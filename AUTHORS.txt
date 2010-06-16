@@ -1,0 +1,7 @@
+Rust authors:
+
+Graydon Hoare <graydon@mozilla.com>
+Andreas Gal <gal@mozilla.com>
+Dave Herman <dherman@mozilla.com>
+Patrick Walton <pwalton@mozilla.com>
+Brendan Eich <brendan@mozilla.com>

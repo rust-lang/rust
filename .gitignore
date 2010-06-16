@@ -1,0 +1,10 @@
+*~
+*.out
+*.exe
+*.orig
+*.cmo
+*.cmi
+*.d
+*.o
+.hg/
+.hgignore
