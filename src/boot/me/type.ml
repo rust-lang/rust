@@ -1215,7 +1215,6 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               let tag_tv = ref TYSPEC_all in
                 unify_ty tag_ty tag_tv;
                 unify_tyvars expected tag_tv;
-                (* FIXME check arity here? *)
                 List.iter
                   begin
                     fun slot ->
