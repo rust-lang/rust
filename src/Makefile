@@ -324,6 +324,8 @@ TEST_XFAILS_X86 :=  test/run-pass/mlist-cycle.rs \
                     test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/task-comm.rs \
                     test/compile-fail/rec-missing-fields.rs \
+                    test/compile-fail/bad-send.rs \
+                    test/compile-fail/bad-recv.rs \
                     test/compile-fail/infinite-tag-type-recursion.rs \
                     test/compile-fail/infinite-vec-type-recursion.rs
 
@@ -440,6 +442,8 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                      ) \
                     $(addprefix test/compile-fail/, \
                       rec-missing-fields.rs \
+                      bad-send.rs \
+                      bad-recv.rs \
                       infinite-tag-type-recursion.rs \
                       infinite-vec-type-recursion.rs \
                      )
