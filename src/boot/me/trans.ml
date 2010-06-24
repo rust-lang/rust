@@ -3763,7 +3763,6 @@ let trans_visitor
               (* NB: follow any exterior pointer as we go. *)
               let src_cell = deref_slot false src_cell src_slot in
 
-              (* NB: follow any exterior pointer as we go. *)
               let tag_cell:Il.cell = get_element_ptr src_cell 0 in
               let union_cell =
                 get_element_ptr_dyn_in_current_frame src_cell 1
