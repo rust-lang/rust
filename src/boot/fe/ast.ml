@@ -300,7 +300,7 @@ and domain =
 
 and pat =
     PAT_lit of lit
-  | PAT_tag of ident * (pat array)
+  | PAT_tag of ((name identified) * (pat array))
   | PAT_slot of ((slot identified) * ident)
   | PAT_wild
 

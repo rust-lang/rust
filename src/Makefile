@@ -331,6 +331,7 @@ TEST_XFAILS_X86 :=  test/run-pass/mlist-cycle.rs \
 
 TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       acyclic-unwind.rs \
+                      alt-pattern-simple.rs \
                       alt-tag.rs \
                       argv.rs \
                       basic.rs \

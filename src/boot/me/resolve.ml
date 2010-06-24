@@ -870,28 +870,61 @@ let pattern_resolving_visitor
     (cx:ctxt)
     (scopes:scope list ref)
     (inner:Walk.visitor) : Walk.visitor =
+
+  let not_tag_ctor (nid:Ast.name identified) : unit =
+    err (Some nid.id) "'%s' is not a tag constructor"
+      (string_of_name nid.node)
+  in
+
+  let resolve_pat_tag
+      (namei:Ast.name identified)
+      (pats:Ast.pat array)
+      (tag_ctor_id:node_id)
+      : unit =
+
+    let tag_ty = 
+      fn_output_ty
+        (Hashtbl.find cx.ctxt_all_item_types tag_ctor_id)
+    in
+      begin
+        match tag_ty with
+            Ast.TY_tag _
+          | Ast.TY_iso _ ->
+              let tag_ty_tup = tag_or_iso_ty_tup_by_name tag_ty namei.node in
+              let arity = Array.length tag_ty_tup in
+                if (Array.length pats) == arity
+                then Hashtbl.add cx.ctxt_pattag_to_item namei.id tag_ctor_id
+                else err (Some namei.id)
+                  "tag pattern '%s' with wrong number of components"
+                  (string_of_name namei.node)
+          | _ -> not_tag_ctor namei
+      end
+  in
+
+  let resolve_arm { node = arm } =
+    match fst arm with
+        Ast.PAT_tag (namei, pats) ->
+          begin
+            match lookup_by_name cx !scopes namei.node with
+                None ->
+                  err (Some namei.id) "unresolved tag constructor '%s'"
+                    (string_of_name namei.node)
+              | Some (_, tag_ctor_id) when referent_is_item cx tag_ctor_id ->
+                  (*
+                   * FIXME we should actually check here that the function
+                   * is a tag value-ctor.  For now this actually allows any
+                   * function returning a tag type to pass as a tag pattern.
+                   *)
+                  resolve_pat_tag namei pats tag_ctor_id
+              |_ -> not_tag_ctor namei
+          end
+      | _ -> ()
+  in
+
   let visit_stmt_pre stmt =
     begin
       match stmt.node with
         Ast.STMT_alt_tag { Ast.alt_tag_lval = _; Ast.alt_tag_arms = arms } ->
-          let resolve_arm { node = arm } =
-            match fst arm with
-                Ast.PAT_tag (ident, _) ->
-                  begin
-                    match lookup_by_ident cx !scopes ident with
-                        None ->
-                          err None "unresolved tag constructor '%s'" ident
-                      | Some (_, tag_id) ->
-                          match Hashtbl.find cx.ctxt_all_defns tag_id with
-                              DEFN_item {
-                                  Ast.decl_item = Ast.MOD_ITEM_tag _
-                                } -> ()
-                            | _ ->
-                                err None "'%s' is not a tag constructor" ident
-                  end
-              | _ -> ()
-
-          in
           Array.iter resolve_arm arms
       | _ -> ()
     end;

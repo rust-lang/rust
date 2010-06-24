@@ -165,6 +165,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
     cx.ctxt_sess.Session.sess_log_type
     cx.ctxt_sess.Session.sess_log_out
   in
+
   let retval_tvs = Stack.create () in
   let push_retval_tv tv =
     Stack.push tv retval_tvs
@@ -175,6 +176,18 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
   let retval_tv _ =
     Stack.top retval_tvs
   in
+
+  let pat_tvs = Stack.create () in
+  let push_pat_tv tv =
+    Stack.push tv pat_tvs
+  in
+  let pop_pat_tv _ =
+    ignore (Stack.pop pat_tvs)
+  in
+  let pat_tv _ =
+    Stack.top pat_tvs
+  in
+
   let (bindings:(node_id, tyvar) Hashtbl.t) = Hashtbl.create 10 in
   let (item_params:(node_id, tyvar array) Hashtbl.t) = Hashtbl.create 10 in
   let (lval_tyvars:(node_id, tyvar) Hashtbl.t) = Hashtbl.create 0 in
@@ -737,23 +750,36 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         a := TYSPEC_equiv c;
         b := TYSPEC_equiv c
 
+    and unify_ty_parametric
+        (ty:Ast.ty)
+        (tps:Ast.ty_param array)
+        (tv:tyvar)
+        : unit =
+      unify_tyvars (ref (TYSPEC_resolved (tps, ty))) tv
+
     and unify_ty (ty:Ast.ty) (tv:tyvar) : unit =
-      unify_tyvars (ref (TYSPEC_resolved ([||], ty))) tv
+      unify_ty_parametric ty [||] tv
+
     in
 
-    let rec unify_atom (atom:Ast.atom) (tv:tyvar) : unit =
+    let rec unify_lit (lit:Ast.lit) (tv:tyvar) : unit =
+      let ty =
+        match lit with
+            Ast.LIT_nil -> Ast.TY_nil
+          | Ast.LIT_bool _ -> Ast.TY_bool
+          | Ast.LIT_mach (mty, _, _) -> Ast.TY_mach mty
+          | Ast.LIT_int (_, _) -> Ast.TY_int
+          | Ast.LIT_uint (_, _) -> Ast.TY_uint
+          | Ast.LIT_char _ -> Ast.TY_char
+      in
+        unify_ty ty tv
+
+    and unify_atom (atom:Ast.atom) (tv:tyvar) : unit =
       match atom with
           Ast.ATOM_literal { node = literal; id = _ } ->
-            let ty = match literal with
-                Ast.LIT_nil -> Ast.TY_nil
-              | Ast.LIT_bool _ -> Ast.TY_bool
-              | Ast.LIT_mach (mty, _, _) -> Ast.TY_mach mty
-              | Ast.LIT_int (_, _) -> Ast.TY_int
-              | Ast.LIT_uint (_, _) -> Ast.TY_uint
-              | Ast.LIT_char _ -> Ast.TY_char
-            in
-              unify_ty ty tv
-        | Ast.ATOM_lval lval -> unify_lval lval tv
+            unify_lit literal tv
+        | Ast.ATOM_lval lval ->
+            unify_lval lval tv
 
     and unify_expr (expr:Ast.expr) (tv:tyvar) : unit =
       match expr with
@@ -886,39 +912,40 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                             | Ast.BASE_app (_, args) ->
                                 note_args args;
                                 ref (TYSPEC_app (tv, args))
-                          | _ -> err None "bad lval / tyspec combination"
-                      in
-                        unify_tyvars (ref spec) tv
-              end
-        | Ast.LVAL_ext (base, comp) ->
-            let base_ts = match comp with
-                Ast.COMP_named (Ast.COMP_ident id) ->
-                  let names = Hashtbl.create 1 in
-                    Hashtbl.add names id tv;
-                    TYSPEC_dictionary names
+                            | _ -> err None "bad lval / tyspec combination"
+                        in
+                          unify_tyvars (ref spec) tv
+                end
+          | Ast.LVAL_ext (base, comp) ->
+              let base_ts = match comp with
+                  Ast.COMP_named (Ast.COMP_ident id) ->
+                    let names = Hashtbl.create 1 in
+                      Hashtbl.add names id tv;
+                      TYSPEC_dictionary names
 
-              | Ast.COMP_named (Ast.COMP_app (id, args)) ->
-                  note_args args;
-                  let tv = ref (TYSPEC_app (tv, args)) in
-                  let names = Hashtbl.create 1 in
-                    Hashtbl.add names id tv;
-                    TYSPEC_dictionary names
+                | Ast.COMP_named (Ast.COMP_app (id, args)) ->
+                    note_args args;
+                    let tv = ref (TYSPEC_app (tv, args)) in
+                    let names = Hashtbl.create 1 in
+                      Hashtbl.add names id tv;
+                      TYSPEC_dictionary names
 
-              | Ast.COMP_named (Ast.COMP_idx i) ->
-                  let init j = if i + 1 == j then tv else ref TYSPEC_all in
-                    TYSPEC_tuple (Array.init (i + 1) init)
+                | Ast.COMP_named (Ast.COMP_idx i) ->
+                    let init j = if i + 1 == j then tv else ref TYSPEC_all in
+                      TYSPEC_tuple (Array.init (i + 1) init)
 
-              | Ast.COMP_atom atom ->
-                  unify_atom atom (ref (TYSPEC_resolved ([||], Ast.TY_int)));
-                  TYSPEC_collection tv
-            in
-            let base_tv = ref base_ts in
-              unify_lval' base base_tv;
-              match !(resolve_tyvar base_tv) with
-                  TYSPEC_resolved (_, ty) ->
-                    unify_ty (slot_ty (project_type_to_slot ty comp)) tv
-                | _ ->
-                    ()
+                | Ast.COMP_atom atom ->
+                    unify_atom atom
+                      (ref (TYSPEC_resolved ([||], Ast.TY_int)));
+                    TYSPEC_collection tv
+              in
+              let base_tv = ref base_ts in
+                unify_lval' base base_tv;
+                match !(resolve_tyvar base_tv) with
+                    TYSPEC_resolved (_, ty) ->
+                      unify_ty (slot_ty (project_type_to_slot ty comp)) tv
+                  | _ ->
+                      ()
 
     and unify_lval (lval:Ast.lval) (tv:tyvar) : unit =
       let id = lval_base_id lval in
@@ -1080,6 +1107,12 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               unify_lval seq seq_tv;
               unify_slot si.node (Some si.id) mem_tv
 
+        | Ast.STMT_alt_tag
+            { Ast.alt_tag_lval = lval; Ast.alt_tag_arms = arms } ->
+            let lval_tv = ref TYSPEC_all in
+              unify_lval lval lval_tv;
+              Array.iter (fun _ -> push_pat_tv lval_tv) arms
+            
         (* FIXME (issue #52): plenty more to handle here. *)
         | _ ->
             log cx "warning: not typechecking stmt %s\n"
@@ -1163,13 +1196,54 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         | _ -> ()
     in
 
+    let visit_pat_pre (pat:Ast.pat) : unit =
+      let expected = pat_tv() in
+        match pat with
+            Ast.PAT_lit lit -> unify_lit lit expected
+
+          | Ast.PAT_tag (namei, _) ->
+              let expect ty =
+                let tv = ref TYSPEC_all in
+                  unify_ty ty tv;
+                  push_pat_tv tv;
+              in
+              let item_id = Hashtbl.find cx.ctxt_pattag_to_item namei.id in
+              let tag_ty =
+                fn_output_ty (Hashtbl.find cx.ctxt_all_item_types item_id)
+              in
+              let tag_ty_tup = tag_or_iso_ty_tup_by_name tag_ty namei.node in
+              let tag_tv = ref TYSPEC_all in
+                unify_ty tag_ty tag_tv;
+                unify_tyvars expected tag_tv;
+                (* FIXME check arity here? *)
+                List.iter
+                  begin
+                    fun slot ->
+                      match slot.Ast.slot_ty with
+                          Some ty -> expect ty
+                        | None -> bug () "no slot type in tag slot tuple"
+                  end
+                  (List.rev (Array.to_list tag_ty_tup));
+
+          | Ast.PAT_slot (sloti, _) ->
+              unify_slot sloti.node (Some sloti.id) expected
+
+          | Ast.PAT_wild -> ()
+    in
+
+    let visit_pat_post (_:Ast.pat) : unit =
+      pop_pat_tv()
+    in
+
       {
         inner with
           Walk.visit_mod_item_pre = visit_mod_item_pre;
           Walk.visit_mod_item_post = visit_mod_item_post;
           Walk.visit_obj_fn_pre = visit_obj_fn_pre;
           Walk.visit_obj_fn_post = visit_obj_fn_post;
-          Walk.visit_stmt_pre = visit_stmt_pre
+          Walk.visit_stmt_pre = visit_stmt_pre;
+          Walk.visit_pat_pre = visit_pat_pre;
+          Walk.visit_pat_post = visit_pat_post;
       }
 
   in
@@ -1223,7 +1297,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                 Hashtbl.find bindings id
         in
           match defn with
-              DEFN_item ({ Ast.decl_item=Ast.MOD_ITEM_mod _ } as item) ->
+              DEFN_item ({ Ast.decl_item = Ast.MOD_ITEM_mod _ } as item) ->
                 ignore (tv_of_item id item)
             | _ -> ()
       in

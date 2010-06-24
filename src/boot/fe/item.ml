@@ -224,24 +224,29 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
                   let (stmts, lval) = bracketed LPAREN RPAREN parse_lval ps in
                   let rec parse_pat ps =
                     match peek ps with
-                        IDENT ident ->
+                        IDENT _ ->
                           let apos = lexpos ps in
-                          bump ps;
+                          let name = Pexp.parse_name ps in
                           let bpos = lexpos ps in
 
-                          (* TODO: nullary constructors *)
                           if peek ps != LPAREN then
-                            let slot =
-                              { Ast.slot_mode = Ast.MODE_interior;
-                                Ast.slot_mutable = false;
-                                Ast.slot_ty = None }
-                            in
-                            Ast.PAT_slot ((span ps apos bpos slot), ident)
+                            begin
+                              match name with
+                                  Ast.NAME_base (Ast.BASE_ident ident) ->
+                                    let slot =
+                                      { Ast.slot_mode = Ast.MODE_interior;
+                                        Ast.slot_mutable = false;
+                                        Ast.slot_ty = None }
+                                    in
+                                      Ast.PAT_slot
+                                        ((span ps apos bpos slot), ident)
+                                |_ -> raise (unexpected ps)
+                            end
                           else
                             let pats =
                               paren_comma_list parse_pat ps
                             in
-                            Ast.PAT_tag (ident, pats)
+                            Ast.PAT_tag ((span ps apos bpos name), pats)
                       | LIT_INT _ | LIT_CHAR _ | LIT_BOOL _ ->
                           Ast.PAT_lit (Pexp.parse_lit ps)
                       | UNDERSCORE -> bump ps; Ast.PAT_wild

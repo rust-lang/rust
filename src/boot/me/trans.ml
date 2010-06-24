@@ -3757,7 +3757,8 @@ let trans_visitor
               emit (Il.jmp Il.JNE Il.CodeNone);
               [ next_jump ]
 
-          | Ast.PAT_tag (ident, pats) ->
+          | Ast.PAT_tag (tag_namei, pats) ->
+              let tag_name = tag_namei.node in
               let ty_tag =
                 match ty with
                     Ast.TY_tag tag_ty -> tag_ty
@@ -3765,7 +3766,6 @@ let trans_visitor
                   | _ -> bug cx "expected tag type"
               in
               let tag_keys = sorted_htab_keys ty_tag in
-              let tag_name = Ast.NAME_base (Ast.BASE_ident ident) in
               let tag_number = arr_idx tag_keys tag_name in
               let ty_tup = Hashtbl.find ty_tag tag_name in
 

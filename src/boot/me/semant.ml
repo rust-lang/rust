@@ -102,6 +102,7 @@ type ctxt =
 
       (* reference id --> definition id *)
       ctxt_lval_to_referent: (node_id,node_id) Hashtbl.t;
+      ctxt_pattag_to_item: (node_id,node_id) Hashtbl.t;
 
       ctxt_required_items: (node_id, (required_lib * nabi_conv)) Hashtbl.t;
       ctxt_required_syms: (node_id, string) Hashtbl.t;
@@ -186,6 +187,7 @@ let new_ctxt sess abi crate =
     ctxt_all_lvals = Hashtbl.create 0;
     ctxt_all_defns = Hashtbl.create 0;
     ctxt_lval_to_referent = Hashtbl.create 0;
+    ctxt_pattag_to_item = Hashtbl.create 0;
     ctxt_required_items = crate.Ast.crate_required;
     ctxt_required_syms = crate.Ast.crate_required_syms;
 
@@ -394,6 +396,27 @@ let slot_ty (s:Ast.slot) : Ast.ty =
   match s.Ast.slot_ty with
       Some t -> t
     | None -> bug () "untyped slot"
+;;
+
+let fn_output_ty (fn_ty:Ast.ty) : Ast.ty =
+  match fn_ty with
+      Ast.TY_fn ({ Ast.sig_output_slot = slot }, _) ->
+        begin
+          match slot.Ast.slot_ty with
+              Some ty -> ty
+            | None -> bug () "function has untyped output slot"
+        end
+    | _ -> bug () "fn_output_ty on non-TY_fn"
+;;
+
+let tag_or_iso_ty_tup_by_name (ty:Ast.ty) (name:Ast.name) : Ast.ty_tup =
+  match ty with
+      Ast.TY_tag tags ->
+        Hashtbl.find tags name
+    | Ast.TY_iso { Ast.iso_index = i; Ast.iso_group = gp } ->
+        Hashtbl.find gp.(i) name
+    | _ ->
+        bug () "tag_or_iso_ty_tup_by_name called with non-tag or -iso type"
 ;;
 
 let defn_is_slot (d:defn) : bool =

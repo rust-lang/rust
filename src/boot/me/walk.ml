@@ -652,10 +652,10 @@ and walk_pat
     (v:visitor)
     (p:Ast.pat)
     : unit =
-  let rec walk p =
+  let walk p =
     match p with
         Ast.PAT_lit lit -> walk_lit v lit
-      | Ast.PAT_tag (_, pats) -> Array.iter walk pats
+      | Ast.PAT_tag (_, pats) -> Array.iter (walk_pat v) pats
       | Ast.PAT_slot (si, _) -> walk_slot_identified v si
       | Ast.PAT_wild -> ()
   in
