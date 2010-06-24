@@ -27,6 +27,16 @@ type call =
     }
 ;;
 
+let need_ty_fn ty =
+  match ty with
+      Ast.TY_fn tfn -> tfn
+    | _ -> bug () "need fn"
+;;
+
+let call_output_slot call =
+  (fst (need_ty_fn call.call_callee_ty)).Ast.sig_output_slot
+;;
+
 let trans_visitor
     (cx:ctxt)
     (path:Ast.name_component Stack.t)
@@ -238,10 +248,6 @@ let trans_visitor
 
   let word_at (mem:Il.mem) : Il.cell =
     Il.Mem (mem, Il.ScalarTy (Il.ValTy word_bits))
-  in
-
-  let wordptr_at (mem:Il.mem) : Il.cell =
-    Il.Mem (mem, Il.ScalarTy (Il.AddrTy (Il.ScalarTy (Il.ValTy word_bits))))
   in
 
   let mov (dst:Il.cell) (src:Il.operand) : unit =
@@ -1547,7 +1553,7 @@ let trans_visitor
   and ty_params_covering (t:Ast.ty) : Ast.slot =
     let n_ty_params = n_used_type_params t in
     let params = make_tydesc_slots n_ty_params in
-      read_alias_slot (Ast.TY_tup params)
+      alias_slot (Ast.TY_tup params)
 
   and get_drop_glue
       (ty:Ast.ty)
@@ -1563,7 +1569,7 @@ let trans_visitor
         note_drop_step ty "drop-glue complete";
     in
     let ty_params_ptr = ty_params_covering ty in
-    let fty = mk_simple_ty_fn [| ty_params_ptr; read_alias_slot ty |] in
+    let fty = mk_simple_ty_fn [| ty_params_ptr; alias_slot ty |] in
       get_typed_mem_glue g fty inner
 
 
@@ -1632,7 +1638,7 @@ let trans_visitor
         mark_ty ty_params ty (deref cell) curr_iso
     in
     let ty_params_ptr = ty_params_covering ty in
-    let fty = mk_simple_ty_fn [| ty_params_ptr; read_alias_slot ty |] in
+    let fty = mk_simple_ty_fn [| ty_params_ptr; alias_slot ty |] in
       get_typed_mem_glue g fty inner
 
 
@@ -1654,7 +1660,7 @@ let trans_visitor
         (interior_slot ty)     (* dst *)
         [|
           ty_params_ptr;
-          read_alias_slot ty;  (* src *)
+          alias_slot ty;       (* src *)
           word_slot            (* clone-task *)
         |]
     in
@@ -1676,7 +1682,7 @@ let trans_visitor
     let fty =
       mk_ty_fn
         (interior_slot ty)
-        [| ty_params_ptr; read_alias_slot ty |]
+        [| ty_params_ptr; alias_slot ty |]
     in
       get_typed_mem_glue g fty inner
 
@@ -1992,7 +1998,7 @@ let trans_visitor
             Ast.DOMAIN_thread ->
               begin
                 trans_upcall "upcall_new_thread" new_task [| |];
-                copy_fn_args false (CLONE_all new_task) call;
+                copy_fn_args false true (CLONE_all new_task) call;
                 trans_upcall "upcall_start_thread" task_cell
                   [|
                     Il.Cell new_task;
@@ -2004,7 +2010,7 @@ let trans_visitor
          | _ ->
              begin
                  trans_upcall "upcall_new_task" new_task [| |];
-                 copy_fn_args false (CLONE_chan new_task) call;
+                 copy_fn_args false true (CLONE_chan new_task) call;
                  trans_upcall "upcall_start_task" task_cell
                    [|
                      Il.Cell new_task;
@@ -3337,13 +3343,22 @@ let trans_visitor
         bound_arg_slots bound_args
 
 
-  and trans_arg0 (arg_cell:Il.cell) (output_cell:Il.cell) : unit =
+  and trans_arg0 (arg_cell:Il.cell) (initializing:bool) (call:call) : unit =
     (* Emit arg0 of any call: the output slot. *)
     iflog (fun _ -> annotate "fn-call arg 0: output slot");
-    trans_init_slot_from_cell
-      CLONE_none
-      arg_cell (word_write_alias_slot abi)
-      output_cell word_slot
+    if not initializing
+    then
+      drop_slot
+        (get_ty_params_of_current_frame())
+        call.call_output
+        (call_output_slot call) None;
+    (* We always get to the same state here: the output slot is uninitialized.
+     * We then do something that's illegal to do in the language, but legal
+     * here: alias the uninitialized memory. We are ok doing this because the
+     * call will fill it in before anyone else observes it. That's the
+     * point.
+     *)
+    mov arg_cell (Il.Cell (alias call.call_output));
 
   and trans_arg1 (arg_cell:Il.cell) : unit =
     (* Emit arg1 of any call: the task pointer. *)
@@ -3385,6 +3400,7 @@ let trans_visitor
 
   and copy_fn_args
       (tail_area:bool)
+      (initializing_arg0:bool)
       (clone:clone_ctrl)
       (call:call)
       : unit =
@@ -3489,7 +3505,7 @@ let trans_visitor
 
         trans_arg1 callee_task_cell;
 
-        trans_arg0 callee_output_cell call.call_output
+        trans_arg0 callee_output_cell initializing_arg0 call
 
 
 
@@ -3700,12 +3716,11 @@ let trans_visitor
     in
       iflog (fun _ -> annotate
                (Printf.sprintf "copy args for tail call to %s" (logname ())));
-      copy_fn_args true CLONE_none call;
+      copy_fn_args true true CLONE_none call;
       drop_slots_at_curr_stmt();
       abi.Abi.abi_emit_fn_tail_call (emitter())
         (force_sz (current_fn_callsz()))
         caller_argsz callee_code callee_argsz;
-
 
   and trans_prepare_call
       (initializing:bool)
@@ -3716,17 +3731,8 @@ let trans_visitor
     let callee_fptr = callee_fn_ptr call.call_callee_ptr call.call_ctrl in
       iflog (fun _ -> annotate
                (Printf.sprintf "copy args for call to %s" (logname ())));
-      copy_fn_args false CLONE_none call;
+      copy_fn_args false initializing CLONE_none call;
       iflog (fun _ -> annotate (Printf.sprintf "call %s" (logname ())));
-      if not initializing
-      then
-        begin
-          match call.call_callee_ty with
-              Ast.TY_fn (tsig, _) ->
-                drop_slot (get_ty_params_of_current_frame()) call.call_output
-                  tsig.Ast.sig_output_slot None;
-            | _ -> bug () "calling non-fn"
-        end;
       callee_fptr
 
   and callee_drop_slot
@@ -3868,15 +3874,20 @@ let trans_visitor
       b
 
 
-  and trans_set_outptr (at:Ast.atom) : unit =
-    let (dst_mem, _) =
-      need_mem_cell
-        (deref (wordptr_at (fp_imm out_mem_disp)))
+  and get_current_output_cell_and_slot _ : (Il.cell * Ast.slot) =
+    let curr_fty =
+      need_ty_fn (Hashtbl.find cx.ctxt_all_item_types (current_fn()))
     in
-    let atom_ty = atom_type cx at in
-    let dst_slot = interior_slot atom_ty in
-    let dst_ty = referent_type abi atom_ty in
-    let dst_cell = Il.Mem (dst_mem, dst_ty) in
+    let curr_args = get_args_for_current_frame () in
+    let curr_outptr =
+      get_element_ptr curr_args Abi.calltup_elt_out_ptr
+    in
+    let dst_cell = deref curr_outptr in
+    let dst_slot = (fst curr_fty).Ast.sig_output_slot in
+      (dst_cell, dst_slot)
+
+  and trans_set_outptr (at:Ast.atom) : unit =
+    let (dst_cell, dst_slot) = get_current_output_cell_and_slot () in
       trans_init_slot_from_atom
         CLONE_none dst_cell dst_slot at
 
@@ -4239,26 +4250,13 @@ let trans_visitor
           emit (Il.jmp Il.JMP Il.CodeNone)
 
       | Ast.STMT_be (flv, args) ->
-          let ty = lval_ty cx flv in
           let ty_params =
             match htab_search cx.ctxt_call_lval_params (lval_base_id flv) with
                 Some params -> params
               | None -> [| |]
             in
-            begin
-              match ty with
-                  Ast.TY_fn (tsig, _) ->
-                    let result_ty = slot_ty tsig.Ast.sig_output_slot in
-                    let (dst_mem, _) =
-                      need_mem_cell
-                        (deref (wordptr_at (fp_imm out_mem_disp)))
-                    in
-                    let dst_rty = referent_type abi result_ty in
-                    let dst_cell = Il.Mem (dst_mem, dst_rty) in
-                      trans_be_fn cx dst_cell flv ty_params args
-
-                | _ -> bug () "Calling unexpected lval."
-            end
+          let (dst_cell, _) = get_current_output_cell_and_slot () in
+            trans_be_fn cx dst_cell flv ty_params args
 
       | Ast.STMT_put atom_opt ->
           trans_put atom_opt
@@ -4446,10 +4444,9 @@ let trans_visitor
 
     let ctor_ty = Hashtbl.find cx.ctxt_all_item_types obj_id in
     let obj_ty =
-      match ctor_ty with
-          Ast.TY_fn (tsig, _) -> slot_ty tsig.Ast.sig_output_slot
-        | _ -> bug () "object constructor doesn't have function type"
+      slot_ty (fst (need_ty_fn ctor_ty)).Ast.sig_output_slot
     in
+
     let vtbl_ptr = get_obj_vtbl obj_id in
     let _ =
       iflog (fun _ -> annotate "calculate vtbl-ptr from displacement")
@@ -4667,15 +4664,10 @@ let trans_visitor
     let (header_tup, _, _) = tag in
     let ctor_ty = Hashtbl.find cx.ctxt_all_item_types tagid in
     let ttag =
-      match ctor_ty with
-          Ast.TY_fn (tsig, _) ->
-            begin
-              match slot_ty tsig.Ast.sig_output_slot with
-                  Ast.TY_tag ttag -> ttag
-                | Ast.TY_iso tiso -> get_iso_tag tiso
-                | _ -> bugi cx tagid "unexpected fn type for tag constructor"
-            end
-        | _ -> bugi cx tagid "unexpected type for tag constructor"
+      match slot_ty (fst (need_ty_fn ctor_ty)).Ast.sig_output_slot with
+          Ast.TY_tag ttag -> ttag
+        | Ast.TY_iso tiso -> get_iso_tag tiso
+        | _ -> bugi cx tagid "unexpected fn type for tag constructor"
     in
     let slots =
       Array.map (fun sloti -> referent_to_slot cx sloti.id) header_tup

@@ -35,24 +35,24 @@ fn main() {
   int_i = ret_int_i(); // non-initializing
   int_i = ret_int_i(); // non-initializing
 
-  //ext_i = ret_ext_i(); // initializing
-  //ext_i = ret_ext_i(); // non-initializing
-  //ext_i = ret_ext_i(); // non-initializing
+  ext_i = ret_ext_i(); // initializing
+  ext_i = ret_ext_i(); // non-initializing
+  ext_i = ret_ext_i(); // non-initializing
 
   int_tup = ret_int_tup(); // initializing
   int_tup = ret_int_tup(); // non-initializing
   int_tup = ret_int_tup(); // non-initializing
 
-  //ext_tup = ret_ext_tup(); // initializing
-  //ext_tup = ret_ext_tup(); // non-initializing
-  //ext_tup = ret_ext_tup(); // non-initializing
+  ext_tup = ret_ext_tup(); // initializing
+  ext_tup = ret_ext_tup(); // non-initializing
+  ext_tup = ret_ext_tup(); // non-initializing
 
   ext_mem = ret_ext_mem(); // initializing
   ext_mem = ret_ext_mem(); // non-initializing
   ext_mem = ret_ext_mem(); // non-initializing
 
-  //ext_ext_mem = ret_ext_ext_mem(); // initializing
-  //ext_ext_mem = ret_ext_ext_mem(); // non-initializing
-  //ext_ext_mem = ret_ext_ext_mem(); // non-initializing
+  ext_ext_mem = ret_ext_ext_mem(); // initializing
+  ext_ext_mem = ret_ext_ext_mem(); // non-initializing
+  ext_ext_mem = ret_ext_ext_mem(); // non-initializing
 
 }
