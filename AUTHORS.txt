@@ -1,7 +1,12 @@
-Rust authors:
+Initial author, project lead, target of blame:
 
 Graydon Hoare <graydon@mozilla.com>
+
+Other authors:
+
 Andreas Gal <gal@mozilla.com>
+Brendan Eich <brendan@mozilla.org>
 Dave Herman <dherman@mozilla.com>
+Michael Bebenita <mbebenita@mozilla.com>
 Patrick Walton <pwalton@mozilla.com>
-Brendan Eich <brendan@mozilla.com>
+Roy Frostig <rfrostig@mozilla.com>

@@ -1,0 +1,12 @@
+// -*- rust -*-
+
+native "rust" mod rustrt {
+  fn str_buf(str s) -> int;
+}
+
+
+native mod libc = target_libc {
+  fn puts(int s) -> ();
+}
+
+mod user = "native-src/native.rs";

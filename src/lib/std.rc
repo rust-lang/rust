@@ -1,0 +1,35 @@
+meta (name = "std",
+      desc = "Rust standard library",
+      uuid = "122bed0b-c19b-4b82-b0b7-7ae8aead7297",
+      url = "http://rust-lang.org/src/std",
+      ver = "0.0.1");
+
+// Built-in types support modules.
+
+mod _int;
+mod _u8;
+mod _vec;
+mod _str;
+
+// General IO and system-services modules.
+
+mod _io;
+mod sys;
+
+// Authorize various rule-bendings.
+
+auth _io = unsafe;
+auth _str = unsafe;
+auth _vec = unsafe;
+
+// Target-OS module.
+
+alt (target_os) {
+  case ("win32") {
+    mod os = "win32_os.rs";
+  } case ("macos") {
+    mod os = "macos_os.rs";
+  } else {
+    mod os = "linux_os.rs";
+  }
+}

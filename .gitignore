@@ -1,4 +1,6 @@
 *~
+*.x86
+*.llvm
 *.out
 *.exe
 *.orig
