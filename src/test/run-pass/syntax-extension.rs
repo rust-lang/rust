@@ -1,4 +1,4 @@
 fn main() {
-  auto s = #shell { uname -a && hg identify };
+  auto s = #shell { uname -a };
   log s;
 }
