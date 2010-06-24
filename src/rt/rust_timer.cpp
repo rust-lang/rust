@@ -21,55 +21,49 @@
 
 #if defined(__WIN32__)
 static DWORD WINAPI
-win32_timer_loop(void *ptr)
+#elif defined(__GNUC__)
+static void *
+#else
+#error "Platform not supported"
+#endif
+timer_loop(void *ptr)
 {
     // We were handed the rust_timer that owns us.
     rust_timer *timer = (rust_timer *)ptr;
     rust_dom &dom = timer->dom;
-    dom.log(LOG_TIMER, "in timer 0x%" PRIxPTR, (uintptr_t)timer);
+    dom.log(rust_log::TIMER, "in timer 0x%" PRIxPTR, (uintptr_t)timer);
     while (!timer->exit_flag) {
+#if defined(__WIN32__)
         Sleep(TIME_SLICE_IN_MS);
-        dom.log(LOG_TIMER,
+#else
+        usleep(TIME_SLICE_IN_MS * 1000);
+#endif
+        dom.log(rust_log::TIMER,
                 "timer 0x%" PRIxPTR
                 " interrupting domain 0x%" PRIxPTR,
                 (uintptr_t)timer,
                 (uintptr_t)&dom);
         dom.interrupt_flag = 1;
     }
+#if defined(__WIN32__)
     ExitThread(0);
-    return 0;
-}
-
-#elif defined(__GNUC__)
-static void *
-pthread_timer_loop(void *ptr)
-{
-    // We were handed the rust_timer that owns us.
-    rust_timer *timer = (rust_timer *)ptr;
-    rust_dom &dom(timer->dom);
-    while (!timer->exit_flag) {
-        usleep(TIME_SLICE_IN_MS * 1000);
-        dom.interrupt_flag = 1;
-    }
-    pthread_exit(NULL);
-    return 0;
-
-}
 #else
-#error "Platform not supported"
+    pthread_exit(NULL);
 #endif
+    return 0;
+}
 
 
 rust_timer::rust_timer(rust_dom &dom) : dom(dom), exit_flag(0)
 {
     dom.log(rust_log::TIMER, "creating timer for domain 0x%" PRIxPTR, &dom);
 #if defined(__WIN32__)
-    thread = CreateThread(NULL, 0, win32_timer_loop, this, 0, NULL);
+    thread = CreateThread(NULL, 0, timer_loop, this, 0, NULL);
     dom.win32_require("CreateThread", thread != NULL);
 #else
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    pthread_create(&thread, &attr, pthread_timer_loop, (void *)this);
+    pthread_create(&thread, &attr, timer_loop, (void *)this);
 #endif
 }
 
