@@ -5,6 +5,8 @@
 *.cmx
 *.dll
 *.exe
+*.so
+*.dylib
 *.orig
 *.cmo
 *.cmi
@@ -24,3 +26,5 @@
 .hg/
 .hgignore
 lexer.ml
+rustboot
+rustc
