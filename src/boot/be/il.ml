@@ -522,54 +522,18 @@ let string_of_reg (f:hreg_formatter) (r:reg) : string =
     | Hreg i -> f i
 ;;
 
-let rec string_of_expr64 (e64:Asm.expr64) : string =
-  let bin op a b =
-    Printf.sprintf "(%s %s %s)" (string_of_expr64 a) op (string_of_expr64 b)
-  in
-  let bini op a b =
-    Printf.sprintf "(%s %s %d)" (string_of_expr64 a) op b
-  in
-    match e64 with
-        Asm.IMM i when (i64_lt i 0L) -> Printf.sprintf "-0x%Lx" (Int64.neg i)
-      | Asm.IMM i -> Printf.sprintf "0x%Lx" i
-      | Asm.ADD (a,b) -> bin "+" a b
-      | Asm.SUB (a,b) -> bin "-" a b
-      | Asm.MUL (a,b) -> bin "*" a b
-      | Asm.DIV (a,b) -> bin "/" a b
-      | Asm.REM (a,b) -> bin "%" a b
-      | Asm.MAX (a,b) ->
-          Printf.sprintf "(max %s %s)"
-            (string_of_expr64 a) (string_of_expr64 b)
-      | Asm.ALIGN (a,b) ->
-          Printf.sprintf "(align %s %s)"
-            (string_of_expr64 a) (string_of_expr64 b)
-      | Asm.SLL (a,b) -> bini "<<" a b
-      | Asm.SLR (a,b) -> bini ">>" a b
-      | Asm.SAR (a,b) -> bini ">>>" a b
-      | Asm.AND (a,b) -> bin "&" a b
-      | Asm.XOR (a,b) -> bin "xor" a b
-      | Asm.OR (a,b) -> bin "|" a b
-      | Asm.NOT a -> Printf.sprintf "(not %s)" (string_of_expr64 a)
-      | Asm.NEG a -> Printf.sprintf "-%s" (string_of_expr64 a)
-      | Asm.F_POS f -> Printf.sprintf "<%s>.fpos" f.fixup_name
-      | Asm.F_SZ f -> Printf.sprintf "<%s>.fsz" f.fixup_name
-      | Asm.M_POS f -> Printf.sprintf "<%s>.mpos" f.fixup_name
-      | Asm.M_SZ f -> Printf.sprintf "<%s>.msz" f.fixup_name
-      | Asm.EXT _ -> "??ext??"
-;;
-
 let string_of_off (e:Asm.expr64 option) : string =
   match e with
       None -> ""
     | Some (Asm.IMM i) when (i64_lt i 0L) ->
         Printf.sprintf " - 0x%Lx" (Int64.neg i)
-    | Some e' -> " + " ^ (string_of_expr64 e')
+    | Some e' -> " + " ^ (Asm.string_of_expr64 e')
 ;;
 
 let string_of_mem (f:hreg_formatter) (a:mem) : string =
   match a with
       Abs e ->
-        Printf.sprintf "[%s]" (string_of_expr64 e)
+        Printf.sprintf "[%s]" (Asm.string_of_expr64 e)
     | RegIn (r, off) ->
         Printf.sprintf "[%s%s]" (string_of_reg f r) (string_of_off off)
     | Spill i ->
@@ -605,9 +569,10 @@ let string_of_operand (f:hreg_formatter) (op:operand) : string =
     | Imm (i, ty) ->
         if !log_iltypes
         then
-          Printf.sprintf "$%s:%s" (string_of_expr64 i) (string_of_ty_mach ty)
+          Printf.sprintf "$%s:%s"
+            (Asm.string_of_expr64 i) (string_of_ty_mach ty)
         else
-          Printf.sprintf "$%s" (string_of_expr64 i)
+          Printf.sprintf "$%s" (Asm.string_of_expr64 i)
 ;;
 
 

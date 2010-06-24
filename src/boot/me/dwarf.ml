@@ -1428,7 +1428,7 @@ let dwarf_visitor
       | Il.Bits64 -> TY_i64
   in
 
-  let path_name _ = Ast.fmt_to_str Ast.fmt_name (Walk.path_to_name path) in
+  let path_name _ = Fmt.fmt_to_str Ast.fmt_name (Walk.path_to_name path) in
 
   let (abbrev_table:(abbrev, int) Hashtbl.t) = Hashtbl.create 0 in
 
@@ -2496,29 +2496,29 @@ let fmt_dies
     : unit =
   let ((root:int),(dies:(int,die) Hashtbl.t)) = dies in
   let rec fmt_die die =
-    Ast.fmt ff "@\nDIE <0x%x> %s" die.die_off (dw_tag_to_string die.die_tag);
+    Fmt.fmt ff "@\nDIE <0x%x> %s" die.die_off (dw_tag_to_string die.die_tag);
     Array.iter
       begin
         fun (at,(form,data)) ->
-          Ast.fmt ff "@\n  %s = " (dw_at_to_string at);
+          Fmt.fmt ff "@\n  %s = " (dw_at_to_string at);
           begin
             match data with
-                DATA_num n -> Ast.fmt ff "0x%x"  n
-              | DATA_str s -> Ast.fmt ff "\"%s\"" s
-              | DATA_other -> Ast.fmt ff "<other>"
+                DATA_num n -> Fmt.fmt ff "0x%x"  n
+              | DATA_str s -> Fmt.fmt ff "\"%s\"" s
+              | DATA_other -> Fmt.fmt ff "<other>"
           end;
-          Ast.fmt ff "  (%s)" (dw_form_to_string form)
+          Fmt.fmt ff "  (%s)" (dw_form_to_string form)
       end
       die.die_attrs;
     if (Array.length die.die_children) != 0
     then
       begin
-        Ast.fmt ff "@\n";
-        Ast.fmt_obox ff;
-        Ast.fmt ff "  children: ";
-        Ast.fmt_obr ff;
+        Fmt.fmt ff "@\n";
+        Fmt.fmt_obox ff;
+        Fmt.fmt ff "  children: ";
+        Fmt.fmt_obr ff;
         Array.iter fmt_die die.die_children;
-        Ast.fmt_cbb ff
+        Fmt.fmt_cbb ff
       end;
   in
     fmt_die (Hashtbl.find dies root)
@@ -2613,7 +2613,7 @@ let read_dies
       begin
         fun _ ->
           log sess "read DIEs:";
-          log sess "%s" (Ast.fmt_to_str fmt_dies (root, all_dies));
+          log sess "%s" (Fmt.fmt_to_str fmt_dies (root, all_dies));
       end;
     (root, all_dies)
 ;;

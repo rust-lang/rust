@@ -831,7 +831,7 @@ let trans_crate
               | Ast.STMT_check_expr expr ->
                   let llexpr = trans_expr expr in
                   let (llfail, llfailbuilder) = new_block None "fail" in
-                  let reason = Ast.fmt_to_str Ast.fmt_expr expr in
+                  let reason = Fmt.fmt_to_str Ast.fmt_expr expr in
                   trans_fail llfailbuilder lltask reason head.id;
                   let (llok, llokbuilder) = new_block None "ok" in
                   ignore (Llvm.build_cond_br llexpr llok llfail llbuilder);

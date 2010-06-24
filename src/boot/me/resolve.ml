@@ -445,9 +445,9 @@ and lookup_type_by_name
                 log cx "applying %d type args to %d params"
                   (Array.length args) (Array.length params);
                 log cx "params: %s"
-                  (Ast.fmt_to_str Ast.fmt_decl_params params);
+                  (Fmt.fmt_to_str Ast.fmt_decl_params params);
                 log cx "args: %s"
-                  (Ast.fmt_to_str Ast.fmt_app_args args);
+                  (Fmt.fmt_to_str Ast.fmt_app_args args);
             end;
           let ty = rebuild_ty_under_params ty params args true in
             iflog cx (fun _ -> log cx "--- lookup_type_by_name %a ==> %a"
@@ -538,7 +538,7 @@ let type_resolving_visitor
       log cx "collected resolved slot #%d with type %s" (int_of_node slot.id)
         (match slot.node.Ast.slot_ty with
              None -> "??"
-           | Some t -> (Ast.fmt_to_str Ast.fmt_ty t));
+           | Some t -> (Fmt.fmt_to_str Ast.fmt_ty t));
       inner.Walk.visit_slot_identified_pre slot
   in
 

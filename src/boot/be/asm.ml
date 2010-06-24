@@ -62,7 +62,7 @@
 *)
 
 open Common;;
-
+open Fmt;;
 
 let log (sess:Session.sess) =
   Session.log "asm"
@@ -201,6 +201,41 @@ let rec eval64 (e:expr64)
     | EXT e -> Int64.of_int32 (eval32 e)
 ;;
 
+let rec string_of_expr64 (e64:expr64) : string =
+  let bin op a b =
+    Printf.sprintf "(%s %s %s)" (string_of_expr64 a) op (string_of_expr64 b)
+  in
+  let bini op a b =
+    Printf.sprintf "(%s %s %d)" (string_of_expr64 a) op b
+  in
+    match e64 with
+        IMM i when (i64_lt i 0L) -> Printf.sprintf "-0x%Lx" (Int64.neg i)
+      | IMM i -> Printf.sprintf "0x%Lx" i
+      | ADD (a,b) -> bin "+" a b
+      | SUB (a,b) -> bin "-" a b
+      | MUL (a,b) -> bin "*" a b
+      | DIV (a,b) -> bin "/" a b
+      | REM (a,b) -> bin "%" a b
+      | MAX (a,b) ->
+          Printf.sprintf "(max %s %s)"
+            (string_of_expr64 a) (string_of_expr64 b)
+      | ALIGN (a,b) ->
+          Printf.sprintf "(align %s %s)"
+            (string_of_expr64 a) (string_of_expr64 b)
+      | SLL (a,b) -> bini "<<" a b
+      | SLR (a,b) -> bini ">>" a b
+      | SAR (a,b) -> bini ">>>" a b
+      | AND (a,b) -> bin "&" a b
+      | XOR (a,b) -> bin "xor" a b
+      | OR (a,b) -> bin "|" a b
+      | NOT a -> Printf.sprintf "(not %s)" (string_of_expr64 a)
+      | NEG a -> Printf.sprintf "-%s" (string_of_expr64 a)
+      | F_POS f -> Printf.sprintf "<%s>.fpos" f.fixup_name
+      | F_SZ f -> Printf.sprintf "<%s>.fsz" f.fixup_name
+      | M_POS f -> Printf.sprintf "<%s>.mpos" f.fixup_name
+      | M_SZ f -> Printf.sprintf "<%s>.msz" f.fixup_name
+      | EXT _ -> "??ext??"
+;;
 
 type frag =
     MARK  (* MARK == 'PAD (IMM 0L)' *)
@@ -225,6 +260,46 @@ and relaxation =
     { relax_options: frag array;
       relax_choice: int ref; }
 ;;
+
+
+let rec fmt_frag (ff:Format.formatter) (f:frag) : unit =
+  match f with
+    MARK -> fmt ff "MARK"
+  | SEQ fs -> fmt_bracketed_arr_sep "[" "]" ", " fmt_frag ff fs
+  | PAD i -> fmt ff "PAD(%d)" i
+  | BSS i -> fmt ff "BSZ(%Ld)" i
+  | MEMPOS i -> fmt ff "MEMPOS(%Ld)" i
+  | BYTE i -> fmt ff "0x%x" i
+  | BYTES iz ->
+      fmt ff "BYTES";
+      fmt_bracketed_arr_sep "(" ")" ", "
+        (fun ff i -> fmt ff "0x%x" i) ff iz
+  | CHAR c -> fmt ff "CHAR(%s)" (Char.escaped c)
+  | STRING s -> fmt ff "STRING(%s)" (String.escaped s)
+  | ZSTRING s -> fmt ff "ZSTRING(%s)" (String.escaped s)
+  | ULEB128 e -> fmt ff "ULEB128(%s)" (string_of_expr64 e)
+  | SLEB128 e -> fmt ff "SLEB128(%s)" (string_of_expr64 e)
+  | WORD (tm, e) ->
+      fmt ff "%s:%s"
+        (string_of_ty_mach tm) (string_of_expr64 e)
+  | ALIGN_FILE (i, f) ->
+      fmt ff "ALIGN_FILE(%d, " i;
+      fmt_frag ff f;
+      fmt ff ")"
+  | ALIGN_MEM (i, f) ->
+      fmt ff "ALIGN_MEM(%d, " i;
+      fmt_frag ff f;
+      fmt ff ")"
+  | DEF (fix, f) ->
+      fmt ff "DEF(%s, " fix.fixup_name;
+      fmt_frag ff f;
+      fmt ff ")"
+  | RELAX r ->
+      fmt ff "RELAX(";
+      fmt_arr_sep ", " fmt_frag ff r.relax_options
+;;
+
+let sprintf_frag = Fmt.sprintf_fmt fmt_frag;;
 
 exception Relax_more of relaxation;;
 

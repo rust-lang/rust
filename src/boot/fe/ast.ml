@@ -7,6 +7,7 @@
  *)
 
 open Common;;
+open Fmt;;
 
 (*
  * Slot names are given by a dot-separated path within the current
@@ -464,8 +465,6 @@ let sane_name (n:name) : bool =
 
 (* FIXME (issue #19): finish all parts with ?foo? as their output. *)
 
-let fmt = Format.fprintf;;
-
 let fmt_ident (ff:Format.formatter) (i:ident) : unit =
   fmt ff  "%s" i
 
@@ -699,13 +698,6 @@ and fmt_carg (ff:Format.formatter) (ca:carg) : unit =
   match ca with
       CARG_path cp -> fmt_carg_path ff cp
     | CARG_lit lit -> fmt_lit ff lit
-
-and fmt_obox ff = Format.pp_open_box ff 4
-and fmt_obox_3 ff = Format.pp_open_box ff 3
-and fmt_cbox ff = Format.pp_close_box ff ()
-and fmt_obr ff = fmt ff "{"
-and fmt_cbr ff = fmt ff "@\n}"
-and fmt_cbb ff = (fmt_cbox ff; fmt_cbr ff)
 
 and fmt_stmts (ff:Format.formatter) (ss:stmt array) : unit =
   Array.iter (fmt_stmt ff) ss;
@@ -1315,22 +1307,6 @@ and fmt_crate (ff:Format.formatter) (c:crate) : unit =
   let (view,items) = c.node.crate_items in
     fmt_mod_view ff view;
     fmt_mod_items ff items
-
-
-let fmt_to_str (f:Format.formatter -> 'a -> unit) (v:'a) : string =
-  let buf = Buffer.create 16 in
-  let bf = Format.formatter_of_buffer buf in
-    begin
-      f bf v;
-      Format.pp_print_flush bf ();
-      Buffer.contents buf
-    end
-
-let sprintf_fmt
-    (f:Format.formatter -> 'a -> unit)
-    : (unit -> 'a -> string) =
-  (fun _ -> fmt_to_str f)
-
 
 let sprintf_expr = sprintf_fmt fmt_expr;;
 let sprintf_name = sprintf_fmt fmt_name;;

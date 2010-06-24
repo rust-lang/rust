@@ -812,7 +812,7 @@ let trans_visitor
                                         (Printf.sprintf
                                            "access outer frame slot #%d = %s"
                                            (int_of_node slot_id)
-                                           (Ast.fmt_to_str
+                                           (Fmt.fmt_to_str
                                               Ast.fmt_slot_key k))
                                 end
                             in
@@ -1214,7 +1214,7 @@ let trans_visitor
     iflog
       begin
         fun _ ->
-          annotate (Ast.fmt_to_str Ast.fmt_atom atom)
+          annotate (Fmt.fmt_to_str Ast.fmt_atom atom)
       end;
 
     match atom with
@@ -1788,7 +1788,7 @@ let trans_visitor
       iflog
         begin
           fun _ ->
-            annotate ((Ast.fmt_to_str Ast.fmt_expr expr) ^
+            annotate ((Fmt.fmt_to_str Ast.fmt_expr expr) ^
                         ": cond, finale")
         end
     in
@@ -1875,7 +1875,7 @@ let trans_visitor
       iflog
         begin
           fun _ ->
-            annotate ((Ast.fmt_to_str Ast.fmt_expr expr) ^
+            annotate ((Fmt.fmt_to_str Ast.fmt_expr expr) ^
                         ": plain exit, finale")
         end
     in
@@ -2037,7 +2037,7 @@ let trans_visitor
 
   and trans_check_expr (e:Ast.expr) : unit =
     let fwd_jmps = trans_cond false e in
-      trans_cond_fail (Ast.fmt_to_str Ast.fmt_expr e) fwd_jmps
+      trans_cond_fail (Fmt.fmt_to_str Ast.fmt_expr e) fwd_jmps
 
   and trans_malloc (dst:Il.cell) (nbytes:Il.operand) : unit =
     trans_upcall "upcall_malloc" dst [| nbytes |]
@@ -2489,7 +2489,7 @@ let trans_visitor
       : unit =
     iflog (fun _ ->
              annotate ("copy_ty: referent data of type " ^
-                         (Ast.fmt_to_str Ast.fmt_ty ty)));
+                         (Fmt.fmt_to_str Ast.fmt_ty ty)));
     match ty with
         Ast.TY_nil
       | Ast.TY_bool
@@ -2626,7 +2626,7 @@ let trans_visitor
         | MEM_interior when type_is_structured ty ->
             (iflog (fun _ ->
                       annotate ("mark interior slot " ^
-                                  (Ast.fmt_to_str Ast.fmt_slot slot))));
+                                  (Fmt.fmt_to_str Ast.fmt_slot slot))));
             let (mem, _) = need_mem_cell cell in
             let tmp = next_vreg_cell Il.voidptr_t in
             let ty = maybe_iso curr_iso ty in
@@ -2750,7 +2750,7 @@ let trans_visitor
         | MEM_interior when type_is_structured ty ->
             (iflog (fun _ ->
                       annotate ("drop interior slot " ^
-                                  (Ast.fmt_to_str Ast.fmt_slot slot))));
+                                  (Fmt.fmt_to_str Ast.fmt_slot slot))));
             let (mem, _) = need_mem_cell cell in
             let vr = next_vreg_cell Il.voidptr_t in
               lea vr mem;
@@ -2767,7 +2767,7 @@ let trans_visitor
     if cx.ctxt_sess.Session.sess_trace_drop ||
       cx.ctxt_sess.Session.sess_log_trans
     then
-      let slotstr = Ast.fmt_to_str Ast.fmt_ty ty in
+      let slotstr = Fmt.fmt_to_str Ast.fmt_ty ty in
       let str = step ^ " " ^ slotstr in
         begin
           annotate str;
@@ -2785,7 +2785,7 @@ let trans_visitor
           | MEM_rc_opaque -> "MEM_rc_struct"
           | MEM_interior -> "MEM_rc_struct"
       in
-      let slotstr = Ast.fmt_to_str Ast.fmt_slot slot in
+      let slotstr = Fmt.fmt_to_str Ast.fmt_slot slot in
       let str = step ^ " " ^ mctrl_str ^ " " ^ slotstr in
         begin
           annotate str;
@@ -3733,7 +3733,7 @@ let trans_visitor
     iflog (fun _ ->
              annotate (Printf.sprintf "callee_drop_slot %d = %s "
                          (int_of_node slot_id)
-                         (Ast.fmt_to_str Ast.fmt_slot_key k)));
+                         (Fmt.fmt_to_str Ast.fmt_slot_key k)));
     drop_slot_in_current_frame (cell_of_block_slot slot_id) slot None
 
 
@@ -3829,7 +3829,7 @@ let trans_visitor
                                (Printf.sprintf
                                   "post-stmt, drop_slot %d = %s "
                                   (int_of_node slot_id)
-                                  (Ast.fmt_to_str Ast.fmt_slot_key k)));
+                                  (Fmt.fmt_to_str Ast.fmt_slot_key k)));
                     drop_slot_in_current_frame
                       (cell_of_block_slot slot_id) slot None
               end
@@ -3841,7 +3841,7 @@ let trans_visitor
       iflog
         begin
           fun _ ->
-            let s = Ast.fmt_to_str Ast.fmt_stmt_body stmt in
+            let s = Fmt.fmt_to_str Ast.fmt_stmt_body stmt in
               log cx "translating stmt: %s" s;
               annotate s;
         end;
@@ -4910,7 +4910,7 @@ let fixup_assigning_visitor
     : Walk.visitor =
 
   let path_name (_:unit) : string =
-    Ast.fmt_to_str Ast.fmt_name (Walk.path_to_name path)
+    Fmt.fmt_to_str Ast.fmt_name (Walk.path_to_name path)
   in
 
   let enter_file_for id =

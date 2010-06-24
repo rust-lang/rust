@@ -90,7 +90,7 @@ let set_default_output_filename (sess:Session.sess) : unit =
 let dump_sig (filename:filename) : unit =
   let items =
     Lib.get_file_mod sess abi filename (ref (Node 0)) (ref (Opaque 0)) in
-    Printf.fprintf stdout "%s\n" (Ast.fmt_to_str Ast.fmt_mod_items items);
+    Printf.fprintf stdout "%s\n" (Fmt.fmt_to_str Ast.fmt_mod_items items);
     exit 0
 ;;
 
@@ -289,7 +289,7 @@ then
   begin
     Printf.fprintf stdout "Post-parse AST:\n";
     Format.set_margin 80;
-    Printf.fprintf stdout "%s\n" (Ast.fmt_to_str Ast.fmt_crate crate)
+    Printf.fprintf stdout "%s\n" (Fmt.fmt_to_str Ast.fmt_crate crate)
   end
 
 let list_to_seq ls = Asm.SEQ (Array.of_list ls);;

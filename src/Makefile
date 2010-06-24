@@ -205,7 +205,7 @@ endif
 # List them in link order.
 # Nobody calculates the link-order DAG automatically, sadly.
 
-UTIL_BOT_MLS := $(addprefix boot/util/, common.ml bits.ml)
+UTIL_BOT_MLS := $(addprefix boot/util/, fmt.ml common.ml bits.ml)
 DRIVER_BOT_MLS := $(addprefix boot/driver/, session.ml)
 BE_MLS := $(addprefix boot/be/, x86.ml ra.ml pe.ml elf.ml \
           macho.ml)

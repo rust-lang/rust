@@ -91,7 +91,7 @@ let fmt_constr_key cx ckey =
         let fmt_constr_arg carg =
           match carg with
               Constr_arg_lit lit ->
-                Ast.fmt_to_str Ast.fmt_lit lit
+                Fmt.fmt_to_str Ast.fmt_lit lit
             | Constr_arg_node (id, pth) ->
                 let rec fmt_pth pth =
                   match pth with
@@ -99,19 +99,19 @@ let fmt_constr_key cx ckey =
                         if referent_is_slot cx id
                         then
                           let key = Hashtbl.find cx.ctxt_slot_keys id in
-                            Ast.fmt_to_str Ast.fmt_slot_key key
+                            Fmt.fmt_to_str Ast.fmt_slot_key key
                         else
                           let n = Hashtbl.find cx.ctxt_all_item_names id in
-                            Ast.fmt_to_str Ast.fmt_name n
+                            Fmt.fmt_to_str Ast.fmt_name n
                     | Ast.CARG_ext (pth, nc) ->
                         let b = fmt_pth pth in
-                          b ^ (Ast.fmt_to_str Ast.fmt_name_component nc)
+                          b ^ (Fmt.fmt_to_str Ast.fmt_name_component nc)
                 in
                   fmt_pth pth
         in
         let pred_name = Hashtbl.find cx.ctxt_all_item_names cid in
           Printf.sprintf "%s(%s)"
-            (Ast.fmt_to_str Ast.fmt_name pred_name)
+            (Fmt.fmt_to_str Ast.fmt_name pred_name)
             (String.concat ", "
                (List.map
                   fmt_constr_arg
@@ -120,7 +120,7 @@ let fmt_constr_key cx ckey =
     | Constr_init n when Hashtbl.mem cx.ctxt_slot_keys n ->
         Printf.sprintf "<init #%d = %s>"
           (int_of_node n)
-          (Ast.fmt_to_str Ast.fmt_slot_key (Hashtbl.find cx.ctxt_slot_keys n))
+          (Fmt.fmt_to_str Ast.fmt_slot_key (Hashtbl.find cx.ctxt_slot_keys n))
     | Constr_init n ->
         Printf.sprintf "<init #%d>" (int_of_node n)
 ;;
@@ -820,7 +820,7 @@ let run_dataflow cx graph : unit =
               iflog cx (fun _ -> log cx "stmt %d: '%s'" (int_of_node node)
                        (match htab_search cx.ctxt_all_stmts node with
                             None -> "??"
-                          | Some stmt -> Ast.fmt_to_str Ast.fmt_stmt stmt));
+                          | Some stmt -> Fmt.fmt_to_str Ast.fmt_stmt stmt));
               iflog cx (fun _ -> log cx "stmt %d:" (int_of_node node));
               iflog cx (fun _ -> log cx
                           "    prestate %s" (fmt_constr_bitv prestate));
@@ -875,7 +875,7 @@ let typestate_verify_visitor
                  "Unsatisfied precondition constraint %s at stmt %d: %s"
                  constr_str
                  (int_of_node s.id)
-                 (Ast.fmt_to_str Ast.fmt_stmt
+                 (Fmt.fmt_to_str Ast.fmt_stmt
                     (Hashtbl.find cx.ctxt_all_stmts s.id)))
         (Bits.to_list precond);
       inner.Walk.visit_stmt_pre s

@@ -65,7 +65,7 @@ type file_code = (node_id, item_code) Hashtbl.t;;
 type data_frags = (data, (fixup * Asm.frag)) Hashtbl.t;;
 
 let string_of_name (n:Ast.name) : string =
-  Ast.fmt_to_str Ast.fmt_name n
+  Fmt.fmt_to_str Ast.fmt_name n
 ;;
 
 (* The only need for a carg is to uniquely identify a constraint-arg

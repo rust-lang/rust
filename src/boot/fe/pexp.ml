@@ -975,7 +975,7 @@ let expand_pexp_custom
     (args:token array)
     (body:string option)
     : pexp' =
-  let nstr = Ast.fmt_to_str Ast.fmt_name name in
+  let nstr = Fmt.fmt_to_str Ast.fmt_name name in
     match (nstr, (Array.length args), body) with
 
         ("shell", 0, Some cmd) ->

@@ -145,7 +145,7 @@ let mod_item_logging_visitor
     (path:Ast.name_component Stack.t)
     (inner:visitor)
     : visitor =
-  let path_name _ = Ast.fmt_to_str Ast.fmt_name (path_to_name path) in
+  let path_name _ = Fmt.fmt_to_str Ast.fmt_name (path_to_name path) in
   let visit_mod_item_pre name params item =
     logfn (Printf.sprintf "entering %s" (path_name()));
     inner.visit_mod_item_pre name params item;

@@ -73,6 +73,19 @@
  *
  *)
 
+
+let log (sess:Session.sess) =
+  Session.log "insn"
+    sess.Session.sess_log_insn
+    sess.Session.sess_log_out
+;;
+
+let iflog (sess:Session.sess) (thunk:(unit -> unit)) : unit =
+  if sess.Session.sess_log_insn
+  then thunk ()
+  else ()
+;;
+
 open Common;;
 
 exception Unrecognized
@@ -2147,44 +2160,55 @@ let new_emitter_without_vregs _ : Il.emitter =
     false None
 ;;
 
-let select_insns (sess:Session.sess) (q:Il.quads) : Asm.frag =
+let select_insns (sess:Session.sess) (qs:Il.quads) : Asm.frag =
   let scopes = Stack.create () in
   let fixups = Stack.create () in
-  let pop_frags _ =
-    Asm.SEQ (Array.of_list
-               (List.rev
-                  (!(Stack.pop scopes))))
+  let append frag =
+    Queue.add frag (Stack.top scopes)
   in
-    ignore (Stack.push (ref []) scopes);
-    for i = 0 to (Array.length q) - 1 do
-      let append frag =
-        let frags = Stack.top scopes in
-          frags := frag :: (!frags)
-      in
-        begin
-          match q.(i).Il.quad_fixup with
-              None -> ()
-            | Some f -> append (Asm.DEF (f, Asm.MARK))
-        end;
-        begin
-          match q.(i).Il.quad_body with
-              Il.Enter f ->
-                Stack.push f fixups;
-                Stack.push (ref []) scopes;
-            | Il.Leave ->
-                append (Asm.DEF (Stack.pop fixups, pop_frags ()))
-            | _ ->
-                try
-                  append (select_insn q.(i))
-                with
+  let pop_frags _ =
+    Asm.SEQ (queue_to_arr (Stack.pop scopes))
+  in
+    ignore (Stack.push (Queue.create()) scopes);
+    Array.iteri
+      begin
+        fun i q ->
+          begin
+            match q.Il.quad_fixup with
+                None -> ()
+              | Some f -> append (Asm.DEF (f, Asm.MARK))
+          end;
+          begin
+            let qstr _ = Il.string_of_quad reg_str q in
+              match q.Il.quad_body with
+                  Il.Enter f ->
+                    Stack.push f fixups;
+                    Stack.push (Queue.create()) scopes;
+                | Il.Leave ->
+                    append (Asm.DEF (Stack.pop fixups, pop_frags ()))
+                | _ ->
+                    try
+                      let _ =
+                        iflog sess (fun _ ->
+                                      log sess "quad %d: %s" i (qstr()))
+                      in
+                      let frag = select_insn q in
+                      let _ =
+                        iflog sess (fun _ ->
+                                      log sess "frag %d: %a" i
+                                        Asm.sprintf_frag frag)
+                      in
+                        append frag
+                    with
                     Unrecognized ->
                       Session.fail sess
-                        "E:Assembly error: unrecognized quad: %s\n%!"
-                        (Il.string_of_quad reg_str q.(i));
+                        "E:Assembly error: unrecognized quad %d: %s\n%!"
+                        i (qstr());
                       ()
-        end
-    done;
-    pop_frags()
+          end
+      end
+      qs;
+      pop_frags()
 ;;
 
 let frags_of_emitted_quads (sess:Session.sess) (e:Il.emitter) : Asm.frag =
