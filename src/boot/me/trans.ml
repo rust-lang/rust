@@ -3708,7 +3708,7 @@ let trans_visitor
 
 
   and trans_prepare_call
-      ((*initializing*)_:bool)
+      (initializing:bool)
       (logname:(unit -> string))
       (call:call)
       : Il.operand =
@@ -3718,11 +3718,15 @@ let trans_visitor
                (Printf.sprintf "copy args for call to %s" (logname ())));
       copy_fn_args false CLONE_none call;
       iflog (fun _ -> annotate (Printf.sprintf "call %s" (logname ())));
-      (* FIXME (issue #24): we need to actually handle writing to an
-       * already-initialised slot. Currently we blindly assume we're
-       * initializing, overwrite the slot; this is ok if we're writing
-       * to an interior output slot, but we'll leak any exteriors as we
-       * do that.  *)
+      if not initializing
+      then
+        begin
+          match call.call_callee_ty with
+              Ast.TY_fn (tsig, _) ->
+                drop_slot (get_ty_params_of_current_frame()) call.call_output
+                  tsig.Ast.sig_output_slot None;
+            | _ -> bug () "calling non-fn"
+        end;
       callee_fptr
 
   and callee_drop_slot
