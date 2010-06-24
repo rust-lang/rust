@@ -3737,30 +3737,21 @@ let trans_visitor
     drop_slot_in_current_frame (cell_of_block_slot slot_id) slot None
 
 
-  and trans_alt_tag { Ast.alt_tag_lval = lval; Ast.alt_tag_arms = arms } =
-    let ((lval_cell:Il.cell), { Ast.slot_ty = ty_opt }) = trans_lval lval in
-    let lval_ty =
-      match ty_opt with
-          Some ty -> ty
-        | None -> bug cx "expected lval type"
-    in
+  and trans_alt_tag (at:Ast.stmt_alt_tag) : unit =
 
-    let trans_arm { node = (pat, block) } : quad_idx =
-      (* Translates the pattern and returns the addresses of the branch
-       * instructions, which are taken if the match fails. *)
-      let rec trans_pat pat cell (ty:Ast.ty) =
+    let trans_arm arm : quad_idx =
+      let (pat, block) = arm.node in
+        (* Translates the pattern and returns the addresses of the branch
+         * instructions, which are taken if the match fails. *)
+      let rec trans_pat pat src_cell src_slot =
         match pat with
             Ast.PAT_lit lit ->
-              let operand = trans_lit lit in
-              emit (Il.cmp (Il.Cell cell) operand);
-              let next_jump = mark() in
-              emit (Il.jmp Il.JNE Il.CodeNone);
-              [ next_jump ]
+              trans_compare Il.JNE (trans_lit lit) (Il.Cell src_cell)
 
           | Ast.PAT_tag (tag_namei, pats) ->
               let tag_name = tag_namei.node in
               let ty_tag =
-                match ty with
+                match slot_ty src_slot with
                     Ast.TY_tag tag_ty -> tag_ty
                   | Ast.TY_iso ti -> (ti.Ast.iso_group).(ti.Ast.iso_index)
                   | _ -> bug cx "expected tag type"
@@ -3769,14 +3760,19 @@ let trans_visitor
               let tag_number = arr_idx tag_keys tag_name in
               let ty_tup = Hashtbl.find ty_tag tag_name in
 
-              let tag_cell:Il.cell = get_element_ptr cell 0 in
-              let union_cell = get_element_ptr_dyn_in_current_frame cell 1 in
+              (* NB: follow any exterior pointer as we go. *)
+              let src_cell = deref_slot false src_cell src_slot in
 
-              emit (Il.cmp
-                      (Il.Cell tag_cell)
-                      (imm (Int64.of_int tag_number)));
-              let next_jump = mark() in
-              emit (Il.jmp Il.JNE Il.CodeNone);
+              (* NB: follow any exterior pointer as we go. *)
+              let tag_cell:Il.cell = get_element_ptr src_cell 0 in
+              let union_cell =
+                get_element_ptr_dyn_in_current_frame src_cell 1
+              in
+
+              let next_jumps =
+                trans_compare Il.JNE
+                  (Il.Cell tag_cell) (imm (Int64.of_int tag_number))
+              in
 
               let tup_cell:Il.cell = get_variant_ptr union_cell tag_number in
 
@@ -3784,35 +3780,36 @@ let trans_visitor
                 let elem_cell =
                   get_element_ptr_dyn_in_current_frame tup_cell i
                 in
-                let elem_ty =
-                  match ty_tup.(i).Ast.slot_ty with
-                      Some ty -> ty
-                    | None -> bug cx "expected element type"
-                in
-                trans_pat elem_pat elem_cell elem_ty
+                let elem_slot = ty_tup.(i) in
+                  trans_pat elem_pat elem_cell elem_slot
               in
 
               let elem_jumps = Array.mapi trans_elem_pat pats in
-              next_jump::(List.concat (Array.to_list elem_jumps))
+                next_jumps @ (List.concat (Array.to_list elem_jumps))
 
-          | Ast.PAT_slot ({ node = dst_slot; id = dst_id }, _) ->
-              let dst_cell = cell_of_block_slot dst_id in
-              let src_cell = Il.Cell cell in
-              mov (deref_slot true dst_cell dst_slot) src_cell;
-              []                  (* irrefutable *)
+          | Ast.PAT_slot (dst, _) ->
+              let dst_slot = get_slot cx dst.id in
+              let dst_cell = cell_of_block_slot dst.id in
+                trans_copy_slot
+                  (get_ty_params_of_current_frame()) true
+                  dst_cell dst_slot
+                  src_cell src_slot
+                  None;
+                []                (* irrefutable *)
 
           | Ast.PAT_wild -> []    (* irrefutable *)
       in
 
-      let next_jumps = trans_pat pat lval_cell lval_ty in
-      trans_block block;
-      let last_jump = mark() in
-      emit (Il.jmp Il.JMP Il.CodeNone);
-      List.iter patch next_jumps;
-      last_jump
+      let (lval_cell, lval_slot) = trans_lval at.Ast.alt_tag_lval in
+      let next_jumps = trans_pat pat lval_cell lval_slot in
+        trans_block block;
+        let last_jump = mark() in
+          emit (Il.jmp Il.JMP Il.CodeNone);
+          List.iter patch next_jumps;
+          last_jump
     in
-    let last_jumps = Array.map trans_arm arms in
-    Array.iter patch last_jumps
+    let last_jumps = Array.map trans_arm at.Ast.alt_tag_arms in
+      Array.iter patch last_jumps
 
   and drop_slots_at_curr_stmt _ : unit =
     let stmt = Stack.top curr_stmt in
