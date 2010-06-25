@@ -758,11 +758,6 @@ let crawl_stack_calling_glue
   let skip_jmp_fix = new_fixup "skip jump" in
   let exit_jmp_fix = new_fixup "exit jump" in
 
-    mov (rc edx) (c task_ptr);          (* switch back to rust stack    *)
-    mov
-      (rc esp)
-      (c (edx_n Abi.task_field_rust_sp));
-
     push (ro ebp);                      (* save ebp at entry            *)
 
     mark repeat_jmp_fix;
@@ -810,10 +805,7 @@ let crawl_stack_calling_glue
 let gc_glue
     (e:Il.emitter)
     : unit =
-  (* Mark pass. *)
-  crawl_stack_calling_glue e Abi.frame_glue_fns_field_mark;
 
-  (* Sweep pass. *)
   let emit = Il.emit e in
   let mov dst src = emit (Il.umov dst src) in
   let push x = emit (Il.Push x) in
@@ -824,11 +816,26 @@ let gc_glue
   let ecx_n = word_n (Il.Hreg ecx) in
   let codefix fix = Il.CodePtr (Il.ImmPtr (fix, Il.CodeTy)) in
   let mark fix = Il.emit_full e (Some fix) [] Il.Dead in
-
   let repeat_jmp_fix = new_fixup "repeat jump" in
   let skip_jmp_fix = new_fixup "skip jump" in
   let exit_jmp_fix = new_fixup "exit jump" in
 
+    mov (rc edx) (c task_ptr);          (* switch back to rust stack    *)
+    mov
+      (rc esp)
+      (c (edx_n Abi.task_field_rust_sp));
+
+    (* Mark pass. *)
+    save_callee_saves e;
+    push (ro eax);
+    crawl_stack_calling_glue e Abi.frame_glue_fns_field_mark;
+
+    (* For now, stop after marking; sweep is still buggy. *)
+    pop (rc eax);
+    restore_callee_saves e;
+    Il.emit e Il.Ret;
+
+    (* Sweep pass. *)
     mov (rc edx) (c task_ptr);
     mov (rc edx) (c (edx_n Abi.task_field_gc_alloc_chain));
     mark repeat_jmp_fix;
@@ -896,13 +903,23 @@ let unwind_glue
     (nabi:nabi)
     (exit_task_fixup:fixup)
     : unit =
-  crawl_stack_calling_glue e Abi.frame_glue_fns_field_drop;
-  let callee =
-    Abi.load_fixup_codeptr
-      e (h eax) exit_task_fixup false nabi.nabi_indirect
-  in
-    emit_c_call
-      e (rc eax) (h edx) (h ecx) nabi false callee [| (c task_ptr) |];
+
+  let emit = Il.emit e in
+  let mov dst src = emit (Il.umov dst src) in
+  let edx_n = word_n (Il.Hreg edx) in
+
+    mov (rc edx) (c task_ptr);          (* switch back to rust stack    *)
+    mov
+      (rc esp)
+      (c (edx_n Abi.task_field_rust_sp));
+
+    crawl_stack_calling_glue e Abi.frame_glue_fns_field_drop;
+    let callee =
+      Abi.load_fixup_codeptr
+        e (h eax) exit_task_fixup false nabi.nabi_indirect
+    in
+      emit_c_call
+        e (rc eax) (h edx) (h ecx) nabi false callee [| (c task_ptr) |];
 ;;
 
 
