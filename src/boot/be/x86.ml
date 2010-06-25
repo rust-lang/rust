@@ -852,15 +852,9 @@ let gc_glue
       (c (ecx_n Abi.tydesc_field_free_glue));
     add eax ecx;                                (* Add to tydesc*         *)
 
-    (* FIXME: this path is all wrong, for three reasons.
+    (* FIXME: this path is all wrong
      *
-     * First, it needs to unlink the values that it frees from the gc
-     * chain. Currently it's going to leave dead pointers on it.
-     *
-     * Second, the *normal* gc-drop path actually has to do that as well;
-     * it's not, and that's a problem.
-     *
-     * Third, it actually needs to walk in two full passes over the chain:
+     * It actually needs to walk in two full passes over the chain:
      *
      *    - In pass #1, it goes through and disposes of all mutable exterior
      *      slots in each record. That is, rc-- the referent, and then
