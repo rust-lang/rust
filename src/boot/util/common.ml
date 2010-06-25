@@ -105,7 +105,6 @@ type ty_param_idx = int
 type nabi_conv =
     CONV_rust
   | CONV_cdecl
-  | CONV_intrinsic
 ;;
 
 type nabi = { nabi_indirect: bool;
@@ -116,7 +115,6 @@ let string_to_conv (a:string) : nabi_conv option =
   match a with
       "cdecl" -> Some CONV_cdecl
     | "rust" -> Some CONV_rust
-    | "intrinsic" -> Some CONV_intrinsic
     | _ -> None
 
 (* FIXME: remove this when native items go away. *)
