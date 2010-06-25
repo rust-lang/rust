@@ -893,6 +893,7 @@ let gc_glue
     emit (Il.jmp Il.JMP
             (codefix repeat_jmp_fix));          (* loop                   *)
     mark exit_jmp_fix;
+    emit Il.Ret;
 ;;
 
 
