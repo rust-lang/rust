@@ -346,6 +346,14 @@ rust_task::fail(size_t nargs) {
 }
 
 void
+rust_task::gc(size_t nargs)
+{
+    dom->log(rust_log::TASK|rust_log::MEM,
+             "task 0x%" PRIxPTR " garbage collecting", this);
+    run_after_return(nargs, dom->root_crate->get_gc_glue());
+}
+
+void
 rust_task::notify_waiting_tasks()
 {
     while (waiting_tasks.length() > 0) {

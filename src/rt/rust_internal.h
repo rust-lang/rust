@@ -660,6 +660,9 @@ rust_task : public rc_base<rust_task>,
     // Fail self, assuming caller-on-stack is this task.
     void fail(size_t nargs);
 
+    // Run the gc glue on the task stack.
+    void gc(size_t nargs);
+
     // Notify tasks waiting for us that we are about to die.
     void notify_waiting_tasks();
 
