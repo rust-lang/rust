@@ -738,10 +738,10 @@ let emit_native_call_in_thunk
           mov (word_at (h edx)) (ro eax)
 ;;
 
-let unwind_glue
+
+let crawl_stack_calling_glue
     (e:Il.emitter)
-    (nabi:nabi)
-    (exit_task_fixup:fixup)
+    (glue_field:int)
     : unit =
 
   let fp_n = word_n (Il.Hreg ebp) in
@@ -753,7 +753,6 @@ let unwind_glue
   let add x y = emit (Il.binary Il.ADD (rc x) (ro x) (ro y)) in
   let codefix fix = Il.CodePtr (Il.ImmPtr (fix, Il.CodeTy)) in
   let mark fix = Il.emit_full e (Some fix) [] Il.Dead in
-  let glue_field = Abi.frame_glue_fns_field_drop in
 
   let repeat_jmp_fix = new_fixup "repeat jump" in
   let skip_jmp_fix = new_fixup "skip jump" in
@@ -763,6 +762,8 @@ let unwind_glue
     mov
       (rc esp)
       (c (edx_n Abi.task_field_rust_sp));
+
+    push (ro ebp);                      (* save ebp at entry            *)
 
     mark repeat_jmp_fix;
 
@@ -776,14 +777,14 @@ let unwind_glue
     add edx esi;                        (* add crate ptr to disp.       *)
     mov
       (rc ecx)
-      (c (edx_n glue_field));           (* ecx <- drop glue             *)
+      (c (edx_n glue_field));           (* ecx <-  glue                 *)
     emit (Il.cmp (ro ecx) (immi 0L));
 
     emit
       (Il.jmp Il.JE
          (codefix skip_jmp_fix));       (* if glue-fn is nonzero        *)
     add ecx esi;                        (* add crate ptr to disp.       *)
-    push (ro ebp);                      (* frame-to-drop                *)
+    push (ro ebp);                      (* frame-arg                    *)
     push (c task_ptr);                  (* form usual call to glue      *)
     push (immi 0L);                     (* outptr                       *)
     emit (Il.call (rc eax)
@@ -803,14 +804,112 @@ let unwind_glue
 
     (* exit path. *)
     mark exit_jmp_fix;
-
-    let callee =
-      Abi.load_fixup_codeptr
-        e (h eax) exit_task_fixup false nabi.nabi_indirect
-    in
-      emit_c_call
-        e (rc eax) (h edx) (h ecx) nabi false callee [| (c task_ptr) |];
+    pop (rc ebp);                       (* restore ebp                    *)
 ;;
+
+let gc_glue
+    (e:Il.emitter)
+    : unit =
+  (* Mark pass. *)
+  crawl_stack_calling_glue e Abi.frame_glue_fns_field_mark;
+
+  (* Sweep pass. *)
+  let emit = Il.emit e in
+  let mov dst src = emit (Il.umov dst src) in
+  let push x = emit (Il.Push x) in
+  let pop x = emit (Il.Pop x) in
+  let band x y = emit (Il.binary Il.AND x (c x) y) in
+  let add x y = emit (Il.binary Il.ADD (rc x) (ro x) (ro y)) in
+  let edx_n = word_n (Il.Hreg edx) in
+  let ecx_n = word_n (Il.Hreg ecx) in
+  let codefix fix = Il.CodePtr (Il.ImmPtr (fix, Il.CodeTy)) in
+  let mark fix = Il.emit_full e (Some fix) [] Il.Dead in
+
+  let repeat_jmp_fix = new_fixup "repeat jump" in
+  let skip_jmp_fix = new_fixup "skip jump" in
+  let exit_jmp_fix = new_fixup "exit jump" in
+
+    mov (rc edx) (c task_ptr);
+    mov (rc edx) (c (edx_n Abi.task_field_gc_alloc_chain));
+    mark repeat_jmp_fix;
+    emit (Il.cmp (ro edx) (immi 0L));
+    emit (Il.jmp Il.JE
+            (codefix exit_jmp_fix));            (* if nonzero             *)
+    mov (rc ecx)                                (* Load GC ctrl word      *)
+      (c (edx_n Abi.exterior_gc_slot_field_ctrl));
+
+    band                                        (* Clear in-memory mark.  *)
+      (edx_n Abi.exterior_gc_slot_field_ctrl)
+      (immi 0xfffffffffffffffeL);
+    band (rc ecx) (immi 1L);                    (* Check in-reg mark.     *)
+    emit (Il.cmp (ro edx) (immi 0L));
+    emit
+      (Il.jmp Il.JNE
+         (codefix skip_jmp_fix));               (* if unmarked (garbage)  *)
+
+    (* NB: ecx is a type descriptor now. *)
+    mov (rc eax)                                (* Load glue tydesc-off.  *)
+      (c (ecx_n Abi.tydesc_field_free_glue));
+    add eax ecx;                                (* Add to tydesc*         *)
+
+    (* FIXME: this path is all wrong, for three reasons.
+     *
+     * First, it needs to unlink the values that it frees from the gc
+     * chain. Currently it's going to leave dead pointers on it.
+     *
+     * Second, the *normal* gc-drop path actually has to do that as well;
+     * it's not, and that's a problem.
+     *
+     * Third, it actually needs to walk in two full passes over the chain:
+     *
+     *    - In pass #1, it goes through and disposes of all mutable exterior
+     *      slots in each record. That is, rc-- the referent, and then
+     *      null-out.  If the rc-- gets to zero, that just means the mutable
+     *      is part of the garbage set currently being collected. But a
+     *      mutable may be live-and-outside; this detaches the garbage set
+     *      from the non-garbage set within the mutable heap.
+     *
+     *    - In pass #2, run the normal free-glue. This winds up doing the
+     *      immutables only, since all the mutables were nulled out in pass
+     *      #1. This is where you do the unlinking from the double-linked
+     *      chain mentioned above.
+     *
+     * So .. this will still take a little more doing.
+     *
+     *)
+
+    push (ro edx);                      (* gc_val to drop                 *)
+    push (c task_ptr);                  (* form usual call to glue        *)
+    push (immi 0L);                     (* outptr                         *)
+    emit (Il.call (rc eax)
+            (reg_codeptr (h eax)));     (* call glue_fn, trashing eax.    *)
+    pop (rc eax);
+    pop (rc eax);
+    pop (rc eax);
+
+    mark skip_jmp_fix;
+    mov (rc ecx)                                (* Advance down chain     *)
+      (c (edx_n Abi.exterior_gc_slot_field_next));
+    emit (Il.jmp Il.JMP
+            (codefix repeat_jmp_fix));          (* loop                   *)
+    mark exit_jmp_fix;
+;;
+
+
+let unwind_glue
+    (e:Il.emitter)
+    (nabi:nabi)
+    (exit_task_fixup:fixup)
+    : unit =
+  crawl_stack_calling_glue e Abi.frame_glue_fns_field_drop;
+  let callee =
+    Abi.load_fixup_codeptr
+      e (h eax) exit_task_fixup false nabi.nabi_indirect
+  in
+    emit_c_call
+      e (rc eax) (h edx) (h ecx) nabi false callee [| (c task_ptr) |];
+;;
+
 
 (* Puts result in eax; clobbers ecx, edx in the process. *)
 let rec calculate_sz (e:Il.emitter) (size:size) : unit =
