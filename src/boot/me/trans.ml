@@ -2200,8 +2200,8 @@ let trans_visitor
              (tydesc_rty abi))
 
   and exterior_ctrl_cell (cell:Il.cell) (off:int) : Il.cell =
-    let (rc_mem, _) = need_mem_cell (deref_imm cell (word_n off)) in
-    word_at rc_mem
+    let (mem, _) = need_mem_cell (deref_imm cell (word_n off)) in
+    word_at mem
 
   and exterior_rc_cell (cell:Il.cell) : Il.cell =
     exterior_ctrl_cell cell Abi.exterior_rc_slot_field_refcnt
@@ -2211,6 +2211,9 @@ let trans_visitor
 
   and exterior_gc_next_cell (cell:Il.cell) : Il.cell =
     exterior_ctrl_cell cell Abi.exterior_gc_slot_field_next
+
+  and exterior_gc_prev_cell (cell:Il.cell) : Il.cell =
+    exterior_ctrl_cell cell Abi.exterior_gc_slot_field_prev
 
   and exterior_allocation_size
       (slot:Ast.slot)
@@ -2825,11 +2828,26 @@ let trans_visitor
               mov ctrl (Il.Cell tydesc);
               note_gc_step slot "init GC exterior: load chain next-ptr";
               let next = exterior_gc_next_cell cell in
+              let prev = exterior_gc_prev_cell cell in
               let chain = tp_imm (word_n Abi.task_field_gc_alloc_chain) in
+
+                note_gc_step slot "init GC exterior: new->prev = 0";
+                mov prev zero;
+
+                note_gc_step slot "init GC exterior: new->next = curr";
                 mov next (Il.Cell chain);
-                note_gc_step slot "init GC exterior: link GC mem to chain";
-                mov chain (Il.Cell cell);
-                note_gc_step slot "init GC exterior: done initializing"
+
+                let null_jmp = null_check chain in
+                let prev = rty_ptr_at (fst (need_mem_cell chain)) word_rty in
+                let chain_prev = exterior_gc_prev_cell prev in
+                  note_gc_step slot "init GC exterior: curr->prev = new";
+                  mov chain_prev (Il.Cell cell);
+                  patch null_jmp;
+
+                  note_gc_step slot "init GC exterior: chain = new";
+                  mov chain (Il.Cell cell);
+
+                  note_gc_step slot "init GC exterior: done initializing"
 
       | MEM_rc_opaque
       | MEM_rc_struct ->
