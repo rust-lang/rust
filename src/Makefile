@@ -391,6 +391,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       obj-as.rs \
                       obj-drop.rs \
                       obj-dtor.rs \
+                      obj-recursion.rs \
                       obj-with-vec.rs \
                       opeq.rs \
                       output-slot-variants.rs \
