@@ -4675,21 +4675,24 @@ let trans_visitor
     let tag_keys = sorted_htab_keys ttag in
     let i = arr_idx tag_keys (Ast.NAME_base (Ast.BASE_ident n)) in
     let _ = log cx "tag variant: %s -> tag value #%d" n i in
-    let out_cell = deref (ptr_at (fp_imm out_mem_disp) (Ast.TY_tag ttag)) in
-    let tag_cell = get_element_ptr out_cell 0 in
-    let union_cell = get_element_ptr_dyn_in_current_frame out_cell 1 in
-    let dst = get_variant_ptr union_cell i in
-    let dst_ty = snd (need_mem_cell dst) in
+    let (dst_cell, dst_slot) = get_current_output_cell_and_slot() in
+    let dst_cell = deref_slot true dst_cell dst_slot in
     let src = get_explicit_args_for_current_frame () in
+    let tag_cell = get_element_ptr dst_cell 0 in
+    let union_cell = get_element_ptr_dyn_in_current_frame dst_cell 1 in
+    let tag_body_cell = get_variant_ptr union_cell i in
+    let tag_body_rty = snd (need_mem_cell tag_body_cell) in
       (* A clever compiler will inline this. We are not clever. *)
-        iflog (fun _ -> annotate (Printf.sprintf "write tag #%d" i));
-        mov tag_cell (imm (Int64.of_int i));
-        iflog (fun _ -> annotate ("copy tag-content tuple: dst_ty=" ^
-                                    (Il.string_of_referent_ty dst_ty)));
-        trans_copy_tup (get_ty_params_of_current_frame()) true dst src slots;
-        trace_str cx.ctxt_sess.Session.sess_trace_tag
-          ("finished tag constructor " ^ n);
-        trans_frame_exit tagid true;
+      iflog (fun _ -> annotate (Printf.sprintf "write tag #%d" i));
+      mov tag_cell (imm (Int64.of_int i));
+      iflog (fun _ -> annotate ("copy tag-content tuple: tag_body_rty=" ^
+                                  (Il.string_of_referent_ty tag_body_rty)));
+      trans_copy_tup
+        (get_ty_params_of_current_frame())
+        true tag_body_cell src slots;
+      trace_str cx.ctxt_sess.Session.sess_trace_tag
+        ("finished tag constructor " ^ n);
+      trans_frame_exit tagid true;
   in
 
   let enter_file_for id =
