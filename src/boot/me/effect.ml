@@ -72,6 +72,7 @@ let function_effect_propagation_visitor
    *    - Calling a function with effect e lowers to e.
    *)
   let curr_fn = Stack.create () in
+
   let visit_mod_item_pre n p i =
     begin
       match i.node.Ast.decl_item with
@@ -80,16 +81,29 @@ let function_effect_propagation_visitor
     end;
     inner.Walk.visit_mod_item_pre n p i
   in
+
   let visit_mod_item_post n p i =
     inner.Walk.visit_mod_item_post n p i;
     match i.node.Ast.decl_item with
         Ast.MOD_ITEM_fn _ -> ignore (Stack.pop curr_fn)
       | _ -> ()
   in
+
+  let visit_obj_fn_pre o i fi =
+    Stack.push fi.id curr_fn;
+    inner.Walk.visit_obj_fn_pre o i fi
+  in
+
+  let visit_obj_fn_post o i fi =
+    inner.Walk.visit_obj_fn_post o i fi;
+    ignore (Stack.pop curr_fn)
+  in
+
   let visit_obj_drop_pre o b =
     Stack.push b.id curr_fn;
     inner.Walk.visit_obj_drop_pre o b
   in
+
   let visit_obj_drop_post o b =
     inner.Walk.visit_obj_drop_post o b;
     ignore (Stack.pop curr_fn);
@@ -155,6 +169,8 @@ let function_effect_propagation_visitor
     { inner with
         Walk.visit_mod_item_pre = visit_mod_item_pre;
         Walk.visit_mod_item_post = visit_mod_item_post;
+        Walk.visit_obj_fn_pre = visit_obj_fn_pre;
+        Walk.visit_obj_fn_post = visit_obj_fn_post;
         Walk.visit_obj_drop_pre = visit_obj_drop_pre;
         Walk.visit_obj_drop_post = visit_obj_drop_post;
         Walk.visit_stmt_pre = visit_stmt_pre }
