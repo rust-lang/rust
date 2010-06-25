@@ -102,7 +102,6 @@ type ctxt =
 
       (* reference id --> definition id *)
       ctxt_lval_to_referent: (node_id,node_id) Hashtbl.t;
-      ctxt_pattag_to_item: (node_id,node_id) Hashtbl.t;
 
       ctxt_required_items: (node_id, (required_lib * nabi_conv)) Hashtbl.t;
       ctxt_required_syms: (node_id, string) Hashtbl.t;
@@ -187,7 +186,6 @@ let new_ctxt sess abi crate =
     ctxt_all_lvals = Hashtbl.create 0;
     ctxt_all_defns = Hashtbl.create 0;
     ctxt_lval_to_referent = Hashtbl.create 0;
-    ctxt_pattag_to_item = Hashtbl.create 0;
     ctxt_required_items = crate.Ast.crate_required;
     ctxt_required_syms = crate.Ast.crate_required_syms;
 
@@ -409,14 +407,29 @@ let fn_output_ty (fn_ty:Ast.ty) : Ast.ty =
     | _ -> bug () "fn_output_ty on non-TY_fn"
 ;;
 
+(* name of tag constructor function -> name for indexing in the ty_tag *)
+let rec tag_ctor_name_to_tag_name (name:Ast.name) : Ast.name =
+  match name with
+      Ast.NAME_base nb ->
+        begin
+          match nb with
+              Ast.BASE_ident _ -> name
+            | Ast.BASE_app (id, _) -> Ast.NAME_base (Ast.BASE_ident id)
+            | _ ->
+                bug () "tag_or_iso_ty_tup_by_name with non-tag-ctor name"
+        end
+    | Ast.NAME_ext (inner_name, _) -> tag_ctor_name_to_tag_name inner_name
+;;
+
 let tag_or_iso_ty_tup_by_name (ty:Ast.ty) (name:Ast.name) : Ast.ty_tup =
-  match ty with
-      Ast.TY_tag tags ->
-        Hashtbl.find tags name
-    | Ast.TY_iso { Ast.iso_index = i; Ast.iso_group = gp } ->
-        Hashtbl.find gp.(i) name
-    | _ ->
-        bug () "tag_or_iso_ty_tup_by_name called with non-tag or -iso type"
+  let tagname = tag_ctor_name_to_tag_name name in
+    match ty with
+        Ast.TY_tag tags ->
+          Hashtbl.find tags tagname
+      | Ast.TY_iso { Ast.iso_index = i; Ast.iso_group = gp } ->
+          Hashtbl.find gp.(i) tagname
+      | _ ->
+          bug () "tag_or_iso_ty_tup_by_name called with non-tag or -iso type"
 ;;
 
 let defn_is_slot (d:defn) : bool =
@@ -497,6 +510,22 @@ let atoms_to_names (atoms:Ast.atom array)
           | _ -> None
     end
     atoms
+;;
+
+let rec lval_to_name (lv:Ast.lval) : Ast.name =
+  match lv with
+      Ast.LVAL_base { node = nb } ->
+        Ast.NAME_base nb
+    | Ast.LVAL_ext (lv, lv_comp) ->
+        let comp =
+          begin
+            match lv_comp with
+                Ast.COMP_named comp -> comp
+              | _ -> bug ()
+                  "lval_to_name with lval that contains non-name components"
+          end
+        in
+          Ast.NAME_ext (lval_to_name lv, comp)
 ;;
 
 let rec lval_base_id (lv:Ast.lval) : node_id =

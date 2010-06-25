@@ -127,6 +127,16 @@ and parse_auto_slot_and_init
 
 and parse_stmts (ps:pstate) : Ast.stmt array =
   let apos = lexpos ps in
+
+  let rec name_to_lval (apos:pos) (bpos:pos) (name:Ast.name)
+      : Ast.lval =
+    match name with
+        Ast.NAME_base nb ->
+          Ast.LVAL_base (span ps apos bpos nb)
+      | Ast.NAME_ext (n, nc) ->
+          Ast.LVAL_ext (name_to_lval apos bpos n, Ast.COMP_named nc)
+  in
+
     match peek ps with
 
         LOG ->
@@ -138,15 +148,6 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
       | CHECK ->
           bump ps;
           begin
-
-            let rec name_to_lval (bpos:pos) (name:Ast.name)
-                : Ast.lval =
-              match name with
-                  Ast.NAME_base nb ->
-                    Ast.LVAL_base (span ps apos bpos nb)
-                | Ast.NAME_ext (n, nc) ->
-                    Ast.LVAL_ext (name_to_lval bpos n, Ast.COMP_named nc)
-            in
 
             let rec carg_path_to_lval (bpos:pos) (path:Ast.carg_path)
                 : Ast.lval =
@@ -171,7 +172,7 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
 
             let synthesise_check_call (bpos:pos) (constr:Ast.constr)
                 : (Ast.lval * (Ast.atom array)) =
-              let lval = name_to_lval bpos constr.Ast.constr_name in
+              let lval = name_to_lval apos bpos constr.Ast.constr_name in
               let args =
                 Array.map (carg_to_atom bpos) constr.Ast.constr_args
               in
@@ -243,13 +244,14 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
                                 |_ -> raise (unexpected ps)
                             end
                           else
-                            let pats =
-                              paren_comma_list parse_pat ps
-                            in
-                            Ast.PAT_tag ((span ps apos bpos name), pats)
+                            let lv = name_to_lval apos bpos name in
+                              Ast.PAT_tag (lv, paren_comma_list parse_pat ps)
+
                       | LIT_INT _ | LIT_CHAR _ | LIT_BOOL _ ->
                           Ast.PAT_lit (Pexp.parse_lit ps)
+
                       | UNDERSCORE -> bump ps; Ast.PAT_wild
+
                       | tok -> raise (Parse_err (ps,
                           "Expected pattern but found '" ^
                             (string_of_tok tok) ^ "'"))

@@ -655,15 +655,17 @@ and walk_pat
   let walk p =
     match p with
         Ast.PAT_lit lit -> walk_lit v lit
-      | Ast.PAT_tag (_, pats) -> Array.iter (walk_pat v) pats
+      | Ast.PAT_tag (lv, pats) ->
+          walk_lval v lv;
+          Array.iter (walk_pat v) pats
       | Ast.PAT_slot (si, _) -> walk_slot_identified v si
       | Ast.PAT_wild -> ()
   in
-  walk_bracketed
-    v.visit_pat_pre
-    (fun _ -> walk p)
-    v.visit_pat_post
-    p
+    walk_bracketed
+      v.visit_pat_pre
+      (fun _ -> walk p)
+      v.visit_pat_post
+      p
 
 
 and walk_block

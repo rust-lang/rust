@@ -3,7 +3,7 @@ type foo[T] = tag(arm(T));
 fn altfoo[T](foo[T] f) {
   auto hit = false;
   alt (f) {
-    case (arm(x)) {
+    case (arm[T](x)) {
       log "in arm";
       hit = true;
     }

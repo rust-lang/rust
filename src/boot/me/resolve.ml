@@ -868,56 +868,57 @@ let resolve_recursion
 
 let pattern_resolving_visitor
     (cx:ctxt)
-    (scopes:scope list ref)
     (inner:Walk.visitor) : Walk.visitor =
 
-  let not_tag_ctor (nid:Ast.name identified) : unit =
-    err (Some nid.id) "'%s' is not a tag constructor"
-      (string_of_name nid.node)
+  let not_tag_ctor nm id : unit =
+    err (Some id) "'%s' is not a tag constructor" (string_of_name nm)
   in
 
   let resolve_pat_tag
-      (namei:Ast.name identified)
+      (name:Ast.name)
+      (id:node_id)
       (pats:Ast.pat array)
       (tag_ctor_id:node_id)
       : unit =
 
+    (* NB this isn't really the proper tag type, since we aren't applying any
+     * type parameters from the tag constructor in the pattern, but since we
+     * are only looking at the fact that it's a tag-like type at all, and
+     * asking for its arity, it doesn't matter that the possibly parametric
+     * tag type has its parameters unbound here. *)
     let tag_ty = 
-      fn_output_ty
-        (Hashtbl.find cx.ctxt_all_item_types tag_ctor_id)
+      fn_output_ty (Hashtbl.find cx.ctxt_all_item_types tag_ctor_id)
     in
       begin
         match tag_ty with
             Ast.TY_tag _
           | Ast.TY_iso _ ->
-              let tag_ty_tup = tag_or_iso_ty_tup_by_name tag_ty namei.node in
+              let tag_ty_tup = tag_or_iso_ty_tup_by_name tag_ty name in
               let arity = Array.length tag_ty_tup in
-                if (Array.length pats) == arity
-                then Hashtbl.add cx.ctxt_pattag_to_item namei.id tag_ctor_id
-                else err (Some namei.id)
-                  "tag pattern '%s' with wrong number of components"
-                  (string_of_name namei.node)
-          | _ -> not_tag_ctor namei
+                if (Array.length pats) != arity
+                then
+                  err (Some id)
+                    "tag pattern '%s' with wrong number of components"
+                    (string_of_name name)
+                else ()
+          | _ -> not_tag_ctor name id
       end
   in
 
   let resolve_arm { node = arm } =
     match fst arm with
-        Ast.PAT_tag (namei, pats) ->
-          begin
-            match lookup_by_name cx !scopes namei.node with
-                None ->
-                  err (Some namei.id) "unresolved tag constructor '%s'"
-                    (string_of_name namei.node)
-              | Some (_, tag_ctor_id) when referent_is_item cx tag_ctor_id ->
-                  (*
-                   * FIXME we should actually check here that the function
-                   * is a tag value-ctor.  For now this actually allows any
-                   * function returning a tag type to pass as a tag pattern.
-                   *)
-                  resolve_pat_tag namei pats tag_ctor_id
-              |_ -> not_tag_ctor namei
-          end
+        Ast.PAT_tag (lval, pats) ->
+          let lval_nm = lval_to_name lval in
+          let lval_id = lval_base_id lval in
+          let tag_ctor_id = lval_to_referent cx lval_id in
+            if referent_is_item cx tag_ctor_id
+              (*
+               * FIXME we should actually check here that the function
+               * is a tag value-ctor.  For now this actually allows any
+               * function returning a tag type to pass as a tag pattern.
+               *)
+            then resolve_pat_tag lval_nm lval_id pats tag_ctor_id
+            else not_tag_ctor lval_nm lval_id
       | _ -> ()
   in
 
@@ -968,8 +969,8 @@ let process_crate
   let passes_2 =
     [|
       (scope_stack_managing_visitor scopes
-        (pattern_resolving_visitor cx scopes
-          Walk.empty_visitor))
+         (pattern_resolving_visitor cx
+            Walk.empty_visitor))
     |]
   in
     log cx "running primary resolve passes";

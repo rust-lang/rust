@@ -881,7 +881,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
       in
         match lval with
             Ast.LVAL_base nbi ->
-              let referent = Hashtbl.find cx.ctxt_lval_to_referent nbi.id in
+              let referent = lval_to_referent cx nbi.id in
                 begin
                   match Hashtbl.find cx.ctxt_all_defns referent with
                       DEFN_slot slot ->
@@ -1196,33 +1196,54 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         | _ -> ()
     in
 
+    (*
+     * Tag patterns give us the type of every sub-pattern in the tag tuple, so
+     * we can "expect" those types by pushing them on a stack.  Checking a
+     * pattern therefore involves seeing that it matches the "expected" type,
+     * and in turn setting any expectations for the inner descent.
+     *)
     let visit_pat_pre (pat:Ast.pat) : unit =
       let expected = pat_tv() in
         match pat with
             Ast.PAT_lit lit -> unify_lit lit expected
 
-          | Ast.PAT_tag (namei, _) ->
+          | Ast.PAT_tag (lval, _) ->
               let expect ty =
                 let tv = ref TYSPEC_all in
                   unify_ty ty tv;
                   push_pat_tv tv;
               in
-              let item_id = Hashtbl.find cx.ctxt_pattag_to_item namei.id in
-              let tag_ty =
-                fn_output_ty (Hashtbl.find cx.ctxt_all_item_types item_id)
-              in
-              let tag_ty_tup = tag_or_iso_ty_tup_by_name tag_ty namei.node in
-              let tag_tv = ref TYSPEC_all in
-                unify_ty tag_ty tag_tv;
-                unify_tyvars expected tag_tv;
-                List.iter
-                  begin
-                    fun slot ->
-                      match slot.Ast.slot_ty with
+
+              let lval_nm = lval_to_name lval in
+
+              (* The lval here is our tag constructor, which we've already
+               * resolved (in Resolve) to have a the actual tag constructor
+               * function item as its referent.  It should hence unify
+               * exactly to that function type, rebuilt under any latent type
+               * parameters applied in the lval. *)
+              let lval_tv = ref TYSPEC_all in
+                unify_lval lval lval_tv;
+                let tag_ctor_ty =
+                  match !(resolve_tyvar lval_tv) with
+                      TYSPEC_resolved (_, ty) -> ty
+                    | _ ->
+                        bug () "tag constructor is not a fully resolved type."
+                in
+
+                let tag_ty = fn_output_ty tag_ctor_ty in
+                let tag_ty_tup = tag_or_iso_ty_tup_by_name tag_ty lval_nm in
+
+                let tag_tv = ref TYSPEC_all in
+                  unify_ty tag_ty tag_tv;
+                  unify_tyvars expected tag_tv;
+                  List.iter
+                    begin
+                      fun slot ->
+                        match slot.Ast.slot_ty with
                           Some ty -> expect ty
-                        | None -> bug () "no slot type in tag slot tuple"
-                  end
-                  (List.rev (Array.to_list tag_ty_tup));
+                          | None -> bug () "no slot type in tag slot tuple"
+                    end
+                    (List.rev (Array.to_list tag_ty_tup));
 
           | Ast.PAT_slot (sloti, _) ->
               unify_slot sloti.node (Some sloti.id) expected

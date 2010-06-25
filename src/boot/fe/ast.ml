@@ -299,9 +299,14 @@ and domain =
     DOMAIN_local
   | DOMAIN_thread
 
+(*
+ * PAT_tag uses lval for the tag constructor so that we can reuse our lval
+ * resolving machinery.  The lval is restricted during parsing to have only
+ * named components.
+ *)
 and pat =
     PAT_lit of lit
-  | PAT_tag of ((name identified) * (pat array))
+  | PAT_tag of (lval * (pat array))
   | PAT_slot of ((slot identified) * ident)
   | PAT_wild
 
@@ -331,6 +336,7 @@ and lval_component =
   | COMP_atom of atom
 
 
+(* identifying the name_base here is sufficient to identify the full lval *)
 and lval =
     LVAL_base of name_base identified
   | LVAL_ext of (lval * lval_component)

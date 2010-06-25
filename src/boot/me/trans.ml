@@ -3761,8 +3761,8 @@ let trans_visitor
             Ast.PAT_lit lit ->
               trans_compare Il.JNE (trans_lit lit) (Il.Cell src_cell)
 
-          | Ast.PAT_tag (tag_namei, pats) ->
-              let tag_name = tag_namei.node in
+          | Ast.PAT_tag (lval, pats) ->
+              let tag_name = tag_ctor_name_to_tag_name (lval_to_name lval) in
               let ty_tag =
                 match slot_ty src_slot with
                     Ast.TY_tag tag_ty -> tag_ty
