@@ -29,6 +29,7 @@ let frame_glue_fns_field_reloc = 2;;
 let exterior_rc_slot_field_refcnt = 0;;
 let exterior_rc_slot_field_body = 1;;
 
+let exterior_gc_slot_alloc_base = (-3);;
 let exterior_gc_slot_field_prev = (-3);;
 let exterior_gc_slot_field_next = (-2);;
 let exterior_gc_slot_field_ctrl = (-1);;

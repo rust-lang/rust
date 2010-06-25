@@ -88,6 +88,7 @@ let trans_visitor
   let imm_true = imm_of_ty 1L TY_u8 in
   let imm_false = imm_of_ty 0L TY_u8 in
   let nil_ptr = Il.Mem ((Il.Abs (Asm.IMM 0L)), Il.NilTy) in
+  let wordptr_ty = Il.AddrTy (Il.ScalarTy word_ty) in
 
   let crate_rel fix =
     Asm.SUB (Asm.M_POS fix, Asm.M_POS cx.ctxt_crate_fixup)
@@ -1295,7 +1296,6 @@ let trans_visitor
       mov (word_at (fp_imm frame_fns_disp)) frame_fns
 
   and check_interrupt_flag _ =
-    let wordptr_ty = Il.AddrTy (Il.ScalarTy word_ty) in
     let dom = next_vreg_cell wordptr_ty in
     let flag = next_vreg_cell word_ty in
       mov dom (Il.Cell (tp_imm (word_n Abi.task_field_dom)));
@@ -1607,12 +1607,35 @@ let trans_visitor
         if mctrl = MEM_gc
         then
           begin
-            note_drop_step ty "MEM_gc, adjusting pointer";
-            lea vr (fst (need_mem_cell (deref cell)));
-            emit (Il.binary Il.SUB vr (Il.Cell vr)
-                    (imm
-                       (word_n Abi.exterior_gc_malloc_return_adjustment)));
-            trans_free vr
+            note_drop_step ty "MEM_gc, unlinking from GC chain";
+            let pcast c =
+              rty_ptr_at (fst (need_mem_cell c)) (Il.ScalarTy wordptr_ty)
+            in
+            let next = pcast (exterior_gc_next_cell cell) in
+            let prev = pcast (exterior_gc_prev_cell cell) in
+
+              note_drop_step ty "MEM_gc, next->prev = prev";
+              let skip_null_next_jmp = null_check next in
+                mov (exterior_gc_prev_cell next) (Il.Cell prev);
+                patch skip_null_next_jmp;
+
+                let skip_null_prev_jmp = null_check prev in
+                  note_drop_step ty "MEM_gc, prev->next = next";
+                  mov (exterior_gc_next_cell prev) (Il.Cell next);
+                  let skip_set_task_chain_jmp = mark () in
+                    emit (Il.jmp Il.JMP Il.CodeNone);
+                    patch skip_null_prev_jmp;
+                    note_drop_step ty "MEM_gc, task->chain = next";
+                    let chain =
+                      tp_imm (word_n Abi.task_field_gc_alloc_chain)
+                    in
+                      mov chain (Il.Cell next);
+                      patch skip_set_task_chain_jmp;
+
+                      note_drop_step ty "MEM_gc, freeing";
+                      lea vr (fst (need_mem_cell
+                                     (exterior_gc_alloc_base cell)));
+                      trans_free vr;
           end
         else
           begin
@@ -2214,6 +2237,9 @@ let trans_visitor
 
   and exterior_gc_prev_cell (cell:Il.cell) : Il.cell =
     exterior_ctrl_cell cell Abi.exterior_gc_slot_field_prev
+
+  and exterior_gc_alloc_base (cell:Il.cell) : Il.cell =
+    exterior_ctrl_cell cell Abi.exterior_gc_slot_alloc_base
 
   and exterior_allocation_size
       (slot:Ast.slot)
