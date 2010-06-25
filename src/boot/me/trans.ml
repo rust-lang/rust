@@ -2041,9 +2041,12 @@ let trans_visitor
         |];
       List.iter patch fwd_jmps
 
-  and trans_check_expr (e:Ast.expr) : unit =
-    let fwd_jmps = trans_cond false e in
-      trans_cond_fail (Fmt.fmt_to_str Ast.fmt_expr e) fwd_jmps
+  and trans_check_expr (id:node_id) (e:Ast.expr) : unit =
+    match expr_type cx e with
+        Ast.TY_bool ->
+          let fwd_jmps = trans_cond false e in
+            trans_cond_fail (Fmt.fmt_to_str Ast.fmt_expr e) fwd_jmps
+      | _ -> bugi cx id "check expr on non-bool"
 
   and trans_malloc (dst:Il.cell) (nbytes:Il.operand) : unit =
     trans_upcall "upcall_malloc" dst [| nbytes |]
@@ -4062,31 +4065,50 @@ let trans_visitor
               emit (Il.binary op dst_cell (Il.Cell dst_cell) src_oper);
 
 
+  and trans_call id dst flv args =
+    let init = maybe_init id "call" dst in
+    let ty = lval_ty cx flv in
+    let ty_params =
+      match
+        htab_search
+          cx.ctxt_call_lval_params (lval_base_id flv)
+      with
+          Some params -> params
+        | None -> [| |]
+    in
+      match ty with
+          Ast.TY_fn _ ->
+            let (dst_cell, _) = trans_lval_maybe_init init dst in
+            let fn_ptr =
+              trans_prepare_fn_call init cx dst_cell flv
+                ty_params None args
+            in
+              call_code (code_of_operand fn_ptr)
+        | _ -> bug () "Calling unexpected lval."
+
+
+  and trans_log id a =
+    match atom_type cx a with
+        (* NB: If you extend this, be sure to update the
+         * typechecking code in type.ml as well. *)
+        Ast.TY_str -> trans_log_str a
+      | Ast.TY_int | Ast.TY_uint | Ast.TY_bool
+      | Ast.TY_char | Ast.TY_mach (TY_u8)
+      | Ast.TY_mach (TY_u16) | Ast.TY_mach (TY_u32)
+      | Ast.TY_mach (TY_i8) | Ast.TY_mach (TY_i16)
+      | Ast.TY_mach (TY_i32) ->
+          trans_log_int a
+      | _ -> bugi cx id "unimplemented logging type"
+
 
   and trans_stmt_full (stmt:Ast.stmt) : unit =
     match stmt.node with
 
         Ast.STMT_log a ->
-          begin
-            match atom_type cx a with
-                (* NB: If you extend this, be sure to update the
-                 * typechecking code in type.ml as well. *)
-                Ast.TY_str -> trans_log_str a
-              | Ast.TY_int | Ast.TY_uint | Ast.TY_bool
-              | Ast.TY_char | Ast.TY_mach (TY_u8)
-              | Ast.TY_mach (TY_u16) | Ast.TY_mach (TY_u32)
-              | Ast.TY_mach (TY_i8) | Ast.TY_mach (TY_i16)
-              | Ast.TY_mach (TY_i32) ->
-                  trans_log_int a
-              | _ -> bugi cx stmt.id "unimplemented logging type"
-          end
+          trans_log stmt.id a
 
       | Ast.STMT_check_expr e ->
-          begin
-            match expr_type cx e with
-                Ast.TY_bool -> trans_check_expr e
-              | _ -> bugi cx stmt.id "check expr on non-bool"
-          end
+          trans_check_expr stmt.id e
 
       | Ast.STMT_yield ->
           trans_yield ()
@@ -4113,27 +4135,7 @@ let trans_visitor
           trans_copy_binop dst binop a_src
 
       | Ast.STMT_call (dst, flv, args) ->
-          begin
-            let init = maybe_init stmt.id "call" dst in
-            let ty = lval_ty cx flv in
-            let ty_params =
-              match
-                htab_search
-                  cx.ctxt_call_lval_params (lval_base_id flv)
-              with
-                  Some params -> params
-                | None -> [| |]
-            in
-              match ty with
-                  Ast.TY_fn _ ->
-                    let (dst_cell, _) = trans_lval_maybe_init init dst in
-                    let fn_ptr =
-                      trans_prepare_fn_call init cx dst_cell flv
-                        ty_params None args
-                    in
-                      call_code (code_of_operand fn_ptr)
-                | _ -> bug () "Calling unexpected lval."
-          end
+          trans_call stmt.id dst flv args
 
       | Ast.STMT_bind (dst, flv, args) ->
           begin
