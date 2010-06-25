@@ -374,6 +374,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       i8-incr.rs \
                       import.rs \
                       inner-module.rs \
+                      item-name-overload.rs \
                       large-records.rs \
                       lazy-and-or.rs \
                       lazychan.rs \
