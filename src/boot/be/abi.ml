@@ -145,6 +145,7 @@ type abi =
     abi_activate: (Il.emitter -> unit);
     abi_yield: (Il.emitter -> unit);
     abi_unwind: (Il.emitter -> Common.nabi -> Common.fixup -> unit);
+    abi_gc: (Il.emitter -> unit);
     abi_get_next_pc_thunk:
       ((Il.reg                   (* output            *)
         * Common.fixup           (* thunk in objfile  *)

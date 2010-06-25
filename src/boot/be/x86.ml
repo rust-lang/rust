@@ -1627,6 +1627,7 @@ let (abi:Abi.abi) =
     Abi.abi_activate = activate_glue;
     Abi.abi_yield = yield_glue;
     Abi.abi_unwind = unwind_glue;
+    Abi.abi_gc = gc_glue;
     Abi.abi_get_next_pc_thunk = Some get_next_pc_thunk;
 
     Abi.abi_sp_reg = (Il.Hreg esp);

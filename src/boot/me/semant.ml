@@ -30,6 +30,7 @@ type glue =
   | GLUE_write of Ast.ty
   | GLUE_read of Ast.ty
   | GLUE_unwind
+  | GLUE_gc
   | GLUE_get_next_pc
   | GLUE_mark_frame of node_id    (* node is the frame                 *)
   | GLUE_drop_frame of node_id    (* node is the frame                 *)
@@ -135,6 +136,7 @@ type ctxt =
       ctxt_spill_fixups: (node_id,fixup) Hashtbl.t;
       ctxt_abi: Abi.abi;
       ctxt_activate_fixup: fixup;
+      ctxt_gc_fixup: fixup;
       ctxt_yield_fixup: fixup;
       ctxt_unwind_fixup: fixup;
       ctxt_exit_task_fixup: fixup;
@@ -218,6 +220,7 @@ let new_ctxt sess abi crate =
     ctxt_activate_fixup = new_fixup "activate glue";
     ctxt_yield_fixup = new_fixup "yield glue";
     ctxt_unwind_fixup = new_fixup "unwind glue";
+    ctxt_gc_fixup = new_fixup "gc glue";
     ctxt_exit_task_fixup = new_fixup "exit-task glue";
 
     ctxt_debug_aranges_fixup = new_fixup "debug_aranges section";
@@ -1989,6 +1992,7 @@ let glue_str (cx:ctxt) (g:glue) : string =
     | GLUE_write ty -> "glue$write$" ^ (ty_str ty)
     | GLUE_read ty -> "glue$read$" ^ (ty_str ty)
     | GLUE_unwind -> "glue$unwind"
+    | GLUE_gc -> "glue$gc"
     | GLUE_get_next_pc -> "glue$get_next_pc"
     | GLUE_mark_frame i -> "glue$mark_frame$" ^ (item_str cx i)
     | GLUE_drop_frame i -> "glue$drop_frame$" ^ (item_str cx i)

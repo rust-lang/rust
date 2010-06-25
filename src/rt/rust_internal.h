@@ -263,9 +263,10 @@ rust_crate
     size_t debug_info_sz;         // Size of .debug_info.
 
     ptrdiff_t activate_glue_off;
-    ptrdiff_t exit_task_glue_off;
-    ptrdiff_t unwind_glue_off;
     ptrdiff_t yield_glue_off;
+    ptrdiff_t unwind_glue_off;
+    ptrdiff_t gc_glue_off;
+    ptrdiff_t exit_task_glue_off;
 
 public:
 
@@ -278,9 +279,11 @@ public:
     uintptr_t get_image_base() const;
     ptrdiff_t get_relocation_diff() const;
     activate_glue_ty get_activate_glue() const;
-    uintptr_t get_exit_task_glue() const;
-    uintptr_t get_unwind_glue() const;
     uintptr_t get_yield_glue() const;
+    uintptr_t get_unwind_glue() const;
+    uintptr_t get_gc_glue() const;
+    uintptr_t get_exit_task_glue() const;
+
     struct mem_area
     {
       rust_dom *dom;

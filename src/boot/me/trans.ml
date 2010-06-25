@@ -4891,9 +4891,10 @@ let trans_visitor
             Asm.WORD (word_ty_mach, Asm.M_SZ cx.ctxt_debug_info_fixup);
 
             crate_rel_word cx.ctxt_activate_fixup;
-            crate_rel_word cx.ctxt_exit_task_fixup;
-            crate_rel_word cx.ctxt_unwind_fixup;
             crate_rel_word cx.ctxt_yield_fixup;
+            crate_rel_word cx.ctxt_unwind_fixup;
+            crate_rel_word cx.ctxt_gc_fixup;
+            crate_rel_word cx.ctxt_exit_task_fixup;
 
             tab_sz cx.ctxt_required_rust_sym_num;
             tab_sz cx.ctxt_required_c_sym_num;
@@ -4914,6 +4915,10 @@ let trans_visitor
         cx.ctxt_unwind_fixup
         (fun e -> abi.Abi.abi_unwind
            e nabi_rust (upcall_fixup "upcall_exit"));
+
+      emit_aux_global_glue cx GLUE_gc
+        cx.ctxt_gc_fixup
+        abi.Abi.abi_gc;
 
       ignore (get_exit_task_glue ());
 
