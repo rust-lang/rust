@@ -4525,10 +4525,12 @@ let trans_visitor
                              [| Asm.WORD (word_ty_mach, Asm.IMM 0L) |]))
   in
 
-  let trans_required_fn (fnid:node_id) (blockid:node_id) : unit =
+  let trans_real_required_fn
+      (fnid:node_id)
+      (blockid:node_id) : unit =
+    let (ilib, conv) = Hashtbl.find cx.ctxt_required_items fnid in
     trans_frame_entry fnid;
     emit (Il.Enter (Hashtbl.find cx.ctxt_block_fixups blockid));
-    let (ilib, conv) = Hashtbl.find cx.ctxt_required_items fnid in
     let lib_num =
       htab_search_or_add cx.ctxt_required_lib_num ilib
         (fun _ -> Hashtbl.length cx.ctxt_required_lib_num)
@@ -4653,6 +4655,12 @@ let trans_visitor
             trans_frame_exit fnid true;
         | _ -> bug ()
             "Trans.required_rust_fn on unexpected form of require library"
+  in
+
+  let trans_required_fn (fnid:node_id) (blockid:node_id) : unit =
+    if fn_is_intrinsic cx fnid
+    then ()
+    else trans_real_required_fn fnid blockid
   in
 
   let trans_tag

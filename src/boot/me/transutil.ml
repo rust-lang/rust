@@ -225,6 +225,28 @@ let iter_rec_slots
     (Array.map snd entries) f curr_iso
 ;;
 
+let intrinsic_name (cx:ctxt) (fnid:node_id) : string =
+  match Hashtbl.find cx.ctxt_all_item_names fnid with
+      Ast.NAME_base (Ast.BASE_ident id) -> id
+    | Ast.NAME_base (Ast.BASE_app (id, _)) -> id
+    | Ast.NAME_ext (_, Ast.COMP_ident id) -> id
+    | Ast.NAME_ext (_, Ast.COMP_app (id, _)) -> id
+    | _ -> err (Some fnid) "unexpected name for intrinsic fn"
+;;
+
+let fn_is_intrinsic (cx:ctxt) (fnid:node_id) : bool =
+  let (_, conv) = Hashtbl.find cx.ctxt_required_items fnid in
+    conv = CONV_intrinsic
+;;
+
+let lval_is_intrinsic (cx:ctxt) (lval:Ast.lval) : bool =
+  let item = lval_item cx lval in
+    match item.node.Ast.decl_item with
+        Ast.MOD_ITEM_fn _
+          when Hashtbl.mem cx.ctxt_required_items item.id ->
+            fn_is_intrinsic cx item.id
+      | _ -> false
+;;
 
 
 
