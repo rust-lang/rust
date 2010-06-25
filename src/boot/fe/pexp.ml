@@ -34,7 +34,7 @@ type pexp' =
   | PEXP_str of string
   | PEXP_mutable of pexp
   | PEXP_exterior of pexp
-  | PEXP_custom of Ast.name * (token array) * (string option)
+  | PEXP_custom of Ast.name * (pexp array) * (string option)
 
 and plval =
     PLVAL_ident of Ast.ident
@@ -691,18 +691,10 @@ and parse_bottom_pexp (ps:pstate) : pexp =
     | POUND ->
         bump ps;
         let name = parse_name ps in
-        let toks =
+        let args =
           match peek ps with
               LPAREN ->
-                bump ps;
-                let toks = Queue.create () in
-                  while (peek ps) <> RPAREN
-                  do
-                    Queue.add (peek ps) toks;
-                    bump ps;
-                  done;
-                  expect ps RPAREN;
-                  queue_to_arr toks
+                parse_pexp_list ps
             | _ -> [| |]
         in
         let str =
@@ -718,7 +710,7 @@ and parse_bottom_pexp (ps:pstate) : pexp =
         in
         let bpos = lexpos ps in
           span ps apos bpos
-            (PEXP_custom (name, toks, str))
+            (PEXP_custom (name, args, str))
 
     | LPAREN ->
         begin
@@ -971,10 +963,12 @@ and parse_pexp_list (ps:pstate) : pexp array =
 
 let expand_pexp_custom
     (ps:pstate)
+    (dst_lval:Ast.lval)
     (name:Ast.name)
-    (args:token array)
+    (args:Ast.atom array)
     (body:string option)
-    : pexp' =
+    (spanner:'a -> 'a identified)
+    : (Ast.stmt array) =
   let nstr = Fmt.fmt_to_str Ast.fmt_name name in
     match (nstr, (Array.length args), body) with
 
@@ -990,7 +984,7 @@ let expand_pexp_custom
                   ignore (Unix.close_process_in c);
                   Buffer.contents b
           in
-            PEXP_str (r ())
+            [| spanner (Ast.STMT_init_str (dst_lval, r())) |]
 
       | _ ->
           raise (err ("unsupported syntax extension: " ^ nstr) ps)
@@ -1093,7 +1087,8 @@ and desugar_expr_atom
       | PEXP_chan _
       | PEXP_call _
       | PEXP_bind _
-      | PEXP_spawn _ ->
+      | PEXP_spawn _
+      | PEXP_custom _ ->
           let (_, tmp, decl_stmt) = build_tmp ps slot_auto apos bpos in
           let stmts = desugar_expr_init ps tmp pexp in
             (Array.append [| decl_stmt |] stmts,
@@ -1111,10 +1106,6 @@ and desugar_expr_atom
 
       | PEXP_mutable _ ->
           raise (err "mutable keyword in atom context" ps)
-
-      | PEXP_custom (n, a, b) ->
-          desugar_expr_atom ps
-            { pexp with node = expand_pexp_custom ps n a b }
 
 
 and desugar_expr_mode_mut_atom
@@ -1331,8 +1322,11 @@ and desugar_expr_init
           raise (err "mutable keyword in initialiser context" ps)
 
       | PEXP_custom (n, a, b) ->
-          desugar_expr_init ps dst_lval
-            { pexp with node = expand_pexp_custom ps n a b }
+          let (arg_stmts, args) = desugar_expr_atoms ps a in
+          let stmts =
+            expand_pexp_custom ps dst_lval n args b ss
+          in
+            aa arg_stmts stmts
 
 
 and atom_lval (ps:pstate) (at:Ast.atom) : Ast.lval =
