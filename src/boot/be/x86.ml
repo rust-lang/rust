@@ -820,7 +820,7 @@ let gc_glue
   let skip_jmp_fix = new_fixup "skip jump" in
   let exit_jmp_fix = new_fixup "exit jump" in
 
-    mov (rc edx) (c task_ptr);          (* switch back to rust stack    *)
+    mov (rc edx) (c task_ptr);            (* switch back to rust stack    *)
     mov
       (rc esp)
       (c (edx_n Abi.task_field_rust_sp));
@@ -829,11 +829,6 @@ let gc_glue
     save_callee_saves e;
     push (ro eax);
     crawl_stack_calling_glue e Abi.frame_glue_fns_field_mark;
-
-    (* For now, stop after marking; sweep is still buggy. *)
-    pop (rc eax);
-    restore_callee_saves e;
-    Il.emit e Il.Ret;
 
     (* Sweep pass. *)
     mov (rc edx) (c task_ptr);
@@ -889,12 +884,16 @@ let gc_glue
     pop (rc eax);
 
     mark skip_jmp_fix;
-    mov (rc ecx)                                (* Advance down chain     *)
+    mov (rc edx)                                (* Advance down chain     *)
       (c (edx_n Abi.exterior_gc_slot_field_next));
     emit (Il.jmp Il.JMP
             (codefix repeat_jmp_fix));          (* loop                   *)
     mark exit_jmp_fix;
-    emit Il.Ret;
+
+    (* For now, stop after marking; sweep is still buggy. *)
+    pop (rc eax);
+    restore_callee_saves e;
+    Il.emit e Il.Ret;
 ;;
 
 
