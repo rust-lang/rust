@@ -2658,6 +2658,7 @@ let trans_visitor
       (slot:Ast.slot)
       (curr_iso:Ast.ty_iso option)
       : unit =
+    let _ = note_gc_step slot "severing" in
     let ty = slot_ty slot in
       match slot_mem_ctrl slot with
           MEM_gc ->
@@ -2665,15 +2666,12 @@ let trans_visitor
             let _ = check_exterior_rty cell in
             let null_jmp = null_check cell in
             let rc = exterior_rc_cell cell in
-            let _ = note_gc_step slot "severing" in
+            let _ = note_gc_step slot "severing GC slot" in
               emit (Il.binary Il.SUB rc (Il.Cell rc) one);
               mov cell zero;
               patch null_jmp
 
         | MEM_interior when type_is_structured ty ->
-            (iflog (fun _ ->
-                      annotate ("sever interior slot " ^
-                                  (Fmt.fmt_to_str Ast.fmt_slot slot))));
             let (mem, _) = need_mem_cell cell in
             let tmp = next_vreg_cell Il.voidptr_t in
             let ty = maybe_iso curr_iso ty in
