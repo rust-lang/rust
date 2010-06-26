@@ -890,7 +890,6 @@ let gc_glue
             (codefix repeat_jmp_fix));          (* loop                   *)
     mark exit_jmp_fix;
 
-    (* For now, stop after marking; sweep is still buggy. *)
     pop (rc eax);
     restore_callee_saves e;
     Il.emit e Il.Ret;
