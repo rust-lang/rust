@@ -81,6 +81,11 @@ refcount(rust_task *task, type_desc *t, size_t *v) {
     return (*v) - 1;
 }
 
+extern "C" CDECL void
+gc(rust_task *task) {
+    task->gc(1);
+}
+
 extern "C" CDECL rust_vec*
 vec_alloc(rust_task *task, type_desc *t, size_t n_elts)
 {
