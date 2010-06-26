@@ -853,11 +853,6 @@ let gc_glue
       (Il.jmp Il.JNE
          (codefix skip_jmp_fix));               (* if unmarked (garbage)  *)
 
-    (* NB: ecx is a type descriptor now. *)
-    mov (rc eax)                                (* Load glue tydesc-off.  *)
-      (c (ecx_n Abi.tydesc_field_free_glue));
-    add eax ecx;                                (* Add to tydesc*         *)
-
     (* FIXME: this path is all wrong
      *
      * It actually needs to walk in two full passes over the chain:
@@ -878,11 +873,23 @@ let gc_glue
      *
      *)
 
-    push (ro edx);                      (* gc_val to drop                 *)
-    push (c task_ptr);                  (* form usual call to glue        *)
-    push (immi 0L);                     (* outptr                         *)
+    push (ro edx);                              (* Push gc_val to drop.   *)
+
+    (* NB: ecx is a type descriptor now. *)
+
+    mov (rc eax)                                (* Load typarams ptr.     *)
+      (c (ecx_n Abi.tydesc_field_first_param));
+    push (ro eax);                              (* Push typarams ptr.     *)
+
+    push (c task_ptr);                          (* Push task ptr.         *)
+    push (immi 0L);                             (* Push null outptr.      *)
+
+    mov (rc eax)                                (* Load glue tydesc-off.  *)
+      (c (ecx_n Abi.tydesc_field_free_glue));
+    add eax ecx;                                (* Add to tydesc*         *)
     emit (Il.call (rc eax)
-            (reg_codeptr (h eax)));     (* call glue_fn, trashing eax.    *)
+            (reg_codeptr (h eax)));             (* Call free glue.        *)
+    pop (rc eax);
     pop (rc eax);
     pop (rc eax);
     pop (rc eax);
