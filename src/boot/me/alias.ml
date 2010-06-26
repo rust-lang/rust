@@ -20,13 +20,10 @@ let alias_analysis_visitor
   in
 
   let alias lval =
-    match lval with
-        Ast.LVAL_base nb ->
-          let referent = Hashtbl.find cx.ctxt_lval_to_referent nb.id in
-            if (referent_is_slot cx referent)
-            then alias_slot referent
-      | _ -> err None "unhandled form of lval %a in alias analysis"
-          Ast.sprintf_lval lval
+    let lv_id = lval_base_id lval in
+    let referent = Hashtbl.find cx.ctxt_lval_to_referent lv_id in
+      if (referent_is_slot cx referent)
+      then alias_slot referent
   in
 
   let alias_atom at =
