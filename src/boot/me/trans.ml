@@ -1016,6 +1016,9 @@ let trans_visitor
         let (cell, _) = trans_lval flv in
           (Il.Cell cell, fty)
 
+  and align x =
+    Asm.ALIGN_FILE (16, Asm.ALIGN_MEM(16, x))
+
   and trans_crate_rel_data_operand
       (d:data)
       (thunk:unit -> Asm.frag)
@@ -1025,7 +1028,7 @@ let trans_visitor
         begin
           fun _ ->
             let fix = new_fixup "data item" in
-            let frag = Asm.DEF (fix, thunk()) in
+            let frag = align (Asm.DEF (fix, thunk())) in
               (fix, frag)
         end
     in
@@ -1037,7 +1040,7 @@ let trans_visitor
         begin
           fun _ ->
             let fix = new_fixup "data item" in
-            let frag = Asm.DEF (fix, thunk()) in
+            let frag = align (Asm.DEF (fix, thunk())) in
               (fix, frag)
         end
     in
