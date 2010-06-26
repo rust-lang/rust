@@ -306,6 +306,7 @@ struct type_desc {
     uintptr_t copy_glue_off;
     uintptr_t drop_glue_off;
     uintptr_t free_glue_off;
+    uintptr_t sever_glue_off;    // For GC.
     uintptr_t mark_glue_off;     // For GC.
     uintptr_t obj_drop_glue_off; // For custom destructors.
 

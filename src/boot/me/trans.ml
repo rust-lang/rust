@@ -1082,6 +1082,7 @@ let trans_visitor
                        get_copy_glue t None;
                        get_drop_glue t None;
                        get_free_glue t (slot_mem_ctrl (interior_slot t)) None;
+                       get_sever_glue t None;
                        get_mark_glue t None;
                      |];
                    (* Include any obj-dtor, if this is an obj and has one. *)
@@ -1650,6 +1651,21 @@ let trans_visitor
     in
     let ty_params_ptr = ty_params_covering ty in
     let fty = mk_simple_ty_fn [| ty_params_ptr; exterior_slot ty |] in
+      get_typed_mem_glue g fty inner
+
+
+  and get_sever_glue
+      (ty:Ast.ty)
+      (curr_iso:Ast.ty_iso option)
+      : fixup =
+    let g = GLUE_sever ty in
+    let inner _ (args:Il.cell) =
+      let ty_params = deref (get_element_ptr args 0) in
+      let cell = get_element_ptr args 1 in
+        sever_ty ty_params ty (deref cell) curr_iso
+    in
+    let ty_params_ptr = ty_params_covering ty in
+    let fty = mk_simple_ty_fn [| ty_params_ptr; alias_slot ty |] in
       get_typed_mem_glue g fty inner
 
 
@@ -2485,6 +2501,18 @@ let trans_visitor
       | _ ->
           iter_ty_slots ty_params ty cell (drop_slot ty_params) curr_iso
 
+  and sever_ty
+      (ty_params:Il.cell)
+      (ty:Ast.ty)
+      (cell:Il.cell)
+      (curr_iso:Ast.ty_iso option)
+      : unit =
+    match ty with
+      | Ast.TY_fn _
+      | Ast.TY_obj _ -> ()
+      | _ ->
+          iter_ty_slots ty_params ty cell (sever_slot ty_params) curr_iso
+
   and mark_ty
       (ty_params:Il.cell)
       (ty:Ast.ty)
@@ -2623,6 +2651,44 @@ let trans_visitor
     match t with
         Ast.TY_iso tiso -> Some tiso
       | _ -> curr_iso
+
+  and sever_slot
+      (ty_params:Il.cell)
+      (cell:Il.cell)
+      (slot:Ast.slot)
+      (curr_iso:Ast.ty_iso option)
+      : unit =
+    let ty = slot_ty slot in
+      match slot_mem_ctrl slot with
+          MEM_gc ->
+
+            let _ = check_exterior_rty cell in
+            let null_jmp = null_check cell in
+            let rc = exterior_rc_cell cell in
+            let _ = note_gc_step slot "severing" in
+              emit (Il.binary Il.SUB rc (Il.Cell rc) one);
+              mov cell zero;
+              patch null_jmp
+
+        | MEM_interior when type_is_structured ty ->
+            (iflog (fun _ ->
+                      annotate ("sever interior slot " ^
+                                  (Fmt.fmt_to_str Ast.fmt_slot slot))));
+            let (mem, _) = need_mem_cell cell in
+            let tmp = next_vreg_cell Il.voidptr_t in
+            let ty = maybe_iso curr_iso ty in
+            let curr_iso = maybe_enter_iso ty curr_iso in
+              lea tmp mem;
+              trans_call_simple_static_glue
+                (get_sever_glue ty curr_iso)
+                ty_params tmp
+
+        | MEM_interior ->
+            (* Interior allocation of all-interior value: sever directly. *)
+            let ty = maybe_iso curr_iso ty in
+              sever_ty ty_params ty cell curr_iso
+
+        | _ -> ()
 
   and mark_slot
       (ty_params:Il.cell)

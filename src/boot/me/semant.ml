@@ -20,11 +20,12 @@ type glue =
   | GLUE_yield
   | GLUE_exit_main_task
   | GLUE_exit_task
-  | GLUE_mark of Ast.ty
-  | GLUE_drop of Ast.ty
-  | GLUE_free of Ast.ty
-  | GLUE_copy of Ast.ty      (* One-level copy. *)
-  | GLUE_clone of Ast.ty     (* Deep copy. *)
+  | GLUE_copy of Ast.ty           (* One-level copy.                    *)
+  | GLUE_drop of Ast.ty           (* De-initialize interior memory.     *)
+  | GLUE_free of Ast.ty           (* Drop body + free() exterior ptr.   *)
+  | GLUE_sever of Ast.ty          (* Null all exterior state slots.     *)
+  | GLUE_mark of Ast.ty           (* Mark all exterior state slots.     *)
+  | GLUE_clone of Ast.ty          (* Deep copy.                         *)
   | GLUE_compare of Ast.ty
   | GLUE_hash of Ast.ty
   | GLUE_write of Ast.ty
@@ -32,12 +33,12 @@ type glue =
   | GLUE_unwind
   | GLUE_gc
   | GLUE_get_next_pc
-  | GLUE_mark_frame of node_id    (* node is the frame                 *)
-  | GLUE_drop_frame of node_id    (* node is the frame                 *)
-  | GLUE_reloc_frame of node_id   (* node is the frame                 *)
-  | GLUE_fn_binding of node_id    (* node is the 'bind' stmt           *)
-  | GLUE_obj_drop of node_id      (* node is the obj                   *)
-  | GLUE_loop_body of node_id     (* node is the 'for each' body block *)
+  | GLUE_mark_frame of node_id    (* Node is the frame.                 *)
+  | GLUE_drop_frame of node_id    (* Node is the frame.                 *)
+  | GLUE_reloc_frame of node_id   (* Node is the frame.                 *)
+  | GLUE_fn_binding of node_id    (* Node is the 'bind' stmt.           *)
+  | GLUE_obj_drop of node_id      (* Node is the obj.                   *)
+  | GLUE_loop_body of node_id     (* Node is the 'for each' body block. *)
   | GLUE_forward of (Ast.ident * Ast.ty_obj * Ast.ty_obj)
 ;;
 
@@ -1603,6 +1604,7 @@ let tydesc_rty (abi:Abi.abi) : Il.referent_ty =
       Il.ScalarTy (Il.AddrTy Il.CodeTy); (* Abi.tydesc_field_copy_glue     *)
       Il.ScalarTy (Il.AddrTy Il.CodeTy); (* Abi.tydesc_field_drop_glue     *)
       Il.ScalarTy (Il.AddrTy Il.CodeTy); (* Abi.tydesc_field_free_glue     *)
+      Il.ScalarTy (Il.AddrTy Il.CodeTy); (* Abi.tydesc_field_sever_glue    *)
       Il.ScalarTy (Il.AddrTy Il.CodeTy); (* Abi.tydesc_field_mark_glue     *)
       Il.ScalarTy (Il.AddrTy Il.CodeTy); (* Abi.tydesc_field_obj_drop_glue *)
     |]
@@ -1982,10 +1984,11 @@ let glue_str (cx:ctxt) (g:glue) : string =
     | GLUE_yield -> "glue$yield"
     | GLUE_exit_main_task -> "glue$exit_main_task"
     | GLUE_exit_task -> "glue$exit_task"
-    | GLUE_mark ty -> "glue$mark$" ^ (ty_str ty)
+    | GLUE_copy ty -> "glue$copy$" ^ (ty_str ty)
     | GLUE_drop ty -> "glue$drop$" ^ (ty_str ty)
     | GLUE_free ty -> "glue$free$" ^ (ty_str ty)
-    | GLUE_copy ty -> "glue$copy$" ^ (ty_str ty)
+    | GLUE_sever ty -> "glue$sever$" ^ (ty_str ty)
+    | GLUE_mark ty -> "glue$mark$" ^ (ty_str ty)
     | GLUE_clone ty -> "glue$clone$" ^ (ty_str ty)
     | GLUE_compare ty -> "glue$compare$" ^ (ty_str ty)
     | GLUE_hash ty -> "glue$hash$" ^ (ty_str ty)
