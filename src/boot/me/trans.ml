@@ -2891,8 +2891,8 @@ let trans_visitor
         match slot_mem_ctrl slot with
             MEM_gc -> "MEM_gc"
           | MEM_rc_struct -> "MEM_rc_struct"
-          | MEM_rc_opaque -> "MEM_rc_struct"
-          | MEM_interior -> "MEM_rc_struct"
+          | MEM_rc_opaque -> "MEM_rc_opaque"
+          | MEM_interior -> "MEM_interior"
       in
       let slotstr = Fmt.fmt_to_str Ast.fmt_slot slot in
       let str = step ^ " " ^ mctrl_str ^ " " ^ slotstr in
