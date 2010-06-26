@@ -745,7 +745,7 @@ let crawl_stack_calling_glue
     : unit =
 
   let fp_n = word_n (Il.Hreg ebp) in
-  let edx_n = word_n (Il.Hreg edx) in
+  let edi_n = word_n (Il.Hreg edi) in
   let emit = Il.emit e in
   let mov dst src = emit (Il.umov dst src) in
   let push x = emit (Il.Push x) in
@@ -763,16 +763,16 @@ let crawl_stack_calling_glue
     mark repeat_jmp_fix;
 
     mov (rc esi) (c (fp_n (-1)));       (* esi <- crate ptr             *)
-    mov (rc edx) (c (fp_n (-2)));       (* edx <- frame glue functions. *)
-    emit (Il.cmp (ro edx) (immi 0L));
+    mov (rc edi) (c (fp_n (-2)));       (* edi <- frame glue functions. *)
+    emit (Il.cmp (ro edi) (immi 0L));
 
     emit
       (Il.jmp Il.JE
          (codefix skip_jmp_fix));       (* if struct* is nonzero        *)
-    add edx esi;                        (* add crate ptr to disp.       *)
+    add edi esi;                        (* add crate ptr to disp.       *)
     mov
       (rc ecx)
-      (c (edx_n glue_field));           (* ecx <-  glue                 *)
+      (c (edi_n glue_field));           (* ecx <-  glue                 *)
     emit (Il.cmp (ro ecx) (immi 0L));
 
     emit
@@ -789,11 +789,11 @@ let crawl_stack_calling_glue
     pop (rc eax);
 
     mark skip_jmp_fix;
-    mov (rc edx) (c (fp_n 3));          (* load next fp (callee-saves[3]) *)
-    emit (Il.cmp (ro edx) (immi 0L));
+    mov (rc edi) (c (fp_n 3));          (* load next fp (callee-saves[3]) *)
+    emit (Il.cmp (ro edi) (immi 0L));
     emit (Il.jmp Il.JE
             (codefix exit_jmp_fix));    (* if nonzero                     *)
-    mov (rc ebp) (ro edx);              (* move to next frame             *)
+    mov (rc ebp) (ro edi);              (* move to next frame             *)
     emit (Il.jmp Il.JMP
             (codefix repeat_jmp_fix));  (* loop                           *)
 
@@ -802,8 +802,10 @@ let crawl_stack_calling_glue
     pop (rc ebp);                       (* restore ebp                    *)
 ;;
 
-let gc_glue
+let sweep_gc_chain
     (e:Il.emitter)
+    (glue_field:int)
+    (clear_mark:bool)
     : unit =
 
   let emit = Il.emit e in
@@ -812,7 +814,7 @@ let gc_glue
   let pop x = emit (Il.Pop x) in
   let band x y = emit (Il.binary Il.AND x (c x) y) in
   let add x y = emit (Il.binary Il.ADD (rc x) (ro x) (ro y)) in
-  let edx_n = word_n (Il.Hreg edx) in
+  let edi_n = word_n (Il.Hreg edi) in
   let ecx_n = word_n (Il.Hreg ecx) in
   let codefix fix = Il.CodePtr (Il.ImmPtr (fix, Il.CodeTy)) in
   let mark fix = Il.emit_full e (Some fix) [] Il.Dead in
@@ -820,60 +822,32 @@ let gc_glue
   let skip_jmp_fix = new_fixup "skip jump" in
   let exit_jmp_fix = new_fixup "exit jump" in
 
-    mov (rc edx) (c task_ptr);            (* switch back to rust stack    *)
-    mov
-      (rc esp)
-      (c (edx_n Abi.task_field_rust_sp));
-
-    (* Mark pass. *)
-    save_callee_saves e;
-    push (ro eax);
-    crawl_stack_calling_glue e Abi.frame_glue_fns_field_mark;
-
-    (* Sweep pass. *)
-    mov (rc edx) (c task_ptr);
-    mov (rc edx) (c (edx_n Abi.task_field_gc_alloc_chain));
+    mov (rc edi) (c task_ptr);
+    mov (rc edi) (c (edi_n Abi.task_field_gc_alloc_chain));
     mark repeat_jmp_fix;
-    emit (Il.cmp (ro edx) (immi 0L));
+    emit (Il.cmp (ro edi) (immi 0L));
     emit (Il.jmp Il.JE
             (codefix exit_jmp_fix));            (* if nonzero             *)
     mov (rc ecx)                                (* Load GC ctrl word      *)
-      (c (edx_n Abi.exterior_gc_slot_field_ctrl));
+      (c (edi_n Abi.exterior_gc_slot_field_ctrl));
     mov (rc eax) (ro ecx);
     band (rc eax) (immi 1L);                    (* Extract mark to eax.   *)
     band                                        (* Clear mark in ecx.     *)
       (rc ecx)
       (immi 0xfffffffffffffffeL);
-    mov
-      ((edx_n Abi.exterior_gc_slot_field_ctrl)) (* Write-back cleared.    *)
-      (ro ecx);
+
+    if clear_mark
+    then
+      mov                                       (* Write-back cleared.    *)
+        ((edi_n Abi.exterior_gc_slot_field_ctrl))
+        (ro ecx);
 
     emit (Il.cmp (ro eax) (immi 0L));
     emit
       (Il.jmp Il.JNE
          (codefix skip_jmp_fix));               (* if unmarked (garbage)  *)
 
-    (* FIXME: this path is all wrong
-     *
-     * It actually needs to walk in two full passes over the chain:
-     *
-     *    - In pass #1, it goes through and disposes of all mutable exterior
-     *      slots in each record. That is, rc-- the referent, and then
-     *      null-out.  If the rc-- gets to zero, that just means the mutable
-     *      is part of the garbage set currently being collected. But a
-     *      mutable may be live-and-outside; this detaches the garbage set
-     *      from the non-garbage set within the mutable heap.
-     *
-     *    - In pass #2, run the normal free-glue. This winds up doing the
-     *      immutables only, since all the mutables were nulled out in pass
-     *      #1. This is where you do the unlinking from the double-linked
-     *      chain mentioned above.
-     *
-     * So .. this will still take a little more doing.
-     *
-     *)
-
-    push (ro edx);                              (* Push gc_val to drop.   *)
+    push (ro edi);                              (* Push gc_val.           *)
 
     (* NB: ecx is a type descriptor now. *)
 
@@ -885,21 +859,63 @@ let gc_glue
     push (immi 0L);                             (* Push null outptr.      *)
 
     mov (rc eax)                                (* Load glue tydesc-off.  *)
-      (c (ecx_n Abi.tydesc_field_free_glue));
+      (c (ecx_n glue_field));
     add eax ecx;                                (* Add to tydesc*         *)
     emit (Il.call (rc eax)
-            (reg_codeptr (h eax)));             (* Call free glue.        *)
+            (reg_codeptr (h eax)));             (* Call glue.             *)
     pop (rc eax);
     pop (rc eax);
     pop (rc eax);
     pop (rc eax);
 
     mark skip_jmp_fix;
-    mov (rc edx)                                (* Advance down chain     *)
-      (c (edx_n Abi.exterior_gc_slot_field_next));
+    mov (rc edi)                                (* Advance down chain     *)
+      (c (edi_n Abi.exterior_gc_slot_field_next));
     emit (Il.jmp Il.JMP
             (codefix repeat_jmp_fix));          (* loop                   *)
     mark exit_jmp_fix;
+;;
+
+
+
+let gc_glue
+    (e:Il.emitter)
+    : unit =
+
+  let emit = Il.emit e in
+  let mov dst src = emit (Il.umov dst src) in
+  let push x = emit (Il.Push x) in
+  let pop x = emit (Il.Pop x) in
+  let edi_n = word_n (Il.Hreg edi) in
+
+    mov (rc edi) (c task_ptr);            (* switch back to rust stack    *)
+    mov
+      (rc esp)
+      (c (edi_n Abi.task_field_rust_sp));
+
+    (* Mark pass. *)
+    save_callee_saves e;
+    push (ro eax);
+    crawl_stack_calling_glue e Abi.frame_glue_fns_field_mark;
+
+    (* The sweep pass has two sub-passes over the GC chain:
+     *
+     *    - In pass #1, 'severing', we goes through and disposes of all
+     *      mutable exterior slots in each record. That is, rc-- the referent,
+     *      and then null-out.  If the rc-- gets to zero, that just means the
+     *      mutable is part of the garbage set currently being collected. But
+     *      a mutable may be live-and-outside; this detaches the garbage set
+     *      from the non-garbage set within the mutable heap.
+     *
+     *    - In pass #2, 'freeing', we run the normal free-glue. This winds up
+     *      running drop-glue on the zero-reference-reaching immutables only,
+     *      since all the mutables were nulled out in pass #1. This is where
+     *      you do the unlinking from the double-linked chain and call free(),
+     *      also.
+     *
+     *)
+    sweep_gc_chain e Abi.tydesc_field_sever_glue false;
+    sweep_gc_chain e Abi.tydesc_field_free_glue true;
 
     pop (rc eax);
     restore_callee_saves e;
@@ -915,12 +931,12 @@ let unwind_glue
 
   let emit = Il.emit e in
   let mov dst src = emit (Il.umov dst src) in
-  let edx_n = word_n (Il.Hreg edx) in
+  let edi_n = word_n (Il.Hreg edi) in
 
-    mov (rc edx) (c task_ptr);          (* switch back to rust stack    *)
+    mov (rc edi) (c task_ptr);          (* switch back to rust stack    *)
     mov
       (rc esp)
-      (c (edx_n Abi.task_field_rust_sp));
+      (c (edi_n Abi.task_field_rust_sp));
 
     crawl_stack_calling_glue e Abi.frame_glue_fns_field_drop;
     let callee =
@@ -928,7 +944,7 @@ let unwind_glue
         e (h eax) exit_task_fixup false nabi.nabi_indirect
     in
       emit_c_call
-        e (rc eax) (h edx) (h ecx) nabi false callee [| (c task_ptr) |];
+        e (rc eax) (h edi) (h ecx) nabi false callee [| (c task_ptr) |];
 ;;
 
 
