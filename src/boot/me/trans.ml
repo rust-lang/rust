@@ -2639,13 +2639,15 @@ let trans_visitor
                 (* if this has been marked already, jump to exit.*)
                 note_gc_step slot "mark GC slot: check for mark:";
                 emit (Il.binary Il.AND tmp (Il.Cell gc_word) one);
-                let already_marked_jump = mark () in
-                  emit (Il.jmp Il.JZ Il.CodeNone);
+                trace_word cx.ctxt_sess.Session.sess_trace_gc tmp;
+
+                let already_marked_jump =
+                  trans_compare Il.JNE (Il.Cell tmp) zero;
+                in
                   (* Set mark bit in allocation header. *)
-                  note_gc_step slot "mark GC slot: mark:";
                   emit (Il.binary Il.OR gc_word (Il.Cell gc_word) one);
+                  note_gc_step slot "mark GC slot: set mark";
                   (* Iterate over exterior slots marking outgoing links. *)
-                  log cx "slot rty: %s" (cell_str cell);
                   let (body_mem, _) =
                     need_mem_cell
                       (get_element_ptr (deref cell)
@@ -2658,7 +2660,7 @@ let trans_visitor
                       (get_mark_glue ty curr_iso)
                       ty_params tmp;
                     patch null_cell_jump;
-                    patch already_marked_jump;
+                    List.iter patch already_marked_jump;
                     note_gc_step slot "mark GC slot: done marking:";
 
         | MEM_interior when type_is_structured ty ->
