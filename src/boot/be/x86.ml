@@ -839,12 +839,16 @@ let gc_glue
             (codefix exit_jmp_fix));            (* if nonzero             *)
     mov (rc ecx)                                (* Load GC ctrl word      *)
       (c (edx_n Abi.exterior_gc_slot_field_ctrl));
-
-    band                                        (* Clear in-memory mark.  *)
-      (edx_n Abi.exterior_gc_slot_field_ctrl)
+    mov (rc eax) (ro ecx);
+    band (rc eax) (immi 1L);                    (* Extract mark to eax.   *)
+    band                                        (* Clear mark in ecx.     *)
+      (rc ecx)
       (immi 0xfffffffffffffffeL);
-    band (rc ecx) (immi 1L);                    (* Check in-reg mark.     *)
-    emit (Il.cmp (ro edx) (immi 0L));
+    mov
+      ((edx_n Abi.exterior_gc_slot_field_ctrl)) (* Write-back cleared.    *)
+      (ro ecx);
+
+    emit (Il.cmp (ro eax) (immi 0L));
     emit
       (Il.jmp Il.JNE
          (codefix skip_jmp_fix));               (* if unmarked (garbage)  *)
