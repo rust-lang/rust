@@ -127,7 +127,9 @@ let slot_mem_ctrl (slot:Ast.slot) : mem_ctrl =
                 then MEM_gc
                 else MEM_rc_struct
             | Ast.MODE_exterior _ ->
-                MEM_rc_opaque
+                if type_has_state ty
+                then MEM_gc
+                else MEM_rc_opaque
             | _ ->
                 MEM_interior
 ;;
