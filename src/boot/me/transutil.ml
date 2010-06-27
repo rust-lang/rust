@@ -118,8 +118,11 @@ let slot_mem_ctrl (slot:Ast.slot) : mem_ctrl =
         Ast.TY_port _
       | Ast.TY_chan _
       | Ast.TY_task
-      | Ast.TY_vec _
       | Ast.TY_str -> MEM_rc_opaque
+      | Ast.TY_vec _ ->
+          if type_has_state ty
+          then MEM_gc
+          else MEM_rc_opaque
       | _ ->
           match slot.Ast.slot_mode with
               Ast.MODE_exterior _ when type_is_structured ty ->

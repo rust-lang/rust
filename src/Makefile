@@ -321,6 +321,7 @@ TEST_XFAILS_X86 :=  test/run-pass/mlist-cycle.rs \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/generic-fn-infer.rs \
                     test/run-pass/generic-recursive-tag.rs \
+                    test/run-pass/mutable-vec-drop.rs \
                     test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/task-comm.rs \
                     test/compile-fail/rec-missing-fields.rs \
