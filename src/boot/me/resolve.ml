@@ -737,7 +737,6 @@ let lval_base_resolving_visitor
      * processed by later stages. An lval that happens to be an item will
      * mark the item in question here.
      *)
-
     let reference_any_name lv =
       let rec lval_is_name lv =
         match lv with
