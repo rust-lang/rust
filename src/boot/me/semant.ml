@@ -90,6 +90,7 @@ type ctxt =
       ctxt_block_items: block_items_table;
       ctxt_slot_is_arg: (node_id,unit) Hashtbl.t;
       ctxt_slot_keys: (node_id,Ast.slot_key) Hashtbl.t;
+      ctxt_node_referenced: (node_id, unit) Hashtbl.t;
       ctxt_all_item_names: (node_id,Ast.name) Hashtbl.t;
       ctxt_all_item_types: (node_id,Ast.ty) Hashtbl.t;
       ctxt_all_lval_types: (node_id,Ast.ty) Hashtbl.t;
@@ -179,6 +180,7 @@ let new_ctxt sess abi crate =
     ctxt_block_items = Hashtbl.create 0;
     ctxt_slot_is_arg = Hashtbl.create 0;
     ctxt_slot_keys = Hashtbl.create 0;
+    ctxt_node_referenced = Hashtbl.create 0;
     ctxt_all_item_names = Hashtbl.create 0;
     ctxt_all_item_types = Hashtbl.create 0;
     ctxt_all_lval_types = Hashtbl.create 0;
@@ -1330,6 +1332,114 @@ let scope_stack_managing_visitor
         Walk.visit_crate_post = visit_crate_post; }
 ;;
 
+let unreferenced_required_item_ignoring_visitor
+    (cx:ctxt)
+    (inner:Walk.visitor)
+    : Walk.visitor =
+
+  let inhibition = ref 0 in
+
+  let directly_inhibited i =
+    (Hashtbl.mem cx.ctxt_required_items i.id) &&
+      (not (Hashtbl.mem cx.ctxt_node_referenced i.id))
+  in
+
+  let indirectly_inhibited _ =
+    (!inhibition) <> 0
+  in
+
+  let should_visit i =
+    not ((directly_inhibited i) || (indirectly_inhibited()))
+  in
+
+  let inhibit_pre i =
+    if directly_inhibited i
+    then incr inhibition
+  in
+
+  let inhibit_post i =
+    if directly_inhibited i
+    then decr inhibition
+  in
+
+  let visit_mod_item_pre n p i =
+    if should_visit i
+    then inner.Walk.visit_mod_item_pre n p i;
+    inhibit_pre i
+  in
+
+  let visit_mod_item_post n p i =
+    if should_visit i
+    then inner.Walk.visit_mod_item_post n p i;
+    inhibit_post i
+  in
+
+  let visit_obj_fn_pre oid ident fn =
+    if not (indirectly_inhibited())
+    then inner.Walk.visit_obj_fn_pre oid ident fn;
+  in
+
+  let visit_obj_fn_post oid ident fn =
+    if not (indirectly_inhibited())
+    then inner.Walk.visit_obj_fn_post oid ident fn;
+  in
+
+  let visit_obj_drop_pre oid d =
+    if not (indirectly_inhibited())
+    then inner.Walk.visit_obj_drop_pre oid d;
+  in
+
+  let visit_obj_drop_post oid d =
+    if not (indirectly_inhibited())
+    then inner.Walk.visit_obj_drop_post oid d;
+  in
+
+  let visit_constr_pre n c =
+    if not (indirectly_inhibited())
+    then inner.Walk.visit_constr_pre n c;
+  in
+
+  let visit_constr_post n c =
+    if not (indirectly_inhibited())
+    then inner.Walk.visit_constr_post n c;
+  in
+
+  let wrap1 fn =
+    fun x ->
+      if not (indirectly_inhibited())
+      then fn x
+  in
+
+    { inner with
+        Walk.visit_stmt_pre = wrap1 inner.Walk.visit_stmt_pre;
+        Walk.visit_stmt_post = wrap1 inner.Walk.visit_stmt_post;
+        Walk.visit_slot_identified_pre =
+        wrap1 inner.Walk.visit_slot_identified_pre;
+        Walk.visit_slot_identified_post =
+        wrap1 inner.Walk.visit_slot_identified_post;
+        Walk.visit_expr_pre = wrap1 inner.Walk.visit_expr_pre;
+        Walk.visit_expr_post = wrap1 inner.Walk.visit_expr_post;
+        Walk.visit_ty_pre = wrap1 inner.Walk.visit_ty_pre;
+        Walk.visit_ty_post = wrap1 inner.Walk.visit_ty_post;
+        Walk.visit_constr_pre = visit_constr_pre;
+        Walk.visit_constr_post = visit_constr_post;
+        Walk.visit_pat_pre = wrap1 inner.Walk.visit_pat_pre;
+        Walk.visit_pat_post = wrap1 inner.Walk.visit_pat_post;
+        Walk.visit_block_pre = wrap1 inner.Walk.visit_block_pre;
+        Walk.visit_block_post = wrap1 inner.Walk.visit_block_post;
+        Walk.visit_lit_pre = wrap1 inner.Walk.visit_lit_pre;
+        Walk.visit_lit_post = wrap1 inner.Walk.visit_lit_post;
+        Walk.visit_lval_pre = wrap1 inner.Walk.visit_lval_pre;
+        Walk.visit_lval_post = wrap1 inner.Walk.visit_lval_post;
+        Walk.visit_mod_item_pre = visit_mod_item_pre;
+        Walk.visit_mod_item_post = visit_mod_item_post;
+        Walk.visit_obj_fn_pre = visit_obj_fn_pre;
+        Walk.visit_obj_fn_post = visit_obj_fn_post;
+        Walk.visit_obj_drop_pre = visit_obj_drop_pre;
+        Walk.visit_obj_drop_post = visit_obj_drop_post; }
+;;
+
+
 (* Generic lookup, used for slots, items, types, etc. *)
 
 type resolved = ((scope list * node_id) option) ;;
@@ -1337,15 +1447,15 @@ type resolved = ((scope list * node_id) option) ;;
 let get_item (cx:ctxt) (node:node_id) : Ast.mod_item_decl =
   match htab_search cx.ctxt_all_defns node with
       Some (DEFN_item item) -> item
-    | Some _ -> err (Some node) "defn is not an item"
-    | None -> bug () "missing defn"
+    | Some _ -> bugi cx node "defn is not an item"
+    | None -> bugi cx node "missing defn"
 ;;
 
 let get_slot (cx:ctxt) (node:node_id) : Ast.slot =
   match htab_search cx.ctxt_all_defns node with
       Some (DEFN_slot slot) -> slot
-    | Some _ -> err (Some node) "defn is not a slot"
-    | None -> bug () "missing defn"
+    | Some _ -> bugi cx node "defn is not a slot"
+    | None -> bugi cx node "missing defn"
 ;;
 
 let get_mod_item
@@ -1354,7 +1464,7 @@ let get_mod_item
     : (Ast.mod_view * Ast.mod_items) =
   match get_item cx node with
       { Ast.decl_item = Ast.MOD_ITEM_mod md } -> md
-    | _ -> err (Some node) "defn is not a mod"
+    | _ -> bugi cx node "defn is not a mod"
 ;;
 
 let get_name_comp_ident
@@ -1387,11 +1497,16 @@ let rec project_ident_from_items
   then None
   else
     match htab_search items ident with
-        Some i -> Some (scopes, i.id)
+        Some i ->
+          found cx scopes i.id
       | None ->
           match htab_search view.Ast.view_imports ident with
               None -> None
             | Some name -> lookup_by_name cx scopes name
+
+and found cx scopes id =
+  Hashtbl.replace cx.ctxt_node_referenced id ();
+  Some (scopes, id)
 
 and project_name_comp_from_resolved
     (cx:ctxt)
@@ -1405,6 +1520,7 @@ and project_name_comp_from_resolved
         let scopes = scope :: scopes in
         let ident = get_name_comp_ident ext in
         let md = get_mod_item cx id in
+          Hashtbl.replace cx.ctxt_node_referenced id ();
           project_ident_from_items cx scopes md ident false
 
 and lookup_by_name
@@ -1426,19 +1542,25 @@ and lookup_by_ident
     (scopes:scope list)
     (ident:Ast.ident)
     : resolved =
+
   let check_slots scopes islots =
     arr_search islots
       (fun _ (sloti,ident') ->
          if ident = ident'
-         then Some (scopes, sloti.id)
+         then found cx scopes sloti.id
          else None)
   in
+
   let check_params scopes params =
     arr_search params
       (fun _ {node=(i,_); id=id} ->
-         if i = ident then Some (scopes, id) else None)
+         if i = ident
+         then found cx scopes id
+         else None)
   in
+
   let passed_capture_scope = ref false in
+
   let would_capture r =
     match r with
         None -> None
@@ -1447,6 +1569,7 @@ and lookup_by_ident
           then err None "attempted dynamic environment-capture"
           else r
   in
+
   let check_scope scopes scope =
     match scope with
         SCOPE_block block_id ->
@@ -1454,10 +1577,10 @@ and lookup_by_ident
           let block_items = Hashtbl.find cx.ctxt_block_items block_id in
             begin
               match htab_search block_slots (Ast.KEY_ident ident) with
-                  Some id -> would_capture (Some (scopes, id))
+                  Some id -> would_capture (found cx scopes id)
                 | None ->
                     match htab_search block_items ident with
-                        Some id -> Some (scopes, id)
+                        Some id -> found cx scopes id
                       | None -> None
             end
 
@@ -1478,7 +1601,7 @@ and lookup_by_ident
                 | Ast.MOD_ITEM_obj obj ->
                     begin
                       match htab_search obj.Ast.obj_fns ident with
-                          Some fn -> Some (scopes, fn.id)
+                          Some fn -> found cx scopes fn.id
                         | None -> check_slots scopes obj.Ast.obj_state
                     end
 

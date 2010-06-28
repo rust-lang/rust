@@ -876,17 +876,31 @@ and parse_mod_item (ps:pstate) : (Ast.ident * Ast.mod_item) =
 and parse_mod_items_from_signature
     (ps:pstate)
     : (Ast.mod_view * Ast.mod_items) =
-    let mis = Hashtbl.create 0 in
-      expect ps LBRACE;
-      while not (peek ps = RBRACE)
-      do
+  let exports = Hashtbl.create 0 in
+  let mis = Hashtbl.create 0 in
+  let in_view = ref true in
+    expect ps LBRACE;
+    while not (peek ps = RBRACE)
+    do
+      if !in_view
+      then
+        match peek ps with
+            EXPORT ->
+              bump ps;
+              parse_export ps exports;
+              expect ps SEMI;
+          | _ ->
+              in_view := false
+      else
         let (ident, mti) = ctxt "mod items from sig: mod item"
           parse_mod_item_from_signature ps
         in
           Hashtbl.add mis ident mti;
-      done;
-      expect ps RBRACE;
-      (empty_view, mis)
+    done;
+    if (Hashtbl.length exports) = 0
+    then Hashtbl.add exports Ast.EXPORT_all_decls ();
+    expect ps RBRACE;
+    ({empty_view with Ast.view_exports = exports}, mis)
 
 
 and parse_mod_item_from_signature (ps:pstate)

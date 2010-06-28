@@ -730,11 +730,33 @@ let lval_base_resolving_visitor
                           (int_of_node nb.id) (int_of_node referent_id));
               htab_put cx.ctxt_lval_to_referent nb.id referent_id
     in
+
+    (*
+     * The point here is just to tickle the reference-a-name machinery in
+     * lookup that makes sure that all and only those items referenced get
+     * processed by later stages. An lval that happens to be an item will
+     * mark the item in question here.
+     *)
+    let reference_any_name lv =
+      let rec lval_is_name lv =
+        match lv with
+            Ast.LVAL_base {node = Ast.BASE_ident _}
+          | Ast.LVAL_base {node = Ast.BASE_app _} -> true
+          | Ast.LVAL_ext (lv', Ast.COMP_named (Ast.COMP_ident _))
+          | Ast.LVAL_ext (lv', Ast.COMP_named (Ast.COMP_app _))
+            -> lval_is_name lv'
+          | _ -> false
+      in
+        if lval_is_name lv && lval_is_item cx lv
+        then ignore (lookup_by_name cx (!scopes) (lval_to_name lv))
+    in
+
       lookup_lval lv;
+      reference_any_name lv;
       inner.Walk.visit_lval_pre lv
   in
     { inner with
-        Walk.visit_lval_pre = visit_lval_pre }
+        Walk.visit_lval_pre = visit_lval_pre };
 ;;
 
 
@@ -868,7 +890,8 @@ let resolve_recursion
 
 let pattern_resolving_visitor
     (cx:ctxt)
-    (inner:Walk.visitor) : Walk.visitor =
+    (inner:Walk.visitor)
+    : Walk.visitor =
 
   let not_tag_ctor nm id : unit =
     err (Some id) "'%s' is not a tag constructor" (string_of_name nm)
@@ -934,6 +957,43 @@ let pattern_resolving_visitor
   { inner with Walk.visit_stmt_pre = visit_stmt_pre }
 ;;
 
+let export_referencing_visitor
+    (cx:ctxt)
+    (inner:Walk.visitor)
+    : Walk.visitor =
+    let visit_mod_item_pre id params item =
+      begin
+        match item.node.Ast.decl_item with
+            Ast.MOD_ITEM_mod (view, items) ->
+              let is_defining_mod =
+                (* auto-ref the default-export cases only if
+                 * the containing mod is 'defining', meaning
+                 * not-native / not-use
+                 *)
+                 not (Hashtbl.mem cx.ctxt_required_items item.id)
+              in
+              let reference _ item =
+                Hashtbl.replace cx.ctxt_node_referenced item.id ();
+              in
+              let reference_export e _ =
+                match e with
+                    Ast.EXPORT_ident ident ->
+                      let item = Hashtbl.find items ident in
+                        reference ident item
+                  | Ast.EXPORT_all_decls ->
+                      if is_defining_mod
+                      then Hashtbl.iter reference items
+              in
+                Hashtbl.iter reference_export view.Ast.view_exports
+          | _ -> ()
+      end;
+      inner.Walk.visit_mod_item_pre id params item
+    in
+      { inner with Walk.visit_mod_item_pre = visit_mod_item_pre }
+
+
+;;
+
 let process_crate
     (cx:ctxt)
     (crate:Ast.crate)
@@ -957,6 +1017,7 @@ let process_crate
             Walk.empty_visitor))
     |]
   in
+
   let passes_1 =
     [|
       (scope_stack_managing_visitor scopes
@@ -966,20 +1027,38 @@ let process_crate
                Walk.empty_visitor)));
     |]
   in
+
   let passes_2 =
     [|
       (scope_stack_managing_visitor scopes
          (pattern_resolving_visitor cx
-            Walk.empty_visitor))
+            Walk.empty_visitor));
+      export_referencing_visitor cx Walk.empty_visitor
     |]
   in
+
     log cx "running primary resolve passes";
     run_passes cx "resolve collect" path passes_0 (log cx "%s") crate;
     resolve_recursion cx node_to_references recursive_tag_groups;
     log cx "running secondary resolve passes";
     run_passes cx "resolve bind" path passes_1 (log cx "%s") crate;
     log cx "running tertiary resolve passes";
-    run_passes cx "resolve patterns" path passes_2 (log cx "%s") crate
+    run_passes cx "resolve patterns" path passes_2 (log cx "%s") crate;
+
+    iflog cx
+      begin
+        fun _ ->
+          Hashtbl.iter
+            begin
+              fun n _ ->
+                if referent_is_item cx n
+                then
+                  log cx "referenced: %a"
+                    Ast.sprintf_name
+                    (Hashtbl.find cx.ctxt_all_item_names n)
+            end
+            cx.ctxt_node_referenced;
+      end
 ;;
 
 (*

@@ -2517,11 +2517,12 @@ let process_crate
 
   let passes =
     [|
-      dwarf_visitor cx Walk.empty_visitor path
-        cx.ctxt_debug_info_fixup
-        cu_aranges cu_pubnames
-        cu_infos cu_abbrevs
-        cu_lines cu_frames
+      unreferenced_required_item_ignoring_visitor cx
+        (dwarf_visitor cx Walk.empty_visitor path
+           cx.ctxt_debug_info_fixup
+           cu_aranges cu_pubnames
+           cu_infos cu_abbrevs
+           cu_lines cu_frames)
     |];
   in
 

@@ -1,5 +1,5 @@
 
-// error-pattern: mismatched types
+// error-pattern: is not a mod
 
 obj x() {
   fn hello() {

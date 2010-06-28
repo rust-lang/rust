@@ -5094,7 +5094,8 @@ let fixup_assigning_visitor
   in
 
   let visit_block_pre b =
-    htab_put cx.ctxt_block_fixups b.id (new_fixup "lexical block");
+    htab_put cx.ctxt_block_fixups b.id
+      (new_fixup ("lexical block in " ^ (path_name())));
     inner.Walk.visit_block_pre b
   in
 
@@ -5118,13 +5119,15 @@ let process_crate
   let path = Stack.create () in
   let passes =
     [|
-      (fixup_assigning_visitor cx path
-         Walk.empty_visitor);
-      (Walk.mod_item_logging_visitor
-         (log cx "translation pass: %s")
-         path
-         (trans_visitor cx path
-            Walk.empty_visitor))
+      (unreferenced_required_item_ignoring_visitor cx
+         (fixup_assigning_visitor cx path
+            Walk.empty_visitor));
+      (unreferenced_required_item_ignoring_visitor cx
+         (Walk.mod_item_logging_visitor
+            (log cx "translation pass: %s")
+            path
+            (trans_visitor cx path
+               Walk.empty_visitor)))
     |];
   in
     log cx "translating crate";
