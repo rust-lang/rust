@@ -302,7 +302,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
       let integral (ty:Ast.ty) : bool =
         match ty with
-            Ast.TY_int | Ast.TY_mach TY_u8 | Ast.TY_mach TY_u16
+            Ast.TY_int | Ast.TY_uint | Ast.TY_mach TY_u8 | Ast.TY_mach TY_u16
           | Ast.TY_mach TY_u32 | Ast.TY_mach TY_u64 | Ast.TY_mach TY_i8
           | Ast.TY_mach TY_i16 | Ast.TY_mach TY_i32
           | Ast.TY_mach TY_i64 ->
