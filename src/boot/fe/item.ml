@@ -960,7 +960,6 @@ and parse_mod_item_from_signature (ps:pstate)
           let bpos = lexpos ps in
             (ident, span ps apos bpos (decl params (Ast.MOD_ITEM_type t)))
 
-    (* FIXME: parse obj. *)
     | _ -> raise (unexpected ps)
 
 

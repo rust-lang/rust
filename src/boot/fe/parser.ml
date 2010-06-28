@@ -209,7 +209,7 @@ let build_tmp
 
 (* Simple helpers *)
 
-(* FIXME: please rename these, they make eyes bleed. *)
+(* FIXME (issue #71): please rename these, they make eyes bleed. *)
 
 let arr (ls:'a list) : 'a array = Array.of_list ls ;;
 let arl (ls:'a list) : 'a array = Array.of_list (List.rev ls) ;;

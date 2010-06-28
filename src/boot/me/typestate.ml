@@ -487,7 +487,7 @@ let condition_assigning_visitor
         | Ast.STMT_alt_tag at ->
             let precond = slot_inits (lval_slots cx at.Ast.alt_tag_lval) in
             let visit_arm { node = (pat, block) } =
-              (* FIXME: propagate tag-carried constrs here. *)
+              (* FIXME (issue #34): propagate tag-carried constrs here. *)
               let rec get_slots pat =
                 match pat with
                     Ast.PAT_slot header_slot -> [| header_slot |]

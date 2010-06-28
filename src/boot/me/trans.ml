@@ -832,13 +832,14 @@ let trans_visitor
                               then
                                 bug () "unsupported nested for each loop";
                               for i = 2 to diff do
-                                (* FIXME: access outer caller-block fps,
-                                 * given nearest caller-block fp.
+                                (* FIXME (issue #79): access outer
+                                 * caller-block fps, given nearest
+                                 * caller-block fp. 
                                  *)
                                 let _ =
                                   annotate "step to outer-outer frame"
                                 in
-                                mov fp (Il.Cell fp)
+                                  mov fp (Il.Cell fp)
                               done;
                               let _ = annotate "calculate size" in
                               let p =
@@ -1179,7 +1180,7 @@ let trans_visitor
         trans_copy_forward_args self_args_rty;
 
         iflog (fun _ -> annotate "call through to callee");
-        (* FIXME: use a tail-call here. *)
+        (* FIXME (issue #80): use a tail-call here. *)
         call_code (code_of_cell callee_fn_cell);
         trans_glue_frame_exit fix spill g;
         fix
@@ -1419,7 +1420,7 @@ let trans_visitor
     let (callee_ty:Ast.ty) = mk_simple_ty_fn arg_slots in
 
     let self_closure_rty = closure_referent_type bound_slots in
-    (* FIXME: binding type parameters doesn't work. *)
+    (* FIXME (issue #81): binding type parameters doesn't work. *)
     let self_args_rty =
       call_args_referent_type cx 0 self_ty (Some self_closure_rty)
     in
@@ -2009,7 +2010,7 @@ let trans_visitor
     let (fptr_operand, fn_ty) = trans_callee fn_lval in
     (*let fn_ty_params = [| |] in*)
     let _ =
-      (* FIXME: handle indirect-spawns (clone closure). *)
+      (* FIXME (issue #82): handle indirect-spawns (clone closure). *)
       if not (lval_is_direct_fn cx fn_lval)
       then bug () "unhandled indirect-spawn"
     in
@@ -2214,7 +2215,9 @@ let trans_visitor
     let descs_ptr = next_vreg_cell Il.voidptr_t in
       if (Array.length descs) > 0
       then
-      (* FIXME: this relies on knowledge that spills are contiguous. *)
+        (* FIXME (issue #83): this relies on knowledge that spills are
+         * contiguous.
+         *)
         let spills =
           Array.map (fun _ -> next_spill_cell Il.voidptr_t) descs
         in
@@ -2229,7 +2232,7 @@ let trans_visitor
       td
 
   and get_tydesc (idopt:node_id option) (ty:Ast.ty) : Il.cell =
-      log cx "getting tydesc for %a" Ast.sprintf_ty ty;
+    log cx "getting tydesc for %a" Ast.sprintf_ty ty;
     match ty with
         Ast.TY_param (idx, _) ->
           (get_ty_param_in_current_frame idx)
@@ -2243,7 +2246,7 @@ let trans_visitor
 
   and exterior_ctrl_cell (cell:Il.cell) (off:int) : Il.cell =
     let (mem, _) = need_mem_cell (deref_imm cell (word_n off)) in
-    word_at mem
+      word_at mem
 
   and exterior_rc_cell (cell:Il.cell) : Il.cell =
     exterior_ctrl_cell cell Abi.exterior_rc_slot_field_refcnt
@@ -2294,31 +2297,31 @@ let trans_visitor
       (curr_iso:Ast.ty_iso option)
       : unit =
     let tag_keys = sorted_htab_keys ttag in
-      let src_tag = get_element_ptr src_cell 0 in
-      let dst_tag = get_element_ptr dst_cell 0 in
-      let src_union = get_element_ptr_dyn ty_params src_cell 1 in
-      let dst_union = get_element_ptr_dyn ty_params dst_cell 1 in
-      let tmp = next_vreg_cell word_ty in
-        f dst_tag src_tag word_slot curr_iso;
-        mov tmp (Il.Cell src_tag);
-        Array.iteri
-          begin
-            fun i key ->
-              (iflog (fun _ ->
-                        annotate (Printf.sprintf "tag case #%i == %a" i
-                                    Ast.sprintf_name key)));
-              let jmps =
-                trans_compare Il.JNE (Il.Cell tmp) (imm (Int64.of_int i))
-              in
-              let ttup = Hashtbl.find ttag key in
-                iter_tup_slots
-                  (get_element_ptr_dyn ty_params)
-                  (get_variant_ptr dst_union i)
-                  (get_variant_ptr src_union i)
-                  ttup f curr_iso;
-                List.iter patch jmps
-          end
-          tag_keys
+    let src_tag = get_element_ptr src_cell 0 in
+    let dst_tag = get_element_ptr dst_cell 0 in
+    let src_union = get_element_ptr_dyn ty_params src_cell 1 in
+    let dst_union = get_element_ptr_dyn ty_params dst_cell 1 in
+    let tmp = next_vreg_cell word_ty in
+      f dst_tag src_tag word_slot curr_iso;
+      mov tmp (Il.Cell src_tag);
+      Array.iteri
+        begin
+          fun i key ->
+            (iflog (fun _ ->
+                      annotate (Printf.sprintf "tag case #%i == %a" i
+                                  Ast.sprintf_name key)));
+            let jmps =
+              trans_compare Il.JNE (Il.Cell tmp) (imm (Int64.of_int i))
+            in
+            let ttup = Hashtbl.find ttag key in
+              iter_tup_slots
+                (get_element_ptr_dyn ty_params)
+                (get_variant_ptr dst_union i)
+                (get_variant_ptr src_union i)
+                ttup f curr_iso;
+              List.iter patch jmps
+        end
+        tag_keys
 
   and get_iso_tag tiso =
     tiso.Ast.iso_group.(tiso.Ast.iso_index)
@@ -3129,14 +3132,13 @@ let trans_visitor
                 let src_cell = need_cell (trans_atom a) in
                 let src_slot = interior_slot src_ty in
 
-                (* FIXME: this is wrong. It treats the underlying obj-state
-                 * as the same as the callee and simply substitutes the
-                 * forwarding vtbl, which would be great if it had any way
+                (* FIXME (issue #84): this is wrong. It treats the underlying
+                 * obj-state as the same as the callee and simply substitutes
+                 * the forwarding vtbl, which would be great if it had any way
                  * convey the callee vtbl to the forwarding functions. But it
                  * doesn't. Instead, we have to malloc a fresh 3-word
                  * refcounted obj to hold the callee's vtbl+state pair, copy
-                 * that in as the state here.
-                 *)
+                 * that in as the state here.  *)
                 let _ =
                   trans_copy_slot (get_ty_params_of_current_frame())
                     initializing
@@ -3260,10 +3262,8 @@ let trans_visitor
               then
                 match clone with
                     CLONE_none ->
-                      (* 
-                       * FIXME: this won't work on mutable aliases, it
-                       * doesn't know to reload. Try something
-                       * else.
+                      (* Aliasing a literal is a bit weird since nobody
+                       * else will ever see it, but it seems harmless.
                        *)
                       mov dst (Il.Cell (alias (Il.Mem (force_to_mem src))))
                   | _ ->
@@ -3326,7 +3326,7 @@ let trans_visitor
                  call_iterator_args = call_iterator_args None;
                  call_indirect_args = call_indirect_args flv cc }
     in
-      (* FIXME: true if caller is object fn *)
+      (* FIXME (issue #85): true if caller is object fn *)
     let caller_is_closure = false in
       log cx "trans_be_fn: %s call to lval %a"
         (call_ctrl_string cc) Ast.sprintf_lval flv;
@@ -3796,9 +3796,9 @@ let trans_visitor
           | CALL_vtbl ->
               begin
                 match flv with
-                    (* 
-                     * FIXME: will need to pass both words of obj if we add
-                     * a 'self' value for self-dispatch within objs.
+                    (* FIXME (issue #84): will need to pass both words of obj
+                     * if we add a 'self' value for self-dispatch within
+                     * objs. Also to support forwarding-functions / 'as'.
                      *)
                     Ast.LVAL_ext (base, _) -> [| callee_binding_ptr base cc |]
                   | _ ->

@@ -859,9 +859,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                       unify_atom atom tv_a;
                       unify_tyvars tv tv_a
                 | Ast.UNOP_cast t ->
-                    (* 
-                     * FIXME: check cast-validity in post-typecheck pass.
-                     * Only some casts make sense.
+                    (* FIXME (issue #84): check cast-validity in
+                     * post-typecheck pass.  Only some casts make sense.
                      *)
                     let tv_a = ref TYSPEC_all in
                     let t = Hashtbl.find cx.ctxt_all_cast_types t.id in
@@ -889,8 +888,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                           begin
                             fun _ ->
                               let tv = Hashtbl.find bindings referent in
-                              log cx "lval-base slot tyspec for %a = %s"
-                                Ast.sprintf_lval lval (tyspec_to_str (!tv));
+                                log cx "lval-base slot tyspec for %a = %s"
+                                  Ast.sprintf_lval lval (tyspec_to_str (!tv));
                           end;
                         unify_slot slot (Some referent) tv
 
@@ -949,7 +948,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
     and unify_lval (lval:Ast.lval) (tv:tyvar) : unit =
       let id = lval_base_id lval in
-      (* Fetch lval with type components resolved. *)
+        (* Fetch lval with type components resolved. *)
         let lval = Hashtbl.find cx.ctxt_all_lvals id in
         iflog cx (fun _ -> log cx
                     "fetched resolved version of lval #%d = %a"
@@ -1056,7 +1055,6 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
         | Ast.STMT_decl _ -> ()
 
-        (* FIXME: deal with difference between return-type vs. put-type *)
         | Ast.STMT_ret atom_opt
         | Ast.STMT_put atom_opt ->
             begin
@@ -1069,7 +1067,9 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             check_callable (retval_tv()) callee args
 
         | Ast.STMT_bind (bound, callee, arg_opts) ->
-            (* FIXME: handle binding type parameters eventually. *)
+            (* FIXME (issue #81): handle binding type parameters
+             * eventually.
+             *)
             let out_tv = ref TYSPEC_all in
             let residue = ref [] in
             let gen_atom_opt_tvs atoms =
@@ -1112,7 +1112,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             let lval_tv = ref TYSPEC_all in
               unify_lval lval lval_tv;
               Array.iter (fun _ -> push_pat_tv lval_tv) arms
-            
+
         (* FIXME (issue #52): plenty more to handle here. *)
         | _ ->
             log cx "warning: not typechecking stmt %s\n"

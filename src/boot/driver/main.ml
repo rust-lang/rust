@@ -9,7 +9,7 @@ let _ =
 let (targ:Common.target) =
   match Sys.os_type with
       "Unix" ->
-        (* FIXME: this is an absurd heuristic. *)
+        (* FIXME (issue #69): this is an absurd heuristic. *)
         if Sys.file_exists "/System/Library"
         then MacOS_x86_macho
         else Linux_x86_elf
@@ -26,7 +26,9 @@ let (sess:Session.sess) =
     Session.sess_out = None;
     Session.sess_library_mode = false;
     Session.sess_alt_backend = false;
-    (* FIXME: need something fancier here for unix sub-flavours. *)
+    (* FIXME (issue #69): need something fancier here for unix
+     * sub-flavours.
+     *)
     Session.sess_targ = targ;
     Session.sess_log_lex = false;
     Session.sess_log_parse = false;

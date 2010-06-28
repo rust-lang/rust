@@ -1245,8 +1245,9 @@ let fn_prologue
         sub (rc esp) dynamic_frame_sz;
 
         (* Zero the frame.
-         *
-         * FIXME: this is awful, will go away when we have proper CFI.
+         * 
+         * FIXME (ssue 27): this is awful, will go away when we have proper
+         * CFI.
          *)
 
         mov (rc edi) (ro esp);

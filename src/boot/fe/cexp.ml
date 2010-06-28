@@ -325,7 +325,7 @@ let unexpected_val (expected:string) (v:pval)  =
       | PVAL_num i -> "num " ^ (Int64.to_string i)
       | PVAL_bool b -> if b then "bool true" else "bool false"
   in
-    (* FIXME: proper error reporting, please. *)
+    (* FIXME (issue #70): proper error reporting, please. *)
     bug () "expected %s, got %s" expected got
 ;;
 

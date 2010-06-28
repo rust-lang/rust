@@ -40,7 +40,9 @@ let mutability_checking_visitor
       then ()
       else err (Some id) "writing to non-mutable slot"
   in
-    (* FIXME: enforce the no-write-alias-to-immutable-slot rule. *)
+    (* FIXME (issue #75): enforce the no-write-alias-to-immutable-slot
+     * rule.
+     *)
   let visit_stmt_pre s =
     begin
       match s.node with

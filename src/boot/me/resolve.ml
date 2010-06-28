@@ -170,7 +170,6 @@ let all_item_collecting_visitor
     htab_put cx.ctxt_all_item_names i.id (Walk.path_to_name path);
     log cx "collected item #%d: %s" (int_of_node i.id) n;
     begin
-      (* FIXME: this is incomplete. *)
       match i.node.Ast.decl_item with
           Ast.MOD_ITEM_fn f ->
             note_header i.id f.Ast.fn_input_slots;
@@ -345,8 +344,6 @@ let rec ty_iso_of
   let group_table = Hashtbl.find recursive_tag_groups n in
   let group_array = Array.of_list (htab_keys group_table) in
   let compare_nodes a_id b_id =
-    (* FIXME: this should sort by the sorted name-lists of the
-     *constructors* of the tag, not the tag type name. *)
     let a_name = Hashtbl.find cx.ctxt_all_item_names a_id in
     let b_name = Hashtbl.find cx.ctxt_all_item_names b_id in
       compare a_name b_name
@@ -935,11 +932,11 @@ let pattern_resolving_visitor
           let lval_id = lval_base_id lval in
           let tag_ctor_id = lval_to_referent cx lval_id in
             if referent_is_item cx tag_ctor_id
-              (*
-               * FIXME we should actually check here that the function
-               * is a tag value-ctor.  For now this actually allows any
-               * function returning a tag type to pass as a tag pattern.
-               *)
+
+            (* FIXME (issue #76): we should actually check here that the
+             * function is a tag value-ctor.  For now this actually allows
+             * any function returning a tag type to pass as a tag
+             * pattern.  *)
             then resolve_pat_tag lval_nm lval_id pats tag_ctor_id
             else not_tag_ctor lval_nm lval_id
       | _ -> ()
@@ -948,28 +945,29 @@ let pattern_resolving_visitor
   let visit_stmt_pre stmt =
     begin
       match stmt.node with
-        Ast.STMT_alt_tag { Ast.alt_tag_lval = _; Ast.alt_tag_arms = arms } ->
-          Array.iter resolve_arm arms
-      | _ -> ()
+          Ast.STMT_alt_tag { Ast.alt_tag_lval = _;
+                             Ast.alt_tag_arms = arms } ->
+            Array.iter resolve_arm arms
+        | _ -> ()
     end;
     inner.Walk.visit_stmt_pre stmt
   in
-  { inner with Walk.visit_stmt_pre = visit_stmt_pre }
+    { inner with Walk.visit_stmt_pre = visit_stmt_pre }
 ;;
 
 let export_referencing_visitor
     (cx:ctxt)
     (inner:Walk.visitor)
     : Walk.visitor =
-    let visit_mod_item_pre id params item =
-      begin
-        match item.node.Ast.decl_item with
-            Ast.MOD_ITEM_mod (view, items) ->
-              let is_defining_mod =
-                (* auto-ref the default-export cases only if
-                 * the containing mod is 'defining', meaning
-                 * not-native / not-use
-                 *)
+  let visit_mod_item_pre id params item =
+    begin
+      match item.node.Ast.decl_item with
+          Ast.MOD_ITEM_mod (view, items) ->
+            let is_defining_mod =
+              (* auto-ref the default-export cases only if
+               * the containing mod is 'defining', meaning
+               * not-native / not-use
+               *)
                  not (Hashtbl.mem cx.ctxt_required_items item.id)
               in
               let reference _ item =

@@ -874,13 +874,10 @@ let rebuild_ty_under_params
         }
       in
       let t' = fold_ty fold t in
-        (* 
-         * FIXME: "substituted" and "ty'" here are only required
-         * because the current type-equality-comparison code in Type
-         * uses <> and will judge some cases, such as rebuilt tags, as
-         * unequal simply due to the different hashtable order in the
-         * fold. 
-         *)
+        (* FIXME (issue #77): "substituted" and "ty'" here are only required
+         * because the current type-equality-comparison code in Type uses <>
+         * and will judge some cases, such as rebuilt tags, as unequal simply
+         * due to the different hashtable order in the fold.  *)
         if !substituted
         then t'
         else t
@@ -2080,7 +2077,7 @@ let ty_str (ty:Ast.ty) : string =
          ty_fold_vec = (fun s -> "v" ^ s);
          ty_fold_iso = fold_iso;
          ty_fold_idx = (fun i -> "x" ^ (string_of_int i));
-         (* FIXME: encode constrs, aux as well. *)
+         (* FIXME (issue #78): encode constrs, aux as well. *)
          ty_fold_fn = (fun ((ins,_,out),_) -> "f" ^ ins ^ out);
 
          (* Built-in special types. *)
@@ -2092,10 +2089,10 @@ let ty_str (ty:Ast.ty) : string =
          ty_fold_param = (fun _ -> "P");
          ty_fold_type = (fun _ -> "Y");
 
-         (* FIXME: encode obj types. *)
-         (* FIXME: encode opaque and param numbers. *)
+         (* FIXME (issue #78): encode obj types. *)
+         (* FIXME (issue #78): encode opaque and param numbers. *)
          ty_fold_named = (fun _ -> bug () "string-encoding named type");
-         (* FIXME: encode constrs as well. *)
+         (* FIXME (issue #78): encode constrs as well. *)
          ty_fold_constrained = (fun (t,_)-> t) }
   in
     fold_ty fold ty
@@ -2124,8 +2121,9 @@ let glue_str (cx:ctxt) (g:glue) : string =
     | GLUE_drop_frame i -> "glue$drop_frame$" ^ (item_str cx i)
     | GLUE_reloc_frame i -> "glue$reloc_frame$" ^ (item_str cx i)
         (* 
-         * FIXME: the node_id here isn't an item, it's a statement; 
-         * lookup bind target and encode bound arg tuple type.
+         * FIXME (issue #78): the node_id here isn't an item, it's 
+         * a statement; lookup bind target and encode bound arg 
+         * tuple type.
          *)
     | GLUE_fn_binding i
       -> "glue$fn_binding$" ^ (string_of_int (int_of_node i))

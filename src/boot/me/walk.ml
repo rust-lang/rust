@@ -524,7 +524,9 @@ and walk_stmt
           walk_lval v lv;
           Array.iter (walk_atom v) ats
 
-      (* FIXME: this should have a param array, and invoke the visitors. *)
+      (* FIXME (issue #86): this should have a param array, and invoke the
+       * visitors. 
+       *)
       | Ast.STMT_decl (Ast.DECL_mod_item (id, mi)) ->
           walk_mod_item v id mi
 
@@ -568,11 +570,11 @@ and walk_stmt
       | Ast.STMT_alt_tag
           { Ast.alt_tag_lval = lval; Ast.alt_tag_arms = arms } ->
           walk_lval v lval;
-          let walk_arm { node = (pat, block) } =
-            walk_pat v pat;
-            walk_block v block
-          in
-          Array.iter walk_arm arms
+            let walk_arm { node = (pat, block) } =
+              walk_pat v pat;
+              walk_block v block
+            in
+              Array.iter walk_arm arms
 
       (* FIXME (issue #20): finish this as needed. *)
       | Ast.STMT_slice _

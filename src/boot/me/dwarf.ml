@@ -1356,7 +1356,6 @@ let (abbrev_variant:abbrev) =
 let (abbrev_subroutine_type:abbrev) =
     (DW_TAG_subroutine_type, DW_CHILDREN_yes,
      [|
-       (* FIXME: model effects properly. *)
        (DW_AT_type, DW_FORM_ref_addr); (* NB: output type. *)
        (DW_AT_mutable, DW_FORM_flag);
        (DW_AT_pure, DW_FORM_flag);
@@ -1375,7 +1374,6 @@ let (abbrev_formal_type:abbrev) =
 let (abbrev_obj_subroutine_type:abbrev) =
     (DW_TAG_subroutine_type, DW_CHILDREN_yes,
      [|
-       (* FIXME: model effects properly. *)
        (DW_AT_name, DW_FORM_string);
        (DW_AT_type, DW_FORM_ref_addr); (* NB: output type. *)
        (DW_AT_mutable, DW_FORM_flag);
@@ -1568,7 +1566,7 @@ let dwarf_visitor
                                |]));
                 ref_addr_for_fix fix
 
-          (* FIXME: encode mutable-ness of interiors. *)
+          (* FIXME (issue #72): encode mutable-ness of interiors. *)
           | Ast.MODE_interior -> ref_type_die (slot_ty slot)
 
           | Ast.MODE_alias ->
@@ -2473,7 +2471,9 @@ let dwarf_visitor
                     Some off ->
                       begin
                         match Il.size_to_expr64 off with
-                            (* FIXME: handle dynamic-size slots. *)
+                            (* FIXME (issue #73): handle dynamic-size
+                             * slots.
+                             *)
                             None -> ()
                           | Some off ->
                               emit_var_die
@@ -3001,7 +3001,9 @@ let rec extract_mod_items
               Ast.slot_ty = Some ty }
       | _ ->
           let ty = get_ty die in
-            (* FIXME: encode mutability of interior slots properly. *)
+            (* FIXME (issue #28): encode mutability of interior slots
+             * properly.
+             *)
             { Ast.slot_mode = Ast.MODE_interior;
               Ast.slot_mutable = false;
               Ast.slot_ty = Some ty }
@@ -3114,7 +3116,7 @@ let rec extract_mod_items
             htab_put mis ident (decl [||] mi)
 
       | DW_TAG_subprogram ->
-          (* FIXME: finish this. *)
+          (* FIXME (issue #74): finish this. *)
           let ident = get_name die in
           let oslot = get_referenced_slot die in
           let effect = get_effect die in

@@ -12,7 +12,7 @@ let iflog (sess:Session.sess) (thunk:(unit -> unit)) : unit =
   else ()
 ;;
 
-(* FIXME: move these to sess. *)
+(* FIXME (issue #67): move these to sess. *)
 let ar_cache = Hashtbl.create 0 ;;
 let sects_cache = Hashtbl.create 0;;
 let meta_cache = Hashtbl.create 0;;
@@ -138,7 +138,7 @@ let get_mod
     then true
     else
       match meta.(i) with
-          (* FIXME: bind the wildcards. *)
+          (* FIXME (issue #68): bind the wildcards. *)
           (_, None) -> meta_matches (i+1) f_meta
         | (k, Some v) ->
             match atab_search f_meta k with
