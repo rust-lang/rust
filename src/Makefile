@@ -319,6 +319,7 @@ TEST_XFAILS_X86 :=  test/run-pass/mlist-cycle.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/rec-auto.rs \
                     test/run-pass/vec-slice.rs \
+                    test/run-pass/fn-lval.rs \
                     test/run-pass/generic-fn-infer.rs \
                     test/run-pass/generic-recursive-tag.rs \
                     test/run-pass/mutable-alias-vec.rs \
@@ -355,6 +356,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       else-if.rs \
                       export-non-interference.rs \
                       exterior.rs \
+                      fn-lval.rs \
                       foreach-put-structured.rs \
                       foreach-simple-outer-slot.rs \
                       foreach-simple.rs \
