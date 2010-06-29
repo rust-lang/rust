@@ -582,15 +582,13 @@ let atoms_slots (cx:ctxt) (az:Ast.atom array) : node_id array =
 ;;
 
 let tup_inputs_slots (cx:ctxt) (az:Ast.tup_input array) : node_id array =
-  Array.concat (List.map
-                  (fun (_,_,a) -> atom_slots cx a)
-                  (Array.to_list az))
+  Array.concat (List.map (atom_slots cx) (Array.to_list az))
 ;;
 
 let rec_inputs_slots (cx:ctxt)
     (inputs:Ast.rec_input array) : node_id array =
   Array.concat (List.map
-                  (fun (_, _, _, atom) -> atom_slots cx atom)
+                  (fun (_, atom) -> atom_slots cx atom)
                   (Array.to_list inputs))
 ;;
 
@@ -606,14 +604,27 @@ let expr_slots (cx:ctxt) (e:Ast.expr) : node_id array =
 (* Type extraction. *)
 
 let interior_slot_full mut ty : Ast.slot =
-  { Ast.slot_mode = Ast.MODE_interior;
-    Ast.slot_mutable = mut;
-    Ast.slot_ty = Some ty }
+  let ty =
+    if mut
+    then Ast.TY_mutable ty
+    else ty
+  in
+    { Ast.slot_mode = Ast.MODE_interior;
+      Ast.slot_ty = Some ty }
 ;;
 
 let exterior_slot_full mut ty : Ast.slot =
-  { Ast.slot_mode = Ast.MODE_exterior;
-    Ast.slot_mutable = mut;
+  let ty =
+    match ty with
+        Ast.TY_exterior _ -> ty
+      | _ -> Ast.TY_exterior ty
+  in
+  let ty =
+    if mut
+    then Ast.TY_mutable ty
+    else ty
+  in
+  { Ast.slot_mode = Ast.MODE_interior;
     Ast.slot_ty = Some ty }
 ;;
 
@@ -626,12 +637,13 @@ let exterior_slot ty : Ast.slot = exterior_slot_full false ty
 
 (* General folds of Ast.ty. *)
 
-type ('ty, 'slot, 'slots, 'tag) ty_fold =
+type ('ty, 'tys, 'slot, 'slots, 'tag) ty_fold =
     {
       (* Functions that correspond to interior nodes in Ast.ty. *)
-      ty_fold_slot : (Ast.mode * bool * 'ty) -> 'slot;
+      ty_fold_slot : (Ast.mode * 'ty) -> 'slot;
       ty_fold_slots : ('slot array) -> 'slots;
-      ty_fold_tags : (Ast.name, 'slots) Hashtbl.t -> 'tag;
+      ty_fold_tys : ('ty array) -> 'tys;
+      ty_fold_tags : (Ast.name, 'tys) Hashtbl.t -> 'tag;
 
       (* Functions that correspond to the Ast.ty constructors. *)
       ty_fold_any: unit -> 'ty;
@@ -642,9 +654,9 @@ type ('ty, 'slot, 'slots, 'tag) ty_fold =
       ty_fold_uint : unit -> 'ty;
       ty_fold_char : unit -> 'ty;
       ty_fold_str : unit -> 'ty;
-      ty_fold_tup : 'slots -> 'ty;
-      ty_fold_vec : 'slot -> 'ty;
-      ty_fold_rec : (Ast.ident * 'slot) array -> 'ty;
+      ty_fold_tup : 'tys -> 'ty;
+      ty_fold_vec : 'ty -> 'ty;
+      ty_fold_rec : (Ast.ident * 'ty) array -> 'ty;
       ty_fold_tag : 'tag -> 'ty;
       ty_fold_iso : (int * 'tag array) -> 'ty;
       ty_fold_idx : int -> 'ty;
@@ -659,21 +671,29 @@ type ('ty, 'slot, 'slots, 'tag) ty_fold =
       ty_fold_param : (int * Ast.effect) -> 'ty;
       ty_fold_named : Ast.name -> 'ty;
       ty_fold_type : unit -> 'ty;
+      ty_fold_exterior : 'ty -> 'ty;
+      ty_fold_mutable : 'ty -> 'ty;
       ty_fold_constrained : ('ty * Ast.constrs) -> 'ty }
 ;;
 
-let rec fold_ty (f:('ty, 'slot, 'slots, 'tag) ty_fold) (ty:Ast.ty) : 'ty =
+let rec fold_ty (f:('ty, 'tys, 'slot, 'slots, 'tag) ty_fold) (ty:Ast.ty) : 'ty =
   let fold_slot (s:Ast.slot) : 'slot =
     f.ty_fold_slot (s.Ast.slot_mode,
-                    s.Ast.slot_mutable,
                     fold_ty f (slot_ty s))
   in
+
   let fold_slots (slots:Ast.slot array) : 'slots =
     f.ty_fold_slots (Array.map fold_slot slots)
   in
-  let fold_tags (ttag:Ast.ty_tag) : 'tag =
-    f.ty_fold_tags (htab_map ttag (fun k v -> (k, fold_slots v)))
+
+  let fold_tys (tys:Ast.ty array) : 'tys =
+    f.ty_fold_tys (Array.map (fold_ty f) tys)
   in
+
+  let fold_tags (ttag:Ast.ty_tag) : 'tag =
+    f.ty_fold_tags (htab_map ttag (fun k v -> (k, fold_tys v)))
+  in
+
   let fold_sig tsig =
     (fold_slots tsig.Ast.sig_input_slots,
      tsig.Ast.sig_input_constrs,
@@ -692,13 +712,15 @@ let rec fold_ty (f:('ty, 'slot, 'slots, 'tag) ty_fold) (ty:Ast.ty) : 'ty =
   | Ast.TY_char -> f.ty_fold_char ()
   | Ast.TY_str -> f.ty_fold_str ()
 
-  | Ast.TY_tup t -> f.ty_fold_tup (fold_slots t)
-  | Ast.TY_vec s -> f.ty_fold_vec (fold_slot s)
-  | Ast.TY_rec r -> f.ty_fold_rec (Array.map (fun (k,v) -> (k,fold_slot v)) r)
+  | Ast.TY_tup t -> f.ty_fold_tup (fold_tys t)
+  | Ast.TY_vec t -> f.ty_fold_vec (fold_ty f t)
+  | Ast.TY_rec r ->
+      f.ty_fold_rec (Array.map (fun (k,v) -> (k,fold_ty f v)) r)
 
   | Ast.TY_tag tt -> f.ty_fold_tag (fold_tags tt)
-  | Ast.TY_iso ti -> f.ty_fold_iso (ti.Ast.iso_index,
-                                    (Array.map fold_tags ti.Ast.iso_group))
+  | Ast.TY_iso ti ->
+      f.ty_fold_iso (ti.Ast.iso_index,
+                     (Array.map fold_tags ti.Ast.iso_group))
   | Ast.TY_idx i -> f.ty_fold_idx i
 
   | Ast.TY_fn (tsig,taux) -> f.ty_fold_fn (fold_sig tsig, taux)
@@ -713,16 +735,20 @@ let rec fold_ty (f:('ty, 'slot, 'slots, 'tag) ty_fold) (ty:Ast.ty) : 'ty =
   | Ast.TY_named n -> f.ty_fold_named n
   | Ast.TY_type -> f.ty_fold_type ()
 
+  | Ast.TY_exterior t -> f.ty_fold_exterior (fold_ty f t)
+  | Ast.TY_mutable t -> f.ty_fold_mutable (fold_ty f t)
+
   | Ast.TY_constrained (t, constrs) ->
       f.ty_fold_constrained (fold_ty f t, constrs)
 
 ;;
 
-type 'a simple_ty_fold = ('a, 'a, 'a, 'a) ty_fold
+type 'a simple_ty_fold = ('a, 'a, 'a, 'a, 'a) ty_fold
 ;;
 
 let ty_fold_default (default:'a) : 'a simple_ty_fold =
-    { ty_fold_slot = (fun _ -> default);
+    { ty_fold_tys = (fun _ -> default);
+      ty_fold_slot = (fun _ -> default);
       ty_fold_slots = (fun _ -> default);
       ty_fold_tags = (fun _ -> default);
       ty_fold_any = (fun _ -> default);
@@ -748,19 +774,22 @@ let ty_fold_default (default:'a) : 'a simple_ty_fold =
       ty_fold_param = (fun _ -> default);
       ty_fold_named = (fun _ -> default);
       ty_fold_type = (fun _ -> default);
+      ty_fold_exterior = (fun _ -> default);
+      ty_fold_mutable = (fun _ -> default);
       ty_fold_constrained = (fun _ -> default) }
 ;;
 
 let ty_fold_rebuild (id:Ast.ty -> Ast.ty)
-    : (Ast.ty, Ast.slot, Ast.slot array, Ast.ty_tag) ty_fold =
+    : (Ast.ty, Ast.ty array, Ast.slot, Ast.slot array, Ast.ty_tag) ty_fold =
   let rebuild_fn ((islots, constrs, oslot), aux) =
     ({ Ast.sig_input_slots = islots;
        Ast.sig_input_constrs = constrs;
        Ast.sig_output_slot = oslot }, aux)
   in
-  { ty_fold_slot = (fun (mode, mut, t) ->
+    {
+    ty_fold_tys = (fun ts -> ts);
+    ty_fold_slot = (fun (mode, t) ->
                       { Ast.slot_mode = mode;
-                        Ast.slot_mutable = mut;
                         Ast.slot_ty = Some t });
     ty_fold_slots = (fun slots -> slots);
     ty_fold_tags = (fun htab -> htab);
@@ -773,7 +802,7 @@ let ty_fold_rebuild (id:Ast.ty -> Ast.ty)
     ty_fold_char = (fun _ -> id Ast.TY_char);
     ty_fold_str = (fun _ -> id Ast.TY_str);
     ty_fold_tup =  (fun slots -> id (Ast.TY_tup slots));
-    ty_fold_vec = (fun slot -> id (Ast.TY_vec slot));
+    ty_fold_vec = (fun t -> id (Ast.TY_vec t));
     ty_fold_rec = (fun entries -> id (Ast.TY_rec entries));
     ty_fold_tag = (fun tag -> id (Ast.TY_tag tag));
     ty_fold_iso = (fun (i, tags) -> id (Ast.TY_iso { Ast.iso_index = i;
@@ -791,6 +820,8 @@ let ty_fold_rebuild (id:Ast.ty -> Ast.ty)
     ty_fold_param = (fun (i, mut) -> id (Ast.TY_param (i, mut)));
     ty_fold_named = (fun n -> id (Ast.TY_named n));
     ty_fold_type = (fun _ -> id (Ast.TY_type));
+    ty_fold_exterior = (fun t -> id (Ast.TY_exterior t));
+    ty_fold_mutable = (fun t -> id (Ast.TY_mutable t));
     ty_fold_constrained = (fun (t, constrs) ->
                              id (Ast.TY_constrained (t, constrs))) }
 ;;
@@ -892,7 +923,7 @@ let associative_binary_op_ty_fold
   in
     { base with
         ty_fold_slots = (fun slots -> reduce (Array.to_list slots));
-        ty_fold_slot = (fun (_, _, a) -> a);
+        ty_fold_slot = (fun (_, a) -> a);
         ty_fold_tags = (fun tab -> reduce (htab_vals tab));
         ty_fold_tup = (fun a -> a);
         ty_fold_vec = (fun a -> a);
@@ -957,13 +988,9 @@ let lower_effect_of x y =
 ;;
 
 let type_effect (t:Ast.ty) : Ast.effect =
-  let fold_slot ((*mode*)_, mut, eff) =
-    if mut
-    then lower_effect_of Ast.STATE eff
-    else eff
-  in
+  let fold_mutable _ = Ast.STATE in
   let fold = associative_binary_op_ty_fold Ast.PURE lower_effect_of in
-  let fold = { fold with ty_fold_slot = fold_slot } in
+  let fold = { fold with ty_fold_mutable = fold_mutable } in
     fold_ty fold t
 ;;
 
@@ -1037,15 +1064,15 @@ let check_concrete params thing =
 ;;
 
 
-let project_type_to_slot
+let project_type
     (base_ty:Ast.ty)
     (comp:Ast.lval_component)
-    : Ast.slot =
+    : Ast.ty =
   match (base_ty, comp) with
       (Ast.TY_rec elts, Ast.COMP_named (Ast.COMP_ident id)) ->
         begin
           match atab_search elts id with
-              Some slot -> slot
+              Some ty -> ty
             | None -> err None "unknown record-member '%s'" id
         end
 
@@ -1054,30 +1081,16 @@ let project_type_to_slot
         then elts.(i)
         else err None "out-of-range tuple index %d" i
 
-    | (Ast.TY_vec slot, Ast.COMP_atom _) ->
-        slot
-
-    | (Ast.TY_str, Ast.COMP_atom _) ->
-        interior_slot (Ast.TY_mach TY_u8)
-
+    | (Ast.TY_vec ty, Ast.COMP_atom _) -> ty
+    | (Ast.TY_str, Ast.COMP_atom _) -> (Ast.TY_mach TY_u8)
     | (Ast.TY_obj (_, fns), Ast.COMP_named (Ast.COMP_ident id)) ->
-        interior_slot (Ast.TY_fn (Hashtbl.find fns id))
+        (Ast.TY_fn (Hashtbl.find fns id))
 
     | (_,_) ->
         bug ()
           "unhandled form of lval-ext in Semant."
           "project_slot: %a indexed by %a"
           Ast.sprintf_ty base_ty Ast.sprintf_lval_component comp
-;;
-
-
-(* NB: this will fail if lval is not a slot. *)
-let rec lval_slot (cx:ctxt) (lval:Ast.lval) : Ast.slot =
-  match lval with
-      Ast.LVAL_base nb -> lval_to_slot cx nb.id
-    | Ast.LVAL_ext (base, comp) ->
-        let base_ty = slot_ty (lval_slot cx base) in
-          project_type_to_slot base_ty comp
 ;;
 
 let exports_permit (view:Ast.mod_view) (ident:Ast.ident) : bool =
@@ -1150,6 +1163,10 @@ let lval_is_direct_mod (cx:ctxt) (lval:Ast.lval) : bool =
         | _ -> false
 ;;
 
+let lval_ty (cx:ctxt) (lval:Ast.lval) : Ast.ty =
+  Hashtbl.find cx.ctxt_all_lval_types (lval_base_id lval)
+;;
+
 let lval_is_static (cx:ctxt) (lval:Ast.lval) : bool =
   defn_is_static (resolve_lval cx lval)
 ;;
@@ -1164,17 +1181,12 @@ let lval_is_obj_vtbl (cx:ctxt) (lval:Ast.lval) : bool =
     match lval with
         Ast.LVAL_ext (base, _) ->
           begin
-            match slot_ty (lval_slot cx base) with
+            match lval_ty cx base with
                 Ast.TY_obj _ -> true
               | _ -> false
           end
       | _ -> false
   else false
-;;
-
-let rec lval_ty (cx:ctxt) (lval:Ast.lval) : Ast.ty =
-  let base_id = lval_base_id lval in
-    Hashtbl.find cx.ctxt_all_lval_types base_id
 ;;
 
 let rec atom_type (cx:ctxt) (at:Ast.atom) : Ast.ty =
@@ -1741,7 +1753,7 @@ let rec referent_type (abi:Abi.abi) (t:Ast.ty) : Il.referent_ty =
   let ptr = sp Il.OpaqueTy in
   let rc_ptr = sp (Il.StructTy [| word; Il.OpaqueTy |]) in
   let codeptr = sp Il.CodeTy in
-  let tup ttup = Il.StructTy (Array.map (slot_referent_type abi) ttup) in
+  let tup ttup = Il.StructTy (Array.map (referent_type abi) ttup) in
   let tag ttag =
     let union =
       Il.UnionTy
@@ -1802,6 +1814,11 @@ let rec referent_type (abi:Abi.abi) (t:Ast.ty) : Il.referent_ty =
 
       | Ast.TY_native _ -> ptr
 
+      | Ast.TY_exterior t ->
+          sp (Il.StructTy [| word; referent_type abi t |])
+
+      | Ast.TY_mutable t -> referent_type abi t
+
       | Ast.TY_param (i, _) -> Il.ParamTy i
 
       | Ast.TY_named _ -> bug () "named type in referent_type"
@@ -1809,16 +1826,11 @@ let rec referent_type (abi:Abi.abi) (t:Ast.ty) : Il.referent_ty =
 
 and slot_referent_type (abi:Abi.abi) (sl:Ast.slot) : Il.referent_ty =
   let s t = Il.ScalarTy t in
-  let v b = Il.ValTy b in
   let p t = Il.AddrTy t in
-  let sv b = s (v b) in
   let sp t = s (p t) in
-
-  let word = sv abi.Abi.abi_word_bits in
 
   let rty = referent_type abi (slot_ty sl) in
     match sl.Ast.slot_mode with
-        Ast.MODE_exterior _ -> sp (Il.StructTy [| word; rty |])
       | Ast.MODE_interior _ -> rty
       | Ast.MODE_alias _ -> sp rty
 ;;
@@ -1940,14 +1952,17 @@ let word_slot (abi:Abi.abi) : Ast.slot =
 
 let alias_slot (ty:Ast.ty) : Ast.slot =
   { Ast.slot_mode = Ast.MODE_alias;
-    Ast.slot_mutable = false;
     Ast.slot_ty = Some ty }
 ;;
 
 let mutable_alias_slot (ty:Ast.ty) : Ast.slot =
-  { Ast.slot_mode = Ast.MODE_alias;
-    Ast.slot_mutable = true;
-    Ast.slot_ty = Some ty }
+  let ty =
+    match ty with
+        Ast.TY_mutable _ -> ty
+      | _ -> Ast.TY_mutable ty
+  in
+    { Ast.slot_mode = Ast.MODE_alias;
+      Ast.slot_ty = Some ty }
 ;;
 
 let mk_ty_fn_or_iter
@@ -2002,12 +2017,10 @@ let item_str (cx:ctxt) (id:node_id) : string =
 
 let ty_str (ty:Ast.ty) : string =
   let base = associative_binary_op_ty_fold "" (fun a b -> a ^ b) in
-  let fold_slot (mode,mut,ty) =
-    (if mut then "m" else "")
-    ^ (match mode with
-           Ast.MODE_exterior -> "e"
-         | Ast.MODE_alias -> "a"
-         | Ast.MODE_interior -> "")
+  let fold_slot (mode,ty) =
+    (match mode with
+         Ast.MODE_alias -> "a"
+       | Ast.MODE_interior -> "")
     ^ ty
   in
   let num n = (string_of_int n) ^ "$" in
@@ -2080,6 +2093,8 @@ let ty_str (ty:Ast.ty) : string =
          ty_fold_native = (fun _ -> "N");
          ty_fold_param = (fun _ -> "P");
          ty_fold_type = (fun _ -> "Y");
+         ty_fold_mutable = (fun t -> "m" ^ t);
+         ty_fold_exterior = (fun t -> "e" ^ t);
 
          (* FIXME (issue #78): encode obj types. *)
          (* FIXME (issue #78): encode opaque and param numbers. *)

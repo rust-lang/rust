@@ -1307,56 +1307,65 @@ let (abbrev_alias_slot:abbrev) =
   (DW_TAG_reference_type, DW_CHILDREN_no,
    [|
      (DW_AT_type, DW_FORM_ref_addr);
+   |])
+;;
+
+(* FIXME: Perverse, but given dwarf's vocabulary it seems at least plausible
+ * that a "mutable const type" is a correct way of saying "mutable". Or else we
+ * make up our own. Revisit perhaps.
+ *)
+let (abbrev_mutable_type:abbrev) =
+  (DW_TAG_const_type, DW_CHILDREN_no,
+   [|
+     (DW_AT_type, DW_FORM_ref_addr);
      (DW_AT_mutable, DW_FORM_flag);
    |])
 ;;
 
-let (abbrev_exterior_slot:abbrev) =
-  (DW_TAG_reference_type, DW_CHILDREN_no,
+let (abbrev_exterior_type:abbrev) =
+  (DW_TAG_pointer_type, DW_CHILDREN_no,
    [|
      (DW_AT_type, DW_FORM_ref_addr);
-     (DW_AT_mutable, DW_FORM_flag);
      (DW_AT_data_location, DW_FORM_block1);
    |])
 ;;
 
 let (abbrev_struct_type:abbrev) =
-    (DW_TAG_structure_type, DW_CHILDREN_yes,
-     [|
-       (DW_AT_byte_size, DW_FORM_block4)
-     |])
+  (DW_TAG_structure_type, DW_CHILDREN_yes,
+   [|
+     (DW_AT_byte_size, DW_FORM_block4)
+   |])
 ;;
 
 let (abbrev_struct_type_member:abbrev) =
-    (DW_TAG_member, DW_CHILDREN_no,
-     [|
-       (DW_AT_name, DW_FORM_string);
-       (DW_AT_type, DW_FORM_ref_addr);
-       (DW_AT_mutable, DW_FORM_flag);
-       (DW_AT_data_member_location, DW_FORM_block4);
-       (DW_AT_byte_size, DW_FORM_block4)
-     |])
+  (DW_TAG_member, DW_CHILDREN_no,
+   [|
+     (DW_AT_name, DW_FORM_string);
+     (DW_AT_type, DW_FORM_ref_addr);
+     (DW_AT_data_member_location, DW_FORM_block4);
+     (DW_AT_byte_size, DW_FORM_block4)
+   |])
 ;;
 
 let (abbrev_variant_part:abbrev) =
-    (DW_TAG_variant_part, DW_CHILDREN_yes,
-     [|
-       (DW_AT_discr, DW_FORM_ref_addr)
-     |])
+  (DW_TAG_variant_part, DW_CHILDREN_yes,
+   [|
+     (DW_AT_discr, DW_FORM_ref_addr)
+   |])
 ;;
 
 
 let (abbrev_variant:abbrev) =
-    (DW_TAG_variant, DW_CHILDREN_yes,
-     [|
-       (DW_AT_discr_value, DW_FORM_udata)
-     |])
+  (DW_TAG_variant, DW_CHILDREN_yes,
+   [|
+     (DW_AT_discr_value, DW_FORM_udata)
+   |])
 ;;
 
 let (abbrev_subroutine_type:abbrev) =
-    (DW_TAG_subroutine_type, DW_CHILDREN_yes,
-     [|
-       (DW_AT_type, DW_FORM_ref_addr); (* NB: output type. *)
+  (DW_TAG_subroutine_type, DW_CHILDREN_yes,
+   [|
+     (DW_AT_type, DW_FORM_ref_addr); (* NB: output type. *)
        (DW_AT_mutable, DW_FORM_flag);
        (DW_AT_pure, DW_FORM_flag);
        (DW_AT_rust_iterator, DW_FORM_flag);
@@ -1541,33 +1550,8 @@ let dwarf_visitor
       in
 
         match slot.Ast.slot_mode with
-            Ast.MODE_exterior ->
-              let fix = new_fixup "exterior DIE" in
-              let body_off =
-                word_sz_int * Abi.exterior_rc_slot_field_body
-              in
-                emit_die (DEF (fix, SEQ [|
-                                 uleb (get_abbrev_code abbrev_exterior_slot);
-                                 (* DW_AT_type: DW_FORM_ref_addr *)
-                                 (ref_type_die (slot_ty slot));
-                                 (* DW_AT_mutable: DW_FORM_flag *)
-                                 BYTE (if slot.Ast.slot_mutable
-                                       then 1 else 0);
-                                 (* DW_AT_data_location: DW_FORM_block1 *)
-                                 (* This is a DWARF expression for moving
-                                    from the address of an exterior
-                                    allocation to the address of its
-                                    body. *)
-                                 dw_form_block1
-                                   [| DW_OP_push_object_address;
-                                      DW_OP_lit body_off;
-                                      DW_OP_plus;
-                                      DW_OP_deref |]
-                               |]));
-                ref_addr_for_fix fix
-
-          (* FIXME (issue #72): encode mutable-ness of interiors. *)
-          | Ast.MODE_interior -> ref_type_die (slot_ty slot)
+          | Ast.MODE_interior ->
+              ref_type_die (slot_ty slot)
 
           | Ast.MODE_alias ->
               let fix = new_fixup "alias DIE" in
@@ -1575,8 +1559,6 @@ let dwarf_visitor
                                  uleb (get_abbrev_code abbrev_alias_slot);
                                  (* DW_AT_type: DW_FORM_ref_addr *)
                                  (ref_type_die (slot_ty slot));
-                                 (* DW_AT_mutable: DW_FORM_flag *)
-                                 BYTE (if slot.Ast.slot_mutable then 1 else 0)
                                |]));
                 ref_addr_for_fix fix
 
@@ -1708,15 +1690,13 @@ let dwarf_visitor
           emit_die die;
           Array.iteri
             begin
-              fun i (ident, slot) ->
+              fun i (ident, ty) ->
                 emit_die (SEQ [|
                             uleb (get_abbrev_code abbrev_struct_type_member);
                             (* DW_AT_name: DW_FORM_string *)
                             ZSTRING ident;
                             (* DW_AT_type: DW_FORM_ref_addr *)
-                            (ref_slot_die slot);
-                            (* DW_AT_mutable: DW_FORM_flag *)
-                            BYTE (if slot.Ast.slot_mutable then 1 else 0);
+                            (ref_type_die ty);
                             (* DW_AT_data_member_location: DW_FORM_block4 *)
                             size_block4
                               (Il.get_element_offset word_bits rtys i)
@@ -1904,10 +1884,6 @@ let dwarf_visitor
         unspecified_ptr_with_ref rust_ty (ref_type_die ty)
       in
 
-      let unspecified_ptr_with_ref_slot rust_ty slot =
-        unspecified_ptr_with_ref rust_ty (ref_slot_die slot)
-      in
-
       let unspecified_ptr rust_ty =
         unspecified_ptr_with_ref rust_ty (unspecified_anon_struct ())
       in
@@ -1974,9 +1950,7 @@ let dwarf_visitor
                  (* DW_AT_name: DW_FORM_string *)
                  ZSTRING "tag";
                  (* DW_AT_type: DW_FORM_ref_addr *)
-                 (ref_slot_die (interior_slot Ast.TY_uint));
-                 (* DW_AT_mutable: DW_FORM_flag *)
-                 BYTE 0;
+                 (ref_type_die Ast.TY_uint);
                  (* DW_AT_data_member_location: DW_FORM_block4 *)
                  size_block4
                    (Il.get_element_offset word_bits rtys 0)
@@ -2038,6 +2012,41 @@ let dwarf_visitor
         ref_addr_for_fix (Stack.top iso_stack).(i)
       in
 
+      let exterior_type t =
+        let fix = new_fixup "exterior DIE" in
+        let body_off =
+          word_sz_int * Abi.exterior_rc_slot_field_body
+        in
+          emit_die (DEF (fix, SEQ [|
+                           uleb (get_abbrev_code abbrev_exterior_type);
+                           (* DW_AT_type: DW_FORM_ref_addr *)
+                           (ref_type_die t);
+                           (* DW_AT_data_location: DW_FORM_block1 *)
+                           (* This is a DWARF expression for moving
+                              from the address of an exterior
+                              allocation to the address of its
+                              body. *)
+                           dw_form_block1
+                             [| DW_OP_push_object_address;
+                                DW_OP_lit body_off;
+                                DW_OP_plus;
+                                DW_OP_deref |]
+                         |]));
+          ref_addr_for_fix fix
+      in
+
+      let mutable_type t =
+        let fix = new_fixup "mutable DIE" in
+          emit_die (DEF (fix, SEQ [|
+                           uleb (get_abbrev_code abbrev_mutable_type);
+                           (* DW_AT_type: DW_FORM_ref_addr *)
+                           (ref_type_die t);
+                           (* DW_AT_mutable: DW_FORM_flag *)
+                           BYTE 1;
+                         |]));
+          ref_addr_for_fix fix
+      in
+
         match ty with
             Ast.TY_nil -> unspecified_struct DW_RUST_nil
           | Ast.TY_bool -> base ("bool", DW_ATE_boolean, 1)
@@ -2058,7 +2067,7 @@ let dwarf_visitor
           | Ast.TY_tag ttag -> tag_type None ttag
           | Ast.TY_iso tiso -> iso_type tiso
           | Ast.TY_idx i -> idx_type i
-          | Ast.TY_vec s -> unspecified_ptr_with_ref_slot DW_RUST_vec s
+          | Ast.TY_vec t -> unspecified_ptr_with_ref_ty DW_RUST_vec t
           | Ast.TY_chan t -> unspecified_ptr_with_ref_ty DW_RUST_chan t
           | Ast.TY_port t -> unspecified_ptr_with_ref_ty DW_RUST_port t
           | Ast.TY_task -> unspecified_ptr DW_RUST_task
@@ -2067,6 +2076,8 @@ let dwarf_visitor
           | Ast.TY_native i -> native_ptr_type i
           | Ast.TY_param p -> rust_type_param p
           | Ast.TY_obj ob -> obj_type ob
+          | Ast.TY_mutable t -> mutable_type t
+          | Ast.TY_exterior t -> exterior_type t
           | _ ->
               bug () "unimplemented dwarf encoding for type %a"
                 Ast.sprintf_ty ty
@@ -2893,7 +2904,7 @@ let rec extract_mod_items
 
         | DW_TAG_pointer_type
             when is_rust_type die DW_RUST_vec ->
-            Ast.TY_vec (get_referenced_slot die)
+            Ast.TY_vec (get_referenced_ty die)
 
         | DW_TAG_pointer_type
             when is_rust_type die DW_RUST_type_param ->
@@ -2902,6 +2913,13 @@ let rec extract_mod_items
         | DW_TAG_pointer_type
             when is_rust_type die DW_RUST_native ->
             Ast.TY_native (get_opaque_of (get_native_id die))
+
+        | DW_TAG_pointer_type ->
+            Ast.TY_exterior (get_referenced_ty die)
+
+        | DW_TAG_const_type
+            when ((get_num die DW_AT_mutable) = 1) ->
+            Ast.TY_mutable (get_referenced_ty die)
 
         | DW_TAG_string_type -> Ast.TY_str
 
@@ -2953,13 +2971,13 @@ let rec extract_mod_items
                 assert ((Array.length members) > 0);
                 if is_num_idx (get_name members.(0))
                 then
-                  let slots = Array.map get_referenced_slot members in
-                    Ast.TY_tup slots
+                  let tys = Array.map get_referenced_ty members in
+                    Ast.TY_tup tys
                 else
                   let entries =
                     Array.map
                       (fun member_die -> ((get_name member_die),
-                                          (get_referenced_slot member_die)))
+                                          (get_referenced_ty member_die)))
                       members
                   in
                     Ast.TY_rec entries
@@ -2989,23 +3007,11 @@ let rec extract_mod_items
     match die.die_tag with
         DW_TAG_reference_type ->
           let ty = get_referenced_ty die in
-          let mut = get_flag die DW_AT_mutable in
-          let mode =
-            (* Exterior slots have a 'data_location' attr. *)
-            match atab_search die.die_attrs DW_AT_data_location with
-                Some _ -> Ast.MODE_exterior
-              | None -> Ast.MODE_alias
-          in
-            { Ast.slot_mode = mode;
-              Ast.slot_mutable = mut;
+            { Ast.slot_mode = Ast.MODE_alias;
               Ast.slot_ty = Some ty }
       | _ ->
           let ty = get_ty die in
-            (* FIXME (issue #28): encode mutability of interior slots
-             * properly.
-             *)
             { Ast.slot_mode = Ast.MODE_interior;
-              Ast.slot_mutable = false;
               Ast.slot_ty = Some ty }
 
   and get_referenced_ty die =

@@ -419,7 +419,7 @@ let condition_assigning_visitor
               raise_precondition s.id precond;
               raise_postcondition s.id postcond
 
-        | Ast.STMT_init_vec (dst, _, atoms) ->
+        | Ast.STMT_init_vec (dst, atoms) ->
             let precond = slot_inits (atoms_slots cx atoms) in
             let postcond = slot_inits (lval_slots cx dst) in
               raise_precondition s.id precond;
@@ -980,13 +980,19 @@ let lifecycle_visitor
                 if initializing
                 then
                   begin
-                    Hashtbl.add cx.ctxt_copy_stmt_is_init s.id ();
+                    iflog cx
+                      begin
+                        fun _ ->
+                          log cx "noting lval %a init at stmt %a"
+                            Ast.sprintf_lval lv_dst Ast.sprintf_stmt s
+                      end;
+                    Hashtbl.replace cx.ctxt_copy_stmt_is_init s.id ();
                     init_lval lv_dst
                   end;
 
           | Ast.STMT_init_rec (lv_dst, _, _)
           | Ast.STMT_init_tup (lv_dst, _)
-          | Ast.STMT_init_vec (lv_dst, _, _)
+          | Ast.STMT_init_vec (lv_dst, _)
           | Ast.STMT_init_str (lv_dst, _)
           | Ast.STMT_init_port lv_dst
           | Ast.STMT_init_chan (lv_dst, _) ->

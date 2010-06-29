@@ -55,13 +55,14 @@ let trans_visitor
   let (abi:Abi.abi) = cx.ctxt_abi in
   let (word_sz:int64) = word_sz abi in
   let (word_slot:Ast.slot) = word_slot abi in
+  let (word_ty:Ast.ty) = Ast.TY_mach abi.Abi.abi_word_ty in
 
   let oper_str = Il.string_of_operand abi.Abi.abi_str_of_hardreg in
   let cell_str = Il.string_of_cell abi.Abi.abi_str_of_hardreg in
 
   let (word_bits:Il.bits) = abi.Abi.abi_word_bits in
-  let (word_ty:Il.scalar_ty) = Il.ValTy word_bits in
-  let (word_rty:Il.referent_ty) = Il.ScalarTy word_ty in
+  let (word_sty:Il.scalar_ty) = Il.ValTy word_bits in
+  let (word_rty:Il.referent_ty) = Il.ScalarTy word_sty in
   let (word_ty_mach:ty_mach) =
     match word_bits with
         Il.Bits8 -> TY_u8
@@ -88,7 +89,7 @@ let trans_visitor
   let imm_true = imm_of_ty 1L TY_u8 in
   let imm_false = imm_of_ty 0L TY_u8 in
   let nil_ptr = Il.Mem ((Il.Abs (Asm.IMM 0L)), Il.NilTy) in
-  let wordptr_ty = Il.AddrTy (Il.ScalarTy word_ty) in
+  let wordptr_ty = Il.AddrTy (Il.ScalarTy word_sty) in
 
   let crate_rel fix =
     Asm.SUB (Asm.M_POS fix, Asm.M_POS cx.ctxt_crate_fixup)
@@ -431,8 +432,8 @@ let trans_visitor
   in
 
 
-  let make_tydesc_slots n =
-    Array.init n (fun _ -> interior_slot Ast.TY_type)
+  let make_tydesc_tys n =
+    Array.init n (fun _ -> Ast.TY_type)
   in
 
   let cell_vreg_num (vr:(int option) ref) : int =
@@ -521,7 +522,7 @@ let trans_visitor
         begin
           let obj = get_obj_for_current_frame() in
           let tydesc = get_element_ptr obj 1 in
-          let ty_params_ty = Ast.TY_tup (make_tydesc_slots n_ty_params) in
+          let ty_params_ty = Ast.TY_tup (make_tydesc_tys n_ty_params) in
           let ty_params_rty = referent_type abi ty_params_ty in
           let ty_params =
             get_element_ptr (deref tydesc) Abi.tydesc_field_first_param
@@ -595,28 +596,28 @@ let trans_visitor
 
               | SIZE_rt_neg a ->
                   let op_a = sub_sz a in
-                  let tmp = next_vreg_cell word_ty in
+                  let tmp = next_vreg_cell word_sty in
                     emit (Il.unary Il.NEG tmp op_a);
                     Il.Cell tmp
 
               | SIZE_rt_add (a, b) ->
                   let op_a = sub_sz a in
                   let op_b = sub_sz b in
-                  let tmp = next_vreg_cell word_ty in
+                  let tmp = next_vreg_cell word_sty in
                     add tmp op_a op_b;
                     Il.Cell tmp
 
               | SIZE_rt_mul (a, b) ->
                   let op_a = sub_sz a in
                   let op_b = sub_sz b in
-                  let tmp = next_vreg_cell word_ty in
+                  let tmp = next_vreg_cell word_sty in
                     emit (Il.binary Il.UMUL tmp op_a op_b);
                     Il.Cell tmp
 
               | SIZE_rt_max (a, b) ->
                   let op_a = sub_sz a in
                   let op_b = sub_sz b in
-                  let tmp = next_vreg_cell word_ty in
+                  let tmp = next_vreg_cell word_sty in
                     mov tmp op_a;
                     emit (Il.cmp op_a op_b);
                     let jmp = mark () in
@@ -643,8 +644,8 @@ let trans_visitor
                   let op_align = sub_sz align in
                     annotate "fetch offset";
                     let op_off = sub_sz off in
-                    let mask = next_vreg_cell word_ty in
-                    let off = next_vreg_cell word_ty in
+                    let mask = next_vreg_cell word_sty in
+                    let off = next_vreg_cell word_sty in
                       mov mask op_align;
                       sub_from mask one;
                       mov off op_off;
@@ -678,8 +679,8 @@ let trans_visitor
       | None ->
              let runtime_size = calculate_sz ty_params size in
              let v = next_vreg () in
-             let c = (Il.Reg (v, word_ty)) in
-               mov c (Il.Cell (Il.Reg (reg, word_ty)));
+             let c = (Il.Reg (v, word_sty)) in
+               mov c (Il.Cell (Il.Reg (reg, word_sty)));
                add_to c runtime_size;
                based v
 
@@ -690,17 +691,17 @@ let trans_visitor
     based_sz (get_ty_params_of_current_frame()) abi.Abi.abi_sp_reg size
   in
 
-  let slot_sz_in_current_frame (slot:Ast.slot) : Il.operand =
-    let rty = slot_referent_type abi slot in
+  let ty_sz_in_current_frame (ty:Ast.ty) : Il.operand =
+    let rty = referent_type abi ty in
     let sz = Il.referent_ty_size word_bits rty in
       calculate_sz_in_current_frame sz
   in
 
-  let slot_sz_with_ty_params
+  let ty_sz_with_ty_params
       (ty_params:Il.cell)
-      (slot:Ast.slot)
+      (ty:Ast.ty)
       : Il.operand =
-    let rty = slot_referent_type abi slot in
+    let rty = referent_type abi ty in
     let sz = Il.referent_ty_size word_bits rty in
       calculate_sz ty_params sz
   in
@@ -722,8 +723,8 @@ let trans_visitor
                       Il.Mem (Il.mem_off_imm mem fixed_off, elt_rty)
                   | sz ->
                       let sz = calculate_sz ty_params sz in
-                      let v = next_vreg word_ty in
-                      let vc = Il.Reg (v, word_ty) in
+                      let v = next_vreg word_sty in
+                      let vc = Il.Reg (v, word_sty) in
                         lea vc mem;
                         add_to vc sz;
                         Il.Mem (based v, elt_rty)
@@ -738,12 +739,6 @@ let trans_visitor
       : Il.cell =
     get_element_ptr_dyn (get_ty_params_of_current_frame()) mem_cell i
   in
-
-  let get_explicit_args_for_current_frame _ =
-    get_element_ptr_dyn_in_current_frame (get_args_for_current_frame ())
-      Abi.calltup_elt_args
-  in
-
 
   let deref_off_sz
       (ty_params:Il.cell)
@@ -890,15 +885,15 @@ let trans_visitor
       (base_ty:Ast.ty)
       (cell:Il.cell)
       (comp:Ast.lval_component)
-      : (Il.cell * Ast.slot) =
+      : (Il.cell * Ast.ty) =
 
-    let bounds_checked_access at slot =
+    let bounds_checked_access at ty =
       let atop = trans_atom at in
-      let unit_sz = slot_sz_in_current_frame slot in
-      let idx = next_vreg_cell word_ty in
+      let unit_sz = ty_sz_in_current_frame ty in
+      let idx = next_vreg_cell word_sty in
         emit (Il.binary Il.UMUL idx atop unit_sz);
         let elt_mem = trans_bounds_check (deref cell) (Il.Cell idx) in
-          (Il.Mem (elt_mem, slot_referent_type abi slot), slot)
+          (Il.Mem (elt_mem, referent_type abi ty), ty)
     in
 
     match (base_ty, comp) with
@@ -911,18 +906,18 @@ let trans_visitor
          Ast.COMP_named (Ast.COMP_idx i)) ->
           (get_element_ptr_dyn_in_current_frame cell i, entries.(i))
 
-      | (Ast.TY_vec slot,
+      | (Ast.TY_vec ty,
          Ast.COMP_atom at) ->
-          bounds_checked_access at slot
+          bounds_checked_access at ty
 
       | (Ast.TY_str,
          Ast.COMP_atom at) ->
-          bounds_checked_access at (interior_slot (Ast.TY_mach TY_u8))
+          bounds_checked_access at (Ast.TY_mach TY_u8)
 
       | (Ast.TY_obj obj_ty,
          Ast.COMP_named (Ast.COMP_ident id)) ->
           let (cell, fn_ty) = get_vtbl_entry cell obj_ty id in
-            (cell, (interior_slot (Ast.TY_fn fn_ty)))
+            (cell, (Ast.TY_fn fn_ty))
 
 
       | _ -> bug () "unhandled form of lval_ext in trans_slot_lval_ext"
@@ -938,7 +933,7 @@ let trans_visitor
     let (base:Il.cell) = next_vreg_cell Il.voidptr_t in
     let (elt_reg:Il.reg) = next_vreg () in
     let (elt:Il.cell) = Il.Reg (elt_reg, Il.voidptr_t) in
-    let (diff:Il.cell) = next_vreg_cell word_ty in
+    let (diff:Il.cell) = next_vreg_cell word_sty in
       annotate "bounds check";
       lea base (fst (need_mem_cell data));
       add elt (Il.Cell base) mul_idx;
@@ -950,23 +945,27 @@ let trans_visitor
   and trans_lval_full
       (initializing:bool)
       (lv:Ast.lval)
-      : (Il.cell * Ast.slot) =
+      : (Il.cell * Ast.ty) =
 
     let rec trans_slot_lval_full (initializing:bool) lv =
-      let (cell, slot) =
+      let (cell, ty) =
         match lv with
             Ast.LVAL_ext (base, comp) ->
-              let (base_cell, base_slot) =
+              let (base_cell, base_ty) =
                 trans_slot_lval_full initializing base
               in
-              let base_cell' = deref_slot initializing base_cell base_slot in
-                trans_slot_lval_ext (slot_ty base_slot) base_cell' comp
+              let (base_cell, base_ty) =
+                deref_ty initializing base_cell base_ty
+              in
+                trans_slot_lval_ext base_ty base_cell comp
 
           | Ast.LVAL_base nb ->
               let slot = lval_to_slot cx nb.id in
               let referent = lval_to_referent cx nb.id in
               let cell = cell_of_block_slot referent in
-                (cell, slot)
+              let ty = slot_ty slot in
+              let cell = deref_slot initializing cell slot in
+                deref_ty initializing cell ty
       in
         iflog
           begin
@@ -976,7 +975,7 @@ let trans_visitor
                    Ast.sprintf_lval lv
                    (cell_str cell))
           end;
-        (cell, slot)
+        (cell, ty)
 
     in
       if lval_is_slot cx lv
@@ -994,13 +993,13 @@ let trans_visitor
   and trans_lval_maybe_init
       (initializing:bool)
       (lv:Ast.lval)
-      : (Il.cell * Ast.slot) =
+      : (Il.cell * Ast.ty) =
     trans_lval_full initializing lv
 
-  and trans_lval_init (lv:Ast.lval) : (Il.cell * Ast.slot) =
+  and trans_lval_init (lv:Ast.lval) : (Il.cell * Ast.ty) =
     trans_lval_maybe_init true lv
 
-  and trans_lval (lv:Ast.lval) : (Il.cell * Ast.slot) =
+  and trans_lval (lv:Ast.lval) : (Il.cell * Ast.ty) =
     trans_lval_maybe_init false lv
 
   and trans_callee
@@ -1231,8 +1230,8 @@ let trans_visitor
 
     match atom with
         Ast.ATOM_lval lv ->
-          let (cell, slot) = trans_lval lv in
-            Il.Cell (deref_slot false cell slot)
+          let (cell, ty) = trans_lval lv in
+            Il.Cell (fst (deref_ty false cell ty))
 
       | Ast.ATOM_literal lit -> trans_lit lit.node
 
@@ -1302,7 +1301,7 @@ let trans_visitor
 
   and check_interrupt_flag _ =
     let dom = next_vreg_cell wordptr_ty in
-    let flag = next_vreg_cell word_ty in
+    let flag = next_vreg_cell word_sty in
       mov dom (Il.Cell (tp_imm (word_n Abi.task_field_dom)));
       mov flag (Il.Cell (deref_imm dom
                            (word_n Abi.dom_field_interrupt_flag)));
@@ -1393,7 +1392,7 @@ let trans_visitor
       (bs:Ast.slot array)
       (* FIXME (issue #5): mutability flag *)
       : Il.referent_ty =
-    let rc = Il.ScalarTy word_ty in
+    let rc = Il.ScalarTy word_sty in
     let targ = referent_type abi (mk_simple_ty_fn [||]) in
     let bindings = Array.map (slot_referent_type abi) bs in
       Il.StructTy [| rc; targ; Il.StructTy bindings |]
@@ -1557,7 +1556,7 @@ let trans_visitor
 
   and ty_params_covering (t:Ast.ty) : Ast.slot =
     let n_ty_params = n_used_type_params t in
-    let params = make_tydesc_slots n_ty_params in
+    let params = make_tydesc_tys n_ty_params in
       alias_slot (Ast.TY_tup params)
 
   and get_drop_glue
@@ -1570,7 +1569,7 @@ let trans_visitor
       let cell = get_element_ptr args 1 in
         note_drop_step ty "in drop-glue, dropping";
         trace_word cx.ctxt_sess.Session.sess_trace_drop cell;
-        drop_ty ty_params ty (deref cell) curr_iso;
+        drop_ty ty_params (deref cell) ty curr_iso;
         note_drop_step ty "drop-glue complete";
     in
     let ty_params_ptr = ty_params_covering ty in
@@ -1621,7 +1620,7 @@ let trans_visitor
     let inner _ (args:Il.cell) =
       let ty_params = deref (get_element_ptr args 0) in
       let cell = get_element_ptr args 1 in
-        sever_ty ty_params ty (deref cell) curr_iso
+        sever_ty ty_params (deref cell) ty curr_iso
     in
     let ty_params_ptr = ty_params_covering ty in
     let fty = mk_simple_ty_fn [| ty_params_ptr; alias_slot ty |] in
@@ -1636,7 +1635,7 @@ let trans_visitor
     let inner _ (args:Il.cell) =
       let ty_params = deref (get_element_ptr args 0) in
       let cell = get_element_ptr args 1 in
-        mark_ty ty_params ty (deref cell) curr_iso
+        mark_ty ty_params (deref cell) ty curr_iso
     in
     let ty_params_ptr = ty_params_covering ty in
     let fty = mk_simple_ty_fn [| ty_params_ptr; alias_slot ty |] in
@@ -1653,7 +1652,7 @@ let trans_visitor
       let ty_params = deref (get_element_ptr args 0) in
       let src = deref (get_element_ptr args 1) in
       let clone_task = get_element_ptr args 2 in
-        clone_ty ty_params clone_task ty dst src curr_iso
+        clone_ty ty_params clone_task dst src ty curr_iso
     in
     let ty_params_ptr = ty_params_covering ty in
     let fty =
@@ -1677,7 +1676,7 @@ let trans_visitor
       let dst = deref out_ptr in
       let ty_params = deref (get_element_ptr args 0) in
       let src = deref (get_element_ptr args 1) in
-        copy_ty ty_params ty dst src curr_iso
+        copy_ty ty_params dst src ty curr_iso
     in
     let ty_params_ptr = ty_params_covering ty in
     let fty =
@@ -2096,8 +2095,8 @@ let trans_visitor
         end
 
   and trans_init_port (dst:Ast.lval) : unit =
-    let (dstcell, dst_slot) = trans_lval_init dst in
-    let unit_ty = match slot_ty dst_slot with
+    let (dstcell, dst_ty) = trans_lval_init dst in
+    let unit_ty = match dst_ty with
         Ast.TY_port t -> t
       | _ -> bug () "init dst of port-init has non-port type"
     in
@@ -2134,19 +2133,18 @@ let trans_visitor
    *)
 
   and trans_init_vec (dst:Ast.lval) (atoms:Ast.atom array) : unit =
-    let (dst_cell, dst_slot) = trans_lval_init dst in
-    let dst_ty = slot_ty dst_slot in
+    let (dst_cell, dst_ty) = trans_lval_init dst in
     let gc_ctrl =
-      if (slot_mem_ctrl dst_slot) = MEM_gc
-      then Il.Cell (get_tydesc None (slot_ty dst_slot))
+      if (ty_mem_ctrl dst_ty) = MEM_gc
+      then Il.Cell (get_tydesc None dst_ty)
       else zero
     in
-    let unit_slot = match dst_ty with
-        Ast.TY_vec s -> s
+    let unit_ty = match dst_ty with
+        Ast.TY_vec t -> t
       | _ -> bug () "init dst of vec-init has non-vec type"
     in
-    let fill = next_vreg_cell word_ty in
-    let unit_sz = slot_sz_in_current_frame unit_slot in
+    let fill = next_vreg_cell word_sty in
+    let unit_sz = ty_sz_in_current_frame unit_ty in
       umul fill unit_sz (imm (Int64.of_int (Array.length atoms)));
       trans_upcall "upcall_new_vec" dst_cell [| Il.Cell fill; gc_ctrl |];
       let vec = deref dst_cell in
@@ -2155,14 +2153,14 @@ let trans_visitor
                  (get_element_ptr_dyn_in_current_frame
                     vec Abi.vec_elt_data))
         in
-        let unit_rty = slot_referent_type abi unit_slot in
+        let unit_rty = referent_type abi unit_ty in
         let body_rty = Il.StructTy (Array.map (fun _ -> unit_rty) atoms) in
         let body = Il.Mem (body_mem, body_rty) in
           Array.iteri
             begin
               fun i atom ->
                 let cell = get_element_ptr_dyn_in_current_frame body i in
-                  trans_init_slot_from_atom CLONE_none cell unit_slot atom
+                  trans_init_ty_from_atom cell unit_ty atom
             end
             atoms;
             mov (get_element_ptr vec Abi.vec_elt_fill) (Il.Cell fill);
@@ -2221,36 +2219,35 @@ let trans_visitor
     exterior_ctrl_cell cell Abi.exterior_rc_slot_field_refcnt
 
   and exterior_allocation_size
-      (slot:Ast.slot)
+      (ty:Ast.ty)
       : Il.operand =
     let header_sz =
-      match slot_mem_ctrl slot with
+      match ty_mem_ctrl ty with
           MEM_gc
         | MEM_rc_opaque
         | MEM_rc_struct -> word_n Abi.exterior_rc_header_size
         | MEM_interior -> bug () "exterior_allocation_size of MEM_interior"
     in
-    let t = slot_ty slot in
     let refty_sz =
-      Il.referent_ty_size abi.Abi.abi_word_bits (referent_type abi t)
+      Il.referent_ty_size abi.Abi.abi_word_bits (referent_type abi ty)
     in
       match refty_sz with
-          SIZE_fixed _ -> imm (Int64.add (ty_sz abi t) header_sz)
+          SIZE_fixed _ -> imm (Int64.add (ty_sz abi ty) header_sz)
         | _ ->
             let ty_params = get_ty_params_of_current_frame() in
             let refty_sz = calculate_sz ty_params refty_sz in
-            let v = next_vreg word_ty in
-            let vc = Il.Reg (v, word_ty) in
+            let v = next_vreg word_sty in
+            let vc = Il.Reg (v, word_sty) in
               mov vc refty_sz;
               add_to vc (imm header_sz);
               Il.Cell vc;
 
-  and iter_tag_slots
+  and iter_tag_parts
       (ty_params:Il.cell)
       (dst_cell:Il.cell)
       (src_cell:Il.cell)
       (ttag:Ast.ty_tag)
-      (f:Il.cell -> Il.cell -> Ast.slot -> (Ast.ty_iso option) -> unit)
+      (f:Il.cell -> Il.cell -> Ast.ty -> (Ast.ty_iso option) -> unit)
       (curr_iso:Ast.ty_iso option)
       : unit =
     let tag_keys = sorted_htab_keys ttag in
@@ -2258,8 +2255,8 @@ let trans_visitor
     let dst_tag = get_element_ptr dst_cell 0 in
     let src_union = get_element_ptr_dyn ty_params src_cell 1 in
     let dst_union = get_element_ptr_dyn ty_params dst_cell 1 in
-    let tmp = next_vreg_cell word_ty in
-      f dst_tag src_tag word_slot curr_iso;
+    let tmp = next_vreg_cell word_sty in
+      f dst_tag src_tag word_ty curr_iso;
       mov tmp (Il.Cell src_tag);
       Array.iteri
         begin
@@ -2271,7 +2268,7 @@ let trans_visitor
               trans_compare Il.JNE (Il.Cell tmp) (imm (Int64.of_int i))
             in
             let ttup = Hashtbl.find ttag key in
-              iter_tup_slots
+              iter_tup_parts
                 (get_element_ptr_dyn ty_params)
                 (get_variant_ptr dst_union i)
                 (get_variant_ptr src_union i)
@@ -2284,24 +2281,24 @@ let trans_visitor
     tiso.Ast.iso_group.(tiso.Ast.iso_index)
 
 
-  and seq_unit_slot (seq:Ast.ty) : Ast.slot =
+  and seq_unit_ty (seq:Ast.ty) : Ast.ty =
     match seq with
-        Ast.TY_vec s -> s
-      | Ast.TY_str -> (interior_slot (Ast.TY_mach TY_u8))
-      | _ -> bug () "seq_unit_slot of non-vec, non-str type"
+        Ast.TY_vec t -> t
+      | Ast.TY_str -> Ast.TY_mach TY_u8
+      | _ -> bug () "seq_unit_ty of non-vec, non-str type"
 
 
-  and iter_seq_slots
+  and iter_seq_parts
       (ty_params:Il.cell)
       (dst_cell:Il.cell)
       (src_cell:Il.cell)
-      (unit_slot:Ast.slot)
-      (f:Il.cell -> Il.cell -> Ast.slot -> (Ast.ty_iso option) -> unit)
+      (unit_ty:Ast.ty)
+      (f:Il.cell -> Il.cell -> Ast.ty -> (Ast.ty_iso option) -> unit)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    let unit_sz = slot_sz_with_ty_params ty_params unit_slot in
+    let unit_sz = ty_sz_with_ty_params ty_params unit_ty in
       (* 
-       * Unlike most of the iter_ty_slots helpers; this one allocates a
+       * Unlike most of the iter_ty_parts helpers; this one allocates a
        * vreg and so has to be aware of when it's iterating over 2
        * sequences of cells or just 1.
        *)
@@ -2323,9 +2320,9 @@ let trans_visitor
             let back_jmp_target = mark () in
             let fwd_jmps = trans_compare Il.JAE (Il.Cell ptr) (Il.Cell lim) in
             let unit_cell =
-              deref (ptr_cast ptr (slot_referent_type abi unit_slot))
+              deref (ptr_cast ptr (referent_type abi unit_ty))
             in
-              f unit_cell unit_cell unit_slot curr_iso;
+              f unit_cell unit_cell unit_ty curr_iso;
               add_to ptr unit_sz;
               check_interrupt_flag ();
               emit (Il.jmp Il.JMP (Il.CodeLabel back_jmp_target));
@@ -2337,12 +2334,12 @@ let trans_visitor
         end
 
 
-  and iter_ty_slots_full
+  and iter_ty_parts_full
       (ty_params:Il.cell)
-      (ty:Ast.ty)
       (dst_cell:Il.cell)
       (src_cell:Il.cell)
-      (f:Il.cell -> Il.cell -> Ast.slot -> (Ast.ty_iso option) -> unit)
+      (ty:Ast.ty)
+      (f:Il.cell -> Il.cell -> Ast.ty -> (Ast.ty_iso option) -> unit)
       (curr_iso:Ast.ty_iso option)
       : unit =
     (* 
@@ -2352,84 +2349,74 @@ let trans_visitor
      *)
     match ty with
         Ast.TY_rec entries ->
-          iter_rec_slots
+          iter_rec_parts
             (get_element_ptr_dyn ty_params) dst_cell src_cell
             entries f curr_iso
 
-      | Ast.TY_tup slots ->
-          iter_tup_slots
+      | Ast.TY_tup tys ->
+          iter_tup_parts
             (get_element_ptr_dyn ty_params) dst_cell src_cell
-            slots f curr_iso
+            tys f curr_iso
 
       | Ast.TY_tag tag ->
-          iter_tag_slots ty_params dst_cell src_cell tag f curr_iso
+          iter_tag_parts ty_params dst_cell src_cell tag f curr_iso
 
       | Ast.TY_iso tiso ->
           let ttag = get_iso_tag tiso in
-            iter_tag_slots ty_params dst_cell src_cell ttag f (Some tiso)
+            iter_tag_parts ty_params dst_cell src_cell ttag f (Some tiso)
 
       | Ast.TY_fn _
       | Ast.TY_obj _ -> bug () "Attempting to iterate over fn/pred/obj slots"
 
       | Ast.TY_vec _
       | Ast.TY_str ->
-          let unit_slot = seq_unit_slot ty in
-            iter_seq_slots ty_params dst_cell src_cell unit_slot f curr_iso
+          let unit_ty = seq_unit_ty ty in
+            iter_seq_parts ty_params dst_cell src_cell unit_ty f curr_iso
 
       | _ -> ()
 
   (* 
-   * This just calls iter_ty_slots_full with your cell as both src and
-   * dst, with an adaptor function that discards the dst slots of the
+   * This just calls iter_ty_parts_full with your cell as both src and
+   * dst, with an adaptor function that discards the dst parts of the
    * parallel traversal and and calls your provided function on the
-   * passed-in src slots.
+   * passed-in src parts.
    *)
-  and iter_ty_slots
+  and iter_ty_parts
       (ty_params:Il.cell)
-      (ty:Ast.ty)
       (cell:Il.cell)
-      (f:Il.cell -> Ast.slot -> (Ast.ty_iso option) -> unit)
+      (ty:Ast.ty)
+      (f:Il.cell -> Ast.ty -> (Ast.ty_iso option) -> unit)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    iter_ty_slots_full ty_params ty cell cell
-      (fun _ src_cell slot curr_iso -> f src_cell slot curr_iso)
+    iter_ty_parts_full ty_params cell cell ty
+      (fun _ src_cell ty curr_iso -> f src_cell ty curr_iso)
       curr_iso
 
   and drop_ty
       (ty_params:Il.cell)
-      (ty:Ast.ty)
       (cell:Il.cell)
+      (ty:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    match ty with
-        Ast.TY_param (i, _) ->
-          iflog (fun _ -> annotate
-                   (Printf.sprintf "drop_ty: parametric drop %#d" i));
-          aliasing false cell
-            begin
-              fun cell ->
-                trans_call_simple_dynamic_glue
-                   i Abi.tydesc_field_drop_glue ty_params cell
-            end
 
-      | Ast.TY_fn _ ->
-          begin
+    let ty = maybe_iso curr_iso ty in
+    let curr_iso = maybe_enter_iso ty curr_iso in
+    let mctrl = ty_mem_ctrl ty in
+
+      match ty with
+
+          Ast.TY_fn _ ->
             let binding = get_element_ptr cell Abi.binding_field_binding in
             let null_jmp = null_check binding in
               (* Drop non-null bindings. *)
-              (* FIXME (issue #58): this is completely wrong,
-               * need a second thunk that generates code to make
-               * use of a runtime type descriptor extracted from
-               * a binding tuple. For now this only works by
-               * accident. 
+              (* FIXME (issue #58): this is completely wrong, Closures need to
+               * carry tydescs like objs. For now this only works by accident,
+               * and will leak closures with exterior substructure.
                *)
-              drop_slot ty_params binding
-                (exterior_slot Ast.TY_int) curr_iso;
+              drop_ty ty_params binding (Ast.TY_exterior Ast.TY_int) curr_iso;
               patch null_jmp
-          end
 
-      | Ast.TY_obj _ ->
-          begin
+        | Ast.TY_obj _ ->
             let binding = get_element_ptr cell Abi.binding_field_binding in
             let null_jmp = null_check binding in
             let obj = deref binding in
@@ -2445,55 +2432,109 @@ let trans_visitor
             in
             let null_dtor_jmp = null_check dtor in
               (* Call any dtor, if present. *)
-              trans_call_dynamic_glue tydesc
-                Abi.tydesc_field_obj_drop_glue None [| binding |];
-              patch null_dtor_jmp;
-              (* Drop the body. *)
-              trans_call_dynamic_glue tydesc
-                Abi.tydesc_field_drop_glue None [| ty_params; alias body |];
-              (* FIXME: this will fail if the user has lied about the
-               * state-ness of their obj. We need to store state-ness in the
-               * captured tydesc, and use that.  *)
-              trans_free binding (type_has_state ty);
-              mov binding zero;
-              patch rc_jmp;
-              patch null_jmp
-          end
+            trans_call_dynamic_glue tydesc
+              Abi.tydesc_field_obj_drop_glue None [| binding |];
+            patch null_dtor_jmp;
+            (* Drop the body. *)
+            trans_call_dynamic_glue tydesc
+              Abi.tydesc_field_drop_glue None [| ty_params; alias body |];
+            (* FIXME: this will fail if the user has lied about the
+             * state-ness of their obj. We need to store state-ness in the
+             * captured tydesc, and use that.  *)
+            trans_free binding (type_has_state ty);
+            mov binding zero;
+            patch rc_jmp;
+            patch null_jmp
 
+
+      | Ast.TY_param (i, _) ->
+          iflog (fun _ -> annotate
+                   (Printf.sprintf "drop_ty: parametric drop %#d" i));
+          aliasing false cell
+            begin
+              fun cell ->
+                trans_call_simple_dynamic_glue
+                  i Abi.tydesc_field_drop_glue ty_params cell
+            end
 
       | _ ->
-          iter_ty_slots ty_params ty cell (drop_slot ty_params) curr_iso
+          match mctrl with
+              MEM_gc
+            | MEM_rc_opaque
+            | MEM_rc_struct ->
+
+                let _ = check_exterior_rty cell in
+                let null_jmp = null_check cell in
+                let rc = exterior_rc_cell cell in
+                let j = drop_refcount_and_cmp rc in
+
+                  (* FIXME (issue #25): check to see that the exterior has
+                   * further exterior members; if it doesn't we can elide the
+                   * call to the glue function.  *)
+
+                  if mctrl = MEM_rc_opaque
+                  then
+                    free_ty false ty_params ty cell curr_iso
+                  else
+                    trans_call_simple_static_glue
+                      (get_free_glue ty (mctrl = MEM_gc) curr_iso)
+                      ty_params cell;
+
+                  (* Null the slot out to prevent double-free if the frame
+                   * unwinds.
+                   *)
+                  mov cell zero;
+                  patch j;
+                  patch null_jmp
+
+            | MEM_interior when type_is_structured ty ->
+                (iflog (fun _ ->
+                          annotate ("drop interior slot " ^
+                                      (Fmt.fmt_to_str Ast.fmt_ty ty))));
+                let (mem, _) = need_mem_cell cell in
+                let vr = next_vreg_cell Il.voidptr_t in
+                  lea vr mem;
+                  trans_call_simple_static_glue
+                    (get_drop_glue ty curr_iso)
+                    ty_params vr
+
+            | MEM_interior ->
+                (* Interior allocation of all-interior value not caught above:
+                 * nothing to do.
+                 *)
+                ()
 
   and sever_ty
       (ty_params:Il.cell)
-      (ty:Ast.ty)
       (cell:Il.cell)
+      (ty:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    match ty with
-      | Ast.TY_fn _
-      | Ast.TY_obj _ -> ()
-      | _ ->
-          iter_ty_slots ty_params ty cell (sever_slot ty_params) curr_iso
+    let _ = note_gc_step ty "severing" in
+      match ty_mem_ctrl ty with
+          MEM_gc ->
 
-  and mark_ty
-      (ty_params:Il.cell)
-      (ty:Ast.ty)
-      (cell:Il.cell)
-      (curr_iso:Ast.ty_iso option)
-      : unit =
-    match ty with
-      | Ast.TY_fn _
-      | Ast.TY_obj _ -> ()
-      | _ ->
-          iter_ty_slots ty_params ty cell (mark_slot ty_params) curr_iso
+            let _ = check_exterior_rty cell in
+            let null_jmp = null_check cell in
+            let rc = exterior_rc_cell cell in
+            let _ = note_gc_step ty "severing GC slot" in
+              emit (Il.binary Il.SUB rc (Il.Cell rc) one);
+              mov cell zero;
+              patch null_jmp
+
+        | MEM_interior when type_is_structured ty ->
+            iter_ty_parts ty_params cell ty
+              (sever_ty ty_params) curr_iso
+
+        | _ -> ()
+            (* No need to follow links / call glue; severing is shallow. *)
 
   and clone_ty
       (ty_params:Il.cell)
       (clone_task:Il.cell)
-      (ty:Ast.ty)
       (dst:Il.cell)
       (src:Il.cell)
+      (ty:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : unit =
     match ty with
@@ -2508,15 +2549,21 @@ let trans_visitor
           -> mov dst (Il.Cell src)
       | Ast.TY_fn _
       | Ast.TY_obj _ -> ()
+      | Ast.TY_exterior ty ->
+          let glue_fix = get_clone_glue ty curr_iso in
+            trans_call_static_glue
+              (code_fixup_to_ptr_operand glue_fix)
+              (Some dst)
+              [| alias ty_params; src; clone_task |]
       | _ ->
-          iter_ty_slots_full ty_params ty dst src
-            (clone_slot ty_params clone_task) curr_iso
+          iter_ty_parts_full ty_params dst src ty
+            (clone_ty ty_params clone_task) curr_iso
 
   and copy_ty
       (ty_params:Il.cell)
-      (ty:Ast.ty)
       (dst:Il.cell)
       (src:Il.cell)
+      (ty:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : unit =
     iflog (fun _ ->
@@ -2565,18 +2612,18 @@ let trans_visitor
                  * through to the binding's self-copy fptr. For now
                  * this only works by accident.
                  *)
-                trans_copy_slot ty_params true
-                  dst_binding (exterior_slot Ast.TY_int)
-                  src_binding (exterior_slot Ast.TY_int)
+                trans_copy_ty ty_params true
+                  dst_binding (Ast.TY_exterior Ast.TY_int)
+                  src_binding (Ast.TY_exterior Ast.TY_int)
                   curr_iso;
                 patch null_jmp
           end
 
       | _ ->
-          iter_ty_slots_full ty_params ty dst src
-            (fun dst src slot curr_iso ->
-               trans_copy_slot ty_params true
-                 dst slot src slot curr_iso)
+          iter_ty_parts_full ty_params dst src ty
+            (fun dst src ty curr_iso ->
+               trans_copy_ty ty_params true
+                 dst ty src ty curr_iso)
             curr_iso
 
   and free_ty
@@ -2591,8 +2638,8 @@ let trans_visitor
       | Ast.TY_chan _ -> trans_del_chan cell
       | Ast.TY_task -> trans_kill_task cell
       | Ast.TY_vec s ->
-          iter_seq_slots ty_params cell cell s
-            (fun _ src slot iso -> drop_slot ty_params src slot iso) curr_iso;
+          iter_seq_parts ty_params cell cell s
+            (fun _ src ty iso -> drop_ty ty_params src ty iso) curr_iso;
           trans_free cell is_gc
 
       | _ -> trans_free cell is_gc
@@ -2603,7 +2650,7 @@ let trans_visitor
       : Ast.ty =
     match (curr_iso, t) with
         (Some iso, Ast.TY_idx n) ->
-          Ast.TY_iso { iso with Ast.iso_index = n }
+          Ast.TY_exterior (Ast.TY_iso { iso with Ast.iso_index = n })
       | (None, Ast.TY_idx _) ->
           bug () "TY_idx outside TY_iso"
       | _ -> t
@@ -2616,74 +2663,46 @@ let trans_visitor
         Ast.TY_iso tiso -> Some tiso
       | _ -> curr_iso
 
-  and sever_slot
-      (ty_params:Il.cell)
-      (cell:Il.cell)
-      (slot:Ast.slot)
-      (curr_iso:Ast.ty_iso option)
-      : unit =
-    let _ = note_gc_step slot "severing" in
-    let ty = slot_ty slot in
-      match slot_mem_ctrl slot with
-          MEM_gc ->
-
-            let _ = check_exterior_rty cell in
-            let null_jmp = null_check cell in
-            let rc = exterior_rc_cell cell in
-            let _ = note_gc_step slot "severing GC slot" in
-              emit (Il.binary Il.SUB rc (Il.Cell rc) one);
-              mov cell zero;
-              patch null_jmp
-
-        | MEM_interior when type_is_structured ty ->
-            let (mem, _) = need_mem_cell cell in
-            let tmp = next_vreg_cell Il.voidptr_t in
-            let ty = maybe_iso curr_iso ty in
-            let curr_iso = maybe_enter_iso ty curr_iso in
-              lea tmp mem;
-              trans_call_simple_static_glue
-                (get_sever_glue ty curr_iso)
-                ty_params tmp
-
-        | MEM_interior ->
-            (* Interior allocation of all-interior value: sever directly. *)
-            let ty = maybe_iso curr_iso ty in
-              sever_ty ty_params ty cell curr_iso
-
-        | _ -> ()
-
   and mark_slot
       (ty_params:Il.cell)
       (cell:Il.cell)
       (slot:Ast.slot)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    let ty = slot_ty slot in
-      match slot_mem_ctrl slot with
-          MEM_gc ->
-            let tmp = next_vreg_cell Il.voidptr_t in
+    (* Marking goes straight through aliases. Reachable means reachable. *)
+    mark_ty ty_params (deref_slot false cell slot) (slot_ty slot) curr_iso
+
+  and mark_ty
+      (ty_params:Il.cell)
+      (cell:Il.cell)
+      (ty:Ast.ty)
+      (curr_iso:Ast.ty_iso option)
+      : unit =
+    match ty_mem_ctrl ty with
+        MEM_gc ->
+          let tmp = next_vreg_cell Il.voidptr_t in
             trans_upcall "upcall_mark" tmp [| Il.Cell cell |];
-              let marked_jump =
-                trans_compare Il.JE (Il.Cell tmp) zero;
-              in
-                (* Iterate over exterior slots marking outgoing links. *)
-              let (body_mem, _) =
-                need_mem_cell
-                  (get_element_ptr (deref cell)
-                     Abi.exterior_gc_slot_field_body)
-              in
-              let ty = maybe_iso curr_iso ty in
-              let curr_iso = maybe_enter_iso ty curr_iso in
-                lea tmp body_mem;
-                trans_call_simple_static_glue
-                  (get_mark_glue ty curr_iso)
-                  ty_params tmp;
-                List.iter patch marked_jump;
+            let marked_jump =
+              trans_compare Il.JE (Il.Cell tmp) zero;
+            in
+              (* Iterate over exterior parts marking outgoing links. *)
+            let (body_mem, _) =
+              need_mem_cell
+                (get_element_ptr (deref cell)
+                   Abi.exterior_gc_slot_field_body)
+            in
+            let ty = maybe_iso curr_iso ty in
+            let curr_iso = maybe_enter_iso ty curr_iso in
+              lea tmp body_mem;
+              trans_call_simple_static_glue
+                (get_mark_glue ty curr_iso)
+                ty_params tmp;
+              List.iter patch marked_jump;
 
         | MEM_interior when type_is_structured ty ->
             (iflog (fun _ ->
                       annotate ("mark interior slot " ^
-                                  (Fmt.fmt_to_str Ast.fmt_slot slot))));
+                                  (Fmt.fmt_to_str Ast.fmt_ty ty))));
             let (mem, _) = need_mem_cell cell in
             let tmp = next_vreg_cell Il.voidptr_t in
             let ty = maybe_iso curr_iso ty in
@@ -2703,30 +2722,6 @@ let trans_visitor
       | _ -> bug ()
           "expected plausibly-exterior cell, got %s"
             (Il.string_of_referent_ty (Il.cell_referent_ty cell))
-
-  and clone_slot
-      (ty_params:Il.cell)
-      (clone_task:Il.cell)
-      (dst:Il.cell)
-      (src:Il.cell)
-      (dst_slot:Ast.slot)
-      (curr_iso:Ast.ty_iso option)
-      : unit =
-    let ty = slot_ty dst_slot in
-      match dst_slot.Ast.slot_mode with
-          Ast.MODE_exterior _ ->
-            let ty = maybe_iso curr_iso ty in
-            let curr_iso = maybe_enter_iso ty curr_iso in
-            let dst = deref_slot true dst dst_slot in
-            let glue_fix = get_clone_glue (slot_ty dst_slot) curr_iso in
-              trans_call_static_glue
-                (code_fixup_to_ptr_operand glue_fix)
-                (Some dst)
-                [| alias ty_params; src; clone_task |]
-
-        | Ast.MODE_alias _ -> bug () "cloning into alias slot"
-        | Ast.MODE_interior _ ->
-            clone_ty ty_params clone_task ty dst src curr_iso
 
   and drop_slot_in_current_frame
       (cell:Il.cell)
@@ -2755,54 +2750,11 @@ let trans_visitor
       (slot:Ast.slot)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    let ty = slot_ty slot in
-    let ty = maybe_iso curr_iso ty in
-    let curr_iso = maybe_enter_iso ty curr_iso in
-    let slot = {slot with Ast.slot_ty = Some ty} in
-    let mctrl = slot_mem_ctrl slot in
-      match mctrl with
-          MEM_rc_opaque
-        | MEM_gc
-        | MEM_rc_struct ->
-            let _ = check_exterior_rty cell in
-            let null_jmp = null_check cell in
-            let rc = exterior_rc_cell cell in
-            let j = drop_refcount_and_cmp rc in
-
-              (* FIXME (issue #25): check to see that the exterior has
-               * further exterior members; if it doesn't we can elide the
-               * call to the glue function.  *)
-
-              if mctrl = MEM_rc_opaque
-              then
-                free_ty false ty_params ty cell curr_iso
-              else
-                trans_call_simple_static_glue
-                  (get_free_glue ty (mctrl = MEM_gc) curr_iso)
-                  ty_params cell;
-
-              (* Null the slot out to prevent double-free if the frame
-               * unwinds.
-               *)
-              mov cell zero;
-              patch j;
-              patch null_jmp
-
-        | MEM_interior when type_is_structured ty ->
-            (iflog (fun _ ->
-                      annotate ("drop interior slot " ^
-                                  (Fmt.fmt_to_str Ast.fmt_slot slot))));
-            let (mem, _) = need_mem_cell cell in
-            let vr = next_vreg_cell Il.voidptr_t in
-              lea vr mem;
-              trans_call_simple_static_glue
-                (get_drop_glue ty curr_iso)
-                ty_params vr
-
-        | MEM_interior ->
-            (* Interior allocation of all-interior value: free directly. *)
-            let ty = maybe_iso curr_iso ty in
-              drop_ty ty_params ty cell curr_iso
+    match slot.Ast.slot_mode with
+        Ast.MODE_alias
+          (* Aliases are always free to drop. *)
+      | Ast.MODE_interior ->
+          drop_ty ty_params cell (slot_ty slot) curr_iso
 
   and note_drop_step ty step =
     if cx.ctxt_sess.Session.sess_trace_drop ||
@@ -2815,44 +2767,70 @@ let trans_visitor
           trace_str cx.ctxt_sess.Session.sess_trace_drop str
         end
 
-  and note_gc_step slot step =
+  and note_gc_step ty step =
     if cx.ctxt_sess.Session.sess_trace_gc ||
       cx.ctxt_sess.Session.sess_log_trans
     then
       let mctrl_str =
-        match slot_mem_ctrl slot with
+        match ty_mem_ctrl ty with
             MEM_gc -> "MEM_gc"
           | MEM_rc_struct -> "MEM_rc_struct"
           | MEM_rc_opaque -> "MEM_rc_opaque"
           | MEM_interior -> "MEM_interior"
       in
-      let slotstr = Fmt.fmt_to_str Ast.fmt_slot slot in
-      let str = step ^ " " ^ mctrl_str ^ " " ^ slotstr in
+      let tystr = Fmt.fmt_to_str Ast.fmt_ty ty in
+      let str = step ^ " " ^ mctrl_str ^ " " ^ tystr in
         begin
           annotate str;
           trace_str cx.ctxt_sess.Session.sess_trace_gc str
         end
 
   (* Returns the offset of the slot-body in the initialized allocation. *)
-  and init_exterior_slot (cell:Il.cell) (slot:Ast.slot) : unit =
-    let mctrl = slot_mem_ctrl slot in
+  and init_exterior (cell:Il.cell) (ty:Ast.ty) : unit =
+    let mctrl = ty_mem_ctrl ty in
       match mctrl with
           MEM_gc
         | MEM_rc_opaque
         | MEM_rc_struct ->
             let ctrl =
               if mctrl = MEM_gc
-              then Il.Cell (get_tydesc None (slot_ty slot))
+              then Il.Cell (get_tydesc None ty)
               else zero
             in
               iflog (fun _ -> annotate "init exterior: malloc");
-              let sz = exterior_allocation_size slot in
+              let sz = exterior_allocation_size ty in
                 trans_malloc cell sz ctrl;
                 iflog (fun _ -> annotate "init exterior: load refcount");
                 let rc = exterior_rc_cell cell in
                   mov rc one
 
-      | MEM_interior -> bug () "init_exterior_slot of MEM_interior"
+      | MEM_interior -> bug () "init_exterior of MEM_interior"
+
+  and deref_ty
+      (initializing:bool)
+      (cell:Il.cell)
+      (ty:Ast.ty)
+      : (Il.cell * Ast.ty) =
+    match ty with
+
+      | Ast.TY_mutable ty
+      | Ast.TY_constrained (ty, _) ->
+          deref_ty initializing cell ty
+
+      | Ast.TY_exterior ty ->
+          check_exterior_rty cell;
+          if initializing
+          then init_exterior cell ty;
+          let cell =
+            get_element_ptr_dyn_in_current_frame
+              (deref cell)
+              (Abi.exterior_rc_slot_field_body)
+          in
+            (* Init recursively so @@@@T chain works. *)
+            deref_ty initializing cell ty
+
+      | _ -> (cell, ty)
+
 
   and deref_slot
       (initializing:bool)
@@ -2860,16 +2838,8 @@ let trans_visitor
       (slot:Ast.slot)
       : Il.cell =
     match slot.Ast.slot_mode with
-        Ast.MODE_interior _ ->
+        Ast.MODE_interior ->
           cell
-
-      | Ast.MODE_exterior _ ->
-          check_exterior_rty cell;
-          if initializing
-          then init_exterior_slot cell slot;
-          get_element_ptr_dyn_in_current_frame
-            (deref cell)
-            Abi.exterior_rc_slot_field_body
 
       | Ast.MODE_alias _  ->
           if initializing
@@ -2881,24 +2851,32 @@ let trans_visitor
       (initializing:bool)
       (dst:Il.cell)
       (src:Il.cell)
-      (slots:Ast.ty_tup)
+      (tys:Ast.ty_tup)
       : unit =
     Array.iteri
       begin
-        fun i slot ->
+        fun i ty ->
           let sub_dst_cell = get_element_ptr_dyn ty_params dst i in
           let sub_src_cell = get_element_ptr_dyn ty_params src i in
-            trans_copy_slot
+            trans_copy_ty
               ty_params initializing
-              sub_dst_cell slot sub_src_cell slot None
+              sub_dst_cell ty sub_src_cell ty None
       end
-      slots
+      tys
 
-  and trans_copy_slot
+  and without_exterior t =
+    match t with
+      | Ast.TY_mutable t
+      | Ast.TY_exterior t
+      | Ast.TY_constrained (t, _) ->
+          without_exterior t
+      | _ -> t
+
+  and trans_copy_ty
       (ty_params:Il.cell)
       (initializing:bool)
-      (dst:Il.cell) (dst_slot:Ast.slot)
-      (src:Il.cell) (src_slot:Ast.slot)
+      (dst:Il.cell) (dst_ty:Ast.ty)
+      (src:Il.cell) (src_ty:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : unit =
     let anno (weight:string) : unit =
@@ -2908,13 +2886,12 @@ let trans_visitor
             annotate
               (Printf.sprintf "%sweight copy: %a <- %a"
                  weight
-                 Ast.sprintf_slot dst_slot
-                 Ast.sprintf_slot src_slot)
+                 Ast.sprintf_ty dst_ty
+                 Ast.sprintf_ty src_ty)
         end;
     in
-      assert (slot_ty src_slot = slot_ty dst_slot);
-      match (slot_mem_ctrl src_slot,
-             slot_mem_ctrl dst_slot) with
+      assert (without_exterior src_ty = without_exterior dst_ty);
+      match (ty_mem_ctrl src_ty, ty_mem_ctrl dst_ty) with
 
         | (MEM_rc_opaque, MEM_rc_opaque)
         | (MEM_gc, MEM_gc)
@@ -2924,14 +2901,14 @@ let trans_visitor
             add_to (exterior_rc_cell src) one;
             if not initializing
             then
-              drop_slot ty_params dst dst_slot None;
+              drop_ty ty_params dst dst_ty None;
             mov dst (Il.Cell src)
 
         | _ ->
             (* Heavyweight copy: duplicate 1 level of the referent. *)
             anno "heavy";
-            trans_copy_slot_heavy ty_params initializing
-              dst dst_slot src src_slot curr_iso
+            trans_copy_ty_heavy ty_params initializing
+              dst dst_ty src src_ty curr_iso
 
   (* NB: heavyweight copying here does not mean "producing a deep
    * clone of the entire data tree rooted at the src operand". It means
@@ -2960,39 +2937,44 @@ let trans_visitor
    * 
    *)
 
-  and trans_copy_slot_heavy
+  and trans_copy_ty_heavy
       (ty_params:Il.cell)
       (initializing:bool)
-      (dst:Il.cell) (dst_slot:Ast.slot)
-      (src:Il.cell) (src_slot:Ast.slot)
+      (dst:Il.cell) (dst_ty:Ast.ty)
+      (src:Il.cell) (src_ty:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    assert (slot_ty src_slot = slot_ty dst_slot);
+    assert (without_exterior src_ty = without_exterior dst_ty);
     iflog (fun _ ->
              annotate ("heavy copy: slot preparation"));
 
-    let ty = slot_ty src_slot in
+    let ty = without_exterior src_ty in
     let ty = maybe_iso curr_iso ty in
     let curr_iso = maybe_enter_iso ty curr_iso in
-    let dst_slot = { dst_slot with Ast.slot_ty = Some ty } in
-    let src_slot = { src_slot with Ast.slot_ty = Some ty } in
-    let dst = deref_slot initializing dst dst_slot in
-    let src = deref_slot false src src_slot in
-      copy_ty ty_params ty dst src curr_iso
+    let (dst, dst_ty) = deref_ty initializing dst dst_ty in
+    let (src, src_ty) = deref_ty false src src_ty in
+      assert (dst_ty = ty);
+      assert (src_ty = ty);
+      copy_ty ty_params dst src ty curr_iso
 
   and trans_copy
       (initializing:bool)
       (dst:Ast.lval)
       (src:Ast.expr)
       : unit =
-    let (dst_cell, dst_slot) = trans_lval_maybe_init initializing dst in
-      match (slot_ty dst_slot, src) with
-          (Ast.TY_vec _,
+    let (dst_cell, dst_ty) = trans_lval_maybe_init initializing dst in
+    let rec can_append t =
+      match t with
+          Ast.TY_vec _
+        | Ast.TY_str -> true
+        | Ast.TY_exterior t when can_append t -> true
+        | _ -> false
+    in
+      match (dst_ty, src) with
+          (t,
            Ast.EXPR_binary (Ast.BINOP_add,
                             Ast.ATOM_lval a, Ast.ATOM_lval b))
-        | (Ast.TY_str,
-           Ast.EXPR_binary (Ast.BINOP_add,
-                            Ast.ATOM_lval a, Ast.ATOM_lval b)) ->
+            when can_append t ->
             (*
              * Translate str or vec
              * 
@@ -3003,14 +2985,14 @@ let trans_visitor
              *   s = a;
              *   s += b;
              *)
-            let (a_cell, a_slot) = trans_lval a in
-            let (b_cell, b_slot) = trans_lval b in
-              trans_copy_slot
+            let (a_cell, a_ty) = trans_lval a in
+            let (b_cell, b_ty) = trans_lval b in
+              trans_copy_ty
                 (get_ty_params_of_current_frame())
-                initializing dst_cell dst_slot
-                a_cell a_slot None;
-              trans_vec_append dst_cell dst_slot
-                (Il.Cell b_cell) (slot_ty b_slot)
+                initializing dst_cell dst_ty
+                a_cell a_ty None;
+              trans_vec_append dst_cell dst_ty
+                (Il.Cell b_cell) b_ty
 
 
         | (Ast.TY_obj caller_obj_ty,
@@ -3026,7 +3008,6 @@ let trans_visitor
                     | _ -> bug () "obj cast from non-obj type"
                 in
                 let src_cell = need_cell (trans_atom a) in
-                let src_slot = interior_slot src_ty in
 
                 (* FIXME (issue #84): this is wrong. It treats the underlying
                  * obj-state as the same as the callee and simply substitutes
@@ -3036,16 +3017,16 @@ let trans_visitor
                  * refcounted obj to hold the callee's vtbl+state pair, copy
                  * that in as the state here.  *)
                 let _ =
-                  trans_copy_slot (get_ty_params_of_current_frame())
+                  trans_copy_ty (get_ty_params_of_current_frame())
                     initializing
-                    dst_cell dst_slot
-                    src_cell src_slot
+                    dst_cell dst_ty
+                    src_cell src_ty
                 in
                 let caller_vtbl_oper =
                   get_forwarding_vtbl caller_obj_ty callee_obj_ty
                 in
-                let caller_obj =
-                  deref_slot initializing dst_cell dst_slot
+                let (caller_obj, _) =
+                  deref_ty initializing dst_cell dst_ty
                 in
                 let caller_vtbl =
                   get_element_ptr caller_obj Abi.binding_field_item
@@ -3061,19 +3042,19 @@ let trans_visitor
              * so copy is just MOV into the lval.
              *)
             let src_operand = trans_expr src in
-              mov (deref_slot false dst_cell dst_slot) src_operand
+              mov (fst (deref_ty false dst_cell dst_ty)) src_operand
 
         | (_, Ast.EXPR_atom (Ast.ATOM_lval src_lval)) ->
             if lval_is_direct_fn cx src_lval then
               trans_copy_direct_fn dst_cell src_lval
             else
               (* Possibly-large structure copying *)
-              let (src_cell, src_slot) = trans_lval src_lval in
-                trans_copy_slot
+              let (src_cell, src_ty) = trans_lval src_lval in
+                trans_copy_ty
                   (get_ty_params_of_current_frame())
                   initializing
-                  dst_cell dst_slot
-                  src_cell src_slot
+                  dst_cell dst_ty
+                  src_cell src_ty
                   None
 
   and trans_copy_direct_fn
@@ -3089,120 +3070,117 @@ let trans_visitor
     let dst_pair_binding_cell =
       get_element_ptr dst_cell Abi.binding_field_binding
     in
-
       mov dst_pair_item_cell (crate_rel_imm fix);
       mov dst_pair_binding_cell zero
 
 
   and trans_init_structural_from_atoms
       (dst:Il.cell)
-      (dst_slots:Ast.slot array)
+      (dst_tys:Ast.ty array)
       (atoms:Ast.atom array)
       : unit =
     Array.iteri
       begin
         fun i atom ->
-          trans_init_slot_from_atom
-            CLONE_none
+          trans_init_ty_from_atom
             (get_element_ptr_dyn_in_current_frame dst i)
-            dst_slots.(i)
-            atom
+            dst_tys.(i) atom
       end
       atoms
 
   and trans_init_rec_update
       (dst:Il.cell)
-      (dst_slots:Ast.slot array)
+      (dst_tys:Ast.ty array)
       (trec:Ast.ty_rec)
-      (atab:(Ast.ident * Ast.mode * bool * Ast.atom) array)
+      (atab:(Ast.ident * Ast.atom) array)
       (base:Ast.lval)
       : unit =
     Array.iteri
       begin
         fun i (fml_ident, _) ->
-          let fml_entry _ (act_ident, _, _, atom) =
+          let fml_entry _ (act_ident, atom) =
             if act_ident = fml_ident then Some atom else None
           in
-          let slot = dst_slots.(i) in
+          let dst_ty = dst_tys.(i) in
             match arr_search atab fml_entry with
                 Some atom ->
-                  trans_init_slot_from_atom
-                    CLONE_none
+                  trans_init_ty_from_atom
                     (get_element_ptr_dyn_in_current_frame dst i)
-                    slot
-                    atom
+                    dst_ty atom
               | None ->
-                  let (src, _) = trans_lval base in
-                    trans_copy_slot
+                  let (src, src_ty) = trans_lval base in
+                    trans_copy_ty
                       (get_ty_params_of_current_frame()) true
-                      (get_element_ptr_dyn_in_current_frame dst i) slot
-                      (get_element_ptr_dyn_in_current_frame src i) slot
+                      (get_element_ptr_dyn_in_current_frame dst i) dst_ty
+                      (get_element_ptr_dyn_in_current_frame src i) src_ty
                       None
       end
       trec
 
-  and trans_init_slot_from_atom
-      (clone:clone_ctrl)
-      (dst:Il.cell) (dst_slot:Ast.slot)
-      (atom:Ast.atom)
+  and trans_init_ty_from_atom
+      (dst:Il.cell) (ty:Ast.ty) (atom:Ast.atom)
       : unit =
-    let is_alias_cell =
-      match dst_slot.Ast.slot_mode with
-          Ast.MODE_alias _ -> true
-        | _ -> false
-    in
-      match atom with
-        | Ast.ATOM_literal _ ->
-            let src = trans_atom atom in
-              if is_alias_cell
-              then
-                match clone with
-                    CLONE_none ->
-                      (* Aliasing a literal is a bit weird since nobody
-                       * else will ever see it, but it seems harmless.
-                       *)
-                      mov dst (Il.Cell (alias (Il.Mem (force_to_mem src))))
-                  | _ ->
-                      bug () "attempting to clone alias cell"
-              else
-                mov (deref_slot true dst dst_slot) src
-        | Ast.ATOM_lval src_lval ->
-            let (src, src_slot) = trans_lval src_lval in
-              trans_init_slot_from_cell clone dst dst_slot src src_slot
+    let src = Il.Mem (force_to_mem (trans_atom atom)) in
+      trans_copy_ty (get_ty_params_of_current_frame())
+       true dst ty src ty None
 
   and trans_init_slot_from_cell
+      (ty_params:Il.cell)
       (clone:clone_ctrl)
       (dst:Il.cell) (dst_slot:Ast.slot)
-      (src:Il.cell) (src_slot:Ast.slot)
+      (src:Il.cell) (src_ty:Ast.ty)
       : unit =
-    assert (slot_ty src_slot = slot_ty dst_slot);
-    let is_alias_cell =
-      match dst_slot.Ast.slot_mode with
-          Ast.MODE_alias _ -> true
-        | _ -> false
-    in
-      match clone with
-          CLONE_chan clone_task ->
+    let dst_ty = slot_ty dst_slot in
+    assert (src_ty = dst_ty);
+    match (dst_slot.Ast.slot_mode, clone) with
+        (Ast.MODE_alias, CLONE_none) ->
+          mov dst (Il.Cell (alias (Il.Mem (need_mem_cell src))))
+
+      | (Ast.MODE_interior, CLONE_none) ->
+          trans_copy_ty
+            ty_params true
+            dst dst_ty src src_ty None
+
+      | (Ast.MODE_alias, _) ->
+          bug () "attempting to clone into alias slot"
+
+      | (_, CLONE_chan clone_task) ->
             let clone =
-              if (type_contains_chan (slot_ty src_slot))
+              if (type_contains_chan src_ty)
               then CLONE_all clone_task
               else CLONE_none
             in
-              trans_init_slot_from_cell clone dst dst_slot src src_slot
-        | CLONE_none ->
-            if is_alias_cell
-            then mov dst (Il.Cell (alias src))
-            else
-              trans_copy_slot
-                (get_ty_params_of_current_frame())
-                true dst dst_slot src src_slot None
-        | CLONE_all clone_task ->
-            if is_alias_cell
-            then bug () "attempting to clone alias cell"
-            else
-              clone_slot
-                (get_ty_params_of_current_frame())
-                clone_task dst src dst_slot None
+              (* Feed back with massaged args. *)
+              trans_init_slot_from_cell ty_params
+                clone dst dst_slot src src_ty
+
+      | (_, CLONE_all clone_task) ->
+          clone_ty ty_params clone_task dst src src_ty None
+
+
+  and trans_init_slot_from_atom
+      (clone:clone_ctrl)
+      (dst:Il.cell) (dst_slot:Ast.slot)
+      (src_atom:Ast.atom)
+      : unit =
+    match (dst_slot.Ast.slot_mode, clone, src_atom) with
+        (Ast.MODE_alias, CLONE_none,
+         Ast.ATOM_literal _) ->
+          (* Aliasing a literal is a bit weird since nobody
+           * else will ever see it, but it seems harmless.
+           *)
+          let src = trans_atom src_atom in
+            mov dst (Il.Cell (alias (Il.Mem (force_to_mem src))))
+
+      | (Ast.MODE_alias, CLONE_chan _, _)
+      | (Ast.MODE_alias, CLONE_all _, _) ->
+          bug () "attempting to clone into alias slot"
+      | _ ->
+          let src = Il.Mem (force_to_mem (trans_atom src_atom)) in
+            trans_init_slot_from_cell
+              (get_ty_params_of_current_frame())
+              clone dst dst_slot src (atom_type cx src_atom)
+
 
   and trans_be_fn
       (cx:ctxt)
@@ -3376,9 +3354,10 @@ let trans_visitor
     (* Emit arg1 of any call: the task pointer. *)
     iflog (fun _ -> annotate "fn-call arg 1: task pointer");
     trans_init_slot_from_cell
+      (get_ty_params_of_current_frame())
       CLONE_none
       arg_cell word_slot
-      abi.Abi.abi_tp_cell word_slot
+      abi.Abi.abi_tp_cell word_ty
 
   and trans_argN
       (clone:clone_ctrl)
@@ -3509,9 +3488,11 @@ let trans_visitor
                      annotate
                        (Printf.sprintf "fn-call ty param %d of %d"
                           i n_ty_params));
-            trans_init_slot_from_cell CLONE_none
+            trans_init_slot_from_cell
+              (get_ty_params_of_current_frame())
+              CLONE_none
               (get_element_ptr callee_ty_params i) word_slot
-              (get_tydesc None ty_param) word_slot
+              (get_tydesc None ty_param) word_ty
         end
         call.call_callee_ty_params;
 
@@ -3609,7 +3590,7 @@ let trans_visitor
                            (Printf.sprintf
                               "extract bound arg %d as actual arg %d"
                               !bound_i arg_i));
-                  get_element_ptr closure_args_cell (!bound_i);
+                  get_element_ptr closure_args_cell (!bound_i)
                 end
               else
                 begin
@@ -3623,9 +3604,10 @@ let trans_visitor
               iflog (fun _ -> annotate
                        (Printf.sprintf
                           "copy into actual-arg %d" arg_i));
-              trans_copy_slot
-                self_ty_params_cell
-                true dst_cell slot src_cell slot None;
+              trans_init_slot_from_cell
+                self_ty_params_cell CLONE_none
+                dst_cell slot
+                (deref_slot false src_cell slot) (slot_ty slot);
               incr (if is_bound then bound_i else unbound_i);
           done;
           assert ((!bound_i + !unbound_i) == n_args)
@@ -3765,7 +3747,7 @@ let trans_visitor
       let (pat, block) = arm.node in
         (* Translates the pattern and returns the addresses of the branch
          * instructions, which are taken if the match fails. *)
-      let rec trans_pat pat src_cell src_slot =
+      let rec trans_pat pat src_cell src_ty =
         match pat with
             Ast.PAT_lit lit ->
               trans_compare Il.JNE (trans_lit lit) (Il.Cell src_cell)
@@ -3773,7 +3755,7 @@ let trans_visitor
           | Ast.PAT_tag (lval, pats) ->
               let tag_name = tag_ctor_name_to_tag_name (lval_to_name lval) in
               let ty_tag =
-                match slot_ty src_slot with
+                match src_ty with
                     Ast.TY_tag tag_ty -> tag_ty
                   | Ast.TY_iso ti -> (ti.Ast.iso_group).(ti.Ast.iso_index)
                   | _ -> bug cx "expected tag type"
@@ -3781,9 +3763,6 @@ let trans_visitor
               let tag_keys = sorted_htab_keys ty_tag in
               let tag_number = arr_idx tag_keys tag_name in
               let ty_tup = Hashtbl.find ty_tag tag_name in
-
-              (* NB: follow any exterior pointer as we go. *)
-              let src_cell = deref_slot false src_cell src_slot in
 
               let tag_cell:Il.cell = get_element_ptr src_cell 0 in
               let union_cell =
@@ -3801,8 +3780,8 @@ let trans_visitor
                 let elem_cell =
                   get_element_ptr_dyn_in_current_frame tup_cell i
                 in
-                let elem_slot = ty_tup.(i) in
-                  trans_pat elem_pat elem_cell elem_slot
+                let elem_ty = ty_tup.(i) in
+                  trans_pat elem_pat elem_cell elem_ty
               in
 
               let elem_jumps = Array.mapi trans_elem_pat pats in
@@ -3811,11 +3790,10 @@ let trans_visitor
           | Ast.PAT_slot (dst, _) ->
               let dst_slot = get_slot cx dst.id in
               let dst_cell = cell_of_block_slot dst.id in
-                trans_copy_slot
-                  (get_ty_params_of_current_frame()) true
-                  dst_cell dst_slot
-                  src_cell src_slot
-                  None;
+                trans_init_slot_from_cell
+                  (get_ty_params_of_current_frame())
+                  CLONE_none dst_cell dst_slot
+                  src_cell src_ty;
                 []                (* irrefutable *)
 
           | Ast.PAT_wild -> []    (* irrefutable *)
@@ -3909,16 +3887,16 @@ let trans_visitor
     let (dst_slot, _) = fo.Ast.for_slot in
     let dst_cell = cell_of_block_slot dst_slot.id in
     let (head_stmts, seq) = fo.Ast.for_seq in
-    let (seq_cell, seq_slot) = trans_lval_full false seq in
-    let unit_slot = seq_unit_slot (slot_ty seq_slot) in
+    let (seq_cell, seq_ty) = trans_lval_full false seq in
+    let unit_ty = seq_unit_ty seq_ty in
       Array.iter trans_stmt head_stmts;
-      iter_seq_slots ty_params seq_cell seq_cell unit_slot
+      iter_seq_parts ty_params seq_cell seq_cell unit_ty
         begin
-          fun _ src_cell unit_slot curr_iso ->
-            trans_copy_slot
-              ty_params true
+          fun _ src_cell unit_ty _ ->
+            trans_init_slot_from_cell
+              ty_params CLONE_none
               dst_cell dst_slot.node
-              src_cell unit_slot curr_iso;
+              src_cell unit_ty;
             trans_block fo.Ast.for_body;
         end
         None
@@ -3978,13 +3956,10 @@ let trans_visitor
       mov vr zero;
       trans_call_glue (code_of_operand block_fptr) None [| vr; fp |]
 
-  and trans_vec_append dst_cell dst_slot src_oper src_ty =
-    let (dst_elt_slot, trim_trailing_null) =
-      match slot_ty dst_slot with
-          Ast.TY_str -> (interior_slot (Ast.TY_mach TY_u8), true)
-        | Ast.TY_vec e -> (e, false)
-        | _ ->  bug () "unexpected dst type in trans_vec_append"
-    in
+  and trans_vec_append dst_cell dst_ty src_oper src_ty =
+    let elt_ty = seq_unit_ty dst_ty in
+    let trim_trailing_null = dst_ty = Ast.TY_str in
+      assert (src_ty = dst_ty);
       match src_ty with
           Ast.TY_str
         | Ast.TY_vec _ ->
@@ -3992,12 +3967,6 @@ let trans_visitor
             let src_cell = need_cell src_oper in
             let src_vec = deref src_cell in
             let src_fill = get_element_ptr src_vec Abi.vec_elt_fill in
-            let src_elt_slot =
-              match src_ty with
-                  Ast.TY_str -> interior_slot (Ast.TY_mach TY_u8)
-                | Ast.TY_vec e -> e
-                | _ -> bug () "unexpected src type in trans_vec_append"
-            in
             let dst_vec = deref dst_cell in
             let dst_fill = get_element_ptr dst_vec Abi.vec_elt_fill in
               if trim_trailing_null
@@ -4018,12 +3987,11 @@ let trans_visitor
               let dst_fill = get_element_ptr dst_vec Abi.vec_elt_fill in
 
               (* Copy loop: *)
-              let pty s = Il.AddrTy (slot_referent_type abi s) in
-              let dptr = next_vreg_cell (pty dst_elt_slot) in
-              let sptr = next_vreg_cell (pty src_elt_slot) in
-              let dlim = next_vreg_cell (pty dst_elt_slot) in
-              let dst_elt_sz = slot_sz_in_current_frame dst_elt_slot in
-              let src_elt_sz = slot_sz_in_current_frame src_elt_slot in
+              let eltp_rty = Il.AddrTy (referent_type abi elt_ty) in
+              let dptr = next_vreg_cell eltp_rty in
+              let sptr = next_vreg_cell eltp_rty in
+              let dlim = next_vreg_cell eltp_rty in
+              let elt_sz = ty_sz_in_current_frame elt_ty in
               let dst_data =
                 get_element_ptr_dyn_in_current_frame
                   dst_vec Abi.vec_elt_data
@@ -4041,20 +4009,20 @@ let trans_visitor
                   emit (Il.jmp Il.JMP Il.CodeNone);
                   let back_jmp_targ = mark () in
                     (* copy slot *)
-                    trans_copy_slot
+                    trans_copy_ty
                       (get_ty_params_of_current_frame()) true
-                      (deref dptr) dst_elt_slot
-                      (deref sptr) src_elt_slot
+                      (deref dptr) elt_ty
+                      (deref sptr) elt_ty
                       None;
-                    add_to dptr dst_elt_sz;
-                    add_to sptr src_elt_sz;
+                    add_to dptr elt_sz;
+                    add_to sptr elt_sz;
                     patch fwd_jmp;
                     check_interrupt_flag ();
                     let back_jmp =
                       trans_compare Il.JB (Il.Cell dptr) (Il.Cell dlim) in
                       List.iter
                         (fun j -> patch_existing j back_jmp_targ) back_jmp;
-                      let v = next_vreg_cell word_ty in
+                      let v = next_vreg_cell word_sty in
                         mov v (Il.Cell src_fill);
                         add_to dst_fill (Il.Cell v);
         | t ->
@@ -4064,14 +4032,14 @@ let trans_visitor
 
 
   and trans_copy_binop dst binop a_src =
-    let (dst_cell, dst_slot) = trans_lval_maybe_init false dst in
+    let (dst_cell, dst_ty) = trans_lval_maybe_init false dst in
     let src_oper = trans_atom a_src in
-      match slot_ty dst_slot with
+      match dst_ty with
           Ast.TY_str
         | Ast.TY_vec _ when binop = Ast.BINOP_add ->
-            trans_vec_append dst_cell dst_slot src_oper (atom_type cx a_src)
+            trans_vec_append dst_cell dst_ty src_oper (atom_type cx a_src)
         | _ ->
-            let dst_cell = deref_slot false dst_cell dst_slot in
+            let (dst_cell, _) = deref_ty false dst_cell dst_ty in
             let op = trans_binop binop in
               emit (Il.binary op dst_cell (Il.Cell dst_cell) src_oper);
 
@@ -4159,46 +4127,43 @@ let trans_visitor
           end
 
       | Ast.STMT_init_rec (dst, atab, base) ->
-          let (slot_cell, slot) = trans_lval_init dst in
-          let (trec, dst_slots) =
-            match slot_ty slot with
+          let (slot_cell, ty) = trans_lval_init dst in
+          let (trec, dst_tys) =
+            match ty with
                 Ast.TY_rec trec -> (trec, Array.map snd trec)
               | _ ->
                   bugi cx stmt.id
                     "non-rec destination type in stmt_init_rec"
           in
-          let dst_cell = deref_slot true slot_cell slot in
+          let (dst_cell, _) = deref_ty true slot_cell ty in
             begin
               match base with
                   None ->
-                    let atoms =
-                      Array.map (fun (_, _, _, atom) -> atom) atab
-                    in
+                    let atoms = Array.map snd atab in
                       trans_init_structural_from_atoms
-                        dst_cell dst_slots atoms
+                        dst_cell dst_tys atoms
                 | Some base_lval ->
                     trans_init_rec_update
-                      dst_cell dst_slots trec atab base_lval
+                      dst_cell dst_tys trec atab base_lval
             end
 
-      | Ast.STMT_init_tup (dst, mode_atoms) ->
-          let (slot_cell, slot) = trans_lval_init dst in
-          let dst_slots =
-            match slot_ty slot with
+      | Ast.STMT_init_tup (dst, atoms) ->
+          let (slot_cell, ty) = trans_lval_init dst in
+          let dst_tys =
+            match ty with
                 Ast.TY_tup ttup -> ttup
               | _ ->
                   bugi cx stmt.id
                     "non-tup destination type in stmt_init_tup"
           in
-          let atoms = Array.map (fun (_, _, atom) -> atom) mode_atoms in
-          let dst_cell = deref_slot true slot_cell slot in
-            trans_init_structural_from_atoms dst_cell dst_slots atoms
+          let (dst_cell, _) = deref_ty true slot_cell ty in
+            trans_init_structural_from_atoms dst_cell dst_tys atoms
 
 
       | Ast.STMT_init_str (dst, s) ->
           trans_init_str dst s
 
-      | Ast.STMT_init_vec (dst, _, atoms) ->
+      | Ast.STMT_init_vec (dst, atoms) ->
           trans_init_vec dst atoms
 
       | Ast.STMT_init_port dst ->
@@ -4424,7 +4389,7 @@ let trans_visitor
 
   let trans_obj_ctor
       (obj_id:node_id)
-      (state:Ast.header_slots)
+      (header:Ast.header_slots)
       : unit =
     trans_frame_entry obj_id;
 
@@ -4439,21 +4404,14 @@ let trans_visitor
         all_args_cell Abi.calltup_elt_ty_params
     in
 
-    let obj_args_tup = Array.map (fun (sloti,_) -> sloti.node) state in
-    let obj_args_slot = interior_slot (Ast.TY_tup obj_args_tup) in
-    let state_ty =
-      Ast.TY_tup [| interior_slot Ast.TY_type;
-                    obj_args_slot |]
+    let obj_args_tup =
+      Array.map (fun (sloti,_) -> (slot_ty sloti.node)) header
     in
-    let state_rty = slot_referent_type abi (interior_slot state_ty) in
-    let state_ptr_slot = exterior_slot state_ty in
-    let state_ptr_rty = slot_referent_type abi state_ptr_slot in
-    let state_malloc_sz =
-      calculate_sz_in_current_frame
-        (SIZE_rt_add
-           ((SIZE_fixed (word_n Abi.exterior_rc_header_size)),
-            (Il.referent_ty_size word_bits state_rty)))
-    in
+    let obj_args_ty = Ast.TY_tup obj_args_tup in
+    let state_ty = Ast.TY_tup [| Ast.TY_type; obj_args_ty |] in
+    let state_ptr_ty = Ast.TY_exterior state_ty in
+    let state_ptr_rty = referent_type abi state_ptr_ty in
+    let state_malloc_sz = exterior_allocation_size state_ty in
 
     let ctor_ty = Hashtbl.find cx.ctxt_all_item_types obj_id in
     let obj_ty =
@@ -4508,10 +4466,17 @@ let trans_visitor
            * because the arg slot ids are actually given layout
            * positions inside the object state, and are at different
            * offsets within that state than within the current
-           * frame. So we manually drop the argument tuple here,
-           * without mentioning the arg slot ids.
+           * frame. So we manually drop the argument slots here,
+           * without mentioning the slot ids.
            *)
-          drop_slot frame_ty_params frame_args obj_args_slot None;
+          Array.iteri
+            (fun i (sloti, _) ->
+               let cell =
+                 get_element_ptr_dyn_in_current_frame
+                   frame_args i
+               in
+                 drop_slot frame_ty_params cell sloti.node None)
+            header;
           trans_frame_exit obj_id false;
   in
 
@@ -4682,27 +4647,32 @@ let trans_visitor
         | Ast.TY_iso tiso -> get_iso_tag tiso
         | _ -> bugi cx tagid "unexpected fn type for tag constructor"
     in
-    let slots =
-      Array.map (fun sloti -> referent_to_slot cx sloti.id) header_tup
-    in
     let tag_keys = sorted_htab_keys ttag in
     let i = arr_idx tag_keys (Ast.NAME_base (Ast.BASE_ident n)) in
     let _ = log cx "tag variant: %s -> tag value #%d" n i in
     let (dst_cell, dst_slot) = get_current_output_cell_and_slot() in
     let dst_cell = deref_slot true dst_cell dst_slot in
-    let src = get_explicit_args_for_current_frame () in
     let tag_cell = get_element_ptr dst_cell 0 in
     let union_cell = get_element_ptr_dyn_in_current_frame dst_cell 1 in
     let tag_body_cell = get_variant_ptr union_cell i in
     let tag_body_rty = snd (need_mem_cell tag_body_cell) in
+    let ty_params = get_ty_params_of_current_frame() in
       (* A clever compiler will inline this. We are not clever. *)
       iflog (fun _ -> annotate (Printf.sprintf "write tag #%d" i));
       mov tag_cell (imm (Int64.of_int i));
       iflog (fun _ -> annotate ("copy tag-content tuple: tag_body_rty=" ^
                                   (Il.string_of_referent_ty tag_body_rty)));
-      trans_copy_tup
-        (get_ty_params_of_current_frame())
-        true tag_body_cell src slots;
+      Array.iteri
+        begin
+          fun i sloti ->
+            let slot = sloti.node in
+            let ty = slot_ty slot in
+              trans_copy_ty ty_params true
+                (get_element_ptr_dyn_in_current_frame tag_body_cell i) ty
+                (deref_slot false (cell_of_block_slot sloti.id) slot) ty
+                None;
+        end
+        header_tup;
       trace_str cx.ctxt_sess.Session.sess_trace_tag
         ("finished tag constructor " ^ n);
       trans_frame_exit tagid true;

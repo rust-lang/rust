@@ -128,6 +128,13 @@ and parse_auto_slot_and_init
 and parse_stmts (ps:pstate) : Ast.stmt array =
   let apos = lexpos ps in
 
+  let ensure_mutable slot =
+    match slot.Ast.slot_ty with
+        None -> slot
+      | Some (Ast.TY_mutable _) -> slot
+      | Some t -> { slot with Ast.slot_ty = Some (Ast.TY_mutable t) }
+  in
+
   let rec name_to_lval (apos:pos) (bpos:pos) (name:Ast.name)
       : Ast.lval =
     match name with
@@ -236,7 +243,6 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
                                   Ast.NAME_base (Ast.BASE_ident ident) ->
                                     let slot =
                                       { Ast.slot_mode = Ast.MODE_interior;
-                                        Ast.slot_mutable = false;
                                         Ast.slot_ty = None }
                                     in
                                       Ast.PAT_slot
@@ -456,7 +462,7 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
           bump ps;
           let (stmts, slot, ident) =
             ctxt "stmt slot" parse_slot_and_ident_and_init ps in
-          let slot = Pexp.apply_mutability slot true in
+          let slot = ensure_mutable slot in
           let bpos = lexpos ps in
           let decl = Ast.DECL_slot (Ast.KEY_ident ident,
                                     (span ps apos bpos slot))
@@ -467,7 +473,7 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
           bump ps;
           let (stmts, slot, ident) =
             ctxt "stmt slot" parse_auto_slot_and_init ps in
-          let slot = Pexp.apply_mutability slot true in
+          let slot = ensure_mutable slot in
           let bpos = lexpos ps in
           let decl = Ast.DECL_slot (Ast.KEY_ident ident,
                                     (span ps apos bpos slot))
@@ -979,7 +985,9 @@ and expand_tags
                            (ps, "unexpected name type while expanding tag"))
             in
             let header =
-              Array.map (fun slot -> (clone_span ps item slot)) tup
+              Array.map (fun ty -> (clone_span ps item
+                                      { Ast.slot_mode = Ast.MODE_alias;
+                                        Ast.slot_ty = Some ty})) tup
             in
             let tag_item' = Ast.MOD_ITEM_tag (header, ttag, id) in
             let cloned_params =

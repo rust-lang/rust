@@ -67,7 +67,7 @@ let alias_analysis_visitor
           | Ast.STMT_recv (dst, _) -> alias dst
           | Ast.STMT_init_port (dst) -> alias dst
           | Ast.STMT_init_chan (dst, _) -> alias dst
-          | Ast.STMT_init_vec (dst, _, _) -> alias dst
+          | Ast.STMT_init_vec (dst, _) -> alias dst
           | Ast.STMT_init_str (dst, _) -> alias dst
           | Ast.STMT_for_each sfe ->
               let (slot, _) = sfe.Ast.for_each_slot in

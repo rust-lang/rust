@@ -33,12 +33,18 @@ let mutability_checking_visitor
       | _ -> ()
   in
 
-  let check_write id dst =
-    let dst_slot = lval_slot cx dst in
-      if (dst_slot.Ast.slot_mutable or
-            (Hashtbl.mem cx.ctxt_copy_stmt_is_init id))
+  let check_write s dst =
+    let dst_ty = lval_ty cx dst in
+    let is_mutable =
+      match dst_ty with
+          Ast.TY_mutable _ -> true
+        | _ -> false
+    in
+      if (is_mutable or (Hashtbl.mem cx.ctxt_copy_stmt_is_init s.id))
       then ()
-      else err (Some id) "writing to non-mutable slot"
+      else err (Some s.id)
+        "writing to non-mutable slot of type %a in statement %a"
+        Ast.sprintf_ty dst_ty Ast.sprintf_stmt s
   in
     (* FIXME (issue #75): enforce the no-write-alias-to-immutable-slot
      * rule.
@@ -46,10 +52,10 @@ let mutability_checking_visitor
   let visit_stmt_pre s =
     begin
       match s.node with
-          Ast.STMT_copy (dst, _) -> check_write s.id dst
-        | Ast.STMT_copy_binop (dst, _, _) -> check_write s.id dst
-        | Ast.STMT_call (dst, _, _) -> check_write s.id dst
-        | Ast.STMT_recv (dst, _) -> check_write s.id dst
+          Ast.STMT_copy (dst, _) -> check_write s dst
+        | Ast.STMT_copy_binop (dst, _, _) -> check_write s dst
+        | Ast.STMT_call (dst, _, _) -> check_write s dst
+        | Ast.STMT_recv (dst, _) -> check_write s dst
         | _ -> ()
     end;
     inner.Walk.visit_stmt_pre s
@@ -151,8 +157,7 @@ let function_effect_propagation_visitor
             in
               if lval_is_slot cx fn
               then
-                let t = lval_slot cx fn in
-                  lower_to_callee_ty (slot_ty t)
+                lower_to_callee_ty (lval_ty cx fn)
               else
                 begin
                   let item = lval_item cx fn in

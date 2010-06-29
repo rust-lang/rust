@@ -262,7 +262,7 @@ and walk_mod_item
       item
 
 
-and walk_ty_tup v ttup = Array.iter (walk_slot v) ttup
+and walk_ty_tup v ttup = Array.iter (walk_ty v) ttup
 
 and walk_ty_tag v ttag = Hashtbl.iter (fun _ t -> walk_ty_tup v t) ttag
 
@@ -273,8 +273,8 @@ and walk_ty
   let children _ =
     match ty with
         Ast.TY_tup ttup -> walk_ty_tup v ttup
-      | Ast.TY_vec s -> walk_slot v s
-      | Ast.TY_rec trec -> Array.iter (fun (_, s) -> walk_slot v s) trec
+      | Ast.TY_vec s -> walk_ty v s
+      | Ast.TY_rec trec -> Array.iter (fun (_, s) -> walk_ty v s) trec
       | Ast.TY_tag ttag -> walk_ty_tag v ttag
       | Ast.TY_iso tiso -> Array.iter (walk_ty_tag v) tiso.Ast.iso_group
       | Ast.TY_fn tfn -> walk_ty_fn v tfn
@@ -301,6 +301,8 @@ and walk_ty
       | Ast.TY_nil -> ()
       | Ast.TY_task -> ()
       | Ast.TY_any -> ()
+      | Ast.TY_exterior m -> walk_ty v m
+      | Ast.TY_mutable m -> walk_ty v m
   in
     walk_bracketed
       v.visit_ty_pre
@@ -448,16 +450,16 @@ and walk_stmt
 
       | Ast.STMT_init_rec (lv, atab, base) ->
           walk_lval v lv;
-          Array.iter (fun (_, _, _, a) -> walk_atom v a) atab;
+          Array.iter (fun (_, a) -> walk_atom v a) atab;
           walk_option (walk_lval v) base;
 
-      | Ast.STMT_init_vec (lv, _, atoms) ->
+      | Ast.STMT_init_vec (lv, atoms) ->
           walk_lval v lv;
           Array.iter (walk_atom v) atoms
 
       | Ast.STMT_init_tup (lv, mut_atoms) ->
           walk_lval v lv;
-          Array.iter (fun (_, _, a) -> walk_atom v a) mut_atoms
+          Array.iter (walk_atom v) mut_atoms
 
       | Ast.STMT_init_str (lv, _) ->
           walk_lval v lv
@@ -468,6 +470,10 @@ and walk_stmt
       | Ast.STMT_init_chan (chan,port) ->
           walk_option (walk_lval v) port;
           walk_lval v chan;
+
+      | Ast.STMT_init_exterior (dst, src) ->
+          walk_lval v dst;
+          walk_atom v src
 
       | Ast.STMT_for f ->
           walk_stmt_for f

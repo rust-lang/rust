@@ -9,11 +9,6 @@
 open Common;;
 open Fmt;;
 
-(*
- * Slot names are given by a dot-separated path within the current
- * module namespace.
- *)
-
 type ident = string
 ;;
 
@@ -70,11 +65,11 @@ and ty =
   | TY_str
 
   | TY_tup of ty_tup
-  | TY_vec of slot
+  | TY_vec of ty
   | TY_rec of ty_rec
 
   (*
-   * Note that ty_idx is only valid inside a slot of a ty_iso group, not
+   * Note that ty_idx is only valid inside a ty of a ty_iso group, not
    * in a general type term.
    *)
   | TY_tag of ty_tag
@@ -93,18 +88,25 @@ and ty =
   | TY_named of name
   | TY_type
 
+  | TY_exterior of ty
+  | TY_mutable of ty
+
   | TY_constrained of (ty * constrs)
 
+(*
+ * FIXME: this should be cleaned up to be a different
+ * type definition. Only args can be by-ref, only locals
+ * can be auto. The structure here is historical.
+ *)
+
 and mode =
-    MODE_exterior
   | MODE_interior
   | MODE_alias
 
 and slot = { slot_mode: mode;
-             slot_mutable: bool;
              slot_ty: ty option; }
 
-and ty_tup = slot array
+and ty_tup = ty array
 
 (* In closed type terms a constraint may refer to components of the term by
  * anchoring off the "formal symbol" '*', which represents "the term this
@@ -147,7 +149,7 @@ and constr =
 
 and constrs = constr array
 
-and ty_rec = (ident * slot) array
+and ty_rec = (ident * ty) array
 
 (* ty_tag is a sum type.
  *
@@ -185,9 +187,9 @@ and ty_obj = (effect * ((ident,ty_fn) Hashtbl.t))
 
 and check_calls = (lval * (atom array)) array
 
-and rec_input = (ident * mode * bool * atom)
+and rec_input = (ident * atom)
 
-and tup_input = (mode * bool * atom)
+and tup_input = atom
 
 and stmt' =
 
@@ -195,10 +197,11 @@ and stmt' =
     STMT_spawn of (lval * domain * lval * (atom array))
   | STMT_init_rec of (lval * (rec_input array) * lval option)
   | STMT_init_tup of (lval * (tup_input array))
-  | STMT_init_vec of (lval * slot * (atom array))
+  | STMT_init_vec of (lval * atom array)
   | STMT_init_str of (lval * string)
   | STMT_init_port of lval
   | STMT_init_chan of (lval * (lval option))
+  | STMT_init_exterior of (lval * atom)
   | STMT_copy of (lval * expr)
   | STMT_copy_binop of (lval * binop * atom)
   | STMT_call of (lval * lval * (atom array))
@@ -516,13 +519,8 @@ and fmt_name (ff:Format.formatter) (n:name) : unit =
         fmt ff ".";
         fmt_name_component ff nc
 
-and fmt_mutable (ff:Format.formatter) (m:bool) : unit =
-  if m
-  then fmt ff "mutable ";
-
 and fmt_mode (ff:Format.formatter) (m:mode) : unit =
   match m with
-      MODE_exterior -> fmt ff "@@"
     | MODE_alias -> fmt ff "&"
     | MODE_interior -> ()
 
@@ -530,9 +528,26 @@ and fmt_slot (ff:Format.formatter) (s:slot) : unit =
   match s.slot_ty with
       None -> fmt ff "auto"
     | Some t ->
-        fmt_mutable ff s.slot_mutable;
         fmt_mode ff s.slot_mode;
         fmt_ty ff t
+
+and fmt_tys
+    (ff:Format.formatter)
+    (tys:ty array)
+    : unit =
+  fmt_bracketed_arr_sep "(" ")" "," fmt_ty ff tys
+
+and fmt_ident_tys
+    (ff:Format.formatter)
+    (entries:(ident * ty) array)
+    : unit =
+  fmt_bracketed_arr_sep "(" ")" ","
+    (fun ff (ident, ty) ->
+       fmt_ty ff ty;
+       fmt ff " ";
+       fmt_ident ff ident)
+    ff
+    entries
 
 and fmt_slots
     (ff:Format.formatter)
@@ -594,7 +609,7 @@ and fmt_tag (ff:Format.formatter) (ttag:ty_tag) : unit =
            then first := false
            else fmt ff ",@ ");
           fmt_name ff name;
-          fmt_slots ff ttup None
+          fmt_tys ff ttup
       end
       ttag;
     fmt ff "@])@]"
@@ -623,19 +638,15 @@ and fmt_ty (ff:Format.formatter) (t:ty) : unit =
   | TY_char -> fmt ff "char"
   | TY_str -> fmt ff "str"
 
-  | TY_tup slots -> (fmt ff "tup"; fmt_slots ff slots None)
-  | TY_vec s -> (fmt ff "vec["; fmt_slot ff s; fmt ff "]")
+  | TY_tup tys -> (fmt ff "tup"; fmt_tys ff tys)
+  | TY_vec t -> (fmt ff "vec["; fmt_ty ff t; fmt ff "]")
   | TY_chan t -> (fmt ff "chan["; fmt_ty ff t; fmt ff "]")
   | TY_port t -> (fmt ff "port["; fmt_ty ff t; fmt ff "]")
 
-  | TY_rec slots ->
-      let (idents, slots) =
-        let (idents, slots) = List.split (Array.to_list slots) in
-          (Array.of_list idents, Array.of_list slots)
-      in
-        fmt ff "@[rec";
-        fmt_slots ff slots (Some idents);
-        fmt ff "@]"
+  | TY_rec entries ->
+      fmt ff "@[rec";
+      fmt_ident_tys ff entries;
+      fmt ff "@]"
 
   | TY_param (i, e) -> (fmt_effect ff e;
                         if e <> PURE then fmt ff " ";
@@ -643,6 +654,14 @@ and fmt_ty (ff:Format.formatter) (t:ty) : unit =
   | TY_native oid -> fmt ff "<native#%d>" (int_of_opaque oid)
   | TY_named n -> fmt_name ff n
   | TY_type -> fmt ff "type"
+
+  | TY_exterior t ->
+      fmt ff "@@";
+      fmt_ty ff t
+
+  | TY_mutable t ->
+      fmt ff "mutable ";
+      fmt_ty ff t
 
   | TY_fn tfn -> fmt_ty_fn ff None tfn
   | TY_task -> fmt ff "task"
@@ -964,7 +983,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           fmt_lval ff lv;
           fmt ff " ";
           fmt_binop ff binop;
-          fmt ff "=";
+          fmt ff "= ";
           fmt_atom ff at;
           fmt ff ";"
 
@@ -999,11 +1018,9 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           do
             if i != 0
             then fmt ff ", ";
-            let (ident, mode, mut, atom) = entries.(i) in
+            let (ident, atom) = entries.(i) in
               fmt_ident ff ident;
               fmt ff " = ";
-              fmt_mutable ff mut;
-              fmt_mode ff mode;
               fmt_atom ff atom;
           done;
           begin
@@ -1015,7 +1032,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           end;
           fmt ff ");"
 
-      | STMT_init_vec (dst, _, atoms) ->
+      | STMT_init_vec (dst, atoms) ->
           fmt_lval ff dst;
           fmt ff " = vec(";
           for i = 0 to (Array.length atoms) - 1
@@ -1033,10 +1050,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           do
             if i != 0
             then fmt ff ", ";
-            let (mode, mut, atom) = entries.(i) in
-              fmt_mutable ff mut;
-              fmt_mode ff mode;
-              fmt_atom ff atom;
+            fmt_atom ff entries.(i);
           done;
           fmt ff ");";
 
@@ -1151,6 +1165,12 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
       | STMT_join t ->
           fmt ff "join ";
           fmt_lval ff t;
+          fmt ff ";"
+
+      | STMT_init_exterior (lv, at) ->
+          fmt_lval ff lv;
+          fmt ff " = @";
+          fmt_atom ff at;
           fmt ff ";"
 
       | STMT_alt_tag _ -> fmt ff "?stmt_alt_tag?"
@@ -1321,7 +1341,6 @@ let sprintf_lval_component = sprintf_fmt fmt_lval_component;;
 let sprintf_atom = sprintf_fmt fmt_atom;;
 let sprintf_slot = sprintf_fmt fmt_slot;;
 let sprintf_slot_key = sprintf_fmt fmt_slot_key;;
-let sprintf_mutable = sprintf_fmt fmt_mutable;;
 let sprintf_ty = sprintf_fmt fmt_ty;;
 let sprintf_effect = sprintf_fmt fmt_effect;;
 let sprintf_tag = sprintf_fmt fmt_tag;;

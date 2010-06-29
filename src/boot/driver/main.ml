@@ -316,8 +316,8 @@ let main_pipeline _ =
          exit_if_failed ())
       [| Resolve.process_crate;
          Type.process_crate;
-         Effect.process_crate;
          Typestate.process_crate;
+         Effect.process_crate;
          Loop.process_crate;
          Alias.process_crate;
          Dead.process_crate;

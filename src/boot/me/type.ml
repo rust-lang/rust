@@ -33,6 +33,23 @@ type binopsig =
   | BINOPSIG_plus_plus_plus     (* plusable a * plusable a -> plusable a *)
 ;;
 
+
+(* In some instances we will strip off a layer of mutability or exterior-ness,
+ * as trans is willing to transplant and/or overlook mutability / exterior
+ * differences wrt. many operators.
+ * 
+ * Note: there is a secondary mutability-checking pass in effect.ml to ensure
+ * you're not actually mutating the insides of an immutable. That's not the
+ * typechecker's job.
+ *)
+let simplified t =
+  match t with
+      Ast.TY_mutable (Ast.TY_exterior t) -> t
+    | Ast.TY_mutable t -> t
+    | Ast.TY_exterior t -> t
+    | _ -> t
+;;
+
 let rec tyspec_to_str (ts:tyspec) : string =
 
   let fmt = Format.fprintf in
@@ -253,17 +270,14 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           (dct:dict)
           (fields:Ast.ty_rec)
           : unit =
-        let rec find_slot (query:Ast.ident) i : Ast.slot =
-          if i = Array.length fields
-          then fail ()
-          else match fields.(i) with
-              (ident, slot) ->
-                if ident = query then slot
-                else find_slot query (i + 1)
+        let find_ty (query:Ast.ident) : Ast.ty =
+          match atab_search fields query with
+              None -> fail()
+            | Some t -> t
         in
 
         let check_entry ident tv =
-          unify_slot (find_slot ident 0) None tv
+          unify_ty (find_ty ident) tv
         in
           Hashtbl.iter check_entry dct
       in
@@ -290,18 +304,20 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | Ast.TY_fn _ | Ast.TY_obj _
           | Ast.TY_param _ | Ast.TY_native _ | Ast.TY_type -> false
           | Ast.TY_named _ -> bug () "unexpected named type"
+          | Ast.TY_exterior ty
+          | Ast.TY_mutable ty
           | Ast.TY_constrained (ty, _) ->
               is_comparable_or_ordered comparable ty
       in
 
       let floating (ty:Ast.ty) : bool =
-        match ty with
+        match simplified ty with
             Ast.TY_mach TY_f32 | Ast.TY_mach TY_f64 -> true
           | _ -> false
       in
 
       let integral (ty:Ast.ty) : bool =
-        match ty with
+        match simplified ty with
             Ast.TY_int | Ast.TY_uint | Ast.TY_mach TY_u8 | Ast.TY_mach TY_u16
           | Ast.TY_mach TY_u32 | Ast.TY_mach TY_u64 | Ast.TY_mach TY_i8
           | Ast.TY_mach TY_i16 | Ast.TY_mach TY_i32
@@ -313,7 +329,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
       let numeric (ty:Ast.ty) : bool = (integral ty) || (floating ty) in
 
       let plusable (ty:Ast.ty) : bool =
-        match ty with
+        match simplified ty with
             Ast.TY_str -> true
           | Ast.TY_vec _ -> true
           | _ -> numeric ty
@@ -369,7 +385,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_collection tv, TYSPEC_resolved (params, ty)) ->
               begin
                 match ty with
-                    Ast.TY_vec slot -> unify_slot slot None tv
+                    Ast.TY_vec ty -> unify_ty ty tv
                   | Ast.TY_str -> unify_ty (Ast.TY_mach TY_u8) tv
                   | _ -> fail ()
               end;
@@ -439,12 +455,12 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_tuple tvs, TYSPEC_resolved (params, ty)) ->
               begin
                 match ty with
-                    Ast.TY_tup (elem_slots:Ast.slot array) ->
-                      if (Array.length elem_slots) < (Array.length tvs)
+                    Ast.TY_tup (elem_tys:Ast.ty array) ->
+                      if (Array.length elem_tys) <> (Array.length tvs)
                       then fail ()
                       else
                         let check_elem i tv =
-                          unify_slot (elem_slots.(i)) None tv
+                          unify_ty (elem_tys.(i)) tv
                         in
                           Array.iteri check_elem tvs
                   | _ -> fail ()
@@ -455,9 +471,9 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_vector tv, TYSPEC_resolved (params, ty)) ->
               begin
                 match ty with
-                    Ast.TY_vec slot ->
-                      unify_slot slot None tv;
-                      TYSPEC_resolved (params, ty)
+                    Ast.TY_vec ty ->
+                      unify_ty ty tv;
+                      TYSPEC_resolved (params, Ast.TY_vec ty)
                   | _ -> fail ()
               end
 
@@ -942,7 +958,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                 unify_lval' base base_tv;
                 match !(resolve_tyvar base_tv) with
                     TYSPEC_resolved (_, ty) ->
-                      unify_ty (slot_ty (project_type_to_slot ty comp)) tv
+                      unify_ty (project_type ty comp) tv
                   | _ ->
                       ()
 
@@ -981,7 +997,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         | Ast.STMT_init_rec (lval, fields, Some base) ->
             let dct = Hashtbl.create 10 in
             let tvrec = ref (TYSPEC_record dct) in
-            let add_field (ident, _, _, atom) =
+            let add_field (ident, atom) =
               let tv = ref TYSPEC_all in
                 unify_atom atom tv;
                 Hashtbl.add dct ident tv
@@ -994,7 +1010,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
         | Ast.STMT_init_rec (lval, fields, None) ->
             let dct = Hashtbl.create 10 in
-            let add_field (ident, _, _, atom) =
+            let add_field (ident, atom) =
               let tv = ref TYSPEC_all in
                 unify_atom atom tv;
                 Hashtbl.add dct ident tv
@@ -1003,7 +1019,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               unify_lval lval (ref (TYSPEC_record dct))
 
         | Ast.STMT_init_tup (lval, members) ->
-            let member_to_tv (_, _, atom) =
+            let member_to_tv atom =
               let tv = ref TYSPEC_all in
                 unify_atom atom tv;
                 tv
@@ -1011,7 +1027,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             let member_tvs = Array.map member_to_tv members in
               unify_lval lval (ref (TYSPEC_tuple member_tvs))
 
-        | Ast.STMT_init_vec (lval, _, atoms) ->
+        | Ast.STMT_init_vec (lval, atoms) ->
             let tv = ref TYSPEC_all in
             let unify_with_tv atom = unify_atom atom tv in
               Array.iter unify_with_tv atoms;
@@ -1181,8 +1197,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                     Ast.TY_fn (tsig, _) ->
                       begin
                         let vec_str =
-                          interior_slot (Ast.TY_vec
-                                           (interior_slot Ast.TY_str))
+                          interior_slot (Ast.TY_vec Ast.TY_str)
                         in
                           match tsig.Ast.sig_input_slots with
                               [| |] -> ()
@@ -1236,13 +1251,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                 let tag_tv = ref TYSPEC_all in
                   unify_ty tag_ty tag_tv;
                   unify_tyvars expected tag_tv;
-                  List.iter
-                    begin
-                      fun slot ->
-                        match slot.Ast.slot_ty with
-                          Some ty -> expect ty
-                          | None -> bug () "no slot type in tag slot tuple"
-                    end
+                  List.iter expect
                     (List.rev (Array.to_list tag_ty_tup));
 
           | Ast.PAT_slot (sloti, _) ->
@@ -1336,8 +1345,14 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           let defn = Hashtbl.find cx.ctxt_all_defns id in
             match defn with
                 DEFN_slot slot_defn ->
-                  Hashtbl.replace cx.ctxt_all_defns id
-                    (DEFN_slot { slot_defn with Ast.slot_ty = Some ty })
+                  begin
+                    match slot_defn.Ast.slot_ty with
+                        Some _ -> ()
+                      | None ->
+                          Hashtbl.replace cx.ctxt_all_defns id
+                            (DEFN_slot { slot_defn with
+                                           Ast.slot_ty = Some ty })
+                  end
               | _ -> bug () "check_auto_tyvar: no slot defn"
         in
 
@@ -1349,7 +1364,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                   begin
                     match !(resolve_tyvar tv) with
                         TYSPEC_resolved ([||], ty) ->
-                          (Ast.TY_vec (interior_slot ty))
+                          (Ast.TY_vec ty)
                       | _ ->
                           err (Some id)
                             "unresolved vector-element type in %s (%d)"

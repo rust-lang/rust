@@ -112,29 +112,35 @@ let word_ty_signed_mach (abi:Abi.abi) : ty_mach =
 ;;
 
 
-let slot_mem_ctrl (slot:Ast.slot) : mem_ctrl =
-  let ty = slot_ty slot in
-    match ty with
-        Ast.TY_port _
-      | Ast.TY_chan _
-      | Ast.TY_task
-      | Ast.TY_str -> MEM_rc_opaque
-      | Ast.TY_vec _ ->
-          if type_has_state ty
-          then MEM_gc
+let rec ty_mem_ctrl (ty:Ast.ty) : mem_ctrl =
+  match ty with
+      Ast.TY_port _
+    | Ast.TY_chan _
+    | Ast.TY_task
+    | Ast.TY_str -> MEM_rc_opaque
+    | Ast.TY_vec _ ->
+        if type_has_state ty
+        then MEM_gc
+        else MEM_rc_opaque
+    | Ast.TY_exterior t ->
+        if type_has_state t
+        then MEM_gc
+        else
+          if type_is_structured t
+          then MEM_rc_struct
           else MEM_rc_opaque
-      | _ ->
-          match slot.Ast.slot_mode with
-              Ast.MODE_exterior _ when type_is_structured ty ->
-                if type_has_state ty
-                then MEM_gc
-                else MEM_rc_struct
-            | Ast.MODE_exterior _ ->
-                if type_has_state ty
-                then MEM_gc
-                else MEM_rc_opaque
-            | _ ->
-                MEM_interior
+    | Ast.TY_mutable t
+    | Ast.TY_constrained (t, _) ->
+        ty_mem_ctrl t
+    | _ ->
+        MEM_interior
+;;
+
+let slot_mem_ctrl (slot:Ast.slot) : mem_ctrl =
+  match slot.Ast.slot_mode with
+      Ast.MODE_alias -> MEM_interior
+    | Ast.MODE_interior ->
+        ty_mem_ctrl (slot_ty slot)
 ;;
 
 
@@ -200,33 +206,33 @@ let next_power_of_two (x:int64) : int64 =
     Int64.add 1L (!xr)
 ;;
 
-let iter_tup_slots
+let iter_tup_parts
     (get_element_ptr:'a -> int -> 'a)
     (dst_ptr:'a)
     (src_ptr:'a)
     (slots:Ast.ty_tup)
-    (f:'a -> 'a -> Ast.slot -> (Ast.ty_iso option) -> unit)
+    (f:'a -> 'a -> Ast.ty -> (Ast.ty_iso option) -> unit)
     (curr_iso:Ast.ty_iso option)
     : unit =
   Array.iteri
     begin
-      fun i slot ->
+      fun i ty ->
         f (get_element_ptr dst_ptr i)
           (get_element_ptr src_ptr i)
-          slot curr_iso
+          ty curr_iso
     end
     slots
 ;;
 
-let iter_rec_slots
+let iter_rec_parts
     (get_element_ptr:'a -> int -> 'a)
     (dst_ptr:'a)
     (src_ptr:'a)
     (entries:Ast.ty_rec)
-    (f:'a -> 'a -> Ast.slot -> (Ast.ty_iso option) -> unit)
+    (f:'a -> 'a -> Ast.ty -> (Ast.ty_iso option) -> unit)
     (curr_iso:Ast.ty_iso option)
     : unit =
-  iter_tup_slots get_element_ptr dst_ptr src_ptr
+  iter_tup_parts get_element_ptr dst_ptr src_ptr
     (Array.map snd entries) f curr_iso
 ;;
 
