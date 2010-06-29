@@ -21,6 +21,7 @@ static uint32_t read_type_bit_mask() {
         bits |= strstr(env_str, "dwarf") ? rust_log::DWARF : 0;
         bits |= strstr(env_str, "cache") ? rust_log::CACHE : 0;
         bits |= strstr(env_str, "timer") ? rust_log::TIMER : 0;
+        bits |= strstr(env_str, "gc") ? rust_log::GC : 0;
         bits |= strstr(env_str, "all") ? rust_log::ALL : 0;
     }
     return bits;

@@ -44,6 +44,7 @@ public:
         CACHE = 0x100,
         UPCALL = 0x200,
         TIMER = 0x400,
+        GC = 0x800,
         ALL = 0xffffffff
     };
 

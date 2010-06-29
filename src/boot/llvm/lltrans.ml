@@ -196,7 +196,7 @@ let trans_crate
       (lltask:Llvm.llvalue)
       (src:Llvm.llvalue)
       : unit =
-    upcall llbuilder lltask "upcall_free" None [| src |]
+    upcall llbuilder lltask "upcall_free" None [| src; const_i32 0 |]
   in
 
   (*

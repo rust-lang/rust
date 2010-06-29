@@ -1082,7 +1082,7 @@ let trans_visitor
                      [|
                        get_copy_glue t None;
                        get_drop_glue t None;
-                       get_free_glue t (slot_mem_ctrl (interior_slot t)) None;
+                       get_free_glue t (type_has_state t) None;
                        get_sever_glue t None;
                        get_mark_glue t None;
                      |];
@@ -1580,7 +1580,7 @@ let trans_visitor
 
   and get_free_glue
       (ty:Ast.ty)
-      (mctrl:mem_ctrl)
+      (is_gc:bool)
       (curr_iso:Ast.ty_iso option)
       : fixup =
     let g = GLUE_free ty in
@@ -1604,49 +1604,7 @@ let trans_visitor
         trans_call_simple_static_glue
           (get_drop_glue ty curr_iso) ty_params vr;
         note_drop_step ty "back in free-glue, calling free";
-        if type_has_state ty
-        then
-          note_drop_step ty "type has state"
-        else
-          note_drop_step ty "type has no state";
-        if mctrl = MEM_gc
-        then
-          begin
-            note_drop_step ty "MEM_gc, unlinking from GC chain";
-            let pcast c =
-              rty_ptr_at (fst (need_mem_cell c)) (Il.ScalarTy wordptr_ty)
-            in
-            let next = pcast (exterior_gc_next_cell cell) in
-            let prev = pcast (exterior_gc_prev_cell cell) in
-
-              note_drop_step ty "MEM_gc, next->prev = prev";
-              let skip_null_next_jmp = null_check next in
-                mov (exterior_gc_prev_cell next) (Il.Cell prev);
-                patch skip_null_next_jmp;
-
-                let skip_null_prev_jmp = null_check prev in
-                  note_drop_step ty "MEM_gc, prev->next = next";
-                  mov (exterior_gc_next_cell prev) (Il.Cell next);
-                  let skip_set_task_chain_jmp = mark () in
-                    emit (Il.jmp Il.JMP Il.CodeNone);
-                    patch skip_null_prev_jmp;
-                    note_drop_step ty "MEM_gc, task->chain = next";
-                    let chain =
-                      tp_imm (word_n Abi.task_field_gc_alloc_chain)
-                    in
-                      mov chain (Il.Cell next);
-                      patch skip_set_task_chain_jmp;
-
-                      note_drop_step ty "MEM_gc, freeing";
-                      lea vr (fst (need_mem_cell
-                                     (exterior_gc_alloc_base cell)));
-                      trans_free vr;
-          end
-        else
-          begin
-            note_drop_step ty "not MEM_gc";
-            trans_free cell;
-          end;
+        trans_free cell is_gc;
         trace_str cx.ctxt_sess.Session.sess_trace_drop
           "free-glue complete";
     in
@@ -2091,11 +2049,16 @@ let trans_visitor
             trans_cond_fail (Fmt.fmt_to_str Ast.fmt_expr e) fwd_jmps
       | _ -> bugi cx id "check expr on non-bool"
 
-  and trans_malloc (dst:Il.cell) (nbytes:Il.operand) : unit =
-    trans_upcall "upcall_malloc" dst [| nbytes |]
+  and trans_malloc
+      (dst:Il.cell)
+      (nbytes:Il.operand)
+      (gc_ctrl_word:Il.operand)
+      : unit =
+    trans_upcall "upcall_malloc" dst [| nbytes; gc_ctrl_word |]
 
-  and trans_free (src:Il.cell) : unit =
-    trans_void_upcall "upcall_free" [| Il.Cell src |]
+  and trans_free (src:Il.cell) (is_gc:bool) : unit =
+    let is_gc = if is_gc then 1L else 0L in
+      trans_void_upcall "upcall_free" [| Il.Cell src; imm is_gc |]
 
   and trans_yield () : unit =
     trans_void_upcall "upcall_yield" [| |];
@@ -2172,14 +2135,20 @@ let trans_visitor
 
   and trans_init_vec (dst:Ast.lval) (atoms:Ast.atom array) : unit =
     let (dst_cell, dst_slot) = trans_lval_init dst in
-    let unit_slot = match slot_ty dst_slot with
+    let dst_ty = slot_ty dst_slot in
+    let gc_ctrl =
+      if (slot_mem_ctrl dst_slot) = MEM_gc
+      then Il.Cell (get_tydesc None (slot_ty dst_slot))
+      else zero
+    in
+    let unit_slot = match dst_ty with
         Ast.TY_vec s -> s
       | _ -> bug () "init dst of vec-init has non-vec type"
     in
     let fill = next_vreg_cell word_ty in
     let unit_sz = slot_sz_in_current_frame unit_slot in
       umul fill unit_sz (imm (Int64.of_int (Array.length atoms)));
-      trans_upcall "upcall_new_vec" dst_cell [| Il.Cell fill |];
+      trans_upcall "upcall_new_vec" dst_cell [| Il.Cell fill; gc_ctrl |];
       let vec = deref dst_cell in
         let body_mem =
           fst (need_mem_cell
@@ -2251,24 +2220,12 @@ let trans_visitor
   and exterior_rc_cell (cell:Il.cell) : Il.cell =
     exterior_ctrl_cell cell Abi.exterior_rc_slot_field_refcnt
 
-  and exterior_gc_ctrl_cell (cell:Il.cell) : Il.cell =
-    exterior_ctrl_cell cell Abi.exterior_gc_slot_field_ctrl
-
-  and exterior_gc_next_cell (cell:Il.cell) : Il.cell =
-    exterior_ctrl_cell cell Abi.exterior_gc_slot_field_next
-
-  and exterior_gc_prev_cell (cell:Il.cell) : Il.cell =
-    exterior_ctrl_cell cell Abi.exterior_gc_slot_field_prev
-
-  and exterior_gc_alloc_base (cell:Il.cell) : Il.cell =
-    exterior_ctrl_cell cell Abi.exterior_gc_slot_alloc_base
-
   and exterior_allocation_size
       (slot:Ast.slot)
       : Il.operand =
     let header_sz =
       match slot_mem_ctrl slot with
-          MEM_gc -> word_n Abi.exterior_gc_header_size
+          MEM_gc
         | MEM_rc_opaque
         | MEM_rc_struct -> word_n Abi.exterior_rc_header_size
         | MEM_interior -> bug () "exterior_allocation_size of MEM_interior"
@@ -2494,7 +2451,10 @@ let trans_visitor
               (* Drop the body. *)
               trans_call_dynamic_glue tydesc
                 Abi.tydesc_field_drop_glue None [| ty_params; alias body |];
-              trans_free binding;
+              (* FIXME: this will fail if the user has lied about the
+               * state-ness of their obj. We need to store state-ness in the
+               * captured tydesc, and use that.  *)
+              trans_free binding (type_has_state ty);
               mov binding zero;
               patch rc_jmp;
               patch null_jmp
@@ -2620,6 +2580,7 @@ let trans_visitor
             curr_iso
 
   and free_ty
+      (is_gc:bool)
       (ty_params:Il.cell)
       (ty:Ast.ty)
       (cell:Il.cell)
@@ -2632,9 +2593,9 @@ let trans_visitor
       | Ast.TY_vec s ->
           iter_seq_slots ty_params cell cell s
             (fun _ src slot iso -> drop_slot ty_params src slot iso) curr_iso;
-          trans_free cell
+          trans_free cell is_gc
 
-      | _ -> trans_free cell
+      | _ -> trans_free cell is_gc
 
   and maybe_iso
       (curr_iso:Ast.ty_iso option)
@@ -2700,38 +2661,24 @@ let trans_visitor
     let ty = slot_ty slot in
       match slot_mem_ctrl slot with
           MEM_gc ->
-            note_gc_step slot "mark GC slot: check for null:";
-            emit (Il.cmp (Il.Cell cell) zero);
-            let null_cell_jump = mark () in
-              emit (Il.jmp Il.JE Il.CodeNone);
-              let gc_word = exterior_gc_ctrl_cell cell in
-              let tmp = next_vreg_cell Il.voidptr_t in
-                (* if this has been marked already, jump to exit.*)
-                note_gc_step slot "mark GC slot: check for mark:";
-                emit (Il.binary Il.AND tmp (Il.Cell gc_word) one);
-                trace_word cx.ctxt_sess.Session.sess_trace_gc tmp;
-
-                let already_marked_jump =
-                  trans_compare Il.JNE (Il.Cell tmp) zero;
-                in
-                  (* Set mark bit in allocation header. *)
-                  emit (Il.binary Il.OR gc_word (Il.Cell gc_word) one);
-                  note_gc_step slot "mark GC slot: set mark";
-                  (* Iterate over exterior slots marking outgoing links. *)
-                  let (body_mem, _) =
-                    need_mem_cell
-                      (get_element_ptr (deref cell)
-                         Abi.exterior_gc_slot_field_body)
-                  in
-                  let ty = maybe_iso curr_iso ty in
-                  let curr_iso = maybe_enter_iso ty curr_iso in
-                    lea tmp body_mem;
-                    trans_call_simple_static_glue
-                      (get_mark_glue ty curr_iso)
-                      ty_params tmp;
-                    patch null_cell_jump;
-                    List.iter patch already_marked_jump;
-                    note_gc_step slot "mark GC slot: done marking:";
+            let tmp = next_vreg_cell Il.voidptr_t in
+            trans_upcall "upcall_mark" tmp [| Il.Cell cell |];
+              let marked_jump =
+                trans_compare Il.JE (Il.Cell tmp) zero;
+              in
+                (* Iterate over exterior slots marking outgoing links. *)
+              let (body_mem, _) =
+                need_mem_cell
+                  (get_element_ptr (deref cell)
+                     Abi.exterior_gc_slot_field_body)
+              in
+              let ty = maybe_iso curr_iso ty in
+              let curr_iso = maybe_enter_iso ty curr_iso in
+                lea tmp body_mem;
+                trans_call_simple_static_glue
+                  (get_mark_glue ty curr_iso)
+                  ty_params tmp;
+                List.iter patch marked_jump;
 
         | MEM_interior when type_is_structured ty ->
             (iflog (fun _ ->
@@ -2814,42 +2761,26 @@ let trans_visitor
     let slot = {slot with Ast.slot_ty = Some ty} in
     let mctrl = slot_mem_ctrl slot in
       match mctrl with
-          MEM_rc_opaque ->
-            (* Refcounted opaque objects we handle without glue functions. *)
-            let _ = check_exterior_rty cell in
-            let null_jmp = null_check cell in
-            let j = drop_refcount_and_cmp (exterior_rc_cell cell) in
-              free_ty ty_params ty cell curr_iso;
-              (* Null the slot out to prevent double-free if the frame
-               * unwinds.
-               *)
-              mov cell zero;
-              patch j;
-              patch null_jmp
-
+          MEM_rc_opaque
         | MEM_gc
         | MEM_rc_struct ->
-            (* Refcounted "structured exterior" objects we handle via
-             * glue functions.
-             *)
-
-            (* 
-             * 'GC memory' is treated similarly, just happens to have
-             * an extra couple cells on the front.
-             *)
-
-            (* FIXME (issue #25): check to see that the exterior has
-             * further exterior members; if it doesn't we can elide the
-             * call to the glue function.  *)
             let _ = check_exterior_rty cell in
             let null_jmp = null_check cell in
             let rc = exterior_rc_cell cell in
-            let _ = note_gc_step slot "dropping refcount on " in
-            let _ = trace_word cx.ctxt_sess.Session.sess_trace_gc rc in
             let j = drop_refcount_and_cmp rc in
-              trans_call_simple_static_glue
-                (get_free_glue ty mctrl curr_iso)
-                ty_params cell;
+
+              (* FIXME (issue #25): check to see that the exterior has
+               * further exterior members; if it doesn't we can elide the
+               * call to the glue function.  *)
+
+              if mctrl = MEM_rc_opaque
+              then
+                free_ty false ty_params ty cell curr_iso
+              else
+                trans_call_simple_static_glue
+                  (get_free_glue ty (mctrl = MEM_gc) curr_iso)
+                  ty_params cell;
+
               (* Null the slot out to prevent double-free if the frame
                * unwinds.
                *)
@@ -2904,57 +2835,22 @@ let trans_visitor
 
   (* Returns the offset of the slot-body in the initialized allocation. *)
   and init_exterior_slot (cell:Il.cell) (slot:Ast.slot) : unit =
-    match slot_mem_ctrl slot with
-        MEM_gc ->
-          iflog (fun _ -> annotate "init GC exterior: malloc");
-          let sz = exterior_allocation_size slot in
-            (* 
-             * Malloc and then immediately shift down to point to
-             * the pseudo-rc cell.
-             *)
-            note_gc_step slot "init GC exterior: malloc slot:";
-            trans_malloc cell sz;
-            add_to cell
-              (imm (word_n Abi.exterior_gc_malloc_return_adjustment));
-            note_gc_step slot "init GC exterior: load control word";
-            let ctrl = exterior_gc_ctrl_cell cell in
-            let tydesc = get_tydesc None (slot_ty slot) in
-            let rc = exterior_rc_cell cell in
-              note_gc_step slot "init GC exterior: set refcount";
-              mov rc one;
-              trace_word cx.ctxt_sess.Session.sess_trace_gc rc;
-              mov ctrl (Il.Cell tydesc);
-              note_gc_step slot "init GC exterior: load chain next-ptr";
-              let next = exterior_gc_next_cell cell in
-              let prev = exterior_gc_prev_cell cell in
-              let chain = tp_imm (word_n Abi.task_field_gc_alloc_chain) in
-
-                note_gc_step slot "init GC exterior: new->prev = 0";
-                mov prev zero;
-
-                note_gc_step slot "init GC exterior: new->next = curr";
-                mov next (Il.Cell chain);
-
-                let null_jmp = null_check chain in
-                let prev = rty_ptr_at (fst (need_mem_cell chain)) word_rty in
-                let chain_prev = exterior_gc_prev_cell prev in
-                  note_gc_step slot "init GC exterior: curr->prev = new";
-                  mov chain_prev (Il.Cell cell);
-                  patch null_jmp;
-
-                  note_gc_step slot "init GC exterior: chain = new";
-                  mov chain (Il.Cell cell);
-
-                  note_gc_step slot "init GC exterior: done initializing"
-
-      | MEM_rc_opaque
-      | MEM_rc_struct ->
-          iflog (fun _ -> annotate "init RC exterior: malloc");
-          let sz = exterior_allocation_size slot in
-            trans_malloc cell sz;
-            iflog (fun _ -> annotate "init RC exterior: load refcount");
-            let rc = exterior_rc_cell cell in
-              mov rc one
+    let mctrl = slot_mem_ctrl slot in
+      match mctrl with
+          MEM_gc
+        | MEM_rc_opaque
+        | MEM_rc_struct ->
+            let ctrl =
+              if mctrl = MEM_gc
+              then Il.Cell (get_tydesc None (slot_ty slot))
+              else zero
+            in
+              iflog (fun _ -> annotate "init exterior: malloc");
+              let sz = exterior_allocation_size slot in
+                trans_malloc cell sz ctrl;
+                iflog (fun _ -> annotate "init exterior: load refcount");
+                let rc = exterior_rc_cell cell in
+                  mov rc one
 
       | MEM_interior -> bug () "init_exterior_slot of MEM_interior"
 
@@ -3452,7 +3348,7 @@ let trans_visitor
       mov fn_cell (crate_rel_imm glue_fixup);
       iflog (fun _ ->
                annotate "heap-allocate closure to binding slot of pair");
-      trans_malloc closure_cell (imm closure_sz);
+      trans_malloc closure_cell (imm closure_sz) zero;
       trans_init_closure
         (deref closure_cell)
         target_fn_ptr target_binding_ptr
@@ -4092,6 +3988,7 @@ let trans_visitor
       match src_ty with
           Ast.TY_str
         | Ast.TY_vec _ ->
+            let is_gc = if type_has_state src_ty then 1L else 0L in
             let src_cell = need_cell src_oper in
             let src_vec = deref src_cell in
             let src_fill = get_element_ptr src_vec Abi.vec_elt_fill in
@@ -4108,7 +4005,8 @@ let trans_visitor
               trans_upcall "upcall_vec_grow"
                 dst_cell
                 [| Il.Cell dst_cell;
-                   Il.Cell src_fill |];
+                   Il.Cell src_fill;
+                   imm is_gc |];
 
               (* 
                * By now, dst_cell points to a vec/str with room for us
@@ -4583,7 +4481,7 @@ let trans_visitor
 
       (* Load second cell of pair with pointer to fresh state tuple.*)
       iflog (fun _ -> annotate "malloc state-tuple to obj.state cell");
-      trans_malloc dst_pair_state_cell state_malloc_sz;
+      trans_malloc dst_pair_state_cell state_malloc_sz zero;
 
       (* Copy args into the state tuple. *)
       let state_ptr = next_vreg_cell (need_scalar_ty state_ptr_rty) in

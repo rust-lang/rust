@@ -324,19 +324,20 @@ upcall_exit(rust_task *task)
 }
 
 extern "C" CDECL uintptr_t
-upcall_malloc(rust_task *task, size_t nbytes)
+upcall_malloc(rust_task *task, size_t nbytes, type_desc *td)
 {
     LOG_UPCALL_ENTRY(task);
 
-    void *p = task->dom->malloc(nbytes);
+    void *p = task->malloc(nbytes, td);
     task->dom->log(rust_log::UPCALL|rust_log::MEM,
-                   "upcall malloc(%u) = 0x%" PRIxPTR,
-                   nbytes, (uintptr_t)p);
+                   "upcall malloc(%u) = 0x%" PRIxPTR
+                   " with gc-chain head = 0x%" PRIxPTR,
+                   nbytes, (uintptr_t)p, task->gc_alloc_chain);
     return (uintptr_t) p;
 }
 
 extern "C" CDECL void
-upcall_free(rust_task *task, void* ptr)
+upcall_free(rust_task *task, void* ptr, uintptr_t is_gc)
 {
     LOG_UPCALL_ENTRY(task);
 
@@ -344,7 +345,24 @@ upcall_free(rust_task *task, void* ptr)
     dom->log(rust_log::UPCALL|rust_log::MEM,
              "upcall free(0x%" PRIxPTR ")",
              (uintptr_t)ptr);
-    dom->free(ptr);
+    task->free(ptr, (bool) is_gc);
+}
+
+extern "C" CDECL uintptr_t
+upcall_mark(rust_task *task, void* ptr)
+{
+    LOG_UPCALL_ENTRY(task);
+
+    rust_dom *dom = task->dom;
+    if (ptr) {
+        gc_alloc *gcm = (gc_alloc*) (((char*)ptr) - sizeof(gc_alloc));
+        uintptr_t marked = (uintptr_t) gcm->mark();
+        dom->log(rust_log::UPCALL|rust_log::MEM|rust_log::GC,
+                 "upcall mark(0x%" PRIxPTR ") = %" PRIdPTR,
+                 (uintptr_t)gcm, marked);
+        return marked;
+    }
+    return 0;
 }
 
 extern "C" CDECL rust_str *
@@ -368,14 +386,15 @@ upcall_new_str(rust_task *task, char const *s, size_t fill)
 }
 
 extern "C" CDECL rust_vec *
-upcall_new_vec(rust_task *task, size_t fill)
+upcall_new_vec(rust_task *task, size_t fill, type_desc *td)
 {
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
     dom->log(rust_log::UPCALL|rust_log::MEM,
-             "upcall new_vec(%" PRIdPTR ")", fill);
+             "upcall new_vec(%" PRIdPTR ")",
+             fill);
     size_t alloc = next_power_of_two(sizeof(rust_vec) + fill);
-    void *mem = dom->malloc(alloc);
+    void *mem = task->malloc(alloc, td);
     if (!mem) {
         task->fail(3);
         return NULL;
@@ -389,7 +408,7 @@ upcall_new_vec(rust_task *task, size_t fill)
 
 
 extern "C" CDECL rust_str *
-upcall_vec_grow(rust_task *task, rust_vec *v, size_t n_bytes)
+upcall_vec_grow(rust_task *task, rust_vec *v, size_t n_bytes, uintptr_t is_gc)
 {
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;

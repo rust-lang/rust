@@ -408,6 +408,84 @@ rust_task::dead()
 }
 
 void
+rust_task::link_gc(gc_alloc *gcm) {
+    I(dom, gcm->prev == NULL);
+    I(dom, gcm->next == NULL);
+    gcm->prev = NULL;
+    gcm->next = gc_alloc_chain;
+}
+
+void
+rust_task::unlink_gc(gc_alloc *gcm) {
+    if (gcm->prev)
+        gcm->prev->next = gcm->next;
+    if (gcm->next)
+        gcm->next->prev = gcm->prev;
+    gcm->prev = NULL;
+    gcm->next = NULL;
+}
+
+void *
+rust_task::malloc(size_t sz, type_desc *td)
+{
+    if (td) {
+        sz += sizeof(gc_alloc);
+    }
+    void *mem = dom->malloc(sz);
+    if (!mem)
+        return mem;
+    if (td) {
+        gc_alloc *gcm = (gc_alloc*) mem;
+        dom->log(rust_log::TASK|rust_log::MEM|rust_log::GC,
+                 "task 0x%" PRIxPTR " allocated %d GC bytes = 0x%" PRIxPTR,
+                 (uintptr_t)this, sz, gcm);
+        memset((void*) gcm, 0, sizeof(gc_alloc));
+        link_gc(gcm);
+        gcm->ctrl_word = (uintptr_t)td;
+        gc_alloc_accum += sz;
+        mem = (void*) &(gcm->data);
+    }
+    return mem;;
+}
+
+void *
+rust_task::realloc(void *data, size_t sz, bool is_gc)
+{
+    if (is_gc) {
+        gc_alloc *gcm = (gc_alloc*)(((char *)data) - sizeof(gc_alloc));
+        unlink_gc(gcm);
+        sz += sizeof(gc_alloc);
+        gcm = (gc_alloc*) dom->realloc((void*)gcm, sz);
+        dom->log(rust_log::TASK|rust_log::MEM|rust_log::GC,
+                 "task 0x%" PRIxPTR " reallocated %d GC bytes = 0x%" PRIxPTR,
+                 (uintptr_t)this, sz, gcm);
+        if (!gcm)
+            return gcm;
+        link_gc(gcm);
+        data = (void*) &(gcm->data);
+    } else {
+        data = dom->realloc(data, sz);
+    }
+    return data;
+}
+
+void
+rust_task::free(void *p, bool is_gc)
+{
+    if (is_gc) {
+        gc_alloc *gcm = (gc_alloc*)(((char *)p) - sizeof(gc_alloc));
+        unlink_gc(gcm);
+        dom->log(rust_log::TASK|rust_log::MEM|rust_log::GC,
+                 "task 0x%" PRIxPTR " freeing GC memory = 0x%" PRIxPTR,
+                 (uintptr_t)this, gcm);
+        dom->free(gcm);
+    } else {
+        dom->free(p);
+    }
+}
+
+
+void
 rust_task::transition(ptr_vec<rust_task> *src, ptr_vec<rust_task> *dst)
 {
     I(dom, state == src);

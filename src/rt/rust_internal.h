@@ -595,6 +595,19 @@ struct frame_glue_fns {
     uintptr_t reloc_glue_off;
 };
 
+struct gc_alloc {
+    gc_alloc *prev;
+    gc_alloc *next;
+    uintptr_t ctrl_word;
+    uint8_t data[];
+    bool mark() {
+        if (ctrl_word & 1)
+            return false;
+        ctrl_word |= 1;
+        return true;
+    }
+};
+
 struct
 rust_task : public rc_base<rust_task>,
             public dom_owned<rust_task>,
@@ -604,7 +617,7 @@ rust_task : public rc_base<rust_task>,
     stk_seg *stk;
     uintptr_t runtime_sp;      // Runtime sp while task running.
     uintptr_t rust_sp;         // Saved sp when not running.
-    uintptr_t gc_alloc_chain;  // Linked list of GC allocations.
+    gc_alloc *gc_alloc_chain;  // Linked list of GC allocations.
     rust_dom *dom;
     rust_crate_cache *cache;
 
@@ -614,6 +627,8 @@ rust_task : public rc_base<rust_task>,
     uintptr_t* dptr;           // Rendezvous pointer for send/recv.
     rust_task *spawner;        // Parent-link.
     size_t idx;
+    size_t gc_alloc_thresh;
+    size_t gc_alloc_accum;
 
     // Wait queue for tasks waiting for this task.
     rust_wait_queue waiting_tasks;
@@ -632,6 +647,12 @@ rust_task : public rc_base<rust_task>,
     bool blocked();
     bool blocked_on(rust_cond *cond);
     bool dead();
+
+    void link_gc(gc_alloc *gcm);
+    void unlink_gc(gc_alloc *gcm);
+    void *malloc(size_t sz, type_desc *td=0);
+    void *realloc(void *data, size_t sz, bool gc_mem=false);
+    void free(void *p, bool gc_mem=false);
 
     const char *state_str();
     void transition(ptr_vec<rust_task> *svec, ptr_vec<rust_task> *dvec);
