@@ -906,7 +906,7 @@ let pattern_resolving_visitor
      * are only looking at the fact that it's a tag-like type at all, and
      * asking for its arity, it doesn't matter that the possibly parametric
      * tag type has its parameters unbound here. *)
-    let tag_ty = 
+    let tag_ty =
       fn_output_ty (Hashtbl.find cx.ctxt_all_item_types tag_ctor_id)
     in
       begin
