@@ -631,17 +631,17 @@ test/run-fail/%.bc: test/run-fail/%.rs $(REQ)
 ML_DEPFILES := $(BOOT_MLS:%.ml=%.d)
 C_DEPFILES := $(RUNTIME_CS:%.cpp=%.d)
 
-%.d.tmp: %.cpp $(MKFILES)
+%.d: %.cpp $(MKFILES)
 	@$(call CFG_ECHO, dep: $<)
 	$(CFG_QUIET)$(call CFG_DEPEND_C, $@ \
       $(patsubst %.cpp, %$(CFG_OBJ_SUFFIX), $<), \
       $(RUNTIME_INCS)) $< $(CFG_PATH_MUNGE) >$@
 
-%.d.tmp: %.ml $(MKFILES)
+%.d: %.ml $(MKFILES)
 	@$(call CFG_ECHO, dep: $<)
 	$(CFG_QUIET)ocamldep$(OPT) $(ML_INCS) $< $(CFG_PATH_MUNGE) >$@
 
-%.d.tmp: %.mli $(MKFILES)
+%.d: %.mli $(MKFILES)
 	@$(call CFG_ECHO, dep: $<)
 	$(CFG_QUIET)ocamldep$(OPT) $(ML_INCS) $< $(CFG_PATH_MUNGE) >$@
 
@@ -656,20 +656,17 @@ CFG_INFO := $(info cfg: using built $(CFG_BOOT) for rust deps)
 STDLIB_DEPFILE := $(CFG_STDLIB).d
 CRATE_DEPFILES := $(ALL_TEST_CRATES:%.rc=%.d) $(STDLIB_DEPFILE)
 
-$(STDLIB_DEPFILE).tmp: $(STDLIB_CRATE) $(MKFILES) $(CFG_BOOT)
+$(STDLIB_DEPFILE): $(STDLIB_CRATE) $(MKFILES) $(CFG_BOOT)
 	@$(call CFG_ECHO, dep: $<)
 	$(BOOT) -shared -rdeps $< $(CFG_PATH_MUNGE) >$@
 
-%.d.tmp: %.rc $(MKFILES) $(CFG_BOOT)
+%.d: %.rc $(MKFILES) $(CFG_BOOT)
 	@$(call CFG_ECHO, dep: $<)
 	$(BOOT) -rdeps $< $(CFG_PATH_MUNGE) >$@
 
-%.d.tmp: %.rs $(MKFILES) $(CFG_BOOT)
+%.d: %.rs $(MKFILES) $(CFG_BOOT)
 	@$(call CFG_ECHO, dep: $<)
 	$(BOOT) -rdeps $< $(CFG_PATH_MUNGE) >$@
-
-%.d: %.d.tmp
-	$(CFG_QUIET)mv $< $@
 
 ifneq ($(MAKECMDGOALS),clean)
 -include $(CRATE_DEPFILES)
