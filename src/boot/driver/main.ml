@@ -64,6 +64,12 @@ let (sess:Session.sess) =
   }
 ;;
 
+let exit_if_failed _ =
+  if sess.Session.sess_failed
+  then exit 1
+  else ()
+;;
+
 let default_output_filename (sess:Session.sess) : filename option =
   match sess.Session.sess_in with
       None -> None
@@ -93,6 +99,7 @@ let dump_sig (filename:filename) : unit =
   let items =
     Lib.get_file_mod sess abi filename (ref (Node 0)) (ref (Opaque 0)) in
     Printf.fprintf stdout "%s\n" (Fmt.fmt_to_str Ast.fmt_mod_items items);
+    exit_if_failed ();
     exit 0
 ;;
 
@@ -202,12 +209,6 @@ let argspecs =
   ] @ (Glue.alt_argspecs sess)
 ;;
 
-let exit_if_failed _ =
-  if sess.Session.sess_failed
-  then exit 1
-  else ()
-;;
-
 Arg.parse
   argspecs
   (fun arg -> sess.Session.sess_in <- (Some arg))
@@ -255,6 +256,7 @@ let (crate:Ast.crate) =
                 exit 1
               end
         in
+          exit_if_failed();
           if sess.Session.sess_report_deps
           then
             let outfile = (Session.filename_of sess.Session.sess_out) in
