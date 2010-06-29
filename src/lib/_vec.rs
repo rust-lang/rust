@@ -28,3 +28,14 @@ fn len[T](vec[T] v) -> uint {
 fn buf[T](vec[T] v) -> vbuf {
   ret rustrt.vec_buf[T](v);
 }
+
+// Ought to take mutable &vec[T] v and just mutate it instead of copy
+// and return.  Blocking on issue #89 for this.
+fn grow[T](mutable vec[T] v, int n, T initval) -> vec[T] {
+  let int i = n;
+  while (i > 0) {
+    i -= 1;
+    v += vec(initval);
+  }
+  ret v;
+}

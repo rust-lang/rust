@@ -18,3 +18,9 @@ iter range(mutable int lo, int hi) -> int {
   }
 }
 
+iter urange(mutable uint lo, uint hi) -> uint {
+  while (lo < hi) {
+    put lo;
+    lo += uint(1);
+  }
+}
