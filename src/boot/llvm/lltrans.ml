@@ -253,15 +253,23 @@ let trans_crate
             fn_ty void_ty (Array.append [| lloutptr; lltaskty |] llins)
 
       | Ast.TY_tup slots ->
-          s (Array.map (trans_slot None) slots)
+          s (Array.map trans_ty slots)
 
       | Ast.TY_rec entries ->
-          s (Array.map (fun e -> trans_slot None (snd e)) entries)
+          s (Array.map (fun (_, e) -> trans_ty e) entries)
 
       | Ast.TY_constrained (ty', _) -> trans_ty ty'
 
       | Ast.TY_chan _ | Ast.TY_port _ | Ast.TY_task  ->
           p rc_opaque_ty
+
+      | Ast.TY_exterior t ->
+          (* FIXME: wrong, this needs to point to a refcounted cell. *)
+          p (trans_ty t)
+
+      | Ast.TY_mutable t ->
+          (* FIXME: No idea if 'mutable' translates to LLVM-type. *)
+          (trans_ty t)
 
       | Ast.TY_native _ ->
           word_ty
@@ -286,7 +294,6 @@ let trans_crate
     in
     let base_llty = trans_ty ty in
       match slot.Ast.slot_mode with
-          Ast.MODE_exterior _
         | Ast.MODE_alias _ ->
             Llvm.pointer_type base_llty
         | Ast.MODE_interior _ -> base_llty
@@ -320,14 +327,14 @@ let trans_crate
       | _ -> trans_free llbuilder lltask ptr
   in
 
-  let rec iter_ty_slots_full
+  let rec iter_ty_parts_full
       (llbuilder:Llvm.llbuilder ref)
       (ty:Ast.ty)
       (dst_ptr:Llvm.llvalue)
       (src_ptr:Llvm.llvalue)
       (f:(Llvm.llvalue
           -> Llvm.llvalue
-            -> Ast.slot
+            -> Ast.ty
               -> (Ast.ty_iso option)
                 -> unit))
       (curr_iso:Ast.ty_iso option)
@@ -338,38 +345,38 @@ let trans_crate
 
     match ty with
         Ast.TY_rec entries ->
-          iter_rec_slots gep dst_ptr src_ptr entries f curr_iso
+          iter_rec_parts gep dst_ptr src_ptr entries f curr_iso
 
-      | Ast.TY_tup slots ->
-          iter_tup_slots gep dst_ptr src_ptr slots f curr_iso
+      | Ast.TY_tup tys ->
+          iter_tup_parts gep dst_ptr src_ptr tys f curr_iso
 
       | Ast.TY_tag _
       | Ast.TY_iso _
       | Ast.TY_fn _
       | Ast.TY_obj _ ->
-          bug () "unimplemented ty in Lltrans.iter_ty_slots_full"
+          bug () "unimplemented ty in Lltrans.iter_ty_parts_full"
 
       | _ -> ()
 
-  and iter_ty_slots
+  and iter_ty_parts
       (llbuilder:Llvm.llbuilder ref)
       (ty:Ast.ty)
       (ptr:Llvm.llvalue)
-      (f:Llvm.llvalue -> Ast.slot -> (Ast.ty_iso option) -> unit)
+      (f:Llvm.llvalue -> Ast.ty -> (Ast.ty_iso option) -> unit)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    iter_ty_slots_full llbuilder ty ptr ptr
+    iter_ty_parts_full llbuilder ty ptr ptr
       (fun _ src_ptr slot curr_iso -> f src_ptr slot curr_iso)
       curr_iso
 
   and drop_ty
       (llbuilder:Llvm.llbuilder ref)
       (lltask:Llvm.llvalue)
-      (ty:Ast.ty)
       (ptr:Llvm.llvalue)
+      (ty:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    iter_ty_slots llbuilder ty ptr (drop_slot llbuilder lltask) curr_iso
+    iter_ty_parts llbuilder ty ptr (drop_ty llbuilder lltask) curr_iso
 
   and drop_slot
       (llbuilder:Llvm.llbuilder ref)
@@ -461,7 +468,7 @@ let trans_crate
             | MEM_interior when Semant.type_is_structured ty ->
                 (* FIXME: to handle recursive types, need to call drop
                    glue here, not inline. *)
-                drop_ty llbuilder lltask ty slot_ptr curr_iso
+                drop_ty llbuilder lltask slot_ptr ty curr_iso
 
             | _ -> ()
         end
@@ -757,7 +764,7 @@ let trans_crate
                 Ast.STMT_init_tup (dest, atoms) ->
                   let zero = const_i32 0 in
                   let lldest = trans_lval dest in
-                  let trans_tup_atom idx (_, _, atom) =
+                  let trans_tup_atom idx atom =
                     let indices = [| zero; const_i32 idx |] in
                     let gep_id = anon_llid "init_tup_gep" in
                     let ptr =
