@@ -10,6 +10,8 @@ obj buf[T](tup(T,T,T) data) {
       }
     }
   }
+
+  fn take(T t) {}
 }
 
 fn main() {
