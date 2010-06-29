@@ -220,6 +220,21 @@ let htab_put (htab:('a,'b) Hashtbl.t) (a:'a) (b:'b) : unit =
   Hashtbl.add htab a b
 ;;
 
+(* This is completely ridiculous, but it turns out that ocaml hashtables are
+ * order-of-element-addition sensitive when it comes to the built-in
+ * polymorphic comparison operator. So you have to canonicalize them after
+ * you've stopped adding things to them if you ever want to use them in a
+ * term that requires structural comparison to work. Sigh.
+ *)
+
+let htab_canonicalize (htab:('a,'b) Hashtbl.t) : ('a,'b) Hashtbl.t =
+  let n = Hashtbl.create (Hashtbl.length htab) in
+    Array.iter
+      (fun k -> Hashtbl.add n k (Hashtbl.find htab k))
+      (sorted_htab_keys htab);
+    n
+;;
+
 let htab_map
     (htab:('a,'b) Hashtbl.t)
     (f:'a -> 'b -> ('c * 'd))
@@ -230,9 +245,8 @@ let htab_map
       htab_put ntab c d
   in
     Hashtbl.iter g htab;
-    ntab
+    htab_canonicalize (ntab)
 ;;
-
 
 let htab_fold
     (fn:'a -> 'b -> 'c -> 'c)

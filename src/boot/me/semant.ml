@@ -817,14 +817,13 @@ let rebuild_ty_under_params
         end
         params
     in
-    let substituted = ref false in
     let rec rebuild_ty t =
       let base = ty_fold_rebuild (fun t -> t) in
       let ty_fold_param (i, mut) =
         let param = Ast.TY_param (i, mut) in
           match htab_search pmap param with
               None -> param
-            | Some arg -> (substituted := true; arg)
+            | Some arg -> arg
       in
       let ty_fold_named n =
         let rec rebuild_name n =
@@ -863,7 +862,7 @@ let rebuild_ty_under_params
                   begin
                     match htab_search nmap id with
                         None -> Ast.TY_named n
-                      | Some arg -> (substituted := true; arg)
+                      | Some arg -> arg
                   end
             | _ -> Ast.TY_named n
       in
@@ -873,14 +872,7 @@ let rebuild_ty_under_params
             ty_fold_named = ty_fold_named;
         }
       in
-      let t' = fold_ty fold t in
-        (* FIXME (issue #77): "substituted" and "ty'" here are only required
-         * because the current type-equality-comparison code in Type uses <>
-         * and will judge some cases, such as rebuilt tags, as unequal simply
-         * due to the different hashtable order in the fold.  *)
-        if !substituted
-        then t'
-        else t
+        fold_ty fold t
     in
       rebuild_ty ty
 ;;
