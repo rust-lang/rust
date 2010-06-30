@@ -2,7 +2,7 @@
 
 type point = rec(int x, int y, mutable int z);
 
-fn f(mutable &point p) {
+fn f(& mutable point p) {
   p.z = 13;
 }
 

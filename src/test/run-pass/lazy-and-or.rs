@@ -1,4 +1,4 @@
-fn incr(mutable &int x) -> bool {
+fn incr(& mutable int x) -> bool {
   x += 1;
   check (false);
   ret false;
