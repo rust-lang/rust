@@ -2,7 +2,7 @@ open Common;;
 open Semant;;
 
 type tyspec =
-    TYSPEC_equiv of tyvar
+    TYSPEC_equiv of (simpl * tyvar)
   | TYSPEC_all
   | TYSPEC_resolved of (Ast.ty_param array) * Ast.ty
   | TYSPEC_callable of (tyvar * tyvar array)   (* out, ins *)
@@ -18,6 +18,10 @@ type tyspec =
   | TYSPEC_tuple of tyvar array                (* heterogeneous tuple *)
   | TYSPEC_vector of tyvar
   | TYSPEC_app of (tyvar * Ast.ty array)
+
+and simpl = SIMPL_none
+            | SIMPL_exterior
+            | SIMPL_mutable
 
 and dict = (Ast.ident, tyvar) Hashtbl.t
 
@@ -101,7 +105,15 @@ let rec tyspec_to_str (ts:tyspec) : string =
           else
             Ast.fmt_ty ff ty
 
-      | TYSPEC_equiv tv ->
+      | TYSPEC_equiv (SIMPL_none, tv) ->
+          fmt_tyspec ff (!tv)
+
+      | TYSPEC_equiv (SIMPL_exterior, tv) ->
+          fmt ff "@";
+          fmt_tyspec ff (!tv)
+
+      | TYSPEC_equiv (SIMPL_mutable, tv) ->
+          fmt ff "mutable ";
           fmt_tyspec ff (!tv)
 
       | TYSPEC_callable (out, ins) ->
@@ -156,7 +168,7 @@ let iflog cx thunk =
 
 let rec resolve_tyvar (tv:tyvar) : tyvar =
   match !tv with
-      TYSPEC_equiv subtv -> resolve_tyvar subtv
+      TYSPEC_equiv (_, subtv) -> resolve_tyvar subtv
     | _ -> tv
 ;;
 
@@ -243,20 +255,23 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
      *)
     and unify_tyvars' (simplify:bool) (av:tyvar) (bv:tyvar) : unit =
       let (a, b) = ((resolve_tyvar av), (resolve_tyvar bv)) in
-      let simplified tv =
+      let wrap tv =
         match !tv with
-            TYSPEC_resolved (params_a, Ast.TY_mutable ty_a) ->
-              Some (ref (TYSPEC_resolved (params_a, ty_a)))
-          | TYSPEC_resolved (params_a, Ast.TY_exterior ty_a) ->
-              Some (ref (TYSPEC_resolved (params_a, ty_a)))
-          | _ -> None
+            TYSPEC_resolved (params, Ast.TY_mutable ty) ->
+              tv := TYSPEC_equiv (SIMPL_mutable,
+                                  (ref (TYSPEC_resolved (params, ty))));
+              true
+          | TYSPEC_resolved (params, Ast.TY_exterior ty) ->
+              tv := TYSPEC_equiv (SIMPL_exterior,
+                                  (ref (TYSPEC_resolved (params, ty))));
+              true
+          | _ -> false
       in
         if simplify
         then
-          match (simplified a, simplified b) with
-              (Some a', _) -> unify_tyvars' simplify a' bv
-            | (_, Some b') -> unify_tyvars' simplify av b'
-            | (None, None) -> unify_tyvars'' av bv
+          if (wrap a) || (wrap b)
+          then unify_tyvars' simplify a b
+          else unify_tyvars'' a b
         else
           unify_tyvars'' av bv
 
@@ -777,8 +792,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               TYSPEC_vector av
       in
       let c = ref result in
-        a := TYSPEC_equiv c;
-        b := TYSPEC_equiv c
+        a := TYSPEC_equiv (SIMPL_none, c);
+        b := TYSPEC_equiv (SIMPL_none, c)
 
     and unify_ty_parametric
         (simplify:bool)
@@ -1371,24 +1386,21 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               | _ -> bug () "check_auto_tyvar: no slot defn"
         in
 
-        let get_resolved_ty tv id =
-          let ts = !(resolve_tyvar tv) in
-            match ts with
-                TYSPEC_resolved ([||], ty) -> ty
-              | TYSPEC_vector (tv) ->
-                  begin
-                    match !(resolve_tyvar tv) with
-                        TYSPEC_resolved ([||], ty) ->
-                          (Ast.TY_vec ty)
-                      | _ ->
-                          err (Some id)
-                            "unresolved vector-element type in %s (%d)"
-                            (tyspec_to_str ts) (int_of_node id)
-                  end
-              | _ -> err (Some id)
-                  "unresolved type %s (%d)"
-                    (tyspec_to_str ts)
-                    (int_of_node id)
+        let rec get_resolved_ty tv id =
+          match !tv with
+              TYSPEC_resolved ([||], ty) -> ty
+            | TYSPEC_vector tv ->
+                Ast.TY_vec (get_resolved_ty tv id)
+            | TYSPEC_equiv (SIMPL_none, tv) ->
+                get_resolved_ty tv id
+            | TYSPEC_equiv (SIMPL_mutable, tv) ->
+                Ast.TY_mutable (get_resolved_ty tv id)
+            | TYSPEC_equiv (SIMPL_exterior, tv) ->
+                Ast.TY_exterior (get_resolved_ty tv id)
+            | _ -> err (Some id)
+                "unresolved type %s (%d)"
+                  (tyspec_to_str !tv)
+                  (int_of_node id)
         in
 
         let check_auto_tyvar id =
