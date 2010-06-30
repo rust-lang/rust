@@ -125,7 +125,7 @@ let rec tyspec_to_str (ts:tyspec) : string =
           fmt_cbb ff;
 
       | TYSPEC_tuple tvs ->
-          fmt ff "(";
+          fmt ff "tuple (";
           fmt_tvs ff tvs;
           fmt ff ")";
 
