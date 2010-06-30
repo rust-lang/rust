@@ -3131,7 +3131,6 @@ let trans_visitor
       (src:Il.cell) (src_ty:Ast.ty)
       : unit =
     let dst_ty = slot_ty dst_slot in
-    assert (src_ty = dst_ty);
     match (dst_slot.Ast.slot_mode, clone) with
         (Ast.MODE_alias, CLONE_none) ->
           mov dst (Il.Cell (alias (Il.Mem (need_mem_cell src))))
