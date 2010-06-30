@@ -874,6 +874,8 @@ and fmt_lval (ff:Format.formatter) (l:lval) : unit =
                 fmt ff ".";
                 fmt_name_component ff nc
             | COMP_atom a ->
+                fmt_lval ff lv;
+                fmt ff ".";
                 fmt_bracketed "(" ")" fmt_atom ff a;
             | COMP_deref ->
                 fmt ff "*";
