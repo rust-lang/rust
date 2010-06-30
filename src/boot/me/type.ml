@@ -167,6 +167,9 @@ let rec resolve_tyvar (tv:tyvar) : tyvar =
 ;;
 
 let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
+
+  let depth = ref 0 in
+
   let log cx = Session.log "type"
     cx.ctxt_sess.Session.sess_log_type
     cx.ctxt_sess.Session.sess_log_out
@@ -221,20 +224,27 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         | _ -> ()
 
     and unify_tyvars (auto_deref:bool) (av:tyvar) (bv:tyvar) : unit =
-      let dstr = if auto_deref then " w/ auto-deref" else "" in
-        iflog cx (fun _ ->
-                    log cx "unifying types%s:" dstr;
-                    log cx "input tyvar A: %s" (tyspec_to_str !av);
-                    log cx "input tyvar B: %s" (tyspec_to_str !bv));
+      let indent = String.make (4 * (!depth)) ' ' in
+        iflog cx
+          (fun _ ->
+             log cx "%s> unifying types:" indent;
+             if auto_deref
+             then
+               log cx "%s> (w/ auto-deref)" indent;
+             log cx "%s> input tyvar A:     %s" indent (tyspec_to_str !av);
+             log cx "%s> input tyvar B:     %s" indent (tyspec_to_str !bv));
         check_sane_tyvar av;
         check_sane_tyvar bv;
 
+        incr depth;
         unify_tyvars' auto_deref av bv;
+        decr depth;
 
-        iflog cx (fun _ ->
-                    log cx "unified types%s:" dstr;
-                    log cx "output tyvar A: %s" (tyspec_to_str !av);
-                    log cx "output tyvar B: %s" (tyspec_to_str !bv));
+        iflog cx
+          (fun _ ->
+             log cx "%s< unified types:" indent;
+             log cx "%s< output tyvar A:     %s" indent (tyspec_to_str !av);
+             log cx "%s< output tyvar B:     %s" indent (tyspec_to_str !bv));
         check_sane_tyvar av;
         check_sane_tyvar bv;
 
@@ -1207,6 +1217,9 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
     let visit_stmt_pre (stmt:Ast.stmt) : unit =
       try
+        log cx "";
+        log cx "typechecking stmt: %a" Ast.sprintf_stmt stmt;
+        log cx "";
         visit_stmt_pre_full stmt;
         (* 
          * Reset any item-parameters that were resolved to types
