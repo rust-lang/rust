@@ -2818,7 +2818,7 @@ let trans_visitor
       | Ast.TY_constrained (ty, _) ->
           deref_ty initializing cell ty
 
-      | Ast.TY_exterior ty ->
+      | Ast.TY_exterior ty' ->
           check_exterior_rty cell;
           if initializing
           then init_exterior cell ty;
@@ -2828,7 +2828,7 @@ let trans_visitor
               (Abi.exterior_rc_slot_field_body)
           in
             (* Init recursively so @@@@T chain works. *)
-            deref_ty initializing cell ty
+            deref_ty initializing cell ty'
 
       | _ -> (cell, ty)
 
