@@ -1099,7 +1099,7 @@ let project_type
     | (_,_) ->
         bug ()
           "unhandled form of lval-ext in Semant."
-          "project_slot: %a indexed by %a"
+          "project_ty: %a indexed by %a"
           Ast.sprintf_ty base_ty Ast.sprintf_lval_component comp
 ;;
 
