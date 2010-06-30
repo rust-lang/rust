@@ -2865,14 +2865,6 @@ let trans_visitor
       end
       tys
 
-  and without_exterior t =
-    match t with
-      | Ast.TY_mutable t
-      | Ast.TY_exterior t
-      | Ast.TY_constrained (t, _) ->
-          without_exterior t
-      | _ -> t
-
   and trans_copy_ty
       (ty_params:Il.cell)
       (initializing:bool)
@@ -2891,7 +2883,7 @@ let trans_visitor
                  Ast.sprintf_ty src_ty)
         end;
     in
-      assert (without_exterior src_ty = without_exterior dst_ty);
+      assert (simplified_ty src_ty = simplified_ty dst_ty);
       match (ty_mem_ctrl src_ty, ty_mem_ctrl dst_ty) with
 
         | (MEM_rc_opaque, MEM_rc_opaque)
@@ -2945,11 +2937,11 @@ let trans_visitor
       (src:Il.cell) (src_ty:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    assert (without_exterior src_ty = without_exterior dst_ty);
+    assert (simplified_ty src_ty = simplified_ty dst_ty);
     iflog (fun _ ->
              annotate ("heavy copy: slot preparation"));
 
-    let ty = without_exterior src_ty in
+    let ty = simplified_ty src_ty in
     let ty = maybe_iso curr_iso ty in
     let curr_iso = maybe_enter_iso ty curr_iso in
     let (dst, dst_ty) = deref_ty initializing dst dst_ty in
