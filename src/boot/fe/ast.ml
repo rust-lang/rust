@@ -1169,7 +1169,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
 
       | STMT_init_exterior (lv, at) ->
           fmt_lval ff lv;
-          fmt ff " = @";
+          fmt ff " = @@";
           fmt_atom ff at;
           fmt ff ";"
 
