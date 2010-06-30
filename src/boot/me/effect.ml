@@ -155,7 +155,7 @@ let function_effect_propagation_visitor
 
         | Ast.STMT_call (_, fn, _) ->
             let lower_to_callee_ty t =
-              match t with
+              match simplified_ty t with
                   Ast.TY_fn (_, taux) ->
                     lower_to s taux.Ast.fn_effect;
                 | _ -> bug () "non-fn callee"
