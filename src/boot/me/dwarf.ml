@@ -1311,9 +1311,10 @@ let (abbrev_alias_slot:abbrev) =
 ;;
 
 (* FIXME: Perverse, but given dwarf's vocabulary it seems at least plausible
- * that a "mutable const type" is a correct way of saying "mutable". Or else we
- * make up our own. Revisit perhaps.
+ * that a "mutable const type" is a correct way of saying "mutable". 
+ * Or else we make up our own. Revisit perhaps.
  *)
+
 let (abbrev_mutable_type:abbrev) =
   (DW_TAG_const_type, DW_CHILDREN_no,
    [|

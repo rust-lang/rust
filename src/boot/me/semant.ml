@@ -676,7 +676,10 @@ type ('ty, 'tys, 'slot, 'slots, 'tag) ty_fold =
       ty_fold_constrained : ('ty * Ast.constrs) -> 'ty }
 ;;
 
-let rec fold_ty (f:('ty, 'tys, 'slot, 'slots, 'tag) ty_fold) (ty:Ast.ty) : 'ty =
+let rec fold_ty
+    (f:('ty, 'tys, 'slot, 'slots, 'tag) ty_fold)
+    (ty:Ast.ty)
+    : 'ty =
   let fold_slot (s:Ast.slot) : 'slot =
     f.ty_fold_slot (s.Ast.slot_mode,
                     fold_ty f (slot_ty s))

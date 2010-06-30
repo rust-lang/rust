@@ -357,7 +357,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_resolved (params_a, ty_a),
              TYSPEC_resolved (params_b, ty_b)) ->
               if params_a <> params_b then fail()
-              else TYSPEC_resolved (params_a, (unify_resolved_types ty_a ty_b))
+              else TYSPEC_resolved
+                (params_a, (unify_resolved_types ty_a ty_b))
 
           | (TYSPEC_resolved (params, ty),
              TYSPEC_callable (out_tv, in_tvs))
