@@ -41,6 +41,7 @@ and plval =
   | PLVAL_app of (Ast.ident * (Ast.ty array))
   | PLVAL_ext_name of (pexp * Ast.name_component)
   | PLVAL_ext_pexp of (pexp * pexp)
+  | PLVAL_ext_deref of pexp
 
 and pexp = pexp' Common.identified
 ;;
@@ -588,6 +589,13 @@ and parse_bottom_pexp (ps:pstate) : pexp =
                 end
         end
 
+
+    | STAR ->
+        bump ps;
+        let inner = parse_pexp ps in
+        let bpos = lexpos ps in
+          span ps apos bpos (PEXP_lval (PLVAL_ext_deref inner))
+
     | (INT | UINT | CHAR | BOOL) as tok ->
         begin
           bump ps;
@@ -1029,6 +1037,11 @@ let rec desugar_lval (ps:pstate) (pexp:pexp) : (Ast.stmt array * Ast.lval) =
           let base_lval = atom_lval ps base_atom in
             (Array.append base_stmts ext_stmts,
              Ast.LVAL_ext (base_lval, Ast.COMP_atom (clone_atom ps ext_atom)))
+
+      | PEXP_lval (PLVAL_ext_deref base_pexp) ->
+          let (base_stmts, base_atom) = desugar_expr_atom ps base_pexp in
+          let base_lval = atom_lval ps base_atom in
+            (base_stmts, Ast.LVAL_ext (base_lval, Ast.COMP_deref))
 
       | _ ->
           let (stmts, atom) = desugar_expr_atom ps pexp in
