@@ -522,7 +522,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               let rec unify ty =
                 match ty with
                     Ast.TY_tup (elem_tys:Ast.ty array) ->
-                      if (Array.length elem_tys) <> (Array.length tvs)
+                      if (Array.length elem_tys) < (Array.length tvs)
                       then fail ()
                       else
                         let check_elem i tv =
