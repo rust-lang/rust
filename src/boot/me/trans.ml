@@ -2218,6 +2218,13 @@ let trans_visitor
   and exterior_rc_cell (cell:Il.cell) : Il.cell =
     exterior_ctrl_cell cell Abi.exterior_rc_slot_field_refcnt
 
+  and simplified_ty t =
+    match t with
+        Ast.TY_exterior t
+      | Ast.TY_mutable t
+      | Ast.TY_constrained (t, _) -> simplified_ty t
+      | _ -> t
+
   and exterior_allocation_size
       (ty:Ast.ty)
       : Il.operand =
@@ -2228,6 +2235,7 @@ let trans_visitor
         | MEM_rc_struct -> word_n Abi.exterior_rc_header_size
         | MEM_interior -> bug () "exterior_allocation_size of MEM_interior"
     in
+    let ty = simplified_ty ty in
     let refty_sz =
       Il.referent_ty_size abi.Abi.abi_word_bits (referent_type abi ty)
     in
@@ -3958,8 +3966,8 @@ let trans_visitor
   and trans_vec_append dst_cell dst_ty src_oper src_ty =
     let elt_ty = seq_unit_ty dst_ty in
     let trim_trailing_null = dst_ty = Ast.TY_str in
-      assert (src_ty = dst_ty);
-      match src_ty with
+      assert (simplified_ty src_ty = simplified_ty dst_ty);
+      match simplified_ty src_ty with
           Ast.TY_str
         | Ast.TY_vec _ ->
             let is_gc = if type_has_state src_ty then 1L else 0L in
@@ -4410,7 +4418,7 @@ let trans_visitor
     let state_ty = Ast.TY_tup [| Ast.TY_type; obj_args_ty |] in
     let state_ptr_ty = Ast.TY_exterior state_ty in
     let state_ptr_rty = referent_type abi state_ptr_ty in
-    let state_malloc_sz = exterior_allocation_size state_ty in
+    let state_malloc_sz = exterior_allocation_size state_ptr_ty in
 
     let ctor_ty = Hashtbl.find cx.ctxt_all_item_types obj_id in
     let obj_ty =
