@@ -107,7 +107,7 @@ let rec tyspec_to_str (ts:tyspec) : string =
           fmt_tyspec ff (!tv)
 
       | TYSPEC_exterior tv ->
-          fmt ff "@";
+          fmt ff "@@";
           fmt_tyspec ff (!tv)
 
       | TYSPEC_callable (out, ins) ->
