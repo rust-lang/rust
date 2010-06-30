@@ -1066,12 +1066,19 @@ let check_concrete params thing =
   else bug () "unhandled parametric binding"
 ;;
 
+let rec simplified_ty (t:Ast.ty) : Ast.ty =
+  match t with
+      Ast.TY_exterior t
+    | Ast.TY_mutable t
+    | Ast.TY_constrained (t, _) -> simplified_ty t
+    | _ -> t
+;;
 
 let project_type
     (base_ty:Ast.ty)
     (comp:Ast.lval_component)
     : Ast.ty =
-  match (base_ty, comp) with
+  match (simplified_ty base_ty, comp) with
       (Ast.TY_rec elts, Ast.COMP_named (Ast.COMP_ident id)) ->
         begin
           match atab_search elts id with

@@ -1887,12 +1887,12 @@ let trans_visitor
     in
       match expr with
           Ast.EXPR_binary (binop, a, b) ->
-            assert (is_prim_type (atom_type cx a));
-            assert (is_prim_type (atom_type cx b));
+            assert (is_prim_type (simplified_ty (atom_type cx a)));
+            assert (is_prim_type (simplified_ty (atom_type cx b)));
             trans_binary binop (trans_atom a) (trans_atom b)
 
         | Ast.EXPR_unary (unop, a) ->
-            assert (is_prim_type (atom_type cx a));
+            assert (is_prim_type (simplified_ty (atom_type cx a)));
             let src = trans_atom a in
             let bits = Il.operand_bits word_bits src in
             let dst = Il.Reg (Il.next_vreg (emitter()), Il.ValTy bits) in
@@ -2217,13 +2217,6 @@ let trans_visitor
 
   and exterior_rc_cell (cell:Il.cell) : Il.cell =
     exterior_ctrl_cell cell Abi.exterior_rc_slot_field_refcnt
-
-  and simplified_ty t =
-    match t with
-        Ast.TY_exterior t
-      | Ast.TY_mutable t
-      | Ast.TY_constrained (t, _) -> simplified_ty t
-      | _ -> t
 
   and exterior_allocation_size
       (ty:Ast.ty)
@@ -4074,7 +4067,7 @@ let trans_visitor
 
 
   and trans_log id a =
-    match atom_type cx a with
+    match simplified_ty (atom_type cx a) with
         (* NB: If you extend this, be sure to update the
          * typechecking code in type.ml as well. *)
         Ast.TY_str -> trans_log_str a
