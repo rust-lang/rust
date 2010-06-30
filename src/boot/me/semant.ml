@@ -1173,8 +1173,45 @@ let lval_is_direct_mod (cx:ctxt) (lval:Ast.lval) : bool =
         | _ -> false
 ;;
 
+let get_item (cx:ctxt) (node:node_id) : Ast.mod_item_decl =
+  match htab_search cx.ctxt_all_defns node with
+      Some (DEFN_item item) -> item
+    | Some _ -> bugi cx node "defn is not an item"
+    | None -> bugi cx node "missing defn"
+;;
+
+let get_slot (cx:ctxt) (node:node_id) : Ast.slot =
+  match htab_search cx.ctxt_all_defns node with
+      Some (DEFN_slot slot) -> slot
+    | Some _ -> bugi cx node "defn is not a slot"
+    | None -> bugi cx node "missing defn"
+;;
+
 let lval_ty (cx:ctxt) (lval:Ast.lval) : Ast.ty =
-  Hashtbl.find cx.ctxt_all_lval_types (lval_base_id lval)
+  (*
+    FIXME: The correct definition of this function is just: 
+    
+       Hashtbl.find cx.ctxt_all_lval_types (lval_base_id lval)
+    
+    However, since the typechecker is not presently handling
+    every stmt, we have a fallback mode to "pick out the slot
+    type and hope for the best".
+  *)
+  match htab_search cx.ctxt_all_lval_types (lval_base_id lval) with
+      Some t -> t
+    | None ->
+        let rec type_of (lval:Ast.lval) : Ast.ty =
+          match lval with
+              Ast.LVAL_base nbi ->
+                let referent = lval_to_referent cx nbi.id in
+                  if lval_is_slot cx lval
+                  then slot_ty (get_slot cx referent)
+                  else Hashtbl.find cx.ctxt_all_item_types nbi.id
+            | Ast.LVAL_ext (base, comp) ->
+                let base_ty = type_of base in
+                  project_type base_ty comp
+        in
+          type_of lval
 ;;
 
 let lval_is_static (cx:ctxt) (lval:Ast.lval) : bool =
@@ -1454,20 +1491,6 @@ let unreferenced_required_item_ignoring_visitor
 (* Generic lookup, used for slots, items, types, etc. *)
 
 type resolved = ((scope list * node_id) option) ;;
-
-let get_item (cx:ctxt) (node:node_id) : Ast.mod_item_decl =
-  match htab_search cx.ctxt_all_defns node with
-      Some (DEFN_item item) -> item
-    | Some _ -> bugi cx node "defn is not an item"
-    | None -> bugi cx node "missing defn"
-;;
-
-let get_slot (cx:ctxt) (node:node_id) : Ast.slot =
-  match htab_search cx.ctxt_all_defns node with
-      Some (DEFN_slot slot) -> slot
-    | Some _ -> bugi cx node "defn is not a slot"
-    | None -> bugi cx node "missing defn"
-;;
 
 let get_mod_item
     (cx:ctxt)
