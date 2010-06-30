@@ -438,7 +438,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_collection tv, TYSPEC_resolved (params, ty)) ->
               let rec unify ty =
                 match ty with
-                    Ast.TY_vec ty -> unify_ty auto_deref ty tv; ty
+                    Ast.TY_vec ty' -> unify_ty auto_deref ty' tv; ty
                   | Ast.TY_str ->
                       unify_ty auto_deref (Ast.TY_mach TY_u8) tv; ty
                   | Ast.TY_exterior ty
