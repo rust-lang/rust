@@ -557,7 +557,8 @@ let rec lval_slots (cx:ctxt) (lv:Ast.lval) : node_id array =
           if referent_is_slot cx referent
           then [| referent |]
           else [| |]
-    | Ast.LVAL_ext (lv, Ast.COMP_named _) -> lval_slots cx lv
+    | Ast.LVAL_ext (lv, Ast.COMP_named _)
+    | Ast.LVAL_ext (lv, Ast.COMP_deref) -> lval_slots cx lv
     | Ast.LVAL_ext (lv, Ast.COMP_atom a) ->
         Array.append (lval_slots cx lv) (atom_slots cx a)
 
@@ -1074,11 +1075,11 @@ let rec simplified_ty (t:Ast.ty) : Ast.ty =
     | _ -> t
 ;;
 
-let project_type
+let rec project_type
     (base_ty:Ast.ty)
     (comp:Ast.lval_component)
     : Ast.ty =
-  match (simplified_ty base_ty, comp) with
+  match (base_ty, comp) with
       (Ast.TY_rec elts, Ast.COMP_named (Ast.COMP_ident id)) ->
         begin
           match atab_search elts id with
@@ -1096,10 +1097,30 @@ let project_type
     | (Ast.TY_obj (_, fns), Ast.COMP_named (Ast.COMP_ident id)) ->
         (Ast.TY_fn (Hashtbl.find fns id))
 
+    | (Ast.TY_exterior t, Ast.COMP_deref) -> t
+
+    (* Exterior, mutable and constrained are transparent to the
+     * other lval-ext forms: x.y and x.(y).
+     *)
+    | (Ast.TY_exterior t, _)
+    | (Ast.TY_mutable t, _)
+    | (Ast.TY_constrained (t, _), _) -> project_type t comp
+
     | (_,_) ->
         bug ()
-          "project_ty: bad lval-ext: %a indexed by %a"
-          Ast.sprintf_ty base_ty Ast.sprintf_lval_component comp
+          "project_ty: bad lval-ext: %s"
+          (match comp with
+               Ast.COMP_atom at ->
+                 Printf.sprintf "%a.(%a)"
+                   Ast.sprintf_ty base_ty
+                   Ast.sprintf_atom at
+             | Ast.COMP_named nc ->
+                 Printf.sprintf "%a.%a"
+                   Ast.sprintf_ty base_ty
+                   Ast.sprintf_name_component nc
+             | Ast.COMP_deref ->
+                 Printf.sprintf "*(%a)"
+                   Ast.sprintf_ty base_ty)
 ;;
 
 let exports_permit (view:Ast.mod_view) (ident:Ast.ident) : bool =
@@ -1129,8 +1150,8 @@ let rec lval_item (cx:ctxt) (lval:Ast.lval) : Ast.mod_item =
                     | Ast.COMP_named (Ast.COMP_app (i, args)) -> (i, args)
                     | _ ->
                         bug ()
-                          "unhandled lval-component '%a' in Semant.lval_item"
-                          Ast.sprintf_lval_component comp
+                          "unhandled lval-component in '%a' in lval_item"
+                          Ast.sprintf_lval lval
                 in
                   match htab_search items i with
                     | Some sub when exports_permit view i ->

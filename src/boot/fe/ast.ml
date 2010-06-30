@@ -337,6 +337,7 @@ and lit =
 and lval_component =
     COMP_named of name_component
   | COMP_atom of atom
+  | COMP_deref
 
 
 (* identifying the name_base here is sufficient to identify the full lval *)
@@ -862,24 +863,21 @@ and fmt_atom_opts (ff:Format.formatter) (az:(atom option) array) : unit =
     az;
   fmt ff ")"
 
-and fmt_lval_component (ff:Format.formatter) (lvc:lval_component) : unit =
-  match lvc with
-      COMP_named nc -> fmt_name_component ff nc
-    | COMP_atom a ->
-        begin
-          fmt ff "(";
-          fmt_atom ff a;
-          fmt ff ")"
-        end
-
 and fmt_lval (ff:Format.formatter) (l:lval) : unit =
   match l with
       LVAL_base nbi -> fmt_name_base ff nbi.node
     | LVAL_ext (lv, lvc) ->
         begin
-          fmt_lval ff lv;
-          fmt ff ".";
-          fmt_lval_component ff lvc
+          match lvc with
+              COMP_named nc ->
+                fmt_lval ff lv;
+                fmt ff ".";
+                fmt_name_component ff nc
+            | COMP_atom a ->
+                fmt_bracketed "(" ")" fmt_atom ff a;
+            | COMP_deref ->
+                fmt ff "*";
+                fmt_lval ff lv
         end
 
 and fmt_stmt (ff:Format.formatter) (s:stmt) : unit =
@@ -1336,8 +1334,8 @@ and fmt_crate (ff:Format.formatter) (c:crate) : unit =
 
 let sprintf_expr = sprintf_fmt fmt_expr;;
 let sprintf_name = sprintf_fmt fmt_name;;
+let sprintf_name_component = sprintf_fmt fmt_name_component;;
 let sprintf_lval = sprintf_fmt fmt_lval;;
-let sprintf_lval_component = sprintf_fmt fmt_lval_component;;
 let sprintf_atom = sprintf_fmt fmt_atom;;
 let sprintf_slot = sprintf_fmt fmt_slot;;
 let sprintf_slot_key = sprintf_fmt fmt_slot_key;;

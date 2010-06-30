@@ -636,7 +636,8 @@ let type_resolving_visitor
           Ast.LVAL_ext (base, ext) ->
             let ext =
               match ext with
-                  Ast.COMP_named (Ast.COMP_ident _)
+                  Ast.COMP_deref
+                | Ast.COMP_named (Ast.COMP_ident _)
                 | Ast.COMP_named (Ast.COMP_idx _)
                 | Ast.COMP_atom (Ast.ATOM_literal _) -> ext
                 | Ast.COMP_atom (Ast.ATOM_lval lv) ->
