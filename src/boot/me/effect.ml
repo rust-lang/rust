@@ -34,6 +34,11 @@ let mutability_checking_visitor
   in
 
   let check_write s dst =
+    let _ =
+      iflog cx
+        (fun _ -> log cx "checking write to lval #%d = %a"
+           (int_of_node (lval_base_id dst)) Ast.sprintf_lval dst)
+    in
     let dst_ty = lval_ty cx dst in
     let is_mutable =
       match dst_ty with
