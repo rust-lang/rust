@@ -287,6 +287,9 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               Ast.TY_exterior (unify_resolved_types a b)
           | Ast.TY_mutable a, b | b, Ast.TY_mutable a ->
               Ast.TY_mutable (unify_resolved_types a b)
+          | Ast.TY_constrained (a, constrs), b
+          | b, Ast.TY_constrained (a, constrs) ->
+              Ast.TY_constrained ((unify_resolved_types a b), constrs)
           | _ -> fail()
       in
 
