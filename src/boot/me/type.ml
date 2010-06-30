@@ -481,8 +481,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                         in
                           Array.iteri check_elem tvs;
                           ty
-                  | Ast.TY_exterior ty -> Ast.TY_exterior ty
-                  | Ast.TY_mutable ty -> Ast.TY_mutable ty
+                  | Ast.TY_exterior ty -> Ast.TY_exterior (unify ty)
+                  | Ast.TY_mutable ty -> Ast.TY_mutable (unify ty)
                   | _ -> fail ()
               in
               TYSPEC_resolved (params, unify ty)
@@ -491,9 +491,9 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_vector tv, TYSPEC_resolved (params, ty)) ->
               let rec unify ty =
                 match ty with
-                    Ast.TY_vec ty -> unify_ty ty tv; ty
-                  | Ast.TY_exterior ty -> Ast.TY_exterior ty
-                  | Ast.TY_mutable ty -> Ast.TY_mutable ty
+                    Ast.TY_vec ty' -> unify_ty ty' tv; ty
+                  | Ast.TY_exterior ty -> Ast.TY_exterior (unify ty)
+                  | Ast.TY_mutable ty -> Ast.TY_mutable (unify ty)
                   | _ -> fail ()
               in
               TYSPEC_resolved (params, unify ty)
