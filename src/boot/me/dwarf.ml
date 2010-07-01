@@ -2463,7 +2463,7 @@ let dwarf_visitor
                 then get_abbrev_code abbrev_formal
                 else get_abbrev_code abbrev_variable
               in
-              let resolved_slot = referent_to_slot cx s.id in
+              let resolved_slot = get_slot cx s.id in
               let emit_var_die slot_loc =
                 let var_die =
                   SEQ [|

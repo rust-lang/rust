@@ -446,7 +446,7 @@ let trans_visitor
   in
 
   let slot_id_referent_type (slot_id:node_id) : Il.referent_ty =
-    slot_referent_type abi (referent_to_slot cx slot_id)
+    slot_referent_type abi (get_slot cx slot_id)
   in
 
   let caller_args_cell (args_rty:Il.referent_ty) : Il.cell =
@@ -959,12 +959,11 @@ let trans_visitor
               in
                 trans_slot_lval_ext base_ty base_cell comp
 
-          | Ast.LVAL_base nb ->
-              let slot = lval_to_slot cx nb.id in
-              let referent = lval_to_referent cx nb.id in
-              let cell = cell_of_block_slot referent in
-              let ty = slot_ty slot in
-              let cell = deref_slot initializing cell slot in
+          | Ast.LVAL_base _ ->
+              let sloti = lval_base_to_slot cx lv in
+              let cell = cell_of_block_slot sloti.id in
+              let ty = slot_ty sloti.node in
+              let cell = deref_slot initializing cell sloti.node in
                 deref_ty initializing cell ty
       in
         iflog
@@ -4172,6 +4171,11 @@ let trans_visitor
               | Some p ->
                   trans_init_chan dst p
           end
+
+      | Ast.STMT_init_box (dst, src) ->
+          let sloti = lval_base_to_slot cx dst in
+          let cell = cell_of_block_slot sloti.id in
+            trans_init_slot_from_atom CLONE_none cell sloti.node src
 
       | Ast.STMT_block block ->
           trans_block block

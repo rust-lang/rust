@@ -153,7 +153,7 @@ let iter_block_slots
     Hashtbl.iter
       begin
         fun key slot_id ->
-          let slot = referent_to_slot cx slot_id in
+          let slot = get_slot cx slot_id in
             fn key slot_id slot
       end
       block_slots
@@ -180,7 +180,7 @@ let iter_arg_slots
           begin
             fun slot_id ->
               let key = Hashtbl.find cx.ctxt_slot_keys slot_id in
-              let slot = referent_to_slot cx slot_id in
+              let slot = get_slot cx slot_id in
                 fn key slot_id slot
           end
           ls

@@ -68,7 +68,7 @@ let determine_constr_key
                           if referent_is_slot cx aid
                           then
                             if type_has_state
-                              (slot_ty (referent_to_slot cx aid))
+                              (slot_ty (get_slot cx aid))
                             then err (Some aid)
                               "predicate applied to slot of mutable type"
                             else aid

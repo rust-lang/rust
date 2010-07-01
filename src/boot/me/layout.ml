@@ -140,7 +140,7 @@ let layout_visitor
       (slots:node_id array)
       : unit =
     let accum (off,align) id : (size * size) =
-      let slot = referent_to_slot cx id in
+      let slot = get_slot cx id in
       let rt = slot_referent_type cx.ctxt_abi slot in
       let (elt_size, elt_align) = rty_layout rt in
         if vregs_ok

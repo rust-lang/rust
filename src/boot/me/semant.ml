@@ -306,18 +306,32 @@ let referent_is_item (cx:ctxt) (id:node_id) : bool =
     | _ -> false
 ;;
 
-(* coerce an lval definition id to a slot *)
-let referent_to_slot (cx:ctxt) (id:node_id) : Ast.slot =
-  match Hashtbl.find cx.ctxt_all_defns id with
-      DEFN_slot slot -> slot
-    | _ -> bugi cx id "unknown slot"
+let rec lval_base_id (lv:Ast.lval) : node_id =
+  match lv with
+      Ast.LVAL_base nbi -> nbi.id
+    | Ast.LVAL_ext (lv, _) -> lval_base_id lv
+;;
+
+let get_item (cx:ctxt) (node:node_id) : Ast.mod_item_decl =
+  match htab_search cx.ctxt_all_defns node with
+      Some (DEFN_item item) -> item
+    | Some _ -> bugi cx node "defn is not an item"
+    | None -> bugi cx node "missing defn"
+;;
+
+let get_slot (cx:ctxt) (node:node_id) : Ast.slot =
+  match htab_search cx.ctxt_all_defns node with
+      Some (DEFN_slot slot) -> slot
+    | Some _ -> bugi cx node "defn is not a slot"
+    | None -> bugi cx node "missing defn"
 ;;
 
 (* coerce an lval reference id to its definition slot *)
-let lval_to_slot (cx:ctxt) (id:node_id) : Ast.slot =
-  match resolve_lval_id cx id with
-      DEFN_slot slot -> slot
-    | _ -> bugi cx id "unknown slot"
+let lval_base_to_slot (cx:ctxt) (lval:Ast.lval) : Ast.slot identified =
+  let lid = lval_base_id lval in
+  let rid = lval_to_referent cx lid in
+  let slot = get_slot cx rid in
+    { node = slot; id = rid }
 ;;
 
 let get_stmt_depth (cx:ctxt) (id:node_id) : int =
@@ -532,22 +546,6 @@ let rec lval_to_name (lv:Ast.lval) : Ast.name =
           end
         in
           Ast.NAME_ext (lval_to_name lv, comp)
-;;
-
-let rec lval_base_id (lv:Ast.lval) : node_id =
-  match lv with
-      Ast.LVAL_base nbi -> nbi.id
-    | Ast.LVAL_ext (lv, _) -> lval_base_id lv
-;;
-
-let rec lval_base_slot (cx:ctxt) (lv:Ast.lval) : node_id option =
-  match lv with
-      Ast.LVAL_base nbi ->
-        let referent = lval_to_referent cx nbi.id in
-          if referent_is_slot cx referent
-          then Some referent
-          else None
-    | Ast.LVAL_ext (lv, _) -> lval_base_slot cx lv
 ;;
 
 let rec lval_slots (cx:ctxt) (lv:Ast.lval) : node_id array =
@@ -1191,20 +1189,6 @@ let lval_is_direct_mod (cx:ctxt) (lval:Ast.lval) : bool =
       match defn with
           DEFN_item { Ast.decl_item = Ast.MOD_ITEM_mod _ } -> true
         | _ -> false
-;;
-
-let get_item (cx:ctxt) (node:node_id) : Ast.mod_item_decl =
-  match htab_search cx.ctxt_all_defns node with
-      Some (DEFN_item item) -> item
-    | Some _ -> bugi cx node "defn is not an item"
-    | None -> bugi cx node "missing defn"
-;;
-
-let get_slot (cx:ctxt) (node:node_id) : Ast.slot =
-  match htab_search cx.ctxt_all_defns node with
-      Some (DEFN_slot slot) -> slot
-    | Some _ -> bugi cx node "defn is not a slot"
-    | None -> bugi cx node "missing defn"
 ;;
 
 let lval_ty (cx:ctxt) (lval:Ast.lval) : Ast.ty =
