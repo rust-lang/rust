@@ -118,6 +118,7 @@ type token =
   | BOOL
   | INT
   | UINT
+  | FLOAT
   | CHAR
   | STR
   | MACH          of Common.ty_mach
@@ -267,6 +268,7 @@ let rec string_of_tok t =
     | BOOL       -> "bool"
     | INT        -> "int"
     | UINT       -> "uint"
+    | FLOAT      -> "float"
     | CHAR       -> "char"
     | STR        -> "str"
     | MACH m     -> Common.string_of_ty_mach m

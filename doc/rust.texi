@@ -647,9 +647,10 @@ The keywords are:
 @tab @code{type}
 @tab @code{true}
 @tab @code{false}
-@item @code{any}
-@tab @code{int}
+@tab @code{any}
+@item @code{int}
 @tab @code{uint}
+@tab @code{float}
 @tab @code{char}
 @tab @code{bool}
 @item @code{u8}
@@ -1750,6 +1751,7 @@ Rust; they cannot be used as user-defined identifiers in any context.
 * Ref.Type.Any::                An open sum of every possible type.
 * Ref.Type.Mach::               Machine-level types.
 * Ref.Type.Int::                The machine-dependent integer types.
+* Ref.Type.Float::              The machine-dependent floating-point types.
 * Ref.Type.Prim::               Primitive types.
 * Ref.Type.Big::                The arbitrary-precision integer type.
 * Ref.Type.Text::               Strings and characters.
@@ -1842,9 +1844,21 @@ The Rust type @code{int}@footnote{A Rust @code{int} is analogous to a C99
 target-machine-dependent size. Its size, in bits, is equal to the size of the
 rust type @code{uint} on the same target machine.
 
+@node       Ref.Type.Float
+@subsection Ref.Type.Float
+
+The Rust type @code{float} is a machine-specific type equal to one of the
+supported Rust floating-point machine types (@code{f32} or @code{f64}). It is
+the largest floating-point type that is directly supported by hardware on the
+target machine, or if the target machine has no floating-point hardware
+support, the largest floating-point type supported by the software
+floating-point library used to support the other floating-point machine types.
+
+Note that due to the preference for hardware-supported floating point, the
+type @code{float} may not be equal to the largest @emph{supported}
+floating-point type.
 
 
-@page
 @node       Ref.Type.Prim
 @subsection Ref.Type.Prim
 
@@ -1863,7 +1877,7 @@ The boolean type @code{bool} with values @code{true} and @code{false}.
 @item
 The machine types.
 @item
-The machine-dependent integer types.
+The machine-dependent integer and floating-point types.
 @end itemize
 
 

@@ -79,6 +79,7 @@
 
                 ("int", INT);
                 ("uint", UINT);
+                ("float", FLOAT);
 
                 ("char", CHAR);
                 ("str", STR);
