@@ -2811,14 +2811,14 @@ current iterator, suspends execution of the current iterator, and transfers
 control to the current put-recipient frame.
 
 A @code{put} statement is only valid within an iterator.  @footnote{A
-@code{put} statement is analogous to a @code{yield} statement in the CLU,
-Sather and Objective C 2.0 languages, or in more recent languages providing a
-``generator'' facility, such as Python, Javascript or C#. Like the generators
-of CLU, Sather and Objective C 2.0, but @emph{unlike} these later languages,
-Rust's iterators reside on the stack and obey a strict stack discipline.} The
-current put-recipient will eventually resume the suspended iterator containing
-the @code{put} statement, either continuing execution after the @code{put}
-statement, or terminating its execution and destroying the iterator frame.
+@code{put} statement is analogous to a @code{yield} statement in the CLU, and
+Sather languages, or in more recent languages providing a ``generator''
+facility, such as Python, Javascript or C#. Like the generators of CLU and
+Sather but @emph{unlike} these later languages, Rust's iterators reside on the
+stack and obey a strict stack discipline.} The current put-recipient will
+eventually resume the suspended iterator containing the @code{put} statement,
+either continuing execution after the @code{put} statement, or terminating its
+execution and destroying the iterator frame.
 
 
 @page
