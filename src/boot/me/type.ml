@@ -432,6 +432,14 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
              TYSPEC_exterior b') ->
                unify_tyvars ucx a b'; !a
 
+          | (_, TYSPEC_resolved (params, Ast.TY_exterior ty))
+              when ucx.ext_ok ->
+              unify_ty_parametric ucx ty params a; !b
+
+          | (TYSPEC_resolved (params, Ast.TY_exterior ty), _)
+              when ucx.ext_ok ->
+              unify_ty_parametric ucx ty params b; !a
+
           | (TYSPEC_exterior a', _) when ucx.ext_ok
               -> unify_tyvars ucx a' b; !a
           | (_, TYSPEC_exterior b') when ucx.ext_ok
@@ -452,6 +460,14 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_resolved (_, Ast.TY_mutable _),
              TYSPEC_mutable b') ->
                unify_tyvars ucx a b'; !a
+
+          | (_, TYSPEC_resolved (params, Ast.TY_mutable ty))
+              when ucx.mut_ok ->
+              unify_ty_parametric ucx ty params a; !b
+
+          | (TYSPEC_resolved (params, Ast.TY_mutable ty), _)
+              when ucx.mut_ok ->
+              unify_ty_parametric ucx ty params b; !a
 
           | (TYSPEC_mutable a', _) when ucx.mut_ok
               -> unify_tyvars ucx a' b; !a
