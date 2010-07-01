@@ -191,6 +191,11 @@ let lval_ctx =
     mut_ok = true }
 ;;
 
+let init_ctx =
+  { ext_ok = true;
+    mut_ok = true }
+;;
+
 let strict_ctx =
   { ext_ok = false;
     mut_ok = false }
@@ -1150,7 +1155,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               let tvbase = any() in
                 unify_lval rval_ctx base tvbase;
                 unify_tyvars rval_ctx tvrec tvbase;
-                unify_lval lval_ctx dst tvrec
+                unify_lval init_ctx dst tvrec
 
         | Ast.STMT_init_rec (dst, fields, None) ->
             let dct = Hashtbl.create 10 in
@@ -1160,7 +1165,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                 Hashtbl.add dct ident tv
             in
               Array.iter add_field fields;
-              unify_lval lval_ctx dst (ref (TYSPEC_record dct))
+              unify_lval init_ctx dst (ref (TYSPEC_record dct))
 
         | Ast.STMT_init_tup (dst, members) ->
             let member_to_tv atom =
@@ -1169,16 +1174,16 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                 tv
             in
             let member_tvs = Array.map member_to_tv members in
-              unify_lval lval_ctx dst (ref (TYSPEC_tuple member_tvs))
+              unify_lval init_ctx dst (ref (TYSPEC_tuple member_tvs))
 
         | Ast.STMT_init_vec (dst, atoms) ->
             let tv = any() in
             let unify_with_tv atom = unify_atom rval_ctx atom tv in
               Array.iter unify_with_tv atoms;
-              unify_lval lval_ctx dst (ref (TYSPEC_vector tv))
+              unify_lval init_ctx dst (ref (TYSPEC_vector tv))
 
         | Ast.STMT_init_str (dst, _) ->
-            unify_lval lval_ctx dst (ty Ast.TY_str)
+            unify_lval init_ctx dst (ty Ast.TY_str)
 
         | Ast.STMT_copy (dst, expr) ->
             let tv = any() in
