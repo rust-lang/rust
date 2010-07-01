@@ -121,9 +121,10 @@
 }
 
 let hexdig = ['0'-'9' 'a'-'f' 'A'-'F']
-let bin = "0b" ['0' '1']['0' '1' '_']*
-let hex = "0x" hexdig ['0'-'9' 'a'-'f' 'A'-'F' '_']*
-let dec = ['0'-'9']+
+let decdig = ['0'-'9']
+let bin = '0' 'b' ['0' '1' '_']*
+let hex = '0' 'x' ['0'-'9' 'a'-'f' 'A'-'F' '_']*
+let dec = decdig ['0'-'9' '_']*
 let exp = ['e''E']['-''+']? dec
 let flo = (dec '.' dec (exp?)) | (dec exp)
 
@@ -160,7 +161,7 @@ rule token = parse
 | ">>>"                        { ASR        }
 | '~'                          { TILDE      }
 | '{'                          { LBRACE     }
-| '_' (dec as n)               { IDX (int_of_string n) }
+| '_' (decdig+ as n)           { IDX (int_of_string n) }
 | '_'                          { UNDERSCORE }
 | '}'                          { RBRACE     }
 
