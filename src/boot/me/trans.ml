@@ -2873,6 +2873,11 @@ let trans_visitor
       iflog
         begin
           fun _ ->
+            log cx "trans_copy_ty";
+            log cx "   dst ty %a, src ty %a"
+              Ast.sprintf_ty dst_ty Ast.sprintf_ty src_ty;
+            log cx "   dst cell %s, src cell %s"
+              (cell_str dst) (cell_str src);
             annotate
               (Printf.sprintf "%sweight copy: %a <- %a"
                  weight
@@ -3121,19 +3126,27 @@ let trans_visitor
       (src:Il.cell) (src_ty:Ast.ty)
       : unit =
     let dst_ty = slot_ty dst_slot in
-    match (dst_slot.Ast.slot_mode, clone) with
-        (Ast.MODE_alias, CLONE_none) ->
-          mov dst (Il.Cell (alias (Il.Mem (need_mem_cell src))))
+    let _ =
+      iflog (fun _ ->
+               log cx "trans_init_slot_from_cell";
+               log cx "   dst slot %a, src ty %a"
+                 Ast.sprintf_slot dst_slot Ast.sprintf_ty src_ty;
+               log cx "   dst cell %s, src cell %s"
+                 (cell_str dst) (cell_str src))
+    in
+      match (dst_slot.Ast.slot_mode, clone) with
+          (Ast.MODE_alias, CLONE_none) ->
+            mov dst (Il.Cell (alias (Il.Mem (need_mem_cell src))))
 
-      | (Ast.MODE_local, CLONE_none) ->
-          trans_copy_ty
-            ty_params true
-            dst dst_ty src src_ty None
+        | (Ast.MODE_local, CLONE_none) ->
+            trans_copy_ty
+              ty_params true
+              dst dst_ty src src_ty None
 
-      | (Ast.MODE_alias, _) ->
-          bug () "attempting to clone into alias slot"
+        | (Ast.MODE_alias, _) ->
+            bug () "attempting to clone into alias slot"
 
-      | (_, CLONE_chan clone_task) ->
+        | (_, CLONE_chan clone_task) ->
             let clone =
               if (type_contains_chan src_ty)
               then CLONE_all clone_task
@@ -3143,8 +3156,8 @@ let trans_visitor
               trans_init_slot_from_cell ty_params
                 clone dst dst_slot src src_ty
 
-      | (_, CLONE_all clone_task) ->
-          clone_ty ty_params clone_task dst src src_ty None
+        | (_, CLONE_all clone_task) ->
+            clone_ty ty_params clone_task dst src src_ty None
 
 
   and trans_init_slot_from_atom
@@ -3354,6 +3367,8 @@ let trans_visitor
       (arg_slot:Ast.slot)
       (arg:Ast.atom)
       : unit =
+    log cx "trans_argN: arg slot %a, arg atom %a"
+      Ast.sprintf_slot arg_slot Ast.sprintf_atom arg;
     trans_init_slot_from_atom clone arg_cell arg_slot arg
 
   and code_of_cell (cell:Il.cell) : Il.code =
