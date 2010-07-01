@@ -583,39 +583,42 @@ Unicode characters.
 * Ref.Lex.Sym::          Special symbol tokens.
 @end menu
 
-@page
+@node
+
 @node       Ref.Lex.Ignore
 @subsection Ref.Lex.Ignore
 @c * Ref.Lex.Ignore::            Ignored tokens.
 
-The classes of @emph{whitespace} and @emph{comment} is ignored, and are not
-considered as tokens.
+Characters considered to be @emph{whitespace} or @emph{comment} are ignored,
+and are not considered as tokens. They serve only to delimit tokens. Rust is
+otherwise a free-form language.
 
 @dfn{Whitespace} is any of the following Unicode characters: U+0020 (space),
 U+0009 (tab, @code{'\t'}), U+000A (LF, @code{'\n'}), U+000D (CR, @code{'\r'}).
 
 @dfn{Comments} are any sequence of Unicode characters beginning with U+002F
-U+002F (@code{//}) and extending to the next U+000a character,
+U+002F (@code{"//"}) and extending to the next U+000A character,
 @emph{excluding} cases in which such a sequence occurs within a string literal
 token or a syntactic extension token.
 
 
-@page
 @node       Ref.Lex.Ident
 @subsection Ref.Lex.Ident
 @c * Ref.Lex.Ident::             Identifier tokens.
 
 Identifiers follow the pattern of C identifiers: they begin with a
-@emph{letter} or underscore character @code{_} (Unicode character U+005f), and
-continue with any combination of @emph{letters}, @emph{digits} and
-underscores, and must not be equal to any keyword. @xref{Ref.Lex.Key}.
+@emph{letter} or @emph{underscore}, and continue with any combination of
+@emph{letters}, @emph{decimal digits} and underscores, and must not be equal
+to any keyword. @xref{Ref.Lex.Key}.
 
 A @emph{letter} is a Unicode character in the ranges U+0061-U+007A and
-U+0041-U+005A (@code{a-z} and @code{A-Z}).
+U+0041-U+005A (@code{'a'}-@code{'z'} and @code{'A'}-@code{'Z'}).
 
-A @emph{digit} is a Unicode character in the range U+0030-U0039 (@code{0-9}).
+An @dfn{underscore} is the character U+005F ('_').
 
-@page
+A @dfn{decimal digit} is a character in the range U+0030-U+0039
+(@code{'0'}-@code{'9'}).
+
 @node       Ref.Lex.Key
 @subsection Ref.Lex.Key
 @c * Ref.Lex.Key::                Keyword tokens.
@@ -701,25 +704,91 @@ The keywords are:
 @subsection Ref.Lex.Num
 @c * Ref.Lex.Num::                 Numeric tokens.
 
-@emph{TODO: describe numeric literals}.
+A @dfn{number literal} is either an @emph{integer literal} or a
+@emph{floating-point literal}.
 
-@page
+@sp 1
+An @dfn{integer literal} has one of three forms:
+@enumerate
+@item A @dfn{decimal literal} starts with a @emph{decimal digit} and continues
+with any mixture of @emph{decimal digits} and @emph{underscores}.
+
+@item A @dfn{hex literal} starts with the character sequence U+0030
+U+0078 (@code{"0x"}) and continues as any mixture @emph{hex digits}
+and @emph{underscores}.
+
+@item A @dfn{binary literal} starts with the character sequence U+0030
+U+0062 (@code{"0b"}) and continues as any mixture @emph{binary digits}
+and @emph{underscores}.
+
+@end enumerate
+
+@sp 1
+A @dfn{floating point literal} has one of two forms:
+@enumerate
+@item Two @emph{decimal literals} separated by a period
+character U+002E ('.'), with an optional @emph{exponent} trailing after the
+second @emph{decimal literal}.
+@item A single @emph{decimal literal} followed by an @emph{exponent}.
+@end enumerate
+
+@sp 1
+A @dfn{hex digit} is either a @emph{decimal digit} or else a character in the
+ranges U+0061-U+0066 and U+0041-U+0046 (@code{'a'}-@code{'f'},
+@code{'A'}-@code{'F'}).
+
+A @dfn{binary digit} is either the character U+0030 or U+0031 (@code{'0'} or
+@code{'1'}).
+
+An @dfn{exponent} begins with either of the characters U+0065 or U+0045
+(@code{'e'} or @code{'E'}), followed by an optional @emph{sign character},
+followed by a trailing @emph{decimal literal}.
+
+A @dfn{sign character} is either U+002B or U+002D (@code{'+'} or @code{'-'}).
+
 @node       Ref.Lex.Text
 @subsection Ref.Lex.Text
 @c * Ref.Lex.Key::                 String and character tokens.
 
-@emph{TODO: describe string and character literals}.
+A @dfn{character literal} is a single Unicode character enclosed within two
+U+0027 (single-quote) characters, with the exception of U+0027 itself, which
+must be @emph{escaped} by a preceding U+005C character ('\').
 
-@page
+A @dfn{string literal} is a sequence of any Unicode characters enclosed
+within two U+0022 (double-quote) characters, with the exception of U+0022
+itself, which must be @emph{escaped} by a preceding U+005C character
+('\').
+
+Some additional @emph{escapes} are available in either character or string
+literals.  An escape starts with a U+005C ('\') and continues with one
+of the following forms:
+@itemize
+@item An @dfn{8-bit codepoint escape} escape starts with U+0078 ('x') and is
+followed by exactly two @dfn{hex digits}. It denotes the Unicode codepoint
+equal to the provided hex value.
+@item A @dfn{16-bit codepoint escape} starts with U+0075 ('u') and is followed
+ by exactly four @dfn{hex digits}. It denotes the Unicode codepoint equal to
+the provided hex value.
+@item A @dfn{32-bit codepoint escape} starts with U+0055 ('U') and is followed
+ by exactly eight @dfn{hex digits}. It denotes the Unicode codepoint equal to
+the provided hex value.
+@item A @dfn{whitespace escape} is one of the characters U+006E, U+0072, or
+U+0074, denoting the unicode values U+000A (LF), U+000D (CR) or U+0009 (HT)
+respectively.
+@item The @dfn{backslash escape} is the character U+005C ('\') which must be
+escaped in order to denote @emph{itself}.
+@end itemize
+
 @node       Ref.Lex.Syntax
 @subsection Ref.Lex.Syntax
 @c * Ref.Lex.Syntax::              Syntactic extension tokens.
 
-Syntactic extensions are marked with the @emph{pound} sigil @code{#} (U+0023),
+Syntactic extensions are marked with the @emph{pound} sigil U+0023 (@code{#}),
 followed by a qualified name of a compile-time imported module item, an
-optional parenthesized list of @emph{tokens}, and an optional brace-enclosed
-region of free-form text (with brace-matching and brace-escaping used to
-determine the limit of the region). @xref{Ref.Comp.Syntax}.
+optional parenthesized list of @emph{parsed expressions}, and an optional
+brace-enclosed region of free-form text (with brace-matching and
+brace-escaping used to determine the limit of the
+region). @xref{Ref.Comp.Syntax}.
 
 @emph{TODO: formalize those terms more}.
 
