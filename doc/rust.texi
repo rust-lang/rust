@@ -1748,7 +1748,7 @@ built-in type or type-constructor name is reserved as a @emph{keyword} in
 Rust; they cannot be used as user-defined identifiers in any context.
 
 @menu
-* Ref.Type.Any::                An open sum of every possible type.
+* Ref.Type.Any::                An open union of every possible type.
 * Ref.Type.Mach::               Machine-level types.
 * Ref.Type.Int::                The machine-dependent integer types.
 * Ref.Type.Float::              The machine-dependent floating-point types.
@@ -1758,7 +1758,7 @@ Rust; they cannot be used as user-defined identifiers in any context.
 * Ref.Type.Rec::                Labeled products of heterogeneous types.
 * Ref.Type.Tup::                Unlabeled products of homogeneous types.
 * Ref.Type.Vec::                Open products of homogeneous types.
-* Ref.Type.Tag::                Disjoint sums of heterogeneous types.
+* Ref.Type.Tag::                Disjoint unions of heterogeneous types.
 * Ref.Type.Fn::                 Subroutine types.
 * Ref.Type.Iter::               Scoped coroutine types.
 * Ref.Type.Port::               Unique inter-task message-receipt endpoints.
@@ -1989,7 +1989,7 @@ vector is always bounds-checked.
 @node       Ref.Type.Tag
 @subsection Ref.Type.Tag
 
-The @code{tag} type-constructor forms new heterogeneous disjoint sum
+The @code{tag} type-constructor forms new heterogeneous disjoint union
 types.@footnote{The @code{tag} type is analogous to a @code{data} constructor
 declaration in ML or a @emph{pick ADT} in Limbo.} A @code{tag} type consists
 of a number of @emph{variants}, each of which is independently named and takes
