@@ -1164,6 +1164,10 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           unify_lval rval_ctx callee callee_tv;
       in
 
+      let set_auto_deref lv b =
+        Hashtbl.replace cx.ctxt_auto_deref_lval (lval_base_id lv) b;
+      in
+
       let ty t = ref (TYSPEC_resolved ([||], t)) in
       let any _ = ref TYSPEC_all in
 
@@ -1227,7 +1231,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               (* Force-override the 'auto-deref' judgment that was cached 
                * in cx.ctxt_auto_deref_lval by preceding unify_expr call.
                *)
-              Hashtbl.replace cx.ctxt_auto_deref_lval (lval_base_id dst) false;
+              set_auto_deref dst false;
               unify_lval lval_ctx dst tv;
 
         | Ast.STMT_call (out, callee, args) ->
@@ -1248,13 +1252,12 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                    check_callable out_tv callee args)
                 check_calls
 
-        | Ast.STMT_while { Ast.while_lval = (_, expr) } ->
+        | Ast.STMT_while { Ast.while_lval = (_, expr) }
+        | Ast.STMT_do_while { Ast.while_lval = (_, expr) } ->
             unify_expr rval_ctx expr (ty Ast.TY_bool)
 
         | Ast.STMT_if { Ast.if_test = if_test } ->
             unify_expr rval_ctx if_test (ty Ast.TY_bool);
-
-        | Ast.STMT_decl _ -> ()
 
         | Ast.STMT_ret atom_opt
         | Ast.STMT_put atom_opt ->
@@ -1314,10 +1317,54 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               unify_lval lval_ctx lval lval_tv;
               Array.iter (fun _ -> push_pat_tv lval_tv) arms
 
-        (* FIXME (issue #52): plenty more to handle here. *)
-        | _ ->
-            log cx "warning: not typechecking stmt %s\n"
-              (Ast.sprintf_stmt () stmt)
+        | Ast.STMT_join lval ->
+            unify_lval rval_ctx lval (ty Ast.TY_task);
+
+        | Ast.STMT_init_box (dst, v) ->
+            let tv = any() in
+              unify_atom rval_ctx v tv;
+              unify_lval { init_ctx with box_ok = true } dst tv
+
+        (* FIXME (issue #52): Finish these. *)
+        (* Fake-typecheck a few comm-related statements for now, just enough
+         * to supply the auto-deref contexts; we will need new tyspecs for
+         * port and channel constraints.
+         *)
+
+        | Ast.STMT_recv (dst, port) ->
+            set_auto_deref dst rval_ctx.box_ok;
+            set_auto_deref port rval_ctx.box_ok;
+
+        | Ast.STMT_send (chan, v) ->
+            set_auto_deref chan rval_ctx.box_ok;
+            set_auto_deref v rval_ctx.box_ok;
+
+        | Ast.STMT_init_chan (dst, port_opt) ->
+            begin
+              match port_opt with
+                  None -> ()
+                | Some port -> set_auto_deref port rval_ctx.box_ok
+            end;
+            set_auto_deref dst init_ctx.box_ok
+
+        | Ast.STMT_init_port dst ->
+            set_auto_deref dst init_ctx.box_ok
+
+
+        (* Nothing to typecheck on these. *)
+        | Ast.STMT_block _
+        | Ast.STMT_decl _
+        | Ast.STMT_yield
+        | Ast.STMT_fail -> ()
+
+        (* Unimplemented. *)
+        | Ast.STMT_check_if _
+        | Ast.STMT_prove _
+        | Ast.STMT_note _
+        | Ast.STMT_alt_port _
+        | Ast.STMT_alt_type _
+        | Ast.STMT_put_each _
+        | Ast.STMT_slice _ -> err None "Unimplemented typecheck for stmt"
     in
 
     let visit_stmt_pre (stmt:Ast.stmt) : unit =
