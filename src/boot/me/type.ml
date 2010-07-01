@@ -1116,7 +1116,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                     TYSPEC_exterior tv
               in
               let base_tv = ref base_ts in
-                unify_lval' ucx base base_tv;
+                unify_lval' { ucx with ext_ok = true } base base_tv;
                 match !(resolve_tyvar base_tv) with
                     TYSPEC_resolved (_, ty) ->
                       unify_ty ucx (project_type ty comp) tv
