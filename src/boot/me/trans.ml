@@ -2210,12 +2210,10 @@ let trans_visitor
                                (ty_align abi ty))
              (tydesc_rty abi))
 
-  and box_ctrl_cell (cell:Il.cell) (off:int) : Il.cell =
+  and box_rc_cell (cell:Il.cell) : Il.cell =
+    let off = Abi.box_rc_slot_field_refcnt in
     let (mem, _) = need_mem_cell (deref_imm cell (word_n off)) in
       word_at mem
-
-  and box_rc_cell (cell:Il.cell) : Il.cell =
-    box_ctrl_cell cell Abi.box_rc_slot_field_refcnt
 
   and box_allocation_size
       (ty:Ast.ty)
