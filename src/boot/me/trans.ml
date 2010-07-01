@@ -882,6 +882,7 @@ let trans_visitor
   in
 
   let rec trans_slot_lval_ext
+      (initializing:bool)
       (base_ty:Ast.ty)
       (cell:Il.cell)
       (comp:Ast.lval_component)
@@ -894,6 +895,16 @@ let trans_visitor
         emit (Il.binary Il.UMUL idx atop unit_sz);
         let elt_mem = trans_bounds_check (deref cell) (Il.Cell idx) in
           (Il.Mem (elt_mem, referent_type abi ty), ty)
+    in
+      (* 
+       * All lval components aside from explicit-deref just auto-deref
+       * through all boxes to find their indexable referent.
+       *)
+    let base_ty = strip_mutable_or_constrained_ty base_ty in
+    let (cell, base_ty) =
+      if comp = Ast.COMP_deref
+      then (cell, base_ty)
+      else deref_ty DEREF_all_boxes initializing cell base_ty
     in
 
     match (base_ty, comp) with
@@ -919,6 +930,8 @@ let trans_visitor
           let (cell, fn_ty) = get_vtbl_entry cell obj_ty id in
             (cell, (Ast.TY_fn fn_ty))
 
+      | (Ast.TY_box _, Ast.COMP_deref) ->
+          deref_ty DEREF_one_box initializing cell base_ty
 
       | _ -> bug () "unhandled form of lval_ext in trans_slot_lval_ext"
 
@@ -943,6 +956,7 @@ let trans_visitor
         based elt_reg
 
   and trans_lval_full
+      (dctrl:deref_ctrl)
       (initializing:bool)
       (lv:Ast.lval)
       : (Il.cell * Ast.ty) =
@@ -954,17 +968,14 @@ let trans_visitor
               let (base_cell, base_ty) =
                 trans_slot_lval_full initializing base
               in
-              let (base_cell, base_ty) =
-                deref_ty initializing base_cell base_ty
-              in
-                trans_slot_lval_ext base_ty base_cell comp
+                trans_slot_lval_ext initializing base_ty base_cell comp
 
           | Ast.LVAL_base _ ->
               let sloti = lval_base_to_slot cx lv in
               let cell = cell_of_block_slot sloti.id in
               let ty = slot_ty sloti.node in
               let cell = deref_slot initializing cell sloti.node in
-                deref_ty initializing cell ty
+                deref_ty dctrl initializing cell ty
       in
         iflog
           begin
@@ -993,7 +1004,7 @@ let trans_visitor
       (initializing:bool)
       (lv:Ast.lval)
       : (Il.cell * Ast.ty) =
-    trans_lval_full initializing lv
+    trans_lval_full DEREF_none initializing lv
 
   and trans_lval_init (lv:Ast.lval) : (Il.cell * Ast.ty) =
     trans_lval_maybe_init true lv
@@ -1221,6 +1232,9 @@ let trans_visitor
       | Ast.LIT_mach (m, n, _) -> imm_of_ty n m
 
   and trans_atom (atom:Ast.atom) : Il.operand =
+    trans_atom_full DEREF_all_boxes atom
+
+  and trans_atom_full (dctrl:deref_ctrl) (atom:Ast.atom) : Il.operand =
     iflog
       begin
         fun _ ->
@@ -1230,7 +1244,7 @@ let trans_visitor
     match atom with
         Ast.ATOM_lval lv ->
           let (cell, ty) = trans_lval lv in
-            Il.Cell (fst (deref_ty false cell ty))
+            Il.Cell (fst (deref_ty dctrl false cell ty))
 
       | Ast.ATOM_literal lit -> trans_lit lit.node
 
@@ -2805,17 +2819,19 @@ let trans_visitor
       | MEM_interior -> bug () "init_box of MEM_interior"
 
   and deref_ty
+      (dctrl:deref_ctrl)
       (initializing:bool)
       (cell:Il.cell)
       (ty:Ast.ty)
       : (Il.cell * Ast.ty) =
-    match ty with
+    match (ty, dctrl) with
 
-      | Ast.TY_mutable ty
-      | Ast.TY_constrained (ty, _) ->
-          deref_ty initializing cell ty
+      | (Ast.TY_mutable ty, _)
+      | (Ast.TY_constrained (ty, _), _) ->
+          deref_ty dctrl initializing cell ty
 
-      | Ast.TY_box ty' ->
+      | (Ast.TY_box ty', DEREF_one_box)
+      | (Ast.TY_box ty', DEREF_all_boxes) ->
           check_box_rty cell;
           if initializing
           then init_box cell ty;
@@ -2824,8 +2840,13 @@ let trans_visitor
               (deref cell)
               (Abi.box_rc_slot_field_body)
           in
-            (* Init recursively so @@@@T chain works. *)
-            deref_ty initializing cell ty'
+          let inner_dctrl =
+            if dctrl = DEREF_one_box
+            then DEREF_none
+            else DEREF_all_boxes
+          in
+            (* Possibly deref recursively. *)
+            deref_ty inner_dctrl initializing cell ty'
 
       | _ -> (cell, ty)
 
@@ -2939,18 +2960,30 @@ let trans_visitor
       (src:Il.cell) (src_ty:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    assert (simplified_ty src_ty = simplified_ty dst_ty);
-    iflog (fun _ ->
-             annotate ("heavy copy: slot preparation"));
+    let src_ty = strip_mutable_or_constrained_ty src_ty in
+    let dst_ty = strip_mutable_or_constrained_ty dst_ty in
+    let dst_ty = maybe_iso curr_iso dst_ty in
+    let src_ty = maybe_iso curr_iso src_ty in
 
-    let ty = simplified_ty src_ty in
-    let ty = maybe_iso curr_iso ty in
-    let curr_iso = maybe_enter_iso ty curr_iso in
-    let (dst, dst_ty) = deref_ty initializing dst dst_ty in
-    let (src, src_ty) = deref_ty false src src_ty in
-      assert (dst_ty = ty);
-      assert (src_ty = ty);
-      copy_ty ty_params dst src ty curr_iso
+      iflog
+        begin
+          fun _ ->
+            log cx "trans_copy_ty_heavy";
+            log cx "   dst ty %a, src ty %a"
+              Ast.sprintf_ty dst_ty Ast.sprintf_ty src_ty;
+            log cx "   dst cell %s, src cell %s"
+              (cell_str dst) (cell_str src);
+        end;
+
+      assert (src_ty = dst_ty);
+      iflog (fun _ ->
+               annotate ("heavy copy: slot preparation"));
+
+      let curr_iso = maybe_enter_iso dst_ty curr_iso in
+      let (dst, dst_ty') = deref_ty DEREF_none initializing dst dst_ty in
+      let (src, _) = deref_ty DEREF_none false src src_ty in
+        assert (dst_ty' = dst_ty);
+        copy_ty ty_params dst src dst_ty' curr_iso
 
   and trans_copy
       (initializing:bool)
@@ -3021,7 +3054,7 @@ let trans_visitor
                   get_forwarding_vtbl caller_obj_ty callee_obj_ty
                 in
                 let (caller_obj, _) =
-                  deref_ty initializing dst_cell dst_ty
+                  deref_ty DEREF_all_boxes initializing dst_cell dst_ty
                 in
                 let caller_vtbl =
                   get_element_ptr caller_obj Abi.binding_field_item
@@ -3037,7 +3070,9 @@ let trans_visitor
              * so copy is just MOV into the lval.
              *)
             let src_operand = trans_expr src in
-              mov (fst (deref_ty false dst_cell dst_ty)) src_operand
+              mov
+                (fst (deref_ty DEREF_none false dst_cell dst_ty))
+                src_operand
 
         | (_, Ast.EXPR_atom (Ast.ATOM_lval src_lval)) ->
             if lval_is_direct_fn cx src_lval then
@@ -3891,7 +3926,7 @@ let trans_visitor
     let (dst_slot, _) = fo.Ast.for_slot in
     let dst_cell = cell_of_block_slot dst_slot.id in
     let (head_stmts, seq) = fo.Ast.for_seq in
-    let (seq_cell, seq_ty) = trans_lval_full false seq in
+    let (seq_cell, seq_ty) = trans_lval seq in
     let unit_ty = seq_unit_ty seq_ty in
       Array.iter trans_stmt head_stmts;
       iter_seq_parts ty_params seq_cell seq_cell unit_ty
@@ -4043,7 +4078,7 @@ let trans_visitor
         | Ast.TY_vec _ when binop = Ast.BINOP_add ->
             trans_vec_append dst_cell dst_ty src_oper (atom_type cx a_src)
         | _ ->
-            let (dst_cell, _) = deref_ty false dst_cell dst_ty in
+            let (dst_cell, _) = deref_ty DEREF_none false dst_cell dst_ty in
             let op = trans_binop binop in
               emit (Il.binary op dst_cell (Il.Cell dst_cell) src_oper);
 
@@ -4139,7 +4174,7 @@ let trans_visitor
                   bugi cx stmt.id
                     "non-rec destination type in stmt_init_rec"
           in
-          let (dst_cell, _) = deref_ty true slot_cell ty in
+          let (dst_cell, _) = deref_ty DEREF_all_boxes true slot_cell ty in
             begin
               match base with
                   None ->
@@ -4160,7 +4195,7 @@ let trans_visitor
                   bugi cx stmt.id
                     "non-tup destination type in stmt_init_tup"
           in
-          let (dst_cell, _) = deref_ty true slot_cell ty in
+          let (dst_cell, _) = deref_ty DEREF_all_boxes true slot_cell ty in
             trans_init_structural_from_atoms dst_cell dst_tys atoms
 
 
@@ -4187,8 +4222,13 @@ let trans_visitor
 
       | Ast.STMT_init_box (dst, src) ->
           let sloti = lval_base_to_slot cx dst in
-          let cell = cell_of_block_slot sloti.id in
-            trans_init_slot_from_atom CLONE_none cell sloti.node src
+          let dst_cell = cell_of_block_slot sloti.id in
+          let dst_cell = deref_slot true dst_cell sloti.node in
+          let ty = slot_ty sloti.node in
+          let (dst_cell, ty) = deref_ty DEREF_one_box true dst_cell ty in
+          let src_cell = need_cell (trans_atom src) in
+            trans_copy_ty (get_ty_params_of_current_frame()) true
+              dst_cell ty src_cell ty None;
 
       | Ast.STMT_block block ->
           trans_block block

@@ -1065,12 +1065,17 @@ let check_concrete params thing =
   else bug () "unhandled parametric binding"
 ;;
 
-let rec simplified_ty (t:Ast.ty) : Ast.ty =
+let rec strip_mutable_or_constrained_ty (t:Ast.ty) : Ast.ty =
   match t with
-      Ast.TY_box t
-    | Ast.TY_mutable t
-    | Ast.TY_constrained (t, _) -> simplified_ty t
+      Ast.TY_mutable t
+    | Ast.TY_constrained (t, _) -> strip_mutable_or_constrained_ty t
     | _ -> t
+;;
+
+let rec simplified_ty (t:Ast.ty) : Ast.ty =
+  match strip_mutable_or_constrained_ty t with
+      Ast.TY_box t -> simplified_ty t
+    | t -> t
 ;;
 
 let rec project_type

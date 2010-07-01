@@ -57,6 +57,12 @@ open Semant;;
  *)
 
 
+type deref_ctrl =
+    DEREF_one_box
+  | DEREF_all_boxes
+  | DEREF_none
+;;
+
 type mem_ctrl =
     MEM_rc_opaque
   | MEM_rc_struct
