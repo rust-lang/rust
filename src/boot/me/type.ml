@@ -1065,6 +1065,20 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                                 log cx "lval-base slot tyspec for %a = %s"
                                   Ast.sprintf_lval lval (tyspec_to_str (!tv));
                           end;
+                        begin
+                          match htab_search
+                            cx.ctxt_auto_deref_lval nbi.id
+                          with
+                              None ->
+                                htab_put cx.ctxt_auto_deref_lval
+                                  nbi.id ucx.box_ok
+                            | Some b ->
+                                (* A given source-occurrence of a name-base
+                                 * should never change its auto-deref
+                                 * nature.
+                                 *)
+                                assert (b = ucx.box_ok);
+                        end;
                         unify_slot ucx slot (Some referent) tv
 
                     | _ ->
@@ -1210,6 +1224,10 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             let tv = any() in
               unify_expr rval_ctx
                 (Ast.EXPR_binary (binop, Ast.ATOM_lval dst, at)) tv;
+              (* Force-override the 'auto-deref' judgment that was cached 
+               * in cx.ctxt_auto_deref_lval by preceding unify_expr call.
+               *)
+              Hashtbl.replace cx.ctxt_auto_deref_lval (lval_base_id dst) false;
               unify_lval lval_ctx dst tv;
 
         | Ast.STMT_call (out, callee, args) ->
@@ -1315,6 +1333,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         Hashtbl.iter
           (fun _ params -> Array.iter (fun tv -> tv := TYSPEC_all) params)
           item_params;
+        log cx "finished typechecking stmt: %a" Ast.sprintf_stmt stmt;
       with
           Semant_err (None, msg) ->
             raise (Semant_err ((Some stmt.id), msg))

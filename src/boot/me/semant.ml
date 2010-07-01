@@ -91,6 +91,7 @@ type ctxt =
       ctxt_slot_is_arg: (node_id,unit) Hashtbl.t;
       ctxt_slot_keys: (node_id,Ast.slot_key) Hashtbl.t;
       ctxt_node_referenced: (node_id, unit) Hashtbl.t;
+      ctxt_auto_deref_lval: (node_id, bool) Hashtbl.t;
       ctxt_all_item_names: (node_id,Ast.name) Hashtbl.t;
       ctxt_all_item_types: (node_id,Ast.ty) Hashtbl.t;
       ctxt_all_lval_types: (node_id,Ast.ty) Hashtbl.t;
@@ -181,6 +182,7 @@ let new_ctxt sess abi crate =
     ctxt_slot_is_arg = Hashtbl.create 0;
     ctxt_slot_keys = Hashtbl.create 0;
     ctxt_node_referenced = Hashtbl.create 0;
+    ctxt_auto_deref_lval = Hashtbl.create 0;
     ctxt_all_item_names = Hashtbl.create 0;
     ctxt_all_item_types = Hashtbl.create 0;
     ctxt_all_lval_types = Hashtbl.create 0;

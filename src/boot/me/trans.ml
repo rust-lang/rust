@@ -956,7 +956,6 @@ let trans_visitor
         based elt_reg
 
   and trans_lval_full
-      (dctrl:deref_ctrl)
       (initializing:bool)
       (lv:Ast.lval)
       : (Il.cell * Ast.ty) =
@@ -970,11 +969,23 @@ let trans_visitor
               in
                 trans_slot_lval_ext initializing base_ty base_cell comp
 
-          | Ast.LVAL_base _ ->
+          | Ast.LVAL_base nbi ->
               let sloti = lval_base_to_slot cx lv in
               let cell = cell_of_block_slot sloti.id in
               let ty = slot_ty sloti.node in
               let cell = deref_slot initializing cell sloti.node in
+              let dctrl =
+                (* If this fails, type didn't visit the lval, and we
+                 * don't know whether to auto-deref its base. Crashing
+                 * here is best. Compiler bug.
+                 *)
+                match htab_search cx.ctxt_auto_deref_lval nbi.id with
+                    None ->
+                      bugi cx nbi.id
+                        "Lval without auto-deref info; bad typecheck?"
+                  | Some true -> DEREF_all_boxes
+                  | Some false -> DEREF_none
+              in
                 deref_ty dctrl initializing cell ty
       in
         iflog
@@ -1004,7 +1015,7 @@ let trans_visitor
       (initializing:bool)
       (lv:Ast.lval)
       : (Il.cell * Ast.ty) =
-    trans_lval_full DEREF_none initializing lv
+    trans_lval_full initializing lv
 
   and trans_lval_init (lv:Ast.lval) : (Il.cell * Ast.ty) =
     trans_lval_maybe_init true lv
