@@ -551,7 +551,6 @@ Additional specific influences can be seen from the following languages:
 * Ref.Run::                     Organization of runtime services.
 @end menu
 
-@page
 @node    Ref.Lex
 @section Ref.Lex
 @c * Ref.Lex::                     Lexical structure.
@@ -700,7 +699,6 @@ The keywords are:
 @tab @code{be}
 @end multitable
 
-@page
 @node       Ref.Lex.Num
 @subsection Ref.Lex.Num
 @c * Ref.Lex.Num::                 Numeric tokens.
@@ -793,7 +791,6 @@ region). @xref{Ref.Comp.Syntax}.
 
 @emph{TODO: formalize those terms more}.
 
-@page
 @node       Ref.Lex.Sym
 @subsection Ref.Lex.Sym
 @c * Ref.Lex.Sym::                 Special symbol tokens.
@@ -953,7 +950,6 @@ successful produces a single crate in executable form.
 * Ref.Comp.Syntax::             Syntax extensions.
 @end menu
 
-@page
 @node       Ref.Comp.Crate
 @subsection Ref.Comp.Crate
 @c * Ref.Comp.Crate::              Units of compilation and linking.
@@ -1044,7 +1040,6 @@ mod bar @{
 @}
 @end example
 
-@page
 @node       Ref.Comp.Meta
 @subsection Ref.Comp.Meta
 
@@ -1055,7 +1050,6 @@ directives, denoted by @code{syntax} and @code{use} keywords respectively.
 
 Alternatively, metadata can serve as a simple form of documentation.
 
-@page
 @node          Ref.Comp.Syntax
 @subsection    Ref.Comp.Syntax
 @c * Ref.Comp.Syntax::        Syntax extension.
@@ -1123,7 +1117,6 @@ consist of @emph{boxes}.
 * Ref.Mem.Acct::                Memory accounting model.
 @end menu
 
-@page
 @node       Ref.Mem.Alloc
 @subsection Ref.Mem.Alloc
 @c * Ref.Mem.Alloc::               Memory allocation model.
@@ -1156,8 +1149,6 @@ heap allocation, so executing a long-running destructor does not interrupt
 execution of other tasks.
 
 
-
-@page
 @node       Ref.Mem.Own
 @subsection Ref.Mem.Own
 @c * Ref.Mem.Own::                 Memory ownership model.
@@ -1180,7 +1171,6 @@ references to boxes (both shared and owned) are dropped.
 When a task finishes, its stack is necessarily empty and it therefore has no
 references to any boxes.
 
-@page
 @node       Ref.Mem.Slot
 @subsection Ref.Mem.Slot
 @c * Ref.Mem.Slot::                Stack memory model.
@@ -1228,7 +1218,6 @@ fn incr(& mutable int i) @{
 @}
 @end example
 
-@page
 @node       Ref.Mem.Box
 @subsection Ref.Mem.Box
 @c * Ref.Mem.Box::                 Heap memory model.
@@ -1284,7 +1273,6 @@ fn main() @{
 @end example
 
 
-@page
 @node       Ref.Mem.Acct
 @subsection Ref.Mem.Acct
 @c * Ref.Mem.Acct::                Memory accounting model.
@@ -1330,7 +1318,6 @@ operating-system processes.
 * Ref.Task.Sched::              Task scheduling model.
 @end menu
 
-@page
 @node       Ref.Task.Comm
 @subsection Ref.Task.Comm
 @c * Ref.Task.Comm::               Inter-task communication.
@@ -1384,7 +1371,6 @@ The asynchronous message-send operator is @code{<+}. The semi-synchronous
 message-send operator is @code{<|}. @xref{Ref.Stmt.Send}. The message-receive
 operator is @code{<-}. @xref{Ref.Stmt.Recv}.
 
-@page
 @node       Ref.Task.Life
 @subsection Ref.Task.Life
 @c * Ref.Task.Life::               Task lifecycle and state transitions.
@@ -1426,7 +1412,6 @@ A task in the @emph{dead} state cannot transition to other states; it exists
 only to have its termination status inspected by other tasks, and/or to await
 reclamation when the last reference to it drops.
 
-@page
 @node       Ref.Task.Dom
 @subsection Ref.Task.Dom
 @c * Ref.Task.Dom::                Task domains
@@ -1448,7 +1433,6 @@ Tasks can own sub-domains, which in turn own their own tasks. Every domain
 owns one @emph{root task}, which is the root of the tree of tasks owned by the
 domain.
 
-@page
 @node       Ref.Task.Sched
 @subsection Ref.Task.Sched
 @c * Ref.Task.Sched::              Task scheduling model.
@@ -1502,7 +1486,6 @@ are no general parametric types.
 * Ref.Item.Type::               Items defining the types of values and slots.
 @end menu
 
-@page
 @node       Ref.Item.Mod
 @subsection Ref.Item.Mod
 @c * Ref.Item.Mod::           Items defining sub-modules.
@@ -1540,7 +1523,6 @@ and outside of it.
 * Ref.Item.Mod.Export::            Declarations for restricting visibility.
 @end menu
 
-@page
 @node          Ref.Item.Mod.Import
 @subsubsection Ref.Item.Mod.Import
 @c * Ref.Item.Mod.Import::     Declarations for module-local synonyms.
@@ -1563,7 +1545,6 @@ fn main() @{
 @}
 @end example
 
-@page
 @node          Ref.Item.Mod.Export
 @subsubsection Ref.Item.Mod.Export
 @c * Ref.Item.Mod.Import::     Declarations for restricting visibility.
@@ -1596,8 +1577,6 @@ fn main() @{
 @end example
 
 
-
-@page
 @node       Ref.Item.Fn
 @subsection Ref.Item.Fn
 @c * Ref.Item.Fn::            Items defining functions.
@@ -1633,7 +1612,6 @@ fn add(int x, int y) -> int @{
 @}
 @end example
 
-@page
 @node          Ref.Item.Iter
 @subsection    Ref.Item.Iter
 @c * Ref.Item.Iter::          Items defining iterators.
@@ -1672,7 +1650,6 @@ for each (int x = range(0,100)) @{
 @end example
 
 
-@page
 @node       Ref.Item.Obj
 @subsection Ref.Item.Obj
 @c * Ref.Item.Obj::          Items defining objects.
@@ -1704,7 +1681,6 @@ c.incr();
 check (c.get() == 3);
 @end example
 
-@page
 @node       Ref.Item.Type
 @subsection Ref.Item.Type
 @c * Ref.Item.Type::          Items defining the types of values and slots.
@@ -1769,7 +1745,6 @@ Rust; they cannot be used as user-defined identifiers in any context.
 * Ref.Type.Type::               Types describing types.
 @end menu
 
-@page
 @node       Ref.Type.Any
 @subsection Ref.Type.Any
 
@@ -1781,7 +1756,6 @@ Values of type @code{any} can be used in an @code{alt type} statement, in
 which the reflection is used to select a block corresponding to a particular
 type extraction. @xref{Ref.Stmt.Alt}.
 
-@page
 @node       Ref.Type.Mach
 @subsection Ref.Type.Mach
 
@@ -1829,7 +1803,6 @@ The IEEE 754 single-precision and double-precision floating point types:
 @code{f32} and @code{f64}, respectively.
 @end itemize
 
-@page
 @node       Ref.Type.Int
 @subsection Ref.Type.Int
 
@@ -1881,7 +1854,6 @@ The machine-dependent integer and floating-point types.
 @end itemize
 
 
-@page
 @node       Ref.Type.Big
 @subsection Ref.Type.Big
 
@@ -1895,7 +1867,6 @@ A Rust @code{big} grows to accommodate extra binary digits as they are needed,
 by taking extra memory from the memory budget available to each Rust task, and
 should only exhaust its range due to memory exhaustion.
 
-@page
 @node       Ref.Type.Text
 @subsection Ref.Type.Text
 
@@ -1907,7 +1878,6 @@ unsigned word holding a UCS-4 codepoint.
 A value of type @code{str} is a Unicode string, represented as a vector of
 8-bit unsigned bytes holding a sequence of UTF-8 codepoints.
 
-@page
 @node       Ref.Type.Rec
 @subsection Ref.Type.Rec
 
@@ -1925,7 +1895,6 @@ let point p = rec(x=10, y=11);
 let int px = p.x;
 @end example
 
-@page
 @node       Ref.Type.Tup
 @subsection Ref.Type.Tup
 
@@ -1946,7 +1915,6 @@ check (p._1 == "world");
 @end example
 
 
-@page
 @node       Ref.Type.Vec
 @subsection Ref.Type.Vec
 
@@ -1985,7 +1953,6 @@ All accessible elements of a vector are always initialized, and access to a
 vector is always bounds-checked.
 
 
-@page
 @node       Ref.Type.Tag
 @subsection Ref.Type.Tag
 
@@ -2024,7 +1991,6 @@ let list[int] a = cons(7, cons(13, nil));
 @end example
 
 
-@page
 @node       Ref.Type.Fn
 @subsection Ref.Type.Fn
 
@@ -2046,7 +2012,6 @@ let binop bo = add;
 x = bo(5,7);
 @end example
 
-@page
 @node       Ref.Type.Iter
 @subsection Ref.Type.Iter
 
@@ -2069,7 +2034,6 @@ for each (int i = range(5,7)) @{
 @end example
 
 
-@page
 @node       Ref.Type.Port
 @subsection Ref.Type.Port
 
@@ -2091,7 +2055,6 @@ let vec[str] v;
 v <- p;
 @end example
 
-@page
 @node       Ref.Type.Chan
 @subsection Ref.Type.Chan
 
@@ -2126,7 +2089,6 @@ let vec[str] v = vec("hello", "world");
 c <| v;
 @end example
 
-@page
 @node       Ref.Type.Task
 @subsection Ref.Type.Task
 
@@ -2147,7 +2109,6 @@ holding those references), the released task immediately fails.
 @xref{Ref.Task.Life}.
 
 
-@page
 @node       Ref.Type.Obj
 @subsection Ref.Type.Obj
 @c * Ref.Type.Obj::                Object types.
@@ -2213,7 +2174,6 @@ give_ints(t2);
 
 
 
-@page
 @node       Ref.Type.Constr
 @subsection Ref.Type.Constr
 @c * Ref.Type.Constr::             Constrained types.
@@ -2239,7 +2199,6 @@ let ordered_range rng2 = rec(low=15, high=17);
 // implicit: 'check less_than(rng2.low, rng2.high);'
 @end example
 
-@page
 @node       Ref.Type.Type
 @subsection Ref.Type.Type
 @c * Ref.Type.Type::               Types describing types.
@@ -2302,7 +2261,6 @@ actions.
 * Ref.Stmt.IfCheck::            Statement for dynamic testing of typestate.
 @end menu
 
-@page
 @node       Ref.Stmt.Stat
 @subsection Ref.Stmt.Stat
 @c * Ref.Stmt.Stat::         The static typestate system of statement analysis.
@@ -2326,7 +2284,6 @@ system.
 * Ref.Stmt.Stat.Check::         Relating dynamic state to static typestate.
 @end menu
 
-@page
 @node          Ref.Stmt.Stat.Point
 @subsubsection Ref.Stmt.Stat.Point
 @c * Ref.Stmt.Stat.Point::         Inter-statement positions of logical judgements.
@@ -2358,7 +2315,6 @@ concerned with constraining the possible states of a task's memory at
 ``at'' a statement, as each statement is likely to change the contents of
 memory.
 
-@page
 @node          Ref.Stmt.Stat.CFG
 @subsubsection Ref.Stmt.Stat.CFG
 @c * Ref.Stmt.Stat.CFG::           The control flow graph formed by statements.
@@ -2372,7 +2328,6 @@ might occur during execution.
 
 This implicit graph is called the @dfn{control flow graph}, or @dfn{CFG}.
 
-@page
 @node          Ref.Stmt.Stat.Constr
 @subsubsection Ref.Stmt.Stat.Constr
 @c * Ref.Stmt.Stat.Constr::          Predicates applied to slots.
@@ -2403,7 +2358,6 @@ Predicates can only apply to slots holding immutable values. The slots a
 predicate applies to can themselves be mutable, but the types of values held
 in those slots must be immutable.
 
-@page
 @node          Ref.Stmt.Stat.Cond
 @subsubsection Ref.Stmt.Stat.Cond
 @c * Ref.Stmt.Stat.Cond::          Constraints required and implied by a statement.
@@ -2422,7 +2376,6 @@ enforces in the point after the statement.
 Any constraint present in the precondition and @emph{absent} in the
 postcondition is considered to be @emph{dropped} by the statement.
 
-@page
 @node          Ref.Stmt.Stat.Typestate
 @subsubsection Ref.Stmt.Stat.Typestate
 @c * Ref.Stmt.Stat.Typestate::     Constraints that hold at points.
@@ -2471,7 +2424,6 @@ prestate. If any preconditions are not satisfied, the mismatch is considered a
 static (compile-time) error.
 
 
-@page
 @node          Ref.Stmt.Stat.Check
 @subsubsection Ref.Stmt.Stat.Check
 @c * Ref.Stmt.Stat.Check::         Relating dynamic state to static typestate.
@@ -2503,7 +2455,6 @@ and constrained types, and the responsibility to @code{check} a constraint
 pushed further and further away from the site at which the program requires it
 to hold in order to execute properly.
 
-@page
 @node       Ref.Stmt.Decl
 @subsection Ref.Stmt.Decl
 @c * Ref.Stmt.Decl::                Statement declaring an item or slot.
@@ -2518,7 +2469,6 @@ before and after the declaration.
 * Ref.Stmt.Decl.Slot::              Statement declaring a slot.
 @end menu
 
-@page
 @node          Ref.Stmt.Decl.Item
 @subsubsection Ref.Stmt.Decl.Item
 @c * Ref.Stmt.Decl.Item::                Statement declaring an item.
@@ -2533,7 +2483,6 @@ block.
 Note: there is no implicit capture of the function's dynamic environment when
 declaring a function-local item.
 
-@page
 @node          Ref.Stmt.Decl.Slot
 @subsubsection Ref.Stmt.Decl.Slot
 @c * Ref.Stmt.Decl.Slot::                Statement declaring an slot.
@@ -2562,7 +2511,6 @@ object signatures must always declared types for all argument slots.
 
 
 
-@page
 @node       Ref.Stmt.Copy
 @subsection Ref.Stmt.Copy
 @c * Ref.Stmt.Copy::                Statement for copying a value.
@@ -2587,7 +2535,6 @@ x.y = z;
 x.y = z + 2;
 @end example
 
-@page
 @node       Ref.Stmt.Spawn
 @subsection Ref.Stmt.Spawn
 @c * Ref.Stmt.Spawn::               Statements creating new tasks.
@@ -2618,7 +2565,6 @@ auto result <- out;
 
 @end example
 
-@page
 @node       Ref.Stmt.Send
 @subsection Ref.Stmt.Send
 @c * Ref.Stmt.Send::            Statements for sending a value into a channel.
@@ -2649,7 +2595,6 @@ chan[str] c = @dots{};
 c <| "hello, world";
 @end example
 
-@page
 @node       Ref.Stmt.Flush
 @subsection Ref.Stmt.Flush
 @c * Ref.Stmt.Flush::              Statement for flushing a channel queue.
@@ -2666,7 +2611,6 @@ flush c;
 @end example
 
 
-@page
 @node       Ref.Stmt.Recv
 @subsection Ref.Stmt.Recv
 @c * Ref.Stmt.Recv::           Statement for receiving a value from a channel.
@@ -2686,7 +2630,6 @@ port[str] p = @dots{};
 let str s <- p;
 @end example
 
-@page
 @node       Ref.Stmt.Call
 @subsection Ref.Stmt.Call
 @c * Ref.Stmt.Call::               Statement for calling a function.
@@ -2705,7 +2648,6 @@ An example of a call statement:
 let int x = add(1, 2);
 @end example
 
-@page
 @node       Ref.Stmt.Bind
 @subsection Ref.Stmt.Bind
 @c * Ref.Stmt.Bind::          Statement for binding arguments to functions.
@@ -2751,7 +2693,6 @@ languages. Rust has no support for lexical closures, but many realistic uses
 of them can be achieved with @code{bind} statements.
 
 
-@page
 @node       Ref.Stmt.Ret
 @subsection Ref.Stmt.Ret
 @c * Ref.Stmt.Ret::                Statement for stopping and producing a value.
@@ -2771,7 +2712,6 @@ fn max(int a, int b) -> int @{
 @}
 @end example
 
-@page
 @node       Ref.Stmt.Be
 @subsection Ref.Stmt.Be
 @c * Ref.Stmt.Be::                 Statement for stopping and executing a tail call.
@@ -2801,7 +2741,6 @@ copy of itself.
 
 
 
-@page
 @node       Ref.Stmt.Put
 @subsection Ref.Stmt.Put
 @c * Ref.Stmt.Put::                Statement for pausing and producing a value.
@@ -2821,7 +2760,6 @@ either continuing execution after the @code{put} statement, or terminating its
 execution and destroying the iterator frame.
 
 
-@page
 @node       Ref.Stmt.Fail
 @subsection Ref.Stmt.Fail
 @c * Ref.Stmt.Fail::               Statement for causing task failure.
@@ -2831,7 +2769,6 @@ state. In the @emph{failing} state, a task unwinds its stack, destroying all
 frames and freeing all resources until it reaches its entry frame, at which
 point it halts execution in the @emph{dead} state.
 
-@page
 @node       Ref.Stmt.Log
 @subsection Ref.Stmt.Log
 @c * Ref.Stmt.Log::                Statement for logging values to diagnostic buffers.
@@ -2849,7 +2786,6 @@ contains a log statement.
 @example
 @end example
 
-@page
 @node       Ref.Stmt.Note
 @subsection Ref.Stmt.Note
 @c * Ref.Stmt.Note::                Statement for logging values during failure.
@@ -2893,7 +2829,6 @@ slot, and then a subsequent failure occurs, the @emph{mutated} value will be
 logged during unwinding, @emph{not} the original value that was denoted by the
 @var{lval} at the moment control passed through the @code{note} statement.
 
-@page
 @node       Ref.Stmt.While
 @subsection Ref.Stmt.While
 @c * Ref.Stmt.While::              Statement for simple conditional looping.
@@ -2928,7 +2863,6 @@ do @{
 @} while (i < 10);
 @end example
 
-@page
 @node       Ref.Stmt.Break
 @subsection Ref.Stmt.Break
 @c * Ref.Stmt.Break::              Statement for terminating a loop.
@@ -2936,7 +2870,6 @@ do @{
 Executing a @code{break} statement immediately terminates the innermost loop
 enclosing it. It is only permitted in the body of a loop.
 
-@page
 @node       Ref.Stmt.Cont
 @subsection Ref.Stmt.Cont
 @c * Ref.Stmt.Cont::               Statement for terminating a single loop iteration.
@@ -2951,7 +2884,6 @@ loop.
 A @code{cont} statement is only permitted in the body of a loop.
 
 
-@page
 @node       Ref.Stmt.For
 @subsection Ref.Stmt.For
 @c * Ref.Stmt.For::                Statement for looping over strings and vectors.
@@ -2984,7 +2916,6 @@ for (&foo e in v) @{
 @}
 @end example
 
-@page
 @node          Ref.Stmt.Foreach
 @subsection    Ref.Stmt.Foreach
 @c * Ref.Stmt.Foreach::           Statement for general conditional looping.
@@ -3003,7 +2934,6 @@ for each (&str s = _str.split(txt, "\n")) @{
 @end example
 
 
-@page
 @node       Ref.Stmt.If
 @subsection Ref.Stmt.If
 @c * Ref.Stmt.If::                 Statement for simple conditional branching.
@@ -3016,7 +2946,6 @@ to @code{true}, the consequent block is executed and any @code{else} block is
 skipped. If the condition expression evaluates to @code{false}, the consequent
 block is skipped and any @code{else} block is executed.
 
-@page
 @node       Ref.Stmt.Alt
 @subsection Ref.Stmt.Alt
 @c * Ref.Stmt.Alt::                Statement for complex conditional branching.
@@ -3039,7 +2968,6 @@ statement following the @code{alt} when the case block completes.
 * Ref.Stmt.Alt.Type::         Statement for branching on types.
 @end menu
 
-@page
 @node          Ref.Stmt.Alt.Comm
 @subsubsection Ref.Stmt.Alt.Comm
 @c * Ref.Stmt.Alt.Comm::           Statement for branching on communication events.
@@ -3073,7 +3001,6 @@ alt @{
 @}
 @end example
 
-@page
 @node          Ref.Stmt.Alt.Pat
 @subsubsection Ref.Stmt.Alt.Pat
 @c * Ref.Stmt.Alt.Pat::            Statement for branching on pattern matches.
@@ -3113,7 +3040,6 @@ alt (x) @{
 @end example
 
 
-@page
 @node          Ref.Stmt.Alt.Type
 @subsubsection Ref.Stmt.Alt.Type
 @c * Ref.Stmt.Alt.Type::           Statement for branching on type.
@@ -3147,7 +3073,6 @@ alt type (x) @{
 @end example
 
 
-@page
 @node       Ref.Stmt.Prove
 @subsection Ref.Stmt.Prove
 @c * Ref.Stmt.Prove::              Statement for static assertion of typestate.
@@ -3157,7 +3082,6 @@ check (and document) that its argument constraint holds at its statement entry
 point. If its argument typestate does not hold, under the typestate algorithm,
 the program containing it will fail to compile.
 
-@page
 @node       Ref.Stmt.Check
 @subsection Ref.Stmt.Check
 @c * Ref.Stmt.Check::              Statement for dynamic assertion of typestate.
@@ -3199,7 +3123,6 @@ fn test() @{
 @}
 @end example
 
-@page
 @node       Ref.Stmt.IfCheck
 @subsection Ref.Stmt.IfCheck
 @c * Ref.Stmt.IfCheck::            Statement for dynamic testing of typestate.
@@ -3249,7 +3172,6 @@ communication, reflection, logging and signal handling.
 * Ref.Run.Sig::                 Runtime signal handler.
 @end menu
 
-@page
 @node       Ref.Run.Mem
 @subsection Ref.Run.Mem
 @c * Ref.Run.Mem::                 Runtime memory management service.
@@ -3264,7 +3186,6 @@ The runtime memory-management system in turn supplies Rust tasks with
 facilities for allocating, extending and releasing stacks, as well as
 allocating and freeing boxed values.
 
-@page
 @node       Ref.Run.Type
 @subsection Ref.Run.Type
 @c * Ref.Run.Mem::                 Runtime built-in type services.
@@ -3281,7 +3202,6 @@ The runtime provides C and Rust code to manage several built-in types:
 Support for other built-in types such as simple types, tuples,
 records, and tags is open-coded by the Rust compiler.
 
-@page
 @node       Ref.Run.Comm
 @subsection Ref.Run.Comm
 @c * Ref.Run.Comm::                Runtime communication service.
@@ -3292,7 +3212,6 @@ queues, as well as code to copy values between queues and their recipients and
 to serialize values for transmission over operating-system inter-process
 communication facilities.
 
-@page
 @node       Ref.Run.Refl
 @subsection Ref.Run.Refl
 @c * Ref.Run.Refl::                Runtime reflection system.
@@ -3301,7 +3220,6 @@ The runtime reflection system is driven by the DWARF tables emitted into a
 crate at compile-time. Reflecting on a slot or item allocates a Rust data
 structure corresponding to the DWARF DIE for that slot or item.
 
-@page
 @node       Ref.Run.Log
 @subsection Ref.Run.Log
 @c * Ref.Run.Log::                 Runtime logging system.
@@ -3332,7 +3250,6 @@ ownership-path-prefix basis.
 Logging is integrated into the language for efficiency reasons, as well as the
 need to filter logs based on these two built-in dimensions.
 
-@page
 @node       Ref.Run.Sig
 @subsection Ref.Run.Sig
 @c * Ref.Run.Sig::               Runtime signal handler.
