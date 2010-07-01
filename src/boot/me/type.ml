@@ -1528,42 +1528,23 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               | _ -> bug () "check_auto_tyvar: no slot defn"
         in
 
-        let get_resolved_ty tv id =
+        let rec get_resolved_ty tv id =
           let ts = !(resolve_tyvar tv) in
             match ts with
                 TYSPEC_resolved ([||], ty) -> ty
               | TYSPEC_exterior tv ->
-                  begin
-                    match !(resolve_tyvar tv) with
-                        TYSPEC_resolved ([||], ty) ->
-                          (Ast.TY_exterior ty)
-                      | _ ->
-                          err (Some id)
-                            "unresolved exterior type in %s (%d)"
-                            (tyspec_to_str ts) (int_of_node id)
-                  end
+                  Ast.TY_exterior (get_resolved_ty tv id)
 
               | TYSPEC_mutable tv ->
-                  begin
-                    match !(resolve_tyvar tv) with
-                        TYSPEC_resolved ([||], ty) ->
-                          (Ast.TY_mutable ty)
-                      | _ ->
-                          err (Some id)
-                            "unresolved mutable type in %s (%d)"
-                            (tyspec_to_str ts) (int_of_node id)
-                  end
+                  Ast.TY_mutable (get_resolved_ty tv id)
 
               | TYSPEC_vector tv ->
-                  begin
-                    match !(resolve_tyvar tv) with
-                        TYSPEC_resolved ([||], ty) ->
-                          (Ast.TY_vec ty)
-                      | _ ->
-                          err (Some id)
-                            "unresolved vector-element type in %s (%d)"
-                            (tyspec_to_str ts) (int_of_node id)
-                  end
+                  Ast.TY_vec (get_resolved_ty tv id)
+
+              | TYSPEC_tuple tvs ->
+                  Ast.TY_tup
+                    (Array.map
+                       (fun tv -> get_resolved_ty tv id) tvs)
 
               | _ -> err (Some id)
                   "unresolved type %s (%d)"
