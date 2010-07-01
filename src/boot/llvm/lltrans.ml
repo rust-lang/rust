@@ -263,7 +263,7 @@ let trans_crate
       | Ast.TY_chan _ | Ast.TY_port _ | Ast.TY_task  ->
           p rc_opaque_ty
 
-      | Ast.TY_exterior t ->
+      | Ast.TY_box t ->
           (* FIXME: wrong, this needs to point to a refcounted cell. *)
           p (trans_ty t)
 
@@ -296,7 +296,7 @@ let trans_crate
       match slot.Ast.slot_mode with
         | Ast.MODE_alias _ ->
             Llvm.pointer_type base_llty
-        | Ast.MODE_interior _ -> base_llty
+        | Ast.MODE_local _ -> base_llty
   in
 
   let get_element_ptr
@@ -453,7 +453,7 @@ let trans_crate
                 llbuilder :=
                   if_ptr_in_slot_not_null
                     (decr_refcnt_and_if_zero
-                       Abi.exterior_rc_slot_field_refcnt
+                       Abi.box_rc_slot_field_refcnt
                        free_and_null_out_slot)
                     (!llbuilder)
 
@@ -461,11 +461,11 @@ let trans_crate
                 llbuilder :=
                   if_ptr_in_slot_not_null
                     (decr_refcnt_and_if_zero
-                       Abi.exterior_rc_slot_field_refcnt
+                       Abi.box_rc_slot_field_refcnt
                        free_and_null_out_slot)
                     (!llbuilder)
 
-            | MEM_interior when Semant.type_is_structured ty ->
+            | MEM_local when Semant.type_is_structured ty ->
                 (* FIXME: to handle recursive types, need to call drop
                    glue here, not inline. *)
                 drop_ty llbuilder lltask slot_ptr ty curr_iso
@@ -562,7 +562,7 @@ let trans_crate
     Array.iteri build_arg (Llvm.params llfn);
 
     (* Allocate space for all the blocks' slots.
-     * and zero the exteriors. *)
+     * and zero the box pointers. *)
     let init_block (block_id:node_id) : unit =
       let init_slot
           (key:Ast.slot_key)

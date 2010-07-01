@@ -242,7 +242,7 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
                               match name with
                                   Ast.NAME_base (Ast.BASE_ident ident) ->
                                     let slot =
-                                      { Ast.slot_mode = Ast.MODE_interior;
+                                      { Ast.slot_mode = Ast.MODE_local;
                                         Ast.slot_ty = None }
                                     in
                                       Ast.PAT_slot

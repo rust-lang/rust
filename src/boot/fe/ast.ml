@@ -88,7 +88,7 @@ and ty =
   | TY_named of name
   | TY_type
 
-  | TY_exterior of ty
+  | TY_box of ty
   | TY_mutable of ty
 
   | TY_constrained of (ty * constrs)
@@ -100,7 +100,7 @@ and ty =
  *)
 
 and mode =
-  | MODE_interior
+  | MODE_local
   | MODE_alias
 
 and slot = { slot_mode: mode;
@@ -201,7 +201,7 @@ and stmt' =
   | STMT_init_str of (lval * string)
   | STMT_init_port of lval
   | STMT_init_chan of (lval * (lval option))
-  | STMT_init_exterior of (lval * atom)
+  | STMT_init_box of (lval * atom)
   | STMT_copy of (lval * expr)
   | STMT_copy_binop of (lval * binop * atom)
   | STMT_call of (lval * lval * (atom array))
@@ -523,7 +523,7 @@ and fmt_name (ff:Format.formatter) (n:name) : unit =
 and fmt_mode (ff:Format.formatter) (m:mode) : unit =
   match m with
     | MODE_alias -> fmt ff "&"
-    | MODE_interior -> ()
+    | MODE_local -> ()
 
 and fmt_slot (ff:Format.formatter) (s:slot) : unit =
   match s.slot_ty with
@@ -656,7 +656,7 @@ and fmt_ty (ff:Format.formatter) (t:ty) : unit =
   | TY_named n -> fmt_name ff n
   | TY_type -> fmt ff "type"
 
-  | TY_exterior t ->
+  | TY_box t ->
       fmt ff "@@";
       fmt_ty ff t
 
@@ -1167,7 +1167,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           fmt_lval ff t;
           fmt ff ";"
 
-      | STMT_init_exterior (lv, at) ->
+      | STMT_init_box (lv, at) ->
           fmt_lval ff lv;
           fmt ff " = @@";
           fmt_atom ff at;

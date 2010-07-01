@@ -26,20 +26,20 @@ let frame_glue_fns_field_mark = 0;;
 let frame_glue_fns_field_drop = 1;;
 let frame_glue_fns_field_reloc = 2;;
 
-let exterior_rc_slot_field_refcnt = 0;;
-let exterior_rc_slot_field_body = 1;;
+let box_rc_slot_field_refcnt = 0;;
+let box_rc_slot_field_body = 1;;
 
-let exterior_gc_slot_alloc_base = (-3);;
-let exterior_gc_slot_field_prev = (-3);;
-let exterior_gc_slot_field_next = (-2);;
-let exterior_gc_slot_field_ctrl = (-1);;
-let exterior_gc_slot_field_refcnt = 0;;
-let exterior_gc_slot_field_body = 1;;
+let box_gc_slot_alloc_base = (-3);;
+let box_gc_slot_field_prev = (-3);;
+let box_gc_slot_field_next = (-2);;
+let box_gc_slot_field_ctrl = (-1);;
+let box_gc_slot_field_refcnt = 0;;
+let box_gc_slot_field_body = 1;;
 
-let exterior_rc_header_size = 1;;
-let exterior_gc_header_size = 4;;
+let box_rc_header_size = 1;;
+let box_gc_header_size = 4;;
 
-let exterior_gc_malloc_return_adjustment = 3;;
+let box_gc_malloc_return_adjustment = 3;;
 
 let stk_field_valgrind_id = 0 + 1;;
 let stk_field_limit = stk_field_valgrind_id + 1;;

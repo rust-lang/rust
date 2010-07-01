@@ -1584,17 +1584,16 @@ let trans_visitor
       : fixup =
     let g = GLUE_free ty in
     let inner _ (args:Il.cell) =
-      (* 
-       * Free-glue assumes it's called with a pointer to an 
-       * exterior allocation with normal exterior layout. It's
-       * just a way to move drop+free out of leaf code. 
+      (* Free-glue assumes it's called with a pointer to a box allocation with
+       * normal box layout. It's just a way to move drop+free out of leaf
+       * code.
        *)
       let ty_params = deref (get_element_ptr args 0) in
       let cell = get_element_ptr args 1 in
       let (body_mem, _) =
         need_mem_cell
           (get_element_ptr_dyn ty_params (deref cell)
-             Abi.exterior_rc_slot_field_body)
+             Abi.box_rc_slot_field_body)
       in
       let vr = next_vreg_cell Il.voidptr_t in
         lea vr body_mem;
@@ -1608,7 +1607,7 @@ let trans_visitor
           "free-glue complete";
     in
     let ty_params_ptr = ty_params_covering ty in
-    let fty = mk_simple_ty_fn [| ty_params_ptr; exterior_slot ty |] in
+    let fty = mk_simple_ty_fn [| ty_params_ptr; box_slot ty |] in
       get_typed_mem_glue g fty inner
 
 
@@ -1657,7 +1656,7 @@ let trans_visitor
     let ty_params_ptr = ty_params_covering ty in
     let fty =
       mk_ty_fn
-        (interior_slot ty)     (* dst *)
+        (local_slot ty)        (* dst *)
         [|
           ty_params_ptr;
           alias_slot ty;       (* src *)
@@ -1681,7 +1680,7 @@ let trans_visitor
     let ty_params_ptr = ty_params_covering ty in
     let fty =
       mk_ty_fn
-        (interior_slot ty)
+        (local_slot ty)
         [| ty_params_ptr; alias_slot ty |]
     in
       get_typed_mem_glue g fty inner
@@ -2120,7 +2119,7 @@ let trans_visitor
     trans_void_upcall "upcall_kill" [| Il.Cell task |]
 
   (*
-   * A vec is implicitly exterior: every slot vec[T] is 1 word and
+   * A vec is implicitly boxed: every slot vec[T] is 1 word and
    * points to a refcounted structure. That structure has 3 words with
    * defined meaning at the beginning; data follows the header.
    *
@@ -2212,22 +2211,22 @@ let trans_visitor
                                (ty_align abi ty))
              (tydesc_rty abi))
 
-  and exterior_ctrl_cell (cell:Il.cell) (off:int) : Il.cell =
+  and box_ctrl_cell (cell:Il.cell) (off:int) : Il.cell =
     let (mem, _) = need_mem_cell (deref_imm cell (word_n off)) in
       word_at mem
 
-  and exterior_rc_cell (cell:Il.cell) : Il.cell =
-    exterior_ctrl_cell cell Abi.exterior_rc_slot_field_refcnt
+  and box_rc_cell (cell:Il.cell) : Il.cell =
+    box_ctrl_cell cell Abi.box_rc_slot_field_refcnt
 
-  and exterior_allocation_size
+  and box_allocation_size
       (ty:Ast.ty)
       : Il.operand =
     let header_sz =
       match ty_mem_ctrl ty with
           MEM_gc
         | MEM_rc_opaque
-        | MEM_rc_struct -> word_n Abi.exterior_rc_header_size
-        | MEM_interior -> bug () "exterior_allocation_size of MEM_interior"
+        | MEM_rc_struct -> word_n Abi.box_rc_header_size
+        | MEM_interior -> bug () "box_allocation_size of MEM_interior"
     in
     let ty = simplified_ty ty in
     let refty_sz =
@@ -2304,8 +2303,8 @@ let trans_visitor
        * vreg and so has to be aware of when it's iterating over 2
        * sequences of cells or just 1.
        *)
-      check_exterior_rty src_cell;
-      check_exterior_rty dst_cell;
+      check_box_rty src_cell;
+      check_box_rty dst_cell;
       if dst_cell = src_cell
       then
         begin
@@ -2413,9 +2412,9 @@ let trans_visitor
               (* Drop non-null bindings. *)
               (* FIXME (issue #58): this is completely wrong, Closures need to
                * carry tydescs like objs. For now this only works by accident,
-               * and will leak closures with exterior substructure.
+               * and will leak closures with box substructure.
                *)
-              drop_ty ty_params binding (Ast.TY_exterior Ast.TY_int) curr_iso;
+              drop_ty ty_params binding (Ast.TY_box Ast.TY_int) curr_iso;
               patch null_jmp
 
         | Ast.TY_obj _ ->
@@ -2465,13 +2464,13 @@ let trans_visitor
             | MEM_rc_opaque
             | MEM_rc_struct ->
 
-                let _ = check_exterior_rty cell in
+                let _ = check_box_rty cell in
                 let null_jmp = null_check cell in
-                let rc = exterior_rc_cell cell in
+                let rc = box_rc_cell cell in
                 let j = drop_refcount_and_cmp rc in
 
-                  (* FIXME (issue #25): check to see that the exterior has
-                   * further exterior members; if it doesn't we can elide the
+                  (* FIXME (issue #25): check to see that the box has
+                   * further box members; if it doesn't we can elide the
                    * call to the glue function.  *)
 
                   if mctrl = MEM_rc_opaque
@@ -2491,7 +2490,7 @@ let trans_visitor
 
             | MEM_interior when type_is_structured ty ->
                 (iflog (fun _ ->
-                          annotate ("drop interior slot " ^
+                          annotate ("drop interior memory " ^
                                       (Fmt.fmt_to_str Ast.fmt_ty ty))));
                 let (mem, _) = need_mem_cell cell in
                 let vr = next_vreg_cell Il.voidptr_t in
@@ -2516,9 +2515,9 @@ let trans_visitor
       match ty_mem_ctrl ty with
           MEM_gc ->
 
-            let _ = check_exterior_rty cell in
+            let _ = check_box_rty cell in
             let null_jmp = null_check cell in
-            let rc = exterior_rc_cell cell in
+            let rc = box_rc_cell cell in
             let _ = note_gc_step ty "severing GC slot" in
               emit (Il.binary Il.SUB rc (Il.Cell rc) one);
               mov cell zero;
@@ -2551,7 +2550,7 @@ let trans_visitor
           -> mov dst (Il.Cell src)
       | Ast.TY_fn _
       | Ast.TY_obj _ -> ()
-      | Ast.TY_exterior ty ->
+      | Ast.TY_box ty ->
           let glue_fix = get_clone_glue ty curr_iso in
             trans_call_static_glue
               (code_fixup_to_ptr_operand glue_fix)
@@ -2615,8 +2614,8 @@ let trans_visitor
                  * this only works by accident.
                  *)
                 trans_copy_ty ty_params true
-                  dst_binding (Ast.TY_exterior Ast.TY_int)
-                  src_binding (Ast.TY_exterior Ast.TY_int)
+                  dst_binding (Ast.TY_box Ast.TY_int)
+                  src_binding (Ast.TY_box Ast.TY_int)
                   curr_iso;
                 patch null_jmp
           end
@@ -2652,7 +2651,7 @@ let trans_visitor
       : Ast.ty =
     match (curr_iso, t) with
         (Some iso, Ast.TY_idx n) ->
-          Ast.TY_exterior (Ast.TY_iso { iso with Ast.iso_index = n })
+          Ast.TY_box (Ast.TY_iso { iso with Ast.iso_index = n })
       | (None, Ast.TY_idx _) ->
           bug () "TY_idx outside TY_iso"
       | _ -> t
@@ -2687,11 +2686,11 @@ let trans_visitor
             let marked_jump =
               trans_compare Il.JE (Il.Cell tmp) zero;
             in
-              (* Iterate over exterior parts marking outgoing links. *)
+              (* Iterate over box parts marking outgoing links. *)
             let (body_mem, _) =
               need_mem_cell
                 (get_element_ptr (deref cell)
-                   Abi.exterior_gc_slot_field_body)
+                   Abi.box_gc_slot_field_body)
             in
             let ty = maybe_iso curr_iso ty in
             let curr_iso = maybe_enter_iso ty curr_iso in
@@ -2703,7 +2702,7 @@ let trans_visitor
 
         | MEM_interior when type_is_structured ty ->
             (iflog (fun _ ->
-                      annotate ("mark interior slot " ^
+                      annotate ("mark interior memory " ^
                                   (Fmt.fmt_to_str Ast.fmt_ty ty))));
             let (mem, _) = need_mem_cell cell in
             let tmp = next_vreg_cell Il.voidptr_t in
@@ -2716,13 +2715,13 @@ let trans_visitor
 
         | _ -> ()
 
-  and check_exterior_rty cell =
+  and check_box_rty cell =
     match cell with
         Il.Reg (_, Il.AddrTy (Il.StructTy fields))
       | Il.Mem (_, Il.ScalarTy (Il.AddrTy (Il.StructTy fields)))
           when (((Array.length fields) > 0) && (fields.(0) = word_rty)) -> ()
       | _ -> bug ()
-          "expected plausibly-exterior cell, got %s"
+          "expected plausibly-box cell, got %s"
             (Il.string_of_referent_ty (Il.cell_referent_ty cell))
 
   and drop_slot_in_current_frame
@@ -2755,7 +2754,7 @@ let trans_visitor
     match slot.Ast.slot_mode with
         Ast.MODE_alias
           (* Aliases are always free to drop. *)
-      | Ast.MODE_interior ->
+      | Ast.MODE_local ->
           drop_ty ty_params cell (slot_ty slot) curr_iso
 
   and note_drop_step ty step =
@@ -2788,7 +2787,7 @@ let trans_visitor
         end
 
   (* Returns the offset of the slot-body in the initialized allocation. *)
-  and init_exterior (cell:Il.cell) (ty:Ast.ty) : unit =
+  and init_box (cell:Il.cell) (ty:Ast.ty) : unit =
     let mctrl = ty_mem_ctrl ty in
       match mctrl with
           MEM_gc
@@ -2799,14 +2798,14 @@ let trans_visitor
               then Il.Cell (get_tydesc None ty)
               else zero
             in
-              iflog (fun _ -> annotate "init exterior: malloc");
-              let sz = exterior_allocation_size ty in
+              iflog (fun _ -> annotate "init box: malloc");
+              let sz = box_allocation_size ty in
                 trans_malloc cell sz ctrl;
-                iflog (fun _ -> annotate "init exterior: load refcount");
-                let rc = exterior_rc_cell cell in
+                iflog (fun _ -> annotate "init box: load refcount");
+                let rc = box_rc_cell cell in
                   mov rc one
 
-      | MEM_interior -> bug () "init_exterior of MEM_interior"
+      | MEM_interior -> bug () "init_box of MEM_interior"
 
   and deref_ty
       (initializing:bool)
@@ -2819,14 +2818,14 @@ let trans_visitor
       | Ast.TY_constrained (ty, _) ->
           deref_ty initializing cell ty
 
-      | Ast.TY_exterior ty' ->
-          check_exterior_rty cell;
+      | Ast.TY_box ty' ->
+          check_box_rty cell;
           if initializing
-          then init_exterior cell ty;
+          then init_box cell ty;
           let cell =
             get_element_ptr_dyn_in_current_frame
               (deref cell)
-              (Abi.exterior_rc_slot_field_body)
+              (Abi.box_rc_slot_field_body)
           in
             (* Init recursively so @@@@T chain works. *)
             deref_ty initializing cell ty'
@@ -2840,7 +2839,7 @@ let trans_visitor
       (slot:Ast.slot)
       : Il.cell =
     match slot.Ast.slot_mode with
-        Ast.MODE_interior ->
+        Ast.MODE_local ->
           cell
 
       | Ast.MODE_alias _  ->
@@ -2892,7 +2891,7 @@ let trans_visitor
         | (MEM_rc_struct, MEM_rc_struct) ->
             (* Lightweight copy: twiddle refcounts, move pointer. *)
             anno "refcounted light";
-            add_to (exterior_rc_cell src) one;
+            add_to (box_rc_cell src) one;
             if not initializing
             then
               drop_ty ty_params dst dst_ty None;
@@ -2961,7 +2960,7 @@ let trans_visitor
       match t with
           Ast.TY_vec _
         | Ast.TY_str -> true
-        | Ast.TY_exterior t when can_append t -> true
+        | Ast.TY_box t when can_append t -> true
         | _ -> false
     in
       match (dst_ty, src) with
@@ -3129,7 +3128,7 @@ let trans_visitor
         (Ast.MODE_alias, CLONE_none) ->
           mov dst (Il.Cell (alias (Il.Mem (need_mem_cell src))))
 
-      | (Ast.MODE_interior, CLONE_none) ->
+      | (Ast.MODE_local, CLONE_none) ->
           trans_copy_ty
             ty_params true
             dst dst_ty src src_ty None
@@ -4402,9 +4401,9 @@ let trans_visitor
     in
     let obj_args_ty = Ast.TY_tup obj_args_tup in
     let state_ty = Ast.TY_tup [| Ast.TY_type; obj_args_ty |] in
-    let state_ptr_ty = Ast.TY_exterior state_ty in
+    let state_ptr_ty = Ast.TY_box state_ty in
     let state_ptr_rty = referent_type abi state_ptr_ty in
-    let state_malloc_sz = exterior_allocation_size state_ptr_ty in
+    let state_malloc_sz = box_allocation_size state_ptr_ty in
 
     let ctor_ty = Hashtbl.find cx.ctxt_all_item_types obj_id in
     let obj_ty =
@@ -4684,8 +4683,8 @@ let trans_visitor
       else ignore (Stack.pop curr_file)
   in
 
-  let visit_local_mod_item_pre n _ i =
-    iflog (fun _ -> log cx "translating local item #%d = %s"
+  let visit_defined_mod_item_pre n _ i =
+    iflog (fun _ -> log cx "translating defined item #%d = %s"
              (int_of_node i.id) (path_name()));
     match i.node.Ast.decl_item with
         Ast.MOD_ITEM_fn f -> trans_fn i.id f.Ast.fn_body
@@ -4730,7 +4729,7 @@ let trans_visitor
       inner.Walk.visit_obj_drop_pre obj b
   in
 
-  let visit_local_obj_fn_pre _ _ fn =
+  let visit_defined_obj_fn_pre _ _ fn =
     trans_fn fn.id fn.node.Ast.fn_body
   in
 
@@ -4745,7 +4744,7 @@ let trans_visitor
       then
         visit_required_obj_fn_pre obj ident fn
       else
-        visit_local_obj_fn_pre obj ident fn;
+        visit_defined_obj_fn_pre obj ident fn;
     end;
     inner.Walk.visit_obj_fn_pre obj ident fn
   in
@@ -4757,7 +4756,7 @@ let trans_visitor
       then
         visit_required_mod_item_pre n p i
       else
-        visit_local_mod_item_pre n p i
+        visit_defined_mod_item_pre n p i
     end;
     inner.Walk.visit_mod_item_pre n p i
   in

@@ -301,7 +301,7 @@ and walk_ty
       | Ast.TY_nil -> ()
       | Ast.TY_task -> ()
       | Ast.TY_any -> ()
-      | Ast.TY_exterior m -> walk_ty v m
+      | Ast.TY_box m -> walk_ty v m
       | Ast.TY_mutable m -> walk_ty v m
   in
     walk_bracketed
@@ -471,7 +471,7 @@ and walk_stmt
           walk_option (walk_lval v) port;
           walk_lval v chan;
 
-      | Ast.STMT_init_exterior (dst, src) ->
+      | Ast.STMT_init_box (dst, src) ->
           walk_lval v dst;
           walk_atom v src
 

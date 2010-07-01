@@ -829,7 +829,7 @@ let sweep_gc_chain
     emit (Il.jmp Il.JE
             (codefix exit_jmp_fix));            (* if nonzero             *)
     mov (rc ecx)                                (* Load GC ctrl word      *)
-      (c (edi_n Abi.exterior_gc_slot_field_ctrl));
+      (c (edi_n Abi.box_gc_slot_field_ctrl));
     mov (rc eax) (ro ecx);
     band (rc eax) (immi 1L);                    (* Extract mark to eax.   *)
     band                                        (* Clear mark in ecx.     *)
@@ -839,7 +839,7 @@ let sweep_gc_chain
     if clear_mark
     then
       mov                                       (* Write-back cleared.    *)
-        ((edi_n Abi.exterior_gc_slot_field_ctrl))
+        ((edi_n Abi.box_gc_slot_field_ctrl))
         (ro ecx);
 
     emit (Il.cmp (ro eax) (immi 0L));
@@ -870,7 +870,7 @@ let sweep_gc_chain
 
     mark skip_jmp_fix;
     mov (rc edi)                                (* Advance down chain     *)
-      (c (edi_n Abi.exterior_gc_slot_field_next));
+      (c (edi_n Abi.box_gc_slot_field_next));
     emit (Il.jmp Il.JMP
             (codefix repeat_jmp_fix));          (* loop                   *)
     mark exit_jmp_fix;
@@ -901,7 +901,7 @@ let gc_glue
     (* The sweep pass has two sub-passes over the GC chain:
      *
      *    - In pass #1, 'severing', we goes through and disposes of all
-     *      mutable exterior slots in each record. That is, rc-- the referent,
+     *      mutable box slots in each record. That is, rc-- the referent,
      *      and then null-out.  If the rc-- gets to zero, that just means the
      *      mutable is part of the garbage set currently being collected. But
      *      a mutable may be live-and-outside; this detaches the garbage set

@@ -221,7 +221,7 @@ let layout_visitor
     let offset =
       let word_sz = cx.ctxt_abi.Abi.abi_word_sz in
       let word_n (n:int) = Int64.mul word_sz (Int64.of_int n) in
-        SIZE_fixed (word_n (Abi.exterior_rc_slot_field_body
+        SIZE_fixed (word_n (Abi.box_rc_slot_field_body
                             + 1 (* the state tydesc. *)))
     in
       log cx "laying out object-state for node #%d at offset %s"
@@ -262,7 +262,7 @@ let layout_visitor
    *)
 
   let glue_callsz =
-    let word = interior_slot Ast.TY_int in
+    let word = local_slot Ast.TY_int in
     let glue_fn =
       mk_simple_ty_fn
         (Array.init Abi.worst_case_glue_call_args (fun _ -> word))

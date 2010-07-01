@@ -33,7 +33,7 @@ type pexp' =
   | PEXP_lit of Ast.lit
   | PEXP_str of string
   | PEXP_mutable of pexp
-  | PEXP_exterior of pexp
+  | PEXP_box of pexp
   | PEXP_custom of Ast.name * (pexp array) * (string option)
 
 and plval =
@@ -334,7 +334,7 @@ and parse_atomic_ty (ps:pstate) : Ast.ty =
 
     | AT ->
         bump ps;
-        Ast.TY_exterior (parse_ty ps)
+        Ast.TY_box (parse_ty ps)
 
     | MUTABLE ->
         bump ps;
@@ -368,7 +368,7 @@ and parse_slot (aliases_ok:bool) (ps:pstate) : Ast.slot =
   match (peek ps, aliases_ok) with
       (AND, true) -> bump ps; Ast.MODE_alias
     | (AND, false) -> raise (err "alias slot in prohibited context" ps)
-    | _ -> Ast.MODE_interior
+    | _ -> Ast.MODE_local
   in
   let ty = parse_ty ps in
     { Ast.slot_mode = mode;
@@ -485,7 +485,7 @@ and parse_bottom_pexp (ps:pstate) : pexp =
         bump ps;
         let inner = parse_pexp ps in
         let bpos = lexpos ps in
-          span ps apos bpos (PEXP_exterior inner)
+          span ps apos bpos (PEXP_box inner)
 
     | TUP ->
         bump ps;
@@ -1102,7 +1102,7 @@ and desugar_expr_atom
       | PEXP_bind _
       | PEXP_spawn _
       | PEXP_custom _
-      | PEXP_exterior _
+      | PEXP_box _
       | PEXP_mutable _ ->
           let (_, tmp, decl_stmt) = build_tmp ps slot_auto apos bpos in
           let stmts = desugar_expr_init ps tmp pexp in
@@ -1299,11 +1299,11 @@ and desugar_expr_init
           in
             aa port_stmts [| chan_stmt |]
 
-      | PEXP_exterior arg ->
+      | PEXP_box arg ->
           let (arg_stmts, arg_mode_atom) =
             desugar_expr_atom ps arg
           in
-          let stmt = ss (Ast.STMT_init_exterior (dst_lval, arg_mode_atom)) in
+          let stmt = ss (Ast.STMT_init_box (dst_lval, arg_mode_atom)) in
             aa arg_stmts [| stmt |]
 
       | PEXP_mutable arg ->

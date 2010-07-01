@@ -1323,7 +1323,7 @@ let (abbrev_mutable_type:abbrev) =
    |])
 ;;
 
-let (abbrev_exterior_type:abbrev) =
+let (abbrev_box_type:abbrev) =
   (DW_TAG_pointer_type, DW_CHILDREN_no,
    [|
      (DW_AT_type, DW_FORM_ref_addr);
@@ -1551,7 +1551,7 @@ let dwarf_visitor
       in
 
         match slot.Ast.slot_mode with
-          | Ast.MODE_interior ->
+          | Ast.MODE_local ->
               ref_type_die (slot_ty slot)
 
           | Ast.MODE_alias ->
@@ -2013,20 +2013,19 @@ let dwarf_visitor
         ref_addr_for_fix (Stack.top iso_stack).(i)
       in
 
-      let exterior_type t =
-        let fix = new_fixup "exterior DIE" in
+      let box_type t =
+        let fix = new_fixup "box DIE" in
         let body_off =
-          word_sz_int * Abi.exterior_rc_slot_field_body
+          word_sz_int * Abi.box_rc_slot_field_body
         in
           emit_die (DEF (fix, SEQ [|
-                           uleb (get_abbrev_code abbrev_exterior_type);
+                           uleb (get_abbrev_code abbrev_box_type);
                            (* DW_AT_type: DW_FORM_ref_addr *)
                            (ref_type_die t);
                            (* DW_AT_data_location: DW_FORM_block1 *)
-                           (* This is a DWARF expression for moving
-                              from the address of an exterior
-                              allocation to the address of its
-                              body. *)
+                           (* This is a DWARF expression for moving from the
+                              address of a box allocation to the address of
+                              its body. *)
                            dw_form_block1
                              [| DW_OP_push_object_address;
                                 DW_OP_lit body_off;
@@ -2078,7 +2077,7 @@ let dwarf_visitor
           | Ast.TY_param p -> rust_type_param p
           | Ast.TY_obj ob -> obj_type ob
           | Ast.TY_mutable t -> mutable_type t
-          | Ast.TY_exterior t -> exterior_type t
+          | Ast.TY_box t -> box_type t
           | _ ->
               bug () "unimplemented dwarf encoding for type %a"
                 Ast.sprintf_ty ty
@@ -2916,7 +2915,7 @@ let rec extract_mod_items
             Ast.TY_native (get_opaque_of (get_native_id die))
 
         | DW_TAG_pointer_type ->
-            Ast.TY_exterior (get_referenced_ty die)
+            Ast.TY_box (get_referenced_ty die)
 
         | DW_TAG_const_type
             when ((get_num die DW_AT_mutable) = 1) ->
@@ -3012,7 +3011,7 @@ let rec extract_mod_items
               Ast.slot_ty = Some ty }
       | _ ->
           let ty = get_ty die in
-            { Ast.slot_mode = Ast.MODE_interior;
+            { Ast.slot_mode = Ast.MODE_local;
               Ast.slot_ty = Some ty }
 
   and get_referenced_ty die =

@@ -5,7 +5,7 @@ type tyspec =
     TYSPEC_equiv of tyvar
   | TYSPEC_all
   | TYSPEC_resolved of (Ast.ty_param array) * Ast.ty
-  | TYSPEC_exterior of tyvar                  (* @ of some t *)
+  | TYSPEC_box of tyvar                       (* @ of some t *)
   | TYSPEC_mutable of tyvar                   (* something mutable *)
   | TYSPEC_callable of (tyvar * tyvar array)  (* out, ins *)
   | TYSPEC_collection of tyvar                (* vec or str *)
@@ -107,7 +107,7 @@ let rec tyspec_to_str (ts:tyspec) : string =
       | TYSPEC_equiv tv ->
           fmt_tyspec ff (!tv)
 
-      | TYSPEC_exterior tv ->
+      | TYSPEC_box tv ->
           fmt ff "@@";
           fmt_tyspec ff (!tv)
 
@@ -173,31 +173,31 @@ let rec resolve_tyvar (tv:tyvar) : tyvar =
 
 type unify_ctxt =
     { mut_ok: bool;
-      ext_ok: bool }
+      box_ok: bool }
 ;;
 
 let arg_pass_ctx =
-  { ext_ok = false;
+  { box_ok = false;
     mut_ok = true }
 ;;
 
 let rval_ctx =
-  { ext_ok = true;
+  { box_ok = true;
     mut_ok = true }
 ;;
 
 let lval_ctx =
-  { ext_ok = false;
+  { box_ok = false;
     mut_ok = true }
 ;;
 
 let init_ctx =
-  { ext_ok = true;
+  { box_ok = true;
     mut_ok = true }
 ;;
 
 let strict_ctx =
-  { ext_ok = false;
+  { box_ok = false;
     mut_ok = false }
 ;;
 
@@ -265,12 +265,12 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         iflog cx
           (fun _ ->
              log cx "%s> unifying types:" indent;
-             if ucx.ext_ok || ucx.mut_ok
+             if ucx.box_ok || ucx.mut_ok
              then
                log cx "%s> (w/ %s%s%s)"
                  indent
-                 (if ucx.ext_ok then "ext-ok" else "")
-                 (if ucx.ext_ok && ucx.mut_ok then " " else "")
+                 (if ucx.box_ok then "ext-ok" else "")
+                 (if ucx.box_ok && ucx.mut_ok then " " else "")
                  (if ucx.mut_ok then "mut-ok" else "");
              log cx "%s> input tyvar A:     %s" indent (tyspec_to_str !av);
              log cx "%s> input tyvar B:     %s" indent (tyspec_to_str !bv));
@@ -341,8 +341,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           : Ast.ty =
         match ty_a, ty_b with
             a, b when a = b -> a
-          | Ast.TY_exterior a, b | b, Ast.TY_exterior a when ucx.ext_ok ->
-              Ast.TY_exterior (unify_resolved_types a b)
+          | Ast.TY_box a, b | b, Ast.TY_box a when ucx.box_ok ->
+              Ast.TY_box (unify_resolved_types a b)
           | Ast.TY_mutable a, b | b, Ast.TY_mutable a when ucx.mut_ok ->
               Ast.TY_mutable (unify_resolved_types a b)
           | Ast.TY_constrained (a, constrs), b
@@ -366,15 +366,15 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               is_comparable_or_ordered comparable ty
           | Ast.TY_mutable ty ->
               ucx.mut_ok && is_comparable_or_ordered comparable ty
-          | Ast.TY_exterior ty ->
-              ucx.ext_ok && is_comparable_or_ordered comparable ty
+          | Ast.TY_box ty ->
+              ucx.box_ok && is_comparable_or_ordered comparable ty
       in
 
       let rec floating (ty:Ast.ty) : bool =
         match ty with
             Ast.TY_mach TY_f32 | Ast.TY_mach TY_f64 -> true
           | Ast.TY_mutable ty when ucx.mut_ok -> floating ty
-          | Ast.TY_exterior ty when ucx.ext_ok -> floating ty
+          | Ast.TY_box ty when ucx.box_ok -> floating ty
           | _ -> false
       in
 
@@ -386,7 +386,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | Ast.TY_mach TY_i64 ->
               true
           | Ast.TY_mutable ty when ucx.mut_ok -> integral ty
-          | Ast.TY_exterior ty when ucx.ext_ok -> integral ty
+          | Ast.TY_box ty when ucx.box_ok -> integral ty
           | _ -> false
       in
 
@@ -397,7 +397,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             Ast.TY_str -> true
           | Ast.TY_vec _ -> true
           | Ast.TY_mutable ty when ucx.mut_ok -> plusable ty
-          | Ast.TY_exterior ty when ucx.ext_ok -> plusable ty
+          | Ast.TY_box ty when ucx.box_ok -> plusable ty
           | _ -> numeric ty
       in
 
@@ -408,7 +408,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | Ast.TY_mach TY_i8 | Ast.TY_mach TY_i16 | Ast.TY_mach TY_i32
               -> true
           | Ast.TY_mutable ty when ucx.mut_ok -> loggable ty
-          | Ast.TY_exterior ty when ucx.ext_ok -> loggable ty
+          | Ast.TY_box ty when ucx.box_ok -> loggable ty
           | _ -> false
       in
 
@@ -419,34 +419,34 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
           | (TYSPEC_all, other) | (other, TYSPEC_all) -> other
 
-          (* exterior *)
+          (* box *)
 
-          | (TYSPEC_exterior a', TYSPEC_exterior b') ->
+          | (TYSPEC_box a', TYSPEC_box b') ->
               unify_tyvars ucx a' b'; !a
 
-          | (TYSPEC_exterior a',
-             TYSPEC_resolved (_, Ast.TY_exterior _)) ->
+          | (TYSPEC_box a',
+             TYSPEC_resolved (_, Ast.TY_box _)) ->
                unify_tyvars ucx a' b; !b
 
-          | (TYSPEC_resolved (_, Ast.TY_exterior _),
-             TYSPEC_exterior b') ->
+          | (TYSPEC_resolved (_, Ast.TY_box _),
+             TYSPEC_box b') ->
                unify_tyvars ucx a b'; !a
 
-          | (_, TYSPEC_resolved (params, Ast.TY_exterior ty))
-              when ucx.ext_ok ->
+          | (_, TYSPEC_resolved (params, Ast.TY_box ty))
+              when ucx.box_ok ->
               unify_ty_parametric ucx ty params a; !b
 
-          | (TYSPEC_resolved (params, Ast.TY_exterior ty), _)
-              when ucx.ext_ok ->
+          | (TYSPEC_resolved (params, Ast.TY_box ty), _)
+              when ucx.box_ok ->
               unify_ty_parametric ucx ty params b; !a
 
-          | (TYSPEC_exterior a', _) when ucx.ext_ok
+          | (TYSPEC_box a', _) when ucx.box_ok
               -> unify_tyvars ucx a' b; !a
-          | (_, TYSPEC_exterior b') when ucx.ext_ok
+          | (_, TYSPEC_box b') when ucx.box_ok
               -> unify_tyvars ucx a b'; !b
 
-          | (_, TYSPEC_exterior _)
-          | (TYSPEC_exterior _, _) -> fail()
+          | (_, TYSPEC_box _)
+          | (TYSPEC_box _, _) -> fail()
 
           (* mutable *)
 
@@ -505,8 +505,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                           unify_slot arg_pass_ctx out_slot None out_tv;
                           Array.iteri unify_in_slot in_slots;
                           ty
-                    | Ast.TY_exterior ty when ucx.ext_ok
-                        -> Ast.TY_exterior (unify ty)
+                    | Ast.TY_box ty when ucx.box_ok
+                        -> Ast.TY_box (unify ty)
                     | Ast.TY_mutable ty when ucx.mut_ok
                         -> Ast.TY_mutable (unify ty)
                     | _ -> fail ()
@@ -520,8 +520,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                     Ast.TY_vec ty' -> unify_ty ucx ty' tv; ty
                   | Ast.TY_str ->
                       unify_ty ucx (Ast.TY_mach TY_u8) tv; ty
-                  | Ast.TY_exterior ty
-                      when ucx.ext_ok -> Ast.TY_exterior (unify ty)
+                  | Ast.TY_box ty
+                      when ucx.box_ok -> Ast.TY_box (unify ty)
                   | Ast.TY_mutable ty
                       when ucx.mut_ok -> Ast.TY_mutable (unify ty)
                   | _ -> fail ()
@@ -548,8 +548,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                   | Ast.TY_obj (_, fns) ->
                       unify_dict_with_obj_fns dct fns;
                       ty
-                  | Ast.TY_exterior ty
-                      when ucx.ext_ok -> Ast.TY_exterior (unify ty)
+                  | Ast.TY_box ty
+                      when ucx.box_ok -> Ast.TY_box (unify ty)
                   | Ast.TY_mutable ty
                       when ucx.mut_ok -> Ast.TY_mutable (unify ty)
                   | _ -> fail ()
@@ -591,8 +591,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                     Ast.TY_rec fields ->
                       unify_dict_with_record_fields dct fields;
                       ty
-                  | Ast.TY_exterior ty
-                      when ucx.ext_ok -> Ast.TY_exterior (unify ty)
+                  | Ast.TY_box ty
+                      when ucx.box_ok -> Ast.TY_box (unify ty)
                   | Ast.TY_mutable ty
                       when ucx.mut_ok -> Ast.TY_mutable (unify ty)
                   | _ -> fail ()
@@ -612,10 +612,10 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                         in
                           Array.iteri check_elem tvs;
                           ty
-                  | Ast.TY_exterior ty
-                      when ucx.ext_ok -> Ast.TY_exterior (unify ty)
+                  | Ast.TY_box ty
+                      when ucx.box_ok -> Ast.TY_box (unify ty)
                   | Ast.TY_mutable ty
-                      when ucx.ext_ok -> Ast.TY_mutable (unify ty)
+                      when ucx.box_ok -> Ast.TY_mutable (unify ty)
                   | _ -> fail ()
               in
               TYSPEC_resolved (params, unify ty)
@@ -625,8 +625,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               let rec unify ty =
                 match ty with
                     Ast.TY_vec ty' -> unify_ty ucx ty' tv; ty
-                  | Ast.TY_exterior ty when ucx.ext_ok ->
-                      Ast.TY_exterior (unify ty)
+                  | Ast.TY_box ty when ucx.box_ok ->
+                      Ast.TY_box (unify ty)
                   | Ast.TY_mutable ty when ucx.mut_ok ->
                       Ast.TY_mutable (unify ty)
                   | _ -> fail ()
@@ -1113,10 +1113,10 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                     TYSPEC_collection tv
 
                 | Ast.COMP_deref ->
-                    TYSPEC_exterior tv
+                    TYSPEC_box tv
               in
               let base_tv = ref base_ts in
-                unify_lval' { ucx with ext_ok = true } base base_tv;
+                unify_lval' { ucx with box_ok = true } base base_tv;
                 match !(resolve_tyvar base_tv) with
                     TYSPEC_resolved (_, ty) ->
                       unify_ty ucx (project_type ty comp) tv
@@ -1367,7 +1367,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                     Ast.TY_fn (tsig, _) ->
                       begin
                         let vec_str =
-                          interior_slot (Ast.TY_vec Ast.TY_str)
+                          local_slot (Ast.TY_vec Ast.TY_str)
                         in
                           match tsig.Ast.sig_input_slots with
                               [| |] -> ()
@@ -1532,8 +1532,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           let ts = !(resolve_tyvar tv) in
             match ts with
                 TYSPEC_resolved ([||], ty) -> ty
-              | TYSPEC_exterior tv ->
-                  Ast.TY_exterior (get_resolved_ty tv id)
+              | TYSPEC_box tv ->
+                  Ast.TY_box (get_resolved_ty tv id)
 
               | TYSPEC_mutable tv ->
                   Ast.TY_mutable (get_resolved_ty tv id)

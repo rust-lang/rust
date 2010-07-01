@@ -7,7 +7,7 @@ open Semant;;
  * "simple" precise, mark-sweep, single-generation, per-task (thereby
  * preemptable and relatively quick) GC scheme on mutable memory.
  * 
- * - For the sake of this note, call any exterior of 'state' effect a gc_val.
+ * - For the sake of this note, call any box of 'state' effect a gc_val.
  *
  * - gc_vals come from the same malloc as all other values but undergo
  *   different storage management.
@@ -19,7 +19,7 @@ open Semant;;
  *
  *  - A pointer to a gc_val, however, points to the third of these three
  *    words. So a certain quantity of code can treat gc_vals the same way it
- *    would treat refcounted exterior vals.
+ *    would treat refcounted box vals.
  *
  *  - The first word at the head of a gc_val is used as a refcount, as in
  *    non-gc allocations.
@@ -122,7 +122,7 @@ let rec ty_mem_ctrl (ty:Ast.ty) : mem_ctrl =
         if type_has_state ty
         then MEM_gc
         else MEM_rc_opaque
-    | Ast.TY_exterior t ->
+    | Ast.TY_box t ->
         if type_has_state t
         then MEM_gc
         else
@@ -139,7 +139,7 @@ let rec ty_mem_ctrl (ty:Ast.ty) : mem_ctrl =
 let slot_mem_ctrl (slot:Ast.slot) : mem_ctrl =
   match slot.Ast.slot_mode with
       Ast.MODE_alias -> MEM_interior
-    | Ast.MODE_interior ->
+    | Ast.MODE_local ->
         ty_mem_ctrl (slot_ty slot)
 ;;
 

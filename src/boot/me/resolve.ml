@@ -570,7 +570,7 @@ let type_resolving_visitor
                           header_slots
                       in
                       let output_slot =
-                        interior_slot (ty_iso_of cx recursive_tag_groups
+                        local_slot (ty_iso_of cx recursive_tag_groups
                                          all_tags nid)
                       in
                       let ty =

@@ -180,12 +180,12 @@ let err (str:string) (ps:pstate) =
 
 
 let (slot_nil:Ast.slot) =
-  { Ast.slot_mode = Ast.MODE_interior;
+  { Ast.slot_mode = Ast.MODE_local;
     Ast.slot_ty = Some Ast.TY_nil }
 ;;
 
 let (slot_auto:Ast.slot) =
-  { Ast.slot_mode = Ast.MODE_interior;
+  { Ast.slot_mode = Ast.MODE_local;
     Ast.slot_ty = None }
 ;;
 
