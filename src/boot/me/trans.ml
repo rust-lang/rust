@@ -3376,7 +3376,7 @@ let trans_visitor
             (oper_str operand)
 
   and ty_arg_slots (ty:Ast.ty) : Ast.slot array =
-    match ty with
+    match simplified_ty ty with
         Ast.TY_fn (tsig, _) -> tsig.Ast.sig_input_slots
       | _ -> bug () "Trans.ty_arg_slots on non-callable type: %a"
           Ast.sprintf_ty ty
@@ -4047,7 +4047,7 @@ let trans_visitor
           Some params -> params
         | None -> [| |]
     in
-      match ty with
+      match simplified_ty ty with
           Ast.TY_fn _ ->
             let (dst_cell, _) = trans_lval_maybe_init init dst in
             let fn_ptr =

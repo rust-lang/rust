@@ -1951,7 +1951,7 @@ let call_args_referent_type
       Il.ScalarTy (Il.AddrTy Il.OpaqueTy)
     |]
   in
-    match callee_ty with
+    match simplified_ty callee_ty with
         Ast.TY_fn (tsig, taux) ->
           call_args_referent_type_full
             cx.ctxt_abi
@@ -1961,7 +1961,9 @@ let call_args_referent_type
             (if taux.Ast.fn_is_iter then (iterator_arg_rtys()) else [||])
             indirect_arg_rtys
 
-      | _ -> bug cx "Semant.call_args_referent_type on non-callable type"
+      | _ -> bug cx
+          "Semant.call_args_referent_type on non-callable type %a"
+            Ast.sprintf_ty callee_ty
 ;;
 
 let indirect_call_args_referent_type
