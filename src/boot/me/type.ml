@@ -6,6 +6,7 @@ type tyspec =
   | TYSPEC_all
   | TYSPEC_resolved of (Ast.ty_param array) * Ast.ty
   | TYSPEC_exterior of tyvar                  (* @ of some t *)
+  | TYSPEC_mutable of tyvar                   (* something mutable *)
   | TYSPEC_callable of (tyvar * tyvar array)  (* out, ins *)
   | TYSPEC_collection of tyvar                (* vec or str *)
   | TYSPEC_comparable                         (* comparable with = and != *)
@@ -110,6 +111,10 @@ let rec tyspec_to_str (ts:tyspec) : string =
           fmt ff "@@";
           fmt_tyspec ff (!tv)
 
+      | TYSPEC_mutable tv ->
+          fmt ff "mutable ";
+          fmt_tyspec ff (!tv)
+
       | TYSPEC_callable (out, ins) ->
           fmt_obb ff;
           fmt ff "callable fn(";
@@ -166,6 +171,32 @@ let rec resolve_tyvar (tv:tyvar) : tyvar =
     | _ -> tv
 ;;
 
+type unify_ctxt =
+    { mut_ok: bool;
+      ext_ok: bool }
+;;
+
+let arg_pass_ctx =
+  { ext_ok = false;
+    mut_ok = true }
+;;
+
+let rval_ctx =
+  { ext_ok = true;
+    mut_ok = true }
+;;
+
+let lval_ctx =
+  { ext_ok = false;
+    mut_ok = true }
+;;
+
+let strict_ctx =
+  { ext_ok = false;
+    mut_ok = false }
+;;
+
+
 let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
   let depth = ref 0 in
@@ -206,16 +237,17 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
   let visitor (cx:ctxt) (inner:Walk.visitor) : Walk.visitor =
 
     let rec unify_slot
-        (auto_deref:bool)
+        (ucx:unify_ctxt)
         (slot:Ast.slot)
         (id_opt:node_id option)
         (tv:tyvar) : unit =
       match id_opt with
-          Some id -> unify_tyvars auto_deref (Hashtbl.find bindings id) tv
+          Some id ->
+            unify_tyvars ucx (Hashtbl.find bindings id) tv
         | None ->
             match slot.Ast.slot_ty with
                 None -> bug () "untyped unidentified slot"
-              | Some ty -> unify_ty auto_deref ty tv
+              | Some ty -> unify_ty ucx ty tv
 
     and check_sane_tyvar tv =
       match !tv with
@@ -223,21 +255,25 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             bug () "named-type in type checker"
         | _ -> ()
 
-    and unify_tyvars (auto_deref:bool) (av:tyvar) (bv:tyvar) : unit =
+    and unify_tyvars (ucx:unify_ctxt) (av:tyvar) (bv:tyvar) : unit =
       let indent = String.make (4 * (!depth)) ' ' in
         iflog cx
           (fun _ ->
              log cx "%s> unifying types:" indent;
-             if auto_deref
+             if ucx.ext_ok || ucx.mut_ok
              then
-               log cx "%s> (w/ auto-deref)" indent;
+               log cx "%s> (w/ %s%s%s)"
+                 indent
+                 (if ucx.ext_ok then "ext-ok" else "")
+                 (if ucx.ext_ok && ucx.mut_ok then " " else "")
+                 (if ucx.mut_ok then "mut-ok" else "");
              log cx "%s> input tyvar A:     %s" indent (tyspec_to_str !av);
              log cx "%s> input tyvar B:     %s" indent (tyspec_to_str !bv));
         check_sane_tyvar av;
         check_sane_tyvar bv;
 
         incr depth;
-        unify_tyvars' auto_deref av bv;
+        unify_tyvars' ucx av bv;
         decr depth;
 
         iflog cx
@@ -248,7 +284,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         check_sane_tyvar av;
         check_sane_tyvar bv;
 
-    and unify_tyvars' (auto_deref:bool) (av:tyvar) (bv:tyvar) : unit =
+    and unify_tyvars' (ucx:unify_ctxt) (av:tyvar) (bv:tyvar) : unit =
       let (a, b) = ((resolve_tyvar av), (resolve_tyvar bv)) in
       let fail () =
         err None "mismatched types: %s vs. %s" (tyspec_to_str !av)
@@ -259,7 +295,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         let c = Hashtbl.create ((Hashtbl.length a) + (Hashtbl.length b)) in
         let merge ident tv_a =
           if Hashtbl.mem c ident
-          then unify_tyvars auto_deref (Hashtbl.find c ident) tv_a
+          then unify_tyvars ucx (Hashtbl.find c ident) tv_a
           else Hashtbl.add c ident tv_a
         in
           Hashtbl.iter (Hashtbl.add c) b;
@@ -278,7 +314,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         in
 
         let check_entry ident tv =
-          unify_ty auto_deref (find_ty ident) tv
+          unify_ty ucx (find_ty ident) tv
         in
           Hashtbl.iter check_entry dct
       in
@@ -289,7 +325,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         let check_entry (query:Ast.ident) tv : unit =
           match htab_search fns query with
               None -> fail ()
-            | Some fn -> unify_ty auto_deref (Ast.TY_fn fn) tv
+            | Some fn -> unify_ty ucx (Ast.TY_fn fn) tv
         in
           Hashtbl.iter check_entry dct
       in
@@ -300,9 +336,9 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           : Ast.ty =
         match ty_a, ty_b with
             a, b when a = b -> a
-          | Ast.TY_exterior a, b | b, Ast.TY_exterior a when auto_deref ->
+          | Ast.TY_exterior a, b | b, Ast.TY_exterior a when ucx.ext_ok ->
               Ast.TY_exterior (unify_resolved_types a b)
-          | Ast.TY_mutable a, b | b, Ast.TY_mutable a ->
+          | Ast.TY_mutable a, b | b, Ast.TY_mutable a when ucx.mut_ok ->
               Ast.TY_mutable (unify_resolved_types a b)
           | Ast.TY_constrained (a, constrs), b
           | b, Ast.TY_constrained (a, constrs) ->
@@ -321,22 +357,19 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | Ast.TY_fn _ | Ast.TY_obj _
           | Ast.TY_param _ | Ast.TY_native _ | Ast.TY_type -> false
           | Ast.TY_named _ -> bug () "unexpected named type"
-          | Ast.TY_mutable ty
           | Ast.TY_constrained (ty, _) ->
               is_comparable_or_ordered comparable ty
+          | Ast.TY_mutable ty ->
+              ucx.mut_ok && is_comparable_or_ordered comparable ty
           | Ast.TY_exterior ty ->
-              if auto_deref
-              then
-                is_comparable_or_ordered comparable ty
-              else
-                false
+              ucx.ext_ok && is_comparable_or_ordered comparable ty
       in
 
       let rec floating (ty:Ast.ty) : bool =
         match ty with
             Ast.TY_mach TY_f32 | Ast.TY_mach TY_f64 -> true
-          | Ast.TY_mutable ty -> floating ty
-          | Ast.TY_exterior ty when auto_deref -> floating ty
+          | Ast.TY_mutable ty when ucx.mut_ok -> floating ty
+          | Ast.TY_exterior ty when ucx.ext_ok -> floating ty
           | _ -> false
       in
 
@@ -347,8 +380,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | Ast.TY_mach TY_i16 | Ast.TY_mach TY_i32
           | Ast.TY_mach TY_i64 ->
               true
-          | Ast.TY_mutable ty -> integral ty
-          | Ast.TY_exterior ty when auto_deref -> integral ty
+          | Ast.TY_mutable ty when ucx.mut_ok -> integral ty
+          | Ast.TY_exterior ty when ucx.ext_ok -> integral ty
           | _ -> false
       in
 
@@ -358,8 +391,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         match ty with
             Ast.TY_str -> true
           | Ast.TY_vec _ -> true
-          | Ast.TY_mutable ty -> plusable ty
-          | Ast.TY_exterior ty when auto_deref -> plusable ty
+          | Ast.TY_mutable ty when ucx.mut_ok -> plusable ty
+          | Ast.TY_exterior ty when ucx.ext_ok -> plusable ty
           | _ -> numeric ty
       in
 
@@ -369,8 +402,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | Ast.TY_mach TY_u8 | Ast.TY_mach TY_u16 | Ast.TY_mach TY_u32
           | Ast.TY_mach TY_i8 | Ast.TY_mach TY_i16 | Ast.TY_mach TY_i32
               -> true
-          | Ast.TY_mutable ty -> loggable ty
-          | Ast.TY_exterior ty when auto_deref -> loggable ty
+          | Ast.TY_mutable ty when ucx.mut_ok -> loggable ty
+          | Ast.TY_exterior ty when ucx.ext_ok -> loggable ty
           | _ -> false
       in
 
@@ -383,21 +416,45 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
           (* exterior *)
 
+          | (TYSPEC_exterior a', TYSPEC_exterior b') ->
+              unify_tyvars ucx a' b'; !a
+
           | (TYSPEC_exterior a',
              TYSPEC_resolved (_, Ast.TY_exterior _)) ->
-               unify_tyvars auto_deref a' b; !b
+               unify_tyvars ucx a' b; !b
 
           | (TYSPEC_resolved (_, Ast.TY_exterior _),
              TYSPEC_exterior b') ->
-               unify_tyvars auto_deref a b'; !b
+               unify_tyvars ucx a b'; !a
 
-          | (TYSPEC_exterior a', _) when auto_deref
-              -> unify_tyvars auto_deref a' b; !a
-          | (_, TYSPEC_exterior b') when auto_deref
-              -> unify_tyvars auto_deref a b'; !b
+          | (TYSPEC_exterior a', _) when ucx.ext_ok
+              -> unify_tyvars ucx a' b; !a
+          | (_, TYSPEC_exterior b') when ucx.ext_ok
+              -> unify_tyvars ucx a b'; !b
 
           | (_, TYSPEC_exterior _)
           | (TYSPEC_exterior _, _) -> fail()
+
+          (* mutable *)
+
+          | (TYSPEC_mutable a', TYSPEC_mutable b') ->
+              unify_tyvars ucx a' b'; !a
+
+          | (TYSPEC_mutable a',
+             TYSPEC_resolved (_, Ast.TY_mutable _)) ->
+               unify_tyvars ucx a' b; !b
+
+          | (TYSPEC_resolved (_, Ast.TY_mutable _),
+             TYSPEC_mutable b') ->
+               unify_tyvars ucx a b'; !a
+
+          | (TYSPEC_mutable a', _) when ucx.mut_ok
+              -> unify_tyvars ucx a' b; !a
+          | (_, TYSPEC_mutable b') when ucx.mut_ok
+              -> unify_tyvars ucx a b'; !b
+
+          | (_, TYSPEC_mutable _)
+          | (TYSPEC_mutable _, _) -> fail()
 
           (* resolved *)
 
@@ -412,7 +469,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_callable (out_tv, in_tvs),
              TYSPEC_resolved (params, ty)) ->
               let unify_in_slot i in_slot =
-                unify_slot false in_slot None in_tvs.(i)
+                unify_slot arg_pass_ctx in_slot None in_tvs.(i)
               in
                 let rec unify ty =
                   match ty with
@@ -424,12 +481,13 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                         then
                           fail ()
                         else
-                          unify_slot false out_slot None out_tv;
+                          unify_slot arg_pass_ctx out_slot None out_tv;
                           Array.iteri unify_in_slot in_slots;
                           ty
-                    | Ast.TY_exterior ty when auto_deref
+                    | Ast.TY_exterior ty when ucx.ext_ok
                         -> Ast.TY_exterior (unify ty)
-                    | Ast.TY_mutable ty -> Ast.TY_mutable (unify ty)
+                    | Ast.TY_mutable ty when ucx.mut_ok
+                        -> Ast.TY_mutable (unify ty)
                     | _ -> fail ()
                 in
                 TYSPEC_resolved (params, unify ty)
@@ -438,12 +496,13 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_collection tv, TYSPEC_resolved (params, ty)) ->
               let rec unify ty =
                 match ty with
-                    Ast.TY_vec ty' -> unify_ty auto_deref ty' tv; ty
+                    Ast.TY_vec ty' -> unify_ty ucx ty' tv; ty
                   | Ast.TY_str ->
-                      unify_ty auto_deref (Ast.TY_mach TY_u8) tv; ty
+                      unify_ty ucx (Ast.TY_mach TY_u8) tv; ty
                   | Ast.TY_exterior ty
-                      when auto_deref -> Ast.TY_exterior (unify ty)
-                  | Ast.TY_mutable ty -> Ast.TY_mutable (unify ty)
+                      when ucx.ext_ok -> Ast.TY_exterior (unify ty)
+                  | Ast.TY_mutable ty
+                      when ucx.mut_ok -> Ast.TY_mutable (unify ty)
                   | _ -> fail ()
               in
               TYSPEC_resolved (params, unify ty)
@@ -469,8 +528,9 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                       unify_dict_with_obj_fns dct fns;
                       ty
                   | Ast.TY_exterior ty
-                      when auto_deref -> Ast.TY_exterior (unify ty)
-                  | Ast.TY_mutable ty -> Ast.TY_mutable (unify ty)
+                      when ucx.ext_ok -> Ast.TY_exterior (unify ty)
+                  | Ast.TY_mutable ty
+                      when ucx.mut_ok -> Ast.TY_mutable (unify ty)
                   | _ -> fail ()
               in
               TYSPEC_resolved (params, unify ty)
@@ -500,7 +560,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_resolved (params, ty), TYSPEC_app (tv, args))
           | (TYSPEC_app (tv, args), TYSPEC_resolved (params, ty)) ->
               let ty = rebuild_ty_under_params ty params args false in
-                unify_ty auto_deref ty tv;
+                unify_ty ucx ty tv;
                 TYSPEC_resolved ([| |], ty)
 
           | (TYSPEC_resolved (params, ty), TYSPEC_record dct)
@@ -511,8 +571,9 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                       unify_dict_with_record_fields dct fields;
                       ty
                   | Ast.TY_exterior ty
-                      when auto_deref -> Ast.TY_exterior (unify ty)
-                  | Ast.TY_mutable ty -> Ast.TY_mutable (unify ty)
+                      when ucx.ext_ok -> Ast.TY_exterior (unify ty)
+                  | Ast.TY_mutable ty
+                      when ucx.mut_ok -> Ast.TY_mutable (unify ty)
                   | _ -> fail ()
               in
               TYSPEC_resolved (params, unify ty)
@@ -526,13 +587,14 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                       then fail ()
                       else
                         let check_elem i tv =
-                          unify_ty auto_deref (elem_tys.(i)) tv
+                          unify_ty ucx (elem_tys.(i)) tv
                         in
                           Array.iteri check_elem tvs;
                           ty
                   | Ast.TY_exterior ty
-                      when auto_deref -> Ast.TY_exterior (unify ty)
-                  | Ast.TY_mutable ty -> Ast.TY_mutable (unify ty)
+                      when ucx.ext_ok -> Ast.TY_exterior (unify ty)
+                  | Ast.TY_mutable ty
+                      when ucx.ext_ok -> Ast.TY_mutable (unify ty)
                   | _ -> fail ()
               in
               TYSPEC_resolved (params, unify ty)
@@ -541,10 +603,11 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_vector tv, TYSPEC_resolved (params, ty)) ->
               let rec unify ty =
                 match ty with
-                    Ast.TY_vec ty' -> unify_ty auto_deref ty' tv; ty
-                  | Ast.TY_exterior ty when auto_deref ->
+                    Ast.TY_vec ty' -> unify_ty ucx ty' tv; ty
+                  | Ast.TY_exterior ty when ucx.ext_ok ->
                       Ast.TY_exterior (unify ty)
-                  | Ast.TY_mutable ty -> Ast.TY_mutable (unify ty)
+                  | Ast.TY_mutable ty when ucx.mut_ok ->
+                      Ast.TY_mutable (unify ty)
                   | _ -> fail ()
               in
               TYSPEC_resolved (params, unify ty)
@@ -553,9 +616,10 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
           | (TYSPEC_callable (a_out_tv, a_in_tvs),
              TYSPEC_callable (b_out_tv, b_in_tvs)) ->
-              unify_tyvars false a_out_tv b_out_tv;
+              unify_tyvars arg_pass_ctx a_out_tv b_out_tv;
               let check_in_tv i a_in_tv =
-                unify_tyvars false a_in_tv b_in_tvs.(i)
+                unify_tyvars arg_pass_ctx
+                  a_in_tv b_in_tvs.(i)
               in
                 Array.iteri check_in_tv a_in_tvs;
                 TYSPEC_callable (a_out_tv, a_in_tvs)
@@ -588,7 +652,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           (* collection *)
 
           | (TYSPEC_collection av, TYSPEC_collection bv) ->
-              unify_tyvars auto_deref av bv;
+              unify_tyvars ucx av bv;
               TYSPEC_collection av
 
           | (TYSPEC_collection av, TYSPEC_comparable)
@@ -617,7 +681,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
           | (TYSPEC_collection av, TYSPEC_vector bv)
           | (TYSPEC_vector bv, TYSPEC_collection av) ->
-              unify_tyvars auto_deref av bv;
+              unify_tyvars ucx av bv;
               TYSPEC_vector av
 
           (* comparable *)
@@ -786,7 +850,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               then fail()
               else
                 begin
-                  unify_tyvars auto_deref tv_a tv_b;
+                  unify_tyvars ucx tv_a tv_b;
                   TYSPEC_app (tv_a, args_a)
                 end
 
@@ -819,7 +883,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                 else if i >= len_b
                 then tvs_a.(i)
                 else begin
-                  unify_tyvars false tvs_a.(i) tvs_b.(i);
+                  unify_tyvars strict_ctx tvs_a.(i) tvs_b.(i);
                   tvs_a.(i)
                 end
               in
@@ -831,7 +895,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           (* vector *)
 
           | (TYSPEC_vector av, TYSPEC_vector bv) ->
-              unify_tyvars false av bv;
+              unify_tyvars strict_ctx av bv;
               TYSPEC_vector av
       in
       let c = ref result in
@@ -839,19 +903,19 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         b := TYSPEC_equiv c
 
     and unify_ty_parametric
-        (auto_deref:bool)
+        (ucx:unify_ctxt)
         (ty:Ast.ty)
         (tps:Ast.ty_param array)
         (tv:tyvar)
         : unit =
-      unify_tyvars auto_deref (ref (TYSPEC_resolved (tps, ty))) tv
+      unify_tyvars ucx (ref (TYSPEC_resolved (tps, ty))) tv
 
-    and unify_ty (auto_deref:bool) (ty:Ast.ty) (tv:tyvar) : unit =
-      unify_ty_parametric auto_deref ty [||] tv
+    and unify_ty (ucx:unify_ctxt) (ty:Ast.ty) (tv:tyvar) : unit =
+      unify_ty_parametric ucx ty [||] tv
 
     in
 
-    let rec unify_lit (auto_deref:bool) (lit:Ast.lit) (tv:tyvar) : unit =
+    let rec unify_lit (ucx:unify_ctxt) (lit:Ast.lit) (tv:tyvar) : unit =
       let ty =
         match lit with
             Ast.LIT_nil -> Ast.TY_nil
@@ -861,16 +925,16 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | Ast.LIT_uint (_, _) -> Ast.TY_uint
           | Ast.LIT_char _ -> Ast.TY_char
       in
-        unify_ty auto_deref ty tv
+        unify_ty ucx ty tv
 
-    and unify_atom (auto_deref:bool) (atom:Ast.atom) (tv:tyvar) : unit =
+    and unify_atom (ucx:unify_ctxt) (atom:Ast.atom) (tv:tyvar) : unit =
       match atom with
           Ast.ATOM_literal { node = literal; id = _ } ->
-            unify_lit auto_deref literal tv
+            unify_lit ucx literal tv
         | Ast.ATOM_lval lval ->
-            unify_lval auto_deref lval tv
+            unify_lval ucx lval tv
 
-    and unify_expr (auto_deref:bool) (expr:Ast.expr) (tv:tyvar) : unit =
+    and unify_expr (ucx:unify_ctxt) (expr:Ast.expr) (tv:tyvar) : unit =
       match expr with
           Ast.EXPR_binary (binop, lhs, rhs) ->
             let binop_sig = match binop with
@@ -901,64 +965,64 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               begin
                 match binop_sig with
                     BINOPSIG_bool_bool_bool ->
-                      unify_atom true lhs
+                      unify_atom rval_ctx lhs
                         (ref (TYSPEC_resolved ([||], Ast.TY_bool)));
-                      unify_atom true rhs
+                      unify_atom rval_ctx rhs
                         (ref (TYSPEC_resolved ([||], Ast.TY_bool)));
-                      unify_ty true Ast.TY_bool tv
+                      unify_ty rval_ctx Ast.TY_bool tv
                   | BINOPSIG_comp_comp_bool ->
                       let tv_a = ref TYSPEC_comparable in
-                        unify_atom true lhs tv_a;
-                        unify_atom true rhs tv_a;
-                        unify_ty true Ast.TY_bool tv
+                        unify_atom rval_ctx lhs tv_a;
+                        unify_atom rval_ctx rhs tv_a;
+                        unify_ty rval_ctx Ast.TY_bool tv
                   | BINOPSIG_ord_ord_bool ->
                       let tv_a = ref TYSPEC_ordered in
-                        unify_atom true lhs tv_a;
-                        unify_atom true rhs tv_a;
-                        unify_ty true Ast.TY_bool tv
+                        unify_atom rval_ctx lhs tv_a;
+                        unify_atom rval_ctx rhs tv_a;
+                        unify_ty rval_ctx Ast.TY_bool tv
                   | BINOPSIG_integ_integ_integ ->
                       let tv_a = ref TYSPEC_integral in
-                        unify_atom true lhs tv_a;
-                        unify_atom true rhs tv_a;
-                        unify_tyvars true tv tv_a
+                        unify_atom rval_ctx lhs tv_a;
+                        unify_atom rval_ctx rhs tv_a;
+                        unify_tyvars rval_ctx tv tv_a
                   | BINOPSIG_num_num_num ->
                       let tv_a = ref TYSPEC_numeric in
-                        unify_atom true lhs tv_a;
-                        unify_atom true rhs tv_a;
-                        unify_tyvars true tv tv_a
+                        unify_atom rval_ctx lhs tv_a;
+                        unify_atom rval_ctx rhs tv_a;
+                        unify_tyvars rval_ctx tv tv_a
                   | BINOPSIG_plus_plus_plus ->
                       let tv_a = ref TYSPEC_plusable in
-                        unify_atom true lhs tv_a;
-                        unify_atom true rhs tv_a;
-                        unify_tyvars true tv tv_a
+                        unify_atom rval_ctx lhs tv_a;
+                        unify_atom rval_ctx rhs tv_a;
+                        unify_tyvars rval_ctx tv tv_a
               end
         | Ast.EXPR_unary (unop, atom) ->
             begin
               match unop with
                   Ast.UNOP_not ->
-                    unify_atom true atom
+                    unify_atom rval_ctx atom
                       (ref (TYSPEC_resolved ([||], Ast.TY_bool)));
-                    unify_ty true Ast.TY_bool tv
+                    unify_ty rval_ctx Ast.TY_bool tv
                 | Ast.UNOP_bitnot ->
                     let tv_a = ref TYSPEC_integral in
-                      unify_atom true atom tv_a;
-                      unify_tyvars true tv tv_a
+                      unify_atom rval_ctx atom tv_a;
+                      unify_tyvars rval_ctx tv tv_a
                 | Ast.UNOP_neg ->
                     let tv_a = ref TYSPEC_numeric in
-                      unify_atom true atom tv_a;
-                      unify_tyvars true tv tv_a
+                      unify_atom rval_ctx atom tv_a;
+                      unify_tyvars rval_ctx tv tv_a
                 | Ast.UNOP_cast t ->
                     (* FIXME (issue #84): check cast-validity in
                      * post-typecheck pass.  Only some casts make sense.
                      *)
                     let tv_a = ref TYSPEC_all in
                     let t = Hashtbl.find cx.ctxt_all_cast_types t.id in
-                      unify_atom true atom tv_a;
-                      unify_ty true t tv
+                      unify_atom rval_ctx atom tv_a;
+                      unify_ty rval_ctx t tv
             end
-        | Ast.EXPR_atom atom -> unify_atom auto_deref atom tv
+        | Ast.EXPR_atom atom -> unify_atom ucx atom tv
 
-    and unify_lval' (auto_deref:bool) (lval:Ast.lval) (tv:tyvar) : unit =
+    and unify_lval' (ucx:unify_ctxt) (lval:Ast.lval) (tv:tyvar) : unit =
       let note_args args =
         iflog cx (fun _ -> log cx "noting lval '%a' type arguments: %a"
                     Ast.sprintf_lval lval Ast.sprintf_app_args args);
@@ -980,7 +1044,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                                 log cx "lval-base slot tyspec for %a = %s"
                                   Ast.sprintf_lval lval (tyspec_to_str (!tv));
                           end;
-                        unify_slot auto_deref slot (Some referent) tv
+                        unify_slot ucx slot (Some referent) tv
 
                     | _ ->
                         let spec = (!(Hashtbl.find bindings referent)) in
@@ -1002,7 +1066,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                                 ref (TYSPEC_app (tv, args))
                             | _ -> err None "bad lval / tyspec combination"
                         in
-                          unify_tyvars auto_deref (ref spec) tv
+                          unify_tyvars ucx (ref spec) tv
                 end
           | Ast.LVAL_ext (base, comp) ->
               let base_ts = match comp with
@@ -1023,7 +1087,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                       TYSPEC_tuple (Array.init (i + 1) init)
 
                 | Ast.COMP_atom atom ->
-                    unify_atom true atom
+                    unify_atom rval_ctx atom
                       (ref (TYSPEC_resolved ([||], Ast.TY_int)));
                     TYSPEC_collection tv
 
@@ -1031,14 +1095,14 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                     TYSPEC_exterior tv
               in
               let base_tv = ref base_ts in
-                unify_lval' auto_deref base base_tv;
+                unify_lval' ucx base base_tv;
                 match !(resolve_tyvar base_tv) with
                     TYSPEC_resolved (_, ty) ->
-                      unify_ty auto_deref (project_type ty comp) tv
+                      unify_ty ucx (project_type ty comp) tv
                   | _ ->
                       ()
 
-    and unify_lval (auto_deref:bool) (lval:Ast.lval) (tv:tyvar) : unit =
+    and unify_lval (ucx:unify_ctxt) (lval:Ast.lval) (tv:tyvar) : unit =
       let id = lval_base_id lval in
         (* Fetch lval with type components resolved. *)
         let lval = Hashtbl.find cx.ctxt_all_lvals id in
@@ -1046,13 +1110,13 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                     "fetched resolved version of lval #%d = %a"
                     (int_of_node id) Ast.sprintf_lval lval);
           Hashtbl.add lval_tyvars id tv;
-          unify_lval' auto_deref lval tv
+          unify_lval' ucx lval tv
 
     in
     let gen_atom_tvs atoms =
       let gen_atom_tv atom =
         let tv = ref TYSPEC_all in
-          unify_atom false atom tv;
+          unify_atom strict_ctx atom tv;
           tv
       in
         Array.map gen_atom_tv atoms
@@ -1062,92 +1126,94 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
       let check_callable out_tv callee args =
         let in_tvs = gen_atom_tvs args in
         let callee_tv = ref (TYSPEC_callable (out_tv, in_tvs)) in
-          unify_lval false callee callee_tv;
+          unify_lval rval_ctx callee callee_tv;
       in
+
+      let ty t = ref (TYSPEC_resolved ([||], t)) in
+      let any _ = ref TYSPEC_all in
+
       match stmt.node with
-          Ast.STMT_spawn (out, _, callee, args) ->
-            let out_tv = ref (TYSPEC_resolved ([||], Ast.TY_nil)) in
-              unify_lval true out (ref (TYSPEC_resolved ([||], Ast.TY_task)));
+          Ast.STMT_spawn (dst, _, callee, args) ->
+            let out_tv = ty Ast.TY_nil in
+              unify_lval lval_ctx dst (ty Ast.TY_task);
               check_callable out_tv callee args
 
-        | Ast.STMT_init_rec (lval, fields, Some base) ->
+        | Ast.STMT_init_rec (dst, fields, Some base) ->
             let dct = Hashtbl.create 10 in
             let tvrec = ref (TYSPEC_record dct) in
             let add_field (ident, atom) =
-              let tv = ref TYSPEC_all in
-                unify_atom true atom tv;
+              let tv = any() in
+                unify_atom rval_ctx atom tv;
                 Hashtbl.add dct ident tv
             in
               Array.iter add_field fields;
-              let tvbase = ref TYSPEC_all in
-                unify_lval true base tvbase;
-                unify_tyvars true tvrec tvbase;
-                unify_lval true lval tvrec
+              let tvbase = any() in
+                unify_lval rval_ctx base tvbase;
+                unify_tyvars rval_ctx tvrec tvbase;
+                unify_lval lval_ctx dst tvrec
 
-        | Ast.STMT_init_rec (lval, fields, None) ->
+        | Ast.STMT_init_rec (dst, fields, None) ->
             let dct = Hashtbl.create 10 in
             let add_field (ident, atom) =
-              let tv = ref TYSPEC_all in
-                unify_atom true atom tv;
+              let tv = any() in
+                unify_atom rval_ctx atom tv;
                 Hashtbl.add dct ident tv
             in
               Array.iter add_field fields;
-              unify_lval true lval (ref (TYSPEC_record dct))
+              unify_lval lval_ctx dst (ref (TYSPEC_record dct))
 
-        | Ast.STMT_init_tup (lval, members) ->
+        | Ast.STMT_init_tup (dst, members) ->
             let member_to_tv atom =
-              let tv = ref TYSPEC_all in
-                unify_atom true atom tv;
+              let tv = any() in
+                unify_atom rval_ctx atom tv;
                 tv
             in
             let member_tvs = Array.map member_to_tv members in
-              unify_lval true lval (ref (TYSPEC_tuple member_tvs))
+              unify_lval lval_ctx dst (ref (TYSPEC_tuple member_tvs))
 
-        | Ast.STMT_init_vec (lval, atoms) ->
-            let tv = ref TYSPEC_all in
-            let unify_with_tv atom = unify_atom true atom tv in
+        | Ast.STMT_init_vec (dst, atoms) ->
+            let tv = any() in
+            let unify_with_tv atom = unify_atom rval_ctx atom tv in
               Array.iter unify_with_tv atoms;
-              unify_lval true lval (ref (TYSPEC_vector tv))
+              unify_lval lval_ctx dst (ref (TYSPEC_vector tv))
 
-        | Ast.STMT_init_str (lval, _) ->
-            unify_lval true lval (ref (TYSPEC_resolved ([||], Ast.TY_str)))
+        | Ast.STMT_init_str (dst, _) ->
+            unify_lval lval_ctx dst (ty Ast.TY_str)
 
-        | Ast.STMT_copy (lval, expr) ->
-            let tv = ref TYSPEC_all in
-              unify_expr false expr tv;
-              unify_lval false lval tv
+        | Ast.STMT_copy (dst, expr) ->
+            let tv = any() in
+              unify_expr rval_ctx expr tv;
+              unify_lval lval_ctx dst tv
 
-        | Ast.STMT_copy_binop (lval, binop, at) ->
-            let tv = ref TYSPEC_all in
-              unify_expr false
-                (Ast.EXPR_binary (binop, Ast.ATOM_lval lval, at)) tv;
-              unify_lval false lval tv;
+        | Ast.STMT_copy_binop (dst, binop, at) ->
+            let tv = any() in
+              unify_expr rval_ctx
+                (Ast.EXPR_binary (binop, Ast.ATOM_lval dst, at)) tv;
+              unify_lval lval_ctx dst tv;
 
         | Ast.STMT_call (out, callee, args) ->
-            let out_tv = ref TYSPEC_all in
-              unify_lval false out out_tv;
+            let out_tv = any() in
+              unify_lval arg_pass_ctx out out_tv;
               check_callable out_tv callee args
 
-        | Ast.STMT_log atom -> unify_atom true atom (ref TYSPEC_loggable)
+        | Ast.STMT_log atom ->
+            unify_atom rval_ctx atom (ref TYSPEC_loggable)
 
         | Ast.STMT_check_expr expr ->
-            unify_expr true expr (ref (TYSPEC_resolved ([||], Ast.TY_bool)))
+            unify_expr rval_ctx expr (ty Ast.TY_bool)
 
         | Ast.STMT_check (_, check_calls) ->
-            let out_tv = ref (TYSPEC_resolved ([||], Ast.TY_bool)) in
+            let out_tv = ty Ast.TY_bool in
               Array.iter
                 (fun (callee, args) ->
                    check_callable out_tv callee args)
                 check_calls
 
-        | Ast.STMT_while { Ast.while_lval = (_, expr);
-                           Ast.while_body = _ } ->
-            unify_expr true
-              expr (ref (TYSPEC_resolved ([||], Ast.TY_bool)))
+        | Ast.STMT_while { Ast.while_lval = (_, expr) } ->
+            unify_expr rval_ctx expr (ty Ast.TY_bool)
 
         | Ast.STMT_if { Ast.if_test = if_test } ->
-            unify_expr true
-              if_test (ref (TYSPEC_resolved ([||], Ast.TY_bool)));
+            unify_expr rval_ctx if_test (ty Ast.TY_bool);
 
         | Ast.STMT_decl _ -> ()
 
@@ -1155,8 +1221,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         | Ast.STMT_put atom_opt ->
             begin
               match atom_opt with
-                  None -> unify_ty false Ast.TY_nil (retval_tv())
-                | Some atom -> unify_atom false atom (retval_tv())
+                  None -> unify_ty arg_pass_ctx Ast.TY_nil (retval_tv())
+                | Some atom -> unify_atom arg_pass_ctx atom (retval_tv())
             end
 
         | Ast.STMT_be (callee, args) ->
@@ -1166,15 +1232,15 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             (* FIXME (issue #81): handle binding type parameters
              * eventually.
              *)
-            let out_tv = ref TYSPEC_all in
+            let out_tv = any() in
             let residue = ref [] in
             let gen_atom_opt_tvs atoms =
               let gen_atom_tv atom_opt =
-                let tv = ref TYSPEC_all in
+                let tv = any() in
                   begin
                     match atom_opt with
                         None -> residue := tv :: (!residue);
-                      | Some atom -> unify_atom false atom tv
+                      | Some atom -> unify_atom arg_pass_ctx atom tv
                   end;
                   tv
               in
@@ -1185,14 +1251,14 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             let arg_residue_tvs = Array.of_list (List.rev (!residue)) in
             let callee_tv = ref (TYSPEC_callable (out_tv, in_tvs)) in
             let bound_tv = ref (TYSPEC_callable (out_tv, arg_residue_tvs)) in
-              unify_lval true callee callee_tv;
-              unify_lval false bound bound_tv
+              unify_lval rval_ctx callee callee_tv;
+              unify_lval lval_ctx bound bound_tv
 
         | Ast.STMT_for_each fe ->
-            let out_tv = ref TYSPEC_all in
+            let out_tv = any() in
             let (si, _) = fe.Ast.for_each_slot in
             let (callee, args) = fe.Ast.for_each_call in
-              unify_slot false si.node (Some si.id) out_tv;
+              unify_slot lval_ctx si.node (Some si.id) out_tv;
               check_callable out_tv callee args
 
         | Ast.STMT_for fo ->
@@ -1200,13 +1266,13 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             let seq_tv = ref (TYSPEC_collection mem_tv) in
             let (si, _) = fo.Ast.for_slot in
             let (_, seq) = fo.Ast.for_seq in
-              unify_lval true seq seq_tv;
-              unify_slot false si.node (Some si.id) mem_tv
+              unify_lval rval_ctx seq seq_tv;
+              unify_slot lval_ctx si.node (Some si.id) mem_tv
 
         | Ast.STMT_alt_tag
             { Ast.alt_tag_lval = lval; Ast.alt_tag_arms = arms } ->
-            let lval_tv = ref TYSPEC_all in
-              unify_lval true lval lval_tv;
+            let lval_tv = any() in
+              unify_lval lval_ctx lval lval_tv;
               Array.iter (fun _ -> push_pat_tv lval_tv) arms
 
         (* FIXME (issue #52): plenty more to handle here. *)
@@ -1236,7 +1302,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
     let enter_fn fn retspec =
       let out = fn.Ast.fn_output_slot in
         push_retval_tv (ref retspec);
-        unify_slot false out.node (Some out.id) (retval_tv())
+        unify_slot arg_pass_ctx out.node (Some out.id) (retval_tv())
     in
 
     let visit_obj_fn_pre obj ident fn =
@@ -1303,12 +1369,12 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
     let visit_pat_pre (pat:Ast.pat) : unit =
       let expected = pat_tv() in
         match pat with
-            Ast.PAT_lit lit -> unify_lit true lit expected
+            Ast.PAT_lit lit -> unify_lit strict_ctx lit expected
 
           | Ast.PAT_tag (lval, _) ->
               let expect ty =
                 let tv = ref TYSPEC_all in
-                  unify_ty false ty tv;
+                  unify_ty strict_ctx ty tv;
                   push_pat_tv tv;
               in
 
@@ -1320,7 +1386,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                * exactly to that function type, rebuilt under any latent type
                * parameters applied in the lval. *)
               let lval_tv = ref TYSPEC_all in
-                unify_lval false lval lval_tv;
+                unify_lval strict_ctx lval lval_tv;
                 let tag_ctor_ty =
                   match !(resolve_tyvar lval_tv) with
                       TYSPEC_resolved (_, ty) -> ty
@@ -1332,13 +1398,13 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                 let tag_ty_tup = tag_or_iso_ty_tup_by_name tag_ty lval_nm in
 
                 let tag_tv = ref TYSPEC_all in
-                  unify_ty false tag_ty tag_tv;
-                  unify_tyvars false expected tag_tv;
+                  unify_ty strict_ctx tag_ty tag_tv;
+                  unify_tyvars strict_ctx expected tag_tv;
                   List.iter expect
                     (List.rev (Array.to_list tag_ty_tup));
 
           | Ast.PAT_slot (sloti, _) ->
-              unify_slot false sloti.node (Some sloti.id) expected
+              unify_slot strict_ctx sloti.node (Some sloti.id) expected
 
           | Ast.PAT_wild -> ()
     in
@@ -1366,7 +1432,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         match defn with
             DEFN_slot { Ast.slot_mode = _; Ast.slot_ty = None } ->
               Queue.add id auto_queue;
-              Hashtbl.add bindings id (ref TYSPEC_all)
+              Hashtbl.add bindings id (ref (TYSPEC_mutable (ref TYSPEC_all)))
           | DEFN_slot { Ast.slot_mode = _; Ast.slot_ty = Some ty } ->
               let _ = iflog cx (fun _ -> log cx "initial slot #%d type: %a"
                                   (int_of_node id) Ast.sprintf_ty ty)
@@ -1432,6 +1498,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                     match slot_defn.Ast.slot_ty with
                         Some _ -> ()
                       | None ->
+                          log cx "setting auto slot #%d to %a"
+                            (int_of_node id) Ast.sprintf_ty ty;
                           Hashtbl.replace cx.ctxt_all_defns id
                             (DEFN_slot { slot_defn with
                                            Ast.slot_ty = Some ty })
@@ -1443,7 +1511,29 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           let ts = !(resolve_tyvar tv) in
             match ts with
                 TYSPEC_resolved ([||], ty) -> ty
-              | TYSPEC_vector (tv) ->
+              | TYSPEC_exterior tv ->
+                  begin
+                    match !(resolve_tyvar tv) with
+                        TYSPEC_resolved ([||], ty) ->
+                          (Ast.TY_exterior ty)
+                      | _ ->
+                          err (Some id)
+                            "unresolved exterior type in %s (%d)"
+                            (tyspec_to_str ts) (int_of_node id)
+                  end
+
+              | TYSPEC_mutable tv ->
+                  begin
+                    match !(resolve_tyvar tv) with
+                        TYSPEC_resolved ([||], ty) ->
+                          (Ast.TY_mutable ty)
+                      | _ ->
+                          err (Some id)
+                            "unresolved mutable type in %s (%d)"
+                            (tyspec_to_str ts) (int_of_node id)
+                  end
+
+              | TYSPEC_vector tv ->
                   begin
                     match !(resolve_tyvar tv) with
                         TYSPEC_resolved ([||], ty) ->
@@ -1453,6 +1543,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                             "unresolved vector-element type in %s (%d)"
                             (tyspec_to_str ts) (int_of_node id)
                   end
+
               | _ -> err (Some id)
                   "unresolved type %s (%d)"
                     (tyspec_to_str ts)
