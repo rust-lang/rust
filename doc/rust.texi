@@ -224,6 +224,67 @@ mechanisms or restrictions of crates. Modules and crates serve different
 roles.
 
 @sp 1
+@item Static control over memory allocation, packing and aliasing.
+
+Many values in Rust are allocated @emph{within} their containing stack-frame
+or parent strucure. Numbers, records, tuples and tags are all allocated this
+way. To allocate such values in the heap, they must be explicitly
+@emph{boxed}. A @dfn{box} is a pointer to a heap allocation that holds another
+value, its @emph{content}. If the content of a box is a @emph{state} value --
+the sort that may contain mutable members -- then the heap allocation is also
+subject to garbage collection.
+
+Boxing and unboxing in Rust is explicit, though in many cases (arithmetic
+operations, name-component dereferencing) Rust will automatically ``reach
+through'' the box to access its content. Box values can be passed and assigned
+independently, like pointers in C; the difference is that in Rust they always
+point to live contents, and are not subject to pointer arithmetic.
+
+In addition to boxes, Rust supports a kind of pass-by-reference slot called an
+alias. Forming or releasing an alias does not perform reference-count
+operations; aliases can only be formed on referents that will provably outlive
+the alias, and are therefore only used for passing arguments to
+functions. Aliases are not ``general values'', in the sense that they cannot
+be independently manipulated. They are more like C++ references, except that
+like boxes, aliases are safe: they always point to live values.
+
+In addition, each slot (stack-local allocation or alias) has a static
+initialization state that is calculated by the typestate system. This permits
+late initialization of slotsx in functions with complex control-flow, while
+still guaranteeing that every use of a slot occurs after it has been
+initialized.
+
+@sp 1
+@item Static control over mutability.
+
+Types in Rust are classified as either immutable or mutable. By default,
+all types are immutable.
+
+If a type is declared as @code{mutable}, then the type is a @code{state} type
+and must be declared as such. Any type directly marked as @code{mutable}
+@emph{or indirectly containing} a state type is also a state type.
+
+This classification of data types in Rust interacts with the memory allocation
+and transmission rules. In particular:
+
+@itemize
+@item Only immutable (non-state) values can be sent over channels.
+@item Only immutable (non-state) objects can have destructor functions.
+@end itemize
+
+Boxed state values are subject to local (per-task) garbage-collection. Garbage
+collection costs are therefore also task-local and do not interrupt or suspend
+other tasks.
+
+Boxed immutable values are reference-counted and have a deterministic
+destruction order: top-down, immediately upon release of the last live
+reference.
+
+State values can refer to immutable values, but not vice-versa. Rust therefore
+encourages the programmer to write in a style that consists primarily of
+immutable types, but also permits limited, local (per-task) mutability.
+
+@sp 1
 @item Stack-based iterators
 
 Rust provides a type of function-like multiple-invocation iterator that is
@@ -284,9 +345,9 @@ destructors.
 @sp 1
 @item Dynamic type
 
-Rust includes support for slots of a top type, @code{any}, that can hold any
-type of value whatsoever. An @code{any} slot is a pair of a type code and an
-exterior value of that type. Injection into an @code{any} and projection by
+Rust includes support for values of a top type, @code{any}, that can hold any
+type of value whatsoever. An @code{any} value is a pair of a type code and a
+boxed value of that type. Injection into an @code{any} and projection by
 type-case-selection is integrated into the language.
 
 @sp 1
@@ -331,99 +392,40 @@ and/or objects are otherwise freed from data structures holding them. The same
 destructors are run in the same order whether the object is deleted by
 unwinding during failure or normal execution.
 
-Similarly, the rules for freeing immutable memory are deterministic and
-predictable: on scope-exit or structure-release, interior slots are released
-immediately, exterior slots have their reference count decreased and are
-released if the count drops to zero. Alias slots are not affected by scope
-exit.
+Similarly, the rules for freeing immutable values are deterministic and
+predictable: on scope-exit or structure-release, local slots are released
+immediately. Referenced boxes have their reference count decreased and are
+released if the count drops to zero. Aliases are silently forgotten.
 
-Mutable memory is local to a task, and is subject to per-task garbage
-collection. As a result, unreferenced mutable memory is not necessarily freed
-immediately; if it is acyclic it is freed when the last reference to it drops,
-but if it is part of a reference cycle it will be freed when the GC collects
-it (or when the owning task terminates, at the latest).
+State values are local to a task, and are subject to per-task garbage
+collection. As a result, unreferenced state boxes are not necessarily freed
+immediately; if an unreferenced state box is part of an acyclic graph, it is
+freed when the last reference to it drops, but if it is part of a reference
+cycle it will be freed when the GC collects it (or when the owning task
+terminates, at the latest).
 
-Mutable memory can point to immutable memory but not vice-versa. Doing so
-merely delays (to an undefined future time) the moment when the deterministic,
-top-down destruction sequence for the referenced immutable memory
-@emph{starts}. In other words, the immutable ``leaves'' of a mutable structure
-are released in a locally-predictable order, even if the ``interior'' of the
-mutable structure is released in an unpredictable order.
+State values can point to immutable values but not vice-versa. Doing so merely
+delays (to an undefined future time) the moment when the deterministic,
+top-down destruction sequence for the referenced immutable values
+@emph{start}. In other words, the immutable ``leaves'' of a state value are
+released in a locally-predictable order, even if the ``interior'' of the state
+value is released in an unpredictable order.
 
 @sp 1
 @item Typestate system
 
-Every storage slot in Rust participates in not only a conventional structural
-static type system, describing the interpretation of memory in the slot, but
-also a @emph{typestate} system. The static typestates of a program describe
-the set of @emph{pure, dynamic predicates} that provably hold over some set of
-slots, at each point in the program's control flow graph. The static
-calculation of the typestates of a program is a dataflow problem, and handles
-user-defined predicates in a similar fashion to the way the type system
-permits user-defined types.
+Every storage slot in a Rust frame participates in not only a conventional
+structural static type system, describing the interpretation of memory in the
+slot, but also a @emph{typestate} system. The static typestates of a program
+describe the set of @emph{pure, dynamic predicates} that provably hold over
+some set of slots, at each point in the program's control flow graph within
+each frame. The static calculation of the typestates of a program is a
+function-local dataflow problem, and handles user-defined predicates in a
+similar fashion to the way the type system permits user-defined types.
 
 A short way of thinking of this is: types statically model the kinds of values
 held in slots, typestates statically model @emph{assertions that hold} before
 and after statements.
-
-@sp 1
-@item Static control over memory allocation, packing and aliasing.
-
-Every variable or field in Rust is a combination of a type, a mutability flag
-and a @emph{mode}; this combination is called a @emph{slot}. There are 3 kinds
-of @dfn{slot mode}, denoting 3 ways of referring to a value:
-
-@itemize
-@item ``interior'' (slot contains value)
-@item ``exterior'', (slot points to to managed heap allocation)
-@item ``alias'', (slot points directly to provably-live address)
-@end itemize
-
-Interior slots declared as variables in a function are allocated very quickly
-on the stack, as part of a local activation frame, as in C or C++. Alias slots
-permit efficient by-reference parameter passing without adjusting heap
-reference counts or interacting with garbage collection, as alias lifetimes
-are statically guaranteed to outlive callee lifetimes.
-
-Copying data between slots of different modes may cause either a simple
-address assignment or reference-count adjustment, or may cause a value to be
-``transplanted'': copied by value from the interior of one memory structure to
-another, or between stack and heap. Transplanting, when necessary, is
-predictable and automatic, as part of the definition of the copy operator
-(@code{=}).
-
-In addition, slots have a static initialization state that is calculated by
-the typestate system. This permits late initialization of variables in
-functions with complex control-flow, while still guaranteeing that every use
-of a slot occurs after it has been initialized.
-
-@sp 1
-@item Static control over mutability.
-
-Slots in Rust are classified as either immutable or mutable. By default,
-all slots are immutable.
-
-If a slot within a type is declared as @code{mutable}, the type is a
-@code{state} type and must be declared as such.
-
-This classification of data types in Rust interacts with the memory allocation
-and transmission rules. In particular:
-
-@itemize
-@item Only immutable (non-state) values can be sent over channels.
-@item Only immutable (non-state) objects can have destructor functions.
-@end itemize
-
-State values are subject to local (per-task) garbage-collection. Garbage
-collection costs are therefore also task-local and do not interrupt or suspend
-other tasks.
-
-Immutable values are reference-counted and have a deterministic destruction
-order: top-down, immediately upon release of the last live reference.
-
-State values can refer to immutable values, but not vice-versa. Rust therefore
-encourages the programmer to write in a style that consists primarily of
-immutable types, but also permits limited, local (per-task) mutability.
 
 @end itemize
 
@@ -817,9 +819,10 @@ Paths fall into two important categories: @emph{names} and
 A @dfn{name} denotes an item, and is statically resolved to its
 referent at compile time.
 
-An @dfn{lval} denotes a slot, and is statically resolved to a sequence of
-memory operations and primitive (arithmetic) expressions required to load or
-store to the slot at compile time.
+An @dfn{lval} denotes a slot or some component of a value held within a slot,
+and is statically resolved at compile time to a sequence of memory operations
+and primitive (arithmetic) expressions that will be executed to load or store
+the associated value, starting from the task stack frame, at run time.
 
 In some contexts, the Rust grammar accepts a general @emph{path}, but a
 subsequent syntactic restriction requires the path to be an lval or a name. In
@@ -1039,13 +1042,14 @@ A Rust task's memory consists of a static set of @emph{items}, a set of tasks
 each with its own @emph{stack}, and a @emph{heap}. Immutable portions of the
 heap may be shared between tasks, mutable portions may not.
 
-Allocations in the stack and the heap consist of @emph{slots}.
+Allocations in the stack consist of @emph{slots}, and allocations in the heap
+consist of @emph{boxes}.
 
 @menu
 * Ref.Mem.Alloc::               Memory allocation model.
 * Ref.Mem.Own::                 Memory ownership model.
-* Ref.Mem.Slot::                Memory containment and reference model.
-* Ref.Mem.Init::                Initialization state of memory.
+* Ref.Mem.Slot::                Stack memory model.
+* Ref.Mem.Box::                 Heap memory model.
 * Ref.Mem.Acct::                Memory accounting model.
 @end menu
 
@@ -1063,21 +1067,23 @@ A task's @dfn{stack} consists of activation frames automatically allocated on
 entry to each function as the task executes. A stack allocation is reclaimed
 when control leaves the frame containing it.
 
-The @dfn{heap} is a general term that describes two separate sets of exterior
-allocations: @emph{local heap} allocations and the @emph{shared heap}
-allocations.
+The @dfn{heap} is a general term that describes two separate sets of boxes:
+@emph{task-local} state boxes and the @emph{shared} immutable boxes.
 
-Exterior allocations of mutable types are @dfn{local heap} allocations,
-owned by the task. Such @dfn{local allocations} cannot pass over channels and
-do not outlive the task that owns them. When unreferenced, they are collected
-using a general (cycle-aware) garbage-collector local to each task. Garbage
-collection within a local heap does not interrupt execution of other tasks.
+State boxes are @dfn{task-local}, owned by the task. Like any other state
+value, they cannot pass over channels. State boxes do not outlive the task
+that owns them. When unreferenced, they are collected using a general
+(cycle-aware) garbage-collector local to each task. Garbage collection within
+a local heap does not interrupt execution of other tasks.
 
-Exterior allocations of immutable types are @dfn{shared heap} allocations,
-and can be multiply-referenced by many different tasks. Such @dfn{shared
-allocations} can pass over channels, and live as long as the last task
-referencing them. When unreferenced, they are collected immediately using
-reference-counting.
+Immutable boxes are @dfn{shared}, and can be multiply-referenced by many
+different tasks. Like any other immutable type, they can pass over channels,
+and live as long as the last task referencing them within a given domain. When
+unreferenced, they are destroyed immediately (due to reference-counting) and
+returned to the heap memory allocator. Destruction of an immutable box also
+executes within the context of task that drops the last reference to a shared
+heap allocation, so executing a long-running destructor does not interrupt
+execution of other tasks.
 
 
 
@@ -1086,72 +1092,57 @@ reference-counting.
 @subsection Ref.Mem.Own
 @c * Ref.Mem.Own::                 Memory ownership model.
 
-A task @emph{owns} all the interior allocations in its stack and @emph{local}
-exterior allocations. A task @emph{shares} ownership of @emph{shared} exterior
-allocations. A task does not own any items.
+A task @emph{owns} all the @emph{stack-local} slot allocations in its stack
+and @emph{task-local} boxes accessible from its stack. A task @emph{shares}
+ownership of @emph{shared} boxes accessible from its stack. A task does not
+own any items.
 
 @dfn{Ownership} of an allocation means that the owning task is the only task
 that can access the allocation.
 
 @dfn{Sharing} of an allocation means that the same allocation may be
-concurrently referenced by multiple tasks. The only shared allocations are
-those that are immutable.
+concurrently read by multiple tasks. The only shared allocations are those
+that are immutable.
 
-When a stack frame is exited, its interior allocations are all released, and
-its references to heap allocations (both shared and owned) are dropped.
+When a stack frame is exited, its local allocations are all released, and its
+references to boxes (both shared and owned) are dropped.
 
-When a task finishes, its stack is necessarily empty. The task's interior
-slots are released as the task itself is released, and its references to heap
-allocations are dropped.
+When a task finishes, its stack is necessarily empty and it therefore has no
+references to any boxes.
 
 @page
 @node       Ref.Mem.Slot
 @subsection Ref.Mem.Slot
-@c * Ref.Mem.Slot::                Memory containment and reference model.
+@c * Ref.Mem.Slot::                Stack memory model.
 
-A @dfn{slot} is a component of an allocation. A slot either holds a value or
-the address of another allocation. Every slot has one of three possible
-@emph{modes}.
+A task's stack contains slots.
 
-The possible @dfn{modes} of a slot are:
+A @dfn{slot} is a component of a stack frame. A slot is either @emph{local} or
+an @emph{alias}.
 
-@itemize
-@sp 1
-@item @dfn{Interior mode}
+A @dfn{local} slot (or @emph{stack-local} allocation) holds a value directly,
+allocated within the stack's memory. The value is a part of the stack frame.
 
-The slot holds the value of the slot.
+An @dfn{alias} references a value outside the frame. An alias may refer to a
+value allocated in another frame @emph{or} a boxed valaue in the heap. The
+alias-formation rules ensure that the referent of an alias will outlive the
+alias.
 
-@sp 1
-@item @dfn{Exterior mode}
+Local slots are always implicitly mutable.
 
-The slot holds the address of a heap allocation that holds the value of the
-slot.
+Local slots are not initialized when allocated; the entire frame worth of
+local slots are allocated at once, on frame-entry, in an uninitialized
+state. Subsequent statements within a function may or may not initialize the
+local slots. Local slots can only be used after they have been initialized;
+this condition is guaranteed by the typestate system.
 
-Exterior slots are indicated by the @emph{at} sigil @code{@@}.
-
-For example, the following code allocates an exterior record, copies it by
-counted-reference to a second exterior slot, then modifies the record through
-the second exterior slot that points to the same exterior allocation.
-@example
-type point3d = rec(int x, int y, int z);
-let @@point3d pt1 = rec(x=1, y=2, z=3);
-let @@point3d pt2 = pt1;
-pt2.z = 4;
-@end example
-
-@sp 1
-@item @dfn{Alias mode}
-
-The slot holds the address of a value. The referenced value may reside within
-a stack allocation @emph{or} a heap allocation.
-
-Alias slots can @emph{only} be declared as members of a function or iterator
-signature, bound to the lifetime of a stack frame. Alias slots cannot be
-declared as members of general data types.
+Aliases can @emph{only} be declared as arguments in a function or iterator
+signature, bound to the lifetime of a stack frame. Aliases are not general
+values and cannot be held in boxed allocations or other general data types.
 
 Alias slots are indicated by the @emph{ampersand} sigil @code{&}.
 
-The following example function accepts a single read-only alias parameter:
+An example function that accepts an alias parameter:
 @example
 type point3d = rec(int x, int y, int z);
 
@@ -1160,28 +1151,68 @@ fn extract_z(&point3d p) -> int @{
 @}
 @end example
 
-The following example function accepts a single mutable alias
-parameter:
+An example function that accepts an alias to a mutable value:
 @example
-fn incr(mutable &int i) @{
+fn incr(& mutable int i) @{
     i = i + 1;
 @}
 @end example
 
+@page
+@node       Ref.Mem.Box
+@subsection Ref.Mem.Box
+@c * Ref.Mem.Box::                 Heap memory model.
+
+A @dfn{box} is a reference to a reference-counted heap allocation holding
+another value.
+
+Box types and values are constructed by the @emph{at} sigil @code{@@}.
+
+An example of constructing a box type and value:
+@example
+let @@int x = @@10;
+@end example
+
+Some operations implicitly dereference boxes. Examples of such @dfn{implicit
+dereference} operations are:
+@itemize
+@item arithmetic operators (@code{x + y - z})
+@item name-component selection (@code{x.y.z})
 @end itemize
 
-@page
-@node       Ref.Mem.Init
-@subsection Ref.Mem.Init
-@c * Ref.Mem.Init::                Initialization state of memory.
+An example of an implicit-dereference operation performed on box values:
+@example
+let @@int x = @@10;
+let @@int y = @@12;
+check (x + y == 22);
+@end example
 
-A slot is either initialized or uninitialized at every point in a program. An
-@dfn{initialized} slot is one that holds a value. An @dfn{uninitialized} slot
-is one that has not yet had a value written into it, or has had its value
-deleted, and so holds undefined memory. The typestate system ensures that an
-uninitialized slot cannot be read, but can be written to. A slot becomes
-initialized in any statement that writes to it, and remains initialized until
-explicitly destroyed or until its enclosing allocation is destroyed.
+Other operations act on box values as single-word-sized address values,
+automatically adjusting reference counts on the associated heap
+allocation. For these operations, to access the value held in the box requires
+an explicit dereference of the box value. Explicitly dereferencing a box is
+indicated with the @emph{star} sigil @code{*}. Examples of such @dfn{explicit
+dererence} operations are:
+@itemize
+@item copying box values (@code{x = y})
+@item passing box values to functions (@code{f(x,y)})
+@end itemize
+
+An example of an explicit-dereference operation performed on box values:
+@example
+fn takes_boxed(@@int b) @{
+@}
+
+fn takes_unboxed(int b) @{
+@}
+
+fn main() @{
+    let @@int x = @@10;
+    takes_boxed(x);
+    takes_unboxed(*x);
+@}
+@end example
+
 
 @page
 @node       Ref.Mem.Acct
@@ -1245,10 +1276,10 @@ messages. Ports receive messages from channels.
 A @dfn{channel} is a communication endpoint that can @emph{send}
 messages. Channels send messages to ports.
 
-Each port has a unique identity and cannot be replicated. If a port value is
-copied from one slot to another, both slots refer to the @emph{same} port,
-even if the slots are declared as interior-mode. New ports can be constructed
-dynamically and stored in data structures.
+Each port is implicitly boxed and mutable; as such a port has has a unique
+per-task identity and cannot be replicated or transmitted. If a port value is
+copied, both copies refer to the @emph{same} port. New ports can be
+constructed dynamically and stored in data structures.
 
 Each channel is bound to a port when the channel is constructed, so the
 destination port for a channel must exist before the channel itself. A channel
@@ -1672,8 +1703,8 @@ Rust; they cannot be used as user-defined identifiers in any context.
 @subsection Ref.Type.Any
 
 The type @code{any} is the union of all possible Rust types. A value of type
-@code{any} is represented in memory as a pair consisting of an exterior value
-of some non-@code{any} type @var{T} and a reflection of the type @var{T}.
+@code{any} is represented in memory as a pair consisting of a boxed value of
+some non-@code{any} type @var{T} and a reflection of the type @var{T}.
 
 Values of type @code{any} can be used in an @code{alt type} statement, in
 which the reflection is used to select a block corresponding to a particular
@@ -1754,10 +1785,10 @@ The primitive types are the following:
 @item
 The ``nil'' type @code{()}, having the single ``nil'' value
 @code{()}.@footnote{The ``nil'' value @code{()} is @emph{not} a sentinel
-``null pointer'' value for alias or exterior slots; the ``nil'' type is the
-implicit return type from functions otherwise lacking a return type, and can
-be used in other contexts (such as message-sending or type-parametric code) as
-a zero-byte type.}
+``null pointer'' value for alias slots; the ``nil'' type is the implicit
+return type from functions otherwise lacking a return type, and can be used in
+other contexts (such as message-sending or type-parametric code) as a
+zero-size type.}
 @item
 The boolean type @code{bool} with values @code{true} and @code{false}.
 @item
@@ -1798,7 +1829,7 @@ A value of type @code{str} is a Unicode string, represented as a vector of
 @subsection Ref.Type.Rec
 
 The record type-constructor @code{rec} forms a new heterogeneous product of
-slots.@footnote{The @code{rec} type-constructor is analogous to the
+values.@footnote{The @code{rec} type-constructor is analogous to the
 @code{struct} type-constructor in the Algol/C family, the @emph{record} types
 of the ML family, or the @emph{structure} types of the Lisp family.} Fields of
 a @code{rec} type are accessed by name and are arranged in memory in the order
@@ -1816,10 +1847,10 @@ let int px = p.x;
 @subsection Ref.Type.Tup
 
 The tuple type-constructor @code{tup} forms a new heterogeneous product of
-slots exactly as the @code{rec} type-constructor does, with the difference
-that tuple slots are automatically assigned implicit field names, given by
+values exactly as the @code{rec} type-constructor does, with the difference
+that tuple members are automatically assigned implicit field names, given by
 ascending integers prefixed by the underscore character: @code{_0}, @code{_1},
-@code{_2}, etc. The fields of a tuple are laid out in memory contiguously,
+@code{_2}, etc. The members of a tuple are laid out in memory contiguously,
 like a record, in order specified by the tuple type.
 
 An example of a tuple type and its use:
@@ -1837,9 +1868,9 @@ check (p._1 == "world");
 @subsection Ref.Type.Vec
 
 The vector type-constructor @code{vec} represents a homogeneous array of
-slots. A vector has a fixed size, and may or may not have mutable member
-slots.  If the slots of a vector are mutable, the vector is a @emph{state}
-type.
+values of a given type. A vector has a fixed size. If the member-type of a
+vector is a state type, then vector is a @emph{state} type, like any type
+containing another type.
 
 Vectors can be sliced. A slice expression builds a new vector by copying a
 contiguous range -- given by a pair of indices representing a half-open
@@ -1854,8 +1885,8 @@ let vec[int] v2 = v.(0,1); // Form a slice.
 
 Vectors always @emph{allocate} a storage region sufficient to store the first
 power of two worth of elements greater than or equal to the size of the
-largest slice sharing the storage. This behaviour supports idiomatic in-place
-``growth'' of a mutable slot holding a vector:
+vector. This behaviour supports idiomatic in-place ``growth'' of a mutable
+slot holding a vector:
 
 @example
 let mutable vec[int] v = vec(1, 2, 3);
@@ -1888,8 +1919,8 @@ a @code{tag} type may refer to type definitions that include the defined
 @item Recursive types can only be introduced through @code{tag} types.
 @item A recursive @code{tag} type must have at least one non-recursive
 variant (in order to give the recursion a basis case).
-@item The recursive slots of recursive variants must be @emph{exterior}
-slots (in order to bound the in-memory size of the variant).
+@item The recursively-typed members of recursive variants must be @emph{box}
+values (in order to bound the in-memory size of the variant).
 @item Recursive type definitions can cross module boundaries, but not module
 @emph{visibility} boundaries, nor crate boundaries (in order to simplify the
 module system).
@@ -2028,7 +2059,7 @@ Like ports, tasks are modeled as mutable native types with built-in meaning to
 the language. They cannot be transmitted over channels or otherwise
 replicated, and are always local to the task that spawns them.
 
-If all references to a task are dropped (due to the release of any slots
+If all references to a task are dropped (due to the release of any structure
 holding those references), the released task immediately fails.
 @xref{Ref.Task.Life}.
 
@@ -2163,7 +2194,7 @@ actions.
 @menu
 * Ref.Stmt.Stat::               The static typestate system of statement analysis.
 * Ref.Stmt.Decl::               Statement declaring an item or slot.
-* Ref.Stmt.Copy::               Statement for copying a value between two slots.
+* Ref.Stmt.Copy::               Statement for copying a value.
 * Ref.Stmt.Spawn::              Statements for creating new tasks.
 * Ref.Stmt.Send::               Statements for sending a value into a channel.
 * Ref.Stmt.Flush::              Statement for flushing a channel queue.
@@ -2198,7 +2229,7 @@ on a statement-by-statement basis, the @emph{effects} the statement has on its
 environment, as well the @emph{legality} of the statement in its environment.
 
 The legality of a statement is partly governed by syntactic rules, partly by
-its conformance to the types of slots it affects, and partly by a
+its conformance to the types of value it affects, and partly by a
 statement-oriented static dataflow analysis. This section describes the
 statement-oriented static dataflow analysis, also called the @emph{typestate}
 system.
@@ -2427,13 +2458,13 @@ declaring a function-local item.
 A @code{slot declaration statement} has one one of two forms:
 
 @itemize
-@item @code{let} @var{mode-and-type} @var{slot} @var{optional-init};
+@item @code{let} @var{type} @var{slot} @var{optional-init};
 @item @code{auto} @var{slot} @var{optional-init};
 @end itemize
 
-Where @var{mode-and-type} is a slot mode and type expression, @var{slot} is
-the name of the slot being declared, and @var{optional-init} is either the
-empty string or an equals sign (@code{=}) followed by a primitive expression.
+Where @var{type} is a type expression, @var{slot} is the name of the slot
+being declared, and @var{optional-init} is either the empty string or an
+equals sign (@code{=}) followed by a primitive expression.
 
 Both forms introduce a new slot into the containing block scope. The new slot
 is visible across the entire scope, but is initialized only at the point
@@ -2441,28 +2472,30 @@ following the declaration statement.
 
 The latter (@code{auto}) form of slot declaration causes the compiler to infer
 the static type of the slot through unification with the types of values
-assigned to the slot in the the remaining code in the block scope. Inferred
-slots always have @emph{interior} mode. @xref{Ref.Mem.Slot}.
+assigned to the slot in the the remaining code in the block scope. Inference
+only occurs on frame-local slots, not argument slots. Function, iterator and
+object signatures must always declared types for all argument slots.
+@xref{Ref.Mem.Slot}.
 
 
 
 @page
 @node       Ref.Stmt.Copy
 @subsection Ref.Stmt.Copy
-@c * Ref.Stmt.Copy::                Statement for copying a value between two slots.
+@c * Ref.Stmt.Copy::                Statement for copying a value.
 
-A @dfn{copy statement} consists of an @emph{lval} -- a name denoting a slot --
-followed by an equals-sign (@code{=}) and a primitive
-expression. @xref{Ref.Expr}.
+A @dfn{copy statement} consists of an @emph{lval} followed by an equals-sign
+(@code{=}) and a primitive expression. @xref{Ref.Expr}.
 
 Executing a copy statement causes the value denoted by the expression --
-either a value in a slot or a primitive combination of values held in slots --
-to be copied into the slot denoted by the @emph{lval}.
+either a value or a primitive combination of values -- to be copied into the
+memory location denoted by the @emph{lval}.
 
-A copy may entail the formation of references, the adjustment of reference
-counts, execution of destructors, or similar adjustments in order to respect
-the @code{lval} slot mode and any existing value held in it. All such
-adjustment is automatic and implied by the @code{=} operator.
+A copy may entail the the adjustment of reference counts, execution of
+destructors, or similar adjustments in order to respect the path through the
+memory graph implied by the @code{lval}, as well as any existing value held in
+the memory being written-to. All such adjustment is automatic and implied by
+the @code{=} operator.
 
 An example of three different copy statements:
 @example
@@ -2483,8 +2516,8 @@ function.  The called function is referred to as the @dfn{entry function} for
 the spawned task, and its arguments are copied form the spawning task to the
 spawned task before the spawned task begins execution.
 
-Only arguments of interior or exterior mode are permitted in the function
-called by a spawn statement, not arguments with alias mode.
+Functions taking alias-slot arguments, or returning non-nil values, cannot be
+spawned. Iterators cannot be spawned.
 
 The result of a @code{spawn} statement is a @code{task} value.
 
@@ -2561,8 +2594,8 @@ expression denoting a port, and applies the @emph{receive operator}
 @var{lval}. The statement causes the receiving task to enter the @emph{blocked
 reading} state until a task is sending a value to the port, at which point the
 runtime pseudo-randomly selects a sending task and copies a value from the
-head of one of the task queues to the receiving slot, and un-blocks the
-receiving task. @xref{Ref.Run.Comm}.
+head of one of the task queues to the receiving location in memory, and
+un-blocks the receiving task. @xref{Ref.Run.Comm}.
 
 An example of a @emph{receive}:
 @example
@@ -2576,7 +2609,8 @@ let str s <- p;
 @c * Ref.Stmt.Call::               Statement for calling a function.
 
 A @dfn{call statement} invokes a function, providing a tuple of input slots
-and a reference to an output slot. If the function eventually returns, then
+and an alias slot to serve as the function's output, bound to the @var{lval}
+on the right hand side of the call. If the function eventually returns, then
 the statement completes.
 
 A call statement statically requires that the precondition declared in the
@@ -2596,7 +2630,7 @@ let int x = add(1, 2);
 A @dfn{bind statement} constructs a new function from an existing
 function.@footnote{The @code{bind} statement is analogous to the @code{bind}
 expression in the Sather language.} The new function has zero or more of its
-arguments @emph{bound} into a new, hidden exterior tuple that holds the
+arguments @emph{bound} into a new, hidden boxed tuple that holds the
 bindings. For each concrete argument passed in the @code{bind} statement, the
 corresponding parameter in the existing function is @emph{omitted} as a
 parameter of the new function. For each argument passed the placeholder symbol
@@ -2624,11 +2658,9 @@ check (add(4,5) == add5(4));
 @end example
 
 A @code{bind} statement generally stores a copy of the bound arguments in the
-hidden exterior tuple. For bound interior slots and alias slots in the bound
-function signature, an interior slot is allocated in the hidden tuple and
-populated with a copy of the bound value. For bound exterior slots in the
-bound function signature, an exterior slot is allocated in the hidden tuple
-and populated with a copy of the bound value, an exterior (pointer) value.
+hidden, boxed tuple, owned by the resulting first-class function. For each
+bound slot in the bound function's signature, space is allocated in the hidden
+tuple and populated with a copy of the bound value.
 
 The @code{bind} statement is a lightweight mechanism for simulating the more
 elaborate construct of @emph{lexical closures} that exist in other
@@ -2641,11 +2673,10 @@ of them can be achieved with @code{bind} statements.
 @subsection Ref.Stmt.Ret
 @c * Ref.Stmt.Ret::                Statement for stopping and producing a value.
 
-Executing a @code{ret} statement@footnote{A @code{ret} statement is
-analogous to a @code{return} statement in the C family.}  copies a
-value into the return slot of the current function, destroys the
-current function activation frame, and transfers control to the caller
-frame.
+Executing a @code{ret} statement@footnote{A @code{ret} statement is analogous
+to a @code{return} statement in the C family.}  copies a value into the output
+slot of the current function, destroys the current function activation frame,
+and transfers control to the caller frame.
 
 An example of a @code{ret} statement:
 @example
@@ -2692,7 +2723,7 @@ copy of itself.
 @subsection Ref.Stmt.Put
 @c * Ref.Stmt.Put::                Statement for pausing and producing a value.
 
-Executing a @code{put} statement copies a value into the put slot of the
+Executing a @code{put} statement copies a value into the output slot of the
 current iterator, suspends execution of the current iterator, and transfers
 control to the current put-recipient frame.
 
@@ -2772,13 +2803,12 @@ In this example, if the task fails while attempting to open or read a file,
 the runtime will log the path name that was being read. If the function
 completes normally, the runtime will not log the path.
 
-A slot that is marked by a @code{note} statement does @emph{not} have its
-value copied aside when control passes through the @code{note}. In other
-words, if a @code{note} statement notes a particular slot, and code after the
-@code{note} that slot, and then a subsequent failure occurs, the
-@emph{mutated} value will be logged during unwinding, @emph{not} the original
-value that was held in the slot at the moment control passed through the
-@code{note} statement.
+A value that is marked by a @code{note} statement is @emph{not} copied aside
+when control passes through the @code{note}. In other words, if a @code{note}
+statement notes a particular @var{lval}, and code after the @code{note} that
+slot, and then a subsequent failure occurs, the @emph{mutated} value will be
+logged during unwinding, @emph{not} the original value that was denoted by the
+@var{lval} at the moment control passed through the @code{note} statement.
 
 @page
 @node       Ref.Stmt.While
@@ -3124,7 +3154,7 @@ if check even(x) @{
 The Rust @dfn{runtime} is a relatively compact collection of C and Rust code
 that provides fundamental services and datatypes to all Rust tasks at
 run-time. It is smaller and simpler than many modern language runtimes. It is
-tightly integrated into the language's execution model of slots, tasks,
+tightly integrated into the language's execution model of memory, tasks,
 communication, reflection, logging and signal handling.
 
 @menu
@@ -3149,7 +3179,7 @@ of the C runtime functions @code{malloc} and @code{free}.
 
 The runtime memory-management system in turn supplies Rust tasks with
 facilities for allocating, extending and releasing stacks, as well as
-allocating and freeing exterior values.
+allocating and freeing boxed values.
 
 @page
 @node       Ref.Run.Type
