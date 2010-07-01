@@ -1903,6 +1903,7 @@ let trans_visitor
               | Ast.UNOP_cast t ->
                   let t = Hashtbl.find cx.ctxt_all_cast_types t.id in
                   let at = atom_type cx a in
+                  let (t, at) = (simplified_ty t, simplified_ty at) in
                     if (type_is_2s_complement at) &&
                       (type_is_2s_complement t)
                     then
