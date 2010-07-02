@@ -567,11 +567,17 @@ endif
 REQ := $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
 BOOT := $(CFG_QUIET)OCAMLRUNPARAM="b1" $(CFG_BOOT) $(CFG_BOOT_FLAGS)
 
-test/run-pass/%.out: test/run-pass/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
+# Cancel the implicit .out rule in GNU make.
+%.out: %
+
+%.out: %.out.tmp
+	$(CFG_QUIET)mv $< $@
+
+test/run-pass/%.out.tmp: test/run-pass/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
 	@$(call CFG_ECHO, run: $<)
 	$(CFG_QUIET)$(call CFG_RUN_TARG, $<) > $@
 
-test/run-fail/%.out: test/run-fail/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
+test/run-fail/%.out.tmp: test/run-fail/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
 	@$(call CFG_ECHO, run: $<)
 	$(CFG_QUIET)rm -f $@
 	$(CFG_QUIET)$(call CFG_RUN_TARG, $<) >$@ 2>&1 ; X=$$? ; \
@@ -580,14 +586,14 @@ test/run-fail/%.out: test/run-fail/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
       "`awk -F: '/error-pattern/ { print $$2 }' \
         $(basename $(basename $@)).rs | tr -d '\n\r'`" $@
 
-test/compile-fail/%.x86.out: test/compile-fail/%.rs $(REQ)
+test/compile-fail/%.x86.out.tmp: test/compile-fail/%.rs $(REQ)
 	@$(call CFG_ECHO, compile [x86]: $<)
 	$(CFG_QUIET)rm -f $@
 	$(BOOT) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1 || true
 	$(CFG_QUIET)grep --text --quiet \
       "`awk -F: '/error-pattern/ { print $$2 }' $< | tr -d '\n\r'`" $@
 
-test/compile-fail/%.llvm.out: test/compile-fail/%.rs $(REQ)
+test/compile-fail/%.llvm.out.tmp: test/compile-fail/%.rs $(REQ)
 	@$(call CFG_ECHO, compile [llvm]: $<)
 	$(CFG_QUIET)rm -f $@
 	$(BOOT) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1 || true
