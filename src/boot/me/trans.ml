@@ -2613,10 +2613,11 @@ let trans_visitor
       (curr_iso:Ast.ty_iso option)
       (t:Ast.ty)
       : Ast.ty =
-    match (curr_iso, t) with
-        (Some iso, Ast.TY_idx n) ->
+    match (curr_iso, strip_mutable_or_constrained_ty t) with
+        (_, Ast.TY_idx _) -> bug () "traversing raw TY_idx (non-box )edge"
+      | (Some iso, Ast.TY_box (Ast.TY_idx n)) ->
           Ast.TY_box (Ast.TY_iso { iso with Ast.iso_index = n })
-      | (None, Ast.TY_idx _) ->
+      | (None, Ast.TY_box (Ast.TY_idx _)) ->
           bug () "TY_idx outside TY_iso"
       | _ -> t
 
@@ -2624,8 +2625,8 @@ let trans_visitor
       (t:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : Ast.ty_iso option =
-    match t with
-        Ast.TY_iso tiso -> Some tiso
+    match strip_mutable_or_constrained_ty t with
+        Ast.TY_box (Ast.TY_iso tiso) -> Some tiso
       | _ -> curr_iso
 
   and mark_slot
