@@ -413,6 +413,7 @@ rust_task::link_gc(gc_alloc *gcm) {
     I(dom, gcm->next == NULL);
     gcm->prev = NULL;
     gcm->next = gc_alloc_chain;
+    gc_alloc_chain = gcm;
 }
 
 void
