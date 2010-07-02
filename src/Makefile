@@ -585,7 +585,7 @@ test/run-fail/%.out.tmp: test/run-fail/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
       if [ $$X -eq 0 ] ; then exit 1 ; else exit 0 ; fi
 	$(CFG_QUIET)grep --text --quiet \
       "`awk -F: '/error-pattern/ { print $$2 }' \
-        $(basename $(basename $@)).rs | tr -d '\n\r'`" $@
+        $(basename $(basename $(basename $@))).rs | tr -d '\n\r'`" $@
 
 test/compile-fail/%.x86.out.tmp: test/compile-fail/%.rs $(REQ)
 	@$(call CFG_ECHO, compile [x86]: $<)
