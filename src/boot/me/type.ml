@@ -1539,8 +1539,11 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                     match slot_defn.Ast.slot_ty with
                         Some _ -> ()
                       | None ->
-                          log cx "setting auto slot #%d to %a"
-                            (int_of_node id) Ast.sprintf_ty ty;
+                          log cx "setting auto slot #%d = %a to type %a"
+                            (int_of_node id)
+                            Ast.sprintf_slot_key
+                            (Hashtbl.find cx.ctxt_slot_keys id)
+                            Ast.sprintf_ty ty;
                           Hashtbl.replace cx.ctxt_all_defns id
                             (DEFN_slot { slot_defn with
                                            Ast.slot_ty = Some ty })
