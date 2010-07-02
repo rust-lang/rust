@@ -3211,6 +3211,15 @@ let trans_visitor
       (dst:Il.cell) (dst_slot:Ast.slot)
       (src_atom:Ast.atom)
       : unit =
+    let _ =
+      iflog (fun _ ->
+               log cx "trans_init_slot_from_atom";
+               log cx "   dst slot %a, src ty %a"
+                 Ast.sprintf_slot dst_slot
+                 Ast.sprintf_ty (atom_type cx src_atom);
+               log cx "   dst cell %s"
+                 (cell_str dst))
+    in
     match (dst_slot.Ast.slot_mode, clone, src_atom) with
         (Ast.MODE_alias, CLONE_none,
          Ast.ATOM_literal _) ->
@@ -3225,9 +3234,12 @@ let trans_visitor
           bug () "attempting to clone into alias slot"
       | _ ->
           let src = Il.Mem (force_to_mem (trans_atom src_atom)) in
-            trans_init_slot_from_cell
-              (get_ty_params_of_current_frame())
-              clone dst dst_slot src (atom_type cx src_atom)
+            begin
+              log cx "   forced-to-mem src cell %s" (cell_str src);
+              trans_init_slot_from_cell
+                (get_ty_params_of_current_frame())
+                clone dst dst_slot src (atom_type cx src_atom)
+            end
 
 
   and trans_be_fn
