@@ -369,7 +369,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | Ast.TY_constrained (ty, _) ->
               is_comparable_or_ordered comparable ty
           | Ast.TY_mutable ty ->
-              ucx.mut_ok && is_comparable_or_ordered comparable ty
+              is_comparable_or_ordered comparable ty
           | Ast.TY_box ty ->
               ucx.box_ok && is_comparable_or_ordered comparable ty
       in
