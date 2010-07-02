@@ -821,17 +821,18 @@ let trans_crate
 
               | Ast.STMT_log a ->
                   begin
-                    match Semant.simplified_ty (Semant.atom_type sem_cx a) with
-                        (* NB: If you extend this, be sure to update the
-                         * typechecking code in type.ml as well. *)
-                        Ast.TY_str -> trans_log_str a
-                      | Ast.TY_int | Ast.TY_uint | Ast.TY_bool | Ast.TY_char
-                      | Ast.TY_mach (TY_u8) | Ast.TY_mach (TY_u16)
-                      | Ast.TY_mach (TY_u32) | Ast.TY_mach (TY_i8)
-                      | Ast.TY_mach (TY_i16) | Ast.TY_mach (TY_i32) ->
-                          trans_log_int a
-                      | _ -> Semant.bugi sem_cx head.id
-                          "unimplemented logging type"
+                    let aty = Semant.atom_type sem_cx a in
+                      match Semant.simplified_ty aty with
+                          (* NB: If you extend this, be sure to update the
+                           * typechecking code in type.ml as well. *)
+                          Ast.TY_str -> trans_log_str a
+                        | Ast.TY_int | Ast.TY_uint | Ast.TY_bool | Ast.TY_char
+                        | Ast.TY_mach (TY_u8) | Ast.TY_mach (TY_u16)
+                        | Ast.TY_mach (TY_u32) | Ast.TY_mach (TY_i8)
+                        | Ast.TY_mach (TY_i16) | Ast.TY_mach (TY_i32) ->
+                            trans_log_int a
+                        | _ -> Semant.bugi sem_cx head.id
+                            "unimplemented logging type"
                   end;
                   trans_tail ()
 
