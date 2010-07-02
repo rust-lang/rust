@@ -29,7 +29,7 @@ let alias_analysis_visitor
   let alias_atom at =
     match at with
         Ast.ATOM_lval lv -> alias lv
-      | _ -> err None "aliasing literal"
+      | _ -> () (* Aliasing a literal is harmless, if weird. *)
   in
 
   let alias_call_args dst callee args =
