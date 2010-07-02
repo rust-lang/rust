@@ -1695,7 +1695,7 @@ let trans_visitor
       let dst = deref out_ptr in
       let ty_params = deref (get_element_ptr args 0) in
       let src = deref (get_element_ptr args 1) in
-        copy_ty ty_params dst src ty curr_iso
+        trans_copy_ty ty_params false dst ty src ty curr_iso
     in
     let ty_params_ptr = ty_params_covering ty in
     let fty =
@@ -2595,73 +2595,6 @@ let trans_visitor
           iter_ty_parts_full ty_params dst src ty
             (clone_ty ty_params clone_task) curr_iso
 
-  and copy_ty
-      (ty_params:Il.cell)
-      (dst:Il.cell)
-      (src:Il.cell)
-      (ty:Ast.ty)
-      (curr_iso:Ast.ty_iso option)
-      : unit =
-    iflog (fun _ ->
-             annotate ("copy_ty: referent data of type " ^
-                         (Fmt.fmt_to_str Ast.fmt_ty ty)));
-    match ty with
-        Ast.TY_nil
-      | Ast.TY_bool
-      | Ast.TY_mach _
-      | Ast.TY_int
-      | Ast.TY_uint
-      | Ast.TY_native _
-      | Ast.TY_type
-      | Ast.TY_char ->
-          iflog
-            (fun _ -> annotate
-               (Printf.sprintf "copy_ty: simple mov (%Ld byte scalar)"
-                  (ty_sz abi ty)));
-          mov dst (Il.Cell src)
-
-      | Ast.TY_param (i, _) ->
-          iflog
-            (fun _ -> annotate
-               (Printf.sprintf "copy_ty: parametric copy %#d" i));
-          aliasing false src
-            begin
-              fun src ->
-                let td = get_ty_param ty_params i in
-                let ty_params_ptr = get_tydesc_params ty_params td in
-                  trans_call_dynamic_glue
-                    td Abi.tydesc_field_copy_glue
-                    (Some dst) [| ty_params_ptr; src; |]
-            end
-
-      | Ast.TY_fn _
-      | Ast.TY_obj _ ->
-          begin
-            let src_item = get_element_ptr src Abi.binding_field_item in
-            let dst_item = get_element_ptr dst Abi.binding_field_item in
-            let src_binding = get_element_ptr src Abi.binding_field_binding in
-            let dst_binding = get_element_ptr dst Abi.binding_field_binding in
-              mov dst_item (Il.Cell src_item);
-              let null_jmp = null_check src_binding in
-                (* Copy if we have a src binding. *)
-                (* FIXME (issue #58): this is completely wrong, call
-                 * through to the binding's self-copy fptr. For now
-                 * this only works by accident.
-                 *)
-                trans_copy_ty ty_params true
-                  dst_binding (Ast.TY_box Ast.TY_int)
-                  src_binding (Ast.TY_box Ast.TY_int)
-                  curr_iso;
-                patch null_jmp
-          end
-
-      | _ ->
-          iter_ty_parts_full ty_params dst src ty
-            (fun dst src ty curr_iso ->
-               trans_copy_ty ty_params true
-                 dst ty src ty curr_iso)
-            curr_iso
-
   and free_ty
       (is_gc:bool)
       (ty_params:Il.cell)
@@ -3004,10 +2937,66 @@ let trans_visitor
                annotate ("heavy copy: slot preparation"));
 
       let curr_iso = maybe_enter_iso dst_ty curr_iso in
-      let (dst, dst_ty') = deref_ty DEREF_none initializing dst dst_ty in
+      let (dst, ty) = deref_ty DEREF_none initializing dst dst_ty in
       let (src, _) = deref_ty DEREF_none false src src_ty in
-        assert (dst_ty' = dst_ty);
-        copy_ty ty_params dst src dst_ty' curr_iso
+        assert (ty = dst_ty);
+        match ty with
+            Ast.TY_nil
+          | Ast.TY_bool
+          | Ast.TY_mach _
+          | Ast.TY_int
+          | Ast.TY_uint
+          | Ast.TY_native _
+          | Ast.TY_type
+          | Ast.TY_char ->
+              iflog
+                (fun _ -> annotate
+                   (Printf.sprintf "copy_ty: simple mov (%Ld byte scalar)"
+                      (ty_sz abi ty)));
+              mov dst (Il.Cell src)
+
+          | Ast.TY_param (i, _) ->
+              iflog
+                (fun _ -> annotate
+                   (Printf.sprintf "copy_ty: parametric copy %#d" i));
+              aliasing false src
+                begin
+                  fun src ->
+                    let td = get_ty_param ty_params i in
+                    let ty_params_ptr = get_tydesc_params ty_params td in
+                      trans_call_dynamic_glue
+                        td Abi.tydesc_field_copy_glue
+                        (Some dst) [| ty_params_ptr; src; |]
+                end
+
+          | Ast.TY_fn _
+          | Ast.TY_obj _ ->
+              begin
+                let src_item = get_element_ptr src Abi.binding_field_item in
+                let dst_item = get_element_ptr dst Abi.binding_field_item in
+                let src_binding = get_element_ptr src Abi.binding_field_binding in
+                let dst_binding = get_element_ptr dst Abi.binding_field_binding in
+                  mov dst_item (Il.Cell src_item);
+                  let null_jmp = null_check src_binding in
+                    (* Copy if we have a src binding. *)
+                    (* FIXME (issue #58): this is completely wrong, call
+                     * through to the binding's self-copy fptr. For now
+                     * this only works by accident.
+                     *)
+                    trans_copy_ty ty_params false
+                      dst_binding (Ast.TY_box Ast.TY_int)
+                      src_binding (Ast.TY_box Ast.TY_int)
+                      curr_iso;
+                    patch null_jmp
+              end
+
+          | _ ->
+              iter_ty_parts_full ty_params dst src ty
+                (fun dst src ty curr_iso ->
+                   trans_copy_ty ty_params true
+                     dst ty src ty curr_iso)
+                curr_iso
+
 
   and trans_copy
       (initializing:bool)
