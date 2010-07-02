@@ -1640,7 +1640,9 @@ let trans_visitor
     let inner _ (args:Il.cell) =
       let ty_params = deref (get_element_ptr args 0) in
       let cell = get_element_ptr args 1 in
-        sever_ty ty_params (deref cell) ty curr_iso
+        note_gc_step ty "in sever-glue, severing";
+        sever_ty ty_params (deref cell) ty curr_iso;
+        note_gc_step ty "in sever-glue complete";
     in
     let ty_params_ptr = ty_params_covering ty in
     let fty = mk_simple_ty_fn [| ty_params_ptr; alias_slot ty |] in
@@ -1655,7 +1657,9 @@ let trans_visitor
     let inner _ (args:Il.cell) =
       let ty_params = deref (get_element_ptr args 0) in
       let cell = get_element_ptr args 1 in
-        mark_ty ty_params (deref cell) ty curr_iso
+        note_gc_step ty "in mark-glue, marking";
+        mark_ty ty_params (deref cell) ty curr_iso;
+        note_gc_step ty "mark-glue complete";
     in
     let ty_params_ptr = ty_params_covering ty in
     let fty = mk_simple_ty_fn [| ty_params_ptr; alias_slot ty |] in
