@@ -248,9 +248,9 @@ functions. Aliases are not ``general values'', in the sense that they cannot
 be independently manipulated. They are more like C++ references, except that
 like boxes, aliases are safe: they always point to live values.
 
-In addition, each slot (stack-local allocation or alias) has a static
+In addition, every slot (stack-local allocation or alias) has a static
 initialization state that is calculated by the typestate system. This permits
-late initialization of slotsx in functions with complex control-flow, while
+late initialization of slots in functions with complex control-flow, while
 still guaranteeing that every use of a slot occurs after it has been
 initialized.
 
@@ -339,7 +339,7 @@ Rust has a lightweight object system based on structural object types: there
 is no ``class hierarchy'' nor any concept of inheritance. Method overriding
 and object restriction are performed explicitly on object values, which are
 little more than order-insensitive records of methods sharing a common private
-value. Objects can be mutable or immutable, and immutable objects can have
+value. Objects can be state or non-state, and only non-state objects can have
 destructors.
 
 @sp 1
@@ -1129,7 +1129,7 @@ entry to each function as the task executes. A stack allocation is reclaimed
 when control leaves the frame containing it.
 
 The @dfn{heap} is a general term that describes two separate sets of boxes:
-@emph{task-local} state boxes and the @emph{shared} immutable boxes.
+@emph{task-local} state boxes and the @emph{shared} non-state boxes.
 
 State boxes are @dfn{task-local}, owned by the task. Like any other state
 value, they cannot pass over channels. State boxes do not outlive the task
@@ -1137,7 +1137,7 @@ that owns them. When unreferenced, they are collected using a general
 (cycle-aware) garbage-collector local to each task. Garbage collection within
 a local heap does not interrupt execution of other tasks.
 
-Immutable boxes are @dfn{shared}, and can be multiply-referenced by many
+Non-state boxes are @dfn{shared}, and can be multiply-referenced by many
 different tasks. Like any other immutable type, they can pass over channels,
 and live as long as the last task referencing them within a given domain. When
 unreferenced, they are destroyed immediately (due to reference-counting) and
@@ -1161,7 +1161,7 @@ that can access the allocation.
 
 @dfn{Sharing} of an allocation means that the same allocation may be
 concurrently read by multiple tasks. The only shared allocations are those
-that are immutable.
+that are non-state.
 
 When a stack frame is exited, its local allocations are all released, and its
 references to boxes (both shared and owned) are dropped.
@@ -1182,7 +1182,7 @@ A @dfn{local} slot (or @emph{stack-local} allocation) holds a value directly,
 allocated within the stack's memory. The value is a part of the stack frame.
 
 An @dfn{alias} references a value outside the frame. An alias may refer to a
-value allocated in another frame @emph{or} a boxed valaue in the heap. The
+value allocated in another frame @emph{or} a boxed value in the heap. The
 alias-formation rules ensure that the referent of an alias will outlive the
 alias.
 
@@ -1297,7 +1297,7 @@ cost is transferred to the receiving domain.
 @section Ref.Task
 @c * Ref.Task::                    Semantic model of tasks.
 
-A executing Rust program consists of a tree of tasks. A Rust @dfn{task}
+An executing Rust program consists of a tree of tasks. A Rust @dfn{task}
 consists of an entry function, a stack, a set of outgoing communication
 channels and incoming communication ports, and ownership of some portion of
 the heap of a single operating-system process.
