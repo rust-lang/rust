@@ -417,13 +417,11 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_box a', TYSPEC_box b') ->
               unify_tyvars ucx a' b'; !a
 
-          | (TYSPEC_box a',
-             TYSPEC_resolved (_, Ast.TY_box _)) ->
-               unify_tyvars ucx a' b; !b
-
-          | (TYSPEC_resolved (_, Ast.TY_box _),
-             TYSPEC_box b') ->
-               unify_tyvars ucx a b'; !a
+          | (TYSPEC_box tv,
+             TYSPEC_resolved (params, Ast.TY_box ty))
+          | (TYSPEC_resolved (params, Ast.TY_box ty),
+             TYSPEC_box tv) ->
+               unify_ty_parametric ucx ty params tv; !a
 
           | (_, TYSPEC_resolved (params, Ast.TY_box ty))
               when ucx.box_ok ->
@@ -446,13 +444,11 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_mutable a', TYSPEC_mutable b') ->
               unify_tyvars ucx a' b'; !a
 
-          | (TYSPEC_mutable a',
-             TYSPEC_resolved (_, Ast.TY_mutable _)) ->
-               unify_tyvars ucx a' b; !b
-
-          | (TYSPEC_resolved (_, Ast.TY_mutable _),
-             TYSPEC_mutable b') ->
-               unify_tyvars ucx a b'; !a
+          | (TYSPEC_mutable tv,
+             TYSPEC_resolved (params, Ast.TY_mutable ty))
+          | (TYSPEC_resolved (params, Ast.TY_mutable ty),
+             TYSPEC_mutable tv) ->
+               unify_ty_parametric ucx ty params tv; !a
 
           | (_, TYSPEC_resolved (params, Ast.TY_mutable ty))
               when ucx.mut_ok ->
