@@ -2586,27 +2586,28 @@ let trans_visitor
       (ty:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    match strip_mutable_or_constrained_ty ty with
-        Ast.TY_chan _ ->
-          trans_upcall "upcall_clone_chan" dst
-            [| (Il.Cell clone_task); (Il.Cell src) |]
-      | Ast.TY_task
-      | Ast.TY_port _
-      | _ when type_has_state ty
-          -> bug () "cloning mutable type"
-      | _ when i64_le (ty_sz abi ty) word_sz
-          -> mov dst (Il.Cell src)
-      | Ast.TY_fn _
-      | Ast.TY_obj _ -> ()
-      | Ast.TY_box ty ->
-          let glue_fix = get_clone_glue ty curr_iso in
-            trans_call_static_glue
-              (code_fixup_to_ptr_operand glue_fix)
-              (Some dst)
-              [| alias ty_params; src; clone_task |]
-      | _ ->
-          iter_ty_parts_full ty_params dst src ty
-            (clone_ty ty_params clone_task) curr_iso
+    let ty = strip_mutable_or_constrained_ty ty in
+      match ty with
+          Ast.TY_chan _ ->
+            trans_upcall "upcall_clone_chan" dst
+              [| (Il.Cell clone_task); (Il.Cell src) |]
+        | Ast.TY_task
+        | Ast.TY_port _
+        | _ when type_has_state ty
+            -> bug () "cloning state type"
+        | _ when i64_le (ty_sz abi ty) word_sz
+            -> mov dst (Il.Cell src)
+        | Ast.TY_fn _
+        | Ast.TY_obj _ -> ()
+        | Ast.TY_box ty ->
+            let glue_fix = get_clone_glue ty curr_iso in
+              trans_call_static_glue
+                (code_fixup_to_ptr_operand glue_fix)
+                (Some dst)
+                [| alias ty_params; src; clone_task |]
+        | _ ->
+            iter_ty_parts_full ty_params dst src ty
+              (clone_ty ty_params clone_task) curr_iso
 
   and free_ty
       (is_gc:bool)
