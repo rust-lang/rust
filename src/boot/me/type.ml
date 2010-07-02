@@ -13,7 +13,6 @@ type tyspec =
   | TYSPEC_plusable                           (* nums, vecs, and strings *)
   | TYSPEC_dictionary of dict
   | TYSPEC_integral                           (* int-like *)
-  | TYSPEC_loggable
   | TYSPEC_numeric                            (* int-like or float-like *)
   | TYSPEC_ordered                            (* comparable with < etc. *)
   | TYSPEC_record of dict
@@ -88,7 +87,6 @@ let rec tyspec_to_str (ts:tyspec) : string =
       | TYSPEC_comparable -> fmt ff "<comparable>"
       | TYSPEC_plusable -> fmt ff "<plusable>"
       | TYSPEC_integral -> fmt ff "<integral>"
-      | TYSPEC_loggable -> fmt ff "<loggable>"
       | TYSPEC_numeric -> fmt ff "<numeric>"
       | TYSPEC_ordered -> fmt ff "<ordered>"
       | TYSPEC_resolved (params, ty) ->
@@ -401,17 +399,6 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | _ -> numeric ty
       in
 
-      let rec loggable (ty:Ast.ty) : bool =
-        match ty with
-            Ast.TY_str | Ast.TY_bool | Ast.TY_int | Ast.TY_uint | Ast.TY_char
-          | Ast.TY_mach TY_u8 | Ast.TY_mach TY_u16 | Ast.TY_mach TY_u32
-          | Ast.TY_mach TY_i8 | Ast.TY_mach TY_i16 | Ast.TY_mach TY_i32
-              -> true
-          | Ast.TY_mutable ty when ucx.mut_ok -> loggable ty
-          | Ast.TY_box ty when ucx.box_ok -> loggable ty
-          | _ -> false
-      in
-
       let result =
         match (!a, !b) with
             (TYSPEC_equiv _, _) | (_, TYSPEC_equiv _) ->
@@ -562,12 +549,6 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               then fail ()
               else TYSPEC_resolved (params, ty)
 
-          | (TYSPEC_resolved (params, ty), TYSPEC_loggable)
-          | (TYSPEC_loggable, TYSPEC_resolved (params, ty)) ->
-              if not (loggable ty)
-              then fail ()
-              else TYSPEC_resolved (params, ty)
-
           | (TYSPEC_resolved (params, ty), TYSPEC_numeric)
           | (TYSPEC_numeric, TYSPEC_resolved (params, ty)) ->
               if not (numeric ty) then fail ()
@@ -650,7 +631,6 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_callable _, TYSPEC_plusable)
           | (TYSPEC_callable _, TYSPEC_dictionary _)
           | (TYSPEC_callable _, TYSPEC_integral)
-          | (TYSPEC_callable _, TYSPEC_loggable)
           | (TYSPEC_callable _, TYSPEC_numeric)
           | (TYSPEC_callable _, TYSPEC_ordered)
           | (TYSPEC_callable _, TYSPEC_app _)
@@ -662,7 +642,6 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_plusable, TYSPEC_callable _)
           | (TYSPEC_dictionary _, TYSPEC_callable _)
           | (TYSPEC_integral, TYSPEC_callable _)
-          | (TYSPEC_loggable, TYSPEC_callable _)
           | (TYSPEC_numeric, TYSPEC_callable _)
           | (TYSPEC_ordered, TYSPEC_callable _)
           | (TYSPEC_app _, TYSPEC_callable _)
@@ -685,7 +664,6 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
           | (TYSPEC_collection _, TYSPEC_dictionary _)
           | (TYSPEC_collection _, TYSPEC_integral)
-          | (TYSPEC_collection _, TYSPEC_loggable)
           | (TYSPEC_collection _, TYSPEC_numeric)
           | (TYSPEC_collection _, TYSPEC_ordered)
           | (TYSPEC_collection _, TYSPEC_app _)
@@ -693,7 +671,6 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_collection _, TYSPEC_tuple _)
           | (TYSPEC_dictionary _, TYSPEC_collection _)
           | (TYSPEC_integral, TYSPEC_collection _)
-          | (TYSPEC_loggable, TYSPEC_collection _)
           | (TYSPEC_numeric, TYSPEC_collection _)
           | (TYSPEC_ordered, TYSPEC_collection _)
           | (TYSPEC_app _, TYSPEC_collection _)
@@ -718,9 +695,6 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
           | (TYSPEC_comparable, TYSPEC_integral)
           | (TYSPEC_integral, TYSPEC_comparable) -> TYSPEC_integral
-
-          | (TYSPEC_comparable, TYSPEC_loggable)
-          | (TYSPEC_loggable, TYSPEC_comparable) -> TYSPEC_loggable
 
           | (TYSPEC_comparable, TYSPEC_numeric)
           | (TYSPEC_numeric, TYSPEC_comparable) -> TYSPEC_numeric
@@ -750,9 +724,6 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_plusable, TYSPEC_integral)
           | (TYSPEC_integral, TYSPEC_plusable) -> TYSPEC_integral
 
-          | (TYSPEC_plusable, TYSPEC_loggable)
-          | (TYSPEC_loggable, TYSPEC_plusable) -> TYSPEC_plusable
-
           | (TYSPEC_plusable, TYSPEC_numeric)
           | (TYSPEC_numeric, TYSPEC_plusable) -> TYSPEC_numeric
 
@@ -777,12 +748,10 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               TYSPEC_dictionary (merge_dicts da db)
 
           | (TYSPEC_dictionary _, TYSPEC_integral)
-          | (TYSPEC_dictionary _, TYSPEC_loggable)
           | (TYSPEC_dictionary _, TYSPEC_numeric)
           | (TYSPEC_dictionary _, TYSPEC_ordered)
           | (TYSPEC_dictionary _, TYSPEC_app _)
           | (TYSPEC_integral, TYSPEC_dictionary _)
-          | (TYSPEC_loggable, TYSPEC_dictionary _)
           | (TYSPEC_numeric, TYSPEC_dictionary _)
           | (TYSPEC_ordered, TYSPEC_dictionary _)
           | (TYSPEC_app _, TYSPEC_dictionary _) -> fail ()
@@ -799,10 +768,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           (* integral *)
 
           | (TYSPEC_integral, TYSPEC_integral)
-          | (TYSPEC_integral, TYSPEC_loggable)
           | (TYSPEC_integral, TYSPEC_numeric)
           | (TYSPEC_integral, TYSPEC_ordered)
-          | (TYSPEC_loggable, TYSPEC_integral)
           | (TYSPEC_numeric, TYSPEC_integral)
           | (TYSPEC_ordered, TYSPEC_integral) -> TYSPEC_integral
 
@@ -814,25 +781,6 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           | (TYSPEC_record _, TYSPEC_integral)
           | (TYSPEC_tuple _, TYSPEC_integral)
           | (TYSPEC_vector _, TYSPEC_integral) -> fail ()
-
-          (* loggable *)
-
-          | (TYSPEC_loggable, TYSPEC_loggable) -> TYSPEC_loggable
-
-          | (TYSPEC_loggable, TYSPEC_numeric)
-          | (TYSPEC_numeric, TYSPEC_loggable) -> TYSPEC_numeric
-
-          | (TYSPEC_loggable, TYSPEC_ordered)
-          | (TYSPEC_ordered, TYSPEC_loggable) -> TYSPEC_ordered
-
-          | (TYSPEC_loggable, TYSPEC_app _)
-          | (TYSPEC_loggable, TYSPEC_record _)
-          | (TYSPEC_loggable, TYSPEC_tuple _)
-          | (TYSPEC_loggable, TYSPEC_vector _)
-          | (TYSPEC_app _, TYSPEC_loggable)
-          | (TYSPEC_record _, TYSPEC_loggable)
-          | (TYSPEC_tuple _, TYSPEC_loggable)
-          | (TYSPEC_vector _, TYSPEC_loggable) -> fail ()
 
           (* numeric *)
 
@@ -1240,7 +1188,11 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               check_callable out_tv callee args
 
         | Ast.STMT_log atom ->
-            unify_atom rval_ctx atom (ref TYSPEC_loggable)
+            begin
+              match atom with
+                  Ast.ATOM_lval lv -> set_auto_deref lv true
+                | _ -> ()
+            end
 
         | Ast.STMT_check_expr expr ->
             unify_expr rval_ctx expr (ty Ast.TY_bool)
