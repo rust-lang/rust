@@ -1243,19 +1243,15 @@ let trans_visitor
       | Ast.LIT_mach (m, n, _) -> imm_of_ty n m
 
   and trans_atom (atom:Ast.atom) : Il.operand =
-    trans_atom_full DEREF_all_boxes atom
-
-  and trans_atom_full (dctrl:deref_ctrl) (atom:Ast.atom) : Il.operand =
     iflog
       begin
         fun _ ->
           annotate (Fmt.fmt_to_str Ast.fmt_atom atom)
       end;
-
     match atom with
         Ast.ATOM_lval lv ->
           let (cell, ty) = trans_lval lv in
-            Il.Cell (fst (deref_ty dctrl false cell ty))
+            Il.Cell (fst (deref_ty DEREF_none false cell ty))
 
       | Ast.ATOM_literal lit -> trans_lit lit.node
 
@@ -3082,7 +3078,7 @@ let trans_visitor
                   get_forwarding_vtbl caller_obj_ty callee_obj_ty
                 in
                 let (caller_obj, _) =
-                  deref_ty DEREF_all_boxes initializing dst_cell dst_ty
+                  deref_ty DEREF_none initializing dst_cell dst_ty
                 in
                 let caller_vtbl =
                   get_element_ptr caller_obj Abi.binding_field_item
@@ -4214,7 +4210,7 @@ let trans_visitor
                   bugi cx stmt.id
                     "non-rec destination type in stmt_init_rec"
           in
-          let (dst_cell, _) = deref_ty DEREF_all_boxes true slot_cell ty in
+          let (dst_cell, _) = deref_ty DEREF_none true slot_cell ty in
             begin
               match base with
                   None ->
@@ -4235,7 +4231,7 @@ let trans_visitor
                   bugi cx stmt.id
                     "non-tup destination type in stmt_init_tup"
           in
-          let (dst_cell, _) = deref_ty DEREF_all_boxes true slot_cell ty in
+          let (dst_cell, _) = deref_ty DEREF_none true slot_cell ty in
             trans_init_structural_from_atoms dst_cell dst_tys atoms
 
 
