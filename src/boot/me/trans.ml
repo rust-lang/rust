@@ -2616,7 +2616,7 @@ let trans_visitor
       (cell:Il.cell)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    match ty with
+    match simplified_ty ty with
         Ast.TY_port _ -> trans_del_port cell
       | Ast.TY_chan _ -> trans_del_chan cell
       | Ast.TY_task -> trans_kill_task cell
