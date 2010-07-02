@@ -926,6 +926,7 @@ let associative_binary_op_ty_fold
     fn islots oslot
   in
     { base with
+        ty_fold_tys = (fun ts -> reduce (Array.to_list ts));
         ty_fold_slots = (fun slots -> reduce (Array.to_list slots));
         ty_fold_slot = (fun (_, a) -> a);
         ty_fold_tags = (fun tab -> reduce (htab_vals tab));
@@ -941,6 +942,8 @@ let associative_binary_op_ty_fold
                          reduce (List.map reduce_fn (htab_vals fns)));
         ty_fold_chan = (fun a -> a);
         ty_fold_port = (fun a -> a);
+        ty_fold_box = (fun a -> a);
+        ty_fold_mutable = (fun a -> a);
         ty_fold_constrained = (fun (a, _) -> a) }
 
 let ty_fold_bool_and (default:bool) : bool simple_ty_fold =
