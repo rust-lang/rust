@@ -1491,7 +1491,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                     (List.rev (Array.to_list tag_ty_tup));
 
           | Ast.PAT_slot (sloti, _) ->
-              unify_slot strict_ctx sloti.node (Some sloti.id) expected
+              unify_slot lval_ctx sloti.node (Some sloti.id) expected
 
           | Ast.PAT_wild -> ()
     in
