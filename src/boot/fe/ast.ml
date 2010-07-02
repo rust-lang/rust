@@ -1180,6 +1180,13 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
       | STMT_slice _ -> fmt ff "?stmt_slice?"
   end
 
+and fmt_decl_param (ff:Format.formatter) (param:ty_param) : unit =
+  let (ident, (i, e)) = param in
+  fmt_effect ff e;
+  if e <> PURE then fmt ff " ";
+  fmt_ident ff ident;
+  fmt ff "=<p#%d>" i
+
 and fmt_decl_params (ff:Format.formatter) (params:ty_param array) : unit =
   if Array.length params = 0
   then ()
@@ -1190,11 +1197,7 @@ and fmt_decl_params (ff:Format.formatter) (params:ty_param array) : unit =
       do
         if i <> 0
         then fmt ff ", ";
-        let (ident, (i, e)) = params.(i) in
-          fmt_effect ff e;
-          if e <> PURE then fmt ff " ";
-          fmt_ident ff ident;
-          fmt ff "=<p#%d>" i
+        fmt_decl_param ff params.(i)
       done;
       fmt ff "]"
     end;
@@ -1350,6 +1353,7 @@ let sprintf_tag = sprintf_fmt fmt_tag;;
 let sprintf_carg = sprintf_fmt fmt_carg;;
 let sprintf_constr = sprintf_fmt fmt_constr;;
 let sprintf_mod_items = sprintf_fmt fmt_mod_items;;
+let sprintf_decl_param = sprintf_fmt fmt_decl_param;;
 let sprintf_decl_params = sprintf_fmt fmt_decl_params;;
 let sprintf_app_args = sprintf_fmt fmt_app_args;;
 
