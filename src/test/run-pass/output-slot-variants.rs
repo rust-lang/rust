@@ -3,7 +3,7 @@ fn ret_int_i() -> int {
 }
 
 fn ret_ext_i() -> @int {
-  ret 10;
+  ret @10;
 }
 
 fn ret_int_tup() -> tup(int,int) {
@@ -11,7 +11,7 @@ fn ret_int_tup() -> tup(int,int) {
 }
 
 fn ret_ext_tup() -> @tup(int,int) {
-  ret tup(10, 10);
+  ret @tup(10, 10);
 }
 
 fn ret_ext_mem() -> tup(@int, @int) {
@@ -19,7 +19,7 @@ fn ret_ext_mem() -> tup(@int, @int) {
 }
 
 fn ret_ext_ext_mem() -> @tup(@int, @int) {
-  ret tup(@10, @10);
+  ret @tup(@10, @10);
 }
 
 fn main() {
