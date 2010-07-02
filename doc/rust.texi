@@ -582,8 +582,6 @@ Unicode characters.
 * Ref.Lex.Sym::          Special symbol tokens.
 @end menu
 
-@node
-
 @node       Ref.Lex.Ignore
 @subsection Ref.Lex.Ignore
 @c * Ref.Lex.Ignore::            Ignored tokens.
