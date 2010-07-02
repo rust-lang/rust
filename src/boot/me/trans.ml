@@ -2249,9 +2249,7 @@ let trans_visitor
              (tydesc_rty abi))
 
   and box_rc_cell (cell:Il.cell) : Il.cell =
-    let off = Abi.box_rc_slot_field_refcnt in
-    let (mem, _) = need_mem_cell (deref_imm cell (word_n off)) in
-      word_at mem
+    get_element_ptr (deref cell) Abi.box_rc_slot_field_refcnt
 
   and box_allocation_size
       (ty:Ast.ty)
@@ -2499,6 +2497,8 @@ let trans_visitor
             | MEM_rc_opaque
             | MEM_rc_struct ->
 
+                note_drop_step ty "in box-drop path of drop_ty";
+
                 let _ = check_box_rty cell in
                 let null_jmp = null_check cell in
                 let rc = box_rc_cell cell in
@@ -2524,6 +2524,7 @@ let trans_visitor
                   patch null_jmp
 
             | MEM_interior when type_is_structured ty ->
+                note_drop_step ty "in structured-interior path of drop_ty";
                 (iflog (fun _ ->
                           annotate ("drop interior memory " ^
                                       (Fmt.fmt_to_str Ast.fmt_ty ty))));
@@ -2535,6 +2536,7 @@ let trans_visitor
                     ty_params vr
 
             | MEM_interior ->
+                note_drop_step ty "in simple-interior path of drop_ty";
                 (* Interior allocation of all-interior value not caught above:
                  * nothing to do.
                  *)
@@ -2729,8 +2731,15 @@ let trans_visitor
     if cx.ctxt_sess.Session.sess_trace_drop ||
       cx.ctxt_sess.Session.sess_log_trans
     then
-      let slotstr = Fmt.fmt_to_str Ast.fmt_ty ty in
-      let str = step ^ " " ^ slotstr in
+      let mctrl_str =
+        match ty_mem_ctrl ty with
+            MEM_gc -> "MEM_gc"
+          | MEM_rc_struct -> "MEM_rc_struct"
+          | MEM_rc_opaque -> "MEM_rc_opaque"
+          | MEM_interior -> "MEM_interior"
+      in
+      let tystr = Fmt.fmt_to_str Ast.fmt_ty ty in
+      let str = step ^ " " ^ mctrl_str ^ " " ^ tystr in
         begin
           annotate str;
           trace_str cx.ctxt_sess.Session.sess_trace_drop str
