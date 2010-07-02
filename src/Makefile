@@ -543,6 +543,9 @@ check: tidy \
        $(TEST_RPASS_OUTS_X86) $(TEST_RFAIL_OUTS_X86) \
        $(TEST_CFAIL_OUTS_X86)
 
+compile-check: tidy \
+       $(TEST_RPASS_EXES_X86) $(TEST_RFAIL_EXES_X86)
+
 
 ifeq ($(VARIANT),llvm)
 ALL_TEST_CRATES += $(TEST_CFAIL_CRATES_LLVM) \
