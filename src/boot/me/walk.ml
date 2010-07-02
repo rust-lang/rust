@@ -235,7 +235,7 @@ and walk_mod_item
     : unit =
   let children _ =
     match item.node.Ast.decl_item with
-        Ast.MOD_ITEM_type ty -> walk_ty v ty
+        Ast.MOD_ITEM_type (_, ty) -> walk_ty v ty
       | Ast.MOD_ITEM_fn f -> walk_fn v f item.id
       | Ast.MOD_ITEM_tag (htup, ttag, _) ->
           walk_header_tup v htup;

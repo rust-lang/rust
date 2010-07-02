@@ -1210,6 +1210,8 @@ let (abbrev_typedef:abbrev) =
   (DW_TAG_typedef, DW_CHILDREN_yes,
    [|
      (DW_AT_name, DW_FORM_string);
+     (DW_AT_mutable, DW_FORM_flag);
+     (DW_AT_pure, DW_FORM_flag);
      (DW_AT_type, DW_FORM_ref_addr)
    |])
 ;;
@@ -2319,6 +2321,7 @@ let dwarf_visitor
 
   let emit_typedef_die
       (id:Ast.ident)
+      (e:Ast.effect)
       (ty:Ast.ty)
       : unit =
     let abbrev_code = get_abbrev_code abbrev_typedef in
@@ -2327,6 +2330,7 @@ let dwarf_visitor
          uleb abbrev_code;
          (* DW_AT_name: DW_FORM_string *)
          ZSTRING id;
+         encode_effect e;
          (* DW_AT_type: DW_FORM_ref_addr *)
          (ref_type_die ty);
        |])
@@ -2388,13 +2392,13 @@ let dwarf_visitor
                   (Hashtbl.find cx.ctxt_fn_fixups item.id);
                 emit_type_param_decl_dies item.node.Ast.decl_params;
             end
-        | Ast.MOD_ITEM_type _ ->
+        | Ast.MOD_ITEM_type (e, _) ->
             begin
               log cx "walking typedef '%s' with %d type params"
                 (path_name())
                 (Array.length item.node.Ast.decl_params);
               emit_typedef_die
-                id (Hashtbl.find cx.ctxt_all_type_items item.id);
+                id e (Hashtbl.find cx.ctxt_all_type_items item.id);
               emit_type_param_decl_dies item.node.Ast.decl_params;
             end
         | _ -> ()
@@ -3100,9 +3104,10 @@ let rec extract_mod_items
   let die = Hashtbl.find dies i in
     match die.die_tag with
         DW_TAG_typedef ->
+          let effect = get_effect die in
           let ident = get_name die in
           let ty = get_referenced_ty die in
-          let tyi = Ast.MOD_ITEM_type ty in
+          let tyi = Ast.MOD_ITEM_type (effect, ty) in
           let (params, islots) = get_formals die in
             assert ((Array.length islots) = 0);
             htab_put mis ident (decl params tyi)

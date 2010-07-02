@@ -760,6 +760,20 @@ and parse_obj_item
          span ps apos bpos
            (decl params (Ast.MOD_ITEM_obj obj)))
 
+and parse_type_item
+    (ps:pstate)
+    (apos:pos)
+    (effect:Ast.effect)
+    : (Ast.ident * Ast.mod_item) =
+  expect ps TYPE;
+  let (ident, params) = parse_ident_and_params ps "type" in
+  let _ = expect ps EQ in
+  let ty = ctxt "mod type item: ty" Pexp.parse_ty ps in
+  let _ = expect ps SEMI in
+  let bpos = lexpos ps in
+  let item = Ast.MOD_ITEM_type (effect, ty) in
+    (ident, span ps apos bpos (decl params item))
+
 
 and parse_mod_item (ps:pstate) : (Ast.ident * Ast.mod_item) =
   let apos = lexpos ps in
@@ -775,13 +789,15 @@ and parse_mod_item (ps:pstate) : (Ast.ident * Ast.mod_item) =
       | _ -> ps.pstate_infer_lib_name ident
   in
 
+
     match peek ps with
 
-        IO | STATE | UNSAFE | OBJ | FN | ITER ->
+        IO | STATE | UNSAFE | TYPE | OBJ | FN | ITER ->
           let effect = Pexp.parse_effect ps in
             begin
               match peek ps with
                   OBJ -> parse_obj_item ps apos effect
+                | TYPE -> parse_type_item ps apos effect
                 | _ ->
                     let is_iter = (peek ps) = ITER in
                       bump ps;
@@ -794,16 +810,6 @@ and parse_mod_item (ps:pstate) : (Ast.ident * Ast.mod_item) =
                          span ps apos bpos
                            (decl params (Ast.MOD_ITEM_fn fn)))
             end
-
-      | TYPE ->
-          bump ps;
-          let (ident, params) = parse_ident_and_params ps "type" in
-          let _ = expect ps EQ in
-          let ty = ctxt "mod type item: ty" Pexp.parse_ty ps in
-          let _ = expect ps SEMI in
-          let bpos = lexpos ps in
-          let item = Ast.MOD_ITEM_type ty in
-            (ident, span ps apos bpos (decl params item))
 
       | MOD ->
           bump ps;
@@ -964,7 +970,8 @@ and parse_mod_item_from_signature (ps:pstate)
         in
           expect ps SEMI;
           let bpos = lexpos ps in
-            (ident, span ps apos bpos (decl params (Ast.MOD_ITEM_type t)))
+            (ident, span ps apos bpos
+               (decl params (Ast.MOD_ITEM_type (Ast.UNSAFE, t))))
 
     | _ -> raise (unexpected ps)
 
@@ -1008,7 +1015,7 @@ and expand_tags
       | _ -> [| |]
   in
     match item.node.Ast.decl_item with
-        Ast.MOD_ITEM_type tyd -> handle_ty_decl item.id tyd
+        Ast.MOD_ITEM_type (_, tyd) -> handle_ty_decl item.id tyd
       | _ -> [| |]
 
 

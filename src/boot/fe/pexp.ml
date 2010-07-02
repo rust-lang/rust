@@ -360,9 +360,6 @@ and flag (ps:pstate) (tok:token) : bool =
   then (bump ps; true)
   else false
 
-and parse_mutability (ps:pstate) : bool =
-  flag ps MUTABLE
-
 and parse_slot (aliases_ok:bool) (ps:pstate) : Ast.slot =
   let mode =
   match (peek ps, aliases_ok) with

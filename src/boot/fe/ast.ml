@@ -410,7 +410,7 @@ and obj =
 and ty_param = ident * (ty_param_idx * effect)
 
 and mod_item' =
-    MOD_ITEM_type of ty
+    MOD_ITEM_type of (effect * ty)
   | MOD_ITEM_tag of (header_tup * ty_tag * node_id)
   | MOD_ITEM_mod of (mod_view * mod_items)
   | MOD_ITEM_fn of fn
@@ -1212,6 +1212,10 @@ and fmt_ident_and_params
   fmt_ident ff id;
   fmt_decl_params ff params
 
+and fmt_effect_qual (ff:Format.formatter) (e:effect) : unit =
+  fmt_effect ff e;
+  if e <> PURE then fmt ff " ";
+
 and fmt_fn
     (ff:Format.formatter)
     (id:ident)
@@ -1219,8 +1223,7 @@ and fmt_fn
     (f:fn)
     : unit =
   fmt_obox ff;
-  fmt_effect ff f.fn_aux.fn_effect;
-  if f.fn_aux.fn_effect <> PURE then fmt ff " ";
+  fmt_effect_qual ff f.fn_aux.fn_effect;
   fmt ff "%s "(if f.fn_aux.fn_is_iter then "iter" else "fn");
   fmt_ident_and_params ff id params;
   fmt_header_slots ff f.fn_input_slots;
@@ -1240,8 +1243,7 @@ and fmt_obj
     (obj:obj)
     : unit =
   fmt_obox ff;
-  fmt_effect ff obj.obj_effect;
-  if obj.obj_effect <> PURE then fmt ff " ";
+  fmt_effect_qual ff obj.obj_effect;
   fmt ff "obj ";
   fmt_ident_and_params ff id params;
   fmt_header_slots ff obj.obj_state;
@@ -1277,7 +1279,8 @@ and fmt_mod_item (ff:Format.formatter) (id:ident) (item:mod_item) : unit =
   let params = Array.map (fun i -> i.node) params in
     begin
       match item.node.decl_item with
-          MOD_ITEM_type ty ->
+          MOD_ITEM_type (e, ty) ->
+            fmt_effect_qual ff e;
             fmt ff "type ";
             fmt_ident_and_params ff id params;
             fmt ff " = ";
