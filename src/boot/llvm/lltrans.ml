@@ -821,7 +821,7 @@ let trans_crate
 
               | Ast.STMT_log a ->
                   begin
-                    match Semant.atom_type sem_cx a with
+                    match Semant.simplified_ty (Semant.atom_type sem_cx a) with
                         (* NB: If you extend this, be sure to update the
                          * typechecking code in type.ml as well. *)
                         Ast.TY_str -> trans_log_str a
