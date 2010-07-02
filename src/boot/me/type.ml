@@ -106,12 +106,16 @@ let rec tyspec_to_str (ts:tyspec) : string =
           fmt_tyspec ff (!tv)
 
       | TYSPEC_box tv ->
-          fmt ff "@@";
-          fmt_tyspec ff (!tv)
+          fmt_obr ff;
+          fmt ff "box ";
+          fmt_tyspec ff (!tv);
+          fmt_cbr ff;
 
       | TYSPEC_mutable tv ->
-          fmt ff "mutable ";
-          fmt_tyspec ff (!tv)
+          fmt_obr ff;
+          fmt ff "mut ";
+          fmt_tyspec ff (!tv);
+          fmt_cbr ff
 
       | TYSPEC_callable (out, ins) ->
           fmt_obb ff;
@@ -128,9 +132,11 @@ let rec tyspec_to_str (ts:tyspec) : string =
           fmt_cbb ff;
 
       | TYSPEC_tuple tvs ->
+          fmt_obr ff;
           fmt ff "tuple (";
           fmt_tvs ff tvs;
           fmt ff ")";
+          fmt_cbr ff;
 
       | TYSPEC_vector tv ->
           fmt_obb ff;
