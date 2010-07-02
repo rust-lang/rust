@@ -1279,8 +1279,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             unify_lval rval_ctx lval (ty Ast.TY_task);
 
         | Ast.STMT_init_box (dst, v) ->
-            let tv = any() in
-              unify_lval init_ctx dst (ref (TYSPEC_box tv));
+            let tv = ref (TYSPEC_mutable (ref (TYSPEC_box (any())))) in
+              unify_lval strict_ctx dst tv;
               unify_atom rval_ctx v tv;
 
         (* FIXME (issue #52): Finish these. *)
