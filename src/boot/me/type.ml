@@ -1132,7 +1132,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             let tvrec = ref (TYSPEC_record dct) in
             let add_field (ident, atom) =
               let tv = any() in
-                unify_atom rval_ctx atom tv;
+                unify_atom arg_pass_ctx atom tv;
                 Hashtbl.add dct ident tv
             in
               Array.iter add_field fields;
@@ -1145,7 +1145,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             let dct = Hashtbl.create 10 in
             let add_field (ident, atom) =
               let tv = any() in
-                unify_atom rval_ctx atom tv;
+                unify_atom arg_pass_ctx atom tv;
                 Hashtbl.add dct ident tv
             in
               Array.iter add_field fields;
@@ -1154,7 +1154,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         | Ast.STMT_init_tup (dst, members) ->
             let member_to_tv atom =
               let tv = any() in
-                unify_atom rval_ctx atom tv;
+                unify_atom arg_pass_ctx atom tv;
                 tv
             in
             let member_tvs = Array.map member_to_tv members in
@@ -1162,7 +1162,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
         | Ast.STMT_init_vec (dst, atoms) ->
             let tv = any() in
-            let unify_with_tv atom = unify_atom rval_ctx atom tv in
+            let unify_with_tv atom = unify_atom arg_pass_ctx atom tv in
               Array.iter unify_with_tv atoms;
               unify_lval init_ctx dst (ref (TYSPEC_vector tv))
 
@@ -1171,12 +1171,12 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
         | Ast.STMT_copy (dst, expr) ->
             let tv = any() in
-              unify_expr rval_ctx expr tv;
+              unify_expr arg_pass_ctx expr tv;
               unify_lval lval_ctx dst tv
 
         | Ast.STMT_copy_binop (dst, binop, at) ->
             let tv = any() in
-              unify_expr rval_ctx
+              unify_expr arg_pass_ctx
                 (Ast.EXPR_binary (binop, Ast.ATOM_lval dst, at)) tv;
               (* Force-override the 'auto-deref' judgment that was cached 
                * in cx.ctxt_auto_deref_lval by preceding unify_expr call.
@@ -1268,7 +1268,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         | Ast.STMT_alt_tag
             { Ast.alt_tag_lval = lval; Ast.alt_tag_arms = arms } ->
             let lval_tv = any() in
-              unify_lval lval_ctx lval lval_tv;
+              unify_lval arg_pass_ctx lval lval_tv;
               Array.iter (fun _ -> push_pat_tv lval_tv) arms
 
         | Ast.STMT_join lval ->
