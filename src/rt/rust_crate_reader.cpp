@@ -255,6 +255,7 @@ rust_crate_reader::die::die(die_reader *rdr, uintptr_t off)
   if (!ab_idx) {
     ab = NULL;
     dom->log(rust_log::DWARF, "DIE <0x%" PRIxPTR "> (null)", off);
+    dom->get_log().outdent();
   } else {
     ab = rdr->abbrevs.get_abbrev(ab_idx);
     dom->log(rust_log::DWARF, "DIE <0x%" PRIxPTR "> abbrev 0x%"
@@ -451,19 +452,21 @@ rust_crate_reader::die::next() const
   {
     rdr_sess use(rdr);
     if (start_attrs()) {
-      attr a;
-      while (step_attr(a)) {
-        I(dom, !(a.is_numeric() && a.is_string()));
-        if (a.is_numeric())
-          dom->log(rust_log::DWARF, "  attr num: 0x%"
-                   PRIxPTR, a.get_num(dom));
-        else if (a.is_string())
-          dom->log(rust_log::DWARF, "  attr str: %s",
-                   a.get_str(dom));
-        else
-          dom->log(rust_log::DWARF, "  attr ??:");
-      }
+        attr a;
+        while (step_attr(a)) {
+            I(dom, !(a.is_numeric() && a.is_string()));
+            if (a.is_numeric())
+                dom->log(rust_log::DWARF, "  attr num: 0x%"
+                         PRIxPTR, a.get_num(dom));
+            else if (a.is_string())
+                dom->log(rust_log::DWARF, "  attr str: %s",
+                         a.get_str(dom));
+            else
+                dom->log(rust_log::DWARF, "  attr ??:");
+        }
     }
+    if (has_children())
+        dom->get_log().indent();
   }
   return die(rdr, rdr->tell_off());
 }
