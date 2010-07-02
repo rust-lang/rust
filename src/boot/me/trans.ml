@@ -2066,7 +2066,7 @@ let trans_visitor
       List.iter patch fwd_jmps
 
   and trans_check_expr (id:node_id) (e:Ast.expr) : unit =
-    match expr_type cx e with
+    match simplified_ty (expr_type cx e) with
         Ast.TY_bool ->
           let fwd_jmps = trans_cond false e in
             trans_cond_fail (Fmt.fmt_to_str Ast.fmt_expr e) fwd_jmps
