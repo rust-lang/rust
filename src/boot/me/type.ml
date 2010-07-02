@@ -1274,8 +1274,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
         | Ast.STMT_init_box (dst, v) ->
             let tv = any() in
+              unify_lval init_ctx dst (ref (TYSPEC_box tv));
               unify_atom rval_ctx v tv;
-              unify_lval { init_ctx with box_ok = true } dst tv
 
         (* FIXME (issue #52): Finish these. *)
         (* Fake-typecheck a few comm-related statements for now, just enough
