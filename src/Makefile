@@ -356,6 +356,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       complex.rs \
                       dead-code-one-arm-if.rs \
                       deep.rs \
+                      deref.rs \
                       div-mod.rs \
                       drop-on-ret.rs \
                       else-if.rs \
