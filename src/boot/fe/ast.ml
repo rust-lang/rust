@@ -1045,7 +1045,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
 
       | STMT_init_tup (dst, entries) ->
           fmt_lval ff dst;
-          fmt ff " = (";
+          fmt ff " = tup(";
           for i = 0 to (Array.length entries) - 1
           do
             if i != 0
