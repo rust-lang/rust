@@ -2974,8 +2974,12 @@ let trans_visitor
               begin
                 let src_item = get_element_ptr src Abi.binding_field_item in
                 let dst_item = get_element_ptr dst Abi.binding_field_item in
-                let src_binding = get_element_ptr src Abi.binding_field_binding in
-                let dst_binding = get_element_ptr dst Abi.binding_field_binding in
+                let src_binding =
+                  get_element_ptr src Abi.binding_field_binding
+                in
+                let dst_binding =
+                  get_element_ptr dst Abi.binding_field_binding
+                in
                   mov dst_item (Il.Cell src_item);
                   let null_jmp = null_check src_binding in
                     (* Copy if we have a src binding. *)
