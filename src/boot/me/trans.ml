@@ -2573,7 +2573,7 @@ let trans_visitor
       (ty:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : unit =
-    match ty with
+    match strip_mutable_or_constrained_ty ty with
         Ast.TY_chan _ ->
           trans_upcall "upcall_clone_chan" dst
             [| (Il.Cell clone_task); (Il.Cell src) |]
