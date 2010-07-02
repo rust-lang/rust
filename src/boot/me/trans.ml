@@ -2547,23 +2547,36 @@ let trans_visitor
       (curr_iso:Ast.ty_iso option)
       : unit =
     let _ = note_gc_step ty "severing" in
-      match ty_mem_ctrl ty with
-          MEM_gc ->
+    let sever_box c =
+      let _ = check_box_rty c in
+      let null_jmp = null_check c in
+      let rc = box_rc_cell c in
+      let _ = note_gc_step ty "severing GC cell" in
+        emit (Il.binary Il.SUB rc (Il.Cell rc) one);
+        mov c zero;
+        patch null_jmp
+    in
 
-            let _ = check_box_rty cell in
-            let null_jmp = null_check cell in
-            let rc = box_rc_cell cell in
-            let _ = note_gc_step ty "severing GC slot" in
-              emit (Il.binary Il.SUB rc (Il.Cell rc) one);
-              mov cell zero;
-              patch null_jmp
+      match strip_mutable_or_constrained_ty ty with
+          Ast.TY_fn _
+        | Ast.TY_obj _ ->
+            if type_has_state ty
+            then
+              let binding = get_element_ptr cell Abi.binding_field_binding in
+                sever_box binding;
 
-        | MEM_interior when type_is_structured ty ->
-            iter_ty_parts ty_params cell ty
-              (sever_ty ty_params) curr_iso
+        | _ ->
+            match ty_mem_ctrl ty with
+                MEM_gc ->
+                  sever_box cell
 
-        | _ -> ()
-            (* No need to follow links / call glue; severing is shallow. *)
+              | MEM_interior when type_is_structured ty ->
+                  iter_ty_parts ty_params cell ty
+                    (sever_ty ty_params) curr_iso
+
+              | _ -> ()
+                  (* No need to follow links / call glue; severing is
+                     shallow. *)
 
   and clone_ty
       (ty_params:Il.cell)
