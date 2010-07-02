@@ -2189,6 +2189,23 @@ let trans_visitor
             atoms;
             mov (get_element_ptr vec Abi.vec_elt_fill) (Il.Cell fill);
 
+
+  and trans_init_box (dst:Ast.lval) (src:Ast.atom) : unit =
+    let src_op = trans_atom src in
+    let src_cell = Il.Mem (force_to_mem src_op) in
+    let src_ty = simplified_ty (atom_type cx src) in
+    let dst_sloti = lval_base_to_slot cx dst in
+    let dst_cell = cell_of_block_slot dst_sloti.id in
+    let dst_cell = deref_slot true dst_cell dst_sloti.node in
+    let dst_ty = slot_ty dst_sloti.node in
+    let (dst_cell, dst_ty) =
+      deref_ty DEREF_one_box true dst_cell dst_ty
+    in
+    let _ = assert (dst_ty = src_ty) in
+      trans_copy_ty (get_ty_params_of_current_frame()) true
+        dst_cell dst_ty src_cell src_ty None
+
+
   and get_dynamic_tydesc (idopt:node_id option) (t:Ast.ty) : Il.cell =
     let td = next_vreg_cell Il.voidptr_t in
     let root_desc =
@@ -4244,14 +4261,7 @@ let trans_visitor
           end
 
       | Ast.STMT_init_box (dst, src) ->
-          let sloti = lval_base_to_slot cx dst in
-          let dst_cell = cell_of_block_slot sloti.id in
-          let dst_cell = deref_slot true dst_cell sloti.node in
-          let ty = slot_ty sloti.node in
-          let (dst_cell, ty) = deref_ty DEREF_one_box true dst_cell ty in
-          let src_cell = need_cell (trans_atom src) in
-            trans_copy_ty (get_ty_params_of_current_frame()) true
-              dst_cell ty src_cell ty None;
+          trans_init_box dst src
 
       | Ast.STMT_block block ->
           trans_block block
