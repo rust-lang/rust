@@ -2147,8 +2147,8 @@ let ty_str (ty:Ast.ty) : string =
          ty_fold_native = (fun _ -> "N");
          ty_fold_param = (fun _ -> "P");
          ty_fold_type = (fun _ -> "Y");
-         ty_fold_mutable = (fun t -> "m" ^ t);
-         ty_fold_box = (fun t -> "e" ^ t);
+         ty_fold_mutable = (fun t -> "M" ^ t);
+         ty_fold_box = (fun t -> "B" ^ t);
 
          (* FIXME (issue #78): encode obj types. *)
          (* FIXME (issue #78): encode opaque and param numbers. *)
