@@ -2720,7 +2720,7 @@ let trans_visitor
       (curr_iso:Ast.ty_iso option)
       : unit =
     match slot.Ast.slot_mode with
-        Ast.MODE_alias
+        Ast.MODE_alias -> ()
           (* Aliases are always free to drop. *)
       | Ast.MODE_local ->
           drop_ty ty_params cell (slot_ty slot) curr_iso
