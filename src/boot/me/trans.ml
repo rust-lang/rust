@@ -1615,12 +1615,13 @@ let trans_visitor
           (get_element_ptr_dyn ty_params (deref cell)
              Abi.box_rc_slot_field_body)
       in
+      let body_ty = simplified_ty ty in
       let vr = next_vreg_cell Il.voidptr_t in
         lea vr body_mem;
-        note_drop_step ty "in free-glue, calling drop-glue on body";
+        note_drop_step body_ty "in free-glue, calling drop-glue on body";
         trace_word cx.ctxt_sess.Session.sess_trace_drop vr;
         trans_call_simple_static_glue
-          (get_drop_glue ty curr_iso) ty_params vr;
+          (get_drop_glue body_ty curr_iso) ty_params vr;
         note_drop_step ty "back in free-glue, calling free";
         trans_free cell is_gc;
         trace_str cx.ctxt_sess.Session.sess_trace_drop
@@ -2525,15 +2526,8 @@ let trans_visitor
 
             | MEM_interior when type_is_structured ty ->
                 note_drop_step ty "in structured-interior path of drop_ty";
-                (iflog (fun _ ->
-                          annotate ("drop interior memory " ^
-                                      (Fmt.fmt_to_str Ast.fmt_ty ty))));
-                let (mem, _) = need_mem_cell cell in
-                let vr = next_vreg_cell Il.voidptr_t in
-                  lea vr mem;
-                  trans_call_simple_static_glue
-                    (get_drop_glue ty curr_iso)
-                    ty_params vr
+                iter_ty_parts ty_params cell ty
+                  (drop_ty ty_params) curr_iso
 
             | MEM_interior ->
                 note_drop_step ty "in simple-interior path of drop_ty";
