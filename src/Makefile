@@ -325,7 +325,7 @@ TEST_XFAILS_X86 :=  test/run-pass/mlist-cycle.rs \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
                     test/run-pass/generic-fn-infer.rs \
-                    test/run-pass/generic-obj.rs \
+                    test/run-pass/generic-fn-twice.rs \
                     test/run-pass/generic-recursive-tag.rs \
                     test/run-pass/mutable-alias-vec.rs \
                     test/run-pass/mutable-vec-drop.rs \
@@ -372,6 +372,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       generic-drop-glue.rs \
                       generic-exterior-box.rs \
                       generic-fn-infer.rs \
+                      generic-fn-twice.rs \
                       generic-fn.rs \
                       generic-obj-with-derived-type.rs \
                       generic-obj.rs \

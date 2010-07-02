@@ -931,7 +931,7 @@ let pattern_resolving_visitor
         Ast.PAT_tag (lval, pats) ->
           let lval_nm = lval_to_name lval in
           let lval_id = lval_base_id lval in
-          let tag_ctor_id = lval_to_referent cx lval_id in
+          let tag_ctor_id = (lval_item cx lval).id in
             if referent_is_item cx tag_ctor_id
 
             (* FIXME (issue #76): we should actually check here that the

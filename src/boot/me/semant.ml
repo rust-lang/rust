@@ -432,15 +432,15 @@ let fn_output_ty (fn_ty:Ast.ty) : Ast.ty =
 (* name of tag constructor function -> name for indexing in the ty_tag *)
 let rec tag_ctor_name_to_tag_name (name:Ast.name) : Ast.name =
   match name with
-      Ast.NAME_base nb ->
-        begin
-          match nb with
-              Ast.BASE_ident _ -> name
-            | Ast.BASE_app (id, _) -> Ast.NAME_base (Ast.BASE_ident id)
-            | _ ->
-                bug () "tag_or_iso_ty_tup_by_name with non-tag-ctor name"
-        end
-    | Ast.NAME_ext (inner_name, _) -> tag_ctor_name_to_tag_name inner_name
+      Ast.NAME_base (Ast.BASE_ident _) -> name
+    | Ast.NAME_base (Ast.BASE_app (id, _)) ->
+        Ast.NAME_base (Ast.BASE_ident id)
+
+    | Ast.NAME_ext (_, Ast.COMP_ident id)
+    | Ast.NAME_ext (_, Ast.COMP_app (id, _)) ->
+        Ast.NAME_base (Ast.BASE_ident id)
+
+    | _ -> bug () "tag_or_iso_ty_tup_by_name with non-tag-ctor name"
 ;;
 
 let tag_or_iso_ty_tup_by_name (ty:Ast.ty) (name:Ast.name) : Ast.ty_tup =
