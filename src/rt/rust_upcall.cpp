@@ -328,11 +328,16 @@ upcall_malloc(rust_task *task, size_t nbytes, type_desc *td)
 {
     LOG_UPCALL_ENTRY(task);
 
+    task->dom->log(rust_log::UPCALL|rust_log::MEM,
+                   "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR ")"
+                   " with gc-chain head = 0x%" PRIxPTR,
+                   nbytes, td, task->gc_alloc_chain);
     void *p = task->malloc(nbytes, td);
     task->dom->log(rust_log::UPCALL|rust_log::MEM,
-                   "upcall malloc(%u) = 0x%" PRIxPTR
+                   "upcall malloc(%" PRIdPTR ", 0x%" PRIxPTR
+                   ") = 0x%" PRIxPTR
                    " with gc-chain head = 0x%" PRIxPTR,
-                   nbytes, (uintptr_t)p, task->gc_alloc_chain);
+                   nbytes, td, (uintptr_t)p, task->gc_alloc_chain);
     return (uintptr_t) p;
 }
 
