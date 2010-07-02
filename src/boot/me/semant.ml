@@ -1198,6 +1198,23 @@ let lval_is_direct_mod (cx:ctxt) (lval:Ast.lval) : bool =
         | _ -> false
 ;;
 
+(* 
+ * FIXME: this function is a bad idea and exists only as a workaround
+ * for other logic that is even worse. Untangle.
+ *)
+let rec project_lval_ty_from_slot (cx:ctxt) (lval:Ast.lval) : Ast.ty =
+  match lval with
+      Ast.LVAL_base nbi ->
+        let referent = lval_to_referent cx nbi.id in
+          if lval_is_slot cx lval
+          then slot_ty (get_slot cx referent)
+          else Hashtbl.find cx.ctxt_all_item_types nbi.id
+    | Ast.LVAL_ext (base, comp) ->
+        let base_ty = project_lval_ty_from_slot cx base in
+          project_type base_ty comp
+;;
+
+
 let lval_ty (cx:ctxt) (lval:Ast.lval) : Ast.ty =
   (*
     FIXME: The correct definition of this function is just: 
@@ -1210,19 +1227,7 @@ let lval_ty (cx:ctxt) (lval:Ast.lval) : Ast.ty =
   *)
   match htab_search cx.ctxt_all_lval_types (lval_base_id lval) with
       Some t -> t
-    | None ->
-        let rec type_of (lval:Ast.lval) : Ast.ty =
-          match lval with
-              Ast.LVAL_base nbi ->
-                let referent = lval_to_referent cx nbi.id in
-                  if lval_is_slot cx lval
-                  then slot_ty (get_slot cx referent)
-                  else Hashtbl.find cx.ctxt_all_item_types nbi.id
-            | Ast.LVAL_ext (base, comp) ->
-                let base_ty = type_of base in
-                  project_type base_ty comp
-        in
-          type_of lval
+    | None -> project_lval_ty_from_slot cx lval
 ;;
 
 let lval_is_static (cx:ctxt) (lval:Ast.lval) : bool =
@@ -1239,7 +1244,7 @@ let lval_is_obj_vtbl (cx:ctxt) (lval:Ast.lval) : bool =
     match lval with
         Ast.LVAL_ext (base, _) ->
           begin
-            match lval_ty cx base with
+            match (simplified_ty (project_lval_ty_from_slot cx base)) with
                 Ast.TY_obj _ -> true
               | _ -> false
           end
