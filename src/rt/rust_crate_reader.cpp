@@ -258,10 +258,16 @@ rust_crate_reader::die::die(die_reader *rdr, uintptr_t off)
     dom->get_log().outdent();
   } else {
     ab = rdr->abbrevs.get_abbrev(ab_idx);
-    dom->log(rust_log::DWARF, "DIE <0x%" PRIxPTR "> abbrev 0x%"
-             PRIxPTR, off, ab_idx);
-    dom->log(rust_log::DWARF, "  tag 0x%x, has children: %d",
-             ab->tag, ab->has_children);
+    if (!ab) {
+        dom->log(rust_log::DWARF, "  bad abbrev number: 0x%"
+                 PRIxPTR, ab_idx);
+        rdr->fail();
+    } else {
+        dom->log(rust_log::DWARF, "DIE <0x%" PRIxPTR "> abbrev 0x%"
+                 PRIxPTR, off, ab_idx);
+        dom->log(rust_log::DWARF, "  tag 0x%x, has children: %d",
+                 ab->tag, ab->has_children);
+    }
   }
 }
 
