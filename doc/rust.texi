@@ -6,15 +6,23 @@
 @c %**end of header
 
 @syncodeindex fn cp
+@include version.texi
 
 @ifinfo
 This manual is for the ``Rust'' programming language.
+
+
+@uref{http://github.com/graydon/rust}
+
+Version: @gitversion
+
 
 Copyright 2006-2010 Graydon Hoare
 
 Copyright 2009-2010 Mozilla Foundation
 
-All rights reserved (for the time being).
+See accompanying LICENSE.txt for terms.
+
 @end ifinfo
 
 @dircategory Programming
@@ -30,12 +38,23 @@ All rights reserved (for the time being).
 
 @page
 @vskip 0pt plus 1filll
+
+
+@uref{http://github.com/graydon/rust}
+
+Version: @gitversion
+
+@sp 2
+
 Copyright @copyright{} 2006-2010 Graydon Hoare
 
 Copyright @copyright{} 2009-2010 Mozilla Foundation
 
 See accompanying LICENSE.txt for terms.
+
 @end titlepage
+
+@everyfooting @| @emph{-- Draft @today --} @|
 
 @ifnottex
 @node Top

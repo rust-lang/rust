@@ -209,7 +209,7 @@ endif
 # List them in link order.
 # Nobody calculates the link-order DAG automatically, sadly.
 
-UTIL_BOT_MLS := $(addprefix boot/util/, fmt.ml common.ml bits.ml)
+UTIL_BOT_MLS := $(addprefix boot/util/, version.ml fmt.ml common.ml bits.ml)
 DRIVER_BOT_MLS := $(addprefix boot/driver/, session.ml)
 BE_MLS := $(addprefix boot/be/, x86.ml ra.ml pe.ml elf.ml \
           macho.ml)
@@ -256,10 +256,16 @@ STDLIB_INPUTS := $(wildcard lib/*.rc lib/*.rs lib/*/*.rs)
 COMPILER_CRATE := comp/rustc.rc
 COMPILER_INPUTS := $(wildcard comp/*.rc comp/*.rs comp/*/*.rs)
 
-all: $(CFG_COMPILER) $(MKFILES) boot/fe/lexer.ml
+GENERATED := boot/fe/lexer.ml boot/util/version.ml
+
+all: $(CFG_COMPILER) $(MKFILES) $(GENERATED)
+
+boot/util/version.ml: Makefile
+	$(CFG_QUIET)git log -1 \
+      --format='let version = "prerelease (%h %ci)";;' >$@
 
 loc:
-	wc -l $(BOOT_MLS) $(RUNTIME_CS) $(RUNTIME_HDR)
+	$(CFG_QUIET)wc -l $(BOOT_MLS) $(RUNTIME_CS) $(RUNTIME_HDR)
 
 $(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR)
 	@$(call CFG_ECHO, compile: $<)
@@ -742,7 +748,7 @@ tidy:
 	$(CFG_QUIET) python etc/tidy.py \
       $(wildcard ../*.txt) \
       ../README \
-      $(filter-out boot/fe/lexer.ml $(PKG_3RDPARTY), $(PKG_FILES))
+      $(filter-out $(GENERATED) $(PKG_3RDPARTY), $(PKG_FILES))
 
 clean:
 	@$(call CFG_ECHO, cleaning)
@@ -750,7 +756,7 @@ clean:
 	$(CFG_QUIET)rm -f $(BOOT_CMOS) $(BOOT_CMIS) $(BOOT_CMXS) $(BOOT_OBJS)
 	$(CFG_QUIET)rm -f $(CFG_COMPILER)
 	$(CFG_QUIET)rm -f $(ML_DEPFILES) $(C_DEPFILES) $(CRATE_DEPFILES)
-	$(CFG_QUIET)rm -f boot/fe/lexer.ml
+	$(CFG_QUIET)rm -f $(GENERATED)
 	$(CFG_QUIET)rm -f $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
 	$(CFG_QUIET)rm -f $(TEST_RPASS_EXES_X86) $(TEST_RPASS_OUTS_X86)
 	$(CFG_QUIET)rm -f $(TEST_RPASS_EXES_LLVM) $(TEST_RPASS_OUTS_LLVM)

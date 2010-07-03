@@ -2238,7 +2238,7 @@ let dwarf_visitor
       (SEQ [|
          uleb abbrev_code;
          (* DW_AT_producer:  DW_FORM_string *)
-         ZSTRING "Rustboot pre-release";
+         ZSTRING ("Rustboot " ^ Version.version);
          (* DW_AT_language:  DW_FORM_data4 *)
          WORD (word_ty_mach, IMM 0x2L);     (* DW_LANG_C *)
          (* DW_AT_name:  DW_FORM_string *)

@@ -1,10 +1,14 @@
 
 all: rust.pdf rust.html
 
-%.pdf: %.texi
+version.texi: Makefile
+	git log -1 \
+      --format='@macro gitversion%n%h %ci%n@end macro%n' >$@
+
+%.pdf: %.texi version.texi
 	texi2pdf $<
 
-%.html: %.texi
+%.html: %.texi version.texi
 	makeinfo --html --ifhtml --force --no-split --output=$@ $<
 
 clean:

@@ -118,6 +118,11 @@ let dump_meta (filename:filename) : unit =
   exit 0
 ;;
 
+let print_version _ =
+  Printf.fprintf stdout "rustboot %s\n" Version.version;
+  exit 0;
+;;
+
 let flag f opt desc =
   (opt, Arg.Unit f, desc)
 ;;
@@ -206,6 +211,8 @@ let argspecs =
      "report metadata from DWARF info in compiled file, then exit");
     ("-rdeps", Arg.Unit (fun _ -> sess.Session.sess_report_deps <- true),
      "report dependencies of input, then exit");
+    ("-version", Arg.Unit (fun _ -> print_version()),
+     "print version information, then exit");
   ] @ (Glue.alt_argspecs sess)
 ;;
 
