@@ -216,7 +216,7 @@ let iter_tup_parts
     (get_element_ptr:'a -> int -> 'a)
     (dst_ptr:'a)
     (src_ptr:'a)
-    (slots:Ast.ty_tup)
+    (tys:Ast.ty_tup)
     (f:'a -> 'a -> Ast.ty -> (Ast.ty_iso option) -> unit)
     (curr_iso:Ast.ty_iso option)
     : unit =
@@ -227,7 +227,7 @@ let iter_tup_parts
           (get_element_ptr src_ptr i)
           ty curr_iso
     end
-    slots
+    tys
 ;;
 
 let iter_rec_parts
