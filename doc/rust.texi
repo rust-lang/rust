@@ -1352,7 +1352,8 @@ channel is equal to the message type of the port it is bound to.
 
 Messages are sent asynchronously or semi-synchronously. A channel contains a
 message queue and asynchronously sending a message merely inserts it into the
-channel's queue; message receipt is the responsibility of the receiving task.
+sending channel's queue; message receipt is the responsibility of the
+receiving task.
 
 Queued messages in channels are charged to the domain of the @emph{sending}
 task. If too many messages are queued for transmission from a single sending
@@ -1399,12 +1400,20 @@ un-trapped signal or the execution of a @code{fail} statement. Once
 @emph{failing}, a task unwinds its stack and transitions to the @emph{dead}
 state. Unwinding the stack of a task is done by the task itself, on its own
 control stack. If a value with a destructor is freed during unwinding, the
-code for the destructor is run, also on the task's control stack. If the
-destructor code causes any subsequent state transitions, the task of unwinding
-and failing may suspend temporarily, and may involve (recursive) unwinding of
-the stack of a failed destructor. Nonetheless, the outermost unwinding
-activity will continue until the stack is unwound and the task transitions to
-the @emph{dead} state. There is no way to ``recover'' from task failure.
+code for the destructor is run, also on the task's control
+stack. Running the destructor code causes a temporary transition to a
+@emph{running} state, and allows the destructor code to cause any
+subsequent state transitions.  The original task of unwinding and
+failing thereby may suspend temporarily, and may involve (recursive)
+unwinding of the stack of a failed destructor. Nonetheless, the
+outermost unwinding activity will continue until the stack is unwound
+and the task transitions to the @emph{dead} state. There is no way to
+``recover'' from task failure.  Once a task has temporarily suspended
+its unwinding in the @emph{failing} state, failure occurring from
+within this destructor results in @emph{hard} failure.  The unwinding
+procedure of hard failure frees resources but does not execute
+destructors.  The original (soft) failure is still resumed at the
+point where it was temporarily suspended.
 
 A task in the @emph{dead} state cannot transition to other states; it exists
 only to have its termination status inspected by other tasks, and/or to await
@@ -1454,7 +1463,7 @@ An @dfn{item} is a component of a module. Items are entirely determined at
 compile-time, remain constant during execution, and may reside in read-only
 memory.
 
-There are 5 primary kinds of item: modules, functions, iterators, objects and
+There are five primary kinds of item: modules, functions, iterators, objects and
 types.
 
 All items form an implicit scope for the declaration of sub-items. In other
