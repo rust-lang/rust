@@ -430,6 +430,11 @@ let arr_map2 (f:'a -> 'b -> 'c) (a:'a array) (b:'b array) : 'c array =
   Array.init (Array.length a) (fun i -> f a.(i) b.(i))
 ;;
 
+let arr_iter2 (f:'a -> 'b -> unit) (a:'a array) (b:'b array) : unit =
+  assert ((Array.length a) = (Array.length b));
+  Array.iteri (fun i a_elem -> f a_elem b.(i)) a
+;;
+
 let arr_for_all (f:int -> 'a -> bool) (a:'a array) : bool =
   let len = Array.length a in
   let rec loop i =
