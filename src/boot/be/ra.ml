@@ -434,7 +434,8 @@ let reg_alloc
           then
             begin
               Hashtbl.remove dirty_vregs vreg;
-              if (Bits.get (live_out_vregs.(i)) vreg)
+              if (Bits.get (live_out_vregs.(i)) vreg) ||
+                (Bits.get (live_in_vregs.(i)) vreg)
               then
                 let spill_idx =
                   if Hashtbl.mem vreg_to_spill vreg
