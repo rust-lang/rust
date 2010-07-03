@@ -2321,7 +2321,7 @@ let trans_visitor
 
 
   and seq_unit_ty (seq:Ast.ty) : Ast.ty =
-    match seq with
+    match simplified_ty seq with
         Ast.TY_vec t -> t
       | Ast.TY_str -> Ast.TY_mach TY_u8
       | _ -> bug () "seq_unit_ty of non-vec, non-str type"
@@ -2386,7 +2386,7 @@ let trans_visitor
      * rec, tag or tup slots that fit in a vreg. It requires 
      * addrs presently.
      *)
-    match ty with
+    match strip_mutable_or_constrained_ty ty with
         Ast.TY_rec entries ->
           iter_rec_parts
             (get_element_ptr_dyn ty_params) dst_cell src_cell
@@ -3030,6 +3030,7 @@ let trans_visitor
       (src:Ast.expr)
       : unit =
     let (dst_cell, dst_ty) = trans_lval_maybe_init initializing dst in
+    let dst_ty = strip_mutable_or_constrained_ty dst_ty in
     let rec can_append t =
       match t with
           Ast.TY_vec _
