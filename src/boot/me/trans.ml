@@ -28,7 +28,7 @@ type call =
 ;;
 
 let need_ty_fn ty =
-  match ty with
+  match simplified_ty ty with
       Ast.TY_fn tfn -> tfn
     | _ -> bug () "need fn"
 ;;
@@ -2242,7 +2242,7 @@ let trans_visitor
 
   and get_tydesc (idopt:node_id option) (ty:Ast.ty) : Il.cell =
     log cx "getting tydesc for %a" Ast.sprintf_ty ty;
-    match ty with
+    match simplified_ty ty with
         Ast.TY_param (idx, _) ->
           (get_ty_param_in_current_frame idx)
       | t when has_parametric_types t ->
@@ -2438,6 +2438,7 @@ let trans_visitor
       (curr_iso:Ast.ty_iso option)
       : unit =
 
+    let ty = strip_mutable_or_constrained_ty ty in
     let ty = maybe_iso curr_iso ty in
     let curr_iso = maybe_enter_iso ty curr_iso in
     let mctrl = ty_mem_ctrl ty in
@@ -2556,8 +2557,9 @@ let trans_visitor
         mov c zero;
         patch null_jmp
     in
+    let ty = strip_mutable_or_constrained_ty ty in
 
-      match strip_mutable_or_constrained_ty ty with
+      match ty with
           Ast.TY_fn _
         | Ast.TY_obj _ ->
             if type_has_state ty
@@ -2662,6 +2664,7 @@ let trans_visitor
       (ty:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : unit =
+    let ty = strip_mutable_or_constrained_ty ty in
     match ty_mem_ctrl ty with
         MEM_gc ->
           let tmp = next_vreg_cell Il.voidptr_t in
