@@ -1589,8 +1589,9 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
           let _ =
             iflog cx
               (fun _ ->
-                 log cx "recording resolved lval #%d type %a"
+                 log cx "recording resolved lval #%d = %a type %a"
                    (int_of_node id)
+                   Ast.sprintf_lval (Hashtbl.find cx.ctxt_all_lvals id)
                    Ast.sprintf_ty ty)
           in
             Hashtbl.add cx.ctxt_all_lval_types id ty
