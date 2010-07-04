@@ -2434,6 +2434,7 @@ let trans_visitor
       match ty with
 
           Ast.TY_fn _ ->
+            note_drop_step ty "drop_ty: fn path";
             let binding = get_element_ptr cell Abi.binding_field_binding in
             let null_jmp = null_check binding in
               (* Drop non-null bindings. *)
@@ -2442,9 +2443,11 @@ let trans_visitor
                * and will leak closures with box substructure.
                *)
               drop_ty ty_params binding (Ast.TY_box Ast.TY_int) curr_iso;
-              patch null_jmp
+              patch null_jmp;
+              note_drop_step ty "drop_ty: done fn path";
 
         | Ast.TY_obj _ ->
+            note_drop_step ty "drop_ty: obj path";
             let binding = get_element_ptr cell Abi.binding_field_binding in
             let null_jmp = null_check binding in
             let obj = deref binding in
@@ -2460,30 +2463,34 @@ let trans_visitor
             in
             let null_dtor_jmp = null_check dtor in
               (* Call any dtor, if present. *)
+            note_drop_step ty "drop_ty: calling obj dtor";
             trans_call_dynamic_glue tydesc
               Abi.tydesc_field_obj_drop_glue None [| binding |];
             patch null_dtor_jmp;
             (* Drop the body. *)
+            note_drop_step ty "drop_ty: dropping obj body";
             trans_call_dynamic_glue tydesc
               Abi.tydesc_field_drop_glue None [| ty_params; alias body |];
             (* FIXME: this will fail if the user has lied about the
              * state-ness of their obj. We need to store state-ness in the
              * captured tydesc, and use that.  *)
+            note_drop_step ty "drop_ty: freeing obj body";
             trans_free binding (type_has_state ty);
             mov binding zero;
             patch rc_jmp;
-            patch null_jmp
+            patch null_jmp;
+            note_drop_step ty "drop_ty: done obj path";
 
 
       | Ast.TY_param (i, _) ->
-          iflog (fun _ -> annotate
-                   (Printf.sprintf "drop_ty: parametric drop %#d" i));
+          note_drop_step ty "drop_ty: parametric-ty path";
           aliasing false cell
             begin
               fun cell ->
                 trans_call_simple_dynamic_glue
                   i Abi.tydesc_field_drop_glue ty_params cell
-            end
+            end;
+          note_drop_step ty "drop_ty: done parametric-ty path";
 
       | _ ->
           match mctrl with
@@ -2491,7 +2498,7 @@ let trans_visitor
             | MEM_rc_opaque
             | MEM_rc_struct ->
 
-                note_drop_step ty "in box-drop path of drop_ty";
+                note_drop_step ty "drop_ty: box-drop path";
 
                 let _ = check_box_rty cell in
                 let null_jmp = null_check cell in
@@ -2511,15 +2518,18 @@ let trans_visitor
                    *)
                   mov cell zero;
                   patch j;
-                  patch null_jmp
+                  patch null_jmp;
+                  note_drop_step ty "drop_ty: done box-drop path";
 
             | MEM_interior when type_is_structured ty ->
-                note_drop_step ty "in structured-interior path of drop_ty";
+                note_drop_step ty "drop:ty structured-interior path";
                 iter_ty_parts ty_params cell ty
-                  (drop_ty ty_params) curr_iso
+                  (drop_ty ty_params) curr_iso;
+                note_drop_step ty "drop_ty: done structured-interior path";
+
 
             | MEM_interior ->
-                note_drop_step ty "in simple-interior path of drop_ty";
+                note_drop_step ty "drop_ty: no-op simple-interior path";
                 (* Interior allocation of all-interior value not caught above:
                  * nothing to do.
                  *)
