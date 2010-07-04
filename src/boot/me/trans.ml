@@ -1089,6 +1089,9 @@ let trans_visitor
       begin
         fun _ ->
           let tydesc_fixup = new_fixup "tydesc" in
+          let fix fixup =
+            fixup_rel_word tydesc_fixup fixup
+          in
           log cx "tydesc for %a has sz=%Ld, align=%Ld"
             Ast.sprintf_ty t sz align;
             Asm.DEF
@@ -1098,14 +1101,17 @@ let trans_visitor
                    Asm.WORD (word_ty_mach, Asm.IMM 0L);
                    Asm.WORD (word_ty_mach, Asm.IMM sz);
                    Asm.WORD (word_ty_mach, Asm.IMM align);
-                   table_of_fixup_rel_fixups tydesc_fixup
-                     [|
-                       get_copy_glue t None;
-                       get_drop_glue t None;
-                       get_free_glue t (type_has_state t) None;
-                       get_sever_glue t None;
-                       get_mark_glue t None;
-                     |];
+                   fix (get_copy_glue t None);
+                   fix (get_drop_glue t None);
+                   begin
+                     match ty_mem_ctrl t with
+                         MEM_interior ->
+                           Asm.WORD (word_ty_mach, Asm.IMM 0L);
+                       | _ ->
+                           fix (get_free_glue t (type_has_state t) None);
+                   end;
+                   fix (get_sever_glue t None);
+                   fix (get_mark_glue t None);
                    (* Include any obj-dtor, if this is an obj and has one. *)
                    begin
                      match idopt with
@@ -1114,10 +1120,7 @@ let trans_visitor
                            begin
                              let g = GLUE_obj_drop oid in
                                match htab_search cx.ctxt_glue_code g with
-                                   Some code ->
-                                     fixup_rel_word
-                                       tydesc_fixup
-                                       code.code_fixup;
+                                   Some code -> fix code.code_fixup
                                  | None ->
                                      Asm.WORD (word_ty_mach, Asm.IMM 0L);
                            end
@@ -1610,25 +1613,10 @@ let trans_visitor
        *)
       let ty_params = deref (get_element_ptr args 0) in
       let cell = get_element_ptr args 1 in
-      let (body_mem, _) =
-        need_mem_cell
-          (get_element_ptr_dyn ty_params (deref cell)
-             Abi.box_rc_slot_field_body)
-      in
-      let body_ty = simplified_ty ty in
-      let vr = next_vreg_cell Il.voidptr_t in
-        lea vr body_mem;
-        note_drop_step body_ty "in free-glue, calling drop-glue on body";
-        trace_word cx.ctxt_sess.Session.sess_trace_drop vr;
-        trans_call_simple_static_glue
-          (get_drop_glue body_ty curr_iso) ty_params vr;
-        note_drop_step ty "back in free-glue, calling free";
-        trans_free cell is_gc;
-        trace_str cx.ctxt_sess.Session.sess_trace_drop
-          "free-glue complete";
+        free_ty is_gc ty_params ty cell curr_iso
     in
     let ty_params_ptr = ty_params_covering ty in
-    let fty = mk_simple_ty_fn [| ty_params_ptr; box_slot ty |] in
+    let fty = mk_simple_ty_fn [| ty_params_ptr; local_slot ty |] in
       get_typed_mem_glue g fty inner
 
 
@@ -2514,13 +2502,9 @@ let trans_visitor
                    * further box members; if it doesn't we can elide the
                    * call to the glue function.  *)
 
-                  if mctrl = MEM_rc_opaque
-                  then
-                    free_ty false ty_params ty cell curr_iso
-                  else
-                    trans_call_simple_static_glue
-                      (get_free_glue ty (mctrl = MEM_gc) curr_iso)
-                      ty_params cell;
+                  trans_call_simple_static_glue
+                    (get_free_glue ty (mctrl = MEM_gc) curr_iso)
+                    ty_params cell;
 
                   (* Null the slot out to prevent double-free if the frame
                    * unwinds.
@@ -2618,16 +2602,36 @@ let trans_visitor
       (cell:Il.cell)
       (curr_iso:Ast.ty_iso option)
       : unit =
+    check_box_rty cell;
+    note_drop_step ty "in free-ty";
+    begin
     match simplified_ty ty with
         Ast.TY_port _ -> trans_del_port cell
       | Ast.TY_chan _ -> trans_del_chan cell
       | Ast.TY_task -> trans_kill_task cell
+      | Ast.TY_str -> trans_free cell false
       | Ast.TY_vec s ->
           iter_seq_parts ty_params cell cell s
             (fun _ src ty iso -> drop_ty ty_params src ty iso) curr_iso;
           trans_free cell is_gc
 
-      | _ -> trans_free cell is_gc
+      | _ ->
+          note_drop_step ty "in free-ty, dropping structured body";
+          let (body_mem, _) =
+            need_mem_cell
+              (get_element_ptr_dyn ty_params (deref cell)
+                 Abi.box_rc_slot_field_body)
+          in
+          let body_ty = simplified_ty ty in
+          let vr = next_vreg_cell Il.voidptr_t in
+            lea vr body_mem;
+            trace_word cx.ctxt_sess.Session.sess_trace_drop vr;
+            trans_call_simple_static_glue
+              (get_drop_glue body_ty curr_iso) ty_params vr;
+            note_drop_step ty "in free-ty, calling free";
+            trans_free cell is_gc;
+    end;
+    note_drop_step ty "free-ty done";
 
   and maybe_iso
       (curr_iso:Ast.ty_iso option)
