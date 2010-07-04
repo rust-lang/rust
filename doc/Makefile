@@ -17,4 +17,5 @@ snap: rust.pdf
 
 clean:
 	rm -f rust.aux rust.cp rust.fn rust.ky rust.log rust.pdf \
-          rust.html rust.pg rust.toc rust.tp rust.vr
+          rust.html rust.pg rust.toc rust.tp rust.vr rust.cps \
+          version.texi
