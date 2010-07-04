@@ -2893,11 +2893,6 @@ let trans_visitor
       iflog
         begin
           fun _ ->
-            log cx "trans_copy_ty";
-            log cx "   dst ty %a, src ty %a"
-              Ast.sprintf_ty dst_ty Ast.sprintf_ty src_ty;
-            log cx "   dst cell %s, src cell %s"
-              (cell_str dst) (cell_str src);
             annotate
               (Printf.sprintf "%sweight copy: %a <- %a"
                  weight
@@ -2905,6 +2900,15 @@ let trans_visitor
                  Ast.sprintf_ty src_ty)
         end;
     in
+      iflog
+        begin
+          fun _ ->
+            log cx "trans_copy_ty";
+            log cx "   dst ty %a, src ty %a"
+              Ast.sprintf_ty dst_ty Ast.sprintf_ty src_ty;
+            log cx "   dst cell %s, src cell %s"
+              (cell_str dst) (cell_str src);
+        end;
       assert (simplified_ty src_ty = simplified_ty dst_ty);
       match (ty_mem_ctrl src_ty, ty_mem_ctrl dst_ty) with
 
@@ -3198,11 +3202,11 @@ let trans_visitor
                     (get_element_ptr_dyn_in_current_frame dst i)
                     dst_ty atom
               | None ->
-                  let (src, src_ty) = trans_lval base in
+                  let (src, _) = trans_lval base in
                     trans_copy_ty
                       (get_ty_params_of_current_frame()) true
                       (get_element_ptr_dyn_in_current_frame dst i) dst_ty
-                      (get_element_ptr_dyn_in_current_frame src i) src_ty
+                      (get_element_ptr_dyn_in_current_frame src i) dst_ty
                       None
       end
       trec
