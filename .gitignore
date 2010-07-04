@@ -16,6 +16,7 @@
 *.cp
 *.fn
 *.ky
+*.cps
 *.log
 *.pdf
 *.html
@@ -29,3 +30,5 @@ lexer.ml
 rustboot
 rustc
 TAGS
+version.ml
+version.texi
