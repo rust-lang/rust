@@ -1342,7 +1342,10 @@ let trans_visitor
       abi.Abi.abi_emit_fn_prologue (emitter())
         framesz callsz nabi_rust (upcall_fixup "upcall_grow_task");
       write_frame_info_ptrs None;
-      check_interrupt_flag ();
+      (* FIXME: not clear why, but checking interrupt in glue context
+       * causes many.rs to crash when run on a sufficiently large number
+       * of tasks; possibly a weird interaction with growing? *)
+      (* check_interrupt_flag (); *)
       iflog (fun _ -> annotate "finished prologue");
 
   and emitted_quads e =
