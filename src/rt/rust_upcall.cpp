@@ -262,7 +262,7 @@ upcall_recv(rust_task *task, uintptr_t *dptr, rust_port *port)
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
     dom->log(rust_log::UPCALL|rust_log::COMM,
-             "upcall recv(dptr=0x" PRIxPTR ", port=0x%" PRIxPTR ")",
+             "upcall recv(dptr=0x%" PRIxPTR ", port=0x%" PRIxPTR ")",
              (uintptr_t)dptr,
              (uintptr_t)port);
 
