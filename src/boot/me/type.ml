@@ -1192,7 +1192,9 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         | Ast.STMT_log atom ->
             begin
               match atom with
-                  Ast.ATOM_lval lv -> set_auto_deref lv true
+                  Ast.ATOM_lval lv ->
+                    unify_lval rval_ctx lv (any());
+                    set_auto_deref lv true
                 | _ -> ()
             end
 
