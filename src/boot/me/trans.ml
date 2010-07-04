@@ -3026,7 +3026,7 @@ let trans_visitor
                      * through to the binding's self-copy fptr. For now
                      * this only works by accident.
                      *)
-                    trans_copy_ty ty_params false
+                    trans_copy_ty ty_params initializing
                       dst_binding (Ast.TY_box Ast.TY_int)
                       src_binding (Ast.TY_box Ast.TY_int)
                       curr_iso;
