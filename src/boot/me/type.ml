@@ -1068,7 +1068,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
                       TYSPEC_dictionary names
 
                 | Ast.COMP_named (Ast.COMP_idx i) ->
-                    let init j = if i + 1 == j then tv else ref TYSPEC_all in
+                    let init j = if i = j then tv else ref TYSPEC_all in
                       TYSPEC_tuple (Array.init (i + 1) init)
 
                 | Ast.COMP_atom atom ->
