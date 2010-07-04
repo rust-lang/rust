@@ -364,7 +364,7 @@ let trans_visitor
     match src with
         Il.Cell (Il.Mem ta) -> ta
       | Il.Cell (Il.Reg (_, t)) -> do_spill src t
-      | Il.Imm _ -> do_spill src (Il.ValTy word_bits)
+      | Il.Imm (_,tm) -> do_spill src (Il.ValTy (Il.bits_of_ty_mach tm))
       | Il.ImmPtr (f, rty) ->
           do_spill
             (Il.Cell (crate_rel_to_ptr (crate_rel_imm f) rty))
