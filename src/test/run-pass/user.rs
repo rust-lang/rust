@@ -5,10 +5,10 @@ use std (name = "std",
          uuid = _, ver = _);
 
 fn main() {
-  auto s = std._str.alloc(10);
+  auto s = std._str.alloc(uint(10));
   s += "hello ";
   log s;
   s += "there";
   log s;
-  auto z = std._vec.alloc[int](10);
+  auto z = std._vec.alloc[int](uint(10));
 }

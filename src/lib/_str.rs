@@ -4,13 +4,13 @@ native "rust" mod rustrt {
   type sbuf;
   fn str_buf(str s) -> sbuf;
   fn str_len(str s) -> uint;
-  fn str_alloc(int n_bytes) -> str;
+  fn str_alloc(uint n_bytes) -> str;
 }
 
 fn is_utf8(vec[u8] v) -> bool {
 }
 
-fn alloc(int n_bytes) -> str {
+fn alloc(uint n_bytes) -> str {
   ret rustrt.str_alloc(n_bytes);
 }
 
