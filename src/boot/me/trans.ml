@@ -3999,8 +3999,9 @@ let trans_visitor
 
   and trans_for_loop (fo:Ast.stmt_for) : unit =
     let ty_params = get_ty_params_of_current_frame () in
-    let (dst_slot, _) = fo.Ast.for_slot in
-    let dst_cell = cell_of_block_slot dst_slot.id in
+    let dst_slot_id = (fst (fo.Ast.for_slot)).id in
+    let dst_slot = get_slot cx dst_slot_id in
+    let dst_cell = cell_of_block_slot dst_slot_id in
     let (head_stmts, seq) = fo.Ast.for_seq in
     let (seq_cell, seq_ty) = trans_lval seq in
     let unit_ty = seq_unit_ty seq_ty in
@@ -4010,7 +4011,7 @@ let trans_visitor
           fun _ src_cell unit_ty _ ->
             trans_init_slot_from_cell
               ty_params CLONE_none
-              dst_cell dst_slot.node
+              dst_cell dst_slot
               src_cell unit_ty;
             trans_block fo.Ast.for_body;
         end
