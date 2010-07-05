@@ -1,5 +1,6 @@
 
 #include "rust_internal.h"
+#include "valgrind.h"
 
 // The mechanism in this file is very crude; every domain (thread) spawns its
 // own secondary timer thread, and that timer thread *never idles*. It
@@ -32,11 +33,15 @@ timer_loop(void *ptr)
     rust_timer *timer = (rust_timer *)ptr;
     rust_dom &dom = timer->dom;
     dom.log(rust_log::TIMER, "in timer 0x%" PRIxPTR, (uintptr_t)timer);
+    size_t ms = TIME_SLICE_IN_MS;
+    if (!RUNNING_ON_VALGRIND)
+        ms = 1;
+
     while (!timer->exit_flag) {
 #if defined(__WIN32__)
-        Sleep(TIME_SLICE_IN_MS);
+        Sleep(ms);
 #else
-        usleep(TIME_SLICE_IN_MS * 1000);
+        usleep(ms * 1000);
 #endif
         dom.log(rust_log::TIMER,
                 "timer 0x%" PRIxPTR
@@ -65,6 +70,9 @@ rust_timer::rust_timer(rust_dom &dom) : dom(dom), exit_flag(0)
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     pthread_create(&thread, &attr, timer_loop, (void *)this);
 #endif
+    if (RUNNING_ON_VALGRIND) {
+        usleep(10000);
+    }
 }
 
 rust_timer::~rust_timer()

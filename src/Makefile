@@ -483,9 +483,6 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
 ifdef CFG_WINDOWSY
 TEST_XFAILS_X86 += test/run-pass/native-mod.rc
 TEST_XFAILS_LLVM += test/run-pass/native-mod.rc
-else
-TEST_XFAILS_X86 += test/run-pass/preempt.rs
-TEST_XFAILS_LLVM += test/run-pass/preempt.rs
 endif
 
 RPASS_RC := $(wildcard test/run-pass/*.rc)
