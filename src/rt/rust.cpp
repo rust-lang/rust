@@ -167,7 +167,7 @@ command_line_args
 #if defined(__WIN32__)
         LPCWSTR cmdline = GetCommandLineW();
         LPWSTR *wargv = CommandLineToArgvW(cmdline, &argc);
-        dom.win32_require("CommandLineToArgvW", argv != NULL);
+        dom.win32_require("CommandLineToArgvW", wargv != NULL);
         argv = (char **) dom.malloc(sizeof(char*) * argc);
         for (int i = 0; i < argc; ++i) {
             int n_chars = WideCharToMultiByte(CP_UTF8, 0, wargv[i], -1,
