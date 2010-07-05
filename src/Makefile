@@ -480,6 +480,10 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       infinite-vec-type-recursion.rs \
                      )
 
+ifdef MINGW_CROSS
+TEST_XFAILS_X86 += test/run-pass/native-mod.rc
+TEST_XFAILS_LLVM += test/run-pass/native-mod.rc
+endif
 ifdef CFG_WINDOWSY
 TEST_XFAILS_X86 += test/run-pass/native-mod.rc
 TEST_XFAILS_LLVM += test/run-pass/native-mod.rc
