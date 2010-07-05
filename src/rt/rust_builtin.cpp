@@ -119,7 +119,7 @@ vec_buf(rust_task *task, type_desc *ty, rust_vec *v)
 extern "C" CDECL size_t
 vec_len(rust_task *task, type_desc *ty, rust_vec *v)
 {
-    return v->fill;
+    return v->fill / ty->size;
 }
 
 //
