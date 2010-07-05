@@ -1,8 +1,8 @@
 type option[T] = tag(none(), some(T));
 
-type map[T, U] = fn(&T) -> U;
+type operator[T, U] = fn(&T) -> U;
 
-fn option_map[T, U](map[T, U] f, &option[T] opt) -> option[U] {
+fn option_map[T, U](&operator[T, U] f, &option[T] opt) -> option[U] {
   alt (opt) {
     case (some[T](x)) {
       ret some[U](f[T, U](x));
