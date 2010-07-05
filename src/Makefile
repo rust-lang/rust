@@ -45,10 +45,6 @@ ifeq ($(CFG_OSTYPE), Linux)
   endif
 endif
 
-ifdef NO_VALGRIND
-    CFG_VALGRIND :=
-endif
-
 ifeq ($(CFG_OSTYPE), Darwin)
   CFG_RUNTIME := librustrt.dylib
   CFG_STDLIB := libstd.dylib
@@ -148,6 +144,10 @@ ifdef CFG_NATIVE
   $(info cfg: building native compiler)
 else
   $(info cfg: building bytecode compiler)
+endif
+
+ifdef NO_VALGRIND
+    CFG_VALGRIND :=
 endif
 
 ifneq ($(CFG_LLVM_CONFIG),)
