@@ -15,5 +15,7 @@ io fn main() {
   let port[int] p = port();
   auto child = spawn sub(chan(p), 500);
   let int y <- p;
+  log "transmission complete";
+  log y;
   check (y == 500);
 }
