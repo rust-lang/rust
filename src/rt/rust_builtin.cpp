@@ -86,6 +86,11 @@ gc(rust_task *task) {
     task->gc(1);
 }
 
+extern "C" CDECL void
+unsupervise(rust_task *task) {
+    task->unsupervise();
+}
+
 extern "C" CDECL rust_vec*
 vec_alloc(rust_task *task, type_desc *t, size_t n_elts)
 {

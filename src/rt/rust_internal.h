@@ -625,7 +625,7 @@ rust_task : public rc_base<rust_task>,
     ptr_vec<rust_task> *state;
     rust_cond *cond;
     uintptr_t* dptr;           // Rendezvous pointer for send/recv.
-    rust_task *spawner;        // Parent-link.
+    rust_task *supervisor;     // Parent-link for failure propagation.
     size_t idx;
     size_t gc_alloc_thresh;
     size_t gc_alloc_accum;
@@ -684,6 +684,9 @@ rust_task : public rc_base<rust_task>,
 
     // Run the gc glue on the task stack.
     void gc(size_t nargs);
+
+    // Disconnect from our supervisor.
+    void unsupervise();
 
     // Notify tasks waiting for us that we are about to die.
     void notify_waiting_tasks();

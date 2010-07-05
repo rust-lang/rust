@@ -62,7 +62,7 @@ rust_task::rust_task(rust_dom *dom, rust_task *spawner) :
     state(&dom->running_tasks),
     cond(NULL),
     dptr(0),
-    spawner(spawner),
+    supervisor(spawner),
     idx(0),
     waiting_tasks(dom),
     alarm(this)
@@ -336,12 +336,12 @@ rust_task::fail(size_t nargs) {
     if (this == dom->root_task)
         dom->fail();
     run_after_return(nargs, dom->root_crate->get_unwind_glue());
-    if (spawner) {
+    if (supervisor) {
         dom->log(rust_log::TASK,
                  "task 0x%" PRIxPTR
-                 " propagating failure to parent 0x%" PRIxPTR,
-                 this, spawner);
-        spawner->kill();
+                 " propagating failure to supervisor 0x%" PRIxPTR,
+                 this, supervisor);
+        supervisor->kill();
     }
 }
 
@@ -351,6 +351,15 @@ rust_task::gc(size_t nargs)
     dom->log(rust_log::TASK|rust_log::MEM,
              "task 0x%" PRIxPTR " garbage collecting", this);
     run_after_return(nargs, dom->root_crate->get_gc_glue());
+}
+
+void
+rust_task::unsupervise()
+{
+    dom->log(rust_log::TASK,
+             "task 0x%" PRIxPTR " disconnecting from supervisor 0x%" PRIxPTR,
+             this, supervisor);
+    supervisor = NULL;
 }
 
 void

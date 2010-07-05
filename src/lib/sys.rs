@@ -17,5 +17,6 @@ native "rust" mod rustrt {
   fn align_of[T]() -> uint;
   fn refcount[T](@T t) -> uint;
   fn gc();
+  fn unsupervise();
 }
 
