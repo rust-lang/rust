@@ -65,14 +65,15 @@ rust_timer::rust_timer(rust_dom &dom) : dom(dom), exit_flag(0)
 #if defined(__WIN32__)
     thread = CreateThread(NULL, 0, timer_loop, this, 0, NULL);
     dom.win32_require("CreateThread", thread != NULL);
+    if (RUNNING_ON_VALGRIND)
+        Sleep(10);
 #else
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     pthread_create(&thread, &attr, timer_loop, (void *)this);
-#endif
-    if (RUNNING_ON_VALGRIND) {
+    if (RUNNING_ON_VALGRIND)
         usleep(10000);
-    }
+#endif
 }
 
 rust_timer::~rust_timer()
