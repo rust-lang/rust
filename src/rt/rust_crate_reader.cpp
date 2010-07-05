@@ -347,6 +347,11 @@ rust_crate_reader::die::step_attr(attr &a) const
       return rdr->is_ok() || rdr->at_end();
       break;
 
+    case DW_FORM_udata:
+      rdr->get_uleb(u32);
+      return rdr->is_ok() || rdr->at_end();
+      break;
+
     default:
       rdr->mem.dom->log(rust_log::DWARF, "  unknown dwarf form: 0x%"
                         PRIxPTR, a.form);

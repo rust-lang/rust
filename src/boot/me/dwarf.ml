@@ -2724,6 +2724,7 @@ let read_dies
                           | DW_FORM_data1 -> DATA_num (ar.asm_get_u8())
                           | DW_FORM_data4 -> DATA_num (ar.asm_get_u32())
                           | DW_FORM_flag -> DATA_num (ar.asm_get_u8())
+                          | DW_FORM_udata -> DATA_num (ar.asm_get_uleb())
                           | DW_FORM_block1 -> (adv_block1(); DATA_other)
                           | DW_FORM_block4 -> (adv_block4(); DATA_other)
                           | _ ->

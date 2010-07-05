@@ -16,6 +16,10 @@ mod _str;
 mod _io;
 mod sys;
 
+// Utility modules.
+
+mod util;
+
 // Authorize various rule-bendings.
 
 auth _io = unsafe;
