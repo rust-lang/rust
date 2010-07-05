@@ -1,7 +1,17 @@
 // -*- rust -*-
 
-fn grow(mutable &vec[int] v) {
+use std;
+
+fn grow(&mutable vec[int] v) {
   v += vec(1);
 }
 
-fn main() {}
+fn main() {
+  let vec[int] v = vec();
+  grow(v);
+  grow(v);
+  grow(v);
+  auto len = std._vec.len[int](v);
+  log len;
+  check (len == uint(3));
+}

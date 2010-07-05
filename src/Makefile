@@ -345,7 +345,6 @@ TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
                     test/run-pass/generic-fn-infer.rs \
                     test/run-pass/generic-fn-twice.rs \
                     test/run-pass/generic-recursive-tag.rs \
-                    test/run-pass/mutable-alias-vec.rs \
                     test/run-pass/mutable-vec-drop.rs \
                     test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/task-comm.rs \
