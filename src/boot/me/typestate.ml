@@ -365,8 +365,17 @@ let condition_assigning_visitor
               let constrs =
                 Array.map (apply_names_to_constr names) formal_constrs
               in
-              let keys = Array.map (resolve_constr_to_key None) constrs in
-                raise_precondition s.id keys
+              let constr_keys = Array.map (resolve_constr_to_key None) constrs in
+              let arg_init_keys =
+                Array.concat
+                  (Array.to_list
+                     (Array.map
+                        (fun arg ->
+                           slot_inits (atom_slots cx arg))
+                        args))
+              in
+                raise_precondition s.id arg_init_keys;
+                raise_precondition s.id constr_keys
           | _ -> ()
       end;
       begin
