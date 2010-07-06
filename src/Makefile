@@ -753,7 +753,7 @@ distcheck:
 # Cleanup
 ######################################################################
 
-.PHONY: clean tidy
+.PHONY: clean native-clean tidy
 
 tidy:
 	@$(call CFG_ECHO, check: formatting)
@@ -761,6 +761,9 @@ tidy:
       $(wildcard ../*.txt) \
       ../README \
       $(filter-out $(GENERATED) $(PKG_3RDPARTY), $(PKG_FILES))
+
+runtime-clean:
+	$(CFG_QUIET)rm -f $(RUNTIME_OBJS) $(CFG_RUNTIME)
 
 clean:
 	@$(call CFG_ECHO, cleaning)
