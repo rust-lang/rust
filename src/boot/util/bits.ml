@@ -67,6 +67,15 @@ let invert (v:t) : unit =
   done
 ;;
 
+(* dst = dst - src *)
+let difference (dst:t) (src:t) : bool =
+  invert src;
+  let b = intersect dst src in
+    invert src;
+    b
+;;
+
+
 let set (v:t) (i:int) (x:bool) : unit =
   assert (i >= 0);
   assert (i < v.nbits);
