@@ -629,6 +629,19 @@ let remove_flow_edges
     Hashtbl.replace graph n (lset_diff existing dsts)
 ;;
 
+
+let last_id (nodes:('a identified) array) : node_id =
+  let len = Array.length nodes in
+    nodes.(len-1).id
+;;
+
+let last_id_or_block_id (block:Ast.block) : node_id =
+  let len = Array.length block.node in
+    if len = 0
+    then block.id
+    else last_id block.node
+;;
+
 let graph_general_block_structure_building_visitor
     ((*cx*)_:ctxt)
     (graph:node_graph)
@@ -682,7 +695,7 @@ let graph_general_block_structure_building_visitor
       then
         begin
           htab_put graph b.id [b.node.(0).id];
-          add_flow_edges graph b.node.(len-1).id dsts
+          add_flow_edges graph (last_id b.node) dsts
         end
       else
         htab_put graph b.id dsts
@@ -698,7 +711,7 @@ let graph_general_block_structure_building_visitor
 
 
 let graph_special_block_structure_building_visitor
-    ((*cx*)_:ctxt)
+    (cx:ctxt)
     (graph:(node_id, (node_id list)) Hashtbl.t)
     (inner:Walk.visitor)
     : Walk.visitor =
@@ -708,17 +721,48 @@ let graph_special_block_structure_building_visitor
       match s.node with
 
         | Ast.STMT_if sif ->
-            (* 
-             * Drop implicit stmt-bypass edge(s);
-             * can only flow to inner block(s).
-             *)
-            let block_ids =
-              [sif.Ast.if_then.id] @
-                match sif.Ast.if_else with
-                    None -> []
-                  | Some eb -> [eb.id]
+            let cond_id = s.id in
+            let then_id = sif.Ast.if_then.id in
+            let then_end_id = last_id_or_block_id sif.Ast.if_then in
+            let show_node s i =
+              iflog cx
+                (fun _ ->
+                   log cx "node '%s' = %d -> %s"
+                     s (int_of_node i) (lset_fmt (Hashtbl.find graph i)))
             in
-              Hashtbl.replace graph s.id block_ids
+              show_node "initial cond" cond_id;
+              show_node "initial then" then_id;
+              show_node "initial then_end" then_end_id;
+              begin
+                match sif.Ast.if_else with
+                    None ->
+                      let succ = Hashtbl.find graph then_end_id in
+                        Hashtbl.replace graph cond_id (then_id :: succ);
+                        (* Kill residual messed-up block wiring.*)
+                        remove_flow_edges graph then_end_id [then_id];
+                        show_node "cond" cond_id;
+                        show_node "then" then_id;
+                        show_node "then_end" then_end_id;
+
+                  | Some e ->
+                      let else_id = e.id in
+                      let else_end_id = last_id_or_block_id e in
+                      let succ = Hashtbl.find graph else_end_id in
+                        show_node "initial else" else_id;
+                        show_node "initial else_end" else_end_id;
+                        Hashtbl.replace graph cond_id [then_id; else_id];
+                        Hashtbl.replace graph then_end_id succ;
+                        Hashtbl.replace graph else_end_id succ;
+                        (* Kill residual messed-up block wiring.*)
+                        remove_flow_edges graph then_end_id [then_id];
+                        remove_flow_edges graph else_id [then_id];
+                        remove_flow_edges graph else_end_id [then_id];
+                        show_node "cond" cond_id;
+                        show_node "then" then_id;
+                        show_node "then_end" then_end_id;
+                        show_node "else" else_id;
+                        show_node "else_end" else_end_id;
+              end;
 
         | Ast.STMT_while sw ->
             (* There are a bunch of rewirings to do on 'while' nodes. *)
@@ -739,11 +783,12 @@ let graph_special_block_structure_building_visitor
                   if slen > 0
                   then
                     begin
-                      remove_flow_edges graph s.id [body.id];
-                      add_flow_edges graph s.id [pre_loop_stmts.(0).id];
-                      add_flow_edges graph
-                        pre_loop_stmts.(slen-1).id [body.id];
-                      pre_loop_stmts.(slen - 1).id
+                      let pre_loop_begin = pre_loop_stmts.(0).id in
+                      let pre_loop_end = last_id pre_loop_stmts in
+                        remove_flow_edges graph s.id [body.id];
+                        add_flow_edges graph s.id [pre_loop_begin];
+                        add_flow_edges graph pre_loop_end [body.id];
+                        pre_loop_end
                     end
                   else
                     body.id
@@ -756,12 +801,8 @@ let graph_special_block_structure_building_visitor
                 add_flow_edges graph loop_head_id succ_stmts;
 
                 (* Flow loop-end to loop-head. *)
-                let blen = Array.length body.node in
-                  if blen > 0
-                  then add_flow_edges graph
-                    body.node.(blen - 1).id [loop_head_id]
-                  else add_flow_edges graph
-                    body.id [loop_head_id]
+                let loop_end = last_id_or_block_id body in
+                  add_flow_edges graph loop_end [loop_head_id]
             end
 
         | Ast.STMT_alt_tag at ->
