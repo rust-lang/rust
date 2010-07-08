@@ -282,7 +282,7 @@ let rec string_of_tok t =
 
     (* Callable type constructors *)
     | FN         -> "fn"
-    | ITER       -> "fn"
+    | ITER       -> "iter"
 
     (* Object type *)
     | OBJ        -> "obj"
