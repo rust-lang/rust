@@ -444,9 +444,9 @@ each frame. The static calculation of the typestates of a program is a
 function-local dataflow problem, and handles user-defined predicates in a
 similar fashion to the way the type system permits user-defined types.
 
-A short way of thinking of this is: types statically model the kinds of values
-held in slots, typestates statically model @emph{assertions that hold} before
-and after statements.
+A short way of thinking of this is: types statically model values,
+typestates statically model @emph{assertions that hold} before and
+after statements.
 
 @end itemize
 
