@@ -139,7 +139,7 @@ rule token = parse
                                      <- (bump_line lexbuf.Lexing.lex_curr_p);
                                  token lexbuf }
 | "//" [^'\n']*                { token lexbuf }
-
+| "/*"                         { comment 1 lexbuf }
 | '+'                          { PLUS       }
 | '-'                          { MINUS      }
 | '*'                          { STAR       }
@@ -362,3 +362,16 @@ and bracequote buf depth = parse
 | [^'\\' '{' '}']+              { let s = Lexing.lexeme lexbuf in
                                     Buffer.add_string buf s;
                                     bracequote buf depth lexbuf        }
+
+
+and comment depth = parse
+
+  '/' '*'                       { comment (depth+1) lexbuf      }
+
+| '*' '/'                       { if depth = 1
+                                  then token lexbuf
+                                  else comment (depth-1) lexbuf }
+
+| '*' [^'{']                   { comment depth lexbuf           }
+| '/' [^'*']                   { comment depth lexbuf           }
+| [^'/' '*']+                  { comment depth lexbuf           }

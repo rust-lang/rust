@@ -616,11 +616,17 @@ otherwise a free-form language.
 @dfn{Whitespace} is any of the following Unicode characters: U+0020 (space),
 U+0009 (tab, @code{'\t'}), U+000A (LF, @code{'\n'}), U+000D (CR, @code{'\r'}).
 
-@dfn{Comments} are any sequence of Unicode characters beginning with U+002F
-U+002F (@code{"//"}) and extending to the next U+000A character,
+@dfn{Comments} are @emph{single-line comments} or @emph{multi-line comments}.
+
+A @dfn{single-line comment} is any sequence of Unicode characters beginning
+with U+002F U+002F (@code{"//"}) and extending to the next U+000A character,
 @emph{excluding} cases in which such a sequence occurs within a string literal
 token or a syntactic extension token.
 
+A @dfn{multi-line comments} is any sequence of Unicode characters beginning
+with U+002F U+002A (@code{"/*"}) and ending with U+002A U+002F (@code{"*/"}),
+@emph{excluding} cases in which such a sequence occurs within a string literal
+token or a syntactic extension token.  Multi-line comments may be nested.
 
 @node       Ref.Lex.Ident
 @subsection Ref.Lex.Ident
