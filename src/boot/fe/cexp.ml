@@ -678,7 +678,11 @@ let parse_crate_file
               begin
                 fun d ->
                   match d with
-                      CDIR_mod (name, item) -> htab_put items name item
+                      CDIR_mod (name, item) ->
+                        if Hashtbl.mem items name
+                        then raise
+                          (err ("duplicate mod declaration: " ^ name) ps)
+                        else Hashtbl.add items name item
                     | CDIR_meta metas ->
                         Array.iter (fun m -> Queue.add m meta) metas
                     | CDIR_auth (n,e) ->
