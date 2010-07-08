@@ -1883,8 +1883,8 @@ and slot_referent_type (abi:Abi.abi) (sl:Ast.slot) : Il.referent_ty =
 
   let rty = referent_type abi (slot_ty sl) in
     match sl.Ast.slot_mode with
-      | Ast.MODE_local _ -> rty
-      | Ast.MODE_alias _ -> sp rty
+      | Ast.MODE_local -> rty
+      | Ast.MODE_alias -> sp rty
 ;;
 
 let task_rty (abi:Abi.abi) : Il.referent_ty =

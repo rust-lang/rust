@@ -2859,7 +2859,7 @@ let trans_visitor
         Ast.MODE_local ->
           cell
 
-      | Ast.MODE_alias _  ->
+      | Ast.MODE_alias  ->
           if initializing
           then cell
           else deref cell
