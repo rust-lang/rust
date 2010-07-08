@@ -6,5 +6,10 @@ fn foo(int x) {
 
 fn main() {
   let int x;
+  if (1 > 2) {
+    log "whoops";
+  } else {
+    x = 10;
+  }
   foo(x);
 }
