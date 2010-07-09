@@ -879,9 +879,6 @@ and parse_mod_item (ps:pstate) : (Ast.ident * Ast.mod_item) =
                   note_required_mod ps {lo=apos; hi=bpos} CONV_rust rlib item;
                   (ident, item)
           end
-
-
-
       | _ -> raise (unexpected ps)
 
 
@@ -890,24 +887,19 @@ and parse_mod_items_from_signature
     : (Ast.mod_view * Ast.mod_items) =
   let exports = Hashtbl.create 0 in
   let mis = Hashtbl.create 0 in
-  let in_view = ref true in
     expect ps LBRACE;
     while not (peek ps = RBRACE)
     do
-      if !in_view
-      then
-        match peek ps with
-            EXPORT ->
-              bump ps;
-              parse_export ps exports;
-              expect ps SEMI;
-          | _ ->
-              in_view := false
-      else
-        let (ident, mti) = ctxt "mod items from sig: mod item"
-          parse_mod_item_from_signature ps
-        in
-          Hashtbl.add mis ident mti;
+      match peek ps with
+        EXPORT ->
+            bump ps;
+            parse_export ps exports;
+            expect ps SEMI;
+        | _ ->
+            let (ident, mti) = ctxt "mod items from sig: mod item"
+              parse_mod_item_from_signature ps
+            in
+              Hashtbl.add mis ident mti;
     done;
     if (Hashtbl.length exports) = 0
     then Hashtbl.add exports Ast.EXPORT_all_decls ();
@@ -1130,27 +1122,22 @@ and parse_mod_items
   ps.pstate_depth <- ps.pstate_depth + 1;
   let imports = Hashtbl.create 0 in
   let exports = Hashtbl.create 0 in
-  let in_view = ref true in
   let items = Hashtbl.create 4 in
     while (not (peek ps = terminal))
     do
-      if !in_view
-      then
-        match peek ps with
-            IMPORT ->
-              bump ps;
-              parse_import ps imports;
-              expect ps SEMI;
-          | EXPORT ->
-              bump ps;
-              parse_export ps exports;
-              expect ps SEMI;
-          | _ ->
-              in_view := false
-      else
-        let (ident, item) = parse_mod_item ps in
-          htab_put items ident item;
-          expand_tags_to_items ps item items;
+      match peek ps with
+          IMPORT ->
+            bump ps;
+            parse_import ps imports;
+            expect ps SEMI;
+        | EXPORT ->
+            bump ps;
+            parse_export ps exports;
+            expect ps SEMI;
+        | _ ->
+            let (ident, item) = parse_mod_item ps in
+              htab_put items ident item;
+              expand_tags_to_items ps item items;
     done;
     if (Hashtbl.length exports) = 0
     then Hashtbl.add exports Ast.EXPORT_all_decls ();
