@@ -625,6 +625,10 @@ test/run-pass/%.x86$(CFG_EXE_SUFFIX): test/run-pass/%.rc $(REQ)
 	@$(call CFG_ECHO, compile [x86]: $<)
 	$(BOOT) -o $@ $<
 
+test/bench/shootout/%.x86$(CFG_EXE_SUFFIX): test/bench/shootout/%.rs $(REQ)
+	@$(call CFG_ECHO, compile [x86]: $<)
+	$(BOOT) -o $@ $<
+
 %.s: %.bc
 	@$(call CFG_ECHO, compile [llvm]: $<)
 	$(CFG_QUIET)llc $(CFG_LLC_CFLAGS) -o $@ $<
