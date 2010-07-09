@@ -1203,6 +1203,7 @@ let (abbrev_subprogram:abbrev) =
      (DW_AT_return_addr, DW_FORM_block1);
      (DW_AT_mutable, DW_FORM_flag);
      (DW_AT_pure, DW_FORM_flag);
+     (DW_AT_rust_iterator, DW_FORM_flag);
    |])
 ;;
 
@@ -2295,6 +2296,7 @@ let dwarf_visitor
       (id:Ast.ident)
       (ret_slot:Ast.slot)
       (effect:Ast.effect)
+      (iter:bool)
       (fix:fixup)
       : unit =
     (* NB: retpc = "top word of frame-base" by convention in ABI/x86. *)
@@ -2314,6 +2316,8 @@ let dwarf_visitor
          (* DW_AT_return_addr *)
          dw_form_block1 [| DW_OP_fbreg (Asm.IMM retpc); |];
          encode_effect effect;
+         (* DW_AT_rust_iterator: DW_FORM_flag *)
+         BYTE (if iter then 1 else 0)
        |])
     in
       emit_die subprogram_die
@@ -2388,7 +2392,8 @@ let dwarf_visitor
                   (path_name())
                   (Array.length item.node.Ast.decl_params);
                 emit_subprogram_die
-                  id tsig.Ast.sig_output_slot taux.Ast.fn_effect
+                  id tsig.Ast.sig_output_slot
+                  taux.Ast.fn_effect taux.Ast.fn_is_iter
                   (Hashtbl.find cx.ctxt_fn_fixups item.id);
                 emit_type_param_decl_dies item.node.Ast.decl_params;
             end
@@ -3132,9 +3137,10 @@ let rec extract_mod_items
           let ident = get_name die in
           let oslot = get_referenced_slot die in
           let effect = get_effect die in
+          let iter = get_flag die DW_AT_rust_iterator in
           let (params, islots) = get_formals die in
           let taux = { Ast.fn_effect = effect;
-                       Ast.fn_is_iter = false }
+                       Ast.fn_is_iter = iter }
           in
           let tfn = { Ast.fn_input_slots = form_header_slots islots;
                        Ast.fn_input_constrs = [| |];
