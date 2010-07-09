@@ -233,7 +233,7 @@ let lookup_type_node_by_name
   iflog cx (fun _ ->
               log cx "lookup_simple_type_by_name %a"
                 Ast.sprintf_name name);
-  match lookup_by_name cx scopes name with
+  match lookup_by_name cx [] scopes name with
       None -> err None "unknown name: %a" Ast.sprintf_name name
     | Some (_, id) ->
         match htab_search cx.ctxt_all_defns id with
@@ -390,7 +390,7 @@ and lookup_type_by_name
   iflog cx (fun _ ->
               log cx "+++ lookup_type_by_name %a"
                 Ast.sprintf_name name);
-  match lookup_by_name cx scopes name with
+  match lookup_by_name cx [] scopes name with
       None -> err None "unknown name: %a" Ast.sprintf_name name
     | Some (scopes', id) ->
         let ty, params =
@@ -746,7 +746,7 @@ let lval_base_resolving_visitor
           | _ -> false
       in
         if lval_is_name lv && lval_is_item cx lv
-        then ignore (lookup_by_name cx (!scopes) (lval_to_name lv))
+        then ignore (lookup_by_name cx [] (!scopes) (lval_to_name lv))
     in
 
       lookup_lval lv;

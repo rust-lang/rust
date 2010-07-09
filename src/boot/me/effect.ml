@@ -320,7 +320,7 @@ let process_crate
   in
   let root_scope = [ SCOPE_crate crate ] in
   let auth_effect name eff =
-    match lookup_by_name cx root_scope name with
+    match lookup_by_name cx [] root_scope name with
         None -> ()
       | Some (_, id) ->
           if referent_is_item cx id

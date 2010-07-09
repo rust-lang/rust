@@ -28,7 +28,7 @@ let determine_constr_key
     : constr_key =
 
   let cid =
-    match lookup_by_name cx scopes c.Ast.constr_name with
+    match lookup_by_name cx [] scopes c.Ast.constr_name with
         Some (_, cid) ->
           if referent_is_item cx cid
           then
@@ -62,7 +62,7 @@ let determine_constr_key
               | Ast.CARG_ext (pth, _) -> node_base_of pth
               | Ast.CARG_base (Ast.BASE_named nb) ->
                   begin
-                    match lookup_by_name cx scopes (Ast.NAME_base nb) with
+                    match lookup_by_name cx [] scopes (Ast.NAME_base nb) with
                         None -> bug () "constraint-arg not found"
                       | Some (_, aid) ->
                           if referent_is_slot cx aid

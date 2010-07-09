@@ -1539,8 +1539,11 @@ let get_name_base_ident
         bug () "get_name_base_ident on BASE_temp"
 ;;
 
+type loop_check = (node_id * Ast.ident) list;;
+
 let rec project_ident_from_items
     (cx:ctxt)
+    (lchk:loop_check)
     (scopes:scope list)
     ((view:Ast.mod_view),(items:Ast.mod_items))
     (ident:Ast.ident)
@@ -1555,7 +1558,7 @@ let rec project_ident_from_items
       | None ->
           match htab_search view.Ast.view_imports ident with
               None -> None
-            | Some name -> lookup_by_name cx scopes name
+            | Some name -> lookup_by_name cx lchk scopes name
 
 and found cx scopes id =
   Hashtbl.replace cx.ctxt_node_referenced id ();
@@ -1563,6 +1566,7 @@ and found cx scopes id =
 
 and project_name_comp_from_resolved
     (cx:ctxt)
+    (lchk:loop_check)
     (mod_res:resolved)
     (ext:Ast.name_component)
     : resolved =
@@ -1574,10 +1578,11 @@ and project_name_comp_from_resolved
         let ident = get_name_comp_ident ext in
         let md = get_mod_item cx id in
           Hashtbl.replace cx.ctxt_node_referenced id ();
-          project_ident_from_items cx scopes md ident false
+          project_ident_from_items cx lchk scopes md ident false
 
 and lookup_by_name
     (cx:ctxt)
+    (lchk:loop_check)
     (scopes:scope list)
     (name:Ast.name)
     : resolved =
@@ -1585,16 +1590,23 @@ and lookup_by_name
   match name with
       Ast.NAME_base nb ->
         let ident = get_name_base_ident nb in
-          lookup_by_ident cx scopes ident
+          lookup_by_ident cx lchk scopes ident
     | Ast.NAME_ext (name, ext) ->
-        let base_res = lookup_by_name cx scopes name in
-          project_name_comp_from_resolved cx base_res ext
+        let base_res = lookup_by_name cx lchk scopes name in
+          project_name_comp_from_resolved cx lchk base_res ext
 
 and lookup_by_ident
     (cx:ctxt)
+    (lchk:loop_check)
     (scopes:scope list)
     (ident:Ast.ident)
     : resolved =
+
+  let passing id =
+    if List.mem (id, ident) lchk
+    then err (Some id) "cyclic import for ident %s" ident
+    else (id, ident)::lchk
+  in
 
   let check_slots scopes islots =
     arr_search islots
@@ -1639,7 +1651,7 @@ and lookup_by_ident
 
       | SCOPE_crate crate ->
           project_ident_from_items
-            cx scopes crate.node.Ast.crate_items ident true
+            cx (passing crate.id) scopes crate.node.Ast.crate_items ident true
 
       | SCOPE_obj_fn fn ->
           would_capture (check_slots scopes fn.node.Ast.fn_input_slots)
@@ -1659,7 +1671,8 @@ and lookup_by_ident
                     end
 
                 | Ast.MOD_ITEM_mod md ->
-                    project_ident_from_items cx scopes md ident true
+                    project_ident_from_items cx (passing item.id)
+                      scopes md ident true
 
                 | _ -> None
             in
@@ -1727,7 +1740,7 @@ let lookup
     : ((scope list * node_id) option) =
   match key with
       Ast.KEY_temp temp -> lookup_by_temp cx scopes temp
-    | Ast.KEY_ident ident -> lookup_by_ident cx scopes ident
+    | Ast.KEY_ident ident -> lookup_by_ident cx [] scopes ident
 ;;
 
 
