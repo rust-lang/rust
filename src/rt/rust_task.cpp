@@ -179,7 +179,7 @@ rust_task::start(uintptr_t exit_task_glue,
         if (j == callee_save_fp)
             *spp-- = frame_base;
         else
-            *spp-- = NULL;
+            *spp-- = (uintptr_t)NULL;
     }
 
     // Back up one, we overshot where sp should be.
