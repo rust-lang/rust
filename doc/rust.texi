@@ -1829,11 +1829,10 @@ type. @xref{Ref.Mem.Slot}. The interpretation of a value includes:
 @item Whether the value is mutable or immutable.
 @end itemize
 
-For example, the type @code{rec(u8 x, u8 y)} defines the
-interpretation of values that are composite records, each containing
-two unsigned two's complement 8-bit integers accessed through the
-components @code{x} and @code{y}, and laid out in memory with the
-@code{x} component preceding the @code{y} component.
+For example, the type @code{rec(u8 x, u8 y)} defines the interpretation of
+values that are composite records, each containing two unsigned 8-bit
+integers accessed through the components @code{x} and @code{y}, and laid
+out in memory with the @code{x} component preceding the @code{y} component.
 
 Some types are @emph{recursive}. A recursive type is one that includes
 its own definition as a component, by named reference. Recursive types
@@ -1903,8 +1902,8 @@ The machine types are the following:
 
 @itemize
 @item
-The unsigned two's complement word types @code{u8}, @code{u16}, @code{u32} and
-@code{u64}, with values drawn from the integer intervals
+The unsigned word types @code{u8}, @code{u16}, @code{u32} and @code{u64},
+with values drawn from the integer intervals
 @iftex
 @math{[0, 2^8 - 1]},
 @math{[0, 2^{16} - 1]},
@@ -1951,7 +1950,7 @@ The IEEE 754 single-precision and double-precision floating-point types:
 
 
 The Rust type @code{uint}@footnote{A Rust @code{uint} is analogous to a C99
-@code{uintptr_t}.} is a two's complement unsigned integer type with with
+@code{uintptr_t}.} is an unsigned integer type with with
 target-machine-dependent size. Its size, in bits, is equal to the number of
 bits required to hold any memory address on the target machine.
 
