@@ -15,6 +15,14 @@ let iflog (sess:Session.sess) (thunk:(unit -> unit)) : unit =
   else ()
 ;;
 
+let filter_marks (orig:frag array) : frag array =
+  let not_mark (elem:frag) =
+    match elem with
+        MARK -> None
+      | x -> Some x
+  in arr_map_partial orig not_mark
+;;
+
 let (cpu_arch_abi64:int64) = 0x01000000L
 ;;
 
@@ -591,11 +599,6 @@ let macho_header_32
     (flags:file_flag list)
     (loadcmds:frag array) : frag =
   let load_commands_fixup = new_fixup "load commands" in
-  let count_non_mark so_far elem =
-    match elem with
-        MARK -> so_far
-      | _ -> so_far + 1
-  in
   let cmds = DEF (load_commands_fixup, SEQ loadcmds) in
     SEQ
     [|
@@ -603,8 +606,7 @@ let macho_header_32
       WORD (TY_u32, IMM (cpu_type_code cpu));
       WORD (TY_u32, IMM (cpu_subtype_code sub));
       WORD (TY_u32, IMM (file_type_code ftype));
-      WORD (TY_u32,
-            IMM (Int64.of_int (Array.fold_left count_non_mark 0 loadcmds)));
+      WORD (TY_u32, IMM (Int64.of_int (Array.length loadcmds)));
       WORD (TY_u32, F_SZ load_commands_fixup);
       WORD (TY_u32, IMM (fold_flags file_flag_code flags));
       cmds
@@ -873,8 +875,10 @@ let emit_file
 
   let load_commands =
     [|
-      macho_segment_command "__PAGEZERO" zero_segment_fixup
-        [] [] [||];
+      if sess.Session.sess_library_mode
+      then MARK
+      else (macho_segment_command "__PAGEZERO" zero_segment_fixup
+              [] [] [||]);
 
       macho_segment_command "__TEXT" text_segment_fixup
         [VM_PROT_READ; VM_PROT_EXECUTE]
@@ -949,7 +953,7 @@ let emit_file
       CPU_SUBTYPE_X86_ALL
       (if sess.Session.sess_library_mode then MH_DYLIB else MH_EXECUTE)
       [ MH_BINDATLOAD; MH_DYLDLINK; MH_TWOLEVEL ]
-      load_commands
+      (filter_marks load_commands)
   in
 
   let objfile_start e start_fixup rust_start_fixup main_fn_fixup =
