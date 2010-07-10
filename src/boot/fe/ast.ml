@@ -1339,6 +1339,32 @@ and fmt_crate (ff:Format.formatter) (c:crate) : unit =
   let (view,items) = c.node.crate_items in
     fmt_mod_view ff view;
     fmt_mod_items ff items
+;;
+
+let ty_children (ty:ty) : ty array =
+  let children_of_ty_tag ty_tag = Array.concat (htab_vals ty_tag) in
+  let children_of_ty_fn ty_fn =
+    let (ty_sig, _) = ty_fn in
+    let in_slots = ty_sig.sig_input_slots in
+    let slots = Array.append in_slots [| ty_sig.sig_output_slot |] in
+    arr_filter_some (Array.map (fun slot -> slot.slot_ty) slots)
+  in
+  match ty with
+      TY_tup tys -> tys
+    | TY_vec ty' | TY_chan ty' | TY_port ty' | TY_box ty' | TY_mutable ty'
+          | TY_constrained (ty', _) ->
+        [| ty' |]
+    | TY_rec fields -> Array.map snd fields
+    | TY_tag ty_tag -> children_of_ty_tag ty_tag
+    | TY_iso ty_iso -> children_of_ty_tag (ty_iso.iso_group.(ty_iso.iso_index))
+    | TY_fn ty_fn -> children_of_ty_fn ty_fn
+    | TY_obj (_, methods) ->
+        Array.concat (List.map children_of_ty_fn (htab_vals methods))
+    | TY_any | TY_nil | TY_bool | TY_mach _ | TY_int | TY_uint | TY_char
+          | TY_str | TY_idx _ | TY_task | TY_native _ | TY_param _
+          | TY_named _ | TY_type ->
+        [| |]
+;;
 
 let sprintf_expr = sprintf_fmt fmt_expr;;
 let sprintf_name = sprintf_fmt fmt_name;;

@@ -341,7 +341,6 @@ let bool_of_option x =
       Some _ -> true
     | None -> false
 
-
 (*
  * Auxiliary stack functions.
  *)
