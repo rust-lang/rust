@@ -591,6 +591,11 @@ let macho_header_32
     (flags:file_flag list)
     (loadcmds:frag array) : frag =
   let load_commands_fixup = new_fixup "load commands" in
+  let count_non_mark so_far elem =
+    match elem with
+        MARK -> so_far
+      | _ -> so_far + 1
+  in
   let cmds = DEF (load_commands_fixup, SEQ loadcmds) in
     SEQ
     [|
@@ -598,7 +603,8 @@ let macho_header_32
       WORD (TY_u32, IMM (cpu_type_code cpu));
       WORD (TY_u32, IMM (cpu_subtype_code sub));
       WORD (TY_u32, IMM (file_type_code ftype));
-      WORD (TY_u32, IMM (Int64.of_int (Array.length loadcmds)));
+      WORD (TY_u32,
+            IMM (Int64.of_int (Array.fold_left count_non_mark 0 loadcmds)));
       WORD (TY_u32, F_SZ load_commands_fixup);
       WORD (TY_u32, IMM (fold_flags file_flag_code flags));
       cmds
