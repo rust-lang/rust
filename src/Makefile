@@ -23,7 +23,11 @@ CFG_GCC_CFLAGS :=
 CFG_GCC_LINK_FLAGS :=
 CFG_VALGRIND :=
 
-CFG_LLVM_CONFIG := llvm-config
+# Issue #102, LLVM-config logic is assuming "presence of llvm-config"
+# means "presence of ocaml bindings". Commenting out for now.
+# CFG_LLVM_CONFIG := llvm-config
+
+CFG_LLVM_CONFIG :=
 CFG_BOOT_FLAGS := $(FLAGS)
 
 ifeq ($(CFG_OSTYPE), Linux)
@@ -148,6 +152,10 @@ endif
 
 ifdef NO_VALGRIND
     CFG_VALGRIND :=
+endif
+
+ifdef NO_LLVM
+    CFG_LLVM_CONFIG :=
 endif
 
 ifneq ($(CFG_LLVM_CONFIG),)
