@@ -48,6 +48,21 @@ fn buf[T](vec[T] v) -> vbuf {
   ret rustrt.vec_buf[T](v);
 }
 
+// Returns elements from [start..end) from v.
+fn slice[T](vec[T] v, int start, int end) -> vec[T] {
+  check(0 <= start);
+  check(start <= end);
+  // FIXME #108: This doesn't work yet.
+  //check(end <= int(len[T](v)));
+  auto result = alloc[T](uint(end - start));
+  let mutable int i = start;
+  while (i < end) {
+    result += vec(v.(i));
+    i += 1;
+  }
+  ret result;
+}
+
 // Ought to take mutable &vec[T] v and just mutate it instead of copy
 // and return.  Blocking on issue #89 for this.
 fn grow[T](mutable vec[T] v, int n, T initval) -> vec[T] {
