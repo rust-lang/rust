@@ -176,7 +176,8 @@ let get_mod
           let dh = Unix.opendir dir in
           let rec scan _ =
             try
-              let file = Unix.readdir dh in
+              let basename = Unix.readdir dh in
+              let file = dir ^ "/" ^ basename in
                 log sess "considering file %s" file;
                 if (Filename.check_suffix file suffix) &&
                   (file_matches file)
