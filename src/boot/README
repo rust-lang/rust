@@ -1,0 +1,405 @@
+An informal guide to reading and working on the rustboot compiler.
+==================================================================
+
+First off, my sincerest apologies for the lightly-commented nature of the
+compiler, as well as the general immaturity of the codebase; rustboot is
+intended to be discarded in the near future as we transition off it, to a
+rust-based, LLVM-backed compiler. It has taken longer than expected for "the
+near future" to arrive, and here we are published and attracting contributors
+without a good place for them to start. It will be a priority for the next
+little while to make new contributors feel welcome and oriented within the
+project; best I can do at this point. We were in a tremendous rush even to get
+everything organized to this minimal point.
+
+If you wish to expand on this document, or have one of the
+slightly-more-familiar authors add anything else to it, please get in touch or
+file a bug. Your concerns are probably the same as someone else's.
+
+
+
+High-level concepts, invariants, 30,000-ft view
+===============================================
+
+Rustboot has 3 main subdirectories: fe, me, and be (front, mid, back
+end). Helper modules and ubiquitous types are found in util/.
+
+The entry-point for the compiler is driver/main.ml, and this file sequences
+the various parts together.
+
+
+The 4 central data structures:
+------------------------------
+
+#1: fe/ast.ml defines the AST. The AST is treated as immutable after parsing
+    despite containing some mutable types (hashtbl and such). Many -- though
+    not all -- nodes within this data structure are wrapped in the type 'a
+    identified. This is important. An "identified" AST node is one that the
+    parser has marked with a unique node_id value. This node_id is used both
+    to denote a source location and, more importantly, to key into a large
+    number of tables later in the compiler. Most additional calculated
+    properties of a program that the compiler derives are keyed to the node_id
+    of an identified node.
+
+    The types 'a identified, node_id and such are in util/common.ml
+
+
+#2: me/semant.ml defines the Semant.ctxt structure. This is a record of
+    tables, almost all of which are keyed by node_id. See previous comment
+    regrding node_id. The Semant module is open in most of the modules within
+    the me/ directory, and they all refer liberally to the ctxt tables, either
+    directly or via helper functions in semant. Semant also defines the
+    mid-end pass-management logic, lookup routines, type folds, and a variety
+    of other miscallaneous semantic-analysis helpers.
+
+
+#3: be/il.ml defines the IL. This is a small, typed IL based on a type system
+    that is relatively LLVM-ish, and a control-flow system that is *not*
+    expression/SSA based like LLVM. It's much dumber than that. The root of
+    the interesting types in this file is the type 'emitter', which is a
+    growable buffer along with a few counters.  An emitter is essentially a
+    buffer of quads. A quad, in turn, is a primitive virtual instruction
+    ('quad' because it is in its limit a 3-address machine, plus opcode) which
+    we then ... tend to turn directly into x86 anyways. Sorry; it wasn't clear
+    during initial construction that we'd wind up stopping at x86, so the IL
+    is probably superfluous, but there it is.
+
+    The IL types are operand = cell | immediate, and cell = reg | mem. Plus a
+    certain quantity of special-casing and noise for constant-pointer
+    propagation and addressing modes and whatnot.
+
+
+#4: be/asm.ml defines the Asm.frag type, which is a "chunk of binary-ish
+    stuff" to put in an output file. Words, bytes, lazily-resolved fixups,
+    constant expressions, 0-terminated strings, alignment boundaries, etc. You
+    will hopefully not need to produce a lot of this yourself; most of this is
+    already being emitted.
+
+    An important type that gets resolved here is fixup, from util/common.ml.
+    Fixups are things you can wrap around a frag using an Asm.DEF frag, which
+    get their size and position (both in-file and in-memory) calculated at
+    asm-time; but you can refer to them before they're resolved. So any time
+    the compiler needs to refer to "the place / size this thingy will be, when
+    it finally gets boiled down to frags and emitted" we generate a fixup and
+    use that. Functions and static data structures, for example, tend to get
+    fixups assigned to them early on in the middle-end of the compiler.
+
+
+Control and information flow within the compiler:
+-------------------------------------------------
+
+- driver/main.ml assumes control on startup. Options are parsed, platform is
+  detected, etc.
+
+
+- fe/lexer.ml does lexing in any case; fe/parser.ml holds the fundamental
+  parser-state and parser-combinator functions. Parsing rules are split
+  between 3 files: fe/cexp.ml, fe/pexp.ml, and fe/item.ml. This split
+  represents the general structure of the grammar(s):
+
+    - The outermost grammar is called "cexp" (crate expression), and is an
+      expression language that describes the crate directives found in crate
+      files. It's evaluated inside the compiler.
+
+    - The next grammar is "item", which is a statement language that describes
+      the directives, declarations and statements found in source files. If
+      you compile a naked source file, you jump straight to item and then
+      synthesize a simple crate structure around the result.
+
+    - The innermost grammar is "pexp" (parsed expression), and is an
+      expression language used for the shared expression grammar within both
+      cexp and item. Pexps within cexp are evaluated in the compiler
+      (non-constant, complex cexps are errors) whereas pexps within items are
+      desugared to statements and primitive expressions.
+
+    - The AST is the output from the item grammar. Pexp and cexp do not escape
+      the front-end.
+
+
+- driver/main.ml then builds a Semant.ctxt and threads it through the various
+  middle-end passes. Each pass defines one or more visitors, which is an FRU
+  copy of the empty_visitor in me/walk.ml. Each visitor performs a particular
+  task, encapsulates some local state in local variables, and leaves its
+  results in a table. If the table it's calculating is pass-local, it will be
+  a local binding within the pass; if it's to be shared with later passes, it
+  will be a table in Semant.ctxt. Pass order is therefore somewhat important,
+  so I'll describe it here:
+
+    - me/resolve.ml looks up names and connects them to definitions. This
+      includes expanding all types (as types can occur within names, as part
+      of a parametric name) and performing all import/export/visibility
+      judgments. After resolve, we should not be doing any further name-based
+      lookups (with one exception: typestate does some more name
+      lookup. Subtle reason, will return to it).
+
+      Resolve populates several of the tables near the top of Semant.ctxt:
+
+          ctxt_all_cast_types
+          ctxt_all_defns
+          ctxt_all_item_names
+          ctxt_all_item_types
+          ctxt_all_lvals
+          ctxt_all_stmts
+          ctxt_all_type_items
+          ctxt_block_items
+          ctxt_block_slots
+          ctxt_frame_args
+          ctxt_lval_to_referent
+          ctxt_node_referenced
+          ctxt_required_items
+          ctxt_slot_is_arg
+          ctxt_slot_keys
+
+      The most obviously critical of these are lval_to_referent and all_defns,
+      which connect subsequent visitors from a reference node to its referent
+      node, and catalogue all the possible things a referent may be.
+
+      Part of resolving that is perhaps not obvious is the task of resolving
+      and normalizing recursive types. This is what TY_iso is for. Recursive
+      types in rust have to pass through a tag type on their recursive edge;
+      TY_iso is an iso-recursive group of tags that refer only to one another;
+      within a TY_iso, the type term "TY_idx n" refers to "the nth member of
+      the current TY_iso". Resolve is responsible for finding such groups and
+      tying them into such closed-form knots.
+
+      TY_name should be completely eliminated in any of the types exiting
+      resolve.
+
+
+    - me/type.ml is a unification-based typechecker and inference engine. This
+      is as textbook-y as we could make it. It rewrites "auto" slots in the
+      ctxt_all_defns table when it completes (these are the slots with None as
+      their Ast.slot_ty).
+
+      This file is organized around tyspecs and tyvars.  A tyspec is a
+      constraint on an unknown type that is implied by its use; tyspecs are
+      generated during the AST-walk, placed in ref cells (tyvars), and the
+      cells are and unified with one another. If two tyvars unify, then a new
+      constraint is created with the tighter of the two and the two previous
+      tyvars are updated to point to the unified spec. Ideally all constraints
+      eventually run into a source of a concrete type (or a type otherwise
+      uniquely-determined by its tyspecs). If not, the type is underdetermined
+      and we get a type error. Similarly if two tyvars that are supposed to
+      unify clash in some way (integer unify-with string, say) then there is
+      also a type error.
+
+
+    - me/typestate.ml is a dataflow-based typestate checker. It is responsible
+      for ensuring all preconditions are met, including init-before-use. It
+      also determines slot lifecycle boundaries, and populates the context
+      tables:
+
+          ctxt_constr_ids
+          ctxt_constrs
+          ctxt_copy_stmt_is_init
+          ctxt_post_stmt_slot_drops
+          ctxt_postconditions
+          ctxt_poststates
+          ctxt_preconditions
+          ctxt_prestates
+
+      It is organized around constr_keys, a bunch of bitsets, and a CFG.
+
+      A constr_key is a normalized value representing a single constraint that
+      we wish to be able to refer to within a typestate. Every constr_key gets
+      a bit number assigned to it. A condition (and a typestate) is a
+      bit-vector, in which the set bits indicate the constr_keys (indexed by
+      associatd number) that hold in the condition/typestate.
+
+      There are 4 such bitsets generated for each node in the CFG:
+      precondition/postcondition and prestate/poststate. The visitors here
+      figure out all the constr_keys we'll need, then assign all the pre/post
+      conditions, generate the CFG, calculate the typestates from the CFG, and
+      check that every typestate satisfies its precondition.
+
+      (Due to the peculiarity that types are pure terms and are not 'a
+      identified in our AST, we have to do some name-lookup in here as well
+      when normalizing the const_keys).
+
+
+    - Effect is relatively simple: it calculates the effect of each type and
+      item, and checks that they either match their declarations or are
+      authorized to be lying.
+
+
+    - Loop is even simpler: it calculates loop-depth information for later use
+      generating foreach loops. It populates the context tables:
+
+          ctxt_block_is_loop_body
+          ctxt_slot_loop_depths
+          ctxt_stmt_loop_depths
+
+
+    - Alias checks slot-aliasing to ensure none of the rules are broken about
+      simultaneous aliases and such. It also populates the table
+      ctxt_slot_is_aliased.
+
+
+    - Layout determines the layout of frames, arguments, objects, closures and
+      such. This includes deciding which slot should go in a vreg and
+      generating fixups for all frame-spill regions. It populates the context
+      tables:
+
+          ctxt_block_is_loop_body
+          ctxt_call_sizes
+          ctxt_frame_blocks
+          ctxt_frame_sizes
+          ctxt_slot_is_obj_state
+          ctxt_slot_offsets
+          ctxt_slot_vregs
+          ctxt_spill_fixups
+
+      There is a useful chunk of ASCII-art in the leading comment of layout,
+      if you want to see how a frame goes together, I recommend reading it.
+
+
+    - Trans is the big one. This is the "translate AST to IL" pass, and it's a
+      bit of a dumping ground, sadly. Probably 4x the size of any other
+      pass. Stuff that is common to the x86 and LLVM backends is factored out
+      into transutil.ml, but it hardly helps. Suggestions welcome for
+      splitting it further.
+
+      Trans works *imperatively*. It maintains a stack of emitters, one per
+      function (or helper-function) and emits Il.quads into the top-of-stack
+      emitter into while it walks the statements of each function. If at any
+      point it needs to pause to emit a helper function ("glue function") it
+      pushes a new emitter onto the stack and emits into that.
+
+      Trans populates the context tables:
+
+          ctxt_all_item_code
+          ctxt_block_fixups
+          ctxt_data
+          ctxt_file_code
+          ctxt_file_fixups
+          ctxt_fn_fixups
+          ctxt_glue_code
+
+      The entries in the tables ending in _code are of type Semant.code, which
+      is an abstract type covering both function and glue-function code; each
+      holds an executable block of quads, plus an aggregate count of vregs and
+      a reference to the spill fixup for that code.
+
+
+- Once it completes trans, driver/main.ml does the "finishing touches":
+  register allocates each emitted code value (be/ra.ml), emits dwarf for the
+  crate (me/dwarf.ml), selects instructions (be/x86.ml), then selects one of
+  the object-file backends (be/elf.ml, be/macho.ml or be/pe.ml) and emits the
+  selected Asm.frag to it. Hopefully little of this will require further work;
+  the most incomplete module here is probably dwarf.ml but the remainder are
+  mostly stable and don't tend to change much, aside from picking bugs out of
+  them.
+
+
+
+Details and curiosities to note along the way:
+==============================================
+
+- Where you might expect there to be a general recursive expression type for
+  'expr', you'll find only a very limited non-recursive 3-way switch: binary,
+  unary, or atom; where atom is either a literal or an lval. This is because
+  all the "big" expressions (pexps) were boiled off during the desugaring
+  phase in the frontend.
+
+
+- There are multiple ways to refer to a path. Names, lvals and cargs all
+  appear to have similar structure (and do). They're all subsets of the
+  general path grammar, so all follow the rough shape of being either a base
+  anchor-path or an ext (extension) path with structural recursion to the
+  left.
+
+  Cargs (constraint arguments) are the sort of paths that can be passed to
+  constraints in the typestate system, and can contain the special symbol "*"
+  in the grammar, meaning "thing I am attached to".  This is the symbol
+  BASE_formal in the carg_base type.
+
+  Names are the sort of paths that refer to types or other items. Not slots.
+
+  Lvals are the sort of paths that *might* refer to slots, but we don't
+  generally know. So they can contain the dynamic-indexing component
+  COMP_atom. For example, x.(1 + 2).y is an lval.
+
+
+- Only one of these forms is 'a identified: an lval. And moreover, only the
+  lval *base* is identified; the remainder of the path has to be projected
+  forward through the referent after lookup. This also means that when you
+  lookup anything else by name, you have to be using the result immediately,
+  not storing it in a table for later.
+
+
+- Types are not 'a identified. This means that you (generally) cannot refer to
+  a *particular* occurrence of a type in the AST and associate information
+  with it. Instead, we treat types as "pure terms" (not carrying identity) and
+  calculate properties of them on the fly. For this we use a general fold
+  defined in me/semant.ml, the family of functions held in a ty_fold
+  structure, and passed to fold_ty.
+
+
+- There is a possibly-surprising type called "size" in util/common. This is a
+  type representing a "size expression" that may depend on runtime
+  information, such as the type descriptors passed to a frame at runtime. This
+  exists because our type-parameterization scheme is, at the moment,
+  implemented by passing type descriptors around at runtime, not
+  code-expansion a la C++ templates. So any time we have a translated indexing
+  operation or such that depends on a type parameter, we wind up with a size
+  expression including SIZE_param_size or SIZE_param_align, and have to do
+  size arithmetic at runtime. Upstream of trans, we generate sizes willy-nilly
+  and then decide in trans, x86, and dwarf whether they can be emitted
+  statically or via runtime calculation at the point of use.
+
+
+- Trans generates position-independent code (PIC). This means that it never
+  refers to the exact position of a fixup in memory at load-time, always the
+  distance-to-a-fixup from some other fixup, and/or current PC. On x86 this
+  means we wind up copying the "get next pc thunk" trick used on linux
+  systems, and/or storing "crate relative" addresses. The runtime and compiler
+  "know" (unfortunately sometimes quite obscurely) that an immediate pointer
+  should be encoded as relative-to a given displacement base, and work with
+  those as necessary.  Similarly, they emit code to reify pointer immediates
+  (add the displacements to displacement-bases) before handing them off to
+  (say) C library functions that expect "real" pointers. This is all somewhat
+  messy.
+
+
+- There is one central static data structure, "rust_crate", which is emitted
+  into the final loadable object and contains pointers to all subsequent
+  information the runtime may be interested in. It also serves as the
+  displacement base for a variety of PIC-ish displacements stored
+  elsewhere. When the runtime loads a crate, it dlsym()s rust_crate, and then
+  digs around in there. It's the entry-point for crawling the crate's
+  structure from outside. Importantly: it also contains pointers to the dwarf.
+
+
+- Currently we drive linking off dwarf. That is: when a crate needs to 'use'
+  an item from another dwarf crate, we dlopen / LoadLibrary and find the
+  "rust_crate" value, follow its pointers to dwarf tables, and scan around the
+  dwarf DIE tree resolving the hierarchical name of the used item. This may
+  change, we decided to recycle dwarf for this purpose early in the language
+  evolution and may, given the number of simplifications that have occurred
+  along the way, be able to fall back to C "mangled name" linkage at some
+  point. Though that decision carries a number of serious constraints, and
+  should not be taken lightly.
+
+
+
+Probably-bad ideas we will want to do differently in the self-hosted compiler:
+==============================================================================
+
+- We desugar too early in rustboot and should preserve the pexp structure
+  until later. Dherman is likely to argue for movement to a more
+  expression-focused grammar. This may well happen.
+
+- Multiple kinds of paths enforced by numerous nearly-isomorphic ML type
+  constructors is pointless once we're in rust; we can just make type
+  abbreviations that carry constraints like path : is_name(*) or such.
+
+- Storing auxiliary information in semant tables is awkward, and we should
+  figure out a suitably rusty idiom for decorating AST nodes in-place.
+  Inter-pass dependencies should be managed by augmenting the AST with
+  ever-more constraints (is_resolved(ast), is_typechecked(ast), etc.)
+
+- Trans should be organized as pure and value-producing code, not imperatively
+  emitting quads into emitters. LLVM will enforce this anwyays. See what
+  happened in lltrans.ml if you're curious what it'll look (more) like.
+
+- The PIC scheme will have to change, hopefully get much easier.
+

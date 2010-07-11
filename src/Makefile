@@ -728,7 +728,7 @@ PKG_3RDPARTY := rt/valgrind.h rt/memcheck.h \
                 rt/uthash/uthash.h rt/uthash/utlist.h \
                 rt/bigint/bigint.h rt/bigint/bigint_int.cpp \
                 rt/bigint/bigint_ext.cpp rt/bigint/low_primes.h
-PKG_FILES := README \
+PKG_FILES := README boot/README \
              $(wildcard etc/*.*) \
              $(MKFILES) $(BOOT_MLS) boot/fe/lexer.mll \
              $(COMPILER_INPUTS) \

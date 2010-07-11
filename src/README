@@ -3,6 +3,7 @@ This is preliminary version of the Rust compiler.
 Source layout:
 
 boot/              The bootstrap compiler
+boot/README        - More-detailed guide to it.
 boot/fe            - Front end (lexer, parser, AST)
 boot/me            - Middle end (resolve, check, layout, trans)
 boot/be            - Back end (IL, RA, insns, asm, objfiles)
