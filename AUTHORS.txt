@@ -6,6 +6,7 @@ Other authors:
 
 Andreas Gal <gal@mozilla.com>
 Brendan Eich <brendan@mozilla.org>
+Chris Double <chris.double@double.co.nz>
 Dave Herman <dherman@mozilla.com>
 Jeff Mulzelaar <jmuizelaar@mozilla.com>
 Matt Brubeck <mbrubeck@limpet.net>
