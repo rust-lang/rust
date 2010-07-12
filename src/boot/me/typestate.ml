@@ -988,23 +988,30 @@ let lifecycle_visitor
    * used later on in translation.
    *)
 
-  let (live_block_slots:(node_id Stack.t) Stack.t) = Stack.create () in
+  let (live_block_slots:(node_id, unit) Hashtbl.t) = Hashtbl.create 0 in
+  let (block_slots:(node_id Stack.t) Stack.t) = Stack.create () in
 
   let (implicit_init_block_slots:(node_id,node_id) Hashtbl.t) =
     Hashtbl.create 0
   in
 
+  let push_slot sl =
+    Stack.push sl (Stack.top block_slots)
+  in
+
   let mark_slot_init sl =
-    Stack.push sl (Stack.top live_block_slots)
+    Hashtbl.replace live_block_slots sl ()
   in
 
 
   let visit_block_pre b =
-    Stack.push (Stack.create()) live_block_slots;
+    Stack.push (Stack.create()) block_slots;
     begin
       match htab_search implicit_init_block_slots b.id with
           None -> ()
-        | Some slot -> mark_slot_init slot
+        | Some slot ->
+            push_slot slot;
+            mark_slot_init slot
     end;
     inner.Walk.visit_block_pre b
   in
@@ -1026,7 +1033,7 @@ let lifecycle_visitor
 
   let visit_block_post b =
     inner.Walk.visit_block_post b;
-    let blk_live = Stack.pop live_block_slots in
+    let blk_slots = Stack.pop block_slots in
     let stmts = b.node in
     let len = Array.length stmts in
       if len > 0
@@ -1038,8 +1045,13 @@ let lifecycle_visitor
               | Ast.STMT_be _ ->
                   () (* Taken care of in visit_stmt_post below. *)
             | _ ->
-                let slots = stk_elts_from_top blk_live in
-                  note_drops s slots
+                let slots = stk_elts_from_bot blk_slots in
+                let live =
+                  List.filter
+                    (fun i -> Hashtbl.mem live_block_slots i)
+                    slots
+                in
+                  note_drops s live
         end;
   in
 
@@ -1081,6 +1093,9 @@ let lifecycle_visitor
                     init_lval lv_dst
                   end;
 
+          | Ast.STMT_decl (Ast.DECL_slot (_, sloti)) ->
+              push_slot sloti.id
+
           | Ast.STMT_init_rec (lv_dst, _, _)
           | Ast.STMT_init_tup (lv_dst, _)
           | Ast.STMT_init_vec (lv_dst, _)
@@ -1117,9 +1132,14 @@ let lifecycle_visitor
     match s.node with
         Ast.STMT_ret _
       | Ast.STMT_be _ ->
-          let stks = stk_elts_from_top live_block_slots in
-          let slots = List.concat (List.map stk_elts_from_top stks) in
-            note_drops s slots
+          let stks = stk_elts_from_top block_slots in
+          let slots = List.concat (List.map stk_elts_from_bot stks) in
+          let live =
+            List.filter
+              (fun i -> Hashtbl.mem live_block_slots i)
+              slots
+          in
+            note_drops s live
       | _ -> ()
   in
 

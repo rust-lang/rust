@@ -464,6 +464,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       vec-append.rs \
                       vec-concat.rs \
                       vec-drop.rs \
+                      vec-late-init.rs \
                       vec-slice.rs \
                       vec.rs \
                       writealias.rs \
