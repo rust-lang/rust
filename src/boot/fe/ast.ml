@@ -1356,7 +1356,8 @@ let ty_children (ty:ty) : ty array =
         [| ty' |]
     | TY_rec fields -> Array.map snd fields
     | TY_tag ty_tag -> children_of_ty_tag ty_tag
-    | TY_iso ty_iso -> children_of_ty_tag (ty_iso.iso_group.(ty_iso.iso_index))
+    | TY_iso ty_iso ->
+        children_of_ty_tag (ty_iso.iso_group.(ty_iso.iso_index))
     | TY_fn ty_fn -> children_of_ty_fn ty_fn
     | TY_obj (_, methods) ->
         Array.concat (List.map children_of_ty_fn (htab_vals methods))
