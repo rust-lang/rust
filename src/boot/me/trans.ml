@@ -2453,9 +2453,8 @@ let trans_visitor
             note_drop_step ty "drop_ty: obj path";
             let binding = get_element_ptr cell Abi.binding_field_binding in
             let null_jmp = null_check binding in
+            let rc_jmp = drop_refcount_and_cmp binding in
             let obj = deref binding in
-            let rc = get_element_ptr obj 0 in
-            let rc_jmp = drop_refcount_and_cmp rc in
             let tydesc = get_element_ptr obj 1 in
             let body = get_element_ptr obj 2 in
             let ty_params =
@@ -2505,8 +2504,7 @@ let trans_visitor
 
                 let _ = check_box_rty cell in
                 let null_jmp = null_check cell in
-                let rc = box_rc_cell cell in
-                let j = drop_refcount_and_cmp rc in
+                let j = drop_refcount_and_cmp cell in
 
                   (* FIXME (issue #25): check to see that the box has
                    * further box members; if it doesn't we can elide the
@@ -2525,7 +2523,7 @@ let trans_visitor
                   note_drop_step ty "drop_ty: done box-drop path";
 
             | MEM_interior when type_is_structured ty ->
-                note_drop_step ty "drop:ty structured-interior path";
+                note_drop_step ty "drop_ty structured-interior path";
                 iter_ty_parts ty_params cell ty
                   (drop_ty ty_params) curr_iso;
                 note_drop_step ty "drop_ty: done structured-interior path";
@@ -2740,13 +2738,34 @@ let trans_visitor
       emit (Il.jmp Il.JE Il.CodeNone);
       j
 
-  and drop_refcount_and_cmp (rc:Il.cell) : quad_idx =
+  and drop_refcount_and_cmp (boxed:Il.cell) : quad_idx =
     iflog (fun _ -> annotate "drop refcount and maybe free");
+    let rc = box_rc_cell boxed in
+    if cx.ctxt_sess.Session.sess_trace_gc ||
+      cx.ctxt_sess.Session.sess_trace_drop
+    then
+      begin
+        trace_str true "refcount--";
+        trace_word true boxed;
+        trace_word true rc
+      end;
     emit (Il.binary Il.SUB rc (Il.Cell rc) one);
     emit (Il.cmp (Il.Cell rc) zero);
     let j = mark () in
       emit (Il.jmp Il.JNE Il.CodeNone);
       j
+
+  and incr_refcount (boxed:Il.cell) : unit =
+    let rc = box_rc_cell boxed in
+      if cx.ctxt_sess.Session.sess_trace_gc ||
+        cx.ctxt_sess.Session.sess_trace_drop
+      then
+        begin
+          trace_str true "refcount++";
+          trace_word true boxed;
+          trace_word true rc
+        end;
+      add_to rc one
 
   and drop_slot
       (ty_params:Il.cell)
@@ -2917,7 +2936,7 @@ let trans_visitor
         | (MEM_rc_struct, MEM_rc_struct) ->
             (* Lightweight copy: twiddle refcounts, move pointer. *)
             anno "refcounted light";
-            add_to (box_rc_cell src) one;
+            incr_refcount src;
             if not initializing
             then
               drop_ty ty_params dst dst_ty None;
