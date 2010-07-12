@@ -1123,17 +1123,17 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
               fmt_slot ff slot.node;
               fmt ff " ";
               fmt_ident ff ident;
-              fmt ff " = ";
+              fmt ff " in ";
               fmt_lval ff f;
               fmt_atoms ff az;
-              fmt ff " ";
+              fmt ff ") ";
               fmt_obr ff;
               fmt_stmts ff sf.for_each_body.node;
               fmt_cbb ff
             end
 
       | STMT_put (atom) ->
-          fmt ff "put ";
+          fmt ff "put";
           begin
             match atom with
                 Some a -> (fmt ff " "; fmt_atom ff a)
