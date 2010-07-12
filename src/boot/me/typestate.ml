@@ -1044,8 +1044,16 @@ let lifecycle_visitor
                 Ast.STMT_ret _
               | Ast.STMT_be _ ->
                   () (* Taken care of in visit_stmt_post below. *)
-            | _ ->
-                let slots = stk_elts_from_bot blk_slots in
+              | _ ->
+                (* The blk_slots stack we have has accumulated slots in
+                 * declaration order as we walked the block; the top of the
+                 * stack is the last-declared slot. We want to generate
+                 * slot-drop obligations here for the slots in top-down order
+                 * (starting with the last-declared) but only hitting those
+                 * slots that actually got initialized (went live) at some
+                 * point in the block.
+                 *)
+                let slots = stk_elts_from_top blk_slots in
                 let live =
                   List.filter
                     (fun i -> Hashtbl.mem live_block_slots i)
@@ -1122,7 +1130,7 @@ let lifecycle_visitor
                 (fst f.Ast.for_each_slot).id
 
 
-        | _ -> ()
+          | _ -> ()
     end;
     inner.Walk.visit_stmt_pre s
   in
@@ -1133,7 +1141,7 @@ let lifecycle_visitor
         Ast.STMT_ret _
       | Ast.STMT_be _ ->
           let stks = stk_elts_from_top block_slots in
-          let slots = List.concat (List.map stk_elts_from_bot stks) in
+          let slots = List.concat (List.map stk_elts_from_top stks) in
           let live =
             List.filter
               (fun i -> Hashtbl.mem live_block_slots i)
