@@ -2089,7 +2089,7 @@ Vectors can be sliced. A slice expression builds a new vector by copying a
 contiguous range -- given by a pair of indices representing a half-open
 interval -- out of the sliced vector.
 
-And example of a @code{vec} type and its use:
+An example of a @code{vec} type and its use:
 @example
 let vec[int] v = vec(7, 5, 3);
 let int i = v.(2);
@@ -2698,9 +2698,9 @@ following the declaration statement.
 
 The latter (@code{auto}) form of slot declaration causes the compiler to infer
 the static type of the slot through unification with the types of values
-assigned to the slot in the the remaining code in the block scope. Inference
-only occurs on frame-local slots, not argument slots. Function, iterator and
-object signatures must always declared types for all argument slots.
+assigned to the slot in the remaining code in the block scope. Inference only
+occurs on frame-local slots, not argument slots. Function, iterator and object
+signatures must always declared types for all argument slots.
 @xref{Ref.Mem.Slot}.
 
 
@@ -2718,11 +2718,11 @@ Executing a copy statement causes the value denoted by the expression --
 either a value or a primitive combination of values -- to be copied into the
 memory location denoted by the @emph{lval}.
 
-A copy may entail the the adjustment of reference counts, execution of
-destructors, or similar adjustments in order to respect the path through the
-memory graph implied by the @code{lval}, as well as any existing value held in
-the memory being written-to. All such adjustment is automatic and implied by
-the @code{=} operator.
+A copy may entail the adjustment of reference counts, execution of destructors,
+or similar adjustments in order to respect the path through the memory graph
+implied by the @code{lval}, as well as any existing value held in the memory
+being written-to. All such adjustment is automatic and implied by the @code{=}
+operator.
 
 An example of three different copy statements:
 @example
@@ -2740,7 +2740,7 @@ A @code{spawn} statement consists of keyword @code{spawn}, followed by a
 normal @emph{call} statement (@pxref{Ref.Stmt.Call}).  A @code{spawn}
 statement causes the runtime to construct a new task executing the called
 function.  The called function is referred to as the @dfn{entry function} for
-the spawned task, and its arguments are copied form the spawning task to the
+the spawned task, and its arguments are copied from the spawning task to the
 spawned task before the spawned task begins execution.
 
 Functions taking alias-slot arguments, or returning non-nil values, cannot be
@@ -3129,7 +3129,7 @@ variable, executing the loop body once per copy. To perform a for loop on a
 sub-range of a vector or string, form a temporary slice over the sub-range and
 run the loop over the slice.
 
-Example of a 4 for loops, all identical:
+Example of 4 for loops, all identical:
 @example
 let vec[foo] v = vec(a, b, c);
 
