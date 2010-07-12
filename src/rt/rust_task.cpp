@@ -423,6 +423,8 @@ rust_task::link_gc(gc_alloc *gcm) {
     gcm->prev = NULL;
     gcm->next = gc_alloc_chain;
     gc_alloc_chain = gcm;
+    if (gcm->next)
+        gcm->next->prev = gcm;
 }
 
 void
@@ -431,6 +433,8 @@ rust_task::unlink_gc(gc_alloc *gcm) {
         gcm->prev->next = gcm->next;
     if (gcm->next)
         gcm->next->prev = gcm->prev;
+    if (gc_alloc_chain == gcm)
+        gc_alloc_chain = gcm->next;
     gcm->prev = NULL;
     gcm->next = NULL;
 }
