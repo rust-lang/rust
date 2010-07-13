@@ -6,6 +6,7 @@ native "rust" mod rustrt {
   fn vec_buf[T](vec[T] v) -> vbuf;
   fn vec_len[T](vec[T] v) -> uint;
   fn vec_alloc[T](uint n_elts) -> vec[T];
+  fn refcount[T](vec[T] v) -> uint;
 }
 
 fn alloc[T](uint n_elts) -> vec[T] {
