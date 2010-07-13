@@ -130,6 +130,7 @@ rust_task::start(uintptr_t exit_task_glue,
     uintptr_t *spp = (uintptr_t *)rust_sp;
 
     // The exit_task_glue frame we synthesize above the frame we activate:
+    *spp-- = (uintptr_t) 0;          // closure-or-obj
     *spp-- = (uintptr_t) this;       // task
     *spp-- = (uintptr_t) 0;          // output
     *spp-- = (uintptr_t) 0;          // retpc
@@ -153,6 +154,7 @@ rust_task::start(uintptr_t exit_task_glue,
         uintptr_t *src = (uintptr_t *)args;
         src += 1;                  // spawn-call output slot
         src += 1;                  // spawn-call task slot
+        src += 1;                  // spawn-call closure-or-obj slot
         // Memcpy all but the task and output pointers
         callsz -= (2 * sizeof(uintptr_t));
         spp = (uintptr_t*) (((uintptr_t)spp) - callsz);
@@ -168,6 +170,7 @@ rust_task::start(uintptr_t exit_task_glue,
     // The *implicit* incoming args to the spawnee frame we're
     // activating:
 
+    *spp-- = (uintptr_t) 0;               // closure-or-obj
     *spp-- = (uintptr_t) this;            // task
     *spp-- = (uintptr_t) 0;               // output addr
     *spp-- = (uintptr_t) exit_task_glue;  // retpc
