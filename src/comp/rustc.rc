@@ -12,6 +12,10 @@ mod driver {
     mod rustc;
 }
 
+mod lib {
+    mod llvm;
+}
+
 // Local Variables:
 // fill-column: 78;
 // indent-tabs-mode: nil
