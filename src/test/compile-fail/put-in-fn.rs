@@ -1,4 +1,4 @@
-// error-pattern: Non-iter function
+// error-pattern: iterator function
 
 fn f() -> int {
   put 10;

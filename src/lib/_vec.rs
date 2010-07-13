@@ -80,7 +80,7 @@ fn map[T,U](&op[T,U] f, &vec[T] v) -> vec[U] {
   // but this does not work presently.
   let vec[U] u = vec();
   for (T ve in v) {
-    u += vec(f[T,U](ve));
+    u += vec(f(ve));
   }
   ret u;
 }

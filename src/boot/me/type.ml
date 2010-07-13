@@ -1,1639 +1,928 @@
-open Common;;
-open Semant;;
+(* rust/src/boot/me/type.ml *)
 
-type tyspec =
-    TYSPEC_equiv of tyvar
-  | TYSPEC_all
-  | TYSPEC_resolved of (Ast.ty_param array) * Ast.ty
-  | TYSPEC_box of tyvar                       (* @ of some t *)
-  | TYSPEC_mutable of tyvar                   (* something mutable *)
-  | TYSPEC_callable of (tyvar * tyvar array)  (* out, ins *)
-  | TYSPEC_collection of tyvar                (* vec or str *)
-  | TYSPEC_comparable                         (* comparable with = and != *)
-  | TYSPEC_plusable                           (* nums, vecs, and strings *)
-  | TYSPEC_dictionary of dict
-  | TYSPEC_integral                           (* int-like *)
-  | TYSPEC_numeric                            (* int-like or float-like *)
-  | TYSPEC_ordered                            (* comparable with < etc. *)
-  | TYSPEC_record of dict
-  | TYSPEC_tuple of tyvar array               (* heterogeneous tuple *)
-  | TYSPEC_vector of tyvar
-  | TYSPEC_app of (tyvar * Ast.ty array)
+(* An ltype is the type of a segment of an lvalue. It is used only by
+ * [check_lval] and friends and are the closest Rust ever comes to polymorphic
+ * types. All ltypes must be resolved into monotypes by the time an outer
+ * lvalue (i.e. an lvalue whose parent is not also an lvalue) is finished
+ * typechecking. *)
 
-and dict = (Ast.ident, tyvar) Hashtbl.t
+type ltype =
+    LTYPE_mono of Ast.ty
+  | LTYPE_poly of Ast.ty_param array * Ast.ty   (* "big lambda" *)
+  | LTYPE_module of Ast.mod_items               (* type of a module *)
 
-and tyvar = tyspec ref;;
+type fn_ctx = {
+  fnctx_return_type: Ast.ty;
+  fnctx_is_iter: bool
+}
 
-(* Signatures for binary operators. *)
-type binopsig =
-    BINOPSIG_bool_bool_bool     (* bool * bool -> bool *)
-  | BINOPSIG_comp_comp_bool     (* comparable a * comparable a -> bool *)
-  | BINOPSIG_ord_ord_bool       (* ordered a * ordered a -> bool *)
-  | BINOPSIG_integ_integ_integ  (* integral a * integral a -> integral a *)
-  | BINOPSIG_num_num_num        (* numeric a * numeric a -> numeric a *)
-  | BINOPSIG_plus_plus_plus     (* plusable a * plusable a -> plusable a *)
-;;
+exception Type_error of string * Ast.ty
 
+let log cx =
+  Session.log
+    "type"
+    cx.Semant.ctxt_sess.Session.sess_log_type
+    cx.Semant.ctxt_sess.Session.sess_log_out
 
-let rec tyspec_to_str (ts:tyspec) : string =
+let type_error expected actual = raise (Type_error (expected, actual))
 
-  let fmt = Format.fprintf in
-  let fmt_ident (ff:Format.formatter) (i:Ast.ident) : unit =
-    fmt ff  "%s" i
+(* We explicitly curry [cx] like this to avoid threading it through all the
+ * inner functions. *)
+let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
+  (* Returns the part of the type that matters for typechecking. *)
+  let rec fundamental_ty (ty:Ast.ty) : Ast.ty =
+    match ty with
+        Ast.TY_constrained (ty', _) | Ast.TY_mutable ty' -> fundamental_ty ty'
+      | _ -> ty
   in
-  let fmt_obox ff = Format.pp_open_box ff 4 in
-  let fmt_cbox ff = Format.pp_close_box ff () in
-  let fmt_obr ff = fmt ff "<" in
-  let fmt_cbr ff = fmt ff ">" in
-  let fmt_obb ff = (fmt_obox ff; fmt_obr ff) in
-  let fmt_cbb ff = (fmt_cbox ff; fmt_cbr ff) in
 
-  let rec fmt_fields (flav:string) (ff:Format.formatter) (flds:dict) : unit =
-    fmt_obb ff;
-    fmt ff "%s :" flav;
-    let fmt_entry ident tv =
-      fmt ff "@\n";
-      fmt_ident ff ident;
-      fmt ff " : ";
-      fmt_tyspec ff (!tv);
+  let sprintf_ltype _ (lty:ltype) : string =
+    match lty with
+        LTYPE_mono ty | LTYPE_poly (_, ty) -> Ast.sprintf_ty () ty
+      | LTYPE_module items -> Ast.sprintf_mod_items () items
+  in
+
+  let get_slot_ty (slot:Ast.slot) : Ast.ty =
+    match slot.Ast.slot_ty with
+        Some ty -> ty 
+      | None -> Common.bug () "get_slot_ty: no type in slot"
+  in
+
+  (* [unbox ty] strips off all boxes in [ty] and returns a tuple consisting of
+   * the number of boxes that were stripped off. *)
+  let unbox (ty:Ast.ty) : (Ast.ty * int) =
+    let rec unbox ty acc =
+      match ty with
+          Ast.TY_box ty' -> unbox ty' (acc + 1)
+        | _ -> (ty, acc)
     in
-      Hashtbl.iter fmt_entry flds;
-      fmt_cbb ff
+    unbox ty 0
+  in
 
-  and fmt_app ff tv args =
-    begin
-      assert (Array.length args <> 0);
-      fmt_obb ff;
-      fmt ff "app(";
-      fmt_tyspec ff (!tv);
-      fmt ff ")";
-      Ast.fmt_app_args ff args;
-      fmt_cbb ff;
-    end
+  let maybe_mutable (mutability:Ast.mutability) (ty:Ast.ty) : Ast.ty =
+    if mutability = Ast.MUT_mutable then Ast.TY_mutable ty else ty
+  in
 
-  and fmt_tvs ff tvs =
-    fmt_obox ff;
-    let fmt_tv i tv =
-      if i <> 0
-      then fmt ff ", ";
-      fmt_tyspec ff (!tv)
+  (*
+   * Type assertions
+   *)
+
+  let is_integer (ty:Ast.ty) =
+    match ty with
+        Ast.TY_int | Ast.TY_uint
+      | Ast.TY_mach Common.TY_u8 | Ast.TY_mach Common.TY_u16
+      | Ast.TY_mach Common.TY_u32 | Ast.TY_mach Common.TY_u64
+      | Ast.TY_mach Common.TY_i8 | Ast.TY_mach Common.TY_i16
+      | Ast.TY_mach Common.TY_i32 | Ast.TY_mach Common.TY_i64 -> true
+      | _ -> false
+  in
+
+  let demand (expected:Ast.ty) (actual:Ast.ty) : unit =
+    let expected, actual = fundamental_ty expected, fundamental_ty actual in
+    if expected <> actual then
+      type_error (Printf.sprintf "%a" Ast.sprintf_ty expected) actual
+  in
+  let demand_integer (actual:Ast.ty) : unit =
+    if not (is_integer (fundamental_ty actual)) then
+      type_error "integer" actual
+  in
+  let demand_bool_or_char_or_integer (actual:Ast.ty) : unit =
+    match fundamental_ty actual with
+        Ast.TY_bool | Ast.TY_char -> ()
+      | ty when is_integer ty -> ()
+      | _ -> type_error "bool, char, or integer" actual
+  in
+  let demand_number (actual:Ast.ty) : unit =
+    match fundamental_ty actual with
+        Ast.TY_int | Ast.TY_uint | Ast.TY_mach _ -> ()
+      | ty -> type_error "number" ty
+  in
+  let demand_number_or_str_or_vector (actual:Ast.ty) : unit =
+    match fundamental_ty actual with
+        Ast.TY_int | Ast.TY_uint | Ast.TY_mach _ | Ast.TY_str
+      | Ast.TY_vec _ ->
+          ()
+      | ty -> type_error "number, string, or vector" ty
+  in
+  let demand_vec (actual:Ast.ty) : Ast.ty =
+    match fundamental_ty actual with
+        Ast.TY_vec ty -> ty
+      | ty -> type_error "vector" ty
+  in
+  let demand_vec_with_mutability
+      (mut:Ast.mutability)
+      (actual:Ast.ty)
+      : Ast.ty =
+    match mut, fundamental_ty actual with
+        Ast.MUT_mutable, Ast.TY_vec ((Ast.TY_mutable _) as ty) -> ty
+      | Ast.MUT_mutable, ty -> type_error "mutable vector" ty
+      | Ast.MUT_immutable, ((Ast.TY_vec (Ast.TY_mutable _)) as ty) ->
+          type_error "immutable vector" ty
+      | Ast.MUT_immutable, Ast.TY_vec ty -> ty
+      | Ast.MUT_immutable, ty -> type_error "immutable vector" ty
+  in
+  let demand_vec_or_str (actual:Ast.ty) : Ast.ty =
+    match fundamental_ty actual with
+        Ast.TY_vec ty -> ty
+      | Ast.TY_str -> Ast.TY_mach Common.TY_u8
+      | ty -> type_error "vector or string" ty
+  in
+  let demand_rec (actual:Ast.ty) : Ast.ty_rec =
+    match fundamental_ty actual with
+        Ast.TY_rec ty_rec -> ty_rec
+      | ty -> type_error "record" ty
+  in
+  let demand_fn (arg_tys:Ast.ty option array) (actual:Ast.ty) : Ast.ty =
+    let expected = lazy begin
+      Format.fprintf Format.str_formatter "fn(";
+      let print_arg_ty i arg_ty_opt =
+        if i > 0 then Format.fprintf Format.str_formatter ", ";
+        match arg_ty_opt with
+            None -> Format.fprintf Format.str_formatter "<?>"
+          | Some arg_ty -> Ast.fmt_ty Format.str_formatter arg_ty
+      in
+      Array.iteri print_arg_ty arg_tys;
+      Format.fprintf Format.str_formatter ")";
+      Format.flush_str_formatter()
+    end in
+    match fundamental_ty actual with
+        Ast.TY_fn (ty_sig, _) as ty ->
+          let in_slots = ty_sig.Ast.sig_input_slots in
+          if Array.length arg_tys != Array.length in_slots then
+            type_error (Lazy.force expected) ty;
+          let in_slot_tys = Array.map get_slot_ty in_slots in
+          let maybe_demand a_opt b =
+            match a_opt with None -> () | Some a -> demand a b
+          in
+          Common.arr_iter2 maybe_demand arg_tys in_slot_tys;
+          get_slot_ty (ty_sig.Ast.sig_output_slot)
+      | ty -> type_error "function" ty
+  in
+  let demand_chan (actual:Ast.ty) : Ast.ty =
+    match fundamental_ty actual with
+        Ast.TY_chan ty -> ty
+      | ty -> type_error "channel" ty
+  in
+  let demand_port (actual:Ast.ty) : Ast.ty =
+    match fundamental_ty actual with
+        Ast.TY_port ty -> ty
+      | ty -> type_error "port" ty
+  in
+  let demand_all (tys:Ast.ty array) : Ast.ty =
+    if Array.length tys == 0 then
+      Common.bug () "demand_all called with an empty array of types";
+    let pivot = fundamental_ty tys.(0) in
+    for i = 1 to Array.length tys - 1 do
+      demand pivot tys.(i)
+    done;
+    pivot
+  in
+
+  (* Performs beta-reduction (that is, type-param substitution). *)
+  let beta_reduce
+      (lval_id:Common.node_id)
+      (lty:ltype)
+      (args:Ast.ty array)
+      : ltype =
+    if Hashtbl.mem cx.Semant.ctxt_call_lval_params lval_id then
+      assert (args = Hashtbl.find cx.Semant.ctxt_call_lval_params lval_id)
+    else
+      Hashtbl.add cx.Semant.ctxt_call_lval_params lval_id args;
+
+    match lty with
+        LTYPE_poly (params, ty) ->
+          LTYPE_mono (Semant.rebuild_ty_under_params ty params args true)
+      | _ ->
+        Common.err None "expected polymorphic type but found %a"
+          sprintf_ltype lty
+  in
+
+  (*
+   * Lvalue and slot checking.
+   *
+   * We use a slightly different type language here which includes polytypes;
+   * see [ltype] above.
+   *)
+
+  let check_literal (lit:Ast.lit) : Ast.ty =
+    match lit with
+        Ast.LIT_nil -> Ast.TY_nil
+      | Ast.LIT_bool _ -> Ast.TY_bool
+      | Ast.LIT_mach (mty, _, _) -> Ast.TY_mach mty
+      | Ast.LIT_int _ -> Ast.TY_int
+      | Ast.LIT_uint _ -> Ast.TY_uint
+      | Ast.LIT_char _ -> Ast.TY_char
+  in
+
+  (* Here the actual inference happens. *)
+  let internal_check_slot
+      (infer:Ast.ty option)
+      (defn_id:Common.node_id)
+      : Ast.ty =
+    let slot =
+      match Hashtbl.find cx.Semant.ctxt_all_defns defn_id with
+          Semant.DEFN_slot slot -> slot
+        | _ ->
+          Common.bug
+            ()
+            "internal_check_slot: supplied defn wasn't a slot at all"
     in
-      Array.iteri fmt_tv tvs;
-      fmt_cbox ff;
+    match infer, slot.Ast.slot_ty with 
+        Some expected, Some actual ->
+          demand expected actual;
+          actual
+      | Some inferred, None ->
+          log cx "setting auto slot #%d = %a to type %a"
+            (Common.int_of_node defn_id)
+            Ast.sprintf_slot_key
+              (Hashtbl.find cx.Semant.ctxt_slot_keys defn_id)
+            Ast.sprintf_ty inferred;
+          let new_slot = { slot with Ast.slot_ty = Some inferred } in
+          Hashtbl.replace cx.Semant.ctxt_all_defns defn_id
+            (Semant.DEFN_slot new_slot);
+          inferred
+      | None, Some actual -> actual
+      | None, None ->
+          Common.err None "can't infer any type for this slot"
+  in
 
-  and fmt_tyspec ff ts =
-    match ts with
-        TYSPEC_all -> fmt ff "<?>"
-      | TYSPEC_comparable -> fmt ff "<comparable>"
-      | TYSPEC_plusable -> fmt ff "<plusable>"
-      | TYSPEC_integral -> fmt ff "<integral>"
-      | TYSPEC_numeric -> fmt ff "<numeric>"
-      | TYSPEC_ordered -> fmt ff "<ordered>"
-      | TYSPEC_resolved (params, ty) ->
-          if Array.length params <> 0
-          then
-            begin
-              fmt ff "abs";
-              Ast.fmt_decl_params ff params;
-              fmt ff "(";
-              Ast.fmt_ty ff ty;
-              fmt ff ")"
-            end
+  let internal_check_mod_item_decl
+      (mid:Ast.mod_item_decl)
+      (mid_id:Common.node_id)
+      : ltype =
+    match mid.Ast.decl_item with
+        Ast.MOD_ITEM_mod (_, items) -> LTYPE_module items
+      | Ast.MOD_ITEM_fn _ | Ast.MOD_ITEM_obj _ | Ast.MOD_ITEM_tag _ ->
+          let ty = Hashtbl.find cx.Semant.ctxt_all_item_types mid_id in
+          let params = mid.Ast.decl_params in
+          if Array.length params == 0 then
+            LTYPE_mono ty
           else
-            Ast.fmt_ty ff ty
-
-      | TYSPEC_equiv tv ->
-          fmt_tyspec ff (!tv)
-
-      | TYSPEC_box tv ->
-          fmt_obr ff;
-          fmt ff "box ";
-          fmt_tyspec ff (!tv);
-          fmt_cbr ff;
-
-      | TYSPEC_mutable tv ->
-          fmt_obr ff;
-          fmt ff "mut ";
-          fmt_tyspec ff (!tv);
-          fmt_cbr ff
-
-      | TYSPEC_callable (out, ins) ->
-          fmt_obb ff;
-          fmt ff "callable fn(";
-          fmt_tvs ff ins;
-          fmt ff ") -> ";
-          fmt_tyspec ff (!out);
-          fmt_cbb ff;
-
-      | TYSPEC_collection tv ->
-          fmt_obb ff;
-          fmt ff "collection : ";
-          fmt_tyspec ff (!tv);
-          fmt_cbb ff;
-
-      | TYSPEC_tuple tvs ->
-          fmt_obr ff;
-          fmt ff "tuple (";
-          fmt_tvs ff tvs;
-          fmt ff ")";
-          fmt_cbr ff;
-
-      | TYSPEC_vector tv ->
-          fmt_obb ff;
-          fmt ff "vector ";
-          fmt_tyspec ff (!tv);
-          fmt_cbb ff;
-
-      | TYSPEC_dictionary dct ->
-          fmt_fields "dictionary" ff dct
-
-      | TYSPEC_record dct ->
-          fmt_fields "record" ff dct
-
-      | TYSPEC_app (tv, args) ->
-          fmt_app ff tv args
-
-  in
-  let buf = Buffer.create 16 in
-  let bf = Format.formatter_of_buffer buf in
-    begin
-      fmt_tyspec bf ts;
-      Format.pp_print_flush bf ();
-      Buffer.contents buf
-    end
-;;
-
-let iflog cx thunk =
-  if cx.ctxt_sess.Session.sess_log_type
-  then thunk ()
-  else ()
-;;
-
-let rec resolve_tyvar (tv:tyvar) : tyvar =
-  match !tv with
-      TYSPEC_equiv subtv -> resolve_tyvar subtv
-    | _ -> tv
-;;
-
-type unify_ctxt =
-    { mut_ok: bool;
-      box_ok: bool }
-;;
-
-let arg_pass_ctx =
-  { box_ok = false;
-    mut_ok = true }
-;;
-
-let rval_ctx =
-  { box_ok = true;
-    mut_ok = true }
-;;
-
-let lval_ctx =
-  { box_ok = false;
-    mut_ok = true }
-;;
-
-let init_ctx =
-  { box_ok = true;
-    mut_ok = true }
-;;
-
-let strict_ctx =
-  { box_ok = false;
-    mut_ok = false }
-;;
-
-
-let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
-
-  let depth = ref 0 in
-
-  let log cx = Session.log "type"
-    cx.ctxt_sess.Session.sess_log_type
-    cx.ctxt_sess.Session.sess_log_out
+            LTYPE_poly ((Array.map (fun p -> p.Common.node) params), ty)
+      | Ast.MOD_ITEM_type _ ->
+          Common.bug
+            ()
+            "internal_check_mod_item_decl: unexpected mod item type"
   in
 
-  let retval_tvs = Stack.create () in
-  let fns = Stack.create () in
-
-  let push_fn fn =
-    Stack.push fn fns
-  in
-
-  let pop_fn _ =
-    ignore (Stack.pop fns)
-  in
-
-  let fn_is_iter() =
-    (Stack.top fns).Ast.fn_aux.Ast.fn_is_iter
-  in
-
-  let push_retval_tv tv =
-    Stack.push tv retval_tvs
-  in
-  let pop_retval_tv _ =
-    ignore (Stack.pop retval_tvs)
-  in
-  let retval_tv _ =
-    Stack.top retval_tvs
-  in
-
-  let pat_tvs = Stack.create () in
-  let push_pat_tv tv =
-    Stack.push tv pat_tvs
-  in
-  let pop_pat_tv _ =
-    ignore (Stack.pop pat_tvs)
-  in
-  let pat_tv _ =
-    Stack.top pat_tvs
-  in
-
-  let (bindings:(node_id, tyvar) Hashtbl.t) = Hashtbl.create 10 in
-  let (item_params:(node_id, tyvar array) Hashtbl.t) = Hashtbl.create 10 in
-  let (lval_tyvars:(node_id, tyvar) Hashtbl.t) = Hashtbl.create 0 in
-
-  let path = Stack.create () in
-
-  let visitor (cx:ctxt) (inner:Walk.visitor) : Walk.visitor =
-
-    let rec unify_slot
-        (ucx:unify_ctxt)
-        (slot:Ast.slot)
-        (id_opt:node_id option)
-        (tv:tyvar) : unit =
-      match id_opt with
-          Some id ->
-            unify_tyvars ucx (Hashtbl.find bindings id) tv
-        | None ->
-            match slot.Ast.slot_ty with
-                None -> bug () "untyped unidentified slot"
-              | Some ty -> unify_ty ucx ty tv
-
-    and check_sane_tyvar tv =
-      match !tv with
-          TYSPEC_resolved (_, (Ast.TY_named _)) ->
-            bug () "named-type in type checker"
-        | _ -> ()
-
-    and unify_tyvars (ucx:unify_ctxt) (av:tyvar) (bv:tyvar) : unit =
-      let indent = String.make (4 * (!depth)) ' ' in
-        iflog cx
-          (fun _ ->
-             log cx "%s> unifying types:" indent;
-             if ucx.box_ok || ucx.mut_ok
-             then
-               log cx "%s> (w/ %s%s%s)"
-                 indent
-                 (if ucx.box_ok then "ext-ok" else "")
-                 (if ucx.box_ok && ucx.mut_ok then " " else "")
-                 (if ucx.mut_ok then "mut-ok" else "");
-             log cx "%s> input tyvar A:     %s" indent (tyspec_to_str !av);
-             log cx "%s> input tyvar B:     %s" indent (tyspec_to_str !bv));
-        check_sane_tyvar av;
-        check_sane_tyvar bv;
-
-        incr depth;
-        unify_tyvars' ucx av bv;
-        decr depth;
-
-        iflog cx
-          (fun _ ->
-             log cx "%s< unified types:" indent;
-             log cx "%s< output tyvar A:     %s" indent (tyspec_to_str !av);
-             log cx "%s< output tyvar B:     %s" indent (tyspec_to_str !bv));
-        check_sane_tyvar av;
-        check_sane_tyvar bv;
-
-    and unify_tyvars' (ucx:unify_ctxt) (av:tyvar) (bv:tyvar) : unit =
-      let (a, b) = ((resolve_tyvar av), (resolve_tyvar bv)) in
-      let fail () =
-        err None "mismatched types: %s vs. %s" (tyspec_to_str !av)
-          (tyspec_to_str !bv);
-      in
-
-      let merge_dicts a b =
-        let c = Hashtbl.create ((Hashtbl.length a) + (Hashtbl.length b)) in
-        let merge ident tv_a =
-          if Hashtbl.mem c ident
-          then unify_tyvars ucx (Hashtbl.find c ident) tv_a
-          else Hashtbl.add c ident tv_a
-        in
-          Hashtbl.iter (Hashtbl.add c) b;
-          Hashtbl.iter merge a;
-          c
-      in
-
-      let unify_dict_with_record_fields
-          (dct:dict)
-          (fields:Ast.ty_rec)
-          : unit =
-        let find_ty (query:Ast.ident) : Ast.ty =
-          match atab_search fields query with
-              None -> fail()
-            | Some t -> t
-        in
-
-        let check_entry ident tv =
-          unify_ty ucx (find_ty ident) tv
-        in
-          Hashtbl.iter check_entry dct
-      in
-
-      let unify_dict_with_obj_fns
-          (dct:dict)
-          (fns:(Ast.ident,Ast.ty_fn) Hashtbl.t) : unit =
-        let check_entry (query:Ast.ident) tv : unit =
-          match htab_search fns query with
-              None -> fail ()
-            | Some fn -> unify_ty ucx (Ast.TY_fn fn) tv
-        in
-          Hashtbl.iter check_entry dct
-      in
-
-      let rec unify_resolved_types
-          (ty_a:Ast.ty)
-          (ty_b:Ast.ty)
-          : Ast.ty =
-        match ty_a, ty_b with
-            a, b when a = b -> a
-          | Ast.TY_box a, b | b, Ast.TY_box a when ucx.box_ok ->
-              Ast.TY_box (unify_resolved_types a b)
-          | Ast.TY_mutable a, b | b, Ast.TY_mutable a when ucx.mut_ok ->
-              Ast.TY_mutable (unify_resolved_types a b)
-          | Ast.TY_constrained (a, constrs), b
-          | b, Ast.TY_constrained (a, constrs) ->
-              Ast.TY_constrained ((unify_resolved_types a b), constrs)
-          | _ -> fail()
-      in
-
-      let rec is_comparable_or_ordered (comparable:bool) (ty:Ast.ty) : bool =
-        match ty with
-            Ast.TY_mach _ | Ast.TY_int | Ast.TY_uint
-          | Ast.TY_char | Ast.TY_str -> true
-          | Ast.TY_any | Ast.TY_nil | Ast.TY_bool | Ast.TY_chan _
-          | Ast.TY_port _ | Ast.TY_task | Ast.TY_tup _ | Ast.TY_vec _
-          | Ast.TY_rec _ | Ast.TY_tag _ | Ast.TY_iso _ | Ast.TY_idx _ ->
-              comparable
-          | Ast.TY_fn _ | Ast.TY_obj _
-          | Ast.TY_param _ | Ast.TY_native _ | Ast.TY_type -> false
-          | Ast.TY_named _ -> bug () "unexpected named type"
-          | Ast.TY_constrained (ty, _) ->
-              is_comparable_or_ordered comparable ty
-          | Ast.TY_mutable ty ->
-              is_comparable_or_ordered comparable ty
-          | Ast.TY_box ty ->
-              ucx.box_ok && is_comparable_or_ordered comparable ty
-      in
-
-      let rec floating (ty:Ast.ty) : bool =
-        match ty with
-            Ast.TY_mach TY_f32 | Ast.TY_mach TY_f64 -> true
-          | Ast.TY_mutable ty when ucx.mut_ok -> floating ty
-          | Ast.TY_box ty when ucx.box_ok -> floating ty
-          | _ -> false
-      in
-
-      let rec integral (ty:Ast.ty) : bool =
-        match ty with
-            Ast.TY_int | Ast.TY_uint | Ast.TY_mach TY_u8 | Ast.TY_mach TY_u16
-          | Ast.TY_mach TY_u32 | Ast.TY_mach TY_u64 | Ast.TY_mach TY_i8
-          | Ast.TY_mach TY_i16 | Ast.TY_mach TY_i32
-          | Ast.TY_mach TY_i64 ->
-              true
-          | Ast.TY_mutable ty when ucx.mut_ok -> integral ty
-          | Ast.TY_box ty when ucx.box_ok -> integral ty
-          | _ -> false
-      in
-
-      let numeric (ty:Ast.ty) : bool = (integral ty) || (floating ty) in
-
-      let rec plusable (ty:Ast.ty) : bool =
-        match ty with
-            Ast.TY_str -> true
-          | Ast.TY_vec _ -> true
-          | Ast.TY_mutable ty when ucx.mut_ok -> plusable ty
-          | Ast.TY_box ty when ucx.box_ok -> plusable ty
-          | _ -> numeric ty
-      in
-
-      let result =
-        match (!a, !b) with
-            (TYSPEC_equiv _, _) | (_, TYSPEC_equiv _) ->
-              bug () "equiv found even though tyvar was resolved"
-
-          | (TYSPEC_all, other) | (other, TYSPEC_all) -> other
-
-          (* box *)
-
-          | (TYSPEC_box a', TYSPEC_box b') ->
-              unify_tyvars ucx a' b'; !a
-
-          | (TYSPEC_box tv,
-             TYSPEC_resolved (params, Ast.TY_box ty))
-          | (TYSPEC_resolved (params, Ast.TY_box ty),
-             TYSPEC_box tv) ->
-               unify_ty_parametric ucx ty params tv; !a
-
-          | (_, TYSPEC_resolved (params, Ast.TY_box ty))
-              when ucx.box_ok ->
-              unify_ty_parametric ucx ty params a; !b
-
-          | (TYSPEC_resolved (params, Ast.TY_box ty), _)
-              when ucx.box_ok ->
-              unify_ty_parametric ucx ty params b; !a
-
-          | (TYSPEC_box a', _) when ucx.box_ok
-              -> unify_tyvars ucx a' b; !a
-          | (_, TYSPEC_box b') when ucx.box_ok
-              -> unify_tyvars ucx a b'; !b
-
-          | (_, TYSPEC_box _)
-          | (TYSPEC_box _, _) -> fail()
-
-          (* mutable *)
-
-          | (TYSPEC_mutable a', TYSPEC_mutable b') ->
-              unify_tyvars ucx a' b'; !a
-
-          | (TYSPEC_mutable tv,
-             TYSPEC_resolved (params, Ast.TY_mutable ty))
-          | (TYSPEC_resolved (params, Ast.TY_mutable ty),
-             TYSPEC_mutable tv) ->
-               unify_ty_parametric ucx ty params tv; !a
-
-          | (_, TYSPEC_resolved (params, Ast.TY_mutable ty))
-              when ucx.mut_ok ->
-              unify_ty_parametric ucx ty params a; !b
-
-          | (TYSPEC_resolved (params, Ast.TY_mutable ty), _)
-              when ucx.mut_ok ->
-              unify_ty_parametric ucx ty params b; !a
-
-          | (TYSPEC_mutable a', _) when ucx.mut_ok
-              -> unify_tyvars ucx a' b; !a
-          | (_, TYSPEC_mutable b') when ucx.mut_ok
-              -> unify_tyvars ucx a b'; !b
-
-          | (_, TYSPEC_mutable _)
-          | (TYSPEC_mutable _, _) -> fail()
-
-          (* resolved *)
-
-          | (TYSPEC_resolved (params_a, ty_a),
-             TYSPEC_resolved (params_b, ty_b)) ->
-              if params_a <> params_b then fail()
-              else TYSPEC_resolved
-                (params_a, (unify_resolved_types ty_a ty_b))
-
-          | (TYSPEC_resolved (params, ty),
-             TYSPEC_callable (out_tv, in_tvs))
-          | (TYSPEC_callable (out_tv, in_tvs),
-             TYSPEC_resolved (params, ty)) ->
-              let unify_in_slot i in_slot =
-                unify_slot arg_pass_ctx in_slot None in_tvs.(i)
-              in
-                let rec unify ty =
-                  match ty with
-                      Ast.TY_fn ({
-                                   Ast.sig_input_slots = in_slots;
-                                   Ast.sig_output_slot = out_slot
-                                 }, _) ->
-                        if Array.length in_slots != Array.length in_tvs
-                        then
-                          fail ()
-                        else
-                          unify_slot arg_pass_ctx out_slot None out_tv;
-                          Array.iteri unify_in_slot in_slots;
-                          ty
-                    | Ast.TY_box ty when ucx.box_ok
-                        -> Ast.TY_box (unify ty)
-                    | Ast.TY_mutable ty when ucx.mut_ok
-                        -> Ast.TY_mutable (unify ty)
-                    | _ -> fail ()
-                in
-                TYSPEC_resolved (params, unify ty)
-
-          | (TYSPEC_resolved (params, ty), TYSPEC_collection tv)
-          | (TYSPEC_collection tv, TYSPEC_resolved (params, ty)) ->
-              let rec unify ty =
-                match ty with
-                    Ast.TY_vec ty' -> unify_ty ucx ty' tv; ty
-                  | Ast.TY_str ->
-                      unify_ty ucx (Ast.TY_mach TY_u8) tv; ty
-                  | Ast.TY_box ty
-                      when ucx.box_ok -> Ast.TY_box (unify ty)
-                  | Ast.TY_mutable ty
-                      when ucx.mut_ok -> Ast.TY_mutable (unify ty)
-                  | _ -> fail ()
-              in
-              TYSPEC_resolved (params, unify ty)
-
-          | (TYSPEC_resolved (params, ty), TYSPEC_comparable)
-          | (TYSPEC_comparable, TYSPEC_resolved (params, ty)) ->
-              if not (is_comparable_or_ordered true ty) then fail ()
-              else TYSPEC_resolved (params, ty)
-
-          | (TYSPEC_resolved (params, ty), TYSPEC_plusable)
-          | (TYSPEC_plusable, TYSPEC_resolved (params, ty)) ->
-              if not (plusable ty) then fail ()
-              else TYSPEC_resolved (params, ty)
-
-          | (TYSPEC_resolved (params, ty), TYSPEC_dictionary dct)
-          | (TYSPEC_dictionary dct, TYSPEC_resolved (params, ty)) ->
-              let rec unify ty =
-                match ty with
-                    Ast.TY_rec fields ->
-                      unify_dict_with_record_fields dct fields;
-                      ty
-                  | Ast.TY_obj (_, fns) ->
-                      unify_dict_with_obj_fns dct fns;
-                      ty
-                  | Ast.TY_box ty
-                      when ucx.box_ok -> Ast.TY_box (unify ty)
-                  | Ast.TY_mutable ty
-                      when ucx.mut_ok -> Ast.TY_mutable (unify ty)
-                  | _ -> fail ()
-              in
-              TYSPEC_resolved (params, unify ty)
-
-          | (TYSPEC_resolved (params, ty), TYSPEC_integral)
-          | (TYSPEC_integral, TYSPEC_resolved (params, ty)) ->
-              if not (integral ty)
-              then fail ()
-              else TYSPEC_resolved (params, ty)
-
-          | (TYSPEC_resolved (params, ty), TYSPEC_numeric)
-          | (TYSPEC_numeric, TYSPEC_resolved (params, ty)) ->
-              if not (numeric ty) then fail ()
-              else TYSPEC_resolved (params, ty)
-
-          | (TYSPEC_resolved (params, ty), TYSPEC_ordered)
-          | (TYSPEC_ordered, TYSPEC_resolved (params, ty)) ->
-              if not (is_comparable_or_ordered false ty) then fail ()
-              else TYSPEC_resolved (params, ty)
-
-          | (TYSPEC_resolved (params, ty), TYSPEC_app (tv, args))
-          | (TYSPEC_app (tv, args), TYSPEC_resolved (params, ty)) ->
-              let ty = rebuild_ty_under_params ty params args false in
-                unify_ty ucx ty tv;
-                TYSPEC_resolved ([| |], ty)
-
-          | (TYSPEC_resolved (params, ty), TYSPEC_record dct)
-          | (TYSPEC_record dct, TYSPEC_resolved (params, ty)) ->
-              let rec unify ty =
-                match ty with
-                    Ast.TY_rec fields ->
-                      unify_dict_with_record_fields dct fields;
-                      ty
-                  | Ast.TY_box ty
-                      when ucx.box_ok -> Ast.TY_box (unify ty)
-                  | Ast.TY_mutable ty
-                      when ucx.mut_ok -> Ast.TY_mutable (unify ty)
-                  | _ -> fail ()
-              in
-              TYSPEC_resolved (params, unify ty)
-
-          | (TYSPEC_resolved (params, ty), TYSPEC_tuple tvs)
-          | (TYSPEC_tuple tvs, TYSPEC_resolved (params, ty)) ->
-              let rec unify ty =
-                match ty with
-                    Ast.TY_tup (elem_tys:Ast.ty array) ->
-                      if (Array.length elem_tys) < (Array.length tvs)
-                      then fail ()
-                      else
-                        let check_elem i tv =
-                          unify_ty ucx (elem_tys.(i)) tv
-                        in
-                          Array.iteri check_elem tvs;
-                          ty
-                  | Ast.TY_box ty
-                      when ucx.box_ok -> Ast.TY_box (unify ty)
-                  | Ast.TY_mutable ty
-                      when ucx.box_ok -> Ast.TY_mutable (unify ty)
-                  | _ -> fail ()
-              in
-              TYSPEC_resolved (params, unify ty)
-
-          | (TYSPEC_resolved (params, ty), TYSPEC_vector tv)
-          | (TYSPEC_vector tv, TYSPEC_resolved (params, ty)) ->
-              let rec unify ty =
-                match ty with
-                    Ast.TY_vec ty' -> unify_ty ucx ty' tv; ty
-                  | Ast.TY_box ty when ucx.box_ok ->
-                      Ast.TY_box (unify ty)
-                  | Ast.TY_mutable ty when ucx.mut_ok ->
-                      Ast.TY_mutable (unify ty)
-                  | _ -> fail ()
-              in
-              TYSPEC_resolved (params, unify ty)
-
-          (* callable *)
-
-          | (TYSPEC_callable (a_out_tv, a_in_tvs),
-             TYSPEC_callable (b_out_tv, b_in_tvs)) ->
-              unify_tyvars arg_pass_ctx a_out_tv b_out_tv;
-              let check_in_tv i a_in_tv =
-                unify_tyvars arg_pass_ctx
-                  a_in_tv b_in_tvs.(i)
-              in
-                Array.iteri check_in_tv a_in_tvs;
-                TYSPEC_callable (a_out_tv, a_in_tvs)
-
-          | (TYSPEC_callable _, TYSPEC_collection _)
-          | (TYSPEC_callable _, TYSPEC_comparable)
-          | (TYSPEC_callable _, TYSPEC_plusable)
-          | (TYSPEC_callable _, TYSPEC_dictionary _)
-          | (TYSPEC_callable _, TYSPEC_integral)
-          | (TYSPEC_callable _, TYSPEC_numeric)
-          | (TYSPEC_callable _, TYSPEC_ordered)
-          | (TYSPEC_callable _, TYSPEC_app _)
-          | (TYSPEC_callable _, TYSPEC_record _)
-          | (TYSPEC_callable _, TYSPEC_tuple _)
-          | (TYSPEC_callable _, TYSPEC_vector _)
-          | (TYSPEC_collection _, TYSPEC_callable _)
-          | (TYSPEC_comparable, TYSPEC_callable _)
-          | (TYSPEC_plusable, TYSPEC_callable _)
-          | (TYSPEC_dictionary _, TYSPEC_callable _)
-          | (TYSPEC_integral, TYSPEC_callable _)
-          | (TYSPEC_numeric, TYSPEC_callable _)
-          | (TYSPEC_ordered, TYSPEC_callable _)
-          | (TYSPEC_app _, TYSPEC_callable _)
-          | (TYSPEC_record _, TYSPEC_callable _)
-          | (TYSPEC_tuple _, TYSPEC_callable _)
-          | (TYSPEC_vector _, TYSPEC_callable _) -> fail ()
-
-          (* collection *)
-
-          | (TYSPEC_collection av, TYSPEC_collection bv) ->
-              unify_tyvars ucx av bv;
-              TYSPEC_collection av
-
-          | (TYSPEC_collection av, TYSPEC_comparable)
-          | (TYSPEC_comparable, TYSPEC_collection av) ->
-              TYSPEC_collection av
-
-          | (TYSPEC_collection v, TYSPEC_plusable)
-          | (TYSPEC_plusable, TYSPEC_collection v) -> TYSPEC_collection v
-
-          | (TYSPEC_collection _, TYSPEC_dictionary _)
-          | (TYSPEC_collection _, TYSPEC_integral)
-          | (TYSPEC_collection _, TYSPEC_numeric)
-          | (TYSPEC_collection _, TYSPEC_ordered)
-          | (TYSPEC_collection _, TYSPEC_app _)
-          | (TYSPEC_collection _, TYSPEC_record _)
-          | (TYSPEC_collection _, TYSPEC_tuple _)
-          | (TYSPEC_dictionary _, TYSPEC_collection _)
-          | (TYSPEC_integral, TYSPEC_collection _)
-          | (TYSPEC_numeric, TYSPEC_collection _)
-          | (TYSPEC_ordered, TYSPEC_collection _)
-          | (TYSPEC_app _, TYSPEC_collection _)
-          | (TYSPEC_record _, TYSPEC_collection _)
-          | (TYSPEC_tuple _, TYSPEC_collection _) -> fail ()
-
-          | (TYSPEC_collection av, TYSPEC_vector bv)
-          | (TYSPEC_vector bv, TYSPEC_collection av) ->
-              unify_tyvars ucx av bv;
-              TYSPEC_vector av
-
-          (* comparable *)
-
-          | (TYSPEC_comparable, TYSPEC_comparable) -> TYSPEC_comparable
-
-          | (TYSPEC_comparable, TYSPEC_plusable)
-          | (TYSPEC_plusable, TYSPEC_comparable) -> TYSPEC_plusable
-
-          | (TYSPEC_comparable, TYSPEC_dictionary dict)
-          | (TYSPEC_dictionary dict, TYSPEC_comparable) ->
-              TYSPEC_dictionary dict
-
-          | (TYSPEC_comparable, TYSPEC_integral)
-          | (TYSPEC_integral, TYSPEC_comparable) -> TYSPEC_integral
-
-          | (TYSPEC_comparable, TYSPEC_numeric)
-          | (TYSPEC_numeric, TYSPEC_comparable) -> TYSPEC_numeric
-
-          | (TYSPEC_comparable, TYSPEC_ordered)
-          | (TYSPEC_ordered, TYSPEC_comparable) -> TYSPEC_ordered
-
-          | (TYSPEC_comparable, TYSPEC_app _)
-          | (TYSPEC_app _, TYSPEC_comparable) -> fail ()
-
-          | (TYSPEC_comparable, TYSPEC_record r)
-          | (TYSPEC_record r, TYSPEC_comparable) -> TYSPEC_record r
-
-          | (TYSPEC_comparable, TYSPEC_tuple t)
-          | (TYSPEC_tuple t, TYSPEC_comparable) -> TYSPEC_tuple t
-
-          | (TYSPEC_comparable, TYSPEC_vector v)
-          | (TYSPEC_vector v, TYSPEC_comparable) -> TYSPEC_vector v
-
-          (* plusable *)
-
-          | (TYSPEC_plusable, TYSPEC_plusable) -> TYSPEC_plusable
-
-          | (TYSPEC_plusable, TYSPEC_dictionary _)
-          | (TYSPEC_dictionary _, TYSPEC_plusable) -> fail ()
-
-          | (TYSPEC_plusable, TYSPEC_integral)
-          | (TYSPEC_integral, TYSPEC_plusable) -> TYSPEC_integral
-
-          | (TYSPEC_plusable, TYSPEC_numeric)
-          | (TYSPEC_numeric, TYSPEC_plusable) -> TYSPEC_numeric
-
-          | (TYSPEC_plusable, TYSPEC_ordered)
-          | (TYSPEC_ordered, TYSPEC_plusable) -> TYSPEC_plusable
-
-          | (TYSPEC_plusable, TYSPEC_record _)
-          | (TYSPEC_record _, TYSPEC_plusable) -> fail ()
-
-          | (TYSPEC_plusable, TYSPEC_tuple _)
-          | (TYSPEC_tuple _, TYSPEC_plusable) -> fail ()
-
-          | (TYSPEC_plusable, TYSPEC_vector v)
-          | (TYSPEC_vector v, TYSPEC_plusable) -> TYSPEC_vector v
-
-          | (TYSPEC_plusable, TYSPEC_app _)
-          | (TYSPEC_app _, TYSPEC_plusable) -> fail ()
-
-          (* dictionary *)
-
-          | (TYSPEC_dictionary da, TYSPEC_dictionary db) ->
-              TYSPEC_dictionary (merge_dicts da db)
-
-          | (TYSPEC_dictionary _, TYSPEC_integral)
-          | (TYSPEC_dictionary _, TYSPEC_numeric)
-          | (TYSPEC_dictionary _, TYSPEC_ordered)
-          | (TYSPEC_dictionary _, TYSPEC_app _)
-          | (TYSPEC_integral, TYSPEC_dictionary _)
-          | (TYSPEC_numeric, TYSPEC_dictionary _)
-          | (TYSPEC_ordered, TYSPEC_dictionary _)
-          | (TYSPEC_app _, TYSPEC_dictionary _) -> fail ()
-
-          | (TYSPEC_dictionary d, TYSPEC_record r)
-          | (TYSPEC_record r, TYSPEC_dictionary d) ->
-              TYSPEC_record (merge_dicts d r)
-
-          | (TYSPEC_dictionary _, TYSPEC_tuple _)
-          | (TYSPEC_dictionary _, TYSPEC_vector _)
-          | (TYSPEC_tuple _, TYSPEC_dictionary _)
-          | (TYSPEC_vector _, TYSPEC_dictionary _) -> fail ()
-
-          (* integral *)
-
-          | (TYSPEC_integral, TYSPEC_integral)
-          | (TYSPEC_integral, TYSPEC_numeric)
-          | (TYSPEC_integral, TYSPEC_ordered)
-          | (TYSPEC_numeric, TYSPEC_integral)
-          | (TYSPEC_ordered, TYSPEC_integral) -> TYSPEC_integral
-
-          | (TYSPEC_integral, TYSPEC_app _)
-          | (TYSPEC_integral, TYSPEC_record _)
-          | (TYSPEC_integral, TYSPEC_tuple _)
-          | (TYSPEC_integral, TYSPEC_vector _)
-          | (TYSPEC_app _, TYSPEC_integral)
-          | (TYSPEC_record _, TYSPEC_integral)
-          | (TYSPEC_tuple _, TYSPEC_integral)
-          | (TYSPEC_vector _, TYSPEC_integral) -> fail ()
-
-          (* numeric *)
-
-          | (TYSPEC_numeric, TYSPEC_numeric) -> TYSPEC_numeric
-
-          | (TYSPEC_numeric, TYSPEC_ordered)
-          | (TYSPEC_ordered, TYSPEC_numeric) -> TYSPEC_ordered
-
-          | (TYSPEC_numeric, TYSPEC_app _)
-          | (TYSPEC_numeric, TYSPEC_record _)
-          | (TYSPEC_numeric, TYSPEC_tuple _)
-          | (TYSPEC_numeric, TYSPEC_vector _)
-          | (TYSPEC_app _, TYSPEC_numeric)
-          | (TYSPEC_record _, TYSPEC_numeric)
-          | (TYSPEC_tuple _, TYSPEC_numeric)
-          | (TYSPEC_vector _, TYSPEC_numeric) -> fail ()
-
-          (* ordered *)
-
-          | (TYSPEC_ordered, TYSPEC_ordered) -> TYSPEC_ordered
-
-          | (TYSPEC_ordered, TYSPEC_app _)
-          | (TYSPEC_ordered, TYSPEC_record _)
-          | (TYSPEC_ordered, TYSPEC_tuple _)
-          | (TYSPEC_ordered, TYSPEC_vector _)
-          | (TYSPEC_app _, TYSPEC_ordered)
-          | (TYSPEC_record _, TYSPEC_ordered)
-          | (TYSPEC_tuple _, TYSPEC_ordered)
-          | (TYSPEC_vector _, TYSPEC_ordered) -> fail ()
-
-          (* app *)
-
-          | (TYSPEC_app (tv_a, args_a),
-             TYSPEC_app (tv_b, args_b)) ->
-              if args_a <> args_b
-              then fail()
-              else
-                begin
-                  unify_tyvars ucx tv_a tv_b;
-                  TYSPEC_app (tv_a, args_a)
-                end
-
-          | (TYSPEC_app _, TYSPEC_record _)
-          | (TYSPEC_app _, TYSPEC_tuple _)
-          | (TYSPEC_app _, TYSPEC_vector _)
-          | (TYSPEC_record _, TYSPEC_app _)
-          | (TYSPEC_tuple _, TYSPEC_app _)
-          | (TYSPEC_vector _, TYSPEC_app _) -> fail ()
-
-          (* record *)
-
-          | (TYSPEC_record da, TYSPEC_record db) ->
-              TYSPEC_record (merge_dicts da db)
-
-          | (TYSPEC_record _, TYSPEC_tuple _)
-          | (TYSPEC_record _, TYSPEC_vector _)
-          | (TYSPEC_tuple _, TYSPEC_record _)
-          | (TYSPEC_vector _, TYSPEC_record _) -> fail ()
-
-          (* tuple *)
-
-          | (TYSPEC_tuple tvs_a, TYSPEC_tuple tvs_b) ->
-              let len_a = Array.length tvs_a in
-              let len_b = Array.length tvs_b in
-              let max_len = max len_a len_b in
-              let init_tuple_elem i =
-                if i >= len_a
-                then tvs_b.(i)
-                else if i >= len_b
-                then tvs_a.(i)
-                else begin
-                  unify_tyvars strict_ctx tvs_a.(i) tvs_b.(i);
-                  tvs_a.(i)
-                end
-              in
-                TYSPEC_tuple (Array.init max_len init_tuple_elem)
-
-          | (TYSPEC_tuple _, TYSPEC_vector _)
-          | (TYSPEC_vector _, TYSPEC_tuple _) -> fail ()
-
-          (* vector *)
-
-          | (TYSPEC_vector av, TYSPEC_vector bv) ->
-              unify_tyvars strict_ctx av bv;
-              TYSPEC_vector av
-      in
-      let c = ref result in
-        a := TYSPEC_equiv c;
-        b := TYSPEC_equiv c
-
-    and unify_ty_parametric
-        (ucx:unify_ctxt)
-        (ty:Ast.ty)
-        (tps:Ast.ty_param array)
-        (tv:tyvar)
-        : unit =
-      unify_tyvars ucx (ref (TYSPEC_resolved (tps, ty))) tv
-
-    and unify_ty (ucx:unify_ctxt) (ty:Ast.ty) (tv:tyvar) : unit =
-      unify_ty_parametric ucx ty [||] tv
-
+  let rec internal_check_base_lval
+      (infer:Ast.ty option)
+      (nbi:Ast.name_base Common.identified)
+      : ltype =
+    let lval_id = nbi.Common.id in
+    let referent = Semant.lval_to_referent cx lval_id in
+    let lty =
+      match Hashtbl.find cx.Semant.ctxt_all_defns referent with
+          Semant.DEFN_slot _ ->
+            LTYPE_mono (internal_check_slot infer referent)
+        | Semant.DEFN_item mid -> internal_check_mod_item_decl mid referent
+        | _ -> Common.bug () "internal_check_base_lval: unexpected defn type"
+    in
+    match nbi.Common.node with
+        Ast.BASE_ident _ | Ast.BASE_temp _ -> lty
+      | Ast.BASE_app (_, args) -> beta_reduce lval_id lty args
+
+  and internal_check_ext_lval
+      (base:Ast.lval)
+      (comp:Ast.lval_component)
+      : ltype =
+    let base_ity =
+      match internal_check_lval None base with
+          LTYPE_poly (_, ty) ->
+            Common.err None "can't index the polymorphic type '%a'"
+              Ast.sprintf_ty ty
+        | LTYPE_mono ty -> `Type (fundamental_ty ty)
+        | LTYPE_module items -> `Module items
     in
 
-    let rec unify_lit (ucx:unify_ctxt) (lit:Ast.lit) (tv:tyvar) : unit =
-      let ty =
-        match lit with
-            Ast.LIT_nil -> Ast.TY_nil
-          | Ast.LIT_bool _ -> Ast.TY_bool
-          | Ast.LIT_mach (mty, _, _) -> Ast.TY_mach mty
-          | Ast.LIT_int (_, _) -> Ast.TY_int
-          | Ast.LIT_uint (_, _) -> Ast.TY_uint
-          | Ast.LIT_char _ -> Ast.TY_char
-      in
-        unify_ty ucx ty tv
+    let sprintf_itype chan () =
+      match base_ity with
+          `Type ty -> Ast.sprintf_ty chan ty
+        | `Module items -> Ast.sprintf_mod_items chan items
+    in
 
-    and unify_atom (ucx:unify_ctxt) (atom:Ast.atom) (tv:tyvar) : unit =
-      match atom with
-          Ast.ATOM_literal { node = literal; id = _ } ->
-            unify_lit ucx literal tv
-        | Ast.ATOM_lval lval ->
-            unify_lval ucx lval tv
-
-    and unify_expr (ucx:unify_ctxt) (expr:Ast.expr) (tv:tyvar) : unit =
-      match expr with
-          Ast.EXPR_binary (binop, lhs, rhs) ->
-            let binop_sig = match binop with
-                Ast.BINOP_eq
-              | Ast.BINOP_ne -> BINOPSIG_comp_comp_bool
-
-              | Ast.BINOP_lt
-              | Ast.BINOP_le
-              | Ast.BINOP_ge
-              | Ast.BINOP_gt -> BINOPSIG_ord_ord_bool
-
-              | Ast.BINOP_or
-              | Ast.BINOP_and
-              | Ast.BINOP_xor
-              | Ast.BINOP_lsl
-              | Ast.BINOP_lsr
-              | Ast.BINOP_asr -> BINOPSIG_integ_integ_integ
-
-              | Ast.BINOP_add -> BINOPSIG_plus_plus_plus
-
-              | Ast.BINOP_sub
-              | Ast.BINOP_mul
-              | Ast.BINOP_div
-              | Ast.BINOP_mod -> BINOPSIG_num_num_num
-
-              | Ast.BINOP_send -> bug () "BINOP_send found in expr"
+    let rec typecheck base_ity =
+      match base_ity, comp with
+          `Type (Ast.TY_rec ty_rec), Ast.COMP_named (Ast.COMP_ident id) ->
+            let find _ (k, v) = if id = k then Some v else None in
+            let comp_ty =
+              match Common.arr_search ty_rec find with
+                  Some elem_ty -> elem_ty
+                | None ->
+                    Common.err
+                      None
+                      "field '%s' is not one of the fields of '%a'"
+                      id
+                      sprintf_itype ()
             in
-              begin
-                match binop_sig with
-                    BINOPSIG_bool_bool_bool ->
-                      unify_atom rval_ctx lhs
-                        (ref (TYSPEC_resolved ([||], Ast.TY_bool)));
-                      unify_atom rval_ctx rhs
-                        (ref (TYSPEC_resolved ([||], Ast.TY_bool)));
-                      unify_ty rval_ctx Ast.TY_bool tv
-                  | BINOPSIG_comp_comp_bool ->
-                      let tv_a = ref TYSPEC_comparable in
-                        unify_atom rval_ctx lhs tv_a;
-                        unify_atom rval_ctx rhs tv_a;
-                        unify_ty rval_ctx Ast.TY_bool tv
-                  | BINOPSIG_ord_ord_bool ->
-                      let tv_a = ref TYSPEC_ordered in
-                        unify_atom rval_ctx lhs tv_a;
-                        unify_atom rval_ctx rhs tv_a;
-                        unify_ty rval_ctx Ast.TY_bool tv
-                  | BINOPSIG_integ_integ_integ ->
-                      let tv_a = ref TYSPEC_integral in
-                        unify_atom rval_ctx lhs tv_a;
-                        unify_atom rval_ctx rhs tv_a;
-                        unify_tyvars rval_ctx tv tv_a
-                  | BINOPSIG_num_num_num ->
-                      let tv_a = ref TYSPEC_numeric in
-                        unify_atom rval_ctx lhs tv_a;
-                        unify_atom rval_ctx rhs tv_a;
-                        unify_tyvars rval_ctx tv tv_a
-                  | BINOPSIG_plus_plus_plus ->
-                      let tv_a = ref TYSPEC_plusable in
-                        unify_atom rval_ctx lhs tv_a;
-                        unify_atom rval_ctx rhs tv_a;
-                        unify_tyvars rval_ctx tv tv_a
-              end
-        | Ast.EXPR_unary (unop, atom) ->
+            LTYPE_mono comp_ty
+
+        | `Type (Ast.TY_rec _), _ ->
+            Common.err None "the record type '%a' must be indexed by name"
+              sprintf_itype ()
+
+        | `Type (Ast.TY_obj ty_obj), Ast.COMP_named (Ast.COMP_ident id) ->
+            let comp_ty =
+              try
+                Ast.TY_fn (Hashtbl.find (snd ty_obj) id)
+              with Not_found ->
+                Common.err
+                  None
+                  "method '%s' is not one of the methods of '%a'"
+                  id
+                  sprintf_itype ()
+            in
+            LTYPE_mono comp_ty
+
+        | `Type (Ast.TY_obj _), _ ->
+            Common.err
+              None
+              "the object type '%a' must be indexed by name"
+              sprintf_itype ()
+
+        | `Type (Ast.TY_tup ty_tup), Ast.COMP_named (Ast.COMP_idx idx)
+              when idx < Array.length ty_tup ->
+            LTYPE_mono (ty_tup.(idx))
+
+        | `Type (Ast.TY_tup _), Ast.COMP_named (Ast.COMP_idx idx) ->
+            Common.err
+              None
+              "member '_%d' is not one of the members of '%a'"
+              idx
+              sprintf_itype ()
+
+        | `Type (Ast.TY_tup _), _ ->
+            Common.err
+              None
+              "the tuple type '%a' must be indexed by tuple index"
+              sprintf_itype ()
+
+        | `Type (Ast.TY_vec ty_vec), Ast.COMP_atom atom ->
+            demand Ast.TY_int (check_atom atom);
+            LTYPE_mono ty_vec
+
+        | `Type (Ast.TY_vec _), _ ->
+            Common.err None "the vector type '%a' must be indexed via an int"
+              sprintf_itype ()
+
+        | `Type Ast.TY_str, Ast.COMP_atom atom ->
+            demand Ast.TY_int (check_atom atom);
+            LTYPE_mono (Ast.TY_mach Common.TY_u8)
+
+        | `Type Ast.TY_str, _ ->
+            Common.err None "strings must be indexed via an int"
+
+        | `Type (Ast.TY_box ty_box), Ast.COMP_deref -> LTYPE_mono ty_box
+
+        | `Type (Ast.TY_box ty_box), _ ->
+            typecheck (`Type ty_box)  (* automatically dereference! *)
+
+        | `Type ty, Ast.COMP_named (Ast.COMP_ident _) ->
+            Common.err None "the type '%a' can't be indexed by name"
+              Ast.sprintf_ty ty
+
+        | `Type ty, Ast.COMP_named (Ast.COMP_app _) ->
+            Common.err
+              None
+              "the type '%a' has no type parameters, so it can't be applied \
+              to types"
+              Ast.sprintf_ty ty
+
+        | `Module items, Ast.COMP_named ((Ast.COMP_ident id) as name_comp)
+              | `Module items, Ast.COMP_named ((Ast.COMP_app (id, _))
+                as name_comp) ->
+            let mod_item =
+              try
+                Hashtbl.find items id
+              with Not_found ->
+                Common.bug
+                  ()
+                  "internal_check_ext_lval: ident not found in mod item"
+            in
+            let lty =
+              internal_check_mod_item_decl
+                mod_item.Common.node
+                mod_item.Common.id
+            in
             begin
-              match unop with
-                  Ast.UNOP_not ->
-                    unify_atom rval_ctx atom
-                      (ref (TYSPEC_resolved ([||], Ast.TY_bool)));
-                    unify_ty rval_ctx Ast.TY_bool tv
-                | Ast.UNOP_bitnot ->
-                    let tv_a = ref TYSPEC_integral in
-                      unify_atom rval_ctx atom tv_a;
-                      unify_tyvars rval_ctx tv tv_a
-                | Ast.UNOP_neg ->
-                    let tv_a = ref TYSPEC_numeric in
-                      unify_atom rval_ctx atom tv_a;
-                      unify_tyvars rval_ctx tv tv_a
-                | Ast.UNOP_cast t ->
-                    (* FIXME (issue #84): check cast-validity in
-                     * post-typecheck pass.  Only some casts make sense.
-                     *)
-                    let tv_a = ref TYSPEC_all in
-                    let t = Hashtbl.find cx.ctxt_all_cast_types t.id in
-                      unify_atom rval_ctx atom tv_a;
-                      unify_ty rval_ctx t tv
+              match name_comp with
+                  Ast.COMP_ident _ -> lty
+                | Ast.COMP_app (_, args) ->
+                    beta_reduce (Semant.lval_base_id base) lty args
+                | _ ->
+                  Common.bug ()
+                    "internal_check_ext_lval: unexpected name_comp"
             end
-        | Ast.EXPR_atom atom -> unify_atom ucx atom tv
 
-    and unify_lval' (ucx:unify_ctxt) (lval:Ast.lval) (tv:tyvar) : unit =
-      let note_args args =
-        iflog cx (fun _ -> log cx "noting lval '%a' type arguments: %a"
-                    Ast.sprintf_lval lval Ast.sprintf_app_args args);
-        Hashtbl.add
-          cx.ctxt_call_lval_params
-          (lval_base_id lval)
-          args;
-      in
-        match lval with
-            Ast.LVAL_base nbi ->
-              let referent = lval_to_referent cx nbi.id in
-                begin
-                  match Hashtbl.find cx.ctxt_all_defns referent with
-                      DEFN_slot slot ->
-                        iflog cx
-                          begin
-                            fun _ ->
-                              let tv = Hashtbl.find bindings referent in
-                                log cx "lval-base slot tyspec for %a = %s"
-                                  Ast.sprintf_lval lval (tyspec_to_str (!tv));
-                          end;
-                        begin
-                          match htab_search
-                            cx.ctxt_auto_deref_lval nbi.id
-                          with
-                              None ->
-                                htab_put cx.ctxt_auto_deref_lval
-                                  nbi.id ucx.box_ok
-                            | Some b ->
-                                (* A given source-occurrence of a name-base
-                                 * should never change its auto-deref
-                                 * nature.
-                                 *)
-                                assert (b = ucx.box_ok);
-                        end;
-                        unify_slot ucx slot (Some referent) tv
+        | _, Ast.COMP_named (Ast.COMP_idx _) ->
+            Common.err
+              None
+              "%a isn't a tuple, so it can't be indexed by tuple index"
+              sprintf_itype ()
 
-                    | _ ->
-                        let spec = (!(Hashtbl.find bindings referent)) in
-                        let _ =
-                          iflog cx
-                            begin
-                              fun _ ->
-                                log cx "lval-base item tyspec for %a = %s"
-                                  Ast.sprintf_lval lval (tyspec_to_str spec);
-                                log cx "unifying with supplied spec %s"
-                                  (tyspec_to_str !tv)
-                            end
-                        in
-                        let tv =
-                          match nbi.node with
-                              Ast.BASE_ident _ -> tv
-                            | Ast.BASE_app (_, args) ->
-                                note_args args;
-                                ref (TYSPEC_app (tv, args))
-                            | _ -> err None "bad lval / tyspec combination"
-                        in
-                          unify_tyvars ucx (ref spec) tv
-                end
-          | Ast.LVAL_ext (base, comp) ->
-              let base_ts = match comp with
-                  Ast.COMP_named (Ast.COMP_ident id) ->
-                    let names = Hashtbl.create 1 in
-                      Hashtbl.add names id tv;
-                      TYSPEC_dictionary names
+        | _, Ast.COMP_atom atom ->
+            Common.err
+              None
+              "%a can't by indexed by the type '%a'"
+              sprintf_itype ()
+              Ast.sprintf_ty (check_atom atom)
 
-                | Ast.COMP_named (Ast.COMP_app (id, args)) ->
-                    note_args args;
-                    let tv = ref (TYSPEC_app (tv, args)) in
-                    let names = Hashtbl.create 1 in
-                      Hashtbl.add names id tv;
-                      TYSPEC_dictionary names
-
-                | Ast.COMP_named (Ast.COMP_idx i) ->
-                    let init j = if i = j then tv else ref TYSPEC_all in
-                      TYSPEC_tuple (Array.init (i + 1) init)
-
-                | Ast.COMP_atom atom ->
-                    unify_atom rval_ctx atom
-                      (ref (TYSPEC_resolved ([||], Ast.TY_int)));
-                    TYSPEC_collection tv
-
-                | Ast.COMP_deref ->
-                    TYSPEC_box tv
-              in
-              let base_tv = ref base_ts in
-                unify_lval' { ucx with box_ok = true } base base_tv;
-                match !(resolve_tyvar base_tv) with
-                    TYSPEC_resolved (_, ty) ->
-                      unify_ty ucx (project_type ty comp) tv
-                  | _ ->
-                      ()
-
-    and unify_lval (ucx:unify_ctxt) (lval:Ast.lval) (tv:tyvar) : unit =
-      let id = lval_base_id lval in
-        (* Fetch lval with type components resolved. *)
-        let lval = Hashtbl.find cx.ctxt_all_lvals id in
-        iflog cx (fun _ -> log cx
-                    "fetched resolved version of lval #%d = %a"
-                    (int_of_node id) Ast.sprintf_lval lval);
-          Hashtbl.add lval_tyvars id tv;
-          unify_lval' ucx lval tv
-
+        | _, Ast.COMP_deref ->
+            Common.err
+              None
+              "%a isn't a box and can't be dereferenced"
+              sprintf_itype ()
     in
-    let gen_atom_tvs atoms =
-      let gen_atom_tv atom =
-        let tv = ref TYSPEC_all in
-          unify_atom strict_ctx atom tv;
-          tv
-      in
-        Array.map gen_atom_tv atoms
+    typecheck base_ity
+
+  and internal_check_lval (infer:Ast.ty option) (lval:Ast.lval) : ltype =
+    match lval with
+        Ast.LVAL_base nbi -> internal_check_base_lval infer nbi
+      | Ast.LVAL_ext (base, comp) -> internal_check_ext_lval base comp
+
+  (* Checks the outermost lvalue and returns the resulting monotype and the
+   * number of layers of indirection needed to access it (i.e. the number of
+   * boxes that were automatically dereferenced, which will always be zero if
+   * the supplied [autoderef] parameter is false). This function is the bridge
+   * between the polymorphically typed lvalue world and the monomorphically
+   * typed value world. *)
+  and internal_check_outer_lval
+      ~mut:(mut:Ast.mutability)
+      ~deref:(deref:bool)
+      (infer:Ast.ty option)
+      (lval:Ast.lval)
+      : (Ast.ty * int) =
+    let yield_ty ty =
+      let (ty, n_boxes) = if deref then unbox ty else (ty, 0) in
+      (maybe_mutable mut ty, n_boxes)
     in
-    let visit_stmt_pre_full (stmt:Ast.stmt) : unit =
+    match infer, internal_check_lval infer lval with
+      | None, LTYPE_mono ty -> yield_ty ty
+      | Some expected, LTYPE_mono actual ->
+          demand expected actual;
+          yield_ty actual
+      | None, (LTYPE_poly _ as lty) -> 
+          Common.err
+            None
+            "not enough context to automatically instantiate the polymorphic \
+              type '%a'; supply type parameters explicitly"
+            sprintf_ltype lty
+      | Some _, (LTYPE_poly _) ->
+          (* FIXME: auto-instantiate *)
+          Common.err
+            None
+            "sorry, automatic polymorphic instantiation isn't supported yet; \
+              please supply type parameters explicitly"
+      | _, LTYPE_module _ ->
+          Common.err None "can't refer to a module as a first-class value"
 
-      let check_callable out_tv callee args =
-        let in_tvs = gen_atom_tvs args in
-        let callee_tv = ref (TYSPEC_callable (out_tv, in_tvs)) in
-          unify_lval rval_ctx callee callee_tv;
+  and generic_check_lval
+      ~mut:(mut:Ast.mutability)
+      ~deref:(deref:bool)
+      (infer:Ast.ty option)
+      (lval:Ast.lval)
+      : Ast.ty =
+    (* The lval we got is an impostor (it may contain unresolved TY_nameds).
+     * Get the real one. *)
+    let lval_id = Semant.lval_base_id lval in
+    let lval = Hashtbl.find cx.Semant.ctxt_all_lvals lval_id in
+    let (lval_ty, n_boxes) =
+      internal_check_outer_lval ~mut:mut ~deref:deref infer lval
+    in
+
+    if Hashtbl.mem cx.Semant.ctxt_all_lval_types lval_id then
+      assert ((Hashtbl.find cx.Semant.ctxt_all_lval_types lval_id) = lval_ty)
+    else
+      Hashtbl.replace cx.Semant.ctxt_all_lval_types lval_id lval_ty;
+
+    if Hashtbl.mem cx.Semant.ctxt_auto_deref_lval lval_id then begin
+      let prev_autoderef =
+        Hashtbl.find cx.Semant.ctxt_auto_deref_lval lval_id
       in
+      if n_boxes == 0 && prev_autoderef then
+        Common.bug () "generic_check_lval: lval was previously marked as \
+          deref but isn't any longer";
+      if n_boxes > 0 && not prev_autoderef then
+        Common.bug () "generic_check_lval: lval wasn't marked as autoderef \
+          before, but now it is"
+    end;
+    if n_boxes > 1 then
+      (* TODO: allow more than one level of automatic dereference *)
+      Common.err None "sorry, only one level of automatic dereference is \
+        implemented; please add explicit dereference operators";
+    Hashtbl.replace cx.Semant.ctxt_auto_deref_lval lval_id (n_boxes > 0);
 
-      let set_auto_deref lv b =
-        Hashtbl.replace cx.ctxt_auto_deref_lval (lval_base_id lv) b;
-      in
+    (* Before demoting the lval to a value, strip off mutability. *)
+    fundamental_ty lval_ty
 
-      let ty t = ref (TYSPEC_resolved ([||], t)) in
-      let any _ = ref TYSPEC_all in
+  (* Note that this function should be avoided when possible, because it
+   * cannot perform type inference. In general you should prefer
+   * [infer_lval]. *)
+  and check_lval
+      ?mut:(mut=Ast.MUT_immutable)
+      ?deref:(deref=false)
+      (lval:Ast.lval)
+      : Ast.ty =
+    generic_check_lval ~mut:mut ~deref:deref None lval
 
-      match stmt.node with
+  and check_atom ?deref:(deref=false) (atom:Ast.atom) : Ast.ty =
+    match atom with
+        Ast.ATOM_lval lval -> check_lval ~deref:deref lval
+      | Ast.ATOM_literal lit_id -> check_literal lit_id.Common.node
+  in
+
+  let infer_slot (ty:Ast.ty) (slot_id:Common.node_id) : unit =
+    ignore (internal_check_slot (Some ty) slot_id)
+  in
+
+  let infer_lval
+      ?mut:(mut=Ast.MUT_mutable)
+      (ty:Ast.ty)
+      (lval:Ast.lval)
+      : unit =
+    ignore (generic_check_lval ?mut:mut ~deref:false (Some ty) lval)
+  in
+
+  (*
+   * AST fragment checking
+   *)
+
+  let check_binop (binop:Ast.binop) (operand_ty:Ast.ty) =
+    match binop with
+        Ast.BINOP_eq | Ast.BINOP_ne | Ast.BINOP_lt | Ast.BINOP_le
+      | Ast.BINOP_ge | Ast.BINOP_gt ->
+          Ast.TY_bool
+      | Ast.BINOP_or | Ast.BINOP_and | Ast.BINOP_xor | Ast.BINOP_lsl
+      | Ast.BINOP_lsr | Ast.BINOP_asr ->
+          demand_integer operand_ty;
+          operand_ty
+      | Ast.BINOP_add ->
+          demand_number_or_str_or_vector operand_ty;
+          operand_ty
+      | Ast.BINOP_sub | Ast.BINOP_mul | Ast.BINOP_div | Ast.BINOP_mod ->
+          demand_number operand_ty;
+          operand_ty
+      | Ast.BINOP_send ->
+          Common.bug () "check_binop: BINOP_send found in expr"
+  in
+
+  let check_expr (expr:Ast.expr) : Ast.ty =
+    match expr with
+        Ast.EXPR_atom atom -> check_atom atom
+      | Ast.EXPR_binary (binop, lhs, rhs) ->
+          let operand_ty = check_atom ~deref:true lhs in
+          demand operand_ty (check_atom ~deref:true rhs);
+          check_binop binop operand_ty 
+      | Ast.EXPR_unary (Ast.UNOP_not, atom) ->
+          demand Ast.TY_bool (check_atom ~deref:true atom);
+          Ast.TY_bool
+      | Ast.EXPR_unary (Ast.UNOP_bitnot, atom)
+      | Ast.EXPR_unary (Ast.UNOP_neg, atom) ->
+          let ty = check_atom atom in
+          demand_integer ty;
+          ty
+      | Ast.EXPR_unary (Ast.UNOP_cast dst_ty_id, atom) ->
+          (* TODO: probably we want to handle more cases here *)
+          demand_bool_or_char_or_integer (check_atom atom);
+          let dst_ty = dst_ty_id.Common.node in
+          demand_bool_or_char_or_integer dst_ty;
+          dst_ty
+  in
+
+  (* Checks a function call pattern, with arguments specified as atoms, and
+   * returns the return type. *)
+  let check_fn (callee:Ast.lval) (args:Ast.atom array) : Ast.ty =
+    let arg_tys = Array.map check_atom args in
+    let callee_ty = check_lval callee in
+    demand_fn (Array.map (fun ty -> Some ty) arg_tys) callee_ty 
+  in
+
+  let rec check_pat (expected:Ast.ty) (pat:Ast.pat) : unit =
+    match pat with
+        Ast.PAT_lit lit -> demand expected (check_literal lit)
+      | Ast.PAT_tag (constr_fn, arg_pats) ->
+          let constr_ty = check_lval constr_fn in
+          let arg_tys =
+            match constr_ty with
+                Ast.TY_fn (ty_sig, _) ->
+                  Array.map get_slot_ty ty_sig.Ast.sig_input_slots
+              | _ -> type_error "constructor function" constr_ty
+          in
+          Common.arr_iter2 check_pat arg_tys arg_pats
+      | Ast.PAT_slot (slot, _) -> infer_slot expected slot.Common.id
+      | Ast.PAT_wild -> ()
+  in
+
+  let check_check_calls (calls:Ast.check_calls) : unit =
+    let check_call (callee, args) =
+      demand Ast.TY_bool (check_fn callee args)
+    in
+    Array.iter check_call calls
+  in
+
+  (*
+   * Statement checking
+   *)
+
+  (* Again as above, we explicitly curry [fn_ctx] to avoid threading it
+   * through these functions. *)
+  let check_stmt (fn_ctx:fn_ctx) : (Ast.stmt -> unit) =
+    let rec check_block (block:Ast.block) : unit =
+      Array.iter check_stmt block.Common.node
+
+    and check_stmt (stmt:Ast.stmt) : unit =
+      match stmt.Common.node with
           Ast.STMT_spawn (dst, _, callee, args) ->
-            let out_tv = ty Ast.TY_nil in
-              unify_lval lval_ctx dst (ty Ast.TY_task);
-              check_callable out_tv callee args
+            infer_lval Ast.TY_task dst;
+            demand Ast.TY_nil (check_fn callee args)
 
         | Ast.STMT_init_rec (dst, fields, Some base) ->
-            let dct = Hashtbl.create 10 in
-            let tvrec = ref (TYSPEC_record dct) in
-            let add_field (ident, _, atom) =
-              let tv = any() in
-                unify_atom arg_pass_ctx atom tv;
-                Hashtbl.add dct ident tv
+            let ty = check_lval base in
+            let ty_rec = demand_rec ty in
+            let field_tys = Hashtbl.create (Array.length ty_rec) in
+            Array.iter (fun (id, ty) -> Hashtbl.add field_tys id ty) ty_rec;
+            let check_field (name, mut, atom) =
+              let field_ty =
+                try
+                  Hashtbl.find field_tys name
+                with Not_found ->
+                  Common.err None
+                    "field '%s' is not one of the base record's fields" name
+              in
+              demand field_ty (maybe_mutable mut (check_atom atom))
             in
-              Array.iter add_field fields;
-              let tvbase = any() in
-                unify_lval rval_ctx base tvbase;
-                unify_tyvars rval_ctx tvrec tvbase;
-                unify_lval init_ctx dst tvrec
+            Array.iter check_field fields;
+            infer_lval ty dst
 
         | Ast.STMT_init_rec (dst, fields, None) ->
-            let dct = Hashtbl.create 10 in
-            let add_field (ident, _, atom) =
-              let tv = any() in
-                unify_atom arg_pass_ctx atom tv;
-                Hashtbl.add dct ident tv
+            let check_field (name, mut, atom) =
+              (name, maybe_mutable mut (check_atom atom))
             in
-              Array.iter add_field fields;
-              unify_lval init_ctx dst (ref (TYSPEC_record dct))
+            let ty = Ast.TY_rec (Array.map check_field fields) in
+            infer_lval ty dst
 
         | Ast.STMT_init_tup (dst, members) ->
-            let member_to_tv (_, atom) =
-              let tv = any() in
-                unify_atom arg_pass_ctx atom tv;
-                tv
+            let check_member (mut, atom) =
+              maybe_mutable mut (check_atom atom)
             in
-            let member_tvs = Array.map member_to_tv members in
-              unify_lval init_ctx dst (ref (TYSPEC_tuple member_tvs))
+            let ty = Ast.TY_tup (Array.map check_member members) in
+            infer_lval ty dst
 
-        | Ast.STMT_init_vec (dst, _, atoms) ->
-            let tv = any() in
-            let unify_with_tv atom = unify_atom arg_pass_ctx atom tv in
-              Array.iter unify_with_tv atoms;
-              unify_lval init_ctx dst (ref (TYSPEC_vector tv))
+        | Ast.STMT_init_vec (dst, mut, [| |]) ->
+            (* no inference allowed here *)
+            let lval_ty = check_lval ~mut:Ast.MUT_mutable dst in
+            ignore (demand_vec_with_mutability mut lval_ty)
 
-        | Ast.STMT_init_str (dst, _) ->
-            unify_lval init_ctx dst (ty Ast.TY_str)
+        | Ast.STMT_init_vec (dst, mut, elems) ->
+            let atom_ty = demand_all (Array.map check_atom elems) in
+            let ty = Ast.TY_vec (maybe_mutable mut atom_ty) in
+            infer_lval ty dst
 
-        | Ast.STMT_copy (dst, expr) ->
-            let tv = any() in
-              unify_expr arg_pass_ctx expr tv;
-              unify_lval lval_ctx dst tv
+        | Ast.STMT_init_str (dst, _) -> infer_lval Ast.TY_str dst
 
-        | Ast.STMT_copy_binop (dst, binop, at) ->
-            let tv = any() in
-              unify_expr arg_pass_ctx
-                (Ast.EXPR_binary (binop, Ast.ATOM_lval dst, at)) tv;
-              (* Force-override the 'auto-deref' judgment that was cached 
-               * in cx.ctxt_auto_deref_lval by preceding unify_expr call.
-               *)
-              set_auto_deref dst false;
-              unify_lval lval_ctx dst tv;
+        | Ast.STMT_init_port _ -> ()  (* we can't actually typecheck this *)
 
-        | Ast.STMT_call (out, callee, args) ->
-            let out_tv = any() in
-              unify_lval arg_pass_ctx out out_tv;
-              check_callable out_tv callee args
+        | Ast.STMT_init_chan (dst, Some port) ->
+            let ty = Ast.TY_chan (demand_port (check_lval port)) in
+            infer_lval ty dst
 
-        | Ast.STMT_log atom ->
-            begin
-              match atom with
-                  Ast.ATOM_lval lv ->
-                    unify_lval rval_ctx lv (any());
-                    set_auto_deref lv true
-                | _ -> ()
-            end
+        | Ast.STMT_init_chan (_, None) -> ()  (* can't check this either *)
 
-        | Ast.STMT_check_expr expr ->
-            unify_expr rval_ctx expr (ty Ast.TY_bool)
+        | Ast.STMT_init_box (dst, mut, src) ->
+            let ty = Ast.TY_box (maybe_mutable mut (check_atom src)) in
+            infer_lval ty dst
 
-        | Ast.STMT_check (_, check_calls) ->
-            let out_tv = ty Ast.TY_bool in
-              Array.iter
-                (fun (callee, args) ->
-                   check_callable out_tv callee args)
-                check_calls
+        | Ast.STMT_copy (dst, src) ->
+            infer_lval (check_expr src) dst
 
-        | Ast.STMT_while { Ast.while_lval = (_, expr) }
-        | Ast.STMT_do_while { Ast.while_lval = (_, expr) } ->
-            unify_expr rval_ctx expr (ty Ast.TY_bool)
+        | Ast.STMT_copy_binop (dst, binop, src) ->
+            let ty = check_atom ~deref:true src in
+            infer_lval ty dst;
+            demand ty (check_binop binop ty)
 
-        | Ast.STMT_if { Ast.if_test = if_test } ->
-            unify_expr rval_ctx if_test (ty Ast.TY_bool);
+        | Ast.STMT_call (dst, callee, args) ->
+            infer_lval (check_fn callee args) dst
 
-        | Ast.STMT_ret atom_opt ->
-            begin
-              if fn_is_iter()
-              then
-                match atom_opt with
-                  | None -> ()
-                  | Some _ -> err None "Iter returning value"
-              else
-                match atom_opt with
-                  | None -> unify_ty arg_pass_ctx Ast.TY_nil (retval_tv())
-                  | Some atom -> unify_atom arg_pass_ctx atom (retval_tv())
-            end
+        | Ast.STMT_bind (bound, callee, args) ->
+            let check_arg arg_opt =
+              match arg_opt with
+                  None -> None
+                | Some arg -> Some (check_atom arg)
+            in
+            let callee_ty = check_lval callee in
+            ignore (demand_fn (Array.map check_arg args) callee_ty);
+            infer_lval callee_ty bound
 
-        | Ast.STMT_put atom_opt ->
-            if fn_is_iter()
-            then
-              match atom_opt with
-                | None -> unify_ty arg_pass_ctx Ast.TY_nil (retval_tv())
-                | Some atom -> unify_atom arg_pass_ctx atom (retval_tv())
-            else
-              err None "Non-iter function with 'put'"
+        | Ast.STMT_recv (dst, src) ->
+            infer_lval (demand_port (check_lval src)) dst
+
+        | Ast.STMT_slice (dst, src, slice) ->
+            let src_ty = check_lval src in
+            ignore (demand_vec src_ty);
+            infer_lval src_ty dst;
+            let check_index index = demand Ast.TY_int (check_atom index) in
+            Common.may check_index slice.Ast.slice_start;
+            Common.may check_index slice.Ast.slice_len
+
+        | Ast.STMT_while w | Ast.STMT_do_while w ->
+            let (stmts, expr) = w.Ast.while_lval in
+            Array.iter check_stmt stmts;
+            demand Ast.TY_bool (check_expr expr);
+            check_block w.Ast.while_body
+
+        | Ast.STMT_for sf ->
+            let elem_ty = demand_vec_or_str (check_lval sf.Ast.for_seq) in
+            infer_slot elem_ty (fst sf.Ast.for_slot).Common.id;
+            check_block sf.Ast.for_body
+
+        | Ast.STMT_for_each sfe ->
+            let (callee, args) = sfe.Ast.for_each_call in
+            let elem_ty = check_fn callee args in
+            infer_slot elem_ty (fst (sfe.Ast.for_each_slot)).Common.id;
+            check_block sfe.Ast.for_each_head;
+            check_block sfe.Ast.for_each_body
+
+        | Ast.STMT_if si ->
+            demand Ast.TY_bool (check_expr si.Ast.if_test);
+            check_block si.Ast.if_then;
+            Common.may check_block si.Ast.if_else
+
+        | Ast.STMT_put _ when not fn_ctx.fnctx_is_iter ->
+            Common.err None "'put' may only be used in an iterator function"
+
+        | Ast.STMT_put (Some atom) ->
+            demand fn_ctx.fnctx_return_type (check_atom atom)
+
+        | Ast.STMT_put None -> () (* always well-typed *)
+
+        | Ast.STMT_put_each (callee, args) -> ignore (check_fn callee args)
+
+        | Ast.STMT_ret (Some atom) ->
+            if fn_ctx.fnctx_is_iter then
+              Common.err None
+                "iterators can't return values; did you mean 'put'?"
+            demand fn_ctx.fnctx_return_type (check_atom atom)
+
+        | Ast.STMT_ret None ->
+            if not fn_ctx.fnctx_is_iter then
+              demand Ast.TY_nil fn_ctx.fnctx_return_type
 
         | Ast.STMT_be (callee, args) ->
-            check_callable (retval_tv()) callee args
+            demand fn_ctx.fnctx_return_type (check_fn callee args)
 
-        | Ast.STMT_bind (bound, callee, arg_opts) ->
-            (* FIXME (issue #81): handle binding type parameters
-             * eventually.
-             *)
-            let out_tv = any() in
-            let residue = ref [] in
-            let gen_atom_opt_tvs atoms =
-              let gen_atom_tv atom_opt =
-                let tv = any() in
-                  begin
-                    match atom_opt with
-                        None -> residue := tv :: (!residue);
-                      | Some atom -> unify_atom arg_pass_ctx atom tv
-                  end;
-                  tv
-              in
-                Array.map gen_atom_tv atoms
-            in
+        | Ast.STMT_alt_tag alt_tag ->
+            let get_pat arm = fst arm.Common.node in
+            let pats = Array.map get_pat alt_tag.Ast.alt_tag_arms in
+            let ty = check_lval alt_tag.Ast.alt_tag_lval in
+            Array.iter (check_pat ty) pats
 
-            let in_tvs = gen_atom_opt_tvs arg_opts in
-            let arg_residue_tvs = Array.of_list (List.rev (!residue)) in
-            let callee_tv = ref (TYSPEC_callable (out_tv, in_tvs)) in
-            let bound_tv = ref (TYSPEC_callable (out_tv, arg_residue_tvs)) in
-              unify_lval rval_ctx callee callee_tv;
-              unify_lval lval_ctx bound bound_tv
+        | Ast.STMT_alt_type _ -> () (* TODO *)
 
-        | Ast.STMT_for_each fe ->
-            let out_tv = any() in
-            let (si, _) = fe.Ast.for_each_slot in
-            let (callee, args) = fe.Ast.for_each_call in
-              unify_slot lval_ctx si.node (Some si.id) out_tv;
-              check_callable out_tv callee args
+        | Ast.STMT_alt_port _ -> () (* TODO *)
 
-        | Ast.STMT_for fo ->
-            let mem_tv = ref TYSPEC_all in
-            let seq_tv = ref (TYSPEC_collection mem_tv) in
-            let (si, _) = fo.Ast.for_slot in
-            let seq = fo.Ast.for_seq in
-              unify_lval rval_ctx seq seq_tv;
-              unify_slot lval_ctx si.node (Some si.id) mem_tv
+        | Ast.STMT_fail | Ast.STMT_yield -> ()  (* always well-typed *)
 
-        | Ast.STMT_alt_tag
-            { Ast.alt_tag_lval = lval; Ast.alt_tag_arms = arms } ->
-            let lval_tv = any() in
-              unify_lval arg_pass_ctx lval lval_tv;
-              Array.iter (fun _ -> push_pat_tv lval_tv) arms
+        | Ast.STMT_join lval -> infer_lval Ast.TY_task lval
 
-        | Ast.STMT_join lval ->
-            unify_lval rval_ctx lval (ty Ast.TY_task);
+        | Ast.STMT_send (chan, value) ->
+            let value_ty = demand_chan (check_lval chan) in
+            infer_lval ~mut:Ast.MUT_immutable value_ty value
 
-        | Ast.STMT_init_box (dst, _, v) ->
-            let in_tv = any() in
-            let tv = ref (TYSPEC_mutable (ref (TYSPEC_box in_tv))) in
-              unify_lval strict_ctx dst tv;
-              unify_atom rval_ctx v in_tv;
+        | Ast.STMT_log _ | Ast.STMT_note _ | Ast.STMT_prove _ ->
+            () (* always well-typed *)
 
-        (* FIXME (issue #52): Finish these. *)
-        (* Fake-typecheck a few comm-related statements for now, just enough
-         * to supply the auto-deref contexts; we will need new tyspecs for
-         * port and channel constraints.
-         *)
+        | Ast.STMT_check (_, calls) -> check_check_calls calls
 
-        | Ast.STMT_recv (dst, port) ->
-            set_auto_deref dst rval_ctx.box_ok;
-            set_auto_deref port rval_ctx.box_ok;
+        | Ast.STMT_check_expr expr -> demand Ast.TY_bool (check_expr expr)
 
-        | Ast.STMT_send (chan, v) ->
-            set_auto_deref chan rval_ctx.box_ok;
-            set_auto_deref v rval_ctx.box_ok;
+        | Ast.STMT_check_if (_, calls, block) ->
+            check_check_calls calls;
+            check_block block
 
-        | Ast.STMT_init_chan (dst, port_opt) ->
-            begin
-              match port_opt with
-                  None -> ()
-                | Some port -> set_auto_deref port rval_ctx.box_ok
-            end;
-            set_auto_deref dst init_ctx.box_ok
+        | Ast.STMT_block block -> check_block block
 
-        | Ast.STMT_init_port dst ->
-            set_auto_deref dst init_ctx.box_ok
-
-
-        (* Nothing to typecheck on these. *)
-        | Ast.STMT_block _
-        | Ast.STMT_decl _
-        | Ast.STMT_yield
-        | Ast.STMT_fail -> ()
-
-        (* Unimplemented. *)
-        | Ast.STMT_check_if _
-        | Ast.STMT_prove _
-        | Ast.STMT_note _
-        | Ast.STMT_alt_port _
-        | Ast.STMT_alt_type _
-        | Ast.STMT_put_each _
-        | Ast.STMT_slice _ -> err None "Unimplemented typecheck for stmt"
+        | Ast.STMT_decl _ -> () (* always well-typed *)
     in
 
+    let check_stmt' stmt =
+      try
+        check_stmt stmt
+      with Type_error (expected, actual) ->
+        Common.err
+          (Some stmt.Common.id)
+          "mismatched types: expected %s but found %a"
+          expected
+          Ast.sprintf_ty actual
+    in
+    check_stmt'
+  in
+  check_stmt
+
+let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
+  let path = Stack.create () in
+  let fn_ctx_stack = Stack.create () in
+
+  (* Verify that, if main is present, it has the right form. *)
+  let verify_main (item_id:Common.node_id) : unit =
+    let path_name = Semant.string_of_name (Semant.path_to_name path) in
+    if cx.Semant.ctxt_main_name = Some path_name then
+      try
+        match Hashtbl.find cx.Semant.ctxt_all_item_types item_id with
+            Ast.TY_fn ({ Ast.sig_input_slots = [| |] }, _)
+          | Ast.TY_fn ({ Ast.sig_input_slots = [| {
+                Ast.slot_mode = Ast.MODE_local;
+                Ast.slot_ty = Some (Ast.TY_vec Ast.TY_str)
+              } |] }, _) ->
+            ()
+          | _ -> Common.err (Some item_id) "main fn has bad type signature"
+      with Not_found ->
+        Common.err (Some item_id) "main item has no type (is it a function?)"
+  in
+
+  let visitor (cx:Semant.ctxt) (inner:Walk.visitor) : Walk.visitor =
+    let push_fn_ctx (ret_ty:Ast.ty) (is_iter:bool) =
+      let fn_ctx = { fnctx_return_type = ret_ty; fnctx_is_iter = is_iter } in
+      Stack.push fn_ctx fn_ctx_stack
+    in
+
+    let visit_mod_item_pre _ _ item =
+      match item.Common.node.Ast.decl_item with
+          Ast.MOD_ITEM_fn _ ->
+            let id = item.Common.id in
+            begin
+              match Hashtbl.find cx.Semant.ctxt_all_item_types id with
+                  Ast.TY_fn (ty_sig, ty_fn_aux) ->
+                    let ret_ty = ty_sig.Ast.sig_output_slot.Ast.slot_ty in
+                    let is_iter = ty_fn_aux.Ast.fn_is_iter in
+                    push_fn_ctx (Common.option_get ret_ty) is_iter
+                | _ ->
+                  Common.bug
+                    ()
+                    "Type.visit_mod_item_pre: fn item doesn't have a fn type"
+            end
+        | _ -> ()
+    in
+    let visit_mod_item_post _ _ item =
+      verify_main item.Common.id;
+      match item.Common.node.Ast.decl_item with
+          Ast.MOD_ITEM_fn _ -> ignore (Stack.pop fn_ctx_stack)
+        | _ -> ()
+    in
+
+    let visit_obj_fn_pre _ _ fn =
+      let fn = fn.Common.node in
+      let ret_ty = fn.Ast.fn_output_slot.Common.node.Ast.slot_ty in
+      push_fn_ctx (Common.option_get ret_ty) fn.Ast.fn_aux.Ast.fn_is_iter
+    in
+    let visit_obj_fn_post _ _ _ = ignore (Stack.pop fn_ctx_stack) in
+
+    let visit_obj_drop_pre _ _ = push_fn_ctx Ast.TY_nil false in
+    let visit_obj_drop_post _ _ = ignore (Stack.pop fn_ctx_stack) in
+
+    (* TODO: make sure you can't fall off the end of a function if it doesn't
+     * return void *)
     let visit_stmt_pre (stmt:Ast.stmt) : unit =
       try
         log cx "";
         log cx "typechecking stmt: %a" Ast.sprintf_stmt stmt;
         log cx "";
-        visit_stmt_pre_full stmt;
-        (* 
-         * Reset any item-parameters that were resolved to types
-         * during inference for this statement.
-         *)
-        Hashtbl.iter
-          (fun _ params -> Array.iter (fun tv -> tv := TYSPEC_all) params)
-          item_params;
+        check_stmt cx (Stack.top fn_ctx_stack) stmt;
         log cx "finished typechecking stmt: %a" Ast.sprintf_stmt stmt;
-      with
-          Semant_err (None, msg) ->
-            raise (Semant_err ((Some stmt.id), msg))
+      with Common.Semant_err (None, msg) ->
+        raise (Common.Semant_err ((Some stmt.Common.id), msg))
     in
 
-    let enter_fn fn retspec =
-      push_fn fn;
-      let out = fn.Ast.fn_output_slot in
-        push_retval_tv (ref retspec);
-        unify_slot arg_pass_ctx out.node (Some out.id) (retval_tv())
+    let visit_crate_post _ : unit =
+      (* Fill in the autoderef info for any lvals we didn't get to. *)
+      let fill lval_id _ =
+        if not (Hashtbl.mem cx.Semant.ctxt_auto_deref_lval lval_id) then
+          Hashtbl.add cx.Semant.ctxt_auto_deref_lval lval_id false
+      in
+      Hashtbl.iter fill cx.Semant.ctxt_all_lvals
     in
 
-    let leave_fn _ =
-      pop_retval_tv ();
-      pop_fn ();
-    in
-
-    let visit_obj_fn_pre obj ident fn =
-      enter_fn fn.node TYSPEC_all;
-      inner.Walk.visit_obj_fn_pre obj ident fn
-    in
-
-    let visit_obj_fn_post obj ident fn =
-      inner.Walk.visit_obj_fn_post obj ident fn;
-      leave_fn ();
-    in
-
-    let visit_mod_item_pre n p mod_item =
-      begin
-        try
-          match mod_item.node.Ast.decl_item with
-              Ast.MOD_ITEM_fn fn ->
-                enter_fn fn TYSPEC_all
-
-            | _ -> ()
-        with Semant_err (None, msg) ->
-          raise (Semant_err ((Some mod_item.id), msg))
-      end;
-      inner.Walk.visit_mod_item_pre n p mod_item
-    in
-
-    let path_name (_:unit) : string =
-      string_of_name (path_to_name path)
-    in
-
-    let visit_mod_item_post n p mod_item =
-      inner.Walk.visit_mod_item_post n p mod_item;
-      match mod_item.node.Ast.decl_item with
-
-        | Ast.MOD_ITEM_fn _ ->
-            leave_fn ();
-            if (Some (path_name())) = cx.ctxt_main_name
-            then
-              begin
-                match Hashtbl.find cx.ctxt_all_item_types mod_item.id with
-                    Ast.TY_fn (tsig, _) ->
-                      begin
-                        let vec_str =
-                          local_slot (Ast.TY_vec Ast.TY_str)
-                        in
-                          match tsig.Ast.sig_input_slots with
-                              [| |] -> ()
-                            | [| vs |] when vs = vec_str -> ()
-                            | _ -> err (Some mod_item.id)
-                                "main fn has bad type signature"
-                      end
-                  | _ ->
-                      err (Some mod_item.id) "main item is not a function"
-              end
-        | _ -> ()
-    in
-
-    (*
-     * Tag patterns give us the type of every sub-pattern in the tag tuple, so
-     * we can "expect" those types by pushing them on a stack.  Checking a
-     * pattern therefore involves seeing that it matches the "expected" type,
-     * and in turn setting any expectations for the inner descent.
-     *)
-    let visit_pat_pre (pat:Ast.pat) : unit =
-      let expected = pat_tv() in
-        match pat with
-            Ast.PAT_lit lit -> unify_lit strict_ctx lit expected
-
-          | Ast.PAT_tag (lval, _) ->
-              let expect ty =
-                let tv = ref TYSPEC_all in
-                  unify_ty strict_ctx ty tv;
-                  push_pat_tv tv;
-              in
-
-              let lval_nm = lval_to_name lval in
-
-              (* The lval here is our tag constructor, which we've already
-               * resolved (in Resolve) to have a the actual tag constructor
-               * function item as its referent.  It should hence unify
-               * exactly to that function type, rebuilt under any latent type
-               * parameters applied in the lval. *)
-              let lval_tv = ref TYSPEC_all in
-                unify_lval strict_ctx lval lval_tv;
-                let tag_ctor_ty =
-                  match !(resolve_tyvar lval_tv) with
-                      TYSPEC_resolved (_, ty) -> ty
-                    | _ ->
-                        bug () "tag constructor is not a fully resolved type."
-                in
-
-                let tag_ty = fn_output_ty tag_ctor_ty in
-                let tag_ty_tup = tag_or_iso_ty_tup_by_name tag_ty lval_nm in
-
-                let tag_tv = ref TYSPEC_all in
-                  unify_ty strict_ctx tag_ty tag_tv;
-                  unify_tyvars strict_ctx expected tag_tv;
-                  List.iter expect
-                    (List.rev (Array.to_list tag_ty_tup));
-
-          | Ast.PAT_slot (sloti, _) ->
-              unify_slot lval_ctx sloti.node (Some sloti.id) expected
-
-          | Ast.PAT_wild -> ()
-    in
-
-    let visit_pat_post (_:Ast.pat) : unit =
-      pop_pat_tv()
-    in
-
-      {
-        inner with
-          Walk.visit_mod_item_pre = visit_mod_item_pre;
-          Walk.visit_mod_item_post = visit_mod_item_post;
-          Walk.visit_obj_fn_pre = visit_obj_fn_pre;
-          Walk.visit_obj_fn_post = visit_obj_fn_post;
-          Walk.visit_stmt_pre = visit_stmt_pre;
-          Walk.visit_pat_pre = visit_pat_pre;
-          Walk.visit_pat_post = visit_pat_post;
-      }
-
+    {
+      inner with
+        Walk.visit_stmt_pre = visit_stmt_pre;
+        Walk.visit_mod_item_pre = visit_mod_item_pre;
+        Walk.visit_mod_item_post = visit_mod_item_post;
+        Walk.visit_obj_fn_pre = visit_obj_fn_pre;
+        Walk.visit_obj_fn_post = visit_obj_fn_post;
+        Walk.visit_obj_drop_pre = visit_obj_drop_pre;
+        Walk.visit_obj_drop_post = visit_obj_drop_post;
+        Walk.visit_crate_post = visit_crate_post
+    }
   in
-    try
-      let auto_queue = Queue.create () in
 
-      let init_slot_tyvar id defn =
-        match defn with
-            DEFN_slot { Ast.slot_mode = _; Ast.slot_ty = None } ->
-              Queue.add id auto_queue;
-              Hashtbl.add bindings id (ref (TYSPEC_mutable (ref TYSPEC_all)))
-          | DEFN_slot { Ast.slot_mode = _; Ast.slot_ty = Some ty } ->
-              let _ = iflog cx (fun _ -> log cx "initial slot #%d type: %a"
-                                  (int_of_node id) Ast.sprintf_ty ty)
-              in
-                Hashtbl.add bindings id (ref (TYSPEC_resolved ([||], ty)))
-          | _ -> ()
-      in
-
-      let init_item_tyvar id ty =
-        let _ = iflog cx (fun _ -> log cx "initial item #%d type: %a"
-                            (int_of_node id) Ast.sprintf_ty ty)
-        in
-        let params =
-          match Hashtbl.find cx.ctxt_all_defns id with
-              DEFN_item i -> Array.map (fun p -> p.node) i.Ast.decl_params
-            | DEFN_obj_fn _ -> [| |]
-            | DEFN_obj_drop _ -> [| |]
-            | DEFN_loop_body _ -> [| |]
-            | _ -> err (Some id) "expected item defn for item tyvar"
-        in
-        let spec = TYSPEC_resolved (params, ty) in
-          Hashtbl.add bindings id (ref spec)
-      in
-
-      let init_mod_dict id defn =
-        let rec tv_of_item id item =
-          match item.Ast.decl_item with
-              Ast.MOD_ITEM_mod (_, items) ->
-                if Hashtbl.mem bindings id
-                then Hashtbl.find bindings id
-                else
-                  let dict = htab_map items
-                    (fun i item -> (i, tv_of_item item.id item.node))
-                  in
-                  let spec = TYSPEC_dictionary dict in
-                  let tv = ref spec in
-                    Hashtbl.add bindings id tv;
-                    tv
-            | _ ->
-                Hashtbl.find bindings id
-        in
-          match defn with
-              DEFN_item ({ Ast.decl_item = Ast.MOD_ITEM_mod _ } as item) ->
-                ignore (tv_of_item id item)
-            | _ -> ()
-      in
-        Hashtbl.iter init_slot_tyvar cx.ctxt_all_defns;
-        Hashtbl.iter init_item_tyvar cx.ctxt_all_item_types;
-        Hashtbl.iter init_mod_dict cx.ctxt_all_defns;
-        Walk.walk_crate
-          (Walk.path_managing_visitor path
-             (mod_item_logging_visitor cx
-                cx.ctxt_sess.Session.sess_log_type log 0 path
-                (visitor cx Walk.empty_visitor)))
-          crate;
-
-        let update_auto_tyvar id ty =
-          let defn = Hashtbl.find cx.ctxt_all_defns id in
-            match defn with
-                DEFN_slot slot_defn ->
-                  begin
-                    match slot_defn.Ast.slot_ty with
-                        Some _ -> ()
-                      | None ->
-                          log cx "setting auto slot #%d = %a to type %a"
-                            (int_of_node id)
-                            Ast.sprintf_slot_key
-                            (Hashtbl.find cx.ctxt_slot_keys id)
-                            Ast.sprintf_ty ty;
-                          Hashtbl.replace cx.ctxt_all_defns id
-                            (DEFN_slot { slot_defn with
-                                           Ast.slot_ty = Some ty })
-                  end
-              | _ -> bug () "check_auto_tyvar: no slot defn"
-        in
-
-        let rec get_resolved_ty tv id =
-          let ts = !(resolve_tyvar tv) in
-            match ts with
-                TYSPEC_resolved ([||], ty) -> ty
-              | TYSPEC_box tv ->
-                  Ast.TY_box (get_resolved_ty tv id)
-
-              | TYSPEC_mutable tv ->
-                  Ast.TY_mutable (get_resolved_ty tv id)
-
-              | TYSPEC_vector tv ->
-                  Ast.TY_vec (get_resolved_ty tv id)
-
-              | TYSPEC_tuple tvs ->
-                  Ast.TY_tup
-                    (Array.map
-                       (fun tv -> get_resolved_ty tv id) tvs)
-
-              | _ -> err (Some id)
-                  "unresolved type %s (%d)"
-                    (tyspec_to_str ts)
-                    (int_of_node id)
-        in
-
-        let check_auto_tyvar id =
-          let tv = Hashtbl.find bindings id in
-          let ty = get_resolved_ty tv id in
-            update_auto_tyvar id ty
-        in
-
-        let record_lval_ty id tv =
-          let ty = get_resolved_ty tv id in
-          let _ =
-            iflog cx
-              (fun _ ->
-                 log cx "recording resolved lval #%d = %a type %a"
-                   (int_of_node id)
-                   Ast.sprintf_lval (Hashtbl.find cx.ctxt_all_lvals id)
-                   Ast.sprintf_ty ty)
-          in
-            Hashtbl.add cx.ctxt_all_lval_types id ty
-        in
-
-          Queue.iter check_auto_tyvar auto_queue;
-          Hashtbl.iter record_lval_ty lval_tyvars;
-    with Semant_err (ido, str) -> report_err cx ido str
-;;
+  try
+    Walk.walk_crate
+      (Walk.path_managing_visitor path
+        (Semant.mod_item_logging_visitor
+          cx
+          cx.Semant.ctxt_sess.Session.sess_log_type log 0 path
+          (visitor cx Walk.empty_visitor)))
+      crate
+  with Common.Semant_err (ido, str) -> Semant.report_err cx ido str;
 
 (*
  * Local Variables:

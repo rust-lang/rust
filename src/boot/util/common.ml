@@ -341,6 +341,16 @@ let bool_of_option x =
       Some _ -> true
     | None -> false
 
+let may f x =
+  match x with
+      Some x' -> f x'
+    | None -> ()
+
+let option_get x =
+  match x with
+      Some x -> x
+    | None -> raise Not_found
+
 (*
  * Auxiliary stack functions.
  *)

@@ -361,7 +361,8 @@ TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
                     test/compile-fail/bad-send.rs \
                     test/compile-fail/bad-recv.rs \
                     test/compile-fail/infinite-tag-type-recursion.rs \
-                    test/compile-fail/infinite-vec-type-recursion.rs
+                    test/compile-fail/infinite-vec-type-recursion.rs \
+                    test/compile-fail/writing-through-read-alias.rs
 
 TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       acyclic-unwind.rs \
@@ -492,6 +493,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       bad-recv.rs \
                       infinite-tag-type-recursion.rs \
                       infinite-vec-type-recursion.rs \
+                      writing-through-read-alias.rs \
                      )
 
 ifdef MINGW_CROSS

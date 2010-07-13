@@ -5,7 +5,7 @@ io fn f(chan[int] c)
   type t = tup(int,int,int);
 
   // Allocate a box.
-  let @t x = tup(1,2,3);
+  let @t x = @tup(1,2,3);
 
   // Signal parent that we've allocated a box.
   c <| 1;
