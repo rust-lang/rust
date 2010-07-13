@@ -419,9 +419,8 @@ and walk_stmt
       (s:Ast.stmt_for)
       : unit =
     let (si,_) = s.Ast.for_slot in
-    let (ss,lv) = s.Ast.for_seq in
+    let lv = s.Ast.for_seq in
       walk_slot_identified v si;
-      Array.iter (walk_stmt v) ss;
       walk_lval v lv;
       walk_block v s.Ast.for_body
   in

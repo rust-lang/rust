@@ -1263,7 +1263,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             let mem_tv = ref TYSPEC_all in
             let seq_tv = ref (TYSPEC_collection mem_tv) in
             let (si, _) = fo.Ast.for_slot in
-            let (_, seq) = fo.Ast.for_seq in
+            let seq = fo.Ast.for_seq in
               unify_lval rval_ctx seq seq_tv;
               unify_slot lval_ctx si.node (Some si.id) mem_tv
 

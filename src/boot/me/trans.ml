@@ -4021,10 +4021,9 @@ let trans_visitor
     let dst_slot_id = (fst (fo.Ast.for_slot)).id in
     let dst_slot = get_slot cx dst_slot_id in
     let dst_cell = cell_of_block_slot dst_slot_id in
-    let (head_stmts, seq) = fo.Ast.for_seq in
+    let seq = fo.Ast.for_seq in
     let (seq_cell, seq_ty) = trans_lval seq in
     let unit_ty = seq_unit_ty seq_ty in
-      Array.iter trans_stmt head_stmts;
       iter_seq_parts ty_params seq_cell seq_cell unit_ty
         begin
           fun _ src_cell unit_ty _ ->

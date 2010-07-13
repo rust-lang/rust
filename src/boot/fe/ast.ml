@@ -283,7 +283,7 @@ and stmt_for_each =
 and stmt_for =
     {
       for_slot: (slot identified * ident);
-      for_seq: ((stmt array) * lval);
+      for_seq: lval;
       for_body: block;
     }
 
@@ -1098,7 +1098,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
 
       | STMT_for sfor ->
           let (slot, ident) = sfor.for_slot in
-          let (stmts, lval) = sfor.for_seq in
+          let lval = sfor.for_seq in
             begin
               fmt_obox ff;
               fmt ff "for (";
@@ -1106,7 +1106,6 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
               fmt ff " ";
               fmt_ident ff ident;
               fmt ff " in ";
-              fmt_stmts ff stmts;
               fmt_lval ff lval;
               fmt ff ") ";
               fmt_obr ff;

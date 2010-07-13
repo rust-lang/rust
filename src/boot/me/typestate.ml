@@ -533,7 +533,7 @@ let condition_assigning_visitor
 
         | Ast.STMT_for fo ->
             let (si, _) = fo.Ast.for_slot in
-            let (_, lval) = fo.Ast.for_seq in
+            let lval = fo.Ast.for_seq in
             let precond = slot_inits (lval_slots cx lval) in
             let block_entry_state = [| Constr_init si.id |] in
               raise_pre_post_cond s.id precond;

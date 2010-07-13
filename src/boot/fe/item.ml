@@ -369,17 +369,18 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
                   let inner ps =
                     let slot = (parse_identified_slot_and_ident false ps) in
                     let _    = (expect ps IN) in
-                    let lval = (parse_lval ps) in
-                      (slot, lval) in
-                  let (slot, seq) =
+                      (slot, (parse_lval ps))
+                  in
+                  let (slot, (stmts, lval)) =
                     ctxt "stmts: for head" (bracketed LPAREN RPAREN inner) ps
                   in
                   let body_block = ctxt "stmts: for body" parse_block ps in
                   let bpos = lexpos ps in
-                    [| span ps apos bpos
-                         (Ast.STMT_for
+                    Array.append stmts
+                      [| span ps apos bpos
+                           (Ast.STMT_for
                             { Ast.for_slot = slot;
-                              Ast.for_seq = seq;
+                              Ast.for_seq = lval;
                               Ast.for_body = body_block; }) |]
           end
 
