@@ -21,7 +21,8 @@ let layout_visitor
    *     |...                         |
    *     |...                         |
    *     +----------------------------+ <-- fp + abi_frame_base_sz
-   *     |task ptr (implicit arg)     |        + abi_implicit_args_sz
+   *     |closure/obj ptr (impl. arg) |        + abi_implicit_args_sz
+   *     |task ptr (implicit arg)     |
    *     |output ptr (implicit arg)   |
    *     +----------------------------+ <-- fp + abi_frame_base_sz
    *     |return pc                   |

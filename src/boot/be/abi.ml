@@ -68,17 +68,17 @@ let vec_elt_data = 3;;
 
 let calltup_elt_out_ptr = 0;;
 let calltup_elt_task_ptr = 1;;
-let calltup_elt_ty_params = 2;;
-let calltup_elt_args = 3;;
-let calltup_elt_iterator_args = 4;;
-let calltup_elt_indirect_args = 5;;
+let calltup_elt_indirect_args = 2;;
+let calltup_elt_ty_params = 3;;
+let calltup_elt_args = 4;;
+let calltup_elt_iterator_args = 5;;
 
 let iterator_args_elt_block_fn = 0;;
 let iterator_args_elt_outer_frame_ptr = 1;;
 
 let indirect_args_elt_closure = 0;;
 
-(* ty_params, src, dst, tydesc, taskptr. *)
+(* dst, taskptr, closure-ptr, ty_params, src, src2=target_task *)
 let worst_case_glue_call_args = 5;;
 
 type abi =

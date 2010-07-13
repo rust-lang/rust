@@ -2027,10 +2027,10 @@ let call_args_referent_type_full
       [|
         out_ptr_rty;                   (* Abi.calltup_elt_out_ptr       *)
         task_ptr_rty;                  (* Abi.calltup_elt_task_ptr      *)
+        Il.StructTy indirect_arg_rtys; (* Abi.calltup_elt_indirect_args *)
         ty_param_rtys;                 (* Abi.calltup_elt_ty_params     *)
         arg_rtys;                      (* Abi.calltup_elt_args          *)
-        Il.StructTy iterator_arg_rtys; (* Abi.calltup_elt_iterator_args *)
-        Il.StructTy indirect_arg_rtys  (* Abi.calltup_elt_indirect_args *)
+        Il.StructTy iterator_arg_rtys  (* Abi.calltup_elt_iterator_args *)
       |]
 ;;
 
