@@ -1723,9 +1723,11 @@ let trans_visitor
         do
           emit (Il.Push (Il.Cell args.(i)))
         done;
+        emit (Il.Push zero);
         emit (Il.Push (Il.Cell abi.Abi.abi_tp_cell));
         emit (Il.Push dst);
         call_code code;
+        pop ();
         pop ();
         pop ();
         Array.iter (fun _ -> pop()) args;
