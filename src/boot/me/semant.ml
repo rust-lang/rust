@@ -2041,13 +2041,12 @@ let call_args_referent_type
     (closure:Il.referent_ty option)
     : Il.referent_ty =
   let indirect_arg_rtys =
+    (* Abi.indirect_args_elt_closure *)
     match closure with
-        None -> [| |]
+        None ->
+          [| word_rty cx.ctxt_abi |]
       | Some c ->
-          [|
-            (* Abi.indirect_args_elt_closure *)
-            Il.ScalarTy (Il.AddrTy c)
-          |]
+          [| Il.ScalarTy (Il.AddrTy c) |]
   in
   let iterator_arg_rtys _ =
     [|
