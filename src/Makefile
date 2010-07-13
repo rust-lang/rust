@@ -23,11 +23,7 @@ CFG_GCC_CFLAGS :=
 CFG_GCC_LINK_FLAGS :=
 CFG_VALGRIND :=
 
-# Issue #102, LLVM-config logic is assuming "presence of llvm-config"
-# means "presence of ocaml bindings". Commenting out for now.
-# CFG_LLVM_CONFIG := llvm-config
-
-CFG_LLVM_CONFIG :=
+CFG_LLVM_CONFIG := llvm-config
 CFG_BOOT_FLAGS := $(FLAGS)
 
 ifeq ($(CFG_OSTYPE), Linux)
@@ -165,6 +161,10 @@ ifneq ($(CFG_LLVM_CONFIG),)
   CFG_LLVM_VERSION := $(shell $(CFG_LLVM_CONFIG) --version)
   ifeq ($(CFG_LLVM_VERSION),2.8svn)
     $(info cfg: using LLVM version 2.8svn)
+    WHERE := $(shell ocamlc -where)
+    ifneq ($(shell test -e $(WHERE)/llvm.cma && echo ok),ok)
+      CFG_LLVM_CONFIG := $(info cfg: LLVM ocaml bindings not found)
+    endif
   else
     CFG_LLVM_CONFIG :=
     $(info cfg: incompatible LLVM version $(CFG_LLVM_VERSION), \
@@ -173,7 +173,6 @@ ifneq ($(CFG_LLVM_CONFIG),)
 endif
 ifdef CFG_LLVM_CONFIG
   VARIANT=llvm
-  WHERE := $(shell ocamlc -where)
   LLVM_LIBS := llvm.cma llvm_bitwriter.cma
   LLVM_NATIVE_LIBS := llvm.cmxa llvm_bitwiter.cmxa
   LLVM_CLIBS := $(shell for c in `$(CFG_LLVM_CONFIG) --ldflags --libs` \
@@ -413,6 +412,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       item-name-overload.rs \
                       large-records.rs \
                       lazy-and-or.rs \
+                      lazy-init.rs \
                       lazychan.rs \
                       linear-for-loop.rs \
                       list.rs \
