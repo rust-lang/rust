@@ -498,7 +498,7 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
             expect ps SEMI;
             spans ps stmts apos (Ast.STMT_join lval)
 
-      | MOD | OBJ | TYPE | FN | USE | NATIVE ->
+      | IO | STATE | UNSAFE | MOD | OBJ | TYPE | FN | USE | NATIVE ->
           let (ident, item) = ctxt "stmt: decl" parse_mod_item ps in
           let decl = Ast.DECL_mod_item (ident, item) in
           let stmts = expand_tags_to_stmts ps item in
