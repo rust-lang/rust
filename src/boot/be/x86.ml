@@ -1428,14 +1428,6 @@ let fn_tail_call
 ;;
 
 
-let loop_info_field_retpc = 0;;
-let loop_info_field_sp = 1;;
-let loop_info_field_fp = 2;;
-
-let self_args_cell (self_args_rty:Il.referent_ty) : Il.cell =
-  Il.Mem (Il.RegIn (h ebp, Some (Asm.IMM frame_base_sz)), self_args_rty)
-;;
-
 let activate_glue (e:Il.emitter) : unit =
   (*
    * This is a bit of glue-code. It should be emitted once per
