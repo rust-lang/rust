@@ -8,8 +8,11 @@ Andreas Gal <gal@mozilla.com>
 Brendan Eich <brendan@mozilla.org>
 Chris Double <chris.double@double.co.nz>
 Dave Herman <dherman@mozilla.com>
+Jason Orendorff <jorendorff@mozilla.com>
+Jeff Balogh <jbalogh@mozilla.com>
 Jeff Mulzelaar <jmuizelaar@mozilla.com>
 Matt Brubeck <mbrubeck@limpet.net>
 Michael Bebenita <mbebenita@mozilla.com>
 Patrick Walton <pwalton@mozilla.com>
+Ralph Giles <giles@thaumas.net>
 Roy Frostig <rfrostig@mozilla.com>
