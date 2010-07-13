@@ -398,7 +398,7 @@ Probably-bad ideas we will want to do differently in the self-hosted compiler:
   ever-more constraints (is_resolved(ast), is_typechecked(ast), etc.)
 
 - Trans should be organized as pure and value-producing code, not imperatively
-  emitting quads into emitters. LLVM will enforce this anwyays. See what
+  emitting quads into emitters. LLVM will enforce this anyways. See what
   happened in lltrans.ml if you're curious what it'll look (more) like.
 
 - The PIC scheme will have to change, hopefully get much easier.

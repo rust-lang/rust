@@ -1201,9 +1201,9 @@ different tasks. Like any other immutable type, they can pass over channels,
 and live as long as the last task referencing them within a given domain. When
 unreferenced, they are destroyed immediately (due to reference-counting) and
 returned to the heap memory allocator. Destruction of an immutable box also
-executes within the context of task that drops the last reference to a shared
-heap allocation, so executing a long-running destructor does not interrupt
-execution of other tasks.
+executes within the context of the task that drops the last reference to a
+shared heap allocation, so executing a long-running destructor does not
+interrupt execution of other tasks.
 
 
 @node       Ref.Mem.Own
@@ -2997,7 +2997,7 @@ by the runtime or emitted to a system console. Log statements are enabled or
 disabled dynamically at run-time on a per-task and per-item
 basis. @xref{Ref.Run.Log}.
 
-Executing a @code{log} statement not considered an @code{io} effect in the
+Executing a @code{log} statement is not considered an @code{io} effect in the
 effect system. In other words, a pure function remains pure even if it
 contains a log statement.
 
@@ -3046,10 +3046,11 @@ completes normally, the runtime will not log the path.
 
 A value that is marked by a @code{note} statement is @emph{not} copied aside
 when control passes through the @code{note}. In other words, if a @code{note}
-statement notes a particular @var{lval}, and code after the @code{note} that
-slot, and then a subsequent failure occurs, the @emph{mutated} value will be
-logged during unwinding, @emph{not} the original value that was denoted by the
-@var{lval} at the moment control passed through the @code{note} statement.
+statement notes a particular @var{lval}, and code after the @code{note}
+mutates that slot, and then a subsequent failure occurs, the @emph{mutated}
+value will be logged during unwinding, @emph{not} the original value that was
+denoted by the @var{lval} at the moment control passed through the @code{note}
+statement.
 
 @node       Ref.Stmt.While
 @subsection Ref.Stmt.While
