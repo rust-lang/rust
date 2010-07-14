@@ -536,11 +536,12 @@ let frame_base_sz = Int64.mul (Int64.of_int frame_base_words) word_sz;;
 let frame_info_words = 2 (* crate ptr, crate-rel frame info disp *) ;;
 let frame_info_sz = Int64.mul (Int64.of_int frame_info_words) word_sz;;
 
-let implicit_arg_words = 2 (* task ptr,out ptr *);;
-let implicit_args_sz =  Int64.mul (Int64.of_int implicit_arg_words) word_sz;;
+let implicit_arg_words = 3 (* task ptr, out ptr, closure ptr *);;
+let implicit_args_sz = Int64.mul (Int64.of_int implicit_arg_words) word_sz;;
 
 let out_ptr = wordptr_n (Il.Hreg ebp) (frame_base_words);;
 let task_ptr = wordptr_n (Il.Hreg ebp) (frame_base_words+1);;
+let closure_ptr = wordptr_n (Il.Hreg ebp) (frame_base_words+2);;
 let ty_param_n i =
   wordptr_n (Il.Hreg ebp) (frame_base_words + implicit_arg_words + i);;
 
@@ -855,6 +856,7 @@ let sweep_gc_chain
       (c (ecx_n Abi.tydesc_field_first_param));
     push (ro eax);                              (* Push typarams ptr.     *)
 
+    push (immi 0L);                             (* Push null closure-ptr  *)
     push (c task_ptr);                          (* Push task ptr.         *)
     push (immi 0L);                             (* Push null outptr.      *)
 
