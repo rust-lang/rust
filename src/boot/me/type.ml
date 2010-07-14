@@ -216,6 +216,20 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
   in
 
   let retval_tvs = Stack.create () in
+  let fns = Stack.create () in
+
+  let push_fn fn =
+    Stack.push fn fns
+  in
+
+  let pop_fn _ =
+    ignore (Stack.pop fns)
+  in
+
+  let fn_is_iter() =
+    (Stack.top fns).Ast.fn_aux.Ast.fn_is_iter
+  in
+
   let push_retval_tv tv =
     Stack.push tv retval_tvs
   in
@@ -1215,13 +1229,27 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         | Ast.STMT_if { Ast.if_test = if_test } ->
             unify_expr rval_ctx if_test (ty Ast.TY_bool);
 
-        | Ast.STMT_ret atom_opt
-        | Ast.STMT_put atom_opt ->
+        | Ast.STMT_ret atom_opt ->
             begin
-              match atom_opt with
-                  None -> unify_ty arg_pass_ctx Ast.TY_nil (retval_tv())
-                | Some atom -> unify_atom arg_pass_ctx atom (retval_tv())
+              if fn_is_iter()
+              then
+                match atom_opt with
+                  | None -> ()
+                  | Some _ -> err None "Iter returning value"
+              else
+                match atom_opt with
+                  | None -> unify_ty arg_pass_ctx Ast.TY_nil (retval_tv())
+                  | Some atom -> unify_atom arg_pass_ctx atom (retval_tv())
             end
+
+        | Ast.STMT_put atom_opt ->
+            if fn_is_iter()
+            then
+              match atom_opt with
+                | None -> unify_ty arg_pass_ctx Ast.TY_nil (retval_tv())
+                | Some atom -> unify_atom arg_pass_ctx atom (retval_tv())
+            else
+              err None "Non-iter function with 'put'"
 
         | Ast.STMT_be (callee, args) ->
             check_callable (retval_tv()) callee args
@@ -1344,9 +1372,15 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
     in
 
     let enter_fn fn retspec =
+      push_fn fn;
       let out = fn.Ast.fn_output_slot in
         push_retval_tv (ref retspec);
         unify_slot arg_pass_ctx out.node (Some out.id) (retval_tv())
+    in
+
+    let leave_fn _ =
+      pop_retval_tv ();
+      pop_fn ();
     in
 
     let visit_obj_fn_pre obj ident fn =
@@ -1356,7 +1390,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
     let visit_obj_fn_post obj ident fn =
       inner.Walk.visit_obj_fn_post obj ident fn;
-      pop_retval_tv ();
+      leave_fn ();
     in
 
     let visit_mod_item_pre n p mod_item =
@@ -1382,7 +1416,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
       match mod_item.node.Ast.decl_item with
 
         | Ast.MOD_ITEM_fn _ ->
-            pop_retval_tv ();
+            leave_fn ();
             if (Some (path_name())) = cx.ctxt_main_name
             then
               begin
