@@ -236,7 +236,7 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc, char **argv)
             rust_crate_reader rdr(&dom, crate);
         }
 
-        uintptr_t main_args[3] = { 0, 0, (uintptr_t)args.args };
+        uintptr_t main_args[4] = { 0, 0, 0, (uintptr_t)args.args };
 
         dom.root_task->start(crate->get_exit_task_glue(),
                              main_fn,
