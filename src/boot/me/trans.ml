@@ -521,7 +521,7 @@ let trans_visitor
       then
         begin
           let obj = get_obj_for_current_frame() in
-          let tydesc = get_element_ptr obj 1 in
+          let tydesc = get_element_ptr obj Abi.obj_elt_tydesc in
           let ty_params_ty = Ast.TY_tup (make_tydesc_tys n_ty_params) in
           let ty_params_rty = referent_type abi ty_params_ty in
           let ty_params =
@@ -2473,8 +2473,8 @@ let trans_visitor
             let null_jmp = null_check binding in
             let rc_jmp = drop_refcount_and_cmp binding in
             let obj = deref binding in
-            let tydesc = get_element_ptr obj 1 in
-            let body = get_element_ptr obj 2 in
+            let tydesc = get_element_ptr obj Abi.obj_elt_tydesc in
+            let body = get_element_ptr obj Abi.obj_elt_fields in
             let ty_params = get_tydesc_params ty_params tydesc in
             let dtor =
               get_element_ptr (deref tydesc) Abi.tydesc_field_obj_drop_glue
