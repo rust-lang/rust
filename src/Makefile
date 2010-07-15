@@ -133,6 +133,7 @@ ifdef PROFILE
   $(info cfg: building with profiling info (forcing native output))
   CFG_NATIVE := 1
   CFG_OCAMLOPT_PROFILE_FLAGS := -p
+  NO_LLVM := 1
 endif
 
 ifdef DEBUG
@@ -200,8 +201,9 @@ CFG_BOOT_FLAGS += -L .
 # Boot targets and rules
 ######################################################################
 
-ML_INCS := -I boot/fe -I boot/me -I boot/be -I boot/driver/$(VARIANT) \
-  -I boot/driver -I boot/util $(LLVM_INCS)
+ML_DEP_INCS := -I boot/fe -I boot/me -I boot/be -I boot/driver/$(VARIANT) \
+  -I boot/driver -I boot/util
+ML_INCS := $(ML_DEP_INCS) $(LLVM_INCS)
 ML_LIBS := unix.cma nums.cma bigarray.cma
 ML_NATIVE_LIBS := unix.cmxa nums.cmxa bigarray.cmxa
 OCAMLC_FLAGS := -g $(ML_INCS) -w Ael -warn-error Ael
@@ -682,11 +684,11 @@ C_DEPFILES := $(RUNTIME_CS:%.cpp=%.d)
 
 %.d: %.ml $(MKFILES)
 	@$(call CFG_ECHO, dep: $<)
-	$(CFG_QUIET)ocamldep$(OPT) $(ML_INCS) $< $(CFG_PATH_MUNGE) >$@
+	$(CFG_QUIET)ocamldep$(OPT) $(ML_DEP_INCS) $< $(CFG_PATH_MUNGE) >$@
 
 %.d: %.mli $(MKFILES)
 	@$(call CFG_ECHO, dep: $<)
-	$(CFG_QUIET)ocamldep$(OPT) $(ML_INCS) $< $(CFG_PATH_MUNGE) >$@
+	$(CFG_QUIET)ocamldep$(OPT) $(ML_DEP_INCS) $< $(CFG_PATH_MUNGE) >$@
 
 ifneq ($(MAKECMDGOALS),clean)
 -include $(ML_DEPFILES) $(C_DEPFILES)
