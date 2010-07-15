@@ -148,8 +148,8 @@ let process_crate
     |]
   in
 
-    run_passes cx "loop" path passes (log cx "%s") crate;
-    ()
+    run_passes cx "loop" path passes
+      cx.ctxt_sess.Session.sess_log_loop log crate
 ;;
 
 

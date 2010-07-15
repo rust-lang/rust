@@ -106,7 +106,8 @@ let process_crate
     |]
   in
 
-    run_passes cx "dead" path passes (log cx "%s") crate;
+    run_passes cx "dead" path passes
+      cx.ctxt_sess.Session.sess_log_dead log crate;
     ()
 ;;
 

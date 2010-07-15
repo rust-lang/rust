@@ -328,7 +328,8 @@ let process_crate
           else err (Some id) "auth clause in crate refers to non-item"
   in
     Hashtbl.iter auth_effect crate.node.Ast.crate_auth;
-    run_passes cx "effect" path passes (log cx "%s") crate
+    run_passes cx "effect" path passes
+      cx.ctxt_sess.Session.sess_log_effect log crate
 ;;
 
 (*

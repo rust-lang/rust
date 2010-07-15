@@ -167,7 +167,7 @@ let all_item_collecting_visitor
     Array.iter (fun p -> htab_put cx.ctxt_all_defns p.id
                   (DEFN_ty_param p.node)) p;
     htab_put cx.ctxt_all_defns i.id (DEFN_item i.node);
-    htab_put cx.ctxt_all_item_names i.id (Walk.path_to_name path);
+    htab_put cx.ctxt_all_item_names i.id (path_to_name path);
     log cx "collected item #%d: %s" (int_of_node i.id) n;
     begin
       match i.node.Ast.decl_item with
@@ -191,14 +191,14 @@ let all_item_collecting_visitor
 
   let visit_obj_fn_pre obj ident fn =
     htab_put cx.ctxt_all_defns fn.id (DEFN_obj_fn (obj.id, fn.node));
-    htab_put cx.ctxt_all_item_names fn.id (Walk.path_to_name path);
+    htab_put cx.ctxt_all_item_names fn.id (path_to_name path);
     note_header fn.id fn.node.Ast.fn_input_slots;
     inner.Walk.visit_obj_fn_pre obj ident fn
   in
 
   let visit_obj_drop_pre obj b =
     htab_put cx.ctxt_all_defns b.id (DEFN_obj_drop obj.id);
-    htab_put cx.ctxt_all_item_names b.id (Walk.path_to_name path);
+    htab_put cx.ctxt_all_item_names b.id (path_to_name path);
     inner.Walk.visit_obj_drop_pre obj b
   in
 
@@ -210,7 +210,7 @@ let all_item_collecting_visitor
               htab_put cx.ctxt_all_defns id
                 (DEFN_loop_body (Stack.top items));
               htab_put cx.ctxt_all_item_names id
-                (Walk.path_to_name path);
+                (path_to_name path);
         | _ -> ()
     end;
     inner.Walk.visit_stmt_pre s;
@@ -1035,14 +1035,14 @@ let process_crate
       export_referencing_visitor cx Walk.empty_visitor
     |]
   in
-
+  let log_flag = cx.ctxt_sess.Session.sess_log_resolve in
     log cx "running primary resolve passes";
-    run_passes cx "resolve collect" path passes_0 (log cx "%s") crate;
+    run_passes cx "resolve collect" path passes_0 log_flag log crate;
     resolve_recursion cx node_to_references recursive_tag_groups;
     log cx "running secondary resolve passes";
-    run_passes cx "resolve bind" path passes_1 (log cx "%s") crate;
+    run_passes cx "resolve bind" path passes_1 log_flag log crate;
     log cx "running tertiary resolve passes";
-    run_passes cx "resolve patterns" path passes_2 (log cx "%s") crate;
+    run_passes cx "resolve patterns" path passes_2 log_flag log crate;
 
     iflog cx
       begin

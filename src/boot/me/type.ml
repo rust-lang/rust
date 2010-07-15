@@ -1408,7 +1408,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
     in
 
     let path_name (_:unit) : string =
-      string_of_name (Walk.path_to_name path)
+      string_of_name (path_to_name path)
     in
 
     let visit_mod_item_post n p mod_item =
@@ -1562,9 +1562,8 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         Hashtbl.iter init_mod_dict cx.ctxt_all_defns;
         Walk.walk_crate
           (Walk.path_managing_visitor path
-             (Walk.mod_item_logging_visitor
-                (log cx "typechecking pass: %s")
-                path
+             (mod_item_logging_visitor cx
+                cx.ctxt_sess.Session.sess_log_type log 0 path
                 (visitor cx Walk.empty_visitor)))
           crate;
 

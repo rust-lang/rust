@@ -1199,10 +1199,11 @@ let process_crate
          Walk.empty_visitor)
     |]
   in
-    run_passes cx "typestate setup" path setup_passes (log cx "%s") crate;
+  let log_flag = cx.ctxt_sess.Session.sess_log_typestate in
+    run_passes cx "typestate setup" path setup_passes log_flag log crate;
     run_dataflow cx constr_id graph;
-    run_passes cx "typestate verify" path verify_passes (log cx "%s") crate;
-    run_passes cx "typestate aux" path aux_passes (log cx "%s") crate
+    run_passes cx "typestate verify" path verify_passes log_flag log crate;
+    run_passes cx "typestate aux" path aux_passes log_flag log crate
 ;;
 
 

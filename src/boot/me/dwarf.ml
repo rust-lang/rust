@@ -1450,7 +1450,7 @@ let dwarf_visitor
 
   let iso_stack = Stack.create () in
 
-  let path_name _ = Fmt.fmt_to_str Ast.fmt_name (Walk.path_to_name path) in
+  let path_name _ = Fmt.fmt_to_str Ast.fmt_name (path_to_name path) in
 
   let (abbrev_table:(abbrev, int) Hashtbl.t) = Hashtbl.create 0 in
 
@@ -2547,7 +2547,8 @@ let process_crate
   in
 
     log cx "emitting DWARF records";
-    run_passes cx "dwarf" path passes (log cx "%s") crate;
+    run_passes cx "dwarf" path passes
+      cx.ctxt_sess.Session.sess_log_dwarf log crate;
 
     (* Terminate the tables. *)
     {

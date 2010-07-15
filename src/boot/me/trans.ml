@@ -225,7 +225,7 @@ let trans_visitor
   let epilogue_jumps = Stack.create() in
 
   let path_name (_:unit) : string =
-    string_of_name (Walk.path_to_name path)
+    string_of_name (path_to_name path)
   in
 
   let based (reg:Il.reg) : Il.mem =
@@ -4632,7 +4632,7 @@ let trans_visitor
       trans_crate_rel_static_string_frag (string_of_name_component nc)
     in
       trans_crate_rel_data_operand
-        (DATA_name (Walk.name_of ncs))
+        (DATA_name (name_of ncs))
         (fun _ -> Asm.SEQ (Array.append
                              (Array.map f (Array.of_list ncs))
                              [| Asm.WORD (word_ty_mach, Asm.IMM 0L) |]))
@@ -5030,7 +5030,7 @@ let fixup_assigning_visitor
     : Walk.visitor =
 
   let path_name (_:unit) : string =
-    Fmt.fmt_to_str Ast.fmt_name (Walk.path_to_name path)
+    Fmt.fmt_to_str Ast.fmt_name (path_to_name path)
   in
 
   let enter_file_for id =
@@ -5128,11 +5128,8 @@ let process_crate
          (fixup_assigning_visitor cx path
             Walk.empty_visitor));
       (unreferenced_required_item_ignoring_visitor cx
-         (Walk.mod_item_logging_visitor
-            (log cx "translation pass: %s")
-            path
-            (trans_visitor cx path
-               Walk.empty_visitor)))
+         (trans_visitor cx path
+            Walk.empty_visitor))
     |];
   in
     log cx "translating crate";
@@ -5141,7 +5138,8 @@ let process_crate
           None -> ()
         | Some m -> log cx "with main fn %s" m
     end;
-    run_passes cx "trans" path passes (log cx "%s") crate;
+    run_passes cx "trans" path passes
+      cx.ctxt_sess.Session.sess_log_trans log crate;
 ;;
 
 (*

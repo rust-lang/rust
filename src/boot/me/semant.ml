@@ -1506,6 +1506,97 @@ let unreferenced_required_item_ignoring_visitor
         Walk.visit_obj_drop_post = visit_obj_drop_post; }
 ;;
 
+let rec name_of ncs =
+  match ncs with
+      [] -> bug () "Walk.name_of_ncs: empty path"
+    | [(Ast.COMP_ident i)] -> Ast.NAME_base (Ast.BASE_ident i)
+    | [(Ast.COMP_app x)] -> Ast.NAME_base (Ast.BASE_app x)
+    | [(Ast.COMP_idx _)] ->
+        bug () "Walk.name_of_ncs: path-name contains COMP_idx"
+    | nc::ncs -> Ast.NAME_ext (name_of ncs, nc)
+;;
+
+let path_to_name
+    (path:Ast.name_component Stack.t)
+    : Ast.name =
+  name_of (stk_elts_from_top path)
+;;
+
+let mod_item_logging_visitor
+    (cx:ctxt)
+    (log_flag:bool)
+    (log:ctxt -> ('a, unit, string, unit) format4 -> 'a)
+    (pass:int)
+    (path:Ast.name_component Stack.t)
+    (inner:Walk.visitor)
+    : Walk.
+visitor =
+  let entering _ =
+    if log_flag
+    then
+      log cx "pass %d: entering %a"
+        pass Ast.sprintf_name (path_to_name path)
+  in
+  let entered _ =
+    if log_flag
+    then
+      log cx "pass %d: entered %a"
+        pass Ast.sprintf_name (path_to_name path)
+  in
+  let leaving _ =
+    if log_flag
+    then
+      log cx "pass %d: leaving %a"
+        pass Ast.sprintf_name (path_to_name path)
+  in
+  let left _ =
+    if log_flag
+    then
+      log cx "pass %d: left %a"
+        pass Ast.sprintf_name (path_to_name path)
+  in
+
+  let visit_mod_item_pre name params item =
+    entering();
+    inner.Walk.visit_mod_item_pre name params item;
+    entered();
+  in
+  let visit_mod_item_post name params item =
+    leaving();
+    inner.Walk.visit_mod_item_post name params item;
+    left();
+  in
+  let visit_obj_fn_pre obj ident fn =
+    entering();
+    inner.Walk.visit_obj_fn_pre obj ident fn;
+    entered();
+  in
+  let visit_obj_fn_post obj ident fn =
+    leaving();
+    inner.Walk.visit_obj_fn_post obj ident fn;
+    left();
+  in
+  let visit_obj_drop_pre obj b =
+    entering();
+    inner.Walk.visit_obj_drop_pre obj b;
+    entered();
+  in
+  let visit_obj_drop_post obj fn =
+    leaving();
+    inner.Walk.visit_obj_drop_post obj fn;
+    left();
+  in
+    { inner with
+        Walk.visit_mod_item_pre = visit_mod_item_pre;
+        Walk.visit_mod_item_post = visit_mod_item_post;
+        Walk.visit_obj_fn_pre = visit_obj_fn_pre;
+        Walk.visit_obj_fn_post = visit_obj_fn_post;
+        Walk.visit_obj_drop_pre = visit_obj_drop_pre;
+        Walk.visit_obj_drop_post = visit_obj_drop_post;
+    }
+;;
+
+
 
 (* Generic lookup, used for slots, items, types, etc. *)
 
@@ -1752,14 +1843,14 @@ let run_passes
     (name:string)
     (path:Ast.name_component Stack.t)
     (passes:Walk.visitor array)
-    (log:string->unit)
+    (log_flag:bool)
+    (log:ctxt -> ('a, unit, string, unit) format4 -> 'a)
     (crate:Ast.crate)
     : unit =
   let do_pass i pass =
-    let logger s = log (Printf.sprintf "pass %d: %s" i s) in
       Walk.walk_crate
         (Walk.path_managing_visitor path
-           (Walk.mod_item_logging_visitor logger path pass))
+           (mod_item_logging_visitor cx log_flag log i path pass))
         crate
   in
   let sess = cx.ctxt_sess in

@@ -456,7 +456,8 @@ let process_crate
          Walk.empty_visitor)
     |];
   in
-    run_passes cx "layout" path passes (log cx "%s") crate
+    run_passes cx "layout" path passes
+      cx.ctxt_sess.Session.sess_log_layout log crate
 ;;
 
 

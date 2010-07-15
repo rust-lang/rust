@@ -123,69 +123,6 @@ let path_managing_visitor
     }
 ;;
 
-let rec name_of ncs =
-  match ncs with
-      [] -> bug () "Walk.name_of_ncs: empty path"
-    | [(Ast.COMP_ident i)] -> Ast.NAME_base (Ast.BASE_ident i)
-    | [(Ast.COMP_app x)] -> Ast.NAME_base (Ast.BASE_app x)
-    | [(Ast.COMP_idx _)] ->
-        bug () "Walk.name_of_ncs: path-name contains COMP_idx"
-    | nc::ncs -> Ast.NAME_ext (name_of ncs, nc)
-;;
-
-let path_to_name
-    (path:Ast.name_component Stack.t)
-    : Ast.name =
-  name_of (stk_elts_from_top path)
-;;
-
-
-let mod_item_logging_visitor
-    (logfn:string->unit)
-    (path:Ast.name_component Stack.t)
-    (inner:visitor)
-    : visitor =
-  let path_name _ = Fmt.fmt_to_str Ast.fmt_name (path_to_name path) in
-  let visit_mod_item_pre name params item =
-    logfn (Printf.sprintf "entering %s" (path_name()));
-    inner.visit_mod_item_pre name params item;
-    logfn (Printf.sprintf "entered %s" (path_name()));
-  in
-  let visit_mod_item_post name params item =
-    logfn (Printf.sprintf "leaving %s" (path_name()));
-    inner.visit_mod_item_post name params item;
-    logfn (Printf.sprintf "left %s" (path_name()));
-  in
-  let visit_obj_fn_pre obj ident fn =
-    logfn (Printf.sprintf "entering %s" (path_name()));
-    inner.visit_obj_fn_pre obj ident fn;
-    logfn (Printf.sprintf "entered %s" (path_name()));
-  in
-  let visit_obj_fn_post obj ident fn =
-    logfn (Printf.sprintf "leaving %s" (path_name()));
-    inner.visit_obj_fn_post obj ident fn;
-    logfn (Printf.sprintf "left %s" (path_name()));
-  in
-  let visit_obj_drop_pre obj b =
-    logfn (Printf.sprintf "entering %s" (path_name()));
-    inner.visit_obj_drop_pre obj b;
-    logfn (Printf.sprintf "entered %s" (path_name()));
-  in
-  let visit_obj_drop_post obj fn =
-    logfn (Printf.sprintf "leaving %s" (path_name()));
-    inner.visit_obj_drop_post obj fn;
-    logfn (Printf.sprintf "left %s" (path_name()));
-  in
-    { inner with
-        visit_mod_item_pre = visit_mod_item_pre;
-        visit_mod_item_post = visit_mod_item_post;
-        visit_obj_fn_pre = visit_obj_fn_pre;
-        visit_obj_fn_post = visit_obj_fn_post;
-        visit_obj_drop_pre = visit_obj_drop_pre;
-        visit_obj_drop_post = visit_obj_drop_post;
-    }
-;;
-
 
 let walk_bracketed
     (pre:'a -> unit)
