@@ -2475,9 +2475,7 @@ let trans_visitor
             let obj = deref binding in
             let tydesc = get_element_ptr obj 1 in
             let body = get_element_ptr obj 2 in
-            let ty_params =
-              get_element_ptr (deref tydesc) Abi.tydesc_field_first_param
-            in
+            let ty_params = get_tydesc_params ty_params tydesc in
             let dtor =
               get_element_ptr (deref tydesc) Abi.tydesc_field_obj_drop_glue
             in
@@ -3670,9 +3668,9 @@ let trans_visitor
         end
         call.call_callee_ty_params;
 
-        trans_arg1 callee_task_cell;
+      trans_arg1 callee_task_cell;
 
-        trans_arg0 callee_output_cell initializing_arg0 call
+      trans_arg0 callee_output_cell initializing_arg0 call
 
 
 
