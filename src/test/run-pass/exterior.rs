@@ -9,7 +9,7 @@ fn f(@point p) {
 }
 
 fn main() {
-  let point a = rec(x=10, y=11, z=mutable 12);
+  let point a = rec(x=10, y=11, mutable z=12);
   let @point b = @a;
   check (b.z == 12);
   f(b);

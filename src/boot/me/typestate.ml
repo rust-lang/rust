@@ -434,7 +434,7 @@ let condition_assigning_visitor
               raise_pre_post_cond s.id precond;
               raise_postcondition s.id postcond
 
-        | Ast.STMT_init_vec (dst, atoms) ->
+        | Ast.STMT_init_vec (dst, _, atoms) ->
             let precond = slot_inits (atoms_slots cx atoms) in
             let postcond = slot_inits (lval_slots cx dst) in
               raise_pre_post_cond s.id precond;
@@ -454,7 +454,7 @@ let condition_assigning_visitor
               raise_pre_post_cond s.id precond;
               raise_postcondition s.id postcond
 
-        | Ast.STMT_init_box (dst, src) ->
+        | Ast.STMT_init_box (dst, _, src) ->
             let precond = slot_inits (atom_slots cx src) in
             let postcond = slot_inits (lval_slots cx dst) in
               raise_pre_post_cond s.id precond;
@@ -1106,11 +1106,11 @@ let lifecycle_visitor
 
           | Ast.STMT_init_rec (lv_dst, _, _)
           | Ast.STMT_init_tup (lv_dst, _)
-          | Ast.STMT_init_vec (lv_dst, _)
+          | Ast.STMT_init_vec (lv_dst, _, _)
           | Ast.STMT_init_str (lv_dst, _)
           | Ast.STMT_init_port lv_dst
           | Ast.STMT_init_chan (lv_dst, _)
-          | Ast.STMT_init_box (lv_dst, _) ->
+          | Ast.STMT_init_box (lv_dst, _, _) ->
               init_lval lv_dst
 
           | Ast.STMT_for f ->

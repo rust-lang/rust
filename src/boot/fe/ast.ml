@@ -35,6 +35,11 @@ type effect =
   | UNSAFE
 ;;
 
+type mutability =
+    MUT_mutable
+  | MUT_immutable
+;;
+
 type name_base =
     BASE_ident of ident
   | BASE_temp of temp_id
@@ -187,9 +192,9 @@ and ty_obj = (effect * ((ident,ty_fn) Hashtbl.t))
 
 and check_calls = (lval * (atom array)) array
 
-and rec_input = (ident * atom)
+and rec_input = (ident * mutability * atom)
 
-and tup_input = atom
+and tup_input = (mutability * atom)
 
 and stmt' =
 
@@ -197,11 +202,11 @@ and stmt' =
     STMT_spawn of (lval * domain * lval * (atom array))
   | STMT_init_rec of (lval * (rec_input array) * lval option)
   | STMT_init_tup of (lval * (tup_input array))
-  | STMT_init_vec of (lval * atom array)
+  | STMT_init_vec of (lval * mutability * atom array)
   | STMT_init_str of (lval * string)
   | STMT_init_port of lval
   | STMT_init_chan of (lval * (lval option))
-  | STMT_init_box of (lval * atom)
+  | STMT_init_box of (lval * mutability * atom)
   | STMT_copy of (lval * expr)
   | STMT_copy_binop of (lval * binop * atom)
   | STMT_call of (lval * lval * (atom array))
@@ -1018,7 +1023,8 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           do
             if i != 0
             then fmt ff ", ";
-            let (ident, atom) = entries.(i) in
+            let (ident, mutability, atom) = entries.(i) in
+              if mutability = MUT_mutable then fmt ff "mutable ";
               fmt_ident ff ident;
               fmt ff " = ";
               fmt_atom ff atom;
@@ -1032,9 +1038,11 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           end;
           fmt ff ");"
 
-      | STMT_init_vec (dst, atoms) ->
+      | STMT_init_vec (dst, mutability, atoms) ->
           fmt_lval ff dst;
-          fmt ff " = vec(";
+          fmt ff " = vec";
+          if mutability = MUT_mutable then fmt ff "[mutable]";
+          fmt ff "(";
           for i = 0 to (Array.length atoms) - 1
           do
             if i != 0
@@ -1050,7 +1058,9 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           do
             if i != 0
             then fmt ff ", ";
-            fmt_atom ff entries.(i);
+            let (mutability, atom) = entries.(i) in
+            if mutability = MUT_mutable then fmt ff "mutable ";
+            fmt_atom ff atom;
           done;
           fmt ff ");";
 
@@ -1166,9 +1176,10 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           fmt_lval ff t;
           fmt ff ";"
 
-      | STMT_init_box (lv, at) ->
+      | STMT_init_box (lv, mutability, at) ->
           fmt_lval ff lv;
           fmt ff " = @@";
+          if mutability = MUT_mutable then fmt ff " mutable ";
           fmt_atom ff at;
           fmt ff ";"
 

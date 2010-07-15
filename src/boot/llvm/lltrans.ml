@@ -761,10 +761,10 @@ let trans_crate
             let trans_tail () = trans_tail_with_builder llbuilder in
 
             match head.node with
-                Ast.STMT_init_tup (dest, atoms) ->
+                Ast.STMT_init_tup (dest, elems) ->
                   let zero = const_i32 0 in
                   let lldest = trans_lval dest in
-                  let trans_tup_atom idx atom =
+                  let trans_tup_elem idx (_, atom) =
                     let indices = [| zero; const_i32 idx |] in
                     let gep_id = anon_llid "init_tup_gep" in
                     let ptr =
@@ -772,7 +772,7 @@ let trans_crate
                     in
                     ignore (Llvm.build_store (trans_atom atom) ptr llbuilder)
                   in
-                  Array.iteri trans_tup_atom atoms;
+                  Array.iteri trans_tup_elem elems;
                   trans_tail ()
 
               | Ast.STMT_copy (dest, src) ->

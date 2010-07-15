@@ -583,13 +583,13 @@ let atoms_slots (cx:ctxt) (az:Ast.atom array) : node_id array =
 ;;
 
 let tup_inputs_slots (cx:ctxt) (az:Ast.tup_input array) : node_id array =
-  Array.concat (List.map (atom_slots cx) (Array.to_list az))
+  Array.concat (List.map (atom_slots cx) (Array.to_list (Array.map snd az)))
 ;;
 
 let rec_inputs_slots (cx:ctxt)
     (inputs:Ast.rec_input array) : node_id array =
   Array.concat (List.map
-                  (fun (_, atom) -> atom_slots cx atom)
+                  (fun (_, _, atom) -> atom_slots cx atom)
                   (Array.to_list inputs))
 ;;
 

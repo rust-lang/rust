@@ -386,16 +386,16 @@ and walk_stmt
 
       | Ast.STMT_init_rec (lv, atab, base) ->
           walk_lval v lv;
-          Array.iter (fun (_, a) -> walk_atom v a) atab;
+          Array.iter (fun (_, _, a) -> walk_atom v a) atab;
           walk_option (walk_lval v) base;
 
-      | Ast.STMT_init_vec (lv, atoms) ->
+      | Ast.STMT_init_vec (lv, _, atoms) ->
           walk_lval v lv;
           Array.iter (walk_atom v) atoms
 
       | Ast.STMT_init_tup (lv, mut_atoms) ->
           walk_lval v lv;
-          Array.iter (walk_atom v) mut_atoms
+          Array.iter (fun (_, atom) -> walk_atom v atom) mut_atoms
 
       | Ast.STMT_init_str (lv, _) ->
           walk_lval v lv
@@ -407,7 +407,7 @@ and walk_stmt
           walk_option (walk_lval v) port;
           walk_lval v chan;
 
-      | Ast.STMT_init_box (dst, src) ->
+      | Ast.STMT_init_box (dst, _, src) ->
           walk_lval v dst;
           walk_atom v src
 

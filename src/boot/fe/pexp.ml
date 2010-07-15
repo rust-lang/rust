@@ -20,9 +20,9 @@ type pexp' =
     PEXP_call of (pexp * pexp array)
   | PEXP_spawn of (Ast.domain * pexp)
   | PEXP_bind of (pexp * pexp option array)
-  | PEXP_rec of ((Ast.ident * pexp) array * pexp option)
-  | PEXP_tup of (pexp array)
-  | PEXP_vec of (pexp array)
+  | PEXP_rec of ((Ast.ident * Ast.mutability * pexp) array * pexp option)
+  | PEXP_tup of ((Ast.mutability * pexp) array)
+  | PEXP_vec of Ast.mutability * (pexp array)
   | PEXP_port
   | PEXP_chan of (pexp option)
   | PEXP_binop of (Ast.binop * pexp * pexp)
@@ -32,8 +32,7 @@ type pexp' =
   | PEXP_lval of plval
   | PEXP_lit of Ast.lit
   | PEXP_str of string
-  | PEXP_mutable of pexp
-  | PEXP_box of pexp
+  | PEXP_box of Ast.mutability * pexp
   | PEXP_custom of Ast.name * (pexp array) * (string option)
 
 and plval =
@@ -176,6 +175,11 @@ and parse_effect (ps:pstate) : Ast.effect =
     | STATE -> bump ps; Ast.STATE
     | UNSAFE -> bump ps; Ast.UNSAFE
     | _ -> Ast.PURE
+
+and parse_mutability (ps:pstate) : Ast.mutability =
+  match peek ps with
+      MUTABLE -> bump ps; Ast.MUT_mutable
+    | _ -> Ast.MUT_immutable
 
 and parse_ty_fn
     (effect:Ast.effect)
@@ -421,13 +425,14 @@ and parse_ty (ps:pstate) : Ast.ty =
   parse_constrained_ty ps
 
 
-and parse_rec_input (ps:pstate) : (Ast.ident * pexp) =
+and parse_rec_input (ps:pstate) : (Ast.ident * Ast.mutability * pexp) =
+  let mutability = parse_mutability ps in
   let lab = (ctxt "rec input: label" parse_ident ps) in
     match peek ps with
         EQ ->
           bump ps;
           let pexp = ctxt "rec input: expr" parse_pexp ps in
-            (lab, pexp)
+            (lab, mutability, pexp)
       | _ -> raise (unexpected ps)
 
 
@@ -439,7 +444,7 @@ and parse_rec_body (ps:pstate) : pexp' = (*((Ast.ident * pexp) array) =*)
       | WITH -> raise (err "empty record extension" ps)
       | _ ->
           let inputs = one_or_more COMMA parse_rec_input ps in
-          let labels = Array.map (fun (l, _) -> l) inputs in
+          let labels = Array.map (fun (l, _, _) -> l) inputs in
             begin
               check_dup_rec_labels ps labels;
               match peek ps with
@@ -472,21 +477,18 @@ and parse_bottom_pexp (ps:pstate) : pexp =
   let apos = lexpos ps in
   match peek ps with
 
-      MUTABLE ->
+      AT ->
         bump ps;
+        let mutability = parse_mutability ps in
         let inner = parse_pexp ps in
         let bpos = lexpos ps in
-          span ps apos bpos (PEXP_mutable inner)
-
-    | AT ->
-        bump ps;
-        let inner = parse_pexp ps in
-        let bpos = lexpos ps in
-          span ps apos bpos (PEXP_box inner)
+          span ps apos bpos (PEXP_box (mutability, inner))
 
     | TUP ->
         bump ps;
-        let pexps = ctxt "paren pexps(s)" (rstr false parse_pexp_list) ps in
+        let pexps =
+          ctxt "paren pexps(s)" (rstr false parse_mutable_and_pexp_list) ps
+        in
         let bpos = lexpos ps in
           span ps apos bpos (PEXP_tup pexps)
 
@@ -498,11 +500,18 @@ and parse_bottom_pexp (ps:pstate) : pexp =
 
     | VEC ->
         bump ps;
-        begin
-          let pexps = ctxt "vec pexp: exprs" parse_pexp_list ps in
-          let bpos = lexpos ps in
-            span ps apos bpos (PEXP_vec pexps)
-        end
+        let mutability =
+          match peek ps with
+              LBRACKET ->
+                bump ps;
+                expect ps MUTABLE;
+                expect ps RBRACKET;
+                Ast.MUT_mutable
+            | _ -> Ast.MUT_immutable
+        in
+        let pexps = ctxt "vec pexp: exprs" parse_pexp_list ps in
+        let bpos = lexpos ps in
+          span ps apos bpos (PEXP_vec (mutability, pexps))
 
 
     | LIT_STR s ->
@@ -947,12 +956,22 @@ and parse_as_pexp (ps:pstate) : pexp =
 and parse_pexp (ps:pstate) : pexp =
   parse_as_pexp ps
 
+and parse_mutable_and_pexp (ps:pstate) : (Ast.mutability * pexp) =
+  let mutability = parse_mutability ps in
+  (mutability, parse_as_pexp ps)
 
 and parse_pexp_list (ps:pstate) : pexp array =
   match peek ps with
       LPAREN ->
         bracketed_zero_or_more LPAREN RPAREN (Some COMMA)
           (ctxt "pexp list" parse_pexp) ps
+    | _ -> raise (unexpected ps)
+
+and parse_mutable_and_pexp_list (ps:pstate) : (Ast.mutability * pexp) array =
+  match peek ps with
+      LPAREN ->
+        bracketed_zero_or_more LPAREN RPAREN (Some COMMA)
+          (ctxt "mutable-and-pexp list" parse_mutable_and_pexp) ps
     | _ -> raise (unexpected ps)
 
 ;;
@@ -1099,8 +1118,7 @@ and desugar_expr_atom
       | PEXP_bind _
       | PEXP_spawn _
       | PEXP_custom _
-      | PEXP_box _
-      | PEXP_mutable _ ->
+      | PEXP_box _ ->
           let (_, tmp, decl_stmt) = build_tmp ps slot_auto apos bpos in
           let stmts = desugar_expr_init ps tmp pexp in
             (Array.append [| decl_stmt |] stmts,
@@ -1233,11 +1251,11 @@ and desugar_expr_init
               begin
                 Array.map
                   begin
-                    fun (ident, pexp) ->
+                    fun (ident, mutability, pexp) ->
                       let (stmts, atom) =
                         desugar_expr_atom ps pexp
                       in
-                        (stmts, (ident, atom))
+                        (stmts, (ident, mutability, atom))
                   end
                   args
               end
@@ -1259,19 +1277,24 @@ and desugar_expr_init
             end
 
       | PEXP_tup args ->
+          let muts = Array.to_list (Array.map fst args) in
           let (arg_stmts, arg_atoms) =
-            desugar_expr_atoms ps args
+            desugar_expr_atoms ps (Array.map snd args)
           in
-          let stmt = ss (Ast.STMT_init_tup (dst_lval, arg_atoms)) in
+          let arg_atoms = Array.to_list arg_atoms in
+          let tup_args = Array.of_list (List.combine muts arg_atoms) in
+          let stmt = ss (Ast.STMT_init_tup (dst_lval, tup_args)) in
             aa arg_stmts [| stmt |]
 
       | PEXP_str s ->
           let stmt = ss (Ast.STMT_init_str (dst_lval, s)) in
             [| stmt |]
 
-      | PEXP_vec args ->
+      | PEXP_vec (mutability, args) ->
           let (arg_stmts, arg_atoms) = desugar_expr_atoms ps args in
-          let stmt = ss (Ast.STMT_init_vec (dst_lval, arg_atoms)) in
+          let stmt =
+            ss (Ast.STMT_init_vec (dst_lval, mutability, arg_atoms))
+          in
             aa arg_stmts [| stmt |]
 
       | PEXP_port ->
@@ -1296,19 +1319,14 @@ and desugar_expr_init
           in
             aa port_stmts [| chan_stmt |]
 
-      | PEXP_box arg ->
+      | PEXP_box (mutability, arg) ->
           let (arg_stmts, arg_mode_atom) =
             desugar_expr_atom ps arg
           in
-          let stmt = ss (Ast.STMT_init_box (dst_lval, arg_mode_atom)) in
+          let stmt =
+            ss (Ast.STMT_init_box (dst_lval, mutability, arg_mode_atom))
+          in
             aa arg_stmts [| stmt |]
-
-      | PEXP_mutable arg ->
-          (* Initializing a local from a "mutable" atom is the same as
-           * initializing it from an immutable one; all locals are mutable
-           * anyways. So this is just a fall-through.
-           *)
-          desugar_expr_init ps dst_lval arg
 
       | PEXP_custom (n, a, b) ->
           let (arg_stmts, args) = desugar_expr_atoms ps a in

@@ -3244,13 +3244,13 @@ let trans_visitor
       (dst:Il.cell)
       (dst_tys:Ast.ty array)
       (trec:Ast.ty_rec)
-      (atab:(Ast.ident * Ast.atom) array)
+      (atab:(Ast.ident * Ast.mutability * Ast.atom) array)
       (base:Ast.lval)
       : unit =
     Array.iteri
       begin
         fun i (fml_ident, _) ->
-          let fml_entry _ (act_ident, atom) =
+          let fml_entry _ (act_ident, _, atom) =
             if act_ident = fml_ident then Some atom else None
           in
           let dst_ty = dst_tys.(i) in
@@ -4315,7 +4315,7 @@ let trans_visitor
             begin
               match base with
                   None ->
-                    let atoms = Array.map snd atab in
+                    let atoms = Array.map (fun (_, _, atom) -> atom) atab in
                       trans_init_structural_from_atoms
                         dst_cell dst_tys atoms
                 | Some base_lval ->
@@ -4323,7 +4323,7 @@ let trans_visitor
                       dst_cell dst_tys trec atab base_lval
             end
 
-      | Ast.STMT_init_tup (dst, atoms) ->
+      | Ast.STMT_init_tup (dst, elems) ->
           let (slot_cell, ty) = trans_lval_init dst in
           let dst_tys =
             match ty with
@@ -4332,6 +4332,7 @@ let trans_visitor
                   bugi cx stmt.id
                     "non-tup destination type in stmt_init_tup"
           in
+          let atoms = Array.map snd elems in
           let (dst_cell, _) = deref_ty DEREF_none true slot_cell ty in
             trans_init_structural_from_atoms dst_cell dst_tys atoms
 
@@ -4339,7 +4340,7 @@ let trans_visitor
       | Ast.STMT_init_str (dst, s) ->
           trans_init_str dst s
 
-      | Ast.STMT_init_vec (dst, atoms) ->
+      | Ast.STMT_init_vec (dst, _, atoms) ->
           trans_init_vec dst atoms
 
       | Ast.STMT_init_port dst ->
@@ -4357,7 +4358,7 @@ let trans_visitor
                   trans_init_chan dst p
           end
 
-      | Ast.STMT_init_box (dst, src) ->
+      | Ast.STMT_init_box (dst, _, src) ->
           trans_init_box dst src
 
       | Ast.STMT_block block ->

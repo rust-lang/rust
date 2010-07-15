@@ -1144,7 +1144,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         | Ast.STMT_init_rec (dst, fields, Some base) ->
             let dct = Hashtbl.create 10 in
             let tvrec = ref (TYSPEC_record dct) in
-            let add_field (ident, atom) =
+            let add_field (ident, _, atom) =
               let tv = any() in
                 unify_atom arg_pass_ctx atom tv;
                 Hashtbl.add dct ident tv
@@ -1157,7 +1157,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
 
         | Ast.STMT_init_rec (dst, fields, None) ->
             let dct = Hashtbl.create 10 in
-            let add_field (ident, atom) =
+            let add_field (ident, _, atom) =
               let tv = any() in
                 unify_atom arg_pass_ctx atom tv;
                 Hashtbl.add dct ident tv
@@ -1166,7 +1166,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
               unify_lval init_ctx dst (ref (TYSPEC_record dct))
 
         | Ast.STMT_init_tup (dst, members) ->
-            let member_to_tv atom =
+            let member_to_tv (_, atom) =
               let tv = any() in
                 unify_atom arg_pass_ctx atom tv;
                 tv
@@ -1174,7 +1174,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
             let member_tvs = Array.map member_to_tv members in
               unify_lval init_ctx dst (ref (TYSPEC_tuple member_tvs))
 
-        | Ast.STMT_init_vec (dst, atoms) ->
+        | Ast.STMT_init_vec (dst, _, atoms) ->
             let tv = any() in
             let unify_with_tv atom = unify_atom arg_pass_ctx atom tv in
               Array.iter unify_with_tv atoms;
@@ -1304,7 +1304,7 @@ let process_crate (cx:ctxt) (crate:Ast.crate) : unit =
         | Ast.STMT_join lval ->
             unify_lval rval_ctx lval (ty Ast.TY_task);
 
-        | Ast.STMT_init_box (dst, v) ->
+        | Ast.STMT_init_box (dst, _, v) ->
             let in_tv = any() in
             let tv = ref (TYSPEC_mutable (ref (TYSPEC_box in_tv))) in
               unify_lval strict_ctx dst tv;
