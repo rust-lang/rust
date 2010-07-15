@@ -461,6 +461,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       u8-incr.rs \
                       unit.rs \
                       user.rs \
+                      use-import-export.rs \
                       use-uninit.rs \
                       utf8.rs \
                       vec-append.rs \
