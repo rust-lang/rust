@@ -3597,6 +3597,9 @@ let trans_visitor
     let callee_task_cell =
       get_element_ptr all_callee_args_cell Abi.calltup_elt_task_ptr
     in
+    let callee_indirect_args =
+      get_element_ptr all_callee_args_cell Abi.calltup_elt_indirect_args
+    in
     let callee_ty_params =
       get_element_ptr all_callee_args_cell Abi.calltup_elt_ty_params
     in
@@ -3607,10 +3610,6 @@ let trans_visitor
     let callee_iterator_args =
       get_element_ptr_dyn_in_current_frame
         all_callee_args_cell Abi.calltup_elt_iterator_args
-    in
-    let callee_indirect_args =
-      get_element_ptr_dyn_in_current_frame
-        all_callee_args_cell Abi.calltup_elt_indirect_args
     in
 
     let n_args = Array.length call.call_args in
