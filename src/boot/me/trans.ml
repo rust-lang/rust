@@ -1228,8 +1228,8 @@ let trans_visitor
                  (sorted_htab_keys fns))
         end
 
-    and trans_init_str (dst:Ast.lval) (s:string) : unit =
-      (* Include null byte. *)
+  and trans_init_str (dst:Ast.lval) (s:string) : unit =
+    (* Include null byte. *)
     let init_sz = Int64.of_int ((String.length s) + 1) in
     let static = trans_static_string s in
     let (dst, _) = trans_lval_init dst in
@@ -1715,15 +1715,16 @@ let trans_visitor
       (code:Il.code)
       (dst:Il.cell option)
       (args:Il.cell array)
+      (clo:Il.cell option)
       : unit =
-    let inner dst =
+    let inner dst cloptr =
       let scratch = next_vreg_cell Il.voidptr_t in
       let pop _ = emit (Il.Pop scratch) in
         for i = ((Array.length args) - 1) downto 0
         do
           emit (Il.Push (Il.Cell args.(i)))
         done;
-        emit (Il.Push zero);
+        emit (Il.Push cloptr);
         emit (Il.Push (Il.Cell abi.Abi.abi_tp_cell));
         emit (Il.Push dst);
         call_code code;
@@ -1732,34 +1733,45 @@ let trans_visitor
         pop ();
         Array.iter (fun _ -> pop()) args;
     in
+    let cloptr =
+      match clo with
+          None -> zero
+        | Some cloptr -> Il.Cell cloptr
+    in
       match dst with
-          None -> inner zero
-        | Some dst -> aliasing true dst (fun dst -> inner (Il.Cell dst))
+          None -> inner zero cloptr
+        | Some dst ->
+            aliasing true dst (fun dst -> inner (Il.Cell dst) cloptr)
 
   and trans_call_static_glue
       (callee:Il.operand)
       (dst:Il.cell option)
       (args:Il.cell array)
+      (clo:Il.cell option)
       : unit =
-    trans_call_glue (code_of_operand callee) dst args
+    trans_call_glue (code_of_operand callee) dst args clo
 
   and trans_call_dynamic_glue
       (tydesc:Il.cell)
       (idx:int)
       (dst:Il.cell option)
       (args:Il.cell array)
+      (clo:Il.cell option)
       : unit =
     let fptr = get_vtbl_entry_idx tydesc idx in
-      trans_call_glue (code_of_operand (Il.Cell fptr)) dst args
+      trans_call_glue (code_of_operand (Il.Cell fptr)) dst args clo
 
   and trans_call_simple_static_glue
       (fix:fixup)
       (ty_params:Il.cell)
-      (arg:Il.cell)
+      (args:Il.cell array)
+      (clo:Il.cell option)
       : unit =
     trans_call_static_glue
       (code_fixup_to_ptr_operand fix)
-      None [| alias ty_params; arg |]
+      None
+      (Array.append [| alias ty_params |] args)
+      clo
 
   and get_tydesc_params
       (outer_ty_params:Il.cell)
@@ -1781,7 +1793,8 @@ let trans_visitor
       (ty_param:int)
       (vtbl_idx:int)
       (ty_params:Il.cell)
-      (arg:Il.cell)
+      (args:Il.cell array)
+      (clo:Il.cell option)
       : unit =
     iflog (fun _ ->
              annotate (Printf.sprintf "calling tydesc[%d].glue[%d]"
@@ -1789,8 +1802,11 @@ let trans_visitor
     let td = get_ty_param ty_params ty_param in
     let ty_params_ptr = get_tydesc_params ty_params td in
       trans_call_dynamic_glue
-        td vtbl_idx
-        None [| ty_params_ptr; arg; |]
+        td
+        vtbl_idx
+        None
+        (Array.append [| ty_params_ptr |] args)
+        clo
 
   (* trans_compare returns a quad number of the cjmp, which the caller
      patches to the cjmp destination.  *)
@@ -2467,23 +2483,31 @@ let trans_visitor
             in
             let null_dtor_jmp = null_check dtor in
               (* Call any dtor, if present. *)
-            note_drop_step ty "drop_ty: calling obj dtor";
-            trans_call_dynamic_glue tydesc
-              Abi.tydesc_field_obj_drop_glue None [| binding |];
-            patch null_dtor_jmp;
-            (* Drop the body. *)
-            note_drop_step ty "drop_ty: dropping obj body";
-            trans_call_dynamic_glue tydesc
-              Abi.tydesc_field_drop_glue None [| ty_params; alias body |];
-            (* FIXME: this will fail if the user has lied about the
-             * state-ness of their obj. We need to store state-ness in the
-             * captured tydesc, and use that.  *)
-            note_drop_step ty "drop_ty: freeing obj body";
-            trans_free binding (type_has_state ty);
-            mov binding zero;
-            patch rc_jmp;
-            patch null_jmp;
-            note_drop_step ty "drop_ty: done obj path";
+              note_drop_step ty "drop_ty: calling obj dtor";
+              trans_call_dynamic_glue
+                tydesc
+                Abi.tydesc_field_obj_drop_glue
+                None
+                [| binding |]
+                (Some binding);
+              patch null_dtor_jmp;
+              (* Drop the body. *)
+              note_drop_step ty "drop_ty: dropping obj body";
+              trans_call_dynamic_glue
+                tydesc
+                Abi.tydesc_field_drop_glue
+                None
+                [| ty_params; alias body |]
+                None;
+              (* FIXME: this will fail if the user has lied about the
+               * state-ness of their obj. We need to store state-ness in the
+               * captured tydesc, and use that.  *)
+              note_drop_step ty "drop_ty: freeing obj body";
+              trans_free binding (type_has_state ty);
+              mov binding zero;
+              patch rc_jmp;
+              patch null_jmp;
+              note_drop_step ty "drop_ty: done obj path";
 
 
       | Ast.TY_param (i, _) ->
@@ -2492,7 +2516,11 @@ let trans_visitor
             begin
               fun cell ->
                 trans_call_simple_dynamic_glue
-                  i Abi.tydesc_field_drop_glue ty_params cell
+                  i
+                  Abi.tydesc_field_drop_glue
+                  ty_params
+                  [| cell |]
+                  None
             end;
           note_drop_step ty "drop_ty: done parametric-ty path";
 
@@ -2514,7 +2542,9 @@ let trans_visitor
 
                   trans_call_simple_static_glue
                     (get_free_glue ty (mctrl = MEM_gc) curr_iso)
-                    ty_params cell;
+                    ty_params
+                    [| cell |]
+                    None;
 
                   (* Null the slot out to prevent double-free if the frame
                    * unwinds.
@@ -2603,7 +2633,7 @@ let trans_visitor
               trans_call_static_glue
                 (code_fixup_to_ptr_operand glue_fix)
                 (Some dst)
-                [| alias ty_params; src; clone_task |]
+                [| alias ty_params; src; clone_task |] None
         | _ ->
             iter_ty_parts_full ty_params dst src ty
               (clone_ty ty_params clone_task) curr_iso
@@ -2640,7 +2670,10 @@ let trans_visitor
             lea vr body_mem;
             trace_word cx.ctxt_sess.Session.sess_trace_drop vr;
             trans_call_simple_static_glue
-              (get_drop_glue body_ty curr_iso) ty_params vr;
+              (get_drop_glue body_ty curr_iso)
+              ty_params
+              [| vr |]
+              None;
             note_drop_step ty "in free-ty, calling free";
             trans_free cell is_gc;
     end;
@@ -2700,7 +2733,9 @@ let trans_visitor
               lea tmp body_mem;
               trans_call_simple_static_glue
                 (get_mark_glue ty curr_iso)
-                ty_params tmp;
+                ty_params
+                [| tmp |]
+                None;
               List.iter patch marked_jump;
 
         | MEM_interior when type_is_structured ty ->
@@ -2714,7 +2749,9 @@ let trans_visitor
               lea tmp mem;
               trans_call_simple_static_glue
                 (get_mark_glue ty curr_iso)
-                ty_params tmp
+                ty_params
+                [| tmp |]
+                None
 
         | _ -> ()
 
@@ -3033,7 +3070,9 @@ let trans_visitor
                     let ty_params_ptr = get_tydesc_params ty_params td in
                       trans_call_dynamic_glue
                         td Abi.tydesc_field_copy_glue
-                        (Some dst) [| ty_params_ptr; src; |]
+                        (Some dst)
+                        [| ty_params_ptr; src; |]
+                        None
                 end
 
           | Ast.TY_fn _
@@ -4090,7 +4129,11 @@ let trans_visitor
     let fp = get_iter_outer_frame_ptr_for_current_frame () in
     let vr = next_vreg_cell Il.voidptr_t in
       mov vr zero;
-      trans_call_glue (code_of_operand block_fptr) None [| vr; fp |]
+      trans_call_glue
+        (code_of_operand block_fptr)
+        None
+        [| vr; fp |]
+        None
 
   and trans_vec_append dst_cell dst_ty src_oper src_ty =
     let elt_ty = seq_unit_ty dst_ty in
