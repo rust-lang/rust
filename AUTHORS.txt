@@ -4,6 +4,7 @@ Graydon Hoare <graydon@mozilla.com>
 
 Other authors:
 
+Adam Bozanich <adam.boz@gmail.com>
 Andreas Gal <gal@mozilla.com>
 Brendan Eich <brendan@mozilla.org>
 Chris Double <chris.double@double.co.nz>

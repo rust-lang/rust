@@ -24,6 +24,7 @@
 *.toc
 *.tp
 *.vr
+*.swp
 .hg/
 .hgignore
 lexer.ml
