@@ -2193,9 +2193,9 @@ a = cat;
 
 An example of a @emph{recursive} @code{tag} type and its use:
 @example
-type list[T] = tag(nil,
+type list[T] = tag(nil(),
                    cons(T, @@list[T]));
-let list[int] a = cons(7, cons(13, nil));
+let list[int] a = cons(7, cons(13, nil()));
 @end example
 
 
@@ -3315,9 +3315,9 @@ control enters the block.
 An example of a pattern @code{alt} statement:
 
 @example
-type list[X] = tag(nil, cons(X, @@list[X]));
+type list[X] = tag(nil(), cons(X, @@list[X]));
 
-let list[int] x = cons(10, cons(11, nil));
+let list[int] x = cons(10, cons(11, nil()));
 
 alt (x) @{
     case (cons(a, cons(b, _))) @{
