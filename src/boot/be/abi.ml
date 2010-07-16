@@ -49,6 +49,10 @@ let binding_size = 2;;
 let binding_field_item = 0;;
 let binding_field_binding = 1;;
 
+let obj_elt_rc = 0;;
+let obj_elt_tydesc = 1;;
+let obj_elt_fields = 2;;
+
 let general_code_alignment = 16;;
 
 let tydesc_field_first_param = 0;;
