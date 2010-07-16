@@ -349,7 +349,6 @@ TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
                     test/run-pass/clone-with-exterior.rs \
                     test/run-pass/destructor-ordering.rs \
                     test/run-pass/obj-as.rs \
-                    test/run-pass/rec-auto.rs \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
                     test/run-pass/generic-fn-infer.rs \
@@ -358,7 +357,6 @@ TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
                     test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/vec-alloc-append.rs \
                     test/run-pass/task-comm.rs \
-                    test/compile-fail/rec-missing-fields.rs \
                     test/compile-fail/bad-send.rs \
                     test/compile-fail/bad-recv.rs \
                     test/compile-fail/infinite-tag-type-recursion.rs \
