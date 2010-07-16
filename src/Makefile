@@ -393,6 +393,8 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       export-non-interference.rs \
                       exterior.rs \
                       fn-lval.rs \
+                      foreach-nested.rs \
+                      foreach-nested-2.rs \
                       foreach-put-structured.rs \
                       foreach-simple-outer-slot.rs \
                       foreach-simple.rs \
