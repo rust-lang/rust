@@ -347,6 +347,7 @@ MUT_BOX_XFAILS := $(addprefix test/run-pass/, \
 TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
                     test/run-pass/mlist-cycle.rs \
                     test/run-pass/clone-with-exterior.rs \
+                    test/run-pass/destructor-ordering.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/rec-auto.rs \
                     test/run-pass/vec-slice.rs \
@@ -356,6 +357,7 @@ TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
                     test/run-pass/generic-recursive-tag.rs \
                     test/run-pass/mutable-vec-drop.rs \
                     test/run-pass/bind-obj-ctor.rs \
+                    test/run-pass/vec-alloc-append.rs \
                     test/run-pass/task-comm.rs \
                     test/compile-fail/rec-missing-fields.rs \
                     test/compile-fail/bad-send.rs \
@@ -466,6 +468,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       use-import-export.rs \
                       use-uninit.rs \
                       utf8.rs \
+                      vec-alloc-append.rs \
                       vec-append.rs \
                       vec-concat.rs \
                       vec-drop.rs \
