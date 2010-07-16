@@ -845,20 +845,24 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
       Stack.push fn_ctx fn_ctx_stack
     in
 
+    let push_fn_ctx_of_ty_fn (ty_fn:Ast.ty_fn) : unit =
+      let (ty_sig, ty_fn_aux) = ty_fn in
+      let ret_ty = ty_sig.Ast.sig_output_slot.Ast.slot_ty in
+      let is_iter = ty_fn_aux.Ast.fn_is_iter in
+      push_fn_ctx (Common.option_get ret_ty) is_iter
+    in
+
     let visit_mod_item_pre _ _ item =
-      match item.Common.node.Ast.decl_item with
+      let { Common.node = item; Common.id = item_id } = item in
+      match item.Ast.decl_item with
           Ast.MOD_ITEM_fn _ ->
-            let id = item.Common.id in
+            let fn_ty = Hashtbl.find cx.Semant.ctxt_all_item_types item_id in
             begin
-              match Hashtbl.find cx.Semant.ctxt_all_item_types id with
-                  Ast.TY_fn (ty_sig, ty_fn_aux) ->
-                    let ret_ty = ty_sig.Ast.sig_output_slot.Ast.slot_ty in
-                    let is_iter = ty_fn_aux.Ast.fn_is_iter in
-                    push_fn_ctx (Common.option_get ret_ty) is_iter
+              match fn_ty with
+                  Ast.TY_fn ty_fn -> push_fn_ctx_of_ty_fn ty_fn
                 | _ ->
-                  Common.bug
-                    ()
-                    "Type.visit_mod_item_pre: fn item doesn't have a fn type"
+                  Common.bug ()
+                    "Type.visit_mod_item_pre: fn item didn't have a fn type"
             end
         | _ -> ()
     in
@@ -869,10 +873,16 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
         | _ -> ()
     in
 
-    let visit_obj_fn_pre _ _ fn =
-      let fn = fn.Common.node in
-      let ret_ty = fn.Ast.fn_output_slot.Common.node.Ast.slot_ty in
-      push_fn_ctx (Common.option_get ret_ty) fn.Ast.fn_aux.Ast.fn_is_iter
+    let visit_obj_fn_pre obj ident _ =
+      let obj_ty = Hashtbl.find cx.Semant.ctxt_all_item_types obj.Common.id in
+      match obj_ty with
+          Ast.TY_fn ({ Ast.sig_output_slot =
+              { Ast.slot_ty = Some (Ast.TY_obj (_, methods)) } }, _) ->
+            push_fn_ctx_of_ty_fn (Hashtbl.find methods ident)
+        | _ ->
+            Common.bug ()
+              "Type.visit_obj_fn_pre: item doesn't have an object type (%a)"
+              Ast.sprintf_ty obj_ty
     in
     let visit_obj_fn_post _ _ _ = ignore (Stack.pop fn_ctx_stack) in
 
