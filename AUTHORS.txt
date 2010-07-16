@@ -12,6 +12,7 @@ Dave Herman <dherman@mozilla.com>
 Jason Orendorff <jorendorff@mozilla.com>
 Jeff Balogh <jbalogh@mozilla.com>
 Jeff Mulzelaar <jmuizelaar@mozilla.com>
+Jeffrey Yasskin <jyasskin@gmail.com>
 Matt Brubeck <mbrubeck@limpet.net>
 Michael Bebenita <mbebenita@mozilla.com>
 Patrick Walton <pwalton@mozilla.com>
