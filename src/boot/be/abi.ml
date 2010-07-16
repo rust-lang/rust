@@ -26,15 +26,15 @@ let frame_glue_fns_field_mark = 0;;
 let frame_glue_fns_field_drop = 1;;
 let frame_glue_fns_field_reloc = 2;;
 
-let box_rc_slot_field_refcnt = 0;;
-let box_rc_slot_field_body = 1;;
+let box_rc_field_refcnt = 0;;
+let box_rc_field_body = 1;;
 
-let box_gc_slot_alloc_base = (-3);;
-let box_gc_slot_field_prev = (-3);;
-let box_gc_slot_field_next = (-2);;
-let box_gc_slot_field_ctrl = (-1);;
-let box_gc_slot_field_refcnt = 0;;
-let box_gc_slot_field_body = 1;;
+let box_gc_alloc_base = (-3);;
+let box_gc_field_prev = (-3);;
+let box_gc_field_next = (-2);;
+let box_gc_field_ctrl = (-1);;
+let box_gc_field_refcnt = 0;;
+let box_gc_field_body = 1;;
 
 let box_rc_header_size = 1;;
 let box_gc_header_size = 4;;
@@ -45,13 +45,21 @@ let stk_field_valgrind_id = 0 + 1;;
 let stk_field_limit = stk_field_valgrind_id + 1;;
 let stk_field_data = stk_field_limit + 1;;
 
-let binding_size = 2;;
-let binding_field_item = 0;;
-let binding_field_binding = 1;;
+let obj_elt_vtbl = 0;;
+let obj_elt_body_box = 1;;
 
-let obj_elt_rc = 0;;
-let obj_elt_tydesc = 1;;
-let obj_elt_fields = 2;;
+let obj_body_elt_tydesc = 0;;
+let obj_body_elt_fields = 1;;
+
+let fn_elt_thunk = 0;;
+let fn_elt_closure = 1;;
+
+let closure_elt_rc = 0;;
+let closure_elt_target = 1;;
+let closure_elt_bound_args = 2;;
+
+let tag_elt_discriminant = 0;;
+let tag_elt_variant = 1;;
 
 let general_code_alignment = 16;;
 

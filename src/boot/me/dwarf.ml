@@ -2019,7 +2019,7 @@ let dwarf_visitor
       let box_type t =
         let fix = new_fixup "box DIE" in
         let body_off =
-          word_sz_int * Abi.box_rc_slot_field_body
+          word_sz_int * Abi.box_rc_field_body
         in
           emit_die (DEF (fix, SEQ [|
                            uleb (get_abbrev_code abbrev_box_type);

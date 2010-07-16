@@ -222,7 +222,7 @@ let layout_visitor
     let offset =
       let word_sz = cx.ctxt_abi.Abi.abi_word_sz in
       let word_n (n:int) = Int64.mul word_sz (Int64.of_int n) in
-        SIZE_fixed (word_n (Abi.box_rc_slot_field_body
+        SIZE_fixed (word_n (Abi.box_rc_field_body
                             + 1 (* the state tydesc. *)))
     in
       log cx "laying out object-state for node #%d at offset %s"

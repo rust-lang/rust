@@ -1894,11 +1894,14 @@ let tydesc_rty (abi:Abi.abi) : Il.referent_ty =
 ;;
 
 let obj_closure_rty (abi:Abi.abi) : Il.referent_ty =
-  Il.StructTy [| word_rty abi;
-                 Il.ScalarTy (Il.AddrTy (tydesc_rty abi));
-                 word_rty abi (* A lie: it's opaque, but this permits
-                               * GEP'ing to it. *)
-              |]
+  Il.StructTy [|
+    word_rty abi;
+    Il.StructTy [|
+      Il.ScalarTy (Il.AddrTy (tydesc_rty abi));
+      word_rty abi (* A lie: it's opaque, but this permits
+                    * GEP'ing to it. *)
+    |]
+  |]
 ;;
 
 let rec referent_type (abi:Abi.abi) (t:Ast.ty) : Il.referent_ty =

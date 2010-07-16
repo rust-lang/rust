@@ -830,7 +830,7 @@ let sweep_gc_chain
     emit (Il.jmp Il.JE
             (codefix exit_jmp_fix));            (* if nonzero             *)
     mov (rc ecx)                                (* Load GC ctrl word      *)
-      (c (edi_n Abi.box_gc_slot_field_ctrl));
+      (c (edi_n Abi.box_gc_field_ctrl));
     mov (rc eax) (ro ecx);
     band (rc eax) (immi 1L);                    (* Extract mark to eax.   *)
     band                                        (* Clear mark in ecx.     *)
@@ -840,7 +840,7 @@ let sweep_gc_chain
     if clear_mark
     then
       mov                                       (* Write-back cleared.    *)
-        ((edi_n Abi.box_gc_slot_field_ctrl))
+        ((edi_n Abi.box_gc_field_ctrl))
         (ro ecx);
 
     emit (Il.cmp (ro eax) (immi 0L));
@@ -872,7 +872,7 @@ let sweep_gc_chain
 
     mark skip_jmp_fix;
     mov (rc edi)                                (* Advance down chain     *)
-      (c (edi_n Abi.box_gc_slot_field_next));
+      (c (edi_n Abi.box_gc_field_next));
     emit (Il.jmp Il.JMP
             (codefix repeat_jmp_fix));          (* loop                   *)
     mark exit_jmp_fix;

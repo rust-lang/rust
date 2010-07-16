@@ -453,7 +453,7 @@ let trans_crate
                 llbuilder :=
                   if_ptr_in_slot_not_null
                     (decr_refcnt_and_if_zero
-                       Abi.box_rc_slot_field_refcnt
+                       Abi.box_rc_field_refcnt
                        free_and_null_out_slot)
                     (!llbuilder)
 
@@ -461,7 +461,7 @@ let trans_crate
                 llbuilder :=
                   if_ptr_in_slot_not_null
                     (decr_refcnt_and_if_zero
-                       Abi.box_rc_slot_field_refcnt
+                       Abi.box_rc_field_refcnt
                        free_and_null_out_slot)
                     (!llbuilder)
 

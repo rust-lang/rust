@@ -525,8 +525,9 @@ let trans_visitor
       if item_is_obj_fn cx id
       then
         begin
-          let obj = get_obj_for_current_frame() in
-          let tydesc = get_element_ptr obj Abi.obj_elt_tydesc in
+          let obj_box = get_obj_for_current_frame() in
+          let obj = get_element_ptr obj_box Abi.box_rc_field_body in
+          let tydesc = get_element_ptr obj Abi.obj_body_elt_tydesc in
           let ty_params_ty = Ast.TY_tup (make_tydesc_tys n_ty_params) in
           let ty_params_rty = referent_type abi ty_params_ty in
           let ty_params =
@@ -889,7 +890,7 @@ let trans_visitor
     let sorted_idents = sorted_htab_keys fns in
     let i = arr_idx sorted_idents id in
     let fn_ty = Hashtbl.find fns id in
-    let table_ptr = get_element_ptr obj_cell Abi.binding_field_item in
+    let table_ptr = get_element_ptr obj_cell Abi.obj_elt_vtbl in
       (get_vtbl_entry_idx table_ptr i, fn_ty)
   in
 
@@ -1478,10 +1479,10 @@ let trans_visitor
                  Abi.indirect_args_elt_closure)
       in
       let closure_target_cell =
-        get_element_ptr closure_cell Abi.binding_field_binding
+        get_element_ptr closure_cell Abi.obj_elt_body_box
       in
       let closure_target_fn_cell =
-        get_element_ptr closure_target_cell Abi.binding_field_item
+        get_element_ptr closure_target_cell Abi.obj_elt_vtbl
       in
 
         merge_bound_args
@@ -2275,7 +2276,7 @@ let trans_visitor
              (tydesc_rty abi))
 
   and box_rc_cell (cell:Il.cell) : Il.cell =
-    get_element_ptr (deref cell) Abi.box_rc_slot_field_refcnt
+    get_element_ptr (deref cell) Abi.box_rc_field_refcnt
 
   and box_allocation_size
       (ty:Ast.ty)
@@ -2311,10 +2312,14 @@ let trans_visitor
       (curr_iso:Ast.ty_iso option)
       : unit =
     let tag_keys = sorted_htab_keys ttag in
-    let src_tag = get_element_ptr src_cell 0 in
-    let dst_tag = get_element_ptr dst_cell 0 in
-    let src_union = get_element_ptr_dyn ty_params src_cell 1 in
-    let dst_union = get_element_ptr_dyn ty_params dst_cell 1 in
+    let src_tag = get_element_ptr src_cell Abi.tag_elt_discriminant in
+    let dst_tag = get_element_ptr dst_cell Abi.tag_elt_discriminant in
+    let src_union =
+      get_element_ptr_dyn ty_params src_cell Abi.tag_elt_variant
+    in
+    let dst_union =
+      get_element_ptr_dyn ty_params dst_cell Abi.tag_elt_variant
+    in
     let tmp = next_vreg_cell word_sty in
       f dst_tag src_tag word_ty curr_iso;
       mov tmp (Il.Cell src_tag);
@@ -2468,7 +2473,7 @@ let trans_visitor
 
           Ast.TY_fn _ ->
             note_drop_step ty "drop_ty: fn path";
-            let binding = get_element_ptr cell Abi.binding_field_binding in
+            let binding = get_element_ptr cell Abi.obj_elt_body_box in
             let null_jmp = null_check binding in
               (* Drop non-null bindings. *)
               (* FIXME (issue #58): this is completely wrong, Closures need to
@@ -2481,12 +2486,13 @@ let trans_visitor
 
         | Ast.TY_obj _ ->
             note_drop_step ty "drop_ty: obj path";
-            let binding = get_element_ptr cell Abi.binding_field_binding in
+            let binding = get_element_ptr cell Abi.obj_elt_body_box in
             let null_jmp = null_check binding in
             let rc_jmp = drop_refcount_and_cmp binding in
-            let obj = deref binding in
-            let tydesc = get_element_ptr obj Abi.obj_elt_tydesc in
-            let body = get_element_ptr obj Abi.obj_elt_fields in
+            let obj_box = deref binding in
+            let obj = get_element_ptr obj_box Abi.box_rc_field_body in
+            let tydesc = get_element_ptr obj Abi.obj_body_elt_tydesc in
+            let body = get_element_ptr obj Abi.obj_body_elt_fields in
             let ty_params = get_tydesc_params ty_params tydesc in
             let dtor =
               get_element_ptr (deref tydesc) Abi.tydesc_field_obj_drop_glue
@@ -2601,7 +2607,7 @@ let trans_visitor
         | Ast.TY_obj _ ->
             if type_has_state ty
             then
-              let binding = get_element_ptr cell Abi.binding_field_binding in
+              let binding = get_element_ptr cell Abi.obj_elt_body_box in
                 sever_box binding;
 
         | _ ->
@@ -2673,7 +2679,7 @@ let trans_visitor
           let (body_mem, _) =
             need_mem_cell
               (get_element_ptr_dyn ty_params (deref cell)
-                 Abi.box_rc_slot_field_body)
+                 Abi.box_rc_field_body)
           in
           let body_ty = simplified_ty ty in
           let vr = next_vreg_cell Il.voidptr_t in
@@ -2736,7 +2742,7 @@ let trans_visitor
             let (body_mem, _) =
               need_mem_cell
                 (get_element_ptr (deref cell)
-                   Abi.box_gc_slot_field_body)
+                   Abi.box_gc_field_body)
             in
             let ty = maybe_iso curr_iso ty in
             let curr_iso = maybe_enter_iso ty curr_iso in
@@ -2905,7 +2911,7 @@ let trans_visitor
           let cell =
             get_element_ptr_dyn_in_current_frame
               (deref cell)
-              (Abi.box_rc_slot_field_body)
+              (Abi.box_rc_field_body)
           in
           let inner_dctrl =
             if dctrl = DEREF_one_box
@@ -3088,13 +3094,13 @@ let trans_visitor
           | Ast.TY_fn _
           | Ast.TY_obj _ ->
               begin
-                let src_item = get_element_ptr src Abi.binding_field_item in
-                let dst_item = get_element_ptr dst Abi.binding_field_item in
+                let src_item = get_element_ptr src Abi.obj_elt_vtbl in
+                let dst_item = get_element_ptr dst Abi.obj_elt_vtbl in
                 let src_binding =
-                  get_element_ptr src Abi.binding_field_binding
+                  get_element_ptr src Abi.obj_elt_body_box
                 in
                 let dst_binding =
-                  get_element_ptr dst Abi.binding_field_binding
+                  get_element_ptr dst Abi.obj_elt_body_box
                 in
                   mov dst_item (Il.Cell src_item);
                   let null_jmp = null_check src_binding in
@@ -3191,7 +3197,7 @@ let trans_visitor
                   deref_ty DEREF_none initializing dst_cell dst_ty
                 in
                 let caller_vtbl =
-                  get_element_ptr caller_obj Abi.binding_field_item
+                  get_element_ptr caller_obj Abi.obj_elt_vtbl
                 in
                   mov caller_vtbl caller_vtbl_oper
               end
@@ -3229,10 +3235,10 @@ let trans_visitor
     let fix = Hashtbl.find cx.ctxt_fn_fixups item.id in
 
     let dst_pair_item_cell =
-      get_element_ptr dst_cell Abi.binding_field_item
+      get_element_ptr dst_cell Abi.obj_elt_vtbl
     in
     let dst_pair_binding_cell =
-      get_element_ptr dst_cell Abi.binding_field_binding
+      get_element_ptr dst_cell Abi.obj_elt_body_box
     in
       mov dst_pair_item_cell (crate_rel_imm fix);
       mov dst_pair_binding_cell zero
@@ -3457,16 +3463,22 @@ let trans_visitor
       (bound_args:Ast.atom array)
       : unit =
 
-    let rc_cell = get_element_ptr closure_cell 0 in
-    let targ_cell = get_element_ptr closure_cell 1 in
-    let args_cell = get_element_ptr closure_cell 2 in
+    let rc_cell = get_element_ptr closure_cell Abi.closure_elt_rc in
+    let targ_cell = get_element_ptr closure_cell Abi.closure_elt_target in
+    let args_cell = get_element_ptr closure_cell Abi.closure_elt_bound_args in
 
     iflog (fun _ -> annotate "init closure refcount");
     mov rc_cell one;
+
     iflog (fun _ -> annotate "set closure target code ptr");
-    mov (get_element_ptr targ_cell 0) (reify_ptr target_fn_ptr);
-    iflog (fun _ -> annotate "set closure target binding ptr");
-    mov (get_element_ptr targ_cell 1) (reify_ptr target_binding_ptr);
+    mov
+      (get_element_ptr targ_cell Abi.fn_elt_thunk)
+      (reify_ptr target_fn_ptr);
+
+    iflog (fun _ -> annotate "set closure target closure ptr");
+    mov
+      (get_element_ptr targ_cell Abi.fn_elt_closure)
+      (reify_ptr target_binding_ptr);
 
     iflog (fun _ -> annotate "set closure bound args");
     copy_bound_args args_cell bound_arg_slots bound_args
@@ -3499,10 +3511,10 @@ let trans_visitor
     let target_binding_ptr = callee_binding_ptr flv cc in
     let closure_rty = closure_referent_type bound_arg_slots in
     let closure_sz = force_sz (Il.referent_ty_size word_bits closure_rty) in
-    let fn_cell = get_element_ptr dst_cell Abi.binding_field_item in
+    let fn_cell = get_element_ptr dst_cell Abi.obj_elt_vtbl in
     let closure_cell =
       ptr_cast
-        (get_element_ptr dst_cell Abi.binding_field_binding)
+        (get_element_ptr dst_cell Abi.obj_elt_body_box)
         (Il.ScalarTy (Il.AddrTy (closure_rty)))
     in
       iflog (fun _ -> annotate "assign glue-code to fn slot of pair");
@@ -3512,8 +3524,10 @@ let trans_visitor
       trans_malloc closure_cell (imm closure_sz) zero;
       trans_init_closure
         (deref closure_cell)
-        target_fn_ptr target_binding_ptr
-        bound_arg_slots bound_args
+        target_fn_ptr
+        target_binding_ptr
+        bound_arg_slots
+        bound_args
 
 
   and trans_arg0 (arg_cell:Il.cell) (initializing:bool) (call:call) : unit =
@@ -3761,7 +3775,9 @@ let trans_visitor
           deref (get_element_ptr self_indirect_args_cell
                    Abi.indirect_args_elt_closure)
         in
-        let closure_args_cell = get_element_ptr closure_cell 2 in
+        let closure_args_cell =
+          get_element_ptr closure_cell Abi.closure_elt_bound_args
+        in
 
           for arg_i = 0 to (n_args - 1) do
             let dst_cell = get_element_ptr callee_args_cell arg_i in
@@ -3808,7 +3824,7 @@ let trans_visitor
       | CALL_indirect ->
           (* fptr is a pair [disp, binding*] *)
           let pair_cell = need_cell (reify_ptr fptr) in
-          let disp_cell = get_element_ptr pair_cell Abi.binding_field_item in
+          let disp_cell = get_element_ptr pair_cell Abi.obj_elt_vtbl in
             Il.Cell (crate_rel_to_ptr (Il.Cell disp_cell) Il.CodeTy)
 
   and callee_binding_ptr
@@ -3819,7 +3835,7 @@ let trans_visitor
     then zero
     else
       let (pair_cell, _) = trans_lval pair_lval in
-        Il.Cell (get_element_ptr pair_cell Abi.binding_field_binding)
+        Il.Cell (get_element_ptr pair_cell Abi.obj_elt_body_box)
 
   and call_ctrl flv : call_ctrl =
     if lval_is_static cx flv
@@ -3948,9 +3964,13 @@ let trans_visitor
               let tag_number = arr_idx tag_keys tag_name in
               let ty_tup = Hashtbl.find ty_tag tag_name in
 
-              let tag_cell:Il.cell = get_element_ptr src_cell 0 in
+              let tag_cell:Il.cell =
+                get_element_ptr src_cell Abi.tag_elt_discriminant
+              in
               let union_cell =
-                get_element_ptr_dyn_in_current_frame src_cell 1
+                get_element_ptr_dyn_in_current_frame
+                  src_cell
+                  Abi.tag_elt_variant
               in
 
               let next_jumps =
@@ -4619,10 +4639,10 @@ let trans_visitor
     let _ = iflog (fun _ -> annotate "load destination obj pair ptr") in
     let dst_pair_cell = deref (ptr_at (fp_imm out_mem_disp) obj_ty) in
     let dst_pair_item_cell =
-      get_element_ptr dst_pair_cell Abi.binding_field_item
+      get_element_ptr dst_pair_cell Abi.obj_elt_vtbl
     in
     let dst_pair_state_cell =
-      get_element_ptr dst_pair_cell Abi.binding_field_binding
+      get_element_ptr dst_pair_cell Abi.obj_elt_body_box
     in
 
       (* Load first cell of pair with vtbl ptr.*)
@@ -4638,10 +4658,20 @@ let trans_visitor
         iflog (fun _ -> annotate "load obj.state ptr to vreg");
         mov state_ptr (Il.Cell dst_pair_state_cell);
         let state = deref state_ptr in
-        let refcnt = get_element_ptr_dyn_in_current_frame state 0 in
-        let body = get_element_ptr_dyn_in_current_frame state 1 in
-        let obj_tydesc = get_element_ptr_dyn_in_current_frame body 0 in
-        let obj_args = get_element_ptr_dyn_in_current_frame body 1 in
+        let refcnt =
+          get_element_ptr_dyn_in_current_frame state
+            Abi.box_rc_field_refcnt
+        in
+        let body =
+          get_element_ptr_dyn_in_current_frame state
+            Abi.box_rc_field_body
+        in
+        let obj_tydesc =
+          get_element_ptr_dyn_in_current_frame body Abi.obj_body_elt_tydesc
+        in
+        let obj_args =
+          get_element_ptr_dyn_in_current_frame body Abi.obj_body_elt_fields
+        in
           iflog (fun _ -> annotate "write refcnt=1 to obj state");
           mov refcnt one;
           iflog (fun _ -> annotate "get args-tup tydesc");
@@ -4844,8 +4874,10 @@ let trans_visitor
     let _ = log cx "tag variant: %s -> tag value #%d" n i in
     let (dst_cell, dst_slot) = get_current_output_cell_and_slot() in
     let dst_cell = deref_slot true dst_cell dst_slot in
-    let tag_cell = get_element_ptr dst_cell 0 in
-    let union_cell = get_element_ptr_dyn_in_current_frame dst_cell 1 in
+    let tag_cell = get_element_ptr dst_cell Abi.tag_elt_discriminant in
+    let union_cell =
+      get_element_ptr_dyn_in_current_frame dst_cell Abi.tag_elt_variant
+    in
     let tag_body_cell = get_variant_ptr union_cell i in
     let tag_body_rty = snd (need_mem_cell tag_body_cell) in
     let ty_params = get_ty_params_of_current_frame() in
