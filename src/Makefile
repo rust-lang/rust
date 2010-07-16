@@ -353,7 +353,6 @@ TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
                     test/run-pass/generic-fn-infer.rs \
-                    test/run-pass/generic-fn-twice.rs \
                     test/run-pass/generic-recursive-tag.rs \
                     test/run-pass/mutable-vec-drop.rs \
                     test/run-pass/bind-obj-ctor.rs \
