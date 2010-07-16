@@ -383,6 +383,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       dead-code-one-arm-if.rs \
                       deep.rs \
                       deref.rs \
+                      destructor-ordering.rs \
                       div-mod.rs \
                       drop-on-ret.rs \
                       else-if.rs \
@@ -468,6 +469,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       vec-concat.rs \
                       vec-drop.rs \
                       vec-late-init.rs \
+                      vec-lib.rs \
                       vec-slice.rs \
                       vec.rs \
                       writealias.rs \
