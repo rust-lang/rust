@@ -15,6 +15,7 @@ fn new_buf() -> vec[u8] {
   }
   // FIXME (issue #93): should be:
   // ret _vec.alloc[u8](default_bufsz());
+  ret v;
 }
 
 fn new_buf_reader(str s) -> buf_reader {

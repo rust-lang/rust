@@ -9,6 +9,7 @@ io fn lt(int a, int b) -> bool {
   let port[int] p = port();
   let chan[int] c = chan(p);
   c <| 10;
+  ret true;
 }
 
 fn main() {

@@ -9,6 +9,7 @@ native "rust" mod rustrt {
 }
 
 fn is_utf8(vec[u8] v) -> bool {
+  fail; // FIXME
 }
 
 fn alloc(uint n_bytes) -> str {

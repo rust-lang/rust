@@ -13,7 +13,8 @@ type ltype =
 
 type fn_ctx = {
   fnctx_return_type: Ast.ty;
-  fnctx_is_iter: bool
+  fnctx_is_iter: bool;
+  mutable fnctx_just_saw_ret: bool
 }
 
 exception Type_error of string * Ast.ty
@@ -627,10 +628,19 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
   (* Again as above, we explicitly curry [fn_ctx] to avoid threading it
    * through these functions. *)
   let check_stmt (fn_ctx:fn_ctx) : (Ast.stmt -> unit) =
+    let check_ret (stmt:Ast.stmt) : unit =
+      fn_ctx.fnctx_just_saw_ret <-
+        match stmt.Common.node with
+            Ast.STMT_ret _ | Ast.STMT_be _ | Ast.STMT_fail
+          | Ast.STMT_yield _ -> true
+          | _ -> false
+    in
+
     let rec check_block (block:Ast.block) : unit =
       Array.iter check_stmt block.Common.node
 
     and check_stmt (stmt:Ast.stmt) : unit =
+      check_ret stmt;
       match stmt.Common.node with
           Ast.STMT_spawn (dst, _, callee, args) ->
             infer_lval Ast.TY_task dst;
@@ -841,7 +851,11 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
 
   let visitor (cx:Semant.ctxt) (inner:Walk.visitor) : Walk.visitor =
     let push_fn_ctx (ret_ty:Ast.ty) (is_iter:bool) =
-      let fn_ctx = { fnctx_return_type = ret_ty; fnctx_is_iter = is_iter } in
+      let fn_ctx = {
+        fnctx_return_type = ret_ty;
+        fnctx_is_iter = is_iter;
+        fnctx_just_saw_ret = false
+      } in
       Stack.push fn_ctx fn_ctx_stack
     in
 
@@ -852,10 +866,19 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
       push_fn_ctx (Common.option_get ret_ty) is_iter
     in
 
+    let finish_function (item_id:Common.node_id) =
+      let fn_ctx = Stack.pop fn_ctx_stack in
+      if not fn_ctx.fnctx_just_saw_ret &&
+          fn_ctx.fnctx_return_type <> Ast.TY_nil &&
+          not fn_ctx.fnctx_is_iter then
+        Common.err (Some item_id) "this function must return a value"
+    in
+
     let visit_mod_item_pre _ _ item =
       let { Common.node = item; Common.id = item_id } = item in
       match item.Ast.decl_item with
-          Ast.MOD_ITEM_fn _ ->
+          Ast.MOD_ITEM_fn _ when
+              not (Hashtbl.mem cx.Semant.ctxt_required_items item_id) ->
             let fn_ty = Hashtbl.find cx.Semant.ctxt_all_item_types item_id in
             begin
               match fn_ty with
@@ -867,9 +890,12 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
         | _ -> ()
     in
     let visit_mod_item_post _ _ item =
-      verify_main item.Common.id;
+      let item_id = item.Common.id in
+      verify_main item_id;
       match item.Common.node.Ast.decl_item with
-          Ast.MOD_ITEM_fn _ -> ignore (Stack.pop fn_ctx_stack)
+          Ast.MOD_ITEM_fn _ when
+              not (Hashtbl.mem cx.Semant.ctxt_required_items item_id) ->
+            finish_function item_id
         | _ -> ()
     in
 
@@ -884,7 +910,7 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
               "Type.visit_obj_fn_pre: item doesn't have an object type (%a)"
               Ast.sprintf_ty obj_ty
     in
-    let visit_obj_fn_post _ _ _ = ignore (Stack.pop fn_ctx_stack) in
+    let visit_obj_fn_post _ _ item = finish_function (item.Common.id) in
 
     let visit_obj_drop_pre _ _ = push_fn_ctx Ast.TY_nil false in
     let visit_obj_drop_post _ _ = ignore (Stack.pop fn_ctx_stack) in

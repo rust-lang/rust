@@ -21,6 +21,7 @@ fn foo(int x) -> int {
   let t z;
   z = 0x55;
   foo(z);
+  ret 0;
 }
 
 fn main() {
