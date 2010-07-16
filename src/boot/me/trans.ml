@@ -453,6 +453,11 @@ let trans_visitor
     Il.Mem (fp_imm out_mem_disp, args_rty)
   in
 
+  let fp_to_args (fp:Il.cell) (args_rty:Il.referent_ty): Il.cell =
+    let (reg, _) = force_to_reg (Il.Cell fp) in
+    Il.Mem(based_imm reg out_mem_disp, args_rty)
+  in
+
   let get_ty_param (ty_params:Il.cell) (param_idx:int) : Il.cell =
       get_element_ptr ty_params param_idx
   in
@@ -753,6 +758,28 @@ let trans_visitor
             Il.Mem (mem, (pointee_type ptr))
   in
 
+  (*
+   * Within a for-each block, calculate the fp of an enclosing for-each block
+   * or the enclosing function by chasing static links.
+   *)
+  let get_nth_outer_frame_ptr (diff:int) : Il.cell =
+    (* All for-each block frames have the same args. *)
+    let block_args_rty = current_fn_args_rty None in
+    let current_fp = Il.Reg (abi.Abi.abi_fp_reg, Il.AddrTy Il.OpaqueTy) in
+    let rec out (n:int) (fp:Il.cell) : Il.cell =
+      if n == 0
+      then fp
+      else
+        let args = fp_to_args fp block_args_rty in
+        let iter_args = get_element_ptr args Abi.calltup_elt_iterator_args in
+        let outer_fp =
+          get_element_ptr iter_args Abi.iterator_args_elt_outer_frame_ptr
+        in
+          out (n - 1) outer_fp
+    in
+      out diff current_fp
+  in
+
   let cell_of_block_slot
       (slot_id:node_id)
       : Il.cell =
@@ -820,28 +847,13 @@ let trans_visitor
                             in
                             let diff = stmt_depth - slot_depth in
                             let _ = annotate "get outer frame pointer" in
-                            let fp =
-                              get_iter_outer_frame_ptr_for_current_frame ()
+                            let fp = get_nth_outer_frame_ptr diff in
+                            let _ = annotate "calculate size" in
+                            let p =
+                              based_sz (get_ty_params_of_current_frame())
+                                (fst (force_to_reg (Il.Cell fp))) off
                             in
-                              if diff > 1
-                              then
-                                bug () "unsupported nested for each loop";
-                              for i = 2 to diff do
-                                (* FIXME (issue #79): access outer
-                                 * caller-block fps, given nearest
-                                 * caller-block fp. 
-                                 *)
-                                let _ =
-                                  annotate "step to outer-outer frame"
-                                in
-                                  mov fp (Il.Cell fp)
-                              done;
-                              let _ = annotate "calculate size" in
-                              let p =
-                                based_sz (get_ty_params_of_current_frame())
-                                  (fst (force_to_reg (Il.Cell fp))) off
-                              in
-                                Il.Mem (p, referent_type)
+                              Il.Mem (p, referent_type)
                           else
                             Il.Mem (fp_off_sz off, referent_type)
             end
