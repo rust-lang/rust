@@ -418,7 +418,9 @@ upcall_vec_grow(rust_task *task, rust_vec *v, size_t n_bytes, uintptr_t is_gc)
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
     dom->log(rust_log::UPCALL|rust_log::MEM,
-             "upcall vec_grow(%" PRIxPTR ", %" PRIdPTR ")", v, n_bytes);
+             "upcall vec_grow(%" PRIxPTR ", %" PRIdPTR
+             "), alloc=%" PRIdPTR ", fill=%" PRIdPTR,
+             v, n_bytes, v->alloc, v->fill);
     size_t alloc = next_power_of_two(sizeof(rust_vec) + v->fill + n_bytes);
     if (v->refcnt == 1) {
 
@@ -432,7 +434,7 @@ upcall_vec_grow(rust_task *task, rust_vec *v, size_t n_bytes, uintptr_t is_gc)
         dom->log(rust_log::UPCALL|rust_log::MEM, "realloc path");
         v = (rust_vec*)dom->realloc(v, alloc);
         if (!v) {
-            task->fail(3);
+            task->fail(4);
             return NULL;
         }
         v->alloc = alloc;
@@ -442,7 +444,7 @@ upcall_vec_grow(rust_task *task, rust_vec *v, size_t n_bytes, uintptr_t is_gc)
         dom->log(rust_log::UPCALL|rust_log::MEM, "new vec path");
         void *mem = dom->malloc(alloc);
         if (!mem) {
-            task->fail(3);
+            task->fail(4);
             return NULL;
         }
         v->deref();
