@@ -79,7 +79,8 @@ let finalize_module
       | Some fn -> fn
   in
   let rust_start = abi.Llabi.rust_start in
-  let rust_start_args = [| rust_main_fn; crate_ptr; argc; argv |] in
+  let rust_start_args = [| Llvm.const_ptrtoint rust_main_fn abi.Llabi.word_ty;
+                           crate_ptr; argc; argv |] in
     ignore (Llvm.build_call
               rust_start rust_start_args "start_rust" main_builder);
     ignore (Llvm.build_ret (Llvm.const_int i32 0) main_builder)

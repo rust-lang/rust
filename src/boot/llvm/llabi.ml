@@ -11,6 +11,8 @@ type abi = {
 
 let declare_abi (llctx:Llvm.llcontext) (llmod:Llvm.llmodule) : abi =
   let i32 = Llvm.i32_type llctx in
+  (* FIXME: Use Llvm_target.intptr_type for more platform support. *)
+  let word_ty = i32 in
 
   let crate_ty =
     (* TODO: other architectures besides x86 *)
@@ -51,19 +53,16 @@ let declare_abi (llctx:Llvm.llcontext) (llmod:Llvm.llmodule) : abi =
   ignore (Llvm.define_type_name "rust_task" task_ty llmod);
 
   let rust_start_ty =
-    let task_ptr_ty = Llvm.pointer_type task_ty in
-    let llnilty = Llvm.array_type (Llvm.i1_type llctx) 0 in
-    let main_ty = Llvm.function_type (Llvm.void_type llctx)
-      [| Llvm.pointer_type llnilty; task_ptr_ty; |]
-    in
-    let args_ty = Array.map Llvm.pointer_type [| main_ty; crate_ty; |] in
-    let args_ty = Array.append args_ty [| i32; i32 |] in
+    (* Rust's main function can have several types, so we cast them
+       all to uintptr_t. *)
+    let main_ty = word_ty in
+    let args_ty = [| main_ty; Llvm.pointer_type crate_ty; i32; i32 |] in
       Llvm.function_type i32 args_ty
   in
   {
     crate_ty = crate_ty;
     task_ty = task_ty;
-    word_ty = i32;
+    word_ty = word_ty;
     rust_start = Llvm.declare_function "rust_start" rust_start_ty llmod
   }
 ;;
