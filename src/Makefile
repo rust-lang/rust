@@ -175,7 +175,7 @@ endif
 ifdef CFG_LLVM_CONFIG
   VARIANT=llvm
   LLVM_LIBS := llvm.cma llvm_bitwriter.cma
-  LLVM_NATIVE_LIBS := llvm.cmxa llvm_bitwiter.cmxa
+  LLVM_NATIVE_LIBS := llvm.cmxa llvm_bitwriter.cmxa
   LLVM_CLIBS := $(shell for c in `$(CFG_LLVM_CONFIG) --ldflags --libs` \
     -lllvm -lllvm_bitwriter; do echo -cclib && echo $$c; done | xargs echo)
   LLVM_INCS := -I boot/llvm -I $(WHERE)
@@ -202,7 +202,7 @@ CFG_BOOT_FLAGS += -L .
 ######################################################################
 
 ML_DEP_INCS := -I boot/fe -I boot/me -I boot/be -I boot/driver/$(VARIANT) \
-  -I boot/driver -I boot/util
+  -I boot/driver -I boot/util -I boot/llvm
 ML_INCS := $(ML_DEP_INCS) $(LLVM_INCS)
 ML_LIBS := unix.cma nums.cma bigarray.cma
 ML_NATIVE_LIBS := unix.cmxa nums.cmxa bigarray.cmxa
