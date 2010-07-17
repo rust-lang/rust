@@ -364,6 +364,8 @@ MUT_BOX_XFAILS := $(addprefix test/run-pass/, \
 TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
                     test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/clone-with-exterior.rs \
+                    test/run-pass/obj-as.rs \
+                    test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
                     test/run-pass/generic-fn-infer.rs \
                     test/run-pass/generic-recursive-tag.rs \
