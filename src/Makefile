@@ -23,7 +23,7 @@ CFG_GCC_CFLAGS :=
 CFG_GCC_LINK_FLAGS :=
 CFG_VALGRIND :=
 
-CFG_LLVM_CONFIG := llvm-config
+CFG_LLVM_CONFIG ?= llvm-config
 CFG_BOOT_FLAGS := $(FLAGS)
 
 ifeq ($(CFG_OSTYPE), Linux)
@@ -162,7 +162,7 @@ ifneq ($(CFG_LLVM_CONFIG),)
   CFG_LLVM_VERSION := $(shell $(CFG_LLVM_CONFIG) --version)
   ifeq ($(CFG_LLVM_VERSION),2.8svn)
     $(info cfg: using LLVM version 2.8svn)
-    WHERE := $(shell ocamlc -where)
+    WHERE := $(shell $(CFG_LLVM_CONFIG) --libdir)/ocaml
     ifneq ($(shell test -e $(WHERE)/llvm.cma && echo ok),ok)
       CFG_LLVM_CONFIG := $(info cfg: LLVM ocaml bindings not found)
     endif
@@ -181,6 +181,7 @@ ifdef CFG_LLVM_CONFIG
   LLVM_INCS := -I boot/llvm -I $(WHERE)
   LLVM_MLS := $(addprefix boot/llvm/, llabi.ml llasm.ml llfinal.ml \
     lltrans.ml llemit.ml)
+  LLC := "$(shell $(CFG_LLVM_CONFIG) --bindir)/llc"
   CFG_LLC_CFLAGS := -march=x86
   $(info cfg: found llvm-config at $(CFG_LLVM_CONFIG))
 else
@@ -648,7 +649,7 @@ test/bench/shootout/%.x86$(CFG_EXE_SUFFIX): test/bench/shootout/%.rs $(REQ)
 
 %.s: %.bc
 	@$(call CFG_ECHO, compile [llvm]: $<)
-	$(CFG_QUIET)llc $(CFG_LLC_CFLAGS) -o $@ $<
+	$(CFG_QUIET)$(LLC) $(CFG_LLC_CFLAGS) -o $@ $<
 
 %.llvm$(CFG_EXE_SUFFIX): %.s $(CFG_RUNTIME)
 	@$(call CFG_ECHO, compile [llvm]: $<)
