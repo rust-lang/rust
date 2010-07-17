@@ -26,6 +26,13 @@ auth _io = unsafe;
 auth _str = unsafe;
 auth _vec = unsafe;
 
+/**
+ * FIXME for some reason 'auth sys = unsafe' isn't enough here to silence
+ * the effect system about map.mk_hashmap.hashl and .hashr using
+ * sys.rustrt.size_of and thereby being unsafe.
+ */
+auth map.mk_hashmap = unsafe;
+
 // Target-OS module.
 
 alt (target_os) {
@@ -37,3 +44,5 @@ alt (target_os) {
     mod os = "linux_os.rs";
   }
 }
+
+mod map;
