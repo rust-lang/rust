@@ -1811,6 +1811,50 @@ c.incr();
 check (c.get() == 3);
 @end example
 
+There is no @emph{this} or @emph{self} available inside an object's
+methods, either implicitly or explicitly, so you can't directly call
+other methods.  For example:
+@example
+obj my_obj() @{
+  fn get() -> int @{
+    ret 3;
+  @}
+  fn foo() @{
+    auto c = get();  // Fails
+  @}
+@}
+@end example
+
+The current replacement is to write a factory function for your type,
+which provides any private helper functions:
+@example
+type my_obj =
+  obj @{
+    fn get() -> int;
+    fn foo();
+  @};
+
+fn mk_my_obj() -> my_obj @{
+  fn get_helper() -> int @{
+    ret 3;
+  @}
+
+  obj impl() @{
+    fn get() -> int @{
+      ret get_helper();
+    @}
+    fn foo() @{
+      auto c = get_helper();  // Works
+    @}
+  @}
+
+  ret impl();
+@}
+@end example
+
+This factory function also allows you to bind the object's state
+variables to initial values.
+
 @node       Ref.Item.Type
 @subsection Ref.Item.Type
 @c * Ref.Item.Type::          Items defining the types of values and slots.
