@@ -77,6 +77,8 @@ let tydesc_field_free_glue = 5;;
 let tydesc_field_sever_glue = 6;;
 let tydesc_field_mark_glue = 7;;
 let tydesc_field_obj_drop_glue = 8;;
+let tydesc_field_cmp_glue = 9;;
+let tydesc_field_hash_glue = 10;;
 
 let vec_elt_rc = 0;;
 let vec_elt_alloc = 1;;

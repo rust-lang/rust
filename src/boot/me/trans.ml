@@ -964,7 +964,7 @@ let trans_visitor
       lea base (fst (need_mem_cell data));
       add elt (Il.Cell base) mul_idx;
       emit (Il.binary Il.SUB diff (Il.Cell elt) (Il.Cell base));
-      let jmp = trans_compare Il.JB (Il.Cell diff) (Il.Cell len) in
+      let jmp = trans_compare_simple Il.JB (Il.Cell diff) (Il.Cell len) in
         trans_cond_fail "bounds check" jmp;
         based elt_reg
 
@@ -1714,6 +1714,8 @@ let trans_visitor
     in
       get_typed_mem_glue g fty inner
 
+  and get_cmp_glue _ = failwith "TODO"
+
 
   (* Glue functions use mostly the same calling convention as ordinary
    * functions.
@@ -1821,18 +1823,88 @@ let trans_visitor
         (Array.append [| ty_params_ptr |] args)
         clo
 
-  (* trans_compare returns a quad number of the cjmp, which the caller
-     patches to the cjmp destination.  *)
-  and trans_compare
+  (* [trans_compare_full] returns the quad number of the cjmp, which the
+   * caller patches to the cjmp destination.
+   *
+   * We assume that the LHS and RHS of the comparison have the same type, an
+   * invariant that the typechecker enforces. *)
+  and trans_compare_full
+      ~cjmp:(cjmp:Il.jmpop)
+      ~ty_params:(ty_params:Il.cell)
+      ~ty:(ty:Ast.ty)
+      ~curr_iso:(curr_iso:Ast.ty_iso option)
+      (lhs:Il.cell)
+      (rhs:Il.cell)
+      : quad_idx list =
+    let ty = strip_mutable_or_constrained_ty (maybe_iso curr_iso ty) in
+    let (result:Il.cell) = next_vreg_cell (Il.ValTy Il.Bits32) in
+    begin
+      match ty with
+          Ast.TY_obj _ ->
+            let lhs_binding = get_element_ptr lhs Abi.obj_field_body_box in
+            let rhs_binding = get_element_ptr rhs Abi.obj_field_body_box in
+            let lhs_box, rhs_box = deref lhs_binding, deref rhs_binding in
+            let lhs_obj = get_element_ptr lhs_box Abi.box_rc_field_body in
+            let rhs_obj = get_element_ptr rhs_box Abi.box_rc_field_body in
+            let tydesc = get_element_ptr lhs_obj Abi.obj_body_elt_tydesc in
+            let lhs_body = get_element_ptr lhs_obj Abi.obj_body_elt_fields in
+            let rhs_body = get_element_ptr rhs_obj Abi.obj_body_elt_fields in
+            trans_call_dynamic_glue
+              tydesc
+              Abi.tydesc_field_cmp_glue
+              (Some result)
+              [| alias lhs_body; alias rhs_body |]
+              None
+
+        | Ast.TY_param (i, _) ->
+            trans_call_simple_dynamic_glue
+              i
+              Abi.tydesc_field_cmp_glue
+              ty_params
+              [| alias lhs; alias rhs |]
+              None
+
+        | _ ->
+            trans_call_static_glue
+              (code_fixup_to_ptr_operand (get_cmp_glue ty curr_iso))
+              (Some result)
+              [| lhs; rhs |]
+              None
+    end;
+    emit (Il.cmp (Il.Cell result) zero);
+    let jmp = mark() in
+    emit (Il.jmp cjmp Il.CodeNone);
+    [ jmp ]
+
+  (* Like [trans_compare_full], returns the address of the jump, which the
+   * caller patches to the destination. Only use this function if you are sure
+   * that the LHS and RHS have the same type and that both will fit in a
+   * machine register; otherwise, use [trans_compare] instead. *)
+  and trans_compare_simple
       (cjmp:Il.jmpop)
       (lhs:Il.operand)
       (rhs:Il.operand)
       : quad_idx list =
-    (* FIXME: this is an x86-ism; abstract via ABI. *)
     emit (Il.cmp (Il.Cell (Il.Reg (force_to_reg lhs))) rhs);
     let jmp = mark() in
-      emit (Il.jmp cjmp Il.CodeNone);
-      [jmp]
+    emit (Il.jmp cjmp Il.CodeNone);
+    [ jmp ]
+
+  and trans_compare
+      ?ty_params:(ty_params=get_ty_params_of_current_frame())
+      ~cjmp:(cjmp:Il.jmpop)
+      ~ty:(ty:Ast.ty)
+      ~curr_iso:(curr_iso:Ast.ty_iso option)
+      (lhs:Il.operand)
+      (rhs:Il.operand)
+      : quad_idx list =
+    ignore (trans_compare ~cjmp:cjmp ~ty:ty ~curr_iso:curr_iso lhs rhs);
+      (* TODO *)
+    match lhs, rhs with
+        Il.Cell lhs, Il.Cell rhs ->
+          trans_compare_full
+            ~cjmp:cjmp ~ty_params:ty_params ~ty:ty ~curr_iso:curr_iso lhs rhs
+      | _ -> trans_compare_simple cjmp lhs rhs
 
   and trans_cond (invert:bool) (expr:Ast.expr) : quad_idx list =
 
@@ -1864,12 +1936,12 @@ let trans_visitor
               cjmp
           in
             anno ();
-            trans_compare cjmp' lhs rhs
+            trans_compare_simple cjmp' lhs rhs
 
       | _ ->
           let bool_operand = trans_expr expr in
             anno ();
-            trans_compare Il.JNE bool_operand
+            trans_compare_simple Il.JNE bool_operand
               (if invert then imm_true else imm_false)
 
   and trans_binop (binop:Ast.binop) : Il.binop =
@@ -1915,7 +1987,7 @@ let trans_visitor
 
       | _ -> let dst = Il.Reg (Il.next_vreg (emitter()), Il.ValTy Il.Bits8) in
           mov dst imm_true;
-          let jmps = trans_compare (binop_to_jmpop binop) lhs rhs in
+          let jmps = trans_compare_simple (binop_to_jmpop binop) lhs rhs in
             mov dst imm_false;
             List.iter patch jmps;
             Il.Cell dst
@@ -2330,7 +2402,7 @@ let trans_visitor
                       annotate (Printf.sprintf "tag case #%i == %a" i
                                   Ast.sprintf_name key)));
             let jmps =
-              trans_compare Il.JNE (Il.Cell tmp) (imm (Int64.of_int i))
+              trans_compare_simple Il.JNE (Il.Cell tmp) (imm (Int64.of_int i))
             in
             let ttup = Hashtbl.find ttag key in
               iter_tup_parts
@@ -2383,7 +2455,9 @@ let trans_visitor
             mov ptr (Il.Cell lim);
             add_to lim (Il.Cell len);
             let back_jmp_target = mark () in
-            let fwd_jmps = trans_compare Il.JAE (Il.Cell ptr) (Il.Cell lim) in
+            let fwd_jmps =
+              trans_compare_simple Il.JAE (Il.Cell ptr) (Il.Cell lim)
+            in
             let unit_cell =
               deref (ptr_cast ptr (referent_type abi unit_ty))
             in
@@ -2737,9 +2811,7 @@ let trans_visitor
         MEM_gc ->
           let tmp = next_vreg_cell Il.voidptr_t in
             trans_upcall "upcall_mark" tmp [| Il.Cell cell |];
-            let marked_jump =
-              trans_compare Il.JE (Il.Cell tmp) zero;
-            in
+            let marked_jump = trans_compare_simple Il.JE (Il.Cell tmp) zero in
               (* Iterate over box parts marking outgoing links. *)
             let (body_mem, _) =
               need_mem_cell
@@ -3455,7 +3527,7 @@ let trans_visitor
       in
         call_code (code_of_operand fn_ptr);
         iflog (fun _ -> annotate "predicate check/fail");
-        let jmp = trans_compare Il.JE (Il.Cell dst_cell) imm_true in
+        let jmp = trans_compare_simple Il.JE (Il.Cell dst_cell) imm_true in
         let errstr = Printf.sprintf "predicate check: %a"
           Ast.sprintf_constr constr
         in
@@ -3956,7 +4028,7 @@ let trans_visitor
       let rec trans_pat pat src_cell src_ty =
         match pat with
             Ast.PAT_lit lit ->
-              trans_compare Il.JNE (trans_lit lit) (Il.Cell src_cell)
+              trans_compare_simple Il.JNE (trans_lit lit) (Il.Cell src_cell)
 
           | Ast.PAT_tag (lval, pats) ->
               let tag_name = tag_ctor_name_to_tag_name (lval_to_name lval) in
@@ -3980,7 +4052,7 @@ let trans_visitor
               in
 
               let next_jumps =
-                trans_compare Il.JNE
+                trans_compare_simple Il.JNE
                   (Il.Cell tag_cell) (imm (Int64.of_int tag_number))
               in
 
@@ -4233,12 +4305,13 @@ let trans_visitor
                     patch fwd_jmp;
                     check_interrupt_flag ();
                     let back_jmp =
-                      trans_compare Il.JB (Il.Cell dptr) (Il.Cell dlim) in
-                      List.iter
-                        (fun j -> patch_existing j back_jmp_targ) back_jmp;
-                      let v = next_vreg_cell word_sty in
-                        mov v (Il.Cell src_fill);
-                        add_to dst_fill (Il.Cell v);
+                      trans_compare_simple Il.JB (Il.Cell dptr) (Il.Cell dlim)
+                    in
+                    List.iter
+                      (fun j -> patch_existing j back_jmp_targ) back_jmp;
+                    let v = next_vreg_cell word_sty in
+                      mov v (Il.Cell src_fill);
+                      add_to dst_fill (Il.Cell v);
         | t ->
             begin
               bug () "unsupported vector-append type %a" Ast.sprintf_ty t
