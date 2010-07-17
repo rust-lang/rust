@@ -390,15 +390,16 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
               Ast.sprintf_ty ty
 
         | `Module items, Ast.COMP_named ((Ast.COMP_ident id) as name_comp)
-              | `Module items, Ast.COMP_named ((Ast.COMP_app (id, _))
-                as name_comp) ->
+        | `Module items, Ast.COMP_named ((Ast.COMP_app (id, _))
+                                           as name_comp) ->
             let mod_item =
               try
                 Hashtbl.find items id
               with Not_found ->
                 Common.bug
                   ()
-                  "internal_check_ext_lval: ident not found in mod item"
+                  "internal_check_ext_lval: ident %s not found in mod item"
+                  id
             in
             let lty =
               internal_check_mod_item_decl

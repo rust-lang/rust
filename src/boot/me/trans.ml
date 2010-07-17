@@ -3961,7 +3961,7 @@ let trans_visitor
           | Ast.PAT_tag (lval, pats) ->
               let tag_name = tag_ctor_name_to_tag_name (lval_to_name lval) in
               let ty_tag =
-                match src_ty with
+                match strip_mutable_or_constrained_ty src_ty with
                     Ast.TY_tag tag_ty -> tag_ty
                   | Ast.TY_iso ti -> (ti.Ast.iso_group).(ti.Ast.iso_index)
                   | _ -> bug cx "expected tag type"
@@ -4009,8 +4009,8 @@ let trans_visitor
           | Ast.PAT_wild -> []    (* irrefutable *)
       in
 
-      let (lval_cell, lval_slot) = trans_lval at.Ast.alt_tag_lval in
-      let next_jumps = trans_pat pat lval_cell lval_slot in
+      let (lval_cell, lval_ty) = trans_lval at.Ast.alt_tag_lval in
+      let next_jumps = trans_pat pat lval_cell lval_ty in
         trans_block block;
         let last_jump = mark() in
           emit (Il.jmp Il.JMP Il.CodeNone);
