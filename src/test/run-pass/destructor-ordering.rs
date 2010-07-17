@@ -18,7 +18,7 @@ state obj order_tracker(mutable int init) {
 
 obj dorder(@order_tracker tracker, int order, str message) {
   drop {
-    tracker.assert_order(order, message);
+    (*tracker).assert_order(order, message);
   }
 }
 

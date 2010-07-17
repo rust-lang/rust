@@ -347,7 +347,6 @@ MUT_BOX_XFAILS := $(addprefix test/run-pass/, \
 TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
                     test/run-pass/mlist-cycle.rs \
                     test/run-pass/clone-with-exterior.rs \
-                    test/run-pass/destructor-ordering.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
