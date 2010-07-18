@@ -10,6 +10,7 @@
 *.orig
 *.cmo
 *.cmi
+*.dSYM
 *.d
 *.o
 *.aux

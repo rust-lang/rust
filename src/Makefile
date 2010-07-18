@@ -26,6 +26,11 @@ CFG_VALGRIND :=
 CFG_LLVM_CONFIG ?= llvm-config
 CFG_BOOT_FLAGS := $(FLAGS)
 
+# On Darwin, we need to run dsymutil so the debugging information ends
+# up in the right place.  On other platforms, it automatically gets
+# embedded into the executable, so use a no-op command.
+DSYMUTIL := true
+
 ifeq ($(CFG_OSTYPE), Linux)
   CFG_RUNTIME := librustrt.so
   CFG_STDLIB := libstd.so
@@ -56,6 +61,7 @@ ifeq ($(CFG_OSTYPE), Darwin)
   # approaches welcome!
   CFG_GCC_CFLAGS += -m32
   CFG_GCC_LINK_FLAGS += -m32
+  DSYMUTIL := dsymutil
 endif
 
 ifneq ($(findstring MINGW,$(CFG_OSTYPE)),)
@@ -651,9 +657,17 @@ test/bench/shootout/%.x86$(CFG_EXE_SUFFIX): test/bench/shootout/%.rs $(REQ)
 	@$(call CFG_ECHO, compile [llvm]: $<)
 	$(CFG_QUIET)$(LLC) $(CFG_LLC_CFLAGS) -o $@ $<
 
-%.llvm$(CFG_EXE_SUFFIX): %.s $(CFG_RUNTIME)
-	@$(call CFG_ECHO, compile [llvm]: $<)
+%.o: %.s
+	@$(call CFG_ECHO, assemble [llvm]: $<)
+	$(CFG_QUIET)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
+
+%.llvm$(CFG_EXE_SUFFIX): %.o $(CFG_RUNTIME)
+	@$(call CFG_ECHO, link [llvm]: $<)
 	$(CFG_QUIET)gcc $(CFG_GCC_CFLAGS) -o $@ $< -L. -lrustrt
+	@# dsymutil sometimes fails or prints a warning, but the
+	@# program still runs.  Since it simplifies debugging other
+	@# programs, I\'ll live with the noise.
+	-$(CFG_QUIET)$(DSYMUTIL) $@
 
 test/run-pass/%.bc: test/run-pass/%.rc $(REQ)
 	@$(call CFG_ECHO, compile [llvm]: $<)
@@ -802,6 +816,8 @@ clean:
 	$(CFG_QUIET)rm -f $(TEST_RFAIL_EXES_LLVM) $(TEST_RFAIL_OUTS_LLVM)
 	$(CFG_QUIET)rm -f $(TEST_CFAIL_EXES_X86) $(TEST_CFAIL_OUTS_X86)
 	$(CFG_QUIET)rm -f $(TEST_CFAIL_EXES_LLVM) $(TEST_CFAIL_OUTS_LLVM)
+	$(CFG_QUIET)rm -rf $(TEST_RPASS_EXES_LLVM:.llvm=.llvm.dSYM)
+	$(CFG_QUIET)rm -rf $(TEST_RFAIL_EXES_LLVM:.llvm=.llvm.dSYM)
 	$(CFG_QUIET)rm -Rf $(PKG_NAME)-*.tar.gz dist
 	$(CFG_QUIET)rm -f $(foreach ext,cmx cmi cmo cma o a d exe,\
                         $(wildcard boot/*/*.$(ext) boot/*/*/*.$(ext)))
