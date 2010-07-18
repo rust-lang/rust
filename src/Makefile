@@ -380,18 +380,13 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       bitwise.rs \
                       box-unbox.rs \
                       cast.rs \
-                      char.rs \
                       clone-with-exterior.rs \
                       comm.rs \
                       command-line-args.rs \
                       complex.rs \
-                      dead-code-one-arm-if.rs \
                       deep.rs \
                       deref.rs \
                       destructor-ordering.rs \
-                      div-mod.rs \
-                      drop-on-ret.rs \
-                      else-if.rs \
                       export-non-interference.rs \
                       exterior.rs \
                       fn-lval.rs \
@@ -415,11 +410,8 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       generic-tag.rs \
                       generic-type-synonym.rs \
                       generic-type.rs \
-                      i32-sub.rs \
-                      i8-incr.rs \
                       import.rs \
                       inner-module.rs \
-                      item-name-overload.rs \
                       large-records.rs \
                       lazy-and-or.rs \
                       lazy-init.rs \
@@ -433,7 +425,6 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       mutable-vec-drop.rs \
                       mutual-recursion-group.rs \
                       native-mod.rc \
-                      native-opaque-type.rs \
                       native.rc \
                       obj-as.rs \
                       obj-drop.rs \
@@ -450,7 +441,6 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       rec-extend.rs \
                       rec-tup.rs \
                       rec.rs \
-                      return-nil.rs \
                       simple-obj.rs \
                       spawn-fn.rs \
                       spawn.rs \
@@ -458,7 +448,6 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       str-append.rs \
                       str-concat.rs \
                       str-idx.rs \
-                      syntax-extension.rs \
                       tag.rs \
                       tail-cps.rs \
                       tail-direct.rs \
@@ -466,12 +455,8 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       threads.rs \
                       tup.rs \
                       type-sizes.rs \
-                      u32-decr.rs \
-                      u8-incr-decr.rs \
-                      u8-incr.rs \
                       unit.rs \
                       use-import-export.rs \
-                      use-uninit.rs \
                       user.rs \
                       utf8.rs \
                       vec-alloc-append.rs \
