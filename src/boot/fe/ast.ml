@@ -1377,6 +1377,7 @@ let ty_children (ty:ty) : ty array =
         [| |]
 ;;
 
+let sprintf_binop = sprintf_fmt fmt_binop;;
 let sprintf_expr = sprintf_fmt fmt_expr;;
 let sprintf_name = sprintf_fmt fmt_name;;
 let sprintf_name_component = sprintf_fmt fmt_name_component;;

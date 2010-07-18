@@ -433,7 +433,6 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       obj-recursion.rs \
                       obj-return-polytypes.rs \
                       obj-with-vec.rs \
-                      opeq.rs \
                       output-slot-variants.rs \
                       pred.rs \
                       preempt.rs \

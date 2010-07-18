@@ -731,6 +731,25 @@ let trans_crate
               Llvm.build_load (trans_lval lval) (anon_llid "tmp") llbuilder
       in
 
+      let build_binop (op:Ast.binop) (lllhs:Llvm.llvalue) (llrhs:Llvm.llvalue)
+          : Llvm.llvalue =
+        let llid = anon_llid "expr" in
+        match op with
+            Ast.BINOP_eq ->
+              (* TODO: equality works on more than just integers *)
+              Llvm.build_icmp Llvm.Icmp.Eq lllhs llrhs llid llbuilder
+
+            (* TODO: signed/unsigned distinction, floating point *)
+          | Ast.BINOP_add -> Llvm.build_add lllhs llrhs llid llbuilder
+          | Ast.BINOP_sub -> Llvm.build_sub lllhs llrhs llid llbuilder
+          | Ast.BINOP_mul -> Llvm.build_mul lllhs llrhs llid llbuilder
+          | Ast.BINOP_div -> Llvm.build_sdiv lllhs llrhs llid llbuilder
+          | Ast.BINOP_mod -> Llvm.build_srem lllhs llrhs llid llbuilder
+
+          | _ -> raise
+              (Not_implemented ("build_binop " ^ (Ast.sprintf_binop() op)))
+      in
+
       let trans_binary_expr
           ((op:Ast.binop), (lhs:Ast.atom), (rhs:Ast.atom))
           : Llvm.llvalue =
@@ -748,23 +767,7 @@ let trans_crate
                 let lllhs = trans_atom lhs in
                 (lllhs, llrhs)
         in
-        let llid = anon_llid "expr" in
-        match op with
-            Ast.BINOP_eq ->
-              (* TODO: equality works on more than just integers *)
-              Llvm.build_icmp Llvm.Icmp.Eq lllhs llrhs llid llbuilder
-
-            (* TODO: signed/unsigned distinction, floating point *)
-          | Ast.BINOP_add -> Llvm.build_add lllhs llrhs llid llbuilder
-          | Ast.BINOP_sub -> Llvm.build_sub lllhs llrhs llid llbuilder
-          | Ast.BINOP_mul -> Llvm.build_mul lllhs llrhs llid llbuilder
-          | Ast.BINOP_div -> Llvm.build_sdiv lllhs llrhs llid llbuilder
-          | Ast.BINOP_mod -> Llvm.build_srem lllhs llrhs llid llbuilder
-
-          | _ -> raise
-              (Not_implemented
-                 ("trans_binary_expr " ^
-                    (Ast.sprintf_expr() (Ast.EXPR_binary (op,lhs,rhs)))))
+          build_binop op lllhs llrhs
       in
 
       let trans_unary_expr e = raise
@@ -852,6 +855,17 @@ let trans_crate
                   let llsrc = trans_expr src in
                   let lldest = trans_lval dest in
                   ignore (Llvm.build_store llsrc lldest llbuilder);
+                  trans_tail ()
+
+              | Ast.STMT_copy_binop (dest, op, src) ->
+                  let lldest = trans_lval dest in
+                  let llsrc = trans_atom src in
+                    (* FIXME: Handle vecs and strs. *)
+                  let lldest_deref =
+                    Llvm.build_load lldest (anon_llid "dest_init") llbuilder
+                  in
+                  let llres = build_binop op lldest_deref llsrc in
+                  ignore (Llvm.build_store llres lldest llbuilder);
                   trans_tail ()
 
               | Ast.STMT_call (dest, fn, args) ->
