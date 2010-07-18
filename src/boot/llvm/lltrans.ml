@@ -24,10 +24,6 @@ let trans_crate
   in
 
   (* Helpers for adding metadata. *)
-  let (dbg_mdkind:int) = Llvm.mdkind_id llctx "dbg" in
-  let set_dbg_metadata (inst:Llvm.llvalue) (md:Llvm.llvalue) : unit =
-    Llvm.set_metadata inst dbg_mdkind md
-  in
   let md_str (s:string) : Llvm.llvalue = Llvm.mdstring llctx s in
   let md_node (vals:Llvm.llvalue array) : Llvm.llvalue =
     Llvm.mdnode llctx vals
@@ -41,6 +37,73 @@ let trans_crate
   let llvm_debug_version : int = 0x8 lsl 16 in
   let const_dw_tag (tag:Dwarf.dw_tag) : Llvm.llvalue =
     const_i32 (llvm_debug_version lor (Dwarf.dw_tag_to_int tag))
+  in
+
+  (* See http://llvm.org/docs/SourceLevelDebugging.html. *)
+  let crate_compile_unit : Llvm.llvalue =
+    let name = Hashtbl.find sem_cx.Semant.ctxt_item_files crate.id in
+    md_node [| const_dw_tag Dwarf.DW_TAG_compile_unit;
+               const_i32 0;  (* Unused. *)
+               const_i32 2;  (* DW_LANG_C. FIXME: Pick a Rust DW_LANG code. *)
+               md_str (Filename.basename name);
+               md_str (Filename.concat
+                            (Sys.getcwd()) (Filename.dirname name));
+               md_str ("Rustboot " ^ Version.version);
+               (* This is the main compile unit. There must be exactly one of
+                  these in an LLVM module for it to emit debug info. *)
+               const_i1 1;
+               (* There are a couple more supported fields, which we ignore
+                  here. *)
+            |]
+  in
+  let di_file (filepath:string) =
+    md_node [| const_dw_tag Dwarf.DW_TAG_file_type;
+               md_str (Filename.basename filepath);
+               md_str (Filename.concat
+                            (Sys.getcwd()) (Filename.dirname filepath));
+               crate_compile_unit
+            |]
+  in
+  let di_subprogram (scope:Llvm.llvalue) (name:string) (fullname:string)
+      (di_file:Llvm.llvalue) (line:int) (llfunction:Llvm.llvalue)
+      : Llvm.llvalue =
+    (* 'scope' is generally a compile unit or other subprogram.  *)
+    md_node [| const_dw_tag Dwarf.DW_TAG_subprogram;
+               const_i32 0;  (* Unused. *)
+               scope;
+               md_str name;
+               md_str fullname;  (* Display name *)
+               md_str fullname;  (* Linkage name *)
+               di_file;
+               const_i32 line;
+               (* FIXME: Fill in the following fields. *)
+               md_node [||];
+               const_i1 1;
+               const_i1 1;
+               const_i32 0;
+               const_i32 0;
+               md_node [||];
+               const_i1 0;
+               const_i1 0;
+               llfunction  (* The llvm::Function this reflects. *)
+            |]
+  in
+  let di_location (line:int) (col:int) (scope:Llvm.llvalue) : Llvm.llvalue =
+    (* 'scope' is generally a subprogram or block. *)
+    md_node [| const_i32 line; const_i32 col; scope; const_i32 0 |]
+  in
+
+  (* Sets the 'llbuilder's current location (which it attaches to all
+     instructions) to the location of the start of the 'id' node within
+     'scope', usually a subprogram or lexical block. *)
+  let set_debug_location
+      (llbuilder:Llvm.llbuilder) (scope:Llvm.llvalue) (id:node_id)
+      : unit =
+    match Session.get_span sess id with
+        None -> ()
+      | Some {lo=(_, line, col)} ->
+          Llvm.set_current_debug_location llbuilder
+            (di_location line col scope)
   in
 
   (* Translation of our node_ids into LLVM identifiers, which are strings. *)
@@ -475,44 +538,31 @@ let trans_crate
   in
 
   let (llitems:(node_id, Llvm.llvalue) Hashtbl.t) = Hashtbl.create 0 in
+    (* Maps a fn's or block's id to an LLVM metadata node (subprogram or
+       lexical block) representing it. *)
+  let (dbg_llscopes:(node_id, Llvm.llvalue) Hashtbl.t) = Hashtbl.create 0 in
   let declare_mod_item
       (name:Ast.ident)
       { node = { Ast.decl_item = (item:Ast.mod_item') }; id = id }
       : unit =
     let full_name = Semant.item_str sem_cx id in
-    let line_num =
+    let (filename, line_num) =
       match Session.get_span sess id with
-          None -> 0
+          None -> ("", 0)
         | Some span ->
-            let (_, line, _) = span.lo in
-              line
+            let (file, line, _) = span.lo in
+              (file, line)
     in
       match item with
           Ast.MOD_ITEM_fn _ ->
             let llty = trans_ty (ty_of_item id) in
             let llfn = Llvm.declare_function ("_rust_" ^ name) llty llmod in
-            let meta =
-              md_node
-                [|
-                  const_dw_tag Dwarf.DW_TAG_subprogram;
-                  const_i32 0; (* unused *)
-                  const_i32 0; (* context metadata llvalue *)
-                  md_str name;
-                  md_str full_name;
-                  md_str full_name;
-                  const_i32 0; (* file metadata llvalue *)
-                  const_i32 line_num;
-                  const_i32 0; (* type descriptor metadata llvalue *)
-                  const_i1 1;  (* flag: local to compile unit? *)
-                  const_i1 1;  (* flag: defined in compile unit? *)
-                |]
+            let meta = (di_subprogram crate_compile_unit name full_name
+                          (di_file filename) line_num llfn)
             in
               Llvm.set_function_call_conv Llvm.CallConv.c llfn;
               Hashtbl.add llitems id llfn;
-
-              (* FIXME: Adding metadata does not work yet. . *)
-              let _ = fun _ -> set_dbg_metadata llfn meta in
-                ()
+              Hashtbl.add dbg_llscopes id meta
 
         | _ -> () (* TODO *)
   in
@@ -527,6 +577,7 @@ let trans_crate
     let llfn = Hashtbl.find llitems fn_id in
     let lloutptr = Llvm.param llfn 0 in
     let lltask = Llvm.param llfn 1 in
+    let llsubprogram = Hashtbl.find dbg_llscopes fn_id in
 
     (* LLVM requires that functions be grouped into basic blocks terminated by
      * terminator instructions, while our AST is less strict. So we have to do
@@ -621,6 +672,12 @@ let trans_crate
         (stmts:Ast.stmt list)
         (terminate:(Llvm.llbuilder -> node_id -> unit))
         : unit =
+      let set_debug_loc (id:node_id) =
+        (* Sets the llbuilder's current location (which it attaches to all
+           instructions) to the location of the start of the 'id' node. *)
+        set_debug_location llbuilder llsubprogram id
+      in
+
       let trans_literal
           (lit:Ast.lit)
           : Llvm.llvalue =
@@ -645,6 +702,7 @@ let trans_crate
         iflog (fun _ -> log sem_cx "trans_lval: %a" Ast.sprintf_lval lval);
         match lval with
             Ast.LVAL_base { id = base_id } ->
+              set_debug_loc base_id;
               let id =
                 Hashtbl.find sem_cx.Semant.ctxt_lval_to_referent base_id
               in
@@ -759,6 +817,8 @@ let trans_crate
               trans_stmts block_id llbuilder' tail terminate
             in
             let trans_tail () = trans_tail_with_builder llbuilder in
+
+            set_debug_loc head.id;
 
             match head.node with
                 Ast.STMT_init_tup (dest, elems) ->
