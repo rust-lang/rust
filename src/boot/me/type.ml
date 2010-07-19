@@ -261,9 +261,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
           else
             LTYPE_poly ((Array.map (fun p -> p.Common.node) params), ty)
       | Ast.MOD_ITEM_type _ ->
-          Common.bug
-            ()
-            "internal_check_mod_item_decl: unexpected mod item type"
+          Common.err None "Type-item used in non-type context"
   in
 
   let rec internal_check_base_lval
