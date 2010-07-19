@@ -771,7 +771,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
         | Ast.STMT_ret (Some atom) ->
             if fn_ctx.fnctx_is_iter then
               Common.err None
-                "iterators can't return values; did you mean 'put'?"
+                "iterators can't return values; did you mean 'put'?";
             demand fn_ctx.fnctx_return_type (check_atom atom)
 
         | Ast.STMT_ret None ->
