@@ -1758,11 +1758,7 @@ and lookup_by_ident
                     check_slots scopes f.Ast.fn_input_slots
 
                 | Ast.MOD_ITEM_obj obj ->
-                    begin
-                      match htab_search obj.Ast.obj_fns ident with
-                          Some fn -> found cx scopes fn.id
-                        | None -> check_slots scopes obj.Ast.obj_state
-                    end
+                    check_slots scopes obj.Ast.obj_state
 
                 | Ast.MOD_ITEM_mod md ->
                     project_ident_from_items cx lchk
