@@ -2815,7 +2815,7 @@ let trans_visitor
               (* Iterate over box parts marking outgoing links. *)
             let (body_mem, _) =
               need_mem_cell
-                (get_element_ptr (deref cell)
+                (get_element_ptr_dyn ty_params (deref cell)
                    Abi.box_gc_field_body)
             in
             let ty = maybe_iso curr_iso ty in
