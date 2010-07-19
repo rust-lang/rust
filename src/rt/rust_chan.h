@@ -9,7 +9,7 @@ public:
 
     rust_task *task;
     rust_port *port;
-    circ_buf buffer;
+    circular_buffer buffer;
     size_t idx;           // Index into port->chans.
 
     // Token belonging to this chan, it will be placed into a port's
@@ -17,6 +17,8 @@ public:
     rust_token token;
 
     void disassociate();
+
+    int transmit();
 };
 
 #endif /* RUST_CHAN_H */

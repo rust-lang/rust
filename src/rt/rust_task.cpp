@@ -53,6 +53,7 @@ align_down(uintptr_t sp)
 
 
 rust_task::rust_task(rust_dom *dom, rust_task *spawner) :
+    rust_proxy_delegate<rust_task>(this),
     stk(new_stk(dom, 0)),
     runtime_sp(0),
     rust_sp(stk->limit),
@@ -61,20 +62,24 @@ rust_task::rust_task(rust_dom *dom, rust_task *spawner) :
     cache(NULL),
     state(&dom->running_tasks),
     cond(NULL),
-    dptr(0),
     supervisor(spawner),
     idx(0),
     waiting_tasks(dom),
+    rendezvous_ptr(0),
     alarm(this)
 {
     dom->logptr("new task", (uintptr_t)this);
+
+    if (spawner == NULL) {
+        ref_count = 0;
+    }
 }
 
 rust_task::~rust_task()
 {
     dom->log(rust_log::MEM|rust_log::TASK,
              "~rust_task 0x%" PRIxPTR ", refcnt=%d",
-             (uintptr_t)this, refcnt);
+             (uintptr_t)this, ref_count);
 
     /*
       for (uintptr_t fp = get_fp(); fp; fp = get_previous_fp(fp)) {
@@ -98,8 +103,8 @@ rust_task::~rust_task()
 
     /* FIXME: tighten this up, there are some more
        assertions that hold at task-lifecycle events. */
-    I(dom, refcnt == 0 ||
-      (refcnt == 1 && this == dom->root_task));
+    I(dom, ref_count == 0 ||
+      (ref_count == 1 && this == dom->root_task));
 
     del_stk(dom, stk);
     if (cache)
@@ -275,9 +280,9 @@ rust_task::run_after_return(size_t nargs, uintptr_t glue)
 
     uintptr_t *retpc = ((uintptr_t *) sp) - 1;
     dom->log(rust_log::TASK|rust_log::MEM,
-             "run_after_return: overwriting retpc=0x%" PRIxPTR
-             " @ runtime_sp=0x%" PRIxPTR
-             " with glue=0x%" PRIxPTR,
+             "run_after_return: overwriting retpc=x%" PRIxPTR
+             " @ runtime_sp=x%" PRIxPTR
+             " with glue=x%" PRIxPTR,
              *retpc, sp, glue);
 
     // Move the current return address (which points into rust code)
@@ -296,9 +301,9 @@ rust_task::run_on_resume(uintptr_t glue)
     uintptr_t* rsp = (uintptr_t*) rust_sp;
     rsp += n_callee_saves;
     dom->log(rust_log::TASK|rust_log::MEM,
-             "run_on_resume: overwriting retpc=0x%" PRIxPTR
-             " @ rust_sp=0x%" PRIxPTR
-             " with glue=0x%" PRIxPTR,
+             "run_on_resume: overwriting retpc=x%" PRIxPTR
+             " @ rust_sp=x%" PRIxPTR
+             " with glue=x%" PRIxPTR,
              *rsp, rsp, glue);
     *rsp = glue;
 }
@@ -306,8 +311,8 @@ rust_task::run_on_resume(uintptr_t glue)
 void
 rust_task::yield(size_t nargs)
 {
-    dom->log(rust_log::TASK,
-             "task 0x%" PRIxPTR " yielding", this);
+    log(rust_log::TASK,
+        "task 0x%" PRIxPTR " yielding", this);
     run_after_return(nargs, dom->root_crate->get_yield_glue());
 }
 
@@ -322,11 +327,13 @@ rust_task::kill() {
     // Note the distinction here: kill() is when you're in an upcall
     // from task A and want to force-fail task B, you do B->kill().
     // If you want to fail yourself you do self->fail(upcall_nargs).
-    dom->log(rust_log::TASK, "killing task 0x%" PRIxPTR, this);
+    log(rust_log::TASK, "killing task 0x%" PRIxPTR, this);
     // Unblock the task so it can unwind.
     unblock();
+
     if (this == dom->root_task)
         dom->fail();
+
     run_on_resume(dom->root_crate->get_unwind_glue());
 }
 
@@ -369,9 +376,12 @@ void
 rust_task::notify_waiting_tasks()
 {
     while (waiting_tasks.length() > 0) {
-        rust_task *t = waiting_tasks.pop()->receiver;
-        if (!t->dead())
-            t->wakeup(this);
+        log(rust_log::ALL, "notify_waiting_tasks: %d",
+            waiting_tasks.length());
+        rust_task *waiting_task = waiting_tasks.pop()->receiver;
+        if (!waiting_task->dead()) {
+            waiting_task->wakeup(this);
+        }
     }
 }
 
@@ -532,6 +542,9 @@ void
 rust_task::wakeup(rust_cond *from)
 {
     transition(&dom->blocked_tasks, &dom->running_tasks);
+    // TODO: Signaling every time the task is awaken is kind of silly,
+    // do this a nicer way.
+    dom->_progress.signal();
     I(dom, cond == from);
 }
 
@@ -563,6 +576,18 @@ rust_task::get_crate_cache(rust_crate const *curr_crate)
         cache = dom->get_cache(curr_crate);
     }
     return cache;
+}
+
+void
+rust_task::log(uint32_t type_bits, char const *fmt, ...) {
+    char buf[256];
+    if (dom->get_log().is_tracing(type_bits)) {
+        va_list args;
+        va_start(args, fmt);
+        vsnprintf(buf, sizeof(buf), fmt, args);
+        dom->get_log().trace_ln(this, type_bits, buf);
+        va_end(args);
+    }
 }
 
 //

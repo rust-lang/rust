@@ -244,7 +244,10 @@ BOOT_CMXS := $(BOOT_MLS:.ml=.cmx)
 BOOT_OBJS := $(BOOT_MLS:.ml=.o)
 BOOT_CMIS := $(BOOT_MLS:.ml=.cmi)
 
-RUNTIME_CS := rt/rust.cpp \
+RUNTIME_CS := rt/sync/spin_lock.cpp \
+			  rt/sync/lock_free_queue.cpp \
+			  rt/sync/condition_variable.cpp \
+              rt/rust.cpp \
               rt/rust_builtin.cpp \
               rt/rust_crate.cpp \
               rt/rust_crate_cache.cpp \
@@ -256,12 +259,19 @@ RUNTIME_CS := rt/rust.cpp \
               rt/rust_upcall.cpp \
               rt/rust_log.cpp \
               rt/rust_timer.cpp \
+              rt/circular_buffer.cpp \
               rt/isaac/randport.cpp
 
-RUNTIME_HDR := rt/rust.h \
+RUNTIME_HDR := rt/globals.h \
+			   rt/rust.h \
                rt/rust_dwarf.h \
                rt/rust_internal.h \
-               rt/rust_util.h
+               rt/rust_util.h \
+               rt/rust_chan.h \
+               rt/rust_dom.h \
+               rt/rust_task.h \
+               rt/rust_proxy.h \
+               rt/circular_buffer.h
 
 RUNTIME_INCS := -Irt/isaac -Irt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=$(CFG_OBJ_SUFFIX))
@@ -363,6 +373,8 @@ TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
                     test/run-pass/task-comm.rs \
                     test/run-pass/vec-alloc-append.rs \
                     test/run-pass/vec-slice.rs \
+					test/run-pass/task-comm-3.rs \
+					test/run-pass/task-comm-4.rs \
                     test/compile-fail/bad-recv.rs \
                     test/compile-fail/bad-send.rs \
                     test/compile-fail/infinite-tag-type-recursion.rs \
@@ -452,6 +464,11 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       tail-cps.rs \
                       tail-direct.rs \
                       task-comm.rs \
+                      task-comm-0.rs \
+                      task-comm-1.rs \
+                      task-comm-2.rs \
+                      task-comm-3.rs \
+                      task-comm-4.rs \
                       threads.rs \
                       tup.rs \
                       type-sizes.rs \

@@ -19,7 +19,7 @@ str_alloc(rust_task *task, size_t n_bytes)
 extern "C" CDECL rust_str*
 last_os_error(rust_task *task) {
     rust_dom *dom = task->dom;
-    dom->log(rust_log::TASK, "last_os_error()");
+    task->log(rust_log::TASK, "last_os_error()");
 
 #if defined(__WIN32__)
     LPTSTR buf;
@@ -95,7 +95,7 @@ extern "C" CDECL rust_vec*
 vec_alloc(rust_task *task, type_desc *t, size_t n_elts)
 {
     rust_dom *dom = task->dom;
-    dom->log(rust_log::MEM,
+    task->log(rust_log::MEM,
             "vec_alloc %" PRIdPTR " elements of size %" PRIdPTR,
              n_elts, t->size);
     size_t fill = n_elts * t->size;

@@ -13,38 +13,44 @@ public:
     array_list();
     ~array_list();
     size_t size();
-    void append(T value);
+    int32_t append(T value);
     T replace(T old_value, T new_value);
-    size_t index_of(T value);
+    int32_t index_of(T value);
     T & operator[](size_t index);
 };
 
-template<typename T> array_list<T>::array_list() {
+template<typename T>
+array_list<T>::array_list() {
     _capacity = INITIAL_CAPACITY;
     _data = (T *) malloc(sizeof(T) * _capacity);
 }
 
-template<typename T> array_list<T>::~array_list() {
+template<typename T>
+array_list<T>::~array_list() {
     delete _data;
 }
 
-template<typename T> size_t array_list<T>::size() {
+template<typename T> size_t
+array_list<T>::size() {
     return _size;
 }
 
-template<typename T> void array_list<T>::append(T value) {
+template<typename T> int32_t
+array_list<T>::append(T value) {
     if (_size == _capacity) {
         _capacity = _capacity * 2;
         _data = (T *) realloc(_data, _capacity * sizeof(T));
     }
-    _data[_size++] = value;
+    _data[_size ++] = value;
+    return _size - 1;
 }
 
 /**
  * Replaces the old_value in the list with the new_value.
  * Returns the old_value if the replacement succeeded, or NULL otherwise.
  */
-template<typename T> T array_list<T>::replace(T old_value, T new_value) {
+template<typename T> T
+array_list<T>::replace(T old_value, T new_value) {
     int index = index_of(old_value);
     if (index < 0) {
         return NULL;
@@ -53,7 +59,8 @@ template<typename T> T array_list<T>::replace(T old_value, T new_value) {
     return old_value;
 }
 
-template<typename T> size_t array_list<T>::index_of(T value) {
+template<typename T> int32_t
+array_list<T>::index_of(T value) {
     for (size_t i = 0; i < _size; i++) {
         if (_data[i] == value) {
             return i;
@@ -62,7 +69,8 @@ template<typename T> size_t array_list<T>::index_of(T value) {
     return -1;
 }
 
-template<typename T> T & array_list<T>::operator[](size_t index) {
+template<typename T> T &
+array_list<T>::operator[](size_t index) {
     return _data[index];
 }
 

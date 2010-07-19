@@ -5,33 +5,46 @@
  * dequeue() is not allowed to interrupt itself.
  */
 
+#include "../globals.h"
 #include "lock_free_queue.h"
 
-lock_free_queue::lock_free_queue() :
-    tail(this) {
+lock_free_queue_node::lock_free_queue_node() : next(NULL) {
+
 }
 
-void lock_free_queue::enqueue(lock_free_queue_node *item) {
-    item->next = (lock_free_queue_node *) 0;
-    lock_free_queue_node *last = tail;
-    tail = item;
-    while (last->next)
+lock_free_queue::lock_free_queue() : _tail(this) {
+
+}
+
+void
+lock_free_queue::enqueue(lock_free_queue_node *item) {
+    item->next = (lock_free_queue_node *) NULL;
+    lock_free_queue_node *last = _tail;
+    _tail = item;
+    while (last->next) {
         last = last->next;
+    }
     last->next = item;
 }
 
-lock_free_queue_node *lockfree_queue::dequeue() {
+lock_free_queue_node *
+lock_free_queue::dequeue() {
     lock_free_queue_node *item = next;
     if (item && !(next = item->next)) {
-        tail = (lock_free_queue_node *) this;
+        _tail = (lock_free_queue_node *) this;
         if (item->next) {
             lock_free_queue_node *lost = item->next;
             lock_free_queue_node *help;
             do {
                 help = lost->next;
                 enqueue(lost);
-            } while ((lost = help) != (lock_free_queue_node *) 0);
+            } while ((lost = help) != (lock_free_queue_node *) NULL);
         }
     }
     return item;
+}
+
+bool
+lock_free_queue::is_empty() {
+    return next == NULL;
 }

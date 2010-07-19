@@ -1,7 +1,6 @@
 #include "rust_internal.h"
 #include "util/array_list.h"
 
-
 // #define TRACK_ALLOCATIONS
 // For debugging, keeps track of live allocations, so you can find out
 // exactly what leaked.
@@ -100,52 +99,6 @@ rust_srv::clone()
     return new rust_srv();
 }
 
-
-int
-rust_main_loop(rust_dom *dom)
-{
-    // Make sure someone is watching, to pull us out of infinite loops.
-    rust_timer timer(*dom);
-
-    int rval;
-    rust_task *task;
-
-    dom->log(rust_log::DOM,
-            "running main-loop on domain 0x%" PRIxPTR, dom);
-    dom->logptr("exit-task glue",
-            dom->root_crate->get_exit_task_glue());
-
-    while ((task = dom->sched()) != NULL) {
-        I(dom, task->running());
-
-        dom->log(rust_log::TASK,
-                "activating task 0x%" PRIxPTR ", sp=0x%" PRIxPTR,
-                (uintptr_t)task, task->rust_sp);
-
-        dom->interrupt_flag = 0;
-
-        dom->activate(task);
-
-        dom->log(rust_log::TASK,
-                 "returned from task 0x%" PRIxPTR
-                 " in state '%s', sp=0x%" PRIxPTR,
-                 (uintptr_t)task,
-                 dom->state_vec_name(task->state),
-                 task->rust_sp);
-
-        I(dom, task->rust_sp >= (uintptr_t) &task->stk->data[0]);
-        I(dom, task->rust_sp < task->stk->limit);
-
-        dom->reap_dead_tasks();
-    }
-
-    dom->log(rust_log::DOM, "finished main-loop (dom.rval = %d)", dom->rval);
-    rval = dom->rval;
-
-    return rval;
-}
-
-
 struct
 command_line_args
 {
@@ -243,7 +196,7 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc, char **argv)
                              (uintptr_t)&main_args,
                              sizeof(main_args));
 
-        ret = rust_main_loop(&dom);
+        ret = dom.start_main_loop();
     }
 
 #if !defined(__WIN32__)

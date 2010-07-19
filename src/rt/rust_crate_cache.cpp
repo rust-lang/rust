@@ -251,7 +251,7 @@ rust_crate_cache::flush() {
         if (s) {
             dom->log(rust_log::CACHE,
                      "rust_crate_cache::flush() deref rust_sym %"
-                     PRIdPTR " (rc=%" PRIdPTR ")", i, s->refcnt);
+                     PRIdPTR " (rc=%" PRIdPTR ")", i, s->ref_count);
             s->deref();
         }
         rust_syms[i] = NULL;
@@ -262,7 +262,7 @@ rust_crate_cache::flush() {
         if (s) {
             dom->log(rust_log::CACHE,
                      "rust_crate_cache::flush() deref c_sym %"
-                     PRIdPTR " (rc=%" PRIdPTR ")", i, s->refcnt);
+                     PRIdPTR " (rc=%" PRIdPTR ")", i, s->ref_count);
             s->deref();
         }
         c_syms[i] = NULL;
@@ -272,7 +272,7 @@ rust_crate_cache::flush() {
         lib *l = libs[i];
         if (l) {
             dom->log(rust_log::CACHE, "rust_crate_cache::flush() deref lib %"
-                     PRIdPTR " (rc=%" PRIdPTR ")", i, l->refcnt);
+                     PRIdPTR " (rc=%" PRIdPTR ")", i, l->ref_count);
             l->deref();
         }
         libs[i] = NULL;

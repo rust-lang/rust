@@ -5,6 +5,8 @@
 #define __STDC_CONSTANT_MACROS 1
 #define __STDC_FORMAT_MACROS 1
 
+#define ERROR 0
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <inttypes.h>
@@ -36,12 +38,17 @@ extern "C" {
 #error "Platform not supported."
 #endif
 
+#include "sync/condition_variable.h"
+
 #ifndef __i386__
 #error "Target CPU not supported."
 #endif
 
-#define I(dom, e) ((e) ? (void)0 :                              \
+#define I(dom, e) ((e) ? (void)0 :                           \
                    (dom)->srv->fatal(#e, __FILE__, __LINE__))
+
+#define A(dom, e, s) ((e) ? (void)0 :                                    \
+                      (dom)->srv->fatal(#e " : " #s, __FILE__, __LINE__))
 
 struct rust_task;
 struct rust_port;
@@ -50,7 +57,7 @@ struct rust_token;
 struct rust_dom;
 class rust_crate;
 class rust_crate_cache;
-class lockfree_queue;
+// class lockfree_queue;
 
 struct stk_seg;
 struct type_desc;
@@ -66,14 +73,14 @@ template <typename T>
 struct
 rc_base
 {
-    size_t refcnt;
+    size_t ref_count;
 
     void ref() {
-        ++refcnt;
+        ++ref_count;
     }
 
     void deref() {
-        if (--refcnt == 0) {
+        if (--ref_count == 0) {
             delete (T*)this;
         }
     }
@@ -122,71 +129,29 @@ public:
         return fill;
     }
 
+    bool is_empty() {
+        return fill == 0;
+    }
+
     T *& operator[](size_t offset);
     void push(T *p);
     T *pop();
     void trim(size_t fill);
-    void swapdel(T* p);
+    void swap_delete(T* p);
 };
 
-struct
-rust_dom
-{
-    // Fields known to the compiler:
-    uintptr_t interrupt_flag;
+#include "rust_dom.h"
 
-    // Fields known only by the runtime:
+template <typename T> inline T
+check_null(rust_dom *dom, T value, char const *expr,
+           char const *file, size_t line) {
+    if (value == NULL) {
+        dom->srv->fatal(expr, file, line);
+    }
+    return value;
+}
 
-    // NB: the root crate must remain in memory until the root of the
-    // tree of domains exits. All domains within this tree have a
-    // copy of this root_crate value and use it for finding utility
-    // glue.
-    rust_crate const *root_crate;
-    rust_log _log;
-    rust_srv *srv;
-    // uint32_t logbits;
-    ptr_vec<rust_task> running_tasks;
-    ptr_vec<rust_task> blocked_tasks;
-    ptr_vec<rust_task> dead_tasks;
-    ptr_vec<rust_crate_cache> caches;
-    randctx rctx;
-    rust_task *root_task;
-    rust_task *curr_task;
-    int rval;
-    lockfree_queue *incoming; // incoming messages from other threads
-
-#ifndef __WIN32__
-    pthread_attr_t attr;
-#endif
-
-    rust_dom(rust_srv *srv, rust_crate const *root_crate);
-    ~rust_dom();
-
-    void activate(rust_task *task);
-    void log(uint32_t logbit, char const *fmt, ...);
-    rust_log & get_log();
-    void logptr(char const *msg, uintptr_t ptrval);
-    template<typename T>
-    void logptr(char const *msg, T* ptrval);
-    void fail();
-    void *malloc(size_t sz);
-    void *calloc(size_t sz);
-    void *realloc(void *data, size_t sz);
-    void free(void *p);
-
-#ifdef __WIN32__
-    void win32_require(LPCTSTR fn, BOOL ok);
-#endif
-
-    rust_crate_cache *get_cache(rust_crate const *crate);
-    size_t n_live_tasks();
-    void add_task_to_state_vec(ptr_vec<rust_task> *v, rust_task *task);
-    void remove_task_from_state_vec(ptr_vec<rust_task> *v, rust_task *task);
-    const char *state_vec_name(ptr_vec<rust_task> *v);
-
-    void reap_dead_tasks();
-    rust_task *sched();
-};
+#define CHECK_NULL(dom, e) (check_null(dom, e, #e, __FILE__, __LINE__))
 
 inline void *operator new(size_t sz, void *mem) {
     return mem;
@@ -217,7 +182,7 @@ rust_timer
     // For now it's just the most basic "thread that can interrupt
     // its associated domain-thread" device, so that we have
     // *some* form of task-preemption.
-    rust_dom &dom;
+    rust_dom *dom;
     uintptr_t exit_flag;
 
 #if defined(__WIN32__)
@@ -227,7 +192,7 @@ rust_timer
     pthread_t thread;
 #endif
 
-    rust_timer(rust_dom &dom);
+    rust_timer(rust_dom *dom);
     ~rust_timer();
 };
 
@@ -608,94 +573,8 @@ struct gc_alloc {
     }
 };
 
-struct
-rust_task : public rc_base<rust_task>,
-            public dom_owned<rust_task>,
-            public rust_cond
-{
-    // Fields known to the compiler.
-    stk_seg *stk;
-    uintptr_t runtime_sp;      // Runtime sp while task running.
-    uintptr_t rust_sp;         // Saved sp when not running.
-    gc_alloc *gc_alloc_chain;  // Linked list of GC allocations.
-    rust_dom *dom;
-    rust_crate_cache *cache;
-
-    // Fields known only to the runtime.
-    ptr_vec<rust_task> *state;
-    rust_cond *cond;
-    uintptr_t* dptr;           // Rendezvous pointer for send/recv.
-    rust_task *supervisor;     // Parent-link for failure propagation.
-    size_t idx;
-    size_t gc_alloc_thresh;
-    size_t gc_alloc_accum;
-
-    // Wait queue for tasks waiting for this task.
-    rust_wait_queue waiting_tasks;
-    rust_alarm alarm;
-
-    rust_task(rust_dom *dom,
-              rust_task *spawner);
-    ~rust_task();
-
-    void start(uintptr_t exit_task_glue,
-               uintptr_t spawnee_fn,
-               uintptr_t args,
-               size_t callsz);
-    void grow(size_t n_frame_bytes);
-    bool running();
-    bool blocked();
-    bool blocked_on(rust_cond *cond);
-    bool dead();
-
-    void link_gc(gc_alloc *gcm);
-    void unlink_gc(gc_alloc *gcm);
-    void *malloc(size_t sz, type_desc *td=0);
-    void *realloc(void *data, size_t sz, bool gc_mem=false);
-    void free(void *p, bool gc_mem=false);
-
-    const char *state_str();
-    void transition(ptr_vec<rust_task> *svec, ptr_vec<rust_task> *dvec);
-
-    void block(rust_cond *on);
-    void wakeup(rust_cond *from);
-    void die();
-    void unblock();
-
-    void check_active() { I(dom, dom->curr_task == this); }
-    void check_suspended() { I(dom, dom->curr_task != this); }
-
-    // Swap in some glue code to run when we have returned to the
-    // task's context (assuming we're the active task).
-    void run_after_return(size_t nargs, uintptr_t glue);
-
-    // Swap in some glue code to run when we're next activated
-    // (assuming we're the suspended task).
-    void run_on_resume(uintptr_t glue);
-
-    // Save callee-saved registers and return to the main loop.
-    void yield(size_t nargs);
-
-    // Fail this task (assuming caller-on-stack is different task).
-    void kill();
-
-    // Fail self, assuming caller-on-stack is this task.
-    void fail(size_t nargs);
-
-    // Run the gc glue on the task stack.
-    void gc(size_t nargs);
-
-    // Disconnect from our supervisor.
-    void unsupervise();
-
-    // Notify tasks waiting for us that we are about to die.
-    void notify_waiting_tasks();
-
-    uintptr_t get_fp();
-    uintptr_t get_previous_fp(uintptr_t fp);
-    frame_glue_fns *get_frame_glue_fns(uintptr_t fp);
-    rust_crate_cache * get_crate_cache(rust_crate const *curr_crate);
-};
+#include "rust_proxy.h"
+#include "rust_task.h"
 
 struct rust_port : public rc_base<rust_port>,
                    public task_owned<rust_port>,
@@ -722,30 +601,28 @@ struct rust_token : public rust_cond {
     void withdraw();
 };
 
+#include "circular_buffer.h"
 
-struct circ_buf : public dom_owned<circ_buf> {
-    static const size_t INIT_CIRC_BUF_UNITS = 8;
-    static const size_t MAX_CIRC_BUF_SIZE = 1 << 24;
-
-    rust_dom *dom;
-    size_t alloc;
-    size_t unit_sz;
-    size_t next;
-    size_t unread;
-    uint8_t *data;
-
-    circ_buf(rust_dom *dom, size_t unit_sz);
-    ~circ_buf();
-
-    void transfer(void *dst);
-    void push(void *src);
-    void shift(void *dst);
-};
+//struct circ_buf : public dom_owned<circ_buf> {
+//    static const size_t INIT_CIRC_BUF_UNITS = 8;
+//    static const size_t MAX_CIRC_BUF_SIZE = 1 << 24;
+//
+//    rust_dom *dom;
+//    size_t alloc;
+//    size_t unit_sz;
+//    size_t next;
+//    size_t unread;
+//    uint8_t *data;
+//
+//    circ_buf(rust_dom *dom, size_t unit_sz);
+//    ~circ_buf();
+//
+//    void transfer(void *dst);
+//    void push(void *src);
+//    void shift(void *dst);
+//};
 
 #include "rust_chan.h"
-
-int
-rust_main_loop(rust_dom *dom);
 
 //
 // Local Variables:

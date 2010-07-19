@@ -1,4 +1,3 @@
-
 #include "rust_internal.h"
 #include "valgrind.h"
 
@@ -27,12 +26,11 @@ static void *
 #else
 #error "Platform not supported"
 #endif
-timer_loop(void *ptr)
-{
+timer_loop(void *ptr) {
     // We were handed the rust_timer that owns us.
     rust_timer *timer = (rust_timer *)ptr;
-    rust_dom &dom = timer->dom;
-    dom.log(rust_log::TIMER, "in timer 0x%" PRIxPTR, (uintptr_t)timer);
+    rust_dom *dom = timer->dom;
+    dom->log(rust_log::TIMER, "in timer 0x%" PRIxPTR, (uintptr_t)timer);
     size_t ms = TIME_SLICE_IN_MS;
     if (!RUNNING_ON_VALGRIND)
         ms = 1;
@@ -43,12 +41,10 @@ timer_loop(void *ptr)
 #else
         usleep(ms * 1000);
 #endif
-        dom.log(rust_log::TIMER,
-                "timer 0x%" PRIxPTR
-                " interrupting domain 0x%" PRIxPTR,
-                (uintptr_t)timer,
-                (uintptr_t)&dom);
-        dom.interrupt_flag = 1;
+        dom->log(rust_log::TIMER, "timer 0x%" PRIxPTR
+        " interrupting domain 0x%" PRIxPTR, (uintptr_t) timer,
+                 (uintptr_t) dom);
+        dom->interrupt_flag = 1;
     }
 #if defined(__WIN32__)
     ExitThread(0);
@@ -58,10 +54,9 @@ timer_loop(void *ptr)
     return 0;
 }
 
-
-rust_timer::rust_timer(rust_dom &dom) : dom(dom), exit_flag(0)
-{
-    dom.log(rust_log::TIMER, "creating timer for domain 0x%" PRIxPTR, &dom);
+rust_timer::rust_timer(rust_dom *dom) :
+    dom(dom), exit_flag(0) {
+    dom->log(rust_log::TIMER, "creating timer for domain 0x%" PRIxPTR, dom);
 #if defined(__WIN32__)
     thread = CreateThread(NULL, 0, timer_loop, this, 0, NULL);
     dom.win32_require("CreateThread", thread != NULL);
@@ -76,13 +71,11 @@ rust_timer::rust_timer(rust_dom &dom) : dom(dom), exit_flag(0)
 #endif
 }
 
-rust_timer::~rust_timer()
-{
+rust_timer::~rust_timer() {
     exit_flag = 1;
 #if defined(__WIN32__)
-    dom.win32_require("WaitForSingleObject",
-                      WaitForSingleObject(thread, INFINITE)
-                      == WAIT_OBJECT_0);
+    dom->win32_require("WaitForSingleObject",
+            WaitForSingleObject(thread, INFINITE) == WAIT_OBJECT_0);
 #else
     pthread_join(thread, NULL);
 #endif

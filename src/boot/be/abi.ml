@@ -13,7 +13,7 @@
 let rc_base_field_refcnt = 0;;
 
 let task_field_refcnt = rc_base_field_refcnt;;
-let task_field_stk = task_field_refcnt + 1;;
+let task_field_stk = task_field_refcnt + 2;;
 let task_field_runtime_sp = task_field_stk + 1;;
 let task_field_rust_sp = task_field_runtime_sp + 1;;
 let task_field_gc_alloc_chain = task_field_rust_sp + 1;;

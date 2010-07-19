@@ -1,8 +1,9 @@
+#include "../globals.h"
+#include "spin_lock.h"
+
 /*
  * Your average spin lock.
  */
-
-#include "globals.h"
 
 // #define TRACE
 

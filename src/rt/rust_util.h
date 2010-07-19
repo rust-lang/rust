@@ -5,7 +5,7 @@
 
 template <typename T>
 rc_base<T>::rc_base() :
-    refcnt(1)
+    ref_count(1)
 {
 }
 
@@ -85,7 +85,7 @@ ptr_vec<T>::trim(size_t sz)
 
 template <typename T>
 void
-ptr_vec<T>::swapdel(T *item)
+ptr_vec<T>::swap_delete(T *item)
 {
     /* Swap the endpoint into i and decr fill. */
     I(dom, data);
