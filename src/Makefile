@@ -352,19 +352,19 @@ MUT_BOX_XFAILS := $(addprefix test/run-pass/, \
                    )
 
 TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
-                    test/run-pass/mlist-cycle.rs \
+                    test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/clone-with-exterior.rs \
-                    test/run-pass/obj-as.rs \
-                    test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
                     test/run-pass/generic-fn-infer.rs \
                     test/run-pass/generic-recursive-tag.rs \
+                    test/run-pass/mlist-cycle.rs \
                     test/run-pass/mutable-vec-drop.rs \
-                    test/run-pass/bind-obj-ctor.rs \
-                    test/run-pass/vec-alloc-append.rs \
+                    test/run-pass/obj-as.rs \
                     test/run-pass/task-comm.rs \
-                    test/compile-fail/bad-send.rs \
+                    test/run-pass/vec-alloc-append.rs \
+                    test/run-pass/vec-slice.rs \
                     test/compile-fail/bad-recv.rs \
+                    test/compile-fail/bad-send.rs \
                     test/compile-fail/infinite-tag-type-recursion.rs \
                     test/compile-fail/infinite-vec-type-recursion.rs \
                     test/compile-fail/writing-through-read-alias.rs
@@ -395,8 +395,8 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       export-non-interference.rs \
                       exterior.rs \
                       fn-lval.rs \
-                      foreach-nested.rs \
                       foreach-nested-2.rs \
+                      foreach-nested.rs \
                       foreach-put-structured.rs \
                       foreach-simple-outer-slot.rs \
                       foreach-simple.rs \
@@ -443,8 +443,8 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       obj-with-vec.rs \
                       opeq.rs \
                       output-slot-variants.rs \
-                      preempt.rs \
                       pred.rs \
+                      preempt.rs \
                       readalias.rs \
                       rec-auto.rs \
                       rec-extend.rs \
@@ -462,6 +462,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       tag.rs \
                       tail-cps.rs \
                       tail-direct.rs \
+                      task-comm.rs \
                       threads.rs \
                       tup.rs \
                       type-sizes.rs \
@@ -469,9 +470,9 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       u8-incr-decr.rs \
                       u8-incr.rs \
                       unit.rs \
-                      user.rs \
                       use-import-export.rs \
                       use-uninit.rs \
+                      user.rs \
                       utf8.rs \
                       vec-alloc-append.rs \
                       vec-append.rs \
@@ -484,23 +485,22 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       writealias.rs \
                       yield.rs \
                       yield2.rs \
-                      task-comm.rs \
                      ) \
                     $(addprefix test/run-fail/, \
                       explicit-fail.rs \
                       fail.rs \
                       linked-failure.rs \
                       pred.rs \
-                      vec-overrun.rs \
                       str-overrun.rs \
+                      vec-overrun.rs \
                       vec-underrun.rs \
                      ) \
                     $(addprefix test/compile-fail/, \
-                      rec-missing-fields.rs \
-                      bad-send.rs \
                       bad-recv.rs \
+                      bad-send.rs \
                       infinite-tag-type-recursion.rs \
                       infinite-vec-type-recursion.rs \
+                      rec-missing-fields.rs \
                       writing-through-read-alias.rs \
                      )
 
