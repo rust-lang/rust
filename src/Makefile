@@ -373,6 +373,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       acyclic-unwind.rs \
                       alt-pattern-simple.rs \
                       alt-tag.rs \
+                      argv.rs \
                       basic.rs \
                       bind-obj-ctor.rs \
                       bind-thunk.rs \

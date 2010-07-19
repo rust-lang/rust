@@ -25,6 +25,10 @@ let bug _ =
   in Printf.ksprintf k
 ;;
 
+(* TODO: On some joyous day, remove me. *)
+exception Not_implemented of string
+;;
+
 exception Semant_err of ((node_id option) * string)
 ;;
 

@@ -1389,6 +1389,8 @@ let sprintf_effect = sprintf_fmt fmt_effect;;
 let sprintf_tag = sprintf_fmt fmt_tag;;
 let sprintf_carg = sprintf_fmt fmt_carg;;
 let sprintf_constr = sprintf_fmt fmt_constr;;
+let sprintf_mod_item =
+  sprintf_fmt (fun ff (id,item) -> fmt_mod_item ff id item);;
 let sprintf_mod_items = sprintf_fmt fmt_mod_items;;
 let sprintf_decl_param = sprintf_fmt fmt_decl_param;;
 let sprintf_decl_params = sprintf_fmt fmt_decl_params;;

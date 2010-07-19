@@ -120,15 +120,6 @@ let trans_crate
       | Some (Node num) -> num_llid num
   in
 
-  (*
-   * Returns a bogus value for use in stub code that hasn't been implemented
-   * yet.
-   *
-   * TODO: On some joyous day, remove me.
-   *)
-  let bogus = Llvm.const_null (Llvm.i32_type llctx) in
-  let bogus_ptr = Llvm.const_null (Llvm.pointer_type (Llvm.i32_type llctx)) in
-
   let llnilty = Llvm.array_type (Llvm.i1_type llctx) 0 in
   let llnil = Llvm.const_array (Llvm.i1_type llctx) [| |] in
 
@@ -338,7 +329,9 @@ let trans_crate
           word_ty
 
       | Ast.TY_tag _ | Ast.TY_iso _ | Ast.TY_idx _
-      | Ast.TY_obj _ | Ast.TY_type -> (opaque()) (* TODO *)
+      | Ast.TY_obj _ | Ast.TY_type ->
+          raise (Not_implemented
+                   ("trans_ty_full " ^ (Ast.sprintf_ty() ty)))
 
       | Ast.TY_param _ | Ast.TY_named _ ->
           bug () "unresolved type in lltrans"
@@ -543,8 +536,10 @@ let trans_crate
   let (dbg_llscopes:(node_id, Llvm.llvalue) Hashtbl.t) = Hashtbl.create 0 in
   let declare_mod_item
       (name:Ast.ident)
-      { node = { Ast.decl_item = (item:Ast.mod_item') }; id = id }
+      mod_item
       : unit =
+    let { node = { Ast.decl_item = (item:Ast.mod_item') }; id = id } =
+      mod_item in
     let full_name = Semant.item_str sem_cx id in
     let (filename, line_num) =
       match Session.get_span sess id with
@@ -564,7 +559,16 @@ let trans_crate
               Hashtbl.add llitems id llfn;
               Hashtbl.add dbg_llscopes id meta
 
-        | _ -> () (* TODO *)
+        | Ast.MOD_ITEM_type _ ->
+            ()  (* Types get translated with their terms. *)
+
+        | Ast.MOD_ITEM_mod _ ->
+            ()  (* Modules simply contain other items that are translated
+                   on their own. *)
+
+        | _ -> raise (Not_implemented
+                        ("declare_mod_item " ^
+                           (Ast.sprintf_mod_item() (name,mod_item))))
   in
 
   let trans_fn
@@ -711,9 +715,12 @@ let trans_crate
                 match referent with
                     Semant.DEFN_slot _ -> Hashtbl.find slot_to_llvalue id
                   | Semant.DEFN_item _ -> Hashtbl.find llitems id
-                  | _ -> bogus_ptr (* TODO *)
+                  | _ -> raise
+                      (Not_implemented
+                         ("referent of " ^ (Ast.sprintf_lval() lval)))
               end
-          | Ast.LVAL_ext _ -> bogus_ptr (* TODO *)
+          | Ast.LVAL_ext _ -> raise
+              (Not_implemented ("trans_lval " ^ (Ast.sprintf_lval() lval)))
       in
 
       let trans_atom (atom:Ast.atom) : Llvm.llvalue =
@@ -754,10 +761,16 @@ let trans_crate
           | Ast.BINOP_div -> Llvm.build_sdiv lllhs llrhs llid llbuilder
           | Ast.BINOP_mod -> Llvm.build_srem lllhs llrhs llid llbuilder
 
-          | _ -> bogus (* TODO *)
+          | _ -> raise
+              (Not_implemented
+                 ("trans_binary_expr " ^
+                    (Ast.sprintf_expr() (Ast.EXPR_binary (op,lhs,rhs)))))
       in
 
-      let trans_unary_expr _ = bogus in (* TODO *)
+      let trans_unary_expr e = raise
+        (Not_implemented ("trans_unary_expr " ^
+                            (Ast.sprintf_expr() (Ast.EXPR_unary e))))
+      in
 
       let trans_expr (expr:Ast.expr) : Llvm.llvalue =
         iflog (fun _ -> log sem_cx "trans_expr: %a" Ast.sprintf_expr expr);
@@ -915,7 +928,11 @@ let trans_crate
                       (Some d) [| s; len |];
                     trans_tail ()
 
-              | _ -> trans_stmts block_id llbuilder tail terminate
+              | Ast.STMT_decl _ ->
+                  trans_tail ()
+
+              | _ -> raise (Not_implemented
+                              ("trans_stmts " ^ (Ast.sprintf_stmt() head)))
 
     (* 
      * Translates an AST block to one or more LLVM basic blocks and returns
