@@ -20,10 +20,19 @@ public:
     bool is_empty();
 
 private:
+    // Size of the buffer in bytes.
     size_t _buffer_sz;
-    size_t unit_sz;
+
+    // Size of the data unit in bytes.
+    size_t _unit_sz;
+
+    // Byte offset within the buffer where to read the next unit of data.
     size_t _next;
+
+    // Number of bytes that have not been read from the buffer.
     size_t _unread;
+
+    // The buffer itself.
     uint8_t *_buffer;
 };
 

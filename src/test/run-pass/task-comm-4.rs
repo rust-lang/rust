@@ -3,8 +3,30 @@ io fn main() -> () {
 }
 
 io fn test00() {
+    let int r = 0;    
+    let int sum = 0;
     let port[int] p = port();
     let chan[int] c = chan(p);
-    c <| 42;
-    let int r <- p;
+
+    c <| 1;
+    c <| 2;
+    c <| 3;
+    c <| 4;
+
+    r <- p; sum += r; log (r);
+    r <- p; sum += r; log (r);
+    r <- p; sum += r; log (r);
+    r <- p; sum += r; log (r);
+    
+    c <| 5;
+    c <| 6;
+    c <| 7;
+    c <| 8;
+
+    r <- p; sum += r; log (r);
+    r <- p; sum += r; log (r);
+    r <- p; sum += r; log (r);
+    r <- p; sum += r; log (r);
+    
+    check (sum == 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8);
 }

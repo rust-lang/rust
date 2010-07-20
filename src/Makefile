@@ -374,7 +374,6 @@ TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
                     test/run-pass/vec-alloc-append.rs \
                     test/run-pass/vec-slice.rs \
 					test/run-pass/task-comm-3.rs \
-					test/run-pass/task-comm-4.rs \
                     test/compile-fail/bad-recv.rs \
                     test/compile-fail/bad-send.rs \
                     test/compile-fail/infinite-tag-type-recursion.rs \
