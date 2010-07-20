@@ -280,9 +280,9 @@ rust_task::run_after_return(size_t nargs, uintptr_t glue)
 
     uintptr_t *retpc = ((uintptr_t *) sp) - 1;
     dom->log(rust_log::TASK|rust_log::MEM,
-             "run_after_return: overwriting retpc=x%" PRIxPTR
-             " @ runtime_sp=x%" PRIxPTR
-             " with glue=x%" PRIxPTR,
+             "run_after_return: overwriting retpc=0x%" PRIxPTR
+             " @ runtime_sp=0x%" PRIxPTR
+             " with glue=0x%" PRIxPTR,
              *retpc, sp, glue);
 
     // Move the current return address (which points into rust code)
@@ -301,9 +301,9 @@ rust_task::run_on_resume(uintptr_t glue)
     uintptr_t* rsp = (uintptr_t*) rust_sp;
     rsp += n_callee_saves;
     dom->log(rust_log::TASK|rust_log::MEM,
-             "run_on_resume: overwriting retpc=x%" PRIxPTR
-             " @ rust_sp=x%" PRIxPTR
-             " with glue=x%" PRIxPTR,
+             "run_on_resume: overwriting retpc=0x%" PRIxPTR
+             " @ rust_sp=0x%" PRIxPTR
+             " with glue=0x%" PRIxPTR,
              *rsp, rsp, glue);
     *rsp = glue;
 }

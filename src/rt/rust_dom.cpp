@@ -339,7 +339,7 @@ rust_dom::start_main_loop()
         I(this, scheduled_task->running());
 
         log(rust_log::TASK,
-                 "activating task 0x%" PRIxPTR ", sp=x%" PRIxPTR,
+                 "activating task 0x%" PRIxPTR ", sp=0x%" PRIxPTR,
                  (uintptr_t)scheduled_task, scheduled_task->rust_sp);
 
         interrupt_flag = 0;
