@@ -507,68 +507,69 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
 
       | _ ->
           let (lstmts, lval) = ctxt "stmt: lval" parse_lval ps in
-            begin
-              match peek ps with
+          let stmts =
+            match peek ps with
 
-                  SEMI -> (bump ps; lstmts)
+                SEMI -> (bump ps; [| |])
 
-                | EQ -> parse_init lval ps
+              | EQ -> parse_init lval ps
 
-                | OPEQ binop_token ->
-                    bump ps;
-                    let (stmts, rhs) =
-                      ctxt "stmt: opeq rhs" parse_expr_atom ps
-                    in
-                    let binop =
-                      match binop_token with
-                          PLUS    -> Ast.BINOP_add
-                        | MINUS   -> Ast.BINOP_sub
-                        | STAR    -> Ast.BINOP_mul
-                        | SLASH   -> Ast.BINOP_div
-                        | PERCENT -> Ast.BINOP_mod
-                        | AND     -> Ast.BINOP_and
-                        | OR      -> Ast.BINOP_or
-                        | CARET   -> Ast.BINOP_xor
-                        | LSL     -> Ast.BINOP_lsl
-                        | LSR     -> Ast.BINOP_lsr
-                        | ASR     -> Ast.BINOP_asr
-                        | _       -> raise (err "unknown opeq token" ps)
-                    in
-                      expect ps SEMI;
-                      spans ps stmts apos
-                        (Ast.STMT_copy_binop (lval, binop, rhs))
+              | OPEQ binop_token ->
+                  bump ps;
+                  let (stmts, rhs) =
+                    ctxt "stmt: opeq rhs" parse_expr_atom ps
+                  in
+                  let binop =
+                    match binop_token with
+                        PLUS    -> Ast.BINOP_add
+                      | MINUS   -> Ast.BINOP_sub
+                      | STAR    -> Ast.BINOP_mul
+                      | SLASH   -> Ast.BINOP_div
+                      | PERCENT -> Ast.BINOP_mod
+                      | AND     -> Ast.BINOP_and
+                      | OR      -> Ast.BINOP_or
+                      | CARET   -> Ast.BINOP_xor
+                      | LSL     -> Ast.BINOP_lsl
+                      | LSR     -> Ast.BINOP_lsr
+                      | ASR     -> Ast.BINOP_asr
+                      | _       -> raise (err "unknown opeq token" ps)
+                  in
+                    expect ps SEMI;
+                    spans ps stmts apos
+                      (Ast.STMT_copy_binop (lval, binop, rhs))
 
-                | LARROW ->
-                    bump ps;
-                    let (stmts, rhs) = ctxt "stmt: recv rhs" parse_lval ps in
-                    let _ = expect ps SEMI in
-                      spans ps stmts apos (Ast.STMT_recv (lval, rhs))
+              | LARROW ->
+                  bump ps;
+                  let (stmts, rhs) = ctxt "stmt: recv rhs" parse_lval ps in
+                  let _ = expect ps SEMI in
+                    spans ps stmts apos (Ast.STMT_recv (lval, rhs))
 
-                | SEND ->
-                    bump ps;
-                    let (stmts, rhs) =
-                      ctxt "stmt: send rhs" parse_expr_atom ps
-                    in
-                    let _ = expect ps SEMI in
-                    let bpos = lexpos ps in
-                    let (src, copy) = match rhs with
-                        Ast.ATOM_lval lv -> (lv, [| |])
-                      | _ ->
-                          let (_, tmp, tempdecl) =
-                            build_tmp ps slot_auto apos bpos
-                          in
-                          let copy = span ps apos bpos
-                            (Ast.STMT_copy (tmp, Ast.EXPR_atom rhs)) in
-                              ((clone_lval ps tmp), [| tempdecl; copy |])
-                    in
-                    let send =
-                      span ps apos bpos
-                        (Ast.STMT_send (lval, src))
-                    in
-                      Array.concat [ stmts; copy; [| send |] ]
+              | SEND ->
+                  bump ps;
+                  let (stmts, rhs) =
+                    ctxt "stmt: send rhs" parse_expr_atom ps
+                  in
+                  let _ = expect ps SEMI in
+                  let bpos = lexpos ps in
+                  let (src, copy) = match rhs with
+                      Ast.ATOM_lval lv -> (lv, [| |])
+                    | _ ->
+                        let (_, tmp, tempdecl) =
+                          build_tmp ps slot_auto apos bpos
+                        in
+                        let copy = span ps apos bpos
+                          (Ast.STMT_copy (tmp, Ast.EXPR_atom rhs)) in
+                            ((clone_lval ps tmp), [| tempdecl; copy |])
+                  in
+                  let send =
+                    span ps apos bpos
+                      (Ast.STMT_send (lval, src))
+                  in
+                    Array.concat [ stmts; copy; [| send |] ]
 
-                | _ -> raise (unexpected ps)
-            end
+              | _ -> raise (unexpected ps)
+          in
+          Array.append lstmts stmts
 
 
 and parse_ty_param (iref:int ref) (ps:pstate) : Ast.ty_param identified =
