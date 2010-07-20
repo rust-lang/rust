@@ -3912,8 +3912,17 @@ let trans_visitor
     if cc = CALL_direct
     then zero
     else
-      let (pair_cell, _) = trans_lval pair_lval in
-        Il.Cell (get_element_ptr pair_cell Abi.fn_field_closure)
+      let (pair_cell, ty) = trans_lval pair_lval in
+      let (pair_cell, _) =
+        if cc = CALL_vtbl
+          (* |pair_lval| here is the obj to whose vtbl we're dispatching.
+           * Said obj might have been auto-deref'ed for the method call,
+           * so we have to be sure to do the same here.
+           *)
+        then deref_ty DEREF_all_boxes false pair_cell ty
+        else (pair_cell, ty)
+      in
+        Il.Cell (get_element_ptr pair_cell Abi.binding_field_bound_data)
 
   and call_ctrl flv : call_ctrl =
     if lval_is_static cx flv
