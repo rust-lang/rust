@@ -386,6 +386,8 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       acyclic-unwind.rs \
                       alt-pattern-simple.rs \
                       alt-tag.rs \
+                      argv.rs \
+                      auto-deref.rs \
                       autoderef-full-lval.rs \
                       autoderef-objfn.rs \
                       basic.rs \
@@ -471,6 +473,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       task-comm-2.rs \
                       task-comm-3.rs \
                       task-comm-4.rs \
+                      task-comm-5.rs \
                       threads.rs \
                       tup.rs \
                       type-sizes.rs \
