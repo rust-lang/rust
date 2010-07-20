@@ -13,6 +13,8 @@
 *.dSYM
 *.d
 *.o
+*.ll
+*.bc
 *.aux
 *.cp
 *.fn

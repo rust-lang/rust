@@ -189,6 +189,7 @@ ifdef CFG_LLVM_CONFIG
     lltrans.ml llemit.ml)
   LLC := "$(shell $(CFG_LLVM_CONFIG) --bindir)/llc"
   CFG_LLC_CFLAGS := -march=x86
+  LLVM-DIS := "$(shell $(CFG_LLVM_CONFIG) --bindir)/llvm-dis"
   $(info cfg: found llvm-config at $(CFG_LLVM_CONFIG))
 else
   VARIANT=x86
@@ -663,6 +664,11 @@ test/run-pass/%.x86$(CFG_EXE_SUFFIX): test/run-pass/%.rc $(REQ)
 test/bench/shootout/%.x86$(CFG_EXE_SUFFIX): test/bench/shootout/%.rs $(REQ)
 	@$(call CFG_ECHO, compile [x86]: $<)
 	$(BOOT) -o $@ $<
+
+%.ll: %.bc
+	@$(call CFG_ECHO, dis [llvm]: $<)
+	$(CFG_QUIET)$(LLVM-DIS) -o $@ $<
+
 
 %.s: %.bc
 	@$(call CFG_ECHO, compile [llvm]: $<)
