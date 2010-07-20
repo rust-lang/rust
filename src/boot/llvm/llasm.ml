@@ -41,10 +41,23 @@ let x86_glue
      "popl  %edi";
      "popl  %ebp";]
   in
-  let load_esp_from_rust_sp    = ["movl  12(%edx), %esp"] in
-  let load_esp_from_runtime_sp = ["movl   8(%edx), %esp"] in
-  let store_esp_to_rust_sp     = ["movl  %esp, 12(%edx)"] in
-  let store_esp_to_runtime_sp  = ["movl  %esp,  8(%edx)"] in
+  let load_esp_from_rust_sp =
+    [ Printf.sprintf "movl  %d(%%edx), %%esp"
+        (Abi.task_field_rust_sp * 4)]
+  in
+  let load_esp_from_runtime_sp =
+    [ Printf.sprintf "movl  %d(%%edx), %%esp"
+        (Abi.task_field_runtime_sp * 4) ]
+  in
+  let store_esp_to_rust_sp     =
+    [ Printf.sprintf "movl  %%esp, %d(%%edx)"
+        (Abi.task_field_rust_sp * 4) ]
+  in
+  let store_esp_to_runtime_sp  =
+    [ Printf.sprintf "movl  %%esp, %d(%%edx)"
+        (Abi.task_field_runtime_sp * 4) ]
+  in
+
   let list_init i f = (Array.to_list (Array.init i f)) in
   let list_init_concat i f = List.concat (list_init i f) in
 

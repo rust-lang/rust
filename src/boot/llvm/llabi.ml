@@ -43,6 +43,7 @@ let declare_abi (llctx:Llvm.llcontext) (llmod:Llvm.llmodule) : abi =
     (* TODO: other architectures besides x86 *)
     Llvm.struct_type llctx [|
       i32;                    (* size_t refcnt *)
+      Llvm.pointer_type i32;  (* rust_task *_delegate *)
       Llvm.pointer_type i32;  (* stk_seg *stk *)
       Llvm.pointer_type i32;  (* uintptr_t runtime_sp *)
       Llvm.pointer_type i32;  (* uintptr_t rust_sp *)
