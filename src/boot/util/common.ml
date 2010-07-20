@@ -26,7 +26,7 @@ let bug _ =
 ;;
 
 (* TODO: On some joyous day, remove me. *)
-exception Not_implemented of string
+exception Not_implemented of ((node_id option) * string)
 ;;
 
 exception Semant_err of ((node_id option) * string)
@@ -35,6 +35,13 @@ exception Semant_err of ((node_id option) * string)
 let err (idopt:node_id option) =
   let k s =
     raise (Semant_err (idopt, s))
+  in
+    Printf.ksprintf k
+;;
+
+let unimpl (idopt:node_id option) =
+  let k s =
+    raise (Not_implemented (idopt, "unimplemented " ^ s))
   in
     Printf.ksprintf k
 ;;

@@ -950,15 +950,14 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
     }
   in
 
-  try
-    Walk.walk_crate
-      (Walk.path_managing_visitor path
-        (Semant.mod_item_logging_visitor
-          cx
-          cx.Semant.ctxt_sess.Session.sess_log_type log 0 path
-          (visitor cx Walk.empty_visitor)))
-      crate
-  with Common.Semant_err (ido, str) -> Semant.report_err cx ido str;
+  let passes =
+    [|
+      (visitor cx Walk.empty_visitor)
+    |]
+  in
+  let log_flag = cx.Semant.ctxt_sess.Session.sess_log_type in
+    Semant.run_passes cx "type" path passes log_flag log crate
+;;
 
 (*
  * Local Variables:

@@ -238,7 +238,7 @@ let _ =
 ;;
 
 
-let (crate:Ast.crate) =
+let parse_input_crate _ : Ast.crate =
   Session.time_inner "parse" sess
     begin
       fun _ ->
@@ -290,6 +290,15 @@ let (crate:Ast.crate) =
           else
             crate
     end
+;;
+
+let (crate:Ast.crate) =
+  try
+    parse_input_crate()
+  with
+      Not_implemented (ido, str) ->
+        Session.report_err sess ido str;
+        { node = Ast.empty_crate'; id = Common.Node 0 }
 ;;
 
 exit_if_failed ()
@@ -399,9 +408,16 @@ let main_pipeline _ =
           exit_if_failed ()
 ;;
 
-if sess.Session.sess_alt_backend
-then Glue.alt_pipeline sess sem_cx crate
-else main_pipeline ()
+try
+  if sess.Session.sess_alt_backend
+  then Glue.alt_pipeline sess sem_cx crate
+  else main_pipeline ()
+with
+    Not_implemented (ido, str) ->
+      Session.report_err sess ido str
+;;
+
+exit_if_failed ()
 ;;
 
 if sess.Session.sess_report_timing

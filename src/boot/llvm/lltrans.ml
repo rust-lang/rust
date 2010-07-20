@@ -330,8 +330,7 @@ let trans_crate
 
       | Ast.TY_tag _ | Ast.TY_iso _ | Ast.TY_idx _
       | Ast.TY_obj _ | Ast.TY_type ->
-          raise (Not_implemented
-                   ("trans_ty_full " ^ (Ast.sprintf_ty() ty)))
+          Common.unimpl None "LLVM type translation for: %a" Ast.sprintf_ty ty
 
       | Ast.TY_param _ | Ast.TY_named _ ->
           bug () "unresolved type in lltrans"
@@ -566,9 +565,10 @@ let trans_crate
             ()  (* Modules simply contain other items that are translated
                    on their own. *)
 
-        | _ -> raise (Not_implemented
-                        ("declare_mod_item " ^
-                           (Ast.sprintf_mod_item() (name,mod_item))))
+        | _ ->
+            Common.unimpl (Some id)
+              "LLVM module declaration for: %a"
+              Ast.sprintf_mod_item (name, mod_item)
   in
 
   let trans_fn
@@ -715,12 +715,15 @@ let trans_crate
                 match referent with
                     Semant.DEFN_slot _ -> Hashtbl.find slot_to_llvalue id
                   | Semant.DEFN_item _ -> Hashtbl.find llitems id
-                  | _ -> raise
-                      (Not_implemented
-                         ("referent of " ^ (Ast.sprintf_lval() lval)))
+                  | _ ->
+                      Common.unimpl (Some id)
+                        "LLVM base-referent translation of: %a"
+                        Ast.sprintf_lval lval
               end
-          | Ast.LVAL_ext _ -> raise
-              (Not_implemented ("trans_lval " ^ (Ast.sprintf_lval() lval)))
+          | Ast.LVAL_ext _ ->
+              Common.unimpl (Some (Semant.lval_base_id lval))
+                        "LLVM lval translation of: %a"
+                        Ast.sprintf_lval lval
       in
 
       let trans_atom (atom:Ast.atom) : Llvm.llvalue =
@@ -746,8 +749,10 @@ let trans_crate
           | Ast.BINOP_div -> Llvm.build_sdiv lllhs llrhs llid llbuilder
           | Ast.BINOP_mod -> Llvm.build_srem lllhs llrhs llid llbuilder
 
-          | _ -> raise
-              (Not_implemented ("build_binop " ^ (Ast.sprintf_binop() op)))
+          | _ ->
+              Common.unimpl None
+                "LLVM binop trranslation of: %a"
+                Ast.sprintf_binop op
       in
 
       let trans_binary_expr
@@ -770,9 +775,10 @@ let trans_crate
           build_binop op lllhs llrhs
       in
 
-      let trans_unary_expr e = raise
-        (Not_implemented ("trans_unary_expr " ^
-                            (Ast.sprintf_expr() (Ast.EXPR_unary e))))
+      let trans_unary_expr e =
+        Common.unimpl None
+          "LLVM unary-expression translation of: %a"
+          Ast.sprintf_expr (Ast.EXPR_unary e)
       in
 
       let trans_expr (expr:Ast.expr) : Llvm.llvalue =
@@ -945,8 +951,10 @@ let trans_crate
               | Ast.STMT_decl _ ->
                   trans_tail ()
 
-              | _ -> raise (Not_implemented
-                              ("trans_stmts " ^ (Ast.sprintf_stmt() head)))
+              | _ ->
+                  Common.unimpl (Some head.id)
+                    "LLVM statement translation of: %a"
+                    Ast.sprintf_stmt head
 
     (* 
      * Translates an AST block to one or more LLVM basic blocks and returns

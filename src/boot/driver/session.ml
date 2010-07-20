@@ -101,6 +101,19 @@ let filename_of (fo:filename option) : filename =
     | Some f -> f
 ;;
 
+let report_err sess ido str =
+  let spano = match ido with
+      None -> None
+    | Some id -> get_span sess id
+  in
+    match spano with
+        None ->
+          fail sess "Error: %s\n%!" str
+      | Some span ->
+          fail sess "%s:E:Error: %s\n%!"
+            (string_of_span span) str
+;;
+
 (*
  * Local Variables:
  * fill-column: 78;

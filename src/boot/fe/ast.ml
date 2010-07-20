@@ -457,6 +457,18 @@ and crate' =
 and crate = crate' identified
 ;;
 
+let empty_crate' =
+  { crate_items = ({ view_imports = Hashtbl.create 0;
+                     view_exports = Hashtbl.create 0 },
+                   Hashtbl.create 0);
+    crate_meta = [||];
+    crate_auth = Hashtbl.create 0;
+    crate_required = Hashtbl.create 0;
+    crate_required_syms = Hashtbl.create 0;
+    crate_main = None;
+    crate_files = Hashtbl.create 0 }
+;;
+
 (*
  * NB: names can only be type-parametric in their *last* path-entry.
  * All path-entries before that must be ident or idx (non-parametric).

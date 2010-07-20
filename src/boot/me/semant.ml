@@ -261,23 +261,10 @@ let new_ctxt sess abi crate =
   }
 ;;
 
-let report_err cx ido str =
-  let sess = cx.ctxt_sess in
-  let spano = match ido with
-      None -> None
-    | Some id -> (Session.get_span sess id)
-  in
-    match spano with
-        None ->
-          Session.fail sess "Error: %s\n%!" str
-      | Some span ->
-          Session.fail sess "%s:E:Error: %s\n%!"
-            (Session.string_of_span span) str
-;;
 
 let bugi (cx:ctxt) (i:node_id) =
   let k s =
-    report_err cx (Some i) s;
+    Session.report_err cx.ctxt_sess (Some i) s;
     failwith s
   in Printf.ksprintf k
 ;;
@@ -1857,7 +1844,8 @@ let run_passes
         Session.time_inner name sess
           (fun _ -> Array.iteri do_pass passes)
       with
-          Semant_err (ido, str) -> report_err cx ido str
+          Semant_err (ido, str) ->
+            Session.report_err cx.ctxt_sess ido str
 ;;
 
 (* Rust type -> IL type conversion. *)

@@ -605,14 +605,7 @@ let with_err_handling sess thunk =
                (Session.string_of_pos pos) cx)
           ps.pstate_ctxt;
         let apos = lexpos ps in
-          span ps apos apos
-            { Ast.crate_items = (Item.empty_view, Hashtbl.create 0);
-              Ast.crate_meta = [||];
-              Ast.crate_auth = Hashtbl.create 0;
-              Ast.crate_required = Hashtbl.create 0;
-              Ast.crate_required_syms = Hashtbl.create 0;
-              Ast.crate_main = None;
-              Ast.crate_files = Hashtbl.create 0 }
+          span ps apos apos Ast.empty_crate'
 ;;
 
 
