@@ -386,6 +386,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       acyclic-unwind.rs \
                       alt-pattern-simple.rs \
                       alt-tag.rs \
+                      autoderef-full-lval.rs \
                       autoderef-objfn.rs \
                       basic.rs \
                       bind-obj-ctor.rs \

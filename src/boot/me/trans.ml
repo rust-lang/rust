@@ -973,33 +973,40 @@ let trans_visitor
       (lv:Ast.lval)
       : (Il.cell * Ast.ty) =
 
-    let rec trans_slot_lval_full (initializing:bool) lv =
+    let rec trans_slot_lval_full (initializing:bool) (outermost:bool) lv =
       let (cell, ty) =
         match lv with
             Ast.LVAL_ext (base, comp) ->
               let (base_cell, base_ty) =
-                trans_slot_lval_full initializing base
+                trans_slot_lval_full initializing false base
               in
                 trans_slot_lval_ext initializing base_ty base_cell comp
 
-          | Ast.LVAL_base nbi ->
+          | Ast.LVAL_base _ ->
               let sloti = lval_base_to_slot cx lv in
               let cell = cell_of_block_slot sloti.id in
               let ty = slot_ty sloti.node in
               let cell = deref_slot initializing cell sloti.node in
-              let dctrl =
-                (* If this fails, type didn't visit the lval, and we
-                 * don't know whether to auto-deref its base. Crashing
-                 * here is best. Compiler bug.
-                 *)
-                match htab_search cx.ctxt_auto_deref_lval nbi.id with
-                    None ->
-                      bugi cx nbi.id
-                        "Lval without auto-deref info; bad typecheck?"
-                  | Some true -> DEREF_all_boxes
-                  | Some false -> DEREF_none
-              in
-                deref_ty dctrl initializing cell ty
+                (cell, ty)
+      in
+      let (cell, ty) =
+        if outermost
+        then
+          let id = lval_base_id lv in
+          let dctrl =
+            (* If this fails, type didn't visit the lval, and we
+             * don't know whether to auto-deref the entire lval.
+             * Crashing here is best. Compiler bug.
+             *)
+            match htab_search cx.ctxt_auto_deref_lval id with
+                None ->
+                  bugi cx id
+                    "Lval without auto-deref info; bad typecheck?"
+              | Some true -> DEREF_all_boxes
+              | Some false -> DEREF_none
+          in
+            deref_ty dctrl initializing cell ty
+        else (cell, ty)
       in
         iflog
           begin
@@ -1013,7 +1020,7 @@ let trans_visitor
 
     in
       if lval_is_slot cx lv
-      then trans_slot_lval_full initializing lv
+      then trans_slot_lval_full initializing true lv
       else
         if initializing
         then err None "init item"
