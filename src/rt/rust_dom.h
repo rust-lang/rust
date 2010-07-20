@@ -12,6 +12,7 @@ class rust_message : public lock_free_queue_node,
 public:
     rust_dom *dom;
     rust_message(rust_dom *dom);
+    virtual ~rust_message() {}
     virtual void process();
 };
 
