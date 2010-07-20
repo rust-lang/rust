@@ -245,8 +245,8 @@ BOOT_OBJS := $(BOOT_MLS:.ml=.o)
 BOOT_CMIS := $(BOOT_MLS:.ml=.cmi)
 
 RUNTIME_CS := rt/sync/spin_lock.cpp \
-			  rt/sync/lock_free_queue.cpp \
-			  rt/sync/condition_variable.cpp \
+              rt/sync/lock_free_queue.cpp \
+              rt/sync/condition_variable.cpp \
               rt/rust.cpp \
               rt/rust_builtin.cpp \
               rt/rust_crate.cpp \
@@ -263,7 +263,7 @@ RUNTIME_CS := rt/sync/spin_lock.cpp \
               rt/isaac/randport.cpp
 
 RUNTIME_HDR := rt/globals.h \
-			   rt/rust.h \
+               rt/rust.h \
                rt/rust_dwarf.h \
                rt/rust_internal.h \
                rt/rust_util.h \
