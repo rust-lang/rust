@@ -73,7 +73,10 @@ let x86_glue
              * This 'add' instruction is a bit surprising.
              * See lengthy comment in boot/be/x86.ml activate_glue.
              *)
-          @ ["addl  $20, 12(%edx)"]
+          @ [ Printf.sprintf
+                "addl  $20, %d(%%edx)"
+                (Abi.task_field_rust_sp * 4) ]
+
           @ restore_callee_saves
           @ ["ret"]));
 
