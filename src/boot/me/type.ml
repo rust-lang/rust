@@ -55,6 +55,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
     let rec unbox ty acc =
       match ty with
           Ast.TY_box ty' -> unbox ty' (acc + 1)
+        | Ast.TY_mutable ty' | Ast.TY_constrained (ty', _) -> unbox ty' acc
         | _ -> (ty, acc)
     in
     unbox ty 0
