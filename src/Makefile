@@ -614,6 +614,10 @@ check:  tidy \
         $(TEST_RPASS_EXES_LLVM) $(TEST_RFAIL_EXES_LLVM) \
         $(TEST_RPASS_OUTS_LLVM) $(TEST_RFAIL_OUTS_LLVM) \
         $(TEST_CFAIL_OUTS_LLVM)
+
+compile-check: tidy \
+       $(TEST_RPASS_EXES_LLVM) $(TEST_RFAIL_EXES_LLVM)
+
 endif
 
 REQ := $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
