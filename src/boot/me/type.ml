@@ -719,9 +719,29 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
                   None -> None
                 | Some arg -> Some (check_atom arg)
             in
+            let rec replace_args ty =
+              match ty with
+                  Ast.TY_fn (ty_sig, ty_fn_aux) ->
+                    let orig_slots = ty_sig.Ast.sig_input_slots in
+                    let take_arg i =
+                      match args.(i) with
+                          None -> Some orig_slots.(i)
+                        | Some _ -> None
+                    in
+                    let new_slots = Array.init (Array.length args) take_arg in
+                    let new_slots = Common.arr_filter_some new_slots in
+                    let ty_sig =
+                      { ty_sig with Ast.sig_input_slots = new_slots }
+                    in
+                    Ast.TY_fn (ty_sig, ty_fn_aux)
+                | Ast.TY_mutable ty' -> Ast.TY_mutable (replace_args ty')
+                | Ast.TY_constrained (ty', constrs) ->
+                    Ast.TY_constrained (replace_args ty', constrs)
+                | _ -> Common.bug () "replace_args: unexpected type"
+            in
             let callee_ty = check_lval callee in
             ignore (demand_fn (Array.map check_arg args) callee_ty);
-            infer_lval callee_ty bound
+            infer_lval (replace_args callee_ty) bound
 
         | Ast.STMT_recv (dst, src) ->
             infer_lval (demand_port (check_lval src)) dst
