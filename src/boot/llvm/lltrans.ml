@@ -10,6 +10,18 @@ let log cx = Session.log "trans"
   cx.Semant.ctxt_sess.Session.sess_log_out
 ;;
 
+(* Returns a new LLVM IRBuilder positioned at the end of llblock.  If
+   debug_loc isn't None, the IRBuilder's debug location is set to its
+   contents, which should be a DILocation mdnode.  (See
+   http://llvm.org/docs/SourceLevelDebugging.html, or get it from an existing
+   llbuilder with Llvm.current_debug_location.) *)
+let llbuilder_at_end_with_debug_loc
+    (llctx:Llvm.llcontext) (llblock:Llvm.llbasicblock)
+    (debug_loc:Llvm.llvalue option) =
+  let llbuilder = Llvm.builder_at_end llctx llblock in
+    may (Llvm.set_current_debug_location llbuilder) debug_loc;
+    llbuilder
+
 let trans_crate
     (sem_cx:Semant.ctxt)
     (llctx:Llvm.llcontext)
@@ -93,17 +105,22 @@ let trans_crate
     md_node [| const_i32 line; const_i32 col; scope; const_i32 0 |]
   in
 
+  let di_location_from_id (scope:Llvm.llvalue) (id:node_id)
+      : Llvm.llvalue option =
+    match Session.get_span sess id with
+        None -> None
+      | Some {lo=(_, line, col)} ->
+          Some (di_location line col scope)
+  in
+
   (* Sets the 'llbuilder's current location (which it attaches to all
      instructions) to the location of the start of the 'id' node within
      'scope', usually a subprogram or lexical block. *)
   let set_debug_location
       (llbuilder:Llvm.llbuilder) (scope:Llvm.llvalue) (id:node_id)
       : unit =
-    match Session.get_span sess id with
-        None -> ()
-      | Some {lo=(_, line, col)} ->
-          Llvm.set_current_debug_location llbuilder
-            (di_location line col scope)
+    may (Llvm.set_current_debug_location llbuilder)
+      (di_location_from_id scope id)
   in
 
   (* Translation of our node_ids into LLVM identifiers, which are strings. *)
@@ -445,9 +462,10 @@ let trans_crate
     let llty = trans_slot None slot in
     let ty = Semant.slot_ty slot in
 
-    let new_block klass =
+    let new_block klass debug_loc =
       let llblock = Llvm.append_block llctx (anon_llid klass) llfn in
-      let llbuilder = Llvm.builder_at_end llctx llblock in
+      let llbuilder =
+        llbuilder_at_end_with_debug_loc llctx llblock debug_loc in
         (llblock, llbuilder)
     in
 
@@ -460,8 +478,9 @@ let trans_crate
       let test =
         Llvm.build_icmp Llvm.Icmp.Ne null ptr (anon_llid "nullp") llbuilder
       in
-      let (llthen, llthen_builder) = new_block "then" in
-      let (llnext, llnext_builder) = new_block "next" in
+      let debug_loc = Llvm.current_debug_location llbuilder in
+      let (llthen, llthen_builder) = new_block "then" debug_loc in
+      let (llnext, llnext_builder) = new_block "next" debug_loc in
         ignore (Llvm.build_cond_br test llthen llnext llbuilder);
         let llthen_builder = inner ptr llthen_builder in
           ignore (Llvm.build_br llnext llthen_builder);
@@ -483,8 +502,9 @@ let trans_crate
         Llvm.build_icmp Llvm.Icmp.Eq
           rc (imm 0L) (anon_llid "zerop") llbuilder
       in
-      let (llthen, llthen_builder) = new_block "then" in
-      let (llnext, llnext_builder) = new_block "next" in
+      let debug_loc = Llvm.current_debug_location llbuilder in
+      let (llthen, llthen_builder) = new_block "then" debug_loc in
+      let (llnext, llnext_builder) = new_block "next" debug_loc in
         ignore (Llvm.build_cond_br test llthen llnext llbuilder);
         let llthen_builder = inner ptr llthen_builder in
           ignore (Llvm.build_br llnext llthen_builder);
@@ -588,16 +608,18 @@ let trans_crate
      * a little trickery here to wrangle the statement sequence into LLVM's
      * format. *)
 
-    let new_block id_opt klass =
+    let new_block id_opt klass debug_loc =
       let llblock = Llvm.append_block llctx (node_llid id_opt klass) llfn in
-      let llbuilder = Llvm.builder_at_end llctx llblock in
-      (llblock, llbuilder)
+      let llbuilder =
+        llbuilder_at_end_with_debug_loc llctx llblock debug_loc in
+        (llblock, llbuilder)
     in
 
     (* Build up the slot-to-llvalue mapping, allocating space along the
      * way. *)
     let slot_to_llvalue = Hashtbl.create 0 in
-    let (_, llinitbuilder) = new_block None "init" in
+    let (_, llinitbuilder) =
+      new_block None "init" (di_location_from_id llsubprogram fn_id) in
 
     (* Allocate space for arguments (needed because arguments are lvalues in
      * Rust), and store them in the slot-to-llvalue mapping. *)
@@ -885,7 +907,9 @@ let trans_crate
 
               | Ast.STMT_if sif ->
                   let llexpr = trans_expr sif.Ast.if_test in
-                  let (llnext, llnextbuilder) = new_block None "next" in
+                  let (llnext, llnextbuilder) =
+                    new_block None "next"
+                      (Llvm.current_debug_location llbuilder) in
                   let branch_to_next llbuilder' _ =
                     ignore (Llvm.build_br llnext llbuilder')
                   in
@@ -931,10 +955,13 @@ let trans_crate
 
               | Ast.STMT_check_expr expr ->
                   let llexpr = trans_expr expr in
-                  let (llfail, llfailbuilder) = new_block None "fail" in
+                  let debug_loc = Llvm.current_debug_location llbuilder in
+                  let (llfail, llfailbuilder) =
+                    new_block None "fail" debug_loc in
                   let reason = Fmt.fmt_to_str Ast.fmt_expr expr in
                   trans_fail llfailbuilder lltask reason head.id;
-                  let (llok, llokbuilder) = new_block None "ok" in
+                  let (llok, llokbuilder) =
+                    new_block None "ok" debug_loc in
                   ignore (Llvm.build_cond_br llexpr llok llfail llbuilder);
                   trans_tail_with_builder llokbuilder
 
@@ -966,7 +993,8 @@ let trans_crate
         ({ node = (stmts:Ast.stmt array); id = id }:Ast.block)
         (terminate:Llvm.llbuilder -> node_id -> unit)
         : Llvm.llbasicblock =
-      let (llblock, llbuilder) = new_block (Some id) "bb" in
+      let (llblock, llbuilder) =
+        new_block (Some id) "bb" (di_location_from_id llsubprogram id) in
         trans_stmts id llbuilder (Array.to_list stmts) terminate;
         llblock
     in
