@@ -10,7 +10,7 @@
 
 static uint32_t
 read_type_bit_mask() {
-    uint32_t bits = rust_log::ULOG | rust_log::ERR | rust_log::ALL;
+    uint32_t bits = rust_log::ULOG | rust_log::ERR;
     char *env_str = getenv("RUST_LOG");
     if (env_str) {
         bits = 0;
