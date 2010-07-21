@@ -153,8 +153,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
   }
 
   let vec[mutable bucket[V]] bkts =
-    _vec.init_elt[mutable bucket[V]](nil[V](),
-                                     uint(initial_capacity));
+    _vec.init_elt[mutable bucket[V]](nil[V](), initial_capacity);
 
   ret hashmap[K, V](hasher, eqer, bkts, uint(0), uint(0), load_factor);
 }
