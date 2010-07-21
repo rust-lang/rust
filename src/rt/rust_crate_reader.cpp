@@ -118,7 +118,7 @@ rust_crate_reader::abbrev_reader::abbrev_reader
     abbrevs(abbrev_mem.dom)
 {
   rust_dom *dom = mem.dom;
-  while (is_ok()) {
+  while (is_ok() && !at_end()) {
 
     // dom->log(rust_log::DWARF, "reading new abbrev at 0x%" PRIxPTR,
     //          tell_off());

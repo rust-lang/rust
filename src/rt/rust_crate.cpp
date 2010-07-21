@@ -47,14 +47,22 @@ rust_crate::mem_area::mem_area(rust_dom *dom, uintptr_t pos, size_t sz)
 
 rust_crate::mem_area
 rust_crate::get_debug_info(rust_dom *dom) const {
-  return mem_area(dom, ((uintptr_t)this + debug_info_off),
-                  debug_info_sz);
+    if (debug_info_off)
+        return mem_area(dom,
+                        ((uintptr_t)this + debug_info_off),
+                        debug_info_sz);
+    else
+        return mem_area(dom, 0, 0);
 }
 
 rust_crate::mem_area
 rust_crate::get_debug_abbrev(rust_dom *dom) const {
-  return mem_area(dom, ((uintptr_t)this + debug_abbrev_off),
-                  debug_abbrev_sz);
+    if (debug_abbrev_off)
+        return mem_area(dom,
+                        ((uintptr_t)this + debug_abbrev_off),
+                        debug_abbrev_sz);
+    else
+        return mem_area(dom, 0, 0);
 }
 
 //
