@@ -201,7 +201,7 @@ endif
 
 MKFILES := Makefile
 
-# add current directory to library search path of CFG_BOOT command line
+# Add current directory to library search path of CFG_BOOT command line.
 
 CFG_BOOT_FLAGS += -L .
 
