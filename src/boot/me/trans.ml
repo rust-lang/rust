@@ -4532,6 +4532,8 @@ let trans_visitor
             calls
 
       | Ast.STMT_ret atom_opt ->
+          if get_stmt_depth cx stmt.id > 0
+          then unimpl (Some stmt.id) "ret within iterator-block";
           begin
             match atom_opt with
                 None -> ()

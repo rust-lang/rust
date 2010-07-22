@@ -370,6 +370,7 @@ TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
                     test/run-pass/fn-lval.rs \
                     test/run-pass/generic-fn-infer.rs \
                     test/run-pass/generic-recursive-tag.rs \
+                    test/run-pass/iter-ret.rs \
                     test/run-pass/mlist-cycle.rs \
                     test/run-pass/mutable-vec-drop.rs \
                     test/run-pass/obj-as.rs \
@@ -430,6 +431,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       import.rs \
                       inner-module.rs \
                       iter-range.rs \
+                      iter-ret.rs \
                       large-records.rs \
                       lazy-and-or.rs \
                       lazy-init.rs \
