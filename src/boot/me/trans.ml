@@ -3818,7 +3818,7 @@ let trans_visitor
       (* 
        * NB: 'all_*_args', both self and callee, are always 4-tuples: 
        * 
-       *    [out_ptr, task_ptr, [args], [indirect_args]] 
+       *    [out_ptr, task_ptr, indirect_args, ty_params, [args]]
        * 
        * The first few bindings here just destructure those via GEP.
        * 
@@ -3833,6 +3833,9 @@ let trans_visitor
         get_element_ptr all_self_args_cell Abi.calltup_elt_ty_params
       in
       let callee_args_cell =
+        (* FIXME (issue #81):  Once we've actually got proper ty_params,
+         * we should GEP dynamically here to get the args, since they may
+         * be aligned dynamically if they have parameterized type. *)
         get_element_ptr all_callee_args_cell Abi.calltup_elt_args
       in
       let self_indirect_args_cell =

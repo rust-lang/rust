@@ -26,11 +26,13 @@ fn init_fn[T](&init_op[T] op, uint n_elts) -> vec[T] {
 }
 
 fn init_elt[T](&T t, uint n_elts) -> vec[T] {
-  // FIXME: should be:
-  // fn elt_op[X](X x, uint i) -> X { ret x; }
-  // auto inner = bind elt_op[T](t, _);
-  // ret init_fn[T](inner, n_elts);
-  // but this does not work presently.
+  /**
+   * FIXME (issue #81): should be:
+   *
+   * fn elt_op[T](T x, uint i) -> T { ret x; }
+   * let init_op[T] inner = bind elt_op[T](t, _);
+   * ret init_fn[T](inner, n_elts);
+   */
   let vec[T] v = alloc[T](n_elts);
   let uint i = n_elts;
   while (i > uint(0)) {

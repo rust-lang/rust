@@ -1013,7 +1013,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
 
       | STMT_bind (dst, fn, arg_opts) ->
           fmt_lval ff dst;
-          fmt ff " = ";
+          fmt ff " = bind ";
           fmt_lval ff fn;
           fmt_atom_opts ff arg_opts;
           fmt ff ";";
