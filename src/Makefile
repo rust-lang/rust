@@ -429,6 +429,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       generic-tag.rs \
                       import.rs \
                       inner-module.rs \
+                      iter-range.rs \
                       large-records.rs \
                       lazy-and-or.rs \
                       lazy-init.rs \

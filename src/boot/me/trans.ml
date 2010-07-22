@@ -4343,8 +4343,15 @@ let trans_visitor
             trans_vec_append dst_cell dst_ty src_oper (atom_type cx a_src)
         | _ ->
             let (dst_cell, _) = deref_ty DEREF_none false dst_cell dst_ty in
+            let bits = Il.operand_bits word_bits src_oper in
+              (* 
+               * FIXME: X86-ism going via a vreg; mem op= mem doesn't work and
+               * IL lacks sufficient brains to cope just now.
+               *)
+            let src = Il.Reg (Il.next_vreg (emitter()), Il.ValTy bits) in
             let op = trans_binop binop in
-              emit (Il.binary op dst_cell (Il.Cell dst_cell) src_oper);
+              mov src src_oper;
+              emit (Il.binary op dst_cell (Il.Cell dst_cell) (Il.Cell src));
 
 
   and trans_call id dst flv args =
