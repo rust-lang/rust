@@ -427,8 +427,6 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       generic-recursive-tag.rs \
                       generic-tag-alt.rs \
                       generic-tag.rs \
-                      generic-type-synonym.rs \
-                      generic-type.rs \
                       import.rs \
                       inner-module.rs \
                       large-records.rs \

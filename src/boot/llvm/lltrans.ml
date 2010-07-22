@@ -346,12 +346,13 @@ let trans_crate
       | Ast.TY_native _ ->
           word_ty
 
+      | Ast.TY_param _ ->
+          abi.Llabi.tydesc_ty
+
       | Ast.TY_tag _ | Ast.TY_iso _ | Ast.TY_idx _
-      | Ast.TY_obj _ | Ast.TY_type ->
+      | Ast.TY_obj _ | Ast.TY_type | Ast.TY_named _ ->
           Common.unimpl None "LLVM type translation for: %a" Ast.sprintf_ty ty
 
-      | Ast.TY_param _ | Ast.TY_named _ ->
-          bug () "unresolved type in lltrans"
 
   and trans_ty t =
     htab_search_or_add lltys t (fun _ -> trans_ty_full t)

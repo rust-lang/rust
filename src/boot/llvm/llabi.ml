@@ -6,6 +6,7 @@ type abi = {
   crate_ty:   Llvm.lltype;
   task_ty:    Llvm.lltype;
   word_ty:    Llvm.lltype;
+  tydesc_ty:  Llvm.lltype;
   rust_start: Llvm.llvalue;
 };;
 
@@ -13,6 +14,7 @@ let declare_abi (llctx:Llvm.llcontext) (llmod:Llvm.llmodule) : abi =
   let i32 = Llvm.i32_type llctx in
   (* FIXME: Use Llvm_target.intptr_type for more platform support. *)
   let word_ty = i32 in
+  let p ty = Llvm.pointer_type ty in
 
   let crate_ty =
     (* TODO: other architectures besides x86 *)
@@ -53,6 +55,27 @@ let declare_abi (llctx:Llvm.llcontext) (llmod:Llvm.llmodule) : abi =
   in
   ignore (Llvm.define_type_name "rust_task" task_ty llmod);
 
+    (* This is the type_desc struct in rust_internal.h *)
+  let tydesc_ty =
+    (* TODO: other architectures besides x86 *)
+    let tydesc_opaque_ty = Llvm.opaque_type llctx in
+    let tydesc_tyhandle = Llvm.handle_to_type (Llvm.struct_type llctx [|
+        p (p tydesc_opaque_ty);  (* const type_desc **first_param *)
+        word_ty;                 (* size_t size *)
+        word_ty;                 (* size_t align *)
+        word_ty;                 (* uintptr_t copy_glue_off *)
+        word_ty;                 (* uintptr_t drop_glue_off *)
+        word_ty;                 (* uintptr_t free_glue_off *)
+        word_ty;                 (* uintptr_t sever_glue_off *)
+        word_ty;                 (* uintptr_t mark_glue_off *)
+        word_ty;                 (* uintptr_t obj_drop_glue_off *)
+      |])
+    in
+    Llvm.refine_type tydesc_opaque_ty (Llvm.type_of_handle tydesc_tyhandle);
+    Llvm.type_of_handle tydesc_tyhandle
+  in
+  ignore (Llvm.define_type_name "type_desc" tydesc_ty llmod);
+
   let rust_start_ty =
     (* Rust's main function can have several types, so we cast them
        all to uintptr_t. *)
@@ -64,6 +87,7 @@ let declare_abi (llctx:Llvm.llcontext) (llmod:Llvm.llmodule) : abi =
     crate_ty = crate_ty;
     task_ty = task_ty;
     word_ty = word_ty;
+    tydesc_ty = tydesc_ty;
     rust_start = Llvm.declare_function "rust_start" rust_start_ty llmod
   }
 ;;
