@@ -477,7 +477,6 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       task-comm-4.rs \
                       task-comm-5.rs \
                       threads.rs \
-                      tup.rs \
                       type-sizes.rs \
                       unit.rs \
                       use-import-export.rs \

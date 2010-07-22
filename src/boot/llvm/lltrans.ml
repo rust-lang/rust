@@ -3,6 +3,7 @@
  *)
 
 open Common;;
+open Semant;;
 open Transutil;;
 
 let log cx = Session.log "trans"
@@ -549,6 +550,37 @@ let trans_crate
         end
   in
 
+  (* Dereferences the box referred to by ptr, whose type is ty.  Looks
+     straight through all mutable and constrained-type boxes, and loads
+     pointers per dctrl.  Returns the dereferenced value and its type. *)
+  let rec deref_ty
+      (llbuilder:Llvm.llbuilder) (dctrl:deref_ctrl)
+      (ptr:Llvm.llvalue) (ty:Ast.ty)
+      : (Llvm.llvalue * Ast.ty) =
+    match (ty, dctrl) with
+
+      | (Ast.TY_mutable ty, _)
+      | (Ast.TY_constrained (ty, _), _) ->
+          deref_ty llbuilder dctrl ptr ty
+
+      | (Ast.TY_box ty', DEREF_one_box)
+      | (Ast.TY_box ty', DEREF_all_boxes) ->
+          let content =
+            Llvm.build_load
+              (get_element_ptr llbuilder ptr (Abi.box_rc_field_body))
+              (anon_llid "deref") llbuilder
+          in
+          let inner_dctrl =
+            if dctrl = DEREF_one_box
+            then DEREF_none
+            else DEREF_all_boxes
+          in
+            (* Possibly deref recursively. *)
+            deref_ty llbuilder inner_dctrl content ty'
+
+      | _ -> (ptr, ty)
+  in
+
   let (llitems:(node_id, Llvm.llvalue) Hashtbl.t) = Hashtbl.create 0 in
     (* Maps a fn's or block's id to an LLVM metadata node (subprogram or
        lexical block) representing it. *)
@@ -724,28 +756,52 @@ let trans_crate
 
       (* Translates an lval by reference into the appropriate pointer
        * value. *)
-      let trans_lval (lval:Ast.lval) : Llvm.llvalue =
+      let rec trans_lval (lval:Ast.lval) : (Llvm.llvalue * Ast.ty) =
         iflog (fun _ -> log sem_cx "trans_lval: %a" Ast.sprintf_lval lval);
         match lval with
             Ast.LVAL_base { id = base_id } ->
               set_debug_loc base_id;
-              let id =
-                Hashtbl.find sem_cx.Semant.ctxt_lval_to_referent base_id
-              in
-              let referent = Hashtbl.find sem_cx.Semant.ctxt_all_defns id in
+              let referent = lval_to_referent sem_cx base_id in
               begin
-                match referent with
-                    Semant.DEFN_slot _ -> Hashtbl.find slot_to_llvalue id
-                  | Semant.DEFN_item _ -> Hashtbl.find llitems id
+                match resolve_lval_id sem_cx base_id with
+                    Semant.DEFN_slot slot ->
+                      (Hashtbl.find slot_to_llvalue referent, slot_ty slot)
+                  | Semant.DEFN_item _ ->
+                      (Hashtbl.find llitems referent, lval_ty sem_cx lval)
                   | _ ->
-                      Common.unimpl (Some id)
+                      Common.unimpl (Some referent)
                         "LLVM base-referent translation of: %a"
                         Ast.sprintf_lval lval
               end
-          | Ast.LVAL_ext _ ->
-              Common.unimpl (Some (Semant.lval_base_id lval))
-                        "LLVM lval translation of: %a"
-                        Ast.sprintf_lval lval
+          | Ast.LVAL_ext (base, component) ->
+              let (llbase, base_ty) = trans_lval base in
+              let base_ty = strip_mutable_or_constrained_ty base_ty in
+                (*
+                 * All lval components aside from explicit-deref just
+                 * auto-deref through all boxes to find their indexable
+                 * referent.
+                 *)
+              let (llbase, base_ty) =
+                if component = Ast.COMP_deref
+                then (llbase, base_ty)
+                else deref_ty llbuilder DEREF_all_boxes llbase base_ty
+              in
+                match (base_ty, component) with
+                    (Ast.TY_rec entries,
+                     Ast.COMP_named (Ast.COMP_ident id)) ->
+                      let i = arr_idx (Array.map fst entries) id in
+                        (get_element_ptr llbuilder llbase i, snd entries.(i))
+
+                  | (Ast.TY_tup entries,
+                     Ast.COMP_named (Ast.COMP_idx i)) ->
+                      (get_element_ptr llbuilder llbase i, entries.(i))
+
+                  | (Ast.TY_box _, Ast.COMP_deref) ->
+                      deref_ty llbuilder DEREF_one_box llbase base_ty
+
+                  | _ -> (Common.unimpl (Some (Semant.lval_base_id lval))
+                            "LLVM lval translation of: %a"
+                            Ast.sprintf_lval lval)
       in
 
       let trans_atom (atom:Ast.atom) : Llvm.llvalue =
@@ -753,7 +809,8 @@ let trans_crate
         match atom with
             Ast.ATOM_literal { node = lit } -> trans_literal lit
           | Ast.ATOM_lval lval ->
-              Llvm.build_load (trans_lval lval) (anon_llid "tmp") llbuilder
+              Llvm.build_load (fst (trans_lval lval)) (anon_llid "tmp")
+                llbuilder
       in
 
       let build_binop (op:Ast.binop) (lllhs:Llvm.llvalue) (llrhs:Llvm.llvalue)
@@ -867,7 +924,7 @@ let trans_crate
             match head.node with
                 Ast.STMT_init_tup (dest, elems) ->
                   let zero = const_i32 0 in
-                  let lldest = trans_lval dest in
+                  let (lldest, _) = trans_lval dest in
                   let trans_tup_elem idx (_, atom) =
                     let indices = [| zero; const_i32 idx |] in
                     let gep_id = anon_llid "init_tup_gep" in
@@ -881,12 +938,12 @@ let trans_crate
 
               | Ast.STMT_copy (dest, src) ->
                   let llsrc = trans_expr src in
-                  let lldest = trans_lval dest in
+                  let (lldest, _) = trans_lval dest in
                   ignore (Llvm.build_store llsrc lldest llbuilder);
                   trans_tail ()
 
               | Ast.STMT_copy_binop (dest, op, src) ->
-                  let lldest = trans_lval dest in
+                  let (lldest, _) = trans_lval dest in
                   let llsrc = trans_atom src in
                     (* FIXME: Handle vecs and strs. *)
                   let lldest_deref =
@@ -898,8 +955,8 @@ let trans_crate
 
               | Ast.STMT_call (dest, fn, args) ->
                   let llargs = Array.map trans_atom args in
-                  let lldest = trans_lval dest in
-                  let llfn = trans_lval fn in
+                  let (lldest, _) = trans_lval dest in
+                  let (llfn, _) = trans_lval fn in
                   let llallargs = Array.append [| lldest; lltask |] llargs in
                   let llrv = build_call llfn llallargs "" llbuilder in
                     Llvm.set_instruction_call_conv Llvm.CallConv.c llrv;
@@ -966,7 +1023,7 @@ let trans_crate
                   trans_tail_with_builder llokbuilder
 
               | Ast.STMT_init_str (dst, str) ->
-                  let d = trans_lval dst in
+                  let (d, _) = trans_lval dst in
                   let s = static_str str in
                   let len =
                     Llvm.const_int word_ty ((String.length str) + 1)
