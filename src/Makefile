@@ -351,19 +351,7 @@ self: $(CFG_COMPILER)
 # Testing
 ######################################################################
 
-# There is some residual fallout from recent hacking on ty_box that should all
-# start working more-or-less simultaneously when pwalton's work on type.ml
-# appears. Until then, xfail a few cases where the typechecker mis-informs
-# trans about TY_box / TY_mutable interactions.
-
-MUT_BOX_XFAILS := $(addprefix test/run-pass/, \
-                    deref.rs \
-                    generic-exterior-box.rs \
-                    output-slot-variants.rs \
-                   )
-
-TEST_XFAILS_X86 :=  $(MUT_BOX_XFAILS) \
-                    test/run-pass/bind-obj-ctor.rs \
+TEST_XFAILS_X86 :=  test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/clone-with-exterior.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/vec-slice.rs \
