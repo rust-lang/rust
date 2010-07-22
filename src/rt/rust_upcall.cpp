@@ -1,21 +1,24 @@
 #include "rust_internal.h"
+#include "valgrind.h"
 
 // Upcalls.
 
 #ifdef __GNUC__
 #define LOG_UPCALL_ENTRY(task)                              \
+    YIELD_C_THREAD_IF_ON_VALGRIND;                          \
     (task)->dom->get_log().reset_indent(0);                 \
     (task)->log(rust_log::UPCALL,                           \
                 "> UPCALL %s - task: 0x%" PRIxPTR           \
-                " retpc: x%" PRIxPTR,                      \
+                " retpc: x%" PRIxPTR,                       \
                 __FUNCTION__,                               \
                 (task), __builtin_return_address(0));       \
     (task)->dom->get_log().indent();
 #else
 #define LOG_UPCALL_ENTRY(task)                              \
+    YIELD_C_THREAD_IF_ON_VALGRIND;                          \
     (task)->dom->get_log().reset_indent(0);                 \
     (task)->log(rust_log::UPCALL,                           \
-                "> UPCALL task: x%" PRIxPTR (task));       \
+                "> UPCALL task: x%" PRIxPTR (task));        \
     (task)->dom->get_log().indent();
 #endif
 

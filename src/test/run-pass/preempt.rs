@@ -18,7 +18,7 @@ io fn main() {
   log "main waiting for alive signal";
   i <- alive;
   log "main got alive signal";
-  while (i < 1000) {
+  while (i < 50) {
     log "main iterated";
     i += 1;
   }

@@ -32,10 +32,9 @@ timer_loop(void *ptr) {
     rust_dom *dom = timer->dom;
     dom->log(rust_log::TIMER, "in timer 0x%" PRIxPTR, (uintptr_t)timer);
     size_t ms = TIME_SLICE_IN_MS;
-    if (!RUNNING_ON_VALGRIND)
-        ms = 1;
 
     while (!timer->exit_flag) {
+        YIELD_C_THREAD_IF_ON_VALGRIND;
 #if defined(__WIN32__)
         Sleep(ms);
 #else
@@ -66,8 +65,6 @@ rust_timer::rust_timer(rust_dom *dom) :
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     pthread_create(&thread, &attr, timer_loop, (void *)this);
-    if (RUNNING_ON_VALGRIND)
-        usleep(10000);
 #endif
 }
 
