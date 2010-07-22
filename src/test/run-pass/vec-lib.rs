@@ -14,9 +14,7 @@ fn id(uint x) -> uint {
 fn test_init_fn() {
   let fn(uint)->uint op = id;
   let vec[uint] v = std._vec.init_fn[uint](op, uint(5));
-  // FIXME #108: Can't call templated function twice in the same
-  // program, at the moment.
-  //check (std._vec.len[uint](v) == uint(5));
+  check (std._vec.len[uint](v) == uint(5));
   check (v.(0) == uint(0));
   check (v.(1) == uint(1));
   check (v.(2) == uint(2));
@@ -27,9 +25,7 @@ fn test_init_fn() {
 fn test_slice() {
   let vec[int] v = vec(1,2,3,4,5);
   auto v2 = std._vec.slice[int](v, 2, 4);
-  // FIXME #108: Can't call templated function twice in the same
-  // program, at the moment.
-  //check (std._vec.len[int](v2) == uint(2));
+  check (std._vec.len[int](v2) == uint(2));
   check (v2.(0) == 3);
   check (v2.(1) == 4);
 }
