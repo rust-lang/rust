@@ -2476,7 +2476,7 @@ let trans_visitor
         end
       else
         begin
-          bug () "Unsupported form of seq iter: src != dst."
+          unimpl None "seq iter with src != dst."
         end
 
 
@@ -4390,7 +4390,7 @@ let trans_visitor
       | Ast.TY_mach (TY_i8) | Ast.TY_mach (TY_i16)
       | Ast.TY_mach (TY_i32) ->
           trans_log_int a
-      | _ -> bugi cx id "unimplemented logging type"
+      | _ -> unimpl (Some id) "logging type"
 
 
   and trans_stmt_full (stmt:Ast.stmt) : unit =
@@ -5043,7 +5043,8 @@ let trans_visitor
         Ast.MOD_ITEM_fn f -> trans_required_fn i.id f.Ast.fn_body.id
       | Ast.MOD_ITEM_mod _ -> ()
       | Ast.MOD_ITEM_type _ -> ()
-      | _ -> bugi cx i.id "unsupported type of require: %s" (path_name())
+      | _ -> unimpl (Some i.id)
+          "unsupported type of require: %s" (path_name())
   in
 
   let visit_obj_drop_pre obj b =

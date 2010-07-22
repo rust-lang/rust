@@ -397,7 +397,8 @@ let trans_crate
     match ty with
         Ast.TY_port _
       | Ast.TY_chan _
-      | Ast.TY_task -> bug () "unimplemented ty in Lltrans.free_ty"
+      | Ast.TY_task ->
+          Common.unimpl None "ty %a in Lltrans.free_ty" Ast.sprintf_ty ty
       | _ -> trans_free llbuilder lltask ptr
   in
 
@@ -428,7 +429,8 @@ let trans_crate
       | Ast.TY_iso _
       | Ast.TY_fn _
       | Ast.TY_obj _ ->
-          bug () "unimplemented ty in Lltrans.iter_ty_parts_full"
+          Common.unimpl None
+            "ty %a in Lltrans.iter_ty_parts_full" Ast.sprintf_ty ty
 
       | _ -> ()
 
@@ -1006,8 +1008,8 @@ let trans_crate
                         | Ast.TY_mach (TY_u32) | Ast.TY_mach (TY_i8)
                         | Ast.TY_mach (TY_i16) | Ast.TY_mach (TY_i32) ->
                             trans_log_int a
-                        | _ -> Semant.bugi sem_cx head.id
-                            "unimplemented logging type"
+                        | _ -> Common.unimpl (Some head.id)
+                            "logging type"
                   end;
                   trans_tail ()
 

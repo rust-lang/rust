@@ -2082,7 +2082,7 @@ let dwarf_visitor
           | Ast.TY_mutable t -> mutable_type t
           | Ast.TY_box t -> box_type t
           | _ ->
-              bug () "unimplemented dwarf encoding for type %a"
+              unimpl None "dwarf encoding for type %a"
                 Ast.sprintf_ty ty
   in
 

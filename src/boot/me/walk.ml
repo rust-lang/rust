@@ -523,7 +523,7 @@ and walk_stmt
       | Ast.STMT_note _
       | Ast.STMT_alt_type _
       | Ast.STMT_alt_port _ ->
-          bug () "unimplemented statement type in Walk.walk_stmt"
+          unimpl (Some s.id) "statement type in Walk.walk_stmt"
   in
     walk_bracketed
       v.visit_stmt_pre

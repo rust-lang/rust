@@ -470,7 +470,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
             sprintf_ltype lty
       | Some _, (LTYPE_poly _) ->
           (* FIXME: auto-instantiate *)
-          Common.err
+          Common.unimpl
             None
             "sorry, automatic polymorphic instantiation isn't supported yet; \
               please supply type parameters explicitly"

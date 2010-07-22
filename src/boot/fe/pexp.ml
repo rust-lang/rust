@@ -1011,7 +1011,7 @@ let expand_pexp_custom
             [| spanner (Ast.STMT_init_str (dst_lval, r())) |]
 
       | _ ->
-          raise (err ("unsupported syntax extension: " ^ nstr) ps)
+          raise (err ("unknown syntax extension: " ^ nstr) ps)
 ;;
 
 (* 
