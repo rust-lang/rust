@@ -34,7 +34,6 @@ timer_loop(void *ptr) {
     size_t ms = TIME_SLICE_IN_MS;
 
     while (!timer->exit_flag) {
-        YIELD_C_THREAD_IF_ON_VALGRIND;
 #if defined(__WIN32__)
         Sleep(ms);
 #else

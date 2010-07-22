@@ -67,17 +67,6 @@ struct frame_glue_fns;
 
 static size_t const TIME_SLICE_IN_MS = 10;
 
-// This helps our preemption scheme handle "running on valgrind".
-
-#if defined(__WIN32__)
-#define YIELD_C_THREAD_IF_ON_VALGRIND (void);
-#else
-#define YIELD_C_THREAD_IF_ON_VALGRIND  \
-    if (RUNNING_ON_VALGRIND) {         \
-        pthread_yield();               \
-    }
-#endif
-
 // Every reference counted object should derive from this base class.
 
 template <typename T>
