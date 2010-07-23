@@ -509,7 +509,8 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
     end;
     if n_boxes > 1 then
       (* TODO: allow more than one level of automatic dereference *)
-      Common.err None "sorry, only one level of automatic dereference is \
+      Common.unimpl (Some (Semant.lval_base_id lval))
+        "sorry, only one level of automatic dereference is \
         implemented; please add explicit dereference operators";
     Hashtbl.replace cx.Semant.ctxt_auto_deref_lval lval_id (n_boxes > 0);
 
@@ -690,13 +691,19 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
 
         | Ast.STMT_new_str (dst, _) -> infer_lval Ast.TY_str dst
 
-        | Ast.STMT_new_port _ -> ()  (* we can't actually typecheck this *)
+        | Ast.STMT_new_port dst ->
+            (* we can't actually typecheck this *)
+            ignore (check_lval dst);
+            ()
 
         | Ast.STMT_new_chan (dst, Some port) ->
             let ty = Ast.TY_chan (demand_port (check_lval port)) in
             infer_lval ty dst
 
-        | Ast.STMT_new_chan (_, None) -> ()  (* can't check this either *)
+        | Ast.STMT_new_chan (dst, None) ->
+            (* can't check this either *)
+            ignore (check_lval dst);
+            ()
 
         | Ast.STMT_new_box (dst, mut, src) ->
             let ty = Ast.TY_box (maybe_mutable mut (check_atom src)) in
@@ -818,8 +825,13 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
             let value_ty = demand_chan (check_lval chan) in
             infer_lval ~mut:Ast.MUT_immutable value_ty value
 
-        | Ast.STMT_log _ | Ast.STMT_note _ | Ast.STMT_prove _ ->
-            () (* always well-typed *)
+        | Ast.STMT_log x | Ast.STMT_note x ->
+            (* always well-typed, just record type in passing. *)
+            ignore (check_atom x)
+
+        | Ast.STMT_prove _ ->
+            (* always well-typed, static. Ignore. *)
+            ()
 
         | Ast.STMT_check (_, calls) -> check_check_calls calls
 

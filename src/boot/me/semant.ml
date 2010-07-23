@@ -1206,18 +1206,10 @@ let rec project_lval_ty_from_slot (cx:ctxt) (lval:Ast.lval) : Ast.ty =
 
 
 let lval_ty (cx:ctxt) (lval:Ast.lval) : Ast.ty =
-  (*
-    FIXME: The correct definition of this function is just: 
-    
-       Hashtbl.find cx.ctxt_all_lval_types (lval_base_id lval)
-    
-    However, since the typechecker is not presently handling
-    every stmt, we have a fallback mode to "pick out the slot
-    type and hope for the best".
-  *)
   match htab_search cx.ctxt_all_lval_types (lval_base_id lval) with
       Some t -> t
-    | None -> project_lval_ty_from_slot cx lval
+    | None -> bugi cx (lval_base_id lval) "no type for lval %a"
+        Ast.sprintf_lval lval
 ;;
 
 let lval_is_static (cx:ctxt) (lval:Ast.lval) : bool =
