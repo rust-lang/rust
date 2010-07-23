@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-// error-pattern: writing to non-mutable slot
+// error-pattern: writing to immutable type
 
 type point = rec(int x, int y, int z);
 

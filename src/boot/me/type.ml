@@ -45,7 +45,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
 
   let get_slot_ty (slot:Ast.slot) : Ast.ty =
     match slot.Ast.slot_ty with
-        Some ty -> ty 
+        Some ty -> ty
       | None -> Common.bug () "get_slot_ty: no type in slot"
   in
 
@@ -62,7 +62,11 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
   in
 
   let maybe_mutable (mutability:Ast.mutability) (ty:Ast.ty) : Ast.ty =
-    if mutability = Ast.MUT_mutable then Ast.TY_mutable ty else ty
+    let res =
+      if mutability = Ast.MUT_mutable then Ast.TY_mutable ty else ty
+    in
+      log cx "maybe_mutable: %a -> %a" Ast.sprintf_ty ty Ast.sprintf_ty res;
+      res
   in
 
   (*
@@ -229,7 +233,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
             ()
             "internal_check_slot: supplied defn wasn't a slot at all"
     in
-    match infer, slot.Ast.slot_ty with 
+    match infer, slot.Ast.slot_ty with
         Some expected, Some actual ->
           demand expected actual;
           actual
@@ -299,6 +303,10 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
       match base_ity with
           `Type ty -> Ast.sprintf_ty chan ty
         | `Module items -> Ast.sprintf_mod_items chan items
+    in
+
+    let _ = log cx "base lval %a, base type %a"
+      Ast.sprintf_lval base sprintf_itype ()
     in
 
     let rec typecheck base_ity =
@@ -455,14 +463,14 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
       : (Ast.ty * int) =
     let yield_ty ty =
       let (ty, n_boxes) = if deref then unbox ty else (ty, 0) in
-      (maybe_mutable mut ty, n_boxes)
+        (maybe_mutable mut ty, n_boxes)
     in
     match infer, internal_check_lval infer lval with
       | None, LTYPE_mono ty -> yield_ty ty
       | Some expected, LTYPE_mono actual ->
           demand expected actual;
           yield_ty actual
-      | None, (LTYPE_poly _ as lty) -> 
+      | None, (LTYPE_poly _ as lty) ->
           Common.err
             None
             "not enough context to automatically instantiate the polymorphic \
@@ -487,8 +495,20 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
      * Get the real one. *)
     let lval_id = Semant.lval_base_id lval in
     let lval = Hashtbl.find cx.Semant.ctxt_all_lvals lval_id in
+    let _ = log cx "generic_check_lval %a mut=%s deref=%s infer=%s"
+      Ast.sprintf_lval lval
+      (if mut = Ast.MUT_mutable then "mutable" else "immutable")
+      (if deref then "true" else "false")
+      (match infer with
+           None -> "<none>"
+         | Some t -> Fmt.fmt_to_str Ast.fmt_ty t)
+    in
     let (lval_ty, n_boxes) =
       internal_check_outer_lval ~mut:mut ~deref:deref infer lval
+    in
+    let _ = log cx "checked lval %a with type %a"
+      Ast.sprintf_lval lval
+      Ast.sprintf_ty lval_ty
     in
 
     if Hashtbl.mem cx.Semant.ctxt_all_lval_types lval_id then
@@ -514,8 +534,8 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
         implemented; please add explicit dereference operators";
     Hashtbl.replace cx.Semant.ctxt_auto_deref_lval lval_id (n_boxes > 0);
 
-    (* Before demoting the lval to a value, strip off mutability. *)
-    fundamental_ty lval_ty
+      (* Before demoting the lval to a value, strip off mutability. *)
+      fundamental_ty lval_ty
 
   (* Note that this function should be avoided when possible, because it
    * cannot perform type inference. In general you should prefer
@@ -538,11 +558,12 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
   in
 
   let infer_lval
-      ?mut:(mut=Ast.MUT_mutable)
+      ?mut:(mut=Ast.MUT_immutable)
       (ty:Ast.ty)
       (lval:Ast.lval)
       : unit =
-    ignore (generic_check_lval ?mut:mut ~deref:false (Some ty) lval)
+    ignore (generic_check_lval ?mut:mut ~deref:false
+              (Some (Ast.TY_mutable ty)) lval)
   in
 
   (*
@@ -574,7 +595,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
       | Ast.EXPR_binary (binop, lhs, rhs) ->
           let operand_ty = check_atom ~deref:true lhs in
           demand operand_ty (check_atom ~deref:true rhs);
-          check_binop binop operand_ty 
+          check_binop binop operand_ty
       | Ast.EXPR_unary (Ast.UNOP_not, atom) ->
           demand Ast.TY_bool (check_atom ~deref:true atom);
           Ast.TY_bool
@@ -596,7 +617,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
   let check_fn (callee:Ast.lval) (args:Ast.atom array) : Ast.ty =
     let arg_tys = Array.map check_atom args in
     let callee_ty = check_lval callee in
-    demand_fn (Array.map (fun ty -> Some ty) arg_tys) callee_ty 
+    demand_fn (Array.map (fun ty -> Some ty) arg_tys) callee_ty
   in
 
   let rec check_pat (expected:Ast.ty) (pat:Ast.pat) : unit =

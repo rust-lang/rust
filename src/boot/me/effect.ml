@@ -51,7 +51,7 @@ let mutability_checking_visitor
       if (is_mutable or is_init)
       then ()
       else err (Some s.id)
-        "writing to non-mutable slot of type %a in statement %a"
+        "writing to immutable type %a in statement %a"
         Ast.sprintf_ty dst_ty Ast.sprintf_stmt s
   in
     (* FIXME (issue #75): enforce the no-write-alias-to-immutable-slot
