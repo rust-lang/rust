@@ -646,7 +646,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
             infer_lval Ast.TY_task dst;
             demand Ast.TY_nil (check_fn callee args)
 
-        | Ast.STMT_init_rec (dst, fields, Some base) ->
+        | Ast.STMT_new_rec (dst, fields, Some base) ->
             let ty = check_lval base in
             let ty_rec = demand_rec ty in
             let field_tys = Hashtbl.create (Array.length ty_rec) in
@@ -664,41 +664,41 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
             Array.iter check_field fields;
             infer_lval ty dst
 
-        | Ast.STMT_init_rec (dst, fields, None) ->
+        | Ast.STMT_new_rec (dst, fields, None) ->
             let check_field (name, mut, atom) =
               (name, maybe_mutable mut (check_atom atom))
             in
             let ty = Ast.TY_rec (Array.map check_field fields) in
             infer_lval ty dst
 
-        | Ast.STMT_init_tup (dst, members) ->
+        | Ast.STMT_new_tup (dst, members) ->
             let check_member (mut, atom) =
               maybe_mutable mut (check_atom atom)
             in
             let ty = Ast.TY_tup (Array.map check_member members) in
             infer_lval ty dst
 
-        | Ast.STMT_init_vec (dst, mut, [| |]) ->
+        | Ast.STMT_new_vec (dst, mut, [| |]) ->
             (* no inference allowed here *)
             let lval_ty = check_lval ~mut:Ast.MUT_mutable dst in
             ignore (demand_vec_with_mutability mut lval_ty)
 
-        | Ast.STMT_init_vec (dst, mut, elems) ->
+        | Ast.STMT_new_vec (dst, mut, elems) ->
             let atom_ty = demand_all (Array.map check_atom elems) in
             let ty = Ast.TY_vec (maybe_mutable mut atom_ty) in
             infer_lval ty dst
 
-        | Ast.STMT_init_str (dst, _) -> infer_lval Ast.TY_str dst
+        | Ast.STMT_new_str (dst, _) -> infer_lval Ast.TY_str dst
 
-        | Ast.STMT_init_port _ -> ()  (* we can't actually typecheck this *)
+        | Ast.STMT_new_port _ -> ()  (* we can't actually typecheck this *)
 
-        | Ast.STMT_init_chan (dst, Some port) ->
+        | Ast.STMT_new_chan (dst, Some port) ->
             let ty = Ast.TY_chan (demand_port (check_lval port)) in
             infer_lval ty dst
 
-        | Ast.STMT_init_chan (_, None) -> ()  (* can't check this either *)
+        | Ast.STMT_new_chan (_, None) -> ()  (* can't check this either *)
 
-        | Ast.STMT_init_box (dst, mut, src) ->
+        | Ast.STMT_new_box (dst, mut, src) ->
             let ty = Ast.TY_box (maybe_mutable mut (check_atom src)) in
             infer_lval ty dst
 

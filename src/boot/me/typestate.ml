@@ -411,7 +411,7 @@ let condition_assigning_visitor
             in
               raise_pre_post_cond s.id precond;
 
-        | Ast.STMT_init_rec (dst, entries, base) ->
+        | Ast.STMT_new_rec (dst, entries, base) ->
             let base_slots =
               begin
                 match base with
@@ -426,7 +426,7 @@ let condition_assigning_visitor
               raise_pre_post_cond s.id precond;
               raise_postcondition s.id postcond
 
-        | Ast.STMT_init_tup (dst, modes_atoms) ->
+        | Ast.STMT_new_tup (dst, modes_atoms) ->
             let precond = slot_inits
               (tup_inputs_slots cx modes_atoms)
             in
@@ -434,27 +434,27 @@ let condition_assigning_visitor
               raise_pre_post_cond s.id precond;
               raise_postcondition s.id postcond
 
-        | Ast.STMT_init_vec (dst, _, atoms) ->
+        | Ast.STMT_new_vec (dst, _, atoms) ->
             let precond = slot_inits (atoms_slots cx atoms) in
             let postcond = slot_inits (lval_slots cx dst) in
               raise_pre_post_cond s.id precond;
               raise_postcondition s.id postcond
 
-        | Ast.STMT_init_str (dst, _) ->
+        | Ast.STMT_new_str (dst, _) ->
             let postcond = slot_inits (lval_slots cx dst) in
               raise_postcondition s.id postcond
 
-        | Ast.STMT_init_port dst ->
+        | Ast.STMT_new_port dst ->
             let postcond = slot_inits (lval_slots cx dst) in
               raise_postcondition s.id postcond
 
-        | Ast.STMT_init_chan (dst, port) ->
+        | Ast.STMT_new_chan (dst, port) ->
             let precond = slot_inits (lval_option_slots cx port) in
             let postcond = slot_inits (lval_slots cx dst) in
               raise_pre_post_cond s.id precond;
               raise_postcondition s.id postcond
 
-        | Ast.STMT_init_box (dst, _, src) ->
+        | Ast.STMT_new_box (dst, _, src) ->
             let precond = slot_inits (atom_slots cx src) in
             let postcond = slot_inits (lval_slots cx dst) in
               raise_pre_post_cond s.id precond;
@@ -999,7 +999,7 @@ let lifecycle_visitor
     Stack.push sl (Stack.top block_slots)
   in
 
-  let mark_slot_init sl =
+  let mark_slot_live sl =
     Hashtbl.replace live_block_slots sl ()
   in
 
@@ -1011,7 +1011,7 @@ let lifecycle_visitor
           None -> ()
         | Some slot ->
             push_slot slot;
-            mark_slot_init slot
+            mark_slot_live slot
     end;
     inner.Walk.visit_block_pre b
   in
@@ -1065,9 +1065,9 @@ let lifecycle_visitor
 
   let visit_stmt_pre s =
     begin
-      let init_lval lv_dst =
+      let mark_lval_live lv_dst =
         let dst_slots = lval_slots cx lv_dst in
-          Array.iter mark_slot_init dst_slots;
+          Array.iter mark_slot_live dst_slots;
       in
         match s.node with
             Ast.STMT_copy (lv_dst, _)
@@ -1098,20 +1098,20 @@ let lifecycle_visitor
                             Ast.sprintf_lval lv_dst Ast.sprintf_stmt s
                       end;
                     Hashtbl.replace cx.ctxt_copy_stmt_is_init s.id ();
-                    init_lval lv_dst
+                    mark_lval_live lv_dst
                   end;
 
           | Ast.STMT_decl (Ast.DECL_slot (_, sloti)) ->
               push_slot sloti.id
 
-          | Ast.STMT_init_rec (lv_dst, _, _)
-          | Ast.STMT_init_tup (lv_dst, _)
-          | Ast.STMT_init_vec (lv_dst, _, _)
-          | Ast.STMT_init_str (lv_dst, _)
-          | Ast.STMT_init_port lv_dst
-          | Ast.STMT_init_chan (lv_dst, _)
-          | Ast.STMT_init_box (lv_dst, _, _) ->
-              init_lval lv_dst
+          | Ast.STMT_new_rec (lv_dst, _, _)
+          | Ast.STMT_new_tup (lv_dst, _)
+          | Ast.STMT_new_vec (lv_dst, _, _)
+          | Ast.STMT_new_str (lv_dst, _)
+          | Ast.STMT_new_port lv_dst
+          | Ast.STMT_new_chan (lv_dst, _)
+          | Ast.STMT_new_box (lv_dst, _, _) ->
+              mark_lval_live lv_dst
 
           | Ast.STMT_for f ->
               log cx "noting implicit init for slot %d in for-block %d"

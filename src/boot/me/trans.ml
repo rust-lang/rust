@@ -1250,15 +1250,16 @@ let trans_visitor
                  (sorted_htab_keys fns))
         end
 
-  and trans_init_str (initializing:bool) (dst:Ast.lval) (s:string) : unit =
+  and drop_existing_if_not_init init cell ty =
+    if not init
+    then drop_ty_in_current_frame cell ty
+
+  and trans_new_str (initializing:bool) (dst:Ast.lval) (s:string) : unit =
     (* Include null byte. *)
     let init_sz = Int64.of_int ((String.length s) + 1) in
     let static = trans_static_string s in
     let (dst_cell, dst_ty) = trans_lval_maybe_init initializing dst in
-    let _ =
-      if not initializing
-      then drop_ty_in_current_frame dst_cell dst_ty
-    in
+      drop_existing_if_not_init initializing dst_cell dst_ty;
       trans_upcall "upcall_new_str" dst_cell [| static; imm init_sz |]
 
   and trans_lit (lit:Ast.lit) : Il.operand =
@@ -2236,32 +2237,26 @@ let trans_visitor
                  trans_atom (Ast.ATOM_lval chan) |];
         end
 
-  and trans_init_port (initializing:bool) (dst:Ast.lval) : unit =
+  and trans_new_port (initializing:bool) (dst:Ast.lval) : unit =
     let (dst_cell, dst_ty) = trans_lval_maybe_init initializing dst in
-    let _ =
-      if not initializing
-      then drop_ty_in_current_frame dst_cell dst_ty
-    in
     let unit_ty = match dst_ty with
         Ast.TY_port t -> t
       | _ -> bug () "init dst of port-init has non-port type"
     in
     let unit_sz = ty_sz abi unit_ty in
+      drop_existing_if_not_init initializing dst_cell dst_ty;
       trans_upcall "upcall_new_port" dst_cell [| imm unit_sz |]
 
   and trans_del_port (port:Il.cell) : unit =
     trans_void_upcall "upcall_del_port" [| Il.Cell port |]
 
-  and trans_init_chan
+  and trans_new_chan
       (initializing:bool)
       (dst:Ast.lval)
       (port:Ast.lval)
       : unit =
     let (dst_cell, dst_ty) = trans_lval_maybe_init initializing dst in
-    let _ =
-      if not initializing
-      then drop_ty_in_current_frame dst_cell dst_ty
-    in
+      drop_existing_if_not_init initializing dst_cell dst_ty;
       trans_upcall "upcall_new_chan" dst_cell
         [| trans_atom (Ast.ATOM_lval port) |]
 
@@ -2285,16 +2280,12 @@ let trans_visitor
    * part out for reuse in string code.
    *)
 
-  and trans_init_vec
+  and trans_new_vec
       (initializing:bool)
       (dst:Ast.lval)
       (atoms:Ast.atom array)
       : unit =
     let (dst_cell, dst_ty) = trans_lval_maybe_init initializing dst in
-    let _ =
-      if not initializing
-      then drop_ty_in_current_frame dst_cell dst_ty
-    in
     let gc_ctrl =
       if (ty_mem_ctrl dst_ty) = MEM_gc
       then Il.Cell (get_tydesc None dst_ty)
@@ -2306,6 +2297,7 @@ let trans_visitor
     in
     let fill = next_vreg_cell word_sty in
     let unit_sz = ty_sz_in_current_frame unit_ty in
+      drop_existing_if_not_init initializing dst_cell dst_ty;
       umul fill unit_sz (imm (Int64.of_int (Array.length atoms)));
       trans_upcall "upcall_new_vec" dst_cell [| Il.Cell fill; gc_ctrl |];
       let vec = deref dst_cell in
@@ -2327,7 +2319,7 @@ let trans_visitor
             mov (get_element_ptr vec Abi.vec_elt_fill) (Il.Cell fill);
 
 
-  and trans_init_box
+  and trans_new_box
       (initializing:bool)
       (dst:Ast.lval)
       (src:Ast.atom)
@@ -2337,8 +2329,7 @@ let trans_visitor
     let src_ty = simplified_ty (atom_type cx src) in
     let (dst_cell, dst_ty) = trans_lval_maybe_init initializing dst in
     let _ =
-      if not initializing
-      then drop_ty_in_current_frame dst_cell dst_ty
+      drop_existing_if_not_init initializing dst_cell dst_ty
     in
     let dst_ty = strip_mutable_or_constrained_ty dst_ty in
     let (dst_cell, dst_ty) =
@@ -3395,7 +3386,7 @@ let trans_visitor
       end
       atoms
 
-  and trans_init_rec_update
+  and trans_new_rec_update
       (dst:Il.cell)
       (dst_tys:Ast.ty array)
       (trec:Ast.ty_rec)
@@ -4496,60 +4487,57 @@ let trans_visitor
                 | _ -> bug () "Binding unexpected lval."
           end
 
-      | Ast.STMT_init_rec (dst, atab, base) ->
-          let init = maybe_init stmt.id "rec-init" dst in
-          let (dst_cell, ty) = trans_lval_maybe_init init dst in
+      | Ast.STMT_new_rec (dst, atab, base) ->
+          let init = maybe_init stmt.id "new rec" dst in
+          let (dst_cell, dst_ty) = trans_lval_maybe_init init dst in
           let (trec, dst_tys) =
-            match ty with
+            match dst_ty with
                 Ast.TY_rec trec -> (trec, Array.map snd trec)
               | _ ->
                   bugi cx stmt.id
-                    "non-rec destination type in stmt_init_rec"
+                    "non-rec destination type in stmt_new_rec"
           in
             begin
+              drop_existing_if_not_init init dst_cell dst_ty;
               match base with
                   None ->
                     let atoms = Array.map (fun (_, _, atom) -> atom) atab in
                       trans_init_structural_from_atoms
                         dst_cell dst_tys atoms
                 | Some base_lval ->
-                    trans_init_rec_update
+                    trans_new_rec_update
                       dst_cell dst_tys trec atab base_lval
             end
 
-      | Ast.STMT_init_tup (dst, elems) ->
-          let init = maybe_init stmt.id "tup-init" dst in
+      | Ast.STMT_new_tup (dst, elems) ->
+          let init = maybe_init stmt.id "new tup" dst in
           let (dst_cell, dst_ty) = trans_lval_maybe_init init dst in
-          let _ =
-            if not init
-            then drop_ty_in_current_frame dst_cell dst_ty
-          in
           let dst_tys =
             match dst_ty with
                 Ast.TY_tup ttup -> ttup
               | _ ->
                   bugi cx stmt.id
-                    "non-tup destination type in stmt_init_tup"
+                    "non-tup destination type in stmt_new_tup"
           in
           let atoms = Array.map snd elems in
-          let (dst_cell, _) = deref_ty DEREF_none init dst_cell dst_ty in
+            drop_existing_if_not_init init dst_cell dst_ty;
             trans_init_structural_from_atoms dst_cell dst_tys atoms
 
 
-      | Ast.STMT_init_str (dst, s) ->
-          let init = maybe_init stmt.id "str-init" dst in
-            trans_init_str init dst s
+      | Ast.STMT_new_str (dst, s) ->
+          let init = maybe_init stmt.id "new str" dst in
+            trans_new_str init dst s
 
-      | Ast.STMT_init_vec (dst, _, atoms) ->
-          let init = maybe_init stmt.id "vec-init" dst in
-            trans_init_vec init dst atoms
+      | Ast.STMT_new_vec (dst, _, atoms) ->
+          let init = maybe_init stmt.id "new vec" dst in
+            trans_new_vec init dst atoms
 
-      | Ast.STMT_init_port dst ->
-          let init = maybe_init stmt.id "port-init" dst in
-            trans_init_port init dst
+      | Ast.STMT_new_port dst ->
+          let init = maybe_init stmt.id "new port" dst in
+            trans_new_port init dst
 
-      | Ast.STMT_init_chan (dst, port) ->
-          let init = maybe_init stmt.id "chan-init" dst in
+      | Ast.STMT_new_chan (dst, port) ->
+          let init = maybe_init stmt.id "new chan" dst in
           begin
             match port with
                 None ->
@@ -4558,12 +4546,12 @@ let trans_visitor
                   in
                     mov dst_cell imm_false
               | Some p ->
-                  trans_init_chan init dst p
+                  trans_new_chan init dst p
           end
 
-      | Ast.STMT_init_box (dst, _, src) ->
-          let init = maybe_init stmt.id "box-init" dst in
-            trans_init_box init dst src
+      | Ast.STMT_new_box (dst, _, src) ->
+          let init = maybe_init stmt.id "new box" dst in
+            trans_new_box init dst src
 
       | Ast.STMT_block block ->
           trans_block block

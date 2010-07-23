@@ -925,7 +925,7 @@ let trans_crate
             set_debug_loc head.id;
 
             match head.node with
-                Ast.STMT_init_tup (dest, elems) ->
+                Ast.STMT_new_tup (dest, elems) ->
                   let zero = const_i32 0 in
                   let (lldest, _) = trans_lval dest in
                   let trans_tup_elem idx (_, atom) =
@@ -1025,7 +1025,7 @@ let trans_crate
                   ignore (Llvm.build_cond_br llexpr llok llfail llbuilder);
                   trans_tail_with_builder llokbuilder
 
-              | Ast.STMT_init_str (dst, str) ->
+              | Ast.STMT_new_str (dst, str) ->
                   let (d, _) = trans_lval dst in
                   let s = static_str str in
                   let len =

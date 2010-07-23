@@ -200,13 +200,13 @@ and stmt' =
 
   (* lval-assigning stmts. *)
     STMT_spawn of (lval * domain * lval * (atom array))
-  | STMT_init_rec of (lval * (rec_input array) * lval option)
-  | STMT_init_tup of (lval * (tup_input array))
-  | STMT_init_vec of (lval * mutability * atom array)
-  | STMT_init_str of (lval * string)
-  | STMT_init_port of lval
-  | STMT_init_chan of (lval * (lval option))
-  | STMT_init_box of (lval * mutability * atom)
+  | STMT_new_rec of (lval * (rec_input array) * lval option)
+  | STMT_new_tup of (lval * (tup_input array))
+  | STMT_new_vec of (lval * mutability * atom array)
+  | STMT_new_str of (lval * string)
+  | STMT_new_port of lval
+  | STMT_new_chan of (lval * (lval option))
+  | STMT_new_box of (lval * mutability * atom)
   | STMT_copy of (lval * expr)
   | STMT_copy_binop of (lval * binop * atom)
   | STMT_call of (lval * lval * (atom array))
@@ -1028,7 +1028,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
       | STMT_decl (DECL_mod_item (ident, item)) ->
           fmt_mod_item ff ident item
 
-      | STMT_init_rec (dst, entries, base) ->
+      | STMT_new_rec (dst, entries, base) ->
           fmt_lval ff dst;
           fmt ff " = rec(";
           for i = 0 to (Array.length entries) - 1
@@ -1050,7 +1050,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           end;
           fmt ff ");"
 
-      | STMT_init_vec (dst, mutability, atoms) ->
+      | STMT_new_vec (dst, mutability, atoms) ->
           fmt_lval ff dst;
           fmt ff " = vec";
           if mutability = MUT_mutable then fmt ff "[mutable]";
@@ -1063,7 +1063,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           done;
           fmt ff ");"
 
-      | STMT_init_tup (dst, entries) ->
+      | STMT_new_tup (dst, entries) ->
           fmt_lval ff dst;
           fmt ff " = tup(";
           for i = 0 to (Array.length entries) - 1
@@ -1076,15 +1076,15 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           done;
           fmt ff ");";
 
-      | STMT_init_str (dst, s) ->
+      | STMT_new_str (dst, s) ->
           fmt_lval ff dst;
           fmt ff " = \"%s\"" (String.escaped s)
 
-      | STMT_init_port dst ->
+      | STMT_new_port dst ->
           fmt_lval ff dst;
           fmt ff " = port();"
 
-      | STMT_init_chan (dst, port_opt) ->
+      | STMT_new_chan (dst, port_opt) ->
           fmt_lval ff dst;
           fmt ff " = chan(";
           begin
@@ -1188,7 +1188,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           fmt_lval ff t;
           fmt ff ";"
 
-      | STMT_init_box (lv, mutability, at) ->
+      | STMT_new_box (lv, mutability, at) ->
           fmt_lval ff lv;
           fmt ff " = @@";
           if mutability = MUT_mutable then fmt ff " mutable ";

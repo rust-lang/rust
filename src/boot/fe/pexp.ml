@@ -1008,7 +1008,7 @@ let expand_pexp_custom
                   ignore (Unix.close_process_in c);
                   Buffer.contents b
           in
-            [| spanner (Ast.STMT_init_str (dst_lval, r())) |]
+            [| spanner (Ast.STMT_new_str (dst_lval, r())) |]
 
       | _ ->
           raise (err ("unknown syntax extension: " ^ nstr) ps)
@@ -1018,7 +1018,7 @@ let expand_pexp_custom
  * Desugarings depend on context:
  * 
  *   - If a pexp is used on the RHS of an assignment, it's turned into
- *     an initialization statement such as STMT_init_rec or such. This
+ *     an initialization statement such as STMT_new_rec or such. This
  *     removes the possibility of initializing into a temp only to
  *     copy out. If the topmost pexp in such a desugaring is an atom,
  *     unop or binop, of course, it will still just emit a STMT_copy
@@ -1265,13 +1265,13 @@ and desugar_expr_init
                   Some base ->
                     let (base_stmts, base_lval) = desugar_lval ps base in
                     let rec_stmt =
-                      ss (Ast.STMT_init_rec
+                      ss (Ast.STMT_new_rec
                             (dst_lval, entries, Some base_lval))
                     in
                       ac [ arg_stmts; base_stmts; [| rec_stmt |] ]
                 | None ->
                     let rec_stmt =
-                      ss (Ast.STMT_init_rec (dst_lval, entries, None))
+                      ss (Ast.STMT_new_rec (dst_lval, entries, None))
                     in
                       aa arg_stmts [| rec_stmt |]
             end
@@ -1283,22 +1283,22 @@ and desugar_expr_init
           in
           let arg_atoms = Array.to_list arg_atoms in
           let tup_args = Array.of_list (List.combine muts arg_atoms) in
-          let stmt = ss (Ast.STMT_init_tup (dst_lval, tup_args)) in
+          let stmt = ss (Ast.STMT_new_tup (dst_lval, tup_args)) in
             aa arg_stmts [| stmt |]
 
       | PEXP_str s ->
-          let stmt = ss (Ast.STMT_init_str (dst_lval, s)) in
+          let stmt = ss (Ast.STMT_new_str (dst_lval, s)) in
             [| stmt |]
 
       | PEXP_vec (mutability, args) ->
           let (arg_stmts, arg_atoms) = desugar_expr_atoms ps args in
           let stmt =
-            ss (Ast.STMT_init_vec (dst_lval, mutability, arg_atoms))
+            ss (Ast.STMT_new_vec (dst_lval, mutability, arg_atoms))
           in
             aa arg_stmts [| stmt |]
 
       | PEXP_port ->
-          [| ss (Ast.STMT_init_port dst_lval) |]
+          [| ss (Ast.STMT_new_port dst_lval) |]
 
       | PEXP_chan pexp_opt ->
           let (port_stmts, port_opt) =
@@ -1315,7 +1315,7 @@ and desugar_expr_init
           in
           let chan_stmt =
             ss
-              (Ast.STMT_init_chan (dst_lval, port_opt))
+              (Ast.STMT_new_chan (dst_lval, port_opt))
           in
             aa port_stmts [| chan_stmt |]
 
@@ -1324,7 +1324,7 @@ and desugar_expr_init
             desugar_expr_atom ps arg
           in
           let stmt =
-            ss (Ast.STMT_init_box (dst_lval, mutability, arg_mode_atom))
+            ss (Ast.STMT_new_box (dst_lval, mutability, arg_mode_atom))
           in
             aa arg_stmts [| stmt |]
 
