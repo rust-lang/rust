@@ -45,7 +45,7 @@ let mutability_checking_visitor
           Ast.TY_mutable _ -> true
         | _ -> false
     in
-      if (is_mutable or (Hashtbl.mem cx.ctxt_copy_stmt_is_init s.id))
+      if (is_mutable or (Hashtbl.mem cx.ctxt_stmt_is_init s.id))
       then ()
       else err (Some s.id)
         "writing to non-mutable slot of type %a in statement %a"

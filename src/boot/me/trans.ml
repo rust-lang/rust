@@ -4199,7 +4199,7 @@ let trans_visitor
 
 
   and maybe_init (id:node_id) (action:string) (dst:Ast.lval) : bool =
-    let b = Hashtbl.mem cx.ctxt_copy_stmt_is_init id in
+    let b = Hashtbl.mem cx.ctxt_stmt_is_init id in
     let act = if b then ("initializing-" ^ action) else action in
       iflog
         (fun _ ->

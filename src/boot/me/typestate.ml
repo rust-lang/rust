@@ -1074,7 +1074,14 @@ let lifecycle_visitor
           | Ast.STMT_call (lv_dst, _, _)
           | Ast.STMT_spawn (lv_dst, _, _, _)
           | Ast.STMT_recv (lv_dst, _)
-          | Ast.STMT_bind (lv_dst, _, _) ->
+          | Ast.STMT_bind (lv_dst, _, _)
+          | Ast.STMT_new_rec (lv_dst, _, _)
+          | Ast.STMT_new_tup (lv_dst, _)
+          | Ast.STMT_new_vec (lv_dst, _, _)
+          | Ast.STMT_new_str (lv_dst, _)
+          | Ast.STMT_new_port lv_dst
+          | Ast.STMT_new_chan (lv_dst, _)
+          | Ast.STMT_new_box (lv_dst, _, _) ->
               let prestate = Hashtbl.find cx.ctxt_prestates s.id in
               let poststate = Hashtbl.find cx.ctxt_poststates s.id in
               let dst_slots = lval_slots cx lv_dst in
@@ -1097,26 +1104,18 @@ let lifecycle_visitor
                           log cx "noting lval %a init at stmt %a"
                             Ast.sprintf_lval lv_dst Ast.sprintf_stmt s
                       end;
-                    Hashtbl.replace cx.ctxt_copy_stmt_is_init s.id ();
+                    Hashtbl.replace cx.ctxt_stmt_is_init s.id ();
                     mark_lval_live lv_dst
                   end;
 
           | Ast.STMT_decl (Ast.DECL_slot (_, sloti)) ->
               push_slot sloti.id
 
-          | Ast.STMT_new_rec (lv_dst, _, _)
-          | Ast.STMT_new_tup (lv_dst, _)
-          | Ast.STMT_new_vec (lv_dst, _, _)
-          | Ast.STMT_new_str (lv_dst, _)
-          | Ast.STMT_new_port lv_dst
-          | Ast.STMT_new_chan (lv_dst, _)
-          | Ast.STMT_new_box (lv_dst, _, _) ->
-              mark_lval_live lv_dst
-
           | Ast.STMT_for f ->
               log cx "noting implicit init for slot %d in for-block %d"
                 (int_of_node (fst f.Ast.for_slot).id)
                 (int_of_node (f.Ast.for_body.id));
+              Hashtbl.replace cx.ctxt_stmt_is_init s.id ();
               htab_put implicit_init_block_slots
                 f.Ast.for_body.id
                 (fst f.Ast.for_slot).id
@@ -1125,6 +1124,7 @@ let lifecycle_visitor
               log cx "noting implicit init for slot %d in for_each-block %d"
                 (int_of_node (fst f.Ast.for_each_slot).id)
                 (int_of_node (f.Ast.for_each_body.id));
+              Hashtbl.replace cx.ctxt_stmt_is_init s.id ();
               htab_put implicit_init_block_slots
                 f.Ast.for_each_body.id
                 (fst f.Ast.for_each_slot).id

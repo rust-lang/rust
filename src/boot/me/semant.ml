@@ -129,7 +129,7 @@ type ctxt =
       ctxt_prestates: (node_id,Bits.t) Hashtbl.t;
       ctxt_poststates: (node_id,Bits.t) Hashtbl.t;
       ctxt_call_lval_params: (node_id,Ast.ty array) Hashtbl.t;
-      ctxt_copy_stmt_is_init: (node_id,unit) Hashtbl.t;
+      ctxt_stmt_is_init: (node_id,unit) Hashtbl.t;
       ctxt_post_stmt_slot_drops: (node_id,node_id list) Hashtbl.t;
 
       (* Translation-y stuff. *)
@@ -202,7 +202,7 @@ let new_ctxt sess abi crate =
     ctxt_postconditions = Hashtbl.create 0;
     ctxt_prestates = Hashtbl.create 0;
     ctxt_poststates = Hashtbl.create 0;
-    ctxt_copy_stmt_is_init = Hashtbl.create 0;
+    ctxt_stmt_is_init = Hashtbl.create 0;
     ctxt_post_stmt_slot_drops = Hashtbl.create 0;
     ctxt_call_lval_params = Hashtbl.create 0;
 
