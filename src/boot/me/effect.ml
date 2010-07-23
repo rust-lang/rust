@@ -34,18 +34,21 @@ let mutability_checking_visitor
   in
 
   let check_write s dst =
-    let _ =
-      iflog cx
-        (fun _ -> log cx "checking write to lval #%d = %a"
-           (int_of_node (lval_base_id dst)) Ast.sprintf_lval dst)
-    in
+    let is_init = Hashtbl.mem cx.ctxt_stmt_is_init s.id in
     let dst_ty = lval_ty cx dst in
     let is_mutable =
       match dst_ty with
           Ast.TY_mutable _ -> true
         | _ -> false
     in
-      if (is_mutable or (Hashtbl.mem cx.ctxt_stmt_is_init s.id))
+      iflog cx
+        (fun _ -> log cx "checking %swrite to %slval #%d = %a of type %a"
+           (if is_init then "initializing " else "")
+           (if is_mutable then "mutable " else "")
+           (int_of_node (lval_base_id dst))
+           Ast.sprintf_lval dst
+           Ast.sprintf_ty dst_ty);
+      if (is_mutable or is_init)
       then ()
       else err (Some s.id)
         "writing to non-mutable slot of type %a in statement %a"
@@ -57,10 +60,19 @@ let mutability_checking_visitor
   let visit_stmt_pre s =
     begin
       match s.node with
-          Ast.STMT_copy (dst, _) -> check_write s dst
-        | Ast.STMT_copy_binop (dst, _, _) -> check_write s dst
-        | Ast.STMT_call (dst, _, _) -> check_write s dst
-        | Ast.STMT_recv (dst, _) -> check_write s dst
+            Ast.STMT_copy (lv_dst, _)
+          | Ast.STMT_call (lv_dst, _, _)
+          | Ast.STMT_spawn (lv_dst, _, _, _)
+          | Ast.STMT_recv (lv_dst, _)
+          | Ast.STMT_bind (lv_dst, _, _)
+          | Ast.STMT_new_rec (lv_dst, _, _)
+          | Ast.STMT_new_tup (lv_dst, _)
+          | Ast.STMT_new_vec (lv_dst, _, _)
+          | Ast.STMT_new_str (lv_dst, _)
+          | Ast.STMT_new_port lv_dst
+          | Ast.STMT_new_chan (lv_dst, _)
+          | Ast.STMT_new_box (lv_dst, _, _) ->
+              check_write s lv_dst
         | _ -> ()
     end;
     inner.Walk.visit_stmt_pre s
