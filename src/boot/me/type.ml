@@ -654,7 +654,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
       fn_ctx.fnctx_just_saw_ret <-
         match stmt.Common.node with
             Ast.STMT_ret _ | Ast.STMT_be _ | Ast.STMT_fail
-          | Ast.STMT_yield _ -> true
+          | Ast.STMT_yield -> true
           | _ -> false
     in
 
