@@ -1195,12 +1195,43 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           fmt_atom ff at;
           fmt ff ";"
 
-      | STMT_alt_tag _ -> fmt ff "?stmt_alt_tag?"
+      | STMT_alt_tag at ->
+          fmt_obox ff;
+          fmt ff "alt (";
+          fmt_lval ff at.alt_tag_lval;
+          fmt ff ") ";
+          fmt_obr ff;
+          Array.iter (fmt_arm ff) at.alt_tag_arms;
+          fmt_cbb ff;
+
       | STMT_alt_type _ -> fmt ff "?stmt_alt_type?"
       | STMT_alt_port _ -> fmt ff "?stmt_alt_port?"
       | STMT_note _ -> fmt ff "?stmt_note?"
       | STMT_slice _ -> fmt ff "?stmt_slice?"
   end
+
+and fmt_arm (ff:Format.formatter) (arm:arm) : unit =
+  let (pat, block) = arm.node in
+    fmt ff "@\n";
+    fmt_obox ff;
+    fmt ff "case (";
+    fmt_pat ff pat;
+    fmt ff ") ";
+    fmt_obr ff;
+    fmt_stmts ff block.node;
+    fmt_cbb ff;
+
+and fmt_pat (ff:Format.formatter) (pat:pat) : unit =
+  match pat with
+      PAT_lit lit ->
+        fmt_lit ff lit
+    | PAT_tag (ctor, pats) ->
+        fmt_lval ff ctor;
+        fmt_bracketed_arr_sep "(" ")" "," fmt_pat ff pats
+    | PAT_slot (_, ident) ->
+        fmt_ident ff ident
+    | PAT_wild ->
+        fmt ff "_"
 
 and fmt_decl_param (ff:Format.formatter) (param:ty_param) : unit =
   let (ident, (i, e)) = param in
