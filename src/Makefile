@@ -357,6 +357,7 @@ TEST_XFAILS_X86 :=  test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
                     test/run-pass/generic-fn-infer.rs \
+                    test/run-pass/generic-tag-alt.rs \
                     test/run-pass/generic-recursive-tag.rs \
                     test/run-pass/iter-ret.rs \
                     test/run-pass/mlist-cycle.rs \
@@ -387,6 +388,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       bind-thunk.rs \
                       bind-trivial.rs \
                       bitwise.rs \
+                      box-in-tup.rs \
                       box-unbox.rs \
                       cast.rs \
                       clone-with-exterior.rs \
@@ -476,6 +478,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       vec-append.rs \
                       vec-concat.rs \
                       vec-drop.rs \
+                      vec-in-tup.rs \
                       vec-late-init.rs \
                       vec-lib.rs \
                       vec-slice.rs \
