@@ -391,6 +391,14 @@ let condition_assigning_visitor
       end
   in
 
+  let raise_dst_init_precond_if_writing_through sid lval =
+    match lval with
+        Ast.LVAL_base _ -> ()
+      | Ast.LVAL_ext _ ->
+          let precond = slot_inits (lval_slots cx lval) in
+            raise_precondition sid precond;
+  in
+
   let visit_stmt_pre s =
     begin
       match s.node with
@@ -402,6 +410,7 @@ let condition_assigning_visitor
             let precond = slot_inits (lval_slots cx src) in
             let postcond = slot_inits (lval_slots cx dst) in
               raise_pre_post_cond s.id precond;
+              raise_dst_init_precond_if_writing_through s.id dst;
               raise_postcondition s.id postcond
 
         | Ast.STMT_send (dst, src) ->
@@ -423,6 +432,7 @@ let condition_assigning_visitor
               (Array.append (rec_inputs_slots cx entries) base_slots)
             in
             let postcond = slot_inits (lval_slots cx dst) in
+              raise_dst_init_precond_if_writing_through s.id dst;
               raise_pre_post_cond s.id precond;
               raise_postcondition s.id postcond
 
@@ -431,38 +441,45 @@ let condition_assigning_visitor
               (tup_inputs_slots cx modes_atoms)
             in
             let postcond = slot_inits (lval_slots cx dst) in
+              raise_dst_init_precond_if_writing_through s.id dst;
               raise_pre_post_cond s.id precond;
               raise_postcondition s.id postcond
 
         | Ast.STMT_new_vec (dst, _, atoms) ->
             let precond = slot_inits (atoms_slots cx atoms) in
             let postcond = slot_inits (lval_slots cx dst) in
+              raise_dst_init_precond_if_writing_through s.id dst;
               raise_pre_post_cond s.id precond;
               raise_postcondition s.id postcond
 
         | Ast.STMT_new_str (dst, _) ->
             let postcond = slot_inits (lval_slots cx dst) in
+              raise_dst_init_precond_if_writing_through s.id dst;
               raise_postcondition s.id postcond
 
         | Ast.STMT_new_port dst ->
             let postcond = slot_inits (lval_slots cx dst) in
+              raise_dst_init_precond_if_writing_through s.id dst;
               raise_postcondition s.id postcond
 
         | Ast.STMT_new_chan (dst, port) ->
             let precond = slot_inits (lval_option_slots cx port) in
             let postcond = slot_inits (lval_slots cx dst) in
+              raise_dst_init_precond_if_writing_through s.id dst;
               raise_pre_post_cond s.id precond;
               raise_postcondition s.id postcond
 
         | Ast.STMT_new_box (dst, _, src) ->
             let precond = slot_inits (atom_slots cx src) in
             let postcond = slot_inits (lval_slots cx dst) in
+              raise_dst_init_precond_if_writing_through s.id dst;
               raise_pre_post_cond s.id precond;
               raise_postcondition s.id postcond
 
         | Ast.STMT_copy (dst, src) ->
             let precond = slot_inits (expr_slots cx src) in
             let postcond = slot_inits (lval_slots cx dst) in
+              raise_dst_init_precond_if_writing_through s.id dst;
               raise_pre_post_cond s.id precond;
               raise_postcondition s.id postcond
 
@@ -474,11 +491,13 @@ let condition_assigning_visitor
 
         | Ast.STMT_spawn (dst, _, lv, args)
         | Ast.STMT_call (dst, lv, args) ->
+            raise_dst_init_precond_if_writing_through s.id dst;
             visit_callable_pre s.id (lval_slots cx dst) lv args
 
         | Ast.STMT_bind (dst, lv, args_opt) ->
             let args = arr_map_partial args_opt (fun a -> a) in
-            visit_callable_pre s.id (lval_slots cx dst) lv args
+              raise_dst_init_precond_if_writing_through s.id dst;
+              visit_callable_pre s.id (lval_slots cx dst) lv args
 
         | Ast.STMT_ret (Some at) ->
             let precond = slot_inits (atom_slots cx at) in
