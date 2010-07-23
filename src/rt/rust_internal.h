@@ -274,6 +274,7 @@ struct type_desc {
     uintptr_t sever_glue_off;    // For GC.
     uintptr_t mark_glue_off;     // For GC.
     uintptr_t obj_drop_glue_off; // For custom destructors.
+    uintptr_t is_stateful;
 
     // Residual fields past here are known only to runtime.
     UT_hash_handle hh;

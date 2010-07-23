@@ -5,12 +5,15 @@ native "rust" mod rustrt {
   type vbuf;
   fn vec_buf[T](vec[T] v) -> vbuf;
   fn vec_len[T](vec[T] v) -> uint;
-  fn vec_alloc[T](uint n_elts) -> vec[T];
+  /* The T in vec_alloc[T, U] is the type of the vec to allocate.  The
+   * U is the type of an element in the vec.  So to allocate a vec[U] we
+   * want to invoke this as vec_alloc[vec[U], U]. */
+  fn vec_alloc[T, U](uint n_elts) -> vec[U];
   fn refcount[T](vec[T] v) -> uint;
 }
 
 fn alloc[T](uint n_elts) -> vec[T] {
-  ret rustrt.vec_alloc[T](n_elts);
+  ret rustrt.vec_alloc[vec[T], T](n_elts);
 }
 
 type init_op[T] = fn(uint i) -> T;

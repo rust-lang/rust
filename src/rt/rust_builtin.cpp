@@ -92,15 +92,15 @@ unsupervise(rust_task *task) {
 }
 
 extern "C" CDECL rust_vec*
-vec_alloc(rust_task *task, type_desc *t, size_t n_elts)
+vec_alloc(rust_task *task, type_desc *t, type_desc *elem_t, size_t n_elts)
 {
     rust_dom *dom = task->dom;
     task->log(rust_log::MEM,
-            "vec_alloc %" PRIdPTR " elements of size %" PRIdPTR,
-             n_elts, t->size);
-    size_t fill = n_elts * t->size;
+              "vec_alloc %" PRIdPTR " elements of size %" PRIdPTR,
+              n_elts, elem_t->size);
+    size_t fill = n_elts * elem_t->size;
     size_t alloc = next_power_of_two(sizeof(rust_vec) + fill);
-    void *mem = dom->malloc(alloc);
+    void *mem = task->malloc(alloc, t->is_stateful ? t : NULL);
     if (!mem) {
         task->fail(3);
         return NULL;

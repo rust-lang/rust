@@ -1112,8 +1112,9 @@ let trans_visitor
           let fix fixup =
             fixup_rel_word tydesc_fixup fixup
           in
-          log cx "tydesc for %a has sz=%Ld, align=%Ld"
-            Ast.sprintf_ty t sz align;
+          let is_stateful = if type_has_state t then 1L else 0L in
+          log cx "tydesc for %a has sz=%Ld, align=%Ld, is_stateful=%Ld"
+            Ast.sprintf_ty t sz align is_stateful;
             Asm.DEF
               (tydesc_fixup,
                Asm.SEQ
@@ -1145,6 +1146,7 @@ let trans_visitor
                                      Asm.WORD (word_ty_mach, Asm.IMM 0L);
                            end
                    end;
+                   Asm.WORD (word_ty_mach, Asm.IMM is_stateful);
                  |])
       end
 
@@ -1715,13 +1717,23 @@ let trans_visitor
       let dst = deref out_ptr in
       let ty_params = deref (get_element_ptr args 0) in
       let src = deref (get_element_ptr args 1) in
-        trans_copy_ty ty_params false dst ty src ty curr_iso
+
+      (* Translate copy code for the dst-initializing and
+       * dst-non-initializing cases and branch accordingly. *)
+      let initflag = get_element_ptr args 2 in
+      let jmps = trans_compare_simple Il.JNE (Il.Cell initflag) one in
+        trans_copy_ty ty_params true dst ty src ty curr_iso;
+        let skip_noninit_jmp = mark() in
+          emit (Il.jmp Il.JMP Il.CodeNone);
+          List.iter patch jmps;          
+          trans_copy_ty ty_params false dst ty src ty curr_iso;
+          patch skip_noninit_jmp;
     in
     let ty_params_ptr = ty_params_covering ty in
     let fty =
       mk_ty_fn
         (local_slot ty)
-        [| ty_params_ptr; alias_slot ty |]
+        [| ty_params_ptr; alias_slot ty; word_slot |]
     in
       get_typed_mem_glue g fty inner
 
@@ -3198,6 +3210,8 @@ let trans_visitor
               iflog
                 (fun _ -> annotate
                    (Printf.sprintf "copy_ty: parametric copy %#d" i));
+              let initflag = if initializing then one else zero in
+              let initflag = Il.Reg (force_to_reg initflag) in
               aliasing false src
                 begin
                   fun src ->
@@ -3206,7 +3220,7 @@ let trans_visitor
                       trans_call_dynamic_glue
                         td Abi.tydesc_field_copy_glue
                         (Some dst)
-                        [| ty_params_ptr; src; |]
+                        [| ty_params_ptr; src; initflag |]
                         None
                 end
 
@@ -4299,7 +4313,12 @@ let trans_visitor
         [| vr; fp |]
         None
 
-  and trans_vec_append dst_cell dst_ty src_oper src_ty =
+  and trans_vec_append
+      (dst_cell:Il.cell)
+      (dst_ty:Ast.ty)
+      (src_oper:Il.operand)
+      (src_ty:Ast.ty)
+      : unit =
     let elt_ty = seq_unit_ty dst_ty in
     let trim_trailing_null = dst_ty = Ast.TY_str in
       assert (simplified_ty src_ty = simplified_ty dst_ty);

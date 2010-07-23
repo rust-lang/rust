@@ -364,7 +364,6 @@ TEST_XFAILS_X86 :=  test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/mutable-vec-drop.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/task-comm.rs \
-                    test/run-pass/vec-alloc-append.rs \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/task-comm-2.rs \
                     test/run-pass/task-comm-3.rs \
