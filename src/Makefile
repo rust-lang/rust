@@ -418,7 +418,6 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       alt-tag.rs \
                       arithmetic-interference.rs \
                       argv.rs \
-                      auto-deref.rs \
                       autoderef-full-lval.rs \
                       autoderef-objfn.rs \
                       basic.rs \
@@ -452,7 +451,6 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       generic-drop-glue.rs \
                       generic-exterior-box.rs \
                       generic-fn-infer.rs \
-                      generic-fn-twice.rs \
                       generic-fn.rs \
                       generic-obj-with-derived-type.rs \
                       generic-obj.rs \
@@ -482,8 +480,6 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       mutable-alias-vec.rs \
                       mutable-vec-drop.rs \
                       mutual-recursion-group.rs \
-                      native-mod.rc \
-                      native.rc \
                       obj-as.rs \
                       obj-drop.rs \
                       obj-dtor.rs \

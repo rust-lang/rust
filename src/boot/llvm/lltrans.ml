@@ -588,7 +588,7 @@ let trans_crate
     (* Maps a fn's or block's id to an LLVM metadata node (subprogram or
        lexical block) representing it. *)
   let (dbg_llscopes:(node_id, Llvm.llvalue) Hashtbl.t) = Hashtbl.create 0 in
-  let declare_mod_item
+  let rec declare_mod_item
       (name:Ast.ident)
       mod_item
       : unit =
@@ -616,9 +616,8 @@ let trans_crate
         | Ast.MOD_ITEM_type _ ->
             ()  (* Types get translated with their terms. *)
 
-        | Ast.MOD_ITEM_mod _ ->
-            ()  (* Modules simply contain other items that are translated
-                   on their own. *)
+        | Ast.MOD_ITEM_mod (_, items) ->
+            Hashtbl.iter declare_mod_item items
 
         | _ ->
             Common.unimpl (Some id)
@@ -807,6 +806,17 @@ let trans_crate
                             Ast.sprintf_lval lval)
       in
 
+      let trans_callee (fn:Ast.lval) : (Llvm.llvalue * Ast.ty) =
+        let fty = Hashtbl.find sem_cx.ctxt_all_lval_types (lval_base_id fn) in
+          if lval_base_is_item sem_cx fn then
+            let fn_item = lval_item sem_cx fn in
+            let llfn = Hashtbl.find llitems (fn_item.id) in
+              (llfn, fty)
+          else
+            (* indirect call to computed slot *)
+            trans_lval fn
+      in
+
       let trans_atom (atom:Ast.atom) : Llvm.llvalue =
         iflog (fun _ -> log sem_cx "trans_atom: %a" Ast.sprintf_atom atom);
         match atom with
@@ -959,7 +969,7 @@ let trans_crate
               | Ast.STMT_call (dest, fn, args) ->
                   let llargs = Array.map trans_atom args in
                   let (lldest, _) = trans_lval dest in
-                  let (llfn, _) = trans_lval fn in
+                  let (llfn, _) = trans_callee fn in
                   let llallargs = Array.append [| lldest; lltask |] llargs in
                   let llrv = build_call llfn llallargs "" llbuilder in
                     Llvm.set_instruction_call_conv Llvm.CallConv.c llrv;
@@ -1072,13 +1082,22 @@ let trans_crate
       ignore (Llvm.build_br llbodyblock llinitbuilder)
   in
 
-  let trans_mod_item
-      (_:Ast.ident)
-      { node = { Ast.decl_item = (item:Ast.mod_item') }; id = id }
+  let rec trans_mod_item
+      (name:Ast.ident)
+      mod_item
       : unit =
+    let { node = { Ast.decl_item = (item:Ast.mod_item') }; id = id } =
+      mod_item in
     match item with
-        Ast.MOD_ITEM_fn fn -> trans_fn fn id
-      | _ -> ()
+        Ast.MOD_ITEM_type _ ->
+          ()  (* Types get translated with their terms. *)
+      | Ast.MOD_ITEM_mod (_, items) ->
+          Hashtbl.iter trans_mod_item items
+      | Ast.MOD_ITEM_fn fn -> trans_fn fn id
+      | _ -> Common.unimpl (Some id)
+          "LLVM module declaration for: %a"
+            Ast.sprintf_mod_item (name, mod_item)
+
   in
 
   let exit_task_glue =
