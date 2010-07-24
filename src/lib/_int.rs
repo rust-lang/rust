@@ -45,7 +45,7 @@ fn next_power_of_two(uint n) -> uint {
   ret tmp + 1u;
 }
 
-fn uto_string(mutable uint n, uint radix) -> str
+fn uto_str(mutable uint n, uint radix) -> str
 {
   check (0u < radix && radix <= 16u);
   fn digit(uint n) -> str {
@@ -60,12 +60,12 @@ fn uto_string(mutable uint n, uint radix) -> str
       case (7u) { ret "7"; }
       case (8u) { ret "8"; }
       case (9u) { ret "9"; }
-      case (10u) { ret "A"; }
-      case (11u) { ret "B"; }
-      case (12u) { ret "C"; }
-      case (13u) { ret "D"; }
-      case (14u) { ret "E"; }
-      case (15u) { ret "F"; }
+      case (10u) { ret "a"; }
+      case (11u) { ret "b"; }
+      case (12u) { ret "c"; }
+      case (13u) { ret "d"; }
+      case (14u) { ret "e"; }
+      case (15u) { ret "f"; }
     }
   }
 
@@ -79,12 +79,12 @@ fn uto_string(mutable uint n, uint radix) -> str
   ret s;
 }
 
-fn to_string(mutable int n, uint radix) -> str
+fn to_str(mutable int n, uint radix) -> str
 {
   check (0u < radix && radix <= 16u);
   if (n < 0) {
-    ret "-" + uto_string((-n) as uint, radix);
+    ret "-" + uto_str((-n) as uint, radix);
   } else {
-    ret uto_string(n as uint, radix);
+    ret uto_str(n as uint, radix);
   }
 }

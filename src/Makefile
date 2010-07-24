@@ -395,6 +395,7 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-pass/fn-lval.rs \
                     test/run-pass/generic-fn-infer.rs \
                     test/run-pass/generic-recursive-tag.rs \
+                    test/run-pass/int-lib.rs \
                     test/run-pass/iter-ret.rs \
                     test/run-pass/lib-deque.rs \
                     test/run-pass/lib-map.rs \
@@ -464,6 +465,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       import.rs \
                       inner-module.rs \
                       integral-indexing.rs \
+                      int-lib.rs \
                       iter-range.rs \
                       iter-ret.rs \
                       large-records.rs \
