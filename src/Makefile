@@ -463,7 +463,6 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       i32-sub.rs \
                       i8-incr.rs \
                       import.rs \
-                      inner-module.rs \
                       integral-indexing.rs \
                       int-lib.rs \
                       iter-range.rs \
