@@ -389,6 +389,7 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-pass/child-outlives-parent.rs \
                     test/run-pass/clone-with-exterior.rs \
                     test/run-pass/constrained-type.rs \
+                    test/run-pass/destructor-ordering.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
