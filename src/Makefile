@@ -506,6 +506,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       str-append.rs \
                       str-concat.rs \
                       str-idx.rs \
+                      str-lib.rs \
                       tag.rs \
                       tail-cps.rs \
                       tail-direct.rs \
