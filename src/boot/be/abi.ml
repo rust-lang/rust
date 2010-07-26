@@ -149,7 +149,7 @@ type abi =
                                       -> unit);
 
     abi_emit_native_call_in_thunk: (Il.emitter
-                                    -> Il.cell                (* ret    *)
+                                    -> Il.cell option         (* ret    *)
                                       -> Common.nabi
                                         -> Il.operand         (* callee *)
                                           -> Il.operand array (* args   *)

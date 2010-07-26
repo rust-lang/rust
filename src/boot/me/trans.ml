@@ -4998,8 +4998,12 @@ let trans_visitor
                        libstr;
                        symstr |];
 
-                  abi.Abi.abi_emit_native_call_in_thunk (emitter())
-                    out nabi (Il.Cell f) args;
+                  abi.Abi.abi_emit_native_call_in_thunk
+                    (emitter())
+                    (if pointee_type out = Il.NilTy then None else Some out)
+                    nabi
+                    (Il.Cell f)
+                    args;
               end
 
           | _ -> bug ()

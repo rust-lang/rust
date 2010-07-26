@@ -700,7 +700,7 @@ let emit_native_void_call
 
 let emit_native_call_in_thunk
     (e:Il.emitter)
-    (ret:Il.cell)
+    (ret:Il.cell option)
     (nabi:nabi)
     (fn:Il.operand)
     (args:Il.operand array)
@@ -734,9 +734,12 @@ let emit_native_call_in_thunk
     end;
 
     match ret with
-        Il.Reg (r, _) -> mov (word_at r) (ro eax)
-      | _ -> mov (rc edx) (c ret);
+        Some (Il.Reg (r, _)) ->
+          mov (word_at r) (ro eax)
+      | Some ret ->
+          mov (rc edx) (c ret);
           mov (word_at (h edx)) (ro eax)
+      | _ -> ()
 ;;
 
 
