@@ -184,7 +184,7 @@ let calculate_live_bitvectors
     (cx:ctxt)
     : ((Bits.t array) * (Bits.t array)) =
 
-  log cx "calculating live bitvectors";
+  iflog cx (fun _ -> log cx "calculating live bitvectors");
 
   let quads = cx.ctxt_quads in
   let n_quads = Array.length quads in
@@ -198,10 +198,9 @@ let calculate_live_bitvectors
   let (quad_uncond_jmp:bool array) = Array.make n_quads false in
   let (quad_jmp_targs:(Il.label list) array) = Array.make n_quads [] in
 
-  let outer_changed = ref true in
-
   (* Working bit-vector. *)
   let scratch = new_bitv() in
+  let changed = ref true in
 
   (* bit-vector helpers. *)
     (* Setup pass. *)
@@ -217,62 +216,39 @@ let calculate_live_bitvectors
           (quad_defined_vregs q)
     done;
 
-    while !outer_changed do
-      iflog cx (fun _ -> log cx "iterating outer bitvector calculation");
-      outer_changed := false;
-      for i = 0 to n_quads - 1 do
-        Bits.clear live_in_vregs.(i);
-        Bits.clear live_out_vregs.(i)
+    while !changed do
+      changed := false;
+      iflog cx
+        (fun _ ->
+           log cx "iterating inner bitvector calculation over %d quads"
+             n_quads);
+      for i = n_quads - 1 downto 0 do
+
+        let note_change b = if b then changed := true in
+        let live_in = live_in_vregs.(i) in
+        let live_out = live_out_vregs.(i) in
+        let used = quad_used_vrs.(i) in
+        let defined = quad_defined_vrs.(i) in
+
+          (* Union in the vregs we use. *)
+          note_change (Bits.union live_in used);
+
+          (* Union in all our jump targets. *)
+          List.iter
+            (fun i -> note_change (Bits.union live_out live_in_vregs.(i)))
+            (quad_jmp_targs.(i));
+
+          (* Union in our block successor if we have one *)
+          if i < (n_quads - 1) && (not (quad_uncond_jmp.(i)))
+          then note_change (Bits.union live_out live_in_vregs.(i+1));
+
+          (* Propagate live-out to live-in on anything we don't define. *)
+          ignore (Bits.copy scratch defined);
+          Bits.invert scratch;
+          ignore (Bits.intersect scratch live_out);
+          note_change (Bits.union live_in scratch);
+
       done;
-      let inner_changed = ref true in
-        while !inner_changed do
-          inner_changed := false;
-          iflog cx
-            (fun _ ->
-               log cx "iterating inner bitvector calculation over %d quads"
-                 n_quads);
-          for i = n_quads - 1 downto 0 do
-
-            let note_change b = if b then inner_changed := true in
-            let live_in = live_in_vregs.(i) in
-            let live_out = live_out_vregs.(i) in
-            let used = quad_used_vrs.(i) in
-            let defined = quad_defined_vrs.(i) in
-
-              (* Union in the vregs we use. *)
-              note_change (Bits.union live_in used);
-
-              (* Union in all our jump targets. *)
-              List.iter
-                (fun i -> note_change (Bits.union live_out live_in_vregs.(i)))
-                (quad_jmp_targs.(i));
-
-              (* Union in our block successor if we have one *)
-              if i < (n_quads - 1) && (not (quad_uncond_jmp.(i)))
-              then note_change (Bits.union live_out live_in_vregs.(i+1));
-
-              (* Propagate live-out to live-in on anything we don't define. *)
-              ignore (Bits.copy scratch defined);
-              Bits.invert scratch;
-              ignore (Bits.intersect scratch live_out);
-              note_change (Bits.union live_in scratch);
-
-          done
-        done;
-        let kill_mov_to_dead_target i q =
-          match q.Il.quad_body with
-              Il.Unary { Il.unary_op=uop;
-                         Il.unary_dst=Il.Reg (Il.Vreg v, _) }
-                when
-                  ((Il.is_mov uop) &&
-                     not (Bits.get live_out_vregs.(i) v)) ->
-                  begin
-                    kill_quad i cx;
-                    outer_changed := true;
-                  end
-            | _ -> ()
-        in
-          Array.iteri kill_mov_to_dead_target quads
     done;
     iflog cx
       begin
@@ -340,7 +316,10 @@ let dump_quads cx =
         None -> ""
       | Some f -> f.fixup_name ^ ":"
     in
-      log cx "[%s] %s %s" (padded_num i len) (padded_str lab (!maxlablen)) qs
+      iflog cx
+        (fun _ ->
+           log cx "[%s] %s %s"
+             (padded_num i len) (padded_str lab (!maxlablen)) qs)
   done
 ;;
 
@@ -449,8 +428,11 @@ let reg_alloc
                 in
                 let spill_mem = spill_slot spill_idx in
                 let spill_cell = Il.Mem (spill_mem, Il.ScalarTy word_ty) in
-                  log cx "spilling <%d> from %s to %s"
-                    vreg (hr_str hreg) (string_of_mem hr_str spill_mem);
+                  iflog cx
+                    (fun _ ->
+                       log cx "spilling <%d> from %s to %s"
+                         vreg (hr_str hreg) (string_of_mem
+                                               hr_str spill_mem));
                   prepend (Il.mk_quad
                              (Il.umov spill_cell (Il.Cell (hr hreg))));
               else ()

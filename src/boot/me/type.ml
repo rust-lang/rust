@@ -25,6 +25,12 @@ let log cx =
     cx.Semant.ctxt_sess.Session.sess_log_type
     cx.Semant.ctxt_sess.Session.sess_log_out
 
+let iflog cx thunk =
+  if cx.Semant.ctxt_sess.Session.sess_log_type
+  then thunk ()
+  else ()
+;;
+
 let type_error expected actual = raise (Type_error (expected, actual))
 
 (* We explicitly curry [cx] like this to avoid threading it through all the
@@ -65,7 +71,10 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
     let res =
       if mutability = Ast.MUT_mutable then Ast.TY_mutable ty else ty
     in
-      log cx "maybe_mutable: %a -> %a" Ast.sprintf_ty ty Ast.sprintf_ty res;
+      iflog cx
+        (fun _ ->
+           log cx "maybe_mutable: %a -> %a"
+             Ast.sprintf_ty ty Ast.sprintf_ty res);
       res
   in
 
@@ -238,11 +247,13 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
           demand expected actual;
           actual
       | Some inferred, None ->
-          log cx "setting auto slot #%d = %a to type %a"
-            (Common.int_of_node defn_id)
-            Ast.sprintf_slot_key
-              (Hashtbl.find cx.Semant.ctxt_slot_keys defn_id)
-            Ast.sprintf_ty inferred;
+          iflog cx
+            (fun _ ->
+               log cx "setting auto slot #%d = %a to type %a"
+                 (Common.int_of_node defn_id)
+                 Ast.sprintf_slot_key
+                 (Hashtbl.find cx.Semant.ctxt_slot_keys defn_id)
+                 Ast.sprintf_ty inferred);
           let new_slot = { slot with Ast.slot_ty = Some inferred } in
           Hashtbl.replace cx.Semant.ctxt_all_defns defn_id
             (Semant.DEFN_slot new_slot);
@@ -305,8 +316,11 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
         | `Module items -> Ast.sprintf_mod_items chan items
     in
 
-    let _ = log cx "base lval %a, base type %a"
-      Ast.sprintf_lval base sprintf_itype ()
+    let _ =
+      iflog cx
+        (fun _ ->
+           log cx "base lval %a, base type %a"
+             Ast.sprintf_lval base sprintf_itype ())
     in
 
     let rec typecheck base_ity =
@@ -495,20 +509,26 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
      * Get the real one. *)
     let lval_id = Semant.lval_base_id lval in
     let lval = Hashtbl.find cx.Semant.ctxt_all_lvals lval_id in
-    let _ = log cx "generic_check_lval %a mut=%s deref=%s infer=%s"
-      Ast.sprintf_lval lval
-      (if mut = Ast.MUT_mutable then "mutable" else "immutable")
-      (if deref then "true" else "false")
-      (match infer with
-           None -> "<none>"
-         | Some t -> Fmt.fmt_to_str Ast.fmt_ty t)
+    let _ =
+      iflog cx
+        (fun _ ->
+           log cx "generic_check_lval %a mut=%s deref=%s infer=%s"
+             Ast.sprintf_lval lval
+             (if mut = Ast.MUT_mutable then "mutable" else "immutable")
+             (if deref then "true" else "false")
+             (match infer with
+                  None -> "<none>"
+                | Some t -> Fmt.fmt_to_str Ast.fmt_ty t))
     in
     let (lval_ty, n_boxes) =
       internal_check_outer_lval ~mut:mut ~deref:deref infer lval
     in
-    let _ = log cx "checked lval %a with type %a"
-      Ast.sprintf_lval lval
-      Ast.sprintf_ty lval_ty
+    let _ =
+      iflog cx
+        (fun _ ->
+           log cx "checked lval %a with type %a"
+             Ast.sprintf_lval lval
+             Ast.sprintf_ty lval_ty)
     in
 
     if Hashtbl.mem cx.Semant.ctxt_all_lval_types lval_id then
@@ -887,7 +907,7 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
 
   (* Verify that, if main is present, it has the right form. *)
   let verify_main (item_id:Common.node_id) : unit =
-    let path_name = Semant.string_of_name (Semant.path_to_name path) in
+    let path_name = Hashtbl.find cx.Semant.ctxt_all_item_names item_id in
     if cx.Semant.ctxt_main_name = Some path_name then
       try
         match Hashtbl.find cx.Semant.ctxt_all_item_types item_id with
@@ -972,11 +992,19 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
      * return void *)
     let visit_stmt_pre (stmt:Ast.stmt) : unit =
       try
-        log cx "";
-        log cx "typechecking stmt: %a" Ast.sprintf_stmt stmt;
-        log cx "";
+        iflog cx
+          begin
+            fun _ ->
+              log cx "";
+              log cx "typechecking stmt: %a" Ast.sprintf_stmt stmt;
+              log cx "";
+          end;
         check_stmt cx (Stack.top fn_ctx_stack) stmt;
-        log cx "finished typechecking stmt: %a" Ast.sprintf_stmt stmt;
+        iflog cx
+          begin
+            fun _ -> 
+              log cx "finished typechecking stmt: %a" Ast.sprintf_stmt stmt;
+          end;
       with Common.Semant_err (None, msg) ->
         raise (Common.Semant_err ((Some stmt.Common.id), msg))
     in
