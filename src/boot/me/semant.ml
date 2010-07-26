@@ -100,6 +100,7 @@ type ctxt =
       ctxt_all_stmts: (node_id,Ast.stmt) Hashtbl.t;
       ctxt_item_files: (node_id,filename) Hashtbl.t;
       ctxt_all_lvals: (node_id,Ast.lval) Hashtbl.t;
+      ctxt_call_lval_params: (node_id,Ast.ty array) Hashtbl.t;
 
       (* definition id --> definition *)
       ctxt_all_defns: (node_id,defn) Hashtbl.t;
@@ -109,6 +110,10 @@ type ctxt =
 
       ctxt_required_items: (node_id, (required_lib * nabi_conv)) Hashtbl.t;
       ctxt_required_syms: (node_id, string) Hashtbl.t;
+
+      (* Typestate-y stuff. *)
+      ctxt_stmt_is_init: (node_id,unit) Hashtbl.t;
+      ctxt_post_stmt_slot_drops: (node_id,node_id list) Hashtbl.t;
 
       (* Layout-y stuff. *)
       ctxt_slot_aliased: (node_id,unit) Hashtbl.t;
@@ -120,17 +125,6 @@ type ctxt =
       ctxt_block_is_loop_body: (node_id,unit) Hashtbl.t;
       ctxt_stmt_loop_depths: (node_id,int) Hashtbl.t;
       ctxt_slot_loop_depths: (node_id,int) Hashtbl.t;
-
-      (* Typestate-y stuff. *)
-      ctxt_constrs: (constr_id,constr_key) Hashtbl.t;
-      ctxt_constr_ids: (constr_key,constr_id) Hashtbl.t;
-      ctxt_preconditions: (node_id,Bits.t) Hashtbl.t;
-      ctxt_postconditions: (node_id,Bits.t) Hashtbl.t;
-      ctxt_prestates: (node_id,Bits.t) Hashtbl.t;
-      ctxt_poststates: (node_id,Bits.t) Hashtbl.t;
-      ctxt_call_lval_params: (node_id,Ast.ty array) Hashtbl.t;
-      ctxt_stmt_is_init: (node_id,unit) Hashtbl.t;
-      ctxt_post_stmt_slot_drops: (node_id,node_id list) Hashtbl.t;
 
       (* Translation-y stuff. *)
       ctxt_fn_fixups: (node_id,fixup) Hashtbl.t;
@@ -192,19 +186,13 @@ let new_ctxt sess abi crate =
     ctxt_item_files = crate.Ast.crate_files;
     ctxt_all_lvals = Hashtbl.create 0;
     ctxt_all_defns = Hashtbl.create 0;
+    ctxt_call_lval_params = Hashtbl.create 0;
     ctxt_lval_to_referent = Hashtbl.create 0;
     ctxt_required_items = crate.Ast.crate_required;
     ctxt_required_syms = crate.Ast.crate_required_syms;
 
-    ctxt_constrs = Hashtbl.create 0;
-    ctxt_constr_ids = Hashtbl.create 0;
-    ctxt_preconditions = Hashtbl.create 0;
-    ctxt_postconditions = Hashtbl.create 0;
-    ctxt_prestates = Hashtbl.create 0;
-    ctxt_poststates = Hashtbl.create 0;
     ctxt_stmt_is_init = Hashtbl.create 0;
     ctxt_post_stmt_slot_drops = Hashtbl.create 0;
-    ctxt_call_lval_params = Hashtbl.create 0;
 
     ctxt_slot_aliased = Hashtbl.create 0;
     ctxt_slot_is_obj_state = Hashtbl.create 0;

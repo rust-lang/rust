@@ -13,6 +13,96 @@ let iflog cx thunk =
   else ()
 ;;
 
+type node_graph = (node_id, (node_id list)) Hashtbl.t;;
+type sibling_map = (node_id, node_id) Hashtbl.t;;
+
+type typestate_tables =
+    { ts_constrs: (constr_id,constr_key) Hashtbl.t;
+      ts_constr_ids: (constr_key,constr_id) Hashtbl.t;
+      ts_preconditions: (node_id,Bits.t) Hashtbl.t;
+      ts_postconditions: (node_id,Bits.t) Hashtbl.t;
+      ts_prestates: (node_id,Bits.t) Hashtbl.t;
+      ts_poststates: (node_id,Bits.t) Hashtbl.t;
+      ts_graph: node_graph;
+      ts_siblings: sibling_map;
+      ts_stmts: Ast.stmt Stack.t;
+      ts_maxid: int ref;
+    }
+;;
+
+let new_tables _ =
+  { ts_constrs = Hashtbl.create 0;
+    ts_constr_ids = Hashtbl.create 0;
+    ts_preconditions = Hashtbl.create 0;
+    ts_postconditions = Hashtbl.create 0;
+    ts_poststates = Hashtbl.create 0;
+    ts_prestates = Hashtbl.create 0;
+    ts_graph = Hashtbl.create 0;
+    ts_siblings = Hashtbl.create 0;
+    ts_stmts = Stack.create ();
+    ts_maxid = ref 0 }
+;;
+
+type item_tables = (node_id, typestate_tables) Hashtbl.t
+;;
+
+let get_tables (all_tables:item_tables) (n:node_id) : typestate_tables =
+  htab_search_or_add all_tables n new_tables
+;;
+
+let tables_managing_visitor
+    (all_tables:item_tables)
+    (tables_stack:typestate_tables Stack.t)
+    (inner:Walk.visitor)
+    : Walk.visitor =
+
+  let enter id =
+    Stack.push (get_tables all_tables id) tables_stack
+  in
+
+  let leave _ =
+    ignore (Stack.pop tables_stack)
+  in
+
+  let visit_mod_item_pre n p i =
+    enter i.id;
+    inner.Walk.visit_mod_item_pre n p i
+  in
+
+  let visit_mod_item_post n p i =
+    inner.Walk.visit_mod_item_post n p i;
+    leave()
+  in
+
+  let visit_obj_fn_pre obj ident fn =
+    enter fn.id;
+    inner.Walk.visit_obj_fn_pre obj ident fn
+  in
+
+  let visit_obj_fn_post obj ident fn =
+    inner.Walk.visit_obj_fn_post obj ident fn;
+    leave()
+  in
+
+  let visit_obj_drop_pre obj b =
+    enter b.id;
+    inner.Walk.visit_obj_drop_pre obj b
+  in
+
+  let visit_obj_drop_post obj b =
+    inner.Walk.visit_obj_drop_post obj b;
+    leave()
+  in
+    { inner with
+        Walk.visit_mod_item_pre = visit_mod_item_pre;
+        Walk.visit_mod_item_post = visit_mod_item_post;
+        Walk.visit_obj_fn_pre = visit_obj_fn_pre;
+        Walk.visit_obj_fn_post = visit_obj_fn_post;
+        Walk.visit_obj_drop_pre = visit_obj_drop_pre;
+        Walk.visit_obj_drop_post = visit_obj_drop_post; }
+;;
+
+
 let name_base_to_slot_key (nb:Ast.name_base) : Ast.slot_key =
   match nb with
       Ast.BASE_ident ident -> Ast.KEY_ident ident
@@ -153,10 +243,12 @@ let fn_keys fn resolver =
 
 let constr_id_assigning_visitor
     (cx:ctxt)
+    (tables_stack:typestate_tables Stack.t)
     (scopes:(scope list) ref)
-    (idref:int ref)
     (inner:Walk.visitor)
     : Walk.visitor =
+
+  let tables _ = Stack.top tables_stack in
 
   let resolve_constr_to_key
       (formal_base:node_id)
@@ -166,17 +258,19 @@ let constr_id_assigning_visitor
   in
 
   let note_constr_key key =
-    if not (Hashtbl.mem cx.ctxt_constr_ids key)
-    then
-      begin
-        let cid = Constr (!idref) in
-          iflog cx
-            (fun _ -> log cx "assigning constr id #%d to constr %s"
-               (!idref) (fmt_constr_key cx key));
-          incr idref;
-          htab_put cx.ctxt_constrs cid key;
-          htab_put cx.ctxt_constr_ids key cid;
-      end
+    let ts = tables () in
+    let idref = ts.ts_maxid in
+      if not (Hashtbl.mem ts.ts_constr_ids key)
+      then
+        begin
+          let cid = Constr (!idref) in
+            iflog cx
+              (fun _ -> log cx "assigning constr id #%d to constr %s"
+                 (!idref) (fmt_constr_key cx key));
+            incr idref;
+            htab_put ts.ts_constrs cid key;
+            htab_put ts.ts_constr_ids key cid;
+        end
   in
 
   let note_keys = Array.iter note_constr_key in
@@ -196,6 +290,24 @@ let constr_id_assigning_visitor
       | _ -> ()
     end;
     inner.Walk.visit_mod_item_pre n p i
+  in
+
+  let visit_obj_fn_pre obj ident fn =
+    let (obj_input_keys, obj_init_keys) =
+      obj_keys obj.node (resolve_constr_to_key obj.id)
+    in
+      note_keys obj_input_keys;
+      note_keys obj_init_keys;
+      inner.Walk.visit_obj_fn_pre obj ident fn
+  in
+
+  let visit_obj_drop_pre obj b =
+    let (obj_input_keys, obj_init_keys) =
+      obj_keys obj.node (resolve_constr_to_key obj.id)
+    in
+      note_keys obj_input_keys;
+      note_keys obj_init_keys;
+      inner.Walk.visit_obj_drop_pre obj b
   in
 
   let visit_constr_pre formal_base c =
@@ -242,6 +354,8 @@ let constr_id_assigning_visitor
   in
     { inner with
         Walk.visit_mod_item_pre = visit_mod_item_pre;
+        Walk.visit_obj_fn_pre = visit_obj_fn_pre;
+        Walk.visit_obj_drop_pre = visit_obj_drop_pre;
         Walk.visit_slot_identified_pre = visit_slot_identified_pre;
         Walk.visit_stmt_pre = visit_stmt_pre;
         Walk.visit_constr_pre = visit_constr_pre }
@@ -249,26 +363,33 @@ let constr_id_assigning_visitor
 
 let bitmap_assigning_visitor
     (cx:ctxt)
-    (idref:int ref)
+    (tables_stack:typestate_tables Stack.t)
     (inner:Walk.visitor)
     : Walk.visitor =
+
+  let tables _ = Stack.top tables_stack in
+
   let visit_stmt_pre s =
-    iflog cx (fun _ -> log cx "building %d-entry bitmap for node %d"
-                (!idref) (int_of_node s.id));
-    htab_put cx.ctxt_preconditions s.id (Bits.create (!idref) false);
-    htab_put cx.ctxt_postconditions s.id (Bits.create (!idref) false);
-    htab_put cx.ctxt_prestates s.id (Bits.create (!idref) false);
-    htab_put cx.ctxt_poststates s.id (Bits.create (!idref) false);
-    inner.Walk.visit_stmt_pre s
+    let ts = tables () in
+    let idref = ts.ts_maxid in
+      iflog cx (fun _ -> log cx "building %d-entry bitmap for node %d"
+                  (!idref) (int_of_node s.id));
+      htab_put ts.ts_preconditions s.id (Bits.create (!idref) false);
+      htab_put ts.ts_postconditions s.id (Bits.create (!idref) false);
+      htab_put ts.ts_prestates s.id (Bits.create (!idref) false);
+      htab_put ts.ts_poststates s.id (Bits.create (!idref) false);
+      inner.Walk.visit_stmt_pre s
   in
   let visit_block_pre b =
-    iflog cx (fun _ -> log cx "building %d-entry bitmap for node %d"
-                (!idref) (int_of_node b.id));
-    htab_put cx.ctxt_preconditions b.id (Bits.create (!idref) false);
-    htab_put cx.ctxt_postconditions b.id (Bits.create (!idref) false);
-    htab_put cx.ctxt_prestates b.id (Bits.create (!idref) false);
-    htab_put cx.ctxt_poststates b.id (Bits.create (!idref) false);
-    inner.Walk.visit_block_pre b
+    let ts = tables () in
+    let idref = ts.ts_maxid in
+      iflog cx (fun _ -> log cx "building %d-entry bitmap for node %d"
+                  (!idref) (int_of_node b.id));
+      htab_put ts.ts_preconditions b.id (Bits.create (!idref) false);
+      htab_put ts.ts_postconditions b.id (Bits.create (!idref) false);
+      htab_put ts.ts_prestates b.id (Bits.create (!idref) false);
+      htab_put ts.ts_poststates b.id (Bits.create (!idref) false);
+      inner.Walk.visit_block_pre b
   in
     { inner with
         Walk.visit_stmt_pre = visit_stmt_pre;
@@ -277,30 +398,36 @@ let bitmap_assigning_visitor
 
 let condition_assigning_visitor
     (cx:ctxt)
+    (tables_stack:typestate_tables Stack.t)
     (scopes:(scope list) ref)
     (inner:Walk.visitor)
     : Walk.visitor =
 
+  let tables _ = Stack.top tables_stack in
+
   let raise_bits (bitv:Bits.t) (keys:constr_key array) : unit =
-    Array.iter
-      (fun key ->
-         let cid = Hashtbl.find cx.ctxt_constr_ids key in
-         let i = int_of_constr cid in
-           iflog cx (fun _ -> log cx "setting bit %d, constraint %s"
-                       i (fmt_constr_key cx key));
-           Bits.set bitv (int_of_constr cid) true)
-      keys
+    let ts = tables () in
+      Array.iter
+        (fun key ->
+           let cid = Hashtbl.find ts.ts_constr_ids key in
+           let i = int_of_constr cid in
+             iflog cx (fun _ -> log cx "setting bit %d, constraint %s"
+                         i (fmt_constr_key cx key));
+             Bits.set bitv (int_of_constr cid) true)
+        keys
   in
 
   let slot_inits ss = Array.map (fun s -> Constr_init s) ss in
 
   let raise_postcondition (id:node_id) (keys:constr_key array) : unit =
-    let bitv = Hashtbl.find cx.ctxt_postconditions id in
+    let ts = tables () in
+    let bitv = Hashtbl.find ts.ts_postconditions id in
       raise_bits bitv keys
   in
 
   let raise_precondition (id:node_id) (keys:constr_key array) : unit =
-    let bitv = Hashtbl.find cx.ctxt_preconditions id in
+    let ts = tables () in
+    let bitv = Hashtbl.find ts.ts_preconditions id in
       raise_bits bitv keys
   in
 
@@ -602,18 +729,19 @@ let show_node cx graph s i =
          s (int_of_node i) (lset_fmt (Hashtbl.find graph i)))
 ;;
 
-type node_graph = (node_id, (node_id list)) Hashtbl.t;;
-type sibling_map = (node_id, node_id) Hashtbl.t;;
-
 let graph_sequence_building_visitor
     (cx:ctxt)
-    (graph:node_graph)
-    (sibs:sibling_map)
+    (tables_stack:typestate_tables Stack.t)
     (inner:Walk.visitor)
     : Walk.visitor =
 
+  let tables _ = Stack.top tables_stack in
+
   (* Flow each stmt to its sequence-successor. *)
   let visit_stmts stmts =
+    let ts = tables () in
+    let graph = ts.ts_graph in
+    let sibs = ts.ts_siblings in
     let len = Array.length stmts in
       for i = 0 to len - 2
       do
@@ -680,27 +808,36 @@ let last_id_or_block_id (block:Ast.block) : node_id =
 
 let graph_general_block_structure_building_visitor
     (cx:ctxt)
-    (graph:node_graph)
-    (sibs:sibling_map)
+    (tables_stack:typestate_tables Stack.t)
     (inner:Walk.visitor)
     : Walk.visitor =
 
-  let stmts = Stack.create () in
+  let tables _ = Stack.top tables_stack in
 
   let visit_stmt_pre s =
-    Stack.push s stmts;
-    inner.Walk.visit_stmt_pre s
+    let ts = tables () in
+    let stmts = ts.ts_stmts in
+      Stack.push s stmts;
+      inner.Walk.visit_stmt_pre s
   in
 
   let visit_stmt_post s =
-    inner.Walk.visit_stmt_post s;
-    ignore (Stack.pop stmts)
+    let ts = tables () in
+    let stmts = ts.ts_stmts in
+      inner.Walk.visit_stmt_post s;
+      ignore (Stack.pop stmts)
   in
 
-  let show_node = show_node cx graph in
+  let show_node =
+    fun n id -> show_node cx (tables()).ts_graph n id
+  in
 
   let visit_block_pre b =
     begin
+      let ts = tables () in
+      let graph = ts.ts_graph in
+      let sibs = ts.ts_siblings in
+      let stmts = ts.ts_stmts in
       let len = Array.length b.node in
       let _ = htab_put graph b.id
         (if len > 0 then [b.node.(0).id] else [])
@@ -748,15 +885,19 @@ let graph_general_block_structure_building_visitor
 
 let graph_special_block_structure_building_visitor
     (cx:ctxt)
-    (graph:(node_id, (node_id list)) Hashtbl.t)
+    (tables_stack:typestate_tables Stack.t)
     (inner:Walk.visitor)
     : Walk.visitor =
+
+  let tables _ = Stack.top tables_stack in
 
   let visit_stmt_pre s =
     begin
       match s.node with
 
-        | Ast.STMT_if sif ->
+          Ast.STMT_if sif ->
+            let ts = tables () in
+            let graph = ts.ts_graph in
             let cond_id = s.id in
             let then_id = sif.Ast.if_then.id in
             let then_end_id = last_id_or_block_id sif.Ast.if_then in
@@ -799,6 +940,8 @@ let graph_special_block_structure_building_visitor
             (* There are a bunch of rewirings to do on 'while' nodes. *)
 
             begin
+              let ts = tables () in
+              let graph = ts.ts_graph in
               let dsts = Hashtbl.find graph s.id in
               let body = sw.Ast.while_body in
               let succ_stmts =
@@ -837,6 +980,8 @@ let graph_special_block_structure_building_visitor
             end
 
         | Ast.STMT_alt_tag at ->
+            let ts = tables () in
+            let graph = ts.ts_graph in
             let dsts = Hashtbl.find graph s.id in
             let arm_blocks =
               let arm_block_id { node = (_, block) } = block.id in
@@ -865,37 +1010,60 @@ let find_roots
     roots
 ;;
 
-let run_dataflow cx idref graph : unit =
+let run_dataflow (cx:ctxt) (ts:typestate_tables) : unit =
+  let graph = ts.ts_graph in
+  let idref = ts.ts_maxid in
   let roots = find_roots graph in
   let nodes = Queue.create () in
+
   let progress = ref true in
+  let iter = ref 0 in
+  let total = ref 0 in
+  let written = Hashtbl.create 0 in
+  let scheduled = Hashtbl.create 0 in
+  let next_nodes = Queue.create () in
+  let schedule n =
+    if Hashtbl.mem scheduled n
+    then ()
+    else
+      begin
+        Queue.push n next_nodes;
+        Hashtbl.add scheduled n ()
+      end
+  in
+
   let fmt_constr_bitv bitv =
     String.concat ", "
       (List.map
          (fun i ->
             fmt_constr_key cx
-              (Hashtbl.find cx.ctxt_constrs (Constr i)))
+              (Hashtbl.find ts.ts_constrs (Constr i)))
          (Bits.to_list bitv))
   in
+
   let set_bits dst src =
     if Bits.copy dst src
     then (progress := true;
           iflog cx (fun _ -> log cx "made progress setting bits"))
   in
-  let intersect_bits dst src =
+
+  let intersect_bits node dst src =
     if Bits.intersect dst src
     then (progress := true;
+          schedule node;
           iflog cx (fun _ -> log cx
                       "made progress intersecting bits"))
   in
-  let iter = ref 0 in
-  let written = Hashtbl.create 0 in
+
   let tmp_diff = (Bits.create (!idref) false) in
   let tmp_poststate = (Bits.create (!idref) false) in
-    Hashtbl.iter (fun n _ -> Queue.push n nodes) roots;
+    Hashtbl.iter (fun n _ -> schedule n) roots;
     while !progress do
       incr iter;
       progress := false;
+      Queue.clear nodes;
+      Queue.transfer next_nodes nodes;
+      Hashtbl.clear scheduled;
       iflog cx (fun _ ->
                   log cx "";
                   log cx "--------------------";
@@ -903,11 +1071,12 @@ let run_dataflow cx idref graph : unit =
       Queue.iter
         begin
           fun node ->
-            let prestate = Hashtbl.find cx.ctxt_prestates node in
-            let precond = Hashtbl.find cx.ctxt_preconditions node in
-            let postcond = Hashtbl.find cx.ctxt_postconditions node in
-            let poststate = Hashtbl.find cx.ctxt_poststates node in
+            let prestate = Hashtbl.find ts.ts_prestates node in
+            let precond = Hashtbl.find ts.ts_preconditions node in
+            let postcond = Hashtbl.find ts.ts_postconditions node in
+            let poststate = Hashtbl.find ts.ts_poststates node in
 
+              incr total;
               Bits.clear tmp_poststate;
               ignore (Bits.union tmp_poststate prestate);
               ignore (Bits.union tmp_poststate precond);
@@ -944,42 +1113,81 @@ let run_dataflow cx idref graph : unit =
                 iflog cx (fun _ -> log cx
                             "out-edges for %d: %s" i (lset_fmt successors));
                 List.iter
-                begin
-                  fun succ ->
-                    let succ_prestates =
-                      Hashtbl.find cx.ctxt_prestates succ
-                    in
-                      if Hashtbl.mem written succ
-                      then
-                        begin
-                          intersect_bits succ_prestates poststate;
-                          Hashtbl.replace written succ ()
-                        end
-                      else
-                        begin
-                          progress := true;
-                          Queue.push succ nodes;
-                          set_bits succ_prestates poststate
-                      end
-                end
-                successors
+                  begin
+                    fun succ ->
+                      let succ_prestates =
+                        Hashtbl.find ts.ts_prestates succ
+                      in
+                        if Hashtbl.mem written succ
+                        then
+                          intersect_bits succ succ_prestates poststate
+                        else
+                          begin
+                            progress := true;
+                            schedule succ;
+                            set_bits succ_prestates poststate
+                          end
+                  end
+                  successors
         end
         nodes
     done
 ;;
 
-let typestate_verify_visitor
+let dataflow_visitor
     (cx:ctxt)
+    (tables_stack:typestate_tables Stack.t)
     (inner:Walk.visitor)
     : Walk.visitor =
+
+  let tables _ = Stack.top tables_stack in
+
+  let visit_mod_item_pre n p i =
+    run_dataflow cx (tables());
+    inner.Walk.visit_mod_item_pre n p i
+  in
+
+  let visit_obj_fn_pre obj ident fn =
+    run_dataflow cx (tables());
+    inner.Walk.visit_obj_fn_pre obj ident fn
+  in
+
+  let visit_obj_drop_pre obj b =
+    run_dataflow cx (tables());
+    inner.Walk.visit_obj_drop_pre obj b
+  in
+
+  let visit_block_pre b =
+    if Hashtbl.mem cx.ctxt_block_is_loop_body b.id
+    then run_dataflow cx (tables());
+    inner.Walk.visit_block_pre b
+  in
+
+    { inner with
+        Walk.visit_mod_item_pre = visit_mod_item_pre;
+        Walk.visit_obj_fn_pre = visit_obj_fn_pre;
+        Walk.visit_obj_drop_pre = visit_obj_drop_pre;
+        Walk.visit_block_pre = visit_block_pre }
+;;
+
+
+let typestate_verify_visitor
+    (cx:ctxt)
+    (tables_stack:typestate_tables Stack.t)
+    (inner:Walk.visitor)
+    : Walk.visitor =
+
+  let tables _ = Stack.top tables_stack in
+
   let visit_stmt_pre s =
-    let prestate = Hashtbl.find cx.ctxt_prestates s.id in
-    let precond = Hashtbl.find cx.ctxt_preconditions s.id in
+    let ts = tables () in
+    let prestate = Hashtbl.find ts.ts_prestates s.id in
+    let precond = Hashtbl.find ts.ts_preconditions s.id in
       List.iter
         (fun i ->
            if not (Bits.get prestate i)
            then
-             let ckey = Hashtbl.find cx.ctxt_constrs (Constr i) in
+             let ckey = Hashtbl.find ts.ts_constrs (Constr i) in
              let constr_str = fmt_constr_key cx ckey in
                err (Some s.id)
                  "Unsatisfied precondition constraint %s at stmt %d: %s"
@@ -996,6 +1204,7 @@ let typestate_verify_visitor
 
 let lifecycle_visitor
     (cx:ctxt)
+    (tables_stack:typestate_tables Stack.t)
     (inner:Walk.visitor)
     : Walk.visitor =
 
@@ -1006,6 +1215,8 @@ let lifecycle_visitor
    * ctxt_copy_stmt_is_init and ctxt_post_stmt_slot_drops. These are
    * used later on in translation.
    *)
+
+  let tables _ = Stack.top tables_stack in
 
   let (live_block_slots:(node_id, unit) Hashtbl.t) = Hashtbl.create 0 in
   let (block_slots:(node_id Stack.t) Stack.t) = Stack.create () in
@@ -1101,12 +1312,13 @@ let lifecycle_visitor
           | Ast.STMT_new_port lv_dst
           | Ast.STMT_new_chan (lv_dst, _)
           | Ast.STMT_new_box (lv_dst, _, _) ->
-              let prestate = Hashtbl.find cx.ctxt_prestates s.id in
-              let poststate = Hashtbl.find cx.ctxt_poststates s.id in
+              let ts = tables () in
+              let prestate = Hashtbl.find ts.ts_prestates s.id in
+              let poststate = Hashtbl.find ts.ts_poststates s.id in
               let dst_slots = lval_slots cx lv_dst in
               let is_initializing slot =
                 let cid =
-                  Hashtbl.find cx.ctxt_constr_ids (Constr_init slot)
+                  Hashtbl.find ts.ts_constr_ids (Constr_init slot)
                 in
                 let i = int_of_constr cid in
                   (not (Bits.get prestate i)) && (Bits.get poststate i)
@@ -1184,44 +1396,58 @@ let process_crate
     : unit =
   let path = Stack.create () in
   let (scopes:(scope list) ref) = ref [] in
-  let constr_id = ref 0 in
-  let (graph:(node_id, (node_id list)) Hashtbl.t) = Hashtbl.create 0 in
-  let sibs = Hashtbl.create 0 in
+  let (tables_stack:typestate_tables Stack.t) = Stack.create () in
+  let (all_tables:item_tables) = Hashtbl.create 0 in
+  let table_managed = tables_managing_visitor all_tables tables_stack in
   let setup_passes =
     [|
-      (scope_stack_managing_visitor scopes
-         (constr_id_assigning_visitor cx scopes constr_id
+      (table_managed
+         (scope_stack_managing_visitor scopes
+            (constr_id_assigning_visitor cx tables_stack scopes
+               Walk.empty_visitor)));
+      (table_managed
+         (bitmap_assigning_visitor cx tables_stack
             Walk.empty_visitor));
-      (bitmap_assigning_visitor cx constr_id
-         Walk.empty_visitor);
-      (scope_stack_managing_visitor scopes
-         (condition_assigning_visitor cx scopes
+      (table_managed
+         (scope_stack_managing_visitor scopes
+            (condition_assigning_visitor cx tables_stack scopes
+               Walk.empty_visitor)));
+      (table_managed
+         (graph_sequence_building_visitor cx tables_stack
             Walk.empty_visitor));
-      (graph_sequence_building_visitor cx graph sibs
-         Walk.empty_visitor);
-      (graph_general_block_structure_building_visitor cx graph sibs
-         Walk.empty_visitor);
-      (graph_special_block_structure_building_visitor cx graph
-         Walk.empty_visitor);
+      (table_managed
+         (graph_general_block_structure_building_visitor cx tables_stack
+            Walk.empty_visitor));
+      (table_managed
+         (graph_special_block_structure_building_visitor cx tables_stack
+            Walk.empty_visitor));
+    |]
+  in
+  let dataflow_passes =
+    [|
+      (table_managed
+         (dataflow_visitor cx tables_stack
+            Walk.empty_visitor))
     |]
   in
   let verify_passes =
     [|
-      (scope_stack_managing_visitor scopes
-         (typestate_verify_visitor cx
+      (table_managed
+         (typestate_verify_visitor cx tables_stack
             Walk.empty_visitor))
     |]
   in
   let aux_passes =
     [|
-      (lifecycle_visitor cx
-         Walk.empty_visitor)
+      (table_managed
+         (lifecycle_visitor cx tables_stack
+            Walk.empty_visitor))
     |]
   in
   let log_flag = cx.ctxt_sess.Session.sess_log_typestate in
     run_passes cx "typestate setup" path setup_passes log_flag log crate;
-    Session.time_inner "typestate dataflow" cx.ctxt_sess
-      (fun _ -> run_dataflow cx constr_id graph);
+    run_passes cx
+      "typestate dataflow" path dataflow_passes log_flag log crate;
     run_passes cx "typestate verify" path verify_passes log_flag log crate;
     run_passes cx "typestate aux" path aux_passes log_flag log crate
 ;;
