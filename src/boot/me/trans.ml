@@ -5313,7 +5313,7 @@ let fixup_assigning_visitor
 
         | Ast.MOD_ITEM_fn _ ->
             begin
-              let path = path_name () in
+              let path = path_to_name path in
               let fixup =
                 if (not cx.ctxt_sess.Session.sess_library_mode)
                   && (Some path) = cx.ctxt_main_name
@@ -5322,7 +5322,7 @@ let fixup_assigning_visitor
                       None -> bug () "missing main fixup in trans"
                     | Some fix -> fix
                 else
-                  new_fixup path
+                  new_fixup (path_name())
               in
                 htab_put cx.ctxt_fn_fixups i.id fixup;
             end
@@ -5390,7 +5390,9 @@ let process_crate
     begin
       match cx.ctxt_main_name with
           None -> ()
-        | Some m -> log cx "with main fn %s" m
+        | Some m ->
+            log cx "with main fn %a"
+              Ast.sprintf_name m
     end;
     run_passes cx "trans" path passes
       cx.ctxt_sess.Session.sess_log_trans log crate;

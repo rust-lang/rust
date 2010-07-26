@@ -169,7 +169,7 @@ type ctxt =
       ctxt_required_lib_num: (required_lib, int) Hashtbl.t;
 
       ctxt_main_fn_fixup: fixup option;
-      ctxt_main_name: string option;
+      ctxt_main_name: Ast.name option;
     }
 ;;
 
@@ -254,10 +254,7 @@ let new_ctxt sess abi crate =
            None -> None
          | Some n -> Some (new_fixup (string_of_name n)));
 
-    ctxt_main_name =
-      (match crate.Ast.crate_main with
-           None -> None
-         | Some n -> Some (string_of_name n));
+    ctxt_main_name = crate.Ast.crate_main;
   }
 ;;
 
