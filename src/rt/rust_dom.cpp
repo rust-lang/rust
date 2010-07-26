@@ -154,6 +154,25 @@ rust_dom::free(void *p) {
     srv->free(p);
 }
 
+#ifdef __WIN32__
+void
+rust_dom::win32_require(LPCTSTR fn, BOOL ok) {
+    if (!ok) {
+        LPTSTR buf;
+        DWORD err = GetLastError();
+        FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                      FORMAT_MESSAGE_FROM_SYSTEM |
+                      FORMAT_MESSAGE_IGNORE_INSERTS,
+                      NULL, err,
+                      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                      (LPTSTR) &buf, 0, NULL );
+        log(rust_log::ERR, "%s failed with error %ld: %s", fn, err, buf);
+        LocalFree((HLOCAL)buf);
+        I(this, ok);
+    }
+}
+#endif
+
 size_t
 rust_dom::n_live_tasks()
 {
