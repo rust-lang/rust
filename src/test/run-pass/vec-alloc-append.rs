@@ -3,7 +3,7 @@
 use std;
 
 fn slice[T](vec[T] e) {
-  let vec[T] result = std._vec.alloc[T](uint(1));
+  let vec[T] result = std._vec.alloc[T](1 as uint);
   log "alloced";
   result += e;
   log "appended";

@@ -1,11 +1,11 @@
 use std;
 
 fn test_init_elt() {
-  let vec[uint] v = std._vec.init_elt[uint](uint(5), uint(3));
-  check (std._vec.len[uint](v) == uint(3));
-  check (v.(0) == uint(5));
-  check (v.(1) == uint(5));
-  check (v.(2) == uint(5));
+  let vec[uint] v = std._vec.init_elt[uint](5 as uint, 3 as uint);
+  check (std._vec.len[uint](v) == (3 as uint));
+  check (v.(0) == (5 as uint));
+  check (v.(1) == (5 as uint));
+  check (v.(2) == (5 as uint));
 }
 
 fn id(uint x) -> uint {
@@ -13,19 +13,19 @@ fn id(uint x) -> uint {
 }
 fn test_init_fn() {
   let fn(uint)->uint op = id;
-  let vec[uint] v = std._vec.init_fn[uint](op, uint(5));
-  check (std._vec.len[uint](v) == uint(5));
-  check (v.(0) == uint(0));
-  check (v.(1) == uint(1));
-  check (v.(2) == uint(2));
-  check (v.(3) == uint(3));
-  check (v.(4) == uint(4));
+  let vec[uint] v = std._vec.init_fn[uint](op, (5 as uint));
+  check (std._vec.len[uint](v) == (5 as uint));
+  check (v.(0) == (0 as uint));
+  check (v.(1) == (1 as uint));
+  check (v.(2) == (2 as uint));
+  check (v.(3) == (3 as uint));
+  check (v.(4) == (4 as uint));
 }
 
 fn test_slice() {
   let vec[int] v = vec(1,2,3,4,5);
   auto v2 = std._vec.slice[int](v, 2, 4);
-  check (std._vec.len[int](v2) == uint(2));
+  check (std._vec.len[int](v2) == (2 as uint));
   check (v2.(0) == 3);
   check (v2.(1) == 4);
 }

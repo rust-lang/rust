@@ -468,6 +468,10 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       task-comm-5.rs \
                       threads.rs \
                       type-sizes.rs \
+                      u8-incr.rs \
+                      u8-incr-decr.rs \
+                      u32-decr.rs \
+                      uint.rs \
                       unit.rs \
                       use-import-export.rs \
                       user.rs \

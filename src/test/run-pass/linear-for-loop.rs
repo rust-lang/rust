@@ -12,23 +12,23 @@ fn main() {
   let int i = 0;
   for (u8 c in s) {
     if (i == 0) {
-      check (c == u8('h'));
+      check (c == ('h' as u8));
     }
     if (i == 1) {
-      check (c == u8('e'));
+      check (c == ('e' as u8));
     }
     if (i == 2) {
-      check (c == u8('l'));
+      check (c == ('l' as u8));
     }
     if (i == 3) {
-      check (c == u8('l'));
+      check (c == ('l' as u8));
     }
     if (i == 4) {
-      check (c == u8('o'));
+      check (c == ('o' as u8));
     }
     // ...
     if (i == 12) {
-      check (c == u8(0));
+      check (c == (0 as u8));
     }
     i += 1;
     log i;

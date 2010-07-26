@@ -2,5 +2,5 @@
 
 
 fn main() {
-  let uint x = uint(10);
+  let uint x = 10 as uint;
 }

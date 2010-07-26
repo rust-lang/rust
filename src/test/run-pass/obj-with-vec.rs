@@ -5,7 +5,7 @@ fn main() {
       ret data.(i);
     }
   }
-  auto b = buf(vec(u8(1), u8(2), u8(3)));
+  auto b = buf(vec(1 as u8, 2 as u8, 3 as u8));
   log b.get(1);
-  check (b.get(1) == u8(2));
+  check (b.get(1) == (2 as u8));
 }
