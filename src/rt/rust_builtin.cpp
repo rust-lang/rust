@@ -102,7 +102,7 @@ vec_alloc(rust_task *task, type_desc *t, type_desc *elem_t, size_t n_elts)
     size_t alloc = next_power_of_two(sizeof(rust_vec) + fill);
     void *mem = task->malloc(alloc, t->is_stateful ? t : NULL);
     if (!mem) {
-        task->fail(3);
+        task->fail(4);
         return NULL;
     }
     rust_vec *vec = new (mem) rust_vec(dom, alloc, 0, NULL);
