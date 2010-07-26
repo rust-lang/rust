@@ -12,6 +12,7 @@ obj buf[T](tup(T,T,T) data) {
   }
 
   fn take(&T t) {}
+  fn take2(T t) {}
 }
 
 fn main() {
@@ -23,4 +24,5 @@ fn main() {
   check (b.get(0) == 1);
   check (b.get(1) == 2);
   check (b.get(2) == 3);
+  b.take2(0);
 }
