@@ -117,6 +117,38 @@ next_power_of_two(size_t s)
     return tmp + 1;
 }
 
+// Initialization helper for ISAAC RNG
+
+static inline void
+isaac_init(rust_dom *dom, randctx *rctx)
+{
+        memset(rctx, 0, sizeof(randctx));
+
+#ifdef __WIN32__
+        {
+            HCRYPTPROV hProv;
+            win32_require
+                (_T("CryptAcquireContext"),
+                 CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL,
+                                     CRYPT_VERIFYCONTEXT|CRYPT_SILENT));
+            win32_require
+                (_T("CryptGenRandom"),
+                 CryptGenRandom(hProv, sizeof(rctx->randrsl),
+                                (BYTE*)(&rctx->randrsl)));
+            win32_require
+                (_T("CryptReleaseContext"),
+                 CryptReleaseContext(hProv, 0));
+        }
+#else
+        int fd = open("/dev/urandom", O_RDONLY);
+        I(dom, fd > 0);
+        I(dom, read(fd, (void*) &rctx->randrsl, sizeof(rctx->randrsl))
+          == sizeof(rctx->randrsl));
+        I(dom, close(fd) == 0);
+#endif
+        randinit(rctx, 1);
+}
+
 // Vectors (rust-user-code level).
 
 struct

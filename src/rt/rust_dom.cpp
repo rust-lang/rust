@@ -36,35 +36,12 @@ rust_dom::rust_dom(rust_srv *srv, rust_crate const *root_crate) :
     rval(0)
 {
     logptr("new dom", (uintptr_t)this);
-    memset(&rctx, 0, sizeof(rctx));
-
-#ifdef __WIN32__
-    {
-        HCRYPTPROV hProv;
-        win32_require
-            (_T("CryptAcquireContext"),
-             CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL,
-                                 CRYPT_VERIFYCONTEXT|CRYPT_SILENT));
-        win32_require
-            (_T("CryptGenRandom"),
-             CryptGenRandom(hProv, sizeof(rctx.randrsl),
-                            (BYTE*)(&rctx.randrsl)));
-        win32_require
-            (_T("CryptReleaseContext"),
-             CryptReleaseContext(hProv, 0));
-    }
-#else
-    int fd = open("/dev/urandom", O_RDONLY);
-    I(this, fd > 0);
-    I(this, read(fd, (void*) &rctx.randrsl, sizeof(rctx.randrsl))
-      == sizeof(rctx.randrsl));
-    I(this, close(fd) == 0);
+    isaac_init(this, &rctx);
+#ifndef __WIN32__
     pthread_attr_init(&attr);
     pthread_attr_setstacksize(&attr, 1024 * 1024);
     pthread_attr_setdetachstate(&attr, true);
 #endif
-    randinit(&rctx, 1);
-
     root_task = new (this) rust_task(this, NULL);
 }
 

@@ -127,6 +127,31 @@ vec_len(rust_task *task, type_desc *ty, rust_vec *v)
     return v->fill / ty->size;
 }
 
+extern "C" CDECL void *
+rand_new(rust_task *task)
+{
+    rust_dom *dom = task->dom;
+    randctx *rctx = (randctx *) task->malloc(sizeof(randctx));
+    if (!rctx) {
+        task->fail(1);
+        return NULL;
+    }
+    isaac_init(dom, rctx);
+    return rctx;
+}
+
+extern "C" CDECL size_t
+rand_next(rust_task *task, randctx *rctx)
+{
+    return rand(rctx);
+}
+
+extern "C" CDECL void
+rand_free(rust_task *task, randctx *rctx)
+{
+    task->free(rctx);
+}
+
 //
 // Local Variables:
 // mode: C++
