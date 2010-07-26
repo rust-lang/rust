@@ -127,15 +127,15 @@ isaac_init(rust_dom *dom, randctx *rctx)
 #ifdef __WIN32__
         {
             HCRYPTPROV hProv;
-            win32_require
+            dom->win32_require
                 (_T("CryptAcquireContext"),
                  CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL,
                                      CRYPT_VERIFYCONTEXT|CRYPT_SILENT));
-            win32_require
+            dom->win32_require
                 (_T("CryptGenRandom"),
                  CryptGenRandom(hProv, sizeof(rctx->randrsl),
                                 (BYTE*)(&rctx->randrsl)));
-            win32_require
+            dom->win32_require
                 (_T("CryptReleaseContext"),
                  CryptReleaseContext(hProv, 0));
         }
