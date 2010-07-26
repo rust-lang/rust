@@ -1220,7 +1220,8 @@ let process_crate
   in
   let log_flag = cx.ctxt_sess.Session.sess_log_typestate in
     run_passes cx "typestate setup" path setup_passes log_flag log crate;
-    run_dataflow cx constr_id graph;
+    Session.time_inner "typestate dataflow" cx.ctxt_sess
+      (fun _ -> run_dataflow cx constr_id graph);
     run_passes cx "typestate verify" path verify_passes log_flag log crate;
     run_passes cx "typestate aux" path aux_passes log_flag log crate
 ;;
