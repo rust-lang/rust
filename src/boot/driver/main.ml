@@ -423,14 +423,17 @@ exit_if_failed ()
 if sess.Session.sess_report_timing
 then
   begin
+    let cumulative = ref 0.0 in
     Printf.fprintf stdout "timing:\n\n";
     Array.iter
       begin
         fun name ->
-          Printf.fprintf stdout "%20s: %f\n" name
-            (Hashtbl.find sess.Session.sess_timings name)
+          let t = Hashtbl.find sess.Session.sess_timings name in
+          Printf.fprintf stdout "%20s: %f\n" name t;
+            cumulative := (!cumulative) +. t
       end
-      (sorted_htab_keys sess.Session.sess_timings)
+      (sorted_htab_keys sess.Session.sess_timings);
+    Printf.fprintf stdout "\n%20s: %f\n" "cumulative" (!cumulative)
   end;
 ;;
 
