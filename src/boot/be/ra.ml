@@ -190,11 +190,14 @@ let calculate_live_bitvectors
   let n_quads = Array.length quads in
   let n_vregs = cx.ctxt_n_vregs in
   let new_bitv _ = Bits.create n_vregs false in
+  let new_true_bitv _ = Bits.create n_vregs true in
   let (live_in_vregs:Bits.t array) = Array.init n_quads new_bitv in
   let (live_out_vregs:Bits.t array) = Array.init n_quads new_bitv in
 
   let (quad_used_vrs:Bits.t array) = Array.init n_quads new_bitv in
-  let (quad_defined_vrs:Bits.t array) = Array.init n_quads new_bitv in
+  let (quad_not_defined_vrs:Bits.t array) =
+    Array.init n_quads new_true_bitv
+  in
   let (quad_uncond_jmp:bool array) = Array.make n_quads false in
   let (quad_jmp_targs:(Il.label list) array) = Array.make n_quads [] in
 
@@ -212,8 +215,8 @@ let calculate_live_bitvectors
           (fun v -> Bits.set quad_used_vrs.(i) v true)
           (quad_used_vregs q);
         List.iter
-          (fun v -> Bits.set quad_defined_vrs.(i) v true)
-          (quad_defined_vregs q)
+          (fun v -> Bits.set quad_not_defined_vrs.(i) v false)
+          (quad_defined_vregs q);
     done;
 
     while !changed do
@@ -228,7 +231,7 @@ let calculate_live_bitvectors
         let live_in = live_in_vregs.(i) in
         let live_out = live_out_vregs.(i) in
         let used = quad_used_vrs.(i) in
-        let defined = quad_defined_vrs.(i) in
+        let not_defined = quad_not_defined_vrs.(i) in
 
           (* Union in the vregs we use. *)
           note_change (Bits.union live_in used);
@@ -243,8 +246,7 @@ let calculate_live_bitvectors
           then note_change (Bits.union live_out live_in_vregs.(i+1));
 
           (* Propagate live-out to live-in on anything we don't define. *)
-          ignore (Bits.copy scratch defined);
-          Bits.invert scratch;
+          ignore (Bits.copy scratch not_defined);
           ignore (Bits.intersect scratch live_out);
           note_change (Bits.union live_in scratch);
 
@@ -379,8 +381,7 @@ let reg_alloc
     let n_pre_spills = convert_pre_spills cx spill_slot in
 
     let (live_in_vregs, live_out_vregs) =
-      Session.time_inner "RA liveness" sess
-        (fun _ -> calculate_live_bitvectors cx)
+      calculate_live_bitvectors cx
     in
     let (vreg_constraints:Bits.t array) = (* vreg idx -> hreg bits.t *)
       calculate_vreg_constraints cx
