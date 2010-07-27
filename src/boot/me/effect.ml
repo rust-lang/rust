@@ -172,7 +172,7 @@ let function_effect_propagation_visitor
                     lower_to s taux.Ast.fn_effect;
                 | _ -> bug () "non-fn callee"
             in
-              if lval_is_slot cx fn
+              if lval_base_is_slot cx fn
               then
                 lower_to_callee_ty (lval_ty cx fn)
               else
@@ -335,7 +335,7 @@ let process_crate
     match lookup_by_name cx [] root_scope name with
         None -> ()
       | Some (_, id) ->
-          if referent_is_item cx id
+          if defn_id_is_item cx id
           then htab_put item_auth id eff
           else err (Some id) "auth clause in crate refers to non-item"
   in

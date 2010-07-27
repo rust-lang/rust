@@ -20,10 +20,9 @@ let alias_analysis_visitor
   in
 
   let alias lval =
-    let lv_id = lval_base_id lval in
-    let referent = Hashtbl.find cx.ctxt_lval_to_referent lv_id in
-      if (referent_is_slot cx referent)
-      then alias_slot referent
+    let defn_id = lval_base_defn_id cx lval in
+      if (defn_id_is_slot cx defn_id)
+      then alias_slot defn_id
   in
 
   let alias_atom at =
@@ -85,8 +84,8 @@ let alias_analysis_visitor
   in
 
   let visit_lval_pre lv =
-    let slot_id = lval_to_referent cx (lval_base_id lv) in
-      if (not (Stack.is_empty curr_stmt)) && (referent_is_slot cx slot_id)
+    let slot_id = lval_base_defn_id cx lv in
+      if (not (Stack.is_empty curr_stmt)) && (defn_id_is_slot cx slot_id)
       then
         begin
           let slot_depth = get_slot_depth cx slot_id in

@@ -412,9 +412,9 @@ let layout_visitor
               let static = lval_is_static cx callee in
               let closure = if static then None else Some Il.OpaqueTy in
               let n_ty_params =
-                match resolve_lval cx callee with
-                    DEFN_item i -> Array.length i.Ast.decl_params
-                  | _ -> 0
+                if lval_base_is_item cx callee
+                then Array.length (lval_item cx callee).node.Ast.decl_params
+                else 0
               in
               let rty =
                 call_args_referent_type cx n_ty_params lv_ty closure

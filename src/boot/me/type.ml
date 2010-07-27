@@ -285,12 +285,12 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
       (nbi:Ast.name_base Common.identified)
       : ltype =
     let lval_id = nbi.Common.id in
-    let referent = Semant.lval_to_referent cx lval_id in
+    let defn_id = Semant.lval_base_id_to_defn_base_id cx lval_id in
     let lty =
-      match Hashtbl.find cx.Semant.ctxt_all_defns referent with
+      match Hashtbl.find cx.Semant.ctxt_all_defns defn_id with
           Semant.DEFN_slot _ ->
-            LTYPE_mono (internal_check_slot infer referent)
-        | Semant.DEFN_item mid -> internal_check_mod_item_decl mid referent
+            LTYPE_mono (internal_check_slot infer defn_id)
+        | Semant.DEFN_item mid -> internal_check_mod_item_decl mid defn_id
         | _ -> Common.bug () "internal_check_base_lval: unexpected defn type"
     in
     match nbi.Common.node with

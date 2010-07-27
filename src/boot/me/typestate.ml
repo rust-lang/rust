@@ -120,7 +120,7 @@ let determine_constr_key
   let cid =
     match lookup_by_name cx [] scopes c.Ast.constr_name with
         Some (_, cid) ->
-          if referent_is_item cx cid
+          if defn_id_is_item cx cid
           then
             begin
               match Hashtbl.find cx.ctxt_all_item_types cid with
@@ -155,7 +155,7 @@ let determine_constr_key
                     match lookup_by_name cx [] scopes (Ast.NAME_base nb) with
                         None -> bug () "constraint-arg not found"
                       | Some (_, aid) ->
-                          if referent_is_slot cx aid
+                          if defn_id_is_slot cx aid
                           then
                             if type_has_state
                               (strip_mutable_or_constrained_ty
@@ -187,7 +187,7 @@ let fmt_constr_key cx ckey =
                 let rec fmt_pth pth =
                   match pth with
                       Ast.CARG_base _ ->
-                        if referent_is_slot cx id
+                        if defn_id_is_slot cx id
                         then
                           let key = Hashtbl.find cx.ctxt_slot_keys id in
                             Fmt.fmt_to_str Ast.fmt_slot_key key
@@ -239,6 +239,54 @@ let obj_keys ob resolver =
 
 let fn_keys fn resolver =
     entry_keys fn.Ast.fn_input_slots fn.Ast.fn_input_constrs resolver
+;;
+
+
+let rec lval_slots (cx:ctxt) (lv:Ast.lval) : node_id array =
+  match lv with
+      Ast.LVAL_base nbi ->
+        let defn_id = lval_base_id_to_defn_base_id cx nbi.id in
+          if defn_id_is_slot cx defn_id
+          then [| defn_id |]
+          else [| |]
+    | Ast.LVAL_ext (lv, Ast.COMP_named _)
+    | Ast.LVAL_ext (lv, Ast.COMP_deref) -> lval_slots cx lv
+    | Ast.LVAL_ext (lv, Ast.COMP_atom a) ->
+        Array.append (lval_slots cx lv) (atom_slots cx a)
+
+and atom_slots (cx:ctxt) (a:Ast.atom) : node_id array =
+  match a with
+      Ast.ATOM_literal _ -> [| |]
+    | Ast.ATOM_lval lv -> lval_slots cx lv
+;;
+
+let lval_option_slots (cx:ctxt) (lv:Ast.lval option) : node_id array =
+  match lv with
+      None -> [| |]
+    | Some lv -> lval_slots cx lv
+;;
+
+let atoms_slots (cx:ctxt) (az:Ast.atom array) : node_id array =
+  Array.concat (List.map (atom_slots cx) (Array.to_list az))
+;;
+
+let tup_inputs_slots (cx:ctxt) (az:Ast.tup_input array) : node_id array =
+  Array.concat (List.map (atom_slots cx) (Array.to_list (Array.map snd az)))
+;;
+
+let rec_inputs_slots (cx:ctxt)
+    (inputs:Ast.rec_input array) : node_id array =
+  Array.concat (List.map
+                  (fun (_, _, atom) -> atom_slots cx atom)
+                  (Array.to_list inputs))
+;;
+
+let expr_slots (cx:ctxt) (e:Ast.expr) : node_id array =
+    match e with
+        Ast.EXPR_binary (_, a, b) ->
+          Array.append (atom_slots cx a) (atom_slots cx b)
+      | Ast.EXPR_unary (_, u) -> atom_slots cx u
+      | Ast.EXPR_atom a -> atom_slots cx a
 ;;
 
 let constr_id_assigning_visitor
@@ -328,17 +376,17 @@ let constr_id_assigning_visitor
     begin
       match s.node with
           Ast.STMT_call (_, lv, args) ->
-            let referent = lval_to_referent cx (lval_base_id lv) in
-            let referent_ty = lval_ty cx lv in
+            let defn_id = lval_base_defn_id cx lv in
+            let defn_ty = lval_ty cx lv in
               begin
-                match referent_ty with
+                match defn_ty with
                     Ast.TY_fn (tsig,_) ->
                       let constrs = tsig.Ast.sig_input_constrs in
                       let names = atoms_to_names args in
                       let constrs' =
                         Array.map (apply_names_to_constr names) constrs
                       in
-                        Array.iter (visit_constr_pre (Some referent)) constrs'
+                        Array.iter (visit_constr_pre (Some defn_id)) constrs'
 
                   | _ -> ()
               end
@@ -488,9 +536,9 @@ let condition_assigning_visitor
   in
 
   let visit_callable_pre id dst_slot_ids lv args =
-    let referent_ty = lval_ty cx lv in
+    let defn_ty = lval_ty cx lv in
       begin
-        match referent_ty with
+        match defn_ty with
             Ast.TY_fn (tsig,_) ->
               let formal_constrs = tsig.Ast.sig_input_constrs in
               let names = atoms_to_names args in

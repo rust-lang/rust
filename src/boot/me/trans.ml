@@ -150,7 +150,7 @@ let trans_visitor
       (closure:Il.referent_ty option)
       : Il.referent_ty =
     let n_params =
-      if item_is_obj_fn cx id
+      if defn_id_is_obj_fn_or_drop cx id
       then 0
       else n_item_ty_params cx id
     in
@@ -522,7 +522,7 @@ let trans_visitor
   let get_ty_params_of_current_frame _ : Il.cell =
     let id = current_fn() in
     let n_ty_params = n_item_ty_params cx id in
-      if item_is_obj_fn cx id
+      if defn_id_is_obj_fn_or_drop cx id
       then
         begin
           let obj_box = get_obj_for_current_frame() in
@@ -1019,14 +1019,14 @@ let trans_visitor
         (cell, ty)
 
     in
-      if lval_is_slot cx lv
+      if lval_base_is_slot cx lv
       then trans_slot_lval_full initializing true lv
       else
         if initializing
         then err None "init item"
         else
           begin
-            assert (lval_is_item cx lv);
+            assert (lval_base_is_item cx lv);
             bug ()
               "trans_lval_full called on item lval '%a'" Ast.sprintf_lval lv
           end
@@ -1048,7 +1048,7 @@ let trans_visitor
       : (Il.operand * Ast.ty) =
     (* direct call to item *)
     let fty = Hashtbl.find cx.ctxt_all_lval_types (lval_base_id flv) in
-      if lval_is_item cx flv then
+      if lval_base_is_item cx flv then
         let fn_item = lval_item cx flv in
         let fn_ptr = code_fixup_to_ptr_operand (get_fn_fixup cx fn_item.id) in
           (fn_ptr, fty)

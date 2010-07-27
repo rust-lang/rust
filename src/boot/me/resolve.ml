@@ -562,7 +562,7 @@ let type_resolving_visitor
           | Ast.MOD_ITEM_tag (header_slots, _, nid)
               when Hashtbl.mem recursive_tag_groups nid ->
               begin
-                match ty_of_mod_item true item with
+                match ty_of_mod_item item with
                     Ast.TY_fn (tsig, taux) ->
                       let input_slots =
                         Array.map
@@ -586,7 +586,7 @@ let type_resolving_visitor
               end
 
           | _ ->
-              let t = ty_of_mod_item true item in
+              let t = ty_of_mod_item item in
               let ty =
                 resolve_type cx (!scopes) recursive_tag_groups
                   all_tags empty_recur_info t
@@ -686,7 +686,7 @@ let lval_base_resolving_visitor
     (scopes:(scope list) ref)
     (inner:Walk.visitor)
     : Walk.visitor =
-  let lookup_referent_by_ident id ident =
+  let lookup_defn_by_ident id ident =
     log cx "looking up slot or item with ident '%s'" ident;
     match lookup cx (!scopes) (Ast.KEY_ident ident) with
         None -> err (Some id) "unresolved identifier '%s'" ident
@@ -702,10 +702,10 @@ let lval_base_resolving_visitor
         | Some (_, id) ->
             (log cx "resolved to node id #%d" (int_of_node id); id)
   in
-  let lookup_referent_by_name_base id nb =
+  let lookup_defn_by_name_base id nb =
     match nb with
         Ast.BASE_ident ident
-      | Ast.BASE_app (ident, _) -> lookup_referent_by_ident id ident
+      | Ast.BASE_app (ident, _) -> lookup_defn_by_ident id ident
       | Ast.BASE_temp temp -> lookup_slot_by_temp id temp
   in
 
@@ -723,10 +723,10 @@ let lval_base_resolving_visitor
                 | _ -> ()
             end
         | Ast.LVAL_base nb ->
-            let referent_id = lookup_referent_by_name_base nb.id nb.node in
-              iflog cx (fun _ -> log cx "resolved lval #%d to referent #%d"
-                          (int_of_node nb.id) (int_of_node referent_id));
-              htab_put cx.ctxt_lval_to_referent nb.id referent_id
+            let defn_id = lookup_defn_by_name_base nb.id nb.node in
+              iflog cx (fun _ -> log cx "resolved lval #%d to defn #%d"
+                          (int_of_node nb.id) (int_of_node defn_id));
+              htab_put cx.ctxt_lval_base_id_to_defn_base_id nb.id defn_id
     in
 
     (*
@@ -745,7 +745,7 @@ let lval_base_resolving_visitor
             -> lval_is_name lv'
           | _ -> false
       in
-        if lval_is_name lv && lval_is_item cx lv
+        if lval_is_name lv && lval_base_is_item cx lv
         then ignore (lookup_by_name cx [] (!scopes) (lval_to_name lv))
     in
 
@@ -932,7 +932,7 @@ let pattern_resolving_visitor
           let lval_nm = lval_to_name lval in
           let lval_id = lval_base_id lval in
           let tag_ctor_id = (lval_item cx lval).id in
-            if referent_is_item cx tag_ctor_id
+            if defn_id_is_item cx tag_ctor_id
 
             (* FIXME (issue #76): we should actually check here that the
              * function is a tag value-ctor.  For now this actually allows
@@ -1050,7 +1050,7 @@ let process_crate
           Hashtbl.iter
             begin
               fun n _ ->
-                if referent_is_item cx n
+                if defn_id_is_item cx n
                 then
                   log cx "referenced: %a"
                     Ast.sprintf_name
