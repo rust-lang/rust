@@ -3,15 +3,42 @@
 use std;
 import std.deque;
 
+fn test_simple() {
+  let deque.t[int] d = deque.create[int]();
+  check (d.size() == 0u);
+  d.add_front(17);
+  d.add_front(42);
+  d.add_back(137);
+  check (d.size() == 3u);
+  d.add_back(137);
+  check (d.size() == 4u);
+
+  log d.peek_front();
+  check (d.peek_front() == 42);
+
+  log d.peek_back();
+  check (d.peek_back() == 137);
+
+  let int i = d.pop_front();
+  log i;
+  check (i == 42);
+
+  i = d.pop_back();
+  log i;
+  check (i == 137);
+
+  i = d.pop_back();
+  log i;
+  check (i == 137);
+
+  i = d.pop_back();
+  log i;
+  check (i == 17);
+
+  /* FIXME (issue #138):  Test d.get() once it no longer causes
+   * segfault. */
+}
+
 fn main() {
-  let deque.t[int] d1 = deque.create[int]();
-  check (d1.size() == 0u);
-  d1.add_front(17);
-  d1.add_front(42);
-  d1.add_back(137);
-  check (d1.size() == 3u);
-  d1.add_back(137);
-  check (d1.size() == 4u);
-  /* FIXME (issue #133):  We should check that the numbers come back
-   * to us correctly once the deque stops zeroing them out. */
+  test_simple();
 }

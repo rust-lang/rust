@@ -79,7 +79,7 @@ fn create[T]() -> t[T] {
       if (lo == hi) {
         elts = grow[T](nelts, oldlo, elts);
         lo = _vec.len[cell[T]](elts) - 1u;
-        hi = nelts - 1u;
+        hi = nelts;
       }
 
       elts.(lo as int) = util.some[T](t);
@@ -87,15 +87,14 @@ fn create[T]() -> t[T] {
     }
 
     fn add_back(&T t) {
-      hi = (hi + 1u) % _vec.len[cell[T]](elts);
-
-      if (lo == hi) {
+      if (lo == hi && nelts != 0u) {
         elts = grow[T](nelts, lo, elts);
         lo = 0u;
         hi = nelts;
       }
 
       elts.(hi as int) = util.some[T](t);
+      hi = (hi + 1u) % _vec.len[cell[T]](elts);
       nelts += 1u;
     }
 
@@ -111,15 +110,14 @@ fn create[T]() -> t[T] {
     }
 
     fn pop_back() -> T {
-      let T t = get[T](elts, hi);
-      elts.(hi as int) = util.none[T]();
-
       if (hi == 0u) {
         hi = _vec.len[cell[T]](elts) - 1u;
       } else {
         hi -= 1u;
       }
 
+      let T t = get[T](elts, hi);
+      elts.(hi as int) = util.none[T]();
       ret t;
     }
 
@@ -128,7 +126,7 @@ fn create[T]() -> t[T] {
     }
 
     fn peek_back() -> T {
-      ret get[T](elts, hi);
+      ret get[T](elts, hi - 1u);
     }
 
     fn get(int i) -> T {
