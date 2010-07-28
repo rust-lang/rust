@@ -25,6 +25,7 @@ struct rust_srv {
 
     virtual void log(char const *);
     virtual void fatal(char const *, char const *, size_t);
+    virtual void warning(char const *, char const *, size_t);
     virtual void *malloc(size_t);
     virtual void *realloc(void *, size_t);
     virtual void free(void *);

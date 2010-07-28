@@ -94,6 +94,16 @@ rust_srv::fatal(char const *expr, char const *file, size_t line)
     exit(1);
 }
 
+void
+rust_srv::warning(char const *expr, char const *file, size_t line)
+{
+    char buf[1024];
+    snprintf(buf, sizeof(buf),
+             "warning: '%s', at: %s:%d",
+             expr, file, (int)line);
+    log(buf);
+}
+
 rust_srv *
 rust_srv::clone()
 {

@@ -44,10 +44,12 @@ extern "C" {
 #error "Target CPU not supported."
 #endif
 
-#define I(dom, e) ((e) ? (void)0 :                           \
+#define I(dom, e) ((e) ? (void)0 :                             \
                    (dom)->srv->fatal(#e, __FILE__, __LINE__))
+#define W(dom, e, s) ((e) ? (void)0 :                             \
+                   (dom)->srv->warning(#e " : " #s, __FILE__, __LINE__))
 
-#define A(dom, e, s) ((e) ? (void)0 :                                    \
+#define A(dom, e, s) ((e) ? (void)0 :                          \
                       (dom)->srv->fatal(#e " : " #s, __FILE__, __LINE__))
 
 struct rust_task;
