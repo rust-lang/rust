@@ -95,6 +95,9 @@ template <typename T>
 struct
 dom_owned
 {
+    rust_dom *get_dom() const {
+        return ((T*)this)->dom;
+    }
     void operator delete(void *ptr) {
         ((T *)ptr)->dom->free(ptr);
     }
@@ -104,6 +107,9 @@ template <typename T>
 struct
 task_owned
 {
+    rust_dom *get_dom() const {
+        return ((T *)this)->task->dom;
+    }
     void operator delete(void *ptr) {
         ((T *)ptr)->task->dom->free(ptr);
     }
