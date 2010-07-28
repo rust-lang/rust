@@ -12,6 +12,8 @@ circular_buffer : public dom_owned<circular_buffer> {
 
 public:
     rust_dom *dom;
+    // Size of the data unit in bytes.
+    const size_t unit_sz;
     circular_buffer(rust_dom *dom, size_t unit_sz);
     ~circular_buffer();
     void transfer(void *dst);
@@ -24,9 +26,6 @@ private:
     // modulo arithmetic (x % _buffer_sz) can optimized away with
     // (x & (_buffer_sz - 1)).
     size_t _buffer_sz;
-
-    // Size of the data unit in bytes.
-    size_t _unit_sz;
 
     // Byte offset within the buffer where to read the next unit of data.
     size_t _next;
