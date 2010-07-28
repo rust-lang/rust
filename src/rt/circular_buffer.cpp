@@ -91,7 +91,8 @@ circular_buffer::enqueue(void *src) {
 
 /**
  * Copies data from this buffer to the "dst" address. The buffer is
- * shrunk if possible.
+ * shrunk if possible. If the "dst" address is NULL, then the message
+ * is dequeued but is not copied.
  */
 void
 circular_buffer::dequeue(void *dst) {
@@ -99,6 +100,11 @@ circular_buffer::dequeue(void *dst) {
     I(dom, _unread >= unit_sz);
     I(dom, _unread <= _buffer_sz);
     I(dom, _buffer);
+
+    dom->log(rust_log::MEM | rust_log::COMM,
+             "circular_buffer dequeue "
+             "unread: %d, buffer_sz: %d, unit_sz: %d",
+             _unread, _buffer_sz, unit_sz);
 
     if (dst != NULL) {
         memcpy(dst, &_buffer[_next], unit_sz);
