@@ -3082,8 +3082,11 @@ let trans_visitor
           let sub_dst_cell = get_element_ptr_dyn ty_params dst i in
           let sub_src_cell = get_element_ptr_dyn ty_params src i in
             trans_copy_ty
-              ty_params initializing
-              sub_dst_cell ty sub_src_cell ty None
+              ty_params
+              initializing
+              sub_dst_cell ty
+              sub_src_cell ty
+              None
       end
       tys
 
@@ -5064,10 +5067,12 @@ let trans_visitor
       Array.iteri
         begin
           fun i sloti ->
-            let slot = sloti.node in
+            let slot = get_slot cx sloti.id in
             let ty = slot_ty slot in
-              trans_copy_ty ty_params true
-                (get_element_ptr_dyn_in_current_frame tag_body_cell i) ty
+              trans_copy_ty
+                ty_params
+                true
+                (get_element_ptr_dyn ty_params tag_body_cell i) ty
                 (deref_slot false (cell_of_block_slot sloti.id) slot) ty
                 None;
         end
