@@ -35,7 +35,7 @@ circular_buffer::~circular_buffer() {
              "~circular_buffer 0x%" PRIxPTR,
              this);
     I(dom, _buffer);
-    // I(dom, _unread == 0);
+    W(dom, _unread == 0, "~circular_buffer with unread messages.");
     dom->free(_buffer);
 }
 
