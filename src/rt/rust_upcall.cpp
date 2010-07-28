@@ -74,7 +74,7 @@ extern "C" CDECL void upcall_del_port(rust_task *task, rust_port *port) {
 }
 
 /**
- * Creates a new channel, pointed to a specified port.
+ * Creates a new channel pointing to a given port.
  */
 extern "C" CDECL rust_chan*
 upcall_new_chan(rust_task *task, rust_port *port) {
@@ -114,69 +114,6 @@ upcall_clone_chan(rust_task *task,
               (uintptr_t) spawnee, (uintptr_t) chan);
     return new (spawnee->dom) rust_chan(spawnee, chan->port);
 }
-
-/*
- * Buffering protocol:
- *
- *   - Reader attempts to read:
- *     - Set reader to blocked-reading state.
- *     - If buf with data exists:
- *       - Attempt transmission.
- *
- *  - Writer attempts to write:
- *     - Set writer to blocked-writing state.
- *     - Copy data into chan.
- *     - Attempt transmission.
- *
- *  - Transmission:
- *       - Copy data from buf to reader
- *       - Decr buf
- *       - Set reader to running
- *       - If buf now empty and blocked writer:
- *         - Set blocked writer to running
- *
- */
-//
-//static int
-//attempt_transmission(rust_dom *dom, rust_chan *src, rust_task *dst) {
-//    I(dom, src);
-//    I(dom, dst);
-//
-//    rust_port *port = src->port;
-//    if (!port) {
-//        dom->log(rust_log::COMM, "src died, transmission incomplete");
-//        return 0;
-//    }
-//
-//    circular_buffer *buf = &src->buffer;
-//    if (buf->is_empty()) {
-//        dom->log(rust_log::COMM, "buffer empty, transmission incomplete");
-//        return 0;
-//    }
-//
-//    if (!dst->blocked_on(port)) {
-//        dom->log(rust_log::COMM,
-//                 "dst in non-reading state, transmission incomplete");
-//        return 0;
-//    }
-//
-//    uintptr_t *dptr = dst->dptr;
-//    dom->log(rust_log::COMM, "receiving %d bytes into dst_task=0x%" PRIxPTR
-//    ", dptr=0x%" PRIxPTR, port->unit_sz, dst, dptr);
-//    buf->dequeue(dptr);
-//
-//    // Wake up the sender if its waiting for the send operation.
-//    rust_task *sender = src->task;
-//    rust_token *token = &src->token;
-//    if (sender->blocked_on(token))
-//        sender->wakeup(token);
-//
-//    // Wake up the receiver, there is new data.
-//    dst->wakeup(port);
-//
-//    dom->log(rust_log::COMM, "transmission complete");
-//    return 1;
-//}
 
 extern "C" CDECL void upcall_yield(rust_task *task) {
     LOG_UPCALL_ENTRY(task);

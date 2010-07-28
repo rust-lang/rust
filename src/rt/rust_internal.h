@@ -606,25 +606,6 @@ struct rust_token : public rust_cond {
 
 #include "circular_buffer.h"
 
-//struct circ_buf : public dom_owned<circ_buf> {
-//    static const size_t INIT_CIRC_BUF_UNITS = 8;
-//    static const size_t MAX_CIRC_BUF_SIZE = 1 << 24;
-//
-//    rust_dom *dom;
-//    size_t alloc;
-//    size_t unit_sz;
-//    size_t next;
-//    size_t unread;
-//    uint8_t *data;
-//
-//    circ_buf(rust_dom *dom, size_t unit_sz);
-//    ~circ_buf();
-//
-//    void transfer(void *dst);
-//    void push(void *src);
-//    void shift(void *dst);
-//};
-
 #include "rust_chan.h"
 
 //

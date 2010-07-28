@@ -1,12 +1,6 @@
 #include "rust_internal.h"
 
 #define TRACK_ALLOCATIONS
-// For debugging, keeps track of live allocations, so you can find out
-// exactly what leaked.
-
-//#ifdef TRACK_ALLOCATIONS
-//array_list<void *> allocation_list;
-//#endif
 
 rust_srv::rust_srv() :
     live_allocs(0)

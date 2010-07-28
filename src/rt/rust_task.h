@@ -31,7 +31,7 @@ rust_task : public rust_proxy_delegate<rust_task>,
     // Rendezvous pointer for receiving data when blocked on a port. If we're
     // trying to read data and no data is available on any incoming channel,
     // we block on the port, and yield control to the scheduler. Since, we
-    // were not able to read anJything, we remember the location where the
+    // were not able to read anything, we remember the location where the
     // result should go in the rendezvous_ptr, and let the sender write to
     // that location before waking us up.
     uintptr_t* rendezvous_ptr;

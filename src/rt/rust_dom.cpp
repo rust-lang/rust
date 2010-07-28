@@ -217,8 +217,6 @@ void
 rust_dom::reap_dead_tasks() {
     for (size_t i = 0; i < dead_tasks.length(); ) {
         rust_task *task = dead_tasks[i];
-//        log(rust_log::TASK, "dead task 0x%" PRIxPTR " with ref_count: %d",
-//            task, task->ref_count);
         if (task->ref_count == 0) {
             I(this, !task->waiting_tasks.length());
             dead_tasks.swap_delete(task);
