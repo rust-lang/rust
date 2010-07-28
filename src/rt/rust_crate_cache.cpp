@@ -216,6 +216,7 @@ rust_crate_cache::get_type_desc(size_t size,
                  "rust_crate_cache::descs[%" PRIdPTR "] = 0x%" PRIxPTR,
                  i, descs[i]);
         td->descs[i] = descs[i];
+        // FIXME (issue #136):  Below is a miscalculation.
         td->is_stateful |= descs[i]->is_stateful;
     }
     adjust_disp(td->copy_glue_off, descs[0], td);
