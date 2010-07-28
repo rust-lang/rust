@@ -53,7 +53,7 @@ align_down(uintptr_t sp)
 
 
 rust_task::rust_task(rust_dom *dom, rust_task *spawner) :
-    rust_proxy_delegate<rust_task>(this),
+    maybe_proxy<rust_task>(this),
     stk(new_stk(dom, 0)),
     runtime_sp(0),
     rust_sp(stk->limit),

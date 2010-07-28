@@ -5,9 +5,8 @@
 #ifndef RUST_TASK_H
 #define RUST_TASK_H
 struct
-rust_task : public rust_proxy_delegate<rust_task>,
-            public dom_owned<rust_task>,
-            public rust_cond
+rust_task : public maybe_proxy<rust_task>,
+            public dom_owned<rust_task>
 {
     // Fields known to the compiler.
     stk_seg *stk;

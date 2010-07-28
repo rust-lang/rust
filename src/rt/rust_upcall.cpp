@@ -105,7 +105,7 @@ extern "C" CDECL void upcall_del_chan(rust_task *task, rust_chan *chan) {
  */
 extern "C" CDECL rust_chan *
 upcall_clone_chan(rust_task *task,
-                  rust_proxy_delegate<rust_task> *spawnee_proxy,
+                  maybe_proxy<rust_task> *spawnee_proxy,
                   rust_chan *chan) {
     LOG_UPCALL_ENTRY(task);
     rust_task *spawnee = spawnee_proxy->delegate();
@@ -121,8 +121,8 @@ extern "C" CDECL void upcall_yield(rust_task *task) {
     task->yield(1);
 }
 
-extern "C" CDECL void upcall_join(rust_task *task,
-                                  rust_proxy_delegate<rust_task> *proxy) {
+extern "C" CDECL void
+upcall_join(rust_task *task, maybe_proxy<rust_task> *proxy) {
     LOG_UPCALL_ENTRY(task);
     task->log(rust_log::UPCALL | rust_log::COMM,
                   "join proxy 0x%" PRIxPTR " -> task = 0x%" PRIxPTR,
@@ -194,7 +194,7 @@ extern "C" CDECL void upcall_fail(rust_task *task, char const *expr,
  * Called whenever a task's ref count drops to zero.
  */
 extern "C" CDECL void
-upcall_kill(rust_task *task, rust_proxy_delegate<rust_task> *target_proxy) {
+upcall_kill(rust_task *task, maybe_proxy<rust_task> *target_proxy) {
     LOG_UPCALL_ENTRY(task);
     rust_task *target_task = target_proxy->delegate();
     if (target_proxy != target_task) {
@@ -504,7 +504,7 @@ upcall_start_task(rust_task *spawner, rust_task *task,
     return task;
 }
 
-extern "C" CDECL rust_proxy_delegate<rust_task> *
+extern "C" CDECL maybe_proxy<rust_task> *
 upcall_new_thread(rust_task *task) {
     LOG_UPCALL_ENTRY(task);
 
@@ -516,16 +516,17 @@ upcall_new_thread(rust_task *task) {
               "upcall new_thread() = dom 0x%" PRIxPTR " task 0x%" PRIxPTR,
               new_dom, new_dom->root_task);
     rust_proxy<rust_task> *proxy =
-            new (old_dom) rust_proxy<rust_task>(old_dom, new_dom->root_task);
+        new (old_dom) rust_proxy<rust_task>(old_dom,
+                                            new_dom->root_task, true);
     task->log(rust_log::UPCALL | rust_log::MEM,
               "new proxy = 0x%" PRIxPTR " -> task = 0x%" PRIxPTR,
               proxy, proxy->delegate());
     return proxy;
 }
 
-extern "C" CDECL rust_proxy_delegate<rust_task> *
+extern "C" CDECL maybe_proxy<rust_task> *
 upcall_start_thread(rust_task *spawner,
-                    rust_proxy_delegate<rust_task> *root_task_proxy,
+                    maybe_proxy<rust_task> *root_task_proxy,
     uintptr_t exit_task_glue, uintptr_t spawnee_fn, size_t callsz) {
     LOG_UPCALL_ENTRY(spawner);
 
