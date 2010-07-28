@@ -127,6 +127,11 @@ circular_buffer::dequeue(void *dst) {
 
 }
 
+uint8_t *
+circular_buffer::peek() {
+    return &_buffer[_next];
+}
+
 bool
 circular_buffer::is_empty() {
     return _unread == 0;

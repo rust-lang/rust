@@ -19,6 +19,7 @@ public:
     void transfer(void *dst);
     void enqueue(void *src);
     void dequeue(void *dst);
+    uint8_t *peek();
     bool is_empty();
 
 private:
