@@ -61,6 +61,7 @@ static const char * _foreground_colors[] = { "[37m",
  * Synchronizes access to the underlying logging mechanism.
  */
 static spin_lock _log_lock;
+static uint32_t _last_thread_id;
 
 rust_log::rust_log(rust_srv *srv, rust_dom *dom) :
     _srv(srv),
@@ -122,7 +123,7 @@ append_string(char *buffer, rust_log::ansi_color color,
 }
 
 void
-rust_log::trace_ln(char *prefix, char *message) {
+rust_log::trace_ln(uint32_t thread_id, char *prefix, char *message) {
     char buffer[1024] = "";
     _log_lock.lock();
     append_string(buffer, "%-34s", prefix);
@@ -130,6 +131,10 @@ rust_log::trace_ln(char *prefix, char *message) {
         append_string(buffer, "    ");
     }
     append_string(buffer, "%s", message);
+    if (_last_thread_id != thread_id) {
+        _last_thread_id = thread_id;
+        _srv->log("---");
+    }
     _srv->log(buffer);
     _log_lock.unlock();
 }
@@ -147,7 +152,7 @@ rust_log::trace_ln(rust_task *task, char *message) {
     if (task) {
         append_string(prefix, "0x%08" PRIxPTR ":", (uintptr_t) task);
     }
-    trace_ln(prefix, message);
+    trace_ln(thread_id, prefix, message);
 }
 
 /**

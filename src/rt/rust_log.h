@@ -47,7 +47,7 @@ public:
     void indent();
     void outdent();
     void reset_indent(uint32_t indent);
-    void trace_ln(char *prefix, char *message);
+    void trace_ln(uint32_t thread_id, char *prefix, char *message);
     void trace_ln(rust_task *task, uint32_t type_bits, char *message);
     void trace_ln(rust_task *task, ansi_color color, uint32_t type_bits, char *message);
     bool is_tracing(uint32_t type_bits);
