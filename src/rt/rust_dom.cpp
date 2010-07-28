@@ -282,6 +282,32 @@ rust_dom::schedule_task()
     return NULL;
 }
 
+void
+rust_dom::log_state() {
+    if (!running_tasks.is_empty()) {
+        log(rust_log::TASK, "running tasks:");
+        for (size_t i = 0; i < running_tasks.length(); i++) {
+            log(rust_log::TASK,
+                "\t task: 0x%" PRIxPTR, running_tasks[i]);
+        }
+    }
+
+    if (!blocked_tasks.is_empty()) {
+        log(rust_log::TASK, "blocked tasks:");
+        for (size_t i = 0; i < blocked_tasks.length(); i++) {
+            log(rust_log::TASK,
+                "\t task: 0x%" PRIxPTR ", blocked on: 0x%" PRIxPTR,
+                blocked_tasks[i], blocked_tasks[i]->cond);
+        }
+    }
+
+    if (!dead_tasks.is_empty()) {
+        log(rust_log::TASK, "dead tasks:");
+        for (size_t i = 0; i < dead_tasks.length(); i++) {
+            log(rust_log::TASK, "\t task: 0x%" PRIxPTR, dead_tasks[i]);
+        }
+    }
+}
 /**
  * Starts the main scheduler loop which performs task scheduling for this
  * domain.
@@ -307,7 +333,11 @@ rust_dom::start_main_loop()
         if (scheduled_task == NULL) {
             log(rust_log::TASK,
                 "all tasks are blocked, waiting for progress ...");
+            if (_log.is_tracing(rust_log::TASK))
+                log_state();
             _progress.wait();
+            log(rust_log::TASK,
+                "progress made, resuming ...");
             continue;
         }
 
