@@ -4,6 +4,14 @@
 
 #include "rust_internal.h"
 
+bool
+is_power_of_two(size_t value) {
+    if (value > 0) {
+        return (value & (value - 1)) == 0;
+    }
+    return false;
+}
+
 circular_buffer::circular_buffer(rust_dom *dom, size_t unit_sz) :
     dom(dom),
     _buffer_sz(INITIAL_CIRCULAR_BUFFFER_SIZE_IN_UNITS * unit_sz),
@@ -37,9 +45,10 @@ circular_buffer::~circular_buffer() {
 void
 circular_buffer::transfer(void *dst) {
     I(dom, dst);
+    I(dom, is_power_of_two(_buffer_sz));
     uint8_t *ptr = (uint8_t *) dst;
     for (size_t i = 0; i < _unread; i += _unit_sz) {
-        memcpy(&ptr[i], &_buffer[(_next + i) % _buffer_sz], _unit_sz);
+        memcpy(&ptr[i], &_buffer[(_next + i) & (_buffer_sz - 1)], _unit_sz);
     }
 }
 
@@ -67,11 +76,12 @@ circular_buffer::enqueue(void *src) {
              "unread: %d, buffer_sz: %d, unit_sz: %d",
              _unread, _buffer_sz, _unit_sz);
 
+    I(dom, is_power_of_two(_buffer_sz));
     I(dom, _unread < _buffer_sz);
     I(dom, _unread + _unit_sz <= _buffer_sz);
 
     // Copy data
-    size_t i = (_next + _unread) % _buffer_sz;
+    size_t i = (_next + _unread) & (_buffer_sz - 1);
     memcpy(&_buffer[i], src, _unit_sz);
     _unread += _unit_sz;
 

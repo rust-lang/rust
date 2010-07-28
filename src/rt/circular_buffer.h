@@ -20,7 +20,9 @@ public:
     bool is_empty();
 
 private:
-    // Size of the buffer in bytes.
+    // Size of the buffer in bytes, should always be a power of two so that
+    // modulo arithmetic (x % _buffer_sz) can optimized away with
+    // (x & (_buffer_sz - 1)).
     size_t _buffer_sz;
 
     // Size of the data unit in bytes.
