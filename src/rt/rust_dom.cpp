@@ -4,23 +4,6 @@
 
 template class ptr_vec<rust_task>;
 
-rust_message::rust_message(rust_dom *dom) : dom(dom) {
-
-}
-
-void rust_message::process() {
-
-}
-
-kill_task_message::kill_task_message(rust_dom *dom, rust_task *task) :
-        rust_message(dom), _task(task) {
-
-}
-
-void kill_task_message::process() {
-    _task->ref_count--;
-    _task->kill();
-}
 
 rust_dom::rust_dom(rust_srv *srv, rust_crate const *root_crate) :
     interrupt_flag(0),
@@ -54,7 +37,23 @@ del_all_tasks(rust_dom *dom, ptr_vec<rust_task> *v) {
     }
 }
 
+void
+rust_dom::delete_proxies() {
+    rust_task *task;
+    rust_proxy<rust_task> *task_proxy;
+    while (_task_proxies.pop(&task, &task_proxy)) {
+        log(rust_log::TASK, "deleting proxy %" PRIxPTR
+                            " in dom %" PRIxPTR, task_proxy, task_proxy->dom);
+        delete task_proxy;
+    }
+}
+
 rust_dom::~rust_dom() {
+    log(rust_log::MEM | rust_log::DOM,
+             "~rust_dom 0x%" PRIxPTR, (uintptr_t)this);
+
+    log(rust_log::TASK, "deleting all proxies");
+    delete_proxies();
     log(rust_log::TASK, "deleting all running tasks");
     del_all_tasks(this, &running_tasks);
     log(rust_log::TASK, "deleting all blocked tasks");
@@ -126,8 +125,8 @@ void *
 rust_dom::malloc(size_t sz) {
     void *p = srv->malloc(sz);
     I(this, p);
-    log(rust_log::MEM, "rust_dom::malloc(%d) -> 0x%" PRIxPTR,
-        sz, p);
+    log(rust_log::MEM, "0x%" PRIxPTR " rust_dom::malloc(%d) -> 0x%" PRIxPTR,
+        (uintptr_t) this, sz, p);
     return p;
 }
 
@@ -219,6 +218,8 @@ rust_dom::reap_dead_tasks() {
         rust_task *task = dead_tasks[i];
         if (task->ref_count == 0) {
             I(this, !task->waiting_tasks.length());
+            I(this, task->tasks_waiting_to_join.is_empty());
+
             dead_tasks.swap_delete(task);
             log(rust_log::TASK,
                 "deleting unreferenced dead task 0x%" PRIxPTR, task);
@@ -229,18 +230,20 @@ rust_dom::reap_dead_tasks() {
     }
 }
 
-
 /**
  * Enqueues a message in this domain's incoming message queue. It's the
  * responsibility of the receiver to free the message once it's processed.
  */
 void rust_dom::send_message(rust_message *message) {
-    log(rust_log::COMM, "enqueueing message 0x%" PRIxPTR
+    log(rust_log::COMM, "==> enqueueing \"%s\" 0x%" PRIxPTR
                         " in queue 0x%" PRIxPTR,
+                        message->label,
                         message,
                         &_incoming_message_queue);
+    A(this, message->dom == this, "Message owned by non-local domain.");
     _incoming_message_queue.enqueue(message);
     _incoming_message_pending.signal();
+    _progress.signal();
 }
 
 /**
@@ -249,17 +252,24 @@ void rust_dom::send_message(rust_message *message) {
 void rust_dom::drain_incoming_message_queue() {
     rust_message *message;
     while ((message = (rust_message *) _incoming_message_queue.dequeue())) {
-        log(rust_log::COMM, "read 0x%" PRIxPTR
-                            " from queue 0x%" PRIxPTR,
-                            message,
-                            &_incoming_message_queue);
-        log(rust_log::COMM, "processing incoming message 0x%" PRIxPTR,
-                            message);
+        log(rust_log::COMM, "<== processing incoming message \"%s\" 0x%"
+            PRIxPTR, message->label, message);
         message->process();
         delete message;
     }
 }
 
+rust_proxy<rust_task> *
+rust_dom::get_task_proxy(rust_task *task) {
+    rust_proxy<rust_task> *proxy = NULL;
+    if (_task_proxies.get(task, &proxy)) {
+        return proxy;
+    }
+    log(rust_log::COMM, "no proxy for 0x%" PRIxPTR, task);
+    proxy = new (this) rust_proxy<rust_task> (this, task, false);
+    _task_proxies.put(task, proxy);
+    return proxy;
+}
 /**
  * Schedules a running task for execution. Only running tasks can be
  * activated.  Blocked tasks have to be unblocked before they can be
@@ -324,6 +334,8 @@ rust_dom::start_main_loop()
     logptr("exit-task glue", root_crate->get_exit_task_glue());
 
     while (n_live_tasks() > 0) {
+        drain_incoming_message_queue();
+
         rust_task *scheduled_task = schedule_task();
 
         // If we cannot schedule a task because all other live tasks
@@ -361,8 +373,6 @@ rust_dom::start_main_loop()
         I(this, scheduled_task->rust_sp >=
           (uintptr_t) &scheduled_task->stk->data[0]);
         I(this, scheduled_task->rust_sp < scheduled_task->stk->limit);
-
-        drain_incoming_message_queue();
 
         reap_dead_tasks();
     }

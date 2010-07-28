@@ -259,6 +259,7 @@ RUNTIME_CS := rt/sync/spin_lock.cpp \
               rt/rust_chan.cpp \
               rt/rust_upcall.cpp \
               rt/rust_log.cpp \
+              rt/rust_message.cpp \
               rt/rust_timer.cpp \
               rt/circular_buffer.cpp \
               rt/isaac/randport.cpp
@@ -272,6 +273,7 @@ RUNTIME_HDR := rt/globals.h \
                rt/rust_dom.h \
                rt/rust_task.h \
                rt/rust_proxy.h \
+               rt/rust_message.h \
                rt/circular_buffer.h
 
 RUNTIME_INCS := -Irt/isaac -Irt/uthash

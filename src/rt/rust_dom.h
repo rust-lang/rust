@@ -6,22 +6,10 @@
 #define RUST_DOM_H
 
 #include "sync/lock_free_queue.h"
+#include "util/hash_map.h"
 
-class rust_message : public lock_free_queue_node,
-                     public dom_owned<rust_message> {
-public:
-    rust_dom *dom;
-    rust_message(rust_dom *dom);
-    virtual ~rust_message() {}
-    virtual void process();
-};
-
-class kill_task_message : public rust_message {
-    rust_task *_task;
-public:
-    kill_task_message(rust_dom *dom, rust_task *task);
-    void process();
-};
+#include "rust_proxy.h"
+#include "rust_message.h"
 
 struct rust_dom
 {
@@ -47,6 +35,8 @@ struct rust_dom
     int rval;
 
     condition_variable _progress;
+
+    hash_map<rust_task *, rust_proxy<rust_task> *> _task_proxies;
 
     // Incoming messages from other domains.
     condition_variable _incoming_message_pending;
@@ -74,6 +64,8 @@ struct rust_dom
 
     void send_message(rust_message *message);
     void drain_incoming_message_queue();
+    rust_proxy<rust_task> *get_task_proxy(rust_task *task);
+    void delete_proxies();
 
 #ifdef __WIN32__
     void win32_require(LPCTSTR fn, BOOL ok);

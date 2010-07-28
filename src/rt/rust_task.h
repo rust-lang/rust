@@ -4,6 +4,10 @@
 
 #ifndef RUST_TASK_H
 #define RUST_TASK_H
+
+#include "util/array_list.h"
+
+
 struct
 rust_task : public maybe_proxy<rust_task>,
             public dom_owned<rust_task>
@@ -34,6 +38,9 @@ rust_task : public maybe_proxy<rust_task>,
     // result should go in the rendezvous_ptr, and let the sender write to
     // that location before waking us up.
     uintptr_t* rendezvous_ptr;
+
+    // List of tasks waiting for this task to finish.
+    array_list<maybe_proxy<rust_task> *> tasks_waiting_to_join;
 
     rust_alarm alarm;
 
@@ -95,6 +102,7 @@ rust_task : public maybe_proxy<rust_task>,
 
     // Notify tasks waiting for us that we are about to die.
     void notify_waiting_tasks();
+    void notify_tasks_waiting_to_join();
 
     uintptr_t get_fp();
     uintptr_t get_previous_fp(uintptr_t fp);

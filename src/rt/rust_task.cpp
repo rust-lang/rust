@@ -385,6 +385,24 @@ rust_task::notify_waiting_tasks()
     }
 }
 
+void
+rust_task::notify_tasks_waiting_to_join() {
+    while (tasks_waiting_to_join.is_empty() == false) {
+        log(rust_log::ALL, "notify_tasks_waiting_to_join: %d",
+            tasks_waiting_to_join.size());
+        maybe_proxy<rust_task> *waiting_task = tasks_waiting_to_join.pop();
+        if (waiting_task->is_proxy()) {
+            notify_message::send(notify_message::WAKEUP, "wakeup",
+                                 this, waiting_task->as_proxy());
+        } else {
+            rust_task *task = waiting_task->delegate();
+            if (task->dead() == false) {
+                task->wakeup(this);
+            }
+        }
+    }
+}
+
 uintptr_t
 rust_task::get_fp() {
     // sp in any suspended task points to the last callee-saved reg on

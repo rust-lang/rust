@@ -122,19 +122,25 @@ extern "C" CDECL void upcall_yield(rust_task *task) {
 }
 
 extern "C" CDECL void
-upcall_join(rust_task *task, maybe_proxy<rust_task> *proxy) {
+upcall_join(rust_task *task, maybe_proxy<rust_task> *target) {
     LOG_UPCALL_ENTRY(task);
     task->log(rust_log::UPCALL | rust_log::COMM,
-                  "join proxy 0x%" PRIxPTR " -> task = 0x%" PRIxPTR,
-                  proxy, proxy->delegate());
+              "target: 0x%" PRIxPTR ", task: 0x%" PRIxPTR,
+              target, target->delegate());
 
-    rust_task *other = proxy->delegate();
-
-    // If the other task is already dying, we don't have to wait for it.
-    if (!other->dead()) {
-        other->waiting_tasks.push(&task->alarm);
-        task->block(other);
+    rust_task *target_task = target->delegate();
+    if (target->is_proxy()) {
+        notify_message::
+        send(notify_message::JOIN, "join", task, target->as_proxy());
+        task->block(target_task);
         task->yield(2);
+    } else {
+        // If the other task is already dying, we don't have to wait for it.
+        if (target_task->dead() == false) {
+            target_task->tasks_waiting_to_join.push(task);
+            task->block(target_task);
+            task->yield(2);
+        }
     }
 }
 
@@ -194,22 +200,20 @@ extern "C" CDECL void upcall_fail(rust_task *task, char const *expr,
  * Called whenever a task's ref count drops to zero.
  */
 extern "C" CDECL void
-upcall_kill(rust_task *task, maybe_proxy<rust_task> *target_proxy) {
+upcall_kill(rust_task *task, maybe_proxy<rust_task> *target) {
     LOG_UPCALL_ENTRY(task);
-    rust_task *target_task = target_proxy->delegate();
-    if (target_proxy != target_task) {
-        task->dom->free(target_proxy);
-    }
+    rust_task *target_task = target->delegate();
+
     task->log(rust_log::UPCALL | rust_log::TASK,
               "kill task 0x%" PRIxPTR ", ref count %d",
               target_task,
               target_task->ref_count);
 
-    if (requires_message_passing(task, target_task)) {
-        rust_dom *target_domain = target_task->dom;
-        target_domain->send_message(
-                new (target_domain)
-                kill_task_message(target_domain, target_task));
+    if (target->is_proxy()) {
+        notify_message::
+        send(notify_message::KILL, "kill", task, target->as_proxy());
+        // The proxy ref_count dropped to zero, delete it here.
+        delete target->as_proxy();
     } else {
         target_task->kill();
     }
@@ -224,7 +228,7 @@ upcall_exit(rust_task *task) {
     task->log(rust_log::UPCALL | rust_log::TASK,
               "task ref_count: %d", task->ref_count);
     task->die();
-    task->notify_waiting_tasks();
+    task->notify_tasks_waiting_to_join();
     task->yield(1);
 }
 
