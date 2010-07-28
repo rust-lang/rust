@@ -63,12 +63,14 @@ circular_buffer::enqueue(void *src) {
 
     // Grow if necessary.
     if (_unread == _buffer_sz) {
-        I(dom, _buffer_sz <= MAX_CIRCULAR_BUFFFER_SIZE);
-        void *tmp = dom->malloc(_buffer_sz << 1);
-        transfer(tmp);
-        _buffer_sz <<= 1;
+        size_t new_buffer_sz = _buffer_sz << 1;
+        I(dom, new_buffer_sz <= MAX_CIRCULAR_BUFFFER_SIZE);
+        void *new_buffer = dom->malloc(new_buffer_sz);
+        transfer(new_buffer);
         dom->free(_buffer);
-        _buffer = (uint8_t *)tmp;
+        _buffer = (uint8_t *)new_buffer;
+        _next = 0;
+        _buffer_sz = new_buffer_sz;
     }
 
     dom->log(rust_log::MEM | rust_log::COMM,
