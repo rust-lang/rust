@@ -764,16 +764,16 @@ let trans_crate
         match lval with
             Ast.LVAL_base { id = base_id } ->
               set_debug_loc base_id;
-              let referent = lval_to_referent sem_cx base_id in
+              let defn_id = lval_base_defn_id sem_cx lval in
               begin
-                match resolve_lval_id sem_cx base_id with
+                match get_defn sem_cx defn_id with
                     Semant.DEFN_slot slot ->
-                      (Hashtbl.find slot_to_llvalue referent, slot_ty slot)
+                      (Hashtbl.find slot_to_llvalue defn_id, slot_ty slot)
                   | Semant.DEFN_item _ ->
-                      (Hashtbl.find llitems referent, lval_ty sem_cx lval)
+                      (Hashtbl.find llitems defn_id, lval_ty sem_cx lval)
                   | _ ->
-                      Common.unimpl (Some referent)
-                        "LLVM base-referent translation of: %a"
+                      Common.unimpl (Some defn_id)
+                        "LLVM base-defn translation of: %a"
                         Ast.sprintf_lval lval
               end
           | Ast.LVAL_ext (base, component) ->

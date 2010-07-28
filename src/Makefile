@@ -451,6 +451,7 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       rec.rs \
                       simple-obj.rs \
                       spawn-fn.rs \
+                      spawn-module-qualified.rs \
                       spawn.rs \
                       stateful-obj.rs \
                       str-append.rs \
