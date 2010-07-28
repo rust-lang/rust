@@ -529,23 +529,29 @@ rust_task::transition(ptr_vec<rust_task> *src, ptr_vec<rust_task> *dst)
 void
 rust_task::block(rust_cond *on)
 {
-    I(dom, on);
+    log(rust_log::TASK, "Blocking on 0x%" PRIxPTR ", cond: 0x%" PRIxPTR,
+                         (uintptr_t) on, (uintptr_t) cond);
+    A(dom, cond == NULL, "Cannot block an already blocked task.");
+    A(dom, on != NULL, "Cannot block on a NULL object.");
+
     transition(&dom->running_tasks, &dom->blocked_tasks);
-    dom->log(rust_log::TASK,
-             "task 0x%" PRIxPTR " blocking on 0x%" PRIxPTR,
-             (uintptr_t)this,
-             (uintptr_t)on);
     cond = on;
 }
 
 void
 rust_task::wakeup(rust_cond *from)
 {
+    A(dom, cond != NULL, "Cannot wake up unblocked task.");
+    log(rust_log::TASK, "Blocked on 0x%" PRIxPTR " woken up on 0x%" PRIxPTR,
+                        (uintptr_t) cond, (uintptr_t) from);
+    A(dom, cond == from, "Cannot wake up blocked task on wrong condition.");
+
     transition(&dom->blocked_tasks, &dom->running_tasks);
     // TODO: Signaling every time the task is awaken is kind of silly,
     // do this a nicer way.
     dom->_progress.signal();
     I(dom, cond == from);
+    cond = NULL;
 }
 
 void
