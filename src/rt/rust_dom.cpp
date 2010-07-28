@@ -414,8 +414,13 @@ rust_dom::start_main_loop()
             "waiting for %d dead tasks to become dereferenced ...",
             dead_tasks.length());
 
-        log(rust_log::DOM,
-            "waiting for %" PRIxPTR, dead_tasks[0]);
+        if (_log.is_tracing(rust_log::DOM)) {
+            for (size_t i = 0; i < dead_tasks.length(); i++) {
+                log(rust_log::DOM,
+                    "task: 0x%" PRIxPTR ", index: %d, ref_count: %d",
+                    dead_tasks[i], i, dead_tasks[i]->ref_count);
+            }
+        }
 
         if (_incoming_message_queue.is_empty()) {
             _incoming_message_pending.wait();
