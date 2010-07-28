@@ -351,7 +351,8 @@ rust_dom::log_state() {
  * Starts the main scheduler loop which performs task scheduling for this
  * domain.
  *
- * Returns once no more tasks can be scheduled.
+ * Returns once no more tasks can be scheduled and all task ref_counts
+ * drop to zero.
  */
 int
 rust_dom::start_main_loop()
