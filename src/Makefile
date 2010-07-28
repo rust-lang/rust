@@ -275,8 +275,11 @@ RUNTIME_HDR := rt/globals.h \
                rt/rust_dom.h \
                rt/rust_task.h \
                rt/rust_proxy.h \
+               rt/rust_log.h \
                rt/rust_message.h \
-               rt/circular_buffer.h
+               rt/circular_buffer.h \
+               rt/util/array_list.h \
+               rt/util/hash_map.h
 
 RUNTIME_INCS := -Irt/isaac -Irt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=$(CFG_OBJ_SUFFIX))
