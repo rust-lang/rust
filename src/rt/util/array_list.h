@@ -14,20 +14,24 @@ public:
     ~array_list();
     size_t size();
     int32_t append(T value);
+    int32_t push(T value);
+    T pop();
     T replace(T old_value, T new_value);
     int32_t index_of(T value);
+    bool is_empty();
     T & operator[](size_t index);
 };
 
 template<typename T>
 array_list<T>::array_list() {
+    _size = 0;
     _capacity = INITIAL_CAPACITY;
     _data = (T *) malloc(sizeof(T) * _capacity);
 }
 
 template<typename T>
 array_list<T>::~array_list() {
-    delete _data;
+    free(_data);
 }
 
 template<typename T> size_t
@@ -37,12 +41,23 @@ array_list<T>::size() {
 
 template<typename T> int32_t
 array_list<T>::append(T value) {
+    return push(value);
+}
+
+template<typename T> int32_t
+array_list<T>::push(T value) {
     if (_size == _capacity) {
         _capacity = _capacity * 2;
         _data = (T *) realloc(_data, _capacity * sizeof(T));
     }
     _data[_size ++] = value;
     return _size - 1;
+}
+
+template<typename T> T
+array_list<T>::pop() {
+    T value = _data[-- _size];
+    return value;
 }
 
 /**
@@ -72,6 +87,11 @@ array_list<T>::index_of(T value) {
 template<typename T> T &
 array_list<T>::operator[](size_t index) {
     return _data[index];
+}
+
+template<typename T> bool
+array_list<T>::is_empty() {
+    return _size == 0;
 }
 
 #endif /* ARRAY_LIST_H */
