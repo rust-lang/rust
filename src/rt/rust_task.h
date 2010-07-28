@@ -103,5 +103,15 @@ rust_task : public rust_proxy_delegate<rust_task>,
     rust_crate_cache * get_crate_cache(rust_crate const *curr_crate);
 };
 
+//
+// Local Variables:
+// mode: C++
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//
 
 #endif /* RUST_TASK_H */
