@@ -257,6 +257,7 @@ RUNTIME_CS := rt/sync/spin_lock.cpp \
               rt/rust_dom.cpp \
               rt/rust_task.cpp \
               rt/rust_chan.cpp \
+              rt/rust_port.cpp \
               rt/rust_upcall.cpp \
               rt/rust_log.cpp \
               rt/rust_message.cpp \
@@ -270,6 +271,7 @@ RUNTIME_HDR := rt/globals.h \
                rt/rust_internal.h \
                rt/rust_util.h \
                rt/rust_chan.h \
+               rt/rust_port.h \
                rt/rust_dom.h \
                rt/rust_task.h \
                rt/rust_proxy.h \

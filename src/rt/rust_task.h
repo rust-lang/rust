@@ -28,9 +28,6 @@ rust_task : public maybe_proxy<rust_task>,
     size_t gc_alloc_thresh;
     size_t gc_alloc_accum;
 
-    // Wait queue for tasks waiting for this task.
-    rust_wait_queue waiting_tasks;
-
     // Rendezvous pointer for receiving data when blocked on a port. If we're
     // trying to read data and no data is available on any incoming channel,
     // we block on the port, and yield control to the scheduler. Since, we
@@ -101,7 +98,6 @@ rust_task : public maybe_proxy<rust_task>,
     void unsupervise();
 
     // Notify tasks waiting for us that we are about to die.
-    void notify_waiting_tasks();
     void notify_tasks_waiting_to_join();
 
     uintptr_t get_fp();

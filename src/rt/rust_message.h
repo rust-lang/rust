@@ -58,6 +58,30 @@ public:
          rust_proxy<rust_task> *target);
 };
 
+/**
+ * Data messages carry a buffer.
+ */
+class data_message : public rust_message {
+private:
+    uint8_t *_buffer;
+    size_t _buffer_sz;
+    rust_port *_port;
+public:
+
+    data_message(uint8_t *buffer, size_t buffer_sz, const char* label,
+                 rust_task *source, rust_task *target, rust_port *port);
+    ~data_message();
+    void process();
+
+    /**
+     * This code executes in the sending domain's thread.
+     */
+    static void
+    send(uint8_t *buffer, size_t buffer_sz, const char* label,
+         rust_task *source, rust_proxy<rust_task> *target,
+         rust_proxy<rust_port> *port);
+};
+
 //
 // Local Variables:
 // mode: C++

@@ -1,12 +1,14 @@
 #include "rust_internal.h"
 #include "rust_chan.h"
 
-rust_chan::rust_chan(rust_task *task, rust_port *port) :
-    task(task), port(port), buffer(task->dom, port->unit_sz), token(this) {
+/**
+ * Create a new rust channel and associate it with the specified port.
+ */
+rust_chan::rust_chan(rust_task *task, maybe_proxy<rust_port> *port) :
+    task(task), port(port), buffer(task->dom, port->delegate()->unit_sz) {
 
     if (port) {
-        port->chans.push(this);
-        ref();
+        associate(port);
     }
 
     task->log(rust_log::MEM | rust_log::COMM,
@@ -16,49 +18,68 @@ rust_chan::rust_chan(rust_task *task, rust_port *port) :
 }
 
 rust_chan::~rust_chan() {
-    if (port) {
-        if (token.pending())
-            token.withdraw();
-        port->chans.swap_delete(this);
+    if (port && !port->is_proxy()) {
+        port->delegate()->chans.swap_delete(this);
     }
 }
 
+/**
+ * Link this channel with the specified port.
+ */
+void rust_chan::associate(maybe_proxy<rust_port> *port) {
+    this->port = port;
+    if (!port->is_proxy()) {
+        this->port->delegate()->chans.push(this);
+    }
+}
+
+bool rust_chan::is_associated() {
+    return port != NULL;
+}
+
+/**
+ * Unlink this channel from its associated port.
+ */
 void rust_chan::disassociate() {
-    I(task->dom, port);
+    A(task->dom, is_associated(), "Channel must be associated with a port.");
 
-    if (token.pending())
-        token.withdraw();
-
-    // Delete reference to the port/
+    // Delete reference to the port.
     port = NULL;
-
-    deref();
 }
 
 /**
  * Attempt to transmit channel data to the associated port.
  */
-int rust_chan::transmit() {
+void rust_chan::transmit() {
     rust_dom *dom = task->dom;
-
-    // TODO: Figure out how and why the port would become null.
-    if (port == NULL) {
-        dom->log(rust_log::COMM, "invalid port, transmission incomplete");
-        return ERROR;
+    if (!is_associated()) {
+        W(dom, is_associated(),
+          "rust_chan::transmit with no associated port.");
+        return;
     }
 
-    if (buffer.is_empty()) {
-        dom->log(rust_log::COMM, "buffer is empty, transmission incomplete");
-        return ERROR;
+    A(dom, !buffer.is_empty(),
+      "rust_chan::transmit with nothing to send.");
+
+    if (port->is_proxy()) {
+        // TODO: Cache port task locally.
+        rust_proxy<rust_task> *port_task =
+            dom->get_task_proxy(port->delegate()->task);
+        data_message::send(buffer.peek(), buffer.unit_sz,
+            "send data", task, port_task, port->as_proxy());
+        buffer.dequeue(NULL);
+    } else {
+        rust_port *target_port = port->delegate();
+        if (target_port->task->blocked_on(target_port)) {
+            dom->log(rust_log::COMM, "dequeued in rendezvous_ptr");
+            buffer.dequeue(target_port->task->rendezvous_ptr);
+            target_port->task->rendezvous_ptr = 0;
+            target_port->task->wakeup(target_port);
+            return;
+        }
     }
 
-    if(port->task->blocked_on(port)) {
-        buffer.dequeue(port->task->rendezvous_ptr);
-        port->task->wakeup(port);
-    }
-
-    return 0;
-
+    return;
 }
 
 //

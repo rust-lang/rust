@@ -46,6 +46,14 @@ rust_dom::delete_proxies() {
                             " in dom %" PRIxPTR, task_proxy, task_proxy->dom);
         delete task_proxy;
     }
+
+    rust_port *port;
+    rust_proxy<rust_port> *port_proxy;
+    while (_port_proxies.pop(&port, &port_proxy)) {
+        log(rust_log::TASK, "deleting proxy %" PRIxPTR
+                            " in dom %" PRIxPTR, port_proxy, port_proxy->dom);
+        delete port_proxy;
+    }
 }
 
 rust_dom::~rust_dom() {
@@ -217,7 +225,6 @@ rust_dom::reap_dead_tasks() {
     for (size_t i = 0; i < dead_tasks.length(); ) {
         rust_task *task = dead_tasks[i];
         if (task->ref_count == 0) {
-            I(this, !task->waiting_tasks.length());
             I(this, task->tasks_waiting_to_join.is_empty());
 
             dead_tasks.swap_delete(task);
@@ -270,6 +277,28 @@ rust_dom::get_task_proxy(rust_task *task) {
     _task_proxies.put(task, proxy);
     return proxy;
 }
+
+/**
+ * Gets a proxy for this port.
+ *
+ * TODO: This method needs to be synchronized since it's usually called
+ * during upcall_clone_chan in a different thread. However, for now
+ * since this usually happens before the thread actually starts,
+ * we may get lucky without synchronizing.
+ *
+ */
+rust_proxy<rust_port> *
+rust_dom::get_port_proxy_synchronized(rust_port *port) {
+    rust_proxy<rust_port> *proxy = NULL;
+    if (_port_proxies.get(port, &proxy)) {
+        return proxy;
+    }
+    log(rust_log::COMM, "no proxy for 0x%" PRIxPTR, port);
+    proxy = new (this) rust_proxy<rust_port> (this, port, false);
+    _port_proxies.put(port, proxy);
+    return proxy;
+}
+
 /**
  * Schedules a running task for execution. Only running tasks can be
  * activated.  Blocked tasks have to be unblocked before they can be

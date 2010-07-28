@@ -580,37 +580,11 @@ struct gc_alloc {
     }
 };
 
+#include "circular_buffer.h"
 #include "rust_proxy.h"
 #include "rust_task.h"
-
-struct rust_port : public rc_base<rust_port>,
-                   public task_owned<rust_port>,
-                   public rust_cond {
-    rust_task *task;
-    size_t unit_sz;
-    ptr_vec<rust_token> writers;
-    ptr_vec<rust_chan> chans;
-
-    rust_port(rust_task *task, size_t unit_sz);
-    ~rust_port();
-};
-
-struct rust_token : public rust_cond {
-    rust_chan *chan;      // Link back to the channel this token belongs to
-    size_t idx;           // Index into port->writers.
-    bool submitted;       // Whether token is in a port->writers.
-
-    rust_token(rust_chan *chan);
-    ~rust_token();
-
-    bool pending() const;
-    void submit();
-    void withdraw();
-};
-
-#include "circular_buffer.h"
-
 #include "rust_chan.h"
+#include "rust_port.h"
 
 //
 // Local Variables:

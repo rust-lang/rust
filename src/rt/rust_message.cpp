@@ -27,6 +27,19 @@ notify_message(notification_type type, const char* label,
                rust_message(label, source, target), type(type) {
 }
 
+data_message::
+data_message(uint8_t *buffer, size_t buffer_sz, const char* label,
+             rust_task *source, rust_task *target, rust_port *port) :
+             rust_message(label, source, target),
+             _buffer_sz(buffer_sz), _port(port) {
+    _buffer = (uint8_t *)malloc(buffer_sz);
+    memcpy(_buffer, buffer, buffer_sz);
+}
+
+data_message::~data_message() {
+    free (_buffer);
+}
+
 /**
  * Sends a message to the target task via a proxy. The message is allocated
  * in the target task domain along with a proxy which points back to the
@@ -61,6 +74,25 @@ void notify_message::process() {
         task->wakeup(get_source_proxy()->delegate());
         break;
     }
+}
+
+void data_message::
+send(uint8_t *buffer, size_t buffer_sz, const char* label, rust_task *source,
+     rust_proxy<rust_task> *target, rust_proxy<rust_port> *port) {
+
+    rust_task *target_task = target->delegate();
+    rust_port *target_port = port->delegate();
+    rust_dom *target_domain = target_task->dom;
+    data_message *message = new (target_domain)
+        data_message(buffer, buffer_sz, label, source,
+                     target_task, target_port);
+    target_domain->send_message(message);
+}
+
+void data_message::process() {
+    _port->remote_channel->buffer.enqueue(_buffer);
+    _port->remote_channel->transmit();
+    _target->log(rust_log::COMM, "<=== received data via message ===");
 }
 
 //

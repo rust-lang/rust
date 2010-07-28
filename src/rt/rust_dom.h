@@ -37,6 +37,7 @@ struct rust_dom
     condition_variable _progress;
 
     hash_map<rust_task *, rust_proxy<rust_task> *> _task_proxies;
+    hash_map<rust_port *, rust_proxy<rust_port> *> _port_proxies;
 
     // Incoming messages from other domains.
     condition_variable _incoming_message_pending;
@@ -66,6 +67,7 @@ struct rust_dom
     void drain_incoming_message_queue();
     rust_proxy<rust_task> *get_task_proxy(rust_task *task);
     void delete_proxies();
+    rust_proxy<rust_port> *get_port_proxy_synchronized(rust_port *port);
 
 #ifdef __WIN32__
     void win32_require(LPCTSTR fn, BOOL ok);

@@ -64,7 +64,6 @@ rust_task::rust_task(rust_dom *dom, rust_task *spawner) :
     cond(NULL),
     supervisor(spawner),
     idx(0),
-    waiting_tasks(dom),
     rendezvous_ptr(0),
     alarm(this)
 {
@@ -370,19 +369,6 @@ rust_task::unsupervise()
              "task 0x%" PRIxPTR " disconnecting from supervisor 0x%" PRIxPTR,
              this, supervisor);
     supervisor = NULL;
-}
-
-void
-rust_task::notify_waiting_tasks()
-{
-    while (waiting_tasks.length() > 0) {
-        log(rust_log::ALL, "notify_waiting_tasks: %d",
-            waiting_tasks.length());
-        rust_task *waiting_task = waiting_tasks.pop()->receiver;
-        if (!waiting_task->dead()) {
-            waiting_task->wakeup(this);
-        }
-    }
 }
 
 void
