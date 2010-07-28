@@ -374,6 +374,7 @@ TEST_XFAILS_X86 :=  test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/task-comm-2.rs \
                     test/run-pass/task-comm-3.rs \
                     test/run-pass/task-comm-5.rs \
+                    test/run-pass/task-comm-6.rs \
                     test/compile-fail/bad-recv.rs \
                     test/compile-fail/bad-send.rs \
                     test/compile-fail/infinite-tag-type-recursion.rs \
@@ -479,6 +480,10 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       task-comm-3.rs \
                       task-comm-4.rs \
                       task-comm-5.rs \
+                      task-comm-6.rs \
+                      task-comm-7.rs \
+                      task-comm-8.rs \
+                      task-comm-9.rs \
                       threads.rs \
                       type-sizes.rs \
                       u8-incr.rs \

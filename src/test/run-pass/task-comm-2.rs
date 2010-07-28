@@ -1,8 +1,8 @@
-fn main() -> () {
-   log "===== THREADS =====";
-   test00(true);
-   log "====== TASKS ======";
-   test00(false);
+fn main() -> () {    
+    log "===== THREADS =====";
+    test00(true);
+    log "====== TASKS ======";
+   // test00(false);
 }
 
 fn start(int task_number) {
@@ -15,7 +15,7 @@ fn start(int task_number) {
 }
     
 fn test00(bool create_threads) {
-    let int number_of_tasks = 32;
+    let int number_of_tasks = 0;
     
     let int i = 0;
     let vec[task] tasks = vec();
@@ -31,4 +31,6 @@ fn test00(bool create_threads) {
     for (task t in tasks) {
         join t;
     }
+    
+    log "Joined all task.";
 }
