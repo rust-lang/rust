@@ -3,7 +3,7 @@ import std._io.buf_reader;
 iter buffers(buf_reader rdr) -> vec[u8] {
   while (true) {
     let vec[u8] v = rdr.read();
-    if (std._vec.len[u8](v) == uint(0)) {
+    if (std._vec.len[u8](v) == 0u) {
       ret;
     }
     put v;

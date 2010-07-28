@@ -466,7 +466,9 @@ and parse_rec_body (ps:pstate) : pexp' = (*((Ast.ident * pexp) array) =*)
 
 and parse_lit (ps:pstate) : Ast.lit =
   match peek ps with
-      LIT_INT (n,s) -> (bump ps; Ast.LIT_int (n,s))
+      LIT_INT i -> (bump ps; Ast.LIT_int i)
+    | LIT_UINT i -> (bump ps; Ast.LIT_uint i)
+    | LIT_MACH_INT (tm, i) -> (bump ps; Ast.LIT_mach_int (tm, i))
     | LIT_CHAR c -> (bump ps; Ast.LIT_char c)
     | LIT_BOOL b -> (bump ps; Ast.LIT_bool b)
     | _ -> raise (unexpected ps)
@@ -601,106 +603,6 @@ and parse_bottom_pexp (ps:pstate) : pexp =
         let inner = parse_pexp ps in
         let bpos = lexpos ps in
           span ps apos bpos (PEXP_lval (PLVAL_ext_deref inner))
-
-    | (INT | UINT | CHAR | BOOL) as tok ->
-        begin
-          bump ps;
-          expect ps LPAREN;
-          match peek ps with
-              (LIT_INT _ | LIT_CHAR _ | LIT_BOOL _) as tok2 ->
-                bump ps;
-                expect ps RPAREN;
-                let i = match tok2 with
-                    LIT_INT i -> i
-                  | LIT_CHAR c -> (Int64.of_int c,
-                                   Common.escaped_char c)
-                  | LIT_BOOL b -> if b then (1L, "1") else (0L, "0")
-                  | _ -> bug () "expected int/char literal"
-                in
-                let bpos = lexpos ps in
-                  span ps apos bpos
-                    (PEXP_lit
-                       (match tok with
-                            INT -> Ast.LIT_int i
-                          | UINT -> Ast.LIT_uint i
-                          | CHAR ->
-                              Ast.LIT_char
-                                (Int64.to_int (fst i))
-                          | BOOL -> Ast.LIT_bool (fst i <> 0L)
-                          | _ -> bug () "expected int/uint/char/bool token"))
-
-          | _ ->
-              let pexp = parse_pexp ps in
-                expect ps RPAREN;
-                let bpos = lexpos ps in
-                let t =
-                  match tok with
-                      INT -> Ast.TY_int
-                    | UINT -> Ast.TY_uint
-                    | CHAR -> Ast.TY_char
-                    | BOOL -> Ast.TY_bool
-                    | _ -> bug () "expected int/uint/char/bool token"
-                in
-                let t = span ps apos bpos t in
-                  span ps apos bpos
-                    (PEXP_unop ((Ast.UNOP_cast t), pexp))
-        end
-
-    | MACH m ->
-        let literal (num, str) =
-          let _ = bump ps in
-          let _ = expect ps RPAREN in
-          let bpos = lexpos ps in
-          let check_range (lo:int64) (hi:int64) : unit =
-            if (num < lo) or (num > hi)
-            then raise (err (Printf.sprintf
-                               "integral literal %Ld out of range [%Ld,%Ld]"
-                               num lo hi) ps)
-            else ()
-          in
-            begin
-              match m with
-                  TY_u8 -> check_range 0L 0xffL
-                | TY_u16 -> check_range 0L 0xffffL
-                | TY_u32 -> check_range 0L 0xffffffffL
-                    (* | TY_u64 -> ... *)
-                | TY_i8 -> check_range (-128L) 127L
-                | TY_i16 -> check_range (-32768L) 32767L
-                | TY_i32 -> check_range (-2147483648L) 2147483647L
-                    (*
-                      | TY_i64 -> ...
-                      | TY_f32 -> ...
-                      | TY_f64 -> ...
-                    *)
-                | _ -> ()
-            end;
-            span ps apos bpos
-              (PEXP_lit
-                 (Ast.LIT_mach
-                    (m, num, str)))
-
-        in
-          begin
-            bump ps;
-            expect ps LPAREN;
-            match peek ps with
-                LIT_INT (n,s) -> literal (n,s)
-              | MINUS ->
-                  begin
-                    bump ps;
-                    match peek ps with
-                        LIT_INT (n,s) ->
-                          literal (Int64.neg n, "-" ^ s)
-                      | _ -> raise (unexpected ps)
-                  end
-              | _ ->
-                  let pexp = parse_pexp ps in
-                    expect ps RPAREN;
-                    let bpos = lexpos ps in
-                    let t = span ps apos bpos (Ast.TY_mach m) in
-                      span ps apos bpos
-                        (PEXP_unop ((Ast.UNOP_cast t), pexp))
-          end
 
     | POUND ->
         bump ps;

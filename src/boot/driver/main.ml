@@ -50,6 +50,7 @@ let (sess:Session.sess) =
     Session.sess_log_obj = false;
     Session.sess_log_lib = false;
     Session.sess_log_out = stdout;
+    Session.sess_log_err = stderr;
     Session.sess_trace_block = false;
     Session.sess_trace_drop = false;
     Session.sess_trace_tag = false;

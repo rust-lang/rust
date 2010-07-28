@@ -527,7 +527,9 @@ and eval_pexp (env:env) (exp:Pexp.pexp) : pval =
     | Pexp.PEXP_lit (Ast.LIT_bool b) ->
         PVAL_bool b
 
-    | Pexp.PEXP_lit (Ast.LIT_int (i, _)) ->
+    | Pexp.PEXP_lit (Ast.LIT_int i)
+    | Pexp.PEXP_lit (Ast.LIT_uint i)
+    | Pexp.PEXP_lit (Ast.LIT_mach_int (_, i)) ->
         PVAL_num i
 
     | Pexp.PEXP_str s ->

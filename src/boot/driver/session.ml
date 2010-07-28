@@ -32,6 +32,7 @@ type sess =
   mutable sess_log_obj: bool;
   mutable sess_log_lib: bool;
   mutable sess_log_out: out_channel;
+  mutable sess_log_err: out_channel;
   mutable sess_trace_block: bool;
   mutable sess_trace_drop: bool;
   mutable sess_trace_tag: bool;
@@ -79,7 +80,7 @@ let log name flag chan =
 
 let fail sess =
   sess.sess_failed <- true;
-  Printf.fprintf sess.sess_log_out
+  Printf.fprintf sess.sess_log_err
 ;;
 
 

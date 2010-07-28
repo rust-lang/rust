@@ -416,6 +416,8 @@ TEST_XFAILS_LLVM := $(addprefix test/run-pass/, \
                       generic-recursive-tag.rs \
                       generic-tag-alt.rs \
                       generic-tag.rs \
+                      i32-sub.rs \
+                      i8-incr.rs \
                       import.rs \
                       inner-module.rs \
                       iter-range.rs \

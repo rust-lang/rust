@@ -3,15 +3,15 @@ type buf_reader = unsafe obj {
 };
 
 fn default_bufsz() -> uint {
-  ret uint(4096);
+  ret 4096u;
 }
 
 fn new_buf() -> vec[u8] {
   let vec[u8] v = vec();
   let uint i = default_bufsz();
-  while (i > uint(0)) {
-    i -= uint(1);
-    v += vec(u8(0));
+  while (i > 0u) {
+    i -= 1u;
+    v += vec(0u8);
   }
   // FIXME (issue #93): should be:
   // ret _vec.alloc[u8](default_bufsz());
@@ -25,7 +25,7 @@ fn new_buf_reader(str s) -> buf_reader {
     fn read() -> vec[u8] {
 
       // Ensure our buf is singly-referenced.
-      if (_vec.rustrt.refcount[u8](buf) != uint(1)) {
+      if (_vec.rustrt.refcount[u8](buf) != 1u) {
         buf = new_buf();
       }
 

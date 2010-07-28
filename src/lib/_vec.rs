@@ -21,8 +21,8 @@ type init_op[T] = fn(uint i) -> T;
 fn init_fn[T](&init_op[T] op, uint n_elts) -> vec[T] {
   let vec[T] v = alloc[T](n_elts);
   let uint i = n_elts;
-  while (i > uint(0)) {
-    i -= uint(1);
+  while (i > 0u) {
+    i -= 1u;
     v += vec(op(i));
   }
   ret v;
@@ -38,8 +38,8 @@ fn init_elt[T](&T t, uint n_elts) -> vec[T] {
    */
   let vec[T] v = alloc[T](n_elts);
   let uint i = n_elts;
-  while (i > uint(0)) {
-    i -= uint(1);
+  while (i > 0u) {
+    i -= 1u;
     v += vec(t);
   }
   ret v;
@@ -59,7 +59,7 @@ fn slice[T](vec[T] v, int start, int end) -> vec[T] {
   check(start <= end);
   // FIXME #108: This doesn't work yet.
   //check(end <= int(len[T](v)));
-  auto result = alloc[T](uint(end - start));
+  auto result = alloc[T]((end - start) as uint);
   let mutable int i = start;
   while (i < end) {
     result += vec(v.(i));

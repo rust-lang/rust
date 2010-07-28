@@ -223,7 +223,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
     match lit with
         Ast.LIT_nil -> Ast.TY_nil
       | Ast.LIT_bool _ -> Ast.TY_bool
-      | Ast.LIT_mach (mty, _, _) -> Ast.TY_mach mty
+      | Ast.LIT_mach_int (mty, _) -> Ast.TY_mach mty
       | Ast.LIT_int _ -> Ast.TY_int
       | Ast.LIT_uint _ -> Ast.TY_uint
       | Ast.LIT_char _ -> Ast.TY_char

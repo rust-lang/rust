@@ -14,7 +14,7 @@ fn gt(u8 x, u8 y) -> bool { ret x > y; }
 iter range(mutable u8 lo, u8 hi) -> u8 {
   while (lo < hi) {
     put lo;
-    lo += u8(1);
+    lo += 1u8;
   }
 }
 

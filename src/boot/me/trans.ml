@@ -1268,9 +1268,9 @@ let trans_visitor
       | Ast.LIT_bool false -> imm_false
       | Ast.LIT_bool true -> imm_true
       | Ast.LIT_char c -> imm_of_ty (Int64.of_int c) TY_u32
-      | Ast.LIT_int (i, _) -> simm i
-      | Ast.LIT_uint (i, _) -> imm i
-      | Ast.LIT_mach (m, n, _) -> imm_of_ty n m
+      | Ast.LIT_int i -> simm i
+      | Ast.LIT_uint i -> imm i
+      | Ast.LIT_mach_int (m, n) -> imm_of_ty n m
 
   and trans_atom (atom:Ast.atom) : Il.operand =
     iflog

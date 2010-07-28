@@ -23,7 +23,7 @@ fn create[T]() -> t[T] {
 
   type cell[T] = mutable util.option[T];
 
-  let uint initial_capacity = uint(32); // 2^5
+  let uint initial_capacity = 32u; // 2^5
 
   /**
    * Grow is only called on full elts, so nelts is also len(elts), unlike
@@ -34,13 +34,13 @@ fn create[T]() -> t[T] {
 
     fn fill[T](uint i, uint nelts, uint lo, &vec[cell[T]] old) -> cell[T] {
       if (i < nelts) {
-        ret old.(int((lo + i) % nelts));
+        ret old.(((lo + i) % nelts) as int);
       } else {
         ret util.none[T]();
       }
     }
 
-    let uint nalloc = _int.next_power_of_two(nelts + uint(1));
+    let uint nalloc = _int.next_power_of_two(nelts + 1u);
     let _vec.init_op[cell[T]] copy_op = bind fill[T](_, nelts, lo, elts);
     ret _vec.init_fn[cell[T]](copy_op, nalloc);
   }
@@ -52,7 +52,7 @@ fn create[T]() -> t[T] {
    */
 
   fn get[T](&vec[cell[T]] elts, uint i) -> T {
-    alt (elts.(int(i))) {
+    alt (elts.(i as int)) {
       case (util.some[T](t)) { ret t; }
       case (_) { fail; }
     }
@@ -68,33 +68,33 @@ fn create[T]() -> t[T] {
     fn add_front(&T t) {
       let uint oldlo = lo;
 
-      if (lo == uint(0)) {
-        lo = _vec.len[cell[T]](elts) - uint(1);
+      if (lo == 0u) {
+        lo = _vec.len[cell[T]](elts) - 1u;
       } else {
-        lo -= uint(1);
+        lo -= 1u;
       }
 
       if (lo == hi) {
         elts = grow[T](nelts, oldlo, elts);
-        lo = _vec.len[cell[T]](elts) - uint(1);
-        hi = nelts - uint(1);
+        lo = _vec.len[cell[T]](elts) - 1u;
+        hi = nelts - 1u;
       }
 
-      elts.(int(lo)) = util.some[T](t);
-      nelts += uint(1);
+      elts.(lo as int) = util.some[T](t);
+      nelts += 1u;
     }
 
     fn add_back(&T t) {
-      hi = (hi + uint(1)) % _vec.len[cell[T]](elts);
+      hi = (hi + 1u) % _vec.len[cell[T]](elts);
 
       if (lo == hi) {
         elts = grow[T](nelts, lo, elts);
-        lo = uint(0);
+        lo = 0u;
         hi = nelts;
       }
 
-      elts.(int(hi)) = util.some[T](t);
-      nelts += uint(1);
+      elts.(hi as int) = util.some[T](t);
+      nelts += 1u;
     }
 
     /**
@@ -103,19 +103,19 @@ fn create[T]() -> t[T] {
      */
     fn pop_front() -> T {
       let T t = get[T](elts, lo);
-      elts.(int(lo)) = util.none[T]();
-      lo = (lo + uint(1)) % _vec.len[cell[T]](elts);
+      elts.(lo as int) = util.none[T]();
+      lo = (lo + 1u) % _vec.len[cell[T]](elts);
       ret t;
     }
 
     fn pop_back() -> T {
       let T t = get[T](elts, hi);
-      elts.(int(hi)) = util.none[T]();
+      elts.(hi as int) = util.none[T]();
 
-      if (hi == uint(0)) {
-        hi = _vec.len[cell[T]](elts) - uint(1);
+      if (hi == 0u) {
+        hi = _vec.len[cell[T]](elts) - 1u;
       } else {
-        hi -= uint(1);
+        hi -= 1u;
       }
 
       ret t;
@@ -133,5 +133,5 @@ fn create[T]() -> t[T] {
   let vec[cell[T]] v = _vec.init_elt[cell[T]](util.none[T](),
                                               initial_capacity);
 
-  ret deque[T](uint(0), uint(0), uint(0), v);
+  ret deque[T](0u, 0u, 0u, v);
 }

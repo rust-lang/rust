@@ -103,8 +103,11 @@ type token =
   | JOIN
 
   (* Literals *)
-  | LIT_INT       of (int64 * string)
-  | LIT_FLO       of string
+  | LIT_INT       of int64
+  | LIT_UINT      of int64
+  | LIT_FLOAT     of float
+  | LIT_MACH_INT  of Common.ty_mach * int64
+  | LIT_MACH_FLOAT of Common.ty_mach * float
   | LIT_STR       of string
   | LIT_CHAR      of int
   | LIT_BOOL      of bool
@@ -253,8 +256,13 @@ let rec string_of_tok t =
     | JOIN       -> "join"
 
     (* Literals *)
-    | LIT_INT (_,s)  -> s
-    | LIT_FLO n  -> n
+    | LIT_INT i  -> Int64.to_string i
+    | LIT_UINT i -> (Int64.to_string i) ^ "u"
+    | LIT_FLOAT s  -> string_of_float s
+    | LIT_MACH_INT (tm, i)  ->
+        (Int64.to_string i) ^ (Common.string_of_ty_mach tm)
+    | LIT_MACH_FLOAT (tm, f)  ->
+        (string_of_float f) ^ (Common.string_of_ty_mach tm)
     | LIT_STR s  -> ("\"" ^ (String.escaped s) ^ "\"")
     | LIT_CHAR c -> ("'" ^ (Common.escaped_char c) ^ "'")
     | LIT_BOOL b -> if b then "true" else "false"

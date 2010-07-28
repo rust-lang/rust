@@ -746,12 +746,12 @@ let trans_crate
             Ast.LIT_nil -> llnil
           | Ast.LIT_bool value ->
             Llvm.const_int (Llvm.i1_type llctx) (if value then 1 else 0)
-          | Ast.LIT_mach (mty, value, _) ->
+          | Ast.LIT_mach_int (mty, value) ->
             let llty = trans_mach_ty mty in
             Llvm.const_of_int64 llty value (mach_is_signed mty)
-          | Ast.LIT_int (value, _) ->
+          | Ast.LIT_int value ->
             Llvm.const_of_int64 (Llvm.i32_type llctx) value true
-          | Ast.LIT_uint (value, _) ->
+          | Ast.LIT_uint value ->
             Llvm.const_of_int64 (Llvm.i32_type llctx) value false
           | Ast.LIT_char ch ->
             Llvm.const_int (Llvm.i32_type llctx) ch

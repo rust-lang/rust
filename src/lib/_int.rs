@@ -23,19 +23,19 @@ iter range(mutable int lo, int hi) -> int {
 iter urange(mutable uint lo, uint hi) -> uint {
   while (lo < hi) {
     put lo;
-    lo += uint(1);
+    lo += 1u;
   }
 }
 
 fn next_power_of_two(uint n) -> uint {
   // FIXME change |* uint(4)| below to |* uint(8) / uint(2)| and watch the
   // world explode.
-  let uint halfbits = sys.rustrt.size_of[uint]() * uint(4);
-  let uint tmp = n - uint(1);
-  let uint shift = uint(1);
+  let uint halfbits = sys.rustrt.size_of[uint]() * 4u;
+  let uint tmp = n - 1u;
+  let uint shift = 1u;
   while (shift <= halfbits) {
     tmp |= tmp >> shift;
-    shift <<= uint(1);
+    shift <<= 1u;
   }
-  ret tmp + uint(1);
+  ret tmp + 1u;
 }

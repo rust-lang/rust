@@ -1204,7 +1204,7 @@ let rec atom_type (cx:ctxt) (at:Ast.atom) : Ast.ty =
     | Ast.ATOM_literal {node=(Ast.LIT_bool _); id=_} -> Ast.TY_bool
     | Ast.ATOM_literal {node=(Ast.LIT_char _); id=_} -> Ast.TY_char
     | Ast.ATOM_literal {node=(Ast.LIT_nil); id=_} -> Ast.TY_nil
-    | Ast.ATOM_literal {node=(Ast.LIT_mach (m,_,_)); id=_} -> Ast.TY_mach m
+    | Ast.ATOM_literal {node=(Ast.LIT_mach_int (m,_)); id=_} -> Ast.TY_mach m
     | Ast.ATOM_lval lv -> lval_ty cx lv
 ;;
 

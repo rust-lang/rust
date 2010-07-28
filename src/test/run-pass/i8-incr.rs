@@ -1,9 +1,9 @@
 // -*- rust -*-
 
 fn main() {
-  let i8 x = i8(-12);
-  let i8 y = i8(-12);
-  x = x + i8(1);
-  x = x - i8(1);
+  let i8 x = -12i8;
+  let i8 y = -12i8;
+  x = x + 1i8;
+  x = x - 1i8;
   check(x == y);
 }

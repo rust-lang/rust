@@ -333,10 +333,11 @@ and expr =
 and lit =
   | LIT_nil
   | LIT_bool of bool
-  | LIT_mach of (ty_mach * int64 * string)
-  | LIT_int of (int64 * string)
-  | LIT_uint of (int64 * string)
+  | LIT_mach_int of (ty_mach * int64)
+  | LIT_int of int64
+  | LIT_uint of int64
   | LIT_char of int
+      (* FIXME: No support for LIT_mach_float or LIT_float yet. *)
 
 
 and lval_component =
@@ -835,13 +836,15 @@ and fmt_lit (ff:Format.formatter) (l:lit) : unit =
   | LIT_nil -> fmt ff "()"
   | LIT_bool true -> fmt ff "true"
   | LIT_bool false -> fmt ff "false"
-  | LIT_mach (m, _, s) ->
+  | LIT_mach_int (m, i) ->
       begin
+        fmt ff "%Ld" i;
         fmt_mach ff m;
-        fmt ff "(%s)" s
       end
-  | LIT_int (_,s) -> fmt ff "%s" s
-  | LIT_uint (_,s) -> fmt ff "%s" s
+  | LIT_int i -> fmt ff "%Ld" i
+  | LIT_uint i ->
+      fmt ff "%Ld" i;
+      fmt ff "u"
   | LIT_char c -> fmt ff "'%s'" (Common.escaped_char c)
 
 and fmt_domain (ff:Format.formatter) (d:domain) : unit =

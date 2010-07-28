@@ -22,7 +22,24 @@
               Lexing.pos_bol = p.Lexing.pos_cnum }
   ;;
 
+  let mach_suf_table = Hashtbl.create 0
+  ;;
+  let _ =
+    List.iter (fun (suf, ty) -> Common.htab_put mach_suf_table suf ty)
+      [ ("u8", Common.TY_u8);
+        ("i8", Common.TY_i8);
+        ("u16", Common.TY_u16);
+        ("i16", Common.TY_i16);
+        ("u32", Common.TY_u32);
+        ("i32", Common.TY_i32);
+        ("u64", Common.TY_u64);
+        ("i64", Common.TY_i64);
+        ("f32", Common.TY_f32);
+        ("f64", Common.TY_f64); ]
+  ;;
+
   let keyword_table = Hashtbl.create 100
+  ;;
   let _ =
     List.iter (fun (kwd, tok) -> Common.htab_put keyword_table kwd tok)
               [ ("mod", MOD);
@@ -129,6 +146,9 @@ let dec = decdig ['0'-'9' '_']*
 let exp = ['e''E']['-''+']? dec
 let flo = (dec '.' dec (exp?)) | (dec exp)
 
+let mach_float_suf = "f32"|"f64"
+let mach_int_suf = ['u''i']('8'|"16"|"32"|"64")
+
 let ws = [ ' ' '\t' '\r' ]
 
 let id = ['a'-'z' 'A'-'Z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']*
@@ -197,19 +217,29 @@ rule token = parse
                                { try
                                      Hashtbl.find keyword_table i
                                  with
-                                     Not_found -> IDENT (i)
-                                            }
+                                     Not_found -> IDENT (i)        }
 
-| bin as n                      { LIT_INT (Int64.of_string n, n)    }
-| hex as n                      { LIT_INT (Int64.of_string n, n)    }
-| dec as n                      { LIT_INT (Int64.of_string n, n)    }
-| flo as n                      { LIT_FLO n                         }
+| (bin|hex|dec) as n           { LIT_INT (Int64.of_string n)       }
+| ((bin|hex|dec) as n) 'u'     { LIT_UINT (Int64.of_string n)      }
+| ((bin|hex|dec) as n)
+  (mach_int_suf as s)          { try
+                                   let tm =
+                                     Hashtbl.find mach_suf_table s
+                                   in
+                                     LIT_MACH_INT
+                                       (tm, Int64.of_string n)
+                                 with
+                                     Not_found ->
+                                       fail lexbuf
+                                         "bad mach-int suffix"     }
 
-| '\''                          { char lexbuf                       }
-| '"'                           { let buf = Buffer.create 32 in
-                                    str buf lexbuf                  }
+| flo as n                     { LIT_FLOAT (float_of_string n)     }
 
-| eof                           { EOF        }
+| '\''                         { char lexbuf                       }
+| '"'                          { let buf = Buffer.create 32 in
+                                   str buf lexbuf                  }
+
+| eof                          { EOF        }
 
 and str buf = parse
     _ as ch
