@@ -11,8 +11,8 @@ rust_chan::rust_chan(rust_task *task, rust_port *port) :
 
     task->log(rust_log::MEM | rust_log::COMM,
               "new rust_chan(task=0x%" PRIxPTR
-              ", port=0x%" PRIxPTR ") -> chan=0x%"
-              PRIxPTR, (uintptr_t) task, (uintptr_t) port, (uintptr_t) this);
+              ", port=0x%" PRIxPTR ") -> chan=0x%" PRIxPTR,
+              (uintptr_t) task, (uintptr_t) port, (uintptr_t) this);
 }
 
 rust_chan::~rust_chan() {
