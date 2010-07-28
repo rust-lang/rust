@@ -109,6 +109,13 @@ task_owned
     }
 };
 
+// A cond(ition) is something we can block on. This can be a channel
+// (writing), a port (reading) or a task (waiting).
+
+struct
+rust_cond
+{
+};
 
 // Helper class used regularly elsewhere.
 
@@ -524,15 +531,6 @@ public:
     };
     die_reader dies;
     rust_crate_reader(rust_dom *dom, rust_crate const *crate);
-};
-
-
-// A cond(ition) is something we can block on. This can be a channel
-// (writing), a port (reading) or a task (waiting).
-
-struct
-rust_cond
-{
 };
 
 // An alarm can be put into a wait queue and the task will be notified
