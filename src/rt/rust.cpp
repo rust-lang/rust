@@ -1,13 +1,12 @@
 #include "rust_internal.h"
-#include "util/array_list.h"
 
-// #define TRACK_ALLOCATIONS
+#define TRACK_ALLOCATIONS
 // For debugging, keeps track of live allocations, so you can find out
 // exactly what leaked.
 
-#ifdef TRACK_ALLOCATIONS
-array_list<void *> allocation_list;
-#endif
+//#ifdef TRACK_ALLOCATIONS
+//array_list<void *> allocation_list;
+//#endif
 
 rust_srv::rust_srv() :
     live_allocs(0)
@@ -70,16 +69,18 @@ rust_srv::realloc(void *p, size_t bytes)
 void
 rust_srv::free(void *p)
 {
+#ifdef TRACK_ALLOCATIONS
+    if (allocation_list.replace(p, NULL) == NULL) {
+        printf("ptr 0x%" PRIxPTR " is not in allocation_list\n",
+               (uintptr_t) p);
+        fatal("not in allocation_list", __FILE__, __LINE__);
+    }
+#endif
     if (live_allocs < 1) {
         fatal("live_allocs < 1", __FILE__, __LINE__);
     }
     live_allocs--;
     ::free(p);
-#ifdef TRACK_ALLOCATIONS
-    if (allocation_list.replace(p, NULL) == NULL) {
-        fatal("not in allocation_list", __FILE__, __LINE__);
-    }
-#endif
 }
 
 void

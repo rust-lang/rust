@@ -17,8 +17,11 @@
 #define CDECL
 #endif
 
+#include "util/array_list.h"
+
 struct rust_srv {
     size_t live_allocs;
+    array_list<void *> allocation_list;
 
     virtual void log(char const *);
     virtual void fatal(char const *, char const *, size_t);
