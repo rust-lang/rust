@@ -1061,6 +1061,23 @@ let rec simplified_ty (t:Ast.ty) : Ast.ty =
     | t -> t
 ;;
 
+let rec innermost_box_ty (t:Ast.ty) : Ast.ty =
+  match strip_mutable_or_constrained_ty t with
+      Ast.TY_box t -> innermost_box_ty t
+    | _ -> t
+;;
+
+let simplified_ty_innermost_was_mutable (t:Ast.ty) : Ast.ty * bool =
+  let rec simplify_innermost t =
+    match t with
+        Ast.TY_mutable t -> (fst (simplify_innermost t), true)
+      | Ast.TY_constrained (t, _) -> simplify_innermost t
+      | _ -> (t, false)
+  in
+  let t = innermost_box_ty t in
+    simplify_innermost t
+;;
+
 let rec project_type
     (base_ty:Ast.ty)
     (comp:Ast.lval_component)

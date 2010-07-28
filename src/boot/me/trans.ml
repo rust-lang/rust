@@ -1103,6 +1103,7 @@ let trans_visitor
       (t:Ast.ty)
       (sz:int64)
       (align:int64)
+      (force_stateful:bool)
       : Il.operand =
     trans_crate_rel_data_operand
       (DATA_tydesc t)
@@ -1112,7 +1113,9 @@ let trans_visitor
           let fix fixup =
             fixup_rel_word tydesc_fixup fixup
           in
-          let is_stateful = if type_has_state t then 1L else 0L in
+          let is_stateful =
+            if (force_stateful || type_has_state t) then 1L else 0L
+          in
           log cx "tydesc for %a has sz=%Ld, align=%Ld, is_stateful=%Ld"
             Ast.sprintf_ty t sz align is_stateful;
             Asm.DEF
@@ -2343,11 +2346,15 @@ let trans_visitor
         dst_cell dst_ty src_cell src_ty None
 
 
-  and get_dynamic_tydesc (idopt:node_id option) (t:Ast.ty) : Il.cell =
+  and get_dynamic_tydesc
+      (idopt:node_id option)
+      (t:Ast.ty)
+      (force_stateful:bool)
+      : Il.cell =
     let td = next_vreg_cell Il.voidptr_t in
     let root_desc =
       Il.Cell (crate_rel_to_ptr
-                 (get_static_tydesc idopt t 0L 0L)
+                 (get_static_tydesc idopt t 0L 0L force_stateful)
                  (tydesc_rty abi))
     in
     let (t, param_descs) = linearize_ty_params t in
@@ -2378,15 +2385,17 @@ let trans_visitor
 
   and get_tydesc (idopt:node_id option) (ty:Ast.ty) : Il.cell =
     log cx "getting tydesc for %a" Ast.sprintf_ty ty;
-    match simplified_ty ty with
+    let (ty, mut) = simplified_ty_innermost_was_mutable ty in
+    match ty with
         Ast.TY_param (idx, _) ->
           (get_ty_param_in_current_frame idx)
       | t when has_parametric_types t ->
-          (get_dynamic_tydesc idopt t)
+          (get_dynamic_tydesc idopt t mut)
       | _ ->
           (crate_rel_to_ptr (get_static_tydesc idopt ty
                                (ty_sz abi ty)
-                               (ty_align abi ty))
+                               (ty_align abi ty)
+                               mut)
              (tydesc_rty abi))
 
   and box_rc_cell (cell:Il.cell) : Il.cell =

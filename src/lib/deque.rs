@@ -17,6 +17,8 @@ type t[T] = obj {
 
   fn peek_front() -> T;
   fn peek_back() -> T;
+
+  fn get(int i) -> T;
 };
 
 fn create[T]() -> t[T] {
@@ -127,6 +129,11 @@ fn create[T]() -> t[T] {
 
     fn peek_back() -> T {
       ret get[T](elts, hi);
+    }
+
+    fn get(int i) -> T {
+      let uint idx = (lo + (i as uint)) % _vec.len[cell[T]](elts);
+      ret get[T](elts, idx);
     }
   }
 

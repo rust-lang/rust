@@ -499,8 +499,13 @@ extern "C" CDECL uintptr_t upcall_require_c_sym(rust_task *task,
 }
 
 extern "C" CDECL type_desc *
-upcall_get_type_desc(rust_task *task, rust_crate const *curr_crate,
-    size_t size, size_t align, size_t n_descs, type_desc const **descs) {
+upcall_get_type_desc(rust_task *task,
+                     rust_crate const *curr_crate,
+                     size_t size,
+                     size_t align,
+                     size_t n_descs,
+                     type_desc const **descs)
+{
     LOG_UPCALL_ENTRY(task);
     task->log(rust_log::UPCALL | rust_log::CACHE,
               "upcall get_type_desc with size=%" PRIdPTR
