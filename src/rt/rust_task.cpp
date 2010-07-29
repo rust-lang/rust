@@ -374,7 +374,7 @@ rust_task::unsupervise()
 void
 rust_task::notify_tasks_waiting_to_join() {
     while (tasks_waiting_to_join.is_empty() == false) {
-        log(rust_log::ALL, "notify_tasks_waiting_to_join: %d",
+        log(rust_log::TASK, "notify_tasks_waiting_to_join: %d",
             tasks_waiting_to_join.size());
         maybe_proxy<rust_task> *waiting_task = tasks_waiting_to_join.pop();
         if (waiting_task->is_proxy()) {
