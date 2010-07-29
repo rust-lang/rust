@@ -359,6 +359,7 @@ TEST_XFAILS_X86 :=  test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/generic-fn-infer.rs \
                     test/run-pass/generic-recursive-tag.rs \
                     test/run-pass/iter-ret.rs \
+                    test/run-pass/lib-deque.rs \
                     test/run-pass/mlist-cycle.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/task-comm.rs \
