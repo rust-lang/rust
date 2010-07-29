@@ -91,6 +91,8 @@ type taggypar[T] = tag(onepar(int),
                        twopar(int, int),
                        threepar(int, int, int));
 
+type reccy = rec(int x, int y, taggy t);
+
 fn main() {
   fn inteq(&int a, &int b) -> bool {
     ret a == b;
@@ -148,6 +150,9 @@ fn main() {
     }
   }
 
+  fn reccyeq(&reccy a, &reccy b) -> bool {
+    ret (a.x == b.x && a.y == b.y && taggyeq(a.t, b.t));
+  }
 
   log "test simple";
   test_simple();
@@ -172,7 +177,6 @@ fn main() {
   test_parameterized[@int](eq2, @5, @72, @64, @175);
 
    */
-  
 
   log "test parameterized: taggy";
   let eqfn[taggy] eq3 = bind taggyeq(_, _);
@@ -189,6 +193,20 @@ fn main() {
                                     twopar[int](1, 2),
                                     threepar[int](1, 2, 3),
                                     twopar[int](17, 42));
+
+   */
+
+  /*
+   * FIXME: Segfault.
+
+  log "test parameterized: reccy";
+  let reccy reccy1 = rec(x=1, y=2, t=one(1));
+  let reccy reccy2 = rec(x=345, y=2, t=two(1, 2));
+  let reccy reccy3 = rec(x=1, y=777, t=three(1, 2, 3));
+  let reccy reccy4 = rec(x=19, y=252, t=two(17, 42));
+  let eqfn[reccy] eq5 = bind reccyeq(_, _);
+  test_parameterized[reccy](eq5,
+                            reccy1, reccy2, reccy3, reccy4);
 
    */
 
