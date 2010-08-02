@@ -8,11 +8,9 @@ let _ =
 
 let (targ:Common.target) =
   match Sys.os_type with
-      "Unix" ->
-        (* FIXME (issue #69): this is an absurd heuristic. *)
-        if Sys.file_exists "/System/Library"
-        then MacOS_x86_macho
-        else Linux_x86_elf
+      "Unix" when Unix.system "test `uname -s` = 'Darwin'" = Unix.WEXITED 0 ->
+        MacOS_x86_macho
+    | "Unix" -> Linux_x86_elf
     | "Win32" -> Win32_x86_pe
     | "Cygwin" -> Win32_x86_pe
     | _ -> Linux_x86_elf
