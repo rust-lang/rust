@@ -22,6 +22,11 @@
               Lexing.pos_bol = p.Lexing.pos_cnum }
   ;;
 
+  let newline lexbuf =
+    lexbuf.Lexing.lex_curr_p
+    <- (bump_line lexbuf.Lexing.lex_curr_p)
+  ;;
+
   let mach_suf_table = Hashtbl.create 0
   ;;
   let _ =
@@ -155,8 +160,7 @@ let id = ['a'-'z' 'A'-'Z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 rule token = parse
   ws+                          { token lexbuf }
-| '\n'                         { lexbuf.Lexing.lex_curr_p
-                                     <- (bump_line lexbuf.Lexing.lex_curr_p);
+| '\n'                         { newline lexbuf;
                                  token lexbuf }
 | "//" [^'\n']*                { token lexbuf }
 | "/*"                         { comment 1 lexbuf }
@@ -389,8 +393,9 @@ and bracequote buf depth = parse
                                     bracequote buf depth lexbuf        }
 
 
-| [^'\\' '{' '}']+              { let s = Lexing.lexeme lexbuf in
-                                    Buffer.add_string buf s;
+| [^'\\' '{' '}'] as c          {   Buffer.add_char buf c;
+                                    if c = '\n'
+                                    then newline lexbuf;
                                     bracequote buf depth lexbuf        }
 
 
@@ -402,6 +407,7 @@ and comment depth = parse
                                   then token lexbuf
                                   else comment (depth-1) lexbuf }
 
-| '*' [^'{']                   { comment depth lexbuf           }
-| '/' [^'*']                   { comment depth lexbuf           }
-| [^'/' '*']+                  { comment depth lexbuf           }
+| '\n'                          { newline lexbuf;
+                                  comment depth lexbuf           }
+
+| _                             { comment depth lexbuf           }
