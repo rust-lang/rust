@@ -121,7 +121,7 @@ and parse_carg_base (ps:pstate) : Ast.carg_base =
 
 and parse_carg (ps:pstate) : Ast.carg =
   match peek ps with
-      IDENT _ ->
+      IDENT _ | STAR ->
         begin
           let base = Ast.CARG_base (parse_carg_base ps) in
           let path =

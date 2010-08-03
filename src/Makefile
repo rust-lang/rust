@@ -381,11 +381,13 @@ TASK_XFAILS := test/run-pass/acyclic-unwind.rs \
                test/run-pass/task-comm-9.rs \
                test/run-pass/task-comm.rs \
                test/run-pass/threads.rs \
-               test/run-pass/yield.rs 
+               test/run-pass/yield.rs
 
 TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-pass/bind-obj-ctor.rs \
+                    test/run-pass/child-outlives-parent.rs \
                     test/run-pass/clone-with-exterior.rs \
+                    test/run-pass/constrained-type.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
@@ -424,10 +426,12 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       box-in-tup.rs \
                       box-unbox.rs \
                       cast.rs \
+                      child-outlives-parent.rs \
                       clone-with-exterior.rs \
                       comm.rs \
                       command-line-args.rs \
                       complex.rs \
+                      constrained-type.rs \
                       deep.rs \
                       deref.rs \
                       destructor-ordering.rs \
