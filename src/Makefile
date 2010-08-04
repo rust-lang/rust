@@ -384,6 +384,7 @@ TASK_XFAILS := test/run-pass/acyclic-unwind.rs \
                test/run-pass/yield.rs
 
 TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
+                    test/run-pass/arithmetic-interference.rs \
                     test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/child-outlives-parent.rs \
                     test/run-pass/clone-with-exterior.rs \
@@ -415,6 +416,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       acyclic-unwind.rs \
                       alt-pattern-simple.rs \
                       alt-tag.rs \
+                      arithmetic-interference.rs \
                       argv.rs \
                       auto-deref.rs \
                       autoderef-full-lval.rs \
