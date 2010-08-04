@@ -692,8 +692,7 @@ let string_of_quad (f:hreg_formatter) (q:quad) : string =
 type emitter = { mutable emit_pc: int;
                  mutable emit_next_vreg: int option;
                  mutable emit_next_spill: int;
-                 emit_preallocator: (quad' -> quad');
-                 emit_is_2addr: bool;
+                 emit_target_specific: (emitter -> quad -> unit);
                  mutable emit_quads: quads;
                  emit_annotations: (int,string) Hashtbl.t;
                  emit_size_cache: ((size,operand) Hashtbl.t) Stack.t;
@@ -712,8 +711,7 @@ let deadq = { quad_fixup = None;
 
 
 let new_emitter
-    (preallocator:quad' -> quad')
-    (is_2addr:bool)
+    (emit_target_specific:emitter -> quad -> unit)
     (vregs_ok:bool)
     (node:node_id option)
     : emitter =
@@ -721,8 +719,7 @@ let new_emitter
     emit_pc = 0;
     emit_next_vreg = (if vregs_ok then Some 0 else None);
     emit_next_spill = 0;
-    emit_preallocator = preallocator;
-    emit_is_2addr = is_2addr;
+    emit_target_specific = emit_target_specific;
     emit_quads = Array.create 4 badq;
     emit_annotations = Hashtbl.create 0;
     emit_size_cache = Stack.create ();
@@ -837,218 +834,30 @@ let append_quad
   e.emit_pc <- e.emit_pc + 1
 ;;
 
+let default_mov q' =
+  match q' with
+      Binary b ->
+        begin
+          match b.binary_op with
+              IDIV | IMUL | IMOD -> IMOV
+            | _ -> UMOV
+        end
+    | Unary u ->
+        begin
+          match u.unary_op with
+              IMOV -> IMOV
+            | _ -> UMOV
+        end
+    | _ -> UMOV
+;;
 
 let emit_full
     (e:emitter)
     (fix:fixup option)
     (q':quad')
     : unit =
-  let fixup = ref fix in
-  let emit_quad_bottom q' =
-    append_quad e { quad_body = q';
-                    quad_fixup = (!fixup) };
-    fixup := None;
-  in
-
-  let emit_quad (q':quad') : unit =
-    (* re-decay any freshly generated mem-mem movs. *)
-    match q' with
-        Unary { unary_dst = Mem (dst_mem, ScalarTy src_st);
-                unary_src = Cell (Mem (src_mem, ScalarTy dst_st));
-                unary_op = op }
-          when is_mov op ->
-            let v = next_vreg_cell e dst_st in
-              emit_quad_bottom
-                (unary op v (Cell (Mem (src_mem, ScalarTy src_st))));
-              emit_quad_bottom
-                (unary op (Mem (dst_mem, ScalarTy dst_st)) (Cell v))
-      | _ -> emit_quad_bottom q'
-  in
-
-  let default_mov =
-    match q' with
-        Binary b ->
-          begin
-            match b.binary_op with
-                IDIV | IMUL | IMOD -> IMOV
-              | _ -> UMOV
-          end
-      | Unary u ->
-          begin
-            match u.unary_op with
-                IMOV -> IMOV
-              | _ -> UMOV
-          end
-      | _ -> UMOV
-  in
-
-  let emit_mov (dst:cell) (src:operand) : unit =
-    emit_quad (unary default_mov dst src)
-  in
-
-  let mov_if_operands_differ
-      (old_op:operand) (new_op:operand)
-      : unit =
-    if (new_op <> old_op)
-    then
-      match new_op with
-          (Cell new_cell) ->
-            emit_mov new_cell old_op
-        | _ -> ()
-  in
-
-  let mov_if_two_operands_differ
-      (old_lhs_op:operand) (new_lhs_op:operand)
-      (old_rhs_op:operand) (new_rhs_op:operand)
-      : unit =
-    (*
-     * This is sufficiently obscure that it deserves an explanation.
-     * 
-     * The main idea here is to do two "mov_if_operands_differ" calls,
-     * such as one might have when setting up a binary quad.
-     * 
-     * The problem comes when you happen to hit a case like X86 div,
-     * which preallocates *both* operands. Preallocating both means we
-     * have to potentially issue two movs into the preallocated regs,
-     * and the second of those movs might be a problem. Specifically:
-     * the second mov-to-prealloc might make be moving from a
-     * register-indirect mem cell based on a vreg, and that vreg may
-     * wind up being assigned to an hreg that we just loaded with the
-     * first mov. In other words, the second mov may retask the
-     * preallocated hreg we set up in the first mov.
-     * 
-     * You laugh, but of course this actually happens.
-     * 
-     * So here we do a conservative thing and check to see if either
-     * operand is memory-indirect at all. If either is, then for either
-     * of the 'old' operands we're *about* to mov into a prealloc reg,
-     * we first bounce them off a spill slot. Spill slots, thankfully,
-     * we can always count on being able to address irrespective of the
-     * opinions of the RA, as they are all just fp-relative.
-     * 
-     * A slightly more aggressive version of this would only bounce
-     * cases that are not fp-relative already, though doing so would
-     * require threading the notion of what fp *is* through to
-     * here. Possibly tighten this up in the future (or just
-     * ... destroy this backend ASAP).
-     * 
-     *)
-    let has_reg_indirect op =
-      match op with
-          Cell (Mem _) -> true
-        | _ -> false
-    in
-    let either_old_op_has_reg_indirect =
-      (has_reg_indirect old_lhs_op) || (has_reg_indirect old_rhs_op)
-    in
-    let old_lhs_op =
-      if either_old_op_has_reg_indirect && (new_lhs_op <> old_lhs_op)
-      then
-        let tmp =
-          Mem (next_spill_slot e
-                 (ScalarTy (operand_scalar_ty old_lhs_op)))
-        in
-          emit_mov tmp old_lhs_op;
-          Cell tmp
-      else
-        old_lhs_op
-    in
-    let old_rhs_op =
-      if either_old_op_has_reg_indirect && (new_rhs_op <> old_rhs_op)
-      then
-        let tmp =
-          Mem (next_spill_slot e
-                 (ScalarTy (operand_scalar_ty old_rhs_op)))
-        in
-          emit_mov tmp old_rhs_op;
-          Cell tmp
-      else
-        old_rhs_op
-    in
-      mov_if_operands_differ old_lhs_op new_lhs_op;
-      mov_if_operands_differ old_rhs_op new_rhs_op;
-  in
-
-  let mov_if_cells_differ (old_cell:cell) (new_cell:cell) : unit =
-    if not (new_cell = old_cell)
-    then
-      emit_mov old_cell (Cell new_cell)
-  in
-
-  let emit_decayed_quad q' =
-    match (q', e.emit_preallocator q') with
-        (Binary b, Binary b') ->
-          begin
-            mov_if_two_operands_differ
-              b.binary_lhs b'.binary_lhs
-              b.binary_rhs b'.binary_rhs;
-            if e.emit_is_2addr &&
-              (not (b'.binary_lhs = (Cell b'.binary_dst)))
-            then
-              begin
-                emit_mov b'.binary_dst b'.binary_lhs;
-                emit_quad (Binary { b' with
-                                      binary_lhs = (Cell b'.binary_dst) })
-              end
-            else
-              emit_quad (Binary b');
-            mov_if_cells_differ b.binary_dst b'.binary_dst
-          end
-
-      | (Unary u, Unary u') ->
-          mov_if_operands_differ u.unary_src u'.unary_src;
-          (* Assume '2addr' means '1addr' for unary ops. *)
-          if e.emit_is_2addr &&
-            (u'.unary_op = NEG || u'.unary_op = NOT) &&
-            (not (u'.unary_src = (Cell u'.unary_dst)))
-            then
-              begin
-                emit_mov u'.unary_dst u'.unary_src;
-                emit_quad (Unary { u' with unary_src = (Cell u'.unary_dst) })
-              end
-            else
-              emit_quad (Unary u');
-          mov_if_cells_differ u.unary_dst u'.unary_dst
-
-      | (Cmp c, Cmp c') ->
-          mov_if_two_operands_differ
-            c.cmp_lhs c'.cmp_lhs
-            c.cmp_rhs c'.cmp_rhs;
-          emit_quad (Cmp c');
-
-      | (Push op, Push op') ->
-          mov_if_operands_differ op op';
-          emit_quad (Push op');
-
-      | (Pop c, Pop c') ->
-          emit_quad (Pop c');
-          mov_if_cells_differ c c'
-
-      | (Call c, Call c') ->
-          emit_quad (Call c');
-          mov_if_cells_differ c.call_dst c'.call_dst
-
-      | (Lea lea, Lea lea') ->
-          emit_quad (Lea lea');
-          mov_if_cells_differ lea.lea_dst lea'.lea_dst
-
-      | (x, y) ->
-          assert (x = y);
-          emit_quad x
-  in
-
-    (* pre-decay mem-mem movs. *)
-    match q' with
-        Unary { unary_dst = Mem (dst_mem, ScalarTy src_st);
-                unary_src = Cell (Mem (src_mem, ScalarTy dst_st));
-                unary_op = op }
-          when is_mov op ->
-            let v = next_vreg_cell e dst_st in
-              emit_decayed_quad
-                (unary op v (Cell (Mem (src_mem, ScalarTy src_st))));
-              emit_decayed_quad
-                (unary op (Mem (dst_mem, ScalarTy dst_st)) (Cell v))
-      | _ -> emit_decayed_quad q'
+  e.emit_target_specific e { quad_body = q';
+                             quad_fixup = fix }
 ;;
 
 let emit (e:emitter) (q':quad') : unit =

@@ -160,8 +160,7 @@ let trans_visitor
   let emitters = Stack.create () in
   let push_new_emitter (vregs_ok:bool) (fnid:node_id option) =
     let e = Il.new_emitter
-         abi.Abi.abi_prealloc_quad
-         abi.Abi.abi_is_2addr_machine
+         abi.Abi.abi_emit_target_specific
          vregs_ok fnid
     in
       Stack.push (Hashtbl.create 0) e.Il.emit_size_cache;

@@ -107,14 +107,13 @@ type abi =
     abi_word_bits: Il.bits;
     abi_word_ty: Common.ty_mach;
 
-    abi_is_2addr_machine: bool;
     abi_has_pcrel_data: bool;
     abi_has_pcrel_code: bool;
 
     abi_n_hardregs: int;
     abi_str_of_hardreg: (int -> string);
 
-    abi_prealloc_quad: (Il.quad' -> Il.quad');
+    abi_emit_target_specific: (Il.emitter -> Il.quad -> unit);
     abi_constrain_vregs: (Il.quad -> Bits.t array -> unit);
 
     abi_emit_fn_prologue: (Il.emitter

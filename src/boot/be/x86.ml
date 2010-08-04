@@ -256,62 +256,110 @@ let is_rm8 (c:Il.cell) : bool =
     | _ -> is_r8 c
 ;;
 
-let prealloc_quad (quad':Il.quad') : Il.quad' =
-  let target_cell reg c =
-    Il.Reg (Il.Hreg reg, Il.cell_scalar_ty c)
+
+let emit_target_specific
+    (e:Il.emitter)
+    (q:Il.quad)
+    : unit =
+  let fixup = ref q.Il.quad_fixup in
+  let put q' =
+    Il.append_quad e { Il.quad_body = q';
+                       Il.quad_fixup = (!fixup) };
+    fixup := None;
   in
-  let target_operand reg op =
-    Il.Cell (Il.Reg (Il.Hreg reg, Il.operand_scalar_ty op))
+  let op_vreg op =
+    Il.next_vreg_cell e (Il.operand_scalar_ty op)
+  in
+  let cell_vreg cell = op_vreg (Il.Cell cell) in
+  let mem_vreg mem = cell_vreg (Il.Mem mem) in
+  let movop = Il.default_mov q.Il.quad_body in
+  let mov dst src =
+    (* Decay mem-mem moves to use a vreg. *)
+    match dst, src with
+        Il.Mem dm, Il.Cell (Il.Mem _) ->
+          let v = mem_vreg dm in
+            put (Il.unary movop v src);
+            put (Il.unary movop dst (Il.Cell v))
+      | _ -> put (Il.unary movop dst src)
   in
 
-  let target_bin_to_hreg bin dst src =
-    { bin with
-        Il.binary_rhs = target_operand src bin.Il.binary_rhs;
-        Il.binary_lhs = target_operand dst bin.Il.binary_lhs;
-        Il.binary_dst = target_cell dst bin.Il.binary_dst }
+  let hr_like_op hr op =
+    Il.Reg (Il.Hreg hr, Il.operand_scalar_ty op)
   in
+  let hr_like_cell hr c = hr_like_op hr (Il.Cell c) in
+  let q = q.Il.quad_body in
 
-  let target_cmp cmp =
-    match cmp.Il.cmp_lhs with
-        (* Immediate LHS we force to eax. *)
-        Il.Imm _ ->
-          { cmp with
-              Il.cmp_lhs = target_operand eax cmp.Il.cmp_lhs }
-      | _ -> cmp
-  in
-
-    match quad' with
-        Il.Binary bin ->
+    match q with
+        Il.Binary ({ Il.binary_op = op;
+                     Il.binary_dst = dst;
+                     Il.binary_lhs = lhs;
+                     Il.binary_rhs = rhs; } as b) ->
           begin
-            Il.Binary
-              begin
-                match bin.Il.binary_op with
-                    Il.IMUL | Il.UMUL
-                  | Il.IDIV | Il.UDIV -> target_bin_to_hreg bin eax ecx
-                  | Il.IMOD | Il.UMOD -> target_bin_to_hreg bin eax ecx
-                  | _ -> bin
-              end
+            match op with
+
+                Il.IMUL | Il.UMUL
+              | Il.IDIV | Il.UDIV
+              | Il.IMOD | Il.UMOD ->
+                  let dst_eax = hr_like_cell eax dst in
+                  let lhs_eax = hr_like_op eax lhs in
+                  let rhs_ecx = hr_like_op ecx lhs in
+                    if lhs <> (Il.Cell lhs_eax)
+                    then mov lhs_eax lhs;
+                    if rhs <> (Il.Cell rhs_ecx)
+                    then mov rhs_ecx rhs;
+                    put (Il.Binary
+                           { b with
+                               Il.binary_lhs = (Il.Cell lhs_eax);
+                               Il.binary_rhs = (Il.Cell rhs_ecx);
+                               Il.binary_dst = dst_eax; });
+                    if dst <> dst_eax
+                    then mov dst (Il.Cell dst_eax);
+
+              | _ when (Il.Cell dst) <> lhs ->
+                  mov dst lhs;
+                  put (Il.Binary
+                         { b with Il.binary_lhs = Il.Cell dst })
+
+              | _ -> put q
           end
 
-      | Il.Cmp cmp -> Il.Cmp (target_cmp cmp)
+      | Il.Unary ({ Il.unary_op = op;
+                    Il.unary_dst = dst;
+                    Il.unary_src = src; } as u) ->
+          begin
+            match op with
+
+                Il.UMOV | Il.IMOV ->
+                  mov dst src
+
+              (* x86 can only NEG or NOT in-place. *)
+              | Il.NEG | Il.NOT when (Il.Cell dst) <> src ->
+                  mov dst src;
+                  put (Il.Unary { u with Il.unary_src = Il.Cell dst })
+
+              | _ -> put q
+          end
 
       | Il.Call c ->
-          let ty = Il.cell_scalar_ty c.Il.call_dst in
-            Il.Call { c with
-                        Il.call_dst = Il.Reg ((Il.Hreg eax), ty) }
+          let dst_eax = hr_like_cell eax c.Il.call_dst in
+            put (Il.Call { c with Il.call_dst = dst_eax });
+            if c.Il.call_dst <> dst_eax
+            then mov c.Il.call_dst (Il.Cell dst_eax)
 
-      | Il.Lea le ->
-          begin
-            match (le.Il.lea_dst, le.Il.lea_src) with
-                (Il.Reg (_, dst_ty), Il.ImmPtr _)
-                  when is_ty32 dst_ty ->
-                    Il.Lea { le with
-                               Il.lea_dst = Il.Reg (Il.Hreg eax, dst_ty) }
-              | _ -> quad'
-          end
+      (* 
+       * For the get-next-pc thunk hack to work, we need to lea an immptr
+       * to eax, always.
+       *)
+      | Il.Lea ({ Il.lea_dst = dst;
+                  Il.lea_src = Il.ImmPtr _  } as lea) ->
+          let eax_dst = hr_like_cell eax dst in
+            put (Il.Lea { lea with Il.lea_dst = eax_dst });
+            if dst <> eax_dst
+            then mov dst (Il.Cell eax_dst);
 
-      | x -> x
+      | q -> put q
 ;;
+
 
 let constrain_vregs (q:Il.quad) (hregs:Bits.t array) : unit =
 
@@ -1640,13 +1688,12 @@ let (abi:Abi.abi) =
     Abi.abi_word_bits = word_bits;
     Abi.abi_word_ty = word_ty;
 
-    Abi.abi_is_2addr_machine = true;
     Abi.abi_has_pcrel_data = false;
     Abi.abi_has_pcrel_code = true;
 
     Abi.abi_n_hardregs = n_hardregs;
     Abi.abi_str_of_hardreg = reg_str;
-    Abi.abi_prealloc_quad = prealloc_quad;
+    Abi.abi_emit_target_specific = emit_target_specific;
     Abi.abi_constrain_vregs = constrain_vregs;
 
     Abi.abi_emit_fn_prologue = fn_prologue;
@@ -2291,8 +2338,7 @@ let select_insn (q:Il.quad) : Asm.frag =
 
 let new_emitter_without_vregs _ : Il.emitter =
   Il.new_emitter
-    abi.Abi.abi_prealloc_quad
-    abi.Abi.abi_is_2addr_machine
+    abi.Abi.abi_emit_target_specific
     false None
 ;;
 
