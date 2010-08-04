@@ -7,15 +7,7 @@ fn default_bufsz() -> uint {
 }
 
 fn new_buf() -> vec[u8] {
-  let vec[u8] v = vec();
-  let uint i = default_bufsz();
-  while (i > 0u) {
-    i -= 1u;
-    v += vec(0u8);
-  }
-  // FIXME (issue #93): should be:
-  // ret _vec.alloc[u8](default_bufsz());
-  ret v;
+  ret _vec.alloc[u8](default_bufsz());
 }
 
 fn new_buf_reader(str s) -> buf_reader {
