@@ -3,7 +3,7 @@ import op = util.operator;
 
 native "rust" mod rustrt {
   type vbuf;
-  fn vec_buf[T](vec[T] v) -> vbuf;
+  fn vec_buf[T](vec[T] v, uint offset) -> vbuf;
   fn vec_len[T](vec[T] v) -> uint;
   /* The T in vec_alloc[T, U] is the type of the vec to allocate.  The
    * U is the type of an element in the vec.  So to allocate a vec[U] we
@@ -50,7 +50,12 @@ fn len[T](vec[T] v) -> uint {
 }
 
 fn buf[T](vec[T] v) -> vbuf {
-  ret rustrt.vec_buf[T](v);
+  ret rustrt.vec_buf[T](v, 0u);
+}
+
+fn buf_off[T](vec[T] v, uint offset) -> vbuf {
+  check (offset < len[T](v));
+  ret rustrt.vec_buf[T](v, offset);
 }
 
 // Returns elements from [start..end) from v.

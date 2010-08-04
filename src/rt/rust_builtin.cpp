@@ -116,9 +116,9 @@ str_buf(rust_task *task, rust_str *s)
 }
 
 extern "C" CDECL void *
-vec_buf(rust_task *task, type_desc *ty, rust_vec *v)
+vec_buf(rust_task *task, type_desc *ty, rust_vec *v, size_t offset)
 {
-    return (void *)&v->data[0];
+    return (void *)&v->data[ty->size * offset];
 }
 
 extern "C" CDECL size_t
