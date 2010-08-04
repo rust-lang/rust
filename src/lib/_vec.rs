@@ -76,14 +76,10 @@ fn grow[T](&mutable vec[T] v, int n, &T initval) {
   }
 }
 
-fn map[T,U](&op[T,U] f, &vec[T] v) -> vec[U] {
-  // FIXME: should be
-  // let vec[U] u = alloc[U](len[T](v));
-  // but this does not work presently.
-  let vec[U] u = vec();
+fn map[T, U](&op[T,U] f, &vec[T] v) -> vec[U] {
+  let vec[U] u = alloc[U](len[T](v));
   for (T ve in v) {
     u += vec(f(ve));
   }
   ret u;
 }
-

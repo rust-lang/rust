@@ -30,6 +30,18 @@ fn test_slice() {
   check (v2.(1) == 4);
 }
 
+fn test_map() {
+  fn square(&int x) -> int { ret x * x; }
+  let std.util.operator[int, int] op = square;
+  let vec[int] v = vec(1, 2, 3, 4, 5);
+  let vec[int] s = std._vec.map[int, int](op, v);
+  let int i = 0;
+  while (i < 5) {
+    check (v.(i) == s.(i));
+    i += 1;
+  }
+}
+
 fn main() {
   test_init_elt();
   //XFAIL: test_init_fn();  // Segfaults.
