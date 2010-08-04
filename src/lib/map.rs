@@ -26,7 +26,11 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
   let uint initial_capacity = 32u; // 2^5
   let util.rational load_factor = rec(num=3, den=4);
 
-  type bucket[V] = tag(nil(), deleted(), some(V));
+  type bucket[K, V] = tag(nil(), deleted(), some(K, V));
+
+  fn make_buckets[K, V](uint nbkts) -> vec[mutable bucket[K, V]] {
+    ret _vec.init_elt[mutable bucket[K, V]](nil[K, V](), nbkts);
+  }
 
   // Derive two hash functions from the one given by taking the upper
   // half and lower half of the uint bits.  Our bucket probing
@@ -57,24 +61,51 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     ret hashl[K](hasher, nbkts, key) + i * hashr[K](hasher, nbkts, key);
   }
 
+  /**
+   * We attempt to never call this with a full table.  If we do, it
+   * will fail.
+   */
+  fn insert_common[K, V](hashfn[K] hasher,
+                         vec[mutable bucket[K, V]] bkts,
+                         uint nbkts,
+                         &K key,
+                         &V val)
+  {
+    let uint i = 0u;
+    while (i < nbkts) {
+      // FIXME (issue #94): as in find_common()
+      let int j = (hash[K](hasher, nbkts, key, i)) as int;
+      alt (bkts.(j)) {
+        case (some[K, V](_, _)) {
+          i += 1u;
+        }
+        case (_) {
+          bkts.(j) = some[K, V](key, val);
+          ret;
+        }
+      }
+    }
+    fail; // full table
+  }
+
   fn find_common[K, V](hashfn[K] hasher,
-                       vec[mutable bucket[V]] bkts,
+                       vec[mutable bucket[K, V]] bkts,
                        uint nbkts,
                        &K key)
     -> util.option[V]
   {
     let uint i = 0u;
     while (i < nbkts) {
-      // Pending fix to issue #94, remove uint coercion.
+      // FIXME (issue #94):  Pending bugfix, remove uint coercion.
       let int j = (hash[K](hasher, nbkts, key, i)) as int;
       alt (bkts.(j)) {
-        case (some[V](val)) {
+        case (some[K, V](_, val)) {
           ret util.some[V](val);
         }
-        case (nil[V]()) {
+        case (nil[K, V]()) {
           ret util.none[V]();
         }
-        case (deleted[V]()) {
+        case (deleted[K, V]()) {
           i += 1u;
         }
       }
@@ -82,32 +113,41 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     ret util.none[V]();
   }
 
+
+  fn rehash[K, V](hashfn[K] hasher,
+                  vec[mutable bucket[K, V]] oldbkts, uint noldbkts,
+                  vec[mutable bucket[K, V]] newbkts, uint nnewbkts)
+  {
+    for (bucket[K, V] b in oldbkts) {
+      alt (b) {
+        case (some[K, V](k, v)) {
+          insert_common[K, V](hasher, newbkts, nnewbkts, k, v);
+        }
+        case (_) { }
+      }
+    }
+  }
+
   obj hashmap[K, V](hashfn[K] hasher,
                     eqfn[K] eqer,
-                    mutable vec[mutable bucket[V]] bkts,
+                    mutable vec[mutable bucket[K, V]] bkts,
                     mutable uint nbkts,
                     mutable uint nelts,
                     util.rational lf)
   {
     fn insert(&K key, &V val) {
-      // FIXME grow the table and rehash if we ought to.
-      let uint i = 0u;
-      while (i < nbkts) {
-        // Issue #94, as in find_common()
-        let int j = (hash[K](hasher, nbkts, key, i)) as int;
-        alt (bkts.(j)) {
-          case (some[V](_)) {
-            i += 1u;
-          }
-          case (_) {
-            bkts.(j) = some[V](val);
-            nelts += 1u;
-            ret;
-          }
-        }
+      let util.rational load = rec(num=(nelts + 1u) as int, den=nbkts as int);
+      if (!util.rational_leq(load, lf)) {
+        let uint nnewbkts = _int.next_power_of_two(nbkts + 1u);
+
+        // FIXME (issue #94):  Enforce our workaround to issue #94.
+        check ((nnewbkts as int) > 0);
+
+        let vec[mutable bucket[K, V]] newbkts = make_buckets[K, V](nnewbkts);
+        rehash[K, V](hasher, bkts, nbkts, newbkts, nnewbkts);
       }
-      // full table, impossible unless growth is broken. remove after testing.
-      fail;
+      insert_common[K, V](hasher, bkts, nbkts, key, val);
+      nelts += 1u;
     }
 
     fn contains_key(&K key) -> bool {
@@ -131,17 +171,17 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     fn remove(&K key) -> util.option[V] {
       let uint i = 0u;
       while (i < nbkts) {
-        // Issue #94, as in find_common()
+        // FIXME (issue #94): as in find_common()
         let int j = (hash[K](hasher, nbkts, key, i)) as int;
         alt (bkts.(j)) {
-          case (some[V](val)) {
-            bkts.(j) = deleted[V]();
+          case (some[K, V](_, val)) {
+            bkts.(j) = deleted[K, V]();
             ret util.some[V](val);
           }
-          case (deleted[V]()) {
+          case (deleted[K, V]()) {
             nelts += 1u;
           }
-          case (nil[V]()) {
+          case (nil[K, V]()) {
             ret util.none[V]();
           }
         }
@@ -149,11 +189,14 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
       ret util.none[V]();
     }
 
-    fn rehash() {}
+    fn rehash() {
+      let vec[mutable bucket[K, V]] newbkts = make_buckets[K, V](nbkts);
+      rehash[K, V](hasher, bkts, nbkts, newbkts, nbkts);
+      bkts = newbkts;
+    }
   }
 
-  let vec[mutable bucket[V]] bkts =
-    _vec.init_elt[mutable bucket[V]](nil[V](), initial_capacity);
+  let vec[mutable bucket[K, V]] bkts = make_buckets[K, V](initial_capacity);
 
-  ret hashmap[K, V](hasher, eqer, bkts, 0u, 0u, load_factor);
+  ret hashmap[K, V](hasher, eqer, bkts, initial_capacity, 0u, load_factor);
 }

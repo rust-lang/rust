@@ -13,6 +13,11 @@ fn ne(int x, int y) -> bool { ret x != y; }
 fn ge(int x, int y) -> bool { ret x >= y; }
 fn gt(int x, int y) -> bool { ret x > y; }
 
+fn positive(int x) -> bool { ret x > 0; }
+fn negative(int x) -> bool { ret x < 0; }
+fn nonpositive(int x) -> bool { ret x <= 0; }
+fn nonnegative(int x) -> bool { ret x >= 0; }
+
 iter range(mutable int lo, int hi) -> int {
   while (lo < hi) {
     put lo;
