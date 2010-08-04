@@ -828,6 +828,16 @@ let mk_quad (q':quad') : quad =
     quad_fixup = None }
 ;;
 
+let append_quad
+    (e:emitter)
+    (q:quad)
+    : unit =
+  grow_if_necessary e;
+  e.emit_quads.(e.emit_pc) <- q;
+  e.emit_pc <- e.emit_pc + 1
+;;
+
+
 let emit_full
     (e:emitter)
     (fix:fixup option)
@@ -835,11 +845,9 @@ let emit_full
     : unit =
   let fixup = ref fix in
   let emit_quad_bottom q' =
-    grow_if_necessary e;
-    e.emit_quads.(e.emit_pc) <- { quad_body = q';
-                                  quad_fixup = (!fixup) };
+    append_quad e { quad_body = q';
+                    quad_fixup = (!fixup) };
     fixup := None;
-    e.emit_pc <- e.emit_pc + 1
   in
 
   let emit_quad (q':quad') : unit =
