@@ -489,6 +489,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       obj-recursion.rs \
                       obj-return-polytypes.rs \
                       obj-with-vec.rs \
+                      operator-associativity.rs \
                       output-slot-variants.rs \
                       pred.rs \
                       preempt.rs \
