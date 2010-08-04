@@ -625,7 +625,17 @@ let trans_visitor
                   let op_b = sub_sz b in
                   let tmp = next_vreg_cell word_sty in
                     mov tmp op_a;
-                    emit (Il.cmp op_a op_b);
+                    (* 
+                     * FIXME: X86-ism going via a vreg; mem op= mem doesn't
+                     * work and IL lacks sufficient brains to cope just now.
+                     * Instead, should be
+                     * 
+                     *     emit (Il.cmp op_a op_b)
+                     * 
+                     * Luckily this isn't the worst hack since we already
+                     * needed a tmp vreg for op_a.
+                     *)
+                    emit (Il.cmp (Il.Cell tmp) op_b);
                     let jmp = mark () in
                       emit (Il.jmp Il.JAE Il.CodeNone);
                       mov tmp op_b;
