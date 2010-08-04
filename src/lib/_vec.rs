@@ -68,15 +68,12 @@ fn slice[T](vec[T] v, int start, int end) -> vec[T] {
   ret result;
 }
 
-// Ought to take mutable &vec[T] v and just mutate it instead of copy
-// and return.  Blocking on issue #89 for this.
-fn grow[T](mutable vec[T] v, int n, &T initval) -> vec[T] {
+fn grow[T](&mutable vec[T] v, int n, &T initval) {
   let int i = n;
   while (i > 0) {
     i -= 1;
     v += vec(initval);
   }
-  ret v;
 }
 
 fn map[T,U](&op[T,U] f, &vec[T] v) -> vec[U] {
