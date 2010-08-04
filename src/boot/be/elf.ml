@@ -1123,14 +1123,14 @@ let elf32_linux_x86_file
     let plt_frag =
       let (reg, _, _) = X86.get_next_pc_thunk in
 
-        Il.emit_full e (Some plt_entry_fixup) [] Il.Dead;
+        Il.emit_full e (Some plt_entry_fixup) Il.Dead;
 
         Abi.load_fixup_addr e reg got_plt_section_fixup Il.CodeTy;
 
         Il.emit e (Il.jmp Il.JMP (got_code_cell reg (2+i)));
 
         Il.emit_full e (Some jump_slot_initial_target_fixup)
-          [] (Il.Push (X86.immi (Int64.of_int i)));
+          (Il.Push (X86.immi (Int64.of_int i)));
 
         Il.emit e (Il.jmp Il.JMP (Il.direct_code_ptr plt0_fixup));
         X86.frags_of_emitted_quads sess e

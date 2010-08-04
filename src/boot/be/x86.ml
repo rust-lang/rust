@@ -564,7 +564,7 @@ let emit_get_next_pc_thunk (e:Il.emitter) : unit =
   let rty = Il.ScalarTy sty in
   let deref_esp = Il.Mem (Il.RegIn (Il.Hreg esp, None), rty) in
   let eax = (Il.Reg (Il.Hreg eax, sty)) in
-    Il.emit_full e (Some get_next_pc_thunk_fixup) []
+    Il.emit_full e (Some get_next_pc_thunk_fixup)
       (Il.umov eax (Il.Cell deref_esp));
     Il.emit e Il.Ret;
 ;;
@@ -756,7 +756,7 @@ let crawl_stack_calling_glue
   let pop x = emit (Il.Pop x) in
   let add x y = emit (Il.binary Il.ADD (rc x) (ro x) (ro y)) in
   let codefix fix = Il.CodePtr (Il.ImmPtr (fix, Il.CodeTy)) in
-  let mark fix = Il.emit_full e (Some fix) [] Il.Dead in
+  let mark fix = Il.emit_full e (Some fix) Il.Dead in
 
   let repeat_jmp_fix = new_fixup "repeat jump" in
   let skip_jmp_fix = new_fixup "skip jump" in
@@ -822,7 +822,7 @@ let sweep_gc_chain
   let edi_n = word_n (Il.Hreg edi) in
   let ecx_n = word_n (Il.Hreg ecx) in
   let codefix fix = Il.CodePtr (Il.ImmPtr (fix, Il.CodeTy)) in
-  let mark fix = Il.emit_full e (Some fix) [] Il.Dead in
+  let mark fix = Il.emit_full e (Some fix) Il.Dead in
   let repeat_jmp_fix = new_fixup "repeat jump" in
   let skip_jmp_fix = new_fixup "skip jump" in
   let exit_jmp_fix = new_fixup "exit jump" in
@@ -1592,7 +1592,7 @@ let objfile_start
   let emit = Il.emit e in
   let mov dst src = emit (Il.umov dst src) in
   let push_pos32 = push_pos32 e in
-    Il.emit_full e (Some start_fixup) [] Il.Dead;
+    Il.emit_full e (Some start_fixup) Il.Dead;
     save_callee_saves e;
     mov (rc ebp) (ro esp);
 

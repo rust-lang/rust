@@ -961,7 +961,7 @@ let emit_file
     let edx_pointee =
       Il.Mem ((Il.RegIn (edx, None)), Il.ScalarTy (Il.AddrTy Il.OpaqueTy))
     in
-      Il.emit_full e (Some start_fixup) [] Il.Dead;
+      Il.emit_full e (Some start_fixup) Il.Dead;
 
       (* zero marks the bottom of the frame chain. *)
       Il.emit e (Il.Push (X86.imm (Asm.IMM 0L)));

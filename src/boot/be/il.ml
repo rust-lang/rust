@@ -227,7 +227,6 @@ type quad' =
 
 type quad =
     { quad_fixup: fixup option;
-      quad_implicits: label list;
       quad_body: quad'; }
 
 type quads = quad array ;;
@@ -703,13 +702,11 @@ type emitter = { mutable emit_pc: int;
 
 
 let badq = { quad_fixup = None;
-             quad_implicits = [];
              quad_body = End }
 ;;
 
 
 let deadq = { quad_fixup = None;
-              quad_implicits = [];
               quad_body = Dead }
 ;;
 
@@ -828,21 +825,18 @@ let is_mov uop =
 
 let mk_quad (q':quad') : quad =
   { quad_body = q';
-    quad_implicits = [];
     quad_fixup = None }
 ;;
 
 let emit_full
     (e:emitter)
     (fix:fixup option)
-    (implicits:label list)
     (q':quad')
     : unit =
   let fixup = ref fix in
   let emit_quad_bottom q' =
     grow_if_necessary e;
     e.emit_quads.(e.emit_pc) <- { quad_body = q';
-                                  quad_implicits = implicits;
                                   quad_fixup = (!fixup) };
     fixup := None;
     e.emit_pc <- e.emit_pc + 1
@@ -1050,7 +1044,7 @@ let emit_full
 ;;
 
 let emit (e:emitter) (q':quad') : unit =
-  emit_full e None [] q'
+  emit_full e None q'
 ;;
 
 let patch_jump (e:emitter) (jmp:int) (targ:int) : unit =
