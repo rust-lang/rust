@@ -32,7 +32,7 @@ fn init_elt[T](&T t, uint n_elts) -> vec[T] {
   /**
    * FIXME (issue #81): should be:
    *
-   * fn elt_op[T](T x, uint i) -> T { ret x; }
+   * fn elt_op[T](&T x, uint i) -> T { ret x; }
    * let init_op[T] inner = bind elt_op[T](t, _);
    * ret init_fn[T](inner, n_elts);
    */
@@ -70,7 +70,7 @@ fn slice[T](vec[T] v, int start, int end) -> vec[T] {
 
 // Ought to take mutable &vec[T] v and just mutate it instead of copy
 // and return.  Blocking on issue #89 for this.
-fn grow[T](mutable vec[T] v, int n, T initval) -> vec[T] {
+fn grow[T](mutable vec[T] v, int n, &T initval) -> vec[T] {
   let int i = n;
   while (i > 0) {
     i -= 1;

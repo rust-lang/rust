@@ -9,8 +9,8 @@ import std.util;
 import std._vec;
 
 
-type hashfn[K] = fn(K) -> uint;
-type eqfn[K] = fn(K) -> bool;
+type hashfn[K] = fn(&K) -> uint;
+type eqfn[K] = fn(&K) -> bool;
 
 type hashmap[K, V] = obj {
   fn insert(&K key, &V val);

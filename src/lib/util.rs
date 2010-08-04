@@ -13,7 +13,7 @@ fn option_map[T, U](&operator[T, U] f, &option[T] opt) -> option[U] {
   }
 }
 
-fn id[T](T x) -> T {
+fn id[T](&T x) -> T {
   ret x;
 }
 
