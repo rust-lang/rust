@@ -395,6 +395,7 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-pass/generic-recursive-tag.rs \
                     test/run-pass/iter-ret.rs \
                     test/run-pass/lib-deque.rs \
+                    test/run-pass/lib-map.rs \
                     test/run-pass/mlist-cycle.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/task-comm.rs \
@@ -468,6 +469,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       lazy-init.rs \
                       lazychan.rs \
                       lib-deque.rs \
+                      lib-map.rs \
                       lib-rand.rs \
                       linear-for-loop.rs \
                       list.rs \
