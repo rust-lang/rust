@@ -13,7 +13,7 @@ type hashfn[K] = fn(&K) -> uint;
 type eqfn[K] = fn(&K, &K) -> bool;
 
 type hashmap[K, V] = obj {
-  fn insert(&K key, &V val);
+  fn insert(&K key, &V val) -> bool;
   fn contains_key(&K key) -> bool;
   fn get(&K key) -> V;
   fn find(&K key) -> util.option[V];
@@ -80,6 +80,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
       alt (bkts.(j)) {
         case (some[K, V](k, _)) {
           if (eqer(key, k)) {
+            bkts.(j) = some[K, V](k, val);
             ret false;
           }
           i += 1u;
@@ -143,7 +144,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                     mutable uint nelts,
                     util.rational lf)
   {
-    fn insert(&K key, &V val) {
+    fn insert(&K key, &V val) -> bool {
       let util.rational load = rec(num=(nelts + 1u) as int, den=nbkts as int);
       if (!util.rational_leq(load, lf)) {
         let uint nnewbkts = _int.next_power_of_two(nbkts + 1u);
@@ -154,8 +155,11 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
         let vec[mutable bucket[K, V]] newbkts = make_buckets[K, V](nnewbkts);
         rehash[K, V](hasher, eqer, bkts, nbkts, newbkts, nnewbkts);
       }
-      insert_common[K, V](hasher, eqer, bkts, nbkts, key, val);
-      nelts += 1u;
+      if (insert_common[K, V](hasher, eqer, bkts, nbkts, key, val)) {
+        nelts += 1u;
+        ret true;
+      }
+      ret false;
     }
 
     fn contains_key(&K key) -> bool {
