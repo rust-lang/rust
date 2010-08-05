@@ -674,7 +674,9 @@ let trans_visitor
                      (Printf.sprintf "calculated size %s is %s"
                         (string_of_size size)
                         (oper_str res)));
-            htab_put (emitter_size_cache()) size res;
+
+            (* FIXME: this appears to be incorrect; investigate why.*)
+            (* htab_put (emitter_size_cache()) size res; *)
             res
 
 
