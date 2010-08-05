@@ -1,3 +1,7 @@
+import std.os;
+import std._str;
+import std._vec;
+
 type buf_reader = unsafe obj {
   fn read() -> vec[u8];
 };
@@ -106,4 +110,51 @@ fn new_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
     fail;
   }
   ret fd_buf_writer(fd);
+}
+
+type formatter[T] = fn(&T x) -> vec[u8];
+
+type writer[T] = unsafe obj { fn write(&T x); };
+
+fn mk_writer[T](str path,
+                vec[fileflag] flags,
+                &formatter[T] fmt)
+  -> writer[T]
+{
+  unsafe obj w[T](buf_writer out, formatter[T] fmt) {
+    fn write(&T x) {
+      out.write(fmt(x));
+    }
+  }
+  ret w[T](new_buf_writer(path, flags), fmt);
+}
+
+/* TODO: int_writer, uint_writer, ... */
+
+fn str_writer(str path, vec[fileflag] flags) -> writer[str] {
+  auto fmt = _str.bytes; // FIXME (issue #90)
+  ret mk_writer[str](path, flags, fmt);
+}
+
+fn vec_writer[T](str path,
+                 vec[fileflag] flags,
+                 &formatter[T] inner)
+  -> writer[vec[T]]
+{
+  fn fmt[T](&vec[T] v, &formatter[T] inner) -> vec[u8] {
+    let vec[u8] res = _str.bytes("vec(");
+    auto first = true;
+    for (T x in v) {
+      if (!first) {
+        res += _str.bytes(", ");
+      } else {
+        first = false;
+      }
+      res += inner(x);
+    }
+    res += _str.bytes(")\n");
+    ret res;
+  }
+
+  ret mk_writer[vec[T]](path, flags, bind fmt[T](_, inner));
 }
