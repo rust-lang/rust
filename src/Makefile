@@ -464,6 +464,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       i8-incr.rs \
                       import.rs \
                       inner-module.rs \
+                      integral-indexing.rs \
                       iter-range.rs \
                       iter-ret.rs \
                       large-records.rs \

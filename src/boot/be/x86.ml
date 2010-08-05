@@ -1936,15 +1936,20 @@ let zero (dst:Il.cell) (count:Il.operand) : Asm.frag =
 ;;
 
 let mov (signed:bool) (dst:Il.cell) (src:Il.operand) : Asm.frag =
-  if is_ty8 (Il.cell_scalar_ty dst) || is_ty8 (Il.operand_scalar_ty src)
+  if is_ty8 (Il.cell_scalar_ty dst)
   then
     begin
-      (match dst with
-           Il.Reg (Il.Hreg r, _)
-           -> assert (is_ok_r8 r) | _ -> ());
-      (match src with
-           Il.Cell (Il.Reg (Il.Hreg r, _))
-           -> assert (is_ok_r8 r) | _ -> ());
+      match dst with
+          Il.Reg (Il.Hreg r, _) -> assert (is_ok_r8 r)
+        | _ -> ()
+    end;
+
+  if is_ty8 (Il.operand_scalar_ty src)
+  then
+    begin
+      match src with
+          Il.Cell (Il.Reg (Il.Hreg r, _)) -> assert (is_ok_r8 r)
+        | _ -> ()
     end;
 
   match (signed, dst, src) with

@@ -914,7 +914,8 @@ let trans_visitor
       let atop = trans_atom at in
       let unit_sz = ty_sz_in_current_frame ty in
       let idx = next_vreg_cell word_sty in
-        emit (Il.binary Il.UMUL idx atop unit_sz);
+        mov idx atop;
+        emit (Il.binary Il.UMUL idx (Il.Cell idx) unit_sz);
         let elt_mem = trans_bounds_check (deref cell) (Il.Cell idx) in
           (Il.Mem (elt_mem, referent_type abi ty), ty)
     in
