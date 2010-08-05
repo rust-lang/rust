@@ -43,7 +43,11 @@ fn new_buf_reader(str path) -> buf_reader {
     }
   }
 
-  auto fd = os.libc.open(_str.buf(path), 0);
+  auto fd = os.libc.open(_str.buf(path),
+                         os.libc_constants.O_RDONLY() |
+                         os.libc_constants.O_BINARY(),
+                         0u);
+
   if (fd < 0) {
     log "error opening file for reading";
     log sys.rustrt.last_os_error();
@@ -52,7 +56,9 @@ fn new_buf_reader(str path) -> buf_reader {
   ret fd_buf_reader(fd, new_buf());
 }
 
-fn new_buf_writer(str path) -> buf_writer {
+type fileflag = tag(append(), create(), truncate());
+
+fn new_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
 
   unsafe obj fd_buf_writer(int fd) {
 
@@ -77,7 +83,23 @@ fn new_buf_writer(str path) -> buf_writer {
     }
   }
 
-  auto fd = os.libc.open(_str.buf(path), 0);
+  let int fflags =
+    os.libc_constants.O_WRONLY() |
+    os.libc_constants.O_BINARY();
+
+  for (fileflag f in flags) {
+    alt (f) {
+      case (append())   { fflags |= os.libc_constants.O_APPEND(); }
+      case (create())   { fflags |= os.libc_constants.O_CREAT(); }
+      case (truncate()) { fflags |= os.libc_constants.O_TRUNC(); }
+    }
+  }
+
+  auto fd = os.libc.open(_str.buf(path),
+                         fflags,
+                         os.libc_constants.S_IRUSR() |
+                         os.libc_constants.S_IWUSR());
+
   if (fd < 0) {
     log "error opening file for writing";
     log sys.rustrt.last_os_error();
