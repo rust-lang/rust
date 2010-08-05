@@ -70,7 +70,8 @@ let dead_code_visitor
 
         | Ast.STMT_alt_type { Ast.alt_type_arms = arms;
                               Ast.alt_type_else = alt_type_else } ->
-            let arm_ids = Array.map (fun (_, _, block) -> block.id) arms in
+            let arm_ids = Array.map (fun { node = (_, _, block) } -> 
+                                       block.id) arms in
             let else_ids =
               begin
                 match alt_type_else with
