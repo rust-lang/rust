@@ -472,6 +472,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
   and internal_check_outer_lval
       ~mut:(mut:Ast.mutability)
       ~deref:(deref:bool)
+      ~fn_args:(fn_args:(Ast.ty array) option)
       (infer:Ast.ty option)
       (lval:Ast.lval)
       : (Ast.ty * int) =
@@ -485,11 +486,15 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
           demand expected actual;
           yield_ty actual
       | None, (LTYPE_poly _ as lty) ->
-          Common.err
-            None
-            "not enough context to automatically instantiate the polymorphic \
-              type '%a'; supply type parameters explicitly"
-            sprintf_ltype lty
+          begin
+            match fn_args with
+                None ->
+                  Common.err None
+                    "can't auto-instantiate %a" sprintf_ltype lty
+              | Some args ->
+                  Common.err None "can't auto-instantiate %a on %d args"
+                    sprintf_ltype lty (Array.length args)
+          end
       | Some _, (LTYPE_poly _) ->
           (* FIXME: auto-instantiate *)
           Common.unimpl
@@ -502,6 +507,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
   and generic_check_lval
       ~mut:(mut:Ast.mutability)
       ~deref:(deref:bool)
+      ~fn_args:(fn_args:(Ast.ty array) option)
       (infer:Ast.ty option)
       (lval:Ast.lval)
       : Ast.ty =
@@ -521,7 +527,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
                 | Some t -> Fmt.fmt_to_str Ast.fmt_ty t))
     in
     let (lval_ty, n_boxes) =
-      internal_check_outer_lval ~mut:mut ~deref:deref infer lval
+      internal_check_outer_lval ~mut ~deref ~fn_args infer lval
     in
     let _ =
       iflog cx
@@ -563,9 +569,10 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
   and check_lval
       ?mut:(mut=Ast.MUT_immutable)
       ?deref:(deref=false)
+      ?fn_args:(fn_args=None)
       (lval:Ast.lval)
       : Ast.ty =
-    generic_check_lval ~mut:mut ~deref:deref None lval
+    generic_check_lval ~fn_args ~mut ~deref None lval
 
   and check_atom ?deref:(deref=false) (atom:Ast.atom) : Ast.ty =
     match atom with
@@ -582,7 +589,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
       (ty:Ast.ty)
       (lval:Ast.lval)
       : unit =
-    ignore (generic_check_lval ?mut:mut ~deref:false
+    ignore (generic_check_lval ~mut ~deref:false ~fn_args:None
               (Some (Ast.TY_mutable ty)) lval)
   in
 
@@ -636,7 +643,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
    * returns the return type. *)
   let check_fn (callee:Ast.lval) (args:Ast.atom array) : Ast.ty =
     let arg_tys = Array.map check_atom args in
-    let callee_ty = check_lval callee in
+    let callee_ty = check_lval callee ~fn_args:(Some arg_tys) in
     demand_fn (Array.map (fun ty -> Some ty) arg_tys) callee_ty
   in
 

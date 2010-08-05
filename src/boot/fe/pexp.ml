@@ -718,131 +718,175 @@ and parse_negation_pexp (ps:pstate) : pexp =
 
 (* Binops are all left-associative,                *)
 (* so we factor out some of the parsing code here. *)
-and binop_rhs
+and binop_build
     (ps:pstate)
     (name:string)
     (apos:pos)
-    (lhs:pexp)
     (rhs_parse_fn:pstate -> pexp)
+    (lhs:pexp)
+    (step_fn:pexp -> pexp)
     (op:Ast.binop)
     : pexp =
   bump ps;
   let rhs = (ctxt (name ^ " rhs") rhs_parse_fn ps) in
   let bpos = lexpos ps in
-    span ps apos bpos (PEXP_binop (op, lhs, rhs))
+  let node = span ps apos bpos (PEXP_binop (op, lhs, rhs)) in
+    step_fn node
 
 
 and parse_factor_pexp (ps:pstate) : pexp =
   let name = "factor pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_negation_pexp ps in
+  let build = binop_build ps name apos parse_negation_pexp in
+  let rec step accum =
     match peek ps with
-        STAR    -> binop_rhs ps name apos lhs parse_factor_pexp Ast.BINOP_mul
-      | SLASH   -> binop_rhs ps name apos lhs parse_factor_pexp Ast.BINOP_div
-      | PERCENT -> binop_rhs ps name apos lhs parse_factor_pexp Ast.BINOP_mod
-      | _       -> lhs
+        STAR    -> build accum step Ast.BINOP_mul
+      | SLASH   -> build accum step Ast.BINOP_div
+      | PERCENT -> build accum step Ast.BINOP_mod
+      | _       -> accum
+  in
+    step lhs
 
 
 and parse_term_pexp (ps:pstate) : pexp =
   let name = "term pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_factor_pexp ps in
+  let build = binop_build ps name apos parse_factor_pexp in
+  let rec step accum =
     match peek ps with
-        PLUS  -> binop_rhs ps name apos lhs parse_term_pexp Ast.BINOP_add
-      | MINUS -> binop_rhs ps name apos lhs parse_term_pexp Ast.BINOP_sub
-      | _     -> lhs
+        PLUS  -> build accum step Ast.BINOP_add
+      | MINUS -> build accum step Ast.BINOP_sub
+      | _     -> accum
+  in
+    step lhs
 
 
 and parse_shift_pexp (ps:pstate) : pexp =
   let name = "shift pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_term_pexp ps in
+  let build = binop_build ps name apos parse_term_pexp in
+  let rec step accum =
     match peek ps with
-        LSL -> binop_rhs ps name apos lhs parse_shift_pexp Ast.BINOP_lsl
-      | LSR -> binop_rhs ps name apos lhs parse_shift_pexp Ast.BINOP_lsr
-      | ASR -> binop_rhs ps name apos lhs parse_shift_pexp Ast.BINOP_asr
-      | _ -> lhs
+        LSL -> build accum step Ast.BINOP_lsl
+      | LSR -> build accum step Ast.BINOP_lsr
+      | ASR -> build accum step Ast.BINOP_asr
+      | _   -> accum
+  in
+    step lhs
 
 
 and parse_and_pexp (ps:pstate) : pexp =
   let name = "and pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_shift_pexp ps in
+  let build = binop_build ps name apos parse_shift_pexp in
+  let rec step accum =
     match peek ps with
-        AND -> binop_rhs ps name apos lhs parse_and_pexp Ast.BINOP_and
-      | _   -> lhs
+        AND -> build accum step Ast.BINOP_and
+      | _   -> accum
+  in
+    step lhs
 
 
 and parse_xor_pexp (ps:pstate) : pexp =
   let name = "xor pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_and_pexp ps in
+  let build = binop_build ps name apos parse_and_pexp in
+  let rec step accum =
     match peek ps with
-        CARET -> binop_rhs ps name apos lhs parse_xor_pexp Ast.BINOP_xor
-      | _ -> lhs
+        CARET -> build accum step Ast.BINOP_xor
+      | _     -> accum
+  in
+    step lhs
 
 
 and parse_or_pexp (ps:pstate) : pexp =
   let name = "or pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_xor_pexp ps in
+  let build = binop_build ps name apos parse_xor_pexp in
+  let rec step accum =
     match peek ps with
-        OR -> binop_rhs ps name apos lhs parse_or_pexp Ast.BINOP_or
-      | _  -> lhs
+        OR -> build accum step Ast.BINOP_or
+      | _  -> accum
+  in
+    step lhs
 
 
 and parse_relational_pexp (ps:pstate) : pexp =
   let name = "relational pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_or_pexp ps in
+  let build = binop_build ps name apos parse_or_pexp in
+  let rec step accum =
     match peek ps with
-        LT -> binop_rhs ps name apos lhs parse_relational_pexp Ast.BINOP_lt
-      | LE -> binop_rhs ps name apos lhs parse_relational_pexp Ast.BINOP_le
-      | GE -> binop_rhs ps name apos lhs parse_relational_pexp Ast.BINOP_ge
-      | GT -> binop_rhs ps name apos lhs parse_relational_pexp Ast.BINOP_gt
-      | _  -> lhs
+        LT -> build accum step Ast.BINOP_lt
+      | LE -> build accum step Ast.BINOP_le
+      | GE -> build accum step Ast.BINOP_ge
+      | GT -> build accum step Ast.BINOP_gt
+      | _  -> accum
+  in
+    step lhs
 
 
 and parse_equality_pexp (ps:pstate) : pexp =
   let name = "equality pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_relational_pexp ps in
+  let build = binop_build ps name apos parse_relational_pexp in
+  let rec step accum =
     match peek ps with
-        EQEQ -> binop_rhs ps name apos lhs parse_equality_pexp Ast.BINOP_eq
-      | NE   -> binop_rhs ps name apos lhs parse_equality_pexp Ast.BINOP_ne
-      | _    -> lhs
+        EQEQ -> build accum step Ast.BINOP_eq
+      | NE   -> build accum step Ast.BINOP_ne
+      | _    -> accum
+  in
+    step lhs
 
 
 and parse_andand_pexp (ps:pstate) : pexp =
   let name = "andand pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_equality_pexp ps in
+  let rec step accum =
     match peek ps with
         ANDAND ->
           bump ps;
-          let rhs = parse_andand_pexp ps in
+          let rhs = parse_equality_pexp ps in
           let bpos = lexpos ps in
-            span ps apos bpos (PEXP_lazy_and (lhs, rhs))
+          let node = span ps apos bpos (PEXP_lazy_and (accum, rhs)) in
+            step node
 
-      | _   -> lhs
+      | _   -> accum
+  in
+    step lhs
 
 
 and parse_oror_pexp (ps:pstate) : pexp =
   let name = "oror pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_andand_pexp ps in
+  let rec step accum =
     match peek ps with
         OROR ->
           bump ps;
-          let rhs = parse_oror_pexp ps in
+          let rhs = parse_andand_pexp ps in
           let bpos = lexpos ps in
-            span ps apos bpos (PEXP_lazy_or (lhs, rhs))
+          let node = span ps apos bpos (PEXP_lazy_or (accum, rhs)) in
+            step node
 
-      | _  -> lhs
+      | _  -> accum
+  in
+    step lhs
+
 
 and parse_as_pexp (ps:pstate) : pexp =
   let apos = lexpos ps in
   let pexp = ctxt "as pexp" parse_oror_pexp ps in
+  let rec step accum =
     match peek ps with
         AS ->
           bump ps;
@@ -850,10 +894,16 @@ and parse_as_pexp (ps:pstate) : pexp =
           let t = parse_ty ps in
           let bpos = lexpos ps in
           let t = span ps tapos bpos t in
+          let node =
             span ps apos bpos
-              (PEXP_unop ((Ast.UNOP_cast t), pexp))
+              (PEXP_unop ((Ast.UNOP_cast t), accum))
+          in
+            step node
 
-      | _       -> pexp
+      | _ -> accum
+  in
+    step pexp
+
 
 and parse_pexp (ps:pstate) : pexp =
   parse_as_pexp ps

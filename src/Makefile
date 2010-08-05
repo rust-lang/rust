@@ -489,6 +489,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       obj-recursion.rs \
                       obj-return-polytypes.rs \
                       obj-with-vec.rs \
+                      operator-associativity.rs \
                       output-slot-variants.rs \
                       pred.rs \
                       preempt.rs \
@@ -576,10 +577,18 @@ RFAIL_RS := $(wildcard test/run-fail/*.rs)
 CFAIL_RC := $(wildcard test/compile-fail/*.rc)
 CFAIL_RS := $(wildcard test/compile-fail/*.rs)
 
+ifdef CHECK_XFAILS
+TEST_RPASS_CRATES_X86 := $(filter $(TEST_XFAILS_X86), $(RPASS_RC))
+TEST_RPASS_CRATES_LLVM := $(filter $(TEST_XFAILS_LLVM), $(RPASS_RC))
+TEST_RPASS_SOURCES_X86 := $(filter $(TEST_XFAILS_X86), $(RPASS_RS))
+TEST_RPASS_SOURCES_LLVM := $(filter $(TEST_XFAILS_LLVM), $(RPASS_RS))
+else
 TEST_RPASS_CRATES_X86 := $(filter-out $(TEST_XFAILS_X86), $(RPASS_RC))
 TEST_RPASS_CRATES_LLVM := $(filter-out $(TEST_XFAILS_LLVM), $(RPASS_RC))
 TEST_RPASS_SOURCES_X86 := $(filter-out $(TEST_XFAILS_X86), $(RPASS_RS))
 TEST_RPASS_SOURCES_LLVM := $(filter-out $(TEST_XFAILS_LLVM), $(RPASS_RS))
+endif
+
 TEST_RPASS_EXTRAS := $(wildcard test/run-pass/*/*.rs)
 TEST_RPASS_EXES_X86 := \
                       $(TEST_RPASS_CRATES_X86:.rc=.x86$(CFG_EXE_SUFFIX)) \
