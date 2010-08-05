@@ -247,13 +247,13 @@ and stmt = stmt' identified
 and stmt_alt_tag =
     {
       alt_tag_lval: lval;
-      alt_tag_arms: arm array;
+      alt_tag_arms: tag_arm array;
     }
 
 and stmt_alt_type =
     {
       alt_type_lval: lval;
-      alt_type_arms: (ident * slot * stmt) array;
+      alt_type_arms: type_arm array;
       alt_type_else: stmt option;
     }
 
@@ -318,8 +318,11 @@ and pat =
   | PAT_slot of ((slot identified) * ident)
   | PAT_wild
 
-and arm' = pat * block
-and arm = arm' identified
+and tag_arm' = pat * block
+and tag_arm = tag_arm' identified
+
+and type_arm' = ident * slot * block
+and type_arm = type_arm' identified
 
 and atom =
     ATOM_literal of (lit identified)
@@ -646,6 +649,16 @@ and fmt_iso (ff:Format.formatter) (tiso:ty_iso) : unit =
   done;
   fmt ff "@]]@]"
 
+and fmt_constrained ff (ty, constrs) : unit =
+  fmt ff "@[";
+  fmt_ty ff ty;
+  fmt ff " : ";
+  fmt ff "@[";
+  fmt_constrs ff constrs;
+  fmt ff "@]";
+  fmt ff "@]";
+    
+
 and fmt_ty (ff:Format.formatter) (t:ty) : unit =
   match t with
     TY_any -> fmt ff "any"
@@ -687,7 +700,7 @@ and fmt_ty (ff:Format.formatter) (t:ty) : unit =
   | TY_tag ttag -> fmt_tag ff ttag
   | TY_iso tiso -> fmt_iso ff tiso
   | TY_idx idx -> fmt ff "<idx#%d>" idx
-  | TY_constrained _ -> fmt ff "?constrained?"
+  | TY_constrained ctrd -> fmt_constrained ff ctrd 
 
   | TY_obj (effect, fns) ->
       fmt_obox ff;
@@ -707,7 +720,13 @@ and fmt_ty (ff:Format.formatter) (t:ty) : unit =
 
 
 and fmt_constrs (ff:Format.formatter) (cc:constr array) : unit =
-  Array.iter (fmt_constr ff) cc
+  for i = 0 to (Array.length cc) - 1
+  do
+    if i != 0
+    then fmt ff ",@ ";
+    fmt_constr ff cc.(i)
+  done;
+  (* Array.iter (fmt_constr ff) cc *)
 
 and fmt_decl_constrs (ff:Format.formatter) (cc:constr array) : unit =
   if Array.length cc = 0
@@ -1204,25 +1223,45 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           fmt_lval ff at.alt_tag_lval;
           fmt ff ") ";
           fmt_obr ff;
-          Array.iter (fmt_arm ff) at.alt_tag_arms;
+          Array.iter (fmt_tag_arm ff) at.alt_tag_arms;
           fmt_cbb ff;
 
-      | STMT_alt_type _ -> fmt ff "?stmt_alt_type?"
+      | STMT_alt_type at -> 
+          fmt_obox ff;
+          fmt ff "alt type (";
+          fmt_lval ff at.alt_type_lval;
+          fmt ff ") ";
+          fmt_obr ff;
+          Array.iter (fmt_type_arm ff) at.alt_type_arms;
+          fmt_cbb ff;
+          
       | STMT_alt_port _ -> fmt ff "?stmt_alt_port?"
       | STMT_note _ -> fmt ff "?stmt_note?"
       | STMT_slice _ -> fmt ff "?stmt_slice?"
   end
 
-and fmt_arm (ff:Format.formatter) (arm:arm) : unit =
-  let (pat, block) = arm.node in
-    fmt ff "@\n";
-    fmt_obox ff;
-    fmt ff "case (";
-    fmt_pat ff pat;
-    fmt ff ") ";
-    fmt_obr ff;
-    fmt_stmts ff block.node;
-    fmt_cbb ff;
+and fmt_arm 
+    (ff:Format.formatter) 
+    (fmt_arm_case_expr : Format.formatter -> unit)
+    (block : block) 
+    : unit =
+  fmt ff "@\n";
+  fmt_obox ff;
+  fmt ff "case (";
+  fmt_arm_case_expr ff;
+  fmt ff ") ";
+  fmt_obr ff;
+  fmt_stmts ff block.node;
+  fmt_cbb ff;
+  
+and fmt_tag_arm (ff:Format.formatter) (tag_arm:tag_arm) : unit =
+  let (pat, block) = tag_arm.node in
+    fmt_arm ff (fun ff -> fmt_pat ff pat) block;
+    
+and fmt_type_arm (ff:Format.formatter) (type_arm:type_arm) : unit =
+  let (_, slot, block) = type_arm.node in
+    fmt_arm ff (fun ff -> fmt_slot ff slot) block;
+      
 
 and fmt_pat (ff:Format.formatter) (pat:pat) : unit =
   match pat with
