@@ -16,8 +16,7 @@ fn is_ascii(str s) -> bool {
   let uint i = len(s);
   while (i > 0u) {
     i -= 1u;
-    // FIXME (issue #94)
-    if ((s.(i as int) & 0x80u8) != 0u8) {
+    if ((s.(i) & 0x80u8) != 0u8) {
       ret false;
     }
   }
@@ -38,7 +37,7 @@ fn buf(str s) -> sbuf {
 
 fn bytes(&str s) -> vec[u8] {
   fn ith(str s, uint i) -> u8 {
-    ret s.(i as int); // FIXME (issue #94)
+    ret s.(i);
   }
   ret _vec.init_fn[u8](bind ith(s, _), _str.len(s));
 }
