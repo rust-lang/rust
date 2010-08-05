@@ -12,3 +12,13 @@
  fun:calloc
  fun:_dl_allocate_tls
 }
+
+{
+   mac-dyld-oddity
+   Memcheck:Cond
+   fun:_ZN4dyld5_mainEPK12macho_headermiPPKcS5_S5_
+   fun:_ZN13dyldbootstrap5startEPK12macho_headeriPPKcl
+   fun:_dyld_start
+   obj:*
+}
+
