@@ -695,7 +695,7 @@ type emitter = { mutable emit_pc: int;
                  emit_target_specific: (emitter -> quad -> unit);
                  mutable emit_quads: quads;
                  emit_annotations: (int,string) Hashtbl.t;
-                 emit_size_cache: ((size,operand) Hashtbl.t) Stack.t;
+                 emit_size_cache: (size,operand) Hashtbl.t;
                  emit_node: node_id option;
                }
 
@@ -722,7 +722,7 @@ let new_emitter
     emit_target_specific = emit_target_specific;
     emit_quads = Array.create 4 badq;
     emit_annotations = Hashtbl.create 0;
-    emit_size_cache = Stack.create ();
+    emit_size_cache = Hashtbl.create 0;
     emit_node = node;
   }
 ;;
