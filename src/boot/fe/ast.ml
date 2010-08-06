@@ -1237,7 +1237,13 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           
       | STMT_alt_port _ -> fmt ff "?stmt_alt_port?"
       | STMT_note _ -> fmt ff "?stmt_note?"
-      | STMT_slice _ -> fmt ff "?stmt_slice?"
+      | STMT_slice (dst, src, slice) -> 
+          fmt_lval ff dst;
+          fmt ff " = ";
+          fmt_lval ff src;
+          fmt ff ".";
+          fmt_slice ff slice;
+          fmt ff ";";
   end
 
 and fmt_arm 
@@ -1274,6 +1280,27 @@ and fmt_pat (ff:Format.formatter) (pat:pat) : unit =
         fmt_ident ff ident
     | PAT_wild ->
         fmt ff "_"
+
+and fmt_slice (ff:Format.formatter) (slice:slice) : unit =
+  let fmt_slice_start = (match slice.slice_start with
+                             None -> (fun ff -> fmt ff "0")
+                           | Some atom -> (fun ff -> fmt_atom ff atom)) in
+    fmt ff "(@[";
+    fmt_slice_start ff;
+    begin
+      match slice.slice_len with
+          None -> fmt ff ","
+        | Some slice_len ->
+            fmt ff ",@ @[";
+            fmt_slice_start ff;
+            fmt ff " +@ ";
+            fmt_atom ff slice_len;
+            fmt ff "@]";
+    end;
+    fmt ff "@])";
+    
+
+    
 
 and fmt_decl_param (ff:Format.formatter) (param:ty_param) : unit =
   let (ident, (i, e)) = param in
