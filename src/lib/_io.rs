@@ -112,49 +112,21 @@ fn new_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
   ret fd_buf_writer(fd);
 }
 
-type formatter[T] = fn(&T x) -> vec[u8];
+type writer =
+  unsafe obj {
+    fn write_str(str s);
+    fn write_int(int n);
+    fn write_uint(uint n);
+  };
 
-type writer[T] = unsafe obj { fn write(&T x); };
-
-fn mk_writer[T](str path,
-                vec[fileflag] flags,
-                &formatter[T] fmt)
-  -> writer[T]
+fn file_writer(str path,
+               vec[fileflag] flags)
+  -> writer
 {
-  unsafe obj w[T](buf_writer out, formatter[T] fmt) {
-    fn write(&T x) {
-      out.write(fmt(x));
-    }
+  unsafe obj fw(buf_writer out) {
+    fn write_str(str s)   { out.write(_str.bytes(s)); }
+    fn write_int(int n)   { out.write(_str.bytes(_int.to_string(n, 10u))); }
+    fn write_uint(uint n) { out.write(_str.bytes(_int.uto_string(n, 10u))); }
   }
-  ret w[T](new_buf_writer(path, flags), fmt);
-}
-
-/* TODO: int_writer, uint_writer, ... */
-
-fn str_writer(str path, vec[fileflag] flags) -> writer[str] {
-  auto fmt = _str.bytes; // FIXME (issue #90)
-  ret mk_writer[str](path, flags, fmt);
-}
-
-fn vec_writer[T](str path,
-                 vec[fileflag] flags,
-                 &formatter[T] inner)
-  -> writer[vec[T]]
-{
-  fn fmt[T](&vec[T] v, &formatter[T] inner) -> vec[u8] {
-    let vec[u8] res = _str.bytes("vec(");
-    auto first = true;
-    for (T x in v) {
-      if (!first) {
-        res += _str.bytes(", ");
-      } else {
-        first = false;
-      }
-      res += inner(x);
-    }
-    res += _str.bytes(")\n");
-    ret res;
-  }
-
-  ret mk_writer[vec[T]](path, flags, bind fmt[T](_, inner));
+  ret fw(new_buf_writer(path, flags));
 }
