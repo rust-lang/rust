@@ -254,7 +254,14 @@ and stmt_alt_type =
     {
       alt_type_lval: lval;
       alt_type_arms: type_arm array;
-      alt_type_else: stmt option;
+      alt_type_else: block option;
+    }
+
+and stmt_alt_port =
+    {
+      (* else lval is a timeout value. *)
+      alt_port_arms: (lval * lval) array;
+      alt_port_else: (lval * block) option;
     }
 
 and block' = stmt array
@@ -264,12 +271,6 @@ and stmt_decl =
     DECL_mod_item of (ident * mod_item)
   | DECL_slot of (slot_key * (slot identified))
 
-and stmt_alt_port =
-    {
-      (* else lval is a timeout value. *)
-      alt_port_arms: (lval * lval) array;
-      alt_port_else: (lval * stmt) option;
-    }
 
 and stmt_while =
     {
@@ -1233,10 +1234,25 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           fmt ff ") ";
           fmt_obr ff;
           Array.iter (fmt_type_arm ff) at.alt_type_arms;
+          begin
+            match at.alt_type_else with 
+                None -> ()
+              | Some block ->
+                  fmt ff "@\n";
+                  fmt_obox ff;
+                  fmt ff "case (_) ";
+                  fmt_obr ff;
+                  fmt_stmts ff block.node;
+                  fmt_cbb ff;
+          end;
           fmt_cbb ff;
-          
       | STMT_alt_port _ -> fmt ff "?stmt_alt_port?"
-      | STMT_note _ -> fmt ff "?stmt_note?"
+      | STMT_note at -> 
+          begin
+            fmt ff "note ";
+            fmt_atom ff at;
+            fmt ff ";"
+          end
       | STMT_slice (dst, src, slice) -> 
           fmt_lval ff dst;
           fmt ff " = ";
@@ -1245,7 +1261,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           fmt_slice ff slice;
           fmt ff ";";
   end
-
+    
 and fmt_arm 
     (ff:Format.formatter) 
     (fmt_arm_case_expr : Format.formatter -> unit)
