@@ -260,8 +260,8 @@ and stmt_alt_type =
 and stmt_alt_port =
     {
       (* else lval is a timeout value. *)
-      alt_port_arms: (lval * lval) array;
-      alt_port_else: (lval * block) option;
+      alt_port_arms: port_arm array;
+      alt_port_else: (atom * block) option;
     }
 
 and block' = stmt array
@@ -324,6 +324,13 @@ and tag_arm = tag_arm' identified
 
 and type_arm' = ident * slot * block
 and type_arm = type_arm' identified
+
+and port_arm' = port_case * block
+and port_arm = port_arm' identified
+
+and port_case = 
+    PORT_CASE_send of (lval * lval)
+  | PORT_CASE_recv of (lval * lval)
 
 and atom =
     ATOM_literal of (lit identified)
@@ -495,7 +502,6 @@ let sane_name (n:name) : bool =
 
 (***********************************************************************)
 
-(* FIXME (issue #19): finish all parts with ?foo? as their output. *)
 
 let fmt_ident (ff:Format.formatter) (i:ident) : unit =
   fmt ff  "%s" i
@@ -1246,7 +1252,25 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
                   fmt_cbb ff;
           end;
           fmt_cbb ff;
-      | STMT_alt_port _ -> fmt ff "?stmt_alt_port?"
+      | STMT_alt_port at -> 
+          fmt_obox ff;
+          fmt ff "alt ";
+          fmt_obr ff;
+          Array.iter (fmt_port_arm ff) at.alt_port_arms;
+          begin
+            match at.alt_port_else with
+                None -> ()
+              | Some (timeout, block) ->
+                  fmt ff "@\n";
+                  fmt_obox ff;
+                  fmt ff "case (_) ";
+                  fmt_atom ff timeout;
+                  fmt ff " ";
+                  fmt_obr ff;
+                  fmt_stmts ff block.node;
+                  fmt_cbb ff;
+          end;
+          fmt_cbb ff;
       | STMT_note at -> 
           begin
             fmt ff "note ";
@@ -1284,6 +1308,16 @@ and fmt_type_arm (ff:Format.formatter) (type_arm:type_arm) : unit =
   let (_, slot, block) = type_arm.node in
     fmt_arm ff (fun ff -> fmt_slot ff slot) block;
       
+and fmt_port_arm (ff:Format.formatter) (port_arm:port_arm) : unit =
+  let (port_case, block) = port_arm.node in
+    fmt_arm ff (fun ff -> fmt_port_case ff port_case) block;
+
+and fmt_port_case (ff:Format.formatter) (port_case:port_case) : unit =
+  let stmt' = match port_case with
+      PORT_CASE_send params -> STMT_send params
+    | PORT_CASE_recv params -> STMT_recv params in
+    fmt_stmt ff {node = stmt'; id = Node 0};
+    
 
 and fmt_pat (ff:Format.formatter) (pat:pat) : unit =
   match pat with
