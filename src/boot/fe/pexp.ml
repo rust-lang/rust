@@ -817,11 +817,33 @@ and parse_or_pexp (ps:pstate) : pexp =
     step lhs
 
 
+and parse_as_pexp (ps:pstate) : pexp =
+  let apos = lexpos ps in
+  let pexp = ctxt "as pexp" parse_or_pexp ps in
+  let rec step accum =
+    match peek ps with
+        AS ->
+          bump ps;
+          let tapos = lexpos ps in
+          let t = parse_ty ps in
+          let bpos = lexpos ps in
+          let t = span ps tapos bpos t in
+          let node =
+            span ps apos bpos
+              (PEXP_unop ((Ast.UNOP_cast t), accum))
+          in
+            step node
+
+      | _ -> accum
+  in
+    step pexp
+
+
 and parse_relational_pexp (ps:pstate) : pexp =
   let name = "relational pexp" in
   let apos = lexpos ps in
-  let lhs = ctxt (name ^ " lhs") parse_or_pexp ps in
-  let build = binop_build ps name apos parse_or_pexp in
+  let lhs = ctxt (name ^ " lhs") parse_as_pexp ps in
+  let build = binop_build ps name apos parse_as_pexp in
   let rec step accum =
     match peek ps with
         LT -> build accum step Ast.BINOP_lt
@@ -883,30 +905,8 @@ and parse_oror_pexp (ps:pstate) : pexp =
     step lhs
 
 
-and parse_as_pexp (ps:pstate) : pexp =
-  let apos = lexpos ps in
-  let pexp = ctxt "as pexp" parse_oror_pexp ps in
-  let rec step accum =
-    match peek ps with
-        AS ->
-          bump ps;
-          let tapos = lexpos ps in
-          let t = parse_ty ps in
-          let bpos = lexpos ps in
-          let t = span ps tapos bpos t in
-          let node =
-            span ps apos bpos
-              (PEXP_unop ((Ast.UNOP_cast t), accum))
-          in
-            step node
-
-      | _ -> accum
-  in
-    step pexp
-
-
 and parse_pexp (ps:pstate) : pexp =
-  parse_as_pexp ps
+  parse_oror_pexp ps
 
 and parse_mutable_and_pexp (ps:pstate) : (Ast.mutability * pexp) =
   let mutability = parse_mutability ps in

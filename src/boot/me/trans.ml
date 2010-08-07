@@ -163,7 +163,6 @@ let trans_visitor
          abi.Abi.abi_emit_target_specific
          vregs_ok fnid
     in
-      Stack.push (Hashtbl.create 0) e.Il.emit_size_cache;
       Stack.push e emitters;
   in
 
@@ -172,16 +171,20 @@ let trans_visitor
 
   let pop_emitter _ = ignore (Stack.pop emitters) in
   let emitter _ = Stack.top emitters in
-  let emitter_size_cache _ = Stack.top (emitter()).Il.emit_size_cache in
-  let push_emitter_size_cache _ =
-    Stack.push
-      (Hashtbl.copy (emitter_size_cache()))
-      (emitter()).Il.emit_size_cache
+  let emitter_size_cache _ = (emitter()).Il.emit_size_cache in
+  let flush_emitter_size_cache _ =
+    Hashtbl.clear (emitter_size_cache())
   in
-  let pop_emitter_size_cache _ =
-    ignore (Stack.pop (emitter()).Il.emit_size_cache)
+
+  let emit q =
+    begin
+      match q with
+        Il.Jmp _ -> flush_emitter_size_cache();
+        | _ -> ()
+    end;        
+    Il.emit (emitter()) q
   in
-  let emit q = Il.emit (emitter()) q in
+
   let next_vreg _ = Il.next_vreg (emitter()) in
   let next_vreg_cell t = Il.next_vreg_cell (emitter()) t in
   let next_spill_cell t =
@@ -190,12 +193,17 @@ let trans_visitor
     let spill_ta = (spill_mem, Il.ScalarTy t) in
       Il.Mem spill_ta
   in
-  let mark _ : quad_idx = (emitter()).Il.emit_pc in
+  let mark _ : quad_idx =
+    flush_emitter_size_cache ();
+    (emitter()).Il.emit_pc
+  in
   let patch_existing (jmp:quad_idx) (targ:quad_idx) : unit =
-    Il.patch_jump (emitter()) jmp targ
+    Il.patch_jump (emitter()) jmp targ;
+    flush_emitter_size_cache ();
   in
   let patch (i:quad_idx) : unit =
     Il.patch_jump (emitter()) i (mark());
+    flush_emitter_size_cache ();
     (* Insert a dead quad to ensure there's an otherwise-unused
      * jump-target here.
      *)
@@ -583,7 +591,13 @@ let trans_visitor
                 (string_of_size size)));
     let sub_sz = calculate_sz ty_params in
     match htab_search (emitter_size_cache()) size with
-        Some op -> op
+        Some op ->
+          iflog (fun _ -> annotate
+                   (Printf.sprintf "cached size %s is %s"
+                      (string_of_size size)
+                      (oper_str op)));
+          op
+
       | _ ->
           let res =
             match size with
@@ -914,7 +928,8 @@ let trans_visitor
       let atop = trans_atom at in
       let unit_sz = ty_sz_in_current_frame ty in
       let idx = next_vreg_cell word_sty in
-        emit (Il.binary Il.UMUL idx atop unit_sz);
+        mov idx atop;
+        emit (Il.binary Il.UMUL idx (Il.Cell idx) unit_sz);
         let elt_mem = trans_bounds_check (deref cell) (Il.Cell idx) in
           (Il.Mem (elt_mem, referent_type abi ty), ty)
     in
@@ -1923,8 +1938,8 @@ let trans_visitor
       : quad_idx list =
     emit (Il.cmp (Il.Cell (Il.Reg (force_to_reg lhs))) rhs);
     let jmp = mark() in
-    emit (Il.jmp cjmp Il.CodeNone);
-    [ jmp ]
+      emit (Il.jmp cjmp Il.CodeNone);
+      [ jmp ]
 
   and trans_compare
       ?ty_params:(ty_params=get_ty_params_of_current_frame())
@@ -1943,7 +1958,6 @@ let trans_visitor
       | _ -> trans_compare_simple cjmp lhs rhs
 
   and trans_cond (invert:bool) (expr:Ast.expr) : quad_idx list =
-
     let anno _ =
       iflog
         begin
@@ -2075,15 +2089,14 @@ let trans_visitor
             trans_atom a
 
   and trans_block (block:Ast.block) : unit =
+    flush_emitter_size_cache();
     trace_str cx.ctxt_sess.Session.sess_trace_block
       "entering block";
-    push_emitter_size_cache ();
     emit (Il.Enter (Hashtbl.find cx.ctxt_block_fixups block.id));
     Array.iter trans_stmt block.node;
     trace_str cx.ctxt_sess.Session.sess_trace_block
       "exiting block";
     emit Il.Leave;
-    pop_emitter_size_cache ();
     trace_str cx.ctxt_sess.Session.sess_trace_block
       "exited block";
 
@@ -4395,11 +4408,11 @@ let trans_visitor
                     let back_jmp =
                       trans_compare_simple Il.JB (Il.Cell dptr) (Il.Cell dlim)
                     in
-                    List.iter
-                      (fun j -> patch_existing j back_jmp_targ) back_jmp;
-                    let v = next_vreg_cell word_sty in
-                      mov v (Il.Cell src_fill);
-                      add_to dst_fill (Il.Cell v);
+                      List.iter
+                        (fun j -> patch_existing j back_jmp_targ) back_jmp;
+                      let v = next_vreg_cell word_sty in
+                        mov v (Il.Cell src_fill);
+                        add_to dst_fill (Il.Cell v);
         | t ->
             begin
               bug () "unsupported vector-append type %a" Ast.sprintf_ty t

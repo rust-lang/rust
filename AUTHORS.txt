@@ -15,6 +15,7 @@ Jeff Mulzelaar <jmuizelaar@mozilla.com>
 Jeffrey Yasskin <jyasskin@gmail.com>
 Matt Brubeck <mbrubeck@limpet.net>
 Michael Bebenita <mbebenita@mozilla.com>
+Or Brostovski <tohava@gmail.com>
 Patrick Walton <pwalton@mozilla.com>
 Ralph Giles <giles@thaumas.net>
 Roy Frostig <rfrostig@mozilla.com>

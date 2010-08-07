@@ -36,7 +36,7 @@ fn create[T]() -> t[T] {
 
     fn fill[T](uint i, uint nelts, uint lo, &vec[cell[T]] old) -> cell[T] {
       if (i < nelts) {
-        ret old.(((lo + i) % nelts) as int);
+        ret old.((lo + i) % nelts);
       } else {
         ret util.none[T]();
       }
@@ -47,14 +47,8 @@ fn create[T]() -> t[T] {
     ret _vec.init_fn[cell[T]](copy_op, nalloc);
   }
 
-  /**
-   * FIXME (issue #94): We're converting to int every time we index into the
-   * vec, but we really want to index with the lo and hi uints that we have
-   * around.
-   */
-
   fn get[T](&vec[cell[T]] elts, uint i) -> T {
-    alt (elts.(i as int)) {
+    alt (elts.(i)) {
       case (util.some[T](t)) { ret t; }
       case (_) { fail; }
     }
@@ -82,7 +76,7 @@ fn create[T]() -> t[T] {
         hi = nelts;
       }
 
-      elts.(lo as int) = util.some[T](t);
+      elts.(lo) = util.some[T](t);
       nelts += 1u;
     }
 
@@ -93,7 +87,7 @@ fn create[T]() -> t[T] {
         hi = nelts;
       }
 
-      elts.(hi as int) = util.some[T](t);
+      elts.(hi) = util.some[T](t);
       hi = (hi + 1u) % _vec.len[cell[T]](elts);
       nelts += 1u;
     }
@@ -104,7 +98,7 @@ fn create[T]() -> t[T] {
      */
     fn pop_front() -> T {
       let T t = get[T](elts, lo);
-      elts.(lo as int) = util.none[T]();
+      elts.(lo) = util.none[T]();
       lo = (lo + 1u) % _vec.len[cell[T]](elts);
       ret t;
     }
@@ -117,7 +111,7 @@ fn create[T]() -> t[T] {
       }
 
       let T t = get[T](elts, hi);
-      elts.(hi as int) = util.none[T]();
+      elts.(hi) = util.none[T]();
       ret t;
     }
 

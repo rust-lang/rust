@@ -389,11 +389,13 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-pass/child-outlives-parent.rs \
                     test/run-pass/clone-with-exterior.rs \
                     test/run-pass/constrained-type.rs \
+                    test/run-pass/destructor-ordering.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
                     test/run-pass/generic-fn-infer.rs \
                     test/run-pass/generic-recursive-tag.rs \
+                    test/run-pass/int-lib.rs \
                     test/run-pass/iter-ret.rs \
                     test/run-pass/lib-deque.rs \
                     test/run-pass/lib-map.rs \
@@ -418,7 +420,6 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       alt-tag.rs \
                       arithmetic-interference.rs \
                       argv.rs \
-                      auto-deref.rs \
                       autoderef-full-lval.rs \
                       autoderef-objfn.rs \
                       basic.rs \
@@ -452,7 +453,6 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       generic-drop-glue.rs \
                       generic-exterior-box.rs \
                       generic-fn-infer.rs \
-                      generic-fn-twice.rs \
                       generic-fn.rs \
                       generic-obj-with-derived-type.rs \
                       generic-obj.rs \
@@ -464,6 +464,8 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       i8-incr.rs \
                       import.rs \
                       inner-module.rs \
+                      integral-indexing.rs \
+                      int-lib.rs \
                       iter-range.rs \
                       iter-ret.rs \
                       large-records.rs \
@@ -481,8 +483,6 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       mutable-alias-vec.rs \
                       mutable-vec-drop.rs \
                       mutual-recursion-group.rs \
-                      native-mod.rc \
-                      native.rc \
                       obj-as.rs \
                       obj-drop.rs \
                       obj-dtor.rs \
@@ -506,6 +506,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       str-append.rs \
                       str-concat.rs \
                       str-idx.rs \
+                      str-lib.rs \
                       tag.rs \
                       tail-cps.rs \
                       tail-direct.rs \

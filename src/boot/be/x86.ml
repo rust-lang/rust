@@ -302,11 +302,41 @@ let emit_target_specific
               | Il.IMOD | Il.UMOD ->
                   let dst_eax = hr_like_cell eax dst in
                   let lhs_eax = hr_like_op eax lhs in
-                  let rhs_ecx = hr_like_op ecx lhs in
-                    if lhs <> (Il.Cell lhs_eax)
-                    then mov lhs_eax lhs;
-                    if rhs <> (Il.Cell rhs_ecx)
-                    then mov rhs_ecx rhs;
+                  let rhs_ecx = hr_like_op ecx rhs in
+                    (* Horrible: we bounce complex mul inputs off spill slots
+                     * to ensure non-interference between the temporaries used
+                     * during mem-base-reg reloads and the registers we're
+                     * preparing.  *)
+                  let next_spill_like op =
+                    Il.Mem (Il.next_spill_slot e
+                              (Il.ScalarTy (Il.operand_scalar_ty op)))
+                  in
+                  let is_mem op =
+                    match op with
+                        Il.Cell (Il.Mem _) -> true
+                      | _ -> false
+                  in
+                  let bounce_lhs = is_mem lhs in
+                  let bounce_rhs = is_mem rhs in
+                  let lhs_spill = next_spill_like lhs in
+                  let rhs_spill = next_spill_like rhs in
+
+                    if bounce_lhs
+                    then mov lhs_spill lhs;
+
+                    if bounce_rhs
+                    then mov rhs_spill rhs;
+
+                    mov lhs_eax
+                      (if bounce_lhs
+                       then (Il.Cell lhs_spill)
+                       else lhs);
+
+                    mov rhs_ecx
+                      (if bounce_rhs
+                       then (Il.Cell rhs_spill)
+                       else rhs);
+                    
                     put (Il.Binary
                            { b with
                                Il.binary_lhs = (Il.Cell lhs_eax);
@@ -314,7 +344,7 @@ let emit_target_specific
                                Il.binary_dst = dst_eax; });
                     if dst <> dst_eax
                     then mov dst (Il.Cell dst_eax);
-
+                    
               | _ when (Il.Cell dst) <> lhs ->
                   mov dst lhs;
                   put (Il.Binary
@@ -1936,15 +1966,20 @@ let zero (dst:Il.cell) (count:Il.operand) : Asm.frag =
 ;;
 
 let mov (signed:bool) (dst:Il.cell) (src:Il.operand) : Asm.frag =
-  if is_ty8 (Il.cell_scalar_ty dst) || is_ty8 (Il.operand_scalar_ty src)
+  if is_ty8 (Il.cell_scalar_ty dst)
   then
     begin
-      (match dst with
-           Il.Reg (Il.Hreg r, _)
-           -> assert (is_ok_r8 r) | _ -> ());
-      (match src with
-           Il.Cell (Il.Reg (Il.Hreg r, _))
-           -> assert (is_ok_r8 r) | _ -> ());
+      match dst with
+          Il.Reg (Il.Hreg r, _) -> assert (is_ok_r8 r)
+        | _ -> ()
+    end;
+
+  if is_ty8 (Il.operand_scalar_ty src)
+  then
+    begin
+      match src with
+          Il.Cell (Il.Reg (Il.Hreg r, _)) -> assert (is_ok_r8 r)
+        | _ -> ()
     end;
 
   match (signed, dst, src) with

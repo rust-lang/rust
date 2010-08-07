@@ -1,3 +1,7 @@
+import std.os;
+import std._str;
+import std._vec;
+
 type buf_reader = unsafe obj {
   fn read() -> vec[u8];
 };
@@ -106,4 +110,23 @@ fn new_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
     fail;
   }
   ret fd_buf_writer(fd);
+}
+
+type writer =
+  unsafe obj {
+    fn write_str(str s);
+    fn write_int(int n);
+    fn write_uint(uint n);
+  };
+
+fn file_writer(str path,
+               vec[fileflag] flags)
+  -> writer
+{
+  unsafe obj fw(buf_writer out) {
+    fn write_str(str s)   { out.write(_str.bytes(s)); }
+    fn write_int(int n)   { out.write(_str.bytes(_int.to_str(n, 10u))); }
+    fn write_uint(uint n) { out.write(_str.bytes(_int.uto_str(n, 10u))); }
+  }
+  ret fw(new_buf_writer(path, flags));
 }

@@ -253,7 +253,10 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
                             let lv = name_to_lval apos bpos name in
                               Ast.PAT_tag (lv, paren_comma_list parse_pat ps)
 
-                      | LIT_INT _ | LIT_CHAR _ | LIT_BOOL _ ->
+                      | LIT_INT _
+                      | LIT_UINT _
+                      | LIT_CHAR _
+                      | LIT_BOOL _ ->
                           Ast.PAT_lit (Pexp.parse_lit ps)
 
                       | UNDERSCORE -> bump ps; Ast.PAT_wild

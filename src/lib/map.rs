@@ -75,8 +75,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
   {
     let uint i = 0u;
     while (i < nbkts) {
-      // FIXME (issue #94): as in find_common()
-      let int j = (hash[K](hasher, nbkts, key, i)) as int;
+      let uint j = (hash[K](hasher, nbkts, key, i));
       alt (bkts.(j)) {
         case (some[K, V](k, _)) {
           if (eqer(key, k)) {
@@ -103,8 +102,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
   {
     let uint i = 0u;
     while (i < nbkts) {
-      // FIXME (issue #94):  Pending bugfix, remove uint coercion.
-      let int j = (hash[K](hasher, nbkts, key, i)) as int;
+      let uint j = (hash[K](hasher, nbkts, key, i));
       alt (bkts.(j)) {
         case (some[K, V](k, v)) {
           if (eqer(key, k)) {
@@ -149,9 +147,6 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
       if (!util.rational_leq(load, lf)) {
         let uint nnewbkts = _int.next_power_of_two(nbkts + 1u);
 
-        // FIXME (issue #94):  Enforce our workaround to issue #94.
-        check ((nnewbkts as int) > 0);
-
         let vec[mutable bucket[K, V]] newbkts = make_buckets[K, V](nnewbkts);
         rehash[K, V](hasher, eqer, bkts, nbkts, newbkts, nnewbkts);
       }
@@ -183,8 +178,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     fn remove(&K key) -> util.option[V] {
       let uint i = 0u;
       while (i < nbkts) {
-        // FIXME (issue #94): as in find_common()
-        let int j = (hash[K](hasher, nbkts, key, i)) as int;
+        let uint j = (hash[K](hasher, nbkts, key, i));
         alt (bkts.(j)) {
           case (some[K, V](_, val)) {
             bkts.(j) = deleted[K, V]();

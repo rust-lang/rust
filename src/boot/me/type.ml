@@ -380,19 +380,20 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
               sprintf_itype ()
 
         | `Type (Ast.TY_vec ty_vec), Ast.COMP_atom atom ->
-            demand Ast.TY_int (check_atom atom);
+            demand_integer (check_atom atom);
             LTYPE_mono ty_vec
 
         | `Type (Ast.TY_vec _), _ ->
-            Common.err None "the vector type '%a' must be indexed via an int"
+            Common.err None
+              "the vector type '%a' must be indexed by an integral type"
               sprintf_itype ()
 
         | `Type Ast.TY_str, Ast.COMP_atom atom ->
-            demand Ast.TY_int (check_atom atom);
+            demand_integer (check_atom atom);
             LTYPE_mono (Ast.TY_mach Common.TY_u8)
 
         | `Type Ast.TY_str, _ ->
-            Common.err None "strings must be indexed via an int"
+            Common.err None "strings must be indexed by an integral type"
 
         | `Type (Ast.TY_box ty_box), Ast.COMP_deref -> LTYPE_mono ty_box
 

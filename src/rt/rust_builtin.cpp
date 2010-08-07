@@ -115,6 +115,12 @@ str_buf(rust_task *task, rust_str *s)
     return (char const *)&s->data[0];
 }
 
+extern "C" CDECL size_t
+str_byte_len(rust_task *task, rust_str *s)
+{
+    return s->fill - 1;  // -1 for the '\0' terminator.
+}
+
 extern "C" CDECL void *
 vec_buf(rust_task *task, type_desc *ty, rust_vec *v, size_t offset)
 {
