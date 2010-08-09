@@ -27,6 +27,7 @@ read_type_bit_mask() {
         bits |= strstr(env_str, "timer") ? rust_log::TIMER : 0;
         bits |= strstr(env_str, "gc") ? rust_log::GC : 0;
         bits |= strstr(env_str, "all") ? rust_log::ALL : 0;
+        bits = strstr(env_str, "none") ? 0 : bits;
     }
     return bits;
 }
