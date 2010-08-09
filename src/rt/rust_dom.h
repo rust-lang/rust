@@ -84,6 +84,7 @@ struct rust_dom
     int start_main_loop();
 
     void log_state();
+    static void log_all_state();
 };
 
 //

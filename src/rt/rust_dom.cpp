@@ -4,6 +4,8 @@
 
 template class ptr_vec<rust_task>;
 
+// Keeps track of all live domains, for debugging purposes.
+array_list<rust_dom*> _live_domains;
 
 rust_dom::rust_dom(rust_srv *srv, rust_crate const *root_crate) :
     interrupt_flag(0),
@@ -26,6 +28,10 @@ rust_dom::rust_dom(rust_srv *srv, rust_crate const *root_crate) :
     pthread_attr_setdetachstate(&attr, true);
 #endif
     root_task = new (this) rust_task(this, NULL);
+
+    if (_live_domains.replace(NULL, this) == false) {
+        _live_domains.append(this);
+    }
 }
 
 static void
@@ -73,6 +79,8 @@ rust_dom::~rust_dom() {
 #endif
     while (caches.length())
         delete caches.pop();
+
+    _live_domains.replace(this, NULL);
 }
 
 void
@@ -319,6 +327,13 @@ rust_dom::schedule_task()
     }
     // log(rust_log::DOM|rust_log::TASK, "no schedulable tasks");
     return NULL;
+}
+
+void
+rust_dom::log_all_state() {
+    for (uint32_t i = 0; i < _live_domains.size(); i++) {
+        _live_domains[i]->log_state();
+    }
 }
 
 void
