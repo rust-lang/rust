@@ -18,9 +18,11 @@ rust_chan::rust_chan(rust_task *task, maybe_proxy<rust_port> *port) :
 }
 
 rust_chan::~rust_chan() {
-    if (port && !port->is_proxy()) {
-        port->delegate()->chans.swap_delete(this);
-    }
+    task->log(rust_log::MEM | rust_log::COMM,
+              "del rust_chan(task=0x%" PRIxPTR ")", (uintptr_t) this);
+
+    A(task->dom, is_associated() == false,
+      "Channel must be disassociated before being freed.");
 }
 
 /**
@@ -28,7 +30,10 @@ rust_chan::~rust_chan() {
  */
 void rust_chan::associate(maybe_proxy<rust_port> *port) {
     this->port = port;
-    if (!port->is_proxy()) {
+    if (port->is_proxy() == false) {
+        task->log(rust_log::TASK,
+            "associating chan: 0x%" PRIxPTR " with port: 0x%" PRIxPTR,
+            this, port);
         this->port->delegate()->chans.push(this);
     }
 }
@@ -43,14 +48,23 @@ bool rust_chan::is_associated() {
 void rust_chan::disassociate() {
     A(task->dom, is_associated(), "Channel must be associated with a port.");
 
+    if (port->is_proxy() == false) {
+        task->log(rust_log::TASK,
+            "disassociating chan: 0x%" PRIxPTR " from port: 0x%" PRIxPTR,
+            this, port->delegate());
+        port->delegate()->chans.swap_delete(this);
+    }
+
     // Delete reference to the port.
     port = NULL;
 }
 
 /**
- * Attempt to transmit channel data to the associated port.
+ * Attempt to send data to the associated port.
  */
-void rust_chan::transmit() {
+void rust_chan::send(void *sptr) {
+    buffer.enqueue(sptr);
+
     rust_dom *dom = task->dom;
     if (!is_associated()) {
         W(dom, is_associated(),
@@ -81,7 +95,6 @@ void rust_chan::transmit() {
 
     return;
 }
-
 //
 // Local Variables:
 // mode: C++

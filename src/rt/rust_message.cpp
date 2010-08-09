@@ -90,8 +90,7 @@ send(uint8_t *buffer, size_t buffer_sz, const char* label, rust_task *source,
 }
 
 void data_message::process() {
-    _port->remote_channel->buffer.enqueue(_buffer);
-    _port->remote_channel->transmit();
+    _port->remote_channel->send(_buffer);
     _target->log(rust_log::COMM, "<=== received data via message ===");
 }
 

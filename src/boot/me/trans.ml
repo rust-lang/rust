@@ -2932,6 +2932,7 @@ let trans_visitor
       (slot:Ast.slot)
       (curr_iso:Ast.ty_iso option)
       : unit =
+      check_and_flush_chan cell slot;
       drop_slot (get_ty_params_of_current_frame()) cell slot curr_iso
 
   and drop_ty_in_current_frame
@@ -4187,6 +4188,25 @@ let trans_visitor
     in
     let last_jumps = Array.map trans_arm at.Ast.alt_tag_arms in
       Array.iter patch last_jumps
+
+  (* If we're about to drop a channel, synthesize an upcall_flush_chan.
+   * TODO: This should rather appear in a chan dtor when chans become
+   * objects. *)
+  and check_and_flush_chan
+    (cell:Il.cell)
+    (slot:Ast.slot)
+      : unit =
+      let ty = strip_mutable_or_constrained_ty (slot_ty slot) in
+      match simplified_ty ty with
+          Ast.TY_chan _ ->
+                annotate "check_and_flush_chan, flush_chan";
+                let rc = box_rc_cell cell in
+                  emit (Il.cmp (Il.Cell rc) one);
+                let jump = mark () in
+                  emit (Il.jmp Il.JNE Il.CodeNone);
+                  trans_void_upcall "upcall_flush_chan" [| Il.Cell cell |];
+                  patch jump;
+        | _ -> ()
 
   and drop_slots_at_curr_stmt _ : unit =
     let stmt = Stack.top curr_stmt in

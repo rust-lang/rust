@@ -237,7 +237,6 @@ rust_dom::reap_dead_tasks() {
         rust_task *task = dead_tasks[i];
         if (task->ref_count == 0) {
             I(this, task->tasks_waiting_to_join.is_empty());
-
             dead_tasks.swap_delete(task);
             log(rust_log::TASK,
                 "deleting unreferenced dead task 0x%" PRIxPTR, task);
@@ -392,10 +391,9 @@ rust_dom::start_main_loop()
         // if progress is made in other domains.
 
         if (scheduled_task == NULL) {
-            log(rust_log::TASK,
-                "all tasks are blocked, waiting for progress ...");
-            if (_log.is_tracing(rust_log::TASK))
+            if (_log.is_tracing(rust_log::TASK)) {
                 log_state();
+            }
             log(rust_log::TASK,
                 "all tasks are blocked, scheduler yielding ...");
             sync::yield();
@@ -437,18 +435,6 @@ rust_dom::start_main_loop()
     log(rust_log::DOM, "terminated scheduler loop, reaping dead tasks ...");
 
     while (dead_tasks.length() > 0) {
-        log(rust_log::DOM,
-            "waiting for %d dead tasks to become dereferenced ...",
-            dead_tasks.length());
-
-        if (_log.is_tracing(rust_log::DOM)) {
-            for (size_t i = 0; i < dead_tasks.length(); i++) {
-                log(rust_log::DOM,
-                    "task: 0x%" PRIxPTR ", index: %d, ref_count: %d",
-                    dead_tasks[i], i, dead_tasks[i]->ref_count);
-            }
-        }
-
         if (_incoming_message_queue.is_empty()) {
             log(rust_log::DOM,
                 "waiting for %d dead tasks to become dereferenced, "

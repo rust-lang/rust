@@ -323,6 +323,11 @@ get_callee_save_fp(uintptr_t *top_of_callee_saves)
 
 void
 rust_task::kill() {
+    if (dead()) {
+        // Task is already dead, can't kill what's already dead.
+        return;
+    }
+
     // Note the distinction here: kill() is when you're in an upcall
     // from task A and want to force-fail task B, you do B->kill().
     // If you want to fail yourself you do self->fail(upcall_nargs).

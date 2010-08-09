@@ -21,12 +21,30 @@ rust_port::~rust_port() {
 
     // Disassociate channels from this port.
     while (chans.is_empty() == false) {
-        chans.pop()->disassociate();
+        rust_chan *chan = chans.peek();
+        chan->disassociate();
     }
 
-    // We're the only ones holding a reference to the remote channel, so
-    // clean it up.
     delete remote_channel;
+}
+
+bool rust_port::receive(void *dptr) {
+    for (uint32_t i = 0; i < chans.length(); i++) {
+        rust_chan *chan = chans[i];
+        if (chan->buffer.is_empty() == false) {
+            chan->buffer.dequeue(dptr);
+            if (chan->buffer.is_empty() && chan->task->blocked()) {
+                task->log(rust_log::COMM,
+                          "chan: 0x%" PRIxPTR
+                          " is flushing, wakeup task: 0x%" PRIxPTR,
+                          chan, chan->task);
+                chan->task->wakeup(this);
+            }
+            task->log(rust_log::COMM, "<=== read data ===");
+            return true;
+        }
+    }
+    return false;
 }
 
 void rust_port::log_state() {

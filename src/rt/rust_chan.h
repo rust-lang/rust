@@ -17,7 +17,7 @@ public:
     void disassociate();
     bool is_associated();
 
-    void transmit();
+    void send(void *sptr);
 };
 
 //
