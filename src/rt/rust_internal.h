@@ -151,6 +151,7 @@ public:
     T *& operator[](size_t offset);
     void push(T *p);
     T *pop();
+    T *peek();
     void trim(size_t fill);
     void swap_delete(T* p);
 };

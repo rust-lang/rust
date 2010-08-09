@@ -70,6 +70,13 @@ ptr_vec<T>::pop()
 }
 
 template <typename T>
+T *
+ptr_vec<T>::peek()
+{
+    return data[fill - 1];
+}
+
+template <typename T>
 void
 ptr_vec<T>::trim(size_t sz)
 {
