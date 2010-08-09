@@ -245,7 +245,8 @@ BOOT_CMXS := $(BOOT_MLS:.ml=.cmx)
 BOOT_OBJS := $(BOOT_MLS:.ml=.o)
 BOOT_CMIS := $(BOOT_MLS:.ml=.cmi)
 
-RUNTIME_CS := rt/sync/spin_lock.cpp \
+RUNTIME_CS := rt/sync/sync.cpp \
+			  rt/sync/spin_lock.cpp \
               rt/sync/lock_free_queue.cpp \
               rt/sync/condition_variable.cpp \
               rt/rust.cpp \
@@ -279,7 +280,8 @@ RUNTIME_HDR := rt/globals.h \
                rt/rust_message.h \
                rt/circular_buffer.h \
                rt/util/array_list.h \
-               rt/util/hash_map.h
+               rt/util/hash_map.h \
+               rt/sync/sync.h
 
 RUNTIME_INCS := -Irt/isaac -Irt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=$(CFG_OBJ_SUFFIX))
