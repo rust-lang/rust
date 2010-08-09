@@ -6,16 +6,18 @@
 #define LOG_UPCALL_ENTRY(task)                              \
     (task)->dom->get_log().reset_indent(0);                 \
     (task)->log(rust_log::UPCALL,                           \
-                "> UPCALL %s - task: 0x%" PRIxPTR           \
+                "> UPCALL %s - task: %s @0x%" PRIxPTR       \
                 " retpc: x%" PRIxPTR,                       \
                 __FUNCTION__,                               \
-                (task), __builtin_return_address(0));       \
+                (task)->name, (task),                       \
+                __builtin_return_address(0));               \
     (task)->dom->get_log().indent();
 #else
 #define LOG_UPCALL_ENTRY(task)                              \
     (task)->dom->get_log().reset_indent(0);                 \
     (task)->log(rust_log::UPCALL,                           \
-                "> UPCALL task: x%" PRIxPTR (task));        \
+                "> UPCALL task: %s @x%" PRIxPTR,            \
+                (task)->name, (task));                      \
     (task)->dom->get_log().indent();
 #endif
 
@@ -55,8 +57,8 @@ upcall_new_port(rust_task *task, size_t unit_sz) {
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
     task->log(rust_log::UPCALL | rust_log::MEM | rust_log::COMM,
-              "upcall_new_port(task=0x%" PRIxPTR ", unit_sz=%d)",
-              (uintptr_t) task, unit_sz);
+              "upcall_new_port(task=0x%" PRIxPTR " (%s), unit_sz=%d)",
+              (uintptr_t) task, task->name, unit_sz);
     return new (dom) rust_port(task, unit_sz);
 }
 
@@ -76,8 +78,9 @@ upcall_new_chan(rust_task *task, rust_port *port) {
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
     task->log(rust_log::UPCALL | rust_log::MEM | rust_log::COMM,
-              "upcall_new_chan(task=0x%" PRIxPTR ", port=0x%" PRIxPTR ")",
-              (uintptr_t) task, port);
+              "upcall_new_chan("
+              "task=0x%" PRIxPTR " (%s), port=0x%" PRIxPTR ")",
+              (uintptr_t) task, task->name, port);
     I(dom, port);
     return new (dom) rust_chan(task, port);
 }
@@ -136,11 +139,11 @@ extern "C" CDECL void upcall_yield(rust_task *task) {
 extern "C" CDECL void
 upcall_join(rust_task *task, maybe_proxy<rust_task> *target) {
     LOG_UPCALL_ENTRY(task);
-    task->log(rust_log::UPCALL | rust_log::COMM,
-              "target: 0x%" PRIxPTR ", task: 0x%" PRIxPTR,
-              target, target->delegate());
-
     rust_task *target_task = target->delegate();
+    task->log(rust_log::UPCALL | rust_log::COMM,
+              "target: 0x%" PRIxPTR ", task: %s @0x%" PRIxPTR,
+              target, target_task->name, target_task);
+
     if (target->is_proxy()) {
         notify_message::
         send(notify_message::JOIN, "join", task, target->as_proxy());
@@ -222,8 +225,8 @@ upcall_kill(rust_task *task, maybe_proxy<rust_task> *target) {
     rust_task *target_task = target->delegate();
 
     task->log(rust_log::UPCALL | rust_log::TASK,
-              "kill task 0x%" PRIxPTR ", ref count %d",
-              target_task,
+              "kill task %s @0x%" PRIxPTR ", ref count %d",
+              target_task->name, target_task,
               target_task->ref_count);
 
     if (target->is_proxy()) {
@@ -498,14 +501,14 @@ static void *rust_thread_start(void *ptr)
 }
 
 extern "C" CDECL rust_task *
-upcall_new_task(rust_task *spawner) {
+upcall_new_task(rust_task *spawner, const char *name) {
     LOG_UPCALL_ENTRY(spawner);
 
     rust_dom *dom = spawner->dom;
-    rust_task *task = new (dom) rust_task(dom, spawner);
+    rust_task *task = new (dom) rust_task(dom, spawner, name);
     dom->log(rust_log::UPCALL | rust_log::MEM | rust_log::TASK,
-             "upcall new_task(spawner 0x%" PRIxPTR ") = 0x%" PRIxPTR,
-             spawner, task);
+             "upcall new_task(spawner %s @0x%" PRIxPTR ", %s) = 0x%" PRIxPTR,
+             spawner->name, spawner, name, task);
     return task;
 }
 
@@ -516,26 +519,27 @@ upcall_start_task(rust_task *spawner, rust_task *task,
 
     rust_dom *dom = spawner->dom;
     dom->log(rust_log::UPCALL | rust_log::MEM | rust_log::TASK,
-             "upcall start_task(task 0x%" PRIxPTR
+             "upcall start_task(task %s @0x%" PRIxPTR
              " exit_task_glue 0x%" PRIxPTR
              ", spawnee 0x%" PRIxPTR
-             ", callsz %" PRIdPTR ")", task, exit_task_glue, spawnee_fn,
-             callsz);
+             ", callsz %" PRIdPTR ")", task->name, task, exit_task_glue,
+             spawnee_fn, callsz);
     task->start(exit_task_glue, spawnee_fn, spawner->rust_sp, callsz);
     return task;
 }
 
 extern "C" CDECL maybe_proxy<rust_task> *
-upcall_new_thread(rust_task *task) {
+upcall_new_thread(rust_task *task, const char *name) {
     LOG_UPCALL_ENTRY(task);
 
     rust_dom *old_dom = task->dom;
     rust_dom *new_dom = new rust_dom(old_dom->srv->clone(),
-                                     old_dom->root_crate);
+                                     old_dom->root_crate,
+                                     name);
 
     task->log(rust_log::UPCALL | rust_log::MEM,
-              "upcall new_thread() = dom 0x%" PRIxPTR " task 0x%" PRIxPTR,
-              new_dom, new_dom->root_task);
+              "upcall new_thread(%s) = dom 0x%" PRIxPTR " task 0x%" PRIxPTR,
+              name, new_dom, new_dom->root_task);
     rust_proxy<rust_task> *proxy =
         new (old_dom) rust_proxy<rust_task>(old_dom,
                                             new_dom->root_task, true);

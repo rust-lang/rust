@@ -692,7 +692,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
     and check_stmt (stmt:Ast.stmt) : unit =
       check_ret stmt;
       match stmt.Common.node with
-          Ast.STMT_spawn (dst, _, callee, args) ->
+          Ast.STMT_spawn (dst, _, _, callee, args) ->
             infer_lval Ast.TY_task dst;
             demand Ast.TY_nil (check_fn callee args)
 

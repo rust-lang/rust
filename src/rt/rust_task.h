@@ -21,6 +21,7 @@ rust_task : public maybe_proxy<rust_task>,
     rust_crate_cache *cache;
 
     // Fields known only to the runtime.
+    const char *const name;
     ptr_vec<rust_task> *state;
     rust_cond *cond;
     rust_task *supervisor;     // Parent-link for failure propagation.
@@ -41,8 +42,10 @@ rust_task : public maybe_proxy<rust_task>,
 
     rust_alarm alarm;
 
+    // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_dom *dom,
-              rust_task *spawner);
+              rust_task *spawner,
+              const char *name);
     ~rust_task();
 
     void start(uintptr_t exit_task_glue,

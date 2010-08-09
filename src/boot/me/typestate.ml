@@ -664,7 +664,7 @@ let condition_assigning_visitor
             let precond = Array.append dst_init src_init in
               raise_pre_post_cond s.id precond;
 
-        | Ast.STMT_spawn (dst, _, lv, args)
+        | Ast.STMT_spawn (dst, _, _, lv, args)
         | Ast.STMT_call (dst, lv, args) ->
             raise_dst_init_precond_if_writing_through s.id dst;
             visit_callable_pre s.id (lval_slots cx dst) lv args
@@ -1350,7 +1350,7 @@ let lifecycle_visitor
         match s.node with
             Ast.STMT_copy (lv_dst, _)
           | Ast.STMT_call (lv_dst, _, _)
-          | Ast.STMT_spawn (lv_dst, _, _, _)
+          | Ast.STMT_spawn (lv_dst, _, _, _, _)
           | Ast.STMT_recv (lv_dst, _)
           | Ast.STMT_bind (lv_dst, _, _)
           | Ast.STMT_new_rec (lv_dst, _, _)

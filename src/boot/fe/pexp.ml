@@ -18,7 +18,7 @@ open Parser;;
 
 type pexp' =
     PEXP_call of (pexp * pexp array)
-  | PEXP_spawn of (Ast.domain * pexp)
+  | PEXP_spawn of (Ast.domain * string * pexp)
   | PEXP_bind of (pexp * pexp option array)
   | PEXP_rec of ((Ast.ident * Ast.mutability * pexp) array * pexp option)
   | PEXP_tup of ((Ast.mutability * pexp) array)
@@ -558,9 +558,27 @@ and parse_bottom_pexp (ps:pstate) : pexp =
               THREAD -> bump ps; Ast.DOMAIN_thread
             | _ -> Ast.DOMAIN_local
         in
-        let pexp = ctxt "spawn [domain] pexp: init call" parse_pexp ps in
+          (* Spawns either have an explicit literal string for the spawned
+             task's name, or the task is named as the entry call
+             expression. *)
+        let explicit_name =
+          match peek ps with
+              LIT_STR s -> bump ps; Some s
+            | _ -> None
+        in
+        let pexp =
+          ctxt "spawn [domain] [name] pexp: init call" parse_pexp ps
+        in
         let bpos = lexpos ps in
-          span ps apos bpos (PEXP_spawn (domain, pexp))
+        let name =
+          match explicit_name with
+              Some s -> s
+                (* FIXME: string_of_span returns a string like
+                   "./driver.rs:10:16 - 11:52", not the actual text at those
+                   characters *)
+            | None -> Session.string_of_span { lo = apos; hi = bpos }
+        in
+          span ps apos bpos (PEXP_spawn (domain, name, pexp))
 
     | BIND ->
         let apos = lexpos ps in
@@ -1183,7 +1201,7 @@ and desugar_expr_init
           let bind_stmt = ss (Ast.STMT_bind (dst_lval, fn_lval, arg_atoms)) in
             ac [ fn_stmts; arg_stmts; [| bind_stmt |] ]
 
-      | PEXP_spawn (domain, sub) ->
+      | PEXP_spawn (domain, name, sub) ->
           begin
             match sub.node with
                 PEXP_call (fn, args) ->
@@ -1191,7 +1209,8 @@ and desugar_expr_init
                   let (arg_stmts, arg_atoms) = desugar_expr_atoms ps args in
                   let fn_lval = atom_lval ps fn_atom in
                   let spawn_stmt =
-                    ss (Ast.STMT_spawn (dst_lval, domain, fn_lval, arg_atoms))
+                    ss (Ast.STMT_spawn
+                          (dst_lval, domain, name, fn_lval, arg_atoms))
                   in
                     ac [ fn_stmts; arg_stmts; [| spawn_stmt |] ]
               | _ -> raise (err "non-call spawn" ps)

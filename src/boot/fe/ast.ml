@@ -199,7 +199,7 @@ and tup_input = (mutability * atom)
 and stmt' =
 
   (* lval-assigning stmts. *)
-    STMT_spawn of (lval * domain * lval * (atom array))
+    STMT_spawn of (lval * domain * string * lval * (atom array))
   | STMT_new_rec of (lval * (rec_input array) * lval option)
   | STMT_new_tup of (lval * (tup_input array))
   | STMT_new_vec of (lval * mutability * atom array)
@@ -936,10 +936,11 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
             fmt ff ";"
           end
 
-      | STMT_spawn (dst, domain, fn, args) ->
+      | STMT_spawn (dst, domain, name, fn, args) ->
           fmt_lval ff dst;
           fmt ff " = spawn ";
           fmt_domain ff domain;
+          fmt_str ff ("\"" ^ name ^ "\"");
           fmt_lval ff fn;
           fmt_atoms ff args;
           fmt ff ";";

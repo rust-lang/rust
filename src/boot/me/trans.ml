@@ -2128,10 +2128,12 @@ let trans_visitor
       ((*initializing*)_:bool)
       (dst:Ast.lval)
       (domain:Ast.domain)
+      (name:string)
       (fn_lval:Ast.lval)
       (args:Ast.atom array)
       : unit =
     let (task_cell, _) = trans_lval_init dst in
+    let runtime_name = trans_static_string name in
     let (fptr_operand, fn_ty) = trans_callee fn_lval in
     (*let fn_ty_params = [| |] in*)
     let _ =
@@ -2165,7 +2167,7 @@ let trans_visitor
         match domain with
             Ast.DOMAIN_thread ->
               begin
-                trans_upcall "upcall_new_thread" new_task [| |];
+                trans_upcall "upcall_new_thread" new_task [| runtime_name |];
                 copy_fn_args false true (CLONE_all new_task) call;
                 trans_upcall "upcall_start_thread" task_cell
                   [|
@@ -2177,7 +2179,7 @@ let trans_visitor
             end
          | _ ->
              begin
-                 trans_upcall "upcall_new_task" new_task [| |];
+                 trans_upcall "upcall_new_task" new_task [| runtime_name |];
                  copy_fn_args false true (CLONE_chan new_task) call;
                  trans_upcall "upcall_start_task" task_cell
                    [|
@@ -4496,8 +4498,9 @@ let trans_visitor
       | Ast.STMT_send (chan,src) ->
           trans_send chan src
 
-      | Ast.STMT_spawn (dst, domain, plv, args) ->
-          trans_spawn (maybe_init stmt.id "spawn" dst) dst domain plv args
+      | Ast.STMT_spawn (dst, domain, name, plv, args) ->
+          trans_spawn (maybe_init stmt.id "spawn" dst) dst
+            domain name plv args
 
       | Ast.STMT_recv (dst, chan) ->
           trans_recv (maybe_init stmt.id "recv" dst) dst chan

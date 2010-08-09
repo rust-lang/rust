@@ -62,7 +62,7 @@ let mutability_checking_visitor
       match s.node with
             Ast.STMT_copy (lv_dst, _)
           | Ast.STMT_call (lv_dst, _, _)
-          | Ast.STMT_spawn (lv_dst, _, _, _)
+          | Ast.STMT_spawn (lv_dst, _, _, _, _)
           | Ast.STMT_recv (lv_dst, _)
           | Ast.STMT_bind (lv_dst, _, _)
           | Ast.STMT_new_rec (lv_dst, _, _)
