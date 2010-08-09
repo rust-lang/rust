@@ -34,13 +34,10 @@ struct rust_dom
     rust_task *curr_task;
     int rval;
 
-    condition_variable _progress;
-
     hash_map<rust_task *, rust_proxy<rust_task> *> _task_proxies;
     hash_map<rust_port *, rust_proxy<rust_port> *> _port_proxies;
 
     // Incoming messages from other domains.
-    condition_variable _incoming_message_pending;
     lock_free_queue _incoming_message_queue;
 
 #ifndef __WIN32__

@@ -262,8 +262,6 @@ void rust_dom::send_message(rust_message *message) {
                         this);
     A(this, message->dom == this, "Message owned by non-local domain.");
     _incoming_message_queue.enqueue(message);
-    _incoming_message_pending.signal();
-    _progress.signal();
 }
 
 /**
@@ -398,9 +396,11 @@ rust_dom::start_main_loop()
                 "all tasks are blocked, waiting for progress ...");
             if (_log.is_tracing(rust_log::TASK))
                 log_state();
-            _progress.wait();
             log(rust_log::TASK,
-                "progress made, resuming ...");
+                "all tasks are blocked, scheduler yielding ...");
+            sync::yield();
+            log(rust_log::TASK,
+                "scheduler resuming ...");
             continue;
         }
 
@@ -450,7 +450,14 @@ rust_dom::start_main_loop()
         }
 
         if (_incoming_message_queue.is_empty()) {
-            _incoming_message_pending.wait();
+            log(rust_log::DOM,
+                "waiting for %d dead tasks to become dereferenced, "
+                "scheduler yielding ...",
+                dead_tasks.length());
+            if (_log.is_tracing(rust_log::TASK)) {
+                log_state();
+            }
+            sync::yield();
         } else {
             drain_incoming_message_queue();
         }

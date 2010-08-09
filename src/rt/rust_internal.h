@@ -38,6 +38,7 @@ extern "C" {
 #error "Platform not supported."
 #endif
 
+#include "sync/sync.h"
 #include "sync/condition_variable.h"
 
 #ifndef __i386__

@@ -556,9 +556,6 @@ rust_task::wakeup(rust_cond *from)
     A(dom, cond == from, "Cannot wake up blocked task on wrong condition.");
 
     transition(&dom->blocked_tasks, &dom->running_tasks);
-    // TODO: Signaling every time the task is awaken is kind of silly,
-    // do this a nicer way.
-    dom->_progress.signal();
     I(dom, cond == from);
     cond = NULL;
 }
