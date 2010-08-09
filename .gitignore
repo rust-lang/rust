@@ -30,6 +30,8 @@
 *.swp
 .hg/
 .hgignore
+.cproject
+.project
 lexer.ml
 rustboot
 rustc
