@@ -16,7 +16,7 @@ public:
     int32_t append(T value);
     int32_t push(T value);
     T pop();
-    T replace(T old_value, T new_value);
+    bool replace(T old_value, T new_value);
     int32_t index_of(T value);
     bool is_empty();
     T & operator[](size_t index);
@@ -62,16 +62,16 @@ array_list<T>::pop() {
 
 /**
  * Replaces the old_value in the list with the new_value.
- * Returns the old_value if the replacement succeeded, or NULL otherwise.
+ * Returns the true if the replacement succeeded, or false otherwise.
  */
-template<typename T> T
+template<typename T> bool
 array_list<T>::replace(T old_value, T new_value) {
     int index = index_of(old_value);
     if (index < 0) {
-        return NULL;
+        return false;
     }
     _data[index] = new_value;
-    return old_value;
+    return true;
 }
 
 template<typename T> int32_t

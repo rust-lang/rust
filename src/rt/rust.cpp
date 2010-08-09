@@ -53,7 +53,9 @@ rust_srv::realloc(void *p, size_t bytes)
     }
     void * val = ::realloc(p, bytes);
 #ifdef TRACK_ALLOCATIONS
-    if (allocation_list.replace(p, val) == NULL) {
+    if (allocation_list.replace(p, val) == false) {
+        printf("realloc: ptr 0x%" PRIxPTR " is not in allocation_list\n",
+               (uintptr_t) p);
         fatal("not in allocation_list", __FILE__, __LINE__);
     }
 #endif
@@ -64,8 +66,8 @@ void
 rust_srv::free(void *p)
 {
 #ifdef TRACK_ALLOCATIONS
-    if (allocation_list.replace(p, NULL) == NULL) {
-        printf("ptr 0x%" PRIxPTR " is not in allocation_list\n",
+    if (allocation_list.replace(p, NULL) == false) {
+        printf("free: ptr 0x%" PRIxPTR " is not in allocation_list\n",
                (uintptr_t) p);
         fatal("not in allocation_list", __FILE__, __LINE__);
     }
