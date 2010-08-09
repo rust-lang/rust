@@ -140,11 +140,20 @@ isaac_init(rust_dom *dom, randctx *rctx)
                  CryptReleaseContext(hProv, 0));
         }
 #else
-        int fd = open("/dev/urandom", O_RDONLY);
-        I(dom, fd > 0);
-        I(dom, read(fd, (void*) &rctx->randrsl, sizeof(rctx->randrsl))
-          == sizeof(rctx->randrsl));
-        I(dom, close(fd) == 0);
+        char *rust_seed = getenv("RUST_SEED");
+        if (rust_seed != NULL) {
+            ub4 seed = (ub4) atoi(rust_seed);
+            for (size_t i = 0; i < RANDSIZ; i ++) {
+                memcpy(&rctx->randrsl[i], &seed, sizeof(ub4));
+                seed = (seed + 0x7ed55d16) + (seed << 12);
+            }
+        } else {
+            int fd = open("/dev/urandom", O_RDONLY);
+            I(dom, fd > 0);
+            I(dom, read(fd, (void*) &rctx->randrsl, sizeof(rctx->randrsl))
+              == sizeof(rctx->randrsl));
+            I(dom, close(fd) == 0);
+        }
 #endif
         randinit(rctx, 1);
 }
