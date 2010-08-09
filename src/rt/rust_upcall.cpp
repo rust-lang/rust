@@ -7,9 +7,11 @@
     (task)->dom->get_log().reset_indent(0);                 \
     (task)->log(rust_log::UPCALL,                           \
                 "> UPCALL %s - task: 0x%" PRIxPTR           \
-                " retpc: x%" PRIxPTR,                       \
+                " retpc: x%" PRIxPTR                        \
+                " ref_count: %d",                           \
                 __FUNCTION__,                               \
-                (task), __builtin_return_address(0));       \
+                (task), __builtin_return_address(0),        \
+                (task->ref_count));                         \
     (task)->dom->get_log().indent();
 #else
 #define LOG_UPCALL_ENTRY(task)                              \
@@ -18,6 +20,20 @@
                 "> UPCALL task: x%" PRIxPTR (task));        \
     (task)->dom->get_log().indent();
 #endif
+
+void
+log_task_state(rust_task *task, maybe_proxy<rust_task> *target) {
+    rust_task *delegate = target->delegate();
+    if (target->is_proxy()) {
+        task->log(rust_log::TASK,
+                  "remote task: 0x%" PRIxPTR ", ref_count: %d state: %s",
+                  delegate, delegate->ref_count, delegate->state_str());
+    } else {
+        task->log(rust_log::TASK,
+                  "local task: 0x%" PRIxPTR ", ref_count: %d state: %s",
+                  delegate, delegate->ref_count, delegate->state_str());
+    }
+}
 
 extern "C" CDECL char const *str_buf(rust_task *task, rust_str *s);
 
@@ -29,14 +45,13 @@ extern "C" void upcall_grow_task(rust_task *task, size_t n_frame_bytes) {
 extern "C" CDECL void upcall_log_int(rust_task *task, int32_t i) {
     LOG_UPCALL_ENTRY(task);
     task->log(rust_log::UPCALL | rust_log::ULOG,
-              "upcall log_int(0x%" PRIx32 " = %" PRId32 " = '%c')", i, i,
-              (char) i);
+              "rust: %" PRId32 " (0x%" PRIx32 ")", i, i);
 }
 
 extern "C" CDECL void upcall_log_str(rust_task *task, rust_str *str) {
     LOG_UPCALL_ENTRY(task);
     const char *c = str_buf(task, str);
-    task->log(rust_log::UPCALL | rust_log::ULOG, "upcall log_str(\"%s\")", c);
+    task->log(rust_log::UPCALL | rust_log::ULOG, "rust: %s", c);
 }
 
 extern "C" CDECL void upcall_trace_word(rust_task *task, uintptr_t i) {
@@ -219,6 +234,7 @@ extern "C" CDECL void upcall_fail(rust_task *task, char const *expr,
 extern "C" CDECL void
 upcall_kill(rust_task *task, maybe_proxy<rust_task> *target) {
     LOG_UPCALL_ENTRY(task);
+    log_task_state(task, target);
     rust_task *target_task = target->delegate();
 
     task->log(rust_log::UPCALL | rust_log::TASK,

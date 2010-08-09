@@ -17,6 +17,8 @@ rust_port::~rust_port() {
     task->log(rust_log::COMM | rust_log::MEM,
               "~rust_port 0x%" PRIxPTR, (uintptr_t) this);
 
+    log_state();
+
     // Disassociate channels from this port.
     while (chans.is_empty() == false) {
         chans.pop()->disassociate();
@@ -25,6 +27,20 @@ rust_port::~rust_port() {
     // We're the only ones holding a reference to the remote channel, so
     // clean it up.
     delete remote_channel;
+}
+
+void rust_port::log_state() {
+    task->log(rust_log::COMM,
+              "rust_port: 0x%" PRIxPTR ", associated channel(s): %d",
+              this, chans.length());
+    for (uint32_t i = 0; i < chans.length(); i++) {
+        rust_chan *chan = chans[i];
+        task->log(rust_log::COMM,
+            "\tchan: 0x%" PRIxPTR ", data pending: %s, remote: %s",
+            chan,
+            !chan->buffer.is_empty() ? "yes" : "no",
+            chan == remote_channel ? "yes" : "no");
+    }
 }
 
 //

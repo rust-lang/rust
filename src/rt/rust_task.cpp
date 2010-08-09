@@ -333,6 +333,7 @@ rust_task::kill() {
     if (this == dom->root_task)
         dom->fail();
 
+    log(rust_log::TASK, "preparing to unwind task: 0x%" PRIxPTR, this);
     run_on_resume(dom->root_crate->get_unwind_glue());
 }
 
@@ -515,6 +516,10 @@ rust_task::free(void *p, bool is_gc)
     }
 }
 
+const char *
+rust_task::state_str() {
+    return dom->state_vec_name(state);
+}
 
 void
 rust_task::transition(ptr_vec<rust_task> *src, ptr_vec<rust_task> *dst)

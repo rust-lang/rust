@@ -38,7 +38,8 @@ static void
 del_all_tasks(rust_dom *dom, ptr_vec<rust_task> *v) {
     I(dom, v);
     while (v->length()) {
-        dom->log(rust_log::TASK, "deleting task %" PRIdPTR, v->length() - 1);
+        dom->log(rust_log::TASK, "deleting task 0x%" PRIdPTR,
+                 v->length() - 1);
         delete v->pop();
     }
 }
@@ -48,16 +49,18 @@ rust_dom::delete_proxies() {
     rust_task *task;
     rust_proxy<rust_task> *task_proxy;
     while (_task_proxies.pop(&task, &task_proxy)) {
-        log(rust_log::TASK, "deleting proxy %" PRIxPTR
-                            " in dom %" PRIxPTR, task_proxy, task_proxy->dom);
+        log(rust_log::TASK, "deleting proxy 0x%" PRIxPTR
+                            " in dom 0x%" PRIxPTR,
+                            task_proxy, task_proxy->dom);
         delete task_proxy;
     }
 
     rust_port *port;
     rust_proxy<rust_port> *port_proxy;
     while (_port_proxies.pop(&port, &port_proxy)) {
-        log(rust_log::TASK, "deleting proxy %" PRIxPTR
-                            " in dom %" PRIxPTR, port_proxy, port_proxy->dom);
+        log(rust_log::TASK, "deleting proxy 0x%" PRIxPTR
+                            " in dom 0x%" PRIxPTR,
+                            port_proxy, port_proxy->dom);
         delete port_proxy;
     }
 }
@@ -251,10 +254,12 @@ rust_dom::reap_dead_tasks() {
  */
 void rust_dom::send_message(rust_message *message) {
     log(rust_log::COMM, "==> enqueueing \"%s\" 0x%" PRIxPTR
-                        " in queue 0x%" PRIxPTR,
+                        " in queue 0x%" PRIxPTR
+                        " in domain 0x%" PRIxPTR,
                         message->label,
                         message,
-                        &_incoming_message_queue);
+                        &_incoming_message_queue,
+                        this);
     A(this, message->dom == this, "Message owned by non-local domain.");
     _incoming_message_queue.enqueue(message);
     _incoming_message_pending.signal();
@@ -358,7 +363,8 @@ rust_dom::log_state() {
     if (!dead_tasks.is_empty()) {
         log(rust_log::TASK, "dead tasks:");
         for (size_t i = 0; i < dead_tasks.length(); i++) {
-            log(rust_log::TASK, "\t task: 0x%" PRIxPTR, dead_tasks[i]);
+            log(rust_log::TASK, "\t task: 0x%" PRIxPTR ", ref_count: %d",
+                dead_tasks[i], dead_tasks[i]->ref_count);
         }
     }
 }
@@ -401,8 +407,14 @@ rust_dom::start_main_loop()
         I(this, scheduled_task->running());
 
         log(rust_log::TASK,
-                 "activating task 0x%" PRIxPTR ", sp=0x%" PRIxPTR,
-                 (uintptr_t)scheduled_task, scheduled_task->rust_sp);
+                 "activating task 0x%" PRIxPTR
+                 ", sp=0x%" PRIxPTR
+                 ", ref_count=%d"
+                 ", state: %s",
+                 (uintptr_t)scheduled_task,
+                 scheduled_task->rust_sp,
+                 scheduled_task->ref_count,
+                 scheduled_task->state_str());
 
         interrupt_flag = 0;
 
