@@ -41,7 +41,7 @@ let box_gc_header_size = 4;;
 
 let box_gc_malloc_return_adjustment = 3;;
 
-let stk_field_valgrind_id = 0 + 1;;
+let stk_field_valgrind_id = 0;;
 let stk_field_limit = stk_field_valgrind_id + 1;;
 let stk_field_data = stk_field_limit + 1;;
 
