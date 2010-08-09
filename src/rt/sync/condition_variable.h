@@ -13,6 +13,7 @@ public:
     virtual ~condition_variable();
 
     void wait();
+    void timed_wait(size_t timeout_in_ns);
     void signal();
 };
 

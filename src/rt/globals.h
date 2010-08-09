@@ -20,12 +20,14 @@ extern "C" {
 }
 #elif defined(__GNUC__)
 #include <unistd.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dlfcn.h>
 #include <pthread.h>
 #include <errno.h>
+#include <time.h>
 #else
 #error "Platform not supported."
 #endif
