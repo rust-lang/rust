@@ -1,11 +1,11 @@
 
-fn main() -> () {
-    // test00(true);
+io fn main() -> () {
+    test00(true);
     // test01();
-    // test02();
-    // test03();
-    // test04();
-    // test05();
+    test02();
+    test03();
+    test04();
+    test05();
     test06();
 }
 
@@ -22,7 +22,7 @@ io fn test00_start(chan[int] ch, int message, int count) {
 
 io fn test00(bool is_multithreaded) {
     let int number_of_tasks = 1;
-    let int number_of_messages = 64;
+    let int number_of_messages = 4;
     log "Creating tasks";
     
     let port[int] po = port();
@@ -103,7 +103,7 @@ fn test04_start() {
 
 fn test04() {
     log "Spawning lots of tasks.";
-    let int i = 64;
+    let int i = 4;
     while (i > 0) {
         i = i - 1;
         spawn thread test04_start();
@@ -139,7 +139,7 @@ fn test06_start(int task_number) {
 }
     
 fn test06() {
-    let int number_of_tasks = 32;
+    let int number_of_tasks = 4;
     log "Creating tasks";
     
     let int i = 0;

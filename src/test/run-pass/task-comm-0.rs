@@ -15,5 +15,5 @@ io fn test05() {
     let int value <- po;
     value <- po;
     value <- po;
-    log value;
+    check(value == 30);
 }

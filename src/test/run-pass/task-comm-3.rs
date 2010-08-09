@@ -1,6 +1,8 @@
 io fn main() -> () {
-   log "===== THREADS =====";
+   log "===== WITHOUT THREADS =====";
    test00(false);
+   log "====== WITH THREADS ======";
+   test00(true);
 }
 
 io fn test00_start(chan[int] ch, int message, int count) {
@@ -15,8 +17,9 @@ io fn test00_start(chan[int] ch, int message, int count) {
 }
 
 io fn test00(bool is_multithreaded) {
-    let int number_of_tasks = 1;
-    let int number_of_messages = 0;
+    let int number_of_tasks = 16;
+    let int number_of_messages = 4;
+    
     log "Creating tasks";
     
     let port[int] po = port();
@@ -27,13 +30,13 @@ io fn test00(bool is_multithreaded) {
     // Create and spawn tasks...
     let vec[task] tasks = vec();
     while (i < number_of_tasks) {
-        i = i + 1;
         if (is_multithreaded) {
             tasks += vec(
                 spawn thread test00_start(ch, i, number_of_messages));
         } else {
             tasks += vec(spawn test00_start(ch, i, number_of_messages));
         }
+        i = i + 1;
     }
     
     // Read from spawned tasks...
@@ -53,7 +56,7 @@ io fn test00(bool is_multithreaded) {
     }
     
     log "Completed: Final number is: ";
-    check (sum + 1 == number_of_messages * 
-           (number_of_tasks * number_of_tasks + number_of_tasks) / 2);
-    log sum;
+    // check (sum == (((number_of_tasks * (number_of_tasks - 1)) / 2) * 
+    //       number_of_messages));
+    check (sum == 480);
 }

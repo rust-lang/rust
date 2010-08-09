@@ -1,8 +1,8 @@
 fn main() -> () {    
-    log "===== THREADS =====";
+    log "===== SPAWNING and JOINING TASKS =====";
+    test00(false);
+    log "===== SPAWNING and JOINING THREAD TASKS =====";
     test00(true);
-    log "====== TASKS ======";
-   // test00(false);
 }
 
 fn start(int task_number) {
@@ -15,7 +15,7 @@ fn start(int task_number) {
 }
     
 fn test00(bool create_threads) {
-    let int number_of_tasks = 0;
+    let int number_of_tasks = 8;
     
     let int i = 0;
     let vec[task] tasks = vec();

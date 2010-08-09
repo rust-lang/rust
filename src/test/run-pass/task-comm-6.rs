@@ -31,6 +31,8 @@ io fn test00() {
         r <- p; sum += r;
         i += 1;
     }
-    
-    check (sum == 4 * ((number_of_messages * (number_of_messages - 1)) / 2));
+
+    check (sum == 1998000);
+    // check (sum == 4 * ((number_of_messages * 
+    //                   (number_of_messages - 1)) / 2));
 }
