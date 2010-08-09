@@ -385,7 +385,10 @@ TASK_XFAILS := test/run-pass/acyclic-unwind.rs \
                test/run-pass/threads.rs \
                test/run-pass/yield.rs
 
+TEST_XFAILS := test/run-pass/arith-0.rs
+
 TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
+					$(TEST_XFAILS) \
                     test/run-pass/arithmetic-interference.rs \
                     test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/child-outlives-parent.rs \
@@ -416,7 +419,9 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/compile-fail/writing-through-read-alias.rs
 
 TEST_XFAILS_LLVM := $(TASK_XFAILS) \
+					$(TEST_XFAILS) \
                     $(addprefix test/run-pass/, \
+                      arith-1.rs \
                       acyclic-unwind.rs \
                       alt-pattern-simple.rs \
                       alt-tag.rs \
@@ -425,6 +430,8 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       autoderef-full-lval.rs \
                       autoderef-objfn.rs \
                       basic.rs \
+                      basic-1.rs \
+                      basic-2.rs \
                       bind-obj-ctor.rs \
                       bind-thunk.rs \
                       bind-trivial.rs \
