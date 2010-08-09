@@ -75,7 +75,7 @@ template <typename T>
 struct
 rc_base
 {
-    size_t ref_count;
+    int32_t ref_count;
 
     void ref() {
         ++ref_count;
