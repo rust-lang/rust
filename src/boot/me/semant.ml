@@ -1822,24 +1822,24 @@ let run_passes
 
 (* Rust type -> IL type conversion. *)
 
-let word_sty (abi:Abi.abi) : Il.scalar_ty =
-  Il.ValTy abi.Abi.abi_word_bits
+let word_sty (word_bits:Il.bits) : Il.scalar_ty =
+  Il.ValTy word_bits
 ;;
 
-let word_rty (abi:Abi.abi) : Il.referent_ty =
-  Il.ScalarTy (word_sty abi)
+let word_rty (word_bits:Il.bits) : Il.referent_ty =
+  Il.ScalarTy (word_sty word_bits)
 ;;
 
-let tydesc_rty (abi:Abi.abi) : Il.referent_ty =
+let tydesc_rty (word_bits:Il.bits) : Il.referent_ty =
   (* 
    * NB: must match corresponding tydesc structure
    * in trans and offsets in ABI exactly.
    *)
   Il.StructTy
     [|
-      word_rty abi;                      (* Abi.tydesc_field_first_param   *)
-      word_rty abi;                      (* Abi.tydesc_field_size          *)
-      word_rty abi;                      (* Abi.tydesc_field_align         *)
+      word_rty word_bits;                (* Abi.tydesc_field_first_param   *)
+      word_rty word_bits;                (* Abi.tydesc_field_size          *)
+      word_rty word_bits;                (* Abi.tydesc_field_align         *)
       Il.ScalarTy (Il.AddrTy Il.CodeTy); (* Abi.tydesc_field_copy_glue     *)
       Il.ScalarTy (Il.AddrTy Il.CodeTy); (* Abi.tydesc_field_drop_glue     *)
       Il.ScalarTy (Il.AddrTy Il.CodeTy); (* Abi.tydesc_field_free_glue     *)
@@ -1849,29 +1849,29 @@ let tydesc_rty (abi:Abi.abi) : Il.referent_ty =
     |]
 ;;
 
-let obj_closure_rty (abi:Abi.abi) : Il.referent_ty =
+let obj_closure_rty (word_bits:Il.bits) : Il.referent_ty =
   Il.StructTy [|
-    word_rty abi;
+    word_rty word_bits;
     Il.StructTy [|
-      Il.ScalarTy (Il.AddrTy (tydesc_rty abi));
-      word_rty abi (* A lie: it's opaque, but this permits
-                    * GEP'ing to it. *)
+      Il.ScalarTy (Il.AddrTy (tydesc_rty word_bits));
+      word_rty word_bits (* A lie: it's opaque, but this permits
+                          * GEP'ing to it. *)
     |]
   |]
 ;;
 
-let rec referent_type (abi:Abi.abi) (t:Ast.ty) : Il.referent_ty =
+let rec referent_type (word_bits:Il.bits) (t:Ast.ty) : Il.referent_ty =
   let s t = Il.ScalarTy t in
   let v b = Il.ValTy b in
   let p t = Il.AddrTy t in
   let sv b = s (v b) in
   let sp t = s (p t) in
 
-  let word = word_rty abi in
+  let word = word_rty word_bits in
   let ptr = sp Il.OpaqueTy in
   let rc_ptr = sp (Il.StructTy [| word; Il.OpaqueTy |]) in
   let codeptr = sp Il.CodeTy in
-  let tup ttup = Il.StructTy (Array.map (referent_type abi) ttup) in
+  let tup ttup = Il.StructTy (Array.map (referent_type word_bits) ttup) in
   let tag ttag =
     let union =
       Il.UnionTy
@@ -1916,7 +1916,7 @@ let rec referent_type (abi:Abi.abi) (t:Ast.ty) : Il.referent_ty =
             Il.StructTy [| codeptr; fn_closure_ptr |]
 
       | Ast.TY_obj _ ->
-          let obj_closure_ptr = sp (obj_closure_rty abi) in
+          let obj_closure_ptr = sp (obj_closure_rty word_bits) in
             Il.StructTy [| ptr; obj_closure_ptr |]
 
       | Ast.TY_tag ttag -> tag ttag
@@ -1928,26 +1928,26 @@ let rec referent_type (abi:Abi.abi) (t:Ast.ty) : Il.referent_ty =
       | Ast.TY_port _
       | Ast.TY_task -> rc_ptr
 
-      | Ast.TY_type -> sp (tydesc_rty abi)
+      | Ast.TY_type -> sp (tydesc_rty word_bits)
 
       | Ast.TY_native _ -> ptr
 
       | Ast.TY_box t ->
-          sp (Il.StructTy [| word; referent_type abi t |])
+          sp (Il.StructTy [| word; referent_type word_bits t |])
 
-      | Ast.TY_mutable t -> referent_type abi t
+      | Ast.TY_mutable t -> referent_type word_bits t
 
       | Ast.TY_param (i, _) -> Il.ParamTy i
 
       | Ast.TY_named _ -> bug () "named type in referent_type"
-      | Ast.TY_constrained (t, _) -> referent_type abi t
+      | Ast.TY_constrained (t, _) -> referent_type word_bits t
 
-and slot_referent_type (abi:Abi.abi) (sl:Ast.slot) : Il.referent_ty =
+and slot_referent_type (word_bits:Il.bits) (sl:Ast.slot) : Il.referent_ty =
   let s t = Il.ScalarTy t in
   let p t = Il.AddrTy t in
   let sp t = s (p t) in
 
-  let rty = referent_type abi (slot_ty sl) in
+  let rty = referent_type word_bits (slot_ty sl) in
     match sl.Ast.slot_mode with
       | Ast.MODE_local -> rty
       | Ast.MODE_alias -> sp rty
@@ -1958,7 +1958,7 @@ let task_rty (abi:Abi.abi) : Il.referent_ty =
     begin
       Array.init
         Abi.n_visible_task_fields
-        (fun _ -> word_rty abi)
+        (fun _ -> word_rty abi.Abi.abi_word_bits)
     end
 ;;
 
@@ -1970,14 +1970,17 @@ let call_args_referent_type_full
     (iterator_arg_rtys:Il.referent_ty array)
     (indirect_arg_rtys:Il.referent_ty array)
     : Il.referent_ty =
-  let out_slot_rty = slot_referent_type abi out_slot in
+  let out_slot_rty = slot_referent_type abi.Abi.abi_word_bits out_slot in
   let out_ptr_rty = Il.ScalarTy (Il.AddrTy out_slot_rty) in
   let task_ptr_rty = Il.ScalarTy (Il.AddrTy (task_rty abi)) in
   let ty_param_rtys =
-    let td = Il.ScalarTy (Il.AddrTy (tydesc_rty abi)) in
+    let td = Il.ScalarTy (Il.AddrTy (tydesc_rty abi.Abi.abi_word_bits)) in
       Il.StructTy (Array.init n_ty_params (fun _ -> td))
   in
-  let arg_rtys = Il.StructTy (Array.map (slot_referent_type abi) in_slots) in
+  let arg_rtys =
+    Il.StructTy
+      (Array.map (slot_referent_type abi.Abi.abi_word_bits) in_slots)
+  in
     (* 
      * NB: must match corresponding calltup structure in trans and
      * member indices in ABI exactly.
@@ -2003,7 +2006,7 @@ let call_args_referent_type
     (* Abi.indirect_args_elt_closure *)
     match closure with
         None ->
-          [| word_rty cx.ctxt_abi |]
+          [| word_rty cx.ctxt_abi.Abi.abi_word_bits |]
       | Some c ->
           [| Il.ScalarTy (Il.AddrTy c) |]
   in
@@ -2057,16 +2060,18 @@ let direct_call_args_referent_type
 ;;
 
 let ty_sz (abi:Abi.abi) (t:Ast.ty) : int64 =
-  force_sz (Il.referent_ty_size abi.Abi.abi_word_bits (referent_type abi t))
+  let wb = abi.Abi.abi_word_bits in
+    force_sz (Il.referent_ty_size wb (referent_type wb t))
 ;;
 
 let ty_align (abi:Abi.abi) (t:Ast.ty) : int64 =
-  force_sz (Il.referent_ty_align abi.Abi.abi_word_bits (referent_type abi t))
+  let wb = abi.Abi.abi_word_bits in
+    force_sz (Il.referent_ty_align wb (referent_type wb t))
 ;;
 
 let slot_sz (abi:Abi.abi) (s:Ast.slot) : int64 =
-  force_sz (Il.referent_ty_size abi.Abi.abi_word_bits
-              (slot_referent_type abi s))
+  let wb = abi.Abi.abi_word_bits in
+    force_sz (Il.referent_ty_size wb (slot_referent_type wb s))
 ;;
 
 let word_slot (abi:Abi.abi) : Ast.slot =

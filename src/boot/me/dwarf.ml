@@ -1677,7 +1677,7 @@ let dwarf_visitor
       in
 
       let record trec =
-        let rty = referent_type abi (Ast.TY_rec trec) in
+        let rty = referent_type word_bits (Ast.TY_rec trec) in
         let rty_sz = Il.referent_ty_size abi.Abi.abi_word_bits in
         let fix = new_fixup "record type DIE" in
         let die = DEF (fix, SEQ [|
@@ -1926,7 +1926,7 @@ let dwarf_visitor
          * I'm a bit surprised by that!
          *)
 
-        let rty = referent_type abi (Ast.TY_tag ttag) in
+        let rty = referent_type word_bits (Ast.TY_tag ttag) in
         let rty_sz = Il.referent_ty_size abi.Abi.abi_word_bits in
         let rtys =
           match rty with

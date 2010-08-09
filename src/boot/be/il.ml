@@ -901,6 +901,13 @@ let get_element_ptr
         (string_of_cell fmt mem_cell)
 ;;
 
+let ptr_cast (cell:cell) (rty:referent_ty) : cell =
+  match cell with
+      Mem (mem, _) -> Mem (mem, rty)
+    | Reg (reg, AddrTy _) -> Reg (reg, AddrTy rty)
+    | _ -> bug () "expected address cell in Il.ptr_cast"
+;;
+
 (*
  * Local Variables:
  * fill-column: 78;

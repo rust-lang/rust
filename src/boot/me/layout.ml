@@ -113,7 +113,7 @@ let layout_visitor
         | Il.CodeTy -> true
         | Il.NilTy -> false
     in
-      rt_in_mem (slot_referent_type cx.ctxt_abi slot)
+      rt_in_mem (slot_referent_type cx.ctxt_abi.Abi.abi_word_bits slot)
   in
 
   let rty_sz rty = Il.referent_ty_size cx.ctxt_abi.Abi.abi_word_bits rty in
@@ -142,7 +142,7 @@ let layout_visitor
       : unit =
     let accum (off,align) id : (size * size) =
       let slot = get_slot cx id in
-      let rt = slot_referent_type cx.ctxt_abi slot in
+      let rt = slot_referent_type cx.ctxt_abi.Abi.abi_word_bits slot in
       let (elt_size, elt_align) = rty_layout rt in
         if vregs_ok
           && (is_subword_size elt_size)
@@ -170,7 +170,9 @@ let layout_visitor
               then elt_off
               else neg_sz (add_sz elt_off elt_size)
             in
-              Stack.push (slot_referent_type cx.ctxt_abi slot) slot_accum;
+              Stack.push
+                (slot_referent_type cx.ctxt_abi.Abi.abi_word_bits slot)
+                slot_accum;
             iflog
               begin
                 fun _ ->

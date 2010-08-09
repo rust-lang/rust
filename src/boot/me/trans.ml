@@ -292,7 +292,7 @@ let trans_visitor
   in
 
   let ptr_at (mem:Il.mem) (pointee_ty:Ast.ty) : Il.cell =
-    rty_ptr_at mem (referent_type abi pointee_ty)
+    rty_ptr_at mem (referent_type word_bits pointee_ty)
   in
 
   let need_scalar_ty (rty:Il.referent_ty) : Il.scalar_ty =
@@ -330,11 +330,7 @@ let trans_visitor
           (cell_str mem_cell)
   in
 
-  let rec ptr_cast (cell:Il.cell) (rty:Il.referent_ty) : Il.cell =
-    match cell with
-        Il.Mem (mem, _) -> Il.Mem (mem, rty)
-      | Il.Reg (reg, Il.AddrTy _) -> Il.Reg (reg, Il.AddrTy rty)
-      | _ -> bug () "expected address cell in Trans.ptr_cast"
+  let rec ptr_cast = Il.ptr_cast
 
   and curr_crate_ptr _ : Il.cell =
     word_at (fp_imm frame_crate_ptr)
@@ -453,7 +449,7 @@ let trans_visitor
   in
 
   let slot_id_referent_type (slot_id:node_id) : Il.referent_ty =
-    slot_referent_type abi (get_slot cx slot_id)
+    slot_referent_type word_bits (get_slot cx slot_id)
   in
 
   let caller_args_cell (args_rty:Il.referent_ty) : Il.cell =
@@ -523,7 +519,7 @@ let trans_visitor
   let get_obj_for_current_frame _ =
     deref (ptr_cast
              (get_closure_for_current_frame ())
-             (Il.ScalarTy (Il.AddrTy (obj_closure_rty abi))))
+             (Il.ScalarTy (Il.AddrTy (obj_closure_rty word_bits))))
   in
 
   let get_ty_params_of_current_frame _ : Il.cell =
@@ -536,7 +532,7 @@ let trans_visitor
           let obj = get_element_ptr obj_box Abi.box_rc_field_body in
           let tydesc = get_element_ptr obj Abi.obj_body_elt_tydesc in
           let ty_params_ty = Ast.TY_tup (make_tydesc_tys n_ty_params) in
-          let ty_params_rty = referent_type abi ty_params_ty in
+          let ty_params_rty = referent_type word_bits ty_params_ty in
           let ty_params =
             get_element_ptr (deref tydesc) Abi.tydesc_field_first_param
           in
@@ -721,7 +717,7 @@ let trans_visitor
   in
 
   let ty_sz_in_current_frame (ty:Ast.ty) : Il.operand =
-    let rty = referent_type abi ty in
+    let rty = referent_type word_bits ty in
     let sz = Il.referent_ty_size word_bits rty in
       calculate_sz_in_current_frame sz
   in
@@ -730,7 +726,7 @@ let trans_visitor
       (ty_params:Il.cell)
       (ty:Ast.ty)
       : Il.operand =
-    let rty = referent_type abi ty in
+    let rty = referent_type word_bits ty in
     let sz = Il.referent_ty_size word_bits rty in
       calculate_sz ty_params sz
   in
@@ -931,7 +927,7 @@ let trans_visitor
         mov idx atop;
         emit (Il.binary Il.UMUL idx (Il.Cell idx) unit_sz);
         let elt_mem = trans_bounds_check (deref cell) (Il.Cell idx) in
-          (Il.Mem (elt_mem, referent_type abi ty), ty)
+          (Il.Mem (elt_mem, referent_type word_bits ty), ty)
     in
       (* 
        * All lval components aside from explicit-deref just auto-deref
@@ -1120,7 +1116,7 @@ let trans_visitor
   and trans_static_string (s:string) : Il.operand =
     Il.Cell (crate_rel_to_ptr
                (trans_crate_rel_static_string_operand s)
-               (referent_type abi Ast.TY_str))
+               (referent_type word_bits Ast.TY_str))
 
   and get_static_tydesc
       (idopt:node_id option)
@@ -1226,7 +1222,7 @@ let trans_visitor
     let fty = Hashtbl.find (snd caller) ident in
     let self_args_rty =
       call_args_referent_type cx 0
-        (Ast.TY_fn fty) (Some (obj_closure_rty abi))
+        (Ast.TY_fn fty) (Some (obj_closure_rty word_bits))
     in
     let callsz = Il.referent_ty_size word_bits self_args_rty in
     let spill = new_fixup "forwarding fn spill" in
@@ -1394,7 +1390,7 @@ let trans_visitor
       push_new_emitter_with_vregs None;
       iflog (fun _ -> annotate "prologue");
       abi.Abi.abi_emit_fn_prologue (emitter())
-        framesz callsz nabi_rust (upcall_fixup "upcall_grow_task");
+        framesz callsz nabi_rust (upcall_fixup "upcall_grow_task") false;
       write_frame_info_ptrs None;
       (* FIXME: not clear why, but checking interrupt in glue context
        * causes many.rs to crash when run on a sufficiently large number
@@ -1473,8 +1469,8 @@ let trans_visitor
       (* FIXME (issue #5): mutability flag *)
       : Il.referent_ty =
     let rc = Il.ScalarTy word_sty in
-    let targ = referent_type abi (mk_simple_ty_fn [||]) in
-    let bindings = Array.map (slot_referent_type abi) bs in
+    let targ = referent_type word_bits (mk_simple_ty_fn [||]) in
+    let bindings = Array.map (slot_referent_type word_bits) bs in
       Il.StructTy [| rc; targ; Il.StructTy bindings |]
 
   (* FIXME (issue #2): this should eventually use tail calling logic *)
@@ -2331,7 +2327,7 @@ let trans_visitor
                  (get_element_ptr_dyn_in_current_frame
                     vec Abi.vec_elt_data))
         in
-        let unit_rty = referent_type abi unit_ty in
+        let unit_rty = referent_type word_bits unit_ty in
         let body_rty = Il.StructTy (Array.map (fun _ -> unit_rty) atoms) in
         let body = Il.Mem (body_mem, body_rty) in
           Array.iteri
@@ -2377,12 +2373,12 @@ let trans_visitor
     let root_desc =
       Il.Cell (crate_rel_to_ptr
                  (get_static_tydesc idopt t 0L 0L force_stateful)
-                 (tydesc_rty abi))
+                 (tydesc_rty word_bits))
     in
     let (t, param_descs) = linearize_ty_params t in
     let descs = Array.append [| root_desc |] param_descs in
     let n = Array.length descs in
-    let rty = referent_type abi t in
+    let rty = referent_type word_bits t in
     let (size_sz, align_sz) = Il.referent_ty_layout word_bits rty in
     let size = calculate_sz_in_current_frame size_sz in
     let align = calculate_sz_in_current_frame align_sz in
@@ -2418,7 +2414,7 @@ let trans_visitor
                                (ty_sz abi ty)
                                (ty_align abi ty)
                                mut)
-             (tydesc_rty abi))
+             (tydesc_rty word_bits))
 
   and box_rc_cell (cell:Il.cell) : Il.cell =
     get_element_ptr (deref cell) Abi.box_rc_field_refcnt
@@ -2435,7 +2431,7 @@ let trans_visitor
     in
     let ty = simplified_ty ty in
     let refty_sz =
-      Il.referent_ty_size abi.Abi.abi_word_bits (referent_type abi ty)
+      Il.referent_ty_size abi.Abi.abi_word_bits (referent_type word_bits ty)
     in
       match refty_sz with
           SIZE_fixed _ -> imm (Int64.add (ty_sz abi ty) header_sz)
@@ -2532,7 +2528,7 @@ let trans_visitor
               trans_compare_simple Il.JAE (Il.Cell ptr) (Il.Cell lim)
             in
             let unit_cell =
-              deref (ptr_cast ptr (referent_type abi unit_ty))
+              deref (ptr_cast ptr (referent_type word_bits unit_ty))
             in
               f unit_cell unit_cell unit_ty curr_iso;
               add_to ptr unit_sz;
@@ -4310,7 +4306,7 @@ let trans_visitor
       push_new_emitter_with_vregs (Some id);
       iflog (fun _ -> annotate "prologue");
       abi.Abi.abi_emit_fn_prologue (emitter())
-        framesz callsz nabi_rust (upcall_fixup "upcall_grow_task");
+        framesz callsz nabi_rust (upcall_fixup "upcall_grow_task") false;
       write_frame_info_ptrs None;
       iflog (fun _ -> annotate "finished prologue");
       trans_block fe.Ast.for_each_body;
@@ -4394,7 +4390,7 @@ let trans_visitor
               let dst_fill = get_element_ptr dst_vec Abi.vec_elt_fill in
 
               (* Copy loop: *)
-              let eltp_rty = Il.AddrTy (referent_type abi elt_ty) in
+              let eltp_rty = Il.AddrTy (referent_type word_bits elt_ty) in
               let dptr = next_vreg_cell eltp_rty in
               let sptr = next_vreg_cell eltp_rty in
               let dlim = next_vreg_cell eltp_rty in
@@ -4771,7 +4767,7 @@ let trans_visitor
       end
   in
 
-  let trans_frame_entry (fnid:node_id) : unit =
+  let trans_frame_entry (fnid:node_id) (obj_fn:bool) : unit =
     let framesz = get_framesz cx fnid in
     let callsz = get_callsz cx fnid in
       Stack.push (Stack.create()) epilogue_jumps;
@@ -4785,7 +4781,7 @@ let trans_visitor
                                   (string_of_size callsz)));
       abi.Abi.abi_emit_fn_prologue
         (emitter()) framesz callsz nabi_rust
-        (upcall_fixup "upcall_grow_task");
+        (upcall_fixup "upcall_grow_task") obj_fn;
 
       write_frame_info_ptrs (Some fnid);
       check_interrupt_flag ();
@@ -4809,8 +4805,9 @@ let trans_visitor
   let trans_fn
       (fnid:node_id)
       (body:Ast.block)
+      (obj_fn:bool)
       : unit =
-    trans_frame_entry fnid;
+    trans_frame_entry fnid obj_fn;
     trans_block body;
     trans_frame_exit fnid true;
   in
@@ -4819,7 +4816,7 @@ let trans_visitor
       (obj_id:node_id)
       (header:Ast.header_slots)
       : unit =
-    trans_frame_entry obj_id;
+    trans_frame_entry obj_id true;
 
     let all_args_rty = current_fn_args_rty None in
     let all_args_cell = caller_args_cell all_args_rty in
@@ -4838,7 +4835,7 @@ let trans_visitor
     let obj_args_ty = Ast.TY_tup obj_args_tup in
     let state_ty = Ast.TY_tup [| Ast.TY_type; obj_args_ty |] in
     let state_ptr_ty = Ast.TY_box state_ty in
-    let state_ptr_rty = referent_type abi state_ptr_ty in
+    let state_ptr_rty = referent_type word_bits state_ptr_ty in
     let state_malloc_sz = box_allocation_size state_ptr_ty in
 
     let ctor_ty = Hashtbl.find cx.ctxt_all_item_types obj_id in
@@ -4940,7 +4937,7 @@ let trans_visitor
   in
 
   let trans_required_fn (fnid:node_id) (blockid:node_id) : unit =
-    trans_frame_entry fnid;
+    trans_frame_entry fnid false;
     emit (Il.Enter (Hashtbl.find cx.ctxt_block_fixups blockid));
     let (ilib, conv) = Hashtbl.find cx.ctxt_required_items fnid in
     let lib_num =
@@ -5078,7 +5075,7 @@ let trans_visitor
       (tagid:node_id)
       (tag:(Ast.header_tup * Ast.ty_tag * node_id))
       : unit =
-    trans_frame_entry tagid;
+    trans_frame_entry tagid false;
     trace_str cx.ctxt_sess.Session.sess_trace_tag
       ("in tag constructor " ^ n);
     let (header_tup, _, _) = tag in
@@ -5141,7 +5138,7 @@ let trans_visitor
     iflog (fun _ -> log cx "translating defined item #%d = %s"
              (int_of_node i.id) (path_name()));
     match i.node.Ast.decl_item with
-        Ast.MOD_ITEM_fn f -> trans_fn i.id f.Ast.fn_body
+        Ast.MOD_ITEM_fn f -> trans_fn i.id f.Ast.fn_body false
       | Ast.MOD_ITEM_tag t -> trans_tag n i.id t
       | Ast.MOD_ITEM_obj ob ->
           trans_obj_ctor i.id
@@ -5175,7 +5172,7 @@ let trans_visitor
       push_new_emitter_with_vregs (Some b.id);
       iflog (fun _ -> annotate "prologue");
       abi.Abi.abi_emit_fn_prologue (emitter())
-        framesz callsz nabi_rust (upcall_fixup "upcall_grow_task");
+        framesz callsz nabi_rust (upcall_fixup "upcall_grow_task") true;
       write_frame_info_ptrs None;
       iflog (fun _ -> annotate "finished prologue");
       trans_block b;
@@ -5185,7 +5182,7 @@ let trans_visitor
   in
 
   let visit_defined_obj_fn_pre _ _ fn =
-    trans_fn fn.id fn.node.Ast.fn_body
+    trans_fn fn.id fn.node.Ast.fn_body true
   in
 
   let visit_required_obj_fn_pre _ _ _ =

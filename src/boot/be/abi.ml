@@ -121,7 +121,8 @@ type abi =
                              -> Common.size      (* callsz  *)
                                -> Common.nabi
                                  -> Common.fixup (* grow_task *)
-                                   -> unit);
+                                   -> bool       (* is_obj_fn *)
+                                     -> unit);
 
     abi_emit_fn_epilogue: (Il.emitter -> unit);
 
