@@ -456,6 +456,15 @@ let trans_visitor
     Il.Mem (fp_imm out_mem_disp, args_rty)
   in
 
+  let get_obj_box_from_calltup (args_cell:Il.cell) =
+    let indirect_args =
+      get_element_ptr args_cell Abi.calltup_elt_indirect_args
+    in
+      deref (ptr_cast
+               (get_element_ptr indirect_args Abi.indirect_args_elt_closure)
+               (Il.ScalarTy (Il.AddrTy (obj_closure_rty word_bits))))
+  in
+
   let fp_to_args (fp:Il.cell) (args_rty:Il.referent_ty): Il.cell =
     let (reg, _) = force_to_reg (Il.Cell fp) in
     Il.Mem(based_imm reg out_mem_disp, args_rty)
@@ -465,11 +474,43 @@ let trans_visitor
       get_element_ptr ty_params param_idx
   in
 
-  let get_ty_params_of_frame (fp:Il.reg) (n_params:int) : Il.cell =
-    let fn_ty = mk_simple_ty_fn [| |] in
-    let fn_rty = call_args_referent_type cx n_params fn_ty None in
-    let args_cell = Il.Mem (based_imm fp out_mem_disp, fn_rty) in
-      get_element_ptr args_cell Abi.calltup_elt_ty_params
+  let get_ty_params_of_frame
+      (fnid:node_id)
+      (fp:Il.reg)
+      (n_ty_params:int)
+      : Il.cell =
+
+        let fn_ty = mk_simple_ty_fn [| |] in
+        let fn_rty =
+          call_args_referent_type cx n_ty_params fn_ty (Some Il.OpaqueTy)
+        in
+        let args_cell = Il.Mem (based_imm fp out_mem_disp, fn_rty) in
+
+          if defn_id_is_obj_fn_or_drop cx fnid
+          then
+            (*
+             * To get the typarams in an obj fn, we must go to the
+             * implicit obj's captured type descriptor.
+             *)
+            let obj_box =
+              get_obj_box_from_calltup args_cell
+            in
+            let obj = get_element_ptr obj_box Abi.box_rc_field_body in
+            let tydesc = get_element_ptr obj Abi.obj_body_elt_tydesc in
+            let ty_params_ty = Ast.TY_tup (make_tydesc_tys n_ty_params) in
+            let ty_params_rty = referent_type word_bits ty_params_ty in
+            let ty_params =
+              get_element_ptr (deref tydesc) Abi.tydesc_field_first_param
+            in
+            let ty_params =
+              ptr_cast ty_params (Il.ScalarTy (Il.AddrTy ty_params_rty))
+            in
+              deref ty_params
+          else
+            (*
+             * Regular function --- typarams are right in the frame calltup.
+             *)
+            get_element_ptr args_cell Abi.calltup_elt_ty_params
   in
 
   let get_args_for_current_frame _ =
@@ -516,34 +557,10 @@ let trans_visitor
         Abi.iterator_args_elt_outer_frame_ptr
   in
 
-  let get_obj_for_current_frame _ =
-    deref (ptr_cast
-             (get_closure_for_current_frame ())
-             (Il.ScalarTy (Il.AddrTy (obj_closure_rty word_bits))))
-  in
-
   let get_ty_params_of_current_frame _ : Il.cell =
-    let id = current_fn() in
-    let n_ty_params = n_item_ty_params cx id in
-      if defn_id_is_obj_fn_or_drop cx id
-      then
-        begin
-          let obj_box = get_obj_for_current_frame() in
-          let obj = get_element_ptr obj_box Abi.box_rc_field_body in
-          let tydesc = get_element_ptr obj Abi.obj_body_elt_tydesc in
-          let ty_params_ty = Ast.TY_tup (make_tydesc_tys n_ty_params) in
-          let ty_params_rty = referent_type word_bits ty_params_ty in
-          let ty_params =
-            get_element_ptr (deref tydesc) Abi.tydesc_field_first_param
-          in
-          let ty_params =
-            ptr_cast ty_params (Il.ScalarTy (Il.AddrTy ty_params_rty))
-          in
-            deref ty_params
-        end
-
-      else
-        get_ty_params_of_frame abi.Abi.abi_fp_reg n_ty_params
+    let fnid = current_fn() in
+    let n_ty_params = n_item_ty_params cx fnid in
+      get_ty_params_of_frame fnid abi.Abi.abi_fp_reg n_ty_params
   in
 
   let get_ty_param_in_current_frame (param_idx:int) : Il.cell =
@@ -4709,6 +4726,8 @@ let trans_visitor
     let get_frame_glue glue inner =
       get_mem_glue glue
         begin
+          (* `mem` here is a pointer to the frame we are marking, dropping,
+             or relocing, etc. *)
           fun mem ->
             iter_frame_and_arg_slots cx fnid
               begin
@@ -4716,10 +4735,19 @@ let trans_visitor
                   match htab_search cx.ctxt_slot_offsets slot_id with
                       Some off when not (slot_is_obj_state cx slot_id) ->
                         let referent_type = slot_id_referent_type slot_id in
+                          (*
+                           * This might look as though we're always taking the
+                           * pointer-to-frame and giving it the type of the
+                           * frame/arg of interest, but this is because our
+                           * deref_off a few lines later takes the referent
+                           * type of the given poiinter (`st`) as the referent
+                           * type of the mem-offset-from-the-given-pointer
+                           * that it returns.
+                           *)
                         let fp_cell = rty_ptr_at mem referent_type in
                         let (fp, st) = force_to_reg (Il.Cell fp_cell) in
                         let ty_params =
-                          get_ty_params_of_frame fp n_ty_params
+                          get_ty_params_of_frame fnid fp n_ty_params
                         in
                         let slot_cell =
                           deref_off_sz ty_params (Il.Reg (fp,st)) off
