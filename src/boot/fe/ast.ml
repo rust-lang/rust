@@ -259,9 +259,9 @@ and stmt_alt_type =
 
 and stmt_alt_port =
     {
-      (* else lval is a timeout value. *)
-      alt_port_arms: (lval * lval) array;
-      alt_port_else: (lval * block) option;
+      (* else atom is a timeout value. *)
+      alt_port_arms: port_arm array;
+      alt_port_else: (atom * block) option;
     }
 
 and block' = stmt array
@@ -324,6 +324,13 @@ and tag_arm = tag_arm' identified
 
 and type_arm' = ident * slot * block
 and type_arm = type_arm' identified
+
+and port_arm' = port_case * block
+and port_arm = port_arm' identified
+
+and port_case =
+    PORT_CASE_send of (lval * lval)
+  | PORT_CASE_recv of (lval * lval)
 
 and atom =
     ATOM_literal of (lit identified)
@@ -495,7 +502,6 @@ let sane_name (n:name) : bool =
 
 (***********************************************************************)
 
-(* FIXME (issue #19): finish all parts with ?foo? as their output. *)
 
 let fmt_ident (ff:Format.formatter) (i:ident) : unit =
   fmt ff  "%s" i
@@ -658,7 +664,7 @@ and fmt_constrained ff (ty, constrs) : unit =
   fmt_constrs ff constrs;
   fmt ff "@]";
   fmt ff "@]";
-    
+
 
 and fmt_ty (ff:Format.formatter) (t:ty) : unit =
   match t with
@@ -701,7 +707,7 @@ and fmt_ty (ff:Format.formatter) (t:ty) : unit =
   | TY_tag ttag -> fmt_tag ff ttag
   | TY_iso tiso -> fmt_iso ff tiso
   | TY_idx idx -> fmt ff "<idx#%d>" idx
-  | TY_constrained ctrd -> fmt_constrained ff ctrd 
+  | TY_constrained ctrd -> fmt_constrained ff ctrd
 
   | TY_obj (effect, fns) ->
       fmt_obox ff;
@@ -1228,7 +1234,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           Array.iter (fmt_tag_arm ff) at.alt_tag_arms;
           fmt_cbb ff;
 
-      | STMT_alt_type at -> 
+      | STMT_alt_type at ->
           fmt_obox ff;
           fmt ff "alt type (";
           fmt_lval ff at.alt_type_lval;
@@ -1236,7 +1242,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           fmt_obr ff;
           Array.iter (fmt_type_arm ff) at.alt_type_arms;
           begin
-            match at.alt_type_else with 
+            match at.alt_type_else with
                 None -> ()
               | Some block ->
                   fmt ff "@\n";
@@ -1247,14 +1253,34 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
                   fmt_cbb ff;
           end;
           fmt_cbb ff;
-      | STMT_alt_port _ -> fmt ff "?stmt_alt_port?"
-      | STMT_note at -> 
+
+      | STMT_alt_port at ->
+          fmt_obox ff;
+          fmt ff "alt ";
+          fmt_obr ff;
+          Array.iter (fmt_port_arm ff) at.alt_port_arms;
+          begin
+            match at.alt_port_else with
+                None -> ()
+              | Some (timeout, block) ->
+                  fmt ff "@\n";
+                  fmt_obox ff;
+                  fmt ff "case (_) ";
+                  fmt_atom ff timeout;
+                  fmt ff " ";
+                  fmt_obr ff;
+                  fmt_stmts ff block.node;
+                  fmt_cbb ff;
+          end;
+          fmt_cbb ff;
+
+      | STMT_note at ->
           begin
             fmt ff "note ";
             fmt_atom ff at;
             fmt ff ";"
           end
-      | STMT_slice (dst, src, slice) -> 
+      | STMT_slice (dst, src, slice) ->
           fmt_lval ff dst;
           fmt ff " = ";
           fmt_lval ff src;
@@ -1262,11 +1288,11 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           fmt_slice ff slice;
           fmt ff ";";
   end
-    
-and fmt_arm 
-    (ff:Format.formatter) 
+
+and fmt_arm
+    (ff:Format.formatter)
     (fmt_arm_case_expr : Format.formatter -> unit)
-    (block : block) 
+    (block : block)
     : unit =
   fmt ff "@\n";
   fmt_obox ff;
@@ -1276,15 +1302,25 @@ and fmt_arm
   fmt_obr ff;
   fmt_stmts ff block.node;
   fmt_cbb ff;
-  
+
 and fmt_tag_arm (ff:Format.formatter) (tag_arm:tag_arm) : unit =
   let (pat, block) = tag_arm.node in
     fmt_arm ff (fun ff -> fmt_pat ff pat) block;
-    
+
 and fmt_type_arm (ff:Format.formatter) (type_arm:type_arm) : unit =
   let (_, slot, block) = type_arm.node in
     fmt_arm ff (fun ff -> fmt_slot ff slot) block;
-      
+
+
+and fmt_port_arm (ff:Format.formatter) (port_arm:port_arm) : unit =
+  let (port_case, block) = port_arm.node in
+    fmt_arm ff (fun ff -> fmt_port_case ff port_case) block;
+
+and fmt_port_case (ff:Format.formatter) (port_case:port_case) : unit =
+  let stmt' = match port_case with
+      PORT_CASE_send params -> STMT_send params
+    | PORT_CASE_recv params -> STMT_recv params in
+    fmt_stmt ff {node = stmt'; id = Node 0};
 
 and fmt_pat (ff:Format.formatter) (pat:pat) : unit =
   match pat with
@@ -1315,9 +1351,9 @@ and fmt_slice (ff:Format.formatter) (slice:slice) : unit =
             fmt ff "@]";
     end;
     fmt ff "@])";
-    
 
-    
+
+
 
 and fmt_decl_param (ff:Format.formatter) (param:ty_param) : unit =
   let (ident, (i, e)) = param in
