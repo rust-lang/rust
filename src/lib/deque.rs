@@ -47,7 +47,7 @@ fn create[T]() -> t[T] {
     ret _vec.init_fn[cell[T]](copy_op, nalloc);
   }
 
-  fn get[T](&vec[cell[T]] elts, uint i) -> T {
+  fn get[T](vec[cell[T]] elts, uint i) -> T {
     alt (elts.(i)) {
       case (util.some[T](t)) { ret t; }
       case (_) { fail; }
@@ -100,6 +100,7 @@ fn create[T]() -> t[T] {
       let T t = get[T](elts, lo);
       elts.(lo) = util.none[T]();
       lo = (lo + 1u) % _vec.len[cell[T]](elts);
+      nelts -= 1u;
       ret t;
     }
 
@@ -112,6 +113,7 @@ fn create[T]() -> t[T] {
 
       let T t = get[T](elts, hi);
       elts.(hi) = util.none[T]();
+      nelts -= 1u;
       ret t;
     }
 
