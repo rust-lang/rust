@@ -181,7 +181,7 @@ let trans_visitor
       match q with
         Il.Jmp _ -> flush_emitter_size_cache();
         | _ -> ()
-    end;        
+    end;
     Il.emit (emitter()) q
   in
 
