@@ -7,11 +7,13 @@ template class ptr_vec<rust_task>;
 // Keeps track of all live domains, for debugging purposes.
 array_list<rust_dom*> _live_domains;
 
-rust_dom::rust_dom(rust_srv *srv, rust_crate const *root_crate) :
+rust_dom::rust_dom(rust_srv *srv, rust_crate const *root_crate,
+                   const char *name) :
     interrupt_flag(0),
     root_crate(root_crate),
     _log(srv, this),
     srv(srv),
+    name(name),
     running_tasks(this),
     blocked_tasks(this),
     dead_tasks(this),
@@ -27,7 +29,7 @@ rust_dom::rust_dom(rust_srv *srv, rust_crate const *root_crate) :
     pthread_attr_setstacksize(&attr, 1024 * 1024);
     pthread_attr_setdetachstate(&attr, true);
 #endif
-    root_task = new (this) rust_task(this, NULL);
+    root_task = new (this) rust_task(this, NULL, name);
 
     if (_live_domains.replace(NULL, this) == false) {
         _live_domains.append(this);
@@ -49,25 +51,25 @@ rust_dom::delete_proxies() {
     rust_task *task;
     rust_proxy<rust_task> *task_proxy;
     while (_task_proxies.pop(&task, &task_proxy)) {
-        log(rust_log::TASK, "deleting proxy 0x%" PRIxPTR
-                            " in dom 0x%" PRIxPTR,
-                            task_proxy, task_proxy->dom);
+        log(rust_log::TASK,
+            "deleting proxy 0x%" PRIxPTR " in dom %s 0x%" PRIxPTR,
+            task_proxy, task_proxy->dom->name, task_proxy->dom);
         delete task_proxy;
     }
 
     rust_port *port;
     rust_proxy<rust_port> *port_proxy;
     while (_port_proxies.pop(&port, &port_proxy)) {
-        log(rust_log::TASK, "deleting proxy 0x%" PRIxPTR
-                            " in dom 0x%" PRIxPTR,
-                            port_proxy, port_proxy->dom);
+        log(rust_log::TASK,
+            "deleting proxy 0x%" PRIxPTR " in dom %s 0x%" PRIxPTR,
+            port_proxy, port_proxy->dom->name, port_proxy->dom);
         delete port_proxy;
     }
 }
 
 rust_dom::~rust_dom() {
     log(rust_log::MEM | rust_log::DOM,
-             "~rust_dom 0x%" PRIxPTR, (uintptr_t)this);
+        "~rust_dom %s @0x%" PRIxPTR, name, (uintptr_t)this);
 
     log(rust_log::TASK, "deleting all proxies");
     delete_proxies();
@@ -135,7 +137,8 @@ rust_dom::logptr(char const *msg, T* ptrval) {
 
 void
 rust_dom::fail() {
-    log(rust_log::DOM, "domain 0x%" PRIxPTR " root task failed", this);
+    log(rust_log::DOM, "domain %s @0x%" PRIxPTR " root task failed",
+        name, this);
     I(this, rval == 0);
     rval = 1;
 }
@@ -144,8 +147,9 @@ void *
 rust_dom::malloc(size_t sz) {
     void *p = srv->malloc(sz);
     I(this, p);
-    log(rust_log::MEM, "0x%" PRIxPTR " rust_dom::malloc(%d) -> 0x%" PRIxPTR,
-        (uintptr_t) this, sz, p);
+    log(rust_log::MEM,
+        "%s @0x%" PRIxPTR " rust_dom::malloc(%d) -> 0x%" PRIxPTR,
+        name, (uintptr_t) this, sz, p);
     return p;
 }
 
@@ -201,8 +205,8 @@ void
 rust_dom::add_task_to_state_vec(ptr_vec<rust_task> *v, rust_task *task)
 {
     log(rust_log::MEM|rust_log::TASK,
-        "adding task 0x%" PRIxPTR " in state '%s' to vec 0x%" PRIxPTR,
-        (uintptr_t)task, state_vec_name(v), (uintptr_t)v);
+        "adding task %s @0x%" PRIxPTR " in state '%s' to vec 0x%" PRIxPTR,
+        task->name, (uintptr_t)task, state_vec_name(v), (uintptr_t)v);
     v->push(task);
 }
 
@@ -211,8 +215,8 @@ void
 rust_dom::remove_task_from_state_vec(ptr_vec<rust_task> *v, rust_task *task)
 {
     log(rust_log::MEM|rust_log::TASK,
-        "removing task 0x%" PRIxPTR " in state '%s' from vec 0x%" PRIxPTR,
-        (uintptr_t)task, state_vec_name(v), (uintptr_t)v);
+        "removing task %s @0x%" PRIxPTR " in state '%s' from vec 0x%" PRIxPTR,
+        task->name, (uintptr_t)task, state_vec_name(v), (uintptr_t)v);
     I(this, (*v)[task->idx] == task);
     v->swap_delete(task);
 }
@@ -239,7 +243,8 @@ rust_dom::reap_dead_tasks() {
             I(this, task->tasks_waiting_to_join.is_empty());
             dead_tasks.swap_delete(task);
             log(rust_log::TASK,
-                "deleting unreferenced dead task 0x%" PRIxPTR, task);
+                "deleting unreferenced dead task %s @0x%" PRIxPTR,
+                task->name, task);
             delete task;
             continue;
         }
@@ -282,7 +287,7 @@ rust_dom::get_task_proxy(rust_task *task) {
     if (_task_proxies.get(task, &proxy)) {
         return proxy;
     }
-    log(rust_log::COMM, "no proxy for 0x%" PRIxPTR, task);
+    log(rust_log::COMM, "no proxy for %s @0x%" PRIxPTR, task->name, task);
     proxy = new (this) rust_proxy<rust_task> (this, task, false);
     _task_proxies.put(task, proxy);
     return proxy;
@@ -344,7 +349,8 @@ rust_dom::log_state() {
         log(rust_log::TASK, "running tasks:");
         for (size_t i = 0; i < running_tasks.length(); i++) {
             log(rust_log::TASK,
-                "\t task: 0x%" PRIxPTR, running_tasks[i]);
+                "\t task: %s @0x%" PRIxPTR,
+                running_tasks[i]->name, running_tasks[i]);
         }
     }
 
@@ -352,16 +358,18 @@ rust_dom::log_state() {
         log(rust_log::TASK, "blocked tasks:");
         for (size_t i = 0; i < blocked_tasks.length(); i++) {
             log(rust_log::TASK,
-                "\t task: 0x%" PRIxPTR ", blocked on: 0x%" PRIxPTR,
-                blocked_tasks[i], blocked_tasks[i]->cond);
+                "\t task: %s @0x%" PRIxPTR ", blocked on: 0x%" PRIxPTR,
+                blocked_tasks[i]->name, blocked_tasks[i],
+                blocked_tasks[i]->cond);
         }
     }
 
     if (!dead_tasks.is_empty()) {
         log(rust_log::TASK, "dead tasks:");
         for (size_t i = 0; i < dead_tasks.length(); i++) {
-            log(rust_log::TASK, "\t task: 0x%" PRIxPTR ", ref_count: %d",
-                dead_tasks[i], dead_tasks[i]->ref_count);
+            log(rust_log::TASK, "\t task: %s 0x%" PRIxPTR ", ref_count: %d",
+                dead_tasks[i], dead_tasks[i]->name,
+                dead_tasks[i]->ref_count);
         }
     }
 }
@@ -378,7 +386,8 @@ rust_dom::start_main_loop()
     // Make sure someone is watching, to pull us out of infinite loops.
     rust_timer timer(this);
 
-    log(rust_log::DOM, "running main-loop on domain 0x%" PRIxPTR, this);
+    log(rust_log::DOM, "running main-loop on domain %s @0x%" PRIxPTR,
+        name, this);
     logptr("exit-task glue", root_crate->get_exit_task_glue());
 
     while (n_live_tasks() > 0) {
@@ -405,22 +414,24 @@ rust_dom::start_main_loop()
         I(this, scheduled_task->running());
 
         log(rust_log::TASK,
-                 "activating task 0x%" PRIxPTR
-                 ", sp=0x%" PRIxPTR
-                 ", ref_count=%d"
-                 ", state: %s",
-                 (uintptr_t)scheduled_task,
-                 scheduled_task->rust_sp,
-                 scheduled_task->ref_count,
-                 scheduled_task->state_str());
+            "activating task %s 0x%" PRIxPTR
+            ", sp=0x%" PRIxPTR
+            ", ref_count=%d"
+            ", state: %s",
+            scheduled_task->name,
+            (uintptr_t)scheduled_task,
+            scheduled_task->rust_sp,
+            scheduled_task->ref_count,
+            scheduled_task->state_str());
 
         interrupt_flag = 0;
 
         activate(scheduled_task);
 
         log(rust_log::TASK,
-                 "returned from task 0x%" PRIxPTR
+                 "returned from task %s @0x%" PRIxPTR
                  " in state '%s', sp=0x%" PRIxPTR,
+                 scheduled_task->name,
                  (uintptr_t)scheduled_task,
                  state_vec_name(scheduled_task->state),
                  scheduled_task->rust_sp);

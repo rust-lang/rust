@@ -25,6 +25,7 @@ struct rust_dom
     rust_crate const *root_crate;
     rust_log _log;
     rust_srv *srv;
+    const char *const name;
     ptr_vec<rust_task> running_tasks;
     ptr_vec<rust_task> blocked_tasks;
     ptr_vec<rust_task> dead_tasks;
@@ -44,7 +45,9 @@ struct rust_dom
     pthread_attr_t attr;
 #endif
 
-    rust_dom(rust_srv *srv, rust_crate const *root_crate);
+    // Only a pointer to 'name' is kept, so it must live as long as this
+    // domain.
+    rust_dom(rust_srv *srv, rust_crate const *root_crate, const char *name);
     ~rust_dom();
 
     void activate(rust_task *task);

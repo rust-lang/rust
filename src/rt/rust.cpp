@@ -184,7 +184,7 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc, char **argv)
     int ret;
     {
         rust_srv srv;
-        rust_dom dom(&srv, crate);
+        rust_dom dom(&srv, crate, "main");
         command_line_args args(dom, argc, argv);
 
         dom.log(rust_log::DOM, "startup: %d args", args.argc);
