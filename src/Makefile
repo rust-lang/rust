@@ -398,6 +398,7 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-pass/generic-recursive-tag.rs \
                     test/run-pass/int-lib.rs \
                     test/run-pass/iter-ret.rs \
+                    test/run-pass/lib-deque.rs \
                     test/run-pass/lib-map.rs \
                     test/run-pass/mlist-cycle.rs \
                     test/run-pass/obj-as.rs \

@@ -311,14 +311,25 @@ let emit_target_specific
                     Il.Mem (Il.next_spill_slot e
                               (Il.ScalarTy (Il.operand_scalar_ty op)))
                   in
-                  let lhs_spill = next_spill_like lhs in
-                  let rhs_spill = next_spill_like rhs in
+                  let is_eax cell =
+                    match cell with
+                        Il.Cell (Il.Reg (Il.Hreg hr, _)) -> hr = eax
+                      | _ -> false
+                  in                    
+                    if is_eax lhs
+                    then
+                      mov rhs_ecx rhs
+                    else
+                      begin
+                        let lhs_spill = next_spill_like lhs in
+                        let rhs_spill = next_spill_like rhs in
 
-                    mov lhs_spill lhs;
-                    mov rhs_spill rhs;
+                          mov lhs_spill lhs;
+                          mov rhs_spill rhs;
 
-                    mov lhs_eax (Il.Cell lhs_spill);
-                    mov rhs_ecx (Il.Cell rhs_spill);
+                          mov lhs_eax (Il.Cell lhs_spill);
+                          mov rhs_ecx (Il.Cell rhs_spill);
+                      end;
 
                     put (Il.Binary
                            { b with
