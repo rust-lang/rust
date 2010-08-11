@@ -2176,14 +2176,8 @@ let dwarf_visitor
   in
 
   let addr_ranges (fix:fixup) : frag =
-    let image_is_relocated =
-      match cx.ctxt_sess.Session.sess_targ with
-          Win32_x86_pe ->
-            cx.ctxt_sess.Session.sess_library_mode
-        | _ -> true
-    in
     let lo =
-      if image_is_relocated
+      if cx.ctxt_sess.Session.sess_library_mode
       then image_base_rel fix
       else M_POS fix
     in
