@@ -20,6 +20,8 @@ parser.add_option("-n", dest="repetitions",
                   help="number of repetitions", metavar="NUMBER")
 parser.add_option("-q", action="store_true", dest="quiet", default=False,
                   help="suppresses rust log output")
+parser.add_option("-v", action="store_true", dest="valgrind", default=False,
+                  help="runs under valgrind")
 parser.add_option("-p", action="store_true", dest="printSource",
                   default=False, help="prints the test case's source")
 parser.add_option("-s", dest="seed", metavar="NUMBER", default=-1,
@@ -72,7 +74,14 @@ for rustProgram in tests:
               os.putenv("RUST_SEED", options.seed);
             else:
               os.putenv("RUST_SEED", str(i));
-        result = os.system(rustProgram.replace(".rs", ".x86"));
+        command = rustProgram.replace(".rs", ".x86");
+        if (options.valgrind):
+          command = "valgrind --leak-check=full "  + \
+                    "--quiet --vex-iropt-level=0 " + \
+                    "--suppressions=etc/x86.supp " + \
+                    command;
+        print "Running Command: " + command;
+        result = os.system(command);
         exitStatus = result >> 8;
         signalNumber = result & 0xF;
         if (result == 0):
