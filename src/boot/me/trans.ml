@@ -2258,8 +2258,17 @@ let trans_visitor
     trans_void_upcall "upcall_join" [| trans_atom (Ast.ATOM_lval task) |]
 
   and trans_send (chan:Ast.lval) (src:Ast.lval) : unit =
-    let (srccell, _) = trans_lval src in
-      aliasing false srccell
+    let (src_cell, src_ty) = trans_lval src in
+      begin
+        match (ty_mem_ctrl src_ty) with
+          | MEM_rc_opaque
+          | MEM_rc_struct
+          | MEM_gc ->
+              iflog (fun _ -> annotate "incr_refcount of src obj");
+              incr_refcount src_cell;
+          | _ -> ()
+      end;
+      aliasing false src_cell
         begin
           fun src_alias ->
             trans_void_upcall "upcall_send"
