@@ -166,22 +166,6 @@ str_from_vec(rust_task *task, rust_vec *v)
     return st;
 }
 
-/*
-extern "C" CDECL rust_str*
-str_alloc(rust_task *task, size_t n_bytes)
-{
-    rust_dom *dom = task->dom;
-    size_t alloc = next_power_of_two(sizeof(rust_str) + n_bytes);
-    void *mem = dom->malloc(alloc);
-    if (!mem) {
-        task->fail(2);
-        return NULL;
-    }
-    rust_str *st = new (mem) rust_str(dom, alloc, 1, (uint8_t const *)"");
-    return st;
-}
-*/
-
 extern "C" CDECL void *
 rand_new(rust_task *task)
 {
