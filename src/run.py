@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import os
 import sys
 import time
@@ -14,16 +16,16 @@ rustTestRunBenchDir = rustTestDir + "/run-bench";
 
 parser = OptionParser()
 parser.set_usage("run.py [options] pattern : run.py -n 100 \"bas*\" -q");
-parser.add_option("-n", dest="repetitions", 
+parser.add_option("-n", dest="repetitions",
                   help="number of repetitions", metavar="NUMBER")
-parser.add_option("-q", action="store_true", dest="quiet", default=False, 
+parser.add_option("-q", action="store_true", dest="quiet", default=False,
                   help="suppresses rust log output")
-parser.add_option("-p", action="store_true", dest="printSource", 
+parser.add_option("-p", action="store_true", dest="printSource",
                   default=False, help="prints the test case's source")
 parser.add_option("-s", dest="seed", metavar="NUMBER", default=-1,
                   help="seeds the rust scheduler, use -1 to generate seeds, "
                   + " or >= 0 to specify a seed")
-                  
+
 (options, args) = parser.parse_args()
 
 def getRustTests(filter):
@@ -41,7 +43,7 @@ if len(args) != 1:
 
 tests = getRustTests(args[0]);
 
-# Make 
+# Make
 for rustProgram in tests:
     print "Making: " + rustProgram;
     result = os.system("make " + rustProgram.replace(".rs", ".x86")) >> 8;
@@ -54,6 +56,7 @@ if (options.quiet):
 
 # Rut
 totalPassed = 0;
+repetitions = 1;
 for rustProgram in tests:
     repetitions = 1;
     if (options.repetitions):
