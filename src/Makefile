@@ -477,6 +477,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       lib-deque.rs \
                       lib-map.rs \
                       lib-rand.rs \
+                      lib-vec-str-conversions.rs \
                       linear-for-loop.rs \
                       list.rs \
                       many.rs \

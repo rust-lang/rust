@@ -2,19 +2,6 @@
 #include "rust_internal.h"
 
 /* Native builtins. */
-extern "C" CDECL rust_str*
-str_alloc(rust_task *task, size_t n_bytes)
-{
-    rust_dom *dom = task->dom;
-    size_t alloc = next_power_of_two(sizeof(rust_str) + n_bytes);
-    void *mem = dom->malloc(alloc);
-    if (!mem) {
-        task->fail(2);
-        return NULL;
-    }
-    rust_str *st = new (mem) rust_str(dom, alloc, 1, (uint8_t const *)"");
-    return st;
-}
 
 extern "C" CDECL rust_str*
 last_os_error(rust_task *task) {
@@ -109,6 +96,48 @@ vec_alloc(rust_task *task, type_desc *t, type_desc *elem_t, size_t n_elts)
     return vec;
 }
 
+extern "C" CDECL void *
+vec_buf(rust_task *task, type_desc *ty, rust_vec *v, size_t offset)
+{
+    return (void *)&v->data[ty->size * offset];
+}
+
+extern "C" CDECL size_t
+vec_len(rust_task *task, type_desc *ty, rust_vec *v)
+{
+    return v->fill / ty->size;
+}
+
+/* Helper for str_alloc and str_from_vec.  Returns NULL as failure. */
+static rust_str *
+str_alloc_with_data(rust_task *task,
+                    size_t n_bytes,
+                    size_t fill,
+                    uint8_t const *d)
+{
+    rust_dom *dom = task->dom;
+    size_t alloc = next_power_of_two(sizeof(rust_str) + n_bytes);
+    void *mem = dom->malloc(alloc);
+    if (!mem)
+        return NULL;
+    rust_str *st = new (mem) rust_str(dom, alloc, fill, d);
+    return st;
+}
+
+extern "C" CDECL rust_str*
+str_alloc(rust_task *task, size_t n_bytes)
+{
+    rust_str *st = str_alloc_with_data(task,
+                                       n_bytes + 1,  // +1 to fit at least ""
+                                       1,
+                                       (uint8_t const *)"");
+    if (!st) {
+        task->fail(2);
+        return NULL;
+    }
+    return st;
+}
+
 extern "C" CDECL char const *
 str_buf(rust_task *task, rust_str *s)
 {
@@ -121,17 +150,37 @@ str_byte_len(rust_task *task, rust_str *s)
     return s->fill - 1;  // -1 for the '\0' terminator.
 }
 
-extern "C" CDECL void *
-vec_buf(rust_task *task, type_desc *ty, rust_vec *v, size_t offset)
+extern "C" CDECL rust_str *
+str_from_vec(rust_task *task, rust_vec *v)
 {
-    return (void *)&v->data[ty->size * offset];
+    rust_str *st =
+        str_alloc_with_data(task,
+                            v->fill + 1,  // +1 to fit at least '\0'
+                            v->fill,
+                            v->fill ? (uint8_t const *)v->data : NULL);
+    if (!st) {
+        task->fail(2);
+        return NULL;
+    }
+    st->data[st->fill++] = '\0';
+    return st;
 }
 
-extern "C" CDECL size_t
-vec_len(rust_task *task, type_desc *ty, rust_vec *v)
+/*
+extern "C" CDECL rust_str*
+str_alloc(rust_task *task, size_t n_bytes)
 {
-    return v->fill / ty->size;
+    rust_dom *dom = task->dom;
+    size_t alloc = next_power_of_two(sizeof(rust_str) + n_bytes);
+    void *mem = dom->malloc(alloc);
+    if (!mem) {
+        task->fail(2);
+        return NULL;
+    }
+    rust_str *st = new (mem) rust_str(dom, alloc, 1, (uint8_t const *)"");
+    return st;
 }
+*/
 
 extern "C" CDECL void *
 rand_new(rust_task *task)

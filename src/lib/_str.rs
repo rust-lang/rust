@@ -1,10 +1,13 @@
 import rustrt.sbuf;
 
+import std._vec.rustrt.vbuf;
+
 native "rust" mod rustrt {
   type sbuf;
   fn str_buf(str s) -> sbuf;
   fn str_byte_len(str s) -> uint;
   fn str_alloc(uint n_bytes) -> str;
+  fn str_from_vec(vec[u8] b) -> str;
   fn refcount[T](str s) -> uint;
 }
 
@@ -40,9 +43,33 @@ fn buf(str s) -> sbuf {
   ret rustrt.str_buf(s);
 }
 
-fn bytes(&str s) -> vec[u8] {
-  fn ith(str s, uint i) -> u8 {
-    ret s.(i);
+fn bytes(str s) -> vec[u8] {
+  /* FIXME (issue #58):
+   * Should be...
+   *
+   *  fn ith(str s, uint i) -> u8 {
+   *      ret s.(i);
+   *  }
+   *  ret _vec.init_fn[u8](bind ith(s, _), byte_len(s));
+   *
+   * but we do not correctly decrement refcount of s when
+   * the binding dies, so we have to do this manually.
+   */
+  let uint n = _str.byte_len(s);
+  let vec[u8] v = _vec.alloc[u8](n);
+  let uint i = 0u;
+  while (i < n) {
+    v += vec(s.(i));
+    i += 1u;
   }
-  ret _vec.init_fn[u8](bind ith(s, _), _str.byte_len(s));
+  ret v;
+}
+
+fn from_bytes(vec[u8] v) : is_utf8(v) -> str {
+  ret rustrt.str_from_vec(v);
+}
+
+fn refcount(str s) -> uint {
+  // -1 because calling this function incremented the refcount.
+  ret rustrt.refcount[u8](s) - 1u;
 }
