@@ -20,10 +20,10 @@ type init_op[T] = fn(uint i) -> T;
 
 fn init_fn[T](&init_op[T] op, uint n_elts) -> vec[T] {
   let vec[T] v = alloc[T](n_elts);
-  let uint i = n_elts;
-  while (i > 0u) {
-    i -= 1u;
+  let uint i = 0u;
+  while (i < n_elts) {
     v += vec(op(i));
+    i += 1u;
   }
   ret v;
 }
