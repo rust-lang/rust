@@ -21,6 +21,7 @@ public:
     void dequeue(void *dst);
     uint8_t *peek();
     bool is_empty();
+    size_t size();
 
 private:
     // Size of the buffer in bytes, should always be a power of two so that

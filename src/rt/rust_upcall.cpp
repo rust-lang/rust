@@ -116,6 +116,14 @@ upcall_flush_chan(rust_task *task, rust_chan *chan) {
         return;
     }
 
+    // We cannot flush if the target port was dropped.
+    if (chan->is_associated() == false) {
+        return;
+    }
+
+    A(dom, chan->is_associated(),
+      "Channel should be associated to a port.");
+
     A(dom, chan->port->is_proxy() == false,
       "Channels to remote ports should be flushed automatically.");
 

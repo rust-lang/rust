@@ -54,9 +54,9 @@ void rust_port::log_state() {
     for (uint32_t i = 0; i < chans.length(); i++) {
         rust_chan *chan = chans[i];
         task->log(rust_log::COMM,
-            "\tchan: 0x%" PRIxPTR ", data pending: %s, remote: %s",
+            "\tchan: 0x%" PRIxPTR ", size: %d, remote: %s",
             chan,
-            !chan->buffer.is_empty() ? "yes" : "no",
+            chan->buffer.size(),
             chan == remote_channel ? "yes" : "no");
     }
 }

@@ -2,8 +2,7 @@ io fn start(chan[chan[str]] c) {
     let port[str] p = port();
     c <| chan(p);
     auto a <- p;
-    auto b <- p;
-    // Never read the second string.
+    // auto b <- p; // Never read the second string.
 }
 
 io fn main() {

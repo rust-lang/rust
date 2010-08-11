@@ -142,3 +142,8 @@ bool
 circular_buffer::is_empty() {
     return _unread == 0;
 }
+
+size_t
+circular_buffer::size() {
+    return _unread;
+}
