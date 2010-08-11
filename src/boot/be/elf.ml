@@ -177,6 +177,7 @@ let section_header
     ~(sh_addralign:int64)
     ~(sh_entsize:int64)
     ~(sh_link:int64 option)
+    ~(sh_info:int64 option)
     : frag =
   SEQ
     [|
@@ -213,7 +214,9 @@ let section_header
       WORD (TY_u32, (IMM (match sh_link with
                               None -> 0L
                             | Some i -> i)));
-      WORD (TY_u32, (IMM 0L)); (* sh_info *)
+      WORD (TY_u32, (IMM (match sh_info with
+                              None -> 0L
+                            | Some i -> i)));
       WORD (TY_u32, (IMM sh_addralign));
       WORD (TY_u32, (IMM sh_entsize));
     |]
@@ -633,7 +636,7 @@ let elf32_linux_x86_file
   let dynsymndx      = 4L in  (* Section index of .dynsym *)
   let dynstrndx      = 5L in  (* Section index of .dynstr *)
   (* let hashndx        = 6L in *)  (* Section index of .hash *)
-  (* let pltndx         = 7L in *)  (* Section index of .plt *)
+  let pltndx         = 7L in  (* Section index of .plt *)
   (* let gotpltndx      = 8L in *)  (* Section index of .got.plt *)
   (* let relapltndx     = 9L in *)  (* Section index of .rela.plt *)
   let datandx        = 10L in  (* Section index of .data *)
@@ -695,7 +698,8 @@ let elf32_linux_x86_file
            ~section_fixup: None
            ~sh_addralign: 0L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 
         (* .interp *)
         (section_header
@@ -706,7 +710,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some interp_section_fixup)
            ~sh_addralign: 1L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 
         (* .text *)
         (section_header
@@ -717,7 +722,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some text_section_fixup)
            ~sh_addralign: 32L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 
         (* .rodata *)
         (section_header
@@ -728,7 +734,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some rodata_section_fixup)
            ~sh_addralign: 32L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 
         (* .dynsym *)
         (section_header
@@ -737,9 +744,10 @@ let elf32_linux_x86_file
            ~sh_type: SHT_DYNSYM
            ~sh_flags: [ SHF_ALLOC ]
            ~section_fixup: (Some dynsym_section_fixup)
-           ~sh_addralign: 8L
+           ~sh_addralign: 4L
            ~sh_entsize: elf32_symsize
-           ~sh_link: (Some dynstrndx) );
+           ~sh_link: (Some dynstrndx)
+           ~sh_info: None );
 
         (* .dynstr *)
         (section_header
@@ -750,7 +758,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some dynstr_section_fixup)
            ~sh_addralign: 1L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 
         (* .hash *)
         (section_header
@@ -761,7 +770,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some hash_section_fixup)
            ~sh_addralign: 4L
            ~sh_entsize: 4L
-           ~sh_link: (Some dynsymndx));
+           ~sh_link: (Some dynsymndx)
+           ~sh_info: None);
 
         (* .plt *)
         (section_header
@@ -772,7 +782,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some plt_section_fixup)
            ~sh_addralign: 4L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 
         (* .got.plt *)
         (section_header
@@ -783,7 +794,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some got_plt_section_fixup)
            ~sh_addralign: 4L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 
         (* .rela.plt *)
         (section_header
@@ -794,7 +806,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some rela_plt_section_fixup)
            ~sh_addralign: 4L
            ~sh_entsize: elf32_rela_entsz
-           ~sh_link: (Some dynsymndx));
+           ~sh_link: (Some dynsymndx)
+           ~sh_info: (Some pltndx));
 
         (* .data *)
         (section_header
@@ -805,7 +818,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some data_section_fixup)
            ~sh_addralign: 32L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 
         (* .bss *)
         (section_header
@@ -816,7 +830,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some bss_section_fixup)
            ~sh_addralign: 32L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 
         (* .dynamic *)
         (section_header
@@ -827,7 +842,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some dynamic_section_fixup)
            ~sh_addralign: 8L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: (Some dynstrndx)
+           ~sh_info: None);
 
         (* .shstrtab *)
         (section_header
@@ -838,7 +854,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some shstrtab_section_fixup)
            ~sh_addralign: 1L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 
 (* 
    FIXME: uncomment the dwarf section headers as you make use of them;
@@ -857,7 +874,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some sem.Semant.ctxt_debug_aranges_fixup)
            ~sh_addralign: 8L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 *)
         (* .debug_pubnames *)
 (*
@@ -869,7 +887,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some sem.Semant.ctxt_debug_pubnames_fixup)
            ~sh_addralign: 1L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 *)
 
         (* .debug_info *)
@@ -881,7 +900,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some sem.Semant.ctxt_debug_info_fixup)
            ~sh_addralign: 1L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 
         (* .debug_abbrev *)
         (section_header
@@ -892,7 +912,9 @@ let elf32_linux_x86_file
            ~section_fixup: (Some sem.Semant.ctxt_debug_abbrev_fixup)
            ~sh_addralign: 1L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
+
         (* .debug_line *)
 (*
         (section_header
@@ -903,7 +925,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some sem.Semant.ctxt_debug_line_fixup)
            ~sh_addralign: 1L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 *)
 
         (* .debug_frame *)
@@ -916,7 +939,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some sem.Semant.ctxt_debug_frame_fixup)
            ~sh_addralign: 4L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 *)
 
         (* .note.rust *)
@@ -928,7 +952,8 @@ let elf32_linux_x86_file
            ~section_fixup: (Some note_rust_section_fixup)
            ~sh_addralign: 1L
            ~sh_entsize: 0L
-           ~sh_link: None);
+           ~sh_link: None
+           ~sh_info: None);
 
       |]
   in
@@ -999,7 +1024,7 @@ let elf32_linux_x86_file
     elf32_header
       ~sess
       ~ei_data: ELFDATA2LSB
-      ~e_type: ET_DYN
+      ~e_type: (if sess.Session.sess_library_mode then ET_DYN else ET_EXEC)
       ~e_machine: EM_386
       ~e_version: EV_CURRENT
 
