@@ -381,6 +381,9 @@ TASK_XFAILS := test/run-pass/acyclic-unwind.rs \
                test/run-pass/task-comm-7.rs \
                test/run-pass/task-comm-8.rs \
                test/run-pass/task-comm-9.rs \
+               test/run-pass/task-comm-10.rs \
+               test/run-pass/task-comm-11.rs \
+               test/run-pass/task-life-0.rs \
                test/run-pass/task-comm.rs \
                test/run-pass/threads.rs \
                test/run-pass/yield.rs
