@@ -41,6 +41,7 @@ public:
         UPCALL = 0x200,
         TIMER = 0x400,
         GC = 0x800,
+        STDLIB = 0x1000,
         ALL = 0xffffffff
     };
 

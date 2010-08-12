@@ -10,6 +10,7 @@ native "rust" mod rustrt {
    * want to invoke this as vec_alloc[vec[U], U]. */
   fn vec_alloc[T, U](uint n_elts) -> vec[U];
   fn refcount[T](vec[T] v) -> uint;
+  fn vec_print_debug_info[T](vec[T] v);
 }
 
 fn alloc[T](uint n_elts) -> vec[T] {
@@ -56,6 +57,10 @@ fn buf[T](vec[T] v) -> vbuf {
 fn buf_off[T](vec[T] v, uint offset) -> vbuf {
   check (offset < len[T](v));
   ret rustrt.vec_buf[T](v, offset);
+}
+
+fn print_debug_info[T](vec[T] v) {
+  rustrt.vec_print_debug_info[T](v);
 }
 
 // Returns elements from [start..end) from v.

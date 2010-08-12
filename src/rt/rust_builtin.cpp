@@ -82,7 +82,7 @@ extern "C" CDECL rust_vec*
 vec_alloc(rust_task *task, type_desc *t, type_desc *elem_t, size_t n_elts)
 {
     rust_dom *dom = task->dom;
-    task->log(rust_log::MEM,
+    task->log(rust_log::MEM | rust_log::STDLIB,
               "vec_alloc %" PRIdPTR " elements of size %" PRIdPTR,
               n_elts, elem_t->size);
     size_t fill = n_elts * elem_t->size;
@@ -106,6 +106,23 @@ extern "C" CDECL size_t
 vec_len(rust_task *task, type_desc *ty, rust_vec *v)
 {
     return v->fill / ty->size;
+}
+
+extern "C" CDECL void
+vec_print_debug_info(rust_task *task, type_desc *ty, rust_vec *v)
+{
+    task->log(rust_log::STDLIB,
+              "vec_print_debug_info(%" PRIxPTR ")"
+              " with tydesc %" PRIxPTR
+              " (size = %" PRIdPTR ", align = %" PRIdPTR ")"
+              " alloc = %" PRIdPTR ", fill = %" PRIdPTR
+              " , data = ...", v, ty, ty->size, ty->align, v->alloc, v->fill);
+
+    for (size_t i = 0; i < v->fill; ++i) {
+        task->log(rust_log::STDLIB,
+                  "  %" PRIdPTR ":    0x%" PRIxPTR,
+                  i, v->data[i]);
+    }
 }
 
 /* Helper for str_alloc and str_from_vec.  Returns NULL as failure. */
