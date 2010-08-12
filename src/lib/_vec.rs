@@ -65,12 +65,11 @@ fn print_debug_info[T](vec[T] v) {
 
 // Returns elements from [start..end) from v.
 fn slice[T](vec[T] v, int start, int end) -> vec[T] {
-  check(0 <= start);
-  check(start <= end);
-  // FIXME #108: This doesn't work yet.
-  //check(end <= int(len[T](v)));
+  check (0 <= start);
+  check (start <= end);
+  check (end <= (len[T](v) as int));
   auto result = alloc[T]((end - start) as uint);
-  let mutable int i = start;
+  let int i = start;
   while (i < end) {
     result += vec(v.(i));
     i += 1;
