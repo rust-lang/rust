@@ -4,6 +4,7 @@
 use std;
 
 mod fe {
+    mod ast;
     mod lexer;
     mod parser;
 }
