@@ -507,6 +507,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       rec-tup.rs \
                       rec.rs \
                       simple-obj.rs \
+                      size-and-align.rs \
                       spawn-fn.rs \
                       spawn-module-qualified.rs \
                       spawn.rs \

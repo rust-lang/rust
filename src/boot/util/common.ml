@@ -686,7 +686,7 @@ let rec max_sz (a:size) (b:size) : size =
       | (SIZE_rt_max (b, c), a) when a = c -> max_sz a b
       | (SIZE_fixed a, SIZE_fixed b) -> SIZE_fixed (i64_max a b)
       | (SIZE_fixed 0L, b) when no_negs b -> b
-      | (a, SIZE_fixed 0L) when no_negs a -> b
+      | (a, SIZE_fixed 0L) when no_negs a -> a
       | (a, SIZE_fixed b) -> max_sz (SIZE_fixed b) a
       | (a, b) when a = b -> a
       | (a, b) -> SIZE_rt_max (a, b)
