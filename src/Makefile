@@ -35,7 +35,7 @@ ifeq ($(CFG_OSTYPE), Linux)
   CFG_RUNTIME := librustrt.so
   CFG_STDLIB := libstd.so
   CFG_GCC_CFLAGS += -fPIC
-  CFG_GCC_LINK_FLAGS += -shared -fPIC -ldl -lpthread
+  CFG_GCC_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
   ifeq ($(CFG_CPUTYPE), x86_64)
     CFG_GCC_CFLAGS += -m32
     CFG_GCC_LINK_FLAGS += -m32
@@ -245,8 +245,9 @@ BOOT_CMXS := $(BOOT_MLS:.ml=.cmx)
 BOOT_OBJS := $(BOOT_MLS:.ml=.o)
 BOOT_CMIS := $(BOOT_MLS:.ml=.cmi)
 
-RUNTIME_CS := rt/sync/sync.cpp \
-			  rt/sync/spin_lock.cpp \
+RUNTIME_CS := rt/sync/timer.cpp \
+              rt/sync/sync.cpp \
+              rt/sync/spin_lock.cpp \
               rt/sync/lock_free_queue.cpp \
               rt/sync/condition_variable.cpp \
               rt/rust.cpp \
@@ -281,7 +282,8 @@ RUNTIME_HDR := rt/globals.h \
                rt/circular_buffer.h \
                rt/util/array_list.h \
                rt/util/hash_map.h \
-               rt/sync/sync.h
+               rt/sync/sync.h \
+               rt/sync/timer.h
 
 RUNTIME_INCS := -Irt/isaac -Irt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=$(CFG_OBJ_SUFFIX))
@@ -513,6 +515,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       str-concat.rs \
                       str-idx.rs \
                       str-lib.rs \
+                      task-lib.rs \
                       tag.rs \
                       tail-cps.rs \
                       tail-direct.rs \

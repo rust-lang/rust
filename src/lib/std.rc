@@ -15,6 +15,7 @@ mod _str;
 
 mod _io;
 mod sys;
+mod _task;
 
 // Utility modules.
 
@@ -25,6 +26,7 @@ mod util;
 auth _io = unsafe;
 auth _str = unsafe;
 auth _vec = unsafe;
+auth _task = unsafe;
 
 auth _int.next_power_of_two = unsafe;
 auth map.mk_hashmap = unsafe;

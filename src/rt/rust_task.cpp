@@ -309,10 +309,16 @@ rust_task::run_on_resume(uintptr_t glue)
 }
 
 void
-rust_task::yield(size_t nargs)
-{
+rust_task::yield(size_t nargs) {
+    yield(nargs, 0);
+}
+
+void
+rust_task::yield(size_t nargs, size_t time_in_us) {
     log(rust_log::TASK,
-        "task %s @0x%" PRIxPTR " yielding", name, this);
+        "task %s @0x%" PRIxPTR " yielding for %d us",
+        name, this, time_in_us);
+    yield_timer.reset(time_in_us);
     run_after_return(nargs, dom->root_crate->get_yield_glue());
 }
 

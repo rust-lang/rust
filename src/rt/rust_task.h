@@ -29,6 +29,9 @@ rust_task : public maybe_proxy<rust_task>,
     size_t gc_alloc_thresh;
     size_t gc_alloc_accum;
 
+    // Keeps track of the last time this task yielded.
+    timer yield_timer;
+
     // Rendezvous pointer for receiving data when blocked on a port. If we're
     // trying to read data and no data is available on any incoming channel,
     // we block on the port, and yield control to the scheduler. Since, we
@@ -87,6 +90,9 @@ rust_task : public maybe_proxy<rust_task>,
 
     // Save callee-saved registers and return to the main loop.
     void yield(size_t nargs);
+
+    // Yields for a specified duration of time.
+    void yield(size_t nargs, size_t time_in_ms);
 
     // Fail this task (assuming caller-on-stack is different task).
     void kill();

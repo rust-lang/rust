@@ -330,7 +330,9 @@ rust_dom::schedule_task()
     if (running_tasks.length() > 0) {
         size_t i = rand(&rctx);
         i %= running_tasks.length();
-        return (rust_task *)running_tasks[i];
+        if (running_tasks[i]->yield_timer.has_timed_out()) {
+            return (rust_task *)running_tasks[i];
+        }
     }
     // log(rust_log::DOM|rust_log::TASK, "no schedulable tasks");
     return NULL;
@@ -349,8 +351,11 @@ rust_dom::log_state() {
         log(rust_log::TASK, "running tasks:");
         for (size_t i = 0; i < running_tasks.length(); i++) {
             log(rust_log::TASK,
-                "\t task: %s @0x%" PRIxPTR,
-                running_tasks[i]->name, running_tasks[i]);
+                "\t task: %s @0x%" PRIxPTR
+                " timeout: %d",
+                running_tasks[i]->name,
+                running_tasks[i],
+                running_tasks[i]->yield_timer.get_timeout());
         }
     }
 
@@ -396,8 +401,8 @@ rust_dom::start_main_loop()
         rust_task *scheduled_task = schedule_task();
 
         // If we cannot schedule a task because all other live tasks
-        // are blocked, wait on a condition variable which is signaled
-        // if progress is made in other domains.
+        // are blocked, yield and hopefully some progress is made in
+        // other domains.
 
         if (scheduled_task == NULL) {
             if (_log.is_tracing(rust_log::TASK)) {

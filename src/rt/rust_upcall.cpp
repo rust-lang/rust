@@ -183,6 +183,14 @@ extern "C" CDECL void upcall_yield(rust_task *task) {
     task->yield(1);
 }
 
+extern "C" CDECL void upcall_sleep(rust_task *task, size_t time_in_us) {
+    LOG_UPCALL_ENTRY(task);
+    task->log(rust_log::UPCALL | rust_log::TASK, "elapsed %d",
+              task->yield_timer.get_elapsed_time());
+    task->log(rust_log::UPCALL | rust_log::TASK, "sleep %d us", time_in_us);
+    task->yield(2, time_in_us);
+}
+
 extern "C" CDECL void
 upcall_join(rust_task *task, maybe_proxy<rust_task> *target) {
     LOG_UPCALL_ENTRY(task);

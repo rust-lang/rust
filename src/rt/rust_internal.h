@@ -39,6 +39,7 @@ extern "C" {
 #endif
 
 #include "sync/sync.h"
+#include "sync/timer.h"
 #include "sync/condition_variable.h"
 
 #ifndef __i386__
