@@ -840,14 +840,14 @@ and parse_mod_item (ps:pstate) : (Ast.ident * Ast.mod_item) =
                 | _ -> CONV_cdecl
             in
               expect ps MOD;
-              let (ident, params) = parse_ident_and_params ps "native mod" in
+              let ident = Pexp.parse_ident ps in
               let path = parse_lib_name ident in
               let items = parse_mod_items_from_signature ps in
               let bpos = lexpos ps in
               let rlib = REQUIRED_LIB_c { required_libname = path;
                                           required_prefix = ps.pstate_depth }
               in
-              let item = decl params (Ast.MOD_ITEM_mod items) in
+              let item = decl [||] (Ast.MOD_ITEM_mod items) in
               let item = span ps apos bpos item in
                 note_required_mod ps {lo=apos; hi=bpos} conv rlib item;
                 (ident, item)
