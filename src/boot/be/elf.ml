@@ -169,15 +169,16 @@ type sh_flags =
 
 
 let section_header
+    ?(sh_link:int64 option=None)
+    ?(sh_info:int64 option=None)
+    ?(zero_sh_addr:bool=false)
+    ?(sh_flags:sh_flags list=[])
+    ?(section_fixup:fixup option=None)
+    ?(sh_addralign:int64=1L)
+    ?(sh_entsize:int64=0L)
     ~(shstring_table_fixup:fixup)
     ~(shname_string_fixup:fixup)
-    ~(sh_type:sh_type)
-    ~(sh_flags:sh_flags list)
-    ~(section_fixup:fixup option)
-    ~(sh_addralign:int64)
-    ~(sh_entsize:int64)
-    ~(sh_link:int64 option)
-    ~(sh_info:int64 option)
+    (sh_type:sh_type)
     : frag =
   SEQ
     [|
@@ -202,9 +203,12 @@ let section_header
                                  SHF_WRITE -> 0x1L
                                | SHF_ALLOC -> 0x2L
                                | SHF_EXECINSTR -> 0x4L) sh_flags)));
-      WORD (TY_u32, (match section_fixup with
-                         None -> (IMM 0L)
-                       | Some s -> (M_POS s)));
+      WORD (TY_u32,
+            if zero_sh_addr
+            then IMM 0L
+            else (match section_fixup with
+                      None -> (IMM 0L)
+                    | Some s -> (M_POS s)));
       WORD (TY_u32, (match section_fixup with
                          None -> (IMM 0L)
                        | Some s -> (F_POS s)));
@@ -693,169 +697,129 @@ let elf32_linux_x86_file
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: null_section_name_fixup
-           ~sh_type: SHT_NULL
-           ~sh_flags: []
            ~section_fixup: None
            ~sh_addralign: 0L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           SHT_NULL);
 
         (* .interp *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: interp_section_name_fixup
-           ~sh_type: SHT_PROGBITS
            ~sh_flags: [ SHF_ALLOC ]
            ~section_fixup: (Some interp_section_fixup)
-           ~sh_addralign: 1L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           SHT_PROGBITS);
 
         (* .text *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: text_section_name_fixup
-           ~sh_type: SHT_PROGBITS
            ~sh_flags: [ SHF_ALLOC; SHF_EXECINSTR ]
            ~section_fixup: (Some text_section_fixup)
            ~sh_addralign: 32L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           SHT_PROGBITS);
 
         (* .rodata *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: rodata_section_name_fixup
-           ~sh_type: SHT_PROGBITS
            ~sh_flags: [ SHF_ALLOC ]
            ~section_fixup: (Some rodata_section_fixup)
            ~sh_addralign: 32L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           SHT_PROGBITS);
 
         (* .dynsym *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: dynsym_section_name_fixup
-           ~sh_type: SHT_DYNSYM
            ~sh_flags: [ SHF_ALLOC ]
            ~section_fixup: (Some dynsym_section_fixup)
            ~sh_addralign: 4L
            ~sh_entsize: elf32_symsize
            ~sh_link: (Some dynstrndx)
-           ~sh_info: None );
+           SHT_DYNSYM);
 
         (* .dynstr *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: dynstr_section_name_fixup
-           ~sh_type: SHT_STRTAB
            ~sh_flags: [ SHF_ALLOC ]
            ~section_fixup: (Some dynstr_section_fixup)
-           ~sh_addralign: 1L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           SHT_STRTAB);
 
         (* .hash *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: hash_section_name_fixup
-           ~sh_type: SHT_PROGBITS
            ~sh_flags: [ SHF_ALLOC ]
            ~section_fixup: (Some hash_section_fixup)
            ~sh_addralign: 4L
            ~sh_entsize: 4L
-           ~sh_link: (Some dynsymndx)
-           ~sh_info: None);
+           SHT_PROGBITS);
 
         (* .plt *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: plt_section_name_fixup
-           ~sh_type: SHT_PROGBITS
            ~sh_flags: [ SHF_ALLOC; SHF_EXECINSTR ]
            ~section_fixup: (Some plt_section_fixup)
            ~sh_addralign: 4L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           SHT_PROGBITS);
 
         (* .got.plt *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: got_plt_section_name_fixup
-           ~sh_type: SHT_PROGBITS
            ~sh_flags: [ SHF_ALLOC; SHF_WRITE ]
            ~section_fixup: (Some got_plt_section_fixup)
            ~sh_addralign: 4L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           SHT_PROGBITS);
 
         (* .rela.plt *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: rela_plt_section_name_fixup
-           ~sh_type: SHT_RELA
            ~sh_flags: [ SHF_ALLOC ]
            ~section_fixup: (Some rela_plt_section_fixup)
            ~sh_addralign: 4L
            ~sh_entsize: elf32_rela_entsz
            ~sh_link: (Some dynsymndx)
-           ~sh_info: (Some pltndx));
+           ~sh_info: (Some pltndx)
+           SHT_RELA);
 
         (* .data *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: data_section_name_fixup
-           ~sh_type: SHT_PROGBITS
            ~sh_flags: [ SHF_ALLOC; SHF_WRITE ]
            ~section_fixup: (Some data_section_fixup)
            ~sh_addralign: 32L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           SHT_PROGBITS);
 
         (* .bss *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: bss_section_name_fixup
-           ~sh_type: SHT_NOBITS
            ~sh_flags: [ SHF_ALLOC; SHF_WRITE ]
            ~section_fixup: (Some bss_section_fixup)
            ~sh_addralign: 32L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           SHT_NOBITS);
 
         (* .dynamic *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: dynamic_section_name_fixup
-           ~sh_type: SHT_DYNAMIC
            ~sh_flags: [ SHF_ALLOC; SHF_WRITE ]
            ~section_fixup: (Some dynamic_section_fixup)
            ~sh_addralign: 8L
-           ~sh_entsize: 0L
            ~sh_link: (Some dynstrndx)
-           ~sh_info: None);
+           SHT_DYNAMIC);
 
         (* .shstrtab *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: shstrtab_section_name_fixup
-           ~sh_type: SHT_STRTAB
-           ~sh_flags: []
            ~section_fixup: (Some shstrtab_section_fixup)
-           ~sh_addralign: 1L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           SHT_STRTAB);
 
 (* 
    FIXME: uncomment the dwarf section headers as you make use of them;
@@ -869,64 +833,45 @@ let elf32_linux_x86_file
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: debug_aranges_section_name_fixup
-           ~sh_type: SHT_PROGBITS
-           ~sh_flags: []
            ~section_fixup: (Some sem.Semant.ctxt_debug_aranges_fixup)
            ~sh_addralign: 8L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           ~zero_sh_addr: true
+           SHT_PROGBITS);
 *)
         (* .debug_pubnames *)
 (*
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: debug_pubnames_section_name_fixup
-           ~sh_type: SHT_PROGBITS
-           ~sh_flags: []
            ~section_fixup: (Some sem.Semant.ctxt_debug_pubnames_fixup)
-           ~sh_addralign: 1L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           ~zero_sh_addr: true
+           SHT_PROGBITS);
 *)
 
         (* .debug_info *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: debug_info_section_name_fixup
-           ~sh_type: SHT_PROGBITS
-           ~sh_flags: []
            ~section_fixup: (Some sem.Semant.ctxt_debug_info_fixup)
-           ~sh_addralign: 1L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           ~zero_sh_addr: true
+           SHT_PROGBITS);
 
         (* .debug_abbrev *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: debug_abbrev_section_name_fixup
-           ~sh_type: SHT_PROGBITS
-           ~sh_flags: []
            ~section_fixup: (Some sem.Semant.ctxt_debug_abbrev_fixup)
-           ~sh_addralign: 1L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           ~zero_sh_addr: true
+           SHT_PROGBITS);
 
         (* .debug_line *)
 (*
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: debug_line_section_name_fixup
-           ~sh_type: SHT_PROGBITS
-           ~sh_flags: []
            ~section_fixup: (Some sem.Semant.ctxt_debug_line_fixup)
-           ~sh_addralign: 1L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           ~zero_sh_addr: true
+           SHT_PROGBITS);
 *)
 
         (* .debug_frame *)
@@ -934,26 +879,18 @@ let elf32_linux_x86_file
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: debug_frame_section_name_fixup
-           ~sh_type: SHT_PROGBITS
-           ~sh_flags: []
            ~section_fixup: (Some sem.Semant.ctxt_debug_frame_fixup)
            ~sh_addralign: 4L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           ~zero_sh_addr: true
+           SHT_PROGBITS);
 *)
 
         (* .note.rust *)
         (section_header
            ~shstring_table_fixup: shstrtab_section_fixup
            ~shname_string_fixup: note_rust_section_name_fixup
-           ~sh_type: SHT_NOTE
-           ~sh_flags: []
            ~section_fixup: (Some note_rust_section_fixup)
-           ~sh_addralign: 1L
-           ~sh_entsize: 0L
-           ~sh_link: None
-           ~sh_info: None);
+           SHT_NOTE);
 
       |]
   in
