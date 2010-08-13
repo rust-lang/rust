@@ -2795,6 +2795,7 @@ let rec extract_meta
     queue_to_arr meta
 ;;
 
+let external_opaques = Hashtbl.create 0;;
 
 let rec extract_mod_items
     (nref:node_id ref)
@@ -2816,7 +2817,6 @@ let rec extract_mod_items
       id
   in
 
-  let external_opaques = Hashtbl.create 0 in
   let get_opaque_of o =
     htab_search_or_add external_opaques o
       (fun _ -> next_opaque_id())
