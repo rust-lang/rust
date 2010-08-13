@@ -1,8 +1,5 @@
 // -*- rust -*-
 
-use std;
-import std._vec;
-
 type clam[T] = tag(a(T, int), b());
 
 fn uhoh[T](vec[clam[T]] v) {

@@ -112,8 +112,8 @@ extern "C" CDECL void
 vec_print_debug_info(rust_task *task, type_desc *ty, rust_vec *v)
 {
     task->log(rust_log::STDLIB,
-              "vec_print_debug_info(%" PRIxPTR ")"
-              " with tydesc %" PRIxPTR
+              "vec_print_debug_info(0x%" PRIxPTR ")"
+              " with tydesc 0x%" PRIxPTR
               " (size = %" PRIdPTR ", align = %" PRIdPTR ")"
               " alloc = %" PRIdPTR ", fill = %" PRIdPTR
               " , data = ...", v, ty, ty->size, ty->align, v->alloc, v->fill);
