@@ -33,7 +33,7 @@ circular_buffer::circular_buffer(rust_dom *dom, size_t unit_sz) :
 circular_buffer::~circular_buffer() {
     dom->log(rust_log::MEM, "~circular_buffer 0x%" PRIxPTR, this);
     I(dom, _buffer);
-    W(dom, _unread == 0, "~circular_buffer with unread messages.");
+    W(dom, _unread == 0, "~circular_buffer with %d unread bytes", _unread);
     dom->free(_buffer);
 }
 

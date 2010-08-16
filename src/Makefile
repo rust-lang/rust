@@ -265,7 +265,8 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/rust_message.cpp \
               rt/rust_timer.cpp \
               rt/circular_buffer.cpp \
-              rt/isaac/randport.cpp
+              rt/isaac/randport.cpp \
+              rt/rust_srv.cpp
 
 RUNTIME_HDR := rt/globals.h \
                rt/rust.h \
@@ -283,7 +284,8 @@ RUNTIME_HDR := rt/globals.h \
                rt/util/array_list.h \
                rt/util/hash_map.h \
                rt/sync/sync.h \
-               rt/sync/timer.h
+               rt/sync/timer.h \
+               rt/rust_srv.h
 
 RUNTIME_INCS := -Irt/isaac -Irt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=$(CFG_OBJ_SUFFIX))
