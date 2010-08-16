@@ -6,7 +6,7 @@ type LongLong = i64;
 type Long = i32;
 type Bool = int;
 
-native mod llvm = "libLLVM-2.7.so" {
+native mod llvm = llvm_lib {
 
   type ModuleRef;
   type ContextRef;

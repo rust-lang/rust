@@ -310,7 +310,7 @@ type cdir =
   | CDIR_mod of (Ast.ident * Ast.mod_item)
   | CDIR_auth of auth
 
-type env = { env_bindings: (Ast.ident * pval) list;
+type env = { env_bindings: ((Ast.ident * pval) list) ref;
              env_prefix: filename list;
              env_items: (filename, Ast.mod_items) Hashtbl.t;
              env_files: (node_id,filename) Hashtbl.t;
@@ -357,10 +357,11 @@ and eval_cexp (env:env) (exp:cexp) : cdir array =
     | CEXP_let {node=cl} ->
         let ident = cl.let_ident in
         let v = eval_pexp env cl.let_value in
-        let env = { env with
-                      env_bindings = ((ident,v)::env.env_bindings ) }
-        in
-          eval_cexps env cl.let_body
+        let old_bindings = !(env.env_bindings) in
+          env.env_bindings := (ident,v)::old_bindings;
+          let res = eval_cexps env cl.let_body in
+            env.env_bindings := old_bindings;
+            res
 
     | CEXP_src_mod {node=s; id=id} ->
         let name = s.src_ident in
@@ -381,6 +382,7 @@ and eval_cexp (env:env) (exp:cexp) : cdir array =
             ps.pstate_opaque_id
             ps.pstate_sess
             ps.pstate_get_mod
+            ps.pstate_get_cenv_tok
             ps.pstate_infer_lib_name
             env.env_required
             env.env_required_syms
@@ -518,7 +520,7 @@ and eval_pexp (env:env) (exp:Pexp.pexp) : pval =
 
     | Pexp.PEXP_lval (Pexp.PLVAL_ident ident) ->
         begin
-          match ltab_search env.env_bindings ident with
+          match ltab_search !(env.env_bindings) ident with
               None -> raise (err (Printf.sprintf "no binding for '%s' found"
                                     ident) env.env_ps)
             | Some v -> v
@@ -622,11 +624,6 @@ let parse_crate_file
   let oref = ref (Opaque 0) in
   let required = Hashtbl.create 4 in
   let required_syms = Hashtbl.create 4 in
-  let ps =
-    make_parser tref nref oref sess get_mod
-      infer_lib_name required required_syms fname
-  in
-
   let files = Hashtbl.create 0 in
   let items = Hashtbl.create 4 in
   let target_bindings =
@@ -648,11 +645,23 @@ let parse_crate_file
       ("build_input", PVAL_str fname);
     ]
   in
-  let initial_bindings =
-    target_bindings
-    @ build_bindings
+  let bindings =
+    ref (target_bindings
+         @ build_bindings)
   in
-  let env = { env_bindings = initial_bindings;
+  let get_cenv_tok ps ident =
+      match ltab_search (!bindings) ident with
+          None -> raise (err (Printf.sprintf "no binding for '%s' found"
+                                ident) ps)
+        | Some (PVAL_bool b) -> LIT_BOOL b
+        | Some (PVAL_str s) -> LIT_STR s
+        | Some (PVAL_num n) -> LIT_INT n
+  in
+  let ps =
+    make_parser tref nref oref sess get_mod get_cenv_tok
+      infer_lib_name required required_syms fname
+  in
+  let env = { env_bindings = bindings;
               env_prefix = [Filename.dirname fname];
               env_items = Hashtbl.create 0;
               env_files = files;
@@ -720,8 +729,12 @@ let parse_src_file
   let oref = ref (Opaque 0) in
   let required = Hashtbl.create 0 in
   let required_syms = Hashtbl.create 0 in
+  let get_cenv_tok ps ident =
+    raise (err (Printf.sprintf "no binding for '%s' found"
+                  ident) ps)
+  in
   let ps =
-    make_parser tref nref oref sess get_mod
+    make_parser tref nref oref sess get_mod get_cenv_tok
       infer_lib_name required required_syms fname
   in
     with_err_handling sess

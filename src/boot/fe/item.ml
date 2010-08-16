@@ -786,9 +786,17 @@ and parse_mod_item (ps:pstate) : (Ast.ident * Ast.mod_item) =
         EQ ->
           begin
             bump ps;
-            match peek ps with
-                LIT_STR s -> (bump ps; s)
-              | _ -> raise (unexpected ps)
+            let do_tok t =
+              bump ps;
+              match t with
+                  LIT_STR s -> s
+                | _ -> raise (unexpected ps)
+            in
+              match peek ps with
+                  IDENT i ->
+                    do_tok (ps.pstate_get_cenv_tok ps i)
+                | t ->
+                    do_tok t
           end
       | _ -> ps.pstate_infer_lib_name ident
   in

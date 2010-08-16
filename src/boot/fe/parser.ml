@@ -23,6 +23,7 @@ type pstate =
       pstate_node_id      : node_id ref;
       pstate_opaque_id    : opaque_id ref;
       pstate_get_mod      : get_mod_fn;
+      pstate_get_cenv_tok : pstate -> Ast.ident -> token;
       pstate_infer_lib_name : (Ast.ident -> filename);
       pstate_required       : (node_id, (required_lib * nabi_conv)) Hashtbl.t;
       pstate_required_syms  : (node_id, string) Hashtbl.t; }
@@ -45,6 +46,7 @@ let make_parser
     (oref:opaque_id ref)
     (sess:Session.sess)
     (get_mod:get_mod_fn)
+    (get_cenv_tok:pstate -> Ast.ident -> token)
     (infer_lib_name:Ast.ident -> filename)
     (required:(node_id, (required_lib * nabi_conv)) Hashtbl.t)
     (required_syms:(node_id, string) Hashtbl.t)
@@ -68,6 +70,7 @@ let make_parser
         pstate_node_id = nref;
         pstate_opaque_id = oref;
         pstate_get_mod = get_mod;
+        pstate_get_cenv_tok = get_cenv_tok;
         pstate_infer_lib_name = infer_lib_name;
         pstate_required = required;
         pstate_required_syms = required_syms; }

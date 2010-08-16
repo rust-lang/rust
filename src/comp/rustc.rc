@@ -14,7 +14,23 @@ mod driver {
 }
 
 mod lib {
-    mod llvm;
+  alt (target_os) {
+    case ("win32") {
+      let (llvm_lib = "llvm-2.8svn.dll") {
+        mod llvm;
+      }
+    }
+    case ("macos") {
+      let (llvm_lib = "libllvm-2.8svn.dylib") {
+        mod llvm;
+      }
+    }
+    else {
+      let (llvm_lib = "libllvm-2.8svn.so") {
+        mod llvm;
+      }
+    }
+  }
 }
 
 // Local Variables:
