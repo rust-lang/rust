@@ -13,6 +13,11 @@ io fn f(chan[int] c)
   while (true) {
     // spin waiting for the parent to kill us.
     log "child waiting to die...";
+
+    // while waiting to die, the messages we are
+    // sending to the channel are never received
+    // by the parent, therefore this test cases drops
+    // messages on the floor
     c <| 1;
   }
 }
