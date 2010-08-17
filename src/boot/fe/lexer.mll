@@ -27,8 +27,12 @@
     <- (bump_line lexbuf.Lexing.lex_curr_p)
   ;;
 
-  let mach_suf_table = Hashtbl.create 0
+  let mach_suf_table = Hashtbl.create 10
   ;;
+
+  let reserved_suf_table = Hashtbl.create 10
+  ;;
+
   let _ =
     List.iter (fun (suf, ty) -> Common.htab_put mach_suf_table suf ty)
       [ ("u8", Common.TY_u8);
@@ -43,8 +47,24 @@
         ("f64", Common.TY_f64); ]
   ;;
 
+  let _ =
+    List.iter (fun suf -> Common.htab_put reserved_suf_table suf ())
+      [ "f16";  (* IEEE 754-2008 'binary16' interchange format. *)
+        "f80";  (* IEEE 754-1985 'extended'   *)
+        "f128"; (* IEEE 754-2008 'binary128'  *)
+        "m32";  (* IEEE 754-2008 'decimal32'  *)
+        "m64";  (* IEEE 754-2008 'decimal64'  *)
+        "m128"; (* IEEE 754-2008 'decimal128' *)
+        "m";  (* One of m32, m64, m128.     *)
+      ]
+  ;;
+
   let keyword_table = Hashtbl.create 100
   ;;
+
+  let reserved_table = Hashtbl.create 10
+  ;;
+
   let _ =
     List.iter (fun (kwd, tok) -> Common.htab_put keyword_table kwd tok)
               [ ("mod", MOD);
@@ -141,6 +161,19 @@
                 ("f64", MACH TY_f64)
               ]
 ;;
+
+  let _ =
+    List.iter (fun kwd -> Common.htab_put reserved_table kwd ())
+              [ "f16";  (* IEEE 754-2008 'binary16' interchange format. *)
+                "f80";  (* IEEE 754-1985 'extended'   *)
+                "f128"; (* IEEE 754-2008 'binary128'  *)
+                "m32";  (* IEEE 754-2008 'decimal32'  *)
+                "m64";  (* IEEE 754-2008 'decimal64'  *)
+                "m128"; (* IEEE 754-2008 'decimal128' *)
+                "dec";  (* One of m32, m64, m128.     *)
+              ];
+  ;;
+
 }
 
 let hexdig = ['0'-'9' 'a'-'f' 'A'-'F']
@@ -153,6 +186,7 @@ let flo = (dec '.' dec (exp?)) | (dec exp)
 
 let mach_float_suf = "f32"|"f64"
 let mach_int_suf = ['u''i']('8'|"16"|"32"|"64")
+let flo_suf = ['m''f']("16"|"32"|"64"|"80"|"128")
 
 let ws = [ ' ' '\t' '\r' ]
 
@@ -218,26 +252,39 @@ rule token = parse
 | ']'                          { RBRACKET   }
 
 | id as i
-                               { try
-                                     Hashtbl.find keyword_table i
-                                 with
-                                     Not_found -> IDENT (i)        }
+    {
+      match Common.htab_search keyword_table i with
+          Some tok -> tok
+        | None ->
+            if Hashtbl.mem reserved_table i
+            then fail lexbuf "reserved keyword"
+            else IDENT (i)
+    }
 
 | (bin|hex|dec) as n           { LIT_INT (Int64.of_string n)       }
 | ((bin|hex|dec) as n) 'u'     { LIT_UINT (Int64.of_string n)      }
 | ((bin|hex|dec) as n)
-  (mach_int_suf as s)          { try
-                                   let tm =
-                                     Hashtbl.find mach_suf_table s
-                                   in
-                                     LIT_MACH_INT
-                                       (tm, Int64.of_string n)
-                                 with
-                                     Not_found ->
-                                       fail lexbuf
-                                         "bad mach-int suffix"     }
+  (mach_int_suf as s)
+  {
+    match Common.htab_search mach_suf_table s with
+        Some tm -> LIT_MACH_INT (tm, Int64.of_string n)
+      | None ->
+          if Hashtbl.mem reserved_suf_table s
+          then fail lexbuf "reserved mach-int suffix"
+          else fail lexbuf "bad mach-int suffix"
+  }
 
 | flo as n                     { LIT_FLOAT (float_of_string n)     }
+| flo 'm'                      { fail lexbuf "reseved mach-float suffix" }
+| (flo as n) (flo_suf as s)
+  {
+    match Common.htab_search mach_suf_table s with
+        Some tm -> LIT_MACH_FLOAT (tm, float_of_string n)
+      | None ->
+          if Hashtbl.mem reserved_suf_table s
+          then fail lexbuf "reserved mach-float suffix"
+          else fail lexbuf "bad mach-float suffix"
+  }
 
 | '\''                         { char lexbuf                       }
 | '"'                          { let buf = Buffer.create 32 in
@@ -411,3 +458,13 @@ and comment depth = parse
                                   comment depth lexbuf           }
 
 | _                             { comment depth lexbuf           }
+
+
+(*
+ * Local Variables:
+ * fill-column: 78;
+ * indent-tabs-mode: nil
+ * buffer-file-coding-system: utf-8-unix
+ * compile-command: "make -k -C ../.. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+ * End:
+ *)
