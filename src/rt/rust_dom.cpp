@@ -400,9 +400,9 @@ rust_dom::start_main_loop()
 
         rust_task *scheduled_task = schedule_task();
 
-        // If we cannot schedule a task because all other live tasks
-        // are blocked, yield and hopefully some progress is made in
-        // other domains.
+        // The scheduler busy waits until a task is available for scheduling.
+        // Eventually we'll want a smarter way to do this, perhaps sleep
+        // for a minimum amount of time.
 
         if (scheduled_task == NULL) {
             if (_log.is_tracing(rust_log::TASK)) {

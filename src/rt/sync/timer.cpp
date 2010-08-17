@@ -6,12 +6,12 @@
 #endif
 
 timer::timer() {
-    reset(0);
 #if __WIN32__
     uint64_t ticks_per_second;
     QueryPerformanceFrequency((LARGE_INTEGER *)&ticks_per_second);
     _ticks_per_us = ticks_per_second / 1000000;
 #endif
+    reset(0);
 }
 
 void
