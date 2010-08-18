@@ -1,9 +1,14 @@
 #!/usr/bin/python
 
-import sys, fileinput
+import sys, fileinput, subprocess
 
 err=0
 cols=78
+
+config_proc=subprocess.Popen([ "git", "config", "core.autocrlf" ],
+    stdout=subprocess.PIPE)
+result=config_proc.communicate()[0]
+autocrlf=result.strip() == b"true" if result is not None else False
 
 def report_err(s):
     global err
@@ -14,10 +19,11 @@ for line in fileinput.input(openhook=fileinput.hook_encoded("utf-8")):
     if line.find('\t') != -1 and fileinput.filename().find("Makefile") == -1:
         report_err("tab character")
 
-    if line.find('\r') != -1:
+    if not autocrlf and line.find('\r') != -1:
         report_err("CR character")
 
-    if len(line)-1 > cols:
+    line_len = len(line)-2 if autocrlf else len(line)-1
+    if line_len > cols:
         report_err("line longer than %d chars" % cols)
 
 
