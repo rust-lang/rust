@@ -305,7 +305,7 @@ all: $(CFG_COMPILER) $(MKFILES) $(GENERATED)
 
 boot/util/version.ml: Makefile
 	$(CFG_QUIET)git log -1 \
-      --format='let version = "prerelease (%h %ci)";;' >$@
+      --format='let version = "prerelease (%h %ci)";;' >$@ || exit 1
 
 loc:
 	$(CFG_QUIET)wc -l $(BOOT_MLS) $(RUNTIME_CS) $(RUNTIME_HDR)
