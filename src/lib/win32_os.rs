@@ -6,6 +6,11 @@ native mod libc = "msvcrt.dll" {
   fn read(int fd, vbuf buf, uint count) -> int = "_read";
   fn write(int fd, vbuf buf, uint count) -> int = "_write";
   fn close(int fd) -> int = "_close";
+
+  type FILE;
+  fn fopen(sbuf path, sbuf mode) -> FILE;
+  fn fclose(FILE f);
+  fn fgetc(FILE f) -> int;
 }
 
 mod libc_constants {

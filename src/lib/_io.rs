@@ -1,6 +1,25 @@
-import std.os;
+import std.os.libc;
 import std._str;
 import std._vec;
+
+
+type stdio_reader = unsafe obj {
+                           fn getc() -> int;
+};
+
+fn new_stdio_reader(str path) -> stdio_reader {
+  unsafe obj stdio_FILE_reader(os.libc.FILE f) {
+    fn getc() -> int {
+      ret os.libc.fgetc(f);
+    }
+    drop {
+      os.libc.fclose(f);
+    }
+  }
+  ret stdio_FILE_reader(os.libc.fopen(_str.buf(path),
+                                      _str.buf("r")));
+}
+
 
 type buf_reader = unsafe obj {
   fn read() -> vec[u8];
@@ -130,3 +149,14 @@ fn file_writer(str path,
   }
   ret fw(new_buf_writer(path, flags));
 }
+
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//

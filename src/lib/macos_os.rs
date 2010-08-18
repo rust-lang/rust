@@ -8,6 +8,11 @@ native mod libc = "libc.dylib" {
   fn write(int fd, vbuf buf, uint count) -> int;
   fn close(int fd) -> int;
 
+  type FILE;
+  fn fopen(sbuf path, sbuf mode) -> FILE;
+  fn fclose(FILE f);
+  fn fgetc(FILE f) -> int;
+
   type dir;
   // readdir is a mess; handle via wrapper function in rustrt.
   fn opendir(sbuf d) -> dir;
