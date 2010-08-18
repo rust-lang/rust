@@ -10,6 +10,15 @@ iter buffers(buf_reader rdr) -> vec[u8] {
   }
 }
 
+
+obj lexer(buf_reader rdr) {
+    fn peek() -> token.token {
+        ret token.EOF();
+    }
+    fn bump() {
+    }
+}
+
 iter bytes(buf_reader rdr) -> u8 {
   for each (vec[u8] buf in buffers(rdr)) {
     for (u8 b in buf) {
