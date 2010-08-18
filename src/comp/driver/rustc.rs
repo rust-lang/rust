@@ -1,5 +1,20 @@
 // -*- rust -*-
 
+import std._str;
+import lib.llvm.llvm;
+import lib.llvm.builder;
+
+fn write_module() {
+    auto llmod =
+        llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
+                                               llvm.LLVMGetGlobalContext());
+
+    auto b = builder(llvm.LLVMCreateBuilder());
+
+    llvm.LLVMWriteBitcodeToFile(llmod, _str.buf("rust_out.bc"));
+    llvm.LLVMDisposeModule(llmod);
+}
+
 fn main(vec[str] args) -> () {
 
   log "This is the rust 'self-hosted' compiler.";
@@ -19,6 +34,8 @@ fn main(vec[str] args) -> () {
     i += 1;
   }
 
+  // Test LLVM module-writing. Nothing interesting yet.
+  write_module();
 
 }
 
