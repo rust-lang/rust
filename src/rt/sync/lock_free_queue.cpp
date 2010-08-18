@@ -18,6 +18,7 @@ lock_free_queue::lock_free_queue() : _tail(this) {
 
 void
 lock_free_queue::enqueue(lock_free_queue_node *item) {
+    lock.lock();
     item->next = (lock_free_queue_node *) NULL;
     lock_free_queue_node *last = _tail;
     _tail = item;
@@ -25,10 +26,12 @@ lock_free_queue::enqueue(lock_free_queue_node *item) {
         last = last->next;
     }
     last->next = item;
+    lock.unlock();
 }
 
 lock_free_queue_node *
 lock_free_queue::dequeue() {
+    lock.lock();
     lock_free_queue_node *item = next;
     if (item && !(next = item->next)) {
         _tail = (lock_free_queue_node *) this;
@@ -41,6 +44,7 @@ lock_free_queue::dequeue() {
             } while ((lost = help) != (lock_free_queue_node *) NULL);
         }
     }
+    lock.unlock();
     return item;
 }
 
