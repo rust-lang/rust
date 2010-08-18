@@ -20,8 +20,12 @@ parser.add_option("-n", dest="repetitions",
                   help="number of repetitions", metavar="NUMBER")
 parser.add_option("-q", action="store_true", dest="quiet", default=False,
                   help="suppresses rust log output")
+parser.add_option("-l", dest="log", default="",
+                  help="rust log")
 parser.add_option("-v", action="store_true", dest="valgrind", default=False,
                   help="runs under valgrind")
+parser.add_option("-t", action="store_true", dest="terminate", default=False,
+                  help="terminate on first failure")
 parser.add_option("-p", action="store_true", dest="printSource",
                   default=False, help="prints the test case's source")
 parser.add_option("-s", dest="seed", metavar="NUMBER", default=-1,
@@ -53,8 +57,11 @@ for rustProgram in tests:
         print "Make failed!";
         sys.exit(1);
 
+if (options.log != ""):
+    os.putenv("RUST_LOG", options.log);
+
 if (options.quiet):
-    os.putenv("RUST_LOG", "none")
+    os.putenv("RUST_LOG", "none");
 
 # Rut
 totalPassed = 0;
@@ -76,16 +83,18 @@ for rustProgram in tests:
               os.putenv("RUST_SEED", str(i));
         command = rustProgram.replace(".rs", ".x86");
         if (options.valgrind):
-          command = "valgrind --leak-check=full "  + \
-                    "--quiet --vex-iropt-level=0 " + \
-                    "--suppressions=etc/x86.supp " + \
-                    command;
+            command = "valgrind --leak-check=full "  + \
+                      "--quiet --vex-iropt-level=0 " + \
+                      "--suppressions=etc/x86.supp " + \
+                      command;
         print "Running Command: " + command;
         result = os.system(command);
         exitStatus = result >> 8;
         signalNumber = result & 0xF;
         if (result == 0):
             passed += 1;
+        elif (options.terminate):
+            sys.exit(1);
     print "Result for: " + rustProgram + " " + str(passed) + \
           " of " + str(repetitions) + " passed.";
     totalPassed += passed;
