@@ -24,6 +24,7 @@ rust_task : public maybe_proxy<rust_task>,
     const char *const name;
     ptr_vec<rust_task> *state;
     rust_cond *cond;
+    const char *cond_name;
     rust_task *supervisor;     // Parent-link for failure propagation.
     size_t idx;
     size_t gc_alloc_thresh;
@@ -70,7 +71,7 @@ rust_task : public maybe_proxy<rust_task>,
     const char *state_str();
     void transition(ptr_vec<rust_task> *svec, ptr_vec<rust_task> *dvec);
 
-    void block(rust_cond *on);
+    void block(rust_cond *on, const char* name);
     void wakeup(rust_cond *from);
     void die();
     void unblock();

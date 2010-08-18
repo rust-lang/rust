@@ -63,6 +63,7 @@ rust_task::rust_task(rust_dom *dom, rust_task *spawner, const char *name) :
     name(name),
     state(&dom->running_tasks),
     cond(NULL),
+    cond_name("none"),
     supervisor(spawner),
     idx(0),
     rendezvous_ptr(0),
@@ -552,7 +553,7 @@ rust_task::transition(ptr_vec<rust_task> *src, ptr_vec<rust_task> *dst)
 }
 
 void
-rust_task::block(rust_cond *on)
+rust_task::block(rust_cond *on, const char* name)
 {
     log(rust_log::TASK, "Blocking on 0x%" PRIxPTR ", cond: 0x%" PRIxPTR,
                          (uintptr_t) on, (uintptr_t) cond);
@@ -561,6 +562,7 @@ rust_task::block(rust_cond *on)
 
     transition(&dom->running_tasks, &dom->blocked_tasks);
     cond = on;
+    cond_name = name;
 }
 
 void
@@ -574,6 +576,7 @@ rust_task::wakeup(rust_cond *from)
     transition(&dom->blocked_tasks, &dom->running_tasks);
     I(dom, cond == from);
     cond = NULL;
+    cond_name = "none";
 }
 
 void

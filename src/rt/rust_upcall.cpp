@@ -191,13 +191,13 @@ upcall_join(rust_task *task, maybe_proxy<rust_task> *target) {
     if (target->is_proxy()) {
         notify_message::
         send(notify_message::JOIN, "join", task, target->as_proxy());
-        task->block(target_task);
+        task->block(target_task, "joining remote task");
         task->yield(2);
     } else {
         // If the other task is already dying, we don't have to wait for it.
         if (target_task->dead() == false) {
             target_task->tasks_waiting_to_join.push(task);
-            task->block(target_task);
+            task->block(target_task, "joining local task");
             task->yield(2);
         }
     }
@@ -238,7 +238,7 @@ upcall_recv(rust_task *task, uintptr_t *dptr, rust_port *port) {
 
     task->log(rust_log::COMM, "<=== waiting for rendezvous data ===");
     task->rendezvous_ptr = dptr;
-    task->block(port);
+    task->block(port, "waiting for rendezvous data");
     task->yield(3);
 }
 

@@ -363,9 +363,10 @@ rust_dom::log_state() {
         log(rust_log::TASK, "blocked tasks:");
         for (size_t i = 0; i < blocked_tasks.length(); i++) {
             log(rust_log::TASK,
-                "\t task: %s @0x%" PRIxPTR ", blocked on: 0x%" PRIxPTR,
+                "\t task: %s @0x%" PRIxPTR ", blocked on: 0x%" PRIxPTR
+                " '%s'",
                 blocked_tasks[i]->name, blocked_tasks[i],
-                blocked_tasks[i]->cond);
+                blocked_tasks[i]->cond, blocked_tasks[i]->cond_name);
         }
     }
 
@@ -373,7 +374,7 @@ rust_dom::log_state() {
         log(rust_log::TASK, "dead tasks:");
         for (size_t i = 0; i < dead_tasks.length(); i++) {
             log(rust_log::TASK, "\t task: %s 0x%" PRIxPTR ", ref_count: %d",
-                dead_tasks[i], dead_tasks[i]->name,
+                dead_tasks[i]->name, dead_tasks[i],
                 dead_tasks[i]->ref_count);
         }
     }
