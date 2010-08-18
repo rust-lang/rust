@@ -3,6 +3,8 @@
 import std._str;
 import lib.llvm.llvm;
 import lib.llvm.builder;
+import fe.parser;
+import fe.token;
 
 fn write_module() {
     auto llmod =
@@ -25,11 +27,9 @@ fn main(vec[str] args) -> () {
   auto i = 0;
   for (str filename in args) {
     if (i > 0) {
-      auto br = std._io.new_buf_reader(filename);
-      log "opened file: " + filename;
-      for (u8 b in br.read()) {
-        log b;
-      }
+        auto p = parser.new_parser(filename);
+        log "opened file: " + filename;
+        auto tok = p.peek();
     }
     i += 1;
   }

@@ -18,7 +18,8 @@ mod util {
     mod common;
 }
 
-auth driver = unsafe;
+auth driver.rustc.main = state;
+auth driver.rustc.write_module = unsafe;
 
 mod lib {
     alt (target_os) {
