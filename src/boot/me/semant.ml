@@ -1012,7 +1012,8 @@ let type_is_unsigned_2s_complement t =
     | Ast.TY_mach TY_u64
     | Ast.TY_char
     | Ast.TY_uint
-    | Ast.TY_bool -> true
+    | Ast.TY_bool
+    | Ast.TY_native _ -> true
     | _ -> false
 ;;
 

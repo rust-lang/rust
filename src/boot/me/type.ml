@@ -101,11 +101,11 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
     if not (is_integer (fundamental_ty actual)) then
       type_error "integer" actual
   in
-  let demand_bool_or_char_or_integer (actual:Ast.ty) : unit =
+  let demand_bool_or_char_or_integer_or_native (actual:Ast.ty) : unit =
     match fundamental_ty actual with
-        Ast.TY_bool | Ast.TY_char -> ()
+        Ast.TY_bool | Ast.TY_char | Ast.TY_native _ -> ()
       | ty when is_integer ty -> ()
-      | _ -> type_error "bool, char, or integer" actual
+      | _ -> type_error "bool, char, integer or native" actual
   in
   let demand_number (actual:Ast.ty) : unit =
     match fundamental_ty actual with
@@ -634,9 +634,11 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
           ty
       | Ast.EXPR_unary (Ast.UNOP_cast dst_ty_id, atom) ->
           (* TODO: probably we want to handle more cases here *)
-          demand_bool_or_char_or_integer (check_atom atom);
-          let dst_ty = dst_ty_id.Common.node in
-          demand_bool_or_char_or_integer dst_ty;
+          demand_bool_or_char_or_integer_or_native (check_atom atom);
+          let dst_ty =
+            Hashtbl.find cx.Semant.ctxt_all_cast_types dst_ty_id.Common.id
+          in
+          demand_bool_or_char_or_integer_or_native dst_ty;
           dst_ty
   in
 
