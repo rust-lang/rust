@@ -16,28 +16,29 @@ mod driver {
 auth driver = unsafe;
 
 mod lib {
-  alt (target_os) {
-    case ("win32") {
-      let (llvm_lib = "LLVM-2.8svn.dll") {
-        mod llvm;
-      }
+    alt (target_os) {
+        case ("win32") {
+            let (llvm_lib = "LLVM-2.8svn.dll") {
+                mod llvm;
+            }
+        }
+        case ("macos") {
+            let (llvm_lib = "libLLVM-2.8svn.dylib") {
+                mod llvm;
+            }
+        }
+        else {
+            let (llvm_lib = "libLLVM-2.8svn.so") {
+                mod llvm;
+            }
+        }
     }
-    case ("macos") {
-      let (llvm_lib = "libLLVM-2.8svn.dylib") {
-        mod llvm;
-      }
-    }
-    else {
-      let (llvm_lib = "libLLVM-2.8svn.so") {
-        mod llvm;
-      }
-    }
-  }
 }
 
 // Local Variables:
 // fill-column: 78;
 // indent-tabs-mode: nil
+// c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
 // compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
