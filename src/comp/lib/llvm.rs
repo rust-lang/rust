@@ -1,6 +1,25 @@
 import std._str.rustrt.sbuf;
 import std._vec.rustrt.vbuf;
 
+import llvm.ModuleRef;
+import llvm.ContextRef;
+import llvm.TypeRef;
+import llvm.TypeHandleRef;
+import llvm.ValueRef;
+import llvm.BasicBlockRef;
+import llvm.BuilderRef;
+import llvm.ModuleProviderRef;
+import llvm.MemoryBufferRef;
+import llvm.PassManagerRef;
+import llvm.UseRef;
+import llvm.Linkage;
+import llvm.Attribute;
+import llvm.Visibility;
+import llvm.CallConv;
+import llvm.IntPredicate;
+import llvm.RealPredicate;
+import llvm.Opcode;
+
 type ULongLong = u64;
 type LongLong = i64;
 type Long = i32;
@@ -8,609 +27,849 @@ type Bool = int;
 
 native mod llvm = llvm_lib {
 
-  type ModuleRef;
-  type ContextRef;
-  type TypeRef;
-  type TypeHandleRef;
-  type ValueRef;
-  type BasicBlockRef;
-  type BuilderRef;
-  type ModuleProviderRef;
-  type MemoryBufferRef;
-  type PassManagerRef;
-  type UseRef;
+    type ModuleRef;
+    type ContextRef;
+    type TypeRef;
+    type TypeHandleRef;
+    type ValueRef;
+    type BasicBlockRef;
+    type BuilderRef;
+    type ModuleProviderRef;
+    type MemoryBufferRef;
+    type PassManagerRef;
+    type UseRef;
 
-  /* FIXME: These are enums in the C header. Represent them how, in rust? */
-  type Linkage;
-  type Attribute;
-  type Visibility;
-  type CallConv;
-  type IntPredicate;
-  type RealPredicate;
-  type Opcode;
+    /* FIXME: These are enums in the C header. Represent them how, in rust? */
+    type Linkage;
+    type Attribute;
+    type Visibility;
+    type CallConv;
+    type IntPredicate;
+    type RealPredicate;
+    type Opcode;
 
-  /* Create and destroy contexts. */
-  fn ContextCreate() -> ContextRef;
-  fn GetGlobalContext() -> ContextRef;
-  fn ContextDispose(ContextRef C);
-  fn GetMDKindIDInContext(ContextRef C, sbuf Name, uint SLen) -> uint;
-  fn GetMDKindID(sbuf Name, uint SLen) -> uint;
+    /* Create and destroy contexts. */
+    fn LLVMContextCreate() -> ContextRef;
+    fn LLVMGetGlobalContext() -> ContextRef;
+    fn LLVMContextDispose(ContextRef C);
+    fn LLVMGetMDKindIDInContext(ContextRef C, sbuf Name, uint SLen) -> uint;
+    fn LLVMGetMDKindID(sbuf Name, uint SLen) -> uint;
 
-  /* Create and destroy modules. */
-  fn ModuleCreateWithNameInContext(sbuf ModuleID, ContextRef C) -> ModuleRef;
-  fn DisposeModule(ModuleRef M);
+    /* Create and destroy modules. */
+    fn LLVMModuleCreateWithNameInContext(sbuf ModuleID,
+                                         ContextRef C)-> ModuleRef;
+    fn LLVMDisposeModule(ModuleRef M);
 
-  /** Data layout. See Module::getDataLayout. */
-  fn GetDataLayout(ModuleRef M) -> sbuf;
-  fn SetDataLayout(ModuleRef M, sbuf Triple);
+    /** Data layout. See Module::getDataLayout. */
+    fn LLVMGetDataLayout(ModuleRef M) -> sbuf;
+    fn LLVMSetDataLayout(ModuleRef M, sbuf Triple);
 
-  /** Target triple. See Module::getTargetTriple. */
-  fn GetTarget(ModuleRef M) -> sbuf;
-  fn SetTarget(ModuleRef M, sbuf Triple);
+    /** Target triple. See Module::getTargetTriple. */
+    fn LLVMGetTarget(ModuleRef M) -> sbuf;
+    fn LLVMSetTarget(ModuleRef M, sbuf Triple);
 
-  /** See Module::addTypeName. */
-  fn AddTypeName(ModuleRef M, sbuf Name, TypeRef Ty) -> Bool;
-  fn DeleteTypeName(ModuleRef M, sbuf Name);
-  fn GetTypeByName(ModuleRef M, sbuf Name) -> TypeRef;
+    /** See Module::addTypeName. */
+    fn LLVMAddTypeName(ModuleRef M, sbuf Name, TypeRef Ty) -> Bool;
+    fn LLVMDeleteTypeName(ModuleRef M, sbuf Name);
+    fn LLVMGetTypeByName(ModuleRef M, sbuf Name) -> TypeRef;
 
-  /** See Module::dump. */
-  fn DumpModule(ModuleRef M);
+    /** See Module::dump. */
+    fn LLVMDumpModule(ModuleRef M);
 
-  /** See Module::setModuleInlineAsm. */
-  fn SetModuleInlineAsm(ModuleRef M, sbuf Asm);
+    /** See Module::setModuleInlineAsm. */
+    fn LLVMSetModuleInlineAsm(ModuleRef M, sbuf Asm);
 
-  /** See llvm::LLVMType::getContext. */
-  fn GetTypeContext(TypeRef Ty) -> ContextRef;
+    /** See llvm::LLVMType::getContext. */
+    fn LLVMGetTypeContext(TypeRef Ty) -> ContextRef;
 
-  /* Operations on integer types */
-  fn Int1TypeInContext(ContextRef C) -> TypeRef;
-  fn Int8TypeInContext(ContextRef C) -> TypeRef;
-  fn Int16TypeInContext(ContextRef C) -> TypeRef;
-  fn Int32TypeInContext(ContextRef C) -> TypeRef;
-  fn Int64TypeInContext(ContextRef C) -> TypeRef;
-  fn IntTypeInContext(ContextRef C, uint NumBits) -> TypeRef;
+    /* Operations on integer types */
+    fn LLVMInt1TypeInContext(ContextRef C) -> TypeRef;
+    fn LLVMInt8TypeInContext(ContextRef C) -> TypeRef;
+    fn LLVMInt16TypeInContext(ContextRef C) -> TypeRef;
+    fn LLVMInt32TypeInContext(ContextRef C) -> TypeRef;
+    fn LLVMInt64TypeInContext(ContextRef C) -> TypeRef;
+    fn LLVMIntTypeInContext(ContextRef C, uint NumBits) -> TypeRef;
 
-  fn Int1Type() -> TypeRef;
-  fn Int8Type() -> TypeRef;
-  fn Int16Type() -> TypeRef;
-  fn Int32Type() -> TypeRef;
-  fn Int64Type() -> TypeRef;
-  fn IntType(uint NumBits) -> TypeRef;
-  fn GetIntTypeWidth(TypeRef IntegerTy) -> uint;
+    fn LLVMInt1Type() -> TypeRef;
+    fn LLVMInt8Type() -> TypeRef;
+    fn LLVMInt16Type() -> TypeRef;
+    fn LLVMInt32Type() -> TypeRef;
+    fn LLVMInt64Type() -> TypeRef;
+    fn LLVMIntType(uint NumBits) -> TypeRef;
+    fn LLVMGetIntTypeWidth(TypeRef IntegerTy) -> uint;
 
-  /* Operations on real types */
-  fn FloatTypeInContext(ContextRef C) -> TypeRef;
-  fn DoubleTypeInContext(ContextRef C) -> TypeRef;
-  fn X86FP80TypeInContext(ContextRef C) -> TypeRef;
-  fn FP128TypeInContext(ContextRef C) -> TypeRef;
-  fn PPCFP128TypeInContext(ContextRef C) -> TypeRef;
+    /* Operations on real types */
+    fn LLVMFloatTypeInContext(ContextRef C) -> TypeRef;
+    fn LLVMDoubleTypeInContext(ContextRef C) -> TypeRef;
+    fn LLVMX86FP80TypeInContext(ContextRef C) -> TypeRef;
+    fn LLVMFP128TypeInContext(ContextRef C) -> TypeRef;
+    fn LLVMPPCFP128TypeInContext(ContextRef C) -> TypeRef;
 
-  fn FloatType() -> TypeRef;
-  fn DoubleType() -> TypeRef;
-  fn X86FP80Type() -> TypeRef;
-  fn FP128Type() -> TypeRef;
-  fn PPCFP128Type() -> TypeRef;
+    fn LLVMFloatType() -> TypeRef;
+    fn LLVMDoubleType() -> TypeRef;
+    fn LLVMX86FP80Type() -> TypeRef;
+    fn LLVMFP128Type() -> TypeRef;
+    fn LLVMPPCFP128Type() -> TypeRef;
 
-  /* Operations on function types */
-  fn FunctionType(TypeRef ReturnType, vbuf ParamTypes,
-                  uint ParamCount, Bool IsVarArg) -> TypeRef;
-  fn IsFunctionVarArg(TypeRef FunctionTy) -> Bool;
-  fn GetReturnType(TypeRef FunctionTy) -> TypeRef;
-  fn CountParamTypes(TypeRef FunctionTy) -> uint;
-  fn GetParamTypes(TypeRef FunctionTy, vbuf Dest);
+    /* Operations on function types */
+    fn LLVMFunctionType(TypeRef ReturnType, vbuf ParamTypes,
+                        uint ParamCount, Bool IsVarArg) -> TypeRef;
+    fn LLVMIsFunctionVarArg(TypeRef FunctionTy) -> Bool;
+    fn LLVMGetReturnType(TypeRef FunctionTy) -> TypeRef;
+    fn LLVMCountParamTypes(TypeRef FunctionTy) -> uint;
+    fn LLVMGetParamTypes(TypeRef FunctionTy, vbuf Dest);
 
-  /* Operations on struct types */
-  fn StructTypeInContext(ContextRef C, vbuf ElementTypes,
-                         uint ElementCount, Bool Packed) -> TypeRef;
-  fn StructType(vbuf ElementTypes, uint ElementCount,
-                Bool Packed) -> TypeRef;
-  fn CountStructElementTypes(TypeRef StructTy) -> uint;
-  fn GetStructElementTypes(TypeRef StructTy, vbuf Dest);
-  fn IsPackedStruct(TypeRef StructTy) -> Bool;
+    /* Operations on struct types */
+    fn LLVMStructTypeInContext(ContextRef C, vbuf ElementTypes,
+                               uint ElementCount, Bool Packed) -> TypeRef;
+    fn LLVMStructType(vbuf ElementTypes, uint ElementCount,
+                      Bool Packed) -> TypeRef;
+    fn LLVMCountStructElementTypes(TypeRef StructTy) -> uint;
+    fn LLVMGetStructElementTypes(TypeRef StructTy, vbuf Dest);
+    fn LLVMIsPackedStruct(TypeRef StructTy) -> Bool;
 
-  /* Operations on union types */
-  fn UnionTypeInContext(ContextRef C, vbuf ElementTypes,
-                        uint ElementCount) -> TypeRef;
-  fn UnionType(vbuf ElementTypes, uint ElementCount) -> TypeRef;
-  fn CountUnionElementTypes(TypeRef UnionTy) -> uint;
-  fn GetUnionElementTypes(TypeRef UnionTy, vbuf Dest);
+    /* Operations on union types */
+    fn LLVMUnionTypeInContext(ContextRef C, vbuf ElementTypes,
+                              uint ElementCount) -> TypeRef;
+    fn LLVMUnionType(vbuf ElementTypes, uint ElementCount) -> TypeRef;
+    fn LLVMCountUnionElementTypes(TypeRef UnionTy) -> uint;
+    fn LLVMGetUnionElementTypes(TypeRef UnionTy, vbuf Dest);
 
-  /* Operations on array, pointer, and vector types (sequence types) */
-  fn ArrayType(TypeRef ElementType, uint ElementCount) -> TypeRef;
-  fn PointerType(TypeRef ElementType, uint AddressSpace) -> TypeRef;
-  fn VectorType(TypeRef ElementType, uint ElementCount) -> TypeRef;
+    /* Operations on array, pointer, and vector types (sequence types) */
+    fn LLVMArrayType(TypeRef ElementType, uint ElementCount) -> TypeRef;
+    fn LLVMPointerType(TypeRef ElementType, uint AddressSpace) -> TypeRef;
+    fn LLVMVectorType(TypeRef ElementType, uint ElementCount) -> TypeRef;
 
-  fn GetElementType(TypeRef Ty) -> TypeRef;
-  fn GetArrayLength(TypeRef ArrayTy) -> uint;
-  fn GetPointerAddressSpace(TypeRef PointerTy) -> uint;
-  fn GetVectorSize(TypeRef VectorTy) -> uint;
+    fn LLVMGetElementType(TypeRef Ty) -> TypeRef;
+    fn LLVMGetArrayLength(TypeRef ArrayTy) -> uint;
+    fn LLVMGetPointerAddressSpace(TypeRef PointerTy) -> uint;
+    fn LLVMGetVectorSize(TypeRef VectorTy) -> uint;
 
-  /* Operations on other types */
-  fn VoidTypeInContext(ContextRef C) -> TypeRef;
-  fn LabelTypeInContext(ContextRef C) -> TypeRef;
-  fn OpaqueTypeInContext(ContextRef C) -> TypeRef;
+    /* Operations on other types */
+    fn LLVMVoidTypeInContext(ContextRef C) -> TypeRef;
+    fn LLVMLabelTypeInContext(ContextRef C) -> TypeRef;
+    fn LLVMOpaqueTypeInContext(ContextRef C) -> TypeRef;
 
-  fn VoidType() -> TypeRef;
-  fn LabelType() -> TypeRef;
-  fn OpaqueType() -> TypeRef;
+    fn LLVMVoidType() -> TypeRef;
+    fn LLVMLabelType() -> TypeRef;
+    fn LLVMOpaqueType() -> TypeRef;
 
-  /* Operations on type handles */
-  fn CreateTypeHandle(TypeRef PotentiallyAbstractTy) -> TypeHandleRef;
-  fn RefineType(TypeRef AbstractTy, TypeRef ConcreteTy);
-  fn ResolveTypeHandle(TypeHandleRef TypeHandle) -> TypeRef;
-  fn DisposeTypeHandle(TypeHandleRef TypeHandle);
+    /* Operations on type handles */
+    fn LLVMCreateTypeHandle(TypeRef PotentiallyAbstractTy) -> TypeHandleRef;
+    fn LLVMRefineType(TypeRef AbstractTy, TypeRef ConcreteTy);
+    fn LLVMResolveTypeHandle(TypeHandleRef TypeHandle) -> TypeRef;
+    fn LLVMDisposeTypeHandle(TypeHandleRef TypeHandle);
 
-  /* Operations on all values */
-  fn TypeOf(ValueRef Val) -> TypeRef;
-  fn GetValueName(ValueRef Val) -> sbuf;
-  fn SetValueName(ValueRef Val, sbuf Name);
-  fn DumpValue(ValueRef Val);
-  fn ReplaceAllUsesWith(ValueRef OldVal, ValueRef NewVal);
-  fn HasMetadata(ValueRef Val) -> int;
-  fn GetMetadata(ValueRef Val, uint KindID) -> ValueRef;
-  fn SetMetadata(ValueRef Val, uint KindID, ValueRef Node);
+    /* Operations on all values */
+    fn LLVMTypeOf(ValueRef Val) -> TypeRef;
+    fn LLVMGetValueName(ValueRef Val) -> sbuf;
+    fn LLVMSetValueName(ValueRef Val, sbuf Name);
+    fn LLVMDumpValue(ValueRef Val);
+    fn LLVMReplaceAllUsesWith(ValueRef OldVal, ValueRef NewVal);
+    fn LLVMHasMetadata(ValueRef Val) -> int;
+    fn LLVMGetMetadata(ValueRef Val, uint KindID) -> ValueRef;
+    fn LLVMSetMetadata(ValueRef Val, uint KindID, ValueRef Node);
 
-  /* Operations on Uses */
-  fn GetFirstUse(ValueRef Val) -> UseRef;
-  fn GetNextUse(UseRef U) -> UseRef;
-  fn GetUser(UseRef U) -> ValueRef;
-  fn GetUsedValue(UseRef U) -> ValueRef;
+    /* Operations on Uses */
+    fn LLVMGetFirstUse(ValueRef Val) -> UseRef;
+    fn LLVMGetNextUse(UseRef U) -> UseRef;
+    fn LLVMGetUser(UseRef U) -> ValueRef;
+    fn LLVMGetUsedValue(UseRef U) -> ValueRef;
 
-  /* Operations on Users */
-  fn GetOperand(ValueRef Val, uint Index) -> ValueRef;
+    /* Operations on Users */
+    fn LLVMGetOperand(ValueRef Val, uint Index) -> ValueRef;
 
-  /* Operations on constants of any type */
-  fn ConstNull(TypeRef Ty) -> ValueRef; /* all zeroes */
-  fn ConstAllOnes(TypeRef Ty) -> ValueRef; /* only for int/vector */
-  fn GetUndef(TypeRef Ty) -> ValueRef;
-  fn IsConstant(ValueRef Val) -> Bool;
-  fn IsNull(ValueRef Val) -> Bool;
-  fn IsUndef(ValueRef Val) -> Bool;
-  fn ConstPointerNull(TypeRef Ty) -> ValueRef;
+    /* Operations on constants of any type */
+    fn LLVMConstNull(TypeRef Ty) -> ValueRef; /* all zeroes */
+    fn LLVMConstAllOnes(TypeRef Ty) -> ValueRef; /* only for int/vector */
+    fn LLVMGetUndef(TypeRef Ty) -> ValueRef;
+    fn LLVMIsConstant(ValueRef Val) -> Bool;
+    fn LLVMIsNull(ValueRef Val) -> Bool;
+    fn LLVMIsUndef(ValueRef Val) -> Bool;
+    fn LLVMConstPointerNull(TypeRef Ty) -> ValueRef;
 
-  /* Operations on metadata */
-  fn MDStringInContext(ContextRef C, sbuf Str, uint SLen) -> ValueRef;
-  fn MDString(sbuf Str, uint SLen) -> ValueRef;
-  fn MDNodeInContext(ContextRef C, vbuf Vals, uint Count) -> ValueRef;
-  fn MDNode(vbuf Vals, uint Count) -> ValueRef;
+    /* Operations on metadata */
+    fn LLVMMDStringInContext(ContextRef C, sbuf Str, uint SLen) -> ValueRef;
+    fn LLVMMDString(sbuf Str, uint SLen) -> ValueRef;
+    fn LLVMMDNodeInContext(ContextRef C, vbuf Vals, uint Count) -> ValueRef;
+    fn LLVMMDNode(vbuf Vals, uint Count) -> ValueRef;
 
-  /* Operations on scalar constants */
-  fn ConstInt(TypeRef IntTy, ULongLong N, Bool SignExtend) -> ValueRef;
-  fn ConstIntOfString(TypeRef IntTy, sbuf Text, u8 Radix) -> ValueRef;
-  fn ConstIntOfStringAndSize(TypeRef IntTy, sbuf Text,
-                             uint SLen, u8 Radix) -> ValueRef;
-  fn ConstReal(TypeRef RealTy, f64 N) -> ValueRef;
-  fn ConstRealOfString(TypeRef RealTy, sbuf Text) -> ValueRef;
-  fn ConstRealOfStringAndSize(TypeRef RealTy, sbuf Text,
-                              uint SLen) -> ValueRef;
-  fn ConstIntGetZExtValue(ValueRef ConstantVal) -> ULongLong;
-  fn ConstIntGetSExtValue(ValueRef ConstantVal) -> LongLong;
-
-
-  /* Operations on composite constants */
-  fn ConstStringInContext(ContextRef C, sbuf Str,
-                          uint Length, Bool DontNullTerminate) -> ValueRef;
-  fn ConstStructInContext(ContextRef C, vbuf ConstantVals,
-                          uint Count, Bool Packed) -> ValueRef;
-
-  fn ConstString(sbuf Str, uint Length, Bool DontNullTerminate) -> ValueRef;
-  fn ConstArray(TypeRef ElementTy,
-                vbuf ConstantVals, uint Length) -> ValueRef;
-  fn ConstStruct(vbuf ConstantVals, uint Count, Bool Packed) -> ValueRef;
-  fn ConstVector(vbuf ScalarConstantVals, uint Size) -> ValueRef;
-  fn ConstUnion(TypeRef Ty, ValueRef Val) -> ValueRef;
-
-  /* Constant expressions */
-  fn AlignOf(TypeRef Ty) -> ValueRef;
-  fn SizeOf(TypeRef Ty) -> ValueRef;
-  fn ConstNeg(ValueRef ConstantVal) -> ValueRef;
-  fn ConstNSWNeg(ValueRef ConstantVal) -> ValueRef;
-  fn ConstNUWNeg(ValueRef ConstantVal) -> ValueRef;
-  fn ConstFNeg(ValueRef ConstantVal) -> ValueRef;
-  fn ConstNot(ValueRef ConstantVal) -> ValueRef;
-  fn ConstAdd(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstNSWAdd(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstNUWAdd(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstFAdd(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstSub(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstNSWSub(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstNUWSub(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstFSub(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstMul(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstNSWMul(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstNUWMul(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstFMul(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstUDiv(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstSDiv(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstExactSDiv(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstFDiv(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstURem(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstSRem(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstFRem(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstAnd(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstOr(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstXor(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstShl(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstLShr(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstAShr(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
-  fn ConstGEP(ValueRef ConstantVal,
-              vbuf ConstantIndices, uint NumIndices) -> ValueRef;
-  fn ConstInBoundsGEP(ValueRef ConstantVal,
-                      vbuf ConstantIndices,
-                      uint NumIndices) -> ValueRef;
-  fn ConstTrunc(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
-  fn ConstSExt(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
-  fn ConstZExt(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
-  fn ConstFPTrunc(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
-  fn ConstFPExt(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
-  fn ConstUIToFP(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
-  fn ConstSIToFP(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
-  fn ConstFPToUI(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
-  fn ConstFPToSI(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
-  fn ConstPtrToInt(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
-  fn ConstIntToPtr(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
-  fn ConstBitCast(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
-  fn ConstZExtOrBitCast(ValueRef ConstantVal,
-                        TypeRef ToType) -> ValueRef;
-  fn ConstSExtOrBitCast(ValueRef ConstantVal,
-                        TypeRef ToType) -> ValueRef;
-  fn ConstTruncOrBitCast(ValueRef ConstantVal,
-                         TypeRef ToType) -> ValueRef;
-  fn ConstPointerCast(ValueRef ConstantVal,
-                      TypeRef ToType) -> ValueRef;
-  fn ConstIntCast(ValueRef ConstantVal, TypeRef ToType,
-                  Bool isSigned) -> ValueRef;
-  fn ConstFPCast(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
-  fn ConstSelect(ValueRef ConstantCondition,
-                 ValueRef ConstantIfTrue,
-                 ValueRef ConstantIfFalse) -> ValueRef;
-  fn ConstExtractElement(ValueRef VectorConstant,
-                         ValueRef IndexConstant) -> ValueRef;
-  fn ConstInsertElement(ValueRef VectorConstant,
-                        ValueRef ElementValueConstant,
-                        ValueRef IndexConstant) -> ValueRef;
-  fn ConstShuffleVector(ValueRef VectorAConstant,
-                        ValueRef VectorBConstant,
-                        ValueRef MaskConstant) -> ValueRef;
-  fn ConstExtractValue(ValueRef AggConstant, vbuf IdxList,
-                       uint NumIdx) -> ValueRef;
-  fn ConstInsertValue(ValueRef AggConstant,
-                      ValueRef ElementValueConstant,
-                      vbuf IdxList, uint NumIdx) -> ValueRef;
-  fn ConstInlineAsm(TypeRef Ty,
-                    sbuf AsmString, sbuf Constraints,
-                    Bool HasSideEffects, Bool IsAlignStack) -> ValueRef;
-  fn BlockAddress(ValueRef F, BasicBlockRef BB) -> ValueRef;
+    /* Operations on scalar constants */
+    fn LLVMConstInt(TypeRef IntTy, ULongLong N, Bool SignExtend) -> ValueRef;
+    fn LLVMConstIntOfString(TypeRef IntTy, sbuf Text, u8 Radix) -> ValueRef;
+    fn LLVMConstIntOfStringAndSize(TypeRef IntTy, sbuf Text,
+                                   uint SLen, u8 Radix) -> ValueRef;
+    fn LLVMConstReal(TypeRef RealTy, f64 N) -> ValueRef;
+    fn LLVMConstRealOfString(TypeRef RealTy, sbuf Text) -> ValueRef;
+    fn LLVMConstRealOfStringAndSize(TypeRef RealTy, sbuf Text,
+                                    uint SLen) -> ValueRef;
+    fn LLVMConstIntGetZExtValue(ValueRef ConstantVal) -> ULongLong;
+    fn LLVMConstIntGetSExtValue(ValueRef ConstantVal) -> LongLong;
 
 
+    /* Operations on composite constants */
+    fn LLVMConstStringInContext(ContextRef C, sbuf Str, uint Length,
+                                Bool DontNullTerminate) -> ValueRef;
+    fn LLVMConstStructInContext(ContextRef C, vbuf ConstantVals,
+                                uint Count, Bool Packed) -> ValueRef;
 
-  /* Operations on global variables, functions, and aliases (globals) */
-  fn GetGlobalParent(ValueRef Global) -> ModuleRef;
-  fn IsDeclaration(ValueRef Global) -> Bool;
-  fn GetLinkage(ValueRef Global) -> Linkage;
-  fn SetLinkage(ValueRef Global, Linkage Link);
-  fn GetSection(ValueRef Global) -> sbuf;
-  fn SetSection(ValueRef Global, sbuf Section);
-  fn GetVisibility(ValueRef Global) -> Visibility;
-  fn SetVisibility(ValueRef Global, Visibility Viz);
-  fn GetAlignment(ValueRef Global) -> uint;
-  fn SetAlignment(ValueRef Global, uint Bytes);
+    fn LLVMConstString(sbuf Str, uint Length,
+                       Bool DontNullTerminate) -> ValueRef;
+    fn LLVMConstArray(TypeRef ElementTy,
+                      vbuf ConstantVals, uint Length) -> ValueRef;
+    fn LLVMConstStruct(vbuf ConstantVals, uint Count,
+                       Bool Packed) -> ValueRef;
+    fn LLVMConstVector(vbuf ScalarConstantVals, uint Size) -> ValueRef;
+    fn LLVMConstUnion(TypeRef Ty, ValueRef Val) -> ValueRef;
+
+    /* Constant expressions */
+    fn LLVMAlignOf(TypeRef Ty) -> ValueRef;
+    fn LLVMSizeOf(TypeRef Ty) -> ValueRef;
+    fn LLVMConstNeg(ValueRef ConstantVal) -> ValueRef;
+    fn LLVMConstNSWNeg(ValueRef ConstantVal) -> ValueRef;
+    fn LLVMConstNUWNeg(ValueRef ConstantVal) -> ValueRef;
+    fn LLVMConstFNeg(ValueRef ConstantVal) -> ValueRef;
+    fn LLVMConstNot(ValueRef ConstantVal) -> ValueRef;
+    fn LLVMConstAdd(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstNSWAdd(ValueRef LHSConstant,
+                       ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstNUWAdd(ValueRef LHSConstant,
+                       ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstFAdd(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstSub(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstNSWSub(ValueRef LHSConstant,
+                       ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstNUWSub(ValueRef LHSConstant,
+                       ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstFSub(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstMul(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstNSWMul(ValueRef LHSConstant,
+                       ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstNUWMul(ValueRef LHSConstant,
+                       ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstFMul(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstUDiv(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstSDiv(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstExactSDiv(ValueRef LHSConstant,
+                          ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstFDiv(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstURem(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstSRem(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstFRem(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstAnd(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstOr(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstXor(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstShl(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstLShr(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstAShr(ValueRef LHSConstant, ValueRef RHSConstant) -> ValueRef;
+    fn LLVMConstGEP(ValueRef ConstantVal,
+                    vbuf ConstantIndices, uint NumIndices) -> ValueRef;
+    fn LLVMConstInBoundsGEP(ValueRef ConstantVal,
+                            vbuf ConstantIndices,
+                            uint NumIndices) -> ValueRef;
+    fn LLVMConstTrunc(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
+    fn LLVMConstSExt(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
+    fn LLVMConstZExt(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
+    fn LLVMConstFPTrunc(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
+    fn LLVMConstFPExt(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
+    fn LLVMConstUIToFP(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
+    fn LLVMConstSIToFP(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
+    fn LLVMConstFPToUI(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
+    fn LLVMConstFPToSI(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
+    fn LLVMConstPtrToInt(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
+    fn LLVMConstIntToPtr(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
+    fn LLVMConstBitCast(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
+    fn LLVMConstZExtOrBitCast(ValueRef ConstantVal,
+                              TypeRef ToType) -> ValueRef;
+    fn LLVMConstSExtOrBitCast(ValueRef ConstantVal,
+                              TypeRef ToType) -> ValueRef;
+    fn LLVMConstTruncOrBitCast(ValueRef ConstantVal,
+                               TypeRef ToType) -> ValueRef;
+    fn LLVMConstPointerCast(ValueRef ConstantVal,
+                            TypeRef ToType) -> ValueRef;
+    fn LLVMConstIntCast(ValueRef ConstantVal, TypeRef ToType,
+                        Bool isSigned) -> ValueRef;
+    fn LLVMConstFPCast(ValueRef ConstantVal, TypeRef ToType) -> ValueRef;
+    fn LLVMConstSelect(ValueRef ConstantCondition,
+                       ValueRef ConstantIfTrue,
+                       ValueRef ConstantIfFalse) -> ValueRef;
+    fn LLVMConstExtractElement(ValueRef VectorConstant,
+                               ValueRef IndexConstant) -> ValueRef;
+    fn LLVMConstInsertElement(ValueRef VectorConstant,
+                              ValueRef ElementValueConstant,
+                              ValueRef IndexConstant) -> ValueRef;
+    fn LLVMConstShuffleVector(ValueRef VectorAConstant,
+                              ValueRef VectorBConstant,
+                              ValueRef MaskConstant) -> ValueRef;
+    fn LLVMConstExtractValue(ValueRef AggConstant, vbuf IdxList,
+                             uint NumIdx) -> ValueRef;
+    fn LLVMConstInsertValue(ValueRef AggConstant,
+                            ValueRef ElementValueConstant,
+                            vbuf IdxList, uint NumIdx) -> ValueRef;
+    fn LLVMConstInlineAsm(TypeRef Ty,
+                          sbuf AsmString, sbuf Constraints,
+                          Bool HasSideEffects, Bool IsAlignStack) -> ValueRef;
+    fn LLVMBlockAddress(ValueRef F, BasicBlockRef BB) -> ValueRef;
 
 
-  /* Operations on global variables */
-  fn AddGlobal(ModuleRef M, TypeRef Ty, sbuf Name) -> ValueRef;
-  fn AddGlobalInAddressSpace(ModuleRef M, TypeRef Ty,
-                             sbuf Name,
-                             uint AddressSpace) -> ValueRef;
-  fn GetNamedGlobal(ModuleRef M, sbuf Name) -> ValueRef;
-  fn GetFirstGlobal(ModuleRef M) -> ValueRef;
-  fn GetLastGlobal(ModuleRef M) -> ValueRef;
-  fn GetNextGlobal(ValueRef GlobalVar) -> ValueRef;
-  fn GetPreviousGlobal(ValueRef GlobalVar) -> ValueRef;
-  fn DeleteGlobal(ValueRef GlobalVar);
-  fn GetInitializer(ValueRef GlobalVar) -> ValueRef;
-  fn SetInitializer(ValueRef GlobalVar, ValueRef ConstantVal);
-  fn IsThreadLocal(ValueRef GlobalVar) -> Bool;
-  fn SetThreadLocal(ValueRef GlobalVar, Bool IsThreadLocal);
-  fn IsGlobalConstant(ValueRef GlobalVar) -> Bool;
-  fn SetGlobalConstant(ValueRef GlobalVar, Bool IsConstant);
 
-  /* Operations on aliases */
-  fn AddAlias(ModuleRef M, TypeRef Ty, ValueRef Aliasee,
-              sbuf Name) -> ValueRef;
+    /* Operations on global variables, functions, and aliases (globals) */
+    fn LLVMGetGlobalParent(ValueRef Global) -> ModuleRef;
+    fn LLVMIsDeclaration(ValueRef Global) -> Bool;
+    fn LLVMGetLinkage(ValueRef Global) -> Linkage;
+    fn LLVMSetLinkage(ValueRef Global, Linkage Link);
+    fn LLVMGetSection(ValueRef Global) -> sbuf;
+    fn LLVMSetSection(ValueRef Global, sbuf Section);
+    fn LLVMGetVisibility(ValueRef Global) -> Visibility;
+    fn LLVMSetVisibility(ValueRef Global, Visibility Viz);
+    fn LLVMGetAlignment(ValueRef Global) -> uint;
+    fn LLVMSetAlignment(ValueRef Global, uint Bytes);
 
-  /* Operations on functions */
-  fn AddFunction(ModuleRef M, sbuf Name,
-                 TypeRef FunctionTy) -> ValueRef;
-  fn GetNamedFunction(ModuleRef M, sbuf Name) -> ValueRef;
-  fn GetFirstFunction(ModuleRef M) -> ValueRef;
-  fn GetLastFunction(ModuleRef M) -> ValueRef;
-  fn GetNextFunction(ValueRef Fn) -> ValueRef;
-  fn GetPreviousFunction(ValueRef Fn) -> ValueRef;
-  fn DeleteFunction(ValueRef Fn);
-  fn GetIntrinsicID(ValueRef Fn) -> uint;
-  fn GetFunctionCallConv(ValueRef Fn) -> uint;
-  fn SetFunctionCallConv(ValueRef Fn, uint CC);
-  fn GetGC(ValueRef Fn) -> sbuf;
-  fn SetGC(ValueRef Fn, sbuf Name);
-  fn AddFunctionAttr(ValueRef Fn, Attribute PA);
-  fn GetFunctionAttr(ValueRef Fn) -> Attribute;
-  fn RemoveFunctionAttr(ValueRef Fn, Attribute PA);
 
-  /* Operations on parameters */
-  fn CountParams(ValueRef Fn) -> uint;
-  fn GetParams(ValueRef Fn, vbuf Params);
-  fn GetParam(ValueRef Fn, uint Index) -> ValueRef;
-  fn GetParamParent(ValueRef Inst) -> ValueRef;
-  fn GetFirstParam(ValueRef Fn) -> ValueRef;
-  fn GetLastParam(ValueRef Fn) -> ValueRef;
-  fn GetNextParam(ValueRef Arg) -> ValueRef;
-  fn GetPreviousParam(ValueRef Arg) -> ValueRef;
-  fn AddAttribute(ValueRef Arg, Attribute PA);
-  fn RemoveAttribute(ValueRef Arg, Attribute PA);
-  fn GetAttribute(ValueRef Arg) -> Attribute;
-  fn SetParamAlignment(ValueRef Arg, uint align);
+    /* Operations on global variables */
+    fn LLVMAddGlobal(ModuleRef M, TypeRef Ty, sbuf Name) -> ValueRef;
+    fn LLVMAddGlobalInAddressSpace(ModuleRef M, TypeRef Ty,
+                                   sbuf Name,
+                                   uint AddressSpace) -> ValueRef;
+    fn LLVMGetNamedGlobal(ModuleRef M, sbuf Name) -> ValueRef;
+    fn LLVMGetFirstGlobal(ModuleRef M) -> ValueRef;
+    fn LLVMGetLastGlobal(ModuleRef M) -> ValueRef;
+    fn LLVMGetNextGlobal(ValueRef GlobalVar) -> ValueRef;
+    fn LLVMGetPreviousGlobal(ValueRef GlobalVar) -> ValueRef;
+    fn LLVMDeleteGlobal(ValueRef GlobalVar);
+    fn LLVMGetInitializer(ValueRef GlobalVar) -> ValueRef;
+    fn LLVMSetInitializer(ValueRef GlobalVar, ValueRef ConstantVal);
+    fn LLVMIsThreadLocal(ValueRef GlobalVar) -> Bool;
+    fn LLVMSetThreadLocal(ValueRef GlobalVar, Bool IsThreadLocal);
+    fn LLVMIsGlobalConstant(ValueRef GlobalVar) -> Bool;
+    fn LLVMSetGlobalConstant(ValueRef GlobalVar, Bool IsConstant);
 
-  /* Operations on basic blocks */
-  fn BasicBlockAsValue(BasicBlockRef BB) -> ValueRef;
-  fn ValueIsBasicBlock(ValueRef Val) -> Bool;
-  fn ValueAsBasicBlock(ValueRef Val) -> BasicBlockRef;
-  fn GetBasicBlockParent(BasicBlockRef BB) -> ValueRef;
-  fn CountBasicBlocks(ValueRef Fn) -> uint;
-  fn GetBasicBlocks(ValueRef Fn, vbuf BasicBlocks);
-  fn GetFirstBasicBlock(ValueRef Fn) -> BasicBlockRef;
-  fn GetLastBasicBlock(ValueRef Fn) -> BasicBlockRef;
-  fn GetNextBasicBlock(BasicBlockRef BB) -> BasicBlockRef;
-  fn GetPreviousBasicBlock(BasicBlockRef BB) -> BasicBlockRef;
-  fn GetEntryBasicBlock(ValueRef Fn) -> BasicBlockRef;
-
-  fn AppendBasicBlockInContext(ContextRef C, ValueRef Fn,
-                               sbuf Name) -> BasicBlockRef;
-  fn InsertBasicBlockInContext(ContextRef C, BasicBlockRef BB,
-                               sbuf Name) -> BasicBlockRef;
-
-  fn AppendBasicBlock(ValueRef Fn, sbuf Name) -> BasicBlockRef;
-  fn InsertBasicBlock(BasicBlockRef InsertBeforeBB,
-                      sbuf Name) -> BasicBlockRef;
-  fn DeleteBasicBlock(BasicBlockRef BB);
-
-  /* Operations on instructions */
-  fn GetInstructionParent(ValueRef Inst) -> BasicBlockRef;
-  fn GetFirstInstruction(BasicBlockRef BB) -> ValueRef;
-  fn GetLastInstruction(BasicBlockRef BB) -> ValueRef;
-  fn GetNextInstruction(ValueRef Inst) -> ValueRef;
-  fn GetPreviousInstruction(ValueRef Inst) -> ValueRef;
-
-  /* Operations on call sites */
-  fn SetInstructionCallConv(ValueRef Instr, uint CC);
-  fn GetInstructionCallConv(ValueRef Instr) -> uint;
-  fn AddInstrAttribute(ValueRef Instr, uint index, Attribute IA);
-  fn RemoveInstrAttribute(ValueRef Instr, uint index, Attribute IA);
-  fn SetInstrParamAlignment(ValueRef Instr, uint index, uint align);
-
-  /* Operations on call instructions (only) */
-  fn IsTailCall(ValueRef CallInst) -> Bool;
-  fn SetTailCall(ValueRef CallInst, Bool IsTailCall);
-
-  /* Operations on phi nodes */
-  fn AddIncoming(ValueRef PhiNode, vbuf IncomingValues,
-                 vbuf IncomingBlocks, uint Count);
-  fn CountIncoming(ValueRef PhiNode) -> uint;
-  fn GetIncomingValue(ValueRef PhiNode, uint Index) -> ValueRef;
-  fn GetIncomingBlock(ValueRef PhiNode, uint Index) -> BasicBlockRef;
-
-  /* Instruction builders */
-  fn CreateBuilderInContext(ContextRef C) -> BuilderRef;
-  fn CreateBuilder() -> BuilderRef;
-  fn PositionBuilder(BuilderRef Builder, BasicBlockRef Block,
-                     ValueRef Instr);
-  fn PositionBuilderBefore(BuilderRef Builder, ValueRef Instr);
-  fn PositionBuilderAtEnd(BuilderRef Builder, BasicBlockRef Block);
-  fn GetInsertBlock(BuilderRef Builder) -> BasicBlockRef;
-  fn ClearInsertionPosition(BuilderRef Builder);
-  fn InsertIntoBuilder(BuilderRef Builder, ValueRef Instr);
-  fn InsertIntoBuilderWithName(BuilderRef Builder, ValueRef Instr,
-                               sbuf Name);
-  fn DisposeBuilder(BuilderRef Builder);
-
-  /* Metadata */
-  fn SetCurrentDebugLocation(BuilderRef Builder, ValueRef L);
-  fn GetCurrentDebugLocation(BuilderRef Builder) -> ValueRef;
-  fn SetInstDebugLocation(BuilderRef Builder, ValueRef Inst);
-
-  /* Terminators */
-  fn BuildRetVoid(BuilderRef B) -> ValueRef;
-  fn BuildRet(BuilderRef B, ValueRef V) -> ValueRef;
-  fn BuildAggregateRet(BuilderRef B, vbuf RetVals,
-                       uint N) -> ValueRef;
-  fn BuildBr(BuilderRef B, BasicBlockRef Dest) -> ValueRef;
-  fn BuildCondBr(BuilderRef B, ValueRef If,
-                 BasicBlockRef Then, BasicBlockRef Else) -> ValueRef;
-  fn BuildSwitch(BuilderRef B, ValueRef V,
-                 BasicBlockRef Else, uint NumCases) -> ValueRef;
-  fn BuildIndirectBr(BuilderRef B, ValueRef Addr,
-                     uint NumDests) -> ValueRef;
-  fn BuildInvoke(BuilderRef B, ValueRef Fn,
-                 vbuf Args, uint NumArgs,
-                 BasicBlockRef Then, BasicBlockRef Catch,
-                 sbuf Name) -> ValueRef;
-  fn BuildUnwind(BuilderRef B) -> ValueRef;
-  fn BuildUnreachable(BuilderRef B) -> ValueRef;
-
-  /* Add a case to the switch instruction */
-  fn AddCase(ValueRef Switch, ValueRef OnVal,
-             BasicBlockRef Dest);
-
-  /* Add a destination to the indirectbr instruction */
-  fn AddDestination(ValueRef IndirectBr, BasicBlockRef Dest);
-
-  /* Arithmetic */
-  fn BuildAdd(BuilderRef B, ValueRef LHS, ValueRef RHS,
-              sbuf Name) -> ValueRef;
-  fn BuildNSWAdd(BuilderRef B, ValueRef LHS, ValueRef RHS,
-                 sbuf Name) -> ValueRef;
-  fn BuildNUWAdd(BuilderRef B, ValueRef LHS, ValueRef RHS,
-                 sbuf Name) -> ValueRef;
-  fn BuildFAdd(BuilderRef B, ValueRef LHS, ValueRef RHS,
-               sbuf Name) -> ValueRef;
-  fn BuildSub(BuilderRef B, ValueRef LHS, ValueRef RHS,
-              sbuf Name) -> ValueRef;
-  fn BuildNSWSub(BuilderRef B, ValueRef LHS, ValueRef RHS,
-                 sbuf Name) -> ValueRef;
-  fn BuildNUWSub(BuilderRef B, ValueRef LHS, ValueRef RHS,
-                 sbuf Name) -> ValueRef;
-  fn BuildFSub(BuilderRef B, ValueRef LHS, ValueRef RHS,
-               sbuf Name) -> ValueRef;
-  fn BuildMul(BuilderRef B, ValueRef LHS, ValueRef RHS,
-              sbuf Name) -> ValueRef;
-  fn BuildNSWMul(BuilderRef B, ValueRef LHS, ValueRef RHS,
-                 sbuf Name) -> ValueRef;
-  fn BuildNUWMul(BuilderRef B, ValueRef LHS, ValueRef RHS,
-                 sbuf Name) -> ValueRef;
-  fn BuildFMul(BuilderRef B, ValueRef LHS, ValueRef RHS,
-               sbuf Name) -> ValueRef;
-  fn BuildUDiv(BuilderRef B, ValueRef LHS, ValueRef RHS,
-               sbuf Name) -> ValueRef;
-  fn BuildSDiv(BuilderRef B, ValueRef LHS, ValueRef RHS,
-               sbuf Name) -> ValueRef;
-  fn BuildExactSDiv(BuilderRef B, ValueRef LHS, ValueRef RHS,
+    /* Operations on aliases */
+    fn LLVMAddAlias(ModuleRef M, TypeRef Ty, ValueRef Aliasee,
                     sbuf Name) -> ValueRef;
-  fn BuildFDiv(BuilderRef B, ValueRef LHS, ValueRef RHS,
-               sbuf Name) -> ValueRef;
-  fn BuildURem(BuilderRef B, ValueRef LHS, ValueRef RHS,
-               sbuf Name) -> ValueRef;
-  fn BuildSRem(BuilderRef B, ValueRef LHS, ValueRef RHS,
-               sbuf Name) -> ValueRef;
-  fn BuildFRem(BuilderRef B, ValueRef LHS, ValueRef RHS,
-               sbuf Name) -> ValueRef;
-  fn BuildShl(BuilderRef B, ValueRef LHS, ValueRef RHS,
-              sbuf Name) -> ValueRef;
-  fn BuildLShr(BuilderRef B, ValueRef LHS, ValueRef RHS,
-               sbuf Name) -> ValueRef;
-  fn BuildAShr(BuilderRef B, ValueRef LHS, ValueRef RHS,
-               sbuf Name) -> ValueRef;
-  fn BuildAnd(BuilderRef B, ValueRef LHS, ValueRef RHS,
-              sbuf Name) -> ValueRef;
-  fn BuildOr(BuilderRef B, ValueRef LHS, ValueRef RHS,
-             sbuf Name) -> ValueRef;
-  fn BuildXor(BuilderRef B, ValueRef LHS, ValueRef RHS,
-              sbuf Name) -> ValueRef;
-  fn BuildBinOp(BuilderRef B, Opcode Op,
-                ValueRef LHS, ValueRef RHS,
-                sbuf Name) -> ValueRef;
-  fn BuildNeg(BuilderRef B, ValueRef V, sbuf Name) -> ValueRef;
-  fn BuildNSWNeg(BuilderRef B, ValueRef V,
-                 sbuf Name) -> ValueRef;
-  fn BuildNUWNeg(BuilderRef B, ValueRef V,
-                 sbuf Name) -> ValueRef;
-  fn BuildFNeg(BuilderRef B, ValueRef V, sbuf Name) -> ValueRef;
-  fn BuildNot(BuilderRef B, ValueRef V, sbuf Name) -> ValueRef;
 
-  /* Memory */
-  fn BuildMalloc(BuilderRef B, TypeRef Ty, sbuf Name) -> ValueRef;
-  fn BuildArrayMalloc(BuilderRef B, TypeRef Ty,
-                      ValueRef Val, sbuf Name) -> ValueRef;
-  fn BuildAlloca(BuilderRef B, TypeRef Ty, sbuf Name) -> ValueRef;
-  fn BuildArrayAlloca(BuilderRef B, TypeRef Ty,
-                      ValueRef Val, sbuf Name) -> ValueRef;
-  fn BuildFree(BuilderRef B, ValueRef PointerVal) -> ValueRef;
-  fn BuildLoad(BuilderRef B, ValueRef PointerVal,
-               sbuf Name) -> ValueRef;
-  fn BuildStore(BuilderRef B, ValueRef Val, ValueRef Ptr) -> ValueRef;
-  fn BuildGEP(BuilderRef B, ValueRef Pointer,
-              vbuf Indices, uint NumIndices,
-              sbuf Name) -> ValueRef;
-  fn BuildInBoundsGEP(BuilderRef B, ValueRef Pointer,
-                      vbuf Indices, uint NumIndices,
-                      sbuf Name) -> ValueRef;
-  fn BuildStructGEP(BuilderRef B, ValueRef Pointer,
-                    uint Idx, sbuf Name) -> ValueRef;
-  fn BuildGlobalString(BuilderRef B, sbuf Str,
+    /* Operations on functions */
+    fn LLVMAddFunction(ModuleRef M, sbuf Name,
+                       TypeRef FunctionTy) -> ValueRef;
+    fn LLVMGetNamedFunction(ModuleRef M, sbuf Name) -> ValueRef;
+    fn LLVMGetFirstFunction(ModuleRef M) -> ValueRef;
+    fn LLVMGetLastFunction(ModuleRef M) -> ValueRef;
+    fn LLVMGetNextFunction(ValueRef Fn) -> ValueRef;
+    fn LLVMGetPreviousFunction(ValueRef Fn) -> ValueRef;
+    fn LLVMDeleteFunction(ValueRef Fn);
+    fn LLVMGetIntrinsicID(ValueRef Fn) -> uint;
+    fn LLVMGetFunctionCallConv(ValueRef Fn) -> uint;
+    fn LLVMSetFunctionCallConv(ValueRef Fn, uint CC);
+    fn LLVMGetGC(ValueRef Fn) -> sbuf;
+    fn LLVMSetGC(ValueRef Fn, sbuf Name);
+    fn LLVMAddFunctionAttr(ValueRef Fn, Attribute PA);
+    fn LLVMGetFunctionAttr(ValueRef Fn) -> Attribute;
+    fn LLVMRemoveFunctionAttr(ValueRef Fn, Attribute PA);
+
+    /* Operations on parameters */
+    fn LLVMCountParams(ValueRef Fn) -> uint;
+    fn LLVMGetParams(ValueRef Fn, vbuf Params);
+    fn LLVMGetParam(ValueRef Fn, uint Index) -> ValueRef;
+    fn LLVMGetParamParent(ValueRef Inst) -> ValueRef;
+    fn LLVMGetFirstParam(ValueRef Fn) -> ValueRef;
+    fn LLVMGetLastParam(ValueRef Fn) -> ValueRef;
+    fn LLVMGetNextParam(ValueRef Arg) -> ValueRef;
+    fn LLVMGetPreviousParam(ValueRef Arg) -> ValueRef;
+    fn LLVMAddAttribute(ValueRef Arg, Attribute PA);
+    fn LLVMRemoveAttribute(ValueRef Arg, Attribute PA);
+    fn LLVMGetAttribute(ValueRef Arg) -> Attribute;
+    fn LLVMSetParamAlignment(ValueRef Arg, uint align);
+
+    /* Operations on basic blocks */
+    fn LLVMBasicBlockAsValue(BasicBlockRef BB) -> ValueRef;
+    fn LLVMValueIsBasicBlock(ValueRef Val) -> Bool;
+    fn LLVMValueAsBasicBlock(ValueRef Val) -> BasicBlockRef;
+    fn LLVMGetBasicBlockParent(BasicBlockRef BB) -> ValueRef;
+    fn LLVMCountBasicBlocks(ValueRef Fn) -> uint;
+    fn LLVMGetBasicBlocks(ValueRef Fn, vbuf BasicBlocks);
+    fn LLVMGetFirstBasicBlock(ValueRef Fn) -> BasicBlockRef;
+    fn LLVMGetLastBasicBlock(ValueRef Fn) -> BasicBlockRef;
+    fn LLVMGetNextBasicBlock(BasicBlockRef BB) -> BasicBlockRef;
+    fn LLVMGetPreviousBasicBlock(BasicBlockRef BB) -> BasicBlockRef;
+    fn LLVMGetEntryBasicBlock(ValueRef Fn) -> BasicBlockRef;
+
+    fn LLVMAppendBasicBlockInContext(ContextRef C, ValueRef Fn,
+                                     sbuf Name) -> BasicBlockRef;
+    fn LLVMInsertBasicBlockInContext(ContextRef C, BasicBlockRef BB,
+                                     sbuf Name) -> BasicBlockRef;
+
+    fn LLVMAppendBasicBlock(ValueRef Fn, sbuf Name) -> BasicBlockRef;
+    fn LLVMInsertBasicBlock(BasicBlockRef InsertBeforeBB,
+                            sbuf Name) -> BasicBlockRef;
+    fn LLVMDeleteBasicBlock(BasicBlockRef BB);
+
+    /* Operations on instructions */
+    fn LLVMGetInstructionParent(ValueRef Inst) -> BasicBlockRef;
+    fn LLVMGetFirstInstruction(BasicBlockRef BB) -> ValueRef;
+    fn LLVMGetLastInstruction(BasicBlockRef BB) -> ValueRef;
+    fn LLVMGetNextInstruction(ValueRef Inst) -> ValueRef;
+    fn LLVMGetPreviousInstruction(ValueRef Inst) -> ValueRef;
+
+    /* Operations on call sites */
+    fn LLVMSetInstructionCallConv(ValueRef Instr, uint CC);
+    fn LLVMGetInstructionCallConv(ValueRef Instr) -> uint;
+    fn LLVMAddInstrAttribute(ValueRef Instr, uint index, Attribute IA);
+    fn LLVMRemoveInstrAttribute(ValueRef Instr, uint index, Attribute IA);
+    fn LLVMSetInstrParamAlignment(ValueRef Instr, uint index, uint align);
+
+    /* Operations on call instructions (only) */
+    fn LLVMIsTailCall(ValueRef CallInst) -> Bool;
+    fn LLVMSetTailCall(ValueRef CallInst, Bool IsTailCall);
+
+    /* Operations on phi nodes */
+    fn LLVMAddIncoming(ValueRef PhiNode, vbuf IncomingValues,
+                       vbuf IncomingBlocks, uint Count);
+    fn LLVMCountIncoming(ValueRef PhiNode) -> uint;
+    fn LLVMGetIncomingValue(ValueRef PhiNode, uint Index) -> ValueRef;
+    fn LLVMGetIncomingBlock(ValueRef PhiNode, uint Index) -> BasicBlockRef;
+
+    /* Instruction builders */
+    fn LLVMCreateBuilderInContext(ContextRef C) -> BuilderRef;
+    fn LLVMCreateBuilder() -> BuilderRef;
+    fn LLVMPositionBuilder(BuilderRef Builder, BasicBlockRef Block,
+                           ValueRef Instr);
+    fn LLVMPositionBuilderBefore(BuilderRef Builder, ValueRef Instr);
+    fn LLVMPositionBuilderAtEnd(BuilderRef Builder, BasicBlockRef Block);
+    fn LLVMGetInsertBlock(BuilderRef Builder) -> BasicBlockRef;
+    fn LLVMClearInsertionPosition(BuilderRef Builder);
+    fn LLVMInsertIntoBuilder(BuilderRef Builder, ValueRef Instr);
+    fn LLVMInsertIntoBuilderWithName(BuilderRef Builder, ValueRef Instr,
+                                     sbuf Name);
+    fn LLVMDisposeBuilder(BuilderRef Builder);
+
+    /* Metadata */
+    fn LLVMSetCurrentDebugLocation(BuilderRef Builder, ValueRef L);
+    fn LLVMGetCurrentDebugLocation(BuilderRef Builder) -> ValueRef;
+    fn LLVMSetInstDebugLocation(BuilderRef Builder, ValueRef Inst);
+
+    /* Terminators */
+    fn LLVMBuildRetVoid(BuilderRef B) -> ValueRef;
+    fn LLVMBuildRet(BuilderRef B, ValueRef V) -> ValueRef;
+    fn LLVMBuildAggregateRet(BuilderRef B, vbuf RetVals,
+                             uint N) -> ValueRef;
+    fn LLVMBuildBr(BuilderRef B, BasicBlockRef Dest) -> ValueRef;
+    fn LLVMBuildCondBr(BuilderRef B, ValueRef If,
+                       BasicBlockRef Then, BasicBlockRef Else) -> ValueRef;
+    fn LLVMBuildSwitch(BuilderRef B, ValueRef V,
+                       BasicBlockRef Else, uint NumCases) -> ValueRef;
+    fn LLVMBuildIndirectBr(BuilderRef B, ValueRef Addr,
+                           uint NumDests) -> ValueRef;
+    fn LLVMBuildInvoke(BuilderRef B, ValueRef Fn,
+                       vbuf Args, uint NumArgs,
+                       BasicBlockRef Then, BasicBlockRef Catch,
                        sbuf Name) -> ValueRef;
-  fn BuildGlobalStringPtr(BuilderRef B, sbuf Str,
-                          sbuf Name) -> ValueRef;
+    fn LLVMBuildUnwind(BuilderRef B) -> ValueRef;
+    fn LLVMBuildUnreachable(BuilderRef B) -> ValueRef;
 
-  /* Casts */
-  fn BuildTrunc(BuilderRef B, ValueRef Val,
-                TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildZExt(BuilderRef B, ValueRef Val,
-               TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildSExt(BuilderRef B, ValueRef Val,
-               TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildFPToUI(BuilderRef B, ValueRef Val,
-                 TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildFPToSI(BuilderRef B, ValueRef Val,
-                 TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildUIToFP(BuilderRef B, ValueRef Val,
-                 TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildSIToFP(BuilderRef B, ValueRef Val,
-                 TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildFPTrunc(BuilderRef B, ValueRef Val,
-                  TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildFPExt(BuilderRef B, ValueRef Val,
-                TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildPtrToInt(BuilderRef B, ValueRef Val,
-                   TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildIntToPtr(BuilderRef B, ValueRef Val,
-                   TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildBitCast(BuilderRef B, ValueRef Val,
-                  TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildZExtOrBitCast(BuilderRef B, ValueRef Val,
-                        TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildSExtOrBitCast(BuilderRef B, ValueRef Val,
-                        TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildTruncOrBitCast(BuilderRef B, ValueRef Val,
-                         TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildCast(BuilderRef B, Opcode Op, ValueRef Val,
-               TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildPointerCast(BuilderRef B, ValueRef Val,
-                      TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildIntCast(BuilderRef B, ValueRef Val,
-                  TypeRef DestTy, sbuf Name) -> ValueRef;
-  fn BuildFPCast(BuilderRef B, ValueRef Val,
-                 TypeRef DestTy, sbuf Name) -> ValueRef;
+    /* Add a case to the switch instruction */
+    fn LLVMAddCase(ValueRef Switch, ValueRef OnVal,
+                   BasicBlockRef Dest);
 
-  /* Comparisons */
-  fn BuildICmp(BuilderRef B, IntPredicate Op,
-               ValueRef LHS, ValueRef RHS,
-               sbuf Name) -> ValueRef;
-  fn BuildFCmp(BuilderRef B, RealPredicate Op,
-               ValueRef LHS, ValueRef RHS,
-               sbuf Name) -> ValueRef;
+    /* Add a destination to the indirectbr instruction */
+    fn LLVMAddDestination(ValueRef IndirectBr, BasicBlockRef Dest);
 
-  /* Miscellaneous instructions */
-  fn BuildPhi(BuilderRef B, TypeRef Ty, sbuf Name) -> ValueRef;
-  fn BuildCall(BuilderRef B, ValueRef Fn,
-               vbuf Args, uint NumArgs,
-               sbuf Name) -> ValueRef;
-  fn BuildSelect(BuilderRef B, ValueRef If,
-                 ValueRef Then, ValueRef Else,
-                 sbuf Name) -> ValueRef;
-  fn BuildVAArg(BuilderRef B, ValueRef List, TypeRef Ty,
-                sbuf Name) -> ValueRef;
-  fn BuildExtractElement(BuilderRef B, ValueRef VecVal,
-                         ValueRef Index, sbuf Name) -> ValueRef;
-  fn BuildInsertElement(BuilderRef B, ValueRef VecVal,
-                        ValueRef EltVal, ValueRef Index,
-                        sbuf Name) -> ValueRef;
-  fn BuildShuffleVector(BuilderRef B, ValueRef V1,
-                        ValueRef V2, ValueRef Mask,
-                        sbuf Name) -> ValueRef;
-  fn BuildExtractValue(BuilderRef B, ValueRef AggVal,
-                       uint Index, sbuf Name) -> ValueRef;
-  fn BuildInsertValue(BuilderRef B, ValueRef AggVal,
-                      ValueRef EltVal, uint Index,
-                      sbuf Name) -> ValueRef;
-
-  fn BuildIsNull(BuilderRef B, ValueRef Val,
-                 sbuf Name) -> ValueRef;
-  fn BuildIsNotNull(BuilderRef B, ValueRef Val,
+    /* Arithmetic */
+    fn LLVMBuildAdd(BuilderRef B, ValueRef LHS, ValueRef RHS,
                     sbuf Name) -> ValueRef;
-  fn BuildPtrDiff(BuilderRef B, ValueRef LHS,
-                  ValueRef RHS, sbuf Name) -> ValueRef;
+    fn LLVMBuildNSWAdd(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                       sbuf Name) -> ValueRef;
+    fn LLVMBuildNUWAdd(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                       sbuf Name) -> ValueRef;
+    fn LLVMBuildFAdd(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildSub(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                    sbuf Name) -> ValueRef;
+    fn LLVMBuildNSWSub(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                       sbuf Name) -> ValueRef;
+    fn LLVMBuildNUWSub(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                       sbuf Name) -> ValueRef;
+    fn LLVMBuildFSub(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildMul(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                    sbuf Name) -> ValueRef;
+    fn LLVMBuildNSWMul(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                       sbuf Name) -> ValueRef;
+    fn LLVMBuildNUWMul(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                       sbuf Name) -> ValueRef;
+    fn LLVMBuildFMul(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildUDiv(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildSDiv(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildExactSDiv(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                          sbuf Name) -> ValueRef;
+    fn LLVMBuildFDiv(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildURem(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildSRem(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildFRem(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildShl(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                    sbuf Name) -> ValueRef;
+    fn LLVMBuildLShr(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildAShr(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildAnd(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                    sbuf Name) -> ValueRef;
+    fn LLVMBuildOr(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                   sbuf Name) -> ValueRef;
+    fn LLVMBuildXor(BuilderRef B, ValueRef LHS, ValueRef RHS,
+                    sbuf Name) -> ValueRef;
+    fn LLVMBuildBinOp(BuilderRef B, Opcode Op,
+                      ValueRef LHS, ValueRef RHS,
+                      sbuf Name) -> ValueRef;
+    fn LLVMBuildNeg(BuilderRef B, ValueRef V, sbuf Name) -> ValueRef;
+    fn LLVMBuildNSWNeg(BuilderRef B, ValueRef V,
+                       sbuf Name) -> ValueRef;
+    fn LLVMBuildNUWNeg(BuilderRef B, ValueRef V,
+                       sbuf Name) -> ValueRef;
+    fn LLVMBuildFNeg(BuilderRef B, ValueRef V, sbuf Name) -> ValueRef;
+    fn LLVMBuildNot(BuilderRef B, ValueRef V, sbuf Name) -> ValueRef;
+
+    /* Memory */
+    fn LLVMBuildMalloc(BuilderRef B, TypeRef Ty, sbuf Name) -> ValueRef;
+    fn LLVMBuildArrayMalloc(BuilderRef B, TypeRef Ty,
+                            ValueRef Val, sbuf Name) -> ValueRef;
+    fn LLVMBuildAlloca(BuilderRef B, TypeRef Ty, sbuf Name) -> ValueRef;
+    fn LLVMBuildArrayAlloca(BuilderRef B, TypeRef Ty,
+                            ValueRef Val, sbuf Name) -> ValueRef;
+    fn LLVMBuildFree(BuilderRef B, ValueRef PointerVal) -> ValueRef;
+    fn LLVMBuildLoad(BuilderRef B, ValueRef PointerVal,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildStore(BuilderRef B, ValueRef Val, ValueRef Ptr) -> ValueRef;
+    fn LLVMBuildGEP(BuilderRef B, ValueRef Pointer,
+                    vbuf Indices, uint NumIndices,
+                    sbuf Name) -> ValueRef;
+    fn LLVMBuildInBoundsGEP(BuilderRef B, ValueRef Pointer,
+                            vbuf Indices, uint NumIndices,
+                            sbuf Name) -> ValueRef;
+    fn LLVMBuildStructGEP(BuilderRef B, ValueRef Pointer,
+                          uint Idx, sbuf Name) -> ValueRef;
+    fn LLVMBuildGlobalString(BuilderRef B, sbuf Str,
+                             sbuf Name) -> ValueRef;
+    fn LLVMBuildGlobalStringPtr(BuilderRef B, sbuf Str,
+                                sbuf Name) -> ValueRef;
+
+    /* Casts */
+    fn LLVMBuildTrunc(BuilderRef B, ValueRef Val,
+                      TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildZExt(BuilderRef B, ValueRef Val,
+                     TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildSExt(BuilderRef B, ValueRef Val,
+                     TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildFPToUI(BuilderRef B, ValueRef Val,
+                       TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildFPToSI(BuilderRef B, ValueRef Val,
+                       TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildUIToFP(BuilderRef B, ValueRef Val,
+                       TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildSIToFP(BuilderRef B, ValueRef Val,
+                       TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildFPTrunc(BuilderRef B, ValueRef Val,
+                        TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildFPExt(BuilderRef B, ValueRef Val,
+                      TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildPtrToInt(BuilderRef B, ValueRef Val,
+                         TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildIntToPtr(BuilderRef B, ValueRef Val,
+                         TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildBitCast(BuilderRef B, ValueRef Val,
+                        TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildZExtOrBitCast(BuilderRef B, ValueRef Val,
+                              TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildSExtOrBitCast(BuilderRef B, ValueRef Val,
+                              TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildTruncOrBitCast(BuilderRef B, ValueRef Val,
+                               TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildCast(BuilderRef B, Opcode Op, ValueRef Val,
+                     TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildPointerCast(BuilderRef B, ValueRef Val,
+                            TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildIntCast(BuilderRef B, ValueRef Val,
+                        TypeRef DestTy, sbuf Name) -> ValueRef;
+    fn LLVMBuildFPCast(BuilderRef B, ValueRef Val,
+                       TypeRef DestTy, sbuf Name) -> ValueRef;
+
+    /* Comparisons */
+    fn LLVMBuildICmp(BuilderRef B, IntPredicate Op,
+                     ValueRef LHS, ValueRef RHS,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildFCmp(BuilderRef B, RealPredicate Op,
+                     ValueRef LHS, ValueRef RHS,
+                     sbuf Name) -> ValueRef;
+
+    /* Miscellaneous instructions */
+    fn LLVMBuildPhi(BuilderRef B, TypeRef Ty, sbuf Name) -> ValueRef;
+    fn LLVMBuildCall(BuilderRef B, ValueRef Fn,
+                     vbuf Args, uint NumArgs,
+                     sbuf Name) -> ValueRef;
+    fn LLVMBuildSelect(BuilderRef B, ValueRef If,
+                       ValueRef Then, ValueRef Else,
+                       sbuf Name) -> ValueRef;
+    fn LLVMBuildVAArg(BuilderRef B, ValueRef List, TypeRef Ty,
+                      sbuf Name) -> ValueRef;
+    fn LLVMBuildExtractElement(BuilderRef B, ValueRef VecVal,
+                               ValueRef Index, sbuf Name) -> ValueRef;
+    fn LLVMBuildInsertElement(BuilderRef B, ValueRef VecVal,
+                              ValueRef EltVal, ValueRef Index,
+                              sbuf Name) -> ValueRef;
+    fn LLVMBuildShuffleVector(BuilderRef B, ValueRef V1,
+                              ValueRef V2, ValueRef Mask,
+                              sbuf Name) -> ValueRef;
+    fn LLVMBuildExtractValue(BuilderRef B, ValueRef AggVal,
+                             uint Index, sbuf Name) -> ValueRef;
+    fn LLVMBuildInsertValue(BuilderRef B, ValueRef AggVal,
+                            ValueRef EltVal, uint Index,
+                            sbuf Name) -> ValueRef;
+
+    fn LLVMBuildIsNull(BuilderRef B, ValueRef Val,
+                       sbuf Name) -> ValueRef;
+    fn LLVMBuildIsNotNull(BuilderRef B, ValueRef Val,
+                          sbuf Name) -> ValueRef;
+    fn LLVMBuildPtrDiff(BuilderRef B, ValueRef LHS,
+                        ValueRef RHS, sbuf Name) -> ValueRef;
 
 
+    /** Writes a module to the specified path. Returns 0 on success. */
+    fn LLVMWriteBitcodeToFile(ModuleRef M, sbuf Path) -> int;
+}
 
+/* Slightly more terse object-interface to LLVM's 'builder' functions. */
+
+obj builder(BuilderRef B) {
+
+    /* Terminators */
+    fn RetVoid()  -> ValueRef {
+        ret llvm.LLVMBuildRetVoid(B);
+    }
+
+    fn Ret(ValueRef V) -> ValueRef {
+        ret llvm.LLVMBuildRet(B, V);
+    }
+
+    fn AggregateRet(vbuf RetVals, uint N) -> ValueRef {
+        ret llvm.LLVMBuildAggregateRet(B, RetVals, N);
+    }
+
+    fn Br(BasicBlockRef Dest) -> ValueRef {
+        ret llvm.LLVMBuildBr(B, Dest);
+    }
+
+    fn CondBr(ValueRef If, BasicBlockRef Then,
+              BasicBlockRef Else) -> ValueRef {
+        ret llvm.LLVMBuildCondBr(B, If, Then, Else);
+    }
+
+    fn Switch(ValueRef V, BasicBlockRef Else, uint NumCases) -> ValueRef {
+        ret llvm.LLVMBuildSwitch(B, V, Else, NumCases);
+    }
+
+    fn IndirectBr(ValueRef Addr, uint NumDests) -> ValueRef {
+        ret llvm.LLVMBuildIndirectBr(B, Addr, NumDests);
+    }
+
+    fn Invoke(ValueRef Fn, vbuf Args, uint NumArgs,
+              BasicBlockRef Then, BasicBlockRef Catch,
+              sbuf Name) -> ValueRef {
+        ret llvm.LLVMBuildInvoke(B, Fn, Args, NumArgs,
+                                 Then, Catch, Name);
+    }
+
+    fn Unwind() -> ValueRef {
+        ret llvm.LLVMBuildUnwind(B);
+    }
+
+    fn Unreachable() -> ValueRef {
+        ret llvm.LLVMBuildUnreachable(B);
+    }
+
+    /* Arithmetic */
+    fn Add(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildAdd(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn NSWAdd(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildNSWAdd(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn NUWAdd(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildNUWAdd(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn FAdd(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildFAdd(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn Sub(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildSub(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn NSWSub(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildNSWSub(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn NUWSub(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildNUWSub(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn FSub(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildFSub(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn Mul(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildMul(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn NSWMul(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildNSWMul(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn NUWMul(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildNUWMul(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn FMul(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildFMul(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn UDiv(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildUDiv(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn SDiv(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildSDiv(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn ExactSDiv(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildExactSDiv(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn FDiv(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildFDiv(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn URem(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildURem(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn SRem(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildSRem(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn FRem(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildFRem(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn Shl(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildShl(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn LShr(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildLShr(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn AShr(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildAShr(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn And(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildAnd(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn Or(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildOr(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn Xor(ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildXor(B, LHS, RHS, 0 as sbuf);
+    }
+
+    fn BinOp(Opcode Op, ValueRef LHS, ValueRef RHS) -> ValueRef {
+        ret llvm.LLVMBuildBinOp(B, Op, LHS, RHS, 0 as sbuf);
+    }
+
+    fn Neg(ValueRef V) -> ValueRef {
+        ret llvm.LLVMBuildNeg(B, V, 0 as sbuf);
+    }
+
+    fn NSWNeg(ValueRef V) -> ValueRef {
+        ret llvm.LLVMBuildNSWNeg(B, V, 0 as sbuf);
+    }
+
+    fn NUWNeg(ValueRef V) -> ValueRef {
+        ret llvm.LLVMBuildNUWNeg(B, V, 0 as sbuf);
+    }
+    fn FNeg(ValueRef V) -> ValueRef {
+        ret llvm.LLVMBuildFNeg(B, V, 0 as sbuf);
+    }
+    fn Not(ValueRef V) -> ValueRef {
+        ret llvm.LLVMBuildNot(B, V, 0 as sbuf);
+    }
+
+    /* Memory */
+    fn Malloc(TypeRef Ty) -> ValueRef {
+        ret llvm.LLVMBuildMalloc(B, Ty, 0 as sbuf);
+    }
+
+    fn ArrayMalloc(TypeRef Ty, ValueRef Val) -> ValueRef {
+        ret llvm.LLVMBuildArrayMalloc(B, Ty, Val, 0 as sbuf);
+    }
+
+    fn Alloca(TypeRef Ty) -> ValueRef {
+        ret llvm.LLVMBuildAlloca(B, Ty, 0 as sbuf);
+    }
+
+    fn ArrayAlloca(TypeRef Ty, ValueRef Val) -> ValueRef {
+        ret llvm.LLVMBuildArrayAlloca(B, Ty, Val, 0 as sbuf);
+    }
+
+    fn Free(ValueRef PointerVal) -> ValueRef {
+        ret llvm.LLVMBuildFree(B, PointerVal);
+    }
+
+    fn Load(ValueRef PointerVal) -> ValueRef {
+        ret llvm.LLVMBuildLoad(B, PointerVal, 0 as sbuf);
+    }
+
+    fn Store(ValueRef Val, ValueRef Ptr) -> ValueRef {
+        ret llvm.LLVMBuildStore(B, Val, Ptr);
+    }
+
+    fn GEP(ValueRef Pointer, vbuf Indices, uint NumIndices,
+           sbuf Name) -> ValueRef {
+        ret llvm.LLVMBuildGEP(B, Pointer, Indices, NumIndices, 0 as sbuf);
+    }
+
+    fn InBoundsGEP(ValueRef Pointer, vbuf Indices, uint NumIndices,
+                   sbuf Name) -> ValueRef {
+        ret llvm.LLVMBuildInBoundsGEP(B, Pointer, Indices,
+                                      NumIndices, 0 as sbuf);
+    }
+
+    fn StructGEP(ValueRef Pointer, uint Idx) -> ValueRef {
+        ret llvm.LLVMBuildStructGEP(B, Pointer, Idx, 0 as sbuf);
+    }
+
+    fn GlobalString(sbuf Str) -> ValueRef {
+        ret llvm.LLVMBuildGlobalString(B, Str, 0 as sbuf);
+    }
+
+    fn GlobalStringPtr(sbuf Str) -> ValueRef {
+        ret llvm.LLVMBuildGlobalStringPtr(B, Str, 0 as sbuf);
+    }
+
+    drop {
+        llvm.LLVMDisposeBuilder(B);
+    }
 }
 
 //
