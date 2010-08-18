@@ -13,6 +13,10 @@ mod driver {
     mod rustc;
 }
 
+mod util {
+    mod common;
+}
+
 auth driver = unsafe;
 
 mod lib {
