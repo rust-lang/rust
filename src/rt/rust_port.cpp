@@ -23,6 +23,12 @@ rust_port::~rust_port() {
     while (chans.is_empty() == false) {
         rust_chan *chan = chans.peek();
         chan->disassociate();
+
+        if (chan->ref_count == 0) {
+            task->log(rust_log::COMM,
+                "chan: 0x%" PRIxPTR " is dormant, freeing", chan);
+            delete chan;
+        }
     }
 
     delete remote_channel;
@@ -33,13 +39,6 @@ bool rust_port::receive(void *dptr) {
         rust_chan *chan = chans[i];
         if (chan->buffer.is_empty() == false) {
             chan->buffer.dequeue(dptr);
-            if (chan->buffer.is_empty() && chan->task->blocked()) {
-                task->log(rust_log::COMM,
-                          "chan: 0x%" PRIxPTR
-                          " is flushing, wakeup task: 0x%" PRIxPTR,
-                          chan, chan->task);
-                chan->task->wakeup(this);
-            }
             task->log(rust_log::COMM, "<=== read data ===");
             return true;
         }

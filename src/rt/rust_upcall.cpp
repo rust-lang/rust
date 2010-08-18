@@ -108,29 +108,7 @@ upcall_new_chan(rust_task *task, rust_port *port) {
 extern "C" CDECL void
 upcall_flush_chan(rust_task *task, rust_chan *chan) {
     LOG_UPCALL_ENTRY(task);
-    rust_dom *dom = task->dom;
-    task->log(rust_log::UPCALL | rust_log::COMM,
-              "flush chan: 0x%" PRIxPTR, chan);
-
-    if (chan->buffer.is_empty()) {
-        return;
-    }
-
-    // We cannot flush if the target port was dropped.
-    if (chan->is_associated() == false) {
-        return;
-    }
-
-    A(dom, chan->is_associated(),
-      "Channel should be associated to a port.");
-
-    A(dom, chan->port->is_proxy() == false,
-      "Channels to remote ports should be flushed automatically.");
-
-    // Block on the port until this channel has been completely drained
-    // by the port.
-    task->block(chan->port);
-    task->yield(2);
+    // Nop.
 }
 
 /**
@@ -149,8 +127,19 @@ extern "C" CDECL void upcall_del_chan(rust_task *task, rust_chan *chan) {
       "Channel's ref count should be zero.");
 
     if (chan->is_associated()) {
-        A(task->dom, chan->buffer.is_empty(),
-          "Channel's buffer should be empty.");
+        // We're trying to delete a channel that another task may be reading
+        // from. We have two options:
+        //
+        // 1. We can flush the channel by blocking in upcall_flush_chan()
+        //    and resuming only when the channel is flushed. The problem
+        //    here is that we can get ourselves in a deadlock if the parent
+        //    task tries to join us.
+        //
+        // 2. We can leave the channel in a "dormnat" state by not freeing
+        //    it and letting the receiver task delete it for us instead.
+        if (chan->buffer.is_empty() == false) {
+            return;
+        }
         chan->disassociate();
     }
     delete chan;
