@@ -42,6 +42,7 @@ public:
         TIMER = 0x400,
         GC = 0x800,
         STDLIB = 0x1000,
+        SPECIAL = 0x2000,
         ALL = 0xffffffff
     };
 
