@@ -5,11 +5,13 @@
 #ifndef RUST_SRV_H
 #define RUST_SRV_H
 
+#include "sync/spin_lock.h"
+#include "memory_region.h"
+
 class rust_srv {
-private:
-    size_t _live_allocations;
-    array_list<void *> _allocation_list;
 public:
+    memory_region local_region;
+    memory_region synchronized_region;
     virtual void log(char const *msg);
     virtual void fatal(char const *expression,
         char const *file,
@@ -21,12 +23,12 @@ public:
         size_t line,
         char const *format,
         ...);
+    virtual void free(void *);
     virtual void *malloc(size_t);
     virtual void *realloc(void *, size_t);
-    virtual void free(void *);
-    virtual rust_srv *clone();
     rust_srv();
     virtual ~rust_srv();
+    virtual rust_srv *clone();
 };
 
 #endif /* RUST_SRV_H */

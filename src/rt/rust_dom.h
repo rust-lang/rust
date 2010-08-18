@@ -25,6 +25,8 @@ struct rust_dom
     rust_crate const *root_crate;
     rust_log _log;
     rust_srv *srv;
+    memory_region local_region;
+    memory_region synchronized_region;
     const char *const name;
     ptr_vec<rust_task> running_tasks;
     ptr_vec<rust_task> blocked_tasks;
@@ -58,10 +60,15 @@ struct rust_dom
     template<typename T>
     void logptr(char const *msg, T* ptrval);
     void fail();
-    void *malloc(size_t sz);
-    void *calloc(size_t sz);
-    void *realloc(void *data, size_t sz);
-    void free(void *p);
+    void *malloc(size_t size);
+    void *malloc(size_t size, memory_region::memory_region_type type);
+    void *calloc(size_t size);
+    void *calloc(size_t size, memory_region::memory_region_type type);
+    void *realloc(void *mem, size_t size);
+    void *realloc(void *mem, size_t size,
+        memory_region::memory_region_type type);
+    void free(void *mem);
+    void free(void *mem, memory_region::memory_region_type type);
 
     void send_message(rust_message *message);
     void drain_incoming_message_queue();

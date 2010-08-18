@@ -38,7 +38,7 @@ last_os_error(rust_task *task) {
 #endif
     size_t fill = strlen(buf) + 1;
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
-    void *mem = dom->malloc(alloc);
+    void *mem = dom->malloc(alloc, memory_region::LOCAL);
     if (!mem) {
         task->fail(1);
         return NULL;
@@ -134,7 +134,7 @@ str_alloc_with_data(rust_task *task,
 {
     rust_dom *dom = task->dom;
     size_t alloc = next_power_of_two(sizeof(rust_str) + n_bytes);
-    void *mem = dom->malloc(alloc);
+    void *mem = dom->malloc(alloc, memory_region::LOCAL);
     if (!mem)
         return NULL;
     rust_str *st = new (mem) rust_str(dom, alloc, fill, d);

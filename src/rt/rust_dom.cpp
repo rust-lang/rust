@@ -13,6 +13,8 @@ rust_dom::rust_dom(rust_srv *srv, rust_crate const *root_crate,
     root_crate(root_crate),
     _log(srv, this),
     srv(srv),
+    local_region(&srv->local_region),
+    synchronized_region(&srv->synchronized_region),
     name(name),
     running_tasks(this),
     blocked_tasks(this),
@@ -144,36 +146,65 @@ rust_dom::fail() {
 }
 
 void *
-rust_dom::malloc(size_t sz) {
-    void *p = srv->malloc(sz);
-    I(this, p);
-    log(rust_log::MEM,
-        "%s @0x%" PRIxPTR " rust_dom::malloc(%d) -> 0x%" PRIxPTR,
-        name, (uintptr_t) this, sz, p);
-    return p;
+rust_dom::malloc(size_t size) {
+    return malloc(size, memory_region::LOCAL);
 }
 
 void *
-rust_dom::calloc(size_t sz) {
-    void *p = this->malloc(sz);
-    memset(p, 0, sz);
-    return p;
+rust_dom::malloc(size_t size, memory_region::memory_region_type type) {
+    if (type == memory_region::LOCAL) {
+        return local_region.malloc(size);
+    } else if (type == memory_region::SYNCHRONIZED) {
+        return synchronized_region.malloc(size);
+    }
+    return NULL;
 }
 
 void *
-rust_dom::realloc(void *p, size_t sz) {
-    void *p1 = srv->realloc(p, sz);
-    I(this, p1);
-    log(rust_log::MEM, "rust_dom::realloc(0x%" PRIxPTR ", %d) -> 0x%" PRIxPTR,
-        p, sz, p1);
-    return p1;
+rust_dom::calloc(size_t size) {
+    return calloc(size, memory_region::LOCAL);
+}
+
+void *
+rust_dom::calloc(size_t size, memory_region::memory_region_type type) {
+    if (type == memory_region::LOCAL) {
+        return local_region.calloc(size);
+    } else if (type == memory_region::SYNCHRONIZED) {
+        return synchronized_region.calloc(size);
+    }
+    return NULL;
+}
+
+void *
+rust_dom::realloc(void *mem, size_t size) {
+    return realloc(mem, size, memory_region::LOCAL);
+}
+
+void *
+rust_dom::realloc(void *mem, size_t size,
+    memory_region::memory_region_type type) {
+    if (type == memory_region::LOCAL) {
+        return local_region.realloc(mem, size);
+    } else if (type == memory_region::SYNCHRONIZED) {
+        return synchronized_region.realloc(mem, size);
+    }
+    return NULL;
 }
 
 void
-rust_dom::free(void *p) {
-    log(rust_log::MEM, "rust_dom::free(0x%" PRIxPTR ")", p);
-    I(this, p);
-    srv->free(p);
+rust_dom::free(void *mem) {
+    free(mem, memory_region::LOCAL);
+}
+
+void
+rust_dom::free(void *mem, memory_region::memory_region_type type) {
+    log(rust_log::MEM, "rust_dom::free(0x%" PRIxPTR ")", mem);
+    if (type == memory_region::LOCAL) {
+        local_region.free(mem);
+    } else if (type == memory_region::SYNCHRONIZED) {
+        synchronized_region.free(mem);
+    }
+    return;
 }
 
 #ifdef __WIN32__
@@ -264,7 +295,6 @@ void rust_dom::send_message(rust_message *message) {
                         message,
                         &_incoming_message_queue,
                         this);
-    A(this, message->dom == this, "Message owned by non-local domain.");
     _incoming_message_queue.enqueue(message);
 }
 
@@ -277,7 +307,8 @@ void rust_dom::drain_incoming_message_queue() {
         log(rust_log::COMM, "<== processing incoming message \"%s\" 0x%"
             PRIxPTR, message->label, message);
         message->process();
-        delete message;
+        message->~rust_message();
+        this->synchronized_region.free(message);
     }
 }
 
@@ -322,8 +353,7 @@ rust_dom::get_port_proxy_synchronized(rust_port *port) {
  * Returns NULL if no tasks can be scheduled.
  */
 rust_task *
-rust_dom::schedule_task()
-{
+rust_dom::schedule_task() {
     I(this, this);
     // FIXME: in the face of failing tasks, this is not always right.
     // I(this, n_live_tasks() > 0);

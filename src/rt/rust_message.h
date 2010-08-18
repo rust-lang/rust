@@ -9,12 +9,11 @@
 /**
  * Abstract base class for all message types.
  */
-class rust_message : public lock_free_queue_node,
-                     public dom_owned<rust_message> {
+class rust_message : public lock_free_queue_node {
 public:
-    rust_dom *dom;
     const char* label;
 private:
+    rust_dom *_dom;
     rust_task *_source;
 protected:
     rust_task *_target;
@@ -70,7 +69,7 @@ public:
 
     data_message(uint8_t *buffer, size_t buffer_sz, const char* label,
                  rust_task *source, rust_task *target, rust_port *port);
-    ~data_message();
+    virtual ~data_message();
     void process();
 
     /**

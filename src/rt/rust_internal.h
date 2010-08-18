@@ -173,25 +173,7 @@ check_null(rust_dom *dom, T value, char const *expr,
 
 #define CHECK_NULL(dom, e) (check_null(dom, e, #e, __FILE__, __LINE__))
 
-inline void *operator new(size_t sz, void *mem) {
-    return mem;
-}
-
-inline void *operator new(size_t sz, rust_dom *dom) {
-    return dom->malloc(sz);
-}
-
-inline void *operator new[](size_t sz, rust_dom *dom) {
-    return dom->malloc(sz);
-}
-
-inline void *operator new(size_t sz, rust_dom &dom) {
-    return dom.malloc(sz);
-}
-
-inline void *operator new[](size_t sz, rust_dom &dom) {
-    return dom.malloc(sz);
-}
+#include "memory.h"
 
 struct
 rust_timer

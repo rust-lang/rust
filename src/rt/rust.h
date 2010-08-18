@@ -21,11 +21,6 @@
 
 #include "rust_srv.h"
 
-inline void *operator new(size_t size, rust_srv *srv)
-{
-    return srv->malloc(size);
-}
-
 /*
  * Local Variables:
  * fill-column: 78;

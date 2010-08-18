@@ -3,7 +3,8 @@
 
 rust_message::
 rust_message(const char* label, rust_task *source, rust_task *target) :
-             dom(target->dom), label(label),
+             label(label),
+             _dom(target->dom),
              _source(source),
              _target(target) {
 }
@@ -12,12 +13,12 @@ rust_message::~rust_message() {
 }
 
 void rust_message::process() {
-    I(dom, false);
+    I(_dom, false);
 }
 
 rust_proxy<rust_task> *
 rust_message::get_source_proxy() {
-    return dom->get_task_proxy(_source);
+    return _dom->get_task_proxy(_source);
 }
 
 notify_message::
@@ -50,8 +51,9 @@ send(notification_type type, const char* label, rust_task *source,
      rust_proxy<rust_task> *target) {
     rust_task *target_task = target->delegate();
     rust_dom *target_domain = target_task->dom;
-    notify_message *message = new (target_domain)
-        notify_message(type, label, source, target_task);
+    notify_message *message =
+        new (target_domain, memory_region::SYNCHRONIZED) notify_message(type,
+            label, source, target_task);
     target_domain->send_message(message);
 }
 
@@ -83,9 +85,10 @@ send(uint8_t *buffer, size_t buffer_sz, const char* label, rust_task *source,
     rust_task *target_task = target->delegate();
     rust_port *target_port = port->delegate();
     rust_dom *target_domain = target_task->dom;
-    data_message *message = new (target_domain)
-        data_message(buffer, buffer_sz, label, source,
-                     target_task, target_port);
+    data_message *message =
+        new (target_domain, memory_region::SYNCHRONIZED)
+            data_message(buffer, buffer_sz, label, source,
+                target_task, target_port);
     target_domain->send_message(message);
 }
 
