@@ -368,6 +368,31 @@ rust_dom::schedule_task() {
     return NULL;
 }
 
+/**
+ * Checks for simple deadlocks.
+ */
+bool
+rust_dom::is_deadlocked() {
+    if (_live_domains.size() != 1) {
+        // We cannot tell if we are deadlocked if other domains exists.
+        return false;
+    }
+
+    if (running_tasks.length() != 0) {
+        // We are making progress and therefore we are not deadlocked.
+        return false;
+    }
+
+    if (_incoming_message_queue.is_empty() && blocked_tasks.length() > 0) {
+        // We have no messages to process, no running tasks to schedule
+        // and some blocked tasks therefore we are likely in a deadlock.
+        log_state();
+        return true;
+    }
+
+    return false;
+}
+
 void
 rust_dom::log_all_state() {
     for (uint32_t i = 0; i < _live_domains.size(); i++) {
@@ -427,6 +452,8 @@ rust_dom::start_main_loop()
     logptr("exit-task glue", root_crate->get_exit_task_glue());
 
     while (n_live_tasks() > 0) {
+        A(this, is_deadlocked() == false, "deadlock");
+
         drain_incoming_message_queue();
 
         rust_task *scheduled_task = schedule_task();

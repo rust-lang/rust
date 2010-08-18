@@ -88,6 +88,7 @@ struct rust_dom
 
     void reap_dead_tasks();
     rust_task *schedule_task();
+    bool is_deadlocked();
     int start_main_loop();
 
     void log_state();
