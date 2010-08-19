@@ -785,18 +785,26 @@ let crate_exports (sem:Semant.ctxt) : pe_export array =
   in
 
   (* Make some fake symbol table entries to aid in debugging. *)
-  let export_stab (node_id, fixup) =
-    let name = Hashtbl.find sem.Semant.ctxt_all_item_names node_id in
+  let export_stab name fixup =
     {
       pe_export_name_fixup = new_fixup "export name fixup";
-      pe_export_name = "rust$" ^ (Ast.sprintf_name () name);
+      pe_export_name = "rust$" ^ name;
       pe_export_address_fixup = fixup
     }
   in
+  let export_stab_of_fn (node_id, fixup) =
+    let name = Hashtbl.find sem.Semant.ctxt_all_item_names node_id in
+    export_stab ("fn$" ^ (Semant.string_of_name name)) fixup
+  in
+  let export_stab_of_glue (glue, code) =
+    export_stab (Semant.glue_str sem glue) code.Semant.code_fixup
+  in
 
   let stabs =
-    let pairs = htab_pairs sem.Semant.ctxt_fn_fixups in
-    Array.of_list (List.map export_stab pairs)
+    Array.of_list (List.concat [
+      (List.map export_stab_of_fn (htab_pairs sem.Semant.ctxt_fn_fixups));
+      (List.map export_stab_of_glue (htab_pairs sem.Semant.ctxt_glue_code))
+    ])
   in
 
     Array.concat
