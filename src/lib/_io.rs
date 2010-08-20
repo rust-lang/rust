@@ -84,7 +84,18 @@ fn new_buf_reader(str path) -> buf_reader {
     ret fd_buf_reader(fd, new_buf());
 }
 
-type fileflag = tag(append(), create(), truncate());
+/**
+ * FIXME (issue #150):  This should be
+ *
+ *   type fileflag = tag(append(), create(), truncate());
+ *
+ * but then the tag value ctors are not found from crate-importers of std, so
+ * we manually simulate the enum below.
+ */
+type fileflag = uint;
+fn append() -> uint { ret 0u; }
+fn create() -> uint { ret 1u; }
+fn truncate() -> uint { ret 2u; }
 
 fn new_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
 
@@ -117,9 +128,13 @@ fn new_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
 
     for (fileflag f in flags) {
         alt (f) {
-            case (append())   { fflags |= os.libc_constants.O_APPEND(); }
-            case (create())   { fflags |= os.libc_constants.O_CREAT(); }
-            case (truncate()) { fflags |= os.libc_constants.O_TRUNC(); }
+            // FIXME (issue #150): cf comment above defn of fileflag type
+            //case (append())   { fflags |= os.libc_constants.O_APPEND(); }
+            //case (create())   { fflags |= os.libc_constants.O_CREAT(); }
+            //case (truncate()) { fflags |= os.libc_constants.O_TRUNC(); }
+            case (0u)   { fflags |= os.libc_constants.O_APPEND(); }
+            case (1u)   { fflags |= os.libc_constants.O_CREAT(); }
+            case (2u) { fflags |= os.libc_constants.O_TRUNC(); }
         }
     }
 

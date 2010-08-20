@@ -11,6 +11,22 @@ native "rust" mod rustrt {
   fn refcount[T](str s) -> uint;
 }
 
+fn eq(str a, str b) -> bool {
+  let uint i = byte_len(a);
+  if (byte_len(b) != i) {
+    ret false;
+  }
+  while (i > 0u) {
+    i -= 1u;
+    auto cha = a.(i);
+    auto chb = b.(i);
+    if (cha != chb) {
+      ret false;
+    }
+  }
+  ret true;
+}
+
 fn is_utf8(vec[u8] v) -> bool {
   fail; // FIXME
 }
