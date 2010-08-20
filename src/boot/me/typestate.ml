@@ -697,7 +697,8 @@ let condition_assigning_visitor
         | Ast.STMT_while sw ->
             let (_, expr) = sw.Ast.while_lval in
             let precond = slot_inits (expr_slots cx expr) in
-              raise_pre_post_cond s.id precond
+              raise_precondition sw.Ast.while_body.id precond;
+              raise_postcondition sw.Ast.while_body.id precond
 
         | Ast.STMT_alt_tag at ->
             let precond = slot_inits (lval_slots cx at.Ast.alt_tag_lval) in
@@ -947,16 +948,17 @@ let graph_special_block_structure_building_visitor
             let ts = tables () in
             let graph = ts.ts_graph in
             let cond_id = s.id in
+            let succ = Hashtbl.find graph cond_id in
             let then_id = sif.Ast.if_then.id in
             let then_end_id = last_id_or_block_id sif.Ast.if_then in
             let show_node = show_node cx graph in
+            let succ = List.filter (fun x -> not (x = then_id)) succ in
               show_node "initial cond" cond_id;
               show_node "initial then" then_id;
               show_node "initial then_end" then_end_id;
               begin
                 match sif.Ast.if_else with
                     None ->
-                      let succ = Hashtbl.find graph then_end_id in
                         Hashtbl.replace graph cond_id (then_id :: succ);
                         (* Kill residual messed-up block wiring.*)
                         remove_flow_edges graph then_end_id [then_id];
@@ -966,8 +968,10 @@ let graph_special_block_structure_building_visitor
 
                   | Some e ->
                       let else_id = e.id in
+                      let succ =
+                        List.filter (fun x -> not (x = else_id)) succ
+                      in
                       let else_end_id = last_id_or_block_id e in
-                      let succ = Hashtbl.find graph else_end_id in
                         show_node "initial else" else_id;
                         show_node "initial else_end" else_end_id;
                         Hashtbl.replace graph cond_id [then_id; else_id];
@@ -1049,19 +1053,23 @@ let graph_special_block_structure_building_visitor
 ;;
 
 let find_roots
+    (cx:ctxt)
     (graph:(node_id, (node_id list)) Hashtbl.t)
     : (node_id,unit) Hashtbl.t =
   let roots = Hashtbl.create 0 in
     Hashtbl.iter (fun src _ -> Hashtbl.replace roots src ()) graph;
     Hashtbl.iter (fun _ dsts ->
                     List.iter (fun d -> Hashtbl.remove roots d) dsts) graph;
+    iflog cx
+      (fun _ -> Hashtbl.iter
+         (fun k _ -> log cx "root: %d" (int_of_node k)) roots);
     roots
 ;;
 
 let run_dataflow (cx:ctxt) (ts:typestate_tables) : unit =
   let graph = ts.ts_graph in
   let idref = ts.ts_maxid in
-  let roots = find_roots graph in
+  let roots = find_roots cx graph in
   let nodes = Queue.create () in
 
   let progress = ref true in
@@ -1138,9 +1146,17 @@ let run_dataflow (cx:ctxt) (ts:typestate_tables) : unit =
                 begin
                   fun _ ->
                     log cx "stmt %d: '%s'" (int_of_node node)
-                      (match htab_search cx.ctxt_all_stmts node with
-                           None -> "??"
-                         | Some stmt -> Fmt.fmt_to_str Ast.fmt_stmt stmt);
+                      begin
+                        match htab_search cx.ctxt_all_stmts node with
+                            None ->
+                              begin
+                                match htab_search cx.ctxt_all_blocks node with
+                                    None -> "??"
+                                  | Some b ->
+                                      Fmt.fmt_to_str Ast.fmt_block b
+                              end
+                          | Some stmt -> Fmt.fmt_to_str Ast.fmt_stmt stmt
+                      end;
                     log cx "stmt %d:" (int_of_node node);
 
                     log cx "    prestate %s" (fmt_constr_bitv prestate);
@@ -1227,27 +1243,35 @@ let typestate_verify_visitor
 
   let tables _ = Stack.top tables_stack in
 
-  let visit_stmt_pre s =
+  let check_states id =
     let ts = tables () in
-    let prestate = Hashtbl.find ts.ts_prestates s.id in
-    let precond = Hashtbl.find ts.ts_preconditions s.id in
+    let prestate = Hashtbl.find ts.ts_prestates id in
+    let precond = Hashtbl.find ts.ts_preconditions id in
       List.iter
         (fun i ->
            if not (Bits.get prestate i)
            then
              let ckey = Hashtbl.find ts.ts_constrs (Constr i) in
              let constr_str = fmt_constr_key cx ckey in
-               err (Some s.id)
-                 "Unsatisfied precondition constraint %s at stmt %d: %s"
-                 constr_str
-                 (int_of_node s.id)
-                 (Fmt.fmt_to_str Ast.fmt_stmt
-                    (Hashtbl.find cx.ctxt_all_stmts s.id)))
-        (Bits.to_list precond);
-      inner.Walk.visit_stmt_pre s
+               err (Some id)
+                 "Unsatisfied precondition constraint %s"
+                 constr_str)
+        (Bits.to_list precond)
   in
+
+  let visit_stmt_pre s =
+    check_states s.id;
+    inner.Walk.visit_stmt_pre s
+  in
+
+  let visit_block_pre b =
+    check_states b.id;
+    inner.Walk.visit_block_pre b
+  in
+
     { inner with
-        Walk.visit_stmt_pre = visit_stmt_pre }
+        Walk.visit_stmt_pre = visit_stmt_pre;
+        Walk.visit_block_pre = visit_block_pre }
 ;;
 
 let lifecycle_visitor

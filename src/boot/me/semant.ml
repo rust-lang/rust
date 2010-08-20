@@ -98,6 +98,7 @@ type ctxt =
       ctxt_all_cast_types: (node_id,Ast.ty) Hashtbl.t;
       ctxt_all_type_items: (node_id,Ast.ty) Hashtbl.t;
       ctxt_all_stmts: (node_id,Ast.stmt) Hashtbl.t;
+      ctxt_all_blocks: (node_id,Ast.block') Hashtbl.t;
       ctxt_item_files: (node_id,filename) Hashtbl.t;
       ctxt_all_lvals: (node_id,Ast.lval) Hashtbl.t;
       ctxt_call_lval_params: (node_id,Ast.ty array) Hashtbl.t;
@@ -183,6 +184,7 @@ let new_ctxt sess abi crate =
     ctxt_all_cast_types = Hashtbl.create 0;
     ctxt_all_type_items = Hashtbl.create 0;
     ctxt_all_stmts = Hashtbl.create 0;
+    ctxt_all_blocks = Hashtbl.create 0;
     ctxt_item_files = crate.Ast.crate_files;
     ctxt_all_lvals = Hashtbl.create 0;
     ctxt_all_defns = Hashtbl.create 0;

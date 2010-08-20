@@ -48,6 +48,7 @@ let stmt_collecting_visitor
     : Walk.visitor =
   let block_ids = Stack.create () in
   let visit_block_pre (b:Ast.block) =
+    htab_put cx.ctxt_all_blocks b.id b.node;
     Stack.push b.id block_ids;
     inner.Walk.visit_block_pre b
   in
