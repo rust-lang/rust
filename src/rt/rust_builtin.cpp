@@ -109,14 +109,34 @@ vec_len(rust_task *task, type_desc *ty, rust_vec *v)
 }
 
 extern "C" CDECL void
+vec_len_set(rust_task *task, type_desc *ty, rust_vec *v, size_t len)
+{
+    task->log(rust_log::STDLIB,
+              "vec_len_set(0x%" PRIxPTR ", %" PRIdPTR ") on vec with "
+              "alloc = %" PRIdPTR
+              ", fill = %" PRIdPTR
+              ", len = %" PRIdPTR
+              ".  New fill is %" PRIdPTR,
+              v, len, v->alloc, v->fill, v->fill / ty->size, len * ty->size);
+    v->fill = len * ty->size;
+}
+
+extern "C" CDECL void
 vec_print_debug_info(rust_task *task, type_desc *ty, rust_vec *v)
 {
     task->log(rust_log::STDLIB,
               "vec_print_debug_info(0x%" PRIxPTR ")"
               " with tydesc 0x%" PRIxPTR
               " (size = %" PRIdPTR ", align = %" PRIdPTR ")"
-              " alloc = %" PRIdPTR ", fill = %" PRIdPTR
-              " , data = ...", v, ty, ty->size, ty->align, v->alloc, v->fill);
+              " alloc = %" PRIdPTR ", fill = %" PRIdPTR ", len = %" PRIdPTR
+              " , data = ...",
+              v,
+              ty,
+              ty->size,
+              ty->align,
+              v->alloc,
+              v->fill,
+              v->fill / ty->size);
 
     for (size_t i = 0; i < v->fill; ++i) {
         task->log(rust_log::STDLIB,

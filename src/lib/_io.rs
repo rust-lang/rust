@@ -48,7 +48,7 @@ fn new_buf_reader(str path) -> buf_reader {
         buf = new_buf();
       }
 
-      auto len = _vec.len[u8](buf);
+      auto len = default_bufsz();
       auto vbuf = _vec.buf[u8](buf);
       auto count = os.libc.read(fd, vbuf, len);
 
@@ -56,9 +56,10 @@ fn new_buf_reader(str path) -> buf_reader {
         log "error filling buffer";
         log sys.rustrt.last_os_error();
         fail;
-      } else {
-        ret buf;
       }
+
+      _vec.len_set[u8](buf, count as uint);
+      ret buf;
     }
 
     drop {
