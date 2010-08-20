@@ -38,8 +38,36 @@ fn next_token(stdio_reader rdr) -> token.token {
 
     if (c == eof) { ret token.EOF(); }
     if (is_alpha(c)) {
-        accum += (c as u8);
+        while (is_alpha(c)) {
+            accum += (c as u8);
+            c = rdr.getc() as char;
+            ret token.IDENT(accum);
+        }
     }
+
+    if (is_dec_digit(c)) {
+        if (c == '0') {
+        } else {
+            while (is_dec_digit(c)) {
+                accum += (c as u8);
+                ret token.LIT_INT(0);
+            }
+        }
+    }
+
+    // One-byte structural symbols.
+    if (c == ';') { ret token.SEMI(); }
+    if (c == '.') { ret token.DOT(); }
+    if (c == '(') { ret token.LPAREN(); }
+    if (c == ')') { ret token.RPAREN(); }
+    if (c == '{') { ret token.LBRACE(); }
+    if (c == '}') { ret token.RBRACE(); }
+    if (c == '[') { ret token.LBRACKET(); }
+    if (c == ']') { ret token.RBRACKET(); }
+    if (c == '@') { ret token.AT(); }
+    if (c == '#') { ret token.POUND(); }
+
+    log "lexer stopping at ";
     log c;
     ret token.EOF();
 }
