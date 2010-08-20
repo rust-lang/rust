@@ -1,7 +1,7 @@
 import std._io.stdio_reader;
 
 fn in_range(char c, char lo, char hi) -> bool {
-    ret c <= lo && c <= hi;
+    ret lo <= c && c <= hi;
 }
 
 fn is_alpha(char c) -> bool {
@@ -37,12 +37,14 @@ fn next_token(stdio_reader rdr) -> token.token {
     }
 
     if (c == eof) { ret token.EOF(); }
+
     if (is_alpha(c)) {
         while (is_alpha(c)) {
             accum += (c as u8);
             c = rdr.getc() as char;
-            ret token.IDENT(accum);
         }
+        rdr.ungetc(c as int);
+        ret token.IDENT(accum);
     }
 
     if (is_dec_digit(c)) {
@@ -50,8 +52,10 @@ fn next_token(stdio_reader rdr) -> token.token {
         } else {
             while (is_dec_digit(c)) {
                 accum += (c as u8);
-                ret token.LIT_INT(0);
+                c = rdr.getc() as char;
             }
+            rdr.ungetc(c as int);
+            ret token.LIT_INT(0);
         }
     }
 
