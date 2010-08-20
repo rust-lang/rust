@@ -322,7 +322,7 @@ and pat =
 and tag_arm' = pat * block
 and tag_arm = tag_arm' identified
 
-and type_arm' = ident * slot * block
+and type_arm' = (ident * slot) * block
 and type_arm = type_arm' identified
 
 and port_arm' = port_case * block
@@ -1305,8 +1305,11 @@ and fmt_tag_arm (ff:Format.formatter) (tag_arm:tag_arm) : unit =
     fmt_arm ff (fun ff -> fmt_pat ff pat) block;
     
 and fmt_type_arm (ff:Format.formatter) (type_arm:type_arm) : unit =
-  let (_, slot, block) = type_arm.node in
-    fmt_arm ff (fun ff -> fmt_slot ff slot) block;
+  let ((ident, slot), block) = type_arm.node in
+  let fmt_type_arm_case (ff:Format.formatter) =
+    fmt_slot ff slot; fmt ff " "; fmt_ident ff ident
+  in
+    fmt_arm ff fmt_type_arm_case block;
       
 and fmt_port_arm (ff:Format.formatter) (port_arm:port_arm) : unit =
   let (port_case, block) = port_arm.node in
