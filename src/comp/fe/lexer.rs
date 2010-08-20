@@ -62,6 +62,7 @@ fn next_token(stdio_reader rdr) -> token.token {
     // One-byte structural symbols.
     alt (c) {
     case (';') { ret token.SEMI(); }
+    case (',') { ret token.COMMA(); }
     case ('.') { ret token.DOT(); }
     case ('(') { ret token.LPAREN(); }
     case (')') { ret token.RPAREN(); }
