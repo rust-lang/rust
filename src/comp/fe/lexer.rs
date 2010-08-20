@@ -60,16 +60,18 @@ fn next_token(stdio_reader rdr) -> token.token {
     }
 
     // One-byte structural symbols.
-    if (c == ';') { ret token.SEMI(); }
-    if (c == '.') { ret token.DOT(); }
-    if (c == '(') { ret token.LPAREN(); }
-    if (c == ')') { ret token.RPAREN(); }
-    if (c == '{') { ret token.LBRACE(); }
-    if (c == '}') { ret token.RBRACE(); }
-    if (c == '[') { ret token.LBRACKET(); }
-    if (c == ']') { ret token.RBRACKET(); }
-    if (c == '@') { ret token.AT(); }
-    if (c == '#') { ret token.POUND(); }
+    alt (c) {
+    case (';') { ret token.SEMI(); }
+    case ('.') { ret token.DOT(); }
+    case ('(') { ret token.LPAREN(); }
+    case (')') { ret token.RPAREN(); }
+    case ('{') { ret token.LBRACE(); }
+    case ('}') { ret token.RBRACE(); }
+    case ('[') { ret token.LBRACKET(); }
+    case (']') { ret token.RBRACKET(); }
+    case ('@') { ret token.AT(); }
+    case ('#') { ret token.POUND(); }
+    }
 
     log "lexer stopping at ";
     log c;
