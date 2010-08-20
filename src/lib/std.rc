@@ -7,6 +7,7 @@ meta (name = "std",
 // Built-in types support modules.
 
 mod _int;
+mod _uint;
 mod _u8;
 mod _vec;
 mod _str;
@@ -28,7 +29,7 @@ auth _str = unsafe;
 auth _vec = unsafe;
 auth _task = unsafe;
 
-auth _int.next_power_of_two = unsafe;
+auth _uint.next_power_of_two = unsafe;
 auth map.mk_hashmap = unsafe;
 auth rand.mk_rng = unsafe;
 

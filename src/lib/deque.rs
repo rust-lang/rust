@@ -42,7 +42,7 @@ fn create[T]() -> t[T] {
       }
     }
 
-    let uint nalloc = _int.next_power_of_two(nelts + 1u);
+    let uint nalloc = _uint.next_power_of_two(nelts + 1u);
     let _vec.init_op[cell[T]] copy_op = bind fill[T](_, nelts, lo, elts);
     ret _vec.init_fn[cell[T]](copy_op, nalloc);
   }
