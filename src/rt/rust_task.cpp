@@ -6,7 +6,9 @@
 
 // Stacks
 
-static size_t const min_stk_bytes = 0x300;
+// FIXME (issue #151): This should be 0x300; the change here is for
+// practicality's sake until stack growth is working.
+static size_t const min_stk_bytes = 0x300000;
 
 // Task stack segments. Heap allocated and chained together.
 
@@ -200,6 +202,12 @@ rust_task::start(uintptr_t exit_task_glue,
 void
 rust_task::grow(size_t n_frame_bytes)
 {
+    // FIXME (issue #151): Just fail rather than almost certainly crashing
+    // mysteriously later. The commented-out logic below won't work at all in
+    // the presence of non-word-aligned pointers.
+    abort();
+
+#if 0
     stk_seg *old_stk = this->stk;
     uintptr_t old_top = (uintptr_t) old_stk->limit;
     uintptr_t old_bottom = (uintptr_t) &old_stk->data[0];
@@ -254,6 +262,7 @@ rust_task::grow(size_t n_frame_bytes)
              "processed %d relocations", n_relocs);
     del_stk(dom, old_stk);
     dom->logptr("grown stk limit", new_top);
+#endif
 }
 
 void
