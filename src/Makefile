@@ -481,6 +481,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       lazy-init.rs \
                       lazychan.rs \
                       lib-deque.rs \
+                      lib-io.rs \
                       lib-map.rs \
                       lib-rand.rs \
                       lib-vec-str-conversions.rs \
@@ -616,6 +617,10 @@ TEST_RPASS_OUTS_X86  := \
                     $(TEST_RPASS_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86.out)
 TEST_RPASS_OUTS_LLVM := \
                     $(TEST_RPASS_EXES_LLVM:.llvm$(CFG_EXE_SUFFIX)=.llvm.out)
+TEST_RPASS_TMPS_X86  := \
+    $(TEST_RPASS_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86$(CFG_EXE_SUFFIX).tmp)
+TEST_RPASS_TMPS_LLVM := \
+    $(TEST_RPASS_EXES_LLVM:.llvm$(CFG_EXE_SUFFIX)=.llvm$(CFG_EXE_SUFFIX).tmp)
 
 
 TEST_RFAIL_CRATES_X86 := $(filter-out $(TEST_XFAILS_X86), $(RFAIL_RC))
@@ -633,6 +638,10 @@ TEST_RFAIL_OUTS_X86  := \
                     $(TEST_RFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86.out)
 TEST_RFAIL_OUTS_LLVM := \
                     $(TEST_RFAIL_EXES_LLVM:.llvm$(CFG_EXE_SUFFIX)=.llvm.out)
+TEST_RFAIL_TMPS_X86  := \
+    $(TEST_RFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86$(CFG_EXE_SUFFIX).tmp)
+TEST_RFAIL_TMPS_LLVM := \
+    $(TEST_RFAIL_EXES_LLVM:.llvm$(CFG_EXE_SUFFIX)=.llvm$(CFG_EXE_SUFFIX).tmp)
 
 
 TEST_CFAIL_CRATES_X86 := $(filter-out $(TEST_XFAILS_X86), $(CFAIL_RC))
@@ -650,6 +659,11 @@ TEST_CFAIL_OUTS_X86 := \
                 $(TEST_CFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86.out)
 TEST_CFAIL_OUTS_LLVM := \
                 $(TEST_CFAIL_EXES_LLVM:.llvm$(CFG_EXE_SUFFIX)=.llvm.out)
+TEST_CFAIL_TMPS_X86 := \
+    $(TEST_CFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86$(CFG_EXE_SUFFIX).tmp)
+TEST_CFAIL_TMPS_LLVM := \
+    $(TEST_CFAIL_EXES_LLVM:.llvm$(CFG_EXE_SUFFIX)=.llvm$(CFG_EXE_SUFFIX).tmp)
+
 
 ALL_TEST_CRATES := $(TEST_CFAIL_CRATES_X86) \
                    $(TEST_RFAIL_CRATES_X86) \
@@ -704,10 +718,12 @@ BOOT := $(CFG_QUIET)OCAMLRUNPARAM="b1" $(CFG_BOOT) $(CFG_BOOT_FLAGS)
 	$(CFG_QUIET)mv $< $@
 
 test/run-pass/%.out.tmp: test/run-pass/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
+	$(CFG_QUIET)rm -f $<.tmp
 	@$(call CFG_ECHO, run: $<)
 	$(CFG_QUIET)$(call CFG_RUN_TARG, $<) > $@
 
 test/run-fail/%.out.tmp: test/run-fail/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
+	$(CFG_QUIET)rm -f $<.tmp
 	@$(call CFG_ECHO, run: $<)
 	$(CFG_QUIET)rm -f $@
 	$(CFG_QUIET)$(call CFG_RUN_TARG, $<) >$@ 2>&1 ; X=$$? ; \
@@ -900,12 +916,18 @@ clean:
 	$(CFG_QUIET)rm -f $(ML_DEPFILES) $(C_DEPFILES) $(CRATE_DEPFILES)
 	$(CFG_QUIET)rm -f $(GENERATED)
 	$(CFG_QUIET)rm -f $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
-	$(CFG_QUIET)rm -f $(TEST_RPASS_EXES_X86) $(TEST_RPASS_OUTS_X86)
-	$(CFG_QUIET)rm -f $(TEST_RPASS_EXES_LLVM) $(TEST_RPASS_OUTS_LLVM)
-	$(CFG_QUIET)rm -f $(TEST_RFAIL_EXES_X86) $(TEST_RFAIL_OUTS_X86)
-	$(CFG_QUIET)rm -f $(TEST_RFAIL_EXES_LLVM) $(TEST_RFAIL_OUTS_LLVM)
-	$(CFG_QUIET)rm -f $(TEST_CFAIL_EXES_X86) $(TEST_CFAIL_OUTS_X86)
-	$(CFG_QUIET)rm -f $(TEST_CFAIL_EXES_LLVM) $(TEST_CFAIL_OUTS_LLVM)
+	$(CFG_QUIET)rm -f $(TEST_RPASS_EXES_X86) $(TEST_RPASS_OUTS_X86) \
+                          $(TEST_RPASS_TMPS_X86)
+	$(CFG_QUIET)rm -f $(TEST_RPASS_EXES_LLVM) $(TEST_RPASS_OUTS_LLVM) \
+                          $(TEST_RPASS_TMPS_LLVM)
+	$(CFG_QUIET)rm -f $(TEST_RFAIL_EXES_X86) $(TEST_RFAIL_OUTS_X86) \
+                          $(TEST_RFAIL_TMPS_X86)
+	$(CFG_QUIET)rm -f $(TEST_RFAIL_EXES_LLVM) $(TEST_RFAIL_OUTS_LLVM) \
+                          $(TEST_RFAIL_TMPS_LLVM)
+	$(CFG_QUIET)rm -f $(TEST_CFAIL_EXES_X86) $(TEST_CFAIL_OUTS_X86) \
+                          $(TEST_CFAIL_TMPS_X86)
+	$(CFG_QUIET)rm -f $(TEST_CFAIL_EXES_LLVM) $(TEST_CFAIL_OUTS_LLVM) \
+                          $(TEST_CFAIL_TMPS_LLVM)
 	$(CFG_QUIET)rm -rf $(TEST_RPASS_EXES_LLVM:.llvm=.llvm.dSYM)
 	$(CFG_QUIET)rm -rf $(TEST_RFAIL_EXES_LLVM:.llvm=.llvm.dSYM)
 	$(CFG_QUIET)rm -Rf $(PKG_NAME)-*.tar.gz dist
