@@ -93,7 +93,7 @@ let string_of_pos (p:pos) =
 let string_of_span (s:span) =
     let (filename, line0, col0) = s.lo in
     let (_, line1, col1) = s.hi in
-    Printf.sprintf "%s:%d:%d - %d:%d" filename line0 col0 line1 col1
+    Printf.sprintf "%s:%d:%d:%d:%d" filename line0 col0 line1 col1
 ;;
 
 let filename_of (fo:filename option) : filename =
@@ -111,7 +111,7 @@ let report_err sess ido str =
         None ->
           fail sess "Error: %s\n%!" str
       | Some span ->
-          fail sess "%s:E:Error: %s\n%!"
+          fail sess "%s: error: %s\n%!"
             (string_of_span span) str
 ;;
 
