@@ -396,11 +396,9 @@ TASK_XFAILS := test/run-pass/acyclic-unwind.rs \
                test/run-pass/yield.rs
 
 TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
-                    test/run-pass/bind-obj-ctor.rs \
                     test/run-pass/child-outlives-parent.rs \
                     test/run-pass/clone-with-exterior.rs \
                     test/run-pass/constrained-type.rs \
-                    test/run-pass/destructor-ordering.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
@@ -408,7 +406,6 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-pass/generic-recursive-tag.rs \
                     test/run-pass/int-lib.rs \
                     test/run-pass/iter-ret.rs \
-                    test/run-pass/lib-deque.rs \
                     test/run-pass/lib-map.rs \
                     test/run-pass/mlist-cycle.rs \
                     test/run-pass/obj-as.rs \
