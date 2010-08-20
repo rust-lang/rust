@@ -24,13 +24,14 @@ fn is_bin_digit(char c) -> bool {
 }
 
 fn is_whitespace(char c) -> bool {
-    ret c == ' ' || c == '\t' || c == '\r';
+    ret c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
 fn next_token(stdio_reader rdr) -> token.token {
     auto eof = (-1) as char;
     auto c = rdr.getc() as char;
-    auto accum = "";
+    auto accum_str = "";
+    auto accum_int = 0;
 
     while (is_whitespace(c) && c != eof) {
         c = rdr.getc() as char;
@@ -40,38 +41,48 @@ fn next_token(stdio_reader rdr) -> token.token {
 
     if (is_alpha(c)) {
         while (is_alpha(c)) {
-            accum += (c as u8);
+            accum_str += (c as u8);
             c = rdr.getc() as char;
         }
         rdr.ungetc(c as int);
-        ret token.IDENT(accum);
+        ret token.IDENT(accum_str);
     }
 
     if (is_dec_digit(c)) {
         if (c == '0') {
         } else {
             while (is_dec_digit(c)) {
-                accum += (c as u8);
+                accum_int *= 10;
+                accum_int += (c as int) - ('0' as int);
                 c = rdr.getc() as char;
             }
             rdr.ungetc(c as int);
-            ret token.LIT_INT(0);
+            ret token.LIT_INT(accum_int);
         }
     }
 
     // One-byte structural symbols.
     alt (c) {
-    case (';') { ret token.SEMI(); }
-    case (',') { ret token.COMMA(); }
-    case ('.') { ret token.DOT(); }
-    case ('(') { ret token.LPAREN(); }
-    case (')') { ret token.RPAREN(); }
-    case ('{') { ret token.LBRACE(); }
-    case ('}') { ret token.RBRACE(); }
-    case ('[') { ret token.LBRACKET(); }
-    case (']') { ret token.RBRACKET(); }
-    case ('@') { ret token.AT(); }
-    case ('#') { ret token.POUND(); }
+        case (';') { ret token.SEMI(); }
+        case (',') { ret token.COMMA(); }
+        case ('.') { ret token.DOT(); }
+        case ('(') { ret token.LPAREN(); }
+        case (')') { ret token.RPAREN(); }
+        case ('{') { ret token.LBRACE(); }
+        case ('}') { ret token.RBRACE(); }
+        case ('[') { ret token.LBRACKET(); }
+        case (']') { ret token.RBRACKET(); }
+        case ('@') { ret token.AT(); }
+        case ('#') { ret token.POUND(); }
+        case ('=') {
+            auto c2 = rdr.getc() as char;
+            if (c2 == '=') {
+                ret token.OP(token.EQEQ());
+            } else {
+                rdr.ungetc(c2 as int);
+                ret token.OP(token.EQ());
+            }
+        }
     }
 
     log "lexer stopping at ";
