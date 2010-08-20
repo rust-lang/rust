@@ -427,6 +427,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       acyclic-unwind.rs \
                       alt-pattern-simple.rs \
                       alt-tag.rs \
+                      append-units.rs \
                       argv.rs \
                       autoderef-full-lval.rs \
                       autoderef-objfn.rs \

@@ -88,6 +88,7 @@ let trans_visitor
   let zero = imm 0L in
   let imm_true = imm_of_ty 1L TY_u8 in
   let imm_false = imm_of_ty 0L TY_u8 in
+  let zero_byte = imm_of_ty 0L TY_u8 in
   let nil_ptr = Il.Mem ((Il.Abs (Asm.IMM 0L)), Il.NilTy) in
   let wordptr_ty = Il.AddrTy (Il.ScalarTy word_sty) in
 
@@ -4389,18 +4390,18 @@ let trans_visitor
       (src_ty:Ast.ty)
       : unit =
     let elt_ty = seq_unit_ty dst_ty in
-    let trim_trailing_null = dst_ty = Ast.TY_str in
-      assert (simplified_ty src_ty = simplified_ty dst_ty);
-      match simplified_ty src_ty with
-          Ast.TY_str
-        | Ast.TY_vec _ ->
+    let trailing_null = simplified_ty dst_ty = Ast.TY_str in
+      match (simplified_ty dst_ty, simplified_ty src_ty) with
+          (Ast.TY_str, Ast.TY_str)
+        | (Ast.TY_vec _, Ast.TY_vec _)
+            when (simplified_ty dst_ty) = (simplified_ty src_ty) ->
             let is_gc = if type_has_state src_ty then 1L else 0L in
             let src_cell = need_cell src_oper in
             let src_vec = deref src_cell in
             let src_fill = get_element_ptr src_vec Abi.vec_elt_fill in
             let dst_vec = deref dst_cell in
             let dst_fill = get_element_ptr dst_vec Abi.vec_elt_fill in
-              if trim_trailing_null
+              if trailing_null
               then sub_from dst_fill (imm 1L);
               trans_upcall "upcall_vec_grow"
                 dst_cell
@@ -4457,9 +4458,53 @@ let trans_visitor
                       let v = next_vreg_cell word_sty in
                         mov v (Il.Cell src_fill);
                         add_to dst_fill (Il.Cell v);
-        | t ->
+
+        | (Ast.TY_str, e)
+        | (Ast.TY_vec _, e)
+            when e = simplified_ty elt_ty ->
+
+            let dst_is_gc = if type_has_state dst_ty then 1L else 0L in
+            let elt_sz = ty_sz_in_current_frame elt_ty in
+              trans_upcall "upcall_vec_grow"
+                dst_cell
+                [| Il.Cell dst_cell;
+                   elt_sz;
+                   imm dst_is_gc |];
+
+              (* 
+               * By now, dst_cell points to a vec/str with room for us
+               * to add to.
+               *)
+
+              (* Reload dst vec, fill; might have changed. *)
+              let dst_vec = deref dst_cell in
+              let dst_fill = get_element_ptr dst_vec Abi.vec_elt_fill in
+
+              let eltp_rty = Il.AddrTy (referent_type word_bits elt_ty) in
+              let dptr = next_vreg_cell eltp_rty in
+              let dst_data =
+                get_element_ptr_dyn_in_current_frame
+                  dst_vec Abi.vec_elt_data
+              in
+                lea dptr (fst (need_mem_cell dst_data));
+                add_to dptr (Il.Cell dst_fill);
+                if trailing_null
+                then sub_from dptr elt_sz;
+                trans_copy_ty
+                  (get_ty_params_of_current_frame()) true
+                  (deref dptr) elt_ty
+                  (Il.Mem (force_to_mem src_oper)) elt_ty
+                  None;
+                add_to dptr elt_sz;
+                if trailing_null
+                then mov (deref dptr) zero_byte;
+                add_to dst_fill elt_sz;
+
+        | _ ->
             begin
-              bug () "unsupported vector-append type %a" Ast.sprintf_ty t
+              bug () "unsupported vector-append types %a += %a"
+                Ast.sprintf_ty dst_ty
+                Ast.sprintf_ty src_ty
             end
 
 

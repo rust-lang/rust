@@ -763,6 +763,27 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
         | Ast.STMT_copy (dst, src) ->
             infer_lval (check_expr src) dst
 
+        | Ast.STMT_copy_binop (dst, Ast.BINOP_add, src) ->
+            begin
+            let src_ty = check_atom ~deref:true src in
+            let dst_ty = check_lval dst in
+              match fundamental_ty dst_ty, fundamental_ty src_ty with
+                  Ast.TY_vec elt1, Ast.TY_vec elt2
+                | Ast.TY_vec elt1, elt2 ->
+                    if elt1 = elt2
+                    then ()
+                    else
+                      Common.err None
+                        "mismatched types in vec-append: %a += %a"
+                        Ast.sprintf_ty dst_ty
+                        Ast.sprintf_ty src_ty
+                | Ast.TY_str, (Ast.TY_mach Common.TY_u8)
+                | Ast.TY_str, Ast.TY_str -> ()
+                | _ ->
+                    infer_lval src_ty dst;
+                    demand src_ty (check_binop Ast.BINOP_add src_ty)
+            end
+
         | Ast.STMT_copy_binop (dst, binop, src) ->
             let ty = check_atom ~deref:true src in
             infer_lval ty dst;
