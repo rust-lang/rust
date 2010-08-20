@@ -36,33 +36,51 @@ fn next_power_of_two(uint n) -> uint {
 fn to_str(mutable uint n, uint radix) -> str
 {
   check (0u < radix && radix <= 16u);
-  fn digit(uint n) -> str {
+  fn digit(uint n) -> char {
     alt (n) {
-      case (0u) { ret "0"; }
-      case (1u) { ret "1"; }
-      case (2u) { ret "2"; }
-      case (3u) { ret "3"; }
-      case (4u) { ret "4"; }
-      case (5u) { ret "5"; }
-      case (6u) { ret "6"; }
-      case (7u) { ret "7"; }
-      case (8u) { ret "8"; }
-      case (9u) { ret "9"; }
-      case (10u) { ret "a"; }
-      case (11u) { ret "b"; }
-      case (12u) { ret "c"; }
-      case (13u) { ret "d"; }
-      case (14u) { ret "e"; }
-      case (15u) { ret "f"; }
+      case (0u) { ret '0'; }
+      case (1u) { ret '1'; }
+      case (2u) { ret '2'; }
+      case (3u) { ret '3'; }
+      case (4u) { ret '4'; }
+      case (5u) { ret '5'; }
+      case (6u) { ret '6'; }
+      case (7u) { ret '7'; }
+      case (8u) { ret '8'; }
+      case (9u) { ret '9'; }
+      case (10u) { ret 'a'; }
+      case (11u) { ret 'b'; }
+      case (12u) { ret 'c'; }
+      case (13u) { ret 'd'; }
+      case (14u) { ret 'e'; }
+      case (15u) { ret 'f'; }
     }
   }
 
   if (n == 0u) { ret "0"; }
 
+  let uint r = 1u;
+  if (n > r) {
+    while ((r*radix) < n) {
+      r *= radix;
+    }
+  }
+
   let str s = "";
   while (n > 0u) {
-    s = digit(n % radix) + s;
-    n /= radix;
+
+    auto i = n/r;
+
+    n -= (i * r);
+    r /= radix;
+
+    s += digit(i) as u8;
   }
+
+  while (r > 0u) {
+    s += '0' as u8;
+    r /= radix;
+  }
+
   ret s;
 }
