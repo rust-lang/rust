@@ -30,12 +30,16 @@ fn is_whitespace(char c) -> bool {
 fn next_token(stdio_reader rdr) -> token.token {
     auto eof = (-1) as char;
     auto c = rdr.getc() as char;
+    auto accum = "";
 
     while (is_whitespace(c) && c != eof) {
         c = rdr.getc() as char;
     }
 
     if (c == eof) { ret token.EOF(); }
+    if (is_alpha(c)) {
+        accum += (c as u8);
+    }
     log c;
     ret token.EOF();
 }
