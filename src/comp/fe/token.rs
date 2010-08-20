@@ -152,10 +152,37 @@ type token = tag
      BRACEQUOTE(str),
      EOF());
 
+fn op_to_str(op o) -> str {
+    alt (o) {
+         case (PLUS()) { ret "+"; }
+         case (MINUS()) { ret "-"; }
+         case (STAR()) { ret "*"; }
+         case (SLASH()) { ret "/"; }
+         case (PERCENT()) { ret "%"; }
+         case (EQ()) { ret "="; }
+         case (LT()) { ret "<"; }
+         case (LE()) { ret "<="; }
+         case (EQEQ()) { ret "=="; }
+         case (NE()) { ret "!="; }
+         case (GE()) { ret ">="; }
+         case (GT()) { ret ">"; }
+         case (NOT()) { ret "!"; }
+         case (TILDE()) { ret "~"; }
+         case (CARET()) { ret "^"; }
+         case (AND()) { ret "&"; }
+         case (ANDAND()) { ret "&&"; }
+         case (OR()) { ret "|"; }
+         case (OROR()) { ret "||"; }
+         case (LSL()) { ret "<<"; }
+         case (LSR()) { ret ">>"; }
+         case (ASR()) { ret ">>>"; }
+    }
+}
+
 fn to_str(token t) -> str {
     alt (t) {
-        case (OP(_)) { ret "<op>"; }
-        case (OPEQ(_)) { ret "<op>="; }
+        case (OP(op)) { ret op_to_str(op); }
+        case (OPEQ(op)) { ret op_to_str(op) + "="; }
         case (AS()) { ret "as"; }
         case (WITH()) { ret "with"; }
 
