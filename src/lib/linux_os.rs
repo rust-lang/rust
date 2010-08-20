@@ -12,6 +12,7 @@ native mod libc = "libc.so.6" {
   fn fopen(sbuf path, sbuf mode) -> FILE;
   fn fclose(FILE f);
   fn fgetc(FILE f) -> int;
+  fn ungetc(int c, FILE f);
 
   type dir;
   // readdir is a mess; handle via wrapper function in rustrt.

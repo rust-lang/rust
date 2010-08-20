@@ -11,6 +11,7 @@ native mod libc = "msvcrt.dll" {
   fn fopen(sbuf path, sbuf mode) -> FILE;
   fn fclose(FILE f);
   fn fgetc(FILE f) -> int;
+  fn ungetc(int c, FILE f);
 }
 
 mod libc_constants {
