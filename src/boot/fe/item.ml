@@ -508,7 +508,11 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
           let stmts = expand_tags_to_stmts ps item in
             spans ps stmts apos (Ast.STMT_decl decl)
 
-      | _ ->
+      | token ->
+          if token = SPAWN then
+            prerr_endline ("warning: \"spawn\" with unused result spawns a " ^
+              "task that immediately dies");
+
           let (lstmts, lval) = ctxt "stmt: lval" parse_lval ps in
           let stmts =
             match peek ps with
