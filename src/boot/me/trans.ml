@@ -4889,7 +4889,11 @@ let trans_visitor
       end
   in
 
-  let trans_frame_entry (fnid:node_id) (obj_fn:bool) : unit =
+  let trans_frame_entry
+      (fnid:node_id)
+      (obj_fn:bool)
+      (yield_check:bool)
+      : unit =
     let framesz = get_framesz cx fnid in
     let callsz = get_callsz cx fnid in
       Stack.push (Stack.create()) epilogue_jumps;
@@ -4906,7 +4910,8 @@ let trans_visitor
         (upcall_fixup "upcall_grow_task") obj_fn;
 
       write_frame_info_ptrs (Some fnid);
-      check_interrupt_flag ();
+      if yield_check
+      then check_interrupt_flag ();
       iflog (fun _ -> annotate "finished prologue");
   in
 
@@ -4929,7 +4934,7 @@ let trans_visitor
       (body:Ast.block)
       (obj_fn:bool)
       : unit =
-    trans_frame_entry fnid obj_fn;
+    trans_frame_entry fnid obj_fn true;
     trans_block body;
     trans_frame_exit fnid true;
   in
@@ -4938,7 +4943,7 @@ let trans_visitor
       (obj_id:node_id)
       (header:Ast.header_slots)
       : unit =
-    trans_frame_entry obj_id true;
+    trans_frame_entry obj_id true false;
 
     let all_args_rty = current_fn_args_rty None in
     let all_args_cell = caller_args_cell all_args_rty in
@@ -5059,7 +5064,7 @@ let trans_visitor
   in
 
   let trans_required_fn (fnid:node_id) (blockid:node_id) : unit =
-    trans_frame_entry fnid false;
+    trans_frame_entry fnid false false;
     emit (Il.Enter (Hashtbl.find cx.ctxt_block_fixups blockid));
     let (ilib, conv) = Hashtbl.find cx.ctxt_required_items fnid in
     let lib_num =
@@ -5197,7 +5202,7 @@ let trans_visitor
       (tagid:node_id)
       (tag:(Ast.header_tup * Ast.ty_tag * node_id))
       : unit =
-    trans_frame_entry tagid false;
+    trans_frame_entry tagid false false;
     trace_str cx.ctxt_sess.Session.sess_trace_tag
       ("in tag constructor " ^ n);
     let (header_tup, _, _) = tag in
