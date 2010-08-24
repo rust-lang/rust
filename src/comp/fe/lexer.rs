@@ -27,15 +27,36 @@ fn is_whitespace(char c) -> bool {
     ret c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
+fn consume_any_whitespace(stdio_reader rdr, char c) -> char {
+    auto c1 = c;
+    while (is_whitespace(c1)) {
+        c1 = rdr.getc() as char;
+    }
+    be consume_any_line_comment(rdr, c1);
+}
+
+fn consume_any_line_comment(stdio_reader rdr, char c) -> char {
+    auto c1 = c;
+    if (c1 == '/') {
+        auto c2 = rdr.getc() as char;
+        if (c2 == '/') {
+            while (c1 != '\n') {
+                c1 = rdr.getc() as char;
+            }
+            // Restart whitespace munch.
+            be consume_any_whitespace(rdr, c1);
+        }
+    }
+    ret c;
+}
+
 fn next_token(stdio_reader rdr) -> token.token {
     auto eof = (-1) as char;
     auto c = rdr.getc() as char;
     auto accum_str = "";
     auto accum_int = 0;
 
-    while (is_whitespace(c) && c != eof) {
-        c = rdr.getc() as char;
-    }
+    c = consume_any_whitespace(rdr, c);
 
     if (c == eof) { ret token.EOF(); }
 
@@ -61,8 +82,19 @@ fn next_token(stdio_reader rdr) -> token.token {
         }
     }
 
-    // One-byte structural symbols.
+
+    fn op_or_opeq(stdio_reader rdr, char c2,
+                  token.op op) -> token.token {
+        if (c2 == '=') {
+            ret token.OPEQ(op);
+        } else {
+            rdr.ungetc(c2 as int);
+            ret token.OP(op);
+        }
+    }
+
     alt (c) {
+        // One-byte tokens.
         case (';') { ret token.SEMI(); }
         case (',') { ret token.COMMA(); }
         case ('.') { ret token.DOT(); }
@@ -74,6 +106,8 @@ fn next_token(stdio_reader rdr) -> token.token {
         case (']') { ret token.RBRACKET(); }
         case ('@') { ret token.AT(); }
         case ('#') { ret token.POUND(); }
+
+        // Multi-byte tokens.
         case ('=') {
             auto c2 = rdr.getc() as char;
             if (c2 == '=') {
@@ -83,6 +117,49 @@ fn next_token(stdio_reader rdr) -> token.token {
                 ret token.OP(token.EQ());
             }
         }
+
+        case ('-') {
+            auto c2 = rdr.getc() as char;
+            if (c2 == '>') {
+                ret token.RARROW();
+            } else {
+                ret op_or_opeq(rdr, c2, token.MINUS());
+            }
+        }
+
+        case ('&') {
+            auto c2 = rdr.getc() as char;
+            if (c2 == '&') {
+                ret token.OP(token.ANDAND());
+            } else {
+                ret op_or_opeq(rdr, c2, token.AND());
+            }
+        }
+
+        case ('+') {
+            ret op_or_opeq(rdr, rdr.getc() as char, token.PLUS());
+        }
+
+        case ('*') {
+            ret op_or_opeq(rdr, rdr.getc() as char, token.STAR());
+        }
+
+        case ('/') {
+            ret op_or_opeq(rdr, rdr.getc() as char, token.STAR());
+        }
+
+        case ('!') {
+            ret op_or_opeq(rdr, rdr.getc() as char, token.NOT());
+        }
+
+        case ('^') {
+            ret op_or_opeq(rdr, rdr.getc() as char, token.CARET());
+        }
+
+        case ('%') {
+            ret op_or_opeq(rdr, rdr.getc() as char, token.PERCENT());
+        }
+
     }
 
     log "lexer stopping at ";
