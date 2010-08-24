@@ -602,10 +602,11 @@ let with_err_handling sess thunk =
     thunk ()
   with
       Parse_err (ps, str) ->
-        Session.fail sess "Parse error: %s\n%!" str;
+        Session.fail sess "%s: error: %s\n%!"
+          (Session.string_of_pos (lexpos ps)) str;
         List.iter
           (fun (cx,pos) ->
-             Session.fail sess "%s:E (parse context): %s\n%!"
+             Session.fail sess "%s: (parse context): %s\n%!"
                (Session.string_of_pos pos) cx)
           ps.pstate_ctxt;
         let apos = lexpos ps in

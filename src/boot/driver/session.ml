@@ -109,7 +109,7 @@ let report_err sess ido str =
   in
     match spano with
         None ->
-          fail sess "Error: %s\n%!" str
+          fail sess "error: %s\n%!" str
       | Some span ->
           fail sess "%s: error: %s\n%!"
             (string_of_span span) str
