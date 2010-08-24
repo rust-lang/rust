@@ -11,7 +11,7 @@ native "rust" mod rustrt {
   fn refcount[T](str s) -> uint;
 }
 
-fn eq(str a, str b) -> bool {
+fn eq(&str a, &str b) -> bool {
   let uint i = byte_len(a);
   if (byte_len(b) != i) {
     ret false;
@@ -25,6 +25,17 @@ fn eq(str a, str b) -> bool {
     }
   }
   ret true;
+}
+
+fn hash(&str s) -> uint {
+  // djb hash.
+  // FIXME: replace with murmur.
+  let uint u = 5381u;
+  for (u8 c in s) {
+    u *= 33u;
+    u += (c as uint);
+  }
+  ret u;
 }
 
 fn is_utf8(vec[u8] v) -> bool {
