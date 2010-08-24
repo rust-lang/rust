@@ -1019,8 +1019,6 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
     let visit_obj_drop_pre _ _ = push_fn_ctx Ast.TY_nil false in
     let visit_obj_drop_post _ _ = ignore (Stack.pop fn_ctx_stack) in
 
-    (* TODO: make sure you can't fall off the end of a function if it doesn't
-     * return void *)
     let visit_stmt_pre (stmt:Ast.stmt) : unit =
       try
         iflog cx
