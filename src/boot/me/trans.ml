@@ -1798,8 +1798,6 @@ let trans_visitor
       (clo:Il.cell option)
       : unit =
     let inner dst cloptr =
-      let scratch = next_vreg_cell Il.voidptr_t in
-      let pop _ = emit (Il.Pop scratch) in
         for i = ((Array.length args) - 1) downto 0
         do
           emit (Il.Push (Il.Cell args.(i)))
@@ -1808,10 +1806,8 @@ let trans_visitor
         emit (Il.Push (Il.Cell abi.Abi.abi_tp_cell));
         emit (Il.Push dst);
         call_code code;
-        pop ();
-        pop ();
-        pop ();
-        Array.iter (fun _ -> pop()) args;
+        add_to (Il.Reg (abi.Abi.abi_sp_reg, word_sty))
+          (imm (Int64.mul word_sz (Int64.of_int (3 + (Array.length args)))));
     in
     let cloptr =
       match clo with
