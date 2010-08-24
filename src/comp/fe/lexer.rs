@@ -1,4 +1,93 @@
 import std._io.stdio_reader;
+import std._str;
+import std.map;
+import std.map.hashmap;
+
+fn new_str_hash[V]() -> map.hashmap[str,V] {
+    let map.hashfn[str] hasher = _str.hash;
+    let map.eqfn[str] eqer = _str.eq;
+    ret map.mk_hashmap[str,V](hasher, eqer);
+}
+
+type reader = obj {
+              fn is_eof() -> bool;
+              fn peek() -> char;
+              fn bump();
+              fn get_pos() -> tup(str,uint,uint);
+              fn get_keywords() -> hashmap[str,token.token];
+              fn get_reserved() -> hashmap[str,()];
+};
+
+fn new_reader(stdio_reader rdr, str filename) -> reader
+{
+    obj reader(stdio_reader rdr,
+               str filename,
+               mutable char c,
+               mutable uint line,
+               mutable uint col,
+               hashmap[str,token.token] keywords,
+               hashmap[str,()] reserved)
+        {
+            fn is_eof() -> bool {
+                ret c == (-1) as char;
+            }
+
+            fn get_pos() -> tup(str,uint,uint) {
+                ret tup(filename, line, col);
+            }
+
+            fn peek() -> char {
+                ret c;
+            }
+
+            fn bump() {
+                c = rdr.getc() as char;
+                if (c == '\n') {
+                    line += 1u;
+                    col = 0u;
+                } else {
+                    col += 1u;
+                }
+            }
+
+            fn get_keywords() -> hashmap[str,token.token] {
+                ret keywords;
+            }
+
+            fn get_reserved() -> hashmap[str,()] {
+                ret reserved;
+            }
+        }
+
+    auto keywords = new_str_hash[token.token]();
+    auto reserved = new_str_hash[()]();
+
+    keywords.insert("mod", token.MOD());
+    keywords.insert("use", token.USE());
+    keywords.insert("meta", token.META());
+    keywords.insert("auth", token.AUTH());
+
+    keywords.insert("syntax", token.SYNTAX());
+
+    keywords.insert("if", token.IF());
+    keywords.insert("else", token.ELSE());
+    keywords.insert("while", token.WHILE());
+    keywords.insert("do", token.DO());
+    keywords.insert("alt", token.ALT());
+    keywords.insert("case", token.CASE());
+
+    keywords.insert("for", token.FOR());
+    keywords.insert("each", token.EACH());
+    keywords.insert("put", token.PUT());
+    keywords.insert("ret", token.RET());
+    keywords.insert("be", token.BE());
+
+    ret reader(rdr, filename, rdr.getc() as char, 1u, 1u,
+               keywords, reserved);
+}
+
+
+
 
 fn in_range(char c, char lo, char hi) -> bool {
     ret lo <= c && c <= hi;
