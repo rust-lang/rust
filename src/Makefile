@@ -406,7 +406,6 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-pass/fn-lval.rs \
                     test/run-pass/generic-fn-infer.rs \
                     test/run-pass/generic-recursive-tag.rs \
-                    test/run-pass/int-lib.rs \
                     test/run-pass/iter-ret.rs \
                     test/run-pass/lib-io.rs \
                     test/run-pass/lib-map.rs \
@@ -475,7 +474,6 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       i8-incr.rs \
                       import.rs \
                       integral-indexing.rs \
-                      int-lib.rs \
                       iter-range.rs \
                       iter-ret.rs \
                       large-records.rs \
@@ -483,9 +481,13 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       lazy-init.rs \
                       lazychan.rs \
                       lib-deque.rs \
+                      lib-int.rs \
                       lib-io.rs \
                       lib-map.rs \
                       lib-rand.rs \
+                      lib-str.rs \
+                      lib-task.rs \
+                      lib-vec.rs \
                       lib-vec-str-conversions.rs \
                       linear-for-loop.rs \
                       list.rs \
@@ -519,8 +521,6 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       str-append.rs \
                       str-concat.rs \
                       str-idx.rs \
-                      str-lib.rs \
-                      task-lib.rs \
                       tag.rs \
                       tail-cps.rs \
                       tail-direct.rs \
@@ -554,7 +554,6 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       vec-drop.rs \
                       vec-in-tup.rs \
                       vec-late-init.rs \
-                      vec-lib.rs \
                       vec-slice.rs \
                       vec.rs \
                       while-flow-graph.rs \
