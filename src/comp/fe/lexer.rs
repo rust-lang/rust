@@ -56,6 +56,14 @@ fn next_token(stdio_reader rdr) -> token.token {
     auto accum_str = "";
     auto accum_int = 0;
 
+    fn next(stdio_reader rdr) -> char {
+        ret rdr.getc() as char;
+    }
+
+    fn forget(stdio_reader rdr, char c) {
+        rdr.ungetc(c as int);
+    }
+
     c = consume_any_whitespace(rdr, c);
 
     if (c == eof) { ret token.EOF(); }
@@ -63,9 +71,9 @@ fn next_token(stdio_reader rdr) -> token.token {
     if (is_alpha(c)) {
         while (is_alpha(c)) {
             accum_str += (c as u8);
-            c = rdr.getc() as char;
+            c = next(rdr);
         }
-        rdr.ungetc(c as int);
+        forget(rdr, c);
         ret token.IDENT(accum_str);
     }
 
@@ -75,9 +83,9 @@ fn next_token(stdio_reader rdr) -> token.token {
             while (is_dec_digit(c)) {
                 accum_int *= 10;
                 accum_int += (c as int) - ('0' as int);
-                c = rdr.getc() as char;
+                c = next(rdr);
             }
-            rdr.ungetc(c as int);
+            forget(rdr, c);
             ret token.LIT_INT(accum_int);
         }
     }
@@ -88,7 +96,7 @@ fn next_token(stdio_reader rdr) -> token.token {
         if (c2 == '=') {
             ret token.OPEQ(op);
         } else {
-            rdr.ungetc(c2 as int);
+            forget(rdr, c2);
             ret token.OP(op);
         }
     }
@@ -109,17 +117,17 @@ fn next_token(stdio_reader rdr) -> token.token {
 
         // Multi-byte tokens.
         case ('=') {
-            auto c2 = rdr.getc() as char;
+            auto c2 = next(rdr);
             if (c2 == '=') {
                 ret token.OP(token.EQEQ());
             } else {
-                rdr.ungetc(c2 as int);
+                forget(rdr, c2);
                 ret token.OP(token.EQ());
             }
         }
 
         case ('-') {
-            auto c2 = rdr.getc() as char;
+            auto c2 = next(rdr);
             if (c2 == '>') {
                 ret token.RARROW();
             } else {
@@ -128,7 +136,7 @@ fn next_token(stdio_reader rdr) -> token.token {
         }
 
         case ('&') {
-            auto c2 = rdr.getc() as char;
+            auto c2 = next(rdr);
             if (c2 == '&') {
                 ret token.OP(token.ANDAND());
             } else {
@@ -137,27 +145,27 @@ fn next_token(stdio_reader rdr) -> token.token {
         }
 
         case ('+') {
-            ret op_or_opeq(rdr, rdr.getc() as char, token.PLUS());
+            ret op_or_opeq(rdr, next(rdr), token.PLUS());
         }
 
         case ('*') {
-            ret op_or_opeq(rdr, rdr.getc() as char, token.STAR());
+            ret op_or_opeq(rdr, next(rdr), token.STAR());
         }
 
         case ('/') {
-            ret op_or_opeq(rdr, rdr.getc() as char, token.STAR());
+            ret op_or_opeq(rdr, next(rdr), token.STAR());
         }
 
         case ('!') {
-            ret op_or_opeq(rdr, rdr.getc() as char, token.NOT());
+            ret op_or_opeq(rdr, next(rdr), token.NOT());
         }
 
         case ('^') {
-            ret op_or_opeq(rdr, rdr.getc() as char, token.CARET());
+            ret op_or_opeq(rdr, next(rdr), token.CARET());
         }
 
         case ('%') {
-            ret op_or_opeq(rdr, rdr.getc() as char, token.PERCENT());
+            ret op_or_opeq(rdr, next(rdr), token.PERCENT());
         }
 
     }
