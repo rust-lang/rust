@@ -371,6 +371,7 @@ self: $(CFG_COMPILER)
 # of inter-task shutdown races introduced with notification proxies.
 
 TASK_XFAILS := test/run-pass/acyclic-unwind.rs \
+               test/run-pass/alt-type-simple.rs \
                test/run-pass/basic.rs \
                test/run-pass/clone-with-exterior.rs \
                test/run-pass/comm.rs \

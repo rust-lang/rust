@@ -3,6 +3,8 @@
  * types shared across all phases of the compiler.
  *)
 
+type ('a, 'b) either = Left of 'a | Right of 'b
+
 type filename = string
 type pos = (filename * int * int)
 type span = {lo: pos; hi: pos}
@@ -344,6 +346,11 @@ let rec list_drop n ls =
 
 
 (*
+ * Auxiliary pair functions.
+ *)
+let pair_rev (x,y) = (y,x)
+
+(*
  * Auxiliary option functions.
  *)
 
@@ -357,11 +364,35 @@ let may f x =
       Some x' -> f x'
     | None -> ()
 
+let option_map f x =
+  match x with
+      Some x' -> Some (f x')
+    | None -> None
+
 let option_get x =
   match x with
       Some x -> x
     | None -> raise Not_found
 
+(*
+ * Auxiliary either functions.
+ *)
+let either_has_left x =
+  match x with
+      Left _ -> true
+    | Right _ -> false
+        
+let either_has_right x = not (either_has_left x)
+
+let either_get_left x =
+  match x with
+      Left x -> x
+    | Right _ -> raise Not_found
+
+let either_get_right x =
+  match x with
+      Right x -> x
+    | Left _ -> raise Not_found
 (*
  * Auxiliary stack functions.
  *)

@@ -225,69 +225,117 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
 
       | ALT ->
           bump ps;
-          begin
+          let rec parse_pat ps  =
             match peek ps with
-                TYPE -> [| |]
-              | LPAREN ->
-                  let (stmts, lval) = bracketed LPAREN RPAREN parse_lval ps in
-                  let rec parse_pat ps =
-                    match peek ps with
-                        IDENT _ ->
-                          let apos = lexpos ps in
-                          let name = Pexp.parse_name ps in
-                          let bpos = lexpos ps in
-
-                          if peek ps != LPAREN then
-                            begin
-                              match name with
-                                  Ast.NAME_base (Ast.BASE_ident ident) ->
-                                    let slot =
-                                      { Ast.slot_mode = Ast.MODE_local;
-                                        Ast.slot_ty = None }
-                                    in
-                                      Ast.PAT_slot
-                                        ((span ps apos bpos slot), ident)
-                                |_ -> raise (unexpected ps)
-                            end
-                          else
-                            let lv = name_to_lval apos bpos name in
-                              Ast.PAT_tag (lv, paren_comma_list parse_pat ps)
-
-                      | LIT_INT _
-                      | LIT_UINT _
-                      | LIT_CHAR _
-                      | LIT_BOOL _ ->
-                          Ast.PAT_lit (Pexp.parse_lit ps)
-
-                      | UNDERSCORE -> bump ps; Ast.PAT_wild
-
-                      | tok -> raise (Parse_err (ps,
-                          "Expected pattern but found '" ^
-                            (string_of_tok tok) ^ "'"))
-                  in
-                  let rec parse_arms ps =
-                    match peek ps with
-                        CASE ->
-                          bump ps;
-                          let pat = bracketed LPAREN RPAREN parse_pat ps in
-                          let block = parse_block ps in
-                          let arm = (pat, block) in
-                          (span ps apos (lexpos ps) arm)::(parse_arms ps)
-                      | _ -> []
-                  in
-                  let parse_alt_block ps =
-                    let arms = ctxt "alt tag arms" parse_arms ps in
-                    spans ps stmts apos begin
-                      Ast.STMT_alt_tag {
-                        Ast.alt_tag_lval = lval;
-                        Ast.alt_tag_arms = Array.of_list arms
-                      }
-                    end
-                  in
-                  bracketed LBRACE RBRACE parse_alt_block ps
-              | _ -> [| |]
-          end
-
+                IDENT _ ->
+                  let apos = lexpos ps in
+                  let name = Pexp.parse_name ps in
+                  let bpos = lexpos ps in
+                    
+                    if peek ps != LPAREN then
+                      begin
+                        match name with
+                            Ast.NAME_base (Ast.BASE_ident ident) ->
+                              let slot =
+                                { Ast.slot_mode = Ast.MODE_local;
+                                  Ast.slot_ty = None }
+                              in
+                                Left 
+                                  (Ast.PAT_slot ((span ps apos bpos slot), 
+                                                 ident))
+                          |_ -> raise (unexpected ps)
+                      end
+                    else
+                      let lv = name_to_lval apos bpos name in
+                      let parse_pat ps = either_get_left (parse_pat ps) in
+                        Left 
+                          (Ast.PAT_tag (lv, paren_comma_list parse_pat ps))
+                          
+              | LIT_INT _
+              | LIT_UINT _
+              | LIT_CHAR _
+              | LIT_BOOL _ ->
+                  Left (Ast.PAT_lit (Pexp.parse_lit ps))
+                    
+              | UNDERSCORE -> bump ps; Left (Ast.PAT_wild)
+                  
+              | tok -> raise (Parse_err (ps,
+                                         "Expected pattern but found '" ^
+                                           (string_of_tok tok) ^ "'"))
+          in
+          let rec parse_arms ps parse_case =
+            match peek ps with 
+                CASE -> 
+                  bump ps;
+                  let case = parse_case ps in
+                  let blk = parse_block ps in
+                  let combine_and_span case =
+                    (span ps apos (lexpos ps) (case, blk)) in
+                  let is_default = either_has_right case in
+                    if is_default then
+                      let arm = combine_and_span (either_get_right case) in
+                        ([], Some arm)
+                    else
+                      let rec_result = parse_arms ps parse_case in
+                      let arm = combine_and_span (either_get_left case) in
+                        (arm::(fst rec_result), (snd rec_result))
+              | _ -> ([], None)
+          in
+          let parse_alt_block ps str parse_case make_stmt =
+            let br_parse_case = bracketed LPAREN RPAREN parse_case in
+            let arms = (ctxt (String.concat " " ["alt"; str; "arms"]) 
+                          (fun ps -> parse_arms ps br_parse_case) ps) in
+              make_stmt (fst arms) (snd arms) 
+          in
+          let which_alt = match peek ps with 
+              TYPE -> "type" | LPAREN -> "tag" | _ -> raise (unexpected ps)
+          in
+          let (stmts, lval) = if which_alt = "type" then bump ps; 
+            bracketed LPAREN RPAREN parse_lval ps 
+          in
+          let make_alt_tag_stmt val_arms dflt_arm =
+            assert (not (bool_of_option dflt_arm));
+            spans ps stmts apos begin
+              Ast.STMT_alt_tag {
+                Ast.alt_tag_lval = lval;
+                Ast.alt_tag_arms = Array.of_list val_arms;
+              }
+            end
+          in 
+          let make_alt_type_stmt val_arms dflt_arm =
+            spans ps stmts apos begin
+              Ast.STMT_alt_type {
+                Ast.alt_type_lval = lval;
+                Ast.alt_type_arms = Array.of_list val_arms;
+                Ast.alt_type_else = option_map (fun x -> snd x.node) dflt_arm;
+              }
+            end
+          in
+          let parse_slot_and_ident ps =
+            match peek ps with
+                UNDERSCORE -> Right ()
+              | _ -> Left (pair_rev (Pexp.parse_slot_and_ident false ps)) 
+                  
+          in
+          let parse_alt_tag_block ps =
+            parse_alt_block ps
+              "tag"
+              parse_pat
+              make_alt_tag_stmt
+          in
+          let parse_alt_type_block ps =
+            parse_alt_block ps
+              "type"
+              parse_slot_and_ident
+              make_alt_type_stmt
+          in
+          let parse_alt_block2 ps =
+            match which_alt with
+                "type" -> parse_alt_type_block ps
+              | "tag" -> parse_alt_tag_block ps
+              | _ -> assert false
+          in
+            bracketed LBRACE RBRACE parse_alt_block2 ps
       | IF ->
           let final_else = ref None in
           let rec parse_stmt_if _ =
