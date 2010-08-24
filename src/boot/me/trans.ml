@@ -2738,11 +2738,11 @@ let trans_visitor
                   patch null_jmp;
                   note_drop_step ty "drop_ty: done box-drop path";
 
-            | MEM_interior when type_is_structured ty ->
-                note_drop_step ty "drop_ty structured-interior path";
+            | MEM_interior when type_points_to_heap ty ->
+                note_drop_step ty "drop_ty heap-referencing path";
                 iter_ty_parts ty_params cell ty
                   (drop_ty ty_params) curr_iso;
-                note_drop_step ty "drop_ty: done structured-interior path";
+                note_drop_step ty "drop_ty: done heap-referencing path";
 
 
             | MEM_interior ->
@@ -2785,7 +2785,7 @@ let trans_visitor
                 MEM_gc ->
                   sever_box cell
 
-              | MEM_interior when type_is_structured ty ->
+              | MEM_interior when type_points_to_heap ty ->
                   iter_ty_parts ty_params cell ty
                     (sever_ty ty_params) curr_iso
 
