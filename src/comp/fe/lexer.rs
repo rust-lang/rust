@@ -126,6 +126,62 @@ fn next_token(stdio_reader rdr) -> token.token {
             }
         }
 
+        case ('\'') {
+            // FIXME: general utf8-consumption support.
+            auto c2 = next(rdr);
+            if (c2 == '\\') {
+                c2 = next(rdr);
+                alt (c2) {
+                    case ('n') { c2 = '\n'; }
+                    case ('r') { c2 = '\r'; }
+                    case ('t') { c2 = '\t'; }
+                    case ('\\') { c2 = '\\'; }
+                    case ('\'') { c2 = '\''; }
+                    // FIXME: unicode numeric escapes.
+                    case (_) {
+                        log "unknown character escape";
+                        log c2;
+                        fail;
+                    }
+                }
+            }
+            if (next(rdr) != '\'') {
+                log "unterminated character constant";
+                fail;
+            }
+            ret token.LIT_CHAR(c2);
+        }
+
+        case ('"') {
+            // FIXME: general utf8-consumption support.
+            auto c2 = next(rdr);
+            while (c2 != '"') {
+                alt (c2) {
+                    case ('\\') {
+                        c2 = next(rdr);
+                        alt (c2) {
+                            case ('n') { accum_str += '\n' as u8; }
+                            case ('r') { accum_str += '\r' as u8; }
+                            case ('t') { accum_str += '\t' as u8; }
+                            case ('\\') { accum_str += '\\' as u8; }
+                            case ('"') { accum_str += '"' as u8; }
+                            // FIXME: unicode numeric escapes.
+                            case (_) {
+                                log "unknown string escape";
+                                log c2;
+                                fail;
+                            }
+                        }
+                    }
+                    case (_) {
+                        accum_str += c2 as u8;
+                    }
+                }
+                c2 = next(rdr);
+            }
+            ret token.LIT_STR(accum_str);
+        }
+
         case ('-') {
             auto c2 = next(rdr);
             if (c2 == '>') {
