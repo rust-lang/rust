@@ -104,10 +104,6 @@ let trans_visitor
     Il.Imm (crate_rel fix, word_ty_signed_mach)
   in
 
-  let table_of_crate_rel_fixups (fixups:fixup array) : Asm.frag =
-    Asm.SEQ (Array.map crate_rel_word fixups)
-  in
-
   let fixup_rel_word (base:fixup) (fix:fixup) =
     Asm.WORD (word_ty_signed_mach,
               Asm.SUB (Asm.M_POS fix, Asm.M_POS base))
@@ -1767,7 +1763,7 @@ let trans_visitor
         trans_copy_ty ty_params true dst ty src ty curr_iso;
         let skip_noninit_jmp = mark() in
           emit (Il.jmp Il.JMP Il.CodeNone);
-          List.iter patch jmps;          
+          List.iter patch jmps;
           trans_copy_ty ty_params false dst ty src ty curr_iso;
           patch skip_noninit_jmp;
     in
@@ -4810,41 +4806,86 @@ let trans_visitor
               end
         end
     in
+    let frame_has_aliases =
+      let r = ref false in
+        iter_frame_and_arg_slots cx fnid
+          begin
+            fun _ _ slot ->
+              match slot.Ast.slot_mode with
+                  Ast.MODE_alias -> r := true
+                | _ -> ()
+          end;
+        !r
+    in
+    let frame_points_to_heap =
+      let r = ref false in
+        iter_frame_and_arg_slots cx fnid
+          begin
+            fun _ slot_id _ ->
+              if type_points_to_heap (slot_ty (get_slot cx slot_id))
+              then r := true
+          end;
+        !r
+    in
+    let null_word = Asm.WORD (word_ty_mach, Asm.IMM 0L) in
+
     trans_crate_rel_data_operand
       (DATA_frame_glue_fns fnid)
       begin
         fun _ ->
-          let mark_frame_glue_fixup =
-            get_frame_glue (GLUE_mark_frame fnid)
-              begin
-                fun _ _ ty_params slot slot_cell ->
-                  mark_slot ty_params slot_cell slot None
-              end
+          let mark_frame_word =
+            if frame_points_to_heap
+            then
+              crate_rel_word
+                begin
+                  get_frame_glue (GLUE_mark_frame fnid)
+                    begin
+                      fun _ _ ty_params slot slot_cell ->
+                        mark_slot ty_params slot_cell slot None
+                    end
+                end
+            else
+              null_word
           in
-          let drop_frame_glue_fixup =
-            get_frame_glue (GLUE_drop_frame fnid)
-              begin
-                fun _ _ ty_params slot slot_cell ->
-                  drop_slot ty_params slot_cell slot None
-              end
+
+          let drop_frame_word =
+            if frame_points_to_heap
+            then
+              crate_rel_word
+                begin
+                  get_frame_glue (GLUE_drop_frame fnid)
+                    begin
+                      fun _ _ ty_params slot slot_cell ->
+                        drop_slot ty_params slot_cell slot None
+                    end
+                end
+            else
+              null_word
           in
-          let reloc_frame_glue_fixup =
-            get_frame_glue (GLUE_reloc_frame fnid)
-              begin
-                fun _ _ _ _ _ ->
-                  ()
-              end
+
+          let reloc_frame_word =
+            if frame_has_aliases
+            then
+              crate_rel_word
+                begin
+                  get_frame_glue (GLUE_reloc_frame fnid)
+                    begin
+                      fun _ _ _ _ _ ->
+                        ()
+                    end
+                end
+            else
+              null_word
           in
-            table_of_crate_rel_fixups
-              [|
-               (* 
-                * NB: this must match the struct-offsets given in ABI
-                * & rust runtime library.
-                *)
-                mark_frame_glue_fixup;
-                drop_frame_glue_fixup;
-                reloc_frame_glue_fixup;
-              |]
+            Asm.SEQ [|
+              (* 
+               * NB: this must match the struct-offsets given in ABI
+               * & rust runtime library.
+               *)
+              mark_frame_word;
+              drop_frame_word;
+              reloc_frame_word;
+            |]
       end
   in
 
