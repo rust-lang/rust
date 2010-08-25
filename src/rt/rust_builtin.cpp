@@ -308,7 +308,8 @@ struct rust_obj {
 };
 
 extern "C" CDECL void
-debug_obj(rust_task *task, type_desc *t, rust_obj *obj, size_t nmethods)
+debug_obj(rust_task *task, type_desc *t, rust_obj *obj,
+          size_t nmethods, size_t nbytes)
 {
     task->log(rust_log::STDLIB,
               "debug_obj with %" PRIdPTR " methods", nmethods);
@@ -318,6 +319,11 @@ debug_obj(rust_task *task, type_desc *t, rust_obj *obj, size_t nmethods)
 
     for (uintptr_t *p = obj->vtbl; p < obj->vtbl + nmethods; ++p)
         task->log(rust_log::STDLIB, "  vtbl word: 0x%" PRIxPTR, *p);
+
+    for (uintptr_t i = 0; i < nbytes; ++i)
+        task->log(rust_log::STDLIB,
+                  "  body byte %" PRIdPTR ": 0x%" PRIxPTR,
+                  i, obj->body->data[i]);
 }
 
 struct rust_fn {
