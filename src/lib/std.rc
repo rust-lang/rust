@@ -29,6 +29,8 @@ auth _str = unsafe;
 auth _vec = unsafe;
 auth _task = unsafe;
 
+auth dbg = unsafe;
+
 auth _uint.next_power_of_two = unsafe;
 auth map.mk_hashmap = unsafe;
 auth rand.mk_rng = unsafe;
@@ -48,3 +50,4 @@ alt (target_os) {
 mod map;
 mod deque;
 mod rand;
+mod dbg;
