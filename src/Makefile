@@ -542,7 +542,6 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       task-comm-12.rs \
                       task-comm-13.rs \
                       task-comm-13-thread.rs \
-                      task-comm-14.rs \
                       task-comm-15.rs \
                       task-life-0.rs \
                       threads.rs \
@@ -576,6 +575,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       str-overrun.rs \
                       vec-overrun.rs \
                       vec-underrun.rs \
+                      task-comm-14.rs \
                      ) \
                     $(addprefix test/compile-fail/, \
                       bad-recv.rs \
