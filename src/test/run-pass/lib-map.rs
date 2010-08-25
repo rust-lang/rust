@@ -19,6 +19,10 @@ fn test_simple() {
   hm.insert(10u, 12u);
   hm.insert(11u, 13u);
   hm.insert(12u, 14u);
+
+  check (hm.get(11u) == 13u);
+  check (hm.get(12u) == 14u);
+
   log "*** finished test_simple";
 }
 
