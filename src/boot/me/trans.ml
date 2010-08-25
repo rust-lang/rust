@@ -1452,49 +1452,15 @@ let trans_visitor
               emit_exit_task_glue fix g;
               fix
 
-  (*
-   * Closure representation has 3 GEP-parts:
-   * 
-   *  ......
-   *  . gc . gc control word, if mutable
-   *  +----+
-   *  | rc | refcount
-   *  +----+
-   * 
-   *  +----+
-   *  | tf | ----> pair of fn+binding that closure 
-   *  +----+   /   targets
-   *  | tb | --
-   *  +----+
-   * 
-   *  +----+
-   *  | b1 | bound arg1
-   *  +----+
-   *  .    .
-   *  .    .
-   *  .    .
-   *  +----+
-   *  | bN | bound argN
-   *  +----+
-   *)
-
-  and closure_referent_type
-      (bs:Ast.slot array)
-      (* FIXME (issue #5): mutability flag *)
-      : Il.referent_ty =
-    let rc = Il.ScalarTy word_sty in
-    let targ = referent_type word_bits (mk_simple_ty_fn [||]) in
-    let bindings = Array.map (slot_referent_type word_bits) bs in
-      Il.StructTy [| rc; targ; Il.StructTy bindings |]
-
   (* FIXME (issue #2): this should eventually use tail calling logic *)
 
-  and emit_fn_binding_glue
+  and emit_fn_thunk_glue
       (arg_slots:Ast.slot array)
       (arg_bound_flags:bool array)
       (fix:fixup)
       (g:glue)
       : unit =
+
     let extract_slots want_bound =
       arr_filter_some
         (arr_map2
@@ -1505,14 +1471,16 @@ let trans_visitor
     in
     let bound_slots = extract_slots true in
     let unbound_slots = extract_slots false in
+
     let (self_ty:Ast.ty) = mk_simple_ty_fn unbound_slots in
     let (callee_ty:Ast.ty) = mk_simple_ty_fn arg_slots in
 
-    let self_closure_rty = closure_referent_type bound_slots in
-    (* FIXME (issue #81): binding type parameters doesn't work. *)
+    let self_box_rty = closure_box_rty word_bits bound_slots in
+
     let self_args_rty =
-      call_args_referent_type cx 0 self_ty (Some self_closure_rty)
+      call_args_referent_type cx 0 self_ty (Some self_box_rty)
     in
+
     let callee_args_rty =
       call_args_referent_type cx 0 callee_ty (Some Il.OpaqueTy)
     in
@@ -1522,18 +1490,26 @@ let trans_visitor
       trans_glue_frame_entry callsz spill;
 
       let all_self_args_cell = caller_args_cell self_args_rty in
+
       let self_indirect_args_cell =
         get_element_ptr all_self_args_cell Abi.calltup_elt_indirect_args
       in
-      let closure_cell =
+
+      let box_cell =
         deref (get_element_ptr self_indirect_args_cell
                  Abi.indirect_args_elt_closure)
       in
-      let closure_target_cell =
-        get_element_ptr closure_cell Abi.fn_field_closure
+
+      let closure_cell =
+        get_element_ptr box_cell Abi.box_rc_field_body
       in
-      let closure_target_fn_cell =
-        get_element_ptr closure_target_cell Abi.fn_field_thunk
+
+      let closure_target_cell =
+        get_element_ptr closure_cell Abi.closure_body_elt_target
+      in
+
+      let closure_target_code_cell =
+        get_element_ptr closure_target_cell Abi.fn_field_code
       in
 
         merge_bound_args
@@ -1541,21 +1517,21 @@ let trans_visitor
           arg_slots arg_bound_flags;
         iflog (fun _ -> annotate "call through to closure target fn");
 
-        call_code (code_of_cell closure_target_fn_cell);
+        call_code (code_of_cell closure_target_code_cell);
         trans_glue_frame_exit fix spill g
 
 
-  and get_fn_binding_glue
+  and get_fn_thunk_glue
       (bind_id:node_id)
       (arg_slots:Ast.slot array)
       (arg_bound_flags:bool array)
       : fixup =
-    let g = GLUE_fn_binding bind_id in
+    let g = GLUE_fn_thunk bind_id in
       match htab_search cx.ctxt_glue_code g with
           Some code -> code.code_fixup
         | None ->
             let fix = new_fixup (glue_str cx g) in
-              emit_fn_binding_glue arg_slots arg_bound_flags fix g;
+              emit_fn_thunk_glue arg_slots arg_bound_flags fix g;
               fix
 
 
@@ -2630,14 +2606,14 @@ let trans_visitor
 
           Ast.TY_fn _ ->
             note_drop_step ty "drop_ty: fn path";
-            let binding = get_element_ptr cell Abi.fn_field_closure in
-            let null_jmp = null_check binding in
+            let box = get_element_ptr cell Abi.fn_field_box in
+            let null_jmp = null_check box in
               (* Drop non-null bindings. *)
               (* FIXME (issue #58): this is completely wrong, Closures need to
                * carry tydescs like objs. For now this only works by accident,
                * and will leak closures with box substructure.
                *)
-              drop_ty ty_params binding (Ast.TY_box Ast.TY_int) curr_iso;
+              drop_ty ty_params box (Ast.TY_box Ast.TY_int) curr_iso;
               patch null_jmp;
               note_drop_step ty "drop_ty: done fn path";
 
@@ -3389,7 +3365,7 @@ let trans_visitor
 
         | (_, Ast.EXPR_atom (Ast.ATOM_lval src_lval)) ->
             if lval_is_direct_fn cx src_lval then
-              trans_copy_direct_fn dst_cell src_lval
+              trans_init_direct_fn dst_cell src_lval
             else
               (* Possibly-large structure copying *)
               let (src_cell, src_ty) = trans_lval src_lval in
@@ -3400,21 +3376,22 @@ let trans_visitor
                   src_cell src_ty
                   None
 
-  and trans_copy_direct_fn
+  and trans_init_direct_fn
       (dst_cell:Il.cell)
       (flv:Ast.lval)
       : unit =
     let item = lval_item cx flv in
     let fix = Hashtbl.find cx.ctxt_fn_fixups item.id in
 
-    let dst_pair_item_cell =
-      get_element_ptr dst_cell Abi.fn_field_thunk
+    let dst_pair_code_cell =
+      get_element_ptr dst_cell Abi.fn_field_code
     in
-    let dst_pair_binding_cell =
-      get_element_ptr dst_cell Abi.fn_field_closure
+
+    let dst_pair_box_cell =
+      get_element_ptr dst_cell Abi.fn_field_box
     in
-      mov dst_pair_item_cell (reify_ptr (Il.ImmPtr (fix, Il.CodeTy)));
-      mov dst_pair_binding_cell zero
+      mov dst_pair_code_cell (reify_ptr (Il.ImmPtr (fix, Il.CodeTy)));
+      mov dst_pair_box_cell zero
 
 
   and trans_init_structural_from_atoms
@@ -3636,21 +3613,31 @@ let trans_visitor
       (bound_args:Ast.atom array)
       : unit =
 
-    let rc_cell = get_element_ptr closure_cell Abi.closure_elt_rc in
-    let targ_cell = get_element_ptr closure_cell Abi.closure_elt_target in
-    let args_cell = get_element_ptr closure_cell Abi.closure_elt_bound_args in
+    let rc_cell = get_element_ptr closure_cell Abi.box_rc_field_refcnt in
+    let body_cell = get_element_ptr closure_cell Abi.box_rc_field_body in
+    let targ_cell = get_element_ptr body_cell Abi.closure_body_elt_target in
+    let tydesc_cell = get_element_ptr body_cell Abi.closure_body_elt_tydesc in
+    let args_cell =
+      get_element_ptr body_cell Abi.closure_body_elt_bound_args
+    in
 
     iflog (fun _ -> annotate "init closure refcount");
     mov rc_cell one;
 
+    iflog (fun _ -> annotate "set closure tydesc ptr");
+    mov tydesc_cell
+      (Il.Cell (get_tydesc None
+                  (Ast.TY_tup (Array.map slot_ty bound_arg_slots))));
+
+
     iflog (fun _ -> annotate "set closure target code ptr");
     mov
-      (get_element_ptr targ_cell Abi.fn_field_thunk)
+      (get_element_ptr targ_cell Abi.fn_field_code)
       (reify_ptr target_fn_ptr);
 
     iflog (fun _ -> annotate "set closure target closure ptr");
     mov
-      (get_element_ptr targ_cell Abi.fn_field_closure)
+      (get_element_ptr targ_cell Abi.fn_field_box)
       (reify_ptr target_binding_ptr);
 
     iflog (fun _ -> annotate "set closure bound args");
@@ -3677,28 +3664,31 @@ let trans_visitor
     in
     let bound_arg_slots = arr_filter_some arg_slots in
     let bound_args = arr_filter_some args in
-    let glue_fixup =
-      get_fn_binding_glue bind_id fn_sig.Ast.sig_input_slots arg_bound_flags
+    let thunk_fixup =
+      get_fn_thunk_glue bind_id fn_sig.Ast.sig_input_slots arg_bound_flags
     in
-    let target_fn_ptr = callee_fn_ptr target_ptr cc in
-    let target_binding_ptr = callee_binding_ptr flv cc in
-    let closure_rty = closure_referent_type bound_arg_slots in
-    let closure_sz = force_sz (Il.referent_ty_size word_bits closure_rty) in
-    let fn_cell = get_element_ptr dst_cell Abi.fn_field_thunk in
-    let closure_cell =
+    let target_code_ptr = callee_code_ptr target_ptr cc in
+    let target_box_ptr = callee_box_ptr flv cc in
+    let closure_box_rty = closure_box_rty word_bits bound_arg_slots in
+    let closure_box_sz =
+      calculate_sz_in_current_frame
+        (Il.referent_ty_size word_bits closure_box_rty)
+    in
+    let pair_code_cell = get_element_ptr dst_cell Abi.fn_field_code in
+    let pair_box_cell =
       ptr_cast
-        (get_element_ptr dst_cell Abi.fn_field_closure)
-        (Il.ScalarTy (Il.AddrTy (closure_rty)))
+        (get_element_ptr dst_cell Abi.fn_field_box)
+        (Il.ScalarTy (Il.AddrTy (closure_box_rty)))
     in
-      iflog (fun _ -> annotate "assign glue-code to fn slot of pair");
-      mov fn_cell (reify_ptr (Il.ImmPtr (glue_fixup, Il.CodeTy)));
+      iflog (fun _ -> annotate "assign thunk-ptr to code field of pair");
+      mov pair_code_cell (reify_ptr (Il.ImmPtr (thunk_fixup, Il.CodeTy)));
       iflog (fun _ ->
                annotate "heap-allocate closure to binding slot of pair");
-      trans_malloc closure_cell (imm closure_sz) zero;
+      trans_malloc pair_box_cell closure_box_sz zero;
       trans_init_closure
-        (deref closure_cell)
-        target_fn_ptr
-        target_binding_ptr
+        (deref pair_box_cell)
+        target_code_ptr
+        target_box_ptr
         bound_arg_slots
         bound_args
 
@@ -3947,12 +3937,16 @@ let trans_visitor
                       Abi.calltup_elt_task_ptr));
 
         iflog (fun _ -> annotate "extract closure indirect-arg");
-        let closure_cell =
+        let closure_box_cell =
           deref (get_element_ptr self_indirect_args_cell
                    Abi.indirect_args_elt_closure)
         in
+        let closure_cell =
+          get_element_ptr closure_box_cell Abi.box_rc_field_body
+        in
+
         let closure_args_cell =
-          get_element_ptr closure_cell Abi.closure_elt_bound_args
+          get_element_ptr closure_cell Abi.closure_body_elt_bound_args
         in
 
           for arg_i = 0 to (n_args - 1) do
@@ -3990,7 +3984,7 @@ let trans_visitor
     end
 
 
-  and callee_fn_ptr
+  and callee_code_ptr
       (fptr:Il.operand)
       (cc:call_ctrl)
       : Il.operand =
@@ -3998,11 +3992,11 @@ let trans_visitor
         CALL_direct
       | CALL_vtbl -> fptr
       | CALL_indirect ->
-          (* fptr is a pair [fptr, binding*] *)
+          (* fptr is a pair [code*, box*] *)
           let pair_cell = need_cell (reify_ptr fptr) in
-            Il.Cell (get_element_ptr pair_cell Abi.fn_field_thunk)
+            Il.Cell (get_element_ptr pair_cell Abi.fn_field_code)
 
-  and callee_binding_ptr
+  and callee_box_ptr
       (pair_lval:Ast.lval)
       (cc:call_ctrl)
       : Il.operand =
@@ -4054,7 +4048,7 @@ let trans_visitor
       begin
         match cc with
             CALL_direct -> [| |]
-          | CALL_indirect -> [| callee_binding_ptr flv cc |]
+          | CALL_indirect -> [| callee_box_ptr flv cc |]
           | CALL_vtbl ->
               begin
                 match flv with
@@ -4062,7 +4056,7 @@ let trans_visitor
                      * if we add a 'self' value for self-dispatch within
                      * objs. Also to support forwarding-functions / 'as'.
                      *)
-                    Ast.LVAL_ext (base, _) -> [| callee_binding_ptr base cc |]
+                    Ast.LVAL_ext (base, _) -> [| callee_box_ptr base cc |]
                   | _ ->
                       bug (lval_base_id flv)
                         "call_indirect_args on obj-fn without base obj"
@@ -4074,7 +4068,7 @@ let trans_visitor
       (caller_is_closure:bool)
       (call:call)
       : unit =
-    let callee_fptr = callee_fn_ptr call.call_callee_ptr call.call_ctrl in
+    let callee_fptr = callee_code_ptr call.call_callee_ptr call.call_ctrl in
     let callee_code = code_of_operand callee_fptr in
     let callee_args_rty =
       call_args_referent_type cx 0 call.call_callee_ty
@@ -4106,7 +4100,7 @@ let trans_visitor
       (call:call)
       : Il.operand =
 
-    let callee_fptr = callee_fn_ptr call.call_callee_ptr call.call_ctrl in
+    let callee_fptr = callee_code_ptr call.call_callee_ptr call.call_ctrl in
       iflog (fun _ -> annotate
                (Printf.sprintf "copy args for call to %s" (logname ())));
       copy_fn_args false initializing CLONE_none call;
@@ -5011,7 +5005,7 @@ let trans_visitor
             (Il.Cell (get_tydesc
                         (Some obj_id)
                         (Ast.TY_tup obj_fields_tup)));
-          iflog (fun _ -> annotate "copy ctor args to obj args");
+          iflog (fun _ -> annotate "copy ctor args to obj body fields");
           trans_copy_tup
             frame_ty_params true
             obj_fields frame_args obj_fields_tup;

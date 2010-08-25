@@ -36,7 +36,7 @@ type glue =
   | GLUE_mark_frame of node_id    (* Node is the frame.                 *)
   | GLUE_drop_frame of node_id    (* Node is the frame.                 *)
   | GLUE_reloc_frame of node_id   (* Node is the frame.                 *)
-  | GLUE_fn_binding of node_id    (* Node is the 'bind' stmt.           *)
+  | GLUE_fn_thunk of node_id      (* Node is the 'bind' stmt.           *)
   | GLUE_obj_drop of node_id      (* Node is the obj.                   *)
   | GLUE_loop_body of node_id     (* Node is the 'for each' body block. *)
   | GLUE_forward of (Ast.ident * Ast.ty_obj * Ast.ty_obj)
@@ -1878,21 +1878,64 @@ let tydesc_rty (word_bits:Il.bits) : Il.referent_ty =
     |]
 ;;
 
-(* 
- * [ rc [ tydesc* | obj-body ] ]
- *)
 let obj_box_rty (word_bits:Il.bits) : Il.referent_ty =
-  Il.StructTy [|
-    word_rty word_bits;
-    Il.StructTy [|
-      Il.ScalarTy (Il.AddrTy (tydesc_rty word_bits));
-      word_rty word_bits (* A lie: it's opaque, but this permits
-                          * GEP'ing to it. *)
-    |]
-  |]
+  let s t = Il.ScalarTy t in
+  let p t = Il.AddrTy t in
+  let sp t = s (p t) in
+  let r rtys = Il.StructTy rtys in
+
+  let rc = word_rty word_bits in
+  let tydesc = sp (tydesc_rty word_bits) in
+
+  (* This is a lie: it's opaque, but this permits GEP'ing to it. *)
+  let fields = word_rty word_bits in
+
+    r [| rc; r [| tydesc; fields |] |]
 ;;
 
-let rec referent_type (word_bits:Il.bits) (t:Ast.ty) : Il.referent_ty =
+let obj_rty (word_bits:Il.bits) : Il.referent_ty =
+  let s t = Il.ScalarTy t in
+  let p t = Il.AddrTy t in
+  let sp t = s (p t) in
+  let r rtys = Il.StructTy rtys in
+
+  let obj_box_ptr = sp (obj_box_rty word_bits) in
+  let obj_vtbl_ptr = sp Il.OpaqueTy in
+
+    r [| obj_vtbl_ptr; obj_box_ptr |]
+;;
+
+
+
+let rec closure_box_rty
+    (word_bits:Il.bits)
+    (bs:Ast.slot array)
+    : Il.referent_ty =
+  let s t = Il.ScalarTy t in
+  let p t = Il.AddrTy t in
+  let sp t = s (p t) in
+  let r rtys = Il.StructTy rtys in
+
+  let rc = word_rty word_bits in
+  let tydesc = sp (tydesc_rty word_bits) in
+  let targ = fn_rty word_bits in
+  let bound_args = r (Array.map (slot_referent_type word_bits) bs) in
+
+    r [| rc; r [| tydesc; targ; bound_args |] |]
+
+and fn_rty (word_bits:Il.bits) : Il.referent_ty =
+  let s t = Il.ScalarTy t in
+  let p t = Il.AddrTy t in
+  let sp t = s (p t) in
+  let r rtys = Il.StructTy rtys in
+  let word = word_rty word_bits in
+
+  let box_ptr = sp (Il.StructTy [| word; Il.OpaqueTy |]) in
+  let code_ptr = sp Il.CodeTy in
+
+    r [| code_ptr; box_ptr |]
+
+and referent_type (word_bits:Il.bits) (t:Ast.ty) : Il.referent_ty =
   let s t = Il.ScalarTy t in
   let v b = Il.ValTy b in
   let p t = Il.AddrTy t in
@@ -1902,7 +1945,6 @@ let rec referent_type (word_bits:Il.bits) (t:Ast.ty) : Il.referent_ty =
   let word = word_rty word_bits in
   let ptr = sp Il.OpaqueTy in
   let rc_ptr = sp (Il.StructTy [| word; Il.OpaqueTy |]) in
-  let codeptr = sp Il.CodeTy in
   let tup ttup = Il.StructTy (Array.map (referent_type word_bits) ttup) in
   let tag ttag =
     let union =
@@ -1943,13 +1985,8 @@ let rec referent_type (word_bits:Il.bits) (t:Ast.ty) : Il.referent_ty =
       | Ast.TY_tup tt -> tup tt
       | Ast.TY_rec tr -> tup (Array.map snd tr)
 
-      | Ast.TY_fn _ ->
-          let fn_closure_ptr = sp (Il.StructTy [| word; Il.OpaqueTy |]) in
-            Il.StructTy [| codeptr; fn_closure_ptr |]
-
-      | Ast.TY_obj _ ->
-          let obj_box_ptr = sp (obj_box_rty word_bits) in
-            Il.StructTy [| ptr; obj_box_ptr |]
+      | Ast.TY_fn _ -> fn_rty word_bits
+      | Ast.TY_obj _ -> obj_rty word_bits
 
       | Ast.TY_tag ttag -> tag ttag
       | Ast.TY_iso tiso -> tag tiso.Ast.iso_group.(tiso.Ast.iso_index)
@@ -2292,8 +2329,8 @@ let glue_str (cx:ctxt) (g:glue) : string =
          * a statement; lookup bind target and encode bound arg 
          * tuple type.
          *)
-    | GLUE_fn_binding i
-      -> "glue$fn_binding$" ^ (string_of_int (int_of_node i))
+    | GLUE_fn_thunk i
+      -> "glue$fn_thunk$" ^ (string_of_int (int_of_node i))
     | GLUE_obj_drop oid
       -> (item_str cx oid) ^ ".drop"
     | GLUE_loop_body i

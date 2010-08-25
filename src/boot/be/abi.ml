@@ -45,9 +45,9 @@ let stk_field_valgrind_id = 0;;
 let stk_field_limit = stk_field_valgrind_id + 1;;
 let stk_field_data = stk_field_limit + 1;;
 
-(* Both obj and fn are two-word "bindings":  One word points to some
- * static dispatch information (vtbl or thunk), and the other points to
- * some bag of bound data (object-body or closure).
+(* Both obj and fn are two-word "bindings": One word points to some static
+ * dispatch information (vtbl, thunk, callee), and the other points to some
+ * box of bound data (object-body or closure).
  *)
 
 let binding_field_dispatch = 0;;
@@ -59,11 +59,12 @@ let obj_field_box = binding_field_bound_data;;
 let obj_body_elt_tydesc = 0;;
 let obj_body_elt_fields = 1;;
 
-let fn_field_thunk = binding_field_dispatch;;
-let fn_field_closure = binding_field_bound_data;;
-let closure_elt_rc = 0;;
-let closure_elt_target = 1;;
-let closure_elt_bound_args = 2;;
+let fn_field_code = binding_field_dispatch;;
+let fn_field_box = binding_field_bound_data;;
+
+let closure_body_elt_tydesc = 0;;
+let closure_body_elt_target = 1;;
+let closure_body_elt_bound_args = 2;;
 
 let tag_elt_discriminant = 0;;
 let tag_elt_variant = 1;;
