@@ -22,6 +22,7 @@ fn test_simple() {
 
   check (hm.get(11u) == 13u);
   check (hm.get(12u) == 14u);
+  check (hm.get(10u) == 12u);
 
   log "*** finished test_simple";
 }

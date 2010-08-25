@@ -1274,6 +1274,10 @@ let typestate_verify_visitor
         Walk.visit_block_pre = visit_block_pre }
 ;;
 
+type slots_stack = node_id Stack.t;;
+type block_slots_stack = slots_stack Stack.t;;
+type frame_block_slots_stack = block_slots_stack Stack.t;;
+
 let lifecycle_visitor
     (cx:ctxt)
     (tables_stack:typestate_tables Stack.t)
@@ -1291,14 +1295,14 @@ let lifecycle_visitor
   let tables _ = Stack.top tables_stack in
 
   let (live_block_slots:(node_id, unit) Hashtbl.t) = Hashtbl.create 0 in
-  let (block_slots:(node_id Stack.t) Stack.t) = Stack.create () in
+  let (frame_blocks:frame_block_slots_stack) = Stack.create () in
 
   let (implicit_init_block_slots:(node_id,node_id) Hashtbl.t) =
     Hashtbl.create 0
   in
 
   let push_slot sl =
-    Stack.push sl (Stack.top block_slots)
+    Stack.push sl (Stack.top (Stack.top frame_blocks))
   in
 
   let mark_slot_live sl =
@@ -1307,7 +1311,7 @@ let lifecycle_visitor
 
 
   let visit_block_pre b =
-    Stack.push (Stack.create()) block_slots;
+    Stack.push (Stack.create()) (Stack.top frame_blocks);
     begin
       match htab_search implicit_init_block_slots b.id with
           None -> ()
@@ -1335,7 +1339,7 @@ let lifecycle_visitor
 
   let visit_block_post b =
     inner.Walk.visit_block_post b;
-    let blk_slots = Stack.pop block_slots in
+    let block_slots = Stack.pop (Stack.top frame_blocks) in
     let stmts = b.node in
     let len = Array.length stmts in
       if len > 0
@@ -1355,7 +1359,7 @@ let lifecycle_visitor
                  * slots that actually got initialized (went live) at some
                  * point in the block.
                  *)
-                let slots = stk_elts_from_top blk_slots in
+                let slots = stk_elts_from_top block_slots in
                 let live =
                   List.filter
                     (fun i -> Hashtbl.mem live_block_slots i)
@@ -1443,8 +1447,8 @@ let lifecycle_visitor
     match s.node with
         Ast.STMT_ret _
       | Ast.STMT_be _ ->
-          let stks = stk_elts_from_top block_slots in
-          let slots = List.concat (List.map stk_elts_from_top stks) in
+          let blocks = stk_elts_from_top (Stack.top frame_blocks) in
+          let slots = List.concat (List.map stk_elts_from_top blocks) in
           let live =
             List.filter
               (fun i -> Hashtbl.mem live_block_slots i)
@@ -1454,11 +1458,57 @@ let lifecycle_visitor
       | _ -> ()
   in
 
+  let enter_frame _ =
+    Stack.push (Stack.create()) frame_blocks
+  in
+
+  let leave_frame _ =
+    ignore (Stack.pop frame_blocks)
+  in
+
+  let visit_mod_item_pre n p i =
+    enter_frame();
+    inner.Walk.visit_mod_item_pre n p i
+  in
+
+  let visit_mod_item_post n p i =
+    inner.Walk.visit_mod_item_post n p i;
+    leave_frame()
+  in
+
+  let visit_obj_fn_pre obj ident fn =
+    enter_frame();
+    inner.Walk.visit_obj_fn_pre obj ident fn
+  in
+
+  let visit_obj_fn_post obj ident fn =
+    inner.Walk.visit_obj_fn_post obj ident fn;
+    leave_frame()
+  in
+
+  let visit_obj_drop_pre obj b =
+    enter_frame();
+    inner.Walk.visit_obj_drop_pre obj b
+  in
+
+  let visit_obj_drop_post obj b =
+    inner.Walk.visit_obj_drop_post obj b;
+    leave_frame()
+  in
+
     { inner with
         Walk.visit_block_pre = visit_block_pre;
         Walk.visit_block_post = visit_block_post;
         Walk.visit_stmt_pre = visit_stmt_pre;
-        Walk.visit_stmt_post = visit_stmt_post
+        Walk.visit_stmt_post = visit_stmt_post;
+
+        Walk.visit_mod_item_pre = visit_mod_item_pre;
+        Walk.visit_mod_item_post = visit_mod_item_post;
+        Walk.visit_obj_fn_pre = visit_obj_fn_pre;
+        Walk.visit_obj_fn_post = visit_obj_fn_post;
+        Walk.visit_obj_drop_pre = visit_obj_drop_pre;
+        Walk.visit_obj_drop_post = visit_obj_drop_post;
+
     }
 ;;
 
