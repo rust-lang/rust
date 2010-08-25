@@ -1878,7 +1878,10 @@ let tydesc_rty (word_bits:Il.bits) : Il.referent_ty =
     |]
 ;;
 
-let obj_closure_rty (word_bits:Il.bits) : Il.referent_ty =
+(* 
+ * [ rc [ tydesc* | obj-body ] ]
+ *)
+let obj_box_rty (word_bits:Il.bits) : Il.referent_ty =
   Il.StructTy [|
     word_rty word_bits;
     Il.StructTy [|
@@ -1945,8 +1948,8 @@ let rec referent_type (word_bits:Il.bits) (t:Ast.ty) : Il.referent_ty =
             Il.StructTy [| codeptr; fn_closure_ptr |]
 
       | Ast.TY_obj _ ->
-          let obj_closure_ptr = sp (obj_closure_rty word_bits) in
-            Il.StructTy [| ptr; obj_closure_ptr |]
+          let obj_box_ptr = sp (obj_box_rty word_bits) in
+            Il.StructTy [| ptr; obj_box_ptr |]
 
       | Ast.TY_tag ttag -> tag ttag
       | Ast.TY_iso tiso -> tag tiso.Ast.iso_group.(tiso.Ast.iso_index)

@@ -1055,7 +1055,7 @@ let rec calculate_sz (e:Il.emitter) (size:size) (in_obj:bool) : unit =
 
     (* Bind all the referent types we'll need... *)
 
-    let obj_body_rty = Semant.obj_closure_rty word_bits in
+    let obj_box_rty = Semant.obj_box_rty word_bits in
     let tydesc_rty = Semant.tydesc_rty word_bits in
     (* Note that we cheat here and pretend only to have i+1 tydescs (because
        we GEP to the i'th while still in this function, so no one outside
@@ -1068,7 +1068,7 @@ let rec calculate_sz (e:Il.emitter) (size:size) (in_obj:bool) : unit =
 
       mov (rc eax) (Il.Cell closure_ptr);
       let obj_body = word_n (h eax) Abi.box_rc_field_body in
-      let obj_body = Il.ptr_cast obj_body obj_body_rty in
+      let obj_body = Il.ptr_cast obj_body obj_box_rty in
       let tydesc_ptr = get_element_ptr obj_body Abi.obj_body_elt_tydesc in
 
         mov (rc eax) (Il.Cell tydesc_ptr);

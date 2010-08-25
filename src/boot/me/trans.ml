@@ -459,7 +459,7 @@ let trans_visitor
     in
       deref (ptr_cast
                (get_element_ptr indirect_args Abi.indirect_args_elt_closure)
-               (Il.ScalarTy (Il.AddrTy (obj_closure_rty word_bits))))
+               (Il.ScalarTy (Il.AddrTy (obj_box_rty word_bits))))
   in
 
   let fp_to_args (fp:Il.cell) (args_rty:Il.referent_ty): Il.cell =
@@ -1236,7 +1236,7 @@ let trans_visitor
     let fty = Hashtbl.find (snd caller) ident in
     let self_args_rty =
       call_args_referent_type cx 0
-        (Ast.TY_fn fty) (Some (obj_closure_rty word_bits))
+        (Ast.TY_fn fty) (Some (obj_box_rty word_bits))
     in
     let callsz = Il.referent_ty_size word_bits self_args_rty in
     let spill = new_fixup "forwarding fn spill" in
@@ -1891,8 +1891,8 @@ let trans_visitor
     begin
       match ty with
           Ast.TY_obj _ ->
-            let lhs_binding = get_element_ptr lhs Abi.obj_field_body_box in
-            let rhs_binding = get_element_ptr rhs Abi.obj_field_body_box in
+            let lhs_binding = get_element_ptr lhs Abi.obj_field_box in
+            let rhs_binding = get_element_ptr rhs Abi.obj_field_box in
             let lhs_box, rhs_box = deref lhs_binding, deref rhs_binding in
             let lhs_obj = get_element_ptr lhs_box Abi.box_rc_field_body in
             let rhs_obj = get_element_ptr rhs_box Abi.box_rc_field_body in
@@ -2643,7 +2643,7 @@ let trans_visitor
 
         | Ast.TY_obj _ ->
             note_drop_step ty "drop_ty: obj path";
-            let binding = get_element_ptr cell Abi.obj_field_body_box in
+            let binding = get_element_ptr cell Abi.obj_field_box in
             let null_jmp = null_check binding in
             let rc_jmp = drop_refcount_and_cmp binding in
             let obj_box = deref binding in
@@ -4948,14 +4948,14 @@ let trans_visitor
         all_args_cell Abi.calltup_elt_ty_params
     in
 
-    let obj_args_tup =
+    let obj_fields_tup =
       Array.map (fun (sloti,_) -> (slot_ty sloti.node)) header
     in
-    let obj_args_ty = Ast.TY_tup obj_args_tup in
-    let state_ty = Ast.TY_tup [| Ast.TY_type; obj_args_ty |] in
-    let state_ptr_ty = Ast.TY_box state_ty in
-    let state_ptr_rty = referent_type word_bits state_ptr_ty in
-    let state_malloc_sz = box_allocation_size state_ptr_ty in
+    let obj_fields_ty = Ast.TY_tup obj_fields_tup in
+    let obj_body_ty = Ast.TY_tup [| Ast.TY_type; obj_fields_ty |] in
+    let box_ptr_ty = Ast.TY_box obj_body_ty in
+    let box_ptr_rty = referent_type word_bits box_ptr_ty in
+    let box_malloc_sz = box_allocation_size box_ptr_ty in
 
     let ctor_ty = Hashtbl.find cx.ctxt_all_item_types obj_id in
     let obj_ty =
@@ -4973,48 +4973,48 @@ let trans_visitor
     let dst_pair_item_cell =
       get_element_ptr dst_pair_cell Abi.obj_field_vtbl
     in
-    let dst_pair_state_cell =
-      get_element_ptr dst_pair_cell Abi.obj_field_body_box
+    let dst_pair_box_cell =
+      get_element_ptr dst_pair_cell Abi.obj_field_box
     in
 
       (* Load first cell of pair with vtbl ptr.*)
       iflog (fun _ -> annotate "mov vtbl-ptr to obj.item cell");
       mov dst_pair_item_cell (Il.Cell vtbl_cell);
 
-      (* Load second cell of pair with pointer to fresh state tuple.*)
-      iflog (fun _ -> annotate "malloc state-tuple to obj.state cell");
-      trans_malloc dst_pair_state_cell state_malloc_sz zero;
+      (* Load second cell of pair with pointer to fresh body tuple.*)
+      iflog (fun _ -> annotate "malloc state-tuple to obj.box-ptr cell");
+      trans_malloc dst_pair_box_cell box_malloc_sz zero;
 
-      (* Copy args into the state tuple. *)
-      let state_ptr = next_vreg_cell (need_scalar_ty state_ptr_rty) in
-        iflog (fun _ -> annotate "load obj.state ptr to vreg");
-        mov state_ptr (Il.Cell dst_pair_state_cell);
-        let state = deref state_ptr in
+      (* Copy rc, tydesc, args into the obj. *)
+      let box_ptr = next_vreg_cell (need_scalar_ty box_ptr_rty) in
+        iflog (fun _ -> annotate "load obj.box ptr to vreg");
+        mov box_ptr (Il.Cell dst_pair_box_cell);
+        let box = deref box_ptr in
         let refcnt =
-          get_element_ptr_dyn_in_current_frame state
+          get_element_ptr_dyn_in_current_frame box
             Abi.box_rc_field_refcnt
         in
         let body =
-          get_element_ptr_dyn_in_current_frame state
+          get_element_ptr_dyn_in_current_frame box
             Abi.box_rc_field_body
         in
         let obj_tydesc =
           get_element_ptr_dyn_in_current_frame body Abi.obj_body_elt_tydesc
         in
-        let obj_args =
+        let obj_fields =
           get_element_ptr_dyn_in_current_frame body Abi.obj_body_elt_fields
         in
-          iflog (fun _ -> annotate "write refcnt=1 to obj state");
+          iflog (fun _ -> annotate "write refcnt=1 to obj box");
           mov refcnt one;
-          iflog (fun _ -> annotate "get args-tup tydesc");
+          iflog (fun _ -> annotate "write tydesc to obj body");
           mov obj_tydesc
             (Il.Cell (get_tydesc
                         (Some obj_id)
-                        (Ast.TY_tup obj_args_tup)));
+                        (Ast.TY_tup obj_fields_tup)));
           iflog (fun _ -> annotate "copy ctor args to obj args");
           trans_copy_tup
             frame_ty_params true
-            obj_args frame_args obj_args_tup;
+            obj_fields frame_args obj_fields_tup;
           (* We have to do something curious here: we can't drop the
            * arg slots directly as in the normal frame-exit sequence,
            * because the arg slot ids are actually given layout
