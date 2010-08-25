@@ -47,18 +47,17 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
   // fixed key.
 
   fn hashl[K](&hashfn[K] hasher, uint nbkts, &K key) -> uint {
-    ret (hasher(key) >>> (sys.rustrt.size_of[uint]() * 8u / 2u))
-      % nbkts;
+    ret (hasher(key) >>> (sys.rustrt.size_of[uint]() * 8u / 2u));
   }
 
   fn hashr[K](&hashfn[K] hasher, uint nbkts, &K key) -> uint {
     ret ((((~ 0u) >>> (sys.rustrt.size_of[uint]() * 8u / 2u))
-          & hasher(key)) * 2u + 1u)
-      % nbkts;
+          & hasher(key)) * 2u + 1u);
   }
 
   fn hash[K](&hashfn[K] hasher, uint nbkts, &K key, uint i) -> uint {
-    ret hashl[K](hasher, nbkts, key) + i * hashr[K](hasher, nbkts, key);
+    ret (hashl[K](hasher, nbkts, key)
+         + i * hashr[K](hasher, nbkts, key)) % nbkts;
   }
 
   /**
