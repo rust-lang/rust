@@ -61,7 +61,7 @@ fn to_str(mutable uint n, uint radix) -> str
 
   let uint r = 1u;
   if (n > r) {
-    while ((r*radix) < n) {
+    while ((r*radix) <= n) {
       r *= radix;
     }
   }
