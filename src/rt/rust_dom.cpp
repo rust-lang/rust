@@ -301,12 +301,14 @@ void rust_dom::send_message(rust_message *message) {
 /**
  * Drains and processes incoming pending messages.
  */
-void rust_dom::drain_incoming_message_queue() {
+void rust_dom::drain_incoming_message_queue(bool process) {
     rust_message *message;
-    while ((message = (rust_message *) _incoming_message_queue.dequeue())) {
+    while (_incoming_message_queue.dequeue(&message)) {
         log(rust_log::COMM, "<== processing incoming message \"%s\" 0x%"
             PRIxPTR, message->label, message);
-        message->process();
+        if (process) {
+            message->process();
+        }
         message->~rust_message();
         this->synchronized_region.free(message);
     }
@@ -454,7 +456,7 @@ rust_dom::start_main_loop()
     while (n_live_tasks() > 0) {
         A(this, is_deadlocked() == false, "deadlock");
 
-        drain_incoming_message_queue();
+        drain_incoming_message_queue(true);
 
         rust_task *scheduled_task = schedule_task();
 
@@ -519,7 +521,7 @@ rust_dom::start_main_loop()
             }
             sync::yield();
         } else {
-            drain_incoming_message_queue();
+            drain_incoming_message_queue(true);
         }
         reap_dead_tasks();
     }

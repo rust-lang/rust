@@ -41,7 +41,7 @@ struct rust_dom
     hash_map<rust_port *, rust_proxy<rust_port> *> _port_proxies;
 
     // Incoming messages from other domains.
-    lock_free_queue _incoming_message_queue;
+    lock_free_queue<rust_message*> _incoming_message_queue;
 
 #ifndef __WIN32__
     pthread_attr_t attr;
@@ -71,7 +71,7 @@ struct rust_dom
     void free(void *mem, memory_region::memory_region_type type);
 
     void send_message(rust_message *message);
-    void drain_incoming_message_queue();
+    void drain_incoming_message_queue(bool process);
     rust_proxy<rust_task> *get_task_proxy(rust_task *task);
     void delete_proxies();
     rust_proxy<rust_port> *get_port_proxy_synchronized(rust_port *port);

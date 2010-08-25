@@ -9,7 +9,7 @@
 /**
  * Abstract base class for all message types.
  */
-class rust_message : public lock_free_queue_node {
+class rust_message {
 public:
     const char* label;
 private:

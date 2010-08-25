@@ -34,7 +34,7 @@ DSYMUTIL := true
 ifeq ($(CFG_OSTYPE), Linux)
   CFG_RUNTIME := librustrt.so
   CFG_STDLIB := libstd.so
-  CFG_GCC_CFLAGS += -fPIC
+  CFG_GCC_CFLAGS += -fPIC -march=i686
   CFG_GCC_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
   ifeq ($(CFG_CPUTYPE), x86_64)
     CFG_GCC_CFLAGS += -m32
@@ -107,7 +107,7 @@ ifdef CFG_UNIXY
     endif
     CFG_OBJ_SUFFIX := .o
     CFG_EXE_SUFFIX := .exe
-    CFG_GCC_CFLAGS :=
+    CFG_GCC_CFLAGS := -march=i686
     CFG_GCC_LINK_FLAGS := -shared
     ifeq ($(CFG_CPUTYPE), x86_64)
       CFG_GCC_CFLAGS += -m32
@@ -248,7 +248,6 @@ BOOT_CMIS := $(BOOT_MLS:.ml=.cmi)
 RUNTIME_CS := rt/sync/timer.cpp \
               rt/sync/sync.cpp \
               rt/sync/spin_lock.cpp \
-              rt/sync/lock_free_queue.cpp \
               rt/sync/condition_variable.cpp \
               rt/rust.cpp \
               rt/rust_builtin.cpp \
@@ -286,6 +285,7 @@ RUNTIME_HDR := rt/globals.h \
                rt/util/hash_map.h \
                rt/sync/sync.h \
                rt/sync/timer.h \
+               rt/sync/lock_free_queue.h \
                rt/rust_srv.h \
                rt/memory_region.h \
                rt/memory.h
@@ -394,7 +394,9 @@ TASK_XFAILS := test/run-pass/acyclic-unwind.rs \
                test/run-pass/task-life-0.rs \
                test/run-pass/task-comm.rs \
                test/run-pass/threads.rs \
-               test/run-pass/yield.rs
+               test/run-pass/yield.rs \
+               test/run-pass/task-comm-15.rs \
+               test/run-pass/task-life-0.rs
 
 TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-pass/child-outlives-parent.rs \
@@ -537,6 +539,11 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       task-comm-9.rs \
                       task-comm-10.rs \
                       task-comm-11.rs \
+                      task-comm-12.rs \
+                      task-comm-13.rs \
+                      task-comm-13-thread.rs \
+                      task-comm-14.rs \
+                      task-comm-15.rs \
                       task-life-0.rs \
                       threads.rs \
                       type-sizes.rs \
