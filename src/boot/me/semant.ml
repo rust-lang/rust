@@ -1905,8 +1905,6 @@ let obj_rty (word_bits:Il.bits) : Il.referent_ty =
     r [| obj_vtbl_ptr; obj_box_ptr |]
 ;;
 
-
-
 let rec closure_box_rty
     (word_bits:Il.bits)
     (bs:Ast.slot array)
@@ -1920,8 +1918,9 @@ let rec closure_box_rty
   let tydesc = sp (tydesc_rty word_bits) in
   let targ = fn_rty true word_bits in
   let bound_args = r (Array.map (slot_referent_type word_bits) bs) in
-
-    r [| rc; r [| tydesc; targ; bound_args |] |]
+    (* First tydesc is the one describing bound_args; second tydesc is the one
+     * to pass to targ when invoking it.  *)
+    r [| rc; r [| tydesc; tydesc; targ; bound_args |] |]
 
 and fn_rty (opaque_box_body:bool) (word_bits:Il.bits) : Il.referent_ty =
   let s t = Il.ScalarTy t in

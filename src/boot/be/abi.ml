@@ -62,9 +62,10 @@ let obj_body_elt_fields = 1;;
 let fn_field_code = binding_field_dispatch;;
 let fn_field_box = binding_field_bound_data;;
 
-let closure_body_elt_tydesc = 0;;
-let closure_body_elt_target = 1;;
-let closure_body_elt_bound_args = 2;;
+let closure_body_elt_bound_args_tydesc = 0;;
+let closure_body_elt_target_tydesc = 1;;
+let closure_body_elt_target = 2;;
+let closure_body_elt_bound_args = 3;;
 
 let tag_elt_discriminant = 0;;
 let tag_elt_variant = 1;;

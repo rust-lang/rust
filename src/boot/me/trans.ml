@@ -3619,7 +3619,9 @@ let trans_visitor
     let rc_cell = get_element_ptr closure_cell Abi.box_rc_field_refcnt in
     let body_cell = get_element_ptr closure_cell Abi.box_rc_field_body in
     let targ_cell = get_element_ptr body_cell Abi.closure_body_elt_target in
-    let tydesc_cell = get_element_ptr body_cell Abi.closure_body_elt_tydesc in
+    let bound_args_tydesc_cell =
+      get_element_ptr body_cell Abi.closure_body_elt_bound_args_tydesc
+    in
     let args_cell =
       get_element_ptr body_cell Abi.closure_body_elt_bound_args
     in
@@ -3627,8 +3629,8 @@ let trans_visitor
     iflog (fun _ -> annotate "init closure refcount");
     mov rc_cell one;
 
-    iflog (fun _ -> annotate "set closure tydesc ptr");
-    mov tydesc_cell
+    iflog (fun _ -> annotate "set closure bound-args tydesc ptr");
+    mov bound_args_tydesc_cell
       (Il.Cell (get_tydesc None
                   (Ast.TY_tup (Array.map slot_ty bound_arg_slots))));
 
