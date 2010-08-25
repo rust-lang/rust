@@ -1541,13 +1541,6 @@ let trans_visitor
           arg_slots arg_bound_flags;
         iflog (fun _ -> annotate "call through to closure target fn");
 
-        (* 
-         * Closures, unlike first-class [disp,*binding] pairs, contain
-         * a fully-resolved target pointer, not a displacement. So we
-         * don't want to use callee_fn_ptr or the like to access the
-         * contents. We just call through the cell directly.
-         *)
-
         call_code (code_of_cell closure_target_fn_cell);
         trans_glue_frame_exit fix spill g
 
@@ -3420,7 +3413,7 @@ let trans_visitor
     let dst_pair_binding_cell =
       get_element_ptr dst_cell Abi.fn_field_closure
     in
-      mov dst_pair_item_cell (crate_rel_imm fix);
+      mov dst_pair_item_cell (reify_ptr (Il.ImmPtr (fix, Il.CodeTy)));
       mov dst_pair_binding_cell zero
 
 
@@ -3698,7 +3691,7 @@ let trans_visitor
         (Il.ScalarTy (Il.AddrTy (closure_rty)))
     in
       iflog (fun _ -> annotate "assign glue-code to fn slot of pair");
-      mov fn_cell (crate_rel_imm glue_fixup);
+      mov fn_cell (reify_ptr (Il.ImmPtr (glue_fixup, Il.CodeTy)));
       iflog (fun _ ->
                annotate "heap-allocate closure to binding slot of pair");
       trans_malloc closure_cell (imm closure_sz) zero;
@@ -4005,10 +3998,9 @@ let trans_visitor
         CALL_direct
       | CALL_vtbl -> fptr
       | CALL_indirect ->
-          (* fptr is a pair [disp, binding*] *)
+          (* fptr is a pair [fptr, binding*] *)
           let pair_cell = need_cell (reify_ptr fptr) in
-          let disp_cell = get_element_ptr pair_cell Abi.fn_field_thunk in
-            Il.Cell (crate_rel_to_ptr (Il.Cell disp_cell) Il.CodeTy)
+            Il.Cell (get_element_ptr pair_cell Abi.fn_field_thunk)
 
   and callee_binding_ptr
       (pair_lval:Ast.lval)
