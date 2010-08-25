@@ -2604,56 +2604,59 @@ let trans_visitor
 
       match ty with
 
-          Ast.TY_fn _ ->
-            note_drop_step ty "drop_ty: fn path";
-            let box = get_element_ptr cell Abi.fn_field_box in
-            let null_jmp = null_check box in
-              (* Drop non-null bindings. *)
-              (* FIXME (issue #58): this is completely wrong, Closures need to
-               * carry tydescs like objs. For now this only works by accident,
-               * and will leak closures with box substructure.
-               *)
-              drop_ty ty_params box (Ast.TY_box Ast.TY_int) curr_iso;
-              patch null_jmp;
-              note_drop_step ty "drop_ty: done fn path";
-
+          Ast.TY_fn _
         | Ast.TY_obj _ ->
-            note_drop_step ty "drop_ty: obj path";
-            let binding = get_element_ptr cell Abi.obj_field_box in
-            let null_jmp = null_check binding in
-            let rc_jmp = drop_refcount_and_cmp binding in
-            let obj_box = deref binding in
-            let obj = get_element_ptr obj_box Abi.box_rc_field_body in
-            let tydesc = get_element_ptr obj Abi.obj_body_elt_tydesc in
-            let body = get_element_ptr obj Abi.obj_body_elt_fields in
-            let ty_params = get_tydesc_params ty_params tydesc in
-            let dtor =
-              get_element_ptr (deref tydesc) Abi.tydesc_field_obj_drop_glue
+            note_drop_step ty "drop_ty: obj/fn path";
+            let box_ptr =
+              get_element_ptr cell Abi.binding_field_bound_data
             in
-            let null_dtor_jmp = null_check dtor in
-              (* Call any dtor, if present. *)
-              note_drop_step ty "drop_ty: calling obj dtor";
-              trans_call_dynamic_glue
-                tydesc
-                Abi.tydesc_field_obj_drop_glue
-                None
-                [| binding |]
-                (Some binding);
-              patch null_dtor_jmp;
-              (* Drop the body. *)
-              note_drop_step ty "drop_ty: dropping obj body";
+            let _ = check_box_rty box_ptr in
+            let null_jmp = null_check box_ptr in
+            let rc_jmp = drop_refcount_and_cmp box_ptr in
+            let box = deref box_ptr in
+            let body = get_element_ptr box Abi.box_rc_field_body in
+            let tydesc = get_element_ptr body Abi.obj_body_elt_tydesc in
+            let fields =
+              match ty with
+                  Ast.TY_fn _ ->
+                    get_element_ptr body Abi.closure_body_elt_bound_args
+                | _ ->
+                    get_element_ptr body Abi.obj_body_elt_fields
+            in
+            let ty_params = get_tydesc_params ty_params tydesc in
+              begin
+                match ty with
+                    Ast.TY_obj _ ->
+                      let dtor =
+                        get_element_ptr (deref tydesc)
+                          Abi.tydesc_field_obj_drop_glue
+                      in
+                      let null_dtor_jmp = null_check dtor in
+                        (* Call any dtor, if present. *)
+                        note_drop_step ty "drop_ty: calling obj/fn dtor";
+                        trans_call_dynamic_glue
+                          tydesc
+                          Abi.tydesc_field_obj_drop_glue
+                          None
+                          [| box_ptr |]
+                          (Some box_ptr);
+                        patch null_dtor_jmp;
+                  | _ -> ()
+              end;
+              (* Drop the fields. *)
+              note_drop_step ty "drop_ty: dropping obj/fn fields";
               trans_call_dynamic_glue
                 tydesc
                 Abi.tydesc_field_drop_glue
                 None
-                [| ty_params; alias body |]
+                [| ty_params; alias fields |]
                 None;
               (* FIXME: this will fail if the user has lied about the
                * state-ness of their obj. We need to store state-ness in the
                * captured tydesc, and use that.  *)
-              note_drop_step ty "drop_ty: freeing obj body";
-              trans_free binding (type_has_state ty);
-              mov binding zero;
+              note_drop_step ty "drop_ty: freeing obj/fn body";
+              trans_free box_ptr (type_has_state ty);
+              mov box_ptr zero;
               patch rc_jmp;
               patch null_jmp;
               note_drop_step ty "drop_ty: done obj path";

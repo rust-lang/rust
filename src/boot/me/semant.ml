@@ -1918,19 +1918,24 @@ let rec closure_box_rty
 
   let rc = word_rty word_bits in
   let tydesc = sp (tydesc_rty word_bits) in
-  let targ = fn_rty word_bits in
+  let targ = fn_rty true word_bits in
   let bound_args = r (Array.map (slot_referent_type word_bits) bs) in
 
     r [| rc; r [| tydesc; targ; bound_args |] |]
 
-and fn_rty (word_bits:Il.bits) : Il.referent_ty =
+and fn_rty (opaque_box_body:bool) (word_bits:Il.bits) : Il.referent_ty =
   let s t = Il.ScalarTy t in
   let p t = Il.AddrTy t in
   let sp t = s (p t) in
   let r rtys = Il.StructTy rtys in
   let word = word_rty word_bits in
 
-  let box_ptr = sp (Il.StructTy [| word; Il.OpaqueTy |]) in
+  let box =
+    if opaque_box_body
+    then r [| word; Il.OpaqueTy |]
+    else closure_box_rty word_bits [||]
+  in
+  let box_ptr = sp box in
   let code_ptr = sp Il.CodeTy in
 
     r [| code_ptr; box_ptr |]
@@ -1985,7 +1990,7 @@ and referent_type (word_bits:Il.bits) (t:Ast.ty) : Il.referent_ty =
       | Ast.TY_tup tt -> tup tt
       | Ast.TY_rec tr -> tup (Array.map snd tr)
 
-      | Ast.TY_fn _ -> fn_rty word_bits
+      | Ast.TY_fn _ -> fn_rty false word_bits
       | Ast.TY_obj _ -> obj_rty word_bits
 
       | Ast.TY_tag ttag -> tag ttag

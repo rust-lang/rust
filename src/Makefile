@@ -435,6 +435,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       basic.rs \
                       basic-1.rs \
                       basic-2.rs \
+                      bind-exterior.rs \
                       bind-obj-ctor.rs \
                       bind-thunk.rs \
                       bind-trivial.rs \
