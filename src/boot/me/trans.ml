@@ -4935,7 +4935,7 @@ let trans_visitor
       (obj_id:node_id)
       (header:Ast.header_slots)
       : unit =
-    trans_frame_entry obj_id true false;
+    trans_frame_entry obj_id false false;
 
     let all_args_rty = current_fn_args_rty None in
     let all_args_cell = caller_args_cell all_args_rty in
