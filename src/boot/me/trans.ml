@@ -2933,12 +2933,18 @@ let trans_visitor
       : unit =
     drop_ty (get_ty_params_of_current_frame()) cell ty None
 
+  (* Returns a mark for a jmp that must be patched to the continuation of
+   * the null case (i.e. fall-through means not null).
+   *)
   and null_check (cell:Il.cell) : quad_idx =
     emit (Il.cmp (Il.Cell cell) zero);
     let j = mark() in
       emit (Il.jmp Il.JE Il.CodeNone);
       j
 
+  (* Returns a mark for a jmp that must be patched to the continuation of
+   * the non-zero refcount case (i.e. fall-through means zero refcount).
+   *)
   and drop_refcount_and_cmp (boxed:Il.cell) : quad_idx =
     iflog (fun _ -> annotate "drop refcount and maybe free");
     let rc = box_rc_cell boxed in
@@ -3268,7 +3274,14 @@ let trans_visitor
                       dst_binding (Ast.TY_box Ast.TY_int)
                       src_binding (Ast.TY_box Ast.TY_int)
                       curr_iso;
-                    patch null_jmp
+                    let end_jmp = mark() in
+                      emit (Il.jmp Il.JMP Il.CodeNone);
+                      patch null_jmp;
+                      (* The src had a null binding, so make sure the dst
+                       * does now too.
+                       *)
+                      mov dst_binding zero;
+                      patch end_jmp
               end
 
           | _ ->
