@@ -153,7 +153,11 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
         Ast.TY_rec ty_rec -> ty_rec
       | ty -> type_error "record" ty
   in
-  let demand_fn (arg_tys:Ast.ty option array) (actual:Ast.ty) : Ast.ty =
+  let demand_fn
+      ?param_handler:(param_handler=demand)
+      (arg_tys:Ast.ty option array)
+      (actual:Ast.ty)
+      : Ast.ty =
     let expected = lazy begin
       Format.fprintf Format.str_formatter "fn(";
       let print_arg_ty i arg_ty_opt =
@@ -173,7 +177,10 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
             type_error (Lazy.force expected) ty;
           let in_slot_tys = Array.map get_slot_ty in_slots in
           let maybe_demand a_opt b =
-            match a_opt with None -> () | Some a -> demand a b
+            match a_opt, b with
+                None, _ -> ()
+              | Some a, Ast.TY_param _ -> param_handler a b
+              | Some a, _ -> demand a b
           in
           Common.arr_iter2 maybe_demand arg_tys in_slot_tys;
           get_slot_ty (ty_sig.Ast.sig_output_slot)
@@ -497,6 +504,12 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
       | TYPAT_fn arg_tys, LTYPE_mono actual ->
           ignore (demand_fn (Array.map (fun ty -> Some ty) arg_tys) actual);
           yield_ty actual
+      | TYPAT_fn _, LTYPE_poly (_, _) ->
+          (* FIXME: auto-instantiate *)
+          Common.unimpl
+            None
+            "instantiation of polymorphic function types; please supply type \
+            parameters explicitly, sorry"
       | TYPAT_wild, (LTYPE_poly _ as lty) ->
           Common.err
             None
@@ -504,19 +517,12 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
               type '%a'; supply type parameters explicitly"
             sprintf_ltype lty
       | TYPAT_ty expected, (LTYPE_poly _ as lty) ->
-          (* FIXME: auto-instantiate *)
-          Common.unimpl
+          Common.err
             None
-            "sorry, automatic polymorphic instantiation of %a to %a isn't \
-            supported yet; please supply type parameters explicitly"
+            "not enough context to automatically instantiate '%a' to '%a'; \
+            please supply type parameters explicitly"
             sprintf_ltype lty
             Ast.sprintf_ty expected
-      | TYPAT_fn _, (LTYPE_poly _) ->
-          (* FIXME: auto-instantiate *)
-          Common.unimpl
-            None
-            "sorry, automatic polymorphic instantiation of function types \
-            isn't supported yet; please supply type parameters explicitly"
       | _, LTYPE_module _ ->
           Common.err None "can't refer to a module as a first-class value"
 
