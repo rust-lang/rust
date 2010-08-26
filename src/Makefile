@@ -491,6 +491,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       lib-rand.rs \
                       lib-str.rs \
                       lib-task.rs \
+                      lib-uint.rs \
                       lib-vec.rs \
                       lib-vec-str-conversions.rs \
                       linear-for-loop.rs \

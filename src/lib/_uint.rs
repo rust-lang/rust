@@ -28,7 +28,9 @@ fn next_power_of_two(uint n) -> uint {
   let uint shift = 1u;
   while (shift <= halfbits) {
     tmp |= tmp >> shift;
-    shift <<= 1u;
+    // FIXME (issue #152):  This would be just a tad cuter if it were
+    //   shift <<= 1u
+    shift = shift << 1u;
   }
   ret tmp + 1u;
 }
