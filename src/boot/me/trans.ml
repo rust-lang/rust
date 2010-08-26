@@ -2058,7 +2058,10 @@ let trans_visitor
             in
               anno ();
               emit (Il.unary op dst src);
-              Il.Cell dst
+              (* Insist the bool domain being 0x0 and 0x1 *)
+              if unop = Ast.UNOP_not
+              then trans_binary Ast.BINOP_and (Il.Cell dst) one
+              else Il.Cell dst
 
         | Ast.EXPR_atom a ->
             trans_atom a

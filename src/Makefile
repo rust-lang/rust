@@ -440,6 +440,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       bind-thunk.rs \
                       bind-trivial.rs \
                       bitwise.rs \
+                      bool-not.rs \
                       box-in-tup.rs \
                       box-unbox.rs \
                       cast.rs \
