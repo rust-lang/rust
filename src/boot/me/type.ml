@@ -490,7 +490,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
         (maybe_mutable mut ty, n_boxes)
     in
     match infer, internal_check_lval infer lval with
-      | TYPAT_wild, LTYPE_mono ty -> yield_ty ty
+        TYPAT_wild, LTYPE_mono ty -> yield_ty ty
       | TYPAT_ty expected, LTYPE_mono actual ->
           demand expected actual;
           yield_ty actual
