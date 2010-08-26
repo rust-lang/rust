@@ -74,7 +74,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
   {
     let uint i = 0u;
     while (i < nbkts) {
-      let uint j = (hash[K](hasher, nbkts, key, i));
+      let uint j = hash[K](hasher, nbkts, key, i);
       alt (bkts.(j)) {
         case (some[K, V](k, _)) {
           if (eqer(key, k)) {
@@ -145,10 +145,12 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
       let util.rational load = rec(num=(nelts + 1u) as int, den=nbkts as int);
       if (!util.rational_leq(load, lf)) {
         let uint nnewbkts = _uint.next_power_of_two(nbkts + 1u);
-
         let vec[mutable bucket[K, V]] newbkts = make_buckets[K, V](nnewbkts);
         rehash[K, V](hasher, eqer, bkts, nbkts, newbkts, nnewbkts);
+        bkts = newbkts;
+        nbkts = nnewbkts;
       }
+
       if (insert_common[K, V](hasher, eqer, bkts, nbkts, key, val)) {
         nelts += 1u;
         ret true;
