@@ -154,7 +154,8 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
       | ty -> type_error "record" ty
   in
   let demand_fn
-      ?param_handler:(param_handler=demand)
+      ?param_handler:(param_handler=
+        fun a idx effect -> demand a (Ast.TY_param (idx, effect)))
       (arg_tys:Ast.ty option array)
       (actual:Ast.ty)
       : Ast.ty =
@@ -179,7 +180,8 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
           let maybe_demand a_opt b =
             match a_opt, b with
                 None, _ -> ()
-              | Some a, Ast.TY_param _ -> param_handler a b
+              | Some a, Ast.TY_param (idx, effect) ->
+                  param_handler a idx effect
               | Some a, _ -> demand a b
           in
           Common.arr_iter2 maybe_demand arg_tys in_slot_tys;
@@ -504,12 +506,33 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
       | TYPAT_fn arg_tys, LTYPE_mono actual ->
           ignore (demand_fn (Array.map (fun ty -> Some ty) arg_tys) actual);
           yield_ty actual
-      | TYPAT_fn _, LTYPE_poly (_, _) ->
-          (* FIXME: auto-instantiate *)
-          Common.unimpl
-            None
-            "instantiation of polymorphic function types; please supply type \
-            parameters explicitly, sorry"
+      | TYPAT_fn arg_tys, (LTYPE_poly (ty_params, ty) as lty) ->
+          (* Perform automatic instantiation of polymorphic types. *)
+          let ty = fundamental_ty ty in
+          let substs = Array.make (Array.length ty_params) None in
+          let param_handler substituted_ty idx _ =
+            match substs.(idx) with
+            | None -> substs.(idx) <- Some substituted_ty
+            | Some substituted_ty' -> demand substituted_ty substituted_ty'
+          in
+          let arg_ty_opts = Array.map (fun ty -> Some ty) arg_tys in
+          ignore (demand_fn ~param_handler:param_handler arg_ty_opts ty);
+          let get_subst subst_opt =
+            match subst_opt with
+                Some subst -> subst
+              | None ->
+                  Common.bug ()
+                    "internal_check_outer_lval: subst not found"
+          in
+          let substs = Array.map get_subst substs in
+          begin
+            match beta_reduce (Semant.lval_base_id lval) lty substs with
+                LTYPE_mono ty -> yield_ty ty
+              | _ ->
+                  Common.bug ()
+                    "internal_check_outer_lval: beta reduction didn't yield \
+                      a monotype"
+          end
       | TYPAT_wild, (LTYPE_poly _ as lty) ->
           Common.err
             None

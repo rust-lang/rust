@@ -431,6 +431,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       argv.rs \
                       autoderef-full-lval.rs \
                       autoderef-objfn.rs \
+                      auto-instantiate.rs \
                       basic.rs \
                       basic-1.rs \
                       basic-2.rs \
