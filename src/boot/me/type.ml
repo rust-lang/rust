@@ -264,11 +264,12 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
           Hashtbl.replace cx.Semant.ctxt_all_defns defn_id
             (Semant.DEFN_slot new_slot);
           inferred
+      | TYPAT_fn arg_tys, Some actual ->
+          ignore (demand_fn (Array.map (fun ty -> Some ty) arg_tys) actual);
+          actual
       | TYPAT_wild, Some actual -> actual
-      | TYPAT_wild, None ->
+      | TYPAT_fn _, None | TYPAT_wild, None ->
           Common.err None "can't infer any type for this slot"
-      | TYPAT_fn _, _ ->
-          Common.unimpl None "sorry, fn type patterns aren't implemented"
   in
 
   let internal_check_mod_item_decl
@@ -493,11 +494,9 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
       | TYPAT_ty expected, LTYPE_mono actual ->
           demand expected actual;
           yield_ty actual
-      | TYPAT_fn _, LTYPE_mono _ ->
-          (* FIXME: typecheck *)
-          Common.unimpl
-            None
-            "sorry, function type patterns aren't typechecked yet"
+      | TYPAT_fn arg_tys, LTYPE_mono actual ->
+          ignore (demand_fn (Array.map (fun ty -> Some ty) arg_tys) actual);
+          yield_ty actual
       | TYPAT_wild, (LTYPE_poly _ as lty) ->
           Common.err
             None
@@ -661,7 +660,13 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
    * returns the return type. *)
   let check_fn (callee:Ast.lval) (args:Ast.atom array) : Ast.ty =
     let arg_tys = Array.map check_atom args in
-    let callee_ty = check_lval callee in
+    let callee_ty =
+      generic_check_lval
+        ~mut:Ast.MUT_immutable
+        ~deref:false
+        (TYPAT_fn arg_tys)
+        callee
+    in
     demand_fn (Array.map (fun ty -> Some ty) arg_tys) callee_ty
   in
 
