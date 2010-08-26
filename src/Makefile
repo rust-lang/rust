@@ -510,6 +510,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       obj-with-vec.rs \
                       operator-associativity.rs \
                       output-slot-variants.rs \
+                      over-constrained-vregs.rs \
                       pred.rs \
                       preempt.rs \
                       readalias.rs \

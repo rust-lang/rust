@@ -322,38 +322,34 @@ let dump_quads cx =
   done
 ;;
 
-let calculate_vreg_constraints (cx:ctxt) : Bits.t array =
+let calculate_vreg_constraints
+    (cx:ctxt)
+    (constraints:Bits.t array)
+    (q:quad)
+    : unit =
   let abi = cx.ctxt_abi in
-  let n_vregs = cx.ctxt_n_vregs in
-  let n_hregs = abi.Abi.abi_n_hardregs in
-  let constraints = Array.init n_vregs (fun _ -> Bits.create n_hregs true) in
-    Array.iteri
+    Array.iter (fun c -> Bits.clear c; Bits.invert c) constraints;
+    abi.Abi.abi_constrain_vregs q constraints;
+    iflog cx
       begin
-        fun i q ->
-          abi.Abi.abi_constrain_vregs q constraints;
-          iflog cx
-            begin
-              fun _ ->
-                let hr_str = cx.ctxt_abi.Abi.abi_str_of_hardreg in
-                  log cx "constraints for quad %d = %s"
-                    i (string_of_quad hr_str q);
-                  let qp_reg _ r =
-                    begin
-                      match r with
-                          Il.Hreg _ -> ()
-                        | Il.Vreg v ->
-                            let hregs = Bits.to_list constraints.(v) in
-                              log cx "<v%d> constrained to hregs: [%s]"
-                                v (list_to_str hregs hr_str)
-                    end;
-                    r
-                  in
-                    ignore (Il.process_quad { Il.identity_processor with
-                                                Il.qp_reg = qp_reg } q)
-            end;
+        fun _ ->
+          let hr_str = cx.ctxt_abi.Abi.abi_str_of_hardreg in
+            log cx "constraints for quad %s"
+              (string_of_quad hr_str q);
+            let qp_reg _ r =
+              begin
+                match r with
+                    Il.Hreg _ -> ()
+                  | Il.Vreg v ->
+                      let hregs = Bits.to_list constraints.(v) in
+                        log cx "<v%d> constrained to hregs: [%s]"
+                          v (list_to_str hregs hr_str)
+              end;
+              r
+            in
+              ignore (Il.process_quad { Il.identity_processor with
+                                          Il.qp_reg = qp_reg } q)
       end
-      cx.ctxt_quads;
-    constraints
 ;;
 
 (* Simple local register allocator. Nothing fancy. *)
@@ -380,8 +376,10 @@ let reg_alloc
     let (live_in_vregs, live_out_vregs) =
       calculate_live_bitvectors cx
     in
+    let n_vregs = cx.ctxt_n_vregs in
+    let n_hregs = abi.Abi.abi_n_hardregs in
     let (vreg_constraints:Bits.t array) = (* vreg idx -> hreg bits.t *)
-      calculate_vreg_constraints cx
+      Array.init n_vregs (fun _ -> Bits.create n_hregs true)
     in
     let inactive_hregs = ref [] in (* [hreg] *)
     let active_hregs = ref [] in (* [hreg] *)
@@ -560,23 +558,40 @@ let reg_alloc
       for i = 0 to (Array.length cx.ctxt_quads) - 1
       do
         let quad = cx.ctxt_quads.(i) in
+        let _ = calculate_vreg_constraints cx vreg_constraints quad in
         let clobbers = cx.ctxt_abi.Abi.abi_clobbers quad in
         let used = quad_used_vregs quad in
         let defined = quad_defined_vregs quad in
 
-        let vreg_constrs v = (v, Bits.to_list (vreg_constraints.(v))) in
-        let used_constrs = List.map vreg_constrs used in
-        let constrs_collide (v1,c1) =
-          if List.length c1 <> 1
-          then false
-          else
-            List.exists
-              (fun (v2,c2) -> if v1 = v2 then false else c1 = c2)
-              used_constrs
-        in
           begin
-            if List.exists constrs_collide used_constrs
-            then raise (Ra_error ("over-constrained vregs"));
+
+            (* If the quad has any nontrivial vreg constraints, regfence.
+             * This is awful but it saves us from cached/constrained
+             * interference as was found in issue #152. *)
+            if List.exists
+              (fun v -> not (Bits.equal vreg_constraints.(v) all_hregs))
+              used
+            then
+              begin
+                (* Regfence. *)
+                spill_all_regs i;
+                (* Check for over-constrained-ness after any such regfence. *)
+                let vreg_constrs v =
+                  (v, Bits.to_list (vreg_constraints.(v)))
+                in
+                let constrs = List.map vreg_constrs (used @ defined) in
+                let constrs_collide (v1,c1) =
+                  if List.length c1 <> 1
+                  then false
+                  else
+                    List.exists
+                      (fun (v2,c2) -> if v1 = v2 then false else c1 = c2)
+                      constrs
+                in
+                  if List.exists constrs_collide constrs
+                  then raise (Ra_error ("over-constrained vregs"));
+              end;
+
             if List.exists (fun def -> List.mem def clobbers) defined
             then raise (Ra_error ("clobber and defined sets overlap"));
             iflog cx
@@ -640,10 +655,10 @@ let reg_alloc
         end;
       (cx.ctxt_quads, cx.ctxt_next_spill)
 
-  with
-      Ra_error s ->
-        Session.fail sess "RA error: %s\n" s;
-        (quads, 0)
+ with
+     Ra_error s ->
+       Session.fail sess "RA error: %s\n" s;
+       (quads, 0)
 
 ;;
 
