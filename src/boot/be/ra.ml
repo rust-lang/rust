@@ -563,7 +563,20 @@ let reg_alloc
         let clobbers = cx.ctxt_abi.Abi.abi_clobbers quad in
         let used = quad_used_vregs quad in
         let defined = quad_defined_vregs quad in
+
+        let vreg_constrs v = (v, Bits.to_list (vreg_constraints.(v))) in
+        let used_constrs = List.map vreg_constrs used in
+        let constrs_collide (v1,c1) =
+          if List.length c1 <> 1
+          then false
+          else
+            List.exists
+              (fun (v2,c2) -> if v1 = v2 then false else c1 = c2)
+              used_constrs
+        in
           begin
+            if List.exists constrs_collide used_constrs
+            then raise (Ra_error ("over-constrained vregs"));
             if List.exists (fun def -> List.mem def clobbers) defined
             then raise (Ra_error ("clobber and defined sets overlap"));
             iflog cx
@@ -629,7 +642,7 @@ let reg_alloc
 
   with
       Ra_error s ->
-        Session.fail sess "RA Error: %s" s;
+        Session.fail sess "RA error: %s\n" s;
         (quads, 0)
 
 ;;
