@@ -13,6 +13,7 @@ type hashfn[K] = fn(&K) -> uint;
 type eqfn[K] = fn(&K, &K) -> bool;
 
 type hashmap[K, V] = obj {
+  fn size() -> uint;
   fn insert(&K key, &V val) -> bool;
   fn contains_key(&K key) -> bool;
   fn get(&K key) -> V;
@@ -141,6 +142,8 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                     mutable uint nelts,
                     util.rational lf)
   {
+    fn size() -> uint { ret nelts; }
+
     fn insert(&K key, &V val) -> bool {
       let util.rational load = rec(num=(nelts + 1u) as int, den=nbkts as int);
       if (!util.rational_leq(load, lf)) {
@@ -181,17 +184,19 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
       while (i < nbkts) {
         let uint j = (hash[K](hasher, nbkts, key, i));
         alt (bkts.(j)) {
-          case (some[K, V](_, val)) {
-            bkts.(j) = deleted[K, V]();
-            ret util.some[V](val);
+          case (some[K, V](k, v)) {
+            if (eqer(key, k)) {
+              bkts.(j) = deleted[K, V]();
+              nelts -= 1u;
+              ret util.some[V](v);
+            }
           }
-          case (deleted[K, V]()) {
-            nelts += 1u;
-          }
+          case (deleted[K, V]()) { }
           case (nil[K, V]()) {
             ret util.none[V]();
           }
         }
+        i += 1u;
       }
       ret util.none[V]();
     }
