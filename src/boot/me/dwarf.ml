@@ -1362,7 +1362,8 @@ let (abbrev_variant_part:abbrev) =
 let (abbrev_variant:abbrev) =
   (DW_TAG_variant, DW_CHILDREN_yes,
    [|
-     (DW_AT_discr_value, DW_FORM_udata)
+     (DW_AT_discr_value, DW_FORM_udata);
+     (DW_AT_name, DW_FORM_string)
    |])
 ;;
 
@@ -1971,14 +1972,14 @@ let dwarf_visitor
           |]
         in
 
-        let emit_variant i (*name*)_ ttup =
+        let emit_variant i name ttup =
           (* FIXME: Possibly use a DW_TAG_enumeration_type here? *)
-          (* Tag-names aren't getting encoded; I'm not sure if that's a
-           * problem. Might be. *)
           emit_die (SEQ [|
                       uleb (get_abbrev_code abbrev_variant);
                       (* DW_AT_discr_value: DW_FORM_udata *)
                       uleb i;
+                      (* DW_AT_name: DW_FORM_string *)
+                      ZSTRING (Ast.sprintf_name () name)
                     |]);
           ignore (tup ttup);
           emit_null_die ();
