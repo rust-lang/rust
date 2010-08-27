@@ -3264,6 +3264,7 @@ let trans_visitor
                   get_element_ptr dst Abi.binding_field_bound_data
                 in
                   mov dst_item (Il.Cell src_item);
+                  mov dst_binding zero;
                   let null_jmp = null_check src_binding in
                     (* Copy if we have a src binding. *)
                     (* FIXME (issue #58): this is completely wrong, call
@@ -3274,14 +3275,7 @@ let trans_visitor
                       dst_binding (Ast.TY_box Ast.TY_int)
                       src_binding (Ast.TY_box Ast.TY_int)
                       curr_iso;
-                    let end_jmp = mark() in
-                      emit (Il.jmp Il.JMP Il.CodeNone);
-                      patch null_jmp;
-                      (* The src had a null binding, so make sure the dst
-                       * does now too.
-                       *)
-                      mov dst_binding zero;
-                      patch end_jmp
+                    patch null_jmp
               end
 
           | _ ->
