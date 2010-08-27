@@ -102,6 +102,10 @@ fn test_removal() {
     ret (u / 2u) * 2u;
   }
 
+  check (hash(0u) == hash(1u));
+  check (hash(2u) == hash(3u));
+  check (hash(0u) != hash(2u));
+
   let map.hashfn[uint] hasher = hash;
   let map.eqfn[uint] eqer = eq;
   let map.hashmap[uint, uint] hm = map.mk_hashmap[uint, uint](hasher, eqer);
