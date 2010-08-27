@@ -2,35 +2,105 @@
 
 use std;
 import std.map;
+import std._str;
 import std.util;
 
 fn test_simple() {
   log "*** starting test_simple";
 
-  fn eq(&uint x, &uint y) -> bool { ret x == y; }
-  fn hash(&uint u) -> uint {
+  fn eq_uint(&uint x, &uint y) -> bool { ret x == y; }
+  fn hash_uint(&uint u) -> uint {
     // FIXME: can't use std.util.id since we'd be capturing a type param,
     // and presently we can't close items over type params.
     ret u;
   }
 
-  let map.hashfn[uint] hasher = hash;
-  let map.eqfn[uint] eqer = eq;
-  let map.hashmap[uint, uint] hm = map.mk_hashmap[uint, uint](hasher, eqer);
+  let map.hashfn[uint] hasher_uint = hash_uint;
+  let map.eqfn[uint] eqer_uint = eq_uint;
 
-  check (hm.insert(10u, 12u));
-  check (hm.insert(11u, 13u));
-  check (hm.insert(12u, 14u));
+  let map.hashfn[str] hasher_str = _str.hash;
+  let map.eqfn[str] eqer_str = _str.eq;
 
-  check (hm.get(11u) == 13u);
-  check (hm.get(12u) == 14u);
-  check (hm.get(10u) == 12u);
 
-  check (!hm.insert(12u, 14u));
-  check (hm.get(12u) == 14u);
+  log "uint -> uint";
 
-  check (!hm.insert(12u, 12u));
-  check (hm.get(12u) == 12u);
+  let map.hashmap[uint, uint] hm_uu = map.mk_hashmap[uint, uint](hasher_uint,
+                                                                 eqer_uint);
+
+  check (hm_uu.insert(10u, 12u));
+  check (hm_uu.insert(11u, 13u));
+  check (hm_uu.insert(12u, 14u));
+
+  check (hm_uu.get(11u) == 13u);
+  check (hm_uu.get(12u) == 14u);
+  check (hm_uu.get(10u) == 12u);
+
+  check (!hm_uu.insert(12u, 14u));
+  check (hm_uu.get(12u) == 14u);
+
+  check (!hm_uu.insert(12u, 12u));
+  check (hm_uu.get(12u) == 12u);
+
+
+  log "str -> uint";
+
+  let map.hashmap[str, uint] hm_su = map.mk_hashmap[str, uint](hasher_str,
+                                                               eqer_str);
+
+  check (hm_su.insert("ten", 12u));
+  check (hm_su.insert("eleven", 13u));
+  check (hm_su.insert("twelve", 14u));
+
+  check (hm_su.get("eleven") == 13u);
+  check (hm_su.get("twelve") == 14u);
+  check (hm_su.get("ten") == 12u);
+
+  check (!hm_su.insert("twelve", 14u));
+  check (hm_su.get("twelve") == 14u);
+
+  check (!hm_su.insert("twelve", 12u));
+  check (hm_su.get("twelve") == 12u);
+
+
+  log "uint -> str";
+
+  let map.hashmap[uint, str] hm_us = map.mk_hashmap[uint, str](hasher_uint,
+                                                               eqer_uint);
+
+  check (hm_us.insert(10u, "twelve"));
+  check (hm_us.insert(11u, "thirteen"));
+  check (hm_us.insert(12u, "fourteen"));
+
+  check (_str.eq(hm_us.get(11u), "thirteen"));
+  check (_str.eq(hm_us.get(12u), "fourteen"));
+  check (_str.eq(hm_us.get(10u), "twelve"));
+
+  check (!hm_us.insert(12u, "fourteen"));
+  check (_str.eq(hm_us.get(12u), "fourteen"));
+
+  check (!hm_us.insert(12u, "twelve"));
+  check (_str.eq(hm_us.get(12u), "twelve"));
+
+
+  log "str -> str";
+
+  let map.hashmap[str, str] hm_ss = map.mk_hashmap[str, str](hasher_str,
+                                                             eqer_str);
+
+  check (hm_ss.insert("ten", "twelve"));
+  check (hm_ss.insert("eleven", "thirteen"));
+  check (hm_ss.insert("twelve", "fourteen"));
+
+  check (_str.eq(hm_ss.get("eleven"), "thirteen"));
+  check (_str.eq(hm_ss.get("twelve"), "fourteen"));
+  check (_str.eq(hm_ss.get("ten"), "twelve"));
+
+  check (!hm_ss.insert("twelve", "fourteen"));
+  check (_str.eq(hm_ss.get("twelve"), "fourteen"));
+
+  check (!hm_ss.insert("twelve", "twelve"));
+  check (_str.eq(hm_ss.get("twelve"), "twelve"));
+
 
   log "*** finished test_simple";
 }
