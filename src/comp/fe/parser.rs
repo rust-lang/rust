@@ -8,7 +8,7 @@ state type parser =
 
 fn new_parser(str path) -> parser {
     state obj stdio_parser(mutable token.token tok,
-                           _io.stdio_reader rdr)
+                           lexer.reader rdr)
         {
             state fn peek() -> token.token {
                 ret tok;
@@ -17,7 +17,8 @@ fn new_parser(str path) -> parser {
                 tok = lexer.next_token(rdr);
             }
         }
-    auto rdr = _io.new_stdio_reader(path);
+    auto srdr = _io.new_stdio_reader(path);
+    auto rdr = lexer.new_reader(srdr, path);
     ret stdio_parser(lexer.next_token(rdr), rdr);
 }
 

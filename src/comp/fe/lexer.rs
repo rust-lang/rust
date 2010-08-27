@@ -11,9 +11,10 @@ fn new_str_hash[V]() -> map.hashmap[str,V] {
 
 type reader = obj {
               fn is_eof() -> bool;
-              fn peek() -> char;
+              fn curr() -> char;
+              fn next() -> char;
               fn bump();
-              fn get_pos() -> tup(str,uint,uint);
+              fn get_curr_pos() -> tup(str,uint,uint);
               fn get_keywords() -> hashmap[str,token.token];
               fn get_reserved() -> hashmap[str,()];
 };
@@ -23,6 +24,7 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
     obj reader(stdio_reader rdr,
                str filename,
                mutable char c,
+               mutable char n,
                mutable uint line,
                mutable uint col,
                hashmap[str,token.token] keywords,
@@ -32,22 +34,33 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
                 ret c == (-1) as char;
             }
 
-            fn get_pos() -> tup(str,uint,uint) {
+            fn get_curr_pos() -> tup(str,uint,uint) {
                 ret tup(filename, line, col);
             }
 
-            fn peek() -> char {
+            fn curr() -> char {
                 ret c;
             }
 
+            fn next() -> char {
+                ret n;
+            }
+
             fn bump() {
-                c = rdr.getc() as char;
+                c = n;
+
+                if (c == (-1) as char) {
+                    ret;
+                }
+
                 if (c == '\n') {
                     line += 1u;
                     col = 0u;
                 } else {
                     col += 1u;
                 }
+
+                n = rdr.getc() as char;
             }
 
             fn get_keywords() -> hashmap[str,token.token] {
@@ -82,8 +95,8 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
     keywords.insert("ret", token.RET());
     keywords.insert("be", token.BE());
 
-    ret reader(rdr, filename, rdr.getc() as char, 1u, 1u,
-               keywords, reserved);
+    ret reader(rdr, filename, rdr.getc() as char, rdr.getc() as char,
+               1u, 1u, keywords, reserved);
 }
 
 
@@ -116,146 +129,138 @@ fn is_whitespace(char c) -> bool {
     ret c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
-fn consume_any_whitespace(stdio_reader rdr, char c) -> char {
-    auto c1 = c;
-    while (is_whitespace(c1)) {
-        c1 = rdr.getc() as char;
+fn consume_any_whitespace(reader rdr) {
+    while (is_whitespace(rdr.curr())) {
+        rdr.bump();
     }
-    be consume_any_line_comment(rdr, c1);
+    be consume_any_line_comment(rdr);
 }
 
-fn consume_any_line_comment(stdio_reader rdr, char c) -> char {
-    auto c1 = c;
-    if (c1 == '/') {
-        auto c2 = rdr.getc() as char;
-        if (c2 == '/') {
-            while (c1 != '\n') {
-                c1 = rdr.getc() as char;
+fn consume_any_line_comment(reader rdr) {
+    if (rdr.curr() == '/') {
+        if (rdr.next() == '/') {
+            while (rdr.curr() != '\n') {
+                rdr.bump();
             }
             // Restart whitespace munch.
-            be consume_any_whitespace(rdr, c1);
+            be consume_any_whitespace(rdr);
         }
     }
-    ret c;
 }
 
-fn next_token(stdio_reader rdr) -> token.token {
-    auto eof = (-1) as char;
-    auto c = rdr.getc() as char;
+fn next_token(reader rdr) -> token.token {
     auto accum_str = "";
     auto accum_int = 0;
 
-    fn next(stdio_reader rdr) -> char {
-        ret rdr.getc() as char;
-    }
+    consume_any_whitespace(rdr);
 
-    fn forget(stdio_reader rdr, char c) {
-        rdr.ungetc(c as int);
-    }
+    if (rdr.is_eof()) { ret token.EOF(); }
 
-    c = consume_any_whitespace(rdr, c);
-
-    if (c == eof) { ret token.EOF(); }
+    auto c = rdr.curr();
 
     if (is_alpha(c)) {
-        while (is_alpha(c)) {
+        while (is_alpha(rdr.curr())) {
+            c = rdr.curr();
             accum_str += (c as u8);
-            c = next(rdr);
+            rdr.bump();
         }
-        forget(rdr, c);
         ret token.IDENT(accum_str);
     }
 
     if (is_dec_digit(c)) {
         if (c == '0') {
+            log "fixme: leading zero";
+            fail;
         } else {
             while (is_dec_digit(c)) {
+                c = rdr.curr();
                 accum_int *= 10;
                 accum_int += (c as int) - ('0' as int);
-                c = next(rdr);
+                rdr.bump();
             }
-            forget(rdr, c);
             ret token.LIT_INT(accum_int);
         }
     }
 
 
-    fn op_or_opeq(stdio_reader rdr, char c2,
-                  token.op op) -> token.token {
-        if (c2 == '=') {
+    fn op_or_opeq(reader rdr, token.op op) -> token.token {
+        rdr.bump();
+        if (rdr.next() == '=') {
+            rdr.bump();
             ret token.OPEQ(op);
         } else {
-            forget(rdr, c2);
             ret token.OP(op);
         }
     }
 
     alt (c) {
         // One-byte tokens.
-        case (';') { ret token.SEMI(); }
-        case (',') { ret token.COMMA(); }
-        case ('.') { ret token.DOT(); }
-        case ('(') { ret token.LPAREN(); }
-        case (')') { ret token.RPAREN(); }
-        case ('{') { ret token.LBRACE(); }
-        case ('}') { ret token.RBRACE(); }
-        case ('[') { ret token.LBRACKET(); }
-        case (']') { ret token.RBRACKET(); }
-        case ('@') { ret token.AT(); }
-        case ('#') { ret token.POUND(); }
+        case (';') { rdr.bump(); ret token.SEMI(); }
+        case (',') { rdr.bump(); ret token.COMMA(); }
+        case ('.') { rdr.bump(); ret token.DOT(); }
+        case ('(') { rdr.bump(); ret token.LPAREN(); }
+        case (')') { rdr.bump(); ret token.RPAREN(); }
+        case ('{') { rdr.bump(); ret token.LBRACE(); }
+        case ('}') { rdr.bump(); ret token.RBRACE(); }
+        case ('[') { rdr.bump(); ret token.LBRACKET(); }
+        case (']') { rdr.bump(); ret token.RBRACKET(); }
+        case ('@') { rdr.bump(); ret token.AT(); }
+        case ('#') { rdr.bump(); ret token.POUND(); }
 
         // Multi-byte tokens.
         case ('=') {
-            auto c2 = next(rdr);
-            if (c2 == '=') {
+            if (rdr.next() == '=') {
+                rdr.bump();
+                rdr.bump();
                 ret token.OP(token.EQEQ());
             } else {
-                forget(rdr, c2);
+                rdr.bump();
                 ret token.OP(token.EQ());
             }
         }
 
         case ('\'') {
-            // FIXME: general utf8-consumption support.
-            auto c2 = next(rdr);
+            rdr.bump();
+            auto c2 = rdr.curr();
             if (c2 == '\\') {
-                c2 = next(rdr);
-                alt (c2) {
-                    case ('n') { c2 = '\n'; }
-                    case ('r') { c2 = '\r'; }
-                    case ('t') { c2 = '\t'; }
-                    case ('\\') { c2 = '\\'; }
-                    case ('\'') { c2 = '\''; }
+                alt (rdr.next()) {
+                    case ('n') { rdr.bump(); c2 = '\n'; }
+                    case ('r') { rdr.bump(); c2 = '\r'; }
+                    case ('t') { rdr.bump(); c2 = '\t'; }
+                    case ('\\') { rdr.bump(); c2 = '\\'; }
+                    case ('\'') { rdr.bump(); c2 = '\''; }
                     // FIXME: unicode numeric escapes.
-                    case (_) {
+                    case (c2) {
                         log "unknown character escape";
                         log c2;
                         fail;
                     }
                 }
             }
-            if (next(rdr) != '\'') {
+
+            if (rdr.next() != '\'') {
                 log "unterminated character constant";
                 fail;
             }
+            rdr.bump();
+            rdr.bump();
             ret token.LIT_CHAR(c2);
         }
 
         case ('"') {
+            rdr.bump();
             // FIXME: general utf8-consumption support.
-            auto c2 = next(rdr);
-            while (c2 != '"') {
-                alt (c2) {
+            while (rdr.curr() != '"') {
+                alt (rdr.curr()) {
                     case ('\\') {
-                        c2 = next(rdr);
-                        alt (c2) {
-                            case ('n') { accum_str += '\n' as u8; }
-                            case ('r') { accum_str += '\r' as u8; }
-                            case ('t') { accum_str += '\t' as u8; }
-                            case ('\\') { accum_str += '\\' as u8; }
-                            case ('"') { accum_str += '"' as u8; }
+                        alt (rdr.next()) {
+                            case ('n') { rdr.bump(); accum_str += '\n' as u8; }
+                            case ('r') { rdr.bump(); accum_str += '\r' as u8; }
+                            case ('t') { rdr.bump(); accum_str += '\t' as u8; }
+                            case ('\\') { rdr.bump(); accum_str += '\\' as u8; }
+                            case ('"') { rdr.bump(); accum_str += '"' as u8; }
                             // FIXME: unicode numeric escapes.
-                            case (_) {
+                            case (c2) {
                                 log "unknown string escape";
                                 log c2;
                                 fail;
@@ -263,54 +268,57 @@ fn next_token(stdio_reader rdr) -> token.token {
                         }
                     }
                     case (_) {
-                        accum_str += c2 as u8;
+                        accum_str += rdr.curr() as u8;
                     }
                 }
-                c2 = next(rdr);
+                rdr.bump();
             }
+            rdr.bump();
             ret token.LIT_STR(accum_str);
         }
 
         case ('-') {
-            auto c2 = next(rdr);
-            if (c2 == '>') {
+            if (rdr.next() == '>') {
+                rdr.bump();
+                rdr.bump();
                 ret token.RARROW();
             } else {
-                ret op_or_opeq(rdr, c2, token.MINUS());
+                ret op_or_opeq(rdr, token.MINUS());
             }
         }
 
         case ('&') {
-            auto c2 = next(rdr);
-            if (c2 == '&') {
+            if (rdr.next() == '&') {
+                rdr.bump();
+                rdr.bump();
                 ret token.OP(token.ANDAND());
             } else {
-                ret op_or_opeq(rdr, c2, token.AND());
+                ret op_or_opeq(rdr, token.AND());
             }
         }
 
         case ('+') {
-            ret op_or_opeq(rdr, next(rdr), token.PLUS());
+            ret op_or_opeq(rdr, token.PLUS());
         }
 
         case ('*') {
-            ret op_or_opeq(rdr, next(rdr), token.STAR());
+            ret op_or_opeq(rdr, token.STAR());
         }
 
         case ('/') {
-            ret op_or_opeq(rdr, next(rdr), token.STAR());
+            ret op_or_opeq(rdr, token.STAR());
         }
 
         case ('!') {
-            ret op_or_opeq(rdr, next(rdr), token.NOT());
+            ret op_or_opeq(rdr, token.NOT());
         }
 
         case ('^') {
-            ret op_or_opeq(rdr, next(rdr), token.CARET());
+            ret op_or_opeq(rdr, token.CARET());
         }
 
         case ('%') {
-            ret op_or_opeq(rdr, next(rdr), token.PERCENT());
+            ret op_or_opeq(rdr, token.PERCENT());
         }
 
     }
