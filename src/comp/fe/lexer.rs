@@ -254,11 +254,26 @@ fn next_token(reader rdr) -> token.token {
                 alt (rdr.curr()) {
                     case ('\\') {
                         alt (rdr.next()) {
-                            case ('n') { rdr.bump(); accum_str += '\n' as u8; }
-                            case ('r') { rdr.bump(); accum_str += '\r' as u8; }
-                            case ('t') { rdr.bump(); accum_str += '\t' as u8; }
-                            case ('\\') { rdr.bump(); accum_str += '\\' as u8; }
-                            case ('"') { rdr.bump(); accum_str += '"' as u8; }
+                            case ('n') {
+                                rdr.bump();
+                                accum_str += '\n' as u8;
+                            }
+                            case ('r') {
+                                rdr.bump();
+                                accum_str += '\r' as u8;
+                            }
+                            case ('t') {
+                                rdr.bump();
+                                accum_str += '\t' as u8;
+                            }
+                            case ('\\') {
+                                rdr.bump();
+                                accum_str += '\\' as u8;
+                            }
+                            case ('"') {
+                                rdr.bump();
+                                accum_str += '"' as u8;
+                            }
                             // FIXME: unicode numeric escapes.
                             case (c2) {
                                 log "unknown string escape";
