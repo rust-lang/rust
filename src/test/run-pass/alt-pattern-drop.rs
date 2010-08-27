@@ -11,7 +11,7 @@ fn main() {
 
   alt (x) {
     case (make_t(y)) { log y; }  // ref up and ref down
-    case (_) { log "?"; }
+    case (_) { log "?"; fail; }
   }
 
   log _str.refcount(s);
