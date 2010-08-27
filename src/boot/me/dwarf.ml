@@ -2953,40 +2953,60 @@ let rec extract_mod_items
 
         | DW_TAG_structure_type ->
             begin
-              let is_num_idx s =
-                let len = String.length s in
-                  if len >= 2 && s.[0] = '_'
-                  then
-                    let ok = ref true in
-                      String.iter
-                        (fun c -> ok := (!ok) && '0' <= c && c <= '9')
-                        (String.sub s 1 (len-1));
-                      !ok
-                  else
-                    false
-              in
-              let members = arr_map_partial
-                die.die_children
-                begin
-                  fun child ->
-                    if child.die_tag = DW_TAG_member
-                    then Some child
-                    else None
-                end
-              in
-                if Array.length members == 0 ||
-                    is_num_idx (get_name members.(0))
-                then
-                  let tys = Array.map get_referenced_ty members in
-                    Ast.TY_tup tys
-                else
-                  let entries =
-                    Array.map
-                      (fun member_die -> ((get_name member_die),
-                                          (get_referenced_ty member_die)))
-                      members
+              if Array.length die.die_children == 2 &&
+                  die.die_children.(1).die_tag =
+                  DW_TAG_variant_part then begin
+                (* FIXME: will infinite loop on iso-recursive tags! *)
+                let ty_tag = Hashtbl.create 0 in
+                let variant_part = die.die_children.(1) in
+                let parse_variant die =
+                  assert (die.die_tag = DW_TAG_variant);
+                  assert (Array.length die.die_children == 1);
+                  let name = Ast.NAME_base (Ast.BASE_ident (get_name die)) in
+                  let ty_tup =
+                    match get_ty die.die_children.(0) with
+                        Ast.TY_tup ty_tup -> ty_tup
+                      | _ -> bug () "tag variant of non-tuple type"
                   in
-                    Ast.TY_rec entries
+                  Hashtbl.add ty_tag name ty_tup
+                in
+                Array.iter parse_variant variant_part.die_children;
+                Ast.TY_tag ty_tag
+              end else
+                let is_num_idx s =
+                  let len = String.length s in
+                    if len >= 2 && s.[0] = '_'
+                    then
+                      let ok = ref true in
+                        String.iter
+                          (fun c -> ok := (!ok) && '0' <= c && c <= '9')
+                          (String.sub s 1 (len-1));
+                        !ok
+                    else
+                      false
+                in
+                let members = arr_map_partial
+                  die.die_children
+                  begin
+                    fun child ->
+                      if child.die_tag = DW_TAG_member
+                      then Some child
+                      else None
+                  end
+                in
+                  if Array.length members == 0 ||
+                    is_num_idx (get_name members.(0))
+                  then
+                    let tys = Array.map get_referenced_ty members in
+                      Ast.TY_tup tys
+                  else
+                    let entries =
+                      Array.map
+                        (fun member_die -> ((get_name member_die),
+                                            (get_referenced_ty member_die)))
+                        members
+                    in
+                      Ast.TY_rec entries
             end
 
         | DW_TAG_interface_type ->
