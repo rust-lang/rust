@@ -425,6 +425,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                     $(addprefix test/run-pass/, \
                       arith-1.rs \
                       acyclic-unwind.rs \
+                      alt-pattern-drop.rs \
                       alt-pattern-simple.rs \
                       alt-tag.rs \
                       append-units.rs \
