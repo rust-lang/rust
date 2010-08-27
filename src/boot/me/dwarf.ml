@@ -2974,8 +2974,8 @@ let rec extract_mod_items
                     else None
                 end
               in
-                assert ((Array.length members) > 0);
-                if is_num_idx (get_name members.(0))
+                if Array.length members == 0 ||
+                    is_num_idx (get_name members.(0))
                 then
                   let tys = Array.map get_referenced_ty members in
                     Ast.TY_tup tys
