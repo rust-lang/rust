@@ -4,9 +4,6 @@
 
 template class ptr_vec<rust_task>;
 
-// Keeps track of all live domains, for debugging purposes.
-array_list<rust_dom*> _live_domains;
-
 rust_dom::rust_dom(rust_srv *srv, rust_crate const *root_crate,
                    const char *name) :
     interrupt_flag(0),
@@ -22,7 +19,8 @@ rust_dom::rust_dom(rust_srv *srv, rust_crate const *root_crate,
     caches(this),
     root_task(NULL),
     curr_task(NULL),
-    rval(0)
+    rval(0),
+    _kernel(srv->kernel)
 {
     logptr("new dom", (uintptr_t)this);
     isaac_init(this, &rctx);
@@ -32,10 +30,6 @@ rust_dom::rust_dom(rust_srv *srv, rust_crate const *root_crate,
     pthread_attr_setdetachstate(&attr, true);
 #endif
     root_task = new (this) rust_task(this, NULL, name);
-
-    if (_live_domains.replace(NULL, this) == false) {
-        _live_domains.append(this);
-    }
 }
 
 static void
@@ -86,8 +80,6 @@ rust_dom::~rust_dom() {
 #endif
     while (caches.length())
         delete caches.pop();
-
-    _live_domains.replace(this, NULL);
 }
 
 void
@@ -375,7 +367,7 @@ rust_dom::schedule_task() {
  */
 bool
 rust_dom::is_deadlocked() {
-    if (_live_domains.size() != 1) {
+    if (_kernel->domains.length() != 1) {
         // We cannot tell if we are deadlocked if other domains exists.
         return false;
     }
@@ -388,18 +380,11 @@ rust_dom::is_deadlocked() {
     if (_incoming_message_queue.is_empty() && blocked_tasks.length() > 0) {
         // We have no messages to process, no running tasks to schedule
         // and some blocked tasks therefore we are likely in a deadlock.
-        log_state();
+        _kernel->log_all_domain_state();
         return true;
     }
 
     return false;
-}
-
-void
-rust_dom::log_all_state() {
-    for (uint32_t i = 0; i < _live_domains.size(); i++) {
-        _live_domains[i]->log_state();
-    }
 }
 
 void

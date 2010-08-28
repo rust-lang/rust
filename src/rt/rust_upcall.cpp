@@ -567,11 +567,9 @@ static void *rust_thread_start(void *ptr)
 
     // Start a new rust main loop for this thread.
     dom->start_main_loop();
-
     rust_srv *srv = dom->srv;
+    srv->kernel->deregister_domain(dom);
     delete dom;
-    delete srv;
-
     return 0;
 }
 
@@ -611,10 +609,10 @@ upcall_new_thread(rust_task *task, const char *name) {
     LOG_UPCALL_ENTRY(task);
 
     rust_dom *old_dom = task->dom;
-    rust_dom *new_dom = new rust_dom(old_dom->srv->clone(),
+    rust_dom *new_dom = new rust_dom(old_dom->srv,
                                      old_dom->root_crate,
                                      name);
-
+    old_dom->srv->kernel->register_domain(new_dom);
     task->log(rust_log::UPCALL | rust_log::MEM,
               "upcall new_thread(%s) = dom 0x%" PRIxPTR " task 0x%" PRIxPTR,
               name, new_dom, new_dom->root_task);

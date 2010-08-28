@@ -28,6 +28,7 @@ read_type_bit_mask() {
         bits |= strstr(env_str, "gc") ? rust_log::GC : 0;
         bits |= strstr(env_str, "stdlib") ? rust_log::STDLIB : 0;
         bits |= strstr(env_str, "special") ? rust_log::SPECIAL : 0;
+        bits |= strstr(env_str, "kern") ? rust_log::KERN : 0;
         bits |= strstr(env_str, "all") ? rust_log::ALL : 0;
         bits = strstr(env_str, "none") ? 0 : bits;
     }
@@ -150,7 +151,7 @@ rust_log::trace_ln(rust_task *task, char *message) {
     uint32_t thread_id = hash((uint32_t) pthread_self());
 #endif
     char prefix[1024] = "";
-    if (_dom->name) {
+    if (_dom && _dom->name) {
         append_string(prefix, "%04" PRIxPTR ":%.10s:",
                       thread_id, _dom->name);
     } else {

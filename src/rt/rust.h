@@ -17,10 +17,6 @@
 #define CDECL
 #endif
 
-#include "util/array_list.h"
-
-#include "rust_srv.h"
-
 /*
  * Local Variables:
  * fill-column: 78;

@@ -7,7 +7,8 @@
 
 rust_srv::rust_srv() :
     local_region(this, false),
-    synchronized_region(this, true) {
+    synchronized_region(this, true),
+    kernel(new rust_kernel(this)) {
     // Nop.
 }
 
@@ -72,9 +73,4 @@ rust_srv::warning(char const *expression,
              "warning: '%s', at: %s:%d %s",
              expression, file, (int)line, buf);
     log(msg);
-}
-
-rust_srv *
-rust_srv::clone() {
-    return new rust_srv();
 }

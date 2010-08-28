@@ -1,15 +1,5 @@
-/*
- * rust_dom.h
- */
-
 #ifndef RUST_DOM_H
 #define RUST_DOM_H
-
-#include "sync/lock_free_queue.h"
-#include "util/hash_map.h"
-
-#include "rust_proxy.h"
-#include "rust_message.h"
 
 struct rust_dom
 {
@@ -36,6 +26,9 @@ struct rust_dom
     rust_task *root_task;
     rust_task *curr_task;
     int rval;
+
+    rust_kernel *_kernel;
+    int32_t list_index;
 
     hash_map<rust_task *, rust_proxy<rust_task> *> _task_proxies;
     hash_map<rust_port *, rust_proxy<rust_port> *> _port_proxies;

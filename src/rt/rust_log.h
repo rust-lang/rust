@@ -4,8 +4,6 @@
 class rust_dom;
 class rust_task;
 
-
-
 class rust_log {
 
 public:
@@ -43,6 +41,7 @@ public:
         GC = 0x800,
         STDLIB = 0x1000,
         SPECIAL = 0x2000,
+        KERN = 0x4000,
         ALL = 0xffffffff
     };
 

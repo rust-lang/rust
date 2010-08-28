@@ -267,6 +267,7 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/circular_buffer.cpp \
               rt/isaac/randport.cpp \
               rt/rust_srv.cpp \
+              rt/rust_kernel.cpp \
               rt/memory_region.cpp
 
 RUNTIME_HDR := rt/globals.h \
@@ -283,11 +284,14 @@ RUNTIME_HDR := rt/globals.h \
                rt/rust_message.h \
                rt/circular_buffer.h \
                rt/util/array_list.h \
+               rt/util/indexed_list.h \
+               rt/util/synchronized_indexed_list.h \
                rt/util/hash_map.h \
                rt/sync/sync.h \
                rt/sync/timer.h \
                rt/sync/lock_free_queue.h \
                rt/rust_srv.h \
+               rt/rust_kernel.h \
                rt/memory_region.h \
                rt/memory.h
 

@@ -14,11 +14,8 @@
 
 #include <stdio.h>
 #include <string.h>
-
 #include "rust.h"
-
 #include "rand.h"
-#include "rust_log.h"
 #include "uthash.h"
 
 #if defined(__WIN32__)
@@ -39,9 +36,28 @@ extern "C" {
 #error "Platform not supported."
 #endif
 
+#include "util/array_list.h"
+#include "util/indexed_list.h"
+#include "util/synchronized_indexed_list.h"
+#include "util/hash_map.h"
 #include "sync/sync.h"
 #include "sync/timer.h"
 #include "sync/condition_variable.h"
+#include "sync/lock_free_queue.h"
+
+class rust_dom;
+class rust_log;
+class rust_task;
+class rust_port;
+class rust_chan;
+struct rust_token;
+class rust_kernel;
+class rust_crate;
+class rust_crate_cache;
+
+struct stk_seg;
+struct type_desc;
+struct frame_glue_fns;
 
 #ifndef __i386__
 #error "Target CPU not supported."
@@ -56,29 +72,13 @@ extern "C" {
 #define A(dom, e, s, ...) ((e) ? (void)0 : \
          (dom)->srv->fatal(#e, __FILE__, __LINE__, s, ## __VA_ARGS__))
 
-struct rust_task;
-struct rust_port;
-class rust_chan;
-struct rust_token;
-struct rust_dom;
-class rust_crate;
-class rust_crate_cache;
-// class lockfree_queue;
-
-struct stk_seg;
-struct type_desc;
-struct frame_glue_fns;
-
 // This drives our preemption scheme.
 
 static size_t const TIME_SLICE_IN_MS = 10;
 
 // Every reference counted object should derive from this base class.
 
-template <typename T>
-struct
-rc_base
-{
+template <typename T> struct rc_base {
     intptr_t ref_count;
 
     void ref() {
@@ -91,29 +91,25 @@ rc_base
         }
     }
 
-  rc_base();
-  ~rc_base();
+    rc_base();
+    ~rc_base();
 };
 
-template <typename T>
-struct
-dom_owned
-{
+template <typename T> struct dom_owned {
     rust_dom *get_dom() const {
         return ((T*)this)->dom;
     }
+
     void operator delete(void *ptr) {
         ((T *)ptr)->dom->free(ptr);
     }
 };
 
-template <typename T>
-struct
-task_owned
-{
+template <typename T> struct task_owned {
     rust_dom *get_dom() const {
         return ((T *)this)->task->dom;
     }
+
     void operator delete(void *ptr) {
         ((T *)ptr)->task->dom->free(ptr);
     }
@@ -122,24 +118,16 @@ task_owned
 // A cond(ition) is something we can block on. This can be a channel
 // (writing), a port (reading) or a task (waiting).
 
-struct
-rust_cond
-{
-};
+struct rust_cond { };
 
 // Helper class used regularly elsewhere.
 
-template <typename T>
-class
-ptr_vec : public dom_owned<ptr_vec<T> >
-{
+template <typename T> class ptr_vec : public dom_owned<ptr_vec<T> > {
     static const size_t INIT_SIZE = 8;
-
     rust_dom *dom;
     size_t alloc;
     size_t fill;
     T **data;
-
 public:
     ptr_vec(rust_dom *dom);
     ~ptr_vec();
@@ -160,24 +148,16 @@ public:
     void swap_delete(T* p);
 };
 
+#include "memory_region.h"
+#include "rust_srv.h"
+#include "rust_log.h"
+#include "rust_proxy.h"
+#include "rust_message.h"
+#include "rust_kernel.h"
 #include "rust_dom.h"
-
-template <typename T> inline T
-check_null(rust_dom *dom, T value, char const *expr,
-           char const *file, size_t line) {
-    if (value == NULL) {
-        dom->srv->fatal(expr, file, line, "is null");
-    }
-    return value;
-}
-
-#define CHECK_NULL(dom, e) (check_null(dom, e, #e, __FILE__, __LINE__))
-
 #include "memory.h"
 
-struct
-rust_timer
-{
+struct rust_timer {
     // FIXME: This will probably eventually need replacement
     // with something more sophisticated and integrated with
     // an IO event-handling library, when we have such a thing.
@@ -568,7 +548,6 @@ struct gc_alloc {
 };
 
 #include "circular_buffer.h"
-#include "rust_proxy.h"
 #include "rust_task.h"
 #include "rust_chan.h"
 #include "rust_port.h"

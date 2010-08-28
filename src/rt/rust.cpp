@@ -1,6 +1,5 @@
 #include "rust_internal.h"
 
-
 struct
 command_line_args
 {
@@ -80,6 +79,7 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc, char **argv)
     {
         rust_srv srv;
         rust_dom dom(&srv, crate, "main");
+        srv.kernel->register_domain(&dom);
         command_line_args args(dom, argc, argv);
 
         dom.log(rust_log::DOM, "startup: %d args", args.argc);
@@ -99,6 +99,7 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc, char **argv)
                              sizeof(main_args));
 
         ret = dom.start_main_loop();
+        srv.kernel->deregister_domain(&dom);
     }
 
 #if !defined(__WIN32__)
