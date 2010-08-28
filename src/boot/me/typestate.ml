@@ -1297,7 +1297,7 @@ let lifecycle_visitor
   let (live_block_slots:(node_id, unit) Hashtbl.t) = Hashtbl.create 0 in
   let (frame_blocks:frame_block_slots_stack) = Stack.create () in
 
-  let (implicit_init_block_slots:(node_id,node_id) Hashtbl.t) =
+  let (implicit_init_block_slots:(node_id,node_id list) Hashtbl.t) =
     Hashtbl.create 0
   in
 
@@ -1315,9 +1315,12 @@ let lifecycle_visitor
     begin
       match htab_search implicit_init_block_slots b.id with
           None -> ()
-        | Some slot ->
-            push_slot slot;
-            mark_slot_live slot
+        | Some slots ->
+            List.iter
+              (fun slot ->
+                 push_slot slot;
+                 mark_slot_live slot)
+              slots
     end;
     inner.Walk.visit_block_pre b
   in
@@ -1425,7 +1428,7 @@ let lifecycle_visitor
               Hashtbl.replace cx.ctxt_stmt_is_init s.id ();
               htab_put implicit_init_block_slots
                 f.Ast.for_body.id
-                (fst f.Ast.for_slot).id
+                [ (fst f.Ast.for_slot).id ]
 
           | Ast.STMT_for_each f ->
               log cx "noting implicit init for slot %d in for_each-block %d"
@@ -1434,9 +1437,36 @@ let lifecycle_visitor
               Hashtbl.replace cx.ctxt_stmt_is_init s.id ();
               htab_put implicit_init_block_slots
                 f.Ast.for_each_body.id
-                (fst f.Ast.for_each_slot).id
+                [ (fst f.Ast.for_each_slot).id ]
 
-
+          | Ast.STMT_alt_tag { Ast.alt_tag_arms = arms } ->
+              let note_slot block slot_id =
+                log cx
+                  "noting implicit init for slot %d in pattern-alt block %d"
+                  (int_of_node slot_id)
+                  (int_of_node block.id);
+              in
+              let rec all_pat_slot_ids block pat =
+                match pat with
+                    Ast.PAT_slot ({ id = slot_id }, _) ->
+                      [ slot_id ]
+                  | Ast.PAT_tag (_, pats) ->
+                      List.concat
+                        (Array.to_list
+                           (Array.map (all_pat_slot_ids block) pats))
+                  | Ast.PAT_lit _
+                  | Ast.PAT_wild -> []
+              in
+                Array.iter
+                  begin
+                    fun { node = (pat, block) } ->
+                      let slot_ids = all_pat_slot_ids block pat in
+                        List.iter (note_slot block) slot_ids;
+                        htab_put implicit_init_block_slots
+                          block.id
+                          slot_ids
+                  end
+                  arms
           | _ -> ()
     end;
     inner.Walk.visit_stmt_pre s

@@ -4139,23 +4139,18 @@ let trans_visitor
     let trans_arm arm : quad_idx =
       let (pat, block) = arm.node in
 
-      (* Translates the pattern and returns the following pair.
-       *
-       *   fst: The addresses of the branch instructions that are taken if
-       *        the match fails.
-       *   snd: The (cell, slot) pairs of any slots bound and initialized
-       *        in PAT_slot pattern leaves.
+      (* Translates the pattern and returns the addresses of the branch
+       * instructions that are taken if the match fails.
        *)
       let rec trans_pat
           (pat:Ast.pat)
           (src_cell:Il.cell)
           (src_ty:Ast.ty)
-          : (quad_idx list) * ((Il.cell * Ast.slot) list) =
+          : quad_idx list =
 
         match pat with
             Ast.PAT_lit lit ->
-              (trans_compare_simple Il.JNE (trans_lit lit) (Il.Cell src_cell),
-               [])
+              trans_compare_simple Il.JNE (trans_lit lit) (Il.Cell src_cell)
 
           | Ast.PAT_tag (lval, pats) ->
               let tag_name = tag_ctor_name_to_tag_name (lval_to_name lval) in
@@ -4185,8 +4180,7 @@ let trans_visitor
 
               let tup_cell:Il.cell = get_variant_ptr union_cell tag_number in
 
-              let trans_elem_pat i elem_pat
-                  : (quad_idx list) * ((Il.cell * Ast.slot) list) =
+              let trans_elem_pat i elem_pat : quad_idx list =
                 let elem_cell =
                   get_element_ptr_dyn_in_current_frame tup_cell i
                 in
@@ -4194,10 +4188,10 @@ let trans_visitor
                   trans_pat elem_pat elem_cell elem_ty
               in
 
-              let (elem_jumps, bindings) =
-                List.split (Array.to_list (Array.mapi trans_elem_pat pats))
+              let elem_jumps =
+                List.concat (Array.to_list (Array.mapi trans_elem_pat pats))
               in
-                (next_jumps @ (List.concat elem_jumps), List.concat bindings)
+                next_jumps @ elem_jumps
 
           | Ast.PAT_slot (dst, _) ->
               let dst_slot = get_slot cx dst.id in
@@ -4206,24 +4200,14 @@ let trans_visitor
                   (get_ty_params_of_current_frame())
                   CLONE_none dst_cell dst_slot
                   src_cell src_ty;
-                ([], [(dst_cell, dst_slot)])   (* irrefutable *)
+                []                 (* irrefutable *)
 
-          | Ast.PAT_wild -> ([], [])           (* irrefutable *)
+          | Ast.PAT_wild -> []     (* irrefutable *)
       in
 
       let (lval_cell, lval_ty) = trans_lval at.Ast.alt_tag_lval in
-      let (next_jumps, bindings) = trans_pat pat lval_cell lval_ty in
+      let next_jumps = trans_pat pat lval_cell lval_ty in
         trans_block block;
-
-        (* Drop any slots we initialized in the leaf slot bindings of
-         * this arm's pattern.
-         *
-         * FIXME: Is `None` really correct to pass as the curr_iso?
-         *)
-        List.iter
-          (fun (cell, slot) -> drop_slot_in_current_frame cell slot None)
-          bindings;
-
         let last_jump = mark() in
           emit (Il.jmp Il.JMP Il.CodeNone);
           List.iter patch next_jumps;

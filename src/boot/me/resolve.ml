@@ -122,9 +122,10 @@ let stmt_collecting_visitor
                     htab_put slots key slot_id;
                     htab_put cx.ctxt_slot_keys slot_id key
                 | Ast.PAT_tag (_, pats) -> Array.iter (resolve_pat block) pats
-                | Ast.PAT_lit _ | Ast.PAT_wild -> ()
+                | Ast.PAT_lit _
+                | Ast.PAT_wild -> ()
             in
-            Array.iter (fun { node = (p, b) } -> resolve_pat b p) arms
+              Array.iter (fun { node = (p, b) } -> resolve_pat b p) arms
         | _ -> ()
     end;
     inner.Walk.visit_stmt_pre stmt
