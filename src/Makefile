@@ -59,6 +59,7 @@ ifeq ($(CFG_OSTYPE), Darwin)
   # "on an i386" when the whole userspace is 64-bit and the compiler
   # emits 64-bit binaries by default. So we just force -m32 here. Smarter
   # approaches welcome!
+  CFG_NATIVE := 1
   CFG_GCC_CFLAGS += -m32
   CFG_GCC_LINK_FLAGS += -m32
   DSYMUTIL := dsymutil
