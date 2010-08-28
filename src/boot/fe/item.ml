@@ -148,12 +148,21 @@ and parse_auto_slot_and_init
   let stmts = ctxt "slot, ident and init: init" (parse_init lval) ps in
     (stmts, slot_auto, ident)
 
+
+and parse_stmts (ps:pstate) : Ast.stmt array =
+  let arr = parse_stmts_including_none ps in
+    if (Array.length arr) == 0 then
+      raise (err "statement does nothing" ps);
+    arr
+        
+    
+
 (*
  * We have no way to parse a single Ast.stmt; any incoming syntactic statement
  * may desugar to N>1 real Ast.stmts
  *)
 
-and parse_stmts (ps:pstate) : Ast.stmt array =
+and parse_stmts_including_none (ps:pstate) : Ast.stmt array =
   let apos = lexpos ps in
 
   let ensure_mutable slot =
