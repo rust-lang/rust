@@ -275,9 +275,8 @@ fn to_str(token t) -> str {
         }
         case (LIT_CHAR(c)) {
             // FIXME: escape and encode.
-            auto tmp = "'";
-            tmp += c as u8;
-            tmp += '\'' as u8;
+            auto tmp = "";
+            tmp += (c as u8);
             ret tmp;
         }
 
@@ -286,7 +285,7 @@ fn to_str(token t) -> str {
         }
 
         /* Name components */
-        case (IDENT(s)) { auto si = "ident:"; si += s; ret si; }
+        case (IDENT(s)) { ret s; }
         case (IDX(i)) { ret "_" + _int.to_str(i, 10u); }
         case (UNDERSCORE()) { ret "_"; }
 
