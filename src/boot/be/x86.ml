@@ -315,7 +315,7 @@ let emit_target_specific
                     match cell with
                         Il.Cell (Il.Reg (Il.Hreg hr, _)) -> hr = eax
                       | _ -> false
-                  in                    
+                  in
                     if is_eax lhs
                     then
                       mov rhs_ecx rhs

@@ -37,32 +37,38 @@ log_task_state(rust_task *task, maybe_proxy<rust_task> *target) {
     }
 }
 
-extern "C" CDECL char const *str_buf(rust_task *task, rust_str *s);
+extern "C" CDECL char const *
+str_buf(rust_task *task, rust_str *s);
 
-extern "C" void upcall_grow_task(rust_task *task, size_t n_frame_bytes) {
+extern "C" void
+upcall_grow_task(rust_task *task, size_t n_frame_bytes) {
     LOG_UPCALL_ENTRY(task);
     task->grow(n_frame_bytes);
 }
 
-extern "C" CDECL void upcall_log_int(rust_task *task, int32_t i) {
+extern "C" CDECL
+void upcall_log_int(rust_task *task, int32_t i) {
     LOG_UPCALL_ENTRY(task);
     task->log(rust_log::UPCALL | rust_log::ULOG,
               "rust: %" PRId32 " (0x%" PRIx32 ")", i, i);
 }
 
-extern "C" CDECL void upcall_log_str(rust_task *task, rust_str *str) {
+extern "C" CDECL void
+upcall_log_str(rust_task *task, rust_str *str) {
     LOG_UPCALL_ENTRY(task);
     const char *c = str_buf(task, str);
     task->log(rust_log::UPCALL | rust_log::ULOG, "rust: %s", c);
 }
 
-extern "C" CDECL void upcall_trace_word(rust_task *task, uintptr_t i) {
+extern "C" CDECL void
+upcall_trace_word(rust_task *task, uintptr_t i) {
     LOG_UPCALL_ENTRY(task);
     task->log(rust_log::UPCALL | rust_log::TRACE, "trace: 0x%" PRIxPTR "", i,
               i, (char) i);
 }
 
-extern "C" CDECL void upcall_trace_str(rust_task *task, char const *c) {
+extern "C" CDECL void
+upcall_trace_str(rust_task *task, char const *c) {
     LOG_UPCALL_ENTRY(task);
     task->log(rust_log::UPCALL | rust_log::TRACE, "trace: %s", c);
 }
@@ -77,7 +83,8 @@ upcall_new_port(rust_task *task, size_t unit_sz) {
     return new (dom) rust_port(task, unit_sz);
 }
 
-extern "C" CDECL void upcall_del_port(rust_task *task, rust_port *port) {
+extern "C" CDECL void
+upcall_del_port(rust_task *task, rust_port *port) {
     LOG_UPCALL_ENTRY(task);
     task->log(rust_log::UPCALL | rust_log::MEM | rust_log::COMM,
               "upcall del_port(0x%" PRIxPTR ")", (uintptr_t) port);
@@ -117,7 +124,8 @@ upcall_flush_chan(rust_task *task, rust_chan *chan) {
  * Cannot Yield: If the task were to unwind, the dropped ref would still
  * appear to be live, causing modify-after-free errors.
  */
-extern "C" CDECL void upcall_del_chan(rust_task *task, rust_chan *chan) {
+extern "C" CDECL
+void upcall_del_chan(rust_task *task, rust_chan *chan) {
     LOG_UPCALL_ENTRY(task);
 
     task->log(rust_log::UPCALL | rust_log::MEM | rust_log::COMM,
@@ -166,13 +174,15 @@ upcall_clone_chan(rust_task *task,
     return new (target_task->dom) rust_chan(target_task, port);
 }
 
-extern "C" CDECL void upcall_yield(rust_task *task) {
+extern "C" CDECL void
+upcall_yield(rust_task *task) {
     LOG_UPCALL_ENTRY(task);
     task->log(rust_log::UPCALL | rust_log::COMM, "upcall yield()");
     task->yield(1);
 }
 
-extern "C" CDECL void upcall_sleep(rust_task *task, size_t time_in_us) {
+extern "C" CDECL void
+upcall_sleep(rust_task *task, size_t time_in_us) {
     LOG_UPCALL_ENTRY(task);
     task->log(rust_log::UPCALL | rust_log::TASK, "elapsed %d",
               task->yield_timer.get_elapsed_time());
@@ -242,8 +252,11 @@ upcall_recv(rust_task *task, uintptr_t *dptr, rust_port *port) {
     task->yield(3);
 }
 
-extern "C" CDECL void upcall_fail(rust_task *task, char const *expr,
-    char const *file, size_t line) {
+extern "C" CDECL void
+upcall_fail(rust_task *task,
+            char const *expr,
+            char const *file,
+            size_t line) {
     LOG_UPCALL_ENTRY(task);
     task->log(rust_log::UPCALL | rust_log::ERR,
               "upcall fail '%s', %s:%" PRIdPTR, expr, file, line);
@@ -290,8 +303,7 @@ upcall_exit(rust_task *task) {
 }
 
 extern "C" CDECL uintptr_t
-upcall_malloc(rust_task *task, size_t nbytes, type_desc *td)
-{
+upcall_malloc(rust_task *task, size_t nbytes, type_desc *td) {
     LOG_UPCALL_ENTRY(task);
 
     task->dom->log(rust_log::UPCALL|rust_log::MEM,
@@ -311,8 +323,7 @@ upcall_malloc(rust_task *task, size_t nbytes, type_desc *td)
  * Called whenever an object's ref count drops to zero.
  */
 extern "C" CDECL void
-upcall_free(rust_task *task, void* ptr, uintptr_t is_gc)
-{
+upcall_free(rust_task *task, void* ptr, uintptr_t is_gc) {
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
     dom->log(rust_log::UPCALL|rust_log::MEM,
@@ -322,8 +333,7 @@ upcall_free(rust_task *task, void* ptr, uintptr_t is_gc)
 }
 
 extern "C" CDECL uintptr_t
-upcall_mark(rust_task *task, void* ptr)
-{
+upcall_mark(rust_task *task, void* ptr) {
     LOG_UPCALL_ENTRY(task);
 
     rust_dom *dom = task->dom;
@@ -356,8 +366,7 @@ upcall_new_str(rust_task *task, char const *s, size_t fill) {
 }
 
 extern "C" CDECL rust_vec *
-upcall_new_vec(rust_task *task, size_t fill, type_desc *td)
-{
+upcall_new_vec(rust_task *task, size_t fill, type_desc *td) {
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
     dom->log(rust_log::UPCALL|rust_log::MEM,
@@ -376,8 +385,10 @@ upcall_new_vec(rust_task *task, size_t fill, type_desc *td)
 }
 
 extern "C" CDECL rust_str *
-upcall_vec_grow(rust_task *task, rust_vec *v, size_t n_bytes, uintptr_t is_gc)
-{
+upcall_vec_grow(rust_task *task,
+                rust_vec *v,
+                size_t n_bytes,
+                uintptr_t is_gc) {
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
     task->log(rust_log::UPCALL|rust_log::MEM,
@@ -419,18 +430,25 @@ upcall_vec_grow(rust_task *task, rust_vec *v, size_t n_bytes, uintptr_t is_gc)
 }
 
 static rust_crate_cache::c_sym *
-fetch_c_sym(rust_task *task, rust_crate const *curr_crate, size_t lib_num,
-    size_t c_sym_num, char const *library, char const *symbol) {
+fetch_c_sym(rust_task *task,
+            rust_crate const *curr_crate,
+            size_t lib_num,
+            size_t c_sym_num,
+            char const *library,
+            char const *symbol) {
     rust_crate_cache *cache = task->get_crate_cache(curr_crate);
     rust_crate_cache::lib *l = cache->get_lib(lib_num, library);
     return cache->get_c_sym(c_sym_num, l, symbol);
 }
 
-extern "C" CDECL uintptr_t upcall_require_rust_sym(rust_task *task,
-    rust_crate const *curr_crate, size_t lib_num, // # of lib
-    size_t c_sym_num, // # of C sym "rust_crate" in lib
-    size_t rust_sym_num, // # of rust sym
-    char const *library, char const **path) {
+extern "C" CDECL uintptr_t
+upcall_require_rust_sym(rust_task *task,
+                        rust_crate const *curr_crate,
+                        size_t lib_num, // # of lib
+                        size_t c_sym_num, // # of C sym "rust_crate" in lib
+                        size_t rust_sym_num, // # of rust sym
+                        char const *library,
+                        char const **path) {
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
 
@@ -469,10 +487,13 @@ extern "C" CDECL uintptr_t upcall_require_rust_sym(rust_task *task,
     return addr;
 }
 
-extern "C" CDECL uintptr_t upcall_require_c_sym(rust_task *task,
-    rust_crate const *curr_crate, size_t lib_num, // # of lib
-    size_t c_sym_num, // # of C sym
-    char const *library, char const *symbol) {
+extern "C" CDECL uintptr_t
+upcall_require_c_sym(rust_task *task,
+                     rust_crate const *curr_crate,
+                     size_t lib_num, // # of lib
+                     size_t c_sym_num, // # of C sym
+                     char const *library,
+                     char const *symbol) {
     LOG_UPCALL_ENTRY(task);
 
     task->log(rust_log::UPCALL | rust_log::CACHE,
@@ -503,8 +524,7 @@ upcall_get_type_desc(rust_task *task,
                      size_t size,
                      size_t align,
                      size_t n_descs,
-                     type_desc const **descs)
-{
+                     type_desc const **descs) {
     LOG_UPCALL_ENTRY(task);
     task->log(rust_log::UPCALL | rust_log::CACHE,
               "upcall get_type_desc with size=%" PRIdPTR
@@ -551,8 +571,11 @@ upcall_new_task(rust_task *spawner, const char *name) {
 }
 
 extern "C" CDECL rust_task *
-upcall_start_task(rust_task *spawner, rust_task *task,
-    uintptr_t exit_task_glue, uintptr_t spawnee_fn, size_t callsz) {
+upcall_start_task(rust_task *spawner,
+                  rust_task *task,
+                  uintptr_t exit_task_glue,
+                  uintptr_t spawnee_fn,
+                  size_t callsz) {
     LOG_UPCALL_ENTRY(spawner);
 
     rust_dom *dom = spawner->dom;
@@ -590,7 +613,9 @@ upcall_new_thread(rust_task *task, const char *name) {
 extern "C" CDECL maybe_proxy<rust_task> *
 upcall_start_thread(rust_task *spawner,
                     maybe_proxy<rust_task> *root_task_proxy,
-    uintptr_t exit_task_glue, uintptr_t spawnee_fn, size_t callsz) {
+                    uintptr_t exit_task_glue,
+                    uintptr_t spawnee_fn,
+                    size_t callsz) {
     LOG_UPCALL_ENTRY(spawner);
 
     rust_dom *dom = spawner->dom;
