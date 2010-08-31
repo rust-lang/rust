@@ -381,7 +381,7 @@ upcall_vec_grow(rust_task *task, rust_vec *v, size_t n_bytes, uintptr_t is_gc)
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
     task->log(rust_log::UPCALL|rust_log::MEM,
-             "upcall vec_grow(%" PRIxPTR ", %" PRIdPTR
+             "upcall vec_grow(0x%" PRIxPTR ", %" PRIdPTR
              "), alloc=%" PRIdPTR ", fill=%" PRIdPTR,
              v, n_bytes, v->alloc, v->fill);
     size_t alloc = next_power_of_two(sizeof(rust_vec) + v->fill + n_bytes);
@@ -411,7 +411,8 @@ upcall_vec_grow(rust_task *task, rust_vec *v, size_t n_bytes, uintptr_t is_gc)
             return NULL;
         }
         v->deref();
-        v = new (mem) rust_vec(dom, alloc, v->fill, &v->data[0]);
+        v = new (mem) rust_vec(dom, alloc, v->fill,
+                               v->fill ? &v->data[0] : NULL);
     }
     I(dom, sizeof(rust_vec) + v->fill <= v->alloc);
     return v;
