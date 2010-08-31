@@ -210,18 +210,18 @@ fn hex_digit_val(char c) -> int {
     }
 
     if (in_range(c, 'a', 'f')) {
-        ret (c as int) - ('a' as int);
+        ret ((c as int) - ('a' as int)) + 10;
     }
 
     if (in_range(c, 'A', 'F')) {
-        ret (c as int) - ('A' as int);
+        ret ((c as int) - ('A' as int)) + 10;
     }
 
     fail;
 }
 
 fn bin_digit_value(char c) -> int {
-    if (c == 0) { ret 0; }
+    if (c == '0') { ret 0; }
     ret 1;
 }
 
@@ -281,7 +281,7 @@ fn next_token(reader rdr) -> token.token {
             c = rdr.curr();
             while (is_hex_digit(c) || c == '_') {
                 accum_int *= 16;
-                accum_int += hex_digit_val(v);
+                accum_int += hex_digit_val(c);
                 rdr.bump();
                 c = rdr.curr();
             }
@@ -291,9 +291,9 @@ fn next_token(reader rdr) -> token.token {
             rdr.bump();
             rdr.bump();
             c = rdr.curr();
-            while (is_hex_digit(c) || c == '_') {
+            while (is_bin_digit(c) || c == '_') {
                 accum_int *= 2;
-                accum_int += bit_value(c);
+                accum_int += bin_digit_value(c);
                 rdr.bump();
                 c = rdr.curr();
             }
@@ -301,7 +301,7 @@ fn next_token(reader rdr) -> token.token {
 
         while (is_dec_digit(c) || c == '_') {
             accum_int *= 10;
-            accum_int += dec_digit_val(v);
+            accum_int += dec_digit_val(c);
             rdr.bump();
             c = rdr.curr();
         }
