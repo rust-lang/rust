@@ -238,14 +238,46 @@ fn consume_any_whitespace(reader rdr) {
 
 fn consume_any_line_comment(reader rdr) {
     if (rdr.curr() == '/') {
-        if (rdr.next() == '/') {
-            while (rdr.curr() != '\n') {
-                rdr.bump();
+        alt (rdr.next()) {
+            case ('/') {
+                while (rdr.curr() != '\n') {
+                    rdr.bump();
+                }
+                // Restart whitespace munch.
+                be consume_any_whitespace(rdr);
             }
-            // Restart whitespace munch.
-            be consume_any_whitespace(rdr);
+            case ('*') {
+                rdr.bump();
+                rdr.bump();
+                be consume_block_comment(rdr);
+            }
+            case (_) {
+                ret;
+            }
         }
     }
+}
+
+
+fn consume_block_comment(reader rdr) {
+    let int level = 1;
+    while (level > 0) {
+        if (rdr.curr() == '/' && rdr.next() == '*') {
+            rdr.bump();
+            rdr.bump();
+            level += 1;
+        } else {
+            if (rdr.curr() == '*' && rdr.next() == '/') {
+                rdr.bump();
+                rdr.bump();
+                level -= 1;
+            } else {
+                rdr.bump();
+            }
+        }
+    }
+    // restart whitespace munch.
+    be consume_any_whitespace(rdr);
 }
 
 fn next_token(reader rdr) -> token.token {
@@ -310,18 +342,19 @@ fn next_token(reader rdr) -> token.token {
     }
 
 
-    fn op_or_opeq(reader rdr, token.op op) -> token.token {
+    fn binop(reader rdr, token.binop op) -> token.token {
         rdr.bump();
         if (rdr.next() == '=') {
             rdr.bump();
-            ret token.OPEQ(op);
+            ret token.BINOPEQ(op);
         } else {
-            ret token.OP(op);
+            ret token.BINOP(op);
         }
     }
 
     alt (c) {
         // One-byte tokens.
+        case (':') { rdr.bump(); ret token.COLON(); }
         case (';') { rdr.bump(); ret token.SEMI(); }
         case (',') { rdr.bump(); ret token.COMMA(); }
         case ('.') { rdr.bump(); ret token.DOT(); }
@@ -334,16 +367,74 @@ fn next_token(reader rdr) -> token.token {
         case ('@') { rdr.bump(); ret token.AT(); }
         case ('#') { rdr.bump(); ret token.POUND(); }
         case ('_') { rdr.bump(); ret token.UNDERSCORE(); }
+        case ('~') { rdr.bump(); ret token.TILDE(); }
+
 
         // Multi-byte tokens.
         case ('=') {
-            if (rdr.next() == '=') {
+            rdr.bump();
+            if (rdr.curr() == '=') {
                 rdr.bump();
-                rdr.bump();
-                ret token.OP(token.EQEQ());
+                ret token.EQEQ();
             } else {
+                ret token.EQ();
+            }
+        }
+
+        case ('!') {
+            rdr.bump();
+            if (rdr.curr() == '=') {
                 rdr.bump();
-                ret token.OP(token.EQ());
+                ret token.NE();
+            } else {
+                ret token.NOT();
+            }
+        }
+
+        case ('<') {
+            rdr.bump();
+            alt (rdr.curr()) {
+                case ('=') {
+                    rdr.bump();
+                    ret token.LE();
+                }
+                case ('<') {
+                    ret binop(rdr, token.LSL());
+                }
+                case ('-') {
+                    rdr.bump();
+                    ret token.LARROW();
+                }
+                case ('|') {
+                    rdr.bump();
+                    ret token.SEND();
+                }
+                case (_) {
+                    ret token.LT();
+                }
+            }
+        }
+
+        case ('>') {
+            rdr.bump();
+            alt (rdr.curr()) {
+                case ('=') {
+                    rdr.bump();
+                    ret token.GE();
+                }
+
+                case ('>') {
+                    if (rdr.next() == '>') {
+                        rdr.bump();
+                        ret binop(rdr, token.ASR());
+                    } else {
+                        ret binop(rdr, token.LSR());
+                    }
+                }
+
+                case (_) {
+                    ret token.GT();
+                }
             }
         }
 
@@ -426,7 +517,7 @@ fn next_token(reader rdr) -> token.token {
                 rdr.bump();
                 ret token.RARROW();
             } else {
-                ret op_or_opeq(rdr, token.MINUS());
+                ret binop(rdr, token.MINUS());
             }
         }
 
@@ -434,34 +525,40 @@ fn next_token(reader rdr) -> token.token {
             if (rdr.next() == '&') {
                 rdr.bump();
                 rdr.bump();
-                ret token.OP(token.ANDAND());
+                ret token.ANDAND();
             } else {
-                ret op_or_opeq(rdr, token.AND());
+                ret binop(rdr, token.AND());
+            }
+        }
+
+        case ('|') {
+            if (rdr.next() == '|') {
+                rdr.bump();
+                rdr.bump();
+                ret token.OROR();
+            } else {
+                ret binop(rdr, token.OR());
             }
         }
 
         case ('+') {
-            ret op_or_opeq(rdr, token.PLUS());
+            ret binop(rdr, token.PLUS());
         }
 
         case ('*') {
-            ret op_or_opeq(rdr, token.STAR());
+            ret binop(rdr, token.STAR());
         }
 
         case ('/') {
-            ret op_or_opeq(rdr, token.STAR());
-        }
-
-        case ('!') {
-            ret op_or_opeq(rdr, token.NOT());
+            ret binop(rdr, token.STAR());
         }
 
         case ('^') {
-            ret op_or_opeq(rdr, token.CARET());
+            ret binop(rdr, token.CARET());
         }
 
         case ('%') {
-            ret op_or_opeq(rdr, token.PERCENT());
+            ret binop(rdr, token.PERCENT());
         }
 
     }

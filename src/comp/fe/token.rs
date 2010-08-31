@@ -3,12 +3,21 @@ import util.common.ty_mach_to_str;
 import std._int;
 import std._uint;
 
-type op = tag
+type binop = tag
     (PLUS(),
      MINUS(),
      STAR(),
      SLASH(),
      PERCENT(),
+     CARET(),
+     AND(),
+     OR(),
+     LSL(),
+     LSR(),
+     ASR());
+
+type token = tag
+    (/* Expression-operator symbols. */
      EQ(),
      LT(),
      LE(),
@@ -16,20 +25,14 @@ type op = tag
      NE(),
      GE(),
      GT(),
+     ANDAND(),
+     OROR(),
      NOT(),
      TILDE(),
-     CARET(),
-     AND(),
-     ANDAND(),
-     OR(),
-     OROR(),
-     LSL(),
-     LSR(),
-     ASR());
 
-type token = tag
-    (OP(op),
-     OPEQ(op),
+     BINOP(binop),
+     BINOPEQ(binop),
+
      AS(),
      WITH(),
 
@@ -152,39 +155,43 @@ type token = tag
      BRACEQUOTE(str),
      EOF());
 
-fn op_to_str(op o) -> str {
+fn binop_to_str(binop o) -> str {
     alt (o) {
-         case (PLUS()) { ret "+"; }
-         case (MINUS()) { ret "-"; }
-         case (STAR()) { ret "*"; }
-         case (SLASH()) { ret "/"; }
-         case (PERCENT()) { ret "%"; }
-         case (EQ()) { ret "="; }
-         case (LT()) { ret "<"; }
-         case (LE()) { ret "<="; }
-         case (EQEQ()) { ret "=="; }
-         case (NE()) { ret "!="; }
-         case (GE()) { ret ">="; }
-         case (GT()) { ret ">"; }
-         case (NOT()) { ret "!"; }
-         case (TILDE()) { ret "~"; }
-         case (CARET()) { ret "^"; }
-         case (AND()) { ret "&"; }
-         case (ANDAND()) { ret "&&"; }
-         case (OR()) { ret "|"; }
-         case (OROR()) { ret "||"; }
-         case (LSL()) { ret "<<"; }
-         case (LSR()) { ret ">>"; }
-         case (ASR()) { ret ">>>"; }
+        case (PLUS()) { ret "+"; }
+        case (MINUS()) { ret "-"; }
+        case (STAR()) { ret "*"; }
+        case (SLASH()) { ret "/"; }
+        case (PERCENT()) { ret "%"; }
+        case (CARET()) { ret "^"; }
+        case (AND()) { ret "&"; }
+        case (OR()) { ret "|"; }
+        case (LSL()) { ret "<<"; }
+        case (LSR()) { ret ">>"; }
+        case (ASR()) { ret ">>>"; }
     }
 }
 
 fn to_str(token t) -> str {
     alt (t) {
-        case (OP(op)) { ret op_to_str(op); }
-        case (OPEQ(op)) { ret op_to_str(op) + "="; }
+
+        case (EQ()) { ret "="; }
+        case (LT()) { ret "<"; }
+        case (LE()) { ret "<="; }
+        case (EQEQ()) { ret "=="; }
+        case (NE()) { ret "!="; }
+        case (GE()) { ret ">="; }
+        case (GT()) { ret ">"; }
+        case (NOT()) { ret "!"; }
+        case (TILDE()) { ret "~"; }
+        case (OROR()) { ret "||"; }
+        case (ANDAND()) { ret "&&"; }
+
+        case (BINOP(op)) { ret binop_to_str(op); }
+        case (BINOPEQ(op)) { ret binop_to_str(op) + "="; }
+
         case (AS()) { ret "as"; }
         case (WITH()) { ret "with"; }
+
 
         /* Structural symbols */
         case (AT()) { ret "@"; }
