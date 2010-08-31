@@ -71,6 +71,8 @@ type token =
   | PUT
   | RET
   | BE
+  | BREAK
+  | CONT
 
   (* Type and type-state keywords *)
   | TYPE
@@ -226,6 +228,8 @@ let rec string_of_tok t =
     | PUT        -> "put"
     | RET        -> "ret"
     | BE         -> "be"
+    | BREAK      -> "break"
+    | CONT       -> "cont"
 
     (* Type and type-state keywords *)
     | TYPE       -> "type"

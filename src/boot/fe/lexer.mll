@@ -113,6 +113,8 @@
                 ("const", CONST);
 
                 ("log", LOG);
+                ("break", BREAK);
+                ("cont", CONT);
                 ("spawn", SPAWN);
                 ("thread", THREAD);
                 ("yield", YIELD);

@@ -945,7 +945,9 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
 
         | Ast.STMT_alt_port _ -> () (* TODO *)
 
-        | Ast.STMT_fail | Ast.STMT_yield -> ()  (* always well-typed *)
+        (* always well-typed *)
+        | Ast.STMT_fail | Ast.STMT_yield 
+        | Ast.STMT_break | Ast.STMT_cont -> ()
 
         | Ast.STMT_join lval -> infer_lval Ast.TY_task lval
 

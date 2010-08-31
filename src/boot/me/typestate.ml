@@ -445,6 +445,15 @@ let bitmap_assigning_visitor
         Walk.visit_block_pre = visit_block_pre }
 ;;
 
+type slots_stack = node_id Stack.t;;
+type block_slots_stack = slots_stack Stack.t;;
+type frame_block_slots_stack = block_slots_stack Stack.t;;
+type loop_block_slots_stack = block_slots_stack option Stack.t;;
+(* like ret drops slots from all blocks in the frame
+ * break from a simple loo drops slots from all block in a loop *)
+let (loop_blocks:loop_block_slots_stack) = 
+  let s = Stack.create() in Stack.push None s; s
+
 let condition_assigning_visitor
     (cx:ctxt)
     (tables_stack:typestate_tables Stack.t)
@@ -574,7 +583,7 @@ let condition_assigning_visitor
           let precond = slot_inits (lval_slots cx lval) in
             raise_precondition sid precond;
   in
-
+    
   let visit_stmt_pre s =
     begin
       match s.node with
@@ -694,7 +703,6 @@ let condition_assigning_visitor
         | Ast.STMT_check_expr expr ->
             let precond = slot_inits (expr_slots cx expr) in
               raise_pre_post_cond s.id precond
-
         | Ast.STMT_while sw ->
             let (_, expr) = sw.Ast.while_lval in
             let precond = slot_inits (expr_slots cx expr) in
@@ -1275,9 +1283,6 @@ let typestate_verify_visitor
         Walk.visit_block_pre = visit_block_pre }
 ;;
 
-type slots_stack = node_id Stack.t;;
-type block_slots_stack = slots_stack Stack.t;;
-type frame_block_slots_stack = block_slots_stack Stack.t;;
 
 let lifecycle_visitor
     (cx:ctxt)
@@ -1312,18 +1317,24 @@ let lifecycle_visitor
 
 
   let visit_block_pre b =
-    Stack.push (Stack.create()) (Stack.top frame_blocks);
-    begin
-      match htab_search implicit_init_block_slots b.id with
-          None -> ()
-        | Some slots ->
+   
+    let s = Stack.create() in
+      begin
+        match Stack.top loop_blocks with 
+            Some loop -> Stack.push s loop | None -> ()
+      end;
+      Stack.push s (Stack.top frame_blocks);
+      begin
+        match htab_search implicit_init_block_slots b.id with
+            None -> ()
+          | Some slots ->
             List.iter
               (fun slot ->
                  push_slot slot;
                  mark_slot_live slot)
               slots
-    end;
-    inner.Walk.visit_block_pre b
+      end;
+      inner.Walk.visit_block_pre b
   in
 
   let note_drops stmt slots =
@@ -1341,8 +1352,20 @@ let lifecycle_visitor
     htab_put cx.ctxt_post_stmt_slot_drops stmt.id slots
   in
 
+  let filter_live_block_slots slots =
+    List.filter (fun i -> Hashtbl.mem live_block_slots i) slots
+  in
+
   let visit_block_post b =
     inner.Walk.visit_block_post b;
+    begin
+      match Stack.top loop_blocks with
+          Some loop -> 
+            ignore(Stack.pop loop);
+            if Stack.is_empty loop then
+              ignore(Stack.pop loop_blocks);
+        | None -> ()
+    end;
     let block_slots = Stack.pop (Stack.top frame_blocks) in
     let stmts = b.node in
     let len = Array.length stmts in
@@ -1352,7 +1375,8 @@ let lifecycle_visitor
           let s = stmts.(len-1) in
             match s.node with
                 Ast.STMT_ret _
-              | Ast.STMT_be _ ->
+              | Ast.STMT_be _ 
+              | Ast.STMT_break ->
                   () (* Taken care of in visit_stmt_post below. *)
               | _ ->
                 (* The blk_slots stack we have has accumulated slots in
@@ -1364,11 +1388,7 @@ let lifecycle_visitor
                  * point in the block.
                  *)
                 let slots = stk_elts_from_top block_slots in
-                let live =
-                  List.filter
-                    (fun i -> Hashtbl.mem live_block_slots i)
-                    slots
-                in
+                let live = filter_live_block_slots slots in
                   note_drops s live
         end;
   in
@@ -1440,6 +1460,10 @@ let lifecycle_visitor
                 f.Ast.for_each_body.id
                 [ (fst f.Ast.for_each_slot).id ]
 
+          | Ast.STMT_while _ ->
+              iflog cx (fun _ -> log cx "entering a loop");
+              Stack.push (Some (Stack.create ()))  loop_blocks;
+
           | Ast.STMT_alt_tag { Ast.alt_tag_arms = arms } ->
               let note_slot block slot_id =
                 log cx
@@ -1475,26 +1499,38 @@ let lifecycle_visitor
 
   let visit_stmt_post s =
     inner.Walk.visit_stmt_post s;
+    let handle_ret_like_stmt block_stack =
+      let blocks = stk_elts_from_top block_stack in
+          let slots = List.concat (List.map stk_elts_from_top blocks) in
+          let live = filter_live_block_slots slots in
+            note_drops s live
+    in
     match s.node with
         Ast.STMT_ret _
       | Ast.STMT_be _ ->
-          let blocks = stk_elts_from_top (Stack.top frame_blocks) in
-          let slots = List.concat (List.map stk_elts_from_top blocks) in
-          let live =
-            List.filter
-              (fun i -> Hashtbl.mem live_block_slots i)
-              slots
-          in
-            note_drops s live
+          handle_ret_like_stmt (Stack.top frame_blocks)
+      | Ast.STMT_break ->
+          begin
+            match (Stack.top loop_blocks) with
+                Some loop -> handle_ret_like_stmt loop
+              | None -> 
+                  iflog cx (fun _ ->
+                              log cx "break statement outside of a loop");
+                  err (Some s.id) "break statement outside of a loop"
+          end
       | _ -> ()
   in
 
   let enter_frame _ =
-    Stack.push (Stack.create()) frame_blocks
+    Stack.push (Stack.create()) frame_blocks;
+    Stack.push None loop_blocks
   in
-
+    
   let leave_frame _ =
-    ignore (Stack.pop frame_blocks)
+    ignore (Stack.pop frame_blocks);
+    match Stack.pop loop_blocks with
+        Some _ -> bug () "leave_frame should not end a loop"
+      | None -> ()
   in
 
   let visit_mod_item_pre n p i =

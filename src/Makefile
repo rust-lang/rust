@@ -579,6 +579,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       vec-slice.rs \
                       vec.rs \
                       while-flow-graph.rs \
+                      while-with-break.rs \
                       writealias.rs \
                       yield.rs \
                       yield2.rs \

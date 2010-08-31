@@ -207,6 +207,8 @@ and stmt' =
   | STMT_put_each of (lval * (atom array))
   | STMT_ret of (atom option)
   | STMT_be of (lval * (atom array))
+  | STMT_break
+  | STMT_cont
   | STMT_alt_tag of stmt_alt_tag
   | STMT_alt_type of stmt_alt_type
   | STMT_alt_port of stmt_alt_port
@@ -1227,6 +1229,10 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           fmt_lval ff fn;
           fmt_atoms ff az;
           fmt ff ";";
+
+      | STMT_break -> fmt ff "break;";
+
+      | STMT_cont -> fmt ff "cont;";
 
       | STMT_block b -> fmt_block ff b.node
 

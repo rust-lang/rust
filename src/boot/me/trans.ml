@@ -234,6 +234,7 @@ let trans_visitor
   in
 
   let epilogue_jumps = Stack.create() in
+  let simple_break_jumps = Stack.create() in (* not used for for-each *)
 
   let path_name (_:unit) : string =
     string_of_name (path_to_name path)
@@ -4717,7 +4718,7 @@ let trans_visitor
             Some params -> params
           | None -> [| |]
       in
-      let depth = Hashtbl.find cx.ctxt_stmt_loop_depths stmt_id in
+      let depth = get_stmt_depth cx stmt_id in
       let fc = { for_each_fixup = fix; for_each_depth = depth } in
         iflog (fun _ ->
                  log cx "for-each at depth %d\n" depth);
@@ -5059,12 +5060,16 @@ let trans_visitor
           let fwd_jmp = mark () in
             emit (Il.jmp Il.JMP Il.CodeNone);
             let block_begin = mark () in
+              Stack.push (Stack.create()) simple_break_jumps;
               trans_block sw.Ast.while_body;
               patch fwd_jmp;
               Array.iter trans_stmt head_stmts;
               check_interrupt_flag ();
-              let back_jmps = trans_cond false head_expr in
-                List.iter (fun j -> patch_existing j block_begin) back_jmps;
+              begin
+                let back_jmps = trans_cond false head_expr in
+                  List.iter (fun j -> patch_existing j block_begin) back_jmps;
+              end;
+              Stack.iter patch (Stack.pop simple_break_jumps);
 
       | Ast.STMT_if si ->
           let skip_thn_jmps = trans_cond true si.Ast.if_test in
@@ -5107,6 +5112,13 @@ let trans_visitor
             in
           let (dst_cell, _) = get_current_output_cell_and_slot () in
             trans_be_fn cx dst_cell flv ty_params args
+
+      | Ast.STMT_break ->
+          if get_stmt_depth cx stmt.id > 0
+          then unimpl (Some stmt.id) "break within iterator-block";
+          drop_slots_at_curr_stmt();
+          Stack.push (mark()) (Stack.top simple_break_jumps);
+          emit (Il.jmp Il.JMP Il.CodeNone);
 
       | Ast.STMT_put atom_opt ->
           trans_put atom_opt
