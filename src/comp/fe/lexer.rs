@@ -2,6 +2,7 @@ import std._io.stdio_reader;
 import std._str;
 import std.map;
 import std.map.hashmap;
+import util.common;
 
 fn new_str_hash[V]() -> map.hashmap[str,V] {
     let map.hashfn[str] hasher = _str.hash;
@@ -95,6 +96,80 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
     keywords.insert("ret", token.RET());
     keywords.insert("be", token.BE());
 
+    keywords.insert("fail", token.FAIL());
+    keywords.insert("drop", token.DROP());
+
+    keywords.insert("type", token.TYPE());
+    keywords.insert("check", token.CHECK());
+    keywords.insert("claim", token.CLAIM());
+    keywords.insert("prove", token.PROVE());
+
+    keywords.insert("io", token.IO());
+    keywords.insert("state", token.STATE());
+    keywords.insert("unsafe", token.UNSAFE());
+
+    keywords.insert("native", token.NATIVE());
+    keywords.insert("mutable", token.MUTABLE());
+    keywords.insert("auto", token.AUTO());
+
+    keywords.insert("fn", token.FN());
+    keywords.insert("iter", token.ITER());
+
+    keywords.insert("import", token.IMPORT());
+    keywords.insert("export", token.EXPORT());
+
+    keywords.insert("let", token.LET());
+
+    keywords.insert("log", token.LOG());
+    keywords.insert("spawn", token.SPAWN());
+    keywords.insert("thread", token.THREAD());
+    keywords.insert("yield", token.YIELD());
+    keywords.insert("join", token.JOIN());
+
+    keywords.insert("bool", token.BOOL());
+
+    keywords.insert("int", token.INT());
+    keywords.insert("uint", token.UINT());
+    keywords.insert("float", token.FLOAT());
+
+    keywords.insert("char", token.CHAR());
+    keywords.insert("str", token.STR());
+
+
+    keywords.insert("rec", token.REC());
+    keywords.insert("tup", token.TUP());
+    keywords.insert("tag", token.TAG());
+    keywords.insert("vec", token.VEC());
+    keywords.insert("any", token.ANY());
+
+    keywords.insert("obj", token.OBJ());
+
+    keywords.insert("port", token.PORT());
+    keywords.insert("chan", token.CHAN());
+
+    keywords.insert("task", token.TASK());
+
+    keywords.insert("true", token.LIT_BOOL(true));
+    keywords.insert("false", token.LIT_BOOL(false));
+
+    keywords.insert("in", token.IN());
+
+    keywords.insert("as", token.AS());
+    keywords.insert("with", token.WITH());
+
+    keywords.insert("bind", token.BIND());
+
+    keywords.insert("u8", token.MACH(common.ty_u8()));
+    keywords.insert("u16", token.MACH(common.ty_u16()));
+    keywords.insert("u32", token.MACH(common.ty_u32()));
+    keywords.insert("u64", token.MACH(common.ty_u64()));
+    keywords.insert("i8", token.MACH(common.ty_i8()));
+    keywords.insert("i16", token.MACH(common.ty_i16()));
+    keywords.insert("i32", token.MACH(common.ty_i32()));
+    keywords.insert("i64", token.MACH(common.ty_i64()));
+    keywords.insert("f32", token.MACH(common.ty_f32()));
+    keywords.insert("f64", token.MACH(common.ty_f64()));
+
     ret reader(rdr, filename, rdr.getc() as char, rdr.getc() as char,
                1u, 1u, keywords, reserved);
 }
@@ -123,6 +198,31 @@ fn is_hex_digit(char c) -> bool {
 
 fn is_bin_digit(char c) -> bool {
     ret c == '0' || c == '1';
+}
+
+fn dec_digit_val(char c) -> int {
+    ret (c as int) - ('0' as int);
+}
+
+fn hex_digit_val(char c) -> int {
+    if (in_range(c, '0', '9')) {
+        ret (c as int) - ('0' as int);
+    }
+
+    if (in_range(c, 'a', 'f')) {
+        ret (c as int) - ('a' as int);
+    }
+
+    if (in_range(c, 'A', 'F')) {
+        ret (c as int) - ('A' as int);
+    }
+
+    fail;
+}
+
+fn bin_digit_value(char c) -> int {
+    if (c == 0) { ret 0; }
+    ret 1;
 }
 
 fn is_whitespace(char c) -> bool {
@@ -159,27 +259,54 @@ fn next_token(reader rdr) -> token.token {
     auto c = rdr.curr();
 
     if (is_alpha(c)) {
-        while (is_alpha(rdr.curr())) {
-            c = rdr.curr();
+        while (is_alpha(c) || c == '_') {
             accum_str += (c as u8);
             rdr.bump();
+            c = rdr.curr();
         }
+
+        auto kwds = rdr.get_keywords();
+        if (kwds.contains_key(accum_str)) {
+            ret kwds.get(accum_str);
+        }
+
         ret token.IDENT(accum_str);
     }
 
     if (is_dec_digit(c)) {
-        if (c == '0') {
-            log "fixme: leading zero";
-            fail;
-        } else {
-            while (is_dec_digit(c)) {
-                c = rdr.curr();
-                accum_int *= 10;
-                accum_int += (c as int) - ('0' as int);
+        auto n = rdr.next();
+        if (c == '0' && n == 'x') {
+            rdr.bump();
+            rdr.bump();
+            c = rdr.curr();
+            while (is_hex_digit(c) || c == '_') {
+                accum_int *= 16;
+                accum_int += hex_digit_val(v);
                 rdr.bump();
+                c = rdr.curr();
             }
-            ret token.LIT_INT(accum_int);
         }
+
+        if (c == '0' && n == 'b') {
+            rdr.bump();
+            rdr.bump();
+            c = rdr.curr();
+            while (is_hex_digit(c) || c == '_') {
+                accum_int *= 2;
+                accum_int += bit_value(c);
+                rdr.bump();
+                c = rdr.curr();
+            }
+        }
+
+        while (is_dec_digit(c) || c == '_') {
+            accum_int *= 10;
+            accum_int += dec_digit_val(v);
+            rdr.bump();
+            c = rdr.curr();
+        }
+
+        ret token.LIT_INT(accum_int);
     }
 
 
@@ -206,6 +333,7 @@ fn next_token(reader rdr) -> token.token {
         case (']') { rdr.bump(); ret token.RBRACKET(); }
         case ('@') { rdr.bump(); ret token.AT(); }
         case ('#') { rdr.bump(); ret token.POUND(); }
+        case ('_') { rdr.bump(); ret token.UNDERSCORE(); }
 
         // Multi-byte tokens.
         case ('=') {
