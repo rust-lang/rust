@@ -1,13 +1,14 @@
 
 import std.util.option;
 import std.map.hashmap;
+import util.common.span;
 
 type ident = str;
 
 type crate = rec( str filename,
                   _mod module);
 
-type block = vec[stmt];
+type block = vec[@stmt];
 
 type stmt = tag( stmt_block(block),
                  stmt_decl(@decl),
@@ -20,7 +21,7 @@ type lval = tag( lval_ident(ident),
                  lval_ext(@lval, ident),
                  lval_idx(@lval, @atom) );
 
-type atom = tag( atom_lit(lit));
+type atom = tag( atom_lit(@lit), atom_lval(@lval) );
 
 type lit = tag( lit_char(char),
                 lit_int(int),
@@ -32,7 +33,7 @@ type ty = tag( ty_nil(),
                ty_int(),
                ty_char() );
 
-type mode = tag( local(), alias() );
+type mode = tag( val(), alias() );
 
 type slot = rec(ty ty, mode mode);
 

@@ -1,3 +1,7 @@
+import std._uint;
+
+type pos = rec(uint line, uint col);
+type span = rec(str filename, pos lo, pos hi);
 
 type ty_mach = tag( ty_i8(), ty_i16(), ty_i32(), ty_i64(),
                     ty_u8(), ty_u16(), ty_u32(), ty_u64(),

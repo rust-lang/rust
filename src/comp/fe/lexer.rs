@@ -10,33 +10,46 @@ fn new_str_hash[V]() -> map.hashmap[str,V] {
     ret map.mk_hashmap[str,V](hasher, eqer);
 }
 
-type reader = obj {
-              fn is_eof() -> bool;
-              fn curr() -> char;
-              fn next() -> char;
-              fn bump();
-              fn get_curr_pos() -> tup(str,uint,uint);
-              fn get_keywords() -> hashmap[str,token.token];
-              fn get_reserved() -> hashmap[str,()];
+state type reader = state obj {
+                          fn is_eof() -> bool;
+                          fn curr() -> char;
+                          fn next() -> char;
+                          state fn bump();
+                          state fn mark();
+                          fn get_filename() -> str;
+                          fn get_mark_pos() -> common.pos;
+                          fn get_curr_pos() -> common.pos;
+                          fn get_keywords() -> hashmap[str,token.token];
+                          fn get_reserved() -> hashmap[str,()];
 };
 
 fn new_reader(stdio_reader rdr, str filename) -> reader
 {
-    obj reader(stdio_reader rdr,
-               str filename,
-               mutable char c,
-               mutable char n,
-               mutable uint line,
-               mutable uint col,
-               hashmap[str,token.token] keywords,
-               hashmap[str,()] reserved)
-        {
+    state obj reader(stdio_reader rdr,
+                     str filename,
+                     mutable char c,
+                     mutable char n,
+                     mutable uint mark_line,
+                     mutable uint mark_col,
+                     mutable uint line,
+                     mutable uint col,
+                     hashmap[str,token.token] keywords,
+                     hashmap[str,()] reserved) {
+
             fn is_eof() -> bool {
                 ret c == (-1) as char;
             }
 
-            fn get_curr_pos() -> tup(str,uint,uint) {
-                ret tup(filename, line, col);
+            fn get_curr_pos() -> common.pos {
+                ret rec(line=line, col=col);
+            }
+
+            fn get_mark_pos() -> common.pos {
+                ret rec(line=mark_line, col=mark_col);
+            }
+
+            fn get_filename() -> str {
+                ret filename;
             }
 
             fn curr() -> char {
@@ -47,7 +60,7 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
                 ret n;
             }
 
-            fn bump() {
+            state fn bump() {
                 c = n;
 
                 if (c == (-1) as char) {
@@ -56,12 +69,17 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
 
                 if (c == '\n') {
                     line += 1u;
-                    col = 0u;
+                    col = 1u;
                 } else {
                     col += 1u;
                 }
 
                 n = rdr.getc() as char;
+            }
+
+            state fn mark() {
+                mark_line = line;
+                mark_col = col;
             }
 
             fn get_keywords() -> hashmap[str,token.token] {
@@ -171,7 +189,7 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
     keywords.insert("f64", token.MACH(common.ty_f64()));
 
     ret reader(rdr, filename, rdr.getc() as char, rdr.getc() as char,
-               1u, 1u, keywords, reserved);
+               1u, 1u, 1u, 1u, keywords, reserved);
 }
 
 
@@ -229,14 +247,14 @@ fn is_whitespace(char c) -> bool {
     ret c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
-fn consume_any_whitespace(reader rdr) {
+state fn consume_any_whitespace(reader rdr) {
     while (is_whitespace(rdr.curr())) {
         rdr.bump();
     }
     be consume_any_line_comment(rdr);
 }
 
-fn consume_any_line_comment(reader rdr) {
+state fn consume_any_line_comment(reader rdr) {
     if (rdr.curr() == '/') {
         alt (rdr.next()) {
             case ('/') {
@@ -259,7 +277,7 @@ fn consume_any_line_comment(reader rdr) {
 }
 
 
-fn consume_block_comment(reader rdr) {
+state fn consume_block_comment(reader rdr) {
     let int level = 1;
     while (level > 0) {
         if (rdr.curr() == '/' && rdr.next() == '*') {
@@ -280,7 +298,7 @@ fn consume_block_comment(reader rdr) {
     be consume_any_whitespace(rdr);
 }
 
-fn next_token(reader rdr) -> token.token {
+state fn next_token(reader rdr) -> token.token {
     auto accum_str = "";
     auto accum_int = 0;
 
@@ -341,8 +359,7 @@ fn next_token(reader rdr) -> token.token {
         ret token.LIT_INT(accum_int);
     }
 
-
-    fn binop(reader rdr, token.binop op) -> token.token {
+    state fn binop(reader rdr, token.binop op) -> token.token {
         rdr.bump();
         if (rdr.next() == '=') {
             rdr.bump();

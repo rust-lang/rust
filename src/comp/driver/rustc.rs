@@ -25,9 +25,10 @@ fn main(vec[str] args) {
   log "You want rustboot, the compiler next door.";
 
   auto i = 0;
+  auto sess = session.session();
   for (str filename in args) {
     if (i > 0) {
-        auto p = parser.new_parser(filename);
+        auto p = parser.new_parser(sess, filename);
         log "opened file: " + filename;
         auto tok = p.peek();
         while (true) {

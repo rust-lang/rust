@@ -12,6 +12,7 @@ mod fe {
 
 mod driver {
     mod rustc;
+    mod session;
 }
 
 mod util {
