@@ -768,8 +768,12 @@ let trans_visitor
                         add_to vc sz;
                         Il.Mem (based v, elt_rty)
             end
-      | _ -> bug () "get_element_ptr_dyn %d on cell %s" i
-          (cell_str mem_cell)
+      | Il.Mem (_, Il.StructTy elts) ->
+          bug ()
+            "get_element_ptr dyn %d out of bounds (len %d) on cell %s"
+            i (Array.length elts) (cell_str mem_cell)
+      | _ ->
+          bug () "get_element_ptr_dyn %d on cell %s" i (cell_str mem_cell)
   in
 
   let get_element_ptr_dyn_in_current_frame
