@@ -40,6 +40,7 @@ type glue =
   | GLUE_obj_drop of node_id      (* Node is the obj.                   *)
   | GLUE_loop_body of node_id     (* Node is the 'for each' body block. *)
   | GLUE_forward of (Ast.ident * Ast.ty_obj * Ast.ty_obj)
+  | GLUE_vec_grow
 ;;
 
 type data =
@@ -1939,6 +1940,11 @@ and fn_rty (opaque_box_body:bool) (word_bits:Il.bits) : Il.referent_ty =
 
     r [| code_ptr; box_ptr |]
 
+and vec_sty (word_bits:Il.bits) : Il.scalar_ty =
+  let word = word_rty word_bits in
+  let ptr = Il.ScalarTy (Il.AddrTy Il.OpaqueTy) in
+    Il.AddrTy (Il.StructTy [| word; word; word; ptr |])
+
 and referent_type (word_bits:Il.bits) (t:Ast.ty) : Il.referent_ty =
   let s t = Il.ScalarTy t in
   let v b = Il.ValTy b in
@@ -1985,7 +1991,7 @@ and referent_type (word_bits:Il.bits) (t:Ast.ty) : Il.referent_ty =
       | Ast.TY_mach (TY_f64) -> sv Il.Bits64
 
       | Ast.TY_str -> sp (Il.StructTy [| word; word; word; ptr |])
-      | Ast.TY_vec _ -> sp (Il.StructTy [| word; word; word; ptr |])
+      | Ast.TY_vec _ -> s (vec_sty word_bits)
       | Ast.TY_tup tt -> tup tt
       | Ast.TY_rec tr -> tup (Array.map snd tr)
 
@@ -2344,6 +2350,7 @@ let glue_str (cx:ctxt) (g:glue) : string =
         ^ id
         ^ "$" ^ (ty_str (Ast.TY_obj oty1))
         ^ "$" ^ (ty_str (Ast.TY_obj oty2))
+    | GLUE_vec_grow -> "glue$vec_grow"
 ;;
 
 

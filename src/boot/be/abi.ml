@@ -102,8 +102,8 @@ let iterator_args_elt_outer_frame_ptr = 1;;
 
 let indirect_args_elt_closure = 0;;
 
-(* dst, taskptr, closure-ptr, ty_params, src, src2=target_task *)
-let worst_case_glue_call_args = 6;;
+(* Current worst case is by vec grow glue *)
+let worst_case_glue_call_args = 7;;
 
 type abi =
   {

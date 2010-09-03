@@ -1740,21 +1740,29 @@ let trans_visitor
       (ty:Ast.ty)
       (curr_iso:Ast.ty_iso option)
       : fixup =
+    let arg_ty_params_alias = 0 in
+    let arg_src_alias = 1 in
+    let arg_initflag = 2 in
+
     let g = GLUE_copy ty in
     let inner (out_ptr:Il.cell) (args:Il.cell) =
       let dst = deref out_ptr in
-      let ty_params = deref (get_element_ptr args 0) in
-      let src = deref (get_element_ptr args 1) in
+      let ty_params = deref (get_element_ptr args arg_ty_params_alias) in
+      let src = deref (get_element_ptr args arg_src_alias) in
 
       (* Translate copy code for the dst-initializing and
        * dst-non-initializing cases and branch accordingly. *)
-      let initflag = get_element_ptr args 2 in
+      let initflag = get_element_ptr args arg_initflag in
       let jmps = trans_compare_simple Il.JNE (Il.Cell initflag) one in
+
         trans_copy_ty ty_params true dst ty src ty curr_iso;
+
         let skip_noninit_jmp = mark() in
           emit (Il.jmp Il.JMP Il.CodeNone);
           List.iter patch jmps;
+
           trans_copy_ty ty_params false dst ty src ty curr_iso;
+
           patch skip_noninit_jmp;
     in
     let ty_params_ptr = ty_params_covering ty in
@@ -1767,6 +1775,151 @@ let trans_visitor
 
   and get_cmp_glue _ = failwith "TODO"
 
+  (*
+   * Vector-growth glue takes four arguments:
+   *
+   *   0. (Implicit) task ptr
+   *   1. Pointer to the typarams of the caller's frame (possibly required to
+   *      be passed to element's copy glue).
+   *   2. Pointer to tydesc of the vec's stored element type, so that elements
+   *      can be copied to a newly alloc'ed vec if one must be created.
+   *   3. Alias to vec that needs to grow (i.e. ptr to ptr to rust_vec).
+   *   4. Number of bytes of growth requested
+   *)
+  and emit_vec_grow_glue
+      (fix:fixup)
+      (g:glue)
+      : unit =
+    let arg_typarams_ptr = 0 in
+    let arg_tydesc_ptr = 1 in
+    let arg_vec_alias = 2 in
+    let arg_nbytes = 3 in
+
+    let name = glue_str cx g in
+      log cx "emitting glue: %s" name;
+
+      let fn_ty =
+        mk_simple_ty_fn
+          [| ty_params_covering Ast.TY_int;      (* an OK lie *)
+             local_slot Ast.TY_type;
+             alias_slot (Ast.TY_vec Ast.TY_int); (* an OK lie *)
+             local_slot Ast.TY_uint; |]
+      in
+
+      let args_rty = call_args_referent_type cx 0 fn_ty None in
+
+      let callsz = Il.referent_ty_size word_bits args_rty in
+      let spill = new_fixup (name ^ " spill") in
+        trans_glue_frame_entry callsz spill false;
+
+        let args_cell =
+          get_element_ptr (caller_args_cell args_rty) Abi.calltup_elt_args
+        in
+
+        let vec_alias_cell = get_element_ptr args_cell arg_vec_alias in
+        let vec_cell = deref vec_alias_cell in
+        let nbytes_cell = get_element_ptr args_cell arg_nbytes in
+        let td_ptr_cell = get_element_ptr args_cell arg_tydesc_ptr in
+        let ty_params_cell =
+          deref (get_element_ptr args_cell arg_typarams_ptr)
+        in
+
+        let need_copy_cell = next_vreg_cell word_sty in
+        let new_vec_cell = next_vreg_cell (vec_sty word_bits) in
+
+          aliasing true need_copy_cell
+            begin
+              fun need_copy_alias_cell ->
+                trans_upcall "upcall_vec_grow"
+                  new_vec_cell
+                  [| Il.Cell vec_cell;
+                     Il.Cell nbytes_cell;
+                     Il.Cell need_copy_alias_cell |]
+            end;
+
+          let no_copy_jmps =
+            trans_compare_simple Il.JE (Il.Cell need_copy_cell) zero
+          in
+
+            let dst_vec = deref new_vec_cell in
+            let src_vec = deref vec_cell in
+
+            let fill =
+              get_element_ptr_dyn ty_params_cell src_vec Abi.vec_elt_fill
+            in
+            let elt_sz =
+              get_element_ptr (deref td_ptr_cell) Abi.tydesc_field_size
+            in
+
+            let dst_buf =
+              get_element_ptr_dyn ty_params_cell dst_vec Abi.vec_elt_data
+            in
+            let src_buf =
+              get_element_ptr_dyn ty_params_cell src_vec Abi.vec_elt_data
+            in
+
+            (* Copy loop: *)
+            let eltp_sty = Il.AddrTy (Il.OpaqueTy) in
+            let dptr = next_vreg_cell eltp_sty in
+            let sptr = next_vreg_cell eltp_sty in
+            let dlim = next_vreg_cell eltp_sty in
+
+              lea dptr (fst (need_mem_cell dst_buf));
+              lea sptr (fst (need_mem_cell src_buf));
+              mov dlim (Il.Cell dptr);
+              add_to dlim (Il.Cell fill);
+
+              (* Copy loop body: *)
+              let fwd_jmp = mark () in
+                emit (Il.jmp Il.JMP Il.CodeNone);
+                let back_jmp_targ = mark () in
+
+                (* Copy *)
+                let ty_params_ptr =
+                  get_tydesc_params ty_params_cell td_ptr_cell
+                in
+                let initflag = Il.Reg (force_to_reg one) in
+                  trans_call_dynamic_glue
+                    td_ptr_cell
+                    Abi.tydesc_field_copy_glue
+                    (Some (deref dptr))
+                    [| ty_params_ptr; sptr; initflag |]
+                    None;
+
+                  add_to dptr (Il.Cell elt_sz);
+                  add_to sptr (Il.Cell elt_sz);
+
+                  patch fwd_jmp;
+                  let back_jmp =
+                    trans_compare_simple Il.JB (Il.Cell dptr) (Il.Cell dlim)
+                  in
+                    List.iter
+                      (fun j -> patch_existing j back_jmp_targ) back_jmp;
+
+                    (* Set the new vec's fill to the original vec's fill *)
+                    let dst_fill = get_element_ptr dst_vec Abi.vec_elt_fill in
+                    let v = next_vreg_cell word_sty in
+                      mov v (Il.Cell fill);
+                      mov dst_fill (Il.Cell v);
+
+                      List.iter patch no_copy_jmps;
+
+                      mov vec_cell (Il.Cell new_vec_cell);
+
+                      trans_glue_frame_exit fix spill g
+
+
+  and get_vec_grow_glue _
+      : fixup =
+    let g = GLUE_vec_grow in
+    match htab_search cx.ctxt_glue_code g with
+        Some code -> code.code_fixup
+      | None ->
+          begin
+            let fix = new_fixup (glue_str cx g) in
+              emit_vec_grow_glue fix g;
+              fix
+          end
 
   (* Glue functions use mostly the same calling convention as ordinary
    * functions.
@@ -4418,21 +4571,29 @@ let trans_visitor
           (Ast.TY_str, Ast.TY_str)
         | (Ast.TY_vec _, Ast.TY_vec _)
             when (simplified_ty dst_ty) = (simplified_ty src_ty) ->
-            let is_gc = if type_has_state src_ty then 1L else 0L in
+
             let src_cell = need_cell src_oper in
             let src_vec = deref src_cell in
             let src_fill = get_element_ptr src_vec Abi.vec_elt_fill in
             let dst_vec = deref dst_cell in
             let dst_fill = get_element_ptr dst_vec Abi.vec_elt_fill in
+
               if trailing_null
               then sub_from dst_fill (imm 1L);
-              trans_upcall "upcall_vec_grow"
-                dst_cell
-                [| Il.Cell dst_cell;
-                   Il.Cell src_fill;
-                   imm is_gc |];
 
-              (* 
+              aliasing true dst_cell
+                begin
+                  fun dst_vec_alias ->
+                    trans_call_simple_static_glue
+                      (get_vec_grow_glue ())
+                      (get_ty_params_of_current_frame ())
+                      [| get_tydesc None elt_ty;
+                         dst_vec_alias;
+                         src_fill; |]
+                      None
+                end;
+
+              (*
                * By now, dst_cell points to a vec/str with room for us
                * to add to.
                *)
@@ -4486,13 +4647,21 @@ let trans_visitor
         | (Ast.TY_vec _, e)
             when e = simplified_ty elt_ty ->
 
-            let dst_is_gc = if type_has_state dst_ty then 1L else 0L in
             let elt_sz = ty_sz_in_current_frame elt_ty in
-              trans_upcall "upcall_vec_grow"
-                dst_cell
-                [| Il.Cell dst_cell;
-                   elt_sz;
-                   imm dst_is_gc |];
+            let elt_sz_cell = next_vreg_cell word_sty in
+              mov elt_sz_cell elt_sz;
+
+              aliasing true dst_cell
+                begin
+                  fun dst_vec_alias ->
+                    trans_call_simple_static_glue
+                      (get_vec_grow_glue ())
+                      (get_ty_params_of_current_frame ())
+                      [| get_tydesc None elt_ty;
+                         dst_vec_alias;
+                         elt_sz_cell; |]
+                      None
+                end;
 
               (* 
                * By now, dst_cell points to a vec/str with room for us

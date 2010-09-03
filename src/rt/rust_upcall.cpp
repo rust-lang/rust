@@ -384,18 +384,23 @@ upcall_new_vec(rust_task *task, size_t fill, type_desc *td) {
     return v;
 }
 
-extern "C" CDECL rust_str *
+extern "C" CDECL rust_vec *
 upcall_vec_grow(rust_task *task,
                 rust_vec *v,
                 size_t n_bytes,
-                uintptr_t is_gc) {
+                uintptr_t *need_copy)
+{
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
-    task->log(rust_log::UPCALL|rust_log::MEM,
-             "upcall vec_grow(0x%" PRIxPTR ", %" PRIdPTR
-             "), alloc=%" PRIdPTR ", fill=%" PRIdPTR,
-             v, n_bytes, v->alloc, v->fill);
+    task->log(rust_log::UPCALL | rust_log::MEM,
+              "upcall vec_grow(0x%" PRIxPTR ", %" PRIdPTR
+              "), alloc=%" PRIdPTR ", fill=%" PRIdPTR
+              ", need_copy=0x%" PRIxPTR,
+              v, n_bytes, v->alloc, v->fill, need_copy);
+
+    *need_copy = 0;
     size_t alloc = next_power_of_two(sizeof(rust_vec) + v->fill + n_bytes);
+
     if (v->ref_count == 1) {
 
         // Fastest path: already large enough.
@@ -414,7 +419,19 @@ upcall_vec_grow(rust_task *task,
         v->alloc = alloc;
 
     } else {
-        // Slowest path: make a new vec.
+        /**
+         * Slowest path: make a new vec.
+         *
+         * 1. Allocate a new rust_vec with desired additional space.
+         * 2. Down-ref the shared rust_vec, point to the new one instead.
+         * 3. Copy existing elements into the new rust_vec.
+         *
+         * Step 3 is a bit tricky.  We don't know how to properly copy the
+         * elements in the runtime (all we have are bits in a buffer; no
+         * type infromation and no copy glue).  What we do instead is set the
+         * need_copy outparam flag to indicate to our caller (vec-copy glue)
+         * that we need the copies performed for us.
+         */
         task->log(rust_log::UPCALL | rust_log::MEM, "new vec path");
         void *mem = dom->malloc(alloc);
         if (!mem) {
@@ -422,8 +439,8 @@ upcall_vec_grow(rust_task *task,
             return NULL;
         }
         v->deref();
-        v = new (mem) rust_vec(dom, alloc, v->fill,
-                               v->fill ? &v->data[0] : NULL);
+        v = new (mem) rust_vec(dom, alloc, 0, NULL);
+        *need_copy = 1;
     }
     I(dom, sizeof(rust_vec) + v->fill <= v->alloc);
     return v;
