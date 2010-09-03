@@ -29,6 +29,11 @@ fn alloc[T](uint n_elts) -> vec[T] {
   ret rustrt.vec_alloc[vec[T], T](n_elts);
 }
 
+fn refcount[T](vec[T] v) -> uint {
+  // -1 because calling this function incremented the refcount.
+  ret rustrt.refcount[T](v) - 1u;
+}
+
 type init_op[T] = fn(uint i) -> T;
 
 fn init_fn[T](&init_op[T] op, uint n_elts) -> vec[T] {
