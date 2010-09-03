@@ -1244,7 +1244,7 @@ let trans_visitor
     in
     let callsz = Il.referent_ty_size word_bits self_args_rty in
     let spill = new_fixup "forwarding fn spill" in
-      trans_glue_frame_entry callsz spill;
+      trans_glue_frame_entry callsz spill true;
       let all_self_args_cell = caller_args_cell self_args_rty in
       let self_indirect_args_cell =
         get_element_ptr all_self_args_cell Abi.calltup_elt_indirect_args
@@ -1403,7 +1403,25 @@ let trans_visitor
   and trans_glue_frame_entry
       (callsz:size)
       (spill:fixup)
+      (user_level:bool)
       : unit =
+    (*
+     * The user_level flag is true to indicate that this is glue that is
+     * not called via the push/pop mechanism of trans_call_glue, and thereby
+     * may (legitimately) have callsz exceeding Abi.worst_case_glue_call_args.
+     *
+     * Assert that the callsz is indeed no bigger than our abi's purported
+     * worst-case glue args.  Moreover, the callsz should be static for non-
+     * user-level glue, so we can rely on (force_sz callsz) as a preliminary
+     * assertion as well.
+     *)
+    if not user_level
+    then assert ((Int64.compare
+                    (force_sz callsz)
+                    (Int64.mul
+                       word_sz
+                       (Int64.of_int Abi.worst_case_glue_call_args))) <= 0);
+
     let framesz = SIZE_fixup_mem_sz spill in
       push_new_emitter_with_vregs None;
       iflog (fun _ -> annotate "prologue");
@@ -1491,7 +1509,7 @@ let trans_visitor
 
     let callsz = Il.referent_ty_size word_bits callee_args_rty in
     let spill = new_fixup "bind glue spill" in
-      trans_glue_frame_entry callsz spill;
+      trans_glue_frame_entry callsz spill true;
 
       let all_self_args_cell = caller_args_cell self_args_rty in
 
@@ -1545,9 +1563,8 @@ let trans_visitor
    *)
 
   and trans_mem_glue_frame_entry (n_outgoing_args:int) (spill:fixup) : unit =
-    let isz = cx.ctxt_abi.Abi.abi_implicit_args_sz in
-    let callsz = SIZE_fixed (Int64.add isz (word_n n_outgoing_args)) in
-      trans_glue_frame_entry callsz spill
+    let callsz = SIZE_fixed (word_n n_outgoing_args) in
+      trans_glue_frame_entry callsz spill false
 
   and get_mem_glue (g:glue) (inner:Il.mem -> unit) : fixup =
     match htab_search cx.ctxt_glue_code g with
