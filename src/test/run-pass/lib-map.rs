@@ -3,6 +3,7 @@
 use std;
 import std.map;
 import std._str;
+import std._uint;
 import std.util;
 
 fn test_simple() {
@@ -42,15 +43,19 @@ fn test_simple() {
   check (hm_uu.get(12u) == 12u);
 
 
-  /*
+  let str ten = "ten";
+  let str eleven = "eleven";
+  let str twelve = "twelve";
+
   log "str -> uint";
 
   let map.hashmap[str, uint] hm_su = map.mk_hashmap[str, uint](hasher_str,
                                                                eqer_str);
-
   check (hm_su.insert("ten", 12u));
-  check (hm_su.insert("eleven", 13u));
+  check (hm_su.insert(eleven, 13u));
   check (hm_su.insert("twelve", 14u));
+
+  check (hm_su.get(eleven) == 13u);
 
   check (hm_su.get("eleven") == 13u);
   check (hm_su.get("twelve") == 14u);
@@ -88,9 +93,9 @@ fn test_simple() {
   let map.hashmap[str, str] hm_ss = map.mk_hashmap[str, str](hasher_str,
                                                              eqer_str);
 
-  check (hm_ss.insert("ten", "twelve"));
-  check (hm_ss.insert("eleven", "thirteen"));
-  check (hm_ss.insert("twelve", "fourteen"));
+  check (hm_ss.insert(ten, "twelve"));
+  check (hm_ss.insert(eleven, "thirteen"));
+  check (hm_ss.insert(twelve, "fourteen"));
 
   check (_str.eq(hm_ss.get("eleven"), "thirteen"));
   check (_str.eq(hm_ss.get("twelve"), "fourteen"));
@@ -101,8 +106,6 @@ fn test_simple() {
 
   check (!hm_ss.insert("twelve", "twelve"));
   check (_str.eq(hm_ss.get("twelve"), "twelve"));
-  */
-
 
   log "*** finished test_simple";
 }
@@ -115,22 +118,26 @@ fn test_growth() {
 
   let uint num_to_insert = 64u;
 
-  fn eq(&uint x, &uint y) -> bool { ret x == y; }
-  fn hash(&uint u) -> uint {
+  fn eq_uint(&uint x, &uint y) -> bool { ret x == y; }
+  fn hash_uint(&uint u) -> uint {
     // FIXME: can't use std.util.id since we'd be capturing a type param,
     // and presently we can't close items over type params.
     ret u;
   }
 
-  let map.hashfn[uint] hasher = hash;
-  let map.eqfn[uint] eqer = eq;
-  let map.hashmap[uint, uint] hm = map.mk_hashmap[uint, uint](hasher, eqer);
+
+  log "uint -> uint";
+
+  let map.hashfn[uint] hasher_uint = hash_uint;
+  let map.eqfn[uint] eqer_uint = eq_uint;
+  let map.hashmap[uint, uint] hm_uu = map.mk_hashmap[uint, uint](hasher_uint,
+                                                                 eqer_uint);
 
   let uint i = 0u;
   while (i < num_to_insert) {
-    check (hm.insert(i, i * i));
-    log "inserting " + std._uint.to_str(i, 10u)
-      + " -> " + std._uint.to_str(i * i, 10u);
+    check (hm_uu.insert(i, i * i));
+    log "inserting " + _uint.to_str(i, 10u)
+      + " -> " + _uint.to_str(i * i, 10u);
     i += 1u;
   }
 
@@ -138,24 +145,73 @@ fn test_growth() {
 
   i = 0u;
   while (i < num_to_insert) {
-    log "get(" + std._uint.to_str(i, 10u) + ") = "
-      + std._uint.to_str(hm.get(i), 10u);
-    check (hm.get(i) == i * i);
+    log "get(" + _uint.to_str(i, 10u) + ") = "
+      + _uint.to_str(hm_uu.get(i), 10u);
+    check (hm_uu.get(i) == i * i);
     i += 1u;
   }
 
-  check (hm.insert(num_to_insert, 17u));
-  check (hm.get(num_to_insert) == 17u);
+  check (hm_uu.insert(num_to_insert, 17u));
+  check (hm_uu.get(num_to_insert) == 17u);
 
   log "-----";
 
-  hm.rehash();
+  hm_uu.rehash();
 
   i = 0u;
   while (i < num_to_insert) {
-    log "get(" + std._uint.to_str(i, 10u) + ") = "
-      + std._uint.to_str(hm.get(i), 10u);
-    check (hm.get(i) == i * i);
+    log "get(" + _uint.to_str(i, 10u) + ") = "
+      + _uint.to_str(hm_uu.get(i), 10u);
+    check (hm_uu.get(i) == i * i);
+    i += 1u;
+  }
+
+
+  log "str -> str";
+
+  let map.hashfn[str] hasher_str = _str.hash;
+  let map.eqfn[str] eqer_str = _str.eq;
+  let map.hashmap[str, str] hm_ss = map.mk_hashmap[str, str](hasher_str,
+                                                             eqer_str);
+
+  i = 0u;
+  while (i < num_to_insert) {
+    check (hm_ss.insert(_uint.to_str(i, 2u), _uint.to_str(i * i, 2u)));
+    log "inserting \"" + _uint.to_str(i, 2u)
+      + "\" -> \"" + _uint.to_str(i * i, 2u) + "\"";
+    i += 1u;
+  }
+
+  log "-----";
+
+  i = 0u;
+  while (i < num_to_insert) {
+    log "get(\""
+      + _uint.to_str(i, 2u)
+      + "\") = \""
+      + hm_ss.get(_uint.to_str(i, 2u)) + "\"";
+
+    check (_str.eq(hm_ss.get(_uint.to_str(i, 2u)),
+                   _uint.to_str(i * i, 2u)));
+    i += 1u;
+  }
+
+  check (hm_ss.insert(_uint.to_str(num_to_insert, 2u),
+                      _uint.to_str(17u, 2u)));
+
+  check (_str.eq(hm_ss.get(_uint.to_str(num_to_insert, 2u)),
+                 _uint.to_str(17u, 2u)));
+
+  log "-----";
+
+  hm_ss.rehash();
+
+  i = 0u;
+  while (i < num_to_insert) {
+    log "get(\"" + _uint.to_str(i, 2u) + "\") = \""
+      + hm_ss.get(_uint.to_str(i, 2u)) + "\"";
+    check (_str.eq(hm_ss.get(_uint.to_str(i, 2u)),
+                   _uint.to_str(i * i, 2u)));
     i += 1u;
   }
 
@@ -185,8 +241,8 @@ fn test_removal() {
   let uint i = 0u;
   while (i < num_to_insert) {
     check (hm.insert(i, i * i));
-    log "inserting " + std._uint.to_str(i, 10u)
-      + " -> " + std._uint.to_str(i * i, 10u);
+    log "inserting " + _uint.to_str(i, 10u)
+      + " -> " + _uint.to_str(i * i, 10u);
     i += 1u;
   }
 
@@ -223,8 +279,8 @@ fn test_removal() {
 
   i = 1u;
   while (i < num_to_insert) {
-    log "get(" + std._uint.to_str(i, 10u) + ") = "
-      + std._uint.to_str(hm.get(i), 10u);
+    log "get(" + _uint.to_str(i, 10u) + ") = "
+      + _uint.to_str(hm.get(i), 10u);
     check (hm.get(i) == i * i);
     i += 2u;
   }
@@ -238,8 +294,8 @@ fn test_removal() {
 
   i = 1u;
   while (i < num_to_insert) {
-    log "get(" + std._uint.to_str(i, 10u) + ") = "
-      + std._uint.to_str(hm.get(i), 10u);
+    log "get(" + _uint.to_str(i, 10u) + ") = "
+      + _uint.to_str(hm.get(i), 10u);
     check (hm.get(i) == i * i);
     i += 2u;
   }
@@ -249,8 +305,8 @@ fn test_removal() {
   i = 0u;
   while (i < num_to_insert) {
     check (hm.insert(i, i * i));
-    log "inserting " + std._uint.to_str(i, 10u)
-      + " -> " + std._uint.to_str(i * i, 10u);
+    log "inserting " + _uint.to_str(i, 10u)
+      + " -> " + _uint.to_str(i * i, 10u);
     i += 2u;
   }
 
@@ -260,8 +316,8 @@ fn test_removal() {
 
   i = 0u;
   while (i < num_to_insert) {
-    log "get(" + std._uint.to_str(i, 10u) + ") = "
-      + std._uint.to_str(hm.get(i), 10u);
+    log "get(" + _uint.to_str(i, 10u) + ") = "
+      + _uint.to_str(hm.get(i), 10u);
     check (hm.get(i) == i * i);
     i += 1u;
   }
@@ -277,8 +333,8 @@ fn test_removal() {
 
   i = 0u;
   while (i < num_to_insert) {
-    log "get(" + std._uint.to_str(i, 10u) + ") = "
-      + std._uint.to_str(hm.get(i), 10u);
+    log "get(" + _uint.to_str(i, 10u) + ") = "
+      + _uint.to_str(hm.get(i), 10u);
     check (hm.get(i) == i * i);
     i += 1u;
   }
@@ -290,4 +346,6 @@ fn main() {
   test_simple();
   test_growth();
   test_removal();
+
+  std.sys.rustrt.gc();
 }
