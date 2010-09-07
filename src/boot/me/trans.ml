@@ -2883,11 +2883,13 @@ let trans_visitor
                   patch null_jmp;
                   note_drop_step ty "drop_ty: done box-drop path";
 
-            | MEM_interior when type_points_to_heap ty ->
-                note_drop_step ty "drop_ty heap-referencing path";
+            | MEM_interior
+                when type_points_to_heap ty || (n_used_type_params ty > 0) ->
+                note_drop_step ty "drop_ty possibly-heap-referencing path";
                 iter_ty_parts ty_params cell ty
                   (drop_ty ty_params) curr_iso;
-                note_drop_step ty "drop_ty: done heap-referencing path";
+                note_drop_step ty
+                  "drop_ty: done possibly-heap-referencing path";
 
 
             | MEM_interior ->
