@@ -58,8 +58,10 @@ let (sess:Session.sess) =
     Session.sess_report_timing = false;
     Session.sess_report_gc = false;
     Session.sess_report_deps = false;
+    Session.sess_next_crate_id = 0;
     Session.sess_timings = Hashtbl.create 0;
     Session.sess_lib_dirs = Queue.create ();
+    Session.sess_crate_meta = Hashtbl.create 0;
   }
 ;;
 

@@ -59,7 +59,7 @@ let get_sects
 let get_meta
     (sess:Session.sess)
     (filename:filename)
-    : Ast.meta option =
+    : Session.meta option =
   htab_search_or_add meta_cache filename
     begin
       fun _ ->
@@ -190,6 +190,10 @@ let get_mod
                           match get_meta sess file with
                               None -> ()
                             | Some meta ->
+                                if not (Hashtbl.mem
+                                    sess.Session.sess_crate_meta meta) then
+                                  Hashtbl.add sess.Session.sess_crate_meta
+                                    meta (Session.make_crate_id sess);
                                 Array.iter
                                   (fun (k,v) -> log sess "%s = %S" k v)
                                   meta;

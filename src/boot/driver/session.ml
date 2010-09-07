@@ -5,6 +5,8 @@
 
 open Common;;
 
+type meta = (string * string) array;;
+
 type sess =
 {
   mutable sess_in: filename option;
@@ -41,9 +43,11 @@ type sess =
   mutable sess_report_timing: bool;
   mutable sess_report_gc: bool;
   mutable sess_report_deps: bool;
+  mutable sess_next_crate_id: int;
   sess_timings: (string, float) Hashtbl.t;
   sess_spans: (node_id,span) Hashtbl.t;
   sess_lib_dirs: filename Queue.t;
+  sess_crate_meta: (meta, crate_id) Hashtbl.t;
 }
 ;;
 
@@ -113,6 +117,12 @@ let report_err sess ido str =
       | Some span ->
           fail sess "%s: error: %s\n%!"
             (string_of_span span) str
+;;
+
+let make_crate_id (sess:sess) : crate_id =
+  let crate_id = Crate sess.sess_next_crate_id in
+  sess.sess_next_crate_id <- sess.sess_next_crate_id + 1;
+  crate_id
 ;;
 
 (*

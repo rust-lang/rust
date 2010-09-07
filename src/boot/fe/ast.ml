@@ -452,14 +452,12 @@ and mod_view =
       view_exports: (export, unit) Hashtbl.t;
     }
 
-and meta = (ident * string) array
-
-and meta_pat = (ident * string option) array
+and meta_pat = (string * string option) array
 
 and crate' =
     {
       crate_items: (mod_view * mod_items);
-      crate_meta: meta;
+      crate_meta: Session.meta;
       crate_auth: (name, effect) Hashtbl.t;
       crate_required: (node_id, (required_lib * nabi_conv)) Hashtbl.t;
       crate_required_syms: (node_id, string) Hashtbl.t;

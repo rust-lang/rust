@@ -758,7 +758,7 @@ and parse_meta_pat (ps:pstate) : Ast.meta_pat =
   bracketed_zero_or_more LPAREN RPAREN
     (Some COMMA) parse_meta_input ps
 
-and parse_meta (ps:pstate) : Ast.meta =
+and parse_meta (ps:pstate) : Session.meta =
   Array.map
     begin
       fun (id,v) ->
