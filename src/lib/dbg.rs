@@ -14,6 +14,7 @@ native "rust" mod rustrt {
   fn debug_tag[T](&T x);
   fn debug_obj[T](&T x, uint nmethods, uint nbytes);
   fn debug_fn[T](&T x);
+  fn debug_ptrcast[T, U](@T x) -> @U;
 }
 
 fn debug_vec[T](vec[T] v) {
@@ -51,4 +52,8 @@ fn debug_obj[T](&T x, uint nmethods, uint nbytes) {
 
 fn debug_fn[T](&T x) {
   rustrt.debug_fn[T](x);
+}
+
+fn ptr_cast[T, U](@T x) -> @U {
+  ret rustrt.debug_ptrcast[T, U](x);
 }

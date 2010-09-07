@@ -340,6 +340,19 @@ debug_fn(rust_task *task, type_desc *t, rust_fn *fn)
     task->log(rust_log::STDLIB, "  closure at 0x%" PRIxPTR, fn->closure);
 }
 
+extern "C" CDECL void *
+debug_ptrcast(rust_task *task,
+              type_desc *from_ty,
+              type_desc *to_ty,
+              void *ptr)
+{
+    task->log(rust_log::STDLIB, "debug_ptrcast from");
+    debug_tydesc_helper(task, from_ty);
+    task->log(rust_log::STDLIB, "to");
+    debug_tydesc_helper(task, to_ty);
+    return ptr;
+}
+
 
 //
 // Local Variables:
