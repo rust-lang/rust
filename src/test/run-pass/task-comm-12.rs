@@ -11,7 +11,7 @@ fn start(int task_number) {
     
 fn test00() {    
     let int i = 0;
-    let task t = spawn thread start(i);
+    let task t = spawn thread "child" start(i);
     
     // Sleep long enough for the task to finish.
     _task.sleep(10000u);

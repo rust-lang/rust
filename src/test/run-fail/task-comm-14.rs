@@ -9,6 +9,9 @@ io fn main() {
         i = i - 1;
     }
 
+    // Spawned tasks are likely killed before they get a chance to send 
+    // anything back, so we deadlock here.
+    
     i = 10;
     let int value = 0;
     while (i > 0) {

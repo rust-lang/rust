@@ -1,10 +1,9 @@
 // -*- rust -*-
 
 fn main() {
-  let port[int] p = port();
   let int i = 10;
   while (i > 0) {
-    spawn thread child(i);
+    spawn thread "child" child(i);
     i = i - 1;
   }
   log "main thread exiting";

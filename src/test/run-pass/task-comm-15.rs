@@ -9,6 +9,10 @@ io fn start(chan[int] c, int n) {
 
 io fn main() {
     let port[int] p = port();
+    // Spawn a task that sends us back messages. The parent task
+    // is likely to terminate before the child completes, so from
+    // the child's point of view the receiver may die. We should
+    // drop messages on the floor in this case, and not crash!
     auto child = spawn thread "child" start(chan(p), 10);
     auto c <- p;
 }
