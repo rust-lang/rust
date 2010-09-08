@@ -11,6 +11,10 @@ void sync::yield() {
 #endif
 }
 
+rust_thread::rust_thread() : _is_running(false) {
+    // Nop.
+}
+
 #if defined(__WIN32__)
 static DWORD WINAPI
 #elif defined(__GNUC__)
@@ -36,6 +40,7 @@ rust_thread::start() {
    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
    pthread_create(&thread, &attr, rust_thread_start, (void *) this);
 #endif
+   _is_running = true;
 }
 
 void
@@ -46,10 +51,10 @@ rust_thread::join() {
    pthread_join(thread, NULL);
 #endif
    thread = 0;
+   _is_running = false;
 }
 
 bool
 rust_thread::is_running() {
-    // TODO: This may be broken because of possible races.
-    return thread;
+    return _is_running;
 }

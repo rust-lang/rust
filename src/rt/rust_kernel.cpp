@@ -129,20 +129,25 @@ rust_kernel::log(uint32_t type_bits, char const *fmt, ...) {
 }
 
 void
-rust_kernel::start_kernel_loop() {
-    while (_interrupt_kernel_loop == false) {
-        message_queues.global.lock();
-        for (size_t i = 0; i < message_queues.length(); i++) {
-            rust_message_queue *queue = message_queues[i];
-            if (queue->is_associated() == false) {
-                rust_message *message = NULL;
-                while (queue->dequeue(&message)) {
-                    message->kernel_process();
-                    delete message;
-                }
+rust_kernel::pump_message_queues() {
+    message_queues.global.lock();
+    for (size_t i = 0; i < message_queues.length(); i++) {
+        rust_message_queue *queue = message_queues[i];
+        if (queue->is_associated() == false) {
+            rust_message *message = NULL;
+            while (queue->dequeue(&message)) {
+                message->kernel_process();
+                delete message;
             }
         }
-        message_queues.global.unlock();
+    }
+    message_queues.global.unlock();
+}
+
+void
+rust_kernel::start_kernel_loop() {
+    while (_interrupt_kernel_loop == false) {
+        pump_message_queues();
     }
 }
 
@@ -153,16 +158,24 @@ rust_kernel::run() {
     log(rust_log::KERN, "finished kernel loop");
 }
 
+void
+rust_kernel::terminate_kernel_loop() {
+    _interrupt_kernel_loop = true;
+    join();
+}
+
 rust_kernel::~rust_kernel() {
     K(_srv, domains.length() == 0,
       "Kernel has %d live domain(s), join all domains before killing "
        "the kernel.", domains.length());
 
-    // If the kernel loop is running, interrupt it, join and exit.
-    if (is_running()) {
-        _interrupt_kernel_loop = true;
-        join();
-    }
+    terminate_kernel_loop();
+
+    // It's possible that the message pump misses some messages because
+    // of races, so pump any remaining messages here. By now all domain
+    // threads should have been joined, so we shouldn't miss any more
+    // messages.
+    pump_message_queues();
 
     free_handles(_task_handles);
     free_handles(_port_handles);

@@ -16,7 +16,8 @@ io fn test00() {
     let port[int] p = port();
     let int number_of_messages = 10;
         
-    let task t0 = spawn thread test00_start(chan(p), number_of_messages);
+    let task t0 = spawn thread "child"
+        test00_start(chan(p), number_of_messages);
     
     let int i = 0;
     while (i < number_of_messages) {

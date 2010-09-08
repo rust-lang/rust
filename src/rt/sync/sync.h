@@ -15,12 +15,15 @@ public:
  * Thread utility class. Derive and implement your own run() method.
  */
 class rust_thread {
+private:
+    volatile bool _is_running;
 public:
 #if defined(__WIN32__)
     HANDLE thread;
 #else
     pthread_t thread;
 #endif
+    rust_thread();
     void start();
 
     virtual void run() {

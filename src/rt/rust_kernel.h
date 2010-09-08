@@ -60,6 +60,9 @@ class rust_kernel : public rust_thread {
      */
     spin_lock _message_queues_lock;
 
+    void terminate_kernel_loop();
+    void pump_message_queues();
+
 public:
 
     /**
