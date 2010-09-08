@@ -34,4 +34,12 @@ public:
     virtual ~memory_region();
 };
 
+inline void *operator new(size_t size, memory_region &region) {
+    return region.malloc(size);
+}
+
+inline void *operator new(size_t size, memory_region *region) {
+    return region->malloc(size);
+}
+
 #endif /* MEMORY_REGION_H */
