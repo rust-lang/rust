@@ -10,6 +10,15 @@ public:
     int32_t list_index;
 };
 
+template<typename T>
+class indexed_list_element : public indexed_list_object {
+public:
+    T value;
+    indexed_list_element(T value) : value(value) {
+        // Nop;
+    }
+};
+
 /**
  * An array list of objects that are aware of their position in the list.
  * Normally, objects in this list should derive from the base class

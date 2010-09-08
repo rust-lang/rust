@@ -7,7 +7,14 @@ template<typename T> class synchronized_indexed_list :
     public indexed_list<T> {
     spin_lock _lock;
 public:
-    synchronized_indexed_list(memory_region &region) :
+    /**
+     * Clients can use this global lock that is associated with the list to
+     * perform more coarse grained locking. Internally, the synchronized list
+     * doesn'tactually make any use of this lock.
+     */
+    spin_lock global;
+
+    synchronized_indexed_list(memory_region *region) :
         indexed_list<T>(region) {
         // Nop.
     }
@@ -18,6 +25,13 @@ public:
         index = indexed_list<T>::append(value);
         _lock.unlock();
         return index;
+    }
+
+    bool pop(T **value) {
+        _lock.lock();
+        bool result = indexed_list<T>::pop(value);
+        _lock.unlock();
+        return result;
     }
 
     size_t length() {
