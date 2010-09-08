@@ -125,6 +125,7 @@ let get_mod
     (use_id:node_id)
     (nref:node_id ref)
     (oref:opaque_id ref)
+    (crate_item_cache:(crate_id, Ast.mod_items) Hashtbl.t)
     : (filename * Ast.mod_items) =
   let found = Queue.create () in
   let suffix =
@@ -183,22 +184,24 @@ let get_mod
                   (file_matches file)
                 then
                   begin
-                    iflog sess
-                      begin
-                        fun _ ->
-                          log sess "matched against library %s" file;
-                          match get_meta sess file with
-                              None -> ()
-                            | Some meta ->
-                                if not (Hashtbl.mem
-                                    sess.Session.sess_crate_meta meta) then
-                                  Hashtbl.add sess.Session.sess_crate_meta
-                                    meta (Session.make_crate_id sess);
-                                Array.iter
-                                  (fun (k,v) -> log sess "%s = %S" k v)
-                                  meta;
-                      end;
-                    Queue.add file found;
+                    log sess "matched against library %s" file;
+
+                    let meta = get_meta sess file in
+                    let crate_id =
+                      match meta with
+                          None -> Session.make_crate_id sess
+                        | Some meta ->
+                            iflog sess begin fun _ ->
+                              Array.iter
+                                (fun (k, v) -> log sess "%s = %S" k v)
+                                meta
+                            end;
+                            htab_search_or_default
+                              sess.Session.sess_crate_meta
+                              meta
+                              (fun () -> Session.make_crate_id sess)
+                    in
+                    Queue.add (file, crate_id) found;
                   end;
                 scan()
             with
@@ -210,8 +213,11 @@ let get_mod
     match Queue.length found with
         0 -> Common.err (Some use_id) "unsatisfied 'use' clause"
       | 1 ->
-          let filename = Queue.pop found in
-          let items = get_file_mod sess abi filename nref oref in
+          let (filename, crate_id) = Queue.pop found in
+          let items =
+            htab_search_or_default crate_item_cache crate_id
+              (fun () -> get_file_mod sess abi filename nref oref)
+          in
             (filename, items)
       | _ -> Common.err (Some use_id) "multiple crates match 'use' clause"
 ;;

@@ -239,7 +239,9 @@ let _ =
 ;;
 
 
-let parse_input_crate _ : Ast.crate =
+let parse_input_crate
+    (crate_cache:(crate_id, Ast.mod_items) Hashtbl.t)
+    : Ast.crate =
   Session.time_inner "parse" sess
     begin
       fun _ ->
@@ -250,12 +252,14 @@ let parse_input_crate _ : Ast.crate =
             Cexp.parse_crate_file sess
               (Lib.get_mod sess abi)
               (Lib.infer_lib_name sess)
+              crate_cache
           else
             if Filename.check_suffix infile ".rs"
             then
               Cexp.parse_src_file sess
                 (Lib.get_mod sess abi)
                 (Lib.infer_lib_name sess)
+                crate_cache
             else
               begin
                 Printf.fprintf stderr
@@ -295,7 +299,8 @@ let parse_input_crate _ : Ast.crate =
 
 let (crate:Ast.crate) =
   try
-    parse_input_crate()
+    let crate_cache = Hashtbl.create 1 in
+    parse_input_crate crate_cache
   with
       Not_implemented (ido, str) ->
         Session.report_err sess ido str;

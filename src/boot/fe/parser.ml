@@ -8,7 +8,8 @@ type get_mod_fn = (Ast.meta_pat
                    -> node_id
                      -> (node_id ref)
                        -> (opaque_id ref)
-                         -> (filename * Ast.mod_items))
+                         -> (crate_id, Ast.mod_items) Hashtbl.t
+                           -> (filename * Ast.mod_items))
 ;;
 
 type pstate =
@@ -22,6 +23,7 @@ type pstate =
       pstate_temp_id      : temp_id ref;
       pstate_node_id      : node_id ref;
       pstate_opaque_id    : opaque_id ref;
+      pstate_crate_cache  : (crate_id, Ast.mod_items) Hashtbl.t;
       pstate_get_mod      : get_mod_fn;
       pstate_get_cenv_tok : pstate -> Ast.ident -> token;
       pstate_infer_lib_name : (Ast.ident -> filename);
@@ -44,6 +46,7 @@ let make_parser
     (tref:temp_id ref)
     (nref:node_id ref)
     (oref:opaque_id ref)
+    (crate_cache:(crate_id, Ast.mod_items) Hashtbl.t)
     (sess:Session.sess)
     (get_mod:get_mod_fn)
     (get_cenv_tok:pstate -> Ast.ident -> token)
@@ -69,6 +72,7 @@ let make_parser
         pstate_temp_id = tref;
         pstate_node_id = nref;
         pstate_opaque_id = oref;
+        pstate_crate_cache = crate_cache;
         pstate_get_mod = get_mod;
         pstate_get_cenv_tok = get_cenv_tok;
         pstate_infer_lib_name = infer_lib_name;
