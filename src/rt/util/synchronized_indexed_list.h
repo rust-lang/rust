@@ -6,14 +6,8 @@
 template<typename T> class synchronized_indexed_list :
     public indexed_list<T> {
     spin_lock _lock;
-public:
-    /**
-     * Clients can use this global lock that is associated with the list to
-     * perform more coarse grained locking. Internally, the synchronized list
-     * doesn'tactually make any use of this lock.
-     */
-    spin_lock global;
 
+public:
     synchronized_indexed_list(memory_region *region) :
         indexed_list<T>(region) {
         // Nop.

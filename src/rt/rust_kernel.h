@@ -32,6 +32,12 @@ public:
     }
 };
 
+#define LOCK(x) x.lock();
+#define UNLOCK(x) x.unlock();
+
+#define PLOCK(x) printf("LOCKING @ %d\n", __LINE__); x.lock();
+#define PUNLOCK(x) x.unlock(); printf("UNLOCKED @ %d\n", __LINE__);
+
 /**
  * A global object shared by all thread domains. Most of the data structures
  * in this class are synchronized since they are accessed from multiple
@@ -55,20 +61,19 @@ class rust_kernel : public rust_thread {
     void start_kernel_loop();
     bool volatile _interrupt_kernel_loop;
 
-    /**
-     * Lock for the message queue list, so we can safely
-     */
-    spin_lock _message_queues_lock;
+    spin_lock _kernel_lock;
 
     void terminate_kernel_loop();
     void pump_message_queues();
+
+    rust_handle<rust_dom> *internal_get_dom_handle(rust_dom *dom);
 
 public:
 
     /**
      * List of domains that are currently executing.
      */
-    synchronized_indexed_list<rust_dom> domains;
+    indexed_list<rust_dom> domains;
 
     /**
      * Message queues are kernel objects and are associated with domains.
@@ -79,7 +84,7 @@ public:
      * Although the message_queues list is synchronized, each individual
      * message queue is lock free.
      */
-    synchronized_indexed_list<rust_message_queue> message_queues;
+    indexed_list<rust_message_queue> message_queues;
 
     rust_handle<rust_dom> *get_dom_handle(rust_dom *dom);
     rust_handle<rust_task> *get_task_handle(rust_task *task);

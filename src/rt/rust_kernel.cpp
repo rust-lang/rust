@@ -12,20 +12,23 @@ rust_kernel::rust_kernel(rust_srv *srv) :
 
 rust_handle<rust_dom> *
 rust_kernel::create_domain(const rust_crate *crate, const char *name) {
+    LOCK(_kernel_lock);
     rust_message_queue *message_queue =
         new (this) rust_message_queue(_srv, this);
     rust_srv *srv = _srv->clone();
     rust_dom *dom =
         new (this) rust_dom(this, message_queue, srv, crate, name);
-    rust_handle<rust_dom> *handle = get_dom_handle(dom);
+    rust_handle<rust_dom> *handle = internal_get_dom_handle(dom);
     message_queue->associate(handle);
     domains.append(dom);
     message_queues.append(message_queue);
+    UNLOCK(_kernel_lock);
     return handle;
 }
 
 void
 rust_kernel::destroy_domain(rust_dom *dom) {
+    LOCK(_kernel_lock);
     log(rust_log::KERN, "deleting domain: " PTR ", index: %d, domains %d",
         dom, dom->list_index, domains.length());
     domains.remove(dom);
@@ -33,40 +36,54 @@ rust_kernel::destroy_domain(rust_dom *dom) {
     rust_srv *srv = dom->srv;
     delete dom;
     delete srv;
+    UNLOCK(_kernel_lock);
+}
+
+rust_handle<rust_dom> *
+rust_kernel::internal_get_dom_handle(rust_dom *dom) {
+    rust_handle<rust_dom> *handle = NULL;
+    if (_dom_handles.get(dom, &handle) == false) {
+        handle =
+            new (this) rust_handle<rust_dom>(this, dom->message_queue, dom);
+        _dom_handles.put(dom, handle);
+    }
+    return handle;
 }
 
 rust_handle<rust_dom> *
 rust_kernel::get_dom_handle(rust_dom *dom) {
-    rust_handle<rust_dom> *handle = NULL;
-    if (_dom_handles.get(dom, &handle)) {
-        return handle;
-    }
-    handle = new (this) rust_handle<rust_dom>(this, dom->message_queue, dom);
-    _dom_handles.put(dom, handle);
+    LOCK(_kernel_lock);
+    rust_handle<rust_dom> *handle = internal_get_dom_handle(dom);
+    UNLOCK(_kernel_lock);
     return handle;
 }
 
 rust_handle<rust_task> *
 rust_kernel::get_task_handle(rust_task *task) {
+    LOCK(_kernel_lock);
     rust_handle<rust_task> *handle = NULL;
-    if (_task_handles.get(task, &handle)) {
-        return handle;
+    if (_task_handles.get(task, &handle) == false) {
+        handle =
+            new (this) rust_handle<rust_task>(this, task->dom->message_queue,
+                                              task);
+        _task_handles.put(task, handle);
     }
-    handle = new (this) rust_handle<rust_task>(this, task->dom->message_queue,
-                                               task);
-    _task_handles.put(task, handle);
+    UNLOCK(_kernel_lock);
     return handle;
 }
 
 rust_handle<rust_port> *
 rust_kernel::get_port_handle(rust_port *port) {
+    PLOCK(_kernel_lock);
     rust_handle<rust_port> *handle = NULL;
-    if (_port_handles.get(port, &handle)) {
-        return handle;
+    if (_port_handles.get(port, &handle) == false) {
+        handle =
+            new (this) rust_handle<rust_port>(this,
+                                              port->task->dom->message_queue,
+                                              port);
+        _port_handles.put(port, handle);
     }
-    handle = new (this) rust_handle<rust_port>(this,
-       port->task->dom->message_queue, port);
-    _port_handles.put(port, handle);
+    PUNLOCK(_kernel_lock);
     return handle;
 }
 
@@ -76,6 +93,7 @@ rust_kernel::join_all_domains() {
     while (domains.length() > 0) {
         sync::yield();
     }
+    log(rust_log::KERN, "joined domains");
 }
 
 void
@@ -92,29 +110,7 @@ rust_kernel::log_all_domain_state() {
 bool
 rust_kernel::is_deadlocked() {
     return false;
-//    _lock.lock();
-//    if (domains.length() != 1) {
-//        // We can only check for deadlocks when only one domain exists.
-//        return false;
-//    }
-//
-//    if (domains[0]->running_tasks.length() != 0) {
-//        // We are making progress and therefore we are not deadlocked.
-//        return false;
-//    }
-//
-//    if (domains[0]->message_queue->is_empty() &&
-//        domains[0]->blocked_tasks.length() > 0) {
-//        // We have no messages to process, no running tasks to schedule
-//        // and some blocked tasks therefore we are likely in a deadlock.
-//        log_all_domain_state();
-//        return true;
-//    }
-//
-//    _lock.unlock();
-//    return false;
 }
-
 
 void
 rust_kernel::log(uint32_t type_bits, char const *fmt, ...) {
@@ -130,7 +126,7 @@ rust_kernel::log(uint32_t type_bits, char const *fmt, ...) {
 
 void
 rust_kernel::pump_message_queues() {
-    message_queues.global.lock();
+    LOCK(_kernel_lock);
     for (size_t i = 0; i < message_queues.length(); i++) {
         rust_message_queue *queue = message_queues[i];
         if (queue->is_associated() == false) {
@@ -141,13 +137,14 @@ rust_kernel::pump_message_queues() {
             }
         }
     }
-    message_queues.global.unlock();
+    UNLOCK(_kernel_lock);
 }
 
 void
 rust_kernel::start_kernel_loop() {
     while (_interrupt_kernel_loop == false) {
         pump_message_queues();
+        sync::yield();
     }
 }
 
@@ -160,6 +157,7 @@ rust_kernel::run() {
 
 void
 rust_kernel::terminate_kernel_loop() {
+    log(rust_log::KERN, "terminating kernel loop");
     _interrupt_kernel_loop = true;
     join();
 }
@@ -177,9 +175,13 @@ rust_kernel::~rust_kernel() {
     // messages.
     pump_message_queues();
 
+    log(rust_log::KERN, "freeing handles");
+
     free_handles(_task_handles);
     free_handles(_port_handles);
     free_handles(_dom_handles);
+
+    log(rust_log::KERN, "freeing queues");
 
     rust_message_queue *queue = NULL;
     while (message_queues.pop(&queue)) {
