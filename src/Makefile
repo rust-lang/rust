@@ -384,7 +384,8 @@ TASK_XFAILS := test/run-pass/task-comm-8.rs \
                test/run-pass/task-comm-10.rs \
                test/run-pass/task-comm-15.rs \
                test/run-pass/task-life-0.rs \
-               test/run-pass/alt-type-simple.rs
+               test/run-pass/alt-type-simple.rs \
+               test/run-pass/many.rs
 
 TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-pass/child-outlives-parent.rs \

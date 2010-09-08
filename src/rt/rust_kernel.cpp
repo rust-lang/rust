@@ -144,7 +144,19 @@ void
 rust_kernel::start_kernel_loop() {
     while (_interrupt_kernel_loop == false) {
         pump_message_queues();
-        sync::yield();
+
+        // FIXME: this is a complete hack to make the testsuite finish in a
+        // sane time when executing under valgrind. The whole message-loop
+        // system here needs replacement with an OS-level event-queue such
+        // that actually wait on inter-thread notices, rather than
+        // busy-waiting.
+
+        size_t ms = TIME_SLICE_IN_MS;
+#if defined(__WIN32__)
+        Sleep(ms);
+#else
+        usleep(ms * 1000);
+#endif
     }
 }
 
@@ -208,3 +220,14 @@ rust_kernel::free_handles(hash_map<T*, rust_handle<T>* > &map) {
         delete value;
     }
 }
+
+//
+// Local Variables:
+// mode: C++
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//
