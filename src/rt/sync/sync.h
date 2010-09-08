@@ -11,4 +11,25 @@ public:
     }
 };
 
+/**
+ * Thread utility class. Derive and implement your own run() method.
+ */
+class rust_thread {
+public:
+#if defined(__WIN32__)
+    HANDLE thread;
+#else
+    pthread_t thread;
+#endif
+    void start();
+
+    virtual void run() {
+        return;
+    }
+
+    void join();
+
+    bool is_running();
+};
+
 #endif /* SYNC_H */
