@@ -400,7 +400,8 @@ rust_task::notify_tasks_waiting_to_join() {
     while (tasks_waiting_to_join.is_empty() == false) {
         log(rust_log::TASK, "notify_tasks_waiting_to_join: %d",
             tasks_waiting_to_join.size());
-        maybe_proxy<rust_task> *waiting_task = tasks_waiting_to_join.pop();
+        maybe_proxy<rust_task> *waiting_task;
+        tasks_waiting_to_join.pop(&waiting_task);
         if (waiting_task->is_proxy()) {
             notify_message::send(notify_message::WAKEUP, "wakeup",
                                  this, waiting_task->as_proxy());

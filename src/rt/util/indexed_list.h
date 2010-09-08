@@ -24,6 +24,7 @@ template<typename T> class indexed_list {
 public:
     indexed_list(memory_region &region) : region(region) {}
     virtual int32_t append(T *value);
+    virtual bool pop(T **value);
     virtual size_t length() {
         return list.size();
     }
@@ -48,7 +49,8 @@ indexed_list<T>::remove(T *value) {
     assert (value->list_index >= 0);
     assert (value->list_index < (int32_t)list.size());
     int32_t removeIndex = value->list_index;
-    T *last = list.pop();
+    T *last;
+    list.pop(&last);
     if (last->list_index == removeIndex) {
         last->list_index = -1;
         return removeIndex;
@@ -58,6 +60,11 @@ indexed_list<T>::remove(T *value) {
         last->list_index = removeIndex;
         return removeIndex;
     }
+}
+
+template<typename T> bool
+indexed_list<T>::pop(T **value) {
+    return list.pop(value);
 }
 
 template <typename T> T *
