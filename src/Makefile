@@ -269,7 +269,9 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/isaac/randport.cpp \
               rt/rust_srv.cpp \
               rt/rust_kernel.cpp \
-              rt/memory_region.cpp
+              rt/memory_region.cpp \
+              rt/test/rust_test_harness.cpp \
+              rt/test/rust_test_util.cpp
 
 RUNTIME_HDR := rt/globals.h \
                rt/rust.h \
@@ -294,7 +296,9 @@ RUNTIME_HDR := rt/globals.h \
                rt/rust_srv.h \
                rt/rust_kernel.h \
                rt/memory_region.h \
-               rt/memory.h
+               rt/memory.h \
+               rt/test/rust_test_harness.h \
+               rt/test/rust_test_util.h
 
 RUNTIME_INCS := -Irt/isaac -Irt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=$(CFG_OBJ_SUFFIX))
