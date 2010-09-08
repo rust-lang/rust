@@ -36,7 +36,7 @@ parser.add_option("-s", dest="seed", metavar="NUMBER", default=-1,
 
 def getRustTests(filter):
     tests = []
-    for root, dirnames, filenames in os.walk(rustTestDir):
+    for root, dirnames, filenames in os.walk(rustTestRunPassDir):
       for filename in fnmatch.filter(filenames, filter + '.rs'):
           tests.append(os.path.join(root, filename).
                        replace(rustDir + "/", ""));
