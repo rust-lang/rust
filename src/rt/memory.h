@@ -1,10 +1,5 @@
-/*
- *
- */
-
 #ifndef MEMORY_H
 #define MEMORY_H
-
 
 inline void *operator new(size_t size, void *mem) {
     return mem;

@@ -2,56 +2,69 @@
 #define RUST_PROXY_H
 
 /**
- * A proxy object is a wrapper around other Rust objects. One use of the proxy
- * object is to mitigate access between tasks in different thread domains.
+ * A proxy object is a wrapper for remote objects. Proxy objects are domain
+ * owned and provide a way distinguish between local and remote objects.
  */
 
 template <typename T> struct rust_proxy;
+
 /**
  * The base class of all objects that may delegate.
  */
 template <typename T> struct
 maybe_proxy : public rc_base<T>, public rust_cond {
 protected:
-    T *_delegate;
+    T *_referent;
 public:
-    maybe_proxy(T * delegate) : _delegate(delegate) {
+    maybe_proxy(T *referent) : _referent(referent) {
+        // Nop.
+    }
 
+    T *referent() {
+        return (T *)_referent;
     }
-    T *delegate() {
-        return _delegate;
-    }
+
     bool is_proxy() {
-        return _delegate != this;
+        return _referent != this;
     }
+
     rust_proxy<T> *as_proxy() {
         return (rust_proxy<T> *) this;
     }
-    T *as_delegate() {
-        I(_delegate->get_dom(), !is_proxy());
+
+    T *as_referent() {
         return (T *) this;
     }
 };
+
+template <typename T> class rust_handle;
 
 /**
  * A proxy object that delegates to another.
  */
 template <typename T> struct
-rust_proxy : public maybe_proxy<T>,
-             public dom_owned<rust_proxy<T> > {
+rust_proxy : public maybe_proxy<T> {
 private:
     bool _strong;
+    rust_handle<T> *_handle;
 public:
-    rust_dom *dom;
-    rust_proxy(rust_dom *dom, T *delegate, bool strong) :
-        maybe_proxy<T> (delegate), _strong(strong), dom(dom) {
-        this->dom->log(rust_log::COMM,
-            "new proxy: 0x%" PRIxPTR " => 0x%" PRIxPTR, this, delegate);
-        if (strong) {
-            delegate->ref();
-        }
+    rust_proxy(rust_handle<T> *handle) :
+        maybe_proxy<T> (NULL), _strong(FALSE), _handle(handle) {
+        // Nop.
+    }
+
+    rust_proxy(T *referent) :
+        maybe_proxy<T> (referent), _strong(FALSE), _handle(NULL) {
+        // Nop.
+    }
+
+    rust_handle<T> *handle() {
+        return _handle;
     }
 };
+
+class rust_message_queue;
+class rust_task;
 
 //
 // Local Variables:

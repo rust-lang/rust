@@ -98,8 +98,6 @@ class lock_free_queue {
     }
 
 public:
-    int32_t list_index;
-
     lock_free_queue() {
         // We can only handle 64bit CAS for counted pointers, so this will
         // not work with 64bit pointers.

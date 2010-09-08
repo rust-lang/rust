@@ -4,13 +4,15 @@
 /**
  * Create a new rust channel and associate it with the specified port.
  */
-rust_chan::rust_chan(rust_task *task, maybe_proxy<rust_port> *port) :
-    task(task), port(port), buffer(task->dom, port->delegate()->unit_sz) {
-
+rust_chan::rust_chan(rust_task *task,
+                     maybe_proxy<rust_port> *port,
+                     size_t unit_sz) :
+                     task(task),
+                     port(port),
+                     buffer(task->dom, unit_sz) {
     if (port) {
         associate(port);
     }
-
     task->log(rust_log::MEM | rust_log::COMM,
               "new rust_chan(task=0x%" PRIxPTR
               ", port=0x%" PRIxPTR ") -> chan=0x%" PRIxPTR,
@@ -34,7 +36,7 @@ void rust_chan::associate(maybe_proxy<rust_port> *port) {
         task->log(rust_log::TASK,
             "associating chan: 0x%" PRIxPTR " with port: 0x%" PRIxPTR,
             this, port);
-        this->port->delegate()->chans.push(this);
+        this->port->referent()->chans.push(this);
     }
 }
 
@@ -51,8 +53,8 @@ void rust_chan::disassociate() {
     if (port->is_proxy() == false) {
         task->log(rust_log::TASK,
             "disassociating chan: 0x%" PRIxPTR " from port: 0x%" PRIxPTR,
-            this, port->delegate());
-        port->delegate()->chans.swap_delete(this);
+            this, port->referent());
+        port->referent()->chans.swap_delete(this);
     }
 
     // Delete reference to the port.
@@ -76,14 +78,11 @@ void rust_chan::send(void *sptr) {
       "rust_chan::transmit with nothing to send.");
 
     if (port->is_proxy()) {
-        // TODO: Cache port task locally.
-        rust_proxy<rust_task> *port_task =
-            dom->get_task_proxy(port->delegate()->task);
-        data_message::send(buffer.peek(), buffer.unit_sz,
-            "send data", task, port_task, port->as_proxy());
+        data_message::send(buffer.peek(), buffer.unit_sz, "send data",
+                           task->get_handle(), port->as_proxy()->handle());
         buffer.dequeue(NULL);
     } else {
-        rust_port *target_port = port->delegate();
+        rust_port *target_port = port->referent();
         if (target_port->task->blocked_on(target_port)) {
             dom->log(rust_log::COMM, "dequeued in rendezvous_ptr");
             buffer.dequeue(target_port->task->rendezvous_ptr);

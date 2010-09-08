@@ -380,33 +380,10 @@ self: $(CFG_COMPILER)
 # Temporarily xfail the entire multi-tasking system, pending resolution
 # of inter-task shutdown races introduced with notification proxies.
 
-TASK_XFAILS := test/run-pass/acyclic-unwind.rs \
-               test/run-pass/alt-type-simple.rs \
-               test/run-pass/basic.rs \
-               test/run-pass/clone-with-exterior.rs \
-               test/run-pass/comm.rs \
-               test/run-pass/lazychan.rs \
-               test/run-pass/many.rs \
-               test/run-pass/obj-dtor.rs \
-               test/run-pass/preempt.rs \
-               test/run-pass/spawn-fn.rs \
-               test/run-pass/spawn-module-qualified.rs \
-               test/run-pass/spawn.rs \
-               test/run-pass/task-comm-0.rs \
-               test/run-pass/task-comm-1.rs \
-               test/run-pass/task-comm-2.rs \
-               test/run-pass/task-comm-3.rs \
-               test/run-pass/task-comm-7.rs \
-               test/run-pass/task-comm-8.rs \
-               test/run-pass/task-comm-9.rs \
-               test/run-pass/task-comm-10.rs \
-               test/run-pass/task-comm-11.rs \
-               test/run-pass/task-life-0.rs \
-               test/run-pass/task-comm.rs \
-               test/run-pass/threads.rs \
-               test/run-pass/yield.rs \
+TASK_XFAILS := test/run-pass/task-comm-10.rs \
                test/run-pass/task-comm-15.rs \
-               test/run-pass/task-life-0.rs
+               test/run-pass/task-life-0.rs \
+               test/run-pass/alt-type-simple.rs
 
 TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-pass/child-outlives-parent.rs \
@@ -425,6 +402,7 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-pass/task-comm.rs \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/task-comm-3.rs \
+                    test/run-fail/task-comm-14.rs \
                     test/compile-fail/bad-recv.rs \
                     test/compile-fail/bad-send.rs \
                     test/compile-fail/infinite-tag-type-recursion.rs \

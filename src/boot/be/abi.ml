@@ -20,7 +20,7 @@ let task_field_gc_alloc_chain = task_field_rust_sp + 1;;
 let task_field_dom = task_field_gc_alloc_chain + 1;;
 let n_visible_task_fields = task_field_dom + 1;;
 
-let dom_field_interrupt_flag = 0;;
+let dom_field_interrupt_flag = 1;;
 
 let frame_glue_fns_field_mark = 0;;
 let frame_glue_fns_field_drop = 1;;

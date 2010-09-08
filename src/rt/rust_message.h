@@ -9,28 +9,31 @@
 /**
  * Abstract base class for all message types.
  */
-class rust_message {
+class rust_message : public region_owned<rust_message> {
 public:
     const char* label;
+    memory_region *region;
 private:
-    rust_dom *_dom;
-    rust_task *_source;
 protected:
-    rust_task *_target;
+    rust_handle<rust_task> *_source;
+    rust_handle<rust_task> *_target;
 public:
-    rust_message(const char* label, rust_task *source, rust_task *target);
+    rust_message(memory_region *region,
+                 const char* label,
+                 rust_handle<rust_task> *source,
+                 rust_handle<rust_task> *target);
+
     virtual ~rust_message();
 
     /**
-     * We can only access the source task through a proxy, so create one
-     * on demand if we need it.
-     */
-    rust_proxy<rust_task> *get_source_proxy();
-
-    /**
-     * Processes the message in the target domain thread.
+     * Processes the message in the target domain.
      */
     virtual void process();
+
+    /**
+     * Processes the message in the kernel.
+     */
+    virtual void kernel_process();
 };
 
 /**
@@ -44,17 +47,19 @@ public:
 
     const notification_type type;
 
-    notify_message(notification_type type, const char* label,
-                   rust_task *source, rust_task *target);
+    notify_message(memory_region *region, notification_type type,
+                   const char* label, rust_handle<rust_task> *source,
+                   rust_handle<rust_task> *target);
 
     void process();
+    void kernel_process();
 
     /**
      * This code executes in the sending domain's thread.
      */
     static void
-    send(notification_type type, const char* label, rust_task *source,
-         rust_proxy<rust_task> *target);
+    send(notification_type type, const char* label,
+         rust_handle<rust_task> *source, rust_handle<rust_task> *target);
 };
 
 /**
@@ -64,21 +69,51 @@ class data_message : public rust_message {
 private:
     uint8_t *_buffer;
     size_t _buffer_sz;
-    rust_port *_port;
-public:
+    rust_handle<rust_port> *_port;
 
-    data_message(uint8_t *buffer, size_t buffer_sz, const char* label,
-                 rust_task *source, rust_task *target, rust_port *port);
+public:
+    data_message(memory_region *region, uint8_t *buffer, size_t buffer_sz,
+                 const char* label, rust_handle<rust_task> *source,
+                 rust_handle<rust_port> *port);
+
     virtual ~data_message();
     void process();
+    void kernel_process();
 
     /**
      * This code executes in the sending domain's thread.
      */
     static void
     send(uint8_t *buffer, size_t buffer_sz, const char* label,
-         rust_task *source, rust_proxy<rust_task> *target,
-         rust_proxy<rust_port> *port);
+         rust_handle<rust_task> *source, rust_handle<rust_port> *port);
+};
+
+class rust_message_queue : public lock_free_queue<rust_message*>,
+                           public kernel_owned<rust_message_queue> {
+public:
+    memory_region region;
+    rust_kernel *kernel;
+    rust_handle<rust_dom> *dom_handle;
+    int32_t list_index;
+    rust_message_queue(rust_srv *srv, rust_kernel *kernel);
+
+    void associate(rust_handle<rust_dom> *dom_handle) {
+        this->dom_handle = dom_handle;
+    }
+
+    /**
+     * The Rust domain relinquishes control to the Rust kernel.
+     */
+    void disassociate() {
+        this->dom_handle = NULL;
+    }
+
+    /**
+     * Checks if a Rust domain is responsible for draining the message queue.
+     */
+    bool is_associated() {
+        return this->dom_handle != NULL;
+    }
 };
 
 //

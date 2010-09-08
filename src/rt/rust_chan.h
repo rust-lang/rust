@@ -5,7 +5,8 @@ class rust_chan : public rc_base<rust_chan>,
                   public task_owned<rust_chan>,
                   public rust_cond {
 public:
-    rust_chan(rust_task *task, maybe_proxy<rust_port> *port);
+    rust_chan(rust_task *task, maybe_proxy<rust_port> *port, size_t unit_sz);
+
     ~rust_chan();
 
     rust_task *task;

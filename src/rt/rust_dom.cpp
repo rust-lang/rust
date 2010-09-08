@@ -4,8 +4,9 @@
 
 template class ptr_vec<rust_task>;
 
-rust_dom::rust_dom(rust_srv *srv, rust_crate const *root_crate,
-                   const char *name) :
+rust_dom::rust_dom(rust_kernel *kernel,
+    rust_message_queue *message_queue, rust_srv *srv,
+    rust_crate const *root_crate, const char *name) :
     interrupt_flag(0),
     root_crate(root_crate),
     _log(srv, this),
@@ -20,7 +21,8 @@ rust_dom::rust_dom(rust_srv *srv, rust_crate const *root_crate,
     root_task(NULL),
     curr_task(NULL),
     rval(0),
-    _kernel(srv->kernel)
+    kernel(kernel),
+    message_queue(message_queue)
 {
     logptr("new dom", (uintptr_t)this);
     isaac_init(this, &rctx);
@@ -42,33 +44,9 @@ del_all_tasks(rust_dom *dom, ptr_vec<rust_task> *v) {
     }
 }
 
-void
-rust_dom::delete_proxies() {
-    rust_task *task;
-    rust_proxy<rust_task> *task_proxy;
-    while (_task_proxies.pop(&task, &task_proxy)) {
-        log(rust_log::TASK,
-            "deleting proxy 0x%" PRIxPTR " in dom %s 0x%" PRIxPTR,
-            task_proxy, task_proxy->dom->name, task_proxy->dom);
-        delete task_proxy;
-    }
-
-    rust_port *port;
-    rust_proxy<rust_port> *port_proxy;
-    while (_port_proxies.pop(&port, &port_proxy)) {
-        log(rust_log::TASK,
-            "deleting proxy 0x%" PRIxPTR " in dom %s 0x%" PRIxPTR,
-            port_proxy, port_proxy->dom->name, port_proxy->dom);
-        delete port_proxy;
-    }
-}
-
 rust_dom::~rust_dom() {
     log(rust_log::MEM | rust_log::DOM,
         "~rust_dom %s @0x%" PRIxPTR, name, (uintptr_t)this);
-
-    log(rust_log::TASK, "deleting all proxies");
-    delete_proxies();
     log(rust_log::TASK, "deleting all running tasks");
     del_all_tasks(this, &running_tasks);
     log(rust_log::TASK, "deleting all blocked tasks");
@@ -78,8 +56,9 @@ rust_dom::~rust_dom() {
 #ifndef __WIN32__
     pthread_attr_destroy(&attr);
 #endif
-    while (caches.length())
+    while (caches.length()) {
         delete caches.pop();
+    }
 }
 
 void
@@ -276,67 +255,18 @@ rust_dom::reap_dead_tasks() {
 }
 
 /**
- * Enqueues a message in this domain's incoming message queue. It's the
- * responsibility of the receiver to free the message once it's processed.
- */
-void rust_dom::send_message(rust_message *message) {
-    log(rust_log::COMM, "==> enqueueing \"%s\" 0x%" PRIxPTR
-                        " in queue 0x%" PRIxPTR
-                        " in domain 0x%" PRIxPTR,
-                        message->label,
-                        message,
-                        &_incoming_message_queue,
-                        this);
-    _incoming_message_queue.enqueue(message);
-}
-
-/**
  * Drains and processes incoming pending messages.
  */
 void rust_dom::drain_incoming_message_queue(bool process) {
     rust_message *message;
-    while (_incoming_message_queue.dequeue(&message)) {
-        log(rust_log::COMM, "<== processing incoming message \"%s\" 0x%"
-            PRIxPTR, message->label, message);
+    while (message_queue->dequeue(&message)) {
+        log(rust_log::COMM, "<== receiving \"%s\" " PTR,
+            message->label, message);
         if (process) {
             message->process();
         }
-        message->~rust_message();
-        this->synchronized_region.free(message);
+        delete message;
     }
-}
-
-rust_proxy<rust_task> *
-rust_dom::get_task_proxy(rust_task *task) {
-    rust_proxy<rust_task> *proxy = NULL;
-    if (_task_proxies.get(task, &proxy)) {
-        return proxy;
-    }
-    log(rust_log::COMM, "no proxy for %s @0x%" PRIxPTR, task->name, task);
-    proxy = new (this) rust_proxy<rust_task> (this, task, false);
-    _task_proxies.put(task, proxy);
-    return proxy;
-}
-
-/**
- * Gets a proxy for this port.
- *
- * TODO: This method needs to be synchronized since it's usually called
- * during upcall_clone_chan in a different thread. However, for now
- * since this usually happens before the thread actually starts,
- * we may get lucky without synchronizing.
- *
- */
-rust_proxy<rust_port> *
-rust_dom::get_port_proxy_synchronized(rust_port *port) {
-    rust_proxy<rust_port> *proxy = NULL;
-    if (_port_proxies.get(port, &proxy)) {
-        return proxy;
-    }
-    log(rust_log::COMM, "no proxy for 0x%" PRIxPTR, port);
-    proxy = new (this) rust_proxy<rust_port> (this, port, false);
-    _port_proxies.put(port, proxy);
-    return proxy;
 }
 
 /**
@@ -360,31 +290,6 @@ rust_dom::schedule_task() {
     }
     // log(rust_log::DOM|rust_log::TASK, "no schedulable tasks");
     return NULL;
-}
-
-/**
- * Checks for simple deadlocks.
- */
-bool
-rust_dom::is_deadlocked() {
-    if (_kernel->domains.length() != 1) {
-        // We cannot tell if we are deadlocked if other domains exists.
-        return false;
-    }
-
-    if (running_tasks.length() != 0) {
-        // We are making progress and therefore we are not deadlocked.
-        return false;
-    }
-
-    if (_incoming_message_queue.is_empty() && blocked_tasks.length() > 0) {
-        // We have no messages to process, no running tasks to schedule
-        // and some blocked tasks therefore we are likely in a deadlock.
-        _kernel->log_all_domain_state();
-        return true;
-    }
-
-    return false;
 }
 
 void
@@ -439,7 +344,7 @@ rust_dom::start_main_loop()
     logptr("exit-task glue", root_crate->get_exit_task_glue());
 
     while (n_live_tasks() > 0) {
-        A(this, is_deadlocked() == false, "deadlock");
+        A(this, kernel->is_deadlocked() == false, "deadlock");
 
         drain_incoming_message_queue(true);
 
@@ -496,7 +401,7 @@ rust_dom::start_main_loop()
     log(rust_log::DOM, "terminated scheduler loop, reaping dead tasks ...");
 
     while (dead_tasks.length() > 0) {
-        if (_incoming_message_queue.is_empty()) {
+        if (message_queue->is_empty()) {
             log(rust_log::DOM,
                 "waiting for %d dead tasks to become dereferenced, "
                 "scheduler yielding ...",

@@ -404,9 +404,10 @@ rust_task::notify_tasks_waiting_to_join() {
         tasks_waiting_to_join.pop(&waiting_task);
         if (waiting_task->is_proxy()) {
             notify_message::send(notify_message::WAKEUP, "wakeup",
-                                 this, waiting_task->as_proxy());
+                get_handle(), waiting_task->as_proxy()->handle());
+            delete waiting_task;
         } else {
-            rust_task *task = waiting_task->delegate();
+            rust_task *task = waiting_task->referent();
             if (task->dead() == false) {
                 task->wakeup(this);
             }
@@ -563,8 +564,7 @@ rust_task::transition(ptr_vec<rust_task> *src, ptr_vec<rust_task> *dst)
 }
 
 void
-rust_task::block(rust_cond *on, const char* name)
-{
+rust_task::block(rust_cond *on, const char* name) {
     log(rust_log::TASK, "Blocking on 0x%" PRIxPTR ", cond: 0x%" PRIxPTR,
                          (uintptr_t) on, (uintptr_t) cond);
     A(dom, cond == NULL, "Cannot block an already blocked task.");
@@ -629,6 +629,11 @@ rust_task::log(uint32_t type_bits, char const *fmt, ...) {
         dom->get_log().trace_ln(this, type_bits, buf);
         va_end(args);
     }
+}
+
+rust_handle<rust_task> *
+rust_task::get_handle() {
+    return dom->kernel->get_task_handle(this);
 }
 
 //

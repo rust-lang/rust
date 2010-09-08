@@ -1,7 +1,7 @@
 #ifndef RUST_DOM_H
 #define RUST_DOM_H
 
-struct rust_dom
+struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
 {
     // Fields known to the compiler:
     uintptr_t interrupt_flag;
@@ -27,14 +27,14 @@ struct rust_dom
     rust_task *curr_task;
     int rval;
 
-    rust_kernel *_kernel;
+    rust_kernel *kernel;
     int32_t list_index;
 
     hash_map<rust_task *, rust_proxy<rust_task> *> _task_proxies;
     hash_map<rust_port *, rust_proxy<rust_port> *> _port_proxies;
 
     // Incoming messages from other domains.
-    lock_free_queue<rust_message*> _incoming_message_queue;
+    rust_message_queue *message_queue;
 
 #ifndef __WIN32__
     pthread_attr_t attr;
@@ -42,9 +42,10 @@ struct rust_dom
 
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
-    rust_dom(rust_srv *srv, rust_crate const *root_crate, const char *name);
+    rust_dom(rust_kernel *kernel,
+        rust_message_queue *message_queue, rust_srv *srv,
+        rust_crate const *root_crate, const char *name);
     ~rust_dom();
-
     void activate(rust_task *task);
     void log(rust_task *task, uint32_t logbit, char const *fmt, ...);
     void log(uint32_t logbit, char const *fmt, ...);
@@ -63,11 +64,7 @@ struct rust_dom
     void free(void *mem);
     void free(void *mem, memory_region::memory_region_type type);
 
-    void send_message(rust_message *message);
     void drain_incoming_message_queue(bool process);
-    rust_proxy<rust_task> *get_task_proxy(rust_task *task);
-    void delete_proxies();
-    rust_proxy<rust_port> *get_port_proxy_synchronized(rust_port *port);
 
 #ifdef __WIN32__
     void win32_require(LPCTSTR fn, BOOL ok);
@@ -81,7 +78,7 @@ struct rust_dom
 
     void reap_dead_tasks();
     rust_task *schedule_task();
-    bool is_deadlocked();
+
     int start_main_loop();
 
     void log_state();

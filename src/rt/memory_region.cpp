@@ -1,7 +1,3 @@
-/*
- *
- */
-
 #include "rust_internal.h"
 #include "memory_region.h"
 
@@ -20,6 +16,7 @@ memory_region::memory_region(memory_region *parent) :
 }
 
 void memory_region::free(void *mem) {
+    // printf("free: ptr 0x%" PRIxPTR"\n", (uintptr_t) mem);
     if (_synchronized) { _lock.lock(); }
 #ifdef TRACK_ALLOCATIONS
     if (_allocation_list.replace(mem, NULL) == false) {
@@ -34,7 +31,6 @@ void memory_region::free(void *mem) {
     _live_allocations--;
     _srv->free(mem);
     if (_synchronized) { _lock.unlock(); }
-
 }
 
 void *
@@ -63,6 +59,7 @@ memory_region::malloc(size_t size) {
 #ifdef TRACK_ALLOCATIONS
     _allocation_list.append(mem);
 #endif
+    // printf("malloc: ptr 0x%" PRIxPTR "\n", (uintptr_t) mem);
     if (_synchronized) { _lock.unlock(); }
     return mem;
 }

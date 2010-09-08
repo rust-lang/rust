@@ -28,10 +28,10 @@ public:
  * object inserted in this list must define a "int32_t list_index" member.
  */
 template<typename T> class indexed_list {
-    memory_region &region;
+    memory_region *region;
     array_list<T*> list;
 public:
-    indexed_list(memory_region &region) : region(region) {}
+    indexed_list(memory_region *region) : region(region) {}
     virtual int32_t append(T *value);
     virtual bool pop(T **value);
     virtual size_t length() {

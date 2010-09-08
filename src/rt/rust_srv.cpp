@@ -7,13 +7,14 @@
 
 rust_srv::rust_srv() :
     local_region(this, false),
-    synchronized_region(this, true),
-    kernel(new rust_kernel(this)) {
+    synchronized_region(this, true) {
     // Nop.
 }
 
 rust_srv::~rust_srv() {
-    // Nop.
+//    char msg[1024];
+//    snprintf(msg, sizeof(msg), "~rust_srv %" PRIxPTR, (uintptr_t) this);
+//    log(msg);
 }
 
 void
@@ -73,4 +74,9 @@ rust_srv::warning(char const *expression,
              "warning: '%s', at: %s:%d %s",
              expression, file, (int)line, buf);
     log(msg);
+}
+
+rust_srv *
+rust_srv::clone() {
+    return new rust_srv();
 }

@@ -50,6 +50,7 @@ rust_task : public maybe_proxy<rust_task>,
     rust_task(rust_dom *dom,
               rust_task *spawner,
               const char *name);
+
     ~rust_task();
 
     void start(uintptr_t exit_task_glue,
@@ -109,6 +110,8 @@ rust_task : public maybe_proxy<rust_task>,
 
     // Notify tasks waiting for us that we are about to die.
     void notify_tasks_waiting_to_join();
+
+    rust_handle<rust_task> * get_handle();
 
     uintptr_t get_fp();
     uintptr_t get_previous_fp(uintptr_t fp);

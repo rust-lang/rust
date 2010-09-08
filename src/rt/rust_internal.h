@@ -72,6 +72,11 @@ struct frame_glue_fns;
 #define A(dom, e, s, ...) ((e) ? (void)0 : \
          (dom)->srv->fatal(#e, __FILE__, __LINE__, s, ## __VA_ARGS__))
 
+#define K(srv, e, s, ...) ((e) ? (void)0 : \
+         srv->fatal(#e, __FILE__, __LINE__, s, ## __VA_ARGS__))
+
+#define PTR "0x%" PRIxPTR
+
 // This drives our preemption scheme.
 
 static size_t const TIME_SLICE_IN_MS = 10;
@@ -96,22 +101,26 @@ template <typename T> struct rc_base {
 };
 
 template <typename T> struct dom_owned {
-    rust_dom *get_dom() const {
-        return ((T*)this)->dom;
-    }
-
     void operator delete(void *ptr) {
         ((T *)ptr)->dom->free(ptr);
     }
 };
 
 template <typename T> struct task_owned {
-    rust_dom *get_dom() const {
-        return ((T *)this)->task->dom;
-    }
-
     void operator delete(void *ptr) {
         ((T *)ptr)->task->dom->free(ptr);
+    }
+};
+
+template <typename T> struct kernel_owned {
+    void operator delete(void *ptr) {
+        ((T *)ptr)->kernel->free(ptr);
+    }
+};
+
+template <typename T> struct region_owned {
+    void operator delete(void *ptr) {
+        ((T *)ptr)->region->free(ptr);
     }
 };
 
@@ -152,8 +161,8 @@ public:
 #include "rust_srv.h"
 #include "rust_log.h"
 #include "rust_proxy.h"
-#include "rust_message.h"
 #include "rust_kernel.h"
+#include "rust_message.h"
 #include "rust_dom.h"
 #include "memory.h"
 
@@ -551,6 +560,9 @@ struct gc_alloc {
 #include "rust_task.h"
 #include "rust_chan.h"
 #include "rust_port.h"
+
+#include "test/rust_test_harness.h"
+#include "test/rust_test_util.h"
 
 //
 // Local Variables:

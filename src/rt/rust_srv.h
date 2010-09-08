@@ -7,7 +7,6 @@ class rust_srv {
 public:
     memory_region local_region;
     memory_region synchronized_region;
-    rust_kernel *kernel;
     virtual void log(char const *msg);
     virtual void fatal(char const *expression,
         char const *file,
@@ -24,6 +23,7 @@ public:
     virtual void *realloc(void *, size_t);
     rust_srv();
     virtual ~rust_srv();
+    virtual rust_srv *clone();
 };
 
 #endif /* RUST_SRV_H */
