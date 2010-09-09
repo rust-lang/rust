@@ -3,7 +3,10 @@
 use std;
 import std._str;
 
-type t = tag(make_t(str), clam());
+tag t {
+  make_t(str);
+  clam();
+}
 
 fn foo(str s) {
   let t x = make_t(s);  // ref up

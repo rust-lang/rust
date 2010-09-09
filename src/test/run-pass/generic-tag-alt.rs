@@ -1,4 +1,6 @@
-type foo[T] = tag(arm(T));
+tag foo[T] {
+  arm(T);
+}
 
 fn altfoo[T](foo[T] f) {
   auto hit = false;

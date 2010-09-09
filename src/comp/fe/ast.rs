@@ -10,30 +10,47 @@ type crate = rec( str filename,
 
 type block = vec[@stmt];
 
-type stmt = tag( stmt_block(block),
-                 stmt_decl(@decl),
-                 stmt_ret(option[@lval]) );
+tag stmt {
+    stmt_block(block);
+    stmt_decl(@decl);
+    stmt_ret(option[@lval]);
+}
 
-type decl = tag( decl_local(ident, option[ty]),
-                 decl_item(ident, @item) );
 
-type lval = tag( lval_ident(ident),
-                 lval_ext(@lval, ident),
-                 lval_idx(@lval, @atom) );
+tag decl {
+    decl_local(ident, option[ty]);
+    decl_item(ident, @item);
+}
 
-type atom = tag( atom_lit(@lit), atom_lval(@lval) );
+tag lval {
+    lval_ident(ident);
+    lval_ext(@lval, ident);
+    lval_idx(@lval, @atom);
+}
 
-type lit = tag( lit_char(char),
-                lit_int(int),
-                lit_nil(),
-                lit_bool(bool) );
+tag atom {
+    atom_lit(@lit);
+    atom_lval(@lval);
+}
 
-type ty = tag( ty_nil(),
-               ty_bool(),
-               ty_int(),
-               ty_char() );
+tag lit {
+    lit_char(char);
+    lit_int(int);
+    lit_nil();
+    lit_bool(bool);
+}
 
-type mode = tag( val(), alias() );
+tag ty {
+    ty_nil();
+    ty_bool();
+    ty_int();
+    ty_char();
+}
+
+tag mode {
+    val();
+    alias();
+}
 
 type slot = rec(ty ty, mode mode);
 
@@ -43,8 +60,10 @@ type _fn = rec(vec[rec(slot slot, ident ident)] inputs,
 
 type _mod = hashmap[ident,item];
 
-type item = tag( item_fn(@_fn),
-                 item_mod(@_mod) );
+tag item {
+    item_fn(@_fn);
+    item_mod(@_mod);
+}
 
 
 //

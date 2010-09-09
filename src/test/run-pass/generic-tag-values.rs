@@ -1,6 +1,8 @@
 // -*- rust -*-
 
-type noption[T] = tag(some(T));
+tag noption[T] {
+  some(T);
+}
 
 fn main() {
   let noption[int] nop = some[int](5);

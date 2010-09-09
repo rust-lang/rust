@@ -27,7 +27,11 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
   let uint initial_capacity = 32u; // 2^5
   let util.rational load_factor = rec(num=3, den=4);
 
-  type bucket[K, V] = tag(nil(), deleted(), some(K, V));
+  tag bucket[K, V] {
+    nil();
+    deleted();
+    some(K, V);
+  }
 
   fn make_buckets[K, V](uint nbkts) -> vec[mutable bucket[K, V]] {
     ret _vec.init_elt[mutable bucket[K, V]](nil[K, V](), nbkts);

@@ -157,7 +157,7 @@ let determine_constr_key
                       | Some (_, aid) ->
                           if defn_id_is_slot cx aid
                           then
-                            if type_has_state
+                            if type_has_state cx
                               (strip_mutable_or_constrained_ty
                                  (slot_ty (get_slot cx aid)))
                             then err (Some aid)

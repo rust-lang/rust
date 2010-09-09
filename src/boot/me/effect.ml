@@ -28,7 +28,7 @@ let mutability_checking_visitor
    *)
   let visit_ty_pre t =
     match t with
-        Ast.TY_chan t' when type_has_state t' ->
+        Ast.TY_chan t' when type_has_state cx t' ->
           err None "channel of mutable type: %a " Ast.sprintf_ty t'
       | _ -> ()
   in

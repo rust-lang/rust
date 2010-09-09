@@ -221,7 +221,8 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
 
     match lty with
         LTYPE_poly (params, ty) ->
-          LTYPE_mono (Semant.rebuild_ty_under_params ty params args true)
+          LTYPE_mono (Semant.rebuild_ty_under_params
+                        cx None ty params args true)
       | _ ->
         Common.err None "expected polymorphic type but found %a"
           sprintf_ltype lty

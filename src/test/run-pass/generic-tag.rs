@@ -1,4 +1,7 @@
-type option[T] = tag(some(@T), none());
+tag option[T] {
+  some(@T);
+  none();
+}
 
 fn main() {
   let option[int] a = some[int](@10);

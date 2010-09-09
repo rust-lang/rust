@@ -440,6 +440,7 @@ type dw_at =
   | DW_AT_rust_type_param_index
   | DW_AT_rust_iterator
   | DW_AT_rust_native_type_id
+  | DW_AT_rust_tag_type_id
   | DW_AT_hi_user
 ;;
 
@@ -537,6 +538,7 @@ let dw_at_to_int (a:dw_at) : int =
     | DW_AT_rust_type_param_index -> 0x2301
     | DW_AT_rust_iterator -> 0x2302
     | DW_AT_rust_native_type_id -> 0x2303
+    | DW_AT_rust_tag_type_id -> 0x2304
     | DW_AT_hi_user -> 0x3fff
 ;;
 
@@ -633,6 +635,7 @@ let dw_at_of_int (i:int) : dw_at =
     | 0x2301 -> DW_AT_rust_type_param_index
     | 0x2302 -> DW_AT_rust_iterator
     | 0x2303 -> DW_AT_rust_native_type_id
+    | 0x2304 -> DW_AT_rust_tag_type_id
     | 0x3fff -> DW_AT_hi_user
     | _ -> bug () "bad DWARF attribute code: 0x%x" i
 ;;
@@ -730,6 +733,7 @@ let dw_at_to_string (a:dw_at) : string =
     | DW_AT_rust_type_param_index -> "DW_AT_rust_type_param_index"
     | DW_AT_rust_iterator -> "DW_AT_rust_iterator"
     | DW_AT_rust_native_type_id -> "DW_AT_native_type_id"
+    | DW_AT_rust_tag_type_id -> "DW_AT_tag_type_id"
     | DW_AT_hi_user -> "DW_AT_hi_user"
 ;;
 
@@ -1354,7 +1358,8 @@ let (abbrev_struct_type_member:abbrev) =
 let (abbrev_variant_part:abbrev) =
   (DW_TAG_variant_part, DW_CHILDREN_yes,
    [|
-     (DW_AT_discr, DW_FORM_ref_addr)
+     (DW_AT_discr, DW_FORM_ref_addr);
+     (DW_AT_rust_tag_type_id, DW_FORM_data4);
    |])
 ;;
 
@@ -1448,8 +1453,6 @@ let dwarf_visitor
       | Il.Bits32 -> TY_i32
       | Il.Bits64 -> TY_i64
   in
-
-  let iso_stack = Stack.create () in
 
   let path_name _ = Fmt.fmt_to_str Ast.fmt_name (path_to_name path) in
 
@@ -1671,16 +1674,13 @@ let dwarf_visitor
     if Hashtbl.mem emitted_types ty
     then Hashtbl.find emitted_types ty
     else
-      let ref_addr_for_fix fix =
-        let res = dw_form_ref_addr fix in
-          Hashtbl.add emitted_types ty res;
-          res
-      in
+      let fix = new_fixup "type DIE" in
+      let res = dw_form_ref_addr fix in
+      let _ = Hashtbl.add emitted_types ty res in
 
       let record trec =
-        let rty = referent_type word_bits (Ast.TY_rec trec) in
+        let rty = referent_type cx (Ast.TY_rec trec) in
         let rty_sz = Il.referent_ty_size abi.Abi.abi_word_bits in
-        let fix = new_fixup "record type DIE" in
         let die = DEF (fix, SEQ [|
                          uleb (get_abbrev_code abbrev_struct_type);
                          (* DW_AT_byte_size: DW_FORM_block4 *)
@@ -1710,8 +1710,7 @@ let dwarf_visitor
                             size_block4 (rty_sz rtys.(i)) false |]);
             end
             trec;
-          emit_null_die ();
-          ref_addr_for_fix fix
+          emit_null_die ()
       in
 
       let tup ttup =
@@ -1724,7 +1723,6 @@ let dwarf_visitor
         (* 
          * Strings, like vecs, are &[rc,alloc,fill,data...] 
          *)
-        let fix = new_fixup "string type DIE" in
         let die =
           DEF (fix, SEQ [|
                  uleb (get_abbrev_code abbrev_string_type);
@@ -1740,12 +1738,10 @@ let dwarf_visitor
                                    DW_OP_plus |]
                |])
         in
-          emit_die die;
-          ref_addr_for_fix fix
+          emit_die die
       in
 
       let base (name, encoding, byte_size) =
-        let fix = new_fixup ("base type DIE: " ^ name) in
         let die =
           DEF (fix, SEQ [|
                  uleb (get_abbrev_code abbrev_base_type);
@@ -1757,12 +1753,11 @@ let dwarf_visitor
                  BYTE byte_size
                |])
         in
-          emit_die die;
-          ref_addr_for_fix fix
+          emit_die die
       in
 
       let unspecified_anon_struct _ =
-        let fix = new_fixup "unspecified-anon-struct DIE" in
+        let fix = new_fixup "type DIE" in
         let die =
           DEF (fix, SEQ [|
                  uleb (get_abbrev_code
@@ -1772,11 +1767,10 @@ let dwarf_visitor
                |])
         in
           emit_die die;
-          ref_addr_for_fix fix
+          dw_form_ref_addr fix
       in
 
       let unspecified_struct rust_ty =
-        let fix = new_fixup "unspecified-struct DIE" in
         let die =
           DEF (fix, SEQ [|
                  uleb (get_abbrev_code abbrev_unspecified_structure_type);
@@ -1786,19 +1780,15 @@ let dwarf_visitor
                  BYTE 1;
                |])
         in
-          emit_die die;
-          ref_addr_for_fix fix
+          emit_die die
       in
 
       let rust_type_param (p:(ty_param_idx * Ast.effect)) =
-        let fix = new_fixup "rust-type-param DIE" in
         let die = DEF (fix, type_param_die p) in
-          emit_die die;
-          ref_addr_for_fix fix
+          emit_die die
       in
 
       let unspecified_ptr_with_ref rust_ty ref_addr =
-        let fix = new_fixup ("unspecified-pointer-type-with-ref DIE") in
         let die =
           DEF (fix, SEQ [|
                  uleb (get_abbrev_code abbrev_unspecified_pointer_type);
@@ -1810,26 +1800,22 @@ let dwarf_visitor
                  ref_addr
                |])
         in
-          emit_die die;
-          ref_addr_for_fix fix
+          emit_die die
       in
 
       let formal_type slot =
-        let fix = new_fixup "formal type" in
         let die =
-          DEF (fix, SEQ [|
-                 uleb (get_abbrev_code abbrev_formal_type);
-                 (* DW_AT_type: DW_FORM_ref_addr *)
-                 (ref_slot_die slot);
-               |])
+          SEQ [|
+            uleb (get_abbrev_code abbrev_formal_type);
+            (* DW_AT_type: DW_FORM_ref_addr *)
+            (ref_slot_die slot);
+          |]
         in
-          emit_die die;
-          ref_addr_for_fix fix
+          emit_die die
       in
 
       let fn_type tfn =
         let (tsig, taux) = tfn in
-        let fix = new_fixup "fn type" in
         let die =
           DEF (fix, SEQ [|
                  uleb (get_abbrev_code abbrev_subroutine_type);
@@ -1842,37 +1828,33 @@ let dwarf_visitor
         in
           emit_die die;
           Array.iter
-            (fun s -> ignore (formal_type s))
+            (fun s -> formal_type s)
             tsig.Ast.sig_input_slots;
-          emit_null_die ();
-          ref_addr_for_fix fix
+          emit_null_die ()
       in
 
       let obj_fn_type ident tfn =
         let (tsig, taux) = tfn in
-        let fix = new_fixup "fn type" in
         let die =
-          DEF (fix, SEQ [|
-                 uleb (get_abbrev_code abbrev_obj_subroutine_type);
-                 (* DW_AT_name: DW_FORM_string *)
-                 ZSTRING ident;
-                 (* DW_AT_type: DW_FORM_ref_addr *)
-                 (ref_slot_die tsig.Ast.sig_output_slot);
-                 encode_effect taux.Ast.fn_effect;
-                 (* DW_AT_rust_iterator: DW_FORM_flag *)
-                 BYTE (if taux.Ast.fn_is_iter then 1 else 0)
-               |])
+          SEQ [|
+            uleb (get_abbrev_code abbrev_obj_subroutine_type);
+            (* DW_AT_name: DW_FORM_string *)
+            ZSTRING ident;
+            (* DW_AT_type: DW_FORM_ref_addr *)
+            (ref_slot_die tsig.Ast.sig_output_slot);
+            encode_effect taux.Ast.fn_effect;
+            (* DW_AT_rust_iterator: DW_FORM_flag *)
+            BYTE (if taux.Ast.fn_is_iter then 1 else 0)
+          |]
         in
           emit_die die;
           Array.iter
-            (fun s -> ignore (formal_type s))
+            (fun s -> formal_type s)
             tsig.Ast.sig_input_slots;
           emit_null_die ();
-          ref_addr_for_fix fix
       in
 
       let obj_type (eff,ob) =
-        let fix = new_fixup "object type" in
         let die =
           DEF (fix, SEQ [|
                  uleb (get_abbrev_code abbrev_obj_type);
@@ -1881,8 +1863,7 @@ let dwarf_visitor
         in
           emit_die die;
           Hashtbl.iter (fun k v -> ignore (obj_fn_type k v)) ob;
-          emit_null_die ();
-          ref_addr_for_fix fix
+          emit_null_die ()
       in
 
       let unspecified_ptr_with_ref_ty rust_ty ty =
@@ -1894,7 +1875,6 @@ let dwarf_visitor
       in
 
       let native_ptr_type oid =
-        let fix = new_fixup "native type" in
         let die =
           DEF (fix, SEQ [|
                  uleb (get_abbrev_code abbrev_native_pointer_type);
@@ -1904,11 +1884,10 @@ let dwarf_visitor
                  WORD (word_ty_mach, IMM (Int64.of_int (int_of_opaque oid)));
                |])
         in
-          emit_die die;
-          ref_addr_for_fix fix
+          emit_die die
       in
 
-      let tag_type fix_opt ttag =
+      let tag_type ttag =
         (*
          * Tag-encoding is a bit complex. It's based on the pascal model.
          *
@@ -1927,7 +1906,9 @@ let dwarf_visitor
          * I'm a bit surprised by that!
          *)
 
-        let rty = referent_type word_bits (Ast.TY_tag ttag) in
+        let n_variants = get_n_tag_tups cx ttag in
+        let tinfo = Hashtbl.find cx.ctxt_all_tag_info ttag.Ast.tag_id in
+        let rty = referent_type cx (Ast.TY_tag ttag) in
         let rty_sz = Il.referent_ty_size abi.Abi.abi_word_bits in
         let rtys =
           match rty with
@@ -1935,13 +1916,8 @@ let dwarf_visitor
             | _ -> bug () "tag type became non-struct referent_ty"
         in
 
-        let outer_structure_fix =
-          match fix_opt with
-              None -> new_fixup "tag type"
-            | Some f -> f
-        in
         let outer_structure_die =
-          DEF (outer_structure_fix, SEQ [|
+          DEF (fix, SEQ [|
                  uleb (get_abbrev_code abbrev_struct_type);
                  (* DW_AT_byte_size: DW_FORM_block4 *)
                  size_block4 (rty_sz rty) false
@@ -1968,57 +1944,39 @@ let dwarf_visitor
           SEQ [|
             uleb (get_abbrev_code abbrev_variant_part);
             (* DW_AT_discr: DW_FORM_ref_addr *)
-            (dw_form_ref_addr discr_fix)
+            (dw_form_ref_addr discr_fix);
+            (* DW_AT_tag_type_id: DW_FORM_data4 *)
+            WORD (word_ty_mach,
+                  IMM (Int64.of_int (int_of_opaque ttag.Ast.tag_id)));
           |]
         in
 
-        let emit_variant i name ttup =
-          (* FIXME: Possibly use a DW_TAG_enumeration_type here? *)
-          emit_die (SEQ [|
-                      uleb (get_abbrev_code abbrev_variant);
-                      (* DW_AT_discr_value: DW_FORM_udata *)
-                      uleb i;
-                      (* DW_AT_name: DW_FORM_string *)
-                      ZSTRING (Ast.sprintf_name () name)
-                    |]);
-          ignore (tup ttup);
-          emit_null_die ();
+        let emit_variant i =
+          let (name, _, _) = Hashtbl.find tinfo.tag_nums i in
+          let ttup = get_nth_tag_tup cx ttag i in
+            (* FIXME: Possibly use a DW_TAG_enumeration_type here? *)
+            emit_die (SEQ [|
+                        uleb (get_abbrev_code abbrev_variant);
+                        (* DW_AT_discr_value: DW_FORM_udata *)
+                        uleb i;
+                        (* DW_AT_name: DW_FORM_string *)
+                        ZSTRING name
+                      |]);
+            ignore (tup ttup);
+            emit_null_die ();
         in
           emit_die outer_structure_die;
           emit_die discr_die;
           emit_die variant_part_die;
-          let tag_keys = sorted_htab_keys ttag in
-            Array.iteri
-              (fun i k -> emit_variant i k (Hashtbl.find ttag k))
-              tag_keys;
-            emit_null_die (); (* end variant-part *)
-            emit_null_die (); (* end outer struct *)
-            ref_addr_for_fix outer_structure_fix
-      in
-
-      let iso_type tiso =
-        let iso_fixups =
-          Array.map
-            (fun _ -> new_fixup "iso-member tag type")
-            tiso.Ast.iso_group
-        in
-          Stack.push iso_fixups iso_stack;
-          let tag_dies =
-            Array.mapi
-              (fun i fix ->
-                 tag_type (Some fix) tiso.Ast.iso_group.(i))
-              iso_fixups
-          in
-            ignore (Stack.pop iso_stack);
-            tag_dies.(tiso.Ast.iso_index)
-      in
-
-      let idx_type i =
-        ref_addr_for_fix (Stack.top iso_stack).(i)
+          for i = 0 to n_variants - 1
+          do
+            emit_variant i
+          done;
+          emit_null_die (); (* end variant-part *)
+          emit_null_die (); (* end outer struct *)
       in
 
       let box_type t =
-        let fix = new_fixup "box DIE" in
         let body_off =
           word_sz_int * Abi.box_rc_field_body
         in
@@ -2035,12 +1993,10 @@ let dwarf_visitor
                                 DW_OP_lit body_off;
                                 DW_OP_plus;
                                 DW_OP_deref |]
-                         |]));
-          ref_addr_for_fix fix
+                         |]))
       in
 
       let mutable_type t =
-        let fix = new_fixup "mutable DIE" in
           emit_die (DEF (fix, SEQ [|
                            uleb (get_abbrev_code abbrev_mutable_type);
                            (* DW_AT_type: DW_FORM_ref_addr *)
@@ -2048,43 +2004,44 @@ let dwarf_visitor
                            (* DW_AT_mutable: DW_FORM_flag *)
                            BYTE 1;
                          |]));
-          ref_addr_for_fix fix
       in
-
-        match ty with
-            Ast.TY_nil -> unspecified_struct DW_RUST_nil
-          | Ast.TY_bool -> base ("bool", DW_ATE_boolean, 1)
-          | Ast.TY_mach (TY_u8)  -> base ("u8",  DW_ATE_unsigned, 1)
-          | Ast.TY_mach (TY_u16) -> base ("u16", DW_ATE_unsigned, 2)
-          | Ast.TY_mach (TY_u32) -> base ("u32", DW_ATE_unsigned, 4)
-          | Ast.TY_mach (TY_u64) -> base ("u64", DW_ATE_unsigned, 8)
-          | Ast.TY_mach (TY_i8)  -> base ("i8",  DW_ATE_signed, 1)
-          | Ast.TY_mach (TY_i16) -> base ("i16", DW_ATE_signed, 2)
-          | Ast.TY_mach (TY_i32) -> base ("i32", DW_ATE_signed, 4)
-          | Ast.TY_mach (TY_i64) -> base ("i64", DW_ATE_signed, 8)
-          | Ast.TY_int -> base ("int", DW_ATE_signed, word_sz_int)
-          | Ast.TY_uint -> base ("uint", DW_ATE_unsigned, word_sz_int)
-          | Ast.TY_char -> base ("char", DW_ATE_unsigned_char, 4)
-          | Ast.TY_str -> string_type ()
-          | Ast.TY_rec trec -> record trec
-          | Ast.TY_tup ttup -> tup ttup
-          | Ast.TY_tag ttag -> tag_type None ttag
-          | Ast.TY_iso tiso -> iso_type tiso
-          | Ast.TY_idx i -> idx_type i
-          | Ast.TY_vec t -> unspecified_ptr_with_ref_ty DW_RUST_vec t
-          | Ast.TY_chan t -> unspecified_ptr_with_ref_ty DW_RUST_chan t
-          | Ast.TY_port t -> unspecified_ptr_with_ref_ty DW_RUST_port t
-          | Ast.TY_task -> unspecified_ptr DW_RUST_task
-          | Ast.TY_fn fn -> fn_type fn
-          | Ast.TY_type -> unspecified_ptr DW_RUST_type
-          | Ast.TY_native i -> native_ptr_type i
-          | Ast.TY_param p -> rust_type_param p
-          | Ast.TY_obj ob -> obj_type ob
-          | Ast.TY_mutable t -> mutable_type t
-          | Ast.TY_box t -> box_type t
-          | _ ->
-              unimpl None "dwarf encoding for type %a"
-                Ast.sprintf_ty ty
+        begin
+          match ty with
+              Ast.TY_nil -> unspecified_struct DW_RUST_nil
+            | Ast.TY_bool -> base ("bool", DW_ATE_boolean, 1)
+            | Ast.TY_mach (TY_u8)  -> base ("u8",  DW_ATE_unsigned, 1)
+            | Ast.TY_mach (TY_u16) -> base ("u16", DW_ATE_unsigned, 2)
+            | Ast.TY_mach (TY_u32) -> base ("u32", DW_ATE_unsigned, 4)
+            | Ast.TY_mach (TY_u64) -> base ("u64", DW_ATE_unsigned, 8)
+            | Ast.TY_mach (TY_i8)  -> base ("i8",  DW_ATE_signed, 1)
+            | Ast.TY_mach (TY_i16) -> base ("i16", DW_ATE_signed, 2)
+            | Ast.TY_mach (TY_i32) -> base ("i32", DW_ATE_signed, 4)
+            | Ast.TY_mach (TY_i64) -> base ("i64", DW_ATE_signed, 8)
+            | Ast.TY_int -> base ("int", DW_ATE_signed, word_sz_int)
+            | Ast.TY_uint -> base ("uint", DW_ATE_unsigned, word_sz_int)
+            | Ast.TY_char -> base ("char", DW_ATE_unsigned_char, 4)
+            | Ast.TY_str -> string_type ()
+            | Ast.TY_rec trec -> record trec
+            | Ast.TY_tup ttup -> tup ttup
+            | Ast.TY_tag ttag ->
+                let _ = fun _ -> tag_type ttag in
+                  unspecified_struct DW_RUST_nil
+            | Ast.TY_vec t -> unspecified_ptr_with_ref_ty DW_RUST_vec t
+            | Ast.TY_chan t -> unspecified_ptr_with_ref_ty DW_RUST_chan t
+            | Ast.TY_port t -> unspecified_ptr_with_ref_ty DW_RUST_port t
+            | Ast.TY_task -> unspecified_ptr DW_RUST_task
+            | Ast.TY_fn fn -> fn_type fn
+            | Ast.TY_type -> unspecified_ptr DW_RUST_type
+            | Ast.TY_native i -> native_ptr_type i
+            | Ast.TY_param p -> rust_type_param p
+            | Ast.TY_obj ob -> obj_type ob
+            | Ast.TY_mutable t -> mutable_type t
+            | Ast.TY_box t -> box_type t
+            | _ ->
+                unimpl None "dwarf encoding for type %a"
+                  Ast.sprintf_ty ty
+        end;
+        res
   in
 
   let finish_crate_cu_and_compose_headers _ =
@@ -2886,6 +2843,12 @@ let rec extract_mod_items
   in
 
   let rec get_ty die : Ast.ty =
+
+    let is_tagged_variant =
+      Array.length die.die_children == 2 &&
+        die.die_children.(1).die_tag = DW_TAG_variant
+    in
+
       match die.die_tag with
 
           DW_TAG_structure_type
@@ -2951,62 +2914,52 @@ let rec extract_mod_items
                 | _ -> bug () "unexpected type of DW_TAG_base_type"
             end
 
+        | DW_TAG_structure_type when is_tagged_variant ->
+            Ast.TY_tag
+              { Ast.tag_id = Opaque (get_num
+                                       (die.die_children.(1))
+                                       DW_AT_rust_tag_type_id);
+                (* FIXME: encode and decode tag args. *)
+                Ast.tag_args = [| |] }
+
         | DW_TAG_structure_type ->
             begin
-              if Array.length die.die_children == 2 &&
-                  die.die_children.(1).die_tag =
-                  DW_TAG_variant_part then begin
-                (* FIXME: will infinite loop on iso-recursive tags! *)
-                let ty_tag = Hashtbl.create 0 in
-                let variant_part = die.die_children.(1) in
-                let parse_variant die =
-                  assert (die.die_tag = DW_TAG_variant);
-                  assert (Array.length die.die_children == 1);
-                  let name = Ast.NAME_base (Ast.BASE_ident (get_name die)) in
-                  let ty_tup =
-                    match get_ty die.die_children.(0) with
-                        Ast.TY_tup ty_tup -> ty_tup
-                      | _ -> bug () "tag variant of non-tuple type"
-                  in
-                  Hashtbl.add ty_tag name ty_tup
-                in
-                Array.iter parse_variant variant_part.die_children;
-                Ast.TY_tag ty_tag
-              end else
-                let is_num_idx s =
-                  let len = String.length s in
-                    if len >= 2 && s.[0] = '_'
-                    then
-                      let ok = ref true in
-                        String.iter
-                          (fun c -> ok := (!ok) && '0' <= c && c <= '9')
-                          (String.sub s 1 (len-1));
-                        !ok
-                    else
-                      false
-                in
-                let members = arr_map_partial
-                  die.die_children
-                  begin
-                    fun child ->
-                      if child.die_tag = DW_TAG_member
-                      then Some child
-                      else None
-                  end
-                in
-                  if Array.length members == 0 ||
-                    is_num_idx (get_name members.(0))
+              let is_num_idx s =
+                let len = String.length s in
+                  if len >= 2 && s.[0] = '_'
                   then
-                    let tys = Array.map get_referenced_ty members in
-                      Ast.TY_tup tys
+                    let ok = ref true in
+                      String.iter
+                        (fun c -> ok := (!ok) && '0' <= c && c <= '9')
+                        (String.sub s 1 (len-1));
+                      !ok
                   else
-                    let entries =
-                      Array.map
-                        (fun member_die -> ((get_name member_die),
-                                            (get_referenced_ty member_die)))
-                        members
-                    in
-                      Ast.TY_rec entries
+                    false
+              in
+
+              let members = arr_map_partial
+                die.die_children
+                begin
+                  fun child ->
+                    if child.die_tag = DW_TAG_member
+                    then Some child
+                    else None
+                end
+              in
+                if Array.length members == 0 ||
+                  is_num_idx (get_name members.(0))
+                then
+                  let tys = Array.map get_referenced_ty members in
+                    Ast.TY_tup tys
+                else
+                  let entries =
+                    Array.map
+                      (fun member_die ->
+                         ((get_name member_die),
+                          (get_referenced_ty member_die)))
+                      members
+                  in
+                    Ast.TY_rec entries
             end
 
         | DW_TAG_interface_type ->

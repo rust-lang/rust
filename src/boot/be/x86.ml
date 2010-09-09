@@ -1028,7 +1028,11 @@ let unwind_glue
 
 
 (* Puts result in eax; clobbers ecx, edx in the process. *)
-let rec calculate_sz (e:Il.emitter) (size:size) (in_obj:bool) : unit =
+let rec calculate_sz
+    (e:Il.emitter)
+    (size:size)
+    (in_obj:bool)
+    : unit =
   let emit = Il.emit e in
   let mov dst src = emit (Il.umov dst src) in
   let push x = emit (Il.Push x) in
@@ -1060,9 +1064,11 @@ let rec calculate_sz (e:Il.emitter) (size:size) (in_obj:bool) : unit =
     (* Note that we cheat here and pretend only to have i+1 tydescs (because
        we GEP to the i'th while still in this function, so no one outside
        finds out about the lie. *)
-    let tydesc_tys = Array.init (i + 1) (fun _ -> Ast.TY_type) in
-    let ty_params_ty = Ast.TY_tup tydesc_tys in
-    let ty_params_rty = Semant.referent_type word_bits ty_params_ty in
+    let tydesc_rtys =
+      Array.init (i + 1)
+        (fun _ ->  (Il.ScalarTy (Il.AddrTy tydesc_rty)))
+    in
+    let ty_params_rty = Il.StructTy tydesc_rtys in
 
       (* ... and fetch! *)
 

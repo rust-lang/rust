@@ -231,7 +231,7 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
                   let apos = lexpos ps in
                   let name = Pexp.parse_name ps in
                   let bpos = lexpos ps in
-                    
+
                     if peek ps != LPAREN then
                       begin
                         match name with
@@ -240,32 +240,32 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
                                 { Ast.slot_mode = Ast.MODE_local;
                                   Ast.slot_ty = None }
                               in
-                                Left 
-                                  (Ast.PAT_slot ((span ps apos bpos slot), 
+                                Left
+                                  (Ast.PAT_slot ((span ps apos bpos slot),
                                                  ident))
                           |_ -> raise (unexpected ps)
                       end
                     else
                       let lv = name_to_lval apos bpos name in
                       let parse_pat ps = either_get_left (parse_pat ps) in
-                        Left 
+                        Left
                           (Ast.PAT_tag (lv, paren_comma_list parse_pat ps))
-                          
+
               | LIT_INT _
               | LIT_UINT _
               | LIT_CHAR _
               | LIT_BOOL _ ->
                   Left (Ast.PAT_lit (Pexp.parse_lit ps))
-                    
+
               | UNDERSCORE -> bump ps; Left (Ast.PAT_wild)
-                  
+
               | tok -> raise (Parse_err (ps,
                                          "Expected pattern but found '" ^
                                            (string_of_tok tok) ^ "'"))
           in
           let rec parse_arms ps parse_case =
-            match peek ps with 
-                CASE -> 
+            match peek ps with
+                CASE ->
                   bump ps;
                   let case = parse_case ps in
                   let blk = parse_block ps in
@@ -283,15 +283,15 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
           in
           let parse_alt_block ps str parse_case make_stmt =
             let br_parse_case = bracketed LPAREN RPAREN parse_case in
-            let arms = (ctxt (String.concat " " ["alt"; str; "arms"]) 
+            let arms = (ctxt (String.concat " " ["alt"; str; "arms"])
                           (fun ps -> parse_arms ps br_parse_case) ps) in
-              make_stmt (fst arms) (snd arms) 
+              make_stmt (fst arms) (snd arms)
           in
-          let which_alt = match peek ps with 
+          let which_alt = match peek ps with
               TYPE -> "type" | LPAREN -> "tag" | _ -> raise (unexpected ps)
           in
-          let (stmts, lval) = if which_alt = "type" then bump ps; 
-            bracketed LPAREN RPAREN parse_lval ps 
+          let (stmts, lval) = if which_alt = "type" then bump ps;
+            bracketed LPAREN RPAREN parse_lval ps
           in
           let make_alt_tag_stmt val_arms dflt_arm =
             assert (not (bool_of_option dflt_arm));
@@ -301,7 +301,7 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
                 Ast.alt_tag_arms = Array.of_list val_arms;
               }
             end
-          in 
+          in
           let make_alt_type_stmt val_arms dflt_arm =
             spans ps stmts apos begin
               Ast.STMT_alt_type {
@@ -314,8 +314,8 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
           let parse_slot_and_ident ps =
             match peek ps with
                 UNDERSCORE -> Right ()
-              | _ -> Left (pair_rev (Pexp.parse_slot_and_ident false ps)) 
-                  
+              | _ -> Left (pair_rev (Pexp.parse_slot_and_ident false ps))
+
           in
           let parse_alt_tag_block ps =
             parse_alt_block ps
@@ -399,7 +399,7 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
                   in
                   let bpos = lexpos ps in
                   let head_block =
-                    (* 
+                    (*
                      * Slightly weird, but we put an extra nesting level of
                      * block here to separate the part that lives in our frame
                      * (the iter slot) from the part that lives in the callee
@@ -550,11 +550,16 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
             expect ps SEMI;
             spans ps stmts apos (Ast.STMT_join lval)
 
-      | IO | STATE | UNSAFE | MOD | OBJ | TYPE | FN | USE | NATIVE ->
-          let (ident, item) = ctxt "stmt: decl" parse_mod_item ps in
-          let decl = Ast.DECL_mod_item (ident, item) in
-          let stmts = expand_tags_to_stmts ps item in
-            spans ps stmts apos (Ast.STMT_decl decl)
+      | IO | STATE | UNSAFE | MOD | OBJ | TAG | TYPE | FN | USE | NATIVE ->
+          let items = ctxt "stmt: decl" parse_mod_item ps in
+          let bpos = lexpos ps in
+            Array.map
+              begin
+                fun (ident, item) ->
+                  let decl = Ast.DECL_mod_item (ident, item) in
+                    span ps apos bpos (Ast.STMT_decl decl)
+              end
+              items
 
       | token ->
           if token = SPAWN then
@@ -817,6 +822,68 @@ and parse_obj_item
          span ps apos bpos
            (decl params (Ast.MOD_ITEM_obj obj)))
 
+and parse_tag_item
+    (ps:pstate)
+    (apos:pos)
+    (effect:Ast.effect)
+    : (Ast.ident * Ast.mod_item) array =
+  expect ps TAG;
+  let (ident, params) = parse_ident_and_params ps "tag" in
+  let tag_id = next_opaque_id ps in
+  let i = ref 0 in
+  let parse_tag_ctor ps =
+    let apos = lexpos ps in
+    let ident = Pexp.parse_ident ps in
+    let hdr =
+      let j = ref 0 in
+      let parse_ctor_slot ps =
+        let apos = lexpos ps in
+        let t = Pexp.parse_ty ps in
+        let s = { Ast.slot_mode = Ast.MODE_local;
+                  Ast.slot_ty = Some t }
+        in
+        let bpos = lexpos ps in
+          incr j;
+          ((span ps apos bpos s), "_" ^ string_of_int (!j))
+      in
+      let res = match peek ps with
+              LPAREN -> paren_comma_list parse_ctor_slot ps
+        | _ -> raise (err "tag variant missing argument list" ps)
+      in
+        expect ps SEMI;
+        res
+    in
+    let n = !i in
+    let bpos = lexpos ps in
+    let params =
+      Array.map (fun p -> Parser.clone_span ps p p.node) params
+    in
+      incr i;
+      (ident,
+       span ps apos bpos
+         (decl params
+            (Ast.MOD_ITEM_tag (hdr, tag_id, n))))
+  in
+  let constructors =
+    bracketed_one_or_more LBRACE RBRACE
+      None (ctxt "tag: ctor" parse_tag_ctor) ps
+  in
+  let bpos = lexpos ps in
+  let ty =
+    Ast.TY_tag
+      { Ast.tag_id = tag_id;
+        Ast.tag_args =
+          Array.map
+            (fun p -> Ast.TY_param (snd p.node))
+            params }
+  in
+  let ty_item =
+    (ident,
+     span ps apos bpos
+       (decl params (Ast.MOD_ITEM_type (effect, ty))))
+  in
+    Array.append [| ty_item |] constructors
+
 and parse_type_item
     (ps:pstate)
     (apos:pos)
@@ -831,7 +898,8 @@ and parse_type_item
   let item = Ast.MOD_ITEM_type (effect, ty) in
     (ident, span ps apos bpos (decl params item))
 
-and parse_mod_item (ps:pstate) : (Ast.ident * Ast.mod_item) =
+and parse_mod_item (ps:pstate)
+    : (Ast.ident * Ast.mod_item) array =
   let apos = lexpos ps in
   let parse_lib_name ident =
     match peek ps with
@@ -856,12 +924,13 @@ and parse_mod_item (ps:pstate) : (Ast.ident * Ast.mod_item) =
 
     match peek ps with
 
-        IO | STATE | UNSAFE | TYPE | OBJ | FN | ITER ->
+        IO | STATE | UNSAFE | TYPE | OBJ | TAG | FN | ITER ->
           let effect = Pexp.parse_effect ps in
             begin
               match peek ps with
-                  OBJ -> parse_obj_item ps apos effect
-                | TYPE -> parse_type_item ps apos effect
+                  OBJ -> [| parse_obj_item ps apos effect |]
+                | TAG -> parse_tag_item ps apos effect
+                | TYPE -> [| parse_type_item ps apos effect |]
                 | _ ->
                     let is_iter = (peek ps) = ITER in
                       bump ps;
@@ -870,9 +939,9 @@ and parse_mod_item (ps:pstate) : (Ast.ident * Ast.mod_item) =
                         ctxt "mod fn item: fn" (parse_fn is_iter effect) ps
                       in
                       let bpos = lexpos ps in
-                        (ident,
-                         span ps apos bpos
-                           (decl params (Ast.MOD_ITEM_fn fn)))
+                        [| (ident,
+                            span ps apos bpos
+                              (decl params (Ast.MOD_ITEM_fn fn))) |]
             end
 
       | MOD ->
@@ -881,9 +950,9 @@ and parse_mod_item (ps:pstate) : (Ast.ident * Ast.mod_item) =
             expect ps LBRACE;
             let items = parse_mod_items ps RBRACE in
             let bpos = lexpos ps in
-              (ident,
-               span ps apos bpos
-                 (decl params (Ast.MOD_ITEM_mod items)))
+              [| (ident,
+                  span ps apos bpos
+                    (decl params (Ast.MOD_ITEM_mod items))) |]
 
       | NATIVE ->
           begin
@@ -910,7 +979,7 @@ and parse_mod_item (ps:pstate) : (Ast.ident * Ast.mod_item) =
               let item = decl [||] (Ast.MOD_ITEM_mod items) in
               let item = span ps apos bpos item in
                 note_required_mod ps {lo=apos; hi=bpos} conv rlib item;
-                (ident, item)
+                [| (ident, item) |]
           end
       | _ -> raise (unexpected ps)
 
@@ -934,16 +1003,17 @@ and parse_mod_items_from_signature
   let items = Hashtbl.create 0 in
     while not (peek ps = RBRACE)
     do
-      let (ident,item) = ctxt "mod items from sig: mod item"
-              parse_mod_item_from_signature ps
-      in
-        htab_put items ident item;
+      Array.iter
+        (fun (ident, item) ->
+           htab_put items ident item)
+        (ctxt "mod items from sig: mod item"
+           parse_mod_item_from_signature ps)
     done;
     expect ps RBRACE;
     (view,items)
 
 and parse_mod_item_from_signature (ps:pstate)
-    : (Ast.ident * Ast.mod_item) =
+    : (Ast.ident * Ast.mod_item) array =
   let apos = lexpos ps in
     match peek ps with
         MOD ->
@@ -951,7 +1021,8 @@ and parse_mod_item_from_signature (ps:pstate)
           let (ident, params) = parse_ident_and_params ps "mod signature" in
           let items = parse_mod_items_from_signature ps in
           let bpos = lexpos ps in
-          (ident, span ps apos bpos (decl params (Ast.MOD_ITEM_mod items)))
+            [| (ident,
+                span ps apos bpos (decl params (Ast.MOD_ITEM_mod items))) |]
 
       | IO | STATE | UNSAFE | FN | ITER ->
           let effect = Pexp.parse_effect ps in
@@ -985,7 +1056,7 @@ and parse_mod_item_from_signature (ps:pstate)
                   | _ -> ()
               end;
               expect ps SEMI;
-              (ident, node)
+              [| (ident, node) |]
 
     | TYPE ->
         bump ps;
@@ -997,76 +1068,10 @@ and parse_mod_item_from_signature (ps:pstate)
         in
           expect ps SEMI;
           let bpos = lexpos ps in
-            (ident, span ps apos bpos
-               (decl params (Ast.MOD_ITEM_type (Ast.UNSAFE, t))))
+            [| (ident, span ps apos bpos
+                  (decl params (Ast.MOD_ITEM_type (Ast.UNSAFE, t)))) |]
 
     | _ -> raise (unexpected ps)
-
-
-and expand_tags
-    (ps:pstate)
-    (item:Ast.mod_item)
-    : (Ast.ident * Ast.mod_item) array =
-  let handle_ty_tag id ttag =
-    let tags = ref [] in
-      Hashtbl.iter
-        begin
-          fun name tup ->
-            let ident = match name with
-                Ast.NAME_base (Ast.BASE_ident ident) -> ident
-              | _ ->
-                  raise (Parse_err
-                           (ps, "unexpected name type while expanding tag"))
-            in
-            let header =
-              Array.map (fun ty -> (clone_span ps item
-                                      { Ast.slot_mode = Ast.MODE_alias;
-                                        Ast.slot_ty = Some ty})) tup
-            in
-            let tag_item' = Ast.MOD_ITEM_tag (header, ttag, id) in
-            let cloned_params =
-              Array.map (fun p -> clone_span ps p p.node)
-                item.node.Ast.decl_params
-            in
-            let tag_item =
-              clone_span ps item (decl cloned_params tag_item')
-            in
-              tags := (ident, tag_item) :: (!tags)
-        end
-        ttag;
-      arr (!tags)
-  in
-  let handle_ty_decl id tyd =
-    match tyd with
-        Ast.TY_tag ttag -> handle_ty_tag id ttag
-      | _ -> [| |]
-  in
-    match item.node.Ast.decl_item with
-        Ast.MOD_ITEM_type (_, tyd) -> handle_ty_decl item.id tyd
-      | _ -> [| |]
-
-
-and expand_tags_to_stmts
-    (ps:pstate)
-    (item:Ast.mod_item)
-    : Ast.stmt array =
-  let id_items = expand_tags ps item in
-    Array.map
-      (fun (ident, tag_item) ->
-         clone_span ps item
-           (Ast.STMT_decl
-              (Ast.DECL_mod_item (ident, tag_item))))
-      id_items
-
-and expand_tags_to_items
-    (ps:pstate)
-    (item:Ast.mod_item)
-    (items:Ast.mod_items)
-    : unit =
-  let id_items = expand_tags ps item in
-    Array.iter
-      (fun (ident, item) -> htab_put items ident item)
-      id_items
 
 and note_required_mod
     (ps:pstate)
@@ -1118,7 +1123,7 @@ and parse_import
             bump ps;
             match peek ps with
                 EQ ->
-                  (* 
+                  (*
                    * import x = ...
                    *)
                   bump ps;
@@ -1149,7 +1154,7 @@ and parse_export
 
 and parse_use
     (ps:pstate)
-    : (Ast.ident * Ast.mod_item) = 
+    : (Ast.ident * Ast.mod_item) array =
   bump ps;
   let ident = ctxt "use mod: ident" Pexp.parse_ident ps in
   let meta =
@@ -1182,12 +1187,12 @@ and parse_use
       let item = decl [||] (Ast.MOD_ITEM_mod (empty_view, items)) in
       let item = span ps apos bpos item in
         note_required_mod ps {lo=apos; hi=bpos} CONV_rust rlib item;
-        (ident, item)
+        [| (ident, item) |]
 
 and parse_item_decl ps items fn =
-  let (ident, item) = fn ps in
-    htab_put items ident item;
-    expand_tags_to_items ps item items
+  Array.iter
+    (fun (id,it) -> htab_put items id it)
+    (fn ps);
 
 and parse_mod_header (ps:pstate)
                      : (Ast.mod_view * Ast.mod_items) =

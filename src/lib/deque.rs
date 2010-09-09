@@ -129,8 +129,8 @@ fn create[T]() -> t[T] {
       let uint idx = (lo + (i as uint)) % _vec.len[cell[T]](elts);
       ret get[T](elts, idx);
     }
-  }
 
+  }
   let vec[cell[T]] v = _vec.init_elt[cell[T]](util.none[T](),
                                               initial_capacity);
 

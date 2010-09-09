@@ -73,13 +73,8 @@ and ty =
   | TY_vec of ty
   | TY_rec of ty_rec
 
-  (*
-   * Note that ty_idx is only valid inside a ty of a ty_iso group, not
-   * in a general type term.
-   *)
+  (* NB: non-denotable. *)
   | TY_tag of ty_tag
-  | TY_iso of ty_iso
-  | TY_idx of int
 
   | TY_fn of ty_fn
   | TY_chan of ty
@@ -112,6 +107,9 @@ and slot = { slot_mode: mode;
              slot_ty: ty option; }
 
 and ty_tup = ty array
+
+and ty_tag = { tag_id: opaque_id;
+               tag_args: ty array }
 
 (* In closed type terms a constraint may refer to components of the term by
  * anchoring off the "formal symbol" '*', which represents "the term this
@@ -155,21 +153,6 @@ and constr =
 and constrs = constr array
 
 and ty_rec = (ident * ty) array
-
-(* ty_tag is a sum type.
- *
- * a tag type expression either normalizes to a TY_tag or a TY_iso,
- * which (like in ocaml) is an indexed projection from an iso-recursive
- * group of TY_tags.
- *)
-
-and ty_tag = (name, ty_tup) Hashtbl.t
-
-and ty_iso =
-    {
-      iso_index: int;
-      iso_group: ty_tag array
-    }
 
 and ty_sig =
     {
@@ -428,7 +411,7 @@ and ty_param = ident * (ty_param_idx * effect)
 
 and mod_item' =
     MOD_ITEM_type of (effect * ty)
-  | MOD_ITEM_tag of (header_tup * ty_tag * node_id)
+  | MOD_ITEM_tag of (header_slots * opaque_id * int)
   | MOD_ITEM_mod of (mod_view * mod_items)
   | MOD_ITEM_fn of fn
   | MOD_ITEM_obj of obj
@@ -626,34 +609,6 @@ and fmt_ty_fn
     fmt ff " -> ";
     fmt_slot ff tsig.sig_output_slot;
 
-and fmt_tag (ff:Format.formatter) (ttag:ty_tag) : unit =
-  fmt ff "@[tag(@[";
-  let first = ref true in
-    Hashtbl.iter
-      begin
-        fun name ttup ->
-          (if !first
-           then first := false
-           else fmt ff ",@ ");
-          fmt_name ff name;
-          fmt_tys ff ttup
-      end
-      ttag;
-    fmt ff "@])@]"
-
-and fmt_iso (ff:Format.formatter) (tiso:ty_iso) : unit =
-  fmt ff "@[iso [@[";
-  for i = 0 to (Array.length tiso.iso_group) - 1
-  do
-    if i != 0
-    then fmt ff ",@ ";
-    if i == tiso.iso_index
-    then fmt ff "<%d>: " i
-    else fmt ff "%d: " i;
-    fmt_tag ff tiso.iso_group.(i);
-  done;
-  fmt ff "@]]@]"
-
 and fmt_constrained ff (ty, constrs) : unit =
   fmt ff "@[";
   fmt_ty ff ty;
@@ -702,9 +657,11 @@ and fmt_ty (ff:Format.formatter) (t:ty) : unit =
 
   | TY_fn tfn -> fmt_ty_fn ff None tfn
   | TY_task -> fmt ff "task"
-  | TY_tag ttag -> fmt_tag ff ttag
-  | TY_iso tiso -> fmt_iso ff tiso
-  | TY_idx idx -> fmt ff "<idx#%d>" idx
+  | TY_tag ttag ->
+        fmt ff "<tag#%d" (int_of_opaque ttag.tag_id);
+        fmt_arr_sep "," fmt_ty ff ttag.tag_args;
+        fmt ff ">";
+
   | TY_constrained ctrd -> fmt_constrained ff ctrd
 
   | TY_obj (effect, fns) ->
@@ -1363,16 +1320,7 @@ and fmt_decl_params (ff:Format.formatter) (params:ty_param array) : unit =
   if Array.length params = 0
   then ()
   else
-    begin
-      fmt ff "[";
-      for i = 0 to (Array.length params) - 1
-      do
-        if i <> 0
-        then fmt ff ", ";
-        fmt_decl_param ff params.(i)
-      done;
-      fmt ff "]"
-    end;
+    fmt_bracketed_arr_sep "[" "]" "," fmt_decl_param ff params
 
 and fmt_header_slots (ff:Format.formatter) (hslots:header_slots) : unit =
   fmt_slots ff
@@ -1462,13 +1410,17 @@ and fmt_mod_item (ff:Format.formatter) (id:ident) (item:mod_item) : unit =
             fmt_ty ff ty;
             fmt ff ";";
 
-        | MOD_ITEM_tag (hdr, ttag, _) ->
+        | MOD_ITEM_tag (hdr, tid, _) ->
             fmt ff "fn ";
             fmt_ident_and_params ff id params;
-            fmt_header_slots ff
-              (Array.mapi (fun i s -> (s,(Printf.sprintf "_%d" i))) hdr);
+            fmt_header_slots ff hdr;
             fmt ff " -> ";
-            fmt_ty ff (TY_tag ttag);
+            fmt_ty ff (TY_tag
+                         { tag_id = tid;
+                           tag_args =
+                             Array.map
+                               (fun (_,p) -> TY_param p)
+                               params });
             fmt ff ";";
 
         | MOD_ITEM_mod (view,items) ->
@@ -1513,32 +1465,6 @@ and fmt_crate (ff:Format.formatter) (c:crate) : unit =
     fmt_mod_items ff items
 ;;
 
-let ty_children (ty:ty) : ty array =
-  let children_of_ty_tag ty_tag = Array.concat (htab_vals ty_tag) in
-  let children_of_ty_fn ty_fn =
-    let (ty_sig, _) = ty_fn in
-    let in_slots = ty_sig.sig_input_slots in
-    let slots = Array.append in_slots [| ty_sig.sig_output_slot |] in
-    arr_filter_some (Array.map (fun slot -> slot.slot_ty) slots)
-  in
-  match ty with
-      TY_tup tys -> tys
-    | TY_vec ty' | TY_chan ty' | TY_port ty' | TY_box ty' | TY_mutable ty'
-          | TY_constrained (ty', _) ->
-        [| ty' |]
-    | TY_rec fields -> Array.map snd fields
-    | TY_tag ty_tag -> children_of_ty_tag ty_tag
-    | TY_iso ty_iso ->
-        children_of_ty_tag (ty_iso.iso_group.(ty_iso.iso_index))
-    | TY_fn ty_fn -> children_of_ty_fn ty_fn
-    | TY_obj (_, methods) ->
-        Array.concat (List.map children_of_ty_fn (htab_vals methods))
-    | TY_any | TY_nil | TY_bool | TY_mach _ | TY_int | TY_uint | TY_char
-          | TY_str | TY_idx _ | TY_task | TY_native _ | TY_param _
-          | TY_named _ | TY_type ->
-        [| |]
-;;
-
 let sprintf_binop = sprintf_fmt fmt_binop;;
 let sprintf_expr = sprintf_fmt fmt_expr;;
 let sprintf_name = sprintf_fmt fmt_name;;
@@ -1549,7 +1475,6 @@ let sprintf_slot = sprintf_fmt fmt_slot;;
 let sprintf_slot_key = sprintf_fmt fmt_slot_key;;
 let sprintf_ty = sprintf_fmt fmt_ty;;
 let sprintf_effect = sprintf_fmt fmt_effect;;
-let sprintf_tag = sprintf_fmt fmt_tag;;
 let sprintf_carg = sprintf_fmt fmt_carg;;
 let sprintf_constr = sprintf_fmt fmt_constr;;
 let sprintf_mod_item =

@@ -118,35 +118,35 @@ let word_ty_signed_mach (abi:Abi.abi) : ty_mach =
 ;;
 
 
-let rec ty_mem_ctrl (ty:Ast.ty) : mem_ctrl =
+let rec ty_mem_ctrl (cx:ctxt) (ty:Ast.ty) : mem_ctrl =
   match ty with
       Ast.TY_port _
     | Ast.TY_chan _
     | Ast.TY_task
     | Ast.TY_str -> MEM_rc_opaque
     | Ast.TY_vec _ ->
-        if type_has_state ty
+        if type_has_state cx ty
         then MEM_gc
         else MEM_rc_opaque
     | Ast.TY_box t ->
-        if type_has_state t
+        if type_has_state cx t
         then MEM_gc
         else
-          if type_is_structured t
+          if type_is_structured cx t
           then MEM_rc_struct
           else MEM_rc_opaque
     | Ast.TY_mutable t
     | Ast.TY_constrained (t, _) ->
-        ty_mem_ctrl t
+        ty_mem_ctrl cx t
     | _ ->
         MEM_interior
 ;;
 
-let slot_mem_ctrl (slot:Ast.slot) : mem_ctrl =
+let slot_mem_ctrl (cx:ctxt) (slot:Ast.slot) : mem_ctrl =
   match slot.Ast.slot_mode with
       Ast.MODE_alias -> MEM_interior
     | Ast.MODE_local ->
-        ty_mem_ctrl (slot_ty slot)
+        ty_mem_ctrl cx (slot_ty slot)
 ;;
 
 
@@ -217,15 +217,14 @@ let iter_tup_parts
     (dst_ptr:'a)
     (src_ptr:'a)
     (tys:Ast.ty_tup)
-    (f:'a -> 'a -> Ast.ty -> (Ast.ty_iso option) -> unit)
-    (curr_iso:Ast.ty_iso option)
+    (f:'a -> 'a -> Ast.ty -> unit)
     : unit =
   Array.iteri
     begin
       fun i ty ->
         f (get_element_ptr dst_ptr i)
           (get_element_ptr src_ptr i)
-          ty curr_iso
+          ty
     end
     tys
 ;;
@@ -235,11 +234,10 @@ let iter_rec_parts
     (dst_ptr:'a)
     (src_ptr:'a)
     (entries:Ast.ty_rec)
-    (f:'a -> 'a -> Ast.ty -> (Ast.ty_iso option) -> unit)
-    (curr_iso:Ast.ty_iso option)
+    (f:'a -> 'a -> Ast.ty -> unit)
     : unit =
   iter_tup_parts get_element_ptr dst_ptr src_ptr
-    (Array.map snd entries) f curr_iso
+    (Array.map snd entries) f
 ;;
 
 

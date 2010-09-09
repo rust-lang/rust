@@ -126,11 +126,17 @@ fn test_parameterized[T](eqfn[T] e, T a, T b, T c, T d) {
   check (e(deq.get(3), d));
 }
 
-type taggy = tag(one(int), two(int, int), three(int, int, int));
+tag taggy {
+  one(int);
+  two(int, int);
+  three(int, int, int);
+}
 
-type taggypar[T] = tag(onepar(int),
-                       twopar(int, int),
-                       threepar(int, int, int));
+tag taggypar[T] {
+  onepar(int);
+  twopar(int, int);
+  threepar(int, int, int);
+}
 
 type reccy = rec(int x, int y, taggy t);
 

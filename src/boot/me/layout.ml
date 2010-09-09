@@ -113,7 +113,7 @@ let layout_visitor
         | Il.CodeTy -> true
         | Il.NilTy -> false
     in
-      rt_in_mem (slot_referent_type cx.ctxt_abi.Abi.abi_word_bits slot)
+      rt_in_mem (slot_referent_type cx slot)
   in
 
   let rty_sz rty = Il.referent_ty_size cx.ctxt_abi.Abi.abi_word_bits rty in
@@ -142,11 +142,11 @@ let layout_visitor
       : unit =
     let accum (off,align) id : (size * size) =
       let slot = get_slot cx id in
-      let rt = slot_referent_type cx.ctxt_abi.Abi.abi_word_bits slot in
+      let rt = slot_referent_type cx slot in
       let (elt_size, elt_align) = rty_layout rt in
         if vregs_ok
           && (is_subword_size elt_size)
-          && (not (type_is_structured (slot_ty slot)))
+          && (not (type_is_structured cx (slot_ty slot)))
           && (not (force_slot_to_mem slot))
           && (not (Hashtbl.mem cx.ctxt_slot_aliased id))
         then
@@ -171,7 +171,7 @@ let layout_visitor
               else neg_sz (add_sz elt_off elt_size)
             in
               Stack.push
-                (slot_referent_type cx.ctxt_abi.Abi.abi_word_bits slot)
+                (slot_referent_type cx slot)
                 slot_accum;
             iflog
               begin
@@ -296,10 +296,10 @@ let layout_visitor
             layout_header i.id
               (header_slot_ids f.Ast.fn_input_slots)
 
-        | Ast.MOD_ITEM_tag (header_slots, _, _) ->
+        | Ast.MOD_ITEM_tag (hdr, _, _) ->
             enter_frame i.id;
             layout_header i.id
-              (Array.map (fun sid -> sid.id) header_slots)
+              (header_slot_ids hdr)
 
         | Ast.MOD_ITEM_obj obj ->
             enter_frame i.id;

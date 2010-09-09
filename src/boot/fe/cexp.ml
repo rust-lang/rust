@@ -176,8 +176,12 @@ and parse_cexp (ps:pstate) : cexp =
             let path = ctxt "native mod: path" parse_eq_pexp_opt ps in
             let items = Hashtbl.create 0 in
             let get_item ps =
-              let (ident, item) = Item.parse_mod_item_from_signature ps in
-                htab_put items ident item;
+              Array.map
+                begin
+                  fun (ident, item) ->
+                    htab_put items ident item
+                end
+                (Item.parse_mod_item_from_signature ps)
             in
               ignore (bracketed_zero_or_more
                         LBRACE RBRACE None get_item ps);

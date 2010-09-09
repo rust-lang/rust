@@ -47,6 +47,7 @@ alt (target_os) {
   }
 }
 
+// FIXME: parametric 
 mod map;
 mod deque;
 mod rand;

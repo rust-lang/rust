@@ -1,6 +1,9 @@
 // -*- rust -*-
 
-type clam[T] = tag(a(T, int), b());
+tag clam[T] {
+  a(T, int);
+  b();
+}
 
 fn uhoh[T](vec[clam[T]] v) {
   alt (v.(1)) {

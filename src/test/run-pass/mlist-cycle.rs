@@ -3,7 +3,10 @@
 use std;
 
 type cell = tup(mutable @list);
-type list = tag(link(@cell), nil());
+tag list {
+  link(@cell);
+  nil();
+}
 
 fn main() {
   let @cell first = @tup(mutable @nil());

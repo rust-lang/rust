@@ -349,7 +349,7 @@ let trans_crate
       | Ast.TY_param _ ->
           abi.Llabi.tydesc_ty
 
-      | Ast.TY_tag _ | Ast.TY_iso _ | Ast.TY_idx _
+      | Ast.TY_tag _
       | Ast.TY_obj _ | Ast.TY_type | Ast.TY_named _ ->
           Common.unimpl None "LLVM type translation for: %a" Ast.sprintf_ty ty
 
@@ -410,9 +410,7 @@ let trans_crate
       (f:(Llvm.llvalue
           -> Llvm.llvalue
             -> Ast.ty
-              -> (Ast.ty_iso option)
-                -> unit))
-      (curr_iso:Ast.ty_iso option)
+              -> unit))
       : unit =
 
     (* NB: must deref llbuilder at call-time; don't curry this. *)
@@ -420,13 +418,12 @@ let trans_crate
 
     match ty with
         Ast.TY_rec entries ->
-          iter_rec_parts gep dst_ptr src_ptr entries f curr_iso
+          iter_rec_parts gep dst_ptr src_ptr entries f
 
       | Ast.TY_tup tys ->
-          iter_tup_parts gep dst_ptr src_ptr tys f curr_iso
+          iter_tup_parts gep dst_ptr src_ptr tys f
 
       | Ast.TY_tag _
-      | Ast.TY_iso _
       | Ast.TY_fn _
       | Ast.TY_obj _ ->
           Common.unimpl None
@@ -438,28 +435,24 @@ let trans_crate
       (llbuilder:Llvm.llbuilder ref)
       (ty:Ast.ty)
       (ptr:Llvm.llvalue)
-      (f:Llvm.llvalue -> Ast.ty -> (Ast.ty_iso option) -> unit)
-      (curr_iso:Ast.ty_iso option)
+      (f:Llvm.llvalue -> Ast.ty -> unit)
       : unit =
     iter_ty_parts_full llbuilder ty ptr ptr
-      (fun _ src_ptr slot curr_iso -> f src_ptr slot curr_iso)
-      curr_iso
+      (fun _ src_ptr slot -> f src_ptr slot)
 
   and drop_ty
       (llbuilder:Llvm.llbuilder ref)
       (lltask:Llvm.llvalue)
       (ptr:Llvm.llvalue)
       (ty:Ast.ty)
-      (curr_iso:Ast.ty_iso option)
       : unit =
-    iter_ty_parts llbuilder ty ptr (drop_ty llbuilder lltask) curr_iso
+    iter_ty_parts llbuilder ty ptr (drop_ty llbuilder lltask)
 
   and drop_slot
       (llbuilder:Llvm.llbuilder ref)
       (lltask:Llvm.llvalue)
       (slot_ptr:Llvm.llvalue)
       (slot:Ast.slot)
-      (curr_iso:Ast.ty_iso option)
       : unit =
 
     let llfn = Llvm.block_parent (Llvm.insertion_block (!llbuilder)) in
@@ -526,7 +519,7 @@ let trans_crate
     in
 
       begin
-          match slot_mem_ctrl slot with
+          match slot_mem_ctrl sem_cx slot with
               MEM_rc_struct
             | MEM_gc ->
                 llbuilder :=
@@ -544,10 +537,10 @@ let trans_crate
                        free_and_null_out_slot)
                     (!llbuilder)
 
-            | MEM_interior when Semant.type_is_structured ty ->
+            | MEM_interior when Semant.type_is_structured sem_cx ty ->
                 (* FIXME: to handle recursive types, need to call drop
                    glue here, not inline. *)
-                drop_ty llbuilder lltask slot_ptr ty curr_iso
+                drop_ty llbuilder lltask slot_ptr ty
 
             | _ -> ()
         end
@@ -684,7 +677,7 @@ let trans_crate
         let llty = trans_slot (Some slot_id) slot in
         let llptr = Llvm.build_alloca llty name llinitbuilder in
           begin
-            match slot_mem_ctrl slot with
+            match slot_mem_ctrl sem_cx slot with
                 MEM_rc_struct
               | MEM_rc_opaque
               | MEM_gc ->
@@ -709,7 +702,7 @@ let trans_crate
               if (not (Semant.slot_is_obj_state sem_cx slot_id))
               then
                 let ptr = Hashtbl.find slot_to_llvalue slot_id in
-                  drop_slot r lltask ptr slot None
+                  drop_slot r lltask ptr slot
           end;
         !r
     in

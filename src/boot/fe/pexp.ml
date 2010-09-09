@@ -270,24 +270,6 @@ and parse_atomic_ty (ps:pstate) : Ast.ty =
 
     | IDENT _ -> Ast.TY_named (parse_name ps)
 
-    | TAG ->
-        bump ps;
-        let htab = Hashtbl.create 4 in
-        let parse_tag_entry ps =
-          let ident = parse_ident ps in
-          let tup =
-            match peek ps with
-                LPAREN -> paren_comma_list parse_ty ps
-              | _ -> raise (err "tag variant missing argument list" ps)
-          in
-            htab_put htab (Ast.NAME_base (Ast.BASE_ident ident)) tup
-        in
-        let _ =
-          bracketed_one_or_more LPAREN RPAREN
-            (Some COMMA) (ctxt "tag: variant" parse_tag_entry) ps
-        in
-          Ast.TY_tag htab
-
     | REC ->
         bump ps;
         let parse_rec_entry ps =

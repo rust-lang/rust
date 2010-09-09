@@ -1,10 +1,10 @@
 // -*- rust -*-
 
-type color = tag(
-  rgb(int, int, int),
-  rgba(int, int, int, int),
-  hsl(int, int, int)
-);
+tag color {
+  rgb(int, int, int);
+  rgba(int, int, int, int);
+  hsl(int, int, int);
+}
 
 fn process(color c) -> int {
   let int x;

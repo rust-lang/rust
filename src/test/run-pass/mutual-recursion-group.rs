@@ -1,10 +1,25 @@
 // -*- rust -*-
 
-type colour = tag(red(), green(), blue());
-type tree = tag(children(@list), leaf(colour));
-type list = tag(cons(@tree, @list), nil());
+tag colour {
+  red();
+  green();
+  blue();
+}
 
-type small_list = tag(kons(int,@small_list), neel());
+tag tree {
+  children(@list);
+  leaf(colour);
+}
+
+tag list {
+  cons(@tree, @list);
+  nil();
+}
+
+tag small_list {
+  kons(int,@small_list);
+  neel();
+}
 
 fn main() {
 }

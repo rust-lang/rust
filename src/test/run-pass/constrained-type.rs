@@ -2,7 +2,11 @@
 
 // Reported as issue #141, as a parse error. Ought to work in full though.
 
-type list = tag(cons(int,@list), nil());
+tag list {
+  cons(int,@list);
+  nil();
+}
+
 type bubu = rec(int x, int y);
 
 

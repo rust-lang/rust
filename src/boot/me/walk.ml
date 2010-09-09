@@ -174,9 +174,8 @@ and walk_mod_item
     match item.node.Ast.decl_item with
         Ast.MOD_ITEM_type (_, ty) -> walk_ty v ty
       | Ast.MOD_ITEM_fn f -> walk_fn v f item.id
-      | Ast.MOD_ITEM_tag (htup, ttag, _) ->
-          walk_header_tup v htup;
-          walk_ty_tag v ttag
+      | Ast.MOD_ITEM_tag (hdr, _, _) ->
+          walk_header_slots v hdr
       | Ast.MOD_ITEM_mod (_, items) ->
           walk_mod_items v items
       | Ast.MOD_ITEM_obj ob ->
@@ -201,8 +200,6 @@ and walk_mod_item
 
 and walk_ty_tup v ttup = Array.iter (walk_ty v) ttup
 
-and walk_ty_tag v ttag = Hashtbl.iter (fun _ t -> walk_ty_tup v t) ttag
-
 and walk_ty
     (v:visitor)
     (ty:Ast.ty)
@@ -212,8 +209,6 @@ and walk_ty
         Ast.TY_tup ttup -> walk_ty_tup v ttup
       | Ast.TY_vec s -> walk_ty v s
       | Ast.TY_rec trec -> Array.iter (fun (_, s) -> walk_ty v s) trec
-      | Ast.TY_tag ttag -> walk_ty_tag v ttag
-      | Ast.TY_iso tiso -> Array.iter (walk_ty_tag v) tiso.Ast.iso_group
       | Ast.TY_fn tfn -> walk_ty_fn v tfn
       | Ast.TY_obj (_, fns) ->
           Hashtbl.iter (fun _ tfn -> walk_ty_fn v tfn) fns
@@ -226,8 +221,8 @@ and walk_ty
           end
       | Ast.TY_named _ -> ()
       | Ast.TY_param _ -> ()
+      | Ast.TY_tag _ -> ()
       | Ast.TY_native _ -> ()
-      | Ast.TY_idx _ -> ()
       | Ast.TY_mach _ -> ()
       | Ast.TY_type -> ()
       | Ast.TY_str -> ()

@@ -3,157 +3,159 @@ import util.common.ty_mach_to_str;
 import std._int;
 import std._uint;
 
-type binop = tag
-    (PLUS(),
-     MINUS(),
-     STAR(),
-     SLASH(),
-     PERCENT(),
-     CARET(),
-     AND(),
-     OR(),
-     LSL(),
-     LSR(),
-     ASR());
+tag binop {
+    PLUS();
+    MINUS();
+    STAR();
+    SLASH();
+    PERCENT();
+    CARET();
+    AND();
+    OR();
+    LSL();
+    LSR();
+    ASR();
+}
 
-type token = tag
-    (/* Expression-operator symbols. */
-     EQ(),
-     LT(),
-     LE(),
-     EQEQ(),
-     NE(),
-     GE(),
-     GT(),
-     ANDAND(),
-     OROR(),
-     NOT(),
-     TILDE(),
+tag token {
+    /* Expression-operator symbols. */
+    EQ();
+    LT();
+    LE();
+    EQEQ();
+    NE();
+    GE();
+    GT();
+    ANDAND();
+    OROR();
+    NOT();
+    TILDE();
 
-     BINOP(binop),
-     BINOPEQ(binop),
+    BINOP(binop);
+    BINOPEQ(binop);
 
-     AS(),
-     WITH(),
+    AS();
+    WITH();
 
-     /* Structural symbols */
-     AT(),
-     DOT(),
-     COMMA(),
-     SEMI(),
-     COLON(),
-     RARROW(),
-     SEND(),
-     LARROW(),
-     LPAREN(),
-     RPAREN(),
-     LBRACKET(),
-     RBRACKET(),
-     LBRACE(),
-     RBRACE(),
+    /* Structural symbols */
+    AT();
+    DOT();
+    COMMA();
+    SEMI();
+    COLON();
+    RARROW();
+    SEND();
+    LARROW();
+    LPAREN();
+    RPAREN();
+    LBRACKET();
+    RBRACKET();
+    LBRACE();
+    RBRACE();
 
-     /* Module and crate keywords */
-     MOD(),
-     USE(),
-     AUTH(),
-     META(),
+    /* Module and crate keywords */
+    MOD();
+    USE();
+    AUTH();
+    META();
 
-     /* Metaprogramming keywords */
-     SYNTAX(),
-     POUND(),
+    /* Metaprogramming keywords */
+    SYNTAX();
+    POUND();
 
-     /* Statement keywords */
-     IF(),
-     ELSE(),
-     DO(),
-     WHILE(),
-     ALT(),
-     CASE(),
+    /* Statement keywords */
+    IF();
+    ELSE();
+    DO();
+    WHILE();
+    ALT();
+    CASE();
 
-     FAIL(),
-     DROP(),
+    FAIL();
+    DROP();
 
-     IN(),
-     FOR(),
-     EACH(),
-     PUT(),
-     RET(),
-     BE(),
+    IN();
+    FOR();
+    EACH();
+    PUT();
+    RET();
+    BE();
 
-     /* Type and type-state keywords */
-     TYPE(),
-     CHECK(),
-     CLAIM(),
-     PROVE(),
+    /* Type and type-state keywords */
+    TYPE();
+    CHECK();
+    CLAIM();
+    PROVE();
 
-     /* Effect keywords */
-     IO(),
-     STATE(),
-     UNSAFE(),
+    /* Effect keywords */
+    IO();
+    STATE();
+    UNSAFE();
 
-     /* Type qualifiers */
-     NATIVE(),
-     AUTO(),
-     MUTABLE(),
+    /* Type qualifiers */
+    NATIVE();
+    AUTO();
+    MUTABLE();
 
-     /* Name management */
-     IMPORT(),
-     EXPORT(),
+    /* Name management */
+    IMPORT();
+    EXPORT();
 
-     /* Value / stmt declarators */
-     LET(),
+    /* Value / stmt declarators */
+    LET();
 
-     /* Magic runtime services */
-     LOG(),
-     SPAWN(),
-     BIND(),
-     THREAD(),
-     YIELD(),
-     JOIN(),
+    /* Magic runtime services */
+    LOG();
+    SPAWN();
+    BIND();
+    THREAD();
+    YIELD();
+    JOIN();
 
-     /* Literals */
-     LIT_INT(int),
-     LIT_UINT(uint),
-     LIT_MACH_INT(ty_mach, int),
-     LIT_STR(str),
-     LIT_CHAR(char),
-     LIT_BOOL(bool),
+    /* Literals */
+    LIT_INT(int);
+    LIT_UINT(uint);
+    LIT_MACH_INT(ty_mach, int);
+    LIT_STR(str);
+    LIT_CHAR(char);
+    LIT_BOOL(bool);
 
-     /* Name components */
-     IDENT(str),
-     IDX(int),
-     UNDERSCORE(),
+    /* Name components */
+    IDENT(str);
+    IDX(int);
+    UNDERSCORE();
 
-     /* Reserved type names */
-     BOOL(),
-     INT(),
-     UINT(),
-     FLOAT(),
-     CHAR(),
-     STR(),
-     MACH(ty_mach),
+    /* Reserved type names */
+    BOOL();
+    INT();
+    UINT();
+    FLOAT();
+    CHAR();
+    STR();
+    MACH(ty_mach);
 
-     /* Algebraic type constructors */
-     REC(),
-     TUP(),
-     TAG(),
-     VEC(),
-     ANY(),
+    /* Algebraic type constructors */
+    REC();
+    TUP();
+    TAG();
+    VEC();
+    ANY();
 
-     /* Callable type constructors */
-     FN(),
-     ITER(),
+    /* Callable type constructors */
+    FN();
+    ITER();
 
-     /* Object type */
-     OBJ(),
+    /* Object type */
+    OBJ();
 
-     /* Comm and task types */
-     CHAN(),
-     PORT(),
-     TASK(),
+    /* Comm and task types */
+    CHAN();
+    PORT();
+    TASK();
 
-     BRACEQUOTE(str),
-     EOF());
+    BRACEQUOTE(str);
+    EOF();
+}
 
 fn binop_to_str(binop o) -> str {
     alt (o) {

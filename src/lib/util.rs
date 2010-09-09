@@ -1,4 +1,7 @@
-type option[T] = tag(none(), some(T));
+tag option[T] {
+  none();
+  some(T);
+}
 
 type operator[T, U] = fn(&T) -> U;
 
