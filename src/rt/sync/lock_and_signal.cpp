@@ -11,7 +11,12 @@
 
 #if defined(__WIN32__)
 lock_and_signal::lock_and_signal() {
-    _event = CreateEvent(NULL, FALSE, FALSE, NULL);
+    // TODO: In order to match the behavior of pthread_cond_broadcast on
+    // Windows, we create manual reset events. This however breaks the
+    // behavior of pthread_cond_signal, fixing this is quite involved:
+    // refer to: http://www.cs.wustl.edu/~schmidt/win32-cv-1.html
+
+    _event = CreateEvent(NULL, TRUE, FALSE, NULL);
     InitializeCriticalSection(&_cs);
 }
 
@@ -33,20 +38,19 @@ lock_and_signal::~lock_and_signal() {
 
 void lock_and_signal::lock() {
 #if defined(__WIN32__)
-  EnterCriticalSection(&_cs);
+    EnterCriticalSection(&_cs);
 #else
-  pthread_mutex_lock(&_mutex);
+    pthread_mutex_lock(&_mutex);
 #endif
 }
 
 void lock_and_signal::unlock() {
 #if defined(__WIN32__)
-  LeaveCriticalSection(&_cs);
+    LeaveCriticalSection(&_cs);
 #else
-  pthread_mutex_unlock(&_mutex);
+    pthread_mutex_unlock(&_mutex);
 #endif
 }
-
 
 /**
  * Wait indefinitely until condition is signaled.
@@ -57,9 +61,9 @@ void lock_and_signal::wait() {
 
 void lock_and_signal::timed_wait(size_t timeout_in_ns) {
 #if defined(__WIN32__)
-  LeaveCriticalSection(&_cs);
-  WaitForSingleObject(_event, INFINITE);
-  EnterCriticalSection(&_cs);
+    LeaveCriticalSection(&_cs);
+    WaitForSingleObject(_event, INFINITE);
+    EnterCriticalSection(&_cs);
 #else
     if (timeout_in_ns == 0) {
         pthread_cond_wait(&_cond, &_mutex);
@@ -82,6 +86,17 @@ void lock_and_signal::signal() {
     SetEvent(_event);
 #else
     pthread_cond_signal(&_cond);
+#endif
+}
+
+/**
+ * Signal condition, and resume all waiting threads.
+ */
+void lock_and_signal::signal_all() {
+#if defined(__WIN32__)
+    SetEvent(_event);
+#else
+    pthread_cond_broadcast(&_cond);
 #endif
 }
 

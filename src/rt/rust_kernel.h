@@ -75,8 +75,6 @@ public:
      * live on after their associated domain has died. This way we can safely
      * communicate with domains that may have died.
      *
-     * Although the message_queues list is synchronized, each individual
-     * message queue is lock free.
      */
     indexed_list<rust_message_queue> message_queues;
 

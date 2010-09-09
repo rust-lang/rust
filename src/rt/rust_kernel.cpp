@@ -22,7 +22,7 @@ rust_kernel::create_domain(const rust_crate *crate, const char *name) {
     message_queue->associate(handle);
     domains.append(dom);
     message_queues.append(message_queue);
-    _kernel_lock.signal();
+    _kernel_lock.signal_all();
     _kernel_lock.unlock();
     return handle;
 }
@@ -37,7 +37,7 @@ rust_kernel::destroy_domain(rust_dom *dom) {
     rust_srv *srv = dom->srv;
     delete dom;
     delete srv;
-    _kernel_lock.signal();
+    _kernel_lock.signal_all();
     _kernel_lock.unlock();
 }
 
@@ -91,10 +91,11 @@ rust_kernel::get_port_handle(rust_port *port) {
 
 void
 rust_kernel::join_all_domains() {
-    // TODO: Perhaps we can do this a little smarter. Just spin wait for now.
+    _kernel_lock.lock();
     while (domains.length() > 0) {
-        sync::yield();
+        _kernel_lock.wait();
     }
+    _kernel_lock.unlock();
     log(rust_log::KERN, "joined domains");
 }
 
@@ -162,7 +163,7 @@ rust_kernel::terminate_kernel_loop() {
     log(rust_log::KERN, "terminating kernel loop");
     _interrupt_kernel_loop = true;
     _kernel_lock.lock();
-    _kernel_lock.signal();
+    _kernel_lock.signal_all();
     _kernel_lock.unlock();
     join();
 }

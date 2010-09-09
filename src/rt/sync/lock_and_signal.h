@@ -18,6 +18,7 @@ public:
     void wait();
     void timed_wait(size_t timeout_in_ns);
     void signal();
+    void signal_all();
 };
 
 #endif /* LOCK_AND_SIGNAL_H */
