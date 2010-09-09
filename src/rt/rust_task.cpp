@@ -69,7 +69,8 @@ rust_task::rust_task(rust_dom *dom, rust_task *spawner, const char *name) :
     supervisor(spawner),
     idx(0),
     rendezvous_ptr(0),
-    alarm(this)
+    alarm(this),
+    handle(NULL)
 {
     dom->logptr("new task", (uintptr_t)this);
 
@@ -633,7 +634,10 @@ rust_task::log(uint32_t type_bits, char const *fmt, ...) {
 
 rust_handle<rust_task> *
 rust_task::get_handle() {
-    return dom->kernel->get_task_handle(this);
+    if (handle == NULL) {
+        handle = dom->kernel->get_task_handle(this);
+    }
+    return handle;
 }
 
 //

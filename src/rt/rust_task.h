@@ -46,6 +46,8 @@ rust_task : public maybe_proxy<rust_task>,
 
     rust_alarm alarm;
 
+    rust_handle<rust_task> *handle;
+
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_dom *dom,
               rust_task *spawner,
