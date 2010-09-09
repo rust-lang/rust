@@ -22,8 +22,8 @@ rust_kernel::create_domain(const rust_crate *crate, const char *name) {
     message_queue->associate(handle);
     domains.append(dom);
     message_queues.append(message_queue);
-    _kernel_lock.unlock();
     _kernel_lock.signal();
+    _kernel_lock.unlock();
     return handle;
 }
 
@@ -37,8 +37,8 @@ rust_kernel::destroy_domain(rust_dom *dom) {
     rust_srv *srv = dom->srv;
     delete dom;
     delete srv;
-    _kernel_lock.unlock();
     _kernel_lock.signal();
+    _kernel_lock.unlock();
 }
 
 rust_handle<rust_dom> *
@@ -161,7 +161,9 @@ void
 rust_kernel::terminate_kernel_loop() {
     log(rust_log::KERN, "terminating kernel loop");
     _interrupt_kernel_loop = true;
+    _kernel_lock.lock();
     _kernel_lock.signal();
+    _kernel_lock.unlock();
     join();
 }
 
