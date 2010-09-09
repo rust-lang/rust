@@ -11,7 +11,7 @@ void sync::yield() {
 #endif
 }
 
-rust_thread::rust_thread() : _is_running(false) {
+rust_thread::rust_thread() : _is_running(false), thread(0) {
     // Nop.
 }
 
@@ -25,7 +25,6 @@ static void *
 rust_thread_start(void *ptr) {
     rust_thread *thread = (rust_thread *) ptr;
     thread->run();
-    thread->thread = 0;
     return 0;
 }
 
@@ -46,9 +45,11 @@ rust_thread::start() {
 void
 rust_thread::join() {
 #if defined(__WIN32__)
-   WaitForSingleObject(thread, INFINITE);
+   if (thread)
+     WaitForSingleObject(thread, INFINITE);
 #else
-   pthread_join(thread, NULL);
+   if (thread)
+     pthread_join(thread, NULL);
 #endif
    thread = 0;
    _is_running = false;

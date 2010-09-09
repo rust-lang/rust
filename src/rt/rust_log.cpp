@@ -4,7 +4,6 @@
  */
 
 #include "rust_internal.h"
-#include "sync/spin_lock.h"
 #include "util/array_list.h"
 #include <stdarg.h>
 
@@ -64,7 +63,7 @@ static const char * _foreground_colors[] = { "[37m",
 /**
  * Synchronizes access to the underlying logging mechanism.
  */
-static spin_lock _log_lock;
+static lock_and_signal _log_lock;
 static uint32_t _last_thread_id;
 
 rust_log::rust_log(rust_srv *srv, rust_dom *dom) :

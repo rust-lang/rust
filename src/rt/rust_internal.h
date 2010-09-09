@@ -42,7 +42,7 @@ extern "C" {
 #include "util/hash_map.h"
 #include "sync/sync.h"
 #include "sync/timer.h"
-#include "sync/condition_variable.h"
+#include "sync/lock_and_signal.h"
 #include "sync/lock_free_queue.h"
 
 class rust_dom;

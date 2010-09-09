@@ -32,12 +32,6 @@ public:
     }
 };
 
-#define LOCK(x) x.lock();
-#define UNLOCK(x) x.unlock();
-
-#define PLOCK(x) printf("LOCKING @ %d\n", __LINE__); x.lock();
-#define PUNLOCK(x) x.unlock(); printf("UNLOCKED @ %d\n", __LINE__);
-
 /**
  * A global object shared by all thread domains. Most of the data structures
  * in this class are synchronized since they are accessed from multiple
@@ -59,9 +53,9 @@ class rust_kernel : public rust_thread {
 
     void run();
     void start_kernel_loop();
-    bool volatile _interrupt_kernel_loop;
+    bool _interrupt_kernel_loop;
 
-    spin_lock _kernel_lock;
+    lock_and_signal _kernel_lock;
 
     void terminate_kernel_loop();
     void pump_message_queues();

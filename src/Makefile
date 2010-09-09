@@ -248,8 +248,7 @@ BOOT_CMIS := $(BOOT_MLS:.ml=.cmi)
 
 RUNTIME_CS := rt/sync/timer.cpp \
               rt/sync/sync.cpp \
-              rt/sync/spin_lock.cpp \
-              rt/sync/condition_variable.cpp \
+              rt/sync/lock_and_signal.cpp \
               rt/rust.cpp \
               rt/rust_builtin.cpp \
               rt/rust_crate.cpp \
@@ -383,6 +382,9 @@ self: $(CFG_COMPILER)
 TASK_XFAILS := test/run-pass/task-comm-8.rs \
                test/run-pass/task-comm-10.rs \
                test/run-pass/task-comm-15.rs \
+               test/run-pass/task-comm-12.rs \
+               test/run-pass/task-comm-2.rs \
+               test/run-pass/task-comm-9.rs \
                test/run-pass/task-life-0.rs \
                test/run-pass/alt-type-simple.rs \
                test/run-pass/many.rs
@@ -936,3 +938,11 @@ clean:
 	$(CFG_QUIET)rm -Rf $(PKG_NAME)-*.tar.gz dist
 	$(CFG_QUIET)rm -f $(foreach ext,cmx cmi cmo cma o a d exe,\
                         $(wildcard boot/*/*.$(ext) boot/*/*/*.$(ext)))
+
+
+# Local Variables:
+# mode: makefile-gmake
+# fill-column: 78;
+# buffer-file-coding-system: utf-8-unix
+# compile-command: "make -k 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+# End:

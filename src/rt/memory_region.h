@@ -9,7 +9,7 @@
 #ifndef MEMORY_REGION_H
 #define MEMORY_REGION_H
 
-#include "sync/spin_lock.h"
+#include "sync/lock_and_signal.h"
 
 class rust_srv;
 
@@ -20,7 +20,7 @@ private:
     size_t _live_allocations;
     array_list<void *> _allocation_list;
     const bool _synchronized;
-    spin_lock _lock;
+    lock_and_signal _lock;
 public:
     enum memory_region_type {
         LOCAL = 0x1, SYNCHRONIZED = 0x2
@@ -41,5 +41,16 @@ inline void *operator new(size_t size, memory_region &region) {
 inline void *operator new(size_t size, memory_region *region) {
     return region->malloc(size);
 }
+
+//
+// Local Variables:
+// mode: C++
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//
 
 #endif /* MEMORY_REGION_H */

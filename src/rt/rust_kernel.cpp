@@ -12,7 +12,7 @@ rust_kernel::rust_kernel(rust_srv *srv) :
 
 rust_handle<rust_dom> *
 rust_kernel::create_domain(const rust_crate *crate, const char *name) {
-    LOCK(_kernel_lock);
+    _kernel_lock.lock();
     rust_message_queue *message_queue =
         new (this) rust_message_queue(_srv, this);
     rust_srv *srv = _srv->clone();
@@ -22,13 +22,14 @@ rust_kernel::create_domain(const rust_crate *crate, const char *name) {
     message_queue->associate(handle);
     domains.append(dom);
     message_queues.append(message_queue);
-    UNLOCK(_kernel_lock);
+    _kernel_lock.unlock();
+    _kernel_lock.signal();
     return handle;
 }
 
 void
 rust_kernel::destroy_domain(rust_dom *dom) {
-    LOCK(_kernel_lock);
+    _kernel_lock.lock();
     log(rust_log::KERN, "deleting domain: " PTR ", index: %d, domains %d",
         dom, dom->list_index, domains.length());
     domains.remove(dom);
@@ -36,7 +37,8 @@ rust_kernel::destroy_domain(rust_dom *dom) {
     rust_srv *srv = dom->srv;
     delete dom;
     delete srv;
-    UNLOCK(_kernel_lock);
+    _kernel_lock.unlock();
+    _kernel_lock.signal();
 }
 
 rust_handle<rust_dom> *
@@ -52,15 +54,15 @@ rust_kernel::internal_get_dom_handle(rust_dom *dom) {
 
 rust_handle<rust_dom> *
 rust_kernel::get_dom_handle(rust_dom *dom) {
-    LOCK(_kernel_lock);
+    _kernel_lock.lock();
     rust_handle<rust_dom> *handle = internal_get_dom_handle(dom);
-    UNLOCK(_kernel_lock);
+    _kernel_lock.unlock();
     return handle;
 }
 
 rust_handle<rust_task> *
 rust_kernel::get_task_handle(rust_task *task) {
-    LOCK(_kernel_lock);
+    _kernel_lock.lock();
     rust_handle<rust_task> *handle = NULL;
     if (_task_handles.get(task, &handle) == false) {
         handle =
@@ -68,13 +70,13 @@ rust_kernel::get_task_handle(rust_task *task) {
                                               task);
         _task_handles.put(task, handle);
     }
-    UNLOCK(_kernel_lock);
+    _kernel_lock.unlock();
     return handle;
 }
 
 rust_handle<rust_port> *
 rust_kernel::get_port_handle(rust_port *port) {
-    PLOCK(_kernel_lock);
+    _kernel_lock.lock();
     rust_handle<rust_port> *handle = NULL;
     if (_port_handles.get(port, &handle) == false) {
         handle =
@@ -83,7 +85,7 @@ rust_kernel::get_port_handle(rust_port *port) {
                                               port);
         _port_handles.put(port, handle);
     }
-    PUNLOCK(_kernel_lock);
+    _kernel_lock.unlock();
     return handle;
 }
 
@@ -126,7 +128,6 @@ rust_kernel::log(uint32_t type_bits, char const *fmt, ...) {
 
 void
 rust_kernel::pump_message_queues() {
-    LOCK(_kernel_lock);
     for (size_t i = 0; i < message_queues.length(); i++) {
         rust_message_queue *queue = message_queues[i];
         if (queue->is_associated() == false) {
@@ -137,27 +138,16 @@ rust_kernel::pump_message_queues() {
             }
         }
     }
-    UNLOCK(_kernel_lock);
 }
 
 void
 rust_kernel::start_kernel_loop() {
+    _kernel_lock.lock();
     while (_interrupt_kernel_loop == false) {
+        _kernel_lock.wait();
         pump_message_queues();
-
-        // FIXME: this is a complete hack to make the testsuite finish in a
-        // sane time when executing under valgrind. The whole message-loop
-        // system here needs replacement with an OS-level event-queue such
-        // that actually wait on inter-thread notices, rather than
-        // busy-waiting.
-
-        size_t ms = TIME_SLICE_IN_MS;
-#if defined(__WIN32__)
-        Sleep(ms);
-#else
-        usleep(ms * 1000);
-#endif
     }
+    _kernel_lock.unlock();
 }
 
 void
@@ -171,6 +161,7 @@ void
 rust_kernel::terminate_kernel_loop() {
     log(rust_log::KERN, "terminating kernel loop");
     _interrupt_kernel_loop = true;
+    _kernel_lock.signal();
     join();
 }
 
