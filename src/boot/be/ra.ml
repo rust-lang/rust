@@ -324,11 +324,11 @@ let dump_quads cx =
 
 let calculate_vreg_constraints
     (cx:ctxt)
-    (constraints:Bits.t array)
+    (constraints:(Il.vreg,Bits.t) Hashtbl.t)
     (q:quad)
     : unit =
   let abi = cx.ctxt_abi in
-    Array.iter (fun c -> Bits.clear c; Bits.invert c) constraints;
+    Hashtbl.clear constraints;
     abi.Abi.abi_constrain_vregs q constraints;
     iflog cx
       begin
@@ -341,9 +341,12 @@ let calculate_vreg_constraints
                 match r with
                     Il.Hreg _ -> ()
                   | Il.Vreg v ->
-                      let hregs = Bits.to_list constraints.(v) in
-                        log cx "<v%d> constrained to hregs: [%s]"
-                          v (list_to_str hregs hr_str)
+                      match htab_search constraints v with
+                          None -> log cx "<v%d> unconstrained" v
+                        | Some c ->
+                            let hregs = Bits.to_list c in
+                              log cx "<v%d> constrained to hregs: [%s]"
+                                v (list_to_str hregs hr_str)
               end;
               r
             in
@@ -376,10 +379,9 @@ let reg_alloc
     let (live_in_vregs, live_out_vregs) =
       calculate_live_bitvectors cx
     in
-    let n_vregs = cx.ctxt_n_vregs in
-    let n_hregs = abi.Abi.abi_n_hardregs in
-    let (vreg_constraints:Bits.t array) = (* vreg idx -> hreg bits.t *)
-      Array.init n_vregs (fun _ -> Bits.create n_hregs true)
+      (* vreg idx -> hreg bits.t *)
+    let (vreg_constraints:(Il.vreg,Bits.t) Hashtbl.t) =
+      Hashtbl.create 0
     in
     let inactive_hregs = ref [] in (* [hreg] *)
     let active_hregs = ref [] in (* [hreg] *)
@@ -497,6 +499,13 @@ let reg_alloc
       else ()
     in
 
+    let get_vreg_constraints v =
+      match htab_search vreg_constraints v with
+          None -> all_hregs
+        | Some c -> c
+    in
+
+
     let use_vreg def i vreg =
       if Hashtbl.mem vreg_to_hreg vreg
       then
@@ -508,18 +517,19 @@ let reg_alloc
         end
       else
         let hreg =
-          let constrs = vreg_constraints.(vreg) in
-          match select_constrained constrs (!inactive_hregs) with
-              None ->
-                let h = spill_constrained constrs i in
-                  iflog cx
-                    (fun _ -> log cx "selected %s to spill and use for <v%d>"
-                       (hr_str h) vreg);
+          let constrs = get_vreg_constraints vreg in
+            match select_constrained constrs (!inactive_hregs) with
+                None ->
+                  let h = spill_constrained constrs i in
+                    iflog cx
+                      (fun _ ->
+                         log cx "selected %s to spill and use for <v%d>"
+                         (hr_str h) vreg);
+                    h
+              | Some h ->
+                  iflog cx (fun _ -> log cx "selected inactive %s for <v%d>"
+                              (hr_str h) vreg);
                   h
-            | Some h ->
-                iflog cx (fun _ -> log cx "selected inactive %s for <v%d>"
-                            (hr_str h) vreg);
-                h
         in
           inactive_hregs :=
             List.filter (fun x -> x != hreg) (!inactive_hregs);
@@ -569,7 +579,7 @@ let reg_alloc
              * This is awful but it saves us from cached/constrained
              * interference as was found in issue #152. *)
             if List.exists
-              (fun v -> not (Bits.equal vreg_constraints.(v) all_hregs))
+              (fun v -> not (Bits.equal (get_vreg_constraints v) all_hregs))
               used
             then
               begin
@@ -577,7 +587,7 @@ let reg_alloc
                 spill_all_regs i;
                 (* Check for over-constrained-ness after any such regfence. *)
                 let vreg_constrs v =
-                  (v, Bits.to_list (vreg_constraints.(v)))
+                  (v, Bits.to_list (get_vreg_constraints v))
                 in
                 let constrs = List.map vreg_constrs (used @ defined) in
                 let constrs_collide (v1,c1) =

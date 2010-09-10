@@ -385,7 +385,7 @@ let emit_target_specific
 ;;
 
 
-let constrain_vregs (q:Il.quad) (hregs:Bits.t array) : unit =
+let constrain_vregs (q:Il.quad) (hregs:(Il.vreg,Bits.t) Hashtbl.t) : unit =
 
   let involves_8bit_cell =
     let b = ref false in
@@ -402,6 +402,10 @@ let constrain_vregs (q:Il.quad) (hregs:Bits.t array) : unit =
       !b
   in
 
+  let get_hregs v =
+    htab_search_or_add hregs v (fun _ -> Bits.create n_hardregs true)
+  in
+
   let qp_mem _ m = m in
   let qp_cell _ c =
     begin
@@ -409,7 +413,7 @@ let constrain_vregs (q:Il.quad) (hregs:Bits.t array) : unit =
           Il.Reg (Il.Vreg v, _) when involves_8bit_cell ->
             (* 8-bit register cells must only be al, cl, dl, bl.
              * Not esi/edi. *)
-            let hv = hregs.(v) in
+            let hv = get_hregs v in
               List.iter (fun bad -> Bits.set hv bad false) [esi; edi]
         | _ -> ()
     end;
@@ -425,7 +429,7 @@ let constrain_vregs (q:Il.quad) (hregs:Bits.t array) : unit =
                     begin
                       match b.Il.binary_rhs with
                           Il.Cell (Il.Reg (Il.Vreg v, _)) ->
-                            let hv = hregs.(v) in
+                            let hv = get_hregs v in
                               (* Shift src has to be ecx. *)
                               List.iter
                                 (fun bad -> Bits.set hv bad false)

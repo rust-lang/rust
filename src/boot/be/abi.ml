@@ -118,7 +118,7 @@ type abi =
     abi_str_of_hardreg: (int -> string);
 
     abi_emit_target_specific: (Il.emitter -> Il.quad -> unit);
-    abi_constrain_vregs: (Il.quad -> Bits.t array -> unit);
+    abi_constrain_vregs: (Il.quad -> (Il.vreg,Bits.t) Hashtbl.t -> unit);
 
     abi_emit_fn_prologue: (Il.emitter
                            -> Common.size        (* framesz *)
