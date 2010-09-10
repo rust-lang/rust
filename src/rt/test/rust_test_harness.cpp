@@ -10,7 +10,9 @@ rust_test::name() {
     return "untitled";
 }
 
-rust_test_suite::rust_test_suite() {
+rust_test_suite::rust_test_suite(rust_crate *crate) : crate(crate) {
+    tests.append(new rust_domain_test());
+    tests.append(new rust_task_test(this));
     tests.append(new rust_array_list_test());
     tests.append(new rust_synchronized_indexed_list_test());
 }
@@ -25,11 +27,12 @@ rust_test_suite::run() {
     for (size_t i = 0; i < tests.size(); i++) {
         rust_test *test = tests[i];
         printf("test: %s running ... \n", test->name());
-        if (tests[i]->run() == false) {
-            printf("test: %s FAILED\n", test->name());
+        timer timer;
+        bool result = tests[i]->run();
+        printf("test: %s %s %.2f ms\n", test->name(),
+               result ? "PASSED" : "FAILE", timer.get_elapsed_time_in_ms());
+        if (result == false) {
             pass = false;
-        } else {
-            printf("test: %s PASSED\n", test->name());
         }
     }
     return pass;

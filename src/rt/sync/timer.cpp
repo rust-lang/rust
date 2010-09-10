@@ -25,6 +25,11 @@ timer::get_elapsed_time() {
     return get_time() - _start;
 }
 
+double
+timer::get_elapsed_time_in_ms() {
+    return (double) get_elapsed_time() / 1000.0;
+}
+
 int64_t
 timer::get_timeout() {
     return _timeout - get_elapsed_time();

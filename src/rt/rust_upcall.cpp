@@ -542,12 +542,8 @@ upcall_get_type_desc(rust_task *task,
 extern "C" CDECL rust_task *
 upcall_new_task(rust_task *spawner, const char *name) {
     LOG_UPCALL_ENTRY(spawner);
-
     rust_dom *dom = spawner->dom;
-    rust_task *task = new (dom) rust_task(dom, spawner, name);
-    dom->log(rust_log::UPCALL | rust_log::MEM | rust_log::TASK,
-             "upcall new_task(spawner %s @0x%" PRIxPTR ", %s) = 0x%" PRIxPTR,
-             spawner->name, spawner, name, task);
+    rust_task *task = dom->create_task(spawner, name);
     return task;
 }
 

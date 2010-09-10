@@ -124,6 +124,8 @@ template <typename T> struct region_owned {
     }
 };
 
+#include "rust_task_list.h"
+
 // A cond(ition) is something we can block on. This can be a channel
 // (writing), a port (reading) or a task (waiting).
 
@@ -203,9 +205,7 @@ crate_rel(rust_crate const *crate, T const *t) {
 
 typedef void CDECL (*activate_glue_ty)(rust_task *);
 
-class
-rust_crate
-{
+class rust_crate {
     // The following fields are emitted by the compiler for the static
     // rust_crate object inside each compiled crate.
 
@@ -563,6 +563,7 @@ struct gc_alloc {
 
 #include "test/rust_test_harness.h"
 #include "test/rust_test_util.h"
+#include "test/rust_test_runtime.h"
 
 //
 // Local Variables:

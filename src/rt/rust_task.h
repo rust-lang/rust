@@ -7,7 +7,6 @@
 
 #include "util/array_list.h"
 
-
 struct
 rust_task : public maybe_proxy<rust_task>,
             public dom_owned<rust_task>
@@ -22,11 +21,11 @@ rust_task : public maybe_proxy<rust_task>,
 
     // Fields known only to the runtime.
     const char *const name;
-    ptr_vec<rust_task> *state;
+    rust_task_list *state;
     rust_cond *cond;
     const char *cond_name;
     rust_task *supervisor;     // Parent-link for failure propagation.
-    size_t idx;
+    int32_t list_index;
     size_t gc_alloc_thresh;
     size_t gc_alloc_accum;
 
@@ -50,6 +49,7 @@ rust_task : public maybe_proxy<rust_task>,
 
     // Only a pointer to 'name' is kept, so it must live as long as this task.
     rust_task(rust_dom *dom,
+              rust_task_list *state,
               rust_task *spawner,
               const char *name);
 
@@ -71,8 +71,7 @@ rust_task : public maybe_proxy<rust_task>,
     void *realloc(void *data, size_t sz, bool gc_mem=false);
     void free(void *p, bool gc_mem=false);
 
-    const char *state_str();
-    void transition(ptr_vec<rust_task> *svec, ptr_vec<rust_task> *dvec);
+    void transition(rust_task_list *src, rust_task_list *dst);
 
     void block(rust_cond *on, const char* name);
     void wakeup(rust_cond *from);

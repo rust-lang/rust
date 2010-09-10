@@ -18,11 +18,9 @@ public:
 class rust_synchronized_indexed_list_test : public rust_test {
 public:
     rust_srv srv;
-    memory_region region;
     synchronized_indexed_list<indexed_list_element<int> > list;
 
-    rust_synchronized_indexed_list_test() :
-        region(&srv, false), list(&region) {
+    rust_synchronized_indexed_list_test() {
         // Nop.
     }
 

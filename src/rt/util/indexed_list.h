@@ -3,7 +3,6 @@
 
 #include <assert.h>
 #include "array_list.h"
-#include "../memory_region.h"
 
 class indexed_list_object {
 public:
@@ -28,12 +27,14 @@ public:
  * object inserted in this list must define a "int32_t list_index" member.
  */
 template<typename T> class indexed_list {
-    memory_region *region;
     array_list<T*> list;
 public:
-    indexed_list(memory_region *region) : region(region) {}
     virtual int32_t append(T *value);
     virtual bool pop(T **value);
+    /**
+     * Same as pop(), except that it returns NULL if the list is empty.
+     */
+    virtual T* pop_value();
     virtual size_t length() {
         return list.size();
     }
@@ -74,6 +75,15 @@ indexed_list<T>::remove(T *value) {
 template<typename T> bool
 indexed_list<T>::pop(T **value) {
     return list.pop(value);
+}
+
+template<typename T> T*
+indexed_list<T>::pop_value() {
+    T *value = NULL;
+    if (list.pop(&value)) {
+        return value;
+    }
+    return NULL;
 }
 
 template <typename T> T *

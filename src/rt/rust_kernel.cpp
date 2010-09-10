@@ -4,9 +4,7 @@ rust_kernel::rust_kernel(rust_srv *srv) :
     _region(&srv->local_region),
     _log(srv, NULL),
     _srv(srv),
-    _interrupt_kernel_loop(FALSE),
-    domains(&srv->local_region),
-    message_queues(&srv->local_region) {
+    _interrupt_kernel_loop(FALSE) {
     // Nop.
 }
 
@@ -22,6 +20,9 @@ rust_kernel::create_domain(const rust_crate *crate, const char *name) {
     message_queue->associate(handle);
     domains.append(dom);
     message_queues.append(message_queue);
+    log(rust_log::KERN | rust_log::TASK,
+        "created domain: " PTR ", name: %s, index: %d, domains %d",
+        dom, name, dom->list_index, domains.length());
     _kernel_lock.signal_all();
     _kernel_lock.unlock();
     return handle;
@@ -30,8 +31,9 @@ rust_kernel::create_domain(const rust_crate *crate, const char *name) {
 void
 rust_kernel::destroy_domain(rust_dom *dom) {
     _kernel_lock.lock();
-    log(rust_log::KERN, "deleting domain: " PTR ", index: %d, domains %d",
-        dom, dom->list_index, domains.length());
+    log(rust_log::KERN,
+        "deleting domain: " PTR ", name: %s, index: %d, domains %d",
+        dom, dom->name, dom->list_index, domains.length());
     domains.remove(dom);
     dom->message_queue->disassociate();
     rust_srv *srv = dom->srv;

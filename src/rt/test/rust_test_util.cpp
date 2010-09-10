@@ -1,7 +1,7 @@
 #include "../rust_internal.h"
 
 #define COUNT 1000
-#define LARGE_COUNT 100000
+#define LARGE_COUNT 10000
 #define THREADS 10
 
 bool

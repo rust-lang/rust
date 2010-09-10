@@ -11,6 +11,18 @@ void sync::yield() {
 #endif
 }
 
+void sync::sleep(size_t timeout_in_ms) {
+#ifdef __WIN32__
+    Sleep(timeout_in_ms);
+#else
+    usleep(timeout_in_ms * 1000);
+#endif
+}
+
+void sync::random_sleep(size_t max_timeout_in_ms) {
+    sleep(rand() % max_timeout_in_ms);
+}
+
 rust_thread::rust_thread() : _is_running(false), thread(0) {
     // Nop.
 }

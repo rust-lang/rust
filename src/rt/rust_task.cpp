@@ -9,6 +9,7 @@
 // FIXME (issue #151): This should be 0x300; the change here is for
 // practicality's sake until stack growth is working.
 static size_t const min_stk_bytes = 0x300000;
+// static size_t const min_stk_bytes = 0x10000;
 
 // Task stack segments. Heap allocated and chained together.
 
@@ -54,7 +55,8 @@ align_down(uintptr_t sp)
 }
 
 
-rust_task::rust_task(rust_dom *dom, rust_task *spawner, const char *name) :
+rust_task::rust_task(rust_dom *dom, rust_task_list *state,
+                     rust_task *spawner, const char *name) :
     maybe_proxy<rust_task>(this),
     stk(new_stk(dom, 0)),
     runtime_sp(0),
@@ -63,11 +65,11 @@ rust_task::rust_task(rust_dom *dom, rust_task *spawner, const char *name) :
     dom(dom),
     cache(NULL),
     name(name),
-    state(&dom->running_tasks),
+    state(state),
     cond(NULL),
     cond_name("none"),
     supervisor(spawner),
-    idx(0),
+    list_index(-1),
     rendezvous_ptr(0),
     alarm(this),
     handle(NULL)
@@ -197,7 +199,7 @@ rust_task::start(uintptr_t exit_task_glue,
     // Back up one, we overshot where sp should be.
     rust_sp = (uintptr_t) (spp+1);
 
-    dom->add_task_to_state_vec(&dom->running_tasks, this);
+    transition(&dom->newborn_tasks, &dom->running_tasks);
 }
 
 void
@@ -544,23 +546,14 @@ rust_task::free(void *p, bool is_gc)
     }
 }
 
-const char *
-rust_task::state_str() {
-    return dom->state_vec_name(state);
-}
-
 void
-rust_task::transition(ptr_vec<rust_task> *src, ptr_vec<rust_task> *dst)
-{
+rust_task::transition(rust_task_list *src, rust_task_list *dst) {
     I(dom, state == src);
     dom->log(rust_log::TASK,
-             "task %s @0x%" PRIxPTR " state change '%s' -> '%s'",
-             name,
-             (uintptr_t)this,
-             dom->state_vec_name(src),
-             dom->state_vec_name(dst));
-    dom->remove_task_from_state_vec(src, this);
-    dom->add_task_to_state_vec(dst, this);
+             "task %s " PTR " state change '%s' -> '%s'",
+             name, (uintptr_t)this, src->name, dst->name);
+    src->remove(this);
+    dst->append(this);
     state = dst;
 }
 
@@ -577,8 +570,7 @@ rust_task::block(rust_cond *on, const char* name) {
 }
 
 void
-rust_task::wakeup(rust_cond *from)
-{
+rust_task::wakeup(rust_cond *from) {
     A(dom, cond != NULL, "Cannot wake up unblocked task.");
     log(rust_log::TASK, "Blocked on 0x%" PRIxPTR " woken up on 0x%" PRIxPTR,
                         (uintptr_t) cond, (uintptr_t) from);
@@ -591,14 +583,12 @@ rust_task::wakeup(rust_cond *from)
 }
 
 void
-rust_task::die()
-{
+rust_task::die() {
     transition(&dom->running_tasks, &dom->dead_tasks);
 }
 
 void
-rust_task::unblock()
-{
+rust_task::unblock() {
     if (blocked())
         wakeup(cond);
 }

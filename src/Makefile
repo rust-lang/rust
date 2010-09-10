@@ -257,6 +257,7 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/rust_comm.cpp \
               rt/rust_dom.cpp \
               rt/rust_task.cpp \
+              rt/rust_task_list.cpp \
               rt/rust_proxy.cpp \
               rt/rust_chan.cpp \
               rt/rust_port.cpp \
@@ -270,6 +271,7 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/rust_kernel.cpp \
               rt/memory_region.cpp \
               rt/test/rust_test_harness.cpp \
+              rt/test/rust_test_runtime.cpp \
               rt/test/rust_test_util.cpp
 
 RUNTIME_HDR := rt/globals.h \
@@ -281,6 +283,7 @@ RUNTIME_HDR := rt/globals.h \
                rt/rust_port.h \
                rt/rust_dom.h \
                rt/rust_task.h \
+               rt/rust_task_list.h \
                rt/rust_proxy.h \
                rt/rust_log.h \
                rt/rust_message.h \
@@ -297,6 +300,7 @@ RUNTIME_HDR := rt/globals.h \
                rt/memory_region.h \
                rt/memory.h \
                rt/test/rust_test_harness.h \
+               rt/test/rust_test_runtime.h \
                rt/test/rust_test_util.h
 
 RUNTIME_INCS := -Irt/isaac -Irt/uthash

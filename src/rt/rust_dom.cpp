@@ -2,8 +2,6 @@
 #include <stdarg.h>
 #include "rust_internal.h"
 
-template class ptr_vec<rust_task>;
-
 rust_dom::rust_dom(rust_kernel *kernel,
     rust_message_queue *message_queue, rust_srv *srv,
     rust_crate const *root_crate, const char *name) :
@@ -14,9 +12,10 @@ rust_dom::rust_dom(rust_kernel *kernel,
     local_region(&srv->local_region),
     synchronized_region(&srv->synchronized_region),
     name(name),
-    running_tasks(this),
-    blocked_tasks(this),
-    dead_tasks(this),
+    newborn_tasks(this, "newborn"),
+    running_tasks(this, "running"),
+    blocked_tasks(this, "blocked"),
+    dead_tasks(this, "dead"),
     caches(this),
     root_task(NULL),
     curr_task(NULL),
@@ -31,28 +30,16 @@ rust_dom::rust_dom(rust_kernel *kernel,
     pthread_attr_setstacksize(&attr, 1024 * 1024);
     pthread_attr_setdetachstate(&attr, true);
 #endif
-    root_task = new (this) rust_task(this, NULL, name);
-}
-
-static void
-del_all_tasks(rust_dom *dom, ptr_vec<rust_task> *v) {
-    I(dom, v);
-    while (v->length()) {
-        dom->log(rust_log::TASK, "deleting task 0x%" PRIdPTR,
-                 v->length() - 1);
-        delete v->pop();
-    }
+    root_task = create_task(NULL, name);
 }
 
 rust_dom::~rust_dom() {
     log(rust_log::MEM | rust_log::DOM,
         "~rust_dom %s @0x%" PRIxPTR, name, (uintptr_t)this);
-    log(rust_log::TASK, "deleting all running tasks");
-    del_all_tasks(this, &running_tasks);
-    log(rust_log::TASK, "deleting all blocked tasks");
-    del_all_tasks(this, &blocked_tasks);
-    log(rust_log::TASK, "deleting all dead tasks");
-    del_all_tasks(this, &dead_tasks);
+    newborn_tasks.delete_all();
+    running_tasks.delete_all();
+    blocked_tasks.delete_all();
+    dead_tasks.delete_all();
 #ifndef __WIN32__
     pthread_attr_destroy(&attr);
 #endif
@@ -198,40 +185,8 @@ rust_dom::win32_require(LPCTSTR fn, BOOL ok) {
 #endif
 
 size_t
-rust_dom::n_live_tasks()
-{
+rust_dom::number_of_live_tasks() {
     return running_tasks.length() + blocked_tasks.length();
-}
-
-void
-rust_dom::add_task_to_state_vec(ptr_vec<rust_task> *v, rust_task *task)
-{
-    log(rust_log::MEM|rust_log::TASK,
-        "adding task %s @0x%" PRIxPTR " in state '%s' to vec 0x%" PRIxPTR,
-        task->name, (uintptr_t)task, state_vec_name(v), (uintptr_t)v);
-    v->push(task);
-}
-
-
-void
-rust_dom::remove_task_from_state_vec(ptr_vec<rust_task> *v, rust_task *task)
-{
-    log(rust_log::MEM|rust_log::TASK,
-        "removing task %s @0x%" PRIxPTR " in state '%s' from vec 0x%" PRIxPTR,
-        task->name, (uintptr_t)task, state_vec_name(v), (uintptr_t)v);
-    I(this, (*v)[task->idx] == task);
-    v->swap_delete(task);
-}
-
-const char *
-rust_dom::state_vec_name(ptr_vec<rust_task> *v)
-{
-    if (v == &running_tasks)
-        return "running";
-    if (v == &blocked_tasks)
-        return "blocked";
-    I(this, v == &dead_tasks);
-    return "dead";
 }
 
 /**
@@ -243,7 +198,7 @@ rust_dom::reap_dead_tasks() {
         rust_task *task = dead_tasks[i];
         if (task->ref_count == 0) {
             I(this, task->tasks_waiting_to_join.is_empty());
-            dead_tasks.swap_delete(task);
+            dead_tasks.remove(task);
             log(rust_log::TASK,
                 "deleting unreferenced dead task %s @0x%" PRIxPTR,
                 task->name, task);
@@ -288,7 +243,6 @@ rust_dom::schedule_task() {
             return (rust_task *)running_tasks[i];
         }
     }
-    // log(rust_log::DOM|rust_log::TASK, "no schedulable tasks");
     return NULL;
 }
 
@@ -334,16 +288,16 @@ rust_dom::log_state() {
  * drop to zero.
  */
 int
-rust_dom::start_main_loop()
-{
+rust_dom::start_main_loop() {
     // Make sure someone is watching, to pull us out of infinite loops.
     rust_timer timer(this);
 
-    log(rust_log::DOM, "running main-loop on domain %s @0x%" PRIxPTR,
-        name, this);
-    logptr("exit-task glue", root_crate->get_exit_task_glue());
+    log(rust_log::DOM, "started domain loop");
+    log(rust_log::DOM | rust_log::MEM,
+        "activate glue: " PTR ", exit glue: " PTR,
+        root_crate->get_activate_glue(), root_crate->get_exit_task_glue());
 
-    while (n_live_tasks() > 0) {
+    while (number_of_live_tasks() > 0) {
         A(this, kernel->is_deadlocked() == false, "deadlock");
 
         drain_incoming_message_queue(true);
@@ -377,7 +331,7 @@ rust_dom::start_main_loop()
             (uintptr_t)scheduled_task,
             scheduled_task->rust_sp,
             scheduled_task->ref_count,
-            scheduled_task->state_str());
+            scheduled_task->state->name);
 
         interrupt_flag = 0;
 
@@ -388,7 +342,7 @@ rust_dom::start_main_loop()
                  " in state '%s', sp=0x%" PRIxPTR,
                  scheduled_task->name,
                  (uintptr_t)scheduled_task,
-                 state_vec_name(scheduled_task->state),
+                 scheduled_task->state->name,
                  scheduled_task->rust_sp);
 
         I(this, scheduled_task->rust_sp >=
@@ -443,6 +397,15 @@ rust_dom::get_cache(rust_crate const *crate) {
     return cache;
 }
 
+rust_task *
+rust_dom::create_task(rust_task *spawner, const char *name) {
+    rust_task *task =
+        new (this) rust_task (this, &newborn_tasks, spawner, name);
+    log(rust_log::TASK, "created task: " PTR ", spawner: %s, name: %s",
+                        task, spawner ? spawner->name : "null", name);
+    newborn_tasks.append(task);
+    return task;
+}
 
 //
 // Local Variables:

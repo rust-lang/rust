@@ -18,10 +18,14 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
     memory_region local_region;
     memory_region synchronized_region;
     const char *const name;
-    ptr_vec<rust_task> running_tasks;
-    ptr_vec<rust_task> blocked_tasks;
-    ptr_vec<rust_task> dead_tasks;
+
+    rust_task_list newborn_tasks;
+    rust_task_list running_tasks;
+    rust_task_list blocked_tasks;
+    rust_task_list dead_tasks;
+
     ptr_vec<rust_crate_cache> caches;
+
     randctx rctx;
     rust_task *root_task;
     rust_task *curr_task;
@@ -71,10 +75,7 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
 #endif
 
     rust_crate_cache *get_cache(rust_crate const *crate);
-    size_t n_live_tasks();
-    void add_task_to_state_vec(ptr_vec<rust_task> *v, rust_task *task);
-    void remove_task_from_state_vec(ptr_vec<rust_task> *v, rust_task *task);
-    const char *state_vec_name(ptr_vec<rust_task> *v);
+    size_t number_of_live_tasks();
 
     void reap_dead_tasks();
     rust_task *schedule_task();
@@ -83,6 +84,8 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
 
     void log_state();
     static void log_all_state();
+
+    rust_task *create_task(rust_task *spawner, const char *name);
 };
 
 //

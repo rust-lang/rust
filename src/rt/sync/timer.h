@@ -17,6 +17,7 @@ public:
     timer();
     void reset(uint64_t timeout);
     uint64_t get_elapsed_time();
+    double get_elapsed_time_in_ms();
     int64_t get_timeout();
     bool has_timed_out();
     virtual ~timer();

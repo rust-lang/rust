@@ -2,14 +2,14 @@
 #define SYNCHRONIZED_INDEXED_LIST_H
 
 #include "indexed_list.h"
+#include "../sync/lock_and_signal.h"
 
 template<typename T> class synchronized_indexed_list :
     public indexed_list<T> {
     lock_and_signal _lock;
 
 public:
-    synchronized_indexed_list(memory_region *region) :
-        indexed_list<T>(region) {
+    synchronized_indexed_list() {
         // Nop.
     }
 
