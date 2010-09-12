@@ -488,6 +488,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       lazy-and-or.rs \
                       lazy-init.rs \
                       lazychan.rs \
+                      leak-box-as-tydesc.rs \
                       lib-deque.rs \
                       lib-int.rs \
                       lib-io.rs \

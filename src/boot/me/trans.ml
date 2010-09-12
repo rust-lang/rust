@@ -2562,8 +2562,8 @@ let trans_visitor
 
   and get_tydesc (idopt:node_id option) (ty:Ast.ty) : Il.cell =
     log cx "getting tydesc for %a" Ast.sprintf_ty ty;
-    let (ty, mut) = simplified_ty_innermost_was_mutable ty in
-    match ty with
+    let (ty', mut) = simplified_ty_innermost_was_mutable ty in
+    match ty' with
         Ast.TY_param (idx, _) ->
           (get_ty_param_in_current_frame idx)
       | t when has_parametric_types t ->
