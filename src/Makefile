@@ -533,6 +533,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       str-concat.rs \
                       str-idx.rs \
                       tag.rs \
+                      tail-call-arg-leak.rs \
                       tail-cps.rs \
                       tail-direct.rs \
                       task-comm.rs \

@@ -4219,6 +4219,8 @@ let trans_visitor
                (Printf.sprintf "copy args for tail call to %s" (logname ())));
       copy_fn_args true true CLONE_none call;
       drop_slots_at_curr_stmt();
+      iflog (fun _ -> annotate "drop args");
+      iter_arg_slots cx (current_fn()) callee_drop_slot;
       abi.Abi.abi_emit_fn_tail_call (emitter())
         (force_sz (current_fn_callsz()))
         caller_argsz callee_code callee_argsz;
