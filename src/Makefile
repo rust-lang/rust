@@ -453,6 +453,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       comm.rs \
                       command-line-args.rs \
                       complex.rs \
+                      const.rs \
                       constrained-type.rs \
                       deep.rs \
                       deref.rs \
