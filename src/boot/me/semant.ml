@@ -1366,6 +1366,7 @@ let ty_of_mod_item (item:Ast.mod_item) : Ast.ty =
       Ast.MOD_ITEM_type _ -> Ast.TY_type
     | Ast.MOD_ITEM_fn f -> (Ast.TY_fn (ty_fn_of_fn f))
     | Ast.MOD_ITEM_mod _ -> bug () "Semant.ty_of_mod_item on mod"
+    | Ast.MOD_ITEM_const (ty, _) -> ty
     | Ast.MOD_ITEM_obj ob ->
         let taux = { Ast.fn_effect = Ast.PURE;
                      Ast.fn_is_iter = false }

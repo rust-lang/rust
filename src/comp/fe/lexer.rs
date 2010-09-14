@@ -137,6 +137,7 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
     keywords.insert("export", token.EXPORT());
 
     keywords.insert("let", token.LET());
+    keywords.insert("const", token.CONST());
 
     keywords.insert("log", token.LOG());
     keywords.insert("spawn", token.SPAWN());

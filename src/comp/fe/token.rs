@@ -103,6 +103,7 @@ tag token {
 
     /* Value / stmt declarators */
     LET();
+    CONST();
 
     /* Magic runtime services */
     LOG();
@@ -261,6 +262,7 @@ fn to_str(token t) -> str {
 
         /* Value / stmt declarators */
         case (LET()) { ret "let"; }
+        case (CONST()) { ret "const"; }
 
         /* Magic runtime services */
         case (LOG()) { ret "log"; }

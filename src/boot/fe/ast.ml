@@ -415,6 +415,7 @@ and mod_item' =
   | MOD_ITEM_mod of (mod_view * mod_items)
   | MOD_ITEM_fn of fn
   | MOD_ITEM_obj of obj
+  | MOD_ITEM_const of (ty * expr option)
 
 and mod_item_decl =
     {
@@ -1438,6 +1439,18 @@ and fmt_mod_item (ff:Format.formatter) (id:ident) (item:mod_item) : unit =
 
         | MOD_ITEM_obj obj ->
             fmt_obj ff id params obj
+
+        | MOD_ITEM_const (ty,e) ->
+            fmt ff "const ";
+            fmt_ty ff ty;
+            begin
+              match e with
+                  None -> ()
+                | Some e ->
+                    fmt ff " = ";
+                    fmt_expr ff e
+            end;
+            fmt ff ";"
     end
 
 and fmt_import (ff:Format.formatter) (ident:ident) (name:name) : unit =

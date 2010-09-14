@@ -19,6 +19,13 @@ let rec parse_expr (ps:pstate) : (Ast.stmt array * Ast.expr) =
   let pexp = ctxt "expr" Pexp.parse_pexp ps in
     Pexp.desugar_expr ps pexp
 
+and parse_prim_expr (ps:pstate) : Ast.expr =
+  let pexp = ctxt "expr" Pexp.parse_pexp ps in
+  let (stmts, expr) = Pexp.desugar_expr ps pexp in
+    if Array.length stmts = 0
+    then expr
+    else raise (Parse_err (ps, "expected primitive expression"))
+
 and parse_expr_atom (ps:pstate) : (Ast.stmt array * Ast.atom) =
   let pexp = ctxt "expr" Pexp.parse_pexp ps in
     Pexp.desugar_expr_atom ps pexp
@@ -943,6 +950,17 @@ and parse_mod_item (ps:pstate)
                             span ps apos bpos
                               (decl params (Ast.MOD_ITEM_fn fn))) |]
             end
+
+      | CONST ->
+          bump ps;
+          let ty = Pexp.parse_ty ps in
+          let ident = Pexp.parse_ident ps in
+            expect ps EQ;
+            let expr = parse_prim_expr ps in
+              expect ps SEMI;
+              let bpos = lexpos ps in
+                [| (ident, span ps apos bpos
+                      (decl [||] (Ast.MOD_ITEM_const (ty, Some expr)))) |]
 
       | MOD ->
           bump ps;

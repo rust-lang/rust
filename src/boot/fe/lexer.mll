@@ -110,6 +110,7 @@
                 ("export", EXPORT);
 
                 ("let", LET);
+                ("const", CONST);
 
                 ("log", LOG);
                 ("spawn", SPAWN);

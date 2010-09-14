@@ -93,6 +93,7 @@ type token =
 
   (* Value / stmt declarators *)
   | LET
+  | CONST
 
   (* Magic runtime services *)
   | LOG
@@ -246,6 +247,7 @@ let rec string_of_tok t =
 
     (* Value / stmt declarators. *)
     | LET        -> "let"
+    | CONST      -> "const"
 
     (* Magic runtime services *)
     | LOG        -> "log"
