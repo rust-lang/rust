@@ -37,6 +37,12 @@ let call_output_slot call =
   (fst (need_ty_fn call.call_callee_ty)).Ast.sig_output_slot
 ;;
 
+
+type const =
+    CONST_val of int64
+  | CONST_frag of Asm.frag
+;;
+
 let trans_visitor
     (cx:ctxt)
     (path:Ast.name_component Stack.t)
@@ -1006,20 +1012,83 @@ let trans_visitor
         trans_cond_fail "bounds check" jmp;
         based elt_reg
 
+  and trans_const_atom
+      (atom:Ast.atom)
+      : (Ast.ty * const) =
+    match atom with
+        Ast.ATOM_literal lit ->
+          begin
+            match lit.node with
+                Ast.LIT_nil -> (Ast.TY_nil, CONST_val 0L)
+              | Ast.LIT_bool false -> (Ast.TY_bool, CONST_val 0L)
+              | Ast.LIT_bool true -> (Ast.TY_bool, CONST_val 1L)
+              | Ast.LIT_char c -> (Ast.TY_char, CONST_val (Int64.of_int c))
+              | Ast.LIT_int i -> (Ast.TY_int, CONST_val i)
+              | Ast.LIT_uint i -> (Ast.TY_uint, CONST_val i)
+              | Ast.LIT_mach_int (m, i) -> (Ast.TY_mach m, CONST_val i)
+          end
+
+      | Ast.ATOM_lval lv ->
+          trans_const_lval lv
+
+  and trans_const_expr
+      (expr:Ast.expr)
+      : (Ast.ty * const) =
+    match expr with
+        Ast.EXPR_atom at -> trans_const_atom at
+
+      | Ast.EXPR_binary (_, a, b) ->
+          let _ = trans_const_atom a in
+          let _ = trans_const_atom b in
+            unimpl None "constant-folding binary expr"
+
+      | Ast.EXPR_unary (_, x) ->
+          let _ = trans_const_atom x in
+            unimpl None "constant-folding unary expr"
+
+  and trans_const_lval
+      (lv:Ast.lval)
+      : (Ast.ty * const) =
+    assert (lval_base_is_item cx lv);
+    let item = lval_item cx lv in
+      check_concrete item.node.Ast.decl_params ();
+      match item.node.Ast.decl_item with
+          Ast.MOD_ITEM_const (_, Some e) -> trans_const_expr e
+
+        | _ -> bug ()
+            "trans_const_lval called on unsupported item lval '%a'"
+              Ast.sprintf_lval lv
+
   and trans_lval_item
       (lv:Ast.lval)
       : (Il.cell * Ast.ty) =
     assert (lval_base_is_item cx lv);
-    let ty = lval_ty cx lv in
-    let item = lval_item cx lv in
-      check_concrete item.node.Ast.decl_params ();
-      match item.node.Ast.decl_item with
-          Ast.MOD_ITEM_const (_, Some e) ->
-            (Il.Reg (force_to_reg (trans_expr e)), ty)
-        | _ ->
-            bug ()
-              "trans_lval_full called on unsupported item lval '%a'"
-              Ast.sprintf_lval lv
+    match trans_const_lval lv with
+
+        (ty, CONST_val v) ->
+          let f tm =
+            (Il.Reg (force_to_reg (imm_of_ty v tm)), ty)
+          in
+            begin
+              match ty with
+                  Ast.TY_mach tm -> f tm
+                | Ast.TY_uint -> f word_ty_mach
+                | Ast.TY_int -> f word_ty_signed_mach
+                | Ast.TY_bool -> f TY_u8
+                | Ast.TY_char -> f TY_u32
+                | Ast.TY_nil -> (nil_ptr, ty)
+                | _ -> bug ()
+                    "trans_lval_item on %a: unexpected type %a"
+                      Ast.sprintf_lval lv Ast.sprintf_ty ty
+            end
+
+      | (ty, CONST_frag f) ->
+          let item = lval_item cx lv in
+            (crate_rel_to_ptr
+               (trans_crate_rel_data_operand
+                  (DATA_const item.id)
+                  (fun _ -> f))
+               (referent_type cx ty), ty)
 
   and trans_lval_full
       (initializing:bool)

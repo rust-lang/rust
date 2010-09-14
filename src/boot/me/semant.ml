@@ -50,6 +50,7 @@ type data =
   | DATA_frame_glue_fns of node_id
   | DATA_obj_vtbl of node_id
   | DATA_forwarding_vtbl of (Ast.ty_obj * Ast.ty_obj)
+  | DATA_const of node_id
   | DATA_crate
 ;;
 
