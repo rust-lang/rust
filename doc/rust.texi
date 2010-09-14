@@ -325,11 +325,11 @@ file.
 @sp 1
 @item Structural algebraic data types
 
-The Rust type system is structural rather than nominal, and contains the
-standard assortment of useful ``algebraic'' type constructors from functional
-languages, such as function types, tuples, record types, vectors, and tagged
-disjoint unions. Structural types may be @emph{pattern-matched} in an
-@code{alt} statement.
+The Rust type system is primarily structural, and contains the standard
+assortment of useful ``algebraic'' type constructors from functional
+languages, such as function types, tuples, record types, vectors, and
+nominally-tagged disjoint unions. Such values may be @emph{pattern-matched} in
+an @code{alt} statement.
 
 @sp 1
 @item Generic code
@@ -1667,6 +1667,7 @@ are no general parametric types.
 * Ref.Item.Iter::               Items defining iterators.
 * Ref.Item.Obj::                Items defining objects.
 * Ref.Item.Type::               Items defining the types of values and slots.
+* Ref.Item.Tag::                Items defining the constructors of a tag type.
 @end menu
 
 @node       Ref.Item.Mod
@@ -1954,10 +1955,50 @@ values that are composite records, each containing two unsigned 8-bit
 integers accessed through the components @code{x} and @code{y}, and laid
 out in memory with the @code{x} component preceding the @code{y} component.
 
-Some types are @emph{recursive}. A recursive type is one that includes
-its own definition as a component, by named reference. Recursive types
-are restricted to occur only within a single crate, and only through a
-restricted form of @code{tag} type. @xref{Ref.Type.Tag}.
+@node       Ref.Item.Tag
+@subsection Ref.Item.Tag
+@c * Ref.Item.Type::          Items defining the constructors of a tag type.
+@cindex Tag types
+
+A tag item simultaneously declares a new nominal tag type
+(@pxref{Ref.Type.Tag}) as well as a set of @emph{constructors} that can be
+used to create or pattern-match values of the corresponding tag type.
+
+The constructors of a @code{tag} type may be recursive: that is, each constructor
+may take an argument that refers, directly or indirectly, to the tag type the constructor
+is a member of. Such recursion has restrictions:
+@itemize
+@item Recursive types can only be introduced through @code{tag} constructors.
+@item A recursive @code{tag} item must have at least one non-recursive
+constructor (in order to give the recursion a basis case).
+@item The recursively argument of recursive tag constructors must be @emph{box}
+values (in order to bound the in-memory size of the constructor).
+@item Recursive type definitions can cross module boundaries, but not module
+@emph{visibility} boundaries, nor crate boundaries (in order to simplify the
+module system).
+@end itemize
+
+An example of a @code{tag} item and its use:
+@example
+tag animal @{
+  dog();
+  cat();
+@}
+
+let animal a = dog();
+a = cat();
+@end example
+
+An example of a @emph{recursive} @code{tag} item and its use:
+@example
+tag list[T] @{
+  nil();
+  cons(T, @@list[T]);
+@}
+
+let list[int] a = cons(7, cons(13, nil()));
+@end example
+
 
 @page
 @node    Ref.Type
@@ -2240,40 +2281,14 @@ vector is always bounds-checked.
 @cindex Tag types
 @cindex Union types, see @i{Tag types}
 
-The @code{tag} type-constructor forms new heterogeneous disjoint union
-types.@footnote{The @code{tag} type is analogous to a @code{data} constructor
-declaration in ML or a @emph{pick ADT} in Limbo.} A @code{tag} type consists
-of a number of @emph{variants}, each of which is independently named and takes
-an optional tuple of arguments.
+A @emph{tag type} is a nominal, heterogeneous disjoint union
+type.@footnote{The @code{tag} type is analogous to a @code{data} constructor
+declaration in ML or a @emph{pick ADT} in Limbo.} A @code{tag} @emph{item}
+consists of a number of @emph{constructors}, each of which is independently
+named and takes an optional tuple of arguments.
 
-The variants of a @code{tag} type may be recursive: that is, the definition of
-a @code{tag} type may refer to type definitions that include the defined
-@code{tag} type itself. Such recursion has restrictions:
-@itemize
-@item Recursive types can only be introduced through @code{tag} types.
-@item A recursive @code{tag} type must have at least one non-recursive
-variant (in order to give the recursion a basis case).
-@item The recursively-typed members of recursive variants must be @emph{box}
-values (in order to bound the in-memory size of the variant).
-@item Recursive type definitions can cross module boundaries, but not module
-@emph{visibility} boundaries, nor crate boundaries (in order to simplify the
-module system).
-@end itemize
-
-An example of a @code{tag} type and its use:
-@example
-type animal = tag(dog, cat);
-let animal a = dog;
-a = cat;
-@end example
-
-An example of a @emph{recursive} @code{tag} type and its use:
-@example
-type list[T] = tag(nil(),
-                   cons(T, @@list[T]));
-let list[int] a = cons(7, cons(13, nil()));
-@end example
-
+Tag types cannot be denoted @emph{structurally} as types, but must be denoted
+by named reference to a @emph{tag item} declaration. @xref{Ref.Item.Tag}.
 
 @node       Ref.Type.Fn
 @subsection Ref.Type.Fn
