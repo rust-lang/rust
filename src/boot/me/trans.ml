@@ -1006,6 +1006,21 @@ let trans_visitor
         trans_cond_fail "bounds check" jmp;
         based elt_reg
 
+  and trans_lval_item
+      (lv:Ast.lval)
+      : (Il.cell * Ast.ty) =
+    assert (lval_base_is_item cx lv);
+    let ty = lval_ty cx lv in
+    let item = lval_item cx lv in
+      check_concrete item.node.Ast.decl_params ();
+      match item.node.Ast.decl_item with
+          Ast.MOD_ITEM_const (_, Some e) ->
+            (Il.Reg (force_to_reg (trans_expr e)), ty)
+        | _ ->
+            bug ()
+              "trans_lval_full called on unsupported item lval '%a'"
+              Ast.sprintf_lval lv
+
   and trans_lval_full
       (initializing:bool)
       (lv:Ast.lval)
@@ -1062,12 +1077,7 @@ let trans_visitor
       else
         if initializing
         then err None "init item"
-        else
-          begin
-            assert (lval_base_is_item cx lv);
-            bug ()
-              "trans_lval_full called on item lval '%a'" Ast.sprintf_lval lv
-          end
+        else trans_lval_item lv
 
   and trans_lval_maybe_init
       (initializing:bool)
