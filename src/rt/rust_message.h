@@ -114,6 +114,11 @@ public:
     bool is_associated() {
         return this->dom_handle != NULL;
     }
+
+    void enqueue(rust_message* message) {
+        lock_free_queue<rust_message*>::enqueue(message);
+        kernel->notify_message_enqueued(this, message);
+    }
 };
 
 //

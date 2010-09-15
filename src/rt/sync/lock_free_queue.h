@@ -120,7 +120,7 @@ public:
         return head.node == tail.node;
     }
 
-    void enqueue(T value) {
+    virtual void enqueue(T value) {
 
         // Create a new node to be inserted in the linked list, and set the
         // next node to NULL.

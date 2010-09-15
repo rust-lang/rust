@@ -9,6 +9,7 @@
  */
 
 class rust_kernel;
+class rust_message;
 
 template <typename T> class
 rust_handle :
@@ -89,6 +90,16 @@ public:
     void destroy_domain(rust_dom *dom);
 
     bool is_deadlocked();
+
+    void signal_kernel_lock();
+
+    /**
+     * Notifies the kernel whenever a message has been enqueued . This gives
+     * the kernel the opportunity to wake up the message pump thread if the
+     * message queue is not associated.
+     */
+    void
+    notify_message_enqueued(rust_message_queue *queue, rust_message *message);
 
     /**
      * Blocks until all domains have terminated.

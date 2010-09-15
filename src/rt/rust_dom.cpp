@@ -314,7 +314,7 @@ rust_dom::start_main_loop() {
             }
             log(rust_log::TASK,
                 "all tasks are blocked, scheduler yielding ...");
-            sync::yield();
+            sync::sleep(100);
             log(rust_log::TASK,
                 "scheduler resuming ...");
             continue;

@@ -164,9 +164,7 @@ void
 rust_kernel::terminate_kernel_loop() {
     log(rust_log::KERN, "terminating kernel loop");
     _interrupt_kernel_loop = true;
-    _kernel_lock.lock();
-    _kernel_lock.signal_all();
-    _kernel_lock.unlock();
+    signal_kernel_lock();
     join();
 }
 
@@ -215,6 +213,23 @@ rust_kernel::free_handles(hash_map<T*, rust_handle<T>* > &map) {
     while (map.pop(&key, &value)) {
         delete value;
     }
+}
+
+void
+rust_kernel::notify_message_enqueued(rust_message_queue *queue,
+                                     rust_message *message) {
+    // The message pump needs to handle this message if the queue is not
+    // associated with a domain, therefore signal the message pump.
+    if (queue->is_associated() == false) {
+        signal_kernel_lock();
+    }
+}
+
+void
+rust_kernel::signal_kernel_lock() {
+    _kernel_lock.lock();
+    _kernel_lock.signal_all();
+    _kernel_lock.unlock();
 }
 
 //
