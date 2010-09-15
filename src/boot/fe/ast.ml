@@ -114,22 +114,22 @@ and ty_tag = { tag_id: opaque_id;
 (* In closed type terms a constraint may refer to components of the term by
  * anchoring off the "formal symbol" '*', which represents "the term this
  * constraint is attached to".
- * 
- * 
+ *
+ *
  * For example, if I have a tuple type tup(int,int), I may wish to enforce the
  * lt predicate on it; I can write this as a constrained type term like:
- * 
+ *
  * tup(int,int) : lt( *._0, *._1 )
- * 
+ *
  * In fact all tuple types are converted to this form for purpose of
  * type-compatibility testing; the argument tuple in a function
- * 
+ *
  * fn (int x, int y) : lt(x, y) -> int
- * 
+ *
  * desugars to
- * 
+ *
  * fn (tup(int, int) : lt( *._1, *._2 )) -> int
- * 
+ *
  *)
 
 and carg_base =
@@ -353,7 +353,7 @@ and plval =
   | PLVAL_ext_pexp of (pexp * pexp)
   | PLVAL_ext_deref of pexp
 
-and pexp = pexp' Common.identified
+and pexp = pexp' identified
 
 and lit =
   | LIT_nil
@@ -481,6 +481,9 @@ and crate' =
 and crate = crate' identified
 ;;
 
+
+(* Utility values and functions. *)
+
 let empty_crate' =
   { crate_items = ({ view_imports = Hashtbl.create 0;
                      view_exports = Hashtbl.create 0 },
@@ -511,9 +514,82 @@ let sane_name (n:name) : bool =
       | NAME_ext (prefix, _) -> sane_prefix prefix
 ;;
 
+(*
+ * We have multiple subset-categories of expression:
+ *
+ *   - Atomic expressions are just atomic-lvals and literals.
+ *
+ *   - Primitive expressions are 1-level, machine-level operations on atomic
+ *     expressions (so: 1-level binops and unops on atomics)
+ *   - Constant expressions are those that can be evaluated at compile time,
+ *     without calling user code or accessing the communication subsystem. So
+ *     all expressions aside from call, port, chan or spawn, applied to all
+ *     lvals that are themselves constant.
 
-(***********************************************************************)
+ *
+ * We similarly have multiple subset-categories of lval:
+ *
+ *   - Name lvals are those that contain no dynamic indices.
+ *
+ *   - Atomic lvals are those indexed by atomic expressions.
+ *
+ *   - Constant lvals are those that are only indexed by constant expressions.
+ *
+ * Rationales:
+ *
+ *   - The primitives are those that can be evaluated without adjusting
+ *     reference counts or otherwise perturbing the lifecycle of anything
+ *     dynamically allocated.
+ *
+ *   - The atomics exist to define the sub-structure of the primitives.
+ *
+ *   - The constants are those we'll compile to read-only memory, either
+ *     immediates in the code-stream or frags in the .rodata section.
+ *
+ * Note:
+ *
+ *   - Constant-expression-ness is defined in semant, and can only be judged
+ *     after resolve has run and connected idents with bindings.
+ *)
 
+let rec plval_is_atomic (plval:plval) : bool =
+  match plval with
+      PLVAL_ident _
+    | PLVAL_app _ -> true
+
+    | PLVAL_ext_name (p, _) ->
+        pexp_is_atomic p
+
+    | PLVAL_ext_pexp (a, b) ->
+        (pexp_is_atomic a) &&
+          (pexp_is_atomic b)
+
+    | PLVAL_ext_deref p ->
+        pexp_is_atomic p
+
+and pexp_is_atomic (pexp:pexp) : bool =
+  match pexp.node with
+      PEXP_lval pl -> plval_is_atomic pl
+    | PEXP_lit _ -> true
+    | _ -> false
+;;
+
+
+let pexp_is_primitive (pexp:pexp) : bool =
+  match pexp.node with
+      PEXP_binop (_, a, b) ->
+        (pexp_is_atomic a) &&
+          (pexp_is_atomic b)
+    | PEXP_unop (_, p) ->
+        pexp_is_atomic p
+    | PEXP_lval pl ->
+        plval_is_atomic pl
+    | PEXP_lit _ -> true
+    | _ -> false
+;;
+
+
+(* Pretty-printing. *)
 
 let fmt_ident (ff:Format.formatter) (i:ident) : unit =
   fmt ff  "%s" i

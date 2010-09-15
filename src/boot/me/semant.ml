@@ -98,6 +98,7 @@ type ctxt =
       ctxt_slot_keys: (node_id,Ast.slot_key) Hashtbl.t;
       ctxt_node_referenced: (node_id, unit) Hashtbl.t;
       ctxt_auto_deref_lval: (node_id, bool) Hashtbl.t;
+      ctxt_plval_const: (node_id,bool) Hashtbl.t;
       ctxt_all_item_names: (node_id,Ast.name) Hashtbl.t;
       ctxt_all_item_types: (node_id,Ast.ty) Hashtbl.t;
       ctxt_all_lval_types: (node_id,Ast.ty) Hashtbl.t;
@@ -185,6 +186,7 @@ let new_ctxt sess abi crate =
     ctxt_slot_keys = Hashtbl.create 0;
     ctxt_node_referenced = Hashtbl.create 0;
     ctxt_auto_deref_lval = Hashtbl.create 0;
+    ctxt_plval_const = Hashtbl.create 0;
     ctxt_all_item_names = Hashtbl.create 0;
     ctxt_all_item_types = Hashtbl.create 0;
     ctxt_all_lval_types = Hashtbl.create 0;
@@ -1338,6 +1340,87 @@ let expr_type (cx:ctxt) (e:Ast.expr) : Ast.ty =
     | Ast.EXPR_unary (Ast.UNOP_not, _) -> Ast.TY_bool
     | Ast.EXPR_unary (_, a) -> atom_type cx a
     | Ast.EXPR_atom a -> atom_type cx a
+;;
+
+
+let rec pexp_is_const (cx:ctxt) (pexp:Ast.pexp) : bool =
+  let check_opt po =
+    match po with
+        None -> true
+      | Some x -> pexp_is_const cx x
+  in
+
+  let check_mut_pexp mut p =
+    mut = Ast.MUT_immutable && pexp_is_const cx p
+  in
+
+    match pexp.node with
+        Ast.PEXP_call _
+      | Ast.PEXP_spawn _
+      | Ast.PEXP_port
+      | Ast.PEXP_chan _
+      | Ast.PEXP_custom _ -> false
+
+      | Ast.PEXP_bind (fn, args) ->
+          (pexp_is_const cx fn) &&
+            (arr_for_all
+               (fun _ a -> check_opt a)
+               args)
+
+      | Ast.PEXP_rec (elts, base) ->
+          (check_opt base) &&
+            (arr_for_all
+               (fun _ (_, mut, p) ->
+                  check_mut_pexp mut p)
+               elts)
+
+      | Ast.PEXP_tup elts ->
+          arr_for_all
+            (fun _ (mut, p) ->
+               check_mut_pexp mut p)
+            elts
+
+      | Ast.PEXP_vec (mut, elts) ->
+          (arr_for_all
+             (fun _ p ->
+                check_mut_pexp mut p)
+             elts)
+
+      | Ast.PEXP_binop (_, a, b)
+      | Ast.PEXP_lazy_and (a, b)
+      | Ast.PEXP_lazy_or (a, b) ->
+          (pexp_is_const cx a) &&
+            (pexp_is_const cx b)
+
+      | Ast.PEXP_unop (_, p) -> pexp_is_const cx p
+      | Ast.PEXP_lval p ->
+          begin
+            match htab_search cx.ctxt_plval_const pexp.id with
+                None -> plval_is_const cx p
+              | Some b -> b
+          end
+
+      | Ast.PEXP_lit _
+      | Ast.PEXP_str _ -> true
+
+      | Ast.PEXP_box (mut, p) ->
+          check_mut_pexp mut p
+
+and plval_is_const (cx:ctxt) (plval:Ast.plval) : bool =
+  match plval with
+    Ast.PLVAL_ident _
+  | Ast.PLVAL_app _ ->
+      bug () "Semant.plval_is_const on plval base"
+
+  | Ast.PLVAL_ext_name (pexp, _) ->
+      pexp_is_const cx pexp
+
+  | Ast.PLVAL_ext_pexp (a, b) ->
+      (pexp_is_const cx a) &&
+        (pexp_is_const cx b)
+
+  | Ast.PLVAL_ext_deref p ->
+      pexp_is_const cx p
 ;;
 
 (* Mappings between mod items and their respective types. *)
