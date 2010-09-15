@@ -25,9 +25,9 @@ open Parser;;
  * 
  *)
 
-type meta = (Ast.ident * Pexp.pexp) array;;
+type meta = (Ast.ident * Ast.pexp) array;;
 
-type meta_pat = (Ast.ident * (Pexp.pexp option)) array;;
+type meta_pat = (Ast.ident * (Ast.pexp option)) array;;
 
 type auth = (Ast.name * Ast.effect);;
 
@@ -42,22 +42,22 @@ type cexp =
   | CEXP_auth of auth identified
 
 and cexp_alt =
-    { alt_val: Pexp.pexp;
-      alt_arms: (Pexp.pexp * cexp array) array;
+    { alt_val: Ast.pexp;
+      alt_arms: (Ast.pexp * cexp array) array;
       alt_else: cexp array }
 
 and cexp_let =
     { let_ident: Ast.ident;
-      let_value: Pexp.pexp;
+      let_value: Ast.pexp;
       let_body: cexp array; }
 
 and cexp_src =
     { src_ident: Ast.ident;
-      src_path: Pexp.pexp option }
+      src_path: Ast.pexp option }
 
 and cexp_dir =
     { dir_ident: Ast.ident;
-      dir_path: Pexp.pexp option;
+      dir_path: Ast.pexp option;
       dir_body: cexp array }
 
 and cexp_use =
@@ -67,7 +67,7 @@ and cexp_use =
 and cexp_nat =
     { nat_abi: string;
       nat_ident: Ast.ident;
-      nat_path: Pexp.pexp option;
+      nat_path: Ast.pexp option;
       (* 
        * FIXME: possibly support embedding optional strings as
        * symbol-names, to handle mangling schemes that aren't
@@ -80,7 +80,7 @@ and cexp_nat =
 
 (* Cexp grammar. *)
 
-let parse_meta_input (ps:pstate) : (Ast.ident * Pexp.pexp option) =
+let parse_meta_input (ps:pstate) : (Ast.ident * Ast.pexp option) =
   let lab = (ctxt "meta input: label" Pexp.parse_ident ps) in
     match peek ps with
         EQ ->
@@ -120,7 +120,7 @@ let parse_optional_meta_pat
       LPAREN -> parse_meta_pat ps
     | _ ->
         let apos = lexpos ps in
-          [| ("name", Some (span ps apos apos (Pexp.PEXP_str ident))) |]
+          [| ("name", Some (span ps apos apos (Ast.PEXP_str ident))) |]
 ;;
 
 let rec parse_cexps (ps:pstate) (term:Token.token) : cexp array =
@@ -282,7 +282,7 @@ and parse_cexp (ps:pstate) : cexp =
       | _ -> raise (unexpected ps)
 
 
-and  parse_eq_pexp_opt (ps:pstate) : Pexp.pexp option =
+and  parse_eq_pexp_opt (ps:pstate) : Ast.pexp option =
   match peek ps with
       EQ ->
         begin
@@ -493,9 +493,9 @@ and eval_cexp (env:env) (exp:cexp) : cdir array =
     | CEXP_auth a -> [| CDIR_auth a.node |]
 
 
-and eval_pexp (env:env) (exp:Pexp.pexp) : pval =
+and eval_pexp (env:env) (exp:Ast.pexp) : pval =
   match exp.node with
-    | Pexp.PEXP_binop (bop, a, b) ->
+    | Ast.PEXP_binop (bop, a, b) ->
         begin
           let av = eval_pexp env a in
           let bv = eval_pexp env b in
@@ -518,7 +518,7 @@ and eval_pexp (env:env) (exp:Pexp.pexp) : pval =
                       end
         end
 
-    | Pexp.PEXP_unop (uop, a) ->
+    | Ast.PEXP_unop (uop, a) ->
         begin
           match uop with
               Ast.UNOP_not ->
@@ -528,7 +528,7 @@ and eval_pexp (env:env) (exp:Pexp.pexp) : pval =
             | _ -> bug () "Unexpected unop in Cexp.eval_pexp"
         end
 
-    | Pexp.PEXP_lval (Pexp.PLVAL_ident ident) ->
+    | Ast.PEXP_lval (Ast.PLVAL_ident ident) ->
         begin
           match ltab_search !(env.env_bindings) ident with
               None -> raise (err (Printf.sprintf "no binding for '%s' found"
@@ -536,21 +536,21 @@ and eval_pexp (env:env) (exp:Pexp.pexp) : pval =
             | Some v -> v
         end
 
-    | Pexp.PEXP_lit (Ast.LIT_bool b) ->
+    | Ast.PEXP_lit (Ast.LIT_bool b) ->
         PVAL_bool b
 
-    | Pexp.PEXP_lit (Ast.LIT_int i)
-    | Pexp.PEXP_lit (Ast.LIT_uint i)
-    | Pexp.PEXP_lit (Ast.LIT_mach_int (_, i)) ->
+    | Ast.PEXP_lit (Ast.LIT_int i)
+    | Ast.PEXP_lit (Ast.LIT_uint i)
+    | Ast.PEXP_lit (Ast.LIT_mach_int (_, i)) ->
         PVAL_num i
 
-    | Pexp.PEXP_str s ->
+    | Ast.PEXP_str s ->
         PVAL_str s
 
     | _ -> bug () "unexpected Pexp in Cexp.eval_pexp"
 
 
-and eval_pexp_to_str (env:env) (exp:Pexp.pexp) : string =
+and eval_pexp_to_str (env:env) (exp:Ast.pexp) : string =
   match eval_pexp env exp with
       PVAL_str s -> s
     | v -> unexpected_val "str" v
@@ -560,10 +560,10 @@ and need_num (cv:pval) : int64 =
       PVAL_num n -> n
     | v -> unexpected_val "num" v
 
-and eval_pexp_to_num (env:env) (exp:Pexp.pexp) : int64 =
+and eval_pexp_to_num (env:env) (exp:Ast.pexp) : int64 =
   need_num (eval_pexp env exp)
 
-and eval_pexp_to_bool (env:env) (exp:Pexp.pexp) : bool =
+and eval_pexp_to_bool (env:env) (exp:Ast.pexp) : bool =
   match eval_pexp env exp with
       PVAL_bool b -> b
     | v -> unexpected_val "bool" v

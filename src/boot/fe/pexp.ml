@@ -16,35 +16,6 @@ open Parser;;
  * routine.
  *)
 
-type pexp' =
-    PEXP_call of (pexp * pexp array)
-  | PEXP_spawn of (Ast.domain * string * pexp)
-  | PEXP_bind of (pexp * pexp option array)
-  | PEXP_rec of ((Ast.ident * Ast.mutability * pexp) array * pexp option)
-  | PEXP_tup of ((Ast.mutability * pexp) array)
-  | PEXP_vec of Ast.mutability * (pexp array)
-  | PEXP_port
-  | PEXP_chan of (pexp option)
-  | PEXP_binop of (Ast.binop * pexp * pexp)
-  | PEXP_lazy_and of (pexp * pexp)
-  | PEXP_lazy_or of (pexp * pexp)
-  | PEXP_unop of (Ast.unop * pexp)
-  | PEXP_lval of plval
-  | PEXP_lit of Ast.lit
-  | PEXP_str of string
-  | PEXP_box of Ast.mutability * pexp
-  | PEXP_custom of Ast.name * (pexp array) * (string option)
-
-and plval =
-    PLVAL_ident of Ast.ident
-  | PLVAL_app of (Ast.ident * (Ast.ty array))
-  | PLVAL_ext_name of (pexp * Ast.name_component)
-  | PLVAL_ext_pexp of (pexp * pexp)
-  | PLVAL_ext_deref of pexp
-
-and pexp = pexp' Common.identified
-;;
-
 (* Pexp grammar. Includes names, idents, types, constrs, binops and unops,
    etc. *)
 
@@ -407,7 +378,8 @@ and parse_ty (ps:pstate) : Ast.ty =
   parse_constrained_ty ps
 
 
-and parse_rec_input (ps:pstate) : (Ast.ident * Ast.mutability * pexp) =
+and parse_rec_input (ps:pstate)
+    : (Ast.ident * Ast.mutability * Ast.pexp) =
   let mutability = parse_mutability ps in
   let lab = (ctxt "rec input: label" parse_ident ps) in
     match peek ps with
@@ -418,11 +390,11 @@ and parse_rec_input (ps:pstate) : (Ast.ident * Ast.mutability * pexp) =
       | _ -> raise (unexpected ps)
 
 
-and parse_rec_body (ps:pstate) : pexp' = (*((Ast.ident * pexp) array) =*)
+and parse_rec_body (ps:pstate) : Ast.pexp' =
   begin
     expect ps LPAREN;
     match peek ps with
-        RPAREN -> PEXP_rec ([||], None)
+        RPAREN -> Ast.PEXP_rec ([||], None)
       | WITH -> raise (err "empty record extension" ps)
       | _ ->
           let inputs = one_or_more COMMA parse_rec_input ps in
@@ -430,7 +402,7 @@ and parse_rec_body (ps:pstate) : pexp' = (*((Ast.ident * pexp) array) =*)
             begin
               check_dup_rec_labels ps labels;
               match peek ps with
-                  RPAREN -> (bump ps; PEXP_rec (inputs, None))
+                  RPAREN -> (bump ps; Ast.PEXP_rec (inputs, None))
                 | WITH ->
                     begin
                       bump ps;
@@ -439,7 +411,7 @@ and parse_rec_body (ps:pstate) : pexp' = (*((Ast.ident * pexp) array) =*)
                           parse_pexp ps
                       in
                         expect ps RPAREN;
-                        PEXP_rec (inputs, Some base)
+                        Ast.PEXP_rec (inputs, Some base)
                     end
                 | _ -> raise (err "expected 'with' or ')'" ps)
             end
@@ -456,7 +428,7 @@ and parse_lit (ps:pstate) : Ast.lit =
     | _ -> raise (unexpected ps)
 
 
-and parse_bottom_pexp (ps:pstate) : pexp =
+and parse_bottom_pexp (ps:pstate) : Ast.pexp =
   check_rstr_start ps;
   let apos = lexpos ps in
   match peek ps with
@@ -466,7 +438,7 @@ and parse_bottom_pexp (ps:pstate) : pexp =
         let mutability = parse_mutability ps in
         let inner = parse_pexp ps in
         let bpos = lexpos ps in
-          span ps apos bpos (PEXP_box (mutability, inner))
+          span ps apos bpos (Ast.PEXP_box (mutability, inner))
 
     | TUP ->
         bump ps;
@@ -474,7 +446,7 @@ and parse_bottom_pexp (ps:pstate) : pexp =
           ctxt "paren pexps(s)" (rstr false parse_mutable_and_pexp_list) ps
         in
         let bpos = lexpos ps in
-          span ps apos bpos (PEXP_tup pexps)
+          span ps apos bpos (Ast.PEXP_tup pexps)
 
     | REC ->
           bump ps;
@@ -495,13 +467,13 @@ and parse_bottom_pexp (ps:pstate) : pexp =
         in
         let pexps = ctxt "vec pexp: exprs" parse_pexp_list ps in
         let bpos = lexpos ps in
-          span ps apos bpos (PEXP_vec (mutability, pexps))
+          span ps apos bpos (Ast.PEXP_vec (mutability, pexps))
 
 
     | LIT_STR s ->
         bump ps;
         let bpos = lexpos ps in
-          span ps apos bpos (PEXP_str s)
+          span ps apos bpos (Ast.PEXP_str s)
 
     | PORT ->
         begin
@@ -509,7 +481,7 @@ and parse_bottom_pexp (ps:pstate) : pexp =
             expect ps LPAREN;
             expect ps RPAREN;
             let bpos = lexpos ps in
-              span ps apos bpos (PEXP_port)
+              span ps apos bpos (Ast.PEXP_port)
         end
 
     | CHAN ->
@@ -530,7 +502,7 @@ and parse_bottom_pexp (ps:pstate) : pexp =
                 | _ -> raise (unexpected ps)
             in
             let bpos = lexpos ps in
-              span ps apos bpos (PEXP_chan port)
+              span ps apos bpos (Ast.PEXP_chan port)
         end
 
     | SPAWN ->
@@ -560,7 +532,7 @@ and parse_bottom_pexp (ps:pstate) : pexp =
                    characters *)
             | None -> Session.string_of_span { lo = apos; hi = bpos }
         in
-          span ps apos bpos (PEXP_spawn (domain, name, pexp))
+          span ps apos bpos (Ast.PEXP_spawn (domain, name, pexp))
 
     | BIND ->
         let apos = lexpos ps in
@@ -572,7 +544,7 @@ and parse_bottom_pexp (ps:pstate) : pexp =
                 (paren_comma_list parse_bind_arg) ps
             in
             let bpos = lexpos ps in
-              span ps apos bpos (PEXP_bind (pexp, args))
+              span ps apos bpos (Ast.PEXP_bind (pexp, args))
           end
 
     | IDENT i ->
@@ -587,13 +559,13 @@ and parse_bottom_pexp (ps:pstate) : pexp =
                          (Some COMMA) parse_ty) ps
                   in
                   let bpos = lexpos ps in
-                    span ps apos bpos (PEXP_lval (PLVAL_app (i, tys)))
+                    span ps apos bpos (Ast.PEXP_lval (Ast.PLVAL_app (i, tys)))
                 end
 
             | _ ->
                 begin
                   let bpos = lexpos ps in
-                    span ps apos bpos (PEXP_lval (PLVAL_ident i))
+                    span ps apos bpos (Ast.PEXP_lval (Ast.PLVAL_ident i))
                 end
         end
 
@@ -602,7 +574,7 @@ and parse_bottom_pexp (ps:pstate) : pexp =
         bump ps;
         let inner = parse_pexp ps in
         let bpos = lexpos ps in
-          span ps apos bpos (PEXP_lval (PLVAL_ext_deref inner))
+          span ps apos bpos (Ast.PEXP_lval (Ast.PLVAL_ext_deref inner))
 
     | POUND ->
         bump ps;
@@ -626,7 +598,7 @@ and parse_bottom_pexp (ps:pstate) : pexp =
         in
         let bpos = lexpos ps in
           span ps apos bpos
-            (PEXP_custom (name, args, str))
+            (Ast.PEXP_custom (name, args, str))
 
     | LPAREN ->
         begin
@@ -635,7 +607,7 @@ and parse_bottom_pexp (ps:pstate) : pexp =
               RPAREN ->
                 bump ps;
                 let bpos = lexpos ps in
-                  span ps apos bpos (PEXP_lit Ast.LIT_nil)
+                  span ps apos bpos (Ast.PEXP_lit Ast.LIT_nil)
             | _ ->
                 let pexp = parse_pexp ps in
                   expect ps RPAREN;
@@ -645,16 +617,16 @@ and parse_bottom_pexp (ps:pstate) : pexp =
     | _ ->
         let lit = parse_lit ps in
         let bpos = lexpos ps in
-          span ps apos bpos (PEXP_lit lit)
+          span ps apos bpos (Ast.PEXP_lit lit)
 
 
-and parse_bind_arg (ps:pstate) : pexp option =
+and parse_bind_arg (ps:pstate) : Ast.pexp option =
   match peek ps with
       UNDERSCORE -> (bump ps; None)
     | _ -> Some (parse_pexp ps)
 
 
-and parse_ext_pexp (ps:pstate) (pexp:pexp) : pexp =
+and parse_ext_pexp (ps:pstate) (pexp:Ast.pexp) : Ast.pexp =
   let apos = lexpos ps in
     match peek ps with
         LPAREN ->
@@ -663,7 +635,7 @@ and parse_ext_pexp (ps:pstate) (pexp:pexp) : pexp =
           else
             let args = parse_pexp_list ps in
             let bpos = lexpos ps in
-            let ext = span ps apos bpos (PEXP_call (pexp, args)) in
+            let ext = span ps apos bpos (Ast.PEXP_call (pexp, args)) in
               parse_ext_pexp ps ext
 
       | DOT ->
@@ -677,12 +649,12 @@ and parse_ext_pexp (ps:pstate) (pexp:pexp) : pexp =
                       expect ps RPAREN;
                       let bpos = lexpos ps in
                         span ps apos bpos
-                          (PEXP_lval (PLVAL_ext_pexp (pexp, rhs)))
+                          (Ast.PEXP_lval (Ast.PLVAL_ext_pexp (pexp, rhs)))
                 | _ ->
                     let rhs = parse_name_component ps in
                     let bpos = lexpos ps in
                       span ps apos bpos
-                        (PEXP_lval (PLVAL_ext_name (pexp, rhs)))
+                        (Ast.PEXP_lval (Ast.PLVAL_ext_name (pexp, rhs)))
             in
               parse_ext_pexp ps ext
           end
@@ -690,26 +662,26 @@ and parse_ext_pexp (ps:pstate) (pexp:pexp) : pexp =
       | _ -> pexp
 
 
-and parse_negation_pexp (ps:pstate) : pexp =
+and parse_negation_pexp (ps:pstate) : Ast.pexp =
     let apos = lexpos ps in
       match peek ps with
           NOT ->
             bump ps;
             let rhs = ctxt "negation pexp" parse_negation_pexp ps in
             let bpos = lexpos ps in
-              span ps apos bpos (PEXP_unop (Ast.UNOP_not, rhs))
+              span ps apos bpos (Ast.PEXP_unop (Ast.UNOP_not, rhs))
 
         | TILDE ->
             bump ps;
             let rhs = ctxt "negation pexp" parse_negation_pexp ps in
             let bpos = lexpos ps in
-              span ps apos bpos (PEXP_unop (Ast.UNOP_bitnot, rhs))
+              span ps apos bpos (Ast.PEXP_unop (Ast.UNOP_bitnot, rhs))
 
         | MINUS ->
             bump ps;
             let rhs = ctxt "negation pexp" parse_negation_pexp ps in
             let bpos = lexpos ps in
-              span ps apos bpos (PEXP_unop (Ast.UNOP_neg, rhs))
+              span ps apos bpos (Ast.PEXP_unop (Ast.UNOP_neg, rhs))
 
         | _ ->
             let lhs = parse_bottom_pexp ps in
@@ -722,19 +694,19 @@ and binop_build
     (ps:pstate)
     (name:string)
     (apos:pos)
-    (rhs_parse_fn:pstate -> pexp)
-    (lhs:pexp)
-    (step_fn:pexp -> pexp)
+    (rhs_parse_fn:pstate -> Ast.pexp)
+    (lhs:Ast.pexp)
+    (step_fn:Ast.pexp -> Ast.pexp)
     (op:Ast.binop)
-    : pexp =
+    : Ast.pexp =
   bump ps;
   let rhs = (ctxt (name ^ " rhs") rhs_parse_fn ps) in
   let bpos = lexpos ps in
-  let node = span ps apos bpos (PEXP_binop (op, lhs, rhs)) in
+  let node = span ps apos bpos (Ast.PEXP_binop (op, lhs, rhs)) in
     step_fn node
 
 
-and parse_factor_pexp (ps:pstate) : pexp =
+and parse_factor_pexp (ps:pstate) : Ast.pexp =
   let name = "factor pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_negation_pexp ps in
@@ -749,7 +721,7 @@ and parse_factor_pexp (ps:pstate) : pexp =
     step lhs
 
 
-and parse_term_pexp (ps:pstate) : pexp =
+and parse_term_pexp (ps:pstate) : Ast.pexp =
   let name = "term pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_factor_pexp ps in
@@ -763,7 +735,7 @@ and parse_term_pexp (ps:pstate) : pexp =
     step lhs
 
 
-and parse_shift_pexp (ps:pstate) : pexp =
+and parse_shift_pexp (ps:pstate) : Ast.pexp =
   let name = "shift pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_term_pexp ps in
@@ -778,7 +750,7 @@ and parse_shift_pexp (ps:pstate) : pexp =
     step lhs
 
 
-and parse_and_pexp (ps:pstate) : pexp =
+and parse_and_pexp (ps:pstate) : Ast.pexp =
   let name = "and pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_shift_pexp ps in
@@ -791,7 +763,7 @@ and parse_and_pexp (ps:pstate) : pexp =
     step lhs
 
 
-and parse_xor_pexp (ps:pstate) : pexp =
+and parse_xor_pexp (ps:pstate) : Ast.pexp =
   let name = "xor pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_and_pexp ps in
@@ -804,7 +776,7 @@ and parse_xor_pexp (ps:pstate) : pexp =
     step lhs
 
 
-and parse_or_pexp (ps:pstate) : pexp =
+and parse_or_pexp (ps:pstate) : Ast.pexp =
   let name = "or pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_xor_pexp ps in
@@ -817,7 +789,7 @@ and parse_or_pexp (ps:pstate) : pexp =
     step lhs
 
 
-and parse_as_pexp (ps:pstate) : pexp =
+and parse_as_pexp (ps:pstate) : Ast.pexp =
   let apos = lexpos ps in
   let pexp = ctxt "as pexp" parse_or_pexp ps in
   let rec step accum =
@@ -830,7 +802,7 @@ and parse_as_pexp (ps:pstate) : pexp =
           let t = span ps tapos bpos t in
           let node =
             span ps apos bpos
-              (PEXP_unop ((Ast.UNOP_cast t), accum))
+              (Ast.PEXP_unop ((Ast.UNOP_cast t), accum))
           in
             step node
 
@@ -839,7 +811,7 @@ and parse_as_pexp (ps:pstate) : pexp =
     step pexp
 
 
-and parse_relational_pexp (ps:pstate) : pexp =
+and parse_relational_pexp (ps:pstate) : Ast.pexp =
   let name = "relational pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_as_pexp ps in
@@ -855,7 +827,7 @@ and parse_relational_pexp (ps:pstate) : pexp =
     step lhs
 
 
-and parse_equality_pexp (ps:pstate) : pexp =
+and parse_equality_pexp (ps:pstate) : Ast.pexp =
   let name = "equality pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_relational_pexp ps in
@@ -869,7 +841,7 @@ and parse_equality_pexp (ps:pstate) : pexp =
     step lhs
 
 
-and parse_andand_pexp (ps:pstate) : pexp =
+and parse_andand_pexp (ps:pstate) : Ast.pexp =
   let name = "andand pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_equality_pexp ps in
@@ -879,7 +851,7 @@ and parse_andand_pexp (ps:pstate) : pexp =
           bump ps;
           let rhs = parse_equality_pexp ps in
           let bpos = lexpos ps in
-          let node = span ps apos bpos (PEXP_lazy_and (accum, rhs)) in
+          let node = span ps apos bpos (Ast.PEXP_lazy_and (accum, rhs)) in
             step node
 
       | _   -> accum
@@ -887,7 +859,7 @@ and parse_andand_pexp (ps:pstate) : pexp =
     step lhs
 
 
-and parse_oror_pexp (ps:pstate) : pexp =
+and parse_oror_pexp (ps:pstate) : Ast.pexp =
   let name = "oror pexp" in
   let apos = lexpos ps in
   let lhs = ctxt (name ^ " lhs") parse_andand_pexp ps in
@@ -897,7 +869,7 @@ and parse_oror_pexp (ps:pstate) : pexp =
           bump ps;
           let rhs = parse_andand_pexp ps in
           let bpos = lexpos ps in
-          let node = span ps apos bpos (PEXP_lazy_or (accum, rhs)) in
+          let node = span ps apos bpos (Ast.PEXP_lazy_or (accum, rhs)) in
             step node
 
       | _  -> accum
@@ -905,21 +877,22 @@ and parse_oror_pexp (ps:pstate) : pexp =
     step lhs
 
 
-and parse_pexp (ps:pstate) : pexp =
+and parse_pexp (ps:pstate) : Ast.pexp =
   parse_oror_pexp ps
 
-and parse_mutable_and_pexp (ps:pstate) : (Ast.mutability * pexp) =
+and parse_mutable_and_pexp (ps:pstate) : (Ast.mutability * Ast.pexp) =
   let mutability = parse_mutability ps in
   (mutability, parse_as_pexp ps)
 
-and parse_pexp_list (ps:pstate) : pexp array =
+and parse_pexp_list (ps:pstate) : Ast.pexp array =
   match peek ps with
       LPAREN ->
         bracketed_zero_or_more LPAREN RPAREN (Some COMMA)
           (ctxt "pexp list" parse_pexp) ps
     | _ -> raise (unexpected ps)
 
-and parse_mutable_and_pexp_list (ps:pstate) : (Ast.mutability * pexp) array =
+and parse_mutable_and_pexp_list (ps:pstate)
+    : (Ast.mutability * Ast.pexp) array =
   match peek ps with
       LPAREN ->
         bracketed_zero_or_more LPAREN RPAREN (Some COMMA)
@@ -981,32 +954,33 @@ let expand_pexp_custom
  *     result of the pexp is prepended, and the temporary atom is used.
  *)
 
-let rec desugar_lval (ps:pstate) (pexp:pexp) : (Ast.stmt array * Ast.lval) =
+let rec desugar_lval (ps:pstate) (pexp:Ast.pexp)
+    : (Ast.stmt array * Ast.lval) =
   let s = Hashtbl.find ps.pstate_sess.Session.sess_spans pexp.id in
   let (apos, bpos) = (s.lo, s.hi) in
     match pexp.node with
 
-        PEXP_lval (PLVAL_ident ident) ->
+        Ast.PEXP_lval (Ast.PLVAL_ident ident) ->
           let nb = span ps apos bpos (Ast.BASE_ident ident) in
             ([||], Ast.LVAL_base nb)
 
-      | PEXP_lval (PLVAL_app (ident, tys)) ->
+      | Ast.PEXP_lval (Ast.PLVAL_app (ident, tys)) ->
           let nb = span ps apos bpos (Ast.BASE_app (ident, tys)) in
             ([||], Ast.LVAL_base nb)
 
-      | PEXP_lval (PLVAL_ext_name (base_pexp, comp)) ->
+      | Ast.PEXP_lval (Ast.PLVAL_ext_name (base_pexp, comp)) ->
           let (base_stmts, base_atom) = desugar_expr_atom ps base_pexp in
           let base_lval = atom_lval ps base_atom in
             (base_stmts, Ast.LVAL_ext (base_lval, Ast.COMP_named comp))
 
-      | PEXP_lval (PLVAL_ext_pexp (base_pexp, ext_pexp)) ->
+      | Ast.PEXP_lval (Ast.PLVAL_ext_pexp (base_pexp, ext_pexp)) ->
           let (base_stmts, base_atom) = desugar_expr_atom ps base_pexp in
           let (ext_stmts, ext_atom) = desugar_expr_atom ps ext_pexp in
           let base_lval = atom_lval ps base_atom in
             (Array.append base_stmts ext_stmts,
              Ast.LVAL_ext (base_lval, Ast.COMP_atom (clone_atom ps ext_atom)))
 
-      | PEXP_lval (PLVAL_ext_deref base_pexp) ->
+      | Ast.PEXP_lval (Ast.PLVAL_ext_deref base_pexp) ->
           let (base_stmts, base_atom) = desugar_expr_atom ps base_pexp in
           let base_lval = atom_lval ps base_atom in
             (base_stmts, Ast.LVAL_ext (base_lval, Ast.COMP_deref))
@@ -1018,15 +992,15 @@ let rec desugar_lval (ps:pstate) (pexp:pexp) : (Ast.stmt array * Ast.lval) =
 
 and desugar_expr
     (ps:pstate)
-    (pexp:pexp)
+    (pexp:Ast.pexp)
     : (Ast.stmt array * Ast.expr) =
   match pexp.node with
 
-      PEXP_unop (op, pe) ->
+      Ast.PEXP_unop (op, pe) ->
         let (stmts, at) = desugar_expr_atom ps pe in
           (stmts, Ast.EXPR_unary (op, at))
 
-    | PEXP_binop (op, lhs, rhs) ->
+    | Ast.PEXP_binop (op, lhs, rhs) ->
           let (lhs_stmts, lhs_atom) = desugar_expr_atom ps lhs in
           let (rhs_stmts, rhs_atom) = desugar_expr_atom ps rhs in
             (Array.append lhs_stmts rhs_stmts,
@@ -1039,7 +1013,7 @@ and desugar_expr
 
 and desugar_opt_expr_atom
     (ps:pstate)
-    (po:pexp option)
+    (po:Ast.pexp option)
     : (Ast.stmt array * Ast.atom option) =
   match po with
       None -> ([| |], None)
@@ -1050,55 +1024,55 @@ and desugar_opt_expr_atom
 
 and desugar_expr_atom
     (ps:pstate)
-    (pexp:pexp)
+    (pexp:Ast.pexp)
     : (Ast.stmt array * Ast.atom) =
   let s = Hashtbl.find ps.pstate_sess.Session.sess_spans pexp.id in
   let (apos, bpos) = (s.lo, s.hi) in
     match pexp.node with
 
-        PEXP_unop _
-      | PEXP_binop _
-      | PEXP_lazy_or _
-      | PEXP_lazy_and _
-      | PEXP_rec _
-      | PEXP_tup _
-      | PEXP_str _
-      | PEXP_vec _
-      | PEXP_port
-      | PEXP_chan _
-      | PEXP_call _
-      | PEXP_bind _
-      | PEXP_spawn _
-      | PEXP_custom _
-      | PEXP_box _ ->
+        Ast.PEXP_unop _
+      | Ast.PEXP_binop _
+      | Ast.PEXP_lazy_or _
+      | Ast.PEXP_lazy_and _
+      | Ast.PEXP_rec _
+      | Ast.PEXP_tup _
+      | Ast.PEXP_str _
+      | Ast.PEXP_vec _
+      | Ast.PEXP_port
+      | Ast.PEXP_chan _
+      | Ast.PEXP_call _
+      | Ast.PEXP_bind _
+      | Ast.PEXP_spawn _
+      | Ast.PEXP_custom _
+      | Ast.PEXP_box _ ->
           let (_, tmp, decl_stmt) = build_tmp ps slot_auto apos bpos in
           let stmts = desugar_expr_init ps tmp pexp in
             (Array.append [| decl_stmt |] stmts,
              Ast.ATOM_lval (clone_lval ps tmp))
 
-      | PEXP_lit lit ->
+      | Ast.PEXP_lit lit ->
           ([||], Ast.ATOM_literal (span ps apos bpos lit))
 
-      | PEXP_lval _ ->
+      | Ast.PEXP_lval _ ->
           let (stmts, lval) = desugar_lval ps pexp in
             (stmts, Ast.ATOM_lval lval)
 
 and desugar_expr_atoms
     (ps:pstate)
-    (pexps:pexp array)
+    (pexps:Ast.pexp array)
     : (Ast.stmt array * Ast.atom array) =
   arj1st (Array.map (desugar_expr_atom ps) pexps)
 
 and desugar_opt_expr_atoms
     (ps:pstate)
-    (pexps:pexp option array)
+    (pexps:Ast.pexp option array)
     : (Ast.stmt array * Ast.atom option array) =
   arj1st (Array.map (desugar_opt_expr_atom ps) pexps)
 
 and desugar_expr_init
     (ps:pstate)
     (dst_lval:Ast.lval)
-    (pexp:pexp)
+    (pexp:Ast.pexp)
     : (Ast.stmt array) =
   let s = Hashtbl.find ps.pstate_sess.Session.sess_spans pexp.id in
   let (apos, bpos) = (s.lo, s.hi) in
@@ -1111,12 +1085,12 @@ and desugar_expr_init
 
     match pexp.node with
 
-        PEXP_lit _
-      | PEXP_lval _ ->
+        Ast.PEXP_lit _
+      | Ast.PEXP_lval _ ->
           let (stmts, atom) = desugar_expr_atom ps pexp in
             aa stmts [| ss (cp (Ast.EXPR_atom atom)) |]
 
-      | PEXP_binop (op, lhs, rhs) ->
+      | Ast.PEXP_binop (op, lhs, rhs) ->
           let (lhs_stmts, lhs_atom) = desugar_expr_atom ps lhs in
           let (rhs_stmts, rhs_atom) = desugar_expr_atom ps rhs in
           let copy_stmt =
@@ -1126,7 +1100,7 @@ and desugar_expr_init
 
       (* x = a && b ==> if (a) { x = b; } else { x = false; } *)
 
-      | PEXP_lazy_and (lhs, rhs) ->
+      | Ast.PEXP_lazy_and (lhs, rhs) ->
           let (lhs_stmts, lhs_atom) = desugar_expr_atom ps lhs in
           let (rhs_stmts, rhs_atom) = desugar_expr_atom ps rhs in
           let sthen =
@@ -1145,7 +1119,7 @@ and desugar_expr_init
 
       (* x = a || b ==> if (a) { x = true; } else { x = b; } *)
 
-      | PEXP_lazy_or (lhs, rhs) ->
+      | Ast.PEXP_lazy_or (lhs, rhs) ->
           let (lhs_stmts, lhs_atom) = desugar_expr_atom ps lhs in
           let (rhs_stmts, rhs_atom) = desugar_expr_atom ps rhs in
           let sthen =
@@ -1163,30 +1137,30 @@ and desugar_expr_init
             aa lhs_stmts [| sif |]
 
 
-      | PEXP_unop (op, rhs) ->
+      | Ast.PEXP_unop (op, rhs) ->
           let (rhs_stmts, rhs_atom) = desugar_expr_atom ps rhs in
           let expr = Ast.EXPR_unary (op, rhs_atom) in
           let copy_stmt = ss (cp expr) in
             aa rhs_stmts [| copy_stmt |]
 
-      | PEXP_call (fn, args) ->
+      | Ast.PEXP_call (fn, args) ->
           let (fn_stmts, fn_atom) = desugar_expr_atom ps fn in
           let (arg_stmts, arg_atoms) = desugar_expr_atoms ps args in
           let fn_lval = atom_lval ps fn_atom in
           let call_stmt = ss (Ast.STMT_call (dst_lval, fn_lval, arg_atoms)) in
             ac [ fn_stmts; arg_stmts; [| call_stmt |] ]
 
-      | PEXP_bind (fn, args) ->
+      | Ast.PEXP_bind (fn, args) ->
           let (fn_stmts, fn_atom) = desugar_expr_atom ps fn in
           let (arg_stmts, arg_atoms) = desugar_opt_expr_atoms ps args in
           let fn_lval = atom_lval ps fn_atom in
           let bind_stmt = ss (Ast.STMT_bind (dst_lval, fn_lval, arg_atoms)) in
             ac [ fn_stmts; arg_stmts; [| bind_stmt |] ]
 
-      | PEXP_spawn (domain, name, sub) ->
+      | Ast.PEXP_spawn (domain, name, sub) ->
           begin
             match sub.node with
-                PEXP_call (fn, args) ->
+                Ast.PEXP_call (fn, args) ->
                   let (fn_stmts, fn_atom) = desugar_expr_atom ps fn in
                   let (arg_stmts, arg_atoms) = desugar_expr_atoms ps args in
                   let fn_lval = atom_lval ps fn_atom in
@@ -1198,7 +1172,7 @@ and desugar_expr_init
               | _ -> raise (err "non-call spawn" ps)
           end
 
-      | PEXP_rec (args, base) ->
+      | Ast.PEXP_rec (args, base) ->
           let (arg_stmts, entries) =
             arj1st
               begin
@@ -1229,7 +1203,7 @@ and desugar_expr_init
                       aa arg_stmts [| rec_stmt |]
             end
 
-      | PEXP_tup args ->
+      | Ast.PEXP_tup args ->
           let muts = Array.to_list (Array.map fst args) in
           let (arg_stmts, arg_atoms) =
             desugar_expr_atoms ps (Array.map snd args)
@@ -1239,21 +1213,21 @@ and desugar_expr_init
           let stmt = ss (Ast.STMT_new_tup (dst_lval, tup_args)) in
             aa arg_stmts [| stmt |]
 
-      | PEXP_str s ->
+      | Ast.PEXP_str s ->
           let stmt = ss (Ast.STMT_new_str (dst_lval, s)) in
             [| stmt |]
 
-      | PEXP_vec (mutability, args) ->
+      | Ast.PEXP_vec (mutability, args) ->
           let (arg_stmts, arg_atoms) = desugar_expr_atoms ps args in
           let stmt =
             ss (Ast.STMT_new_vec (dst_lval, mutability, arg_atoms))
           in
             aa arg_stmts [| stmt |]
 
-      | PEXP_port ->
+      | Ast.PEXP_port ->
           [| ss (Ast.STMT_new_port dst_lval) |]
 
-      | PEXP_chan pexp_opt ->
+      | Ast.PEXP_chan pexp_opt ->
           let (port_stmts, port_opt) =
             match pexp_opt with
                 None -> ([||], None)
@@ -1272,7 +1246,7 @@ and desugar_expr_init
           in
             aa port_stmts [| chan_stmt |]
 
-      | PEXP_box (mutability, arg) ->
+      | Ast.PEXP_box (mutability, arg) ->
           let (arg_stmts, arg_mode_atom) =
             desugar_expr_atom ps arg
           in
@@ -1281,7 +1255,7 @@ and desugar_expr_init
           in
             aa arg_stmts [| stmt |]
 
-      | PEXP_custom (n, a, b) ->
+      | Ast.PEXP_custom (n, a, b) ->
           let (arg_stmts, args) = desugar_expr_atoms ps a in
           let stmts =
             expand_pexp_custom ps dst_lval n args b ss

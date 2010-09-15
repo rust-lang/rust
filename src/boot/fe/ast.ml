@@ -324,6 +324,37 @@ and expr =
   | EXPR_unary of (unop * atom)
   | EXPR_atom of atom
 
+(* FIXME: The redundancy between exprs and pexps is temporary.
+ * it'll just take a large-ish number of revisions to eliminate. *)
+
+and pexp' =
+    PEXP_call of (pexp * pexp array)
+  | PEXP_spawn of (domain * string * pexp)
+  | PEXP_bind of (pexp * pexp option array)
+  | PEXP_rec of ((ident * mutability * pexp) array * pexp option)
+  | PEXP_tup of ((mutability * pexp) array)
+  | PEXP_vec of mutability * (pexp array)
+  | PEXP_port
+  | PEXP_chan of (pexp option)
+  | PEXP_binop of (binop * pexp * pexp)
+  | PEXP_lazy_and of (pexp * pexp)
+  | PEXP_lazy_or of (pexp * pexp)
+  | PEXP_unop of (unop * pexp)
+  | PEXP_lval of plval
+  | PEXP_lit of lit
+  | PEXP_str of string
+  | PEXP_box of mutability * pexp
+  | PEXP_custom of name * (pexp array) * (string option)
+
+and plval =
+    PLVAL_ident of ident
+  | PLVAL_app of (ident * (ty array))
+  | PLVAL_ext_name of (pexp * name_component)
+  | PLVAL_ext_pexp of (pexp * pexp)
+  | PLVAL_ext_deref of pexp
+
+and pexp = pexp' Common.identified
+
 and lit =
   | LIT_nil
   | LIT_bool of bool
@@ -374,7 +405,6 @@ and unop =
   | UNOP_bitnot
   | UNOP_neg
   | UNOP_cast of ty identified
-
 
 and header_slots = ((slot identified) * ident) array
 
