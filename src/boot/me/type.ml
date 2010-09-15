@@ -438,9 +438,9 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
               try
                 Hashtbl.find items id
               with Not_found ->
-                Common.bug
-                  ()
-                  "internal_check_ext_lval: ident %s not found in mod item"
+                Common.err
+                  None
+                  "the name '%s' can't be found in the module"
                   id
             in
             let lty =
