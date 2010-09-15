@@ -906,6 +906,151 @@ and fmt_expr (ff:Format.formatter) (e:expr) : unit =
       end
   | EXPR_atom a -> fmt_atom ff a
 
+and fmt_mutability (ff:Format.formatter) (mut:mutability) : unit =
+  if mut = MUT_mutable then fmt ff "mutable "
+
+and fmt_pexp (ff:Format.formatter) (pexp:pexp) : unit =
+  match pexp.node with
+      PEXP_call (fn, args) ->
+        fmt_pexp ff fn;
+        fmt_bracketed_arr_sep "(" ")" "," fmt_pexp ff args
+
+    | PEXP_spawn (dom, name, call) ->
+        fmt_domain ff dom;
+        fmt_str ff ("\"" ^ name ^ "\"");
+        fmt_pexp ff call
+
+    | PEXP_bind (fn, arg_opts) ->
+        fmt_pexp ff fn;
+        let fmt_opt ff opt =
+          match opt with
+              None -> fmt ff "_"
+            | Some p -> fmt_pexp ff p
+        in
+          fmt_bracketed_arr_sep "(" ")" "," fmt_opt ff arg_opts
+
+    | PEXP_rec (elts, base) ->
+        fmt ff "rec(";
+        let fmt_elt ff (ident, mut, pexp) =
+          fmt_mutability ff mut;
+          fmt_ident ff ident;
+          fmt ff " = ";
+          fmt_pexp ff pexp;
+        in
+          fmt_arr_sep "," fmt_elt ff elts;
+          begin
+            match base with
+                None -> ()
+              | Some b ->
+                  fmt ff " with ";
+                  fmt_pexp ff b
+          end;
+          fmt ff ")"
+
+    | PEXP_tup elts ->
+        fmt ff "tup";
+        let fmt_elt ff (mut, pexp) =
+          fmt_mutability ff mut;
+          fmt_pexp ff pexp
+        in
+          fmt_bracketed_arr_sep "(" ")" "," fmt_elt ff elts
+
+    | PEXP_vec (mut, elts) ->
+        fmt ff "vec";
+        if mut = MUT_mutable then fmt ff "[mutable]";
+        fmt_bracketed_arr_sep "(" ")" "," fmt_pexp ff elts
+
+    | PEXP_port ->
+        fmt ff "port()"
+
+    | PEXP_chan None ->
+        fmt ff "chan()"
+
+    | PEXP_chan (Some pexp) ->
+        fmt ff "chan";
+        fmt_bracketed "(" ")" fmt_pexp ff pexp
+
+    | PEXP_binop (binop, a, b) ->
+        fmt_pexp ff a;
+        fmt ff " ";
+        fmt_binop ff binop;
+        fmt ff " ";
+        fmt_pexp ff b;
+
+    | PEXP_lazy_and (a, b) ->
+        fmt_pexp ff a;
+        fmt ff " && ";
+        fmt_pexp ff b
+
+    | PEXP_lazy_or (a, b) ->
+        fmt_pexp ff a;
+        fmt ff " || ";
+        fmt_pexp ff b
+
+    | PEXP_unop (unop, pexp) ->
+        begin
+          match unop with
+              UNOP_not ->
+                fmt ff "!";
+                fmt_pexp ff pexp
+
+            | UNOP_bitnot ->
+                fmt ff "~";
+                fmt_pexp ff pexp
+
+            | UNOP_neg ->
+                fmt ff "-";
+                fmt_pexp ff pexp
+
+            | UNOP_cast t ->
+                fmt_pexp ff pexp;
+                fmt ff " as ";
+                fmt_ty ff t.node
+        end
+
+    | PEXP_lval plval ->
+        fmt_plval ff plval
+
+    | PEXP_lit lit ->
+        fmt_lit ff lit
+
+    | PEXP_str str -> fmt_str ff str
+
+    | PEXP_box (mut, pexp) ->
+        fmt_mutability ff mut;
+        fmt ff "@";
+        fmt_pexp ff pexp
+
+    | PEXP_custom (name, args, txt) ->
+        fmt ff "#";
+        fmt_name ff name;
+        fmt_bracketed_arr_sep "(" ")" "," fmt_pexp ff args;
+        match txt with
+            None -> ()
+          | Some t -> fmt ff "{%s}" t
+
+
+and fmt_plval (ff:Format.formatter) (plval:plval) : unit =
+  match plval with
+      PLVAL_ident id -> fmt_ident ff id
+    | PLVAL_app (id, tys) ->
+        fmt_ident ff id;
+        fmt_bracketed_arr_sep "[" "]" "," fmt_ty ff tys
+
+    | PLVAL_ext_name (pexp, nc) ->
+        fmt_pexp ff pexp;
+        fmt ff ".";
+        fmt_name_component ff nc
+
+    | PLVAL_ext_pexp (pexp, ext) ->
+        fmt_pexp ff pexp;
+        fmt_bracketed ".(" ")" fmt_pexp ff ext
+
+    | PLVAL_ext_deref pexp ->
+        fmt ff "*";
+        fmt_pexp ff pexp
+
+
 and fmt_mach (ff:Format.formatter) (m:ty_mach) : unit =
   match m with
     TY_u8 -> fmt ff "u8"
