@@ -182,7 +182,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
                 None, _ -> ()
               | Some a, Ast.TY_param (idx, effect) ->
                   param_handler a idx effect
-              | Some a, _ -> demand a b
+              | Some a, _ -> demand b a
           in
           Common.arr_iter2 maybe_demand arg_tys in_slot_tys;
           get_slot_ty (ty_sig.Ast.sig_output_slot)
