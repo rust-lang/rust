@@ -557,6 +557,7 @@ and walk_atom
   match a with
       Ast.ATOM_literal ls -> walk_lit v ls.node
     | Ast.ATOM_lval lv -> walk_lval v lv
+    | Ast.ATOM_pexp _ -> bug () "Walk.walk_atom on ATOM_pexp"
 
 
 and walk_opt_atom

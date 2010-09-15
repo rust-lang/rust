@@ -495,6 +495,9 @@ let type_resolving_visitor
                 | Ast.COMP_atom (Ast.ATOM_literal _) -> ext
                 | Ast.COMP_atom (Ast.ATOM_lval lv) ->
                     Ast.COMP_atom (Ast.ATOM_lval (rebuild_lval lv))
+                | Ast.COMP_atom (Ast.ATOM_pexp _) ->
+                    bug () "Resolve.rebuild_lval' on ATOM_pexp"
+
                 | Ast.COMP_named (Ast.COMP_app (ident, params)) ->
                     Ast.COMP_named
                       (Ast.COMP_app (ident, Array.map resolve_ty params))

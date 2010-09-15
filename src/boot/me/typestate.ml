@@ -258,6 +258,7 @@ and atom_slots (cx:ctxt) (a:Ast.atom) : node_id array =
   match a with
       Ast.ATOM_literal _ -> [| |]
     | Ast.ATOM_lval lv -> lval_slots cx lv
+    | Ast.ATOM_pexp _ -> bug () "Typestate.atom_slots on ATOM_pexp"
 ;;
 
 let lval_option_slots (cx:ctxt) (lv:Ast.lval option) : node_id array =

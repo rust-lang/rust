@@ -318,6 +318,7 @@ and port_case =
 and atom =
     ATOM_literal of (lit identified)
   | ATOM_lval of lval
+  | ATOM_pexp of pexp
 
 and expr =
     EXPR_binary of (binop * atom * atom)
@@ -930,6 +931,7 @@ and fmt_pexp (ff:Format.formatter) (pexp:pexp) : unit =
           fmt_bracketed_arr_sep "(" ")" "," fmt_opt ff arg_opts
 
     | PEXP_rec (elts, base) ->
+        fmt_obox_n ff 0;
         fmt ff "rec(";
         let fmt_elt ff (ident, mut, pexp) =
           fmt_mutability ff mut;
@@ -945,6 +947,7 @@ and fmt_pexp (ff:Format.formatter) (pexp:pexp) : unit =
                   fmt ff " with ";
                   fmt_pexp ff b
           end;
+          fmt_cbox ff;
           fmt ff ")"
 
     | PEXP_tup elts ->
@@ -1014,11 +1017,11 @@ and fmt_pexp (ff:Format.formatter) (pexp:pexp) : unit =
     | PEXP_lit lit ->
         fmt_lit ff lit
 
-    | PEXP_str str -> fmt_str ff str
+    | PEXP_str str -> fmt_str ff  ("\"" ^ str ^ "\"")
 
     | PEXP_box (mut, pexp) ->
         fmt_mutability ff mut;
-        fmt ff "@";
+        fmt ff "@@";
         fmt_pexp ff pexp
 
     | PEXP_custom (name, args, txt) ->
@@ -1089,6 +1092,7 @@ and fmt_atom (ff:Format.formatter) (a:atom) : unit =
   match a with
       ATOM_literal lit -> fmt_lit ff lit.node
     | ATOM_lval lval -> fmt_lval ff lval
+    | ATOM_pexp pexp -> fmt_pexp ff pexp
 
 and fmt_atoms (ff:Format.formatter) (az:atom array) : unit =
   fmt ff "(";
@@ -1200,7 +1204,7 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
               | Some e ->
                   begin
                     fmt_cbb ff;
-                    fmt_obox_3 ff;
+                    fmt_obox_n ff 3;
                     fmt ff " else ";
                     fmt_obr ff;
                     fmt_stmts ff e.node

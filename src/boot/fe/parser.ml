@@ -164,6 +164,7 @@ let clone_atom (ps:pstate) (atom:Ast.atom) : Ast.atom =
   match atom with
       Ast.ATOM_literal _ -> atom
     | Ast.ATOM_lval lv -> Ast.ATOM_lval (clone_lval ps lv)
+    | Ast.ATOM_pexp _ -> bug () "Parser.clone_atom on ATOM_pexp"
 ;;
 
 let ctxt (n:string) (f:pstate -> 'a) (ps:pstate) : 'a =

@@ -1031,6 +1031,9 @@ let trans_visitor
       | Ast.ATOM_lval lv ->
           trans_const_lval lv
 
+      | Ast.ATOM_pexp _ ->
+          unimpl None "constant-folding pexp atom"
+
   and trans_const_expr
       (expr:Ast.expr)
       : (Ast.ty * const) =
@@ -1404,6 +1407,8 @@ let trans_visitor
             Il.Cell (fst (deref_ty DEREF_none false cell ty))
 
       | Ast.ATOM_literal lit -> trans_lit lit.node
+      | Ast.ATOM_pexp _ -> bug () "Trans.trans_atom on ATOM_pexp"
+
 
   and fixup_to_ptr_operand
       (imm_ok:bool)
@@ -3582,6 +3587,10 @@ let trans_visitor
                   initializing
                   dst_cell dst_ty
                   src_cell src_ty
+
+        | (_, Ast.EXPR_atom (Ast.ATOM_pexp _)) ->
+            bug () "Trans.trans_copy on ATOM_pexp"
+
 
   and trans_init_direct_fn
       (dst_cell:Il.cell)

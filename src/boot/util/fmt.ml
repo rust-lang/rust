@@ -9,11 +9,12 @@ let fmt_str ff = fmt ff "%s"
 ;;
 
 let fmt_obox ff = Format.pp_open_box ff 4;;
-let fmt_obox_3 ff = Format.pp_open_box ff 3;;
+let fmt_obox_n ff n = Format.pp_open_box ff n;;
 let fmt_cbox ff = Format.pp_close_box ff ();;
 let fmt_obr ff = fmt ff "{";;
 let fmt_cbr ff = fmt ff "@\n}";;
 let fmt_cbb ff = (fmt_cbox ff; fmt_cbr ff);;
+let fmt_break ff = Format.pp_print_space ff ();;
 
 let fmt_bracketed
     (bra:string)
@@ -23,7 +24,9 @@ let fmt_bracketed
     (a:'a)
     : unit =
   fmt_str ff bra;
+  fmt_obox_n ff 0;
   inner ff a;
+  fmt_cbox ff;
   fmt_str ff ket
 ;;
 
@@ -37,7 +40,7 @@ let fmt_arr_sep
     begin
       fun i a ->
         if i <> 0
-        then fmt_str ff sep;
+        then (fmt_str ff sep; fmt_break ff);
         inner ff a
     end
     az

@@ -817,6 +817,8 @@ let trans_crate
           | Ast.ATOM_lval lval ->
               Llvm.build_load (fst (trans_lval lval)) (anon_llid "tmp")
                 llbuilder
+          | Ast.ATOM_pexp _ ->
+              bug () "Lltrans.trans_atom on ATOM_pexp"
       in
 
       let build_binop (op:Ast.binop) (lllhs:Llvm.llvalue) (llrhs:Llvm.llvalue)

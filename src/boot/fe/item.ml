@@ -17,7 +17,9 @@ let empty_view = { Ast.view_imports = Hashtbl.create 0;
 
 let rec parse_expr (ps:pstate) : (Ast.stmt array * Ast.expr) =
   let pexp = ctxt "expr" Pexp.parse_pexp ps in
-    Pexp.desugar_expr ps pexp
+    if ps.pstate_sess.Session.sess_use_pexps
+    then ([||], Ast.EXPR_atom (Ast.ATOM_pexp pexp))
+    else Pexp.desugar_expr ps pexp
 
 and parse_prim_expr (ps:pstate) : Ast.expr =
   let pexp = ctxt "expr" Pexp.parse_pexp ps in
@@ -28,7 +30,9 @@ and parse_prim_expr (ps:pstate) : Ast.expr =
 
 and parse_expr_atom (ps:pstate) : (Ast.stmt array * Ast.atom) =
   let pexp = ctxt "expr" Pexp.parse_pexp ps in
-    Pexp.desugar_expr_atom ps pexp
+    if ps.pstate_sess.Session.sess_use_pexps
+    then ([||], Ast.ATOM_pexp pexp)
+    else Pexp.desugar_expr_atom ps pexp
 
 and parse_expr_atom_list
     (bra:token)
@@ -39,12 +43,29 @@ and parse_expr_atom_list
             (ctxt "expr-atom list" parse_expr_atom) ps)
 
 and parse_expr_init (lv:Ast.lval) (ps:pstate) : (Ast.stmt array) =
+  let apos = lexpos ps in
   let pexp = ctxt "expr" Pexp.parse_pexp ps in
-    Pexp.desugar_expr_init ps lv pexp
+  let bpos = lexpos ps in
+    if ps.pstate_sess.Session.sess_use_pexps
+    then [|
+      span ps apos bpos
+        (Ast.STMT_copy (lv, Ast.EXPR_atom (Ast.ATOM_pexp pexp)))
+    |]
+    else Pexp.desugar_expr_init ps lv pexp
 
 and parse_lval (ps:pstate) : (Ast.stmt array * Ast.lval) =
-  let pexp = Pexp.parse_pexp ps in
-    Pexp.desugar_lval ps pexp
+  let apos = lexpos ps in
+  let pexp = ctxt "lval" Pexp.parse_pexp ps in
+  let bpos = lexpos ps in
+    if ps.pstate_sess.Session.sess_use_pexps
+    then
+      let (_, tmp, decl_stmt) = build_tmp ps slot_auto apos bpos in
+      let copy_stmt =
+        span ps apos bpos
+          (Ast.STMT_copy (tmp, Ast.EXPR_atom (Ast.ATOM_pexp pexp)))
+      in
+        ([| decl_stmt; copy_stmt |], (clone_lval ps tmp))
+    else Pexp.desugar_lval ps pexp
 
 and parse_identified_slot_and_ident
     (aliases_ok:bool)

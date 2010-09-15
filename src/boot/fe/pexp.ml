@@ -1263,10 +1263,11 @@ and desugar_expr_init
             aa arg_stmts stmts
 
 
-and atom_lval (ps:pstate) (at:Ast.atom) : Ast.lval =
+and atom_lval (_:pstate) (at:Ast.atom) : Ast.lval =
   match at with
       Ast.ATOM_lval lv -> lv
-    | Ast.ATOM_literal _ -> raise (err "literal where lval expected" ps)
+    | Ast.ATOM_literal _
+    | Ast.ATOM_pexp _ -> bug () "Pexp.atom_lval on non-ATOM_lval"
 ;;
 
 

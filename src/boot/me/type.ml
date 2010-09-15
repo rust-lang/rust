@@ -624,6 +624,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
     match atom with
         Ast.ATOM_lval lval -> check_lval ~deref:deref lval
       | Ast.ATOM_literal lit_id -> check_literal lit_id.Common.node
+      | Ast.ATOM_pexp _ -> Common.bug () "Type.check_atom on ATOM_pexp"
   in
 
   let infer_slot (ty:Ast.ty) (slot_id:Common.node_id) : unit =
