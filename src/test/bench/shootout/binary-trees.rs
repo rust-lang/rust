@@ -1,4 +1,7 @@
-type tree = tag(nil(), node(@tree, @tree, int));
+tag tree {
+  nil();
+  node(@tree, @tree, int);
+}
 
 fn item_check(&tree t) -> int {
   alt (t) {

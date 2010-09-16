@@ -17,5 +17,6 @@ Matt Brubeck <mbrubeck@limpet.net>
 Michael Bebenita <mbebenita@mozilla.com>
 Or Brostovski <tohava@gmail.com>
 Patrick Walton <pwalton@mozilla.com>
+Peter Hull <peterhull90@gmail.com>
 Ralph Giles <giles@thaumas.net>
 Roy Frostig <rfrostig@mozilla.com>
