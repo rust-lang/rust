@@ -111,6 +111,10 @@ type ctxt =
       ctxt_all_lvals: (node_id,Ast.lval) Hashtbl.t;
       ctxt_call_lval_params: (node_id,Ast.ty array) Hashtbl.t;
 
+      (* Each pair (a, b) in this table indicates that tag a contains all the
+       * tags in the list b. *)
+      ctxt_tag_containment: (opaque_id, opaque_id Queue.t) Hashtbl.t;
+
       (* definition id --> definition *)
       ctxt_all_defns: (node_id,defn) Hashtbl.t;
 
@@ -199,6 +203,9 @@ let new_ctxt sess abi crate =
     ctxt_all_lvals = Hashtbl.create 0;
     ctxt_all_defns = Hashtbl.create 0;
     ctxt_call_lval_params = Hashtbl.create 0;
+
+    ctxt_tag_containment = Hashtbl.create 0;
+
     ctxt_lval_base_id_to_defn_base_id = Hashtbl.create 0;
     ctxt_required_items = crate.Ast.crate_required;
     ctxt_required_syms = crate.Ast.crate_required_syms;
