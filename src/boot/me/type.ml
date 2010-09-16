@@ -984,19 +984,23 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
   in
   check_stmt
 
-let create_tag_graph_node (cx:Semant.ctxt) (id:Common.opaque_id) (n:int) =
+let create_tag_graph_nodes (cx:Semant.ctxt) =
+  let make_graph_node id _ =
+    Hashtbl.add cx.Semant.ctxt_tag_containment id {
+      Semant.tgn_index = None;
+      Semant.tgn_children = Queue.create ()
+    }
+  in
+  Hashtbl.iter make_graph_node cx.Semant.ctxt_all_tag_info
+
+let populate_tag_graph_node (cx:Semant.ctxt) (id:Common.opaque_id) (n:int) =
   let tag_info = Hashtbl.find cx.Semant.ctxt_all_tag_info id in
   let (_, _, ty_tup) = Hashtbl.find tag_info.Semant.tag_nums n in
   let rec add_ty =
     function
         Ast.TY_tag { Ast.tag_id = id'; Ast.tag_args = tys } ->
-          let make_graph_node () = {
-            Semant.tgn_index = None;
-            Semant.tgn_children = Queue.create ()
-          } in
           let tag_graph_node =
-            Common.htab_search_or_add cx.Semant.ctxt_tag_containment id
-              make_graph_node
+            Hashtbl.find cx.Semant.ctxt_tag_containment id'
           in
           Queue.add id' tag_graph_node.Semant.tgn_children;
           Array.iter add_ty tys
@@ -1088,7 +1092,7 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
           Ast.MOD_ITEM_fn _ when
               not (Hashtbl.mem cx.Semant.ctxt_required_items item_id) ->
             finish_function item_id
-        | Ast.MOD_ITEM_tag (_, id, n) -> create_tag_graph_node cx id n
+        | Ast.MOD_ITEM_tag (_, id, n) -> populate_tag_graph_node cx id n
         | _ -> ()
     in
 
@@ -1127,6 +1131,8 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
         raise (Common.Semant_err ((Some stmt.Common.id), msg))
     in
 
+    let visit_crate_pre _ : unit = create_tag_graph_nodes cx in
+
     let visit_crate_post _ : unit =
       (* Fill in the autoderef info for any lvals we didn't get to. *)
       let fill lval_id _ =
@@ -1145,6 +1151,7 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
         Walk.visit_obj_fn_post = visit_obj_fn_post;
         Walk.visit_obj_drop_pre = visit_obj_drop_pre;
         Walk.visit_obj_drop_post = visit_obj_drop_post;
+        Walk.visit_crate_pre = visit_crate_pre;
         Walk.visit_crate_post = visit_crate_post
     }
   in
