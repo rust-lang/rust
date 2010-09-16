@@ -714,8 +714,12 @@ and fmt_ty_fn
     end;
     fmt_slots ff tsig.sig_input_slots None;
     fmt_decl_constrs ff tsig.sig_input_constrs;
-    fmt ff " -> ";
-    fmt_slot ff tsig.sig_output_slot;
+    if tsig.sig_output_slot.slot_ty <> (Some TY_nil)
+    then
+      begin
+        fmt ff " -> ";
+        fmt_slot ff tsig.sig_output_slot;
+      end
 
 and fmt_constrained ff (ty, constrs) : unit =
   fmt ff "@[";
@@ -1607,8 +1611,12 @@ and fmt_fn
   fmt_ident_and_params ff id params;
   fmt_header_slots ff f.fn_input_slots;
   fmt_decl_constrs ff f.fn_input_constrs;
-  fmt ff " -> ";
-  fmt_slot ff f.fn_output_slot.node;
+  if f.fn_output_slot.node.slot_ty <> (Some TY_nil)
+  then
+    begin
+      fmt ff " -> ";
+      fmt_slot ff f.fn_output_slot.node;
+    end;
   fmt ff " ";
   fmt_obr ff;
   fmt_stmts ff f.fn_body.node;
@@ -1713,6 +1721,7 @@ and fmt_import (ff:Format.formatter) (ident:ident) (name:name) : unit =
   fmt ff "import ";
   fmt ff "%s = " ident;
   fmt_name ff name;
+  fmt ff ";";
 
 and fmt_export (ff:Format.formatter) (export:export) _ : unit =
   fmt ff "@\n";
@@ -1722,7 +1731,9 @@ and fmt_export (ff:Format.formatter) (export:export) _ : unit =
 
 and fmt_mod_view (ff:Format.formatter) (mv:mod_view) : unit =
   Hashtbl.iter (fmt_import ff) mv.view_imports;
-  Hashtbl.iter (fmt_export ff) mv.view_exports
+  if not ((Hashtbl.length mv.view_exports = 1) &&
+            (Hashtbl.mem mv.view_exports EXPORT_all_decls))
+  then Hashtbl.iter (fmt_export ff) mv.view_exports
 
 and fmt_mod_items (ff:Format.formatter) (mi:mod_items) : unit =
   Hashtbl.iter (fmt_mod_item ff) mi
