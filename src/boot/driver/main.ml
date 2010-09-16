@@ -34,6 +34,7 @@ let (sess:Session.sess) =
     Session.sess_log_ast = false;
     Session.sess_log_resolve = false;
     Session.sess_log_type = false;
+    Session.sess_log_simplify = false;
     Session.sess_log_effect = false;
     Session.sess_log_typestate = false;
     Session.sess_log_loop = false;
@@ -162,6 +163,8 @@ let argspecs =
        "-lresolve"  "log resolution");
     (flag (fun _ -> sess.Session.sess_log_type <- true)
        "-ltype"     "log type checking");
+    (flag (fun _ -> sess.Session.sess_log_simplify <- true)
+       "-lsimplify" "log simplification");
     (flag (fun _ -> sess.Session.sess_log_effect <- true)
        "-leffect"   "log effect checking");
     (flag (fun _ -> sess.Session.sess_log_typestate <- true)
@@ -352,6 +355,7 @@ let main_pipeline _ =
          proc sem_cx crate;
          exit_if_failed ())
       [| Resolve.process_crate;
+         Simplify.process_crate;
          Type.process_crate;
          Typestate.process_crate;
          Effect.process_crate;
