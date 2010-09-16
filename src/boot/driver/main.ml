@@ -60,6 +60,7 @@ let (sess:Session.sess) =
     Session.sess_report_gc = false;
     Session.sess_report_deps = false;
     Session.sess_next_crate_id = 0;
+    Session.sess_fuzz_item_count = 5;
     Session.sess_timings = Hashtbl.create 0;
     Session.sess_lib_dirs = Queue.create ();
     Session.sess_crate_meta = Hashtbl.create 0;
@@ -218,6 +219,15 @@ let argspecs =
 
     (flag (fun _ -> sess.Session.sess_use_pexps <- true)
        "-pexp"         "use pexp portion of AST");
+
+    ("-zc", Arg.Int (fun i -> sess.Session.sess_fuzz_item_count <- i),
+     "count of items to generate when fuzzing");
+
+    ("-zs", Arg.Int (fun i -> Fuzz.fuzz (Some i) sess),
+     "run fuzzer with given seed");
+
+    (flag (fun _ -> Fuzz.fuzz None sess)
+       "-z" "run fuzzer with random seed")
 
   ] @ (Glue.alt_argspecs sess)
 ;;
