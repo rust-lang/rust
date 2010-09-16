@@ -483,6 +483,49 @@ let type_resolving_visitor
     inner.Walk.visit_stmt_pre stmt
   in
 
+  let rebuilt_pexps = Hashtbl.create 0 in
+  let get_rebuilt_pexp p =
+    Hashtbl.find rebuilt_pexps p.id
+  in
+
+  let visit_pexp_post p =
+    let rebuild_plval pl =
+      match pl with
+          Ast.PLVAL_ident _ -> pl
+        | Ast.PLVAL_app (id, tys) ->
+            Ast.PLVAL_app (id, Array.map resolve_ty tys)
+        | Ast.PLVAL_ext_name (pexp, nc) ->
+            let pexp = get_rebuilt_pexp pexp in
+            let nc =
+              match nc with
+                  Ast.COMP_ident _
+                | Ast.COMP_idx _ -> nc
+                | Ast.COMP_app (id, tys) ->
+                    Ast.COMP_app (id, Array.map resolve_ty tys)
+            in
+              Ast.PLVAL_ext_name (pexp, nc)
+
+        | Ast.PLVAL_ext_pexp (a, b) ->
+            Ast.PLVAL_ext_pexp (get_rebuilt_pexp a,
+                                get_rebuilt_pexp b)
+        | Ast.PLVAL_ext_deref p ->
+            Ast.PLVAL_ext_deref (get_rebuilt_pexp p)
+    in
+    let p =
+      match p.node with
+          Ast.PEXP_lval pl ->
+            let pl' = rebuild_plval pl in
+              iflog cx (fun _ -> log cx "rebuilt plval %a as %a (#%d)"
+                          Ast.sprintf_plval pl Ast.sprintf_plval pl'
+                          (int_of_node p.id));
+              { p with node = Ast.PEXP_lval pl' }
+
+        | _ -> p
+    in
+      htab_put rebuilt_pexps p.id p
+  in
+
+
   let visit_lval_pre lv =
     let rec rebuild_lval' lv =
       match lv with
@@ -539,6 +582,7 @@ let type_resolving_visitor
         Walk.visit_obj_drop_pre = visit_obj_drop_pre;
         Walk.visit_stmt_pre = visit_stmt_pre;
         Walk.visit_lval_pre = visit_lval_pre;
+        Walk.visit_pexp_post = visit_pexp_post;
         Walk.visit_crate_post = visit_crate_post }
 ;;
 
