@@ -1000,7 +1000,7 @@ let populate_tag_graph_node (cx:Semant.ctxt) (id:Common.opaque_id) (n:int) =
     function
         Ast.TY_tag { Ast.tag_id = id'; Ast.tag_args = tys } ->
           let tag_graph_node =
-            Hashtbl.find cx.Semant.ctxt_tag_containment id'
+            Hashtbl.find cx.Semant.ctxt_tag_containment id
           in
           Queue.add id' tag_graph_node.Semant.tgn_children;
           Array.iter add_ty tys
