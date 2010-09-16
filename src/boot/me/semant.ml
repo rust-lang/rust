@@ -88,6 +88,11 @@ type tag_info =
     { tag_idents: (Ast.ident, (int * node_id * Ast.ty_tup)) Hashtbl.t;
       tag_nums: (int, (Ast.ident * node_id * Ast.ty_tup)) Hashtbl.t; }
 
+type tag_graph_node = {
+    mutable tgn_index: int option;
+    tgn_children: opaque_id Queue.t;
+}
+
 type ctxt =
     { ctxt_sess: Session.sess;
       ctxt_frame_args: (node_id,node_id list) Hashtbl.t;
@@ -111,9 +116,8 @@ type ctxt =
       ctxt_all_lvals: (node_id,Ast.lval) Hashtbl.t;
       ctxt_call_lval_params: (node_id,Ast.ty array) Hashtbl.t;
 
-      (* Each pair (a, b) in this table indicates that tag a contains all the
-       * tags in the list b. *)
-      ctxt_tag_containment: (opaque_id, opaque_id Queue.t) Hashtbl.t;
+      (* A directed graph that encodes the containment relation among tags. *)
+      ctxt_tag_containment: (opaque_id, tag_graph_node) Hashtbl.t;
 
       (* definition id --> definition *)
       ctxt_all_defns: (node_id,defn) Hashtbl.t;
