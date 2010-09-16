@@ -19,6 +19,8 @@ type visitor =
       visit_slot_identified_post: (Ast.slot identified) -> unit;
       visit_expr_pre: Ast.expr -> unit;
       visit_expr_post: Ast.expr -> unit;
+      visit_pexp_pre: Ast.pexp -> unit;
+      visit_pexp_post: Ast.pexp -> unit;
       visit_ty_pre: Ast.ty -> unit;
       visit_ty_post: Ast.ty -> unit;
       visit_constr_pre: node_id option -> Ast.constr -> unit;
@@ -32,6 +34,8 @@ type visitor =
       visit_lit_post: Ast.lit -> unit;
       visit_lval_pre: Ast.lval -> unit;
       visit_lval_post: Ast.lval -> unit;
+      visit_plval_pre: Ast.plval -> unit;
+      visit_plval_post: Ast.plval -> unit;
       visit_mod_item_pre:
         (Ast.ident
          -> ((Ast.ty_param identified) array)
@@ -63,6 +67,8 @@ let empty_visitor =
     visit_slot_identified_post = (fun _ -> ());
     visit_expr_pre = (fun _ -> ());
     visit_expr_post = (fun _ -> ());
+    visit_pexp_pre = (fun _ -> ());
+    visit_pexp_post = (fun _ -> ());
     visit_ty_pre = (fun _ -> ());
     visit_ty_post = (fun _ -> ());
     visit_constr_pre = (fun _ _ -> ());
@@ -75,6 +81,8 @@ let empty_visitor =
     visit_lit_post = (fun _ -> ());
     visit_lval_pre = (fun _ -> ());
     visit_lval_post = (fun _ -> ());
+    visit_plval_pre = (fun _ -> ());
+    visit_plval_post = (fun _ -> ());
     visit_mod_item_pre = (fun _ _ _ -> ());
     visit_mod_item_post = (fun _ _ _ -> ());
     visit_obj_fn_pre = (fun _ _ _ -> ());
@@ -529,6 +537,15 @@ and walk_stmt
       v.visit_stmt_post
       s
 
+and walk_unop
+    (v:visitor)
+    (unop:Ast.unop)
+    : unit =
+  match unop with
+      Ast.UNOP_cast tyi ->
+        walk_ty v tyi.node
+    | _ -> ()
+
 
 and walk_expr
     (v:visitor)
@@ -539,16 +556,97 @@ and walk_expr
         Ast.EXPR_binary (_,aa,ab) ->
           walk_atom v aa;
           walk_atom v ab
-      | Ast.EXPR_unary (_,a) ->
-          walk_atom v a
+      | Ast.EXPR_unary (unop,a) ->
+          walk_atom v a;
+          walk_unop v unop
       | Ast.EXPR_atom a ->
           walk_atom v a
   in
-  walk_bracketed
-    v.visit_expr_pre
-    children
-    v.visit_expr_post
-    e
+    walk_bracketed
+      v.visit_expr_pre
+      children
+      v.visit_expr_post
+      e
+
+and walk_pexp
+    (v:visitor)
+    (p:Ast.pexp)
+    : unit =
+  let children _ =
+    match p.node with
+        Ast.PEXP_call (pexp, pexps) ->
+          walk_pexp v pexp;
+          Array.iter (walk_pexp v) pexps
+
+      | Ast.PEXP_spawn (_, _, pexp)
+      | Ast.PEXP_box (_, pexp) ->
+          walk_pexp v pexp;
+
+      | Ast.PEXP_unop (unop, pexp) ->
+          walk_pexp v pexp;
+          walk_unop v unop
+
+      | Ast.PEXP_bind (pexp, pexp_opts) ->
+          walk_pexp v pexp;
+          Array.iter (walk_option (walk_pexp v)) pexp_opts
+
+      | Ast.PEXP_rec (elts, base) ->
+          let walk_elt (_, _, pexp) = walk_pexp v pexp in
+            Array.iter walk_elt elts;
+            walk_option (walk_pexp v) base
+
+      | Ast.PEXP_tup elts ->
+          let walk_elt (_, pexp) = walk_pexp v pexp in
+            Array.iter walk_elt elts
+
+      | Ast.PEXP_vec (_, pexps)
+      | Ast.PEXP_custom (_, pexps, _) ->
+          Array.iter (walk_pexp v) pexps
+
+      | Ast.PEXP_chan po ->
+          walk_option (walk_pexp v) po
+
+      | Ast.PEXP_binop (_, a, b)
+      | Ast.PEXP_lazy_and (a, b)
+      | Ast.PEXP_lazy_or (a, b) ->
+          walk_pexp v a;
+          walk_pexp v b
+
+      | Ast.PEXP_lval pl -> walk_plval v pl
+
+      | Ast.PEXP_lit lit -> walk_lit v lit
+
+      | Ast.PEXP_port
+      | Ast.PEXP_str _ -> ()
+  in
+    walk_bracketed
+      v.visit_pexp_pre
+      children
+      v.visit_pexp_post
+      p
+
+and walk_plval
+    (v:visitor)
+    (p:Ast.plval)
+    : unit =
+  let children _ =
+    match p with
+        Ast.PLVAL_ident _ -> ()
+      | Ast.PLVAL_app (_, tys) ->
+          Array.iter (walk_ty v) tys
+      | Ast.PLVAL_ext_name (pexp, _) ->
+          walk_pexp v pexp
+      | Ast.PLVAL_ext_pexp (a, b) ->
+          walk_pexp v a;
+          walk_pexp v b;
+      | Ast.PLVAL_ext_deref pexp ->
+          walk_pexp v pexp
+  in
+    walk_bracketed
+      v.visit_plval_pre
+      children
+      v.visit_plval_post
+      p
 
 and walk_atom
     (v:visitor)
@@ -557,7 +655,7 @@ and walk_atom
   match a with
       Ast.ATOM_literal ls -> walk_lit v ls.node
     | Ast.ATOM_lval lv -> walk_lval v lv
-    | Ast.ATOM_pexp _ -> bug () "Walk.walk_atom on ATOM_pexp"
+    | Ast.ATOM_pexp p -> walk_pexp v p
 
 
 and walk_opt_atom
