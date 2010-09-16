@@ -984,6 +984,42 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
   in
   check_stmt
 
+let create_tag_graph_node (cx:Semant.ctxt) (id:Common.opaque_id) (n:int) =
+  let tag_info = Hashtbl.find cx.Semant.ctxt_all_tag_info id in
+  let (_, _, ty_tup) = Hashtbl.find tag_info.Semant.tag_nums n in
+  let rec add_ty =
+    function
+        Ast.TY_tag { Ast.tag_id = id'; Ast.tag_args = tys } ->
+          let make_graph_node () = {
+            Semant.tgn_index = None;
+            Semant.tgn_children = Queue.create ()
+          } in
+          let tag_graph_node =
+            Common.htab_search_or_add cx.Semant.ctxt_tag_containment id
+              make_graph_node
+          in
+          Queue.add id' tag_graph_node.Semant.tgn_children;
+          Array.iter add_ty tys
+      | Ast.TY_tup tys -> Array.iter add_ty tys
+      | Ast.TY_rec ty_rec ->
+          Array.iter (fun (_, ty) -> add_ty ty) ty_rec
+      | Ast.TY_fn ty_fn -> add_ty_fn ty_fn
+      | Ast.TY_vec ty | Ast.TY_chan ty | Ast.TY_port ty | Ast.TY_mutable ty
+          | Ast.TY_constrained (ty, _) -> add_ty ty
+      | Ast.TY_obj (_, ty_fns) ->
+          Hashtbl.iter (fun _ ty_fn -> add_ty_fn ty_fn) ty_fns
+      | _ -> ()
+  and add_ty_fn (ty_sig, _) =
+    let add_slot slot =
+      match slot.Ast.slot_ty with
+          None -> ()
+        | Some ty -> add_ty ty
+    in
+    Array.iter add_slot ty_sig.Ast.sig_input_slots;
+    add_slot ty_sig.Ast.sig_output_slot
+  in
+  Array.iter add_ty ty_tup
+
 let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
   let path = Stack.create () in
   let fn_ctx_stack = Stack.create () in
@@ -1052,6 +1088,7 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
           Ast.MOD_ITEM_fn _ when
               not (Hashtbl.mem cx.Semant.ctxt_required_items item_id) ->
             finish_function item_id
+        | Ast.MOD_ITEM_tag (_, id, n) -> create_tag_graph_node cx id n
         | _ -> ()
     in
 
