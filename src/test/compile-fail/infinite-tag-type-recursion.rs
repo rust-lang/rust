@@ -1,8 +1,11 @@
 // -*- rust -*-
 
-// error-pattern: Infinite type recursion
+// error-pattern: tag of infinite size
 
-type mlist = tag(cons(int,mlist), nil());
+tag mlist {
+  cons(int, mlist);
+  nil();
+}
 
 fn main() {
   auto a = cons(10, cons(11, nil()));

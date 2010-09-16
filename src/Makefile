@@ -419,7 +419,6 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-fail/task-comm-14.rs \
                     test/compile-fail/bad-recv.rs \
                     test/compile-fail/bad-send.rs \
-                    test/compile-fail/infinite-tag-type-recursion.rs \
                     test/compile-fail/infinite-vec-type-recursion.rs \
                     test/compile-fail/writing-through-read-alias.rs
 
@@ -591,7 +590,6 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                     $(addprefix test/compile-fail/, \
                       bad-recv.rs \
                       bad-send.rs \
-                      infinite-tag-type-recursion.rs \
                       infinite-vec-type-recursion.rs \
                       rec-missing-fields.rs \
                       writing-through-read-alias.rs \

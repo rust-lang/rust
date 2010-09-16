@@ -1024,6 +1024,75 @@ let populate_tag_graph_node (cx:Semant.ctxt) (id:Common.opaque_id) (n:int) =
   in
   Array.iter add_ty ty_tup
 
+let stack_contains (stack:'a Stack.t) (elem:'a) : bool =
+  try
+    Stack.iter (fun elem' -> if elem = elem' then raise Exit) stack; false
+  with Exit -> true
+
+let report_infinitely_sized_tag
+    (id:Common.opaque_id)
+    (stack:Common.opaque_id Stack.t)
+    : unit =
+  let string_of_tag_id tag_id =
+    let ty = Ast.TY_tag { Ast.tag_id = tag_id; Ast.tag_args = [| |] } in
+    Ast.sprintf_ty () ty
+  in
+  let msg = Buffer.create 0 in
+  Buffer.add_string msg "found tag of infinite size: ";
+  while not (Stack.is_empty stack) do
+    Buffer.add_string msg (string_of_tag_id (Stack.pop stack));
+    Buffer.add_string msg " <- "
+  done;
+  Buffer.add_string msg (string_of_tag_id id);
+  Buffer.add_string msg "; use '@' for recursive references";
+  Common.err None "%s" (Buffer.contents msg)
+
+let check_for_tag_cycles (cx:Semant.ctxt) =
+  (* Find cycles in tags using Tarjan's strongly connected components
+   * algorithm. *)
+  let lowlinks = Hashtbl.create 0 in
+  let next_index, stack = ref 0, Stack.create () in
+
+  let rec check_node id node =
+    if node.Semant.tgn_index = None then begin
+      let index = !next_index in
+      incr next_index;
+      node.Semant.tgn_index <- Some index;
+
+      Stack.push id stack;
+
+      Hashtbl.add lowlinks id max_int;
+
+      let check_outgoing_edge id' =
+        let node' = Hashtbl.find cx.Semant.ctxt_tag_containment id' in
+        if node'.Semant.tgn_index = None then begin
+          check_node id' node';
+          let lowlink = Hashtbl.find lowlinks id in
+          let lowlink' = Hashtbl.find lowlinks id' in
+          Hashtbl.replace lowlinks id (min lowlink lowlink')
+        end else if stack_contains stack id' then
+          let lowlink = Hashtbl.find lowlinks id in
+          let index' =
+            match node'.Semant.tgn_index with
+                Some index' -> index'
+              | None ->
+                  Common.bug
+                    ()
+                    "check_for_tag_cycles: node in stack without index"
+          in
+          Hashtbl.replace lowlinks id (min lowlink index')
+      in
+
+      Queue.iter check_outgoing_edge node.Semant.tgn_children;
+
+      if index == Hashtbl.find lowlinks id then
+        report_infinitely_sized_tag id stack;
+
+      ignore (Stack.pop stack)
+    end
+  in
+  Hashtbl.iter check_node cx.Semant.ctxt_tag_containment
+
 let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
   let path = Stack.create () in
   let fn_ctx_stack = Stack.create () in
@@ -1139,7 +1208,10 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
         if not (Hashtbl.mem cx.Semant.ctxt_auto_deref_lval lval_id) then
           Hashtbl.add cx.Semant.ctxt_auto_deref_lval lval_id false
       in
-      Hashtbl.iter fill cx.Semant.ctxt_all_lvals
+      Hashtbl.iter fill cx.Semant.ctxt_all_lvals;
+
+      (* Check for tag cycles. *)
+      check_for_tag_cycles cx
     in
 
     {
