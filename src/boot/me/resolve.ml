@@ -489,6 +489,7 @@ let type_resolving_visitor
   in
 
   let visit_pexp_post p =
+    inner.Walk.visit_pexp_post p;
     let rebuild_plval pl =
       match pl with
           Ast.PLVAL_ident _ -> pl
@@ -626,6 +627,7 @@ let lval_base_resolving_visitor
               lookup_lval base;
               match ext with
                   Ast.COMP_atom (Ast.ATOM_lval lv') -> lookup_lval lv'
+
                 | _ -> ()
             end
         | Ast.LVAL_base nb ->
@@ -659,8 +661,42 @@ let lval_base_resolving_visitor
       reference_any_name lv;
       inner.Walk.visit_lval_pre lv
   in
+
+  let visit_pexp_pre p =
+    begin
+    match p.node with
+        Ast.PEXP_lval pl ->
+          begin
+            match pl with
+                (Ast.PLVAL_ident ident)
+              | (Ast.PLVAL_app (ident, _)) ->
+                  let id = lookup_defn_by_ident p.id ident in
+
+                    iflog cx
+                      (fun _ ->
+                         log cx "resolved plval %a = #%d to defn #%d"
+                           Ast.sprintf_plval pl
+                           (int_of_node p.id) (int_of_node id));
+
+                    (* Record the pexp -> defn mapping. *)
+                    htab_put cx.ctxt_lval_base_id_to_defn_base_id p.id id;
+
+                    (* Tickle the referenced-ness table if it's an item. *)
+                    if defn_id_is_item cx id
+                    then ignore (lookup_by_name cx [] (!scopes)
+                                   (plval_to_name pl))
+              | _ -> ()
+          end
+
+      | _ -> ()
+    end;
+    inner.Walk.visit_pexp_pre p
+  in
+
     { inner with
-        Walk.visit_lval_pre = visit_lval_pre };
+        Walk.visit_lval_pre = visit_lval_pre;
+        Walk.visit_pexp_pre = visit_pexp_pre
+    };
 ;;
 
 

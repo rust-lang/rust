@@ -577,6 +577,17 @@ let rec lval_to_name (lv:Ast.lval) : Ast.name =
           Ast.NAME_ext (lval_to_name lv, comp)
 ;;
 
+let rec plval_to_name (pl:Ast.plval) : Ast.name =
+  match pl with
+      Ast.PLVAL_ident ident ->
+        Ast.NAME_base (Ast.BASE_ident ident)
+    | Ast.PLVAL_app (ident, tys) ->
+        Ast.NAME_base (Ast.BASE_app (ident, tys))
+    | Ast.PLVAL_ext_name ({node = Ast.PEXP_lval pl}, nc) ->
+        Ast.NAME_ext (plval_to_name pl, nc)
+    | _ -> bug () "plval_to_name with plval that contains non-name components"
+;;
+
 
 (* Type extraction. *)
 
