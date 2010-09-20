@@ -109,11 +109,11 @@ let get_file_mod
     (sess:Session.sess)
     (abi:Abi.abi)
     (filename:filename)
-    (nref:node_id ref)
-    (oref:opaque_id ref)
     : Ast.mod_items =
   let dies = get_dies sess filename in
   let items = Hashtbl.create 0 in
+  let nref = sess.Session.sess_node_id_counter in
+  let oref = sess.Session.sess_opaque_id_counter in
     Dwarf.extract_mod_items nref oref abi items dies;
     items
 ;;
@@ -123,8 +123,6 @@ let get_mod
     (abi:Abi.abi)
     (meta:Ast.meta_pat)
     (use_id:node_id)
-    (nref:node_id ref)
-    (oref:opaque_id ref)
     (crate_item_cache:(crate_id, Ast.mod_items) Hashtbl.t)
     : (filename * Ast.mod_items) =
   let found = Queue.create () in
@@ -215,8 +213,8 @@ let get_mod
       | 1 ->
           let (filename, crate_id) = Queue.pop found in
           let items =
-            htab_search_or_default crate_item_cache crate_id
-              (fun () -> get_file_mod sess abi filename nref oref)
+              htab_search_or_default crate_item_cache crate_id
+                (fun () -> get_file_mod sess abi filename)
           in
             (filename, items)
       | _ -> Common.err (Some use_id) "multiple crates match 'use' clause"

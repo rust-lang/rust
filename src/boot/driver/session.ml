@@ -47,10 +47,15 @@ type sess =
   mutable sess_report_deps: bool;
   mutable sess_next_crate_id: int;
   mutable sess_fuzz_item_count: int;
+
   sess_timings: (string, float) Hashtbl.t;
   sess_spans: (node_id,span) Hashtbl.t;
   sess_lib_dirs: filename Queue.t;
   sess_crate_meta: (meta, crate_id) Hashtbl.t;
+
+  sess_node_id_counter: node_id ref;
+  sess_opaque_id_counter: opaque_id ref;
+  sess_temp_id_counter: temp_id ref;
 }
 ;;
 

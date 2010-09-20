@@ -381,9 +381,6 @@ and eval_cexp (env:env) (exp:cexp) : cdir array =
         let ps = env.env_ps in
         let p =
           make_parser
-            ps.pstate_temp_id
-            ps.pstate_node_id
-            ps.pstate_opaque_id
             ps.pstate_crate_cache
             ps.pstate_sess
             ps.pstate_get_mod
@@ -432,12 +429,7 @@ and eval_cexp (env:env) (exp:cexp) : cdir array =
               end
               u.use_meta
           in
-          ps.pstate_get_mod
-            meta_pat
-            id
-            ps.pstate_node_id
-            ps.pstate_opaque_id
-            ps.pstate_crate_cache
+            ps.pstate_get_mod meta_pat id ps.pstate_crate_cache
         in
           iflog ps
             begin
@@ -631,9 +623,6 @@ let parse_crate_file
     (crate_cache:(crate_id, Ast.mod_items) Hashtbl.t)
     : Ast.crate =
   let fname = Session.filename_of sess.Session.sess_in in
-  let tref = ref (Temp 0) in
-  let nref = ref (Node 0) in
-  let oref = ref (Opaque 0) in
   let required = Hashtbl.create 4 in
   let required_syms = Hashtbl.create 4 in
   let files = Hashtbl.create 0 in
@@ -670,7 +659,7 @@ let parse_crate_file
         | Some (PVAL_num n) -> LIT_INT n
   in
   let ps =
-    make_parser tref nref oref crate_cache sess get_mod get_cenv_tok
+    make_parser crate_cache sess get_mod get_cenv_tok
       infer_lib_name required required_syms fname
   in
   let env = { env_bindings = bindings;
@@ -737,9 +726,6 @@ let parse_src_file
     (crate_cache:(crate_id, Ast.mod_items) Hashtbl.t)
     : Ast.crate =
   let fname = Session.filename_of sess.Session.sess_in in
-  let tref = ref (Temp 0) in
-  let nref = ref (Node 0) in
-  let oref = ref (Opaque 0) in
   let required = Hashtbl.create 0 in
   let required_syms = Hashtbl.create 0 in
   let get_cenv_tok ps ident =
@@ -747,7 +733,7 @@ let parse_src_file
                   ident) ps)
   in
   let ps =
-    make_parser tref nref oref crate_cache sess get_mod get_cenv_tok
+    make_parser crate_cache sess get_mod get_cenv_tok
       infer_lib_name required required_syms fname
   in
     with_err_handling sess

@@ -1202,14 +1202,7 @@ and parse_use
   let apos = lexpos ps in
   let bpos = lexpos ps in
   let id = (span ps apos bpos ()).id in
-  let (path, items) =
-    ps.pstate_get_mod
-      meta
-      id
-      ps.pstate_node_id
-      ps.pstate_opaque_id
-      ps.pstate_crate_cache
-  in
+  let (path, items) = ps.pstate_get_mod meta id ps.pstate_crate_cache in
   let bpos = lexpos ps in
     expect ps SEMI;
     let rlib =

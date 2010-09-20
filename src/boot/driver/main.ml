@@ -65,6 +65,9 @@ let (sess:Session.sess) =
     Session.sess_timings = Hashtbl.create 0;
     Session.sess_lib_dirs = Queue.create ();
     Session.sess_crate_meta = Hashtbl.create 0;
+    Session.sess_node_id_counter = ref (Node 0);
+    Session.sess_opaque_id_counter = ref (Opaque 0);
+    Session.sess_temp_id_counter = ref (Temp 0);
   }
 ;;
 
@@ -101,7 +104,7 @@ let set_default_output_filename (sess:Session.sess) : unit =
 
 let dump_sig (filename:filename) : unit =
   let items =
-    Lib.get_file_mod sess abi filename (ref (Node 0)) (ref (Opaque 0)) in
+    Lib.get_file_mod sess abi filename in
     Printf.fprintf stdout "%s\n" (Fmt.fmt_to_str Ast.fmt_mod_items items);
     exit_if_failed ();
     exit 0

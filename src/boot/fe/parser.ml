@@ -6,10 +6,8 @@ open Token;;
 
 type get_mod_fn = (Ast.meta_pat
                    -> node_id
-                     -> (node_id ref)
-                       -> (opaque_id ref)
-                         -> (crate_id, Ast.mod_items) Hashtbl.t
-                           -> (filename * Ast.mod_items))
+                     -> (crate_id, Ast.mod_items) Hashtbl.t
+                       -> (filename * Ast.mod_items))
 ;;
 
 type pstate =
@@ -20,9 +18,6 @@ type pstate =
       pstate_lexbuf       : Lexing.lexbuf;
       pstate_file         : filename;
       pstate_sess         : Session.sess;
-      pstate_temp_id      : temp_id ref;
-      pstate_node_id      : node_id ref;
-      pstate_opaque_id    : opaque_id ref;
       pstate_crate_cache  : (crate_id, Ast.mod_items) Hashtbl.t;
       pstate_get_mod      : get_mod_fn;
       pstate_get_cenv_tok : pstate -> Ast.ident -> token;
@@ -43,9 +38,6 @@ let iflog ps thunk =
 ;;
 
 let make_parser
-    (tref:temp_id ref)
-    (nref:node_id ref)
-    (oref:opaque_id ref)
     (crate_cache:(crate_id, Ast.mod_items) Hashtbl.t)
     (sess:Session.sess)
     (get_mod:get_mod_fn)
@@ -69,9 +61,6 @@ let make_parser
         pstate_lexbuf = lexbuf;
         pstate_file = fname;
         pstate_sess = sess;
-        pstate_temp_id = tref;
-        pstate_node_id = nref;
-        pstate_opaque_id = oref;
         pstate_crate_cache = crate_cache;
         pstate_get_mod = get_mod;
         pstate_get_cenv_tok = get_cenv_tok;
@@ -94,14 +83,16 @@ let lexpos (ps:pstate) : pos =
 ;;
 
 let next_node_id (ps:pstate) : node_id =
-  let id = !(ps.pstate_node_id) in
-    ps.pstate_node_id := Node ((int_of_node id)+1);
+  let r = ps.pstate_sess.Session.sess_node_id_counter in
+  let id = !r in
+    r := Node ((int_of_node id)+1);
     id
 ;;
 
 let next_opaque_id (ps:pstate) : opaque_id =
-  let id = !(ps.pstate_opaque_id) in
-    ps.pstate_opaque_id := Opaque ((int_of_opaque id)+1);
+  let r = ps.pstate_sess.Session.sess_opaque_id_counter in
+  let id = !r in
+    r := Opaque ((int_of_opaque id)+1);
     id
 ;;
 
@@ -203,14 +194,15 @@ let build_tmp
     (apos:pos)
     (bpos:pos)
     : (temp_id * Ast.lval * Ast.stmt) =
-  let nonce = !(ps.pstate_temp_id) in
-    ps.pstate_temp_id := Temp ((int_of_temp nonce)+1);
+  let r = ps.pstate_sess.Session.sess_temp_id_counter in
+  let id = !r in
+    r := Temp ((int_of_temp id)+1);
     iflog ps
-      (fun _ -> log ps "building temporary %d" (int_of_temp nonce));
-    let decl = Ast.DECL_slot (Ast.KEY_temp nonce, (span ps apos bpos slot)) in
+      (fun _ -> log ps "building temporary %d" (int_of_temp id));
+    let decl = Ast.DECL_slot (Ast.KEY_temp id, (span ps apos bpos slot)) in
     let declstmt = span ps apos bpos (Ast.STMT_decl decl) in
-    let tmp = Ast.LVAL_base (span ps apos bpos (Ast.BASE_temp nonce)) in
-      (nonce, tmp, declstmt)
+    let tmp = Ast.LVAL_base (span ps apos bpos (Ast.BASE_temp id)) in
+      (id, tmp, declstmt)
 ;;
 
 (* Simple helpers *)
