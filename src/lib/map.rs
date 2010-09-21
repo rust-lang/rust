@@ -113,10 +113,10 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
             ret util.some[V](v);
           }
         }
-        case (nil[K, V]()) {
+        case (nil[K, V]) {
           ret util.none[V];
         }
-        case (deleted[K, V]()) { }
+        case (deleted[K, V]) { }
       }
       i += 1u;
     }

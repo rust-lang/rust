@@ -281,7 +281,11 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
                   let parse_pat ps = either_get_left (parse_pat ps) in
                   let args =
                     match peek ps with
-                        LPAREN -> paren_comma_list parse_pat ps
+                        LPAREN ->
+                          let args = paren_comma_list parse_pat ps in
+                            if Array.length args = 0
+                            then raise (err "empty pattern argument list" ps)
+                            else args
                       | _ -> [| |]
                   in
                     Left (Ast.PAT_tag (lv, args))
