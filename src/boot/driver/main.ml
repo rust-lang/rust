@@ -375,7 +375,10 @@ let main_pipeline _ =
   let process_code _ (code:Semant.code) : Asm.frag =
     let frag =
       match code.Semant.code_vregs_and_spill with
-          None -> select_insns code.Semant.code_quads
+          None ->
+            X86.log sess "selecting insns for %s"
+              code.Semant.code_fixup.fixup_name;
+            select_insns code.Semant.code_quads
         | Some (n_vregs, spill_fix) ->
             let (quads', n_spills) =
               (Session.time_inner "RA" sess
@@ -383,6 +386,10 @@ let main_pipeline _ =
                     Ra.reg_alloc sess
                       code.Semant.code_quads
                       n_vregs abi))
+            in
+            let _ =
+              X86.log sess "selecting insns for %s"
+                code.Semant.code_fixup.fixup_name
             in
             let insns = select_insns quads' in
               begin
