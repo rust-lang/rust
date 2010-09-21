@@ -91,6 +91,7 @@ let trans_visitor
   let imm (i:int64) : Il.operand = imm_of_ty i word_ty_mach in
   let simm (i:int64) : Il.operand = imm_of_ty i word_ty_signed_mach in
   let one = imm 1L in
+  let neg_one = simm (-1L) in
   let zero = imm 0L in
   let imm_true = imm_of_ty 1L TY_u8 in
   let imm_false = imm_of_ty 0L TY_u8 in
@@ -1858,7 +1859,38 @@ let trans_visitor
     in
       get_typed_mem_glue g fty inner
 
-  and get_cmp_glue _ = failwith "TODO"
+  and get_cmp_glue ty =
+    let arg_ty_params_alias = 0 in
+    let arg_lhs_alias = 1 in
+    let arg_rhs_alias = 2 in
+    let g = GLUE_cmp ty in
+    let inner (out_ptr:Il.cell) (args:Il.cell) =
+      let dst = deref out_ptr in
+      let ty_params = deref (get_element_ptr args arg_ty_params_alias) in
+      let lhs = deref (get_element_ptr args arg_lhs_alias) in
+      let rhs = deref (get_element_ptr args arg_rhs_alias) in
+      let early_finish_jmps = Queue.create () in
+      let cmp_part lhs rhs ty =
+        let tmp = trans_cmp ~ty_params ~ty (Il.Cell lhs) (Il.Cell rhs) in
+        let keep_going_jmps =
+          trans_compare_simple Il.JE tmp zero
+        in
+          mov dst tmp;
+          Queue.add (mark()) early_finish_jmps;
+          emit (Il.jmp Il.JMP Il.CodeNone);
+          List.iter patch keep_going_jmps
+      in
+        mov dst zero;
+        iter_ty_parts_full ty_params lhs rhs ty cmp_part;
+        Queue.iter patch early_finish_jmps;
+    in
+    let ty_params_ptr = ty_params_covering ty in
+    let fty =
+      mk_ty_fn
+        (local_slot Ast.TY_int)
+        [| ty_params_ptr; alias_slot ty; alias_slot ty |]
+    in
+      get_typed_mem_glue g fty inner
 
   (*
    * Vector-growth glue takes four arguments:
@@ -2108,62 +2140,120 @@ let trans_visitor
         (Array.append [| ty_params_ptr |] args)
         clo
 
-  (* [trans_compare_full] returns the quad number of the cjmp, which the
-   * caller patches to the cjmp destination.
+  (*
+   * NB: there are 2 categories of comparisons:
+   *
+   *   - Those called 'compare' that take a jmpop and return a jump list
+   *     that the caller should patch.
+   *
+   *   - Those called 'cmp' that return a number, -1/0/1, indicating the
+   *     relative order of lhs and rhs.
+   *
+   * While in theory compare could be built out of cmp, on real machines
+   * we are forced to build cmp out of compare.
+   *)
+
+
+  (* 
+   * [trans_cmp] returns the result-code of a three-value comparison, 
+   * which is an operand representing the ordering of lhs and rhs. -1 means
+   * less than, 0 means equal, 1 means greater-than.
    *
    * We assume that the LHS and RHS of the comparison have the same type, an
-   * invariant that the typechecker enforces. *)
-  and trans_compare_full
-      ~cjmp:(cjmp:Il.jmpop)
+   * invariant that the typechecker enforces.
+   *)
+  and trans_cmp
       ~ty_params:(ty_params:Il.cell)
       ~ty:(ty:Ast.ty)
-      (lhs:Il.cell)
-      (rhs:Il.cell)
-      : quad_idx list =
+      (lhs:Il.operand)
+      (rhs:Il.operand)
+      : Il.operand =
     let ty = strip_mutable_or_constrained_ty ty in
     let (result:Il.cell) = next_vreg_cell (Il.ValTy Il.Bits32) in
-    begin
-      match ty with
-          Ast.TY_obj _ ->
-            let lhs_binding = get_element_ptr lhs Abi.obj_field_box in
-            let rhs_binding = get_element_ptr rhs Abi.obj_field_box in
-            let lhs_box, rhs_box = deref lhs_binding, deref rhs_binding in
-            let lhs_obj = get_element_ptr lhs_box Abi.box_rc_field_body in
-            let rhs_obj = get_element_ptr rhs_box Abi.box_rc_field_body in
-            let tydesc = get_element_ptr lhs_obj Abi.obj_body_elt_tydesc in
-            let lhs_body = get_element_ptr lhs_obj Abi.obj_body_elt_fields in
-            let rhs_body = get_element_ptr rhs_obj Abi.obj_body_elt_fields in
-            trans_call_dynamic_glue
-              tydesc
-              Abi.tydesc_field_cmp_glue
-              (Some result)
-              [| alias lhs_body; alias rhs_body |]
-              None
+      begin
+        match ty with
 
-        | Ast.TY_param (i, _) ->
-            trans_call_simple_dynamic_glue
-              i
-              Abi.tydesc_field_cmp_glue
-              ty_params
-              [| alias lhs; alias rhs |]
-              None
+            Ast.TY_bool
+          | Ast.TY_mach _
+          | Ast.TY_int
+          | Ast.TY_uint
+          | Ast.TY_char ->
+              let cjmp =
+                if type_is_unsigned_2s_complement ty
+                then Il.JB
+                else Il.JL
+              in
+                (* Start with assumption lhs < rhs *)
+                mov result neg_one;
+                let lhs_lt_rhs_jmps =
+                  trans_compare ~ty_params ~cjmp ~ty lhs rhs
+                in
+                  (* ... disproven, so assume lhs > rhs *)
+                  mov result one;
+                  let rhs_lt_lhs_jmps =
+                    trans_compare ~ty_params ~cjmp ~ty rhs lhs
+                  in
+                    (* ... disproven, must be lhs == rhs *)
+                    mov result zero;
+                    List.iter patch lhs_lt_rhs_jmps;
+                    List.iter patch rhs_lt_lhs_jmps;
 
-        | _ ->
-            trans_call_static_glue
-              (code_fixup_to_ptr_operand (get_cmp_glue ty))
-              (Some result)
-              [| lhs; rhs |]
-              None
-    end;
-    emit (Il.cmp (Il.Cell result) zero);
-    let jmp = mark() in
-    emit (Il.jmp cjmp Il.CodeNone);
-    [ jmp ]
+          | Ast.TY_obj _ ->
+              let lhs = need_cell lhs in
+              let rhs = need_cell rhs in
+              let lhs_binding = get_element_ptr lhs Abi.obj_field_box in
+              let rhs_binding = get_element_ptr rhs Abi.obj_field_box in
+              let lhs_box, rhs_box = deref lhs_binding, deref rhs_binding in
+              let lhs_obj = get_element_ptr lhs_box Abi.box_rc_field_body in
+              let rhs_obj = get_element_ptr rhs_box Abi.box_rc_field_body in
+              let td = get_element_ptr lhs_obj Abi.obj_body_elt_tydesc in
+              let lhs_body =
+                get_element_ptr lhs_obj Abi.obj_body_elt_fields
+              in
+              let rhs_body =
+                get_element_ptr rhs_obj Abi.obj_body_elt_fields
+              in
+              let ty_params_ptr = get_tydesc_params ty_params td in
+                trans_call_dynamic_glue
+                  td Abi.tydesc_field_cmp_glue
+                  (Some result)
+                  [| ty_params_ptr; alias lhs_body; alias rhs_body |]
+                  None
 
-  (* Like [trans_compare_full], returns the address of the jump, which the
+          | Ast.TY_param (i, _) ->
+              let lhs = need_cell lhs in
+              let rhs = need_cell rhs in
+              let td = get_ty_param ty_params i in
+              let ty_params_ptr = get_tydesc_params ty_params td in
+                trans_call_dynamic_glue
+                  td Abi.tydesc_field_cmp_glue
+                  (Some result)
+                  [| ty_params_ptr; alias lhs; alias rhs |]
+                  None
+
+          | Ast.TY_vec _
+          | Ast.TY_str ->
+              (* FIXME: temporary until we get sequence-compares working. *)
+              mov result zero;
+
+          | _ ->
+              let lhs = need_cell lhs in
+              let rhs = need_cell rhs in
+                trans_call_static_glue
+                  (code_fixup_to_ptr_operand (get_cmp_glue ty))
+                  (Some result)
+                  [| alias ty_params; alias lhs; alias rhs |]
+                  None
+      end;
+      Il.Cell result
+
+
+  (*
+   * [trans_compare_simple] returns a set of jump addresses, which the
    * caller patches to the destination. Only use this function if you are sure
    * that the LHS and RHS have the same type and that both will fit in a
-   * machine register; otherwise, use [trans_compare] instead. *)
+   * machine register; otherwise, use [trans_compare] instead.
+   *)
   and trans_compare_simple
       (cjmp:Il.jmpop)
       (lhs:Il.operand)
@@ -2174,6 +2264,10 @@ let trans_visitor
       emit (Il.jmp cjmp Il.CodeNone);
       [ jmp ]
 
+  (*
+   * [trans_compare] returns a set of jump addresses, which the
+   * caller patches to the destination.
+   *)
   and trans_compare
       ?ty_params:(ty_params=get_ty_params_of_current_frame())
       ~cjmp:(cjmp:Il.jmpop)
@@ -2181,13 +2275,23 @@ let trans_visitor
       (lhs:Il.operand)
       (rhs:Il.operand)
       : quad_idx list =
-    ignore (trans_compare ~cjmp ~ty lhs rhs);
-      (* TODO *)
-    match lhs, rhs with
-        Il.Cell lhs, Il.Cell rhs ->
-          trans_compare_full
-            ~cjmp ~ty_params ~ty lhs rhs
-      | _ -> trans_compare_simple cjmp lhs rhs
+      match ty with
+          Ast.TY_bool
+        | Ast.TY_mach _
+        | Ast.TY_int
+        | Ast.TY_uint
+        | Ast.TY_char ->
+            trans_compare_simple cjmp lhs rhs
+
+        | _ ->
+            let result =
+              trans_cmp ~ty_params ~ty lhs rhs
+            in
+              emit (Il.cmp result zero);
+              let jmp = mark() in
+                emit (Il.jmp cjmp Il.CodeNone);
+                [ jmp ]
+
 
   and trans_cond (invert:bool) (expr:Ast.expr) : quad_idx list =
     let anno _ =
@@ -2198,27 +2302,27 @@ let trans_visitor
                         ": cond, finale")
         end
     in
-
-    match expr with
-        Ast.EXPR_binary (binop, a, b) ->
-          let lhs = trans_atom a in
-          let rhs = trans_atom b in
-          let cjmp = binop_to_jmpop binop in
-          let cjmp' =
-            if invert then
-              match cjmp with
-                  Il.JE -> Il.JNE
-                | Il.JNE -> Il.JE
-                | Il.JL -> Il.JGE
-                | Il.JLE -> Il.JG
-                | Il.JGE -> Il.JL
-                | Il.JG -> Il.JLE
-                | _ -> bug () "Unhandled inverse binop in trans_cond"
-            else
-              cjmp
-          in
-            anno ();
-            trans_compare_simple cjmp' lhs rhs
+      match expr with
+          Ast.EXPR_binary (binop, a, b) ->
+            let lhs = trans_atom a in
+            let rhs = trans_atom b in
+            let cjmp = binop_to_jmpop binop in
+            let cjmp =
+              if invert then
+                match cjmp with
+                    Il.JE -> Il.JNE
+                  | Il.JNE -> Il.JE
+                  | Il.JL -> Il.JGE
+                  | Il.JLE -> Il.JG
+                  | Il.JGE -> Il.JL
+                  | Il.JG -> Il.JLE
+                  | _ -> bug () "Unhandled inverse binop in trans_cond"
+              else
+                cjmp
+            in
+              anno ();
+              let ty = atom_type cx a in
+                trans_compare ~cjmp ~ty lhs rhs
 
       | _ ->
           let bool_operand = trans_expr expr in

@@ -50,8 +50,7 @@ state fn new_parser(session.session sess, str path) -> parser {
 }
 
 state fn expect(parser p, token.token t) {
-    // FIXME: comparing tags would be good. One of these days.
-    if (true /* p.peek() == t */) {
+    if (p.peek() == t) {
         p.bump();
     } else {
         let str s = "expecting ";

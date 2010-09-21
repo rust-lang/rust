@@ -537,6 +537,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       str-append.rs \
                       str-concat.rs \
                       str-idx.rs \
+                      structured-compare.rs \
                       tag.rs \
                       tail-call-arg-leak.rs \
                       tail-cps.rs \
