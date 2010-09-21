@@ -27,22 +27,12 @@ fn main(vec[str] args) {
   auto i = 0;
   auto sess = session.session();
   for (str filename in args) {
-    if (i > 0) {
-        auto p = parser.new_parser(sess, filename);
-        log "opened file: " + filename;
-        auto tok = p.peek();
-        while (true) {
-            alt (tok) {
-                case (token.EOF()) { ret; }
-                case (_) {
-                    log token.to_str(tok);
-                    p.bump();
-                    tok = p.peek();
-                }
-            }
-        }
-    }
-    i += 1;
+      if (i > 0) {
+          auto p = parser.new_parser(sess, filename);
+          log "opened file: " + filename;
+          auto crate = parser.parse_crate(p);
+      }
+      i += 1;
   }
 
   // Test LLVM module-writing. Nothing interesting yet.

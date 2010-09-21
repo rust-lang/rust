@@ -1,6 +1,16 @@
 import std._io;
 import driver.session;
 import util.common;
+import util.common.new_str_hash;
+
+// FIXME: import std.util.option and use it here.
+// import std.util.option;
+
+tag option[T] {
+  none;
+  some(T);
+}
+
 
 state type parser =
     state obj {
@@ -19,6 +29,7 @@ state fn new_parser(session.session sess, str path) -> parser {
                            lexer.reader rdr)
         {
             state fn peek() -> token.token {
+                log token.to_str(tok);
                 ret tok;
             }
 
@@ -56,14 +67,14 @@ state fn expect(parser p, token.token t) {
         let str s = "expecting ";
         s += token.to_str(t);
         s += ", found ";
-        s += token.to_str(t);
+        s += token.to_str(p.peek());
         p.err(s);
     }
 }
 
 state fn parse_ident(parser p) -> ast.ident {
     alt (p.peek()) {
-        case (token.IDENT(?i)) { ret i; }
+        case (token.IDENT(?i)) { p.bump(); ret i; }
         case (_) {
             p.err("expecting ident");
             fail;
@@ -71,23 +82,159 @@ state fn parse_ident(parser p) -> ast.ident {
     }
 }
 
-state fn parse_item(parser p) -> tup(ast.ident, ast.item) {
+state fn parse_ty(parser p) -> ast.ty {
     alt (p.peek()) {
-        case (token.FN()) {
+        case (token.INT) { p.bump(); ret ast.ty_int; }
+        case (token.UINT) { p.bump(); ret ast.ty_int; }
+        case (token.STR) { p.bump(); ret ast.ty_str; }
+        case (token.CHAR) { p.bump(); ret ast.ty_char; }
+        case (token.MACH(?tm)) { p.bump(); ret ast.ty_machine(tm); }
+    }
+    p.err("expecting type");
+    fail;
+}
+
+state fn parse_slot(parser p) -> ast.slot {
+    let ast.mode m = ast.val;
+    if (p.peek() == token.BINOP(token.AND)) {
+        m = ast.alias;
+        p.bump();
+    }
+    let ast.ty t = parse_ty(p);
+    ret rec(ty=t, mode=m);
+}
+
+state fn parse_seq[T](token.token bra,
+                      token.token ket,
+                      option[token.token] sep,
+                      (state fn(parser) -> T) f,
+                      parser p) -> vec[T] {
+    let bool first = true;
+    expect(p, bra);
+    let vec[T] v = vec();
+    while (p.peek() != ket) {
+        alt(sep) {
+            case (some[token.token](?t)) {
+                if (first) {
+                    first = false;
+                } else {
+                    expect(p, t);
+                }
+            }
+            case (_) {
+            }
+        }
+        // FIXME: v += f(p) doesn't work at the moment.
+        let T t = f(p);
+        v += vec(t);
+    }
+    expect(p, ket);
+    ret v;
+}
+
+state fn parse_lit(parser p) -> ast.lit {
+    alt (p.peek()) {
+        case (token.LIT_INT(?i)) {
             p.bump();
-            auto id = parse_ident(p);
-            expect(p, token.LPAREN);
-            let vec[rec(ast.slot slot, ast.ident ident)] inputs = vec();
-            let vec[@ast.stmt] body = vec();
-            auto output = rec(ty = ast.ty_nil, mode = ast.val );
-            let ast._fn f = rec(inputs = inputs,
-                                output = output,
-                                body = body);
-            ret tup(id, ast.item_fn(@f));
+            ret ast.lit_int(i);
+        }
+        case (token.LIT_UINT(?u)) {
+            p.bump();
+            ret ast.lit_uint(u);
+        }
+        case (token.LIT_CHAR(?c)) {
+            p.bump();
+            ret ast.lit_char(c);
+        }
+        case (token.LIT_BOOL(?b)) {
+            p.bump();
+            ret ast.lit_bool(b);
         }
     }
-    p.err("expecting item");
+    p.err("expected literal");
     fail;
+}
+
+state fn parse_atom(parser p) -> ast.atom {
+    ret ast.atom_lit(@parse_lit(p));
+}
+
+state fn parse_stmt(parser p) -> @ast.stmt {
+    alt (p.peek()) {
+        case (token.LOG) {
+            p.bump();
+            auto a = @parse_atom(p);
+            expect(p, token.SEMI);
+            ret @ast.stmt_log(a);
+        }
+    }
+    p.err("expected statement");
+    fail;
+}
+
+state fn parse_block(parser p) -> ast.block {
+    auto f = parse_stmt;
+    // FIXME: passing parse_stmt as an lval doesn't work at the moment.
+    ret parse_seq[@ast.stmt](token.LBRACE,
+                             token.RBRACE,
+                             none[token.token],
+                             f, p);
+}
+
+state fn parse_slot_ident_pair(parser p) ->
+    rec(ast.slot slot, ast.ident ident) {
+    auto s = parse_slot(p);
+    auto i =  parse_ident(p);
+    ret rec(slot=s, ident=i);
+}
+
+state fn parse_fn(parser p) -> tup(ast.ident, ast.item) {
+    expect(p, token.FN);
+    auto id = parse_ident(p);
+    auto pf = parse_slot_ident_pair;
+    auto inputs =
+        // FIXME: passing parse_slot_ident_pair as an lval doesn't work at the
+        // moment.
+        parse_seq[rec(ast.slot slot, ast.ident ident)]
+        (token.LPAREN,
+         token.RPAREN,
+         some(token.COMMA),
+         pf, p);
+
+    auto output;
+    if (p.peek() == token.RARROW) {
+        p.bump();
+        output = rec(ty=parse_ty(p), mode=ast.val);
+    } else {
+        output = rec(ty=ast.ty_nil, mode=ast.val);
+    }
+
+    auto body = parse_block(p);
+
+    let ast._fn f = rec(inputs = inputs,
+                        output = output,
+                        body = body);
+
+    ret tup(id, ast.item_fn(@f));
+}
+
+state fn parse_item(parser p) -> tup(ast.ident, ast.item) {
+    alt (p.peek()) {
+        case (token.FN) {
+            ret parse_fn(p);
+        }
+    }
+    p.err("expectied item");
+    fail;
+}
+
+state fn parse_crate(parser p) -> ast.crate {
+    let ast._mod m = new_str_hash[ast.item]();
+    while (p.peek() != token.EOF) {
+        auto i = parse_item(p);
+        m.insert(i._0, i._1);
+    }
+    ret rec(module=m);
 }
 
 //

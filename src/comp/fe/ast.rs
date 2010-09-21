@@ -5,8 +5,7 @@ import util.common.span;
 
 type ident = str;
 
-type crate = rec( str filename,
-                  _mod module);
+type crate = rec(_mod module);
 
 type block = vec[@stmt];
 
@@ -14,6 +13,7 @@ tag stmt {
     stmt_block(block);
     stmt_decl(@decl);
     stmt_ret(option[@lval]);
+    stmt_log(@atom);
 }
 
 
@@ -36,6 +36,7 @@ tag atom {
 tag lit {
     lit_char(char);
     lit_int(int);
+    lit_uint(uint);
     lit_nil;
     lit_bool(bool);
 }
@@ -44,7 +45,11 @@ tag ty {
     ty_nil;
     ty_bool;
     ty_int;
+    ty_uint;
+    ty_machine(util.common.ty_mach);
     ty_char;
+    ty_str;
+    ty_box(@ty);
 }
 
 tag mode {

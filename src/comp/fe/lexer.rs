@@ -3,12 +3,7 @@ import std._str;
 import std.map;
 import std.map.hashmap;
 import util.common;
-
-fn new_str_hash[V]() -> map.hashmap[str,V] {
-    let map.hashfn[str] hasher = _str.hash;
-    let map.eqfn[str] eqer = _str.eq;
-    ret map.mk_hashmap[str,V](hasher, eqer);
-}
+import util.common.new_str_hash;
 
 state type reader = state obj {
                           fn is_eof() -> bool;

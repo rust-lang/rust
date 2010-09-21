@@ -35,6 +35,12 @@ fn ty_mach_to_str(ty_mach tm) -> str {
     }
 }
 
+fn new_str_hash[V]() -> std.map.hashmap[str,V] {
+    let std.map.hashfn[str] hasher = std._str.hash;
+    let std.map.eqfn[str] eqer = std._str.eq;
+    ret std.map.mk_hashmap[str,V](hasher, eqer);
+}
+
 //
 // Local Variables:
 // mode: rust
