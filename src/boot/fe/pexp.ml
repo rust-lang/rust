@@ -559,13 +559,15 @@ and parse_bottom_pexp (ps:pstate) : Ast.pexp =
                          (Some COMMA) parse_ty) ps
                   in
                   let bpos = lexpos ps in
-                    span ps apos bpos (Ast.PEXP_lval (Ast.PLVAL_base (Ast.BASE_app (i, tys))))
+                    span ps apos bpos
+                      (Ast.PEXP_lval (Ast.PLVAL_base (Ast.BASE_app (i, tys))))
                 end
 
             | _ ->
                 begin
                   let bpos = lexpos ps in
-                    span ps apos bpos (Ast.PEXP_lval (Ast.PLVAL_base (Ast.BASE_ident i)))
+                    span ps apos bpos
+                      (Ast.PEXP_lval (Ast.PLVAL_base (Ast.BASE_ident i)))
                 end
         end
 
