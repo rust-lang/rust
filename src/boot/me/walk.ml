@@ -631,9 +631,9 @@ and walk_plval
     : unit =
   let children _ =
     match p with
-        Ast.PLVAL_ident _ -> ()
-      | Ast.PLVAL_app (_, tys) ->
+      | Ast.PLVAL_base (Ast.BASE_app (_, tys)) ->
           Array.iter (walk_ty v) tys
+      | Ast.PLVAL_base _ -> ()
       | Ast.PLVAL_ext_name (pexp, _) ->
           walk_pexp v pexp
       | Ast.PLVAL_ext_pexp (a, b) ->

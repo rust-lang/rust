@@ -492,9 +492,9 @@ let type_resolving_visitor
     inner.Walk.visit_pexp_post p;
     let rebuild_plval pl =
       match pl with
-          Ast.PLVAL_ident _ -> pl
-        | Ast.PLVAL_app (id, tys) ->
-            Ast.PLVAL_app (id, Array.map resolve_ty tys)
+          Ast.PLVAL_base (Ast.BASE_app (id, tys)) ->
+            Ast.PLVAL_base (Ast.BASE_app (id, Array.map resolve_ty tys))
+        | Ast.PLVAL_base _ -> pl
         | Ast.PLVAL_ext_name (pexp, nc) ->
             let pexp = get_rebuilt_pexp pexp in
             let nc =
@@ -668,8 +668,8 @@ let lval_base_resolving_visitor
         Ast.PEXP_lval pl ->
           begin
             match pl with
-                (Ast.PLVAL_ident ident)
-              | (Ast.PLVAL_app (ident, _)) ->
+                (Ast.PLVAL_base (Ast.BASE_ident ident))
+              | (Ast.PLVAL_base (Ast.BASE_app (ident, _))) ->
                   let id = lookup_defn_by_ident p.id ident in
 
                     iflog cx

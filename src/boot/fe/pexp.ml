@@ -559,13 +559,13 @@ and parse_bottom_pexp (ps:pstate) : Ast.pexp =
                          (Some COMMA) parse_ty) ps
                   in
                   let bpos = lexpos ps in
-                    span ps apos bpos (Ast.PEXP_lval (Ast.PLVAL_app (i, tys)))
+                    span ps apos bpos (Ast.PEXP_lval (Ast.PLVAL_base (Ast.BASE_app (i, tys))))
                 end
 
             | _ ->
                 begin
                   let bpos = lexpos ps in
-                    span ps apos bpos (Ast.PEXP_lval (Ast.PLVAL_ident i))
+                    span ps apos bpos (Ast.PEXP_lval (Ast.PLVAL_base (Ast.BASE_ident i)))
                 end
         end
 
@@ -960,13 +960,8 @@ let rec desugar_lval (ps:pstate) (pexp:Ast.pexp)
   let (apos, bpos) = (s.lo, s.hi) in
     match pexp.node with
 
-        Ast.PEXP_lval (Ast.PLVAL_ident ident) ->
-          let nb = span ps apos bpos (Ast.BASE_ident ident) in
-            ([||], Ast.LVAL_base nb)
-
-      | Ast.PEXP_lval (Ast.PLVAL_app (ident, tys)) ->
-          let nb = span ps apos bpos (Ast.BASE_app (ident, tys)) in
-            ([||], Ast.LVAL_base nb)
+        Ast.PEXP_lval (Ast.PLVAL_base nb) ->
+            ([||], Ast.LVAL_base (span ps apos bpos nb))
 
       | Ast.PEXP_lval (Ast.PLVAL_ext_name (base_pexp, comp)) ->
           let (base_stmts, base_atom) = desugar_expr_atom ps base_pexp in

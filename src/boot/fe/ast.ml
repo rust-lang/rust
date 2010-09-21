@@ -348,8 +348,7 @@ and pexp' =
   | PEXP_custom of name * (pexp array) * (string option)
 
 and plval =
-    PLVAL_ident of ident
-  | PLVAL_app of (ident * (ty array))
+    PLVAL_base of name_base
   | PLVAL_ext_name of (pexp * name_component)
   | PLVAL_ext_pexp of (pexp * pexp)
   | PLVAL_ext_deref of pexp
@@ -555,8 +554,7 @@ let sane_name (n:name) : bool =
 
 let rec plval_is_atomic (plval:plval) : bool =
   match plval with
-      PLVAL_ident _
-    | PLVAL_app _ -> true
+      PLVAL_base _ -> true
 
     | PLVAL_ext_name (p, _) ->
         pexp_is_atomic p
@@ -1039,10 +1037,7 @@ and fmt_pexp (ff:Format.formatter) (pexp:pexp) : unit =
 
 and fmt_plval (ff:Format.formatter) (plval:plval) : unit =
   match plval with
-      PLVAL_ident id -> fmt_ident ff id
-    | PLVAL_app (id, tys) ->
-        fmt_ident ff id;
-        fmt_bracketed_arr_sep "[" "]" "," fmt_ty ff tys
+      PLVAL_base nb -> fmt_name_base ff nb
 
     | PLVAL_ext_name (pexp, nc) ->
         fmt_pexp ff pexp;

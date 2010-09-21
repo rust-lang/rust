@@ -579,10 +579,8 @@ let rec lval_to_name (lv:Ast.lval) : Ast.name =
 
 let rec plval_to_name (pl:Ast.plval) : Ast.name =
   match pl with
-      Ast.PLVAL_ident ident ->
-        Ast.NAME_base (Ast.BASE_ident ident)
-    | Ast.PLVAL_app (ident, tys) ->
-        Ast.NAME_base (Ast.BASE_app (ident, tys))
+      Ast.PLVAL_base nb ->
+        Ast.NAME_base nb
     | Ast.PLVAL_ext_name ({node = Ast.PEXP_lval pl}, nc) ->
         Ast.NAME_ext (plval_to_name pl, nc)
     | _ -> bug () "plval_to_name with plval that contains non-name components"
@@ -1431,8 +1429,7 @@ let rec pexp_is_const (cx:ctxt) (pexp:Ast.pexp) : bool =
 
 and plval_is_const (cx:ctxt) (plval:Ast.plval) : bool =
   match plval with
-    Ast.PLVAL_ident _
-  | Ast.PLVAL_app _ ->
+    Ast.PLVAL_base _ ->
       bug () "Semant.plval_is_const on plval base"
 
   | Ast.PLVAL_ext_name (pexp, _) ->

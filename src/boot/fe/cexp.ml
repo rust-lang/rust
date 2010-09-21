@@ -520,7 +520,7 @@ and eval_pexp (env:env) (exp:Ast.pexp) : pval =
             | _ -> bug () "Unexpected unop in Cexp.eval_pexp"
         end
 
-    | Ast.PEXP_lval (Ast.PLVAL_ident ident) ->
+    | Ast.PEXP_lval (Ast.PLVAL_base (Ast.BASE_ident ident)) ->
         begin
           match ltab_search !(env.env_bindings) ident with
               None -> raise (err (Printf.sprintf "no binding for '%s' found"
