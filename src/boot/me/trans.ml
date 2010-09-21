@@ -4612,11 +4612,6 @@ let trans_visitor
             let src_cell = need_cell src_oper in
             let src_vec = deref src_cell in
             let src_fill = get_element_ptr src_vec Abi.vec_elt_fill in
-            let dst_vec = deref dst_cell in
-            let dst_fill = get_element_ptr dst_vec Abi.vec_elt_fill in
-
-              if trailing_null
-              then sub_from dst_fill (imm 1L);
 
               aliasing true dst_cell
                 begin
@@ -4635,49 +4630,52 @@ let trans_visitor
                * to add to.
                *)
 
-              (* Reload dst vec, fill; might have changed. *)
               let dst_vec = deref dst_cell in
               let dst_fill = get_element_ptr dst_vec Abi.vec_elt_fill in
 
-              (* Copy loop: *)
-              let eltp_rty = Il.AddrTy (referent_type cx elt_ty) in
-              let dptr = next_vreg_cell eltp_rty in
-              let sptr = next_vreg_cell eltp_rty in
-              let dlim = next_vreg_cell eltp_rty in
-              let elt_sz = ty_sz_in_current_frame elt_ty in
-              let dst_data =
-                get_element_ptr_dyn_in_current_frame
-                  dst_vec Abi.vec_elt_data
-              in
-              let src_data =
-                get_element_ptr_dyn_in_current_frame
-                  src_vec Abi.vec_elt_data
-              in
-                lea dptr (fst (need_mem_cell dst_data));
-                lea sptr (fst (need_mem_cell src_data));
-                add_to dptr (Il.Cell dst_fill);
-                mov dlim (Il.Cell dptr);
-                add_to dlim (Il.Cell src_fill);
-                let fwd_jmp = mark () in
-                  emit (Il.jmp Il.JMP Il.CodeNone);
-                  let back_jmp_targ = mark () in
-                    (* copy slot *)
-                    trans_copy_ty
-                      (get_ty_params_of_current_frame()) true
-                      (deref dptr) elt_ty
-                      (deref sptr) elt_ty;
-                    add_to dptr elt_sz;
-                    add_to sptr elt_sz;
-                    patch fwd_jmp;
-                    check_interrupt_flag ();
-                    let back_jmp =
-                      trans_compare_simple Il.JB (Il.Cell dptr) (Il.Cell dlim)
-                    in
-                      List.iter
-                        (fun j -> patch_existing j back_jmp_targ) back_jmp;
-                      let v = next_vreg_cell word_sty in
-                        mov v (Il.Cell src_fill);
-                        add_to dst_fill (Il.Cell v);
+                if trailing_null
+                then sub_from dst_fill (imm 1L);
+
+                (* Copy loop: *)
+                let eltp_rty = Il.AddrTy (referent_type cx elt_ty) in
+                let dptr = next_vreg_cell eltp_rty in
+                let sptr = next_vreg_cell eltp_rty in
+                let dlim = next_vreg_cell eltp_rty in
+                let elt_sz = ty_sz_in_current_frame elt_ty in
+                let dst_data =
+                  get_element_ptr_dyn_in_current_frame
+                    dst_vec Abi.vec_elt_data
+                in
+                let src_data =
+                  get_element_ptr_dyn_in_current_frame
+                    src_vec Abi.vec_elt_data
+                in
+                  lea dptr (fst (need_mem_cell dst_data));
+                  lea sptr (fst (need_mem_cell src_data));
+                  add_to dptr (Il.Cell dst_fill);
+                  mov dlim (Il.Cell dptr);
+                  add_to dlim (Il.Cell src_fill);
+                  let fwd_jmp = mark () in
+                    emit (Il.jmp Il.JMP Il.CodeNone);
+                    let back_jmp_targ = mark () in
+                      (* copy slot *)
+                      trans_copy_ty
+                        (get_ty_params_of_current_frame()) true
+                        (deref dptr) elt_ty
+                        (deref sptr) elt_ty;
+                      add_to dptr elt_sz;
+                      add_to sptr elt_sz;
+                      patch fwd_jmp;
+                      check_interrupt_flag ();
+                      let back_jmp =
+                        trans_compare_simple
+                          Il.JB (Il.Cell dptr) (Il.Cell dlim)
+                      in
+                        List.iter
+                          (fun j -> patch_existing j back_jmp_targ) back_jmp;
+                        let v = next_vreg_cell word_sty in
+                          mov v (Il.Cell src_fill);
+                          add_to dst_fill (Il.Cell v);
 
         | (Ast.TY_str, e)
         | (Ast.TY_vec _, e)
