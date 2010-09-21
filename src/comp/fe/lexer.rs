@@ -373,6 +373,7 @@ state fn next_token(reader rdr) -> token.token {
     alt (c) {
         // One-byte tokens.
         case (':') { rdr.bump(); ret token.COLON; }
+        case ('?') { rdr.bump(); ret token.QUES; }
         case (';') { rdr.bump(); ret token.SEMI; }
         case (',') { rdr.bump(); ret token.COMMA; }
         case ('.') { rdr.bump(); ret token.DOT; }

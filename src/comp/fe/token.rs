@@ -43,6 +43,7 @@ tag token {
     COMMA;
     SEMI;
     COLON;
+    QUES;
     RARROW;
     SEND;
     LARROW;
@@ -202,6 +203,7 @@ fn to_str(token t) -> str {
         case (COMMA) { ret ","; }
         case (SEMI) { ret ";"; }
         case (COLON) { ret ":"; }
+        case (QUES) { ret "?"; }
         case (RARROW) { ret "->"; }
         case (SEND) { ret "<|"; }
         case (LARROW) { ret "<-"; }
