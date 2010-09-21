@@ -2715,18 +2715,24 @@ let trans_visitor
       mov tmp (Il.Cell src_tag);
       for i = 0 to n-1
       do
-        (iflog (fun _ ->
-                  annotate (Printf.sprintf "tag case #%i" i)));
-        let jmps =
-          trans_compare_simple Il.JNE (Il.Cell tmp) (imm (Int64.of_int i))
-        in
         let ttup = get_nth_tag_tup cx ttag i in
-          iter_tup_parts
-            (get_element_ptr_dyn ty_params)
-            (get_variant_ptr dst_union i)
-            (get_variant_ptr src_union i)
-            ttup f;
-          List.iter patch jmps
+          if Array.length ttup <> 0
+          then
+            begin
+              (iflog (fun _ ->
+                        annotate (Printf.sprintf "tag case #%i" i)));
+              let jmps =
+                trans_compare_simple Il.JNE
+                  (Il.Cell tmp) (imm (Int64.of_int i))
+              in
+              let ttup = get_nth_tag_tup cx ttag i in
+                iter_tup_parts
+                  (get_element_ptr_dyn ty_params)
+                  (get_variant_ptr dst_union i)
+                  (get_variant_ptr src_union i)
+                  ttup f;
+                List.iter patch jmps
+            end
       done;
 
   and seq_unit_ty (seq:Ast.ty) : Ast.ty =
