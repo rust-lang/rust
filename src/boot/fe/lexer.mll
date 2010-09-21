@@ -244,6 +244,7 @@ rule token = parse
 | ','                          { COMMA      }
 | ';'                          { SEMI       }
 | ':'                          { COLON      }
+| '?'                          { QUES       }
 | "<-"                         { LARROW     }
 | "<|"                         { SEND       }
 | "->"                         { RARROW     }

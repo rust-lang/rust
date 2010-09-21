@@ -5,7 +5,7 @@ tag foo[T] {
 fn altfoo[T](foo[T] f) {
   auto hit = false;
   alt (f) {
-    case (arm[T](x)) {
+    case (arm[T](?x)) {
       log "in arm";
       hit = true;
     }

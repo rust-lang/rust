@@ -94,100 +94,100 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
     auto keywords = new_str_hash[token.token]();
     auto reserved = new_str_hash[()]();
 
-    keywords.insert("mod", token.MOD());
-    keywords.insert("use", token.USE());
-    keywords.insert("meta", token.META());
-    keywords.insert("auth", token.AUTH());
+    keywords.insert("mod", token.MOD);
+    keywords.insert("use", token.USE);
+    keywords.insert("meta", token.META);
+    keywords.insert("auth", token.AUTH);
 
-    keywords.insert("syntax", token.SYNTAX());
+    keywords.insert("syntax", token.SYNTAX);
 
-    keywords.insert("if", token.IF());
-    keywords.insert("else", token.ELSE());
-    keywords.insert("while", token.WHILE());
-    keywords.insert("do", token.DO());
-    keywords.insert("alt", token.ALT());
-    keywords.insert("case", token.CASE());
+    keywords.insert("if", token.IF);
+    keywords.insert("else", token.ELSE);
+    keywords.insert("while", token.WHILE);
+    keywords.insert("do", token.DO);
+    keywords.insert("alt", token.ALT);
+    keywords.insert("case", token.CASE);
 
-    keywords.insert("for", token.FOR());
-    keywords.insert("each", token.EACH());
-    keywords.insert("put", token.PUT());
-    keywords.insert("ret", token.RET());
-    keywords.insert("be", token.BE());
+    keywords.insert("for", token.FOR);
+    keywords.insert("each", token.EACH);
+    keywords.insert("put", token.PUT);
+    keywords.insert("ret", token.RET);
+    keywords.insert("be", token.BE);
 
-    keywords.insert("fail", token.FAIL());
-    keywords.insert("drop", token.DROP());
+    keywords.insert("fail", token.FAIL);
+    keywords.insert("drop", token.DROP);
 
-    keywords.insert("type", token.TYPE());
-    keywords.insert("check", token.CHECK());
-    keywords.insert("claim", token.CLAIM());
-    keywords.insert("prove", token.PROVE());
+    keywords.insert("type", token.TYPE);
+    keywords.insert("check", token.CHECK);
+    keywords.insert("claim", token.CLAIM);
+    keywords.insert("prove", token.PROVE);
 
-    keywords.insert("io", token.IO());
-    keywords.insert("state", token.STATE());
-    keywords.insert("unsafe", token.UNSAFE());
+    keywords.insert("io", token.IO);
+    keywords.insert("state", token.STATE);
+    keywords.insert("unsafe", token.UNSAFE);
 
-    keywords.insert("native", token.NATIVE());
-    keywords.insert("mutable", token.MUTABLE());
-    keywords.insert("auto", token.AUTO());
+    keywords.insert("native", token.NATIVE);
+    keywords.insert("mutable", token.MUTABLE);
+    keywords.insert("auto", token.AUTO);
 
-    keywords.insert("fn", token.FN());
-    keywords.insert("iter", token.ITER());
+    keywords.insert("fn", token.FN);
+    keywords.insert("iter", token.ITER);
 
-    keywords.insert("import", token.IMPORT());
-    keywords.insert("export", token.EXPORT());
+    keywords.insert("import", token.IMPORT);
+    keywords.insert("export", token.EXPORT);
 
-    keywords.insert("let", token.LET());
-    keywords.insert("const", token.CONST());
+    keywords.insert("let", token.LET);
+    keywords.insert("const", token.CONST);
 
-    keywords.insert("log", token.LOG());
-    keywords.insert("spawn", token.SPAWN());
-    keywords.insert("thread", token.THREAD());
-    keywords.insert("yield", token.YIELD());
-    keywords.insert("join", token.JOIN());
+    keywords.insert("log", token.LOG);
+    keywords.insert("spawn", token.SPAWN);
+    keywords.insert("thread", token.THREAD);
+    keywords.insert("yield", token.YIELD);
+    keywords.insert("join", token.JOIN);
 
-    keywords.insert("bool", token.BOOL());
+    keywords.insert("bool", token.BOOL);
 
-    keywords.insert("int", token.INT());
-    keywords.insert("uint", token.UINT());
-    keywords.insert("float", token.FLOAT());
+    keywords.insert("int", token.INT);
+    keywords.insert("uint", token.UINT);
+    keywords.insert("float", token.FLOAT);
 
-    keywords.insert("char", token.CHAR());
-    keywords.insert("str", token.STR());
+    keywords.insert("char", token.CHAR);
+    keywords.insert("str", token.STR);
 
 
-    keywords.insert("rec", token.REC());
-    keywords.insert("tup", token.TUP());
-    keywords.insert("tag", token.TAG());
-    keywords.insert("vec", token.VEC());
-    keywords.insert("any", token.ANY());
+    keywords.insert("rec", token.REC);
+    keywords.insert("tup", token.TUP);
+    keywords.insert("tag", token.TAG);
+    keywords.insert("vec", token.VEC);
+    keywords.insert("any", token.ANY);
 
-    keywords.insert("obj", token.OBJ());
+    keywords.insert("obj", token.OBJ);
 
-    keywords.insert("port", token.PORT());
-    keywords.insert("chan", token.CHAN());
+    keywords.insert("port", token.PORT);
+    keywords.insert("chan", token.CHAN);
 
-    keywords.insert("task", token.TASK());
+    keywords.insert("task", token.TASK);
 
     keywords.insert("true", token.LIT_BOOL(true));
     keywords.insert("false", token.LIT_BOOL(false));
 
-    keywords.insert("in", token.IN());
+    keywords.insert("in", token.IN);
 
-    keywords.insert("as", token.AS());
-    keywords.insert("with", token.WITH());
+    keywords.insert("as", token.AS);
+    keywords.insert("with", token.WITH);
 
-    keywords.insert("bind", token.BIND());
+    keywords.insert("bind", token.BIND);
 
-    keywords.insert("u8", token.MACH(common.ty_u8()));
-    keywords.insert("u16", token.MACH(common.ty_u16()));
-    keywords.insert("u32", token.MACH(common.ty_u32()));
-    keywords.insert("u64", token.MACH(common.ty_u64()));
-    keywords.insert("i8", token.MACH(common.ty_i8()));
-    keywords.insert("i16", token.MACH(common.ty_i16()));
-    keywords.insert("i32", token.MACH(common.ty_i32()));
-    keywords.insert("i64", token.MACH(common.ty_i64()));
-    keywords.insert("f32", token.MACH(common.ty_f32()));
-    keywords.insert("f64", token.MACH(common.ty_f64()));
+    keywords.insert("u8", token.MACH(common.ty_u8));
+    keywords.insert("u16", token.MACH(common.ty_u16));
+    keywords.insert("u32", token.MACH(common.ty_u32));
+    keywords.insert("u64", token.MACH(common.ty_u64));
+    keywords.insert("i8", token.MACH(common.ty_i8));
+    keywords.insert("i16", token.MACH(common.ty_i16));
+    keywords.insert("i32", token.MACH(common.ty_i32));
+    keywords.insert("i64", token.MACH(common.ty_i64));
+    keywords.insert("f32", token.MACH(common.ty_f32));
+    keywords.insert("f64", token.MACH(common.ty_f64));
 
     ret reader(rdr, filename, rdr.getc() as char, rdr.getc() as char,
                1u, 1u, 1u, 1u, keywords, reserved);
@@ -305,7 +305,7 @@ state fn next_token(reader rdr) -> token.token {
 
     consume_any_whitespace(rdr);
 
-    if (rdr.is_eof()) { ret token.EOF(); }
+    if (rdr.is_eof()) { ret token.EOF; }
 
     auto c = rdr.curr();
 
@@ -372,20 +372,20 @@ state fn next_token(reader rdr) -> token.token {
 
     alt (c) {
         // One-byte tokens.
-        case (':') { rdr.bump(); ret token.COLON(); }
-        case (';') { rdr.bump(); ret token.SEMI(); }
-        case (',') { rdr.bump(); ret token.COMMA(); }
-        case ('.') { rdr.bump(); ret token.DOT(); }
-        case ('(') { rdr.bump(); ret token.LPAREN(); }
-        case (')') { rdr.bump(); ret token.RPAREN(); }
-        case ('{') { rdr.bump(); ret token.LBRACE(); }
-        case ('}') { rdr.bump(); ret token.RBRACE(); }
-        case ('[') { rdr.bump(); ret token.LBRACKET(); }
-        case (']') { rdr.bump(); ret token.RBRACKET(); }
-        case ('@') { rdr.bump(); ret token.AT(); }
-        case ('#') { rdr.bump(); ret token.POUND(); }
-        case ('_') { rdr.bump(); ret token.UNDERSCORE(); }
-        case ('~') { rdr.bump(); ret token.TILDE(); }
+        case (':') { rdr.bump(); ret token.COLON; }
+        case (';') { rdr.bump(); ret token.SEMI; }
+        case (',') { rdr.bump(); ret token.COMMA; }
+        case ('.') { rdr.bump(); ret token.DOT; }
+        case ('(') { rdr.bump(); ret token.LPAREN; }
+        case (')') { rdr.bump(); ret token.RPAREN; }
+        case ('{') { rdr.bump(); ret token.LBRACE; }
+        case ('}') { rdr.bump(); ret token.RBRACE; }
+        case ('[') { rdr.bump(); ret token.LBRACKET; }
+        case (']') { rdr.bump(); ret token.RBRACKET; }
+        case ('@') { rdr.bump(); ret token.AT; }
+        case ('#') { rdr.bump(); ret token.POUND; }
+        case ('_') { rdr.bump(); ret token.UNDERSCORE; }
+        case ('~') { rdr.bump(); ret token.TILDE; }
 
 
         // Multi-byte tokens.
@@ -393,9 +393,9 @@ state fn next_token(reader rdr) -> token.token {
             rdr.bump();
             if (rdr.curr() == '=') {
                 rdr.bump();
-                ret token.EQEQ();
+                ret token.EQEQ;
             } else {
-                ret token.EQ();
+                ret token.EQ;
             }
         }
 
@@ -403,9 +403,9 @@ state fn next_token(reader rdr) -> token.token {
             rdr.bump();
             if (rdr.curr() == '=') {
                 rdr.bump();
-                ret token.NE();
+                ret token.NE;
             } else {
-                ret token.NOT();
+                ret token.NOT;
             }
         }
 
@@ -414,21 +414,21 @@ state fn next_token(reader rdr) -> token.token {
             alt (rdr.curr()) {
                 case ('=') {
                     rdr.bump();
-                    ret token.LE();
+                    ret token.LE;
                 }
                 case ('<') {
-                    ret binop(rdr, token.LSL());
+                    ret binop(rdr, token.LSL);
                 }
                 case ('-') {
                     rdr.bump();
-                    ret token.LARROW();
+                    ret token.LARROW;
                 }
                 case ('|') {
                     rdr.bump();
-                    ret token.SEND();
+                    ret token.SEND;
                 }
                 case (_) {
-                    ret token.LT();
+                    ret token.LT;
                 }
             }
         }
@@ -438,20 +438,20 @@ state fn next_token(reader rdr) -> token.token {
             alt (rdr.curr()) {
                 case ('=') {
                     rdr.bump();
-                    ret token.GE();
+                    ret token.GE;
                 }
 
                 case ('>') {
                     if (rdr.next() == '>') {
                         rdr.bump();
-                        ret binop(rdr, token.ASR());
+                        ret binop(rdr, token.ASR);
                     } else {
-                        ret binop(rdr, token.LSR());
+                        ret binop(rdr, token.LSR);
                     }
                 }
 
                 case (_) {
-                    ret token.GT();
+                    ret token.GT;
                 }
             }
         }
@@ -467,7 +467,7 @@ state fn next_token(reader rdr) -> token.token {
                     case ('\\') { rdr.bump(); c2 = '\\'; }
                     case ('\'') { rdr.bump(); c2 = '\''; }
                     // FIXME: unicode numeric escapes.
-                    case (c2) {
+                    case (?c2) {
                         log "unknown character escape";
                         log c2;
                         fail;
@@ -512,7 +512,7 @@ state fn next_token(reader rdr) -> token.token {
                                 accum_str += '"' as u8;
                             }
                             // FIXME: unicode numeric escapes.
-                            case (c2) {
+                            case (?c2) {
                                 log "unknown string escape";
                                 log c2;
                                 fail;
@@ -533,9 +533,9 @@ state fn next_token(reader rdr) -> token.token {
             if (rdr.next() == '>') {
                 rdr.bump();
                 rdr.bump();
-                ret token.RARROW();
+                ret token.RARROW;
             } else {
-                ret binop(rdr, token.MINUS());
+                ret binop(rdr, token.MINUS);
             }
         }
 
@@ -543,9 +543,9 @@ state fn next_token(reader rdr) -> token.token {
             if (rdr.next() == '&') {
                 rdr.bump();
                 rdr.bump();
-                ret token.ANDAND();
+                ret token.ANDAND;
             } else {
-                ret binop(rdr, token.AND());
+                ret binop(rdr, token.AND);
             }
         }
 
@@ -553,37 +553,37 @@ state fn next_token(reader rdr) -> token.token {
             if (rdr.next() == '|') {
                 rdr.bump();
                 rdr.bump();
-                ret token.OROR();
+                ret token.OROR;
             } else {
-                ret binop(rdr, token.OR());
+                ret binop(rdr, token.OR);
             }
         }
 
         case ('+') {
-            ret binop(rdr, token.PLUS());
+            ret binop(rdr, token.PLUS);
         }
 
         case ('*') {
-            ret binop(rdr, token.STAR());
+            ret binop(rdr, token.STAR);
         }
 
         case ('/') {
-            ret binop(rdr, token.STAR());
+            ret binop(rdr, token.STAR);
         }
 
         case ('^') {
-            ret binop(rdr, token.CARET());
+            ret binop(rdr, token.CARET);
         }
 
         case ('%') {
-            ret binop(rdr, token.PERCENT());
+            ret binop(rdr, token.PERCENT);
         }
 
     }
 
     log "lexer stopping at ";
     log c;
-    ret token.EOF();
+    ret token.EOF;
 }
 
 

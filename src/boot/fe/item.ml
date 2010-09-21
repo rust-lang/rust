@@ -255,12 +255,11 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
           bump ps;
           let rec parse_pat ps  =
             match peek ps with
-                IDENT _ ->
+                QUES ->
                   let apos = lexpos ps in
-                  let name = Pexp.parse_name ps in
-                  let bpos = lexpos ps in
-
-                    if peek ps != LPAREN then
+                    bump ps;
+                    let name = Pexp.parse_name ps in
+                    let bpos = lexpos ps in
                       begin
                         match name with
                             Ast.NAME_base (Ast.BASE_ident ident) ->
@@ -273,11 +272,19 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
                                                  ident))
                           |_ -> raise (unexpected ps)
                       end
-                    else
-                      let lv = name_to_lval apos bpos name in
-                      let parse_pat ps = either_get_left (parse_pat ps) in
-                        Left
-                          (Ast.PAT_tag (lv, paren_comma_list parse_pat ps))
+
+              | IDENT _ ->
+                  let apos = lexpos ps in
+                  let name = Pexp.parse_name ps in
+                  let bpos = lexpos ps in
+                  let lv = name_to_lval apos bpos name in
+                  let parse_pat ps = either_get_left (parse_pat ps) in
+                  let args =
+                    match peek ps with
+                        LPAREN -> paren_comma_list parse_pat ps
+                      | _ -> [| |]
+                  in
+                    Left (Ast.PAT_tag (lv, args))
 
               | LIT_INT _
               | LIT_UINT _
@@ -874,9 +881,16 @@ and parse_tag_item
           incr j;
           ((span ps apos bpos s), "_" ^ string_of_int (!j))
       in
-      let res = match peek ps with
-              LPAREN -> paren_comma_list parse_ctor_slot ps
-        | _ -> raise (err "tag variant missing argument list" ps)
+      let res =
+        match peek ps with
+            LPAREN ->
+              let slots = paren_comma_list parse_ctor_slot ps in
+                if Array.length slots = 0
+                then
+                  raise (err ("empty argument list to tag constructor") ps)
+                else slots
+
+          | _ -> [| |]
       in
         expect ps SEMI;
         res

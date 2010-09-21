@@ -28,13 +28,13 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
   let util.rational load_factor = rec(num=3, den=4);
 
   tag bucket[K, V] {
-    nil();
-    deleted();
+    nil;
+    deleted;
     some(K, V);
   }
 
   fn make_buckets[K, V](uint nbkts) -> vec[mutable bucket[K, V]] {
-    ret _vec.init_elt[mutable bucket[K, V]](nil[K, V](), nbkts);
+    ret _vec.init_elt[mutable bucket[K, V]](nil[K, V], nbkts);
   }
 
   // Derive two hash functions from the one given by taking the upper
@@ -81,7 +81,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     while (i < nbkts) {
       let uint j = hash[K](hasher, nbkts, key, i);
       alt (bkts.(j)) {
-        case (some[K, V](k, _)) {
+        case (some[K, V](?k, _)) {
           if (eqer(key, k)) {
             bkts.(j) = some[K, V](k, val);
             ret false;
@@ -108,19 +108,19 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     while (i < nbkts) {
       let uint j = (hash[K](hasher, nbkts, key, i));
       alt (bkts.(j)) {
-        case (some[K, V](k, v)) {
+        case (some[K, V](?k, ?v)) {
           if (eqer(key, k)) {
             ret util.some[V](v);
           }
         }
         case (nil[K, V]()) {
-          ret util.none[V]();
+          ret util.none[V];
         }
         case (deleted[K, V]()) { }
       }
       i += 1u;
     }
-    ret util.none[V]();
+    ret util.none[V];
   }
 
 
@@ -131,7 +131,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
   {
     for (bucket[K, V] b in oldbkts) {
       alt (b) {
-        case (some[K, V](k, v)) {
+        case (some[K, V](?k, ?v)) {
           insert_common[K, V](hasher, eqer, newbkts, nnewbkts, k, v);
         }
         case (_) { }
@@ -174,7 +174,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
 
     fn get(&K key) -> V {
       alt (find_common[K, V](hasher, eqer, bkts, nbkts, key)) {
-        case (util.some[V](val)) { ret val; }
+        case (util.some[V](?val)) { ret val; }
         case (_) { fail; }
       }
     }
@@ -188,21 +188,21 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
       while (i < nbkts) {
         let uint j = (hash[K](hasher, nbkts, key, i));
         alt (bkts.(j)) {
-          case (some[K, V](k, v)) {
+          case (some[K, V](?k, ?v)) {
             if (eqer(key, k)) {
-              bkts.(j) = deleted[K, V]();
+              bkts.(j) = deleted[K, V];
               nelts -= 1u;
               ret util.some[V](v);
             }
           }
-          case (deleted[K, V]()) { }
-          case (nil[K, V]()) {
-            ret util.none[V]();
+          case (deleted[K, V]) { }
+          case (nil[K, V]) {
+            ret util.none[V];
           }
         }
         i += 1u;
       }
-      ret util.none[V]();
+      ret util.none[V];
     }
 
     fn rehash() {

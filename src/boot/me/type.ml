@@ -711,6 +711,8 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
             match constr_ty with
                 Ast.TY_fn (ty_sig, _) ->
                   Array.map get_slot_ty ty_sig.Ast.sig_input_slots
+              | Ast.TY_tag _ ->
+                  [||]
               | _ -> type_error "constructor function" constr_ty
           in
           Common.arr_iter2 check_pat arg_tys arg_pats

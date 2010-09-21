@@ -722,7 +722,9 @@ let pattern_resolving_visitor
      * asking for its arity, it doesn't matter that the possibly parametric
      * tag type has its parameters unbound here. *)
     let tag_ty =
-      fn_output_ty (Hashtbl.find cx.ctxt_all_item_types tag_ctor_id)
+      match Hashtbl.find cx.ctxt_all_item_types tag_ctor_id with
+          Ast.TY_tag t -> Ast.TY_tag t
+        | ft -> fn_output_ty ft
     in
       begin
         match tag_ty with

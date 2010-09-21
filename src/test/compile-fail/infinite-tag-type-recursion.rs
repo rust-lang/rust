@@ -4,9 +4,9 @@
 
 tag mlist {
   cons(int, mlist);
-  nil();
+  nil;
 }
 
 fn main() {
-  auto a = cons(10, cons(11, nil()));
+  auto a = cons(10, cons(11, nil));
 }

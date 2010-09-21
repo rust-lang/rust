@@ -151,21 +151,23 @@ fn main() {
 
   fn taggyeq(taggy a, taggy b) -> bool {
     alt (a) {
-      case (one(a1)) {
+      case (one(?a1)) {
         alt (b) {
-          case (one(b1)) { ret a1 == b1; }
+          case (one(?b1)) { ret a1 == b1; }
           case (_) { ret false; }
         }
       }
-      case (two(a1, a2)) {
+      case (two(?a1, ?a2)) {
         alt (b) {
-          case (two(b1, b2)) { ret (a1 == b1 && a2 == b2); }
+          case (two(?b1, ?b2)) { ret (a1 == b1 && a2 == b2); }
           case (_) { ret false; }
         }
       }
-      case (three(a1, a2, a3)) {
+      case (three(?a1, ?a2, ?a3)) {
         alt (b) {
-          case (three(b1, b2, b3)) { ret (a1 == b1 && a2 == b2 && a3 == b3); }
+          case (three(?b1, ?b2, ?b3)) {
+            ret (a1 == b1 && a2 == b2 && a3 == b3);
+          }
           case (_) { ret false; }
         }
       }
@@ -174,21 +176,21 @@ fn main() {
 
   fn taggypareq[T](taggypar[T] a, taggypar[T] b) -> bool {
     alt (a) {
-      case (onepar[T](a1)) {
+      case (onepar[T](?a1)) {
         alt (b) {
-          case (onepar[T](b1)) { ret a1 == b1; }
+          case (onepar[T](?b1)) { ret a1 == b1; }
           case (_) { ret false; }
         }
       }
-      case (twopar[T](a1, a2)) {
+      case (twopar[T](?a1, ?a2)) {
         alt (b) {
-          case (twopar[T](b1, b2)) { ret (a1 == b1 && a2 == b2); }
+          case (twopar[T](?b1, ?b2)) { ret (a1 == b1 && a2 == b2); }
           case (_) { ret false; }
         }
       }
-      case (threepar[T](a1, a2, a3)) {
+      case (threepar[T](?a1, ?a2, ?a3)) {
         alt (b) {
-          case (threepar[T](b1, b2, b3)) {
+          case (threepar[T](?b1, ?b2, ?b3)) {
             ret (a1 == b1 && a2 == b2 && a3 == b3);
           }
           case (_) { ret false; }

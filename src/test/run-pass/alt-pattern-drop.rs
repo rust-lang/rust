@@ -5,14 +5,14 @@ import std._str;
 
 tag t {
   make_t(str);
-  clam();
+  clam;
 }
 
 fn foo(str s) {
   let t x = make_t(s);  // ref up
 
   alt (x) {
-    case (make_t(y)) { log y; }  // ref up then down
+    case (make_t(?y)) { log y; }  // ref up then down
     case (_) { log "?"; fail; }
   }
 

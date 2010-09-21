@@ -128,7 +128,9 @@ let mem_off (mem:mem) (off:Asm.expr64) : mem =
         Abs e -> Abs (addto e)
       | RegIn (r, None) -> RegIn (r, Some off)
       | RegIn (r, Some e) -> RegIn (r, Some (addto e))
-      | Spill _ -> bug () "Adding offset to spill slot"
+      | Spill _ ->
+          bug () "Adding offset %s to spill slot"
+            (Asm.string_of_expr64 off)
 ;;
 
 let mem_off_imm (mem:mem) (imm:int64) : mem =

@@ -64,7 +64,7 @@ state fn expect(parser p, token.token t) {
 
 state fn parse_ident(parser p) -> ast.ident {
     alt (p.peek()) {
-        case (token.IDENT(i)) { ret i; }
+        case (token.IDENT(?i)) { ret i; }
         case (_) {
             p.err("expecting ident");
             fail;
@@ -77,10 +77,10 @@ state fn parse_item(parser p) -> tup(ast.ident, ast.item) {
         case (token.FN()) {
             p.bump();
             auto id = parse_ident(p);
-            expect(p, token.LPAREN());
+            expect(p, token.LPAREN);
             let vec[rec(ast.slot slot, ast.ident ident)] inputs = vec();
             let vec[@ast.stmt] body = vec();
-            auto output = rec(ty = ast.ty_nil(), mode = ast.val() );
+            auto output = rec(ty = ast.ty_nil, mode = ast.val );
             let ast._fn f = rec(inputs = inputs,
                                 output = output,
                                 body = body);

@@ -296,7 +296,7 @@ let layout_visitor
             layout_header i.id
               (header_slot_ids f.Ast.fn_input_slots)
 
-        | Ast.MOD_ITEM_tag (hdr, _, _) ->
+        | Ast.MOD_ITEM_tag (hdr, _, _) when Array.length hdr <> 0 ->
             enter_frame i.id;
             layout_header i.id
               (header_slot_ids hdr)
@@ -319,8 +319,9 @@ let layout_visitor
     begin
       match i.node.Ast.decl_item with
           Ast.MOD_ITEM_fn _
-        | Ast.MOD_ITEM_tag _
         | Ast.MOD_ITEM_obj _ -> leave_frame ()
+        | Ast.MOD_ITEM_tag (hdr, _, _) when Array.length hdr <> 0 ->
+            leave_frame()
         | _ -> ()
     end
   in

@@ -1054,9 +1054,13 @@ let trans_visitor
       : (Ast.ty * const) =
     assert (lval_base_is_item cx lv);
     let item = lval_item cx lv in
-      check_concrete item.node.Ast.decl_params ();
       match item.node.Ast.decl_item with
           Ast.MOD_ITEM_const (_, Some e) -> trans_const_expr e
+
+        | Ast.MOD_ITEM_tag (hdr, _, i) when Array.length hdr = 0 ->
+            (lval_ty cx lv,
+             CONST_frag (Asm.WORD (word_ty_mach,
+                                   Asm.IMM (Int64.of_int i))))
 
         | _ -> bug ()
             "trans_const_lval called on unsupported item lval '%a'"
@@ -1069,9 +1073,8 @@ let trans_visitor
     match trans_const_lval lv with
 
         (ty, CONST_val v) ->
-          let f tm =
-            (Il.Reg (force_to_reg (imm_of_ty v tm)), ty)
-          in
+          let r tm = Il.Reg (force_to_reg (imm_of_ty v tm)) in
+          let f tm = (r tm, ty) in
             begin
               match ty with
                   Ast.TY_mach tm -> f tm
@@ -1080,6 +1083,7 @@ let trans_visitor
                 | Ast.TY_bool -> f TY_u8
                 | Ast.TY_char -> f TY_u32
                 | Ast.TY_nil -> (nil_ptr, ty)
+
                 | _ -> bug ()
                     "trans_lval_item on %a: unexpected type %a"
                       Ast.sprintf_lval lv Ast.sprintf_ty ty
@@ -1087,11 +1091,14 @@ let trans_visitor
 
       | (ty, CONST_frag f) ->
           let item = lval_item cx lv in
-            (crate_rel_to_ptr
-               (trans_crate_rel_data_operand
-                  (DATA_const item.id)
-                  (fun _ -> f))
-               (referent_type cx ty), ty)
+          let ptr =
+            crate_rel_to_ptr
+              (trans_crate_rel_data_operand
+                 (DATA_const item.id)
+                 (fun _ -> f))
+              (referent_type cx ty)
+          in
+            (deref ptr, ty)
 
   and trans_lval_full
       (initializing:bool)
@@ -5430,7 +5437,7 @@ let trans_visitor
             "Trans.required_rust_fn on unexpected form of require library"
   in
 
-  let trans_tag
+  let trans_tag_fn
       (n:Ast.ident)
       (tagid:node_id)
       (tag:(Ast.header_slots * opaque_id * int))
@@ -5471,6 +5478,16 @@ let trans_visitor
       trace_str cx.ctxt_sess.Session.sess_trace_tag
         ("finished tag constructor " ^ n);
       trans_frame_exit tagid true;
+  in
+
+  let trans_tag
+      (n:Ast.ident)
+      (tagid:node_id)
+      (tag:(Ast.header_slots * opaque_id * int))
+      : unit =
+    let (header_tup, _, _) = tag in
+      if Array.length header_tup <> 0
+      then trans_tag_fn n tagid tag
   in
 
   let enter_file_for id =

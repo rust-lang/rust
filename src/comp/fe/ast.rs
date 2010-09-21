@@ -36,20 +36,20 @@ tag atom {
 tag lit {
     lit_char(char);
     lit_int(int);
-    lit_nil();
+    lit_nil;
     lit_bool(bool);
 }
 
 tag ty {
-    ty_nil();
-    ty_bool();
-    ty_int();
-    ty_char();
+    ty_nil;
+    ty_bool;
+    ty_int;
+    ty_char;
 }
 
 tag mode {
-    val();
-    alias();
+    val;
+    alias;
 }
 
 type slot = rec(ty ty, mode mode);

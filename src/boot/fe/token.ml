@@ -33,6 +33,7 @@ type token =
   | COMMA
   | SEMI
   | COLON
+  | QUES
   | RARROW
   | SEND
   | LARROW
@@ -187,6 +188,7 @@ let rec string_of_tok t =
     | COMMA      -> ","
     | SEMI       -> ";"
     | COLON      -> ":"
+    | QUES       -> "?"
     | RARROW     -> "->"
     | SEND       -> "<|"
     | LARROW     -> "<-"

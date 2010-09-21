@@ -1,9 +1,9 @@
 // -*- rust -*-
 
 tag colour {
-  red();
-  green();
-  blue();
+  red;
+  green;
+  blue;
 }
 
 tag tree {
@@ -13,12 +13,12 @@ tag tree {
 
 tag list {
   cons(@tree, @list);
-  nil();
+  nil;
 }
 
 tag small_list {
   kons(int,@small_list);
-  neel();
+  neel;
 }
 
 fn main() {

@@ -1,9 +1,9 @@
 tag option[T] {
   some(@T);
-  none();
+  none;
 }
 
 fn main() {
   let option[int] a = some[int](@10);
-  a = none[int]();
+  a = none[int];
 }

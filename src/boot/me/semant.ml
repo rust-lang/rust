@@ -1483,23 +1483,29 @@ let ty_of_mod_item (item:Ast.mod_item) : Ast.ty =
           (Ast.TY_fn (tsig, taux))
 
     | Ast.MOD_ITEM_tag (hdr, tid, _) ->
-        let taux = { Ast.fn_effect = Ast.PURE;
-                     Ast.fn_is_iter = false }
-        in
-        let inputs = Array.map (fun (s, _) -> s.node) hdr in
         let args =
           Array.map
             (fun p -> Ast.TY_param (snd p.node))
             item.node.Ast.decl_params
         in
-        let tsig = { Ast.sig_input_slots = inputs;
-                     Ast.sig_input_constrs = [| |];
-                     Ast.sig_output_slot =
-            local_slot
-              (Ast.TY_tag { Ast.tag_id = tid;
-                            Ast.tag_args = args } ) }
+        let ttag =
+          { Ast.tag_id = tid;
+            Ast.tag_args = args }
         in
-          (Ast.TY_fn (tsig, taux))
+          if Array.length hdr = 0
+          then Ast.TY_tag ttag
+          else
+            let taux = { Ast.fn_effect = Ast.PURE;
+                         Ast.fn_is_iter = false }
+            in
+            let inputs = Array.map (fun (s, _) -> s.node) hdr in
+            let tsig = { Ast.sig_input_slots = inputs;
+                         Ast.sig_input_constrs = [| |];
+                         Ast.sig_output_slot =
+                local_slot
+                  (Ast.TY_tag ttag ) }
+            in
+              (Ast.TY_fn (tsig, taux))
 ;;
 
 (* Scopes and the visitor that builds them. *)
