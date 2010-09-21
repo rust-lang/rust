@@ -2719,6 +2719,7 @@ let trans_visitor
           if Array.length ttup <> 0
           then
             begin
+              let pc0 = (emitter()).Il.emit_pc in
               (iflog (fun _ ->
                         annotate (Printf.sprintf "tag case #%i" i)));
               let jmps =
@@ -2726,12 +2727,21 @@ let trans_visitor
                   (Il.Cell tmp) (imm (Int64.of_int i))
               in
               let ttup = get_nth_tag_tup cx ttag i in
+              let pc1 = (emitter()).Il.emit_pc in
                 iter_tup_parts
                   (get_element_ptr_dyn ty_params)
                   (get_variant_ptr dst_union i)
                   (get_variant_ptr src_union i)
                   ttup f;
-                List.iter patch jmps
+
+                (* Hack: if this variant is all dead code, blank it out. *)
+                if pc1 = (emitter()).Il.emit_pc
+                then
+                  begin
+                    for j = pc0 to (pc1-1)
+                    do (emitter()).Il.emit_quads.(j) <- Il.deadq done
+                  end;
+                List.iter patch jmps;
             end
       done;
 
