@@ -830,15 +830,18 @@ C_DEPFILES := $(RUNTIME_CS:%.cpp=%.d)
 	@$(call CFG_ECHO, dep: $<)
 	$(CFG_QUIET)$(call CFG_DEPEND_C, $@ \
       $(patsubst %.cpp, %$(CFG_OBJ_SUFFIX), $<), \
-      $(RUNTIME_INCS)) $< $(CFG_PATH_MUNGE) >$@
+      $(RUNTIME_INCS)) $< $(CFG_PATH_MUNGE) >$@.tmp \
+      && mv $@.tmp $@
 
 %.d: %.ml $(MKFILES)
 	@$(call CFG_ECHO, dep: $<)
-	$(CFG_QUIET)ocamldep$(OPT) $(ML_DEP_INCS) $< $(CFG_PATH_MUNGE) >$@
+	$(CFG_QUIET)ocamldep$(OPT) $(ML_DEP_INCS) $< $(CFG_PATH_MUNGE) >$@.tmp \
+    && mv $@.tmp $@
 
 %.d: %.mli $(MKFILES)
 	@$(call CFG_ECHO, dep: $<)
-	$(CFG_QUIET)ocamldep$(OPT) $(ML_DEP_INCS) $< $(CFG_PATH_MUNGE) >$@
+	$(CFG_QUIET)ocamldep$(OPT) $(ML_DEP_INCS) $< $(CFG_PATH_MUNGE) >$@.tmp \
+    && mv $@.tmp $@
 
 ifneq ($(MAKECMDGOALS),clean)
 -include $(ML_DEPFILES) $(C_DEPFILES)
@@ -853,15 +856,18 @@ CRATE_DEPFILES := $(ALL_TEST_CRATES:%.rc=%.d) $(STDLIB_DEPFILE)
 
 $(STDLIB_DEPFILE): $(STDLIB_CRATE) $(MKFILES) $(CFG_BOOT)
 	@$(call CFG_ECHO, dep: $<)
-	$(BOOT) -shared -rdeps $< $(CFG_PATH_MUNGE) >$@
+	$(BOOT) -shared -rdeps $< $(CFG_PATH_MUNGE) >$@.tmp \
+    && mv $@.tmp $@
 
 %.d: %.rc $(MKFILES) $(CFG_BOOT)
 	@$(call CFG_ECHO, dep: $<)
-	$(BOOT) -rdeps $< $(CFG_PATH_MUNGE) >$@
+	$(BOOT) -rdeps $< $(CFG_PATH_MUNGE) >$@.tmp \
+    && mv $@.tmp $@
 
 %.d: %.rs $(MKFILES) $(CFG_BOOT)
 	@$(call CFG_ECHO, dep: $<)
-	$(BOOT) -rdeps $< $(CFG_PATH_MUNGE) >$@
+	$(BOOT) -rdeps $< $(CFG_PATH_MUNGE) >$@.tmp \
+    && mv $@.tmp $@
 
 ifneq ($(MAKECMDGOALS),clean)
 -include $(CRATE_DEPFILES)
@@ -937,6 +943,9 @@ clean:
 	$(CFG_QUIET)rm -f $(BOOT_CMOS) $(BOOT_CMIS) $(BOOT_CMXS) $(BOOT_OBJS)
 	$(CFG_QUIET)rm -f $(CFG_COMPILER)
 	$(CFG_QUIET)rm -f $(ML_DEPFILES) $(C_DEPFILES) $(CRATE_DEPFILES)
+	$(CFG_QUIET)rm -f $(ML_DEPFILES:%.d=%.d.tmp)
+	$(CFG_QUIET)rm -f $(C_DEPFILES:%.d=%.d.tmp)
+	$(CFG_QUIET)rm -f $(CRATE_DEPFILES:%.d=%.d.tmp)
 	$(CFG_QUIET)rm -f $(GENERATED)
 	$(CFG_QUIET)rm -f $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
 	$(CFG_QUIET)rm -f $(TEST_RPASS_EXES_X86) $(TEST_RPASS_OUTS_X86) \
