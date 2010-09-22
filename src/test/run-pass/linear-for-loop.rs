@@ -27,12 +27,9 @@ fn main() {
       check (c == ('o' as u8));
     }
     // ...
-    if (i == 12) {
-      check (c == (0 as u8));
-    }
     i += 1;
     log i;
     log c;
   }
-  check(i == 12);
+  check(i == 11);
 }

@@ -2861,6 +2861,7 @@ let trans_visitor
       (dst_cell:Il.cell)
       (src_cell:Il.cell)
       (unit_ty:Ast.ty)
+      (trailing_null:bool)
       (f:Il.cell -> Il.cell -> Ast.ty -> unit)
       : unit =
 
@@ -2886,6 +2887,10 @@ let trans_visitor
             lea lim (fst (need_mem_cell data));
             mov ptr (Il.Cell lim);
             add_to lim (Il.Cell len);
+
+            if trailing_null
+            then sub_from lim (imm 1L);
+
             let back_jmp_target = mark () in
             let fwd_jmps =
               trans_compare_simple Il.JAE (Il.Cell ptr) (Il.Cell lim)
@@ -2935,10 +2940,13 @@ let trans_visitor
       | Ast.TY_fn _
       | Ast.TY_obj _ -> bug () "Attempting to iterate over fn/pred/obj slots"
 
-      | Ast.TY_vec _
+      | Ast.TY_vec _ ->
+          let unit_ty = seq_unit_ty ty in
+            iter_seq_parts ty_params dst_cell src_cell unit_ty false f
+
       | Ast.TY_str ->
           let unit_ty = seq_unit_ty ty in
-            iter_seq_parts ty_params dst_cell src_cell unit_ty f
+            iter_seq_parts ty_params dst_cell src_cell unit_ty true f
 
       | _ -> ()
 
@@ -3171,7 +3179,7 @@ let trans_visitor
       | Ast.TY_task -> trans_kill_task cell
       | Ast.TY_str -> trans_free cell false
       | Ast.TY_vec s ->
-          iter_seq_parts ty_params cell cell s
+          iter_seq_parts ty_params cell cell s false
              (fun _ src ty -> drop_ty ty_params src ty);
              trans_free cell is_gc
 
@@ -4655,6 +4663,7 @@ let trans_visitor
     let (seq_cell, seq_ty) = trans_lval seq in
     let unit_ty = seq_unit_ty seq_ty in
       iter_seq_parts ty_params seq_cell seq_cell unit_ty
+        (simplified_ty seq_ty = Ast.TY_str)
         begin
           fun _ src_cell unit_ty ->
             trans_init_slot_from_cell
