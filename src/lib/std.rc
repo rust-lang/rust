@@ -38,17 +38,26 @@ auth rand.mk_rng = unsafe;
 // Target-OS module.
 
 alt (target_os) {
-  case ("win32") {
-    mod os = "win32_os.rs";
-  } case ("macos") {
-    mod os = "macos_os.rs";
-  } else {
-    mod os = "linux_os.rs";
-  }
-}
+    case ("win32") {
+        mod os = "win32_os.rs";
+    } case ("macos") {
+        mod os = "macos_os.rs";
+    } else {
+        mod os = "linux_os.rs";
+    }
+ }
 
 // FIXME: parametric 
 mod map;
 mod deque;
 mod rand;
 mod dbg;
+
+// Local Variables:
+// mode: rust;
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:

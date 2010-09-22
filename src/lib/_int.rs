@@ -19,18 +19,27 @@ fn nonpositive(int x) -> bool { ret x <= 0; }
 fn nonnegative(int x) -> bool { ret x >= 0; }
 
 iter range(mutable int lo, int hi) -> int {
-  while (lo < hi) {
-    put lo;
-    lo += 1;
-  }
+    while (lo < hi) {
+        put lo;
+        lo += 1;
+    }
 }
 
 fn to_str(mutable int n, uint radix) -> str
 {
-  check (0u < radix && radix <= 16u);
-  if (n < 0) {
-    ret "-" + _uint.to_str((-n) as uint, radix);
-  } else {
-    ret _uint.to_str(n as uint, radix);
-  }
+    check (0u < radix && radix <= 16u);
+    if (n < 0) {
+        ret "-" + _uint.to_str((-n) as uint, radix);
+    } else {
+        ret _uint.to_str(n as uint, radix);
+    }
 }
+
+// Local Variables:
+// mode: rust;
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
