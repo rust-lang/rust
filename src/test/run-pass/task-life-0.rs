@@ -1,5 +1,5 @@
 fn main() -> () {
-    spawn child("Hello");
+    auto child_task = spawn child("Hello");
 }
 
 fn child(str s) {

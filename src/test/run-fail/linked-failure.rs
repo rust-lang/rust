@@ -8,7 +8,7 @@ fn child() {
 
 io fn main() {
   let port[int] p = port();
-  spawn child();
+  auto child_task = spawn child();
   let int x;
   x <- p;
 }

@@ -2,7 +2,7 @@
 
 io fn main() {
   let port[int] p = port();
-  spawn child(chan(p));
+  auto child_task = spawn child(chan(p));
   let int y;
   y <- p;
   log "received";

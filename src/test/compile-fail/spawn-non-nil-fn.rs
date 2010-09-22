@@ -5,5 +5,5 @@ fn f(int x) -> int {
 }
 
 fn main() {
-  spawn f(10);
+  auto taskf = spawn f(10);
 }
