@@ -10,6 +10,10 @@ mod fe {
     mod token;
 }
 
+mod me {
+    mod trans;
+}
+
 mod driver {
     mod rustc;
     mod session;
@@ -20,7 +24,8 @@ mod util {
 }
 
 auth driver.rustc.main = state;
-auth driver.rustc.write_module = unsafe;
+auth me.trans = unsafe;
+
 
 mod lib {
     alt (target_os) {
