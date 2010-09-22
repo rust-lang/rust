@@ -1240,9 +1240,13 @@ and parse_use
         [| (ident, item) |]
 
 and parse_item_decl ps items fn =
-  Array.iter
-    (fun (id,it) -> htab_put items id it)
-    (fn ps);
+  let add (id, item) =
+    if Hashtbl.mem items id then
+      raise (Parse_err
+        (ps, (Printf.sprintf "item name already in use: '%s'" id)));
+    Hashtbl.add items id item
+  in
+  Array.iter add (fn ps)
 
 and parse_mod_header (ps:pstate)
                      : (Ast.mod_view * Ast.mod_items) =
