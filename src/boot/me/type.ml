@@ -1010,7 +1010,7 @@ let populate_tag_graph_node (cx:Semant.ctxt) (id:Common.opaque_id) (n:int) =
       | Ast.TY_rec ty_rec ->
           Array.iter (fun (_, ty) -> add_ty ty) ty_rec
       | Ast.TY_fn ty_fn -> add_ty_fn ty_fn
-      | Ast.TY_chan ty | Ast.TY_port ty | Ast.TY_mutable ty
+      | Ast.TY_vec ty | Ast.TY_chan ty | Ast.TY_port ty | Ast.TY_mutable ty
           | Ast.TY_constrained (ty, _) -> add_ty ty
       | Ast.TY_obj (_, ty_fns) ->
           Hashtbl.iter (fun _ ty_fn -> add_ty_fn ty_fn) ty_fns
