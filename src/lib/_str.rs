@@ -100,3 +100,122 @@ fn refcount(str s) -> uint {
   // -1 because calling this function incremented the refcount.
   ret rustrt.refcount[u8](s) - 1u;
 }
+
+
+// Standard bits from the world of string libraries.
+
+fn index(str s, u8 c) -> int {
+  let int i = 0;
+  for (u8 k in s) {
+    if (k == c) {
+      ret i;
+    }
+    i += 1;
+  }
+  ret -1;
+}
+
+fn rindex(str s, u8 c) -> int {
+  let int n = _str.byte_len(s) as int;
+  while (n >= 0) {
+    if (s.(n) == c) {
+      ret n;
+    }
+    n -= 1;
+  }
+  ret n;
+}
+
+fn find(str haystack, str needle) -> int {
+
+  let int haystack_len = byte_len(haystack) as int;
+  let int needle_len = byte_len(needle) as int;
+
+  if (needle_len == 0) {
+    ret 0;
+  }
+
+  fn match_at(&str haystack,
+              &str needle,
+              int i) -> bool {
+    let int j = i;
+    for (u8 c in needle) {
+      if (haystack.(j) != c) {
+        ret false;
+      }
+      j += 1;
+    }
+    ret true;
+  }
+
+  let int i = 0;
+  while (i <= haystack_len - needle_len) {
+    if (match_at(haystack, needle, i)) {
+      ret i;
+    }
+    i += 1;
+  }
+  ret  -1;
+}
+
+fn substr(str s, uint begin, uint len) -> str {
+  let str accum = "";
+  let uint i = begin;
+  while (i < begin+len) {
+    accum += s.(i);
+    i += 1u;
+  }
+  ret accum;
+}
+
+fn split(str s, u8 sep) -> vec[str] {
+  let vec[str] v = vec();
+  let str accum = "";
+  let bool ends_with_sep = false;
+  for (u8 c in s) {
+    if (c == sep) {
+      v += accum;
+      accum = "";
+      ends_with_sep = true;
+    } else {
+      accum += c;
+      ends_with_sep = false;
+    }
+  }
+  if (_str.byte_len(accum) != 0u ||
+      ends_with_sep) {
+    v += accum;
+  }
+  ret v;
+}
+
+fn concat(vec[str] v) -> str {
+  let str s = "";
+  for (str ss in v) {
+    s += ss;
+  }
+  ret s;
+}
+
+fn connect(vec[str] v, str sep) -> str {
+  let str s = "";
+  let bool first = true;
+  for (str ss in v) {
+    if (first) {
+      first = false;
+    } else {
+      s += sep;
+    }
+    s += ss;
+  }
+  ret s;
+}
+
+
+// Local Variables:
+// mode: rust;
+// fill-column: 78;
+// indent-tabs-mode: nil
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
