@@ -18,7 +18,7 @@ fn main(vec[str] args) {
           auto p = parser.new_parser(sess, filename);
           log "opened file: " + filename;
           auto crate = parser.parse_crate(p);
-          trans.translate_crate(sess, crate);
+          trans.trans_crate(sess, crate);
       }
       i += 1;
   }

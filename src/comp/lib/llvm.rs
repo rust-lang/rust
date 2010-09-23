@@ -25,6 +25,10 @@ type LongLong = i64;
 type Long = i32;
 type Bool = int;
 
+fn True() -> Bool { ret 1; }
+fn False() -> Bool { ret 0; }
+
+
 native mod llvm = llvm_lib {
 
     type ModuleRef;
