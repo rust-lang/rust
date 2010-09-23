@@ -1,8 +1,8 @@
 import util.common.span;
 import std._uint;
 
-io obj session() {
-    io fn span_err(span sp, str msg) {
+obj session() {
+    fn span_err(span sp, str msg) {
         let str s =  sp.filename;
         s += ':' as u8;
         // We really need #fmt soon!
@@ -19,8 +19,15 @@ io obj session() {
         fail;
     }
 
-    io fn err(str msg) {
+    fn err(str msg) {
         let str s = "error: ";
+        s += msg;
+        log s;
+        fail;
+    }
+
+    fn unimpl(str msg) {
+        let str s = "error: unimplemented ";
         s += msg;
         log s;
         fail;

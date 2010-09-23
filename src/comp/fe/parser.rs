@@ -218,10 +218,26 @@ state fn parse_fn(parser p) -> tup(ast.ident, ast.item) {
     ret tup(id, ast.item_fn(@f));
 }
 
+state fn parse_mod(parser p) -> tup(ast.ident, ast.item) {
+    expect(p, token.MOD);
+    auto id = parse_ident(p);
+    expect(p, token.LBRACE);
+    let ast._mod m = new_str_hash[ast.item]();
+    while (p.peek() != token.RBRACE) {
+        auto i = parse_item(p);
+        m.insert(i._0, i._1);
+    }
+    expect(p, token.RBRACE);
+    ret tup(id, ast.item_mod(@m));
+}
+
 state fn parse_item(parser p) -> tup(ast.ident, ast.item) {
     alt (p.peek()) {
         case (token.FN) {
             ret parse_fn(p);
+        }
+        case (token.MOD) {
+            ret parse_mod(p);
         }
     }
     p.err("expectied item");

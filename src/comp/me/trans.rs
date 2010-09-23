@@ -17,6 +17,10 @@ import lib.llvm.llvm.BasicBlockRef;
 import lib.llvm.False;
 import lib.llvm.True;
 
+type trans_ctxt = rec(session.session sess,
+                      ModuleRef llmod,
+                      str path);
+
 fn T_nil() -> TypeRef {
     ret llvm.LLVMVoidType();
 }
@@ -32,35 +36,54 @@ fn T_fn(vec[TypeRef] inputs, TypeRef output) -> TypeRef {
                               False());
 }
 
-fn trans_fn(ModuleRef llmod, str name, &ast._fn f) {
-    let vec[TypeRef] args = vec();
-    let TypeRef llty = T_fn(args, T_nil());
-    let ValueRef llfn =
-        llvm.LLVMAddFunction(llmod, _str.buf(name), llty);
+fn trans_log(&trans_ctxt cx, builder b, &ast.atom a) {
 }
 
-fn trans_block(ast.block b, ValueRef llfn) {
-    let BasicBlockRef llbb =
-        llvm.LLVMAppendBasicBlock(llfn, 0 as sbuf);
-    let BuilderRef llbuild = llvm.LLVMCreateBuilder();
-    llvm.LLVMPositionBuilderAtEnd(llbuild, llbb);
-    auto b = builder(llbuild);
-}
-
-fn trans_mod_item(ModuleRef llmod, str name, &ast.item item) {
-    alt (item) {
-        case (ast.item_fn(?f)) {
-            trans_fn(llmod, name, *f);
+fn trans_stmt(&trans_ctxt cx, builder b, &ast.stmt s) {
+    alt (s) {
+        case (ast.stmt_log(?a)) {
+            trans_log(cx, b, *a);
         }
-        case (ast.item_mod(?m)) {
-            trans_mod(llmod, name, *m);
+        case (_) {
+            cx.sess.unimpl("stmt variant");
         }
     }
 }
 
-fn trans_mod(ModuleRef llmod, str name, &ast._mod m) {
+fn trans_block(&trans_ctxt cx, ValueRef llfn, &ast.block b) {
+    let BasicBlockRef llbb =
+        llvm.LLVMAppendBasicBlock(llfn, _str.buf(""));
+    let BuilderRef llbuild = llvm.LLVMCreateBuilder();
+    llvm.LLVMPositionBuilderAtEnd(llbuild, llbb);
+    auto bld = builder(llbuild);
+    for (@ast.stmt s in b) {
+        trans_stmt(cx, bld, *s);
+    }
+}
+
+fn trans_fn(&trans_ctxt cx, &ast._fn f) {
+    let vec[TypeRef] args = vec();
+    let TypeRef llty = T_fn(args, T_nil());
+    let ValueRef llfn =
+        llvm.LLVMAddFunction(cx.llmod, _str.buf(cx.path), llty);
+    trans_block(cx, llfn, f.body);
+}
+
+fn trans_item(&trans_ctxt cx, &str name, &ast.item item) {
+    auto sub_cx = rec(path=cx.path + "." + name with cx);
+    alt (item) {
+        case (ast.item_fn(?f)) {
+            trans_fn(sub_cx, *f);
+        }
+        case (ast.item_mod(?m)) {
+            trans_mod(sub_cx, *m);
+        }
+    }
+}
+
+fn trans_mod(&trans_ctxt cx, &ast._mod m) {
     for each (tup(str, ast.item) pair in m.items()) {
-        trans_mod_item(llmod, name + "." + pair._0, pair._1);
+        trans_item(cx, pair._0, pair._1);
     }
 }
 
@@ -69,6 +92,8 @@ fn trans_crate(session.session sess, ast.crate crate) {
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
 
+    auto cx = rec(sess=sess, llmod=llmod, path="");
+    trans_mod(cx, crate.module);
 
     llvm.LLVMWriteBitcodeToFile(llmod, _str.buf("rust_out.bc"));
     llvm.LLVMDisposeModule(llmod);
