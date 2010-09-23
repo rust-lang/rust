@@ -20,6 +20,7 @@ type hashmap[K, V] = obj {
                      fn find(&K key) -> util.option[V];
                      fn remove(&K key) -> util.option[V];
                      fn rehash();
+                     iter items() -> tup(K,V);
 };
 
 fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
@@ -215,6 +216,17 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                     make_buckets[K, V](nbkts);
                 rehash[K, V](hasher, eqer, bkts, nbkts, newbkts, nbkts);
                 bkts = newbkts;
+            }
+
+            iter items() -> tup(K,V) {
+                for (bucket[K,V] b in bkts) {
+                    alt (b) {
+                        case(some[K,V](?k,?v)) {
+                            put tup(k,v);
+                        }
+                        case (_) { }
+                    }
+                }
             }
         }
 
