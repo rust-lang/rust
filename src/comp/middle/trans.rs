@@ -3,8 +3,9 @@ import std._vec;
 import std._str.rustrt.sbuf;
 import std._vec.rustrt.vbuf;
 
-import fe.ast;
+import front.ast;
 import driver.session;
+import back.x86;
 
 import lib.llvm.llvm;
 import lib.llvm.builder;
@@ -36,10 +37,12 @@ fn T_fn(vec[TypeRef] inputs, TypeRef output) -> TypeRef {
                               False());
 }
 
+type terminator = fn(&trans_ctxt cx, builder b);
+
 fn trans_log(&trans_ctxt cx, builder b, &ast.atom a) {
 }
 
-fn trans_stmt(&trans_ctxt cx, builder b, &ast.stmt s) {
+fn trans_stmt(&trans_ctxt cx, builder b, &ast.stmt s, terminator t) {
     alt (s) {
         case (ast.stmt_log(?a)) {
             trans_log(cx, b, *a);
@@ -50,15 +53,20 @@ fn trans_stmt(&trans_ctxt cx, builder b, &ast.stmt s) {
     }
 }
 
-fn trans_block(&trans_ctxt cx, ValueRef llfn, &ast.block b) {
+fn default_terminate(&trans_ctxt cx, builder b) {
+    b.RetVoid();
+}
+
+fn trans_block(&trans_ctxt cx, ValueRef llfn, &ast.block b, terminator t) {
     let BasicBlockRef llbb =
         llvm.LLVMAppendBasicBlock(llfn, _str.buf(""));
     let BuilderRef llbuild = llvm.LLVMCreateBuilder();
     llvm.LLVMPositionBuilderAtEnd(llbuild, llbb);
     auto bld = builder(llbuild);
     for (@ast.stmt s in b) {
-        trans_stmt(cx, bld, *s);
+        trans_stmt(cx, bld, *s, t);
     }
+    t(cx, bld);
 }
 
 fn trans_fn(&trans_ctxt cx, &ast._fn f) {
@@ -66,7 +74,8 @@ fn trans_fn(&trans_ctxt cx, &ast._fn f) {
     let TypeRef llty = T_fn(args, T_nil());
     let ValueRef llfn =
         llvm.LLVMAddFunction(cx.llmod, _str.buf(cx.path), llty);
-    trans_block(cx, llfn, f.body);
+    auto term = default_terminate;
+    trans_block(cx, llfn, f.body, term);
 }
 
 fn trans_item(&trans_ctxt cx, &str name, &ast.item item) {
@@ -91,6 +100,8 @@ fn trans_crate(session.session sess, ast.crate crate) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
+
+    llvm.LLVMSetModuleInlineAsm(llmod, _str.buf(x86.get_module_asm()));
 
     auto cx = rec(sess=sess, llmod=llmod, path="");
     trans_mod(cx, crate.module);

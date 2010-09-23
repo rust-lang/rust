@@ -1,8 +1,8 @@
 // -*- rust -*-
 
-import fe.parser;
-import fe.token;
-import me.trans;
+import front.parser;
+import front.token;
+import middle.trans;
 
 fn main(vec[str] args) {
 
@@ -16,7 +16,6 @@ fn main(vec[str] args) {
   for (str filename in args) {
       if (i > 0) {
           auto p = parser.new_parser(sess, filename);
-          log "opened file: " + filename;
           auto crate = parser.parse_crate(p);
           trans.trans_crate(sess, crate);
       }

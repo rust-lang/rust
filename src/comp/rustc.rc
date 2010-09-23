@@ -3,15 +3,20 @@
 
 use std;
 
-mod fe {
+mod front {
     mod ast;
     mod lexer;
     mod parser;
     mod token;
 }
 
-mod me {
+mod middle {
     mod trans;
+}
+
+mod back {
+    mod abi;
+    mod x86;
 }
 
 mod driver {
@@ -24,7 +29,7 @@ mod util {
 }
 
 auth driver.rustc.main = state;
-auth me.trans = unsafe;
+auth middle.trans = unsafe;
 
 
 mod lib {
