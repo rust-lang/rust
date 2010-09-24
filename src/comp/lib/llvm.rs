@@ -1007,7 +1007,8 @@ obj builder(BuilderRef B) {
 
     fn InsertElement(ValueRef VecVal, ValueRef EltVal,
                      ValueRef Index) -> ValueRef {
-        ret llvm.LLVMBuildInsertElement(B, VecVal, EltVal, Index, _str.buf(""));
+        ret llvm.LLVMBuildInsertElement(B, VecVal, EltVal, Index,
+                                        _str.buf(""));
     }
 
     fn ShuffleVector(ValueRef V1, ValueRef V2, ValueRef Mask) -> ValueRef {
