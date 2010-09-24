@@ -121,7 +121,7 @@ fn decl_glue(int align, str prefix, str name, vec[str] insns) -> str {
 fn decl_upcall_glue(int align, str prefix, uint n) -> str {
     let int i = n as int;
     ret decl_glue(align, prefix,
-                  "rust_upcall_" + istr(i),
+                  abi.upcall_glue_name(i),
                   upcall_glue(i));
 }
 
@@ -131,11 +131,11 @@ fn get_module_asm() -> str {
 
     auto glues =
         vec(decl_glue(align, prefix,
-                      "rust_activate_glue",
+                      abi.activate_glue_name(),
                       rust_activate_glue()),
 
             decl_glue(align, prefix,
-                      "rust_yield_glue",
+                      abi.yield_glue_name(),
                       rust_yield_glue()))
 
         + _vec.init_fn[str](bind decl_upcall_glue(align, prefix, _),

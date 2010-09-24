@@ -36,6 +36,18 @@ const int worst_case_glue_call_args = 7;
 
 const int n_upcall_glues = 7;
 
+fn upcall_glue_name(int n) -> str {
+    ret "rust_upcall_" + util.common.istr(n);
+}
+
+fn activate_glue_name() -> str {
+    ret "rust_activate_glue";
+}
+
+fn yield_glue_name() -> str {
+    ret "rust_yield_glue";
+}
+
 //
 // Local Variables:
 // mode: rust

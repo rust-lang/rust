@@ -41,7 +41,6 @@ const uint LLVMColdCallConv = 9u;
 const uint LLVMX86StdcallCallConv = 64u;
 const uint LLVMX86FastcallCallConv = 65u;
 
-
 native mod llvm = llvm_lib {
 
     type ModuleRef;
@@ -95,6 +94,14 @@ native mod llvm = llvm_lib {
 
     /** See Module::setModuleInlineAsm. */
     fn LLVMSetModuleInlineAsm(ModuleRef M, sbuf Asm);
+
+    /** See llvm::LLVMTypeKind::getTypeID. */
+
+    // FIXME: returning int rather than TypeKind because
+    // we directly inspect the values, and casting from
+    // a native doesn't work yet (only *to* a native).
+
+    fn LLVMGetTypeKind(TypeRef Ty) -> int;
 
     /** See llvm::LLVMType::getContext. */
     fn LLVMGetTypeContext(TypeRef Ty) -> ContextRef;
@@ -213,7 +220,9 @@ native mod llvm = llvm_lib {
 
     /* Operations on scalar constants */
     fn LLVMConstInt(TypeRef IntTy, ULongLong N, Bool SignExtend) -> ValueRef;
-    fn LLVMConstIntOfString(TypeRef IntTy, sbuf Text, u8 Radix) -> ValueRef;
+    // FIXME: radix is actually u8, but our native layer can't handle this
+    // yet.  lucky for us we're little-endian. Small miracles.
+    fn LLVMConstIntOfString(TypeRef IntTy, sbuf Text, int Radix) -> ValueRef;
     fn LLVMConstIntOfStringAndSize(TypeRef IntTy, sbuf Text,
                                    uint SLen, u8 Radix) -> ValueRef;
     fn LLVMConstReal(TypeRef RealTy, f64 N) -> ValueRef;
@@ -1040,6 +1049,82 @@ obj builder(BuilderRef B) {
         llvm.LLVMDisposeBuilder(B);
     }
 }
+
+fn type_to_str(TypeRef ty) -> str {
+    let int kind = llvm.LLVMGetTypeKind(ty);
+
+    fn tys_str(vec[TypeRef] tys) -> str {
+        let str s = "";
+        let bool first = true;
+        for (TypeRef t in tys) {
+            if (first) {
+                first = false;
+            } else {
+                s += ", ";
+            }
+            s += type_to_str(t);
+        }
+        ret s;
+    }
+
+    alt (kind) {
+
+        // FIXME: more enum-as-int constants determined from Core.h;
+        // horrible, horrible. Complete as needed.
+
+        case (0) { ret "Void"; }
+        case (1) { ret "Float"; }
+        case (2) { ret "Double"; }
+        case (3) { ret "X86_FP80"; }
+        case (4) { ret "FP128"; }
+        case (5) { ret "PPC_FP128"; }
+        case (6) { ret "Label"; }
+
+        case (7) {
+            ret "i" + util.common.istr(llvm.LLVMGetIntTypeWidth(ty) as int);
+        }
+
+        case (8) {
+            auto s = "fn(";
+            let TypeRef out_ty = llvm.LLVMGetReturnType(ty);
+            let uint n_args = llvm.LLVMCountParamTypes(ty);
+            let vec[TypeRef] args =
+                _vec.init_elt[TypeRef](0 as TypeRef, n_args);
+            llvm.LLVMGetParamTypes(ty, _vec.buf[TypeRef](args));
+            s += tys_str(args);
+            s += ") -> ";
+            s += type_to_str(out_ty);
+            ret s;
+        }
+
+        case (9) {
+            let str s = "{";
+            let uint n_elts = llvm.LLVMCountStructElementTypes(ty);
+            let vec[TypeRef] elts =
+                _vec.init_elt[TypeRef](0 as TypeRef, n_elts);
+            llvm.LLVMGetStructElementTypes(ty, _vec.buf[TypeRef](elts));
+            s += tys_str(elts);
+            s += "}";
+            ret s;
+        }
+
+        case (10) { ret "Array"; }
+
+        case (11) {
+            ret "*" + type_to_str(llvm.LLVMGetElementType(ty));
+        }
+
+        case (12) { ret "Opaque"; }
+        case (13) { ret "Vector"; }
+        case (14) { ret "Metadata"; }
+        case (15) { ret "Union"; }
+        case (_) {
+            log "unknown TypeKind" + util.common.istr(kind as int);
+            fail;
+        }
+    }
+}
+
 
 //
 // Local Variables:
