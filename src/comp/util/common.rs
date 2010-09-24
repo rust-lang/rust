@@ -1,4 +1,5 @@
 import std._uint;
+import std._int;
 
 type pos = rec(uint line, uint col);
 type span = rec(str filename, pos lo, pos hi);
@@ -39,6 +40,10 @@ fn new_str_hash[V]() -> std.map.hashmap[str,V] {
     let std.map.hashfn[str] hasher = std._str.hash;
     let std.map.eqfn[str] eqer = std._str.eq;
     ret std.map.mk_hashmap[str,V](hasher, eqer);
+}
+
+fn istr(int i) -> str {
+    ret _int.to_str(i, 10u);
 }
 
 //

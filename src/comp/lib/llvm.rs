@@ -25,8 +25,19 @@ type LongLong = i64;
 type Long = i32;
 type Bool = int;
 
-fn True() -> Bool { ret 1; }
-fn False() -> Bool { ret 0; }
+
+const Bool True = 1;
+const Bool False = 0;
+
+// Consts for the LLVM CallConv type, pre-cast to uint.
+// FIXME: figure out a way to merge these with the native
+// typedef and/or a tag type in the native module below.
+
+const uint LLVMCCallConv = 0u;
+const uint LLVMFastCallConv = 8u;
+const uint LLVMColdCallConv = 9u;
+const uint LLVMX86StdcallCallConv = 64u;
+const uint LLVMX86FastcallCallConv = 65u;
 
 
 native mod llvm = llvm_lib {

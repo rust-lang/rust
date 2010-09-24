@@ -34,6 +34,8 @@ const int calltup_elt_iterator_args = 5;
 
 const int worst_case_glue_call_args = 7;
 
+const int n_upcall_glues = 7;
+
 //
 // Local Variables:
 // mode: rust

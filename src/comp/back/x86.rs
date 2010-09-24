@@ -1,14 +1,10 @@
 import lib.llvm.llvm;
 import lib.llvm.llvm.ModuleRef;
 import std._str;
-import std._int;
 import std._vec;
+import util.common.istr;
 
 const int wordsz = 4;
-
-fn istr(int i) -> str {
-    ret _int.to_str(i, 10u);
-}
 
 fn wstr(int i) -> str {
     ret istr(i * wordsz);
@@ -122,6 +118,13 @@ fn decl_glue(int align, str prefix, str name, vec[str] insns) -> str {
 }
 
 
+fn decl_upcall_glue(int align, str prefix, uint n) -> str {
+    let int i = n as int;
+    ret decl_glue(align, prefix,
+                  "rust_upcall_" + istr(i),
+                  upcall_glue(i));
+}
+
 fn get_module_asm() -> str {
     auto align = 4;
     auto prefix = "";
@@ -133,19 +136,14 @@ fn get_module_asm() -> str {
 
             decl_glue(align, prefix,
                       "rust_yield_glue",
-                      rust_yield_glue()));
+                      rust_yield_glue()))
 
-    let int i = 0;
-    let int n_upcall_glues = 7;
-    while (i < n_upcall_glues) {
-        glues += decl_glue(align, prefix,
-                           "rust_upcall_" + istr(i),
-                           upcall_glue(i));
-        i += 1;
-    }
+        + _vec.init_fn[str](bind decl_upcall_glue(align, prefix, _),
+                            abi.n_upcall_glues as uint);
 
     ret _str.connect(glues, "\n\n");
 }
+
 
 //
 // Local Variables:
