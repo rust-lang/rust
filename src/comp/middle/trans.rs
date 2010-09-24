@@ -79,7 +79,22 @@ fn T_opaque() -> TypeRef {
 
 fn T_task() -> TypeRef {
     ret T_struct(vec(T_int(),      // Refcount
-                     T_opaque())); // Rest is opaque for now
+                     T_int(),      // Delegate pointer
+                     T_int(),      // Stack segment pointer
+                     T_int(),      // Runtime SP
+                     T_int(),      // Rust SP
+                     T_int(),      // GC chain
+                     T_int(),      // Domain pointer
+                     T_int()       // Crate cache pointer
+                     ));
+}
+
+fn T_double() -> TypeRef {
+    ret llvm.LLVMDoubleType();
+}
+
+fn T_taskptr() -> TypeRef {
+    ret T_ptr(T_task());
 }
 
 
@@ -121,15 +136,19 @@ fn decl_cdecl_fn(ModuleRef llmod, str name,
 }
 
 fn decl_glue(ModuleRef llmod, str s) -> ValueRef {
-    ret decl_cdecl_fn(llmod, s, vec(T_ptr(T_task())), T_nil());
+    ret decl_cdecl_fn(llmod, s, vec(T_taskptr()), T_nil());
 }
 
 fn decl_upcall(ModuleRef llmod, uint _n) -> ValueRef {
+    // It doesn't actually matter what type we come up with here, at the
+    // moment, as we cast the upcall function pointers to int before passing
+    // them to the indirect upcall-invocation glue.  But eventually we'd like
+    // to call them directly, once we have a calling convention worked out.
     let int n = _n as int;
     let str s = abi.upcall_glue_name(n);
     let vec[TypeRef] args =
-        vec(T_ptr(T_task()), // taskptr
-            T_int())         // callee
+        vec(T_taskptr(), // taskptr
+            T_int())     // callee
         + _vec.init_elt[TypeRef](T_int(), n as uint);
 
     ret decl_cdecl_fn(llmod, s, args, T_int());
@@ -139,7 +158,7 @@ fn get_upcall(@trans_ctxt cx, str name, int n_args) -> ValueRef {
     if (cx.upcalls.contains_key(name)) {
         ret cx.upcalls.get(name);
     }
-    auto inputs = vec(T_ptr(T_task()));
+    auto inputs = vec(T_taskptr());
     inputs += _vec.init_elt[TypeRef](T_int(), n_args as uint);
     auto output = T_nil();
     auto f = decl_cdecl_fn(cx.llmod, name, inputs, output);
@@ -213,7 +232,7 @@ fn trans_block(@fn_ctxt cx, &ast.block b, terminator term) {
 
 fn trans_fn(@trans_ctxt cx, &ast._fn f) {
     let vec[TypeRef] args = vec(T_ptr(T_int()), // outptr.
-                                T_ptr(T_task()) // taskptr
+                                T_taskptr()     // taskptr
                                 );
     let ValueRef llfn = decl_cdecl_fn(cx.llmod, cx.path, args, T_nil());
     let ValueRef lloutptr = llvm.LLVMGetParam(llfn, 0u);
