@@ -2,6 +2,7 @@ import std._str;
 import std._vec;
 import std._str.rustrt.sbuf;
 import std._vec.rustrt.vbuf;
+import std.map.hashmap;
 
 import front.ast;
 import driver.session;
@@ -9,6 +10,7 @@ import back.x86;
 import back.abi;
 
 import util.common.istr;
+import util.common.new_str_hash;
 
 import lib.llvm.llvm;
 import lib.llvm.builder;
@@ -27,6 +29,7 @@ type glue_fns = rec(ValueRef activate_glue,
 
 type trans_ctxt = rec(session.session sess,
                       ModuleRef llmod,
+                      hashmap[str,ValueRef] upcalls,
                       @glue_fns glues,
                       str path);
 
@@ -88,10 +91,36 @@ fn decl_upcall(ModuleRef llmod, uint _n) -> ValueRef {
     ret decl_cdecl_fn(llmod, s, args, T_int());
 }
 
-
 type terminator = fn(&trans_ctxt cx, builder b);
 
+fn get_upcall(&trans_ctxt cx, str name, int n_args) -> ValueRef {
+    if (cx.upcalls.contains_key(name)) {
+        ret cx.upcalls.get(name);
+    }
+    auto inputs = vec(T_ptr(T_task()));
+    inputs += _vec.init_elt[TypeRef](T_int(), n_args as uint);
+    auto output = T_nil();
+    auto f = decl_cdecl_fn(cx.llmod, name, inputs, output);
+    cx.upcalls.insert(name, f);
+    ret f;
+}
+
 fn trans_log(&trans_ctxt cx, builder b, &ast.atom a) {
+    alt (a) {
+        case (ast.atom_lit(?lit)) {
+            alt (*lit) {
+                case (ast.lit_int(?i)) {
+                    cx.sess.unimpl("log int");
+                }
+                case (_) {
+                    cx.sess.unimpl("literal variant in trans_log");
+                }
+            }
+        }
+        case (_) {
+            cx.sess.unimpl("atom variant in trans_log");
+        }
+    }
 }
 
 fn trans_stmt(&trans_ctxt cx, builder b, &ast.stmt s, terminator t) {
@@ -160,7 +189,12 @@ fn trans_crate(session.session sess, ast.crate crate) {
                       _vec.init_fn[ValueRef](bind decl_upcall(llmod, _),
                                              abi.n_upcall_glues as uint));
 
-    auto cx = rec(sess=sess, llmod=llmod, glues=glues, path="");
+    auto cx = rec(sess = sess,
+                  llmod = llmod,
+                  upcalls = new_str_hash[ValueRef](),
+                  glues = glues,
+                  path = "");
+
     trans_mod(cx, crate.module);
 
     llvm.LLVMWriteBitcodeToFile(llmod, _str.buf("rust_out.bc"));
