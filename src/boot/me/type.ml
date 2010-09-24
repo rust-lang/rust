@@ -295,7 +295,9 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
             LTYPE_mono ty
           else
             LTYPE_poly ((Array.map (fun p -> p.Common.node) params), ty)
-      | Ast.MOD_ITEM_const (ty, _) -> LTYPE_mono ty
+      | Ast.MOD_ITEM_const _ ->
+          let ty = Hashtbl.find cx.Semant.ctxt_all_item_types mid_id in
+            LTYPE_mono ty
       | Ast.MOD_ITEM_type _ ->
           Common.err None "Type-item used in non-type context"
   in
