@@ -89,6 +89,24 @@ fn T_task() -> TypeRef {
                      ));
 }
 
+fn T_crate() -> TypeRef {
+    ret T_struct(vec(T_int(),      // ptrdiff_t image_base_off
+                     T_int(),      // uintptr_t self_addr
+                     T_int(),      // ptrdiff_t debug_abbrev_off
+                     T_int(),      // size_t debug_abbrev_sz
+                     T_int(),      // ptrdiff_t debug_info_off
+                     T_int(),      // size_t debug_info_sz
+                     T_int(),      // size_t activate_glue_off
+                     T_int(),      // size_t yield_glue_off
+                     T_int(),      // size_t unwind_glue_off
+                     T_int(),      // size_t gc_glue_off
+                     T_int(),      // size_t main_exit_task_glue_off
+                     T_int(),      // int n_rust_syms
+                     T_int(),      // int n_c_syms
+                     T_int()       //int n_libs
+                     ));
+}
+
 fn T_double() -> TypeRef {
     ret llvm.LLVMDoubleType();
 }
@@ -263,6 +281,49 @@ fn trans_mod(@trans_ctxt cx, &ast._mod m) {
     }
 }
 
+fn crate_constant(@trans_ctxt cx) -> ValueRef {
+
+    let ValueRef crate_ptr =
+        llvm.LLVMAddGlobal(cx.llmod, T_ptr(T_crate()),
+                           _str.buf("rust_crate"));
+
+    fn p2i(ValueRef v) -> ValueRef {
+        ret llvm.LLVMConstPtrToInt(v, T_int());
+    }
+
+    let ValueRef crate_addr = p2i(crate_ptr);
+
+    let ValueRef activate_glue_off =
+        llvm.LLVMConstSub(p2i(cx.glues.activate_glue), crate_addr);
+
+    let ValueRef yield_glue_off =
+        llvm.LLVMConstSub(p2i(cx.glues.yield_glue), crate_addr);
+
+    // FIXME: we aren't generating the exit-task glue yet.
+    // llvm.LLVMConstSub(p2i(cx.glues.exit_task_glue), crate_addr);
+    let ValueRef exit_task_glue_off = C_null(T_int());
+
+    let ValueRef crate_val =
+        C_struct(vec(C_null(T_int()),     // ptrdiff_t image_base_off
+                     crate_ptr,           // uintptr_t self_addr
+                     C_null(T_int()),     // ptrdiff_t debug_abbrev_off
+                     C_null(T_int()),     // size_t debug_abbrev_sz
+                     C_null(T_int()),     // ptrdiff_t debug_info_off
+                     C_null(T_int()),     // size_t debug_info_sz
+                     activate_glue_off,   // size_t activate_glue_off
+                     yield_glue_off,      // size_t yield_glue_off
+                     C_null(T_int()),     // size_t unwind_glue_off
+                     C_null(T_int()),     // size_t gc_glue_off
+                     exit_task_glue_off,  // size_t main_exit_task_glue_off
+                     C_null(T_int()),     // int n_rust_syms
+                     C_null(T_int()),     // int n_c_syms
+                     C_null(T_int())      // int n_libs
+                     ));
+
+    llvm.LLVMSetInitializer(crate_ptr, crate_val);
+    ret crate_ptr;
+}
+
 fn trans_crate(session.session sess, ast.crate crate) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
@@ -281,7 +342,7 @@ fn trans_crate(session.session sess, ast.crate crate) {
                    llmod = llmod,
                    upcalls = new_str_hash[ValueRef](),
                    glues = glues,
-                   path = "");
+                   path = "_rust");
 
     trans_mod(cx, crate.module);
 
