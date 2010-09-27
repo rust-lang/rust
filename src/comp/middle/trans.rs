@@ -30,6 +30,7 @@ type glue_fns = rec(ValueRef activate_glue,
 type trans_ctxt = rec(session.session sess,
                       ModuleRef llmod,
                       hashmap[str,ValueRef] upcalls,
+                      hashmap[str,ValueRef] fns,
                       @glue_fns glues,
                       str path);
 
@@ -233,13 +234,17 @@ fn default_terminate(@fn_ctxt cx, builder build) {
     build.RetVoid();
 }
 
+fn new_builder(BasicBlockRef llbb) -> builder {
+    let BuilderRef llbuild = llvm.LLVMCreateBuilder();
+    llvm.LLVMPositionBuilderAtEnd(llbuild, llbb);
+    ret builder(llbuild);
+}
+
 fn trans_block(@fn_ctxt cx, &ast.block b, terminator term) {
     let BasicBlockRef llbb =
         llvm.LLVMAppendBasicBlock(cx.llfn, _str.buf(""));
-    let BuilderRef llbuild = llvm.LLVMCreateBuilder();
-    llvm.LLVMPositionBuilderAtEnd(llbuild, llbb);
     auto bcx = @rec(llbb=llbb,
-                    build=builder(llbuild),
+                    build=new_builder(llbb),
                     term=term,
                     fcx=cx);
     for (@ast.stmt s in b) {
@@ -253,6 +258,7 @@ fn trans_fn(@trans_ctxt cx, &ast._fn f) {
                                 T_taskptr()     // taskptr
                                 );
     let ValueRef llfn = decl_cdecl_fn(cx.llmod, cx.path, args, T_nil());
+    cx.fns.insert(cx.path, llfn);
     let ValueRef lloutptr = llvm.LLVMGetParam(llfn, 0u);
     let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 1u);
     auto fcx = @rec(llfn=llfn,
@@ -281,15 +287,16 @@ fn trans_mod(@trans_ctxt cx, &ast._mod m) {
     }
 }
 
+
+fn p2i(ValueRef v) -> ValueRef {
+    ret llvm.LLVMConstPtrToInt(v, T_int());
+}
+
 fn crate_constant(@trans_ctxt cx) -> ValueRef {
 
     let ValueRef crate_ptr =
-        llvm.LLVMAddGlobal(cx.llmod, T_ptr(T_crate()),
+        llvm.LLVMAddGlobal(cx.llmod, T_crate(),
                            _str.buf("rust_crate"));
-
-    fn p2i(ValueRef v) -> ValueRef {
-        ret llvm.LLVMConstPtrToInt(v, T_int());
-    }
 
     let ValueRef crate_addr = p2i(crate_ptr);
 
@@ -305,7 +312,7 @@ fn crate_constant(@trans_ctxt cx) -> ValueRef {
 
     let ValueRef crate_val =
         C_struct(vec(C_null(T_int()),     // ptrdiff_t image_base_off
-                     crate_ptr,           // uintptr_t self_addr
+                     p2i(crate_ptr),      // uintptr_t self_addr
                      C_null(T_int()),     // ptrdiff_t debug_abbrev_off
                      C_null(T_int()),     // size_t debug_abbrev_sz
                      C_null(T_int()),     // ptrdiff_t debug_info_off
@@ -322,6 +329,38 @@ fn crate_constant(@trans_ctxt cx) -> ValueRef {
 
     llvm.LLVMSetInitializer(crate_ptr, crate_val);
     ret crate_ptr;
+}
+
+fn trans_main_fn(@trans_ctxt cx, ValueRef llcrate) {
+    auto T_main_args = vec(T_int(), T_int());
+    auto T_rust_start_args = vec(T_int(), T_int(), T_int(), T_int());
+
+    auto llmain =
+        decl_cdecl_fn(cx.llmod, "main", T_main_args, T_int());
+
+    auto llrust_start =
+        decl_cdecl_fn(cx.llmod, "rust_start", T_rust_start_args, T_int());
+
+    auto llargc = llvm.LLVMGetParam(llmain, 0u);
+    auto llargv = llvm.LLVMGetParam(llmain, 1u);
+    auto llrust_main = cx.fns.get("_rust.main");
+
+    //
+    // Emit the moral equivalent of:
+    //
+    // main(int argc, char **argv) {
+    //     rust_start(&_rust.main, &crate, argc, argv);
+    // }
+    //
+
+    let BasicBlockRef llbb =
+        llvm.LLVMAppendBasicBlock(llmain, _str.buf(""));
+    auto b = new_builder(llbb);
+
+    auto start_args = vec(p2i(llrust_main), p2i(llcrate), llargc, llargv);
+
+    b.Ret(b.Call(llrust_start, start_args));
+
 }
 
 fn trans_crate(session.session sess, ast.crate crate) {
@@ -341,10 +380,13 @@ fn trans_crate(session.session sess, ast.crate crate) {
     auto cx = @rec(sess = sess,
                    llmod = llmod,
                    upcalls = new_str_hash[ValueRef](),
+                   fns = new_str_hash[ValueRef](),
                    glues = glues,
                    path = "_rust");
 
     trans_mod(cx, crate.module);
+
+    trans_main_fn(cx, crate_constant(cx));
 
     llvm.LLVMWriteBitcodeToFile(llmod, _str.buf("rust_out.bc"));
     llvm.LLVMDisposeModule(llmod);
