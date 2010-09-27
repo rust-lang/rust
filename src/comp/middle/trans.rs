@@ -25,6 +25,7 @@ import lib.llvm.True;
 
 type glue_fns = rec(ValueRef activate_glue,
                     ValueRef yield_glue,
+                    ValueRef exit_task_glue,
                     vec[ValueRef] upcall_glues);
 
 type trans_ctxt = rec(session.session sess,
@@ -240,32 +241,48 @@ fn new_builder(BasicBlockRef llbb) -> builder {
     ret builder(llbuild);
 }
 
-fn trans_block(@fn_ctxt cx, &ast.block b, terminator term) {
+fn new_block_ctxt(@fn_ctxt cx, terminator term) -> @block_ctxt {
     let BasicBlockRef llbb =
         llvm.LLVMAppendBasicBlock(cx.llfn, _str.buf(""));
-    auto bcx = @rec(llbb=llbb,
-                    build=new_builder(llbb),
-                    term=term,
-                    fcx=cx);
+    ret @rec(llbb=llbb,
+             build=new_builder(llbb),
+             term=term,
+             fcx=cx);
+}
+
+fn trans_block(@fn_ctxt cx, &ast.block b, terminator term) {
+    auto bcx = (new_block_ctxt(cx, term));
     for (@ast.stmt s in b) {
         trans_stmt(bcx, *s);
     }
     bcx.term(cx, bcx.build);
 }
 
-fn trans_fn(@trans_ctxt cx, &ast._fn f) {
-    let vec[TypeRef] args = vec(T_ptr(T_int()), // outptr.
-                                T_taskptr()     // taskptr
+fn new_fn_ctxt(@trans_ctxt cx,
+               str name,
+               TypeRef T_out,
+               vec[TypeRef] T_explicit_args) -> @fn_ctxt {
+    let vec[TypeRef] args = vec(T_ptr(T_out), // outptr.
+                                T_taskptr()   // taskptr
                                 );
-    let ValueRef llfn = decl_cdecl_fn(cx.llmod, cx.path, args, T_nil());
+    args += T_explicit_args;
+    let ValueRef llfn = decl_cdecl_fn(cx.llmod, name, args, T_nil());
     cx.fns.insert(cx.path, llfn);
     let ValueRef lloutptr = llvm.LLVMGetParam(llfn, 0u);
     let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 1u);
-    auto fcx = @rec(llfn=llfn,
-                    lloutptr=lloutptr,
-                    lltaskptr=lltaskptr,
-                    tcx=cx);
+    ret @rec(llfn=llfn,
+             lloutptr=lloutptr,
+             lltaskptr=lltaskptr,
+             tcx=cx);
+}
+
+fn trans_fn(@trans_ctxt cx, &ast._fn f) {
+    let TypeRef out = T_int();
+    let vec[TypeRef] args = vec();
+
+    auto fcx = new_fn_ctxt(cx, cx.path, out, args);
     auto term = default_terminate;
+
     trans_block(fcx, f.body, term);
 }
 
@@ -292,6 +309,24 @@ fn p2i(ValueRef v) -> ValueRef {
     ret llvm.LLVMConstPtrToInt(v, T_int());
 }
 
+fn trans_exit_task_glue(@trans_ctxt cx) {
+    let vec[TypeRef] T_args = vec();
+    let vec[ValueRef] V_args = vec();
+    auto term = default_terminate;
+
+    auto llfn = cx.glues.exit_task_glue;
+    let ValueRef lloutptr = C_null(T_int());
+    let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 0u);
+    auto fcx = @rec(llfn=llfn,
+                    lloutptr=lloutptr,
+                    lltaskptr=lltaskptr,
+                    tcx=cx);
+
+    auto bcx = new_block_ctxt(fcx, term);
+    trans_upcall(bcx, "upcall_exit", V_args);
+    bcx.term(fcx, bcx.build);
+}
+
 fn crate_constant(@trans_ctxt cx) -> ValueRef {
 
     let ValueRef crate_ptr =
@@ -306,9 +341,8 @@ fn crate_constant(@trans_ctxt cx) -> ValueRef {
     let ValueRef yield_glue_off =
         llvm.LLVMConstSub(p2i(cx.glues.yield_glue), crate_addr);
 
-    // FIXME: we aren't generating the exit-task glue yet.
-    // llvm.LLVMConstSub(p2i(cx.glues.exit_task_glue), crate_addr);
-    let ValueRef exit_task_glue_off = C_null(T_int());
+    let ValueRef exit_task_glue_off =
+        llvm.LLVMConstSub(p2i(cx.glues.exit_task_glue), crate_addr);
 
     let ValueRef crate_val =
         C_struct(vec(C_null(T_int()),     // ptrdiff_t image_base_off
@@ -373,6 +407,22 @@ fn trans_crate(session.session sess, ast.crate crate) {
     auto glues = @rec(activate_glue = decl_glue(llmod,
                                                 abi.activate_glue_name()),
                       yield_glue = decl_glue(llmod, abi.yield_glue_name()),
+                      /*
+                       * Note: the signature passed to decl_cdecl_fn here
+                       * looks unusual because it is. It corresponds neither
+                       * to an upcall signature nor a normal rust-ABI
+                       * signature. In fact it is a fake signature, that
+                       * exists solely to acquire the task pointer as an
+                       * argument to the upcall. It so happens that the
+                       * runtime sets up the task pointer as the sole incoming
+                       * argument to the frame that we return into when
+                       * returning to the exit task glue. So this is the
+                       * signature required to retrieve it.
+                       */
+                      exit_task_glue =
+                      decl_cdecl_fn(llmod, abi.exit_task_glue_name(),
+                                    vec(T_taskptr()), T_nil()),
+
                       upcall_glues =
                       _vec.init_fn[ValueRef](bind decl_upcall(llmod, _),
                                              abi.n_upcall_glues as uint));
@@ -385,7 +435,7 @@ fn trans_crate(session.session sess, ast.crate crate) {
                    path = "_rust");
 
     trans_mod(cx, crate.module);
-
+    trans_exit_task_glue(cx);
     trans_main_fn(cx, crate_constant(cx));
 
     llvm.LLVMWriteBitcodeToFile(llmod, _str.buf("rust_out.bc"));
