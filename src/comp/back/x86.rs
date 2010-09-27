@@ -75,9 +75,10 @@ fn upcall_glue(int n_args) -> vec[str] {
      */
 
     fn copy_arg(uint i) -> str {
-        auto off = wstr(7 + (i as int));
-        auto m = vec("movl  " + off + "(%ebp),%edx",
-                     "movl  %edx," + off + "(%esp)");
+        auto src_off = wstr(7 + (i as int));
+        auto dst_off = wstr(1 + (i as int));
+        auto m = vec("movl  " + src_off + "(%ebp),%edx",
+                     "movl  %edx," + dst_off + "(%esp)");
         ret _str.connect(m, "\n\t");
     }
 
