@@ -250,11 +250,13 @@ state fn parse_prefix_expr(parser p) -> @ast.expr {
     alt (p.peek()) {
 
         case (token.NOT) {
+            p.bump();
             auto e = parse_prefix_expr(p);
             ret @ast.expr_unary(ast.not, e);
         }
 
         case (token.TILDE) {
+            p.bump();
             auto e = parse_prefix_expr(p);
             ret @ast.expr_unary(ast.bitnot, e);
         }
@@ -263,11 +265,13 @@ state fn parse_prefix_expr(parser p) -> @ast.expr {
             alt (b) {
 
                 case (token.MINUS) {
+                    p.bump();
                     auto e = parse_prefix_expr(p);
                     ret @ast.expr_unary(ast.neg, e);
                 }
 
                 case (token.STAR) {
+                    p.bump();
                     auto e = parse_prefix_expr(p);
                     ret @ast.expr_unary(ast.deref, e);
                 }
@@ -298,18 +302,15 @@ state fn parse_binops(parser p,
     auto more = true;
     while (more) {
         more = false;
-        auto t = p.peek();
-        alt (t) {
-            case (token.BINOP(?op)) {
-                for (tup(token.binop, ast.binop) pair in ops) {
+        for (tup(token.binop, ast.binop) pair in ops) {
+            alt (p.peek()) {
+                case (token.BINOP(?op)) {
                     if (pair._0 == op) {
+                        p.bump();
                         e = @ast.expr_binary(pair._1, e, sub(p));
                         more = true;
-                        t = p.peek();
                     }
                 }
-            }
-            case (_) {
             }
         }
     }
@@ -324,12 +325,11 @@ state fn parse_binary_exprs(parser p,
     auto more = true;
     while (more) {
         more = false;
-        auto t = p.peek();
         for (tup(token.token, ast.binop) pair in ops) {
-            if (pair._0 == t) {
+            if (pair._0 == p.peek()) {
+                p.bump();
                 e = @ast.expr_binary(pair._1, e, sub(p));
                 more = true;
-                t = p.peek();
             }
         }
     }

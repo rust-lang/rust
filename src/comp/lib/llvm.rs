@@ -41,6 +41,21 @@ const uint LLVMColdCallConv = 9u;
 const uint LLVMX86StdcallCallConv = 64u;
 const uint LLVMX86FastcallCallConv = 65u;
 
+// Consts for the LLVM IntPredicate type, pre-cast to uint.
+// FIXME: as above.
+
+const uint LLVMIntEQ = 32;
+const uint LLVMIntNE = 33;
+const uint LLVMIntUGT = 34;
+const uint LLVMIntUGE = 35;
+const uint LLVMIntULT = 36;
+const uint LLVMIntULE = 37;
+const uint LLVMIntSGT = 38;
+const uint LLVMIntSGE = 39;
+const uint LLVMIntSLT = 40;
+const uint LLVMIntSLE = 41;
+
+
 native mod llvm = llvm_lib {
 
     type ModuleRef;
@@ -626,7 +641,7 @@ native mod llvm = llvm_lib {
                        TypeRef DestTy, sbuf Name) -> ValueRef;
 
     /* Comparisons */
-    fn LLVMBuildICmp(BuilderRef B, IntPredicate Op,
+    fn LLVMBuildICmp(BuilderRef B, uint Op,
                      ValueRef LHS, ValueRef RHS,
                      sbuf Name) -> ValueRef;
     fn LLVMBuildFCmp(BuilderRef B, RealPredicate Op,
@@ -981,7 +996,7 @@ obj builder(BuilderRef B) {
 
 
     /* Comparisons */
-    fn ICmp(IntPredicate Op, ValueRef LHS, ValueRef RHS) -> ValueRef {
+    fn ICmp(uint Op, ValueRef LHS, ValueRef RHS) -> ValueRef {
         ret llvm.LLVMBuildICmp(B, Op, LHS, RHS, _str.buf(""));
     }
 

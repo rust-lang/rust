@@ -159,6 +159,14 @@ fn C_integral(int i, TypeRef t) -> ValueRef {
     ret llvm.LLVMConstIntOfString(t, _str.buf(istr(i)), 10);
 }
 
+fn C_bool(bool b) -> ValueRef {
+    if (b) {
+        ret C_integral(1, T_i8());
+    } else {
+        ret C_integral(0, T_i8());
+    }
+}
+
 fn C_int(int i) -> ValueRef {
     ret C_integral(i, T_int());
 }
@@ -237,33 +245,148 @@ fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> ValueRef {
     ret cx.build.Call(llglue, call_args);
 }
 
+fn trans_lit(@block_ctxt cx, &ast.lit lit) -> ValueRef {
+    alt (lit) {
+        case (ast.lit_int(?i)) {
+            ret C_int(i);
+        }
+        case (ast.lit_uint(?u)) {
+            ret C_int(u as int);
+        }
+        case (ast.lit_char(?c)) {
+            ret C_integral(c as int, T_i32());
+        }
+        case (ast.lit_bool(?b)) {
+            ret C_bool(b);
+        }
+        case (ast.lit_str(?s)) {
+            auto len = (_str.byte_len(s) as int) + 1;
+            ret trans_upcall(cx, "upcall_new_str",
+                             vec(p2i(C_str(cx.fcx.tcx, s)),
+                                 C_int(len)));
+        }
+    }
+}
+
+fn trans_unary(@block_ctxt cx, ast.unop op, &ast.expr e) -> ValueRef {
+    alt (op) {
+        case (ast.bitnot) {
+            ret cx.build.Not(trans_expr(cx, e));
+        }
+        case (ast.not) {
+            ret cx.build.And(C_bool(true),
+                             cx.build.Not(trans_expr(cx, e)));
+        }
+        case (ast.neg) {
+            // FIXME: switch by signedness.
+            ret cx.build.Neg(trans_expr(cx, e));
+        }
+
+    }
+    cx.fcx.tcx.sess.unimpl("expr variant in trans_unary");
+    fail;
+}
+
+fn trans_binary(@block_ctxt cx, ast.binop op,
+                &ast.expr a, &ast.expr b) -> ValueRef {
+    alt (op) {
+        case (ast.add) {
+            ret cx.build.Add(trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.sub) {
+            ret cx.build.Sub(trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.mul) {
+            // FIXME: switch by signedness.
+            ret cx.build.Mul(trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.div) {
+            // FIXME: switch by signedness.
+            ret cx.build.SDiv(trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.rem) {
+            // FIXME: switch by signedness.
+            ret cx.build.SRem(trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.bitor) {
+            ret cx.build.Or(trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.bitand) {
+            ret cx.build.And(trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.bitxor) {
+            ret cx.build.Xor(trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.lsl) {
+            ret cx.build.Shl(trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.lsr) {
+            ret cx.build.LShr(trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.asr) {
+            ret cx.build.AShr(trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.eq) {
+            ret cx.build.ICmp(lib.llvm.LLVMIntEQ,
+                              trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.ne) {
+            ret cx.build.ICmp(lib.llvm.LLVMIntNE,
+                              trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.lt) {
+            // FIXME: switch by signedness.
+            ret cx.build.ICmp(lib.llvm.LLVMIntSLT,
+                              trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.le) {
+            // FIXME: switch by signedness.
+            ret cx.build.ICmp(lib.llvm.LLVMIntSLE,
+                              trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.ge) {
+            // FIXME: switch by signedness.
+            ret cx.build.ICmp(lib.llvm.LLVMIntSGE,
+                              trans_expr(cx, a), trans_expr(cx, b));
+        }
+
+        case (ast.gt) {
+            // FIXME: switch by signedness.
+            ret cx.build.ICmp(lib.llvm.LLVMIntSGT,
+                              trans_expr(cx, a), trans_expr(cx, b));
+        }
+    }
+    cx.fcx.tcx.sess.unimpl("expr variant in trans_binary");
+    fail;
+}
+
 fn trans_expr(@block_ctxt cx, &ast.expr e) -> ValueRef {
     alt (e) {
         case (ast.expr_lit(?lit)) {
-            alt (*lit) {
-                case (ast.lit_int(?i)) {
-                    ret C_int(i);
-                }
-                case (ast.lit_uint(?u)) {
-                    ret C_int(u as int);
-                }
-                case (ast.lit_char(?c)) {
-                    ret C_integral(c as int, T_i32());
-                }
-                case (ast.lit_bool(?b)) {
-                    if (b) {
-                        ret C_integral(1, T_i8());
-                    } else {
-                        ret C_integral(0, T_i8());
-                    }
-                }
-                case (ast.lit_str(?s)) {
-                    auto len = (_str.byte_len(s) as int) + 1;
-                    ret trans_upcall(cx, "upcall_new_str",
-                                     vec(p2i(C_str(cx.fcx.tcx, s)),
-                                         C_int(len)));
-                }
-            }
+            ret trans_lit(cx, *lit);
+        }
+
+        case (ast.expr_unary(?op, ?x)) {
+            ret trans_unary(cx, op, *x);
+        }
+
+        case (ast.expr_binary(?op, ?x, ?y)) {
+            ret trans_binary(cx, op, *x, *y);
         }
     }
     cx.fcx.tcx.sess.unimpl("expr variant in trans_expr");
@@ -285,7 +408,8 @@ fn trans_log(@block_ctxt cx, &ast.expr e) {
             }
         }
         case (_) {
-            cx.fcx.tcx.sess.unimpl("expr variant in trans_log");
+            auto v = trans_expr(cx, e);
+            trans_upcall(cx, "upcall_log_int", vec(v));
         }
     }
 }
