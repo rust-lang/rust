@@ -9,13 +9,40 @@ type crate = rec(_mod module);
 
 type block = vec[@stmt];
 
+tag binop {
+    plus;
+    minus;
+    star;
+    slash;
+    percent;
+    caret;
+    bitand;
+    bitor;
+    lsl;
+    lsr;
+    asr;
+    eq;
+    lt;
+    le;
+    ne;
+    ge;
+    gt;
+}
+
+tag unop {
+    bitnot;
+    not;
+    neg;
+    deref;
+    cast(@ty);
+}
+
 tag stmt {
     stmt_block(block);
     stmt_decl(@decl);
-    stmt_ret(option[@lval]);
-    stmt_log(@atom);
+    stmt_ret(option[@expr]);
+    stmt_log(@expr);
 }
-
 
 tag decl {
     decl_local(ident, option[ty]);
@@ -25,15 +52,23 @@ tag decl {
 tag lval {
     lval_ident(ident);
     lval_ext(@lval, ident);
-    lval_idx(@lval, @atom);
+    lval_idx(@lval, @expr);
 }
 
-tag atom {
-    atom_lit(@lit);
-    atom_lval(@lval);
+tag expr {
+    expr_box(@expr);
+    expr_vec(vec[@expr]);
+    expr_tup(vec[@expr]);
+    expr_rec(vec[tup(ident,@expr)]);
+    expr_call(@expr, vec[@expr]);
+    expr_binary(binop, @expr, @expr);
+    expr_unary(unop, @expr);
+    expr_lit(@lit);
+    expr_lval(@lval);
 }
 
 tag lit {
+    lit_str(str);
     lit_char(char);
     lit_int(int);
     lit_uint(uint);

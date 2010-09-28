@@ -132,40 +132,77 @@ state fn parse_seq[T](token.token bra,
     ret v;
 }
 
-state fn parse_lit(parser p) -> ast.lit {
+state fn parse_lit(parser p) -> @ast.lit {
     alt (p.peek()) {
         case (token.LIT_INT(?i)) {
             p.bump();
-            ret ast.lit_int(i);
+            ret @ast.lit_int(i);
         }
         case (token.LIT_UINT(?u)) {
             p.bump();
-            ret ast.lit_uint(u);
+            ret @ast.lit_uint(u);
         }
         case (token.LIT_CHAR(?c)) {
             p.bump();
-            ret ast.lit_char(c);
+            ret @ast.lit_char(c);
         }
         case (token.LIT_BOOL(?b)) {
             p.bump();
-            ret ast.lit_bool(b);
+            ret @ast.lit_bool(b);
         }
     }
     p.err("expected literal");
     fail;
 }
 
-state fn parse_atom(parser p) -> ast.atom {
-    ret ast.atom_lit(@parse_lit(p));
+
+
+state fn parse_bottom_expr(parser p) -> @ast.expr {
+    alt (p.peek()) {
+        case (token.LPAREN) {
+            p.bump();
+            auto e = parse_expr(p);
+            expect(p, token.RPAREN);
+            ret e;
+        }
+
+        case (_) {
+            ret @ast.expr_lit(parse_lit(p));
+        }
+    }
+}
+
+
+state fn parse_negation_expr(parser p) -> @ast.expr {
+    alt (p.peek()) {
+
+        case (token.NOT) {
+            auto e = parse_negation_expr(p);
+            ret @ast.expr_unary(ast.not, e);
+        }
+
+        case (token.TILDE) {
+            auto e = parse_negation_expr(p);
+            ret @ast.expr_unary(ast.bitnot, e);
+        }
+
+        case (_) {
+            ret parse_bottom_expr(p);
+        }
+    }
+}
+
+state fn parse_expr(parser p) -> @ast.expr {
+    ret parse_negation_expr(p);
 }
 
 state fn parse_stmt(parser p) -> @ast.stmt {
     alt (p.peek()) {
         case (token.LOG) {
             p.bump();
-            auto a = @parse_atom(p);
+            auto e = parse_expr(p);
             expect(p, token.SEMI);
-            ret @ast.stmt_log(a);
+            ret @ast.stmt_log(e);
         }
     }
     p.err("expected statement");

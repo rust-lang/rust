@@ -202,9 +202,9 @@ fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> ValueRef {
     ret cx.build.Call(llglue, call_args);
 }
 
-fn trans_log(@block_ctxt cx, &ast.atom a) {
-    alt (a) {
-        case (ast.atom_lit(?lit)) {
+fn trans_log(@block_ctxt cx, &ast.expr e) {
+    alt (e) {
+        case (ast.expr_lit(?lit)) {
             alt (*lit) {
                 case (ast.lit_int(?i)) {
                     trans_upcall(cx, "upcall_log_int", vec(C_int(i)));
@@ -215,7 +215,7 @@ fn trans_log(@block_ctxt cx, &ast.atom a) {
             }
         }
         case (_) {
-            cx.fcx.tcx.sess.unimpl("atom variant in trans_log");
+            cx.fcx.tcx.sess.unimpl("expr variant in trans_log");
         }
     }
 }
