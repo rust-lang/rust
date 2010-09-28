@@ -62,6 +62,10 @@ fn T_nil() -> TypeRef {
     ret llvm.LLVMVoidType();
 }
 
+fn T_i1() -> TypeRef {
+    ret llvm.LLVMInt1Type();
+}
+
 fn T_i8() -> TypeRef {
     ret llvm.LLVMInt8Type();
 }
@@ -161,9 +165,9 @@ fn C_integral(int i, TypeRef t) -> ValueRef {
 
 fn C_bool(bool b) -> ValueRef {
     if (b) {
-        ret C_integral(1, T_i8());
+        ret C_integral(1, T_i1());
     } else {
-        ret C_integral(0, T_i8());
+        ret C_integral(0, T_i1());
     }
 }
 
@@ -274,8 +278,7 @@ fn trans_unary(@block_ctxt cx, ast.unop op, &ast.expr e) -> ValueRef {
             ret cx.build.Not(trans_expr(cx, e));
         }
         case (ast.not) {
-            ret cx.build.And(C_bool(true),
-                             cx.build.Not(trans_expr(cx, e)));
+            ret cx.build.Not(trans_expr(cx, e));
         }
         case (ast.neg) {
             // FIXME: switch by signedness.
