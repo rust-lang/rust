@@ -10,12 +10,14 @@ type crate = rec(_mod module);
 type block = vec[@stmt];
 
 tag binop {
-    plus;
-    minus;
-    star;
-    slash;
-    percent;
-    caret;
+    add;
+    sub;
+    mul;
+    div;
+    rem;
+    and;
+    or;
+    bitxor;
     bitand;
     bitor;
     lsl;
@@ -30,11 +32,11 @@ tag binop {
 }
 
 tag unop {
+    box;
+    deref;
     bitnot;
     not;
     neg;
-    deref;
-    cast(@ty);
 }
 
 tag stmt {
@@ -49,14 +51,7 @@ tag decl {
     decl_item(ident, @item);
 }
 
-tag lval {
-    lval_ident(ident);
-    lval_ext(@lval, ident);
-    lval_idx(@lval, @expr);
-}
-
 tag expr {
-    expr_box(@expr);
     expr_vec(vec[@expr]);
     expr_tup(vec[@expr]);
     expr_rec(vec[tup(ident,@expr)]);
@@ -64,7 +59,10 @@ tag expr {
     expr_binary(binop, @expr, @expr);
     expr_unary(unop, @expr);
     expr_lit(@lit);
-    expr_lval(@lval);
+    expr_ident(ident);
+    expr_field(@expr, ident);
+    expr_index(@expr, @expr);
+    expr_cast(@expr, ty);
 }
 
 tag lit {
