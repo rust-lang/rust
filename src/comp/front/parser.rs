@@ -150,6 +150,10 @@ state fn parse_lit(parser p) -> @ast.lit {
             p.bump();
             ret @ast.lit_bool(b);
         }
+        case (token.LIT_STR(?s)) {
+            p.bump();
+            ret @ast.lit_str(s);
+        }
     }
     p.err("expected literal");
     fail;

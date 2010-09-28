@@ -23,22 +23,30 @@ import lib.llvm.llvm.BasicBlockRef;
 import lib.llvm.False;
 import lib.llvm.True;
 
+state obj namegen(mutable int i) {
+    fn next(str prefix) -> str {
+        i += 1;
+        ret prefix + istr(i);
+    }
+}
+
 type glue_fns = rec(ValueRef activate_glue,
                     ValueRef yield_glue,
                     ValueRef exit_task_glue,
                     vec[ValueRef] upcall_glues);
 
-type trans_ctxt = rec(session.session sess,
-                      ModuleRef llmod,
-                      hashmap[str,ValueRef] upcalls,
-                      hashmap[str,ValueRef] fns,
-                      @glue_fns glues,
-                      str path);
+state type trans_ctxt = rec(session.session sess,
+                            ModuleRef llmod,
+                            hashmap[str,ValueRef] upcalls,
+                            hashmap[str,ValueRef] fns,
+                            @glue_fns glues,
+                            namegen names,
+                            str path);
 
-type fn_ctxt = rec(ValueRef llfn,
-                   ValueRef lloutptr,
-                   ValueRef lltaskptr,
-                   @trans_ctxt tcx);
+state type fn_ctxt = rec(ValueRef llfn,
+                         ValueRef lloutptr,
+                         ValueRef lltaskptr,
+                         @trans_ctxt tcx);
 
 type terminator = fn(@fn_ctxt cx, builder build);
 
@@ -54,8 +62,25 @@ fn T_nil() -> TypeRef {
     ret llvm.LLVMVoidType();
 }
 
-fn T_int() -> TypeRef {
+fn T_i8() -> TypeRef {
+    ret llvm.LLVMInt8Type();
+}
+
+fn T_i16() -> TypeRef {
+    ret llvm.LLVMInt16Type();
+}
+
+fn T_i32() -> TypeRef {
     ret llvm.LLVMInt32Type();
+}
+
+fn T_i64() -> TypeRef {
+    ret llvm.LLVMInt64Type();
+}
+
+fn T_int() -> TypeRef {
+    // FIXME: switch on target type.
+    ret T_i32();
 }
 
 fn T_fn(vec[TypeRef] inputs, TypeRef output) -> TypeRef {
@@ -124,19 +149,26 @@ fn C_null(TypeRef t) -> ValueRef {
     ret llvm.LLVMConstNull(t);
 }
 
-fn C_int(int i) -> ValueRef {
+fn C_integral(int i, TypeRef t) -> ValueRef {
     // FIXME. We can't use LLVM.ULongLong with our existing minimal native
     // API, which only knows word-sized args.  Lucky for us LLVM has a "take a
     // string encoding" version.  Hilarious. Please fix to handle:
     //
     // ret llvm.LLVMConstInt(T_int(), t as LLVM.ULongLong, False);
     //
-    ret llvm.LLVMConstIntOfString(T_int(),
-                                  _str.buf(istr(i)), 10);
+    ret llvm.LLVMConstIntOfString(t, _str.buf(istr(i)), 10);
 }
 
-fn C_str(str s) -> ValueRef {
-    ret llvm.LLVMConstString(_str.buf(s), _str.byte_len(s), False);
+fn C_int(int i) -> ValueRef {
+    ret C_integral(i, T_int());
+}
+
+fn C_str(@trans_ctxt cx, str s) -> ValueRef {
+    auto sc = llvm.LLVMConstString(_str.buf(s), _str.byte_len(s), False);
+    auto g = llvm.LLVMAddGlobal(cx.llmod, llvm.LLVMTypeOf(sc),
+                                _str.buf(cx.names.next("str")));
+    llvm.LLVMSetInitializer(g, sc);
+    ret g;
 }
 
 fn C_struct(vec[ValueRef] elts) -> ValueRef {
@@ -192,7 +224,10 @@ fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> ValueRef {
     llupcall = llvm.LLVMConstPointerCast(llupcall, T_int());
 
     let ValueRef llglue = cx.fcx.tcx.glues.upcall_glues.(n);
-    let vec[ValueRef] call_args = vec(cx.fcx.lltaskptr, llupcall) + args;
+    let vec[ValueRef] call_args = vec(cx.fcx.lltaskptr, llupcall);
+    for (ValueRef a in args) {
+        call_args += cx.build.ZExtOrBitCast(a, T_int());
+    }
     log "emitting indirect-upcall via " + abi.upcall_glue_name(n);
     for (ValueRef v in call_args) {
         log "arg: " + lib.llvm.type_to_str(llvm.LLVMTypeOf(v));
@@ -202,15 +237,50 @@ fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> ValueRef {
     ret cx.build.Call(llglue, call_args);
 }
 
-fn trans_log(@block_ctxt cx, &ast.expr e) {
+fn trans_expr(@block_ctxt cx, &ast.expr e) -> ValueRef {
     alt (e) {
         case (ast.expr_lit(?lit)) {
             alt (*lit) {
                 case (ast.lit_int(?i)) {
-                    trans_upcall(cx, "upcall_log_int", vec(C_int(i)));
+                    ret C_int(i);
+                }
+                case (ast.lit_uint(?u)) {
+                    ret C_int(u as int);
+                }
+                case (ast.lit_char(?c)) {
+                    ret C_integral(c as int, T_i32());
+                }
+                case (ast.lit_bool(?b)) {
+                    if (b) {
+                        ret C_integral(1, T_i8());
+                    } else {
+                        ret C_integral(0, T_i8());
+                    }
+                }
+                case (ast.lit_str(?s)) {
+                    auto len = (_str.byte_len(s) as int) + 1;
+                    ret trans_upcall(cx, "upcall_new_str",
+                                     vec(p2i(C_str(cx.fcx.tcx, s)),
+                                         C_int(len)));
+                }
+            }
+        }
+    }
+    cx.fcx.tcx.sess.unimpl("expr variant in trans_expr");
+    fail;
+}
+
+fn trans_log(@block_ctxt cx, &ast.expr e) {
+    alt (e) {
+        case (ast.expr_lit(?lit)) {
+            alt (*lit) {
+                case (ast.lit_str(_)) {
+                    auto v = trans_expr(cx, e);
+                    trans_upcall(cx, "upcall_log_str", vec(v));
                 }
                 case (_) {
-                    cx.fcx.tcx.sess.unimpl("literal variant in trans_log");
+                    auto v = trans_expr(cx, e);
+                    trans_upcall(cx, "upcall_log_int", vec(v));
                 }
             }
         }
@@ -432,6 +502,7 @@ fn trans_crate(session.session sess, ast.crate crate) {
                    upcalls = new_str_hash[ValueRef](),
                    fns = new_str_hash[ValueRef](),
                    glues = glues,
+                   names = namegen(0),
                    path = "_rust");
 
     trans_mod(cx, crate.module);
