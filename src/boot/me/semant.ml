@@ -131,6 +131,7 @@ type ctxt =
       (* Typestate-y stuff. *)
       ctxt_stmt_is_init: (node_id,unit) Hashtbl.t;
       ctxt_post_stmt_slot_drops: (node_id,node_id list) Hashtbl.t;
+      ctxt_post_block_slot_drops: (node_id,node_id list) Hashtbl.t;
 
       (* Layout-y stuff. *)
       ctxt_slot_aliased: (node_id,unit) Hashtbl.t;
@@ -141,6 +142,7 @@ type ctxt =
       ctxt_call_sizes: (node_id,size) Hashtbl.t;
       ctxt_block_is_loop_body: (node_id,unit) Hashtbl.t;
       ctxt_stmt_loop_depths: (node_id,int) Hashtbl.t;
+      ctxt_block_loop_depths: (node_id,int) Hashtbl.t;
       ctxt_slot_loop_depths: (node_id,int) Hashtbl.t;
 
       (* Translation-y stuff. *)
@@ -216,6 +218,7 @@ let new_ctxt sess abi crate =
 
     ctxt_stmt_is_init = Hashtbl.create 0;
     ctxt_post_stmt_slot_drops = Hashtbl.create 0;
+    ctxt_post_block_slot_drops = Hashtbl.create 0;
 
     ctxt_slot_aliased = Hashtbl.create 0;
     ctxt_slot_is_obj_state = Hashtbl.create 0;
@@ -227,6 +230,7 @@ let new_ctxt sess abi crate =
     ctxt_block_is_loop_body = Hashtbl.create 0;
     ctxt_slot_loop_depths = Hashtbl.create 0;
     ctxt_stmt_loop_depths = Hashtbl.create 0;
+    ctxt_block_loop_depths = Hashtbl.create 0;
 
     ctxt_fn_fixups = Hashtbl.create 0;
     ctxt_block_fixups = Hashtbl.create 0;
@@ -397,6 +401,10 @@ let lval_base_to_slot (cx:ctxt) (lval:Ast.lval) : Ast.slot identified =
 
 let get_stmt_depth (cx:ctxt) (id:node_id) : int =
   Hashtbl.find cx.ctxt_stmt_loop_depths id
+;;
+
+let get_block_depth (cx:ctxt) (id:node_id) : int =
+  Hashtbl.find cx.ctxt_block_loop_depths id
 ;;
 
 let get_slot_depth (cx:ctxt) (id:node_id) : int =

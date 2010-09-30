@@ -114,6 +114,8 @@ let loop_depth_visitor
   let visit_block_pre b =
     if Hashtbl.mem cx.ctxt_block_is_loop_body b.id
     then push_loop ();
+    let fcx = Stack.top fcxs in
+      htab_put cx.ctxt_block_loop_depths b.id fcx.current_depth;
     inner.Walk.visit_block_pre b
   in
 

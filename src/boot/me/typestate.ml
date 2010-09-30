@@ -449,9 +449,12 @@ type slots_stack = node_id Stack.t;;
 type block_slots_stack = slots_stack Stack.t;;
 type frame_block_slots_stack = block_slots_stack Stack.t;;
 type loop_block_slots_stack = block_slots_stack option Stack.t;;
-(* like ret drops slots from all blocks in the frame
- * break from a simple loo drops slots from all block in a loop *)
-let (loop_blocks:loop_block_slots_stack) = 
+
+(* Like ret drops slots from all blocks in the frame
+ * break from a simple loop drops slots from all block in a loop
+ *)
+
+let (loop_blocks:loop_block_slots_stack) =
   let s = Stack.create() in Stack.push None s; s
 
 let condition_assigning_visitor
@@ -583,7 +586,7 @@ let condition_assigning_visitor
           let precond = slot_inits (lval_slots cx lval) in
             raise_precondition sid precond;
   in
-    
+
   let visit_stmt_pre s =
     begin
       match s.node with
@@ -1317,11 +1320,12 @@ let lifecycle_visitor
 
 
   let visit_block_pre b =
-   
+
     let s = Stack.create() in
       begin
-        match Stack.top loop_blocks with 
-            Some loop -> Stack.push s loop | None -> ()
+        match Stack.top loop_blocks with
+            Some loop -> Stack.push s loop
+          | None -> ()
       end;
       Stack.push s (Stack.top frame_blocks);
       begin
@@ -1337,7 +1341,7 @@ let lifecycle_visitor
       inner.Walk.visit_block_pre b
   in
 
-  let note_drops stmt slots =
+  let note_stmt_drops stmt slots =
     iflog cx
       begin
         fun _ ->
@@ -1352,6 +1356,21 @@ let lifecycle_visitor
     htab_put cx.ctxt_post_stmt_slot_drops stmt.id slots
   in
 
+  let note_block_drops bid slots =
+    iflog cx
+      begin
+        fun _ ->
+          log cx "implicit drop of %d slots after block %d: "
+            (List.length slots)
+            (int_of_node bid);
+          List.iter (fun s -> log cx "drop: %a"
+                       Ast.sprintf_slot_key
+                       (Hashtbl.find cx.ctxt_slot_keys s))
+            slots
+      end;
+    htab_put cx.ctxt_post_block_slot_drops bid slots
+  in
+
   let filter_live_block_slots slots =
     List.filter (fun i -> Hashtbl.mem live_block_slots i) slots
   in
@@ -1360,37 +1379,24 @@ let lifecycle_visitor
     inner.Walk.visit_block_post b;
     begin
       match Stack.top loop_blocks with
-          Some loop -> 
-            ignore(Stack.pop loop);
-            if Stack.is_empty loop then
-              ignore(Stack.pop loop_blocks);
+          Some loop ->
+            ignore (Stack.pop loop);
+            if Stack.is_empty loop
+            then ignore (Stack.pop loop_blocks);
         | None -> ()
     end;
     let block_slots = Stack.pop (Stack.top frame_blocks) in
-    let stmts = b.node in
-    let len = Array.length stmts in
-      if len > 0
-      then
-        begin
-          let s = stmts.(len-1) in
-            match s.node with
-                Ast.STMT_ret _
-              | Ast.STMT_be _ 
-              | Ast.STMT_break ->
-                  () (* Taken care of in visit_stmt_post below. *)
-              | _ ->
-                (* The blk_slots stack we have has accumulated slots in
-                 * declaration order as we walked the block; the top of the
-                 * stack is the last-declared slot. We want to generate
-                 * slot-drop obligations here for the slots in top-down order
-                 * (starting with the last-declared) but only hitting those
-                 * slots that actually got initialized (went live) at some
-                 * point in the block.
-                 *)
-                let slots = stk_elts_from_top block_slots in
-                let live = filter_live_block_slots slots in
-                  note_drops s live
-        end;
+      (* The blk_slots stack we have has accumulated slots in
+       * declaration order as we walked the block; the top of the
+       * stack is the last-declared slot. We want to generate
+       * slot-drop obligations here for the slots in top-down order
+       * (starting with the last-declared) but only hitting those
+       * slots that actually got initialized (went live) at some
+       * point in the block.
+       *)
+    let slots = stk_elts_from_top block_slots in
+    let live = filter_live_block_slots slots in
+      note_block_drops b.id live
   in
 
   let visit_stmt_pre s =
@@ -1499,33 +1505,34 @@ let lifecycle_visitor
 
   let visit_stmt_post s =
     inner.Walk.visit_stmt_post s;
-    let handle_ret_like_stmt block_stack =
+
+    let handle_outward_jump_stmt block_stack =
       let blocks = stk_elts_from_top block_stack in
           let slots = List.concat (List.map stk_elts_from_top blocks) in
           let live = filter_live_block_slots slots in
-            note_drops s live
+            note_stmt_drops s live
     in
-    match s.node with
-        Ast.STMT_ret _
-      | Ast.STMT_be _ ->
-          handle_ret_like_stmt (Stack.top frame_blocks)
-      | Ast.STMT_break ->
-          begin
-            match (Stack.top loop_blocks) with
-                Some loop -> handle_ret_like_stmt loop
-              | None -> 
-                  iflog cx (fun _ ->
-                              log cx "break statement outside of a loop");
-                  err (Some s.id) "break statement outside of a loop"
-          end
-      | _ -> ()
+
+      match s.node with
+          Ast.STMT_ret _
+        | Ast.STMT_be _ ->
+            handle_outward_jump_stmt (Stack.top frame_blocks)
+
+        | Ast.STMT_break ->
+            begin
+              match (Stack.top loop_blocks) with
+                  Some loop -> handle_outward_jump_stmt loop
+                | None ->
+                    err (Some s.id) "break statement outside of a loop"
+            end
+        | _ -> ()
   in
 
   let enter_frame _ =
     Stack.push (Stack.create()) frame_blocks;
     Stack.push None loop_blocks
   in
-    
+
   let leave_frame _ =
     ignore (Stack.pop frame_blocks);
     match Stack.pop loop_blocks with

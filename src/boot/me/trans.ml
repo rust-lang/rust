@@ -826,10 +826,51 @@ let trans_visitor
       out diff current_fp
   in
 
+  let curr_stmt_depth _ =
+    if (Stack.is_empty curr_stmt)
+    then None
+    else
+      Some
+        (get_stmt_depth cx (Stack.top curr_stmt))
+  in
+
   let cell_of_block_slot
+      ?access_depth:(access_depth=curr_stmt_depth())
       (slot_id:node_id)
       : Il.cell =
+
     let referent_type = slot_id_referent_type slot_id in
+
+    let local_access off =
+      Il.Mem (fp_off_sz off, referent_type)
+    in
+
+    let outer_access off slot_depth depth =
+      let _ = assert (slot_depth < depth) in
+        let _ =
+          iflog
+            begin
+              fun _ ->
+                let k =
+                  Hashtbl.find cx.ctxt_slot_keys slot_id
+                in
+                  annotate (Printf.sprintf
+                              "access outer frame slot #%d = %s"
+                              (int_of_node slot_id)
+                              (Fmt.fmt_to_str Ast.fmt_slot_key k))
+            end
+        in
+        let diff = depth - slot_depth in
+        let _ = annotate "get outer frame pointer" in
+        let fp = get_nth_outer_frame_ptr diff in
+        let _ = annotate "calculate size" in
+        let p =
+          based_sz (get_ty_params_of_current_frame())
+            (fst (force_to_reg (Il.Cell fp))) off
+        in
+          Il.Mem (p, referent_type)
+    in
+
       match htab_search cx.ctxt_slot_vregs slot_id with
           Some vr ->
             begin
@@ -865,43 +906,15 @@ let trans_visitor
                           Il.Mem (slot_mem, referent_type)
                       end
                     else
-                      if (Stack.is_empty curr_stmt)
-                      then
-                        Il.Mem (fp_off_sz off, referent_type)
-                      else
-                        let slot_depth = get_slot_depth cx slot_id in
-                        let stmt_depth =
-                          get_stmt_depth cx (Stack.top curr_stmt)
-                        in
-                          if slot_depth <> stmt_depth
-                          then
-                            let _ = assert (slot_depth < stmt_depth) in
-                            let _ =
-                              iflog
-                                begin
-                                  fun _ ->
-                                    let k =
-                                      Hashtbl.find cx.ctxt_slot_keys slot_id
-                                    in
-                                      annotate
-                                        (Printf.sprintf
-                                           "access outer frame slot #%d = %s"
-                                           (int_of_node slot_id)
-                                           (Fmt.fmt_to_str
-                                              Ast.fmt_slot_key k))
-                                end
-                            in
-                            let diff = stmt_depth - slot_depth in
-                            let _ = annotate "get outer frame pointer" in
-                            let fp = get_nth_outer_frame_ptr diff in
-                            let _ = annotate "calculate size" in
-                            let p =
-                              based_sz (get_ty_params_of_current_frame())
-                                (fst (force_to_reg (Il.Cell fp))) off
-                            in
-                              Il.Mem (p, referent_type)
-                          else
-                            Il.Mem (fp_off_sz off, referent_type)
+                      match access_depth with
+                          None -> local_access off
+                        | Some depth ->
+                            let slot_depth = get_slot_depth cx slot_id in
+                              if slot_depth <> depth
+                              then
+                                outer_access off slot_depth depth
+                              else
+                                local_access off
             end
   in
 
@@ -2434,12 +2447,35 @@ let trans_visitor
         | Ast.EXPR_atom a ->
             trans_atom a
 
+  and drop_slots_after_block bid : unit =
+    match htab_search cx.ctxt_post_block_slot_drops bid with
+        None -> ()
+      | Some slots ->
+          List.iter
+            begin
+              fun slot_id ->
+                let slot = get_slot cx slot_id in
+                let k = Hashtbl.find cx.ctxt_slot_keys slot_id in
+                let depth = Hashtbl.find cx.ctxt_block_loop_depths bid in
+                  iflog (fun _ ->
+                           annotate
+                             (Printf.sprintf
+                                "post-block, drop_slot %d = %s "
+                                (int_of_node slot_id)
+                                (Fmt.fmt_to_str Ast.fmt_slot_key k)));
+                  drop_slot_in_current_frame
+                    (cell_of_block_slot
+                       ~access_depth:(Some depth) slot_id) slot
+            end
+            slots
+
   and trans_block (block:Ast.block) : unit =
     flush_emitter_size_cache();
     trace_str cx.ctxt_sess.Session.sess_trace_block
       "entering block";
     emit (Il.Enter (Hashtbl.find cx.ctxt_block_fixups block.id));
     Array.iter trans_stmt block.node;
+    drop_slots_after_block block.id;
     trace_str cx.ctxt_sess.Session.sess_trace_block
       "exiting block";
     emit Il.Leave;

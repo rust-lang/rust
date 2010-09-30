@@ -1545,6 +1545,7 @@ and fmt_pat (ff:Format.formatter) (pat:pat) : unit =
         fmt_lval ff ctor;
         fmt_bracketed_arr_sep "(" ")" "," fmt_pat ff pats
     | PAT_slot (_, ident) ->
+        fmt ff "?";
         fmt_ident ff ident
     | PAT_wild ->
         fmt ff "_"

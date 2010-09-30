@@ -462,6 +462,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       deep.rs \
                       deref.rs \
                       destructor-ordering.rs \
+                      drop-on-empty-block-exit.rs \
                       export-non-interference.rs \
                       exterior.rs \
                       fn-lval.rs \
