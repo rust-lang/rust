@@ -50,10 +50,28 @@ state type fn_ctxt = rec(ValueRef llfn,
 
 type terminator = fn(@fn_ctxt cx, builder build);
 
-type block_ctxt = rec(BasicBlockRef llbb,
-                      builder build,
-                      terminator term,
-                      @fn_ctxt fcx);
+tag cleanup {
+    clean(fn(@block_ctxt cx, ValueRef v), ValueRef);
+}
+
+state type block_ctxt = rec(BasicBlockRef llbb,
+                            builder build,
+                            terminator term,
+                            mutable vec[cleanup] cleanups,
+                            @fn_ctxt fcx);
+
+
+fn ty_str(TypeRef t) -> str {
+    ret lib.llvm.type_to_str(t);
+}
+
+fn val_ty(ValueRef v) -> TypeRef {
+    ret llvm.LLVMTypeOf(v);
+}
+
+fn val_str(ValueRef v) -> str {
+    ret ty_str(val_ty(v));
+}
 
 
 // LLVM type constructors.
@@ -120,6 +138,12 @@ fn T_task() -> TypeRef {
                      ));
 }
 
+fn T_str() -> TypeRef {
+    ret T_struct(vec(T_int(),      // Refcount
+                     T_int()       // Lie about the remainder
+                     ));
+}
+
 fn T_crate() -> TypeRef {
     ret T_struct(vec(T_int(),      // ptrdiff_t image_base_off
                      T_int(),      // uintptr_t self_addr
@@ -134,7 +158,7 @@ fn T_crate() -> TypeRef {
                      T_int(),      // size_t main_exit_task_glue_off
                      T_int(),      // int n_rust_syms
                      T_int(),      // int n_c_syms
-                     T_int()       //int n_libs
+                     T_int()       // int n_libs
                      ));
 }
 
@@ -145,7 +169,6 @@ fn T_double() -> TypeRef {
 fn T_taskptr() -> TypeRef {
     ret T_ptr(T_task());
 }
-
 
 // LLVM constant constructors.
 
@@ -177,7 +200,7 @@ fn C_int(int i) -> ValueRef {
 
 fn C_str(@trans_ctxt cx, str s) -> ValueRef {
     auto sc = llvm.LLVMConstString(_str.buf(s), _str.byte_len(s), False);
-    auto g = llvm.LLVMAddGlobal(cx.llmod, llvm.LLVMTypeOf(sc),
+    auto g = llvm.LLVMAddGlobal(cx.llmod, val_ty(sc),
                                 _str.buf(cx.names.next("str")));
     llvm.LLVMSetInitializer(g, sc);
     ret g;
@@ -192,7 +215,7 @@ fn C_struct(vec[ValueRef] elts) -> ValueRef {
 fn decl_cdecl_fn(ModuleRef llmod, str name,
                  vec[TypeRef] inputs, TypeRef output) -> ValueRef {
     let TypeRef llty = T_fn(inputs, output);
-    log "declaring " + name + " with type " + lib.llvm.type_to_str(llty);
+    log "declaring " + name + " with type " + ty_str(llty);
     let ValueRef llfn =
         llvm.LLVMAddFunction(llmod, _str.buf(name), llty);
     llvm.LLVMSetFunctionCallConv(llfn, lib.llvm.LLVMCCallConv);
@@ -224,7 +247,7 @@ fn get_upcall(@trans_ctxt cx, str name, int n_args) -> ValueRef {
     }
     auto inputs = vec(T_taskptr());
     inputs += _vec.init_elt[TypeRef](T_int(), n_args as uint);
-    auto output = T_nil();
+    auto output = T_int();
     auto f = decl_cdecl_fn(cx.llmod, name, inputs, output);
     cx.upcalls.insert(name, f);
     ret f;
@@ -240,13 +263,24 @@ fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> ValueRef {
     for (ValueRef a in args) {
         call_args += cx.build.ZExtOrBitCast(a, T_int());
     }
-    log "emitting indirect-upcall via " + abi.upcall_glue_name(n);
-    for (ValueRef v in call_args) {
-        log "arg: " + lib.llvm.type_to_str(llvm.LLVMTypeOf(v));
-    }
-    log "emitting call to callee of type: " +
-        lib.llvm.type_to_str(llvm.LLVMTypeOf(llglue));
+    /*
+     log "emitting indirect-upcall via " + abi.upcall_glue_name(n);
+     for (ValueRef v in call_args) {
+       log "arg: " + val_str(v);
+     }
+     log "emitting call to llglue of type: " + val_str(llglue);
+    */
+
     ret cx.build.Call(llglue, call_args);
+}
+
+fn build_non_gc_free(@block_ctxt cx, ValueRef v) {
+    trans_upcall(cx, "upcall_free", vec(cx.build.PtrToInt(v, T_int()),
+                                        C_int(0)));
+}
+
+fn drop_str(@block_ctxt cx, ValueRef v) {
+    build_non_gc_free(cx, v);
 }
 
 fn trans_lit(@block_ctxt cx, &ast.lit lit) -> ValueRef {
@@ -265,9 +299,13 @@ fn trans_lit(@block_ctxt cx, &ast.lit lit) -> ValueRef {
         }
         case (ast.lit_str(?s)) {
             auto len = (_str.byte_len(s) as int) + 1;
-            ret trans_upcall(cx, "upcall_new_str",
-                             vec(p2i(C_str(cx.fcx.tcx, s)),
-                                 C_int(len)));
+            auto v = trans_upcall(cx, "upcall_new_str",
+                                  vec(p2i(C_str(cx.fcx.tcx, s)),
+                                      C_int(len)));
+            v = cx.build.IntToPtr(v, T_ptr(T_str()));
+            auto f = drop_str;
+            cx.cleanups += vec(clean(f, v));
+            ret v;
         }
     }
 }
@@ -402,7 +440,8 @@ fn trans_log(@block_ctxt cx, &ast.expr e) {
             alt (*lit) {
                 case (ast.lit_str(_)) {
                     auto v = trans_expr(cx, e);
-                    trans_upcall(cx, "upcall_log_str", vec(v));
+                    trans_upcall(cx, "upcall_log_str",
+                                 vec(cx.build.PtrToInt(v, T_int())));
                 }
                 case (_) {
                     auto v = trans_expr(cx, e);
@@ -441,9 +480,11 @@ fn new_builder(BasicBlockRef llbb) -> builder {
 fn new_block_ctxt(@fn_ctxt cx, terminator term) -> @block_ctxt {
     let BasicBlockRef llbb =
         llvm.LLVMAppendBasicBlock(cx.llfn, _str.buf(""));
+    let vec[cleanup] cleanups = vec();
     ret @rec(llbb=llbb,
              build=new_builder(llbb),
              term=term,
+             mutable cleanups=cleanups,
              fcx=cx);
 }
 
@@ -452,6 +493,15 @@ fn trans_block(@fn_ctxt cx, &ast.block b, terminator term) {
     for (@ast.stmt s in b) {
         trans_stmt(bcx, *s);
     }
+
+    for (cleanup c in bcx.cleanups) {
+        alt (c) {
+            case (clean(?cfn, ?v)) {
+                cfn(bcx, v);
+            }
+        }
+    }
+
     bcx.term(cx, bcx.build);
 }
 

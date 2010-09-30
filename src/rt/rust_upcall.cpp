@@ -312,8 +312,8 @@ upcall_free(rust_task *task, void* ptr, uintptr_t is_gc) {
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
     dom->log(rust_log::UPCALL|rust_log::MEM,
-             "upcall free(0x%" PRIxPTR ")",
-             (uintptr_t)ptr);
+             "upcall free(0x%" PRIxPTR ", is_gc=%" PRIdPTR ")",
+             (uintptr_t)ptr, is_gc);
     task->free(ptr, (bool) is_gc);
 }
 
@@ -338,7 +338,7 @@ upcall_new_str(rust_task *task, char const *s, size_t fill) {
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
     size_t alloc = next_power_of_two(sizeof(rust_str) + fill);
-    void *mem = dom->malloc(alloc);
+    void *mem = task->malloc(alloc);
     if (!mem) {
         task->fail(3);
         return NULL;
@@ -373,7 +373,8 @@ extern "C" CDECL rust_vec *
 upcall_vec_grow(rust_task *task,
                 rust_vec *v,
                 size_t n_bytes,
-                uintptr_t *need_copy)
+                uintptr_t *need_copy,
+                type_desc *td)
 {
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
@@ -396,7 +397,7 @@ upcall_vec_grow(rust_task *task,
 
         // Second-fastest path: can at least realloc.
         task->log(rust_log::UPCALL | rust_log::MEM, "realloc path");
-        v = (rust_vec*) dom->realloc(v, alloc);
+        v = (rust_vec*) task->realloc(v, alloc, td->is_stateful);
         if (!v) {
             task->fail(4);
             return NULL;
@@ -418,7 +419,7 @@ upcall_vec_grow(rust_task *task,
          * that we need the copies performed for us.
          */
         task->log(rust_log::UPCALL | rust_log::MEM, "new vec path");
-        void *mem = dom->malloc(alloc);
+        void *mem = task->malloc(alloc, td);
         if (!mem) {
             task->fail(4);
             return NULL;

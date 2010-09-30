@@ -1893,24 +1893,27 @@ let trans_visitor
       get_typed_mem_glue g fty inner
 
   (*
-   * Vector-growth glue takes four arguments:
+   * Vector-growth glue takes the following arguments:
    *
    *   0. (Implicit) task ptr
    *   1. Pointer to the typarams of the caller's frame (possibly required to
    *      be passed to element's copy glue).
-   *   2. Pointer to tydesc of the vec's stored element type, so that elements
+   *   2. Pointer to the tydesc of the vec, so that we can tell if it's gc
+   *      mem, and have a tydesc to pass to malloc if we're allocating anew.
+   *   3. Pointer to tydesc of the vec's stored element type, so that elements
    *      can be copied to a newly alloc'ed vec if one must be created.
-   *   3. Alias to vec that needs to grow (i.e. ptr to ptr to rust_vec).
-   *   4. Number of bytes of growth requested
+   *   4. Alias to vec that needs to grow (i.e. ptr to ptr to rust_vec).
+   *   5. Number of bytes of growth requested
    *)
   and emit_vec_grow_glue
       (fix:fixup)
       (g:glue)
       : unit =
     let arg_typarams_ptr = 0 in
-    let arg_tydesc_ptr = 1 in
-    let arg_vec_alias = 2 in
-    let arg_nbytes = 3 in
+    let arg_vec_tydesc_ptr = 1 in
+    let arg_elt_tydesc_ptr = 2 in
+    let arg_vec_alias = 3 in
+    let arg_nbytes = 4 in
 
     let name = glue_str cx g in
       log cx "emitting glue: %s" name;
@@ -1919,8 +1922,9 @@ let trans_visitor
         mk_simple_ty_fn
           [| ty_params_covering Ast.TY_int;      (* an OK lie *)
              local_slot Ast.TY_type;
+             local_slot Ast.TY_type;
              alias_slot (Ast.TY_vec Ast.TY_int); (* an OK lie *)
-             local_slot Ast.TY_uint; |]
+             local_slot Ast.TY_uint |]
       in
 
       let args_rty = call_args_referent_type cx 0 fn_ty None in
@@ -1936,7 +1940,8 @@ let trans_visitor
         let vec_alias_cell = get_element_ptr args_cell arg_vec_alias in
         let vec_cell = deref vec_alias_cell in
         let nbytes_cell = get_element_ptr args_cell arg_nbytes in
-        let td_ptr_cell = get_element_ptr args_cell arg_tydesc_ptr in
+        let vec_td_ptr_cell = get_element_ptr args_cell arg_vec_tydesc_ptr in
+        let elt_td_ptr_cell = get_element_ptr args_cell arg_elt_tydesc_ptr in
         let ty_params_cell =
           deref (get_element_ptr args_cell arg_typarams_ptr)
         in
@@ -1951,7 +1956,8 @@ let trans_visitor
                   new_vec_cell
                   [| Il.Cell vec_cell;
                      Il.Cell nbytes_cell;
-                     Il.Cell need_copy_alias_cell |]
+                     Il.Cell need_copy_alias_cell;
+                     Il.Cell vec_td_ptr_cell; |]
             end;
 
           let no_copy_jmps =
@@ -1965,7 +1971,7 @@ let trans_visitor
               get_element_ptr_dyn ty_params_cell src_vec Abi.vec_elt_fill
             in
             let elt_sz =
-              get_element_ptr (deref td_ptr_cell) Abi.tydesc_field_size
+              get_element_ptr (deref elt_td_ptr_cell) Abi.tydesc_field_size
             in
 
             let dst_buf =
@@ -1993,11 +1999,11 @@ let trans_visitor
 
                 (* Copy *)
                 let ty_params_ptr =
-                  get_tydesc_params ty_params_cell td_ptr_cell
+                  get_tydesc_params ty_params_cell elt_td_ptr_cell
                 in
                 let initflag = Il.Reg (force_to_reg one) in
                   trans_call_dynamic_glue
-                    td_ptr_cell
+                    elt_td_ptr_cell
                     Abi.tydesc_field_copy_glue
                     (Some (deref dptr))
                     [| ty_params_ptr; sptr; initflag |]
@@ -2971,8 +2977,8 @@ let trans_visitor
       (ty:Ast.ty)
       : unit =
 
-    let ty = strip_mutable_or_constrained_ty ty in
     let mctrl = ty_mem_ctrl cx ty in
+    let ty = strip_mutable_or_constrained_ty ty in
 
       match ty with
 
@@ -3173,7 +3179,7 @@ let trans_visitor
     check_box_rty cell;
     note_drop_step ty "in free-ty";
     begin
-    match simplified_ty ty with
+    match strip_mutable_or_constrained_ty ty with
         Ast.TY_port _ -> trans_del_port cell
       | Ast.TY_chan _ -> trans_del_chan cell
       | Ast.TY_task -> trans_kill_task cell
@@ -3183,14 +3189,13 @@ let trans_visitor
              (fun _ src ty -> drop_ty ty_params src ty);
              trans_free cell is_gc
 
-      | _ ->
+      | Ast.TY_box body_ty ->
           note_drop_step ty "in free-ty, dropping structured body";
           let (body_mem, _) =
             need_mem_cell
               (get_element_ptr_dyn ty_params (deref cell)
                  Abi.box_rc_field_body)
           in
-          let body_ty = simplified_ty ty in
           let vr = next_vreg_cell Il.voidptr_t in
             lea vr body_mem;
             trace_word cx.ctxt_sess.Session.sess_trace_drop vr;
@@ -3201,6 +3206,8 @@ let trans_visitor
               None;
             note_drop_step ty "in free-ty, calling free";
             trans_free cell is_gc;
+
+      | t -> bug () "freeing unexpected type: %a" Ast.sprintf_ty t
     end;
     note_drop_step ty "free-ty done";
 
@@ -3268,13 +3275,17 @@ let trans_visitor
       (slot:Ast.slot)
       : unit =
       check_and_flush_chan cell slot;
-      drop_slot (get_ty_params_of_current_frame()) cell slot
+      drop_slot (get_ty_params_of_current_frame()) cell
+        { slot with
+            Ast.slot_ty = Some (strip_mutable_or_constrained_ty
+                                  (slot_ty slot)) }
 
   and drop_ty_in_current_frame
       (cell:Il.cell)
       (ty:Ast.ty)
       : unit =
-    drop_ty (get_ty_params_of_current_frame()) cell ty
+    drop_ty (get_ty_params_of_current_frame()) cell
+      (strip_mutable_or_constrained_ty ty)
 
   (* Returns a mark for a jmp that must be patched to the continuation of
    * the null case (i.e. fall-through means not null).
@@ -4755,7 +4766,8 @@ let trans_visitor
                     trans_call_simple_static_glue
                       (get_vec_grow_glue ())
                       (get_ty_params_of_current_frame ())
-                      [| get_tydesc None elt_ty;
+                      [| get_tydesc None dst_ty;
+                         get_tydesc None elt_ty;
                          dst_vec_alias;
                          src_fill; |]
                       None
@@ -4827,7 +4839,8 @@ let trans_visitor
                     trans_call_simple_static_glue
                       (get_vec_grow_glue ())
                       (get_ty_params_of_current_frame ())
-                      [| get_tydesc None elt_ty;
+                      [| get_tydesc None dst_ty;
+                         get_tydesc None elt_ty;
                          dst_vec_alias;
                          elt_sz_cell; |]
                       None

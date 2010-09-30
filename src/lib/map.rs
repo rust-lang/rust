@@ -12,15 +12,15 @@ import std._vec;
 type hashfn[K] = fn(&K) -> uint;
 type eqfn[K] = fn(&K, &K) -> bool;
 
-type hashmap[K, V] = obj {
-                     fn size() -> uint;
-                     fn insert(&K key, &V val) -> bool;
-                     fn contains_key(&K key) -> bool;
-                     fn get(&K key) -> V;
-                     fn find(&K key) -> util.option[V];
-                     fn remove(&K key) -> util.option[V];
-                     fn rehash();
-                     iter items() -> tup(K,V);
+state type hashmap[K, V] = state obj {
+                                 fn size() -> uint;
+                                 fn insert(&K key, &V val) -> bool;
+                                 fn contains_key(&K key) -> bool;
+                                 fn get(&K key) -> V;
+                                 fn find(&K key) -> util.option[V];
+                                 fn remove(&K key) -> util.option[V];
+                                 fn rehash();
+                                 iter items() -> tup(K,V);
 };
 
 fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
@@ -141,12 +141,12 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
             }
         }
 
-    obj hashmap[K, V](hashfn[K] hasher,
-                      eqfn[K] eqer,
-                      mutable vec[mutable bucket[K, V]] bkts,
-                      mutable uint nbkts,
-                      mutable uint nelts,
-                      util.rational lf)
+    state obj hashmap[K, V](hashfn[K] hasher,
+                            eqfn[K] eqer,
+                            mutable vec[mutable bucket[K, V]] bkts,
+                            mutable uint nbkts,
+                            mutable uint nelts,
+                            util.rational lf)
         {
             fn size() -> uint { ret nelts; }
 

@@ -9,8 +9,8 @@ state type reader = state obj {
                           fn is_eof() -> bool;
                           fn curr() -> char;
                           fn next() -> char;
-                          state fn bump();
-                          state fn mark();
+                          io fn bump();
+                          fn mark();
                           fn get_filename() -> str;
                           fn get_mark_pos() -> common.pos;
                           fn get_curr_pos() -> common.pos;
@@ -55,7 +55,7 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
                 ret n;
             }
 
-            state fn bump() {
+            io fn bump() {
                 c = n;
 
                 if (c == (-1) as char) {
@@ -72,7 +72,7 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
                 n = rdr.getc() as char;
             }
 
-            state fn mark() {
+            fn mark() {
                 mark_line = line;
                 mark_col = col;
             }
@@ -243,14 +243,14 @@ fn is_whitespace(char c) -> bool {
     ret c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
-state fn consume_any_whitespace(reader rdr) {
+io fn consume_any_whitespace(reader rdr) {
     while (is_whitespace(rdr.curr())) {
         rdr.bump();
     }
     be consume_any_line_comment(rdr);
 }
 
-state fn consume_any_line_comment(reader rdr) {
+io fn consume_any_line_comment(reader rdr) {
     if (rdr.curr() == '/') {
         alt (rdr.next()) {
             case ('/') {
@@ -273,7 +273,7 @@ state fn consume_any_line_comment(reader rdr) {
 }
 
 
-state fn consume_block_comment(reader rdr) {
+io fn consume_block_comment(reader rdr) {
     let int level = 1;
     while (level > 0) {
         if (rdr.curr() == '/' && rdr.next() == '*') {
@@ -294,7 +294,7 @@ state fn consume_block_comment(reader rdr) {
     be consume_any_whitespace(rdr);
 }
 
-state fn next_token(reader rdr) -> token.token {
+io fn next_token(reader rdr) -> token.token {
     auto accum_str = "";
     auto accum_int = 0;
 
@@ -355,7 +355,7 @@ state fn next_token(reader rdr) -> token.token {
         ret token.LIT_INT(accum_int);
     }
 
-    state fn binop(reader rdr, token.binop op) -> token.token {
+    io fn binop(reader rdr, token.binop op) -> token.token {
         rdr.bump();
         if (rdr.next() == '=') {
             rdr.bump();

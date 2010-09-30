@@ -14,26 +14,26 @@ tag option[T] {
 
 state type parser =
     state obj {
-          state fn peek() -> token.token;
-          state fn bump();
+          fn peek() -> token.token;
+          io fn bump();
           io fn err(str s);
           fn get_session() -> session.session;
           fn get_span() -> common.span;
     };
 
-state fn new_parser(session.session sess, str path) -> parser {
+io fn new_parser(session.session sess, str path) -> parser {
     state obj stdio_parser(session.session sess,
                            mutable token.token tok,
                            mutable common.pos lo,
                            mutable common.pos hi,
                            lexer.reader rdr)
         {
-            state fn peek() -> token.token {
+            fn peek() -> token.token {
                 log token.to_str(tok);
                 ret tok;
             }
 
-            state fn bump() {
+            io fn bump() {
                 tok = lexer.next_token(rdr);
                 lo = rdr.get_mark_pos();
                 hi = rdr.get_curr_pos();
@@ -60,7 +60,7 @@ state fn new_parser(session.session sess, str path) -> parser {
     ret stdio_parser(sess, lexer.next_token(rdr), npos, npos, rdr);
 }
 
-state fn expect(parser p, token.token t) {
+io fn expect(parser p, token.token t) {
     if (p.peek() == t) {
         p.bump();
     } else {
@@ -72,7 +72,7 @@ state fn expect(parser p, token.token t) {
     }
 }
 
-state fn parse_ident(parser p) -> ast.ident {
+io fn parse_ident(parser p) -> ast.ident {
     alt (p.peek()) {
         case (token.IDENT(?i)) { p.bump(); ret i; }
         case (_) {
@@ -82,7 +82,7 @@ state fn parse_ident(parser p) -> ast.ident {
     }
 }
 
-state fn parse_ty(parser p) -> ast.ty {
+io fn parse_ty(parser p) -> ast.ty {
     alt (p.peek()) {
         case (token.INT) { p.bump(); ret ast.ty_int; }
         case (token.UINT) { p.bump(); ret ast.ty_int; }
@@ -94,7 +94,7 @@ state fn parse_ty(parser p) -> ast.ty {
     fail;
 }
 
-state fn parse_slot(parser p) -> ast.slot {
+io fn parse_slot(parser p) -> ast.slot {
     let ast.mode m = ast.val;
     if (p.peek() == token.BINOP(token.AND)) {
         m = ast.alias;
@@ -104,10 +104,10 @@ state fn parse_slot(parser p) -> ast.slot {
     ret rec(ty=t, mode=m);
 }
 
-state fn parse_seq[T](token.token bra,
+io fn parse_seq[T](token.token bra,
                       token.token ket,
                       option[token.token] sep,
-                      (state fn(parser) -> T) f,
+                      (io fn(parser) -> T) f,
                       parser p) -> vec[T] {
     let bool first = true;
     expect(p, bra);
@@ -132,7 +132,7 @@ state fn parse_seq[T](token.token bra,
     ret v;
 }
 
-state fn parse_lit(parser p) -> @ast.lit {
+io fn parse_lit(parser p) -> @ast.lit {
     alt (p.peek()) {
         case (token.LIT_INT(?i)) {
             p.bump();
@@ -161,7 +161,7 @@ state fn parse_lit(parser p) -> @ast.lit {
 
 
 
-state fn parse_bottom_expr(parser p) -> @ast.expr {
+io fn parse_bottom_expr(parser p) -> @ast.expr {
     alt (p.peek()) {
         case (token.LPAREN) {
             p.bump();
@@ -192,7 +192,7 @@ state fn parse_bottom_expr(parser p) -> @ast.expr {
 
         case (token.REC) {
             p.bump();
-            state fn parse_entry(parser p) ->
+            io fn parse_entry(parser p) ->
                 tup(ast.ident, @ast.expr) {
                 auto i = parse_ident(p);
                 expect(p, token.EQ);
@@ -219,7 +219,7 @@ state fn parse_bottom_expr(parser p) -> @ast.expr {
     }
 }
 
-state fn parse_path_expr(parser p) -> @ast.expr {
+io fn parse_path_expr(parser p) -> @ast.expr {
     auto e = parse_bottom_expr(p);
     while (true) {
         alt (p.peek()) {
@@ -246,7 +246,7 @@ state fn parse_path_expr(parser p) -> @ast.expr {
     ret e;
 }
 
-state fn parse_prefix_expr(parser p) -> @ast.expr {
+io fn parse_prefix_expr(parser p) -> @ast.expr {
     alt (p.peek()) {
 
         case (token.NOT) {
@@ -294,8 +294,8 @@ state fn parse_prefix_expr(parser p) -> @ast.expr {
     }
 }
 
-state fn parse_binops(parser p,
-                      (state fn(parser) -> @ast.expr) sub,
+io fn parse_binops(parser p,
+                      (io fn(parser) -> @ast.expr) sub,
                       vec[tup(token.binop, ast.binop)] ops)
     -> @ast.expr {
     auto e = sub(p);
@@ -317,8 +317,8 @@ state fn parse_binops(parser p,
     ret e;
 }
 
-state fn parse_binary_exprs(parser p,
-                            (state fn(parser) -> @ast.expr) sub,
+io fn parse_binary_exprs(parser p,
+                            (io fn(parser) -> @ast.expr) sub,
                             vec[tup(token.token, ast.binop)] ops)
     -> @ast.expr {
     auto e = sub(p);
@@ -336,42 +336,42 @@ state fn parse_binary_exprs(parser p,
     ret e;
 }
 
-state fn parse_factor_expr(parser p) -> @ast.expr {
+io fn parse_factor_expr(parser p) -> @ast.expr {
     auto sub = parse_prefix_expr;
     ret parse_binops(p, sub, vec(tup(token.STAR, ast.mul),
                                  tup(token.SLASH, ast.div),
                                  tup(token.PERCENT, ast.rem)));
 }
 
-state fn parse_term_expr(parser p) -> @ast.expr {
+io fn parse_term_expr(parser p) -> @ast.expr {
     auto sub = parse_factor_expr;
     ret parse_binops(p, sub, vec(tup(token.PLUS, ast.add),
                                  tup(token.MINUS, ast.sub)));
 }
 
-state fn parse_shift_expr(parser p) -> @ast.expr {
+io fn parse_shift_expr(parser p) -> @ast.expr {
     auto sub = parse_term_expr;
     ret parse_binops(p, sub, vec(tup(token.LSL, ast.lsl),
                                  tup(token.LSR, ast.lsr),
                                  tup(token.ASR, ast.asr)));
 }
 
-state fn parse_bitand_expr(parser p) -> @ast.expr {
+io fn parse_bitand_expr(parser p) -> @ast.expr {
     auto sub = parse_shift_expr;
     ret parse_binops(p, sub, vec(tup(token.AND, ast.bitand)));
 }
 
-state fn parse_bitxor_expr(parser p) -> @ast.expr {
+io fn parse_bitxor_expr(parser p) -> @ast.expr {
     auto sub = parse_bitand_expr;
     ret parse_binops(p, sub, vec(tup(token.CARET, ast.bitxor)));
 }
 
-state fn parse_bitor_expr(parser p) -> @ast.expr {
+io fn parse_bitor_expr(parser p) -> @ast.expr {
     auto sub = parse_bitxor_expr;
     ret parse_binops(p, sub, vec(tup(token.OR, ast.bitor)));
 }
 
-state fn parse_cast_expr(parser p) -> @ast.expr {
+io fn parse_cast_expr(parser p) -> @ast.expr {
     auto e = parse_bitor_expr(p);
     while (true) {
         alt (p.peek()) {
@@ -389,7 +389,7 @@ state fn parse_cast_expr(parser p) -> @ast.expr {
     ret e;
 }
 
-state fn parse_relational_expr(parser p) -> @ast.expr {
+io fn parse_relational_expr(parser p) -> @ast.expr {
     auto sub = parse_cast_expr;
     ret parse_binary_exprs(p, sub, vec(tup(token.LT, ast.lt),
                                        tup(token.LE, ast.le),
@@ -398,27 +398,27 @@ state fn parse_relational_expr(parser p) -> @ast.expr {
 }
 
 
-state fn parse_equality_expr(parser p) -> @ast.expr {
+io fn parse_equality_expr(parser p) -> @ast.expr {
     auto sub = parse_relational_expr;
     ret parse_binary_exprs(p, sub, vec(tup(token.EQEQ, ast.eq),
                                        tup(token.NE, ast.ne)));
 }
 
-state fn parse_and_expr(parser p) -> @ast.expr {
+io fn parse_and_expr(parser p) -> @ast.expr {
     auto sub = parse_equality_expr;
     ret parse_binary_exprs(p, sub, vec(tup(token.ANDAND, ast.and)));
 }
 
-state fn parse_or_expr(parser p) -> @ast.expr {
+io fn parse_or_expr(parser p) -> @ast.expr {
     auto sub = parse_and_expr;
     ret parse_binary_exprs(p, sub, vec(tup(token.OROR, ast.or)));
 }
 
-state fn parse_expr(parser p) -> @ast.expr {
+io fn parse_expr(parser p) -> @ast.expr {
     ret parse_or_expr(p);
 }
 
-state fn parse_stmt(parser p) -> @ast.stmt {
+io fn parse_stmt(parser p) -> @ast.stmt {
     alt (p.peek()) {
         case (token.LOG) {
             p.bump();
@@ -431,7 +431,7 @@ state fn parse_stmt(parser p) -> @ast.stmt {
     fail;
 }
 
-state fn parse_block(parser p) -> ast.block {
+io fn parse_block(parser p) -> ast.block {
     auto f = parse_stmt;
     // FIXME: passing parse_stmt as an lval doesn't work at the moment.
     ret parse_seq[@ast.stmt](token.LBRACE,
@@ -440,14 +440,14 @@ state fn parse_block(parser p) -> ast.block {
                              f, p);
 }
 
-state fn parse_slot_ident_pair(parser p) ->
+io fn parse_slot_ident_pair(parser p) ->
     rec(ast.slot slot, ast.ident ident) {
     auto s = parse_slot(p);
     auto i = parse_ident(p);
     ret rec(slot=s, ident=i);
 }
 
-state fn parse_fn(parser p) -> tup(ast.ident, ast.item) {
+io fn parse_fn(parser p) -> tup(ast.ident, ast.item) {
     expect(p, token.FN);
     auto id = parse_ident(p);
     auto pf = parse_slot_ident_pair;
@@ -477,7 +477,7 @@ state fn parse_fn(parser p) -> tup(ast.ident, ast.item) {
     ret tup(id, ast.item_fn(@f));
 }
 
-state fn parse_mod(parser p) -> tup(ast.ident, ast.item) {
+io fn parse_mod(parser p) -> tup(ast.ident, ast.item) {
     expect(p, token.MOD);
     auto id = parse_ident(p);
     expect(p, token.LBRACE);
@@ -490,7 +490,7 @@ state fn parse_mod(parser p) -> tup(ast.ident, ast.item) {
     ret tup(id, ast.item_mod(@m));
 }
 
-state fn parse_item(parser p) -> tup(ast.ident, ast.item) {
+io fn parse_item(parser p) -> tup(ast.ident, ast.item) {
     alt (p.peek()) {
         case (token.FN) {
             ret parse_fn(p);
@@ -503,7 +503,7 @@ state fn parse_item(parser p) -> tup(ast.ident, ast.item) {
     fail;
 }
 
-state fn parse_crate(parser p) -> ast.crate {
+io fn parse_crate(parser p) -> ast.crate {
     let ast._mod m = new_str_hash[ast.item]();
     while (p.peek() != token.EOF) {
         auto i = parse_item(p);

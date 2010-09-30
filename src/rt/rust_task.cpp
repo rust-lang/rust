@@ -488,6 +488,10 @@ rust_task::unlink_gc(gc_alloc *gcm) {
 void *
 rust_task::malloc(size_t sz, type_desc *td)
 {
+    // FIXME: GC is disabled for now.
+    // Effects, GC-memory classification are all wrong.
+    td = NULL;
+
     if (td) {
         sz += sizeof(gc_alloc);
     }
@@ -512,6 +516,9 @@ rust_task::malloc(size_t sz, type_desc *td)
 void *
 rust_task::realloc(void *data, size_t sz, bool is_gc)
 {
+    // FIXME: GC is disabled for now.
+    // Effects, GC-memory classification are all wrong.
+    is_gc = false;
     if (is_gc) {
         gc_alloc *gcm = (gc_alloc*)(((char *)data) - sizeof(gc_alloc));
         unlink_gc(gcm);
@@ -534,6 +541,9 @@ rust_task::realloc(void *data, size_t sz, bool is_gc)
 void
 rust_task::free(void *p, bool is_gc)
 {
+    // FIXME: GC is disabled for now.
+    // Effects, GC-memory classification are all wrong.
+    is_gc = false;
     if (is_gc) {
         gc_alloc *gcm = (gc_alloc*)(((char *)p) - sizeof(gc_alloc));
         unlink_gc(gcm);

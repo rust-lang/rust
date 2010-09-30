@@ -4,7 +4,7 @@ import front.parser;
 import front.token;
 import middle.trans;
 
-fn main(vec[str] args) {
+io fn main(vec[str] args) {
 
   log "This is the rust 'self-hosted' compiler.";
   log "The one written in rust.";
