@@ -904,44 +904,6 @@ and parse_mutable_and_pexp_list (ps:pstate)
 ;;
 
 (* 
- * FIXME: This is a crude approximation of the syntax-extension system,
- * for purposes of prototyping and/or hard-wiring any extensions we
- * wish to use in the bootstrap compiler. The eventual aim is to permit
- * loading rust crates to process extensions, but this will likely
- * require a rust-based frontend, or an ocaml-FFI-based connection to
- * rust crates. At the moment we have neither.
- *)
-
-let expand_pexp_custom
-    (ps:pstate)
-    (dst_lval:Ast.lval)
-    (name:Ast.name)
-    (args:Ast.atom array)
-    (body:string option)
-    (spanner:'a -> 'a identified)
-    : (Ast.stmt array) =
-  let nstr = Fmt.fmt_to_str Ast.fmt_name name in
-    match (nstr, (Array.length args), body) with
-
-        ("shell", 0, Some cmd) ->
-          let c = Unix.open_process_in cmd in
-          let b = Buffer.create 32 in
-          let rec r _ =
-            try
-              Buffer.add_char b (input_char c);
-              r ()
-            with
-                End_of_file ->
-                  ignore (Unix.close_process_in c);
-                  Buffer.contents b
-          in
-            [| spanner (Ast.STMT_new_str (dst_lval, r())) |]
-
-      | _ ->
-          raise (err ("unknown syntax extension: " ^ nstr) ps)
-;;
-
-(* 
  * Desugarings depend on context:
  * 
  *   - If a pexp is used on the RHS of an assignment, it's turned into
@@ -1253,11 +1215,185 @@ and desugar_expr_init
             aa arg_stmts [| stmt |]
 
       | Ast.PEXP_custom (n, a, b) ->
-          let (arg_stmts, args) = desugar_expr_atoms ps a in
-          let stmts =
-            expand_pexp_custom ps dst_lval n args b ss
+          expand_pexp_custom ps apos bpos dst_lval n a b
+
+(* 
+ * FIXME: This is a crude approximation of the syntax-extension system,
+ * for purposes of prototyping and/or hard-wiring any extensions we
+ * wish to use in the bootstrap compiler. The eventual aim is to permit
+ * loading rust crates to process extensions, but this will likely
+ * require a rust-based frontend, or an ocaml-FFI-based connection to
+ * rust crates. At the moment we have neither.
+ *)
+
+and expand_pexp_custom
+    (ps:pstate)
+    (apos:pos)
+    (bpos:pos)
+    (dst_lval:Ast.lval)
+    (name:Ast.name)
+    (pexp_args:Ast.pexp array)
+    (body:string option)
+    : (Ast.stmt array) =
+  let nstr = Fmt.fmt_to_str Ast.fmt_name name in
+    match (nstr, (Array.length pexp_args), body) with
+
+        ("shell", 0, Some cmd) ->
+          let c = Unix.open_process_in cmd in
+          let b = Buffer.create 32 in
+          let rec r _ =
+            try
+              Buffer.add_char b (input_char c);
+              r ()
+            with
+                End_of_file ->
+                  ignore (Unix.close_process_in c);
+                  Buffer.contents b
           in
-            aa arg_stmts stmts
+            [| span ps apos bpos
+                 (Ast.STMT_new_str (dst_lval, r())) |]
+
+      | ("fmt", nargs, None) ->
+            if nargs = 0
+            then raise (err "malformed #fmt call" ps)
+            else
+              begin
+                match pexp_args.(0).node with
+                    Ast.PEXP_str s ->
+                      let (arg_stmts, args) =
+                        desugar_expr_atoms ps
+                          (Array.sub pexp_args 1 (nargs-1))
+                      in
+
+                      let pieces = Extfmt.parse_fmt_string s in
+                      let fmt_stmts =
+                        fmt_pieces_to_stmts
+                          ps apos bpos dst_lval pieces args
+                      in
+                        Array.append arg_stmts fmt_stmts
+                  | _ ->
+                      raise (err "malformed #fmt call" ps)
+              end
+
+      | _ ->
+          raise (err ("unknown syntax extension: " ^ nstr) ps)
+
+and fmt_pieces_to_stmts
+    (ps:pstate)
+    (apos:pos)
+    (bpos:pos)
+    (dst_lval:Ast.lval)
+    (pieces:Extfmt.piece array)
+    (args:Ast.atom array)
+    : (Ast.stmt array) =
+
+  let stmts = Queue.create () in
+
+  let make_new_tmp _ =
+    let (_, tmp, decl_stmt) = build_tmp ps slot_auto apos bpos in
+      Queue.add decl_stmt stmts;
+      tmp
+  in
+
+  let make_new_str s =
+    let tmp = make_new_tmp () in
+    let init_stmt =
+      span ps apos bpos (Ast.STMT_new_str (clone_lval ps tmp, s))
+    in
+      Queue.add init_stmt stmts;
+      tmp
+  in
+
+  let make_append dst_lval src_atom =
+    let stmt =
+      span ps apos bpos
+        (Ast.STMT_copy_binop
+           ((clone_lval ps dst_lval), Ast.BINOP_add, src_atom))
+    in
+      Queue.add stmt stmts
+  in
+
+  let make_append_lval dst_lval src_lval =
+      make_append dst_lval (Ast.ATOM_lval (clone_lval ps src_lval))
+  in
+
+  let rec make_lval' path =
+    match path with
+        [n] ->
+          Ast.LVAL_base (span ps apos bpos (Ast.BASE_ident n))
+
+      | x :: xs ->
+          Ast.LVAL_ext (make_lval' xs,
+                        Ast.COMP_named (Ast.COMP_ident x))
+
+      | [] -> (bug () "make_lval on empty list in #fmt")
+  in
+
+  let make_lval path = make_lval' (List.rev path) in
+
+  let make_call dst path args =
+    let callee = make_lval path in
+    let stmt =
+      span ps apos bpos (Ast.STMT_call (dst, callee, args ))
+    in
+      Queue.add stmt stmts
+  in
+
+  let ulit i =
+    Ast.ATOM_literal (span ps apos bpos (Ast.LIT_uint (Int64.of_int i)))
+  in
+
+  let n = ref 0 in
+  let tmp_lval = make_new_str "" in
+  let final_stmt =
+    span ps apos bpos
+      (Ast.STMT_copy
+         (clone_lval ps dst_lval,
+          Ast.EXPR_atom (Ast.ATOM_lval tmp_lval)))
+  in
+    Array.iter
+      begin
+        fun piece ->
+          match piece with
+              Extfmt.PIECE_string s ->
+                let s_lval = make_new_str s in
+                  make_append_lval tmp_lval s_lval
+
+            | Extfmt.PIECE_conversion conv ->
+                if not
+                  ((conv.Extfmt.conv_parameter = None) &&
+                     (conv.Extfmt.conv_flags = []) &&
+                     (conv.Extfmt.conv_width = Extfmt.COUNT_implied) &&
+                     (conv.Extfmt.conv_precision = Extfmt.COUNT_implied))
+                then
+                  raise (err "conversion not supported in #fmt string" ps);
+                if !n >= Array.length args
+                then raise (err "too many conversions in #fmt string" ps);
+                let arg = args.(!n) in
+                  incr n;
+                  match conv.Extfmt.conv_ty with
+                      Extfmt.TY_str ->
+                        make_append tmp_lval arg
+
+                    | Extfmt.TY_int Extfmt.SIGNED ->
+                        let t = make_new_tmp () in
+                          make_call t
+                            ["std"; "_int"; "to_str" ] [| arg; ulit 10 |];
+
+                          make_append_lval tmp_lval t
+
+                    | Extfmt.TY_int Extfmt.UNSIGNED ->
+                        let t = make_new_tmp () in
+                          make_call t
+                            ["std"; "_uint"; "to_str" ] [| arg; ulit 10 |];
+                          make_append_lval tmp_lval t
+
+                    | _ ->
+                        raise (err "conversion not supported in #fmt" ps);
+      end
+      pieces;
+    Queue.add final_stmt stmts;
+    queue_to_arr stmts;
 
 
 and atom_lval (_:pstate) (at:Ast.atom) : Ast.lval =

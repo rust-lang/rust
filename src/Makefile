@@ -235,8 +235,8 @@ IL_MLS := $(addprefix boot/be/, asm.ml il.ml abi.ml)
 ME_MLS := $(addprefix boot/me/, walk.ml semant.ml resolve.ml alias.ml \
             simplify.ml type.ml dead.ml effect.ml typestate.ml loop.ml \
             layout.ml transutil.ml trans.ml dwarf.ml)
-FE_MLS := $(addprefix boot/fe/, ast.ml token.ml lexer.ml parser.ml pexp.ml \
-            item.ml cexp.ml fuzz.ml)
+FE_MLS := $(addprefix boot/fe/, ast.ml token.ml lexer.ml parser.ml \
+            extfmt.ml pexp.ml item.ml cexp.ml fuzz.ml)
 DRIVER_TOP_MLS := $(addprefix boot/driver/, lib.ml $(VARIANT)/glue.ml main.ml)
 
 BOOT_MLS := $(UTIL_BOT_MLS) $(DRIVER_BOT_MLS) $(FE_MLS) $(IL_MLS) $(ME_MLS) \
@@ -540,6 +540,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       str-concat.rs \
                       str-idx.rs \
                       structured-compare.rs \
+                      syntax-extension-fmt.rs \
                       tag.rs \
                       tail-call-arg-leak.rs \
                       tail-cps.rs \
