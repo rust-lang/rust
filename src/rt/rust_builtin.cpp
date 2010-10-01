@@ -338,6 +338,10 @@ debug_fn(rust_task *task, type_desc *t, rust_fn *fn)
     debug_tydesc_helper(task, t);
     task->log(rust_log::STDLIB, "  thunk at 0x%" PRIxPTR, fn->thunk);
     task->log(rust_log::STDLIB, "  closure at 0x%" PRIxPTR, fn->closure);
+    if (fn->closure) {
+        task->log(rust_log::STDLIB, "    refcount %" PRIdPTR,
+                  fn->closure->ref_count);
+    }
 }
 
 extern "C" CDECL void *

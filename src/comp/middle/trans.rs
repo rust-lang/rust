@@ -51,7 +51,7 @@ state type fn_ctxt = rec(ValueRef llfn,
 type terminator = fn(@fn_ctxt cx, builder build);
 
 tag cleanup {
-    clean(fn(@block_ctxt cx, ValueRef v), ValueRef);
+    clean(fn(@block_ctxt cx));
 }
 
 state type block_ctxt = rec(BasicBlockRef llbb,
@@ -303,8 +303,7 @@ fn trans_lit(@block_ctxt cx, &ast.lit lit) -> ValueRef {
                                   vec(p2i(C_str(cx.fcx.tcx, s)),
                                       C_int(len)));
             v = cx.build.IntToPtr(v, T_ptr(T_str()));
-            auto f = drop_str;
-            cx.cleanups += vec(clean(f, v));
+            cx.cleanups += vec(clean(bind drop_str(_, v)));
             ret v;
         }
     }
@@ -496,8 +495,8 @@ fn trans_block(@fn_ctxt cx, &ast.block b, terminator term) {
 
     for (cleanup c in bcx.cleanups) {
         alt (c) {
-            case (clean(?cfn, ?v)) {
-                cfn(bcx, v);
+            case (clean(?cfn)) {
+                cfn(bcx);
             }
         }
     }

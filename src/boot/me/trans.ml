@@ -1640,12 +1640,28 @@ let trans_visitor
         get_element_ptr closure_target_cell Abi.fn_field_code
       in
 
+      let self_args_cell =
+        get_element_ptr all_self_args_cell Abi.calltup_elt_args
+      in
+
+      let self_ty_params_cell =
+        get_element_ptr all_self_args_cell Abi.calltup_elt_ty_params
+      in
+
         merge_bound_args
           self_args_rty callee_args_rty
           arg_slots arg_bound_flags;
         iflog (fun _ -> annotate "call through to closure target fn");
 
         call_code (code_of_cell closure_target_code_cell);
+
+        (* Drop the args we were passed. *)
+        Array.iteri
+          (fun i slot ->
+             let cell = get_element_ptr self_args_cell i in
+               drop_slot self_ty_params_cell cell slot)
+          unbound_slots;
+
         trans_glue_frame_exit fix spill g
 
 
