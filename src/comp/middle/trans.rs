@@ -51,7 +51,7 @@ state type fn_ctxt = rec(ValueRef llfn,
 type terminator = fn(@fn_ctxt cx, builder build);
 
 tag cleanup {
-    clean(fn(@block_ctxt cx));
+    clean(fn(@block_ctxt cx) -> @block_ctxt);
 }
 
 state type block_ctxt = rec(BasicBlockRef llbb,
@@ -138,10 +138,20 @@ fn T_task() -> TypeRef {
                      ));
 }
 
-fn T_str() -> TypeRef {
+fn T_array(TypeRef t, uint n) -> TypeRef {
+    ret llvm.LLVMArrayType(t, n);
+}
+
+fn T_vec(TypeRef t, uint n) -> TypeRef {
     ret T_struct(vec(T_int(),      // Refcount
-                     T_int()       // Lie about the remainder
+                     T_int(),      // Alloc
+                     T_int(),      // Fill
+                     T_array(t, n) // Body elements
                      ));
+}
+
+fn T_str(uint n) -> TypeRef {
+    ret T_vec(T_i8(), n);
 }
 
 fn T_crate() -> TypeRef {
@@ -279,8 +289,28 @@ fn build_non_gc_free(@block_ctxt cx, ValueRef v) {
                                         C_int(0)));
 }
 
-fn drop_str(@block_ctxt cx, ValueRef v) {
-    build_non_gc_free(cx, v);
+fn decr_refcnt_and_if_zero(@block_ctxt cx,
+                           ValueRef box_ptr,
+                           fn(@block_ctxt cx) inner) -> @block_ctxt {
+    auto rc_ptr = cx.build.GEP(box_ptr, vec(C_int(0),
+                                            C_int(abi.box_rc_field_refcnt)));
+    auto rc = cx.build.Load(rc_ptr);
+    rc = cx.build.Sub(rc, C_int(1));
+    cx.build.Store(rc, rc_ptr);
+    auto test = cx.build.ICmp(lib.llvm.LLVMIntEQ, C_int(0), rc);
+    auto next_cx = new_block_ctxt(cx.fcx, cx.term);
+    // We terminate the then-block ourselves here with a Br, so
+    // the terminator we pass in to the inner call is the no-op.
+    auto then_term = terminate_no_op;
+    auto then_cx = new_block_ctxt(cx.fcx, then_term);
+    inner(then_cx);
+    then_cx.build.Br(next_cx.llbb);
+    cx.build.CondBr(test, then_cx.llbb, next_cx.llbb);
+    ret next_cx;
+}
+
+fn drop_str(@block_ctxt cx, ValueRef v) -> @block_ctxt {
+    ret decr_refcnt_and_if_zero(cx, v, bind build_non_gc_free(_, v));
 }
 
 fn trans_lit(@block_ctxt cx, &ast.lit lit) -> ValueRef {
@@ -302,7 +332,7 @@ fn trans_lit(@block_ctxt cx, &ast.lit lit) -> ValueRef {
             auto v = trans_upcall(cx, "upcall_new_str",
                                   vec(p2i(C_str(cx.fcx.tcx, s)),
                                       C_int(len)));
-            v = cx.build.IntToPtr(v, T_ptr(T_str()));
+            v = cx.build.IntToPtr(v, T_ptr(T_str(len as uint)));
             cx.cleanups += vec(clean(bind drop_str(_, v)));
             ret v;
         }
@@ -466,8 +496,16 @@ fn trans_stmt(@block_ctxt cx, &ast.stmt s) {
     }
 }
 
-fn default_terminate(@fn_ctxt cx, builder build) {
+fn terminate_ret_void(@fn_ctxt cx, builder build) {
     build.RetVoid();
+}
+
+
+fn terminate_branch_to(@fn_ctxt cx, builder build, BasicBlockRef bb) {
+    build.Br(bb);
+}
+
+fn terminate_no_op(@fn_ctxt cx, builder build) {
 }
 
 fn new_builder(BasicBlockRef llbb) -> builder {
@@ -496,7 +534,7 @@ fn trans_block(@fn_ctxt cx, &ast.block b, terminator term) {
     for (cleanup c in bcx.cleanups) {
         alt (c) {
             case (clean(?cfn)) {
-                cfn(bcx);
+                bcx = cfn(bcx);
             }
         }
     }
@@ -527,7 +565,7 @@ fn trans_fn(@trans_ctxt cx, &ast._fn f) {
     let vec[TypeRef] args = vec();
 
     auto fcx = new_fn_ctxt(cx, cx.path, out, args);
-    auto term = default_terminate;
+    auto term = terminate_ret_void;
 
     trans_block(fcx, f.body, term);
 }
@@ -558,7 +596,7 @@ fn p2i(ValueRef v) -> ValueRef {
 fn trans_exit_task_glue(@trans_ctxt cx) {
     let vec[TypeRef] T_args = vec();
     let vec[ValueRef] V_args = vec();
-    auto term = default_terminate;
+    auto term = terminate_ret_void;
 
     auto llfn = cx.glues.exit_task_glue;
     let ValueRef lloutptr = C_null(T_int());
