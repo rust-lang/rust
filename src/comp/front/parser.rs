@@ -2,15 +2,9 @@ import std._io;
 import driver.session;
 import util.common;
 import util.common.new_str_hash;
-
-// FIXME: import std.util.option and use it here.
-// import std.util.option;
-
-tag option[T] {
-  none;
-  some(T);
-}
-
+import util.common.option;
+import util.common.some;
+import util.common.none;
 
 state type parser =
     state obj {
@@ -414,8 +408,35 @@ io fn parse_or_expr(parser p) -> @ast.expr {
     ret parse_binary_exprs(p, sub, vec(tup(token.OROR, ast.or)));
 }
 
+io fn parse_if_expr(parser p) -> @ast.expr {
+    expect(p, token.IF);
+    expect(p, token.LPAREN);
+    auto cond = parse_expr(p);
+    expect(p, token.RPAREN);
+    auto thn = parse_block(p);
+    let option[ast.block] els = none[ast.block];
+    alt (p.peek()) {
+        case (token.ELSE) {
+            p.bump();
+            els = some(parse_block(p));
+        }
+    }
+    ret @ast.expr_if(cond, thn, els);
+}
+
 io fn parse_expr(parser p) -> @ast.expr {
-    ret parse_or_expr(p);
+    alt (p.peek()) {
+        case (token.LBRACE) {
+            ret @ast.expr_block(parse_block(p));
+        }
+        case (token.IF) {
+            ret parse_if_expr(p);
+        }
+        case (_) {
+            ret parse_or_expr(p);
+        }
+
+    }
 }
 
 io fn parse_stmt(parser p) -> @ast.stmt {
@@ -425,6 +446,25 @@ io fn parse_stmt(parser p) -> @ast.stmt {
             auto e = parse_expr(p);
             expect(p, token.SEMI);
             ret @ast.stmt_log(e);
+        }
+
+        // Handle the (few) block-expr stmts first.
+
+        case (token.IF) {
+            ret @ast.stmt_expr(parse_expr(p));
+        }
+
+        case (token.LBRACE) {
+            ret @ast.stmt_expr(parse_expr(p));
+        }
+
+
+        // Remainder are line-expr stmts.
+
+        case (_) {
+            auto e = parse_expr(p);
+            expect(p, token.SEMI);
+            ret @ast.stmt_expr(e);
         }
     }
     p.err("expected statement");

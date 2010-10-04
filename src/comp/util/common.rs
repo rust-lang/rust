@@ -4,6 +4,14 @@ import std._int;
 type pos = rec(uint line, uint col);
 type span = rec(str filename, pos lo, pos hi);
 
+// FIXME: import std.util.option and use it here.
+// import std.util.option;
+
+tag option[T] {
+  none;
+  some(T);
+}
+
 tag ty_mach {
     ty_i8;
     ty_i16;

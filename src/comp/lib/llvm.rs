@@ -1006,8 +1006,14 @@ obj builder(BuilderRef B) {
 
 
     /* Miscellaneous instructions */
-    fn Phi(TypeRef Ty) -> ValueRef {
-        ret llvm.LLVMBuildPhi(B, Ty, _str.buf(""));
+    fn Phi(TypeRef Ty, vec[ValueRef] vals, vec[BasicBlockRef] bbs) -> ValueRef {
+        auto phi = llvm.LLVMBuildPhi(B, Ty, _str.buf(""));
+        check (_vec.len[ValueRef](vals) == _vec.len[BasicBlockRef](bbs));
+        llvm.LLVMAddIncoming(phi,
+                             _vec.buf[ValueRef](vals),
+                             _vec.buf[BasicBlockRef](bbs),
+                             _vec.len[ValueRef](vals));
+        ret phi;
     }
 
     fn Call(ValueRef Fn, vec[ValueRef] Args) -> ValueRef {

@@ -1,7 +1,10 @@
 
-import std.util.option;
+import util.common.option;
 import std.map.hashmap;
 import util.common.span;
+import util.common.option;
+import util.common.some;
+import util.common.none;
 
 type ident = str;
 
@@ -40,10 +43,10 @@ tag unop {
 }
 
 tag stmt {
-    stmt_block(block);
     stmt_decl(@decl);
     stmt_ret(option[@expr]);
     stmt_log(@expr);
+    stmt_expr(@expr);
 }
 
 tag decl {
@@ -63,6 +66,8 @@ tag expr {
     expr_field(@expr, ident);
     expr_index(@expr, @expr);
     expr_cast(@expr, ty);
+    expr_if(@expr, block, option[block]);
+    expr_block(block);
 }
 
 tag lit {
