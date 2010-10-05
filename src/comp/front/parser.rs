@@ -153,7 +153,24 @@ io fn parse_lit(parser p) -> @ast.lit {
     fail;
 }
 
+io fn parse_name(parser p, ast.ident id) -> ast.name {
+    p.bump();
 
+    let vec[ast.ty] tys = vec();
+
+    alt (p.peek()) {
+        case (token.LBRACKET) {
+            auto pf = parse_ty;
+            tys = parse_seq[ast.ty](token.LBRACKET,
+                                    token.RBRACKET,
+                                    some(token.COMMA),
+                                    pf, p);
+        }
+        case (_) {
+        }
+    }
+    ret rec(ident=id, types=tys);
+}
 
 io fn parse_bottom_expr(parser p) -> @ast.expr {
     alt (p.peek()) {
@@ -203,8 +220,7 @@ io fn parse_bottom_expr(parser p) -> @ast.expr {
         }
 
         case (token.IDENT(?i)) {
-            p.bump();
-            ret @ast.expr_ident(i);
+            ret @ast.expr_name(parse_name(p, i), none[ast.referent]);
         }
 
         case (_) {

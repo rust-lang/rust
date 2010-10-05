@@ -8,6 +8,19 @@ import util.common.none;
 
 type ident = str;
 
+type name = rec(ident ident, vec[ty] types);
+type path = vec[name];
+
+type crate_id = int;
+type slot_id = int;
+type item_id = int;
+
+tag referent {
+    ref_slot(crate_id, slot_id);
+    ref_item(crate_id, item_id);
+}
+
+
 type crate = rec(_mod module);
 
 type block = vec[@stmt];
@@ -62,7 +75,7 @@ tag expr {
     expr_binary(binop, @expr, @expr);
     expr_unary(unop, @expr);
     expr_lit(@lit);
-    expr_ident(ident);
+    expr_name(name, option[referent]);
     expr_field(@expr, ident);
     expr_index(@expr, @expr);
     expr_cast(@expr, ty);
@@ -88,6 +101,7 @@ tag ty {
     ty_char;
     ty_str;
     ty_box(@ty);
+    ty_path(path, option[referent]);
 }
 
 tag mode {
@@ -106,6 +120,7 @@ type _mod = hashmap[ident,item];
 tag item {
     item_fn(@_fn);
     item_mod(@_mod);
+    item_ty(@ty);
 }
 
 
