@@ -8,7 +8,7 @@ rust_crate_cache::lib::lib(rust_dom *dom, char const *name)
 #if defined(__WIN32__)
     handle = (uintptr_t)LoadLibrary(_T(name));
 #else
-    handle = (uintptr_t)dlopen(name, RTLD_LOCAL|RTLD_LAZY);
+    handle = (uintptr_t)dlopen(name, RTLD_GLOBAL|RTLD_LAZY);
 #endif
     dom->log(rust_log::CACHE, "loaded library '%s' as 0x%"  PRIxPTR,
              name, handle);
