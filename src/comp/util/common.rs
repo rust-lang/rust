@@ -3,6 +3,7 @@ import std._int;
 
 type pos = rec(uint line, uint col);
 type span = rec(str filename, pos lo, pos hi);
+type spanned[T] = rec(T node, span span);
 
 // FIXME: import std.util.option and use it here.
 // import std.util.option;

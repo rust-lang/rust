@@ -348,7 +348,7 @@ fn trans_drop_str(@block_ctxt cx, ValueRef v) -> result {
 }
 
 fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
-    alt (lit) {
+    alt (lit.node) {
         case (ast.lit_int(?i)) {
             ret res(cx, C_int(i));
         }
@@ -545,7 +545,7 @@ fn trans_if(@block_ctxt cx, &ast.expr cond,
 }
 
 fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
-    alt (e) {
+    alt (e.node) {
         case (ast.expr_lit(?lit)) {
             ret trans_lit(cx, *lit);
         }
@@ -578,9 +578,9 @@ fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
 }
 
 fn trans_log(@block_ctxt cx, &ast.expr e) -> result {
-    alt (e) {
+    alt (e.node) {
         case (ast.expr_lit(?lit)) {
-            alt (*lit) {
+            alt (lit.node) {
                 case (ast.lit_str(_)) {
                     auto sub = trans_expr(cx, e);
                     auto v = sub.bcx.build.PtrToInt(sub.val, T_int());
@@ -607,7 +607,7 @@ fn trans_log(@block_ctxt cx, &ast.expr e) -> result {
 
 fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
     auto sub = res(cx, C_nil());
-    alt (s) {
+    alt (s.node) {
         case (ast.stmt_log(?a)) {
             sub.bcx = trans_log(cx, *a).bcx;
         }
@@ -688,7 +688,7 @@ fn trans_block_cleanups(@block_ctxt cx) -> @block_ctxt {
 fn trans_block(@block_ctxt cx, &ast.block b) -> result {
     auto bcx = cx;
 
-    for (@ast.stmt s in b) {
+    for (@ast.stmt s in b.node) {
         bcx = trans_stmt(bcx, *s).bcx;
     }
 
@@ -726,8 +726,8 @@ fn trans_fn(@trans_ctxt cx, &ast._fn f) {
 
 fn trans_item(@trans_ctxt cx, &str name, &ast.item item) {
     auto sub_cx = @rec(path=cx.path + "." + name with *cx);
-    alt (item) {
-        case (ast.item_fn(?f)) {
+    alt (item.node) {
+        case (ast.item_fn(?f, _)) {
             trans_fn(sub_cx, *f);
         }
         case (ast.item_mod(?m)) {
@@ -872,7 +872,7 @@ fn trans_crate(session.session sess, ast.crate crate) {
                    names = namegen(0),
                    path = "_rust");
 
-    trans_mod(cx, crate.module);
+    trans_mod(cx, crate.node.module);
     trans_exit_task_glue(cx);
     trans_main_fn(cx, crate_constant(cx));
 

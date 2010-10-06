@@ -2,28 +2,39 @@
 import util.common.option;
 import std.map.hashmap;
 import util.common.span;
+import util.common.spanned;
 import util.common.option;
 import util.common.some;
 import util.common.none;
 
 type ident = str;
 
-type name = rec(ident ident, vec[ty] types);
+type name_ = rec(ident ident, vec[ty] types);
+type name = spanned[name_];
 type path = vec[name];
 
-type crate_id = int;
-type slot_id = int;
-type item_id = int;
+type crate_num = int;
+type slot_num = int;
+type item_num = int;
 
-tag referent {
-    ref_slot(crate_id, slot_id);
-    ref_item(crate_id, item_id);
+tag slot_id {
+    id_slot(crate_num, slot_num);
 }
 
+tag item_id {
+    id_item(crate_num, slot_num);
+}
 
-type crate = rec(_mod module);
+tag referent {
+    ref_slot(slot_id);
+    ref_item(item_id);
+}
 
-type block = vec[@stmt];
+type crate = spanned[crate_];
+type crate_ = rec(_mod module);
+
+type block = spanned[block_];
+type block_ = vec[@stmt];
 
 tag binop {
     add;
@@ -55,19 +66,22 @@ tag unop {
     neg;
 }
 
-tag stmt {
+type stmt = spanned[stmt_];
+tag stmt_ {
     stmt_decl(@decl);
     stmt_ret(option[@expr]);
     stmt_log(@expr);
     stmt_expr(@expr);
 }
 
-tag decl {
-    decl_local(ident, option[ty]);
-    decl_item(ident, @item);
+type decl = spanned[decl_];
+tag decl_ {
+    decl_local(ident, option[ty], ty);
+    decl_item(name, @item);
 }
 
-tag expr {
+type expr = spanned[expr_];
+tag expr_ {
     expr_vec(vec[@expr]);
     expr_tup(vec[@expr]);
     expr_rec(vec[tup(ident,@expr)]);
@@ -83,7 +97,8 @@ tag expr {
     expr_block(block);
 }
 
-tag lit {
+type lit = spanned[lit_];
+tag lit_ {
     lit_str(str);
     lit_char(char);
     lit_int(int);
@@ -92,7 +107,8 @@ tag lit {
     lit_bool(bool);
 }
 
-tag ty {
+type ty = spanned[ty_];
+tag ty_ {
     ty_nil;
     ty_bool;
     ty_int;
@@ -109,7 +125,7 @@ tag mode {
     alias;
 }
 
-type slot = rec(ty ty, mode mode);
+type slot = rec(ty ty, mode mode, option[slot_id] id);
 
 type _fn = rec(vec[rec(slot slot, ident ident)] inputs,
                slot output,
@@ -117,10 +133,11 @@ type _fn = rec(vec[rec(slot slot, ident ident)] inputs,
 
 type _mod = hashmap[ident,item];
 
-tag item {
-    item_fn(@_fn);
+type item = spanned[item_];
+tag item_ {
+    item_fn(@_fn, item_id);
     item_mod(@_mod);
-    item_ty(@ty);
+    item_ty(@ty, item_id);
 }
 
 

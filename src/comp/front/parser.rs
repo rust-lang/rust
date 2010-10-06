@@ -1,6 +1,7 @@
 import std._io;
 import driver.session;
 import util.common;
+import util.common.span;
 import util.common.new_str_hash;
 import util.common.option;
 import util.common.some;
@@ -23,7 +24,7 @@ io fn new_parser(session.session sess, str path) -> parser {
                            lexer.reader rdr)
         {
             fn peek() -> token.token {
-                log token.to_str(tok);
+                // log token.to_str(tok);
                 ret tok;
             }
 
@@ -66,6 +67,12 @@ io fn expect(parser p, token.token t) {
     }
 }
 
+fn spanned[T](&span lo, &span hi, &T node) -> ast.spanned[T] {
+    ret rec(node=node, span=rec(filename=lo.filename,
+                                lo=lo.lo,
+                                hi=hi.hi));
+}
+
 io fn parse_ident(parser p) -> ast.ident {
     alt (p.peek()) {
         case (token.IDENT(?i)) { p.bump(); ret i; }
@@ -77,15 +84,21 @@ io fn parse_ident(parser p) -> ast.ident {
 }
 
 io fn parse_ty(parser p) -> ast.ty {
+    auto lo = p.get_span();
+    let ast.ty_ t;
     alt (p.peek()) {
-        case (token.INT) { p.bump(); ret ast.ty_int; }
-        case (token.UINT) { p.bump(); ret ast.ty_int; }
-        case (token.STR) { p.bump(); ret ast.ty_str; }
-        case (token.CHAR) { p.bump(); ret ast.ty_char; }
-        case (token.MACH(?tm)) { p.bump(); ret ast.ty_machine(tm); }
+        case (token.INT) { p.bump(); t = ast.ty_int; }
+        case (token.UINT) { p.bump(); t = ast.ty_int; }
+        case (token.STR) { p.bump(); t = ast.ty_str; }
+        case (token.CHAR) { p.bump(); t = ast.ty_char; }
+        case (token.MACH(?tm)) { p.bump(); t = ast.ty_machine(tm); }
+        case (_) {
+            p.err("expecting type");
+            t = ast.ty_nil;
+            fail;
+        }
     }
-    p.err("expecting type");
-    fail;
+    ret spanned(lo, lo, t);
 }
 
 io fn parse_slot(parser p) -> ast.slot {
@@ -95,15 +108,16 @@ io fn parse_slot(parser p) -> ast.slot {
         p.bump();
     }
     let ast.ty t = parse_ty(p);
-    ret rec(ty=t, mode=m);
+    ret rec(ty=t, mode=m, id=none[ast.slot_id]);
 }
 
 io fn parse_seq[T](token.token bra,
                       token.token ket,
                       option[token.token] sep,
                       (io fn(parser) -> T) f,
-                      parser p) -> vec[T] {
+                      parser p) -> util.common.spanned[vec[T]] {
     let bool first = true;
+    auto lo = p.get_span();
     expect(p, bra);
     let vec[T] v = vec();
     while (p.peek() != ket) {
@@ -122,41 +136,52 @@ io fn parse_seq[T](token.token bra,
         let T t = f(p);
         v += vec(t);
     }
+    auto hi = p.get_span();
     expect(p, ket);
-    ret v;
+    ret spanned(lo, hi, v);
 }
 
 io fn parse_lit(parser p) -> @ast.lit {
+    auto lo = p.get_span();
+    let ast.lit_ lit;
     alt (p.peek()) {
         case (token.LIT_INT(?i)) {
             p.bump();
-            ret @ast.lit_int(i);
+            lit = ast.lit_int(i);
         }
         case (token.LIT_UINT(?u)) {
             p.bump();
-            ret @ast.lit_uint(u);
+            lit = ast.lit_uint(u);
         }
         case (token.LIT_CHAR(?c)) {
             p.bump();
-            ret @ast.lit_char(c);
+            lit = ast.lit_char(c);
         }
         case (token.LIT_BOOL(?b)) {
             p.bump();
-            ret @ast.lit_bool(b);
+            lit = ast.lit_bool(b);
         }
         case (token.LIT_STR(?s)) {
             p.bump();
-            ret @ast.lit_str(s);
+            lit = ast.lit_str(s);
+        }
+        case (_) {
+            lit = ast.lit_nil;
+            p.err("expected literal");
+            fail;
         }
     }
-    p.err("expected literal");
-    fail;
+    ret @spanned(lo, lo, lit);
 }
 
 io fn parse_name(parser p, ast.ident id) -> ast.name {
+
+    auto lo = p.get_span();
+
     p.bump();
 
-    let vec[ast.ty] tys = vec();
+    let vec[ast.ty] v = vec();
+    let util.common.spanned[vec[ast.ty]] tys = rec(node=v, span=lo);
 
     alt (p.peek()) {
         case (token.LBRACKET) {
@@ -169,16 +194,25 @@ io fn parse_name(parser p, ast.ident id) -> ast.name {
         case (_) {
         }
     }
-    ret rec(ident=id, types=tys);
+    ret spanned(lo, tys.span, rec(ident=id, types=tys.node));
 }
 
 io fn parse_bottom_expr(parser p) -> @ast.expr {
+
+    auto lo = p.get_span();
+    auto hi = lo;
+
+    // FIXME: can only remove this sort of thing when both typestate and
+    // alt-exhaustive-match checking are co-operating.
+    let ast.expr_ ex = ast.expr_lit(@spanned(lo, lo, ast.lit_nil));
+
     alt (p.peek()) {
         case (token.LPAREN) {
             p.bump();
             auto e = parse_expr(p);
+            hi = p.get_span();
             expect(p, token.RPAREN);
-            ret e;
+            ret @spanned(lo, hi, e.node);
         }
 
         case (token.TUP) {
@@ -188,7 +222,8 @@ io fn parse_bottom_expr(parser p) -> @ast.expr {
                                            token.RPAREN,
                                            some(token.COMMA),
                                            pf, p);
-            ret @ast.expr_tup(es);
+            hi = es.span;
+            ex = ast.expr_tup(es.node);
         }
 
         case (token.VEC) {
@@ -198,7 +233,8 @@ io fn parse_bottom_expr(parser p) -> @ast.expr {
                                            token.RPAREN,
                                            some(token.COMMA),
                                            pf, p);
-            ret @ast.expr_vec(es);
+            hi = es.span;
+            ex = ast.expr_vec(es.node);
         }
 
         case (token.REC) {
@@ -216,21 +252,29 @@ io fn parse_bottom_expr(parser p) -> @ast.expr {
                                                      token.RPAREN,
                                                      some(token.COMMA),
                                                      pf, p);
-            ret @ast.expr_rec(es);
+            hi = es.span;
+            ex = ast.expr_rec(es.node);
         }
 
         case (token.IDENT(?i)) {
-            ret @ast.expr_name(parse_name(p, i), none[ast.referent]);
+            auto n = parse_name(p, i);
+            hi = n.span;
+            ex = ast.expr_name(n, none[ast.referent]);
         }
 
         case (_) {
-            ret @ast.expr_lit(parse_lit(p));
+            auto lit = parse_lit(p);
+            hi = lit.span;
+            ex = ast.expr_lit(lit);
         }
     }
+    ret @spanned(lo, hi, ex);
 }
 
 io fn parse_path_expr(parser p) -> @ast.expr {
+    auto lo = p.get_span();
     auto e = parse_bottom_expr(p);
+    auto hi = e.span;
     while (true) {
         alt (p.peek()) {
             case (token.DOT) {
@@ -238,13 +282,15 @@ io fn parse_path_expr(parser p) -> @ast.expr {
                 alt (p.peek()) {
 
                     case (token.IDENT(?i)) {
+                        hi = p.get_span();
                         p.bump();
-                        e = @ast.expr_field(e, i);
+                        e = @spanned(lo, hi, ast.expr_field(e, i));
                     }
 
                     case (token.LPAREN) {
                         auto ix = parse_bottom_expr(p);
-                        e = @ast.expr_index(e, ix);
+                        hi = ix.span;
+                        e = @spanned(lo, hi, ast.expr_index(e, ix));
                     }
                 }
             }
@@ -257,33 +303,44 @@ io fn parse_path_expr(parser p) -> @ast.expr {
 }
 
 io fn parse_prefix_expr(parser p) -> @ast.expr {
+
+    auto lo = p.get_span();
+    auto hi = lo;
+
+    // FIXME: can only remove this sort of thing when both typestate and
+    // alt-exhaustive-match checking are co-operating.
+    let ast.expr_ ex = ast.expr_lit(@spanned(lo, lo, ast.lit_nil));
+
     alt (p.peek()) {
 
         case (token.NOT) {
             p.bump();
             auto e = parse_prefix_expr(p);
-            ret @ast.expr_unary(ast.not, e);
+            hi = e.span;
+            ex = ast.expr_unary(ast.not, e);
         }
 
         case (token.TILDE) {
             p.bump();
             auto e = parse_prefix_expr(p);
-            ret @ast.expr_unary(ast.bitnot, e);
+            hi = e.span;
+            ex = ast.expr_unary(ast.bitnot, e);
         }
 
         case (token.BINOP(?b)) {
             alt (b) {
-
                 case (token.MINUS) {
                     p.bump();
                     auto e = parse_prefix_expr(p);
-                    ret @ast.expr_unary(ast.neg, e);
+                    hi = e.span;
+                    ex = ast.expr_unary(ast.neg, e);
                 }
 
                 case (token.STAR) {
                     p.bump();
                     auto e = parse_prefix_expr(p);
-                    ret @ast.expr_unary(ast.deref, e);
+                    hi = e.span;
+                    ex = ast.expr_unary(ast.deref, e);
                 }
 
                 case (_) {
@@ -295,19 +352,23 @@ io fn parse_prefix_expr(parser p) -> @ast.expr {
         case (token.AT) {
             p.bump();
             auto e = parse_prefix_expr(p);
-            ret @ast.expr_unary(ast.box, e);
+            hi = e.span;
+            ex = ast.expr_unary(ast.box, e);
         }
 
         case (_) {
             ret parse_path_expr(p);
         }
     }
+    ret @spanned(lo, hi, ex);
 }
 
 io fn parse_binops(parser p,
-                      (io fn(parser) -> @ast.expr) sub,
-                      vec[tup(token.binop, ast.binop)] ops)
+                   (io fn(parser) -> @ast.expr) sub,
+                   vec[tup(token.binop, ast.binop)] ops)
     -> @ast.expr {
+    auto lo = p.get_span();
+    auto hi = lo;
     auto e = sub(p);
     auto more = true;
     while (more) {
@@ -317,7 +378,10 @@ io fn parse_binops(parser p,
                 case (token.BINOP(?op)) {
                     if (pair._0 == op) {
                         p.bump();
-                        e = @ast.expr_binary(pair._1, e, sub(p));
+                        auto rhs = sub(p);
+                        hi = rhs.span;
+                        auto exp = ast.expr_binary(pair._1, e, rhs);
+                        e = @spanned(lo, hi, exp);
                         more = true;
                     }
                 }
@@ -331,6 +395,8 @@ io fn parse_binary_exprs(parser p,
                             (io fn(parser) -> @ast.expr) sub,
                             vec[tup(token.token, ast.binop)] ops)
     -> @ast.expr {
+    auto lo = p.get_span();
+    auto hi = lo;
     auto e = sub(p);
     auto more = true;
     while (more) {
@@ -338,7 +404,10 @@ io fn parse_binary_exprs(parser p,
         for (tup(token.token, ast.binop) pair in ops) {
             if (pair._0 == p.peek()) {
                 p.bump();
-                e = @ast.expr_binary(pair._1, e, sub(p));
+                auto rhs = sub(p);
+                hi = rhs.span;
+                auto exp = ast.expr_binary(pair._1, e, rhs);
+                e = @spanned(lo, hi, exp);
                 more = true;
             }
         }
@@ -382,13 +451,16 @@ io fn parse_bitor_expr(parser p) -> @ast.expr {
 }
 
 io fn parse_cast_expr(parser p) -> @ast.expr {
+    auto lo = p.get_span();
     auto e = parse_bitor_expr(p);
+    auto hi = e.span;
     while (true) {
         alt (p.peek()) {
             case (token.AS) {
                 p.bump();
                 auto t = parse_ty(p);
-                e = @ast.expr_cast(e, t);
+                hi = t.span;
+                e = @spanned(lo, hi, ast.expr_cast(e, t));
             }
 
             case (_) {
@@ -425,25 +497,33 @@ io fn parse_or_expr(parser p) -> @ast.expr {
 }
 
 io fn parse_if_expr(parser p) -> @ast.expr {
+    auto lo = p.get_span();
+    auto hi = lo;
+
     expect(p, token.IF);
     expect(p, token.LPAREN);
     auto cond = parse_expr(p);
     expect(p, token.RPAREN);
     auto thn = parse_block(p);
     let option[ast.block] els = none[ast.block];
+    hi = thn.span;
     alt (p.peek()) {
         case (token.ELSE) {
             p.bump();
-            els = some(parse_block(p));
+            auto eblk = parse_block(p);
+            els = some(eblk);
+            hi = eblk.span;
         }
     }
-    ret @ast.expr_if(cond, thn, els);
+    ret @spanned(lo, hi, ast.expr_if(cond, thn, els));
 }
 
 io fn parse_expr(parser p) -> @ast.expr {
     alt (p.peek()) {
         case (token.LBRACE) {
-            ret @ast.expr_block(parse_block(p));
+            auto blk = parse_block(p);
+            ret @spanned(blk.span, blk.span,
+                         ast.expr_block(blk));
         }
         case (token.IF) {
             ret parse_if_expr(p);
@@ -456,22 +536,27 @@ io fn parse_expr(parser p) -> @ast.expr {
 }
 
 io fn parse_stmt(parser p) -> @ast.stmt {
+    auto lo = p.get_span();
     alt (p.peek()) {
+
         case (token.LOG) {
             p.bump();
             auto e = parse_expr(p);
+            auto hi = p.get_span();
             expect(p, token.SEMI);
-            ret @ast.stmt_log(e);
+            ret @spanned(lo, hi, ast.stmt_log(e));
         }
 
         // Handle the (few) block-expr stmts first.
 
         case (token.IF) {
-            ret @ast.stmt_expr(parse_expr(p));
+            auto e = parse_expr(p);
+            ret @spanned(lo, e.span, ast.stmt_expr(e));
         }
 
         case (token.LBRACE) {
-            ret @ast.stmt_expr(parse_expr(p));
+            auto e = parse_expr(p);
+            ret @spanned(lo, e.span, ast.stmt_expr(e));
         }
 
 
@@ -479,8 +564,9 @@ io fn parse_stmt(parser p) -> @ast.stmt {
 
         case (_) {
             auto e = parse_expr(p);
+            auto hi = p.get_span();
             expect(p, token.SEMI);
-            ret @ast.stmt_expr(e);
+            ret @spanned(lo, hi, ast.stmt_expr(e));
         }
     }
     p.err("expected statement");
@@ -504,10 +590,11 @@ io fn parse_slot_ident_pair(parser p) ->
 }
 
 io fn parse_fn(parser p) -> tup(ast.ident, ast.item) {
+    auto lo = p.get_span();
     expect(p, token.FN);
     auto id = parse_ident(p);
     auto pf = parse_slot_ident_pair;
-    auto inputs =
+    let util.common.spanned[vec[rec(ast.slot slot, ast.ident ident)]] inputs =
         // FIXME: passing parse_slot_ident_pair as an lval doesn't work at the
         // moment.
         parse_seq[rec(ast.slot slot, ast.ident ident)]
@@ -516,24 +603,28 @@ io fn parse_fn(parser p) -> tup(ast.ident, ast.item) {
          some(token.COMMA),
          pf, p);
 
-    auto output;
+    let ast.slot output;
     if (p.peek() == token.RARROW) {
         p.bump();
-        output = rec(ty=parse_ty(p), mode=ast.val);
+        output = rec(ty=parse_ty(p), mode=ast.val, id=none[ast.slot_id]);
     } else {
-        output = rec(ty=ast.ty_nil, mode=ast.val);
+        output = rec(ty=spanned(lo, inputs.span, ast.ty_nil),
+                     mode=ast.val, id=none[ast.slot_id]);
     }
 
     auto body = parse_block(p);
 
-    let ast._fn f = rec(inputs = inputs,
+    let ast._fn f = rec(inputs = inputs.node,
                         output = output,
                         body = body);
 
-    ret tup(id, ast.item_fn(@f));
+    let ast.item i = spanned(lo, body.span,
+                             ast.item_fn(@f, ast.id_item(0,0)));
+    ret tup(id, i);
 }
 
 io fn parse_mod(parser p) -> tup(ast.ident, ast.item) {
+    auto lo = p.get_span();
     expect(p, token.MOD);
     auto id = parse_ident(p);
     expect(p, token.LBRACE);
@@ -542,8 +633,9 @@ io fn parse_mod(parser p) -> tup(ast.ident, ast.item) {
         auto i = parse_item(p);
         m.insert(i._0, i._1);
     }
+    auto hi = p.get_span();
     expect(p, token.RBRACE);
-    ret tup(id, ast.item_mod(@m));
+    ret tup(id, spanned(lo, hi, ast.item_mod(@m)));
 }
 
 io fn parse_item(parser p) -> tup(ast.ident, ast.item) {
@@ -560,12 +652,15 @@ io fn parse_item(parser p) -> tup(ast.ident, ast.item) {
 }
 
 io fn parse_crate(parser p) -> ast.crate {
+    auto lo = p.get_span();
+    auto hi = lo;
     let ast._mod m = new_str_hash[ast.item]();
     while (p.peek() != token.EOF) {
         auto i = parse_item(p);
         m.insert(i._0, i._1);
+        hi = i._1.span;
     }
-    ret rec(module=m);
+    ret spanned(lo, hi, rec(module=m));
 }
 
 //
