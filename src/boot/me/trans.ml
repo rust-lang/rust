@@ -337,6 +337,8 @@ let trans_visitor
 
   let rec ptr_cast = Il.ptr_cast
 
+  and cell_cast = Il.cell_cast
+
   and curr_crate_ptr _ : Il.cell =
     word_at (fp_imm frame_crate_ptr)
 
@@ -465,7 +467,7 @@ let trans_visitor
     let indirect_args =
       get_element_ptr args_cell Abi.calltup_elt_indirect_args
     in
-      deref (ptr_cast
+      deref (cell_cast
                (get_element_ptr indirect_args Abi.indirect_args_elt_closure)
                (Il.ScalarTy (Il.AddrTy (obj_box_rty word_bits))))
   in
@@ -508,7 +510,7 @@ let trans_visitor
               get_element_ptr (deref tydesc) Abi.tydesc_field_first_param
             in
             let ty_params =
-              ptr_cast ty_params (Il.ScalarTy (Il.AddrTy ty_params_rty))
+              cell_cast ty_params (Il.ScalarTy (Il.AddrTy ty_params_rty))
             in
               deref ty_params
           else
@@ -550,7 +552,7 @@ let trans_visitor
     let blk_fn = get_element_ptr self_iterator_args
       Abi.iterator_args_elt_block_fn
     in
-      ptr_cast blk_fn
+      cell_cast blk_fn
         (Il.ScalarTy (Il.AddrTy Il.CodeTy))
   in
 
@@ -3223,12 +3225,26 @@ let trans_visitor
             iter_ty_parts_full ty_params dst src ty
               (clone_ty ty_params clone_task)
 
+  and unfold_opaque_cell (c:Il.cell) (ty:Ast.ty) : Il.cell =
+    match Il.cell_referent_ty c with
+        Il.ScalarTy (Il.AddrTy _) ->
+          begin
+            match strip_mutable_or_constrained_ty ty with
+                Ast.TY_box boxed ->
+                  Il.ptr_cast c
+                    (Il.StructTy [| word_rty; referent_type cx boxed |])
+              | _ -> c
+          end
+      | _ -> c
+
   and free_ty
       (is_gc:bool)
       (ty_params:Il.cell)
       (ty:Ast.ty)
       (cell:Il.cell)
       : unit =
+    check_box_rty cell;
+    let cell = unfold_opaque_cell cell ty in
     check_box_rty cell;
     note_drop_step ty "in free-ty";
     begin
@@ -3463,6 +3479,8 @@ let trans_visitor
 
       | (Ast.TY_box ty', DEREF_one_box)
       | (Ast.TY_box ty', DEREF_all_boxes) ->
+          check_box_rty cell;
+          let cell = unfold_opaque_cell cell ty in
           check_box_rty cell;
           if initializing
           then init_box cell ty;
@@ -4092,7 +4110,7 @@ let trans_visitor
     in
     let pair_code_cell = get_element_ptr dst_cell Abi.fn_field_code in
     let pair_box_cell =
-      ptr_cast
+      cell_cast
         (get_element_ptr dst_cell Abi.fn_field_box)
         (Il.ScalarTy (Il.AddrTy (closure_box_rty)))
     in

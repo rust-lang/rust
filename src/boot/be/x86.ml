@@ -1078,17 +1078,17 @@ let rec calculate_sz
 
       mov (rc eax) (Il.Cell closure_ptr);
       let obj_body = word_n (h eax) Abi.box_rc_field_body in
-      let obj_body = Il.ptr_cast obj_body obj_box_rty in
+      let obj_body = Il.cell_cast obj_body obj_box_rty in
       let tydesc_ptr = get_element_ptr obj_body Abi.obj_body_elt_tydesc in
 
         mov (rc eax) (Il.Cell tydesc_ptr);
-        let tydesc = Il.ptr_cast (word_at (h eax)) tydesc_rty in
+        let tydesc = Il.cell_cast (word_at (h eax)) tydesc_rty in
         let ty_params_ptr =
           get_element_ptr tydesc Abi.tydesc_field_first_param
         in
 
           mov (rc eax) (Il.Cell ty_params_ptr);
-          let ty_params = Il.ptr_cast (word_at (h eax)) ty_params_rty in
+          let ty_params = Il.cell_cast (word_at (h eax)) ty_params_rty in
             get_element_ptr ty_params i
   in
 
