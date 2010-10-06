@@ -32,6 +32,7 @@ let (sess:Session.sess) =
     Session.sess_log_lex = false;
     Session.sess_log_parse = false;
     Session.sess_log_ast = false;
+    Session.sess_log_passes = false;
     Session.sess_log_resolve = false;
     Session.sess_log_type = false;
     Session.sess_log_simplify = false;
@@ -162,6 +163,8 @@ let argspecs =
        "-lparse"    "log parsing");
     (flag (fun _ -> sess.Session.sess_log_ast <- true)
        "-last"      "log AST");
+    (flag (fun _ -> sess.Session.sess_log_passes <- true)
+       "-lpasses"  "log passes at high-level");
     (flag (fun _ -> sess.Session.sess_log_resolve <- true)
        "-lresolve"  "log resolution");
     (flag (fun _ -> sess.Session.sess_log_type <- true)

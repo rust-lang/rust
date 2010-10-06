@@ -1719,24 +1719,44 @@ let mod_item_logging_visitor
     : Walk.
 visitor =
   let entering _ =
+    if cx.ctxt_sess.Session.sess_log_passes
+    then
+      Session.log "pass" true cx.ctxt_sess.Session.sess_log_out
+        "pass %d: entering %a"
+        pass Ast.sprintf_name (path_to_name path);
     if log_flag
     then
       log cx "pass %d: entering %a"
         pass Ast.sprintf_name (path_to_name path)
   in
   let entered _ =
+    if cx.ctxt_sess.Session.sess_log_passes
+    then
+      Session.log "pass" true cx.ctxt_sess.Session.sess_log_out
+        "pass %d: entered %a"
+        pass Ast.sprintf_name (path_to_name path);
     if log_flag
     then
       log cx "pass %d: entered %a"
         pass Ast.sprintf_name (path_to_name path)
   in
   let leaving _ =
+    if cx.ctxt_sess.Session.sess_log_passes
+    then
+      Session.log "pass" true cx.ctxt_sess.Session.sess_log_out
+        "pass %d: leaving %a"
+        pass Ast.sprintf_name (path_to_name path);
     if log_flag
     then
       log cx "pass %d: leaving %a"
         pass Ast.sprintf_name (path_to_name path)
   in
   let left _ =
+    if cx.ctxt_sess.Session.sess_log_passes
+    then
+      Session.log "pass" true cx.ctxt_sess.Session.sess_log_out
+        "pass %d: left %a"
+        pass Ast.sprintf_name (path_to_name path);
     if log_flag
     then
       log cx "pass %d: left %a"
@@ -2031,7 +2051,10 @@ let run_passes
     (crate:Ast.crate)
     : unit =
   let do_pass i pass =
-      Walk.walk_crate
+    if cx.ctxt_sess.Session.sess_log_passes
+    then Session.log "pass" true cx.ctxt_sess.Session.sess_log_out
+      "starting pass %s # %d" name i;
+    Walk.walk_crate
         (Walk.path_managing_visitor path
            (mod_item_logging_visitor cx log_flag log i path pass))
         crate
