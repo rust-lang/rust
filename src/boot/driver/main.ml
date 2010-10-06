@@ -24,6 +24,7 @@ let (sess:Session.sess) =
     Session.sess_out = None;
     Session.sess_library_mode = false;
     Session.sess_alt_backend = false;
+    Session.sess_minimal = false;
     Session.sess_use_pexps = false;
     (* FIXME (issue #69): need something fancier here for unix
      * sub-flavours.
@@ -228,6 +229,10 @@ let argspecs =
 
     (flag (fun _ -> sess.Session.sess_use_pexps <- true)
        "-pexp"         "use pexp portion of AST");
+
+    (flag (fun _ -> sess.Session.sess_minimal <- true)
+       "-minimal"     ("reduce code size by disabling various features"
+                       ^ " (use at own risk)"));
 
     ("-zc", Arg.Int (fun i -> sess.Session.sess_fuzz_item_count <- i),
      "count of items to generate when fuzzing");

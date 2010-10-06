@@ -1488,6 +1488,7 @@ let trans_visitor
     let frame_fns =
       match fnid with
           None -> zero
+        | Some _ when cx.ctxt_sess.Session.sess_minimal -> zero
         | Some fnid -> get_frame_glue_fns fnid
     in
     let crate_ptr_reg = next_vreg () in
@@ -1499,14 +1500,19 @@ let trans_visitor
       mov (word_at (fp_imm frame_fns_disp)) frame_fns
 
   and check_interrupt_flag _ =
-    let dom = next_vreg_cell wordptr_ty in
-    let flag = next_vreg_cell word_sty in
-      mov dom (Il.Cell (tp_imm (word_n Abi.task_field_dom)));
-      mov flag (Il.Cell (deref_imm dom
-                           (word_n Abi.dom_field_interrupt_flag)));
-      let null_jmp = null_check flag in
-        trans_yield ();
-        patch null_jmp
+    if cx.ctxt_sess.Session.sess_minimal
+    then ()
+    else
+      begin
+        let dom = next_vreg_cell wordptr_ty in
+        let flag = next_vreg_cell word_sty in
+          mov dom (Il.Cell (tp_imm (word_n Abi.task_field_dom)));
+          mov flag (Il.Cell (deref_imm dom
+                               (word_n Abi.dom_field_interrupt_flag)));
+          let null_jmp = null_check flag in
+            trans_yield ();
+            patch null_jmp
+      end
 
   and trans_glue_frame_entry
       (callsz:size)
@@ -1534,7 +1540,8 @@ let trans_visitor
       push_new_emitter_with_vregs None;
       iflog (fun _ -> annotate "prologue");
       abi.Abi.abi_emit_fn_prologue (emitter())
-        framesz callsz nabi_rust (upcall_fixup "upcall_grow_task") false;
+        framesz callsz nabi_rust (upcall_fixup "upcall_grow_task")
+        false cx.ctxt_sess.Session.sess_minimal;
       write_frame_info_ptrs None;
       (* FIXME: not clear why, but checking interrupt in glue context
        * causes many.rs to crash when run on a sufficiently large number
@@ -4766,7 +4773,8 @@ let trans_visitor
       push_new_emitter_with_vregs (Some id);
       iflog (fun _ -> annotate "prologue");
       abi.Abi.abi_emit_fn_prologue (emitter())
-        framesz callsz nabi_rust (upcall_fixup "upcall_grow_task") false;
+        framesz callsz nabi_rust (upcall_fixup "upcall_grow_task")
+        false cx.ctxt_sess.Session.sess_minimal;
       write_frame_info_ptrs None;
       iflog (fun _ -> annotate "finished prologue");
       trans_block fe.Ast.for_each_body;
@@ -5371,7 +5379,8 @@ let trans_visitor
                                   (string_of_size callsz)));
       abi.Abi.abi_emit_fn_prologue
         (emitter()) framesz callsz nabi_rust
-        (upcall_fixup "upcall_grow_task") obj_fn;
+        (upcall_fixup "upcall_grow_task") obj_fn
+        cx.ctxt_sess.Session.sess_minimal;
 
       write_frame_info_ptrs (Some fnid);
       if yield_check
@@ -5765,7 +5774,8 @@ let trans_visitor
       push_new_emitter_with_vregs (Some b.id);
       iflog (fun _ -> annotate "prologue");
       abi.Abi.abi_emit_fn_prologue (emitter())
-        framesz callsz nabi_rust (upcall_fixup "upcall_grow_task") true;
+        framesz callsz nabi_rust (upcall_fixup "upcall_grow_task")
+        true cx.ctxt_sess.Session.sess_minimal;
       write_frame_info_ptrs None;
       iflog (fun _ -> annotate "finished prologue");
       trans_block b;

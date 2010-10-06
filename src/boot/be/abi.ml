@@ -126,7 +126,8 @@ type abi =
                                -> Common.nabi
                                  -> Common.fixup (* grow_task *)
                                    -> bool       (* is_obj_fn *)
-                                     -> unit);
+                                     -> bool     (* minimal *)
+                                       -> unit);
 
     abi_emit_fn_epilogue: (Il.emitter -> unit);
 

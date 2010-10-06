@@ -368,7 +368,8 @@ endif
 
 $(CFG_COMPILER): $(COMPILER_INPUTS) $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
 	@$(call CFG_ECHO, compile: $<)
-	$(CFG_QUIET)OCAMLRUNPARAM="b1" $(CFG_BOOT) $(CFG_BOOT_FLAGS) -o $@ $<
+	$(CFG_QUIET)OCAMLRUNPARAM="b1" $(CFG_BOOT) $(CFG_BOOT_FLAGS) \
+      -minimal -o $@ $<
 	$(CFG_QUIET)chmod 0755 $@
 
 self: $(CFG_COMPILER)

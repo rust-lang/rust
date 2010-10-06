@@ -13,6 +13,7 @@ type sess =
   mutable sess_out: filename option;
   mutable sess_library_mode: bool;
   mutable sess_alt_backend: bool;
+  mutable sess_minimal: bool;
   mutable sess_use_pexps: bool;
   mutable sess_targ: target;
   mutable sess_log_lex: bool;
