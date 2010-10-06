@@ -728,17 +728,17 @@ fn trans_item(@trans_ctxt cx, &str name, &ast.item item) {
     auto sub_cx = @rec(path=cx.path + "." + name with *cx);
     alt (item.node) {
         case (ast.item_fn(?f, _)) {
-            trans_fn(sub_cx, *f);
+            trans_fn(sub_cx, f);
         }
         case (ast.item_mod(?m)) {
-            trans_mod(sub_cx, *m);
+            trans_mod(sub_cx, m);
         }
     }
 }
 
 fn trans_mod(@trans_ctxt cx, &ast._mod m) {
-    for each (tup(str, ast.item) pair in m.items()) {
-        trans_item(cx, pair._0, pair._1);
+    for each (tup(str, @ast.item) pair in m.items()) {
+        trans_item(cx, pair._0, *pair._1);
     }
 }
 

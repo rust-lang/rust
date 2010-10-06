@@ -9,7 +9,7 @@ import util.common.none;
 
 type ident = str;
 
-type name_ = rec(ident ident, vec[ty] types);
+type name_ = rec(ident ident, vec[@ty] types);
 type name = spanned[name_];
 type path = vec[name];
 
@@ -76,7 +76,7 @@ tag stmt_ {
 
 type decl = spanned[decl_];
 tag decl_ {
-    decl_local(ident, option[ty], ty);
+    decl_local(ident, option[@ty], ty);
     decl_item(name, @item);
 }
 
@@ -92,7 +92,7 @@ tag expr_ {
     expr_name(name, option[referent]);
     expr_field(@expr, ident);
     expr_index(@expr, @expr);
-    expr_cast(@expr, ty);
+    expr_cast(@expr, @ty);
     expr_if(@expr, block, option[block]);
     expr_block(block);
 }
@@ -125,18 +125,18 @@ tag mode {
     alias;
 }
 
-type slot = rec(ty ty, mode mode, option[slot_id] id);
+type slot = rec(@ty ty, mode mode, option[slot_id] id);
 
 type _fn = rec(vec[rec(slot slot, ident ident)] inputs,
                slot output,
                block body);
 
-type _mod = hashmap[ident,item];
+type _mod = hashmap[ident,@item];
 
 type item = spanned[item_];
 tag item_ {
-    item_fn(@_fn, item_id);
-    item_mod(@_mod);
+    item_fn(_fn, item_id);
+    item_mod(_mod);
     item_ty(@ty, item_id);
 }
 
