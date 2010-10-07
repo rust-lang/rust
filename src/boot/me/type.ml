@@ -23,7 +23,7 @@ type fn_ctx = {
   mutable fnctx_just_saw_ret: bool
 }
 
-exception Type_error of string * Ast.ty
+exception Type_error of string * string
 
 let log cx =
   Session.log
@@ -37,7 +37,159 @@ let iflog cx thunk =
   else ()
 ;;
 
-let type_error expected actual = raise (Type_error (expected, actual))
+let head_only ty =
+  match ty with
+
+      Ast.TY_tup _ -> "tup(...)"
+    | Ast.TY_rec _ -> "rec(...)"
+
+    | Ast.TY_fn _ -> "fn (...) -> ..."
+
+    | Ast.TY_vec _ -> "vec[...]"
+    | Ast.TY_chan _ -> "chan[...]"
+    | Ast.TY_port _ -> "port[...]"
+
+    | Ast.TY_obj _ -> "obj { ... }"
+    | Ast.TY_box _ -> "@(...)"
+    | Ast.TY_mutable _ -> "(mutable ...)"
+    | Ast.TY_constrained _ -> "(... : <constrained>)"
+
+    | _ -> Printf.sprintf "%a" Ast.sprintf_ty ty
+;;
+
+
+let rec rec_diff
+    (a:Ast.ty_rec) (b:Ast.ty_rec)
+    (abuf:Buffer.t) (bbuf:Buffer.t)
+    : unit =
+
+  Buffer.add_string abuf "rec(";
+  Buffer.add_string bbuf "rec(";
+
+  let rec append_first_diff buf a b i =
+    let alen = Array.length a in
+    let blen = Array.length b in
+      if i >= alen
+      then
+        Buffer.add_string buf "...)"
+      else
+        if i >= blen
+        then
+          Printf.bprintf buf
+            "... <%d elements>)" (blen - i)
+        else
+          let (alab, aty) = a.(i) in
+          let (blab, bty) = b.(i) in
+            if alab <> blab
+            then
+              Printf.bprintf buf "... <ty> %s ...)" alab
+            else
+              if aty <> bty
+              then
+                let (a,_) = summarize_difference aty bty in
+                  Printf.bprintf buf "... %s %s ...)" a alab
+              else
+                append_first_diff buf a b (i+1)
+  in
+    append_first_diff abuf a b 0;
+    append_first_diff bbuf b a 0;
+    Buffer.add_string abuf ")";
+    Buffer.add_string bbuf ")";
+
+
+and tup_diff
+    (a:Ast.ty_tup) (b:Ast.ty_tup)
+    (abuf:Buffer.t) (bbuf:Buffer.t)
+    : unit =
+
+  Buffer.add_string abuf "tup(";
+  Buffer.add_string bbuf "tup(";
+
+  let rec append_first_diff buf a b i =
+    let alen = Array.length a in
+    let blen = Array.length b in
+      if i >= alen
+      then
+        Buffer.add_string buf "...)"
+      else
+        if i >= blen
+        then
+          Printf.bprintf buf
+            "... <%d elements>)" (blen - i)
+        else
+          let (aty) = a.(i) in
+          let (bty) = b.(i) in
+            if aty <> bty
+            then
+              let (a,_) = summarize_difference aty bty in
+                Printf.bprintf buf "... %s ...)" a
+            else
+              append_first_diff buf a b (i+1)
+  in
+    append_first_diff abuf a b 0;
+    append_first_diff bbuf b a 0;
+    Buffer.add_string abuf ")";
+    Buffer.add_string bbuf ")";
+
+
+and summarize_difference (expected:Ast.ty) (actual:Ast.ty)
+    : (string * string) =
+  if expected = actual
+  then ("_", "_")
+  else
+    begin
+      let ebuf = Buffer.create 10 in
+      let abuf = Buffer.create 10 in
+
+      let p s =
+        Buffer.add_string ebuf s;
+        Buffer.add_string abuf s
+      in
+
+      let sub e a =
+        let (e, a) = summarize_difference e a in
+          Printf.bprintf ebuf "%s" e;
+          Printf.bprintf abuf "%s" a;
+      in
+
+        begin
+          match expected, actual with
+              (Ast.TY_tup etys,  Ast.TY_tup atys) ->
+                tup_diff etys atys ebuf abuf
+
+            | (Ast.TY_rec eelts, Ast.TY_rec aelts) ->
+                rec_diff eelts aelts ebuf abuf
+
+            | (Ast.TY_vec e, Ast.TY_vec a) ->
+                p "vec["; sub e a; p "]";
+
+            | (Ast.TY_chan e, Ast.TY_port a) ->
+                p "chan["; sub e a; p "]";
+
+            | (Ast.TY_port e, Ast.TY_port a) ->
+                p "port["; sub e a; p "]";
+
+            | (Ast.TY_box e, Ast.TY_box a) ->
+                p "@"; sub e a;
+
+            | (Ast.TY_mutable e, Ast.TY_mutable a) ->
+                p "mutable "; sub e a;
+
+            | (e, a) ->
+                Buffer.add_string ebuf (head_only e);
+                Buffer.add_string abuf (head_only a)
+        end;
+        (Buffer.contents ebuf, Buffer.contents abuf)
+    end
+;;
+
+let type_error_full expected actual =
+  raise (Type_error (expected, actual))
+;;
+
+let type_error expected actual =
+  type_error_full expected (head_only actual)
+;;
 
 (* We explicitly curry [cx] like this to avoid threading it through all the
  * inner functions. *)
@@ -101,7 +253,8 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
   let demand (expected:Ast.ty) (actual:Ast.ty) : unit =
     let expected, actual = fundamental_ty expected, fundamental_ty actual in
     if expected <> actual then
-      type_error (Printf.sprintf "%a" Ast.sprintf_ty expected) actual
+      let (e,a) = summarize_difference expected actual in
+        type_error_full e a
   in
   let demand_integer (actual:Ast.ty) : unit =
     if not (is_integer (fundamental_ty actual)) then
@@ -982,9 +1135,9 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
       with Type_error (expected, actual) ->
         Common.err
           (Some stmt.Common.id)
-          "mismatched types: expected %s but found %a"
+          "mismatched types: expected %s but found %s"
           expected
-          Ast.sprintf_ty actual
+          actual
     in
     check_stmt'
   in
