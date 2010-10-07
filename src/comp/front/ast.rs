@@ -76,7 +76,7 @@ tag stmt_ {
 
 type decl = spanned[decl_];
 tag decl_ {
-    decl_local(ident, option[@ty], ty);
+    decl_local(ident, bool, option[@ty]);
     decl_item(name, @item);
 }
 
@@ -126,8 +126,9 @@ tag mode {
 }
 
 type slot = rec(@ty ty, mode mode, option[slot_id] id);
+type input = rec(slot slot, ident ident);
 
-type _fn = rec(vec[rec(slot slot, ident ident)] inputs,
+type _fn = rec(vec[input] inputs,
                slot output,
                block body);
 

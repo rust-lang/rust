@@ -11,6 +11,8 @@ mod front {
 }
 
 mod middle {
+    mod fold;
+    mod resolve;
     mod trans;
 }
 

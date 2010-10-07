@@ -834,7 +834,7 @@ fn trans_main_fn(@trans_ctxt cx, ValueRef llcrate) {
 
 }
 
-fn trans_crate(session.session sess, ast.crate crate) {
+fn trans_crate(session.session sess, @ast.crate crate) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());

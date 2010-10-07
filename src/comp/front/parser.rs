@@ -651,7 +651,7 @@ io fn parse_item(parser p) -> tup(ast.ident, @ast.item) {
     fail;
 }
 
-io fn parse_crate(parser p) -> ast.crate {
+io fn parse_crate(parser p) -> @ast.crate {
     auto lo = p.get_span();
     auto hi = lo;
     let ast._mod m = new_str_hash[@ast.item]();
@@ -660,7 +660,7 @@ io fn parse_crate(parser p) -> ast.crate {
         m.insert(i._0, i._1);
         hi = i._1.span;
     }
-    ret spanned(lo, hi, rec(module=m));
+    ret @spanned(lo, hi, rec(module=m));
 }
 
 //
