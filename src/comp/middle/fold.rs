@@ -143,7 +143,7 @@ type ast_fold[ENV] =
 
 // FIXME: Finish these.
 
-fn fold_name[ENV](&ENV env, ast_fold[ENV] fld, &name n,
+fn fold_expr_name[ENV](&ENV env, ast_fold[ENV] fld, &name n,
                   &option[referent] r) -> tup(name,option[referent]) {
     ret tup(n,r);
 }
@@ -214,7 +214,7 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
         }
 
         case (ast.expr_name(?n, ?r)) {
-            auto nn = fold_name(env_, fld, n, r);
+            auto nn = fold_expr_name(env_, fld, n, r);
             ret fld.fold_expr_name(env_, e.span, nn._0, nn._1);
         }
 
