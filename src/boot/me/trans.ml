@@ -595,13 +595,16 @@ let trans_visitor
         (ty, queue_to_arr q)
   in
 
+  let has_parametric_types_cache = Hashtbl.create 0 in
   let has_parametric_types (t:Ast.ty) : bool =
     let base = ty_fold_bool_or false in
     let ty_fold_param _ =
       true
     in
     let fold = { base with ty_fold_param = ty_fold_param } in
-      fold_ty cx fold t
+      htab_search_or_add
+        has_parametric_types_cache t
+        (fun _ -> fold_ty cx fold t)
   in
 
   let rec calculate_sz (ty_params:Il.cell) (size:size) : Il.operand =

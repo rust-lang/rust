@@ -188,6 +188,12 @@ type ctxt =
       ctxt_curr_path: Ast.name_component Stack.t;
 
       ctxt_rty_cache: (Ast.ty,Il.referent_ty) Hashtbl.t;
+
+      ctxt_type_effect_cache: (Ast.ty,Ast.effect) Hashtbl.t;
+      ctxt_type_points_to_heap_cache: (Ast.ty,bool) Hashtbl.t;
+      ctxt_type_is_structured_cache: (Ast.ty,bool) Hashtbl.t;
+      ctxt_type_contains_chan_cache: (Ast.ty,bool) Hashtbl.t;
+      ctxt_n_used_type_parameters_cache: (Ast.ty,int) Hashtbl.t;
     }
 ;;
 
@@ -277,7 +283,13 @@ let new_ctxt sess abi crate =
     ctxt_main_name = crate.Ast.crate_main;
 
     ctxt_curr_path = Stack.create ();
-    ctxt_rty_cache = Hashtbl.create 1024;
+
+    ctxt_rty_cache = Hashtbl.create 0;
+    ctxt_type_effect_cache = Hashtbl.create 0;
+    ctxt_type_points_to_heap_cache = Hashtbl.create 0;
+    ctxt_type_is_structured_cache = Hashtbl.create 0;
+    ctxt_type_contains_chan_cache = Hashtbl.create 0;
+    ctxt_n_used_type_parameters_cache = Hashtbl.create 0;
   }
 ;;
 
@@ -1110,7 +1122,8 @@ let type_is_structured (cx:ctxt) (t:Ast.ty) : bool =
              }
 
   in
-    fold_ty cx fold t
+    htab_search_or_add cx.ctxt_type_is_structured_cache t
+      (fun _ -> fold_ty cx fold t)
 ;;
 
 
@@ -1128,7 +1141,8 @@ let type_points_to_heap (cx:ctxt) (t:Ast.ty) : bool =
                  ty_fold_task = (fun _ -> true);
              }
   in
-    fold_ty cx fold t
+    htab_search_or_add cx.ctxt_type_points_to_heap_cache t
+      (fun _ -> fold_ty cx fold t)
 ;;
 
 (* Effect analysis. *)
@@ -1152,7 +1166,8 @@ let type_effect (cx:ctxt) (t:Ast.ty) : Ast.effect =
   let fold_mutable _ = Ast.STATE in
   let fold = associative_binary_op_ty_fold Ast.PURE lower_effect_of in
   let fold = { fold with ty_fold_mutable = fold_mutable } in
-    fold_ty cx fold t
+    htab_search_or_add cx.ctxt_type_effect_cache t
+      (fun _ -> fold_ty cx fold t)
 ;;
 
 let type_has_state (cx:ctxt) (t:Ast.ty) : bool =
@@ -1176,7 +1191,8 @@ let type_contains_chan (cx:ctxt) (t:Ast.ty) : bool =
   let fold_chan _ = true in
   let fold = ty_fold_bool_or false in
   let fold = { fold with ty_fold_chan = fold_chan } in
-    fold_ty cx fold t
+    htab_search_or_add cx.ctxt_type_contains_chan_cache t
+      (fun _ -> fold_ty cx fold t)
 ;;
 
 
@@ -1214,7 +1230,8 @@ let n_used_type_params (cx:ctxt) t =
   let fold_param (i,_) = i+1 in
   let fold = ty_fold_int_max 0 in
   let fold = { fold with ty_fold_param = fold_param } in
-  fold_ty cx fold t
+  htab_search_or_add cx.ctxt_n_used_type_parameters_cache t
+    (fun _ -> fold_ty cx fold t)
 ;;
 
 let check_concrete params thing =
