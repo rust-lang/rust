@@ -1236,7 +1236,7 @@ let fn_prologue
     (nabi:nabi)
     (grow_task_fixup:fixup)
     (is_obj_fn:bool)
-    (minimal:bool)
+    (_(*minimal*):bool)
     : unit =
 
   let esi_n = word_n (h esi) in
@@ -1373,12 +1373,8 @@ let fn_prologue
       in
 
         (* "Full" frame size-check. *)
-        match dynamic_grow_jmp with
-            None when minimal -> ()
-          | _ ->
-              stack_growth_check e nabi grow_task_fixup
-                dynamic_frame_sz dynamic_grow_jmp restart_pc (h esi) (h edi);
-
+        stack_growth_check e nabi grow_task_fixup
+          dynamic_frame_sz dynamic_grow_jmp restart_pc (h esi) (h edi);
 
         (* Establish a frame, wherever we landed. *)
         sub (rc esp) dynamic_frame_sz;
