@@ -2,12 +2,12 @@ open Semant;;
 open Common;;
 
 let log cx = Session.log "effect"
-  cx.ctxt_sess.Session.sess_log_effect
+  (should_log cx cx.ctxt_sess.Session.sess_log_effect)
   cx.ctxt_sess.Session.sess_log_out
 ;;
 
 let iflog cx thunk =
-  if cx.ctxt_sess.Session.sess_log_effect
+  if (should_log cx cx.ctxt_sess.Session.sess_log_effect)
   then thunk ()
   else ()
 ;;
@@ -315,7 +315,6 @@ let process_crate
     (cx:ctxt)
     (crate:Ast.crate)
     : unit =
-  let path = Stack.create () in
   let item_auth = Hashtbl.create 0 in
   let item_effect = Hashtbl.create 0 in
   let passes =
@@ -340,7 +339,7 @@ let process_crate
           else err (Some id) "auth clause in crate refers to non-item"
   in
     Hashtbl.iter auth_effect crate.node.Ast.crate_auth;
-    run_passes cx "effect" path passes
+    run_passes cx "effect" passes
       cx.ctxt_sess.Session.sess_log_effect log crate
 ;;
 

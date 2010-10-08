@@ -28,11 +28,11 @@ exception Type_error of string * string
 let log cx =
   Session.log
     "type"
-    cx.Semant.ctxt_sess.Session.sess_log_type
+    (Semant.should_log cx cx.Semant.ctxt_sess.Session.sess_log_type)
     cx.Semant.ctxt_sess.Session.sess_log_out
 
 let iflog cx thunk =
-  if cx.Semant.ctxt_sess.Session.sess_log_type
+  if (Semant.should_log cx cx.Semant.ctxt_sess.Session.sess_log_type)
   then thunk ()
   else ()
 ;;
@@ -1253,7 +1253,6 @@ let check_for_tag_cycles (cx:Semant.ctxt) =
   Hashtbl.iter check_node cx.Semant.ctxt_tag_containment
 
 let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
-  let path = Stack.create () in
   let fn_ctx_stack = Stack.create () in
 
   (* Verify that, if main is present, it has the right form. *)
@@ -1393,7 +1392,7 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
     |]
   in
   let log_flag = cx.Semant.ctxt_sess.Session.sess_log_type in
-    Semant.run_passes cx "type" path passes log_flag log crate
+    Semant.run_passes cx "type" passes log_flag log crate
 ;;
 
 (*

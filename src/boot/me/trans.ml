@@ -5,7 +5,7 @@ open Common;;
 open Transutil;;
 
 let log cx = Session.log "trans"
-  cx.ctxt_sess.Session.sess_log_trans
+  (should_log cx cx.ctxt_sess.Session.sess_log_trans)
   cx.ctxt_sess.Session.sess_log_out
 ;;
 
@@ -45,12 +45,11 @@ type const =
 
 let trans_visitor
     (cx:ctxt)
-    (path:Ast.name_component Stack.t)
     (inner:Walk.visitor)
     : Walk.visitor =
 
   let iflog thunk =
-    if cx.ctxt_sess.Session.sess_log_trans
+    if (should_log cx cx.ctxt_sess.Session.sess_log_trans)
     then thunk ()
     else ()
   in
@@ -237,7 +236,7 @@ let trans_visitor
   let simple_break_jumps = Stack.create() in (* not used for for-each *)
 
   let path_name (_:unit) : string =
-    string_of_name (path_to_name path)
+    string_of_name (path_to_name cx.ctxt_curr_path)
   in
 
   let based (reg:Il.reg) : Il.mem =
@@ -3416,8 +3415,8 @@ let trans_visitor
           drop_ty ty_params cell (slot_ty slot)
 
   and note_drop_step ty step =
-    if cx.ctxt_sess.Session.sess_trace_drop ||
-      cx.ctxt_sess.Session.sess_log_trans
+    if (should_log cx (cx.ctxt_sess.Session.sess_trace_drop ||
+                         cx.ctxt_sess.Session.sess_log_trans))
     then
       let mctrl_str =
         match ty_mem_ctrl cx ty with
@@ -3434,8 +3433,8 @@ let trans_visitor
         end
 
   and note_gc_step ty step =
-    if cx.ctxt_sess.Session.sess_trace_gc ||
-      cx.ctxt_sess.Session.sess_log_trans
+    if (should_log cx (cx.ctxt_sess.Session.sess_trace_gc ||
+                         cx.ctxt_sess.Session.sess_log_trans))
     then
       let mctrl_str =
         match ty_mem_ctrl cx ty with
@@ -5561,7 +5560,7 @@ let trans_visitor
                   htab_search_or_add cx.ctxt_required_rust_sym_num fnid
                     (fun _ -> Hashtbl.length cx.ctxt_required_rust_sym_num)
                 in
-                let path_elts = stk_elts_from_bot path in
+                let path_elts = stk_elts_from_bot cx.ctxt_curr_path in
                 let _ =
                   assert (ls.required_prefix < (List.length path_elts))
                 in
@@ -5591,7 +5590,8 @@ let trans_visitor
                   match htab_search cx.ctxt_required_syms fnid with
                       Some s -> s
                     | None ->
-                        string_of_name_component (Stack.top path)
+                        string_of_name_component
+                          (Stack.top cx.ctxt_curr_path)
                 in
                 let c_sym_num =
                   (* FIXME: permit remapping symbol names to handle
@@ -5935,12 +5935,11 @@ let trans_visitor
 
 let fixup_assigning_visitor
     (cx:ctxt)
-    (path:Ast.name_component Stack.t)
     (inner:Walk.visitor)
     : Walk.visitor =
 
   let path_name (_:unit) : string =
-    Fmt.fmt_to_str Ast.fmt_name (path_to_name path)
+    Fmt.fmt_to_str Ast.fmt_name (path_to_name cx.ctxt_curr_path)
   in
 
   let enter_file_for id =
@@ -5948,7 +5947,7 @@ let fixup_assigning_visitor
     then
       begin
         let name =
-          if Stack.is_empty path
+          if Stack.is_empty cx.ctxt_curr_path
           then "crate root"
           else path_name()
         in
@@ -5969,7 +5968,7 @@ let fixup_assigning_visitor
 
         | Ast.MOD_ITEM_fn _ ->
             begin
-              let path = path_to_name path in
+              let path = path_to_name cx.ctxt_curr_path in
               let fixup =
                 if (not cx.ctxt_sess.Session.sess_library_mode)
                   && (Some path) = cx.ctxt_main_name
@@ -6031,15 +6030,12 @@ let process_crate
     (cx:ctxt)
     (crate:Ast.crate)
     : unit =
-  let path = Stack.create () in
   let passes =
     [|
       (unreferenced_required_item_ignoring_visitor cx
-         (fixup_assigning_visitor cx path
-            Walk.empty_visitor));
+         (fixup_assigning_visitor cx Walk.empty_visitor));
       (unreferenced_required_item_ignoring_visitor cx
-         (trans_visitor cx path
-            Walk.empty_visitor))
+         (trans_visitor cx Walk.empty_visitor))
     |];
   in
     log cx "translating crate";
@@ -6050,7 +6046,7 @@ let process_crate
             log cx "with main fn %a"
               Ast.sprintf_name m
     end;
-    run_passes cx "trans" path passes
+    run_passes cx "trans" passes
       cx.ctxt_sess.Session.sess_log_trans log crate;
 ;;
 

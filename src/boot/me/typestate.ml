@@ -3,12 +3,12 @@ open Common;;
 
 
 let log cx = Session.log "typestate"
-  cx.ctxt_sess.Session.sess_log_typestate
+  (should_log cx cx.ctxt_sess.Session.sess_log_typestate)
   cx.ctxt_sess.Session.sess_log_out
 ;;
 
 let iflog cx thunk =
-  if cx.ctxt_sess.Session.sess_log_typestate
+  if (should_log cx cx.ctxt_sess.Session.sess_log_typestate)
   then thunk ()
   else ()
 ;;
@@ -1590,7 +1590,6 @@ let process_crate
     (cx:ctxt)
     (crate:Ast.crate)
     : unit =
-  let path = Stack.create () in
   let (scopes:(scope list) ref) = ref [] in
   let (tables_stack:typestate_tables Stack.t) = Stack.create () in
   let (all_tables:item_tables) = Hashtbl.create 0 in
@@ -1641,11 +1640,11 @@ let process_crate
     |]
   in
   let log_flag = cx.ctxt_sess.Session.sess_log_typestate in
-    run_passes cx "typestate setup" path setup_passes log_flag log crate;
+    run_passes cx "typestate setup" setup_passes log_flag log crate;
     run_passes cx
-      "typestate dataflow" path dataflow_passes log_flag log crate;
-    run_passes cx "typestate verify" path verify_passes log_flag log crate;
-    run_passes cx "typestate aux" path aux_passes log_flag log crate
+      "typestate dataflow" dataflow_passes log_flag log crate;
+    run_passes cx "typestate verify" verify_passes log_flag log crate;
+    run_passes cx "typestate aux" aux_passes log_flag log crate
 ;;
 
 

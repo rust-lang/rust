@@ -7,7 +7,7 @@ open Semant;;
 open Common;;
 
 let log cx = Session.log "dead"
-  cx.ctxt_sess.Session.sess_log_dead
+  (should_log cx cx.ctxt_sess.Session.sess_log_dead)
   cx.ctxt_sess.Session.sess_log_out
 ;;
 
@@ -99,7 +99,6 @@ let process_crate
     (cx:ctxt)
     (crate:Ast.crate)
     : unit =
-  let path = Stack.create () in
   let passes =
     [|
       (dead_code_visitor cx
@@ -107,7 +106,7 @@ let process_crate
     |]
   in
 
-    run_passes cx "dead" path passes
+    run_passes cx "dead" passes
       cx.ctxt_sess.Session.sess_log_dead log crate;
     ()
 ;;

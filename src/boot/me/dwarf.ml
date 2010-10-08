@@ -66,7 +66,7 @@ open Common;;
 open Asm;;
 
 let log cx = Session.log "dwarf"
-  cx.ctxt_sess.Session.sess_log_dwarf
+  (should_log cx cx.ctxt_sess.Session.sess_log_dwarf)
   cx.ctxt_sess.Session.sess_log_out
 ;;
 
@@ -1425,7 +1425,6 @@ let prepend lref x = lref := x :: (!lref)
 let dwarf_visitor
     (cx:ctxt)
     (inner:Walk.visitor)
-    (path:Ast.name_component Stack.t)
     (cu_info_section_fixup:fixup)
     (cu_aranges:(frag list) ref)
     (cu_pubnames:(frag list) ref)
@@ -1454,7 +1453,9 @@ let dwarf_visitor
       | Il.Bits64 -> TY_i64
   in
 
-  let path_name _ = Fmt.fmt_to_str Ast.fmt_name (path_to_name path) in
+  let path_name _ =
+    Fmt.fmt_to_str Ast.fmt_name (path_to_name cx.ctxt_curr_path)
+  in
 
   let (abbrev_table:(abbrev, int) Hashtbl.t) = Hashtbl.create 0 in
 
@@ -2485,12 +2486,10 @@ let process_crate
   let cu_lines = ref [] in
   let cu_frames = ref [] in
 
-  let path = Stack.create () in
-
   let passes =
     [|
       unreferenced_required_item_ignoring_visitor cx
-        (dwarf_visitor cx Walk.empty_visitor path
+        (dwarf_visitor cx Walk.empty_visitor
            cx.ctxt_debug_info_fixup
            cu_aranges cu_pubnames
            cu_infos cu_abbrevs
@@ -2499,7 +2498,7 @@ let process_crate
   in
 
     log cx "emitting DWARF records";
-    run_passes cx "dwarf" path passes
+    run_passes cx "dwarf" passes
       cx.ctxt_sess.Session.sess_log_dwarf log crate;
 
     (* Terminate the tables. *)

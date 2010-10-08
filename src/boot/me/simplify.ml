@@ -4,11 +4,11 @@ open Semant;;
 let log cx =
   Session.log
     "simplify"
-    cx.Semant.ctxt_sess.Session.sess_log_simplify
+    (should_log cx cx.Semant.ctxt_sess.Session.sess_log_simplify)
     cx.Semant.ctxt_sess.Session.sess_log_out
 
 let iflog cx thunk =
-  if cx.Semant.ctxt_sess.Session.sess_log_simplify
+  if (should_log cx cx.Semant.ctxt_sess.Session.sess_log_simplify)
   then thunk ()
   else ()
 ;;
@@ -87,7 +87,6 @@ let pexp_simplifying_visitor
 
 
 let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
-  let path = Stack.create () in
 
   let passes =
     [|
@@ -96,7 +95,7 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
     |]
   in
   let log_flag = cx.Semant.ctxt_sess.Session.sess_log_simplify in
-    Semant.run_passes cx "simplify" path passes log_flag log crate
+    Semant.run_passes cx "simplify" passes log_flag log crate
 ;;
 
 (*

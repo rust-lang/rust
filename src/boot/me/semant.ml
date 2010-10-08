@@ -183,6 +183,9 @@ type ctxt =
 
       ctxt_main_fn_fixup: fixup option;
       ctxt_main_name: Ast.name option;
+
+      (* Dynamically changes while walking. See path_managing_visitor. *)
+      ctxt_curr_path: Ast.name_component Stack.t;
     }
 ;;
 
@@ -270,9 +273,47 @@ let new_ctxt sess abi crate =
          | Some n -> Some (new_fixup (string_of_name n)));
 
     ctxt_main_name = crate.Ast.crate_main;
+
+    ctxt_curr_path = Stack.create ();
   }
 ;;
 
+let rec name_of ncs =
+  match ncs with
+      [] -> bug () "Walk.name_of_ncs: empty path"
+    | [(Ast.COMP_ident i)] -> Ast.NAME_base (Ast.BASE_ident i)
+    | [(Ast.COMP_app x)] -> Ast.NAME_base (Ast.BASE_app x)
+    | [(Ast.COMP_idx _)] ->
+        bug () "Walk.name_of_ncs: path-name contains COMP_idx"
+    | nc::ncs -> Ast.NAME_ext (name_of ncs, nc)
+;;
+
+let path_to_name
+    (path:Ast.name_component Stack.t)
+    : Ast.name =
+  name_of (stk_elts_from_top path)
+;;
+
+let should_log cx flag =
+  if flag
+  then
+    match cx.ctxt_sess.Session.sess_log_path with
+        None -> false
+      | Some mask ->
+          let curr = stk_elts_from_bot cx.ctxt_curr_path in
+          let rec permitted ncs strs =
+            match (ncs, strs) with
+                ((Ast.COMP_ident s) :: ncs, str :: strs)
+              | ((Ast.COMP_app (s, _)) :: ncs, str :: strs)
+                  when s = str ->
+                    permitted ncs strs
+              | (_, []) -> true
+              | _ -> false
+          in
+            (permitted curr mask)
+  else
+    false
+;;
 
 let bugi (cx:ctxt) (i:node_id) =
   let k s =
@@ -1693,74 +1734,57 @@ let unreferenced_required_item_ignoring_visitor
         Walk.visit_obj_drop_post = visit_obj_drop_post; }
 ;;
 
-let rec name_of ncs =
-  match ncs with
-      [] -> bug () "Walk.name_of_ncs: empty path"
-    | [(Ast.COMP_ident i)] -> Ast.NAME_base (Ast.BASE_ident i)
-    | [(Ast.COMP_app x)] -> Ast.NAME_base (Ast.BASE_app x)
-    | [(Ast.COMP_idx _)] ->
-        bug () "Walk.name_of_ncs: path-name contains COMP_idx"
-    | nc::ncs -> Ast.NAME_ext (name_of ncs, nc)
-;;
-
-let path_to_name
-    (path:Ast.name_component Stack.t)
-    : Ast.name =
-  name_of (stk_elts_from_top path)
-;;
-
 let mod_item_logging_visitor
     (cx:ctxt)
     (log_flag:bool)
     (log:ctxt -> ('a, unit, string, unit) format4 -> 'a)
     (pass:int)
-    (path:Ast.name_component Stack.t)
     (inner:Walk.visitor)
     : Walk.
 visitor =
   let entering _ =
-    if cx.ctxt_sess.Session.sess_log_passes
+    if (should_log cx cx.ctxt_sess.Session.sess_log_passes)
     then
       Session.log "pass" true cx.ctxt_sess.Session.sess_log_out
         "pass %d: entering %a"
-        pass Ast.sprintf_name (path_to_name path);
+        pass Ast.sprintf_name (path_to_name cx.ctxt_curr_path);
     if log_flag
     then
       log cx "pass %d: entering %a"
-        pass Ast.sprintf_name (path_to_name path)
+        pass Ast.sprintf_name (path_to_name cx.ctxt_curr_path)
   in
   let entered _ =
-    if cx.ctxt_sess.Session.sess_log_passes
+    if (should_log cx cx.ctxt_sess.Session.sess_log_passes)
     then
       Session.log "pass" true cx.ctxt_sess.Session.sess_log_out
         "pass %d: entered %a"
-        pass Ast.sprintf_name (path_to_name path);
+        pass Ast.sprintf_name (path_to_name cx.ctxt_curr_path);
     if log_flag
     then
       log cx "pass %d: entered %a"
-        pass Ast.sprintf_name (path_to_name path)
+        pass Ast.sprintf_name (path_to_name cx.ctxt_curr_path)
   in
   let leaving _ =
-    if cx.ctxt_sess.Session.sess_log_passes
+    if (should_log cx cx.ctxt_sess.Session.sess_log_passes)
     then
       Session.log "pass" true cx.ctxt_sess.Session.sess_log_out
         "pass %d: leaving %a"
-        pass Ast.sprintf_name (path_to_name path);
+        pass Ast.sprintf_name (path_to_name cx.ctxt_curr_path);
     if log_flag
     then
       log cx "pass %d: leaving %a"
-        pass Ast.sprintf_name (path_to_name path)
+        pass Ast.sprintf_name (path_to_name cx.ctxt_curr_path)
   in
   let left _ =
-    if cx.ctxt_sess.Session.sess_log_passes
+    if (should_log cx cx.ctxt_sess.Session.sess_log_passes)
     then
       Session.log "pass" true cx.ctxt_sess.Session.sess_log_out
         "pass %d: left %a"
-        pass Ast.sprintf_name (path_to_name path);
+        pass Ast.sprintf_name (path_to_name cx.ctxt_curr_path);
     if log_flag
     then
       log cx "pass %d: left %a"
-        pass Ast.sprintf_name (path_to_name path)
+        pass Ast.sprintf_name (path_to_name cx.ctxt_curr_path)
   in
 
   let visit_mod_item_pre name params item =
@@ -2044,7 +2068,6 @@ let lookup
 let run_passes
     (cx:ctxt)
     (name:string)
-    (path:Ast.name_component Stack.t)
     (passes:Walk.visitor array)
     (log_flag:bool)
     (log:ctxt -> ('a, unit, string, unit) format4 -> 'a)
@@ -2055,8 +2078,8 @@ let run_passes
     then Session.log "pass" true cx.ctxt_sess.Session.sess_log_out
       "starting pass %s # %d" name i;
     Walk.walk_crate
-        (Walk.path_managing_visitor path
-           (mod_item_logging_visitor cx log_flag log i path pass))
+        (Walk.path_managing_visitor cx.ctxt_curr_path
+           (mod_item_logging_visitor cx log_flag log i pass))
         crate
   in
   let sess = cx.ctxt_sess in

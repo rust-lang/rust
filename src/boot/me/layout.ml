@@ -2,7 +2,7 @@ open Semant;;
 open Common;;
 
 let log cx = Session.log "layout"
-  cx.ctxt_sess.Session.sess_log_layout
+  (should_log cx cx.ctxt_sess.Session.sess_log_layout)
   cx.ctxt_sess.Session.sess_log_out
 ;;
 
@@ -128,7 +128,7 @@ let layout_visitor
   in
 
   let iflog thunk =
-    if cx.ctxt_sess.Session.sess_log_layout
+    if (should_log cx cx.ctxt_sess.Session.sess_log_layout)
     then thunk ()
     else ()
   in
@@ -453,14 +453,13 @@ let process_crate
     (cx:ctxt)
     (crate:Ast.crate)
     : unit =
-  let path = Stack.create () in
   let passes =
     [|
       (layout_visitor cx
          Walk.empty_visitor)
     |];
   in
-    run_passes cx "layout" path passes
+    run_passes cx "layout" passes
       cx.ctxt_sess.Session.sess_log_layout log crate
 ;;
 

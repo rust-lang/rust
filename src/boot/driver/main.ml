@@ -51,6 +51,7 @@ let (sess:Session.sess) =
     Session.sess_log_asm = false;
     Session.sess_log_obj = false;
     Session.sess_log_lib = false;
+    Session.sess_log_path = None;
     Session.sess_log_out = stdout;
     Session.sess_log_err = stderr;
     Session.sess_trace_block = false;
@@ -198,6 +199,10 @@ let argspecs =
        "-lobj"        "log object-file generation");
     (flag (fun _ -> sess.Session.sess_log_lib <- true)
        "-llib"        "log library search");
+
+    ("-lpath", Arg.String
+       (fun s -> sess.Session.sess_log_path <- Some (split_string '.' s)),
+     "module path to restrict logging to");
 
     (flag (fun _ -> sess.Session.sess_trace_block <- true)
        "-tblock"      "emit block-boundary tracing code");

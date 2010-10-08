@@ -16,12 +16,12 @@ open Common;;
 
 
 let log cx = Session.log "resolve"
-  cx.ctxt_sess.Session.sess_log_resolve
+  (should_log cx cx.ctxt_sess.Session.sess_log_resolve)
   cx.ctxt_sess.Session.sess_log_out
 ;;
 
 let iflog cx thunk =
-  if cx.ctxt_sess.Session.sess_log_resolve
+  if (should_log cx cx.ctxt_sess.Session.sess_log_resolve)
   then thunk ()
   else ()
 ;;
@@ -139,7 +139,6 @@ let stmt_collecting_visitor
 
 let all_item_collecting_visitor
     (cx:ctxt)
-    (path:Ast.name_component Stack.t)
     (inner:Walk.visitor)
     : Walk.visitor =
 
@@ -169,7 +168,7 @@ let all_item_collecting_visitor
     Array.iter (fun p -> htab_put cx.ctxt_all_defns p.id
                   (DEFN_ty_param p.node)) p;
     htab_put cx.ctxt_all_defns i.id (DEFN_item i.node);
-    htab_put cx.ctxt_all_item_names i.id (path_to_name path);
+    htab_put cx.ctxt_all_item_names i.id (path_to_name cx.ctxt_curr_path);
     log cx "collected item #%d: %s" (int_of_node i.id) n;
     begin
       match i.node.Ast.decl_item with
@@ -191,14 +190,14 @@ let all_item_collecting_visitor
 
   let visit_obj_fn_pre obj ident fn =
     htab_put cx.ctxt_all_defns fn.id (DEFN_obj_fn (obj.id, fn.node));
-    htab_put cx.ctxt_all_item_names fn.id (path_to_name path);
+    htab_put cx.ctxt_all_item_names fn.id (path_to_name cx.ctxt_curr_path);
     note_header fn.id fn.node.Ast.fn_input_slots;
     inner.Walk.visit_obj_fn_pre obj ident fn
   in
 
   let visit_obj_drop_pre obj b =
     htab_put cx.ctxt_all_defns b.id (DEFN_obj_drop obj.id);
-    htab_put cx.ctxt_all_item_names b.id (path_to_name path);
+    htab_put cx.ctxt_all_item_names b.id (path_to_name cx.ctxt_curr_path);
     inner.Walk.visit_obj_drop_pre obj b
   in
 
@@ -210,7 +209,7 @@ let all_item_collecting_visitor
               htab_put cx.ctxt_all_defns id
                 (DEFN_loop_body (Stack.top items));
               htab_put cx.ctxt_all_item_names id
-                (path_to_name path);
+                (path_to_name cx.ctxt_curr_path);
         | _ -> ()
     end;
     inner.Walk.visit_stmt_pre s;
@@ -822,13 +821,12 @@ let process_crate
     (crate:Ast.crate)
     : unit =
   let (scopes:(scope list) ref) = ref [] in
-  let path = Stack.create () in
 
   let passes_0 =
     [|
       (block_scope_forming_visitor cx Walk.empty_visitor);
       (stmt_collecting_visitor cx
-         (all_item_collecting_visitor cx path
+         (all_item_collecting_visitor cx
             Walk.empty_visitor));
     |]
   in
@@ -852,11 +850,11 @@ let process_crate
   in
   let log_flag = cx.ctxt_sess.Session.sess_log_resolve in
     log cx "running primary resolve passes";
-    run_passes cx "resolve collect" path passes_0 log_flag log crate;
+    run_passes cx "resolve collect" passes_0 log_flag log crate;
     log cx "running secondary resolve passes";
-    run_passes cx "resolve bind" path passes_1 log_flag log crate;
+    run_passes cx "resolve bind" passes_1 log_flag log crate;
     log cx "running tertiary resolve passes";
-    run_passes cx "resolve patterns" path passes_2 log_flag log crate;
+    run_passes cx "resolve patterns" passes_2 log_flag log crate;
 
     iflog cx
       begin

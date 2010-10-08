@@ -180,6 +180,31 @@ let new_fixup (s:string)
 
 
 (*
+ * Auxiliary string functions.
+ *)
+
+let split_string (c:char) (s:string) : string list =
+  let ls = ref [] in
+  let b = Buffer.create (String.length s) in
+  let flush _ =
+    if Buffer.length b <> 0
+    then
+      begin
+        ls := (Buffer.contents b) :: (!ls);
+        Buffer.clear b
+      end
+  in
+  let f ch =
+    if c = ch
+    then flush()
+    else Buffer.add_char b ch
+  in
+    String.iter f s;
+    flush();
+    List.rev (!ls)
+;;
+
+(*
  * Auxiliary hashtable functions.
  *)
 

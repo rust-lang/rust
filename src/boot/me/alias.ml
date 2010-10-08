@@ -2,7 +2,7 @@ open Semant;;
 open Common;;
 
 let log cx = Session.log "alias"
-  cx.ctxt_sess.Session.sess_log_alias
+  (should_log cx cx.ctxt_sess.Session.sess_log_alias)
   cx.ctxt_sess.Session.sess_log_out
 ;;
 
@@ -110,14 +110,13 @@ let process_crate
     (cx:ctxt)
     (crate:Ast.crate)
     : unit =
-  let path = Stack.create () in
   let passes =
     [|
       (alias_analysis_visitor cx
          Walk.empty_visitor);
     |]
   in
-    run_passes cx "alias" path passes
+    run_passes cx "alias" passes
       cx.ctxt_sess.Session.sess_log_alias log crate
 ;;
 
