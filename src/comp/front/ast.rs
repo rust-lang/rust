@@ -129,7 +129,7 @@ type slot = rec(@ty ty, mode mode, option[slot_id] id);
 type input = rec(slot slot, ident ident);
 
 type _fn = rec(vec[input] inputs,
-               slot output,
+               ty output,
                block body);
 
 type _mod = hashmap[ident,@item];

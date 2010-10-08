@@ -120,7 +120,7 @@ type ast_fold[ENV] =
          vec[@stmt] stmts) -> block)              fold_block,
 
      (fn(&ENV e, vec[ast.input] inputs,
-         &slot output, block body) -> ast._fn)    fold_fn,
+         &ty output, block body) -> ast._fn)      fold_fn,
 
      (fn(&ENV e, &ast._mod m) -> ast._mod)        fold_mod,
 
@@ -310,10 +310,10 @@ fn fold_fn[ENV](&ENV env, ast_fold[ENV] fld, &ast._fn f) -> ast._fn {
 
     let operator[ast.input,ast.input] fi = bind fold_input[ENV](env, fld, _);
     auto inputs = _vec.map[ast.input, ast.input](fi, f.inputs);
-    auto output = fold_slot[ENV](env, fld, f.output);
+    auto output = fold_ty[ENV](env, fld, @f.output);
     auto body = fold_block[ENV](env, fld, f.body);
 
-    ret fld.fold_fn(env, inputs, output, body);
+    ret fld.fold_fn(env, inputs, *output, body);
 }
 
 fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
@@ -539,7 +539,7 @@ fn identity_fold_block[ENV](&ENV e, &span sp, vec[@stmt] stmts) -> block {
 
 fn identity_fold_fn[ENV](&ENV e,
                          vec[ast.input] inputs,
-                         &slot output,
+                         &ast.ty output,
                          block body) -> ast._fn {
     ret rec(inputs=inputs, output=output, body=body);
 }

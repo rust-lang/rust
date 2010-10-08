@@ -603,13 +603,12 @@ io fn parse_fn(parser p) -> tup(ast.ident, @ast.item) {
          some(token.COMMA),
          pf, p);
 
-    let ast.slot output;
+    let ast.ty output;
     if (p.peek() == token.RARROW) {
         p.bump();
-        output = rec(ty=parse_ty(p), mode=ast.val, id=none[ast.slot_id]);
+        output = *parse_ty(p);
     } else {
-        output = rec(ty=@spanned(lo, inputs.span, ast.ty_nil),
-                     mode=ast.val, id=none[ast.slot_id]);
+        output = spanned(lo, inputs.span, ast.ty_nil);
     }
 
     auto body = parse_block(p);
