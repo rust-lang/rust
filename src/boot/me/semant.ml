@@ -186,6 +186,8 @@ type ctxt =
 
       (* Dynamically changes while walking. See path_managing_visitor. *)
       ctxt_curr_path: Ast.name_component Stack.t;
+
+      ctxt_rty_cache: (Ast.ty,Il.referent_ty) Hashtbl.t;
     }
 ;;
 
@@ -275,6 +277,7 @@ let new_ctxt sess abi crate =
     ctxt_main_name = crate.Ast.crate_main;
 
     ctxt_curr_path = Stack.create ();
+    ctxt_rty_cache = Hashtbl.create 1024;
   }
 ;;
 
@@ -2222,7 +2225,7 @@ and referent_type
     let discriminant = word in
       Il.StructTy [| discriminant; union |]
   in
-
+  let calculate _ =
     match t with
         Ast.TY_any -> Il.StructTy [| word;  ptr |]
       | Ast.TY_nil -> Il.NilTy
@@ -2284,6 +2287,9 @@ and referent_type
 
       | Ast.TY_named _ -> bug () "named type in referent_type"
       | Ast.TY_constrained (t, _) -> recur t
+  in
+    htab_search_or_add cx.ctxt_rty_cache t calculate
+
 
 and slot_referent_type (cx:ctxt) (sl:Ast.slot) : Il.referent_ty =
   let s t = Il.ScalarTy t in
