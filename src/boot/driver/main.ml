@@ -61,11 +61,13 @@ let (sess:Session.sess) =
     Session.sess_failed = false;
     Session.sess_spans = Hashtbl.create 0;
     Session.sess_report_timing = false;
+    Session.sess_report_quads = false;
     Session.sess_report_gc = false;
     Session.sess_report_deps = false;
     Session.sess_next_crate_id = 0;
     Session.sess_fuzz_item_count = 5;
     Session.sess_timings = Hashtbl.create 0;
+    Session.sess_quad_counts = Hashtbl.create 0;
     Session.sess_lib_dirs = Queue.create ();
     Session.sess_crate_meta = Hashtbl.create 0;
     Session.sess_node_id_counter = ref (Node 0);
@@ -221,6 +223,8 @@ let argspecs =
 
     (flag (fun _ -> sess.Session.sess_report_timing <- true)
        "-rtime"        "report timing of compiler phases");
+    (flag (fun _ -> sess.Session.sess_report_quads <- true)
+       "-rquads"       "report categories of quad emitted");
     (flag (fun _ -> sess.Session.sess_report_gc <- true)
        "-rgc"          "report gc behavior of compiler");
     ("-rsig", Arg.String dump_sig,

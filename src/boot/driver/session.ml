@@ -46,12 +46,14 @@ type sess =
   mutable sess_trace_gc: bool;
   mutable sess_failed: bool;
   mutable sess_report_timing: bool;
+  mutable sess_report_quads: bool;
   mutable sess_report_gc: bool;
   mutable sess_report_deps: bool;
   mutable sess_next_crate_id: int;
   mutable sess_fuzz_item_count: int;
 
   sess_timings: (string, float) Hashtbl.t;
+  sess_quad_counts: (string, int ref) Hashtbl.t;
   sess_spans: (node_id,span) Hashtbl.t;
   sess_lib_dirs: filename Queue.t;
   sess_crate_meta: (meta, crate_id) Hashtbl.t;

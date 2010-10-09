@@ -163,8 +163,8 @@ let trans_visitor
   let emitters = Stack.create () in
   let push_new_emitter (vregs_ok:bool) (fnid:node_id option) =
     let e = Il.new_emitter
-         abi.Abi.abi_emit_target_specific
-         vregs_ok fnid
+      abi.Abi.abi_emit_target_specific
+      vregs_ok fnid
     in
       Stack.push e emitters;
   in
@@ -179,13 +179,54 @@ let trans_visitor
     Hashtbl.clear (emitter_size_cache())
   in
 
+  let quad_categories = Hashtbl.create 0 in
+  let quad_category_stack = Stack.create () in
+  let in_quad_category name thunk =
+    if cx.ctxt_sess.Session.sess_report_quads
+    then Stack.push name quad_category_stack;
+    let x = thunk() in
+      if cx.ctxt_sess.Session.sess_report_quads
+      then ignore (Stack.pop quad_category_stack);
+      x
+  in
+
+  let credit name i =
+    let c =
+      htab_search_or_add quad_categories name
+        (fun _ -> ref 0)
+    in
+      c := (!c) + i
+  in
+
+  let in_native_quad_category name thunk =
+    if cx.ctxt_sess.Session.sess_report_quads
+    then
+      let i = (emitter()).Il.emit_pc in
+      let x = thunk() in
+      let j = (emitter()).Il.emit_pc in
+        credit name (j-i);
+        x
+    else
+      thunk()
+  in
+
   let emit q =
     begin
       match q with
         Il.Jmp _ -> flush_emitter_size_cache();
         | _ -> ()
     end;
-    Il.emit (emitter()) q
+    Il.emit (emitter()) q;
+    if cx.ctxt_sess.Session.sess_report_quads
+    then
+      begin
+        let name =
+          if Stack.is_empty quad_category_stack
+          then "other"
+          else Stack.top quad_category_stack
+        in
+          credit name 1
+      end
   in
 
   let next_vreg _ = Il.next_vreg (emitter()) in
@@ -2517,15 +2558,19 @@ let trans_visitor
       (ret:Il.cell)
       (args:Il.operand array)
       : unit =
-    abi.Abi.abi_emit_native_call (emitter())
-      ret nabi_rust (upcall_fixup name) args;
+    in_native_quad_category "upcall"
+      (fun _ ->
+         abi.Abi.abi_emit_native_call (emitter())
+           ret nabi_rust (upcall_fixup name) args)
 
   and trans_void_upcall
       (name:string)
       (args:Il.operand array)
       : unit =
-    abi.Abi.abi_emit_native_void_call (emitter())
-      nabi_rust (upcall_fixup name) args;
+    in_native_quad_category "upcall"
+      (fun _ ->
+         abi.Abi.abi_emit_native_void_call (emitter())
+           nabi_rust (upcall_fixup name) args);
 
   and trans_log_int (a:Ast.atom) : unit =
     trans_void_upcall "upcall_log_int" [| (trans_atom a) |]
@@ -4705,7 +4750,8 @@ let trans_visitor
               annotate s;
         end;
       Stack.push stmt.id curr_stmt;
-      trans_stmt_full stmt;
+      (in_quad_category "stmt"
+         (fun _ -> trans_stmt_full stmt));
       begin
         match stmt.node with
             Ast.STMT_be _
@@ -5834,6 +5880,24 @@ let trans_visitor
     inner.Walk.visit_crate_pre crate
   in
 
+  let report_quads _ =
+    if cx.ctxt_sess.Session.sess_report_quads
+    then
+      begin
+        let cumulative = ref 0 in
+          Printf.fprintf stdout "quads:\n\n";
+          Array.iter
+            begin
+              fun name ->
+                let t = Hashtbl.find quad_categories name in
+                  Printf.fprintf stdout "%20s: %d\n" name (!t);
+                  cumulative := (!cumulative) + (!t)
+            end
+            (sorted_htab_keys quad_categories);
+          Printf.fprintf stdout "\n%20s: %d\n" "cumulative" (!cumulative)
+      end
+  in
+
   let visit_crate_post crate =
 
     inner.Walk.visit_crate_post crate;
@@ -5921,7 +5985,9 @@ let trans_visitor
 
       provide_existing_native cx SEG_data "rust_crate" cx.ctxt_crate_fixup;
 
-      leave_file_for crate.id
+      leave_file_for crate.id;
+
+      report_quads()
   in
 
     { inner with
