@@ -280,6 +280,18 @@ let trans_visitor
     string_of_name (path_to_name cx.ctxt_curr_path)
   in
 
+  let should_inline_structure_helpers t =
+    let n = 2 in
+      match t with
+          Ast.TY_tag ttag ->
+            get_n_tag_tups cx ttag > n
+        | Ast.TY_rec elts ->
+            Array.length elts > 3
+        | Ast.TY_tup elts ->
+            Array.length elts > 3
+        | _ -> false
+  in
+
   let based (reg:Il.reg) : Il.mem =
     Il.RegIn (reg, None)
   in
@@ -361,7 +373,9 @@ let trans_visitor
   in
 
   let get_element_ptr =
-    Il.get_element_ptr word_bits abi.Abi.abi_str_of_hardreg
+    Session.time_inner "trans GEP" cx.ctxt_sess
+      (fun _ ->
+         Il.get_element_ptr word_bits abi.Abi.abi_str_of_hardreg)
   in
 
   let get_variant_ptr (mem_cell:Il.cell) (i:int) : Il.cell =
@@ -383,10 +397,12 @@ let trans_visitor
     word_at (fp_imm frame_crate_ptr)
 
   and crate_rel_to_ptr (rel:Il.operand) (rty:Il.referent_ty) : Il.cell =
-    let cell = next_vreg_cell (Il.AddrTy rty) in
-      mov cell (Il.Cell (curr_crate_ptr()));
-      add_to cell rel;
-      cell
+    (in_quad_category "crate_rel -> ptr"
+       (fun _ ->
+          let cell = next_vreg_cell (Il.AddrTy rty) in
+            mov cell (Il.Cell (curr_crate_ptr()));
+            add_to cell rel;
+            cell))
 
   (* 
    * Note: alias *requires* its cell to be in memory already, and should
@@ -648,11 +664,11 @@ let trans_visitor
         (fun _ -> fold_ty cx fold t)
   in
 
-  let rec calculate_sz (ty_params:Il.cell) (size:size) : Il.operand =
+  let rec calculate_sz_full (ty_params:Il.cell) (size:size) : Il.operand =
     iflog (fun _ -> annotate
              (Printf.sprintf "calculating size %s"
                 (string_of_size size)));
-    let sub_sz = calculate_sz ty_params in
+    let sub_sz = calculate_sz_full ty_params in
     match htab_search (emitter_size_cache()) size with
         Some op ->
           iflog (fun _ -> annotate
@@ -754,6 +770,9 @@ let trans_visitor
             htab_put (emitter_size_cache()) size res;
             res
 
+  and calculate_sz c s =
+    in_quad_category "size calc"
+      (fun _ -> calculate_sz_full c s)
 
   and calculate_sz_in_current_frame (size:size) : Il.operand =
     calculate_sz (get_ty_params_of_current_frame()) size
@@ -1222,7 +1241,8 @@ let trans_visitor
       (initializing:bool)
       (lv:Ast.lval)
       : (Il.cell * Ast.ty) =
-    trans_lval_full initializing lv
+    in_quad_category "lval"
+      (fun _ -> trans_lval_full initializing lv)
 
   and trans_lval_init (lv:Ast.lval) : (Il.cell * Ast.ty) =
     trans_lval_maybe_init true lv
@@ -1582,10 +1602,13 @@ let trans_visitor
     let framesz = SIZE_fixup_mem_sz spill in
       push_new_emitter_with_vregs None;
       iflog (fun _ -> annotate "prologue");
-      abi.Abi.abi_emit_fn_prologue (emitter())
-        framesz callsz nabi_rust (upcall_fixup "upcall_grow_task")
-        false cx.ctxt_sess.Session.sess_minimal;
-      write_frame_info_ptrs None;
+      in_native_quad_category "prologue"
+        (fun _ ->
+           abi.Abi.abi_emit_fn_prologue (emitter())
+             framesz callsz nabi_rust (upcall_fixup "upcall_grow_task")
+             false cx.ctxt_sess.Session.sess_minimal);
+      (in_quad_category "prologue"
+         (fun _ -> write_frame_info_ptrs None));
       (* FIXME: not clear why, but checking interrupt in glue context
        * causes many.rs to crash when run on a sufficiently large number
        * of tasks; possibly a weird interaction with growing? *)
@@ -1740,7 +1763,7 @@ let trans_visitor
     let callsz = SIZE_fixed (word_n n_outgoing_args) in
       trans_glue_frame_entry callsz spill false
 
-  and get_mem_glue (g:glue) (inner:Il.mem -> unit) : fixup =
+  and get_mem_glue_full (g:glue) (inner:Il.mem -> unit) : fixup =
     match htab_search cx.ctxt_glue_code g with
         Some code -> code.code_fixup
       | None ->
@@ -1765,6 +1788,9 @@ let trans_visitor
                 trans_glue_frame_exit fix spill g;
                 fix
           end
+
+  and get_mem_glue g i =
+    in_quad_category "mem glue" (fun _ -> get_mem_glue_full g i)
 
   and get_typed_mem_glue
       (g:glue)
@@ -1822,7 +1848,7 @@ let trans_visitor
       let cell = get_element_ptr args 1 in
         note_drop_step ty "in drop-glue, dropping";
         trace_word cx.ctxt_sess.Session.sess_trace_drop cell;
-        drop_ty ty_params (deref cell) ty;
+        drop_ty_full true ty_params (deref cell) ty;
         note_drop_step ty "drop-glue complete";
     in
     let ty_params_ptr = ty_params_covering ty in
@@ -3080,7 +3106,14 @@ let trans_visitor
     iter_ty_parts_full ty_params cell cell ty
       (fun _ src_cell ty -> f src_cell ty)
 
-  and drop_ty
+  and drop_ty tp c t =
+    (in_quad_category "drop" (fun _ -> drop_ty_normal tp c t))
+
+  and drop_ty_normal tp c t =
+    drop_ty_full false tp c t
+
+  and drop_ty_full
+      (force_inline:bool)
       (ty_params:Il.cell)
       (cell:Il.cell)
       (ty:Ast.ty)
@@ -3088,11 +3121,15 @@ let trans_visitor
 
     let mctrl = ty_mem_ctrl cx ty in
     let ty = strip_mutable_or_constrained_ty ty in
+    let call_out_of_line _ =
+      trans_call_simple_static_glue (get_drop_glue ty)
+        ty_params [| alias cell |] None;
+    in
 
       match ty with
 
           Ast.TY_fn _
-        | Ast.TY_obj _ ->
+        | Ast.TY_obj _ when force_inline ->
             note_drop_step ty "drop_ty: obj/fn path";
             let box_ptr =
               get_element_ptr cell Abi.binding_field_bound_data
@@ -3148,8 +3185,11 @@ let trans_visitor
               patch null_jmp;
               note_drop_step ty "drop_ty: done obj path";
 
+        | Ast.TY_fn _
+        | Ast.TY_obj _ ->
+            call_out_of_line()
 
-      | Ast.TY_param (i, _) ->
+        | Ast.TY_param (i, _) ->
           note_drop_step ty "drop_ty: parametric-ty path";
           aliasing false cell
             begin
@@ -3163,51 +3203,61 @@ let trans_visitor
             end;
           note_drop_step ty "drop_ty: done parametric-ty path";
 
-      | _ ->
-          match mctrl with
-              MEM_gc
-            | MEM_rc_opaque
-            | MEM_rc_struct ->
+        | _ ->
+            match mctrl with
+                MEM_gc
+              | MEM_rc_opaque
+              | MEM_rc_struct when force_inline ->
 
-                note_drop_step ty "drop_ty: box-drop path";
+                  note_drop_step ty "drop_ty: box-drop path";
 
-                let _ = check_box_rty cell in
-                let null_jmp = null_check cell in
-                let j = drop_refcount_and_cmp cell in
+                  let _ = check_box_rty cell in
+                  let null_jmp = null_check cell in
+                  let j = drop_refcount_and_cmp cell in
 
-                  (* FIXME (issue #25): check to see that the box has
-                   * further box members; if it doesn't we can elide the
-                   * call to the glue function.  *)
+                    (* FIXME (issue #25): check to see that the box has
+                     * further box members; if it doesn't we can elide the
+                     * call to the glue function.  *)
 
-                  trans_call_simple_static_glue
-                    (get_free_glue ty (mctrl = MEM_gc))
-                    ty_params
-                    [| cell |]
-                    None;
+                    trans_call_simple_static_glue
+                      (get_free_glue ty (mctrl = MEM_gc))
+                      ty_params
+                      [| cell |]
+                      None;
 
-                  (* Null the slot out to prevent double-free if the frame
-                   * unwinds.
-                   *)
-                  mov cell zero;
-                  patch j;
-                  patch null_jmp;
-                  note_drop_step ty "drop_ty: done box-drop path";
+                    (* Null the slot out to prevent double-free if the frame
+                     * unwinds.  *)
+                    mov cell zero;
+                    patch j;
+                    patch null_jmp;
+                    note_drop_step ty "drop_ty: done box-drop path";
 
-            | MEM_interior
-                when type_points_to_heap cx ty ||
-                  (n_used_type_params cx ty > 0) ->
-                note_drop_step ty "drop_ty possibly-heap-referencing path";
-                iter_ty_parts ty_params cell ty
-                  (drop_ty ty_params);
-                note_drop_step ty
-                  "drop_ty: done possibly-heap-referencing path";
+              | MEM_gc
+              | MEM_rc_opaque
+              | MEM_rc_struct ->
+                  call_out_of_line()
 
-            | MEM_interior ->
-                note_drop_step ty "drop_ty: no-op simple-interior path";
-                (* Interior allocation of all-interior value not caught above:
-                 * nothing to do.
-                 *)
-                ()
+              | MEM_interior
+                  when type_points_to_heap cx ty ||
+                    (n_used_type_params cx ty > 0) ->
+                  begin
+                    note_drop_step ty
+                      "drop_ty possibly-heap-referencing path";
+                    if force_inline || should_inline_structure_helpers ty
+                    then iter_ty_parts ty_params cell ty
+                      (drop_ty ty_params)
+                    else
+                      call_out_of_line();
+
+                    note_drop_step ty
+                      "drop_ty: done possibly-heap-referencing path";
+                  end
+
+              | MEM_interior ->
+                  note_drop_step ty "drop_ty: no-op simple-interior path";
+                  (* Interior allocation of all-interior value not caught
+                   * above: nothing to do.  *)
+                  ()
 
   and sever_ty
       (ty_params:Il.cell)
@@ -3414,42 +3464,54 @@ let trans_visitor
    * the null case (i.e. fall-through means not null).
    *)
   and null_check (cell:Il.cell) : quad_idx =
-    emit (Il.cmp (Il.Cell cell) zero);
-    let j = mark() in
-      emit (Il.jmp Il.JE Il.CodeNone);
-      j
+    in_quad_category "null check"
+      begin
+        fun _ ->
+          emit (Il.cmp (Il.Cell cell) zero);
+          let j = mark() in
+            emit (Il.jmp Il.JE Il.CodeNone);
+            j
+      end
 
   (* Returns a mark for a jmp that must be patched to the continuation of
    * the non-zero refcount case (i.e. fall-through means zero refcount).
    *)
   and drop_refcount_and_cmp (boxed:Il.cell) : quad_idx =
-    iflog (fun _ -> annotate "drop refcount and maybe free");
-    let rc = box_rc_cell boxed in
-    if cx.ctxt_sess.Session.sess_trace_gc ||
-      cx.ctxt_sess.Session.sess_trace_drop
-    then
+    in_quad_category "drop refcnt + free"
       begin
-        trace_str true "refcount--";
-        trace_word true boxed;
-        trace_word true rc
-      end;
-    emit (Il.binary Il.SUB rc (Il.Cell rc) one);
-    emit (Il.cmp (Il.Cell rc) zero);
-    let j = mark () in
-      emit (Il.jmp Il.JNE Il.CodeNone);
-      j
+        fun _ ->
+          iflog (fun _ -> annotate "drop refcount and maybe free");
+          let rc = box_rc_cell boxed in
+            if cx.ctxt_sess.Session.sess_trace_gc ||
+              cx.ctxt_sess.Session.sess_trace_drop
+            then
+              begin
+                trace_str true "refcount--";
+                trace_word true boxed;
+                trace_word true rc
+              end;
+            emit (Il.binary Il.SUB rc (Il.Cell rc) one);
+            emit (Il.cmp (Il.Cell rc) zero);
+            let j = mark () in
+              emit (Il.jmp Il.JNE Il.CodeNone);
+              j
+      end
 
   and incr_refcount (boxed:Il.cell) : unit =
-    let rc = box_rc_cell boxed in
-      if cx.ctxt_sess.Session.sess_trace_gc ||
-        cx.ctxt_sess.Session.sess_trace_drop
-      then
-        begin
-          trace_str true "refcount++";
-          trace_word true boxed;
-          trace_word true rc
-        end;
-      add_to rc one
+    in_quad_category "incr refcnt"
+      begin
+        fun _ ->
+          let rc = box_rc_cell boxed in
+            if cx.ctxt_sess.Session.sess_trace_gc ||
+              cx.ctxt_sess.Session.sess_trace_drop
+            then
+              begin
+                trace_str true "refcount++";
+                trace_word true boxed;
+                trace_word true rc
+              end;
+            add_to rc one
+      end
 
   and drop_slot
       (ty_params:Il.cell)
@@ -3615,24 +3677,27 @@ let trans_visitor
               (cell_str dst) (cell_str src);
         end;
       assert (simplified_ty src_ty = simplified_ty dst_ty);
-      match (ty_mem_ctrl cx src_ty, ty_mem_ctrl cx dst_ty) with
+      in_quad_category "copy"
+        begin
+          fun _ ->
+            match (ty_mem_ctrl cx src_ty, ty_mem_ctrl cx dst_ty) with
+                (MEM_rc_opaque, MEM_rc_opaque)
+              | (MEM_gc, MEM_gc)
+              | (MEM_rc_struct, MEM_rc_struct) ->
+                  (* Lightweight copy: twiddle refcounts, move pointer. *)
+                  anno "refcounted light";
+                  incr_refcount src;
+                  if not initializing
+                  then
+                    drop_ty ty_params dst dst_ty;
+                  mov dst (Il.Cell src)
 
-        | (MEM_rc_opaque, MEM_rc_opaque)
-        | (MEM_gc, MEM_gc)
-        | (MEM_rc_struct, MEM_rc_struct) ->
-            (* Lightweight copy: twiddle refcounts, move pointer. *)
-            anno "refcounted light";
-            incr_refcount src;
-            if not initializing
-            then
-              drop_ty ty_params dst dst_ty;
-            mov dst (Il.Cell src)
-
-        | _ ->
-            (* Heavyweight copy: duplicate 1 level of the referent. *)
-            anno "heavy";
-            trans_copy_ty_heavy ty_params initializing
-              dst dst_ty src src_ty
+              | _ ->
+                  (* Heavyweight copy: duplicate 1 level of the referent. *)
+                  anno "heavy";
+                  trans_copy_ty_heavy ty_params initializing
+                    dst dst_ty src src_ty
+        end
 
   (* NB: heavyweight copying here does not mean "producing a deep
    * clone of the entire data tree rooted at the src operand". It means
@@ -6084,7 +6149,7 @@ let fixup_assigning_visitor
 
   let visit_crate_pre c =
     enter_file_for c.id;
-    inner.Walk.visit_crate_pre c
+    inner.Walk.visit_crate_pre c;
   in
 
   { inner with
