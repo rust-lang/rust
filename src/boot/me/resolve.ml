@@ -872,6 +872,7 @@ let process_crate
       end;
     (* Post-resolve, we can establish a tag cache. *)
     cx.ctxt_tag_cache <- Some (Hashtbl.create 0);
+    cx.ctxt_rebuild_cache <- Some (Hashtbl.create 0);
 ;;
 
 (*

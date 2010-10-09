@@ -194,9 +194,13 @@ type ctxt =
       ctxt_type_is_structured_cache: (Ast.ty,bool) Hashtbl.t;
       ctxt_type_contains_chan_cache: (Ast.ty,bool) Hashtbl.t;
       ctxt_n_used_type_parameters_cache: (Ast.ty,int) Hashtbl.t;
+      ctxt_type_str_cache: (Ast.ty,string) Hashtbl.t;
       mutable ctxt_tag_cache:
         ((Ast.ty_tag option * Ast.ty_tag * int,
           Ast.ty_tup) Hashtbl.t) option;
+      mutable ctxt_rebuild_cache:
+        ((Ast.ty_tag option * Ast.ty * Ast.ty_param array
+          * Ast.ty array * bool, Ast.ty) Hashtbl.t) option;
     }
 ;;
 
@@ -293,7 +297,9 @@ let new_ctxt sess abi crate =
     ctxt_type_is_structured_cache = Hashtbl.create 0;
     ctxt_type_contains_chan_cache = Hashtbl.create 0;
     ctxt_n_used_type_parameters_cache = Hashtbl.create 0;
+    ctxt_type_str_cache = Hashtbl.create 0;
     ctxt_tag_cache = None;
+    ctxt_rebuild_cache = None;
   }
 ;;
 
@@ -1037,7 +1043,12 @@ let rec rebuild_ty_under_params
       in
         fold_ty_full cx src_tag rebuilder fold t
     in
-      rebuild_ty ty
+      match cx.ctxt_rebuild_cache with
+          None -> rebuild_ty ty
+        | Some cache ->
+            htab_search_or_add cache
+              (src_tag,ty,params,args,resolve_names)
+              (fun _ -> rebuild_ty ty)
 ;;
 
 let fold_ty
@@ -2596,7 +2607,8 @@ let ty_str (cx:ctxt) (ty:Ast.ty) : string =
          (* FIXME (issue #78): encode constrs as well. *)
          ty_fold_constrained = (fun (t,_)-> t) }
   in
-    fold_ty cx fold ty
+    htab_search_or_add cx.ctxt_type_str_cache ty
+      (fun _ -> fold_ty cx fold ty)
 ;;
 
 let glue_str (cx:ctxt) (g:glue) : string =

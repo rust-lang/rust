@@ -373,9 +373,7 @@ let trans_visitor
   in
 
   let get_element_ptr =
-    Session.time_inner "trans GEP" cx.ctxt_sess
-      (fun _ ->
-         Il.get_element_ptr word_bits abi.Abi.abi_str_of_hardreg)
+    Il.get_element_ptr word_bits abi.Abi.abi_str_of_hardreg
   in
 
   let get_variant_ptr (mem_cell:Il.cell) (i:int) : Il.cell =
