@@ -1339,8 +1339,15 @@ let trans_visitor
                        | _ ->
                            fix (get_free_glue t (type_has_state cx t));
                    end;
-                   fix (get_sever_glue t);
-                   fix (get_mark_glue t);
+
+                   if cx.ctxt_sess.Session.sess_minimal
+                   then Asm.WORD (word_ty_mach, Asm.IMM 0L)
+                   else fix (get_sever_glue t);
+
+                   if cx.ctxt_sess.Session.sess_minimal
+                   then Asm.WORD (word_ty_mach, Asm.IMM 0L)
+                   else fix (get_mark_glue t);
+
                    (* Include any obj-dtor, if this is an obj and has one. *)
                    begin
                      match idopt with
