@@ -281,14 +281,14 @@ let trans_visitor
   in
 
   let should_inline_structure_helpers t =
-    let n = 2 in
+    let n = 3 in
       match t with
           Ast.TY_tag ttag ->
-            get_n_tag_tups cx ttag > n
+            get_n_tag_tups cx ttag < n
         | Ast.TY_rec elts ->
-            Array.length elts > 3
+            Array.length elts < n
         | Ast.TY_tup elts ->
-            Array.length elts > 3
+            Array.length elts < n
         | _ -> false
   in
 
