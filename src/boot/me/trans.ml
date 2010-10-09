@@ -1954,13 +1954,13 @@ let trans_visitor
       let initflag = get_element_ptr args arg_initflag in
       let jmps = trans_compare_simple Il.JNE (Il.Cell initflag) one in
 
-        trans_copy_ty ty_params true dst ty src ty;
+        trans_copy_ty_full true ty_params true dst ty src ty;
 
         let skip_noninit_jmp = mark() in
           emit (Il.jmp Il.JMP Il.CodeNone);
           List.iter patch jmps;
 
-          trans_copy_ty ty_params false dst ty src ty;
+          trans_copy_ty_full true ty_params false dst ty src ty;
 
           patch skip_noninit_jmp;
     in
@@ -3661,6 +3661,16 @@ let trans_visitor
       (dst:Il.cell) (dst_ty:Ast.ty)
       (src:Il.cell) (src_ty:Ast.ty)
       : unit =
+    trans_copy_ty_full
+      false ty_params initializing dst dst_ty src src_ty
+
+  and trans_copy_ty_full
+      (force_inline:bool)
+      (ty_params:Il.cell)
+      (initializing:bool)
+      (dst:Il.cell) (dst_ty:Ast.ty)
+      (src:Il.cell) (src_ty:Ast.ty)
+      : unit =
     let anno (weight:string) : unit =
       iflog
         begin
@@ -3700,7 +3710,7 @@ let trans_visitor
               | _ ->
                   (* Heavyweight copy: duplicate 1 level of the referent. *)
                   anno "heavy";
-                  trans_copy_ty_heavy ty_params initializing
+                  trans_copy_ty_heavy force_inline ty_params initializing
                     dst dst_ty src src_ty
         end
 
@@ -3732,6 +3742,7 @@ let trans_visitor
    *)
 
   and trans_copy_ty_heavy
+      (force_inline:bool)
       (ty_params:Il.cell)
       (initializing:bool)
       (dst:Il.cell) (dst_ty:Ast.ty)
@@ -3777,8 +3788,7 @@ let trans_visitor
               iflog
                 (fun _ -> annotate
                    (Printf.sprintf "copy_ty: parametric copy %#d" i));
-              let initflag = if initializing then one else zero in
-              let initflag = Il.Reg (force_to_reg initflag) in
+              let initflag = Il.Reg (force_to_reg one) in
               aliasing false src
                 begin
                   fun src ->
@@ -3814,17 +3824,28 @@ let trans_visitor
                      * through to the binding's self-copy fptr. For now
                      * this only works by accident.
                      *)
-                    trans_copy_ty ty_params initializing
+                    trans_copy_ty ty_params true
                       dst_binding (Ast.TY_box Ast.TY_int)
                       src_binding (Ast.TY_box Ast.TY_int);
                     patch null_jmp
               end
 
           | _ ->
-              iter_ty_parts_full ty_params dst src ty
-                (fun dst src ty ->
-                   trans_copy_ty ty_params true
-                     dst ty src ty)
+              if force_inline || should_inline_structure_helpers ty
+              then
+                iter_ty_parts_full ty_params dst src ty
+                  (fun dst src ty ->
+                     trans_copy_ty ty_params true
+                       dst ty src ty)
+              else
+                let initflag = Il.Reg (force_to_reg one) in
+                  trans_call_static_glue
+                    (code_fixup_to_ptr_operand (get_copy_glue ty))
+                    (Some dst)
+                    [| alias ty_params;
+                       alias src;
+                       initflag |]
+                    None
 
 
   and trans_copy
