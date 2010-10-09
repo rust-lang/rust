@@ -1229,14 +1229,63 @@ let stack_growth_check
       Il.patch_jump e bypass_grow_upcall_jmp_pc e.Il.emit_pc
 ;;
 
-let fn_prologue
-    (e:Il.emitter)
+let n_glue_args = Int64.of_int Abi.worst_case_glue_call_args;;
+let n_glue_words = Int64.mul word_sz n_glue_args;;
+
+let combined_frame_size
     (framesz:size)
     (callsz:size)
+    : size =
+  (*
+   * We double the reserved callsz because we need a 'temporary tail-call
+   * region' above the actual call region, in case there's a drop call at the
+   * end of assembling the tail-call args and before copying them to callee
+   * position.
+   *)
+
+  let callsz = add_sz callsz callsz in
+
+  (*
+   * Add in *another* word to handle an extra-awkward spill of the
+   * callee address that might occur during an indirect tail call.
+   *)
+  let callsz = add_sz (SIZE_fixed word_sz) callsz in
+
+  (*
+   * Add in enough words for a glue-call (these occur underneath esp)
+   *)
+  let callsz = add_sz (SIZE_fixed n_glue_words) callsz in
+
+    add_sz callsz framesz
+;;
+
+let minimal_fn_prologue
+    (e:Il.emitter)
+    (call_and_frame_sz:Asm.expr64)
+    : unit =
+
+  let emit = Il.emit e in
+  let mov dst src = emit (Il.umov dst src) in
+  let add dst src = emit (Il.binary Il.ADD dst (Il.Cell dst) src) in
+  let sub dst src = emit (Il.binary Il.SUB dst (Il.Cell dst) src) in
+
+    (* See diagram and explanation in full_fn_prologue, below.    *)
+    save_callee_saves e;
+    mov (rc ebp) (ro esp);                 (* Establish frame base.  *)
+    sub (rc esp) (imm call_and_frame_sz);  (* Establish a frame.     *)
+    mov (rc edi) (ro esp);                 (* Zero the frame. *)
+    mov (rc ecx) (imm call_and_frame_sz);
+    emit (Il.unary Il.ZERO (word_at (h edi)) (ro ecx));
+    (* Move esp back up over the glue region. *)
+    add (rc esp) (immi n_glue_words);
+;;
+
+let full_fn_prologue
+    (e:Il.emitter)
+    (call_and_frame_sz:size)
     (nabi:nabi)
     (grow_task_fixup:fixup)
     (is_obj_fn:bool)
-    (_(*minimal*):bool)
     : unit =
 
   let esi_n = word_n (h esi) in
@@ -1298,33 +1347,6 @@ let fn_prologue
    * we're going to be blindly entering the next frame-base (pushing eip and
    * callee-saves) before we perform the next check.
    *)
-
-  (*
-   * We double the reserved callsz because we need a 'temporary tail-call
-   * region' above the actual call region, in case there's a drop call at the
-   * end of assembling the tail-call args and before copying them to callee
-   * position.
-   *)
-
-  let callsz = add_sz callsz callsz in
-  let n_glue_args = Int64.of_int Abi.worst_case_glue_call_args in
-  let n_glue_words = Int64.mul word_sz n_glue_args in
-
-  (*
-   * Add in *another* word to handle an extra-awkward spill of the
-   * callee address that might occur during an indirect tail call.
-   *)
-  let callsz = add_sz (SIZE_fixed word_sz) callsz in
-
-  (*
-   * Add in enough words for a glue-call (these occur underneath esp)
-   *)
-  let callsz = add_sz (SIZE_fixed n_glue_words) callsz in
-
-  (*
-   * Cumulative dynamic-frame size.
-   *)
-  let call_and_frame_sz = add_sz callsz framesz in
 
     (* Already have room to save regs on entry. *)
     save_callee_saves e;
@@ -1393,6 +1415,30 @@ let fn_prologue
         add (rc esp) (immi n_glue_words);
 ;;
 
+let fn_prologue
+    (e:Il.emitter)
+    (framesz:size)
+    (callsz:size)
+    (nabi:nabi)
+    (grow_task_fixup:fixup)
+    (is_obj_fn:bool)
+    (minimal:bool)
+    : unit =
+
+  let call_and_frame_sz = combined_frame_size framesz callsz in
+
+  let full _ =
+    full_fn_prologue e call_and_frame_sz nabi grow_task_fixup is_obj_fn
+  in
+
+    if minimal
+    then
+      match Il.size_to_expr64 call_and_frame_sz with
+          None -> full()
+        | Some sz -> minimal_fn_prologue e sz
+    else
+      full()
+;;
 
 let fn_epilogue (e:Il.emitter) : unit =
 

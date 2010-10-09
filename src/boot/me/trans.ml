@@ -3477,7 +3477,7 @@ let trans_visitor
    * the non-zero refcount case (i.e. fall-through means zero refcount).
    *)
   and drop_refcount_and_cmp (boxed:Il.cell) : quad_idx =
-    in_quad_category "drop refcnt + free"
+    in_quad_category "refcount"
       begin
         fun _ ->
           iflog (fun _ -> annotate "drop refcount and maybe free");
@@ -3498,7 +3498,7 @@ let trans_visitor
       end
 
   and incr_refcount (boxed:Il.cell) : unit =
-    in_quad_category "incr refcnt"
+    in_quad_category "refcount"
       begin
         fun _ ->
           let rc = box_rc_cell boxed in
