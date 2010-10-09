@@ -869,7 +869,9 @@ let process_crate
                     (Hashtbl.find cx.ctxt_all_item_names n)
             end
             cx.ctxt_node_referenced;
-      end
+      end;
+    (* Post-resolve, we can establish a tag cache. *)
+    cx.ctxt_tag_cache <- Some (Hashtbl.create 0);
 ;;
 
 (*

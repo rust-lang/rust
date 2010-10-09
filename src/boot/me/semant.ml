@@ -194,6 +194,9 @@ type ctxt =
       ctxt_type_is_structured_cache: (Ast.ty,bool) Hashtbl.t;
       ctxt_type_contains_chan_cache: (Ast.ty,bool) Hashtbl.t;
       ctxt_n_used_type_parameters_cache: (Ast.ty,int) Hashtbl.t;
+      mutable ctxt_tag_cache:
+        ((Ast.ty_tag option * Ast.ty_tag * int,
+          Ast.ty_tup) Hashtbl.t) option;
     }
 ;;
 
@@ -290,6 +293,7 @@ let new_ctxt sess abi crate =
     ctxt_type_is_structured_cache = Hashtbl.create 0;
     ctxt_type_contains_chan_cache = Hashtbl.create 0;
     ctxt_n_used_type_parameters_cache = Hashtbl.create 0;
+    ctxt_tag_cache = None;
   }
 ;;
 
@@ -797,13 +801,18 @@ let get_nth_tag_tup_full
     (ttag:Ast.ty_tag)
     (i:int)
     : Ast.ty_tup =
-  let tinfo = Hashtbl.find cx.ctxt_all_tag_info ttag.Ast.tag_id in
-  let (_, node_id, ttup) = Hashtbl.find tinfo.tag_nums i in
-  let ctor = get_item cx node_id in
-  let params = Array.map (fun p -> p.node) ctor.Ast.decl_params in
-    Array.map
-      (fun ty -> rebuilder src_tag ty params ttag.Ast.tag_args)
-      ttup
+  let calculate _ =
+    let tinfo = Hashtbl.find cx.ctxt_all_tag_info ttag.Ast.tag_id in
+    let (_, node_id, ttup) = Hashtbl.find tinfo.tag_nums i in
+    let ctor = get_item cx node_id in
+    let params = Array.map (fun p -> p.node) ctor.Ast.decl_params in
+      Array.map
+        (fun ty -> rebuilder src_tag ty params ttag.Ast.tag_args)
+        ttup
+  in
+    match cx.ctxt_tag_cache with
+        None -> calculate()
+      | Some cache -> htab_search_or_add cache (src_tag,ttag,i) calculate
 ;;
 
 let rec fold_ty_full
