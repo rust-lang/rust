@@ -317,7 +317,7 @@ let should_log cx flag =
   if flag
   then
     match cx.ctxt_sess.Session.sess_log_path with
-        None -> false
+        None -> true
       | Some mask ->
           let curr = stk_elts_from_bot cx.ctxt_curr_path in
           let rec permitted ncs strs =
