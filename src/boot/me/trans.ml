@@ -4532,9 +4532,6 @@ let trans_visitor
         get_element_ptr all_callee_args_cell Abi.calltup_elt_ty_params
       in
       let callee_args_cell =
-        (* FIXME (issue #81):  Once we've actually got proper ty_params,
-         * we should GEP dynamically here to get the args, since they may
-         * be aligned dynamically if they have parameterized type. *)
         get_element_ptr_dyn closure_ty_params_cell
           all_callee_args_cell Abi.calltup_elt_args
       in
