@@ -475,6 +475,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       foreach-simple.rs \
                       fun-call-variants.rs \
                       fun-indirect-call.rs \
+                      generic-bind.rs \
                       generic-derived-type.rs \
                       generic-drop-glue.rs \
                       generic-exterior-box.rs \

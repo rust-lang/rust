@@ -63,8 +63,8 @@ let fn_field_code = binding_field_dispatch;;
 let fn_field_box = binding_field_bound_data;;
 
 let closure_body_elt_bound_args_tydesc = 0;;
-let closure_body_elt_target_tydesc = 1;;
-let closure_body_elt_target = 2;;
+let closure_body_elt_target = 1;;
+let closure_body_elt_bound_ty_params = 2;;
 let closure_body_elt_bound_args = 3;;
 
 let tag_elt_discriminant = 0;;

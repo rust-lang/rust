@@ -2190,7 +2190,11 @@ let obj_rty (word_bits:Il.bits) : Il.referent_ty =
     r [| obj_vtbl_ptr; obj_box_ptr |]
 ;;
 
-let rec closure_box_rty (cx:ctxt) (bs:Ast.slot array) : Il.referent_ty =
+let rec closure_box_rty
+    (cx:ctxt)
+    (n_ty_params:int)
+    (bs:Ast.slot array)
+    : Il.referent_ty =
   let s t = Il.ScalarTy t in
   let p t = Il.AddrTy t in
   let sp t = s (p t) in
@@ -2200,10 +2204,13 @@ let rec closure_box_rty (cx:ctxt) (bs:Ast.slot array) : Il.referent_ty =
   let rc = word_rty word_bits in
   let tydesc = sp (tydesc_rty word_bits) in
   let targ = fn_rty cx true in
+  let ty_param_rtys =
+      r (Array.init n_ty_params (fun _ -> tydesc))
+  in
   let bound_args = r (Array.map (slot_referent_type cx) bs) in
     (* First tydesc is the one describing bound_args; second tydesc is the one
      * to pass to targ when invoking it.  *)
-    r [| rc; r [| tydesc; tydesc; targ; bound_args |] |]
+    r [| rc; r [| tydesc; targ; ty_param_rtys; bound_args |] |]
 
 and fn_rty (cx:ctxt) (opaque_box_body:bool) : Il.referent_ty =
   let s t = Il.ScalarTy t in
@@ -2216,7 +2223,7 @@ and fn_rty (cx:ctxt) (opaque_box_body:bool) : Il.referent_ty =
   let box =
     if opaque_box_body
     then r [| word; Il.OpaqueTy |]
-    else closure_box_rty cx [||]
+    else closure_box_rty cx 0 [||]
   in
   let box_ptr = sp box in
   let code_ptr = sp Il.CodeTy in

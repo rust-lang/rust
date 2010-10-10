@@ -1663,6 +1663,7 @@ let trans_visitor
   (* FIXME (issue #2): this should eventually use tail calling logic *)
 
   and emit_fn_thunk_glue
+      (n_ty_params:int)
       (arg_slots:Ast.slot array)
       (arg_bound_flags:bool array)
       (fix:fixup)
@@ -1683,14 +1684,14 @@ let trans_visitor
     let (self_ty:Ast.ty) = mk_simple_ty_fn unbound_slots in
     let (callee_ty:Ast.ty) = mk_simple_ty_fn arg_slots in
 
-    let self_box_rty = closure_box_rty cx bound_slots in
+    let self_box_rty = closure_box_rty cx n_ty_params bound_slots in
 
     let self_args_rty =
       call_args_referent_type cx 0 self_ty (Some self_box_rty)
     in
 
     let callee_args_rty =
-      call_args_referent_type cx 0 callee_ty (Some Il.OpaqueTy)
+      call_args_referent_type cx n_ty_params callee_ty (Some Il.OpaqueTy)
     in
 
     let callsz = Il.referent_ty_size word_bits callee_args_rty in
@@ -1729,6 +1730,7 @@ let trans_visitor
       in
 
         merge_bound_args
+          n_ty_params
           self_args_rty callee_args_rty
           arg_slots arg_bound_flags;
         iflog (fun _ -> annotate "call through to closure target fn");
@@ -1747,6 +1749,7 @@ let trans_visitor
 
   and get_fn_thunk_glue
       (bind_id:node_id)
+      (n_ty_params:int)
       (arg_slots:Ast.slot array)
       (arg_bound_flags:bool array)
       : fixup =
@@ -1755,7 +1758,7 @@ let trans_visitor
           Some code -> code.code_fixup
         | None ->
             let fix = new_fixup (glue_str cx g) in
-              emit_fn_thunk_glue arg_slots arg_bound_flags fix g;
+              emit_fn_thunk_glue n_ty_params arg_slots arg_bound_flags fix g;
               fix
 
 
@@ -4186,6 +4189,7 @@ let trans_visitor
       (closure_cell:Il.cell)
       (target_fn_ptr:Il.operand)
       (target_binding_ptr:Il.operand)
+      (ty_params:Ast.ty array)
       (bound_arg_slots:Ast.slot array)
       (bound_args:Ast.atom array)
       : unit =
@@ -4195,6 +4199,9 @@ let trans_visitor
     let targ_cell = get_element_ptr body_cell Abi.closure_body_elt_target in
     let bound_args_tydesc_cell =
       get_element_ptr body_cell Abi.closure_body_elt_bound_args_tydesc
+    in
+    let bound_ty_params_cell =
+      get_element_ptr body_cell Abi.closure_body_elt_bound_ty_params
     in
     let args_cell =
       get_element_ptr body_cell Abi.closure_body_elt_bound_args
@@ -4219,6 +4226,16 @@ let trans_visitor
       (get_element_ptr targ_cell Abi.fn_field_box)
       (reify_ptr target_binding_ptr);
 
+    iflog (fun _ -> annotate "set closure bound tydescs");
+    Array.iteri
+      begin
+        fun i ty ->
+          mov
+            (get_element_ptr bound_ty_params_cell i)
+            (Il.Cell (get_tydesc None ty))
+      end
+      ty_params;
+
     iflog (fun _ -> annotate "set closure bound args");
     copy_bound_args args_cell bound_arg_slots bound_args
 
@@ -4233,6 +4250,12 @@ let trans_visitor
       : unit =
     let (dst_cell, _) = trans_lval_maybe_init initializing dst in
     let (target_ptr, _) = trans_callee flv in
+    let ty_params =
+      match htab_search cx.ctxt_call_lval_params (lval_base_id flv) with
+          Some params -> params
+        | None -> [| |]
+    in
+    let n_ty_params = Array.length ty_params in
     let arg_bound_flags = Array.map bool_of_option args in
     let arg_slots =
       arr_map2
@@ -4244,11 +4267,12 @@ let trans_visitor
     let bound_arg_slots = arr_filter_some arg_slots in
     let bound_args = arr_filter_some args in
     let thunk_fixup =
-      get_fn_thunk_glue bind_id fn_sig.Ast.sig_input_slots arg_bound_flags
+      get_fn_thunk_glue bind_id n_ty_params
+        fn_sig.Ast.sig_input_slots arg_bound_flags
     in
     let target_code_ptr = callee_code_ptr target_ptr cc in
     let target_box_ptr = callee_box_ptr flv cc in
-    let closure_box_rty = closure_box_rty cx bound_arg_slots in
+    let closure_box_rty = closure_box_rty cx n_ty_params bound_arg_slots in
     let closure_box_sz =
       calculate_sz_in_current_frame
         (Il.referent_ty_size word_bits closure_box_rty)
@@ -4268,6 +4292,7 @@ let trans_visitor
         (deref pair_box_cell)
         target_code_ptr
         target_box_ptr
+        ty_params
         bound_arg_slots
         bound_args
 
@@ -4466,6 +4491,7 @@ let trans_visitor
         bound_arg_slots
 
   and merge_bound_args
+      (n_ty_params:int)
       (all_self_args_rty:Il.referent_ty)
       (all_callee_args_rty:Il.referent_ty)
       (arg_slots:Ast.slot array)
@@ -4473,7 +4499,7 @@ let trans_visitor
       : unit =
     begin
       (* 
-       * NB: 'all_*_args', both self and callee, are always 4-tuples: 
+       * NB: 'all_*_args', both self and callee, are always 5-tuples: 
        * 
        *    [out_ptr, task_ptr, indirect_args, ty_params, [args]]
        * 
@@ -4486,17 +4512,31 @@ let trans_visitor
       let self_args_cell =
         get_element_ptr all_self_args_cell Abi.calltup_elt_args
       in
-      let self_ty_params_cell =
-        get_element_ptr all_self_args_cell Abi.calltup_elt_ty_params
+      let self_indirect_args_cell =
+        get_element_ptr all_self_args_cell Abi.calltup_elt_indirect_args
+      in
+      let closure_box_cell =
+        deref (get_element_ptr self_indirect_args_cell
+                 Abi.indirect_args_elt_closure)
+      in
+      let closure_cell =
+        get_element_ptr closure_box_cell Abi.box_rc_field_body
+      in
+      let closure_args_cell =
+        get_element_ptr closure_cell Abi.closure_body_elt_bound_args
+      in
+      let closure_ty_params_cell =
+        get_element_ptr closure_cell Abi.closure_body_elt_bound_ty_params
+      in
+      let callee_ty_params_cell =
+        get_element_ptr all_callee_args_cell Abi.calltup_elt_ty_params
       in
       let callee_args_cell =
         (* FIXME (issue #81):  Once we've actually got proper ty_params,
          * we should GEP dynamically here to get the args, since they may
          * be aligned dynamically if they have parameterized type. *)
-        get_element_ptr all_callee_args_cell Abi.calltup_elt_args
-      in
-      let self_indirect_args_cell =
-        get_element_ptr all_self_args_cell Abi.calltup_elt_indirect_args
+        get_element_ptr_dyn closure_ty_params_cell
+          all_callee_args_cell Abi.calltup_elt_args
       in
 
       let n_args = Array.length arg_bound_flags in
@@ -4515,51 +4555,46 @@ let trans_visitor
           (Il.Cell (get_element_ptr all_self_args_cell
                       Abi.calltup_elt_task_ptr));
 
-        iflog (fun _ -> annotate "extract closure indirect-arg");
-        let closure_box_cell =
-          deref (get_element_ptr self_indirect_args_cell
-                   Abi.indirect_args_elt_closure)
-        in
-        let closure_cell =
-          get_element_ptr closure_box_cell Abi.box_rc_field_body
-        in
+        iflog (fun _ -> annotate "copy ty-params");
+        for ty_i = 0 to (n_ty_params - 1) do
+          mov
+            (get_element_ptr callee_ty_params_cell ty_i)
+            (Il.Cell (get_element_ptr closure_ty_params_cell ty_i))
+        done;
 
-        let closure_args_cell =
-          get_element_ptr closure_cell Abi.closure_body_elt_bound_args
-        in
-
-          for arg_i = 0 to (n_args - 1) do
-            let dst_cell = get_element_ptr callee_args_cell arg_i in
-            let slot = arg_slots.(arg_i) in
-            let is_bound = arg_bound_flags.(arg_i) in
-            let src_cell =
-              if is_bound then
-                begin
-                  iflog (fun _ -> annotate
-                           (Printf.sprintf
-                              "extract bound arg %d as actual arg %d"
-                              !bound_i arg_i));
-                  get_element_ptr closure_args_cell (!bound_i)
-                end
-              else
-                begin
-                  iflog (fun _ -> annotate
-                           (Printf.sprintf
-                              "extract unbound arg %d as actual arg %d"
-                              !unbound_i arg_i));
-                  get_element_ptr self_args_cell (!unbound_i);
-                end
-            in
-              iflog (fun _ -> annotate
-                       (Printf.sprintf
-                          "copy into actual-arg %d" arg_i));
-              trans_init_slot_from_cell
-                self_ty_params_cell CLONE_none
-                dst_cell slot
-                (deref_slot false src_cell slot) (slot_ty slot);
-              incr (if is_bound then bound_i else unbound_i);
-          done;
-          assert ((!bound_i + !unbound_i) == n_args)
+        iflog (fun _ -> annotate "copy args");
+        for arg_i = 0 to (n_args - 1) do
+          let dst_cell = get_element_ptr callee_args_cell arg_i in
+          let slot = arg_slots.(arg_i) in
+          let is_bound = arg_bound_flags.(arg_i) in
+          let src_cell =
+            if is_bound then
+              begin
+                iflog (fun _ -> annotate
+                         (Printf.sprintf
+                            "extract bound arg %d as actual arg %d"
+                            !bound_i arg_i));
+                get_element_ptr closure_args_cell (!bound_i)
+              end
+            else
+              begin
+                iflog (fun _ -> annotate
+                         (Printf.sprintf
+                            "extract unbound arg %d as actual arg %d"
+                            !unbound_i arg_i));
+                get_element_ptr self_args_cell (!unbound_i);
+              end
+          in
+            iflog (fun _ -> annotate
+                     (Printf.sprintf
+                        "copy into actual-arg %d" arg_i));
+            trans_init_slot_from_cell
+              closure_ty_params_cell CLONE_none
+              dst_cell slot
+              (deref_slot false src_cell slot) (slot_ty slot);
+            incr (if is_bound then bound_i else unbound_i);
+        done;
+        assert ((!bound_i + !unbound_i) == n_args)
     end
 
 
