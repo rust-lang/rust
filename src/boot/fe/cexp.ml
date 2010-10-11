@@ -344,7 +344,7 @@ let rec eval_cexps (env:env) (exps:cexp array) : cdir array =
 
 and eval_cexp (env:env) (exp:cexp) : cdir array =
   match exp with
-      CEXP_alt {node=ca} ->
+      CEXP_alt { node = ca; id = _ } ->
         let v = eval_pexp env ca.alt_val in
         let rec try_arm i =
           if i >= Array.length ca.alt_arms
@@ -358,7 +358,7 @@ and eval_cexp (env:env) (exp:cexp) : cdir array =
         in
           eval_cexps env (try_arm 0)
 
-    | CEXP_let {node=cl} ->
+    | CEXP_let { node = cl; id = _ } ->
         let ident = cl.let_ident in
         let v = eval_pexp env cl.let_value in
         let old_bindings = !(env.env_bindings) in
