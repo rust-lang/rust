@@ -6,30 +6,38 @@
 #include "rust_internal.h"
 #include "util/array_list.h"
 #include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <alloca.h>
 
 static uint32_t
 read_type_bit_mask() {
     uint32_t bits = rust_log::ULOG | rust_log::ERR;
     char *env_str = getenv("RUST_LOG");
     if (env_str) {
+        char *str = (char *)alloca(strlen(env_str) + 2);
+        str[0] = ',';
+        strcpy(str + 1, env_str);
+
         bits = 0;
-        bits |= strstr(env_str, "err") ? rust_log::ERR : 0;
-        bits |= strstr(env_str, "mem") ? rust_log::MEM : 0;
-        bits |= strstr(env_str, "comm") ? rust_log::COMM : 0;
-        bits |= strstr(env_str, "task") ? rust_log::TASK : 0;
-        bits |= strstr(env_str, "up") ? rust_log::UPCALL : 0;
-        bits |= strstr(env_str, "dom") ? rust_log::DOM : 0;
-        bits |= strstr(env_str, "ulog") ? rust_log::ULOG : 0;
-        bits |= strstr(env_str, "trace") ? rust_log::TRACE : 0;
-        bits |= strstr(env_str, "dwarf") ? rust_log::DWARF : 0;
-        bits |= strstr(env_str, "cache") ? rust_log::CACHE : 0;
-        bits |= strstr(env_str, "timer") ? rust_log::TIMER : 0;
-        bits |= strstr(env_str, "gc") ? rust_log::GC : 0;
-        bits |= strstr(env_str, "stdlib") ? rust_log::STDLIB : 0;
-        bits |= strstr(env_str, "special") ? rust_log::SPECIAL : 0;
-        bits |= strstr(env_str, "kern") ? rust_log::KERN : 0;
-        bits |= strstr(env_str, "all") ? rust_log::ALL : 0;
-        bits = strstr(env_str, "none") ? 0 : bits;
+        bits |= strstr(str, ",err") ? rust_log::ERR : 0;
+        bits |= strstr(str, ",mem") ? rust_log::MEM : 0;
+        bits |= strstr(str, ",comm") ? rust_log::COMM : 0;
+        bits |= strstr(str, ",task") ? rust_log::TASK : 0;
+        bits |= strstr(str, ",up") ? rust_log::UPCALL : 0;
+        bits |= strstr(str, ",dom") ? rust_log::DOM : 0;
+        bits |= strstr(str, ",ulog") ? rust_log::ULOG : 0;
+        bits |= strstr(str, ",trace") ? rust_log::TRACE : 0;
+        bits |= strstr(str, ",dwarf") ? rust_log::DWARF : 0;
+        bits |= strstr(str, ",cache") ? rust_log::CACHE : 0;
+        bits |= strstr(str, ",timer") ? rust_log::TIMER : 0;
+        bits |= strstr(str, ",gc") ? rust_log::GC : 0;
+        bits |= strstr(str, ",stdlib") ? rust_log::STDLIB : 0;
+        bits |= strstr(str, ",special") ? rust_log::SPECIAL : 0;
+        bits |= strstr(str, ",kern") ? rust_log::KERN : 0;
+        bits |= strstr(str, ",bt") ? rust_log::BT : 0;
+        bits |= strstr(str, ",all") ? rust_log::ALL : 0;
+        bits = strstr(str, ",none") ? 0 : bits;
     }
     return bits;
 }

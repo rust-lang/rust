@@ -4,6 +4,10 @@
 #include "valgrind.h"
 #include "memcheck.h"
 
+#ifndef __WIN32__
+#include <execinfo.h>
+#endif
+
 // Stacks
 
 // FIXME (issue #151): This should be 0x300; the change here is for
@@ -366,6 +370,7 @@ void
 rust_task::fail(size_t nargs) {
     // See note in ::kill() regarding who should call this.
     dom->log(rust_log::TASK, "task %s @0x%" PRIxPTR " failing", name, this);
+    backtrace();
     // Unblock the task so it can unwind.
     unblock();
     if (this == dom->root_task)
@@ -630,6 +635,18 @@ rust_task::log(uint32_t type_bits, char const *fmt, ...) {
         dom->get_log().trace_ln(this, type_bits, buf);
         va_end(args);
     }
+}
+
+void
+rust_task::backtrace() {
+    if (!dom->get_log().is_tracing(rust_log::BT))
+        return;
+
+#ifndef __WIN32__
+    void *call_stack[256];
+    int nframes = ::backtrace(call_stack, 256);
+    backtrace_symbols_fd(call_stack + 1, nframes - 1, 2);
+#endif
 }
 
 rust_handle<rust_task> *

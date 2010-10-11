@@ -83,6 +83,9 @@ rust_task : public maybe_proxy<rust_task>,
 
     void log(uint32_t type_bits, char const *fmt, ...);
 
+    // Print a backtrace, if the "bt" logging option is on.
+    void backtrace();
+
     // Swap in some glue code to run when we have returned to the
     // task's context (assuming we're the active task).
     void run_after_return(size_t nargs, uintptr_t glue);

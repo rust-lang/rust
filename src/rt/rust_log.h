@@ -42,6 +42,7 @@ public:
         STDLIB = 0x1000,
         SPECIAL = 0x2000,
         KERN = 0x4000,
+        BT = 0x8000,
         ALL = 0xffffffff
     };
 
