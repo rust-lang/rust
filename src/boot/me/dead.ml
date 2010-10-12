@@ -37,21 +37,31 @@ let dead_code_visitor
       inner.Walk.visit_block_post block
   in
 
+  let exit_stmt_if_exit_body s body =
+      if (Hashtbl.mem must_exit body.id) then
+        Hashtbl.add must_exit s.id ()
+  in
+
   let visit_stmt_post s =
     begin
-      match s.node with
+        match s.node with
         | Ast.STMT_block block ->
             if Hashtbl.mem must_exit block.id then
               Hashtbl.add must_exit s.id ()
 
-        | Ast.STMT_while { Ast.while_body = body; _ }
-        | Ast.STMT_do_while { Ast.while_body = body; _ }
-        | Ast.STMT_for_each { Ast.for_each_body = body; _ }
-        | Ast.STMT_for { Ast.for_body = body; _ } ->
-            if (Hashtbl.mem must_exit body.id) then
-              Hashtbl.add must_exit s.id ()
+        | Ast.STMT_while w
+        | Ast.STMT_do_while w ->
+            exit_stmt_if_exit_body s w.Ast.while_body
 
-        | Ast.STMT_if { Ast.if_then = b1; Ast.if_else = Some b2; _ } ->
+        | Ast.STMT_for_each f ->
+            exit_stmt_if_exit_body s f.Ast.for_each_body
+
+        | Ast.STMT_for f ->
+            exit_stmt_if_exit_body s f.Ast.for_body
+
+        | Ast.STMT_if { Ast.if_then = b1;
+                        Ast.if_else = Some b2;
+                        Ast.if_test = _ } ->
             if (Hashtbl.mem must_exit b1.id) && (Hashtbl.mem must_exit b2.id)
             then Hashtbl.add must_exit s.id ()
 
@@ -61,16 +71,18 @@ let dead_code_visitor
         | Ast.STMT_be _ ->
             Hashtbl.add must_exit s.id ()
 
-        | Ast.STMT_alt_tag { Ast.alt_tag_arms = arms; _ } ->
+        | Ast.STMT_alt_tag { Ast.alt_tag_arms = arms;
+                             Ast.alt_tag_lval = _ } ->
             let arm_ids =
-              Array.map (fun { node = (_, block); _ } -> block.id) arms
+              Array.map (fun { node = (_, block); id = _ } -> block.id) arms
             in
               if all_must_exit arm_ids
               then Hashtbl.add must_exit s.id ()
 
         | Ast.STMT_alt_type { Ast.alt_type_arms = arms;
-                              Ast.alt_type_else = alt_type_else; _ } ->
-            let arm_ids = Array.map (fun { node = ((_, _), block); _ } -> 
+                              Ast.alt_type_else = alt_type_else;
+                              Ast.alt_type_lval = _ } ->
+            let arm_ids = Array.map (fun { node = ((_, _), block); id = _ } ->
                                        block.id) arms in
             let else_ids =
               begin

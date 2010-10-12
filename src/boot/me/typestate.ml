@@ -714,7 +714,7 @@ let condition_assigning_visitor
 
         | Ast.STMT_alt_tag at ->
             let precond = slot_inits (lval_slots cx at.Ast.alt_tag_lval) in
-            let visit_arm { node = (pat, block); _ } =
+            let visit_arm { node = (pat, block); id = _ } =
               (* FIXME (issue #34): propagate tag-carried constrs here. *)
               let rec get_slots pat =
                 match pat with
@@ -1048,7 +1048,7 @@ let graph_special_block_structure_building_visitor
             let graph = ts.ts_graph in
             let dsts = Hashtbl.find graph s.id in
             let arm_blocks =
-              let arm_block_id { node = (_, block); _ } = block.id in
+              let arm_block_id { node = (_, block); id = _ } = block.id in
               Array.to_list (Array.map arm_block_id at.Ast.alt_tag_arms)
             in
             let succ_stmts =
@@ -1470,7 +1470,8 @@ let lifecycle_visitor
               iflog cx (fun _ -> log cx "entering a loop");
               Stack.push (Some (Stack.create ()))  loop_blocks;
 
-          | Ast.STMT_alt_tag { Ast.alt_tag_arms = arms; _ } ->
+          | Ast.STMT_alt_tag { Ast.alt_tag_arms = arms;
+                               Ast.alt_tag_lval = _ } ->
               let note_slot block slot_id =
                 log cx
                   "noting implicit init for slot %d in pattern-alt block %d"
@@ -1479,7 +1480,7 @@ let lifecycle_visitor
               in
               let rec all_pat_slot_ids block pat =
                 match pat with
-                    Ast.PAT_slot ({ id = slot_id; _ }, _) ->
+                    Ast.PAT_slot ({ id = slot_id; node = _ }, _) ->
                       [ slot_id ]
                   | Ast.PAT_tag (_, pats) ->
                       List.concat
@@ -1490,7 +1491,7 @@ let lifecycle_visitor
               in
                 Array.iter
                   begin
-                    fun { node = (pat, block); _ } ->
+                    fun { node = (pat, block); id = _ } ->
                       let slot_ids = all_pat_slot_ids block pat in
                         List.iter (note_slot block) slot_ids;
                         htab_put implicit_init_block_slots

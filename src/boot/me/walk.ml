@@ -517,7 +517,7 @@ and walk_stmt
       | Ast.STMT_alt_tag
           { Ast.alt_tag_lval = lval; Ast.alt_tag_arms = arms } ->
           walk_lval v lval;
-            let walk_arm { node = (pat, block); _ } =
+            let walk_arm { node = (pat, block); id=_ } =
               walk_pat v pat;
               walk_block v block
             in

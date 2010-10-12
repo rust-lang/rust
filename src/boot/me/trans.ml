@@ -1368,7 +1368,8 @@ let trans_visitor
   and get_obj_vtbl (id:node_id) : Il.operand =
     let obj =
       match Hashtbl.find cx.ctxt_all_defns id with
-          DEFN_item { Ast.decl_item=Ast.MOD_ITEM_obj obj; _} -> obj
+          DEFN_item { Ast.decl_item = Ast.MOD_ITEM_obj obj;
+                      Ast.decl_params = _} -> obj
         | _ -> bug () "Trans.get_obj_vtbl on non-obj referent"
     in
       trans_crate_rel_data_operand (DATA_obj_vtbl id)
@@ -4755,8 +4756,9 @@ let trans_visitor
                 match lval with
                     Ast.LVAL_ext (_, (Ast.COMP_named (Ast.COMP_ident id)))
                   | Ast.LVAL_ext (_, (Ast.COMP_named (Ast.COMP_app (id, _))))
-                  | Ast.LVAL_base { node = Ast.BASE_ident id; _ }
-                  | Ast.LVAL_base { node = Ast.BASE_app (id, _); _ } -> id
+                  | Ast.LVAL_base { node = Ast.BASE_ident id; id = _ }
+                  | Ast.LVAL_base { node = Ast.BASE_app (id, _); id = _ } ->
+                      id
                   | _ -> bug cx "expected lval ending in ident"
               in
               let ttag =
