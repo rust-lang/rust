@@ -76,7 +76,7 @@ tag stmt_ {
 
 type decl = spanned[decl_];
 tag decl_ {
-    decl_local(ident, bool, option[@ty]);
+    decl_local(ident, option[@ty], option[@expr]);
     decl_item(name, @item);
 }
 

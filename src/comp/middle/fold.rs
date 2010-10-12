@@ -85,8 +85,8 @@ type ast_fold[ENV] =
 
      // Decl folds.
      (fn(&ENV e, &span sp,
-         ident ident, bool infer,
-         &option[@ty] ty) -> @decl)               fold_decl_local,
+         ident ident, &option[@ty] ty,
+         &option[@expr]) -> @decl)                fold_decl_local,
 
      (fn(&ENV e, &span sp,
          &name name, @item item) -> @decl)        fold_decl_item,
@@ -483,9 +483,9 @@ fn identity_fold_expr_block[ENV](&ENV env, &span sp, block blk) -> @expr {
 // Decl identities.
 
 fn identity_fold_decl_local[ENV](&ENV e, &span sp,
-                                 ident i, bool infer,
-                                 &option[@ty] t) -> @decl {
-    ret @respan(sp, ast.decl_local(i, infer, t));
+                                 ident i, &option[@ty] t,
+                                 &option[@expr] init) -> @decl {
+    ret @respan(sp, ast.decl_local(i, t, init));
 }
 
 fn identity_fold_decl_item[ENV](&ENV e, &span sp,
