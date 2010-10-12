@@ -83,6 +83,18 @@ io fn parse_ident(parser p) -> ast.ident {
     }
 }
 
+io fn parse_possibly_mutable_ty(parser p) -> tup(bool, @ast.ty) {
+    auto mut;
+    if (p.peek() == token.MUTABLE) {
+        p.bump();
+        mut = true;
+    } else {
+        mut = false;
+    }
+
+    ret tup(mut, parse_ty(p));
+}
+
 io fn parse_ty(parser p) -> @ast.ty {
     auto lo = p.get_span();
     let ast.ty_ t;
@@ -92,6 +104,15 @@ io fn parse_ty(parser p) -> @ast.ty {
         case (token.STR) { p.bump(); t = ast.ty_str; }
         case (token.CHAR) { p.bump(); t = ast.ty_char; }
         case (token.MACH(?tm)) { p.bump(); t = ast.ty_machine(tm); }
+
+        case (token.TUP) {
+            p.bump();
+            auto f = parse_possibly_mutable_ty; // FIXME: trans_const_lval bug
+            auto elems = parse_seq[tup(bool, @ast.ty)](token.LPAREN,
+                token.RPAREN, some(token.COMMA), f, p);
+            t = ast.ty_tup(elems.node);
+        }
+
         case (_) {
             p.err("expecting type");
             t = ast.ty_nil;
