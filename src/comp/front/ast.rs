@@ -117,6 +117,7 @@ tag ty_ {
     ty_char;
     ty_str;
     ty_box(@ty);
+    ty_tup(vec[tup(bool /* mutability */, @ty)]);
     ty_path(path, option[referent]);
 }
 
