@@ -541,24 +541,26 @@ io fn parse_expr(parser p) -> @ast.expr {
     }
 }
 
+io fn parse_initializer(parser p) -> option[@ast.expr] {
+    if (p.peek() == token.EQ) {
+        p.bump();
+        ret some(parse_expr(p));
+    }
+
+    ret none[@ast.expr];
+}
+
 io fn parse_let(parser p) -> @ast.decl {
     auto lo = p.get_span();
 
     expect(p, token.LET);
     auto ty = parse_ty(p);
     auto id = parse_ident(p);
-
-    auto init;
-    if (p.peek() == token.EQ) {
-        p.bump();
-        init = some(parse_expr(p));
-    } else {
-        init = none[@ast.expr];
-    }
-
-    expect(p, token.SEMI);
+    auto init = parse_initializer(p);
 
     auto hi = p.get_span();
+    expect(p, token.SEMI);
+
     ret @spanned(lo, hi, ast.decl_local(id, some(ty), init));
 }
 
@@ -578,6 +580,17 @@ io fn parse_stmt(parser p) -> @ast.stmt {
             auto leht = parse_let(p);
             auto hi = p.get_span();
             ret @spanned(lo, hi, ast.stmt_decl(leht));
+        }
+
+        case (token.AUTO) {
+            p.bump();
+            auto id = parse_ident(p);
+            auto init = parse_initializer(p);
+            auto hi = p.get_span();
+            expect(p, token.SEMI);
+
+            auto decl = ast.decl_local(id, none[@ast.ty], init);
+            ret @spanned(lo, hi, ast.stmt_decl(@spanned(lo, hi, decl)));
         }
 
         // Handle the (few) block-expr stmts first.
