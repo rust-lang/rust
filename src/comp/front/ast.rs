@@ -83,7 +83,7 @@ tag decl_ {
 type expr = spanned[expr_];
 tag expr_ {
     expr_vec(vec[@expr]);
-    expr_tup(vec[@expr]);
+    expr_tup(vec[tup(bool /* mutability */, @expr)]);
     expr_rec(vec[tup(ident,@expr)]);
     expr_call(@expr, vec[@expr]);
     expr_binary(binop, @expr, @expr);

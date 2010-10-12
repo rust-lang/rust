@@ -219,6 +219,18 @@ io fn parse_name(parser p, ast.ident id) -> ast.name {
     ret spanned(lo, tys.span, rec(ident=id, types=tys.node));
 }
 
+io fn parse_possibly_mutable_expr(parser p) -> tup(bool, @ast.expr) {
+    auto mut;
+    if (p.peek() == token.MUTABLE) {
+        p.bump();
+        mut = true;
+    } else {
+        mut = false;
+    }
+
+    ret tup(mut, parse_expr(p));
+}
+
 io fn parse_bottom_expr(parser p) -> @ast.expr {
 
     auto lo = p.get_span();
@@ -239,11 +251,11 @@ io fn parse_bottom_expr(parser p) -> @ast.expr {
 
         case (token.TUP) {
             p.bump();
-            auto pf = parse_expr;
-            auto es = parse_seq[@ast.expr](token.LPAREN,
-                                           token.RPAREN,
-                                           some(token.COMMA),
-                                           pf, p);
+            auto pf = parse_possibly_mutable_expr;
+            auto es = parse_seq[tup(bool, @ast.expr)](token.LPAREN,
+                                                      token.RPAREN,
+                                                      some(token.COMMA),
+                                                      pf, p);
             hi = es.span;
             ex = ast.expr_tup(es.node);
         }

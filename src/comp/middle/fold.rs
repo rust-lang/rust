@@ -47,7 +47,7 @@ type ast_fold[ENV] =
          vec[@expr] es) -> @expr)                 fold_expr_vec,
 
      (fn(&ENV e, &span sp,
-         vec[@expr] es) -> @expr)                 fold_expr_tup,
+         vec[tup(bool,@expr)] es) -> @expr)       fold_expr_tup,
 
      (fn(&ENV e, &span sp,
          vec[tup(ident,@expr)] fields) -> @expr)  fold_expr_rec,
@@ -161,6 +161,11 @@ fn fold_exprs[ENV](&ENV env, ast_fold[ENV] fld, vec[@expr] e) -> vec[@expr] {
     ret _vec.map[@expr, @expr](fe, e);
 }
 
+fn fold_tup_entry[ENV](&ENV env, ast_fold[ENV] fld, &tup(bool,@expr) e)
+    -> tup(bool,@expr) {
+    ret tup(e._0, fold_expr(env, fld, e._1));
+}
+
 fn fold_rec_entry[ENV](&ENV env, ast_fold[ENV] fld, &tup(ident,@expr) e)
     -> tup(ident,@expr) {
     ret tup(e._0, fold_expr(env, fld, e._1));
@@ -181,8 +186,10 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
         }
 
         case (ast.expr_tup(?es)) {
-            auto ees = fold_exprs(env_, fld, es);
-            ret fld.fold_expr_vec(env_, e.span, ees);
+            let operator[tup(bool,@expr), tup(bool,@expr)] fe =
+                bind fold_tup_entry[ENV](env, fld, _);
+            auto ees = _vec.map[tup(bool,@expr), tup(bool,@expr)](fe, es);
+            ret fld.fold_expr_tup(env_, e.span, ees);
         }
 
         case (ast.expr_rec(?es)) {
@@ -425,7 +432,8 @@ fn identity_fold_expr_vec[ENV](&ENV env, &span sp, vec[@expr] es) -> @expr {
     ret @respan(sp, ast.expr_vec(es));
 }
 
-fn identity_fold_expr_tup[ENV](&ENV env, &span sp, vec[@expr] es) -> @expr {
+fn identity_fold_expr_tup[ENV](&ENV env, &span sp, vec[tup(bool, @expr)] es)
+        -> @expr {
     ret @respan(sp, ast.expr_tup(es));
 }
 
