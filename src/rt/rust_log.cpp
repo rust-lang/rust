@@ -8,14 +8,13 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include <alloca.h>
 
 static uint32_t
 read_type_bit_mask() {
     uint32_t bits = rust_log::ULOG | rust_log::ERR;
     char *env_str = getenv("RUST_LOG");
     if (env_str) {
-        char *str = (char *)alloca(strlen(env_str) + 2);
+        char *str = new char[strlen(env_str) + 2];
         str[0] = ',';
         strcpy(str + 1, env_str);
 
@@ -38,6 +37,8 @@ read_type_bit_mask() {
         bits |= strstr(str, ",bt") ? rust_log::BT : 0;
         bits |= strstr(str, ",all") ? rust_log::ALL : 0;
         bits = strstr(str, ",none") ? 0 : bits;
+
+        delete[] str;
     }
     return bits;
 }
