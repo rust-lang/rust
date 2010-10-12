@@ -141,7 +141,7 @@ io fn parse_seq[T](token.token bra,
     ret spanned(lo, hi, v);
 }
 
-io fn parse_lit(parser p) -> @ast.lit {
+io fn parse_lit(parser p) -> option[ast.lit] {
     auto lo = p.get_span();
     let ast.lit_ lit;
     alt (p.peek()) {
@@ -166,12 +166,11 @@ io fn parse_lit(parser p) -> @ast.lit {
             lit = ast.lit_str(s);
         }
         case (_) {
-            lit = ast.lit_nil;
-            p.err("expected literal");
-            fail;
+            lit = ast.lit_nil;  // FIXME: typestate bug requires this
+            ret none[ast.lit];
         }
     }
-    ret @spanned(lo, lo, lit);
+    ret some(spanned(lo, lo, lit));
 }
 
 io fn parse_name(parser p, ast.ident id) -> ast.name {
@@ -263,9 +262,16 @@ io fn parse_bottom_expr(parser p) -> @ast.expr {
         }
 
         case (_) {
-            auto lit = parse_lit(p);
-            hi = lit.span;
-            ex = ast.expr_lit(lit);
+            alt (parse_lit(p)) {
+                case (some[ast.lit](?lit)) {
+                    hi = lit.span;
+                    ex = ast.expr_lit(@lit);
+                }
+                case (none[ast.lit]) {
+                    p.err("expecting expression");
+                    fail;
+                }
+            }
         }
     }
     ret @spanned(lo, hi, ex);
