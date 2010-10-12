@@ -590,8 +590,9 @@ and lower_frag
       | WORD (m,e) ->
           iflog sess
             (fun _ ->
-               log sess "lowering word %s"
-                 (string_of_ty_mach m));
+               log sess "lowering word %s with val %s"
+                 (string_of_ty_mach m)
+                 (fmt_to_str fmt_frag frag));
           word (bytes_of_ty_mach m) (mach_is_signed m) e
 
       | ALIGN_FILE (n, frag) ->

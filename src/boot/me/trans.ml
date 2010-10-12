@@ -316,6 +316,10 @@ let trans_visitor
     Il.Mem (mem, Il.ScalarTy (Il.ValTy word_bits))
   in
 
+  let imov (dst:Il.cell) (src:Il.operand) : unit =
+    emit (Il.imov dst src)
+  in
+
   let mov (dst:Il.cell) (src:Il.operand) : unit =
     emit (Il.umov dst src)
   in
@@ -398,8 +402,10 @@ let trans_visitor
     (in_quad_category "crate_rel -> ptr"
        (fun _ ->
           let cell = next_vreg_cell (Il.AddrTy rty) in
+          let diff = next_vreg_cell (Il.AddrTy rty) in
             mov cell (Il.Cell (curr_crate_ptr()));
-            add_to cell rel;
+            imov diff rel;
+            add_to cell (Il.Cell diff);
             cell))
 
   (* 
@@ -1566,7 +1572,7 @@ let trans_visitor
       Abi.load_fixup_addr (emitter())
         crate_ptr_reg cx.ctxt_crate_fixup Il.OpaqueTy;
       mov (word_at (fp_imm frame_crate_ptr)) (Il.Cell (crate_ptr_cell));
-      mov (word_at (fp_imm frame_fns_disp)) frame_fns
+      imov (word_at (fp_imm frame_fns_disp)) frame_fns
 
   and check_interrupt_flag _ =
     if cx.ctxt_sess.Session.sess_minimal
@@ -2307,7 +2313,7 @@ let trans_visitor
                 else Il.JL
               in
                 (* Start with assumption lhs < rhs *)
-                mov result neg_one;
+                imov result neg_one;
                 let lhs_lt_rhs_jmps =
                   trans_compare ~ty_params ~cjmp ~ty lhs rhs
                 in

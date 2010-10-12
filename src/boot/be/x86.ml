@@ -663,6 +663,7 @@ let emit_c_call
 
   let emit = Il.emit e in
   let mov dst src = emit (Il.umov dst src) in
+  let imov dst src = emit (Il.imov dst src) in
   let binary op dst imm = emit (Il.binary op dst (c dst) (immi imm)) in
 
   (* rust calls get task as arg0  *)
@@ -702,6 +703,8 @@ let emit_c_call
                         mov (r tmp1) arg;
                         mov (word_n (h esp) i) (c (r tmp1));
                 end
+            | Il.Imm (_, tm) when mach_is_signed tm ->
+                imov (word_n (h esp) i) arg
             | _ ->
                 mov (word_n (h esp) i) arg
       end
@@ -2151,7 +2154,7 @@ let mov (signed:bool) (dst:Il.cell) (src:Il.operand) : Asm.frag =
 
     (* rm32 <- imm32 *)
     | (_, _, Il.Imm (i, _)) when is_rm32 dst || is_r8 dst ->
-        let t = if signed then TY_u32 else TY_i32 in
+        let t = if signed then TY_i32 else TY_u32 in
           insn_rm_r_imm 0xc7 dst slash0 t i
 
     | _ -> raise Unrecognized

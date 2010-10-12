@@ -812,6 +812,12 @@ let umov (dst:cell) (src:operand) : quad' =
     else unary UMOV dst src
 ;;
 
+let imov (dst:cell) (src:operand) : quad' =
+    if (cell_is_nil dst || operand_is_nil src)
+    then Dead
+    else unary IMOV dst src
+;;
+
 let zero (dst:cell) (count:operand) : quad' =
   unary ZERO dst count
 ;;
