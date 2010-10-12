@@ -105,6 +105,8 @@ io fn parse_ty(parser p) -> @ast.ty {
         case (token.CHAR) { p.bump(); t = ast.ty_char; }
         case (token.MACH(?tm)) { p.bump(); t = ast.ty_machine(tm); }
 
+        case (token.AT) { p.bump(); t = ast.ty_box(parse_ty(p)); }
+
         case (token.TUP) {
             p.bump();
             auto f = parse_possibly_mutable_ty; // FIXME: trans_const_lval bug
