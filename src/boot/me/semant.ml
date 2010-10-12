@@ -546,7 +546,7 @@ let slot_ty (s:Ast.slot) : Ast.ty =
 
 let fn_output_ty (fn_ty:Ast.ty) : Ast.ty =
   match fn_ty with
-      Ast.TY_fn ({ Ast.sig_output_slot = slot }, _) ->
+      Ast.TY_fn ({ Ast.sig_output_slot = slot; _ }, _) ->
         begin
           match slot.Ast.slot_ty with
               Some ty -> ty
@@ -579,8 +579,8 @@ let defn_is_static (d:defn) : bool =
 
 let defn_is_callable (d:defn) : bool =
   match d with
-      DEFN_slot { Ast.slot_ty = Some Ast.TY_fn _ }
-    | DEFN_item { Ast.decl_item = (Ast.MOD_ITEM_fn _ ) } -> true
+      DEFN_slot { Ast.slot_ty = Some Ast.TY_fn _; _ }
+    | DEFN_item { Ast.decl_item = (Ast.MOD_ITEM_fn _ ); _ } -> true
     | _ -> false
 ;;
 
@@ -637,7 +637,7 @@ let atoms_to_names (atoms:Ast.atom array)
 
 let rec lval_to_name (lv:Ast.lval) : Ast.name =
   match lv with
-      Ast.LVAL_base { node = nb } ->
+      Ast.LVAL_base { node = nb; _ } ->
         Ast.NAME_base nb
     | Ast.LVAL_ext (lv, lv_comp) ->
         let comp =
@@ -655,7 +655,7 @@ let rec plval_to_name (pl:Ast.plval) : Ast.name =
   match pl with
       Ast.PLVAL_base nb ->
         Ast.NAME_base nb
-    | Ast.PLVAL_ext_name ({node = Ast.PEXP_lval pl}, nc) ->
+    | Ast.PLVAL_ext_name ({node = Ast.PEXP_lval pl; _}, nc) ->
         Ast.NAME_ext (plval_to_name pl, nc)
     | _ -> bug () "plval_to_name with plval that contains non-name components"
 ;;
@@ -1878,7 +1878,7 @@ let get_mod_item
     (node:node_id)
     : (Ast.mod_view * Ast.mod_items) =
   match get_item cx node with
-      { Ast.decl_item = Ast.MOD_ITEM_mod md } -> md
+      { Ast.decl_item = Ast.MOD_ITEM_mod md; _ } -> md
     | _ -> bugi cx node "defn is not a mod"
 ;;
 

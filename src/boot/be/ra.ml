@@ -132,7 +132,7 @@ let kill_redundant_moves (cx:ctxt) : unit =
 
 let quad_jump_target_labels (q:quad) : Il.label list =
   match q.Il.quad_body with
-      Il.Jmp { Il.jmp_targ = Il.CodeLabel lab } -> [ lab ]
+      Il.Jmp { Il.jmp_targ = Il.CodeLabel lab; _ } -> [ lab ]
     | _ -> []
 ;;
 
@@ -172,7 +172,7 @@ let quad_defined_vregs (q:quad) : Il.vreg list =
 
 let quad_is_unconditional_jump (q:quad) : bool =
   match q.Il.quad_body with
-      Il.Jmp { jmp_op = Il.JMP } -> true
+      Il.Jmp { jmp_op = Il.JMP; _ } -> true
     | Il.Ret -> true
     | _ -> false
 ;;

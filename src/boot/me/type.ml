@@ -1261,11 +1261,11 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
     if cx.Semant.ctxt_main_name = Some path_name then
       try
         match Hashtbl.find cx.Semant.ctxt_all_item_types item_id with
-            Ast.TY_fn ({ Ast.sig_input_slots = [| |] }, _)
+            Ast.TY_fn ({ Ast.sig_input_slots = [| |]; _ }, _)
           | Ast.TY_fn ({ Ast.sig_input_slots = [| {
                 Ast.slot_mode = Ast.MODE_local;
                 Ast.slot_ty = Some (Ast.TY_vec Ast.TY_str)
-              } |] }, _) ->
+              } |]; _}, _) ->
             ()
           | _ -> Common.err (Some item_id) "main fn has bad type signature"
       with Not_found ->
@@ -1327,7 +1327,7 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
       let obj_ty = Hashtbl.find cx.Semant.ctxt_all_item_types obj.Common.id in
       match obj_ty with
           Ast.TY_fn ({ Ast.sig_output_slot =
-              { Ast.slot_ty = Some (Ast.TY_obj (_, methods)) } }, _) ->
+              { Ast.slot_ty = Some (Ast.TY_obj (_, methods)); _ }; _ }, _) ->
             push_fn_ctx_of_ty_fn (Hashtbl.find methods ident)
         | _ ->
             Common.bug ()

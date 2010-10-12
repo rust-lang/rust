@@ -113,10 +113,10 @@ let stmt_collecting_visitor
             visit_for_block f.Ast.for_slot f.Ast.for_body.id
         | Ast.STMT_for_each f ->
             visit_for_block f.Ast.for_each_slot f.Ast.for_each_head.id
-        | Ast.STMT_alt_tag { Ast.alt_tag_arms = arms } ->
+        | Ast.STMT_alt_tag { Ast.alt_tag_arms = arms; _ } ->
             let rec resolve_pat block pat =
               match pat with
-                  Ast.PAT_slot ({ id = slot_id }, ident) ->
+                  Ast.PAT_slot ({ id = slot_id; _ }, ident) ->
                     let slots = Hashtbl.find cx.ctxt_block_slots block.id in
                     let key = Ast.KEY_ident ident in
                     htab_put slots key slot_id;
@@ -125,7 +125,7 @@ let stmt_collecting_visitor
                 | Ast.PAT_lit _
                 | Ast.PAT_wild -> ()
             in
-              Array.iter (fun { node = (p, b) } -> resolve_pat b p) arms
+              Array.iter (fun { node = (p, b); _ } -> resolve_pat b p) arms
         | _ -> ()
     end;
     inner.Walk.visit_stmt_pre stmt
@@ -236,8 +236,8 @@ let lookup_type_node_by_name
       None -> err None "unknown name: %a" Ast.sprintf_name name
     | Some (_, id) ->
         match htab_search cx.ctxt_all_defns id with
-            Some (DEFN_item { Ast.decl_item = Ast.MOD_ITEM_type _ })
-          | Some (DEFN_item { Ast.decl_item = Ast.MOD_ITEM_obj _ })
+            Some (DEFN_item { Ast.decl_item = Ast.MOD_ITEM_type _; _ })
+          | Some (DEFN_item { Ast.decl_item = Ast.MOD_ITEM_obj _; _ })
           | Some (DEFN_ty_param _) -> id
           | _ ->
               err None "Found non-type binding for %a"
@@ -645,8 +645,8 @@ let lval_base_resolving_visitor
     let reference_any_name lv =
       let rec lval_is_name lv =
         match lv with
-            Ast.LVAL_base {node = Ast.BASE_ident _}
-          | Ast.LVAL_base {node = Ast.BASE_app _} -> true
+            Ast.LVAL_base {node = Ast.BASE_ident _; _}
+          | Ast.LVAL_base {node = Ast.BASE_app _; _} -> true
           | Ast.LVAL_ext (lv', Ast.COMP_named (Ast.COMP_ident _))
           | Ast.LVAL_ext (lv', Ast.COMP_named (Ast.COMP_app _))
             -> lval_is_name lv'
@@ -749,7 +749,7 @@ let pattern_resolving_visitor
       end
   in
 
-  let resolve_arm { node = arm } =
+  let resolve_arm { node = arm; _ } =
     match fst arm with
         Ast.PAT_tag (lval, pats) ->
           let lval_nm = lval_to_name lval in

@@ -110,7 +110,7 @@ let trans_crate
       : Llvm.llvalue option =
     match Session.get_span sess id with
         None -> None
-      | Some {lo=(_, line, col)} ->
+      | Some {lo=(_, line, col); _} ->
           Some (di_location line col scope)
   in
 
@@ -368,9 +368,9 @@ let trans_crate
     in
     let base_llty = trans_ty ty in
       match slot.Ast.slot_mode with
-        | Ast.MODE_alias _ ->
+        | Ast.MODE_alias  ->
             Llvm.pointer_type base_llty
-        | Ast.MODE_local _ -> base_llty
+        | Ast.MODE_local  -> base_llty
   in
 
   let get_element_ptr
@@ -585,7 +585,7 @@ let trans_crate
       (name:Ast.ident)
       mod_item
       : unit =
-    let { node = { Ast.decl_item = (item:Ast.mod_item') }; id = id } =
+    let { node = { Ast.decl_item = (item:Ast.mod_item'); _ }; id = id } =
       mod_item in
     let full_name = Semant.item_str sem_cx id in
     let (filename, line_num) =
@@ -621,7 +621,7 @@ let trans_crate
   let trans_fn
       ({
         Ast.fn_input_slots = (header_slots:Ast.header_slots);
-        Ast.fn_body = (body:Ast.block)
+        Ast.fn_body = (body:Ast.block); _
       }:Ast.fn)
       (fn_id:node_id)
       : unit =
@@ -654,7 +654,7 @@ let trans_crate
     let build_arg idx llargval =
       if idx >= n_implicit_args
       then
-        let ({ id = id }, ident) = header_slots.(idx - 2) in
+        let ({ id = id; _ }, ident) = header_slots.(idx - 2) in
         Llvm.set_value_name ident llargval;
         let llarg =
           let llty = Llvm.type_of llargval in
@@ -754,7 +754,7 @@ let trans_crate
       let rec trans_lval (lval:Ast.lval) : (Llvm.llvalue * Ast.ty) =
         iflog (fun _ -> log sem_cx "trans_lval: %a" Ast.sprintf_lval lval);
         match lval with
-            Ast.LVAL_base { id = base_id } ->
+            Ast.LVAL_base { id = base_id; _ } ->
               set_debug_loc base_id;
               let defn_id = lval_base_defn_id sem_cx lval in
               begin
@@ -813,7 +813,7 @@ let trans_crate
       let trans_atom (atom:Ast.atom) : Llvm.llvalue =
         iflog (fun _ -> log sem_cx "trans_atom: %a" Ast.sprintf_atom atom);
         match atom with
-            Ast.ATOM_literal { node = lit } -> trans_literal lit
+            Ast.ATOM_literal { node = lit; _ } -> trans_literal lit
           | Ast.ATOM_lval lval ->
               Llvm.build_load (fst (trans_lval lval)) (anon_llid "tmp")
                 llbuilder
@@ -1081,7 +1081,7 @@ let trans_crate
       (name:Ast.ident)
       mod_item
       : unit =
-    let { node = { Ast.decl_item = (item:Ast.mod_item') }; id = id } =
+    let { node = { Ast.decl_item = (item:Ast.mod_item'); _ }; id = id } =
       mod_item in
     match item with
         Ast.MOD_ITEM_type _ ->

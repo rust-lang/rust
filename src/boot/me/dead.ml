@@ -44,14 +44,14 @@ let dead_code_visitor
             if Hashtbl.mem must_exit block.id then
               Hashtbl.add must_exit s.id ()
 
-        | Ast.STMT_while { Ast.while_body = body }
-        | Ast.STMT_do_while { Ast.while_body = body }
-        | Ast.STMT_for_each { Ast.for_each_body = body }
-        | Ast.STMT_for { Ast.for_body = body } ->
+        | Ast.STMT_while { Ast.while_body = body; _ }
+        | Ast.STMT_do_while { Ast.while_body = body; _ }
+        | Ast.STMT_for_each { Ast.for_each_body = body; _ }
+        | Ast.STMT_for { Ast.for_body = body; _ } ->
             if (Hashtbl.mem must_exit body.id) then
               Hashtbl.add must_exit s.id ()
 
-        | Ast.STMT_if { Ast.if_then = b1; Ast.if_else = Some b2 } ->
+        | Ast.STMT_if { Ast.if_then = b1; Ast.if_else = Some b2; _ } ->
             if (Hashtbl.mem must_exit b1.id) && (Hashtbl.mem must_exit b2.id)
             then Hashtbl.add must_exit s.id ()
 
@@ -61,16 +61,16 @@ let dead_code_visitor
         | Ast.STMT_be _ ->
             Hashtbl.add must_exit s.id ()
 
-        | Ast.STMT_alt_tag { Ast.alt_tag_arms = arms } ->
+        | Ast.STMT_alt_tag { Ast.alt_tag_arms = arms; _ } ->
             let arm_ids =
-              Array.map (fun { node = (_, block) } -> block.id) arms
+              Array.map (fun { node = (_, block); _ } -> block.id) arms
             in
               if all_must_exit arm_ids
               then Hashtbl.add must_exit s.id ()
 
         | Ast.STMT_alt_type { Ast.alt_type_arms = arms;
-                              Ast.alt_type_else = alt_type_else } ->
-            let arm_ids = Array.map (fun { node = ((_, _), block) } -> 
+                              Ast.alt_type_else = alt_type_else; _ } ->
+            let arm_ids = Array.map (fun { node = ((_, _), block); _ } -> 
                                        block.id) arms in
             let else_ids =
               begin
