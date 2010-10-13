@@ -204,6 +204,10 @@ fn is_dec_digit(char c) -> bool {
     ret in_range(c, '0', '9');
 }
 
+fn is_alnum(char c) -> bool {
+    ret is_alpha(c) || is_dec_digit(c);
+}
+
 fn is_hex_digit(char c) -> bool {
     ret in_range(c, '0', '9') ||
         in_range(c, 'a', 'f') ||
@@ -304,8 +308,8 @@ io fn next_token(reader rdr) -> token.token {
 
     auto c = rdr.curr();
 
-    if (is_alpha(c)) {
-        while (is_alpha(c) || c == '_') {
+    if (is_alpha(c) || c == '_') {
+        while (is_alnum(c) || c == '_') {
             accum_str += (c as u8);
             rdr.bump();
             c = rdr.curr();
