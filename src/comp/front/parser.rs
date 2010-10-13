@@ -238,6 +238,25 @@ io fn parse_possibly_mutable_expr(parser p) -> tup(bool, @ast.expr) {
     ret tup(mut, parse_expr(p));
 }
 
+io fn parse_lval(parser p) -> option[@ast.lval] {
+    auto lo = p.get_span();
+
+    alt (p.peek()) {
+        case (token.IDENT(?i)) {
+            auto n = parse_name(p, i);
+            auto hi = n.span;
+            auto lval = ast.lval_name(n, none[ast.referent]);
+            ret some(@spanned(lo, hi, lval));
+        }
+
+        case (_) {
+            ret none[@ast.lval];
+        }
+    }
+
+    fail;
+}
+
 io fn parse_bottom_expr(parser p) -> @ast.expr {
 
     auto lo = p.get_span();
@@ -297,21 +316,22 @@ io fn parse_bottom_expr(parser p) -> @ast.expr {
             ex = ast.expr_rec(es.node);
         }
 
-        case (token.IDENT(?i)) {
-            auto n = parse_name(p, i);
-            hi = n.span;
-            ex = ast.expr_name(n, none[ast.referent]);
-        }
-
         case (_) {
-            alt (parse_lit(p)) {
-                case (some[ast.lit](?lit)) {
-                    hi = lit.span;
-                    ex = ast.expr_lit(@lit);
+            alt (parse_lval(p)) {
+                case (some[@ast.lval](?lval)) {
+                    hi = lval.span;
+                    ex = ast.expr_lval(lval);
                 }
-                case (none[ast.lit]) {
-                    p.err("expecting expression");
-                    fail;
+                case (none[@ast.lval]) {
+                    alt (parse_lit(p)) {
+                        case (some[ast.lit](?lit)) {
+                            hi = lit.span;
+                            ex = ast.expr_lit(@lit);
+                        }
+                        case (none[ast.lit]) {
+                            p.err("expecting expression");
+                        }
+                    }
                 }
             }
         }
@@ -332,13 +352,15 @@ io fn parse_path_expr(parser p) -> @ast.expr {
                     case (token.IDENT(?i)) {
                         hi = p.get_span();
                         p.bump();
-                        e = @spanned(lo, hi, ast.expr_field(e, i));
+                        auto lv = @spanned(lo, hi, ast.lval_field(e, i));
+                        e = @spanned(lo, hi, ast.expr_lval(lv));
                     }
 
                     case (token.LPAREN) {
                         auto ix = parse_bottom_expr(p);
                         hi = ix.span;
-                        e = @spanned(lo, hi, ast.expr_index(e, ix));
+                        auto lv = @spanned(lo, hi, ast.lval_index(e, ix));
+                        e = @spanned(lo, hi, ast.expr_lval(lv));
                     }
                 }
             }

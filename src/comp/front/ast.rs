@@ -89,12 +89,18 @@ tag expr_ {
     expr_binary(binop, @expr, @expr);
     expr_unary(unop, @expr);
     expr_lit(@lit);
-    expr_name(name, option[referent]);
-    expr_field(@expr, ident);
-    expr_index(@expr, @expr);
     expr_cast(@expr, @ty);
     expr_if(@expr, block, option[block]);
     expr_block(block);
+    expr_assign(@lval, @expr);
+    expr_lval(@lval);
+}
+
+type lval = spanned[lval_];
+tag lval_ {
+    lval_field(@expr, ident);
+    lval_index(@expr, @expr);
+    lval_name(name, option[referent]);
 }
 
 type lit = spanned[lit_];
