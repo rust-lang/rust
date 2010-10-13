@@ -481,6 +481,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       generic-exterior-box.rs \
                       generic-fn-infer.rs \
                       generic-fn.rs \
+                      generic-iter-frame.rs \
                       generic-obj-with-derived-type.rs \
                       generic-obj.rs \
                       generic-recursive-tag.rs \

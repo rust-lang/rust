@@ -624,10 +624,61 @@ let trans_visitor
         Abi.iterator_args_elt_outer_frame_ptr
   in
 
+  (*
+   * Within a for-each block, calculate the fp of an enclosing for-each block
+   * or the enclosing function by chasing static links.
+   *)
+  let get_nth_outer_frame_ptr (diff:int) : Il.cell =
+    (* All for-each block frames have the same args. *)
+    let block_args_rty = current_fn_args_rty None in
+    let current_fp = Il.Reg (abi.Abi.abi_fp_reg, Il.AddrTy Il.OpaqueTy) in
+    let rec out (n:int) (fp:Il.cell) : Il.cell =
+      if n == 0
+      then fp
+      else
+        let args = fp_to_args fp block_args_rty in
+        let iter_args = get_element_ptr args Abi.calltup_elt_iterator_args in
+        let outer_fp =
+          get_element_ptr iter_args Abi.iterator_args_elt_outer_frame_ptr
+        in
+          out (n - 1) outer_fp
+    in
+      out diff current_fp
+  in
+
+  let curr_stmt_depth _ =
+    if (Stack.is_empty curr_stmt)
+    then None
+    else
+      Some
+        (get_stmt_depth cx (Stack.top curr_stmt))
+  in
+
   let get_ty_params_of_current_frame _ : Il.cell =
     let fnid = current_fn() in
     let n_ty_params = n_item_ty_params cx fnid in
+    let local _ =
       get_ty_params_of_frame fnid abi.Abi.abi_fp_reg n_ty_params
+    in
+      if Hashtbl.mem cx.ctxt_block_is_loop_body fnid
+      then
+        begin
+          let outermost_fnid = get_loop_outermost_fn cx fnid in
+            match curr_stmt_depth() with
+                None -> local()
+              | Some depth ->
+                  iflog (fun _ ->
+                           annotate "loading outermost frame ty params");
+                  let (outermost_fp, _) =
+                    force_to_reg (Il.Cell (get_nth_outer_frame_ptr depth))
+                  in
+                    get_ty_params_of_frame
+                      outermost_fnid
+                      outermost_fp
+                      (n_item_ty_params cx outermost_fnid)
+        end
+      else
+        local()
   in
 
   let get_ty_param_in_current_frame (param_idx:int) : Il.cell =
@@ -872,35 +923,6 @@ let trans_visitor
             Il.Mem (mem, (pointee_type ptr))
   in
 
-  (*
-   * Within a for-each block, calculate the fp of an enclosing for-each block
-   * or the enclosing function by chasing static links.
-   *)
-  let get_nth_outer_frame_ptr (diff:int) : Il.cell =
-    (* All for-each block frames have the same args. *)
-    let block_args_rty = current_fn_args_rty None in
-    let current_fp = Il.Reg (abi.Abi.abi_fp_reg, Il.AddrTy Il.OpaqueTy) in
-    let rec out (n:int) (fp:Il.cell) : Il.cell =
-      if n == 0
-      then fp
-      else
-        let args = fp_to_args fp block_args_rty in
-        let iter_args = get_element_ptr args Abi.calltup_elt_iterator_args in
-        let outer_fp =
-          get_element_ptr iter_args Abi.iterator_args_elt_outer_frame_ptr
-        in
-          out (n - 1) outer_fp
-    in
-      out diff current_fp
-  in
-
-  let curr_stmt_depth _ =
-    if (Stack.is_empty curr_stmt)
-    then None
-    else
-      Some
-        (get_stmt_depth cx (Stack.top curr_stmt))
-  in
 
   let cell_of_block_slot
       ?access_depth:(access_depth=curr_stmt_depth())

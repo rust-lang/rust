@@ -495,12 +495,18 @@ let get_callsz (cx:ctxt) (id:node_id) : size =
   else bugi cx id "missing callsz"
 ;;
 
+let get_loop_outermost_fn (cx:ctxt) (id:node_id) : node_id =
+  match Hashtbl.find cx.ctxt_all_defns id with
+      DEFN_loop_body fnid -> fnid
+    | _ -> bugi cx id "get_loop_outermost_fn on non-loop"
+;;
+
 let rec n_item_ty_params (cx:ctxt) (id:node_id) : int =
   match Hashtbl.find cx.ctxt_all_defns id with
       DEFN_item i -> Array.length i.Ast.decl_params
     | DEFN_obj_fn (oid,_) -> n_item_ty_params cx oid
     | DEFN_obj_drop oid -> n_item_ty_params cx oid
-    | DEFN_loop_body fid -> n_item_ty_params cx fid
+    | DEFN_loop_body _ -> 0
     | _ -> bugi cx id "n_item_ty_params on non-item"
 ;;
 
