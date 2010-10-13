@@ -37,6 +37,61 @@ let iflog cx thunk =
   else ()
 ;;
 
+(* Pretty-printing of type names *)
+let type_name_cache = ref None
+let get_type_name_cache cx =
+  match !type_name_cache with
+      None ->
+        let cache = Hashtbl.create 0 in
+        let add item_id ty =
+          let item_names = cx.Semant.ctxt_all_item_names in
+          if Hashtbl.mem item_names item_id then
+            Hashtbl.add cache ty (Hashtbl.find item_names item_id)
+        in
+        Hashtbl.iter add cx.Semant.ctxt_all_type_items;
+        type_name_cache := Some cache;
+        cache
+    | Some cache -> cache
+
+let rec friendly_stringify cx fallback ty =
+  let cache = get_type_name_cache cx in
+  if Hashtbl.mem cache ty then
+    let names = List.map (Ast.sprintf_name ()) (Hashtbl.find_all cache ty) in
+    String.concat " = " names
+  else
+    match ty with
+        Ast.TY_vec ty' -> "vec[" ^ (friendly_stringify cx fallback ty') ^ ")"
+      | Ast.TY_chan ty' ->
+          "chan[" ^ (friendly_stringify cx fallback ty') ^ ")"
+      | Ast.TY_port ty' ->
+          "port[" ^ (friendly_stringify cx fallback ty') ^ ")"
+      | Ast.TY_box ty' -> "@" ^ (friendly_stringify cx fallback ty')
+      | Ast.TY_mutable ty' ->
+          "(mutable " ^ (friendly_stringify cx fallback ty') ^ ")"
+      | Ast.TY_constrained (ty', _) ->
+          "(" ^ (friendly_stringify cx fallback ty') ^ " : <constrained>)"
+      | Ast.TY_tup tys ->
+          let tys_str = Array.map (friendly_stringify cx fallback) tys in
+          "tup(" ^ (String.concat ", " (Array.to_list tys_str)) ^ ")"
+      | Ast.TY_rec fields ->
+          let format_field (ident, ty') =
+            ident ^ "=" ^ (friendly_stringify cx fallback ty')
+          in
+          let fields = Array.to_list (Array.map format_field fields) in
+          "rec(" ^ (String.concat ", " fields) ^ ")"
+      | Ast.TY_fn (fnsig, _) ->
+          let format_slot slot =
+            match slot.Ast.slot_ty with
+                None -> Common.bug () "no ty in slot"
+              | Some ty' -> friendly_stringify cx fallback ty'
+          in
+          let fn_args = Array.map format_slot fnsig.Ast.sig_input_slots in
+          let fn_args_str = String.concat ", " (Array.to_list fn_args) in
+          let fn_rv_str = format_slot fnsig.Ast.sig_output_slot in
+          Printf.sprintf "fn(%s) -> %s" fn_args_str fn_rv_str
+
+      | _ -> fallback ty (* TODO: we can do better for objects *)
+
 let head_only ty =
   match ty with
 
@@ -59,11 +114,11 @@ let head_only ty =
 
 
 let rec rec_diff
+    (cx:Semant.ctxt)
     (a:Ast.ty_rec) (b:Ast.ty_rec)
-    (abuf:Buffer.t) (bbuf:Buffer.t)
+    (bbuf:Buffer.t)
     : unit =
 
-  Buffer.add_string abuf "rec(";
   Buffer.add_string bbuf "rec(";
 
   let rec append_first_diff buf a b i =
@@ -86,23 +141,21 @@ let rec rec_diff
             else
               if aty <> bty
               then
-                let (a,_) = summarize_difference aty bty in
+                let (a,_) = summarize_difference cx aty bty in
                   Printf.bprintf buf "... %s %s ...)" a alab
               else
                 append_first_diff buf a b (i+1)
   in
-    append_first_diff abuf a b 0;
     append_first_diff bbuf b a 0;
-    Buffer.add_string abuf ")";
     Buffer.add_string bbuf ")";
 
 
 and tup_diff
+    (cx:Semant.ctxt)
     (a:Ast.ty_tup) (b:Ast.ty_tup)
-    (abuf:Buffer.t) (bbuf:Buffer.t)
+    (bbuf:Buffer.t)
     : unit =
 
-  Buffer.add_string abuf "tup(";
   Buffer.add_string bbuf "tup(";
 
   let rec append_first_diff buf a b i =
@@ -121,18 +174,16 @@ and tup_diff
           let (bty) = b.(i) in
             if aty <> bty
             then
-              let (a,_) = summarize_difference aty bty in
+              let (a,_) = summarize_difference cx aty bty in
                 Printf.bprintf buf "... %s ...)" a
             else
               append_first_diff buf a b (i+1)
   in
-    append_first_diff abuf a b 0;
     append_first_diff bbuf b a 0;
-    Buffer.add_string abuf ")";
     Buffer.add_string bbuf ")";
 
 
-and summarize_difference (expected:Ast.ty) (actual:Ast.ty)
+and summarize_difference cx (expected:Ast.ty) (actual:Ast.ty)
     : (string * string) =
   if expected = actual
   then ("_", "_")
@@ -142,23 +193,23 @@ and summarize_difference (expected:Ast.ty) (actual:Ast.ty)
       let abuf = Buffer.create 10 in
 
       let p s =
-        Buffer.add_string ebuf s;
         Buffer.add_string abuf s
       in
 
       let sub e a =
-        let (e, a) = summarize_difference e a in
-          Printf.bprintf ebuf "%s" e;
-          Printf.bprintf abuf "%s" a;
+        let (_, a) = summarize_difference cx e a in
+          Printf.bprintf abuf "%s" a
       in
+
+      Buffer.add_string ebuf (friendly_stringify cx head_only expected);
 
         begin
           match expected, actual with
               (Ast.TY_tup etys,  Ast.TY_tup atys) ->
-                tup_diff etys atys ebuf abuf
+                tup_diff cx etys atys abuf
 
             | (Ast.TY_rec eelts, Ast.TY_rec aelts) ->
-                rec_diff eelts aelts ebuf abuf
+                rec_diff cx eelts aelts abuf
 
             | (Ast.TY_vec e, Ast.TY_vec a) ->
                 p "vec["; sub e a; p "]";
@@ -175,9 +226,8 @@ and summarize_difference (expected:Ast.ty) (actual:Ast.ty)
             | (Ast.TY_mutable e, Ast.TY_mutable a) ->
                 p "mutable "; sub e a;
 
-            | (e, a) ->
-                Buffer.add_string ebuf (head_only e);
-                Buffer.add_string abuf (head_only a)
+            | (_, a) ->
+                Buffer.add_string abuf (friendly_stringify cx head_only a)
         end;
         (Buffer.contents ebuf, Buffer.contents abuf)
     end
@@ -253,7 +303,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
   let demand (expected:Ast.ty) (actual:Ast.ty) : unit =
     let expected, actual = fundamental_ty expected, fundamental_ty actual in
     if expected <> actual then
-      let (e,a) = summarize_difference expected actual in
+      let (e,a) = summarize_difference cx expected actual in
         type_error_full e a
   in
   let demand_integer (actual:Ast.ty) : unit =
