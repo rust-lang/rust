@@ -244,6 +244,8 @@ let type_error expected actual =
 (* We explicitly curry [cx] like this to avoid threading it through all the
  * inner functions. *)
 let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
+  let friendly_string_of_ty = friendly_stringify cx (Ast.sprintf_ty ()) in
+
   (* Returns the part of the type that matters for typechecking. *)
   let rec fundamental_ty (ty:Ast.ty) : Ast.ty =
     match ty with
@@ -253,7 +255,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
 
   let sprintf_ltype _ (lty:ltype) : string =
     match lty with
-        LTYPE_mono ty | LTYPE_poly (_, ty) -> Ast.sprintf_ty () ty
+        LTYPE_mono ty | LTYPE_poly (_, ty) -> friendly_string_of_ty ty
       | LTYPE_module items -> Ast.sprintf_mod_items () items
   in
 
@@ -529,23 +531,23 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
     let base_ity =
       match internal_check_lval TYPAT_wild base with
           LTYPE_poly (_, ty) ->
-            Common.err None "can't index the polymorphic type '%a'"
-              Ast.sprintf_ty ty
+            Common.err None "can't index the polymorphic type '%s'"
+              (friendly_string_of_ty ty)
         | LTYPE_mono ty -> `Type (fundamental_ty ty)
         | LTYPE_module items -> `Module items
     in
 
-    let sprintf_itype chan () =
+    let string_of_itype () =
       match base_ity with
-          `Type ty -> Ast.sprintf_ty chan ty
-        | `Module items -> Ast.sprintf_mod_items chan items
+          `Type ty -> friendly_string_of_ty ty
+        | `Module items -> Ast.sprintf_mod_items () items
     in
 
     let _ =
       iflog cx
         (fun _ ->
-           log cx "base lval %a, base type %a"
-             Ast.sprintf_lval base sprintf_itype ())
+           log cx "base lval %a, base type %s"
+             Ast.sprintf_lval base (string_of_itype ()))
     in
 
     let rec typecheck base_ity =
@@ -558,15 +560,15 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
                 | None ->
                     Common.err
                       None
-                      "field '%s' is not one of the fields of '%a'"
+                      "field '%s' is not one of the fields of '%s'"
                       id
-                      sprintf_itype ()
+                      (string_of_itype ())
             in
             LTYPE_mono comp_ty
 
         | `Type (Ast.TY_rec _), _ ->
-            Common.err None "the record type '%a' must be indexed by name"
-              sprintf_itype ()
+            Common.err None "the record type '%s' must be indexed by name"
+              (string_of_itype ())
 
         | `Type (Ast.TY_obj ty_obj), Ast.COMP_named (Ast.COMP_ident id) ->
             let comp_ty =
@@ -575,17 +577,17 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
               with Not_found ->
                 Common.err
                   None
-                  "method '%s' is not one of the methods of '%a'"
+                  "method '%s' is not one of the methods of '%s'"
                   id
-                  sprintf_itype ()
+                  (string_of_itype ())
             in
             LTYPE_mono comp_ty
 
         | `Type (Ast.TY_obj _), _ ->
             Common.err
               None
-              "the object type '%a' must be indexed by name"
-              sprintf_itype ()
+              "the object type '%s' must be indexed by name"
+              (string_of_itype ())
 
         | `Type (Ast.TY_tup ty_tup), Ast.COMP_named (Ast.COMP_idx idx)
               when idx < Array.length ty_tup ->
@@ -594,15 +596,15 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
         | `Type (Ast.TY_tup _), Ast.COMP_named (Ast.COMP_idx idx) ->
             Common.err
               None
-              "member '_%d' is not one of the members of '%a'"
+              "member '_%d' is not one of the members of '%s'"
               idx
-              sprintf_itype ()
+              (string_of_itype ())
 
         | `Type (Ast.TY_tup _), _ ->
             Common.err
               None
-              "the tuple type '%a' must be indexed by tuple index"
-              sprintf_itype ()
+              "the tuple type '%s' must be indexed by tuple index"
+              (string_of_itype ())
 
         | `Type (Ast.TY_vec ty_vec), Ast.COMP_atom atom ->
             demand_integer (check_atom atom);
@@ -610,8 +612,8 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
 
         | `Type (Ast.TY_vec _), _ ->
             Common.err None
-              "the vector type '%a' must be indexed by an integral type"
-              sprintf_itype ()
+              "the vector type '%s' must be indexed by an integral type"
+              (string_of_itype ())
 
         | `Type Ast.TY_str, Ast.COMP_atom atom ->
             demand_integer (check_atom atom);
@@ -626,15 +628,15 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
             typecheck (`Type ty_box)  (* automatically dereference! *)
 
         | `Type ty, Ast.COMP_named (Ast.COMP_ident _) ->
-            Common.err None "the type '%a' can't be indexed by name"
-              Ast.sprintf_ty ty
+            Common.err None "the type '%s' can't be indexed by name"
+              (friendly_string_of_ty ty)
 
         | `Type ty, Ast.COMP_named (Ast.COMP_app _) ->
             Common.err
               None
-              "the type '%a' has no type parameters, so it can't be applied \
+              "the type '%s' has no type parameters, so it can't be applied \
               to types"
-              Ast.sprintf_ty ty
+              (friendly_string_of_ty ty)
 
         | `Module items, Ast.COMP_named ((Ast.COMP_ident id) as name_comp)
         | `Module items, Ast.COMP_named ((Ast.COMP_app (id, _))
@@ -666,21 +668,21 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
         | _, Ast.COMP_named (Ast.COMP_idx _) ->
             Common.err
               None
-              "%a isn't a tuple, so it can't be indexed by tuple index"
-              sprintf_itype ()
+              "%s isn't a tuple, so it can't be indexed by tuple index"
+              (string_of_itype ())
 
         | _, Ast.COMP_atom atom ->
             Common.err
               None
-              "%a can't by indexed by the type '%a'"
-              sprintf_itype ()
-              Ast.sprintf_ty (check_atom atom)
+              "%s can't by indexed by the type '%s'"
+              (string_of_itype ())
+              (friendly_string_of_ty (check_atom atom))
 
         | _, Ast.COMP_deref ->
             Common.err
               None
-              "%a isn't a box and can't be dereferenced"
-              sprintf_itype ()
+              "%s isn't a box and can't be dereferenced"
+              (string_of_itype ())
     in
     typecheck base_ity
 
@@ -749,10 +751,10 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
       | TYPAT_ty expected, (LTYPE_poly _ as lty) ->
           Common.err
             None
-            "not enough context to automatically instantiate '%a' to '%a'; \
+            "not enough context to automatically instantiate '%a' to '%s'; \
             please supply type parameters explicitly"
             sprintf_ltype lty
-            Ast.sprintf_ty expected
+            (friendly_string_of_ty expected)
       | _, LTYPE_module _ ->
           Common.err None "can't refer to a module as a first-class value"
 
@@ -1033,9 +1035,9 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
                     then ()
                     else
                       Common.err None
-                        "mismatched types in vec-append: %a += %a"
-                        Ast.sprintf_ty dst_ty
-                        Ast.sprintf_ty src_ty
+                        "mismatched types in vec-append: %s += %s"
+                        (friendly_string_of_ty dst_ty)
+                        (friendly_string_of_ty src_ty)
                 | Ast.TY_str, (Ast.TY_mach Common.TY_u8)
                 | Ast.TY_str, Ast.TY_str -> ()
                 | _ ->
