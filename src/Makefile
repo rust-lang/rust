@@ -938,7 +938,7 @@ tidy:
 	$(CFG_QUIET) python etc/tidy.py \
       $(wildcard ../*.txt) \
       ../README \
-      $(filter-out $(GENERATED) $(PKG_3RDPARTY), $(PKG_FILES))
+      $(filter-out $(GENERATED) $(PKG_3RDPARTY) etc/%, $(PKG_FILES))
 
 runtime-clean:
 	$(CFG_QUIET)rm -f $(RUNTIME_OBJS) $(CFG_RUNTIME)
