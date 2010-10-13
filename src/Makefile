@@ -167,8 +167,9 @@ ifneq ($(CFG_LLVM_CONFIG),)
 endif
 ifneq ($(CFG_LLVM_CONFIG),)
   CFG_LLVM_VERSION := $(shell $(CFG_LLVM_CONFIG) --version)
-  ifeq ($(CFG_LLVM_VERSION),2.8svn)
-    $(info cfg: using LLVM version 2.8svn)
+  CFG_LLVM_ALLOWED_VERSIONS := 2.8svn 2.8 2.9svn
+  ifneq (,$(findstring $(CFG_LLVM_VERSION),$(CFG_LLVM_ALLOWED_VERSIONS)))
+    $(info cfg: using LLVM version $(CFG_LLVM_VERSION))
     WHERE := $(shell $(CFG_LLVM_CONFIG) --libdir)/ocaml
     ifneq ($(shell test -e $(WHERE)/llvm.cma && echo ok),ok)
       CFG_LLVM_CONFIG := $(info cfg: LLVM ocaml bindings not found)
@@ -176,7 +177,7 @@ ifneq ($(CFG_LLVM_CONFIG),)
   else
     CFG_LLVM_CONFIG :=
     $(info cfg: incompatible LLVM version $(CFG_LLVM_VERSION), \
-      expected 2.8svn)
+      expected one of $(CFG_LLVM_ALLOWED_VERSIONS))
   endif
 endif
 ifdef CFG_LLVM_CONFIG
