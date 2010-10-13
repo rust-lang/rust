@@ -107,6 +107,13 @@ io fn parse_ty(parser p) -> @ast.ty {
 
         case (token.AT) { p.bump(); t = ast.ty_box(parse_ty(p)); }
 
+        case (token.VEC) {
+            p.bump();
+            expect(p, token.LBRACKET);
+            t = ast.ty_vec(parse_ty(p));
+            expect(p, token.RBRACKET);
+        }
+
         case (token.TUP) {
             p.bump();
             auto f = parse_possibly_mutable_ty; // FIXME: trans_const_lval bug
