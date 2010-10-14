@@ -2219,9 +2219,10 @@ let rec closure_box_rty
       r (Array.init n_ty_params (fun _ -> tydesc))
   in
   let bound_args = r (Array.map (slot_referent_type cx) bs) in
-    (* First tydesc is the one describing bound_args; second tydesc is the one
-     * to pass to targ when invoking it.  *)
-    r [| rc; r [| tydesc; targ; ty_param_rtys; bound_args |] |]
+    (* First tydesc is the one describing bound_args; second tydesc cluster
+     * are those to pass to targ when invoking it, along with the merged
+     * bound args. *)
+    r [| rc; r [| tydesc; targ; bound_args; ty_param_rtys |] |]
 
 and fn_rty (cx:ctxt) (opaque_box_body:bool) : Il.referent_ty =
   let s t = Il.ScalarTy t in

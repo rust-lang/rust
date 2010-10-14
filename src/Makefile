@@ -465,6 +465,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       destructor-ordering.rs \
                       drop-bind-thunk-args.rs \
                       drop-on-empty-block-exit.rs \
+                      drop-parametric-closure-with-bound-box.rs \
                       export-non-interference.rs \
                       exterior.rs \
                       fn-lval.rs \
