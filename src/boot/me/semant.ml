@@ -115,6 +115,7 @@ type ctxt =
       ctxt_item_files: (node_id,filename) Hashtbl.t;
       ctxt_all_lvals: (node_id,Ast.lval) Hashtbl.t;
       ctxt_call_lval_params: (node_id,Ast.ty array) Hashtbl.t;
+      ctxt_user_type_names: (Ast.ty,Ast.name) Hashtbl.t;
 
       (* A directed graph that encodes the containment relation among tags. *)
       ctxt_tag_containment: (opaque_id, tag_graph_node) Hashtbl.t;
@@ -227,6 +228,7 @@ let new_ctxt sess abi crate =
     ctxt_all_lvals = Hashtbl.create 0;
     ctxt_all_defns = Hashtbl.create 0;
     ctxt_call_lval_params = Hashtbl.create 0;
+    ctxt_user_type_names = Hashtbl.create 0;
 
     ctxt_tag_containment = Hashtbl.create 0;
 
@@ -2624,7 +2626,10 @@ let ty_str (cx:ctxt) (ty:Ast.ty) : string =
          ty_fold_constrained = (fun (t,_)-> t) }
   in
     htab_search_or_add cx.ctxt_type_str_cache ty
-      (fun _ -> fold_ty cx fold ty)
+      (fun _ ->
+         match htab_search cx.ctxt_user_type_names ty with
+             None -> "$" ^ (fold_ty cx fold ty)
+           | Some name -> string_of_name name)
 ;;
 
 let glue_str (cx:ctxt) (g:glue) : string =

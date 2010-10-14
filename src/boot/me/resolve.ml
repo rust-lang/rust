@@ -877,6 +877,18 @@ let process_crate
     (* Post-resolve, we can establish a tag cache. *)
     cx.ctxt_tag_cache <- Some (Hashtbl.create 0);
     cx.ctxt_rebuild_cache <- Some (Hashtbl.create 0);
+
+    (* Also index all the type names for future error messages. *)
+    Hashtbl.iter
+      begin
+        fun item_id ty ->
+          let item_names = cx.Semant.ctxt_all_item_names in
+            if Hashtbl.mem item_names item_id then
+              Hashtbl.add cx.Semant.ctxt_user_type_names ty
+                (Hashtbl.find item_names item_id)
+      end
+      cx.Semant.ctxt_all_type_items;
+
 ;;
 
 (*

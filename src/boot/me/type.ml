@@ -38,23 +38,9 @@ let iflog cx thunk =
 ;;
 
 (* Pretty-printing of type names *)
-let type_name_cache = ref None
-let get_type_name_cache cx =
-  match !type_name_cache with
-      None ->
-        let cache = Hashtbl.create 0 in
-        let add item_id ty =
-          let item_names = cx.Semant.ctxt_all_item_names in
-          if Hashtbl.mem item_names item_id then
-            Hashtbl.add cache ty (Hashtbl.find item_names item_id)
-        in
-        Hashtbl.iter add cx.Semant.ctxt_all_type_items;
-        type_name_cache := Some cache;
-        cache
-    | Some cache -> cache
 
 let rec friendly_stringify cx fallback ty =
-  let cache = get_type_name_cache cx in
+  let cache = cx.Semant.ctxt_user_type_names in
   if Hashtbl.mem cache ty then
     let names = List.map (Ast.sprintf_name ()) (Hashtbl.find_all cache ty) in
     String.concat " = " names
