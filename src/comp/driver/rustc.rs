@@ -3,6 +3,7 @@
 import front.parser;
 import front.token;
 import middle.trans;
+import middle.resolve;
 
 io fn main(vec[str] args) {
 
@@ -17,6 +18,7 @@ io fn main(vec[str] args) {
       if (i > 0) {
           auto p = parser.new_parser(sess, filename);
           auto crate = parser.parse_crate(p);
+          crate = resolve.resolve_crate(sess, crate);
           trans.trans_crate(sess, crate);
       }
       i += 1;
