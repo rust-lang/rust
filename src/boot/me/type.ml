@@ -903,8 +903,10 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
           let arg_tys =
             match constr_ty with
                 Ast.TY_fn (ty_sig, _) ->
+                  demand expected (get_slot_ty ty_sig.Ast.sig_output_slot);
                   Array.map get_slot_ty ty_sig.Ast.sig_input_slots
               | Ast.TY_tag _ ->
+                  demand expected constr_ty;
                   [||]
               | _ -> type_error "constructor function" constr_ty
           in
