@@ -23,8 +23,6 @@ import front.ast.referent;
 
 import std._vec;
 
-import std.util.operator;
-
 type ast_fold[ENV] =
     @rec
     (
@@ -191,9 +189,20 @@ fn fold_lval[ENV](&ENV env, ast_fold[ENV] fld, @lval lv) -> @lval {
     fail;   // shoudn't be reached
 }
 
-fn fold_exprs[ENV](&ENV env, ast_fold[ENV] fld, vec[@expr] e) -> vec[@expr] {
-    let operator[@expr, @expr] fe = bind fold_expr[ENV](env, fld, _);
-    ret _vec.map[@expr, @expr](fe, e);
+// FIXME: Weird bug. Due to the way we auto-deref + in +=, we can't append a
+// boxed value to a vector-of-boxes using +=.  Best to figure out a way to fix
+// this. Deref-on-demand or something? It's a hazard of the ambiguity between
+// single-element and vector append.
+fn append[T](&vec[T] v, &T t) {
+    v += t;
+}
+
+fn fold_exprs[ENV](&ENV env, ast_fold[ENV] fld, vec[@expr] es) -> vec[@expr] {
+    let vec[@expr] exprs = vec();
+    for (@expr e in es) {
+        append[@expr](exprs, fold_expr(env, fld, e));
+    }
+    ret exprs;
 }
 
 fn fold_tup_entry[ENV](&ENV env, ast_fold[ENV] fld, &tup(bool,@expr) e)
@@ -221,17 +230,19 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
         }
 
         case (ast.expr_tup(?es)) {
-            let operator[tup(bool,@expr), tup(bool,@expr)] fe =
-                bind fold_tup_entry[ENV](env, fld, _);
-            auto ees = _vec.map[tup(bool,@expr), tup(bool,@expr)](fe, es);
-            ret fld.fold_expr_tup(env_, e.span, ees);
+            let vec[tup(bool,@expr)] entries = vec();
+            for (tup(bool,@expr) entry in es) {
+                entries += fold_tup_entry[ENV](env, fld, entry);
+            }
+            ret fld.fold_expr_tup(env_, e.span, entries);
         }
 
         case (ast.expr_rec(?es)) {
-            let operator[tup(ident,@expr), tup(ident,@expr)] fe =
-                bind fold_rec_entry[ENV](env, fld, _);
-            auto ees = _vec.map[tup(ident,@expr), tup(ident,@expr)](fe, es);
-            ret fld.fold_expr_rec(env_, e.span, ees);
+            let vec[tup(ident,@expr)] entries = vec();
+            for (tup(ident,@expr) entry in es) {
+                entries += fold_rec_entry(env, fld, entry);
+            }
+            ret fld.fold_expr_rec(env_, e.span, entries);
         }
 
         case (ast.expr_call(?f, ?args)) {
@@ -326,27 +337,26 @@ fn fold_stmt[ENV](&ENV env, ast_fold[ENV] fld, &@stmt s) -> @stmt {
 }
 
 fn fold_block[ENV](&ENV env, ast_fold[ENV] fld, &block blk) -> block {
-    let operator[@stmt, @stmt] fs = bind fold_stmt[ENV](env, fld, _);
-    auto stmts = _vec.map[@stmt, @stmt](fs, blk.node);
+    let vec[@ast.stmt] stmts = vec();
+    for (@ast.stmt s in blk.node) {
+        append[@ast.stmt](stmts, fold_stmt[ENV](env, fld, s));
+    }
     ret respan(blk.span, stmts);
 }
 
 fn fold_slot[ENV](&ENV env, ast_fold[ENV] fld, &slot s) -> slot {
-    auto ty = fold_ty[ENV](env, fld, s.ty);
+    auto ty = fold_ty(env, fld, s.ty);
     ret rec(ty=ty, mode=s.mode, id=s.id);
 }
 
 
 fn fold_fn[ENV](&ENV env, ast_fold[ENV] fld, &ast._fn f) -> ast._fn {
 
-    fn fold_input[ENV](&ENV env, ast_fold[ENV] fld, &ast.input i)
-        -> ast.input {
-        ret rec(slot=fold_slot[ENV](env, fld, i.slot),
-                ident=i.ident);
+    let vec[ast.input] inputs = vec();
+    for (ast.input i in f.inputs) {
+        inputs += rec(slot=fold_slot(env, fld, i.slot),
+                      ident=i.ident);
     }
-
-    let operator[ast.input,ast.input] fi = bind fold_input[ENV](env, fld, _);
-    auto inputs = _vec.map[ast.input, ast.input](fi, f.inputs);
     auto output = fold_ty[ENV](env, fld, @f.output);
     auto body = fold_block[ENV](env, fld, f.body);
 
