@@ -46,11 +46,11 @@ let rec friendly_stringify cx fallback ty =
     String.concat " = " names
   else
     match ty with
-        Ast.TY_vec ty' -> "vec[" ^ (friendly_stringify cx fallback ty') ^ ")"
+        Ast.TY_vec ty' -> "vec[" ^ (friendly_stringify cx fallback ty') ^ "]"
       | Ast.TY_chan ty' ->
-          "chan[" ^ (friendly_stringify cx fallback ty') ^ ")"
+          "chan[" ^ (friendly_stringify cx fallback ty') ^ "]"
       | Ast.TY_port ty' ->
-          "port[" ^ (friendly_stringify cx fallback ty') ^ ")"
+          "port[" ^ (friendly_stringify cx fallback ty') ^ "]"
       | Ast.TY_box ty' -> "@" ^ (friendly_stringify cx fallback ty')
       | Ast.TY_mutable ty' ->
           "(mutable " ^ (friendly_stringify cx fallback ty') ^ ")"
