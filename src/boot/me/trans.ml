@@ -5110,8 +5110,8 @@ let trans_visitor
             when e = simplified_ty elt_ty ->
 
             let elt_sz = ty_sz_in_current_frame elt_ty in
-            let elt_sz_cell = next_vreg_cell word_sty in
-              mov elt_sz_cell elt_sz;
+            let elt_sz_cell = Il.Reg (force_to_reg elt_sz) in
+            let elt_sz = Il.Cell elt_sz_cell in
 
               aliasing true dst_cell
                 begin
