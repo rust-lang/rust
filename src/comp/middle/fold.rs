@@ -11,6 +11,7 @@ import util.common.ty_mach;
 import front.ast;
 import front.ast.ident;
 import front.ast.name;
+import front.ast.path;
 import front.ast.ty;
 import front.ast.expr;
 import front.ast.lval;
@@ -38,6 +39,11 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp) -> @ty)                fold_ty_char,
      (fn(&ENV e, &span sp) -> @ty)                fold_ty_str,
      (fn(&ENV e, &span sp, @ty t) -> @ty)         fold_ty_box,
+     (fn(&ENV e, &span sp, @ty t) -> @ty)         fold_ty_vec,
+
+     (fn(&ENV e, &span sp,
+         vec[tup(bool, @ty)] elts) -> @ty)        fold_ty_tup,
+
      (fn(&ENV e, &span sp, ast.path p,
          &option[referent] r) -> @ty)             fold_ty_path,
 
@@ -94,7 +100,7 @@ type ast_fold[ENV] =
          &option[@expr]) -> @decl)                fold_decl_local,
 
      (fn(&ENV e, &span sp,
-         &name name, @item item) -> @decl)        fold_decl_item,
+         ident ident, @item item) -> @decl)        fold_decl_item,
 
 
      // Stmt folds.
@@ -136,6 +142,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, @ast.crate c) -> ENV) update_env_for_crate,
      (fn(&ENV e, @item i) -> ENV) update_env_for_item,
      (fn(&ENV e, @stmt s) -> ENV) update_env_for_stmt,
+     (fn(&ENV e, @decl i) -> ENV) update_env_for_decl,
      (fn(&ENV e, @lval l) -> ENV) update_env_for_lval,
      (fn(&ENV e, @expr x) -> ENV) update_env_for_expr,
      (fn(&ENV e, @ty t) -> ENV) update_env_for_ty,
@@ -147,19 +154,94 @@ type ast_fold[ENV] =
 
 //// Fold drivers.
 
-// FIXME: Finish these.
-
-fn fold_expr_name[ENV](&ENV env, ast_fold[ENV] fld, &name n,
-                  &option[referent] r) -> tup(name,option[referent]) {
-    ret tup(n,r);
+fn fold_name[ENV](&ENV env, ast_fold[ENV] fld, &name n) -> name {
+    let vec[@ast.ty] tys_ = vec();
+    for (@ast.ty t in n.node.types) {
+        append[@ast.ty](tys_, fold_ty(env, fld, t));
+    }
+    let ast.name_ n_ = rec(ident=n.node.ident, types=tys_);
+    ret fld.fold_name(env, n.span, n_);
 }
 
 fn fold_ty[ENV](&ENV env, ast_fold[ENV] fld, @ty t) -> @ty {
-    ret t;
+    let ENV env_ = fld.update_env_for_ty(env, t);
+
+    if (!fld.keep_going(env_)) {
+        ret t;
+    }
+
+    alt (t.node) {
+        case (ast.ty_nil) { ret fld.fold_ty_nil(env_, t.span); }
+        case (ast.ty_bool) { ret fld.fold_ty_bool(env_, t.span); }
+        case (ast.ty_int) { ret fld.fold_ty_int(env_, t.span); }
+        case (ast.ty_uint) { ret fld.fold_ty_uint(env_, t.span); }
+
+        case (ast.ty_machine(?m)) {
+            ret fld.fold_ty_machine(env_, t.span, m);
+        }
+
+        case (ast.ty_char) { ret fld.fold_ty_char(env_, t.span); }
+        case (ast.ty_str) { ret fld.fold_ty_str(env_, t.span); }
+
+        case (ast.ty_box(?ty)) {
+            auto ty_ = fold_ty(env, fld, ty);
+            ret fld.fold_ty_box(env_, t.span, ty_);
+        }
+
+        case (ast.ty_vec(?ty)) {
+            auto ty_ = fold_ty(env, fld, ty);
+            ret fld.fold_ty_vec(env_, t.span, ty_);
+        }
+
+        case (ast.ty_tup(?elts)) {
+            let vec[tup(bool, @ty)] elts_ = vec();
+            for (tup(bool, @ty) elt in elts) {
+                elts_ += tup(elt._0, fold_ty(env, fld, elt._1));
+            }
+            ret fld.fold_ty_tup(env_, t.span, elts);
+        }
+
+        case (ast.ty_path(?pth, ?ref_opt)) {
+            let vec[ast.name] path = vec();
+            for (ast.name n in pth) {
+                path += fold_name(env, fld, n);
+            }
+            ret fld.fold_ty_path(env_, t.span, path, ref_opt);
+        }
+    }
 }
 
 fn fold_decl[ENV](&ENV env, ast_fold[ENV] fld, @decl d) -> @decl {
-    ret d;
+    let ENV env_ = fld.update_env_for_decl(env, d);
+
+    if (!fld.keep_going(env_)) {
+        ret d;
+    }
+
+    alt (d.node) {
+        case (ast.decl_local(?id, ?ty_opt, ?expr_opt)) {
+            auto ty_opt_ = none[@ast.ty];
+            auto expr_opt_ = none[@ast.expr];
+            alt (ty_opt) {
+                case (some[@ast.ty](?t)) {
+                    ty_opt_ = some[@ast.ty](fold_ty(env, fld, t));
+                }
+            }
+            alt (expr_opt) {
+                case (some[@ast.expr](?e)) {
+                    expr_opt_ = some[@ast.expr](fold_expr(env, fld, e));
+                }
+            }
+            ret fld.fold_decl_local(env_, d.span, id, ty_opt_, expr_opt_);
+        }
+
+        case (ast.decl_item(?id, ?item)) {
+            auto item_ = fold_item(env_, fld, item);
+            ret fld.fold_decl_item(env_, d.span, id, item_);
+        }
+    }
+
+    fail;
 }
 
 fn fold_lval[ENV](&ENV env, ast_fold[ENV] fld, @lval lv) -> @lval {
@@ -182,6 +264,7 @@ fn fold_lval[ENV](&ENV env, ast_fold[ENV] fld, @lval lv) -> @lval {
         }
 
         case (ast.lval_name(?n, ?r)) {
+            auto n_ = fold_name(env_, fld, n);
             ret fld.fold_lval_name(env_, lv.span, n, r);
         }
     }
@@ -424,7 +507,6 @@ fn identity_fold_name[ENV](&ENV env, &span sp, ast.name_ n) -> name {
     ret respan(sp, n);
 }
 
-
 // Type identities.
 
 fn identity_fold_ty_nil[ENV](&ENV env, &span sp) -> @ty {
@@ -458,6 +540,15 @@ fn identity_fold_ty_str[ENV](&ENV env, &span sp) -> @ty {
 
 fn identity_fold_ty_box[ENV](&ENV env, &span sp, @ty t) -> @ty {
     ret @respan(sp, ast.ty_box(t));
+}
+
+fn identity_fold_ty_vec[ENV](&ENV env, &span sp, @ty t) -> @ty {
+    ret @respan(sp, ast.ty_vec(t));
+}
+
+fn identity_fold_ty_tup[ENV](&ENV env, &span sp, vec[tup(bool,@ty)] elts)
+    -> @ty {
+    ret @respan(sp, ast.ty_tup(elts));
 }
 
 fn identity_fold_ty_path[ENV](&ENV env, &span sp, ast.path p,
@@ -549,8 +640,8 @@ fn identity_fold_decl_local[ENV](&ENV e, &span sp,
 }
 
 fn identity_fold_decl_item[ENV](&ENV e, &span sp,
-                                &name n, @item i) -> @decl {
-    ret @respan(sp, ast.decl_item(n, i));
+                                ident id, @item i) -> @decl {
+    ret @respan(sp, ast.decl_item(id, i));
 }
 
 
@@ -627,6 +718,10 @@ fn identity_update_env_for_stmt[ENV](&ENV e, @stmt s) -> ENV {
     ret e;
 }
 
+fn identity_update_env_for_decl[ENV](&ENV e, @decl d) -> ENV {
+    ret e;
+}
+
 fn identity_update_env_for_lval[ENV](&ENV e, @lval l) -> ENV {
     ret e;
 }
@@ -660,6 +755,8 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_ty_char    = bind identity_fold_ty_char[ENV](_,_),
          fold_ty_str     = bind identity_fold_ty_str[ENV](_,_),
          fold_ty_box     = bind identity_fold_ty_box[ENV](_,_,_),
+         fold_ty_vec     = bind identity_fold_ty_vec[ENV](_,_,_),
+         fold_ty_tup     = bind identity_fold_ty_tup[ENV](_,_,_),
          fold_ty_path    = bind identity_fold_ty_path[ENV](_,_,_,_),
 
          fold_expr_vec    = bind identity_fold_expr_vec[ENV](_,_,_),
@@ -698,6 +795,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          update_env_for_crate = bind identity_update_env_for_crate[ENV](_,_),
          update_env_for_item = bind identity_update_env_for_item[ENV](_,_),
          update_env_for_stmt = bind identity_update_env_for_stmt[ENV](_,_),
+         update_env_for_decl = bind identity_update_env_for_decl[ENV](_,_),
          update_env_for_lval = bind identity_update_env_for_lval[ENV](_,_),
          update_env_for_expr = bind identity_update_env_for_expr[ENV](_,_),
          update_env_for_ty = bind identity_update_env_for_ty[ENV](_,_),

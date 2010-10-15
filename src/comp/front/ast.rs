@@ -77,7 +77,7 @@ tag stmt_ {
 type decl = spanned[decl_];
 tag decl_ {
     decl_local(ident, option[@ty], option[@expr]);
-    decl_item(name, @item);
+    decl_item(ident, @item);
 }
 
 type expr = spanned[expr_];
