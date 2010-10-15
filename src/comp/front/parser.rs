@@ -226,6 +226,43 @@ io fn parse_name(parser p, ast.ident id) -> ast.name {
     ret spanned(lo, tys.span, rec(ident=id, types=tys.node));
 }
 
+/** Parses any field or index selectors. */
+io fn parse_selectors(parser p, @ast.expr ex) -> @ast.expr {
+    if (p.peek() == token.DOT) {
+        auto lo = p.get_span();
+        p.bump();
+
+        alt (p.peek()) {
+            case (token.LPAREN) {
+                p.bump();
+
+                auto idx = parse_expr(p);
+                expect(p, token.RPAREN);
+
+                auto hi = p.get_span();
+                auto lval = @spanned(lo, hi, ast.lval_index(ex, idx));
+                auto lval_ex = @spanned(lo, hi, ast.expr_lval(lval));
+                ret parse_selectors(p, lval_ex);
+            }
+
+            case (token.IDENT(?ident)) {
+                p.bump();
+
+                auto hi = p.get_span();
+                auto lval = @spanned(lo, hi, ast.lval_field(ex, ident));
+                auto lval_ex = @spanned(lo, hi, ast.expr_lval(lval));
+                ret parse_selectors(p, lval_ex);
+            }
+
+            case (_) {
+                p.err("expecting '(' or field name after identifier");
+            }
+        }
+    }
+
+    ret ex;
+}
+
 io fn parse_possibly_mutable_expr(parser p) -> tup(bool, @ast.expr) {
     auto mut;
     if (p.peek() == token.MUTABLE) {
@@ -236,25 +273,6 @@ io fn parse_possibly_mutable_expr(parser p) -> tup(bool, @ast.expr) {
     }
 
     ret tup(mut, parse_expr(p));
-}
-
-io fn parse_lval(parser p) -> option[@ast.lval] {
-    auto lo = p.get_span();
-
-    alt (p.peek()) {
-        case (token.IDENT(?i)) {
-            auto n = parse_name(p, i);
-            auto hi = n.span;
-            auto lval = ast.lval_name(n, none[ast.referent]);
-            ret some(@spanned(lo, hi, lval));
-        }
-
-        case (_) {
-            ret none[@ast.lval];
-        }
-    }
-
-    fail;
 }
 
 io fn parse_bottom_expr(parser p) -> @ast.expr {
@@ -316,27 +334,28 @@ io fn parse_bottom_expr(parser p) -> @ast.expr {
             ex = ast.expr_rec(es.node);
         }
 
+        case (token.IDENT(?i)) {
+            auto n = parse_name(p, i);
+            hi = p.get_span();
+            auto lval = ast.lval_name(n, none[ast.referent]);
+            auto lval_sp = @spanned(lo, hi, lval);
+            ex = ast.expr_lval(lval_sp);
+        }
+
         case (_) {
-            alt (parse_lval(p)) {
-                case (some[@ast.lval](?lval)) {
-                    hi = lval.span;
-                    ex = ast.expr_lval(lval);
+            alt (parse_lit(p)) {
+                case (some[ast.lit](?lit)) {
+                    hi = lit.span;
+                    ex = ast.expr_lit(@lit);
                 }
-                case (none[@ast.lval]) {
-                    alt (parse_lit(p)) {
-                        case (some[ast.lit](?lit)) {
-                            hi = lit.span;
-                            ex = ast.expr_lit(@lit);
-                        }
-                        case (none[ast.lit]) {
-                            p.err("expecting expression");
-                        }
-                    }
+                case (none[ast.lit]) {
+                    p.err("expecting expression");
                 }
             }
         }
     }
-    ret @spanned(lo, hi, ex);
+
+    ret parse_selectors(p, @spanned(lo, hi, ex));
 }
 
 io fn parse_path_expr(parser p) -> @ast.expr {
