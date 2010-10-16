@@ -1211,6 +1211,19 @@ let (abbrev_subprogram:abbrev) =
    |])
 ;;
 
+let (abbrev_tag_constructor_subprogram:abbrev) =
+  (DW_TAG_subprogram, DW_CHILDREN_yes,
+   [|
+     (DW_AT_name, DW_FORM_string);
+     (DW_AT_rust_tag_type_id, DW_FORM_data4);
+     (DW_AT_discr_value, DW_FORM_data4);
+     (DW_AT_low_pc, DW_FORM_addr);
+     (DW_AT_high_pc, DW_FORM_addr);
+     (DW_AT_frame_base, DW_FORM_block1);
+     (DW_AT_return_addr, DW_FORM_block1);
+   |])
+;;
+
 let (abbrev_typedef:abbrev) =
   (DW_TAG_typedef, DW_CHILDREN_yes,
    [|
@@ -1233,7 +1246,7 @@ let (abbrev_variable:abbrev) =
   (DW_TAG_variable, DW_CHILDREN_no,
    [|
      (DW_AT_name, DW_FORM_string);
-     (DW_AT_location, DW_FORM_block1);
+     (DW_AT_location, DW_FORM_block4);
      (DW_AT_type, DW_FORM_ref_addr)
    |])
 ;;
@@ -1243,7 +1256,7 @@ let (abbrev_formal:abbrev) =
   (DW_TAG_formal_parameter, DW_CHILDREN_no,
    [|
      (DW_AT_name, DW_FORM_string);
-     (DW_AT_location, DW_FORM_block1);
+     (DW_AT_location, DW_FORM_block4);
      (DW_AT_type, DW_FORM_ref_addr)
    |])
 ;;
@@ -1572,7 +1585,7 @@ let dwarf_visitor
                 ref_addr_for_fix fix
 
 
-  and size_block4 (sz:size) (add_to_base:bool) : frag =
+  and size_block4 (sz:size) (push_fbreg:bool) (add_to_base:bool) : frag =
     (* NB: typarams = "words following implicit args" by convention in
      * ABI/x86.
      *)
@@ -1656,7 +1669,12 @@ let dwarf_visitor
                 DW_OP_and;            (* ... aligned          *)
               ]
     in
-    let ops = sz_ops sz in
+    let ops =
+      if push_fbreg
+      then [ DW_OP_reg abi.Abi.abi_dwarf_fp_reg ]
+      else []
+    in
+    let ops = ops @ (sz_ops sz) in
     let ops =
       if add_to_base
       then ops @ [ DW_OP_plus ]
@@ -1685,7 +1703,7 @@ let dwarf_visitor
         let die = DEF (fix, SEQ [|
                          uleb (get_abbrev_code abbrev_struct_type);
                          (* DW_AT_byte_size: DW_FORM_block4 *)
-                         size_block4 (rty_sz rty) false
+                         size_block4 (rty_sz rty) false false
                        |]);
         in
         let rtys =
@@ -1706,9 +1724,9 @@ let dwarf_visitor
                             (* DW_AT_data_member_location: DW_FORM_block4 *)
                             size_block4
                               (Il.get_element_offset word_bits rtys i)
-                              true;
+                              false true;
                             (* DW_AT_byte_size: DW_FORM_block4 *)
-                            size_block4 (rty_sz rtys.(i)) false |]);
+                            size_block4 (rty_sz rtys.(i)) false false |]);
             end
             trec;
           emit_null_die ()
@@ -1908,6 +1926,7 @@ let dwarf_visitor
          *)
 
         let n_variants = get_n_tag_tups cx ttag in
+        let n_args = Array.length ttag.Ast.tag_args in
         let tinfo = Hashtbl.find cx.ctxt_all_tag_info ttag.Ast.tag_id in
         let rty = referent_type cx (Ast.TY_tag ttag) in
         let rty_sz = Il.referent_ty_size abi.Abi.abi_word_bits in
@@ -1921,7 +1940,7 @@ let dwarf_visitor
           DEF (fix, SEQ [|
                  uleb (get_abbrev_code abbrev_struct_type);
                  (* DW_AT_byte_size: DW_FORM_block4 *)
-                 size_block4 (rty_sz rty) false
+                 size_block4 (rty_sz rty) false false
                |])
         in
 
@@ -1936,9 +1955,9 @@ let dwarf_visitor
                  (* DW_AT_data_member_location: DW_FORM_block4 *)
                  size_block4
                    (Il.get_element_offset word_bits rtys 0)
-                   true;
+                   false true;
                  (* DW_AT_byte_size: DW_FORM_block4 *)
-                 size_block4 (rty_sz rtys.(0)) false |]);
+                 size_block4 (rty_sz rtys.(0)) false false |]);
         in
 
         let variant_part_die =
@@ -1952,6 +1971,7 @@ let dwarf_visitor
           |]
         in
 
+
         let emit_variant i =
           let (name, _, _) = Hashtbl.find tinfo.tag_nums i in
           let ttup = get_nth_tag_tup cx ttag i in
@@ -1963,9 +1983,19 @@ let dwarf_visitor
                         (* DW_AT_name: DW_FORM_string *)
                         ZSTRING name
                       |]);
-            ignore (tup ttup);
+            ignore (ref_type_die (Ast.TY_tup ttup));
             emit_null_die ();
         in
+
+        let emit_arg i =
+          let arg = ttag.Ast.tag_args.(i) in
+          emit_die (SEQ [|
+                      uleb (get_abbrev_code abbrev_formal_type);
+                      (* DW_AT_type: DW_FORM_ref_addr *)
+                      (ref_type_die arg)
+                    |]);
+        in
+
           emit_die outer_structure_die;
           emit_die discr_die;
           emit_die variant_part_die;
@@ -1974,6 +2004,10 @@ let dwarf_visitor
             emit_variant i
           done;
           emit_null_die (); (* end variant-part *)
+          for i = 0 to n_args - 1
+          do
+            emit_arg i
+          done;
           emit_null_die (); (* end outer struct *)
       in
 
@@ -2024,9 +2058,7 @@ let dwarf_visitor
             | Ast.TY_str -> string_type ()
             | Ast.TY_rec trec -> record trec
             | Ast.TY_tup ttup -> tup ttup
-            | Ast.TY_tag ttag ->
-                let _ = fun _ -> tag_type ttag in
-                  unspecified_struct DW_RUST_nil
+            | Ast.TY_tag ttag -> tag_type ttag
             | Ast.TY_vec t -> unspecified_ptr_with_ref_ty DW_RUST_vec t
             | Ast.TY_chan t -> unspecified_ptr_with_ref_ty DW_RUST_chan t
             | Ast.TY_port t -> unspecified_ptr_with_ref_ty DW_RUST_port t
@@ -2276,6 +2308,41 @@ let dwarf_visitor
       emit_die subprogram_die
   in
 
+  let emit_tag_constructor_die
+      (id:Ast.ident)
+      (tid:opaque_id)
+      (n_slots:int)
+      (tag_num:int)
+      (fix:fixup)
+      : unit =
+    (* NB: retpc = "top word of frame-base" by convention in ABI/x86. *)
+    let abi = cx.ctxt_abi in
+    let retpc = Int64.sub abi.Abi.abi_frame_base_sz abi.Abi.abi_word_sz in
+    let abbrev_code = get_abbrev_code abbrev_tag_constructor_subprogram in
+    let subprogram_die =
+      (SEQ [|
+         uleb abbrev_code;
+         (* DW_AT_name *)
+         ZSTRING id;
+         (* DW_AT_tag_type_id *)
+         WORD (word_ty_mach, IMM (Int64.of_int (int_of_opaque tid)));
+         (* DW_AT_discr_value *)
+         WORD (word_ty_mach, IMM (Int64.of_int tag_num));
+         if n_slots = 0
+         then
+           SEQ [| WORD (word_ty_mach, IMM 0L);
+                  WORD (word_ty_mach, IMM 0L); |]
+         else
+           addr_ranges fix;
+         (* DW_AT_frame_base *)
+         dw_form_block1 [| DW_OP_reg abi.Abi.abi_dwarf_fp_reg |];
+         (* DW_AT_return_addr *)
+         dw_form_block1 [| DW_OP_fbreg (Asm.IMM retpc); |];
+       |])
+    in
+      emit_die subprogram_die
+  in
+
   let emit_typedef_die
       (id:Ast.ident)
       (e:Ast.effect)
@@ -2331,6 +2398,7 @@ let dwarf_visitor
               emit_module_die id;
               emit_type_param_decl_dies item.node.Ast.decl_params;
             end
+
         | Ast.MOD_ITEM_fn _ ->
             begin
               let ty = Hashtbl.find cx.ctxt_all_item_types item.id in
@@ -2350,6 +2418,7 @@ let dwarf_visitor
                   (Hashtbl.find cx.ctxt_fn_fixups item.id);
                 emit_type_param_decl_dies item.node.Ast.decl_params;
             end
+
         | Ast.MOD_ITEM_type (e, _) ->
             begin
               log cx "walking typedef '%s' with %d type params"
@@ -2359,6 +2428,15 @@ let dwarf_visitor
                 id e (Hashtbl.find cx.ctxt_all_type_items item.id);
               emit_type_param_decl_dies item.node.Ast.decl_params;
             end
+
+        | Ast.MOD_ITEM_tag (hslots, tid, n) ->
+            log cx "walking tag constructor '%s' with %d type params"
+              (path_name())
+              (Array.length item.node.Ast.decl_params);
+            emit_tag_constructor_die id tid (Array.length hslots) n
+              (Hashtbl.find cx.ctxt_fn_fixups item.id);
+            emit_type_param_decl_dies item.node.Ast.decl_params;
+
         | _ -> ()
     end;
     inner.Walk.visit_mod_item_pre id params item
@@ -2386,6 +2464,7 @@ let dwarf_visitor
       match item.node.Ast.decl_item with
           Ast.MOD_ITEM_mod _
         | Ast.MOD_ITEM_fn _
+        | Ast.MOD_ITEM_tag _
         | Ast.MOD_ITEM_type _ -> emit_null_die ()
         | _ -> ()
     end;
@@ -2432,8 +2511,8 @@ let dwarf_visitor
                     uleb abbrev_code;
                     (* DW_AT_name: DW_FORM_string *)
                     ZSTRING ident;
-                    (* DW_AT_location:  DW_FORM_block1 *)
-                    dw_form_block1 slot_loc;
+                    (* DW_AT_location:  DW_FORM_block4 *)
+                    slot_loc;
                     (* DW_AT_type: DW_FORM_ref_addr *)
                     ref_slot_die resolved_slot
                   |]
@@ -2442,16 +2521,8 @@ let dwarf_visitor
               in
                 match htab_search cx.ctxt_slot_offsets s.id with
                     Some off ->
-                      begin
-                        match Il.size_to_expr64 off with
-                            (* FIXME (issue #73): handle dynamic-size
-                             * slots.
-                             *)
-                            None -> ()
-                          | Some off ->
-                              emit_var_die
-                                [| DW_OP_fbreg off |]
-                      end
+                      emit_var_die (size_block4 off true true)
+
                   | None ->
                       (* FIXME (issue #28): handle slots assigned to
                        * vregs.
@@ -2791,6 +2862,10 @@ let rec extract_mod_items
     atab_find die.die_attrs attr
   in
 
+  let has_attr die attr =
+    atab_mem die.die_attrs attr
+  in
+
   let get_str die attr  =
     match get_attr die attr with
         (_, DATA_str s) -> s
@@ -2831,6 +2906,10 @@ let rec extract_mod_items
     get_num die DW_AT_rust_native_type_id
   in
 
+  let get_tag_id die =
+    get_num die DW_AT_rust_tag_type_id
+  in
+
   let get_type_param_decl die =
     ((get_str die DW_AT_name), (get_type_param die))
   in
@@ -2843,9 +2922,9 @@ let rec extract_mod_items
 
   let rec get_ty die : Ast.ty =
 
-    let is_tagged_variant =
-      Array.length die.die_children == 2 &&
-        die.die_children.(1).die_tag = DW_TAG_variant
+    let is_tagged_variant die =
+      Array.length die.die_children >= 2 &&
+      die.die_children.(1).die_tag = DW_TAG_variant_part
     in
 
       match die.die_tag with
@@ -2913,13 +2992,19 @@ let rec extract_mod_items
                 | _ -> bug () "unexpected type of DW_TAG_base_type"
             end
 
-        | DW_TAG_structure_type when is_tagged_variant ->
+        | DW_TAG_structure_type when is_tagged_variant die ->
             Ast.TY_tag
-              { Ast.tag_id = Opaque (get_num
-                                       (die.die_children.(1))
-                                       DW_AT_rust_tag_type_id);
-                (* FIXME: encode and decode tag args. *)
-                Ast.tag_args = [| |] }
+              { Ast.tag_id = get_opaque_of (get_tag_id die.die_children.(1));
+                Ast.tag_args =
+                  let n_children = Array.length die.die_children in
+                    if n_children > 2
+                    then
+                      Array.map
+                        get_referenced_ty
+                        (Array.sub die.die_children 2 (n_children - 2))
+                    else
+                      [| |]
+              }
 
         | DW_TAG_structure_type ->
             begin
@@ -3099,6 +3184,16 @@ let rec extract_mod_items
           in
           let mi = Ast.MOD_ITEM_mod (view, sub_mis) in
             htab_put mis ident (decl [||] mi)
+
+      | DW_TAG_subprogram
+          when has_attr die DW_AT_rust_tag_type_id ->
+          let ident = get_name die in
+          let tid = get_opaque_of (get_tag_id die) in
+          let n = get_num die DW_AT_discr_value in
+          let (params, islots) = get_formals die in
+          let hslots = form_header_slots islots in
+          let ctor = Ast.MOD_ITEM_tag (hslots, tid, n) in
+            htab_put mis ident (decl params ctor)
 
       | DW_TAG_subprogram ->
           (* FIXME (issue #74): finish this. *)

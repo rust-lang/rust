@@ -1415,16 +1415,49 @@ let trans_visitor
                  (sorted_htab_keys obj.Ast.obj_fns))
         end
 
+  and copy_loop
+      (dst:Il.cell)
+      (src:Il.cell)
+      (sz:Il.operand)
+      (elt_sz:Il.operand)
+      (elt_copy:Il.cell -> Il.cell -> unit)
+      : unit =
+    let eltp_sty = Il.AddrTy (Il.ScalarTy (Il.ValTy Il.Bits8)) in
+    let dptr = next_vreg_cell eltp_sty in
+    let sptr = next_vreg_cell eltp_sty in
+    let dlim = next_vreg_cell eltp_sty in
+      lea dptr (fst (need_mem_cell dst));
+      lea sptr (fst (need_mem_cell src));
+      mov dlim (Il.Cell dptr);
+      add_to dlim sz;
+
+      let fwd_jmp = mark () in
+        emit (Il.jmp Il.JMP Il.CodeNone);
+        let back_jmp_targ = mark () in
+
+          elt_copy dptr sptr;
+
+          add_to dptr elt_sz;
+          add_to sptr elt_sz;
+
+          patch fwd_jmp;
+          let back_jmp =
+            trans_compare_simple Il.JB (Il.Cell dptr) (Il.Cell dlim)
+          in
+            List.iter
+              (fun j -> patch_existing j back_jmp_targ) back_jmp;
+
 
   and trans_copy_forward_args (args_rty:Il.referent_ty) : unit =
     let caller_args_cell = caller_args_cell args_rty in
     let callee_args_cell = callee_args_cell false args_rty in
-    let (dst_reg, _) = force_to_reg (Il.Cell (alias callee_args_cell)) in
-    let (src_reg, _) = force_to_reg (Il.Cell (alias caller_args_cell)) in
-    let tmp_reg = next_vreg () in
-    let nbytes = force_sz (Il.referent_ty_size word_bits args_rty) in
-      abi.Abi.abi_emit_inline_memcpy (emitter())
-        nbytes dst_reg src_reg tmp_reg false;
+    let nbytes = Il.referent_ty_size word_bits args_rty in
+    let nbytes = calculate_sz_in_current_frame nbytes in
+      copy_loop callee_args_cell caller_args_cell nbytes one
+        begin
+          fun dptr sptr ->
+            mov (deref dptr) (Il.Cell (deref sptr))
+        end
 
 
   and get_forwarding_obj_fn
@@ -2126,55 +2159,34 @@ let trans_visitor
               get_element_ptr_dyn ty_params_cell src_vec Abi.vec_elt_data
             in
 
-            (* Copy loop: *)
-            let eltp_sty = Il.AddrTy (Il.OpaqueTy) in
-            let dptr = next_vreg_cell eltp_sty in
-            let sptr = next_vreg_cell eltp_sty in
-            let dlim = next_vreg_cell eltp_sty in
+            let ty_params_ptr =
+              get_tydesc_params ty_params_cell elt_td_ptr_cell
+            in
 
-              lea dptr (fst (need_mem_cell dst_buf));
-              lea sptr (fst (need_mem_cell src_buf));
-              mov dlim (Il.Cell dptr);
-              add_to dlim (Il.Cell fill);
+            let initflag = Il.Reg (force_to_reg one) in
 
-              (* Copy loop body: *)
-              let fwd_jmp = mark () in
-                emit (Il.jmp Il.JMP Il.CodeNone);
-                let back_jmp_targ = mark () in
+              copy_loop dst_buf src_buf (Il.Cell fill) (Il.Cell elt_sz)
+                begin
+                  fun dptr sptr ->
+                    trans_call_dynamic_glue
+                      elt_td_ptr_cell
+                      Abi.tydesc_field_copy_glue
+                      (Some (deref dptr))
+                      [| ty_params_ptr; sptr; initflag |]
+                      None
+                end;
 
-                (* Copy *)
-                let ty_params_ptr =
-                  get_tydesc_params ty_params_cell elt_td_ptr_cell
-                in
-                let initflag = Il.Reg (force_to_reg one) in
-                  trans_call_dynamic_glue
-                    elt_td_ptr_cell
-                    Abi.tydesc_field_copy_glue
-                    (Some (deref dptr))
-                    [| ty_params_ptr; sptr; initflag |]
-                    None;
+              (* Set the new vec's fill to the original vec's fill *)
+              let dst_fill = get_element_ptr dst_vec Abi.vec_elt_fill in
+              let v = next_vreg_cell word_sty in
+                mov v (Il.Cell fill);
+                mov dst_fill (Il.Cell v);
 
-                  add_to dptr (Il.Cell elt_sz);
-                  add_to sptr (Il.Cell elt_sz);
+                List.iter patch no_copy_jmps;
 
-                  patch fwd_jmp;
-                  let back_jmp =
-                    trans_compare_simple Il.JB (Il.Cell dptr) (Il.Cell dlim)
-                  in
-                    List.iter
-                      (fun j -> patch_existing j back_jmp_targ) back_jmp;
+                mov vec_cell (Il.Cell new_vec_cell);
 
-                    (* Set the new vec's fill to the original vec's fill *)
-                    let dst_fill = get_element_ptr dst_vec Abi.vec_elt_fill in
-                    let v = next_vreg_cell word_sty in
-                      mov v (Il.Cell fill);
-                      mov dst_fill (Il.Cell v);
-
-                      List.iter patch no_copy_jmps;
-
-                      mov vec_cell (Il.Cell new_vec_cell);
-
-                      trans_glue_frame_exit fix spill g
+                trans_glue_frame_exit fix spill g
 
 
   and get_vec_grow_glue _
@@ -5737,9 +5749,14 @@ let trans_visitor
                              [| Asm.WORD (word_ty_mach, Asm.IMM 0L) |]))
   in
 
-  let trans_required_fn (fnid:node_id) (blockid:node_id) : unit =
+  let trans_required_fn (fnid:node_id) (blockid:node_id option) : unit =
     trans_frame_entry fnid false false;
-    emit (Il.Enter (Hashtbl.find cx.ctxt_block_fixups blockid));
+    begin
+      match blockid with
+          None -> ()
+        | Some blockid ->
+            emit (Il.Enter (Hashtbl.find cx.ctxt_block_fixups blockid));
+    end;
     let (ilib, conv) = Hashtbl.find cx.ctxt_required_items fnid in
     let lib_num =
       htab_search_or_add cx.ctxt_required_lib_num ilib
@@ -5862,7 +5879,8 @@ let trans_visitor
           | _ -> bug ()
               "Trans.required_rust_fn on unexpected form of require library"
       end;
-      emit Il.Leave;
+      if blockid <> None
+      then emit Il.Leave;
       match ilib with
           REQUIRED_LIB_rust _ ->
             trans_frame_exit fnid false;
@@ -5956,7 +5974,12 @@ let trans_visitor
     iflog (fun _ -> log cx "translating required item #%d = %s"
              (int_of_node i.id) (path_name()));
     match i.node.Ast.decl_item with
-        Ast.MOD_ITEM_fn f -> trans_required_fn i.id f.Ast.fn_body.id
+        Ast.MOD_ITEM_fn f ->
+          trans_required_fn i.id (Some f.Ast.fn_body.id)
+      | Ast.MOD_ITEM_tag (hslots, _, _) ->
+          if Array.length hslots = 0
+          then ()
+          else trans_required_fn i.id None
       | Ast.MOD_ITEM_mod _ -> ()
       | Ast.MOD_ITEM_type _ -> ()
       | _ -> unimpl (Some i.id)

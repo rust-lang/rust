@@ -47,9 +47,10 @@ alt (target_os) {
     }
  }
 
-// FIXME: parametric 
+// FIXME: parametric
 mod map;
 mod deque;
+mod list;
 mod rand;
 mod dbg;
 

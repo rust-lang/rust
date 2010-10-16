@@ -1,11 +1,9 @@
 
 import util.common.option;
 import std.map.hashmap;
+import std.util.option;
 import util.common.span;
 import util.common.spanned;
-import util.common.option;
-import util.common.some;
-import util.common.none;
 
 type ident = str;
 

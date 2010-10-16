@@ -1,12 +1,12 @@
 import std.map.hashmap;
+import std.util.option;
+import std.util.some;
+import std.util.none;
+
 import util.common.new_str_hash;
 import util.common.spanned;
 import util.common.span;
-import util.common.option;
-import util.common.some;
-import util.common.none;
 import util.common.ty_mach;
-
 
 import front.ast;
 import front.ast.ident;

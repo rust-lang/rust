@@ -445,8 +445,12 @@ let type_resolving_visitor
                   (fun (s,_) -> (slot_ty (resolve_slot_identified s).node))
                   slots
               in
-                htab_put tinfo.tag_idents id (n, item.id, ttup);
-                htab_put tinfo.tag_nums n (id, item.id, ttup);
+                if not (Hashtbl.mem tinfo.tag_idents id)
+                then
+                  begin
+                    htab_put tinfo.tag_idents id (n, item.id, ttup);
+                    htab_put tinfo.tag_nums n (id, item.id, ttup);
+                  end
 
           | _ -> resolve_and_store_type ()
       with

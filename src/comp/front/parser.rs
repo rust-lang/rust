@@ -1,11 +1,12 @@
 import std._io;
+import std.util.option;
+import std.util.some;
+import std.util.none;
+
 import driver.session;
 import util.common;
 import util.common.span;
 import util.common.new_str_hash;
-import util.common.option;
-import util.common.some;
-import util.common.none;
 
 state type parser =
     state obj {

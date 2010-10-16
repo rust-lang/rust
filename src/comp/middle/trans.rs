@@ -3,6 +3,9 @@ import std._vec;
 import std._str.rustrt.sbuf;
 import std._vec.rustrt.vbuf;
 import std.map.hashmap;
+import std.util.option;
+import std.util.some;
+import std.util.none;
 
 import front.ast;
 import driver.session;
@@ -11,9 +14,6 @@ import back.abi;
 
 import util.common.istr;
 import util.common.new_str_hash;
-import util.common.option;
-import util.common.some;
-import util.common.none;
 
 import lib.llvm.llvm;
 import lib.llvm.builder;
