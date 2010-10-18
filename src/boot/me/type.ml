@@ -223,8 +223,8 @@ let type_error_full expected actual =
   raise (Type_error (expected, actual))
 ;;
 
-let type_error expected actual =
-  type_error_full expected (head_only actual)
+let type_error cx expected actual =
+  type_error_full expected (friendly_stringify cx head_only actual)
 ;;
 
 (* We explicitly curry [cx] like this to avoid threading it through all the
@@ -277,6 +277,8 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
   (*
    * Type assertions
    *)
+
+  let type_error = type_error cx in
 
   let is_integer (ty:Ast.ty) =
     match ty with
