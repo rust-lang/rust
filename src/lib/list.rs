@@ -26,23 +26,23 @@ fn foldl[T,U](&list[T] ls, U u, fn(&T t, U u) -> U f) -> U {
   }
 }
 
-fn find[T](&list[T] ls,
-             (fn(&T) -> option[T]) f) -> option[T] {
+fn find[T,U](&list[T] ls,
+             (fn(&T) -> option[U]) f) -> option[U] {
   alt(ls) {
     case (cons[T](?hd, ?tl)) {
         alt (f(hd)) {
-            case (none[T]) {
+            case (none[U]) {
                 // FIXME: should use 'be' here, not 'ret'. But parametric tail
                 // calls currently don't work.
-                ret find[T](*tl, f);
+                ret find[T,U](*tl, f);
             }
-            case (some[T](?res)) {
-                ret some[T](res);
+            case (some[U](?res)) {
+                ret some[U](res);
             }
         }
     }
     case (nil[T]) {
-        ret none[T];
+        ret none[U];
     }
   }
 }
