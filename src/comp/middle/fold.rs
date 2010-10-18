@@ -14,7 +14,6 @@ import front.ast.name;
 import front.ast.path;
 import front.ast.ty;
 import front.ast.expr;
-import front.ast.lval;
 import front.ast.stmt;
 import front.ast.block;
 import front.ast.item;
@@ -78,21 +77,17 @@ type ast_fold[ENV] =
          block blk) -> @expr)                     fold_expr_block,
 
      (fn(&ENV e, &span sp,
-         @lval lhs, @expr rhs) -> @expr)          fold_expr_assign,
+         @expr lhs, @expr rhs) -> @expr)          fold_expr_assign,
 
      (fn(&ENV e, &span sp,
-         @lval lv) -> @expr)                      fold_expr_lval,
-
-     // Lvalue folds.
-     (fn(&ENV e, &span sp,
-         @expr e, ident i) -> @lval)              fold_lval_field,
+         @expr e, ident i) -> @expr)              fold_expr_field,
 
      (fn(&ENV e, &span sp,
-         @expr e, @expr ix) -> @lval)             fold_lval_index,
+         @expr e, @expr ix) -> @expr)             fold_expr_index,
 
      (fn(&ENV e, &span sp,
          &name n,
-         &option[referent] r) -> @lval)           fold_lval_name,
+         &option[referent] r) -> @expr)           fold_expr_name,
 
      // Decl folds.
      (fn(&ENV e, &span sp,
@@ -143,7 +138,6 @@ type ast_fold[ENV] =
      (fn(&ENV e, @item i) -> ENV) update_env_for_item,
      (fn(&ENV e, @stmt s) -> ENV) update_env_for_stmt,
      (fn(&ENV e, @decl i) -> ENV) update_env_for_decl,
-     (fn(&ENV e, @lval l) -> ENV) update_env_for_lval,
      (fn(&ENV e, @expr x) -> ENV) update_env_for_expr,
      (fn(&ENV e, @ty t) -> ENV) update_env_for_ty,
 
@@ -244,34 +238,6 @@ fn fold_decl[ENV](&ENV env, ast_fold[ENV] fld, @decl d) -> @decl {
     fail;
 }
 
-fn fold_lval[ENV](&ENV env, ast_fold[ENV] fld, @lval lv) -> @lval {
-    let ENV env_ = fld.update_env_for_lval(env, lv);
-
-    if (!fld.keep_going(env_)) {
-        ret lv;
-    }
-
-    alt (lv.node) {
-        case (ast.lval_field(?e, ?i)) {
-            auto ee = fold_expr(env_, fld, e);
-            ret fld.fold_lval_field(env_, lv.span, ee, i);
-        }
-
-        case (ast.lval_index(?e, ?ix)) {
-            auto ee = fold_expr(env_, fld, e);
-            auto iix = fold_expr(env_, fld, ix);
-            ret fld.fold_lval_index(env_, lv.span, ee, iix);
-        }
-
-        case (ast.lval_name(?n, ?r)) {
-            auto n_ = fold_name(env_, fld, n);
-            ret fld.fold_lval_name(env_, lv.span, n, r);
-        }
-    }
-
-    fail;   // shoudn't be reached
-}
-
 // FIXME: Weird bug. Due to the way we auto-deref + in +=, we can't append a
 // boxed value to a vector-of-boxes using +=.  Best to figure out a way to fix
 // this. Deref-on-demand or something? It's a hazard of the ambiguity between
@@ -367,14 +333,25 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
         }
 
         case (ast.expr_assign(?lhs, ?rhs)) {
-            auto llhs = fold_lval(env_, fld, lhs);
+            auto llhs = fold_expr(env_, fld, lhs);
             auto rrhs = fold_expr(env_, fld, rhs);
             ret fld.fold_expr_assign(env_, e.span, llhs, rrhs);
         }
 
-        case (ast.expr_lval(?lv)) {
-            auto llv = fold_lval(env_, fld, lv);
-            ret fld.fold_expr_lval(env_, e.span, llv);
+        case (ast.expr_field(?e, ?i)) {
+            auto ee = fold_expr(env_, fld, e);
+            ret fld.fold_expr_field(env_, e.span, ee, i);
+        }
+
+        case (ast.expr_index(?e, ?ix)) {
+            auto ee = fold_expr(env_, fld, e);
+            auto iix = fold_expr(env_, fld, ix);
+            ret fld.fold_expr_index(env_, e.span, ee, iix);
+        }
+
+        case (ast.expr_name(?n, ?r)) {
+            auto n_ = fold_name(env_, fld, n);
+            ret fld.fold_expr_name(env_, e.span, n, r);
         }
     }
 
@@ -604,30 +581,23 @@ fn identity_fold_expr_block[ENV](&ENV env, &span sp, block blk) -> @expr {
 }
 
 fn identity_fold_expr_assign[ENV](&ENV env, &span sp,
-                                  @lval lhs, @expr rhs) -> @expr {
+                                  @expr lhs, @expr rhs) -> @expr {
     ret @respan(sp, ast.expr_assign(lhs, rhs));
 }
 
-fn identity_fold_expr_lval[ENV](&ENV env, &span sp, @lval lv) -> @expr {
-    ret @respan(sp, ast.expr_lval(lv));
+fn identity_fold_expr_field[ENV](&ENV env, &span sp,
+                                 @expr e, ident i) -> @expr {
+    ret @respan(sp, ast.expr_field(e, i));
 }
 
-
-// Lvalue identities.
-
-fn identity_fold_lval_field[ENV](&ENV env, &span sp,
-                                 @expr e, ident i) -> @lval {
-    ret @respan(sp, ast.lval_field(e, i));
+fn identity_fold_expr_index[ENV](&ENV env, &span sp,
+                                 @expr e, @expr ix) -> @expr {
+    ret @respan(sp, ast.expr_index(e, ix));
 }
 
-fn identity_fold_lval_index[ENV](&ENV env, &span sp,
-                                 @expr e, @expr ix) -> @lval {
-    ret @respan(sp, ast.lval_index(e, ix));
-}
-
-fn identity_fold_lval_name[ENV](&ENV env, &span sp,
-                                &name n, &option[referent] r) -> @lval {
-    ret @respan(sp, ast.lval_name(n, r));
+fn identity_fold_expr_name[ENV](&ENV env, &span sp,
+                                &name n, &option[referent] r) -> @expr {
+    ret @respan(sp, ast.expr_name(n, r));
 }
 
 
@@ -722,10 +692,6 @@ fn identity_update_env_for_decl[ENV](&ENV e, @decl d) -> ENV {
     ret e;
 }
 
-fn identity_update_env_for_lval[ENV](&ENV e, @lval l) -> ENV {
-    ret e;
-}
-
 fn identity_update_env_for_expr[ENV](&ENV e, @expr x) -> ENV {
     ret e;
 }
@@ -769,11 +735,9 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_if     = bind identity_fold_expr_if[ENV](_,_,_,_,_),
          fold_expr_block  = bind identity_fold_expr_block[ENV](_,_,_),
          fold_expr_assign = bind identity_fold_expr_assign[ENV](_,_,_,_),
-         fold_expr_lval   = bind identity_fold_expr_lval[ENV](_,_,_),
-
-         fold_lval_field  = bind identity_fold_lval_field[ENV](_,_,_,_),
-         fold_lval_index  = bind identity_fold_lval_index[ENV](_,_,_,_),
-         fold_lval_name   = bind identity_fold_lval_name[ENV](_,_,_,_),
+         fold_expr_field  = bind identity_fold_expr_field[ENV](_,_,_,_),
+         fold_expr_index  = bind identity_fold_expr_index[ENV](_,_,_,_),
+         fold_expr_name   = bind identity_fold_expr_name[ENV](_,_,_,_),
 
          fold_decl_local  = bind identity_fold_decl_local[ENV](_,_,_,_,_),
          fold_decl_item   = bind identity_fold_decl_item[ENV](_,_,_,_),
@@ -796,7 +760,6 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          update_env_for_item = bind identity_update_env_for_item[ENV](_,_),
          update_env_for_stmt = bind identity_update_env_for_stmt[ENV](_,_),
          update_env_for_decl = bind identity_update_env_for_decl[ENV](_,_),
-         update_env_for_lval = bind identity_update_env_for_lval[ENV](_,_),
          update_env_for_expr = bind identity_update_env_for_expr[ENV](_,_),
          update_env_for_ty = bind identity_update_env_for_ty[ENV](_,_),
 

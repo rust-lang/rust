@@ -90,15 +90,10 @@ tag expr_ {
     expr_cast(@expr, @ty);
     expr_if(@expr, block, option[block]);
     expr_block(block);
-    expr_assign(@lval, @expr);
-    expr_lval(@lval);
-}
-
-type lval = spanned[lval_];
-tag lval_ {
-    lval_field(@expr, ident);
-    lval_index(@expr, @expr);
-    lval_name(name, option[referent]);
+    expr_assign(@expr /* TODO: @expr : is_lval(@expr) */, @expr);
+    expr_field(@expr, ident);
+    expr_index(@expr, @expr);
+    expr_name(name, option[referent]);
 }
 
 type lit = spanned[lit_];
