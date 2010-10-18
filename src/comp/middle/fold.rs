@@ -136,6 +136,7 @@ type ast_fold[ENV] =
      // Env updates.
      (fn(&ENV e, @ast.crate c) -> ENV) update_env_for_crate,
      (fn(&ENV e, @item i) -> ENV) update_env_for_item,
+     (fn(&ENV e, block b) -> ENV) update_env_for_block,
      (fn(&ENV e, @stmt s) -> ENV) update_env_for_stmt,
      (fn(&ENV e, @decl i) -> ENV) update_env_for_decl,
      (fn(&ENV e, @expr x) -> ENV) update_env_for_expr,
@@ -397,9 +398,16 @@ fn fold_stmt[ENV](&ENV env, ast_fold[ENV] fld, &@stmt s) -> @stmt {
 }
 
 fn fold_block[ENV](&ENV env, ast_fold[ENV] fld, &block blk) -> block {
+
+    let ENV env_ = fld.update_env_for_block(env, blk);
+
+    if (!fld.keep_going(env_)) {
+        ret blk;
+    }
+
     let vec[@ast.stmt] stmts = vec();
     for (@ast.stmt s in blk.node) {
-        append[@ast.stmt](stmts, fold_stmt[ENV](env, fld, s));
+        append[@ast.stmt](stmts, fold_stmt[ENV](env_, fld, s));
     }
     ret respan(blk.span, stmts);
 }
@@ -684,6 +692,10 @@ fn identity_update_env_for_item[ENV](&ENV e, @item i) -> ENV {
     ret e;
 }
 
+fn identity_update_env_for_block[ENV](&ENV e, block b) -> ENV {
+    ret e;
+}
+
 fn identity_update_env_for_stmt[ENV](&ENV e, @stmt s) -> ENV {
     ret e;
 }
@@ -758,6 +770,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
 
          update_env_for_crate = bind identity_update_env_for_crate[ENV](_,_),
          update_env_for_item = bind identity_update_env_for_item[ENV](_,_),
+         update_env_for_block = bind identity_update_env_for_block[ENV](_,_),
          update_env_for_stmt = bind identity_update_env_for_stmt[ENV](_,_),
          update_env_for_decl = bind identity_update_env_for_decl[ENV](_,_),
          update_env_for_expr = bind identity_update_env_for_expr[ENV](_,_),
