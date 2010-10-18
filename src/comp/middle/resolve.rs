@@ -1,4 +1,6 @@
 import front.ast;
+import front.ast.ident;
+import front.ast.def;
 import driver.session;
 import util.common.span;
 import std.map.hashmap;
@@ -18,67 +20,89 @@ tag scope {
 
 type env = list[scope];
 
-fn resolve_name(&env e, &span sp, ast.name_ n) -> ast.name {
+fn lookup_name(&env e, ast.ident i) -> option[def] {
 
-    log "resolving name " + n.ident;
+    log "resolving name " + i;
 
-    fn in_scope(ast.ident i, &scope s) -> option[scope] {
-        alt (s) {
-            case (scope_crate(?c)) {
-                if (c.node.module.contains_key(i)) {
-                    ret some[scope](s);
+    fn check_mod(ast.ident i, ast._mod m) -> option[def] {
+        alt (m.find(i)) {
+            case (some[@ast.item](?it)) {
+                alt (it.node) {
+                    case (ast.item_fn(_, ?id)) {
+                        ret some[def](ast.def_fn(id));
+                    }
+                    case (ast.item_mod(_, ?id)) {
+                        ret some[def](ast.def_mod(id));
+                    }
+                    case (ast.item_ty(_, ?id)) {
+                        ret some[def](ast.def_ty(id));
+                    }
                 }
             }
+        }
+        ret none[def];
+    }
+
+    fn in_scope(ast.ident i, &scope s) -> option[def] {
+        alt (s) {
+
+            case (scope_crate(?c)) {
+                ret check_mod(i, c.node.module);
+            }
+
             case (scope_item(?it)) {
                 alt (it.node) {
                     case (ast.item_fn(?f, _)) {
-                        for (ast.input inp in f.inputs) {
-                            if (_str.eq(inp.ident, i)) {
-                                ret some[scope](s);
+                        for (ast.arg a in f.inputs) {
+                            if (_str.eq(a.ident, i)) {
+                                ret some[def](ast.def_arg(a.id));
                             }
                         }
                     }
-                    case (ast.item_mod(?m)) {
-                        if (m.contains_key(i)) {
-                            ret some[scope](s);
-                        }
+                    case (ast.item_mod(?m, _)) {
+                        ret check_mod(i, m);
                     }
                 }
             }
         }
-        ret none[scope];
+        ret none[def];
     }
 
-    alt (std.list.find[scope](e, bind in_scope(n.ident, _))) {
-        case (some[scope](?s)) {
-            log "resolved name " + n.ident;
+    ret std.list.find[scope,def](e, bind in_scope(i, _));
+}
+
+fn fold_expr_name(&env e, &span sp, &ast.name n,
+                  &option[def] d) -> @ast.expr {
+
+    auto d_ = lookup_name(e, n.node.ident);
+
+    alt (d_) {
+        case (some[def](_)) {
+            log "resolved name " + n.node.ident;
         }
-        case (none[scope]) {
-            log "unresolved name " + n.ident;
+        case (none[def]) {
+            log "unresolved name " + n.node.ident;
         }
     }
 
-    ret fold.respan[ast.name_](sp, n);
+    ret @fold.respan[ast.expr_](sp, ast.expr_name(n, d_));
 }
 
 fn update_env_for_crate(&env e, @ast.crate c) -> env {
-    log "updating env with crate";
     ret cons[scope](scope_crate(c), @e);
 }
 
 fn update_env_for_item(&env e, @ast.item i) -> env {
-    log "updating env with item";
     ret cons[scope](scope_item(i), @e);
 }
 
 fn update_env_for_block(&env e, ast.block b) -> env {
-    log "updating env with block";
     ret cons[scope](scope_block(b), @e);
 }
 
 fn resolve_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     let fold.ast_fold[env] fld = fold.new_identity_fold[env]();
-    fld = @rec( fold_name = bind resolve_name(_,_,_),
+    fld = @rec( fold_expr_name = bind fold_expr_name(_,_,_,_),
                 update_env_for_crate = bind update_env_for_crate(_,_),
                 update_env_for_item = bind update_env_for_item(_,_),
                 update_env_for_block = bind update_env_for_block(_,_)

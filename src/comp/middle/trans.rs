@@ -730,7 +730,7 @@ fn trans_item(@trans_ctxt cx, &str name, &ast.item item) {
         case (ast.item_fn(?f, _)) {
             trans_fn(sub_cx, f);
         }
-        case (ast.item_mod(?m)) {
+        case (ast.item_mod(?m, _)) {
             trans_mod(sub_cx, m);
         }
     }

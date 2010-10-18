@@ -12,20 +12,17 @@ type name = spanned[name_];
 type path = vec[name];
 
 type crate_num = int;
-type slot_num = int;
-type item_num = int;
+type def_num = int;
+type def_id = tup(crate_num, def_num);
 
-tag slot_id {
-    id_slot(crate_num, slot_num);
-}
-
-tag item_id {
-    id_item(crate_num, slot_num);
-}
-
-tag referent {
-    ref_slot(slot_id);
-    ref_item(item_id);
+tag def {
+    def_fn(def_id);
+    def_mod(def_id);
+    def_const(def_id);
+    def_arg(def_id);
+    def_local(def_id);
+    def_ty(def_id);
+    def_ty_arg(def_id);
 }
 
 type crate = spanned[crate_];
@@ -93,7 +90,7 @@ tag expr_ {
     expr_assign(@expr /* TODO: @expr : is_lval(@expr) */, @expr);
     expr_field(@expr, ident);
     expr_index(@expr, @expr);
-    expr_name(name, option[referent]);
+    expr_name(name, option[def]);
 }
 
 type lit = spanned[lit_];
@@ -118,7 +115,7 @@ tag ty_ {
     ty_box(@ty);
     ty_vec(@ty);
     ty_tup(vec[tup(bool /* mutability */, @ty)]);
-    ty_path(path, option[referent]);
+    ty_path(path, option[def]);
 }
 
 tag mode {
@@ -126,10 +123,8 @@ tag mode {
     alias;
 }
 
-type slot = rec(@ty ty, mode mode, option[slot_id] id);
-type input = rec(slot slot, ident ident);
-
-type _fn = rec(vec[input] inputs,
+type arg = rec(mode mode, @ty ty, ident ident, def_id id);
+type _fn = rec(vec[arg] inputs,
                ty output,
                block body);
 
@@ -137,9 +132,9 @@ type _mod = hashmap[ident,@item];
 
 type item = spanned[item_];
 tag item_ {
-    item_fn(_fn, item_id);
-    item_mod(_mod);
-    item_ty(@ty, item_id);
+    item_fn(_fn, def_id);
+    item_mod(_mod, def_id);
+    item_ty(@ty, def_id);
 }
 
 

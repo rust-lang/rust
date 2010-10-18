@@ -16,7 +16,7 @@ io fn main(vec[str] args) {
   auto sess = session.session();
   for (str filename in args) {
       if (i > 0) {
-          auto p = parser.new_parser(sess, filename);
+          auto p = parser.new_parser(sess, 0, filename);
           auto crate = parser.parse_crate(p);
           crate = resolve.resolve_crate(sess, crate);
           trans.trans_crate(sess, crate);

@@ -15,13 +15,17 @@ state type parser =
           io fn err(str s);
           fn get_session() -> session.session;
           fn get_span() -> common.span;
+          fn next_def_id() -> ast.def_id;
     };
 
-io fn new_parser(session.session sess, str path) -> parser {
+io fn new_parser(session.session sess,
+                 ast.crate_num crate, str path) -> parser {
     state obj stdio_parser(session.session sess,
                            mutable token.token tok,
                            mutable common.pos lo,
                            mutable common.pos hi,
+                           mutable ast.def_num def,
+                           ast.crate_num crate,
                            lexer.reader rdr)
         {
             fn peek() -> token.token {
@@ -49,11 +53,17 @@ io fn new_parser(session.session sess, str path) -> parser {
                 ret rec(filename = rdr.get_filename(),
                         lo = lo, hi = hi);
             }
+
+            fn next_def_id() -> ast.def_id {
+                def += 1;
+                ret tup(crate, def);
+            }
         }
     auto srdr = _io.new_stdio_reader(path);
     auto rdr = lexer.new_reader(srdr, path);
     auto npos = rdr.get_curr_pos();
-    ret stdio_parser(sess, lexer.next_token(rdr), npos, npos, rdr);
+    ret stdio_parser(sess, lexer.next_token(rdr),
+                     npos, npos, 0, crate, rdr);
 }
 
 io fn expect(parser p, token.token t) {
@@ -132,14 +142,15 @@ io fn parse_ty(parser p) -> @ast.ty {
     ret @spanned(lo, lo, t);
 }
 
-io fn parse_slot(parser p) -> ast.slot {
+io fn parse_arg(parser p) -> ast.arg {
     let ast.mode m = ast.val;
     if (p.peek() == token.BINOP(token.AND)) {
         m = ast.alias;
         p.bump();
     }
     let @ast.ty t = parse_ty(p);
-    ret rec(ty=t, mode=m, id=none[ast.slot_id]);
+    let ast.ident i = parse_ident(p);
+    ret rec(mode=m, ty=t, ident=i, id=p.next_def_id());
 }
 
 io fn parse_seq[T](token.token bra,
@@ -249,6 +260,13 @@ io fn parse_bottom_expr(parser p) -> @ast.expr {
     let ast.expr_ ex = ast.expr_lit(@spanned(lo, lo, ast.lit_nil));
 
     alt (p.peek()) {
+
+        case (token.IDENT(?i)) {
+            auto n = parse_name(p, i);
+            hi = n.span;
+            ex = ast.expr_name(n, none[ast.def]);
+        }
+
         case (token.LPAREN) {
             p.bump();
             auto e = parse_expr(p);
@@ -665,22 +683,15 @@ io fn parse_block(parser p) -> ast.block {
                              f, p);
 }
 
-io fn parse_slot_ident_pair(parser p) ->
-    rec(ast.slot slot, ast.ident ident) {
-    auto s = parse_slot(p);
-    auto i = parse_ident(p);
-    ret rec(slot=s, ident=i);
-}
-
 io fn parse_fn(parser p) -> tup(ast.ident, @ast.item) {
     auto lo = p.get_span();
     expect(p, token.FN);
     auto id = parse_ident(p);
-    auto pf = parse_slot_ident_pair;
-    let util.common.spanned[vec[rec(ast.slot slot, ast.ident ident)]] inputs =
-        // FIXME: passing parse_slot_ident_pair as an lval doesn't work at the
+    auto pf = parse_arg;
+    let util.common.spanned[vec[ast.arg]] inputs =
+        // FIXME: passing parse_arg as an lval doesn't work at the
         // moment.
-        parse_seq[rec(ast.slot slot, ast.ident ident)]
+        parse_seq[ast.arg]
         (token.LPAREN,
          token.RPAREN,
          some(token.COMMA),
@@ -701,7 +712,7 @@ io fn parse_fn(parser p) -> tup(ast.ident, @ast.item) {
                         body = body);
 
     let @ast.item i = @spanned(lo, body.span,
-                               ast.item_fn(f, ast.id_item(0,0)));
+                               ast.item_fn(f, p.next_def_id()));
     ret tup(id, i);
 }
 
@@ -717,7 +728,7 @@ io fn parse_mod(parser p) -> tup(ast.ident, @ast.item) {
     }
     auto hi = p.get_span();
     expect(p, token.RBRACE);
-    ret tup(id, @spanned(lo, hi, ast.item_mod(m)));
+    ret tup(id, @spanned(lo, hi, ast.item_mod(m, p.next_def_id())));
 }
 
 io fn parse_item(parser p) -> tup(ast.ident, @ast.item) {
