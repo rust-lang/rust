@@ -186,7 +186,9 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
             }
 
             fn find(&K key) -> util.option[V] {
-                be find_common[K, V](hasher, eqer, bkts, nbkts, key);
+                // FIXME: should be 'be' but parametric tail-calls don't
+                // work at the moment.
+                ret find_common[K, V](hasher, eqer, bkts, nbkts, key);
             }
 
             fn remove(&K key) -> util.option[V] {
