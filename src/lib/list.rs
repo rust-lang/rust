@@ -1,9 +1,58 @@
 
+import util.option;
+import util.some;
+import util.none;
+
+// FIXME: It would probably be more appealing to define this as
+// type list[T] = rec(T hd, option[@list[T]] tl), but at the moment
+// our recursion rules do not permit that.
+
 tag list[T] {
     cons(T, @list[T]);
     nil;
 }
 
+fn foldl[T,U](&list[T] ls, U u, fn(&T t, U u) -> U f) -> U {
+  alt(ls) {
+    case (cons[T](?hd, ?tl)) {
+      auto u_ = f(hd, u);
+      // FIXME: should use 'be' here, not 'ret'. But parametric
+      // tail calls currently don't work.
+      ret foldl[T,U](*tl, u_, f);
+    }
+    case (nil[T]) {
+      ret u;
+    }
+  }
+}
+
+fn find[T](&list[T] ls,
+             (fn(&T) -> option[T]) f) -> option[T] {
+  alt(ls) {
+    case (cons[T](?hd, ?tl)) {
+        alt (f(hd)) {
+            case (none[T]) {
+                // FIXME: should use 'be' here, not 'ret'. But parametric tail
+                // calls currently don't work.
+                ret find[T](*tl, f);
+            }
+            case (some[T](?res)) {
+                ret some[T](res);
+            }
+        }
+    }
+    case (nil[T]) {
+        ret none[T];
+    }
+  }
+}
+
+fn length[T](&list[T] ls) -> uint {
+  fn count[T](&T t, uint u) -> uint {
+    ret u + 1u;
+  }
+  ret foldl[T,uint](ls, 0u, bind count[T](_, _));
+}
 
 // Local Variables:
 // mode: rust;
