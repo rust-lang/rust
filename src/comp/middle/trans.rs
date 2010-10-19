@@ -546,23 +546,23 @@ fn trans_if(@block_ctxt cx, &ast.expr cond,
 
 fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
     alt (e.node) {
-        case (ast.expr_lit(?lit)) {
+        case (ast.expr_lit(?lit, _)) {
             ret trans_lit(cx, *lit);
         }
 
-        case (ast.expr_unary(?op, ?x)) {
+        case (ast.expr_unary(?op, ?x, _)) {
             ret trans_unary(cx, op, *x);
         }
 
-        case (ast.expr_binary(?op, ?x, ?y)) {
+        case (ast.expr_binary(?op, ?x, ?y, _)) {
             ret trans_binary(cx, op, *x, *y);
         }
 
-        case (ast.expr_if(?cond, ?thn, ?els)) {
+        case (ast.expr_if(?cond, ?thn, ?els, _)) {
             ret trans_if(cx, *cond, thn, els);
         }
 
-        case (ast.expr_block(?blk)) {
+        case (ast.expr_block(?blk, _)) {
             auto sub_cx = new_empty_block_ctxt(cx.fcx);
             auto next_cx = new_extension_block_ctxt(cx);
             auto sub = trans_block(sub_cx, blk);
@@ -579,7 +579,7 @@ fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
 
 fn trans_log(@block_ctxt cx, &ast.expr e) -> result {
     alt (e.node) {
-        case (ast.expr_lit(?lit)) {
+        case (ast.expr_lit(?lit, _)) {
             alt (lit.node) {
                 case (ast.lit_str(_)) {
                     auto sub = trans_expr(cx, e);

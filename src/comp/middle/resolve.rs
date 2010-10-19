@@ -101,7 +101,7 @@ fn lookup_name(&env e, ast.ident i) -> option[def] {
 }
 
 fn fold_expr_name(&env e, &span sp, &ast.name n,
-                  &option[def] d) -> @ast.expr {
+                  &option[def] d, option[@ast.ty] t) -> @ast.expr {
 
     auto d_ = lookup_name(e, n.node.ident);
 
@@ -114,7 +114,7 @@ fn fold_expr_name(&env e, &span sp, &ast.name n,
         }
     }
 
-    ret @fold.respan[ast.expr_](sp, ast.expr_name(n, d_));
+    ret @fold.respan[ast.expr_](sp, ast.expr_name(n, d_, t));
 }
 
 fn update_env_for_crate(&env e, @ast.crate c) -> env {
@@ -131,7 +131,7 @@ fn update_env_for_block(&env e, &ast.block b) -> env {
 
 fn resolve_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     let fold.ast_fold[env] fld = fold.new_identity_fold[env]();
-    fld = @rec( fold_expr_name = bind fold_expr_name(_,_,_,_),
+    fld = @rec( fold_expr_name = bind fold_expr_name(_,_,_,_,_),
                 update_env_for_crate = bind update_env_for_crate(_,_),
                 update_env_for_item = bind update_env_for_item(_,_),
                 update_env_for_block = bind update_env_for_block(_,_)

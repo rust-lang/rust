@@ -106,7 +106,7 @@ type ast_fold[ENV] =
          &ast.local local) -> @decl)              fold_decl_local,
 
      (fn(&ENV e, &span sp,
-         @item item, option[@ty] ty) -> @decl)    fold_decl_item,
+         @item item) -> @decl)                    fold_decl_item,
 
 
      // Stmt folds.
@@ -278,49 +278,49 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
     }
 
     alt (e.node) {
-        case (ast.expr_vec(?es)) {
+        case (ast.expr_vec(?es, ?t)) {
             auto ees = fold_exprs(env_, fld, es);
-            ret fld.fold_expr_vec(env_, e.span, ees);
+            ret fld.fold_expr_vec(env_, e.span, ees, t);
         }
 
-        case (ast.expr_tup(?es)) {
+        case (ast.expr_tup(?es, ?t)) {
             let vec[tup(bool,@expr)] entries = vec();
             for (tup(bool,@expr) entry in es) {
                 entries += fold_tup_entry[ENV](env, fld, entry);
             }
-            ret fld.fold_expr_tup(env_, e.span, entries);
+            ret fld.fold_expr_tup(env_, e.span, entries, t);
         }
 
-        case (ast.expr_rec(?es)) {
+        case (ast.expr_rec(?es, ?t)) {
             let vec[tup(ident,@expr)] entries = vec();
             for (tup(ident,@expr) entry in es) {
                 entries += fold_rec_entry(env, fld, entry);
             }
-            ret fld.fold_expr_rec(env_, e.span, entries);
+            ret fld.fold_expr_rec(env_, e.span, entries, t);
         }
 
-        case (ast.expr_call(?f, ?args)) {
+        case (ast.expr_call(?f, ?args, ?t)) {
             auto ff = fold_expr(env_, fld, f);
             auto aargs = fold_exprs(env_, fld, args);
-            ret fld.fold_expr_call(env_, e.span, ff, aargs);
+            ret fld.fold_expr_call(env_, e.span, ff, aargs, t);
         }
 
-        case (ast.expr_binary(?op, ?a, ?b)) {
+        case (ast.expr_binary(?op, ?a, ?b, ?t)) {
             auto aa = fold_expr(env_, fld, a);
             auto bb = fold_expr(env_, fld, b);
-            ret fld.fold_expr_binary(env_, e.span, op, aa, bb);
+            ret fld.fold_expr_binary(env_, e.span, op, aa, bb, t);
         }
 
-        case (ast.expr_unary(?op, ?a)) {
+        case (ast.expr_unary(?op, ?a, ?t)) {
             auto aa = fold_expr(env_, fld, a);
-            ret fld.fold_expr_unary(env_, e.span, op, a);
+            ret fld.fold_expr_unary(env_, e.span, op, a, t);
         }
 
-        case (ast.expr_lit(?lit)) {
-            ret fld.fold_expr_lit(env_, e.span, lit);
+        case (ast.expr_lit(?lit, ?t)) {
+            ret fld.fold_expr_lit(env_, e.span, lit, t);
         }
 
-        case (ast.expr_if(?cnd, ?thn, ?els)) {
+        case (ast.expr_if(?cnd, ?thn, ?els, ?t)) {
             auto ccnd = fold_expr(env_, fld, cnd);
             auto tthn = fold_block(env_, fld, thn);
             auto eels = none[block];
@@ -329,34 +329,34 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
                     eels = some(fold_block(env_, fld, b));
                 }
             }
-            ret fld.fold_expr_if(env_, e.span, ccnd, tthn, eels);
+            ret fld.fold_expr_if(env_, e.span, ccnd, tthn, eels, t);
         }
 
-        case (ast.expr_block(?b)) {
+        case (ast.expr_block(?b, ?t)) {
             auto bb = fold_block(env_, fld, b);
-            ret fld.fold_expr_block(env_, e.span, bb);
+            ret fld.fold_expr_block(env_, e.span, bb, t);
         }
 
-        case (ast.expr_assign(?lhs, ?rhs)) {
+        case (ast.expr_assign(?lhs, ?rhs, ?t)) {
             auto llhs = fold_expr(env_, fld, lhs);
             auto rrhs = fold_expr(env_, fld, rhs);
-            ret fld.fold_expr_assign(env_, e.span, llhs, rrhs);
+            ret fld.fold_expr_assign(env_, e.span, llhs, rrhs, t);
         }
 
-        case (ast.expr_field(?e, ?i)) {
+        case (ast.expr_field(?e, ?i, ?t)) {
             auto ee = fold_expr(env_, fld, e);
-            ret fld.fold_expr_field(env_, e.span, ee, i);
+            ret fld.fold_expr_field(env_, e.span, ee, i, t);
         }
 
-        case (ast.expr_index(?e, ?ix)) {
+        case (ast.expr_index(?e, ?ix, ?t)) {
             auto ee = fold_expr(env_, fld, e);
             auto iix = fold_expr(env_, fld, ix);
-            ret fld.fold_expr_index(env_, e.span, ee, iix);
+            ret fld.fold_expr_index(env_, e.span, ee, iix, t);
         }
 
-        case (ast.expr_name(?n, ?r)) {
+        case (ast.expr_name(?n, ?r, ?t)) {
             auto n_ = fold_name(env_, fld, n);
-            ret fld.fold_expr_name(env_, e.span, n, r);
+            ret fld.fold_expr_name(env_, e.span, n, r, t);
         }
     }
 
@@ -547,74 +547,74 @@ fn identity_fold_ty_path[ENV](&ENV env, &span sp, ast.path p,
 // Expr identities.
 
 fn identity_fold_expr_vec[ENV](&ENV env, &span sp, vec[@expr] es,
-                               option[@ty] ty) -> @expr {
-    ret @respan(sp, ast.expr_vec(es, ty));
+                               option[@ty] t) -> @expr {
+    ret @respan(sp, ast.expr_vec(es, t));
 }
 
 fn identity_fold_expr_tup[ENV](&ENV env, &span sp, vec[tup(bool, @expr)] es,
-                               option[@ty] ty) -> @expr {
-    ret @respan(sp, ast.expr_tup(es, ty));
+                               option[@ty] t) -> @expr {
+    ret @respan(sp, ast.expr_tup(es, t));
 }
 
 fn identity_fold_expr_rec[ENV](&ENV env, &span sp,
-                               vec[tup(ident,@expr)] fields, option[@ty] ty)
+                               vec[tup(ident,@expr)] fields, option[@ty] t)
     -> @expr {
-    ret @respan(sp, ast.expr_rec(fields, ty));
+    ret @respan(sp, ast.expr_rec(fields, t));
 }
 
 fn identity_fold_expr_call[ENV](&ENV env, &span sp, @expr f,
-                                vec[@expr] args, option[@ty] ty) -> @expr {
-    ret @respan(sp, ast.expr_call(f, args, ty));
+                                vec[@expr] args, option[@ty] t) -> @expr {
+    ret @respan(sp, ast.expr_call(f, args, t));
 }
 
 fn identity_fold_expr_binary[ENV](&ENV env, &span sp, ast.binop b,
                                   @expr lhs, @expr rhs,
-                                  option[@ty] ty) -> @expr {
-    ret @respan(sp, ast.expr_binary(b, lhs, rhs, ty));
+                                  option[@ty] t) -> @expr {
+    ret @respan(sp, ast.expr_binary(b, lhs, rhs, t));
 }
 
 fn identity_fold_expr_unary[ENV](&ENV env, &span sp,
-                                 ast.unop u, @expr e, option[@ty] ty)
+                                 ast.unop u, @expr e, option[@ty] t)
         -> @expr {
-    ret @respan(sp, ast.expr_unary(u, e, ty));
+    ret @respan(sp, ast.expr_unary(u, e, t));
 }
 
 fn identity_fold_expr_lit[ENV](&ENV env, &span sp, @ast.lit lit,
-                               option[@ty] ty) -> @expr {
-    ret @respan(sp, ast.expr_lit(lit, ty));
+                               option[@ty] t) -> @expr {
+    ret @respan(sp, ast.expr_lit(lit, t));
 }
 
 fn identity_fold_expr_if[ENV](&ENV env, &span sp,
                               @expr cond, &block thn,
-                              &option[block] els, option[@ty] ty) -> @expr {
-    ret @respan(sp, ast.expr_if(cond, thn, els, ty));
+                              &option[block] els, option[@ty] t) -> @expr {
+    ret @respan(sp, ast.expr_if(cond, thn, els, t));
 }
 
 fn identity_fold_expr_block[ENV](&ENV env, &span sp, &block blk,
-                                 option[@ty] ty) -> @expr {
-    ret @respan(sp, ast.expr_block(blk, ty));
+                                 option[@ty] t) -> @expr {
+    ret @respan(sp, ast.expr_block(blk, t));
 }
 
 fn identity_fold_expr_assign[ENV](&ENV env, &span sp,
-                                  @expr lhs, @expr rhs, option[@ty] ty)
+                                  @expr lhs, @expr rhs, option[@ty] t)
         -> @expr {
-    ret @respan(sp, ast.expr_assign(lhs, rhs, ty));
+    ret @respan(sp, ast.expr_assign(lhs, rhs, t));
 }
 
 fn identity_fold_expr_field[ENV](&ENV env, &span sp,
-                                 @expr e, ident i, option[@ty] ty) -> @expr {
-    ret @respan(sp, ast.expr_field(e, i, ty));
+                                 @expr e, ident i, option[@ty] t) -> @expr {
+    ret @respan(sp, ast.expr_field(e, i, t));
 }
 
 fn identity_fold_expr_index[ENV](&ENV env, &span sp,
-                                 @expr e, @expr ix, option[@ty] ty) -> @expr {
-    ret @respan(sp, ast.expr_index(e, ix, ty));
+                                 @expr e, @expr ix, option[@ty] t) -> @expr {
+    ret @respan(sp, ast.expr_index(e, ix, t));
 }
 
 fn identity_fold_expr_name[ENV](&ENV env, &span sp,
                                 &name n, &option[def] d,
-                                option[@ty] ty) -> @expr {
-    ret @respan(sp, ast.expr_name(n, d, ty));
+                                option[@ty] t) -> @expr {
+    ret @respan(sp, ast.expr_name(n, d, t));
 }
 
 
@@ -745,19 +745,19 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_ty_tup     = bind identity_fold_ty_tup[ENV](_,_,_),
          fold_ty_path    = bind identity_fold_ty_path[ENV](_,_,_,_),
 
-         fold_expr_vec    = bind identity_fold_expr_vec[ENV](_,_,_),
-         fold_expr_tup    = bind identity_fold_expr_tup[ENV](_,_,_),
-         fold_expr_rec    = bind identity_fold_expr_rec[ENV](_,_,_),
-         fold_expr_call   = bind identity_fold_expr_call[ENV](_,_,_,_),
-         fold_expr_binary = bind identity_fold_expr_binary[ENV](_,_,_,_,_),
-         fold_expr_unary  = bind identity_fold_expr_unary[ENV](_,_,_,_),
-         fold_expr_lit    = bind identity_fold_expr_lit[ENV](_,_,_),
-         fold_expr_if     = bind identity_fold_expr_if[ENV](_,_,_,_,_),
-         fold_expr_block  = bind identity_fold_expr_block[ENV](_,_,_),
-         fold_expr_assign = bind identity_fold_expr_assign[ENV](_,_,_,_),
-         fold_expr_field  = bind identity_fold_expr_field[ENV](_,_,_,_),
-         fold_expr_index  = bind identity_fold_expr_index[ENV](_,_,_,_),
-         fold_expr_name   = bind identity_fold_expr_name[ENV](_,_,_,_),
+         fold_expr_vec    = bind identity_fold_expr_vec[ENV](_,_,_,_),
+         fold_expr_tup    = bind identity_fold_expr_tup[ENV](_,_,_,_),
+         fold_expr_rec    = bind identity_fold_expr_rec[ENV](_,_,_,_),
+         fold_expr_call   = bind identity_fold_expr_call[ENV](_,_,_,_,_),
+         fold_expr_binary = bind identity_fold_expr_binary[ENV](_,_,_,_,_,_),
+         fold_expr_unary  = bind identity_fold_expr_unary[ENV](_,_,_,_,_),
+         fold_expr_lit    = bind identity_fold_expr_lit[ENV](_,_,_,_),
+         fold_expr_if     = bind identity_fold_expr_if[ENV](_,_,_,_,_,_),
+         fold_expr_block  = bind identity_fold_expr_block[ENV](_,_,_,_),
+         fold_expr_assign = bind identity_fold_expr_assign[ENV](_,_,_,_,_),
+         fold_expr_field  = bind identity_fold_expr_field[ENV](_,_,_,_,_),
+         fold_expr_index  = bind identity_fold_expr_index[ENV](_,_,_,_,_),
+         fold_expr_name   = bind identity_fold_expr_name[ENV](_,_,_,_,_),
 
          fold_decl_local  = bind identity_fold_decl_local[ENV](_,_,_),
          fold_decl_item   = bind identity_fold_decl_item[ENV](_,_,_),
