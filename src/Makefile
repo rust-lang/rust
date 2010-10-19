@@ -167,16 +167,30 @@ ifneq ($(CFG_LLVM_CONFIG),)
 endif
 ifneq ($(CFG_LLVM_CONFIG),)
   CFG_LLVM_VERSION := $(shell $(CFG_LLVM_CONFIG) --version)
-  ifeq ($(CFG_LLVM_VERSION),2.8svn)
-    $(info cfg: using LLVM version 2.8svn)
-    WHERE := $(shell $(CFG_LLVM_CONFIG) --libdir)/ocaml
-    ifneq ($(shell test -e $(WHERE)/llvm.cma && echo ok),ok)
-      CFG_LLVM_CONFIG := $(info cfg: LLVM ocaml bindings not found)
-    endif
+  $(info cfg: found llvm-config at $(CFG_LLVM_CONFIG))
+  ifneq ($(findstring 2.8,$(CFG_LLVM_VERSION)),)
+    $(info cfg: using LLVM version $(CFG_LLVM_VERSION))
+  else ifneq ($(findstring 2.9,$(CFG_LLVM_VERSION)),)
+    $(info cfg: using LLVM version $(CFG_LLVM_VERSION))
   else
     CFG_LLVM_CONFIG :=
     $(info cfg: incompatible LLVM version $(CFG_LLVM_VERSION), \
-      expected 2.8svn)
+      expected 2.8)
+  endif
+endif
+ifneq ($(CFG_LLVM_CONFIG),)
+  CFG_OCAML_LIBPATH := $(lastword \
+    $(shell ocamlc$(OPT) -config | grep standard_library:))
+  CFG_OCAML_LLVM := $(shell \
+      for path in $(shell $(CFG_LLVM_CONFIG) --libdir)/ocaml \
+          $(CFG_OCAML_LIBPATH)/llvm \
+          $(CFG_OCAML_LIBPATH)/llvm-$(CFG_LLVM_VERSION) ; do \
+        if test -e $${path}/llvm.cma; then echo $${path}; break; fi \
+      done)
+  ifneq ($(CFG_OCAML_LLVM),)
+    $(info cfg: found LLVM ocaml bindings in $(CFG_OCAML_LLVM))
+  else 
+    CFG_LLVM_CONFIG := $(info cfg: LLVM ocaml bindings not found)
   endif
 endif
 ifdef CFG_LLVM_CONFIG
@@ -185,13 +199,12 @@ ifdef CFG_LLVM_CONFIG
   LLVM_NATIVE_LIBS := llvm.cmxa llvm_bitwriter.cmxa
   LLVM_CLIBS := $(shell for c in `$(CFG_LLVM_CONFIG) --ldflags --libs` \
     -lllvm -lllvm_bitwriter; do echo -cclib && echo $$c; done | xargs echo)
-  LLVM_INCS := -I boot/llvm -I $(WHERE)
+  LLVM_INCS := -I boot/llvm -I $(CFG_OCAML_LLVM)
   LLVM_MLS := $(addprefix boot/llvm/, llabi.ml llasm.ml llfinal.ml \
     lltrans.ml llemit.ml)
   LLC := "$(shell $(CFG_LLVM_CONFIG) --bindir)/llc"
   CFG_LLC_CFLAGS := -march=x86
   LLVM-DIS := "$(shell $(CFG_LLVM_CONFIG) --bindir)/llvm-dis"
-  $(info cfg: found llvm-config at $(CFG_LLVM_CONFIG))
 else
   VARIANT=x86
   LLVM_CLIBS :=
