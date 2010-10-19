@@ -564,6 +564,20 @@ io fn parse_or_expr(parser p) -> @ast.expr {
     ret parse_binary_exprs(p, sub, vec(tup(token.OROR, ast.or)));
 }
 
+io fn parse_assign_expr(parser p) -> @ast.expr {
+    auto lo = p.get_span();
+    auto lhs = parse_or_expr(p);
+    alt (p.peek()) {
+        case (token.EQ) {
+            p.bump();
+            auto rhs = parse_expr(p);
+            ret @spanned(lo, rhs.span,
+                         ast.expr_assign(lhs, rhs, none[@ast.ty]));
+        }
+    }
+    ret lhs;
+}
+
 io fn parse_if_expr(parser p) -> @ast.expr {
     auto lo = p.get_span();
     auto hi = lo;
@@ -597,7 +611,7 @@ io fn parse_expr(parser p) -> @ast.expr {
             ret parse_if_expr(p);
         }
         case (_) {
-            ret parse_or_expr(p);
+            ret parse_assign_expr(p);
         }
 
     }

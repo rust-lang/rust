@@ -606,6 +606,30 @@ fn trans_if(@block_ctxt cx, &ast.expr cond,
     ret res(next_cx, phi);
 }
 
+fn trans_lval(@block_ctxt cx, &ast.expr e) -> result {
+    alt (e.node) {
+        case (ast.expr_name(?n, ?dopt, _)) {
+            alt (dopt) {
+                case (some[ast.def](?def)) {
+                    alt (def) {
+                        case (ast.def_local(?did)) {
+                            ret res(cx, cx.fcx.lllocals.get(did));
+                        }
+                        case (_) {
+                            cx.fcx.tcx.sess.unimpl("def variant in trans");
+                        }
+                    }
+                }
+                case (none[ast.def]) {
+                    cx.fcx.tcx.sess.err("unresolved expr_name in trans");
+                }
+            }
+        }
+    }
+    cx.fcx.tcx.sess.unimpl("expr variant in trans_lval");
+    fail;
+}
+
 fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
     alt (e.node) {
         case (ast.expr_lit(?lit, _)) {
@@ -635,24 +659,18 @@ fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
             ret res(next_cx, sub.val);
         }
 
-        case (ast.expr_name(?n, ?dopt, _)) {
-            alt (dopt) {
-                case (some[ast.def](?def)) {
-                    alt (def) {
-                        case (ast.def_local(?did)) {
-                            auto llptr = cx.fcx.lllocals.get(did);
-                            ret res(cx, cx.build.Load(llptr));
-                        }
-                        case (_) {
-                            cx.fcx.tcx.sess.unimpl("def variant in trans");
-                        }
-                    }
-                }
-                case (none[ast.def]) {
-                    cx.fcx.tcx.sess.err("unresolved expr_name in trans");
-                }
-            }
+        case (ast.expr_name(_,_,_)) {
+            auto sub = trans_lval(cx, e);
+            ret res(sub.bcx, cx.build.Load(sub.val));
         }
+
+        case (ast.expr_assign(?dst, ?src, _)) {
+            auto lhs_res = trans_lval(cx, *dst);
+            auto rhs_res = trans_expr(lhs_res.bcx, *src);
+            ret res(rhs_res.bcx,
+                    cx.build.Store(rhs_res.val, lhs_res.val));
+        }
+
     }
     cx.fcx.tcx.sess.unimpl("expr variant in trans_expr");
     fail;
