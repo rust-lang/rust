@@ -84,20 +84,20 @@ tag decl_ {
 
 type expr = spanned[expr_];
 tag expr_ {
-    expr_vec(vec[@expr]);
-    expr_tup(vec[tup(bool /* mutability */, @expr)]);
-    expr_rec(vec[tup(ident,@expr)]);
-    expr_call(@expr, vec[@expr]);
-    expr_binary(binop, @expr, @expr);
-    expr_unary(unop, @expr);
-    expr_lit(@lit);
+    expr_vec(vec[@expr], option[@ty]);
+    expr_tup(vec[tup(bool /* mutability */, @expr)], option[@ty]);
+    expr_rec(vec[tup(ident,@expr)], option[@ty]);
+    expr_call(@expr, vec[@expr], option[@ty]);
+    expr_binary(binop, @expr, @expr, option[@ty]);
+    expr_unary(unop, @expr, option[@ty]);
+    expr_lit(@lit, option[@ty]);
     expr_cast(@expr, @ty);
-    expr_if(@expr, block, option[block]);
-    expr_block(block);
-    expr_assign(@expr /* TODO: @expr : is_lval(@expr) */, @expr);
-    expr_field(@expr, ident);
-    expr_index(@expr, @expr);
-    expr_name(name, option[def]);
+    expr_if(@expr, block, option[block], option[@ty]);
+    expr_block(block, option[@ty]);
+    expr_assign(@expr /* TODO: @expr|is_lval */, @expr, option[@ty]);
+    expr_field(@expr, ident, option[@ty]);
+    expr_index(@expr, @expr, option[@ty]);
+    expr_name(name, option[def], option[@ty]);
 }
 
 type lit = spanned[lit_];
