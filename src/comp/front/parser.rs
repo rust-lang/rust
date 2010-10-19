@@ -2,9 +2,11 @@ import std._io;
 import std.util.option;
 import std.util.some;
 import std.util.none;
+import std.map.hashmap;
 
 import driver.session;
 import util.common;
+import util.common.append;
 import util.common.span;
 import util.common.new_str_hash;
 
@@ -610,13 +612,38 @@ io fn parse_let(parser p) -> @ast.decl {
 
     expect(p, token.LET);
     auto ty = parse_ty(p);
-    auto id = parse_ident(p);
+    auto ident = parse_ident(p);
     auto init = parse_initializer(p);
 
     auto hi = p.get_span();
     expect(p, token.SEMI);
 
-    ret @spanned(lo, hi, ast.decl_local(id, some(ty), init));
+    let ast.local local = rec(ty = some(ty),
+                              infer = false,
+                              ident = ident,
+                              init = init,
+                              id = p.next_def_id());
+
+    ret @spanned(lo, hi, ast.decl_local(local));
+}
+
+io fn parse_auto(parser p) -> @ast.decl {
+    auto lo = p.get_span();
+
+    expect(p, token.AUTO);
+    auto ident = parse_ident(p);
+    auto init = parse_initializer(p);
+
+    auto hi = p.get_span();
+    expect(p, token.SEMI);
+
+    let ast.local local = rec(ty = none[@ast.ty],
+                              infer = true,
+                              ident = ident,
+                              init = init,
+                              id = p.next_def_id());
+
+    ret @spanned(lo, hi, ast.decl_local(local));
 }
 
 io fn parse_stmt(parser p) -> @ast.stmt {
@@ -632,20 +659,15 @@ io fn parse_stmt(parser p) -> @ast.stmt {
         }
 
         case (token.LET) {
-            auto leht = parse_let(p);
+            auto decl = parse_let(p);
             auto hi = p.get_span();
-            ret @spanned(lo, hi, ast.stmt_decl(leht));
+            ret @spanned(lo, hi, ast.stmt_decl(decl));
         }
 
         case (token.AUTO) {
-            p.bump();
-            auto id = parse_ident(p);
-            auto init = parse_initializer(p);
+            auto decl = parse_auto(p);
             auto hi = p.get_span();
-            expect(p, token.SEMI);
-
-            auto decl = ast.decl_local(id, none[@ast.ty], init);
-            ret @spanned(lo, hi, ast.stmt_decl(@spanned(lo, hi, decl)));
+            ret @spanned(lo, hi, ast.stmt_decl(decl));
         }
 
         // Handle the (few) block-expr stmts first.
@@ -677,10 +699,41 @@ io fn parse_stmt(parser p) -> @ast.stmt {
 io fn parse_block(parser p) -> ast.block {
     auto f = parse_stmt;
     // FIXME: passing parse_stmt as an lval doesn't work at the moment.
-    ret parse_seq[@ast.stmt](token.LBRACE,
-                             token.RBRACE,
-                             none[token.token],
-                             f, p);
+    auto stmts = parse_seq[@ast.stmt](token.LBRACE,
+                                      token.RBRACE,
+                                      none[token.token],
+                                      f, p);
+    auto index = new_str_hash[uint]();
+    auto u = 0u;
+    for (@ast.stmt s in stmts.node) {
+        // FIXME: typestate bug requires we do this up top, not
+        // down below loop. Sigh.
+        u += 1u;
+        alt (s.node) {
+            case (ast.stmt_decl(?d)) {
+                alt (d.node) {
+                    case (ast.decl_local(?loc)) {
+                        index.insert(loc.ident, u-1u);
+                    }
+                    case (ast.decl_item(?it)) {
+                        alt (it.node) {
+                            case (ast.item_fn(?i, _, _)) {
+                                index.insert(i, u-1u);
+                            }
+                            case (ast.item_mod(?i, _, _)) {
+                                index.insert(i, u-1u);
+                            }
+                            case (ast.item_ty(?i, _, _)) {
+                                index.insert(i, u-1u);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    let ast.block_ b = rec(stmts=stmts.node, index=index);
+    ret spanned(stmts.span, stmts.span, b);
 }
 
 io fn parse_fn(parser p) -> tup(ast.ident, @ast.item) {
@@ -697,12 +750,12 @@ io fn parse_fn(parser p) -> tup(ast.ident, @ast.item) {
          some(token.COMMA),
          pf, p);
 
-    let ast.ty output;
+    let @ast.ty output;
     if (p.peek() == token.RARROW) {
         p.bump();
-        output = *parse_ty(p);
+        output = parse_ty(p);
     } else {
-        output = spanned(lo, inputs.span, ast.ty_nil);
+        output = @spanned(lo, inputs.span, ast.ty_nil);
     }
 
     auto body = parse_block(p);
@@ -711,24 +764,33 @@ io fn parse_fn(parser p) -> tup(ast.ident, @ast.item) {
                         output = output,
                         body = body);
 
-    let @ast.item i = @spanned(lo, body.span,
-                               ast.item_fn(f, p.next_def_id()));
-    ret tup(id, i);
+    auto item = ast.item_fn(id, f, p.next_def_id());
+    ret tup(id, @spanned(lo, body.span, item));
 }
+
+io fn parse_mod_items(parser p, token.token term) -> ast._mod {
+   let vec[@ast.item] items = vec();
+    let hashmap[ast.ident,uint] index = new_str_hash[uint]();
+    let uint u = 0u;
+    while (p.peek() != term) {
+        auto pair = parse_item(p);
+        append[@ast.item](items, pair._1);
+        index.insert(pair._0, u);
+        u += 1u;
+    }
+    ret rec(items=items, index=index);
+ }
 
 io fn parse_mod(parser p) -> tup(ast.ident, @ast.item) {
     auto lo = p.get_span();
     expect(p, token.MOD);
     auto id = parse_ident(p);
     expect(p, token.LBRACE);
-    let ast._mod m = new_str_hash[@ast.item]();
-    while (p.peek() != token.RBRACE) {
-        auto i = parse_item(p);
-        m.insert(i._0, i._1);
-    }
+    auto m = parse_mod_items(p, token.RBRACE);
     auto hi = p.get_span();
     expect(p, token.RBRACE);
-    ret tup(id, @spanned(lo, hi, ast.item_mod(m, p.next_def_id())));
+    auto item = ast.item_mod(id, m, p.next_def_id());
+    ret tup(id, @spanned(lo, hi, item));
 }
 
 io fn parse_item(parser p) -> tup(ast.ident, @ast.item) {
@@ -747,12 +809,7 @@ io fn parse_item(parser p) -> tup(ast.ident, @ast.item) {
 io fn parse_crate(parser p) -> @ast.crate {
     auto lo = p.get_span();
     auto hi = lo;
-    let ast._mod m = new_str_hash[@ast.item]();
-    while (p.peek() != token.EOF) {
-        auto i = parse_item(p);
-        m.insert(i._0, i._1);
-        hi = i._1.span;
-    }
+    auto m = parse_mod_items(p, token.EOF);
     ret @spanned(lo, hi, rec(module=m));
 }
 

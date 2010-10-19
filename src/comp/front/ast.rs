@@ -29,7 +29,8 @@ type crate = spanned[crate_];
 type crate_ = rec(_mod module);
 
 type block = spanned[block_];
-type block_ = vec[@stmt];
+type block_ = rec(vec[@stmt] stmts,
+                  hashmap[ident,uint] index);
 
 tag binop {
     add;
@@ -69,10 +70,16 @@ tag stmt_ {
     stmt_expr(@expr);
 }
 
+type local = rec(option[@ty] ty,
+                 bool infer,
+                 ident ident,
+                 option[@expr] init,
+                 def_id id);
+
 type decl = spanned[decl_];
 tag decl_ {
-    decl_local(ident, option[@ty], option[@expr]);
-    decl_item(ident, @item);
+    decl_local(local);
+    decl_item(@item);
 }
 
 type expr = spanned[expr_];
@@ -125,16 +132,17 @@ tag mode {
 
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
 type _fn = rec(vec[arg] inputs,
-               ty output,
+               @ty output,
                block body);
 
-type _mod = hashmap[ident,@item];
+type _mod = rec(vec[@item] items,
+                hashmap[ident,uint] index);
 
 type item = spanned[item_];
 tag item_ {
-    item_fn(_fn, def_id);
-    item_mod(_mod, def_id);
-    item_ty(@ty, def_id);
+    item_fn(ident, _fn, def_id);
+    item_mod(ident, _mod, def_id);
+    item_ty(ident, @ty, def_id);
 }
 
 

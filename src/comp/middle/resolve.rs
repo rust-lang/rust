@@ -24,24 +24,45 @@ fn lookup_name(&env e, ast.ident i) -> option[def] {
 
     log "resolving name " + i;
 
-    fn check_mod(ast.ident i, ast._mod m) -> option[def] {
-        alt (m.find(i)) {
-            case (some[@ast.item](?it)) {
-                alt (it.node) {
-                    case (ast.item_fn(_, ?id)) {
-                        ret some[def](ast.def_fn(id));
+    fn found_def_item(@ast.item i) -> option[def] {
+        alt (i.node) {
+            case (ast.item_fn(_, _, ?id)) {
+                ret some[def](ast.def_fn(id));
+            }
+            case (ast.item_mod(_, _, ?id)) {
+                ret some[def](ast.def_mod(id));
+            }
+            case (ast.item_ty(_, _, ?id)) {
+                ret some[def](ast.def_ty(id));
+            }
+        }
+    }
+
+    fn found_decl_stmt(@ast.stmt s) -> option[def] {
+        alt (s.node) {
+            case (ast.stmt_decl(?d)) {
+                alt (d.node) {
+                    case (ast.decl_local(?loc)) {
+                        ret some[def](ast.def_local(loc.id));
                     }
-                    case (ast.item_mod(_, ?id)) {
-                        ret some[def](ast.def_mod(id));
-                    }
-                    case (ast.item_ty(_, ?id)) {
-                        ret some[def](ast.def_ty(id));
+                    case (ast.decl_item(?it)) {
+                        ret found_def_item(it);
                     }
                 }
             }
         }
         ret none[def];
     }
+
+    fn check_mod(ast.ident i, ast._mod m) -> option[def] {
+        alt (m.index.find(i)) {
+            case (some[uint](?ix)) {
+                ret found_def_item(m.items.(ix));
+            }
+        }
+        ret none[def];
+    }
+
 
     fn in_scope(ast.ident i, &scope s) -> option[def] {
         alt (s) {
@@ -52,15 +73,23 @@ fn lookup_name(&env e, ast.ident i) -> option[def] {
 
             case (scope_item(?it)) {
                 alt (it.node) {
-                    case (ast.item_fn(?f, _)) {
+                    case (ast.item_fn(_, ?f, _)) {
                         for (ast.arg a in f.inputs) {
                             if (_str.eq(a.ident, i)) {
                                 ret some[def](ast.def_arg(a.id));
                             }
                         }
                     }
-                    case (ast.item_mod(?m, _)) {
+                    case (ast.item_mod(_, ?m, _)) {
                         ret check_mod(i, m);
+                    }
+                }
+            }
+
+            case (scope_block(?b)) {
+                alt (b.node.index.find(i)) {
+                    case (some[uint](?ix)) {
+                        ret found_decl_stmt(b.node.stmts.(ix));
                     }
                 }
             }
@@ -96,7 +125,7 @@ fn update_env_for_item(&env e, @ast.item i) -> env {
     ret cons[scope](scope_item(i), @e);
 }
 
-fn update_env_for_block(&env e, ast.block b) -> env {
+fn update_env_for_block(&env e, &ast.block b) -> env {
     ret cons[scope](scope_block(b), @e);
 }
 

@@ -688,7 +688,7 @@ fn trans_block_cleanups(@block_ctxt cx) -> @block_ctxt {
 fn trans_block(@block_ctxt cx, &ast.block b) -> result {
     auto bcx = cx;
 
-    for (@ast.stmt s in b.node) {
+    for (@ast.stmt s in b.node.stmts) {
         bcx = trans_stmt(bcx, *s).bcx;
     }
 
@@ -724,21 +724,22 @@ fn trans_fn(@trans_ctxt cx, &ast._fn f) {
     trans_block(new_top_block_ctxt(fcx), f.body);
 }
 
-fn trans_item(@trans_ctxt cx, &str name, &ast.item item) {
-    auto sub_cx = @rec(path=cx.path + "." + name with *cx);
+fn trans_item(@trans_ctxt cx, &ast.item item) {
     alt (item.node) {
-        case (ast.item_fn(?f, _)) {
+        case (ast.item_fn(?name, ?f, _)) {
+            auto sub_cx = @rec(path=cx.path + "." + name with *cx);
             trans_fn(sub_cx, f);
         }
-        case (ast.item_mod(?m, _)) {
+        case (ast.item_mod(?name, ?m, _)) {
+            auto sub_cx = @rec(path=cx.path + "." + name with *cx);
             trans_mod(sub_cx, m);
         }
     }
 }
 
 fn trans_mod(@trans_ctxt cx, &ast._mod m) {
-    for each (tup(str, @ast.item) pair in m.items()) {
-        trans_item(cx, pair._0, *pair._1);
+    for (@ast.item item in m.items) {
+        trans_item(cx, *item);
     }
 }
 
