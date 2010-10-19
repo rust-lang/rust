@@ -103,7 +103,7 @@ type ast_fold[ENV] =
 
      // Decl folds.
      (fn(&ENV e, &span sp,
-         &ast.local local) -> @decl)              fold_decl_local,
+         @ast.local local) -> @decl)              fold_decl_local,
 
      (fn(&ENV e, &span sp,
          @item item) -> @decl)                    fold_decl_item,
@@ -238,7 +238,7 @@ fn fold_decl[ENV](&ENV env, ast_fold[ENV] fld, @decl d) -> @decl {
                     init_ = some[@ast.expr](fold_expr(env, fld, e));
                 }
             }
-            let ast.local local_ = rec(ty=ty_, init=init_ with local);
+            let @ast.local local_ = @rec(ty=ty_, init=init_ with *local);
             ret fld.fold_decl_local(env_, d.span, local_);
         }
 
@@ -356,7 +356,7 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
 
         case (ast.expr_name(?n, ?r, ?t)) {
             auto n_ = fold_name(env_, fld, n);
-            ret fld.fold_expr_name(env_, e.span, n, r, t);
+            ret fld.fold_expr_name(env_, e.span, n_, r, t);
         }
     }
 
@@ -375,7 +375,7 @@ fn fold_stmt[ENV](&ENV env, ast_fold[ENV] fld, &@stmt s) -> @stmt {
     alt (s.node) {
         case (ast.stmt_decl(?d)) {
             auto dd = fold_decl(env_, fld, d);
-            ret fld.fold_stmt_decl(env_, s.span, d);
+            ret fld.fold_stmt_decl(env_, s.span, dd);
         }
 
         case (ast.stmt_ret(?oe)) {
@@ -390,12 +390,12 @@ fn fold_stmt[ENV](&ENV env, ast_fold[ENV] fld, &@stmt s) -> @stmt {
 
         case (ast.stmt_log(?e)) {
             auto ee = fold_expr(env_, fld, e);
-            ret fld.fold_stmt_log(env_, s.span, e);
+            ret fld.fold_stmt_log(env_, s.span, ee);
         }
 
         case (ast.stmt_expr(?e)) {
             auto ee = fold_expr(env_, fld, e);
-            ret fld.fold_stmt_expr(env_, s.span, e);
+            ret fld.fold_stmt_expr(env_, s.span, ee);
         }
     }
     ret s;
@@ -621,7 +621,7 @@ fn identity_fold_expr_name[ENV](&ENV env, &span sp,
 // Decl identities.
 
 fn identity_fold_decl_local[ENV](&ENV e, &span sp,
-                                 &ast.local local) -> @decl {
+                                 @ast.local local) -> @decl {
     ret @respan(sp, ast.decl_local(local));
 }
 

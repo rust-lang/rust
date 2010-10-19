@@ -629,7 +629,7 @@ io fn parse_let(parser p) -> @ast.decl {
                               init = init,
                               id = p.next_def_id());
 
-    ret @spanned(lo, hi, ast.decl_local(local));
+    ret @spanned(lo, hi, ast.decl_local(@local));
 }
 
 io fn parse_auto(parser p) -> @ast.decl {
@@ -648,7 +648,7 @@ io fn parse_auto(parser p) -> @ast.decl {
                               init = init,
                               id = p.next_def_id());
 
-    ret @spanned(lo, hi, ast.decl_local(local));
+    ret @spanned(lo, hi, ast.decl_local(@local));
 }
 
 io fn parse_stmt(parser p) -> @ast.stmt {

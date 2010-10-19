@@ -1,5 +1,6 @@
 import std._uint;
 import std._int;
+import front.ast;
 
 type pos = rec(uint line, uint col);
 type span = rec(str filename, pos lo, pos hi);
@@ -41,6 +42,24 @@ fn new_str_hash[V]() -> std.map.hashmap[str,V] {
     let std.map.hashfn[str] hasher = std._str.hash;
     let std.map.eqfn[str] eqer = std._str.eq;
     ret std.map.mk_hashmap[str,V](hasher, eqer);
+}
+
+fn new_def_hash[V]() -> std.map.hashmap[ast.def_id,V] {
+
+    fn hash(&ast.def_id d) -> uint {
+        let uint u = d._0 as uint;
+        u <<= 16u;
+        u |= d._1 as uint;
+        ret u;
+    }
+
+    fn eq(&ast.def_id a, &ast.def_id b) -> bool {
+        ret a._0 == b._0 && a._1 == b._1;
+    }
+
+    let std.map.hashfn[ast.def_id] hasher = hash;
+    let std.map.eqfn[ast.def_id] eqer = eq;
+    ret std.map.mk_hashmap[ast.def_id,V](hasher, eqer);
 }
 
 fn istr(int i) -> str {

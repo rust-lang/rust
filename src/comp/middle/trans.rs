@@ -12,7 +12,9 @@ import driver.session;
 import back.x86;
 import back.abi;
 
+import util.common;
 import util.common.istr;
+import util.common.new_def_hash;
 import util.common.new_str_hash;
 
 import lib.llvm.llvm;
@@ -49,6 +51,7 @@ state type trans_ctxt = rec(session.session sess,
 state type fn_ctxt = rec(ValueRef llfn,
                          ValueRef lloutptr,
                          ValueRef lltaskptr,
+                         hashmap[ast.def_id, ValueRef] lllocals,
                          @trans_ctxt tcx);
 
 type terminator = fn(@fn_ctxt cx, builder build);
@@ -126,8 +129,20 @@ fn T_i64() -> TypeRef {
     ret llvm.LLVMInt64Type();
 }
 
+fn T_f32() -> TypeRef {
+    ret llvm.LLVMFloatType();
+}
+
+fn T_f64() -> TypeRef {
+    ret llvm.LLVMDoubleType();
+}
+
 fn T_int() -> TypeRef {
     // FIXME: switch on target type.
+    ret T_i32();
+}
+
+fn T_char() -> TypeRef {
     ret T_i32();
 }
 
@@ -180,6 +195,10 @@ fn T_str(uint n) -> TypeRef {
     ret T_vec(T_i8(), n);
 }
 
+fn T_box(TypeRef t) -> TypeRef {
+    ret T_struct(vec(T_int(), t));
+}
+
 fn T_crate() -> TypeRef {
     ret T_struct(vec(T_int(),      // ptrdiff_t image_base_off
                      T_int(),      // uintptr_t self_addr
@@ -204,6 +223,49 @@ fn T_double() -> TypeRef {
 
 fn T_taskptr() -> TypeRef {
     ret T_ptr(T_task());
+}
+
+fn type_of(@trans_ctxt cx, @ast.ty t) -> TypeRef {
+    alt (t.node) {
+        case (ast.ty_nil) { ret T_nil(); }
+        case (ast.ty_bool) { ret T_i1(); }
+        case (ast.ty_int) { ret T_int(); }
+        case (ast.ty_uint) { ret T_int(); }
+        case (ast.ty_machine(?tm)) {
+            alt (tm) {
+                case (common.ty_i8) { ret T_i8(); }
+                case (common.ty_u8) { ret T_i8(); }
+                case (common.ty_i16) { ret T_i16(); }
+                case (common.ty_u16) { ret T_i16(); }
+                case (common.ty_i32) { ret T_i32(); }
+                case (common.ty_u32) { ret T_i32(); }
+                case (common.ty_i64) { ret T_i64(); }
+                case (common.ty_u64) { ret T_i64(); }
+                case (common.ty_f32) { ret T_f32(); }
+                case (common.ty_f64) { ret T_f64(); }
+            }
+        }
+        case (ast.ty_char) { ret T_char(); }
+        case (ast.ty_str) { ret T_str(0u); }
+        case (ast.ty_box(?t)) {
+            ret T_ptr(T_box(type_of(cx, t)));
+        }
+        case (ast.ty_vec(?t)) {
+            ret T_ptr(T_vec(type_of(cx, t), 0u));
+        }
+        case (ast.ty_tup(?elts)) {
+            let vec[TypeRef] tys = vec();
+            for (tup(bool, @ast.ty) elt in elts) {
+                tys += type_of(cx, elt._1);
+            }
+            ret T_struct(tys);
+        }
+        case (ast.ty_path(?pth,  ?def)) {
+            // FIXME: implement.
+            cx.sess.unimpl("ty_path in trans.type_of");
+        }
+    }
+    fail;
 }
 
 // LLVM constant constructors.
@@ -356,7 +418,7 @@ fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
             ret res(cx, C_int(u as int));
         }
         case (ast.lit_char(?c)) {
-            ret res(cx, C_integral(c as int, T_i32()));
+            ret res(cx, C_integral(c as int, T_char()));
         }
         case (ast.lit_bool(?b)) {
             ret res(cx, C_bool(b));
@@ -572,6 +634,25 @@ fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
 
             ret res(next_cx, sub.val);
         }
+
+        case (ast.expr_name(?n, ?dopt, _)) {
+            alt (dopt) {
+                case (some[ast.def](?def)) {
+                    alt (def) {
+                        case (ast.def_local(?did)) {
+                            auto llptr = cx.fcx.lllocals.get(did);
+                            ret res(cx, cx.build.Load(llptr));
+                        }
+                        case (_) {
+                            cx.fcx.tcx.sess.unimpl("def variant in trans");
+                        }
+                    }
+                }
+                case (none[ast.def]) {
+                    cx.fcx.tcx.sess.err("unresolved expr_name in trans");
+                }
+            }
+        }
     }
     cx.fcx.tcx.sess.unimpl("expr variant in trans_expr");
     fail;
@@ -616,6 +697,20 @@ fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
             sub.bcx = trans_expr(cx, *e).bcx;
         }
 
+        case (ast.stmt_decl(?d)) {
+            alt (d.node) {
+                case (ast.decl_local(?local)) {
+                    alt (local.init) {
+                        case (some[@ast.expr](?e)) {
+                            log "storing init of local " + local.ident;
+                            auto llptr = cx.fcx.lllocals.get(local.id);
+                            sub = trans_expr(cx, *e);
+                            sub.val = sub.bcx.build.Store(sub.val, llptr);
+                        }
+                    }
+                }
+            }
+        }
         case (_) {
             cx.fcx.tcx.sess.unimpl("stmt variant");
         }
@@ -685,8 +780,40 @@ fn trans_block_cleanups(@block_ctxt cx) -> @block_ctxt {
     ret bcx;
 }
 
+iter block_locals(&ast.block b) -> @ast.local {
+    // FIXME: putting from inside an iter block doesn't work, so we can't
+    // use the index here.
+    for (@ast.stmt s in b.node.stmts) {
+        alt (s.node) {
+            case (ast.stmt_decl(?d)) {
+                alt (d.node) {
+                    case (ast.decl_local(?local)) {
+                        put local;
+                    }
+                }
+            }
+        }
+    }
+}
+
 fn trans_block(@block_ctxt cx, &ast.block b) -> result {
     auto bcx = cx;
+
+    for each (@ast.local local in block_locals(b)) {
+        log "declaring local " + local.ident;
+        auto ty = T_nil();
+        alt (local.ty) {
+            case (some[@ast.ty](?t)) {
+                ty = type_of(cx.fcx.tcx, t);
+            }
+            case (none[@ast.ty]) {
+                cx.fcx.tcx.sess.err("missing type for local " + local.ident);
+            }
+        }
+        auto val = bcx.build.Alloca(ty);
+        log "built alloca: " + val_str(val);
+        cx.fcx.lllocals.insert(local.id, val);
+    }
 
     for (@ast.stmt s in b.node.stmts) {
         bcx = trans_stmt(bcx, *s).bcx;
@@ -709,9 +836,11 @@ fn new_fn_ctxt(@trans_ctxt cx,
     cx.fns.insert(cx.path, llfn);
     let ValueRef lloutptr = llvm.LLVMGetParam(llfn, 0u);
     let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 1u);
+    let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
     ret @rec(llfn=llfn,
              lloutptr=lloutptr,
              lltaskptr=lltaskptr,
+             lllocals=lllocals,
              tcx=cx);
 }
 
@@ -758,6 +887,7 @@ fn trans_exit_task_glue(@trans_ctxt cx) {
     auto fcx = @rec(llfn=llfn,
                     lloutptr=lloutptr,
                     lltaskptr=lltaskptr,
+                    lllocals=new_def_hash[ValueRef](),
                     tcx=cx);
 
     auto bcx = new_top_block_ctxt(fcx);

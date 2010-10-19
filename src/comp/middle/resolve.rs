@@ -18,7 +18,8 @@ tag scope {
     scope_block(ast.block);
 }
 
-type env = list[scope];
+type env = rec(list[scope] scopes,
+               session.session sess);
 
 fn lookup_name(&env e, ast.ident i) -> option[def] {
 
@@ -97,7 +98,7 @@ fn lookup_name(&env e, ast.ident i) -> option[def] {
         ret none[def];
     }
 
-    ret std.list.find[scope,def](e, bind in_scope(i, _));
+    ret std.list.find[scope,def](e.scopes, bind in_scope(i, _));
 }
 
 fn fold_expr_name(&env e, &span sp, &ast.name n,
@@ -110,7 +111,7 @@ fn fold_expr_name(&env e, &span sp, &ast.name n,
             log "resolved name " + n.node.ident;
         }
         case (none[def]) {
-            log "unresolved name " + n.node.ident;
+            e.sess.err("unresolved name: " + n.node.ident);
         }
     }
 
@@ -118,25 +119,31 @@ fn fold_expr_name(&env e, &span sp, &ast.name n,
 }
 
 fn update_env_for_crate(&env e, @ast.crate c) -> env {
-    ret cons[scope](scope_crate(c), @e);
+    ret rec(scopes = cons[scope](scope_crate(c), @e.scopes) with e);
 }
 
 fn update_env_for_item(&env e, @ast.item i) -> env {
-    ret cons[scope](scope_item(i), @e);
+    ret rec(scopes = cons[scope](scope_item(i), @e.scopes) with e);
 }
 
 fn update_env_for_block(&env e, &ast.block b) -> env {
-    ret cons[scope](scope_block(b), @e);
+    ret rec(scopes = cons[scope](scope_block(b), @e.scopes) with e);
 }
 
 fn resolve_crate(session.session sess, @ast.crate crate) -> @ast.crate {
+
     let fold.ast_fold[env] fld = fold.new_identity_fold[env]();
+
     fld = @rec( fold_expr_name = bind fold_expr_name(_,_,_,_,_),
                 update_env_for_crate = bind update_env_for_crate(_,_),
                 update_env_for_item = bind update_env_for_item(_,_),
                 update_env_for_block = bind update_env_for_block(_,_)
                 with *fld );
-    ret fold.fold_crate[env](nil[scope], fld, crate);
+
+    auto e = rec(scopes = nil[scope],
+                 sess = sess);
+
+    ret fold.fold_crate[env](e, fld, crate);
 }
 
 // Local Variables:

@@ -78,7 +78,7 @@ type local = rec(option[@ty] ty,
 
 type decl = spanned[decl_];
 tag decl_ {
-    decl_local(local);
+    decl_local(@local);
     decl_item(@item);
 }
 
