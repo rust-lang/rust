@@ -35,6 +35,8 @@ public:
     void join();
 
     bool is_running();
+
+    virtual ~rust_thread() {}   // quiet the compiler
 };
 
 #endif /* SYNC_H */
