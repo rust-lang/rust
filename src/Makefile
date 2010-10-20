@@ -168,14 +168,13 @@ endif
 ifneq ($(CFG_LLVM_CONFIG),)
   CFG_LLVM_VERSION := $(shell $(CFG_LLVM_CONFIG) --version)
   $(info cfg: found llvm-config at $(CFG_LLVM_CONFIG))
-  ifneq ($(findstring 2.8,$(CFG_LLVM_VERSION)),)
-    $(info cfg: using LLVM version $(CFG_LLVM_VERSION))
-  else ifneq ($(findstring 2.9,$(CFG_LLVM_VERSION)),)
+  CFG_LLVM_ALLOWED_VERSIONS := 2.8svn 2.8 2.9svn
+  ifneq ($(findstring $(CFG_LLVM_VERSION),$(CFG_LLVM_ALLOWED_VERSIONS)),)
     $(info cfg: using LLVM version $(CFG_LLVM_VERSION))
   else
     CFG_LLVM_CONFIG :=
     $(info cfg: incompatible LLVM version $(CFG_LLVM_VERSION), \
-      expected 2.8)
+      expected one of $(CFG_LLVM_ALLOWED_VERSIONS)
   endif
 endif
 ifneq ($(CFG_LLVM_CONFIG),)
