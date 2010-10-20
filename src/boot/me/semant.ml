@@ -978,7 +978,12 @@ let rec rebuild_ty_under_params
     (resolve_names:bool)
     : Ast.ty =
   if (Array.length params) <> (Array.length args)
-  then err None "mismatched type-params"
+  then
+    err None
+      "mismatched type-params: %s has %d param(s) but %d given"
+      (Ast.sprintf_ty () ty)
+      (Array.length params)
+      (Array.length args)
   else
     let nmap = Hashtbl.create (Array.length args) in
     let pmap = Hashtbl.create (Array.length args) in
