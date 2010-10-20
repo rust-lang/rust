@@ -137,6 +137,10 @@ fn T_f64() -> TypeRef {
     ret llvm.LLVMDoubleType();
 }
 
+fn T_bool() -> TypeRef {
+    ret T_i1();
+}
+
 fn T_int() -> TypeRef {
     // FIXME: switch on target type.
     ret T_i32();
@@ -228,7 +232,7 @@ fn T_taskptr() -> TypeRef {
 fn type_of(@trans_ctxt cx, @ast.ty t) -> TypeRef {
     alt (t.node) {
         case (ast.ty_nil) { ret T_nil(); }
-        case (ast.ty_bool) { ret T_i1(); }
+        case (ast.ty_bool) { ret T_bool(); }
         case (ast.ty_int) { ret T_int(); }
         case (ast.ty_uint) { ret T_int(); }
         case (ast.ty_machine(?tm)) {
@@ -291,9 +295,9 @@ fn C_nil() -> ValueRef {
 
 fn C_bool(bool b) -> ValueRef {
     if (b) {
-        ret C_integral(1, T_i1());
+        ret C_integral(1, T_bool());
     } else {
-        ret C_integral(0, T_i1());
+        ret C_integral(0, T_bool());
     }
 }
 
@@ -464,6 +468,54 @@ fn trans_unary(@block_ctxt cx, ast.unop op, &ast.expr e) -> result {
 
 fn trans_binary(@block_ctxt cx, ast.binop op,
                 &ast.expr a, &ast.expr b) -> result {
+
+    // First couple cases are lazy:
+
+    alt (op) {
+        case (ast.and) {
+            // Lazy-eval and
+            auto lhs_res = trans_expr(cx, a);
+
+            auto rhs_cx = new_empty_block_ctxt(cx.fcx);
+            auto rhs_res = trans_expr(rhs_cx, b);
+
+            auto next_cx = new_extension_block_ctxt(cx);
+            rhs_res.bcx.build.Br(next_cx.llbb);
+
+            lhs_res.bcx.build.CondBr(lhs_res.val,
+                                     rhs_cx.llbb,
+                                     next_cx.llbb);
+            auto phi = next_cx.build.Phi(T_bool(),
+                                         vec(lhs_res.val,
+                                             rhs_res.val),
+                                         vec(lhs_res.bcx.llbb,
+                                             rhs_res.bcx.llbb));
+            ret res(next_cx, phi);
+        }
+
+        case (ast.or) {
+            // Lazy-eval or
+            auto lhs_res = trans_expr(cx, a);
+
+            auto rhs_cx = new_empty_block_ctxt(cx.fcx);
+            auto rhs_res = trans_expr(rhs_cx, b);
+
+            auto next_cx = new_extension_block_ctxt(cx);
+            rhs_res.bcx.build.Br(next_cx.llbb);
+
+            lhs_res.bcx.build.CondBr(lhs_res.val,
+                                     next_cx.llbb,
+                                     rhs_cx.llbb);
+            auto phi = next_cx.build.Phi(T_bool(),
+                                         vec(lhs_res.val,
+                                             rhs_res.val),
+                                         vec(lhs_res.bcx.llbb,
+                                             rhs_res.bcx.llbb));
+            ret res(next_cx, phi);
+        }
+    }
+
+    // Remaining cases are eager:
 
     auto lhs = trans_expr(cx, a);
     auto sub = trans_expr(lhs.bcx, b);
@@ -774,10 +826,9 @@ fn new_top_block_ctxt(@fn_ctxt fcx) -> @block_ctxt {
 
 }
 
-// Use this when you are making a block_ctxt to replace the
-// current one, i.e. when chaining together sequences of stmts
-// or making sub-blocks you will branch back out of and wish to
-// "carry on" in the parent block's context.
+// Use this when you are making a block_ctxt that starts with a fresh
+// terminator and empty cleanups (no locals, no implicit return when
+// falling off the end).
 fn new_empty_block_ctxt(@fn_ctxt fcx) -> @block_ctxt {
     fn terminate_no_op(@fn_ctxt cx, builder build) {
     }
