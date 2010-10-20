@@ -174,7 +174,7 @@ ifneq ($(CFG_LLVM_CONFIG),)
   else
     CFG_LLVM_CONFIG :=
     $(info cfg: incompatible LLVM version $(CFG_LLVM_VERSION), \
-      expected one of $(CFG_LLVM_ALLOWED_VERSIONS)
+      expected one of $(CFG_LLVM_ALLOWED_VERSIONS))
   endif
 endif
 ifneq ($(CFG_LLVM_CONFIG),)
