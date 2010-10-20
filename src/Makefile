@@ -183,6 +183,7 @@ ifneq ($(CFG_LLVM_CONFIG),)
     $(shell ocamlc$(OPT) -config | grep standard_library:))
   CFG_OCAML_LLVM := $(shell \
       for path in $(shell $(CFG_LLVM_CONFIG) --libdir)/ocaml \
+          $(CFG_OCAML_LIBPATH) \
           $(CFG_OCAML_LIBPATH)/llvm \
           $(CFG_OCAML_LIBPATH)/llvm-$(CFG_LLVM_VERSION) ; do \
         if test -e $${path}/llvm.cma; then echo $${path}; break; fi \
