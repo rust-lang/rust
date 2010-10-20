@@ -75,6 +75,39 @@ let rec friendly_stringify cx fallback ty =
           let fn_args_str = String.concat ", " (Array.to_list fn_args) in
           let fn_rv_str = format_slot fnsig.Ast.sig_output_slot in
           Printf.sprintf "fn(%s) -> %s" fn_args_str fn_rv_str
+      | Ast.TY_tag { Ast.tag_id = tag_id; Ast.tag_args = args } ->
+          let tag_info = Hashtbl.find cx.Semant.ctxt_all_tag_info tag_id in
+          let tag_idents = tag_info.Semant.tag_idents in
+          let item_id = ref None in
+          (* Ugly hack ahead... *)
+          begin
+            try
+              Hashtbl.iter
+                begin
+                  fun _ (_, item_id', _) ->
+                    item_id := Some item_id'; raise Exit
+                end
+                tag_idents
+            with Exit -> ();
+          end;
+          begin
+            match !item_id with
+                None -> fallback ty
+              | Some item_id ->
+                  let item_types = cx.Semant.ctxt_all_item_types in
+                  let ty = Hashtbl.find item_types item_id in
+                  let args_suffix =
+                    if Array.length args == 0 then ""
+                    else
+                      Printf.sprintf "[%s]"
+                        (String.concat ","
+                          (Array.to_list
+                            (Array.map
+                              (friendly_stringify cx fallback)
+                              args)))
+                  in
+                  (friendly_stringify cx fallback ty) ^ args_suffix
+          end
 
       | _ -> fallback ty (* TODO: we can do better for objects *)
 
