@@ -5,11 +5,7 @@ import front.token;
 import middle.trans;
 import middle.resolve;
 
-import util.bits;
-
 io fn main(vec[str] args) {
-
-  bits.test();
 
   log "This is the rust 'self-hosted' compiler.";
   log "The one written in rust.";
