@@ -971,7 +971,7 @@ let ty_fold_rebuild (id:Ast.ty -> Ast.ty)
 
 let rec pretty_ty_str (cx:ctxt) (fallback:(Ast.ty -> string)) (ty:Ast.ty) =
   let cache = cx.ctxt_user_type_names in
-  if Hashtbl.mem cache ty then
+  if not (Ast.ty_is_simple ty) && Hashtbl.mem cache ty then
     let names = List.map (Ast.sprintf_name ()) (Hashtbl.find_all cache ty) in
     String.concat " = " names
   else

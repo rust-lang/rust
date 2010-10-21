@@ -516,6 +516,17 @@ let sane_name (n:name) : bool =
       | NAME_ext (prefix, _) -> sane_prefix prefix
 ;;
 
+(* Error messages always refer to simple types structurally, not by their
+ * user-defined names. *)
+let rec ty_is_simple (ty:ty) : bool =
+  match ty with
+      TY_any | TY_nil | TY_bool | TY_mach _ | TY_int | TY_uint | TY_char
+    | TY_str | TY_task | TY_type -> true
+    | TY_vec ty | TY_chan ty | TY_port ty -> ty_is_simple ty
+    | TY_tup tys -> List.for_all ty_is_simple (Array.to_list tys)
+    | _ -> false
+;;
+
 (*
  * We have multiple subset-categories of expression:
  *
