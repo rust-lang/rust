@@ -268,6 +268,19 @@ io fn parse_bottom_expr(parser p) -> @ast.expr {
             auto n = parse_name(p, i);
             hi = n.span;
             ex = ast.expr_name(n, none[ast.def], none[@ast.ty]);
+            alt (p.peek()) {
+                case (token.LPAREN) {
+                    // Call expr.
+                    auto pf = parse_expr;
+                    auto es = parse_seq[@ast.expr](token.LPAREN,
+                                                   token.RPAREN,
+                                                   some(token.COMMA),
+                                                   pf, p);
+                    ex = ast.expr_call(@spanned(lo, hi, ex),
+                                       es.node, none[@ast.ty]);
+                    hi = es.span;
+                }
+            }
         }
 
         case (token.LPAREN) {
