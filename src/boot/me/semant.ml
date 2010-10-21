@@ -969,6 +969,79 @@ let ty_fold_rebuild (id:Ast.ty -> Ast.ty)
                              id (Ast.TY_constrained (t, constrs))) }
 ;;
 
+let rec pretty_ty_str (cx:ctxt) (fallback:(Ast.ty -> string)) (ty:Ast.ty) =
+  let cache = cx.ctxt_user_type_names in
+  if Hashtbl.mem cache ty then
+    let names = List.map (Ast.sprintf_name ()) (Hashtbl.find_all cache ty) in
+    String.concat " = " names
+  else
+    match ty with
+        Ast.TY_vec ty' -> "vec[" ^ (pretty_ty_str cx fallback ty') ^ "]"
+      | Ast.TY_chan ty' ->
+          "chan[" ^ (pretty_ty_str cx fallback ty') ^ "]"
+      | Ast.TY_port ty' ->
+          "port[" ^ (pretty_ty_str cx fallback ty') ^ "]"
+      | Ast.TY_box ty' -> "@" ^ (pretty_ty_str cx fallback ty')
+      | Ast.TY_mutable ty' ->
+          "(mutable " ^ (pretty_ty_str cx fallback ty') ^ ")"
+      | Ast.TY_constrained (ty', _) ->
+          "(" ^ (pretty_ty_str cx fallback ty') ^ " : <constrained>)"
+      | Ast.TY_tup tys ->
+          let tys_str = Array.map (pretty_ty_str cx fallback) tys in
+          "tup(" ^ (String.concat ", " (Array.to_list tys_str)) ^ ")"
+      | Ast.TY_rec fields ->
+          let format_field (ident, ty') =
+            ident ^ "=" ^ (pretty_ty_str cx fallback ty')
+          in
+          let fields = Array.to_list (Array.map format_field fields) in
+          "rec(" ^ (String.concat ", " fields) ^ ")"
+      | Ast.TY_fn (fnsig, _) ->
+          let format_slot slot =
+            match slot.Ast.slot_ty with
+                None -> Common.bug () "no ty in slot"
+              | Some ty' -> pretty_ty_str cx fallback ty'
+          in
+          let fn_args = Array.map format_slot fnsig.Ast.sig_input_slots in
+          let fn_args_str = String.concat ", " (Array.to_list fn_args) in
+          let fn_rv_str = format_slot fnsig.Ast.sig_output_slot in
+          Printf.sprintf "fn(%s) -> %s" fn_args_str fn_rv_str
+      | Ast.TY_tag { Ast.tag_id = tag_id; Ast.tag_args = args } ->
+          let tag_info = Hashtbl.find cx.ctxt_all_tag_info tag_id in
+          let tag_idents = tag_info.tag_idents in
+          let item_id = ref None in
+          (* Ugly hack ahead... *)
+          begin
+            try
+              Hashtbl.iter
+                begin
+                  fun _ (_, item_id', _) ->
+                    item_id := Some item_id'; raise Exit
+                end
+                tag_idents
+            with Exit -> ();
+          end;
+          begin
+            match !item_id with
+                None -> fallback ty
+              | Some item_id ->
+                  let item_types = cx.ctxt_all_item_types in
+                  let ty = Hashtbl.find item_types item_id in
+                  let args_suffix =
+                    if Array.length args == 0 then ""
+                    else
+                      Printf.sprintf "[%s]"
+                        (String.concat ","
+                          (Array.to_list
+                            (Array.map
+                              (pretty_ty_str cx fallback)
+                              args)))
+                  in
+                  (pretty_ty_str cx fallback ty) ^ args_suffix
+          end
+
+      | _ -> fallback ty (* TODO: we can do better for objects *)
+;;
+
 let rec rebuild_ty_under_params
     (cx:ctxt)
     (src_tag:Ast.ty_tag option)
@@ -981,7 +1054,7 @@ let rec rebuild_ty_under_params
   then
     err None
       "mismatched type-params: %s has %d param(s) but %d given"
-      (Ast.sprintf_ty () ty)
+      (pretty_ty_str cx (Ast.sprintf_ty ()) ty)
       (Array.length params)
       (Array.length args)
   else
@@ -2677,79 +2750,6 @@ let glue_str (cx:ctxt) (g:glue) : string =
         ^ "$" ^ (ty_str cx (Ast.TY_obj oty1))
         ^ "$" ^ (ty_str cx (Ast.TY_obj oty2))
     | GLUE_vec_grow -> "glue$vec_grow"
-;;
-
-let rec pretty_ty_str (cx:ctxt) (fallback:(Ast.ty -> string)) (ty:Ast.ty) =
-  let cache = cx.ctxt_user_type_names in
-  if Hashtbl.mem cache ty then
-    let names = List.map (Ast.sprintf_name ()) (Hashtbl.find_all cache ty) in
-    String.concat " = " names
-  else
-    match ty with
-        Ast.TY_vec ty' -> "vec[" ^ (pretty_ty_str cx fallback ty') ^ "]"
-      | Ast.TY_chan ty' ->
-          "chan[" ^ (pretty_ty_str cx fallback ty') ^ "]"
-      | Ast.TY_port ty' ->
-          "port[" ^ (pretty_ty_str cx fallback ty') ^ "]"
-      | Ast.TY_box ty' -> "@" ^ (pretty_ty_str cx fallback ty')
-      | Ast.TY_mutable ty' ->
-          "(mutable " ^ (pretty_ty_str cx fallback ty') ^ ")"
-      | Ast.TY_constrained (ty', _) ->
-          "(" ^ (pretty_ty_str cx fallback ty') ^ " : <constrained>)"
-      | Ast.TY_tup tys ->
-          let tys_str = Array.map (pretty_ty_str cx fallback) tys in
-          "tup(" ^ (String.concat ", " (Array.to_list tys_str)) ^ ")"
-      | Ast.TY_rec fields ->
-          let format_field (ident, ty') =
-            ident ^ "=" ^ (pretty_ty_str cx fallback ty')
-          in
-          let fields = Array.to_list (Array.map format_field fields) in
-          "rec(" ^ (String.concat ", " fields) ^ ")"
-      | Ast.TY_fn (fnsig, _) ->
-          let format_slot slot =
-            match slot.Ast.slot_ty with
-                None -> Common.bug () "no ty in slot"
-              | Some ty' -> pretty_ty_str cx fallback ty'
-          in
-          let fn_args = Array.map format_slot fnsig.Ast.sig_input_slots in
-          let fn_args_str = String.concat ", " (Array.to_list fn_args) in
-          let fn_rv_str = format_slot fnsig.Ast.sig_output_slot in
-          Printf.sprintf "fn(%s) -> %s" fn_args_str fn_rv_str
-      | Ast.TY_tag { Ast.tag_id = tag_id; Ast.tag_args = args } ->
-          let tag_info = Hashtbl.find cx.ctxt_all_tag_info tag_id in
-          let tag_idents = tag_info.tag_idents in
-          let item_id = ref None in
-          (* Ugly hack ahead... *)
-          begin
-            try
-              Hashtbl.iter
-                begin
-                  fun _ (_, item_id', _) ->
-                    item_id := Some item_id'; raise Exit
-                end
-                tag_idents
-            with Exit -> ();
-          end;
-          begin
-            match !item_id with
-                None -> fallback ty
-              | Some item_id ->
-                  let item_types = cx.ctxt_all_item_types in
-                  let ty = Hashtbl.find item_types item_id in
-                  let args_suffix =
-                    if Array.length args == 0 then ""
-                    else
-                      Printf.sprintf "[%s]"
-                        (String.concat ","
-                          (Array.to_list
-                            (Array.map
-                              (pretty_ty_str cx fallback)
-                              args)))
-                  in
-                  (pretty_ty_str cx fallback ty) ^ args_suffix
-          end
-
-      | _ -> fallback ty (* TODO: we can do better for objects *)
 ;;
 
 (*

@@ -423,7 +423,10 @@ let type_resolving_visitor
                 log cx "resolved item %s, defining type %a"
                   id Ast.sprintf_ty ty;
                 htab_put cx.ctxt_all_type_items item.id ty;
-                htab_put cx.ctxt_all_item_types item.id Ast.TY_type
+                htab_put cx.ctxt_all_item_types item.id Ast.TY_type;
+                if Hashtbl.mem cx.ctxt_all_item_names item.id then
+                  Hashtbl.add cx.ctxt_user_type_names ty
+                    (Hashtbl.find cx.ctxt_all_item_names item.id)
 
           (* 
            * Don't resolve the "type" of a mod item; just resolve its
@@ -880,19 +883,7 @@ let process_crate
       end;
     (* Post-resolve, we can establish a tag cache. *)
     cx.ctxt_tag_cache <- Some (Hashtbl.create 0);
-    cx.ctxt_rebuild_cache <- Some (Hashtbl.create 0);
-
-    (* Also index all the type names for future error messages. *)
-    Hashtbl.iter
-      begin
-        fun item_id ty ->
-          let item_names = cx.Semant.ctxt_all_item_names in
-            if Hashtbl.mem item_names item_id then
-              Hashtbl.add cx.Semant.ctxt_user_type_names ty
-                (Hashtbl.find item_names item_id)
-      end
-      cx.Semant.ctxt_all_type_items;
-
+    cx.ctxt_rebuild_cache <- Some (Hashtbl.create 0)
 ;;
 
 (*
