@@ -53,6 +53,7 @@ mod deque;
 mod list;
 mod rand;
 mod dbg;
+mod bitv;
 
 // Local Variables:
 // mode: rust;

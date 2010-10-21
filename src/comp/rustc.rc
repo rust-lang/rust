@@ -28,7 +28,6 @@ mod driver {
 
 mod util {
     mod common;
-    mod bits;
 }
 
 auth driver.rustc.main = state;

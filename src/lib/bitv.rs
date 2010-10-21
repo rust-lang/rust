@@ -25,8 +25,8 @@ fn create(uint nbits, bool init) -> t {
         elt = 0u;
     }
 
-    ret rec(storage = _vec.init_elt[mutable uint](elt, nbits / uint_bits() + 1u),
-            nbits = nbits);
+    auto storage = _vec.init_elt[mutable uint](elt, nbits / uint_bits() + 1u);
+    ret rec(storage = storage, nbits = nbits);
 }
 
 fn process(&fn(uint, uint) -> uint op, &t v0, &t v1) -> bool {
