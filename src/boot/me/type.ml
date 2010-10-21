@@ -37,80 +37,6 @@ let iflog cx thunk =
   else ()
 ;;
 
-(* Pretty-printing of type names *)
-
-let rec friendly_stringify cx fallback ty =
-  let cache = cx.Semant.ctxt_user_type_names in
-  if Hashtbl.mem cache ty then
-    let names = List.map (Ast.sprintf_name ()) (Hashtbl.find_all cache ty) in
-    String.concat " = " names
-  else
-    match ty with
-        Ast.TY_vec ty' -> "vec[" ^ (friendly_stringify cx fallback ty') ^ "]"
-      | Ast.TY_chan ty' ->
-          "chan[" ^ (friendly_stringify cx fallback ty') ^ "]"
-      | Ast.TY_port ty' ->
-          "port[" ^ (friendly_stringify cx fallback ty') ^ "]"
-      | Ast.TY_box ty' -> "@" ^ (friendly_stringify cx fallback ty')
-      | Ast.TY_mutable ty' ->
-          "(mutable " ^ (friendly_stringify cx fallback ty') ^ ")"
-      | Ast.TY_constrained (ty', _) ->
-          "(" ^ (friendly_stringify cx fallback ty') ^ " : <constrained>)"
-      | Ast.TY_tup tys ->
-          let tys_str = Array.map (friendly_stringify cx fallback) tys in
-          "tup(" ^ (String.concat ", " (Array.to_list tys_str)) ^ ")"
-      | Ast.TY_rec fields ->
-          let format_field (ident, ty') =
-            ident ^ "=" ^ (friendly_stringify cx fallback ty')
-          in
-          let fields = Array.to_list (Array.map format_field fields) in
-          "rec(" ^ (String.concat ", " fields) ^ ")"
-      | Ast.TY_fn (fnsig, _) ->
-          let format_slot slot =
-            match slot.Ast.slot_ty with
-                None -> Common.bug () "no ty in slot"
-              | Some ty' -> friendly_stringify cx fallback ty'
-          in
-          let fn_args = Array.map format_slot fnsig.Ast.sig_input_slots in
-          let fn_args_str = String.concat ", " (Array.to_list fn_args) in
-          let fn_rv_str = format_slot fnsig.Ast.sig_output_slot in
-          Printf.sprintf "fn(%s) -> %s" fn_args_str fn_rv_str
-      | Ast.TY_tag { Ast.tag_id = tag_id; Ast.tag_args = args } ->
-          let tag_info = Hashtbl.find cx.Semant.ctxt_all_tag_info tag_id in
-          let tag_idents = tag_info.Semant.tag_idents in
-          let item_id = ref None in
-          (* Ugly hack ahead... *)
-          begin
-            try
-              Hashtbl.iter
-                begin
-                  fun _ (_, item_id', _) ->
-                    item_id := Some item_id'; raise Exit
-                end
-                tag_idents
-            with Exit -> ();
-          end;
-          begin
-            match !item_id with
-                None -> fallback ty
-              | Some item_id ->
-                  let item_types = cx.Semant.ctxt_all_item_types in
-                  let ty = Hashtbl.find item_types item_id in
-                  let args_suffix =
-                    if Array.length args == 0 then ""
-                    else
-                      Printf.sprintf "[%s]"
-                        (String.concat ","
-                          (Array.to_list
-                            (Array.map
-                              (friendly_stringify cx fallback)
-                              args)))
-                  in
-                  (friendly_stringify cx fallback ty) ^ args_suffix
-          end
-
-      | _ -> fallback ty (* TODO: we can do better for objects *)
-
 let head_only ty =
   match ty with
 
@@ -220,7 +146,7 @@ and summarize_difference cx (expected:Ast.ty) (actual:Ast.ty)
           Printf.bprintf abuf "%s" a
       in
 
-      Buffer.add_string ebuf (friendly_stringify cx head_only expected);
+      Buffer.add_string ebuf (Semant.pretty_ty_str cx head_only expected);
 
         begin
           match expected, actual with
@@ -246,7 +172,7 @@ and summarize_difference cx (expected:Ast.ty) (actual:Ast.ty)
                 p "mutable "; sub e a;
 
             | (_, a) ->
-                Buffer.add_string abuf (friendly_stringify cx head_only a)
+                Buffer.add_string abuf (Semant.pretty_ty_str cx head_only a)
         end;
         (Buffer.contents ebuf, Buffer.contents abuf)
     end
@@ -257,13 +183,13 @@ let type_error_full expected actual =
 ;;
 
 let type_error cx expected actual =
-  type_error_full expected (friendly_stringify cx head_only actual)
+  type_error_full expected (Semant.pretty_ty_str cx head_only actual)
 ;;
 
 (* We explicitly curry [cx] like this to avoid threading it through all the
  * inner functions. *)
 let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
-  let friendly_string_of_ty = friendly_stringify cx (Ast.sprintf_ty ()) in
+  let pretty_ty_str = Semant.pretty_ty_str cx (Ast.sprintf_ty ()) in
 
   (* Returns the part of the type that matters for typechecking. *)
   let rec fundamental_ty (ty:Ast.ty) : Ast.ty =
@@ -274,7 +200,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
 
   let sprintf_ltype _ (lty:ltype) : string =
     match lty with
-        LTYPE_mono ty | LTYPE_poly (_, ty) -> friendly_string_of_ty ty
+        LTYPE_mono ty | LTYPE_poly (_, ty) -> pretty_ty_str ty
       | LTYPE_module items -> Ast.sprintf_mod_items () items
   in
 
@@ -553,14 +479,14 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
       match internal_check_lval TYPAT_wild base with
           LTYPE_poly (_, ty) ->
             Common.err None "can't index the polymorphic type '%s'"
-              (friendly_string_of_ty ty)
+              (pretty_ty_str ty)
         | LTYPE_mono ty -> `Type (fundamental_ty ty)
         | LTYPE_module items -> `Module items
     in
 
     let string_of_itype () =
       match base_ity with
-          `Type ty -> friendly_string_of_ty ty
+          `Type ty -> pretty_ty_str ty
         | `Module items -> Ast.sprintf_mod_items () items
     in
 
@@ -650,14 +576,14 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
 
         | `Type ty, Ast.COMP_named (Ast.COMP_ident _) ->
             Common.err None "the type '%s' can't be indexed by name"
-              (friendly_string_of_ty ty)
+              (pretty_ty_str ty)
 
         | `Type ty, Ast.COMP_named (Ast.COMP_app _) ->
             Common.err
               None
               "the type '%s' has no type parameters, so it can't be applied \
               to types"
-              (friendly_string_of_ty ty)
+              (pretty_ty_str ty)
 
         | `Module items, Ast.COMP_named ((Ast.COMP_ident id) as name_comp)
         | `Module items, Ast.COMP_named ((Ast.COMP_app (id, _))
@@ -697,7 +623,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
               None
               "%s can't by indexed by the type '%s'"
               (string_of_itype ())
-              (friendly_string_of_ty (check_atom atom))
+              (pretty_ty_str (check_atom atom))
 
         | _, Ast.COMP_deref ->
             Common.err
@@ -775,7 +701,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
             "not enough context to automatically instantiate '%a' to '%s'; \
             please supply type parameters explicitly"
             sprintf_ltype lty
-            (friendly_string_of_ty expected)
+            (pretty_ty_str expected)
       | _, LTYPE_module _ ->
           Common.err None "can't refer to a module as a first-class value"
 
@@ -1059,8 +985,8 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
                     else
                       Common.err None
                         "mismatched types in vec-append: %s += %s"
-                        (friendly_string_of_ty dst_ty)
-                        (friendly_string_of_ty src_ty)
+                        (pretty_ty_str dst_ty)
+                        (pretty_ty_str src_ty)
                 | Ast.TY_str, (Ast.TY_mach Common.TY_u8)
                 | Ast.TY_str, Ast.TY_str -> ()
                 | _ ->
