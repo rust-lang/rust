@@ -9,18 +9,9 @@ import std._vec;
 
 state type t = rec(vec[mutable uint] storage, uint nbits);
 
-// FIXME: we should bind std.max_int
-fn is32bit() -> bool {
-    let uint n = 0xffffffffu;
-    ret (n + 1u) == 0u;
-}
-
+// FIXME: this should be a constant once they work
 fn uint_bits() -> uint {
-    if (is32bit()) {
-        ret 31u;
-    } else {
-        ret 63u;
-    }
+    ret 32u + ((1u << 32u) >> 27u) - 1u;
 }
 
 // FIXME: this should be state
@@ -35,8 +26,6 @@ fn create(uint nbits, bool init) -> t {
     ret rec(storage = _vec.init_elt[mutable uint](nbits / uint_bits() + 1u, elt),
             nbits = nbits);
 }
-
-
 
 // FIXME: this should be state
 fn process(fn(uint, uint) -> uint op, t v0, t v1) -> bool {
