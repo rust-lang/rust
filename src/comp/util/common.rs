@@ -71,7 +71,7 @@ fn istr(int i) -> str {
 // boxed value to a vector-of-boxes using +=.  Best to figure out a way to fix
 // this. Deref-on-demand or something? It's a hazard of the ambiguity between
 // single-element and vector append.
-fn append[T](&vec[T] v, &T t) {
+fn append[T](&mutable vec[T] v, &T t) {
     v += t;
 }
 
