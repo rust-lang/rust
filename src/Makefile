@@ -440,171 +440,39 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/compile-fail/infinite-vec-type-recursion.rs \
                     test/compile-fail/writing-through-read-alias.rs
 
+# Most tests fail on the boot-llvm backend, so we list the run-pass
+# xfails inside-out, by listing those that *don't* fail. A bit
+# double-negative-y but it's a bit unwieldy the other way just now.
+
 TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                     $(NOMINAL_TAG_XFAILS) \
                     $(CONST_TAG_XFAILS) \
-                    $(addprefix test/run-pass/, \
-                      arith-1.rs \
-                      acyclic-unwind.rs \
-                      alt-pattern-drop.rs \
-                      alt-pattern-simple.rs \
-                      alt-tag.rs \
-                      append-units.rs \
-                      argv.rs \
-                      autoderef-full-lval.rs \
-                      autoderef-objfn.rs \
-                      auto-instantiate.rs \
-                      basic.rs \
-                      basic-1.rs \
-                      basic-2.rs \
-                      bind-exterior.rs \
-                      bind-obj-ctor.rs \
-                      bind-thunk.rs \
-                      bind-trivial.rs \
-                      bitwise.rs \
-                      bool-not.rs \
-                      box-in-tup.rs \
-                      box-unbox.rs \
-                      cast.rs \
-                      child-outlives-parent.rs \
-                      clone-with-exterior.rs \
-                      comm.rs \
-                      command-line-args.rs \
-                      complex.rs \
-                      const.rs \
-                      constrained-type.rs \
-                      deep.rs \
-                      deref.rs \
-                      destructor-ordering.rs \
-                      drop-bind-thunk-args.rs \
-                      drop-on-empty-block-exit.rs \
-                      drop-parametric-closure-with-bound-box.rs \
-                      export-non-interference.rs \
-                      exterior.rs \
-                      fn-lval.rs \
-                      foreach-nested-2.rs \
-                      foreach-nested.rs \
-                      foreach-put-structured.rs \
-                      foreach-simple-outer-slot.rs \
-                      foreach-simple.rs \
-                      fun-call-variants.rs \
-                      fun-indirect-call.rs \
-                      generic-bind.rs \
-                      generic-derived-type.rs \
-                      generic-drop-glue.rs \
-                      generic-exterior-box.rs \
-                      generic-fn-infer.rs \
-                      generic-fn.rs \
-                      generic-iter-frame.rs \
-                      generic-obj-with-derived-type.rs \
-                      generic-obj.rs \
-                      generic-recursive-tag.rs \
-                      generic-tag-alt.rs \
-                      generic-tag-values.rs \
-                      generic-tag.rs \
-                      i32-sub.rs \
-                      i8-incr.rs \
-                      import.rs \
-                      integral-indexing.rs \
-                      iter-range.rs \
-                      iter-ret.rs \
-                      large-records.rs \
-                      lazy-and-or.rs \
-                      lazy-init.rs \
-                      lazychan.rs \
-                      leak-box-as-tydesc.rs \
-                      lib-bitv.rs \
-                      lib-deque.rs \
-                      lib-int.rs \
-                      lib-io.rs \
-                      lib-map.rs \
-                      lib-rand.rs \
-                      lib-str.rs \
-                      lib-task.rs \
-                      lib-uint.rs \
-                      lib-vec.rs \
-                      lib-vec-str-conversions.rs \
-                      linear-for-loop.rs \
-                      list.rs \
-                      many.rs \
-                      mlist-cycle.rs \
-                      mlist.rs \
-                      mutable-alias-vec.rs \
-                      mutable-vec-drop.rs \
-                      mutual-recursion-group.rs \
-                      obj-as.rs \
-                      obj-drop.rs \
-                      obj-dtor.rs \
-                      obj-recursion.rs \
-                      obj-return-polytypes.rs \
-                      obj-with-vec.rs \
-                      operator-associativity.rs \
-                      output-slot-variants.rs \
-                      over-constrained-vregs.rs \
-                      pred.rs \
-                      preempt.rs \
-                      readalias.rs \
-                      rec-auto.rs \
-                      rec-extend.rs \
-                      rec-tup.rs \
-                      rec.rs \
-                      simple-obj.rs \
-                      size-and-align.rs \
-                      spawn-fn.rs \
-                      spawn-module-qualified.rs \
-                      spawn.rs \
-                      stateful-obj.rs \
-                      str-append.rs \
-                      str-concat.rs \
-                      str-idx.rs \
-                      structured-compare.rs \
-                      syntax-extension-fmt.rs \
-                      tag.rs \
-                      tail-call-arg-leak.rs \
-                      tail-cps.rs \
-                      tail-direct.rs \
-                      task-comm.rs \
-                      task-comm-0.rs \
-                      task-comm-1.rs \
-                      task-comm-2.rs \
-                      task-comm-3.rs \
-                      task-comm-4.rs \
-                      task-comm-5.rs \
-                      task-comm-6.rs \
-                      task-comm-7.rs \
-                      task-comm-8.rs \
-                      task-comm-9.rs \
-                      task-comm-10.rs \
-                      task-comm-11.rs \
-                      task-comm-12.rs \
-                      task-comm-13.rs \
-                      task-comm-13-thread.rs \
-                      task-comm-15.rs \
-                      task-life-0.rs \
-                      threads.rs \
-                      type-sizes.rs \
-                      u8-incr.rs \
-                      u8-incr-decr.rs \
-                      u32-decr.rs \
-                      uint.rs \
-                      unit.rs \
-                      use-import-export.rs \
-                      user.rs \
-                      utf8.rs \
-                      vec-alloc-append.rs \
-                      vec-append.rs \
-                      vec-concat.rs \
-                      vec-drop.rs \
-                      vec-in-tup.rs \
-                      vec-late-init.rs \
-                      vec-slice.rs \
-                      vec.rs \
-                      while-flow-graph.rs \
-                      while-with-break.rs \
-                      writealias.rs \
-                      yield.rs \
-                      yield2.rs \
-                     ) \
+                    $(filter-out \
+                      $(addprefix test/run-pass/, \
+                        arith-0.rs \
+                        arith-2.rs \
+                        char.rs \
+                        dead-code-one-arm-if.rs \
+                        div-mod.rs \
+                        drop-on-ret.rs \
+                        else-if.rs \
+                        fact.rs \
+                        generic-fn-twice.rs \
+                        generic-type.rs \
+                        generic-type-synonym.rs \
+                        hello.rs \
+                        inner-module.rs \
+                        int.rs \
+                        item-name-overload.rs \
+                        multiline-comment.rs \
+                        native.rs \
+                        native-mod.rs \
+                        native-opaque-type.rs \
+                        opeq.rs \
+                        return-nil.rs \
+                        syntax-extension-shell.rs \
+                        tup.rs), \
+                      $(wildcard test/run-pass/*.rs) ) \
                     $(addprefix test/run-fail/, \
                       explicit-fail.rs \
                       fail.rs \
@@ -622,6 +490,8 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       rec-missing-fields.rs \
                       writing-through-read-alias.rs \
                      )
+
+
 
 ifdef MINGW_CROSS
 TEST_XFAILS_X86 += test/run-pass/native-mod.rc
