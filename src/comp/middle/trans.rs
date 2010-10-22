@@ -42,9 +42,9 @@ type glue_fns = rec(ValueRef activate_glue,
 
 state type trans_ctxt = rec(session.session sess,
                             ModuleRef llmod,
-                            hashmap[str,ValueRef] upcalls,
-                            hashmap[str,ValueRef] fn_names,
-                            hashmap[ast.def_id,ValueRef] fn_ids,
+                            hashmap[str, ValueRef] upcalls,
+                            hashmap[str, ValueRef] fn_names,
+                            hashmap[ast.def_id, ValueRef] fn_ids,
                             @glue_fns glues,
                             namegen names,
                             str path);
@@ -52,6 +52,7 @@ state type trans_ctxt = rec(session.session sess,
 state type fn_ctxt = rec(ValueRef llfn,
                          ValueRef lloutptr,
                          ValueRef lltaskptr,
+                         hashmap[ast.def_id, ValueRef] llargs,
                          hashmap[ast.def_id, ValueRef] lllocals,
                          @trans_ctxt tcx);
 
@@ -659,17 +660,25 @@ fn trans_if(@block_ctxt cx, &ast.expr cond,
     ret res(next_cx, phi);
 }
 
-fn trans_lval(@block_ctxt cx, &ast.expr e) -> result {
+// The additional bool returned indicates whether it's a local
+// (that is represented as an alloca, hence needs a 'load' to be
+// used as an rval).
+
+fn trans_lval(@block_ctxt cx, &ast.expr e) -> tup(result, bool) {
     alt (e.node) {
         case (ast.expr_name(?n, ?dopt, _)) {
             alt (dopt) {
                 case (some[ast.def](?def)) {
                     alt (def) {
+                        case (ast.def_arg(?did)) {
+                            ret tup(res(cx, cx.fcx.llargs.get(did)), false);
+                        }
                         case (ast.def_local(?did)) {
-                            ret res(cx, cx.fcx.lllocals.get(did));
+                            ret tup(res(cx, cx.fcx.lllocals.get(did)), true);
                         }
                         case (ast.def_fn(?did)) {
-                            ret res(cx, cx.fcx.tcx.fn_ids.get(did));
+                            ret tup(res(cx, cx.fcx.tcx.fn_ids.get(did)),
+                                    false);
                         }
                         case (_) {
                             cx.fcx.tcx.sess.unimpl("def variant in trans");
@@ -731,24 +740,30 @@ fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
 
         case (ast.expr_name(_,_,_)) {
             auto sub = trans_lval(cx, e);
-            ret res(sub.bcx, cx.build.Load(sub.val));
+            if (sub._1) {
+                ret res(sub._0.bcx, cx.build.Load(sub._0.val));
+            } else {
+                ret sub._0;
+            }
         }
 
         case (ast.expr_assign(?dst, ?src, _)) {
             auto lhs_res = trans_lval(cx, *dst);
-            auto rhs_res = trans_expr(lhs_res.bcx, *src);
+            check (lhs_res._1);
+            auto rhs_res = trans_expr(lhs_res._0.bcx, *src);
             ret res(rhs_res.bcx,
-                    cx.build.Store(rhs_res.val, lhs_res.val));
+                    cx.build.Store(rhs_res.val, lhs_res._0.val));
         }
 
         case (ast.expr_call(?f, ?args, _)) {
             auto f_res = trans_lval(cx, *f);
-            auto args_res = trans_exprs(f_res.bcx, args);
+            check (! f_res._1);
+            auto args_res = trans_exprs(f_res._0.bcx, args);
             auto llargs = vec(cx.fcx.lloutptr,
                               cx.fcx.lltaskptr);
             llargs += args_res._1;
             ret res(args_res._0,
-                    cx.build.Call(f_res.val, llargs));
+                    cx.build.Call(f_res._0.val, llargs));
         }
 
     }
@@ -923,31 +938,46 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
 
 fn new_fn_ctxt(@trans_ctxt cx,
                str name,
-               ast.def_id fid,
-               TypeRef T_out,
-               vec[TypeRef] T_explicit_args) -> @fn_ctxt {
-    let vec[TypeRef] args = vec(T_ptr(T_out), // outptr.
+               &ast._fn f,
+               ast.def_id fid) -> @fn_ctxt {
+
+    let vec[TypeRef] args = vec(T_ptr(type_of(cx, f.output)), // outptr.
                                 T_taskptr()   // taskptr
                                 );
+    let uint arg_n = _vec.len[TypeRef](args);
+
+    let vec[TypeRef] T_explicit_args = vec();
+    for (ast.arg arg in f.inputs) {
+        T_explicit_args += type_of(cx, arg.ty);
+    }
     args += T_explicit_args;
+
     let ValueRef llfn = decl_cdecl_fn(cx.llmod, name, args, T_void());
     cx.fn_names.insert(cx.path, llfn);
     cx.fn_ids.insert(fid, llfn);
+
     let ValueRef lloutptr = llvm.LLVMGetParam(llfn, 0u);
     let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 1u);
+
     let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
+    let hashmap[ast.def_id, ValueRef] llargs = new_def_hash[ValueRef]();
+
+    for (ast.arg arg in f.inputs) {
+        llargs.insert(arg.id, llvm.LLVMGetParam(llfn, arg_n));
+        arg_n += 1u;
+    }
+
     ret @rec(llfn=llfn,
              lloutptr=lloutptr,
              lltaskptr=lltaskptr,
+             llargs=llargs,
              lllocals=lllocals,
              tcx=cx);
 }
 
 fn trans_fn(@trans_ctxt cx, &ast._fn f, ast.def_id fid) {
-    let TypeRef out = T_int();
-    let vec[TypeRef] args = vec();
 
-    auto fcx = new_fn_ctxt(cx, cx.path, fid, out, args);
+    auto fcx = new_fn_ctxt(cx, cx.path, f, fid);
 
     trans_block(new_top_block_ctxt(fcx), f.body);
 }
@@ -986,6 +1016,7 @@ fn trans_exit_task_glue(@trans_ctxt cx) {
     auto fcx = @rec(llfn=llfn,
                     lloutptr=lloutptr,
                     lltaskptr=lltaskptr,
+                    llargs=new_def_hash[ValueRef](),
                     lllocals=new_def_hash[ValueRef](),
                     tcx=cx);
 
