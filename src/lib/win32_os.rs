@@ -38,6 +38,10 @@ fn exec_suffix() -> str {
     ret ".exe";
 }
 
+fn target_os() -> str {
+    ret "win32";
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
