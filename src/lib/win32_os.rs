@@ -29,6 +29,15 @@ mod libc_constants {
     fn S_IWUSR() -> uint { ret 0x0080u; } // really _S_IWRITE in win32
 }
 
+
+fn path_sep() -> str {
+    ret "\\";
+}
+
+fn exec_suffix() -> str {
+    ret ".exe";
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

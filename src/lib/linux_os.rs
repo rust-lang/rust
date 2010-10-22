@@ -39,6 +39,14 @@ mod libc_constants {
     fn S_IWUSR() -> uint { ret 0x0080u; }
 }
 
+fn path_sep() -> str {
+    ret "/";
+}
+
+fn exec_suffix() -> str {
+    ret "";
+}
+
 
 // Local Variables:
 // mode: rust;
