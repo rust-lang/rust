@@ -324,7 +324,6 @@ fn C_struct(vec[ValueRef] elts) -> ValueRef {
 fn decl_cdecl_fn(ModuleRef llmod, str name,
                  vec[TypeRef] inputs, TypeRef output) -> ValueRef {
     let TypeRef llty = T_fn(inputs, output);
-    log "declaring " + name + " with type " + ty_str(llty);
     let ValueRef llfn =
         llvm.LLVMAddFunction(llmod, _str.buf(name), llty);
     llvm.LLVMSetFunctionCallConv(llfn, lib.llvm.LLVMCCallConv);
@@ -372,13 +371,6 @@ fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> result {
     for (ValueRef a in args) {
         call_args += cx.build.ZExtOrBitCast(a, T_int());
     }
-    /*
-     log "emitting indirect-upcall via " + abi.upcall_glue_name(n);
-     for (ValueRef v in call_args) {
-       log "arg: " + val_str(v);
-     }
-     log "emitting call to llglue of type: " + val_str(llglue);
-    */
 
     ret res(cx, cx.build.Call(llglue, call_args));
 }
@@ -815,7 +807,6 @@ fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
                 case (ast.decl_local(?local)) {
                     alt (local.init) {
                         case (some[@ast.expr](?e)) {
-                            log "storing init of local " + local.ident;
                             auto llptr = cx.fcx.lllocals.get(local.id);
                             sub = trans_expr(cx, *e);
                             sub.val = sub.bcx.build.Store(sub.val, llptr);
@@ -912,7 +903,6 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
     auto bcx = cx;
 
     for each (@ast.local local in block_locals(b)) {
-        log "declaring local " + local.ident;
         auto ty = T_nil();
         alt (local.ty) {
             case (some[@ast.ty](?t)) {
@@ -923,7 +913,6 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
             }
         }
         auto val = bcx.build.Alloca(ty);
-        log "built alloca: " + val_str(val);
         cx.fcx.lllocals.insert(local.id, val);
     }
 
