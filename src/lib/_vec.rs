@@ -85,17 +85,40 @@ fn print_debug_info[T](vec[T] v) {
 }
 
 // Returns elements from [start..end) from v.
-fn slice[T](vec[T] v, int start, int end) -> vec[T] {
-    check (0 <= start);
+fn slice[T](vec[T] v, uint start, uint end) -> vec[T] {
     check (start <= end);
-    check (end <= (len[T](v) as int));
-    auto result = alloc[T]((end - start) as uint);
-    let int i = start;
+    check (end <= len[T](v));
+    auto result = alloc[T](end - start);
+    let uint i = start;
     while (i < end) {
         result += vec(v.(i));
-        i += 1;
+        i += 1u;
     }
     ret result;
+}
+
+fn shift[T](vec[T] v) -> vec[T] {
+    check(len[T](v) > 0u);
+    ret slice[T](v, 1u, len[T](v));
+}
+
+fn pop[T](vec[T] v) -> vec[T] {
+    check(len[T](v) > 0u);
+    ret slice[T](v, 0u, len[T](v) - 1u);
+}
+
+fn push[T](vec[T] v, &T t) -> vec[T] {
+    v += t;
+    ret v;
+}
+
+fn unshift[T](vec[T] v, &T t) -> vec[T] {
+    auto res = alloc[T](len[T](v) + 1u);
+    res += t;
+    for (T t_ in v) {
+        res += t_;
+    }
+    ret res;
 }
 
 fn grow[T](&mutable vec[T] v, int n, &T initval) {
