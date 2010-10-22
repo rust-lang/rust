@@ -653,11 +653,11 @@ endif
 
 TEST_RPASS_EXTRAS := $(wildcard test/run-pass/*/*.rs)
 TEST_RPASS_EXES_X86 := \
-                      $(TEST_RPASS_CRATES_X86:.rc=.x86$(CFG_EXE_SUFFIX)) \
-                      $(TEST_RPASS_SOURCES_X86:.rs=.x86$(CFG_EXE_SUFFIX))
+              $(TEST_RPASS_CRATES_X86:.rc=-boot.x86$(CFG_EXE_SUFFIX)) \
+              $(TEST_RPASS_SOURCES_X86:.rs=-boot.x86$(CFG_EXE_SUFFIX))
 TEST_RPASS_EXES_LLVM := \
-                      $(TEST_RPASS_CRATES_LLVM:.rc=.llvm$(CFG_EXE_SUFFIX)) \
-                      $(TEST_RPASS_SOURCES_LLVM:.rs=.llvm$(CFG_EXE_SUFFIX))
+              $(TEST_RPASS_CRATES_LLVM:.rc=-boot.llvm$(CFG_EXE_SUFFIX)) \
+              $(TEST_RPASS_SOURCES_LLVM:.rs=-boot.llvm$(CFG_EXE_SUFFIX))
 TEST_RPASS_OUTS_X86  := \
                     $(TEST_RPASS_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86.out)
 TEST_RPASS_OUTS_LLVM := \
@@ -674,11 +674,11 @@ TEST_RFAIL_SOURCES_X86 := $(filter-out $(TEST_XFAILS_X86), $(RFAIL_RS))
 TEST_RFAIL_SOURCES_LLVM := $(filter-out $(TEST_XFAILS_LLVM), $(RFAIL_RS))
 TEST_RFAIL_EXTRAS := $(wildcard test/run-fail/*/*.rs)
 TEST_RFAIL_EXES_X86 := \
-                      $(TEST_RFAIL_CRATES_X86:.rc=.x86$(CFG_EXE_SUFFIX)) \
-                      $(TEST_RFAIL_SOURCES_X86:.rs=.x86$(CFG_EXE_SUFFIX))
+              $(TEST_RFAIL_CRATES_X86:.rc=-boot.x86$(CFG_EXE_SUFFIX)) \
+              $(TEST_RFAIL_SOURCES_X86:.rs=-boot.x86$(CFG_EXE_SUFFIX))
 TEST_RFAIL_EXES_LLVM := \
-                      $(TEST_RFAIL_CRATES_LLVM:.rc=.llvm$(CFG_EXE_SUFFIX)) \
-                      $(TEST_RFAIL_SOURCES_LLVM:.rs=.llvm$(CFG_EXE_SUFFIX))
+              $(TEST_RFAIL_CRATES_LLVM:.rc=-boot.llvm$(CFG_EXE_SUFFIX)) \
+              $(TEST_RFAIL_SOURCES_LLVM:.rs=-boot.llvm$(CFG_EXE_SUFFIX))
 TEST_RFAIL_OUTS_X86  := \
                     $(TEST_RFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86.out)
 TEST_RFAIL_OUTS_LLVM := \
@@ -695,11 +695,11 @@ TEST_CFAIL_SOURCES_X86 := $(filter-out $(TEST_XFAILS_X86), $(CFAIL_RS))
 TEST_CFAIL_SOURCES_LLVM := $(filter-out $(TEST_XFAILS_LLVM), $(CFAIL_RS))
 TEST_CFAIL_EXTRAS := $(wildcard test/compile-fail/*/*.rs)
 TEST_CFAIL_EXES_X86 := \
-                  $(TEST_CFAIL_CRATES_X86:.rc=.x86$(CFG_EXE_SUFFIX)) \
-                  $(TEST_CFAIL_SOURCES_X86:.rs=.x86$(CFG_EXE_SUFFIX))
+              $(TEST_CFAIL_CRATES_X86:.rc=-boot.x86$(CFG_EXE_SUFFIX)) \
+              $(TEST_CFAIL_SOURCES_X86:.rs=-boot.x86$(CFG_EXE_SUFFIX))
 TEST_CFAIL_EXES_LLVM := \
-                  $(TEST_CFAIL_CRATES_LLVM:.rc=.llvm$(CFG_EXE_SUFFIX)) \
-                  $(TEST_CFAIL_SOURCES_LLVM:.rs=.llvm$(CFG_EXE_SUFFIX))
+              $(TEST_CFAIL_CRATES_LLVM:.rc=-boot.llvm$(CFG_EXE_SUFFIX)) \
+              $(TEST_CFAIL_SOURCES_LLVM:.rs=-boot.llvm$(CFG_EXE_SUFFIX))
 TEST_CFAIL_OUTS_X86 := \
                 $(TEST_CFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86.out)
 TEST_CFAIL_OUTS_LLVM := \
@@ -777,26 +777,27 @@ test/run-fail/%.out.tmp: test/run-fail/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
       "`awk -F: '/error-pattern/ { print $$2 }' \
         $(basename $(basename $(basename $@))).rs | tr -d '\n\r'`" $@
 
-test/compile-fail/%.x86.out.tmp: test/compile-fail/%.rs $(REQ)
-	@$(call CFG_ECHO, compile [x86]: $<)
+test/compile-fail/%-boot.x86.out.tmp: test/compile-fail/%.rs $(REQ)
+	@$(call CFG_ECHO, compile [boot x86]: $<)
 	$(CFG_QUIET)rm -f $@
 	$(BOOT) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1 || true
 	$(CFG_QUIET)grep --text --quiet \
       "`awk -F: '/error-pattern/ { print $$2 }' $< | tr -d '\n\r'`" $@
 
-test/compile-fail/%.llvm.out.tmp: test/compile-fail/%.rs $(REQ)
-	@$(call CFG_ECHO, compile [llvm]: $<)
+test/compile-fail/%-boot.llvm.out.tmp: test/compile-fail/%.rs $(REQ)
+	@$(call CFG_ECHO, compile [boot llvm]: $<)
 	$(CFG_QUIET)rm -f $@
 	$(BOOT) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1 || true
 	$(CFG_QUIET)grep --text --quiet \
       "`awk -F: '/error-pattern/ { print $$2 }' $< | tr -d '\n\r'`" $@
 
-test/run-pass/%.x86$(CFG_EXE_SUFFIX): test/run-pass/%.rc $(REQ)
-	@$(call CFG_ECHO, compile [x86]: $<)
+test/run-pass/%-boot.x86$(CFG_EXE_SUFFIX): test/run-pass/%.rc $(REQ)
+	@$(call CFG_ECHO, compile [boot x86]: $<)
 	$(BOOT) -o $@ $<
 
-test/bench/shootout/%.x86$(CFG_EXE_SUFFIX): test/bench/shootout/%.rs $(REQ)
-	@$(call CFG_ECHO, compile [x86]: $<)
+test/bench/shootout/%-boot.x86$(CFG_EXE_SUFFIX): \
+  test/bench/shootout/%.rs $(REQ)
+	@$(call CFG_ECHO, compile [boot x86]: $<)
 	$(BOOT) -o $@ $<
 
 %.ll: %.bc
@@ -820,24 +821,24 @@ test/bench/shootout/%.x86$(CFG_EXE_SUFFIX): test/bench/shootout/%.rs $(REQ)
 	@# programs, I\'ll live with the noise.
 	-$(CFG_QUIET)$(DSYMUTIL) $@
 
-test/run-pass/%.bc: test/run-pass/%.rc $(REQ)
-	@$(call CFG_ECHO, compile [llvm]: $<)
+test/run-pass/%-boot.bc: test/run-pass/%.rc $(REQ)
+	@$(call CFG_ECHO, compile [boot llvm]: $<)
 	$(BOOT) -o $@ -llvm $<
 
-test/run-pass/%.x86$(CFG_EXE_SUFFIX): test/run-pass/%.rs $(REQ)
-	@$(call CFG_ECHO, compile [x86]: $<)
+test/run-pass/%-boot.x86$(CFG_EXE_SUFFIX): test/run-pass/%.rs $(REQ)
+	@$(call CFG_ECHO, compile [boot x86]: $<)
 	$(BOOT) -o $@ $<
 
-test/run-pass/%.bc: test/run-pass/%.rs $(REQ)
-	@$(call CFG_ECHO, compile [llvm]: $<)
+test/run-pass/%-boot.bc: test/run-pass/%.rs $(REQ)
+	@$(call CFG_ECHO, compile [boot llvm]: $<)
 	$(BOOT) -o $@ -llvm $<
 
-test/run-fail/%.x86$(CFG_EXE_SUFFIX): test/run-fail/%.rs $(REQ)
-	@$(call CFG_ECHO, compile [x86]: $<)
+test/run-fail/%-boot.x86$(CFG_EXE_SUFFIX): test/run-fail/%.rs $(REQ)
+	@$(call CFG_ECHO, compile [boot x86]: $<)
 	$(BOOT) -o $@ $<
 
-test/run-fail/%.bc: test/run-fail/%.rs $(REQ)
-	@$(call CFG_ECHO, compile [llvm]: $<)
+test/run-fail/%-boot.bc: test/run-fail/%.rs $(REQ)
+	@$(call CFG_ECHO, compile [boot llvm]: $<)
 	$(BOOT) -o $@ -llvm $<
 
 
@@ -986,7 +987,9 @@ clean:
 	$(CFG_QUIET)rm -rf $(TEST_RFAIL_EXES_LLVM:.llvm=.llvm.dSYM)
 	$(CFG_QUIET)rm -Rf $(PKG_NAME)-*.tar.gz dist
 	$(CFG_QUIET)rm -f $(foreach ext,cmx cmi cmo cma o a d exe,\
-                        $(wildcard boot/*/*.$(ext) boot/*/*/*.$(ext)))
+                        $(wildcard boot/*/*.$(ext) boot/*/*/*.$(ext))) \
+	$(CFG_QUIET)rm -f $(foreach ext,out llvm x86 o s exe,\
+                        $(wildcard test/*/*.$(ext))) \
 
 
 # Local Variables:
