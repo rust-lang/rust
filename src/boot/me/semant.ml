@@ -1043,6 +1043,7 @@ let rec pretty_ty_str (cx:ctxt) (fallback:(Ast.ty -> string)) (ty:Ast.ty) =
 ;;
 
 let rec rebuild_ty_under_params
+    ?node_id:id_opt
     (cx:ctxt)
     (src_tag:Ast.ty_tag option)
     (ty:Ast.ty)
@@ -1052,7 +1053,7 @@ let rec rebuild_ty_under_params
     : Ast.ty =
   if (Array.length params) <> (Array.length args)
   then
-    err None
+    err id_opt
       "mismatched type-params: %s has %d param(s) but %d given"
       (pretty_ty_str cx (Ast.sprintf_ty ()) ty)
       (Array.length params)
