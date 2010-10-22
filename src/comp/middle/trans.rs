@@ -43,7 +43,8 @@ type glue_fns = rec(ValueRef activate_glue,
 state type trans_ctxt = rec(session.session sess,
                             ModuleRef llmod,
                             hashmap[str,ValueRef] upcalls,
-                            hashmap[str,ValueRef] fns,
+                            hashmap[str,ValueRef] fn_names,
+                            hashmap[ast.def_id,ValueRef] fn_ids,
                             @glue_fns glues,
                             namegen names,
                             str path);
@@ -667,6 +668,9 @@ fn trans_lval(@block_ctxt cx, &ast.expr e) -> result {
                         case (ast.def_local(?did)) {
                             ret res(cx, cx.fcx.lllocals.get(did));
                         }
+                        case (ast.def_fn(?did)) {
+                            ret res(cx, cx.fcx.tcx.fn_ids.get(did));
+                        }
                         case (_) {
                             cx.fcx.tcx.sess.unimpl("def variant in trans");
                         }
@@ -680,6 +684,20 @@ fn trans_lval(@block_ctxt cx, &ast.expr e) -> result {
     }
     cx.fcx.tcx.sess.unimpl("expr variant in trans_lval");
     fail;
+}
+
+fn trans_exprs(@block_ctxt cx, &vec[@ast.expr] es)
+    -> tup(@block_ctxt, vec[ValueRef]) {
+    let vec[ValueRef] vs = vec();
+    let @block_ctxt bcx = cx;
+
+    for (@ast.expr e in es) {
+        auto res = trans_expr(bcx, *e);
+        vs += res.val;
+        bcx = res.bcx;
+    }
+
+    ret tup(bcx, vs);
 }
 
 fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
@@ -721,6 +739,16 @@ fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
             auto rhs_res = trans_expr(lhs_res.bcx, *src);
             ret res(rhs_res.bcx,
                     cx.build.Store(rhs_res.val, lhs_res.val));
+        }
+
+        case (ast.expr_call(?f, ?args, _)) {
+            auto f_res = trans_lval(cx, *f);
+            auto args_res = trans_exprs(f_res.bcx, args);
+            auto llargs = vec(cx.fcx.lloutptr,
+                              cx.fcx.lltaskptr);
+            llargs += args_res._1;
+            ret res(args_res._0,
+                    cx.build.Call(f_res.val, llargs));
         }
 
     }
@@ -895,6 +923,7 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
 
 fn new_fn_ctxt(@trans_ctxt cx,
                str name,
+               ast.def_id fid,
                TypeRef T_out,
                vec[TypeRef] T_explicit_args) -> @fn_ctxt {
     let vec[TypeRef] args = vec(T_ptr(T_out), // outptr.
@@ -902,7 +931,8 @@ fn new_fn_ctxt(@trans_ctxt cx,
                                 );
     args += T_explicit_args;
     let ValueRef llfn = decl_cdecl_fn(cx.llmod, name, args, T_void());
-    cx.fns.insert(cx.path, llfn);
+    cx.fn_names.insert(cx.path, llfn);
+    cx.fn_ids.insert(fid, llfn);
     let ValueRef lloutptr = llvm.LLVMGetParam(llfn, 0u);
     let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 1u);
     let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
@@ -913,20 +943,20 @@ fn new_fn_ctxt(@trans_ctxt cx,
              tcx=cx);
 }
 
-fn trans_fn(@trans_ctxt cx, &ast._fn f) {
+fn trans_fn(@trans_ctxt cx, &ast._fn f, ast.def_id fid) {
     let TypeRef out = T_int();
     let vec[TypeRef] args = vec();
 
-    auto fcx = new_fn_ctxt(cx, cx.path, out, args);
+    auto fcx = new_fn_ctxt(cx, cx.path, fid, out, args);
 
     trans_block(new_top_block_ctxt(fcx), f.body);
 }
 
 fn trans_item(@trans_ctxt cx, &ast.item item) {
     alt (item.node) {
-        case (ast.item_fn(?name, ?f, _)) {
+        case (ast.item_fn(?name, ?f, ?fid)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
-            trans_fn(sub_cx, f);
+            trans_fn(sub_cx, f, fid);
         }
         case (ast.item_mod(?name, ?m, _)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
@@ -1014,7 +1044,7 @@ fn trans_main_fn(@trans_ctxt cx, ValueRef llcrate) {
 
     auto llargc = llvm.LLVMGetParam(llmain, 0u);
     auto llargv = llvm.LLVMGetParam(llmain, 1u);
-    auto llrust_main = cx.fns.get("_rust.main");
+    auto llrust_main = cx.fn_names.get("_rust.main");
 
     //
     // Emit the moral equivalent of:
@@ -1067,7 +1097,8 @@ fn trans_crate(session.session sess, @ast.crate crate) {
     auto cx = @rec(sess = sess,
                    llmod = llmod,
                    upcalls = new_str_hash[ValueRef](),
-                   fns = new_str_hash[ValueRef](),
+                   fn_names = new_str_hash[ValueRef](),
+                   fn_ids = new_def_hash[ValueRef](),
                    glues = glues,
                    names = namegen(0),
                    path = "_rust");
