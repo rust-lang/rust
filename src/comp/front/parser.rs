@@ -690,6 +690,22 @@ io fn parse_stmt(parser p) -> @ast.stmt {
             ret @spanned(lo, hi, ast.stmt_log(e));
         }
 
+        case (token.CHECK) {
+            p.bump();
+            alt (p.peek()) {
+                case (token.LPAREN) {
+                    auto e = parse_expr(p);
+                    auto hi = p.get_span();
+                    expect(p, token.SEMI);
+                    ret @spanned(lo, hi, ast.stmt_check_expr(e));
+                }
+                case (_) {
+                    p.get_session().unimpl("constraint-check stmt");
+                }
+            }
+        }
+
+
         case (token.LET) {
             auto decl = parse_let(p);
             auto hi = p.get_span();

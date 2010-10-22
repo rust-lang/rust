@@ -23,7 +23,7 @@ type env = rec(list[scope] scopes,
 
 fn lookup_name(&env e, ast.ident i) -> option[def] {
 
-    log "resolving name " + i;
+    // log "resolving name " + i;
 
     fn found_def_item(@ast.item i) -> option[def] {
         alt (i.node) {
@@ -108,7 +108,7 @@ fn fold_expr_name(&env e, &span sp, &ast.name n,
 
     alt (d_) {
         case (some[def](_)) {
-            log "resolved name " + n.node.ident;
+            // log "resolved name " + n.node.ident;
         }
         case (none[def]) {
             e.sess.err("unresolved name: " + n.node.ident);

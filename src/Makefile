@@ -498,8 +498,14 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
 
 TEST_XFAILS_SELF := $(filter-out \
                       $(addprefix test/run-pass/, \
+                        bool-not.rs \
+                        char.rs \
+                        div-mod.rs \
                         hello.rs \
-                        int.rs), \
+                        int.rs \
+                        item-name-overload.rs \
+                        multiline-comment.rs \
+                        ), \
                       $(wildcard test/*/*.rs test/*/*.rc))
 
 

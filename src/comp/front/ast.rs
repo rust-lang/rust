@@ -67,6 +67,7 @@ tag stmt_ {
     stmt_decl(@decl);
     stmt_ret(option[@expr]);
     stmt_log(@expr);
+    stmt_check_expr(@expr);
     stmt_expr(@expr);
 }
 

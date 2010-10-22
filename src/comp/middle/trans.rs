@@ -791,11 +791,35 @@ fn trans_log(@block_ctxt cx, &ast.expr e) -> result {
     }
 }
 
+fn trans_check_expr(@block_ctxt cx, &ast.expr e) -> result {
+    auto cond_res = trans_expr(cx, e);
+
+    // FIXME: need pretty-printer.
+    auto V_expr_str = p2i(C_str(cx.fcx.tcx, "<expr>"));
+    auto V_filename = p2i(C_str(cx.fcx.tcx, e.span.filename));
+    auto V_line = e.span.lo.line as int;
+    auto args = vec(V_expr_str, V_filename, C_int(V_line));
+
+    auto fail_cx = new_empty_block_ctxt(cx.fcx);
+    auto fail_res = trans_upcall(fail_cx, "upcall_fail", args);
+
+    auto next_cx = new_extension_block_ctxt(cx);
+    fail_res.bcx.build.Br(next_cx.llbb);
+    cond_res.bcx.build.CondBr(cond_res.val,
+                              next_cx.llbb,
+                              fail_cx.llbb);
+    ret res(next_cx, C_nil());
+}
+
 fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
     auto sub = res(cx, C_nil());
     alt (s.node) {
         case (ast.stmt_log(?a)) {
             sub.bcx = trans_log(cx, *a).bcx;
+        }
+
+        case (ast.stmt_check_expr(?a)) {
+            sub.bcx = trans_check_expr(cx, *a).bcx;
         }
 
         case (ast.stmt_expr(?e)) {
