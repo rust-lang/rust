@@ -1095,7 +1095,7 @@ fn trans_main_fn(@trans_ctxt cx, ValueRef llcrate) {
 
 }
 
-fn trans_crate(session.session sess, @ast.crate crate) {
+fn trans_crate(session.session sess, @ast.crate crate, str output) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
@@ -1138,7 +1138,7 @@ fn trans_crate(session.session sess, @ast.crate crate) {
     trans_exit_task_glue(cx);
     trans_main_fn(cx, crate_constant(cx));
 
-    llvm.LLVMWriteBitcodeToFile(llmod, _str.buf("rust_out.bc"));
+    llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(output));
     llvm.LLVMDisposeModule(llmod);
 }
 
