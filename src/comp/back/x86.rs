@@ -131,7 +131,7 @@ fn get_module_asm() -> str {
     auto align = 4;
 
     auto prefix = "";
-    if (target_os() == "macos") {
+    if (_str.eq(target_os(), "macos")) {
         prefix = "_";
     }
 
