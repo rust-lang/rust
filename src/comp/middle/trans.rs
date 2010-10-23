@@ -45,6 +45,7 @@ state type trans_ctxt = rec(session.session sess,
                             hashmap[str, ValueRef] upcalls,
                             hashmap[str, ValueRef] fn_names,
                             hashmap[ast.def_id, ValueRef] fn_ids,
+                            hashmap[ast.def_id, @ast.item] items,
                             @glue_fns glues,
                             namegen names,
                             str path);
@@ -974,20 +975,8 @@ fn new_fn_ctxt(@trans_ctxt cx,
                &ast._fn f,
                ast.def_id fid) -> @fn_ctxt {
 
-    let vec[TypeRef] args = vec(T_ptr(type_of(cx, f.output)), // outptr.
-                                T_taskptr()   // taskptr
-                                );
-    let uint arg_n = _vec.len[TypeRef](args);
-
-    let vec[TypeRef] T_explicit_args = vec();
-    for (ast.arg arg in f.inputs) {
-        T_explicit_args += type_of(cx, arg.ty);
-    }
-    args += T_explicit_args;
-
-    let ValueRef llfn = decl_cdecl_fn(cx.llmod, name, args, T_void());
+    let ValueRef llfn = cx.fn_ids.get(fid);
     cx.fn_names.insert(cx.path, llfn);
-    cx.fn_ids.insert(fid, llfn);
 
     let ValueRef lloutptr = llvm.LLVMGetParam(llfn, 0u);
     let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 1u);
@@ -995,6 +984,7 @@ fn new_fn_ctxt(@trans_ctxt cx,
     let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] llargs = new_def_hash[ValueRef]();
 
+    let uint arg_n = 2u;
     for (ast.arg arg in f.inputs) {
         llargs.insert(arg.id, llvm.LLVMGetParam(llfn, arg_n));
         arg_n += 1u;
@@ -1034,6 +1024,42 @@ fn trans_mod(@trans_ctxt cx, &ast._mod m) {
     }
 }
 
+
+fn collect_item(&@trans_ctxt cx, @ast.item i) -> @trans_ctxt {
+    alt (i.node) {
+        case (ast.item_fn(?name, ?f, ?fid)) {
+            cx.items.insert(fid, i);
+            let vec[TypeRef] args = vec(T_ptr(type_of(cx, f.output)), // outptr.
+                                        T_taskptr()   // taskptr
+                                        );
+            let vec[TypeRef] T_explicit_args = vec();
+            for (ast.arg arg in f.inputs) {
+                T_explicit_args += type_of(cx, arg.ty);
+            }
+            args += T_explicit_args;
+
+            let str s = cx.names.next("_rust_fn") + "." + name;
+            let ValueRef llfn = decl_cdecl_fn(cx.llmod, s, args, T_void());
+            cx.fn_ids.insert(fid, llfn);
+        }
+
+        case (ast.item_mod(?name, ?m, ?mid)) {
+            cx.items.insert(mid, i);
+        }
+    }
+    ret cx;
+}
+
+
+fn collect_items(@trans_ctxt cx, @ast.crate crate) {
+
+    let fold.ast_fold[@trans_ctxt] fld = fold.new_identity_fold[@trans_ctxt]();
+
+    fld = @rec( update_env_for_item = bind collect_item(_,_)
+                with *fld );
+
+    fold.fold_crate[@trans_ctxt](cx, fld, crate);
+}
 
 fn p2i(ValueRef v) -> ValueRef {
     ret llvm.LLVMConstPtrToInt(v, T_int());
@@ -1163,10 +1189,12 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
                    upcalls = new_str_hash[ValueRef](),
                    fn_names = new_str_hash[ValueRef](),
                    fn_ids = new_def_hash[ValueRef](),
+                   items = new_def_hash[@ast.item](),
                    glues = glues,
                    names = namegen(0),
                    path = "_rust");
 
+    collect_items(cx, crate);
     trans_mod(cx, crate.node.module);
     trans_exit_task_glue(cx);
     trans_main_fn(cx, crate_constant(cx));
