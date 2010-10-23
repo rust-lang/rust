@@ -705,6 +705,22 @@ io fn parse_stmt(parser p) -> @ast.stmt {
             }
         }
 
+        case (token.RET) {
+            p.bump();
+            alt (p.peek()) {
+                case (token.SEMI) {
+                    p.bump();
+                    ret @spanned(lo, p.get_span(),
+                                 ast.stmt_ret(none[@ast.expr]));
+                }
+                case (_) {
+                    auto e = parse_expr(p);
+                    expect(p, token.SEMI);
+                    ret @spanned(lo, e.span,
+                                 ast.stmt_ret(some[@ast.expr](e)));
+                }
+            }
+        }
 
         case (token.LET) {
             auto decl = parse_let(p);

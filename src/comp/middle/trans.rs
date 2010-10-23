@@ -811,6 +811,22 @@ fn trans_check_expr(@block_ctxt cx, &ast.expr e) -> result {
     ret res(next_cx, C_nil());
 }
 
+fn trans_ret(@block_ctxt cx, &option[@ast.expr] e) -> result {
+    auto r = res(cx, C_nil());
+    alt (e) {
+        case (some[@ast.expr](?x)) {
+            r = trans_expr(cx, *x);
+            r.bcx.build.Store(r.val, cx.fcx.lloutptr);
+        }
+    }
+    // FIXME: if we actually ret here, the block structure falls apart;
+    // need to do something more-clever with terminators and block cleanup.
+    // Mean time 'ret' means 'copy result to output slot and keep going'.
+
+    // r.val = r.bcx.build.RetVoid();
+    ret r;
+}
+
 fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
     auto sub = res(cx, C_nil());
     alt (s.node) {
@@ -820,6 +836,10 @@ fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
 
         case (ast.stmt_check_expr(?a)) {
             sub.bcx = trans_check_expr(cx, *a).bcx;
+        }
+
+        case (ast.stmt_ret(?e)) {
+            sub.bcx = trans_ret(cx, e).bcx;
         }
 
         case (ast.stmt_expr(?e)) {
