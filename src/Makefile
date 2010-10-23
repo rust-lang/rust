@@ -500,7 +500,6 @@ TEST_XFAILS_SELF := $(filter-out \
                       $(addprefix test/run-pass/, \
                         bool-not.rs \
                         char.rs \
-                        div-mod.rs \
                         hello.rs \
                         int.rs \
                         item-name-overload.rs \
@@ -704,7 +703,8 @@ test/run-pass/%.out.tmp: test/run-pass/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
 	@$(call CFG_ECHO, run: $<)
 	$(CFG_QUIET)$(call CFG_RUN_TARG, $<) > $@
 
-test/run-fail/%-boot.out.tmp: test/run-fail/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
+test/run-fail/%-boot.x86.out.tmp: test/run-fail/%-boot.x86$(CFG_EXE_SUFFIX) \
+                                  $(CFG_RUNTIME)
 	$(CFG_QUIET)rm -f $<.tmp
 	@$(call CFG_ECHO, run: $<)
 	$(CFG_QUIET)rm -f $@
@@ -712,7 +712,7 @@ test/run-fail/%-boot.out.tmp: test/run-fail/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
       if [ $$X -eq 0 ] ; then exit 1 ; else exit 0 ; fi
 	$(CFG_QUIET)grep --text --quiet \
       "`awk -F: '/error-pattern/ { print $$2 }' \
-        $(basename $(basename $(basename $@ -boot.out.tmp))).rs \
+        $(subst -boot.x86.out.tmp,.rs,$@) \
         | tr -d '\n\r'`" $@
 
 test/compile-fail/%-boot.x86.out.tmp: test/compile-fail/%.rs $(BREQ)
