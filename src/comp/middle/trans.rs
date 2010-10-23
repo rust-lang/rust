@@ -657,21 +657,24 @@ fn trans_if(@block_ctxt cx, &ast.expr cond,
 // (that is represented as an alloca, hence needs a 'load' to be
 // used as an rval).
 
-fn trans_lval(@block_ctxt cx, &ast.expr e) -> tup(result, bool) {
+fn trans_lval(@block_ctxt cx, &ast.expr e)
+    -> tup(result, bool, ast.def_id) {
     alt (e.node) {
         case (ast.expr_name(?n, ?dopt, _)) {
             alt (dopt) {
                 case (some[ast.def](?def)) {
                     alt (def) {
                         case (ast.def_arg(?did)) {
-                            ret tup(res(cx, cx.fcx.llargs.get(did)), false);
+                            ret tup(res(cx, cx.fcx.llargs.get(did)),
+                                    false, did);
                         }
                         case (ast.def_local(?did)) {
-                            ret tup(res(cx, cx.fcx.lllocals.get(did)), true);
+                            ret tup(res(cx, cx.fcx.lllocals.get(did)),
+                                    true, did);
                         }
                         case (ast.def_fn(?did)) {
                             ret tup(res(cx, cx.fcx.tcx.fn_ids.get(did)),
-                                    false);
+                                    false, did);
                         }
                         case (_) {
                             cx.fcx.tcx.sess.unimpl("def variant in trans");
@@ -751,8 +754,18 @@ fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
         case (ast.expr_call(?f, ?args, _)) {
             auto f_res = trans_lval(cx, *f);
             check (! f_res._1);
+
+            // FIXME: Revolting hack to get the type of the outptr. Can get a
+            // variety of other ways; will wait until we have a typechecker
+            // perhaps to pick a more tasteful one.
+            auto outptr = cx.fcx.lloutptr;
+            alt (cx.fcx.tcx.items.get(f_res._2).node) {
+                case (ast.item_fn(_, ?ff, _)) {
+                    outptr = cx.build.Alloca(type_of(cx.fcx.tcx, ff.output));
+                }
+            }
             auto args_res = trans_exprs(f_res._0.bcx, args);
-            auto llargs = vec(cx.fcx.lloutptr,
+            auto llargs = vec(outptr,
                               cx.fcx.lltaskptr);
             llargs += args_res._1;
             ret res(args_res._0,
