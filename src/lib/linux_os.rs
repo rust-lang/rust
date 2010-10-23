@@ -47,6 +47,9 @@ fn exec_suffix() -> str {
     ret "";
 }
 
+fn target_os() -> str {
+    ret "linux";
+}
 
 // Local Variables:
 // mode: rust;

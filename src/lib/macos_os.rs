@@ -47,6 +47,10 @@ fn exec_suffix() -> str {
     ret "";
 }
 
+fn target_os() -> str {
+    ret "macos";
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

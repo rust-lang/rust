@@ -2,6 +2,7 @@ import lib.llvm.llvm;
 import lib.llvm.llvm.ModuleRef;
 import std._str;
 import std._vec;
+import std.os.target_os;
 import util.common.istr;
 
 const int wordsz = 4;
@@ -128,7 +129,11 @@ fn decl_upcall_glue(int align, str prefix, uint n) -> str {
 
 fn get_module_asm() -> str {
     auto align = 4;
+
     auto prefix = "";
+    if (target_os() == "macos") {
+        prefix = "_";
+    }
 
     auto glues =
         vec(decl_glue(align, prefix,
