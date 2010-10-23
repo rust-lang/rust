@@ -1042,8 +1042,9 @@ fn collect_item(&@trans_ctxt cx, @ast.item i) -> @trans_ctxt {
     alt (i.node) {
         case (ast.item_fn(?name, ?f, ?fid)) {
             cx.items.insert(fid, i);
-            let vec[TypeRef] args = vec(T_ptr(type_of(cx, f.output)), // outptr.
-                                        T_taskptr()   // taskptr
+            let vec[TypeRef] args =
+                vec(T_ptr(type_of(cx, f.output)), // outptr.
+                    T_taskptr()   // taskptr
                                         );
             let vec[TypeRef] T_explicit_args = vec();
             for (ast.arg arg in f.inputs) {
@@ -1066,7 +1067,8 @@ fn collect_item(&@trans_ctxt cx, @ast.item i) -> @trans_ctxt {
 
 fn collect_items(@trans_ctxt cx, @ast.crate crate) {
 
-    let fold.ast_fold[@trans_ctxt] fld = fold.new_identity_fold[@trans_ctxt]();
+    let fold.ast_fold[@trans_ctxt] fld =
+        fold.new_identity_fold[@trans_ctxt]();
 
     fld = @rec( update_env_for_item = bind collect_item(_,_)
                 with *fld );
