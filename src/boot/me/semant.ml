@@ -116,6 +116,7 @@ type ctxt =
       ctxt_all_lvals: (node_id,Ast.lval) Hashtbl.t;
       ctxt_call_lval_params: (node_id,Ast.ty array) Hashtbl.t;
       ctxt_user_type_names: (Ast.ty,Ast.name) Hashtbl.t;
+      ctxt_user_tag_names: (opaque_id,Ast.name) Hashtbl.t;
 
       (* A directed graph that encodes the containment relation among tags. *)
       ctxt_tag_containment: (opaque_id, tag_graph_node) Hashtbl.t;
@@ -229,6 +230,7 @@ let new_ctxt sess abi crate =
     ctxt_all_defns = Hashtbl.create 0;
     ctxt_call_lval_params = Hashtbl.create 0;
     ctxt_user_type_names = Hashtbl.create 0;
+    ctxt_user_tag_names = Hashtbl.create 0;
 
     ctxt_tag_containment = Hashtbl.create 0;
 
@@ -1005,40 +1007,10 @@ let rec pretty_ty_str (cx:ctxt) (fallback:(Ast.ty -> string)) (ty:Ast.ty) =
           let fn_args_str = String.concat ", " (Array.to_list fn_args) in
           let fn_rv_str = format_slot fnsig.Ast.sig_output_slot in
           Printf.sprintf "fn(%s) -> %s" fn_args_str fn_rv_str
-      | Ast.TY_tag { Ast.tag_id = tag_id; Ast.tag_args = args }
-              when Hashtbl.mem cx.ctxt_all_tag_info tag_id ->
-          let tag_info = Hashtbl.find cx.ctxt_all_tag_info tag_id in
-          let tag_idents = tag_info.tag_idents in
-          let item_id = ref None in
-          (* Ugly hack ahead... *)
-          begin
-            try
-              Hashtbl.iter
-                begin
-                  fun _ (_, item_id', _) ->
-                    item_id := Some item_id'; raise Exit
-                end
-                tag_idents
-            with Exit -> ();
-          end;
-          begin
-            match !item_id with
-                None -> fallback ty
-              | Some item_id ->
-                  let item_types = cx.ctxt_all_item_types in
-                  let ty = Hashtbl.find item_types item_id in
-                  let args_suffix =
-                    if Array.length args == 0 then ""
-                    else
-                      Printf.sprintf "[%s]"
-                        (String.concat ","
-                          (Array.to_list
-                            (Array.map
-                              (pretty_ty_str cx fallback)
-                              args)))
-                  in
-                  (pretty_ty_str cx fallback ty) ^ args_suffix
-          end
+      | Ast.TY_tag { Ast.tag_id = tag_id; Ast.tag_args = _ }
+              when Hashtbl.mem cx.ctxt_user_tag_names tag_id ->
+          let name = Hashtbl.find cx.ctxt_user_tag_names tag_id in
+          Ast.sprintf_name () name
 
       | _ -> fallback ty (* TODO: we can do better for objects *)
 ;;
