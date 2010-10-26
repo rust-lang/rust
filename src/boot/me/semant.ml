@@ -1005,7 +1005,8 @@ let rec pretty_ty_str (cx:ctxt) (fallback:(Ast.ty -> string)) (ty:Ast.ty) =
           let fn_args_str = String.concat ", " (Array.to_list fn_args) in
           let fn_rv_str = format_slot fnsig.Ast.sig_output_slot in
           Printf.sprintf "fn(%s) -> %s" fn_args_str fn_rv_str
-      | Ast.TY_tag { Ast.tag_id = tag_id; Ast.tag_args = args } ->
+      | Ast.TY_tag { Ast.tag_id = tag_id; Ast.tag_args = args }
+              when Hashtbl.mem cx.ctxt_all_tag_info tag_id ->
           let tag_info = Hashtbl.find cx.ctxt_all_tag_info tag_id in
           let tag_idents = tag_info.tag_idents in
           let item_id = ref None in
