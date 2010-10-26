@@ -178,10 +178,11 @@ let all_item_collecting_visitor
             note_header i.id f.Ast.fn_input_slots;
         | Ast.MOD_ITEM_obj ob ->
             note_header i.id ob.Ast.obj_state;
-        | Ast.MOD_ITEM_tag (hdr, oid, _) ->
-            note_header i.id hdr;
-            Hashtbl.replace cx.ctxt_user_tag_names oid
-              (path_to_name cx.ctxt_curr_path);
+        | Ast.MOD_ITEM_tag (hdr, _, _) ->
+            note_header i.id hdr
+        | Ast.MOD_ITEM_type (_, Ast.TY_tag ttag) ->
+            Hashtbl.replace cx.ctxt_user_tag_names ttag.Ast.tag_id
+              (path_to_name cx.ctxt_curr_path)
         | _ -> ()
     end;
       inner.Walk.visit_mod_item_pre n p i
