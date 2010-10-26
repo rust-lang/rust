@@ -261,6 +261,7 @@ let push_node r n =
 
 
 let rec lookup_type_by_name
+    ?loc:loc
     (cx:ctxt)
     (scopes:scope list)
     (recur:recur_info)
@@ -302,7 +303,7 @@ let rec lookup_type_by_name
             begin
               fun i t ->
                 let t =
-                  resolve_type cx scopes recur t
+                  resolve_type ?loc:loc cx scopes recur t
                 in
                   iflog cx (fun _ -> log cx
                               "lookup_type_by_name resolved arg %d to %a" i
@@ -325,9 +326,7 @@ let rec lookup_type_by_name
                   (Fmt.fmt_to_str Ast.fmt_app_args args);
             end;
           let ty =
-            rebuild_ty_under_params
-              ~node_id:(id_of_scope (List.hd scopes))
-              cx None ty params args true
+            rebuild_ty_under_params ?node_id:loc cx None ty params args true
           in
             iflog cx (fun _ -> log cx "--- lookup_type_by_name %a ==> %a"
                         Ast.sprintf_name name
@@ -335,6 +334,7 @@ let rec lookup_type_by_name
             (scopes', id, ty)
 
 and resolve_type
+    ?loc:loc
     (cx:ctxt)
     (scopes:(scope list))
     (recur:recur_info)
@@ -344,7 +344,7 @@ and resolve_type
   let base = ty_fold_rebuild (fun t -> t) in
   let ty_fold_named name =
     let (scopes, node, t) =
-      lookup_type_by_name cx scopes recur name
+      lookup_type_by_name ?loc:loc cx scopes recur name
     in
       iflog cx (fun _ ->
                   log cx "resolved type name '%a' to item %d with ty %a"
@@ -356,7 +356,7 @@ and resolve_type
         let recur = push_node recur node in
           iflog cx (fun _ -> log cx "recursively resolving type %a"
                       Ast.sprintf_ty t);
-          resolve_type cx scopes recur t
+          resolve_type ?loc:loc cx scopes recur t
   in
   let fold =
     { base with
@@ -379,7 +379,8 @@ let type_resolving_visitor
   let tinfos = Hashtbl.create 0 in
 
   let resolve_ty (t:Ast.ty) : Ast.ty =
-    resolve_type cx (!scopes) empty_recur_info t
+    resolve_type ~loc:(id_of_scope (List.hd (!scopes)))
+      cx (!scopes) empty_recur_info t
   in
 
   let resolve_slot (s:Ast.slot) : Ast.slot =
@@ -412,7 +413,7 @@ let type_resolving_visitor
     let resolve_and_store_type _ =
       let t = ty_of_mod_item item in
       let ty =
-        resolve_type cx (!scopes) empty_recur_info t
+        resolve_type ~loc:item.id cx (!scopes) empty_recur_info t
       in
         log cx "resolved item %s, type as %a" id Ast.sprintf_ty ty;
         htab_put cx.ctxt_all_item_types item.id ty;
@@ -422,7 +423,7 @@ let type_resolving_visitor
         match item.node.Ast.decl_item with
             Ast.MOD_ITEM_type (_, ty) ->
               let ty =
-                resolve_type cx (!scopes) empty_recur_info ty
+                resolve_type ~loc:item.id cx (!scopes) empty_recur_info ty
               in
                 log cx "resolved item %s, defining type %a"
                   id Ast.sprintf_ty ty;
@@ -468,7 +469,7 @@ let type_resolving_visitor
 
   let visit_obj_fn_pre obj ident fn =
     let fty =
-      resolve_type cx (!scopes)
+      resolve_type ~loc:fn.id cx (!scopes)
         empty_recur_info (Ast.TY_fn (ty_fn_of_fn fn.node))
     in
       log cx "resolved obj fn %s as %a" ident Ast.sprintf_ty fty;
