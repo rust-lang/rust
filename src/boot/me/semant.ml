@@ -1406,7 +1406,7 @@ let exports_permit (view:Ast.mod_view) (ident:Ast.ident) : bool =
 ;;
 
 (* NB: this will fail if lval is not an item. *)
-let rec lval_item (cx:ctxt) (lval:Ast.lval) : Ast.mod_item =
+let rec lval_item ?node_id:node_id (cx:ctxt) (lval:Ast.lval) : Ast.mod_item =
   match lval with
       Ast.LVAL_base _ ->
         let defn_id = lval_base_defn_id cx lval in
@@ -1429,9 +1429,13 @@ let rec lval_item (cx:ctxt) (lval:Ast.lval) : Ast.mod_item =
                 in
                   match htab_search items i with
                     | Some sub when exports_permit view i ->
-                        assert
-                          ((Array.length sub.node.Ast.decl_params) =
-                              (Array.length args));
+                        if Array.length sub.node.Ast.decl_params !=
+                            (Array.length args) then
+                          err node_id
+                            "%a has %d type-params but %d given"
+                            Ast.sprintf_mod_item ("", sub)
+                            (Array.length sub.node.Ast.decl_params)
+                            (Array.length args);
                         check_concrete base_item.node.Ast.decl_params sub
                     | _ -> err (Some (lval_base_id lval))
                         "unknown module item '%s'" i

@@ -768,12 +768,12 @@ let pattern_resolving_visitor
       end
   in
 
-  let resolve_arm { node = arm; id = _ } =
+  let resolve_arm { node = arm; id = id } =
     match fst arm with
         Ast.PAT_tag (lval, pats) ->
           let lval_nm = lval_to_name lval in
           let lval_id = lval_base_id lval in
-          let tag_ctor_id = (lval_item cx lval).id in
+          let tag_ctor_id = (lval_item ~node_id:id cx lval).id in
             if defn_id_is_item cx tag_ctor_id
 
             (* FIXME (issue #76): we should actually check here that the
