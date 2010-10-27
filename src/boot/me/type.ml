@@ -673,14 +673,19 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
           in
           let arg_ty_opts = Array.map (fun ty -> Some ty) arg_tys in
           ignore (demand_fn ~param_handler:param_handler arg_ty_opts ty);
-          let get_subst subst_opt =
+          let get_subst i subst_opt =
             match subst_opt with
                 Some subst -> subst
               | None ->
-                  Common.bug ()
-                    "internal_check_outer_lval: subst not found"
+                  Common.err
+                    None
+                    "not enough context to instantiate parameter %d of the \
+                    function with type '%a'; please supply type parameters \
+                    explicitly"
+                    (i + 1)
+                    sprintf_ltype lty
           in
-          let substs = Array.map get_subst substs in
+          let substs = Array.mapi get_subst substs in
           begin
             match beta_reduce (Semant.lval_base_id lval) lty substs with
                 LTYPE_mono ty -> yield_ty ty
