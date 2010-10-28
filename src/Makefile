@@ -194,18 +194,32 @@ ifneq ($(CFG_LLVM_CONFIG),)
     CFG_LLVM_CONFIG := $(info cfg: LLVM ocaml bindings not found)
   endif
 endif
+
+ifdef NO_OCAML_LLVM
+    $(info cfg: disabling LLVM ocaml bindings)
+    CFG_OCAML_LLVM :=
+endif
+
 ifdef CFG_LLVM_CONFIG
-  VARIANT=llvm
-  LLVM_LIBS := llvm.cma llvm_bitwriter.cma
-  LLVM_NATIVE_LIBS := llvm.cmxa llvm_bitwriter.cmxa
-  LLVM_CLIBS := $(shell for c in `$(CFG_LLVM_CONFIG) --ldflags --libs` \
-    -lllvm -lllvm_bitwriter; do echo -cclib && echo $$c; done | xargs echo)
-  LLVM_INCS := -I boot/llvm -I $(CFG_OCAML_LLVM)
-  LLVM_MLS := $(addprefix boot/llvm/, llabi.ml llasm.ml llfinal.ml \
-    lltrans.ml llemit.ml)
   LLC := "$(shell $(CFG_LLVM_CONFIG) --bindir)/llc"
   CFG_LLC_CFLAGS := -march=x86
   LLVM-DIS := "$(shell $(CFG_LLVM_CONFIG) --bindir)/llvm-dis"
+  ifneq ($(CFG_OCAML_LLVM),)
+    VARIANT=llvm
+    LLVM_LIBS := llvm.cma llvm_bitwriter.cma
+    LLVM_NATIVE_LIBS := llvm.cmxa llvm_bitwriter.cmxa
+    LLVM_CLIBS := $(shell for c in `$(CFG_LLVM_CONFIG) --ldflags --libs` \
+      -lllvm -lllvm_bitwriter; do echo -cclib && echo $$c; done | xargs echo)
+    LLVM_INCS := -I boot/llvm -I $(CFG_OCAML_LLVM)
+    LLVM_MLS := $(addprefix boot/llvm/, llabi.ml llasm.ml llfinal.ml \
+      lltrans.ml llemit.ml)
+  else
+    VARIANT=x86
+    LLVM_CLIBS :=
+    LLVM_INCS :=
+    LLVM_MLS :=
+    $(info cfg: disabling LLVM ocaml backend)
+  endif
 else
   VARIANT=x86
   LLVM_CLIBS :=
@@ -657,6 +671,9 @@ compile-check: tidy \
 
 
 ifdef CFG_LLVM_CONFIG
+
+ifneq ($(CFG_OCAML_LLVM),)
+
 ALL_TEST_CRATES += $(TEST_CFAIL_CRATES_LLVM) \
                    $(TEST_RFAIL_CRATES_LLVM) \
                    $(TEST_RPASS_CRATES_LLVM)
@@ -664,6 +681,20 @@ ALL_TEST_CRATES += $(TEST_CFAIL_CRATES_LLVM) \
 ALL_TEST_SOURCES += $(TEST_CFAIL_SOURCES_LLVM) \
                     $(TEST_RFAIL_SOURCES_LLVM) \
                     $(TEST_RPASS_SOURCES_LLVM)
+
+check_nocompile: $(TEST_CFAIL_OUTS_LLVM)
+
+check:	tidy \
+        $(TEST_RPASS_EXES_LLVM) $(TEST_RFAIL_EXES_LLVM) \
+        $(TEST_RPASS_OUTS_LLVM) $(TEST_RFAIL_OUTS_LLVM) \
+        $(TEST_CFAIL_OUTS_LLVM)
+
+compile-check: tidy \
+       $(TEST_RPASS_EXES_LLVM) $(TEST_RFAIL_EXES_LLVM)
+
+endif
+
+$(info $(TEST_RPASS_EXES_SELF))
 
 ALL_TEST_CRATES += $(TEST_CFAIL_CRATES_SELF) \
                    $(TEST_RFAIL_CRATES_SELF) \
@@ -673,13 +704,9 @@ ALL_TEST_SOURCES += $(TEST_CFAIL_SOURCES_SELF) \
                     $(TEST_RFAIL_SOURCES_SELF) \
                     $(TEST_RPASS_SOURCES_SELF)
 
-check_nocompile: $(TEST_CFAIL_OUTS_LLVM) \
-                 $(TEST_CFAIL_OUTS_SELF)
+check_nocompile: $(TEST_CFAIL_OUTS_SELF)
 
 check:  tidy \
-        $(TEST_RPASS_EXES_LLVM) $(TEST_RFAIL_EXES_LLVM) \
-        $(TEST_RPASS_OUTS_LLVM) $(TEST_RFAIL_OUTS_LLVM) \
-        $(TEST_CFAIL_OUTS_LLVM) \
         $(TEST_RPASS_EXES_SELF) $(TEST_RFAIL_EXES_SELF) \
         $(TEST_RPASS_OUTS_SELF) $(TEST_RFAIL_OUTS_SELF) \
         $(TEST_CFAIL_OUTS_SELF)
