@@ -1308,23 +1308,6 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
         Common.err (Some item_id) "this function must return a value"
     in
 
-    let check_fn_ty_validity item_id (ty_sig, _) =
-      let check_input_slot i slot =
-        match slot with
-            {
-              Ast.slot_ty = Some (Ast.TY_param _);
-              Ast.slot_mode = Ast.MODE_local
-            } ->
-              Common.err
-                (Some item_id)
-                "parameter %d of this type-parametric function must be \
-                passed by reference, not by value"
-                (i + 1)
-          | _ -> ()
-      in
-      Array.iteri check_input_slot ty_sig.Ast.sig_input_slots
-    in
-
     let visit_mod_item_pre _ _ item =
       let { Common.node = item; Common.id = item_id } = item in
       match item.Ast.decl_item with
@@ -1333,9 +1316,7 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
             let fn_ty = Hashtbl.find cx.Semant.ctxt_all_item_types item_id in
             begin
               match fn_ty with
-                  Ast.TY_fn ty_fn ->
-                    check_fn_ty_validity item_id ty_fn;
-                    push_fn_ctx_of_ty_fn ty_fn
+                  Ast.TY_fn ty_fn -> push_fn_ctx_of_ty_fn ty_fn
                 | _ ->
                   Common.bug ()
                     "Type.visit_mod_item_pre: fn item didn't have a fn type"
