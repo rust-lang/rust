@@ -694,8 +694,6 @@ compile-check: tidy \
 
 endif
 
-$(info $(TEST_RPASS_EXES_SELF))
-
 ALL_TEST_CRATES += $(TEST_CFAIL_CRATES_SELF) \
                    $(TEST_RFAIL_CRATES_SELF) \
                    $(TEST_RPASS_CRATES_SELF)
