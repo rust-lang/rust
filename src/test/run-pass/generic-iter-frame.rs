@@ -4,7 +4,7 @@ iter i() -> () {
   put ();
 }
 
-fn foo[T](T t) {
+fn foo[T](&T t) {
   let int x = 10;
   for each (() j in i()) {
     log x;

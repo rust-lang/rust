@@ -1,4 +1,4 @@
-fn leaky[T](T t) {
+fn leaky[T](&T t) {
 }
 
 fn main() {

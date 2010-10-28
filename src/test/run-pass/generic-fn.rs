@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-fn id[T](T x) -> T {
+fn id[T](&T x) -> T {
    ret x;
 }
 

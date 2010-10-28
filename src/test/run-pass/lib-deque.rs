@@ -92,7 +92,7 @@ fn test_boxes(@int a, @int b, @int c, @int d) {
 
 type eqfn[T] = fn(T a, T b) -> bool;
 
-fn test_parameterized[T](eqfn[T] e, T a, T b, T c, T d) {
+fn test_parameterized[T](eqfn[T] e, &T a, &T b, &T c, &T d) {
   let deque.t[T] deq = deque.create[T]();
   check (deq.size() == 0u);
   deq.add_front(a);

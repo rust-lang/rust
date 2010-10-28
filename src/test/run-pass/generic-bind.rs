@@ -1,4 +1,4 @@
-fn id[T](T t) -> T {
+fn id[T](&T t) -> T {
   ret t;
 }
 

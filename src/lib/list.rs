@@ -12,7 +12,7 @@ tag list[T] {
     nil;
 }
 
-fn foldl[T,U](&list[T] ls, U u, fn(&T t, U u) -> U f) -> U {
+fn foldl[T,U](&list[T] ls, &U u, fn(&T t, U u) -> U f) -> U {
   alt(ls) {
     case (cons[T](?hd, ?tl)) {
       auto u_ = f(hd, u);

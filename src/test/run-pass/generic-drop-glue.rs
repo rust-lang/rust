@@ -1,4 +1,4 @@
-fn f[T](T t) {
+fn f[T](&T t) {
   log "dropping";
 }
 
