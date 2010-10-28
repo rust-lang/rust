@@ -532,9 +532,6 @@ TEST_XFAILS_X86 += test/run-pass/native-mod.rc
 TEST_XFAILS_LLVM += test/run-pass/native-mod.rc
 TEST_XFAILS_SELF += test/run-pass/native-mod.rc
 endif
-ifeq ($(CFG_OSTYPE), Darwin)
-TEST_XFAILS_SELF += $(wildcard test/*/*.rs)
-endif
 
 RPASS_RC := $(wildcard test/run-pass/*.rc)
 RPASS_RS := $(wildcard test/run-pass/*.rs)
