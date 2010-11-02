@@ -12,78 +12,7 @@ let iflog cx thunk =
   else ()
 ;;
 
-let mutability_checking_visitor
-    (cx:ctxt)
-    (inner:Walk.visitor)
-    : Walk.visitor =
-  (* 
-   * This visitor enforces the following rules:
-   * 
-   * - A channel type carrying a mutable type is illegal.
-   * 
-   * - Writing to an immutable slot is illegal.
-   * 
-   * - Forming a mutable alias to an immutable slot is illegal.
-   * 
-   *)
-  let visit_ty_pre t =
-    match t with
-        Ast.TY_chan t' when type_has_state cx t' ->
-          err None "channel of mutable type: %a " Ast.sprintf_ty t'
-      | _ -> ()
-  in
-
-  let check_write s dst =
-    let is_init = Hashtbl.mem cx.ctxt_stmt_is_init s.id in
-    let dst_ty = lval_ty cx dst in
-    let is_mutable =
-      match dst_ty with
-          Ast.TY_mutable _ -> true
-        | _ -> false
-    in
-      iflog cx
-        (fun _ -> log cx "checking %swrite to %slval #%d = %a of type %a"
-           (if is_init then "initializing " else "")
-           (if is_mutable then "mutable " else "")
-           (int_of_node (lval_base_id dst))
-           Ast.sprintf_lval dst
-           Ast.sprintf_ty dst_ty);
-      if (is_mutable or is_init)
-      then ()
-      else err (Some s.id)
-        "writing to immutable type %a in statement %a"
-        Ast.sprintf_ty dst_ty Ast.sprintf_stmt s
-  in
-    (* FIXME (issue #75): enforce the no-write-alias-to-immutable-slot
-     * rule.
-     *)
-  let visit_stmt_pre s =
-    begin
-      match s.node with
-            Ast.STMT_copy (lv_dst, _)
-          | Ast.STMT_call (lv_dst, _, _)
-          | Ast.STMT_spawn (lv_dst, _, _, _, _)
-          | Ast.STMT_recv (lv_dst, _)
-          | Ast.STMT_bind (lv_dst, _, _)
-          | Ast.STMT_new_rec (lv_dst, _, _)
-          | Ast.STMT_new_tup (lv_dst, _)
-          | Ast.STMT_new_vec (lv_dst, _, _)
-          | Ast.STMT_new_str (lv_dst, _)
-          | Ast.STMT_new_port lv_dst
-          | Ast.STMT_new_chan (lv_dst, _)
-          | Ast.STMT_new_box (lv_dst, _, _) ->
-              check_write s lv_dst
-        | _ -> ()
-    end;
-    inner.Walk.visit_stmt_pre s
-  in
-
-    { inner with
-        Walk.visit_ty_pre = visit_ty_pre;
-        Walk.visit_stmt_pre = visit_stmt_pre }
-;;
-
-let function_effect_propagation_visitor
+let effect_calculating_visitor
     (item_effect:(node_id, Ast.effect) Hashtbl.t)
     (cx:ctxt)
     (inner:Walk.visitor)
@@ -93,6 +22,7 @@ let function_effect_propagation_visitor
    * its statements:
    * 
    *    - Communication statements lower to 'impure'
+   *    - Writing to anything other than a local slot lowers to 'impure'
    *    - Native calls lower to 'unsafe'
    *    - Calling a function with effect e lowers to e.
    *)
@@ -159,13 +89,27 @@ let function_effect_propagation_visitor
         end;
   in
 
+  let note_write s dst =
+    (* FIXME (issue #182): this is too aggressive; won't permit writes to
+     * interior components of records or tuples. It should at least do that,
+     * possibly handle escape analysis on the pointee for things like vecs as
+     * well.  *)
+    if lval_base_is_slot cx dst
+    then
+      let base_slot = lval_base_slot cx dst in
+        match dst, base_slot.Ast.slot_mode with
+            (Ast.LVAL_base _, Ast.MODE_local) -> ()
+          | _ -> lower_to s Ast.EFF_impure
+  in
+
   let visit_stmt_pre s =
     begin
       match s.node with
           Ast.STMT_send _
         | Ast.STMT_recv _ -> lower_to s Ast.EFF_impure
 
-        | Ast.STMT_call (_, fn, _) ->
+        | Ast.STMT_call (lv_dst, fn, _) ->
+            note_write s lv_dst;
             let lower_to_callee_ty t =
               match simplified_ty t with
                   Ast.TY_fn (_, taux) ->
@@ -185,6 +129,19 @@ let function_effect_propagation_visitor
                       | Some (REQUIRED_LIB_rust _, _) -> ()
                       | Some _ -> lower_to s Ast.EFF_unsafe
                 end
+
+        | Ast.STMT_copy (lv_dst, _)
+        | Ast.STMT_spawn (lv_dst, _, _, _, _)
+        | Ast.STMT_bind (lv_dst, _, _)
+        | Ast.STMT_new_rec (lv_dst, _, _)
+        | Ast.STMT_new_tup (lv_dst, _)
+        | Ast.STMT_new_vec (lv_dst, _, _)
+        | Ast.STMT_new_str (lv_dst, _)
+        | Ast.STMT_new_port lv_dst
+        | Ast.STMT_new_chan (lv_dst, _)
+        | Ast.STMT_new_box (lv_dst, _, _) ->
+            note_write s lv_dst
+
         | _ -> ()
     end;
     inner.Walk.visit_stmt_pre s
@@ -200,19 +157,6 @@ let function_effect_propagation_visitor
         Walk.visit_stmt_pre = visit_stmt_pre }
 ;;
 
-let binding_effect_propagation_visitor
-    ((*cx*)_:ctxt)
-    (inner:Walk.visitor)
-    : Walk.visitor =
-  (* This visitor lowers the effect of an object or binding according
-   * to its slots: holding a 'state' slot lowers any obj item, or
-   * bind-stmt LHS, to 'state'.
-   * 
-   * Binding (or implicitly just making a native 1st-class) makes the LHS
-   * unsafe.
-   *)
-  inner
-;;
 
 let effect_checking_visitor
     (item_auth:(node_id, Ast.effect) Hashtbl.t)
@@ -221,7 +165,7 @@ let effect_checking_visitor
     (inner:Walk.visitor)
     : Walk.visitor =
   (*
-   * This visitor checks that each type, item and obj declares
+   * This visitor checks that each fn declares
    * effects consistent with what we calculated.
    *)
   let auth_stack = Stack.create () in
@@ -250,7 +194,8 @@ let effect_checking_visitor
     end;
     begin
       match i.node.Ast.decl_item with
-          Ast.MOD_ITEM_fn f ->
+          Ast.MOD_ITEM_fn f
+            when htab_search cx.ctxt_required_items i.id = None ->
             let e =
               match htab_search item_effect i.id with
                 None -> Ast.EFF_pure
@@ -319,11 +264,7 @@ let process_crate
   let item_effect = Hashtbl.create 0 in
   let passes =
     [|
-      (mutability_checking_visitor cx
-         Walk.empty_visitor);
-      (function_effect_propagation_visitor item_effect cx
-         Walk.empty_visitor);
-      (binding_effect_propagation_visitor cx
+      (effect_calculating_visitor item_effect cx
          Walk.empty_visitor);
       (effect_checking_visitor item_auth item_effect cx
          Walk.empty_visitor);

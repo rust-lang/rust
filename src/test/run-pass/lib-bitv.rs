@@ -22,7 +22,7 @@ fn test_1_element() {
   check (bitv.eq_vec(act, vec(1u)));
 }
 
-fn test_10_elements() {
+impure fn test_10_elements() {
   auto act;
 
   // all 0
@@ -60,7 +60,7 @@ fn test_10_elements() {
   check (bitv.eq_vec(act, vec(1u, 0u, 0u, 1u, 0u, 0u, 1u, 0u, 0u, 1u)));
 }
 
-fn test_31_elements() {
+impure fn test_31_elements() {
   auto act;
 
   // all 0
@@ -132,7 +132,7 @@ fn test_31_elements() {
                               0u, 0u, 0u, 0u, 0u, 0u, 1u)));
 }
 
-fn test_32_elements() {
+impure fn test_32_elements() {
   auto act;
 
   // all 0
@@ -206,7 +206,7 @@ fn test_32_elements() {
                               0u, 0u, 0u, 0u, 0u, 0u, 1u, 1u)));
 }
 
-fn test_33_elements() {
+impure fn test_33_elements() {
   auto act;
 
   // all 0
@@ -287,7 +287,7 @@ fn test_33_elements() {
                               1u)));
 }
 
-fn main() {
+impure fn main() {
   test_0_elements();
   test_1_element();
   test_10_elements();

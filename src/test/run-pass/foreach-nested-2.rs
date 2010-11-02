@@ -13,7 +13,7 @@ iter range(int start, int stop) -> int {
     }
 }
 
-fn main() {
+impure fn main() {
     let vec[mutable int] a =
       vec[mutable](-1, -1, -1, -1, -1, -1, -1, -1);
     let int p = 0;

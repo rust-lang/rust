@@ -18,6 +18,7 @@ let alt_pipeline sess sem_cx crate =
       Simplify.process_crate;
       Type.process_crate;
       Typestate.process_crate;
+      Stratum.process_crate;
       Effect.process_crate;
       Loop.process_crate;
       Alias.process_crate;

@@ -408,7 +408,7 @@ fn trans_drop_str(@block_ctxt cx, ValueRef v) -> result {
                                 T_int(), C_int(0));
 }
 
-fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
+impure fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
     alt (lit.node) {
         case (ast.lit_int(?i)) {
             ret res(cx, C_int(i));
@@ -438,7 +438,7 @@ fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
     }
 }
 
-fn trans_unary(@block_ctxt cx, ast.unop op, &ast.expr e) -> result {
+impure fn trans_unary(@block_ctxt cx, ast.unop op, &ast.expr e) -> result {
 
     auto sub = trans_expr(cx, e);
 
@@ -461,8 +461,8 @@ fn trans_unary(@block_ctxt cx, ast.unop op, &ast.expr e) -> result {
     fail;
 }
 
-fn trans_binary(@block_ctxt cx, ast.binop op,
-                &ast.expr a, &ast.expr b) -> result {
+impure fn trans_binary(@block_ctxt cx, ast.binop op,
+                       &ast.expr a, &ast.expr b) -> result {
 
     // First couple cases are lazy:
 
@@ -612,8 +612,8 @@ fn trans_binary(@block_ctxt cx, ast.binop op,
     fail;
 }
 
-fn trans_if(@block_ctxt cx, &ast.expr cond,
-            &ast.block thn, &option[ast.block] els) -> result {
+impure fn trans_if(@block_ctxt cx, &ast.expr cond,
+                   &ast.block thn, &option[ast.block] els) -> result {
 
     auto cond_res = trans_expr(cx, cond);
 
@@ -691,7 +691,7 @@ fn trans_lval(@block_ctxt cx, &ast.expr e)
     fail;
 }
 
-fn trans_exprs(@block_ctxt cx, &vec[@ast.expr] es)
+impure fn trans_exprs(@block_ctxt cx, &vec[@ast.expr] es)
     -> tup(@block_ctxt, vec[ValueRef]) {
     let vec[ValueRef] vs = vec();
     let @block_ctxt bcx = cx;
@@ -705,7 +705,7 @@ fn trans_exprs(@block_ctxt cx, &vec[@ast.expr] es)
     ret tup(bcx, vs);
 }
 
-fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
+impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
     alt (e.node) {
         case (ast.expr_lit(?lit, _)) {
             ret trans_lit(cx, *lit);
@@ -777,7 +777,7 @@ fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
     fail;
 }
 
-fn trans_log(@block_ctxt cx, &ast.expr e) -> result {
+impure fn trans_log(@block_ctxt cx, &ast.expr e) -> result {
     alt (e.node) {
         case (ast.expr_lit(?lit, _)) {
             alt (lit.node) {
@@ -805,7 +805,7 @@ fn trans_log(@block_ctxt cx, &ast.expr e) -> result {
     }
 }
 
-fn trans_check_expr(@block_ctxt cx, &ast.expr e) -> result {
+impure fn trans_check_expr(@block_ctxt cx, &ast.expr e) -> result {
     auto cond_res = trans_expr(cx, e);
 
     // FIXME: need pretty-printer.
@@ -825,7 +825,7 @@ fn trans_check_expr(@block_ctxt cx, &ast.expr e) -> result {
     ret res(next_cx, C_nil());
 }
 
-fn trans_ret(@block_ctxt cx, &option[@ast.expr] e) -> result {
+impure fn trans_ret(@block_ctxt cx, &option[@ast.expr] e) -> result {
     auto r = res(cx, C_nil());
     alt (e) {
         case (some[@ast.expr](?x)) {
@@ -841,7 +841,7 @@ fn trans_ret(@block_ctxt cx, &option[@ast.expr] e) -> result {
     ret r;
 }
 
-fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
+impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
     auto sub = res(cx, C_nil());
     alt (s.node) {
         case (ast.stmt_log(?a)) {
@@ -957,7 +957,7 @@ iter block_locals(&ast.block b) -> @ast.local {
     }
 }
 
-fn trans_block(@block_ctxt cx, &ast.block b) -> result {
+impure fn trans_block(@block_ctxt cx, &ast.block b) -> result {
     auto bcx = cx;
 
     for each (@ast.local local in block_locals(b)) {
@@ -1011,14 +1011,14 @@ fn new_fn_ctxt(@trans_ctxt cx,
              tcx=cx);
 }
 
-fn trans_fn(@trans_ctxt cx, &ast._fn f, ast.def_id fid) {
+impure fn trans_fn(@trans_ctxt cx, &ast._fn f, ast.def_id fid) {
 
     auto fcx = new_fn_ctxt(cx, cx.path, f, fid);
 
     trans_block(new_top_block_ctxt(fcx), f.body);
 }
 
-fn trans_item(@trans_ctxt cx, &ast.item item) {
+impure fn trans_item(@trans_ctxt cx, &ast.item item) {
     alt (item.node) {
         case (ast.item_fn(?name, ?f, ?fid)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
@@ -1031,7 +1031,7 @@ fn trans_item(@trans_ctxt cx, &ast.item item) {
     }
 }
 
-fn trans_mod(@trans_ctxt cx, &ast._mod m) {
+impure fn trans_mod(@trans_ctxt cx, &ast._mod m) {
     for (@ast.item item in m.items) {
         trans_item(cx, *item);
     }
