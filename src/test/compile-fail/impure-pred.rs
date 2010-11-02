@@ -5,7 +5,7 @@
 fn f(int a, int b) : lt(a,b) {
 }
 
-io fn lt(int a, int b) -> bool {
+impure fn lt(int a, int b) -> bool {
   let port[int] p = port();
   let chan[int] c = chan(p);
   c <| 10;

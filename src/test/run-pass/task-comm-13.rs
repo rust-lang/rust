@@ -1,7 +1,7 @@
 use std;
 import std._task;
 
-io fn start(chan[int] c, int start, int number_of_messages) {
+impure fn start(chan[int] c, int start, int number_of_messages) {
     let int i = 0;
     while (i < number_of_messages) {
         c <| start + i;

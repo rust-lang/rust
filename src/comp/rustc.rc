@@ -30,7 +30,7 @@ mod util {
     mod common;
 }
 
-auth driver.rustc.main = state;
+auth driver.rustc.main = impure;
 auth middle.trans = unsafe;
 auth lib.llvm = unsafe;
 

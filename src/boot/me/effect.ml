@@ -92,7 +92,7 @@ let function_effect_propagation_visitor
    * This visitor calculates the effect of each function according to
    * its statements:
    * 
-   *    - Communication lowers to 'io'
+   *    - Communication statements lower to 'impure'
    *    - Native calls lower to 'unsafe'
    *    - Calling a function with effect e lowers to e.
    *)
@@ -138,7 +138,7 @@ let function_effect_propagation_visitor
     let fn_id = Stack.top curr_fn in
     let e =
       match htab_search item_effect fn_id with
-          None -> Ast.PURE
+          None -> Ast.EFF_pure
         | Some e -> e
     in
     let ne = lower_effect_of ne e in
@@ -163,7 +163,7 @@ let function_effect_propagation_visitor
     begin
       match s.node with
           Ast.STMT_send _
-        | Ast.STMT_recv _ -> lower_to s Ast.IO
+        | Ast.STMT_recv _ -> lower_to s Ast.EFF_impure
 
         | Ast.STMT_call (_, fn, _) ->
             let lower_to_callee_ty t =
@@ -183,7 +183,7 @@ let function_effect_propagation_visitor
                     match htab_search cx.ctxt_required_items item.id with
                         None -> ()
                       | Some (REQUIRED_LIB_rust _, _) -> ()
-                      | Some _ -> lower_to s Ast.UNSAFE
+                      | Some _ -> lower_to s Ast.EFF_unsafe
                 end
         | _ -> ()
     end;
@@ -232,7 +232,7 @@ let effect_checking_visitor
         | Some e ->
             let curr =
               if Stack.is_empty auth_stack
-              then Ast.PURE
+              then Ast.EFF_pure
               else Stack.top auth_stack
             in
             let next = lower_effect_of e curr in
@@ -253,7 +253,7 @@ let effect_checking_visitor
           Ast.MOD_ITEM_fn f ->
             let e =
               match htab_search item_effect i.id with
-                None -> Ast.PURE
+                None -> Ast.EFF_pure
               | Some e -> e
             in
             let fe = f.Ast.fn_aux.Ast.fn_effect in
@@ -291,7 +291,7 @@ let effect_checking_visitor
           let curr = Stack.pop auth_stack in
           let next =
             if Stack.is_empty auth_stack
-            then Ast.PURE
+            then Ast.EFF_pure
             else Stack.top auth_stack
           in
           iflog cx

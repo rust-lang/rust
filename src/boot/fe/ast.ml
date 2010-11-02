@@ -29,10 +29,20 @@ type slot_key =
  *)
 
 type effect =
-    PURE
-  | IO
-  | STATE
-  | UNSAFE
+    EFF_pure
+  | EFF_impure
+  | EFF_unsafe
+;;
+
+type stratum =
+    STRAT_value
+  | STRAT_state
+  | STRAT_gc
+;;
+
+type opacity =
+    OPA_transparent
+  | OPA_abstract
 ;;
 
 type mutability =
@@ -702,10 +712,48 @@ and fmt_effect
     (effect:effect)
     : unit =
   match effect with
-      PURE -> ()
-    | IO -> fmt ff "io"
-    | STATE -> fmt ff "state"
-    | UNSAFE -> fmt ff "unsafe"
+      EFF_pure -> ()
+    | EFF_impure -> fmt ff "impure"
+    | EFF_unsafe -> fmt ff "unsafe"
+
+and fmt_effect_qual
+    (ff:Format.formatter)
+    (e:effect)
+    : unit =
+  fmt_effect ff e;
+  if e <> EFF_pure then fmt ff " ";
+
+and fmt_stratum
+    (ff:Format.formatter)
+    (strat:stratum)
+    : unit =
+  match strat with
+      STRAT_value -> ()
+    | STRAT_state -> fmt ff "state"
+    | STRAT_gc -> fmt ff "gc"
+
+and fmt_stratum_qual
+    (ff:Format.formatter)
+    (s:stratum)
+    : unit =
+  fmt_stratum ff s;
+  if s <> STRAT_value then fmt ff " ";
+
+and fmt_opacity
+    (ff:Format.formatter)
+    (opa:opacity)
+    : unit =
+  match opa with
+      OPA_transparent -> ()
+    | OPA_abstract -> fmt ff "abs"
+
+and fmt_opacity_qual
+    (ff:Format.formatter)
+    (op:opacity)
+    : unit =
+  fmt_opacity ff op;
+  if op <> OPA_transparent then fmt ff " ";
+
 
 and fmt_ty_fn
     (ff:Format.formatter)
@@ -713,8 +761,7 @@ and fmt_ty_fn
     (tf:ty_fn)
     : unit =
   let (tsig, ta) = tf in
-    fmt_effect ff ta.fn_effect;
-    if ta.fn_effect <> PURE then fmt ff " ";
+    fmt_effect_qual ff ta.fn_effect;
     fmt ff "%s" (if ta.fn_is_iter then "iter" else "fn");
     begin
       match ident_and_params with
@@ -763,8 +810,7 @@ and fmt_ty (ff:Format.formatter) (t:ty) : unit =
       fmt_ident_tys ff entries;
       fmt ff "@]"
 
-  | TY_param (i, e) -> (fmt_effect ff e;
-                        if e <> PURE then fmt ff " ";
+  | TY_param (i, e) -> (fmt_effect_qual ff e;
                         fmt ff "<p#%d>" i)
   | TY_native oid -> fmt ff "<native#%d>" (int_of_opaque oid)
   | TY_named n -> fmt_name ff n
@@ -789,8 +835,7 @@ and fmt_ty (ff:Format.formatter) (t:ty) : unit =
 
   | TY_obj (effect, fns) ->
       fmt_obox ff;
-      fmt_effect ff effect;
-      if effect <> PURE then fmt ff " ";
+      fmt_effect_qual ff effect;
       fmt ff "obj ";
       fmt_obr ff;
       Hashtbl.iter
@@ -1584,8 +1629,7 @@ and fmt_slice (ff:Format.formatter) (slice:slice) : unit =
 
 and fmt_decl_param (ff:Format.formatter) (param:ty_param) : unit =
   let (ident, (i, e)) = param in
-  fmt_effect ff e;
-  if e <> PURE then fmt ff " ";
+  fmt_effect_qual ff e;
   fmt_ident ff ident;
   fmt ff "=<p#%d>" i
 
@@ -1607,10 +1651,6 @@ and fmt_ident_and_params
     : unit =
   fmt_ident ff id;
   fmt_decl_params ff params
-
-and fmt_effect_qual (ff:Format.formatter) (e:effect) : unit =
-  fmt_effect ff e;
-  if e <> PURE then fmt ff " ";
 
 and fmt_fn
     (ff:Format.formatter)

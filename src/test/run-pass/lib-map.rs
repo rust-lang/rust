@@ -347,5 +347,5 @@ fn main() {
   test_growth();
   test_removal();
 
-  std.sys.rustrt.gc();
+  std.sys.rustrt.do_gc();
 }

@@ -11,7 +11,7 @@ import std.util.none;
 import std._str;
 import std._vec;
 
-io fn compile_input(session.session sess, str input, str output) {
+impure fn compile_input(session.session sess, str input, str output) {
           auto p = parser.new_parser(sess, 0, input);
           auto crate = parser.parse_crate(p);
           crate = resolve.resolve_crate(sess, crate);
@@ -36,7 +36,7 @@ fn usage(session.session sess, str argv0) {
     log "";
 }
 
-io fn main(vec[str] args) {
+impure fn main(vec[str] args) {
 
   auto sess = session.session();
   let option[str] input_file = none[str];

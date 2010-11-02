@@ -126,7 +126,7 @@ let determine_constr_key
               match Hashtbl.find cx.ctxt_all_item_types cid with
                   Ast.TY_fn (_, taux) ->
                     begin
-                      if taux.Ast.fn_effect = Ast.PURE
+                      if taux.Ast.fn_effect = Ast.EFF_pure
                       then cid
                       else err (Some cid) "impure function used in constraint"
                     end
@@ -989,6 +989,7 @@ let graph_special_block_structure_building_visitor
                         Hashtbl.replace graph cond_id [then_id; else_id];
                         Hashtbl.replace graph then_end_id succ;
                         Hashtbl.replace graph else_end_id succ;
+
                         (* Kill residual messed-up block wiring.*)
                         remove_flow_edges graph then_end_id [then_id];
                         remove_flow_edges graph else_id [then_id];

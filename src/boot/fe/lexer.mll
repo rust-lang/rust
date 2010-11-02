@@ -95,8 +95,12 @@
                 ("claim", CLAIM);
                 ("prove", PROVE);
 
-                ("io", IO);
+                ("abs", ABS);
+
                 ("state", STATE);
+                ("gc", GC);
+
+                ("impure", IMPURE);
                 ("unsafe", UNSAFE);
 
                 ("native", NATIVE);

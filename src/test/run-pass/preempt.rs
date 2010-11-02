@@ -1,6 +1,6 @@
 // This checks that preemption works.
 
-io fn starve_main(chan[int] alive) {
+impure fn starve_main(chan[int] alive) {
   log "signalling main";
   alive <| 1;
   log "starving main";
@@ -10,7 +10,7 @@ io fn starve_main(chan[int] alive) {
   }
 }
 
-io fn main() {
+impure fn main() {
   let port[int] alive = port();
   log "main started";
   let task s = spawn starve_main(chan(alive));

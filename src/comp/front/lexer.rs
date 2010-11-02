@@ -9,7 +9,7 @@ state type reader = state obj {
                           fn is_eof() -> bool;
                           fn curr() -> char;
                           fn next() -> char;
-                          io fn bump();
+                          impure fn bump();
                           fn mark();
                           fn get_filename() -> str;
                           fn get_mark_pos() -> common.pos;
@@ -55,7 +55,7 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
                 ret n;
             }
 
-            io fn bump() {
+            impure fn bump() {
                 c = n;
 
                 if (c == (-1) as char) {
@@ -247,14 +247,14 @@ fn is_whitespace(char c) -> bool {
     ret c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
-io fn consume_any_whitespace(reader rdr) {
+impure fn consume_any_whitespace(reader rdr) {
     while (is_whitespace(rdr.curr())) {
         rdr.bump();
     }
     be consume_any_line_comment(rdr);
 }
 
-io fn consume_any_line_comment(reader rdr) {
+impure fn consume_any_line_comment(reader rdr) {
     if (rdr.curr() == '/') {
         alt (rdr.next()) {
             case ('/') {
@@ -277,7 +277,7 @@ io fn consume_any_line_comment(reader rdr) {
 }
 
 
-io fn consume_block_comment(reader rdr) {
+impure fn consume_block_comment(reader rdr) {
     let int level = 1;
     while (level > 0) {
         if (rdr.curr() == '/' && rdr.next() == '*') {
@@ -298,7 +298,7 @@ io fn consume_block_comment(reader rdr) {
     be consume_any_whitespace(rdr);
 }
 
-io fn next_token(reader rdr) -> token.token {
+impure fn next_token(reader rdr) -> token.token {
     auto accum_str = "";
     auto accum_int = 0;
 
@@ -359,7 +359,7 @@ io fn next_token(reader rdr) -> token.token {
         ret token.LIT_INT(accum_int);
     }
 
-    io fn binop(reader rdr, token.binop op) -> token.token {
+    impure fn binop(reader rdr, token.binop op) -> token.token {
         rdr.bump();
         if (rdr.next() == '=') {
             rdr.bump();

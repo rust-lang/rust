@@ -1,4 +1,4 @@
-// error-pattern: calculated effect is 'io'
+// error-pattern: calculated effect is 'impure'
 
 fn main() {
   let chan[int] c = chan();

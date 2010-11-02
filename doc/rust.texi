@@ -667,11 +667,12 @@ The keywords are:
 @tab @code{export}
 @tab @code{let}
 @tab @code{auto}
-@item @code{io}
-@tab @code{state}
+@item @code{state}
+@tab @code{gc}
+@tab @code{abs}
+@item @code{auth}
+@tab @code{impure}
 @tab @code{unsafe}
-@tab @code{auth}
-@tab @code{with}
 @item @code{bind}
 @tab @code{type}
 @tab @code{true}
@@ -705,8 +706,8 @@ The keywords are:
 @item @code{task}
 @tab @code{port}
 @tab @code{chan}
-@tab @code{flush}
 @tab @code{spawn}
+@tab @code{with}
 @item @code{if}
 @tab @code{else}
 @tab @code{alt}
@@ -1473,7 +1474,6 @@ operating-system processes.
 @cindex Message passing
 @cindex Send statement
 @cindex Receive statement
-@cindex Flush statement
 
 With the exception of @emph{unsafe} constructs, Rust tasks are isolated from
 interfering with one another's memory directly. Instead of manipulating shared
@@ -1515,11 +1515,7 @@ task. If too many messages are queued for transmission from a single sending
 task, without being received by a receiving task, the sending task may exceed
 its memory budget, which causes a run-time signal. To help control this
 possibility, a semi-synchronous send operation is possible, which blocks until
-there is room in the existing queue and then executes an asynchronous send. A
-full @code{flush} operation is also available, which blocks until a channel's
-queue is @emph{empty}. A @code{flush} does @emph{not} guarantee that a message
-has been @emph{received} by any particular recipient when the sending task is
-unblocked. @xref{Ref.Stmt.Flush}.
+there is room in the existing queue and then executes an asynchronous send.
 
 The asynchronous message-send operator is @code{<+}. The semi-synchronous
 message-send operator is @code{<|}. @xref{Ref.Stmt.Send}. The message-receive
@@ -2550,7 +2546,6 @@ actions.
 * Ref.Stmt.Copy::               Statement for copying a value.
 * Ref.Stmt.Spawn::              Statements for creating new tasks.
 * Ref.Stmt.Send::               Statements for sending a value into a channel.
-* Ref.Stmt.Flush::              Statement for flushing a channel queue.
 * Ref.Stmt.Recv::               Statement for receiving a value from a channel.
 * Ref.Stmt.Call::               Statement for calling a function.
 * Ref.Stmt.Bind::               Statement for binding arguments to functions.
@@ -2932,24 +2927,6 @@ An example of a semi-synchronous send:
 chan[str] c = @dots{};
 c <| "hello, world";
 @end example
-
-@node       Ref.Stmt.Flush
-@subsection Ref.Stmt.Flush
-@c * Ref.Stmt.Flush::              Statement for flushing a channel queue.
-@cindex Flush statement
-@cindex Communication
-
-A @code{flush} statement takes a channel and blocks the flushing task until
-the channel's queue has emptied. It can be used to implement a more precise
-form of flow-control than with the send operators alone.
-
-An example of the @code{flush} statement:
-@example
-chan[str] c = @dots{};
-c <| "hello, world";
-flush c;
-@end example
-
 
 @node       Ref.Stmt.Recv
 @subsection Ref.Stmt.Recv
@@ -3359,8 +3336,8 @@ statement following the @code{alt} when the case block completes.
 @cindex Multiplexing
 
 The simplest form of @code{alt} statement is the a @emph{communication}
-@code{alt}. The cases of a communication @code{alt}'s arms are send, receive
-and flush statements. @xref{Ref.Task.Comm}.
+@code{alt}. The cases of a communication @code{alt}'s arms are send and
+receive statements. @xref{Ref.Task.Comm}.
 
 To execute a communication @code{alt}, the runtime checks all of the ports and
 channels involved in the arms of the statement to see if any @code{case} can
@@ -3679,3 +3656,11 @@ to the task's domain; if the queue grows too big, the task will fail.
 @printindex cp
 
 @bye
+
+@c Local Variables:
+@c mode: texinfo
+@c fill-column: 78;
+@c indent-tabs-mode: nil
+@c buffer-file-coding-system: utf-8-unix
+@c compile-command: "make -k 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+@c End:

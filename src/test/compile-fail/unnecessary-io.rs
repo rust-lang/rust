@@ -1,4 +1,4 @@
 // error-pattern: calculated effect is ''
-io fn main() {
+impure fn main() {
   log "hi";
 }

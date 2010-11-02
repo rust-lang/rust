@@ -181,7 +181,7 @@ and parse_cexp (ps:pstate) : cexp =
                   fun (ident, item) ->
                     htab_put items ident item
                 end
-                (Item.parse_mod_item_from_signature ps)
+                (Item.parse_native_mod_item_from_signature ps)
             in
               ignore (bracketed_zero_or_more
                         LBRACE RBRACE None get_item ps);

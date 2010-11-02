@@ -69,7 +69,7 @@ refcount(rust_task *task, type_desc *t, size_t *v) {
 }
 
 extern "C" CDECL void
-gc(rust_task *task) {
+do_gc(rust_task *task) {
     task->gc(1);
 }
 

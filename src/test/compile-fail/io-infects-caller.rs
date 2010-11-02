@@ -1,6 +1,6 @@
-// error-pattern: calculated effect is 'io'
+// error-pattern: calculated effect is 'impure'
 
-io fn foo() {
+impure fn foo() {
   let chan[int] c = chan();
   c <| 10;
 }

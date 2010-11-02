@@ -12,7 +12,7 @@ import std._vec;
 type hashfn[K] = fn(&K) -> uint;
 type eqfn[K] = fn(&K, &K) -> bool;
 
-state type hashmap[K, V] = state obj {
+abs state type hashmap[K, V] = state obj {
                                  fn size() -> uint;
                                  fn insert(&K key, &V val) -> bool;
                                  fn contains_key(&K key) -> bool;

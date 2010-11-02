@@ -1527,10 +1527,9 @@ let dwarf_visitor
     (* Note: weird encoding: mutable+pure = unsafe. *)
     let mut_byte, pure_byte =
       match eff with
-          Ast.UNSAFE -> (1,1)
-        | Ast.STATE -> (1,0)
-        | Ast.IO -> (0,0)
-        | Ast.PURE -> (0,1)
+          Ast.EFF_unsafe -> (1,1)
+        | Ast.EFF_impure -> (0,0)
+        | Ast.EFF_pure -> (0,1)
     in
       SEQ [|
         (* DW_AT_mutable: DW_FORM_flag *)
@@ -2888,10 +2887,10 @@ let rec extract_mod_items
   let get_effect die =
     match (get_flag die DW_AT_mutable, get_flag die DW_AT_pure) with
         (* Note: weird encoding: mutable+pure = unsafe. *)
-        (true, true) -> Ast.UNSAFE
-      | (true, false) -> Ast.STATE
-      | (false, false) -> Ast.IO
-      | (false, true) -> Ast.PURE
+        (true, true) -> Ast.EFF_unsafe
+      | (false, false) -> Ast.EFF_impure
+      | (false, true) -> Ast.EFF_pure
+      | _ -> failwith "bad effect encoding"
   in
 
   let get_name die = get_str die DW_AT_name in

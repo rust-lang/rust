@@ -154,8 +154,6 @@ and parse_stmts (ps:pstate) : Ast.stmt array =
     if (Array.length arr) == 0 then
       raise (err "statement does nothing" ps);
     arr
-        
-    
 
 (*
  * We have no way to parse a single Ast.stmt; any incoming syntactic statement
@@ -605,7 +603,11 @@ and parse_stmts_including_none (ps:pstate) : Ast.stmt array =
             expect ps SEMI;
             spans ps stmts apos (Ast.STMT_join lval)
 
-      | IO | STATE | UNSAFE | MOD | OBJ | TAG | TYPE | FN | USE | NATIVE ->
+
+       | STATE | GC
+       | IMPURE | UNSAFE
+       | ABS | NATIVE
+       | MOD | OBJ | TAG | TYPE | FN | USE ->
           let items = ctxt "stmt: decl" parse_mod_item ps in
           let bpos = lexpos ps in
             Array.map
@@ -689,6 +691,8 @@ and parse_stmts_including_none (ps:pstate) : Ast.stmt array =
 
 and parse_ty_param (iref:int ref) (ps:pstate) : Ast.ty_param identified =
   let apos = lexpos ps in
+  let _ = Pexp.parse_opacity ps in
+  let _ = Pexp.parse_stratum ps in
   let e = Pexp.parse_effect ps in
   let ident = Pexp.parse_ident ps in
   let i = !iref in
@@ -851,7 +855,7 @@ and parse_obj_item
       do
         let apos = lexpos ps in
           match peek ps with
-              IO | STATE | UNSAFE | FN | ITER ->
+              IMPURE | UNSAFE | FN | ITER ->
                 let effect = Pexp.parse_effect ps in
                 let is_iter = (peek ps) = ITER in
                   bump ps;
@@ -986,7 +990,10 @@ and parse_mod_item (ps:pstate)
 
     match peek ps with
 
-        IO | STATE | UNSAFE | TYPE | OBJ | TAG | FN | ITER ->
+        STATE | GC | IMPURE | UNSAFE | ABS
+      | TYPE | OBJ | TAG | FN | ITER ->
+          let _ = Pexp.parse_opacity ps in
+          let _ = Pexp.parse_stratum ps in
           let effect = Pexp.parse_effect ps in
             begin
               match peek ps with
@@ -1044,7 +1051,7 @@ and parse_mod_item (ps:pstate)
               expect ps MOD;
               let ident = Pexp.parse_ident ps in
               let path = parse_lib_name ident in
-              let items = parse_mod_items_from_signature ps in
+              let items = parse_native_mod_items_from_signature ps in
               let bpos = lexpos ps in
               let rlib = REQUIRED_LIB_c { required_libname = path;
                                           required_prefix = ps.pstate_depth }
@@ -1056,7 +1063,7 @@ and parse_mod_item (ps:pstate)
           end
       | _ -> raise (unexpected ps)
 
-and parse_mod_items_header_from_signature (ps:pstate) : Ast.mod_view =
+and parse_native_mod_header_from_signature (ps:pstate) : Ast.mod_view =
   let exports = Hashtbl.create 0 in
     while (peek ps = EXPORT)
     do
@@ -1068,11 +1075,11 @@ and parse_mod_items_header_from_signature (ps:pstate) : Ast.mod_view =
     then htab_put exports Ast.EXPORT_all_decls ();
     {empty_view with Ast.view_exports = exports}
 
-and parse_mod_items_from_signature
+and parse_native_mod_items_from_signature
     (ps:pstate)
     : (Ast.mod_view * Ast.mod_items) =
   expect ps LBRACE;
-  let view  = parse_mod_items_header_from_signature ps in
+  let view  = parse_native_mod_header_from_signature ps in
   let items = Hashtbl.create 0 in
     while not (peek ps = RBRACE)
     do
@@ -1080,24 +1087,24 @@ and parse_mod_items_from_signature
         (fun (ident, item) ->
            htab_put items ident item)
         (ctxt "mod items from sig: mod item"
-           parse_mod_item_from_signature ps)
+           parse_native_mod_item_from_signature ps)
     done;
     expect ps RBRACE;
     (view,items)
 
-and parse_mod_item_from_signature (ps:pstate)
+and parse_native_mod_item_from_signature (ps:pstate)
     : (Ast.ident * Ast.mod_item) array =
   let apos = lexpos ps in
     match peek ps with
         MOD ->
           bump ps;
           let (ident, params) = parse_ident_and_params ps "mod signature" in
-          let items = parse_mod_items_from_signature ps in
+          let items = parse_native_mod_items_from_signature ps in
           let bpos = lexpos ps in
             [| (ident,
                 span ps apos bpos (decl params (Ast.MOD_ITEM_mod items))) |]
 
-      | IO | STATE | UNSAFE | FN | ITER ->
+      | IMPURE | UNSAFE | FN | ITER ->
           let effect = Pexp.parse_effect ps in
           let is_iter = (peek ps) = ITER in
             bump ps;
@@ -1142,7 +1149,7 @@ and parse_mod_item_from_signature (ps:pstate)
           expect ps SEMI;
           let bpos = lexpos ps in
             [| (ident, span ps apos bpos
-                  (decl params (Ast.MOD_ITEM_type (Ast.UNSAFE, t)))) |]
+                  (decl params (Ast.MOD_ITEM_type (Ast.EFF_unsafe, t)))) |]
 
     | _ -> raise (unexpected ps)
 

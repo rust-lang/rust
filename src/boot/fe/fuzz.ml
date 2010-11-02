@@ -104,7 +104,7 @@ let rec generate_mod_item (mis:mod_items) (cx:ctxt) : unit =
     match Random.int 2 with
         0 ->
           let ty = generate_ty cx in
-          let eff = PURE in
+          let eff = Ast.EFF_pure in
             decl (MOD_ITEM_type (eff, ty))
       | _ ->
           let mis' = Hashtbl.create 0 in

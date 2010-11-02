@@ -140,12 +140,22 @@ and parse_optional_trailing_constrs (ps:pstate) : Ast.constrs =
       COLON -> (bump ps; parse_constrs ps)
     | _ -> [| |]
 
+and parse_opacity (ps:pstate) : Ast.opacity =
+  match peek ps with
+      ABS -> bump ps; Ast.OPA_abstract
+    |  _ -> Ast.OPA_transparent
+
+and parse_stratum (ps:pstate) : Ast.stratum =
+  match peek ps with
+      STATE -> bump ps; Ast.STRAT_state
+    | GC -> bump ps; Ast.STRAT_gc
+    |  _ -> Ast.STRAT_value
+
 and parse_effect (ps:pstate) : Ast.effect =
   match peek ps with
-      IO -> bump ps; Ast.IO
-    | STATE -> bump ps; Ast.STATE
-    | UNSAFE -> bump ps; Ast.UNSAFE
-    | _ -> Ast.PURE
+      IMPURE -> bump ps; Ast.EFF_impure
+    | UNSAFE -> bump ps; Ast.EFF_unsafe
+    | _ -> Ast.EFF_pure
 
 and parse_mutability (ps:pstate) : Ast.mutability =
   match peek ps with
@@ -263,7 +273,9 @@ and parse_atomic_ty (ps:pstate) : Ast.ty =
         bump ps;
         Ast.TY_mach m
 
-    | IO | STATE | UNSAFE | OBJ | FN | ITER ->
+    | ABS | STATE | GC | IMPURE | UNSAFE | OBJ | FN | ITER ->
+        let _ = parse_opacity ps in
+        let _ = parse_stratum ps in
         let effect = parse_effect ps in
           begin
             match peek ps with

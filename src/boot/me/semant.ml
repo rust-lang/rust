@@ -191,7 +191,7 @@ type ctxt =
 
       ctxt_rty_cache: (Ast.ty,Il.referent_ty) Hashtbl.t;
 
-      ctxt_type_effect_cache: (Ast.ty,Ast.effect) Hashtbl.t;
+      ctxt_type_stratum_cache: (Ast.ty,Ast.stratum) Hashtbl.t;
       ctxt_type_points_to_heap_cache: (Ast.ty,bool) Hashtbl.t;
       ctxt_type_is_structured_cache: (Ast.ty,bool) Hashtbl.t;
       ctxt_type_contains_chan_cache: (Ast.ty,bool) Hashtbl.t;
@@ -296,7 +296,7 @@ let new_ctxt sess abi crate =
     ctxt_curr_path = Stack.create ();
 
     ctxt_rty_cache = Hashtbl.create 0;
-    ctxt_type_effect_cache = Hashtbl.create 0;
+    ctxt_type_stratum_cache = Hashtbl.create 0;
     ctxt_type_points_to_heap_cache = Hashtbl.create 0;
     ctxt_type_is_structured_cache = Hashtbl.create 0;
     ctxt_type_contains_chan_cache = Hashtbl.create 0;
@@ -1227,16 +1227,15 @@ let type_points_to_heap (cx:ctxt) (t:Ast.ty) : bool =
       (fun _ -> fold_ty cx fold t)
 ;;
 
-(* Effect analysis. *)
+
+(* Type qualifier analysis. *)
+
 let effect_le x y =
   match (x,y) with
-      (Ast.UNSAFE, _) -> true
-    | (Ast.STATE, Ast.PURE) -> true
-    | (Ast.STATE, Ast.IO) -> true
-    | (Ast.STATE, Ast.STATE) -> true
-    | (Ast.IO, Ast.PURE) -> true
-    | (Ast.IO, Ast.IO) -> true
-    | (Ast.PURE, Ast.PURE) -> true
+      (Ast.EFF_unsafe, _) -> true
+    | (Ast.EFF_impure, Ast.EFF_pure) -> true
+    | (Ast.EFF_impure, Ast.EFF_impure) -> true
+    | (Ast.EFF_pure, Ast.EFF_pure) -> true
     | _ -> false
 ;;
 
@@ -1244,16 +1243,30 @@ let lower_effect_of x y =
   if effect_le x y then x else y
 ;;
 
-let type_effect (cx:ctxt) (t:Ast.ty) : Ast.effect =
-  let fold_mutable _ = Ast.STATE in
-  let fold = associative_binary_op_ty_fold Ast.PURE lower_effect_of in
+let stratum_le x y =
+  match (x,y) with
+      (Ast.STRAT_gc, _) -> true
+    | (Ast.STRAT_state, Ast.STRAT_value) -> true
+    | (Ast.STRAT_state, Ast.STRAT_state) -> true
+    | (Ast.STRAT_value, Ast.STRAT_value) -> true
+    | _ -> false
+;;
+
+let lower_stratum_of x y =
+  if stratum_le x y then x else y
+;;
+
+let type_stratum (cx:ctxt) (t:Ast.ty) : Ast.stratum =
+  let fold_mutable _ = Ast.STRAT_state in
+  let fold = associative_binary_op_ty_fold Ast.STRAT_value lower_stratum_of in
   let fold = { fold with ty_fold_mutable = fold_mutable } in
-    htab_search_or_add cx.ctxt_type_effect_cache t
+    htab_search_or_add cx.ctxt_type_stratum_cache t
       (fun _ -> fold_ty cx fold t)
 ;;
 
+
 let type_has_state (cx:ctxt) (t:Ast.ty) : bool =
-  effect_le (type_effect cx t) Ast.STATE
+  stratum_le (type_stratum cx t) Ast.STRAT_state
 ;;
 
 
@@ -1627,7 +1640,7 @@ let ty_of_mod_item (item:Ast.mod_item) : Ast.ty =
     | Ast.MOD_ITEM_mod _ -> bug () "Semant.ty_of_mod_item on mod"
     | Ast.MOD_ITEM_const (ty, _) -> ty
     | Ast.MOD_ITEM_obj ob ->
-        let taux = { Ast.fn_effect = Ast.PURE;
+        let taux = { Ast.fn_effect = Ast.EFF_pure;
                      Ast.fn_is_iter = false }
         in
         let tobj = Ast.TY_obj (ty_obj_of_obj ob) in
@@ -1650,7 +1663,7 @@ let ty_of_mod_item (item:Ast.mod_item) : Ast.ty =
           if Array.length hdr = 0
           then Ast.TY_tag ttag
           else
-            let taux = { Ast.fn_effect = Ast.PURE;
+            let taux = { Ast.fn_effect = Ast.EFF_pure;
                          Ast.fn_is_iter = false }
             in
             let inputs = Array.map (fun (s, _) -> s.node) hdr in
@@ -2561,7 +2574,7 @@ let mk_ty_fn_or_iter
     (is_iter:bool)
     : Ast.ty =
   (* In some cases we don't care what aux or constrs are. *)
-  let taux = { Ast.fn_effect = Ast.PURE;
+  let taux = { Ast.fn_effect = Ast.EFF_pure;
                Ast.fn_is_iter = is_iter; }
   in
   let tsig = { Ast.sig_input_slots = arg_slots;

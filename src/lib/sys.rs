@@ -10,13 +10,13 @@ native "rust" mod rustrt {
     export size_of;
     export align_of;
     export refcount;
-    export gc;
+    export do_gc;
 
     fn last_os_error() -> str;
     fn size_of[T]() -> uint;
     fn align_of[T]() -> uint;
     fn refcount[T](@T t) -> uint;
-    fn gc();
+    fn do_gc();
     fn unsupervise();
 }
 

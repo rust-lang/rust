@@ -80,9 +80,15 @@ type token =
   | CLAIM
   | PROVE
 
-  (* Effect keywords *)
-  | IO
+  (* Opacity keywords *)
+  | ABS
+
+  (* Stratum keywords *)
   | STATE
+  | GC
+
+  (* Effect keywords *)
+  | IMPURE
   | UNSAFE
 
   (* Type qualifiers *)
@@ -237,9 +243,15 @@ let rec string_of_tok t =
     | CLAIM      -> "claim"
     | PROVE      -> "prove"
 
-    (* Effect keywords *)
-    | IO         -> "io"
+    (* Opacity keywords *)
+    | ABS        -> "abs"
+
+    (* Stratum keywords *)
     | STATE      -> "state"
+    | GC         -> "gc"
+
+    (* Effect keywords *)
+    | IMPURE     -> "impure"
     | UNSAFE     -> "unsafe"
 
     (* Type qualifiers *)
