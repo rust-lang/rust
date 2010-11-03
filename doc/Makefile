@@ -2,7 +2,7 @@ DOC_VER  := $(shell date +"%Y-%m-%d")-snap
 
 all: rust.pdf rust.html
 
-version.texi: Makefile
+version.texi: Makefile rust.texi
 	git log -1 \
       --format='@macro gitversion%n%h %ci%n@end macro%n' >$@
 
