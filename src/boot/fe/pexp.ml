@@ -273,14 +273,15 @@ and parse_atomic_ty (ps:pstate) : Ast.ty =
         bump ps;
         Ast.TY_mach m
 
-    | ABS | STATE | GC | IMPURE | UNSAFE | OBJ | FN | ITER ->
-        let _ = parse_opacity ps in
-        let _ = parse_stratum ps in
+    | STATE | GC | IMPURE | UNSAFE | OBJ | FN | ITER ->
+        let stratum = parse_stratum ps in
         let effect = parse_effect ps in
           begin
             match peek ps with
                 OBJ ->
                   bump ps;
+                  if effect <> Ast.EFF_pure
+                  then raise (err "effect specified for obj" ps);
                   let methods = Hashtbl.create 0 in
                   let parse_method ps =
                     let effect = parse_effect ps in
@@ -294,9 +295,11 @@ and parse_atomic_ty (ps:pstate) : Ast.ty =
                   in
                     ignore (bracketed_zero_or_more LBRACE RBRACE
                               None parse_method ps);
-                    Ast.TY_obj (effect, methods)
+                    Ast.TY_obj (stratum, methods)
 
               | FN | ITER ->
+                  if stratum <> Ast.STRAT_value
+                  then raise (err "stratum specified for fn or iter" ps);
                   Ast.TY_fn (fst (parse_ty_fn effect ps))
               | _ -> raise (unexpected ps)
           end

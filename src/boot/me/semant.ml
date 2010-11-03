@@ -729,7 +729,7 @@ type ('ty, 'tys, 'slot, 'slots, 'tag) ty_fold =
       ty_fold_vec : 'ty -> 'ty;
       ty_fold_rec : (Ast.ident * 'ty) array -> 'ty;
       ty_fold_fn : (('slots * Ast.constrs * 'slot) * Ast.ty_fn_aux) -> 'ty;
-      ty_fold_obj : (Ast.effect
+      ty_fold_obj : (Ast.stratum
                      * (Ast.ident, (('slots * Ast.constrs * 'slot) *
                                       Ast.ty_fn_aux)) Hashtbl.t) -> 'ty;
       ty_fold_chan : 'ty -> 'ty;
@@ -737,7 +737,7 @@ type ('ty, 'tys, 'slot, 'slots, 'tag) ty_fold =
       ty_fold_task : unit -> 'ty;
       ty_fold_native : opaque_id -> 'ty;
       ty_fold_tag : 'tag -> 'ty;
-      ty_fold_param : (int * Ast.effect) -> 'ty;
+      ty_fold_param : (int * Ast.stratum) -> 'ty;
       ty_fold_named : Ast.name -> 'ty;
       ty_fold_type : unit -> 'ty;
       ty_fold_box : 'ty -> 'ty;
@@ -909,7 +909,7 @@ let rec fold_ty_full
   | Ast.TY_chan t -> f.ty_fold_chan (fold_ty cx f t)
   | Ast.TY_port t -> f.ty_fold_port (fold_ty cx f t)
 
-  | Ast.TY_obj (eff,t) -> f.ty_fold_obj (eff, (fold_obj t))
+  | Ast.TY_obj (st,t) -> f.ty_fold_obj (st, (fold_obj t))
   | Ast.TY_task -> f.ty_fold_task ()
 
   | Ast.TY_native x -> f.ty_fold_native x
@@ -962,7 +962,7 @@ let ty_fold_rebuild (id:Ast.ty -> Ast.ty)
     ty_fold_task = (fun _ -> id Ast.TY_task);
     ty_fold_native = (fun oid -> id (Ast.TY_native oid));
     ty_fold_tag = (fun ttag -> id (Ast.TY_tag ttag));
-    ty_fold_param = (fun (i, mut) -> id (Ast.TY_param (i, mut)));
+    ty_fold_param = (fun (i, s) -> id (Ast.TY_param (i, s)));
     ty_fold_named = (fun n -> id (Ast.TY_named n));
     ty_fold_type = (fun _ -> id (Ast.TY_type));
     ty_fold_box = (fun t -> id (Ast.TY_box t));
@@ -1047,8 +1047,8 @@ let rec rebuild_ty_under_params
     in
     let rec rebuild_ty t =
       let base = ty_fold_rebuild (fun t -> t) in
-      let ty_fold_param (i, mut) =
-        let param = Ast.TY_param (i, mut) in
+      let ty_fold_param (i, s) =
+        let param = Ast.TY_param (i, s) in
           match htab_search pmap param with
               None -> param
             | Some arg -> arg
@@ -1629,7 +1629,7 @@ let ty_fn_of_fn (fn:Ast.fn) : Ast.ty_fn =
 ;;
 
 let ty_obj_of_obj (obj:Ast.obj) : Ast.ty_obj =
-  (obj.Ast.obj_effect,
+  (obj.Ast.obj_stratum,
    htab_map obj.Ast.obj_fns (fun i f -> (i, ty_fn_of_fn f.node)))
 ;;
 
