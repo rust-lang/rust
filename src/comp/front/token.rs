@@ -89,9 +89,15 @@ tag token {
     CLAIM;
     PROVE;
 
-    /* Effect keywords */
-    IO;
+    /* Opacity keywords */
+    ABS;
+
+    /* Stratum keywords */
     STATE;
+    GC;
+
+    /* Effect keywords */
+    IMPURE;
     UNSAFE;
 
     /* Type qualifiers */
@@ -249,9 +255,15 @@ fn to_str(token t) -> str {
         case (CLAIM) { ret "claim"; }
         case (PROVE) { ret "prove"; }
 
-        /* Effect keywords */
-        case (IO) { ret "io"; }
+        /* Opacity keywords */
+        case (ABS) { ret "abs"; }
+
+        /* Stratum keywords */
         case (STATE) { ret "state"; }
+        case (GC) { ret "gc"; }
+
+        /* Effect keywords */
+        case (IMPURE) { ret "impure"; }
         case (UNSAFE) { ret "unsafe"; }
 
         /* Type qualifiers */

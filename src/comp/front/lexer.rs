@@ -117,8 +117,12 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
     keywords.insert("claim", token.CLAIM);
     keywords.insert("prove", token.PROVE);
 
-    keywords.insert("io", token.IO);
+    keywords.insert("abs", token.ABS);
+
     keywords.insert("state", token.STATE);
+    keywords.insert("gc", token.GC);
+
+    keywords.insert("impure", token.IMPURE);
     keywords.insert("unsafe", token.UNSAFE);
 
     keywords.insert("native", token.NATIVE);
