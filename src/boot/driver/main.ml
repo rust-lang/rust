@@ -33,6 +33,7 @@ let (sess:Session.sess) =
     Session.sess_log_lex = false;
     Session.sess_log_parse = false;
     Session.sess_log_ast = false;
+    Session.sess_log_sig = false;
     Session.sess_log_passes = false;
     Session.sess_log_resolve = false;
     Session.sess_log_type = false;
@@ -116,6 +117,7 @@ let dump_sig (filename:filename) : unit =
     exit 0
 ;;
 
+
 let dump_meta (filename:filename) : unit =
   begin
     match Lib.get_meta sess filename with
@@ -168,6 +170,8 @@ let argspecs =
        "-lparse"    "log parsing");
     (flag (fun _ -> sess.Session.sess_log_ast <- true)
        "-last"      "log AST");
+    (flag (fun _ -> sess.Session.sess_log_sig <- true)
+       "-lsig"      "log signature");
     (flag (fun _ -> sess.Session.sess_log_passes <- true)
        "-lpasses"  "log passes at high-level");
     (flag (fun _ -> sess.Session.sess_log_resolve <- true)
@@ -358,6 +362,17 @@ then
     Format.set_margin 80;
     Printf.fprintf stdout "%s\n" (Fmt.fmt_to_str Ast.fmt_crate crate)
   end
+;;
+
+if sess.Session.sess_log_sig
+then
+  begin
+    Printf.fprintf stdout "Post-parse signature:\n";
+    Format.set_margin 80;
+    Printf.fprintf stdout "%s\n" (Fmt.fmt_to_str Lib.fmt_iface crate);
+  end
+;;
+
 
 let list_to_seq ls = Asm.SEQ (Array.of_list ls);;
 let select_insns (quads:Il.quads) : Asm.frag =

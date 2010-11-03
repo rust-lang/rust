@@ -218,6 +218,15 @@ let sorted_htab_keys (tab:('a, 'b) Hashtbl.t) : 'a array =
     keys
 ;;
 
+let sorted_htab_iter
+    (f:'a -> 'b -> unit)
+    (tab:('a, 'b) Hashtbl.t)
+    : unit =
+  Array.iter
+    (fun k -> f k (Hashtbl.find tab k))
+    (sorted_htab_keys tab)
+;;
+
 let htab_vals (htab:('a,'b) Hashtbl.t) : ('b list)  =
   Hashtbl.fold (fun _ v accum -> v :: accum) htab []
 ;;
