@@ -653,6 +653,38 @@ impure fn trans_if(@block_ctxt cx, &ast.expr cond,
     ret res(next_cx, phi);
 }
 
+impure fn trans_while(@block_ctxt cx, &ast.expr cond,
+                      &ast.block body) -> result {
+
+    auto cond_cx = new_empty_block_ctxt(cx.fcx);
+    auto body_cx = new_empty_block_ctxt(cx.fcx);
+    auto next_cx = new_extension_block_ctxt(cx);
+
+    cx.build.Br(cond_cx.llbb);
+    auto cond_res = trans_expr(cond_cx, cond);
+    cond_cx.build.CondBr(cond_res.val,
+                         body_cx.llbb,
+                         next_cx.llbb);
+    auto body_res = trans_block(body_cx, body);
+    body_cx.build.Br(cond_cx.llbb);
+    ret res(next_cx, C_nil());
+}
+
+impure fn trans_do_while(@block_ctxt cx, &ast.block body,
+                         &ast.expr cond) -> result {
+
+    auto body_cx = new_empty_block_ctxt(cx.fcx);
+    auto next_cx = new_extension_block_ctxt(cx);
+
+    cx.build.Br(body_cx.llbb);
+    auto body_res = trans_block(body_cx, body);
+    auto cond_res = trans_expr(body_cx, cond);
+    body_cx.build.CondBr(cond_res.val,
+                         body_cx.llbb,
+                         next_cx.llbb);
+    ret res(next_cx, body_res.val);
+}
+
 // The additional bool returned indicates whether it's a local
 // (that is represented as an alloca, hence needs a 'load' to be
 // used as an rval).
@@ -721,6 +753,10 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
 
         case (ast.expr_if(?cond, ?thn, ?els, _)) {
             ret trans_if(cx, *cond, thn, els);
+        }
+
+        case (ast.expr_while(?cond, ?body, _)) {
+            ret trans_while(cx, *cond, body);
         }
 
         case (ast.expr_block(?blk, _)) {

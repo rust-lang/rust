@@ -94,6 +94,8 @@ tag expr_ {
     expr_lit(@lit, option[@ty]);
     expr_cast(@expr, @ty);
     expr_if(@expr, block, option[block], option[@ty]);
+    expr_while(@expr, block, option[@ty]);
+    expr_do_while(block, @expr, option[@ty]);
     expr_block(block, option[@ty]);
     expr_assign(@expr /* TODO: @expr|is_lval */, @expr, option[@ty]);
     expr_field(@expr, ident, option[@ty]);

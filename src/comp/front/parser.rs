@@ -613,6 +613,33 @@ impure fn parse_if_expr(parser p) -> @ast.expr {
     ret @spanned(lo, hi, ast.expr_if(cond, thn, els, none[@ast.ty]));
 }
 
+impure fn parse_while_expr(parser p) -> @ast.expr {
+    auto lo = p.get_span();
+    auto hi = lo;
+
+    expect(p, token.WHILE);
+    expect (p, token.LPAREN);
+    auto cond = parse_expr(p);
+    expect(p, token.RPAREN);
+    auto body = parse_block(p);
+    hi = body.span;
+    ret @spanned(lo, hi, ast.expr_while(cond, body, none[@ast.ty]));
+}
+
+impure fn parse_do_while_expr(parser p) -> @ast.expr {
+    auto lo = p.get_span();
+    auto hi = lo;
+
+    expect(p, token.DO);
+    auto body = parse_block(p);
+    expect(p, token.WHILE);
+    expect (p, token.LPAREN);
+    auto cond = parse_expr(p);
+    expect(p, token.RPAREN);
+    hi = cond.span;
+    ret @spanned(lo, hi, ast.expr_do_while(body, cond, none[@ast.ty]));
+}
+
 impure fn parse_expr(parser p) -> @ast.expr {
     alt (p.peek()) {
         case (token.LBRACE) {
@@ -622,6 +649,12 @@ impure fn parse_expr(parser p) -> @ast.expr {
         }
         case (token.IF) {
             ret parse_if_expr(p);
+        }
+        case (token.WHILE) {
+            ret parse_while_expr(p);
+        }
+        case (token.DO) {
+            ret parse_do_while_expr(p);
         }
         case (_) {
             ret parse_assign_expr(p);
@@ -737,6 +770,16 @@ impure fn parse_stmt(parser p) -> @ast.stmt {
         // Handle the (few) block-expr stmts first.
 
         case (token.IF) {
+            auto e = parse_expr(p);
+            ret @spanned(lo, e.span, ast.stmt_expr(e));
+        }
+
+        case (token.WHILE) {
+            auto e = parse_expr(p);
+            ret @spanned(lo, e.span, ast.stmt_expr(e));
+        }
+
+        case (token.DO) {
             auto e = parse_expr(p);
             ret @spanned(lo, e.span, ast.stmt_expr(e));
         }

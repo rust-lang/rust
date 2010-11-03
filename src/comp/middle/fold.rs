@@ -82,6 +82,14 @@ type ast_fold[ENV] =
          option[@ty] ty) -> @expr)                fold_expr_if,
 
      (fn(&ENV e, &span sp,
+         @expr cond, &block body,
+         option[@ty] ty) -> @expr)                fold_expr_while,
+
+     (fn(&ENV e, &span sp,
+         &block body, @expr cond,
+         option[@ty] ty) -> @expr)                fold_expr_do_while,
+
+     (fn(&ENV e, &span sp,
          &block blk, option[@ty] ty) -> @expr)    fold_expr_block,
 
      (fn(&ENV e, &span sp,
@@ -333,6 +341,18 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
                 }
             }
             ret fld.fold_expr_if(env_, e.span, ccnd, tthn, eels, t);
+        }
+
+        case (ast.expr_while(?cnd, ?body, ?t)) {
+            auto ccnd = fold_expr(env_, fld, cnd);
+            auto bbody = fold_block(env_, fld, body);
+            ret fld.fold_expr_while(env_, e.span, ccnd, bbody, t);
+        }
+
+        case (ast.expr_do_while(?body, ?cnd, ?t)) {
+            auto bbody = fold_block(env_, fld, body);
+            auto ccnd = fold_expr(env_, fld, cnd);
+            ret fld.fold_expr_do_while(env_, e.span, bbody, ccnd, t);
         }
 
         case (ast.expr_block(?b, ?t)) {
@@ -598,6 +618,18 @@ fn identity_fold_expr_if[ENV](&ENV env, &span sp,
     ret @respan(sp, ast.expr_if(cond, thn, els, t));
 }
 
+fn identity_fold_expr_while[ENV](&ENV env, &span sp,
+                                 @expr cond, &block body,
+                                 option[@ty] t) -> @expr {
+    ret @respan(sp, ast.expr_while(cond, body, t));
+}
+
+fn identity_fold_expr_do_while[ENV](&ENV env, &span sp,
+                                    &block body, @expr cond,
+                                    option[@ty] t) -> @expr {
+    ret @respan(sp, ast.expr_do_while(body, cond, t));
+}
+
 fn identity_fold_expr_block[ENV](&ENV env, &span sp, &block blk,
                                  option[@ty] t) -> @expr {
     ret @respan(sp, ast.expr_block(blk, t));
@@ -765,6 +797,9 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_unary  = bind identity_fold_expr_unary[ENV](_,_,_,_,_),
          fold_expr_lit    = bind identity_fold_expr_lit[ENV](_,_,_,_),
          fold_expr_if     = bind identity_fold_expr_if[ENV](_,_,_,_,_,_),
+         fold_expr_while  = bind identity_fold_expr_while[ENV](_,_,_,_,_),
+         fold_expr_do_while
+                          = bind identity_fold_expr_do_while[ENV](_,_,_,_,_),
          fold_expr_block  = bind identity_fold_expr_block[ENV](_,_,_,_),
          fold_expr_assign = bind identity_fold_expr_assign[ENV](_,_,_,_,_),
          fold_expr_field  = bind identity_fold_expr_field[ENV](_,_,_,_,_),
