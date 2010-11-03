@@ -3149,7 +3149,7 @@ fn read_file_lines(&str path) -> vec[str] @{
     note path;
     vec[str] r;
     file f = open_read(path);
-    for each (str &s in lines(f)) @{
+    for each (&str s in lines(f)) @{
         vec.append(r,s);
     @}
     ret r;
