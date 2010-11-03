@@ -1,6 +1,7 @@
 import front.ast;
 import front.ast.ident;
 import front.ast.def;
+import front.ast.ann;
 import driver.session;
 import util.common.span;
 import std.map.hashmap;
@@ -102,7 +103,7 @@ fn lookup_name(&env e, ast.ident i) -> option[def] {
 }
 
 fn fold_expr_name(&env e, &span sp, &ast.name n,
-                  &option[def] d, option[@ast.ty] t) -> @ast.expr {
+                  &option[def] d, ann a) -> @ast.expr {
 
     auto d_ = lookup_name(e, n.node.ident);
 
@@ -115,7 +116,7 @@ fn fold_expr_name(&env e, &span sp, &ast.name n,
         }
     }
 
-    ret @fold.respan[ast.expr_](sp, ast.expr_name(n, d_, t));
+    ret @fold.respan[ast.expr_](sp, ast.expr_name(n, d_, a));
 }
 
 fn update_env_for_crate(&env e, @ast.crate c) -> env {

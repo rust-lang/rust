@@ -260,14 +260,14 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
     // FIXME: can only remove this sort of thing when both typestate and
     // alt-exhaustive-match checking are co-operating.
     auto lit = @spanned(lo, lo, ast.lit_nil);
-    let ast.expr_ ex = ast.expr_lit(lit, none[@ast.ty]);
+    let ast.expr_ ex = ast.expr_lit(lit, ast.ann_none);
 
     alt (p.peek()) {
 
         case (token.IDENT(?i)) {
             auto n = parse_name(p, i);
             hi = n.span;
-            ex = ast.expr_name(n, none[ast.def], none[@ast.ty]);
+            ex = ast.expr_name(n, none[ast.def], ast.ann_none);
             alt (p.peek()) {
                 case (token.LPAREN) {
                     // Call expr.
@@ -277,7 +277,7 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
                                                    some(token.COMMA),
                                                    pf, p);
                     ex = ast.expr_call(@spanned(lo, hi, ex),
-                                       es.node, none[@ast.ty]);
+                                       es.node, ast.ann_none);
                     hi = es.span;
                 }
             }
@@ -299,7 +299,7 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
                                                       some(token.COMMA),
                                                       pf, p);
             hi = es.span;
-            ex = ast.expr_tup(es.node, none[@ast.ty]);
+            ex = ast.expr_tup(es.node, ast.ann_none);
         }
 
         case (token.VEC) {
@@ -310,7 +310,7 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
                                            some(token.COMMA),
                                            pf, p);
             hi = es.span;
-            ex = ast.expr_vec(es.node, none[@ast.ty]);
+            ex = ast.expr_vec(es.node, ast.ann_none);
         }
 
         case (token.REC) {
@@ -329,14 +329,14 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
                                                      some(token.COMMA),
                                                      pf, p);
             hi = es.span;
-            ex = ast.expr_rec(es.node, none[@ast.ty]);
+            ex = ast.expr_rec(es.node, ast.ann_none);
         }
 
         case (_) {
             alt (parse_lit(p)) {
                 case (some[ast.lit](?lit)) {
                     hi = lit.span;
-                    ex = ast.expr_lit(@lit, none[@ast.ty]);
+                    ex = ast.expr_lit(@lit, ast.ann_none);
                 }
                 case (none[ast.lit]) {
                     p.err("expecting expression");
@@ -361,14 +361,14 @@ impure fn parse_path_expr(parser p) -> @ast.expr {
                     case (token.IDENT(?i)) {
                         hi = p.get_span();
                         p.bump();
-                        auto e_ = ast.expr_field(e, i, none[@ast.ty]);
+                        auto e_ = ast.expr_field(e, i, ast.ann_none);
                         e = @spanned(lo, hi, e_);
                     }
 
                     case (token.LPAREN) {
                         auto ix = parse_bottom_expr(p);
                         hi = ix.span;
-                        auto e_ = ast.expr_index(e, ix, none[@ast.ty]);
+                        auto e_ = ast.expr_index(e, ix, ast.ann_none);
                         e = @spanned(lo, hi, e_);
                     }
                 }
@@ -389,7 +389,7 @@ impure fn parse_prefix_expr(parser p) -> @ast.expr {
     // FIXME: can only remove this sort of thing when both typestate and
     // alt-exhaustive-match checking are co-operating.
     auto lit = @spanned(lo, lo, ast.lit_nil);
-    let ast.expr_ ex = ast.expr_lit(lit, none[@ast.ty]);
+    let ast.expr_ ex = ast.expr_lit(lit, ast.ann_none);
 
     alt (p.peek()) {
 
@@ -397,14 +397,14 @@ impure fn parse_prefix_expr(parser p) -> @ast.expr {
             p.bump();
             auto e = parse_prefix_expr(p);
             hi = e.span;
-            ex = ast.expr_unary(ast.not, e, none[@ast.ty]);
+            ex = ast.expr_unary(ast.not, e, ast.ann_none);
         }
 
         case (token.TILDE) {
             p.bump();
             auto e = parse_prefix_expr(p);
             hi = e.span;
-            ex = ast.expr_unary(ast.bitnot, e, none[@ast.ty]);
+            ex = ast.expr_unary(ast.bitnot, e, ast.ann_none);
         }
 
         case (token.BINOP(?b)) {
@@ -413,14 +413,14 @@ impure fn parse_prefix_expr(parser p) -> @ast.expr {
                     p.bump();
                     auto e = parse_prefix_expr(p);
                     hi = e.span;
-                    ex = ast.expr_unary(ast.neg, e, none[@ast.ty]);
+                    ex = ast.expr_unary(ast.neg, e, ast.ann_none);
                 }
 
                 case (token.STAR) {
                     p.bump();
                     auto e = parse_prefix_expr(p);
                     hi = e.span;
-                    ex = ast.expr_unary(ast.deref, e, none[@ast.ty]);
+                    ex = ast.expr_unary(ast.deref, e, ast.ann_none);
                 }
 
                 case (_) {
@@ -433,7 +433,7 @@ impure fn parse_prefix_expr(parser p) -> @ast.expr {
             p.bump();
             auto e = parse_prefix_expr(p);
             hi = e.span;
-            ex = ast.expr_unary(ast.box, e, none[@ast.ty]);
+            ex = ast.expr_unary(ast.box, e, ast.ann_none);
         }
 
         case (_) {
@@ -461,7 +461,7 @@ impure fn parse_binops(parser p,
                         auto rhs = sub(p);
                         hi = rhs.span;
                         auto exp = ast.expr_binary(pair._1, e, rhs,
-                                                   none[@ast.ty]);
+                                                   ast.ann_none);
                         e = @spanned(lo, hi, exp);
                         more = true;
                     }
@@ -487,7 +487,7 @@ impure fn parse_binary_exprs(parser p,
                 p.bump();
                 auto rhs = sub(p);
                 hi = rhs.span;
-                auto exp = ast.expr_binary(pair._1, e, rhs, none[@ast.ty]);
+                auto exp = ast.expr_binary(pair._1, e, rhs, ast.ann_none);
                 e = @spanned(lo, hi, exp);
                 more = true;
             }
@@ -541,7 +541,7 @@ impure fn parse_cast_expr(parser p) -> @ast.expr {
                 p.bump();
                 auto t = parse_ty(p);
                 hi = t.span;
-                e = @spanned(lo, hi, ast.expr_cast(e, t));
+                e = @spanned(lo, hi, ast.expr_cast(e, t, ast.ann_none));
             }
 
             case (_) {
@@ -585,7 +585,7 @@ impure fn parse_assign_expr(parser p) -> @ast.expr {
             p.bump();
             auto rhs = parse_expr(p);
             ret @spanned(lo, rhs.span,
-                         ast.expr_assign(lhs, rhs, none[@ast.ty]));
+                         ast.expr_assign(lhs, rhs, ast.ann_none));
         }
     }
     ret lhs;
@@ -610,7 +610,7 @@ impure fn parse_if_expr(parser p) -> @ast.expr {
             hi = eblk.span;
         }
     }
-    ret @spanned(lo, hi, ast.expr_if(cond, thn, els, none[@ast.ty]));
+    ret @spanned(lo, hi, ast.expr_if(cond, thn, els, ast.ann_none));
 }
 
 impure fn parse_while_expr(parser p) -> @ast.expr {
@@ -623,7 +623,7 @@ impure fn parse_while_expr(parser p) -> @ast.expr {
     expect(p, token.RPAREN);
     auto body = parse_block(p);
     hi = body.span;
-    ret @spanned(lo, hi, ast.expr_while(cond, body, none[@ast.ty]));
+    ret @spanned(lo, hi, ast.expr_while(cond, body, ast.ann_none));
 }
 
 impure fn parse_do_while_expr(parser p) -> @ast.expr {
@@ -637,7 +637,7 @@ impure fn parse_do_while_expr(parser p) -> @ast.expr {
     auto cond = parse_expr(p);
     expect(p, token.RPAREN);
     hi = cond.span;
-    ret @spanned(lo, hi, ast.expr_do_while(body, cond, none[@ast.ty]));
+    ret @spanned(lo, hi, ast.expr_do_while(body, cond, ast.ann_none));
 }
 
 impure fn parse_expr(parser p) -> @ast.expr {
@@ -645,7 +645,7 @@ impure fn parse_expr(parser p) -> @ast.expr {
         case (token.LBRACE) {
             auto blk = parse_block(p);
             ret @spanned(blk.span, blk.span,
-                         ast.expr_block(blk, none[@ast.ty]));
+                         ast.expr_block(blk, ast.ann_none));
         }
         case (token.IF) {
             ret parse_if_expr(p);

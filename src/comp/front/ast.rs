@@ -15,6 +15,12 @@ type crate_num = int;
 type def_num = int;
 type def_id = tup(crate_num, def_num);
 
+// Annotations added during successive passes.
+tag ann {
+    ann_none;
+    ann_type(@ty);
+}
+
 tag def {
     def_fn(def_id);
     def_mod(def_id);
@@ -85,22 +91,22 @@ tag decl_ {
 
 type expr = spanned[expr_];
 tag expr_ {
-    expr_vec(vec[@expr], option[@ty]);
-    expr_tup(vec[tup(bool /* mutability */, @expr)], option[@ty]);
-    expr_rec(vec[tup(ident,@expr)], option[@ty]);
-    expr_call(@expr, vec[@expr], option[@ty]);
-    expr_binary(binop, @expr, @expr, option[@ty]);
-    expr_unary(unop, @expr, option[@ty]);
-    expr_lit(@lit, option[@ty]);
-    expr_cast(@expr, @ty);
-    expr_if(@expr, block, option[block], option[@ty]);
-    expr_while(@expr, block, option[@ty]);
-    expr_do_while(block, @expr, option[@ty]);
-    expr_block(block, option[@ty]);
-    expr_assign(@expr /* TODO: @expr|is_lval */, @expr, option[@ty]);
-    expr_field(@expr, ident, option[@ty]);
-    expr_index(@expr, @expr, option[@ty]);
-    expr_name(name, option[def], option[@ty]);
+    expr_vec(vec[@expr], ann);
+    expr_tup(vec[tup(bool /* mutability */, @expr)], ann);
+    expr_rec(vec[tup(ident,@expr)], ann);
+    expr_call(@expr, vec[@expr], ann);
+    expr_binary(binop, @expr, @expr, ann);
+    expr_unary(unop, @expr, ann);
+    expr_lit(@lit, ann);
+    expr_cast(@expr, @ty, ann);
+    expr_if(@expr, block, option[block], ann);
+    expr_while(@expr, block, ann);
+    expr_do_while(block, @expr, ann);
+    expr_block(block, ann);
+    expr_assign(@expr /* TODO: @expr|is_lval */, @expr, ann);
+    expr_field(@expr, ident, ann);
+    expr_index(@expr, @expr, ann);
+    expr_name(name, option[def], ann);
 }
 
 type lit = spanned[lit_];
