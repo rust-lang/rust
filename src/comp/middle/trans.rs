@@ -9,6 +9,7 @@ import std.option.none;
 
 import front.ast;
 import driver.session;
+import middle.typeck;
 import back.x86;
 import back.abi;
 
@@ -237,13 +238,13 @@ fn T_taskptr() -> TypeRef {
     ret T_ptr(T_task());
 }
 
-fn type_of(@trans_ctxt cx, @ast.ty t) -> TypeRef {
-    alt (t.node) {
-        case (ast.ty_nil) { ret T_nil(); }
-        case (ast.ty_bool) { ret T_bool(); }
-        case (ast.ty_int) { ret T_int(); }
-        case (ast.ty_uint) { ret T_int(); }
-        case (ast.ty_machine(?tm)) {
+fn type_of(@trans_ctxt cx, @typeck.ty t) -> TypeRef {
+    alt (t.struct) {
+        case (typeck.ty_nil) { ret T_nil(); }
+        case (typeck.ty_bool) { ret T_bool(); }
+        case (typeck.ty_int) { ret T_int(); }
+        case (typeck.ty_uint) { ret T_int(); }
+        case (typeck.ty_machine(?tm)) {
             alt (tm) {
                 case (common.ty_i8) { ret T_i8(); }
                 case (common.ty_u8) { ret T_i8(); }
@@ -257,24 +258,25 @@ fn type_of(@trans_ctxt cx, @ast.ty t) -> TypeRef {
                 case (common.ty_f64) { ret T_f64(); }
             }
         }
-        case (ast.ty_char) { ret T_char(); }
-        case (ast.ty_str) { ret T_str(0u); }
-        case (ast.ty_box(?t)) {
+        case (typeck.ty_char) { ret T_char(); }
+        case (typeck.ty_str) { ret T_str(0u); }
+        case (typeck.ty_box(?t)) {
             ret T_ptr(T_box(type_of(cx, t)));
         }
-        case (ast.ty_vec(?t)) {
+        case (typeck.ty_vec(?t)) {
             ret T_ptr(T_vec(type_of(cx, t), 0u));
         }
-        case (ast.ty_tup(?elts)) {
+        case (typeck.ty_tup(?elts)) {
             let vec[TypeRef] tys = vec();
-            for (tup(bool, @ast.ty) elt in elts) {
+            for (tup(bool, @typeck.ty) elt in elts) {
                 tys += type_of(cx, elt._1);
             }
             ret T_struct(tys);
         }
-        case (ast.ty_path(?pth,  ?def)) {
+        case (typeck.ty_var(_)) {
             // FIXME: implement.
-            cx.sess.unimpl("ty_path in trans.type_of");
+            log "ty_var in trans.type_of";
+            ret T_i8();
         }
     }
     fail;
@@ -340,27 +342,23 @@ fn C_tydesc(TypeRef t) -> ValueRef {
                      C_null(T_opaque())));      // is_stateful
 }
 
-fn decl_fn(ModuleRef llmod, str name,
-           uint cc, vec[TypeRef] inputs, TypeRef output) -> ValueRef {
-    let TypeRef llty = T_fn(inputs, output);
+fn decl_fn(ModuleRef llmod, str name, uint cc, TypeRef llty) -> ValueRef {
     let ValueRef llfn =
         llvm.LLVMAddFunction(llmod, _str.buf(name), llty);
     llvm.LLVMSetFunctionCallConv(llfn, cc);
     ret llfn;
 }
 
-fn decl_cdecl_fn(ModuleRef llmod, str name,
-                 vec[TypeRef] inputs, TypeRef output) -> ValueRef {
-    ret decl_fn(llmod, name, lib.llvm.LLVMCCallConv, inputs, output);
+fn decl_cdecl_fn(ModuleRef llmod, str name, TypeRef llty) -> ValueRef {
+    ret decl_fn(llmod, name, lib.llvm.LLVMCCallConv, llty);
 }
 
-fn decl_fastcall_fn(ModuleRef llmod, str name,
-                    vec[TypeRef] inputs, TypeRef output) -> ValueRef {
-    ret decl_fn(llmod, name, lib.llvm.LLVMFastCallConv, inputs, output);
+fn decl_fastcall_fn(ModuleRef llmod, str name, TypeRef llty) -> ValueRef {
+    ret decl_fn(llmod, name, lib.llvm.LLVMFastCallConv, llty);
 }
 
 fn decl_glue(ModuleRef llmod, str s) -> ValueRef {
-    ret decl_cdecl_fn(llmod, s, vec(T_taskptr()), T_void());
+    ret decl_cdecl_fn(llmod, s, T_fn(vec(T_taskptr()), T_void()));
 }
 
 fn decl_upcall(ModuleRef llmod, uint _n) -> ValueRef {
@@ -375,7 +373,7 @@ fn decl_upcall(ModuleRef llmod, uint _n) -> ValueRef {
             T_int())     // callee
         + _vec.init_elt[TypeRef](T_int(), n as uint);
 
-    ret decl_fastcall_fn(llmod, s, args, T_int());
+    ret decl_fastcall_fn(llmod, s, T_fn(args, T_int()));
 }
 
 fn get_upcall(@trans_ctxt cx, str name, int n_args) -> ValueRef {
@@ -385,7 +383,7 @@ fn get_upcall(@trans_ctxt cx, str name, int n_args) -> ValueRef {
     auto inputs = vec(T_taskptr());
     inputs += _vec.init_elt[TypeRef](T_int(), n_args as uint);
     auto output = T_int();
-    auto f = decl_cdecl_fn(cx.llmod, name, inputs, output);
+    auto f = decl_cdecl_fn(cx.llmod, name, T_fn(inputs, output));
     cx.upcalls.insert(name, f);
     ret f;
 }
@@ -937,6 +935,7 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
         case (ast.expr_call(?f, ?args, _)) {
             auto f_res = trans_lval(cx, *f);
             check (! f_res._1);
+
             auto args_res = trans_exprs(f_res._0.bcx, args);
             auto llargs = vec(cx.fcx.lltaskptr);
             llargs += args_res._1;
@@ -1141,15 +1140,7 @@ impure fn trans_block(@block_ctxt cx, &ast.block b) -> result {
     auto bcx = cx;
 
     for each (@ast.local local in block_locals(b)) {
-        auto ty = T_nil();
-        alt (local.ty) {
-            case (some[@ast.ty](?t)) {
-                ty = type_of(cx.fcx.tcx, t);
-            }
-            case (none[@ast.ty]) {
-                cx.fcx.tcx.sess.err("missing type for local " + local.ident);
-            }
-        }
+        auto ty = node_type(cx.fcx.tcx, local.ann);
         auto val = bcx.build.Alloca(ty);
         cx.fcx.lllocals.insert(local.id, val);
     }
@@ -1236,15 +1227,24 @@ impure fn trans_mod(@trans_ctxt cx, &ast._mod m) {
 
 fn collect_item(&@trans_ctxt cx, @ast.item i) -> @trans_ctxt {
     alt (i.node) {
-        case (ast.item_fn(?name, ?f, ?fid, _)) {
-            cx.items.insert(fid, i);
-            let TypeRef out = type_of(cx, f.output);
-            auto args = vec(T_taskptr());
-            for (ast.arg arg in f.inputs) {
-                args += type_of(cx, arg.ty);
+        case (ast.item_fn(?name, ?f, ?fid, ?ann)) {
+            auto fn_inputs;
+            auto fn_output;
+            alt (typeck.ann_to_type(ann).struct) {
+                case (typeck.ty_fn(?ins, ?out)) {
+                    fn_inputs = ins;
+                    fn_output = out;
+                }
+                case (_) {
+                    log "trans: fn item doesn't have function type!";
+                    fail;
+                }
             }
+
+            cx.items.insert(fid, i);
+            auto llty = node_type(cx, ann);
             let str s = cx.names.next("_rust_fn") + "." + name;
-            let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, args, out);
+            let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llty);
             cx.fn_ids.insert(fid, llfn);
         }
 
@@ -1338,10 +1338,10 @@ fn trans_main_fn(@trans_ctxt cx, ValueRef llcrate) {
     }
 
     auto llmain =
-        decl_cdecl_fn(cx.llmod, main_name, T_main_args, T_int());
+        decl_cdecl_fn(cx.llmod, main_name, T_fn(T_main_args, T_int()));
 
-    auto llrust_start =
-        decl_cdecl_fn(cx.llmod, "rust_start", T_rust_start_args, T_int());
+    auto llrust_start = decl_cdecl_fn(cx.llmod, "rust_start",
+                                      T_fn(T_rust_start_args, T_int()));
 
     auto llargc = llvm.LLVMGetParam(llmain, 0u);
     auto llargv = llvm.LLVMGetParam(llmain, 1u);
@@ -1367,7 +1367,7 @@ fn trans_main_fn(@trans_ctxt cx, ValueRef llcrate) {
 
 fn declare_intrinsics(ModuleRef llmod) {
     let vec[TypeRef] T_trap_args = vec();
-    decl_cdecl_fn(llmod, "llvm.trap", T_trap_args, T_void());
+    decl_cdecl_fn(llmod, "llvm.trap", T_fn(T_trap_args, T_void()));
 }
 
 fn trans_crate(session.session sess, @ast.crate crate, str output) {
@@ -1396,7 +1396,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
                        */
                       exit_task_glue =
                       decl_cdecl_fn(llmod, abi.exit_task_glue_name(),
-                                    vec(T_taskptr()), T_void()),
+                                    T_fn(vec(T_taskptr()), T_void())),
 
                       upcall_glues =
                       _vec.init_fn[ValueRef](bind decl_upcall(llmod, _),

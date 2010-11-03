@@ -1,6 +1,7 @@
 
 import std.map.hashmap;
 import std.option;
+import middle.typeck;
 import util.common.span;
 import util.common.spanned;
 
@@ -17,7 +18,7 @@ type def_id = tup(crate_num, def_num);
 // Annotations added during successive passes.
 tag ann {
     ann_none;
-    ann_type(@ty);
+    ann_type(@typeck.ty);
 }
 
 tag def {
@@ -119,6 +120,8 @@ tag lit_ {
     lit_bool(bool);
 }
 
+// NB: If you change this, you'll probably want to change the corresponding
+// type structure in middle/typeck.rs as well.
 type ty = spanned[ty_];
 tag ty_ {
     ty_nil;

@@ -4,6 +4,7 @@ import front.parser;
 import front.token;
 import middle.trans;
 import middle.resolve;
+import middle.typeck;
 
 import std.option;
 import std.option.some;
@@ -15,6 +16,7 @@ impure fn compile_input(session.session sess, str input, str output) {
           auto p = parser.new_parser(sess, 0, input);
           auto crate = parser.parse_crate(p);
           crate = resolve.resolve_crate(sess, crate);
+          crate = typeck.check_crate(sess, crate);
           trans.trans_crate(sess, crate, output);
 }
 
