@@ -247,7 +247,7 @@ roles.
 @item Static control over memory allocation, packing and aliasing.
 
 Many values in Rust are allocated @emph{within} their containing stack-frame
-or parent strucure. Numbers, records, tuples and tags are all allocated this
+or parent structure. Numbers, records, tuples and tags are all allocated this
 way. To allocate such values in the heap, they must be explicitly
 @emph{boxed}. A @dfn{box} is a pointer to a heap allocation that holds another
 value, its @emph{content}. If the content of a box is a @emph{state} value --
@@ -1392,7 +1392,7 @@ automatically adjusting reference counts on the associated heap
 allocation. For these operations, to access the value held in the box requires
 an explicit dereference of the box value. Explicitly dereferencing a box is
 indicated with the unary @emph{star} operator @code{*}. Examples of such
-@dfn{explicit dererence} operations are:
+@dfn{explicit dereference} operations are:
 @itemize
 @item copying box values (@code{x = y})
 @item passing box values to functions (@code{f(x,y)})
