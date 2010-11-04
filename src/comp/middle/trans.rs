@@ -660,13 +660,15 @@ impure fn trans_while(@block_ctxt cx, &ast.expr cond,
     auto body_cx = new_empty_block_ctxt(cx.fcx);
     auto next_cx = new_extension_block_ctxt(cx);
 
-    cx.build.Br(cond_cx.llbb);
-    auto cond_res = trans_expr(cond_cx, cond);
-    cond_cx.build.CondBr(cond_res.val,
-                         body_cx.llbb,
-                         next_cx.llbb);
     auto body_res = trans_block(body_cx, body);
-    body_cx.build.Br(cond_cx.llbb);
+    auto cond_res = trans_expr(cond_cx, cond);
+
+    body_res.bcx.build.Br(cond_cx.llbb);
+    cond_res.bcx.build.CondBr(cond_res.val,
+                              body_cx.llbb,
+                              next_cx.llbb);
+
+    cx.build.Br(cond_cx.llbb);
     ret res(next_cx, C_nil());
 }
 
@@ -676,12 +678,13 @@ impure fn trans_do_while(@block_ctxt cx, &ast.block body,
     auto body_cx = new_empty_block_ctxt(cx.fcx);
     auto next_cx = new_extension_block_ctxt(cx);
 
-    cx.build.Br(body_cx.llbb);
     auto body_res = trans_block(body_cx, body);
-    auto cond_res = trans_expr(body_cx, cond);
-    body_cx.build.CondBr(cond_res.val,
-                         body_cx.llbb,
-                         next_cx.llbb);
+    auto cond_res = trans_expr(body_res.bcx, cond);
+
+    cond_res.bcx.build.CondBr(cond_res.val,
+                              body_cx.llbb,
+                              next_cx.llbb);
+    cx.build.Br(body_cx.llbb);
     ret res(next_cx, body_res.val);
 }
 
@@ -757,6 +760,10 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
 
         case (ast.expr_while(?cond, ?body, _)) {
             ret trans_while(cx, *cond, body);
+        }
+
+        case (ast.expr_do_while(?body, ?cond, _)) {
+            ret trans_do_while(cx, body, *cond);
         }
 
         case (ast.expr_block(?blk, _)) {

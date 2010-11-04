@@ -447,8 +447,9 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/run-pass/mlist-cycle.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/task-comm.rs \
-                    test/run-pass/vec-slice.rs \
                     test/run-pass/task-comm-3.rs \
+                    test/run-pass/vec-slice.rs \
+                    test/run-pass/while-and-do-while.rs \
                     test/run-fail/task-comm-14.rs \
                     test/compile-fail/bad-recv.rs \
                     test/compile-fail/bad-send.rs \

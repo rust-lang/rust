@@ -636,6 +636,7 @@ impure fn parse_do_while_expr(parser p) -> @ast.expr {
     expect (p, token.LPAREN);
     auto cond = parse_expr(p);
     expect(p, token.RPAREN);
+    expect(p, token.SEMI);
     hi = cond.span;
     ret @spanned(lo, hi, ast.expr_do_while(body, cond, ast.ann_none));
 }
