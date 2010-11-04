@@ -1,7 +1,7 @@
 
-import util.option;
-import util.some;
-import util.none;
+import option;
+import option.some;
+import option.none;
 
 // FIXME: It would probably be more appealing to define this as
 // type list[T] = rec(T hd, option[@list[T]] tl), but at the moment
@@ -27,7 +27,7 @@ fn foldl[T,U](&list[T] ls, &U u, fn(&T t, U u) -> U f) -> U {
 }
 
 fn find[T,U](&list[T] ls,
-             (fn(&T) -> option[U]) f) -> option[U] {
+             (fn(&T) -> option.t[U]) f) -> option.t[U] {
   alt(ls) {
     case (cons[T](?hd, ?tl)) {
         alt (f(hd)) {

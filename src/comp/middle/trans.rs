@@ -3,9 +3,9 @@ import std._vec;
 import std._str.rustrt.sbuf;
 import std._vec.rustrt.vbuf;
 import std.map.hashmap;
+import std.option.some;
+import std.option.none;
 import std.util.option;
-import std.util.some;
-import std.util.none;
 
 import front.ast;
 import driver.session;

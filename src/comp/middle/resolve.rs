@@ -8,9 +8,9 @@ import std.map.hashmap;
 import std.list.list;
 import std.list.nil;
 import std.list.cons;
+import std.option.some;
+import std.option.none;
 import std.util.option;
-import std.util.some;
-import std.util.none;
 import std._str;
 
 tag scope {
