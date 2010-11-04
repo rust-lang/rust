@@ -14,6 +14,7 @@ open Common;;
  *
  *)
 
+exception Resolution_failure of (Ast.name * Ast.name) list
 
 let log cx = Session.log "resolve"
   (should_log cx cx.ctxt_sess.Session.sess_log_resolve)
@@ -228,14 +229,6 @@ let all_item_collecting_visitor
         Walk.visit_stmt_pre = visit_stmt_pre; }
 ;;
 
-let report_error (full_name:Ast.name) (unbound_name:Ast.name) =
-  if full_name = unbound_name then
-    err None "unbound name '%a'" Ast.sprintf_name full_name
-  else
-    err None "unbound name '%a' in name '%a'" Ast.sprintf_name unbound_name
-      Ast.sprintf_name full_name
-;;
-
 let lookup_type_node_by_name
     (cx:ctxt)
     (scopes:scope list)
@@ -245,7 +238,7 @@ let lookup_type_node_by_name
               log cx "lookup_simple_type_by_name %a"
                 Ast.sprintf_name name);
   match lookup_by_name cx [] scopes name with
-      RES_failed name' -> report_error name name'
+      RES_failed name' -> raise (Resolution_failure [ name', name ])
     | RES_ok (_, id) ->
         match htab_search cx.ctxt_all_defns id with
             Some (DEFN_item { Ast.decl_item = Ast.MOD_ITEM_type _;
@@ -270,6 +263,24 @@ let push_node r n =
   { recur_all_nodes = n :: r.recur_all_nodes }
 
 
+let report_resolution_failure type_names =
+  let rec recur type_names str =
+    let stringify_pair (part, whole) =
+      if part = whole then
+        Printf.sprintf "'%a'" Ast.sprintf_name part
+      else
+        Printf.sprintf "'%a' in name '%a'" Ast.sprintf_name part
+          Ast.sprintf_name whole
+    in
+    match type_names with
+        [] -> bug () "no name in resolution failure"
+      | [ pair ] -> err None "unbound name %s%s" (stringify_pair pair) str
+      | pair::pairs ->
+          recur pairs
+            (Printf.sprintf " while resolving %s" (stringify_pair pair))
+  in 
+  recur type_names "" 
+
 let rec lookup_type_by_name
     ?loc:loc
     (cx:ctxt)
@@ -281,7 +292,7 @@ let rec lookup_type_by_name
               log cx "+++ lookup_type_by_name %a"
                 Ast.sprintf_name name);
   match lookup_by_name cx [] scopes name with
-      RES_failed name' -> report_error name name'
+      RES_failed name' -> raise (Resolution_failure [ name', name ])
     | RES_ok (scopes', id) ->
         let ty, params =
           match htab_search cx.ctxt_all_defns id with
@@ -358,7 +369,8 @@ and resolve_type
     in
       iflog cx (fun _ ->
                   log cx "resolved type name '%a' to item %d with ty %a"
-                  Ast.sprintf_name name (int_of_node node) Ast.sprintf_ty t);
+                  Ast.sprintf_name name (int_of_node node)
+                  Ast.sprintf_ty t);
       if List.mem node recur.recur_all_nodes
       then (err (Some node) "infinite recursive type definition: '%a'"
               Ast.sprintf_name name)
@@ -366,7 +378,10 @@ and resolve_type
         let recur = push_node recur node in
           iflog cx (fun _ -> log cx "recursively resolving type %a"
                       Ast.sprintf_ty t);
-          resolve_type ?loc:loc cx scopes recur t
+          try
+            resolve_type ?loc:loc cx scopes recur t
+          with Resolution_failure names ->
+            raise (Resolution_failure ((name, name)::names))
   in
   let fold =
     { base with
@@ -388,9 +403,11 @@ let type_resolving_visitor
 
   let tinfos = Hashtbl.create 0 in
 
-  let resolve_ty (t:Ast.ty) : Ast.ty =
-    resolve_type ~loc:(id_of_scope (List.hd (!scopes)))
-      cx (!scopes) empty_recur_info t
+  let resolve_ty ?(loc=id_of_scope (List.hd (!scopes))) (t:Ast.ty) : Ast.ty =
+    try
+      resolve_type ~loc:loc cx (!scopes) empty_recur_info t
+    with Resolution_failure pairs ->
+      report_resolution_failure pairs
   in
 
   let resolve_slot (s:Ast.slot) : Ast.slot =
@@ -422,9 +439,7 @@ let type_resolving_visitor
   let visit_mod_item_pre id params item =
     let resolve_and_store_type _ =
       let t = ty_of_mod_item item in
-      let ty =
-        resolve_type ~loc:item.id cx (!scopes) empty_recur_info t
-      in
+      let ty = resolve_ty ~loc:item.id t in
         log cx "resolved item %s, type as %a" id Ast.sprintf_ty ty;
         htab_put cx.ctxt_all_item_types item.id ty;
     in
@@ -432,9 +447,7 @@ let type_resolving_visitor
       try
         match item.node.Ast.decl_item with
             Ast.MOD_ITEM_type (_, ty) ->
-              let ty =
-                resolve_type ~loc:item.id cx (!scopes) empty_recur_info ty
-              in
+              let ty = resolve_ty ~loc:item.id ty in
                 log cx "resolved item %s, defining type %a"
                   id Ast.sprintf_ty ty;
                 htab_put cx.ctxt_all_type_items item.id ty;
@@ -478,10 +491,7 @@ let type_resolving_visitor
   in
 
   let visit_obj_fn_pre obj ident fn =
-    let fty =
-      resolve_type ~loc:fn.id cx (!scopes)
-        empty_recur_info (Ast.TY_fn (ty_fn_of_fn fn.node))
-    in
+    let fty = resolve_ty ~loc:fn.id (Ast.TY_fn (ty_fn_of_fn fn.node)) in
       log cx "resolved obj fn %s as %a" ident Ast.sprintf_ty fty;
       htab_put cx.ctxt_all_item_types fn.id fty;
       inner.Walk.visit_obj_fn_pre obj ident fn
