@@ -5,7 +5,7 @@
 
 import std._int;
 import std.sys;
-import std.util;
+import std.option;
 import std._vec;
 
 
@@ -17,8 +17,8 @@ abs state type hashmap[K, V] = state obj {
                                  fn insert(&K key, &V val) -> bool;
                                  fn contains_key(&K key) -> bool;
                                  fn get(&K key) -> V;
-                                 fn find(&K key) -> util.option[V];
-                                 fn remove(&K key) -> util.option[V];
+                                 fn find(&K key) -> option.t[V];
+                                 fn remove(&K key) -> option.t[V];
                                  fn rehash();
                                  iter items() -> tup(K,V);
 };
@@ -103,7 +103,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                          vec[mutable bucket[K, V]] bkts,
                          uint nbkts,
                          &K key)
-        -> util.option[V]
+        -> option.t[V]
         {
             let uint i = 0u;
             while (i < nbkts) {
@@ -111,17 +111,17 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                 alt (bkts.(j)) {
                     case (some[K, V](?k, ?v)) {
                         if (eqer(key, k)) {
-                            ret util.some[V](v);
+                            ret option.some[V](v);
                         }
                     }
                     case (nil[K, V]) {
-                        ret util.none[V];
+                        ret option.none[V];
                     }
                     case (deleted[K, V]) { }
                 }
                 i += 1u;
             }
-            ret util.none[V];
+            ret option.none[V];
         }
 
 
@@ -173,25 +173,25 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
 
             fn contains_key(&K key) -> bool {
                 alt (find_common[K, V](hasher, eqer, bkts, nbkts, key)) {
-                    case (util.some[V](_)) { ret true; }
+                    case (option.some[V](_)) { ret true; }
                     case (_) { ret false; }
                 }
             }
 
             fn get(&K key) -> V {
                 alt (find_common[K, V](hasher, eqer, bkts, nbkts, key)) {
-                    case (util.some[V](?val)) { ret val; }
+                    case (option.some[V](?val)) { ret val; }
                     case (_) { fail; }
                 }
             }
 
-            fn find(&K key) -> util.option[V] {
+            fn find(&K key) -> option.t[V] {
                 // FIXME: should be 'be' but parametric tail-calls don't
                 // work at the moment.
                 ret find_common[K, V](hasher, eqer, bkts, nbkts, key);
             }
 
-            fn remove(&K key) -> util.option[V] {
+            fn remove(&K key) -> option.t[V] {
                 let uint i = 0u;
                 while (i < nbkts) {
                     let uint j = (hash[K](hasher, nbkts, key, i));
@@ -200,17 +200,17 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                             if (eqer(key, k)) {
                                 bkts.(j) = deleted[K, V];
                                 nelts -= 1u;
-                                ret util.some[V](v);
+                                ret option.some[V](v);
                             }
                         }
                         case (deleted[K, V]) { }
                         case (nil[K, V]) {
-                            ret util.none[V];
+                            ret option.none[V];
                         }
                     }
                     i += 1u;
                 }
-                ret util.none[V];
+                ret option.none[V];
             }
 
             fn rehash() {

@@ -1,7 +1,6 @@
 
-import util.common.option;
 import std.map.hashmap;
-import std.util.option;
+import std.option;
 import util.common.span;
 import util.common.spanned;
 
@@ -71,16 +70,16 @@ tag unop {
 type stmt = spanned[stmt_];
 tag stmt_ {
     stmt_decl(@decl);
-    stmt_ret(option[@expr]);
+    stmt_ret(option.t[@expr]);
     stmt_log(@expr);
     stmt_check_expr(@expr);
     stmt_expr(@expr);
 }
 
-type local = rec(option[@ty] ty,
+type local = rec(option.t[@ty] ty,
                  bool infer,
                  ident ident,
-                 option[@expr] init,
+                 option.t[@expr] init,
                  def_id id);
 
 type decl = spanned[decl_];
@@ -99,14 +98,14 @@ tag expr_ {
     expr_unary(unop, @expr, ann);
     expr_lit(@lit, ann);
     expr_cast(@expr, @ty, ann);
-    expr_if(@expr, block, option[block], ann);
+    expr_if(@expr, block, option.t[block], ann);
     expr_while(@expr, block, ann);
     expr_do_while(block, @expr, ann);
     expr_block(block, ann);
     expr_assign(@expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_field(@expr, ident, ann);
     expr_index(@expr, @expr, ann);
-    expr_name(name, option[def], ann);
+    expr_name(name, option.t[def], ann);
 }
 
 type lit = spanned[lit_];
@@ -131,7 +130,7 @@ tag ty_ {
     ty_box(@ty);
     ty_vec(@ty);
     ty_tup(vec[tup(bool /* mutability */, @ty)]);
-    ty_path(path, option[def]);
+    ty_path(path, option.t[def]);
 }
 
 tag mode {

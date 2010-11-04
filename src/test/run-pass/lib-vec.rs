@@ -32,7 +32,7 @@ fn test_slice() {
 
 fn test_map() {
   fn square(&int x) -> int { ret x * x; }
-  let std.util.operator[int, int] op = square;
+  let std.option.operator[int, int] op = square;
   let vec[int] v = vec(1, 2, 3, 4, 5);
   let vec[int] s = std._vec.map[int, int](op, v);
   let int i = 0;

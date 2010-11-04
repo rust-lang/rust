@@ -8,9 +8,9 @@ import std.map.hashmap;
 import std.list.list;
 import std.list.nil;
 import std.list.cons;
-import std.util.option;
-import std.util.some;
-import std.util.none;
+import std.option;
+import std.option.some;
+import std.option.none;
 import std._str;
 
 tag scope {
@@ -22,11 +22,11 @@ tag scope {
 type env = rec(list[scope] scopes,
                session.session sess);
 
-fn lookup_name(&env e, ast.ident i) -> option[def] {
+fn lookup_name(&env e, ast.ident i) -> option.t[def] {
 
     // log "resolving name " + i;
 
-    fn found_def_item(@ast.item i) -> option[def] {
+    fn found_def_item(@ast.item i) -> option.t[def] {
         alt (i.node) {
             case (ast.item_fn(_, _, ?id)) {
                 ret some[def](ast.def_fn(id));
@@ -40,7 +40,7 @@ fn lookup_name(&env e, ast.ident i) -> option[def] {
         }
     }
 
-    fn found_decl_stmt(@ast.stmt s) -> option[def] {
+    fn found_decl_stmt(@ast.stmt s) -> option.t[def] {
         alt (s.node) {
             case (ast.stmt_decl(?d)) {
                 alt (d.node) {
@@ -56,7 +56,7 @@ fn lookup_name(&env e, ast.ident i) -> option[def] {
         ret none[def];
     }
 
-    fn check_mod(ast.ident i, ast._mod m) -> option[def] {
+    fn check_mod(ast.ident i, ast._mod m) -> option.t[def] {
         alt (m.index.find(i)) {
             case (some[uint](?ix)) {
                 ret found_def_item(m.items.(ix));
@@ -66,7 +66,7 @@ fn lookup_name(&env e, ast.ident i) -> option[def] {
     }
 
 
-    fn in_scope(ast.ident i, &scope s) -> option[def] {
+    fn in_scope(ast.ident i, &scope s) -> option.t[def] {
         alt (s) {
 
             case (scope_crate(?c)) {
@@ -103,7 +103,7 @@ fn lookup_name(&env e, ast.ident i) -> option[def] {
 }
 
 fn fold_expr_name(&env e, &span sp, &ast.name n,
-                  &option[def] d, ann a) -> @ast.expr {
+                  &option.t[def] d, ann a) -> @ast.expr {
 
     auto d_ = lookup_name(e, n.node.ident);
 

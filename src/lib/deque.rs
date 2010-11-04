@@ -2,7 +2,7 @@
  * A deque, for fun.  Untested as of yet.  Likely buggy.
  */
 
-import std.util;
+import std.option;
 import std._vec;
 import std._int;
 
@@ -23,7 +23,7 @@ type t[T] = obj {
 
 fn create[T]() -> t[T] {
 
-    type cell[T] = mutable util.option[T];
+    type cell[T] = mutable option.t[T];
 
     let uint initial_capacity = 32u; // 2^5
 
@@ -39,7 +39,7 @@ fn create[T]() -> t[T] {
             if (i < nelts) {
                 ret old.((lo + i) % nelts);
             } else {
-                ret util.none[T];
+                ret option.none[T];
             }
         }
 
@@ -50,7 +50,7 @@ fn create[T]() -> t[T] {
 
     fn get[T](vec[cell[T]] elts, uint i) -> T {
         alt (elts.(i)) {
-            case (util.some[T](?t)) { ret t; }
+            case (option.some[T](?t)) { ret t; }
             case (_) { fail; }
         }
     }
@@ -77,7 +77,7 @@ fn create[T]() -> t[T] {
                     hi = nelts;
                 }
 
-                elts.(lo) = util.some[T](t);
+                elts.(lo) = option.some[T](t);
                 nelts += 1u;
             }
 
@@ -88,7 +88,7 @@ fn create[T]() -> t[T] {
                     hi = nelts;
                 }
 
-                elts.(hi) = util.some[T](t);
+                elts.(hi) = option.some[T](t);
                 hi = (hi + 1u) % _vec.len[cell[T]](elts);
                 nelts += 1u;
             }
@@ -99,7 +99,7 @@ fn create[T]() -> t[T] {
              */
             fn pop_front() -> T {
                 let T t = get[T](elts, lo);
-                elts.(lo) = util.none[T];
+                elts.(lo) = option.none[T];
                 lo = (lo + 1u) % _vec.len[cell[T]](elts);
                 nelts -= 1u;
                 ret t;
@@ -113,7 +113,7 @@ fn create[T]() -> t[T] {
                 }
 
                 let T t = get[T](elts, hi);
-                elts.(hi) = util.none[T];
+                elts.(hi) = option.none[T];
                 nelts -= 1u;
                 ret t;
             }
@@ -132,7 +132,7 @@ fn create[T]() -> t[T] {
             }
 
         }
-    let vec[cell[T]] v = _vec.init_elt[cell[T]](util.none[T],
+    let vec[cell[T]] v = _vec.init_elt[cell[T]](option.none[T],
                                                 initial_capacity);
 
     ret deque[T](0u, 0u, 0u, v);

@@ -1,7 +1,7 @@
 import std.map.hashmap;
-import std.util.option;
-import std.util.some;
-import std.util.none;
+import std.option;
+import std.option.some;
+import std.option.none;
 
 import util.common.new_str_hash;
 import util.common.spanned;
@@ -47,7 +47,7 @@ type ast_fold[ENV] =
          vec[tup(bool, @ty)] elts) -> @ty)        fold_ty_tup,
 
      (fn(&ENV e, &span sp, ast.path p,
-         &option[def] d) -> @ty)                  fold_ty_path,
+         &option.t[def] d) -> @ty)                  fold_ty_path,
 
      // Expr folds.
      (fn(&ENV e, &span sp,
@@ -79,7 +79,7 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &span sp,
          @expr cond, &block thn,
-         &option[block] els,
+         &option.t[block] els,
          ann a) -> @expr)                         fold_expr_if,
 
      (fn(&ENV e, &span sp,
@@ -107,7 +107,7 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &span sp,
          &name n,
-         &option[def] d,
+         &option.t[def] d,
          ann a) -> @expr)                         fold_expr_name,
 
      // Decl folds.
@@ -123,7 +123,7 @@ type ast_fold[ENV] =
          @decl decl) -> @stmt)                    fold_stmt_decl,
 
      (fn(&ENV e, &span sp,
-         &option[@expr] rv) -> @stmt)             fold_stmt_ret,
+         &option.t[@expr] rv) -> @stmt)           fold_stmt_ret,
 
      (fn(&ENV e, &span sp,
          @expr e) -> @stmt)                       fold_stmt_log,
@@ -568,7 +568,7 @@ fn identity_fold_ty_tup[ENV](&ENV env, &span sp, vec[tup(bool,@ty)] elts)
 }
 
 fn identity_fold_ty_path[ENV](&ENV env, &span sp, ast.path p,
-                        &option[def] d) -> @ty {
+                        &option.t[def] d) -> @ty {
     ret @respan(sp, ast.ty_path(p, d));
 }
 
@@ -614,7 +614,7 @@ fn identity_fold_expr_lit[ENV](&ENV env, &span sp, @ast.lit lit,
 
 fn identity_fold_expr_if[ENV](&ENV env, &span sp,
                               @expr cond, &block thn,
-                              &option[block] els, ann a) -> @expr {
+                              &option.t[block] els, ann a) -> @expr {
     ret @respan(sp, ast.expr_if(cond, thn, els, a));
 }
 
@@ -650,7 +650,7 @@ fn identity_fold_expr_index[ENV](&ENV env, &span sp,
 }
 
 fn identity_fold_expr_name[ENV](&ENV env, &span sp,
-                                &name n, &option[def] d,
+                                &name n, &option.t[def] d,
                                 ann a) -> @expr {
     ret @respan(sp, ast.expr_name(n, d, a));
 }
@@ -675,7 +675,7 @@ fn identity_fold_stmt_decl[ENV](&ENV env, &span sp, @decl d) -> @stmt {
 }
 
 fn identity_fold_stmt_ret[ENV](&ENV env, &span sp,
-                               &option[@expr] rv) -> @stmt {
+                               &option.t[@expr] rv) -> @stmt {
     ret @respan(sp, ast.stmt_ret(rv));
 }
 

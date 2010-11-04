@@ -1,5 +1,5 @@
 import vbuf = rustrt.vbuf;
-import op = util.operator;
+import std.option;
 
 native "rust" mod rustrt {
     type vbuf;
@@ -129,7 +129,7 @@ fn grow[T](&mutable vec[T] v, int n, &T initval) {
     }
 }
 
-fn map[T, U](&op[T,U] f, &vec[T] v) -> vec[U] {
+fn map[T, U](&option.operator[T,U] f, &vec[T] v) -> vec[U] {
     let vec[U] u = alloc[U](len[T](v));
     for (T ve in v) {
         u += vec(f(ve));

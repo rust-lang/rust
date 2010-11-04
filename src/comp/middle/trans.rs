@@ -3,9 +3,9 @@ import std._vec;
 import std._str.rustrt.sbuf;
 import std._vec.rustrt.vbuf;
 import std.map.hashmap;
-import std.util.option;
-import std.util.some;
-import std.util.none;
+import std.option;
+import std.option.some;
+import std.option.none;
 
 import front.ast;
 import driver.session;
@@ -613,7 +613,7 @@ impure fn trans_binary(@block_ctxt cx, ast.binop op,
 }
 
 impure fn trans_if(@block_ctxt cx, &ast.expr cond,
-                   &ast.block thn, &option[ast.block] els) -> result {
+                   &ast.block thn, &option.t[ast.block] els) -> result {
 
     auto cond_res = trans_expr(cx, cond);
 
@@ -868,7 +868,7 @@ impure fn trans_check_expr(@block_ctxt cx, &ast.expr e) -> result {
     ret res(next_cx, C_nil());
 }
 
-impure fn trans_ret(@block_ctxt cx, &option[@ast.expr] e) -> result {
+impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
     auto r = res(cx, C_nil());
     alt (e) {
         case (some[@ast.expr](?x)) {

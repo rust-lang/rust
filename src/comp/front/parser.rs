@@ -1,7 +1,7 @@
 import std._io;
-import std.util.option;
-import std.util.some;
-import std.util.none;
+import std.option;
+import std.option.some;
+import std.option.none;
 import std.map.hashmap;
 
 import driver.session;
@@ -157,7 +157,7 @@ impure fn parse_arg(parser p) -> ast.arg {
 
 impure fn parse_seq[T](token.token bra,
                       token.token ket,
-                      option[token.token] sep,
+                      option.t[token.token] sep,
                       (impure fn(parser) -> T) f,
                       parser p) -> util.common.spanned[vec[T]] {
     let bool first = true;
@@ -185,7 +185,7 @@ impure fn parse_seq[T](token.token bra,
     ret spanned(lo, hi, v);
 }
 
-impure fn parse_lit(parser p) -> option[ast.lit] {
+impure fn parse_lit(parser p) -> option.t[ast.lit] {
     auto lo = p.get_span();
     let ast.lit_ lit;
     alt (p.peek()) {
@@ -600,7 +600,7 @@ impure fn parse_if_expr(parser p) -> @ast.expr {
     auto cond = parse_expr(p);
     expect(p, token.RPAREN);
     auto thn = parse_block(p);
-    let option[ast.block] els = none[ast.block];
+    let option.t[ast.block] els = none[ast.block];
     hi = thn.span;
     alt (p.peek()) {
         case (token.ELSE) {
@@ -664,7 +664,7 @@ impure fn parse_expr(parser p) -> @ast.expr {
     }
 }
 
-impure fn parse_initializer(parser p) -> option[@ast.expr] {
+impure fn parse_initializer(parser p) -> option.t[@ast.expr] {
     if (p.peek() == token.EQ) {
         p.bump();
         ret some(parse_expr(p));
