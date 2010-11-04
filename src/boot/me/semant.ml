@@ -1950,7 +1950,13 @@ visitor =
 
 (* Generic lookup, used for slots, items, types, etc. *)
 
-type resolved = ((scope list * node_id) option) ;;
+type resolved =
+    RES_ok of scope list * node_id
+  | RES_failed of Ast.name
+;;
+
+let no_such_ident ident = RES_failed (Ast.NAME_base (Ast.BASE_ident ident))
+let no_such_temp temp = RES_failed (Ast.NAME_base (Ast.BASE_temp temp))
 
 let get_mod_item
     (cx:ctxt)
@@ -2000,20 +2006,20 @@ let rec project_ident_from_items
   in
 
   if not (inside || (exports_permit view ident))
-  then None
+  then no_such_ident ident
   else
     match htab_search items ident with
         Some i ->
           found cx scopes i.id
       | None ->
           match htab_search view.Ast.view_imports ident with
-              None -> None
+              None -> no_such_ident ident
             | Some name ->
                 lookup_by_name cx lchk scopes name
 
 and found cx scopes id =
   Hashtbl.replace cx.ctxt_node_referenced id ();
-  Some (scopes, id)
+  RES_ok (scopes, id)
 
 and project_name_comp_from_resolved
     (cx:ctxt)
@@ -2022,8 +2028,8 @@ and project_name_comp_from_resolved
     (ext:Ast.name_component)
     : resolved =
   match mod_res with
-      None -> None
-    | Some (scopes, id) ->
+      RES_failed _ -> mod_res
+    | RES_ok (scopes, id) ->
         let scope = (SCOPE_mod_item {id=id; node=get_item cx id}) in
         let scopes = scope :: scopes in
         let ident = get_name_comp_ident ext in
@@ -2054,27 +2060,37 @@ and lookup_by_ident
     : resolved =
 
   let check_slots scopes islots =
-    arr_search islots
-      (fun _ (sloti,ident') ->
-         if ident = ident'
-         then found cx scopes sloti.id
-         else None)
+    let rec search i =
+      if i == (Array.length islots) then
+        no_such_ident ident
+      else
+        let (sloti, ident') = islots.(i) in
+        if ident = ident'
+        then found cx scopes sloti.id
+        else search (i + 1)
+    in
+    search 0
   in
 
   let check_params scopes params =
-    arr_search params
-      (fun _ {node=(i,_); id=id} ->
-         if i = ident
-         then found cx scopes id
-         else None)
+    let rec search i =
+      if i == (Array.length params) then
+        no_such_ident ident
+      else
+        let { node = (ident', _); id = id } = params.(i) in
+        if ident = ident'
+        then found cx scopes id
+        else search (i + 1)
+    in
+    search 0
   in
 
   let passed_capture_scope = ref false in
 
   let would_capture r =
     match r with
-        None -> None
-      | Some _ ->
+        RES_failed _ -> r
+      | RES_ok _ ->
           if !passed_capture_scope
           then err None "attempted dynamic environment-capture"
           else r
@@ -2091,7 +2107,7 @@ and lookup_by_ident
                 | None ->
                     match htab_search block_items ident with
                         Some id -> found cx scopes id
-                      | None -> None
+                      | None -> no_such_ident ident
             end
 
       | SCOPE_crate crate ->
@@ -2115,21 +2131,21 @@ and lookup_by_ident
                     project_ident_from_items cx lchk
                       scopes item.id md ident true
 
-                | _ -> None
+                | _ -> no_such_ident ident
             in
               match item_match with
-                  Some _ -> item_match
-                | None ->
+                  RES_ok _ -> item_match
+                | RES_failed _ ->
                     would_capture
                       (check_params scopes item.node.Ast.decl_params)
           end
   in
   let rec search scopes =
     match scopes with
-        [] -> None
+        [] -> no_such_ident ident
       | scope::rest ->
           match check_scope scopes scope with
-              None ->
+              RES_failed _ ->
                 begin
                   let is_ty_item i =
                     match i.node.Ast.decl_item with
@@ -2157,28 +2173,26 @@ let lookup_by_temp
     (cx:ctxt)
     (scopes:scope list)
     (temp:temp_id)
-    : ((scope list * node_id) option) =
-  let passed_item_scope = ref false in
-  let check_scope scope =
-    if !passed_item_scope
-    then None
-    else
-      match scope with
-          SCOPE_block block_id ->
+    : resolved =
+  let rec search scopes' =
+    match scopes' with
+        (SCOPE_block block_id)::scopes'' ->
             let block_slots = Hashtbl.find cx.ctxt_block_slots block_id in
-              htab_search block_slots (Ast.KEY_temp temp)
-        | _ ->
-            passed_item_scope := true;
-            None
+            begin
+              match htab_search block_slots (Ast.KEY_temp temp) with
+                  Some slot -> RES_ok (scopes', slot)
+                | None -> search scopes''
+            end
+      | _ -> no_such_temp temp
   in
-    list_search_ctxt scopes check_scope
+  search scopes
 ;;
 
 let lookup
     (cx:ctxt)
     (scopes:scope list)
     (key:Ast.slot_key)
-    : ((scope list * node_id) option) =
+    : resolved =
   match key with
       Ast.KEY_temp temp -> lookup_by_temp cx scopes temp
     | Ast.KEY_ident ident -> lookup_by_ident cx [] scopes ident

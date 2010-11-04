@@ -119,7 +119,7 @@ let determine_constr_key
 
   let cid =
     match lookup_by_name cx [] scopes c.Ast.constr_name with
-        Some (_, cid) ->
+        RES_ok (_, cid) ->
           if defn_id_is_item cx cid
           then
             begin
@@ -134,7 +134,7 @@ let determine_constr_key
             end
           else
             bug () "slot used as predicate"
-      | None -> bug () "predicate not found"
+      | RES_failed _ -> bug () "predicate not found"
   in
 
   let constr_arg_of_carg carg =
@@ -153,8 +153,8 @@ let determine_constr_key
               | Ast.CARG_base (Ast.BASE_named nb) ->
                   begin
                     match lookup_by_name cx [] scopes (Ast.NAME_base nb) with
-                        None -> bug () "constraint-arg not found"
-                      | Some (_, aid) ->
+                        RES_failed _ -> bug () "constraint-arg not found"
+                      | RES_ok (_, aid) ->
                           if defn_id_is_slot cx aid
                           then
                             if type_has_state cx

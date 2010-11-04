@@ -228,6 +228,13 @@ let all_item_collecting_visitor
         Walk.visit_stmt_pre = visit_stmt_pre; }
 ;;
 
+let report_error (full_name:Ast.name) (unbound_name:Ast.name) =
+  if full_name = unbound_name then
+    err None "unbound name '%a'" Ast.sprintf_name full_name
+  else
+    err None "unbound name '%a' in name '%a'" Ast.sprintf_name unbound_name
+      Ast.sprintf_name full_name
+;;
 
 let lookup_type_node_by_name
     (cx:ctxt)
@@ -238,8 +245,8 @@ let lookup_type_node_by_name
               log cx "lookup_simple_type_by_name %a"
                 Ast.sprintf_name name);
   match lookup_by_name cx [] scopes name with
-      None -> err None "unknown name: %a" Ast.sprintf_name name
-    | Some (_, id) ->
+      RES_failed name' -> report_error name name'
+    | RES_ok (_, id) ->
         match htab_search cx.ctxt_all_defns id with
             Some (DEFN_item { Ast.decl_item = Ast.MOD_ITEM_type _;
                               Ast.decl_params = _ })
@@ -274,8 +281,8 @@ let rec lookup_type_by_name
               log cx "+++ lookup_type_by_name %a"
                 Ast.sprintf_name name);
   match lookup_by_name cx [] scopes name with
-      None -> err None "unknown name: %a" Ast.sprintf_name name
-    | Some (scopes', id) ->
+      RES_failed name' -> report_error name name'
+    | RES_ok (scopes', id) ->
         let ty, params =
           match htab_search cx.ctxt_all_defns id with
               Some (DEFN_item { Ast.decl_item = Ast.MOD_ITEM_type (_, t);
@@ -614,17 +621,17 @@ let lval_base_resolving_visitor
   let lookup_defn_by_ident id ident =
     log cx "looking up slot or item with ident '%s'" ident;
     match lookup cx (!scopes) (Ast.KEY_ident ident) with
-        None -> err (Some id) "unresolved identifier '%s'" ident
-      | Some (_, id) -> (log cx "resolved to node id #%d"
+        RES_failed _ -> err (Some id) "unresolved identifier '%s'" ident
+      | RES_ok (_, id) -> (log cx "resolved to node id #%d"
                            (int_of_node id); id)
   in
   let lookup_slot_by_temp id temp =
     log cx "looking up temp slot #%d" (int_of_temp temp);
     let res = lookup cx (!scopes) (Ast.KEY_temp temp) in
       match res with
-          None -> err
+          RES_failed _ -> err
             (Some id) "unresolved temp node #%d" (int_of_temp temp)
-        | Some (_, id) ->
+        | RES_ok (_, id) ->
             (log cx "resolved to node id #%d" (int_of_node id); id)
   in
   let lookup_defn_by_name_base id nb =

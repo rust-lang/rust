@@ -273,8 +273,8 @@ let process_crate
   let root_scope = [ SCOPE_crate crate ] in
   let auth_effect name eff =
     match lookup_by_name cx [] root_scope name with
-        None -> ()
-      | Some (_, id) ->
+        RES_failed _ -> ()
+      | RES_ok (_, id) ->
           if defn_id_is_item cx id
           then htab_put item_auth id eff
           else err (Some id) "auth clause in crate refers to non-item"
