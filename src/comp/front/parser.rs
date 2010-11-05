@@ -108,6 +108,45 @@ impure fn parse_possibly_mutable_ty(parser p) -> tup(bool, @ast.ty) {
     ret tup(mut, parse_ty(p));
 }
 
+impure fn parse_ty_fn(parser p) -> ast.ty_ {
+    impure fn parse_fn_input_ty(parser p) -> rec(ast.mode mode, @ast.ty ty) {
+        auto mode;
+        if (p.peek() == token.BINOP(token.AND)) {
+            p.bump();
+            mode = ast.alias;
+        } else {
+            mode = ast.val;
+        }
+
+        auto t = parse_ty(p);
+
+        alt (p.peek()) {
+            case (token.IDENT(_)) { p.bump(); /* ignore the param name */ }
+            case (_) { /* no param name present */ }
+        }
+
+        ret rec(mode=mode, ty=t);
+    }
+
+    auto lo = p.get_span();
+
+    expect(p, token.FN);
+
+    auto f = parse_fn_input_ty; // FIXME: trans_const_lval bug
+    auto inputs = parse_seq[rec(ast.mode mode, @ast.ty ty)](token.LPAREN,
+        token.RPAREN, some(token.COMMA), f, p);
+
+    let @ast.ty output;
+    if (p.peek() == token.RARROW) {
+        p.bump();
+        output = parse_ty(p);
+    } else {
+        output = @spanned(lo, inputs.span, ast.ty_nil);
+    }
+
+    ret ast.ty_fn(inputs.node, output);
+}
+            
 impure fn parse_ty(parser p) -> @ast.ty {
     auto lo = p.get_span();
     let ast.ty_ t;
@@ -133,6 +172,10 @@ impure fn parse_ty(parser p) -> @ast.ty {
             auto elems = parse_seq[tup(bool, @ast.ty)](token.LPAREN,
                 token.RPAREN, some(token.COMMA), f, p);
             t = ast.ty_tup(elems.node);
+        }
+
+        case (token.FN) {
+            t = parse_ty_fn(p);
         }
 
         case (_) {

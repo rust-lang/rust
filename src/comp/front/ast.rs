@@ -130,6 +130,7 @@ tag ty_ {
     ty_box(@ty);
     ty_vec(@ty);
     ty_tup(vec[tup(bool /* mutability */, @ty)]);
+    ty_fn(vec[rec(mode mode, @ty ty)], @ty);        // TODO: effect
     ty_path(path, option.t[def]);
 }
 
