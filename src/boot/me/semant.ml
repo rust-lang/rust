@@ -2001,7 +2001,16 @@ let rec project_ident_from_items
 
   let lchk =
     if List.mem (scope_id, ident) lchk
-    then err (Some scope_id) "cyclic import for ident %s" ident
+    then
+      let string_of_loop_check (id, ident) =
+        match Session.get_span cx.ctxt_sess id with
+            Some span -> ident ^ " @ " ^ (Session.string_of_span span)
+          | None -> ident
+      in
+      let lchk' = (scope_id, ident)::lchk in
+      let lchk_strs = List.map string_of_loop_check (List.rev lchk') in
+      err (Some scope_id) "cyclic import for ident %s (%s)" ident
+        (String.concat " -> " lchk_strs)
     else (scope_id, ident)::lchk
   in
 
