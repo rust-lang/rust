@@ -1,7 +1,7 @@
 import std.map.hashmap;
-import std.option.some;
-import std.option.none;
 import std.util.option;
+import std.util.some;
+import std.util.none;
 
 import util.common.new_str_hash;
 import util.common.spanned;

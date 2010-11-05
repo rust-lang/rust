@@ -20,7 +20,6 @@ mod _task;
 
 // Utility modules.
 
-mod option;
 mod util;
 
 // Authorize various rule-bendings.

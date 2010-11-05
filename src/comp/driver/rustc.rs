@@ -5,9 +5,9 @@ import front.token;
 import middle.trans;
 import middle.resolve;
 
-import std.option;
-import std.option.some;
-import std.option.none;
+import std.util.option;
+import std.util.some;
+import std.util.none;
 import std._str;
 import std._vec;
 
@@ -39,8 +39,8 @@ fn usage(session.session sess, str argv0) {
 impure fn main(vec[str] args) {
 
   auto sess = session.session();
-  let option.t[str] input_file = none[str];
-  let option.t[str] output_file = none[str];
+  let option[str] input_file = none[str];
+  let option[str] output_file = none[str];
   let bool do_warn = true;
 
   auto i = 1u;

@@ -1,8 +1,8 @@
 import std._io;
-import std.option.some;
-import std.option.none;
-import std.map.hashmap;
 import std.util.option;
+import std.util.some;
+import std.util.none;
+import std.map.hashmap;
 
 import driver.session;
 import util.common;
