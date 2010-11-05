@@ -997,16 +997,19 @@ let rec pretty_ty_str (cx:ctxt) (fallback:(Ast.ty -> string)) (ty:Ast.ty) =
           in
           let fields = Array.to_list (Array.map format_field fields) in
           "rec(" ^ (String.concat ", " fields) ^ ")"
-      | Ast.TY_fn (fnsig, _) ->
+      | Ast.TY_fn (fnsig, aux) ->
           let format_slot slot =
             match slot.Ast.slot_ty with
                 None -> Common.bug () "no ty in slot"
               | Some ty' -> pretty_ty_str cx fallback ty'
           in
+          let effect = aux.Ast.fn_effect in
+          let qual = Fmt.sprintf_fmt Ast.fmt_effect_qual () effect in
+          let keyword = if aux.Ast.fn_is_iter then "iter" else "fn" in
           let fn_args = Array.map format_slot fnsig.Ast.sig_input_slots in
           let fn_args_str = String.concat ", " (Array.to_list fn_args) in
           let fn_rv_str = format_slot fnsig.Ast.sig_output_slot in
-          Printf.sprintf "fn(%s) -> %s" fn_args_str fn_rv_str
+          Printf.sprintf "%s%s(%s) -> %s" qual keyword fn_args_str fn_rv_str
       | Ast.TY_tag { Ast.tag_id = tag_id; Ast.tag_args = _ }
               when Hashtbl.mem cx.ctxt_user_tag_names tag_id ->
           let name = Hashtbl.find cx.ctxt_user_tag_names tag_id in
