@@ -44,6 +44,6 @@ fn test_map() {
 
 fn main() {
   test_init_elt();
-  //XFAIL: test_init_fn();  // Segfaults.
+  test_init_fn();
   test_slice();
 }
