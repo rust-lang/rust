@@ -1990,6 +1990,7 @@ let get_name_base_ident
 type loop_check = (node_id * Ast.ident) list;;
 
 let rec project_ident_from_items
+    ?loc:loc
     (cx:ctxt)
     (lchk:loop_check)
     (scopes:scope list)
@@ -2009,7 +2010,7 @@ let rec project_ident_from_items
       in
       let lchk' = (scope_id, ident)::lchk in
       let lchk_strs = List.map string_of_loop_check (List.rev lchk') in
-      err (Some scope_id) "cyclic import for ident %s (%s)" ident
+      err loc "cyclic import for ident %s (%s)" ident
         (String.concat " -> " lchk_strs)
     else (scope_id, ident)::lchk
   in
@@ -2047,6 +2048,7 @@ and project_name_comp_from_resolved
           project_ident_from_items cx lchk scopes id md ident false
 
 and lookup_by_name
+    ?loc:loc
     (cx:ctxt)
     (lchk:loop_check)
     (scopes:scope list)
@@ -2056,12 +2058,13 @@ and lookup_by_name
   match name with
       Ast.NAME_base nb ->
         let ident = get_name_base_ident nb in
-          lookup_by_ident cx lchk scopes ident
+          lookup_by_ident ?loc:loc cx lchk scopes ident
     | Ast.NAME_ext (name, ext) ->
         let base_res = lookup_by_name cx lchk scopes name in
           project_name_comp_from_resolved cx lchk base_res ext
 
 and lookup_by_ident
+    ?loc:loc
     (cx:ctxt)
     (lchk:loop_check)
     (scopes:scope list)
@@ -2120,8 +2123,8 @@ and lookup_by_ident
             end
 
       | SCOPE_crate crate ->
-          project_ident_from_items
-            cx lchk scopes crate.id crate.node.Ast.crate_items ident true
+          project_ident_from_items ?loc:loc cx lchk
+            scopes crate.id crate.node.Ast.crate_items ident true
 
       | SCOPE_obj_fn fn ->
           would_capture (check_slots scopes fn.node.Ast.fn_input_slots)
@@ -2137,7 +2140,7 @@ and lookup_by_ident
                     check_slots scopes obj.Ast.obj_state
 
                 | Ast.MOD_ITEM_mod md ->
-                    project_ident_from_items cx lchk
+                    project_ident_from_items ?loc:loc cx lchk
                       scopes item.id md ident true
 
                 | _ -> no_such_ident ident

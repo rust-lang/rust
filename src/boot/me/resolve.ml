@@ -291,7 +291,7 @@ let rec lookup_type_by_name
   iflog cx (fun _ ->
               log cx "+++ lookup_type_by_name %a"
                 Ast.sprintf_name name);
-  match lookup_by_name cx [] scopes name with
+  match lookup_by_name ?loc:loc cx [] scopes name with
       RES_failed name' -> raise (Resolution_failure [ name', name ])
     | RES_ok (scopes', id) ->
         let ty, params =
