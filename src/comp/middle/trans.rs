@@ -804,7 +804,7 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
             check (lhs_res._1);
             auto rhs_res = trans_expr(lhs_res._0.bcx, *src);
             ret res(rhs_res.bcx,
-                    cx.build.Store(rhs_res.val, lhs_res._0.val));
+                    rhs_res.bcx.build.Store(rhs_res.val, lhs_res._0.val));
         }
 
         case (ast.expr_call(?f, ?args, _)) {
@@ -825,7 +825,7 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
                               cx.fcx.lltaskptr);
             llargs += args_res._1;
             ret res(args_res._0,
-                    cx.build.Call(f_res._0.val, llargs));
+                    args_res._0.build.Call(f_res._0.val, llargs));
         }
 
     }
