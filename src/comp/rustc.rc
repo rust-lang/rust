@@ -38,7 +38,7 @@ auth lib.llvm = unsafe;
 mod lib {
     alt (target_os) {
         case ("win32") {
-            let (llvm_lib = "LLVM-2.8svn.dll") {
+            let (llvm_lib = "LLVM-2.8.dll") {
                 mod llvm;
             }
         }
