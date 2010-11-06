@@ -26,7 +26,7 @@ let x86_glue
   let (prefix,align) =
     match sess.Session.sess_targ with
         Linux_x86_elf
-      | Win32_x86_pe -> ("",4)
+      | Win32_x86_pe -> ("_",4)
       | MacOS_x86_macho -> ("_", 16)
   in
   let save_callee_saves =

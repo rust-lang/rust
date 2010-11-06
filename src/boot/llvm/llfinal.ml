@@ -4,6 +4,7 @@
  *)
 
 let finalize_module
+    (sess:Session.sess)
     (llctx:Llvm.llcontext)
     (llmod:Llvm.llmodule)
     (abi:Llabi.abi)
@@ -68,7 +69,13 @@ let finalize_module
   (* Define the main function for crt0 to call. *)
   let main_fn =
     let main_ty = Llvm.function_type i32 [| i32; i32 |] in
-    Llvm.define_function "main" main_ty llmod
+    let main_name =
+      match sess.Session.sess_targ with
+          Common.Win32_x86_pe -> "WinMain@16"
+        | Common.Linux_x86_elf
+        | Common.MacOS_x86_macho -> "main"
+  in
+    Llvm.define_function main_name main_ty llmod
   in
   let argc = Llvm.param main_fn 0 in
   let argv = Llvm.param main_fn 1 in

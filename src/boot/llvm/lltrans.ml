@@ -1132,7 +1132,7 @@ let trans_crate
         Hashtbl.iter declare_mod_item items;
         Hashtbl.iter trans_mod_item items;
         Llfinal.finalize_module
-          llctx llmod abi asm_glue exit_task_glue crate_ptr;
+          sess llctx llmod abi asm_glue exit_task_glue crate_ptr;
         llmod
     with e -> Llvm.dispose_module llmod; raise e
 ;;
