@@ -127,13 +127,19 @@ fn decl_upcall_glue(int align, str prefix, uint n) -> str {
                   upcall_glue(i));
 }
 
+fn get_symbol_prefix() -> str {
+    if (_str.eq(target_os(), "macos") ||
+        _str.eq(target_os(), "win32")) {
+        ret "_";
+    } else {
+        ret "";
+    }
+}
+
 fn get_module_asm() -> str {
     auto align = 4;
 
-    auto prefix = "";
-    if (_str.eq(target_os(), "macos")) {
-        prefix = "_";
-    }
+    auto prefix = get_symbol_prefix();
 
     auto glues =
         vec(decl_glue(align, prefix,
