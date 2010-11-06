@@ -1197,8 +1197,15 @@ fn trans_main_fn(@trans_ctxt cx, ValueRef llcrate) {
     auto T_main_args = vec(T_int(), T_int());
     auto T_rust_start_args = vec(T_int(), T_int(), T_int(), T_int());
 
+    auto main_name;
+    if (_str.eq(std.os.target_os(), "win32")) {
+        main_name = "WinMain@16";
+    } else {
+        main_name = "main";
+    }
+
     auto llmain =
-        decl_cdecl_fn(cx.llmod, "main", T_main_args, T_int());
+        decl_cdecl_fn(cx.llmod, main_name, T_main_args, T_int());
 
     auto llrust_start =
         decl_cdecl_fn(cx.llmod, "rust_start", T_rust_start_args, T_int());
