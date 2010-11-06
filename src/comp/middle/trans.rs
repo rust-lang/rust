@@ -322,6 +322,19 @@ fn C_struct(vec[ValueRef] elts) -> ValueRef {
                              False);
 }
 
+fn C_tydesc(TypeRef t) -> ValueRef {
+    ret C_struct(vec(C_null(T_opaque()),        // first_param
+                     llvm.LLVMSizeOf(t),        // size
+                     llvm.LLVMAlignOf(t),       // align
+                     C_null(T_opaque()),        // copy_glue_off
+                     C_null(T_opaque()),        // drop_glue_off
+                     C_null(T_opaque()),        // free_glue_off
+                     C_null(T_opaque()),        // sever_glue_off
+                     C_null(T_opaque()),        // mark_glue_off
+                     C_null(T_opaque()),        // obj_drop_glue_off
+                     C_null(T_opaque())));      // is_stateful
+}
+
 fn decl_cdecl_fn(ModuleRef llmod, str name,
                  vec[TypeRef] inputs, TypeRef output) -> ValueRef {
     let TypeRef llty = T_fn(inputs, output);
