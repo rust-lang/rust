@@ -306,7 +306,7 @@ let rec lookup_type_by_name
             | Some (DEFN_ty_param (_, x)) ->
                 (Ast.TY_param x, [||])
             | _ ->
-                err None "Found non-type binding for %a"
+                err loc "Found non-type binding for %a"
                   Ast.sprintf_name name
         in
         let args =
