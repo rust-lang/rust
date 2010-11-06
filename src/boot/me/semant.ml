@@ -999,9 +999,14 @@ let rec pretty_ty_str (cx:ctxt) (fallback:(Ast.ty -> string)) (ty:Ast.ty) =
           "rec(" ^ (String.concat ", " fields) ^ ")"
       | Ast.TY_fn (fnsig, aux) ->
           let format_slot slot =
+            let prefix =
+              match slot.Ast.slot_mode with
+                  Ast.MODE_local -> ""
+                | Ast.MODE_alias -> "&"
+            in
             match slot.Ast.slot_ty with
                 None -> Common.bug () "no ty in slot"
-              | Some ty' -> pretty_ty_str cx fallback ty'
+              | Some ty' -> prefix ^ (pretty_ty_str cx fallback ty')
           in
           let effect = aux.Ast.fn_effect in
           let qual = Fmt.sprintf_fmt Ast.fmt_effect_qual () effect in
