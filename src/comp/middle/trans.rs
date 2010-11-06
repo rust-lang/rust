@@ -451,7 +451,20 @@ impure fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
     }
 }
 
-impure fn trans_unary(@block_ctxt cx, ast.unop op, &ast.expr e) -> result {
+fn node_type(@trans_ctxt cx, &ast.ann a) -> TypeRef {
+    alt (a) {
+        case (ast.ann_none) {
+            log "missing type annotation";
+            fail;
+        }
+        case (ast.ann_type(?t)) {
+            ret type_of(cx, t);
+        }
+    }
+}
+
+impure fn trans_unary(@block_ctxt cx, ast.unop op,
+                      &ast.expr e, &ast.ann a) -> result {
 
     auto sub = trans_expr(cx, e);
 
@@ -468,6 +481,15 @@ impure fn trans_unary(@block_ctxt cx, ast.unop op, &ast.expr e) -> result {
             // FIXME: switch by signedness.
             sub.val = cx.build.Neg(sub.val);
             ret sub;
+        }
+        case (ast.box) {
+            auto e_ty = node_type(cx.fcx.tcx, a);
+            auto box_ty = T_box(e_ty);
+            sub.val = cx.build.Malloc(box_ty);
+            auto rc = sub.bcx.build.GEP(sub.val,
+                                        vec(C_int(0),
+                                            C_int(abi.box_rc_field_refcnt)));
+            ret res(sub.bcx, cx.build.Store(C_int(1), rc));
         }
     }
     cx.fcx.tcx.sess.unimpl("expr variant in trans_unary");
@@ -759,8 +781,8 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
             ret trans_lit(cx, *lit);
         }
 
-        case (ast.expr_unary(?op, ?x, _)) {
-            ret trans_unary(cx, op, *x);
+        case (ast.expr_unary(?op, ?x, ?ann)) {
+            ret trans_unary(cx, op, *x, ann);
         }
 
         case (ast.expr_binary(?op, ?x, ?y, _)) {
