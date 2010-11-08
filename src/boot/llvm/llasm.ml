@@ -25,7 +25,7 @@ let x86_glue
   : asm_glue =
   let (prefix,align) =
     match sess.Session.sess_targ with
-        Linux_x86_elf
+        Linux_x86_elf -> ("", 4)
       | Win32_x86_pe -> ("_",4)
       | MacOS_x86_macho -> ("_", 16)
   in
