@@ -35,7 +35,7 @@ fn create[T]() -> t[T] {
         check (nelts == _vec.len[cell[T]](elts));
 
         fn fill[T](uint i, uint nelts, uint lo,
-                   &vec[cell[T]] old) -> cell[T] {
+                   vec[cell[T]] old) -> cell[T] {
             if (i < nelts) {
                 ret old.((lo + i) % nelts);
             } else {

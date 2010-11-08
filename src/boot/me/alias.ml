@@ -48,6 +48,29 @@ let alias_analysis_visitor
         | _ -> ()
   in
 
+  let check_no_alias_bindings
+      (fn:Ast.lval)
+      (args:(Ast.atom option) array)
+      : unit =
+    let fty = match lval_ty cx fn with
+        Ast.TY_fn tfn -> tfn
+      | _ -> err (Some (lval_base_id fn)) "binding non-fn"
+    in
+    let arg_slots = (fst fty).Ast.sig_input_slots in
+      Array.iteri
+        begin
+          fun i arg ->
+            match arg with
+                None -> ()
+              | Some _ ->
+                  match arg_slots.(i).Ast.slot_mode with
+                      Ast.MODE_local -> ()
+                    | Ast.MODE_alias ->
+                        err (Some (lval_base_id fn)) "binding alias slot"
+        end
+        args
+  in
+
   let visit_stmt_pre s =
     Stack.push s.id curr_stmt;
     begin
@@ -61,6 +84,9 @@ let alias_analysis_visitor
             Ast.STMT_call (dst, callee, args)
           | Ast.STMT_spawn (dst, _, _, callee, args)
             -> alias_call_args dst callee args
+
+          | Ast.STMT_bind (_, fn, args) ->
+              check_no_alias_bindings fn args
 
           | Ast.STMT_send (_, src) -> alias src
           | Ast.STMT_recv (dst, _) -> alias dst

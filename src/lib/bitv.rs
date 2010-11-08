@@ -139,7 +139,7 @@ impure fn set(&t v, uint i, bool x) {
     }
 }
 
-fn init_to_vec(&t v, uint i) -> uint {
+fn init_to_vec(t v, uint i) -> uint {
     if (get(v, i)) {
         ret 1u;
     } else {
