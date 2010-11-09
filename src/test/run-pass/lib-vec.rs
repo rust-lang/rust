@@ -37,7 +37,21 @@ fn test_map() {
   let vec[int] s = std._vec.map[int, int](op, v);
   let int i = 0;
   while (i < 5) {
-    check (v.(i) == s.(i));
+    check (v.(i) * v.(i) == s.(i));
+    i += 1;
+  }
+}
+
+fn test_map2() {
+  fn times(&int x, &int y) -> int { ret x * y; }
+  auto f = times;
+  auto v0 = vec(1, 2, 3, 4, 5);
+  auto v1 = vec(5, 4, 3, 2, 1);
+  auto u = std._vec.map2[int,int,int](f, v0, v1);
+
+  auto i = 0;
+  while (i < 5) {
+    check (v0.(i) * v1.(i) == u.(i));
     i += 1;
   }
 }
@@ -46,4 +60,7 @@ fn main() {
   test_init_elt();
   test_init_fn();
   test_slice();
+  test_map();
+  test_map2();
 }
+

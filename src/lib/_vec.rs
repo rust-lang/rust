@@ -1,6 +1,8 @@
 import vbuf = rustrt.vbuf;
 import std.option;
 
+type operator2[T,U,V] = fn(&T, &U) -> V;
+
 native "rust" mod rustrt {
     type vbuf;
 
@@ -139,6 +141,22 @@ fn map[T, U](&option.operator[T,U] f, &vec[T] v) -> vec[U] {
     for (T ve in v) {
         u += vec(f(ve));
     }
+    ret u;
+}
+
+fn map2[T,U,V](&operator2[T,U,V] f, &vec[T] v0, &vec[U] v1) -> vec[V] {
+    auto v0_len = len[T](v0);
+    if (v0_len != len[U](v1)) {
+        fail;
+    }
+
+    let vec[V] u = alloc[V](v0_len);
+    auto i = 0u;
+    while (i < v0_len) {
+        u += f(v0.(i), v1.(i));
+        i += 1u;
+    }
+
     ret u;
 }
 
