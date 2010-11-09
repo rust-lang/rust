@@ -424,7 +424,10 @@ upcall_vec_grow(rust_task *task,
             task->fail(4);
             return NULL;
         }
-        v->deref();
+
+        if (v->ref_count != CONST_REFCOUNT)
+            v->deref();
+
         v = new (mem) rust_vec(dom, alloc, 0, NULL);
         *need_copy = 1;
     }

@@ -3,6 +3,10 @@
 use std;
 import std._str;
 
+// FIXME: import std.dbg.const_refcount. Currently
+// cross-crate const references don't work.
+const uint const_refcount = 0x7bad_face_u;
+
 tag t {
   make_t(str);
   clam;
@@ -17,12 +21,12 @@ fn foo(str s) {
   }
 
   log _str.refcount(s);
-  check (_str.refcount(s) == 3u);
+  check (_str.refcount(s) == const_refcount);
 }
 
 fn main() {
   let str s = "hi";     // ref up
   foo(s);               // ref up then down
   log _str.refcount(s);
-  check (_str.refcount(s) == 1u);
+  check (_str.refcount(s) == const_refcount);
 }

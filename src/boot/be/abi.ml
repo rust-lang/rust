@@ -12,6 +12,9 @@
 
 let rc_base_field_refcnt = 0;;
 
+(* FIXME: this needs updating if you ever want to work on 64 bit. *)
+let const_refcount = 0x7badfaceL;;
+
 let task_field_refcnt = rc_base_field_refcnt;;
 let task_field_stk = task_field_refcnt + 2;;
 let task_field_runtime_sp = task_field_stk + 1;;

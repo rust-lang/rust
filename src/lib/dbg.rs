@@ -7,6 +7,9 @@
 
 import std._vec;
 
+// FIXME: handle 64-bit case.
+const uint const_refcount = 0x7bad_face_u;
+
 native "rust" mod rustrt {
     fn debug_tydesc[T]();
     fn debug_opaque[T](&T x);

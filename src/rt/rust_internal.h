@@ -81,6 +81,13 @@ struct frame_glue_fns;
 
 static size_t const TIME_SLICE_IN_MS = 10;
 
+// Since every refcounted object is > 4 bytes, any refcount with any of the
+// top two bits set is invalid. We reserve a particular bit pattern in this
+// set for indicating objects that are "constant" as far as the memory model
+// knows.
+
+static intptr_t const CONST_REFCOUNT = 0x7badface;
+
 // Every reference counted object should derive from this base class.
 
 template <typename T> struct rc_base {

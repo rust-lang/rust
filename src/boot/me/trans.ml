@@ -1531,13 +1531,32 @@ let trans_visitor
     if not init
     then drop_ty_in_current_frame cell ty
 
-  and trans_new_str (initializing:bool) (dst:Ast.lval) (s:string) : unit =
+  and trans_new_str
+      (initializing:bool)
+      (dst:Ast.lval)
+      (s:string)
+      (id:node_id)
+      : unit =
     (* Include null byte. *)
     let init_sz = Int64.of_int ((String.length s) + 1) in
-    let static = trans_static_string s in
     let (dst_cell, dst_ty) = trans_lval_maybe_init initializing dst in
       drop_existing_if_not_init initializing dst_cell dst_ty;
-      trans_upcall "upcall_new_str" dst_cell [| static; imm init_sz |]
+      let ptr =
+        crate_rel_to_ptr
+          (trans_crate_rel_data_operand
+             (DATA_const id)
+             (fun _ ->
+               Asm.SEQ
+                 [|
+                   Asm.WORD (word_ty_signed_mach,
+                             Asm.IMM Abi.const_refcount);
+                   Asm.WORD (word_ty_mach, Asm.IMM init_sz);
+                   Asm.WORD (word_ty_mach, Asm.IMM init_sz);
+                   Asm.ZSTRING s
+                 |]))
+          (referent_type cx Ast.TY_str)
+      in
+        mov dst_cell (Il.Cell ptr);
 
   and trans_lit (lit:Ast.lit) : Il.operand =
     match lit with
@@ -3185,7 +3204,7 @@ let trans_visitor
             in
             let _ = check_box_rty box_ptr in
             let null_jmp = null_check box_ptr in
-            let rc_jmp = drop_refcount_and_cmp box_ptr in
+            let rc_jmps = drop_refcount_and_cmp box_ptr in
             let box = deref box_ptr in
             let body = get_element_ptr box Abi.box_rc_field_body in
             let tydesc = get_element_ptr body Abi.obj_body_elt_tydesc in
@@ -3230,7 +3249,7 @@ let trans_visitor
               note_drop_step ty "drop_ty: freeing obj/fn body";
               trans_free box_ptr (type_has_state cx ty);
               mov box_ptr zero;
-              patch rc_jmp;
+              List.iter patch rc_jmps;
               patch null_jmp;
               note_drop_step ty "drop_ty: done obj path";
 
@@ -3262,7 +3281,7 @@ let trans_visitor
 
                   let _ = check_box_rty cell in
                   let null_jmp = null_check cell in
-                  let j = drop_refcount_and_cmp cell in
+                  let js = drop_refcount_and_cmp cell in
 
                     (* FIXME (issue #25): check to see that the box has
                      * further box members; if it doesn't we can elide the
@@ -3277,7 +3296,7 @@ let trans_visitor
                     (* Null the slot out to prevent double-free if the frame
                      * unwinds.  *)
                     mov cell zero;
-                    patch j;
+                    List.iter patch js;
                     patch null_jmp;
                     note_drop_step ty "drop_ty: done box-drop path";
 
@@ -3525,7 +3544,7 @@ let trans_visitor
   (* Returns a mark for a jmp that must be patched to the continuation of
    * the non-zero refcount case (i.e. fall-through means zero refcount).
    *)
-  and drop_refcount_and_cmp (boxed:Il.cell) : quad_idx =
+  and drop_refcount_and_cmp (boxed:Il.cell) : quad_idx list =
     in_quad_category "refcount"
       begin
         fun _ ->
@@ -3539,11 +3558,14 @@ let trans_visitor
                 trace_word true boxed;
                 trace_word true rc
               end;
-            emit (Il.binary Il.SUB rc (Il.Cell rc) one);
-            emit (Il.cmp (Il.Cell rc) zero);
-            let j = mark () in
-              emit (Il.jmp Il.JNE Il.CodeNone);
-              j
+            emit (Il.cmp (Il.Cell rc) (simm Abi.const_refcount));
+            let j0 = mark() in
+              emit (Il.jmp Il.JE Il.CodeNone);
+              emit (Il.binary Il.SUB rc (Il.Cell rc) one);
+              emit (Il.cmp (Il.Cell rc) zero);
+              let j1 = mark () in
+                emit (Il.jmp Il.JNE Il.CodeNone);
+                [j0; j1]
       end
 
   and incr_refcount (boxed:Il.cell) : unit =
@@ -3559,7 +3581,11 @@ let trans_visitor
                 trace_word true boxed;
                 trace_word true rc
               end;
-            add_to rc one
+            emit (Il.cmp (Il.Cell rc) (simm Abi.const_refcount));
+            let j = mark() in
+              emit (Il.jmp Il.JE Il.CodeNone);
+              add_to rc one;
+              patch j;
       end
 
   and drop_slot
@@ -5316,7 +5342,7 @@ let trans_visitor
 
       | Ast.STMT_new_str (dst, s) ->
           let init = maybe_init stmt.id "new str" dst in
-            trans_new_str init dst s
+            trans_new_str init dst s stmt.id
 
       | Ast.STMT_new_vec (dst, _, atoms) ->
           let init = maybe_init stmt.id "new vec" dst in

@@ -30,8 +30,13 @@ fn alloc[T](uint n_elts) -> vec[T] {
 }
 
 fn refcount[T](vec[T] v) -> uint {
-    // -1 because calling this function incremented the refcount.
-    ret rustrt.refcount[T](v) - 1u;
+    auto r = rustrt.refcount[T](v);
+    if (r == dbg.const_refcount) {
+        ret r;
+    } else {
+        // -1 because calling this function incremented the refcount.
+        ret  r - 1u;
+    }
 }
 
 type init_op[T] = fn(uint i) -> T;

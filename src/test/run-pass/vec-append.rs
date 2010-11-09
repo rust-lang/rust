@@ -4,6 +4,11 @@ use std;
 import std._str;
 import std._vec;
 
+
+// FIXME: import std.dbg.const_refcount. Currently
+// cross-crate const references don't work.
+const uint const_refcount = 0x7bad_face_u;
+
 fn fast_growth() {
   let vec[int] v = vec(1,2,3,4,5);
   v += vec(6,7,8,9,0);
@@ -55,8 +60,8 @@ fn slow_growth2_helper(str s) {   // ref up: s
     log _str.refcount(mumble);
 
     check (_vec.refcount[str](v) == 1u);
-    check (_str.refcount(s) == 4u);
-    check (_str.refcount(mumble) == 3u);
+    check (_str.refcount(s) == const_refcount);
+    check (_str.refcount(mumble) == const_refcount);
 
     log v.(0);
     log _vec.len[str](v);
@@ -67,8 +72,8 @@ fn slow_growth2_helper(str s) {   // ref up: s
   log _str.refcount(s);
   log _str.refcount(mumble);
 
-  check (_str.refcount(s) == 3u);
-  check (_str.refcount(mumble) == 1u);
+  check (_str.refcount(s) == const_refcount);
+  check (_str.refcount(mumble) == const_refcount);
 
   log mumble;
   log ss;
@@ -78,7 +83,7 @@ fn slow_growth2() {
   let str s = "hi";               // ref up: s
   slow_growth2_helper(s);
   log _str.refcount(s);
-  check (_str.refcount(s) == 1u);
+  check (_str.refcount(s) == const_refcount);
 }
 
 fn main() {

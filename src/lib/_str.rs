@@ -97,8 +97,13 @@ fn from_bytes(vec[u8] v) : is_utf8(v) -> str {
 }
 
 fn refcount(str s) -> uint {
-    // -1 because calling this function incremented the refcount.
-    ret rustrt.refcount[u8](s) - 1u;
+    auto r = rustrt.refcount[u8](s);
+    if (r == dbg.const_refcount) {
+        ret r;
+    } else {
+        // -1 because calling this function incremented the refcount.
+        ret  r - 1u;
+    }
 }
 
 
