@@ -394,6 +394,25 @@ fn trans_non_gc_free(@block_ctxt cx, ValueRef v) -> result {
                                             C_int(0)));
 }
 
+fn incr_refcnt(@block_ctxt cx, ValueRef box_ptr) -> result {
+    auto rc_ptr = cx.build.GEP(box_ptr, vec(C_int(0),
+                                            C_int(abi.box_rc_field_refcnt)));
+    auto rc = cx.build.Load(rc_ptr);
+
+    auto next_cx = new_extension_block_ctxt(cx);
+    auto rc_adj_cx = new_empty_block_ctxt(cx.fcx);
+
+    auto const_test = cx.build.ICmp(lib.llvm.LLVMIntEQ,
+                                    C_int(abi.const_refcount as int), rc);
+    cx.build.CondBr(const_test, next_cx.llbb, rc_adj_cx.llbb);
+
+    rc = rc_adj_cx.build.Add(rc, C_int(1));
+    rc_adj_cx.build.Store(rc, rc_ptr);
+    rc_adj_cx.build.Br(next_cx.llbb);
+
+    ret res(next_cx, C_nil());
+}
+
 fn decr_refcnt_and_if_zero(@block_ctxt cx,
                            ValueRef box_ptr,
                            fn(@block_ctxt cx) -> result inner,
@@ -401,18 +420,64 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
     auto rc_ptr = cx.build.GEP(box_ptr, vec(C_int(0),
                                             C_int(abi.box_rc_field_refcnt)));
     auto rc = cx.build.Load(rc_ptr);
-    rc = cx.build.Sub(rc, C_int(1));
-    cx.build.Store(rc, rc_ptr);
-    auto test = cx.build.ICmp(lib.llvm.LLVMIntEQ, C_int(0), rc);
+
+    auto rc_adj_cx = new_empty_block_ctxt(cx.fcx);
     auto next_cx = new_extension_block_ctxt(cx);
+
+    auto const_test = cx.build.ICmp(lib.llvm.LLVMIntEQ,
+                                    C_int(abi.const_refcount as int), rc);
+    cx.build.CondBr(const_test, next_cx.llbb, rc_adj_cx.llbb);
+
+    rc = rc_adj_cx.build.Sub(rc, C_int(1));
+    rc_adj_cx.build.Store(rc, rc_ptr);
+
+    auto zero_test = rc_adj_cx.build.ICmp(lib.llvm.LLVMIntEQ, C_int(0), rc);
+
     auto then_cx = new_empty_block_ctxt(cx.fcx);
     auto then_res = inner(then_cx);
     then_res.bcx.build.Br(next_cx.llbb);
-    cx.build.CondBr(test, then_res.bcx.llbb, next_cx.llbb);
+    rc_adj_cx.build.CondBr(zero_test, then_res.bcx.llbb, next_cx.llbb);
     auto phi = next_cx.build.Phi(t_else,
-                                 vec(v_else, then_res.val),
-                                 vec(cx.llbb, then_res.bcx.llbb));
+                                 vec(v_else, v_else, then_res.val),
+                                 vec(cx.llbb,
+                                     rc_adj_cx.llbb,
+                                     then_res.bcx.llbb));
     ret res(next_cx, phi);
+}
+
+fn type_is_scalar(@ast.ty t) -> bool {
+    alt (t.node) {
+        case (ast.ty_nil) { ret true; }
+        case (ast.ty_bool) { ret true; }
+        case (ast.ty_int) { ret true; }
+        case (ast.ty_uint) { ret true; }
+        case (ast.ty_machine(_)) { ret true; }
+        case (ast.ty_char) { ret true; }
+    }
+    ret false;
+}
+
+fn trans_copy_ty(@block_ctxt cx,
+                 bool is_init,
+                 ValueRef dst,
+                 ValueRef src,
+                 @ast.ty t) -> result {
+    if (type_is_scalar(t)) {
+        ret res(cx, cx.build.Store(src, dst));
+    }
+
+    alt (t.node) {
+        case (ast.ty_str) {
+            let result r = res(cx, C_nil());
+            if (is_init) {
+                r = trans_drop_str(cx, dst);
+            }
+            r = incr_refcnt(r.bcx, src);
+            ret res(r.bcx, r.bcx.build.Store(src, dst));
+        }
+    }
+    cx.fcx.tcx.sess.unimpl("ty variant in trans_copy_ty");
+    fail;
 }
 
 fn trans_drop_str(@block_ctxt cx, ValueRef v) -> result {
@@ -825,6 +890,7 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
             auto lhs_res = trans_lval(cx, *dst);
             check (lhs_res._1);
             auto rhs_res = trans_expr(lhs_res._0.bcx, *src);
+            // FIXME: call trans_copy_ty once we have a ty here.
             ret res(rhs_res.bcx,
                     rhs_res.bcx.build.Store(rhs_res.val, lhs_res._0.val));
         }

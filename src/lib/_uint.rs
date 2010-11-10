@@ -59,30 +59,20 @@ fn to_str(mutable uint n, uint radix) -> str
 
     if (n == 0u) { ret "0"; }
 
-    let uint r = 1u;
-    if (n > r) {
-        while ((r*radix) <= n) {
-            r *= radix;
-        }
-    }
-
     let str s = "";
-    while (n > 0u) {
-
-        auto i = n/r;
-
-        n -= (i * r);
-        r /= radix;
-
-        s += digit(i) as u8;
+    while (n != 0u) {
+        s += digit(n % radix) as u8;
+        n /= radix;
     }
 
-    while (r > 0u) {
-        s += '0' as u8;
-        r /= radix;
+    let str s1 = "";
+    let uint len = _str.byte_len(s);
+    while (len != 0u) {
+        len -= 1u;
+        s1 += s.(len);
     }
+    ret s1;
 
-    ret s;
 }
 
 // Local Variables:

@@ -1,6 +1,9 @@
 
 const int rc_base_field_refcnt = 0;
 
+// FIXME: import from std.dbg when imported consts work.
+const uint const_refcount = 0x7bad_face_u;
+
 const int task_field_refcnt = 0;
 const int task_field_stk = 2;
 const int task_field_runtime_sp = 3;
