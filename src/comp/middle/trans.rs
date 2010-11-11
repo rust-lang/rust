@@ -57,17 +57,23 @@ state type fn_ctxt = rec(ValueRef llfn,
                          hashmap[ast.def_id, ValueRef] lllocals,
                          @trans_ctxt tcx);
 
-type terminator = fn(@fn_ctxt cx, builder build);
-
 tag cleanup {
     clean(fn(@block_ctxt cx) -> result);
 }
 
 state type block_ctxt = rec(BasicBlockRef llbb,
                             builder build,
-                            terminator term,
+                            block_parent parent,
                             mutable vec[cleanup] cleanups,
                             @fn_ctxt fcx);
+
+// FIXME: we should be able to use option.t[@block_parent] here but
+// the infinite-tag check in rustboot gets upset.
+
+tag block_parent {
+    parent_none;
+    parent_some(@block_ctxt);
+}
 
 
 state type result = rec(mutable @block_ctxt bcx,
@@ -399,8 +405,8 @@ fn incr_refcnt(@block_ctxt cx, ValueRef box_ptr) -> result {
                                             C_int(abi.box_rc_field_refcnt)));
     auto rc = cx.build.Load(rc_ptr);
 
-    auto next_cx = new_extension_block_ctxt(cx);
-    auto rc_adj_cx = new_empty_block_ctxt(cx.fcx);
+    auto next_cx = new_sub_block_ctxt(cx, "next");
+    auto rc_adj_cx = new_sub_block_ctxt(cx, "rc++");
 
     auto const_test = cx.build.ICmp(lib.llvm.LLVMIntEQ,
                                     C_int(abi.const_refcount as int), rc);
@@ -416,13 +422,16 @@ fn incr_refcnt(@block_ctxt cx, ValueRef box_ptr) -> result {
 fn decr_refcnt_and_if_zero(@block_ctxt cx,
                            ValueRef box_ptr,
                            fn(@block_ctxt cx) -> result inner,
+                           str inner_name,
                            TypeRef t_else, ValueRef v_else) -> result {
+
+    auto rc_adj_cx = new_sub_block_ctxt(cx, "rc--");
+    auto inner_cx = new_sub_block_ctxt(cx, inner_name);
+    auto next_cx = new_sub_block_ctxt(cx, "next");
+
     auto rc_ptr = cx.build.GEP(box_ptr, vec(C_int(0),
                                             C_int(abi.box_rc_field_refcnt)));
     auto rc = cx.build.Load(rc_ptr);
-
-    auto rc_adj_cx = new_empty_block_ctxt(cx.fcx);
-    auto next_cx = new_extension_block_ctxt(cx);
 
     auto const_test = cx.build.ICmp(lib.llvm.LLVMIntEQ,
                                     C_int(abi.const_refcount as int), rc);
@@ -430,18 +439,18 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
 
     rc = rc_adj_cx.build.Sub(rc, C_int(1));
     rc_adj_cx.build.Store(rc, rc_ptr);
-
     auto zero_test = rc_adj_cx.build.ICmp(lib.llvm.LLVMIntEQ, C_int(0), rc);
+    rc_adj_cx.build.CondBr(zero_test, inner_cx.llbb, next_cx.llbb);
 
-    auto then_cx = new_empty_block_ctxt(cx.fcx);
-    auto then_res = inner(then_cx);
-    then_res.bcx.build.Br(next_cx.llbb);
-    rc_adj_cx.build.CondBr(zero_test, then_res.bcx.llbb, next_cx.llbb);
+    auto inner_res = inner(inner_cx);
+    inner_res.bcx.build.Br(next_cx.llbb);
+
     auto phi = next_cx.build.Phi(t_else,
-                                 vec(v_else, v_else, then_res.val),
+                                 vec(v_else, v_else, inner_res.val),
                                  vec(cx.llbb,
                                      rc_adj_cx.llbb,
-                                     then_res.bcx.llbb));
+                                     inner_res.bcx.llbb));
+
     ret res(next_cx, phi);
 }
 
@@ -483,6 +492,7 @@ fn trans_copy_ty(@block_ctxt cx,
 fn trans_drop_str(@block_ctxt cx, ValueRef v) -> result {
     ret decr_refcnt_and_if_zero(cx, v,
                                 bind trans_non_gc_free(_, v),
+                                "free string",
                                 T_int(), C_int(0));
 }
 
@@ -571,10 +581,10 @@ impure fn trans_binary(@block_ctxt cx, ast.binop op,
             // Lazy-eval and
             auto lhs_res = trans_expr(cx, a);
 
-            auto rhs_cx = new_empty_block_ctxt(cx.fcx);
+            auto rhs_cx = new_sub_block_ctxt(cx, "rhs");
             auto rhs_res = trans_expr(rhs_cx, b);
 
-            auto next_cx = new_extension_block_ctxt(cx);
+            auto next_cx = new_sub_block_ctxt(cx, "next");
             rhs_res.bcx.build.Br(next_cx.llbb);
 
             lhs_res.bcx.build.CondBr(lhs_res.val,
@@ -592,10 +602,10 @@ impure fn trans_binary(@block_ctxt cx, ast.binop op,
             // Lazy-eval or
             auto lhs_res = trans_expr(cx, a);
 
-            auto rhs_cx = new_empty_block_ctxt(cx.fcx);
+            auto rhs_cx = new_sub_block_ctxt(cx, "rhs");
             auto rhs_res = trans_expr(rhs_cx, b);
 
-            auto next_cx = new_extension_block_ctxt(cx);
+            auto next_cx = new_sub_block_ctxt(cx, "next");
             rhs_res.bcx.build.Br(next_cx.llbb);
 
             lhs_res.bcx.build.CondBr(lhs_res.val,
@@ -717,16 +727,16 @@ impure fn trans_if(@block_ctxt cx, &ast.expr cond,
 
     auto cond_res = trans_expr(cx, cond);
 
-    auto then_cx = new_empty_block_ctxt(cx.fcx);
+    auto then_cx = new_sub_block_ctxt(cx, "then");
     auto then_res = trans_block(then_cx, thn);
 
-    auto next_cx = new_extension_block_ctxt(cx);
+    auto next_cx = new_sub_block_ctxt(cx, "next");
     then_res.bcx.build.Br(next_cx.llbb);
     auto phi;
 
     alt (els) {
         case (some[ast.block](?eblk)) {
-            auto else_cx = new_empty_block_ctxt(cx.fcx);
+            auto else_cx = new_sub_block_ctxt(cx, "else");
             auto else_res = trans_block(else_cx, eblk);
             cond_res.bcx.build.CondBr(cond_res.val,
                                       then_cx.llbb,
@@ -756,9 +766,9 @@ impure fn trans_if(@block_ctxt cx, &ast.expr cond,
 impure fn trans_while(@block_ctxt cx, &ast.expr cond,
                       &ast.block body) -> result {
 
-    auto cond_cx = new_empty_block_ctxt(cx.fcx);
-    auto body_cx = new_empty_block_ctxt(cx.fcx);
-    auto next_cx = new_extension_block_ctxt(cx);
+    auto cond_cx = new_sub_block_ctxt(cx, "while cond");
+    auto body_cx = new_sub_block_ctxt(cx, "while loop body");
+    auto next_cx = new_sub_block_ctxt(cx, "next");
 
     auto body_res = trans_block(body_cx, body);
     auto cond_res = trans_expr(cond_cx, cond);
@@ -775,8 +785,8 @@ impure fn trans_while(@block_ctxt cx, &ast.expr cond,
 impure fn trans_do_while(@block_ctxt cx, &ast.block body,
                          &ast.expr cond) -> result {
 
-    auto body_cx = new_empty_block_ctxt(cx.fcx);
-    auto next_cx = new_extension_block_ctxt(cx);
+    auto body_cx = new_sub_block_ctxt(cx, "do-while loop body");
+    auto next_cx = new_sub_block_ctxt(cx, "next");
 
     auto body_res = trans_block(body_cx, body);
     auto cond_res = trans_expr(body_res.bcx, cond);
@@ -867,8 +877,8 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
         }
 
         case (ast.expr_block(?blk, _)) {
-            auto sub_cx = new_empty_block_ctxt(cx.fcx);
-            auto next_cx = new_extension_block_ctxt(cx);
+            auto sub_cx = new_sub_block_ctxt(cx, "block-expr body");
+            auto next_cx = new_sub_block_ctxt(cx, "next");
             auto sub = trans_block(sub_cx, blk);
 
             cx.build.Br(sub_cx.llbb);
@@ -958,10 +968,10 @@ impure fn trans_check_expr(@block_ctxt cx, &ast.expr e) -> result {
     auto V_line = e.span.lo.line as int;
     auto args = vec(V_expr_str, V_filename, C_int(V_line));
 
-    auto fail_cx = new_empty_block_ctxt(cx.fcx);
+    auto fail_cx = new_sub_block_ctxt(cx, "fail");
     auto fail_res = trans_upcall(fail_cx, "upcall_fail", args);
 
-    auto next_cx = new_extension_block_ctxt(cx);
+    auto next_cx = new_sub_block_ctxt(cx, "next");
     fail_res.bcx.build.Br(next_cx.llbb);
     cond_res.bcx.build.CondBr(cond_res.val,
                               next_cx.llbb,
@@ -977,11 +987,23 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
             r.bcx.build.Store(r.val, cx.fcx.lloutptr);
         }
     }
-    // FIXME: if we actually ret here, the block structure falls apart;
-    // need to do something more-clever with terminators and block cleanup.
-    // Mean time 'ret' means 'copy result to output slot and keep going'.
 
-    // r.val = r.bcx.build.RetVoid();
+    // Run all cleanups and back out.
+    let bool more_cleanups = true;
+    auto bcx = cx;
+    while (more_cleanups) {
+        bcx = trans_block_cleanups(bcx);
+        alt (bcx.parent) {
+            case (parent_some(?b)) {
+                bcx = b;
+            }
+            case (parent_none) {
+                more_cleanups = false;
+            }
+        }
+    }
+
+    r.val = r.bcx.build.RetVoid();
     ret r;
 }
 
@@ -1024,7 +1046,7 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
     ret sub;
 }
 
-fn new_builder(BasicBlockRef llbb) -> builder {
+fn new_builder(BasicBlockRef llbb, str name) -> builder {
     let BuilderRef llbuild = llvm.LLVMCreateBuilder();
     llvm.LLVMPositionBuilderAtEnd(llbuild, llbb);
     ret builder(llbuild);
@@ -1032,46 +1054,33 @@ fn new_builder(BasicBlockRef llbb) -> builder {
 
 // You probably don't want to use this one. See the
 // next three functions instead.
-fn new_block_ctxt(@fn_ctxt cx, terminator term,
-                  vec[cleanup] cleanups) -> @block_ctxt {
+fn new_block_ctxt(@fn_ctxt cx, block_parent parent,
+                  vec[cleanup] cleanups,
+                  str name) -> @block_ctxt {
     let BasicBlockRef llbb =
-        llvm.LLVMAppendBasicBlock(cx.llfn, _str.buf(""));
+        llvm.LLVMAppendBasicBlock(cx.llfn,
+                                  _str.buf(cx.tcx.names.next(name)));
+
     ret @rec(llbb=llbb,
-             build=new_builder(llbb),
-             term=term,
+             build=new_builder(llbb, name),
+             parent=parent,
              mutable cleanups=cleanups,
              fcx=cx);
 }
 
-// Use this when you are making a block_ctxt to replace the
-// current one, i.e. when chaining together sequences of stmts
-// or making sub-blocks you will branch back out of and wish to
-// "carry on" in the parent block's context.
-fn new_extension_block_ctxt(@block_ctxt bcx) -> @block_ctxt {
-    ret new_block_ctxt(bcx.fcx, bcx.term, bcx.cleanups);
-}
-
 // Use this when you're at the top block of a function or the like.
 fn new_top_block_ctxt(@fn_ctxt fcx) -> @block_ctxt {
-    fn terminate_ret_void(@fn_ctxt cx, builder build) {
-        build.RetVoid();
-    }
-    auto term = terminate_ret_void;
     let vec[cleanup] cleanups = vec();
-    ret new_block_ctxt(fcx, term, cleanups);
+    ret new_block_ctxt(fcx, parent_none, cleanups, "function top level");
 
 }
 
-// Use this when you are making a block_ctxt that starts with a fresh
-// terminator and empty cleanups (no locals, no implicit return when
-// falling off the end).
-fn new_empty_block_ctxt(@fn_ctxt fcx) -> @block_ctxt {
-    fn terminate_no_op(@fn_ctxt cx, builder build) {
-    }
-    auto term = terminate_no_op;
+// Use this when you're making a block-within-a-block.
+fn new_sub_block_ctxt(@block_ctxt bcx, str n) -> @block_ctxt {
     let vec[cleanup] cleanups = vec();
-    ret new_block_ctxt(fcx, term, cleanups);
+    ret new_block_ctxt(bcx.fcx, parent_some(bcx), cleanups, n);
 }
+
 
 fn trans_block_cleanups(@block_ctxt cx) -> @block_ctxt {
     auto bcx = cx;
@@ -1117,14 +1126,15 @@ impure fn trans_block(@block_ctxt cx, &ast.block b) -> result {
         auto val = bcx.build.Alloca(ty);
         cx.fcx.lllocals.insert(local.id, val);
     }
+    auto r = res(bcx, C_nil());
 
     for (@ast.stmt s in b.node.stmts) {
-        bcx = trans_stmt(bcx, *s).bcx;
+        r = trans_stmt(bcx, *s);
+        bcx = r.bcx;
     }
 
     bcx = trans_block_cleanups(bcx);
-    bcx.term(bcx.fcx, bcx.build);
-    ret res(bcx, C_nil());
+    ret res(bcx, r.val);
 }
 
 fn new_fn_ctxt(@trans_ctxt cx,
@@ -1155,11 +1165,19 @@ fn new_fn_ctxt(@trans_ctxt cx,
              tcx=cx);
 }
 
+fn is_terminated(@block_ctxt cx) -> bool {
+    auto inst = llvm.LLVMGetLastInstruction(cx.llbb);
+    ret llvm.LLVMIsATerminatorInst(inst) as int != 0;
+}
+
 impure fn trans_fn(@trans_ctxt cx, &ast._fn f, ast.def_id fid) {
 
     auto fcx = new_fn_ctxt(cx, cx.path, f, fid);
-
-    trans_block(new_top_block_ctxt(fcx), f.body);
+    auto bcx = new_top_block_ctxt(fcx);
+    auto res = trans_block(bcx, f.body);
+    if (!is_terminated(res.bcx)) {
+        res.bcx.build.RetVoid();
+    }
 }
 
 impure fn trans_item(@trans_ctxt cx, &ast.item item) {
@@ -1240,7 +1258,7 @@ fn trans_exit_task_glue(@trans_ctxt cx) {
 
     auto bcx = new_top_block_ctxt(fcx);
     trans_upcall(bcx, "upcall_exit", V_args);
-    bcx.term(fcx, bcx.build);
+    bcx.build.RetVoid();
 }
 
 fn crate_constant(@trans_ctxt cx) -> ValueRef {
@@ -1312,7 +1330,7 @@ fn trans_main_fn(@trans_ctxt cx, ValueRef llcrate) {
 
     let BasicBlockRef llbb =
         llvm.LLVMAppendBasicBlock(llmain, _str.buf(""));
-    auto b = new_builder(llbb);
+    auto b = new_builder(llbb, "");
 
     auto start_args = vec(p2i(llrust_main), p2i(llcrate), llargc, llargv);
 

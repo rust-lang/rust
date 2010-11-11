@@ -679,6 +679,8 @@ native mod llvm = llvm_lib {
     fn LLVMBuildPtrDiff(BuilderRef B, ValueRef LHS,
                         ValueRef RHS, sbuf Name) -> ValueRef;
 
+    /* Selected entries from the downcasts. */
+    fn LLVMIsATerminatorInst(ValueRef Inst) -> ValueRef;
 
     /** Writes a module to the specified path. Returns 0 on success. */
     fn LLVMWriteBitcodeToFile(ModuleRef M, sbuf Path) -> int;

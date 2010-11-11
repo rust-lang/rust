@@ -1286,7 +1286,8 @@ let is_prim_type (t:Ast.ty) : bool =
     | Ast.TY_uint
     | Ast.TY_char
     | Ast.TY_mach _
-    | Ast.TY_bool -> true
+    | Ast.TY_bool
+    | Ast.TY_native _ -> true
     | _ -> false
 ;;
 
