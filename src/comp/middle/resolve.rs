@@ -28,13 +28,13 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
 
     fn found_def_item(@ast.item i) -> option.t[def] {
         alt (i.node) {
-            case (ast.item_fn(_, _, ?id)) {
+            case (ast.item_fn(_, _, ?id, _)) {
                 ret some[def](ast.def_fn(id));
             }
             case (ast.item_mod(_, _, ?id)) {
                 ret some[def](ast.def_mod(id));
             }
-            case (ast.item_ty(_, _, ?id)) {
+            case (ast.item_ty(_, _, ?id, _)) {
                 ret some[def](ast.def_ty(id));
             }
         }
@@ -75,7 +75,7 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
 
             case (scope_item(?it)) {
                 alt (it.node) {
-                    case (ast.item_fn(_, ?f, _)) {
+                    case (ast.item_fn(_, ?f, _, _)) {
                         for (ast.arg a in f.inputs) {
                             if (_str.eq(a.ident, i)) {
                                 ret some[def](ast.def_arg(a.id));

@@ -868,13 +868,13 @@ impure fn parse_block(parser p) -> ast.block {
                     }
                     case (ast.decl_item(?it)) {
                         alt (it.node) {
-                            case (ast.item_fn(?i, _, _)) {
+                            case (ast.item_fn(?i, _, _, _)) {
                                 index.insert(i, u-1u);
                             }
                             case (ast.item_mod(?i, _, _)) {
                                 index.insert(i, u-1u);
                             }
-                            case (ast.item_ty(?i, _, _)) {
+                            case (ast.item_ty(?i, _, _, _)) {
                                 index.insert(i, u-1u);
                             }
                         }
@@ -915,7 +915,7 @@ impure fn parse_fn(parser p) -> tup(ast.ident, @ast.item) {
                         output = output,
                         body = body);
 
-    auto item = ast.item_fn(id, f, p.next_def_id());
+    auto item = ast.item_fn(id, f, p.next_def_id(), ast.ann_none);
     ret tup(id, @spanned(lo, body.span, item));
 }
 

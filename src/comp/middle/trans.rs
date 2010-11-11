@@ -914,7 +914,7 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
             // perhaps to pick a more tasteful one.
             auto outptr = cx.fcx.lloutptr;
             alt (cx.fcx.tcx.items.get(f_res._2).node) {
-                case (ast.item_fn(_, ?ff, _)) {
+                case (ast.item_fn(_, ?ff, _, _)) {
                     outptr = cx.build.Alloca(type_of(cx.fcx.tcx, ff.output));
                 }
             }
@@ -1182,7 +1182,7 @@ impure fn trans_fn(@trans_ctxt cx, &ast._fn f, ast.def_id fid) {
 
 impure fn trans_item(@trans_ctxt cx, &ast.item item) {
     alt (item.node) {
-        case (ast.item_fn(?name, ?f, ?fid)) {
+        case (ast.item_fn(?name, ?f, ?fid, _)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
             trans_fn(sub_cx, f, fid);
         }
@@ -1202,7 +1202,7 @@ impure fn trans_mod(@trans_ctxt cx, &ast._mod m) {
 
 fn collect_item(&@trans_ctxt cx, @ast.item i) -> @trans_ctxt {
     alt (i.node) {
-        case (ast.item_fn(?name, ?f, ?fid)) {
+        case (ast.item_fn(?name, ?f, ?fid, _)) {
             cx.items.insert(fid, i);
             let vec[TypeRef] args =
                 vec(T_ptr(type_of(cx, f.output)), // outptr.

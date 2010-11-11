@@ -149,9 +149,9 @@ type _mod = rec(vec[@item] items,
 
 type item = spanned[item_];
 tag item_ {
-    item_fn(ident, _fn, def_id);
+    item_fn(ident, _fn, def_id, ann);
     item_mod(ident, _mod, def_id);
-    item_ty(ident, @ty, def_id);
+    item_ty(ident, @ty, def_id, ann);
 }
 
 
