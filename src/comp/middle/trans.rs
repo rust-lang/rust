@@ -584,18 +584,15 @@ impure fn trans_binary(@block_ctxt cx, ast.binop op,
             auto rhs_cx = new_sub_block_ctxt(cx, "rhs");
             auto rhs_res = trans_expr(rhs_cx, b);
 
-            auto next_cx = new_sub_block_ctxt(cx, "next");
-            rhs_res.bcx.build.Br(next_cx.llbb);
+            auto lhs_false_cx = new_sub_block_ctxt(cx, "lhs false");
+            auto lhs_false_res = res(lhs_false_cx, C_bool(false));
 
             lhs_res.bcx.build.CondBr(lhs_res.val,
                                      rhs_cx.llbb,
-                                     next_cx.llbb);
-            auto phi = next_cx.build.Phi(T_bool(),
-                                         vec(lhs_res.val,
-                                             rhs_res.val),
-                                         vec(lhs_res.bcx.llbb,
-                                             rhs_res.bcx.llbb));
-            ret res(next_cx, phi);
+                                     lhs_false_cx.llbb);
+
+            ret join_results(cx, T_bool(),
+                             vec(lhs_false_res, rhs_res));
         }
 
         case (ast.or) {
@@ -605,18 +602,15 @@ impure fn trans_binary(@block_ctxt cx, ast.binop op,
             auto rhs_cx = new_sub_block_ctxt(cx, "rhs");
             auto rhs_res = trans_expr(rhs_cx, b);
 
-            auto next_cx = new_sub_block_ctxt(cx, "next");
-            rhs_res.bcx.build.Br(next_cx.llbb);
+            auto lhs_true_cx = new_sub_block_ctxt(cx, "lhs true");
+            auto lhs_true_res = res(lhs_true_cx, C_bool(true));
 
             lhs_res.bcx.build.CondBr(lhs_res.val,
-                                     next_cx.llbb,
+                                     lhs_true_cx.llbb,
                                      rhs_cx.llbb);
-            auto phi = next_cx.build.Phi(T_bool(),
-                                         vec(lhs_res.val,
-                                             rhs_res.val),
-                                         vec(lhs_res.bcx.llbb,
-                                             rhs_res.bcx.llbb));
-            ret res(next_cx, phi);
+
+            ret join_results(cx, T_bool(),
+                             vec(lhs_true_res, rhs_res));
         }
     }
 
@@ -722,6 +716,48 @@ impure fn trans_binary(@block_ctxt cx, ast.binop op,
     fail;
 }
 
+fn join_results(@block_ctxt parent_cx,
+                TypeRef t,
+                vec[result] ins)
+    -> result {
+
+    let vec[result] live = vec();
+    let vec[ValueRef] vals = vec();
+    let vec[BasicBlockRef] bbs = vec();
+
+    for (result r in ins) {
+        if (! is_terminated(r.bcx)) {
+            live += r;
+            vals += r.val;
+            bbs += r.bcx.llbb;
+        }
+    }
+
+    alt (_vec.len[result](live)) {
+        case (0u) {
+            // No incoming edges are live, so we're in dead-code-land.
+            // Arbitrarily pick the first dead edge, since the caller
+            // is just going to propagate it outward.
+            check (_vec.len[result](ins) >= 1u);
+            ret ins.(0);
+        }
+
+        case (1u) {
+            // Only one incoming edge is live, so we just feed that block
+            // onward.
+            ret live.(0);
+        }
+    }
+
+    // We have >1 incoming edges. Make a join block and br+phi them into it.
+    auto join_cx = new_sub_block_ctxt(parent_cx, "join");
+    for (result r in live) {
+        r.bcx.build.Br(join_cx.llbb);
+    }
+    auto phi = join_cx.build.Phi(t, vals, bbs);
+    ret res(join_cx, phi);
+}
+
 impure fn trans_if(@block_ctxt cx, &ast.expr cond,
                    &ast.block thn, &option.t[ast.block] els) -> result {
 
@@ -730,37 +766,22 @@ impure fn trans_if(@block_ctxt cx, &ast.expr cond,
     auto then_cx = new_sub_block_ctxt(cx, "then");
     auto then_res = trans_block(then_cx, thn);
 
-    auto next_cx = new_sub_block_ctxt(cx, "next");
-    then_res.bcx.build.Br(next_cx.llbb);
-    auto phi;
+    auto else_cx = new_sub_block_ctxt(cx, "else");
+    auto else_res = res(else_cx, C_nil());
 
     alt (els) {
         case (some[ast.block](?eblk)) {
-            auto else_cx = new_sub_block_ctxt(cx, "else");
-            auto else_res = trans_block(else_cx, eblk);
-            cond_res.bcx.build.CondBr(cond_res.val,
-                                      then_cx.llbb,
-                                      else_cx.llbb);
-            else_res.bcx.build.Br(next_cx.llbb);
-            phi = next_cx.build.Phi(T_nil(),
-                                    vec(then_res.val,
-                                        else_res.val),
-                                    vec(then_res.bcx.llbb,
-                                        else_res.bcx.llbb));
-        }
-
-        case (_) {
-            cond_res.bcx.build.CondBr(cond_res.val,
-                                      then_cx.llbb,
-                                      next_cx.llbb);
-            phi = next_cx.build.Phi(T_nil(),
-                                    vec(then_res.val, C_nil()),
-                                    vec(then_res.bcx.llbb,
-                                        cond_res.bcx.llbb));
+            else_res = trans_block(else_cx, eblk);
         }
     }
 
-    ret res(next_cx, phi);
+    cond_res.bcx.build.CondBr(cond_res.val,
+                              then_res.bcx.llbb,
+                              else_res.bcx.llbb);
+
+    // FIXME: use inferred type when available.
+    ret join_results(cx, T_nil(),
+                     vec(then_res, else_res));
 }
 
 impure fn trans_while(@block_ctxt cx, &ast.expr cond,
