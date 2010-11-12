@@ -917,13 +917,17 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
                 case (ast.item_fn(_, ?ff, _, _)) {
                     outptr = cx.build.Alloca(type_of(cx.fcx.tcx, ff.output));
                 }
+                case (_) {
+                    cx.fcx.tcx.sess.unimpl("call to non-item");
+                }
             }
             auto args_res = trans_exprs(f_res._0.bcx, args);
             auto llargs = vec(outptr,
                               cx.fcx.lltaskptr);
             llargs += args_res._1;
+            auto call_val = args_res._0.build.Call(f_res._0.val, llargs);
             ret res(args_res._0,
-                    args_res._0.build.Call(f_res._0.val, llargs));
+                    args_res._0.build.Load(outptr));
         }
 
     }
