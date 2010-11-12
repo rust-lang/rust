@@ -1131,6 +1131,11 @@ impure fn trans_block(@block_ctxt cx, &ast.block b) -> result {
     for (@ast.stmt s in b.node.stmts) {
         r = trans_stmt(bcx, *s);
         bcx = r.bcx;
+        // If we hit a terminator, control won't go any further so
+        // we're in dead-code land. Stop here.
+        if (is_terminated(bcx)) {
+            ret r;
+        }
     }
 
     bcx = trans_block_cleanups(bcx);
