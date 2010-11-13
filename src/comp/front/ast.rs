@@ -80,7 +80,8 @@ type local = rec(option.t[@ty] ty,
                  bool infer,
                  ident ident,
                  option.t[@expr] init,
-                 def_id id);
+                 def_id id,
+                 ann ann);
 
 type decl = spanned[decl_];
 tag decl_ {

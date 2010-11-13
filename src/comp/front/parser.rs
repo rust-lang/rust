@@ -731,7 +731,8 @@ impure fn parse_let(parser p) -> @ast.decl {
                               infer = false,
                               ident = ident,
                               init = init,
-                              id = p.next_def_id());
+                              id = p.next_def_id(),
+                              ann = ast.ann_none);
 
     ret @spanned(lo, hi, ast.decl_local(@local));
 }
@@ -750,7 +751,8 @@ impure fn parse_auto(parser p) -> @ast.decl {
                               infer = true,
                               ident = ident,
                               init = init,
-                              id = p.next_def_id());
+                              id = p.next_def_id(),
+                              ann = ast.ann_none);
 
     ret @spanned(lo, hi, ast.decl_local(@local));
 }
