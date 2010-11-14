@@ -310,7 +310,6 @@ type pval =
 type cdir =
     CDIR_meta of ((Ast.ident * string) array)
   | CDIR_syntax of Ast.name
-  | CDIR_check of (Ast.name * pval array)
   | CDIR_mod of (Ast.ident * Ast.mod_item)
   | CDIR_auth of auth
 
