@@ -1026,6 +1026,15 @@ obj builder(BuilderRef B) {
                                _str.buf(""));
     }
 
+    fn FastCall(ValueRef Fn, vec[ValueRef] Args) -> ValueRef {
+        auto v = llvm.LLVMBuildCall(B, Fn,
+                                    _vec.buf[ValueRef](Args),
+                                    _vec.len[ValueRef](Args),
+                                    _str.buf(""));
+        llvm.LLVMSetInstructionCallConv(v, LLVMFastCallConv);
+        ret v;
+    }
+
     fn Select(ValueRef If, ValueRef Then, ValueRef Else) -> ValueRef {
         ret llvm.LLVMBuildSelect(B, If, Then, Else, _str.buf(""));
     }

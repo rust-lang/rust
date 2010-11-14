@@ -375,7 +375,7 @@ fn decl_upcall(ModuleRef llmod, uint _n) -> ValueRef {
             T_int())     // callee
         + _vec.init_elt[TypeRef](T_int(), n as uint);
 
-    ret decl_cdecl_fn(llmod, s, args, T_int());
+    ret decl_fastcall_fn(llmod, s, args, T_int());
 }
 
 fn get_upcall(@trans_ctxt cx, str name, int n_args) -> ValueRef {
@@ -400,8 +400,7 @@ fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> result {
     for (ValueRef a in args) {
         call_args += cx.build.ZExtOrBitCast(a, T_int());
     }
-
-    ret res(cx, cx.build.Call(llglue, call_args));
+    ret res(cx, cx.build.FastCall(llglue, call_args));
 }
 
 fn trans_non_gc_free(@block_ctxt cx, ValueRef v) -> result {
@@ -941,10 +940,8 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
             auto args_res = trans_exprs(f_res._0.bcx, args);
             auto llargs = vec(cx.fcx.lltaskptr);
             llargs += args_res._1;
-            auto call_val = args_res._0.build.Call(f_res._0.val, llargs);
-            llvm.LLVMSetInstructionCallConv(call_val,
-                                            lib.llvm.LLVMFastCallConv);
-            ret res(args_res._0, call_val);
+            ret res(args_res._0,
+                    args_res._0.build.FastCall(f_res._0.val, llargs));
         }
 
     }

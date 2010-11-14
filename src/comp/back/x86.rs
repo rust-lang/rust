@@ -70,16 +70,18 @@ fn upcall_glue(int n_args) -> vec[str] {
     /*
      * 0, 4, 8, 12 are callee-saves
      * 16 is retpc
-     * 20 is taskptr
-     * 24 is callee
-     * 28 .. (7+i) * 4 are args
+     * 20 .. (5+i) * 4 are args
+     *
+     * ecx is taskptr
+     * edx is callee
+     *
      */
 
     fn copy_arg(uint i) -> str {
-        auto src_off = wstr(7 + (i as int));
+        auto src_off = wstr(5 + (i as int));
         auto dst_off = wstr(1 + (i as int));
-        auto m = vec("movl  " + src_off + "(%ebp),%edx",
-                     "movl  %edx," + dst_off + "(%esp)");
+        auto m = vec("movl  " + src_off + "(%ebp),%eax",
+                     "movl  %eax," + dst_off + "(%esp)");
         ret _str.connect(m, "\n\t");
     }
 
@@ -88,8 +90,7 @@ fn upcall_glue(int n_args) -> vec[str] {
     ret
         save_callee_saves()
 
-        + vec("movl  %esp, %ebp     # ebp = rust_sp",
-              "movl  20(%esp), %ecx # ecx = rust_task")
+        + vec("movl  %esp, %ebp     # ebp = rust_sp")
 
         + store_esp_to_rust_sp()
         + load_esp_from_runtime_sp()
@@ -100,9 +101,9 @@ fn upcall_glue(int n_args) -> vec[str] {
 
         + _vec.init_fn[str](carg, n_args as uint)
 
-        +  vec("movl  24(%ebp), %edx # edx = callee",
+        +  vec("movl  %ecx, %edi     # save task from ecx to edi",
                "call  *%edx          # call *%edx",
-               "movl  20(%ebp), %ecx # edx = rust_task")
+               "movl  %edi, %ecx     # restore edi-saved task to ecx")
 
         + load_esp_from_rust_sp()
         + restore_callee_saves()
