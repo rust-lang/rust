@@ -1015,12 +1015,12 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
 
     // Run all cleanups and back out.
     let bool more_cleanups = true;
-    auto bcx = cx;
+    auto cleanup_cx = cx;
     while (more_cleanups) {
-        bcx = trans_block_cleanups(bcx);
-        alt (bcx.parent) {
+        r.bcx = trans_block_cleanups(r.bcx, cleanup_cx);
+        alt (cleanup_cx.parent) {
             case (parent_some(?b)) {
-                bcx = b;
+                cleanup_cx = b;
             }
             case (parent_none) {
                 more_cleanups = false;
@@ -1107,9 +1107,10 @@ fn new_sub_block_ctxt(@block_ctxt bcx, str n) -> @block_ctxt {
 }
 
 
-fn trans_block_cleanups(@block_ctxt cx) -> @block_ctxt {
+fn trans_block_cleanups(@block_ctxt cx,
+                        @block_ctxt cleanup_cx) -> @block_ctxt {
     auto bcx = cx;
-    for (cleanup c in cx.cleanups) {
+    for (cleanup c in cleanup_cx.cleanups) {
         alt (c) {
             case (clean(?cfn)) {
                 bcx = cfn(bcx).bcx;
@@ -1163,7 +1164,7 @@ impure fn trans_block(@block_ctxt cx, &ast.block b) -> result {
         }
     }
 
-    bcx = trans_block_cleanups(bcx);
+    bcx = trans_block_cleanups(bcx, bcx);
     ret res(bcx, r.val);
 }
 
