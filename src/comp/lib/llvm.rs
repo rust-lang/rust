@@ -1069,6 +1069,19 @@ obj builder(BuilderRef B) {
         ret llvm.LLVMBuildPtrDiff(B, LHS, RHS, _str.buf(""));
     }
 
+    fn Trap() -> ValueRef {
+        let BasicBlockRef BB = llvm.LLVMGetInsertBlock(B);
+        let ValueRef FN = llvm.LLVMGetBasicBlockParent(BB);
+        let ModuleRef M = llvm.LLVMGetGlobalParent(FN);
+        let ValueRef T = llvm.LLVMGetNamedFunction(M, _str.buf("llvm.trap"));
+        check (T as int != 0);
+        let vec[ValueRef] Args = vec();
+        ret llvm.LLVMBuildCall(B, T,
+                               _vec.buf[ValueRef](Args),
+                               _vec.len[ValueRef](Args),
+                               _str.buf(""));
+    }
+
     drop {
         llvm.LLVMDisposeBuilder(B);
     }

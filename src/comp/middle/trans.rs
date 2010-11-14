@@ -1369,12 +1369,19 @@ fn trans_main_fn(@trans_ctxt cx, ValueRef llcrate) {
 
 }
 
+fn declare_intrinsics(ModuleRef llmod) {
+    let vec[TypeRef] T_trap_args = vec();
+    decl_cdecl_fn(llmod, "llvm.trap", T_trap_args, T_void());
+}
+
 fn trans_crate(session.session sess, @ast.crate crate, str output) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
 
     llvm.LLVMSetModuleInlineAsm(llmod, _str.buf(x86.get_module_asm()));
+
+    declare_intrinsics(llmod);
 
     auto glues = @rec(activate_glue = decl_glue(llmod,
                                                 abi.activate_glue_name()),
