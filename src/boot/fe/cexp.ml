@@ -303,7 +303,7 @@ and  parse_eq_pexp_opt (ps:pstate) : Ast.pexp option =
 
 type pval =
     PVAL_str of string
-  | PVAL_num of int64
+  | PVAL_int of int64
   | PVAL_bool of bool
 ;;
 
@@ -325,7 +325,7 @@ let unexpected_val (expected:string) (v:pval)  =
   let got =
     match v with
         PVAL_str s -> "str \"" ^ (String.escaped s) ^ "\""
-      | PVAL_num i -> "num " ^ (Int64.to_string i)
+      | PVAL_int i -> "int " ^ (Int64.to_string i)
       | PVAL_bool b -> if b then "bool true" else "bool false"
   in
     (* FIXME (issue #70): proper error reporting, please. *)
@@ -494,9 +494,9 @@ and eval_pexp (env:env) (exp:Ast.pexp) : pval =
                 (Ast.BINOP_add, PVAL_str az, PVAL_str bz) ->
                   PVAL_str (az ^ bz)
               | _ ->
-                  let av = (need_num av) in
-                  let bv = (need_num bv) in
-                    PVAL_num
+                  let av = (need_int av) in
+                  let bv = (need_int bv) in
+                    PVAL_int
                       begin
                         match bop with
                             Ast.BINOP_add -> Int64.add av bv
@@ -515,7 +515,7 @@ and eval_pexp (env:env) (exp:Ast.pexp) : pval =
               Ast.UNOP_not ->
                 PVAL_bool (not (eval_pexp_to_bool env a))
             | Ast.UNOP_neg ->
-                PVAL_num (Int64.neg (eval_pexp_to_num env a))
+                PVAL_int (Int64.neg (eval_pexp_to_int env a))
             | _ -> bug () "Unexpected unop in Cexp.eval_pexp"
         end
 
@@ -530,10 +530,8 @@ and eval_pexp (env:env) (exp:Ast.pexp) : pval =
     | Ast.PEXP_lit (Ast.LIT_bool b) ->
         PVAL_bool b
 
-    | Ast.PEXP_lit (Ast.LIT_int i)
-    | Ast.PEXP_lit (Ast.LIT_uint i)
-    | Ast.PEXP_lit (Ast.LIT_mach_int (_, i)) ->
-        PVAL_num i
+    | Ast.PEXP_lit (Ast.LIT_int i) ->
+        PVAL_int i
 
     | Ast.PEXP_str s ->
         PVAL_str s
@@ -546,13 +544,13 @@ and eval_pexp_to_str (env:env) (exp:Ast.pexp) : string =
       PVAL_str s -> s
     | v -> unexpected_val "str" v
 
-and need_num (cv:pval) : int64 =
+and need_int (cv:pval) : int64 =
   match cv with
-      PVAL_num n -> n
-    | v -> unexpected_val "num" v
+      PVAL_int n -> n
+    | v -> unexpected_val "int" v
 
-and eval_pexp_to_num (env:env) (exp:Ast.pexp) : int64 =
-  need_num (eval_pexp env exp)
+and eval_pexp_to_int (env:env) (exp:Ast.pexp) : int64 =
+  need_int (eval_pexp env exp)
 
 and eval_pexp_to_bool (env:env) (exp:Ast.pexp) : bool =
   match eval_pexp env exp with
@@ -655,7 +653,7 @@ let parse_crate_file
                                 ident) ps)
         | Some (PVAL_bool b) -> LIT_BOOL b
         | Some (PVAL_str s) -> LIT_STR s
-        | Some (PVAL_num n) -> LIT_INT n
+        | Some (PVAL_int n) -> LIT_INT n
   in
   let ps =
     make_parser crate_cache sess get_mod get_cenv_tok
