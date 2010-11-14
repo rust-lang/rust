@@ -26,23 +26,23 @@ fn restore_callee_saves() -> vec[str] {
 }
 
 fn load_esp_from_rust_sp() -> vec[str] {
-    ret vec("movl  " + wstr(abi.task_field_rust_sp) + "(%edx), %esp");
+    ret vec("movl  " + wstr(abi.task_field_rust_sp) + "(%ecx), %esp");
 }
 
 fn load_esp_from_runtime_sp() -> vec[str] {
-    ret vec("movl  " + wstr(abi.task_field_runtime_sp) + "(%edx), %esp");
+    ret vec("movl  " + wstr(abi.task_field_runtime_sp) + "(%ecx), %esp");
 }
 
 fn store_esp_to_rust_sp() -> vec[str] {
-    ret vec("movl  %esp, " + wstr(abi.task_field_rust_sp) + "(%edx)");
+    ret vec("movl  %esp, " + wstr(abi.task_field_rust_sp) + "(%ecx)");
 }
 
 fn store_esp_to_runtime_sp() -> vec[str] {
-    ret vec("movl  %esp, " + wstr(abi.task_field_runtime_sp) + "(%edx)");
+    ret vec("movl  %esp, " + wstr(abi.task_field_runtime_sp) + "(%ecx)");
 }
 
 fn rust_activate_glue() -> vec[str] {
-    ret vec("movl  4(%esp), %edx    # edx = rust_task")
+    ret vec("movl  4(%esp), %ecx    # ecx = rust_task")
         + save_callee_saves()
         + store_esp_to_runtime_sp()
         + load_esp_from_rust_sp()
@@ -56,7 +56,7 @@ fn rust_activate_glue() -> vec[str] {
 }
 
 fn rust_yield_glue() -> vec[str] {
-    ret vec("movl  0(%esp), %edx    # edx = rust_task")
+    ret vec("movl  0(%esp), %ecx    # ecx = rust_task")
         + load_esp_from_rust_sp()
         + save_callee_saves()
         + store_esp_to_rust_sp()
@@ -89,20 +89,20 @@ fn upcall_glue(int n_args) -> vec[str] {
         save_callee_saves()
 
         + vec("movl  %esp, %ebp     # ebp = rust_sp",
-              "movl  20(%esp), %edx # edx = rust_task")
+              "movl  20(%esp), %ecx # ecx = rust_task")
 
         + store_esp_to_rust_sp()
         + load_esp_from_runtime_sp()
 
         + vec("subl  $" + wstr(n_args + 1) + ", %esp   # esp -= args",
               "andl  $~0xf, %esp    # align esp down",
-              "movl  %edx, (%esp)   # arg[0] = rust_task ")
+              "movl  %ecx, (%esp)   # arg[0] = rust_task ")
 
         + _vec.init_fn[str](carg, n_args as uint)
 
         +  vec("movl  24(%ebp), %edx # edx = callee",
                "call  *%edx          # call *%edx",
-               "movl  20(%ebp), %edx # edx = rust_task")
+               "movl  20(%ebp), %ecx # edx = rust_task")
 
         + load_esp_from_rust_sp()
         + restore_callee_saves()

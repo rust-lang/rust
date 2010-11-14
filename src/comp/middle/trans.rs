@@ -51,7 +51,6 @@ state type trans_ctxt = rec(session.session sess,
                             str path);
 
 state type fn_ctxt = rec(ValueRef llfn,
-                         ValueRef lloutptr,
                          ValueRef lltaskptr,
                          hashmap[ast.def_id, ValueRef] llargs,
                          hashmap[ast.def_id, ValueRef] lllocals,
@@ -939,28 +938,13 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
         case (ast.expr_call(?f, ?args, _)) {
             auto f_res = trans_lval(cx, *f);
             check (! f_res._1);
-
-            // FIXME: Revolting hack to get the type of the outptr. Can get a
-            // variety of other ways; will wait until we have a typechecker
-            // perhaps to pick a more tasteful one.
-            auto outptr = cx.fcx.lloutptr;
-            alt (cx.fcx.tcx.items.get(f_res._2).node) {
-                case (ast.item_fn(_, ?ff, _, _)) {
-                    outptr = cx.build.Alloca(type_of(cx.fcx.tcx, ff.output));
-                }
-                case (_) {
-                    cx.fcx.tcx.sess.unimpl("call to non-item");
-                }
-            }
             auto args_res = trans_exprs(f_res._0.bcx, args);
-            auto llargs = vec(outptr,
-                              cx.fcx.lltaskptr);
+            auto llargs = vec(cx.fcx.lltaskptr);
             llargs += args_res._1;
             auto call_val = args_res._0.build.Call(f_res._0.val, llargs);
             llvm.LLVMSetInstructionCallConv(call_val,
                                             lib.llvm.LLVMFastCallConv);
-            ret res(args_res._0,
-                    args_res._0.build.Load(outptr));
+            ret res(args_res._0, call_val);
         }
 
     }
@@ -1021,7 +1005,6 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
     alt (e) {
         case (some[@ast.expr](?x)) {
             r = trans_expr(cx, *x);
-            r.bcx.build.Store(r.val, cx.fcx.lloutptr);
         }
     }
 
@@ -1040,7 +1023,16 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
         }
     }
 
-    r.val = r.bcx.build.RetVoid();
+    alt (e) {
+        case (some[@ast.expr](_)) {
+            r.val = r.bcx.build.Ret(r.val);
+            ret r;
+        }
+    }
+
+    // FIXME: until LLVM has a unit type, we are moving around
+    // C_nil values rather than their void type.
+    r.val = r.bcx.build.Ret(C_nil());
     ret r;
 }
 
@@ -1188,20 +1180,20 @@ fn new_fn_ctxt(@trans_ctxt cx,
     let ValueRef llfn = cx.fn_ids.get(fid);
     cx.fn_names.insert(cx.path, llfn);
 
-    let ValueRef lloutptr = llvm.LLVMGetParam(llfn, 0u);
-    let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 1u);
+    let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 0u);
+    let uint arg_n = 1u;
 
     let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] llargs = new_def_hash[ValueRef]();
 
-    let uint arg_n = 2u;
     for (ast.arg arg in f.inputs) {
-        llargs.insert(arg.id, llvm.LLVMGetParam(llfn, arg_n));
+        auto llarg = llvm.LLVMGetParam(llfn, arg_n);
+        check (llarg as int != 0);
+        llargs.insert(arg.id, llarg);
         arg_n += 1u;
     }
 
     ret @rec(llfn=llfn,
-             lloutptr=lloutptr,
              lltaskptr=lltaskptr,
              llargs=llargs,
              lllocals=lllocals,
@@ -1219,7 +1211,9 @@ impure fn trans_fn(@trans_ctxt cx, &ast._fn f, ast.def_id fid) {
     auto bcx = new_top_block_ctxt(fcx);
     auto res = trans_block(bcx, f.body);
     if (!is_terminated(res.bcx)) {
-        res.bcx.build.RetVoid();
+        // FIXME: until LLVM has a unit type, we are moving around
+        // C_nil values rather than their void type.
+        res.bcx.build.Ret(C_nil());
     }
 }
 
@@ -1247,18 +1241,13 @@ fn collect_item(&@trans_ctxt cx, @ast.item i) -> @trans_ctxt {
     alt (i.node) {
         case (ast.item_fn(?name, ?f, ?fid, _)) {
             cx.items.insert(fid, i);
-            let vec[TypeRef] args =
-                vec(T_ptr(type_of(cx, f.output)), // outptr.
-                    T_taskptr()   // taskptr
-                                        );
-            let vec[TypeRef] T_explicit_args = vec();
+            let TypeRef out = type_of(cx, f.output);
+            auto args = vec(T_taskptr());
             for (ast.arg arg in f.inputs) {
-                T_explicit_args += type_of(cx, arg.ty);
+                args += type_of(cx, arg.ty);
             }
-            args += T_explicit_args;
-
             let str s = cx.names.next("_rust_fn") + "." + name;
-            let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, args, T_void());
+            let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, args, out);
             cx.fn_ids.insert(fid, llfn);
         }
 
@@ -1290,10 +1279,8 @@ fn trans_exit_task_glue(@trans_ctxt cx) {
     let vec[ValueRef] V_args = vec();
 
     auto llfn = cx.glues.exit_task_glue;
-    let ValueRef lloutptr = C_null(T_int());
     let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 0u);
     auto fcx = @rec(llfn=llfn,
-                    lloutptr=lloutptr,
                     lltaskptr=lltaskptr,
                     llargs=new_def_hash[ValueRef](),
                     lllocals=new_def_hash[ValueRef](),
