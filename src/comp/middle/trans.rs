@@ -341,13 +341,23 @@ fn C_tydesc(TypeRef t) -> ValueRef {
                      C_null(T_opaque())));      // is_stateful
 }
 
-fn decl_cdecl_fn(ModuleRef llmod, str name,
-                 vec[TypeRef] inputs, TypeRef output) -> ValueRef {
+fn decl_fn(ModuleRef llmod, str name,
+           uint cc, vec[TypeRef] inputs, TypeRef output) -> ValueRef {
     let TypeRef llty = T_fn(inputs, output);
     let ValueRef llfn =
         llvm.LLVMAddFunction(llmod, _str.buf(name), llty);
-    llvm.LLVMSetFunctionCallConv(llfn, lib.llvm.LLVMCCallConv);
+    llvm.LLVMSetFunctionCallConv(llfn, cc);
     ret llfn;
+}
+
+fn decl_cdecl_fn(ModuleRef llmod, str name,
+                 vec[TypeRef] inputs, TypeRef output) -> ValueRef {
+    ret decl_fn(llmod, name, lib.llvm.LLVMCCallConv, inputs, output);
+}
+
+fn decl_fastcall_fn(ModuleRef llmod, str name,
+                    vec[TypeRef] inputs, TypeRef output) -> ValueRef {
+    ret decl_fn(llmod, name, lib.llvm.LLVMFastCallConv, inputs, output);
 }
 
 fn decl_glue(ModuleRef llmod, str s) -> ValueRef {
@@ -947,6 +957,8 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
                               cx.fcx.lltaskptr);
             llargs += args_res._1;
             auto call_val = args_res._0.build.Call(f_res._0.val, llargs);
+            llvm.LLVMSetInstructionCallConv(call_val,
+                                            lib.llvm.LLVMFastCallConv);
             ret res(args_res._0,
                     args_res._0.build.Load(outptr));
         }
@@ -1246,7 +1258,7 @@ fn collect_item(&@trans_ctxt cx, @ast.item i) -> @trans_ctxt {
             args += T_explicit_args;
 
             let str s = cx.names.next("_rust_fn") + "." + name;
-            let ValueRef llfn = decl_cdecl_fn(cx.llmod, s, args, T_void());
+            let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, args, T_void());
             cx.fn_ids.insert(fid, llfn);
         }
 
