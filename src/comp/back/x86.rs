@@ -49,7 +49,7 @@ fn rust_activate_glue() -> vec[str] {
 
         // This 'add' instruction is a bit surprising.
         // See lengthy comment in boot/be/x86.ml activate_glue.
-        + vec("addl  $20, " + wstr(abi.task_field_rust_sp) + "(%edx)")
+        + vec("addl  $20, " + wstr(abi.task_field_rust_sp) + "(%ecx)")
 
         + restore_callee_saves()
         + vec("ret");
