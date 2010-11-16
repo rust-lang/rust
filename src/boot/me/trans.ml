@@ -142,8 +142,13 @@ let trans_visitor
   let arg0_disp =
     Int64.add abi.Abi.abi_frame_base_sz abi.Abi.abi_implicit_args_sz
   in
-  let frame_crate_ptr = word_n (-1) in
-  let frame_fns_disp = word_n (-2) in
+  let frame_info_disp =
+    Int64.neg (Int64.add
+                 abi.Abi.abi_frame_info_sz
+                 abi.Abi.abi_callee_saves_sz)
+  in
+  let frame_fns_disp = Int64.add frame_info_disp (word_n 0) in
+  let frame_crate_ptr_disp = Int64.add frame_info_disp (word_n 1) in
 
   let fn_ty (id:node_id) : Ast.ty =
     Hashtbl.find cx.ctxt_all_item_types id
@@ -396,7 +401,7 @@ let trans_visitor
   and cell_cast = Il.cell_cast
 
   and curr_crate_ptr _ : Il.cell =
-    word_at (fp_imm frame_crate_ptr)
+    word_at (fp_imm frame_crate_ptr_disp)
 
   and crate_rel_to_ptr (rel:Il.operand) (rty:Il.referent_ty) : Il.cell =
     (in_quad_category "crate_rel -> ptr"
@@ -1645,7 +1650,7 @@ let trans_visitor
       iflog (fun _ -> annotate "write frame-info pointers");
       Abi.load_fixup_addr (emitter())
         crate_ptr_reg cx.ctxt_crate_fixup Il.OpaqueTy;
-      mov (word_at (fp_imm frame_crate_ptr)) (Il.Cell (crate_ptr_cell));
+      mov (word_at (fp_imm frame_crate_ptr_disp)) (Il.Cell (crate_ptr_cell));
       imov (word_at (fp_imm frame_fns_disp)) frame_fns
 
   and check_interrupt_flag _ =

@@ -987,7 +987,7 @@ let emit_file
       Il.emit e (Il.umov edx_pointee (X86.ro X86.eax));
       Il.emit e (Il.Push (X86.ro X86.eax));
 
-      (* Calculte and store envp. *)
+      (* Calculate and store envp. *)
       Il.emit e (Il.binary Il.ADD
                    (X86.rc X86.eax) (X86.ro X86.eax)
                    (X86.imm (Asm.IMM 1L)));

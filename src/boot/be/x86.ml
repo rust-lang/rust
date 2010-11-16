@@ -199,8 +199,14 @@ let reg_str r =
 
 (* This is a basic ABI. You might need to customize it by platform. *)
 let (n_hardregs:int) = 6;;
-let (n_callee_saves:int) = 4;;
 
+(* Includes ebx, esi, edi; does *not* include ebp, which has ABI-specified
+ * rules concerning its location and save/restore sequence.
+ * 
+ * See http://refspecs.freestandards.org/elf/abi386-4.pdf
+ * Page 36, Figure 3-15 and friends.
+ *)
+let (n_callee_saves:int) = 3;;
 
 let is_ty32 (ty:Il.scalar_ty) : bool =
   match ty with
@@ -553,52 +559,61 @@ let wordptr_n (reg:Il.reg) (i:int) : Il.cell =
 
 let get_element_ptr = Il.get_element_ptr word_bits reg_str ;;
 
-let save_callee_saves (e:Il.emitter) : unit =
+let establish_frame_base (e:Il.emitter) : unit =
+    (* Establish i386-ABI-compliant frame base. *)
     Il.emit e (Il.Push (ro ebp));
+    Il.emit e (Il.umov (rc ebp) (ro esp));
+;;
+
+let save_callee_saves (e:Il.emitter) : unit =
     Il.emit e (Il.Push (ro edi));
     Il.emit e (Il.Push (ro esi));
     Il.emit e (Il.Push (ro ebx));
 ;;
 
-
 let restore_callee_saves (e:Il.emitter) : unit =
     Il.emit e (Il.Pop (rc ebx));
     Il.emit e (Il.Pop (rc esi));
     Il.emit e (Il.Pop (rc edi));
+;;
+
+let leave_frame (e:Il.emitter) : unit =
     Il.emit e (Il.Pop (rc ebp));
 ;;
 
 
 (* restores registers from the frame base without updating esp:
- *   - sets ebp, edi, esi, ebx to stored values from frame base
+ *   - restores the callee-saves: edi, esi, ebx
+ *   - restores ebp to stored values from frame base
  *   - sets `retpc' register to stored retpc from frame base
  *   - sets `base' register to current fp
  *)
-let restore_frame_base (e:Il.emitter) (base:Il.reg) (retpc:Il.reg) : unit =
+let restore_frame_regs (e:Il.emitter) (base:Il.reg) (retpc:Il.reg)
+    : unit =
   let emit = Il.emit e in
   let mov dst src = emit (Il.umov dst src) in
     mov (r base) (ro ebp);
-    mov (rc ebx) (c (word_at base));
-    mov (rc esi) (c (word_n base 1));
-    mov (rc edi) (c (word_n base 2));
-    mov (rc ebp) (c (word_n base 3));
-    mov (r retpc) (c (word_n base 4));
+    mov (rc ebx) (c (word_n base (-3)));
+    mov (rc esi) (c (word_n base (-2)));
+    mov (rc edi) (c (word_n base (-1)));
+    mov (rc ebp) (c (word_at base));
+    mov (r retpc) (c (word_n base 1));
 ;;
 
 
 (*
  * Our arrangement on x86 is this:
  *
- *   *ebp+20+(4*N) = [argN   ]
+ *   *ebp+8+(4*N)  = [argN   ]
  *   ...
- *   *ebp+28       = [arg2   ] = obj/closure ptr
- *   *ebp+24       = [arg1   ] = task ptr
- *   *ebp+20       = [arg0   ] = out ptr
- *   *ebp+16       = [retpc  ]
- *   *ebp+12       = [old_ebp]
- *   *ebp+8        = [old_edi]
- *   *ebp+4        = [old_esi]
- *   *ebp          = [old_ebx]
+ *   *ebp+16       = [arg2   ] = obj/closure ptr
+ *   *ebp+12       = [arg1   ] = task ptr
+ *   *ebp+8        = [arg0   ] = out ptr
+ *   *ebp+4        = [retpc  ]
+ *   *ebp          = [old_ebp]
+ *   *ebp-4        = [old_edi]
+ *   *ebp-8        = [old_esi]
+ *   *ebp-12       = [old_ebx]
  *
  * For x86-cdecl:
  *
@@ -607,7 +622,7 @@ let restore_frame_base (e:Il.emitter) (base:Il.reg) (retpc:Il.reg) : unit =
  *
  *)
 
-let frame_base_words = 5 (* eip,ebp,edi,esi,ebx *) ;;
+let frame_base_words = 2 (* eip,ebp *) ;;
 let frame_base_sz = Int64.mul (Int64.of_int frame_base_words) word_sz;;
 
 let frame_info_words = 2 (* crate ptr, crate-rel frame info disp *) ;;
@@ -615,6 +630,8 @@ let frame_info_sz = Int64.mul (Int64.of_int frame_info_words) word_sz;;
 
 let implicit_arg_words = 3 (* task ptr, out ptr, closure ptr *);;
 let implicit_args_sz = Int64.mul (Int64.of_int implicit_arg_words) word_sz;;
+
+let callee_saves_sz = Int64.mul (Int64.of_int n_callee_saves) word_sz;;
 
 let out_ptr = wordptr_n (Il.Hreg ebp) (frame_base_words);;
 let task_ptr = wordptr_n (Il.Hreg ebp) (frame_base_words+1);;
@@ -625,7 +642,8 @@ let ty_param_n i =
 let spill_slot (i:Il.spill) : Il.mem =
   let imm = (Asm.IMM
                (Int64.neg
-                  (Int64.add frame_info_sz
+                  (Int64.add
+                     (Int64.add frame_info_sz callee_saves_sz)
                      (Int64.mul word_sz
                         (Int64.of_int (i+1))))))
   in
@@ -664,6 +682,7 @@ let emit_c_call
   let emit = Il.emit e in
   let mov dst src = emit (Il.umov dst src) in
   let imov dst src = emit (Il.imov dst src) in
+  let add dst src = emit (Il.binary Il.ADD dst (Il.Cell dst) src) in
   let binary op dst imm = emit (Il.binary op dst (c dst) (immi imm)) in
 
   (* rust calls get task as arg0  *)
@@ -735,6 +754,7 @@ let emit_c_call
           emit (Il.call ret fptr);
           mov (rc esp) (c (word_n (h ebp) Abi.task_field_rust_sp));
           mov (rc ebp) (ro esp);
+          add (rc ebp) (immi callee_saves_sz);
 
       | _ ->
           emit (Il.call ret fptr);
@@ -846,8 +866,10 @@ let crawl_stack_calling_glue
 
     mark repeat_jmp_fix;
 
-    mov (rc esi) (c (fp_n (-1)));       (* esi <- crate ptr             *)
-    mov (rc edi) (c (fp_n (-2)));       (* edi <- frame glue functions. *)
+    mov (rc esi)                        (* esi <- crate ptr             *)
+      (c (fp_n ((-1) - n_callee_saves)));
+    mov (rc edi)                        (* edi <- frame glue functions. *)
+      (c (fp_n ((-2) - n_callee_saves)));
     emit (Il.cmp (ro edi) (immi 0L));
 
     emit
@@ -874,7 +896,7 @@ let crawl_stack_calling_glue
     pop (rc eax);
 
     mark skip_jmp_fix;
-    mov (rc edi) (c (fp_n 3));          (* load next fp (callee-saves[3]) *)
+    mov (rc edi) (c (fp_n 0));          (* load next fp (fp[0])           *)
     emit (Il.cmp (ro edi) (immi 0L));
     emit (Il.jmp Il.JE
             (codefix exit_jmp_fix));    (* if nonzero                     *)
@@ -980,6 +1002,8 @@ let gc_glue
       (c (edi_n Abi.task_field_rust_sp));
 
     (* Mark pass. *)
+
+    push (ro ebp);
     save_callee_saves e;
     push (ro eax);
     crawl_stack_calling_glue e Abi.frame_glue_fns_field_mark;
@@ -1005,6 +1029,7 @@ let gc_glue
 
     pop (rc eax);
     restore_callee_saves e;
+    pop (rc ebp);
     Il.emit e Il.Ret;
 ;;
 
@@ -1182,11 +1207,12 @@ let rec size_calculation_stack_highwater (size:size) : int =
         + 1
 ;;
 
+let minimal_call_sz = Int64.add frame_base_sz callee_saves_sz;;
 let boundary_sz =
   (Asm.IMM
      (Int64.add                   (* Extra non-frame room:           *)
-        frame_base_sz             (* to safely enter the next frame, *)
-        frame_base_sz))           (* and make a 'grow' upcall there. *)
+        minimal_call_sz           (* to safely enter the next frame, *)
+        minimal_call_sz))         (* and make a 'grow' upcall there. *)
 ;;
 
 let stack_growth_check
@@ -1273,8 +1299,8 @@ let minimal_fn_prologue
   let sub dst src = emit (Il.binary Il.SUB dst (Il.Cell dst) src) in
 
     (* See diagram and explanation in full_fn_prologue, below.    *)
+    establish_frame_base e;
     save_callee_saves e;
-    mov (rc ebp) (ro esp);                 (* Establish frame base.  *)
     sub (rc esp) (imm call_and_frame_sz);  (* Establish a frame.     *)
     mov (rc edi) (ro esp);                 (* Zero the frame. *)
     mov (rc ecx) (imm call_and_frame_sz);
@@ -1329,9 +1355,9 @@ let full_fn_prologue
    *  | ...           |
    *  | caller arg 0  |
    *  | retpc         | <-- sp we received, top of callee frame
-   *  | callee save 1 |
+   *  | callee save 1 | <-- ebp after frame-base setup
    *  | ...           |
-   *  | callee save N | <-- ebp and esp after saving callee-saves
+   *  | callee save N | <-- esp after saving callee-saves
    *  | ...           |
    *  | callee frame  |
    *  | + spill       |
@@ -1344,19 +1370,20 @@ let full_fn_prologue
    *  | next save N   | <-- bottom of region we must reserve
    *  | ...           |
    *
-   * A "frame base" is the retpc and set of callee-saves.
+   * A "frame base" is the retpc + ebp.
    *
-   * We need to reserve room for our frame *and* the next frame-base, because
-   * we're going to be blindly entering the next frame-base (pushing eip and
-   * callee-saves) before we perform the next check.
+   * We need to reserve room for our frame *and* the next frame-base and
+   * callee-saves, because we're going to be blindly entering the next
+   * frame-base (pushing eip and callee-saves) before we perform the next
+   * check.
    *)
 
     (* Already have room to save regs on entry. *)
+    establish_frame_base e;
     save_callee_saves e;
 
     let restart_pc = e.Il.emit_pc in
 
-      mov (rc ebp) (ro esp);             (* Establish frame base.     *)
       mov (rc esi) (c task_ptr);         (* esi = task                *)
       mov
         (rc esi)
@@ -1444,12 +1471,14 @@ let fn_prologue
 ;;
 
 let fn_epilogue (e:Il.emitter) : unit =
-
   (* Tear down existing frame. *)
   let emit = Il.emit e in
   let mov dst src = emit (Il.umov dst src) in
+  let sub dst src = emit (Il.binary Il.SUB dst (Il.Cell dst) src) in
+    sub (rc ebp) (immi callee_saves_sz);
     mov (rc esp) (ro ebp);
     restore_callee_saves e;
+    leave_frame e;
     emit Il.Ret;
 ;;
 
@@ -1543,8 +1572,8 @@ let fn_tail_call
     end;
 
     (* edx <- ebp; restore ebp, edi, esi, ebx; ecx <- retpc *)
-    annotate e "tail call: restore callee-saves from frame base";
-    restore_frame_base e (h edx) (h ecx);
+    annotate e "tail call: restore registers from frame base";
+    restore_frame_regs e (h edx) (h ecx);
     (* move edx past frame base and adjust for difference in call sizes *)
     annotate e "tail call: adjust temporary fp";
     binary Il.ADD (rc edx) (Int64.add frame_base_sz argsz_diff);
@@ -1637,6 +1666,7 @@ let activate_glue (e:Il.emitter) : unit =
   let binary op dst imm = emit (Il.binary op dst (c dst) (immi imm)) in
 
     mov (rc edx) (c (sp_n 1));            (* edx <- task             *)
+    establish_frame_base e;
     save_callee_saves e;
     mov
       (edx_n Abi.task_field_runtime_sp)
@@ -1690,10 +1720,11 @@ let activate_glue (e:Il.emitter) : unit =
      *)
 
     binary Il.ADD (edx_n Abi.task_field_rust_sp)
-      (Int64.mul (Int64.of_int (n_callee_saves + 1)) word_sz);
+      (Int64.mul (Int64.of_int (n_callee_saves + 2)) word_sz);
 
     (**** IN TASK STACK ****)
     restore_callee_saves e;
+    leave_frame e;
     emit Il.Ret;
     (***********************)
   ()
@@ -1736,6 +1767,7 @@ let yield_glue (e:Il.emitter) : unit =
     mov
       (rc esp)
       (c (edx_n Abi.task_field_rust_sp));    (* esp <- task->rust_sp    *)
+    establish_frame_base e;
     save_callee_saves e;
     mov                                      (* task->rust_sp <- esp    *)
       (edx_n Abi.task_field_rust_sp)
@@ -1746,6 +1778,7 @@ let yield_glue (e:Il.emitter) : unit =
 
     (**** IN C STACK ****)
     restore_callee_saves e;
+    leave_frame e;
     emit Il.Ret;
     (***********************)
   ()
@@ -1771,30 +1804,30 @@ let objfile_start
   let mov dst src = emit (Il.umov dst src) in
   let push_pos32 = push_pos32 e in
     Il.emit_full e (Some start_fixup) Il.Dead;
+    establish_frame_base e;
     save_callee_saves e;
-    mov (rc ebp) (ro esp);
 
     (* If we're very lucky, the platform will have left us with
      * something sensible in the startup stack like so:
      * 
-     *   *ebp+24       = [arg1   ] = argv
-     *   *ebp+20       = [arg0   ] = argc
-     *   *ebp+16       = [retpc  ]
-     *   *ebp+12       = [old_ebp]
-     *   *ebp+8        = [old_edi]
-     *   *ebp+4        = [old_esi]
-     *   *ebp          = [old_ebx]
+     *   *ebp+12       = [arg1   ] = argv
+     *   *ebp+8        = [arg0   ] = argc
+     *   *ebp+4        = [retpc  ]
+     *   *ebp          = [old_ebp]
+     *   *ebp-4        = [old_edi]
+     *   *ebp-8        = [old_esi]
+     *   *ebp-12       = [old_ebx]
      * 
      * This is not the case everywhere, but we start with this
      * assumption and correct it in the runtime library.
      *)
 
     (* Copy argv. *)
-    mov (rc eax) (c (ebp_n (2 + n_callee_saves)));
+    mov (rc eax) (c (ebp_n 3));
     Il.emit e (Il.Push (ro eax));
 
     (* Copy argc. *)
-    mov (rc eax) (c (ebp_n (1 + n_callee_saves)));
+    mov (rc eax) (c (ebp_n 2));
     Il.emit e (Il.Push (ro eax));
 
     push_pos32 crate_fixup;
@@ -1807,8 +1840,8 @@ let objfile_start
       Il.emit e (Il.Pop (rc ecx));
       Il.emit e (Il.Pop (rc ecx));
       Il.emit e (Il.Pop (rc ecx));
-      Il.emit e (Il.umov (rc esp) (ro ebp));
       restore_callee_saves e;
+      leave_frame e;
       Il.emit e Il.Ret;
 ;;
 
@@ -1847,6 +1880,7 @@ let (abi:Abi.abi) =
     Abi.abi_dwarf_fp_reg = dwarf_ebp;
     Abi.abi_tp_cell = task_ptr;
     Abi.abi_frame_base_sz = frame_base_sz;
+    Abi.abi_callee_saves_sz = callee_saves_sz;
     Abi.abi_frame_info_sz = frame_info_sz;
     Abi.abi_implicit_args_sz = implicit_args_sz;
     Abi.abi_spill_slot = spill_slot;

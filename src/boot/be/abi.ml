@@ -189,6 +189,7 @@ type abi =
     abi_tp_cell: Il.cell;
     abi_implicit_args_sz: int64;
     abi_frame_base_sz: int64;
+    abi_callee_saves_sz: int64;
     abi_frame_info_sz: int64;
     abi_spill_slot: (Il.spill -> Il.mem);
   }

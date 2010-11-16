@@ -149,17 +149,21 @@ rust_task::start(uintptr_t exit_task_glue,
     *spp-- = (uintptr_t) this;       // task
     *spp-- = (uintptr_t) 0;          // output
     *spp-- = (uintptr_t) 0;          // retpc
+
+    uintptr_t exit_task_frame_base;
+
     for (size_t j = 0; j < n_callee_saves; ++j) {
+
+        // We want 'frame_base' to point to the old fp in this (exit-task)
+        // frame, because we're going to inject this frame-pointer into the
+        // callee-save frame pointer value in the *next* (spawnee) frame. A
+        // cheap trick, but this means the spawnee frame will restore the
+        // proper frame pointer of the glue frame as it runs its epilogue.
+        if (j == callee_save_fp)
+            exit_task_frame_base = (uintptr_t)spp;
+
         *spp-- = 0;
     }
-
-    // We want 'frame_base' to point to the last callee-save in this
-    // (exit-task) frame, because we're going to inject this
-    // frame-pointer into the callee-save frame pointer value in the
-    // *next* (spawnee) frame. A cheap trick, but this means the
-    // spawnee frame will restore the proper frame pointer of the glue
-    // frame as it runs its epilogue.
-    uintptr_t frame_base = (uintptr_t) (spp+1);
 
     *spp-- = (uintptr_t) dom->root_crate;  // crate ptr
     *spp-- = (uintptr_t) 0;                // frame_glue_fns
@@ -195,7 +199,7 @@ rust_task::start(uintptr_t exit_task_glue,
     for (size_t j = 0; j < n_callee_saves; ++j) {
         // callee-saves to carry in when we activate
         if (j == callee_save_fp)
-            *spp-- = frame_base;
+            *spp-- = exit_task_frame_base;
         else
             *spp-- = (uintptr_t)NULL;
     }
@@ -432,9 +436,9 @@ rust_task::get_fp() {
 
 uintptr_t
 rust_task::get_previous_fp(uintptr_t fp) {
-    // fp happens to, coincidentally (!) also point to the last
-    // callee-save on the task stack.
-    return get_callee_save_fp((uintptr_t*)fp);
+    // FIXME: terribly X86-specific.
+    // *fp == previous_fp.
+    return *((uintptr_t*)fp);
 }
 
 frame_glue_fns*

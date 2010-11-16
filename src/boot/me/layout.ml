@@ -26,27 +26,30 @@ let layout_visitor
    *     |output ptr (implicit arg)   |
    *     +----------------------------+ <-- fp + abi_frame_base_sz
    *     |return pc                   |
-   *     |callee-save registers       |
+   *     |old fp                      | <-- fp
+   *     +----------------------------+
+   *     |other callee-save registers |
    *     |...                         |
-   *     +----------------------------+ <-- fp
+   *     +----------------------------+ <-- fp - callee_saves
    *     |crate ptr                   |
    *     |crate-rel frame info disp   |
-   *     +----------------------------+ <-- fp - abi_frame_info_sz
-   *     |spills determined in ra     |
+   *     +----------------------------+ <-- fp - (callee_saves
+   *     |spills determined in ra     |           + abi_frame_info_sz)
    *     |...                         |
    *     |...                         |
-   *     +----------------------------+ <-- fp - (abi_frame_info_sz
-   *     |...                         |            + spillsz)
-   *     |frame-allocated stuff       |
+   *     +----------------------------+ <-- fp - (callee_saves
+   *     |...                         |           + abi_frame_info_sz
+   *     |frame-allocated stuff       |           + spillsz)
    *     |determined in resolve       |
    *     |laid out in layout          |
    *     |...                         |
    *     |...                         |
-   *     +----------------------------+ <-- fp - framesz
+   *     +----------------------------+ <-- fp - (callee_saves + framesz)
    *     |call space                  |      == sp + callsz
    *     |...                         |
    *     |...                         |
-   *     +----------------------------+ <-- fp - (framesz + callsz) == sp
+   *     +----------------------------+ <-- fp - (callee_saves
+   *                                              + framesz + callsz) == sp
    *
    *   - Slot offsets fall into three classes:
    *
@@ -246,11 +249,13 @@ let layout_visitor
     let (frame_id, frame_blocks) = Stack.top frame_stack in
     let frame_spill = Hashtbl.find cx.ctxt_spill_fixups frame_id in
     let sz =
+      (* NB: the "frame size" does not include the callee-saves. *)
       add_sz
         (add_sz
            (rty_sz (frame_rty frame_blocks))
            (SIZE_fixup_mem_sz frame_spill))
-        (SIZE_fixed cx.ctxt_abi.Abi.abi_frame_info_sz)
+        (SIZE_fixed
+           cx.ctxt_abi.Abi.abi_frame_info_sz)
     in
     let curr = Hashtbl.find cx.ctxt_frame_sizes frame_id in
     let sz = max_sz curr sz in
@@ -354,8 +359,9 @@ let layout_visitor
     let (frame_id, frame_blocks) = Stack.top frame_stack in
     let frame_spill = Hashtbl.find cx.ctxt_spill_fixups frame_id in
     let spill_sz = SIZE_fixup_mem_sz frame_spill in
+    let callee_saves_sz = SIZE_fixed cx.ctxt_abi.Abi.abi_callee_saves_sz in
     let info_sz = SIZE_fixed cx.ctxt_abi.Abi.abi_frame_info_sz in
-    let locals_off = add_sz spill_sz info_sz in
+    let locals_off = add_sz spill_sz (add_sz info_sz callee_saves_sz) in
     let off =
       if Stack.is_empty frame_blocks
       then locals_off
