@@ -53,6 +53,7 @@ fn create[T]() -> t[T] {
             case (option.some[T](?t)) { ret t; }
             case (_) { fail; }
         }
+        fail;   // FIXME: remove me when exhaustiveness checking works
     }
 
     obj deque[T](mutable uint nelts,

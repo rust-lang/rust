@@ -176,6 +176,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                     case (option.some[V](_)) { ret true; }
                     case (_) { ret false; }
                 }
+                fail;   // FIXME: remove me when exhaustiveness checking works
             }
 
             fn get(&K key) -> V {
@@ -183,6 +184,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                     case (option.some[V](?val)) { ret val; }
                     case (_) { fail; }
                 }
+                fail;   // FIXME: remove me when exhaustiveness checking works
             }
 
             fn find(&K key) -> option.t[V] {

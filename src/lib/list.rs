@@ -24,6 +24,8 @@ fn foldl[T,U](&list[T] ls, &U u, fn(&T t, U u) -> U f) -> U {
       ret u;
     }
   }
+
+  fail; // TODO: remove me when exhaustiveness checking works
 }
 
 fn find[T,U](&list[T] ls,
@@ -45,6 +47,8 @@ fn find[T,U](&list[T] ls,
         ret none[U];
     }
   }
+
+  fail; // TODO: remove me when exhaustiveness checking works
 }
 
 fn length[T](&list[T] ls) -> uint {

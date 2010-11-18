@@ -20,7 +20,9 @@ type ty_pat =
 type fn_ctx = {
   fnctx_return_type: Ast.ty;
   fnctx_is_iter: bool;
-  mutable fnctx_just_saw_ret: bool
+  mutable fnctx_just_saw_ret: bool;
+  fnctx_blocks: Common.node_id Stack.t;
+  fnctx_slot_decls: (Ast.slot_key,Common.node_id) Hashtbl.t;
 }
 
 exception Type_error of string * string
@@ -188,7 +190,7 @@ let type_error cx expected actual =
 
 (* We explicitly curry [cx] like this to avoid threading it through all the
  * inner functions. *)
-let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
+let check_block (cx:Semant.ctxt) : (fn_ctx -> Ast.block -> unit) =
   let pretty_ty_str = Semant.pretty_ty_str cx (Ast.sprintf_ty ()) in
 
   (* Returns the part of the type that matters for typechecking. *)
@@ -894,7 +896,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
 
   (* Again as above, we explicitly curry [fn_ctx] to avoid threading it
    * through these functions. *)
-  let check_stmt (fn_ctx:fn_ctx) : (Ast.stmt -> unit) =
+  let check_block (fn_ctx:fn_ctx) : (Ast.block -> unit) =
     let check_ret (stmt:Ast.stmt) : unit =
       fn_ctx.fnctx_just_saw_ret <-
         match stmt.Common.node with
@@ -904,7 +906,8 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
     in
 
     let rec check_block (block:Ast.block) : unit =
-      Array.iter check_stmt block.Common.node
+      Stack.push block.Common.id fn_ctx.fnctx_blocks;
+      Array.iter check_stmt' block.Common.node
 
     and check_stmt (stmt:Ast.stmt) : unit =
       check_ret stmt;
@@ -1050,7 +1053,7 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
 
         | Ast.STMT_while w | Ast.STMT_do_while w ->
             let (stmts, expr) = w.Ast.while_lval in
-            Array.iter check_stmt stmts;
+            Array.iter check_stmt' stmts;
             demand Ast.TY_bool (check_expr expr);
             check_block w.Ast.while_body
 
@@ -1098,7 +1101,10 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
             let get_pat arm = fst arm.Common.node in
             let pats = Array.map get_pat alt_tag.Ast.alt_tag_arms in
             let ty = check_lval alt_tag.Ast.alt_tag_lval in
-            Array.iter (check_pat ty) pats
+            let get_block arm = snd arm.Common.node in
+            let blocks = Array.map get_block alt_tag.Ast.alt_tag_arms in
+            Array.iter (check_pat ty) pats;
+            Array.iter check_block blocks
 
         | Ast.STMT_alt_type _ -> () (* TODO *)
 
@@ -1132,10 +1138,12 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
 
         | Ast.STMT_block block -> check_block block
 
-        | Ast.STMT_decl _ -> () (* always well-typed *)
-    in
+        | Ast.STMT_decl (Ast.DECL_slot (slot_key, _)) ->
+            Hashtbl.add fn_ctx.fnctx_slot_decls slot_key stmt.Common.id
 
-    let check_stmt' stmt =
+        | Ast.STMT_decl (Ast.DECL_mod_item _) -> () (* always well-typed *)
+
+    and check_stmt' stmt =
       try
         check_stmt stmt
       with Type_error (expected, actual) ->
@@ -1145,9 +1153,9 @@ let check_stmt (cx:Semant.ctxt) : (fn_ctx -> Ast.stmt -> unit) =
           expected
           actual
     in
-    check_stmt'
+    check_block
   in
-  check_stmt
+  check_block
 
 let create_tag_graph_nodes (cx:Semant.ctxt) =
   let make_graph_node id _ =
@@ -1259,8 +1267,6 @@ let check_for_tag_cycles (cx:Semant.ctxt) =
   Hashtbl.iter check_node cx.Semant.ctxt_tag_containment
 
 let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
-  let fn_ctx_stack = Stack.create () in
-
   (* Verify that, if main is present, it has the right form. *)
   let verify_main (item_id:Common.node_id) : unit =
     let path_name = Hashtbl.find cx.Semant.ctxt_all_item_names item_id in
@@ -1284,28 +1290,43 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
   in
 
   let visitor (cx:Semant.ctxt) (inner:Walk.visitor) : Walk.visitor =
-    let push_fn_ctx (ret_ty:Ast.ty) (is_iter:bool) =
-      let fn_ctx = {
+    let create_fn_ctx (ret_ty:Ast.ty) (is_iter:bool) =
+      {
         fnctx_return_type = ret_ty;
         fnctx_is_iter = is_iter;
-        fnctx_just_saw_ret = false
-      } in
-      Stack.push fn_ctx fn_ctx_stack
+        fnctx_just_saw_ret = false;
+        fnctx_blocks = Stack.create ();
+        fnctx_slot_decls = Hashtbl.create 0;
+      }
     in
 
-    let push_fn_ctx_of_ty_fn (ty_fn:Ast.ty_fn) : unit =
+    let create_fn_ctx_of_ty_fn (ty_fn:Ast.ty_fn) : fn_ctx =
       let (ty_sig, ty_fn_aux) = ty_fn in
       let ret_ty = ty_sig.Ast.sig_output_slot.Ast.slot_ty in
       let is_iter = ty_fn_aux.Ast.fn_is_iter in
-      push_fn_ctx (Common.option_get ret_ty) is_iter
+      create_fn_ctx (Common.option_get ret_ty) is_iter
     in
 
-    let finish_function (item_id:Common.node_id) =
-      let fn_ctx = Stack.pop fn_ctx_stack in
+    let finish_function (fn_ctx:fn_ctx) (item_id:Common.node_id option) =
       if not fn_ctx.fnctx_just_saw_ret &&
           fn_ctx.fnctx_return_type <> Ast.TY_nil &&
           not fn_ctx.fnctx_is_iter then
-        Common.err (Some item_id) "this function must return a value"
+        Common.err item_id "this function must return a value";
+
+      let check_for_slot_types_in_block block_id =
+        let check_for_slot_type slot_key defn_id =
+          match Hashtbl.find cx.Semant.ctxt_all_defns defn_id with
+              Semant.DEFN_slot { Ast.slot_ty = None; Ast.slot_mode = _ } ->
+                let stmt_id = Hashtbl.find fn_ctx.fnctx_slot_decls slot_key in
+                Common.err
+                  (Some stmt_id)
+                  "no type could be inferred for this slot"
+            | _ -> ()
+        in
+        let block_slots = Hashtbl.find cx.Semant.ctxt_block_slots block_id in
+        Hashtbl.iter check_for_slot_type block_slots
+      in
+      Stack.iter check_for_slot_types_in_block fn_ctx.fnctx_blocks
     in
 
     let check_fn_ty_validity item_id (ty_sig, _) =
@@ -1328,14 +1349,16 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
     let visit_mod_item_pre _ _ item =
       let { Common.node = item; Common.id = item_id } = item in
       match item.Ast.decl_item with
-          Ast.MOD_ITEM_fn _ when
+          Ast.MOD_ITEM_fn fn when
               not (Hashtbl.mem cx.Semant.ctxt_required_items item_id) ->
             let fn_ty = Hashtbl.find cx.Semant.ctxt_all_item_types item_id in
             begin
               match fn_ty with
                   Ast.TY_fn ty_fn ->
                     check_fn_ty_validity item_id ty_fn;
-                    push_fn_ctx_of_ty_fn ty_fn
+                    let fn_ctx = create_fn_ctx_of_ty_fn ty_fn in
+                    check_block cx fn_ctx fn.Ast.fn_body;
+                    finish_function fn_ctx (Some item_id)
                 | _ ->
                   Common.bug ()
                     "Type.visit_mod_item_pre: fn item didn't have a fn type"
@@ -1346,10 +1369,7 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
       let item_id = item.Common.id in
       verify_main item_id;
       match item.Common.node.Ast.decl_item with
-          Ast.MOD_ITEM_fn _ when
-              not (Hashtbl.mem cx.Semant.ctxt_required_items item_id) ->
-            finish_function item_id
-        | Ast.MOD_ITEM_tag (_, id, n) -> populate_tag_graph_node cx id n
+          Ast.MOD_ITEM_tag (_, id, n) -> populate_tag_graph_node cx id n
         | _ -> ()
     in
 
@@ -1366,33 +1386,21 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
                 match tsig.Ast.sig_output_slot with
                     { Ast.slot_ty = Some (Ast.TY_obj (_, methods));
                       Ast.slot_mode = _ } ->
-                      push_fn_ctx_of_ty_fn (Hashtbl.find methods ident)
+                      let fn_ty = Hashtbl.find methods ident in
+                      let fn_ctx = create_fn_ctx_of_ty_fn fn_ty in
+                      let obj_fns = obj.Common.node.Ast.obj_fns in
+                      let fn = Hashtbl.find obj_fns ident in
+                      check_block cx fn_ctx fn.Common.node.Ast.fn_body;
+                      finish_function fn_ctx (Some fn.Common.id)
                   | _ -> bad()
               end
           | _ -> bad()
     in
-    let visit_obj_fn_post _ _ item = finish_function (item.Common.id) in
 
-    let visit_obj_drop_pre _ _ = push_fn_ctx Ast.TY_nil false in
-    let visit_obj_drop_post _ _ = ignore (Stack.pop fn_ctx_stack) in
-
-    let visit_stmt_pre (stmt:Ast.stmt) : unit =
-      try
-        iflog cx
-          begin
-            fun _ ->
-              log cx "";
-              log cx "typechecking stmt: %a" Ast.sprintf_stmt stmt;
-              log cx "";
-          end;
-        check_stmt cx (Stack.top fn_ctx_stack) stmt;
-        iflog cx
-          begin
-            fun _ -> 
-              log cx "finished typechecking stmt: %a" Ast.sprintf_stmt stmt;
-          end;
-      with Common.Semant_err (None, msg) ->
-        raise (Common.Semant_err ((Some stmt.Common.id), msg))
+    let visit_obj_drop_pre _ block =
+      let fn_ctx = create_fn_ctx Ast.TY_nil false in
+      check_block cx fn_ctx block;
+      finish_function fn_ctx None
     in
 
     let visit_crate_pre _ : unit = create_tag_graph_nodes cx in
@@ -1411,13 +1419,10 @@ let process_crate (cx:Semant.ctxt) (crate:Ast.crate) : unit =
 
     {
       inner with
-        Walk.visit_stmt_pre = visit_stmt_pre;
         Walk.visit_mod_item_pre = visit_mod_item_pre;
         Walk.visit_mod_item_post = visit_mod_item_post;
         Walk.visit_obj_fn_pre = visit_obj_fn_pre;
-        Walk.visit_obj_fn_post = visit_obj_fn_post;
         Walk.visit_obj_drop_pre = visit_obj_drop_pre;
-        Walk.visit_obj_drop_post = visit_obj_drop_post;
         Walk.visit_crate_pre = visit_crate_pre;
         Walk.visit_crate_post = visit_crate_post
     }

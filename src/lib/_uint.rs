@@ -55,6 +55,7 @@ fn to_str(mutable uint n, uint radix) -> str
             case (14u) { ret 'e'; }
             case (15u) { ret 'f'; }
         }
+        fail;
     }
 
     if (n == 0u) { ret "0"; }

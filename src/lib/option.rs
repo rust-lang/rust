@@ -16,6 +16,7 @@ fn get[T](&t[T] opt) -> T {
             fail;
         }
     }
+    fail;   // FIXME: remove me when exhaustiveness checking works
 }
 
 fn map[T, U](&operator[T, U] f, &t[T] opt) -> t[U] {
@@ -27,6 +28,7 @@ fn map[T, U](&operator[T, U] f, &t[T] opt) -> t[U] {
             ret none[U];
         }
     }
+    fail;   // FIXME: remove me when exhaustiveness checking works
 }
 
 // Local Variables:
