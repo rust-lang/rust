@@ -519,9 +519,13 @@ TEST_XFAILS_SELF := $(filter-out \
                       $(addprefix test/run-pass/, \
                         bool-not.rs \
                         char.rs \
+                        fact.rs \
+                        dead-code-one-arm-if.rs \
+                        deep.rs \
                         hello.rs \
                         int.rs \
                         item-name-overload.rs \
+                        lazy-init.rs \
                         multiline-comment.rs \
                         ), \
                       $(wildcard test/*/*.rs test/*/*.rc))
