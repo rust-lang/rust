@@ -132,6 +132,7 @@ type ctxt =
 
       (* Typestate-y stuff. *)
       ctxt_stmt_is_init: (node_id,unit) Hashtbl.t;
+      ctxt_while_header_slots: (node_id,node_id list) Hashtbl.t;
       ctxt_post_stmt_slot_drops: (node_id,node_id list) Hashtbl.t;
       ctxt_post_block_slot_drops: (node_id,node_id list) Hashtbl.t;
 
@@ -239,6 +240,7 @@ let new_ctxt sess abi crate =
     ctxt_required_syms = crate.Ast.crate_required_syms;
 
     ctxt_stmt_is_init = Hashtbl.create 0;
+    ctxt_while_header_slots = Hashtbl.create 0;
     ctxt_post_stmt_slot_drops = Hashtbl.create 0;
     ctxt_post_block_slot_drops = Hashtbl.create 0;
 

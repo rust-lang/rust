@@ -2614,27 +2614,24 @@ let trans_visitor
         | Ast.EXPR_atom a ->
             trans_atom a
 
+  and drop_slot_by_id (depth:int) (slot_id:node_id) : unit =
+    let slot = get_slot cx slot_id in
+    let k = Hashtbl.find cx.ctxt_slot_keys slot_id in
+      iflog (fun _ ->
+               annotate
+                 (Printf.sprintf
+                    "drop_slot %d = %s "
+                    (int_of_node slot_id)
+                    (Fmt.fmt_to_str Ast.fmt_slot_key k)));
+      drop_slot_in_current_frame
+        (cell_of_block_slot
+           ~access_depth:(Some depth) slot_id) slot
+
   and drop_slots_after_block bid : unit =
+    let depth = Hashtbl.find cx.ctxt_block_loop_depths bid in
     match htab_search cx.ctxt_post_block_slot_drops bid with
         None -> ()
-      | Some slots ->
-          List.iter
-            begin
-              fun slot_id ->
-                let slot = get_slot cx slot_id in
-                let k = Hashtbl.find cx.ctxt_slot_keys slot_id in
-                let depth = Hashtbl.find cx.ctxt_block_loop_depths bid in
-                  iflog (fun _ ->
-                           annotate
-                             (Printf.sprintf
-                                "post-block, drop_slot %d = %s "
-                                (int_of_node slot_id)
-                                (Fmt.fmt_to_str Ast.fmt_slot_key k)));
-                  drop_slot_in_current_frame
-                    (cell_of_block_slot
-                       ~access_depth:(Some depth) slot_id) slot
-            end
-            slots
+      | Some slots -> List.iter (drop_slot_by_id depth) slots
 
   and trans_block (block:Ast.block) : unit =
     flush_emitter_size_cache();
@@ -5260,6 +5257,36 @@ let trans_visitor
           trans_log_int a
       | _ -> unimpl (Some id) "logging type"
 
+  and trans_while (id:node_id) (sw:Ast.stmt_while) : unit =
+    let (head_stmts, head_expr) = sw.Ast.while_lval in
+    let fwd_jmp = mark () in
+      emit (Il.jmp Il.JMP Il.CodeNone);
+      let block_begin = mark () in
+        Stack.push (Stack.create()) simple_break_jumps;
+        trans_block sw.Ast.while_body;
+        patch fwd_jmp;
+        Array.iter trans_stmt head_stmts;
+        check_interrupt_flag ();
+        let flag = next_vreg_cell (Il.ValTy Il.Bits8) in
+          mov flag imm_true;
+          let true_jmps = trans_cond false head_expr in
+            mov flag imm_false;
+            List.iter patch true_jmps;
+            begin
+              begin
+                match htab_search cx.ctxt_while_header_slots id with
+                    None -> ()
+                  | Some slots ->
+                      let depth = get_stmt_depth cx id in
+                        List.iter (drop_slot_by_id depth) slots
+              end;
+              let back_jmps =
+                trans_compare_simple Il.JE (Il.Cell flag) imm_true
+              in
+                List.iter (fun j -> patch_existing j block_begin) back_jmps;
+        end;
+        Stack.iter patch (Stack.pop simple_break_jumps);
+
 
   and trans_stmt_full (stmt:Ast.stmt) : unit =
     match stmt.node with
@@ -5378,20 +5405,7 @@ let trans_visitor
           trans_block block
 
       | Ast.STMT_while sw ->
-          let (head_stmts, head_expr) = sw.Ast.while_lval in
-          let fwd_jmp = mark () in
-            emit (Il.jmp Il.JMP Il.CodeNone);
-            let block_begin = mark () in
-              Stack.push (Stack.create()) simple_break_jumps;
-              trans_block sw.Ast.while_body;
-              patch fwd_jmp;
-              Array.iter trans_stmt head_stmts;
-              check_interrupt_flag ();
-              begin
-                let back_jmps = trans_cond false head_expr in
-                  List.iter (fun j -> patch_existing j block_begin) back_jmps;
-              end;
-              Stack.iter patch (Stack.pop simple_break_jumps);
+          trans_while stmt.id sw
 
       | Ast.STMT_if si ->
           let skip_thn_jmps = trans_cond true si.Ast.if_test in

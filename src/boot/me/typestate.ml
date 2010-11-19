@@ -1467,7 +1467,28 @@ let lifecycle_visitor
                 f.Ast.for_each_body.id
                 [ (fst f.Ast.for_each_slot).id ]
 
-          | Ast.STMT_while _ ->
+          | Ast.STMT_while sw ->
+              (* Collect any header-locals. *)
+              Array.iter
+                begin
+                  fun stmt ->
+                    match stmt.node with
+                        Ast.STMT_decl (Ast.DECL_slot (_, slot)) ->
+                          begin
+                            match
+                              htab_search cx.ctxt_while_header_slots s.id
+                            with
+                                None ->
+                                  Hashtbl.add cx.ctxt_while_header_slots
+                                    s.id [slot.id]
+                              | Some slots ->
+                                  Hashtbl.replace cx.ctxt_while_header_slots
+                                    s.id (slot.id :: slots)
+                          end
+                      | _ -> ()
+                end
+                (fst sw.Ast.while_lval);
+
               iflog cx (fun _ -> log cx "entering a loop");
               Stack.push (Some (Stack.create ()))  loop_blocks;
 

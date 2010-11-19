@@ -198,17 +198,6 @@ impure fn parse_arg(parser p) -> ast.arg {
     ret rec(mode=m, ty=t, ident=i, id=p.next_def_id());
 }
 
-// FIXME: workaround for a bug in the typestate walk of
-// the while-graph; the while-loop header doesn't drop
-// its slots, so "while (p.peek() ...) { ... }" leaks.
-
-fn peeking_at(parser p, token.token t) -> bool {
-    if (p.peek() == t) {
-        ret true;
-    }
-    ret false;
-}
-
 impure fn parse_seq[T](token.token bra,
                       token.token ket,
                       option.t[token.token] sep,
@@ -218,7 +207,7 @@ impure fn parse_seq[T](token.token bra,
     auto lo = p.get_span();
     expect(p, bra);
     let vec[T] v = vec();
-    while (!peeking_at(p, ket)) {
+    while (p.peek() != ket) {
         alt(sep) {
             case (some[token.token](?t)) {
                 if (first) {
@@ -936,7 +925,7 @@ impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
    let vec[@ast.item] items = vec();
     let hashmap[ast.ident,uint] index = new_str_hash[uint]();
     let uint u = 0u;
-    while (!peeking_at(p, term)) {
+    while (p.peek() != term) {
         auto pair = parse_item(p);
         append[@ast.item](items, pair._1);
         index.insert(pair._0, u);
