@@ -23,6 +23,10 @@ CFG_GCC_CFLAGS :=
 CFG_GCC_LINK_FLAGS :=
 CFG_VALGRIND :=
 
+# Disable the ocaml backend on rustboot. It's too frustrating at this
+# point.
+NO_OCAML_LLVM := 1
+
 CFG_LLVM_CONFIG ?= llvm-config
 CFG_BOOT_FLAGS := $(FLAGS)
 CFG_RUSTC_FLAGS := -nowarn
