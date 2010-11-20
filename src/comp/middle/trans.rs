@@ -273,6 +273,19 @@ fn type_of(@trans_ctxt cx, @typeck.ty t) -> TypeRef {
             }
             ret T_struct(tys);
         }
+        case (typeck.ty_fn(?args, ?out)) {
+            let vec[TypeRef] atys = vec();
+            for (typeck.arg arg in args) {
+                let TypeRef t = type_of(cx, arg.ty);
+                alt (arg.mode) {
+                    case (ast.alias) {
+                        t = T_ptr(t);
+                    }
+                }
+                atys += t;
+            }
+            ret T_fn(atys, type_of(cx, out));
+        }
         case (typeck.ty_var(_)) {
             // FIXME: implement.
             log "ty_var in trans.type_of";
