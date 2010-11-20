@@ -2578,8 +2578,13 @@ let trans_visitor
     in
       match expr with
           Ast.EXPR_binary (binop, a, b) ->
-            assert (is_prim_type (simplified_ty (atom_type cx a)));
-            assert (is_prim_type (simplified_ty (atom_type cx b)));
+            if not (is_prim_type (simplified_ty (atom_type cx a))) ||
+                not (is_prim_type (simplified_ty (atom_type cx b))) then
+              unimpl None "application of binary operator %a to operands of \
+                type %s and %s"
+                Ast.sprintf_binop binop
+                (pretty_ty_str cx (Ast.sprintf_ty ()) (atom_type cx a))
+                (pretty_ty_str cx (Ast.sprintf_ty ()) (atom_type cx b));
             trans_binary binop (trans_atom a) (trans_atom b)
 
         | Ast.EXPR_unary (unop, a) ->
