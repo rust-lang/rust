@@ -146,9 +146,10 @@ impure fn parse_ty_fn(parser p) -> ast.ty_ {
 
     ret ast.ty_fn(inputs.node, output);
 }
-            
+
 impure fn parse_ty(parser p) -> @ast.ty {
     auto lo = p.get_span();
+    auto hi = lo;
     let ast.ty_ t;
     alt (p.peek()) {
         case (token.INT) { p.bump(); t = ast.ty_int; }
@@ -157,12 +158,29 @@ impure fn parse_ty(parser p) -> @ast.ty {
         case (token.CHAR) { p.bump(); t = ast.ty_char; }
         case (token.MACH(?tm)) { p.bump(); t = ast.ty_machine(tm); }
 
+        case (token.LPAREN) {
+            p.bump();
+            alt (p.peek()) {
+                case (token.RPAREN) {
+                    hi = p.get_span();
+                    p.bump();
+                    t = ast.ty_nil;
+                }
+                case (_) {
+                    t = parse_ty(p).node;
+                    hi = p.get_span();
+                    expect(p, token.RPAREN);
+                }
+            }
+        }
+
         case (token.AT) { p.bump(); t = ast.ty_box(parse_ty(p)); }
 
         case (token.VEC) {
             p.bump();
             expect(p, token.LBRACKET);
             t = ast.ty_vec(parse_ty(p));
+            hi = p.get_span();
             expect(p, token.RBRACKET);
         }
 
@@ -171,11 +189,39 @@ impure fn parse_ty(parser p) -> @ast.ty {
             auto f = parse_possibly_mutable_ty; // FIXME: trans_const_lval bug
             auto elems = parse_seq[tup(bool, @ast.ty)](token.LPAREN,
                 token.RPAREN, some(token.COMMA), f, p);
+            hi = p.get_span();
             t = ast.ty_tup(elems.node);
         }
 
         case (token.FN) {
             t = parse_ty_fn(p);
+            alt (t) {
+                case (ast.ty_fn(_, ?out)) {
+                    hi = out.span;
+                }
+            }
+        }
+
+        case (token.IDENT(_)) {
+            let ast.path pth = vec();
+            let bool more = true;
+            while (more) {
+                alt (p.peek()) {
+                    case (token.IDENT(?i)) {
+                        auto n = parse_name(p, i);
+                        hi = n.span;
+                        if (p.peek() == token.DOT) {
+                            p.bump();
+                        } else {
+                            more = false;
+                        }
+                    }
+                    case (_) {
+                        more = false;
+                    }
+                }
+            }
+            t = ast.ty_path(pth, none[ast.def]);
         }
 
         case (_) {
@@ -184,7 +230,7 @@ impure fn parse_ty(parser p) -> @ast.ty {
             fail;
         }
     }
-    ret @spanned(lo, lo, t);
+    ret @spanned(lo, hi, t);
 }
 
 impure fn parse_arg(parser p) -> ast.arg {
@@ -328,6 +374,15 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
 
         case (token.LPAREN) {
             p.bump();
+            alt (p.peek()) {
+                case (token.RPAREN) {
+                    hi = p.get_span();
+                    p.bump();
+                    auto lit = @spanned(lo, hi, ast.lit_nil);
+                    ret @spanned(lo, hi,
+                                 ast.expr_lit(lit, ast.ann_none));
+                }
+            }
             auto e = parse_expr(p);
             hi = p.get_span();
             expect(p, token.RPAREN);
@@ -409,6 +464,7 @@ impure fn parse_path_expr(parser p) -> @ast.expr {
                     }
 
                     case (token.LPAREN) {
+                        p.bump();
                         auto ix = parse_bottom_expr(p);
                         hi = ix.span;
                         auto e_ = ast.expr_index(e, ix, ast.ann_none);
@@ -889,7 +945,7 @@ impure fn parse_block(parser p) -> ast.block {
     ret spanned(stmts.span, stmts.span, b);
 }
 
-impure fn parse_fn(parser p) -> tup(ast.ident, @ast.item) {
+impure fn parse_item_fn(parser p) -> tup(ast.ident, @ast.item) {
     auto lo = p.get_span();
     expect(p, token.FN);
     auto id = parse_ident(p);
@@ -934,7 +990,7 @@ impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
     ret rec(items=items, index=index);
  }
 
-impure fn parse_mod(parser p) -> tup(ast.ident, @ast.item) {
+impure fn parse_item_mod(parser p) -> tup(ast.ident, @ast.item) {
     auto lo = p.get_span();
     expect(p, token.MOD);
     auto id = parse_ident(p);
@@ -946,13 +1002,28 @@ impure fn parse_mod(parser p) -> tup(ast.ident, @ast.item) {
     ret tup(id, @spanned(lo, hi, item));
 }
 
+impure fn parse_item_type(parser p) -> tup(ast.ident, @ast.item) {
+    auto lo = p.get_span();
+    expect(p, token.TYPE);
+    auto id = parse_ident(p);
+    expect(p, token.EQ);
+    auto ty = parse_ty(p);
+    auto hi = p.get_span();
+    expect(p, token.SEMI);
+    auto item = ast.item_ty(id, ty, p.next_def_id(), ast.ann_none);
+    ret tup(id, @spanned(lo, hi, item));
+}
+
 impure fn parse_item(parser p) -> tup(ast.ident, @ast.item) {
     alt (p.peek()) {
         case (token.FN) {
-            ret parse_fn(p);
+            ret parse_item_fn(p);
         }
         case (token.MOD) {
-            ret parse_mod(p);
+            ret parse_item_mod(p);
+        }
+        case (token.TYPE) {
+            ret parse_item_type(p);
         }
     }
     p.err("expectied item");
