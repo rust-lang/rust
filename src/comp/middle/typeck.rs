@@ -1,7 +1,3 @@
-//
-// comp/middle/typeck.rs
-//
-
 import front.ast;
 import front.ast.ann;
 import middle.fold;
@@ -185,7 +181,8 @@ fn ty_to_str(@ty typ) -> str {
 
         case (ty_fn(?inputs, ?output)) {
             auto f = fn_input_to_str;
-            s = "fn(" + _str.connect(_vec.map[arg,str](f, inputs), ", ") + ")";
+            s = "fn(" + _str.connect(_vec.map[arg,str](f, inputs),
+                                     ", ") + ")";
             if (output.struct != ty_nil) {
                 s += " -> " + ty_to_str(output);
             }
@@ -604,7 +601,7 @@ fn unify(@ty expected, @ty actual) -> unify_result {
                         auto result = unify_step(expected_output,
                                                  actual_output, bindings);
                         alt (result) {
-                            case (ures_ok(?rty)) {  
+                            case (ures_ok(?rty)) {
                                 result_out = rty;
                             }
 
@@ -722,7 +719,7 @@ fn check_expr(&@env e, &@ty_table locals, @ast.expr expr) -> @ast.expr {
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_lit(lit, ast.ann_type(ty)));
         }
-        
+
         case (_) {
             // TODO
             ret expr;
@@ -855,3 +852,13 @@ fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     ret fold.fold_crate[@env](e, fld, result._0);
 }
 
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C ../.. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//
