@@ -239,6 +239,12 @@ fn T_taskptr() -> TypeRef {
 }
 
 fn type_of(@trans_ctxt cx, @typeck.ty t) -> TypeRef {
+    let TypeRef llty = type_of_inner(cx, t);
+    check (llty as int != 0);
+    ret llty;
+}
+
+fn type_of_inner(@trans_ctxt cx, @typeck.ty t) -> TypeRef {
     alt (t.struct) {
         case (typeck.ty_nil) { ret T_nil(); }
         case (typeck.ty_bool) { ret T_bool(); }
