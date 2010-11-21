@@ -41,7 +41,7 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef exit_task_glue,
                     vec[ValueRef] upcall_glues);
 
-state type trans_ctxt = rec(session.session sess,
+state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
                             hashmap[str, ValueRef] upcalls,
                             hashmap[str, ValueRef] fn_names,
@@ -55,7 +55,7 @@ state type fn_ctxt = rec(ValueRef llfn,
                          ValueRef lltaskptr,
                          hashmap[ast.def_id, ValueRef] llargs,
                          hashmap[ast.def_id, ValueRef] lllocals,
-                         @trans_ctxt tcx);
+                         @crate_ctxt ccx);
 
 tag cleanup {
     clean(fn(@block_ctxt cx) -> result);
@@ -238,13 +238,13 @@ fn T_taskptr() -> TypeRef {
     ret T_ptr(T_task());
 }
 
-fn type_of(@trans_ctxt cx, @typeck.ty t) -> TypeRef {
+fn type_of(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
     let TypeRef llty = type_of_inner(cx, t);
     check (llty as int != 0);
     ret llty;
 }
 
-fn type_of_inner(@trans_ctxt cx, @typeck.ty t) -> TypeRef {
+fn type_of_inner(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
     alt (t.struct) {
         case (typeck.ty_nil) { ret T_nil(); }
         case (typeck.ty_bool) { ret T_bool(); }
@@ -334,7 +334,7 @@ fn C_int(int i) -> ValueRef {
     ret C_integral(i, T_int());
 }
 
-fn C_str(@trans_ctxt cx, str s) -> ValueRef {
+fn C_str(@crate_ctxt cx, str s) -> ValueRef {
     auto sc = llvm.LLVMConstString(_str.buf(s), _str.byte_len(s), False);
     auto g = llvm.LLVMAddGlobal(cx.llmod, val_ty(sc),
                                 _str.buf(cx.names.next("str")));
@@ -395,7 +395,7 @@ fn decl_upcall(ModuleRef llmod, uint _n) -> ValueRef {
     ret decl_fastcall_fn(llmod, s, T_fn(args, T_int()));
 }
 
-fn get_upcall(@trans_ctxt cx, str name, int n_args) -> ValueRef {
+fn get_upcall(@crate_ctxt cx, str name, int n_args) -> ValueRef {
     if (cx.upcalls.contains_key(name)) {
         ret cx.upcalls.get(name);
     }
@@ -409,10 +409,10 @@ fn get_upcall(@trans_ctxt cx, str name, int n_args) -> ValueRef {
 
 fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> result {
     let int n = _vec.len[ValueRef](args) as int;
-    let ValueRef llupcall = get_upcall(cx.fcx.tcx, name, n);
+    let ValueRef llupcall = get_upcall(cx.fcx.ccx, name, n);
     llupcall = llvm.LLVMConstPointerCast(llupcall, T_int());
 
-    let ValueRef llglue = cx.fcx.tcx.glues.upcall_glues.(n);
+    let ValueRef llglue = cx.fcx.ccx.glues.upcall_glues.(n);
     let vec[ValueRef] call_args = vec(cx.fcx.lltaskptr, llupcall);
     for (ValueRef a in args) {
         call_args += cx.build.ZExtOrBitCast(a, T_int());
@@ -510,7 +510,7 @@ fn trans_copy_ty(@block_ctxt cx,
             ret res(r.bcx, r.bcx.build.Store(src, dst));
         }
     }
-    cx.fcx.tcx.sess.unimpl("ty variant in trans_copy_ty");
+    cx.fcx.ccx.sess.unimpl("ty variant in trans_copy_ty");
     fail;
 }
 
@@ -541,7 +541,7 @@ impure fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
         case (ast.lit_str(?s)) {
             auto len = (_str.byte_len(s) as int) + 1;
             auto sub = trans_upcall(cx, "upcall_new_str",
-                                    vec(p2i(C_str(cx.fcx.tcx, s)),
+                                    vec(p2i(C_str(cx.fcx.ccx, s)),
                                         C_int(len)));
             sub.val = sub.bcx.build.IntToPtr(sub.val,
                                              T_ptr(T_str(len as uint)));
@@ -551,7 +551,7 @@ impure fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
     }
 }
 
-fn node_type(@trans_ctxt cx, &ast.ann a) -> TypeRef {
+fn node_type(@crate_ctxt cx, &ast.ann a) -> TypeRef {
     alt (a) {
         case (ast.ann_none) {
             log "missing type annotation";
@@ -583,7 +583,7 @@ impure fn trans_unary(@block_ctxt cx, ast.unop op,
             ret sub;
         }
         case (ast.box) {
-            auto e_ty = node_type(cx.fcx.tcx, a);
+            auto e_ty = node_type(cx.fcx.ccx, a);
             auto box_ty = T_box(e_ty);
             sub.val = cx.build.Malloc(box_ty);
             auto rc = sub.bcx.build.GEP(sub.val,
@@ -592,7 +592,7 @@ impure fn trans_unary(@block_ctxt cx, ast.unop op,
             ret res(sub.bcx, cx.build.Store(C_int(1), rc));
         }
     }
-    cx.fcx.tcx.sess.unimpl("expr variant in trans_unary");
+    cx.fcx.ccx.sess.unimpl("expr variant in trans_unary");
     fail;
 }
 
@@ -737,7 +737,7 @@ impure fn trans_binary(@block_ctxt cx, ast.binop op,
             ret sub;
         }
     }
-    cx.fcx.tcx.sess.unimpl("expr variant in trans_binary");
+    cx.fcx.ccx.sess.unimpl("expr variant in trans_binary");
     fail;
 }
 
@@ -864,21 +864,21 @@ fn trans_lval(@block_ctxt cx, &ast.expr e)
                                     true, did);
                         }
                         case (ast.def_fn(?did)) {
-                            ret tup(res(cx, cx.fcx.tcx.fn_ids.get(did)),
+                            ret tup(res(cx, cx.fcx.ccx.fn_ids.get(did)),
                                     false, did);
                         }
                         case (_) {
-                            cx.fcx.tcx.sess.unimpl("def variant in trans");
+                            cx.fcx.ccx.sess.unimpl("def variant in trans");
                         }
                     }
                 }
                 case (none[ast.def]) {
-                    cx.fcx.tcx.sess.err("unresolved expr_name in trans");
+                    cx.fcx.ccx.sess.err("unresolved expr_name in trans");
                 }
             }
         }
     }
-    cx.fcx.tcx.sess.unimpl("expr variant in trans_lval");
+    cx.fcx.ccx.sess.unimpl("expr variant in trans_lval");
     fail;
 }
 
@@ -963,7 +963,7 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
         }
 
     }
-    cx.fcx.tcx.sess.unimpl("expr variant in trans_expr");
+    cx.fcx.ccx.sess.unimpl("expr variant in trans_expr");
     fail;
 }
 
@@ -999,8 +999,8 @@ impure fn trans_check_expr(@block_ctxt cx, &ast.expr e) -> result {
     auto cond_res = trans_expr(cx, e);
 
     // FIXME: need pretty-printer.
-    auto V_expr_str = p2i(C_str(cx.fcx.tcx, "<expr>"));
-    auto V_filename = p2i(C_str(cx.fcx.tcx, e.span.filename));
+    auto V_expr_str = p2i(C_str(cx.fcx.ccx, "<expr>"));
+    auto V_filename = p2i(C_str(cx.fcx.ccx, e.span.filename));
     auto V_line = e.span.lo.line as int;
     auto args = vec(V_expr_str, V_filename, C_int(V_line));
 
@@ -1084,7 +1084,7 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
             }
         }
         case (_) {
-            cx.fcx.tcx.sess.unimpl("stmt variant");
+            cx.fcx.ccx.sess.unimpl("stmt variant");
         }
     }
     ret sub;
@@ -1103,7 +1103,7 @@ fn new_block_ctxt(@fn_ctxt cx, block_parent parent,
                   str name) -> @block_ctxt {
     let BasicBlockRef llbb =
         llvm.LLVMAppendBasicBlock(cx.llfn,
-                                  _str.buf(cx.tcx.names.next(name)));
+                                  _str.buf(cx.ccx.names.next(name)));
 
     ret @rec(llbb=llbb,
              build=new_builder(llbb, name),
@@ -1159,7 +1159,7 @@ impure fn trans_block(@block_ctxt cx, &ast.block b) -> result {
     auto bcx = cx;
 
     for each (@ast.local local in block_locals(b)) {
-        auto ty = node_type(cx.fcx.tcx, local.ann);
+        auto ty = node_type(cx.fcx.ccx, local.ann);
         auto val = bcx.build.Alloca(ty);
         cx.fcx.lllocals.insert(local.id, val);
     }
@@ -1179,7 +1179,7 @@ impure fn trans_block(@block_ctxt cx, &ast.block b) -> result {
     ret res(bcx, r.val);
 }
 
-fn new_fn_ctxt(@trans_ctxt cx,
+fn new_fn_ctxt(@crate_ctxt cx,
                str name,
                &ast._fn f,
                ast.def_id fid) -> @fn_ctxt {
@@ -1204,7 +1204,7 @@ fn new_fn_ctxt(@trans_ctxt cx,
              lltaskptr=lltaskptr,
              llargs=llargs,
              lllocals=lllocals,
-             tcx=cx);
+             ccx=cx);
 }
 
 fn is_terminated(@block_ctxt cx) -> bool {
@@ -1212,7 +1212,7 @@ fn is_terminated(@block_ctxt cx) -> bool {
     ret llvm.LLVMIsATerminatorInst(inst) as int != 0;
 }
 
-impure fn trans_fn(@trans_ctxt cx, &ast._fn f, ast.def_id fid) {
+impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid) {
 
     auto fcx = new_fn_ctxt(cx, cx.path, f, fid);
     auto bcx = new_top_block_ctxt(fcx);
@@ -1224,7 +1224,7 @@ impure fn trans_fn(@trans_ctxt cx, &ast._fn f, ast.def_id fid) {
     }
 }
 
-impure fn trans_item(@trans_ctxt cx, &ast.item item) {
+impure fn trans_item(@crate_ctxt cx, &ast.item item) {
     alt (item.node) {
         case (ast.item_fn(?name, ?f, ?fid, _)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
@@ -1237,14 +1237,14 @@ impure fn trans_item(@trans_ctxt cx, &ast.item item) {
     }
 }
 
-impure fn trans_mod(@trans_ctxt cx, &ast._mod m) {
+impure fn trans_mod(@crate_ctxt cx, &ast._mod m) {
     for (@ast.item item in m.items) {
         trans_item(cx, *item);
     }
 }
 
 
-fn collect_item(&@trans_ctxt cx, @ast.item i) -> @trans_ctxt {
+fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
     alt (i.node) {
         case (ast.item_fn(?name, ?f, ?fid, ?ann)) {
             cx.items.insert(fid, i);
@@ -1262,22 +1262,22 @@ fn collect_item(&@trans_ctxt cx, @ast.item i) -> @trans_ctxt {
 }
 
 
-fn collect_items(@trans_ctxt cx, @ast.crate crate) {
+fn collect_items(@crate_ctxt cx, @ast.crate crate) {
 
-    let fold.ast_fold[@trans_ctxt] fld =
-        fold.new_identity_fold[@trans_ctxt]();
+    let fold.ast_fold[@crate_ctxt] fld =
+        fold.new_identity_fold[@crate_ctxt]();
 
     fld = @rec( update_env_for_item = bind collect_item(_,_)
                 with *fld );
 
-    fold.fold_crate[@trans_ctxt](cx, fld, crate);
+    fold.fold_crate[@crate_ctxt](cx, fld, crate);
 }
 
 fn p2i(ValueRef v) -> ValueRef {
     ret llvm.LLVMConstPtrToInt(v, T_int());
 }
 
-fn trans_exit_task_glue(@trans_ctxt cx) {
+fn trans_exit_task_glue(@crate_ctxt cx) {
     let vec[TypeRef] T_args = vec();
     let vec[ValueRef] V_args = vec();
 
@@ -1287,14 +1287,14 @@ fn trans_exit_task_glue(@trans_ctxt cx) {
                     lltaskptr=lltaskptr,
                     llargs=new_def_hash[ValueRef](),
                     lllocals=new_def_hash[ValueRef](),
-                    tcx=cx);
+                    ccx=cx);
 
     auto bcx = new_top_block_ctxt(fcx);
     trans_upcall(bcx, "upcall_exit", V_args);
     bcx.build.RetVoid();
 }
 
-fn crate_constant(@trans_ctxt cx) -> ValueRef {
+fn crate_constant(@crate_ctxt cx) -> ValueRef {
 
     let ValueRef crate_ptr =
         llvm.LLVMAddGlobal(cx.llmod, T_crate(),
@@ -1332,7 +1332,7 @@ fn crate_constant(@trans_ctxt cx) -> ValueRef {
     ret crate_ptr;
 }
 
-fn trans_main_fn(@trans_ctxt cx, ValueRef llcrate) {
+fn trans_main_fn(@crate_ctxt cx, ValueRef llcrate) {
     auto T_main_args = vec(T_int(), T_int());
     auto T_rust_start_args = vec(T_int(), T_int(), T_int(), T_int());
 

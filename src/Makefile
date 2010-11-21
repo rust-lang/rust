@@ -522,6 +522,8 @@ TEST_XFAILS_SELF := $(filter-out \
                         bool-not.rs \
                         char.rs \
                         dead-code-one-arm-if.rs \
+                        deep.rs \
+                        fact.rs \
                         hello.rs \
                         int.rs \
                         item-name-overload.rs \
