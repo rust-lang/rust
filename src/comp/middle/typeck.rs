@@ -17,6 +17,7 @@ import std.option.some;
 type ty_table = hashmap[ast.def_id, @ty];
 type env = rec(session.session sess,
                @ty_table item_types,
+               hashmap[int,@ty] bindings,
                mutable int next_var_id);
 
 type arg = rec(ast.mode mode, @ty ty);
@@ -245,6 +246,7 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
 // ast_ty_to_ty.
 fn ast_ty_to_ty_env(@env e, &@ast.ty ast_ty) -> @ty {
     fn getter(@env e, ast.def_id id) -> @ty {
+        check (e.item_types.contains_key(id));
         ret e.item_types.get(id);
     }
     auto f = bind getter(e, _);
@@ -285,6 +287,7 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
     fn trans_ty_item_id_to_ty(@hashmap[ast.def_id,@ast.item] id_to_ty_item,
                               @ty_table item_to_ty,
                               ast.def_id id) -> @ty {
+        check (id_to_ty_item.contains_key(id));
         auto item = id_to_ty_item.get(id);
         ret trans_ty_item_to_ty(id_to_ty_item, item_to_ty, item);
     }
@@ -317,6 +320,7 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
             case (ast.item_ty(?ident, ?referent_ty, ?def_id, _)) {
                 if (item_to_ty.contains_key(def_id)) {
                     // Avoid repeating work.
+                    check (item_to_ty.contains_key(def_id));
                     ret item_to_ty.get(def_id);
                 }
 
@@ -423,7 +427,7 @@ fn type_of(@ast.expr expr) -> @ty {
 
 // Type unification
 
-fn unify(@ty expected, @ty actual) -> unify_result {
+fn unify(&@env e, @ty expected, @ty actual) -> unify_result {
     // Wraps the given type in an appropriate cname.
     //
     // TODO: This doesn't do anything yet. We should carry the cname up from
@@ -440,7 +444,7 @@ fn unify(@ty expected, @ty actual) -> unify_result {
         ret ures_err(terr_mismatch, expected, actual);
     }
 
-    fn unify_step(@ty expected, @ty actual, &hashmap[int,@ty] bindings)
+    fn unify_step(&@env e, @ty expected, @ty actual)
             -> unify_result {
         // TODO: rewrite this using tuple pattern matching when available, to
         // avoid all this rightward drift and spikiness.
@@ -456,8 +460,7 @@ fn unify(@ty expected, @ty actual) -> unify_result {
             case (ty_box(?expected_sub)) {
                 alt (actual.struct) {
                     case (ty_box(?actual_sub)) {
-                        auto result = unify_step(expected_sub, actual_sub,
-                                                 bindings);
+                        auto result = unify_step(e, expected_sub, actual_sub);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
                                 ret ures_ok(plain_ty(ty_box(result_sub)));
@@ -479,8 +482,7 @@ fn unify(@ty expected, @ty actual) -> unify_result {
             case (ty_vec(?expected_sub)) {
                 alt (actual.struct) {
                     case (ty_vec(?actual_sub)) {
-                        auto result = unify_step(expected_sub, actual_sub,
-                                                 bindings);
+                        auto result = unify_step(e, expected_sub, actual_sub);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
                                 ret ures_ok(plain_ty(ty_vec(result_sub)));
@@ -524,9 +526,8 @@ fn unify(@ty expected, @ty actual) -> unify_result {
                                 ret ures_err(err, expected, actual);
                             }
 
-                            auto result = unify_step(expected_elem._1,
-                                                     actual_elem._1,
-                                                     bindings);
+                            auto result = unify_step(e, expected_elem._1,
+                                                     actual_elem._1);
                             alt (result) {
                                 case (ures_ok(?rty)) {
                                     result_elems += vec(tup(expected_elem._0,
@@ -576,9 +577,8 @@ fn unify(@ty expected, @ty actual) -> unify_result {
                                 result_mode = ast.val;
                             }
 
-                            auto result = unify_step(expected_input.ty,
-                                                     actual_input.ty,
-                                                     bindings);
+                            auto result = unify_step(e, expected_input.ty,
+                                                     actual_input.ty);
 
                             alt (result) {
                                 case (ures_ok(?rty)) {
@@ -596,8 +596,8 @@ fn unify(@ty expected, @ty actual) -> unify_result {
 
                         // Check the output.
                         auto result_out;
-                        auto result = unify_step(expected_output,
-                                                 actual_output, bindings);
+                        auto result = unify_step(e, expected_output,
+                                                 actual_output);
                         alt (result) {
                             case (ures_ok(?rty)) {
                                 result_out = rty;
@@ -618,12 +618,13 @@ fn unify(@ty expected, @ty actual) -> unify_result {
             }
 
             case (ty_var(?expected_id)) {
-                if (bindings.contains_key(expected_id)) {
-                     auto binding = bindings.get(expected_id);
-                     ret unify_step(binding, actual, bindings);
+                if (e.bindings.contains_key(expected_id)) {
+                    check (e.bindings.contains_key(expected_id));
+                    auto binding = e.bindings.get(expected_id);
+                    ret unify_step(e, binding, actual);
                 }
 
-                bindings.insert(expected_id, actual);
+                e.bindings.insert(expected_id, actual);
                 ret ures_ok(actual);
             }
         }
@@ -632,19 +633,13 @@ fn unify(@ty expected, @ty actual) -> unify_result {
         fail;
     }
 
-    fn hash_int(&int x) -> uint { ret x as uint; }
-    fn eq_int(&int a, &int b) -> bool { ret a == b; }
-    auto hasher = hash_int;
-    auto eqer = eq_int;
-    auto bindings = map.mk_hashmap[int,@ty](hasher, eqer);
-
-    ret unify_step(expected, actual, bindings);
+    ret unify_step(e, expected, actual);
 }
 
 // Requires that the two types unify, and prints an error message if they
 // don't. Returns the unified type.
 fn demand(&@env e, &span sp, @ty expected, @ty actual) -> @ty {
-    alt (unify(expected, actual)) {
+    alt (unify(e, expected, actual)) {
         case (ures_ok(?ty)) {
             ret ty;
         }
@@ -666,14 +661,15 @@ fn demand(&@env e, &span sp, @ty expected, @ty actual) -> @ty {
 // with the previously-stored type for this local.
 fn demand_local(&@env e, &span sp, &@ty_table locals, ast.def_id local_id,
                 @ty t) {
+    check (locals.contains_key(local_id));
     auto prev_ty = locals.get(local_id);
     auto unified_ty = demand(e, sp, prev_ty, t);
     locals.insert(local_id, unified_ty);
 }
 
 // Returns true if the two types unify and false if they don't.
-fn are_compatible(@ty expected, @ty actual) -> bool {
-    alt (unify(expected, actual)) {
+fn are_compatible(&@env e, @ty expected, @ty actual) -> bool {
+    alt (unify(e, expected, actual)) {
         case (ures_ok(_))        { ret true;  }
         case (ures_err(_, _, _)) { ret false; }
     }
@@ -681,15 +677,29 @@ fn are_compatible(@ty expected, @ty actual) -> bool {
 
 // Writeback: the phase that writes inferred types back into the AST.
 
-fn writeback_local(&@ty_table locals, &span sp, @ast.local local)
+fn resolve_vars(@env e, @ty t) -> @ty {
+    alt (t.struct) {
+        case (ty_var(?v)) {
+            check (e.bindings.contains_key(v));
+            ret resolve_vars(e, e.bindings.get(v));
+        }
+    }
+    ret t;
+}
+
+fn writeback_local(@env e, &@ty_table locals, &span sp, @ast.local local)
         -> @ast.decl {
-    auto local_wb = @rec(ann=ast.ann_type(locals.get(local.id)) with *local);
+    if (!locals.contains_key(local.id)) {
+        e.sess.err("unable to determine type of local: " + local.ident);
+    }
+    auto local_ty = resolve_vars(e, locals.get(local.id));
+    auto local_wb = @rec(ann=ast.ann_type(local_ty) with *local);
     ret @fold.respan[ast.decl_](sp, ast.decl_local(local_wb));
 }
 
 fn writeback(&@env e, &@ty_table locals, &ast.block block) -> ast.block {
     auto fld = fold.new_identity_fold[@ty_table]();
-    auto f = writeback_local;   // FIXME: trans_const_lval bug
+    auto f = bind writeback_local(e, _, _, _);
     fld = @rec(fold_decl_local = f with *fld);
     ret fold.fold_block[@ty_table](locals, fld, block);
 }
@@ -753,8 +763,14 @@ fn check_expr(&@env e, &@ty_table locals, @ast.expr expr) -> @ast.expr {
         case (ast.expr_name(?name, ?defopt, _)) {
             auto ty = @rec(struct=ty_nil, cname=none[str]);
             alt (option.get[ast.def](defopt)) {
-                case (ast.def_arg(?id)) { ty = locals.get(id); }
-                case (ast.def_local(?id)) { ty = locals.get(id); }
+                case (ast.def_arg(?id)) {
+                    check (locals.contains_key(id));
+                    ty = locals.get(id);
+                }
+                case (ast.def_local(?id)) {
+                    check (locals.contains_key(id));
+                    ty = locals.get(id);
+                }
                 case (_) {
                     // FIXME: handle other names.
                     e.sess.unimpl("definition variant for: "
@@ -765,6 +781,17 @@ fn check_expr(&@env e, &@ty_table locals, @ast.expr expr) -> @ast.expr {
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_name(name, defopt,
                                                       ast.ann_type(ty)));
+        }
+
+        case (ast.expr_assign(?lhs, ?rhs, _)) {
+            auto lhs_1 = check_expr(e, locals, lhs);
+            auto rhs_1 = check_expr(e, locals, rhs);
+            auto lhs_t = type_of(lhs_1);
+            auto rhs_t = type_of(rhs_1);
+            demand(e, expr.span, lhs_t, rhs_t);
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_assign(lhs_1, rhs_1,
+                                                        ast.ann_type(rhs_t)));
         }
 
         case (_) {
@@ -780,29 +807,36 @@ fn check_stmt(@env e, @ty_table locals, @ty ret_ty, &@ast.stmt stmt)
         case (ast.stmt_decl(?decl)) {
             alt (decl.node) {
                 case (ast.decl_local(?local)) {
-                    alt (local.init) {
-                        case (none[@ast.expr]) {
-                            // empty
+
+                    auto local_ty;
+                    alt (local.ty) {
+                        case (none[@ast.ty]) {
+                            // Auto slot. Assign a ty_var.
+                            local_ty = plain_ty(ty_var(e.next_var_id));
+                            e.next_var_id += 1;
                         }
 
-                        case (some[@ast.expr](?expr)) {
-                            auto expr_t = check_expr(e, locals, expr);
-                            locals.insert(local.id, type_of(expr_t));
-
-                            alt (local.ty) {
-                                case (none[@ast.ty]) {
-                                    // Nothing to do. We'll figure out the
-                                    // type later.
-                                }
-
-                                case (some[@ast.ty](?ast_ty)) {
-                                    auto ty = ast_ty_to_ty_env(e, ast_ty);
-                                    demand_local(e, decl.span, locals,
-                                                 local.id, ty);
-                                }
-                            }
+                        case (some[@ast.ty](?ast_ty)) {
+                            local_ty = ast_ty_to_ty_env(e, ast_ty);
                         }
                     }
+                    locals.insert(local.id, local_ty);
+
+                    auto rhs_ty = local_ty;
+                    auto init = local.init;
+                    alt (local.init) {
+                        case (some[@ast.expr](?expr)) {
+                            auto expr_t = check_expr(e, locals, expr);
+                            rhs_ty = type_of(expr_t);
+                            init = some[@ast.expr](expr_t);
+                        }
+                    }
+                    demand(e, decl.span, local_ty, rhs_ty);
+                    auto local_1 = @rec(init = init with *local);
+                    auto decl_1 = @rec(node=ast.decl_local(local_1)
+                                       with *decl);
+                    ret @fold.respan[ast.stmt_](stmt.span,
+                                                ast.stmt_decl(decl_1));
                 }
 
                 case (ast.decl_item(_)) {
@@ -816,7 +850,7 @@ fn check_stmt(@env e, @ty_table locals, @ty ret_ty, &@ast.stmt stmt)
         case (ast.stmt_ret(?expr_opt)) {
             alt (expr_opt) {
                 case (none[@ast.expr]) {
-                    if (!are_compatible(ret_ty, plain_ty(ty_nil))) {
+                    if (!are_compatible(e, ret_ty, plain_ty(ty_nil))) {
                         e.sess.err("ret; in function returning non-void");
                     }
 
@@ -846,7 +880,7 @@ fn check_stmt(@env e, @ty_table locals, @ty ret_ty, &@ast.stmt stmt)
 
         case (ast.stmt_expr(?expr)) {
             auto expr_t = check_expr(e, locals, expr);
-            if (!are_compatible(type_of(expr_t), plain_ty(ty_nil))) {
+            if (!are_compatible(e, type_of(expr_t), plain_ty(ty_nil))) {
                 // TODO: real warning function
                 log "warning: expression used as statement should have " +
                     "void type";
@@ -891,7 +925,16 @@ fn check_fn(&@env e, &span sp, ast.ident ident, &ast._fn f, ast.def_id id,
 
 fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     auto result = collect_item_types(crate);
-    auto e = @rec(sess=sess, item_types=result._1, mutable next_var_id=0);
+
+    fn hash_int(&int x) -> uint { ret x as uint; }
+    fn eq_int(&int a, &int b) -> bool { ret a == b; }
+    auto hasher = hash_int;
+    auto eqer = eq_int;
+
+    auto e = @rec(sess=sess,
+                  item_types=result._1,
+                  bindings = map.mk_hashmap[int,@ty](hasher, eqer),
+                  mutable next_var_id=0);
 
     auto fld = fold.new_identity_fold[@env]();
     auto f = check_fn;  // FIXME: trans_const_lval bug

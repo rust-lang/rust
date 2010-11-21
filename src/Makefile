@@ -525,6 +525,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         hello.rs \
                         int.rs \
                         item-name-overload.rs \
+                        lazy-init.rs \
                         multiline-comment.rs \
                         ), \
                       $(wildcard test/*/*.rs test/*/*.rc))
