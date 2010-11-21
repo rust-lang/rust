@@ -1247,19 +1247,6 @@ impure fn trans_mod(@trans_ctxt cx, &ast._mod m) {
 fn collect_item(&@trans_ctxt cx, @ast.item i) -> @trans_ctxt {
     alt (i.node) {
         case (ast.item_fn(?name, ?f, ?fid, ?ann)) {
-            auto fn_inputs;
-            auto fn_output;
-            alt (typeck.ann_to_type(ann).struct) {
-                case (typeck.ty_fn(?ins, ?out)) {
-                    fn_inputs = ins;
-                    fn_output = out;
-                }
-                case (_) {
-                    log "trans: fn item doesn't have function type!";
-                    fail;
-                }
-            }
-
             cx.items.insert(fid, i);
             auto llty = node_type(cx, ann);
             let str s = cx.names.next("_rust_fn") + "." + name;
