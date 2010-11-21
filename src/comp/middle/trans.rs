@@ -280,7 +280,7 @@ fn type_of_inner(@trans_ctxt cx, @typeck.ty t) -> TypeRef {
             ret T_struct(tys);
         }
         case (typeck.ty_fn(?args, ?out)) {
-            let vec[TypeRef] atys = vec();
+            let vec[TypeRef] atys = vec(T_taskptr());
             for (typeck.arg arg in args) {
                 let TypeRef t = type_of(cx, arg.ty);
                 alt (arg.mode) {

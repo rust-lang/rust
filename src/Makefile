@@ -517,6 +517,9 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
 
 TEST_XFAILS_SELF := $(filter-out \
                       $(addprefix test/run-pass/, \
+                        bool-not.rs \
+                        dead-code-one-arm-if.rs \
+                        hello.rs \
                         int.rs \
                         item-name-overload.rs \
                         multiline-comment.rs \
