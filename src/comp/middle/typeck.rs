@@ -189,9 +189,7 @@ fn ty_to_str(@ty typ) -> str {
         }
 
         case (ty_var(?v)) {
-            // FIXME: wrap around in the case of many variables
-            auto ch = ('T' as u8) + (v as u8);
-            s = _str.from_bytes(vec(ch));
+            s = "<T" + util.common.istr(v) + ">";
         }
     }
 
@@ -392,7 +390,7 @@ fn ann_to_type(&ast.ann ann) -> @ty {
     alt (ann) {
         case (ast.ann_none) {
             // shouldn't happen, but can until the typechecker is complete
-            ret plain_ty(ty_var(0));    // FIXME: broken, broken, broken
+            ret plain_ty(ty_var(-1));    // FIXME: broken, broken, broken
         }
         case (ast.ann_type(?ty)) {
             ret ty;
@@ -463,7 +461,7 @@ fn unify(@ty expected, @ty actual) -> unify_result {
                         alt (result) {
                             case (ures_ok(?result_sub)) {
                                 ret ures_ok(plain_ty(ty_box(result_sub)));
-                            } 
+                            }
                             case (_) {
                                 ret result;
                             }
@@ -718,6 +716,55 @@ fn check_expr(&@env e, &@ty_table locals, @ast.expr expr) -> @ast.expr {
             auto ty = check_lit(e, lit);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_lit(lit, ast.ann_type(ty)));
+        }
+
+
+        case (ast.expr_binary(?binop, ?lhs, ?rhs, _)) {
+            auto lhs_1 = check_expr(e, locals, lhs);
+            auto rhs_1 = check_expr(e, locals, rhs);
+            auto lhs_t = type_of(lhs_1);
+            auto rhs_t = type_of(rhs_1);
+            // FIXME: Binops have a bit more subtlety than this.
+            demand(e, expr.span, lhs_t, rhs_t);
+            auto t = lhs_t;
+            alt (binop) {
+                case (ast.eq) { t = plain_ty(ty_bool); }
+                case (ast.lt) { t = plain_ty(ty_bool); }
+                case (ast.le) { t = plain_ty(ty_bool); }
+                case (ast.ne) { t = plain_ty(ty_bool); }
+                case (ast.ge) { t = plain_ty(ty_bool); }
+                case (ast.gt) { t = plain_ty(ty_bool); }
+            }
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_binary(binop, lhs_1, rhs_1,
+                                                        ast.ann_type(t)));
+        }
+
+
+        case (ast.expr_unary(?unop, ?oper, _)) {
+            auto oper_1 = check_expr(e, locals, oper);
+            auto oper_t = type_of(oper_1);
+            // FIXME: Unops have a bit more subtlety than this.
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_unary(unop, oper_1,
+                                                       ast.ann_type(oper_t)));
+        }
+
+        case (ast.expr_name(?name, ?defopt, _)) {
+            auto ty = @rec(struct=ty_nil, cname=none[str]);
+            alt (option.get[ast.def](defopt)) {
+                case (ast.def_arg(?id)) { ty = locals.get(id); }
+                case (ast.def_local(?id)) { ty = locals.get(id); }
+                case (_) {
+                    // FIXME: handle other names.
+                    e.sess.unimpl("definition variant for: "
+                                  + name.node.ident);
+                    fail;
+                }
+            }
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_name(name, defopt,
+                                                      ast.ann_type(ty)));
         }
 
         case (_) {
