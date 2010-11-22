@@ -463,7 +463,7 @@ fn unify(&@crate_ctxt ccx, @ty expected, @ty actual) -> unify_result {
 
     // Simple structural type comparison.
     fn struct_cmp(@ty expected, @ty actual) -> unify_result {
-        if (expected == actual) {
+        if (expected.struct == actual.struct) {
             ret ures_ok(expected);
         }
 
