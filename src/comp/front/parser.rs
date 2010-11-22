@@ -210,6 +210,7 @@ impure fn parse_ty(parser p) -> @ast.ty {
                     case (token.IDENT(?i)) {
                         auto n = parse_name(p, i);
                         hi = n.span;
+                        pth += n;
                         if (p.peek() == token.DOT) {
                             p.bump();
                         } else {
