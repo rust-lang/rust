@@ -1025,8 +1025,10 @@ impure fn parse_item(parser p) -> tup(ast.ident, @ast.item) {
         case (token.TYPE) {
             ret parse_item_type(p);
         }
+        case (?t) {
+            p.err("expected item but found " + token.to_str(t));
+        }
     }
-    p.err("expectied item");
     fail;
 }
 
