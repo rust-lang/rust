@@ -572,7 +572,7 @@ impure fn next_token(reader rdr) -> token.token {
         }
 
         case ('/') {
-            ret binop(rdr, token.STAR);
+            ret binop(rdr, token.SLASH);
         }
 
         case ('^') {

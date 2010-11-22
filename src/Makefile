@@ -518,17 +518,22 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
 TEST_XFAILS_SELF := $(filter-out \
                       $(addprefix test/run-pass/, \
                         arith-0.rs \
+                        arith-1.rs \
                         arith-2.rs \
                         bool-not.rs \
                         char.rs \
                         dead-code-one-arm-if.rs \
                         deep.rs \
+                        div-mod.rs \
                         fact.rs \
                         hello.rs \
                         int.rs \
                         item-name-overload.rs \
                         lazy-init.rs \
                         multiline-comment.rs \
+                        return-nil.rs \
+                        unit.rs \
+                        while-and-do-while.rs \
                         ), \
                       $(wildcard test/*/*.rs test/*/*.rc))
 
