@@ -12,6 +12,7 @@ import std.option;
 import std.option.some;
 import std.option.none;
 import std._str;
+import std._vec;
 
 tag scope {
     scope_crate(@ast.crate);
@@ -105,6 +106,10 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
 fn fold_expr_name(&env e, &span sp, &ast.name n,
                   &option.t[def] d, ann a) -> @ast.expr {
 
+    if (_vec.len[@ast.ty](n.node.types) > 0u) {
+        e.sess.unimpl("resoling name expr with ty params");
+    }
+
     auto d_ = lookup_name(e, n.node.ident);
 
     alt (d_) {
@@ -117,6 +122,35 @@ fn fold_expr_name(&env e, &span sp, &ast.name n,
     }
 
     ret @fold.respan[ast.expr_](sp, ast.expr_name(n, d_, a));
+}
+
+fn fold_ty_path(&env e, &span sp, ast.path p,
+                &option.t[def] d) -> @ast.ty {
+
+    let uint len = _vec.len[ast.name](p);
+    check (len != 0u);
+    if (len > 1u) {
+        e.sess.unimpl("resoling path ty with >1 component");
+    }
+
+    let ast.name n = p.(0);
+
+    if (_vec.len[@ast.ty](n.node.types) > 0u) {
+        e.sess.unimpl("resoling path ty with ty params");
+    }
+
+    auto d_ = lookup_name(e, n.node.ident);
+
+    alt (d_) {
+        case (some[def](_)) {
+            // log "resolved name " + n.node.ident;
+        }
+        case (none[def]) {
+            e.sess.err("unresolved name: " + n.node.ident);
+        }
+    }
+
+    ret @fold.respan[ast.ty_](sp, ast.ty_path(p, d_));
 }
 
 fn update_env_for_crate(&env e, @ast.crate c) -> env {
@@ -136,6 +170,7 @@ fn resolve_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     let fold.ast_fold[env] fld = fold.new_identity_fold[env]();
 
     fld = @rec( fold_expr_name = bind fold_expr_name(_,_,_,_,_),
+                fold_ty_path = bind fold_ty_path(_,_,_,_),
                 update_env_for_crate = bind update_env_for_crate(_,_),
                 update_env_for_item = bind update_env_for_item(_,_),
                 update_env_for_block = bind update_env_for_block(_,_)
