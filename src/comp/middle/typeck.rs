@@ -18,7 +18,6 @@ import std.option.some;
 type ty_table = hashmap[ast.def_id, @ty];
 type crate_ctxt = rec(session.session sess,
                       @ty_table item_types,
-                      hashmap[int,@ty] bindings,
                       mutable int next_var_id);
 
 type fn_ctxt = rec(@ty ret_ty,
@@ -42,7 +41,10 @@ tag sty {
     ty_vec(@ty);
     ty_tup(vec[tup(bool /* mutability */, @ty)]);
     ty_fn(vec[arg], @ty);                           // TODO: effect
-    ty_var(int);
+    ty_var(int);                                    // ephemeral type var
+    ty_local(ast.def_id);                           // type of a local var
+    // TODO: ty_param(ast.def_id), for fn type params
+    // TODO: ty_fn_arg(@ty), for a possibly-aliased function argument
 }
 
 tag type_err {
@@ -381,6 +383,20 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
             item_to_ty);
 }
 
+// Expression utilities
+
+fn last_expr_of_block(&ast.block bloc) -> option.t[@ast.expr] {
+    auto len = _vec.len[@ast.stmt](bloc.node.stmts);
+    if (len == 0u) {
+        ret none[@ast.expr];
+    }
+    auto last_stmt = bloc.node.stmts.(len - 1u);
+    alt (last_stmt.node) {
+        case (ast.stmt_expr(?e)) { ret some[@ast.expr](e); }
+        case (_)                 { ret none[@ast.expr]; }
+    }
+}
+
 // Type utilities
 
 // FIXME: remove me when == works on these tags.
@@ -457,13 +473,10 @@ fn stmt_ty(@ast.stmt s) -> @ty {
 }
 
 fn block_ty(&ast.block b) -> @ty {
-    auto len = _vec.len[@ast.stmt](b.node.stmts);
-    if (len == 0u) {
-        ret plain_ty(ty_nil);
+    alt (last_expr_of_block(b)) {
+        case (some[@ast.expr](?e)) { ret expr_ty(e); }
+        case (none[@ast.expr])     { ret plain_ty(ty_nil); }
     }
-    // FIXME: should rewind to last non-dead stmt? Or perhaps
-    // we prohibit all dead stmts?
-    ret stmt_ty(b.node.stmts.(len - 1u));
 }
 
 fn expr_ty(@ast.expr expr) -> @ty {
@@ -491,7 +504,7 @@ fn expr_ty(@ast.expr expr) -> @ty {
 
 // Type unification
 
-fn unify(&@crate_ctxt ccx, @ty expected, @ty actual) -> unify_result {
+fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
     // Wraps the given type in an appropriate cname.
     //
     // TODO: This doesn't do anything yet. We should carry the cname up from
@@ -508,10 +521,41 @@ fn unify(&@crate_ctxt ccx, @ty expected, @ty actual) -> unify_result {
         ret ures_err(terr_mismatch, expected, actual);
     }
 
-    fn unify_step(&@crate_ctxt ccx, @ty expected, @ty actual)
-            -> unify_result {
+    fn unify_step(&fn_ctxt fcx, &hashmap[int,@ty] bindings, @ty expected,
+                  @ty actual) -> unify_result {
         // TODO: rewrite this using tuple pattern matching when available, to
         // avoid all this rightward drift and spikiness.
+
+        // If the RHS is a variable type, then just do the appropriate
+        // binding.
+        alt (actual.struct) {
+            case (ty_var(?actual_id)) {
+                alt (bindings.find(actual_id)) {
+                    case (some[@ty](?actual_ty)) {
+                        // FIXME: change the binding here?
+                        // FIXME: "be"
+                        ret unify_step(fcx, bindings, expected, actual_ty);
+                    }
+                    case (none[@ty]) {
+                        bindings.insert(actual_id, expected);
+                        ret ures_ok(expected);
+                    }
+                }
+            }
+            case (ty_local(?actual_id)) {
+                auto actual_ty = fcx.locals.get(actual_id);
+                auto result = unify_step(fcx, bindings, expected, actual_ty);
+                alt (result) {
+                    case (ures_ok(?result_ty)) {
+                        fcx.locals.insert(actual_id, result_ty);
+                    }
+                    case (_) { /* empty */ }
+                }
+                ret result;
+            }
+            case (_) { /* empty */ }
+        }
+
         alt (expected.struct) {
             case (ty_nil)        { ret struct_cmp(expected, actual); }
             case (ty_bool)       { ret struct_cmp(expected, actual); }
@@ -524,7 +568,8 @@ fn unify(&@crate_ctxt ccx, @ty expected, @ty actual) -> unify_result {
             case (ty_box(?expected_sub)) {
                 alt (actual.struct) {
                     case (ty_box(?actual_sub)) {
-                        auto result = unify_step(ccx,
+                        auto result = unify_step(fcx,
+                                                 bindings,
                                                  expected_sub,
                                                  actual_sub);
                         alt (result) {
@@ -548,7 +593,8 @@ fn unify(&@crate_ctxt ccx, @ty expected, @ty actual) -> unify_result {
             case (ty_vec(?expected_sub)) {
                 alt (actual.struct) {
                     case (ty_vec(?actual_sub)) {
-                        auto result = unify_step(ccx,
+                        auto result = unify_step(fcx,
+                                                 bindings,
                                                  expected_sub,
                                                  actual_sub);
                         alt (result) {
@@ -594,7 +640,8 @@ fn unify(&@crate_ctxt ccx, @ty expected, @ty actual) -> unify_result {
                                 ret ures_err(err, expected, actual);
                             }
 
-                            auto result = unify_step(ccx,
+                            auto result = unify_step(fcx,
+                                                     bindings,
                                                      expected_elem._1,
                                                      actual_elem._1);
                             alt (result) {
@@ -646,7 +693,8 @@ fn unify(&@crate_ctxt ccx, @ty expected, @ty actual) -> unify_result {
                                 result_mode = ast.val;
                             }
 
-                            auto result = unify_step(ccx,
+                            auto result = unify_step(fcx,
+                                                     bindings,
                                                      expected_input.ty,
                                                      actual_input.ty);
 
@@ -666,7 +714,8 @@ fn unify(&@crate_ctxt ccx, @ty expected, @ty actual) -> unify_result {
 
                         // Check the output.
                         auto result_out;
-                        auto result = unify_step(ccx,
+                        auto result = unify_step(fcx,
+                                                 bindings,
                                                  expected_output,
                                                  actual_output);
                         alt (result) {
@@ -689,14 +738,30 @@ fn unify(&@crate_ctxt ccx, @ty expected, @ty actual) -> unify_result {
             }
 
             case (ty_var(?expected_id)) {
-                if (ccx.bindings.contains_key(expected_id)) {
-                    check (ccx.bindings.contains_key(expected_id));
-                    auto binding = ccx.bindings.get(expected_id);
-                    ret unify_step(ccx, binding, actual);
+                alt (bindings.find(expected_id)) {
+                    case (some[@ty](?expected_ty)) {
+                        // FIXME: change the binding here?
+                        // FIXME: "be"
+                        ret unify_step(fcx, bindings, expected_ty, actual);
+                    }
+                    case (none[@ty]) {
+                        bindings.insert(expected_id, actual);
+                        ret ures_ok(actual);
+                    }
                 }
+            }
 
-                ccx.bindings.insert(expected_id, actual);
-                ret ures_ok(actual);
+            case (ty_local(?expected_id)) {
+                auto expected_ty = fcx.locals.get(expected_id);
+                auto result = unify_step(fcx, bindings, expected_ty, actual);
+                alt (result) {
+                    case (ures_ok(?result_ty)) {
+                        
+                        fcx.locals.insert(expected_id, result_ty);
+                    }
+                    case (_) { /* empty */ }
+                }
+                ret result;
             }
         }
 
@@ -704,22 +769,28 @@ fn unify(&@crate_ctxt ccx, @ty expected, @ty actual) -> unify_result {
         fail;
     }
 
-    ret unify_step(ccx, expected, actual);
+    fn hash_int(&int x) -> uint { ret x as uint; }
+    fn eq_int(&int a, &int b) -> bool { ret a == b; }
+    auto hasher = hash_int;
+    auto eqer = eq_int;
+    auto bindings = map.mk_hashmap[int,@ty](hasher, eqer);
+
+    ret unify_step(fcx, bindings, expected, actual);
 }
 
 // Requires that the two types unify, and prints an error message if they
 // don't. Returns the unified type.
-fn demand(&@crate_ctxt ccx, &span sp, @ty expected, @ty actual) -> @ty {
-    alt (unify(ccx, expected, actual)) {
+fn demand(&fn_ctxt fcx, &span sp, @ty expected, @ty actual) -> @ty {
+    alt (unify(fcx, expected, actual)) {
         case (ures_ok(?ty)) {
             ret ty;
         }
 
         case (ures_err(?err, ?expected, ?actual)) {
-            ccx.sess.span_err(sp, "mismatched types: expected "
-                              + ty_to_str(expected) + " but found "
-                              + ty_to_str(actual) + " (" +
-                              type_err_to_str(err) + ")");
+            fcx.ccx.sess.span_err(sp, "mismatched types: expected "
+                                  + ty_to_str(expected) + " but found "
+                                  + ty_to_str(actual) + " (" +
+                                  type_err_to_str(err) + ")");
 
             // TODO: In the future, try returning "expected", reporting the
             // error, and continue.
@@ -729,24 +800,122 @@ fn demand(&@crate_ctxt ccx, &span sp, @ty expected, @ty actual) -> @ty {
 }
 
 // Returns true if the two types unify and false if they don't.
-fn are_compatible(&@crate_ctxt ccx, @ty expected, @ty actual) -> bool {
-    alt (unify(ccx, expected, actual)) {
+fn are_compatible(&fn_ctxt fcx, @ty expected, @ty actual) -> bool {
+    alt (unify(fcx, expected, actual)) {
         case (ures_ok(_))        { ret true;  }
         case (ures_err(_, _, _)) { ret false; }
     }
 }
 
-// Writeback: the phase that writes inferred types back into the AST.
+// Type unification over typed expressions. Note that the expression that you
+// pass to this function must have been passed to check_expr() first.
+//
+// TODO: enforce this via a predicate.
+// TODO: propagate the types downward. This makes the typechecker quadratic,
+//       but we can mitigate that if expected == actual == unified.
 
-fn resolve_vars(@crate_ctxt ccx, @ty t) -> @ty {
-    alt (t.struct) {
-        case (ty_var(?v)) {
-            check (ccx.bindings.contains_key(v));
-            ret resolve_vars(ccx, ccx.bindings.get(v));
+fn demand_expr(&fn_ctxt fcx, @ty expected, @ast.expr e) -> @ast.expr {
+    // FIXME: botch to work around typestate bug in rustboot
+    let vec[@ast.expr] v = vec();
+    auto e_1 = ast.expr_vec(v, ast.ann_none);
+
+    alt (e.node) {
+        case (ast.expr_vec(?es, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_vec(es, ast.ann_type(t));
+        }
+        case (ast.expr_tup(?es, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_tup(es, ast.ann_type(t));
+        }
+        case (ast.expr_rec(?es, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_rec(es, ast.ann_type(t));
+        }
+        case (ast.expr_call(?sube, ?es, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_call(sube, es, ast.ann_type(t));
+        }
+        case (ast.expr_binary(?bop, ?lhs, ?rhs, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_binary(bop, lhs, rhs, ast.ann_type(t));
+        }
+        case (ast.expr_unary(?uop, ?sube, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_unary(uop, sube, ast.ann_type(t));
+        }
+        case (ast.expr_lit(?lit, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_lit(lit, ast.ann_type(t));
+        }
+        case (ast.expr_cast(?sube, ?ast_ty, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_cast(sube, ast_ty, ast.ann_type(t));
+        }
+        case (ast.expr_if(?cond, ?then, ?els, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_if(cond, then, els, ast.ann_type(t));
+        }
+        case (ast.expr_while(?cond, ?bloc, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_while(cond, bloc, ast.ann_type(t));
+        }
+        case (ast.expr_do_while(?bloc, ?cond, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_do_while(bloc, cond, ast.ann_type(t));
+        }
+        case (ast.expr_block(?bloc, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_block(bloc, ast.ann_type(t));
+        }
+        case (ast.expr_assign(?lhs, ?rhs, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_assign(lhs, rhs, ast.ann_type(t));
+        }
+        case (ast.expr_field(?lhs, ?rhs, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_field(lhs, rhs, ast.ann_type(t));
+        }
+        case (ast.expr_index(?base, ?index, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_index(base, index, ast.ann_type(t));
+        }
+        case (ast.expr_name(?name, ?d, ?ann)) {
+            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            e_1 = ast.expr_name(name, d, ast.ann_type(t));
+        }
+        case (_) {
+            fail;
         }
     }
-    ret t;
+
+    ret @fold.respan[ast.expr_](e.span, e_1);
 }
+
+// Type unification over typed blocks.
+fn demand_block(&fn_ctxt fcx, @ty expected, &ast.block bloc) -> ast.block {
+    alt (last_expr_of_block(bloc)) {
+        case (some[@ast.expr](?e_0)) {
+            auto e_1 = demand_expr(fcx, expected, e_0);
+
+            auto len = _vec.len[@ast.stmt](bloc.node.stmts);
+            auto last_stmt_0 = bloc.node.stmts.(len - 1u);
+            auto prev_stmts = _vec.pop[@ast.stmt](bloc.node.stmts);
+            auto last_stmt_1 = @fold.respan[ast.stmt_](last_stmt_0.span,
+                                                       ast.stmt_expr(e_1));
+            auto stmts_1 = prev_stmts + vec(last_stmt_1);
+
+            auto block_ = rec(stmts=stmts_1, index=bloc.node.index);
+            ret fold.respan[ast.block_](bloc.span, block_);
+        }
+        case (none[@ast.expr]) {
+            demand(fcx, bloc.span, expected, plain_ty(ty_nil));
+            ret bloc;
+        }
+    }
+}
+
+// Writeback: the phase that writes inferred types back into the AST.
 
 fn writeback_local(&fn_ctxt fcx, &span sp, @ast.local local)
         -> @ast.decl {
@@ -754,7 +923,7 @@ fn writeback_local(&fn_ctxt fcx, &span sp, @ast.local local)
         fcx.ccx.sess.span_err(sp, "unable to determine type of local: "
                               + local.ident);
     }
-    auto local_ty = resolve_vars(fcx.ccx, fcx.locals.get(local.id));
+    auto local_ty = fcx.locals.get(local.id);
     auto local_wb = @rec(ann=ast.ann_type(local_ty) with *local);
     ret @fold.respan[ast.decl_](sp, ast.decl_local(local_wb));
 }
@@ -792,13 +961,16 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
 
         case (ast.expr_binary(?binop, ?lhs, ?rhs, _)) {
-            auto lhs_1 = check_expr(fcx, lhs);
-            auto rhs_1 = check_expr(fcx, rhs);
-            auto lhs_t = expr_ty(lhs_1);
-            auto rhs_t = expr_ty(rhs_1);
+            auto lhs_0 = check_expr(fcx, lhs);
+            auto rhs_0 = check_expr(fcx, rhs);
+            auto lhs_t0 = expr_ty(lhs_0);
+            auto rhs_t0 = expr_ty(rhs_0);
+
             // FIXME: Binops have a bit more subtlety than this.
-            demand(fcx.ccx, expr.span, lhs_t, rhs_t);
-            auto t = lhs_t;
+            auto lhs_1 = demand_expr(fcx, rhs_t0, lhs_0);
+            auto rhs_1 = demand_expr(fcx, expr_ty(lhs_1), rhs_0);
+
+            auto t = lhs_t0;
             alt (binop) {
                 case (ast.eq) { t = plain_ty(ty_bool); }
                 case (ast.lt) { t = plain_ty(ty_bool); }
@@ -823,23 +995,25 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_name(?name, ?defopt, _)) {
-            auto ty = @rec(struct=ty_nil, cname=none[str]);
+            auto t = @rec(struct=ty_nil, cname=none[str]);
             alt (option.get[ast.def](defopt)) {
                 case (ast.def_arg(?id)) {
                     check (fcx.locals.contains_key(id));
-                    ty = fcx.locals.get(id);
+                    t = fcx.locals.get(id);
                 }
                 case (ast.def_local(?id)) {
-                    check (fcx.locals.contains_key(id));
-                    ty = fcx.locals.get(id);
+                    alt (fcx.locals.find(id)) {
+                        case (some[@ty](?t1)) { t = t1; }
+                        case (none[@ty])      { t = plain_ty(ty_local(id)); }
+                    }
                 }
                 case (ast.def_fn(?id)) {
                     check (fcx.ccx.item_types.contains_key(id));
-                    ty = fcx.ccx.item_types.get(id);
+                    t = fcx.ccx.item_types.get(id);
                 }
                 case (ast.def_const(?id)) {
                     check (fcx.ccx.item_types.contains_key(id));
-                    ty = fcx.ccx.item_types.get(id);
+                    t = fcx.ccx.item_types.get(id);
                 }
                 case (_) {
                     // FIXME: handle other names.
@@ -850,65 +1024,103 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             }
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_name(name, defopt,
-                                                      ast.ann_type(ty)));
+                                                      ast.ann_type(t)));
         }
 
         case (ast.expr_assign(?lhs, ?rhs, _)) {
-            auto lhs_1 = check_expr(fcx, lhs);
-            auto rhs_1 = check_expr(fcx, rhs);
-            auto lhs_t = expr_ty(lhs_1);
-            auto rhs_t = expr_ty(rhs_1);
-            demand(fcx.ccx, expr.span, lhs_t, rhs_t);
+            auto lhs_0 = check_expr(fcx, lhs);
+            auto rhs_0 = check_expr(fcx, rhs);
+            auto lhs_t0 = expr_ty(lhs_0);
+            auto rhs_t0 = expr_ty(rhs_0);
+
+            auto lhs_1 = demand_expr(fcx, rhs_t0, lhs_0);
+            auto rhs_1 = demand_expr(fcx, expr_ty(lhs_1), rhs_0);
+
+            auto ann = ast.ann_type(rhs_t0);
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_assign(lhs_1, rhs_1,
-                                                        ast.ann_type(rhs_t)));
+                                        ast.expr_assign(lhs_1, rhs_1, ann));
         }
 
         case (ast.expr_if(?cond, ?thn, ?elsopt, _)) {
-            auto cond_1 = check_expr(fcx, cond);
-            auto thn_1 = check_block(fcx, thn);
-            demand(fcx.ccx, cond.span, plain_ty(ty_bool), expr_ty(cond_1));
-            auto thn_t = block_ty(thn_1);
-            auto elsopt_1 = none[ast.block];
-            auto elsopt_t = plain_ty(ty_nil);
+            auto cond_0 = check_expr(fcx, cond);
+            auto cond_1 = demand_expr(fcx, plain_ty(ty_bool), cond_0);
+
+            auto thn_0 = check_block(fcx, thn);
+            auto thn_t = block_ty(thn_0);
+
+            auto elsopt_1;
+            auto elsopt_t;
             alt (elsopt) {
                 case (some[ast.block](?els)) {
-                    auto els_1 = check_block(fcx, els);
+                    auto els_0 = check_block(fcx, els);
+                    auto els_1 = demand_block(fcx, thn_t, els_0);
                     elsopt_1 = some[ast.block](els_1);
                     elsopt_t = block_ty(els_1);
                 }
+                case (none[ast.block]) {
+                    elsopt_1 = none[ast.block];
+                    elsopt_t = plain_ty(ty_nil);
+                }
             }
-            demand(fcx.ccx, expr.span, thn_t, elsopt_t);
+
+            auto thn_1 = demand_block(fcx, elsopt_t, thn_0);
+
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_if(cond_1, thn_1, elsopt_1,
-                                                    ast.ann_type(thn_t)));
+                                                    ast.ann_type(elsopt_t)));
         }
 
         case (ast.expr_call(?f, ?args, _)) {
-            auto f_1 = check_expr(fcx, f);
-            let @ty ret_t = plain_ty(ty_nil);
-            alt (expr_ty(f_1).struct) {
-                case (ty_fn(_, ?r)) {
-                    ret_t = r;
+            // Check the function.
+            auto f_0 = check_expr(fcx, f);
+
+            // Check the arguments and generate the argument signature.
+            let vec[@ast.expr] args_0 = vec();
+            let vec[arg] arg_tys_0 = vec();
+            for (@ast.expr a in args) {
+                auto a_0 = check_expr(fcx, a);
+                append[@ast.expr](args_0, a_0);
+
+                // FIXME: this breaks aliases. We need a ty_fn_arg.
+                append[arg](arg_tys_0, rec(mode=ast.val, ty=expr_ty(a_0)));
+            }
+            auto rt_0 = plain_ty(ty_var(-2));   // FIXME: broken!
+            auto t_0 = plain_ty(ty_fn(arg_tys_0, rt_0));
+
+            // Unify and write back to the function.
+            auto f_1 = demand_expr(fcx, t_0, f_0);
+
+            // Take the argument types out of the resulting function type.
+            auto t_1 = expr_ty(f_1);
+            let vec[arg] arg_tys_1 = vec();     // TODO: typestate botch
+            let @ty rt_1 = plain_ty(ty_nil);    // TODO: typestate botch
+            alt (t_1.struct) {
+                case (ty_fn(?arg_tys, ?rt)) {
+                    arg_tys_1 = arg_tys;
+                    rt_1 = rt;
                 }
                 case (_) {
                     fcx.ccx.sess.span_err(f_1.span,
-                                          "callee has non-function type: "
-                                          + ty_to_str(expr_ty(f_1)));
+                                          "mismatched types: callee has " +
+                                          "non-function type: " +
+                                          ty_to_str(t_1));
                 }
             }
+
+            // Unify and write back to the arguments.
+            auto i = 0u;
             let vec[@ast.expr] args_1 = vec();
-            let vec[arg] args_t = vec();
-            for (@ast.expr a in args) {
-                auto a_1 = check_expr(fcx, a);
-                append[@ast.expr](args_1, a_1);
-                append[arg](args_t, rec(mode=ast.val, ty=expr_ty(a_1)));
+            while (i < _vec.len[@ast.expr](args_0)) {
+                auto arg_ty_1 = arg_tys_1.(i);
+                auto e = demand_expr(fcx, arg_ty_1.ty, args_0.(i));
+                append[@ast.expr](args_1, e);
+
+                i += 1u;
             }
-            demand(fcx.ccx, expr.span, expr_ty(f_1),
-                   plain_ty(ty_fn(args_t, ret_t)));
+
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_call(f_1, args_1,
-                                                      ast.ann_type(ret_t)));
+                                                      ast.ann_type(rt_1)));
         }
 
         case (ast.expr_cast(?e, ?t, _)) {
@@ -965,12 +1177,13 @@ fn check_stmt(&fn_ctxt fcx, &@ast.stmt stmt)
                     auto init = local.init;
                     alt (local.init) {
                         case (some[@ast.expr](?expr)) {
-                            auto expr_t = check_expr(fcx, expr);
-                            rhs_ty = expr_ty(expr_t);
-                            init = some[@ast.expr](expr_t);
+                            auto expr_0 = check_expr(fcx, expr);
+                            auto lty = plain_ty(ty_local(local.id));
+                            auto expr_1 = demand_expr(fcx, lty, expr_0);
+                            init = some[@ast.expr](expr_1);
                         }
                     }
-                    demand(fcx.ccx, decl.span, local_ty, rhs_ty);
+
                     auto local_1 = @rec(init = init with *local);
                     auto decl_1 = @rec(node=ast.decl_local(local_1)
                                        with *decl);
@@ -989,8 +1202,7 @@ fn check_stmt(&fn_ctxt fcx, &@ast.stmt stmt)
         case (ast.stmt_ret(?expr_opt)) {
             alt (expr_opt) {
                 case (none[@ast.expr]) {
-                    if (!are_compatible(fcx.ccx, fcx.ret_ty,
-                                        plain_ty(ty_nil))) {
+                    if (!are_compatible(fcx, fcx.ret_ty, plain_ty(ty_nil))) {
                         fcx.ccx.sess.err("ret; in function "
                                          + "returning non-nil");
                     }
@@ -1000,7 +1212,7 @@ fn check_stmt(&fn_ctxt fcx, &@ast.stmt stmt)
 
                 case (some[@ast.expr](?expr)) {
                     auto expr_t = check_expr(fcx, expr);
-                    demand(fcx.ccx, expr.span, fcx.ret_ty, expr_ty(expr_t));
+                    demand(fcx, expr.span, fcx.ret_ty, expr_ty(expr_t));
                     ret @fold.respan[ast.stmt_](stmt.span,
                                                 ast.stmt_ret(some(expr_t)));
                 }
@@ -1014,15 +1226,14 @@ fn check_stmt(&fn_ctxt fcx, &@ast.stmt stmt)
 
         case (ast.stmt_check_expr(?expr)) {
             auto expr_t = check_expr(fcx, expr);
-            demand(fcx.ccx, expr.span, plain_ty(ty_bool), expr_ty(expr_t));
+            demand(fcx, expr.span, plain_ty(ty_bool), expr_ty(expr_t));
             ret @fold.respan[ast.stmt_](stmt.span,
                                         ast.stmt_check_expr(expr_t));
         }
 
         case (ast.stmt_expr(?expr)) {
             auto expr_t = check_expr(fcx, expr);
-            if (!are_compatible(fcx.ccx, expr_ty(expr_t),
-                                plain_ty(ty_nil))) {
+            if (!are_compatible(fcx, expr_ty(expr_t), plain_ty(ty_nil))) {
                 // TODO: real warning function
                 log "warning: expression used as statement should have " +
                     "void type";
@@ -1073,14 +1284,8 @@ fn check_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
 fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     auto result = collect_item_types(crate);
 
-    fn hash_int(&int x) -> uint { ret x as uint; }
-    fn eq_int(&int a, &int b) -> bool { ret a == b; }
-    auto hasher = hash_int;
-    auto eqer = eq_int;
-
     auto ccx = @rec(sess=sess,
                     item_types=result._1,
-                    bindings = map.mk_hashmap[int,@ty](hasher, eqer),
                     mutable next_var_id=0);
 
     auto fld = fold.new_identity_fold[@crate_ctxt]();
