@@ -196,16 +196,16 @@ fn T_array(TypeRef t, uint n) -> TypeRef {
     ret llvm.LLVMArrayType(t, n);
 }
 
-fn T_vec(TypeRef t, uint n) -> TypeRef {
-    ret T_struct(vec(T_int(),      // Refcount
-                     T_int(),      // Alloc
-                     T_int(),      // Fill
-                     T_array(t, n) // Body elements
+fn T_vec(TypeRef t) -> TypeRef {
+    ret T_struct(vec(T_int(),       // Refcount
+                     T_int(),       // Alloc
+                     T_int(),       // Fill
+                     T_array(t, 0u) // Body elements
                      ));
 }
 
-fn T_str(uint n) -> TypeRef {
-    ret T_vec(T_i8(), n);
+fn T_str() -> TypeRef {
+    ret T_vec(T_i8());
 }
 
 fn T_box(TypeRef t) -> TypeRef {
@@ -265,12 +265,12 @@ fn type_of_inner(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
             }
         }
         case (typeck.ty_char) { ret T_char(); }
-        case (typeck.ty_str) { ret T_str(0u); }
+        case (typeck.ty_str) { ret T_ptr(T_str()); }
         case (typeck.ty_box(?t)) {
             ret T_ptr(T_box(type_of(cx, t)));
         }
         case (typeck.ty_vec(?t)) {
-            ret T_ptr(T_vec(type_of(cx, t), 0u));
+            ret T_ptr(T_vec(type_of(cx, t)));
         }
         case (typeck.ty_tup(?elts)) {
             let vec[TypeRef] tys = vec();
@@ -544,7 +544,7 @@ impure fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
                                     vec(p2i(C_str(cx.fcx.ccx, s)),
                                         C_int(len)));
             sub.val = sub.bcx.build.IntToPtr(sub.val,
-                                             T_ptr(T_str(len as uint)));
+                                             T_ptr(T_str()));
             cx.cleanups += vec(clean(bind trans_drop_str(_, sub.val)));
             ret sub;
         }
