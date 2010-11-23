@@ -533,6 +533,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         lazy-init.rs \
                         multiline-comment.rs \
                         return-nil.rs \
+                        uint.rs \
                         unit.rs \
                         while-and-do-while.rs \
                         ), \

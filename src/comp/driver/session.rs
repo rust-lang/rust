@@ -1,7 +1,31 @@
 import util.common.span;
+import util.common.ty_mach;
 import std._uint;
 
-obj session() {
+tag os {
+    os_win32;
+    os_macos;
+    os_linux;
+}
+
+tag arch {
+    arch_x86;
+    arch_x64;
+    arch_arm;
+}
+
+type cfg = rec(os os,
+               arch arch,
+               ty_mach int_type,
+               ty_mach uint_type,
+               ty_mach float_type);
+
+obj session(cfg targ) {
+
+    fn get_targ_cfg() -> cfg {
+        ret targ;
+    }
+
     fn span_err(span sp, str msg) {
         log #fmt("%s:%u:%u:%u:%u: error: %s",
                  sp.filename,
@@ -13,6 +37,11 @@ obj session() {
 
     fn err(str msg) {
         log #fmt("error: %s", msg);
+        fail;
+    }
+
+    fn bug(str msg) {
+        log #fmt("error: internal compiler error %s", msg);
         fail;
     }
 

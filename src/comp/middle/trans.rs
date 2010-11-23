@@ -551,16 +551,34 @@ impure fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
     }
 }
 
-fn node_type(@crate_ctxt cx, &ast.ann a) -> TypeRef {
+fn target_type(@crate_ctxt cx, @typeck.ty t) -> @typeck.ty {
+    alt (t.struct) {
+        case (typeck.ty_int) {
+            auto tm = typeck.ty_machine(cx.sess.get_targ_cfg().int_type);
+            ret @rec(struct=tm with *t);
+        }
+        case (typeck.ty_uint) {
+            auto tm = typeck.ty_machine(cx.sess.get_targ_cfg().uint_type);
+            ret @rec(struct=tm with *t);
+        }
+    }
+    ret t;
+}
+
+fn node_ann_type(@crate_ctxt cx, &ast.ann a) -> @typeck.ty {
     alt (a) {
         case (ast.ann_none) {
             log "missing type annotation";
             fail;
         }
         case (ast.ann_type(?t)) {
-            ret type_of(cx, t);
+            ret target_type(cx, t);
         }
     }
+}
+
+fn node_type(@crate_ctxt cx, &ast.ann a) -> TypeRef {
+    ret type_of(cx, node_ann_type(cx, a));
 }
 
 impure fn trans_unary(@block_ctxt cx, ast.unop op,
@@ -962,6 +980,36 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
                     args_res._0.build.FastCall(f_res._0.val, llargs));
         }
 
+        case (ast.expr_cast(?e, _, ?ann)) {
+            auto e_res = trans_expr(cx, *e);
+            auto llsrctype = val_ty(e_res.val);
+            auto t = node_ann_type(cx.fcx.ccx, ann);
+            auto lldsttype = type_of(cx.fcx.ccx, t);
+            if (!typeck.type_is_fp(t)) {
+                if (llvm.LLVMGetIntTypeWidth(lldsttype) >
+                    llvm.LLVMGetIntTypeWidth(llsrctype)) {
+                    if (typeck.type_is_signed(t)) {
+                        // Widening signed cast.
+                        e_res.val =
+                            e_res.bcx.build.SExtOrBitCast(e_res.val,
+                                                          lldsttype);
+                    } else {
+                        // Widening unsigned cast.
+                        e_res.val =
+                            e_res.bcx.build.ZExtOrBitCast(e_res.val,
+                                                          lldsttype);
+                    }
+                } else {
+                    // Narrowing cast.
+                    e_res.val =
+                        e_res.bcx.build.TruncOrBitCast(e_res.val,
+                                                       lldsttype);
+                }
+            } else {
+                cx.fcx.ccx.sess.unimpl("fp cast");
+            }
+            ret e_res;
+        }
     }
     cx.fcx.ccx.sess.unimpl("expr variant in trans_expr");
     fail;

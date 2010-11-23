@@ -5,6 +5,7 @@ import front.token;
 import middle.trans;
 import middle.resolve;
 import middle.typeck;
+import util.common;
 
 import std.option;
 import std.option.some;
@@ -13,18 +14,18 @@ import std._str;
 import std._vec;
 
 impure fn compile_input(session.session sess, str input, str output) {
-          auto p = parser.new_parser(sess, 0, input);
-          auto crate = parser.parse_crate(p);
-          crate = resolve.resolve_crate(sess, crate);
-          crate = typeck.check_crate(sess, crate);
-          trans.trans_crate(sess, crate, output);
+    auto p = parser.new_parser(sess, 0, input);
+    auto crate = parser.parse_crate(p);
+    crate = resolve.resolve_crate(sess, crate);
+    crate = typeck.check_crate(sess, crate);
+    trans.trans_crate(sess, crate, output);
 }
 
 fn warn_wrong_compiler() {
-  log "This is the rust 'self-hosted' compiler.";
-  log "The one written in rust.";
-  log "It does nothing yet, it's a placeholder.";
-  log "You want rustboot, the compiler next door.";
+    log "This is the rust 'self-hosted' compiler.";
+    log "The one written in rust.";
+    log "It does nothing yet, it's a placeholder.";
+    log "You want rustboot, the compiler next door.";
 }
 
 fn usage(session.session sess, str argv0) {
@@ -38,81 +39,95 @@ fn usage(session.session sess, str argv0) {
     log "";
 }
 
+fn get_os() -> session.os {
+    auto s = std.os.target_os();
+    if (_str.eq(s, "win32")) { ret session.os_win32; }
+    if (_str.eq(s, "macos")) { ret session.os_macos; }
+    if (_str.eq(s, "linux")) { ret session.os_linux; }
+}
+
 impure fn main(vec[str] args) {
 
-  auto sess = session.session();
-  let option.t[str] input_file = none[str];
-  let option.t[str] output_file = none[str];
-  let bool do_warn = true;
+    // FIXME: don't hard-wire this.
+    auto target_cfg = rec(os = get_os(),
+                          arch = session.arch_x86,
+                          int_type = common.ty_i32,
+                          uint_type = common.ty_u32,
+                          float_type = common.ty_f64 );
 
-  auto i = 1u;
-  auto len = _vec.len[str](args);
+    auto sess = session.session(target_cfg);
+    let option.t[str] input_file = none[str];
+    let option.t[str] output_file = none[str];
+    let bool do_warn = true;
 
-  // FIXME: a getopt module would be nice.
-  while (i < len) {
-      auto arg = args.(i);
-      if (_str.byte_len(arg) > 0u && arg.(0) == '-' as u8) {
-          if (_str.eq(arg, "-nowarn")) {
-              do_warn = false;
-          } else {
-              // FIXME: rust could use an elif construct.
-              if (_str.eq(arg, "-o")) {
-                  if (i+1u < len) {
-                      output_file = some(args.(i+1u));
-                      i += 1u;
-                  } else {
-                      usage(sess, args.(0));
-                      sess.err("-o requires an argument");
-                  }
-              } else {
-                  if (_str.eq(arg, "-h")) {
-                      usage(sess, args.(0));
-                  } else {
-                      usage(sess, args.(0));
-                      sess.err("unrecognized option: " + arg);
-                  }
-              }
-          }
-      } else {
-          alt (input_file) {
-              case (some[str](_)) {
-                  usage(sess, args.(0));
-                  sess.err("multiple inputs provided");
-              }
-              case (none[str]) {
-                  input_file = some[str](arg);
-              }
-          }
-          // FIXME: dummy node to work around typestate mis-wiring bug.
-          i = i;
-      }
-      i += 1u;
-  }
+    auto i = 1u;
+    auto len = _vec.len[str](args);
 
-  if (do_warn) {
-      warn_wrong_compiler();
-  }
+    // FIXME: a getopt module would be nice.
+    while (i < len) {
+        auto arg = args.(i);
+        if (_str.byte_len(arg) > 0u && arg.(0) == '-' as u8) {
+            if (_str.eq(arg, "-nowarn")) {
+                do_warn = false;
+            } else {
+                // FIXME: rust could use an elif construct.
+                if (_str.eq(arg, "-o")) {
+                    if (i+1u < len) {
+                        output_file = some(args.(i+1u));
+                        i += 1u;
+                    } else {
+                        usage(sess, args.(0));
+                        sess.err("-o requires an argument");
+                    }
+                } else {
+                    if (_str.eq(arg, "-h")) {
+                        usage(sess, args.(0));
+                    } else {
+                        usage(sess, args.(0));
+                        sess.err("unrecognized option: " + arg);
+                    }
+                }
+            }
+        } else {
+            alt (input_file) {
+                case (some[str](_)) {
+                    usage(sess, args.(0));
+                    sess.err("multiple inputs provided");
+                }
+                case (none[str]) {
+                    input_file = some[str](arg);
+                }
+            }
+            // FIXME: dummy node to work around typestate mis-wiring bug.
+            i = i;
+        }
+        i += 1u;
+    }
 
-  alt (input_file) {
-      case (none[str]) {
-          usage(sess, args.(0));
-          sess.err("no input filename");
-      }
-      case (some[str](?ifile)) {
-          alt (output_file) {
-              case (none[str]) {
-                  let vec[str] parts = _str.split(ifile, '.' as u8);
-                  parts = _vec.pop[str](parts);
-                  parts += ".bc";
-                  auto ofile = _str.concat(parts);
-                  compile_input(sess, ifile, ofile);
-              }
-              case (some[str](?ofile)) {
-                  compile_input(sess, ifile, ofile);
-              }
-          }
-      }
-  }
+    if (do_warn) {
+        warn_wrong_compiler();
+    }
+
+    alt (input_file) {
+        case (none[str]) {
+            usage(sess, args.(0));
+            sess.err("no input filename");
+        }
+        case (some[str](?ifile)) {
+            alt (output_file) {
+                case (none[str]) {
+                    let vec[str] parts = _str.split(ifile, '.' as u8);
+                    parts = _vec.pop[str](parts);
+                    parts += ".bc";
+                    auto ofile = _str.concat(parts);
+                    compile_input(sess, ifile, ofile);
+                }
+                case (some[str](?ofile)) {
+                    compile_input(sess, ifile, ofile);
+                }
+            }
+        }
+    }
 }
 
 

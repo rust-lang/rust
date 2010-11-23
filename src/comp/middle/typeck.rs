@@ -391,6 +391,44 @@ fn mode_is_alias(ast.mode m) -> bool {
     }
 }
 
+fn type_is_scalar(@ty t) -> bool {
+    alt (t.struct) {
+        case (ty_bool) { ret true; }
+        case (ty_int) { ret true; }
+        case (ty_uint) { ret true; }
+        case (ty_machine(_)) { ret true; }
+        case (ty_char) { ret true; }
+    }
+    ret false;
+}
+
+fn type_is_fp(@ty t) -> bool {
+    alt (t.struct) {
+        case (ty_machine(?tm)) {
+            alt (tm) {
+                case (common.ty_f32) { ret true; }
+                case (common.ty_f64) { ret true; }
+            }
+        }
+    }
+    ret false;
+}
+
+fn type_is_signed(@ty t) -> bool {
+    alt (t.struct) {
+        case (ty_int) { ret true; }
+        case (ty_machine(?tm)) {
+            alt (tm) {
+                case (common.ty_i8) { ret true; }
+                case (common.ty_i16) { ret true; }
+                case (common.ty_i32) { ret true; }
+                case (common.ty_i64) { ret true; }
+            }
+        }
+    }
+    ret false;
+}
+
 fn plain_ty(&sty st) -> @ty {
     ret @rec(struct=st, cname=none[str]);
 }
@@ -871,6 +909,23 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_call(f_1, args_1,
                                                       ast.ann_type(ret_t)));
+        }
+
+        case (ast.expr_cast(?e, ?t, _)) {
+            auto e_1 = check_expr(fcx, e);
+            auto t_1 = ast_ty_to_ty_crate(fcx.ccx, t);
+            // FIXME: there are more forms of cast to support, eventually.
+            if (! (type_is_scalar(expr_ty(e_1)) &&
+                   type_is_scalar(t_1))) {
+                fcx.ccx.sess.span_err(expr.span,
+                                      "non-scalar cast: "
+                                      + ty_to_str(expr_ty(e_1))
+                                      + " as "
+                                      +  ty_to_str(t_1));
+            }
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_cast(e_1, t,
+                                                      ast.ann_type(t_1)));
         }
 
         case (_) {
