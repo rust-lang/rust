@@ -302,9 +302,102 @@ impure fn consume_block_comment(reader rdr) {
     be consume_any_whitespace(rdr);
 }
 
+impure fn scan_number(mutable char c, reader rdr) -> token.token {
+    auto accum_int = 0;
+    auto n = rdr.next();
+
+    if (c == '0' && n == 'x') {
+        rdr.bump();
+        rdr.bump();
+        c = rdr.curr();
+        while (is_hex_digit(c) || c == '_') {
+            if (c != '_') {
+                accum_int *= 16;
+                accum_int += hex_digit_val(c);
+            }
+            rdr.bump();
+            c = rdr.curr();
+        }
+    }
+
+    if (c == '0' && n == 'b') {
+        rdr.bump();
+        rdr.bump();
+        c = rdr.curr();
+        while (is_bin_digit(c) || c == '_') {
+            if (c != '_') {
+                accum_int *= 2;
+                accum_int += bin_digit_value(c);
+            }
+            rdr.bump();
+            c = rdr.curr();
+        }
+    }
+
+    while (is_dec_digit(c) || c == '_') {
+        if (c != '_') {
+            accum_int *= 10;
+            accum_int += dec_digit_val(c);
+        }
+        rdr.bump();
+        c = rdr.curr();
+    }
+
+    if (c == 'u' || c == 'i') {
+        let bool signed = (c == 'i');
+        rdr.bump();
+        c = rdr.curr();
+        if (c == '8') {
+            rdr.bump();
+            if (signed) {
+                ret token.LIT_MACH_INT(common.ty_i8, accum_int);
+            } else {
+                ret token.LIT_MACH_INT(common.ty_u8, accum_int);
+            }
+        }
+
+        n = rdr.next();
+        if (c == '1' && n == '6') {
+            rdr.bump();
+            rdr.bump();
+            if (signed) {
+                ret token.LIT_MACH_INT(common.ty_i16, accum_int);
+            } else {
+                ret token.LIT_MACH_INT(common.ty_u16, accum_int);
+            }
+        }
+        if (c == '3' && n == '2') {
+            rdr.bump();
+            rdr.bump();
+            if (signed) {
+                ret token.LIT_MACH_INT(common.ty_i32, accum_int);
+            } else {
+                ret token.LIT_MACH_INT(common.ty_u32, accum_int);
+            }
+        }
+
+        if (c == '6' && n == '4') {
+            rdr.bump();
+            rdr.bump();
+            if (signed) {
+                ret token.LIT_MACH_INT(common.ty_i64, accum_int);
+            } else {
+                ret token.LIT_MACH_INT(common.ty_u64, accum_int);
+            }
+        }
+
+        if (signed) {
+            ret token.LIT_INT(accum_int);
+        } else {
+            // FIXME: should cast in the target bit-width.
+            ret token.LIT_UINT(accum_int as uint);
+        }
+    }
+    ret token.LIT_INT(accum_int);
+}
+
 impure fn next_token(reader rdr) -> token.token {
     auto accum_str = "";
-    auto accum_int = 0;
 
     consume_any_whitespace(rdr);
 
@@ -328,39 +421,7 @@ impure fn next_token(reader rdr) -> token.token {
     }
 
     if (is_dec_digit(c)) {
-        auto n = rdr.next();
-        if (c == '0' && n == 'x') {
-            rdr.bump();
-            rdr.bump();
-            c = rdr.curr();
-            while (is_hex_digit(c) || c == '_') {
-                accum_int *= 16;
-                accum_int += hex_digit_val(c);
-                rdr.bump();
-                c = rdr.curr();
-            }
-        }
-
-        if (c == '0' && n == 'b') {
-            rdr.bump();
-            rdr.bump();
-            c = rdr.curr();
-            while (is_bin_digit(c) || c == '_') {
-                accum_int *= 2;
-                accum_int += bin_digit_value(c);
-                rdr.bump();
-                c = rdr.curr();
-            }
-        }
-
-        while (is_dec_digit(c) || c == '_') {
-            accum_int *= 10;
-            accum_int += dec_digit_val(c);
-            rdr.bump();
-            c = rdr.curr();
-        }
-
-        ret token.LIT_INT(accum_int);
+        ret scan_number(c, rdr);
     }
 
     impure fn binop(reader rdr, token.binop op) -> token.token {

@@ -4,6 +4,7 @@ import std.option;
 import middle.typeck;
 import util.common.span;
 import util.common.spanned;
+import util.common.ty_mach;
 
 type ident = str;
 
@@ -116,6 +117,7 @@ tag lit_ {
     lit_char(char);
     lit_int(int);
     lit_uint(uint);
+    lit_mach_int(ty_mach, int);
     lit_nil;
     lit_bool(bool);
 }

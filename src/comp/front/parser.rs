@@ -287,6 +287,10 @@ impure fn parse_lit(parser p) -> option.t[ast.lit] {
             p.bump();
             lit = ast.lit_uint(u);
         }
+        case (token.LIT_MACH_INT(?tm, ?i)) {
+            p.bump();
+            lit = ast.lit_mach_int(tm, i);
+        }
         case (token.LIT_CHAR(?c)) {
             p.bump();
             lit = ast.lit_char(c);

@@ -529,10 +529,15 @@ TEST_XFAILS_SELF := $(filter-out \
                         fact.rs \
                         hello.rs \
                         int.rs \
+                        i32-sub.rs \
+                        i8-incr.rs \
                         item-name-overload.rs \
                         lazy-init.rs \
                         multiline-comment.rs \
                         return-nil.rs \
+                        u32-decr.rs \
+                        u8-incr.rs \
+                        u8-incr-decr.rs \
                         uint.rs \
                         unit.rs \
                         while-and-do-while.rs \

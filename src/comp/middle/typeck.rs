@@ -944,6 +944,9 @@ fn check_lit(@ast.lit lit) -> @ty {
         case (ast.lit_char(_))  { sty = ty_char; }
         case (ast.lit_int(_))   { sty = ty_int;  }
         case (ast.lit_uint(_))  { sty = ty_uint; }
+        case (ast.lit_mach_int(?tm, _)) {
+            sty = ty_machine(tm);
+        }
         case (ast.lit_nil)      { sty = ty_nil;  }
         case (ast.lit_bool(_))  { sty = ty_bool; }
     }
