@@ -821,67 +821,67 @@ fn demand_expr(&fn_ctxt fcx, @ty expected, @ast.expr e) -> @ast.expr {
 
     alt (e.node) {
         case (ast.expr_vec(?es, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_vec(es, ast.ann_type(t));
         }
         case (ast.expr_tup(?es, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_tup(es, ast.ann_type(t));
         }
         case (ast.expr_rec(?es, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_rec(es, ast.ann_type(t));
         }
         case (ast.expr_call(?sube, ?es, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_call(sube, es, ast.ann_type(t));
         }
         case (ast.expr_binary(?bop, ?lhs, ?rhs, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_binary(bop, lhs, rhs, ast.ann_type(t));
         }
         case (ast.expr_unary(?uop, ?sube, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_unary(uop, sube, ast.ann_type(t));
         }
         case (ast.expr_lit(?lit, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_lit(lit, ast.ann_type(t));
         }
         case (ast.expr_cast(?sube, ?ast_ty, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_cast(sube, ast_ty, ast.ann_type(t));
         }
         case (ast.expr_if(?cond, ?then, ?els, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_if(cond, then, els, ast.ann_type(t));
         }
         case (ast.expr_while(?cond, ?bloc, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_while(cond, bloc, ast.ann_type(t));
         }
         case (ast.expr_do_while(?bloc, ?cond, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_do_while(bloc, cond, ast.ann_type(t));
         }
         case (ast.expr_block(?bloc, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_block(bloc, ast.ann_type(t));
         }
         case (ast.expr_assign(?lhs, ?rhs, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_assign(lhs, rhs, ast.ann_type(t));
         }
         case (ast.expr_field(?lhs, ?rhs, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_field(lhs, rhs, ast.ann_type(t));
         }
         case (ast.expr_index(?base, ?index, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_index(base, index, ast.ann_type(t));
         }
         case (ast.expr_name(?name, ?d, ?ann)) {
-            auto t = demand(fcx, e.span, ann_to_type(ann), expected);
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_name(name, d, ast.ann_type(t));
         }
         case (_) {

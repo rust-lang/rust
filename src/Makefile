@@ -536,6 +536,9 @@ TEST_XFAILS_SELF := $(filter-out \
                         uint.rs \
                         unit.rs \
                         while-and-do-while.rs \
+                        ) \
+                      $(addprefix test/compile-fail/, \
+                        arg-count-mismatch.rs \
                         ), \
                       $(wildcard test/*/*.rs test/*/*.rc))
 
@@ -767,6 +770,13 @@ test/compile-fail/%-boot.x86.out.tmp: test/compile-fail/%.rs $(BREQ)
 
 test/compile-fail/%-boot.llvm.out.tmp: test/compile-fail/%.rs $(BREQ)
 	@$(call CFG_ECHO, compile [boot llvm]: $<)
+	$(CFG_QUIET)rm -f $@
+	$(BOOT) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1 || true
+	$(CFG_QUIET)grep --text --quiet \
+      "`awk -F: '/error-pattern/ { print $$2 }' $< | tr -d '\n\r'`" $@
+
+test/compile-fail/%.llvm.out.tmp: test/compile-fail/%.rs $(BREQ)
+	@$(call CFG_ECHO, compile [rustc]: $<)
 	$(CFG_QUIET)rm -f $@
 	$(BOOT) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1 || true
 	$(CFG_QUIET)grep --text --quiet \
