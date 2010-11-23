@@ -544,6 +544,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         ) \
                       $(addprefix test/compile-fail/, \
                         arg-count-mismatch.rs \
+                        arg-type-mismatch.rs \
                         ), \
                       $(wildcard test/*/*.rs test/*/*.rc))
 
