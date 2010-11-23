@@ -1236,12 +1236,6 @@ fn check_stmt(&fn_ctxt fcx, &@ast.stmt stmt)
 
         case (ast.stmt_expr(?expr)) {
             auto expr_t = check_expr(fcx, expr);
-            if (!are_compatible(fcx, expr_ty(expr_t), plain_ty(ty_nil))) {
-                // TODO: real warning function
-                log "warning: expression used as statement should have " +
-                    "void type";
-            }
-
             ret @fold.respan[ast.stmt_](stmt.span, ast.stmt_expr(expr_t));
         }
     }
