@@ -695,8 +695,8 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
 
                             auto result = unify_step(fcx,
                                                      bindings,
-                                                     expected_input.ty,
-                                                     actual_input.ty);
+                                                     actual_input.ty,
+                                                     expected_input.ty);
 
                             alt (result) {
                                 case (ures_ok(?rty)) {
