@@ -935,6 +935,37 @@ impure fn trans_exprs(@block_ctxt cx, &vec[@ast.expr] es)
     ret tup(bcx, vs);
 }
 
+impure fn trans_cast(@block_ctxt cx, &ast.expr e, &ast.ann ann) -> result {
+    auto e_res = trans_expr(cx, e);
+    auto llsrctype = val_ty(e_res.val);
+    auto t = node_ann_type(cx.fcx.ccx, ann);
+    auto lldsttype = type_of(cx.fcx.ccx, t);
+    if (!typeck.type_is_fp(t)) {
+        if (llvm.LLVMGetIntTypeWidth(lldsttype) >
+            llvm.LLVMGetIntTypeWidth(llsrctype)) {
+            if (typeck.type_is_signed(t)) {
+                // Widening signed cast.
+                e_res.val =
+                    e_res.bcx.build.SExtOrBitCast(e_res.val,
+                                                  lldsttype);
+            } else {
+                // Widening unsigned cast.
+                e_res.val =
+                    e_res.bcx.build.ZExtOrBitCast(e_res.val,
+                                                  lldsttype);
+            }
+        } else {
+            // Narrowing cast.
+            e_res.val =
+                e_res.bcx.build.TruncOrBitCast(e_res.val,
+                                               lldsttype);
+        }
+    } else {
+        cx.fcx.ccx.sess.unimpl("fp cast");
+    }
+    ret e_res;
+}
+
 impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
     alt (e.node) {
         case (ast.expr_lit(?lit, _)) {
@@ -1002,34 +1033,7 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
         }
 
         case (ast.expr_cast(?e, _, ?ann)) {
-            auto e_res = trans_expr(cx, *e);
-            auto llsrctype = val_ty(e_res.val);
-            auto t = node_ann_type(cx.fcx.ccx, ann);
-            auto lldsttype = type_of(cx.fcx.ccx, t);
-            if (!typeck.type_is_fp(t)) {
-                if (llvm.LLVMGetIntTypeWidth(lldsttype) >
-                    llvm.LLVMGetIntTypeWidth(llsrctype)) {
-                    if (typeck.type_is_signed(t)) {
-                        // Widening signed cast.
-                        e_res.val =
-                            e_res.bcx.build.SExtOrBitCast(e_res.val,
-                                                          lldsttype);
-                    } else {
-                        // Widening unsigned cast.
-                        e_res.val =
-                            e_res.bcx.build.ZExtOrBitCast(e_res.val,
-                                                          lldsttype);
-                    }
-                } else {
-                    // Narrowing cast.
-                    e_res.val =
-                        e_res.bcx.build.TruncOrBitCast(e_res.val,
-                                                       lldsttype);
-                }
-            } else {
-                cx.fcx.ccx.sess.unimpl("fp cast");
-            }
-            ret e_res;
+            ret trans_cast(cx, *e, ann);
         }
     }
     cx.fcx.ccx.sess.unimpl("expr variant in trans_expr");
