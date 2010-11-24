@@ -41,12 +41,10 @@ type block_ = rec(vec[@stmt] stmts,
 
 type pat = spanned[pat_];
 tag pat_ {
-    pat_wild;
-    pat_bind(ident);
-    pat_tag(ident, vec[@pat]);
+    pat_wild(ann);
+    pat_bind(ident, ann);
+    pat_tag(ident, vec[@pat], ann);
 }
-
-type arm = rec(@pat pat, block block);
 
 tag binop {
     add;
@@ -99,6 +97,8 @@ tag decl_ {
     decl_local(@local);
     decl_item(@item);
 }
+
+type arm = rec(@pat pat, block block);
 
 type expr = spanned[expr_];
 tag expr_ {

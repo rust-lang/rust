@@ -815,13 +815,19 @@ impure fn parse_initializer(parser p) -> option.t[@ast.expr] {
 impure fn parse_pat(parser p) -> @ast.pat {
     auto lo = p.get_span();
 
-    auto pat = ast.pat_wild;    // FIXME: typestate bug
+    auto pat = ast.pat_wild(ast.ann_none);  // FIXME: typestate bug
     alt (p.peek()) {
-        case (token.UNDERSCORE) { p.bump(); pat = ast.pat_wild; }
+        case (token.UNDERSCORE) {
+            p.bump();
+            pat = ast.pat_wild(ast.ann_none);
+        }
         case (token.QUES) {
             p.bump();
             alt (p.peek()) {
-                case (token.IDENT(?id)) { p.bump(); pat = ast.pat_bind(id); }
+                case (token.IDENT(?id)) {
+                    p.bump();
+                    pat = ast.pat_bind(id, ast.ann_none);
+                }
                 case (?tok) {
                     p.err("expected identifier after '?' in pattern but " +
                           "found " + token.to_str(tok));
@@ -842,7 +848,7 @@ impure fn parse_pat(parser p) -> @ast.pat {
                 case (_) { args = vec(); }
             }
 
-            pat = ast.pat_tag(id, args);
+            pat = ast.pat_tag(id, args, ast.ann_none);
         }
         case (?tok) {
             p.err("expected pattern but found " + token.to_str(tok));

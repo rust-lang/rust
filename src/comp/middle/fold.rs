@@ -19,7 +19,9 @@ import front.ast.stmt;
 import front.ast.block;
 import front.ast.item;
 import front.ast.arg;
+import front.ast.pat;
 import front.ast.decl;
+import front.ast.arm;
 import front.ast.def;
 import front.ast.def_id;
 import front.ast.ann;
@@ -95,6 +97,10 @@ type ast_fold[ENV] =
          ann a) -> @expr)                         fold_expr_do_while,
 
      (fn(&ENV e, &span sp,
+         @expr e, vec[arm] arms,
+         ann a) -> @expr)                         fold_expr_alt,
+
+     (fn(&ENV e, &span sp,
          &block blk, ann a) -> @expr)             fold_expr_block,
 
      (fn(&ENV e, &span sp,
@@ -120,6 +126,18 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &span sp,
          @item item) -> @decl)                    fold_decl_item,
+
+
+     // Pat folds.
+     (fn(&ENV e, &span sp,
+         ann a) -> @pat)                          fold_pat_wild,
+
+     (fn(&ENV e, &span sp,
+         ident i, ann a) -> @pat)                 fold_pat_bind,
+
+     (fn(&ENV e, &span sp,
+         ident i, vec[@pat] args,
+         ann a) -> @pat)                          fold_pat_tag,
 
 
      // Stmt folds.
@@ -170,6 +188,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, &block b) -> ENV) update_env_for_block,
      (fn(&ENV e, @stmt s) -> ENV) update_env_for_stmt,
      (fn(&ENV e, @decl i) -> ENV) update_env_for_decl,
+     (fn(&ENV e, @pat p) -> ENV) update_env_for_pat,
      (fn(&ENV e, @expr x) -> ENV) update_env_for_expr,
      (fn(&ENV e, @ty t) -> ENV) update_env_for_ty,
 
@@ -275,6 +294,28 @@ fn fold_decl[ENV](&ENV env, ast_fold[ENV] fld, @decl d) -> @decl {
     fail;
 }
 
+fn fold_pat[ENV](&ENV env, ast_fold[ENV] fld, @ast.pat p) -> @ast.pat {
+    let ENV env_ = fld.update_env_for_pat(env, p);
+
+    if (!fld.keep_going(env_)) {
+        ret p;
+    }
+
+    alt (p.node) {
+        case (ast.pat_wild(?t)) { ret fld.fold_pat_wild(env_, p.span, t); }
+        case (ast.pat_bind(?id, ?t)) {
+            ret fld.fold_pat_bind(env_, p.span, id, t);
+        }
+        case (ast.pat_tag(?id, ?pats, ?t)) {
+            let vec[@ast.pat] ppats = vec();
+            for (@ast.pat pat in pats) {
+                ppats += vec(fold_pat(env_, fld, pat));
+            }
+            ret fld.fold_pat_tag(env_, p.span, id, ppats, t);
+        }
+    }
+}
+
 fn fold_exprs[ENV](&ENV env, ast_fold[ENV] fld, vec[@expr] es) -> vec[@expr] {
     let vec[@expr] exprs = vec();
     for (@expr e in es) {
@@ -366,6 +407,17 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
             auto bbody = fold_block(env_, fld, body);
             auto ccnd = fold_expr(env_, fld, cnd);
             ret fld.fold_expr_do_while(env_, e.span, bbody, ccnd, t);
+        }
+
+        case (ast.expr_alt(?expr, ?arms, ?t)) {
+            auto eexpr = fold_expr(env_, fld, expr);
+            let vec[ast.arm] aarms = vec();
+            for (ast.arm arm in arms) {
+                auto ppat = fold_pat(env_, fld, arm.pat);
+                auto bblock = fold_block(env_, fld, arm.block);
+                aarms += vec(rec(pat=ppat, block=bblock));
+            }
+            ret fld.fold_expr_alt(env_, e.span, eexpr, aarms, t);
         }
 
         case (ast.expr_block(?b, ?t)) {
@@ -658,6 +710,11 @@ fn identity_fold_expr_do_while[ENV](&ENV env, &span sp,
     ret @respan(sp, ast.expr_do_while(body, cond, a));
 }
 
+fn identity_fold_expr_alt[ENV](&ENV env, &span sp,
+                               @expr e, vec[arm] arms, ann a) -> @expr {
+    ret @respan(sp, ast.expr_alt(e, arms, a));
+}
+
 fn identity_fold_expr_block[ENV](&ENV env, &span sp, &block blk,
                                  ann a) -> @expr {
     ret @respan(sp, ast.expr_block(blk, a));
@@ -695,6 +752,22 @@ fn identity_fold_decl_local[ENV](&ENV e, &span sp,
 
 fn identity_fold_decl_item[ENV](&ENV e, &span sp, @item i) -> @decl {
     ret @respan(sp, ast.decl_item(i));
+}
+
+
+// Pat identities.
+
+fn identity_fold_pat_wild[ENV](&ENV e, &span sp, ann a) -> @pat {
+    ret @respan(sp, ast.pat_wild(a));
+}
+
+fn identity_fold_pat_bind[ENV](&ENV e, &span sp, ident i, ann a) -> @pat {
+    ret @respan(sp, ast.pat_bind(i, a));
+}
+
+fn identity_fold_pat_tag[ENV](&ENV e, &span sp, ident i, vec[@pat] args,
+                              ann a) -> @pat {
+    ret @respan(sp, ast.pat_tag(i, args, a));
 }
 
 
@@ -790,6 +863,10 @@ fn identity_update_env_for_decl[ENV](&ENV e, @decl d) -> ENV {
     ret e;
 }
 
+fn identity_update_env_for_pat[ENV](&ENV e, @pat p) -> ENV {
+    ret e;
+}
+
 fn identity_update_env_for_expr[ENV](&ENV e, @expr x) -> ENV {
     ret e;
 }
@@ -835,6 +912,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_while  = bind identity_fold_expr_while[ENV](_,_,_,_,_),
          fold_expr_do_while
                           = bind identity_fold_expr_do_while[ENV](_,_,_,_,_),
+         fold_expr_alt    = bind identity_fold_expr_alt[ENV](_,_,_,_,_),
          fold_expr_block  = bind identity_fold_expr_block[ENV](_,_,_,_),
          fold_expr_assign = bind identity_fold_expr_assign[ENV](_,_,_,_,_),
          fold_expr_field  = bind identity_fold_expr_field[ENV](_,_,_,_,_),
@@ -843,6 +921,10 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
 
          fold_decl_local  = bind identity_fold_decl_local[ENV](_,_,_),
          fold_decl_item   = bind identity_fold_decl_item[ENV](_,_,_),
+
+         fold_pat_wild    = bind identity_fold_pat_wild[ENV](_,_,_),
+         fold_pat_bind    = bind identity_fold_pat_bind[ENV](_,_,_,_),
+         fold_pat_tag     = bind identity_fold_pat_tag[ENV](_,_,_,_,_),
 
          fold_stmt_decl   = bind identity_fold_stmt_decl[ENV](_,_,_),
          fold_stmt_ret    = bind identity_fold_stmt_ret[ENV](_,_,_),
@@ -866,6 +948,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          update_env_for_block = bind identity_update_env_for_block[ENV](_,_),
          update_env_for_stmt = bind identity_update_env_for_stmt[ENV](_,_),
          update_env_for_decl = bind identity_update_env_for_decl[ENV](_,_),
+         update_env_for_pat = bind identity_update_env_for_pat[ENV](_,_),
          update_env_for_expr = bind identity_update_env_for_expr[ENV](_,_),
          update_env_for_ty = bind identity_update_env_for_ty[ENV](_,_),
 
