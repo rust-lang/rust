@@ -966,6 +966,17 @@ impure fn trans_cast(@block_ctxt cx, &ast.expr e, &ast.ann ann) -> result {
     ret e_res;
 }
 
+impure fn trans_call(@block_ctxt cx, &ast.expr f,
+                     vec[@ast.expr] args) -> result {
+    auto f_res = trans_lval(cx, f);
+    check (! f_res._1);
+    auto args_res = trans_exprs(f_res._0.bcx, args);
+    auto llargs = vec(cx.fcx.lltaskptr);
+    llargs += args_res._1;
+    ret res(args_res._0,
+            args_res._0.build.FastCall(f_res._0.val, llargs));
+}
+
 impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
     alt (e.node) {
         case (ast.expr_lit(?lit, _)) {
@@ -1022,14 +1033,7 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
         }
 
         case (ast.expr_call(?f, ?args, _)) {
-            auto f_res = trans_lval(cx, *f);
-            check (! f_res._1);
-
-            auto args_res = trans_exprs(f_res._0.bcx, args);
-            auto llargs = vec(cx.fcx.lltaskptr);
-            llargs += args_res._1;
-            ret res(args_res._0,
-                    args_res._0.build.FastCall(f_res._0.val, llargs));
+            ret trans_call(cx, *f, args);
         }
 
         case (ast.expr_cast(?e, _, ?ann)) {
