@@ -153,11 +153,14 @@ type _fn = rec(vec[arg] inputs,
 type _mod = rec(vec[@item] items,
                 hashmap[ident,uint] index);
 
+type variant = rec(str name, vec[@ty] args);
+
 type item = spanned[item_];
 tag item_ {
     item_fn(ident, _fn, def_id, ann);
     item_mod(ident, _mod, def_id);
     item_ty(ident, @ty, def_id, ann);
+    item_tag(ident, vec[variant], def_id);
 }
 
 

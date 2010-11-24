@@ -148,6 +148,10 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp, ident ident,
          @ty t, def_id id, ann a) -> @item)       fold_item_ty,
 
+     (fn(&ENV e, &span sp, ident ident,
+         vec[ast.variant] variants,
+         def_id id) -> @item)                     fold_item_tag,
+
      // Additional nodes.
      (fn(&ENV e, &span sp,
          &ast.block_) -> block)                   fold_block,
@@ -495,6 +499,18 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
             let @ast.ty ty_ = fold_ty[ENV](env_, fld, ty);
             ret fld.fold_item_ty(env_, i.span, ident, ty_, id, ann);
         }
+
+        case (ast.item_tag(?ident, ?variants, ?id)) {
+            let vec[ast.variant] new_variants = vec();
+            for (ast.variant v in variants) {
+                let vec[@ast.ty] new_args = vec();
+                for (@ast.ty t in v.args) {
+                    new_args += vec(fold_ty[ENV](env_, fld, t));
+                }
+                new_variants += rec(name=v.name, args=new_args);
+            }
+            ret fld.fold_item_tag(env_, i.span, ident, new_variants, id);
+        }
     }
 
     fail;
@@ -723,6 +739,12 @@ fn identity_fold_item_ty[ENV](&ENV e, &span sp, ident i,
     ret @respan(sp, ast.item_ty(i, t, id, a));
 }
 
+fn identity_fold_item_tag[ENV](&ENV e, &span sp, ident i,
+                               vec[ast.variant] variants,
+                               def_id id) -> @item {
+    ret @respan(sp, ast.item_tag(i, variants, id));
+}
+
 
 // Additional identities.
 
@@ -832,6 +854,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_item_fn   = bind identity_fold_item_fn[ENV](_,_,_,_,_,_),
          fold_item_mod  = bind identity_fold_item_mod[ENV](_,_,_,_,_),
          fold_item_ty   = bind identity_fold_item_ty[ENV](_,_,_,_,_,_),
+         fold_item_tag  = bind identity_fold_item_tag[ENV](_,_,_,_,_),
 
          fold_block = bind identity_fold_block[ENV](_,_,_),
          fold_fn = bind identity_fold_fn[ENV](_,_,_,_),

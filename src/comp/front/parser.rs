@@ -1019,6 +1019,52 @@ impure fn parse_item_type(parser p) -> tup(ast.ident, @ast.item) {
     ret tup(id, @spanned(lo, hi, item));
 }
 
+impure fn parse_item_tag(parser p) -> tup(ast.ident, @ast.item) {
+    auto lo = p.get_span();
+    expect(p, token.TAG);
+    auto id = parse_ident(p);
+
+    let vec[ast.variant] variants = vec();
+    expect(p, token.LBRACE);
+    while (p.peek() != token.RBRACE) {
+        auto tok = p.peek();
+        alt (tok) {
+            case (token.IDENT(?name)) {
+                p.bump();
+
+                auto args;
+                alt (p.peek()) {
+                    case (token.LPAREN) {
+                        auto f = parse_ty;
+                        auto tys = parse_seq[@ast.ty](token.LPAREN,
+                                                      token.RPAREN,
+                                                      some(token.COMMA),
+                                                      f, p);
+                        args = tys.node;
+                    }
+                    case (_) {
+                        args = vec();
+                    }
+                }
+
+                expect(p, token.SEMI);
+
+                variants += vec(rec(name=name, args=args));
+            }
+            case (token.RBRACE) { /* empty */ }
+            case (_) {
+                p.err("expected name of variant or '}' but found " +
+                      token.to_str(tok));
+            }
+        }
+    }
+    p.bump();
+
+    auto hi = p.get_span();
+    auto item = ast.item_tag(id, variants, p.next_def_id());
+    ret tup(id, @spanned(lo, hi, item));
+}
+
 impure fn parse_item(parser p) -> tup(ast.ident, @ast.item) {
     alt (p.peek()) {
         case (token.FN) {
@@ -1029,6 +1075,9 @@ impure fn parse_item(parser p) -> tup(ast.ident, @ast.item) {
         }
         case (token.TYPE) {
             ret parse_item_type(p);
+        }
+        case (token.TAG) {
+            ret parse_item_tag(p);
         }
         case (?t) {
             p.err("expected item but found " + token.to_str(t));
