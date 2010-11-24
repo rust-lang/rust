@@ -1073,6 +1073,27 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                     ast.ann_type(elsopt_t)));
         }
 
+        case (ast.expr_while(?cond, ?body, _)) {
+            auto cond_0 = check_expr(fcx, cond);
+            auto cond_1 = demand_expr(fcx, plain_ty(ty_bool), cond_0);
+            auto body_1 = check_block(fcx, body);
+
+            auto ann = ast.ann_type(plain_ty(ty_nil));
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_while(cond_1, body_1, ann));
+        }
+
+        case (ast.expr_do_while(?body, ?cond, _)) {
+            auto cond_0 = check_expr(fcx, cond);
+            auto cond_1 = demand_expr(fcx, plain_ty(ty_bool), cond_0);
+            auto body_1 = check_block(fcx, body);
+
+            auto ann = ast.ann_type(block_ty(body_1));
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_do_while(body_1, cond_1,
+                                                          ann));
+        }
+
         case (ast.expr_call(?f, ?args, _)) {
             // Check the function.
             auto f_0 = check_expr(fcx, f);

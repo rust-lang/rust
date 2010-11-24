@@ -1,6 +1,7 @@
 // -*- rust -*-
 
 type t = int;
+fn nothing() {}
 fn putstr(str s) {}
 fn putint(int i) {
   let int i = 33;
@@ -15,7 +16,7 @@ fn foo(int x) -> int {
   while (y < 10) {
     putint(y);
     if (y * 3 == 4) {
-      y = y + 2;
+      y = y + 2; nothing();
     }
   }
   let t z;
