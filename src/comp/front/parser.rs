@@ -745,6 +745,38 @@ impure fn parse_do_while_expr(parser p) -> @ast.expr {
     ret @spanned(lo, hi, ast.expr_do_while(body, cond, ast.ann_none));
 }
 
+impure fn parse_alt_expr(parser p) -> @ast.expr {
+    auto lo = p.get_span();
+    expect(p, token.ALT);
+    expect(p, token.LPAREN);
+    auto discriminant = parse_expr(p);
+    expect(p, token.RPAREN);
+    expect(p, token.LBRACE);
+
+    let vec[ast.arm] arms = vec();
+    while (p.peek() != token.RBRACE) {
+        alt (p.peek()) {
+            case (token.CASE) {
+                p.bump();
+                expect(p, token.LPAREN);
+                auto pat = parse_pat(p);
+                expect(p, token.RPAREN);
+                auto block = parse_block(p);
+                arms += vec(rec(pat=pat, block=block));
+            }
+            case (token.RBRACE) { /* empty */ }
+            case (?tok) {
+                p.err("expected 'case' or '}' when parsing 'alt' statement " +
+                      "but found " + token.to_str(tok));
+            }
+        }
+    }
+
+    auto expr = ast.expr_alt(discriminant, arms, ast.ann_none);
+    auto hi = p.get_span();
+    ret @spanned(lo, hi, expr);
+}
+
 impure fn parse_expr(parser p) -> @ast.expr {
     alt (p.peek()) {
         case (token.LBRACE) {
@@ -761,6 +793,9 @@ impure fn parse_expr(parser p) -> @ast.expr {
         case (token.DO) {
             ret parse_do_while_expr(p);
         }
+        case (token.ALT) {
+            ret parse_alt_expr(p);
+        }
         case (_) {
             ret parse_assign_expr(p);
         }
@@ -775,6 +810,48 @@ impure fn parse_initializer(parser p) -> option.t[@ast.expr] {
     }
 
     ret none[@ast.expr];
+}
+
+impure fn parse_pat(parser p) -> @ast.pat {
+    auto lo = p.get_span();
+
+    auto pat = ast.pat_wild;    // FIXME: typestate bug
+    alt (p.peek()) {
+        case (token.UNDERSCORE) { p.bump(); pat = ast.pat_wild; }
+        case (token.QUES) {
+            p.bump();
+            alt (p.peek()) {
+                case (token.IDENT(?id)) { p.bump(); pat = ast.pat_bind(id); }
+                case (?tok) {
+                    p.err("expected identifier after '?' in pattern but " +
+                          "found " + token.to_str(tok));
+                    fail;
+                }
+            }
+        }
+        case (token.IDENT(?id)) {
+            p.bump();
+
+            let vec[@ast.pat] args;
+            alt (p.peek()) {
+                case (token.LPAREN) {
+                    auto f = parse_pat;
+                    args = parse_seq[@ast.pat](token.LPAREN, token.RPAREN,
+                                               some(token.COMMA), f, p).node;
+                }
+                case (_) { args = vec(); }
+            }
+
+            pat = ast.pat_tag(id, args);
+        }
+        case (?tok) {
+            p.err("expected pattern but found " + token.to_str(tok));
+            fail;
+        }
+    }
+
+    auto hi = p.get_span();
+    ret @spanned(lo, hi, pat);
 }
 
 impure fn parse_let(parser p) -> @ast.decl {

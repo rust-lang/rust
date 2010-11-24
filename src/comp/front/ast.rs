@@ -39,6 +39,15 @@ type block = spanned[block_];
 type block_ = rec(vec[@stmt] stmts,
                   hashmap[ident,uint] index);
 
+type pat = spanned[pat_];
+tag pat_ {
+    pat_wild;
+    pat_bind(ident);
+    pat_tag(ident, vec[@pat]);
+}
+
+type arm = rec(@pat pat, block block);
+
 tag binop {
     add;
     sub;
@@ -104,6 +113,7 @@ tag expr_ {
     expr_if(@expr, block, option.t[block], ann);
     expr_while(@expr, block, ann);
     expr_do_while(block, @expr, ann);
+    expr_alt(@expr, vec[arm], ann);
     expr_block(block, ann);
     expr_assign(@expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_field(@expr, ident, ann);
