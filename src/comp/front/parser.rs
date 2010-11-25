@@ -1039,10 +1039,15 @@ impure fn parse_block(parser p) -> ast.block {
     ret spanned(stmts.span, stmts.span, b);
 }
 
+impure fn parse_ty_param(parser p) -> ast.ty_param {
+    auto ident = parse_ident(p);
+    ret rec(ident=ident, id=p.next_def_id());
+}
+
 impure fn parse_ty_params(parser p) -> vec[ast.ty_param] {
     let vec[ast.ty_param] ty_params = vec();
     if (p.peek() == token.LBRACKET) {
-        auto f = parse_ident;   // FIXME: pass as lval directly
+        auto f = parse_ty_param;   // FIXME: pass as lval directly
         ty_params = parse_seq[ast.ty_param](token.LBRACKET, token.RBRACKET,
                                             some(token.COMMA), f, p).node;
     }

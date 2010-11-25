@@ -7,7 +7,6 @@ import util.common.spanned;
 import util.common.ty_mach;
 
 type ident = str;
-type ty_param = ident;
 
 type name_ = rec(ident ident, vec[@ty] types);
 type name = spanned[name_];
@@ -16,6 +15,8 @@ type path = vec[name];
 type crate_num = int;
 type def_num = int;
 type def_id = tup(crate_num, def_num);
+
+type ty_param = rec(ident ident, def_id id);
 
 // Annotations added during successive passes.
 tag ann {
