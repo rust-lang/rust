@@ -1141,6 +1141,24 @@ impure fn trans_call(@block_ctxt cx, &ast.expr f,
             args_res._0.build.FastCall(f_res._0.val, llargs));
 }
 
+impure fn trans_tup(@block_ctxt cx, vec[tup(bool, @ast.expr)] args,
+                    &ast.ann ann) -> result {
+    auto ty = node_type(cx.fcx.ccx, ann);
+    auto tup_val = cx.build.Alloca(ty);
+    let int i = 0;
+    auto r = res(cx, C_nil());
+    for (tup(bool, @ast.expr) arg in args) {
+        auto t = typeck.expr_ty(arg._1);
+        auto src_res = trans_expr(r.bcx, *arg._1);
+        auto dst_elt = r.bcx.build.GEP(tup_val, vec(C_int(0), C_int(i)));
+        // FIXME: calculate copy init-ness in typestate.
+        r = copy_ty(src_res.bcx, true, dst_elt, src_res.val, t);
+        i += 1;
+    }
+    ret res(r.bcx, tup_val);
+}
+
+
 impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
     alt (e.node) {
         case (ast.expr_lit(?lit, _)) {
@@ -1192,6 +1210,7 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
             check (lhs_res._1);
             auto rhs_res = trans_expr(lhs_res._0.bcx, *src);
             auto t = node_ann_type(cx.fcx.ccx, ann);
+            // FIXME: calculate copy init-ness in typestate.
             ret copy_ty(rhs_res.bcx, true, lhs_res._0.val, rhs_res.val, t);
         }
 
@@ -1201,6 +1220,10 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
 
         case (ast.expr_cast(?e, _, ?ann)) {
             ret trans_cast(cx, *e, ann);
+        }
+
+        case (ast.expr_tup(?args, ?ann)) {
+            ret trans_tup(cx, args, ann);
         }
     }
     cx.fcx.ccx.sess.unimpl("expr variant in trans_expr");
