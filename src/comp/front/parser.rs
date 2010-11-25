@@ -771,6 +771,7 @@ impure fn parse_alt_expr(parser p) -> @ast.expr {
             }
         }
     }
+    p.bump();
 
     auto expr = ast.expr_alt(discriminant, arms, ast.ann_none);
     auto hi = p.get_span();
@@ -970,6 +971,11 @@ impure fn parse_stmt(parser p) -> @ast.stmt {
         }
 
         case (token.DO) {
+            auto e = parse_expr(p);
+            ret @spanned(lo, e.span, ast.stmt_expr(e));
+        }
+
+        case (token.ALT) {
             auto e = parse_expr(p);
             ret @spanned(lo, e.span, ast.stmt_expr(e));
         }
