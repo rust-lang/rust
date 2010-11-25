@@ -1200,6 +1200,21 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                       ast.ann_type(t_1)));
         }
 
+        case (ast.expr_tup(?args, _)) {
+            let vec[tup(bool, @ast.expr)] args_1 = vec();
+            let vec[tup(bool, @ty)] args_t = vec();
+
+            for (tup(bool, @ast.expr) arg in args) {
+                auto expr_1 = check_expr(fcx, arg._1);
+                args_1 += tup(arg._0, expr_1);
+                args_t += tup(arg._0, expr_ty(expr_1));
+            }
+
+            auto ann = ast.ann_type(plain_ty(ty_tup(args_t)));
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_tup(args_1, ann));
+        }
+
         case (_) {
             // TODO
             ret expr;
