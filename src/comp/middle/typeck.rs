@@ -412,6 +412,37 @@ fn mode_is_alias(ast.mode m) -> bool {
     }
 }
 
+fn type_is_nil(@ty t) -> bool {
+    alt (t.struct) {
+        case (ty_nil) { ret true; }
+    }
+    ret false;
+}
+
+fn type_is_structural(@ty t) -> bool {
+    alt (t.struct) {
+        // FIXME: cover rec and tag when we support them.
+        case (ty_tup(_)) { ret true; }
+    }
+    ret false;
+}
+
+fn type_is_binding(@ty t) -> bool {
+    alt (t.struct) {
+        // FIXME: cover obj when we support it.
+        case (ty_fn(_,_)) { ret true; }
+    }
+    ret false;
+}
+
+fn type_is_boxed(@ty t) -> bool {
+    alt (t.struct) {
+        case (ty_str) { ret true; }
+        case (ty_vec(_)) { ret true; }
+    }
+    ret false;
+}
+
 fn type_is_scalar(@ty t) -> bool {
     alt (t.struct) {
         case (ty_bool) { ret true; }

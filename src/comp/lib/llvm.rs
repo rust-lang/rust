@@ -1019,6 +1019,16 @@ obj builder(BuilderRef B) {
         ret phi;
     }
 
+    fn AddIncomingToPhi(ValueRef phi,
+                        vec[ValueRef] vals,
+                        vec[BasicBlockRef] bbs) {
+        check (_vec.len[ValueRef](vals) == _vec.len[BasicBlockRef](bbs));
+        llvm.LLVMAddIncoming(phi,
+                             _vec.buf[ValueRef](vals),
+                             _vec.buf[BasicBlockRef](bbs),
+                             _vec.len[ValueRef](vals));
+    }
+
     fn Call(ValueRef Fn, vec[ValueRef] Args) -> ValueRef {
         ret llvm.LLVMBuildCall(B, Fn,
                                _vec.buf[ValueRef](Args),

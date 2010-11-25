@@ -479,38 +479,202 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
     ret res(next_cx, phi);
 }
 
-fn type_is_scalar(@ast.ty t) -> bool {
-    alt (t.node) {
-        case (ast.ty_nil) { ret true; }
-        case (ast.ty_bool) { ret true; }
-        case (ast.ty_int) { ret true; }
-        case (ast.ty_uint) { ret true; }
-        case (ast.ty_machine(_)) { ret true; }
-        case (ast.ty_char) { ret true; }
+type val_and_ty_fn =
+    fn(@block_ctxt cx, ValueRef v, @typeck.ty t) -> result;
+
+// Iterates through the elements of a tup, rec or tag.
+fn iter_structural_ty(@block_ctxt cx,
+                      ValueRef v,
+                      @typeck.ty t,
+                      val_and_ty_fn f)
+    -> result {
+    let result r = res(cx, C_nil());
+    alt (t.struct) {
+        case (typeck.ty_tup(?args)) {
+            let int i = 0;
+            for (tup(bool, @typeck.ty) arg in args) {
+                auto elt = r.bcx.build.GEP(v, vec(C_int(0), C_int(i)));
+                r = f(r.bcx, elt, arg._1);
+                i += 1;
+            }
+        }
+        // FIXME: handle records and tags when we support them.
     }
-    ret false;
+    ret r;
 }
 
-fn trans_copy_ty(@block_ctxt cx,
-                 bool is_init,
-                 ValueRef dst,
-                 ValueRef src,
-                 @ast.ty t) -> result {
-    if (type_is_scalar(t)) {
-        ret res(cx, cx.build.Store(src, dst));
+// Iterates through the elements of a vec or str.
+fn iter_sequence(@block_ctxt cx,
+                 ValueRef v,
+                 @typeck.ty ty,
+                 val_and_ty_fn f) -> result {
+
+    fn iter_sequence_body(@block_ctxt cx,
+                          ValueRef v,
+                          @typeck.ty elt_ty,
+                          val_and_ty_fn f,
+                          bool trailing_null) -> result {
+
+        auto p0 = cx.build.GEP(v, vec(C_int(0),
+                                      C_int(abi.vec_elt_data)));
+        auto lenptr = cx.build.GEP(v, vec(C_int(0),
+                                          C_int(abi.vec_elt_fill)));
+        auto len = cx.build.Load(lenptr);
+        if (trailing_null) {
+            len = cx.build.Sub(len, C_int(1));
+        }
+
+        auto r = res(cx, C_nil());
+
+        auto cond_cx = new_sub_block_ctxt(cx, "sequence-iter cond");
+        auto body_cx = new_sub_block_ctxt(cx, "sequence-iter body");
+        auto next_cx = new_sub_block_ctxt(cx, "next");
+
+        auto ix = cond_cx.build.Phi(T_int(), vec(C_int(0)), vec(cx.llbb));
+        auto end_test = cond_cx.build.ICmp(lib.llvm.LLVMIntEQ, ix, len);
+        cond_cx.build.CondBr(end_test, body_cx.llbb, next_cx.llbb);
+
+        auto elt = body_cx.build.GEP(p0, vec(ix));
+        auto body_res = f(body_cx, elt, elt_ty);
+        auto next_ix = body_res.bcx.build.Add(ix, C_int(1));
+        cond_cx.build.AddIncomingToPhi(ix, vec(next_ix),
+                                       vec(body_res.bcx.llbb));
+
+        body_res.bcx.build.Br(cond_cx.llbb);
+        ret res(next_cx, C_nil());
     }
 
-    alt (t.node) {
-        case (ast.ty_str) {
-            let result r = res(cx, C_nil());
-            if (is_init) {
-                r = trans_drop_str(cx, dst);
-            }
-            r = incr_refcnt(r.bcx, src);
-            ret res(r.bcx, r.bcx.build.Store(src, dst));
+    alt (ty.struct) {
+        case (typeck.ty_vec(?et)) {
+            ret iter_sequence_body(cx, v, et, f, false);
+        }
+        case (typeck.ty_str) {
+            auto et = typeck.plain_ty(typeck.ty_machine(common.ty_u8));
+            ret iter_sequence_body(cx, v, et, f, false);
         }
     }
-    cx.fcx.ccx.sess.unimpl("ty variant in trans_copy_ty");
+    cx.fcx.ccx.sess.bug("bad type in trans.iter_sequence");
+    fail;
+}
+
+fn incr_all_refcnts(@block_ctxt cx,
+                    ValueRef v,
+                    @typeck.ty t) -> result {
+
+    if (typeck.type_is_boxed(t)) {
+        ret incr_refcnt(cx, v);
+
+    } else if (typeck.type_is_binding(t)) {
+        cx.fcx.ccx.sess.unimpl("binding type in trans.incr_all_refcnts");
+
+    } else if (typeck.type_is_structural(t)) {
+        ret iter_structural_ty(cx, v, t,
+                               bind incr_all_refcnts(_, _, _));
+    }
+}
+
+fn drop_ty(@block_ctxt cx,
+           ValueRef v,
+           @typeck.ty t) -> result {
+
+    alt (t.struct) {
+        case (typeck.ty_str) {
+            ret decr_refcnt_and_if_zero(cx, v,
+                                        bind trans_non_gc_free(_, v),
+                                        "free string",
+                                        T_int(), C_int(0));
+        }
+
+        case (typeck.ty_vec(_)) {
+            fn hit_zero(@block_ctxt cx, ValueRef v,
+                        @typeck.ty t) -> result {
+                auto res = iter_sequence(cx, v, t, bind drop_ty(_,_,_));
+                // FIXME: switch gc/non-gc on stratum of the type.
+                ret trans_non_gc_free(res.bcx, v);
+            }
+            ret decr_refcnt_and_if_zero(cx, v,
+                                        bind hit_zero(_, v, t),
+                                        "free vector",
+                                        T_int(), C_int(0));
+        }
+
+        case (typeck.ty_box(_)) {
+            fn hit_zero(@block_ctxt cx, ValueRef v,
+                        @typeck.ty elt_ty) -> result {
+                auto res = drop_ty(cx,
+                                   cx.build.GEP(v, vec(C_int(0))),
+                                   elt_ty);
+                // FIXME: switch gc/non-gc on stratum of the type.
+                ret trans_non_gc_free(res.bcx, v);
+            }
+            ret incr_refcnt(cx, v);
+        }
+
+        case (_) {
+            if (typeck.type_is_structural(t)) {
+                ret iter_structural_ty(cx, v, t,
+                                       bind drop_ty(_, _, _));
+
+            } else if (typeck.type_is_binding(t)) {
+                cx.fcx.ccx.sess.unimpl("binding type in trans.drop_ty");
+
+            } else if (typeck.type_is_scalar(t) ||
+                       typeck.type_is_nil(t)) {
+                ret res(cx, C_nil());
+            }
+        }
+    }
+    cx.fcx.ccx.sess.bug("bad type in trans.drop_ty");
+    fail;
+}
+
+fn build_memcpy(@block_ctxt cx,
+                ValueRef dst,
+                ValueRef src,
+                TypeRef llty) -> result {
+    auto memcpy = cx.fcx.ccx.fn_names.get("llvm.memcpy");
+    auto src_ptr = cx.build.PointerCast(src, T_ptr(T_i8()));
+    auto dst_ptr = cx.build.PointerCast(dst, T_ptr(T_i8()));
+    auto size = lib.llvm.llvm.LLVMSizeOf(llty);
+    auto align = lib.llvm.llvm.LLVMAlignOf(llty);
+    auto volatile = C_integral(0, T_i1());
+    ret res(cx, cx.build.Call(memcpy,
+                              vec(dst_ptr, src_ptr,
+                                  size, align, volatile)));
+}
+
+fn copy_ty(@block_ctxt cx,
+           bool is_init,
+           ValueRef dst,
+           ValueRef src,
+           @typeck.ty t) -> result {
+    if (typeck.type_is_scalar(t)) {
+        ret res(cx, cx.build.Store(src, dst));
+
+    } else if (typeck.type_is_nil(t)) {
+        ret res(cx, C_nil());
+
+    } else if (typeck.type_is_binding(t)) {
+        cx.fcx.ccx.sess.unimpl("binding type in trans.copy_ty");
+
+    } else if (typeck.type_is_boxed(t)) {
+        auto r = incr_refcnt(cx, src);
+        if (! is_init) {
+            r = drop_ty(r.bcx, dst, t);
+        }
+        ret res(r.bcx, r.bcx.build.Store(src, dst));
+
+    } else if (typeck.type_is_structural(t)) {
+        auto r = incr_all_refcnts(cx, src, t);
+        if (! is_init) {
+            r = drop_ty(r.bcx, dst, t);
+        }
+        auto llty = type_of(cx.fcx.ccx, t);
+        r = build_memcpy(r.bcx, dst, src, llty);
+    }
+
+    cx.fcx.ccx.sess.bug("unexpected type in trans.copy_ty: " +
+                        typeck.ty_to_str(t));
     fail;
 }
 
@@ -1023,13 +1187,12 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
             }
         }
 
-        case (ast.expr_assign(?dst, ?src, _)) {
+        case (ast.expr_assign(?dst, ?src, ?ann)) {
             auto lhs_res = trans_lval(cx, *dst);
             check (lhs_res._1);
             auto rhs_res = trans_expr(lhs_res._0.bcx, *src);
-            // FIXME: call trans_copy_ty once we have a ty here.
-            ret res(rhs_res.bcx,
-                    rhs_res.bcx.build.Store(rhs_res.val, lhs_res._0.val));
+            auto t = node_ann_type(cx.fcx.ccx, ann);
+            ret copy_ty(rhs_res.bcx, true, lhs_res._0.val, rhs_res.val, t);
         }
 
         case (ast.expr_call(?f, ?args, _)) {
@@ -1451,7 +1614,12 @@ fn trans_main_fn(@crate_ctxt cx, ValueRef llcrate) {
 
 fn declare_intrinsics(ModuleRef llmod) {
     let vec[TypeRef] T_trap_args = vec();
+    // FIXME: switch this to 64-bit memcpy when targeting a 64-bit system.
+    let vec[TypeRef] T_memcpy_args = vec(T_ptr(T_i8()),
+                                         T_ptr(T_i8()),
+                                         T_i32(), T_i32(), T_i1());
     decl_cdecl_fn(llmod, "llvm.trap", T_fn(T_trap_args, T_void()));
+    decl_cdecl_fn(llmod, "llvm.memcpy", T_fn(T_memcpy_args, T_void()));
 }
 
 fn trans_crate(session.session sess, @ast.crate crate, str output) {
