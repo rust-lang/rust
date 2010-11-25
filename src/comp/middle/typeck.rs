@@ -310,7 +310,9 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
                            @ty_table item_to_ty,
                            @ast.item it) -> @ty {
         alt (it.node) {
-            case (ast.item_fn(?ident, ?fn_info, ?def_id, _)) {
+            case (ast.item_fn(?ident, ?fn_info, _, ?def_id, _)) {
+                // TODO: handle ty-params
+
                 auto f = bind trans_fn_arg_to_ty(id_to_ty_item, item_to_ty,
                                                  _);
                 auto input_tys = _vec.map[ast.arg,arg](f, fn_info.inputs);
@@ -362,9 +364,12 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
     for (@ast.item it in module.items) {
         let ast.item_ result;
         alt (it.node) {
-            case (ast.item_fn(?ident, ?fn_info, ?def_id, _)) {
+            case (ast.item_fn(?ident, ?fn_info, ?tps, ?def_id, _)) {
+                // TODO: type-params
+
                 auto t = trans_ty_item_to_ty(id_to_ty_item, item_to_ty, it);
-                result = ast.item_fn(ident, fn_info, def_id, ast.ann_type(t));
+                result = ast.item_fn(ident, fn_info, tps, def_id,
+                                     ast.ann_type(t));
             }
             case (ast.item_ty(?ident, ?referent_ty, ?def_id, _)) {
                 auto t = trans_ty_item_to_ty(id_to_ty_item, item_to_ty, it);
@@ -1274,7 +1279,8 @@ fn check_block(&fn_ctxt fcx, &ast.block block) -> ast.block {
 }
 
 fn check_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
-            ast.def_id id, ast.ann ann) -> @ast.item {
+            vec[ast.ty_param] ty_params, ast.def_id id,
+            ast.ann ann) -> @ast.item {
     auto local_ty_table = @common.new_def_hash[@ty]();
 
     // Store the type of each argument in the table.
@@ -1296,7 +1302,8 @@ fn check_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
     auto block_t = check_block(fcx, f.body);
     auto block_wb = writeback(fcx, block_t);
     auto fn_t = rec(inputs=f.inputs, output=f.output, body=block_wb);
-    ret @fold.respan[ast.item_](sp, ast.item_fn(ident, fn_t, id, fn_ann));
+    auto item = ast.item_fn(ident, fn_t, ty_params, id, fn_ann);
+    ret @fold.respan[ast.item_](sp, item);
 }
 
 fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {

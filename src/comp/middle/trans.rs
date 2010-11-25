@@ -1295,7 +1295,7 @@ impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid) {
 
 impure fn trans_item(@crate_ctxt cx, &ast.item item) {
     alt (item.node) {
-        case (ast.item_fn(?name, ?f, ?fid, _)) {
+        case (ast.item_fn(?name, ?f, _, ?fid, _)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
             trans_fn(sub_cx, f, fid);
         }
@@ -1315,7 +1315,8 @@ impure fn trans_mod(@crate_ctxt cx, &ast._mod m) {
 
 fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
     alt (i.node) {
-        case (ast.item_fn(?name, ?f, ?fid, ?ann)) {
+        case (ast.item_fn(?name, ?f, _, ?fid, ?ann)) {
+            // TODO: type-params
             cx.items.insert(fid, i);
             auto llty = node_type(cx, ann);
             let str s = cx.names.next("_rust_fn") + "." + name;

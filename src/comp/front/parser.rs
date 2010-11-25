@@ -1020,7 +1020,7 @@ impure fn parse_block(parser p) -> ast.block {
                     }
                     case (ast.decl_item(?it)) {
                         alt (it.node) {
-                            case (ast.item_fn(?i, _, _, _)) {
+                            case (ast.item_fn(?i, _, _, _, _)) {
                                 index.insert(i, u-1u);
                             }
                             case (ast.item_mod(?i, _, _)) {
@@ -1043,6 +1043,14 @@ impure fn parse_item_fn(parser p) -> tup(ast.ident, @ast.item) {
     auto lo = p.get_span();
     expect(p, token.FN);
     auto id = parse_ident(p);
+
+    let vec[ast.ty_param] ty_params = vec();
+    if (p.peek() == token.LBRACKET) {
+        auto pg = parse_ident;  // FIXME: pass as lval directly
+        ty_params = parse_seq[ast.ty_param](token.LBRACKET, token.RBRACKET,
+                                            some(token.COMMA), pg, p).node;
+    }
+
     auto pf = parse_arg;
     let util.common.spanned[vec[ast.arg]] inputs =
         // FIXME: passing parse_arg as an lval doesn't work at the
@@ -1067,7 +1075,7 @@ impure fn parse_item_fn(parser p) -> tup(ast.ident, @ast.item) {
                         output = output,
                         body = body);
 
-    auto item = ast.item_fn(id, f, p.next_def_id(), ast.ann_none);
+    auto item = ast.item_fn(id, f, ty_params, p.next_def_id(), ast.ann_none);
     ret tup(id, @spanned(lo, body.span, item));
 }
 

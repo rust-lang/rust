@@ -7,6 +7,7 @@ import util.common.spanned;
 import util.common.ty_mach;
 
 type ident = str;
+type ty_param = ident;
 
 type name_ = rec(ident ident, vec[@ty] types);
 type name = spanned[name_];
@@ -167,7 +168,7 @@ type variant = rec(str name, vec[@ty] args);
 
 type item = spanned[item_];
 tag item_ {
-    item_fn(ident, _fn, def_id, ann);
+    item_fn(ident, _fn, vec[ty_param], def_id, ann);
     item_mod(ident, _mod, def_id);
     item_ty(ident, @ty, def_id, ann);
     item_tag(ident, vec[variant], def_id);
