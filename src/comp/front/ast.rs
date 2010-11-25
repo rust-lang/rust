@@ -171,7 +171,7 @@ tag item_ {
     item_fn(ident, _fn, vec[ty_param], def_id, ann);
     item_mod(ident, _mod, def_id);
     item_ty(ident, @ty, def_id, ann);
-    item_tag(ident, vec[variant], def_id);
+    item_tag(ident, vec[variant], vec[ty_param], def_id);
 }
 
 

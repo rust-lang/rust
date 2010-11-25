@@ -170,6 +170,7 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &span sp, ident ident,
          vec[ast.variant] variants,
+         vec[ast.ty_param] ty_params,
          def_id id) -> @item)                     fold_item_tag,
 
      // Additional nodes.
@@ -554,7 +555,7 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
             ret fld.fold_item_ty(env_, i.span, ident, ty_, id, ann);
         }
 
-        case (ast.item_tag(?ident, ?variants, ?id)) {
+        case (ast.item_tag(?ident, ?variants, ?ty_params, ?id)) {
             let vec[ast.variant] new_variants = vec();
             for (ast.variant v in variants) {
                 let vec[@ast.ty] new_args = vec();
@@ -563,7 +564,8 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
                 }
                 new_variants += rec(name=v.name, args=new_args);
             }
-            ret fld.fold_item_tag(env_, i.span, ident, new_variants, id);
+            ret fld.fold_item_tag(env_, i.span, ident, new_variants,
+                                  ty_params, id);
         }
     }
 
@@ -817,8 +819,9 @@ fn identity_fold_item_ty[ENV](&ENV e, &span sp, ident i,
 
 fn identity_fold_item_tag[ENV](&ENV e, &span sp, ident i,
                                vec[ast.variant] variants,
+                               vec[ast.ty_param] ty_params,
                                def_id id) -> @item {
-    ret @respan(sp, ast.item_tag(i, variants, id));
+    ret @respan(sp, ast.item_tag(i, variants, ty_params, id));
 }
 
 
@@ -939,7 +942,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_item_fn   = bind identity_fold_item_fn[ENV](_,_,_,_,_,_,_),
          fold_item_mod  = bind identity_fold_item_mod[ENV](_,_,_,_,_),
          fold_item_ty   = bind identity_fold_item_ty[ENV](_,_,_,_,_,_),
-         fold_item_tag  = bind identity_fold_item_tag[ENV](_,_,_,_,_),
+         fold_item_tag  = bind identity_fold_item_tag[ENV](_,_,_,_,_,_),
 
          fold_block = bind identity_fold_block[ENV](_,_,_),
          fold_fn = bind identity_fold_fn[ENV](_,_,_,_),

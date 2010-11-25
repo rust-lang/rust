@@ -1039,17 +1039,21 @@ impure fn parse_block(parser p) -> ast.block {
     ret spanned(stmts.span, stmts.span, b);
 }
 
+impure fn parse_ty_params(parser p) -> vec[ast.ty_param] {
+    let vec[ast.ty_param] ty_params = vec();
+    if (p.peek() == token.LBRACKET) {
+        auto f = parse_ident;   // FIXME: pass as lval directly
+        ty_params = parse_seq[ast.ty_param](token.LBRACKET, token.RBRACKET,
+                                            some(token.COMMA), f, p).node;
+    }
+    ret ty_params;
+}
+
 impure fn parse_item_fn(parser p) -> tup(ast.ident, @ast.item) {
     auto lo = p.get_span();
     expect(p, token.FN);
     auto id = parse_ident(p);
-
-    let vec[ast.ty_param] ty_params = vec();
-    if (p.peek() == token.LBRACKET) {
-        auto pg = parse_ident;  // FIXME: pass as lval directly
-        ty_params = parse_seq[ast.ty_param](token.LBRACKET, token.RBRACKET,
-                                            some(token.COMMA), pg, p).node;
-    }
+    auto ty_params = parse_ty_params(p);
 
     auto pf = parse_arg;
     let util.common.spanned[vec[ast.arg]] inputs =
@@ -1120,6 +1124,7 @@ impure fn parse_item_tag(parser p) -> tup(ast.ident, @ast.item) {
     auto lo = p.get_span();
     expect(p, token.TAG);
     auto id = parse_ident(p);
+    auto ty_params = parse_ty_params(p);
 
     let vec[ast.variant] variants = vec();
     expect(p, token.LBRACE);
@@ -1158,7 +1163,7 @@ impure fn parse_item_tag(parser p) -> tup(ast.ident, @ast.item) {
     p.bump();
 
     auto hi = p.get_span();
-    auto item = ast.item_tag(id, variants, p.next_def_id());
+    auto item = ast.item_tag(id, variants, ty_params, p.next_def_id());
     ret tup(id, @spanned(lo, hi, item));
 }
 
