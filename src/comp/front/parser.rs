@@ -1026,7 +1026,7 @@ impure fn parse_block(parser p) -> ast.block {
                             case (ast.item_mod(?i, _, _)) {
                                 index.insert(i, u-1u);
                             }
-                            case (ast.item_ty(?i, _, _, _)) {
+                            case (ast.item_ty(?i, _, _, _, _)) {
                                 index.insert(i, u-1u);
                             }
                         }
@@ -1112,11 +1112,13 @@ impure fn parse_item_type(parser p) -> tup(ast.ident, @ast.item) {
     auto lo = p.get_span();
     expect(p, token.TYPE);
     auto id = parse_ident(p);
+    auto tps = parse_ty_params(p);
+
     expect(p, token.EQ);
     auto ty = parse_ty(p);
     auto hi = p.get_span();
     expect(p, token.SEMI);
-    auto item = ast.item_ty(id, ty, p.next_def_id(), ast.ann_none);
+    auto item = ast.item_ty(id, ty, tps, p.next_def_id(), ast.ann_none);
     ret tup(id, @spanned(lo, hi, item));
 }
 

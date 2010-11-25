@@ -326,7 +326,7 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
                 ret t_fn;
             }
 
-            case (ast.item_ty(?ident, ?referent_ty, ?def_id, _)) {
+            case (ast.item_ty(?ident, ?referent_ty, _, ?def_id, _)) {
                 if (item_to_ty.contains_key(def_id)) {
                     // Avoid repeating work.
                     check (item_to_ty.contains_key(def_id));
@@ -351,7 +351,7 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
     auto id_to_ty_item = @common.new_def_hash[@ast.item]();
     for (@ast.item item in module.items) {
         alt (item.node) {
-            case (ast.item_ty(_, _, ?def_id, _)) {
+            case (ast.item_ty(_, _, _, ?def_id, _)) {
                 id_to_ty_item.insert(def_id, item);
             }
             case (_) { /* empty */ }
@@ -371,10 +371,10 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
                 result = ast.item_fn(ident, fn_info, tps, def_id,
                                      ast.ann_type(t));
             }
-            case (ast.item_ty(?ident, ?referent_ty, ?def_id, _)) {
+            case (ast.item_ty(?ident, ?referent_ty, ?tps, ?def_id, _)) {
                 auto t = trans_ty_item_to_ty(id_to_ty_item, item_to_ty, it);
                 auto ann = ast.ann_type(t);
-                result = ast.item_ty(ident, referent_ty, def_id, ann);
+                result = ast.item_ty(ident, referent_ty, tps, def_id, ann);
             }
             case (ast.item_mod(_, _, _)) {
                 result = it.node;

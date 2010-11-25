@@ -35,7 +35,7 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
             case (ast.item_mod(_, _, ?id)) {
                 ret some[def](ast.def_mod(id));
             }
-            case (ast.item_ty(_, _, ?id, _)) {
+            case (ast.item_ty(_, _, _, ?id, _)) {
                 ret some[def](ast.def_ty(id));
             }
         }
