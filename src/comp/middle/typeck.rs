@@ -225,6 +225,13 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
         case (ast.ty_str)          { sty = ty_str; }
         case (ast.ty_box(?t))      { sty = ty_box(ast_ty_to_ty(getter, t)); }
         case (ast.ty_vec(?t))      { sty = ty_vec(ast_ty_to_ty(getter, t)); }
+        case (ast.ty_tup(?fields)) {
+            let vec[tup(bool,@ty)] flds = vec();
+            for (tup(bool, @ast.ty) field in fields) {
+                flds += tup(field._0, ast_ty_to_ty(getter, field._1));
+            }
+            sty = ty_tup(flds);
+        }
 
         case (ast.ty_fn(?inputs, ?output)) {
             auto f = bind ast_arg_to_arg(getter, _);
@@ -243,6 +250,10 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
             // OCaml?
             sty = getter(def_id).struct;
             cname = some(path_to_str(path));
+        }
+
+        case (_) {
+            fail;
         }
     }
 
