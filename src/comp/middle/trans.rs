@@ -637,8 +637,10 @@ fn build_memcpy(@block_ctxt cx,
     auto memcpy = cx.fcx.ccx.intrinsics.get("llvm.memcpy");
     auto src_ptr = cx.build.PointerCast(src, T_ptr(T_i8()));
     auto dst_ptr = cx.build.PointerCast(dst, T_ptr(T_i8()));
-    auto size = lib.llvm.llvm.LLVMSizeOf(llty);
-    auto align = lib.llvm.llvm.LLVMAlignOf(llty);
+    auto size = cx.build.IntCast(lib.llvm.llvm.LLVMSizeOf(llty),
+                                 T_i32());
+    auto align = cx.build.IntCast(lib.llvm.llvm.LLVMAlignOf(llty),
+                                  T_i32());
     auto volatile = C_integral(0, T_i1());
     ret res(cx, cx.build.Call(memcpy,
                               vec(dst_ptr, src_ptr,
@@ -1670,7 +1672,9 @@ fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
     // FIXME: switch this to 64-bit memcpy when targeting a 64-bit system.
     let vec[TypeRef] T_memcpy_args = vec(T_ptr(T_i8()),
                                          T_ptr(T_i8()),
-                                         T_i32(), T_i32(), T_i1());
+                                         T_i32(),
+                                         T_i32(),
+                                         T_i1());
     auto trap = decl_cdecl_fn(llmod, "llvm.trap",
                               T_fn(T_trap_args, T_void()));
     auto memcpy = decl_cdecl_fn(llmod, "llvm.memcpy",
