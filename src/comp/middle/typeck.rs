@@ -408,18 +408,25 @@ fn field_num(session.session sess, &span sp, &ast.ident id) -> uint {
     let uint i = 0u;
     for (u8 c in id) {
         if (i == 0u) {
-            if (c != '_' as u8) {
-                sess.span_err(sp, "bad numeric field on tuple");
+            if (c != ('_' as u8)) {
+                sess.span_err(sp,
+                              "bad numeric field on tuple: "
+                              + "missing leading underscore");
             }
         } else {
-            i += 1u;
             if (('0' as u8) <= c && c <= ('9' as u8)) {
                 accum *= 10u;
                 accum += (c as uint) - ('0' as uint);
             } else {
-                sess.span_err(sp, "bad numeric field on tuple");
+                auto s = "";
+                s += c;
+                sess.span_err(sp,
+                              "bad numeric field on tuple: "
+                              + " non-digit character: "
+                              + s);
             }
         }
+        i += 1u;
     }
     ret accum;
 }
