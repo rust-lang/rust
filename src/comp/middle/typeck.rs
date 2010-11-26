@@ -619,6 +619,7 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
                 }
             }
             case (ty_local(?actual_id)) {
+                check (fcx.locals.contains_key(actual_id));
                 auto actual_ty = fcx.locals.get(actual_id);
                 auto result = unify_step(fcx, bindings, expected, actual_ty);
                 alt (result) {
@@ -828,6 +829,7 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
             }
 
             case (ty_local(?expected_id)) {
+                check (fcx.locals.contains_key(expected_id));
                 auto expected_ty = fcx.locals.get(expected_id);
                 auto result = unify_step(fcx, bindings, expected_ty, actual);
                 alt (result) {

@@ -44,6 +44,7 @@ type glue_fns = rec(ValueRef activate_glue,
 state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
                             hashmap[str, ValueRef] upcalls,
+                            hashmap[str, ValueRef] intrinsics,
                             hashmap[str, ValueRef] fn_names,
                             hashmap[ast.def_id, ValueRef] fn_ids,
                             hashmap[ast.def_id, @ast.item] items,
@@ -632,7 +633,8 @@ fn build_memcpy(@block_ctxt cx,
                 ValueRef dst,
                 ValueRef src,
                 TypeRef llty) -> result {
-    auto memcpy = cx.fcx.ccx.fn_names.get("llvm.memcpy");
+    check (cx.fcx.ccx.intrinsics.contains_key("llvm.memcpy"));
+    auto memcpy = cx.fcx.ccx.intrinsics.get("llvm.memcpy");
     auto src_ptr = cx.build.PointerCast(src, T_ptr(T_i8()));
     auto dst_ptr = cx.build.PointerCast(dst, T_ptr(T_i8()));
     auto size = lib.llvm.llvm.LLVMSizeOf(llty);
@@ -1059,14 +1061,17 @@ fn trans_lval(@block_ctxt cx, &ast.expr e)
                 case (some[ast.def](?def)) {
                     alt (def) {
                         case (ast.def_arg(?did)) {
+                            check (cx.fcx.llargs.contains_key(did));
                             ret tup(res(cx, cx.fcx.llargs.get(did)),
                                     false, did);
                         }
                         case (ast.def_local(?did)) {
+                            check (cx.fcx.lllocals.contains_key(did));
                             ret tup(res(cx, cx.fcx.lllocals.get(did)),
                                     true, did);
                         }
                         case (ast.def_fn(?did)) {
+                            check (cx.fcx.ccx.fn_ids.contains_key(did));
                             ret tup(res(cx, cx.fcx.ccx.fn_ids.get(did)),
                                     false, did);
                         }
@@ -1359,6 +1364,7 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
                 case (ast.decl_local(?local)) {
                     alt (local.init) {
                         case (some[@ast.expr](?e)) {
+                            check (cx.fcx.lllocals.contains_key(local.id));
                             auto llptr = cx.fcx.lllocals.get(local.id);
                             sub = trans_expr(cx, *e);
                             sub.val = sub.bcx.build.Store(sub.val, llptr);
@@ -1468,6 +1474,7 @@ fn new_fn_ctxt(@crate_ctxt cx,
                &ast._fn f,
                ast.def_id fid) -> @fn_ctxt {
 
+    check (cx.fn_ids.contains_key(fid));
     let ValueRef llfn = cx.fn_ids.get(fid);
     cx.fn_names.insert(cx.path, llfn);
 
@@ -1636,6 +1643,7 @@ fn trans_main_fn(@crate_ctxt cx, ValueRef llcrate) {
 
     auto llargc = llvm.LLVMGetParam(llmain, 0u);
     auto llargv = llvm.LLVMGetParam(llmain, 1u);
+    check (cx.fn_names.contains_key("_rust.main"));
     auto llrust_main = cx.fn_names.get("_rust.main");
 
     //
@@ -1656,14 +1664,22 @@ fn trans_main_fn(@crate_ctxt cx, ValueRef llcrate) {
 
 }
 
-fn declare_intrinsics(ModuleRef llmod) {
+fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
+
     let vec[TypeRef] T_trap_args = vec();
     // FIXME: switch this to 64-bit memcpy when targeting a 64-bit system.
     let vec[TypeRef] T_memcpy_args = vec(T_ptr(T_i8()),
                                          T_ptr(T_i8()),
                                          T_i32(), T_i32(), T_i1());
-    decl_cdecl_fn(llmod, "llvm.trap", T_fn(T_trap_args, T_void()));
-    decl_cdecl_fn(llmod, "llvm.memcpy", T_fn(T_memcpy_args, T_void()));
+    auto trap = decl_cdecl_fn(llmod, "llvm.trap",
+                              T_fn(T_trap_args, T_void()));
+    auto memcpy = decl_cdecl_fn(llmod, "llvm.memcpy",
+                                T_fn(T_memcpy_args, T_void()));
+
+    auto intrinsics = new_str_hash[ValueRef]();
+    intrinsics.insert("llvm.trap", trap);
+    intrinsics.insert("llvm.memcpy", memcpy);
+    ret intrinsics;
 }
 
 fn trans_crate(session.session sess, @ast.crate crate, str output) {
@@ -1673,7 +1689,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
 
     llvm.LLVMSetModuleInlineAsm(llmod, _str.buf(x86.get_module_asm()));
 
-    declare_intrinsics(llmod);
+    auto intrinsics = declare_intrinsics(llmod);
 
     auto glues = @rec(activate_glue = decl_glue(llmod,
                                                 abi.activate_glue_name()),
@@ -1701,6 +1717,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
     auto cx = @rec(sess = sess,
                    llmod = llmod,
                    upcalls = new_str_hash[ValueRef](),
+                   intrinsics = intrinsics,
                    fn_names = new_str_hash[ValueRef](),
                    fn_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
