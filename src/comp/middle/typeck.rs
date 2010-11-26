@@ -402,6 +402,28 @@ fn last_expr_of_block(&ast.block bloc) -> option.t[@ast.expr] {
     }
 }
 
+
+fn field_num(session.session sess, &span sp, &ast.ident id) -> uint {
+    let uint accum = 0u;
+    let uint i = 0u;
+    for (u8 c in id) {
+        if (i == 0u) {
+            if (c != '_' as u8) {
+                sess.span_err(sp, "bad numeric field on tuple");
+            }
+        } else {
+            i += 1u;
+            if (('0' as u8) <= c && c <= ('9' as u8)) {
+                accum *= 10u;
+                accum += (c as uint) - ('0' as uint);
+            } else {
+                sess.span_err(sp, "bad numeric field on tuple");
+            }
+        }
+    }
+    ret accum;
+}
+
 // Type utilities
 
 // FIXME: remove me when == works on these tags.
@@ -792,7 +814,6 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
                 auto result = unify_step(fcx, bindings, expected_ty, actual);
                 alt (result) {
                     case (ures_ok(?result_ty)) {
-                        
                         fcx.locals.insert(expected_id, result_ty);
                     }
                     case (_) { /* empty */ }
@@ -1215,7 +1236,33 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                         ast.expr_tup(args_1, ann));
         }
 
+        case (ast.expr_field(?base, ?field, _)) {
+            auto base_1 = check_expr(fcx, base);
+            auto base_t = expr_ty(base_1);
+            alt (base_t.struct) {
+                case (ty_tup(?args)) {
+                    let uint ix = field_num(fcx.ccx.sess,
+                                            expr.span, field);
+                    if (ix >= _vec.len[tup(bool,@ty)](args)) {
+                        fcx.ccx.sess.span_err(expr.span,
+                                              "bad index on tuple");
+                    }
+                    auto ann = ast.ann_type(args.(ix)._1);
+                    ret @fold.respan[ast.expr_](expr.span,
+                                                ast.expr_field(base_1,
+                                                               field,
+                                                               ann));
+                }
+                case (_) {
+                    fcx.ccx.sess.unimpl("base type for expr_field "
+                                        + "in typeck.check_expr: "
+                                        + ty_to_str(base_t));
+                }
+            }
+        }
+
         case (_) {
+            fcx.ccx.sess.unimpl("expr type in typeck.check_expr");
             // TODO
             ret expr;
         }
