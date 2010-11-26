@@ -572,6 +572,7 @@ fn incr_all_refcnts(@block_ctxt cx,
         ret iter_structural_ty(cx, v, t,
                                bind incr_all_refcnts(_, _, _));
     }
+    ret res(cx, C_nil());
 }
 
 fn drop_ty(@block_ctxt cx,
