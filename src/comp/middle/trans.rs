@@ -1159,6 +1159,22 @@ impure fn trans_tup(@block_ctxt cx, vec[tup(bool, @ast.expr)] args,
 }
 
 
+impure fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
+                      &ast.ident field, &ast.ann ann) -> result {
+    auto r = trans_expr(cx, *base);
+    auto ty = typeck.expr_ty(base);
+    alt (ty.struct) {
+        case (typeck.ty_tup(?fields)) {
+            let uint ix = typeck.field_num(cx.fcx.ccx.sess, sp, field);
+            auto v = r.bcx.build.GEP(r.val, vec(C_int(ix as int)));
+            ret res(r.bcx, v);
+        }
+    }
+    cx.fcx.ccx.sess.unimpl("field variant in trans_field");
+    fail;
+}
+
+
 impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
     alt (e.node) {
         case (ast.expr_lit(?lit, _)) {
@@ -1225,6 +1241,11 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
         case (ast.expr_tup(?args, ?ann)) {
             ret trans_tup(cx, args, ann);
         }
+
+        case (ast.expr_field(?base, ?ident, ?ann)) {
+            ret trans_field(cx, e.span, base, ident, ann);
+        }
+
     }
     cx.fcx.ccx.sess.unimpl("expr variant in trans_expr");
     fail;
