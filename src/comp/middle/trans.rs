@@ -679,9 +679,10 @@ fn copy_ty(@block_ctxt cx,
         if (! is_init) {
             r = drop_ty(r.bcx, dst, t);
         }
-        auto llty = type_of(cx.fcx.ccx, t);
-        r = build_memcpy(r.bcx, dst, src, llty);
-        ret res(r.bcx, src);
+        // In this one surprising case, we do a load/store on
+        // structure types. This results in a memcpy. Usually
+        // we talk about structures by pointers in this file.
+        ret res(r.bcx, r.bcx.build.Store(r.bcx.build.Load(src), dst));
     }
 
     cx.fcx.ccx.sess.bug("unexpected type in trans.copy_ty: " +
@@ -778,7 +779,7 @@ fn node_type(@crate_ctxt cx, &ast.ann a) -> TypeRef {
 }
 
 impure fn trans_unary(@block_ctxt cx, ast.unop op,
-                      &ast.expr e, &ast.ann a) -> result {
+                      @ast.expr e, &ast.ann a) -> result {
 
     auto sub = trans_expr(cx, e);
 
@@ -811,7 +812,7 @@ impure fn trans_unary(@block_ctxt cx, ast.unop op,
 }
 
 impure fn trans_binary(@block_ctxt cx, ast.binop op,
-                       &ast.expr a, &ast.expr b) -> result {
+                       @ast.expr a, @ast.expr b) -> result {
 
     // First couple cases are lazy:
 
@@ -997,7 +998,7 @@ fn join_results(@block_ctxt parent_cx,
     ret res(join_cx, phi);
 }
 
-impure fn trans_if(@block_ctxt cx, &ast.expr cond,
+impure fn trans_if(@block_ctxt cx, @ast.expr cond,
                    &ast.block thn, &option.t[ast.block] els) -> result {
 
     auto cond_res = trans_expr(cx, cond);
@@ -1023,7 +1024,7 @@ impure fn trans_if(@block_ctxt cx, &ast.expr cond,
                      vec(then_res, else_res));
 }
 
-impure fn trans_while(@block_ctxt cx, &ast.expr cond,
+impure fn trans_while(@block_ctxt cx, @ast.expr cond,
                       &ast.block body) -> result {
 
     auto cond_cx = new_sub_block_ctxt(cx, "while cond");
@@ -1043,7 +1044,7 @@ impure fn trans_while(@block_ctxt cx, &ast.expr cond,
 }
 
 impure fn trans_do_while(@block_ctxt cx, &ast.block body,
-                         &ast.expr cond) -> result {
+                         @ast.expr cond) -> result {
 
     auto body_cx = new_sub_block_ctxt(cx, "do-while loop body");
     auto next_cx = new_sub_block_ctxt(cx, "next");
@@ -1058,41 +1059,65 @@ impure fn trans_do_while(@block_ctxt cx, &ast.block body,
     ret res(next_cx, body_res.val);
 }
 
-// The additional bool returned indicates whether it's a local
-// (that is represented as an alloca, hence needs a 'load' to be
-// used as an rval).
+// The additional bool returned indicates whether it's mem (that is
+// represented as an alloca or heap, hence needs a 'load' to be used as an
+// immediate).
 
-fn trans_lval(@block_ctxt cx, &ast.expr e)
-    -> tup(result, bool, ast.def_id) {
-    alt (e.node) {
-        case (ast.expr_name(?n, ?dopt, _)) {
-            alt (dopt) {
-                case (some[ast.def](?def)) {
-                    alt (def) {
-                        case (ast.def_arg(?did)) {
-                            check (cx.fcx.llargs.contains_key(did));
-                            ret tup(res(cx, cx.fcx.llargs.get(did)),
-                                    false, did);
-                        }
-                        case (ast.def_local(?did)) {
-                            check (cx.fcx.lllocals.contains_key(did));
-                            ret tup(res(cx, cx.fcx.lllocals.get(did)),
-                                    true, did);
-                        }
-                        case (ast.def_fn(?did)) {
-                            check (cx.fcx.ccx.fn_ids.contains_key(did));
-                            ret tup(res(cx, cx.fcx.ccx.fn_ids.get(did)),
-                                    false, did);
-                        }
-                        case (_) {
-                            cx.fcx.ccx.sess.unimpl("def variant in trans");
-                        }
-                    }
+fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt)
+    -> tup(result, bool) {
+    alt (dopt) {
+        case (some[ast.def](?def)) {
+            alt (def) {
+                case (ast.def_arg(?did)) {
+                    check (cx.fcx.llargs.contains_key(did));
+                    ret tup(res(cx, cx.fcx.llargs.get(did)),
+                            false);
                 }
-                case (none[ast.def]) {
-                    cx.fcx.ccx.sess.err("unresolved expr_name in trans");
+                case (ast.def_local(?did)) {
+                    check (cx.fcx.lllocals.contains_key(did));
+                    ret tup(res(cx, cx.fcx.lllocals.get(did)),
+                            true);
+                }
+                case (ast.def_fn(?did)) {
+                    check (cx.fcx.ccx.fn_ids.contains_key(did));
+                    ret tup(res(cx, cx.fcx.ccx.fn_ids.get(did)),
+                            false);
+                }
+                case (_) {
+                    cx.fcx.ccx.sess.unimpl("def variant in trans");
                 }
             }
+        }
+        case (none[ast.def]) {
+            cx.fcx.ccx.sess.err("unresolved expr_name in trans");
+        }
+    }
+    fail;
+}
+
+fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
+               &ast.ident field, &ast.ann ann) -> tup(result, bool) {
+    auto lv = trans_lval(cx, base);
+    auto r = lv._0;
+    auto ty = typeck.expr_ty(base);
+    alt (ty.struct) {
+        case (typeck.ty_tup(?fields)) {
+            let uint ix = typeck.field_num(cx.fcx.ccx.sess, sp, field);
+            auto v = r.bcx.build.GEP(r.val, vec(C_int(0), C_int(ix as int)));
+            ret tup(res(r.bcx, v), lv._1);
+        }
+    }
+    cx.fcx.ccx.sess.unimpl("field variant in trans_field");
+    fail;
+}
+
+fn trans_lval(@block_ctxt cx, @ast.expr e) -> tup(result, bool) {
+    alt (e.node) {
+        case (ast.expr_name(?n, ?dopt, _)) {
+            ret trans_name(cx, n, dopt);
+        }
+        case (ast.expr_field(?base, ?ident, ?ann)) {
+            ret trans_field(cx, e.span, base, ident, ann);
         }
     }
     cx.fcx.ccx.sess.unimpl("expr variant in trans_lval");
@@ -1105,7 +1130,7 @@ impure fn trans_exprs(@block_ctxt cx, &vec[@ast.expr] es)
     let @block_ctxt bcx = cx;
 
     for (@ast.expr e in es) {
-        auto res = trans_expr(bcx, *e);
+        auto res = trans_expr(bcx, e);
         vs += res.val;
         bcx = res.bcx;
     }
@@ -1113,7 +1138,7 @@ impure fn trans_exprs(@block_ctxt cx, &vec[@ast.expr] es)
     ret tup(bcx, vs);
 }
 
-impure fn trans_cast(@block_ctxt cx, &ast.expr e, &ast.ann ann) -> result {
+impure fn trans_cast(@block_ctxt cx, @ast.expr e, &ast.ann ann) -> result {
     auto e_res = trans_expr(cx, e);
     auto llsrctype = val_ty(e_res.val);
     auto t = node_ann_type(cx.fcx.ccx, ann);
@@ -1144,7 +1169,7 @@ impure fn trans_cast(@block_ctxt cx, &ast.expr e, &ast.ann ann) -> result {
     ret e_res;
 }
 
-impure fn trans_call(@block_ctxt cx, &ast.expr f,
+impure fn trans_call(@block_ctxt cx, @ast.expr f,
                      vec[@ast.expr] args) -> result {
     auto f_res = trans_lval(cx, f);
     check (! f_res._1);
@@ -1163,7 +1188,7 @@ impure fn trans_tup(@block_ctxt cx, vec[tup(bool, @ast.expr)] args,
     auto r = res(cx, C_nil());
     for (tup(bool, @ast.expr) arg in args) {
         auto t = typeck.expr_ty(arg._1);
-        auto src_res = trans_expr(r.bcx, *arg._1);
+        auto src_res = trans_expr(r.bcx, arg._1);
         auto dst_elt = r.bcx.build.GEP(tup_val, vec(C_int(0), C_int(i)));
         // FIXME: calculate copy init-ness in typestate.
         r = copy_ty(src_res.bcx, true, dst_elt, src_res.val, t);
@@ -1173,46 +1198,31 @@ impure fn trans_tup(@block_ctxt cx, vec[tup(bool, @ast.expr)] args,
 }
 
 
-impure fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
-                      &ast.ident field, &ast.ann ann) -> result {
-    auto r = trans_expr(cx, *base);
-    auto ty = typeck.expr_ty(base);
-    alt (ty.struct) {
-        case (typeck.ty_tup(?fields)) {
-            let uint ix = typeck.field_num(cx.fcx.ccx.sess, sp, field);
-            auto v = r.bcx.build.GEP(r.val, vec(C_int(ix as int)));
-            ret res(r.bcx, v);
-        }
-    }
-    cx.fcx.ccx.sess.unimpl("field variant in trans_field");
-    fail;
-}
 
-
-impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
+impure fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
     alt (e.node) {
         case (ast.expr_lit(?lit, _)) {
             ret trans_lit(cx, *lit);
         }
 
         case (ast.expr_unary(?op, ?x, ?ann)) {
-            ret trans_unary(cx, op, *x, ann);
+            ret trans_unary(cx, op, x, ann);
         }
 
         case (ast.expr_binary(?op, ?x, ?y, _)) {
-            ret trans_binary(cx, op, *x, *y);
+            ret trans_binary(cx, op, x, y);
         }
 
         case (ast.expr_if(?cond, ?thn, ?els, _)) {
-            ret trans_if(cx, *cond, thn, els);
+            ret trans_if(cx, cond, thn, els);
         }
 
         case (ast.expr_while(?cond, ?body, _)) {
-            ret trans_while(cx, *cond, body);
+            ret trans_while(cx, cond, body);
         }
 
         case (ast.expr_do_while(?body, ?cond, _)) {
-            ret trans_do_while(cx, body, *cond);
+            ret trans_do_while(cx, body, cond);
         }
 
         case (ast.expr_block(?blk, _)) {
@@ -1226,46 +1236,45 @@ impure fn trans_expr(@block_ctxt cx, &ast.expr e) -> result {
             ret res(next_cx, sub.val);
         }
 
-        case (ast.expr_name(_,_,_)) {
-            auto sub = trans_lval(cx, e);
-            if (sub._1) {
-                ret res(sub._0.bcx, cx.build.Load(sub._0.val));
-            } else {
-                ret sub._0;
-            }
-        }
-
         case (ast.expr_assign(?dst, ?src, ?ann)) {
-            auto lhs_res = trans_lval(cx, *dst);
+            auto lhs_res = trans_lval(cx, dst);
             check (lhs_res._1);
-            auto rhs_res = trans_expr(lhs_res._0.bcx, *src);
+            auto rhs_res = trans_expr(lhs_res._0.bcx, src);
             auto t = node_ann_type(cx.fcx.ccx, ann);
             // FIXME: calculate copy init-ness in typestate.
             ret copy_ty(rhs_res.bcx, true, lhs_res._0.val, rhs_res.val, t);
         }
 
         case (ast.expr_call(?f, ?args, _)) {
-            ret trans_call(cx, *f, args);
+            ret trans_call(cx, f, args);
         }
 
         case (ast.expr_cast(?e, _, ?ann)) {
-            ret trans_cast(cx, *e, ann);
+            ret trans_cast(cx, e, ann);
         }
 
         case (ast.expr_tup(?args, ?ann)) {
             ret trans_tup(cx, args, ann);
         }
 
-        case (ast.expr_field(?base, ?ident, ?ann)) {
-            ret trans_field(cx, e.span, base, ident, ann);
-        }
+        // lval cases fall through to trans_lval and then
+        // possibly load the result (if it's non-structural).
 
+        case (_) {
+            auto t = typeck.expr_ty(e);
+            auto sub = trans_lval(cx, e);
+            if (sub._1 && ! typeck.type_is_structural(t)) {
+                ret res(sub._0.bcx, cx.build.Load(sub._0.val));
+            } else {
+                ret sub._0;
+            }
+        }
     }
     cx.fcx.ccx.sess.unimpl("expr variant in trans_expr");
     fail;
 }
 
-impure fn trans_log(@block_ctxt cx, &ast.expr e) -> result {
+impure fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
     alt (e.node) {
         case (ast.expr_lit(?lit, _)) {
             alt (lit.node) {
@@ -1293,7 +1302,7 @@ impure fn trans_log(@block_ctxt cx, &ast.expr e) -> result {
     }
 }
 
-impure fn trans_check_expr(@block_ctxt cx, &ast.expr e) -> result {
+impure fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
     auto cond_res = trans_expr(cx, e);
 
     // FIXME: need pretty-printer.
@@ -1317,7 +1326,7 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
     auto r = res(cx, C_nil());
     alt (e) {
         case (some[@ast.expr](?x)) {
-            r = trans_expr(cx, *x);
+            r = trans_expr(cx, x);
         }
     }
 
@@ -1353,11 +1362,11 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
     auto sub = res(cx, C_nil());
     alt (s.node) {
         case (ast.stmt_log(?a)) {
-            sub.bcx = trans_log(cx, *a).bcx;
+            sub.bcx = trans_log(cx, a).bcx;
         }
 
         case (ast.stmt_check_expr(?a)) {
-            sub.bcx = trans_check_expr(cx, *a).bcx;
+            sub.bcx = trans_check_expr(cx, a).bcx;
         }
 
         case (ast.stmt_ret(?e)) {
@@ -1365,7 +1374,7 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
         }
 
         case (ast.stmt_expr(?e)) {
-            sub.bcx = trans_expr(cx, *e).bcx;
+            sub.bcx = trans_expr(cx, e).bcx;
         }
 
         case (ast.stmt_decl(?d)) {
@@ -1375,8 +1384,9 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
                         case (some[@ast.expr](?e)) {
                             check (cx.fcx.lllocals.contains_key(local.id));
                             auto llptr = cx.fcx.lllocals.get(local.id);
-                            sub = trans_expr(cx, *e);
-                            sub.val = sub.bcx.build.Store(sub.val, llptr);
+                            sub = trans_expr(cx, e);
+                            copy_ty(sub.bcx, true, llptr, sub.val,
+                                    typeck.expr_ty(e));
                         }
                     }
                 }
