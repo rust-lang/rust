@@ -633,14 +633,19 @@ fn build_memcpy(@block_ctxt cx,
                 ValueRef dst,
                 ValueRef src,
                 TypeRef llty) -> result {
-    check (cx.fcx.ccx.intrinsics.contains_key("llvm.memcpy"));
-    auto memcpy = cx.fcx.ccx.intrinsics.get("llvm.memcpy");
+    // FIXME: switch to the 64-bit variant when on such a platform.
+    check (cx.fcx.ccx.intrinsics.contains_key("llvm.memcpy.p0i8.p0i8.i32"));
+    auto memcpy = cx.fcx.ccx.intrinsics.get("llvm.memcpy.p0i8.p0i8.i32");
     auto src_ptr = cx.build.PointerCast(src, T_ptr(T_i8()));
     auto dst_ptr = cx.build.PointerCast(dst, T_ptr(T_i8()));
     auto size = cx.build.IntCast(lib.llvm.llvm.LLVMSizeOf(llty),
                                  T_i32());
-    auto align = cx.build.IntCast(lib.llvm.llvm.LLVMAlignOf(llty),
-                                  T_i32());
+    auto align = cx.build.IntCast(C_int(1), T_i32());
+
+    // FIXME: align seems like it should be
+    //   lib.llvm.llvm.LLVMAlignOf(llty);
+    // but this makes it upset because it's not a constant.
+
     auto volatile = C_integral(0, T_i1());
     ret res(cx, cx.build.Call(memcpy,
                               vec(dst_ptr, src_ptr,
@@ -1670,20 +1675,21 @@ fn trans_main_fn(@crate_ctxt cx, ValueRef llcrate) {
 fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
 
     let vec[TypeRef] T_trap_args = vec();
-    // FIXME: switch this to 64-bit memcpy when targeting a 64-bit system.
-    let vec[TypeRef] T_memcpy_args = vec(T_ptr(T_i8()),
-                                         T_ptr(T_i8()),
-                                         T_i32(),
-                                         T_i32(),
-                                         T_i1());
+    let vec[TypeRef] T_memcpy32_args = vec(T_ptr(T_i8()), T_ptr(T_i8()),
+                                           T_i32(), T_i32(), T_i1());
+    let vec[TypeRef] T_memcpy64_args = vec(T_ptr(T_i8()), T_ptr(T_i8()),
+                                           T_i32(), T_i32(), T_i1());
     auto trap = decl_cdecl_fn(llmod, "llvm.trap",
                               T_fn(T_trap_args, T_void()));
-    auto memcpy = decl_cdecl_fn(llmod, "llvm.memcpy",
-                                T_fn(T_memcpy_args, T_void()));
+    auto memcpy32 = decl_cdecl_fn(llmod, "llvm.memcpy.p0i8.p0i8.i32",
+                                  T_fn(T_memcpy32_args, T_void()));
+    auto memcpy64 = decl_cdecl_fn(llmod, "llvm.memcpy.p0i8.p0i8.i64",
+                                  T_fn(T_memcpy64_args, T_void()));
 
     auto intrinsics = new_str_hash[ValueRef]();
     intrinsics.insert("llvm.trap", trap);
-    intrinsics.insert("llvm.memcpy", memcpy);
+    intrinsics.insert("llvm.memcpy.p0i8.p0i8.i32", memcpy32);
+    intrinsics.insert("llvm.memcpy.p0i8.p0i8.i64", memcpy64);
     ret intrinsics;
 }
 
