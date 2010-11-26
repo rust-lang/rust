@@ -675,6 +675,7 @@ fn copy_ty(@block_ctxt cx,
         }
         auto llty = type_of(cx.fcx.ccx, t);
         r = build_memcpy(r.bcx, dst, src, llty);
+        ret res(r.bcx, src);
     }
 
     cx.fcx.ccx.sess.bug("unexpected type in trans.copy_ty: " +
