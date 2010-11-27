@@ -1124,20 +1124,6 @@ fn trans_lval(@block_ctxt cx, @ast.expr e) -> tup(result, bool) {
     fail;
 }
 
-impure fn trans_exprs(@block_ctxt cx, &vec[@ast.expr] es)
-    -> tup(@block_ctxt, vec[ValueRef]) {
-    let vec[ValueRef] vs = vec();
-    let @block_ctxt bcx = cx;
-
-    for (@ast.expr e in es) {
-        auto res = trans_expr(bcx, e);
-        vs += res.val;
-        bcx = res.bcx;
-    }
-
-    ret tup(bcx, vs);
-}
-
 impure fn trans_cast(@block_ctxt cx, @ast.expr e, &ast.ann ann) -> result {
     auto e_res = trans_expr(cx, e);
     auto llsrctype = val_ty(e_res.val);
@@ -1169,15 +1155,33 @@ impure fn trans_cast(@block_ctxt cx, @ast.expr e, &ast.ann ann) -> result {
     ret e_res;
 }
 
+
+impure fn trans_args(@block_ctxt cx, &vec[@ast.expr] es)
+    -> tup(@block_ctxt, vec[ValueRef]) {
+    let vec[ValueRef] vs = vec(cx.fcx.lltaskptr);
+    let @block_ctxt bcx = cx;
+
+    for (@ast.expr e in es) {
+        auto res = trans_expr(bcx, e);
+        // Until here we've been treating structures by pointer;
+        // we are now passing it as an arg, so need to load it.
+        if (typeck.type_is_structural(typeck.expr_ty(e))) {
+            res.val = res.bcx.build.Load(res.val);
+        }
+        vs += res.val;
+        bcx = res.bcx;
+    }
+
+    ret tup(bcx, vs);
+}
+
 impure fn trans_call(@block_ctxt cx, @ast.expr f,
                      vec[@ast.expr] args) -> result {
     auto f_res = trans_lval(cx, f);
     check (! f_res._1);
-    auto args_res = trans_exprs(f_res._0.bcx, args);
-    auto llargs = vec(cx.fcx.lltaskptr);
-    llargs += args_res._1;
+    auto args_res = trans_args(f_res._0.bcx, args);
     ret res(args_res._0,
-            args_res._0.build.FastCall(f_res._0.val, llargs));
+            args_res._0.build.FastCall(f_res._0.val, args_res._1));
 }
 
 impure fn trans_tup(@block_ctxt cx, vec[tup(bool, @ast.expr)] args,
