@@ -1071,7 +1071,7 @@ fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt)
                 case (ast.def_arg(?did)) {
                     check (cx.fcx.llargs.contains_key(did));
                     ret tup(res(cx, cx.fcx.llargs.get(did)),
-                            false);
+                            true);
                 }
                 case (ast.def_local(?did)) {
                     check (cx.fcx.lllocals.contains_key(did));
@@ -1521,15 +1521,46 @@ fn new_fn_ctxt(@crate_ctxt cx,
              ccx=cx);
 }
 
+
+// Recommended LLVM style, strange though this is, is to copy from args to
+// allocas immediately upon entry; this permits us to GEP into structures we
+// were passed and whatnot. Apparently mem2reg will mop up.
+
+fn copy_args_to_allocas(@block_ctxt cx, &ast._fn f, &ast.ann ann) {
+
+    let vec[typeck.arg] arg_ts = vec();
+    let @typeck.ty fty = node_ann_type(cx.fcx.ccx, ann);
+    alt (fty.struct) {
+        case (typeck.ty_fn(?a, _)) { arg_ts += a; }
+    }
+
+    let uint arg_n = 0u;
+
+    for (ast.arg aarg in f.inputs) {
+        auto arg = arg_ts.(arg_n);
+        auto arg_t = type_of(cx.fcx.ccx, arg.ty);
+        auto alloca = cx.build.Alloca(arg_t);
+        auto argval = cx.fcx.llargs.get(aarg.id);
+        cx.build.Store(argval, alloca);
+        // Overwrite the llargs entry for this arg with its alloca.
+        cx.fcx.llargs.insert(aarg.id, alloca);
+        arg_n += 1u;
+    }
+}
+
 fn is_terminated(@block_ctxt cx) -> bool {
     auto inst = llvm.LLVMGetLastInstruction(cx.llbb);
     ret llvm.LLVMIsATerminatorInst(inst) as int != 0;
 }
 
-impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid) {
+impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
+                   &ast.ann ann) {
 
     auto fcx = new_fn_ctxt(cx, cx.path, f, fid);
     auto bcx = new_top_block_ctxt(fcx);
+
+    copy_args_to_allocas(bcx, f, ann);
+
     auto res = trans_block(bcx, f.body);
     if (!is_terminated(res.bcx)) {
         // FIXME: until LLVM has a unit type, we are moving around
@@ -1540,9 +1571,9 @@ impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid) {
 
 impure fn trans_item(@crate_ctxt cx, &ast.item item) {
     alt (item.node) {
-        case (ast.item_fn(?name, ?f, _, ?fid, _)) {
+        case (ast.item_fn(?name, ?f, _, ?fid, ?ann)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
-            trans_fn(sub_cx, f, fid);
+            trans_fn(sub_cx, f, fid, ann);
         }
         case (ast.item_mod(?name, ?m, _)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);

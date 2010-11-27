@@ -535,6 +535,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         lazy-init.rs \
                         multiline-comment.rs \
                         return-nil.rs \
+                        tup.rs \
                         u32-decr.rs \
                         u8-incr.rs \
                         u8-incr-decr.rs \
