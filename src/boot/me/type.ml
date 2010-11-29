@@ -910,6 +910,13 @@ let check_block (cx:Semant.ctxt) : (fn_ctx -> Ast.block -> unit) =
       Array.iter check_stmt' block.Common.node
 
     and check_stmt (stmt:Ast.stmt) : unit =
+      try
+        check_stmt_full stmt
+      with
+          Common.Semant_err (None, msg) ->
+            raise (Common.Semant_err ((Some stmt.Common.id), msg))
+
+    and check_stmt_full (stmt:Ast.stmt) : unit =
       check_ret stmt;
       match stmt.Common.node with
           Ast.STMT_spawn (dst, _, _, callee, args) ->

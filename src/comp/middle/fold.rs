@@ -46,8 +46,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp, @ty t) -> @ty)         fold_ty_box,
      (fn(&ENV e, &span sp, @ty t) -> @ty)         fold_ty_vec,
 
-     (fn(&ENV e, &span sp,
-         vec[tup(mutability, @ty)] elts) -> @ty)  fold_ty_tup,
+     (fn(&ENV e, &span sp, vec[@ty] elts) -> @ty) fold_ty_tup,
 
      (fn(&ENV e, &span sp,
          vec[rec(ast.mode mode, @ty ty)] inputs,
@@ -246,9 +245,9 @@ fn fold_ty[ENV](&ENV env, ast_fold[ENV] fld, @ty t) -> @ty {
         }
 
         case (ast.ty_tup(?elts)) {
-            let vec[tup(mutability, @ty)] elts_ = vec();
-            for (tup(mutability, @ty) elt in elts) {
-                elts_ += tup(elt._0, fold_ty(env, fld, elt._1));
+            let vec[@ty] elts_ = vec();
+            for (@ty elt in elts) {
+                append[@ty](elts_,fold_ty(env, fld, elt));
             }
             ret fld.fold_ty_tup(env_, t.span, elts);
         }
@@ -652,7 +651,7 @@ fn identity_fold_ty_vec[ENV](&ENV env, &span sp, @ty t) -> @ty {
 }
 
 fn identity_fold_ty_tup[ENV](&ENV env, &span sp,
-                             vec[tup(mutability,@ty)] elts) -> @ty {
+                             vec[@ty] elts) -> @ty {
     ret @respan(sp, ast.ty_tup(elts));
 }
 

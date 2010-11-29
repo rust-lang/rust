@@ -275,8 +275,8 @@ fn type_of_inner(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
         }
         case (typeck.ty_tup(?elts)) {
             let vec[TypeRef] tys = vec();
-            for (tup(ast.mutability, @typeck.ty) elt in elts) {
-                tys += type_of(cx, elt._1);
+            for (@typeck.ty elt in elts) {
+                tys += type_of(cx, elt);
             }
             ret T_struct(tys);
         }
@@ -493,9 +493,9 @@ fn iter_structural_ty(@block_ctxt cx,
     alt (t.struct) {
         case (typeck.ty_tup(?args)) {
             let int i = 0;
-            for (tup(ast.mutability, @typeck.ty) arg in args) {
+            for (@typeck.ty arg in args) {
                 auto elt = r.bcx.build.GEP(v, vec(C_int(0), C_int(i)));
-                r = f(r.bcx, elt, arg._1);
+                r = f(r.bcx, elt, arg);
                 i += 1;
             }
         }

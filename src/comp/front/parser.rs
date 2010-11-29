@@ -96,19 +96,6 @@ impure fn parse_ident(parser p) -> ast.ident {
     }
 }
 
-impure fn parse_possibly_mutable_ty(parser p)
-    -> tup(ast.mutability, @ast.ty) {
-    auto mut;
-    if (p.peek() == token.MUTABLE) {
-        p.bump();
-        mut = ast.mut;
-    } else {
-        mut = ast.imm;
-    }
-
-    ret tup(mut, parse_ty(p));
-}
-
 impure fn parse_ty_fn(parser p) -> ast.ty_ {
     impure fn parse_fn_input_ty(parser p) -> rec(ast.mode mode, @ast.ty ty) {
         auto mode;
@@ -192,11 +179,10 @@ impure fn parse_ty(parser p) -> @ast.ty {
 
         case (token.TUP) {
             p.bump();
-            auto f = parse_possibly_mutable_ty; // FIXME: trans_const_lval bug
-            auto elems =
-                parse_seq[tup(ast.mutability, @ast.ty)]
-                (token.LPAREN,
-                 token.RPAREN, some(token.COMMA), f, p);
+            auto f = parse_ty; // FIXME: trans_const_lval bug
+            auto elems = parse_seq[@ast.ty] (token.LPAREN,
+                                             token.RPAREN,
+                                             some(token.COMMA), f, p);
             hi = p.get_span();
             t = ast.ty_tup(elems.node);
         }

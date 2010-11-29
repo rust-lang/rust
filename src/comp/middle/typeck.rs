@@ -40,7 +40,7 @@ tag sty {
     ty_str;
     ty_box(@ty);
     ty_vec(@ty);
-    ty_tup(vec[tup(mutability, @ty)]);
+    ty_tup(vec[@ty]);
     ty_fn(vec[arg], @ty);                           // TODO: effect
     ty_var(int);                                    // ephemeral type var
     ty_local(ast.def_id);                           // type of a local var
@@ -66,16 +66,6 @@ type ty_getter = fn(ast.def_id) -> @ty;
 // Error-reporting utility functions
 
 fn ast_ty_to_str(&@ast.ty ty) -> str {
-    fn ast_tup_elem_to_str(&tup(mutability, @ast.ty) elem) -> str {
-        auto s;
-        if (elem._0 == ast.mut) {
-            s = "mutable ";
-        } else {
-            s = "";
-        }
-
-        ret s + ast_ty_to_str(elem._1);
-    }
 
     fn ast_fn_input_to_str(&rec(ast.mode mode, @ast.ty ty) input) -> str {
         auto s;
@@ -101,11 +91,9 @@ fn ast_ty_to_str(&@ast.ty ty) -> str {
         case (ast.ty_vec(?t))      { s = "vec[" + ast_ty_to_str(t) + "]"; }
 
         case (ast.ty_tup(?elems)) {
-            auto f = ast_tup_elem_to_str;
+            auto f = ast_ty_to_str;
             s = "tup(";
-            s +=
-                _str.connect(_vec.map[tup(mutability,@ast.ty),str](f, elems),
-                             ",");
+            s += _str.connect(_vec.map[@ast.ty,str](f, elems), ",");
             s += ")";
         }
 
@@ -153,17 +141,7 @@ fn path_to_str(&ast.path path) -> str {
     ret _str.connect(_vec.map[ast.name,str](f, path), ".");
 }
 
-fn ty_to_str(@ty typ) -> str {
-    fn tup_elem_to_str(&tup(mutability, @ty) elem) -> str {
-        auto s;
-        if (elem._0 == ast.mut) {
-            s = "mutable ";
-        } else {
-            s = "";
-        }
-
-        ret s + ty_to_str(elem._1);
-    }
+fn ty_to_str(&@ty typ) -> str {
 
     fn fn_input_to_str(&rec(ast.mode mode, @ty ty) input) -> str {
         auto s;
@@ -176,7 +154,11 @@ fn ty_to_str(@ty typ) -> str {
         ret s + ty_to_str(input.ty);
     }
 
-    auto s;
+    auto s = "";
+    if (typ.mut == ast.mut) {
+        s += "mutable ";
+    }
+
     alt (typ.struct) {
         case (ty_nil)          { s = "()";                        }
         case (ty_bool)         { s = "bool";                      }
@@ -189,8 +171,8 @@ fn ty_to_str(@ty typ) -> str {
         case (ty_vec(?t))      { s = "vec[" + ty_to_str(t) + "]"; }
 
         case (ty_tup(?elems)) {
-            auto f = tup_elem_to_str;
-            auto strs = _vec.map[tup(mutability,@ty),str](f, elems);
+            auto f = ty_to_str;
+            auto strs = _vec.map[@ty,str](f, elems);
             s = "tup(" + _str.connect(strs, ",") + ")";
         }
 
@@ -234,9 +216,9 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
         case (ast.ty_box(?t))      { sty = ty_box(ast_ty_to_ty(getter, t)); }
         case (ast.ty_vec(?t))      { sty = ty_vec(ast_ty_to_ty(getter, t)); }
         case (ast.ty_tup(?fields)) {
-            let vec[tup(mutability,@ty)] flds = vec();
-            for (tup(mutability, @ast.ty) field in fields) {
-                flds += tup(field._0, ast_ty_to_ty(getter, field._1));
+            let vec[@ty] flds = vec();
+            for (@ast.ty field in fields) {
+                append[@ty](flds, ast_ty_to_ty(getter, field));
             }
             sty = ty_tup(flds);
         }
@@ -710,10 +692,8 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
             case (ty_tup(?expected_elems)) {
                 alt (actual.struct) {
                     case (ty_tup(?actual_elems)) {
-                        auto expected_len =
-                            _vec.len[tup(mutability,@ty)](expected_elems);
-                        auto actual_len =
-                            _vec.len[tup(mutability,@ty)](actual_elems);
+                        auto expected_len = _vec.len[@ty](expected_elems);
+                        auto actual_len = _vec.len[@ty](actual_elems);
                         if (expected_len != actual_len) {
                             auto err = terr_tuple_size(expected_len,
                                                        actual_len);
@@ -722,24 +702,23 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
 
                         // TODO: implement an iterator that can iterate over
                         // two arrays simultaneously.
-                        let vec[tup(mutability, @ty)] result_elems = vec();
+                        let vec[@ty] result_elems = vec();
                         auto i = 0u;
                         while (i < expected_len) {
                             auto expected_elem = expected_elems.(i);
                             auto actual_elem = actual_elems.(i);
-                            if (expected_elem._0 != actual_elem._0) {
+                            if (expected_elem.mut != actual_elem.mut) {
                                 auto err = terr_tuple_mutability;
                                 ret ures_err(err, expected, actual);
                             }
 
                             auto result = unify_step(fcx,
                                                      bindings,
-                                                     expected_elem._1,
-                                                     actual_elem._1);
+                                                     expected_elem,
+                                                     actual_elem);
                             alt (result) {
                                 case (ures_ok(?rty)) {
-                                    result_elems += vec(tup(expected_elem._0,
-                                                            rty));
+                                    append[@ty](result_elems,rty);
                                 }
                                 case (_) {
                                     ret result;
@@ -1258,12 +1237,17 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_tup(?args, _)) {
             let vec[tup(mutability, @ast.expr)] args_1 = vec();
-            let vec[tup(mutability, @ty)] args_t = vec();
+            let vec[@ty] args_t = vec();
 
             for (tup(mutability, @ast.expr) arg in args) {
                 auto expr_1 = check_expr(fcx, arg._1);
                 args_1 += tup(arg._0, expr_1);
-                args_t += tup(arg._0, expr_ty(expr_1));
+                if (arg._0 == ast.mut) {
+                    append[@ty](args_t,@rec(mut=ast.mut
+                                            with *expr_ty(expr_1)));
+                } else {
+                    append[@ty](args_t,expr_ty(expr_1));
+                }
             }
 
             auto ann = ast.ann_type(plain_ty(ty_tup(args_t)));
@@ -1278,11 +1262,11 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (ty_tup(?args)) {
                     let uint ix = field_num(fcx.ccx.sess,
                                             expr.span, field);
-                    if (ix >= _vec.len[tup(mutability,@ty)](args)) {
+                    if (ix >= _vec.len[@ty](args)) {
                         fcx.ccx.sess.span_err(expr.span,
                                               "bad index on tuple");
                     }
-                    auto ann = ast.ann_type(args.(ix)._1);
+                    auto ann = ast.ann_type(args.(ix));
                     ret @fold.respan[ast.expr_](expr.span,
                                                 ast.expr_field(base_1,
                                                                field,
