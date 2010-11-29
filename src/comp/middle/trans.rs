@@ -275,7 +275,7 @@ fn type_of_inner(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
         }
         case (typeck.ty_tup(?elts)) {
             let vec[TypeRef] tys = vec();
-            for (tup(bool, @typeck.ty) elt in elts) {
+            for (tup(ast.mutability, @typeck.ty) elt in elts) {
                 tys += type_of(cx, elt._1);
             }
             ret T_struct(tys);
@@ -493,7 +493,7 @@ fn iter_structural_ty(@block_ctxt cx,
     alt (t.struct) {
         case (typeck.ty_tup(?args)) {
             let int i = 0;
-            for (tup(bool, @typeck.ty) arg in args) {
+            for (tup(ast.mutability, @typeck.ty) arg in args) {
                 auto elt = r.bcx.build.GEP(v, vec(C_int(0), C_int(i)));
                 r = f(r.bcx, elt, arg._1);
                 i += 1;
@@ -1184,13 +1184,13 @@ impure fn trans_call(@block_ctxt cx, @ast.expr f,
             args_res._0.build.FastCall(f_res._0.val, args_res._1));
 }
 
-impure fn trans_tup(@block_ctxt cx, vec[tup(bool, @ast.expr)] args,
+impure fn trans_tup(@block_ctxt cx, vec[tup(ast.mutability, @ast.expr)] args,
                     &ast.ann ann) -> result {
     auto ty = node_type(cx.fcx.ccx, ann);
     auto tup_val = cx.build.Alloca(ty);
     let int i = 0;
     auto r = res(cx, C_nil());
-    for (tup(bool, @ast.expr) arg in args) {
+    for (tup(ast.mutability, @ast.expr) arg in args) {
         auto t = typeck.expr_ty(arg._1);
         auto src_res = trans_expr(r.bcx, arg._1);
         auto dst_elt = r.bcx.build.GEP(tup_val, vec(C_int(0), C_int(i)));

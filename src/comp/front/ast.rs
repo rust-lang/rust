@@ -48,6 +48,11 @@ tag pat_ {
     pat_tag(ident, vec[@pat], ann);
 }
 
+tag mutability {
+    mut;
+    imm;
+}
+
 tag binop {
     add;
     sub;
@@ -105,7 +110,7 @@ type arm = rec(@pat pat, block block);
 type expr = spanned[expr_];
 tag expr_ {
     expr_vec(vec[@expr], ann);
-    expr_tup(vec[tup(bool /* mutability */, @expr)], ann);
+    expr_tup(vec[tup(mutability, @expr)], ann);
     expr_rec(vec[tup(ident,@expr)], ann);
     expr_call(@expr, vec[@expr], ann);
     expr_binary(binop, @expr, @expr, ann);
@@ -147,7 +152,7 @@ tag ty_ {
     ty_str;
     ty_box(@ty);
     ty_vec(@ty);
-    ty_tup(vec[tup(bool /* mutability */, @ty)]);
+    ty_tup(vec[tup(mutability, @ty)]);
     ty_fn(vec[rec(mode mode, @ty ty)], @ty);        // TODO: effect
     ty_path(path, option.t[def]);
     ty_mutable(@ty);

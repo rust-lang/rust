@@ -96,13 +96,14 @@ impure fn parse_ident(parser p) -> ast.ident {
     }
 }
 
-impure fn parse_possibly_mutable_ty(parser p) -> tup(bool, @ast.ty) {
+impure fn parse_possibly_mutable_ty(parser p)
+    -> tup(ast.mutability, @ast.ty) {
     auto mut;
     if (p.peek() == token.MUTABLE) {
         p.bump();
-        mut = true;
+        mut = ast.mut;
     } else {
-        mut = false;
+        mut = ast.imm;
     }
 
     ret tup(mut, parse_ty(p));
@@ -192,8 +193,10 @@ impure fn parse_ty(parser p) -> @ast.ty {
         case (token.TUP) {
             p.bump();
             auto f = parse_possibly_mutable_ty; // FIXME: trans_const_lval bug
-            auto elems = parse_seq[tup(bool, @ast.ty)](token.LPAREN,
-                token.RPAREN, some(token.COMMA), f, p);
+            auto elems =
+                parse_seq[tup(ast.mutability, @ast.ty)]
+                (token.LPAREN,
+                 token.RPAREN, some(token.COMMA), f, p);
             hi = p.get_span();
             t = ast.ty_tup(elems.node);
         }
@@ -346,13 +349,14 @@ impure fn parse_name(parser p, ast.ident id) -> ast.name {
     ret spanned(lo, tys.span, rec(ident=id, types=tys.node));
 }
 
-impure fn parse_possibly_mutable_expr(parser p) -> tup(bool, @ast.expr) {
+impure fn parse_possibly_mutable_expr(parser p)
+    -> tup(ast.mutability, @ast.expr) {
     auto mut;
     if (p.peek() == token.MUTABLE) {
         p.bump();
-        mut = true;
+        mut = ast.mut;
     } else {
-        mut = false;
+        mut = ast.imm;
     }
 
     ret tup(mut, parse_expr(p));
@@ -409,10 +413,12 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
         case (token.TUP) {
             p.bump();
             auto pf = parse_possibly_mutable_expr;
-            auto es = parse_seq[tup(bool, @ast.expr)](token.LPAREN,
-                                                      token.RPAREN,
-                                                      some(token.COMMA),
-                                                      pf, p);
+            auto es =
+                parse_seq[tup(ast.mutability, @ast.expr)]
+                (token.LPAREN,
+                 token.RPAREN,
+                 some(token.COMMA),
+                 pf, p);
             hi = es.span;
             ex = ast.expr_tup(es.node, ast.ann_none);
         }

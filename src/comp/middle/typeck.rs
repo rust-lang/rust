@@ -1,5 +1,6 @@
 import front.ast;
 import front.ast.ann;
+import front.ast.mutability;
 import middle.fold;
 import driver.session;
 import util.common;
@@ -28,7 +29,7 @@ type arg = rec(ast.mode mode, @ty ty);
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast.rs as well.
-type ty = rec(sty struct, bool mut, option.t[str] cname);
+type ty = rec(sty struct, mutability mut, option.t[str] cname);
 tag sty {
     ty_nil;
     ty_bool;
@@ -39,7 +40,7 @@ tag sty {
     ty_str;
     ty_box(@ty);
     ty_vec(@ty);
-    ty_tup(vec[tup(bool /* mutability */, @ty)]);
+    ty_tup(vec[tup(mutability, @ty)]);
     ty_fn(vec[arg], @ty);                           // TODO: effect
     ty_var(int);                                    // ephemeral type var
     ty_local(ast.def_id);                           // type of a local var
@@ -65,9 +66,9 @@ type ty_getter = fn(ast.def_id) -> @ty;
 // Error-reporting utility functions
 
 fn ast_ty_to_str(&@ast.ty ty) -> str {
-    fn ast_tup_elem_to_str(&tup(bool, @ast.ty) elem) -> str {
+    fn ast_tup_elem_to_str(&tup(mutability, @ast.ty) elem) -> str {
         auto s;
-        if (elem._0) {
+        if (elem._0 == ast.mut) {
             s = "mutable ";
         } else {
             s = "";
@@ -102,7 +103,9 @@ fn ast_ty_to_str(&@ast.ty ty) -> str {
         case (ast.ty_tup(?elems)) {
             auto f = ast_tup_elem_to_str;
             s = "tup(";
-            s += _str.connect(_vec.map[tup(bool,@ast.ty),str](f, elems), ",");
+            s +=
+                _str.connect(_vec.map[tup(mutability,@ast.ty),str](f, elems),
+                             ",");
             s += ")";
         }
 
@@ -151,9 +154,9 @@ fn path_to_str(&ast.path path) -> str {
 }
 
 fn ty_to_str(@ty typ) -> str {
-    fn tup_elem_to_str(&tup(bool, @ty) elem) -> str {
+    fn tup_elem_to_str(&tup(mutability, @ty) elem) -> str {
         auto s;
-        if (elem._0) {
+        if (elem._0 == ast.mut) {
             s = "mutable ";
         } else {
             s = "";
@@ -187,7 +190,7 @@ fn ty_to_str(@ty typ) -> str {
 
         case (ty_tup(?elems)) {
             auto f = tup_elem_to_str;
-            auto strs = _vec.map[tup(bool,@ty),str](f, elems);
+            auto strs = _vec.map[tup(mutability,@ty),str](f, elems);
             s = "tup(" + _str.connect(strs, ",") + ")";
         }
 
@@ -217,7 +220,7 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
         ret rec(mode=arg.mode, ty=ast_ty_to_ty(getter, arg.ty));
     }
 
-    auto mut = false;
+    auto mut = ast.imm;
     auto sty;
     auto cname = none[str];
     alt (ast_ty.node) {
@@ -231,8 +234,8 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
         case (ast.ty_box(?t))      { sty = ty_box(ast_ty_to_ty(getter, t)); }
         case (ast.ty_vec(?t))      { sty = ty_vec(ast_ty_to_ty(getter, t)); }
         case (ast.ty_tup(?fields)) {
-            let vec[tup(bool,@ty)] flds = vec();
-            for (tup(bool, @ast.ty) field in fields) {
+            let vec[tup(mutability,@ty)] flds = vec();
+            for (tup(mutability, @ast.ty) field in fields) {
                 flds += tup(field._0, ast_ty_to_ty(getter, field._1));
             }
             sty = ty_tup(flds);
@@ -258,7 +261,7 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
         }
 
         case (ast.ty_mutable(?t)) {
-            mut = true;
+            mut = ast.mut;
             auto t0 = ast_ty_to_ty(getter, t);
             sty = t0.struct;
             cname = t0.cname;
@@ -534,7 +537,7 @@ fn type_is_signed(@ty t) -> bool {
 }
 
 fn plain_ty(&sty st) -> @ty {
-    ret @rec(struct=st, mut=false, cname=none[str]);
+    ret @rec(struct=st, mut=ast.imm, cname=none[str]);
 }
 
 fn ann_to_type(&ast.ann ann) -> @ty {
@@ -708,9 +711,9 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
                 alt (actual.struct) {
                     case (ty_tup(?actual_elems)) {
                         auto expected_len =
-                            _vec.len[tup(bool,@ty)](expected_elems);
+                            _vec.len[tup(mutability,@ty)](expected_elems);
                         auto actual_len =
-                            _vec.len[tup(bool,@ty)](actual_elems);
+                            _vec.len[tup(mutability,@ty)](actual_elems);
                         if (expected_len != actual_len) {
                             auto err = terr_tuple_size(expected_len,
                                                        actual_len);
@@ -719,7 +722,7 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
 
                         // TODO: implement an iterator that can iterate over
                         // two arrays simultaneously.
-                        let vec[tup(bool, @ty)] result_elems = vec();
+                        let vec[tup(mutability, @ty)] result_elems = vec();
                         auto i = 0u;
                         while (i < expected_len) {
                             auto expected_elem = expected_elems.(i);
@@ -1254,10 +1257,10 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_tup(?args, _)) {
-            let vec[tup(bool, @ast.expr)] args_1 = vec();
-            let vec[tup(bool, @ty)] args_t = vec();
+            let vec[tup(mutability, @ast.expr)] args_1 = vec();
+            let vec[tup(mutability, @ty)] args_t = vec();
 
-            for (tup(bool, @ast.expr) arg in args) {
+            for (tup(mutability, @ast.expr) arg in args) {
                 auto expr_1 = check_expr(fcx, arg._1);
                 args_1 += tup(arg._0, expr_1);
                 args_t += tup(arg._0, expr_ty(expr_1));
@@ -1275,7 +1278,7 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (ty_tup(?args)) {
                     let uint ix = field_num(fcx.ccx.sess,
                                             expr.span, field);
-                    if (ix >= _vec.len[tup(bool,@ty)](args)) {
+                    if (ix >= _vec.len[tup(mutability,@ty)](args)) {
                         fcx.ccx.sess.span_err(expr.span,
                                               "bad index on tuple");
                     }

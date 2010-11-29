@@ -13,6 +13,7 @@ import front.ast;
 import front.ast.ident;
 import front.ast.name;
 import front.ast.path;
+import front.ast.mutability;
 import front.ast.ty;
 import front.ast.expr;
 import front.ast.stmt;
@@ -46,7 +47,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp, @ty t) -> @ty)         fold_ty_vec,
 
      (fn(&ENV e, &span sp,
-         vec[tup(bool, @ty)] elts) -> @ty)        fold_ty_tup,
+         vec[tup(mutability, @ty)] elts) -> @ty)  fold_ty_tup,
 
      (fn(&ENV e, &span sp,
          vec[rec(ast.mode mode, @ty ty)] inputs,
@@ -62,7 +63,7 @@ type ast_fold[ENV] =
          vec[@expr] es, ann a) -> @expr)          fold_expr_vec,
 
      (fn(&ENV e, &span sp,
-         vec[tup(bool,@expr)] es,
+         vec[tup(mutability,@expr)] es,
          ann a) -> @expr)                         fold_expr_tup,
 
      (fn(&ENV e, &span sp,
@@ -245,8 +246,8 @@ fn fold_ty[ENV](&ENV env, ast_fold[ENV] fld, @ty t) -> @ty {
         }
 
         case (ast.ty_tup(?elts)) {
-            let vec[tup(bool, @ty)] elts_ = vec();
-            for (tup(bool, @ty) elt in elts) {
+            let vec[tup(mutability, @ty)] elts_ = vec();
+            for (tup(mutability, @ty) elt in elts) {
                 elts_ += tup(elt._0, fold_ty(env, fld, elt._1));
             }
             ret fld.fold_ty_tup(env_, t.span, elts);
@@ -335,8 +336,8 @@ fn fold_exprs[ENV](&ENV env, ast_fold[ENV] fld, vec[@expr] es) -> vec[@expr] {
     ret exprs;
 }
 
-fn fold_tup_entry[ENV](&ENV env, ast_fold[ENV] fld, &tup(bool,@expr) e)
-    -> tup(bool,@expr) {
+fn fold_tup_entry[ENV](&ENV env, ast_fold[ENV] fld,
+                       &tup(mutability,@expr) e) -> tup(mutability,@expr) {
     ret tup(e._0, fold_expr(env, fld, e._1));
 }
 
@@ -360,8 +361,8 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
         }
 
         case (ast.expr_tup(?es, ?t)) {
-            let vec[tup(bool,@expr)] entries = vec();
-            for (tup(bool,@expr) entry in es) {
+            let vec[tup(mutability,@expr)] entries = vec();
+            for (tup(mutability,@expr) entry in es) {
                 entries += fold_tup_entry[ENV](env, fld, entry);
             }
             ret fld.fold_expr_tup(env_, e.span, entries, t);
@@ -650,8 +651,8 @@ fn identity_fold_ty_vec[ENV](&ENV env, &span sp, @ty t) -> @ty {
     ret @respan(sp, ast.ty_vec(t));
 }
 
-fn identity_fold_ty_tup[ENV](&ENV env, &span sp, vec[tup(bool,@ty)] elts)
-    -> @ty {
+fn identity_fold_ty_tup[ENV](&ENV env, &span sp,
+                             vec[tup(mutability,@ty)] elts) -> @ty {
     ret @respan(sp, ast.ty_tup(elts));
 }
 
@@ -678,7 +679,8 @@ fn identity_fold_expr_vec[ENV](&ENV env, &span sp, vec[@expr] es,
     ret @respan(sp, ast.expr_vec(es, a));
 }
 
-fn identity_fold_expr_tup[ENV](&ENV env, &span sp, vec[tup(bool, @expr)] es,
+fn identity_fold_expr_tup[ENV](&ENV env, &span sp,
+                               vec[tup(mutability, @expr)] es,
                                ann a) -> @expr {
     ret @respan(sp, ast.expr_tup(es, a));
 }
