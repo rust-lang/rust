@@ -28,7 +28,7 @@ type arg = rec(ast.mode mode, @ty ty);
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast.rs as well.
-type ty = rec(sty struct, option.t[str] cname);
+type ty = rec(sty struct, bool mut, option.t[str] cname);
 tag sty {
     ty_nil;
     ty_bool;
@@ -257,7 +257,7 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
         }
     }
 
-    ret @rec(struct=sty, cname=cname);
+    ret @rec(struct=sty, mut=false, cname=cname);
 }
 
 // A convenience function to use a crate_ctxt to resolve names for
@@ -522,7 +522,7 @@ fn type_is_signed(@ty t) -> bool {
 }
 
 fn plain_ty(&sty st) -> @ty {
-    ret @rec(struct=st, cname=none[str]);
+    ret @rec(struct=st, mut=false, cname=none[str]);
 }
 
 fn ann_to_type(&ast.ann ann) -> @ty {
@@ -1075,7 +1075,7 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_name(?name, ?defopt, _)) {
-            auto t = @rec(struct=ty_nil, cname=none[str]);
+            auto t = plain_ty(ty_nil);
             alt (option.get[ast.def](defopt)) {
                 case (ast.def_arg(?id)) {
                     check (fcx.locals.contains_key(id));
