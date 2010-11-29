@@ -174,7 +174,12 @@ impure fn parse_ty(parser p) -> @ast.ty {
             }
         }
 
-        case (token.AT) { p.bump(); t = ast.ty_box(parse_ty(p)); }
+        case (token.AT) {
+            p.bump();
+            auto t0 = parse_ty(p);
+            hi = t0.span;
+            t = ast.ty_box(t0);
+        }
 
         case (token.VEC) {
             p.bump();
@@ -191,6 +196,13 @@ impure fn parse_ty(parser p) -> @ast.ty {
                 token.RPAREN, some(token.COMMA), f, p);
             hi = p.get_span();
             t = ast.ty_tup(elems.node);
+        }
+
+        case (token.MUTABLE) {
+            p.bump();
+            auto t0 = parse_ty(p);
+            hi = p.get_span();
+            t = ast.ty_mutable(t0);
         }
 
         case (token.FN) {

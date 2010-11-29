@@ -122,6 +122,10 @@ fn ast_ty_to_str(&@ast.ty ty) -> str {
             s = path_to_str(path);
         }
 
+        case (ast.ty_mutable(?t)) {
+            s = "mutable " + ast_ty_to_str(t);
+        }
+
         case (_) {
             fail;   // FIXME: typestate bug
         }
@@ -213,6 +217,7 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
         ret rec(mode=arg.mode, ty=ast_ty_to_ty(getter, arg.ty));
     }
 
+    auto mut = false;
     auto sty;
     auto cname = none[str];
     alt (ast_ty.node) {
@@ -252,12 +257,19 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
             cname = some(path_to_str(path));
         }
 
+        case (ast.ty_mutable(?t)) {
+            mut = true;
+            auto t0 = ast_ty_to_ty(getter, t);
+            sty = t0.struct;
+            cname = t0.cname;
+        }
+
         case (_) {
             fail;
         }
     }
 
-    ret @rec(struct=sty, mut=false, cname=cname);
+    ret @rec(struct=sty, mut=mut, cname=cname);
 }
 
 // A convenience function to use a crate_ctxt to resolve names for
