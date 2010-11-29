@@ -153,6 +153,7 @@ tag ty_ {
     ty_box(@ty);
     ty_vec(@ty);
     ty_tup(vec[@ty]);
+    ty_rec(vec[tup(ident,@ty)]);
     ty_fn(vec[rec(mode mode, @ty ty)], @ty);        // TODO: effect
     ty_path(path, option.t[def]);
     ty_mutable(@ty);

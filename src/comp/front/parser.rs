@@ -187,6 +187,23 @@ impure fn parse_ty(parser p) -> @ast.ty {
             t = ast.ty_tup(elems.node);
         }
 
+        case (token.REC) {
+            p.bump();
+            impure fn parse_field(parser p) -> tup(ast.ident, @ast.ty) {
+                auto ty = parse_ty(p);
+                auto id = parse_ident(p);
+                ret tup(id,ty);
+            }
+            auto f = parse_field; // FIXME: trans_const_lval bug
+            auto elems =
+                parse_seq[tup(ast.ident, @ast.ty)](token.LPAREN,
+                                                   token.RPAREN,
+                                                   some(token.COMMA),
+                                                   f, p);
+            hi = p.get_span();
+            t = ast.ty_rec(elems.node);
+        }
+
         case (token.MUTABLE) {
             p.bump();
             auto t0 = parse_ty(p);
