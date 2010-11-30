@@ -793,7 +793,8 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
                         while (i < expected_len) {
                             auto expected_field = expected_fields.(i);
                             auto actual_field = actual_fields.(i);
-                            if (expected_field.ty.mut != actual_field.ty.mut) {
+                            if (expected_field.ty.mut
+                                != actual_field.ty.mut) {
                                 auto err = terr_record_mutability;
                                 ret ures_err(err, expected, actual);
                             }
@@ -812,8 +813,9 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
                                                      actual_field.ty);
                             alt (result) {
                                 case (ures_ok(?rty)) {
-                                    append[field](result_fields,
-                                                  rec(ty=rty with expected_field));
+                                    append[field]
+                                        (result_fields,
+                                         rec(ty=rty with expected_field));
                                 }
                                 case (_) {
                                     ret result;
