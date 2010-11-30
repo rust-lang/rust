@@ -1260,7 +1260,8 @@ impure fn parse_item_tag(parser p) -> tup(ast.ident, @ast.item) {
 
                 expect(p, token.SEMI);
 
-                variants += vec(rec(name=name, args=args));
+                auto id = p.next_def_id();
+                variants += vec(rec(name=name, args=args, id=id));
             }
             case (token.RBRACE) { /* empty */ }
             case (_) {

@@ -594,7 +594,7 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
                 for (@ast.ty t in v.args) {
                     new_args += vec(fold_ty[ENV](env_, fld, t));
                 }
-                new_variants += rec(name=v.name, args=new_args);
+                new_variants += rec(name=v.name, args=new_args, id=v.id);
             }
             ret fld.fold_item_tag(env_, i.span, ident, new_variants,
                                   ty_params, id);
