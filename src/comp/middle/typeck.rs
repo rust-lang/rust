@@ -26,6 +26,7 @@ type fn_ctxt = rec(@ty ret_ty,
                    @crate_ctxt ccx);
 
 type arg = rec(ast.mode mode, @ty ty);
+type field = rec(ast.ident label, @ty ty);
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast.rs as well.
@@ -41,6 +42,7 @@ tag sty {
     ty_box(@ty);
     ty_vec(@ty);
     ty_tup(vec[@ty]);
+    ty_rec(vec[field]);
     ty_fn(vec[arg], @ty);                           // TODO: effect
     ty_var(int);                                    // ephemeral type var
     ty_local(ast.def_id);                           // type of a local var
@@ -52,6 +54,9 @@ tag type_err {
     terr_mismatch;
     terr_tuple_size(uint, uint);
     terr_tuple_mutability;
+    terr_record_size(uint, uint);
+    terr_record_mutability;
+    terr_record_fields(ast.ident,ast.ident);
     terr_arg_count;
 }
 
@@ -78,6 +83,10 @@ fn ast_ty_to_str(&@ast.ty ty) -> str {
         ret s + ast_ty_to_str(input.ty);
     }
 
+    fn ast_field_to_str(&tup(ast.ident, @ast.ty) f) -> str {
+        ret ast_ty_to_str(f._1) + " " + f._0;
+    }
+
     auto s;
     alt (ty.node) {
         case (ast.ty_nil)          { s = "()";                            }
@@ -94,6 +103,14 @@ fn ast_ty_to_str(&@ast.ty ty) -> str {
             auto f = ast_ty_to_str;
             s = "tup(";
             s += _str.connect(_vec.map[@ast.ty,str](f, elems), ",");
+            s += ")";
+        }
+
+        case (ast.ty_rec(?elems)) {
+            auto f = ast_field_to_str;
+            s = "rec(";
+            s += _str.connect(_vec.map[tup(ast.ident, @ast.ty),str]
+                              (f, elems), ",");
             s += ")";
         }
 
@@ -154,6 +171,10 @@ fn ty_to_str(&@ty typ) -> str {
         ret s + ty_to_str(input.ty);
     }
 
+    fn field_to_str(&field f) -> str {
+        ret ty_to_str(f.ty) + " " + f.label;
+    }
+
     auto s = "";
     if (typ.mut == ast.mut) {
         s += "mutable ";
@@ -174,6 +195,12 @@ fn ty_to_str(&@ty typ) -> str {
             auto f = ty_to_str;
             auto strs = _vec.map[@ty,str](f, elems);
             s = "tup(" + _str.connect(strs, ",") + ")";
+        }
+
+        case (ty_rec(?elems)) {
+            auto f = field_to_str;
+            auto strs = _vec.map[field,str](f, elems);
+            s = "rec(" + _str.connect(strs, ",") + ")";
         }
 
         case (ty_fn(?inputs, ?output)) {
@@ -221,6 +248,14 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
                 append[@ty](flds, ast_ty_to_ty(getter, field));
             }
             sty = ty_tup(flds);
+        }
+        case (ast.ty_rec(?fields)) {
+            let vec[field] flds = vec();
+            for (tup(ast.ident, @ast.ty) f in fields) {
+                append[field](flds, rec(label=f._0,
+                                        ty=ast_ty_to_ty(getter, f._1)));
+            }
+            sty = ty_rec(flds);
         }
 
         case (ast.ty_fn(?inputs, ?output)) {
@@ -280,6 +315,19 @@ fn type_err_to_str(&type_err err) -> str {
         }
         case (terr_tuple_mutability) {
             ret "tuple elements differ in mutability";
+        }
+        case (terr_record_size(?e_sz, ?a_sz)) {
+            ret "expected a record with " + _uint.to_str(e_sz, 10u) +
+                " fields but found one with " + _uint.to_str(a_sz, 10u) +
+                " fields";
+        }
+        case (terr_record_mutability) {
+            ret "record elements differ in mutability";
+        }
+        case (terr_record_fields(?e_fld, ?a_fld)) {
+            ret "expected a record with field '" + e_fld +
+                "' but found one with field '" + a_fld +
+                "'";
         }
         case (terr_arg_count) {
             ret "incorrect number of function parameters";
@@ -445,8 +493,9 @@ fn type_is_nil(@ty t) -> bool {
 
 fn type_is_structural(@ty t) -> bool {
     alt (t.struct) {
-        // FIXME: cover rec and tag when we support them.
+        // FIXME: cover tag when we support it.
         case (ty_tup(_)) { ret true; }
+        case (ty_rec(_)) { ret true; }
     }
     ret false;
 }
@@ -716,6 +765,65 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
                         }
 
                         ret ures_ok(plain_ty(ty_tup(result_elems)));
+                    }
+
+                    // TODO: ty_var
+
+                    case (_) {
+                        ret ures_err(terr_mismatch, expected, actual);
+                    }
+                }
+            }
+
+            case (ty_rec(?expected_fields)) {
+                alt (actual.struct) {
+                    case (ty_rec(?actual_fields)) {
+                        auto expected_len = _vec.len[field](expected_fields);
+                        auto actual_len = _vec.len[field](actual_fields);
+                        if (expected_len != actual_len) {
+                            auto err = terr_record_size(expected_len,
+                                                        actual_len);
+                            ret ures_err(err, expected, actual);
+                        }
+
+                        // TODO: implement an iterator that can iterate over
+                        // two arrays simultaneously.
+                        let vec[field] result_fields = vec();
+                        auto i = 0u;
+                        while (i < expected_len) {
+                            auto expected_field = expected_fields.(i);
+                            auto actual_field = actual_fields.(i);
+                            if (expected_field.ty.mut != actual_field.ty.mut) {
+                                auto err = terr_record_mutability;
+                                ret ures_err(err, expected, actual);
+                            }
+
+                            if (!_str.eq(expected_field.label,
+                                        actual_field.label)) {
+                                auto err =
+                                    terr_record_fields(expected_field.label,
+                                                       actual_field.label);
+                                ret ures_err(err, expected, actual);
+                            }
+
+                            auto result = unify_step(fcx,
+                                                     bindings,
+                                                     expected_field.ty,
+                                                     actual_field.ty);
+                            alt (result) {
+                                case (ures_ok(?rty)) {
+                                    append[field](result_fields,
+                                                  rec(ty=rty with expected_field));
+                                }
+                                case (_) {
+                                    ret result;
+                                }
+                            }
+
+                            i += 1u;
+                        }
+
+                        ret ures_ok(plain_ty(ty_rec(result_fields)));
                     }
 
                     // TODO: ty_var
