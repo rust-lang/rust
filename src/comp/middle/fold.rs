@@ -49,6 +49,9 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp, vec[@ty] elts) -> @ty) fold_ty_tup,
 
      (fn(&ENV e, &span sp,
+         vec[tup(ident,@ty)] elts) -> @ty)        fold_ty_rec,
+
+     (fn(&ENV e, &span sp,
          vec[rec(ast.mode mode, @ty ty)] inputs,
          @ty output) -> @ty)                      fold_ty_fn,
 
@@ -250,6 +253,15 @@ fn fold_ty[ENV](&ENV env, ast_fold[ENV] fld, @ty t) -> @ty {
                 append[@ty](elts_,fold_ty(env, fld, elt));
             }
             ret fld.fold_ty_tup(env_, t.span, elts);
+        }
+
+        case (ast.ty_rec(?elts)) {
+            let vec[tup(ident,@ty)] elts_ = vec();
+            for (tup(ident, @ty) elt in elts) {
+                append[tup(ident, @ty)]
+                    (elts_, tup(elt._0, fold_ty(env, fld, elt._1)));
+            }
+            ret fld.fold_ty_rec(env_, t.span, elts);
         }
 
         case (ast.ty_path(?pth, ?ref_opt)) {
@@ -655,6 +667,11 @@ fn identity_fold_ty_tup[ENV](&ENV env, &span sp,
     ret @respan(sp, ast.ty_tup(elts));
 }
 
+fn identity_fold_ty_rec[ENV](&ENV env, &span sp,
+                             vec[tup(ident,@ty)] elts) -> @ty {
+    ret @respan(sp, ast.ty_rec(elts));
+}
+
 fn identity_fold_ty_fn[ENV](&ENV env, &span sp,
                             vec[rec(ast.mode mode, @ty ty)] inputs,
                             @ty output) -> @ty {
@@ -918,6 +935,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_ty_box     = bind identity_fold_ty_box[ENV](_,_,_),
          fold_ty_vec     = bind identity_fold_ty_vec[ENV](_,_,_),
          fold_ty_tup     = bind identity_fold_ty_tup[ENV](_,_,_),
+         fold_ty_rec     = bind identity_fold_ty_rec[ENV](_,_,_),
          fold_ty_fn      = bind identity_fold_ty_fn[ENV](_,_,_,_),
          fold_ty_path    = bind identity_fold_ty_path[ENV](_,_,_,_),
          fold_ty_mutable = bind identity_fold_ty_mutable[ENV](_,_,_),
