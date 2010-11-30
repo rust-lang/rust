@@ -398,19 +398,6 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
 
 // Expression utilities
 
-fn last_expr_of_block(&ast.block bloc) -> option.t[@ast.expr] {
-    auto len = _vec.len[@ast.stmt](bloc.node.stmts);
-    if (len == 0u) {
-        ret none[@ast.expr];
-    }
-    auto last_stmt = bloc.node.stmts.(len - 1u);
-    alt (last_stmt.node) {
-        case (ast.stmt_expr(?e)) { ret some[@ast.expr](e); }
-        case (_)                 { ret none[@ast.expr]; }
-    }
-}
-
-
 fn field_num(session.session sess, &span sp, &ast.ident id) -> uint {
     let uint accum = 0u;
     let uint i = 0u;
@@ -546,7 +533,7 @@ fn stmt_ty(@ast.stmt s) -> @ty {
 }
 
 fn block_ty(&ast.block b) -> @ty {
-    alt (last_expr_of_block(b)) {
+    alt (b.node.expr) {
         case (some[@ast.expr](?e)) { ret expr_ty(e); }
         case (none[@ast.expr])     { ret plain_ty(ty_nil); }
     }
@@ -965,18 +952,12 @@ fn demand_expr(&fn_ctxt fcx, @ty expected, @ast.expr e) -> @ast.expr {
 
 // Type unification over typed blocks.
 fn demand_block(&fn_ctxt fcx, @ty expected, &ast.block bloc) -> ast.block {
-    alt (last_expr_of_block(bloc)) {
+    alt (bloc.node.expr) {
         case (some[@ast.expr](?e_0)) {
             auto e_1 = demand_expr(fcx, expected, e_0);
-
-            auto len = _vec.len[@ast.stmt](bloc.node.stmts);
-            auto last_stmt_0 = bloc.node.stmts.(len - 1u);
-            auto prev_stmts = _vec.pop[@ast.stmt](bloc.node.stmts);
-            auto last_stmt_1 = @fold.respan[ast.stmt_](last_stmt_0.span,
-                                                       ast.stmt_expr(e_1));
-            auto stmts_1 = prev_stmts + vec(last_stmt_1);
-
-            auto block_ = rec(stmts=stmts_1, index=bloc.node.index);
+            auto block_ = rec(stmts=bloc.node.stmts,
+                              expr=some[@ast.expr](e_1),
+                              index=bloc.node.index);
             ret fold.respan[ast.block_](bloc.span, block_);
         }
         case (none[@ast.expr]) {
@@ -1386,8 +1367,18 @@ fn check_block(&fn_ctxt fcx, &ast.block block) -> ast.block {
     for (@ast.stmt s in block.node.stmts) {
         append[@ast.stmt](stmts, check_stmt(fcx, s));
     }
+
+    auto expr = none[@ast.expr];
+    alt (block.node.expr) {
+        case (none[@ast.expr]) { /* empty */ }
+        case (some[@ast.expr](?e)) {
+            expr = some[@ast.expr](check_expr(fcx, e));
+        }
+    }
+
     ret fold.respan[ast.block_](block.span,
-                                rec(stmts=stmts, index=block.node.index));
+                                rec(stmts=stmts, expr=expr,
+                                    index=block.node.index));
 }
 
 fn check_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
@@ -1411,8 +1402,10 @@ fn check_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
                           locals = local_ty_table,
                           ccx = ccx);
 
+    // TODO: Make sure the type of the block agrees with the function type.
     auto block_t = check_block(fcx, f.body);
     auto block_wb = writeback(fcx, block_t);
+
     auto fn_t = rec(inputs=f.inputs, output=f.output, body=block_wb);
     auto item = ast.item_fn(ident, fn_t, ty_params, id, fn_ann);
     ret @fold.respan[ast.item_](sp, item);

@@ -529,7 +529,19 @@ fn fold_block[ENV](&ENV env, ast_fold[ENV] fld, &block blk) -> block {
     for (@ast.stmt s in blk.node.stmts) {
         append[@ast.stmt](stmts, fold_stmt[ENV](env_, fld, s));
     }
-    ret respan(blk.span, rec(stmts=stmts with blk.node));
+
+    auto expr = none[@ast.expr];
+    alt (blk.node.expr) {
+        case (some[@ast.expr](?e)) {
+            expr = some[@ast.expr](fold_expr[ENV](env_, fld, e));
+        }
+        case (none[@ast.expr]) {
+            // empty
+        }
+    }
+
+    // FIXME: should we reindex?
+    ret respan(blk.span, rec(stmts=stmts, expr=expr, index=blk.node.index));
 }
 
 fn fold_arg[ENV](&ENV env, ast_fold[ENV] fld, &arg a) -> arg {

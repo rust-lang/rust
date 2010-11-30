@@ -1488,6 +1488,19 @@ impure fn trans_block(@block_ctxt cx, &ast.block b) -> result {
         }
     }
 
+    alt (b.node.expr) {
+        case (some[@ast.expr](?e)) {
+            r = trans_expr(bcx, e);
+            bcx = r.bcx;
+            if (is_terminated(bcx)) {
+                ret r;
+            }
+        }
+        case (none[@ast.expr]) {
+            r = res(bcx, C_nil());
+        }
+    }
+
     bcx = trans_block_cleanups(bcx, bcx);
     ret res(bcx, r.val);
 }

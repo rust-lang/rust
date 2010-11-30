@@ -39,6 +39,7 @@ type crate_ = rec(_mod module);
 
 type block = spanned[block_];
 type block_ = rec(vec[@stmt] stmts,
+                  option.t[@expr] expr,
                   hashmap[ident,uint] index);
 
 type pat = spanned[pat_];

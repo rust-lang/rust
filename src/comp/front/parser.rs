@@ -761,7 +761,6 @@ impure fn parse_do_while_expr(parser p) -> @ast.expr {
     expect (p, token.LPAREN);
     auto cond = parse_expr(p);
     expect(p, token.RPAREN);
-    expect(p, token.SEMI);
     hi = cond.span;
     ret @spanned(lo, hi, ast.expr_do_while(body, cond, ast.ann_none));
 }
@@ -891,7 +890,6 @@ impure fn parse_let(parser p) -> @ast.decl {
     auto init = parse_initializer(p);
 
     auto hi = p.get_span();
-    expect(p, token.SEMI);
 
     let ast.local local = rec(ty = some(ty),
                               infer = false,
@@ -911,7 +909,6 @@ impure fn parse_auto(parser p) -> @ast.decl {
     auto init = parse_initializer(p);
 
     auto hi = p.get_span();
-    expect(p, token.SEMI);
 
     let ast.local local = rec(ty = none[@ast.ty],
                               infer = true,
@@ -931,7 +928,6 @@ impure fn parse_stmt(parser p) -> @ast.stmt {
             p.bump();
             auto e = parse_expr(p);
             auto hi = p.get_span();
-            expect(p, token.SEMI);
             ret @spanned(lo, hi, ast.stmt_log(e));
         }
 
@@ -941,7 +937,6 @@ impure fn parse_stmt(parser p) -> @ast.stmt {
                 case (token.LPAREN) {
                     auto e = parse_expr(p);
                     auto hi = p.get_span();
-                    expect(p, token.SEMI);
                     ret @spanned(lo, hi, ast.stmt_check_expr(e));
                 }
                 case (_) {
@@ -954,13 +949,11 @@ impure fn parse_stmt(parser p) -> @ast.stmt {
             p.bump();
             alt (p.peek()) {
                 case (token.SEMI) {
-                    p.bump();
                     ret @spanned(lo, p.get_span(),
                                  ast.stmt_ret(none[@ast.expr]));
                 }
                 case (_) {
                     auto e = parse_expr(p);
-                    expect(p, token.SEMI);
                     ret @spanned(lo, e.span,
                                  ast.stmt_ret(some[@ast.expr](e)));
                 }
@@ -1012,7 +1005,6 @@ impure fn parse_stmt(parser p) -> @ast.stmt {
         case (_) {
             auto e = parse_expr(p);
             auto hi = p.get_span();
-            expect(p, token.SEMI);
             ret @spanned(lo, hi, ast.stmt_expr(e));
         }
     }
@@ -1020,16 +1012,10 @@ impure fn parse_stmt(parser p) -> @ast.stmt {
     fail;
 }
 
-impure fn parse_block(parser p) -> ast.block {
-    auto f = parse_stmt;
-    // FIXME: passing parse_stmt as an lval doesn't work at the moment.
-    auto stmts = parse_seq[@ast.stmt](token.LBRACE,
-                                      token.RBRACE,
-                                      none[token.token],
-                                      f, p);
+fn index_block(vec[@ast.stmt] stmts, option.t[@ast.expr] expr) -> ast.block_ {
     auto index = new_str_hash[uint]();
     auto u = 0u;
-    for (@ast.stmt s in stmts.node) {
+    for (@ast.stmt s in stmts) {
         // FIXME: typestate bug requires we do this up top, not
         // down below loop. Sigh.
         u += 1u;
@@ -1056,8 +1042,103 @@ impure fn parse_block(parser p) -> ast.block {
             }
         }
     }
-    let ast.block_ b = rec(stmts=stmts.node, index=index);
-    ret spanned(stmts.span, stmts.span, b);
+    ret rec(stmts=stmts, expr=expr, index=index);
+}
+
+fn stmt_to_expr(@ast.stmt stmt) -> option.t[@ast.expr] {
+    alt (stmt.node) {
+        case (ast.stmt_expr(?e)) { ret some[@ast.expr](e); }
+        case (_) { /* fall through */ }
+    }
+    ret none[@ast.expr];
+}
+
+fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
+    alt (stmt.node) {
+        case (ast.stmt_decl(_))                 { ret true; } // FIXME
+        case (ast.stmt_ret(_))                  { ret true; }
+        case (ast.stmt_log(_))                  { ret true; }
+        case (ast.stmt_check_expr(_))           { ret true; }
+        case (ast.stmt_expr(?e)) {
+            alt (e.node) {
+                case (ast.expr_vec(_,_))        { ret true; }
+                case (ast.expr_tup(_,_))        { ret true; }
+                case (ast.expr_rec(_,_))        { ret true; }
+                case (ast.expr_call(_,_,_))     { ret true; }
+                case (ast.expr_binary(_,_,_,_)) { ret true; }
+                case (ast.expr_unary(_,_,_))    { ret true; }
+                case (ast.expr_lit(_,_))        { ret true; }
+                case (ast.expr_cast(_,_,_))     { ret true; }
+                case (ast.expr_if(_,_,_,_))     { ret false; }
+                case (ast.expr_while(_,_,_))    { ret false; }
+                case (ast.expr_do_while(_,_,_)) { ret false; }
+                case (ast.expr_alt(_,_,_))      { ret false; }
+                case (ast.expr_block(_,_))      { ret false; }
+                case (ast.expr_assign(_,_,_))   { ret true; }
+                case (ast.expr_field(_,_,_))    { ret true; }
+                case (ast.expr_index(_,_,_))    { ret true; }
+                case (ast.expr_name(_,_,_))     { ret true; }
+                case (_)                        { fail; }
+            }
+        }
+        case (_)                                { fail; }
+    }
+}
+
+impure fn parse_block(parser p) -> ast.block {
+    auto lo = p.get_span();
+
+    let vec[@ast.stmt] stmts = vec();
+    let option.t[@ast.expr] expr = none[@ast.expr];
+
+    expect(p, token.LBRACE);
+    while (p.peek() != token.RBRACE) {
+        alt (p.peek()) {
+            case (token.RBRACE) {
+                // empty; fall through to next iteration
+            }
+            case (token.SEMI) {
+                p.bump();
+                // empty
+            }
+            case (_) {
+                auto stmt = parse_stmt(p);
+                alt (stmt_to_expr(stmt)) {
+                    case (some[@ast.expr](?e)) {
+                        alt (p.peek()) {
+                            case (token.SEMI) {
+                                p.bump();
+                                stmts += vec(stmt);
+                            }
+                            case (token.RBRACE) { expr = some(e); }
+                            case (?t) {
+                                if (stmt_ends_with_semi(stmt)) {
+                                    p.err("expected ';' or '}' after " +
+                                          "expression but found " +
+                                          token.to_str(t));
+                                    fail;
+                                }
+                                stmts += vec(stmt);
+                            }
+                        }
+                    }
+                    case (none[@ast.expr]) {
+                        // Not an expression statement.
+                        stmts += vec(stmt);
+                        if (stmt_ends_with_semi(stmt)) {
+                            expect(p, token.SEMI);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    p.bump();
+    auto hi = p.get_span();
+
+    auto bloc = index_block(stmts, expr);
+    ret spanned[ast.block_](lo, hi, bloc);
 }
 
 impure fn parse_ty_param(parser p) -> ast.ty_param {
