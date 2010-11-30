@@ -474,6 +474,19 @@ fn field_num(session.session sess, &span sp, &ast.ident id) -> uint {
     ret accum;
 }
 
+fn field_idx(session.session sess, &span sp,
+             &ast.ident id, vec[field] fields) -> uint {
+    let uint i = 0u;
+    for (field f in fields) {
+        if (_str.eq(f.label, id)) {
+            ret i;
+        }
+        i += 1u;
+    }
+    sess.span_err(sp, "unknown field '" + id + "' of record");
+    fail;
+}
+
 // Type utilities
 
 // FIXME: remove me when == works on these tags.
@@ -1346,6 +1359,22 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                         ast.expr_tup(args_1, ann));
         }
 
+        case (ast.expr_rec(?args, _)) {
+            let vec[tup(ast.ident, @ast.expr)] args_1 = vec();
+            let vec[field] args_t = vec();
+
+            for (tup(ast.ident, @ast.expr) arg in args) {
+                auto expr_1 = check_expr(fcx, arg._1);
+                args_1 += tup(arg._0, expr_1);
+                append[field](args_t,rec(label=arg._0,
+                                         ty=expr_ty(expr_1)));
+            }
+
+            auto ann = ast.ann_type(plain_ty(ty_rec(args_t)));
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_rec(args_1, ann));
+        }
+
         case (ast.expr_field(?base, ?field, _)) {
             auto base_1 = check_expr(fcx, base);
             auto base_t = expr_ty(base_1);
@@ -1363,6 +1392,21 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                                field,
                                                                ann));
                 }
+
+                case (ty_rec(?fields)) {
+                    let uint ix = field_idx(fcx.ccx.sess,
+                                            expr.span, field, fields);
+                    if (ix >= _vec.len[typeck.field](fields)) {
+                        fcx.ccx.sess.span_err(expr.span,
+                                              "bad index on record");
+                    }
+                    auto ann = ast.ann_type(fields.(ix).ty);
+                    ret @fold.respan[ast.expr_](expr.span,
+                                                ast.expr_field(base_1,
+                                                               field,
+                                                               ann));
+                }
+
                 case (_) {
                     fcx.ccx.sess.unimpl("base type for expr_field "
                                         + "in typeck.check_expr: "

@@ -534,6 +534,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         item-name-overload.rs \
                         lazy-init.rs \
                         multiline-comment.rs \
+                        rec.rs \
                         return-nil.rs \
                         tup.rs \
                         u32-decr.rs \

@@ -280,6 +280,13 @@ fn type_of_inner(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
             }
             ret T_struct(tys);
         }
+        case (typeck.ty_rec(?fields)) {
+            let vec[TypeRef] tys = vec();
+            for (typeck.field f in fields) {
+                tys += type_of(cx, f.ty);
+            }
+            ret T_struct(tys);
+        }
         case (typeck.ty_fn(?args, ?out)) {
             let vec[TypeRef] atys = vec(T_taskptr());
             for (typeck.arg arg in args) {
@@ -1106,6 +1113,12 @@ fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
             auto v = r.bcx.build.GEP(r.val, vec(C_int(0), C_int(ix as int)));
             ret tup(res(r.bcx, v), lv._1);
         }
+        case (typeck.ty_rec(?fields)) {
+            let uint ix = typeck.field_idx(cx.fcx.ccx.sess, sp,
+                                           field, fields);
+            auto v = r.bcx.build.GEP(r.val, vec(C_int(0), C_int(ix as int)));
+            ret tup(res(r.bcx, v), lv._1);
+        }
     }
     cx.fcx.ccx.sess.unimpl("field variant in trans_field");
     fail;
@@ -1201,6 +1214,23 @@ impure fn trans_tup(@block_ctxt cx, vec[tup(ast.mutability, @ast.expr)] args,
     ret res(r.bcx, tup_val);
 }
 
+impure fn trans_rec(@block_ctxt cx, vec[tup(ast.ident, @ast.expr)] args,
+                    &ast.ann ann) -> result {
+    auto ty = node_type(cx.fcx.ccx, ann);
+    auto tup_val = cx.build.Alloca(ty);
+    let int i = 0;
+    auto r = res(cx, C_nil());
+    for (tup(ast.ident, @ast.expr) arg in args) {
+        auto t = typeck.expr_ty(arg._1);
+        auto src_res = trans_expr(r.bcx, arg._1);
+        auto dst_elt = r.bcx.build.GEP(tup_val, vec(C_int(0), C_int(i)));
+        // FIXME: calculate copy init-ness in typestate.
+        r = copy_ty(src_res.bcx, true, dst_elt, src_res.val, t);
+        i += 1;
+    }
+    ret res(r.bcx, tup_val);
+}
+
 
 
 impure fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
@@ -1259,6 +1289,10 @@ impure fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
 
         case (ast.expr_tup(?args, ?ann)) {
             ret trans_tup(cx, args, ann);
+        }
+
+        case (ast.expr_rec(?args, ?ann)) {
+            ret trans_rec(cx, args, ann);
         }
 
         // lval cases fall through to trans_lval and then
