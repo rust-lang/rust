@@ -1283,7 +1283,8 @@ impure fn parse_item_tag(parser p) -> @ast.item {
                 expect(p, token.SEMI);
 
                 auto id = p.next_def_id();
-                variants += vec(rec(name=name, args=args, id=id));
+                variants += vec(rec(name=name, args=args, id=id,
+                                    ann=ast.ann_none));
             }
             case (token.RBRACE) { /* empty */ }
             case (_) {

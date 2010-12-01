@@ -402,10 +402,12 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         }
     }
 
-    fn add_tag_variant_types(@hashmap[ast.def_id,@ast.item] id_to_ty_item,
+    fn get_tag_variant_types(@hashmap[ast.def_id,@ast.item] id_to_ty_item,
                              @ty_table item_to_ty,
                              &ast.def_id tag_id,
-                             &vec[ast.variant] variants) {
+                             &vec[ast.variant] variants) -> vec[ast.variant] {
+        let vec[ast.variant] result = vec();
+
         for (ast.variant variant in variants) {
             // Nullary tag constructors get turned into constants; n-ary tag
             // constructors get turned into functions.
@@ -427,7 +429,12 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
             }
 
             item_to_ty.insert(variant.id, result_ty);
+            
+            auto variant_t = rec(ann=ast.ann_type(result_ty) with variant);
+            result += vec(variant_t);
         }
+
+        ret result;
     }
 
     // First pass: collect all type item IDs.
@@ -463,10 +470,12 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
             case (ast.item_mod(_, _, _)) {
                 result = it.node;
             }
-            case (ast.item_tag(_, ?variants, _, ?tag_id)) {
-                add_tag_variant_types(id_to_ty_item, item_to_ty, tag_id,
-                                      variants);
-                result = it.node;
+            case (ast.item_tag(?ident, ?variants, ?tps, ?tag_id)) {
+                auto variants_t = get_tag_variant_types(id_to_ty_item,
+                                                        item_to_ty,
+                                                        tag_id,
+                                                        variants);
+                result = ast.item_tag(ident, variants_t, tps, tag_id);
             }
         }
         items_t += vec(@fold.respan[ast.item_](it.span, result));
