@@ -26,7 +26,7 @@ type fn_ctxt = rec(@ty ret_ty,
                    @crate_ctxt ccx);
 
 type arg = rec(ast.mode mode, @ty ty);
-type field = rec(ast.ident label, @ty ty);
+type field = rec(ast.ident ident, @ty ty);
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast.rs as well.
@@ -83,8 +83,8 @@ fn ast_ty_to_str(&@ast.ty ty) -> str {
         ret s + ast_ty_to_str(input.ty);
     }
 
-    fn ast_field_to_str(&tup(ast.ident, @ast.ty) f) -> str {
-        ret ast_ty_to_str(f._1) + " " + f._0;
+    fn ast_ty_field_to_str(&ast.ty_field f) -> str {
+        ret ast_ty_to_str(f.ty) + " " + f.ident;
     }
 
     auto s;
@@ -99,18 +99,17 @@ fn ast_ty_to_str(&@ast.ty ty) -> str {
         case (ast.ty_box(?t))      { s = "@" + ast_ty_to_str(t);          }
         case (ast.ty_vec(?t))      { s = "vec[" + ast_ty_to_str(t) + "]"; }
 
-        case (ast.ty_tup(?elems)) {
+        case (ast.ty_tup(?elts)) {
             auto f = ast_ty_to_str;
             s = "tup(";
-            s += _str.connect(_vec.map[@ast.ty,str](f, elems), ",");
+            s += _str.connect(_vec.map[@ast.ty,str](f, elts), ",");
             s += ")";
         }
 
-        case (ast.ty_rec(?elems)) {
-            auto f = ast_field_to_str;
+        case (ast.ty_rec(?fields)) {
+            auto f = ast_ty_field_to_str;
             s = "rec(";
-            s += _str.connect(_vec.map[tup(ast.ident, @ast.ty),str]
-                              (f, elems), ",");
+            s += _str.connect(_vec.map[ast.ty_field,str](f, fields), ",");
             s += ")";
         }
 
@@ -172,7 +171,7 @@ fn ty_to_str(&@ty typ) -> str {
     }
 
     fn field_to_str(&field f) -> str {
-        ret ty_to_str(f.ty) + " " + f.label;
+        ret ty_to_str(f.ty) + " " + f.ident;
     }
 
     auto s = "";
@@ -251,9 +250,9 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
         }
         case (ast.ty_rec(?fields)) {
             let vec[field] flds = vec();
-            for (tup(ast.ident, @ast.ty) f in fields) {
-                append[field](flds, rec(label=f._0,
-                                        ty=ast_ty_to_ty(getter, f._1)));
+            for (ast.ty_field f in fields) {
+                append[field](flds, rec(ident=f.ident,
+                                        ty=ast_ty_to_ty(getter, f.ty)));
             }
             sty = ty_rec(flds);
         }
@@ -478,7 +477,7 @@ fn field_idx(session.session sess, &span sp,
              &ast.ident id, vec[field] fields) -> uint {
     let uint i = 0u;
     for (field f in fields) {
-        if (_str.eq(f.label, id)) {
+        if (_str.eq(f.ident, id)) {
             ret i;
         }
         i += 1u;
@@ -812,11 +811,11 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
                                 ret ures_err(err, expected, actual);
                             }
 
-                            if (!_str.eq(expected_field.label,
-                                        actual_field.label)) {
+                            if (!_str.eq(expected_field.ident,
+                                        actual_field.ident)) {
                                 auto err =
-                                    terr_record_fields(expected_field.label,
-                                                       actual_field.label);
+                                    terr_record_fields(expected_field.ident,
+                                                       actual_field.ident);
                                 ret ures_err(err, expected, actual);
                             }
 
@@ -1339,40 +1338,42 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                       ast.ann_type(t_1)));
         }
 
-        case (ast.expr_tup(?args, _)) {
-            let vec[tup(mutability, @ast.expr)] args_1 = vec();
-            let vec[@ty] args_t = vec();
+        case (ast.expr_tup(?elts, _)) {
+            let vec[ast.elt] elts_1 = vec();
+            let vec[@ty] elts_t = vec();
 
-            for (tup(mutability, @ast.expr) arg in args) {
-                auto expr_1 = check_expr(fcx, arg._1);
-                args_1 += tup(arg._0, expr_1);
-                if (arg._0 == ast.mut) {
-                    append[@ty](args_t,@rec(mut=ast.mut
-                                            with *expr_ty(expr_1)));
-                } else {
-                    append[@ty](args_t,expr_ty(expr_1));
+            for (ast.elt e in elts) {
+                auto expr_1 = check_expr(fcx, e.expr);
+                auto expr_t = expr_ty(expr_1);
+                if (e.mut == ast.mut) {
+                    expr_t = @rec(mut=ast.mut with *expr_t);
                 }
+                append[ast.elt](elts_1, rec(expr=expr_1 with e));
+                append[@ty](elts_t, expr_t);
             }
 
-            auto ann = ast.ann_type(plain_ty(ty_tup(args_t)));
+            auto ann = ast.ann_type(plain_ty(ty_tup(elts_t)));
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_tup(args_1, ann));
+                                        ast.expr_tup(elts_1, ann));
         }
 
-        case (ast.expr_rec(?args, _)) {
-            let vec[tup(ast.ident, @ast.expr)] args_1 = vec();
-            let vec[field] args_t = vec();
+        case (ast.expr_rec(?fields, _)) {
+            let vec[ast.field] fields_1 = vec();
+            let vec[field] fields_t = vec();
 
-            for (tup(ast.ident, @ast.expr) arg in args) {
-                auto expr_1 = check_expr(fcx, arg._1);
-                args_1 += tup(arg._0, expr_1);
-                append[field](args_t,rec(label=arg._0,
-                                         ty=expr_ty(expr_1)));
+            for (ast.field f in fields) {
+                auto expr_1 = check_expr(fcx, f.expr);
+                auto expr_t = expr_ty(expr_1);
+                if (f.mut == ast.mut) {
+                    expr_t = @rec(mut=ast.mut with *expr_t);
+                }
+                append[ast.field](fields_1, rec(expr=expr_1 with f));
+                append[field](fields_t, rec(ident=f.ident, ty=expr_t));
             }
 
-            auto ann = ast.ann_type(plain_ty(ty_rec(args_t)));
+            auto ann = ast.ann_type(plain_ty(ty_rec(fields_t)));
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_rec(args_1, ann));
+                                        ast.expr_rec(fields_1, ann));
         }
 
         case (ast.expr_field(?base, ?field, _)) {

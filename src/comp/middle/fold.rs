@@ -49,7 +49,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp, vec[@ty] elts) -> @ty) fold_ty_tup,
 
      (fn(&ENV e, &span sp,
-         vec[tup(ident,@ty)] elts) -> @ty)        fold_ty_rec,
+         vec[ast.ty_field] elts) -> @ty)          fold_ty_rec,
 
      (fn(&ENV e, &span sp,
          vec[rec(ast.mode mode, @ty ty)] inputs,
@@ -65,12 +65,10 @@ type ast_fold[ENV] =
          vec[@expr] es, ann a) -> @expr)          fold_expr_vec,
 
      (fn(&ENV e, &span sp,
-         vec[tup(mutability,@expr)] es,
-         ann a) -> @expr)                         fold_expr_tup,
+         vec[ast.elt] es, ann a) -> @expr)        fold_expr_tup,
 
      (fn(&ENV e, &span sp,
-         vec[tup(ident,@expr)] fields,
-         ann a) -> @expr)                         fold_expr_rec,
+         vec[ast.field] fields, ann a) -> @expr)  fold_expr_rec,
 
      (fn(&ENV e, &span sp,
          @expr f, vec[@expr] args,
@@ -252,16 +250,16 @@ fn fold_ty[ENV](&ENV env, ast_fold[ENV] fld, @ty t) -> @ty {
             for (@ty elt in elts) {
                 append[@ty](elts_,fold_ty(env, fld, elt));
             }
-            ret fld.fold_ty_tup(env_, t.span, elts);
+            ret fld.fold_ty_tup(env_, t.span, elts_);
         }
 
-        case (ast.ty_rec(?elts)) {
-            let vec[tup(ident,@ty)] elts_ = vec();
-            for (tup(ident, @ty) elt in elts) {
-                append[tup(ident, @ty)]
-                    (elts_, tup(elt._0, fold_ty(env, fld, elt._1)));
+        case (ast.ty_rec(?flds)) {
+            let vec[ast.ty_field] flds_ = vec();
+            for (ast.ty_field f in flds) {
+                append[ast.ty_field]
+                    (flds_, rec(ty=fold_ty(env, fld, f.ty) with f));
             }
-            ret fld.fold_ty_rec(env_, t.span, elts);
+            ret fld.fold_ty_rec(env_, t.span, flds_);
         }
 
         case (ast.ty_path(?pth, ?ref_opt)) {
@@ -347,14 +345,13 @@ fn fold_exprs[ENV](&ENV env, ast_fold[ENV] fld, vec[@expr] es) -> vec[@expr] {
     ret exprs;
 }
 
-fn fold_tup_entry[ENV](&ENV env, ast_fold[ENV] fld,
-                       &tup(mutability,@expr) e) -> tup(mutability,@expr) {
-    ret tup(e._0, fold_expr(env, fld, e._1));
+fn fold_tup_elt[ENV](&ENV env, ast_fold[ENV] fld, &ast.elt e) -> ast.elt {
+    ret rec(expr=fold_expr(env, fld, e.expr) with e);
 }
 
-fn fold_rec_entry[ENV](&ENV env, ast_fold[ENV] fld, &tup(ident,@expr) e)
-    -> tup(ident,@expr) {
-    ret tup(e._0, fold_expr(env, fld, e._1));
+fn fold_rec_field[ENV](&ENV env, ast_fold[ENV] fld, &ast.field f)
+    -> ast.field {
+    ret rec(expr=fold_expr(env, fld, f.expr) with f);
 }
 
 fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
@@ -372,19 +369,19 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
         }
 
         case (ast.expr_tup(?es, ?t)) {
-            let vec[tup(mutability,@expr)] entries = vec();
-            for (tup(mutability,@expr) entry in es) {
-                entries += fold_tup_entry[ENV](env, fld, entry);
+            let vec[ast.elt] elts = vec();
+            for (ast.elt e in es) {
+                elts += fold_tup_elt[ENV](env, fld, e);
             }
-            ret fld.fold_expr_tup(env_, e.span, entries, t);
+            ret fld.fold_expr_tup(env_, e.span, elts, t);
         }
 
-        case (ast.expr_rec(?es, ?t)) {
-            let vec[tup(ident,@expr)] entries = vec();
-            for (tup(ident,@expr) entry in es) {
-                entries += fold_rec_entry(env, fld, entry);
+        case (ast.expr_rec(?fs, ?t)) {
+            let vec[ast.field] fields = vec();
+            for (ast.field f in fs) {
+                fields += fold_rec_field(env, fld, f);
             }
-            ret fld.fold_expr_rec(env_, e.span, entries, t);
+            ret fld.fold_expr_rec(env_, e.span, fields, t);
         }
 
         case (ast.expr_call(?f, ?args, ?t)) {
@@ -680,7 +677,7 @@ fn identity_fold_ty_tup[ENV](&ENV env, &span sp,
 }
 
 fn identity_fold_ty_rec[ENV](&ENV env, &span sp,
-                             vec[tup(ident,@ty)] elts) -> @ty {
+                             vec[ast.ty_field] elts) -> @ty {
     ret @respan(sp, ast.ty_rec(elts));
 }
 
@@ -708,13 +705,12 @@ fn identity_fold_expr_vec[ENV](&ENV env, &span sp, vec[@expr] es,
 }
 
 fn identity_fold_expr_tup[ENV](&ENV env, &span sp,
-                               vec[tup(mutability, @expr)] es,
-                               ann a) -> @expr {
+                               vec[ast.elt] es, ann a) -> @expr {
     ret @respan(sp, ast.expr_tup(es, a));
 }
 
 fn identity_fold_expr_rec[ENV](&ENV env, &span sp,
-                               vec[tup(ident,@expr)] fields, ann a) -> @expr {
+                               vec[ast.field] fields, ann a) -> @expr {
     ret @respan(sp, ast.expr_rec(fields, a));
 }
 

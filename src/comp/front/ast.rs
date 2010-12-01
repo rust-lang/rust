@@ -109,11 +109,14 @@ tag decl_ {
 
 type arm = rec(@pat pat, block block);
 
+type elt = rec(mutability mut, @expr expr);
+type field = rec(mutability mut, ident ident, @expr expr);
+
 type expr = spanned[expr_];
 tag expr_ {
     expr_vec(vec[@expr], ann);
-    expr_tup(vec[tup(mutability, @expr)], ann);
-    expr_rec(vec[tup(ident,@expr)], ann);
+    expr_tup(vec[elt], ann);
+    expr_rec(vec[field], ann);
     expr_call(@expr, vec[@expr], ann);
     expr_binary(binop, @expr, @expr, ann);
     expr_unary(unop, @expr, ann);
@@ -143,6 +146,7 @@ tag lit_ {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/typeck.rs as well.
+type ty_field = rec(ident ident, @ty ty);
 type ty = spanned[ty_];
 tag ty_ {
     ty_nil;
@@ -155,7 +159,7 @@ tag ty_ {
     ty_box(@ty);
     ty_vec(@ty);
     ty_tup(vec[@ty]);
-    ty_rec(vec[tup(ident,@ty)]);
+    ty_rec(vec[ty_field]);
     ty_fn(vec[rec(mode mode, @ty ty)], @ty);        // TODO: effect
     ty_path(path, option.t[def]);
     ty_mutable(@ty);

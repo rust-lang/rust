@@ -189,17 +189,17 @@ impure fn parse_ty(parser p) -> @ast.ty {
 
         case (token.REC) {
             p.bump();
-            impure fn parse_field(parser p) -> tup(ast.ident, @ast.ty) {
+            impure fn parse_field(parser p) -> ast.ty_field {
                 auto ty = parse_ty(p);
                 auto id = parse_ident(p);
-                ret tup(id,ty);
+                ret rec(ident=id, ty=ty);
             }
             auto f = parse_field; // FIXME: trans_const_lval bug
             auto elems =
-                parse_seq[tup(ast.ident, @ast.ty)](token.LPAREN,
-                                                   token.RPAREN,
-                                                   some(token.COMMA),
-                                                   f, p);
+                parse_seq[ast.ty_field](token.LPAREN,
+                                        token.RPAREN,
+                                        some(token.COMMA),
+                                        f, p);
             hi = p.get_span();
             t = ast.ty_rec(elems.node);
         }
@@ -352,17 +352,12 @@ impure fn parse_name(parser p, ast.ident id) -> ast.name {
     ret spanned(lo, tys.span, rec(ident=id, types=tys.node));
 }
 
-impure fn parse_possibly_mutable_expr(parser p)
-    -> tup(ast.mutability, @ast.expr) {
-    auto mut;
+impure fn parse_mutabliity(parser p) -> ast.mutability {
     if (p.peek() == token.MUTABLE) {
         p.bump();
-        mut = ast.mut;
-    } else {
-        mut = ast.imm;
+        ret ast.mut;
     }
-
-    ret tup(mut, parse_expr(p));
+    ret ast.imm;
 }
 
 impure fn parse_bottom_expr(parser p) -> @ast.expr {
@@ -415,13 +410,17 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
 
         case (token.TUP) {
             p.bump();
-            auto pf = parse_possibly_mutable_expr;
+            impure fn parse_elt(parser p) -> ast.elt {
+                auto m = parse_mutabliity(p);
+                auto e = parse_expr(p);
+                ret rec(mut=m, expr=e);
+            }
+            auto pf = parse_elt;
             auto es =
-                parse_seq[tup(ast.mutability, @ast.expr)]
-                (token.LPAREN,
-                 token.RPAREN,
-                 some(token.COMMA),
-                 pf, p);
+                parse_seq[ast.elt](token.LPAREN,
+                                   token.RPAREN,
+                                   some(token.COMMA),
+                                   pf, p);
             hi = es.span;
             ex = ast.expr_tup(es.node, ast.ann_none);
         }
@@ -439,21 +438,21 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
 
         case (token.REC) {
             p.bump();
-            impure fn parse_entry(parser p) ->
-                tup(ast.ident, @ast.expr) {
+            impure fn parse_field(parser p) -> ast.field {
+                auto m = parse_mutabliity(p);
                 auto i = parse_ident(p);
                 expect(p, token.EQ);
                 auto e = parse_expr(p);
-                ret tup(i, e);
+                ret rec(mut=m, ident=i, expr=e);
             }
-            auto pf = parse_entry;
-            auto es =
-                parse_seq[tup(ast.ident, @ast.expr)](token.LPAREN,
-                                                     token.RPAREN,
-                                                     some(token.COMMA),
-                                                     pf, p);
-            hi = es.span;
-            ex = ast.expr_rec(es.node, ast.ann_none);
+            auto pf = parse_field;
+            auto fs =
+                parse_seq[ast.field](token.LPAREN,
+                                     token.RPAREN,
+                                     some(token.COMMA),
+                                     pf, p);
+            hi = fs.span;
+            ex = ast.expr_rec(fs.node, ast.ann_none);
         }
 
         case (_) {
