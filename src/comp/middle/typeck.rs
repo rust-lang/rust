@@ -39,6 +39,7 @@ tag sty {
     ty_machine(util.common.ty_mach);
     ty_char;
     ty_str;
+    ty_tag(ast.def_id);
     ty_box(@ty);
     ty_vec(@ty);
     ty_tup(vec[@ty]);
@@ -401,6 +402,34 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         }
     }
 
+    fn add_tag_variant_types(@hashmap[ast.def_id,@ast.item] id_to_ty_item,
+                             @ty_table item_to_ty,
+                             &ast.def_id tag_id,
+                             &vec[ast.variant] variants) {
+        for (ast.variant variant in variants) {
+            // Nullary tag constructors get turned into constants; n-ary tag
+            // constructors get turned into functions.
+            auto result_ty;
+            if (_vec.len[@ast.ty](variant.args) == 0u) {
+                result_ty = plain_ty(ty_tag(tag_id));
+            } else {
+                // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
+                // should be called to resolve named types.
+                auto f = bind trans_ty_item_id_to_ty(id_to_ty_item,
+                                                     item_to_ty, _);
+
+                let vec[arg] args = vec();
+                for (@ast.ty arg_ast_ty in variant.args) {
+                    auto arg_ty = ast_ty_to_ty(f, arg_ast_ty);
+                    args += vec(rec(mode=ast.alias, ty=arg_ty));
+                }
+                result_ty = plain_ty(ty_fn(args, plain_ty(ty_tag(tag_id)))); 
+            }
+
+            item_to_ty.insert(variant.id, result_ty);
+        }
+    }
+
     // First pass: collect all type item IDs.
     auto module = crate.node.module;
     auto id_to_ty_item = @common.new_def_hash[@ast.item]();
@@ -434,7 +463,9 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
             case (ast.item_mod(_, _, _)) {
                 result = it.node;
             }
-            case (ast.item_tag(_, _, _, _)) {
+            case (ast.item_tag(_, ?variants, _, ?tag_id)) {
+                add_tag_variant_types(id_to_ty_item, item_to_ty, tag_id,
+                                      variants);
                 result = it.node;
             }
         }
@@ -1194,6 +1225,10 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (ast.def_const(?id)) {
                     check (fcx.ccx.item_types.contains_key(id));
                     t = fcx.ccx.item_types.get(id);
+                }
+                case (ast.def_variant(_, ?variant_id)) {
+                    check (fcx.ccx.item_types.contains_key(variant_id));
+                    t = fcx.ccx.item_types.get(variant_id);
                 }
                 case (_) {
                     // FIXME: handle other names.
