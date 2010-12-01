@@ -434,6 +434,9 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
             case (ast.item_mod(_, _, _)) {
                 result = it.node;
             }
+            case (ast.item_tag(_, _, _, _)) {
+                result = it.node;
+            }
         }
         items_t += vec(@fold.respan[ast.item_](it.span, result));
     }
