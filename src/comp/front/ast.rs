@@ -30,7 +30,7 @@ tag def {
     def_const(def_id);
     def_arg(def_id);
     def_local(def_id);
-    def_variant(def_id);
+    def_variant(def_id /* tag */, def_id /* variant */);
     def_ty(def_id);
     def_ty_arg(def_id);
 }
@@ -175,8 +175,13 @@ type _fn = rec(vec[arg] inputs,
                @ty output,
                block body);
 
+tag mod_index_entry {
+    mie_item(uint);
+    mie_tag_variant(uint /* tag item index */, uint /* variant index */);
+}
+
 type _mod = rec(vec[@item] items,
-                hashmap[ident,uint] index);
+                hashmap[ident,mod_index_entry] index);
 
 type variant = rec(str name, vec[@ty] args, def_id id);
 

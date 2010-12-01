@@ -38,6 +38,9 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
             case (ast.item_ty(_, _, _, ?id, _)) {
                 ret some[def](ast.def_ty(id));
             }
+            case (ast.item_tag(_, _, _, ?id)) {
+                ret some[def](ast.def_ty(id));
+            }
         }
     }
 
@@ -59,8 +62,24 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
 
     fn check_mod(ast.ident i, ast._mod m) -> option.t[def] {
         alt (m.index.find(i)) {
-            case (some[uint](?ix)) {
-                ret found_def_item(m.items.(ix));
+            case (some[ast.mod_index_entry](?ent)) {
+                alt (ent) {
+                    case (ast.mie_item(?ix)) {
+                        ret found_def_item(m.items.(ix));
+                    }
+                    case (ast.mie_tag_variant(?item_idx, ?variant_idx)) {
+                        alt (m.items.(item_idx).node) {
+                            case (ast.item_tag(_, ?variants, _, ?tid)) {
+                                auto vid = variants.(variant_idx).id;
+                                ret some[def](ast.def_variant(tid, vid));
+                            }
+                            case (_) {
+                                log "tag item not actually a tag";
+                                fail;
+                            }
+                        }
+                    }
+                }
             }
         }
         ret none[def];

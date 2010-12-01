@@ -1155,7 +1155,7 @@ impure fn parse_ty_params(parser p) -> vec[ast.ty_param] {
     ret ty_params;
 }
 
-impure fn parse_item_fn(parser p) -> tup(ast.ident, @ast.item) {
+impure fn parse_item_fn(parser p) -> @ast.item {
     auto lo = p.get_span();
     expect(p, token.FN);
     auto id = parse_ident(p);
@@ -1186,23 +1186,46 @@ impure fn parse_item_fn(parser p) -> tup(ast.ident, @ast.item) {
                         body = body);
 
     auto item = ast.item_fn(id, f, ty_params, p.next_def_id(), ast.ann_none);
-    ret tup(id, @spanned(lo, body.span, item));
+    ret @spanned(lo, body.span, item);
 }
 
 impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
-   let vec[@ast.item] items = vec();
-    let hashmap[ast.ident,uint] index = new_str_hash[uint]();
+    let vec[@ast.item] items = vec();
+    auto index = new_str_hash[ast.mod_index_entry]();
     let uint u = 0u;
     while (p.peek() != term) {
-        auto pair = parse_item(p);
-        append[@ast.item](items, pair._1);
-        index.insert(pair._0, u);
+        auto item = parse_item(p);
+        items += vec(item);
+
+        // Index the item.
+        alt (item.node) {
+            case (ast.item_fn(?id, _, _, _, _)) {
+                index.insert(id, ast.mie_item(u));
+            }
+            case (ast.item_mod(?id, _, _)) {
+                index.insert(id, ast.mie_item(u));
+            }
+            case (ast.item_ty(?id, _, _, _, _)) {
+                index.insert(id, ast.mie_item(u));
+            }
+
+            case (ast.item_tag(?id, ?variants, _, _)) {
+                index.insert(id, ast.mie_item(u));
+            
+                let uint variant_idx = 0u;
+                for (ast.variant v in variants) {
+                    index.insert(v.name, ast.mie_tag_variant(u, variant_idx));
+                    variant_idx += 1u;
+                }
+            }
+        }
+
         u += 1u;
     }
     ret rec(items=items, index=index);
  }
 
-impure fn parse_item_mod(parser p) -> tup(ast.ident, @ast.item) {
+impure fn parse_item_mod(parser p) -> @ast.item {
     auto lo = p.get_span();
     expect(p, token.MOD);
     auto id = parse_ident(p);
@@ -1211,10 +1234,10 @@ impure fn parse_item_mod(parser p) -> tup(ast.ident, @ast.item) {
     auto hi = p.get_span();
     expect(p, token.RBRACE);
     auto item = ast.item_mod(id, m, p.next_def_id());
-    ret tup(id, @spanned(lo, hi, item));
+    ret @spanned(lo, hi, item);
 }
 
-impure fn parse_item_type(parser p) -> tup(ast.ident, @ast.item) {
+impure fn parse_item_type(parser p) -> @ast.item {
     auto lo = p.get_span();
     expect(p, token.TYPE);
     auto id = parse_ident(p);
@@ -1225,10 +1248,10 @@ impure fn parse_item_type(parser p) -> tup(ast.ident, @ast.item) {
     auto hi = p.get_span();
     expect(p, token.SEMI);
     auto item = ast.item_ty(id, ty, tps, p.next_def_id(), ast.ann_none);
-    ret tup(id, @spanned(lo, hi, item));
+    ret @spanned(lo, hi, item);
 }
 
-impure fn parse_item_tag(parser p) -> tup(ast.ident, @ast.item) {
+impure fn parse_item_tag(parser p) -> @ast.item {
     auto lo = p.get_span();
     expect(p, token.TAG);
     auto id = parse_ident(p);
@@ -1273,10 +1296,10 @@ impure fn parse_item_tag(parser p) -> tup(ast.ident, @ast.item) {
 
     auto hi = p.get_span();
     auto item = ast.item_tag(id, variants, ty_params, p.next_def_id());
-    ret tup(id, @spanned(lo, hi, item));
+    ret @spanned(lo, hi, item);
 }
 
-impure fn parse_item(parser p) -> tup(ast.ident, @ast.item) {
+impure fn parse_item(parser p) -> @ast.item {
     alt (p.peek()) {
         case (token.FN) {
             ret parse_item_fn(p);
