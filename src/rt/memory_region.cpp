@@ -5,12 +5,13 @@
 
 memory_region::memory_region(rust_srv *srv, bool synchronized) :
     _srv(srv), _parent(NULL), _live_allocations(0),
+    _detailed_leaks(getenv("RUST_DETAILED_LEAKS") != NULL),
     _synchronized(synchronized) {
-    // Nop.
 }
 
 memory_region::memory_region(memory_region *parent) :
     _srv(parent->_srv), _parent(parent), _live_allocations(0),
+    _detailed_leaks(parent->_detailed_leaks),
     _synchronized(parent->_synchronized) {
     // Nop.
 }
@@ -83,15 +84,28 @@ memory_region::~memory_region() {
     }
     char msg[128];
     snprintf(msg, sizeof(msg),
-        "leaked memory in rust main loop (%" PRIuPTR " objects)",
-        _live_allocations);
+             "leaked memory in rust main loop (%" PRIuPTR " objects)",
+             _live_allocations);
 #ifdef TRACK_ALLOCATIONS
-    for (size_t i = 0; i < _allocation_list.size(); i++) {
-        if (_allocation_list[i] != NULL) {
-            printf("allocation 0x%" PRIxPTR " was not freed\n",
-                (uintptr_t) _allocation_list[i]);
+    if (_detailed_leaks) {
+        for (size_t i = 0; i < _allocation_list.size(); i++) {
+            if (_allocation_list[i] != NULL) {
+                printf("allocation 0x%" PRIxPTR " was not freed\n",
+                       (uintptr_t) _allocation_list[i]);
+            }
         }
     }
 #endif
     _srv->fatal(msg, __FILE__, __LINE__, "%d objects", _live_allocations);
 }
+
+//
+// Local Variables:
+// mode: C++
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//
