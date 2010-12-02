@@ -1223,7 +1223,23 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         case (ast.expr_unary(?unop, ?oper, _)) {
             auto oper_1 = check_expr(fcx, oper);
             auto oper_t = expr_ty(oper_1);
-            // FIXME: Unops have a bit more subtlety than this.
+            alt (unop) {
+                case (ast.box) { oper_t = plain_ty(ty_box(oper_t)); }
+                case (ast.deref) {
+                    alt (oper_t.struct) {
+                        case (ty_box(?inner_t)) {
+                            oper_t = inner_t;
+                        }
+                        case (_) {
+                            fcx.ccx.sess.span_err
+                                (expr.span,
+                                 "dereferencing non-box type: "
+                                 + ty_to_str(oper_t));
+                        }
+                    }
+                }
+                case (_) { /* fall through */ }
+            }
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_unary(unop, oper_1,
                                                        ast.ann_type(oper_t)));
