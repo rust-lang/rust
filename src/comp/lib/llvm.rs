@@ -1106,6 +1106,19 @@ obj builder(BuilderRef B) {
     }
 }
 
+/* Memory-managed object interface to type handles. */
+
+obj type_handle_dtor(TypeHandleRef TH) {
+    drop { llvm.LLVMDisposeTypeHandle(TH); }
+}
+
+type type_handle = rec(TypeHandleRef llth, type_handle_dtor dtor);
+
+fn mk_type_handle() -> type_handle {
+    auto th = llvm.LLVMCreateTypeHandle(llvm.LLVMOpaqueType());
+    ret rec(llth=th, dtor=type_handle_dtor(th));
+}
+
 fn type_to_str(TypeRef ty) -> str {
     let int kind = llvm.LLVMGetTypeKind(ty);
 

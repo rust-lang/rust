@@ -203,6 +203,11 @@ fn ty_to_str(&@ty typ) -> str {
             s = "rec(" + _str.connect(strs, ",") + ")";
         }
 
+        case (ty_tag(_)) {
+            // The user should never see this if the cname is set properly!
+            s = "<tag>";
+        }
+
         case (ty_fn(?inputs, ?output)) {
             auto f = fn_input_to_str;
             s = "fn(" + _str.connect(_vec.map[arg,str](f, inputs),
@@ -550,9 +555,9 @@ fn type_is_nil(@ty t) -> bool {
 
 fn type_is_structural(@ty t) -> bool {
     alt (t.struct) {
-        // FIXME: cover tag when we support it.
         case (ty_tup(_)) { ret true; }
         case (ty_rec(_)) { ret true; }
+        case (ty_tag(_)) { ret true; }
         case (_) { ret false; }
     }
     fail;
