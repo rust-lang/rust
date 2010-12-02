@@ -497,6 +497,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       explicit-fail.rs \
                       fail.rs \
                       linked-failure.rs \
+                      non-exhaustive-match.rs \
                       pred.rs \
                       str-overrun.rs \
                       vec-overrun.rs \
