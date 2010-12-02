@@ -404,7 +404,7 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
 
         case (ast.expr_unary(?op, ?a, ?t)) {
             auto aa = fold_expr(env_, fld, a);
-            ret fld.fold_expr_unary(env_, e.span, op, a, t);
+            ret fld.fold_expr_unary(env_, e.span, op, aa, t);
         }
 
         case (ast.expr_lit(?lit, ?t)) {

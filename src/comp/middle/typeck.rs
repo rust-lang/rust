@@ -271,6 +271,7 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
 
         case (ast.ty_path(?path, ?def)) {
             auto def_id;
+            check (def != none[ast.def]);
             alt (option.get[ast.def](def)) {
                 case (ast.def_ty(?id)) { def_id = id; }
                 case (_) { fail; }
@@ -1247,6 +1248,7 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_name(?name, ?defopt, _)) {
             auto t = plain_ty(ty_nil);
+            check (defopt != none[ast.def]);
             alt (option.get[ast.def](defopt)) {
                 case (ast.def_arg(?id)) {
                     check (fcx.locals.contains_key(id));
