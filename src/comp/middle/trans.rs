@@ -44,9 +44,9 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef exit_task_glue,
                     vec[ValueRef] upcall_glues);
 
+tag arity { nullary; n_ary(uint); }
 type tag_info = rec(type_handle th,
-                    hashmap[ast.def_id, uint] variant_indices,
-                    hashmap[ast.def_id, uint] n_ary_variant_indices);
+                    mutable vec[tup(ast.def_id,arity)] variants);
 
 state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
@@ -55,7 +55,7 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[str, ValueRef] fn_names,
                             hashmap[ast.def_id, ValueRef] fn_ids,
                             hashmap[ast.def_id, @ast.item] items,
-                            hashmap[ast.def_id, tag_info] tags,
+                            hashmap[ast.def_id, @tag_info] tags,
                             @glue_fns glues,
                             namegen names,
                             str path);
@@ -1133,14 +1133,22 @@ fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt)
                 case (ast.def_variant(?tid, ?vid)) {
                     check (cx.fcx.ccx.tags.contains_key(tid));
                     auto info = cx.fcx.ccx.tags.get(tid);
-                    if (info.n_ary_variant_indices.contains_key(vid)) {
-                        cx.fcx.ccx.sess.unimpl("n-ary tag constructors in " +
-                                               "trans");
-                    } else {
-                        // Nullary tag variant case.
-                        auto idx = info.variant_indices.get(vid);
-                        auto elems = vec(C_int(idx as int));
-                        ret tup(res(cx, C_struct(elems)), false);
+                    auto i = 0;
+                    for (tup(ast.def_id,arity) v in info.variants) {
+                        if (vid == v._0) {
+                            alt (v._1) {
+                                case (nullary) {
+                                    auto elems = vec(C_int(i));
+                                    ret tup(res(cx, C_struct(elems)), false);
+                                }
+                                case (n_ary(_)) {
+                                    cx.fcx.ccx.sess.unimpl("n-ary tag " +
+                                                           "constructor in " +
+                                                           "trans");
+                                }
+                            }
+                        }
+                        i += 1;
                     }
                 }
                 case (_) {
@@ -1716,17 +1724,15 @@ fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             let vec[TypeRef] variant_tys = vec();
 
             auto info = cx.tags.get(tag_id);
-            auto variant_indices = info.variant_indices;
-            auto n_ary_variant_indices = info.n_ary_variant_indices;
+            let vec[tup(ast.def_id,arity)] variant_info = vec();
 
             auto tag_ty;
             if (_vec.len[ast.variant](variants) == 0u) {
                 tag_ty = T_struct(vec(T_int()));
             } else {
-                auto variant_idx = 0u;
-                auto n_ary_variant_idx = 0u;
-
+                auto n_ary_idx = 0u;
                 for (ast.variant variant in variants) {
+                    auto arity_info;
                     if (_vec.len[@ast.ty](variant.args) > 0u) {
                         let vec[TypeRef] lltys = vec();
 
@@ -1741,17 +1747,19 @@ fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
 
                         variant_tys += vec(T_struct(lltys));
 
-                        n_ary_variant_indices.insert(variant.id,
-                                                     n_ary_variant_idx);
-                        n_ary_variant_idx += 1u;
+                        arity_info = n_ary(n_ary_idx);
+                        n_ary_idx += 1u;
+                    } else {
+                        arity_info = nullary;
                     }
 
-                    variant_indices.insert(variant.id, variant_idx);
-                    variant_idx += 1u;
+                    variant_info += vec(tup(variant.id, arity_info));
                 }
 
                 tag_ty = T_struct(vec(T_int(), T_union(variant_tys)));
             }
+
+            info.variants = variant_info;
 
             auto th = cx.tags.get(tag_id).th.llth;
             llvm.LLVMRefineType(llvm.LLVMResolveTypeHandle(th), tag_ty);
@@ -1782,9 +1790,9 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
         case (ast.item_tag(_, ?variants, _, ?tag_id)) {
             auto vi = new_def_hash[uint]();
             auto navi = new_def_hash[uint]();
-            cx.tags.insert(tag_id, rec(th=mk_type_handle(),
-                                       variant_indices=vi,
-                                       n_ary_variant_indices=navi));
+            let vec[tup(ast.def_id,arity)] variant_info = vec();
+            cx.tags.insert(tag_id, @rec(th=mk_type_handle(),
+                                        mutable variants=variant_info));
         }
 
         case (_) { /* fall through */ }
@@ -1973,7 +1981,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
                    fn_names = new_str_hash[ValueRef](),
                    fn_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
-                   tags = new_def_hash[tag_info](),
+                   tags = new_def_hash[@tag_info](),
                    glues = glues,
                    names = namegen(0),
                    path = "_rust");
