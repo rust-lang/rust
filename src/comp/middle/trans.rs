@@ -295,6 +295,7 @@ fn type_of_inner(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
                     case (ast.alias) {
                         t = T_ptr(t);
                     }
+                    case (_) { /* fall through */  }
                 }
                 atys += t;
             }
@@ -506,6 +507,17 @@ fn iter_structural_ty(@block_ctxt cx,
                 i += 1;
             }
         }
+        case (typeck.ty_rec(?fields)) {
+            let int i = 0;
+            for (typeck.field fld in fields) {
+                auto llfld = r.bcx.build.GEP(v, vec(C_int(0), C_int(i)));
+                r = f(r.bcx, llfld, fld.ty);
+                i += 1;
+            }
+        }
+        case (_) {
+            cx.fcx.ccx.sess.unimpl("type in iter_structural_ty");
+        }
         // FIXME: handle records and tags when we support them.
     }
     ret r;
@@ -560,6 +572,7 @@ fn iter_sequence(@block_ctxt cx,
             auto et = typeck.plain_ty(typeck.ty_machine(common.ty_u8));
             ret iter_sequence_body(cx, v, et, f, false);
         }
+        case (_) { fail; }
     }
     cx.fcx.ccx.sess.bug("bad type in trans.iter_sequence");
     fail;
@@ -765,6 +778,7 @@ fn target_type(@crate_ctxt cx, @typeck.ty t) -> @typeck.ty {
             auto tm = typeck.ty_machine(cx.sess.get_targ_cfg().uint_type);
             ret @rec(struct=tm with *t);
         }
+        case (_) { /* fall through */ }
     }
     ret t;
 }
@@ -813,8 +827,10 @@ impure fn trans_unary(@block_ctxt cx, ast.unop op,
                                             C_int(abi.box_rc_field_refcnt)));
             ret res(sub.bcx, cx.build.Store(C_int(1), rc));
         }
+        case (_) {
+            cx.fcx.ccx.sess.unimpl("expr variant in trans_unary");
+        }
     }
-    cx.fcx.ccx.sess.unimpl("expr variant in trans_unary");
     fail;
 }
 
@@ -859,6 +875,8 @@ impure fn trans_binary(@block_ctxt cx, ast.binop op,
             ret join_results(cx, T_bool(),
                              vec(lhs_true_res, rhs_res));
         }
+
+        case (_) { /* fall through */ }
     }
 
     // Remaining cases are eager:
@@ -958,8 +976,11 @@ impure fn trans_binary(@block_ctxt cx, ast.binop op,
             sub.val = cx.build.ICmp(lib.llvm.LLVMIntSGT, lhs.val, sub.val);
             ret sub;
         }
+
+        case (_) {
+            cx.fcx.ccx.sess.unimpl("operator in trans_binary");
+        }
     }
-    cx.fcx.ccx.sess.unimpl("expr variant in trans_binary");
     fail;
 }
 
@@ -994,6 +1015,8 @@ fn join_results(@block_ctxt parent_cx,
             // onward.
             ret live.(0);
         }
+
+        case (_) { /* fall through */ }
     }
 
     // We have >1 incoming edges. Make a join block and br+phi them into it.
@@ -1020,6 +1043,7 @@ impure fn trans_if(@block_ctxt cx, @ast.expr cond,
         case (some[ast.block](?eblk)) {
             else_res = trans_block(else_cx, eblk);
         }
+        case (_) { /* fall through */ }
     }
 
     cond_res.bcx.build.CondBr(cond_res.val,
@@ -1119,8 +1143,8 @@ fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
             auto v = r.bcx.build.GEP(r.val, vec(C_int(0), C_int(ix as int)));
             ret tup(res(r.bcx, v), lv._1);
         }
+        case (_) { cx.fcx.ccx.sess.unimpl("field variant in trans_field"); }
     }
-    cx.fcx.ccx.sess.unimpl("field variant in trans_field");
     fail;
 }
 
@@ -1132,8 +1156,8 @@ fn trans_lval(@block_ctxt cx, @ast.expr e) -> tup(result, bool) {
         case (ast.expr_field(?base, ?ident, ?ann)) {
             ret trans_field(cx, e.span, base, ident, ann);
         }
+        case (_) { cx.fcx.ccx.sess.unimpl("expr variant in trans_lval"); }
     }
-    cx.fcx.ccx.sess.unimpl("expr variant in trans_lval");
     fail;
 }
 
@@ -1366,6 +1390,7 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
         case (some[@ast.expr](?x)) {
             r = trans_expr(cx, x);
         }
+        case (_) { /* fall through */  }
     }
 
     // Run all cleanups and back out.
@@ -1388,6 +1413,7 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
             r.val = r.bcx.build.Ret(r.val);
             ret r;
         }
+        case (_) { /* fall through */  }
     }
 
     // FIXME: until LLVM has a unit type, we are moving around
@@ -1426,6 +1452,7 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
                             copy_ty(sub.bcx, true, llptr, sub.val,
                                     typeck.expr_ty(e));
                         }
+                        case (_) { /* fall through */  }
                     }
                 }
             }
@@ -1496,8 +1523,10 @@ iter block_locals(&ast.block b) -> @ast.local {
                     case (ast.decl_local(?local)) {
                         put local;
                     }
+                    case (_) { /* fall through */ }
                 }
             }
+            case (_) { /* fall through */ }
         }
     }
 }
@@ -1626,6 +1655,7 @@ impure fn trans_item(@crate_ctxt cx, &ast.item item) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
             trans_mod(sub_cx, m);
         }
+        case (_) { /* fall through */ }
     }
 }
 
@@ -1650,6 +1680,7 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
         case (ast.item_mod(?name, ?m, ?mid)) {
             cx.items.insert(mid, i);
         }
+        case (_) { /* fall through */ }
     }
     ret cx;
 }

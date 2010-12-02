@@ -388,6 +388,7 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
                                        es.node, ast.ann_none);
                     hi = es.span;
                 }
+                case (_) { /* fall through */ }
             }
         }
 
@@ -401,6 +402,7 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
                     ret @spanned(lo, hi,
                                  ast.expr_lit(lit, ast.ann_none));
                 }
+                case (_) { /* fall through */ }
             }
             auto e = parse_expr(p);
             hi = p.get_span();
@@ -590,6 +592,7 @@ impure fn parse_binops(parser p,
                         more = true;
                     }
                 }
+                case (_) { /* fall through */ }
             }
         }
     }
@@ -711,6 +714,7 @@ impure fn parse_assign_expr(parser p) -> @ast.expr {
             ret @spanned(lo, rhs.span,
                          ast.expr_assign(lhs, rhs, ast.ann_none));
         }
+        case (_) { /* fall through */ }
     }
     ret lhs;
 }
@@ -733,6 +737,7 @@ impure fn parse_if_expr(parser p) -> @ast.expr {
             els = some(eblk);
             hi = eblk.span;
         }
+        case (_) { /* fall through */ }
     }
     ret @spanned(lo, hi, ast.expr_if(cond, thn, els, ast.ann_none));
 }
@@ -1039,6 +1044,7 @@ fn index_block(vec[@ast.stmt] stmts, option.t[@ast.expr] expr) -> ast.block_ {
                     }
                 }
             }
+            case (_) { /* fall through */ }
         }
     }
     ret rec(stmts=stmts, expr=expr, index=index);
@@ -1211,7 +1217,6 @@ impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
 
             case (ast.item_tag(?id, ?variants, _, _)) {
                 index.insert(id, ast.mie_item(u));
-            
                 let uint variant_idx = 0u;
                 for (ast.variant v in variants) {
                     index.insert(v.name, ast.mie_tag_variant(u, variant_idx));

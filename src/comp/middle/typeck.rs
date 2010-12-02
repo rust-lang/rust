@@ -537,13 +537,15 @@ fn mode_is_alias(ast.mode m) -> bool {
         case (ast.val) { ret false; }
         case (ast.alias) { ret true; }
     }
+    fail;
 }
 
 fn type_is_nil(@ty t) -> bool {
     alt (t.struct) {
         case (ty_nil) { ret true; }
+        case (_) { ret false; }
     }
-    ret false;
+    fail;
 }
 
 fn type_is_structural(@ty t) -> bool {
@@ -551,24 +553,27 @@ fn type_is_structural(@ty t) -> bool {
         // FIXME: cover tag when we support it.
         case (ty_tup(_)) { ret true; }
         case (ty_rec(_)) { ret true; }
+        case (_) { ret false; }
     }
-    ret false;
+    fail;
 }
 
 fn type_is_binding(@ty t) -> bool {
     alt (t.struct) {
         // FIXME: cover obj when we support it.
         case (ty_fn(_,_)) { ret true; }
+        case (_) { ret false; }
     }
-    ret false;
+    fail;
 }
 
 fn type_is_boxed(@ty t) -> bool {
     alt (t.struct) {
         case (ty_str) { ret true; }
         case (ty_vec(_)) { ret true; }
+        case (_) { ret false; }
     }
-    ret false;
+    fail;
 }
 
 fn type_is_scalar(@ty t) -> bool {
@@ -578,8 +583,9 @@ fn type_is_scalar(@ty t) -> bool {
         case (ty_uint) { ret true; }
         case (ty_machine(_)) { ret true; }
         case (ty_char) { ret true; }
+        case (_) { ret false; }
     }
-    ret false;
+    fail;
 }
 
 fn type_is_fp(@ty t) -> bool {
@@ -588,10 +594,12 @@ fn type_is_fp(@ty t) -> bool {
             alt (tm) {
                 case (common.ty_f32) { ret true; }
                 case (common.ty_f64) { ret true; }
+                case (_) { ret false; }
             }
         }
+        case (_) { ret false; }
     }
-    ret false;
+    fail;
 }
 
 fn type_is_signed(@ty t) -> bool {
@@ -603,10 +611,12 @@ fn type_is_signed(@ty t) -> bool {
                 case (common.ty_i16) { ret true; }
                 case (common.ty_i32) { ret true; }
                 case (common.ty_i64) { ret true; }
+                case (_) { ret false; }
             }
         }
+        case (_) { ret false; }
     }
-    ret false;
+    fail;
 }
 
 fn plain_ty(&sty st) -> @ty {
@@ -662,7 +672,6 @@ fn expr_ty(@ast.expr expr) -> @ty {
         case (ast.expr_index(_, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_name(_, _, ?ann))      { ret ann_to_type(ann); }
     }
-
     fail;
 }
 
@@ -1198,6 +1207,7 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (ast.ne) { t = plain_ty(ty_bool); }
                 case (ast.ge) { t = plain_ty(ty_bool); }
                 case (ast.gt) { t = plain_ty(ty_bool); }
+                case (_) { /* fall through */ }
             }
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_binary(binop, lhs_1, rhs_1,
@@ -1506,6 +1516,7 @@ fn check_stmt(&fn_ctxt fcx, &@ast.stmt stmt)
                             auto expr_1 = demand_expr(fcx, lty, expr_0);
                             init = some[@ast.expr](expr_1);
                         }
+                        case (_) { /* fall through */  }
                     }
 
                     auto local_1 = @rec(init = init with *local);

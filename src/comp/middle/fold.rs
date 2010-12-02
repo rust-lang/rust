@@ -87,6 +87,10 @@ type ast_fold[ENV] =
          @ast.lit, ann a) -> @expr)               fold_expr_lit,
 
      (fn(&ENV e, &span sp,
+         @ast.expr e, @ast.ty ty,
+         ann a) -> @expr)                         fold_expr_cast,
+
+     (fn(&ENV e, &span sp,
          @expr cond, &block thn,
          &option.t[block] els,
          ann a) -> @expr)                         fold_expr_if,
@@ -296,11 +300,13 @@ fn fold_decl[ENV](&ENV env, ast_fold[ENV] fld, @decl d) -> @decl {
                 case (some[@ast.ty](?t)) {
                     ty_ = some[@ast.ty](fold_ty(env, fld, t));
                 }
+                case (_) { /* fall through */  }
             }
             alt (local.init) {
                 case (some[@ast.expr](?e)) {
                     init_ = some[@ast.expr](fold_expr(env, fld, e));
                 }
+                case (_) { /* fall through */  }
             }
             let @ast.local local_ = @rec(ty=ty_, init=init_ with *local);
             ret fld.fold_decl_local(env_, d.span, local_);
@@ -405,6 +411,12 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
             ret fld.fold_expr_lit(env_, e.span, lit, t);
         }
 
+        case (ast.expr_cast(?e, ?t, ?at)) {
+            auto ee = fold_expr(env_, fld, e);
+            auto tt = fold_ty(env, fld, t);
+            ret fld.fold_expr_cast(env_, e.span, ee, tt, at);
+        }
+
         case (ast.expr_if(?cnd, ?thn, ?els, ?t)) {
             auto ccnd = fold_expr(env_, fld, cnd);
             auto tthn = fold_block(env_, fld, thn);
@@ -413,6 +425,7 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
                 case (some[block](?b)) {
                     eels = some(fold_block(env_, fld, b));
                 }
+                case (_) { /* fall through */  }
             }
             ret fld.fold_expr_if(env_, e.span, ccnd, tthn, eels, t);
         }
@@ -492,6 +505,7 @@ fn fold_stmt[ENV](&ENV env, ast_fold[ENV] fld, &@stmt s) -> @stmt {
                 case (some[@expr](?e)) {
                     oee = some(fold_expr(env_, fld, e));
                 }
+                case (_) { /* fall through */  }
             }
             ret fld.fold_stmt_ret(env_, s.span, oee);
         }
@@ -737,6 +751,11 @@ fn identity_fold_expr_lit[ENV](&ENV env, &span sp, @ast.lit lit,
     ret @respan(sp, ast.expr_lit(lit, a));
 }
 
+fn identity_fold_expr_cast[ENV](&ENV env, &span sp, @ast.expr e,
+                                @ast.ty t, ann a) -> @expr {
+    ret @respan(sp, ast.expr_cast(e, t, a));
+}
+
 fn identity_fold_expr_if[ENV](&ENV env, &span sp,
                               @expr cond, &block thn,
                               &option.t[block] els, ann a) -> @expr {
@@ -956,6 +975,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_binary = bind identity_fold_expr_binary[ENV](_,_,_,_,_,_),
          fold_expr_unary  = bind identity_fold_expr_unary[ENV](_,_,_,_,_),
          fold_expr_lit    = bind identity_fold_expr_lit[ENV](_,_,_,_),
+         fold_expr_cast   = bind identity_fold_expr_cast[ENV](_,_,_,_,_),
          fold_expr_if     = bind identity_fold_expr_if[ENV](_,_,_,_,_,_),
          fold_expr_while  = bind identity_fold_expr_while[ENV](_,_,_,_,_),
          fold_expr_do_while

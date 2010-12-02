@@ -113,6 +113,7 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
                     case (some[uint](?ix)) {
                         ret found_decl_stmt(b.node.stmts.(ix));
                     }
+                    case (_) { /* fall through */  }
                 }
             }
         }

@@ -4895,7 +4895,14 @@ let trans_visitor
           last_jump
     in
     let last_jumps = Array.map trans_arm at.Ast.alt_tag_arms in
-      Array.iter patch last_jumps
+      if not (arr_exists
+                (fun _ arm -> (fst arm.node) = Ast.PAT_wild)
+                at.Ast.alt_tag_arms)
+      then
+        trans_cond_fail "non-exhaustive match failure"
+          (Array.to_list last_jumps)
+      else
+        Array.iter patch last_jumps
 
   (* If we're about to drop a channel, synthesize an upcall_flush_chan.
    * TODO: This should rather appear in a chan dtor when chans become
