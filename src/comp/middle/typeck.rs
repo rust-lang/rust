@@ -577,6 +577,7 @@ fn type_is_boxed(@ty t) -> bool {
     alt (t.struct) {
         case (ty_str) { ret true; }
         case (ty_vec(_)) { ret true; }
+        case (ty_box(_)) { ret true; }
         case (_) { ret false; }
     }
     fail;
