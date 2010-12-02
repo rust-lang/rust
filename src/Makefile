@@ -471,6 +471,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
                       $(addprefix test/run-pass/, \
                         arith-0.rs \
                         arith-2.rs \
+                        box.rs \
                         char.rs \
                         dead-code-one-arm-if.rs \
                         div-mod.rs \
