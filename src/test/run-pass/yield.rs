@@ -1,20 +1,23 @@
 // -*- rust -*-
+use std;
+import std._task.yield;
+import std._task.join;
 
 fn main() {
   auto other = spawn child();
   log "1";
-  yield;
+  yield();
   log "2";
-  yield;
+  yield();
   log "3";
-  join other;
+  join(other);
 }
 
 fn child() {
   log "4";
-  yield;
+  yield();
   log "5";
-  yield;
+  yield();
   log "6";
 }
 

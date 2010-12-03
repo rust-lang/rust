@@ -481,11 +481,8 @@ and walk_stmt
       | Ast.STMT_decl (Ast.DECL_slot (_, slot)) ->
           walk_slot_identified v slot
 
-      | Ast.STMT_break | Ast.STMT_cont | Ast.STMT_yield | Ast.STMT_fail ->
+      | Ast.STMT_break | Ast.STMT_cont | Ast.STMT_fail ->
           ()
-
-      | Ast.STMT_join task ->
-          walk_lval v task
 
       | Ast.STMT_send (dst,src) ->
           walk_lval v dst;

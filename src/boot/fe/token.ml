@@ -109,8 +109,6 @@ type token =
   | SPAWN
   | BIND
   | THREAD
-  | YIELD
-  | JOIN
 
   (* Literals *)
   | LIT_INT       of int64
@@ -272,8 +270,6 @@ let rec string_of_tok t =
     | SPAWN      -> "spawn"
     | BIND       -> "bind"
     | THREAD     -> "thread"
-    | YIELD      -> "yield"
-    | JOIN       -> "join"
 
     (* Literals *)
     | LIT_INT i  -> Int64.to_string i

@@ -1,3 +1,6 @@
+use std;
+import std._task;
+
 fn main() -> () {
    test00(); 
 }
@@ -8,6 +11,6 @@ fn start() {
 
 fn test00() {
     let task t = spawn thread start();
-    join t;
+    _task.join(t);
     log "Completing.";
 }

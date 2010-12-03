@@ -1,3 +1,6 @@
+use std;
+import std._task.join;
+
 fn main() -> () {    
     log "===== SPAWNING and JOINING TASKS =====";
     test00(false);
@@ -29,7 +32,7 @@ fn test00(bool create_threads) {
     }
     
     for (task t in tasks) {
-        join t;
+        join(t);
     }
     
     log "Joined all task.";

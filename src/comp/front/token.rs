@@ -118,8 +118,6 @@ tag token {
     SPAWN;
     BIND;
     THREAD;
-    YIELD;
-    JOIN;
 
     /* Literals */
     LIT_INT(int);
@@ -284,8 +282,6 @@ fn to_str(token t) -> str {
         case (SPAWN) { ret "spawn"; }
         case (BIND) { ret "bind"; }
         case (THREAD) { ret "thread"; }
-        case (YIELD) { ret "yield"; }
-        case (JOIN) { ret "join"; }
 
         /* Literals */
         case (LIT_INT(?i)) { ret _int.to_str(i, 10u); }

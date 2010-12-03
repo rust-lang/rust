@@ -1,3 +1,6 @@
+use std;
+import std._task.yield;
+
 io fn start(chan[chan[str]] c) {
     let port[str] p = port();
     c <| chan(p);
@@ -11,5 +14,5 @@ io fn main() {
     auto c <- p;
     c <| "A";
     c <| "B";
-    yield;
+    yield();
 }

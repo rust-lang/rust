@@ -1,3 +1,6 @@
+use std;
+import std._task.yield;
+
 obj worker(chan[int] c) {
   drop {
     log "in dtor";
@@ -16,7 +19,7 @@ impure fn do_work(chan[int] c) {
     // Deadlock-condition not handled properly yet, need to avoid
     // exiting the child early.
     c <| 11;
-    yield;
+    yield();
   }
 }
 

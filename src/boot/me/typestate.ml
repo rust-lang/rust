@@ -695,10 +695,6 @@ let condition_assigning_visitor
             let precond = slot_inits (atom_slots cx at) in
               raise_pre_post_cond s.id precond
 
-        | Ast.STMT_join lval ->
-            let precond = slot_inits (lval_slots cx lval) in
-              raise_pre_post_cond s.id precond
-
         | Ast.STMT_log atom ->
             let precond = slot_inits (atom_slots cx atom) in
               raise_pre_post_cond s.id precond

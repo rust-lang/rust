@@ -121,8 +121,6 @@
                 ("cont", CONT);
                 ("spawn", SPAWN);
                 ("thread", THREAD);
-                ("yield", YIELD);
-                ("join", JOIN);
 
                 ("bool", BOOL);
 

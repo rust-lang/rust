@@ -2796,9 +2796,6 @@ let trans_visitor
           imm (Int64.of_int line)
         |];
 
-  and trans_join (task:Ast.lval) : unit =
-    trans_void_upcall "upcall_join" [| trans_atom (Ast.ATOM_lval task) |]
-
   and trans_send (chan:Ast.lval) (src:Ast.lval) : unit =
     let (src_cell, src_ty) = trans_lval src in
       begin
@@ -5309,14 +5306,8 @@ let trans_visitor
       | Ast.STMT_check_expr e ->
           trans_check_expr stmt.id e
 
-      | Ast.STMT_yield ->
-          trans_yield ()
-
       | Ast.STMT_fail ->
           trans_fail ()
-
-      | Ast.STMT_join task ->
-          trans_join task
 
       | Ast.STMT_send (chan,src) ->
           trans_send chan src

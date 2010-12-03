@@ -1,3 +1,6 @@
+use std;
+import std._task.join;
+
 io fn main() -> () {
    log "===== WITHOUT THREADS =====";
    test00(false);
@@ -52,7 +55,7 @@ io fn test00(bool is_multithreaded) {
 
     // Join spawned tasks...
     for (task t in tasks) {
-        join t;
+        join(t);
     }
     
     log "Completed: Final number is: ";

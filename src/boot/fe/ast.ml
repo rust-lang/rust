@@ -225,8 +225,6 @@ and stmt' =
 
   (* structural and misc stmts. *)
   | STMT_fail
-  | STMT_yield
-  | STMT_join of lval
   | STMT_send of (lval * lval)
   | STMT_log of atom
   | STMT_note of atom
@@ -1471,7 +1469,6 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           fmt ff ";"
 
       | STMT_fail -> fmt ff "fail;"
-      | STMT_yield -> fmt ff "yield;"
 
       | STMT_send (chan, v) ->
           fmt_lval ff chan;
@@ -1484,11 +1481,6 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
           fmt ff " <- ";
           fmt_lval ff port;
           fmt ff ";";
-
-      | STMT_join t ->
-          fmt ff "join ";
-          fmt_lval ff t;
-          fmt ff ";"
 
       | STMT_new_box (lv, mutability, at) ->
           fmt_lval ff lv;

@@ -17,7 +17,7 @@ fn test00() {
     _task.sleep(10000u);
     
     // Try joining tasks that have already finished.
-    join t;
+    _task.join(t);
     
     log "Joined Task.";
 }

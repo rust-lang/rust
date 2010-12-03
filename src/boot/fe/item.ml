@@ -585,24 +585,11 @@ and parse_stmts_including_none (ps:pstate) : Ast.stmt array =
           in
             Array.concat [[| span ps apos bpos (Ast.STMT_decl decl) |]; stmts]
 
-      | YIELD ->
-          bump ps;
-          expect ps SEMI;
-          let bpos = lexpos ps in
-            [| span ps apos bpos Ast.STMT_yield |]
-
       | FAIL ->
           bump ps;
           expect ps SEMI;
           let bpos = lexpos ps in
             [| span ps apos bpos Ast.STMT_fail |]
-
-      | JOIN ->
-          bump ps;
-          let (stmts, lval) = ctxt "stmts: task expr" parse_lval ps in
-            expect ps SEMI;
-            spans ps stmts apos (Ast.STMT_join lval)
-
 
        | STATE | GC
        | IMPURE | UNSAFE

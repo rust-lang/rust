@@ -141,8 +141,6 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
     keywords.insert("log", token.LOG);
     keywords.insert("spawn", token.SPAWN);
     keywords.insert("thread", token.THREAD);
-    keywords.insert("yield", token.YIELD);
-    keywords.insert("join", token.JOIN);
 
     keywords.insert("bool", token.BOOL);
 

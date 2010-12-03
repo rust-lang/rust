@@ -900,8 +900,7 @@ let check_block (cx:Semant.ctxt) : (fn_ctx -> Ast.block -> unit) =
     let check_ret (stmt:Ast.stmt) : unit =
       fn_ctx.fnctx_just_saw_ret <-
         match stmt.Common.node with
-            Ast.STMT_ret _ | Ast.STMT_be _ | Ast.STMT_fail
-          | Ast.STMT_yield -> true
+            Ast.STMT_ret _ | Ast.STMT_be _ | Ast.STMT_fail -> true
           | _ -> false
     in
 
@@ -1118,10 +1117,7 @@ let check_block (cx:Semant.ctxt) : (fn_ctx -> Ast.block -> unit) =
         | Ast.STMT_alt_port _ -> () (* TODO *)
 
         (* always well-typed *)
-        | Ast.STMT_fail | Ast.STMT_yield 
-        | Ast.STMT_break | Ast.STMT_cont -> ()
-
-        | Ast.STMT_join lval -> infer_lval Ast.TY_task lval
+        | Ast.STMT_fail | Ast.STMT_break | Ast.STMT_cont -> ()
 
         | Ast.STMT_send (chan, value) ->
             let value_ty = demand_chan (check_lval chan) in

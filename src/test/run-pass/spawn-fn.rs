@@ -1,4 +1,6 @@
 // -*- rust -*-
+use std;
+import std._task.yield;
 
 fn x(str s, int n) {
   log s;
@@ -13,6 +15,6 @@ fn main() {
   while (i > 0) {
     i = i - 1;
     log "parent sleeping";
-    yield;
+    yield();
   }
 }

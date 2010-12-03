@@ -1,5 +1,7 @@
 native "rust" mod rustrt {
     fn task_sleep(uint time_in_us);
+    fn task_yield();
+    fn task_join(task t);
 }
 
 /**
@@ -9,6 +11,14 @@ native "rust" mod rustrt {
  */
 fn sleep(uint time_in_us) {
     ret rustrt.task_sleep(time_in_us);
+}
+
+fn join(task t) {
+    ret rustrt.task_join(t);
+}
+
+fn yield() {
+    ret rustrt.task_yield();
 }
 
 // Local Variables:

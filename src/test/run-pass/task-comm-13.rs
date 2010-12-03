@@ -13,6 +13,6 @@ fn main() -> () {
     log "Check that we don't deadlock.";
     let port[int] p = port();
     let task a = spawn "start" start(chan(p), 0, 10);
-    join a;
+    _task.join(a);
     log "Joined Task";
 }

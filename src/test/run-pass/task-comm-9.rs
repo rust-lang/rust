@@ -1,3 +1,6 @@
+use std;
+import std._task.join;
+
 io fn main() -> () {
    test00();
 }
@@ -25,7 +28,7 @@ io fn test00() {
         i += 1;
     }
             
-    join t0;
+    join(t0);
     
     check (sum == (number_of_messages * (number_of_messages - 1)) / 2);
 }
