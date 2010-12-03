@@ -867,8 +867,16 @@ impure fn trans_unary(@block_ctxt cx, ast.unop op,
             sub = copy_ty(sub.bcx, true, body, e_val, e_ty);
             ret res(sub.bcx, box);
         }
-        case (_) {
-            cx.fcx.ccx.sess.unimpl("expr variant in trans_unary");
+        case (ast.deref) {
+            sub.val = sub.bcx.build.GEP(sub.val,
+                                        vec(C_int(0),
+                                            C_int(abi.box_rc_field_body)));
+            auto e_ty = node_ann_type(sub.bcx.fcx.ccx, a);
+            if (typeck.type_is_scalar(e_ty) ||
+                typeck.type_is_nil(e_ty)) {
+                sub.val = sub.bcx.build.Load(sub.val);
+            }
+            ret sub;
         }
     }
     fail;
