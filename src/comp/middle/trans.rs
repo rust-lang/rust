@@ -553,7 +553,9 @@ fn iter_structural_ty(@block_ctxt cx,
             let int i = 0;
             for (@typeck.ty arg in args) {
                 auto elt = r.bcx.build.GEP(v, vec(C_int(0), C_int(i)));
-                r = f(r.bcx, elt, arg);
+                r = f(r.bcx,
+                      load_non_structural(r.bcx, elt, arg),
+                      arg);
                 i += 1;
             }
         }
@@ -561,7 +563,9 @@ fn iter_structural_ty(@block_ctxt cx,
             let int i = 0;
             for (typeck.field fld in fields) {
                 auto llfld = r.bcx.build.GEP(v, vec(C_int(0), C_int(i)));
-                r = f(r.bcx, llfld, fld.ty);
+                r = f(r.bcx,
+                      load_non_structural(r.bcx, llfld, fld.ty),
+                      fld.ty);
                 i += 1;
             }
         }
@@ -608,7 +612,7 @@ fn iter_structural_ty(@block_ctxt cx,
                                                      C_int(i as int));
                         auto llvar = variant_cx.build.GEP(v, vals);
 
-                        auto fn_ty = typeck.ann_to_type(variants.(i).ann); 
+                        auto fn_ty = typeck.ann_to_type(variants.(i).ann);
                         alt (fn_ty.struct) {
                             case (typeck.ty_fn(?args, _)) {
                                 auto j = 0u;
@@ -616,7 +620,10 @@ fn iter_structural_ty(@block_ctxt cx,
                                     auto idx = vec(C_int(0), C_int(j as int));
                                     auto llfp = variant_cx.build.GEP(llvar,
                                                                      idx);
-                                    auto llfld = variant_cx.build.Load(llfp);
+                                    auto llfld =
+                                        load_non_structural(variant_cx,
+                                                            llfp, a.ty);
+
                                     auto res = f(variant_cx, llfld, a.ty);
                                     variant_cx = res.bcx;
                                     j += 1u;
@@ -1483,15 +1490,26 @@ impure fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
         case (_) {
             auto t = typeck.expr_ty(e);
             auto sub = trans_lval(cx, e);
-            if (sub._1 && ! typeck.type_is_structural(t)) {
-                ret res(sub._0.bcx, cx.build.Load(sub._0.val));
-            } else {
-                ret sub._0;
-            }
+            ret res(sub._0.bcx,
+                    load_non_structural(sub._0.bcx, sub._0.val, t));
         }
     }
     cx.fcx.ccx.sess.unimpl("expr variant in trans_expr");
     fail;
+}
+
+// We pass structural values around the compiler "by pointer" and
+// non-structural values "by value". This function selects whether
+// to load a pointer or pass it.
+
+fn load_non_structural(@block_ctxt cx,
+                       ValueRef v,
+                       @typeck.ty t) -> ValueRef {
+    if (typeck.type_is_structural(t)) {
+        ret v;
+    } else {
+        ret cx.build.Load(v);
+    }
 }
 
 impure fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
