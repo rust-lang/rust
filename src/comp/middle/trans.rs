@@ -468,8 +468,8 @@ fn incr_refcnt(@block_ctxt cx, ValueRef box_ptr) -> result {
                                             C_int(abi.box_rc_field_refcnt)));
     auto rc = cx.build.Load(rc_ptr);
 
-    auto next_cx = new_sub_block_ctxt(cx, "next");
     auto rc_adj_cx = new_sub_block_ctxt(cx, "rc++");
+    auto next_cx = new_sub_block_ctxt(cx, "next");
 
     auto const_test = cx.build.ICmp(lib.llvm.LLVMIntEQ,
                                     C_int(abi.const_refcount as int), rc);
