@@ -587,13 +587,13 @@ fn iter_structural_ty(@block_ctxt cx,
             auto lldiscrim_ptr = cx.build.GEP(v, vec(C_int(0), C_int(0)));
             auto llunion_ptr = cx.build.GEP(v, vec(C_int(0), C_int(1)));
             auto lldiscrim = cx.build.Load(lldiscrim_ptr);
-          
+
             auto unr_cx = new_sub_block_ctxt(cx, "tag-iter-unr");
             unr_cx.build.Unreachable();
 
             auto llswitch = cx.build.Switch(lldiscrim, unr_cx.llbb,
                                             n_variants);
-           
+
             auto next_cx = new_sub_block_ctxt(cx, "tag-iter-next");
 
             auto i = 0u;
@@ -1961,7 +1961,7 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
                         // Nullary tags become constants.
                         auto union_val = C_union(union_ty, C_nil());
                         auto val = C_struct(vec(C_int(i as int), union_val));
-                        
+
                         // FIXME: better name
                         auto gvar = llvm.LLVMAddGlobal(cx.llmod, val_ty(val),
                                                        _str.buf("tag"));
