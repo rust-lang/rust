@@ -523,6 +523,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         arith-1.rs \
                         arith-2.rs \
                         bool-not.rs \
+                        box.rs \
                         char.rs \
                         complex.rs \
                         dead-code-one-arm-if.rs \

@@ -640,6 +640,16 @@ fn incr_all_refcnts(@block_ctxt cx,
     ret res(cx, C_nil());
 }
 
+fn drop_slot(@block_ctxt cx,
+             ValueRef slot,
+             @typeck.ty t) -> result {
+    if (typeck.type_is_structural(t)) {
+        be drop_ty(cx, slot, t);
+    } else {
+        be drop_ty(cx, cx.build.Load(slot), t);
+    }
+}
+
 fn drop_ty(@block_ctxt cx,
            ValueRef v,
            @typeck.ty t) -> result {
@@ -812,7 +822,8 @@ impure fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
                                         C_int(len)));
             sub.val = sub.bcx.build.IntToPtr(sub.val,
                                              T_ptr(T_str()));
-            cx.cleanups += clean(bind trans_drop_str(_, sub.val));
+            find_scope_cx(cx).cleanups +=
+                clean(bind trans_drop_str(_, sub.val));
             ret sub;
         }
     }
@@ -1529,13 +1540,18 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
         case (ast.stmt_decl(?d)) {
             alt (d.node) {
                 case (ast.decl_local(?local)) {
+
+                    // Make a note to drop this slot on the way out.
+                    check (cx.fcx.lllocals.contains_key(local.id));
+                    auto llptr = cx.fcx.lllocals.get(local.id);
+                    auto ty = node_ann_type(cx.fcx.ccx, local.ann);
+                    find_scope_cx(sub.bcx).cleanups +=
+                        clean(bind drop_slot(_, llptr, ty));
+
                     alt (local.init) {
                         case (some[@ast.expr](?e)) {
-                            check (cx.fcx.lllocals.contains_key(local.id));
-                            auto llptr = cx.fcx.lllocals.get(local.id);
                             sub = trans_expr(cx, e);
-                            sub = copy_ty(sub.bcx, true, llptr, sub.val,
-                                          typeck.expr_ty(e));
+                            sub = copy_ty(sub.bcx, true, llptr, sub.val, ty);
                         }
                         case (_) { /* fall through */  }
                     }
@@ -1658,7 +1674,7 @@ impure fn trans_block(@block_ctxt cx, &ast.block b) -> result {
         }
     }
 
-    bcx = trans_block_cleanups(bcx, bcx);
+    bcx = trans_block_cleanups(bcx, find_scope_cx(bcx));
     ret res(bcx, r.val);
 }
 
