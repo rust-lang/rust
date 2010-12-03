@@ -92,7 +92,7 @@ tag token {
     /* Opacity keywords */
     ABS;
 
-    /* Stratum keywords */
+    /* Layer keywords */
     STATE;
     GC;
 
@@ -258,7 +258,7 @@ fn to_str(token t) -> str {
         /* Opacity keywords */
         case (ABS) { ret "abs"; }
 
-        /* Stratum keywords */
+        /* Layer keywords */
         case (STATE) { ret "state"; }
         case (GC) { ret "gc"; }
 

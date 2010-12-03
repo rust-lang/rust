@@ -34,10 +34,10 @@ type effect =
   | EFF_unsafe
 ;;
 
-type stratum =
-    STRAT_value
-  | STRAT_state
-  | STRAT_gc
+type layer =
+    LAYER_value
+  | LAYER_state
+  | LAYER_gc
 ;;
 
 type opacity =
@@ -94,7 +94,7 @@ and ty =
   | TY_task
 
   | TY_native of opaque_id
-  | TY_param of (ty_param_idx * stratum)
+  | TY_param of (ty_param_idx * layer)
   | TY_named of name
   | TY_type
 
@@ -181,7 +181,7 @@ and ty_fn = (ty_sig * ty_fn_aux)
 
 and ty_obj_header = (slot array * constrs)
 
-and ty_obj = (stratum * ((ident,ty_fn) Hashtbl.t))
+and ty_obj = (layer * ((ident,ty_fn) Hashtbl.t))
 
 and check_calls = (lval * (atom array)) array
 
@@ -434,7 +434,7 @@ and fn =
 and obj =
     {
       obj_state: header_slots;
-      obj_stratum: stratum;
+      obj_layer: layer;
       obj_constrs: constrs;
       obj_fns: (ident,fn identified) Hashtbl.t;
       obj_drop: block option;
@@ -449,10 +449,10 @@ and obj =
  * even if it's a type that's bound by a quantifier in its environment.
  *)
 
-and ty_param = ident * (ty_param_idx * stratum)
+and ty_param = ident * (ty_param_idx * layer)
 
 and mod_item' =
-    MOD_ITEM_type of (stratum * ty)
+    MOD_ITEM_type of (layer * ty)
   | MOD_ITEM_tag of (header_slots * opaque_id * int)
   | MOD_ITEM_mod of (mod_view * mod_items)
   | MOD_ITEM_fn of fn
@@ -723,21 +723,21 @@ and fmt_effect_qual
   fmt_effect ff e;
   if e <> EFF_pure then fmt ff " ";
 
-and fmt_stratum
+and fmt_layer
     (ff:Format.formatter)
-    (strat:stratum)
+    (la:layer)
     : unit =
-  match strat with
-      STRAT_value -> ()
-    | STRAT_state -> fmt ff "state"
-    | STRAT_gc -> fmt ff "gc"
+  match la with
+      LAYER_value -> ()
+    | LAYER_state -> fmt ff "state"
+    | LAYER_gc -> fmt ff "gc"
 
-and fmt_stratum_qual
+and fmt_layer_qual
     (ff:Format.formatter)
-    (s:stratum)
+    (s:layer)
     : unit =
-  fmt_stratum ff s;
-  if s <> STRAT_value then fmt ff " ";
+  fmt_layer ff s;
+  if s <> LAYER_value then fmt ff " ";
 
 and fmt_opacity
     (ff:Format.formatter)
@@ -810,7 +810,7 @@ and fmt_ty (ff:Format.formatter) (t:ty) : unit =
       fmt_ident_tys ff entries;
       fmt ff "@]"
 
-  | TY_param (i, s) -> (fmt_stratum_qual ff s;
+  | TY_param (i, s) -> (fmt_layer_qual ff s;
                         fmt ff "<p#%d>" i)
   | TY_native oid -> fmt ff "<native#%d>" (int_of_opaque oid)
   | TY_named n -> fmt_name ff n
@@ -833,9 +833,9 @@ and fmt_ty (ff:Format.formatter) (t:ty) : unit =
 
   | TY_constrained ctrd -> fmt_constrained ff ctrd
 
-  | TY_obj (stratum, fns) ->
+  | TY_obj (layer, fns) ->
       fmt_obox ff;
-      fmt_stratum_qual ff stratum;
+      fmt_layer_qual ff layer;
       fmt ff "obj ";
       fmt_obr ff;
       Hashtbl.iter
@@ -1629,7 +1629,7 @@ and fmt_slice (ff:Format.formatter) (slice:slice) : unit =
 
 and fmt_decl_param (ff:Format.formatter) (param:ty_param) : unit =
   let (ident, (i, s)) = param in
-  fmt_stratum_qual ff s;
+  fmt_layer_qual ff s;
   fmt_ident ff ident;
   fmt ff "=<p#%d>" i
 
@@ -1683,7 +1683,7 @@ and fmt_obj
     (obj:obj)
     : unit =
   fmt_obox ff;
-  fmt_stratum_qual ff obj.obj_stratum;
+  fmt_layer_qual ff obj.obj_layer;
   fmt ff "obj ";
   fmt_ident_and_params ff id params;
   fmt_header_slots ff obj.obj_state;
@@ -1720,7 +1720,7 @@ and fmt_mod_item (ff:Format.formatter) (id:ident) (item:mod_item) : unit =
     begin
       match item.node.decl_item with
           MOD_ITEM_type (s, ty) ->
-            fmt_stratum_qual ff s;
+            fmt_layer_qual ff s;
             fmt ff "type ";
             fmt_ident_and_params ff id params;
             fmt ff " = ";

@@ -730,7 +730,7 @@ fn drop_ty(@block_ctxt cx,
             fn hit_zero(@block_ctxt cx, ValueRef v,
                         @typeck.ty t) -> result {
                 auto res = iter_sequence(cx, v, t, bind drop_ty(_,_,_));
-                // FIXME: switch gc/non-gc on stratum of the type.
+                // FIXME: switch gc/non-gc on layer of the type.
                 ret trans_non_gc_free(res.bcx, v);
             }
             ret decr_refcnt_and_if_zero(cx, v,
@@ -747,7 +747,7 @@ fn drop_ty(@block_ctxt cx,
                                              C_int(abi.box_rc_field_body)));
 
                 auto res = drop_ty(cx, body, body_ty);
-                // FIXME: switch gc/non-gc on stratum of the type.
+                // FIXME: switch gc/non-gc on layer of the type.
                 ret trans_non_gc_free(res.bcx, v);
             }
             ret decr_refcnt_and_if_zero(cx, v,

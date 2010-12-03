@@ -1539,13 +1539,13 @@ let dwarf_visitor
       |]
   in
 
-  let encode_stratum eff =
+  let encode_layer eff =
     (* Note: weird encoding: mutable+pure = gc. *)
     let mut_byte, pure_byte =
       match eff with
-          Ast.STRAT_value -> (0,1)
-        | Ast.STRAT_state -> (1,0)
-        | Ast.STRAT_gc -> (1,1)
+          Ast.LAYER_value -> (0,1)
+        | Ast.LAYER_state -> (1,0)
+        | Ast.LAYER_gc -> (1,1)
     in
       SEQ [|
         (* DW_AT_mutable: DW_FORM_flag *)
@@ -1557,7 +1557,7 @@ let dwarf_visitor
 
   (* Type-param DIEs. *)
 
-  let type_param_die (p:(ty_param_idx * Ast.stratum)) =
+  let type_param_die (p:(ty_param_idx * Ast.layer)) =
     let (idx, s) = p in
       SEQ [|
         uleb (get_abbrev_code abbrev_rust_type_param);
@@ -1565,7 +1565,7 @@ let dwarf_visitor
         BYTE (dw_rust_type_to_int DW_RUST_type_param);
         (* DW_AT_rust_type_param_index: DW_FORM_data4 *)
         WORD (word_ty_mach, IMM (Int64.of_int idx));
-        encode_stratum s;
+        encode_layer s;
       |]
   in
 
@@ -1817,7 +1817,7 @@ let dwarf_visitor
           emit_die die
       in
 
-      let rust_type_param (p:(ty_param_idx * Ast.stratum)) =
+      let rust_type_param (p:(ty_param_idx * Ast.layer)) =
         let die = DEF (fix, type_param_die p) in
           emit_die die
       in
@@ -1892,7 +1892,7 @@ let dwarf_visitor
         let die =
           DEF (fix, SEQ [|
                  uleb (get_abbrev_code abbrev_obj_type);
-                 encode_stratum str;
+                 encode_layer str;
                |])
         in
           emit_die die;
@@ -2255,7 +2255,7 @@ let dwarf_visitor
       curr_cu_line := []
   in
 
-  let type_param_decl_die (p:(Ast.ident * (ty_param_idx * Ast.stratum))) =
+  let type_param_decl_die (p:(Ast.ident * (ty_param_idx * Ast.layer))) =
     let (ident, (idx, str)) = p in
       SEQ [|
         uleb (get_abbrev_code abbrev_rust_type_param_decl);
@@ -2265,7 +2265,7 @@ let dwarf_visitor
         ZSTRING (Filename.basename ident);
         (* DW_AT_rust_type_param_index: DW_FORM_data4 *)
         WORD (word_ty_mach, IMM (Int64.of_int idx));
-        encode_stratum str;
+        encode_layer str;
       |]
   in
 
@@ -2360,7 +2360,7 @@ let dwarf_visitor
 
   let emit_typedef_die
       (id:Ast.ident)
-      (s:Ast.stratum)
+      (s:Ast.layer)
       (ty:Ast.ty)
       : unit =
     let abbrev_code = get_abbrev_code abbrev_typedef in
@@ -2369,7 +2369,7 @@ let dwarf_visitor
          uleb abbrev_code;
          (* DW_AT_name: DW_FORM_string *)
          ZSTRING id;
-         encode_stratum s;
+         encode_layer s;
          (* DW_AT_type: DW_FORM_ref_addr *)
          (ref_type_die ty);
        |])
@@ -2909,12 +2909,12 @@ let rec extract_mod_items
       | _ -> failwith "bad effect encoding"
   in
 
-  let get_stratum die =
+  let get_layer die =
     match (get_flag die DW_AT_mutable, get_flag die DW_AT_pure) with
         (* Note: weird encoding: mutable+pure = gc. *)
-      | (false, true) -> Ast.STRAT_value
-      | (true, false) -> Ast.STRAT_state
-      | (true, true) -> Ast.STRAT_gc
+      | (false, true) -> Ast.LAYER_value
+      | (true, false) -> Ast.LAYER_state
+      | (true, true) -> Ast.LAYER_gc
       | _ -> failwith "bad statum encoding"
   in
 
@@ -2922,7 +2922,7 @@ let rec extract_mod_items
 
   let get_type_param die =
     let idx = get_num die DW_AT_rust_type_param_index in
-    let s = get_stratum die in
+    let s = get_layer die in
       (idx, s)
   in
 
@@ -3071,7 +3071,7 @@ let rec extract_mod_items
             end
 
         | DW_TAG_interface_type ->
-            let str = get_stratum die in
+            let str = get_layer die in
             let fns = Hashtbl.create 0 in
               Array.iter
                 begin
@@ -3187,10 +3187,10 @@ let rec extract_mod_items
   let die = Hashtbl.find dies i in
     match die.die_tag with
         DW_TAG_typedef ->
-          let stratum = get_stratum die in
+          let layer = get_layer die in
           let ident = get_name die in
           let ty = get_referenced_ty die in
-          let tyi = Ast.MOD_ITEM_type (stratum, ty) in
+          let tyi = Ast.MOD_ITEM_type (layer, ty) in
           let (params, islots) = get_formals die in
             assert ((Array.length islots) = 0);
             htab_put mis ident (decl params tyi)

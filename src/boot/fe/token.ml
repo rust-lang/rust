@@ -83,7 +83,7 @@ type token =
   (* Opacity keywords *)
   | ABS
 
-  (* Stratum keywords *)
+  (* Layer keywords *)
   | STATE
   | GC
 
@@ -246,7 +246,7 @@ let rec string_of_tok t =
     (* Opacity keywords *)
     | ABS        -> "abs"
 
-    (* Stratum keywords *)
+    (* Layer keywords *)
     | STATE      -> "state"
     | GC         -> "gc"
 

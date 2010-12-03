@@ -265,7 +265,7 @@ BE_MLS := $(addprefix boot/be/, x86.ml ra.ml pe.ml elf.ml \
           macho.ml)
 IL_MLS := $(addprefix boot/be/, asm.ml il.ml abi.ml)
 ME_MLS := $(addprefix boot/me/, walk.ml semant.ml resolve.ml alias.ml \
-            simplify.ml type.ml dead.ml stratum.ml effect.ml typestate.ml \
+            simplify.ml type.ml dead.ml layer.ml effect.ml typestate.ml \
             loop.ml layout.ml transutil.ml trans.ml dwarf.ml)
 FE_MLS := $(addprefix boot/fe/, ast.ml token.ml lexer.ml parser.ml \
             extfmt.ml pexp.ml item.ml cexp.ml fuzz.ml)

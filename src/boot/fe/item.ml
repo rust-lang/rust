@@ -692,7 +692,7 @@ and parse_stmts_including_none (ps:pstate) : Ast.stmt array =
 and parse_ty_param (iref:int ref) (ps:pstate) : Ast.ty_param identified =
   let apos = lexpos ps in
   let _ = Pexp.parse_opacity ps in
-  let s = Pexp.parse_stratum ps in
+  let s = Pexp.parse_layer ps in
   let ident = Pexp.parse_ident ps in
   let i = !iref in
   let bpos = lexpos ps in
@@ -842,7 +842,7 @@ and parse_optional_meta_pat (ps:pstate) (ident:Ast.ident) : Ast.meta_pat =
 and parse_obj_item
     (ps:pstate)
     (apos:pos)
-    (stratum:Ast.stratum)
+    (layer:Ast.layer)
     : (Ast.ident * Ast.mod_item) =
   expect ps OBJ;
   let (ident, params) = parse_ident_and_params ps "obj" in
@@ -871,7 +871,7 @@ and parse_obj_item
       expect ps RBRACE;
       let bpos = lexpos ps in
       let obj = { Ast.obj_state = state;
-                  Ast.obj_stratum = stratum;
+                  Ast.obj_layer = layer;
                   Ast.obj_constrs = constrs;
                   Ast.obj_fns = fns;
                   Ast.obj_drop = !drop }
@@ -883,7 +883,7 @@ and parse_obj_item
 and parse_tag_item
     (ps:pstate)
     (apos:pos)
-    (stratum:Ast.stratum)
+    (layer:Ast.layer)
     : (Ast.ident * Ast.mod_item) array =
   expect ps TAG;
   let (ident, params) = parse_ident_and_params ps "tag" in
@@ -945,14 +945,14 @@ and parse_tag_item
   let ty_item =
     (ident,
      span ps apos bpos
-       (decl params (Ast.MOD_ITEM_type (stratum, ty))))
+       (decl params (Ast.MOD_ITEM_type (layer, ty))))
   in
     Array.append [| ty_item |] constructors
 
 and parse_type_item
     (ps:pstate)
     (apos:pos)
-    (stratum:Ast.stratum)
+    (layer:Ast.layer)
     : (Ast.ident * Ast.mod_item) =
   expect ps TYPE;
   let (ident, params) = parse_ident_and_params ps "type" in
@@ -960,7 +960,7 @@ and parse_type_item
   let ty = ctxt "mod type item: ty" Pexp.parse_ty ps in
   let _ = expect ps SEMI in
   let bpos = lexpos ps in
-  let item = Ast.MOD_ITEM_type (stratum, ty) in
+  let item = Ast.MOD_ITEM_type (layer, ty) in
     (ident, span ps apos bpos (decl params item))
 
 and parse_mod_item (ps:pstate)
@@ -992,25 +992,25 @@ and parse_mod_item (ps:pstate)
         STATE | GC | IMPURE | UNSAFE | ABS
       | TYPE | OBJ | TAG | FN | ITER ->
           let _ = Pexp.parse_opacity ps in
-          let stratum = Pexp.parse_stratum ps in
+          let layer = Pexp.parse_layer ps in
           let effect = Pexp.parse_effect ps in
             begin
               match peek ps with
                   OBJ ->
                     if effect <> Ast.EFF_pure
                     then raise (err "effect specified for obj" ps);
-                    [| parse_obj_item ps apos stratum |]
+                    [| parse_obj_item ps apos layer |]
                 | TAG ->
                     if effect <> Ast.EFF_pure
                     then raise (err "effect specified for tag" ps);
-                    parse_tag_item ps apos stratum
+                    parse_tag_item ps apos layer
                 | TYPE ->
                     if effect <> Ast.EFF_pure
                     then raise (err "effect specified for type" ps);
-                    [| parse_type_item ps apos stratum |]
+                    [| parse_type_item ps apos layer |]
                 | _ ->
-                    if stratum <> Ast.STRAT_value
-                    then raise (err "stratum specified for fn or iter" ps);
+                    if layer <> Ast.LAYER_value
+                    then raise (err "layer specified for fn or iter" ps);
                     let is_iter = (peek ps) = ITER in
                       bump ps;
                       let (ident, params) = parse_ident_and_params ps "fn" in
@@ -1159,7 +1159,7 @@ and parse_native_mod_item_from_signature (ps:pstate)
           expect ps SEMI;
           let bpos = lexpos ps in
             [| (ident, span ps apos bpos
-                  (decl params (Ast.MOD_ITEM_type (Ast.STRAT_value, t)))) |]
+                  (decl params (Ast.MOD_ITEM_type (Ast.LAYER_value, t)))) |]
 
     | _ -> raise (unexpected ps)
 
