@@ -52,8 +52,8 @@ state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
                             hashmap[str, ValueRef] upcalls,
                             hashmap[str, ValueRef] intrinsics,
-                            hashmap[str, ValueRef] fn_names,
-                            hashmap[ast.def_id, ValueRef] fn_ids,
+                            hashmap[str, ValueRef] item_names,
+                            hashmap[ast.def_id, ValueRef] item_ids,
                             hashmap[ast.def_id, @ast.item] items,
                             hashmap[ast.def_id, @tag_info] tags,
                             @glue_fns glues,
@@ -1126,8 +1126,8 @@ fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt)
                             true);
                 }
                 case (ast.def_fn(?did)) {
-                    check (cx.fcx.ccx.fn_ids.contains_key(did));
-                    ret tup(res(cx, cx.fcx.ccx.fn_ids.get(did)),
+                    check (cx.fcx.ccx.item_ids.contains_key(did));
+                    ret tup(res(cx, cx.fcx.ccx.item_ids.get(did)),
                             false);
                 }
                 case (ast.def_variant(?tid, ?vid)) {
@@ -1610,9 +1610,9 @@ fn new_fn_ctxt(@crate_ctxt cx,
                &ast._fn f,
                ast.def_id fid) -> @fn_ctxt {
 
-    check (cx.fn_ids.contains_key(fid));
-    let ValueRef llfn = cx.fn_ids.get(fid);
-    cx.fn_names.insert(cx.path, llfn);
+    check (cx.item_ids.contains_key(fid));
+    let ValueRef llfn = cx.item_ids.get(fid);
+    cx.item_names.insert(cx.path, llfn);
 
     let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 0u);
     let uint arg_n = 1u;
@@ -1779,7 +1779,7 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             auto llty = node_type(cx, ann);
             let str s = cx.names.next("_rust_fn") + "." + name;
             let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llty);
-            cx.fn_ids.insert(fid, llfn);
+            cx.item_ids.insert(fid, llfn);
         }
 
         case (ast.item_mod(?name, ?m, ?mid)) {
@@ -1899,8 +1899,8 @@ fn trans_main_fn(@crate_ctxt cx, ValueRef llcrate) {
 
     auto llargc = llvm.LLVMGetParam(llmain, 0u);
     auto llargv = llvm.LLVMGetParam(llmain, 1u);
-    check (cx.fn_names.contains_key("_rust.main"));
-    auto llrust_main = cx.fn_names.get("_rust.main");
+    check (cx.item_names.contains_key("_rust.main"));
+    auto llrust_main = cx.item_names.get("_rust.main");
 
     //
     // Emit the moral equivalent of:
@@ -1977,8 +1977,8 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
                    llmod = llmod,
                    upcalls = new_str_hash[ValueRef](),
                    intrinsics = intrinsics,
-                   fn_names = new_str_hash[ValueRef](),
-                   fn_ids = new_def_hash[ValueRef](),
+                   item_names = new_str_hash[ValueRef](),
+                   item_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
                    tags = new_def_hash[@tag_info](),
                    glues = glues,
