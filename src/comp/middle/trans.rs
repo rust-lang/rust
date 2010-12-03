@@ -374,16 +374,16 @@ fn C_struct(vec[ValueRef] elts) -> ValueRef {
 }
 
 fn C_tydesc(TypeRef t) -> ValueRef {
-    ret C_struct(vec(C_null(T_opaque()),        // first_param
-                     llvm.LLVMSizeOf(t),        // size
-                     llvm.LLVMAlignOf(t),       // align
-                     C_null(T_opaque()),        // copy_glue_off
-                     C_null(T_opaque()),        // drop_glue_off
-                     C_null(T_opaque()),        // free_glue_off
-                     C_null(T_opaque()),        // sever_glue_off
-                     C_null(T_opaque()),        // mark_glue_off
-                     C_null(T_opaque()),        // obj_drop_glue_off
-                     C_null(T_opaque())));      // is_stateful
+    ret C_struct(vec(C_null(T_ptr(T_opaque())),        // first_param
+                     llvm.LLVMSizeOf(t),               // size
+                     llvm.LLVMAlignOf(t),              // align
+                     C_null(T_ptr(T_opaque())),        // copy_glue_off
+                     C_null(T_ptr(T_opaque())),        // drop_glue_off
+                     C_null(T_ptr(T_opaque())),        // free_glue_off
+                     C_null(T_ptr(T_opaque())),        // sever_glue_off
+                     C_null(T_ptr(T_opaque())),        // mark_glue_off
+                     C_null(T_ptr(T_opaque())),        // obj_drop_glue_off
+                     C_null(T_ptr(T_opaque()))));      // is_stateful
 }
 
 fn decl_fn(ModuleRef llmod, str name, uint cc, TypeRef llty) -> ValueRef {
@@ -449,6 +449,19 @@ fn trans_non_gc_free(@block_ctxt cx, ValueRef v) -> result {
     ret trans_upcall(cx, "upcall_free", vec(cx.build.PtrToInt(v, T_int()),
                                             C_int(0)));
 }
+
+fn trans_malloc(@block_ctxt cx, @typeck.ty t) -> result {
+    auto ptr_ty = type_of(cx.fcx.ccx, t);
+    auto body_ty = lib.llvm.llvm.LLVMGetElementType(ptr_ty);
+    // FIXME: need a table to collect tydesc globals.
+    auto tydesc = C_int(0);
+    auto sz = cx.build.IntCast(lib.llvm.llvm.LLVMSizeOf(body_ty), T_int());
+    auto sub = trans_upcall(cx, "upcall_malloc", vec(sz, tydesc));
+    sub.val = sub.bcx.build.IntToPtr(sub.val, ptr_ty);
+    sub.bcx.cleanups += clean(bind drop_ty(_, sub.val, t));
+    ret sub;
+}
+
 
 fn incr_refcnt(@block_ctxt cx, ValueRef box_ptr) -> result {
     auto rc_ptr = cx.build.GEP(box_ptr, vec(C_int(0),
@@ -636,16 +649,21 @@ fn drop_ty(@block_ctxt cx,
                                         T_int(), C_int(0));
         }
 
-        case (typeck.ty_box(_)) {
+        case (typeck.ty_box(?body_ty)) {
             fn hit_zero(@block_ctxt cx, ValueRef v,
-                        @typeck.ty elt_ty) -> result {
-                auto res = drop_ty(cx,
-                                   cx.build.GEP(v, vec(C_int(0))),
-                                   elt_ty);
+                        @typeck.ty body_ty) -> result {
+                auto body = cx.build.GEP(v,
+                                         vec(C_int(0),
+                                             C_int(abi.box_rc_field_body)));
+
+                auto res = drop_ty(cx, body, body_ty);
                 // FIXME: switch gc/non-gc on stratum of the type.
                 ret trans_non_gc_free(res.bcx, v);
             }
-            ret incr_refcnt(cx, v);
+            ret decr_refcnt_and_if_zero(cx, v,
+                                        bind hit_zero(_, v, body_ty),
+                                        "free box",
+                                        T_int(), C_int(0));
         }
 
         case (_) {
@@ -778,7 +796,7 @@ impure fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
                                         C_int(len)));
             sub.val = sub.bcx.build.IntToPtr(sub.val,
                                              T_ptr(T_str()));
-            cx.cleanups += vec(clean(bind trans_drop_str(_, sub.val)));
+            cx.cleanups += clean(bind trans_drop_str(_, sub.val));
             ret sub;
         }
     }
@@ -835,13 +853,19 @@ impure fn trans_unary(@block_ctxt cx, ast.unop op,
             ret sub;
         }
         case (ast.box) {
-            auto e_ty = node_type(cx.fcx.ccx, a);
-            auto box_ty = T_box(e_ty);
-            sub.val = cx.build.Malloc(box_ty);
-            auto rc = sub.bcx.build.GEP(sub.val,
+            auto e_ty = typeck.expr_ty(e);
+            auto e_val = sub.val;
+            sub = trans_malloc(sub.bcx, node_ann_type(sub.bcx.fcx.ccx, a));
+            auto box = sub.val;
+            auto rc = sub.bcx.build.GEP(box,
                                         vec(C_int(0),
                                             C_int(abi.box_rc_field_refcnt)));
-            ret res(sub.bcx, cx.build.Store(C_int(1), rc));
+            auto body = sub.bcx.build.GEP(box,
+                                          vec(C_int(0),
+                                              C_int(abi.box_rc_field_body)));
+            sub.bcx.build.Store(C_int(1), rc);
+            sub = copy_ty(sub.bcx, true, body, e_val, e_ty);
+            ret res(sub.bcx, box);
         }
         case (_) {
             cx.fcx.ccx.sess.unimpl("expr variant in trans_unary");
