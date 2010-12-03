@@ -1,4 +1,5 @@
 import std._str;
+import std._uint;
 import std._vec;
 import std._str.rustrt.sbuf;
 import std._vec.rustrt.vbuf;
@@ -387,6 +388,10 @@ fn C_tydesc(TypeRef t) -> ValueRef {
                      C_null(T_ptr(T_opaque()))));      // is_stateful
 }
 
+fn C_union(TypeRef ty, ValueRef val) -> ValueRef {
+    ret llvm.LLVMConstUnion(ty, val);
+}
+
 fn decl_fn(ModuleRef llmod, str name, uint cc, TypeRef llty) -> ValueRef {
     let ValueRef llfn =
         llvm.LLVMAddFunction(llmod, _str.buf(name), llty);
@@ -560,10 +565,69 @@ fn iter_structural_ty(@block_ctxt cx,
                 i += 1;
             }
         }
+        case (typeck.ty_tag(?tid)) {
+            check (cx.fcx.ccx.tags.contains_key(tid));
+            auto info = cx.fcx.ccx.tags.get(tid);
+            auto n_variants = _vec.len[tup(ast.def_id,arity)](info.variants);
+
+            // Look up the tag in the typechecked AST.
+            check (cx.fcx.ccx.items.contains_key(tid));
+            auto tag_item = cx.fcx.ccx.items.get(tid);
+            let vec[ast.variant] variants = vec();  // FIXME: typestate bug
+            alt (tag_item.node) {
+                case (ast.item_tag(_, ?vs, _, _)) {
+                    variants = vs;
+                }
+                case (_) {
+                    log "trans: ty_tag doesn't actually refer to a tag";
+                    fail;
+                }
+            }
+
+            auto lldiscrim_ptr = cx.build.GEP(v, vec(C_int(0), C_int(0)));
+            auto llunion_ptr = cx.build.GEP(v, vec(C_int(0), C_int(1)));
+            auto lldiscrim = cx.build.Load(lldiscrim_ptr);
+          
+            auto unr_cx = new_sub_block_ctxt(cx, "tag-iter-unr");
+            unr_cx.build.Unreachable();
+
+            auto llswitch = cx.build.Switch(lldiscrim, unr_cx.llbb,
+                                            n_variants);
+           
+            auto next_cx = new_sub_block_ctxt(cx, "tag-iter-next");
+
+            auto i = 0u;
+            for (tup(ast.def_id,arity) variant in info.variants) {
+                auto variant_cx = new_sub_block_ctxt(cx, "tag-iter-variant-" +
+                                                     _uint.to_str(i, 10u));
+                llvm.LLVMAddCase(llswitch, C_int(i as int), variant_cx.llbb);
+
+                alt (variant._1) {
+                    case (n_ary) {
+                        // FIXME: broken at the moment, causes type_is_binding
+                        // errors; need to unpack the fn type returned by
+                        // ann_to_type.
+                        let vec[ValueRef] vals = vec(C_int(0), C_int(1),
+                                                     C_int(i as int));
+                        auto llfld = r.bcx.build.GEP(v, vals);
+                        auto ty = typeck.ann_to_type(variants.(i).ann);
+                        r = f(variant_cx, llfld, ty);
+                        r.bcx.build.Br(next_cx.llbb);
+                    }
+                    case (nullary) {
+                        // Nothing to do.
+                        variant_cx.build.Br(next_cx.llbb);
+                    }
+                }
+
+                i += 1u;
+            }
+
+            ret res(next_cx, C_nil());
+        }
         case (_) {
             cx.fcx.ccx.sess.unimpl("type in iter_structural_ty");
         }
-        // FIXME: handle records and tags when we support them.
     }
     ret r;
 }
@@ -1191,24 +1255,9 @@ fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt)
                 }
                 case (ast.def_variant(?tid, ?vid)) {
                     check (cx.fcx.ccx.tags.contains_key(tid));
-                    auto info = cx.fcx.ccx.tags.get(tid);
-                    auto i = 0;
-                    for (tup(ast.def_id,arity) v in info.variants) {
-                        if (vid == v._0) {
-                            alt (v._1) {
-                                case (nullary) {
-                                    auto elems = vec(C_int(i));
-                                    ret tup(res(cx, C_struct(elems)), false);
-                                }
-                                case (n_ary) {
-                                    cx.fcx.ccx.sess.unimpl("n-ary tag " +
-                                                           "constructor in " +
-                                                           "trans");
-                                }
-                            }
-                        }
-                        i += 1;
-                    }
+                    check (cx.fcx.ccx.item_ids.contains_key(vid));
+                    ret tup(res(cx, cx.fcx.ccx.item_ids.get(vid)),
+                            false);
                 }
                 case (_) {
                     cx.fcx.ccx.sess.unimpl("def variant in trans");
@@ -1791,59 +1840,6 @@ impure fn trans_mod(@crate_ctxt cx, &ast._mod m) {
 }
 
 
-fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
-    alt (i.node) {
-        case (ast.item_tag(_, ?variants, _, ?tag_id)) {
-            let vec[TypeRef] variant_tys = vec();
-
-            auto info = cx.tags.get(tag_id);
-            let vec[tup(ast.def_id,arity)] variant_info = vec();
-
-            auto tag_ty;
-            if (_vec.len[ast.variant](variants) == 0u) {
-                tag_ty = T_struct(vec(T_int()));
-            } else {
-                auto n_ary_idx = 0u;
-                for (ast.variant variant in variants) {
-                    auto arity_info;
-                    if (_vec.len[@ast.ty](variant.args) > 0u) {
-                        let vec[TypeRef] lltys = vec();
-
-                        alt (typeck.ann_to_type(variant.ann).struct) {
-                            case (typeck.ty_fn(?args, _)) {
-                                for (typeck.arg arg in args) {
-                                    lltys += vec(type_of(cx, arg.ty));
-                                }
-                            }
-                            case (_) { fail; }
-                        }
-
-                        variant_tys += vec(T_struct(lltys));
-                        arity_info = n_ary;
-                    } else {
-                        variant_tys += vec(T_nil());
-                        arity_info = nullary;
-                    }
-
-                    variant_info += vec(tup(variant.id, arity_info));
-                }
-
-                tag_ty = T_struct(vec(T_int(), T_union(variant_tys)));
-            }
-
-            info.variants = variant_info;
-
-            auto th = cx.tags.get(tag_id).th.llth;
-            llvm.LLVMRefineType(llvm.LLVMResolveTypeHandle(th), tag_ty);
-        }
-        case (_) {
-            // fall through
-        }
-    }
-
-    ret cx;
-}
-
 fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
     alt (i.node) {
         case (ast.item_fn(?name, ?f, _, ?fid, ?ann)) {
@@ -1865,6 +1861,7 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             let vec[tup(ast.def_id,arity)] variant_info = vec();
             cx.tags.insert(tag_id, @rec(th=mk_type_handle(),
                                         mutable variants=variant_info));
+            cx.items.insert(tag_id, i);
         }
 
         case (_) { /* fall through */ }
@@ -1884,12 +1881,116 @@ fn collect_items(@crate_ctxt cx, @ast.crate crate) {
     fold.fold_crate[@crate_ctxt](cx, fld, crate);
 }
 
+// The tag type resolution pass, which determines all the LLVM types that
+// correspond to each tag type in the crate.
+
+fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
+    alt (i.node) {
+        case (ast.item_tag(_, ?variants, _, ?tag_id)) {
+            let vec[TypeRef] variant_tys = vec();
+
+            auto info = cx.tags.get(tag_id);
+            let vec[tup(ast.def_id,arity)] variant_info = vec();
+
+            for (ast.variant variant in variants) {
+                auto arity_info;
+                if (_vec.len[@ast.ty](variant.args) > 0u) {
+                    let vec[TypeRef] lltys = vec();
+
+                    alt (typeck.ann_to_type(variant.ann).struct) {
+                        case (typeck.ty_fn(?args, _)) {
+                            for (typeck.arg arg in args) {
+                                lltys += vec(type_of(cx, arg.ty));
+                            }
+                        }
+                        case (_) { fail; }
+                    }
+
+                    variant_tys += vec(T_struct(lltys));
+                    arity_info = n_ary;
+                } else {
+                    variant_tys += vec(T_nil());
+                    arity_info = nullary;
+                }
+
+                variant_info += vec(tup(variant.id, arity_info));
+            }
+
+            info.variants = variant_info;
+
+            auto tag_ty = T_struct(vec(T_int(), T_union(variant_tys)));
+            auto th = cx.tags.get(tag_id).th.llth;
+            llvm.LLVMRefineType(llvm.LLVMResolveTypeHandle(th), tag_ty);
+        }
+        case (_) {
+            // fall through
+        }
+    }
+
+    ret cx;
+}
+
 fn resolve_tag_types(@crate_ctxt cx, @ast.crate crate) {
     let fold.ast_fold[@crate_ctxt] fld =
         fold.new_identity_fold[@crate_ctxt]();
 
     fld = @rec( update_env_for_item = bind resolve_tag_types_for_item(_,_)
                 with *fld );
+
+    fold.fold_crate[@crate_ctxt](cx, fld, crate);
+}
+
+// The constant translation pass.
+
+fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
+    alt (it.node) {
+        case (ast.item_tag(_, ?variants, _, ?tag_id)) {
+            auto info = cx.tags.get(tag_id);
+
+            auto tag_ty = llvm.LLVMResolveTypeHandle(info.th.llth);
+            check (llvm.LLVMCountStructElementTypes(tag_ty) == 2u);
+            auto elts = vec(0 as TypeRef, 0 as TypeRef);
+            llvm.LLVMGetStructElementTypes(tag_ty, _vec.buf[TypeRef](elts));
+            auto union_ty = elts.(1);
+
+            auto i = 0u;
+            while (i < _vec.len[tup(ast.def_id,arity)](info.variants)) {
+                auto variant_info = info.variants.(i);
+                alt (variant_info._1) {
+                    case (nullary) {
+                        // Nullary tags become constants.
+                        auto union_val = C_union(union_ty, C_nil());
+                        auto val = C_struct(vec(C_int(i as int), union_val));
+                        
+                        // FIXME: better name
+                        auto gvar = llvm.LLVMAddGlobal(cx.llmod, val_ty(val),
+                                                       _str.buf("tag"));
+                        llvm.LLVMSetInitializer(gvar, val);
+                        llvm.LLVMSetGlobalConstant(gvar, True);
+                        cx.item_ids.insert(variant_info._0, gvar);
+                    }
+                    case (n_ary) {
+                        // N-ary tags are treated as functions and generated
+                        // later.
+                    }
+                }
+
+                i += 1u;
+            }
+        }
+        case (_) {
+            // empty
+        }
+    }
+
+    ret cx;
+}
+
+fn trans_constants(@crate_ctxt cx, @ast.crate crate) {
+    let fold.ast_fold[@crate_ctxt] fld =
+        fold.new_identity_fold[@crate_ctxt]();
+
+    fld = @rec(update_env_for_item = bind trans_constant(_,_) with *fld);
 
     fold.fold_crate[@crate_ctxt](cx, fld, crate);
 }
@@ -2060,6 +2161,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
 
     collect_items(cx, crate);
     resolve_tag_types(cx, crate);
+    trans_constants(cx, crate);
 
     trans_mod(cx, crate.node.module);
     trans_exit_task_glue(cx);
