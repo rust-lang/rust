@@ -44,7 +44,7 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef exit_task_glue,
                     vec[ValueRef] upcall_glues);
 
-tag arity { nullary; n_ary(uint); }
+tag arity { nullary; n_ary; }
 type tag_info = rec(type_handle th,
                     mutable vec[tup(ast.def_id,arity)] variants);
 
@@ -1141,7 +1141,7 @@ fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt)
                                     auto elems = vec(C_int(i));
                                     ret tup(res(cx, C_struct(elems)), false);
                                 }
-                                case (n_ary(_)) {
+                                case (n_ary) {
                                     cx.fcx.ccx.sess.unimpl("n-ary tag " +
                                                            "constructor in " +
                                                            "trans");
@@ -1746,10 +1746,9 @@ fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
                         }
 
                         variant_tys += vec(T_struct(lltys));
-
-                        arity_info = n_ary(n_ary_idx);
-                        n_ary_idx += 1u;
+                        arity_info = n_ary;
                     } else {
+                        variant_tys += vec(T_nil());
                         arity_info = nullary;
                     }
 
