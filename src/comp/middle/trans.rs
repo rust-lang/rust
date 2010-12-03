@@ -2151,6 +2151,9 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
 
+    llvm.LLVMSetDataLayout(llmod, _str.buf(x86.get_data_layout()));
+    llvm.LLVMSetTarget(llmod, _str.buf(x86.get_target_triple()));
+
     llvm.LLVMSetModuleInlineAsm(llmod, _str.buf(x86.get_module_asm()));
 
     auto intrinsics = declare_intrinsics(llmod);
