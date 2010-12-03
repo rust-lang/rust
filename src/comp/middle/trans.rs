@@ -1510,8 +1510,8 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
                             check (cx.fcx.lllocals.contains_key(local.id));
                             auto llptr = cx.fcx.lllocals.get(local.id);
                             sub = trans_expr(cx, e);
-                            copy_ty(sub.bcx, true, llptr, sub.val,
-                                    typeck.expr_ty(e));
+                            sub = copy_ty(sub.bcx, true, llptr, sub.val,
+                                          typeck.expr_ty(e));
                         }
                         case (_) { /* fall through */  }
                     }
