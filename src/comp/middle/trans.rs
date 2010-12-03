@@ -73,6 +73,7 @@ tag cleanup {
 state type block_ctxt = rec(BasicBlockRef llbb,
                             builder build,
                             block_parent parent,
+                            bool is_scope,
                             mutable vec[cleanup] cleanups,
                             @fn_ctxt fcx);
 
@@ -450,7 +451,22 @@ fn trans_non_gc_free(@block_ctxt cx, ValueRef v) -> result {
                                             C_int(0)));
 }
 
+fn find_scope_cx(@block_ctxt cx) -> @block_ctxt {
+    if (cx.is_scope) {
+        ret cx;
+    }
+    alt (cx.parent) {
+        case (parent_some(?b)) {
+            be find_scope_cx(b);
+        }
+        case (parent_none) {
+            fail;
+        }
+    }
+}
+
 fn trans_malloc(@block_ctxt cx, @typeck.ty t) -> result {
+    auto scope_cx = find_scope_cx(cx);
     auto ptr_ty = type_of(cx.fcx.ccx, t);
     auto body_ty = lib.llvm.llvm.LLVMGetElementType(ptr_ty);
     // FIXME: need a table to collect tydesc globals.
@@ -458,7 +474,7 @@ fn trans_malloc(@block_ctxt cx, @typeck.ty t) -> result {
     auto sz = cx.build.IntCast(lib.llvm.llvm.LLVMSizeOf(body_ty), T_int());
     auto sub = trans_upcall(cx, "upcall_malloc", vec(sz, tydesc));
     sub.val = sub.bcx.build.IntToPtr(sub.val, ptr_ty);
-    sub.bcx.cleanups += clean(bind drop_ty(_, sub.val, t));
+    scope_cx.cleanups += clean(bind drop_ty(_, sub.val, t));
     ret sub;
 }
 
@@ -575,8 +591,8 @@ fn iter_sequence(@block_ctxt cx,
 
         auto r = res(cx, C_nil());
 
-        auto cond_cx = new_sub_block_ctxt(cx, "sequence-iter cond");
-        auto body_cx = new_sub_block_ctxt(cx, "sequence-iter body");
+        auto cond_cx = new_scope_block_ctxt(cx, "sequence-iter cond");
+        auto body_cx = new_scope_block_ctxt(cx, "sequence-iter body");
         auto next_cx = new_sub_block_ctxt(cx, "next");
 
         auto ix = cond_cx.build.Phi(T_int(), vec(C_int(0)), vec(cx.llbb));
@@ -1081,10 +1097,10 @@ impure fn trans_if(@block_ctxt cx, @ast.expr cond,
 
     auto cond_res = trans_expr(cx, cond);
 
-    auto then_cx = new_sub_block_ctxt(cx, "then");
+    auto then_cx = new_scope_block_ctxt(cx, "then");
     auto then_res = trans_block(then_cx, thn);
 
-    auto else_cx = new_sub_block_ctxt(cx, "else");
+    auto else_cx = new_scope_block_ctxt(cx, "else");
     auto else_res = res(else_cx, C_nil());
 
     alt (els) {
@@ -1106,8 +1122,8 @@ impure fn trans_if(@block_ctxt cx, @ast.expr cond,
 impure fn trans_while(@block_ctxt cx, @ast.expr cond,
                       &ast.block body) -> result {
 
-    auto cond_cx = new_sub_block_ctxt(cx, "while cond");
-    auto body_cx = new_sub_block_ctxt(cx, "while loop body");
+    auto cond_cx = new_scope_block_ctxt(cx, "while cond");
+    auto body_cx = new_scope_block_ctxt(cx, "while loop body");
     auto next_cx = new_sub_block_ctxt(cx, "next");
 
     auto body_res = trans_block(body_cx, body);
@@ -1125,7 +1141,7 @@ impure fn trans_while(@block_ctxt cx, @ast.expr cond,
 impure fn trans_do_while(@block_ctxt cx, &ast.block body,
                          @ast.expr cond) -> result {
 
-    auto body_cx = new_sub_block_ctxt(cx, "do-while loop body");
+    auto body_cx = new_scope_block_ctxt(cx, "do-while loop body");
     auto next_cx = new_sub_block_ctxt(cx, "next");
 
     auto body_res = trans_block(body_cx, body);
@@ -1353,7 +1369,7 @@ impure fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
         }
 
         case (ast.expr_block(?blk, _)) {
-            auto sub_cx = new_sub_block_ctxt(cx, "block-expr body");
+            auto sub_cx = new_scope_block_ctxt(cx, "block-expr body");
             auto next_cx = new_sub_block_ctxt(cx, "next");
             auto sub = trans_block(sub_cx, blk);
 
@@ -1542,8 +1558,9 @@ fn new_builder(BasicBlockRef llbb, str name) -> builder {
 // You probably don't want to use this one. See the
 // next three functions instead.
 fn new_block_ctxt(@fn_ctxt cx, block_parent parent,
-                  vec[cleanup] cleanups,
+                  bool is_scope,
                   str name) -> @block_ctxt {
+    let vec[cleanup] cleanups = vec();
     let BasicBlockRef llbb =
         llvm.LLVMAppendBasicBlock(cx.llfn,
                                   _str.buf(cx.ccx.names.next(name)));
@@ -1551,27 +1568,35 @@ fn new_block_ctxt(@fn_ctxt cx, block_parent parent,
     ret @rec(llbb=llbb,
              build=new_builder(llbb, name),
              parent=parent,
+             is_scope=is_scope,
              mutable cleanups=cleanups,
              fcx=cx);
 }
 
 // Use this when you're at the top block of a function or the like.
 fn new_top_block_ctxt(@fn_ctxt fcx) -> @block_ctxt {
-    let vec[cleanup] cleanups = vec();
-    ret new_block_ctxt(fcx, parent_none, cleanups, "function top level");
-
+    ret new_block_ctxt(fcx, parent_none, true, "function top level");
 }
 
-// Use this when you're making a block-within-a-block.
+// Use this when you're at a curly-brace or similar lexical scope.
+fn new_scope_block_ctxt(@block_ctxt bcx, str n) -> @block_ctxt {
+    ret new_block_ctxt(bcx.fcx, parent_some(bcx), true, n);
+}
+
+// Use this when you're making a general CFG BB within a scope.
 fn new_sub_block_ctxt(@block_ctxt bcx, str n) -> @block_ctxt {
-    let vec[cleanup] cleanups = vec();
-    ret new_block_ctxt(bcx.fcx, parent_some(bcx), cleanups, n);
+    ret new_block_ctxt(bcx.fcx, parent_some(bcx), false, n);
 }
 
 
 fn trans_block_cleanups(@block_ctxt cx,
                         @block_ctxt cleanup_cx) -> @block_ctxt {
     auto bcx = cx;
+
+    if (!cleanup_cx.is_scope) {
+        check (_vec.len[cleanup](cleanup_cx.cleanups) == 0u);
+    }
+
     for (cleanup c in cleanup_cx.cleanups) {
         alt (c) {
             case (clean(?cfn)) {
