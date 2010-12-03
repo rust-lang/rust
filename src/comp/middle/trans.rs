@@ -604,15 +604,28 @@ fn iter_structural_ty(@block_ctxt cx,
 
                 alt (variant._1) {
                     case (n_ary) {
-                        // FIXME: broken at the moment, causes type_is_binding
-                        // errors; need to unpack the fn type returned by
-                        // ann_to_type.
                         let vec[ValueRef] vals = vec(C_int(0), C_int(1),
                                                      C_int(i as int));
-                        auto llfld = r.bcx.build.GEP(v, vals);
-                        auto ty = typeck.ann_to_type(variants.(i).ann);
-                        r = f(variant_cx, llfld, ty);
-                        r.bcx.build.Br(next_cx.llbb);
+                        auto llvar = variant_cx.build.GEP(v, vals);
+
+                        auto fn_ty = typeck.ann_to_type(variants.(i).ann); 
+                        alt (fn_ty.struct) {
+                            case (typeck.ty_fn(?args, _)) {
+                                auto j = 0u;
+                                for (typeck.arg a in args) {
+                                    auto idx = vec(C_int(0), C_int(j as int));
+                                    auto llfp = variant_cx.build.GEP(llvar,
+                                                                     idx);
+                                    auto llfld = variant_cx.build.Load(llfp);
+                                    auto res = f(variant_cx, llfld, a.ty);
+                                    variant_cx = res.bcx;
+                                    j += 1u;
+                                }
+                            }
+                            case (_) { fail; }
+                        }
+
+                        variant_cx.build.Br(next_cx.llbb);
                     }
                     case (nullary) {
                         // Nothing to do.
