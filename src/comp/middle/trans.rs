@@ -1784,7 +1784,7 @@ impure fn trans_block(@block_ctxt cx, &ast.block b) -> result {
 
 fn new_fn_ctxt(@crate_ctxt cx,
                str name,
-               &ast._fn f,
+               vec[ast.arg] args,
                ast.def_id fid) -> @fn_ctxt {
 
     check (cx.item_ids.contains_key(fid));
@@ -1797,7 +1797,7 @@ fn new_fn_ctxt(@crate_ctxt cx,
     let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] llargs = new_def_hash[ValueRef]();
 
-    for (ast.arg arg in f.inputs) {
+    for (ast.arg arg in args) {
         auto llarg = llvm.LLVMGetParam(llfn, arg_n);
         check (llarg as int != 0);
         llargs.insert(arg.id, llarg);
@@ -1816,7 +1816,7 @@ fn new_fn_ctxt(@crate_ctxt cx,
 // allocas immediately upon entry; this permits us to GEP into structures we
 // were passed and whatnot. Apparently mem2reg will mop up.
 
-fn copy_args_to_allocas(@block_ctxt cx, &ast._fn f, &ast.ann ann) {
+fn copy_args_to_allocas(@block_ctxt cx, vec[ast.arg] args, &ast.ann ann) {
 
     let vec[typeck.arg] arg_ts = vec();
     let @typeck.ty fty = node_ann_type(cx.fcx.ccx, ann);
@@ -1826,7 +1826,7 @@ fn copy_args_to_allocas(@block_ctxt cx, &ast._fn f, &ast.ann ann) {
 
     let uint arg_n = 0u;
 
-    for (ast.arg aarg in f.inputs) {
+    for (ast.arg aarg in args) {
         auto arg = arg_ts.(arg_n);
         auto arg_t = type_of(cx.fcx.ccx, arg.ty);
         auto alloca = cx.build.Alloca(arg_t);
@@ -1846,10 +1846,10 @@ fn is_terminated(@block_ctxt cx) -> bool {
 impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
                    &ast.ann ann) {
 
-    auto fcx = new_fn_ctxt(cx, cx.path, f, fid);
+    auto fcx = new_fn_ctxt(cx, cx.path, f.inputs, fid);
     auto bcx = new_top_block_ctxt(fcx);
 
-    copy_args_to_allocas(bcx, f, ann);
+    copy_args_to_allocas(bcx, f.inputs, ann);
 
     auto res = trans_block(bcx, f.body);
     if (!is_terminated(res.bcx)) {
