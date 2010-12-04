@@ -21,8 +21,10 @@ import util.common.new_str_hash;
 
 import lib.llvm.llvm;
 import lib.llvm.builder;
+import lib.llvm.target_data;
 import lib.llvm.type_handle;
 import lib.llvm.mk_type_handle;
+import lib.llvm.mk_target_data;
 import lib.llvm.llvm.ModuleRef;
 import lib.llvm.llvm.ValueRef;
 import lib.llvm.llvm.TypeRef;
@@ -47,10 +49,12 @@ type glue_fns = rec(ValueRef activate_glue,
 
 tag arity { nullary; n_ary; }
 type tag_info = rec(type_handle th,
-                    mutable vec[tup(ast.def_id,arity)] variants);
+                    mutable vec[tup(ast.def_id,arity)] variants,
+                    mutable uint size);
 
 state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
+                            target_data td,
                             hashmap[str, ValueRef] upcalls,
                             hashmap[str, ValueRef] intrinsics,
                             hashmap[str, ValueRef] item_names,
@@ -185,11 +189,6 @@ fn T_struct(vec[TypeRef] elts) -> TypeRef {
     ret llvm.LLVMStructType(_vec.buf[TypeRef](elts),
                             _vec.len[TypeRef](elts),
                             False);
-}
-
-fn T_union(vec[TypeRef] elts) -> TypeRef {
-    ret llvm.LLVMUnionType(_vec.buf[TypeRef](elts),
-                           _vec.len[TypeRef](elts));
 }
 
 fn T_opaque() -> TypeRef {
@@ -369,6 +368,17 @@ fn C_str(@crate_ctxt cx, str s) -> ValueRef {
     ret g;
 }
 
+fn C_zero_byte_arr(uint size) -> ValueRef {
+    auto i = 0u;
+    let vec[ValueRef] elts = vec();
+    while (i < size) {
+        elts += vec(C_integral(0, T_i8()));
+        i += 1u;
+    }
+    ret llvm.LLVMConstArray(T_i8(), _vec.buf[ValueRef](elts),
+                            _vec.len[ValueRef](elts));
+}
+
 fn C_struct(vec[ValueRef] elts) -> ValueRef {
     ret llvm.LLVMConstStruct(_vec.buf[ValueRef](elts),
                              _vec.len[ValueRef](elts),
@@ -386,10 +396,6 @@ fn C_tydesc(TypeRef t) -> ValueRef {
                      C_null(T_ptr(T_opaque())),        // mark_glue_off
                      C_null(T_ptr(T_opaque())),        // obj_drop_glue_off
                      C_null(T_ptr(T_opaque()))));      // is_stateful
-}
-
-fn C_union(TypeRef ty, ValueRef val) -> ValueRef {
-    ret llvm.LLVMConstUnion(ty, val);
 }
 
 fn decl_fn(ModuleRef llmod, str name, uint cc, TypeRef llty) -> ValueRef {
@@ -538,6 +544,19 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
     ret res(next_cx, phi);
 }
 
+fn type_of_variant(@crate_ctxt cx, &ast.variant v) -> TypeRef {
+    let vec[TypeRef] lltys = vec();
+    alt (typeck.ann_to_type(v.ann).struct) {
+        case (typeck.ty_fn(?args, _)) {
+            for (typeck.arg arg in args) {
+                lltys += vec(type_of(cx, arg.ty));
+            }
+        }
+        case (_) { fail; }
+    }
+    ret T_struct(lltys);
+}
+
 type val_and_ty_fn =
     fn(@block_ctxt cx, ValueRef v, @typeck.ty t) -> result;
 
@@ -611,18 +630,23 @@ fn iter_structural_ty(@block_ctxt cx,
                         let vec[ValueRef] vals = vec(C_int(0), C_int(1),
                                                      C_int(i as int));
                         auto llvar = variant_cx.build.GEP(v, vals);
+                        auto llvarty = type_of_variant(cx.fcx.ccx,
+                                                       variants.(i));
 
                         auto fn_ty = typeck.ann_to_type(variants.(i).ann);
                         alt (fn_ty.struct) {
                             case (typeck.ty_fn(?args, _)) {
+                                auto llvarp = variant_cx.build.
+                                    TruncOrBitCast(llunion_ptr,
+                                                   T_ptr(llvarty));
+
                                 auto j = 0u;
                                 for (typeck.arg a in args) {
-                                    auto idx = vec(C_int(0), C_int(j as int));
-                                    auto llfp = variant_cx.build.GEP(llvar,
-                                                                     idx);
+                                    auto llfldp = variant_cx.build.GEP(llvarp,
+                                        vec(C_int(0), C_int(j as int)));
                                     auto llfld =
                                         load_non_structural(variant_cx,
-                                                            llfp, a.ty);
+                                                            llfldp, a.ty);
 
                                     auto res = f(variant_cx, llfld, a.ty);
                                     variant_cx = res.bcx;
@@ -1891,7 +1915,8 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             auto navi = new_def_hash[uint]();
             let vec[tup(ast.def_id,arity)] variant_info = vec();
             cx.tags.insert(tag_id, @rec(th=mk_type_handle(),
-                                        mutable variants=variant_info));
+                                        mutable variants=variant_info,
+                                        mutable size=0u));
             cx.items.insert(tag_id, i);
         }
 
@@ -1918,7 +1943,8 @@ fn collect_items(@crate_ctxt cx, @ast.crate crate) {
 fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
     alt (i.node) {
         case (ast.item_tag(_, ?variants, _, ?tag_id)) {
-            let vec[TypeRef] variant_tys = vec();
+            auto max_align = 0u;
+            auto max_size = 0u;
 
             auto info = cx.tags.get(tag_id);
             let vec[tup(ast.def_id,arity)] variant_info = vec();
@@ -1926,21 +1952,16 @@ fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             for (ast.variant variant in variants) {
                 auto arity_info;
                 if (_vec.len[@ast.ty](variant.args) > 0u) {
-                    let vec[TypeRef] lltys = vec();
+                    auto llvariantty = type_of_variant(cx, variant);
+                    auto align = llvm.LLVMPreferredAlignmentOfType(cx.td.lltd,
+                                                                 llvariantty);
+                    auto size = llvm.LLVMStoreSizeOfType(cx.td.lltd,
+                                                         llvariantty) as uint;
+                    if (max_align < align) { max_align = align; }
+                    if (max_size < size) { max_size = size; }
 
-                    alt (typeck.ann_to_type(variant.ann).struct) {
-                        case (typeck.ty_fn(?args, _)) {
-                            for (typeck.arg arg in args) {
-                                lltys += vec(type_of(cx, arg.ty));
-                            }
-                        }
-                        case (_) { fail; }
-                    }
-
-                    variant_tys += vec(T_struct(lltys));
                     arity_info = n_ary;
                 } else {
-                    variant_tys += vec(T_nil());
                     arity_info = nullary;
                 }
 
@@ -1948,8 +1969,11 @@ fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             }
 
             info.variants = variant_info;
+            info.size = max_size;
 
-            auto tag_ty = T_struct(vec(T_int(), T_union(variant_tys)));
+            // FIXME: alignment is wrong here, manually insert padding I
+            // guess :(
+            auto tag_ty = T_struct(vec(T_int(), T_array(T_i8(), max_size)));
             auto th = cx.tags.get(tag_id).th.llth;
             llvm.LLVMRefineType(llvm.LLVMResolveTypeHandle(th), tag_ty);
         }
@@ -1990,7 +2014,7 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
                 alt (variant_info._1) {
                     case (nullary) {
                         // Nullary tags become constants.
-                        auto union_val = C_union(union_ty, C_nil());
+                        auto union_val = C_zero_byte_arr(info.size as uint);
                         auto val = C_struct(vec(C_int(i as int), union_val));
 
                         // FIXME: better name
@@ -2153,6 +2177,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
 
     llvm.LLVMSetDataLayout(llmod, _str.buf(x86.get_data_layout()));
     llvm.LLVMSetTarget(llmod, _str.buf(x86.get_target_triple()));
+    auto td = mk_target_data(x86.get_data_layout());
 
     llvm.LLVMSetModuleInlineAsm(llmod, _str.buf(x86.get_module_asm()));
 
@@ -2183,6 +2208,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
 
     auto cx = @rec(sess = sess,
                    llmod = llmod,
+                   td = td,
                    upcalls = new_str_hash[ValueRef](),
                    intrinsics = intrinsics,
                    item_names = new_str_hash[ValueRef](),

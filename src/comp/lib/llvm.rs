@@ -14,6 +14,7 @@ import llvm.ModuleProviderRef;
 import llvm.MemoryBufferRef;
 import llvm.PassManagerRef;
 import llvm.UseRef;
+import llvm.TargetDataRef;
 import llvm.Linkage;
 import llvm.Attribute;
 import llvm.Visibility;
@@ -69,6 +70,7 @@ native mod llvm = llvm_lib {
     type MemoryBufferRef;
     type PassManagerRef;
     type UseRef;
+    type TargetDataRef;
 
     /* FIXME: These are enums in the C header. Represent them how, in rust? */
     type Linkage;
@@ -167,13 +169,6 @@ native mod llvm = llvm_lib {
     fn LLVMGetStructElementTypes(TypeRef StructTy, vbuf Dest);
     fn LLVMIsPackedStruct(TypeRef StructTy) -> Bool;
 
-    /* Operations on union types */
-    fn LLVMUnionTypeInContext(ContextRef C, vbuf ElementTypes,
-                              uint ElementCount) -> TypeRef;
-    fn LLVMUnionType(vbuf ElementTypes, uint ElementCount) -> TypeRef;
-    fn LLVMCountUnionElementTypes(TypeRef UnionTy) -> uint;
-    fn LLVMGetUnionElementTypes(TypeRef UnionTy, vbuf Dest);
-
     /* Operations on array, pointer, and vector types (sequence types) */
     fn LLVMArrayType(TypeRef ElementType, uint ElementCount) -> TypeRef;
     fn LLVMPointerType(TypeRef ElementType, uint AddressSpace) -> TypeRef;
@@ -261,7 +256,6 @@ native mod llvm = llvm_lib {
     fn LLVMConstStruct(vbuf ConstantVals, uint Count,
                        Bool Packed) -> ValueRef;
     fn LLVMConstVector(vbuf ScalarConstantVals, uint Size) -> ValueRef;
-    fn LLVMConstUnion(TypeRef Ty, ValueRef Val) -> ValueRef;
 
     /* Constant expressions */
     fn LLVMAlignOf(TypeRef Ty) -> ValueRef;
@@ -684,6 +678,15 @@ native mod llvm = llvm_lib {
 
     /** Writes a module to the specified path. Returns 0 on success. */
     fn LLVMWriteBitcodeToFile(ModuleRef M, sbuf Path) -> int;
+
+    /** Creates target data from a target layout string. */
+    fn LLVMCreateTargetData(sbuf StringRep) -> TargetDataRef;
+    /** Returns the size of a type. FIXME: rv is actually a ULongLong! */
+    fn LLVMStoreSizeOfType(TargetDataRef TD, TypeRef Ty) -> uint;
+    /** Returns the alignment of a type. */
+    fn LLVMPreferredAlignmentOfType(TargetDataRef TD, TypeRef Ty) -> uint;
+    /** Disposes target data. */
+    fn LLVMDisposeTargetData(TargetDataRef TD);
 }
 
 /* Slightly more terse object-interface to LLVM's 'builder' functions. */
@@ -1186,12 +1189,24 @@ fn type_to_str(TypeRef ty) -> str {
         case (12) { ret "Opaque"; }
         case (13) { ret "Vector"; }
         case (14) { ret "Metadata"; }
-        case (15) { ret "Union"; }
         case (_) {
             log "unknown TypeKind" + util.common.istr(kind as int);
             fail;
         }
     }
+}
+
+/* Memory-managed interface to target data. */
+
+obj target_data_dtor(TargetDataRef TD) {
+    drop { llvm.LLVMDisposeTargetData(TD); }
+}
+
+type target_data = rec(TargetDataRef lltd, target_data_dtor dtor);
+
+fn mk_target_data(str string_rep) -> target_data {
+    auto lltd = llvm.LLVMCreateTargetData(_str.buf(string_rep));
+    ret rec(lltd=lltd, dtor=target_data_dtor(lltd));
 }
 
 
