@@ -1271,19 +1271,19 @@ impure fn parse_item_tag(parser p) -> @ast.item {
             case (token.IDENT(?name)) {
                 p.bump();
 
-                auto args;
+                let vec[ast.variant_arg] args = vec();
                 alt (p.peek()) {
                     case (token.LPAREN) {
                         auto f = parse_ty;
-                        auto tys = parse_seq[@ast.ty](token.LPAREN,
-                                                      token.RPAREN,
-                                                      some(token.COMMA),
-                                                      f, p);
-                        args = tys.node;
+                        auto arg_tys = parse_seq[@ast.ty](token.LPAREN,
+                                                          token.RPAREN,
+                                                          some(token.COMMA),
+                                                          f, p);
+                        for (@ast.ty ty in arg_tys.node) {
+                            args += vec(rec(ty=ty, id=p.next_def_id()));
+                        }
                     }
-                    case (_) {
-                        args = vec();
-                    }
+                    case (_) { /* empty */ }
                 }
 
                 expect(p, token.SEMI);

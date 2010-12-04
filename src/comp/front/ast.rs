@@ -198,7 +198,8 @@ tag mod_index_entry {
 type _mod = rec(vec[@item] items,
                 hashmap[ident,mod_index_entry] index);
 
-type variant = rec(str name, vec[@ty] args, def_id id, ann ann);
+type variant_arg = rec(@ty ty, def_id id);
+type variant = rec(str name, vec[variant_arg] args, def_id id, ann ann);
 
 type item = spanned[item_];
 tag item_ {

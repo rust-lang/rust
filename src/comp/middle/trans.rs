@@ -1861,7 +1861,7 @@ impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
 
 fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
                      &ast.variant variant) {
-    if (_vec.len[@ast.ty](variant.args) == 0u) {
+    if (_vec.len[ast.variant_arg](variant.args) == 0u) {
         ret;    // nullary constructors are just constants
     }
 
@@ -1951,7 +1951,7 @@ fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
 
             for (ast.variant variant in variants) {
                 auto arity_info;
-                if (_vec.len[@ast.ty](variant.args) > 0u) {
+                if (_vec.len[ast.variant_arg](variant.args) > 0u) {
                     auto llvariantty = type_of_variant(cx, variant);
                     auto align = llvm.LLVMPreferredAlignmentOfType(cx.td.lltd,
                                                                  llvariantty);

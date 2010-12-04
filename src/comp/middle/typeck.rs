@@ -418,7 +418,7 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
             // Nullary tag constructors get turned into constants; n-ary tag
             // constructors get turned into functions.
             auto result_ty;
-            if (_vec.len[@ast.ty](variant.args) == 0u) {
+            if (_vec.len[ast.variant_arg](variant.args) == 0u) {
                 result_ty = plain_ty(ty_tag(tag_id));
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
@@ -427,8 +427,8 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
                                                      item_to_ty, _);
 
                 let vec[arg] args = vec();
-                for (@ast.ty arg_ast_ty in variant.args) {
-                    auto arg_ty = ast_ty_to_ty(f, arg_ast_ty);
+                for (ast.variant_arg va in variant.args) {
+                    auto arg_ty = ast_ty_to_ty(f, va.ty);
                     args += vec(rec(mode=ast.alias, ty=arg_ty));
                 }
                 result_ty = plain_ty(ty_fn(args, plain_ty(ty_tag(tag_id)))); 

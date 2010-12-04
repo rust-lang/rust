@@ -602,9 +602,10 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
         case (ast.item_tag(?ident, ?variants, ?ty_params, ?id)) {
             let vec[ast.variant] new_variants = vec();
             for (ast.variant v in variants) {
-                let vec[@ast.ty] new_args = vec();
-                for (@ast.ty t in v.args) {
-                    new_args += vec(fold_ty[ENV](env_, fld, t));
+                let vec[ast.variant_arg] new_args = vec();
+                for (ast.variant_arg va in v.args) {
+                    auto new_ty = fold_ty[ENV](env_, fld, va.ty);
+                    new_args += vec(rec(ty=new_ty, id=va.id));
                 }
                 new_variants += rec(name=v.name, args=new_args, id=v.id,
                                     ann=v.ann);
