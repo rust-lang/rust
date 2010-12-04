@@ -55,6 +55,18 @@ tag mutability {
     imm;
 }
 
+tag layer {
+    layer_value;
+    layer_state;
+    layer_gc;
+}
+
+tag effect {
+    eff_pure;
+    eff_impure;
+    eff_unsafe;
+}
+
 tag binop {
     add;
     sub;
@@ -83,6 +95,11 @@ tag unop {
     bitnot;
     not;
     neg;
+}
+
+tag mode {
+    val;
+    alias;
 }
 
 type stmt = spanned[stmt_];
@@ -146,7 +163,9 @@ tag lit_ {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/typeck.rs as well.
+
 type ty_field = rec(ident ident, @ty ty);
+type ty_arg = rec(mode mode, @ty ty);
 type ty = spanned[ty_];
 tag ty_ {
     ty_nil;
@@ -160,18 +179,14 @@ tag ty_ {
     ty_vec(@ty);
     ty_tup(vec[@ty]);
     ty_rec(vec[ty_field]);
-    ty_fn(vec[rec(mode mode, @ty ty)], @ty);        // TODO: effect
+    ty_fn(vec[ty_arg], @ty);        // TODO: effect
     ty_path(path, option.t[def]);
     ty_mutable(@ty);
 }
 
-tag mode {
-    val;
-    alias;
-}
-
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
-type _fn = rec(vec[arg] inputs,
+type _fn = rec(effect effect,
+               vec[arg] inputs,
                @ty output,
                block body);
 

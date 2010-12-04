@@ -1161,7 +1161,7 @@ impure fn parse_ty_params(parser p) -> vec[ast.ty_param] {
     ret ty_params;
 }
 
-impure fn parse_item_fn(parser p) -> @ast.item {
+impure fn parse_item_fn(parser p, ast.effect eff) -> @ast.item {
     auto lo = p.get_span();
     expect(p, token.FN);
     auto id = parse_ident(p);
@@ -1187,7 +1187,8 @@ impure fn parse_item_fn(parser p) -> @ast.item {
 
     auto body = parse_block(p);
 
-    let ast._fn f = rec(inputs = inputs.node,
+    let ast._fn f = rec(effect = eff,
+                        inputs = inputs.node,
                         output = output,
                         body = body);
 
@@ -1305,18 +1306,61 @@ impure fn parse_item_tag(parser p) -> @ast.item {
     ret @spanned(lo, hi, item);
 }
 
+impure fn parse_layer(parser p) -> ast.layer {
+    alt (p.peek()) {
+        case (token.STATE) {
+            p.bump();
+            ret ast.layer_state;
+        }
+        case (token.GC) {
+            p.bump();
+            ret ast.layer_gc;
+        }
+        case (_) {
+            ret ast.layer_value;
+        }
+    }
+    fail;
+}
+
+
+impure fn parse_effect(parser p) -> ast.effect {
+    alt (p.peek()) {
+        case (token.IMPURE) {
+            p.bump();
+            ret ast.eff_impure;
+        }
+        case (token.UNSAFE) {
+            p.bump();
+            ret ast.eff_unsafe;
+        }
+        case (_) {
+            ret ast.eff_pure;
+        }
+    }
+    fail;
+}
+
 impure fn parse_item(parser p) -> @ast.item {
+    let ast.effect eff = parse_effect(p);
+    let ast.layer lyr = parse_layer(p);
+
     alt (p.peek()) {
         case (token.FN) {
-            ret parse_item_fn(p);
+            check (lyr == ast.layer_value);
+            ret parse_item_fn(p, eff);
         }
         case (token.MOD) {
+            check (eff == ast.eff_pure);
+            check (lyr == ast.layer_value);
             ret parse_item_mod(p);
         }
         case (token.TYPE) {
+            check (eff == ast.eff_pure);
             ret parse_item_type(p);
         }
         case (token.TAG) {
+            check (eff == ast.eff_pure);
             ret parse_item_tag(p);
         }
         case (?t) {

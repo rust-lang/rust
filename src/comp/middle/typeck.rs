@@ -1643,7 +1643,8 @@ fn check_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
     auto block_t = check_block(fcx, f.body);
     auto block_wb = writeback(fcx, block_t);
 
-    auto fn_t = rec(inputs=f.inputs, output=f.output, body=block_wb);
+    auto fn_t = rec(effect=f.effect, inputs=f.inputs, output=f.output,
+                    body=block_wb);
     auto item = ast.item_fn(ident, fn_t, ty_params, id, fn_ann);
     ret @fold.respan[ast.item_](sp, item);
 }
