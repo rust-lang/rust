@@ -708,7 +708,9 @@ fn iter_sequence(@block_ctxt cx,
         cond_cx.build.CondBr(end_test, body_cx.llbb, next_cx.llbb);
 
         auto elt = body_cx.build.GEP(p0, vec(ix));
-        auto body_res = f(body_cx, elt, elt_ty);
+        auto body_res = f(body_cx,
+                          load_non_structural(body_cx, elt, elt_ty),
+                          elt_ty);
         auto next_ix = body_res.bcx.build.Add(ix, C_int(1));
         cond_cx.build.AddIncomingToPhi(ix, vec(next_ix),
                                        vec(body_res.bcx.llbb));
@@ -751,11 +753,7 @@ fn incr_all_refcnts(@block_ctxt cx,
 fn drop_slot(@block_ctxt cx,
              ValueRef slot,
              @typeck.ty t) -> result {
-    if (typeck.type_is_structural(t)) {
-        be drop_ty(cx, slot, t);
-    } else {
-        be drop_ty(cx, cx.build.Load(slot), t);
-    }
+    be drop_ty(cx, load_non_structural(cx, slot, t), t);
 }
 
 fn drop_ty(@block_ctxt cx,
@@ -955,8 +953,7 @@ fn target_type(@crate_ctxt cx, @typeck.ty t) -> @typeck.ty {
 fn node_ann_type(@crate_ctxt cx, &ast.ann a) -> @typeck.ty {
     alt (a) {
         case (ast.ann_none) {
-            log "missing type annotation";
-            fail;
+            cx.sess.bug("missing type annotation");
         }
         case (ast.ann_type(?t)) {
             ret target_type(cx, t);
@@ -1412,8 +1409,10 @@ impure fn trans_call(@block_ctxt cx, @ast.expr f,
 
 impure fn trans_tup(@block_ctxt cx, vec[ast.elt] elts,
                     &ast.ann ann) -> result {
-    auto ty = node_type(cx.fcx.ccx, ann);
-    auto tup_val = cx.build.Alloca(ty);
+    auto ty = node_ann_type(cx.fcx.ccx, ann);
+    auto llty = type_of(cx.fcx.ccx, ty);
+    auto tup_val = cx.build.Alloca(llty);
+    find_scope_cx(cx).cleanups += clean(bind drop_ty(_, tup_val, ty));
     let int i = 0;
     auto r = res(cx, C_nil());
     for (ast.elt e in elts) {
@@ -1429,8 +1428,10 @@ impure fn trans_tup(@block_ctxt cx, vec[ast.elt] elts,
 
 impure fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
                     &ast.ann ann) -> result {
-    auto ty = node_type(cx.fcx.ccx, ann);
-    auto rec_val = cx.build.Alloca(ty);
+    auto ty = node_ann_type(cx.fcx.ccx, ann);
+    auto llty = type_of(cx.fcx.ccx, ty);
+    auto rec_val = cx.build.Alloca(llty);
+    find_scope_cx(cx).cleanups += clean(bind drop_ty(_, rec_val, ty));
     let int i = 0;
     auto r = res(cx, C_nil());
     for (ast.field f in fields) {
