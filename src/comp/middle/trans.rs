@@ -1817,19 +1817,13 @@ fn new_fn_ctxt(@crate_ctxt cx,
 // allocas immediately upon entry; this permits us to GEP into structures we
 // were passed and whatnot. Apparently mem2reg will mop up.
 
-fn copy_args_to_allocas(@block_ctxt cx, vec[ast.arg] args, &ast.ann ann) {
-
-    let vec[typeck.arg] arg_ts = vec();
-    let @typeck.ty fty = node_ann_type(cx.fcx.ccx, ann);
-    alt (fty.struct) {
-        case (typeck.ty_fn(?a, _)) { arg_ts += a; }
-    }
+fn copy_args_to_allocas(@block_ctxt cx, vec[ast.arg] args,
+                        vec[typeck.arg] arg_tys) {
 
     let uint arg_n = 0u;
 
     for (ast.arg aarg in args) {
-        auto arg = arg_ts.(arg_n);
-        auto arg_t = type_of(cx.fcx.ccx, arg.ty);
+        auto arg_t = type_of(cx.fcx.ccx, arg_tys.(arg_n).ty);
         auto alloca = cx.build.Alloca(arg_t);
         auto argval = cx.fcx.llargs.get(aarg.id);
         cx.build.Store(argval, alloca);
@@ -1844,13 +1838,22 @@ fn is_terminated(@block_ctxt cx) -> bool {
     ret llvm.LLVMIsATerminatorInst(inst) as int != 0;
 }
 
+fn arg_tys_of_fn(ast.ann ann) -> vec[typeck.arg] {
+    alt (typeck.ann_to_type(ann).struct) {
+        case (typeck.ty_fn(?arg_tys, _)) {
+            ret arg_tys;
+        }
+    }
+    fail;
+}
+
 impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
                    &ast.ann ann) {
 
     auto fcx = new_fn_ctxt(cx, cx.path, f.inputs, fid);
     auto bcx = new_top_block_ctxt(fcx);
 
-    copy_args_to_allocas(bcx, f.inputs, ann);
+    copy_args_to_allocas(bcx, f.inputs, arg_tys_of_fn(ann));
 
     auto res = trans_block(bcx, f.body);
     if (!is_terminated(res.bcx)) {
