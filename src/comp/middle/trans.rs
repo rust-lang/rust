@@ -1885,12 +1885,15 @@ fn copy_args_to_allocas(@block_ctxt cx, vec[ast.arg] args,
     let uint arg_n = 0u;
 
     for (ast.arg aarg in args) {
-        auto arg_t = type_of_arg(cx.fcx.ccx, arg_tys.(arg_n));
-        auto alloca = cx.build.Alloca(arg_t);
-        auto argval = cx.fcx.llargs.get(aarg.id);
-        cx.build.Store(argval, alloca);
-        // Overwrite the llargs entry for this arg with its alloca.
-        cx.fcx.llargs.insert(aarg.id, alloca);
+        if (aarg.mode != ast.alias) {
+            auto arg_t = type_of_arg(cx.fcx.ccx, arg_tys.(arg_n));
+            auto alloca = cx.build.Alloca(arg_t);
+            auto argval = cx.fcx.llargs.get(aarg.id);
+            cx.build.Store(argval, alloca);
+            // Overwrite the llargs entry for this arg with its alloca.
+            cx.fcx.llargs.insert(aarg.id, alloca);
+        }
+
         arg_n += 1u;
     }
 }
