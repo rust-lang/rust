@@ -540,6 +540,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         large-records.rs \
                         lazy-init.rs \
                         multiline-comment.rs \
+                        readalias.rs \
                         rec.rs \
                         return-nil.rs \
                         tup.rs \
