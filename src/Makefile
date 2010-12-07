@@ -550,6 +550,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         uint.rs \
                         unit.rs \
                         while-and-do-while.rs \
+                        writealias.rs \
                         ) \
                       $(addprefix test/compile-fail/, \
                         arg-count-mismatch.rs \
