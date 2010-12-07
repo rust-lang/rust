@@ -524,17 +524,24 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
                            str inner_name,
                            TypeRef t_else, ValueRef v_else) -> result {
 
+    auto load_rc_cx = new_sub_block_ctxt(cx, "load rc");
     auto rc_adj_cx = new_sub_block_ctxt(cx, "rc--");
     auto inner_cx = new_sub_block_ctxt(cx, inner_name);
     auto next_cx = new_sub_block_ctxt(cx, "next");
 
-    auto rc_ptr = cx.build.GEP(box_ptr, vec(C_int(0),
-                                            C_int(abi.box_rc_field_refcnt)));
-    auto rc = cx.build.Load(rc_ptr);
+    auto null_test = cx.build.IsNull(box_ptr);
+    cx.build.CondBr(null_test, next_cx.llbb, load_rc_cx.llbb);
 
-    auto const_test = cx.build.ICmp(lib.llvm.LLVMIntEQ,
-                                    C_int(abi.const_refcount as int), rc);
-    cx.build.CondBr(const_test, next_cx.llbb, rc_adj_cx.llbb);
+
+    auto rc_ptr = load_rc_cx.build.GEP(box_ptr,
+                                       vec(C_int(0),
+                                           C_int(abi.box_rc_field_refcnt)));
+
+    auto rc = load_rc_cx.build.Load(rc_ptr);
+    auto const_test =
+        load_rc_cx.build.ICmp(lib.llvm.LLVMIntEQ,
+                              C_int(abi.const_refcount as int), rc);
+    load_rc_cx.build.CondBr(const_test, next_cx.llbb, rc_adj_cx.llbb);
 
     rc = rc_adj_cx.build.Sub(rc, C_int(1));
     rc_adj_cx.build.Store(rc, rc_ptr);
@@ -545,8 +552,9 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
     inner_res.bcx.build.Br(next_cx.llbb);
 
     auto phi = next_cx.build.Phi(t_else,
-                                 vec(v_else, v_else, inner_res.val),
+                                 vec(v_else, v_else, v_else, inner_res.val),
                                  vec(cx.llbb,
+                                     load_rc_cx.llbb,
                                      rc_adj_cx.llbb,
                                      inner_res.bcx.llbb));
 
@@ -865,7 +873,7 @@ fn copy_ty(@block_ctxt cx,
     } else if (typeck.type_is_boxed(t)) {
         auto r = incr_refcnt(cx, src);
         if (! is_init) {
-            r = drop_ty(r.bcx, dst, t);
+            r = drop_ty(r.bcx, r.bcx.build.Load(dst), t);
         }
         ret res(r.bcx, r.bcx.build.Store(src, dst));
 
@@ -1499,7 +1507,7 @@ impure fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             auto rhs_res = trans_expr(lhs_res._0.bcx, src);
             auto t = node_ann_type(cx.fcx.ccx, ann);
             // FIXME: calculate copy init-ness in typestate.
-            ret copy_ty(rhs_res.bcx, true, lhs_res._0.val, rhs_res.val, t);
+            ret copy_ty(rhs_res.bcx, false, lhs_res._0.val, rhs_res.val, t);
         }
 
         case (ast.expr_call(?f, ?args, _)) {
@@ -1659,7 +1667,7 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
                     check (cx.fcx.lllocals.contains_key(local.id));
                     auto llptr = cx.fcx.lllocals.get(local.id);
                     auto ty = node_ann_type(cx.fcx.ccx, local.ann);
-                    find_scope_cx(sub.bcx).cleanups +=
+                    find_scope_cx(cx).cleanups +=
                         clean(bind drop_slot(_, llptr, ty));
 
                     alt (local.init) {
@@ -1667,7 +1675,11 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
                             sub = trans_expr(cx, e);
                             sub = copy_ty(sub.bcx, true, llptr, sub.val, ty);
                         }
-                        case (_) { /* fall through */  }
+                        case (_) {
+                            auto llty = type_of(cx.fcx.ccx, ty);
+                            auto null = lib.llvm.llvm.LLVMConstNull(llty);
+                            sub = res(cx, cx.build.Store(null, llptr));
+                        }
                     }
                 }
             }
