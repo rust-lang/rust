@@ -535,6 +535,15 @@ fn field_idx(session.session sess, &span sp,
     fail;
 }
 
+fn is_lval(@ast.expr expr) -> bool {
+    alt (expr.node) {
+        case (ast.expr_field(_,_,_))    { ret true;  }
+        case (ast.expr_index(_,_,_))    { ret true;  }
+        case (ast.expr_name(_,_,_))     { ret true;  }
+        case (_)                        { ret false; }
+    }
+}
+
 // Type utilities
 
 // FIXME: remove me when == works on these tags.
