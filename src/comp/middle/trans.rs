@@ -23,8 +23,9 @@ import lib.llvm.llvm;
 import lib.llvm.builder;
 import lib.llvm.target_data;
 import lib.llvm.type_handle;
-import lib.llvm.mk_type_handle;
+import lib.llvm.mk_pass_manager;
 import lib.llvm.mk_target_data;
+import lib.llvm.mk_type_handle;
 import lib.llvm.llvm.ModuleRef;
 import lib.llvm.llvm.ValueRef;
 import lib.llvm.llvm.TypeRef;
@@ -2245,6 +2246,14 @@ fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
     ret intrinsics;
 }
 
+fn check_module(ModuleRef llmod) {
+    auto pm = mk_pass_manager();
+    llvm.LLVMAddVerifierPass(pm.llpm);
+    llvm.LLVMRunPassManager(pm.llpm, llmod);
+
+    // TODO: run the linter here also, once there are llvm-c bindings for it.
+}
+
 fn trans_crate(session.session sess, @ast.crate crate, str output) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
@@ -2301,6 +2310,8 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
     trans_mod(cx, crate.node.module);
     trans_exit_task_glue(cx);
     trans_main_fn(cx, crate_constant(cx));
+
+    check_module(llmod);
 
     llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(output));
     llvm.LLVMDisposeModule(llmod);

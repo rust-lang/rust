@@ -687,6 +687,16 @@ native mod llvm = llvm_lib {
     fn LLVMPreferredAlignmentOfType(TargetDataRef TD, TypeRef Ty) -> uint;
     /** Disposes target data. */
     fn LLVMDisposeTargetData(TargetDataRef TD);
+
+    /** Creates a pass manager. */
+    fn LLVMCreatePassManager() -> PassManagerRef;
+    /** Disposes a pass manager. */
+    fn LLVMDisposePassManager(PassManagerRef PM);
+    /** Runs a pass manager on a module. */
+    fn LLVMRunPassManager(PassManagerRef PM, ModuleRef M) -> Bool;
+
+    /** Adds a verification pass. */
+    fn LLVMAddVerifierPass(PassManagerRef PM);
 }
 
 /* Slightly more terse object-interface to LLVM's 'builder' functions. */
@@ -1207,6 +1217,19 @@ type target_data = rec(TargetDataRef lltd, target_data_dtor dtor);
 fn mk_target_data(str string_rep) -> target_data {
     auto lltd = llvm.LLVMCreateTargetData(_str.buf(string_rep));
     ret rec(lltd=lltd, dtor=target_data_dtor(lltd));
+}
+
+/* Memory-managed interface to pass managers. */
+
+obj pass_manager_dtor(PassManagerRef PM) {
+    drop { llvm.LLVMDisposePassManager(PM); }
+}
+
+type pass_manager = rec(PassManagerRef llpm, pass_manager_dtor dtor);
+
+fn mk_pass_manager() -> pass_manager {
+    auto llpm = llvm.LLVMCreatePassManager();
+    ret rec(llpm=llpm, dtor=pass_manager_dtor(llpm));
 }
 
 
