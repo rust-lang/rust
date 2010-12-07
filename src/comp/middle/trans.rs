@@ -327,6 +327,14 @@ fn type_of_inner(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
     fail;
 }
 
+fn type_of_arg(@crate_ctxt cx, &typeck.arg arg) -> TypeRef {
+    auto ty = type_of(cx, arg.ty);
+    if (arg.mode == ast.alias) {
+        ty = T_ptr(ty);
+    }
+    ret ty;
+}
+
 // LLVM constant constructors.
 
 fn C_null(TypeRef t) -> ValueRef {
@@ -1823,7 +1831,7 @@ fn copy_args_to_allocas(@block_ctxt cx, vec[ast.arg] args,
     let uint arg_n = 0u;
 
     for (ast.arg aarg in args) {
-        auto arg_t = type_of(cx.fcx.ccx, arg_tys.(arg_n).ty);
+        auto arg_t = type_of_arg(cx.fcx.ccx, arg_tys.(arg_n));
         auto alloca = cx.build.Alloca(arg_t);
         auto argval = cx.fcx.llargs.get(aarg.id);
         cx.build.Store(argval, alloca);
@@ -1864,12 +1872,73 @@ impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
 }
 
 fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
-                     &ast.variant variant) {
+                     &ast.variant variant, int index) {
     if (_vec.len[ast.variant_arg](variant.args) == 0u) {
         ret;    // nullary constructors are just constants
     }
 
-    // TODO
+    // Translate variant arguments to function arguments.
+    let vec[ast.arg] fn_args = vec();
+    auto i = 0u;
+    for (ast.variant_arg varg in variant.args) {
+        fn_args += vec(rec(mode=ast.alias,
+                           ty=varg.ty,
+                           ident="arg" + _uint.to_str(i, 10u),
+                           id=varg.id));
+    }
+
+    auto var_ty = typeck.ann_to_type(variant.ann);
+    auto llfnty = type_of(cx, var_ty);
+
+    let str s = cx.names.next("_rust_tag") + "." + cx.path;
+    let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfnty);
+    cx.item_ids.insert(variant.id, llfn);
+
+    auto fcx = new_fn_ctxt(cx, cx.path, fn_args, variant.id);
+    auto bcx = new_top_block_ctxt(fcx);
+
+    auto arg_tys = arg_tys_of_fn(variant.ann);
+    copy_args_to_allocas(bcx, fn_args, arg_tys);
+
+    auto info = cx.tags.get(tag_id);
+
+    auto lltagty = T_struct(vec(T_int(), T_array(T_i8(), info.size)));
+
+    // FIXME: better name.
+    llvm.LLVMAddTypeName(cx.llmod, _str.buf("tag"), lltagty);
+
+    auto lltagptr = bcx.build.Alloca(lltagty);
+    auto lldiscrimptr = bcx.build.GEP(lltagptr, vec(C_int(0), C_int(0)));
+    bcx.build.Store(C_int(index), lldiscrimptr);
+
+    auto llblobptr = bcx.build.GEP(lltagptr, vec(C_int(0), C_int(1)));
+
+    // First, generate the union type.
+    let vec[TypeRef] llargtys = vec();
+    for (typeck.arg arg in arg_tys) {
+        llargtys += vec(type_of(cx, arg.ty));
+    }
+
+    auto llunionty = T_struct(llargtys);
+    auto llunionptr = bcx.build.TruncOrBitCast(llblobptr, T_ptr(llunionty));
+
+    i = 0u;
+    for (ast.variant_arg va in variant.args) {
+        auto llargalias = bcx.build.Load(fcx.llargs.get(va.id));
+        auto llargval = bcx.build.Load(llargalias);
+
+        llvm.LLVMDumpValue(llunionptr);
+
+        auto lldestptr = bcx.build.GEP(llunionptr,
+                                       vec(C_int(0), C_int(i as int)));
+
+        bcx.build.Store(llargval, lldestptr);
+        i += 1u;
+    }
+
+    auto lltagval = bcx.build.Load(lltagptr);
+    bcx = trans_block_cleanups(bcx, find_scope_cx(bcx));
+    bcx.build.Ret(lltagval);
 }
 
 impure fn trans_item(@crate_ctxt cx, &ast.item item) {
@@ -1884,8 +1953,10 @@ impure fn trans_item(@crate_ctxt cx, &ast.item item) {
         }
         case (ast.item_tag(?name, ?variants, _, ?tag_id)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
+            auto i = 0;
             for (ast.variant variant in variants) {
-                trans_tag_variant(sub_cx, tag_id, variant);
+                trans_tag_variant(sub_cx, tag_id, variant, i);
+                i += 1;
             }
         }
         case (_) { /* fall through */ }
