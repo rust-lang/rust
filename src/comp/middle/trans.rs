@@ -1351,6 +1351,10 @@ fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
     fail;
 }
 
+// The additional bool returned indicates whether it's mem (that is
+// represented as an alloca or heap, hence needs a 'load' to be used as an
+// immediate).
+
 fn trans_lval(@block_ctxt cx, @ast.expr e) -> tup(result, bool) {
     alt (e.node) {
         case (ast.expr_name(?n, ?dopt, _)) {
@@ -1396,20 +1400,56 @@ impure fn trans_cast(@block_ctxt cx, @ast.expr e, &ast.ann ann) -> result {
 }
 
 
-impure fn trans_args(@block_ctxt cx, &vec[@ast.expr] es)
+impure fn trans_args(@block_ctxt cx, &vec[@ast.expr] es, @typeck.ty fn_ty)
     -> tup(@block_ctxt, vec[ValueRef]) {
     let vec[ValueRef] vs = vec(cx.fcx.lltaskptr);
     let @block_ctxt bcx = cx;
 
+    let vec[typeck.arg] args = vec();   // FIXME: typestate bug
+    alt (fn_ty.struct) {
+        case (typeck.ty_fn(?a, _)) { args = a; }
+        case (_) { fail; }
+    }
+
+    auto i = 0u;
     for (@ast.expr e in es) {
-        auto res = trans_expr(bcx, e);
-        // Until here we've been treating structures by pointer;
-        // we are now passing it as an arg, so need to load it.
+        auto mode = args.(i).mode;
+
+        auto re;
         if (typeck.type_is_structural(typeck.expr_ty(e))) {
-            res.val = res.bcx.build.Load(res.val);
+            re = trans_expr(bcx, e);
+            if (mode == ast.val) {
+                // Until here we've been treating structures by pointer;
+                // we are now passing it as an arg, so need to load it.
+                re.val = re.bcx.build.Load(re.val);
+            }
+        } else {
+            if (mode == ast.alias) {
+                let tup(result, bool /* is a pointer? */) pair;
+                if (typeck.is_lval(e)) {
+                    pair = trans_lval(bcx, e);
+                } else {
+                    pair = tup(trans_expr(bcx, e), false);
+                }
+
+                if (!pair._1) {
+                    // Have to synthesize a pointer here...
+                    auto llty = val_ty(pair._0.val);
+                    auto llptr = pair._0.bcx.build.Alloca(llty);
+                    pair._0.bcx.build.Store(pair._0.val, llptr);
+                    re = res(pair._0.bcx, llptr);
+                } else {
+                    re = pair._0;
+                }
+            } else {
+                re = trans_expr(bcx, e);
+            }
         }
-        vs += res.val;
-        bcx = res.bcx;
+
+        vs += re.val;
+        bcx = re.bcx;
+
+        i += 1u;
     }
 
     ret tup(bcx, vs);
@@ -1419,7 +1459,8 @@ impure fn trans_call(@block_ctxt cx, @ast.expr f,
                      vec[@ast.expr] args) -> result {
     auto f_res = trans_lval(cx, f);
     check (! f_res._1);
-    auto args_res = trans_args(f_res._0.bcx, args);
+    auto fn_ty = typeck.expr_ty(f);
+    auto args_res = trans_args(f_res._0.bcx, args, fn_ty);
     ret res(args_res._0,
             args_res._0.build.FastCall(f_res._0.val, args_res._1));
 }
