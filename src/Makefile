@@ -529,6 +529,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         complex.rs \
                         dead-code-one-arm-if.rs \
                         deep.rs \
+                        deref.rs \
                         div-mod.rs \
                         fact.rs \
                         hello.rs \
@@ -536,6 +537,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         i32-sub.rs \
                         i8-incr.rs \
                         item-name-overload.rs \
+                        large-records.rs \
                         lazy-init.rs \
                         multiline-comment.rs \
                         rec.rs \
