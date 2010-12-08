@@ -1611,7 +1611,14 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
     }
 
     alt (e) {
-        case (some[@ast.expr](_)) {
+        case (some[@ast.expr](?e)) {
+            if (typeck.type_is_structural(typeck.expr_ty(e))) {
+                // We usually treat structurals by-pointer; in particular,
+                // trans_expr will have given us a structure pointer. But in
+                // this case we're about to return. LLVM wants a first-class
+                // value here (which makes sense; the frame is going away!)
+                r.val = r.bcx.build.Load(r.val);
+            }
             r.val = r.bcx.build.Ret(r.val);
             ret r;
         }
