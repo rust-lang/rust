@@ -1547,31 +1547,23 @@ fn load_non_structural(@block_ctxt cx,
 }
 
 impure fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
-    alt (e.node) {
-        case (ast.expr_lit(?lit, _)) {
-            alt (lit.node) {
-                case (ast.lit_str(_)) {
-                    auto sub = trans_expr(cx, e);
-                    auto v = sub.bcx.build.PtrToInt(sub.val, T_int());
-                    ret trans_upcall(sub.bcx,
-                                     "upcall_log_str",
-                                     vec(v));
-                }
 
-                case (_) {
-                    auto sub = trans_expr(cx, e);
-                    ret trans_upcall(sub.bcx,
-                                     "upcall_log_int",
-                                     vec(sub.val));
-                }
-            }
+    auto sub = trans_expr(cx, e);
+    auto e_ty = typeck.expr_ty(e);
+    alt (e_ty.struct) {
+        case (typeck.ty_str) {
+            auto v = sub.bcx.build.PtrToInt(sub.val, T_int());
+            ret trans_upcall(sub.bcx,
+                             "upcall_log_str",
+                             vec(v));
         }
-
         case (_) {
-            auto sub = trans_expr(cx, e);
-            ret trans_upcall(sub.bcx, "upcall_log_int", vec(sub.val));
+            ret trans_upcall(sub.bcx,
+                             "upcall_log_int",
+                             vec(sub.val));
         }
     }
+    fail;
 }
 
 impure fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
