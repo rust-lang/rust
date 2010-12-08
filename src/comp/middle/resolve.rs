@@ -105,6 +105,7 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
                     case (ast.item_mod(_, ?m, _)) {
                         ret check_mod(i, m);
                     }
+                    case (_) { /* fall through */ }
                 }
             }
 

@@ -542,6 +542,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         multiline-comment.rs \
                         readalias.rs \
                         rec.rs \
+                        rec-tup.rs \
                         return-nil.rs \
                         tup.rs \
                         u32-decr.rs \
