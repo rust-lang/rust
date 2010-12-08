@@ -526,6 +526,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         bool-not.rs \
                         box.rs \
                         box-in-tup.rs \
+                        cast.rs \
                         char.rs \
                         complex.rs \
                         dead-code-one-arm-if.rs \

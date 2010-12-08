@@ -140,6 +140,7 @@ impure fn parse_ty(parser p) -> @ast.ty {
     auto hi = lo;
     let ast.ty_ t;
     alt (p.peek()) {
+        case (token.BOOL) { p.bump(); t = ast.ty_bool; }
         case (token.INT) { p.bump(); t = ast.ty_int; }
         case (token.UINT) { p.bump(); t = ast.ty_int; }
         case (token.STR) { p.bump(); t = ast.ty_str; }
