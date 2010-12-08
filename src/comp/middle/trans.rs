@@ -1031,6 +1031,42 @@ impure fn trans_unary(@block_ctxt cx, ast.unop op,
     fail;
 }
 
+fn trans_eager_binop(@block_ctxt cx, ast.binop op,
+                     ValueRef lhs, ValueRef rhs) -> ValueRef {
+
+    alt (op) {
+        case (ast.add) { ret cx.build.Add(lhs, rhs); }
+        case (ast.sub) { ret cx.build.Sub(lhs, rhs); }
+
+        // FIXME: switch by signedness.
+        case (ast.mul) { ret cx.build.Mul(lhs, rhs); }
+        case (ast.div) { ret cx.build.SDiv(lhs, rhs); }
+        case (ast.rem) { ret cx.build.SRem(lhs, rhs); }
+
+        case (ast.bitor) { ret cx.build.Or(lhs, rhs); }
+        case (ast.bitand) { ret cx.build.And(lhs, rhs); }
+        case (ast.bitxor) { ret cx.build.Xor(lhs, rhs); }
+        case (ast.lsl) { ret cx.build.Shl(lhs, rhs); }
+        case (ast.lsr) { ret cx.build.LShr(lhs, rhs); }
+        case (ast.asr) { ret cx.build.AShr(lhs, rhs); }
+        case (_) {
+            auto cmp = lib.llvm.LLVMIntEQ;
+            alt (op) {
+                case (ast.eq) { cmp = lib.llvm.LLVMIntEQ; }
+                case (ast.ne) { cmp = lib.llvm.LLVMIntNE; }
+
+                // FIXME: switch by signedness.
+                case (ast.lt) { cmp = lib.llvm.LLVMIntSLT; }
+                case (ast.le) { cmp = lib.llvm.LLVMIntSLE; }
+                case (ast.ge) { cmp = lib.llvm.LLVMIntSGE; }
+                case (ast.gt) { cmp = lib.llvm.LLVMIntSGT; }
+            }
+            ret cx.build.ICmp(cmp, lhs, rhs);
+        }
+    }
+    fail;
+}
+
 impure fn trans_binary(@block_ctxt cx, ast.binop op,
                        @ast.expr a, @ast.expr b) -> result {
 
@@ -1073,109 +1109,12 @@ impure fn trans_binary(@block_ctxt cx, ast.binop op,
                              vec(lhs_true_res, rhs_res));
         }
 
-        case (_) { /* fall through */ }
-    }
-
-    // Remaining cases are eager:
-
-    auto lhs = trans_expr(cx, a);
-    auto sub = trans_expr(lhs.bcx, b);
-
-    alt (op) {
-        case (ast.add) {
-            sub.val = cx.build.Add(lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.sub) {
-            sub.val = cx.build.Sub(lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.mul) {
-            // FIXME: switch by signedness.
-            sub.val = cx.build.Mul(lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.div) {
-            // FIXME: switch by signedness.
-            sub.val = cx.build.SDiv(lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.rem) {
-            // FIXME: switch by signedness.
-            sub.val = cx.build.SRem(lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.bitor) {
-            sub.val = cx.build.Or(lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.bitand) {
-            sub.val = cx.build.And(lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.bitxor) {
-            sub.val = cx.build.Xor(lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.lsl) {
-            sub.val = cx.build.Shl(lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.lsr) {
-            sub.val = cx.build.LShr(lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.asr) {
-            sub.val = cx.build.AShr(lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.eq) {
-            sub.val = cx.build.ICmp(lib.llvm.LLVMIntEQ, lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.ne) {
-            sub.val = cx.build.ICmp(lib.llvm.LLVMIntNE, lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.lt) {
-            // FIXME: switch by signedness.
-            sub.val = cx.build.ICmp(lib.llvm.LLVMIntSLT, lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.le) {
-            // FIXME: switch by signedness.
-            sub.val = cx.build.ICmp(lib.llvm.LLVMIntSLE, lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.ge) {
-            // FIXME: switch by signedness.
-            sub.val = cx.build.ICmp(lib.llvm.LLVMIntSGE, lhs.val, sub.val);
-            ret sub;
-        }
-
-        case (ast.gt) {
-            // FIXME: switch by signedness.
-            sub.val = cx.build.ICmp(lib.llvm.LLVMIntSGT, lhs.val, sub.val);
-            ret sub;
-        }
-
         case (_) {
-            cx.fcx.ccx.sess.unimpl("operator in trans_binary");
+            // Remaining cases are eager:
+            auto lhs = trans_expr(cx, a);
+            auto sub = trans_expr(lhs.bcx, b);
+            ret res(sub.bcx, trans_eager_binop(sub.bcx, op,
+                                               lhs.val, sub.val));
         }
     }
     fail;
@@ -1549,6 +1488,18 @@ impure fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             auto t = node_ann_type(cx.fcx.ccx, ann);
             // FIXME: calculate copy init-ness in typestate.
             ret copy_ty(rhs_res.bcx, false, lhs_res._0.val, rhs_res.val, t);
+        }
+
+        case (ast.expr_assign_op(?op, ?dst, ?src, ?ann)) {
+            auto t = node_ann_type(cx.fcx.ccx, ann);
+            auto lhs_res = trans_lval(cx, dst);
+            check (lhs_res._1);
+            auto lhs_val = load_non_structural(lhs_res._0.bcx,
+                                               lhs_res._0.val, t);
+            auto rhs_res = trans_expr(lhs_res._0.bcx, src);
+            auto v = trans_eager_binop(rhs_res.bcx, op, lhs_val, rhs_res.val);
+            // FIXME: calculate copy init-ness in typestate.
+            ret copy_ty(rhs_res.bcx, false, lhs_res._0.val, v, t);
         }
 
         case (ast.expr_call(?f, ?args, _)) {

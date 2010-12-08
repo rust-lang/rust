@@ -714,6 +714,26 @@ impure fn parse_assign_expr(parser p) -> @ast.expr {
             ret @spanned(lo, rhs.span,
                          ast.expr_assign(lhs, rhs, ast.ann_none));
         }
+        case (token.BINOPEQ(?op)) {
+            p.bump();
+            auto rhs = parse_expr(p);
+            auto aop = ast.add;
+            alt (op) {
+                case (token.PLUS) { aop = ast.add; }
+                case (token.MINUS) { aop = ast.sub; }
+                case (token.STAR) { aop = ast.mul; }
+                case (token.SLASH) { aop = ast.div; }
+                case (token.PERCENT) { aop = ast.rem; }
+                case (token.CARET) { aop = ast.bitxor; }
+                case (token.AND) { aop = ast.bitand; }
+                case (token.OR) { aop = ast.bitor; }
+                case (token.LSL) { aop = ast.lsl; }
+                case (token.LSR) { aop = ast.lsr; }
+                case (token.ASR) { aop = ast.asr; }
+            }
+            ret @spanned(lo, rhs.span,
+                         ast.expr_assign_op(aop, lhs, rhs, ast.ann_none));
+        }
         case (_) { /* fall through */ }
     }
     ret lhs;
@@ -1080,6 +1100,8 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_alt(_,_,_))      { ret false; }
                 case (ast.expr_block(_,_))      { ret false; }
                 case (ast.expr_assign(_,_,_))   { ret true; }
+                case (ast.expr_assign_op(_,_,_,_))
+                                                { ret true; }
                 case (ast.expr_field(_,_,_))    { ret true; }
                 case (ast.expr_index(_,_,_))    { ret true; }
                 case (ast.expr_name(_,_,_))     { ret true; }

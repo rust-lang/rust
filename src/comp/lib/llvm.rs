@@ -45,16 +45,16 @@ const uint LLVMX86FastcallCallConv = 65u;
 // Consts for the LLVM IntPredicate type, pre-cast to uint.
 // FIXME: as above.
 
-const uint LLVMIntEQ = 32;
-const uint LLVMIntNE = 33;
-const uint LLVMIntUGT = 34;
-const uint LLVMIntUGE = 35;
-const uint LLVMIntULT = 36;
-const uint LLVMIntULE = 37;
-const uint LLVMIntSGT = 38;
-const uint LLVMIntSGE = 39;
-const uint LLVMIntSLT = 40;
-const uint LLVMIntSLE = 41;
+const uint LLVMIntEQ = 32u;
+const uint LLVMIntNE = 33u;
+const uint LLVMIntUGT = 34u;
+const uint LLVMIntUGE = 35u;
+const uint LLVMIntULT = 36u;
+const uint LLVMIntULE = 37u;
+const uint LLVMIntSGT = 38u;
+const uint LLVMIntSGE = 39u;
+const uint LLVMIntSLT = 40u;
+const uint LLVMIntSLE = 41u;
 
 
 native mod llvm = llvm_lib {

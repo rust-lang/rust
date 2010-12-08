@@ -426,7 +426,7 @@ impure fn next_token(reader rdr) -> token.token {
 
     impure fn binop(reader rdr, token.binop op) -> token.token {
         rdr.bump();
-        if (rdr.next() == '=') {
+        if (rdr.curr() == '=') {
             rdr.bump();
             ret token.BINOPEQ(op);
         } else {

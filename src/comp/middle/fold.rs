@@ -115,6 +115,11 @@ type ast_fold[ENV] =
          ann a) -> @expr)                         fold_expr_assign,
 
      (fn(&ENV e, &span sp,
+         ast.binop,
+         @expr lhs, @expr rhs,
+         ann a) -> @expr)                         fold_expr_assign_op,
+
+     (fn(&ENV e, &span sp,
          @expr e, ident i,
          ann a) -> @expr)                         fold_expr_field,
 
@@ -465,6 +470,12 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
             ret fld.fold_expr_assign(env_, e.span, llhs, rrhs, t);
         }
 
+        case (ast.expr_assign_op(?op, ?lhs, ?rhs, ?t)) {
+            auto llhs = fold_expr(env_, fld, lhs);
+            auto rrhs = fold_expr(env_, fld, rhs);
+            ret fld.fold_expr_assign_op(env_, e.span, op, llhs, rrhs, t);
+        }
+
         case (ast.expr_field(?e, ?i, ?t)) {
             auto ee = fold_expr(env_, fld, e);
             ret fld.fold_expr_field(env_, e.span, ee, i, t);
@@ -790,6 +801,12 @@ fn identity_fold_expr_assign[ENV](&ENV env, &span sp,
     ret @respan(sp, ast.expr_assign(lhs, rhs, a));
 }
 
+fn identity_fold_expr_assign_op[ENV](&ENV env, &span sp, ast.binop op,
+                                     @expr lhs, @expr rhs, ann a)
+        -> @expr {
+    ret @respan(sp, ast.expr_assign_op(op, lhs, rhs, a));
+}
+
 fn identity_fold_expr_field[ENV](&ENV env, &span sp,
                                  @expr e, ident i, ann a) -> @expr {
     ret @respan(sp, ast.expr_field(e, i, a));
@@ -986,6 +1003,8 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_alt    = bind identity_fold_expr_alt[ENV](_,_,_,_,_),
          fold_expr_block  = bind identity_fold_expr_block[ENV](_,_,_,_),
          fold_expr_assign = bind identity_fold_expr_assign[ENV](_,_,_,_,_),
+         fold_expr_assign_op
+                       = bind identity_fold_expr_assign_op[ENV](_,_,_,_,_,_),
          fold_expr_field  = bind identity_fold_expr_field[ENV](_,_,_,_,_),
          fold_expr_index  = bind identity_fold_expr_index[ENV](_,_,_,_,_),
          fold_expr_name   = bind identity_fold_expr_name[ENV](_,_,_,_,_),

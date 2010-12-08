@@ -684,6 +684,8 @@ fn expr_ty(@ast.expr expr) -> @ty {
         case (ast.expr_do_while(_, _, ?ann))  { ret ann_to_type(ann); }
         case (ast.expr_block(_, ?ann))        { ret ann_to_type(ann); }
         case (ast.expr_assign(_, _, ?ann))    { ret ann_to_type(ann); }
+        case (ast.expr_assign_op(_, _, _, ?ann))
+                                              { ret ann_to_type(ann); }
         case (ast.expr_field(_, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_index(_, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_name(_, _, ?ann))      { ret ann_to_type(ann); }
@@ -1120,6 +1122,10 @@ fn demand_expr(&fn_ctxt fcx, @ty expected, @ast.expr e) -> @ast.expr {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_assign(lhs, rhs, ast.ann_type(t));
         }
+        case (ast.expr_assign_op(?op, ?lhs, ?rhs, ?ann)) {
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            e_1 = ast.expr_assign_op(op, lhs, rhs, ast.ann_type(t));
+        }
         case (ast.expr_field(?lhs, ?rhs, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_field(lhs, rhs, ast.ann_type(t));
@@ -1306,6 +1312,21 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto ann = ast.ann_type(rhs_t0);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_assign(lhs_1, rhs_1, ann));
+        }
+
+        case (ast.expr_assign_op(?op, ?lhs, ?rhs, _)) {
+            auto lhs_0 = check_expr(fcx, lhs);
+            auto rhs_0 = check_expr(fcx, rhs);
+            auto lhs_t0 = expr_ty(lhs_0);
+            auto rhs_t0 = expr_ty(rhs_0);
+
+            auto lhs_1 = demand_expr(fcx, rhs_t0, lhs_0);
+            auto rhs_1 = demand_expr(fcx, expr_ty(lhs_1), rhs_0);
+
+            auto ann = ast.ann_type(rhs_t0);
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_assign_op(op, lhs_1, rhs_1,
+                                                           ann));
         }
 
         case (ast.expr_if(?cond, ?thn, ?elsopt, _)) {

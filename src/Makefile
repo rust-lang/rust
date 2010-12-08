@@ -522,6 +522,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         arith-0.rs \
                         arith-1.rs \
                         arith-2.rs \
+                        bitwise.rs \
                         bool-not.rs \
                         box.rs \
                         box-in-tup.rs \
