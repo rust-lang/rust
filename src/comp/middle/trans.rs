@@ -1395,13 +1395,20 @@ impure fn trans_args(@block_ctxt cx, &vec[@ast.expr] es, @typeck.ty fn_ty)
 }
 
 impure fn trans_call(@block_ctxt cx, @ast.expr f,
-                     vec[@ast.expr] args) -> result {
+                     vec[@ast.expr] args, &ast.ann ann) -> result {
     auto f_res = trans_lval(cx, f);
     check (! f_res._1);
     auto fn_ty = typeck.expr_ty(f);
+    auto ret_ty = typeck.ann_to_type(ann);
     auto args_res = trans_args(f_res._0.bcx, args, fn_ty);
-    ret res(args_res._0,
-            args_res._0.build.FastCall(f_res._0.val, args_res._1));
+    auto retval = args_res._0.build.FastCall(f_res._0.val, args_res._1);
+
+    // Retval doesn't correspond to anything really tangible in the frame, but
+    // it's a ref all the same, so we put a note here to drop it when we're
+    // done in this scope.
+    find_scope_cx(cx).cleanups += clean(bind drop_ty(_, retval, ret_ty));
+
+    ret res(args_res._0, retval);
 }
 
 impure fn trans_tup(@block_ctxt cx, vec[ast.elt] elts,
@@ -1502,8 +1509,8 @@ impure fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             ret copy_ty(rhs_res.bcx, false, lhs_res._0.val, v, t);
         }
 
-        case (ast.expr_call(?f, ?args, _)) {
-            ret trans_call(cx, f, args);
+        case (ast.expr_call(?f, ?args, ?ann)) {
+            ret trans_call(cx, f, args, ann);
         }
 
         case (ast.expr_cast(?e, _, ?ann)) {
@@ -1590,7 +1597,21 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
     auto r = res(cx, C_nil());
     alt (e) {
         case (some[@ast.expr](?x)) {
+            auto t = typeck.expr_ty(x);
             r = trans_expr(cx, x);
+            if (typeck.type_is_structural(t)) {
+                // We usually treat structurals by-pointer; in particular,
+                // trans_expr will have given us a structure pointer. But in
+                // this case we're about to return. LLVM wants a first-class
+                // value here (which makes sense; the frame is going away!)
+                r.val = r.bcx.build.Load(r.val);
+            }
+            if (typeck.type_is_boxed(t)) {
+                // A return is an implicit ++ on the refcount on any boxed
+                // value, as it is being newly referenced as the anonymous
+                // 'return value' from the function, in the caller frame.
+                r.bcx = incr_refcnt(r.bcx, r.val).bcx;
+            }
         }
         case (_) { /* fall through */  }
     }
@@ -1611,14 +1632,7 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
     }
 
     alt (e) {
-        case (some[@ast.expr](?e)) {
-            if (typeck.type_is_structural(typeck.expr_ty(e))) {
-                // We usually treat structurals by-pointer; in particular,
-                // trans_expr will have given us a structure pointer. But in
-                // this case we're about to return. LLVM wants a first-class
-                // value here (which makes sense; the frame is going away!)
-                r.val = r.bcx.build.Load(r.val);
-            }
+        case (some[@ast.expr](_)) {
             r.val = r.bcx.build.Ret(r.val);
             ret r;
         }
