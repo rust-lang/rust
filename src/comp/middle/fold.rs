@@ -170,6 +170,10 @@ type ast_fold[ENV] =
 
      // Item folds.
      (fn(&ENV e, &span sp, ident ident,
+         @ty t, @expr e,
+         def_id id, ann a) -> @item)              fold_item_const,
+
+     (fn(&ENV e, &span sp, ident ident,
          &ast._fn f,
          vec[ast.ty_param] ty_params,
          def_id id, ann a) -> @item)              fold_item_fn,
@@ -595,6 +599,12 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
 
     alt (i.node) {
 
+        case (ast.item_const(?ident, ?t, ?e, ?id, ?ann)) {
+            let @ast.ty t_ = fold_ty[ENV](env_, fld, t);
+            let @ast.expr e_ = fold_expr(env_, fld, e);
+            ret fld.fold_item_const(env_, i.span, ident, t_, e_, id, ann);
+        }
+
         case (ast.item_fn(?ident, ?ff, ?tps, ?id, ?ann)) {
             let ast._fn ff_ = fold_fn[ENV](env_, fld, ff);
             ret fld.fold_item_fn(env_, i.span, ident, ff_, tps, id, ann);
@@ -878,6 +888,12 @@ fn identity_fold_stmt_expr[ENV](&ENV e, &span sp, @expr x) -> @stmt {
 
 // Item identities.
 
+fn identity_fold_item_const[ENV](&ENV e, &span sp, ident i,
+                                 @ty t, @expr ex,
+                                 def_id id, ann a) -> @item {
+    ret @respan(sp, ast.item_const(i, t, ex, id, a));
+}
+
 fn identity_fold_item_fn[ENV](&ENV e, &span sp, ident i,
                               &ast._fn f, vec[ast.ty_param] ty_params,
                               def_id id, ann a) -> @item {
@@ -1023,6 +1039,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
                           = bind identity_fold_stmt_check_expr[ENV](_,_,_),
          fold_stmt_expr   = bind identity_fold_stmt_expr[ENV](_,_,_),
 
+         fold_item_const= bind identity_fold_item_const[ENV](_,_,_,_,_,_,_),
          fold_item_fn   = bind identity_fold_item_fn[ENV](_,_,_,_,_,_,_),
          fold_item_mod  = bind identity_fold_item_mod[ENV](_,_,_,_,_),
          fold_item_ty   = bind identity_fold_item_ty[ENV](_,_,_,_,_,_,_),

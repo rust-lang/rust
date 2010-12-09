@@ -29,6 +29,9 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
 
     fn found_def_item(@ast.item i) -> option.t[def] {
         alt (i.node) {
+            case (ast.item_const(_, _, _, ?id, _)) {
+                ret some[def](ast.def_const(id));
+            }
             case (ast.item_fn(_, _, _, ?id, _)) {
                 ret some[def](ast.def_fn(id));
             }

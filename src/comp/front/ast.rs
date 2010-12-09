@@ -204,6 +204,7 @@ type variant = rec(str name, vec[variant_arg] args, def_id id, ann ann);
 
 type item = spanned[item_];
 tag item_ {
+    item_const(ident, @ty, @expr, def_id, ann);
     item_fn(ident, _fn, vec[ty_param], def_id, ann);
     item_mod(ident, _mod, def_id);
     item_ty(ident, @ty, vec[ty_param], def_id, ann);

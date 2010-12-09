@@ -1229,6 +1229,9 @@ impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
 
         // Index the item.
         alt (item.node) {
+            case (ast.item_const(?id, _, _, _, _)) {
+                index.insert(id, ast.mie_item(u));
+            }
             case (ast.item_fn(?id, _, _, _, _)) {
                 index.insert(id, ast.mie_item(u));
             }
@@ -1253,6 +1256,19 @@ impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
     }
     ret rec(items=items, index=index);
  }
+
+impure fn parse_item_const(parser p) -> @ast.item {
+    auto lo = p.get_span();
+    expect(p, token.CONST);
+    auto ty = parse_ty(p);
+    auto id = parse_ident(p);
+    expect(p, token.EQ);
+    auto e = parse_expr(p);
+    auto hi = p.get_span();
+    expect(p, token.SEMI);
+    auto item = ast.item_const(id, ty, e, p.next_def_id(), ast.ann_none);
+    ret @spanned(lo, hi, item);
+}
 
 impure fn parse_item_mod(parser p) -> @ast.item {
     auto lo = p.get_span();
@@ -1369,6 +1385,12 @@ impure fn parse_item(parser p) -> @ast.item {
     let ast.layer lyr = parse_layer(p);
 
     alt (p.peek()) {
+        case (token.CONST) {
+            check (eff == ast.eff_pure);
+            check (lyr == ast.layer_value);
+            ret parse_item_const(p);
+        }
+
         case (token.FN) {
             check (lyr == ast.layer_value);
             ret parse_item_fn(p, eff);

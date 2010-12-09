@@ -2001,6 +2001,10 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             cx.item_ids.insert(fid, llfn);
         }
 
+        case (ast.item_const(?name, _, _, ?cid, _)) {
+            cx.items.insert(cid, i);
+        }
+
         case (ast.item_mod(?name, ?m, ?mid)) {
             cx.items.insert(mid, i);
         }
@@ -2128,6 +2132,14 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
                 i += 1u;
             }
         }
+
+        case (ast.item_const(?name, _, ?expr, ?cid, ?ann)) {
+            // FIXME: The whole expr-translation system needs cloning to deal
+            // with consts.
+            auto v = C_int(1);
+            cx.item_ids.insert(cid, v);
+        }
+
         case (_) {
             // empty
         }

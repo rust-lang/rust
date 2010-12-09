@@ -372,6 +372,13 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
                            @ty_table item_to_ty,
                            @ast.item it) -> @ty {
         alt (it.node) {
+
+            case (ast.item_const(?ident, ?t, _, ?def_id, _)) {
+                auto f = bind trans_ty_item_id_to_ty(id_to_ty_item,
+                                                     item_to_ty, _);
+                item_to_ty.insert(def_id, ast_ty_to_ty(f, t));
+            }
+
             case (ast.item_fn(?ident, ?fn_info, _, ?def_id, _)) {
                 // TODO: handle ty-params
 
@@ -391,7 +398,6 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
             case (ast.item_ty(?ident, ?referent_ty, _, ?def_id, _)) {
                 if (item_to_ty.contains_key(def_id)) {
                     // Avoid repeating work.
-                    check (item_to_ty.contains_key(def_id));
                     ret item_to_ty.get(def_id);
                 }
 
@@ -431,11 +437,11 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
                     auto arg_ty = ast_ty_to_ty(f, va.ty);
                     args += vec(rec(mode=ast.alias, ty=arg_ty));
                 }
-                result_ty = plain_ty(ty_fn(args, plain_ty(ty_tag(tag_id)))); 
+                result_ty = plain_ty(ty_fn(args, plain_ty(ty_tag(tag_id))));
             }
 
             item_to_ty.insert(variant.id, result_ty);
-            
+
             auto variant_t = rec(ann=ast.ann_type(result_ty) with variant);
             result += vec(variant_t);
         }
@@ -461,6 +467,11 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
     for (@ast.item it in module.items) {
         let ast.item_ result;
         alt (it.node) {
+            case (ast.item_const(?ident, ?t, ?e, ?def_id, _)) {
+                auto ty = trans_ty_item_to_ty(id_to_ty_item, item_to_ty, it);
+                result = ast.item_const(ident, t, e, def_id,
+                                        ast.ann_type(ty));
+            }
             case (ast.item_fn(?ident, ?fn_info, ?tps, ?def_id, _)) {
                 // TODO: type-params
 
@@ -1659,10 +1670,29 @@ fn check_block(&fn_ctxt fcx, &ast.block block) -> ast.block {
                                     index=block.node.index));
 }
 
+fn check_const(&@crate_ctxt ccx, &span sp, ast.ident ident, @ast.ty t,
+               @ast.expr e, ast.def_id id, ast.ann ann) -> @ast.item {
+    // FIXME: this is kinda a kludge; we manufacture a fake "function context"
+    // for checking the initializer expression.
+    auto rty = ann_to_type(ann);
+    let fn_ctxt fcx = rec(ret_ty = rty,
+                          locals = @common.new_def_hash[@ty](),
+                          ccx = ccx);
+    auto e_ = check_expr(fcx, e);
+    // FIXME: necessary? Correct sequence?
+    demand_expr(fcx, rty, e_);
+    auto item = ast.item_const(ident, t, e_, id, ann);
+    ret @fold.respan[ast.item_](sp, item);
+}
+
 fn check_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
             vec[ast.ty_param] ty_params, ast.def_id id,
             ast.ann ann) -> @ast.item {
     auto local_ty_table = @common.new_def_hash[@ty]();
+
+    // FIXME: duplicate work: the item annotation already has the arg types
+    // and return type translated to typeck.ty values. We don't need do to it
+    // again here, we can extract them.
 
     // Store the type of each argument in the table.
     let vec[arg] inputs = vec();
