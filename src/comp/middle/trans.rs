@@ -1947,11 +1947,7 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
 
     i = 0u;
     for (ast.variant_arg va in variant.args) {
-        auto llargalias = bcx.build.Load(fcx.llargs.get(va.id));
-        auto llargval = bcx.build.Load(llargalias);
-
-        llvm.LLVMDumpValue(llunionptr);
-
+        auto llargval = bcx.build.Load(fcx.llargs.get(va.id));
         auto lldestptr = bcx.build.GEP(llunionptr,
                                        vec(C_int(0), C_int(i as int)));
 
