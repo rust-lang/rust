@@ -353,7 +353,10 @@ fn type_err_to_str(&type_err err) -> str {
 // AST, along with a table mapping item IDs to their types.
 
 fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
-    fn trans_ty_item_id_to_ty(@hashmap[ast.def_id,@ast.item] id_to_ty_item,
+
+    type ty_item_table = hashmap[ast.def_id,@ast.item];
+
+    fn trans_ty_item_id_to_ty(@ty_item_table id_to_ty_item,
                               @ty_table item_to_ty,
                               ast.def_id id) -> @ty {
         check (id_to_ty_item.contains_key(id));
@@ -361,14 +364,14 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         ret trans_ty_item_to_ty(id_to_ty_item, item_to_ty, item);
     }
 
-    fn trans_fn_arg_to_ty(@hashmap[ast.def_id,@ast.item] id_to_ty_item,
+    fn trans_fn_arg_to_ty(@ty_item_table id_to_ty_item,
                           @ty_table item_to_ty,
                           &ast.arg a) -> arg {
         auto f = bind trans_ty_item_id_to_ty(id_to_ty_item, item_to_ty, _);
         ret rec(mode=a.mode, ty=ast_ty_to_ty(f, a.ty));
     }
 
-    fn trans_ty_item_to_ty(@hashmap[ast.def_id,@ast.item] id_to_ty_item,
+    fn trans_ty_item_to_ty(@ty_item_table id_to_ty_item,
                            @ty_table item_to_ty,
                            @ast.item it) -> @ty {
         alt (it.node) {
@@ -414,7 +417,7 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         }
     }
 
-    fn get_tag_variant_types(@hashmap[ast.def_id,@ast.item] id_to_ty_item,
+    fn get_tag_variant_types(@ty_item_table id_to_ty_item,
                              @ty_table item_to_ty,
                              &ast.def_id tag_id,
                              &vec[ast.variant] variants) -> vec[ast.variant] {
@@ -452,14 +455,22 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
     // First pass: collect all type item IDs.
     auto module = crate.node.module;
     auto id_to_ty_item = @common.new_def_hash[@ast.item]();
-    for (@ast.item item in module.items) {
-        alt (item.node) {
+    fn collect(&@ty_item_table id_to_ty_item, @ast.item i)
+        -> @ty_item_table {
+        alt (i.node) {
             case (ast.item_ty(_, _, _, ?def_id, _)) {
-                id_to_ty_item.insert(def_id, item);
+                id_to_ty_item.insert(def_id, i);
             }
             case (_) { /* empty */ }
         }
+        ret id_to_ty_item;
     }
+    auto fld_1 = fold.new_identity_fold[@ty_item_table]();
+    auto f = collect;
+    fld_1 = @rec(update_env_for_item = f with *fld_1);
+    fold.fold_crate[@ty_item_table](id_to_ty_item, fld_1, crate);
+
+
 
     // Second pass: translate the types of all items.
     auto item_to_ty = @common.new_def_hash[@ty]();
