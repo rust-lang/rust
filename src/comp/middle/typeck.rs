@@ -639,6 +639,17 @@ fn plain_ty(&sty st) -> @ty {
     ret @rec(struct=st, mut=ast.imm, cname=none[str]);
 }
 
+fn hash_ty(&@ty t) -> uint {
+    ret _str.hash(ty_to_str(t));
+}
+
+fn eq_ty(&@ty a, &@ty b) -> bool {
+    // FIXME: this is gross, but I think it's safe, and I don't think writing
+    // a giant function to handle all the cases is necessary when structural
+    // equality will someday save the day.
+    ret _str.eq(ty_to_str(a), ty_to_str(b));
+}
+
 fn ann_to_type(&ast.ann ann) -> @ty {
     alt (ann) {
         case (ast.ann_none) {
