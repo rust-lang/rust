@@ -1815,26 +1815,22 @@ impure fn trans_block(@block_ctxt cx, &ast.block b) -> result {
 fn new_fn_ctxt(@crate_ctxt cx,
                str name,
                vec[ast.arg] args,
-               ast.def_id fid) -> @fn_ctxt {
+               ValueRef llfndecl) -> @fn_ctxt {
 
-    check (cx.item_ids.contains_key(fid));
-    let ValueRef llfn = cx.item_ids.get(fid);
-    cx.item_names.insert(cx.path, llfn);
-
-    let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 0u);
+    let ValueRef lltaskptr = llvm.LLVMGetParam(llfndecl, 0u);
     let uint arg_n = 1u;
 
     let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] llargs = new_def_hash[ValueRef]();
 
     for (ast.arg arg in args) {
-        auto llarg = llvm.LLVMGetParam(llfn, arg_n);
+        auto llarg = llvm.LLVMGetParam(llfndecl, arg_n);
         check (llarg as int != 0);
         llargs.insert(arg.id, llarg);
         arg_n += 1u;
     }
 
-    ret @rec(llfn=llfn,
+    ret @rec(llfn=llfndecl,
              lltaskptr=lltaskptr,
              llargs=llargs,
              lllocals=lllocals,
@@ -1882,7 +1878,10 @@ fn arg_tys_of_fn(ast.ann ann) -> vec[typeck.arg] {
 impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
                    &ast.ann ann) {
 
-    auto fcx = new_fn_ctxt(cx, cx.path, f.inputs, fid);
+    auto llfndecl = cx.item_ids.get(fid);
+    cx.item_names.insert(cx.path, llfndecl);
+
+    auto fcx = new_fn_ctxt(cx, cx.path, f.inputs, llfndecl);
     auto bcx = new_top_block_ctxt(fcx);
 
     copy_args_to_allocas(bcx, f.inputs, arg_tys_of_fn(ann));
@@ -1918,7 +1917,10 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfnty);
     cx.item_ids.insert(variant.id, llfn);
 
-    auto fcx = new_fn_ctxt(cx, cx.path, fn_args, variant.id);
+    let ValueRef llfndecl = cx.item_ids.get(variant.id);
+    cx.item_names.insert(cx.path, llfndecl);
+
+    auto fcx = new_fn_ctxt(cx, cx.path, fn_args, llfndecl);
     auto bcx = new_top_block_ctxt(fcx);
 
     auto arg_tys = arg_tys_of_fn(variant.ann);
