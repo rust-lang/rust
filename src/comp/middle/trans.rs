@@ -1608,18 +1608,17 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
         case (some[@ast.expr](?x)) {
             auto t = typeck.expr_ty(x);
             r = trans_expr(cx, x);
+
+            // A return is an implicit copy into a newborn anonymous
+            // 'return value' in the caller frame.
+            r.bcx = incr_all_refcnts(r.bcx, r.val, t).bcx;
+
             if (typeck.type_is_structural(t)) {
                 // We usually treat structurals by-pointer; in particular,
                 // trans_expr will have given us a structure pointer. But in
                 // this case we're about to return. LLVM wants a first-class
                 // value here (which makes sense; the frame is going away!)
                 r.val = r.bcx.build.Load(r.val);
-            }
-            if (typeck.type_is_boxed(t)) {
-                // A return is an implicit ++ on the refcount on any boxed
-                // value, as it is being newly referenced as the anonymous
-                // 'return value' from the function, in the caller frame.
-                r.bcx = incr_refcnt(r.bcx, r.val).bcx;
             }
         }
         case (_) { /* fall through */  }
