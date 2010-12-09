@@ -356,49 +356,47 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
 
     type ty_item_table = hashmap[ast.def_id,@ast.item];
 
-    fn trans_ty_item_id_to_ty(@ty_item_table id_to_ty_item,
-                              @ty_table item_to_ty,
-                              ast.def_id id) -> @ty {
+    fn getter(@ty_item_table id_to_ty_item,
+              @ty_table item_to_ty,
+              ast.def_id id) -> @ty {
         check (id_to_ty_item.contains_key(id));
         auto item = id_to_ty_item.get(id);
-        ret trans_ty_item_to_ty(id_to_ty_item, item_to_ty, item);
+        ret ty_of_item(id_to_ty_item, item_to_ty, item);
     }
 
-    fn trans_fn_arg_to_ty(@ty_item_table id_to_ty_item,
-                          @ty_table item_to_ty,
-                          &ast.arg a) -> arg {
-        auto f = bind trans_ty_item_id_to_ty(id_to_ty_item, item_to_ty, _);
+    fn ty_of_arg(@ty_item_table id_to_ty_item,
+                 @ty_table item_to_ty,
+                 &ast.arg a) -> arg {
+        auto f = bind getter(id_to_ty_item, item_to_ty, _);
         ret rec(mode=a.mode, ty=ast_ty_to_ty(f, a.ty));
     }
 
-    fn trans_ty_item_to_ty(@ty_item_table id_to_ty_item,
-                           @ty_table item_to_ty,
-                           @ast.item it) -> @ty {
+    fn ty_of_item(@ty_item_table id_to_ty_item,
+                  @ty_table item_to_ty,
+                  @ast.item it) -> @ty {
+
+        auto get = bind getter(id_to_ty_item, item_to_ty, _);
+        auto convert = bind ast_ty_to_ty(get, _);
+
         alt (it.node) {
 
             case (ast.item_const(?ident, ?t, _, ?def_id, _)) {
-                auto f = bind trans_ty_item_id_to_ty(id_to_ty_item,
-                                                     item_to_ty, _);
-                item_to_ty.insert(def_id, ast_ty_to_ty(f, t));
+                item_to_ty.insert(def_id, convert(t));
             }
 
             case (ast.item_fn(?ident, ?fn_info, _, ?def_id, _)) {
                 // TODO: handle ty-params
 
-                auto f = bind trans_fn_arg_to_ty(id_to_ty_item, item_to_ty,
-                                                 _);
+                auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
                 auto input_tys = _vec.map[ast.arg,arg](f, fn_info.inputs);
-
-                auto g = bind trans_ty_item_id_to_ty(id_to_ty_item,
-                                                     item_to_ty, _);
-                auto output_ty = ast_ty_to_ty(g, fn_info.output);
+                auto output_ty = convert(fn_info.output);
 
                 auto t_fn = plain_ty(ty_fn(input_tys, output_ty));
                 item_to_ty.insert(def_id, t_fn);
                 ret t_fn;
             }
 
-            case (ast.item_ty(?ident, ?referent_ty, _, ?def_id, _)) {
+            case (ast.item_ty(?ident, ?ty, _, ?def_id, _)) {
                 if (item_to_ty.contains_key(def_id)) {
                     // Avoid repeating work.
                     ret item_to_ty.get(def_id);
@@ -406,11 +404,9 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
 
                 // Tell ast_ty_to_ty() that we want to perform a recursive
                 // call to resolve any named types.
-                auto f = bind trans_ty_item_id_to_ty(id_to_ty_item,
-                                                     item_to_ty, _);
-                auto ty = ast_ty_to_ty(f, referent_ty);
-                item_to_ty.insert(def_id, ty);
-                ret ty;
+                auto ty_ = convert(ty);
+                item_to_ty.insert(def_id, ty_);
+                ret ty_;
             }
 
             case (ast.item_mod(_, _, _)) { fail; }
@@ -432,8 +428,7 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
                 // should be called to resolve named types.
-                auto f = bind trans_ty_item_id_to_ty(id_to_ty_item,
-                                                     item_to_ty, _);
+                auto f = bind getter(id_to_ty_item, item_to_ty, _);
 
                 let vec[arg] args = vec();
                 for (ast.variant_arg va in variant.args) {
@@ -478,20 +473,20 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
     for (@ast.item it in module.items) {
         let ast.item_ result;
         alt (it.node) {
-            case (ast.item_const(?ident, ?t, ?e, ?def_id, _)) {
-                auto ty = trans_ty_item_to_ty(id_to_ty_item, item_to_ty, it);
-                result = ast.item_const(ident, t, e, def_id,
-                                        ast.ann_type(ty));
+            case (ast.item_const(?ident, ?at, ?e, ?def_id, _)) {
+                auto t = ty_of_item(id_to_ty_item, item_to_ty, it);
+                result = ast.item_const(ident, at, e, def_id,
+                                        ast.ann_type(t));
             }
             case (ast.item_fn(?ident, ?fn_info, ?tps, ?def_id, _)) {
                 // TODO: type-params
 
-                auto t = trans_ty_item_to_ty(id_to_ty_item, item_to_ty, it);
+                auto t = ty_of_item(id_to_ty_item, item_to_ty, it);
                 result = ast.item_fn(ident, fn_info, tps, def_id,
                                      ast.ann_type(t));
             }
             case (ast.item_ty(?ident, ?referent_ty, ?tps, ?def_id, _)) {
-                auto t = trans_ty_item_to_ty(id_to_ty_item, item_to_ty, it);
+                auto t = ty_of_item(id_to_ty_item, item_to_ty, it);
                 auto ann = ast.ann_type(t);
                 result = ast.item_ty(ident, referent_ty, tps, def_id, ann);
             }
