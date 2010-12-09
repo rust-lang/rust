@@ -374,6 +374,7 @@ fn C_str(@crate_ctxt cx, str s) -> ValueRef {
     auto g = llvm.LLVMAddGlobal(cx.llmod, val_ty(sc),
                                 _str.buf(cx.names.next("str")));
     llvm.LLVMSetInitializer(g, sc);
+    llvm.LLVMSetGlobalConstant(g, True);
     ret g;
 }
 
