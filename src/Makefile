@@ -533,6 +533,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         deep.rs \
                         deref.rs \
                         div-mod.rs \
+                        drop-on-ret.rs \
                         fact.rs \
                         hello.rs \
                         int.rs \
