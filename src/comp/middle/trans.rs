@@ -893,14 +893,7 @@ fn copy_ty(@block_ctxt cx,
     fail;
 }
 
-fn trans_drop_str(@block_ctxt cx, ValueRef v) -> result {
-    ret decr_refcnt_and_if_zero(cx, v,
-                                bind trans_non_gc_free(_, v),
-                                "free string",
-                                T_int(), C_int(0));
-}
-
-impure fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
+impure fn trans_lit(@block_ctxt cx, &ast.lit lit, &ast.ann ann) -> result {
     alt (lit.node) {
         case (ast.lit_int(?i)) {
             ret res(cx, C_int(i));
@@ -945,8 +938,9 @@ impure fn trans_lit(@block_ctxt cx, &ast.lit lit) -> result {
                                         C_int(len)));
             sub.val = sub.bcx.build.IntToPtr(sub.val,
                                              T_ptr(T_str()));
+            auto t = node_ann_type(cx.fcx.ccx, ann);
             find_scope_cx(cx).cleanups +=
-                clean(bind trans_drop_str(_, sub.val));
+                clean(bind drop_ty(_, sub.val, t));
             ret sub;
         }
     }
@@ -1183,8 +1177,8 @@ impure fn trans_if(@block_ctxt cx, @ast.expr cond,
     }
 
     cond_res.bcx.build.CondBr(cond_res.val,
-                              then_res.bcx.llbb,
-                              else_res.bcx.llbb);
+                              then_cx.llbb,
+                              else_cx.llbb);
 
     // FIXME: use inferred type when available.
     ret join_results(cx, T_nil(),
@@ -1462,8 +1456,8 @@ impure fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
 
 impure fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
     alt (e.node) {
-        case (ast.expr_lit(?lit, _)) {
-            ret trans_lit(cx, *lit);
+        case (ast.expr_lit(?lit, ?ann)) {
+            ret trans_lit(cx, *lit, ann);
         }
 
         case (ast.expr_unary(?op, ?x, ?ann)) {
