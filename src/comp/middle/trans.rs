@@ -1403,6 +1403,15 @@ impure fn trans_call(@block_ctxt cx, @ast.expr f,
     auto args_res = trans_args(f_res._0.bcx, args, fn_ty);
     auto retval = args_res._0.build.FastCall(f_res._0.val, args_res._1);
 
+    // Structured returns come back as first-class values. This is nice for
+    // LLVM but wrong for us; we treat structured values by pointer in
+    // most of our code here. So spill it to an alloca.
+    if (typeck.type_is_structural(ret_ty)) {
+        auto local = args_res._0.build.Alloca(type_of(cx.fcx.ccx, ret_ty));
+        args_res._0.build.Store(retval, local);
+        retval = local;
+    }
+
     // Retval doesn't correspond to anything really tangible in the frame, but
     // it's a ref all the same, so we put a note here to drop it when we're
     // done in this scope.
