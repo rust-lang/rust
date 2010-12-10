@@ -542,7 +542,9 @@ TEST_XFAILS_SELF := $(filter-out \
                         item-name-overload.rs \
                         large-records.rs \
                         lazy-init.rs \
+                        lazy-and-or.rs \
                         multiline-comment.rs \
+                        operator-associativity.rs \
                         output-slot-variants.rs \
                         readalias.rs \
                         rec.rs \
