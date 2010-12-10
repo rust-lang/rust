@@ -499,7 +499,7 @@ impure fn parse_path_expr(parser p) -> @ast.expr {
 
                     case (token.LPAREN) {
                         p.bump();
-                        auto ix = parse_bottom_expr(p);
+                        auto ix = parse_expr(p);
                         hi = ix.span;
                         expect(p, token.RPAREN);
                         auto e_ = ast.expr_index(e, ix, ast.ann_none);
