@@ -461,52 +461,85 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         ret id_to_ty_item;
     }
     auto fld_1 = fold.new_identity_fold[@ty_item_table]();
-    auto f = collect;
-    fld_1 = @rec(update_env_for_item = f with *fld_1);
+    fld_1 = @rec(update_env_for_item = bind collect(_, _)
+                 with *fld_1);
     fold.fold_crate[@ty_item_table](id_to_ty_item, fld_1, crate);
 
 
 
     // Second pass: translate the types of all items.
-    auto item_to_ty = @common.new_def_hash[@ty]();
-    let vec[@ast.item] items_t = vec();
-    for (@ast.item it in module.items) {
-        let ast.item_ result;
-        alt (it.node) {
-            case (ast.item_const(?ident, ?at, ?e, ?def_id, _)) {
-                auto t = ty_of_item(id_to_ty_item, item_to_ty, it);
-                result = ast.item_const(ident, at, e, def_id,
-                                        ast.ann_type(t));
-            }
-            case (ast.item_fn(?ident, ?fn_info, ?tps, ?def_id, _)) {
-                // TODO: type-params
+    let @ty_table item_to_ty = @common.new_def_hash[@ty]();
 
-                auto t = ty_of_item(id_to_ty_item, item_to_ty, it);
-                result = ast.item_fn(ident, fn_info, tps, def_id,
-                                     ast.ann_type(t));
-            }
-            case (ast.item_ty(?ident, ?referent_ty, ?tps, ?def_id, _)) {
-                auto t = ty_of_item(id_to_ty_item, item_to_ty, it);
-                auto ann = ast.ann_type(t);
-                result = ast.item_ty(ident, referent_ty, tps, def_id, ann);
-            }
+    type env = rec(@ty_item_table id_to_ty_item,
+                   @ty_table item_to_ty);
+    let @env e = @rec(id_to_ty_item=id_to_ty_item,
+                      item_to_ty=item_to_ty);
+
+    fn convert(&@env e, @ast.item i) -> @env {
+        alt (i.node) {
             case (ast.item_mod(_, _, _)) {
-                result = it.node;
+                // ignore item_mod, it has no type.
             }
-            case (ast.item_tag(?ident, ?variants, ?tps, ?tag_id)) {
-                auto variants_t = get_tag_variant_types(id_to_ty_item,
-                                                        item_to_ty,
-                                                        tag_id,
-                                                        variants);
-                result = ast.item_tag(ident, variants_t, tps, tag_id);
+            case (_) {
+                // This call populates the ty_table with the converted type of
+                // the item in passing; we don't need to do anything else.
+                ty_of_item(e.id_to_ty_item, e.item_to_ty, i);
             }
         }
-        items_t += vec(@fold.respan[ast.item_](it.span, result));
+        ret e;
     }
 
-    auto module_t = rec(items=items_t, index=module.index);
-    ret tup(@fold.respan[ast.crate_](crate.span, rec(module=module_t)),
-            item_to_ty);
+    fn fold_item_const(&@env e, &span sp, ast.ident i,
+                       @ast.ty t, @ast.expr ex,
+                       ast.def_id id, ast.ann a) -> @ast.item {
+        check (e.item_to_ty.contains_key(id));
+        auto ty = e.item_to_ty.get(id);
+        auto item = ast.item_const(i, t, ex, id,
+                                   ast.ann_type(ty));
+        ret @fold.respan[ast.item_](sp, item);
+    }
+
+    fn fold_item_fn(&@env e, &span sp, ast.ident i,
+                    &ast._fn f, vec[ast.ty_param] ty_params,
+                    ast.def_id id, ast.ann a) -> @ast.item {
+        check (e.item_to_ty.contains_key(id));
+        auto ty = e.item_to_ty.get(id);
+        auto item = ast.item_fn(i, f, ty_params, id,
+                                ast.ann_type(ty));
+        ret @fold.respan[ast.item_](sp, item);
+    }
+
+    fn fold_item_ty(&@env e, &span sp, ast.ident i,
+                    @ast.ty t, vec[ast.ty_param] ty_params,
+                    ast.def_id id, ast.ann a) -> @ast.item {
+        check (e.item_to_ty.contains_key(id));
+        auto ty = e.item_to_ty.get(id);
+        auto item = ast.item_ty(i, t, ty_params, id,
+                                ast.ann_type(ty));
+        ret @fold.respan[ast.item_](sp, item);
+    }
+
+    fn fold_item_tag(&@env e, &span sp, ast.ident i,
+                     vec[ast.variant] variants,
+                     vec[ast.ty_param] ty_params,
+                     ast.def_id id) -> @ast.item {
+        auto variants_t = get_tag_variant_types(e.id_to_ty_item,
+                                                e.item_to_ty,
+                                                id, variants);
+        auto item = ast.item_tag(i, variants_t, ty_params, id);
+        ret @fold.respan[ast.item_](sp, item);
+    }
+
+    auto fld_2 = fold.new_identity_fold[@env]();
+    fld_2 =
+        @rec(update_env_for_item = bind convert(_,_),
+             fold_item_const = bind fold_item_const(_,_,_,_,_,_,_),
+             fold_item_fn    = bind fold_item_fn(_,_,_,_,_,_,_),
+             fold_item_ty    = bind fold_item_ty(_,_,_,_,_,_,_),
+             fold_item_tag   = bind fold_item_tag(_,_,_,_,_,_)
+             with *fld_2);
+    auto crate_ = fold.fold_crate[@env](e, fld_2, crate);
+    ret tup(crate_, item_to_ty);
 }
 
 // Expression utilities
