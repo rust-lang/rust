@@ -1072,10 +1072,10 @@ impure fn trans_binary(@block_ctxt cx, ast.binop op,
             // Lazy-eval and
             auto lhs_res = trans_expr(cx, a);
 
-            auto rhs_cx = new_sub_block_ctxt(cx, "rhs");
+            auto rhs_cx = new_scope_block_ctxt(cx, "rhs");
             auto rhs_res = trans_expr(rhs_cx, b);
 
-            auto lhs_false_cx = new_sub_block_ctxt(cx, "lhs false");
+            auto lhs_false_cx = new_scope_block_ctxt(cx, "lhs false");
             auto lhs_false_res = res(lhs_false_cx, C_bool(false));
 
             lhs_res.bcx.build.CondBr(lhs_res.val,
@@ -1090,10 +1090,10 @@ impure fn trans_binary(@block_ctxt cx, ast.binop op,
             // Lazy-eval or
             auto lhs_res = trans_expr(cx, a);
 
-            auto rhs_cx = new_sub_block_ctxt(cx, "rhs");
+            auto rhs_cx = new_scope_block_ctxt(cx, "rhs");
             auto rhs_res = trans_expr(rhs_cx, b);
 
-            auto lhs_true_cx = new_sub_block_ctxt(cx, "lhs true");
+            auto lhs_true_cx = new_scope_block_ctxt(cx, "lhs true");
             auto lhs_true_res = res(lhs_true_cx, C_bool(true));
 
             lhs_res.bcx.build.CondBr(lhs_res.val,
