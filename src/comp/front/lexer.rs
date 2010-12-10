@@ -56,15 +56,18 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
             }
 
             impure fn bump() {
+
+                let char prev = c;
+
                 c = n;
 
                 if (c == (-1) as char) {
                     ret;
                 }
 
-                if (c == '\n') {
+                if (prev == '\n') {
                     line += 1u;
-                    col = 1u;
+                    col = 0u;
                 } else {
                     col += 1u;
                 }
@@ -189,7 +192,7 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
     keywords.insert("f64", token.MACH(common.ty_f64));
 
     ret reader(rdr, filename, rdr.getc() as char, rdr.getc() as char,
-               1u, 1u, 1u, 1u, keywords, reserved);
+               1u, 0u, 1u, 0u, keywords, reserved);
 }
 
 
@@ -403,6 +406,7 @@ impure fn next_token(reader rdr) -> token.token {
 
     if (rdr.is_eof()) { ret token.EOF; }
 
+    rdr.mark();
     auto c = rdr.curr();
 
     if (is_alpha(c) || c == '_') {
