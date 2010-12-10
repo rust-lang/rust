@@ -654,6 +654,31 @@ fn type_is_scalar(@ty t) -> bool {
     fail;
 }
 
+
+fn type_is_integral(@ty t) -> bool {
+    alt (t.struct) {
+        case (ty_int) { ret true; }
+        case (ty_uint) { ret true; }
+        case (ty_machine(?m)) {
+            alt (m) {
+                case (common.ty_i8) { ret true; }
+                case (common.ty_i16) { ret true; }
+                case (common.ty_i32) { ret true; }
+                case (common.ty_i64) { ret true; }
+
+                case (common.ty_u8) { ret true; }
+                case (common.ty_u16) { ret true; }
+                case (common.ty_u32) { ret true; }
+                case (common.ty_u64) { ret true; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_char) { ret true; }
+        case (_) { ret false; }
+    }
+    fail;
+}
+
 fn type_is_fp(@ty t) -> bool {
     alt (t.struct) {
         case (ty_machine(?tm)) {
@@ -1510,6 +1535,31 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                       ast.ann_type(t_1)));
         }
 
+        case (ast.expr_vec(?args, _)) {
+            let vec[@ast.expr] args_1 = vec();
+
+            // FIXME: implement mutable vectors with leading 'mutable' flag
+            // marking the elements as mutable.
+
+            let @ty t;
+            if (_vec.len[@ast.expr](args) == 0u) {
+                t = next_ty_var(fcx);
+            } else {
+                auto expr_1 = check_expr(fcx, args.(0));
+                t = expr_ty(expr_1);
+            }
+
+            for (@ast.expr e in args) {
+                auto expr_1 = check_expr(fcx, e);
+                auto expr_t = expr_ty(expr_1);
+                demand(fcx, expr.span, t, expr_t);
+                append[@ast.expr](args_1,expr_1);
+            }
+            auto ann = ast.ann_type(plain_ty(ty_vec(t)));
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_vec(args_1, ann));
+        }
+
         case (ast.expr_tup(?elts, _)) {
             let vec[ast.elt] elts_1 = vec();
             let vec[@ty] elts_t = vec();
@@ -1584,6 +1634,50 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     fcx.ccx.sess.unimpl("base type for expr_field "
                                         + "in typeck.check_expr: "
                                         + ty_to_str(base_t));
+                }
+            }
+        }
+
+        case (ast.expr_index(?base, ?idx, _)) {
+            auto base_1 = check_expr(fcx, base);
+            auto base_t = expr_ty(base_1);
+
+            auto idx_1 = check_expr(fcx, idx);
+            auto idx_t = expr_ty(idx_1);
+
+            alt (base_t.struct) {
+                case (ty_vec(?t)) {
+                    if (! type_is_integral(idx_t)) {
+                        fcx.ccx.sess.span_err
+                            (idx.span,
+                             "non-integral type of vec index: "
+                             + ty_to_str(idx_t));
+                    }
+                    auto ann = ast.ann_type(t);
+                    ret @fold.respan[ast.expr_](expr.span,
+                                                ast.expr_index(base_1,
+                                                               idx_1,
+                                                               ann));
+                }
+                case (ty_str) {
+                    if (! type_is_integral(idx_t)) {
+                        fcx.ccx.sess.span_err
+                            (idx.span,
+                             "non-integral type of str index: "
+                             + ty_to_str(idx_t));
+                    }
+                    auto t = ty_machine(common.ty_u8);
+                    auto ann = ast.ann_type(plain_ty(t));
+                    ret @fold.respan[ast.expr_](expr.span,
+                                                ast.expr_index(base_1,
+                                                               idx_1,
+                                                               ann));
+                }
+                case (_) {
+                    fcx.ccx.sess.span_err
+                        (expr.span,
+                         "vector-indexing bad type: "
+                         + ty_to_str(base_t));
                 }
             }
         }
