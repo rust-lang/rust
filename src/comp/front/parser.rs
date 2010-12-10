@@ -68,6 +68,12 @@ impure fn new_parser(session.session sess,
                      npos, npos, 0, crate, rdr);
 }
 
+impure fn unexpected(parser p, token.token t) {
+    let str s = "unexpected token: ";
+    s += token.to_str(t);
+    p.err(s);
+}
+
 impure fn expect(parser p, token.token t) {
     if (p.peek() == t) {
         p.bump();
