@@ -501,8 +501,13 @@ impure fn parse_path_expr(parser p) -> @ast.expr {
                         p.bump();
                         auto ix = parse_bottom_expr(p);
                         hi = ix.span;
+                        expect(p, token.RPAREN);
                         auto e_ = ast.expr_index(e, ix, ast.ann_none);
                         e = @spanned(lo, hi, e_);
+                    }
+
+                    case (?t) {
+                        unexpected(p, t);
                     }
                 }
             }
