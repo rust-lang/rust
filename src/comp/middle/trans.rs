@@ -1814,27 +1814,29 @@ impure fn trans_block(@block_ctxt cx, &ast.block b) -> result {
 
 fn new_fn_ctxt(@crate_ctxt cx,
                str name,
-               vec[ast.arg] args,
                ValueRef llfndecl) -> @fn_ctxt {
 
     let ValueRef lltaskptr = llvm.LLVMGetParam(llfndecl, 0u);
-    let uint arg_n = 1u;
 
     let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] llargs = new_def_hash[ValueRef]();
-
-    for (ast.arg arg in args) {
-        auto llarg = llvm.LLVMGetParam(llfndecl, arg_n);
-        check (llarg as int != 0);
-        llargs.insert(arg.id, llarg);
-        arg_n += 1u;
-    }
 
     ret @rec(llfn=llfndecl,
              lltaskptr=lltaskptr,
              llargs=llargs,
              lllocals=lllocals,
              ccx=cx);
+}
+
+
+fn create_llargs_for_fn_args(@fn_ctxt cx, vec[ast.arg] args) {
+    let uint arg_n = 1u;
+    for (ast.arg arg in args) {
+        auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
+        check (llarg as int != 0);
+        cx.llargs.insert(arg.id, llarg);
+        arg_n += 1u;
+    }
 }
 
 
@@ -1881,7 +1883,9 @@ impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
     auto llfndecl = cx.item_ids.get(fid);
     cx.item_names.insert(cx.path, llfndecl);
 
-    auto fcx = new_fn_ctxt(cx, cx.path, f.inputs, llfndecl);
+    auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
+    create_llargs_for_fn_args(fcx, f.inputs);
+
     auto bcx = new_top_block_ctxt(fcx);
 
     copy_args_to_allocas(bcx, f.inputs, arg_tys_of_fn(ann));
@@ -1920,7 +1924,9 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     let ValueRef llfndecl = cx.item_ids.get(variant.id);
     cx.item_names.insert(cx.path, llfndecl);
 
-    auto fcx = new_fn_ctxt(cx, cx.path, fn_args, llfndecl);
+    auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
+    create_llargs_for_fn_args(fcx, fn_args);
+
     auto bcx = new_top_block_ctxt(fcx);
 
     auto arg_tys = arg_tys_of_fn(variant.ann);
