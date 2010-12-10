@@ -3,6 +3,7 @@ import std._uint;
 import std._vec;
 import std._str.rustrt.sbuf;
 import std._vec.rustrt.vbuf;
+import std.map;
 import std.map.hashmap;
 import std.option;
 import std.option.some;
@@ -53,6 +54,8 @@ type tag_info = rec(type_handle th,
                     mutable vec[tup(ast.def_id,arity)] variants,
                     mutable uint size);
 
+type ty_info = rec(ValueRef drop_glue);
+
 state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
                             target_data td,
@@ -62,6 +65,7 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id, ValueRef] item_ids,
                             hashmap[ast.def_id, @ast.item] items,
                             hashmap[ast.def_id, @tag_info] tags,
+                            hashmap[@typeck.ty, @ty_info] types,
                             @glue_fns glues,
                             namegen names,
                             str path);
@@ -336,6 +340,22 @@ fn type_of_arg(@crate_ctxt cx, &typeck.arg arg) -> TypeRef {
     ret ty;
 }
 
+// Name sanitation. LLVM will happily accept identifiers with weird names, but
+// gas doesn't!
+
+fn sanitize(str s) -> str {
+    auto result = "";
+    for (u8 c in s) {
+        if (c == ('@' as u8)) {
+            result += "boxed_";
+        } else {
+            auto v = vec(c);
+            result += _str.from_bytes(v);
+        }
+    }
+    ret result;
+}
+
 // LLVM constant constructors.
 
 fn C_null(TypeRef t) -> ValueRef {
@@ -517,6 +537,102 @@ fn incr_refcnt(@block_ctxt cx, ValueRef box_ptr) -> result {
     rc_adj_cx.build.Br(next_cx.llbb);
 
     ret res(next_cx, C_nil());
+}
+
+// Glue and referent count twiddling
+
+fn get_ty_info(@crate_ctxt cx, @typeck.ty ty) -> @ty_info {
+    if (!cx.types.contains_key(ty)) {
+        make_ty_info(cx, ty);
+    }
+    ret cx.types.get(ty);
+}
+
+fn make_ty_info(@crate_ctxt cx, @typeck.ty ty) {
+    cx.types.insert(ty, @rec(drop_glue=make_drop_glue(cx, ty)));
+}
+
+fn make_drop_glue(@crate_ctxt cx, @typeck.ty t) -> ValueRef {
+    auto arg_t;
+    if (typeck.type_is_structural(t)) {
+        arg_t = T_ptr(type_of(cx, t));
+    } else {
+        arg_t = type_of(cx, t);
+    }
+    auto llfnty = T_fn(vec(T_taskptr(), arg_t), T_void());
+
+    auto fn_name = cx.names.next("_rust_drop") + "." + typeck.ty_to_str(t);
+    fn_name = sanitize(fn_name);
+    auto llfn = decl_fastcall_fn(cx.llmod, fn_name, llfnty);
+
+    auto fcx = new_fn_ctxt(cx, fn_name, llfn);
+    auto bcx = new_top_block_ctxt(fcx);
+
+    auto llval = llvm.LLVMGetParam(llfn, 1u);
+    auto res = make_drop_glue_inner(bcx, llval, t);
+
+    res.bcx.build.RetVoid();
+
+    ret llfn;
+}
+
+fn make_drop_glue_inner(@block_ctxt cx, ValueRef v, @typeck.ty t) -> result {
+    alt (t.struct) {
+        case (typeck.ty_str) {
+            ret decr_refcnt_and_if_zero(cx, v,
+                                        bind trans_non_gc_free(_, v),
+                                        "free string",
+                                        T_int(), C_int(0));
+        }
+
+        case (typeck.ty_vec(_)) {
+            fn hit_zero(@block_ctxt cx, ValueRef v,
+                        @typeck.ty t) -> result {
+                auto res = iter_sequence(cx, v, t, bind drop_ty(_,_,_));
+                // FIXME: switch gc/non-gc on layer of the type.
+                ret trans_non_gc_free(res.bcx, v);
+            }
+            ret decr_refcnt_and_if_zero(cx, v,
+                                        bind hit_zero(_, v, t),
+                                        "free vector",
+                                        T_int(), C_int(0));
+        }
+
+        case (typeck.ty_box(?body_ty)) {
+            fn hit_zero(@block_ctxt cx, ValueRef v,
+                        @typeck.ty body_ty) -> result {
+                auto body = cx.build.GEP(v,
+                                         vec(C_int(0),
+                                             C_int(abi.box_rc_field_body)));
+
+                auto body_val = load_non_structural(cx, body, body_ty);
+                auto res = drop_ty(cx, body_val, body_ty);
+                // FIXME: switch gc/non-gc on layer of the type.
+                ret trans_non_gc_free(res.bcx, v);
+            }
+            ret decr_refcnt_and_if_zero(cx, v,
+                                        bind hit_zero(_, v, body_ty),
+                                        "free box",
+                                        T_int(), C_int(0));
+        }
+
+        case (_) {
+            if (typeck.type_is_structural(t)) {
+                ret iter_structural_ty(cx, v, t,
+                                       bind drop_ty(_, _, _));
+
+            } else if (typeck.type_is_binding(t)) {
+                cx.fcx.ccx.sess.unimpl("binding type in " +
+                                       "trans.make_drop_glue_inner");
+
+            } else if (typeck.type_is_scalar(t) ||
+                       typeck.type_is_nil(t)) {
+                ret res(cx, C_nil());
+            }
+        }
+    }
+    cx.fcx.ccx.sess.bug("bad type in trans.make_drop_glue_inner");
+    fail;
 }
 
 fn decr_refcnt_and_if_zero(@block_ctxt cx,
@@ -777,61 +893,9 @@ fn drop_slot(@block_ctxt cx,
 fn drop_ty(@block_ctxt cx,
            ValueRef v,
            @typeck.ty t) -> result {
-
-    alt (t.struct) {
-        case (typeck.ty_str) {
-            ret decr_refcnt_and_if_zero(cx, v,
-                                        bind trans_non_gc_free(_, v),
-                                        "free string",
-                                        T_int(), C_int(0));
-        }
-
-        case (typeck.ty_vec(_)) {
-            fn hit_zero(@block_ctxt cx, ValueRef v,
-                        @typeck.ty t) -> result {
-                auto res = iter_sequence(cx, v, t, bind drop_ty(_,_,_));
-                // FIXME: switch gc/non-gc on layer of the type.
-                ret trans_non_gc_free(res.bcx, v);
-            }
-            ret decr_refcnt_and_if_zero(cx, v,
-                                        bind hit_zero(_, v, t),
-                                        "free vector",
-                                        T_int(), C_int(0));
-        }
-
-        case (typeck.ty_box(?body_ty)) {
-            fn hit_zero(@block_ctxt cx, ValueRef v,
-                        @typeck.ty body_ty) -> result {
-                auto body = cx.build.GEP(v,
-                                         vec(C_int(0),
-                                             C_int(abi.box_rc_field_body)));
-
-                auto res = drop_ty(cx, body, body_ty);
-                // FIXME: switch gc/non-gc on layer of the type.
-                ret trans_non_gc_free(res.bcx, v);
-            }
-            ret decr_refcnt_and_if_zero(cx, v,
-                                        bind hit_zero(_, v, body_ty),
-                                        "free box",
-                                        T_int(), C_int(0));
-        }
-
-        case (_) {
-            if (typeck.type_is_structural(t)) {
-                ret iter_structural_ty(cx, v, t,
-                                       bind drop_ty(_, _, _));
-
-            } else if (typeck.type_is_binding(t)) {
-                cx.fcx.ccx.sess.unimpl("binding type in trans.drop_ty");
-
-            } else if (typeck.type_is_scalar(t) ||
-                       typeck.type_is_nil(t)) {
-                ret res(cx, C_nil());
-            }
-        }
-    }
-    cx.fcx.ccx.sess.bug("bad type in trans.drop_ty");
-    fail;
+    cx.build.FastCall(get_ty_info(cx.fcx.ccx, t).drop_glue,
+                      vec(cx.fcx.lltaskptr, v));
+    ret res(cx, C_nil());
 }
 
 fn build_memcpy(@block_ctxt cx,
@@ -2329,6 +2393,10 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
                       _vec.init_fn[ValueRef](bind decl_upcall(llmod, _),
                                              abi.n_upcall_glues as uint));
 
+    auto hasher = typeck.hash_ty;
+    auto eqer = typeck.eq_ty;
+    auto types = map.mk_hashmap[@typeck.ty,@ty_info](hasher, eqer);
+
     auto cx = @rec(sess = sess,
                    llmod = llmod,
                    td = td,
@@ -2338,6 +2406,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
                    item_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
                    tags = new_def_hash[@tag_info](),
+                   types = types,
                    glues = glues,
                    names = namegen(0),
                    path = "_rust");
