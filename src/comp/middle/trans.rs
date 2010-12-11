@@ -1363,9 +1363,9 @@ fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
 fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
                @ast.expr idx, &ast.ann ann) -> tup(result, bool) {
 
-    auto lv = trans_lval(cx, base);
-    auto ix = trans_expr(lv._0.bcx, idx);
-    auto v = lv._0.val;
+    auto lv = trans_expr(cx, base);
+    auto ix = trans_expr(lv.bcx, idx);
+    auto v = lv.val;
 
     auto llunit_ty = node_type(cx.fcx.ccx, ann);
     auto unit_sz = ix.bcx.build.IntCast(lib.llvm.llvm.LLVMSizeOf(llunit_ty),
@@ -1391,7 +1391,7 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
 
     auto body = next_cx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_data)));
     auto elt = next_cx.build.GEP(body, vec(C_int(0), ix.val));
-    ret tup(res(next_cx, elt), lv._1);
+    ret tup(res(next_cx, elt), true);
 }
 
 // The additional bool returned indicates whether it's mem (that is
