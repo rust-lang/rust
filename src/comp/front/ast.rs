@@ -46,7 +46,7 @@ type block_ = rec(vec[@stmt] stmts,
 type pat = spanned[pat_];
 tag pat_ {
     pat_wild(ann);
-    pat_bind(ident, ann);
+    pat_bind(ident, def_id, ann);
     pat_tag(ident, vec[@pat], ann);
 }
 

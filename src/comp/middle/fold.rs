@@ -145,7 +145,7 @@ type ast_fold[ENV] =
          ann a) -> @pat)                          fold_pat_wild,
 
      (fn(&ENV e, &span sp,
-         ident i, ann a) -> @pat)                 fold_pat_bind,
+         ident i, def_id did, ann a) -> @pat)     fold_pat_bind,
 
      (fn(&ENV e, &span sp,
          ident i, vec[@pat] args,
@@ -340,8 +340,8 @@ fn fold_pat[ENV](&ENV env, ast_fold[ENV] fld, @ast.pat p) -> @ast.pat {
 
     alt (p.node) {
         case (ast.pat_wild(?t)) { ret fld.fold_pat_wild(env_, p.span, t); }
-        case (ast.pat_bind(?id, ?t)) {
-            ret fld.fold_pat_bind(env_, p.span, id, t);
+        case (ast.pat_bind(?id, ?did, ?t)) {
+            ret fld.fold_pat_bind(env_, p.span, id, did, t);
         }
         case (ast.pat_tag(?id, ?pats, ?t)) {
             let vec[@ast.pat] ppats = vec();
@@ -852,8 +852,9 @@ fn identity_fold_pat_wild[ENV](&ENV e, &span sp, ann a) -> @pat {
     ret @respan(sp, ast.pat_wild(a));
 }
 
-fn identity_fold_pat_bind[ENV](&ENV e, &span sp, ident i, ann a) -> @pat {
-    ret @respan(sp, ast.pat_bind(i, a));
+fn identity_fold_pat_bind[ENV](&ENV e, &span sp, ident i, def_id did, ann a)
+        -> @pat {
+    ret @respan(sp, ast.pat_bind(i, did, a));
 }
 
 fn identity_fold_pat_tag[ENV](&ENV e, &span sp, ident i, vec[@pat] args,
@@ -1029,7 +1030,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_decl_item   = bind identity_fold_decl_item[ENV](_,_,_),
 
          fold_pat_wild    = bind identity_fold_pat_wild[ENV](_,_,_),
-         fold_pat_bind    = bind identity_fold_pat_bind[ENV](_,_,_,_),
+         fold_pat_bind    = bind identity_fold_pat_bind[ENV](_,_,_,_,_),
          fold_pat_tag     = bind identity_fold_pat_tag[ENV](_,_,_,_,_),
 
          fold_stmt_decl   = bind identity_fold_stmt_decl[ENV](_,_,_),

@@ -883,7 +883,7 @@ impure fn parse_pat(parser p) -> @ast.pat {
             alt (p.peek()) {
                 case (token.IDENT(?id)) {
                     p.bump();
-                    pat = ast.pat_bind(id, ast.ann_none);
+                    pat = ast.pat_bind(id, p.next_def_id(), ast.ann_none);
                 }
                 case (?tok) {
                     p.err("expected identifier after '?' in pattern but " +
