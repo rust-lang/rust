@@ -2298,6 +2298,11 @@ fn trans_exit_task_glue(@crate_ctxt cx) {
     bcx.build.RetVoid();
 }
 
+fn create_typedefs(@crate_ctxt cx) {
+    llvm.LLVMAddTypeName(cx.llmod, _str.buf("rust_crate"), T_crate());
+    llvm.LLVMAddTypeName(cx.llmod, _str.buf("rust_task"), T_task());
+}
+
 fn crate_constant(@crate_ctxt cx) -> ValueRef {
 
     let ValueRef crate_ptr =
@@ -2458,6 +2463,8 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
                    glues = glues,
                    names = namegen(0),
                    path = "_rust");
+
+    create_typedefs(cx);
 
     collect_items(cx, crate);
     resolve_tag_types(cx, crate);
