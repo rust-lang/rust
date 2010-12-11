@@ -261,6 +261,7 @@ fn T_taskptr() -> TypeRef {
 fn type_of(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
     let TypeRef llty = type_of_inner(cx, t);
     check (llty as int != 0);
+    llvm.LLVMAddTypeName(cx.llmod, _str.buf(typeck.ty_to_str(t)), llty);
     ret llty;
 }
 
