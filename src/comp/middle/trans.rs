@@ -857,11 +857,13 @@ fn iter_sequence(@block_ctxt cx,
         auto body_cx = new_scope_block_ctxt(cx, "sequence-iter body");
         auto next_cx = new_sub_block_ctxt(cx, "next");
 
+        cx.build.Br(cond_cx.llbb);
+
         auto ix = cond_cx.build.Phi(T_int(), vec(C_int(0)), vec(cx.llbb));
         auto end_test = cond_cx.build.ICmp(lib.llvm.LLVMIntEQ, ix, len);
         cond_cx.build.CondBr(end_test, body_cx.llbb, next_cx.llbb);
 
-        auto elt = body_cx.build.GEP(p0, vec(ix));
+        auto elt = body_cx.build.GEP(p0, vec(C_int(0), ix));
         auto body_res = f(body_cx,
                           load_non_structural(body_cx, elt, elt_ty),
                           elt_ty);
