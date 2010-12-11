@@ -1539,11 +1539,48 @@ impure fn trans_tup(@block_ctxt cx, vec[ast.elt] elts,
         auto t = typeck.expr_ty(e.expr);
         auto src_res = trans_expr(r.bcx, e.expr);
         auto dst_elt = r.bcx.build.GEP(tup_val, vec(C_int(0), C_int(i)));
-        // FIXME: calculate copy init-ness in typestate.
         r = copy_ty(src_res.bcx, true, dst_elt, src_res.val, t);
         i += 1;
     }
     ret res(r.bcx, tup_val);
+}
+
+impure fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
+                    &ast.ann ann) -> result {
+    auto ty = node_ann_type(cx.fcx.ccx, ann);
+    auto unit_ty = ty;
+    alt (ty.struct) {
+        case (typeck.ty_vec(?t)) {
+            unit_ty = t;
+        }
+        case (_) {
+            cx.fcx.ccx.sess.bug("non-vec type in trans_vec");
+        }
+    }
+
+    auto llunit_ty = type_of(cx.fcx.ccx, unit_ty);
+    auto unit_sz = llvm.LLVMConstIntCast(llvm.LLVMSizeOf(llunit_ty),
+                                         T_int(), False);
+    auto data_sz = llvm.LLVMConstMul(C_int(_vec.len[@ast.expr](args) as int),
+                                     unit_sz);
+
+    // FIXME: pass tydesc properly.
+    auto sub = trans_upcall(cx, "upcall_new_vec", vec(data_sz, C_int(0)));
+
+    auto llty = type_of(cx.fcx.ccx, ty);
+    auto vec_val = sub.bcx.build.IntToPtr(sub.val, llty);
+    find_scope_cx(cx).cleanups += clean(bind drop_ty(_, vec_val, ty));
+
+    auto body = sub.bcx.build.GEP(vec_val, vec(C_int(0),
+                                               C_int(abi.vec_elt_data)));
+    let int i = 0;
+    for (@ast.expr e in args) {
+        auto src_res = trans_expr(sub.bcx, e);
+        auto dst_elt = sub.bcx.build.GEP(body, vec(C_int(0), C_int(i)));
+        sub = copy_ty(src_res.bcx, true, dst_elt, src_res.val, unit_ty);
+        i += 1;
+    }
+    ret res(sub.bcx, vec_val);
 }
 
 impure fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
@@ -1631,6 +1668,10 @@ impure fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
 
         case (ast.expr_cast(?e, _, ?ann)) {
             ret trans_cast(cx, e, ann);
+        }
+
+        case (ast.expr_vec(?args, ?ann)) {
+            ret trans_vec(cx, args, ann);
         }
 
         case (ast.expr_tup(?args, ?ann)) {
