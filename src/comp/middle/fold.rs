@@ -210,6 +210,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, @stmt s) -> ENV) update_env_for_stmt,
      (fn(&ENV e, @decl i) -> ENV) update_env_for_decl,
      (fn(&ENV e, @pat p) -> ENV) update_env_for_pat,
+     (fn(&ENV e, &arm a) -> ENV) update_env_for_arm,
      (fn(&ENV e, @expr x) -> ENV) update_env_for_expr,
      (fn(&ENV e, @ty t) -> ENV) update_env_for_ty,
 
@@ -455,10 +456,8 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
         case (ast.expr_alt(?expr, ?arms, ?t)) {
             auto eexpr = fold_expr(env_, fld, expr);
             let vec[ast.arm] aarms = vec();
-            for (ast.arm arm in arms) {
-                auto ppat = fold_pat(env_, fld, arm.pat);
-                auto bblock = fold_block(env_, fld, arm.block);
-                aarms += vec(rec(pat=ppat, block=bblock));
+            for (ast.arm a in arms) {
+                aarms += vec(fold_arm(env_, fld, a));
             }
             ret fld.fold_expr_alt(env_, e.span, eexpr, aarms, t);
         }
@@ -569,6 +568,13 @@ fn fold_block[ENV](&ENV env, ast_fold[ENV] fld, &block blk) -> block {
 
     // FIXME: should we reindex?
     ret respan(blk.span, rec(stmts=stmts, expr=expr, index=blk.node.index));
+}
+
+fn fold_arm[ENV](&ENV env, ast_fold[ENV] fld, &arm a) -> arm {
+    let ENV env_ = fld.update_env_for_arm(env, a);
+    auto ppat = fold_pat(env_, fld, a.pat);
+    auto bblock = fold_block(env_, fld, a.block);
+    ret rec(pat=ppat, block=bblock);
 }
 
 fn fold_arg[ENV](&ENV env, ast_fold[ENV] fld, &arg a) -> arg {
@@ -965,6 +971,10 @@ fn identity_update_env_for_decl[ENV](&ENV e, @decl d) -> ENV {
     ret e;
 }
 
+fn identity_update_env_for_arm[ENV](&ENV e, &arm a) -> ENV {
+    ret e;
+}
+
 fn identity_update_env_for_pat[ENV](&ENV e, @pat p) -> ENV {
     ret e;
 }
@@ -1057,6 +1067,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          update_env_for_stmt = bind identity_update_env_for_stmt[ENV](_,_),
          update_env_for_decl = bind identity_update_env_for_decl[ENV](_,_),
          update_env_for_pat = bind identity_update_env_for_pat[ENV](_,_),
+         update_env_for_arm = bind identity_update_env_for_arm[ENV](_,_),
          update_env_for_expr = bind identity_update_env_for_expr[ENV](_,_),
          update_env_for_ty = bind identity_update_env_for_ty[ENV](_,_),
 
