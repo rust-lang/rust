@@ -409,6 +409,10 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
                 ret ty_;
             }
 
+            case (ast.item_tag(_, _, _, ?def_id)) {
+                item_to_ty.insert(def_id, plain_ty(ty_tag(def_id)));
+            }
+
             case (ast.item_mod(_, _, _)) { fail; }
         }
     }
