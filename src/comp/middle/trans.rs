@@ -1349,6 +1349,40 @@ fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
     fail;
 }
 
+fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
+               @ast.expr idx, &ast.ann ann) -> tup(result, bool) {
+
+    auto lv = trans_lval(cx, base);
+    auto ix = trans_expr(lv._0.bcx, idx);
+    auto v = lv._0.val;
+
+    auto llunit_ty = node_type(cx.fcx.ccx, ann);
+    auto unit_sz = ix.bcx.build.IntCast(lib.llvm.llvm.LLVMSizeOf(llunit_ty),
+                                      T_int());
+    auto scaled_ix = ix.bcx.build.Mul(ix.val, unit_sz);
+
+    auto lim = ix.bcx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_fill)));
+    lim = ix.bcx.build.Load(lim);
+    auto bounds_check = ix.bcx.build.ICmp(lib.llvm.LLVMIntULT,
+                                          scaled_ix, lim);
+
+    auto fail_cx = new_sub_block_ctxt(ix.bcx, "fail");
+    auto next_cx = new_sub_block_ctxt(ix.bcx, "next");
+    ix.bcx.build.CondBr(bounds_check, next_cx.llbb, fail_cx.llbb);
+
+    // fail: bad bounds check.
+    auto V_expr_str = p2i(C_str(cx.fcx.ccx, "out-of-bounds access"));
+    auto V_filename = p2i(C_str(cx.fcx.ccx, sp.filename));
+    auto V_line = sp.lo.line as int;
+    auto args = vec(V_expr_str, V_filename, C_int(V_line));
+    auto fail_res = trans_upcall(fail_cx, "upcall_fail", args);
+    fail_res.bcx.build.Br(next_cx.llbb);
+
+    auto body = next_cx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_data)));
+    auto elt = next_cx.build.GEP(body, vec(C_int(0), ix.val));
+    ret tup(res(next_cx, elt), lv._1);
+}
+
 // The additional bool returned indicates whether it's mem (that is
 // represented as an alloca or heap, hence needs a 'load' to be used as an
 // immediate).
@@ -1360,6 +1394,9 @@ fn trans_lval(@block_ctxt cx, @ast.expr e) -> tup(result, bool) {
         }
         case (ast.expr_field(?base, ?ident, ?ann)) {
             ret trans_field(cx, e.span, base, ident, ann);
+        }
+        case (ast.expr_index(?base, ?idx, ?ann)) {
+            ret trans_index(cx, e.span, base, idx, ann);
         }
         case (_) { cx.fcx.ccx.sess.unimpl("expr variant in trans_lval"); }
     }
