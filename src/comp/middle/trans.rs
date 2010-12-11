@@ -54,7 +54,7 @@ type tag_info = rec(type_handle th,
                     mutable vec[tup(ast.def_id,arity)] variants,
                     mutable uint size);
 
-type ty_info = rec(ValueRef drop_glue);
+type ty_info = rec(ValueRef take_glue, ValueRef drop_glue);
 
 state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
@@ -520,7 +520,63 @@ fn trans_malloc(@block_ctxt cx, @typeck.ty t) -> result {
 }
 
 
-fn incr_refcnt(@block_ctxt cx, ValueRef box_ptr) -> result {
+// Glue and referent count twiddling
+
+fn get_ty_info(@crate_ctxt cx, @typeck.ty ty) -> @ty_info {
+    if (!cx.types.contains_key(ty)) {
+        make_ty_info(cx, ty);
+    }
+    ret cx.types.get(ty);
+}
+
+fn make_ty_info(@crate_ctxt cx, @typeck.ty ty) {
+    auto tg = make_take_glue;
+    auto take_glue = make_generic_glue(cx, ty, "take", tg);
+    auto dg = make_drop_glue;
+    auto drop_glue = make_generic_glue(cx, ty, "drop", dg);
+    cx.types.insert(ty, @rec(take_glue=take_glue, drop_glue=drop_glue));
+}
+
+fn make_generic_glue(@crate_ctxt cx, @typeck.ty t, str name,
+                     val_and_ty_fn helper) -> ValueRef {
+    auto arg_t;
+    if (typeck.type_is_structural(t)) {
+        arg_t = T_ptr(type_of(cx, t));
+    } else {
+        arg_t = type_of(cx, t);
+    }
+    auto llfnty = T_fn(vec(T_taskptr(), arg_t), T_void());
+
+    auto fn_name = cx.names.next("_rust_" + name) + "." + typeck.ty_to_str(t);
+    fn_name = sanitize(fn_name);
+    auto llfn = decl_fastcall_fn(cx.llmod, fn_name, llfnty);
+
+    auto fcx = new_fn_ctxt(cx, fn_name, llfn);
+    auto bcx = new_top_block_ctxt(fcx);
+
+    auto llval = llvm.LLVMGetParam(llfn, 1u);
+
+    auto res = helper(bcx, llval, t);
+
+    res.bcx.build.RetVoid();
+    ret llfn;
+}
+
+fn make_take_glue(@block_ctxt cx, ValueRef v, @typeck.ty t) -> result {
+    if (typeck.type_is_boxed(t)) {
+        ret incr_refcnt_of_boxed(cx, v);
+
+    } else if (typeck.type_is_binding(t)) {
+        cx.fcx.ccx.sess.unimpl("binding type in trans.incr_all_refcnts");
+
+    } else if (typeck.type_is_structural(t)) {
+        ret iter_structural_ty(cx, v, t,
+                               bind incr_all_refcnts(_, _, _));
+    }
+    ret res(cx, C_nil());
+}
+
+fn incr_refcnt_of_boxed(@block_ctxt cx, ValueRef box_ptr) -> result {
     auto rc_ptr = cx.build.GEP(box_ptr, vec(C_int(0),
                                             C_int(abi.box_rc_field_refcnt)));
     auto rc = cx.build.Load(rc_ptr);
@@ -539,44 +595,7 @@ fn incr_refcnt(@block_ctxt cx, ValueRef box_ptr) -> result {
     ret res(next_cx, C_nil());
 }
 
-// Glue and referent count twiddling
-
-fn get_ty_info(@crate_ctxt cx, @typeck.ty ty) -> @ty_info {
-    if (!cx.types.contains_key(ty)) {
-        make_ty_info(cx, ty);
-    }
-    ret cx.types.get(ty);
-}
-
-fn make_ty_info(@crate_ctxt cx, @typeck.ty ty) {
-    cx.types.insert(ty, @rec(drop_glue=make_drop_glue(cx, ty)));
-}
-
-fn make_drop_glue(@crate_ctxt cx, @typeck.ty t) -> ValueRef {
-    auto arg_t;
-    if (typeck.type_is_structural(t)) {
-        arg_t = T_ptr(type_of(cx, t));
-    } else {
-        arg_t = type_of(cx, t);
-    }
-    auto llfnty = T_fn(vec(T_taskptr(), arg_t), T_void());
-
-    auto fn_name = cx.names.next("_rust_drop") + "." + typeck.ty_to_str(t);
-    fn_name = sanitize(fn_name);
-    auto llfn = decl_fastcall_fn(cx.llmod, fn_name, llfnty);
-
-    auto fcx = new_fn_ctxt(cx, fn_name, llfn);
-    auto bcx = new_top_block_ctxt(fcx);
-
-    auto llval = llvm.LLVMGetParam(llfn, 1u);
-    auto res = make_drop_glue_inner(bcx, llval, t);
-
-    res.bcx.build.RetVoid();
-
-    ret llfn;
-}
-
-fn make_drop_glue_inner(@block_ctxt cx, ValueRef v, @typeck.ty t) -> result {
+fn make_drop_glue(@block_ctxt cx, ValueRef v, @typeck.ty t) -> result {
     alt (t.struct) {
         case (typeck.ty_str) {
             ret decr_refcnt_and_if_zero(cx, v,
@@ -870,17 +889,8 @@ fn iter_sequence(@block_ctxt cx,
 fn incr_all_refcnts(@block_ctxt cx,
                     ValueRef v,
                     @typeck.ty t) -> result {
-
-    if (typeck.type_is_boxed(t)) {
-        ret incr_refcnt(cx, v);
-
-    } else if (typeck.type_is_binding(t)) {
-        cx.fcx.ccx.sess.unimpl("binding type in trans.incr_all_refcnts");
-
-    } else if (typeck.type_is_structural(t)) {
-        ret iter_structural_ty(cx, v, t,
-                               bind incr_all_refcnts(_, _, _));
-    }
+    cx.build.FastCall(get_ty_info(cx.fcx.ccx, t).take_glue,
+                      vec(cx.fcx.lltaskptr, v));
     ret res(cx, C_nil());
 }
 
@@ -936,7 +946,7 @@ fn copy_ty(@block_ctxt cx,
         cx.fcx.ccx.sess.unimpl("binding type in trans.copy_ty");
 
     } else if (typeck.type_is_boxed(t)) {
-        auto r = incr_refcnt(cx, src);
+        auto r = incr_all_refcnts(cx, src, t);
         if (! is_init) {
             r = drop_ty(r.bcx, r.bcx.build.Load(dst), t);
         }
