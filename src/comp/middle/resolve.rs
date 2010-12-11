@@ -18,6 +18,7 @@ tag scope {
     scope_crate(@ast.crate);
     scope_item(@ast.item);
     scope_block(ast.block);
+    scope_arm(ast.arm);
 }
 
 type env = rec(list[scope] scopes,
@@ -120,6 +121,15 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
                     case (_) { /* fall through */  }
                 }
             }
+
+            case (scope_arm(?a)) {
+                alt (a.index.find(i)) {
+                    case (some[ast.def_id](?did)) {
+                        ret some[def](ast.def_binding(did));
+                    }
+                    case (_) { /* fall through */  }
+                }
+            }
         }
         ret none[def];
     }
@@ -189,6 +199,11 @@ fn update_env_for_block(&env e, &ast.block b) -> env {
     ret rec(scopes = cons[scope](scope_block(b), @e.scopes) with e);
 }
 
+fn update_env_for_arm(&env e, &ast.arm p) -> env {
+    log "update_env_for_arm";
+    ret rec(scopes = cons[scope](scope_arm(p), @e.scopes) with e);
+}
+
 fn resolve_crate(session.session sess, @ast.crate crate) -> @ast.crate {
 
     let fold.ast_fold[env] fld = fold.new_identity_fold[env]();
@@ -197,7 +212,8 @@ fn resolve_crate(session.session sess, @ast.crate crate) -> @ast.crate {
                 fold_ty_path = bind fold_ty_path(_,_,_,_),
                 update_env_for_crate = bind update_env_for_crate(_,_),
                 update_env_for_item = bind update_env_for_item(_,_),
-                update_env_for_block = bind update_env_for_block(_,_)
+                update_env_for_block = bind update_env_for_block(_,_),
+                update_env_for_arm = bind update_env_for_arm(_,_)
                 with *fld );
 
     auto e = rec(scopes = nil[scope],

@@ -33,6 +33,7 @@ tag def {
     def_variant(def_id /* tag */, def_id /* variant */);
     def_ty(def_id);
     def_ty_arg(def_id);
+    def_binding(def_id);
 }
 
 type crate = spanned[crate_];
@@ -124,7 +125,7 @@ tag decl_ {
     decl_item(@item);
 }
 
-type arm = rec(@pat pat, block block);
+type arm = rec(@pat pat, block block, hashmap[ident,def_id] index);
 
 type elt = rec(mutability mut, @expr expr);
 type field = rec(mutability mut, ident ident, @expr expr);

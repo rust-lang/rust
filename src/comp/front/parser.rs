@@ -817,8 +817,9 @@ impure fn parse_alt_expr(parser p) -> @ast.expr {
                 expect(p, token.LPAREN);
                 auto pat = parse_pat(p);
                 expect(p, token.RPAREN);
+                auto index = index_arm(pat);
                 auto block = parse_block(p);
-                arms += vec(rec(pat=pat, block=block));
+                arms += vec(rec(pat=pat, block=block, index=index));
             }
             case (token.RBRACE) { /* empty */ }
             case (?tok) {
@@ -1080,6 +1081,24 @@ fn index_block(vec[@ast.stmt] stmts, option.t[@ast.expr] expr) -> ast.block_ {
         }
     }
     ret rec(stmts=stmts, expr=expr, index=index);
+}
+
+fn index_arm(@ast.pat pat) -> hashmap[ast.ident,ast.def_id] {
+    fn do_index_arm(&hashmap[ast.ident,ast.def_id] index, @ast.pat pat) {
+        alt (pat.node) {
+            case (ast.pat_bind(?i, ?def_id, _)) { index.insert(i, def_id); }
+            case (ast.pat_wild(_)) { /* empty */ }
+            case (ast.pat_tag(_, ?pats, _)) {
+                for (@ast.pat p in pats) {
+                    do_index_arm(index, p);
+                }
+            }
+        }
+    }
+
+    auto index = new_str_hash[ast.def_id]();
+    do_index_arm(index, pat);
+    ret index;
 }
 
 fn stmt_to_expr(@ast.stmt stmt) -> option.t[@ast.expr] {
