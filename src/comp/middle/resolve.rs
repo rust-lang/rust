@@ -200,7 +200,6 @@ fn update_env_for_block(&env e, &ast.block b) -> env {
 }
 
 fn update_env_for_arm(&env e, &ast.arm p) -> env {
-    log "update_env_for_arm";
     ret rec(scopes = cons[scope](scope_arm(p), @e.scopes) with e);
 }
 
