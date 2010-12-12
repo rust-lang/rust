@@ -1483,7 +1483,7 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 // FIXME: this breaks aliases. We need a ty_fn_arg.
                 append[arg](arg_tys_0, rec(mode=ast.val, ty=expr_ty(a_0)));
             }
-            auto rt_0 = plain_ty(ty_var(-2));   // FIXME: broken!
+            auto rt_0 = next_ty_var(fcx);
             auto t_0 = plain_ty(ty_fn(arg_tys_0, rt_0));
 
             // Unify and write back to the function.
