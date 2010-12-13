@@ -33,6 +33,7 @@ tag def {
     def_variant(def_id /* tag */, def_id /* variant */);
     def_ty(def_id);
     def_ty_arg(def_id);
+    def_binding(def_id);
 }
 
 type crate = spanned[crate_];
@@ -43,16 +44,30 @@ type block_ = rec(vec[@stmt] stmts,
                   option.t[@expr] expr,
                   hashmap[ident,uint] index);
 
+type variant_def = tup(def_id /* tag */, def_id /* variant */);
+
 type pat = spanned[pat_];
 tag pat_ {
     pat_wild(ann);
-    pat_bind(ident, ann);
-    pat_tag(ident, vec[@pat], ann);
+    pat_bind(ident, def_id, ann);
+    pat_tag(ident, vec[@pat], option.t[variant_def], ann);
 }
 
 tag mutability {
     mut;
     imm;
+}
+
+tag layer {
+    layer_value;
+    layer_state;
+    layer_gc;
+}
+
+tag effect {
+    eff_pure;
+    eff_impure;
+    eff_unsafe;
 }
 
 tag binop {
@@ -85,6 +100,11 @@ tag unop {
     neg;
 }
 
+tag mode {
+    val;
+    alias;
+}
+
 type stmt = spanned[stmt_];
 tag stmt_ {
     stmt_decl(@decl);
@@ -107,7 +127,7 @@ tag decl_ {
     decl_item(@item);
 }
 
-type arm = rec(@pat pat, block block);
+type arm = rec(@pat pat, block block, hashmap[ident,def_id] index);
 
 type elt = rec(mutability mut, @expr expr);
 type field = rec(mutability mut, ident ident, @expr expr);
@@ -128,6 +148,7 @@ tag expr_ {
     expr_alt(@expr, vec[arm], ann);
     expr_block(block, ann);
     expr_assign(@expr /* TODO: @expr|is_lval */, @expr, ann);
+    expr_assign_op(binop, @expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_field(@expr, ident, ann);
     expr_index(@expr, @expr, ann);
     expr_name(name, option.t[def], ann);
@@ -146,7 +167,9 @@ tag lit_ {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/typeck.rs as well.
+
 type ty_field = rec(ident ident, @ty ty);
+type ty_arg = rec(mode mode, @ty ty);
 type ty = spanned[ty_];
 tag ty_ {
     ty_nil;
@@ -160,18 +183,14 @@ tag ty_ {
     ty_vec(@ty);
     ty_tup(vec[@ty]);
     ty_rec(vec[ty_field]);
-    ty_fn(vec[rec(mode mode, @ty ty)], @ty);        // TODO: effect
+    ty_fn(vec[ty_arg], @ty);        // TODO: effect
     ty_path(path, option.t[def]);
     ty_mutable(@ty);
 }
 
-tag mode {
-    val;
-    alias;
-}
-
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
-type _fn = rec(vec[arg] inputs,
+type _fn = rec(effect effect,
+               vec[arg] inputs,
                @ty output,
                block body);
 
@@ -183,10 +202,12 @@ tag mod_index_entry {
 type _mod = rec(vec[@item] items,
                 hashmap[ident,mod_index_entry] index);
 
-type variant = rec(str name, vec[@ty] args, def_id id, ann ann);
+type variant_arg = rec(@ty ty, def_id id);
+type variant = rec(str name, vec[variant_arg] args, def_id id, ann ann);
 
 type item = spanned[item_];
 tag item_ {
+    item_const(ident, @ty, @expr, def_id, ann);
     item_fn(ident, _fn, vec[ty_param], def_id, ann);
     item_mod(ident, _mod, def_id);
     item_ty(ident, @ty, vec[ty_param], def_id, ann);

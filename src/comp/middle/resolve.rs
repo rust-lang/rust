@@ -18,6 +18,7 @@ tag scope {
     scope_crate(@ast.crate);
     scope_item(@ast.item);
     scope_block(ast.block);
+    scope_arm(ast.arm);
 }
 
 type env = rec(list[scope] scopes,
@@ -29,6 +30,9 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
 
     fn found_def_item(@ast.item i) -> option.t[def] {
         alt (i.node) {
+            case (ast.item_const(_, _, _, ?id, _)) {
+                ret some[def](ast.def_const(id));
+            }
             case (ast.item_fn(_, _, _, ?id, _)) {
                 ret some[def](ast.def_fn(id));
             }
@@ -81,6 +85,7 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
                     }
                 }
             }
+            case (none[ast.mod_index_entry]) { /* fall through */ }
         }
         ret none[def];
     }
@@ -105,6 +110,7 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
                     case (ast.item_mod(_, ?m, _)) {
                         ret check_mod(i, m);
                     }
+                    case (_) { /* fall through */ }
                 }
             }
 
@@ -116,6 +122,15 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
                     case (_) { /* fall through */  }
                 }
             }
+
+            case (scope_arm(?a)) {
+                alt (a.index.find(i)) {
+                    case (some[ast.def_id](?did)) {
+                        ret some[def](ast.def_binding(did));
+                    }
+                    case (_) { /* fall through */  }
+                }
+            }
         }
         ret none[def];
     }
@@ -123,11 +138,35 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
     ret std.list.find[scope,def](e.scopes, bind in_scope(i, _));
 }
 
+fn fold_pat_tag(&env e, &span sp, ident i, vec[@ast.pat] args,
+                option.t[ast.variant_def] old_def, ann a) -> @ast.pat {
+    auto new_def;
+    alt (lookup_name(e, i)) {
+        case (some[def](?d)) {
+            alt (d) {
+                case (ast.def_variant(?did, ?vid)) {
+                    new_def = some[ast.variant_def](tup(did, vid));
+                }
+                case (_) {
+                    e.sess.err("not a tag variant: " + i);
+                    new_def = none[ast.variant_def];
+                }
+            }
+        }
+        case (none[def]) {
+            new_def = none[ast.variant_def];
+            e.sess.err("unresolved name: " + i);
+        }
+    }
+
+    ret @fold.respan[ast.pat_](sp, ast.pat_tag(i, args, new_def, a));
+}
+
 fn fold_expr_name(&env e, &span sp, &ast.name n,
                   &option.t[def] d, ann a) -> @ast.expr {
 
     if (_vec.len[@ast.ty](n.node.types) > 0u) {
-        e.sess.unimpl("resoling name expr with ty params");
+        e.sess.unimpl("resolving name expr with ty params");
     }
 
     auto d_ = lookup_name(e, n.node.ident);
@@ -150,13 +189,13 @@ fn fold_ty_path(&env e, &span sp, ast.path p,
     let uint len = _vec.len[ast.name](p);
     check (len != 0u);
     if (len > 1u) {
-        e.sess.unimpl("resoling path ty with >1 component");
+        e.sess.unimpl("resolving path ty with >1 component");
     }
 
     let ast.name n = p.(0);
 
     if (_vec.len[@ast.ty](n.node.types) > 0u) {
-        e.sess.unimpl("resoling path ty with ty params");
+        e.sess.unimpl("resolving path ty with ty params");
     }
 
     auto d_ = lookup_name(e, n.node.ident);
@@ -185,15 +224,21 @@ fn update_env_for_block(&env e, &ast.block b) -> env {
     ret rec(scopes = cons[scope](scope_block(b), @e.scopes) with e);
 }
 
+fn update_env_for_arm(&env e, &ast.arm p) -> env {
+    ret rec(scopes = cons[scope](scope_arm(p), @e.scopes) with e);
+}
+
 fn resolve_crate(session.session sess, @ast.crate crate) -> @ast.crate {
 
     let fold.ast_fold[env] fld = fold.new_identity_fold[env]();
 
-    fld = @rec( fold_expr_name = bind fold_expr_name(_,_,_,_,_),
+    fld = @rec( fold_pat_tag = bind fold_pat_tag(_,_,_,_,_,_),
+                fold_expr_name = bind fold_expr_name(_,_,_,_,_),
                 fold_ty_path = bind fold_ty_path(_,_,_,_),
                 update_env_for_crate = bind update_env_for_crate(_,_),
                 update_env_for_item = bind update_env_for_item(_,_),
-                update_env_for_block = bind update_env_for_block(_,_)
+                update_env_for_block = bind update_env_for_block(_,_),
+                update_env_for_arm = bind update_env_for_arm(_,_)
                 with *fld );
 
     auto e = rec(scopes = nil[scope],

@@ -68,6 +68,12 @@ impure fn new_parser(session.session sess,
                      npos, npos, 0, crate, rdr);
 }
 
+impure fn unexpected(parser p, token.token t) {
+    let str s = "unexpected token: ";
+    s += token.to_str(t);
+    p.err(s);
+}
+
 impure fn expect(parser p, token.token t) {
     if (p.peek() == t) {
         p.bump();
@@ -140,6 +146,7 @@ impure fn parse_ty(parser p) -> @ast.ty {
     auto hi = lo;
     let ast.ty_ t;
     alt (p.peek()) {
+        case (token.BOOL) { p.bump(); t = ast.ty_bool; }
         case (token.INT) { p.bump(); t = ast.ty_int; }
         case (token.UINT) { p.bump(); t = ast.ty_int; }
         case (token.STR) { p.bump(); t = ast.ty_str; }
@@ -492,10 +499,15 @@ impure fn parse_path_expr(parser p) -> @ast.expr {
 
                     case (token.LPAREN) {
                         p.bump();
-                        auto ix = parse_bottom_expr(p);
+                        auto ix = parse_expr(p);
                         hi = ix.span;
+                        expect(p, token.RPAREN);
                         auto e_ = ast.expr_index(e, ix, ast.ann_none);
                         e = @spanned(lo, hi, e_);
+                    }
+
+                    case (?t) {
+                        unexpected(p, t);
                     }
                 }
             }
@@ -714,6 +726,26 @@ impure fn parse_assign_expr(parser p) -> @ast.expr {
             ret @spanned(lo, rhs.span,
                          ast.expr_assign(lhs, rhs, ast.ann_none));
         }
+        case (token.BINOPEQ(?op)) {
+            p.bump();
+            auto rhs = parse_expr(p);
+            auto aop = ast.add;
+            alt (op) {
+                case (token.PLUS) { aop = ast.add; }
+                case (token.MINUS) { aop = ast.sub; }
+                case (token.STAR) { aop = ast.mul; }
+                case (token.SLASH) { aop = ast.div; }
+                case (token.PERCENT) { aop = ast.rem; }
+                case (token.CARET) { aop = ast.bitxor; }
+                case (token.AND) { aop = ast.bitand; }
+                case (token.OR) { aop = ast.bitor; }
+                case (token.LSL) { aop = ast.lsl; }
+                case (token.LSR) { aop = ast.lsr; }
+                case (token.ASR) { aop = ast.asr; }
+            }
+            ret @spanned(lo, rhs.span,
+                         ast.expr_assign_op(aop, lhs, rhs, ast.ann_none));
+        }
         case (_) { /* fall through */ }
     }
     ret lhs;
@@ -785,8 +817,9 @@ impure fn parse_alt_expr(parser p) -> @ast.expr {
                 expect(p, token.LPAREN);
                 auto pat = parse_pat(p);
                 expect(p, token.RPAREN);
+                auto index = index_arm(pat);
                 auto block = parse_block(p);
-                arms += vec(rec(pat=pat, block=block));
+                arms += vec(rec(pat=pat, block=block, index=index));
             }
             case (token.RBRACE) { /* empty */ }
             case (?tok) {
@@ -851,7 +884,7 @@ impure fn parse_pat(parser p) -> @ast.pat {
             alt (p.peek()) {
                 case (token.IDENT(?id)) {
                     p.bump();
-                    pat = ast.pat_bind(id, ast.ann_none);
+                    pat = ast.pat_bind(id, p.next_def_id(), ast.ann_none);
                 }
                 case (?tok) {
                     p.err("expected identifier after '?' in pattern but " +
@@ -873,7 +906,7 @@ impure fn parse_pat(parser p) -> @ast.pat {
                 case (_) { args = vec(); }
             }
 
-            pat = ast.pat_tag(id, args, ast.ann_none);
+            pat = ast.pat_tag(id, args, none[ast.variant_def], ast.ann_none);
         }
         case (?tok) {
             p.err("expected pattern but found " + token.to_str(tok));
@@ -1050,6 +1083,24 @@ fn index_block(vec[@ast.stmt] stmts, option.t[@ast.expr] expr) -> ast.block_ {
     ret rec(stmts=stmts, expr=expr, index=index);
 }
 
+fn index_arm(@ast.pat pat) -> hashmap[ast.ident,ast.def_id] {
+    fn do_index_arm(&hashmap[ast.ident,ast.def_id] index, @ast.pat pat) {
+        alt (pat.node) {
+            case (ast.pat_bind(?i, ?def_id, _)) { index.insert(i, def_id); }
+            case (ast.pat_wild(_)) { /* empty */ }
+            case (ast.pat_tag(_, ?pats, _, _)) {
+                for (@ast.pat p in pats) {
+                    do_index_arm(index, p);
+                }
+            }
+        }
+    }
+
+    auto index = new_str_hash[ast.def_id]();
+    do_index_arm(index, pat);
+    ret index;
+}
+
 fn stmt_to_expr(@ast.stmt stmt) -> option.t[@ast.expr] {
     alt (stmt.node) {
         case (ast.stmt_expr(?e)) { ret some[@ast.expr](e); }
@@ -1080,6 +1131,8 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_alt(_,_,_))      { ret false; }
                 case (ast.expr_block(_,_))      { ret false; }
                 case (ast.expr_assign(_,_,_))   { ret true; }
+                case (ast.expr_assign_op(_,_,_,_))
+                                                { ret true; }
                 case (ast.expr_field(_,_,_))    { ret true; }
                 case (ast.expr_index(_,_,_))    { ret true; }
                 case (ast.expr_name(_,_,_))     { ret true; }
@@ -1161,7 +1214,7 @@ impure fn parse_ty_params(parser p) -> vec[ast.ty_param] {
     ret ty_params;
 }
 
-impure fn parse_item_fn(parser p) -> @ast.item {
+impure fn parse_item_fn(parser p, ast.effect eff) -> @ast.item {
     auto lo = p.get_span();
     expect(p, token.FN);
     auto id = parse_ident(p);
@@ -1187,7 +1240,8 @@ impure fn parse_item_fn(parser p) -> @ast.item {
 
     auto body = parse_block(p);
 
-    let ast._fn f = rec(inputs = inputs.node,
+    let ast._fn f = rec(effect = eff,
+                        inputs = inputs.node,
                         output = output,
                         body = body);
 
@@ -1205,6 +1259,9 @@ impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
 
         // Index the item.
         alt (item.node) {
+            case (ast.item_const(?id, _, _, _, _)) {
+                index.insert(id, ast.mie_item(u));
+            }
             case (ast.item_fn(?id, _, _, _, _)) {
                 index.insert(id, ast.mie_item(u));
             }
@@ -1229,6 +1286,19 @@ impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
     }
     ret rec(items=items, index=index);
  }
+
+impure fn parse_item_const(parser p) -> @ast.item {
+    auto lo = p.get_span();
+    expect(p, token.CONST);
+    auto ty = parse_ty(p);
+    auto id = parse_ident(p);
+    expect(p, token.EQ);
+    auto e = parse_expr(p);
+    auto hi = p.get_span();
+    expect(p, token.SEMI);
+    auto item = ast.item_const(id, ty, e, p.next_def_id(), ast.ann_none);
+    ret @spanned(lo, hi, item);
+}
 
 impure fn parse_item_mod(parser p) -> @ast.item {
     auto lo = p.get_span();
@@ -1270,19 +1340,19 @@ impure fn parse_item_tag(parser p) -> @ast.item {
             case (token.IDENT(?name)) {
                 p.bump();
 
-                auto args;
+                let vec[ast.variant_arg] args = vec();
                 alt (p.peek()) {
                     case (token.LPAREN) {
                         auto f = parse_ty;
-                        auto tys = parse_seq[@ast.ty](token.LPAREN,
-                                                      token.RPAREN,
-                                                      some(token.COMMA),
-                                                      f, p);
-                        args = tys.node;
+                        auto arg_tys = parse_seq[@ast.ty](token.LPAREN,
+                                                          token.RPAREN,
+                                                          some(token.COMMA),
+                                                          f, p);
+                        for (@ast.ty ty in arg_tys.node) {
+                            args += vec(rec(ty=ty, id=p.next_def_id()));
+                        }
                     }
-                    case (_) {
-                        args = vec();
-                    }
+                    case (_) { /* empty */ }
                 }
 
                 expect(p, token.SEMI);
@@ -1305,18 +1375,67 @@ impure fn parse_item_tag(parser p) -> @ast.item {
     ret @spanned(lo, hi, item);
 }
 
-impure fn parse_item(parser p) -> @ast.item {
+impure fn parse_layer(parser p) -> ast.layer {
     alt (p.peek()) {
+        case (token.STATE) {
+            p.bump();
+            ret ast.layer_state;
+        }
+        case (token.GC) {
+            p.bump();
+            ret ast.layer_gc;
+        }
+        case (_) {
+            ret ast.layer_value;
+        }
+    }
+    fail;
+}
+
+
+impure fn parse_effect(parser p) -> ast.effect {
+    alt (p.peek()) {
+        case (token.IMPURE) {
+            p.bump();
+            ret ast.eff_impure;
+        }
+        case (token.UNSAFE) {
+            p.bump();
+            ret ast.eff_unsafe;
+        }
+        case (_) {
+            ret ast.eff_pure;
+        }
+    }
+    fail;
+}
+
+impure fn parse_item(parser p) -> @ast.item {
+    let ast.effect eff = parse_effect(p);
+    let ast.layer lyr = parse_layer(p);
+
+    alt (p.peek()) {
+        case (token.CONST) {
+            check (eff == ast.eff_pure);
+            check (lyr == ast.layer_value);
+            ret parse_item_const(p);
+        }
+
         case (token.FN) {
-            ret parse_item_fn(p);
+            check (lyr == ast.layer_value);
+            ret parse_item_fn(p, eff);
         }
         case (token.MOD) {
+            check (eff == ast.eff_pure);
+            check (lyr == ast.layer_value);
             ret parse_item_mod(p);
         }
         case (token.TYPE) {
+            check (eff == ast.eff_pure);
             ret parse_item_type(p);
         }
         case (token.TAG) {
+            check (eff == ast.eff_pure);
             ret parse_item_tag(p);
         }
         case (?t) {

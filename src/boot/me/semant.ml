@@ -192,7 +192,7 @@ type ctxt =
 
       ctxt_rty_cache: (Ast.ty,Il.referent_ty) Hashtbl.t;
 
-      ctxt_type_stratum_cache: (Ast.ty,Ast.stratum) Hashtbl.t;
+      ctxt_type_layer_cache: (Ast.ty,Ast.layer) Hashtbl.t;
       ctxt_type_points_to_heap_cache: (Ast.ty,bool) Hashtbl.t;
       ctxt_type_is_structured_cache: (Ast.ty,bool) Hashtbl.t;
       ctxt_type_contains_chan_cache: (Ast.ty,bool) Hashtbl.t;
@@ -298,7 +298,7 @@ let new_ctxt sess abi crate =
     ctxt_curr_path = Stack.create ();
 
     ctxt_rty_cache = Hashtbl.create 0;
-    ctxt_type_stratum_cache = Hashtbl.create 0;
+    ctxt_type_layer_cache = Hashtbl.create 0;
     ctxt_type_points_to_heap_cache = Hashtbl.create 0;
     ctxt_type_is_structured_cache = Hashtbl.create 0;
     ctxt_type_contains_chan_cache = Hashtbl.create 0;
@@ -731,7 +731,7 @@ type ('ty, 'tys, 'slot, 'slots, 'tag) ty_fold =
       ty_fold_vec : 'ty -> 'ty;
       ty_fold_rec : (Ast.ident * 'ty) array -> 'ty;
       ty_fold_fn : (('slots * Ast.constrs * 'slot) * Ast.ty_fn_aux) -> 'ty;
-      ty_fold_obj : (Ast.stratum
+      ty_fold_obj : (Ast.layer
                      * (Ast.ident, (('slots * Ast.constrs * 'slot) *
                                       Ast.ty_fn_aux)) Hashtbl.t) -> 'ty;
       ty_fold_chan : 'ty -> 'ty;
@@ -739,7 +739,7 @@ type ('ty, 'tys, 'slot, 'slots, 'tag) ty_fold =
       ty_fold_task : unit -> 'ty;
       ty_fold_native : opaque_id -> 'ty;
       ty_fold_tag : 'tag -> 'ty;
-      ty_fold_param : (int * Ast.stratum) -> 'ty;
+      ty_fold_param : (int * Ast.layer) -> 'ty;
       ty_fold_named : Ast.name -> 'ty;
       ty_fold_type : unit -> 'ty;
       ty_fold_box : 'ty -> 'ty;
@@ -1253,30 +1253,30 @@ let lower_effect_of x y =
   if effect_le x y then x else y
 ;;
 
-let stratum_le x y =
+let layer_le x y =
   match (x,y) with
-      (Ast.STRAT_gc, _) -> true
-    | (Ast.STRAT_state, Ast.STRAT_value) -> true
-    | (Ast.STRAT_state, Ast.STRAT_state) -> true
-    | (Ast.STRAT_value, Ast.STRAT_value) -> true
+      (Ast.LAYER_gc, _) -> true
+    | (Ast.LAYER_state, Ast.LAYER_value) -> true
+    | (Ast.LAYER_state, Ast.LAYER_state) -> true
+    | (Ast.LAYER_value, Ast.LAYER_value) -> true
     | _ -> false
 ;;
 
-let lower_stratum_of x y =
-  if stratum_le x y then x else y
+let lower_layer_of x y =
+  if layer_le x y then x else y
 ;;
 
-let type_stratum (cx:ctxt) (t:Ast.ty) : Ast.stratum =
-  let fold_mutable _ = Ast.STRAT_state in
-  let fold = associative_binary_op_ty_fold Ast.STRAT_value lower_stratum_of in
+let type_layer (cx:ctxt) (t:Ast.ty) : Ast.layer =
+  let fold_mutable _ = Ast.LAYER_state in
+  let fold = associative_binary_op_ty_fold Ast.LAYER_value lower_layer_of in
   let fold = { fold with ty_fold_mutable = fold_mutable } in
-    htab_search_or_add cx.ctxt_type_stratum_cache t
+    htab_search_or_add cx.ctxt_type_layer_cache t
       (fun _ -> fold_ty cx fold t)
 ;;
 
 
 let type_has_state (cx:ctxt) (t:Ast.ty) : bool =
-  stratum_le (type_stratum cx t) Ast.STRAT_state
+  layer_le (type_layer cx t) Ast.LAYER_state
 ;;
 
 
@@ -1640,7 +1640,7 @@ let ty_fn_of_fn (fn:Ast.fn) : Ast.ty_fn =
 ;;
 
 let ty_obj_of_obj (obj:Ast.obj) : Ast.ty_obj =
-  (obj.Ast.obj_stratum,
+  (obj.Ast.obj_layer,
    htab_map obj.Ast.obj_fns (fun i f -> (i, ty_fn_of_fn f.node)))
 ;;
 

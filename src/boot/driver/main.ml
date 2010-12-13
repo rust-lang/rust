@@ -38,7 +38,7 @@ let (sess:Session.sess) =
     Session.sess_log_resolve = false;
     Session.sess_log_type = false;
     Session.sess_log_simplify = false;
-    Session.sess_log_stratum = false;
+    Session.sess_log_layer = false;
     Session.sess_log_effect = false;
     Session.sess_log_typestate = false;
     Session.sess_log_loop = false;
@@ -180,8 +180,8 @@ let argspecs =
        "-ltype"     "log type checking");
     (flag (fun _ -> sess.Session.sess_log_simplify <- true)
        "-lsimplify" "log simplification");
-    (flag (fun _ -> sess.Session.sess_log_stratum <- true)
-       "-lstratum"  "log stratum checking");
+    (flag (fun _ -> sess.Session.sess_log_layer <- true)
+       "-llayer"  "log layer checking");
     (flag (fun _ -> sess.Session.sess_log_effect <- true)
        "-leffect"   "log effect checking");
     (flag (fun _ -> sess.Session.sess_log_typestate <- true)
@@ -396,7 +396,7 @@ let main_pipeline _ =
          Simplify.process_crate;
          Type.process_crate;
          Typestate.process_crate;
-         Stratum.process_crate;
+         Layer.process_crate;
          Effect.process_crate;
          Loop.process_crate;
          Alias.process_crate;

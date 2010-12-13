@@ -104,7 +104,7 @@ let rec generate_mod_item (mis:mod_items) (cx:ctxt) : unit =
     match Random.int 2 with
         0 ->
           let ty = generate_ty cx in
-          let st = Ast.STRAT_value in
+          let st = Ast.LAYER_value in
             decl (MOD_ITEM_type (st, ty))
       | _ ->
           let mis' = Hashtbl.create 0 in

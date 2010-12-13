@@ -1,19 +1,19 @@
 open Semant;;
 open Common;;
 
-let log cx = Session.log "stratum"
-  (should_log cx cx.ctxt_sess.Session.sess_log_stratum)
+let log cx = Session.log "layer"
+  (should_log cx cx.ctxt_sess.Session.sess_log_layer)
   cx.ctxt_sess.Session.sess_log_out
 ;;
 
 let iflog cx thunk =
-  if (should_log cx cx.ctxt_sess.Session.sess_log_stratum)
+  if (should_log cx cx.ctxt_sess.Session.sess_log_layer)
   then thunk ()
   else ()
 ;;
 
 
-let state_stratum_checking_visitor
+let state_layer_checking_visitor
     (cx:ctxt)
     (inner:Walk.visitor)
     : Walk.visitor =
@@ -90,12 +90,12 @@ let process_crate
     : unit =
   let passes =
     [|
-      (state_stratum_checking_visitor cx
+      (state_layer_checking_visitor cx
          Walk.empty_visitor);
     |]
   in
-    run_passes cx "stratum" passes
-      cx.ctxt_sess.Session.sess_log_stratum log crate
+    run_passes cx "layer" passes
+      cx.ctxt_sess.Session.sess_log_layer log crate
 ;;
 
 (*

@@ -18,11 +18,11 @@ import std.option.some;
 
 type ty_table = hashmap[ast.def_id, @ty];
 type crate_ctxt = rec(session.session sess,
-                      @ty_table item_types,
-                      mutable int next_var_id);
+                      @ty_table item_types);
 
 type fn_ctxt = rec(@ty ret_ty,
                    @ty_table locals,
+                   mutable int next_var_id,
                    @crate_ctxt ccx);
 
 type arg = rec(ast.mode mode, @ty ty);
@@ -353,62 +353,71 @@ fn type_err_to_str(&type_err err) -> str {
 // AST, along with a table mapping item IDs to their types.
 
 fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
-    fn trans_ty_item_id_to_ty(@hashmap[ast.def_id,@ast.item] id_to_ty_item,
-                              @ty_table item_to_ty,
-                              ast.def_id id) -> @ty {
+
+    type ty_item_table = hashmap[ast.def_id,@ast.item];
+
+    fn getter(@ty_item_table id_to_ty_item,
+              @ty_table item_to_ty,
+              ast.def_id id) -> @ty {
         check (id_to_ty_item.contains_key(id));
         auto item = id_to_ty_item.get(id);
-        ret trans_ty_item_to_ty(id_to_ty_item, item_to_ty, item);
+        ret ty_of_item(id_to_ty_item, item_to_ty, item);
     }
 
-    fn trans_fn_arg_to_ty(@hashmap[ast.def_id,@ast.item] id_to_ty_item,
-                          @ty_table item_to_ty,
-                          &ast.arg a) -> arg {
-        auto f = bind trans_ty_item_id_to_ty(id_to_ty_item, item_to_ty, _);
+    fn ty_of_arg(@ty_item_table id_to_ty_item,
+                 @ty_table item_to_ty,
+                 &ast.arg a) -> arg {
+        auto f = bind getter(id_to_ty_item, item_to_ty, _);
         ret rec(mode=a.mode, ty=ast_ty_to_ty(f, a.ty));
     }
 
-    fn trans_ty_item_to_ty(@hashmap[ast.def_id,@ast.item] id_to_ty_item,
-                           @ty_table item_to_ty,
-                           @ast.item it) -> @ty {
+    fn ty_of_item(@ty_item_table id_to_ty_item,
+                  @ty_table item_to_ty,
+                  @ast.item it) -> @ty {
+
+        auto get = bind getter(id_to_ty_item, item_to_ty, _);
+        auto convert = bind ast_ty_to_ty(get, _);
+
         alt (it.node) {
+
+            case (ast.item_const(?ident, ?t, _, ?def_id, _)) {
+                item_to_ty.insert(def_id, convert(t));
+            }
+
             case (ast.item_fn(?ident, ?fn_info, _, ?def_id, _)) {
                 // TODO: handle ty-params
 
-                auto f = bind trans_fn_arg_to_ty(id_to_ty_item, item_to_ty,
-                                                 _);
+                auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
                 auto input_tys = _vec.map[ast.arg,arg](f, fn_info.inputs);
-
-                auto g = bind trans_ty_item_id_to_ty(id_to_ty_item,
-                                                     item_to_ty, _);
-                auto output_ty = ast_ty_to_ty(g, fn_info.output);
+                auto output_ty = convert(fn_info.output);
 
                 auto t_fn = plain_ty(ty_fn(input_tys, output_ty));
                 item_to_ty.insert(def_id, t_fn);
                 ret t_fn;
             }
 
-            case (ast.item_ty(?ident, ?referent_ty, _, ?def_id, _)) {
+            case (ast.item_ty(?ident, ?ty, _, ?def_id, _)) {
                 if (item_to_ty.contains_key(def_id)) {
                     // Avoid repeating work.
-                    check (item_to_ty.contains_key(def_id));
                     ret item_to_ty.get(def_id);
                 }
 
                 // Tell ast_ty_to_ty() that we want to perform a recursive
                 // call to resolve any named types.
-                auto f = bind trans_ty_item_id_to_ty(id_to_ty_item,
-                                                     item_to_ty, _);
-                auto ty = ast_ty_to_ty(f, referent_ty);
-                item_to_ty.insert(def_id, ty);
-                ret ty;
+                auto ty_ = convert(ty);
+                item_to_ty.insert(def_id, ty_);
+                ret ty_;
+            }
+
+            case (ast.item_tag(_, _, _, ?def_id)) {
+                item_to_ty.insert(def_id, plain_ty(ty_tag(def_id)));
             }
 
             case (ast.item_mod(_, _, _)) { fail; }
         }
     }
 
-    fn get_tag_variant_types(@hashmap[ast.def_id,@ast.item] id_to_ty_item,
+    fn get_tag_variant_types(@ty_item_table id_to_ty_item,
                              @ty_table item_to_ty,
                              &ast.def_id tag_id,
                              &vec[ast.variant] variants) -> vec[ast.variant] {
@@ -418,24 +427,23 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
             // Nullary tag constructors get turned into constants; n-ary tag
             // constructors get turned into functions.
             auto result_ty;
-            if (_vec.len[@ast.ty](variant.args) == 0u) {
+            if (_vec.len[ast.variant_arg](variant.args) == 0u) {
                 result_ty = plain_ty(ty_tag(tag_id));
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
                 // should be called to resolve named types.
-                auto f = bind trans_ty_item_id_to_ty(id_to_ty_item,
-                                                     item_to_ty, _);
+                auto f = bind getter(id_to_ty_item, item_to_ty, _);
 
                 let vec[arg] args = vec();
-                for (@ast.ty arg_ast_ty in variant.args) {
-                    auto arg_ty = ast_ty_to_ty(f, arg_ast_ty);
+                for (ast.variant_arg va in variant.args) {
+                    auto arg_ty = ast_ty_to_ty(f, va.ty);
                     args += vec(rec(mode=ast.alias, ty=arg_ty));
                 }
-                result_ty = plain_ty(ty_fn(args, plain_ty(ty_tag(tag_id)))); 
+                result_ty = plain_ty(ty_fn(args, plain_ty(ty_tag(tag_id))));
             }
 
             item_to_ty.insert(variant.id, result_ty);
-            
+
             auto variant_t = rec(ann=ast.ann_type(result_ty) with variant);
             result += vec(variant_t);
         }
@@ -446,50 +454,96 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
     // First pass: collect all type item IDs.
     auto module = crate.node.module;
     auto id_to_ty_item = @common.new_def_hash[@ast.item]();
-    for (@ast.item item in module.items) {
-        alt (item.node) {
+    fn collect(&@ty_item_table id_to_ty_item, @ast.item i)
+        -> @ty_item_table {
+        alt (i.node) {
             case (ast.item_ty(_, _, _, ?def_id, _)) {
-                id_to_ty_item.insert(def_id, item);
+                id_to_ty_item.insert(def_id, i);
             }
             case (_) { /* empty */ }
         }
+        ret id_to_ty_item;
     }
+    auto fld_1 = fold.new_identity_fold[@ty_item_table]();
+    fld_1 = @rec(update_env_for_item = bind collect(_, _)
+                 with *fld_1);
+    fold.fold_crate[@ty_item_table](id_to_ty_item, fld_1, crate);
+
+
 
     // Second pass: translate the types of all items.
-    auto item_to_ty = @common.new_def_hash[@ty]();
-    let vec[@ast.item] items_t = vec();
-    for (@ast.item it in module.items) {
-        let ast.item_ result;
-        alt (it.node) {
-            case (ast.item_fn(?ident, ?fn_info, ?tps, ?def_id, _)) {
-                // TODO: type-params
+    let @ty_table item_to_ty = @common.new_def_hash[@ty]();
 
-                auto t = trans_ty_item_to_ty(id_to_ty_item, item_to_ty, it);
-                result = ast.item_fn(ident, fn_info, tps, def_id,
-                                     ast.ann_type(t));
-            }
-            case (ast.item_ty(?ident, ?referent_ty, ?tps, ?def_id, _)) {
-                auto t = trans_ty_item_to_ty(id_to_ty_item, item_to_ty, it);
-                auto ann = ast.ann_type(t);
-                result = ast.item_ty(ident, referent_ty, tps, def_id, ann);
-            }
+    type env = rec(@ty_item_table id_to_ty_item,
+                   @ty_table item_to_ty);
+    let @env e = @rec(id_to_ty_item=id_to_ty_item,
+                      item_to_ty=item_to_ty);
+
+    fn convert(&@env e, @ast.item i) -> @env {
+        alt (i.node) {
             case (ast.item_mod(_, _, _)) {
-                result = it.node;
+                // ignore item_mod, it has no type.
             }
-            case (ast.item_tag(?ident, ?variants, ?tps, ?tag_id)) {
-                auto variants_t = get_tag_variant_types(id_to_ty_item,
-                                                        item_to_ty,
-                                                        tag_id,
-                                                        variants);
-                result = ast.item_tag(ident, variants_t, tps, tag_id);
+            case (_) {
+                // This call populates the ty_table with the converted type of
+                // the item in passing; we don't need to do anything else.
+                ty_of_item(e.id_to_ty_item, e.item_to_ty, i);
             }
         }
-        items_t += vec(@fold.respan[ast.item_](it.span, result));
+        ret e;
     }
 
-    auto module_t = rec(items=items_t, index=module.index);
-    ret tup(@fold.respan[ast.crate_](crate.span, rec(module=module_t)),
-            item_to_ty);
+    fn fold_item_const(&@env e, &span sp, ast.ident i,
+                       @ast.ty t, @ast.expr ex,
+                       ast.def_id id, ast.ann a) -> @ast.item {
+        check (e.item_to_ty.contains_key(id));
+        auto ty = e.item_to_ty.get(id);
+        auto item = ast.item_const(i, t, ex, id,
+                                   ast.ann_type(ty));
+        ret @fold.respan[ast.item_](sp, item);
+    }
+
+    fn fold_item_fn(&@env e, &span sp, ast.ident i,
+                    &ast._fn f, vec[ast.ty_param] ty_params,
+                    ast.def_id id, ast.ann a) -> @ast.item {
+        check (e.item_to_ty.contains_key(id));
+        auto ty = e.item_to_ty.get(id);
+        auto item = ast.item_fn(i, f, ty_params, id,
+                                ast.ann_type(ty));
+        ret @fold.respan[ast.item_](sp, item);
+    }
+
+    fn fold_item_ty(&@env e, &span sp, ast.ident i,
+                    @ast.ty t, vec[ast.ty_param] ty_params,
+                    ast.def_id id, ast.ann a) -> @ast.item {
+        check (e.item_to_ty.contains_key(id));
+        auto ty = e.item_to_ty.get(id);
+        auto item = ast.item_ty(i, t, ty_params, id,
+                                ast.ann_type(ty));
+        ret @fold.respan[ast.item_](sp, item);
+    }
+
+    fn fold_item_tag(&@env e, &span sp, ast.ident i,
+                     vec[ast.variant] variants,
+                     vec[ast.ty_param] ty_params,
+                     ast.def_id id) -> @ast.item {
+        auto variants_t = get_tag_variant_types(e.id_to_ty_item,
+                                                e.item_to_ty,
+                                                id, variants);
+        auto item = ast.item_tag(i, variants_t, ty_params, id);
+        ret @fold.respan[ast.item_](sp, item);
+    }
+
+    auto fld_2 = fold.new_identity_fold[@env]();
+    fld_2 =
+        @rec(update_env_for_item = bind convert(_,_),
+             fold_item_const = bind fold_item_const(_,_,_,_,_,_,_),
+             fold_item_fn    = bind fold_item_fn(_,_,_,_,_,_,_),
+             fold_item_ty    = bind fold_item_ty(_,_,_,_,_,_,_),
+             fold_item_tag   = bind fold_item_tag(_,_,_,_,_,_)
+             with *fld_2);
+    auto crate_ = fold.fold_crate[@env](e, fld_2, crate);
+    ret tup(crate_, item_to_ty);
 }
 
 // Expression utilities
@@ -533,6 +587,15 @@ fn field_idx(session.session sess, &span sp,
     }
     sess.span_err(sp, "unknown field '" + id + "' of record");
     fail;
+}
+
+fn is_lval(@ast.expr expr) -> bool {
+    alt (expr.node) {
+        case (ast.expr_field(_,_,_))    { ret true;  }
+        case (ast.expr_index(_,_,_))    { ret true;  }
+        case (ast.expr_name(_,_,_))     { ret true;  }
+        case (_)                        { ret false; }
+    }
 }
 
 // Type utilities
@@ -595,6 +658,31 @@ fn type_is_scalar(@ty t) -> bool {
     fail;
 }
 
+
+fn type_is_integral(@ty t) -> bool {
+    alt (t.struct) {
+        case (ty_int) { ret true; }
+        case (ty_uint) { ret true; }
+        case (ty_machine(?m)) {
+            alt (m) {
+                case (common.ty_i8) { ret true; }
+                case (common.ty_i16) { ret true; }
+                case (common.ty_i32) { ret true; }
+                case (common.ty_i64) { ret true; }
+
+                case (common.ty_u8) { ret true; }
+                case (common.ty_u16) { ret true; }
+                case (common.ty_u32) { ret true; }
+                case (common.ty_u64) { ret true; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_char) { ret true; }
+        case (_) { ret false; }
+    }
+    fail;
+}
+
 fn type_is_fp(@ty t) -> bool {
     alt (t.struct) {
         case (ty_machine(?tm)) {
@@ -630,6 +718,17 @@ fn plain_ty(&sty st) -> @ty {
     ret @rec(struct=st, mut=ast.imm, cname=none[str]);
 }
 
+fn hash_ty(&@ty t) -> uint {
+    ret _str.hash(ty_to_str(t));
+}
+
+fn eq_ty(&@ty a, &@ty b) -> bool {
+    // FIXME: this is gross, but I think it's safe, and I don't think writing
+    // a giant function to handle all the cases is necessary when structural
+    // equality will someday save the day.
+    ret _str.eq(ty_to_str(a), ty_to_str(b));
+}
+
 fn ann_to_type(&ast.ann ann) -> @ty {
     alt (ann) {
         case (ast.ann_none) {
@@ -660,6 +759,15 @@ fn block_ty(&ast.block b) -> @ty {
     }
 }
 
+fn pat_ty(@ast.pat pat) -> @ty {
+    alt (pat.node) {
+        case (ast.pat_wild(?ann))           { ret ann_to_type(ann); }
+        case (ast.pat_bind(_, _, ?ann))     { ret ann_to_type(ann); }
+        case (ast.pat_tag(_, _, _, ?ann))   { ret ann_to_type(ann); }
+    }
+    fail;   // not reached
+}
+
 fn expr_ty(@ast.expr expr) -> @ty {
     alt (expr.node) {
         case (ast.expr_vec(_, ?ann))          { ret ann_to_type(ann); }
@@ -673,8 +781,11 @@ fn expr_ty(@ast.expr expr) -> @ty {
         case (ast.expr_if(_, _, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_while(_, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_do_while(_, _, ?ann))  { ret ann_to_type(ann); }
+        case (ast.expr_alt(_, _, ?ann))       { ret ann_to_type(ann); }
         case (ast.expr_block(_, ?ann))        { ret ann_to_type(ann); }
         case (ast.expr_assign(_, _, ?ann))    { ret ann_to_type(ann); }
+        case (ast.expr_assign_op(_, _, _, ?ann))
+                                              { ret ann_to_type(ann); }
         case (ast.expr_field(_, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_index(_, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_name(_, _, ?ann))      { ret ann_to_type(ann); }
@@ -745,6 +856,20 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
             case (ty_machine(_)) { ret struct_cmp(expected, actual); }
             case (ty_char)       { ret struct_cmp(expected, actual); }
             case (ty_str)        { ret struct_cmp(expected, actual); }
+
+            case (ty_tag(?expected_id)) {
+                alt (actual.struct) {
+                    case (ty_tag(?actual_id)) {
+                        if (expected_id._0 == actual_id._0 &&
+                                expected_id._1 == actual_id._1) {
+                            ret ures_ok(expected);
+                        }
+                    }
+                    case (_) { /* fall through */ }
+                }
+
+                ret ures_err(terr_mismatch, expected, actual);
+            }
 
             case (ty_box(?expected_sub)) {
                 alt (actual.struct) {
@@ -1046,6 +1171,64 @@ fn are_compatible(&fn_ctxt fcx, @ty expected, @ty actual) -> bool {
     }
 }
 
+// Type unification over typed patterns. Note that the pattern that you pass
+// to this function must have been passed to check_pat() first.
+//
+// TODO: enforce this via a predicate.
+
+fn demand_pat(&fn_ctxt fcx, @ty expected, @ast.pat pat) -> @ast.pat {
+    auto p_1 = ast.pat_wild(ast.ann_none);  // FIXME: typestate botch
+
+    alt (pat.node) {
+        case (ast.pat_wild(?ann)) {
+            auto t = demand(fcx, pat.span, expected, ann_to_type(ann));
+            p_1 = ast.pat_wild(ast.ann_type(t));
+        }
+        case (ast.pat_bind(?id, ?did, ?ann)) {
+            auto t = demand(fcx, pat.span, expected, ann_to_type(ann));
+            p_1 = ast.pat_bind(id, did, ast.ann_type(t));
+        }
+        case (ast.pat_tag(?id, ?subpats, ?vdef_opt, ?ann)) {
+            auto t = demand(fcx, pat.span, expected, ann_to_type(ann));
+
+            // The type of the tag isn't enough; we also have to get the type
+            // of the variant, which is either a tag type in the case of
+            // nullary variants or a function type in the case of n-ary
+            // variants.
+            //
+            // TODO: When we have type-parametric tags, this will get a little
+            // trickier. Basically, we have to instantiate the variant type we
+            // acquire here with the type parameters provided to us by
+            // "expected".
+
+            auto vdef = option.get[ast.variant_def](vdef_opt);
+            auto variant_ty = fcx.ccx.item_types.get(vdef._1);
+
+            auto subpats_len = _vec.len[@ast.pat](subpats);
+            alt (variant_ty.struct) {
+                case (ty_tag(_)) {
+                    // Nullary tag variant.
+                    check (subpats_len == 0u);
+                    p_1 = ast.pat_tag(id, subpats, vdef_opt, ast.ann_type(t));
+                }
+                case (ty_fn(?args, ?tag_ty)) {
+                    let vec[@ast.pat] new_subpats = vec();
+                    auto i = 0u;
+                    for (arg a in args) {
+                        auto new_subpat = demand_pat(fcx, a.ty, subpats.(i));
+                        new_subpats += vec(new_subpat);
+                        i += 1u;
+                    }
+                    p_1 = ast.pat_tag(id, new_subpats, vdef_opt,
+                                      ast.ann_type(tag_ty));
+                }
+            }
+        }
+    }
+
+    ret @fold.respan[ast.pat_](pat.span, p_1);
+}
+
 // Type unification over typed expressions. Note that the expression that you
 // pass to this function must have been passed to check_expr() first.
 //
@@ -1059,17 +1242,63 @@ fn demand_expr(&fn_ctxt fcx, @ty expected, @ast.expr e) -> @ast.expr {
     auto e_1 = ast.expr_vec(v, ast.ann_none);
 
     alt (e.node) {
-        case (ast.expr_vec(?es, ?ann)) {
+        case (ast.expr_vec(?es_0, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_vec(es, ast.ann_type(t));
+            let vec[@ast.expr] es_1 = vec();
+            alt (t.struct) {
+                case (ty_vec(?subty)) {
+                    for (@ast.expr e_0 in es_0) {
+                        es_1 += vec(demand_expr(fcx, subty, e_0));
+                    }
+                }
+                case (_) {
+                    log "vec expr doesn't have a vec type!";
+                    fail;
+                }
+            }
+            e_1 = ast.expr_vec(es_1, ast.ann_type(t));
         }
-        case (ast.expr_tup(?es, ?ann)) {
+        case (ast.expr_tup(?es_0, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_tup(es, ast.ann_type(t));
+            let vec[ast.elt] elts_1 = vec();
+            alt (t.struct) {
+                case (ty_tup(?subtys)) {
+                    auto i = 0u;
+                    for (ast.elt elt_0 in es_0) {
+                        auto e_1 = demand_expr(fcx, subtys.(i), elt_0.expr);
+                        elts_1 += vec(rec(mut=elt_0.mut, expr=e_1));
+                        i += 1u;
+                    }
+                }
+                case (_) {
+                    log "tup expr doesn't have a tup type!";
+                    fail;
+                }
+            }
+            e_1 = ast.expr_tup(elts_1, ast.ann_type(t));
         }
-        case (ast.expr_rec(?es, ?ann)) {
+        case (ast.expr_rec(?fields_0, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_rec(es, ast.ann_type(t));
+            let vec[ast.field] fields_1 = vec();
+            alt (t.struct) {
+                case (ty_rec(?field_tys)) {
+                    auto i = 0u;
+                    for (ast.field field_0 in fields_0) {
+                        check (_str.eq(field_0.ident, field_tys.(i).ident));
+                        auto e_1 = demand_expr(fcx, field_tys.(i).ty,
+                                               field_0.expr);
+                        fields_1 += vec(rec(mut=field_0.mut,
+                                            ident=field_0.ident,
+                                            expr=e_1));
+                        i += 1u;
+                    }
+                }
+                case (_) {
+                    log "rec expr doesn't have a rec type!";
+                    fail;
+                }
+            }
+            e_1 = ast.expr_rec(fields_1, ast.ann_type(t));
         }
         case (ast.expr_call(?sube, ?es, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
@@ -1091,9 +1320,18 @@ fn demand_expr(&fn_ctxt fcx, @ty expected, @ast.expr e) -> @ast.expr {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_cast(sube, ast_ty, ast.ann_type(t));
         }
-        case (ast.expr_if(?cond, ?then, ?els, ?ann)) {
+        case (ast.expr_if(?cond, ?then_0, ?else_0, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_if(cond, then, els, ast.ann_type(t));
+            auto then_1 = demand_block(fcx, expected, then_0);
+            auto else_1;
+            alt (else_0) {
+                case (none[ast.block]) { else_1 = none[ast.block]; }
+                case (some[ast.block](?b_0)) {
+                    auto b_1 = demand_block(fcx, expected, b_0);
+                    else_1 = some[ast.block](b_1);
+                }
+            }
+            e_1 = ast.expr_if(cond, then_1, else_1, ast.ann_type(t));
         }
         case (ast.expr_while(?cond, ?bloc, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
@@ -1107,9 +1345,17 @@ fn demand_expr(&fn_ctxt fcx, @ty expected, @ast.expr e) -> @ast.expr {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_block(bloc, ast.ann_type(t));
         }
-        case (ast.expr_assign(?lhs, ?rhs, ?ann)) {
+        case (ast.expr_assign(?lhs_0, ?rhs_0, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_assign(lhs, rhs, ast.ann_type(t));
+            auto lhs_1 = demand_expr(fcx, expected, lhs_0);
+            auto rhs_1 = demand_expr(fcx, expected, rhs_0);
+            e_1 = ast.expr_assign(lhs_1, rhs_1, ast.ann_type(t));
+        }
+        case (ast.expr_assign_op(?op, ?lhs_0, ?rhs_0, ?ann)) {
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            auto lhs_1 = demand_expr(fcx, expected, lhs_0);
+            auto rhs_1 = demand_expr(fcx, expected, rhs_0);
+            e_1 = ast.expr_assign_op(op, lhs_1, rhs_1, ast.ann_type(t));
         }
         case (ast.expr_field(?lhs, ?rhs, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
@@ -1185,6 +1431,68 @@ fn check_lit(@ast.lit lit) -> @ty {
     }
 
     ret plain_ty(sty);
+}
+
+fn check_pat(&fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
+    auto new_pat;
+    alt (pat.node) {
+        case (ast.pat_wild(_)) {
+            new_pat = ast.pat_wild(ast.ann_type(next_ty_var(fcx)));
+        }
+        case (ast.pat_bind(?id, ?def_id, _)) {
+            auto ann = ast.ann_type(next_ty_var(fcx));
+            new_pat = ast.pat_bind(id, def_id, ann);
+        }
+        case (ast.pat_tag(?id, ?subpats, ?vdef_opt, _)) {
+            auto vdef = option.get[ast.variant_def](vdef_opt);
+            auto t = fcx.ccx.item_types.get(vdef._1); 
+            alt (t.struct) {
+                // N-ary variants have function types.
+                case (ty_fn(?args, ?tag_ty)) {
+                    auto arg_len = _vec.len[arg](args);
+                    auto subpats_len = _vec.len[@ast.pat](subpats);
+                    if (arg_len != subpats_len) {
+                        // TODO: pluralize properly
+                        auto err_msg = "tag type " + id + " has " +
+                                       _uint.to_str(subpats_len, 10u) +
+                                       " fields, but this pattern has " +
+                                       _uint.to_str(arg_len, 10u) + " fields";
+
+                        fcx.ccx.sess.span_err(pat.span, err_msg);
+                        fail;   // TODO: recover
+                    }
+
+                    let vec[@ast.pat] new_subpats = vec();
+                    for (@ast.pat subpat in subpats) {
+                        new_subpats += vec(check_pat(fcx, subpat));
+                    }
+
+                    auto ann = ast.ann_type(tag_ty);
+                    new_pat = ast.pat_tag(id, new_subpats, vdef_opt, ann);
+                }
+
+                // Nullary variants have tag types.
+                case (ty_tag(?tid)) {
+                    auto subpats_len = _vec.len[@ast.pat](subpats);
+                    if (subpats_len > 0u) {
+                        // TODO: pluralize properly
+                        auto err_msg = "tag type " + id + " has no fields," +
+                                       " but this pattern has " +
+                                       _uint.to_str(subpats_len, 10u) +
+                                       " fields";
+
+                        fcx.ccx.sess.span_err(pat.span, err_msg);
+                        fail;   // TODO: recover
+                    }
+
+                    auto ann = ast.ann_type(plain_ty(ty_tag(tid)));
+                    new_pat = ast.pat_tag(id, subpats, vdef_opt, ann);
+                }
+            }
+        }
+    }
+
+    ret @fold.respan[ast.pat_](pat.span, new_pat);
 }
 
 fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
@@ -1299,6 +1607,21 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                         ast.expr_assign(lhs_1, rhs_1, ann));
         }
 
+        case (ast.expr_assign_op(?op, ?lhs, ?rhs, _)) {
+            auto lhs_0 = check_expr(fcx, lhs);
+            auto rhs_0 = check_expr(fcx, rhs);
+            auto lhs_t0 = expr_ty(lhs_0);
+            auto rhs_t0 = expr_ty(rhs_0);
+
+            auto lhs_1 = demand_expr(fcx, rhs_t0, lhs_0);
+            auto rhs_1 = demand_expr(fcx, expr_ty(lhs_1), rhs_0);
+
+            auto ann = ast.ann_type(rhs_t0);
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_assign_op(op, lhs_1, rhs_1,
+                                                           ann));
+        }
+
         case (ast.expr_if(?cond, ?thn, ?elsopt, _)) {
             auto cond_0 = check_expr(fcx, cond);
             auto cond_1 = demand_expr(fcx, plain_ty(ty_bool), cond_0);
@@ -1349,6 +1672,37 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                           ann));
         }
 
+        case (ast.expr_alt(?expr, ?arms, _)) {
+            auto expr_0 = check_expr(fcx, expr);
+            auto pattern_ty = expr_ty(expr_0);
+            auto result_ty = next_ty_var(fcx);
+
+            let vec[ast.arm] arms_0 = vec();
+            for (ast.arm arm in arms) {
+                auto pat_0 = check_pat(fcx, arm.pat);
+                pattern_ty = demand(fcx, pat_0.span, pattern_ty,
+                                    pat_ty(pat_0));
+                auto block_0 = check_block(fcx, arm.block);
+                result_ty = demand(fcx, block_0.span, result_ty,
+                                   block_ty(block_0));
+                arms_0 += vec(rec(pat=pat_0, block=block_0, index=arm.index));
+            }
+
+            auto expr_1 = demand_expr(fcx, pattern_ty, expr);
+
+            let vec[ast.arm] arms_1 = vec();
+            for (ast.arm arm_0 in arms_0) {
+                auto pat_1 = demand_pat(fcx, pattern_ty, arm_0.pat);
+                auto block_1 = demand_block(fcx, result_ty, arm_0.block);
+                auto arm_1 = rec(pat=pat_1, block=block_1, index=arm_0.index);
+                arms_1 += vec(arm_1);
+            }
+
+            auto ann = ast.ann_type(result_ty);
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_alt(expr_1, arms_1, ann));
+        }
+
         case (ast.expr_call(?f, ?args, _)) {
             // Check the function.
             auto f_0 = check_expr(fcx, f);
@@ -1363,7 +1717,7 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 // FIXME: this breaks aliases. We need a ty_fn_arg.
                 append[arg](arg_tys_0, rec(mode=ast.val, ty=expr_ty(a_0)));
             }
-            auto rt_0 = plain_ty(ty_var(-2));   // FIXME: broken!
+            auto rt_0 = next_ty_var(fcx);
             auto t_0 = plain_ty(ty_fn(arg_tys_0, rt_0));
 
             // Unify and write back to the function.
@@ -1417,6 +1771,31 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_cast(e_1, t,
                                                       ast.ann_type(t_1)));
+        }
+
+        case (ast.expr_vec(?args, _)) {
+            let vec[@ast.expr] args_1 = vec();
+
+            // FIXME: implement mutable vectors with leading 'mutable' flag
+            // marking the elements as mutable.
+
+            let @ty t;
+            if (_vec.len[@ast.expr](args) == 0u) {
+                t = next_ty_var(fcx);
+            } else {
+                auto expr_1 = check_expr(fcx, args.(0));
+                t = expr_ty(expr_1);
+            }
+
+            for (@ast.expr e in args) {
+                auto expr_1 = check_expr(fcx, e);
+                auto expr_t = expr_ty(expr_1);
+                demand(fcx, expr.span, t, expr_t);
+                append[@ast.expr](args_1,expr_1);
+            }
+            auto ann = ast.ann_type(plain_ty(ty_vec(t)));
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_vec(args_1, ann));
         }
 
         case (ast.expr_tup(?elts, _)) {
@@ -1497,6 +1876,50 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             }
         }
 
+        case (ast.expr_index(?base, ?idx, _)) {
+            auto base_1 = check_expr(fcx, base);
+            auto base_t = expr_ty(base_1);
+
+            auto idx_1 = check_expr(fcx, idx);
+            auto idx_t = expr_ty(idx_1);
+
+            alt (base_t.struct) {
+                case (ty_vec(?t)) {
+                    if (! type_is_integral(idx_t)) {
+                        fcx.ccx.sess.span_err
+                            (idx.span,
+                             "non-integral type of vec index: "
+                             + ty_to_str(idx_t));
+                    }
+                    auto ann = ast.ann_type(t);
+                    ret @fold.respan[ast.expr_](expr.span,
+                                                ast.expr_index(base_1,
+                                                               idx_1,
+                                                               ann));
+                }
+                case (ty_str) {
+                    if (! type_is_integral(idx_t)) {
+                        fcx.ccx.sess.span_err
+                            (idx.span,
+                             "non-integral type of str index: "
+                             + ty_to_str(idx_t));
+                    }
+                    auto t = ty_machine(common.ty_u8);
+                    auto ann = ast.ann_type(plain_ty(t));
+                    ret @fold.respan[ast.expr_](expr.span,
+                                                ast.expr_index(base_1,
+                                                               idx_1,
+                                                               ann));
+                }
+                case (_) {
+                    fcx.ccx.sess.span_err
+                        (expr.span,
+                         "vector-indexing bad type: "
+                         + ty_to_str(base_t));
+                }
+            }
+        }
+
         case (_) {
             fcx.ccx.sess.unimpl("expr type in typeck.check_expr");
             // TODO
@@ -1506,8 +1929,8 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 }
 
 fn next_ty_var(&fn_ctxt fcx) -> @ty {
-    auto t = plain_ty(ty_var(fcx.ccx.next_var_id));
-    fcx.ccx.next_var_id += 1;
+    auto t = plain_ty(ty_var(fcx.next_var_id));
+    fcx.next_var_id += 1;
     ret t;
 }
 
@@ -1618,10 +2041,30 @@ fn check_block(&fn_ctxt fcx, &ast.block block) -> ast.block {
                                     index=block.node.index));
 }
 
+fn check_const(&@crate_ctxt ccx, &span sp, ast.ident ident, @ast.ty t,
+               @ast.expr e, ast.def_id id, ast.ann ann) -> @ast.item {
+    // FIXME: this is kinda a kludge; we manufacture a fake "function context"
+    // for checking the initializer expression.
+    auto rty = ann_to_type(ann);
+    let fn_ctxt fcx = rec(ret_ty = rty,
+                          locals = @common.new_def_hash[@ty](),
+                          mutable next_var_id = 0,
+                          ccx = ccx);
+    auto e_ = check_expr(fcx, e);
+    // FIXME: necessary? Correct sequence?
+    demand_expr(fcx, rty, e_);
+    auto item = ast.item_const(ident, t, e_, id, ann);
+    ret @fold.respan[ast.item_](sp, item);
+}
+
 fn check_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
             vec[ast.ty_param] ty_params, ast.def_id id,
             ast.ann ann) -> @ast.item {
     auto local_ty_table = @common.new_def_hash[@ty]();
+
+    // FIXME: duplicate work: the item annotation already has the arg types
+    // and return type translated to typeck.ty values. We don't need do to it
+    // again here, we can extract them.
 
     // Store the type of each argument in the table.
     let vec[arg] inputs = vec();
@@ -1637,13 +2080,15 @@ fn check_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
 
     let fn_ctxt fcx = rec(ret_ty = output_ty,
                           locals = local_ty_table,
+                          mutable next_var_id = 0,
                           ccx = ccx);
 
     // TODO: Make sure the type of the block agrees with the function type.
     auto block_t = check_block(fcx, f.body);
     auto block_wb = writeback(fcx, block_t);
 
-    auto fn_t = rec(inputs=f.inputs, output=f.output, body=block_wb);
+    auto fn_t = rec(effect=f.effect, inputs=f.inputs, output=f.output,
+                    body=block_wb);
     auto item = ast.item_fn(ident, fn_t, ty_params, id, fn_ann);
     ret @fold.respan[ast.item_](sp, item);
 }
@@ -1652,8 +2097,7 @@ fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     auto result = collect_item_types(crate);
 
     auto ccx = @rec(sess=sess,
-                    item_types=result._1,
-                    mutable next_var_id=0);
+                    item_types=result._1);
 
     auto fld = fold.new_identity_fold[@crate_ctxt]();
     auto f = check_fn;  // FIXME: trans_const_lval bug

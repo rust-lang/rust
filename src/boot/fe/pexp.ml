@@ -145,11 +145,11 @@ and parse_opacity (ps:pstate) : Ast.opacity =
       ABS -> bump ps; Ast.OPA_abstract
     |  _ -> Ast.OPA_transparent
 
-and parse_stratum (ps:pstate) : Ast.stratum =
+and parse_layer (ps:pstate) : Ast.layer =
   match peek ps with
-      STATE -> bump ps; Ast.STRAT_state
-    | GC -> bump ps; Ast.STRAT_gc
-    |  _ -> Ast.STRAT_value
+      STATE -> bump ps; Ast.LAYER_state
+    | GC -> bump ps; Ast.LAYER_gc
+    |  _ -> Ast.LAYER_value
 
 and parse_effect (ps:pstate) : Ast.effect =
   match peek ps with
@@ -274,7 +274,7 @@ and parse_atomic_ty (ps:pstate) : Ast.ty =
         Ast.TY_mach m
 
     | STATE | GC | IMPURE | UNSAFE | OBJ | FN | ITER ->
-        let stratum = parse_stratum ps in
+        let layer = parse_layer ps in
         let effect = parse_effect ps in
           begin
             match peek ps with
@@ -295,11 +295,11 @@ and parse_atomic_ty (ps:pstate) : Ast.ty =
                   in
                     ignore (bracketed_zero_or_more LBRACE RBRACE
                               None parse_method ps);
-                    Ast.TY_obj (stratum, methods)
+                    Ast.TY_obj (layer, methods)
 
               | FN | ITER ->
-                  if stratum <> Ast.STRAT_value
-                  then raise (err "stratum specified for fn or iter" ps);
+                  if layer <> Ast.LAYER_value
+                  then raise (err "layer specified for fn or iter" ps);
                   Ast.TY_fn (fst (parse_ty_fn effect ps))
               | _ -> raise (unexpected ps)
           end
@@ -471,18 +471,28 @@ and parse_bottom_pexp (ps:pstate) : Ast.pexp =
 
     | VEC ->
         bump ps;
-        let mutability =
-          match peek ps with
-              LBRACKET ->
-                bump ps;
-                expect ps MUTABLE;
-                expect ps RBRACKET;
-                Ast.MUT_mutable
-            | _ -> Ast.MUT_immutable
+        let pexps =
+          ctxt "paren pexps(s)" (rstr false parse_mutable_and_pexp_list) ps
         in
-        let pexps = ctxt "vec pexp: exprs" parse_pexp_list ps in
+        let mutability = ref Ast.MUT_immutable in
+        let pexps =
+          Array.mapi
+            begin
+              fun i (mut, e) ->
+                if i = 0
+                then
+                  mutability := mut
+                else
+                  if mut <> Ast.MUT_immutable
+                  then
+                    raise
+                      (err "'mutable' keyword after first vec element" ps);
+                e
+            end
+            pexps
+        in
         let bpos = lexpos ps in
-          span ps apos bpos (Ast.PEXP_vec (mutability, pexps))
+          span ps apos bpos (Ast.PEXP_vec (!mutability, pexps))
 
 
     | LIT_STR s ->

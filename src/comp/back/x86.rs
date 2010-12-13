@@ -157,6 +157,26 @@ fn get_module_asm() -> str {
     ret _str.connect(glues, "\n\n");
 }
 
+fn get_data_layout() -> str {
+    if (_str.eq(target_os(), "macos")) {
+      ret "e-p:32:32-f64:32:64-i64:32:64-f80:128:128-n8:16:32";
+    }
+    if (_str.eq(target_os(), "win32")) {
+      ret "e-p:32:32-f64:64:64-i64:64:64-f80:32:32-n8:16:32";
+    }
+    ret "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32";
+}
+
+fn get_target_triple() -> str {
+    if (_str.eq(target_os(), "macos")) {
+        ret "i686-apple-darwin";
+    }
+    if (_str.eq(target_os(), "win32")) {
+        ret "i686-pc-mingw32";
+    }
+    ret "i686-pc-linux-gnu";
+}
+
 
 //
 // Local Variables:

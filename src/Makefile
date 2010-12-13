@@ -265,7 +265,7 @@ BE_MLS := $(addprefix boot/be/, x86.ml ra.ml pe.ml elf.ml \
           macho.ml)
 IL_MLS := $(addprefix boot/be/, asm.ml il.ml abi.ml)
 ME_MLS := $(addprefix boot/me/, walk.ml semant.ml resolve.ml alias.ml \
-            simplify.ml type.ml dead.ml stratum.ml effect.ml typestate.ml \
+            simplify.ml type.ml dead.ml layer.ml effect.ml typestate.ml \
             loop.ml layout.ml transutil.ml trans.ml dwarf.ml)
 FE_MLS := $(addprefix boot/fe/, ast.ml token.ml lexer.ml parser.ml \
             extfmt.ml pexp.ml item.ml cexp.ml fuzz.ml)
@@ -522,30 +522,47 @@ TEST_XFAILS_SELF := $(filter-out \
                         arith-0.rs \
                         arith-1.rs \
                         arith-2.rs \
+                        bitwise.rs \
                         bool-not.rs \
                         box.rs \
+                        box-in-tup.rs \
+                        cast.rs \
                         char.rs \
                         complex.rs \
                         dead-code-one-arm-if.rs \
                         deep.rs \
+                        deref.rs \
                         div-mod.rs \
+                        drop-on-ret.rs \
                         fact.rs \
                         hello.rs \
                         int.rs \
                         i32-sub.rs \
                         i8-incr.rs \
                         item-name-overload.rs \
+                        large-records.rs \
                         lazy-init.rs \
+                        lazy-and-or.rs \
                         multiline-comment.rs \
+                        operator-associativity.rs \
+                        output-slot-variants.rs \
+                        readalias.rs \
                         rec.rs \
+                        rec-auto.rs \
+                        rec-tup.rs \
                         return-nil.rs \
+                        type-in-nested-module.rs \
                         tup.rs \
                         u32-decr.rs \
                         u8-incr.rs \
                         u8-incr-decr.rs \
                         uint.rs \
                         unit.rs \
+                        vec.rs \
+                        vec-in-tup.rs \
+                        vec-late-init.rs \
                         while-and-do-while.rs \
+                        writealias.rs \
                         ) \
                       $(addprefix test/compile-fail/, \
                         arg-count-mismatch.rs \
