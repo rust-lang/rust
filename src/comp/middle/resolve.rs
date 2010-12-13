@@ -85,6 +85,7 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
                     }
                 }
             }
+            case (none[ast.mod_index_entry]) { /* fall through */ }
         }
         ret none[def];
     }
