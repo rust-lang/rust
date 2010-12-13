@@ -1376,6 +1376,7 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
 
     auto lim = ix.bcx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_fill)));
     lim = ix.bcx.build.Load(lim);
+
     auto bounds_check = ix.bcx.build.ICmp(lib.llvm.LLVMIntULT,
                                           scaled_ix, lim);
 
@@ -1582,6 +1583,10 @@ impure fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
         sub = copy_ty(src_res.bcx, true, dst_elt, src_res.val, unit_ty);
         i += 1;
     }
+    auto fill = sub.bcx.build.GEP(vec_val,
+                                  vec(C_int(0), C_int(abi.vec_elt_fill)));
+    sub.bcx.build.Store(data_sz, fill);
+
     ret res(sub.bcx, vec_val);
 }
 

@@ -558,6 +558,9 @@ TEST_XFAILS_SELF := $(filter-out \
                         u8-incr-decr.rs \
                         uint.rs \
                         unit.rs \
+                        vec.rs \
+                        vec-in-tup.rs \
+                        vec-late-init.rs \
                         while-and-do-while.rs \
                         writealias.rs \
                         ) \
