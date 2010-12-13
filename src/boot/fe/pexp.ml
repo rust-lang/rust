@@ -471,18 +471,28 @@ and parse_bottom_pexp (ps:pstate) : Ast.pexp =
 
     | VEC ->
         bump ps;
-        let mutability =
-          match peek ps with
-              LBRACKET ->
-                bump ps;
-                expect ps MUTABLE;
-                expect ps RBRACKET;
-                Ast.MUT_mutable
-            | _ -> Ast.MUT_immutable
+        let pexps =
+          ctxt "paren pexps(s)" (rstr false parse_mutable_and_pexp_list) ps
         in
-        let pexps = ctxt "vec pexp: exprs" parse_pexp_list ps in
+        let mutability = ref Ast.MUT_immutable in
+        let pexps =
+          Array.mapi
+            begin
+              fun i (mut, e) ->
+                if i = 0
+                then
+                  mutability := mut
+                else
+                  if mut <> Ast.MUT_immutable
+                  then
+                    raise
+                      (err "'mutable' keyword after first vec element" ps);
+                e
+            end
+            pexps
+        in
         let bpos = lexpos ps in
-          span ps apos bpos (Ast.PEXP_vec (mutability, pexps))
+          span ps apos bpos (Ast.PEXP_vec (!mutability, pexps))
 
 
     | LIT_STR s ->
