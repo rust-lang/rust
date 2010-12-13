@@ -137,6 +137,30 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
     ret std.list.find[scope,def](e.scopes, bind in_scope(i, _));
 }
 
+fn fold_pat_tag(&env e, &span sp, ident i, vec[@ast.pat] args,
+                option.t[ast.variant_def] old_def, ann a) -> @ast.pat {
+    auto new_def;
+    alt (lookup_name(e, i)) {
+        case (some[def](?d)) {
+            alt (d) {
+                case (ast.def_variant(?did, ?vid)) {
+                    new_def = some[ast.variant_def](tup(did, vid));
+                }
+                case (_) {
+                    e.sess.err("not a tag variant: " + i);
+                    new_def = none[ast.variant_def];
+                }
+            }
+        }
+        case (none[def]) {
+            new_def = none[ast.variant_def];
+            e.sess.err("unresolved name: " + i);
+        }
+    }
+
+    ret @fold.respan[ast.pat_](sp, ast.pat_tag(i, args, new_def, a));
+}
+
 fn fold_expr_name(&env e, &span sp, &ast.name n,
                   &option.t[def] d, ann a) -> @ast.expr {
 
@@ -207,7 +231,8 @@ fn resolve_crate(session.session sess, @ast.crate crate) -> @ast.crate {
 
     let fold.ast_fold[env] fld = fold.new_identity_fold[env]();
 
-    fld = @rec( fold_expr_name = bind fold_expr_name(_,_,_,_,_),
+    fld = @rec( fold_pat_tag = bind fold_pat_tag(_,_,_,_,_,_),
+                fold_expr_name = bind fold_expr_name(_,_,_,_,_),
                 fold_ty_path = bind fold_ty_path(_,_,_,_),
                 update_env_for_crate = bind update_env_for_crate(_,_),
                 update_env_for_item = bind update_env_for_item(_,_),
