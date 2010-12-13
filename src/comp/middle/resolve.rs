@@ -141,7 +141,7 @@ fn fold_expr_name(&env e, &span sp, &ast.name n,
                   &option.t[def] d, ann a) -> @ast.expr {
 
     if (_vec.len[@ast.ty](n.node.types) > 0u) {
-        e.sess.unimpl("resoling name expr with ty params");
+        e.sess.unimpl("resolving name expr with ty params");
     }
 
     auto d_ = lookup_name(e, n.node.ident);
@@ -164,13 +164,13 @@ fn fold_ty_path(&env e, &span sp, ast.path p,
     let uint len = _vec.len[ast.name](p);
     check (len != 0u);
     if (len > 1u) {
-        e.sess.unimpl("resoling path ty with >1 component");
+        e.sess.unimpl("resolving path ty with >1 component");
     }
 
     let ast.name n = p.(0);
 
     if (_vec.len[@ast.ty](n.node.types) > 0u) {
-        e.sess.unimpl("resoling path ty with ty params");
+        e.sess.unimpl("resolving path ty with ty params");
     }
 
     auto d_ = lookup_name(e, n.node.ident);
