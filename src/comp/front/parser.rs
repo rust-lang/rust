@@ -906,7 +906,7 @@ impure fn parse_pat(parser p) -> @ast.pat {
                 case (_) { args = vec(); }
             }
 
-            pat = ast.pat_tag(id, args, ast.ann_none);
+            pat = ast.pat_tag(id, args, none[ast.variant_def], ast.ann_none);
         }
         case (?tok) {
             p.err("expected pattern but found " + token.to_str(tok));
@@ -1088,7 +1088,7 @@ fn index_arm(@ast.pat pat) -> hashmap[ast.ident,ast.def_id] {
         alt (pat.node) {
             case (ast.pat_bind(?i, ?def_id, _)) { index.insert(i, def_id); }
             case (ast.pat_wild(_)) { /* empty */ }
-            case (ast.pat_tag(_, ?pats, _)) {
+            case (ast.pat_tag(_, ?pats, _, _)) {
                 for (@ast.pat p in pats) {
                     do_index_arm(index, p);
                 }
