@@ -1160,63 +1160,17 @@ fn demand_expr(&fn_ctxt fcx, @ty expected, @ast.expr e) -> @ast.expr {
     auto e_1 = ast.expr_vec(v, ast.ann_none);
 
     alt (e.node) {
-        case (ast.expr_vec(?es_0, ?ann)) {
+        case (ast.expr_vec(?es, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            let vec[@ast.expr] es_1 = vec();
-            alt (t.struct) {
-                case (ty_vec(?subty)) {
-                    for (@ast.expr e_0 in es_0) {
-                        es_1 += vec(demand_expr(fcx, subty, e_0));
-                    }
-                }
-                case (_) {
-                    log "vec expr doesn't have a vec type!";
-                    fail;
-                }
-            }
-            e_1 = ast.expr_vec(es_1, ast.ann_type(t));
+            e_1 = ast.expr_vec(es, ast.ann_type(t));
         }
-        case (ast.expr_tup(?es_0, ?ann)) {
+        case (ast.expr_tup(?es, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            let vec[ast.elt] elts_1 = vec();
-            alt (t.struct) {
-                case (ty_tup(?subtys)) {
-                    auto i = 0u;
-                    for (ast.elt elt_0 in es_0) {
-                        auto e_1 = demand_expr(fcx, subtys.(i), elt_0.expr);
-                        elts_1 += vec(rec(mut=elt_0.mut, expr=e_1));
-                        i += 1u;
-                    }
-                }
-                case (_) {
-                    log "tup expr doesn't have a tup type!";
-                    fail;
-                }
-            }
-            e_1 = ast.expr_tup(elts_1, ast.ann_type(t));
+            e_1 = ast.expr_tup(es, ast.ann_type(t));
         }
-        case (ast.expr_rec(?fields_0, ?ann)) {
+        case (ast.expr_rec(?es, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            let vec[ast.field] fields_1 = vec();
-            alt (t.struct) {
-                case (ty_rec(?field_tys)) {
-                    auto i = 0u;
-                    for (ast.field field_0 in fields_0) {
-                        check (_str.eq(field_0.ident, field_tys.(i).ident));
-                        auto e_1 = demand_expr(fcx, field_tys.(i).ty,
-                                               field_0.expr);
-                        fields_0 += vec(rec(mut=field_0.mut,
-                                            ident=field_0.ident,
-                                            expr=e_1));
-                        i += 1u;
-                    }
-                }
-                case (_) {
-                    log "rec expr doesn't have a rec type!";
-                    fail;
-                }
-            }
-            e_1 = ast.expr_rec(fields_1, ast.ann_type(t));
+            e_1 = ast.expr_rec(es, ast.ann_type(t));
         }
         case (ast.expr_call(?sube, ?es, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
@@ -1238,18 +1192,9 @@ fn demand_expr(&fn_ctxt fcx, @ty expected, @ast.expr e) -> @ast.expr {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_cast(sube, ast_ty, ast.ann_type(t));
         }
-        case (ast.expr_if(?cond, ?then_0, ?else_0, ?ann)) {
+        case (ast.expr_if(?cond, ?then, ?els, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            auto then_1 = demand_block(fcx, expected, then_0);
-            auto else_1;
-            alt (else_0) {
-                case (none[ast.block]) { else_1 = none[ast.block]; }
-                case (some[ast.block](?b_0)) {
-                    auto b_1 = demand_block(fcx, expected, b_0);
-                    else_1 = some[ast.block](b_1);
-                }
-            }
-            e_1 = ast.expr_if(cond, then_1, else_1, ast.ann_type(t));
+            e_1 = ast.expr_if(cond, then, els, ast.ann_type(t));
         }
         case (ast.expr_while(?cond, ?bloc, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
@@ -1263,17 +1208,13 @@ fn demand_expr(&fn_ctxt fcx, @ty expected, @ast.expr e) -> @ast.expr {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_block(bloc, ast.ann_type(t));
         }
-        case (ast.expr_assign(?lhs_0, ?rhs_0, ?ann)) {
+        case (ast.expr_assign(?lhs, ?rhs, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            auto lhs_1 = demand_expr(fcx, expected, lhs_0);
-            auto rhs_1 = demand_expr(fcx, expected, rhs_0);
-            e_1 = ast.expr_assign(lhs_1, rhs_1, ast.ann_type(t));
+            e_1 = ast.expr_assign(lhs, rhs, ast.ann_type(t));
         }
-        case (ast.expr_assign_op(?op, ?lhs_0, ?rhs_0, ?ann)) {
+        case (ast.expr_assign_op(?op, ?lhs, ?rhs, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            auto lhs_1 = demand_expr(fcx, expected, lhs_0);
-            auto rhs_1 = demand_expr(fcx, expected, rhs_0);
-            e_1 = ast.expr_assign_op(op, lhs_1, rhs_1, ast.ann_type(t));
+            e_1 = ast.expr_assign_op(op, lhs, rhs, ast.ann_type(t));
         }
         case (ast.expr_field(?lhs, ?rhs, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
