@@ -250,9 +250,7 @@ Many values in Rust are allocated @emph{within} their containing stack-frame
 or parent structure. Numbers, records, tuples and tags are all allocated this
 way. To allocate such values in the heap, they must be explicitly
 @emph{boxed}. A @dfn{box} is a pointer to a heap allocation that holds another
-value, its @emph{content}. If the content of a box is a @emph{state} value --
-the sort that may contain mutable members -- then the heap allocation is also
-subject to garbage collection.
+value, its @emph{content}.
 
 Boxing and unboxing in Rust is explicit, though in many cases (arithmetic
 operations, name-component dereferencing) Rust will automatically ``reach
@@ -275,35 +273,42 @@ still guaranteeing that every use of a slot occurs after it has been
 initialized.
 
 @sp 1
-@item Static control over mutability.
+@item Static control over mutability and garbage collection.
 
-Types in Rust are classified as either immutable or mutable. By default,
-all types are immutable.
+Types in Rust are classified into @emph{layers}. There is a layer of immutable
+values, a layer of state values, and a layer of GC values. By default, all
+types are immutable.
 
-If a type is declared as @code{mutable}, then the type is a @code{state} type
-and must be declared as such. Any type directly marked as @code{mutable}
-@emph{or indirectly containing} a state type is also a state type.
+If a field within a type is declared as @code{mutable}, then the type is part
+of the @code{state} layer and must be declared as such. Any type directly
+marked as @code{state} @emph{or indirectly referring to} a state type is also
+a state type.
 
-This classification of data types in Rust interacts with the memory allocation
-and transmission rules. In particular:
+If a field within a type is potentially cyclic (this is a narrow, but
+well-defined condition involving mutable recursive types) then it is part of
+the @code{gc} layer and must be declared as such.
+
+This classification of data types in Rust interacts with the memory allocation,
+transmission and destruction rules. In particular:
 
 @itemize
-@item Only immutable (non-state) values can be sent over channels.
-@item Only immutable (non-state) objects can have destructor functions.
+@item Only immutable values can be sent over channels.
+@item Only non-GC objects can have destructor functions.
 @end itemize
 
-Boxed state values are subject to local (per-task) garbage-collection. Garbage
-collection costs are therefore also task-local and do not interrupt or suspend
-other tasks.
+Garbage collection, when present, operates per-task and does not interrupt
+other tasks while running. It is limited to types that need it and can be
+statically avoided altogether by limiting the types in a program to the state
+and immutable layers.
 
-Boxed immutable values are reference-counted and have a deterministic
-destruction order: top-down, immediately upon release of the last live
-reference.
+Non-GC values are reference-counted and have a deterministic destruction
+order: top-down, immediately upon release of the last live reference.
 
-State values can refer to non-state values, but not vice-versa. Rust
-therefore encourages the programmer to write in a style that consists
-primarily of immutable types, but also permits limited, local
-(per-task) mutability.
+State values can refer to non-state values, but not vice-versa; likewise GC
+values can refer to non-GC values but not vice-versa. Rust therefore
+encourages the programmer to write in a style that consists primarily of
+immutable types, but also permits limited, local (per-task) mutability,
+and provides local (per-task) GC only when required.
 
 @sp 1
 @item Stack-based iterators
@@ -360,8 +365,7 @@ Rust has a lightweight object system based on structural object types: there
 is no ``class hierarchy'' nor any concept of inheritance. Method overriding
 and object restriction are performed explicitly on object values, which are
 little more than order-insensitive records of methods sharing a common private
-value. Objects can be state or non-state, and only non-state objects can have
-destructors.
+value. Objects that reside outside the GC layer can have destructors.
 
 @sp 1
 @item Dynamic type
@@ -407,29 +411,29 @@ organizing tasks into mutually-supervising or mutually-failing groups.
 @sp 1
 @item Deterministic destruction
 
-Immutable objects can have destructor functions, which are executed
+Non-GC objects can have destructor functions, which are executed
 deterministically in top-down ownership order, as control frames are exited
 and/or objects are otherwise freed from data structures holding them. The same
 destructors are run in the same order whether the object is deleted by
 unwinding during failure or normal execution.
 
-Similarly, the rules for freeing immutable values are deterministic and
+Similarly, the rules for freeing non-GC values are deterministic and
 predictable: on scope-exit or structure-release, local slots are released
 immediately. Referenced boxes have their reference count decreased and are
 released if the count drops to zero. Aliases are silently forgotten.
 
-State values are local to a task, and are subject to per-task garbage
-collection. As a result, unreferenced state boxes are not necessarily freed
-immediately; if an unreferenced state box is part of an acyclic graph, it is
+GC values are local to a task, and are subject to per-task garbage
+collection. As a result, unreferenced GC-layer boxes are not necessarily freed
+immediately; if an unreferenced GC box is part of an acyclic graph, it is
 freed when the last reference to it drops, but if it is part of a reference
 cycle it will be freed when the GC collects it (or when the owning task
 terminates, at the latest).
 
-State values can point to immutable values but not vice-versa. Doing so merely
+GC values can point to non-GC values but not vice-versa. Doing so merely
 delays (to an undefined future time) the moment when the deterministic,
-top-down destruction sequence for the referenced immutable values
-@emph{start}. In other words, the immutable ``leaves'' of a state value are
-released in a locally-predictable order, even if the ``interior'' of the state
+top-down destruction sequence for the referenced non-GC values
+@emph{start}. In other words, the non-GC ``leaves'' of a GC value are released
+in a locally-predictable order, even if the ``interior'' cyclic part of the GC
 value is released in an unpredictable order.
 
 @sp 1
@@ -1265,15 +1269,16 @@ entry to each function as the task executes. A stack allocation is reclaimed
 when control leaves the frame containing it.
 
 The @dfn{heap} is a general term that describes two separate sets of boxes:
-@emph{task-local} state boxes and the @emph{shared} non-state boxes.
+@emph{task-local} state and GC boxes, and the @emph{shared} immutable boxes.
 
-State boxes are @dfn{task-local}, owned by the task. Like any other state
-value, they cannot pass over channels. State boxes do not outlive the task
-that owns them. When unreferenced, they are collected using a general
+State and GC boxes are @dfn{task-local}, owned by the task. Like any other
+state or GC value, they cannot pass over channels. State and GC boxes do not
+outlive the task that owns them. When unreferenced, they are either
+immediately destructed (if acyclic) or else collected using a general
 (cycle-aware) garbage-collector local to each task. Garbage collection within
 a local heap does not interrupt execution of other tasks.
 
-Non-state boxes are @dfn{shared}, and can be multiply-referenced by many
+Immutable boxes are @dfn{shared}, and can be multiply-referenced by many
 different tasks. Like any other immutable type, they can pass over channels,
 and live as long as the last task referencing them within a given domain. When
 unreferenced, they are destroyed immediately (due to reference-counting) and
@@ -1794,9 +1799,9 @@ statement. If a control path lacks a @code{ret} statement in source code, an
 implicit @code{ret} statement is appended to the end of the control path
 during compilation, returning the implicit @code{()} value.
 
-A function may have an @emph{effect}, which may be either @code{io},
-@code{state}, @code{unsafe}. If no effect is specified, the function is said
-to be @dfn{pure}.
+A function may have an @emph{effect}, which may be either @code{impure} or
+@code{unsafe}. If no effect is specified, the function is said to be
+@dfn{pure}.
 
 Any pure boolean function is also called a @emph{predicate}, and may be used
 as part of the static typestate system. @xref{Ref.Stmt.Stat.Constr}.
@@ -1933,23 +1938,23 @@ variables to initial values.
 @c * Ref.Item.Type::          Items defining the types of values and slots.
 @cindex Types
 
-A @dfn{type} defines an @emph{interpretation} of a value in
-memory. @xref{Ref.Type}. Types are declared with the keyword @code{type}. A
-type's interpretation is used for the values held in any slot with that
-type. @xref{Ref.Mem.Slot}. The interpretation of a value includes:
+A @dfn{type} defines a set of possible values in
+memory. @xref{Ref.Type}. Types are declared with the keyword
+@code{type}. Every value has a single, specific type; the type-specified
+aspects of a value include:
 
 @itemize
 @item Whether the value is composed of sub-values or is indivisible.
 @item Whether the value represents textual or numerical information.
 @item Whether the value represents integral or floating-point information.
 @item The sequence of memory operations required to access the value.
-@item Whether the value is mutable or immutable.
+@item The storage layer the value resides in (immutable, state or gc).
 @end itemize
 
-For example, the type @code{rec(u8 x, u8 y)} defines the interpretation of
-values that are composite records, each containing two unsigned 8-bit
-integers accessed through the components @code{x} and @code{y}, and laid
-out in memory with the @code{x} component preceding the @code{y} component.
+For example, the type @code{rec(u8 x, u8 y)} defines the set of immutable
+values that are composite records, each containing two unsigned 8-bit integers
+accessed through the components @code{x} and @code{y}, and laid out in memory
+with the @code{x} component preceding the @code{y} component.
 
 @node       Ref.Item.Tag
 @subsection Ref.Item.Tag
@@ -2238,9 +2243,9 @@ check (p._1 == "world");
 @cindex Array types, see @i{Vector types}
 
 The vector type-constructor @code{vec} represents a homogeneous array of
-values of a given type. A vector has a fixed size. If the member-type of a
-vector is a state type, then vector is a @emph{state} type, like any type
-containing another type.
+values of a given type. A vector has a fixed size. The layer of a vector type
+is to the layer of its member type, like any type that contains a single
+member type.
 
 Vectors can be sliced. A slice expression builds a new vector by copying a
 contiguous range -- given by a pair of indices representing a half-open
@@ -2342,9 +2347,12 @@ communication facility. @xref{Ref.Task.Comm}. A @code{port} type takes a
 single type parameter, denoting the type of value that can be received from a
 @code{port} value of that type.
 
-Ports are modeled as mutable native types with built-in meaning to the
+Ports are modeled as stateful native types, with built-in meaning to the
 language. They cannot be transmitted over channels or otherwise replicated,
 and are always local to the task that creates them.
+
+Ports (like channels) can only be carry types of the immutable layer. No
+mutable values can pass over a port or channel.
 
 An example of a @code{port} type:
 @example
@@ -2369,6 +2377,9 @@ Channels are immutable, and can be transmitted over channels to other
 tasks. They are modeled as immutable native types with built-in meaning to the
 language.
 
+Channels (like ports) can only be carry types of the immutable layer. No
+mutable values can pass over a port or channel.
+
 When a task sends a message into a channel, the task forms an outgoing queue
 associated with that channel. The per-task queue @emph{associated} with a
 channel can be indirectly manipulated by the task, but is @emph{not} otherwise
@@ -2379,8 +2390,8 @@ associated with the channel.
 Channels are also @emph{weak}: a channel is directly coupled to a particular
 destination port on a particular task, but does not keep that port or task
 @emph{alive}. A channel may therefore fail to operate at any moment. If a task
-sends to a channel that is connected to a nonexistent port, it receives a
-signal.
+sends a message to a channel that is connected to a nonexistent port, the
+message is dropped.
 
 An example of a @code{chan} type:
 @example
@@ -2407,8 +2418,8 @@ the language. They cannot be transmitted over channels or otherwise
 replicated, and are always local to the task that spawns them.
 
 If all references to a task are dropped (due to the release of any structure
-holding those references), the released task immediately fails.
-@xref{Ref.Task.Life}.
+holding those references), the runtime signals the un-referenced task, which
+then fails. @xref{Ref.Task.Life}.
 
 
 @node       Ref.Type.Obj
@@ -2427,15 +2438,10 @@ declaration. Such a ``plain'' object type can be used to describe an interface
 that a variety of particular objects may conform to, by supporting a superset
 of the methods.
 
-An object type that can contain a state must be declared as a @code{state obj}
-like any other state type. And similarly a method type that performs I/O or
-makes native calls must be declared @code{io} or @code{unsafe}, like any other
-function.
-
-Moreover, @emph{all} methods of a state object are implicitly state functions -- as
-they all bind the same mutable state field(s) -- so implicitly have an effect
-lower than @code{io}. It is therefore unnecessary to declare methods within a
-state object type (or state object item) as @code{io}.
+An object type that can contain fields of a given layer must be declared as
+residing in that layer (or lower), like any other type. And similarly a method
+with a given effect must be declared as having that effect (or lower) in the
+object type, like any other function.
 
 An example of an object type with two separate object items supporting it, and
 a client function using both items via the object type:
@@ -2444,17 +2450,17 @@ a client function using both items via the object type:
 
 state type taker =
     state obj @{
-        fn take(int);
+        impure fn take(int);
     @};
 
 state obj adder(mutable int x) @{
-    fn take(int y) @{
+    impure fn take(int y) @{
         x += y;
     @}
 @}
 
 obj sender(chan[int] c) @{
-    io fn take(int z) @{
+    impure fn take(int z) @{
         c <| z;
     @}
 @}
@@ -3113,7 +3119,7 @@ by the runtime or emitted to a system console. Log statements are enabled or
 disabled dynamically at run-time on a per-task and per-item
 basis. @xref{Ref.Run.Log}.
 
-Executing a @code{log} statement is not considered an @code{io} effect in the
+Executing a @code{log} statement is not considered an impure effect in the
 effect system. In other words, a pure function remains pure even if it
 contains a log statement.
 
