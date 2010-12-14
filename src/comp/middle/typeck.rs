@@ -1186,6 +1186,7 @@ fn demand_pat(&fn_ctxt fcx, @ty expected, @ast.pat pat) -> @ast.pat {
         }
         case (ast.pat_bind(?id, ?did, ?ann)) {
             auto t = demand(fcx, pat.span, expected, ann_to_type(ann));
+            fcx.locals.insert(did, t);
             p_1 = ast.pat_bind(id, did, ast.ann_type(t));
         }
         case (ast.pat_tag(?id, ?subpats, ?vdef_opt, ?ann)) {
