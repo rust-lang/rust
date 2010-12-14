@@ -1581,6 +1581,10 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     check (fcx.ccx.item_types.contains_key(variant_id));
                     t = fcx.ccx.item_types.get(variant_id);
                 }
+                case (ast.def_binding(?id)) {
+                    check (fcx.locals.contains_key(id));
+                    t = fcx.locals.get(id);
+                }
                 case (_) {
                     // FIXME: handle other names.
                     fcx.ccx.sess.unimpl("definition variant for: "
@@ -1674,29 +1678,47 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_alt(?expr, ?arms, _)) {
             auto expr_0 = check_expr(fcx, expr);
-            auto pattern_ty = expr_ty(expr_0);
-            auto result_ty = next_ty_var(fcx);
 
-            let vec[ast.arm] arms_0 = vec();
+            // Typecheck the patterns first, so that we get types for all the
+            // bindings.
+            auto pattern_ty = expr_ty(expr_0);
+
+            let vec[@ast.pat] pats_0 = vec();
             for (ast.arm arm in arms) {
                 auto pat_0 = check_pat(fcx, arm.pat);
                 pattern_ty = demand(fcx, pat_0.span, pattern_ty,
                                     pat_ty(pat_0));
+                pats_0 += vec(pat_0);
+            }
+
+            let vec[@ast.pat] pats_1 = vec();
+            for (@ast.pat pat_0 in pats_0) {
+                pats_1 += vec(demand_pat(fcx, pattern_ty, pat_0));
+            }
+
+            // Now typecheck the blocks.
+            auto result_ty = next_ty_var(fcx);
+
+            let vec[ast.block] blocks_0 = vec();
+            for (ast.arm arm in arms) {
                 auto block_0 = check_block(fcx, arm.block);
                 result_ty = demand(fcx, block_0.span, result_ty,
                                    block_ty(block_0));
-                arms_0 += vec(rec(pat=pat_0, block=block_0, index=arm.index));
+                blocks_0 += vec(block_0);
             }
-
-            auto expr_1 = demand_expr(fcx, pattern_ty, expr);
 
             let vec[ast.arm] arms_1 = vec();
-            for (ast.arm arm_0 in arms_0) {
-                auto pat_1 = demand_pat(fcx, pattern_ty, arm_0.pat);
-                auto block_1 = demand_block(fcx, result_ty, arm_0.block);
-                auto arm_1 = rec(pat=pat_1, block=block_1, index=arm_0.index);
+            auto i = 0u;
+            for (ast.block block_0 in blocks_0) {
+                auto block_1 = demand_block(fcx, result_ty, block_0);
+                auto pat_1 = pats_1.(i);
+                auto arm = arms.(i);
+                auto arm_1 = rec(pat=pat_1, block=block_1, index=arm.index);
                 arms_1 += vec(arm_1);
+                i += 1u;
             }
+
+            auto expr_1 = demand_expr(fcx, pattern_ty, expr_0);
 
             auto ann = ast.ann_type(result_ty);
             ret @fold.respan[ast.expr_](expr.span,
