@@ -322,7 +322,15 @@ fn type_of_inner(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
                 }
                 atys += t;
             }
-            ret T_fn(atys, type_of(cx, out));
+
+            auto ret_ty;
+            if (typeck.type_is_nil(out)) {
+                ret_ty = llvm.LLVMVoidType();
+            } else {
+                ret_ty = type_of(cx, out);
+            }
+
+            ret T_fn(atys, ret_ty);
         }
         case (typeck.ty_var(_)) {
             // FIXME: implement.
@@ -1511,7 +1519,14 @@ impure fn trans_call(@block_ctxt cx, @ast.expr f,
     auto fn_ty = typeck.expr_ty(f);
     auto ret_ty = typeck.ann_to_type(ann);
     auto args_res = trans_args(f_res._0.bcx, args, fn_ty);
-    auto retval = args_res._0.build.FastCall(f_res._0.val, args_res._1);
+    
+    auto real_retval = args_res._0.build.FastCall(f_res._0.val, args_res._1);
+    auto retval;
+    if (typeck.type_is_nil(ret_ty)) {
+        retval = C_nil();
+    } else {
+        retval = real_retval;
+    }
 
     // Structured returns come back as first-class values. This is nice for
     // LLVM but wrong for us; we treat structured values by pointer in
@@ -1795,8 +1810,13 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
     }
 
     alt (e) {
-        case (some[@ast.expr](_)) {
-            r.val = r.bcx.build.Ret(r.val);
+        case (some[@ast.expr](?ex)) {
+            if (typeck.type_is_nil(typeck.expr_ty(ex))) {
+                r.bcx.build.RetVoid();
+                r.val = C_nil();
+            } else {
+                r.val = r.bcx.build.Ret(r.val);
+            }
             ret r;
         }
         case (_) { /* fall through */  }
@@ -1804,7 +1824,8 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
 
     // FIXME: until LLVM has a unit type, we are moving around
     // C_nil values rather than their void type.
-    r.val = r.bcx.build.Ret(C_nil());
+    r.bcx.build.RetVoid();
+    r.val = C_nil();
     ret r;
 }
 
@@ -2054,7 +2075,7 @@ impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
     if (!is_terminated(res.bcx)) {
         // FIXME: until LLVM has a unit type, we are moving around
         // C_nil values rather than their void type.
-        res.bcx.build.Ret(C_nil());
+        res.bcx.build.RetVoid();
     }
 }
 
