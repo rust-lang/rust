@@ -854,9 +854,14 @@ fn iter_sequence(@block_ctxt cx,
                                       C_int(abi.vec_elt_data)));
         auto lenptr = cx.build.GEP(v, vec(C_int(0),
                                           C_int(abi.vec_elt_fill)));
+
+        auto llunit_ty = type_of(cx.fcx.ccx, elt_ty);
+        auto unit_sz = llvm.LLVMConstIntCast(llvm.LLVMSizeOf(llunit_ty),
+                                             T_int(), False);
+
         auto len = cx.build.Load(lenptr);
         if (trailing_null) {
-            len = cx.build.Sub(len, C_int(1));
+            len = cx.build.Sub(len, unit_sz);
         }
 
         auto r = res(cx, C_nil());
@@ -868,7 +873,11 @@ fn iter_sequence(@block_ctxt cx,
         cx.build.Br(cond_cx.llbb);
 
         auto ix = cond_cx.build.Phi(T_int(), vec(C_int(0)), vec(cx.llbb));
-        auto end_test = cond_cx.build.ICmp(lib.llvm.LLVMIntEQ, ix, len);
+        auto scaled_ix = cond_cx.build.Phi(T_int(),
+                                           vec(C_int(0)), vec(cx.llbb));
+
+        auto end_test = cond_cx.build.ICmp(lib.llvm.LLVMIntNE,
+                                           scaled_ix, len);
         cond_cx.build.CondBr(end_test, body_cx.llbb, next_cx.llbb);
 
         auto elt = body_cx.build.GEP(p0, vec(C_int(0), ix));
@@ -876,7 +885,12 @@ fn iter_sequence(@block_ctxt cx,
                           load_non_structural(body_cx, elt, elt_ty),
                           elt_ty);
         auto next_ix = body_res.bcx.build.Add(ix, C_int(1));
+        auto next_scaled_ix = body_res.bcx.build.Add(scaled_ix, unit_sz);
+
         cond_cx.build.AddIncomingToPhi(ix, vec(next_ix),
+                                       vec(body_res.bcx.llbb));
+
+        cond_cx.build.AddIncomingToPhi(scaled_ix, vec(next_scaled_ix),
                                        vec(body_res.bcx.llbb));
 
         body_res.bcx.build.Br(cond_cx.llbb);
@@ -889,7 +903,7 @@ fn iter_sequence(@block_ctxt cx,
         }
         case (typeck.ty_str) {
             auto et = typeck.plain_ty(typeck.ty_machine(common.ty_u8));
-            ret iter_sequence_body(cx, v, et, f, false);
+            ret iter_sequence_body(cx, v, et, f, true);
         }
         case (_) { fail; }
     }

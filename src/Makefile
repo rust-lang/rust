@@ -559,6 +559,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         uint.rs \
                         unit.rs \
                         vec.rs \
+                        vec-drop.rs \
                         vec-in-tup.rs \
                         vec-late-init.rs \
                         while-and-do-while.rs \
