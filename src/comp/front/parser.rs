@@ -141,6 +141,12 @@ impure fn parse_ty_fn(parser p) -> ast.ty_ {
     ret ast.ty_fn(inputs.node, output);
 }
 
+impure fn parse_ty_field(parser p) -> ast.ty_field {
+    auto ty = parse_ty(p);
+    auto id = parse_ident(p);
+    ret rec(ident=id, ty=ty);
+}
+
 impure fn parse_ty(parser p) -> @ast.ty {
     auto lo = p.get_span();
     auto hi = lo;
@@ -196,12 +202,7 @@ impure fn parse_ty(parser p) -> @ast.ty {
 
         case (token.REC) {
             p.bump();
-            impure fn parse_field(parser p) -> ast.ty_field {
-                auto ty = parse_ty(p);
-                auto id = parse_ident(p);
-                ret rec(ident=id, ty=ty);
-            }
-            auto f = parse_field; // FIXME: trans_const_lval bug
+            auto f = parse_ty_field; // FIXME: trans_const_lval bug
             auto elems =
                 parse_seq[ast.ty_field](token.LPAREN,
                                         token.RPAREN,
@@ -367,6 +368,14 @@ impure fn parse_mutabliity(parser p) -> ast.mutability {
     ret ast.imm;
 }
 
+impure fn parse_field(parser p) -> ast.field {
+    auto m = parse_mutabliity(p);
+    auto i = parse_ident(p);
+    expect(p, token.EQ);
+    auto e = parse_expr(p);
+    ret rec(mut=m, ident=i, expr=e);
+}
+
 impure fn parse_bottom_expr(parser p) -> @ast.expr {
 
     auto lo = p.get_span();
@@ -447,13 +456,6 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
 
         case (token.REC) {
             p.bump();
-            impure fn parse_field(parser p) -> ast.field {
-                auto m = parse_mutabliity(p);
-                auto i = parse_ident(p);
-                expect(p, token.EQ);
-                auto e = parse_expr(p);
-                ret rec(mut=m, ident=i, expr=e);
-            }
             auto pf = parse_field;
             auto fs =
                 parse_seq[ast.field](token.LPAREN,
@@ -1214,12 +1216,7 @@ impure fn parse_ty_params(parser p) -> vec[ast.ty_param] {
     ret ty_params;
 }
 
-impure fn parse_item_fn(parser p, ast.effect eff) -> @ast.item {
-    auto lo = p.get_span();
-    expect(p, token.FN);
-    auto id = parse_ident(p);
-    auto ty_params = parse_ty_params(p);
-
+impure fn parse_fn(parser p, ast.effect eff) -> ast._fn {
     auto pf = parse_arg;
     let util.common.spanned[vec[ast.arg]] inputs =
         // FIXME: passing parse_arg as an lval doesn't work at the
@@ -1235,18 +1232,72 @@ impure fn parse_item_fn(parser p, ast.effect eff) -> @ast.item {
         p.bump();
         output = parse_ty(p);
     } else {
-        output = @spanned(lo, inputs.span, ast.ty_nil);
+        output = @spanned(inputs.span, inputs.span, ast.ty_nil);
     }
 
     auto body = parse_block(p);
 
-    let ast._fn f = rec(effect = eff,
-                        inputs = inputs.node,
-                        output = output,
-                        body = body);
+    ret rec(effect = eff,
+            inputs = inputs.node,
+            output = output,
+            body = body);
+}
 
+impure fn parse_item_fn(parser p, ast.effect eff) -> @ast.item {
+    auto lo = p.get_span();
+    expect(p, token.FN);
+    auto id = parse_ident(p);
+    auto ty_params = parse_ty_params(p);
+    auto f = parse_fn(p, eff);
     auto item = ast.item_fn(id, f, ty_params, p.next_def_id(), ast.ann_none);
-    ret @spanned(lo, body.span, item);
+    ret @spanned(lo, f.body.span, item);
+}
+
+
+impure fn parse_obj_field(parser p) -> ast.obj_field {
+    auto ty = parse_ty(p);
+    auto ident = parse_ident(p);
+    ret rec(ty=ty, ident=ident, id=p.next_def_id());
+}
+
+impure fn parse_method(parser p) -> @ast.method {
+    auto lo = p.get_span();
+    auto eff = parse_effect(p);
+    expect(p, token.FN);
+    auto ident = parse_ident(p);
+    auto f = parse_fn(p, eff);
+    auto meth = rec(ident = ident, meth = f, id = p.next_def_id());
+    ret @spanned(lo, f.body.span, meth);
+}
+
+impure fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
+    auto lo = p.get_span();
+    expect(p, token.OBJ);
+    auto ident = parse_ident(p);
+    auto ty_params = parse_ty_params(p);
+    auto pf = parse_obj_field;
+    let util.common.spanned[vec[ast.obj_field]] fields =
+        parse_seq[ast.obj_field]
+        (token.LPAREN,
+         token.RPAREN,
+         some(token.COMMA),
+         pf, p);
+
+    auto pm = parse_method;
+    let util.common.spanned[vec[@ast.method]] meths =
+        parse_seq[@ast.method]
+        (token.LBRACE,
+         token.RBRACE,
+         none[token.token],
+         pm, p);
+
+    let ast._obj ob = rec(fields=fields.node,
+                          methods=meths.node);
+
+    auto item = ast.item_obj(ident, ob, ty_params,
+                             p.next_def_id(), ast.ann_none);
+
+    ret @spanned(lo, meths.span, item);
 }
 
 impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
@@ -1271,7 +1322,6 @@ impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
             case (ast.item_ty(?id, _, _, _, _)) {
                 index.insert(id, ast.mie_item(u));
             }
-
             case (ast.item_tag(?id, ?variants, _, _)) {
                 index.insert(id, ast.mie_item(u));
                 let uint variant_idx = 0u;
@@ -1279,6 +1329,9 @@ impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
                     index.insert(v.name, ast.mie_tag_variant(u, variant_idx));
                     variant_idx += 1u;
                 }
+            }
+            case (ast.item_obj(?id, _, _, _, _)) {
+                index.insert(id, ast.mie_item(u));
             }
         }
 
@@ -1437,6 +1490,10 @@ impure fn parse_item(parser p) -> @ast.item {
         case (token.TAG) {
             check (eff == ast.eff_pure);
             ret parse_item_tag(p);
+        }
+        case (token.OBJ) {
+            check (eff == ast.eff_pure);
+            ret parse_item_obj(p, lyr);
         }
         case (?t) {
             p.err("expected item but found " + token.to_str(t));

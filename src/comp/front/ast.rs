@@ -26,6 +26,7 @@ tag ann {
 
 tag def {
     def_fn(def_id);
+    def_obj(def_id);
     def_mod(def_id);
     def_const(def_id);
     def_arg(def_id);
@@ -194,6 +195,15 @@ type _fn = rec(effect effect,
                @ty output,
                block body);
 
+
+type method_ = rec(ident ident, _fn meth, def_id id);
+type method = spanned[method_];
+
+type obj_field = rec(@ty ty, ident ident, def_id id);
+type _obj = rec(vec[obj_field] fields,
+                vec[@method] methods);
+
+
 tag mod_index_entry {
     mie_item(uint);
     mie_tag_variant(uint /* tag item index */, uint /* variant index */);
@@ -212,6 +222,7 @@ tag item_ {
     item_mod(ident, _mod, def_id);
     item_ty(ident, @ty, vec[ty_param], def_id, ann);
     item_tag(ident, vec[variant], vec[ty_param], def_id);
+    item_obj(ident, _obj, vec[ty_param], def_id, ann);
 }
 
 
