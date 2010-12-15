@@ -392,20 +392,6 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
             auto n = parse_name(p, i);
             hi = n.span;
             ex = ast.expr_name(n, none[ast.def], ast.ann_none);
-            alt (p.peek()) {
-                case (token.LPAREN) {
-                    // Call expr.
-                    auto pf = parse_expr;
-                    auto es = parse_seq[@ast.expr](token.LPAREN,
-                                                   token.RPAREN,
-                                                   some(token.COMMA),
-                                                   pf, p);
-                    ex = ast.expr_call(@spanned(lo, hi, ex),
-                                       es.node, ast.ann_none);
-                    hi = es.span;
-                }
-                case (_) { /* fall through */ }
-            }
         }
 
         case (token.LPAREN) {
@@ -488,6 +474,19 @@ impure fn parse_path_expr(parser p) -> @ast.expr {
     auto hi = e.span;
     while (true) {
         alt (p.peek()) {
+
+            case (token.LPAREN) {
+                // Call expr.
+                auto pf = parse_expr;
+                auto es = parse_seq[@ast.expr](token.LPAREN,
+                                               token.RPAREN,
+                                               some(token.COMMA),
+                                               pf, p);
+                hi = es.span;
+                auto e_ = ast.expr_call(e, es.node, ast.ann_none);
+                e = @spanned(lo, hi, e_);
+            }
+
             case (token.DOT) {
                 p.bump();
                 alt (p.peek()) {
