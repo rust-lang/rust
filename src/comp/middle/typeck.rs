@@ -27,6 +27,7 @@ type fn_ctxt = rec(@ty ret_ty,
 
 type arg = rec(ast.mode mode, @ty ty);
 type field = rec(ast.ident ident, @ty ty);
+type method = rec(ast.ident ident, vec[arg] inputs, @ty output);
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast.rs as well.
@@ -45,6 +46,7 @@ tag sty {
     ty_tup(vec[@ty]);
     ty_rec(vec[field]);
     ty_fn(vec[arg], @ty);                           // TODO: effect
+    ty_obj(vec[method]);
     ty_var(int);                                    // ephemeral type var
     ty_local(ast.def_id);                           // type of a local var
     // TODO: ty_param(ast.def_id), for fn type params
@@ -371,6 +373,17 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         ret rec(mode=a.mode, ty=ast_ty_to_ty(f, a.ty));
     }
 
+    fn ty_of_method(@ty_item_table id_to_ty_item,
+                    @ty_table item_to_ty,
+                    &@ast.method m) -> method {
+        auto get = bind getter(id_to_ty_item, item_to_ty, _);
+        auto convert = bind ast_ty_to_ty(get, _);
+        auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
+        auto inputs = _vec.map[ast.arg,arg](f, m.node.meth.inputs);
+        auto output = convert(m.node.meth.output);
+        ret rec(ident=m.node.ident, inputs=inputs, output=output);
+    }
+
     fn ty_of_item(@ty_item_table id_to_ty_item,
                   @ty_table item_to_ty,
                   @ast.item it) -> @ty {
@@ -394,6 +407,18 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
                 auto t_fn = plain_ty(ty_fn(input_tys, output_ty));
                 item_to_ty.insert(def_id, t_fn);
                 ret t_fn;
+            }
+
+            case (ast.item_obj(?ident, ?obj_info, _, ?def_id, _)) {
+                // TODO: handle ty-params
+
+                auto f = bind ty_of_method(id_to_ty_item, item_to_ty, _);
+                auto methods =
+                    _vec.map[@ast.method,method](f, obj_info.methods);
+
+                auto t_obj = plain_ty(ty_obj(methods));
+                item_to_ty.insert(def_id, t_obj);
+                ret t_obj;
             }
 
             case (ast.item_ty(?ident, ?ty, _, ?def_id, _)) {
@@ -424,7 +449,7 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         let vec[ast.variant] result = vec();
 
         for (ast.variant variant in variants) {
-            // Nullary tag constructors get turned into constants; n-ary tag
+            // Nullary tag constructors get truned into constants; n-ary tag
             // constructors get turned into functions.
             auto result_ty;
             if (_vec.len[ast.variant_arg](variant.args) == 0u) {
@@ -1586,6 +1611,11 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     check (fcx.locals.contains_key(id));
                     t = fcx.locals.get(id);
                 }
+                case (ast.def_obj(?id)) {
+                    check (fcx.ccx.item_types.contains_key(id));
+                    t = fcx.ccx.item_types.get(id);
+                }
+
                 case (_) {
                     // FIXME: handle other names.
                     fcx.ccx.sess.unimpl("definition variant for: "
