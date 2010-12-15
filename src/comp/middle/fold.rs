@@ -191,6 +191,11 @@ type ast_fold[ENV] =
          vec[ast.ty_param] ty_params,
          def_id id) -> @item)                     fold_item_tag,
 
+     (fn(&ENV e, &span sp, ident ident,
+         &ast._obj ob,
+         vec[ast.ty_param] ty_params,
+         def_id id, ann a) -> @item)              fold_item_obj,
+
      // Additional nodes.
      (fn(&ENV e, &span sp,
          &ast.block_) -> block)                   fold_block,
@@ -203,6 +208,10 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &span sp,
          &ast._mod m) -> @ast.crate)              fold_crate,
+
+     (fn(&ENV e,
+         vec[ast.obj_field] fields,
+         vec[@ast.method] methods) -> ast._obj)   fold_obj,
 
      // Env updates.
      (fn(&ENV e, @ast.crate c) -> ENV) update_env_for_crate,
@@ -596,6 +605,34 @@ fn fold_fn[ENV](&ENV env, ast_fold[ENV] fld, &ast._fn f) -> ast._fn {
     ret fld.fold_fn(env, f.effect, inputs, output, body);
 }
 
+
+fn fold_obj_field[ENV](&ENV env, ast_fold[ENV] fld,
+                       &ast.obj_field f) -> ast.obj_field {
+    auto ty = fold_ty(env, fld, f.ty);
+    ret rec(ty=ty with f);
+}
+
+
+fn fold_method[ENV](&ENV env, ast_fold[ENV] fld,
+                    @ast.method m) -> @ast.method {
+    auto meth = fold_fn(env, fld, m.node.meth);
+    ret @rec(node=rec(meth=meth with m.node) with *m);
+}
+
+
+fn fold_obj[ENV](&ENV env, ast_fold[ENV] fld, &ast._obj ob) -> ast._obj {
+
+    let vec[ast.obj_field] fields = vec();
+    let vec[@ast.method] meths = vec();
+    for (ast.obj_field f in ob.fields) {
+        fields += fold_obj_field(env, fld, f);
+    }
+    for (@ast.method m in ob.methods) {
+        append[@ast.method](meths, fold_method(env, fld, m));
+    }
+    ret fld.fold_obj(env, fields, meths);
+}
+
 fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
 
     let ENV env_ = fld.update_env_for_item(env, i);
@@ -641,6 +678,12 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
             ret fld.fold_item_tag(env_, i.span, ident, new_variants,
                                   ty_params, id);
         }
+
+        case (ast.item_obj(?ident, ?ob, ?tps, ?id, ?ann)) {
+            let ast._obj ob_ = fold_obj[ENV](env_, fld, ob);
+            ret fld.fold_item_obj(env_, i.span, ident, ob_, tps, id, ann);
+        }
+
     }
 
     fail;
@@ -926,6 +969,12 @@ fn identity_fold_item_tag[ENV](&ENV e, &span sp, ident i,
     ret @respan(sp, ast.item_tag(i, variants, ty_params, id));
 }
 
+fn identity_fold_item_obj[ENV](&ENV e, &span sp, ident i,
+                               &ast._obj ob, vec[ast.ty_param] ty_params,
+                               def_id id, ann a) -> @item {
+    ret @respan(sp, ast.item_obj(i, ob, ty_params, id, a));
+}
+
 
 // Additional identities.
 
@@ -947,6 +996,12 @@ fn identity_fold_mod[ENV](&ENV e, &ast._mod m) -> ast._mod {
 
 fn identity_fold_crate[ENV](&ENV e, &span sp, &ast._mod m) -> @ast.crate {
     ret @respan(sp, rec(module=m));
+}
+
+fn identity_fold_obj[ENV](&ENV e,
+                          vec[ast.obj_field] fields,
+                          vec[@ast.method] methods) -> ast._obj {
+    ret rec(fields=fields, methods=methods);
 }
 
 
@@ -1056,11 +1111,13 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_item_mod  = bind identity_fold_item_mod[ENV](_,_,_,_,_),
          fold_item_ty   = bind identity_fold_item_ty[ENV](_,_,_,_,_,_,_),
          fold_item_tag  = bind identity_fold_item_tag[ENV](_,_,_,_,_,_),
+         fold_item_obj  = bind identity_fold_item_obj[ENV](_,_,_,_,_,_,_),
 
          fold_block = bind identity_fold_block[ENV](_,_,_),
          fold_fn = bind identity_fold_fn[ENV](_,_,_,_,_),
          fold_mod = bind identity_fold_mod[ENV](_,_),
          fold_crate = bind identity_fold_crate[ENV](_,_,_),
+         fold_obj = bind identity_fold_obj[ENV](_,_,_),
 
          update_env_for_crate = bind identity_update_env_for_crate[ENV](_,_),
          update_env_for_item = bind identity_update_env_for_item[ENV](_,_),
