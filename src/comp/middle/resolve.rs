@@ -45,6 +45,9 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
             case (ast.item_tag(_, _, _, ?id)) {
                 ret some[def](ast.def_ty(id));
             }
+            case (ast.item_obj(_, _, _, ?id, _)) {
+                ret some[def](ast.def_obj(id));
+            }
         }
     }
 
