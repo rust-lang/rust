@@ -519,6 +519,7 @@ TEST_XFAILS_LLVM := $(TASK_XFAILS) \
 
 TEST_XFAILS_SELF := $(filter-out \
                       $(addprefix test/run-pass/, \
+                        alt-tag.rs \
                         arith-0.rs \
                         arith-1.rs \
                         arith-2.rs \

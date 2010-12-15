@@ -1425,6 +1425,7 @@ impure fn trans_pat_binding(@block_ctxt cx, @ast.pat pat, ValueRef llval)
                 auto subpat_res = trans_pat_binding(this_cx, subpat,
                                                     llsubval);
                 this_cx = subpat_res.bcx;
+                i += 1;
             }
 
             ret res(this_cx, llval);
