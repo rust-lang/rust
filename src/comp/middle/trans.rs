@@ -15,6 +15,8 @@ import middle.typeck;
 import back.x86;
 import back.abi;
 
+import middle.typeck.pat_ty;
+
 import util.common;
 import util.common.istr;
 import util.common.new_def_hash;
@@ -950,6 +952,7 @@ fn build_memcpy(@block_ctxt cx,
     //   lib.llvm.llvm.LLVMAlignOf(llty);
     // but this makes it upset because it's not a constant.
 
+    log "building memcpy";
     auto volatile = C_integral(0, T_i1());
     ret res(cx, cx.build.Call(memcpy,
                               vec(dst_ptr, src_ptr,
@@ -1320,6 +1323,150 @@ impure fn trans_do_while(@block_ctxt cx, &ast.block body,
     ret res(next_cx, body_res.val);
 }
 
+// Pattern matching translation
+
+// Returns a pointer to the union part of the LLVM representation of a tag
+// type, cast to the appropriate type.
+fn get_pat_union_ptr(@block_ctxt cx, vec[@ast.pat] subpats, ValueRef llval)
+        -> ValueRef {
+    auto llblobptr = cx.build.GEP(llval, vec(C_int(0), C_int(1)));
+
+    // Generate the union type.
+    let vec[TypeRef] llsubpattys = vec();
+    for (@ast.pat subpat in subpats) {
+        llsubpattys += vec(type_of(cx.fcx.ccx, pat_ty(subpat)));
+    }
+
+    // Recursively check subpatterns.
+    auto llunionty = T_struct(llsubpattys);
+    ret cx.build.TruncOrBitCast(llblobptr, T_ptr(llunionty));
+}
+
+impure fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
+                          @block_ctxt next_cx) -> result {
+    alt (pat.node) {
+        case (ast.pat_wild(_)) { ret res(cx, llval); }
+        case (ast.pat_bind(_, _, _)) { ret res(cx, llval); }
+        case (ast.pat_tag(?id, ?subpats, ?vdef_opt, ?ann)) {
+            auto lltagptr = cx.build.GEP(llval, vec(C_int(0), C_int(0)));
+            auto lltag = cx.build.Load(lltagptr);
+            
+            auto vdef = option.get[ast.variant_def](vdef_opt);
+            auto variant_id = vdef._1;
+            auto tinfo = cx.fcx.ccx.tags.get(vdef._0);
+            auto variant_tag = 0;
+            auto i = 0;
+            for (tup(ast.def_id,arity) vinfo in tinfo.variants) {
+                auto this_variant_id = vinfo._0;
+                if (variant_id._0 == this_variant_id._0 &&
+                        variant_id._1 == this_variant_id._1) {
+                    variant_tag = i;
+                }
+                i += 1;
+            }
+
+            auto matched_cx = new_sub_block_ctxt(cx, "matched_cx");
+
+            auto lleq = cx.build.ICmp(lib.llvm.LLVMIntEQ, lltag,
+                                      C_int(variant_tag));
+            cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
+
+            if (_vec.len[@ast.pat](subpats) > 0u) {
+                auto llunionptr = get_pat_union_ptr(matched_cx, subpats,
+                                                    llval);
+                auto i = 0;
+                for (@ast.pat subpat in subpats) {
+                    auto llsubvalptr = matched_cx.build.GEP(llunionptr,
+                                                            vec(C_int(0),
+                                                                C_int(i)));
+                    auto llsubval = load_non_structural(matched_cx,
+                                                        llsubvalptr,
+                                                        pat_ty(subpat));
+                    auto subpat_res = trans_pat_match(matched_cx, subpat,
+                                                      llsubval, next_cx);
+                    matched_cx = subpat_res.bcx;
+                }
+            }
+
+            ret res(matched_cx, llval);
+        }
+    }
+
+    fail;
+}
+
+impure fn trans_pat_binding(@block_ctxt cx, @ast.pat pat, ValueRef llval)
+        -> result {
+    alt (pat.node) {
+        case (ast.pat_wild(_)) { ret res(cx, llval); }
+        case (ast.pat_bind(?id, ?def_id, ?ann)) {
+            auto ty = node_ann_type(cx.fcx.ccx, ann);
+            auto llty = type_of(cx.fcx.ccx, ty);
+
+            auto dst = cx.build.Alloca(llty);
+            llvm.LLVMSetValueName(dst, _str.buf(id));
+            cx.fcx.lllocals.insert(def_id, dst);
+            cx.cleanups += clean(bind drop_slot(_, dst, ty));
+
+            ret copy_ty(cx, true, dst, llval, ty);
+        }
+        case (ast.pat_tag(_, ?subpats, _, _)) {
+            if (_vec.len[@ast.pat](subpats) == 0u) { ret res(cx, llval); }
+
+            auto llunionptr = get_pat_union_ptr(cx, subpats, llval);
+
+            auto this_cx = cx;
+            auto i = 0;
+            for (@ast.pat subpat in subpats) {
+                auto llsubvalptr = this_cx.build.GEP(llunionptr,
+                                                     vec(C_int(0), C_int(i)));
+                auto llsubval = load_non_structural(this_cx, llsubvalptr,
+                                                    pat_ty(subpat));
+                auto subpat_res = trans_pat_binding(this_cx, subpat,
+                                                    llsubval);
+                this_cx = subpat_res.bcx;
+            }
+
+            ret res(this_cx, llval);
+        }
+    }
+}
+
+impure fn trans_alt(@block_ctxt cx, @ast.expr expr, vec[ast.arm] arms)
+        -> result {
+    auto expr_res = trans_expr(cx, expr);
+
+    auto last_cx = new_sub_block_ctxt(expr_res.bcx, "last");
+
+    auto this_cx = expr_res.bcx;
+    for (ast.arm arm in arms) {
+        auto next_cx = new_sub_block_ctxt(expr_res.bcx, "next");
+        auto match_res = trans_pat_match(this_cx, arm.pat, expr_res.val,
+                                         next_cx);
+
+        auto binding_cx = new_scope_block_ctxt(match_res.bcx, "binding");
+        match_res.bcx.build.Br(binding_cx.llbb);
+
+        auto binding_res = trans_pat_binding(binding_cx, arm.pat,
+                                             expr_res.val);
+
+        auto block_res = trans_block(binding_res.bcx, arm.block);
+        if (!is_terminated(block_res.bcx)) {
+            block_res.bcx.build.Br(last_cx.llbb);
+        }
+
+        this_cx = next_cx;
+    }
+
+    // FIXME: This is executed when none of the patterns match; it should fail
+    // instead!
+    this_cx.build.Br(last_cx.llbb);
+
+    // FIXME: This is very wrong; we should phi together all the arm blocks,
+    // since this is an expression.
+    ret res(last_cx, C_nil());
+}
+
 // The additional bool returned indicates whether it's mem (that is
 // represented as an alloca or heap, hence needs a 'load' to be used as an
 // immediate).
@@ -1338,6 +1485,10 @@ fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt)
                     check (cx.fcx.lllocals.contains_key(did));
                     ret tup(res(cx, cx.fcx.lllocals.get(did)),
                             true);
+                }
+                case (ast.def_binding(?did)) {
+                    check (cx.fcx.lllocals.contains_key(did));
+                    ret tup(res(cx, cx.fcx.lllocals.get(did)), true);
                 }
                 case (ast.def_fn(?did)) {
                     check (cx.fcx.ccx.item_ids.contains_key(did));
@@ -1664,6 +1815,10 @@ impure fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
 
         case (ast.expr_do_while(?body, ?cond, _)) {
             ret trans_do_while(cx, body, cond);
+        }
+
+        case (ast.expr_alt(?expr, ?arms, _)) {
+            ret trans_alt(cx, expr, arms);
         }
 
         case (ast.expr_block(?blk, _)) {
@@ -2461,7 +2616,6 @@ fn trans_main_fn(@crate_ctxt cx, ValueRef llcrate) {
     auto start_args = vec(p2i(llrust_main), p2i(llcrate), llargc, llargv);
 
     b.Ret(b.Call(llrust_start, start_args));
-
 }
 
 fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
