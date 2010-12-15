@@ -103,10 +103,15 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
 
             case (scope_item(?it)) {
                 alt (it.node) {
-                    case (ast.item_fn(_, ?f, _, _, _)) {
+                    case (ast.item_fn(_, ?f, ?ty_params, _, _)) {
                         for (ast.arg a in f.inputs) {
                             if (_str.eq(a.ident, i)) {
                                 ret some[def](ast.def_arg(a.id));
+                            }
+                        }
+                        for (ast.ty_param tp in ty_params) {
+                            if (_str.eq(tp.ident, i)) {
+                                ret some[def](ast.def_ty_arg(tp.id));
                             }
                         }
                     }
