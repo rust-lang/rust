@@ -102,7 +102,7 @@ impure fn parse_ident(parser p) -> ast.ident {
     }
 }
 
-impure fn parse_ty_fn(parser p) -> ast.ty_ {
+impure fn parse_ty_fn(parser p, ast.span lo) -> ast.ty_ {
     impure fn parse_fn_input_ty(parser p) -> rec(ast.mode mode, @ast.ty ty) {
         auto mode;
         if (p.peek() == token.BINOP(token.AND)) {
@@ -124,8 +124,6 @@ impure fn parse_ty_fn(parser p) -> ast.ty_ {
 
     auto lo = p.get_span();
 
-    expect(p, token.FN);
-
     auto f = parse_fn_input_ty; // FIXME: trans_const_lval bug
     auto inputs = parse_seq[rec(ast.mode mode, @ast.ty ty)](token.LPAREN,
         token.RPAREN, some(token.COMMA), f, p);
@@ -139,6 +137,31 @@ impure fn parse_ty_fn(parser p) -> ast.ty_ {
     }
 
     ret ast.ty_fn(inputs.node, output);
+}
+
+impure fn parse_ty_obj(parser p, &mutable ast.span hi) -> ast.ty_ {
+    expect(p, token.OBJ);
+    impure fn parse_method_sig(parser p) -> ast.ty_method {
+        auto flo = p.get_span();
+        expect(p, token.FN);
+        auto ident = parse_ident(p);
+        auto f = parse_ty_fn(p, flo);
+        expect(p, token.SEMI);
+        alt (f) {
+            case (ast.ty_fn(?inputs, ?output)) {
+                ret rec(ident=ident, inputs=inputs, output=output);
+            }
+        }
+        fail;
+    }
+    auto f = parse_method_sig;
+    auto meths =
+        parse_seq[ast.ty_method](token.LBRACE,
+                                 token.RBRACE,
+                                 none[token.token],
+                                 f, p);
+    hi = meths.span;
+    ret ast.ty_obj(meths.node);
 }
 
 impure fn parse_ty_field(parser p) -> ast.ty_field {
@@ -196,7 +219,7 @@ impure fn parse_ty(parser p) -> @ast.ty {
             auto elems = parse_seq[@ast.ty] (token.LPAREN,
                                              token.RPAREN,
                                              some(token.COMMA), f, p);
-            hi = p.get_span();
+            hi = elems.span;
             t = ast.ty_tup(elems.node);
         }
 
@@ -208,24 +231,30 @@ impure fn parse_ty(parser p) -> @ast.ty {
                                         token.RPAREN,
                                         some(token.COMMA),
                                         f, p);
-            hi = p.get_span();
+            hi = elems.span;
             t = ast.ty_rec(elems.node);
         }
 
         case (token.MUTABLE) {
             p.bump();
             auto t0 = parse_ty(p);
-            hi = p.get_span();
+            hi = t0.span;
             t = ast.ty_mutable(t0);
         }
 
         case (token.FN) {
-            t = parse_ty_fn(p);
+            auto flo = p.get_span();
+            p.bump();
+            t = parse_ty_fn(p, flo);
             alt (t) {
                 case (ast.ty_fn(_, ?out)) {
                     hi = out.span;
                 }
             }
+        }
+
+        case (token.OBJ) {
+            t = parse_ty_obj(p, hi);
         }
 
         case (token.IDENT(_)) {

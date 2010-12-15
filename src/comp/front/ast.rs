@@ -171,6 +171,8 @@ tag lit_ {
 
 type ty_field = rec(ident ident, @ty ty);
 type ty_arg = rec(mode mode, @ty ty);
+// TODO: effect
+type ty_method = rec(ident ident, vec[ty_arg] inputs, @ty output);
 type ty = spanned[ty_];
 tag ty_ {
     ty_nil;
@@ -185,6 +187,7 @@ tag ty_ {
     ty_tup(vec[@ty]);
     ty_rec(vec[ty_field]);
     ty_fn(vec[ty_arg], @ty);        // TODO: effect
+    ty_obj(vec[ty_method]);
     ty_path(path, option.t[def]);
     ty_mutable(@ty);
 }
