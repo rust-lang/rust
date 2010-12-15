@@ -18,11 +18,11 @@ import std.option.some;
 
 type ty_table = hashmap[ast.def_id, @ty];
 type crate_ctxt = rec(session.session sess,
-                      @ty_table item_types);
+                      @ty_table item_types,
+                      mutable int next_var_id);
 
 type fn_ctxt = rec(@ty ret_ty,
                    @ty_table locals,
-                   mutable int next_var_id,
                    @crate_ctxt ccx);
 
 type arg = rec(ast.mode mode, @ty ty);
@@ -49,7 +49,7 @@ tag sty {
     ty_obj(vec[method]);
     ty_var(int);                                    // ephemeral type var
     ty_local(ast.def_id);                           // type of a local var
-    // TODO: ty_param(ast.def_id), for fn type params
+    ty_param(ast.def_id);                           // fn type param
     // TODO: ty_fn_arg(@ty), for a possibly-aliased function argument
 }
 
@@ -249,6 +249,11 @@ fn ty_to_str(&@ty typ) -> str {
         case (ty_var(?v)) {
             s = "<T" + util.common.istr(v) + ">";
         }
+
+        case (ty_param(?id)) {
+            s = "<P" + util.common.istr(id._0) + ":" + util.common.istr(id._1)
+                + ">";
+        }
     }
 
     ret s;
@@ -299,16 +304,17 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty {
         }
 
         case (ast.ty_path(?path, ?def)) {
-            auto def_id;
             check (def != none[ast.def]);
             alt (option.get[ast.def](def)) {
-                case (ast.def_ty(?id)) { def_id = id; }
-                case (_) { fail; }
+                case (ast.def_ty(?id)) {
+                    // TODO: maybe record cname chains so we can do
+                    // "foo = int" like OCaml?
+                    sty = getter(id).struct;
+                }
+                case (ast.def_ty_arg(?id))  { sty = ty_param(id); }
+                case (_)                    { fail; }
             }
 
-            // TODO: maybe record cname chains so we can do "foo = int" like
-            // OCaml?
-            sty = getter(def_id).struct;
             cname = some(path_to_str(path));
         }
 
@@ -1184,6 +1190,20 @@ fn unify(&fn_ctxt fcx, @ty expected, @ty actual) -> unify_result {
                 }
                 ret result;
             }
+
+            case (ty_param(?expected_id)) {
+                alt (actual.struct) {
+                    case (ty_param(?actual_id)) {
+                        if (expected_id._0 == actual_id._0 &&
+                                expected_id._1 == actual_id._1) {
+                            ret ures_ok(expected);
+                        }
+                    }
+                    case (_) {
+                        ret ures_err(terr_mismatch, expected, actual);
+                    }
+                }
+            }
         }
 
         // TODO: remove me once match-exhaustiveness checking works
@@ -1495,10 +1515,10 @@ fn check_pat(&fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
     auto new_pat;
     alt (pat.node) {
         case (ast.pat_wild(_)) {
-            new_pat = ast.pat_wild(ast.ann_type(next_ty_var(fcx)));
+            new_pat = ast.pat_wild(ast.ann_type(next_ty_var(fcx.ccx)));
         }
         case (ast.pat_bind(?id, ?def_id, _)) {
-            auto ann = ast.ann_type(next_ty_var(fcx));
+            auto ann = ast.ann_type(next_ty_var(fcx.ccx));
             new_pat = ast.pat_bind(id, def_id, ann);
         }
         case (ast.pat_tag(?id, ?subpats, ?vdef_opt, _)) {
@@ -1760,7 +1780,7 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             }
 
             // Now typecheck the blocks.
-            auto result_ty = next_ty_var(fcx);
+            auto result_ty = next_ty_var(fcx.ccx);
 
             let vec[ast.block] blocks_0 = vec();
             for (ast.arm arm in arms) {
@@ -1802,7 +1822,7 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 // FIXME: this breaks aliases. We need a ty_fn_arg.
                 append[arg](arg_tys_0, rec(mode=ast.val, ty=expr_ty(a_0)));
             }
-            auto rt_0 = next_ty_var(fcx);
+            auto rt_0 = next_ty_var(fcx.ccx);
             auto t_0 = plain_ty(ty_fn(arg_tys_0, rt_0));
 
             // Unify and write back to the function.
@@ -1866,7 +1886,7 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             let @ty t;
             if (_vec.len[@ast.expr](args) == 0u) {
-                t = next_ty_var(fcx);
+                t = next_ty_var(fcx.ccx);
             } else {
                 auto expr_1 = check_expr(fcx, args.(0));
                 t = expr_ty(expr_1);
@@ -2013,9 +2033,9 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
     }
 }
 
-fn next_ty_var(&fn_ctxt fcx) -> @ty {
-    auto t = plain_ty(ty_var(fcx.next_var_id));
-    fcx.next_var_id += 1;
+fn next_ty_var(@crate_ctxt ccx) -> @ty {
+    auto t = plain_ty(ty_var(ccx.next_var_id));
+    ccx.next_var_id += 1;
     ret t;
 }
 
@@ -2030,7 +2050,7 @@ fn check_stmt(&fn_ctxt fcx, &@ast.stmt stmt)
                     alt (local.ty) {
                         case (none[@ast.ty]) {
                             // Auto slot. Assign a ty_var.
-                            local_ty = next_ty_var(fcx);
+                            local_ty = next_ty_var(fcx.ccx);
                         }
 
                         case (some[@ast.ty](?ast_ty)) {
@@ -2133,7 +2153,6 @@ fn check_const(&@crate_ctxt ccx, &span sp, ast.ident ident, @ast.ty t,
     auto rty = ann_to_type(ann);
     let fn_ctxt fcx = rec(ret_ty = rty,
                           locals = @common.new_def_hash[@ty](),
-                          mutable next_var_id = 0,
                           ccx = ccx);
     auto e_ = check_expr(fcx, e);
     // FIXME: necessary? Correct sequence?
@@ -2165,7 +2184,6 @@ fn check_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
 
     let fn_ctxt fcx = rec(ret_ty = output_ty,
                           locals = local_ty_table,
-                          mutable next_var_id = 0,
                           ccx = ccx);
 
     // TODO: Make sure the type of the block agrees with the function type.
@@ -2181,8 +2199,7 @@ fn check_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
 fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     auto result = collect_item_types(crate);
 
-    auto ccx = @rec(sess=sess,
-                    item_types=result._1);
+    auto ccx = @rec(sess=sess, item_types=result._1, mutable next_var_id=0);
 
     auto fld = fold.new_identity_fold[@crate_ctxt]();
     auto f = check_fn;  // FIXME: trans_const_lval bug
