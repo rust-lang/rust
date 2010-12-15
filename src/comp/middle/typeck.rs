@@ -435,7 +435,9 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
             }
 
             case (ast.item_tag(_, _, _, ?def_id)) {
-                item_to_ty.insert(def_id, plain_ty(ty_tag(def_id)));
+                auto ty = plain_ty(ty_tag(def_id));
+                item_to_ty.insert(def_id, ty);
+                ret ty;
             }
 
             case (ast.item_mod(_, _, _)) { fail; }
@@ -483,6 +485,9 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         -> @ty_item_table {
         alt (i.node) {
             case (ast.item_ty(_, _, _, ?def_id, _)) {
+                id_to_ty_item.insert(def_id, i);
+            }
+            case (ast.item_tag(_, _, _, ?def_id)) {
                 id_to_ty_item.insert(def_id, i);
             }
             case (_) { /* empty */ }
