@@ -416,6 +416,10 @@ impure fn next_token(reader rdr) -> token.token {
             c = rdr.curr();
         }
 
+        if (_str.eq(accum_str, "_")) {
+            ret token.UNDERSCORE;
+        }
+
         auto kwds = rdr.get_keywords();
         if (kwds.contains_key(accum_str)) {
             ret kwds.get(accum_str);
@@ -453,7 +457,6 @@ impure fn next_token(reader rdr) -> token.token {
         case (']') { rdr.bump(); ret token.RBRACKET; }
         case ('@') { rdr.bump(); ret token.AT; }
         case ('#') { rdr.bump(); ret token.POUND; }
-        case ('_') { rdr.bump(); ret token.UNDERSCORE; }
         case ('~') { rdr.bump(); ret token.TILDE; }
 
 
