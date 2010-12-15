@@ -173,6 +173,32 @@ fn ty_to_str(&@ty typ) -> str {
         ret s + ty_to_str(input.ty);
     }
 
+    fn fn_to_str(option.t[ast.ident] ident,
+                 vec[arg] inputs, @ty output) -> str {
+            auto f = fn_input_to_str;
+            auto s = "fn";
+            alt (ident) {
+                case (some[ast.ident](?i)) {
+                    s += " ";
+                    s += i;
+                }
+                case (_) { }
+            }
+
+            s += "(";
+            s += _str.connect(_vec.map[arg,str](f, inputs), ", ");
+            s += ")";
+
+            if (output.struct != ty_nil) {
+                s += " -> " + ty_to_str(output);
+            }
+            ret s;
+    }
+
+    fn method_to_str(&method m) -> str {
+        ret fn_to_str(some[ast.ident](m.ident), m.inputs, m.output) + ";";
+    }
+
     fn field_to_str(&field f) -> str {
         ret ty_to_str(f.ty) + " " + f.ident;
     }
@@ -211,12 +237,13 @@ fn ty_to_str(&@ty typ) -> str {
         }
 
         case (ty_fn(?inputs, ?output)) {
-            auto f = fn_input_to_str;
-            s = "fn(" + _str.connect(_vec.map[arg,str](f, inputs),
-                                     ", ") + ")";
-            if (output.struct != ty_nil) {
-                s += " -> " + ty_to_str(output);
-            }
+            s = fn_to_str(none[ast.ident], inputs, output);
+        }
+
+        case (ty_obj(?meths)) {
+            auto f = method_to_str;
+            auto m = _vec.map[method,str](f, meths);
+            s = "obj {\n\t" + _str.connect(m, "\n\t") + "\n}";
         }
 
         case (ty_var(?v)) {
