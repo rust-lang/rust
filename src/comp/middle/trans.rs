@@ -267,6 +267,31 @@ fn type_of(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
     ret llty;
 }
 
+fn type_of_fn(@crate_ctxt cx,
+              vec[typeck.arg] inputs,
+              @typeck.ty output) -> TypeRef {
+    let vec[TypeRef] atys = vec(T_taskptr());
+    for (typeck.arg arg in inputs) {
+        let TypeRef t = type_of(cx, arg.ty);
+        alt (arg.mode) {
+            case (ast.alias) {
+                t = T_ptr(t);
+            }
+            case (_) { /* fall through */  }
+        }
+        atys += t;
+    }
+
+    auto ret_ty;
+    if (typeck.type_is_nil(output)) {
+        ret_ty = llvm.LLVMVoidType();
+    } else {
+        ret_ty = type_of(cx, output);
+    }
+
+    ret T_fn(atys, ret_ty);
+}
+
 fn type_of_inner(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
     alt (t.struct) {
         case (typeck.ty_nil) { ret T_nil(); }
@@ -313,26 +338,19 @@ fn type_of_inner(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
             ret T_struct(tys);
         }
         case (typeck.ty_fn(?args, ?out)) {
-            let vec[TypeRef] atys = vec(T_taskptr());
-            for (typeck.arg arg in args) {
-                let TypeRef t = type_of(cx, arg.ty);
-                alt (arg.mode) {
-                    case (ast.alias) {
-                        t = T_ptr(t);
-                    }
-                    case (_) { /* fall through */  }
-                }
-                atys += t;
+            ret type_of_fn(cx, args, out);
+        }
+        case (typeck.ty_obj(?meths)) {
+            let vec[TypeRef] mtys = vec();
+            for (typeck.method m in meths) {
+                let TypeRef mty = type_of_fn(cx, m.inputs, m.output);
+                mtys += T_ptr(mty);
             }
-
-            auto ret_ty;
-            if (typeck.type_is_nil(out)) {
-                ret_ty = llvm.LLVMVoidType();
-            } else {
-                ret_ty = type_of(cx, out);
-            }
-
-            ret T_fn(atys, ret_ty);
+            let TypeRef vtbl = T_struct(mtys);
+            let TypeRef pair =
+                T_struct(vec(T_ptr(vtbl),
+                             T_ptr(T_box(T_opaque()))));
+            ret pair;
         }
         case (typeck.ty_var(_)) {
             // FIXME: implement.
@@ -1496,6 +1514,11 @@ fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt)
                     ret tup(res(cx, cx.fcx.ccx.item_ids.get(did)),
                             false);
                 }
+                case (ast.def_obj(?did)) {
+                    check (cx.fcx.ccx.item_ids.contains_key(did));
+                    ret tup(res(cx, cx.fcx.ccx.item_ids.get(did)),
+                            false);
+                }
                 case (ast.def_variant(?tid, ?vid)) {
                     check (cx.fcx.ccx.tags.contains_key(tid));
                     check (cx.fcx.ccx.item_ids.contains_key(vid));
@@ -2358,6 +2381,15 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             let str s = cx.names.next("_rust_fn") + "." + name;
             let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llty);
             cx.item_ids.insert(fid, llfn);
+        }
+
+        case (ast.item_obj(?name, ?ob, _, ?oid, ?ann)) {
+            // TODO: type-params
+            cx.items.insert(oid, i);
+            auto llty = node_type(cx, ann);
+            let str s = cx.names.next("_rust_obj_ctor") + "." + name;
+            let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llty);
+            cx.item_ids.insert(oid, llfn);
         }
 
         case (ast.item_const(?name, _, _, ?cid, _)) {
