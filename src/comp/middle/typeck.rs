@@ -673,6 +673,19 @@ fn field_idx(session.session sess, &span sp,
     fail;
 }
 
+fn method_idx(session.session sess, &span sp,
+              &ast.ident id, vec[method] meths) -> uint {
+    let uint i = 0u;
+    for (method m in meths) {
+        if (_str.eq(m.ident, id)) {
+            ret i;
+        }
+        i += 1u;
+    }
+    sess.span_err(sp, "unknown method '" + id + "' of obj");
+    fail;
+}
+
 fn is_lval(@ast.expr expr) -> bool {
     alt (expr.node) {
         case (ast.expr_field(_,_,_))    { ret true;  }
@@ -1830,6 +1843,7 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_call(?f, ?args, _)) {
+
             // Check the function.
             auto f_0 = check_expr(fcx, f);
 
@@ -1988,6 +2002,22 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                               "bad index on record");
                     }
                     auto ann = ast.ann_type(fields.(ix).ty);
+                    ret @fold.respan[ast.expr_](expr.span,
+                                                ast.expr_field(base_1,
+                                                               field,
+                                                               ann));
+                }
+
+                case (ty_obj(?methods)) {
+                    let uint ix = method_idx(fcx.ccx.sess,
+                                             expr.span, field, methods);
+                    if (ix >= _vec.len[typeck.method](methods)) {
+                        fcx.ccx.sess.span_err(expr.span,
+                                              "bad index on obj");
+                    }
+                    auto meth = methods.(ix);
+                    auto ty = plain_ty(ty_fn(meth.inputs, meth.output));
+                    auto ann = ast.ann_type(ty);
                     ret @fold.respan[ast.expr_](expr.span,
                                                 ast.expr_field(base_1,
                                                                field,
