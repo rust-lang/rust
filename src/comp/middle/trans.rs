@@ -353,9 +353,11 @@ fn type_of_inner(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
             ret pair;
         }
         case (typeck.ty_var(_)) {
-            // FIXME: implement.
             log "ty_var in trans.type_of";
-            ret T_i8();
+            fail;
+        }
+        case (typeck.ty_param(_)) {
+            ret T_ptr(T_i8());
         }
     }
     fail;
