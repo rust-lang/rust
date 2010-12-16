@@ -597,6 +597,16 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         ret @fold.respan[ast.item_](sp, item);
     }
 
+    fn fold_item_obj(&@env e, &span sp, ast.ident i,
+                    &ast._obj ob, vec[ast.ty_param] ty_params,
+                    ast.def_id id, ast.ann a) -> @ast.item {
+        check (e.item_to_ty.contains_key(id));
+        auto ty = e.item_to_ty.get(id);
+        auto item = ast.item_obj(i, ob, ty_params, id,
+                                ast.ann_type(ty));
+        ret @fold.respan[ast.item_](sp, item);
+    }
+
     fn fold_item_ty(&@env e, &span sp, ast.ident i,
                     @ast.ty t, vec[ast.ty_param] ty_params,
                     ast.def_id id, ast.ann a) -> @ast.item {
@@ -623,6 +633,7 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         @rec(update_env_for_item = bind convert(_,_),
              fold_item_const = bind fold_item_const(_,_,_,_,_,_,_),
              fold_item_fn    = bind fold_item_fn(_,_,_,_,_,_,_),
+             fold_item_obj   = bind fold_item_obj(_,_,_,_,_,_,_),
              fold_item_ty    = bind fold_item_ty(_,_,_,_,_,_,_),
              fold_item_tag   = bind fold_item_tag(_,_,_,_,_,_)
              with *fld_2);
