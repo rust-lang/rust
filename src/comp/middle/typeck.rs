@@ -417,6 +417,30 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         ret rec(ident=m.node.ident, inputs=inputs, output=output);
     }
 
+    fn ty_of_obj(@ty_item_table id_to_ty_item,
+                 @ty_table item_to_ty,
+                 &ast._obj obj_info) -> @ty {
+        auto f = bind ty_of_method(id_to_ty_item, item_to_ty, _);
+        auto methods =
+            _vec.map[@ast.method,method](f, obj_info.methods);
+
+        auto t_obj = plain_ty(ty_obj(methods));
+        ret t_obj;
+    }
+
+    fn ty_of_obj_ctor(@ty_item_table id_to_ty_item,
+                      @ty_table item_to_ty,
+                      &ast._obj obj_info) -> @ty {
+        auto t_obj = ty_of_obj(id_to_ty_item, item_to_ty, obj_info);
+        let vec[arg] t_inputs = vec();
+        for (ast.obj_field f in obj_info.fields) {
+            auto t_field = getter(id_to_ty_item, item_to_ty, f.id);
+            append[arg](t_inputs, rec(mode=ast.alias, ty=t_field));
+        }
+        auto t_fn = plain_ty(ty_fn(t_inputs, t_obj));
+        ret t_fn;
+    }
+
     fn ty_of_item(@ty_item_table id_to_ty_item,
                   @ty_table item_to_ty,
                   @ast.item it) -> @ty {
@@ -444,14 +468,11 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
 
             case (ast.item_obj(?ident, ?obj_info, _, ?def_id, _)) {
                 // TODO: handle ty-params
-
-                auto f = bind ty_of_method(id_to_ty_item, item_to_ty, _);
-                auto methods =
-                    _vec.map[@ast.method,method](f, obj_info.methods);
-
-                auto t_obj = plain_ty(ty_obj(methods));
-                item_to_ty.insert(def_id, t_obj);
-                ret t_obj;
+                auto t_ctor = ty_of_obj_ctor(id_to_ty_item,
+                                             item_to_ty,
+                                             obj_info);
+                item_to_ty.insert(def_id, t_ctor);
+                ret t_ctor;
             }
 
             case (ast.item_ty(?ident, ?ty, _, ?def_id, _)) {
