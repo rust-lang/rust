@@ -2236,10 +2236,10 @@ fn check_stmt(&fn_ctxt fcx, &@ast.stmt stmt)
                 }
 
                 case (some[@ast.expr](?expr)) {
-                    auto expr_t = check_expr(fcx, expr);
-                    demand(fcx, expr.span, fcx.ret_ty, expr_ty(expr_t));
+                    auto expr_0 = check_expr(fcx, expr);
+                    auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
                     ret @fold.respan[ast.stmt_](stmt.span,
-                                                ast.stmt_ret(some(expr_t)));
+                                                ast.stmt_ret(some(expr_1)));
                 }
             }
         }
