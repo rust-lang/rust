@@ -2253,6 +2253,15 @@ fn arg_tys_of_fn(ast.ann ann) -> vec[typeck.arg] {
     fail;
 }
 
+fn ret_ty_of_fn(ast.ann ann) -> @typeck.ty {
+    alt (typeck.ann_to_type(ann).struct) {
+        case (typeck.ty_fn(_, ?ret_ty)) {
+            ret ret_ty;
+        }
+    }
+    fail;
+}
+
 impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
                    &ast.ann ann) {
 
@@ -2272,6 +2281,33 @@ impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
         // C_nil values rather than their void type.
         res.bcx.build.RetVoid();
     }
+}
+
+fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
+             &ast.ann ann) {
+
+    auto llctor_decl = cx.item_ids.get(oid);
+    cx.item_names.insert(cx.path, llctor_decl);
+
+    // Translate obj ctor fields to function arguments.
+    let vec[ast.arg] fn_args = vec();
+    for (ast.obj_field f in ob.fields) {
+        fn_args += vec(rec(mode=ast.alias,
+                           ty=f.ty,
+                           ident=f.ident,
+                           id=f.id));
+    }
+
+    auto fcx = new_fn_ctxt(cx, cx.path, llctor_decl);
+    create_llargs_for_fn_args(fcx, fn_args);
+
+    auto bcx = new_top_block_ctxt(fcx);
+
+    copy_args_to_allocas(bcx, fn_args, arg_tys_of_fn(ann));
+
+    auto pair = bcx.build.Alloca(type_of(cx, ret_ty_of_fn(ann)));
+
+    bcx.build.Ret(pair);
 }
 
 fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
@@ -2350,6 +2386,10 @@ impure fn trans_item(@crate_ctxt cx, &ast.item item) {
         case (ast.item_fn(?name, ?f, _, ?fid, ?ann)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
             trans_fn(sub_cx, f, fid, ann);
+        }
+        case (ast.item_obj(?name, ?ob, _, ?oid, ?ann)) {
+            auto sub_cx = @rec(path=cx.path + "." + name with *cx);
+            trans_obj(sub_cx, ob, oid, ann);
         }
         case (ast.item_mod(?name, ?m, _)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
