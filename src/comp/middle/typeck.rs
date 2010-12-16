@@ -261,75 +261,26 @@ fn ty_to_str(&@ty typ) -> str {
 
 // Replaces parameter types inside a type with type variables.
 fn generalize_ty(@crate_ctxt cx, @ty t) -> @ty {
-    fn rewrap(@ty orig, &sty new) -> @ty {
-        ret @rec(struct=new, mut=orig.mut, cname=orig.cname);
-    }
-
-    fn recur(@crate_ctxt cx, @ty t,
-             &hashmap[ast.def_id,@ty] ty_params_to_ty_vars) -> @ty {
-        alt (t.struct) {
-            case (ty_box(?subty)) {
-                auto new_subty = recur(cx, subty, ty_params_to_ty_vars);
-                ret rewrap(t, ty_box(new_subty));
-            }
-            case (ty_vec(?subty)) {
-                auto new_subty = recur(cx, subty, ty_params_to_ty_vars);
-                ret rewrap(t, ty_vec(new_subty));
-            }
-            case (ty_tup(?subtys)) {
-                let vec[@ty] new_subtys = vec();
-                for (@ty subty in subtys) {
-                    new_subtys += vec(recur(cx, subty, ty_params_to_ty_vars));
-                }
-                ret rewrap(t, ty_tup(new_subtys));
-            }
-            case (ty_rec(?fields)) {
-                let vec[field] new_fields = vec();
-                for (field fld in fields) {
-                    auto new_ty = recur(cx, fld.ty, ty_params_to_ty_vars);
-                    new_fields += vec(rec(ident=fld.ident, ty=new_ty));
-                }
-                ret rewrap(t, ty_rec(new_fields));
-            }
-            case (ty_fn(?args, ?ret_ty)) {
-                let vec[arg] new_args = vec();
-                for (arg a in args) {
-                    auto new_ty = recur(cx, a.ty, ty_params_to_ty_vars);
-                    new_args += vec(rec(mode=a.mode, ty=new_ty));
-                }
-                auto new_ret_ty = recur(cx, ret_ty, ty_params_to_ty_vars);
-                ret rewrap(t, ty_fn(new_args, new_ret_ty));
-            }
-            case (ty_obj(?methods)) {
-                let vec[method] new_methods = vec();
-                for (method m in methods) {
-                    let vec[arg] new_args = vec();
-                    for (arg a in m.inputs) {
-                        auto new_ty = recur(cx, a.ty, ty_params_to_ty_vars);
-                        new_args += vec(rec(mode=a.mode, ty=new_ty));
+    state obj ty_generalizer(@crate_ctxt cx,
+                             @hashmap[ast.def_id,@ty] ty_params_to_ty_vars) {
+        fn fold_simple_ty(@ty t) -> @ty {
+            alt (t.struct) {
+                case (ty_param(?pid)) {
+                    if (ty_params_to_ty_vars.contains_key(pid)) {
+                        ret ty_params_to_ty_vars.get(pid);
                     }
-                    auto new_rty = recur(cx, m.output, ty_params_to_ty_vars);
-                    new_methods += vec(rec(ident=m.ident, inputs=new_args,
-                                           output=new_rty));
+                    auto var_ty = next_ty_var(cx);
+                    ty_params_to_ty_vars.insert(pid, var_ty);
+                    ret var_ty;
                 }
-                ret rewrap(t, ty_obj(new_methods));
+                case (_) { /* fall through */ }
             }
-            case (ty_param(?pid)) {
-                if (ty_params_to_ty_vars.contains_key(pid)) {
-                    ret ty_params_to_ty_vars.get(pid);
-                }
-                auto var_ty = next_ty_var(cx);
-                ty_params_to_ty_vars.insert(pid, var_ty);
-                ret var_ty;
-            }
-            case (_) { /* fall through */ }
+            ret t;
         }
-
-        ret t;
     }
 
-    auto ty_params_to_ty_vars = common.new_def_hash[@ty]();
-    ret recur(cx, t, ty_params_to_ty_vars);
+    auto generalizer = ty_generalizer(cx, @common.new_def_hash[@ty]());
+    ret fold_ty(generalizer, t);
 }
 
 // Parses the programmer's textual representation of a type into our internal
@@ -777,6 +728,75 @@ fn is_lval(@ast.expr expr) -> bool {
         case (ast.expr_name(_,_,_))     { ret true;  }
         case (_)                        { ret false; }
     }
+}
+
+// Type folds
+
+type ty_fold = state obj {
+    fn fold_simple_ty(@ty ty) -> @ty;
+};
+
+fn fold_ty(ty_fold fld, @ty t) -> @ty {
+    fn rewrap(@ty orig, &sty new) -> @ty {
+        ret @rec(struct=new, mut=orig.mut, cname=orig.cname);
+    }
+
+    alt (t.struct) {
+        case (ty_nil)           { ret fld.fold_simple_ty(t); }
+        case (ty_bool)          { ret fld.fold_simple_ty(t); }
+        case (ty_int)           { ret fld.fold_simple_ty(t); }
+        case (ty_uint)          { ret fld.fold_simple_ty(t); }
+        case (ty_machine(_))    { ret fld.fold_simple_ty(t); }
+        case (ty_char)          { ret fld.fold_simple_ty(t); }
+        case (ty_str)           { ret fld.fold_simple_ty(t); }
+        case (ty_tag(_))        { ret fld.fold_simple_ty(t); }
+        case (ty_box(?subty)) {
+            ret rewrap(t, ty_box(fold_ty(fld, subty)));
+        }
+        case (ty_vec(?subty)) {
+            ret rewrap(t, ty_vec(fold_ty(fld, subty)));
+        }
+        case (ty_tup(?subtys)) {
+            let vec[@ty] new_subtys = vec();
+            for (@ty subty in subtys) {
+                new_subtys += vec(fold_ty(fld, subty));
+            }
+            ret rewrap(t, ty_tup(new_subtys));
+        }
+        case (ty_rec(?fields)) {
+            let vec[field] new_fields = vec();
+            for (field fl in fields) {
+                auto new_ty = fold_ty(fld, fl.ty);
+                new_fields += vec(rec(ident=fl.ident, ty=new_ty));
+            }
+            ret rewrap(t, ty_rec(new_fields));
+        }
+        case (ty_fn(?args, ?ret_ty)) {
+            let vec[arg] new_args = vec();
+            for (arg a in args) {
+                auto new_ty = fold_ty(fld, a.ty);
+                new_args += vec(rec(mode=a.mode, ty=new_ty));
+            }
+            ret rewrap(t, ty_fn(new_args, fold_ty(fld, ret_ty)));
+        }
+        case (ty_obj(?methods)) {
+            let vec[method] new_methods = vec();
+            for (method m in methods) {
+                let vec[arg] new_args = vec();
+                for (arg a in m.inputs) {
+                    new_args += vec(rec(mode=a.mode, ty=fold_ty(fld, a.ty)));
+                }
+                new_methods += vec(rec(ident=m.ident, inputs=new_args,
+                                       output=fold_ty(fld, m.output)));
+            }
+            ret rewrap(t, ty_obj(new_methods));
+        }
+        case (ty_var(_))        { ret fld.fold_simple_ty(t); }
+        case (ty_local(_))      { ret fld.fold_simple_ty(t); }
+        case (ty_param(_))      { ret fld.fold_simple_ty(t); }
+    }
+
+    ret t;
 }
 
 // Type utilities
