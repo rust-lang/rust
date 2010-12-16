@@ -1767,7 +1767,7 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 }
                 case (ast.def_fn(?id)) {
                     check (fcx.ccx.item_types.contains_key(id));
-                    t = fcx.ccx.item_types.get(id);
+                    t = generalize_ty(fcx.ccx, fcx.ccx.item_types.get(id));
                 }
                 case (ast.def_const(?id)) {
                     check (fcx.ccx.item_types.contains_key(id));
@@ -1783,7 +1783,7 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 }
                 case (ast.def_obj(?id)) {
                     check (fcx.ccx.item_types.contains_key(id));
-                    t = fcx.ccx.item_types.get(id);
+                    t = generalize_ty(fcx.ccx, fcx.ccx.item_types.get(id));
                 }
 
                 case (_) {
@@ -1793,8 +1793,6 @@ fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     fail;
                 }
             }
-
-            t = generalize_ty(fcx.ccx, t); 
 
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_name(name, defopt,
