@@ -28,12 +28,23 @@ const int vec_elt_alloc = 1;
 const int vec_elt_fill = 2;
 const int vec_elt_data = 3;
 
-const int calltup_elt_out_ptr = 0;
-const int calltup_elt_task_ptr = 1;
-const int calltup_elt_indirect_args = 2;
-const int calltup_elt_ty_params = 3;
-const int calltup_elt_args = 4;
-const int calltup_elt_iterator_args = 5;
+
+/* Both obj and fn are two-word "bindings": One word points to some static
+ * dispatch information (vtbl, thunk, callee), and the other points to some
+ * box of bound data (object-body or closure).
+ */
+
+const int binding_field_dispatch = 0;
+const int binding_field_bound_data = 1;
+
+const int obj_field_vtbl = binding_field_dispatch;
+const int obj_field_box = binding_field_bound_data;
+
+const int obj_body_elt_tydesc = 0;
+const int obj_body_elt_fields = 1;
+
+const int fn_field_code = binding_field_dispatch;
+const int fn_field_box = binding_field_bound_data;
 
 const int worst_case_glue_call_args = 7;
 
