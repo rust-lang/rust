@@ -560,6 +560,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         u8-incr-decr.rs \
                         uint.rs \
                         unit.rs \
+                        tag.rs \
                         vec.rs \
                         vec-drop.rs \
                         vec-in-tup.rs \
