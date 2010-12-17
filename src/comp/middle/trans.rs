@@ -2310,14 +2310,20 @@ impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
 impure fn trans_vtbl(@crate_ctxt cx, &ast._obj ob) -> ValueRef {
     let vec[ValueRef] methods = vec();
     for (@ast.method m in ob.methods) {
+
+        auto llfnty = node_type(cx, m.node.ann);
+        let str s = cx.names.next("_rust_method") + "." + cx.path;
+        let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfnty);
+        cx.item_ids.insert(m.node.id, llfn);
+
         trans_fn(cx, m.node.meth, m.node.id, m.node.ann);
-        methods += cx.item_ids.get(m.node.id);
+        methods += llfn;
     }
     ret C_struct(methods);
 }
 
-fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
-             &ast.ann ann) {
+impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
+                    &ast.ann ann) {
 
     auto llctor_decl = cx.item_ids.get(oid);
     cx.item_names.insert(cx.path, llctor_decl);
@@ -2339,7 +2345,11 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
     copy_args_to_allocas(bcx, fn_args, arg_tys_of_fn(ann));
 
     auto pair = bcx.build.Alloca(type_of(cx, ret_ty_of_fn(ann)));
-
+    auto vtbl = trans_vtbl(cx, ob);
+    auto pair_vtbl = bcx.build.GEP(pair,
+                                   vec(C_int(0),
+                                       C_int(abi.obj_field_vtbl)));
+    bcx.build.Store(vtbl, pair_vtbl);
     bcx.build.Ret(pair);
 }
 
