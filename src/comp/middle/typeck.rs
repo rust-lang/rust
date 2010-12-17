@@ -942,6 +942,33 @@ fn ann_to_type(&ast.ann ann) -> @ty {
     }
 }
 
+fn count_ty_params(@ty t) -> uint {
+    state obj ty_param_counter(@mutable vec[ast.def_id] param_ids) {
+        fn fold_simple_ty(@ty t) -> @ty {
+            alt (t.struct) {
+                case (ty_param(?param_id)) {
+                    for (ast.def_id other_param_id in *param_ids) {
+                        if (param_id._0 == other_param_id._0 &&
+                                param_id._1 == other_param_id._1) {
+                            ret t;
+                        }
+                    }
+                    *param_ids += vec(param_id);
+                }
+                case (_) { /* fall through */ }
+            }
+            ret t;
+        }
+    }
+  
+    let vec[ast.def_id] param_ids_inner = vec();
+    let @mutable vec[ast.def_id] param_ids = @mutable param_ids_inner;
+    fold_ty(ty_param_counter(param_ids), t);
+    ret _vec.len[ast.def_id](*param_ids);
+}
+
+// Type accessors for AST nodes
+
 fn stmt_ty(@ast.stmt s) -> @ty {
     alt (s.node) {
         case (ast.stmt_expr(?e)) {

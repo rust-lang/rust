@@ -214,6 +214,21 @@ fn T_task() -> TypeRef {
                      ));
 }
 
+fn T_tydesc() -> TypeRef {
+    auto pvoid = T_ptr(T_i8());
+    auto glue_fn_ty = T_ptr(T_fn(vec(T_taskptr(), pvoid), T_void()));
+    ret T_struct(vec(pvoid,             // first_param
+                     T_int(),           // size
+                     T_int(),           // align
+                     glue_fn_ty,        // copy_glue_off
+                     glue_fn_ty,        // drop_glue_off
+                     glue_fn_ty,        // free_glue_off
+                     glue_fn_ty,        // sever_glue_off
+                     glue_fn_ty,        // mark_glue_off
+                     glue_fn_ty,        // obj_drop_glue_off
+                     glue_fn_ty));      // is_stateful
+}
+
 fn T_array(TypeRef t, uint n) -> TypeRef {
     ret llvm.LLVMArrayType(t, n);
 }
@@ -271,6 +286,15 @@ fn type_of_fn(@crate_ctxt cx,
               vec[typeck.arg] inputs,
               @typeck.ty output) -> TypeRef {
     let vec[TypeRef] atys = vec(T_taskptr());
+
+    auto fn_ty = typeck.plain_ty(typeck.ty_fn(inputs, output));
+    auto ty_param_count = typeck.count_ty_params(fn_ty);
+    auto i = 0u;
+    while (i < ty_param_count) {
+        atys += T_tydesc();
+        i += 1u;
+    }
+
     for (typeck.arg arg in inputs) {
         let TypeRef t = type_of(cx, arg.ty);
         alt (arg.mode) {
@@ -2614,6 +2638,7 @@ fn trans_exit_task_glue(@crate_ctxt cx) {
 fn create_typedefs(@crate_ctxt cx) {
     llvm.LLVMAddTypeName(cx.llmod, _str.buf("rust_crate"), T_crate());
     llvm.LLVMAddTypeName(cx.llmod, _str.buf("rust_task"), T_task());
+    llvm.LLVMAddTypeName(cx.llmod, _str.buf("rust_tydesc"), T_tydesc());
 }
 
 fn crate_constant(@crate_ctxt cx) -> ValueRef {
