@@ -199,10 +199,10 @@ type _fn = rec(effect effect,
                block body);
 
 
-type method_ = rec(ident ident, _fn meth, def_id id);
+type method_ = rec(ident ident, _fn meth, def_id id, ann ann);
 type method = spanned[method_];
 
-type obj_field = rec(@ty ty, ident ident, def_id id);
+type obj_field = rec(@ty ty, ident ident, def_id id, ann ann);
 type _obj = rec(vec[obj_field] fields,
                 vec[@method] methods);
 

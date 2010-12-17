@@ -1285,7 +1285,7 @@ impure fn parse_item_fn(parser p, ast.effect eff) -> @ast.item {
 impure fn parse_obj_field(parser p) -> ast.obj_field {
     auto ty = parse_ty(p);
     auto ident = parse_ident(p);
-    ret rec(ty=ty, ident=ident, id=p.next_def_id());
+    ret rec(ty=ty, ident=ident, id=p.next_def_id(), ann=ast.ann_none);
 }
 
 impure fn parse_method(parser p) -> @ast.method {
@@ -1294,7 +1294,8 @@ impure fn parse_method(parser p) -> @ast.method {
     expect(p, token.FN);
     auto ident = parse_ident(p);
     auto f = parse_fn(p, eff);
-    auto meth = rec(ident = ident, meth = f, id = p.next_def_id());
+    auto meth = rec(ident=ident, meth=f,
+                    id=p.next_def_id(), ann=ast.ann_none);
     ret @spanned(lo, f.body.span, meth);
 }
 

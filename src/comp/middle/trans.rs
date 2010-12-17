@@ -2307,6 +2307,15 @@ impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
     }
 }
 
+impure fn trans_vtbl(@crate_ctxt cx, &ast._obj ob) -> ValueRef {
+    let vec[ValueRef] methods = vec();
+    for (@ast.method m in ob.methods) {
+        trans_fn(cx, m.node.meth, m.node.id, m.node.ann);
+        methods += cx.item_ids.get(m.node.id);
+    }
+    ret C_struct(methods);
+}
+
 fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
              &ast.ann ann) {
 
