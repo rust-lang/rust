@@ -49,7 +49,8 @@ state obj namegen(mutable int i) {
 type glue_fns = rec(ValueRef activate_glue,
                     ValueRef yield_glue,
                     ValueRef exit_task_glue,
-                    vec[ValueRef] upcall_glues);
+                    vec[ValueRef] upcall_glues,
+                    ValueRef no_op_type_glue);
 
 tag arity { nullary; n_ary; }
 type tag_info = rec(type_handle th,
@@ -2785,6 +2786,37 @@ fn check_module(ModuleRef llmod) {
     // TODO: run the linter here also, once there are llvm-c bindings for it.
 }
 
+fn make_no_op_type_glue(ModuleRef llmod) -> ValueRef {
+    auto ty = T_fn(vec(T_taskptr(), T_ptr(T_i8())), T_void());
+    auto fun = decl_fastcall_fn(llmod, "_rust_no_op_type_glue", ty);
+    auto bb_name = _str.buf("_rust_no_op_type_glue_bb");
+    auto llbb = llvm.LLVMAppendBasicBlock(fun, bb_name);
+    new_builder(llbb, "builder").RetVoid();
+    ret fun;
+}
+
+fn make_glues(ModuleRef llmod) -> @glue_fns {
+    ret @rec(activate_glue = decl_glue(llmod, abi.activate_glue_name()),
+             yield_glue = decl_glue(llmod, abi.yield_glue_name()),
+             /*
+              * Note: the signature passed to decl_cdecl_fn here looks unusual
+              * because it is. It corresponds neither to an upcall signature
+              * nor a normal rust-ABI signature. In fact it is a fake
+              * signature, that exists solely to acquire the task pointer as
+              * an argument to the upcall. It so happens that the runtime sets
+              * up the task pointer as the sole incoming argument to the frame
+              * that we return into when returning to the exit task glue. So
+              * this is the signature required to retrieve it.
+              */
+             exit_task_glue = decl_cdecl_fn(llmod, abi.exit_task_glue_name(),
+                                            T_fn(vec(T_taskptr()), T_void())),
+
+             upcall_glues =
+              _vec.init_fn[ValueRef](bind decl_upcall(llmod, _),
+                                     abi.n_upcall_glues as uint),
+             no_op_type_glue = make_no_op_type_glue(llmod));
+}
+
 fn trans_crate(session.session sess, @ast.crate crate, str output) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
@@ -2798,29 +2830,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
 
     auto intrinsics = declare_intrinsics(llmod);
 
-    auto glues = @rec(activate_glue = decl_glue(llmod,
-                                                abi.activate_glue_name()),
-                      yield_glue = decl_glue(llmod, abi.yield_glue_name()),
-                      /*
-                       * Note: the signature passed to decl_cdecl_fn here
-                       * looks unusual because it is. It corresponds neither
-                       * to an upcall signature nor a normal rust-ABI
-                       * signature. In fact it is a fake signature, that
-                       * exists solely to acquire the task pointer as an
-                       * argument to the upcall. It so happens that the
-                       * runtime sets up the task pointer as the sole incoming
-                       * argument to the frame that we return into when
-                       * returning to the exit task glue. So this is the
-                       * signature required to retrieve it.
-                       */
-                      exit_task_glue =
-                      decl_cdecl_fn(llmod, abi.exit_task_glue_name(),
-                                    T_fn(vec(T_taskptr()), T_void())),
-
-                      upcall_glues =
-                      _vec.init_fn[ValueRef](bind decl_upcall(llmod, _),
-                                             abi.n_upcall_glues as uint));
-
+    auto glues = make_glues(llmod);
     auto hasher = typeck.hash_ty;
     auto eqer = typeck.eq_ty;
     auto types = map.mk_hashmap[@typeck.ty,@ty_info](hasher, eqer);
