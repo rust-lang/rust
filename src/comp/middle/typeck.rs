@@ -621,13 +621,51 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         ret @fold.respan[ast.item_](sp, item);
     }
 
+    fn get_ctor_obj_methods(@ty t) -> vec[method] {
+        alt (t.struct) {
+            case (ty_fn(_,?tobj)) {
+                alt (tobj.struct) {
+                    case (ty_obj(?tm)) {
+                        ret tm;
+                    }
+                    case (_) {
+                        let vec[method] tm = vec();
+                        ret tm;
+                    }
+                }
+            }
+            case (_) {
+                let vec[method] tm = vec();
+                ret tm;
+            }
+        }
+    }
+
+
     fn fold_item_obj(&@env e, &span sp, ast.ident i,
                     &ast._obj ob, vec[ast.ty_param] ty_params,
                     ast.def_id id, ast.ann a) -> @ast.item {
         check (e.item_to_ty.contains_key(id));
         auto ty = e.item_to_ty.get(id);
-        auto item = ast.item_obj(i, ob, ty_params, id,
-                                ast.ann_type(ty));
+        let vec[method] meth_tys = get_ctor_obj_methods(ty);
+        let vec[@ast.method] methods = vec();
+
+        let uint n = 0u;
+        for (method meth_ty in meth_tys) {
+            let @ast.method meth = ob.methods.(n);
+            let ast.method_ m_;
+            let @ast.method m;
+            auto meth_tfn = plain_ty(ty_fn(meth_ty.inputs,
+                                           meth_ty.output));
+            m_ = rec(ann=ast.ann_type(meth_tfn) with meth.node);
+            m = @rec(node=m_ with *meth);
+            append[@ast.method](methods, m);
+            n += 1u;
+        }
+
+        auto ob_ = rec(methods = methods with ob);
+        auto item = ast.item_obj(i, ob_, ty_params, id,
+                                 ast.ann_type(ty));
         ret @fold.respan[ast.item_](sp, item);
     }
 
