@@ -2383,9 +2383,9 @@ fn check_const(&@crate_ctxt ccx, &span sp, ast.ident ident, @ast.ty t,
     ret @fold.respan[ast.item_](sp, item);
 }
 
-fn check_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
-            vec[ast.ty_param] ty_params, ast.def_id id,
-            ast.ann ann) -> @ast.item {
+fn check_fn(&@crate_ctxt ccx, ast.effect effect,
+            vec[ast.arg] inputs,
+            @ast.ty output, &ast.block body) -> ast._fn {
     auto local_ty_table = @common.new_def_hash[@ty]();
 
     // FIXME: duplicate work: the item annotation already has the arg types
@@ -2393,28 +2393,42 @@ fn check_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
     // again here, we can extract them.
 
     // Store the type of each argument in the table.
+    for (ast.arg arg in inputs) {
+        auto input_ty = ast_ty_to_ty_crate(ccx, arg.ty);
+        local_ty_table.insert(arg.id, input_ty);
+    }
+    let fn_ctxt fcx = rec(ret_ty = ast_ty_to_ty_crate(ccx, output),
+                          locals = local_ty_table,
+                          ccx = ccx);
+
+    // TODO: Make sure the type of the block agrees with the function type.
+    auto block_t = check_block(fcx, body);
+    auto block_wb = writeback(fcx, block_t);
+
+    auto fn_t = rec(effect=effect, inputs=inputs, output=output,
+                    body=block_wb);
+    ret fn_t;
+}
+
+fn check_item_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
+                 vec[ast.ty_param] ty_params, ast.def_id id,
+                 ast.ann ann) -> @ast.item {
+
+    // FIXME: duplicate work: the item annotation already has the arg types
+    // and return type translated to typeck.ty values. We don't need do to it
+    // again here, we can extract them.
+
     let vec[arg] inputs = vec();
     for (ast.arg arg in f.inputs) {
         auto input_ty = ast_ty_to_ty_crate(ccx, arg.ty);
         inputs += vec(rec(mode=arg.mode, ty=input_ty));
-        local_ty_table.insert(arg.id, input_ty);
     }
 
     auto output_ty = ast_ty_to_ty_crate(ccx, f.output);
     auto fn_sty = ty_fn(inputs, output_ty);
     auto fn_ann = ast.ann_type(plain_ty(fn_sty));
 
-    let fn_ctxt fcx = rec(ret_ty = output_ty,
-                          locals = local_ty_table,
-                          ccx = ccx);
-
-    // TODO: Make sure the type of the block agrees with the function type.
-    auto block_t = check_block(fcx, f.body);
-    auto block_wb = writeback(fcx, block_t);
-
-    auto fn_t = rec(effect=f.effect, inputs=f.inputs, output=f.output,
-                    body=block_wb);
-    auto item = ast.item_fn(ident, fn_t, ty_params, id, fn_ann);
+    auto item = ast.item_fn(ident, f, ty_params, id, fn_ann);
     ret @fold.respan[ast.item_](sp, item);
 }
 
@@ -2424,8 +2438,10 @@ fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     auto ccx = @rec(sess=sess, item_types=result._1, mutable next_var_id=0);
 
     auto fld = fold.new_identity_fold[@crate_ctxt]();
-    auto f = check_fn;  // FIXME: trans_const_lval bug
-    fld = @rec(fold_item_fn = f with *fld);
+
+    fld = @rec(fold_fn      = bind check_fn(_,_,_,_,_),
+               fold_item_fn = bind check_item_fn(_,_,_,_,_,_,_)
+               with *fld);
     ret fold.fold_crate[@crate_ctxt](ccx, fld, result._0);
 }
 
