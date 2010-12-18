@@ -2119,7 +2119,7 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
     ret sub;
 }
 
-fn new_builder(BasicBlockRef llbb, str name) -> builder {
+fn new_builder(BasicBlockRef llbb) -> builder {
     let BuilderRef llbuild = llvm.LLVMCreateBuilder();
     llvm.LLVMPositionBuilderAtEnd(llbuild, llbb);
     ret builder(llbuild);
@@ -2136,7 +2136,7 @@ fn new_block_ctxt(@fn_ctxt cx, block_parent parent,
                                   _str.buf(cx.ccx.names.next(name)));
 
     ret @rec(llbb=llbb,
-             build=new_builder(llbb, name),
+             build=new_builder(llbb),
              parent=parent,
              is_scope=is_scope,
              mutable cleanups=cleanups,
@@ -2750,7 +2750,7 @@ fn trans_main_fn(@crate_ctxt cx, ValueRef llcrate) {
 
     let BasicBlockRef llbb =
         llvm.LLVMAppendBasicBlock(llmain, _str.buf(""));
-    auto b = new_builder(llbb, "");
+    auto b = new_builder(llbb);
 
     auto start_args = vec(p2i(llrust_main), p2i(llcrate), llargc, llargv);
 
@@ -2791,7 +2791,7 @@ fn make_no_op_type_glue(ModuleRef llmod) -> ValueRef {
     auto fun = decl_fastcall_fn(llmod, "_rust_no_op_type_glue", ty);
     auto bb_name = _str.buf("_rust_no_op_type_glue_bb");
     auto llbb = llvm.LLVMAppendBasicBlock(fun, bb_name);
-    new_builder(llbb, "builder").RetVoid();
+    new_builder(llbb).RetVoid();
     ret fun;
 }
 
