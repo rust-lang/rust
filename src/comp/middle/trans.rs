@@ -594,13 +594,7 @@ fn make_ty_info(@crate_ctxt cx, @typeck.ty ty) {
 
 fn make_generic_glue(@crate_ctxt cx, @typeck.ty t, str name,
                      val_and_ty_fn helper) -> ValueRef {
-    auto arg_t;
-    if (typeck.type_is_structural(t)) {
-        arg_t = T_ptr(type_of(cx, t));
-    } else {
-        arg_t = type_of(cx, t);
-    }
-    auto llfnty = T_fn(vec(T_taskptr(), arg_t), T_void());
+    auto llfnty = T_fn(vec(T_taskptr(), T_ptr(T_i8())), T_void());
 
     auto fn_name = cx.names.next("_rust_" + name) + "." + typeck.ty_to_str(t);
     fn_name = sanitize(fn_name);
@@ -609,11 +603,24 @@ fn make_generic_glue(@crate_ctxt cx, @typeck.ty t, str name,
     auto fcx = new_fn_ctxt(cx, fn_name, llfn);
     auto bcx = new_top_block_ctxt(fcx);
 
-    auto llval = llvm.LLVMGetParam(llfn, 1u);
+    auto re;
+    if (!typeck.type_is_scalar(t)) {
+        auto llty;
+        if (typeck.type_is_structural(t)) {
+            llty = T_ptr(type_of(cx, t));
+        } else {
+            llty = type_of(cx, t);
+        }
 
-    auto res = helper(bcx, llval, t);
+        auto llrawptr = llvm.LLVMGetParam(llfn, 1u);
+        auto llval = bcx.build.BitCast(llrawptr, llty);
+        
+        re = helper(bcx, llval, t);
+    } else {
+        re = res(bcx, C_nil());
+    }
 
-    res.bcx.build.RetVoid();
+    re.bcx.build.RetVoid();
     ret llfn;
 }
 
@@ -960,8 +967,11 @@ fn iter_sequence(@block_ctxt cx,
 fn incr_all_refcnts(@block_ctxt cx,
                     ValueRef v,
                     @typeck.ty t) -> result {
-    cx.build.FastCall(get_ty_info(cx.fcx.ccx, t).take_glue,
-                      vec(cx.fcx.lltaskptr, v));
+    if (!typeck.type_is_scalar(t)) {
+        auto llrawptr = cx.build.BitCast(v, T_ptr(T_i8()));
+        cx.build.FastCall(get_ty_info(cx.fcx.ccx, t).take_glue,
+                          vec(cx.fcx.lltaskptr, llrawptr));
+    }
     ret res(cx, C_nil());
 }
 
@@ -980,8 +990,11 @@ fn drop_slot(@block_ctxt cx,
 fn drop_ty(@block_ctxt cx,
            ValueRef v,
            @typeck.ty t) -> result {
-    cx.build.FastCall(get_ty_info(cx.fcx.ccx, t).drop_glue,
-                      vec(cx.fcx.lltaskptr, v));
+    if (!typeck.type_is_scalar(t)) {
+        auto llrawptr = cx.build.BitCast(v, T_ptr(T_i8()));
+        cx.build.FastCall(get_ty_info(cx.fcx.ccx, t).drop_glue,
+                          vec(cx.fcx.lltaskptr, llrawptr));
+    }
     ret res(cx, C_nil());
 }
 

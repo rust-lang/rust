@@ -887,6 +887,7 @@ fn type_is_boxed(@ty t) -> bool {
 
 fn type_is_scalar(@ty t) -> bool {
     alt (t.struct) {
+        case (ty_nil) { ret true; }
         case (ty_bool) { ret true; }
         case (ty_int) { ret true; }
         case (ty_uint) { ret true; }
