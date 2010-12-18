@@ -768,7 +768,7 @@ fn type_of_variant(@crate_ctxt cx, &ast.variant v) -> TypeRef {
 type val_and_ty_fn =
     fn(@block_ctxt cx, ValueRef v, @typeck.ty t) -> result;
 
-// Iterates through the elements of a tup, rec or tag.
+// Iterates through the elements of a box, tup, rec or tag.
 fn iter_structural_ty(@block_ctxt cx,
                       ValueRef v,
                       @typeck.ty t,
@@ -968,7 +968,13 @@ fn incr_all_refcnts(@block_ctxt cx,
 fn drop_slot(@block_ctxt cx,
              ValueRef slot,
              @typeck.ty t) -> result {
-    be drop_ty(cx, load_non_structural(cx, slot, t), t);
+    auto llptr = load_non_structural(cx, slot, t);
+    auto re = drop_ty(cx, llptr, t);
+
+    auto llty = val_ty(slot);
+    auto llelemty = lib.llvm.llvm.LLVMGetElementType(llty);
+    re.bcx.build.Store(C_null(llelemty), slot);
+    ret re;
 }
 
 fn drop_ty(@block_ctxt cx,
