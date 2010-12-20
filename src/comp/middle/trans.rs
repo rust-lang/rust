@@ -549,13 +549,21 @@ fn find_scope_cx(@block_ctxt cx) -> @block_ctxt {
     }
 }
 
+fn size_of(TypeRef t) -> ValueRef {
+    ret llvm.LLVMConstIntCast(lib.llvm.llvm.LLVMSizeOf(t), T_int(), False);
+}
+
+fn align_of(TypeRef t) -> ValueRef {
+    ret llvm.LLVMConstIntCast(lib.llvm.llvm.LLVMAlignOf(t), T_int(), False);
+}
+
 fn trans_malloc(@block_ctxt cx, @typeck.ty t) -> result {
     auto scope_cx = find_scope_cx(cx);
     auto ptr_ty = type_of(cx.fcx.ccx, t);
     auto body_ty = lib.llvm.llvm.LLVMGetElementType(ptr_ty);
     // FIXME: need a table to collect tydesc globals.
     auto tydesc = C_int(0);
-    auto sz = cx.build.IntCast(lib.llvm.llvm.LLVMSizeOf(body_ty), T_int());
+    auto sz = size_of(body_ty);
     auto sub = trans_upcall(cx, "upcall_malloc", vec(sz, tydesc));
     sub.val = sub.bcx.build.IntToPtr(sub.val, ptr_ty);
     scope_cx.cleanups += clean(bind drop_ty(_, sub.val, t));
@@ -590,8 +598,8 @@ fn make_tydesc(@crate_ctxt cx, @typeck.ty ty) {
     auto pvoid = T_ptr(T_i8());
     auto glue_fn_ty = T_ptr(T_fn(vec(T_taskptr(), pvoid), T_void()));
     auto tydesc = C_struct(vec(C_null(pvoid),
-                               llvm.LLVMSizeOf(llty),
-                               llvm.LLVMAlignOf(llty),
+                               size_of(llty),
+                               align_of(llty),
                                take_glue,             // copy_glue_off
                                drop_glue,             // drop_glue_off
                                C_null(glue_fn_ty),    // free_glue_off
@@ -924,8 +932,7 @@ fn iter_sequence(@block_ctxt cx,
                                           C_int(abi.vec_elt_fill)));
 
         auto llunit_ty = type_of(cx.fcx.ccx, elt_ty);
-        auto unit_sz = llvm.LLVMConstIntCast(llvm.LLVMSizeOf(llunit_ty),
-                                             T_int(), False);
+        auto unit_sz = size_of(llunit_ty);
 
         auto len = cx.build.Load(lenptr);
         if (trailing_null) {
@@ -1599,8 +1606,8 @@ fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt)
     fail;
 }
 
-fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
-               &ast.ident field, &ast.ann ann) -> tup(result, bool) {
+impure fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
+                      &ast.ident field, &ast.ann ann) -> tup(result, bool) {
     auto lv = trans_lval(cx, base);
     auto r = lv._0;
     auto ty = typeck.expr_ty(base);
@@ -1621,16 +1628,15 @@ fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
     fail;
 }
 
-fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
-               @ast.expr idx, &ast.ann ann) -> tup(result, bool) {
+impure fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
+                      @ast.expr idx, &ast.ann ann) -> tup(result, bool) {
 
     auto lv = trans_expr(cx, base);
     auto ix = trans_expr(lv.bcx, idx);
     auto v = lv.val;
 
     auto llunit_ty = node_type(cx.fcx.ccx, ann);
-    auto unit_sz = ix.bcx.build.IntCast(lib.llvm.llvm.LLVMSizeOf(llunit_ty),
-                                      T_int());
+    auto unit_sz = size_of(llunit_ty);
     auto scaled_ix = ix.bcx.build.Mul(ix.val, unit_sz);
 
     auto lim = ix.bcx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_fill)));
@@ -1660,7 +1666,7 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
 // represented as an alloca or heap, hence needs a 'load' to be used as an
 // immediate).
 
-fn trans_lval(@block_ctxt cx, @ast.expr e) -> tup(result, bool) {
+impure fn trans_lval(@block_ctxt cx, @ast.expr e) -> tup(result, bool) {
     alt (e.node) {
         case (ast.expr_name(?n, ?dopt, _)) {
             ret trans_name(cx, n, dopt);
@@ -1828,8 +1834,7 @@ impure fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
     }
 
     auto llunit_ty = type_of(cx.fcx.ccx, unit_ty);
-    auto unit_sz = llvm.LLVMConstIntCast(llvm.LLVMSizeOf(llunit_ty),
-                                         T_int(), False);
+    auto unit_sz = size_of(llunit_ty);
     auto data_sz = llvm.LLVMConstMul(C_int(_vec.len[@ast.expr](args) as int),
                                      unit_sz);
 
