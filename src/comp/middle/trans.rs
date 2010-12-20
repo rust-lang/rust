@@ -68,7 +68,7 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id, ValueRef] item_ids,
                             hashmap[ast.def_id, @ast.item] items,
                             hashmap[ast.def_id, @tag_info] tags,
-                            hashmap[@typeck.ty, @ty_info] types,
+                            hashmap[@typeck.ty, ValueRef] tydescs,
                             @glue_fns glues,
                             namegen names,
                             str path);
@@ -471,19 +471,6 @@ fn C_struct(vec[ValueRef] elts) -> ValueRef {
                              False);
 }
 
-fn C_tydesc(TypeRef t) -> ValueRef {
-    ret C_struct(vec(C_null(T_ptr(T_opaque())),        // first_param
-                     llvm.LLVMSizeOf(t),               // size
-                     llvm.LLVMAlignOf(t),              // align
-                     C_null(T_ptr(T_opaque())),        // copy_glue_off
-                     C_null(T_ptr(T_opaque())),        // drop_glue_off
-                     C_null(T_ptr(T_opaque())),        // free_glue_off
-                     C_null(T_ptr(T_opaque())),        // sever_glue_off
-                     C_null(T_ptr(T_opaque())),        // mark_glue_off
-                     C_null(T_ptr(T_opaque())),        // obj_drop_glue_off
-                     C_null(T_ptr(T_opaque()))));      // is_stateful
-}
-
 fn decl_fn(ModuleRef llmod, str name, uint cc, TypeRef llty) -> ValueRef {
     let ValueRef llfn =
         llvm.LLVMAddFunction(llmod, _str.buf(name), llty);
@@ -576,21 +563,48 @@ fn trans_malloc(@block_ctxt cx, @typeck.ty t) -> result {
 }
 
 
-// Glue and referent count twiddling
+// Type descriptor and type glue stuff
 
-fn get_ty_info(@crate_ctxt cx, @typeck.ty ty) -> @ty_info {
-    if (!cx.types.contains_key(ty)) {
-        make_ty_info(cx, ty);
-    }
-    ret cx.types.get(ty);
+// Given a type and a field index into its corresponding type descriptor,
+// returns an LLVM ValueRef of that field from the tydesc, generating the
+// tydesc if necessary.
+fn field_of_tydesc(@block_ctxt cx, @typeck.ty ty, int field) -> ValueRef {
+    auto tydesc = get_tydesc(cx.fcx.ccx, ty);
+    ret cx.build.GEP(tydesc, vec(C_int(0), C_int(field)));
 }
 
-fn make_ty_info(@crate_ctxt cx, @typeck.ty ty) {
+fn get_tydesc(@crate_ctxt cx, @typeck.ty ty) -> ValueRef {
+    if (!cx.tydescs.contains_key(ty)) {
+        make_tydesc(cx, ty);
+    }
+    ret cx.tydescs.get(ty);
+}
+
+fn make_tydesc(@crate_ctxt cx, @typeck.ty ty) {
     auto tg = make_take_glue;
     auto take_glue = make_generic_glue(cx, ty, "take", tg);
     auto dg = make_drop_glue;
     auto drop_glue = make_generic_glue(cx, ty, "drop", dg);
-    cx.types.insert(ty, @rec(take_glue=take_glue, drop_glue=drop_glue));
+
+    auto llty = type_of(cx, ty);
+    auto pvoid = T_ptr(T_i8());
+    auto glue_fn_ty = T_ptr(T_fn(vec(T_taskptr(), pvoid), T_void()));
+    auto tydesc = C_struct(vec(C_null(pvoid),
+                               llvm.LLVMSizeOf(llty),
+                               llvm.LLVMAlignOf(llty),
+                               take_glue,             // copy_glue_off
+                               drop_glue,             // drop_glue_off
+                               C_null(glue_fn_ty),    // free_glue_off
+                               C_null(glue_fn_ty),    // sever_glue_off
+                               C_null(glue_fn_ty),    // mark_glue_off
+                               C_null(glue_fn_ty),    // obj_drop_glue_off
+                               C_null(glue_fn_ty)));  // is_stateful
+
+    auto name = sanitize(cx.names.next("tydesc_" + typeck.ty_to_str(ty)));
+    auto gvar = llvm.LLVMAddGlobal(cx.llmod, val_ty(tydesc), _str.buf(name));
+    llvm.LLVMSetInitializer(gvar, tydesc);
+    llvm.LLVMSetGlobalConstant(gvar, True);
+    cx.tydescs.insert(ty, gvar);
 }
 
 fn make_generic_glue(@crate_ctxt cx, @typeck.ty t, str name,
@@ -970,8 +984,9 @@ fn incr_all_refcnts(@block_ctxt cx,
                     @typeck.ty t) -> result {
     if (!typeck.type_is_scalar(t)) {
         auto llrawptr = cx.build.BitCast(v, T_ptr(T_i8()));
-        cx.build.FastCall(get_ty_info(cx.fcx.ccx, t).take_glue,
-                          vec(cx.fcx.lltaskptr, llrawptr));
+        auto llfnptr = field_of_tydesc(cx, t, abi.tydesc_field_copy_glue_off);
+        auto llfn = cx.build.Load(llfnptr);
+        cx.build.FastCall(llfn, vec(cx.fcx.lltaskptr, llrawptr));
     }
     ret res(cx, C_nil());
 }
@@ -993,8 +1008,9 @@ fn drop_ty(@block_ctxt cx,
            @typeck.ty t) -> result {
     if (!typeck.type_is_scalar(t)) {
         auto llrawptr = cx.build.BitCast(v, T_ptr(T_i8()));
-        cx.build.FastCall(get_ty_info(cx.fcx.ccx, t).drop_glue,
-                          vec(cx.fcx.lltaskptr, llrawptr));
+        auto llfnptr = field_of_tydesc(cx, t, abi.tydesc_field_drop_glue_off);
+        auto llfn = cx.build.Load(llfnptr);
+        cx.build.FastCall(llfn, vec(cx.fcx.lltaskptr, llrawptr));
     }
     ret res(cx, C_nil());
 }
@@ -2833,7 +2849,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
     auto glues = make_glues(llmod);
     auto hasher = typeck.hash_ty;
     auto eqer = typeck.eq_ty;
-    auto types = map.mk_hashmap[@typeck.ty,@ty_info](hasher, eqer);
+    auto tydescs = map.mk_hashmap[@typeck.ty,ValueRef](hasher, eqer);
 
     auto cx = @rec(sess = sess,
                    llmod = llmod,
@@ -2844,7 +2860,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
                    item_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
                    tags = new_def_hash[@tag_info](),
-                   types = types,
+                   tydescs = tydescs,
                    glues = glues,
                    names = namegen(0),
                    path = "_rust");

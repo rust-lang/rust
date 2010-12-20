@@ -28,6 +28,17 @@ const int vec_elt_alloc = 1;
 const int vec_elt_fill = 2;
 const int vec_elt_data = 3;
 
+const int tydesc_field_first_param = 0;
+const int tydesc_field_size = 1;
+const int tydesc_field_align = 2;
+const int tydesc_field_copy_glue_off = 3;
+const int tydesc_field_drop_glue_off = 4;
+const int tydesc_field_free_glue_off = 5;
+const int tydesc_field_sever_glue_off = 6;
+const int tydesc_field_mark_glue_off = 7;
+const int tydesc_field_obj_drop_glue_off = 8;
+const int tydesc_field_is_stateful = 9;
+
 
 /* Both obj and fn are two-word "bindings": One word points to some static
  * dispatch information (vtbl, thunk, callee), and the other points to some
