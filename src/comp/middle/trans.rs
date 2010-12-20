@@ -736,7 +736,8 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @typeck.ty t) -> result {
             }
         }
     }
-    cx.fcx.ccx.sess.bug("bad type in trans.make_drop_glue_inner");
+    cx.fcx.ccx.sess.bug("bad type in trans.make_drop_glue_inner: " +
+                        typeck.ty_to_str(t));
     fail;
 }
 
