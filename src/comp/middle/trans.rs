@@ -2355,7 +2355,13 @@ impure fn trans_vtbl(@crate_ctxt cx, &ast._obj ob) -> ValueRef {
         trans_fn(cx, m.node.meth, m.node.id, m.node.ann);
         methods += llfn;
     }
-    ret C_struct(methods);
+    auto vtbl = C_struct(methods);
+    auto gvar = llvm.LLVMAddGlobal(cx.llmod,
+                                   val_ty(vtbl),
+                                   _str.buf("_rust_vtbl" + "." + cx.path));
+    llvm.LLVMSetInitializer(gvar, vtbl);
+    llvm.LLVMSetGlobalConstant(gvar, True);
+    ret gvar;
 }
 
 impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
