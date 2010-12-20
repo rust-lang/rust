@@ -77,6 +77,7 @@ state type fn_ctxt = rec(ValueRef llfn,
                          ValueRef lltaskptr,
                          hashmap[ast.def_id, ValueRef] llargs,
                          hashmap[ast.def_id, ValueRef] lllocals,
+                         hashmap[ast.def_id, ValueRef] lltydescs,
                          @crate_ctxt ccx);
 
 tag cleanup {
@@ -2261,17 +2262,27 @@ fn new_fn_ctxt(@crate_ctxt cx,
 
     let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] llargs = new_def_hash[ValueRef]();
+    let hashmap[ast.def_id, ValueRef] lltydescs = new_def_hash[ValueRef]();
 
     ret @rec(llfn=llfndecl,
              lltaskptr=lltaskptr,
              llargs=llargs,
              lllocals=lllocals,
+             lltydescs=lltydescs,
              ccx=cx);
 }
 
 
-fn create_llargs_for_fn_args(@fn_ctxt cx, vec[ast.arg] args) {
+fn create_llargs_for_fn_args(&@fn_ctxt cx, &vec[ast.arg] args,
+                             &vec[ast.ty_param] ty_params) {
     let uint arg_n = 1u;
+    for (ast.ty_param tp in ty_params) {
+        auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
+        check (llarg as int != 0);
+        cx.lltydescs.insert(tp.id, llarg);
+        arg_n += 1u;
+    }
+
     for (ast.arg arg in args) {
         auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
         check (llarg as int != 0);
@@ -2328,13 +2339,13 @@ fn ret_ty_of_fn(ast.ann ann) -> @typeck.ty {
 }
 
 impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
-                   &ast.ann ann) {
+                   &vec[ast.ty_param] ty_params, &ast.ann ann) {
 
     auto llfndecl = cx.item_ids.get(fid);
     cx.item_names.insert(cx.path, llfndecl);
 
     auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
-    create_llargs_for_fn_args(fcx, f.inputs);
+    create_llargs_for_fn_args(fcx, f.inputs, ty_params);
 
     auto bcx = new_top_block_ctxt(fcx);
 
@@ -2348,7 +2359,8 @@ impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
     }
 }
 
-impure fn trans_vtbl(@crate_ctxt cx, &ast._obj ob) -> ValueRef {
+impure fn trans_vtbl(@crate_ctxt cx, &ast._obj ob,
+                     &vec[ast.ty_param] ty_params) -> ValueRef {
     let vec[ValueRef] methods = vec();
     for (@ast.method m in ob.methods) {
 
@@ -2357,7 +2369,7 @@ impure fn trans_vtbl(@crate_ctxt cx, &ast._obj ob) -> ValueRef {
         let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfnty);
         cx.item_ids.insert(m.node.id, llfn);
 
-        trans_fn(cx, m.node.meth, m.node.id, m.node.ann);
+        trans_fn(cx, m.node.meth, m.node.id, ty_params, m.node.ann);
         methods += llfn;
     }
     auto vtbl = C_struct(methods);
@@ -2370,7 +2382,7 @@ impure fn trans_vtbl(@crate_ctxt cx, &ast._obj ob) -> ValueRef {
 }
 
 impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
-                    &ast.ann ann) {
+                    &vec[ast.ty_param] ty_params, &ast.ann ann) {
 
     auto llctor_decl = cx.item_ids.get(oid);
     cx.item_names.insert(cx.path, llctor_decl);
@@ -2385,14 +2397,14 @@ impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
     }
 
     auto fcx = new_fn_ctxt(cx, cx.path, llctor_decl);
-    create_llargs_for_fn_args(fcx, fn_args);
+    create_llargs_for_fn_args(fcx, fn_args, ty_params);
 
     auto bcx = new_top_block_ctxt(fcx);
 
     copy_args_to_allocas(bcx, fn_args, arg_tys_of_fn(ann));
 
     auto pair = bcx.build.Alloca(type_of(cx, ret_ty_of_fn(ann)));
-    auto vtbl = trans_vtbl(cx, ob);
+    auto vtbl = trans_vtbl(cx, ob, ty_params);
     auto pair_vtbl = bcx.build.GEP(pair,
                                    vec(C_int(0),
                                        C_int(abi.obj_field_vtbl)));
@@ -2401,7 +2413,8 @@ impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
 }
 
 fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
-                     &ast.variant variant, int index) {
+                     &ast.variant variant, int index,
+                     &vec[ast.ty_param] ty_params) {
     if (_vec.len[ast.variant_arg](variant.args) == 0u) {
         ret;    // nullary constructors are just constants
     }
@@ -2427,7 +2440,7 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     cx.item_names.insert(cx.path, llfndecl);
 
     auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
-    create_llargs_for_fn_args(fcx, fn_args);
+    create_llargs_for_fn_args(fcx, fn_args, ty_params);
 
     auto bcx = new_top_block_ctxt(fcx);
 
@@ -2473,23 +2486,23 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
 
 impure fn trans_item(@crate_ctxt cx, &ast.item item) {
     alt (item.node) {
-        case (ast.item_fn(?name, ?f, _, ?fid, ?ann)) {
+        case (ast.item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
-            trans_fn(sub_cx, f, fid, ann);
+            trans_fn(sub_cx, f, fid, tps, ann);
         }
-        case (ast.item_obj(?name, ?ob, _, ?oid, ?ann)) {
+        case (ast.item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
-            trans_obj(sub_cx, ob, oid, ann);
+            trans_obj(sub_cx, ob, oid, tps, ann);
         }
         case (ast.item_mod(?name, ?m, _)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
             trans_mod(sub_cx, m);
         }
-        case (ast.item_tag(?name, ?variants, _, ?tag_id)) {
+        case (ast.item_tag(?name, ?variants, ?tps, ?tag_id)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
             auto i = 0;
             for (ast.variant variant in variants) {
-                trans_tag_variant(sub_cx, tag_id, variant, i);
+                trans_tag_variant(sub_cx, tag_id, variant, i, tps);
                 i += 1;
             }
         }
@@ -2694,6 +2707,7 @@ fn trans_exit_task_glue(@crate_ctxt cx) {
                     lltaskptr=lltaskptr,
                     llargs=new_def_hash[ValueRef](),
                     lllocals=new_def_hash[ValueRef](),
+                    lltydescs=new_def_hash[ValueRef](),
                     ccx=cx);
 
     auto bcx = new_top_block_ctxt(fcx);
