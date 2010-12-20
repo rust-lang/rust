@@ -954,6 +954,14 @@ fn type_is_signed(@ty t) -> bool {
     fail;
 }
 
+fn type_param(@ty t) -> option.t[ast.def_id] {
+    alt (t.struct) {
+        case (ty_param(?id)) { ret some[ast.def_id](id); }
+        case (_)             { /* fall through */        }
+    }
+    ret none[ast.def_id];
+}
+
 fn plain_ty(&sty st) -> @ty {
     ret @rec(struct=st, mut=ast.imm, cname=none[str]);
 }

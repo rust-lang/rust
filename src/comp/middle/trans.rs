@@ -293,7 +293,7 @@ fn type_of_fn(@crate_ctxt cx,
     auto ty_param_count = typeck.count_ty_params(fn_ty);
     auto i = 0u;
     while (i < ty_param_count) {
-        atys += T_tydesc();
+        atys += T_ptr(T_tydesc());
         i += 1u;
     }
 
@@ -578,15 +578,28 @@ fn trans_malloc(@block_ctxt cx, @typeck.ty t) -> result {
 // returns an LLVM ValueRef of that field from the tydesc, generating the
 // tydesc if necessary.
 fn field_of_tydesc(@block_ctxt cx, @typeck.ty ty, int field) -> ValueRef {
-    auto tydesc = get_tydesc(cx.fcx.ccx, ty);
+    auto tydesc = get_tydesc(cx, ty);
     ret cx.build.GEP(tydesc, vec(C_int(0), C_int(field)));
 }
 
-fn get_tydesc(@crate_ctxt cx, @typeck.ty ty) -> ValueRef {
-    if (!cx.tydescs.contains_key(ty)) {
-        make_tydesc(cx, ty);
+fn get_tydesc(&@block_ctxt cx, @typeck.ty ty) -> ValueRef {
+    // Is the supplied type a type param? If so, return the passed-in tydesc.
+    alt (typeck.type_param(ty)) {
+        case (some[ast.def_id](?id)) { ret cx.fcx.lltydescs.get(id); }
+        case (none[ast.def_id])      { /* fall through */ }
     }
-    ret cx.tydescs.get(ty);
+
+    // Does it contain a type param? If so, generate a derived tydesc.
+    if (typeck.count_ty_params(ty) > 0u) {
+        log "TODO: trans.get_tydesc(): generate a derived type descriptor";
+        fail;
+    }
+
+    // Otherwise, generate a tydesc if necessary, and return it.
+    if (!cx.fcx.ccx.tydescs.contains_key(ty)) {
+        make_tydesc(cx.fcx.ccx, ty);
+    }
+    ret cx.fcx.ccx.tydescs.get(ty);
 }
 
 fn make_tydesc(@crate_ctxt cx, @typeck.ty ty) {
