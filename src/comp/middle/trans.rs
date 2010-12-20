@@ -629,7 +629,7 @@ fn make_generic_glue(@crate_ctxt cx, @typeck.ty t, str name,
 
         auto llrawptr = llvm.LLVMGetParam(llfn, 1u);
         auto llval = bcx.build.BitCast(llrawptr, llty);
-        
+
         re = helper(bcx, llval, t);
     } else {
         re = res(bcx, C_nil());
@@ -1770,7 +1770,7 @@ impure fn trans_call(@block_ctxt cx, @ast.expr f,
     auto fn_ty = typeck.expr_ty(f);
     auto ret_ty = typeck.ann_to_type(ann);
     auto args_res = trans_args(f_res._0.bcx, args, fn_ty);
-    
+
     auto real_retval = args_res._0.build.FastCall(f_res._0.val, args_res._1);
     auto retval;
     if (typeck.type_is_nil(ret_ty)) {
