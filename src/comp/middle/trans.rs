@@ -57,8 +57,6 @@ type tag_info = rec(type_handle th,
                     mutable vec[tup(ast.def_id,arity)] variants,
                     mutable uint size);
 
-type ty_info = rec(ValueRef take_glue, ValueRef drop_glue);
-
 state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
                             target_data td,
@@ -222,7 +220,7 @@ fn T_tydesc() -> TypeRef {
     ret T_struct(vec(pvoid,             // first_param
                      T_int(),           // size
                      T_int(),           // align
-                     glue_fn_ty,        // copy_glue_off
+                     glue_fn_ty,        // take_glue_off
                      glue_fn_ty,        // drop_glue_off
                      glue_fn_ty,        // free_glue_off
                      glue_fn_ty,        // sever_glue_off
@@ -375,7 +373,7 @@ fn type_of_inner(@crate_ctxt cx, @typeck.ty t) -> TypeRef {
             let TypeRef vtbl = T_struct(mtys);
             let TypeRef pair =
                 T_struct(vec(T_ptr(vtbl),
-                             T_ptr(T_box(T_opaque()))));
+                             T_ptr(T_box(T_nil()))));
             ret pair;
         }
         case (typeck.ty_var(_)) {
@@ -614,7 +612,7 @@ fn make_tydesc(@crate_ctxt cx, @typeck.ty ty) {
     auto tydesc = C_struct(vec(C_null(pvoid),
                                size_of(llty),
                                align_of(llty),
-                               take_glue,             // copy_glue_off
+                               take_glue,             // take_glue_off
                                drop_glue,             // drop_glue_off
                                C_null(glue_fn_ty),    // free_glue_off
                                C_null(glue_fn_ty),    // sever_glue_off
@@ -664,9 +662,6 @@ fn make_generic_glue(@crate_ctxt cx, @typeck.ty t, str name,
 fn make_take_glue(@block_ctxt cx, ValueRef v, @typeck.ty t) -> result {
     if (typeck.type_is_boxed(t)) {
         ret incr_refcnt_of_boxed(cx, v);
-
-    } else if (typeck.type_is_binding(t)) {
-        cx.fcx.ccx.sess.unimpl("binding type in trans.incr_all_refcnts");
 
     } else if (typeck.type_is_structural(t)) {
         ret iter_structural_ty(cx, v, t,
@@ -739,10 +734,6 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @typeck.ty t) -> result {
                 ret iter_structural_ty(cx, v, t,
                                        bind drop_ty(_, _, _));
 
-            } else if (typeck.type_is_binding(t)) {
-                cx.fcx.ccx.sess.unimpl("binding type in " +
-                                       "trans.make_drop_glue_inner");
-
             } else if (typeck.type_is_scalar(t) ||
                        typeck.type_is_nil(t)) {
                 ret res(cx, C_nil());
@@ -813,13 +804,14 @@ fn type_of_variant(@crate_ctxt cx, &ast.variant v) -> TypeRef {
 type val_and_ty_fn =
     fn(@block_ctxt cx, ValueRef v, @typeck.ty t) -> result;
 
-// Iterates through the elements of a box, tup, rec or tag.
+// Iterates through the elements of a structural type.
 fn iter_structural_ty(@block_ctxt cx,
                       ValueRef v,
                       @typeck.ty t,
                       val_and_ty_fn f)
     -> result {
     let result r = res(cx, C_nil());
+
     alt (t.struct) {
         case (typeck.ty_tup(?args)) {
             let int i = 0;
@@ -922,6 +914,26 @@ fn iter_structural_ty(@block_ctxt cx,
 
             ret res(next_cx, C_nil());
         }
+        case (typeck.ty_fn(_,_)) {
+            auto box_cell =
+                cx.build.GEP(v,
+                             vec(C_int(0),
+                                 C_int(abi.fn_field_box)));
+            auto box_ptr = cx.build.Load(box_cell);
+            auto tnil = typeck.plain_ty(typeck.ty_nil);
+            auto tbox = typeck.plain_ty(typeck.ty_box(tnil));
+            ret f(cx, box_ptr, tbox);
+        }
+        case (typeck.ty_obj(_)) {
+            auto box_cell =
+                cx.build.GEP(v,
+                             vec(C_int(0),
+                                 C_int(abi.obj_field_box)));
+            auto box_ptr = cx.build.Load(box_cell);
+            auto tnil = typeck.plain_ty(typeck.ty_nil);
+            auto tbox = typeck.plain_ty(typeck.ty_box(tnil));
+            ret f(cx, box_ptr, tbox);
+        }
         case (_) {
             cx.fcx.ccx.sess.unimpl("type in iter_structural_ty");
         }
@@ -1004,9 +1016,10 @@ fn iter_sequence(@block_ctxt cx,
 fn incr_all_refcnts(@block_ctxt cx,
                     ValueRef v,
                     @typeck.ty t) -> result {
+
     if (!typeck.type_is_scalar(t)) {
         auto llrawptr = cx.build.BitCast(v, T_ptr(T_i8()));
-        auto llfnptr = field_of_tydesc(cx, t, abi.tydesc_field_copy_glue_off);
+        auto llfnptr = field_of_tydesc(cx, t, abi.tydesc_field_take_glue_off);
         auto llfn = cx.build.Load(llfnptr);
         cx.build.FastCall(llfn, vec(cx.fcx.lltaskptr, llrawptr));
     }
@@ -1028,6 +1041,7 @@ fn drop_slot(@block_ctxt cx,
 fn drop_ty(@block_ctxt cx,
            ValueRef v,
            @typeck.ty t) -> result {
+
     if (!typeck.type_is_scalar(t)) {
         auto llrawptr = cx.build.BitCast(v, T_ptr(T_i8()));
         auto llfnptr = field_of_tydesc(cx, t, abi.tydesc_field_drop_glue_off);
@@ -1071,9 +1085,6 @@ fn copy_ty(@block_ctxt cx,
 
     } else if (typeck.type_is_nil(t)) {
         ret res(cx, C_nil());
-
-    } else if (typeck.type_is_binding(t)) {
-        cx.fcx.ccx.sess.unimpl("binding type in trans.copy_ty");
 
     } else if (typeck.type_is_boxed(t)) {
         auto r = incr_all_refcnts(cx, src, t);
@@ -1452,7 +1463,7 @@ impure fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
         case (ast.pat_tag(?id, ?subpats, ?vdef_opt, ?ann)) {
             auto lltagptr = cx.build.GEP(llval, vec(C_int(0), C_int(0)));
             auto lltag = cx.build.Load(lltagptr);
-            
+
             auto vdef = option.get[ast.variant_def](vdef_opt);
             auto variant_id = vdef._1;
             auto tinfo = cx.fcx.ccx.tags.get(vdef._0);
@@ -2423,7 +2434,7 @@ impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
                                    vec(C_int(0),
                                        C_int(abi.obj_field_vtbl)));
     bcx.build.Store(vtbl, pair_vtbl);
-    bcx.build.Ret(pair);
+    bcx.build.Ret(bcx.build.Load(pair));
 }
 
 fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,

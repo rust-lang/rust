@@ -31,7 +31,7 @@ const int vec_elt_data = 3;
 const int tydesc_field_first_param = 0;
 const int tydesc_field_size = 1;
 const int tydesc_field_align = 2;
-const int tydesc_field_copy_glue_off = 3;
+const int tydesc_field_take_glue_off = 3;
 const int tydesc_field_drop_glue_off = 4;
 const int tydesc_field_free_glue_off = 5;
 const int tydesc_field_sever_glue_off = 6;
@@ -40,22 +40,14 @@ const int tydesc_field_obj_drop_glue_off = 8;
 const int tydesc_field_is_stateful = 9;
 
 
-/* Both obj and fn are two-word "bindings": One word points to some static
- * dispatch information (vtbl, thunk, callee), and the other points to some
- * box of bound data (object-body or closure).
- */
-
-const int binding_field_dispatch = 0;
-const int binding_field_bound_data = 1;
-
-const int obj_field_vtbl = binding_field_dispatch;
-const int obj_field_box = binding_field_bound_data;
+const int obj_field_vtbl = 0;
+const int obj_field_box = 1;
 
 const int obj_body_elt_tydesc = 0;
 const int obj_body_elt_fields = 1;
 
-const int fn_field_code = binding_field_dispatch;
-const int fn_field_box = binding_field_bound_data;
+const int fn_field_code = 0;
+const int fn_field_box = 1;
 
 const int worst_case_glue_call_args = 7;
 

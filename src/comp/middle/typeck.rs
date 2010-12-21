@@ -861,15 +861,8 @@ fn type_is_structural(@ty t) -> bool {
         case (ty_tup(_)) { ret true; }
         case (ty_rec(_)) { ret true; }
         case (ty_tag(_)) { ret true; }
-        case (_) { ret false; }
-    }
-    fail;
-}
-
-fn type_is_binding(@ty t) -> bool {
-    alt (t.struct) {
-        // FIXME: cover obj when we support it.
         case (ty_fn(_,_)) { ret true; }
+        case (ty_obj(_)) { ret true; }
         case (_) { ret false; }
     }
     fail;
@@ -1007,7 +1000,7 @@ fn count_ty_params(@ty t) -> uint {
             ret t;
         }
     }
-  
+
     let vec[ast.def_id] param_ids_inner = vec();
     let @mutable vec[ast.def_id] param_ids = @mutable param_ids_inner;
     fold_ty(ty_param_counter(param_ids), t);
