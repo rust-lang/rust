@@ -55,6 +55,7 @@ mod list;
 mod rand;
 mod dbg;
 mod bitv;
+mod sort;
 
 // Local Variables:
 // mode: rust;
