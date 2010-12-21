@@ -404,8 +404,20 @@ fn sanitize(str s) -> str {
         if (c == ('@' as u8)) {
             result += "boxed_";
         } else {
-            auto v = vec(c);
-            result += _str.from_bytes(v);
+            if (c == (',' as u8)) {
+                result += "_";
+            } else {
+                if (c == ('{' as u8) || c == ('(' as u8)) {
+                    result += "_of_";
+                } else {
+                    if (c != 10u8 && c != ('}' as u8) && c != (')' as u8) &&
+                            c != (' ' as u8) && c != ('\t' as u8) &&
+                            c != (';' as u8)) {
+                        auto v = vec(c);
+                        result += _str.from_bytes(v);
+                    }
+                }
+            }
         }
     }
     ret result;
