@@ -1641,13 +1641,24 @@ impure fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
         case (typeck.ty_tup(?fields)) {
             let uint ix = typeck.field_num(cx.fcx.ccx.sess, sp, field);
             auto v = r.bcx.build.GEP(r.val, vec(C_int(0), C_int(ix as int)));
-            ret tup(res(r.bcx, v), lv._1);
+            ret tup(res(r.bcx, v), true);
         }
         case (typeck.ty_rec(?fields)) {
             let uint ix = typeck.field_idx(cx.fcx.ccx.sess, sp,
                                            field, fields);
             auto v = r.bcx.build.GEP(r.val, vec(C_int(0), C_int(ix as int)));
-            ret tup(res(r.bcx, v), lv._1);
+            ret tup(res(r.bcx, v), true);
+        }
+        case (typeck.ty_obj(?methods)) {
+            let uint ix = typeck.method_idx(cx.fcx.ccx.sess, sp,
+                                            field, methods);
+            auto vtbl = r.bcx.build.GEP(r.val,
+                                        vec(C_int(0),
+                                            C_int(abi.obj_field_vtbl)));
+            vtbl = r.bcx.build.Load(vtbl);
+            auto v =  r.bcx.build.GEP(vtbl, vec(C_int(0),
+                                                C_int(ix as int)));
+            ret tup(res(r.bcx, v), true);
         }
         case (_) { cx.fcx.ccx.sess.unimpl("field variant in trans_field"); }
     }
@@ -1798,12 +1809,15 @@ impure fn trans_args(@block_ctxt cx, &vec[@ast.expr] es, @typeck.ty fn_ty)
 impure fn trans_call(@block_ctxt cx, @ast.expr f,
                      vec[@ast.expr] args, &ast.ann ann) -> result {
     auto f_res = trans_lval(cx, f);
-    check (! f_res._1);
+    auto faddr = f_res._0.val;
+    if (f_res._1) {
+        faddr = f_res._0.bcx.build.Load(faddr);
+    }
     auto fn_ty = typeck.expr_ty(f);
     auto ret_ty = typeck.ann_to_type(ann);
     auto args_res = trans_args(f_res._0.bcx, args, fn_ty);
 
-    auto real_retval = args_res._0.build.FastCall(f_res._0.val, args_res._1);
+    auto real_retval = args_res._0.build.FastCall(faddr, args_res._1);
     auto retval;
     if (typeck.type_is_nil(ret_ty)) {
         retval = C_nil();
