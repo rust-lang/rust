@@ -380,6 +380,13 @@ let rec list_drop n ls =
   else list_drop (n-1) (List.tl ls)
 ;;
 
+let rec list_count elem lst =
+  match lst with
+      [] -> 0
+    | h::t when h = elem -> 1 + (list_count elem t)
+    | _::t -> list_count elem t
+;;
+
 
 (*
  * Auxiliary pair functions.

@@ -2425,7 +2425,7 @@ and referent_type
                 Some parent_tags
                   when boxed
                     && parent_tags <> []
-                    && List.mem ttag parent_tags
+                    && (list_count ttag parent_tags) > 1
                     && is_back_edge ttag (List.hd parent_tags) ->
                   Il.StructTy [| word; Il.OpaqueTy |]
               | _ -> tag ttag
