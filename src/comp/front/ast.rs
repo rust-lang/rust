@@ -1,7 +1,6 @@
 
 import std.map.hashmap;
 import std.option;
-import middle.typeck;
 import util.common.span;
 import util.common.spanned;
 import util.common.ty_mach;
@@ -21,7 +20,7 @@ type ty_param = rec(ident ident, def_id id);
 // Annotations added during successive passes.
 tag ann {
     ann_none;
-    ann_type(@typeck.ty);
+    ann_type(@middle.ty.t);
 }
 
 tag def {
@@ -168,7 +167,7 @@ tag lit_ {
 }
 
 // NB: If you change this, you'll probably want to change the corresponding
-// type structure in middle/typeck.rs as well.
+// type structure in middle/ty.rs as well.
 
 type ty_field = rec(ident ident, @ty ty);
 type ty_arg = rec(mode mode, @ty ty);
