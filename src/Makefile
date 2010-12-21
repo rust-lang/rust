@@ -553,6 +553,7 @@ TEST_XFAILS_SELF := $(filter-out \
                         rec-auto.rs \
                         rec-tup.rs \
                         return-nil.rs \
+                        simple-obj.rs \
                         type-in-nested-module.rs \
                         tup.rs \
                         u32-decr.rs \

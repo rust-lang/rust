@@ -812,6 +812,23 @@ fn iter_structural_ty(@block_ctxt cx,
     -> result {
     let result r = res(cx, C_nil());
 
+    fn iter_boxpp(@block_ctxt cx,
+                  ValueRef box_cell,
+                  val_and_ty_fn f) -> result {
+        auto box_ptr = cx.build.Load(box_cell);
+        auto tnil = typeck.plain_ty(typeck.ty_nil);
+        auto tbox = typeck.plain_ty(typeck.ty_box(tnil));
+
+        auto inner_cx = new_sub_block_ctxt(cx, "iter box");
+        auto next_cx = new_sub_block_ctxt(cx, "next");
+        auto null_test = cx.build.IsNull(box_ptr);
+        cx.build.CondBr(null_test, next_cx.llbb, inner_cx.llbb);
+
+        auto r = f(inner_cx, box_ptr, tbox);
+        r.bcx.build.Br(next_cx.llbb);
+        ret res(next_cx, r.val);
+    }
+
     alt (t.struct) {
         case (typeck.ty_tup(?args)) {
             let int i = 0;
@@ -919,20 +936,14 @@ fn iter_structural_ty(@block_ctxt cx,
                 cx.build.GEP(v,
                              vec(C_int(0),
                                  C_int(abi.fn_field_box)));
-            auto box_ptr = cx.build.Load(box_cell);
-            auto tnil = typeck.plain_ty(typeck.ty_nil);
-            auto tbox = typeck.plain_ty(typeck.ty_box(tnil));
-            ret f(cx, box_ptr, tbox);
+            ret iter_boxpp(cx, box_cell, f);
         }
         case (typeck.ty_obj(_)) {
             auto box_cell =
                 cx.build.GEP(v,
                              vec(C_int(0),
                                  C_int(abi.obj_field_box)));
-            auto box_ptr = cx.build.Load(box_cell);
-            auto tnil = typeck.plain_ty(typeck.ty_nil);
-            auto tbox = typeck.plain_ty(typeck.ty_box(tnil));
-            ret f(cx, box_ptr, tbox);
+            ret iter_boxpp(cx, box_cell, f);
         }
         case (_) {
             cx.fcx.ccx.sess.unimpl("type in iter_structural_ty");
@@ -2447,7 +2458,14 @@ impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
     auto pair_vtbl = bcx.build.GEP(pair,
                                    vec(C_int(0),
                                        C_int(abi.obj_field_vtbl)));
+    auto pair_box = bcx.build.GEP(pair,
+                                  vec(C_int(0),
+                                      C_int(abi.obj_field_box)));
     bcx.build.Store(vtbl, pair_vtbl);
+
+    // FIXME: allocate the object body, copy the args in, etc.
+    bcx.build.Store(C_null(T_ptr(T_box(T_nil()))), pair_box);
+
     bcx.build.Ret(bcx.build.Load(pair));
 }
 
