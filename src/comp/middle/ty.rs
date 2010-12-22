@@ -1,5 +1,8 @@
 import std._str;
+import std._uint;
 import std._vec;
+import std.map;
+import std.map.hashmap;
 import std.option;
 import std.option.none;
 import std.option.some;
@@ -8,6 +11,7 @@ import driver.session;
 import front.ast;
 import front.ast.mutability;
 import util.common;
+import util.common.append;
 import util.common.span;
 
 // Data types
@@ -38,6 +42,30 @@ tag sty {
     ty_local(ast.def_id);                           // type of a local var
     ty_param(ast.def_id);                           // fn type param
     // TODO: ty_fn_arg(@t), for a possibly-aliased function argument
+}
+
+// Data structures used in type unification
+
+type unify_handler = obj {
+    fn resolve_local(ast.def_id id) -> @t;
+    fn record_local(ast.def_id id, @t ty);
+    fn unify_expected_param(ast.def_id id, @t expected, @t actual)
+        -> unify_result;
+};
+
+tag type_err {
+    terr_mismatch;
+    terr_tuple_size(uint, uint);
+    terr_tuple_mutability;
+    terr_record_size(uint, uint);
+    terr_record_mutability;
+    terr_record_fields(ast.ident,ast.ident);
+    terr_arg_count;
+}
+
+tag unify_result {
+    ures_ok(@ty.t);
+    ures_err(type_err, @ty.t, @ty.t);
 }
 
 // Stringification
@@ -583,6 +611,403 @@ fn is_lval(@ast.expr expr) -> bool {
         case (ast.expr_index(_,_,_))    { ret true;  }
         case (ast.expr_name(_,_,_))     { ret true;  }
         case (_)                        { ret false; }
+    }
+}
+
+// Type unification
+
+fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
+        -> unify_result {
+    // Wraps the given type in an appropriate cname.
+    //
+    // TODO: This doesn't do anything yet. We should carry the cname up from
+    // the expected and/or actual types when unification results in a type
+    // identical to one or both of the two. The precise algorithm for this is
+    // something we'll probably need to develop over time.
+
+    // Simple structural type comparison.
+    fn struct_cmp(@ty.t expected, @ty.t actual) -> unify_result {
+        if (expected.struct == actual.struct) {
+            ret ures_ok(expected);
+        }
+
+        ret ures_err(terr_mismatch, expected, actual);
+    }
+
+    fn unify_step(&hashmap[int,@ty.t] bindings, @ty.t expected, @ty.t actual,
+                  &unify_handler handler) -> unify_result {
+        // TODO: rewrite this using tuple pattern matching when available, to
+        // avoid all this rightward drift and spikiness.
+
+        // If the RHS is a variable type, then just do the appropriate
+        // binding.
+        alt (actual.struct) {
+            case (ty.ty_var(?actual_id)) {
+                alt (bindings.find(actual_id)) {
+                    case (some[@ty.t](?actual_ty)) {
+                        // FIXME: change the binding here?
+                        // FIXME: "be"
+                        ret unify_step(bindings, expected, actual_ty,
+                                       handler);
+                    }
+                    case (none[@ty.t]) {
+                        bindings.insert(actual_id, expected);
+                        ret ures_ok(expected);
+                    }
+                }
+            }
+            case (ty.ty_local(?actual_id)) {
+                auto actual_ty = handler.resolve_local(actual_id);
+                auto result = unify_step(bindings,
+                                         expected,
+                                         actual_ty,
+                                         handler);
+                alt (result) {
+                    case (ures_ok(?result_ty)) {
+                        handler.record_local(actual_id, result_ty);
+                    }
+                    case (_) { /* empty */ }
+                }
+                ret result;
+            }
+            case (_) { /* empty */ }
+        }
+
+        alt (expected.struct) {
+            case (ty.ty_nil)        { ret struct_cmp(expected, actual); }
+            case (ty.ty_bool)       { ret struct_cmp(expected, actual); }
+            case (ty.ty_int)        { ret struct_cmp(expected, actual); }
+            case (ty.ty_uint)       { ret struct_cmp(expected, actual); }
+            case (ty.ty_machine(_)) { ret struct_cmp(expected, actual); }
+            case (ty.ty_char)       { ret struct_cmp(expected, actual); }
+            case (ty.ty_str)        { ret struct_cmp(expected, actual); }
+
+            case (ty.ty_tag(?expected_id)) {
+                alt (actual.struct) {
+                    case (ty.ty_tag(?actual_id)) {
+                        if (expected_id._0 == actual_id._0 &&
+                                expected_id._1 == actual_id._1) {
+                            ret ures_ok(expected);
+                        }
+                    }
+                    case (_) { /* fall through */ }
+                }
+
+                ret ures_err(terr_mismatch, expected, actual);
+            }
+
+            case (ty.ty_box(?expected_sub)) {
+                alt (actual.struct) {
+                    case (ty.ty_box(?actual_sub)) {
+                        auto result = unify_step(bindings,
+                                                 expected_sub,
+                                                 actual_sub,
+                                                 handler);
+                        alt (result) {
+                            case (ures_ok(?result_sub)) {
+                                ret ures_ok(plain_ty(ty.ty_box(result_sub)));
+                            }
+                            case (_) {
+                                ret result;
+                            }
+                        }
+                    }
+
+                    // TODO: ty_var
+
+                    case (_) {
+                        ret ures_err(terr_mismatch, expected, actual);
+                    }
+                }
+            }
+
+            case (ty.ty_vec(?expected_sub)) {
+                alt (actual.struct) {
+                    case (ty.ty_vec(?actual_sub)) {
+                        auto result = unify_step(bindings,
+                                                 expected_sub,
+                                                 actual_sub,
+                                                 handler);
+                        alt (result) {
+                            case (ures_ok(?result_sub)) {
+                                ret ures_ok(plain_ty(ty.ty_vec(result_sub)));
+                            }
+                            case (_) {
+                                ret result;
+                            }
+                        }
+                    }
+
+                    // TODO: ty_var
+
+                    case (_) {
+                        ret ures_err(terr_mismatch, expected, actual);
+                   }
+                }
+            }
+
+            case (ty.ty_tup(?expected_elems)) {
+                alt (actual.struct) {
+                    case (ty.ty_tup(?actual_elems)) {
+                        auto expected_len = _vec.len[@ty.t](expected_elems);
+                        auto actual_len = _vec.len[@ty.t](actual_elems);
+                        if (expected_len != actual_len) {
+                            auto err = terr_tuple_size(expected_len,
+                                                       actual_len);
+                            ret ures_err(err, expected, actual);
+                        }
+
+                        // TODO: implement an iterator that can iterate over
+                        // two arrays simultaneously.
+                        let vec[@ty.t] result_elems = vec();
+                        auto i = 0u;
+                        while (i < expected_len) {
+                            auto expected_elem = expected_elems.(i);
+                            auto actual_elem = actual_elems.(i);
+                            if (expected_elem.mut != actual_elem.mut) {
+                                auto err = terr_tuple_mutability;
+                                ret ures_err(err, expected, actual);
+                            }
+
+                            auto result = unify_step(bindings,
+                                                     expected_elem,
+                                                     actual_elem,
+                                                     handler);
+                            alt (result) {
+                                case (ures_ok(?rty)) {
+                                    append[@ty.t](result_elems,rty);
+                                }
+                                case (_) {
+                                    ret result;
+                                }
+                            }
+
+                            i += 1u;
+                        }
+
+                        ret ures_ok(plain_ty(ty.ty_tup(result_elems)));
+                    }
+
+                    // TODO: ty_var
+
+                    case (_) {
+                        ret ures_err(terr_mismatch, expected, actual);
+                    }
+                }
+            }
+
+            case (ty.ty_rec(?expected_fields)) {
+                alt (actual.struct) {
+                    case (ty.ty_rec(?actual_fields)) {
+                        auto expected_len = _vec.len[field](expected_fields);
+                        auto actual_len = _vec.len[field](actual_fields);
+                        if (expected_len != actual_len) {
+                            auto err = terr_record_size(expected_len,
+                                                        actual_len);
+                            ret ures_err(err, expected, actual);
+                        }
+
+                        // TODO: implement an iterator that can iterate over
+                        // two arrays simultaneously.
+                        let vec[field] result_fields = vec();
+                        auto i = 0u;
+                        while (i < expected_len) {
+                            auto expected_field = expected_fields.(i);
+                            auto actual_field = actual_fields.(i);
+                            if (expected_field.ty.mut
+                                != actual_field.ty.mut) {
+                                auto err = terr_record_mutability;
+                                ret ures_err(err, expected, actual);
+                            }
+
+                            if (!_str.eq(expected_field.ident,
+                                        actual_field.ident)) {
+                                auto err =
+                                    terr_record_fields(expected_field.ident,
+                                                       actual_field.ident);
+                                ret ures_err(err, expected, actual);
+                            }
+
+                            auto result = unify_step(bindings,
+                                                     expected_field.ty,
+                                                     actual_field.ty,
+                                                     handler);
+                            alt (result) {
+                                case (ures_ok(?rty)) {
+                                    append[field]
+                                        (result_fields,
+                                         rec(ty=rty with expected_field));
+                                }
+                                case (_) {
+                                    ret result;
+                                }
+                            }
+
+                            i += 1u;
+                        }
+
+                        ret ures_ok(plain_ty(ty.ty_rec(result_fields)));
+                    }
+
+                    // TODO: ty_var
+
+                    case (_) {
+                        ret ures_err(terr_mismatch, expected, actual);
+                    }
+                }
+            }
+
+            case (ty.ty_fn(?expected_inputs, ?expected_output)) {
+                alt (actual.struct) {
+                    case (ty.ty_fn(?actual_inputs, ?actual_output)) {
+                        auto expected_len = _vec.len[arg](expected_inputs);
+                        auto actual_len = _vec.len[arg](actual_inputs);
+                        if (expected_len != actual_len) {
+                            ret ures_err(terr_arg_count, expected, actual);
+                        }
+
+                        // TODO: as above, we should have an iter2 iterator.
+                        let vec[arg] result_ins = vec();
+                        auto i = 0u;
+                        while (i < expected_len) {
+                            auto expected_input = expected_inputs.(i);
+                            auto actual_input = actual_inputs.(i);
+
+                            // This should be safe, I think?
+                            auto result_mode;
+                            if (mode_is_alias(expected_input.mode) ||
+                                    mode_is_alias(actual_input.mode)) {
+                                result_mode = ast.alias;
+                            } else {
+                                result_mode = ast.val;
+                            }
+
+                            auto result = unify_step(bindings,
+                                                     actual_input.ty,
+                                                     expected_input.ty,
+                                                     handler);
+
+                            alt (result) {
+                                case (ures_ok(?rty)) {
+                                    result_ins += vec(rec(mode=result_mode,
+                                                          ty=rty));
+                                }
+
+                                case (_) {
+                                    ret result;
+                                }
+                            }
+
+                            i += 1u;
+                        }
+
+                        // Check the output.
+                        auto result_out;
+                        auto result = unify_step(bindings,
+                                                 expected_output,
+                                                 actual_output,
+                                                 handler);
+                        alt (result) {
+                            case (ures_ok(?rty)) {
+                                result_out = rty;
+                            }
+
+                            case (_) {
+                                ret result;
+                            }
+                        }
+
+                        auto t = plain_ty(ty.ty_fn(result_ins, result_out));
+                        ret ures_ok(t);
+                    }
+
+                    case (_) {
+                        ret ures_err(terr_mismatch, expected, actual);
+                    }
+                }
+            }
+
+            case (ty.ty_var(?expected_id)) {
+                alt (bindings.find(expected_id)) {
+                    case (some[@ty.t](?expected_ty)) {
+                        // FIXME: change the binding here?
+                        // FIXME: "be"
+                        ret unify_step(bindings,
+                                       expected_ty,
+                                       actual,
+                                       handler);
+                    }
+                    case (none[@ty.t]) {
+                        bindings.insert(expected_id, actual);
+                        ret ures_ok(actual);
+                    }
+                }
+            }
+
+            case (ty.ty_local(?expected_id)) {
+                auto expected_ty = handler.resolve_local(expected_id);
+                auto result = unify_step(bindings,
+                                         expected_ty,
+                                         actual,
+                                         handler);
+                alt (result) {
+                    case (ures_ok(?result_ty)) {
+                        handler.record_local(expected_id, result_ty);
+                    }
+                    case (_) { /* empty */ }
+                }
+                ret result;
+            }
+
+            case (ty.ty_param(?expected_id)) {
+                ret handler.unify_expected_param(expected_id,
+                                                 expected,
+                                                 actual);
+            }
+        }
+
+        // TODO: remove me once match-exhaustiveness checking works
+        fail;
+    }
+
+    fn hash_int(&int x) -> uint { ret x as uint; }
+    fn eq_int(&int a, &int b) -> bool { ret a == b; }
+    auto hasher = hash_int;
+    auto eqer = eq_int;
+    auto bindings = map.mk_hashmap[int,@ty.t](hasher, eqer);
+
+    ret unify_step(bindings, expected, actual, handler);
+}
+
+fn type_err_to_str(&ty.type_err err) -> str {
+    alt (err) {
+        case (terr_mismatch) {
+            ret "types differ";
+        }
+        case (terr_tuple_size(?e_sz, ?a_sz)) {
+            ret "expected a tuple with " + _uint.to_str(e_sz, 10u) +
+                " elements but found one with " + _uint.to_str(a_sz, 10u) +
+                " elements";
+        }
+        case (terr_tuple_mutability) {
+            ret "tuple elements differ in mutability";
+        }
+        case (terr_record_size(?e_sz, ?a_sz)) {
+            ret "expected a record with " + _uint.to_str(e_sz, 10u) +
+                " fields but found one with " + _uint.to_str(a_sz, 10u) +
+                " fields";
+        }
+        case (terr_record_mutability) {
+            ret "record elements differ in mutability";
+        }
+        case (terr_record_fields(?e_fld, ?a_fld)) {
+            ret "expected a record with field '" + e_fld +
+                "' but found one with field '" + a_fld +
+                "'";
+        }
+        case (terr_arg_count) {
+            ret "incorrect number of function parameters";
+        }
     }
 }
 
