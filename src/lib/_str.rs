@@ -27,6 +27,31 @@ fn eq(&str a, &str b) -> bool {
     ret true;
 }
 
+fn lteq(&str a, &str b) -> bool {
+    let uint i = byte_len(a);
+    let uint j = byte_len(b);
+    let uint n = i;
+    if (j < n) {
+        n = j;
+    }
+
+    let uint x = 0u;
+    while (x < n) {
+        auto cha = a.(x);
+        auto chb = b.(x);
+        if (cha <= chb) {
+            ret true;
+        }
+        else if (cha > chb) {
+            ret false;
+        }
+        x += 1u;
+    }
+
+    ret i <= j;
+}
+
+
 fn hash(&str s) -> uint {
     // djb hash.
     // FIXME: replace with murmur.

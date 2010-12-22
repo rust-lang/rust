@@ -248,6 +248,13 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         auto methods =
             _vec.map[@ast.method,method](f, obj_info.methods);
 
+        fn method_lteq(&method a, &method b) -> bool {
+            ret _str.lteq(a.ident, b.ident);
+        }
+
+        methods = std.sort.merge_sort[method](bind method_lteq(_,_),
+                                              methods);
+
         auto t_obj = plain_ty(ty.ty_obj(methods));
         ret t_obj;
     }
