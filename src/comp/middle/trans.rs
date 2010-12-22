@@ -18,6 +18,7 @@ import back.abi;
 import middle.ty.pat_ty;
 
 import util.common;
+import util.common.append;
 import util.common.istr;
 import util.common.new_def_hash;
 import util.common.new_str_hash;
@@ -566,15 +567,20 @@ fn align_of(TypeRef t) -> ValueRef {
     ret llvm.LLVMConstIntCast(lib.llvm.llvm.LLVMAlignOf(t), T_int(), False);
 }
 
-fn trans_malloc(@block_ctxt cx, @ty.t t) -> result {
-    auto scope_cx = find_scope_cx(cx);
-    auto ptr_ty = type_of(cx.fcx.ccx, t);
-    auto body_ty = lib.llvm.llvm.LLVMGetElementType(ptr_ty);
+fn trans_malloc_inner(@block_ctxt cx, TypeRef llptr_ty) -> result {
+    auto llbody_ty = lib.llvm.llvm.LLVMGetElementType(llptr_ty);
     // FIXME: need a table to collect tydesc globals.
     auto tydesc = C_int(0);
-    auto sz = size_of(body_ty);
+    auto sz = size_of(llbody_ty);
     auto sub = trans_upcall(cx, "upcall_malloc", vec(sz, tydesc));
-    sub.val = sub.bcx.build.IntToPtr(sub.val, ptr_ty);
+    sub.val = sub.bcx.build.IntToPtr(sub.val, llptr_ty);
+    ret sub;
+}
+
+fn trans_malloc(@block_ctxt cx, @ty.t t) -> result {
+    auto scope_cx = find_scope_cx(cx);
+    auto llptr_ty = type_of(cx.fcx.ccx, t);
+    auto sub = trans_malloc_inner(cx, llptr_ty);
     scope_cx.cleanups += clean(bind drop_ty(_, sub.val, t));
     ret sub;
 }
@@ -2442,7 +2448,7 @@ impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
     auto llctor_decl = cx.item_ids.get(oid);
     cx.item_names.insert(cx.path, llctor_decl);
 
-    // Translate obj ctor fields to function arguments.
+    // Translate obj ctor args to function arguments.
     let vec[ast.arg] fn_args = vec();
     for (ast.obj_field f in ob.fields) {
         fn_args += vec(rec(mode=ast.alias,
@@ -2456,7 +2462,8 @@ impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
 
     auto bcx = new_top_block_ctxt(fcx);
 
-    copy_args_to_allocas(bcx, fn_args, arg_tys_of_fn(ann));
+    let vec[ty.arg] arg_tys = arg_tys_of_fn(ann);
+    copy_args_to_allocas(bcx, fn_args, arg_tys);
 
     auto pair = bcx.build.Alloca(type_of(cx, ret_ty_of_fn(ann)));
     auto vtbl = trans_vtbl(cx, ob, ty_params);
@@ -2468,9 +2475,37 @@ impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
                                       C_int(abi.obj_field_box)));
     bcx.build.Store(vtbl, pair_vtbl);
 
-    // FIXME: allocate the object body, copy the args in, etc.
-    bcx.build.Store(C_null(T_ptr(T_box(T_nil()))), pair_box);
+    let TypeRef llbox_ty = T_ptr(T_box(T_nil()));
+    if (_vec.len[ty.arg](arg_tys) == 0u) {
+        // Store null into pair, if no args.
+        bcx.build.Store(C_null(llbox_ty), pair_box);
+    } else {
+        // Malloc a box for the body and copy args in.
+        let vec[@ty.t] obj_fields = vec();
+        for (ty.arg a in arg_tys) {
+            append[@ty.t](obj_fields, a.ty);
+        }
+        // Synthesize an obj body:
+        let @ty.t fields_ty = ty.plain_ty(ty.ty_tup(obj_fields));
+        let TypeRef llfields_ty = type_of(bcx.fcx.ccx, fields_ty);
+        let TypeRef llobj_body_ty =
+            T_ptr(T_box(T_struct(vec(T_tydesc(),
+                                     llfields_ty))));
+        auto r = trans_malloc_inner(bcx, llobj_body_ty);
+        auto box = r.val;
+        auto rc = r.bcx.build.GEP(box,
+                                  vec(C_int(0),
+                                      C_int(abi.box_rc_field_refcnt)));
+        auto body = r.bcx.build.GEP(box,
+                                    vec(C_int(0),
+                                        C_int(abi.box_rc_field_body)));
+        r.bcx.build.Store(C_int(1), rc);
 
+        // FIXME: Copy args into body
+
+        auto p = r.bcx.build.PointerCast(box, llbox_ty);
+        r.bcx.build.Store(p, pair_box);
+    }
     bcx.build.Ret(bcx.build.Load(pair));
 }
 
