@@ -513,7 +513,7 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
 
 // Type unification
 
-fn unify(&fn_ctxt fcx, @ty.t expected, @ty.t actual) -> unify_result {
+fn unify(&@fn_ctxt fcx, @ty.t expected, @ty.t actual) -> unify_result {
     // Wraps the given type in an appropriate cname.
     //
     // TODO: This doesn't do anything yet. We should carry the cname up from
@@ -530,7 +530,7 @@ fn unify(&fn_ctxt fcx, @ty.t expected, @ty.t actual) -> unify_result {
         ret ures_err(terr_mismatch, expected, actual);
     }
 
-    fn unify_step(&fn_ctxt fcx, &hashmap[int,@ty.t] bindings, @ty.t expected,
+    fn unify_step(&@fn_ctxt fcx, &hashmap[int,@ty.t] bindings, @ty.t expected,
                   @ty.t actual) -> unify_result {
         // TODO: rewrite this using tuple pattern matching when available, to
         // avoid all this rightward drift and spikiness.
@@ -877,7 +877,7 @@ fn unify(&fn_ctxt fcx, @ty.t expected, @ty.t actual) -> unify_result {
 
 // Requires that the two types unify, and prints an error message if they
 // don't. Returns the unified type.
-fn demand(&fn_ctxt fcx, &span sp, @ty.t expected, @ty.t actual) -> @ty.t {
+fn demand(&@fn_ctxt fcx, &span sp, @ty.t expected, @ty.t actual) -> @ty.t {
     alt (unify(fcx, expected, actual)) {
         case (ures_ok(?ty)) {
             ret ty;
@@ -897,7 +897,7 @@ fn demand(&fn_ctxt fcx, &span sp, @ty.t expected, @ty.t actual) -> @ty.t {
 }
 
 // Returns true if the two types unify and false if they don't.
-fn are_compatible(&fn_ctxt fcx, @ty.t expected, @ty.t actual) -> bool {
+fn are_compatible(&@fn_ctxt fcx, @ty.t expected, @ty.t actual) -> bool {
     alt (unify(fcx, expected, actual)) {
         case (ures_ok(_))        { ret true;  }
         case (ures_err(_, _, _)) { ret false; }
@@ -909,7 +909,7 @@ fn are_compatible(&fn_ctxt fcx, @ty.t expected, @ty.t actual) -> bool {
 //
 // TODO: enforce this via a predicate.
 
-fn demand_pat(&fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
+fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
     auto p_1 = ast.pat_wild(ast.ann_none);  // FIXME: typestate botch
 
     alt (pat.node) {
@@ -970,7 +970,7 @@ fn demand_pat(&fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
 // TODO: propagate the types downward. This makes the typechecker quadratic,
 //       but we can mitigate that if expected == actual == unified.
 
-fn demand_expr(&fn_ctxt fcx, @ty.t expected, @ast.expr e) -> @ast.expr {
+fn demand_expr(&@fn_ctxt fcx, @ty.t expected, @ast.expr e) -> @ast.expr {
     // FIXME: botch to work around typestate bug in rustboot
     let vec[@ast.expr] v = vec();
     auto e_1 = ast.expr_vec(v, ast.ann_none);
@@ -1112,7 +1112,7 @@ fn demand_expr(&fn_ctxt fcx, @ty.t expected, @ast.expr e) -> @ast.expr {
 }
 
 // Type unification over typed blocks.
-fn demand_block(&fn_ctxt fcx, @ty.t expected, &ast.block bloc) -> ast.block {
+fn demand_block(&@fn_ctxt fcx, @ty.t expected, &ast.block bloc) -> ast.block {
     alt (bloc.node.expr) {
         case (some[@ast.expr](?e_0)) {
             auto e_1 = demand_expr(fcx, expected, e_0);
@@ -1130,7 +1130,7 @@ fn demand_block(&fn_ctxt fcx, @ty.t expected, &ast.block bloc) -> ast.block {
 
 // Writeback: the phase that writes inferred types back into the AST.
 
-fn writeback_local(&fn_ctxt fcx, &span sp, @ast.local local)
+fn writeback_local(&@fn_ctxt fcx, &span sp, @ast.local local)
         -> @ast.decl {
     if (!fcx.locals.contains_key(local.id)) {
         fcx.ccx.sess.span_err(sp, "unable to determine type of local: "
@@ -1141,11 +1141,11 @@ fn writeback_local(&fn_ctxt fcx, &span sp, @ast.local local)
     ret @fold.respan[ast.decl_](sp, ast.decl_local(local_wb));
 }
 
-fn writeback(&fn_ctxt fcx, &ast.block block) -> ast.block {
-    auto fld = fold.new_identity_fold[fn_ctxt]();
+fn writeback(&@fn_ctxt fcx, &ast.block block) -> ast.block {
+    auto fld = fold.new_identity_fold[@fn_ctxt]();
     auto f = writeback_local;
     fld = @rec(fold_decl_local = f with *fld);
-    ret fold.fold_block[fn_ctxt](fcx, fld, block);
+    ret fold.fold_block[@fn_ctxt](fcx, fld, block);
 }
 
 // AST fragment checking
@@ -1165,7 +1165,7 @@ fn check_lit(@ast.lit lit) -> @ty.t {
     ret plain_ty(sty);
 }
 
-fn check_pat(&fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
+fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
     auto new_pat;
     alt (pat.node) {
         case (ast.pat_wild(_)) {
@@ -1227,7 +1227,7 @@ fn check_pat(&fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
     ret @fold.respan[ast.pat_](pat.span, new_pat);
 }
 
-fn check_expr(&fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
+fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
     alt (expr.node) {
         case (ast.expr_lit(?lit, _)) {
             auto ty = check_lit(lit);
@@ -1711,8 +1711,7 @@ fn next_ty_var(@crate_ctxt ccx) -> @ty.t {
     ret t;
 }
 
-fn check_stmt(&fn_ctxt fcx, &@ast.stmt stmt)
-        -> @ast.stmt {
+fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
     alt (stmt.node) {
         case (ast.stmt_decl(?decl)) {
             alt (decl.node) {
@@ -1800,7 +1799,7 @@ fn check_stmt(&fn_ctxt fcx, &@ast.stmt stmt)
     fail;
 }
 
-fn check_block(&fn_ctxt fcx, &ast.block block) -> ast.block {
+fn check_block(&@fn_ctxt fcx, &ast.block block) -> ast.block {
     let vec[@ast.stmt] stmts = vec();
     for (@ast.stmt s in block.node.stmts) {
         append[@ast.stmt](stmts, check_stmt(fcx, s));
@@ -1824,9 +1823,9 @@ fn check_const(&@crate_ctxt ccx, &span sp, ast.ident ident, @ast.ty t,
     // FIXME: this is kinda a kludge; we manufacture a fake "function context"
     // for checking the initializer expression.
     auto rty = ann_to_type(ann);
-    let fn_ctxt fcx = rec(ret_ty = rty,
-                          locals = @common.new_def_hash[@ty.t](),
-                          ccx = ccx);
+    let @fn_ctxt fcx = @rec(ret_ty = rty,
+                            locals = @common.new_def_hash[@ty.t](),
+                            ccx = ccx);
     auto e_ = check_expr(fcx, e);
     // FIXME: necessary? Correct sequence?
     demand_expr(fcx, rty, e_);
@@ -1848,9 +1847,9 @@ fn check_fn(&@crate_ctxt ccx, ast.effect effect,
         auto input_ty = ast_ty_to_ty_crate(ccx, arg.ty);
         local_ty_table.insert(arg.id, input_ty);
     }
-    let fn_ctxt fcx = rec(ret_ty = ast_ty_to_ty_crate(ccx, output),
-                          locals = local_ty_table,
-                          ccx = ccx);
+    let @fn_ctxt fcx = @rec(ret_ty = ast_ty_to_ty_crate(ccx, output),
+                            locals = local_ty_table,
+                            ccx = ccx);
 
     // TODO: Make sure the type of the block agrees with the function type.
     auto block_t = check_block(fcx, body);
