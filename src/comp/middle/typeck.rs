@@ -217,7 +217,8 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         auto t_obj = ty_of_obj(id_to_ty_item, item_to_ty, obj_info);
         let vec[arg] t_inputs = vec();
         for (ast.obj_field f in obj_info.fields) {
-            auto t_field = getter(id_to_ty_item, item_to_ty, f.id);
+            auto g = bind getter(id_to_ty_item, item_to_ty, _);
+            auto t_field = ast_ty_to_ty(g, f.ty);
             append[arg](t_inputs, rec(mode=ast.alias, ty=t_field));
         }
         auto t_fn = plain_ty(ty.ty_fn(t_inputs, t_obj));
