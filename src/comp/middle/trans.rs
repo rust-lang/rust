@@ -2485,12 +2485,15 @@ impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
         for (ty.arg a in arg_tys) {
             append[@ty.t](obj_fields, a.ty);
         }
-        // Synthesize an obj body:
+
+        // Synthesize an obj body type.
         let @ty.t fields_ty = ty.plain_ty(ty.ty_tup(obj_fields));
         let TypeRef llfields_ty = type_of(bcx.fcx.ccx, fields_ty);
         let TypeRef llobj_body_ty =
-            T_ptr(T_box(T_struct(vec(T_tydesc(),
+            T_ptr(T_box(T_struct(vec(T_ptr(T_tydesc()),
                                      llfields_ty))));
+
+        // Malloc a box for the body.
         auto r = trans_malloc_inner(bcx, llobj_body_ty);
         auto box = r.val;
         auto rc = r.bcx.build.GEP(box,
@@ -2501,8 +2504,32 @@ impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
                                         C_int(abi.box_rc_field_body)));
         r.bcx.build.Store(C_int(1), rc);
 
-        // FIXME: Copy args into body
+        // Store body tydesc.
+        auto body_tydesc =
+            r.bcx.build.GEP(body,
+                            vec(C_int(0),
+                                C_int(abi.obj_body_elt_tydesc)));
 
+        auto fields_tydesc = get_tydesc(r.bcx, fields_ty);
+        r.bcx.build.Store(fields_tydesc, body_tydesc);
+
+        // Copy args into body fields.
+        auto body_fields =
+            r.bcx.build.GEP(body,
+                            vec(C_int(0),
+                                C_int(abi.obj_body_elt_fields)));
+
+        let int i = 0;
+        for (ast.obj_field f in ob.fields) {
+            auto arg = r.bcx.fcx.llargs.get(f.id);
+            arg = r.bcx.build.Load(arg);
+            auto field = r.bcx.build.GEP(body_fields,
+                                         vec(C_int(0),C_int(i)));
+            r = copy_ty(r.bcx, true, field, arg, arg_tys.(i).ty);
+            i += 1;
+        }
+
+        // Store box ptr in outer pair.
         auto p = r.bcx.build.PointerCast(box, llbox_ty);
         r.bcx.build.Store(p, pair_box);
     }
