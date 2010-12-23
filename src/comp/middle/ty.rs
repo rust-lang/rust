@@ -379,6 +379,27 @@ fn type_is_scalar(@t ty) -> bool {
     fail;
 }
 
+fn type_has_dynamic_size(@t ty) -> bool {
+    alt (ty.struct) {
+        case (ty_tup(?ts)) {
+            auto i = 0u;
+            while (i < _vec.len[@t](ts)) {
+                if (type_has_dynamic_size(ts.(i))) { ret true; }
+                i += 1u;
+            }
+        }
+        case (ty_rec(?fields)) {
+            auto i = 0u;
+            while (i < _vec.len[field](fields)) {
+                if (type_has_dynamic_size(fields.(i).ty)) { ret true; }
+                i += 1u;
+            }
+        }
+        case (ty_param(_)) { ret true; }
+        case (_) { /* fall through */ }
+    }
+    ret false;
+}
 
 fn type_is_integral(@t ty) -> bool {
     alt (ty.struct) {
