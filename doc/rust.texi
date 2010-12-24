@@ -674,6 +674,8 @@ The keywords are:
 @item @code{state}
 @tab @code{gc}
 @tab @code{abs}
+@tab @code{const}
+@tab @code{thread}
 @item @code{auth}
 @tab @code{impure}
 @tab @code{unsafe}
