@@ -4,7 +4,7 @@ all: rust.pdf rust.html
 
 version.texi: Makefile rust.texi
 	git log -1 \
-      --format='@macro gitversion%n%h %ci%n@end macro%n' >$@
+      --pretty=format:'@macro gitversion%n%h %ci%n@end macro%n' >$@
 
 %.pdf: %.texi version.texi
 	texi2pdf $<
