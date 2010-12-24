@@ -1133,9 +1133,17 @@ fn mk_type_handle() -> type_handle {
 }
 
 fn type_to_str(TypeRef ty) -> str {
+    let vec[TypeRef] v = vec();
+    ret type_to_str_inner(v, ty);
+}
+
+fn type_to_str_inner(vec[TypeRef] outer0, TypeRef ty) -> str {
+
+    auto outer = outer0 + vec(ty);
+
     let int kind = llvm.LLVMGetTypeKind(ty);
 
-    fn tys_str(vec[TypeRef] tys) -> str {
+    fn tys_str(vec[TypeRef] outer, vec[TypeRef] tys) -> str {
         let str s = "";
         let bool first = true;
         for (TypeRef t in tys) {
@@ -1144,7 +1152,7 @@ fn type_to_str(TypeRef ty) -> str {
             } else {
                 s += ", ";
             }
-            s += type_to_str(t);
+            s += type_to_str_inner(outer, t);
         }
         ret s;
     }
@@ -1173,9 +1181,9 @@ fn type_to_str(TypeRef ty) -> str {
             let vec[TypeRef] args =
                 _vec.init_elt[TypeRef](0 as TypeRef, n_args);
             llvm.LLVMGetParamTypes(ty, _vec.buf[TypeRef](args));
-            s += tys_str(args);
+            s += tys_str(outer, args);
             s += ") -> ";
-            s += type_to_str(out_ty);
+            s += type_to_str_inner(outer, out_ty);
             ret s;
         }
 
@@ -1185,7 +1193,7 @@ fn type_to_str(TypeRef ty) -> str {
             let vec[TypeRef] elts =
                 _vec.init_elt[TypeRef](0 as TypeRef, n_elts);
             llvm.LLVMGetStructElementTypes(ty, _vec.buf[TypeRef](elts));
-            s += tys_str(elts);
+            s += tys_str(outer, elts);
             s += "}";
             ret s;
         }
@@ -1193,7 +1201,15 @@ fn type_to_str(TypeRef ty) -> str {
         case (10) { ret "Array"; }
 
         case (11) {
-            ret "*" + type_to_str(llvm.LLVMGetElementType(ty));
+            let uint i = 0u;
+            for (TypeRef tout in outer0) {
+                i += 1u;
+                if (tout as int == ty as int) {
+                    let uint n = _vec.len[TypeRef](outer0) - i;
+                    ret "*\\" + util.common.istr(n as int);
+                }
+            }
+            ret "*" + type_to_str_inner(outer, llvm.LLVMGetElementType(ty));
         }
 
         case (12) { ret "Opaque"; }
