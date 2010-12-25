@@ -194,8 +194,6 @@ ifneq ($(CFG_LLVM_CONFIG),)
       done)
   ifneq ($(CFG_OCAML_LLVM),)
     $(info cfg: found LLVM ocaml bindings in $(CFG_OCAML_LLVM))
-  else
-    CFG_LLVM_CONFIG := $(info cfg: LLVM ocaml bindings not found)
   endif
 endif
 
