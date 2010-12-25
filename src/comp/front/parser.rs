@@ -1562,6 +1562,45 @@ impure fn parse_optional_meta(parser p) {
     }
 }
 
+impure fn parse_rest_import_name(parser p, ast.ident id) {
+    while (p.peek() != token.SEMI) {
+        expect(p, token.DOT);
+        parse_ident(p);
+    }
+}
+
+impure fn parse_full_import_name(parser p) {
+    alt (p.peek()) {
+        case (token.IDENT(?ident)) {
+            p.bump();
+            parse_rest_import_name(p, ident);
+        }
+        case (_) {
+            p.err("expecting an identifier");
+        }
+    }
+}
+
+impure fn parse_import(parser p) {
+    alt (p.peek()) {
+        case (token.IDENT(?ident)) {
+            p.bump();
+            alt (p.peek()) {
+                case (token.EQ) {
+                    p.bump();
+                    parse_full_import_name(p);
+                }
+                case (_) {
+                    parse_rest_import_name(p, ident);
+                }
+            }
+        }
+        case (_) {
+            p.err("expecting an identifier");
+        }
+    }
+}
+
 impure fn parse_use_and_imports(parser p) {
     while (true) {
         alt (p.peek()) {
@@ -1569,6 +1608,11 @@ impure fn parse_use_and_imports(parser p) {
                 p.bump();
                 auto ident = parse_ident(p);
                 parse_optional_meta(p);
+                expect(p, token.SEMI);
+            }
+            case (token.IMPORT) {
+                p.bump();
+                parse_import(p);
                 expect(p, token.SEMI);
             }
             case (_) {
