@@ -1330,6 +1330,8 @@ impure fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
 }
 
 impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
+    parse_use_and_imports(p);
+
     let vec[@ast.item] items = vec();
     auto index = new_str_hash[ast.mod_index_entry]();
     let uint u = 0u;
@@ -1529,6 +1531,51 @@ impure fn parse_item(parser p) -> @ast.item {
         }
     }
     fail;
+}
+
+impure fn parse_meta_item(parser p) {
+    auto ident = parse_ident(p);
+    expect(p, token.EQ);
+    alt (p.peek()) {
+        case (token.LIT_STR(?s)) {
+            p.bump();
+        }
+        case (_) {
+            p.err("Metadata items must be string literals");
+        }
+    }
+}
+
+impure fn parse_meta(parser p) {
+    auto pf = parse_meta_item;
+    parse_seq[()](token.LPAREN, token.RPAREN, some(token.COMMA), pf, p);
+}
+
+impure fn parse_optional_meta(parser p) {
+    alt (p.peek()) {
+        case (token.LPAREN) {
+            ret parse_meta(p);
+        }
+        case (_) {
+            ret;
+        }
+    }
+}
+
+impure fn parse_use_and_imports(parser p) {
+    while (true) {
+        alt (p.peek()) {
+            case (token.USE) {
+                p.bump();
+                auto ident = parse_ident(p);
+                parse_optional_meta(p);
+                expect(p, token.SEMI);
+            }
+            case (_) {
+                ret;
+            }
+        }
+    }
 }
 
 impure fn parse_crate(parser p) -> @ast.crate {
