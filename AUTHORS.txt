@@ -19,4 +19,5 @@ Or Brostovski <tohava@gmail.com>
 Patrick Walton <pwalton@mozilla.com>
 Peter Hull <peterhull90@gmail.com>
 Ralph Giles <giles@thaumas.net>
+Rafael Ávila de Espíndola <respindola@mozilla.com>
 Roy Frostig <rfrostig@mozilla.com>
