@@ -420,7 +420,7 @@ rust_task::notify_tasks_waiting_to_join() {
             delete waiting_task;
         } else {
             rust_task *task = waiting_task->referent();
-            if (task->dead() == false) {
+            if (task->blocked() == true) {
                 task->wakeup(this);
             }
         }
