@@ -578,6 +578,10 @@ ALL_TEST_SOURCES := $(TEST_CFAIL_SOURCES_BOOT) \
 
 ALL_TEST_INPUTS := $(wildcard test/*/*.rs test/*/*/*.rs test/*/*.rc)
 
+# The test suite currently relies on logging to validate results so
+# make sure that logging uses the default configuration
+unexport RUST_LOG
+
 
 check_nocompile: $(TEST_CFAIL_OUTS_BOOT)
 
