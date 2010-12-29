@@ -13,12 +13,13 @@ import std.option.none;
 import std._str;
 import std._vec;
 
-impure fn compile_input(session.session sess, str input, str output) {
+impure fn compile_input(session.session sess, str input, str output,
+                        bool shared) {
     auto p = parser.new_parser(sess, 0, input);
     auto crate = parser.parse_crate(p);
     crate = resolve.resolve_crate(sess, crate);
     crate = typeck.check_crate(sess, crate);
-    trans.trans_crate(sess, crate, output);
+    trans.trans_crate(sess, crate, output, shared);
 }
 
 fn warn_wrong_compiler() {
@@ -34,6 +35,7 @@ fn usage(session.session sess, str argv0) {
     log "";
     log "    -o <filename>      write output to <filename>";
     log "    -nowarn            suppress wrong-compiler warning";
+    log "    -shared            compile a shared-library crate";
     log "    -h                 display this message";
     log "";
     log "";
@@ -59,6 +61,7 @@ impure fn main(vec[str] args) {
     let option.t[str] input_file = none[str];
     let option.t[str] output_file = none[str];
     let bool do_warn = true;
+    let bool shared = false;
 
     auto i = 1u;
     auto len = _vec.len[str](args);
@@ -69,6 +72,8 @@ impure fn main(vec[str] args) {
         if (_str.byte_len(arg) > 0u && arg.(0) == '-' as u8) {
             if (_str.eq(arg, "-nowarn")) {
                 do_warn = false;
+            } else if (_str.eq(arg, "-shared")) {
+                shared = true;
             } else {
                 // FIXME: rust could use an elif construct.
                 if (_str.eq(arg, "-o")) {
@@ -120,10 +125,10 @@ impure fn main(vec[str] args) {
                     parts = _vec.pop[str](parts);
                     parts += ".bc";
                     auto ofile = _str.concat(parts);
-                    compile_input(sess, ifile, ofile);
+                    compile_input(sess, ifile, ofile, shared);
                 }
                 case (some[str](?ofile)) {
-                    compile_input(sess, ifile, ofile);
+                    compile_input(sess, ifile, ofile, shared);
                 }
             }
         }

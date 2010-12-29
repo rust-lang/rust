@@ -3055,7 +3055,8 @@ fn make_glues(ModuleRef llmod) -> @glue_fns {
              no_op_type_glue = make_no_op_type_glue(llmod));
 }
 
-fn trans_crate(session.session sess, @ast.crate crate, str output) {
+fn trans_crate(session.session sess, @ast.crate crate, str output,
+               bool shared) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
@@ -3095,7 +3096,9 @@ fn trans_crate(session.session sess, @ast.crate crate, str output) {
 
     trans_mod(cx, crate.node.module);
     trans_exit_task_glue(cx);
-    trans_main_fn(cx, crate_constant(cx));
+    if (!shared) {
+        trans_main_fn(cx, crate_constant(cx));
+    }
 
     check_module(llmod);
 
