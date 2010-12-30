@@ -75,6 +75,7 @@ state type crate_ctxt = rec(session.session sess,
 state type fn_ctxt = rec(ValueRef llfn,
                          ValueRef lltaskptr,
                          mutable option.t[ValueRef] llself,
+                         mutable option.t[ValueRef] llretptr,
                          hashmap[ast.def_id, ValueRef] llargs,
                          hashmap[ast.def_id, ValueRef] lllocals,
                          hashmap[ast.def_id, ValueRef] lltydescs,
@@ -306,6 +307,10 @@ fn type_of_fn_full(@crate_ctxt cx,
         case (_) { }
     }
 
+    if (ty.type_has_dynamic_size(output)) {
+        atys += T_ptr(type_of(cx, output));
+    }
+
     for (ty.arg arg in inputs) {
         let TypeRef t = type_of(cx, arg.ty);
         alt (arg.mode) {
@@ -318,7 +323,7 @@ fn type_of_fn_full(@crate_ctxt cx,
     }
 
     auto ret_ty;
-    if (ty.type_is_nil(output)) {
+    if (ty.type_is_nil(output) || ty.type_has_dynamic_size(output)) {
         ret_ty = llvm.LLVMVoidType();
     } else {
         ret_ty = type_of(cx, output);
@@ -2183,8 +2188,17 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
             if (ty.type_is_nil(ty.expr_ty(ex))) {
                 r.bcx.build.RetVoid();
                 r.val = C_nil();
-            } else {
-                r.val = r.bcx.build.Ret(r.val);
+                ret r;  // FIXME: early return needed due to typestate bug
+            }
+
+            alt (cx.fcx.llretptr) {
+                case (some[ValueRef](?llptr)) {
+                    r.bcx.build.Store(r.val, llptr);
+                    r.bcx.build.RetVoid();
+                }
+                case (none[ValueRef]) {
+                    r.val = r.bcx.build.Ret(r.val);
+                }
             }
             ret r;
         }
@@ -2375,6 +2389,7 @@ fn new_fn_ctxt(@crate_ctxt cx,
     ret @rec(llfn=llfndecl,
              lltaskptr=lltaskptr,
              mutable llself=none[ValueRef],
+             mutable llretptr=none[ValueRef],
              llargs=llargs,
              lllocals=lllocals,
              lltydescs=lltydescs,
@@ -2384,6 +2399,7 @@ fn new_fn_ctxt(@crate_ctxt cx,
 
 fn create_llargs_for_fn_args(&@fn_ctxt cx,
                              option.t[TypeRef] ty_self,
+                             @ty.t ret_ty,
                              &vec[ast.arg] args,
                              &vec[ast.ty_param] ty_params) {
     let uint arg_n = 1u;
@@ -2403,6 +2419,11 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx,
             arg_n += 1u;
         }
         case (_) { }
+    }
+
+    if (ty.type_has_dynamic_size(ret_ty)) {
+        cx.llretptr = some[ValueRef](llvm.LLVMGetParam(cx.llfn, arg_n));
+        arg_n += 1u;
     }
 
     for (ast.arg arg in args) {
@@ -2467,7 +2488,8 @@ impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
     cx.item_names.insert(cx.path, llfndecl);
 
     auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
-    create_llargs_for_fn_args(fcx, none[TypeRef], f.inputs, ty_params);
+    create_llargs_for_fn_args(fcx, none[TypeRef], ret_ty_of_fn(ann),
+                              f.inputs, ty_params);
 
     auto bcx = new_top_block_ctxt(fcx);
 
@@ -2528,7 +2550,7 @@ impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
     }
 
     auto fcx = new_fn_ctxt(cx, cx.path, llctor_decl);
-    create_llargs_for_fn_args(fcx, none[TypeRef],
+    create_llargs_for_fn_args(fcx, none[TypeRef], ret_ty_of_fn(ann),
                               fn_args, ty_params);
 
     auto bcx = new_top_block_ctxt(fcx);
@@ -2636,7 +2658,8 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     cx.item_names.insert(cx.path, llfndecl);
 
     auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
-    create_llargs_for_fn_args(fcx, none[TypeRef], fn_args, ty_params);
+    create_llargs_for_fn_args(fcx, none[TypeRef], ret_ty_of_fn(variant.ann),
+                              fn_args, ty_params);
 
     auto bcx = new_top_block_ctxt(fcx);
 
@@ -2902,6 +2925,7 @@ fn trans_exit_task_glue(@crate_ctxt cx) {
     auto fcx = @rec(llfn=llfn,
                     lltaskptr=lltaskptr,
                     mutable llself=none[ValueRef],
+                    mutable llretptr=none[ValueRef],
                     llargs=new_def_hash[ValueRef](),
                     lllocals=new_def_hash[ValueRef](),
                     lltydescs=new_def_hash[ValueRef](),
