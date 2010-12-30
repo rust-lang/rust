@@ -178,8 +178,6 @@ ifneq ($(CFG_LLVM_CONFIG),)
   endif
 endif
 
-VARIANT=x86
-
 ifdef CFG_LLVM_CONFIG
   LLC := "$(shell $(CFG_LLVM_CONFIG) --bindir)/llc"
   CFG_LLC_CFLAGS := -march=x86
@@ -196,9 +194,9 @@ CFG_BOOT_FLAGS += -L .
 # Boot targets and rules
 ######################################################################
 
-ML_DEP_INCS := -I boot/fe -I boot/me -I boot/be -I boot/driver/$(VARIANT) \
+ML_DEP_INCS := -I boot/fe -I boot/me -I boot/be \
   -I boot/driver -I boot/util
-ML_INCS := $(ML_DEP_INCS) $(LLVM_INCS)
+ML_INCS := $(ML_DEP_INCS)
 ML_LIBS := unix.cma nums.cma bigarray.cma
 ML_NATIVE_LIBS := unix.cmxa nums.cmxa bigarray.cmxa
 OCAMLC_FLAGS := -g $(ML_INCS) -w Ael -warn-error Ael
@@ -218,7 +216,7 @@ ME_MLS := $(addprefix boot/me/, walk.ml semant.ml resolve.ml alias.ml \
             loop.ml layout.ml transutil.ml trans.ml dwarf.ml)
 FE_MLS := $(addprefix boot/fe/, ast.ml token.ml lexer.ml parser.ml \
             extfmt.ml pexp.ml item.ml cexp.ml fuzz.ml)
-DRIVER_TOP_MLS := $(addprefix boot/driver/, lib.ml $(VARIANT)/glue.ml main.ml)
+DRIVER_TOP_MLS := $(addprefix boot/driver/, lib.ml glue.ml main.ml)
 
 BOOT_MLS := $(UTIL_BOT_MLS) $(DRIVER_BOT_MLS) $(FE_MLS) $(IL_MLS) $(ME_MLS) \
   $(BE_MLS) $(DRIVER_TOP_MLS)
@@ -383,7 +381,7 @@ TASK_XFAILS := test/run-pass/task-comm-8.rs \
                test/run-pass/alt-type-simple.rs \
                test/run-pass/many.rs
 
-TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
+TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     $(NOMINAL_TAG_XFAILS) \
                     $(CONST_TAG_XFAILS) \
                     test/run-pass/child-outlives-parent.rs \
@@ -413,7 +411,7 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
 # work and assume the others don't. Invert this when we're closer
 # to actually bootstrapping.
 
-TEST_XFAILS_SELF := $(filter-out \
+TEST_XFAILS_RUSTC := $(filter-out \
                       $(addprefix test/run-pass/, \
                         alt-pattern-simple.rs \
                         alt-tag.rs \
@@ -475,12 +473,12 @@ TEST_XFAILS_SELF := $(filter-out \
 
 
 ifdef MINGW_CROSS
-TEST_XFAILS_X86 += test/run-pass/native-mod.rc
-TEST_XFAILS_SELF += test/run-pass/native-mod.rc
+TEST_XFAILS_BOOT += test/run-pass/native-mod.rc
+TEST_XFAILS_RUSTC += test/run-pass/native-mod.rc
 endif
 ifdef CFG_WINDOWSY
-TEST_XFAILS_X86 += test/run-pass/native-mod.rc
-TEST_XFAILS_SELF += test/run-pass/native-mod.rc
+TEST_XFAILS_BOOT += test/run-pass/native-mod.rc
+TEST_XFAILS_RUSTC += test/run-pass/native-mod.rc
 endif
 
 RPASS_RC := $(wildcard test/run-pass/*.rc)
@@ -491,129 +489,129 @@ CFAIL_RC := $(wildcard test/compile-fail/*.rc)
 CFAIL_RS := $(wildcard test/compile-fail/*.rs)
 
 ifdef CHECK_XFAILS
-TEST_RPASS_CRATES_X86 := $(filter $(TEST_XFAILS_X86), $(RPASS_RC))
-TEST_RPASS_CRATES_SELF := $(filter $(TEST_XFAILS_SELF), $(RPASS_RC))
-TEST_RPASS_SOURCES_X86 := $(filter $(TEST_XFAILS_X86), $(RPASS_RS))
-TEST_RPASS_SOURCES_SELF := $(filter $(TEST_XFAILS_SELF), $(RPASS_RS))
+TEST_RPASS_CRATES_BOOT := $(filter $(TEST_XFAILS_BOOT), $(RPASS_RC))
+TEST_RPASS_CRATES_RUSTC := $(filter $(TEST_XFAILS_RUSTC), $(RPASS_RC))
+TEST_RPASS_SOURCES_BOOT := $(filter $(TEST_XFAILS_BOOT), $(RPASS_RS))
+TEST_RPASS_SOURCES_RUSTC := $(filter $(TEST_XFAILS_RUSTC), $(RPASS_RS))
 else
-TEST_RPASS_CRATES_X86 := $(filter-out $(TEST_XFAILS_X86), $(RPASS_RC))
-TEST_RPASS_CRATES_SELF := $(filter-out $(TEST_XFAILS_SELF), $(RPASS_RC))
-TEST_RPASS_SOURCES_X86 := $(filter-out $(TEST_XFAILS_X86), $(RPASS_RS))
-TEST_RPASS_SOURCES_SELF := $(filter-out $(TEST_XFAILS_SELF), $(RPASS_RS))
+TEST_RPASS_CRATES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(RPASS_RC))
+TEST_RPASS_CRATES_RUSTC := $(filter-out $(TEST_XFAILS_RUSTC), $(RPASS_RC))
+TEST_RPASS_SOURCES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(RPASS_RS))
+TEST_RPASS_SOURCES_RUSTC := $(filter-out $(TEST_XFAILS_RUSTC), $(RPASS_RS))
 endif
 
-TEST_RPASS_EXES_X86 := \
-              $(TEST_RPASS_CRATES_X86:.rc=-boot.x86$(CFG_EXE_SUFFIX)) \
-              $(TEST_RPASS_SOURCES_X86:.rs=-boot.x86$(CFG_EXE_SUFFIX))
-TEST_RPASS_EXES_SELF := \
-              $(TEST_RPASS_CRATES_SELF:.rc=.llvm$(CFG_EXE_SUFFIX)) \
-              $(TEST_RPASS_SOURCES_SELF:.rs=.llvm$(CFG_EXE_SUFFIX))
+TEST_RPASS_EXES_BOOT := \
+              $(TEST_RPASS_CRATES_BOOT:.rc=.boot$(CFG_EXE_SUFFIX)) \
+              $(TEST_RPASS_SOURCES_BOOT:.rs=.boot$(CFG_EXE_SUFFIX))
+TEST_RPASS_EXES_RUSTC := \
+              $(TEST_RPASS_CRATES_RUSTC:.rc=.rustc$(CFG_EXE_SUFFIX)) \
+              $(TEST_RPASS_SOURCES_RUSTC:.rs=.rustc$(CFG_EXE_SUFFIX))
 
-TEST_RPASS_OUTS_X86  := \
-                    $(TEST_RPASS_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86.out)
-TEST_RPASS_OUTS_SELF := \
-                    $(TEST_RPASS_EXES_SELF:.llvm$(CFG_EXE_SUFFIX)=.llvm.out)
+TEST_RPASS_OUTS_BOOT  := \
+                 $(TEST_RPASS_EXES_BOOT:.boot$(CFG_EXE_SUFFIX)=.boot.out)
+TEST_RPASS_OUTS_RUSTC := \
+                 $(TEST_RPASS_EXES_RUSTC:.rustc$(CFG_EXE_SUFFIX)=.rustc.out)
 
-TEST_RPASS_TMPS_X86  := \
-    $(TEST_RPASS_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86$(CFG_EXE_SUFFIX).tmp)
-TEST_RPASS_TMPS_SELF := \
-    $(TEST_RPASS_EXES_SELF:.llvm$(CFG_EXE_SUFFIX)=.llvm$(CFG_EXE_SUFFIX).tmp)
-
-
-TEST_RFAIL_CRATES_X86 := $(filter-out $(TEST_XFAILS_X86), $(RFAIL_RC))
-TEST_RFAIL_CRATES_SELF := $(filter-out $(TEST_XFAILS_SELF), $(RFAIL_RC))
-TEST_RFAIL_SOURCES_X86 := $(filter-out $(TEST_XFAILS_X86), $(RFAIL_RS))
-TEST_RFAIL_SOURCES_SELF := $(filter-out $(TEST_XFAILS_SELF), $(RFAIL_RS))
-
-TEST_RFAIL_EXES_X86 := \
-              $(TEST_RFAIL_CRATES_X86:.rc=-boot.x86$(CFG_EXE_SUFFIX)) \
-              $(TEST_RFAIL_SOURCES_X86:.rs=-boot.x86$(CFG_EXE_SUFFIX))
-TEST_RFAIL_EXES_SELF := \
-              $(TEST_RFAIL_CRATES_SELF:.rc=-boot.llvm$(CFG_EXE_SUFFIX)) \
-              $(TEST_RFAIL_SOURCES_SELF:.rs=-boot.llvm$(CFG_EXE_SUFFIX))
-
-TEST_RFAIL_OUTS_X86  := \
-                    $(TEST_RFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86.out)
-TEST_RFAIL_OUTS_SELF := \
-                    $(TEST_RFAIL_EXES_SELF:.llvm$(CFG_EXE_SUFFIX)=.llvm.out)
-
-TEST_RFAIL_TMPS_X86  := \
-    $(TEST_RFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86$(CFG_EXE_SUFFIX).tmp)
-TEST_RFAIL_TMPS_SELF := \
-    $(TEST_RFAIL_EXES_SELF:.llvm$(CFG_EXE_SUFFIX)=.llvm$(CFG_EXE_SUFFIX).tmp)
+TEST_RPASS_TMPS_BOOT  := \
+  $(TEST_RPASS_EXES_BOOT:.boot$(CFG_EXE_SUFFIX)=.boot$(CFG_EXE_SUFFIX).tmp)
+TEST_RPASS_TMPS_RUSTC := \
+  $(TEST_RPASS_EXES_RUSTC:.rustc$(CFG_EXE_SUFFIX)=.rustc$(CFG_EXE_SUFFIX).tmp)
 
 
-TEST_CFAIL_CRATES_X86 := $(filter-out $(TEST_XFAILS_X86), $(CFAIL_RC))
-TEST_CFAIL_CRATES_SELF := $(filter-out $(TEST_XFAILS_SELF), $(CFAIL_RC))
-TEST_CFAIL_SOURCES_X86 := $(filter-out $(TEST_XFAILS_X86), $(CFAIL_RS))
-TEST_CFAIL_SOURCES_SELF := $(filter-out $(TEST_XFAILS_SELF), $(CFAIL_RS))
+TEST_RFAIL_CRATES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(RFAIL_RC))
+TEST_RFAIL_CRATES_RUSTC := $(filter-out $(TEST_XFAILS_RUSTC), $(RFAIL_RC))
+TEST_RFAIL_SOURCES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(RFAIL_RS))
+TEST_RFAIL_SOURCES_RUSTC := $(filter-out $(TEST_XFAILS_RUSTC), $(RFAIL_RS))
 
-TEST_CFAIL_EXES_X86 := \
-              $(TEST_CFAIL_CRATES_X86:.rc=-boot.x86$(CFG_EXE_SUFFIX)) \
-              $(TEST_CFAIL_SOURCES_X86:.rs=-boot.x86$(CFG_EXE_SUFFIX))
-TEST_CFAIL_EXES_SELF := \
-              $(TEST_CFAIL_CRATES_SELF:.rc=.llvm$(CFG_EXE_SUFFIX)) \
-              $(TEST_CFAIL_SOURCES_SELF:.rs=.llvm$(CFG_EXE_SUFFIX))
+TEST_RFAIL_EXES_BOOT := \
+              $(TEST_RFAIL_CRATES_BOOT:.rc=.boot$(CFG_EXE_SUFFIX)) \
+              $(TEST_RFAIL_SOURCES_BOOT:.rs=.boot$(CFG_EXE_SUFFIX))
+TEST_RFAIL_EXES_RUSTC := \
+              $(TEST_RFAIL_CRATES_RUSTC:.rc=.rustc$(CFG_EXE_SUFFIX)) \
+              $(TEST_RFAIL_SOURCES_RUSTC:.rs=.rustc$(CFG_EXE_SUFFIX))
 
-TEST_CFAIL_OUTS_X86 := \
-                $(TEST_CFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86.out)
-TEST_CFAIL_OUTS_SELF := \
-                $(TEST_CFAIL_EXES_SELF:.llvm$(CFG_EXE_SUFFIX)=.llvm.out)
+TEST_RFAIL_OUTS_BOOT  := \
+                  $(TEST_RFAIL_EXES_BOOT:.boot$(CFG_EXE_SUFFIX)=.boot.out)
+TEST_RFAIL_OUTS_RUSTC := \
+                  $(TEST_RFAIL_EXES_RUSTC:.rustc$(CFG_EXE_SUFFIX)=.rustc.out)
 
-TEST_CFAIL_TMPS_X86 := \
-    $(TEST_CFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86$(CFG_EXE_SUFFIX).tmp)
-TEST_CFAIL_TMPS_SELF := \
-    $(TEST_CFAIL_EXES_SELF:.llvm$(CFG_EXE_SUFFIX)=.llvm$(CFG_EXE_SUFFIX).tmp)
+TEST_RFAIL_TMPS_BOOT  := \
+  $(TEST_RFAIL_EXES_BOOT:.boot$(CFG_EXE_SUFFIX)=.boot$(CFG_EXE_SUFFIX).tmp)
+TEST_RFAIL_TMPS_RUSTC := \
+  $(TEST_RFAIL_EXES_RUSTC:.rustc$(CFG_EXE_SUFFIX)=.rustc$(CFG_EXE_SUFFIX).tmp)
 
 
-ALL_TEST_CRATES := $(TEST_CFAIL_CRATES_X86) \
-                   $(TEST_RFAIL_CRATES_X86) \
-                   $(TEST_RPASS_CRATES_X86)
+TEST_CFAIL_CRATES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(CFAIL_RC))
+TEST_CFAIL_CRATES_RUSTC := $(filter-out $(TEST_XFAILS_RUSTC), $(CFAIL_RC))
+TEST_CFAIL_SOURCES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(CFAIL_RS))
+TEST_CFAIL_SOURCES_RUSTC := $(filter-out $(TEST_XFAILS_RUSTC), $(CFAIL_RS))
 
-ALL_TEST_SOURCES := $(TEST_CFAIL_SOURCES_X86) \
-                    $(TEST_RFAIL_SOURCES_X86) \
-                    $(TEST_RPASS_SOURCES_X86)
+TEST_CFAIL_EXES_BOOT := \
+              $(TEST_CFAIL_CRATES_BOOT:.rc=.boot$(CFG_EXE_SUFFIX)) \
+              $(TEST_CFAIL_SOURCES_BOOT:.rs=.boot$(CFG_EXE_SUFFIX))
+TEST_CFAIL_EXES_RUSTC := \
+              $(TEST_CFAIL_CRATES_RUSTC:.rc=.rustc$(CFG_EXE_SUFFIX)) \
+              $(TEST_CFAIL_SOURCES_RUSTC:.rs=.rustc$(CFG_EXE_SUFFIX))
+
+TEST_CFAIL_OUTS_BOOT := \
+                $(TEST_CFAIL_EXES_BOOT:.boot$(CFG_EXE_SUFFIX)=.boot.out)
+TEST_CFAIL_OUTS_RUSTC := \
+                $(TEST_CFAIL_EXES_RUSTC:.rustc$(CFG_EXE_SUFFIX)=.rustc.out)
+
+TEST_CFAIL_TMPS_BOOT := \
+  $(TEST_CFAIL_EXES_BOOT:.boot$(CFG_EXE_SUFFIX)=.boot$(CFG_EXE_SUFFIX).tmp)
+TEST_CFAIL_TMPS_RUSTC := \
+  $(TEST_CFAIL_EXES_RUSTC:.rustc$(CFG_EXE_SUFFIX)=.rustc$(CFG_EXE_SUFFIX).tmp)
+
+
+ALL_TEST_CRATES := $(TEST_CFAIL_CRATES_BOOT) \
+                   $(TEST_RFAIL_CRATES_BOOT) \
+                   $(TEST_RPASS_CRATES_BOOT)
+
+ALL_TEST_SOURCES := $(TEST_CFAIL_SOURCES_BOOT) \
+                    $(TEST_RFAIL_SOURCES_BOOT) \
+                    $(TEST_RPASS_SOURCES_BOOT)
 
 ALL_TEST_INPUTS := $(wildcard test/*/*.rs test/*/*/*.rs test/*/*.rc)
 
 
-check_nocompile: $(TEST_CFAIL_OUTS_X86)
+check_nocompile: $(TEST_CFAIL_OUTS_BOOT)
 
 check: tidy \
-       $(TEST_RPASS_EXES_X86) $(TEST_RFAIL_EXES_X86) \
-       $(TEST_RPASS_OUTS_X86) $(TEST_RFAIL_OUTS_X86) \
-       $(TEST_CFAIL_OUTS_X86)
+       $(TEST_RPASS_EXES_BOOT) $(TEST_RFAIL_EXES_BOOT) \
+       $(TEST_RPASS_OUTS_BOOT) $(TEST_RFAIL_OUTS_BOOT) \
+       $(TEST_CFAIL_OUTS_BOOT)
 
 compile-check: tidy \
-       $(TEST_RPASS_EXES_X86) $(TEST_RFAIL_EXES_X86)
+       $(TEST_RPASS_EXES_BOOT) $(TEST_RFAIL_EXES_BOOT)
 
 
 ifdef CFG_LLVM_CONFIG
 
-ALL_TEST_CRATES += $(TEST_CFAIL_CRATES_SELF) \
-                   $(TEST_RFAIL_CRATES_SELF) \
-                   $(TEST_RPASS_CRATES_SELF)
+ALL_TEST_CRATES += $(TEST_CFAIL_CRATES_RUSTC) \
+                   $(TEST_RFAIL_CRATES_RUSTC) \
+                   $(TEST_RPASS_CRATES_RUSTC)
 
-ALL_TEST_SOURCES += $(TEST_CFAIL_SOURCES_SELF) \
-                    $(TEST_RFAIL_SOURCES_SELF) \
-                    $(TEST_RPASS_SOURCES_SELF)
+ALL_TEST_SOURCES += $(TEST_CFAIL_SOURCES_RUSTC) \
+                    $(TEST_RFAIL_SOURCES_RUSTC) \
+                    $(TEST_RPASS_SOURCES_RUSTC)
 
-check_nocompile: $(TEST_CFAIL_OUTS_SELF)
+check_nocompile: $(TEST_CFAIL_OUTS_RUSTC)
 
 check:  tidy \
-        $(TEST_RPASS_EXES_SELF) $(TEST_RFAIL_EXES_SELF) \
-        $(TEST_RPASS_OUTS_SELF) $(TEST_RFAIL_OUTS_SELF) \
-        $(TEST_CFAIL_OUTS_SELF)
+        $(TEST_RPASS_EXES_RUSTC) $(TEST_RFAIL_EXES_RUSTC) \
+        $(TEST_RPASS_OUTS_RUSTC) $(TEST_RFAIL_OUTS_RUSTC) \
+        $(TEST_CFAIL_OUTS_RUSTC)
 
 compile-check: tidy \
-       $(TEST_RPASS_EXES_SELF) $(TEST_RFAIL_EXES_SELF)
+       $(TEST_RPASS_EXES_RUSTC) $(TEST_RFAIL_EXES_RUSTC)
 
 endif
 
 BREQ := $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
 SREQ := $(CFG_RUSTC) $(CFG_RUNTIME) $(CFG_STDLIB)
 BOOT := $(CFG_QUIET)OCAMLRUNPARAM="b1" $(CFG_BOOT) $(CFG_BOOT_FLAGS)
-SELF := $(CFG_QUIET)$(CFG_RUSTC) $(CFG_RUSTC_FLAGS)
+RUSTC := $(CFG_QUIET)$(CFG_RUSTC) $(CFG_RUSTC_FLAGS)
 
 # Cancel the implicit .out rule in GNU make.
 %.out: %
@@ -626,7 +624,7 @@ test/run-pass/%.out.tmp: test/run-pass/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
 	@$(call CFG_ECHO, run: $<)
 	$(CFG_QUIET)$(call CFG_RUN_TARG, $<) > $@
 
-test/run-fail/%-boot.x86.out.tmp: test/run-fail/%-boot.x86$(CFG_EXE_SUFFIX) \
+test/run-fail/%.out.tmp: test/run-fail/%$(CFG_EXE_SUFFIX) \
                                   $(CFG_RUNTIME)
 	$(CFG_QUIET)rm -f $<.tmp
 	@$(call CFG_ECHO, run: $<)
@@ -635,37 +633,30 @@ test/run-fail/%-boot.x86.out.tmp: test/run-fail/%-boot.x86$(CFG_EXE_SUFFIX) \
       if [ $$X -eq 0 ] ; then exit 1 ; else exit 0 ; fi
 	$(CFG_QUIET)grep --text --quiet \
       "`awk -F: '/error-pattern/ { print $$2 }' \
-        $(subst -boot.x86.out.tmp,.rs,$@) \
+        $(subst .out.tmp,.rs,$@) \
         | tr -d '\n\r'`" $@
 
-test/compile-fail/%-boot.x86.out.tmp: test/compile-fail/%.rs $(BREQ)
-	@$(call CFG_ECHO, compile [boot x86]: $<)
+test/compile-fail/%.boot.out.tmp: test/compile-fail/%.rs $(BREQ)
+	@$(call CFG_ECHO, compile [boot]: $<)
 	$(CFG_QUIET)rm -f $@
 	$(BOOT) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1 || true
 	$(CFG_QUIET)grep --text --quiet \
       "`awk -F: '/error-pattern/ { print $$2 }' $< | tr -d '\n\r'`" $@
 
-test/compile-fail/%-boot.llvm.out.tmp: test/compile-fail/%.rs $(BREQ)
-	@$(call CFG_ECHO, compile [boot llvm]: $<)
-	$(CFG_QUIET)rm -f $@
-	$(BOOT) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1 || true
-	$(CFG_QUIET)grep --text --quiet \
-      "`awk -F: '/error-pattern/ { print $$2 }' $< | tr -d '\n\r'`" $@
-
-test/compile-fail/%.llvm.out.tmp: test/compile-fail/%.rs $(BREQ)
+test/compile-fail/%.rustc.out.tmp: test/compile-fail/%.rs $(BREQ)
 	@$(call CFG_ECHO, compile [rustc]: $<)
 	$(CFG_QUIET)rm -f $@
-	$(BOOT) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1 || true
+	$(RUSTC) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1 || true
 	$(CFG_QUIET)grep --text --quiet \
       "`awk -F: '/error-pattern/ { print $$2 }' $< | tr -d '\n\r'`" $@
 
-test/run-pass/%-boot.x86$(CFG_EXE_SUFFIX): test/run-pass/%.rc $(BREQ)
-	@$(call CFG_ECHO, compile [boot x86]: $<)
+test/run-pass/%.boot$(CFG_EXE_SUFFIX): test/run-pass/%.rc $(BREQ)
+	@$(call CFG_ECHO, compile [boot]: $<)
 	$(BOOT) -o $@ $<
 
-test/bench/shootout/%-boot.x86$(CFG_EXE_SUFFIX): \
+test/bench/shootout/%.boot$(CFG_EXE_SUFFIX): \
   test/bench/shootout/%.rs $(BREQ)
-	@$(call CFG_ECHO, compile [boot x86]: $<)
+	@$(call CFG_ECHO, compile [boot]: $<)
 	$(BOOT) -o $@ $<
 
 %.ll: %.bc
@@ -681,7 +672,7 @@ test/bench/shootout/%-boot.x86$(CFG_EXE_SUFFIX): \
 	@$(call CFG_ECHO, assemble [llvm]: $<)
 	$(CFG_QUIET)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
 
-%.llvm$(CFG_EXE_SUFFIX): %.o $(CFG_RUNTIME)
+%.rustc$(CFG_EXE_SUFFIX): %.o $(CFG_RUNTIME)
 	@$(call CFG_ECHO, link [llvm]: $<)
 	$(CFG_QUIET)gcc $(CFG_GCC_CFLAGS) -o $@ $< -L. -lrustrt
 	@# dsymutil sometimes fails or prints a warning, but the
@@ -689,37 +680,25 @@ test/bench/shootout/%-boot.x86$(CFG_EXE_SUFFIX): \
 	@# programs, I\'ll live with the noise.
 	-$(CFG_QUIET)$(DSYMUTIL) $@
 
-test/run-pass/%-boot.bc: test/run-pass/%.rc $(BREQ)
-	@$(call CFG_ECHO, compile [boot llvm]: $<)
-	$(BOOT) -o $@ -llvm $<
-
 test/run-pass/%.bc: test/run-pass/%.rc $(SREQ)
 	@$(call CFG_ECHO, compile [rustc]: $<)
-	$(SELF) -o $@ $<
+	$(RUSTC) -o $@ $<
 
-test/run-pass/%-boot.x86$(CFG_EXE_SUFFIX): test/run-pass/%.rs $(BREQ)
-	@$(call CFG_ECHO, compile [boot x86]: $<)
+test/run-pass/%.boot$(CFG_EXE_SUFFIX): test/run-pass/%.rs $(BREQ)
+	@$(call CFG_ECHO, compile [boot]: $<)
 	$(BOOT) -o $@ $<
-
-test/run-pass/%-boot.bc: test/run-pass/%.rs $(BREQ)
-	@$(call CFG_ECHO, compile [boot llvm]: $<)
-	$(BOOT) -o $@ -llvm $<
 
 test/run-pass/%.bc: test/run-pass/%.rs $(SREQ)
 	@$(call CFG_ECHO, compile [rustc]: $<)
-	$(SELF) -o $@ $<
+	$(RUSTC) -o $@ $<
 
-test/run-fail/%-boot.x86$(CFG_EXE_SUFFIX): test/run-fail/%.rs $(BREQ)
-	@$(call CFG_ECHO, compile [boot x86]: $<)
+test/run-fail/%.boot$(CFG_EXE_SUFFIX): test/run-fail/%.rs $(BREQ)
+	@$(call CFG_ECHO, compile [boot]: $<)
 	$(BOOT) -o $@ $<
-
-test/run-fail/%-boot.bc: test/run-fail/%.rs $(BREQ)
-	@$(call CFG_ECHO, compile [boot llvm]: $<)
-	$(BOOT) -o $@ -llvm $<
 
 test/run-fail/%.bc: test/run-fail/%.rs $(BREQ)
 	@$(call CFG_ECHO, compile [rustc]: $<)
-	$(SELF) -o $@ $<
+	$(RUSTC) -o $@ $<
 
 
 ######################################################################
@@ -853,9 +832,9 @@ clean:
 	$(CFG_QUIET)rm -f $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
 	$(CFG_QUIET)rm -Rf $(PKG_NAME)-*.tar.gz dist
 	$(CFG_QUIET)rm -f $(foreach ext,cmx cmi cmo cma o a d exe,\
-                        $(wildcard boot/*/*.$(ext) boot/*/*/*.$(ext))) 
-	$(CFG_QUIET)rm -Rf $(foreach ext,out llvm x86 o s exe dSYM,\
-                        $(wildcard test/*/*.$(ext))) 
+                        $(wildcard boot/*/*.$(ext) boot/*/*/*.$(ext)))
+	$(CFG_QUIET)rm -Rf $(foreach ext,out llvm x86 boot rustc o s exe dSYM,\
+                        $(wildcard test/*/*.$(ext)))
 
 
 # Local Variables:
