@@ -23,10 +23,6 @@ CFG_GCC_CFLAGS :=
 CFG_GCC_LINK_FLAGS :=
 CFG_VALGRIND :=
 
-# Disable the ocaml backend on rustboot. It's too frustrating at this
-# point.
-NO_OCAML_LLVM := 1
-
 CFG_LLVM_CONFIG ?= llvm-config
 CFG_BOOT_FLAGS := $(FLAGS)
 CFG_RUSTC_FLAGS := -nowarn
@@ -145,7 +141,6 @@ ifdef PROFILE
   $(info cfg: building with profiling info (forcing native output))
   CFG_NATIVE := 1
   CFG_OCAMLOPT_PROFILE_FLAGS := -p
-  NO_LLVM := 1
 endif
 
 ifdef DEBUG
@@ -182,52 +177,13 @@ ifneq ($(CFG_LLVM_CONFIG),)
       expected one of $(CFG_LLVM_ALLOWED_VERSIONS))
   endif
 endif
-ifneq ($(CFG_LLVM_CONFIG),)
-  CFG_OCAML_LIBPATH := $(lastword \
-    $(shell ocamlc$(OPT) -config | grep standard_library:))
-  CFG_OCAML_LLVM := $(shell \
-      for path in $(shell $(CFG_LLVM_CONFIG) --libdir)/ocaml \
-          $(CFG_OCAML_LIBPATH) \
-          $(CFG_OCAML_LIBPATH)/llvm \
-          $(CFG_OCAML_LIBPATH)/llvm-$(CFG_LLVM_VERSION) ; do \
-        if test -e $${path}/llvm.cma; then echo $${path}; break; fi \
-      done)
-  ifneq ($(CFG_OCAML_LLVM),)
-    $(info cfg: found LLVM ocaml bindings in $(CFG_OCAML_LLVM))
-  endif
-endif
 
-ifdef NO_OCAML_LLVM
-    $(info cfg: disabling LLVM ocaml bindings)
-    CFG_OCAML_LLVM :=
-endif
+VARIANT=x86
 
 ifdef CFG_LLVM_CONFIG
   LLC := "$(shell $(CFG_LLVM_CONFIG) --bindir)/llc"
   CFG_LLC_CFLAGS := -march=x86
   LLVM-DIS := "$(shell $(CFG_LLVM_CONFIG) --bindir)/llvm-dis"
-  ifneq ($(CFG_OCAML_LLVM),)
-    VARIANT=llvm
-    LLVM_LIBS := llvm.cma llvm_bitwriter.cma
-    LLVM_NATIVE_LIBS := llvm.cmxa llvm_bitwriter.cmxa
-    LLVM_CLIBS := $(shell for c in `$(CFG_LLVM_CONFIG) --ldflags --libs` \
-      -lllvm -lllvm_bitwriter; do echo -cclib && echo $$c; done | xargs echo)
-    LLVM_INCS := -I boot/llvm -I $(CFG_OCAML_LLVM)
-    LLVM_MLS := $(addprefix boot/llvm/, llabi.ml llasm.ml llfinal.ml \
-      lltrans.ml llemit.ml)
-  else
-    VARIANT=x86
-    LLVM_CLIBS :=
-    LLVM_INCS :=
-    LLVM_MLS :=
-    $(info cfg: disabling LLVM ocaml backend)
-  endif
-else
-  VARIANT=x86
-  LLVM_CLIBS :=
-  LLVM_INCS :=
-  LLVM_MLS :=
-  $(info cfg: disabling LLVM backend)
 endif
 
 MKFILES := Makefile
@@ -241,18 +197,13 @@ CFG_BOOT_FLAGS += -L .
 ######################################################################
 
 ML_DEP_INCS := -I boot/fe -I boot/me -I boot/be -I boot/driver/$(VARIANT) \
-  -I boot/driver -I boot/util -I boot/llvm
+  -I boot/driver -I boot/util
 ML_INCS := $(ML_DEP_INCS) $(LLVM_INCS)
 ML_LIBS := unix.cma nums.cma bigarray.cma
 ML_NATIVE_LIBS := unix.cmxa nums.cmxa bigarray.cmxa
 OCAMLC_FLAGS := -g $(ML_INCS) -w Ael -warn-error Ael
 OCAMLOPT_FLAGS := $(ML_INCS) -w Ael -warn-error Ael \
                     $(CFG_OCAMLOPT_PROFILE_FLAGS)
-
-ifdef CFG_LLVM_CONFIG
-  ML_LIBS += $(LLVM_LIBS) -custom -cclib -lstdc++ $(LLVM_CLIBS)
-  ML_NATIVE_LIBS += $(LLVM_NATIVE_LIBS) -cclib -lstdc++ $(LLVM_CLIBS)
-endif
 
 # List them in link order.
 # Nobody calculates the link-order DAG automatically, sadly.
@@ -270,7 +221,7 @@ FE_MLS := $(addprefix boot/fe/, ast.ml token.ml lexer.ml parser.ml \
 DRIVER_TOP_MLS := $(addprefix boot/driver/, lib.ml $(VARIANT)/glue.ml main.ml)
 
 BOOT_MLS := $(UTIL_BOT_MLS) $(DRIVER_BOT_MLS) $(FE_MLS) $(IL_MLS) $(ME_MLS) \
-  $(BE_MLS) $(LLVM_MLS) $(DRIVER_TOP_MLS)
+  $(BE_MLS) $(DRIVER_TOP_MLS)
 BOOT_CMOS := $(BOOT_MLS:.ml=.cmo)
 BOOT_CMXS := $(BOOT_MLS:.ml=.cmx)
 BOOT_OBJS := $(BOOT_MLS:.ml=.o)
@@ -458,59 +409,6 @@ TEST_XFAILS_X86 :=  $(TASK_XFAILS) \
                     test/compile-fail/infinite-vec-type-recursion.rs \
                     test/compile-fail/writing-through-read-alias.rs
 
-# Most tests fail on the boot-llvm backend, so we list the run-pass
-# xfails inside-out, by listing those that *don't* fail. A bit
-# double-negative-y but it's a bit unwieldy the other way just now.
-
-TEST_XFAILS_LLVM := $(TASK_XFAILS) \
-                    $(NOMINAL_TAG_XFAILS) \
-                    $(CONST_TAG_XFAILS) \
-                    $(filter-out \
-                      $(addprefix test/run-pass/, \
-                        arith-0.rs \
-                        arith-2.rs \
-                        box.rs \
-                        char.rs \
-                        dead-code-one-arm-if.rs \
-                        div-mod.rs \
-                        drop-on-ret.rs \
-                        else-if.rs \
-                        fact.rs \
-                        generic-fn-twice.rs \
-                        generic-type.rs \
-                        generic-type-synonym.rs \
-                        hello.rs \
-                        inner-module.rs \
-                        int.rs \
-                        item-name-overload.rs \
-                        multiline-comment.rs \
-                        native.rs \
-                        native-mod.rs \
-                        native-opaque-type.rs \
-                        opeq.rs \
-                        return-nil.rs \
-                        syntax-extension-shell.rs \
-                        tup.rs), \
-                      $(wildcard test/run-pass/*.rs) ) \
-                    $(addprefix test/run-fail/, \
-                      explicit-fail.rs \
-                      fail.rs \
-                      linked-failure.rs \
-                      non-exhaustive-match.rs \
-                      pred.rs \
-                      str-overrun.rs \
-                      vec-overrun.rs \
-                      vec-underrun.rs \
-                      task-comm-14.rs \
-                     ) \
-                    $(addprefix test/compile-fail/, \
-                      bad-recv.rs \
-                      bad-send.rs \
-                      infinite-vec-type-recursion.rs \
-                      rec-missing-fields.rs \
-                      writing-through-read-alias.rs \
-                     )
-
 # Same strategy here for the time being: just list the ones that
 # work and assume the others don't. Invert this when we're closer
 # to actually bootstrapping.
@@ -578,12 +476,10 @@ TEST_XFAILS_SELF := $(filter-out \
 
 ifdef MINGW_CROSS
 TEST_XFAILS_X86 += test/run-pass/native-mod.rc
-TEST_XFAILS_LLVM += test/run-pass/native-mod.rc
 TEST_XFAILS_SELF += test/run-pass/native-mod.rc
 endif
 ifdef CFG_WINDOWSY
 TEST_XFAILS_X86 += test/run-pass/native-mod.rc
-TEST_XFAILS_LLVM += test/run-pass/native-mod.rc
 TEST_XFAILS_SELF += test/run-pass/native-mod.rc
 endif
 
@@ -596,105 +492,76 @@ CFAIL_RS := $(wildcard test/compile-fail/*.rs)
 
 ifdef CHECK_XFAILS
 TEST_RPASS_CRATES_X86 := $(filter $(TEST_XFAILS_X86), $(RPASS_RC))
-TEST_RPASS_CRATES_LLVM := $(filter $(TEST_XFAILS_LLVM), $(RPASS_RC))
 TEST_RPASS_CRATES_SELF := $(filter $(TEST_XFAILS_SELF), $(RPASS_RC))
 TEST_RPASS_SOURCES_X86 := $(filter $(TEST_XFAILS_X86), $(RPASS_RS))
-TEST_RPASS_SOURCES_LLVM := $(filter $(TEST_XFAILS_LLVM), $(RPASS_RS))
 TEST_RPASS_SOURCES_SELF := $(filter $(TEST_XFAILS_SELF), $(RPASS_RS))
 else
 TEST_RPASS_CRATES_X86 := $(filter-out $(TEST_XFAILS_X86), $(RPASS_RC))
-TEST_RPASS_CRATES_LLVM := $(filter-out $(TEST_XFAILS_LLVM), $(RPASS_RC))
 TEST_RPASS_CRATES_SELF := $(filter-out $(TEST_XFAILS_SELF), $(RPASS_RC))
 TEST_RPASS_SOURCES_X86 := $(filter-out $(TEST_XFAILS_X86), $(RPASS_RS))
-TEST_RPASS_SOURCES_LLVM := $(filter-out $(TEST_XFAILS_LLVM), $(RPASS_RS))
 TEST_RPASS_SOURCES_SELF := $(filter-out $(TEST_XFAILS_SELF), $(RPASS_RS))
 endif
 
 TEST_RPASS_EXES_X86 := \
               $(TEST_RPASS_CRATES_X86:.rc=-boot.x86$(CFG_EXE_SUFFIX)) \
               $(TEST_RPASS_SOURCES_X86:.rs=-boot.x86$(CFG_EXE_SUFFIX))
-TEST_RPASS_EXES_LLVM := \
-              $(TEST_RPASS_CRATES_LLVM:.rc=-boot.llvm$(CFG_EXE_SUFFIX)) \
-              $(TEST_RPASS_SOURCES_LLVM:.rs=-boot.llvm$(CFG_EXE_SUFFIX))
 TEST_RPASS_EXES_SELF := \
               $(TEST_RPASS_CRATES_SELF:.rc=.llvm$(CFG_EXE_SUFFIX)) \
               $(TEST_RPASS_SOURCES_SELF:.rs=.llvm$(CFG_EXE_SUFFIX))
 
 TEST_RPASS_OUTS_X86  := \
                     $(TEST_RPASS_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86.out)
-TEST_RPASS_OUTS_LLVM := \
-                    $(TEST_RPASS_EXES_LLVM:.llvm$(CFG_EXE_SUFFIX)=.llvm.out)
 TEST_RPASS_OUTS_SELF := \
                     $(TEST_RPASS_EXES_SELF:.llvm$(CFG_EXE_SUFFIX)=.llvm.out)
 
 TEST_RPASS_TMPS_X86  := \
     $(TEST_RPASS_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86$(CFG_EXE_SUFFIX).tmp)
-TEST_RPASS_TMPS_LLVM := \
-    $(TEST_RPASS_EXES_LLVM:.llvm$(CFG_EXE_SUFFIX)=.llvm$(CFG_EXE_SUFFIX).tmp)
 TEST_RPASS_TMPS_SELF := \
     $(TEST_RPASS_EXES_SELF:.llvm$(CFG_EXE_SUFFIX)=.llvm$(CFG_EXE_SUFFIX).tmp)
 
 
 TEST_RFAIL_CRATES_X86 := $(filter-out $(TEST_XFAILS_X86), $(RFAIL_RC))
-TEST_RFAIL_CRATES_LLVM := $(filter-out $(TEST_XFAILS_LLVM), $(RFAIL_RC))
 TEST_RFAIL_CRATES_SELF := $(filter-out $(TEST_XFAILS_SELF), $(RFAIL_RC))
 TEST_RFAIL_SOURCES_X86 := $(filter-out $(TEST_XFAILS_X86), $(RFAIL_RS))
-TEST_RFAIL_SOURCES_LLVM := $(filter-out $(TEST_XFAILS_LLVM), $(RFAIL_RS))
 TEST_RFAIL_SOURCES_SELF := $(filter-out $(TEST_XFAILS_SELF), $(RFAIL_RS))
 
 TEST_RFAIL_EXES_X86 := \
               $(TEST_RFAIL_CRATES_X86:.rc=-boot.x86$(CFG_EXE_SUFFIX)) \
               $(TEST_RFAIL_SOURCES_X86:.rs=-boot.x86$(CFG_EXE_SUFFIX))
-TEST_RFAIL_EXES_LLVM := \
-              $(TEST_RFAIL_CRATES_LLVM:.rc=-boot.llvm$(CFG_EXE_SUFFIX)) \
-              $(TEST_RFAIL_SOURCES_LLVM:.rs=-boot.llvm$(CFG_EXE_SUFFIX))
 TEST_RFAIL_EXES_SELF := \
               $(TEST_RFAIL_CRATES_SELF:.rc=-boot.llvm$(CFG_EXE_SUFFIX)) \
               $(TEST_RFAIL_SOURCES_SELF:.rs=-boot.llvm$(CFG_EXE_SUFFIX))
 
 TEST_RFAIL_OUTS_X86  := \
                     $(TEST_RFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86.out)
-TEST_RFAIL_OUTS_LLVM := \
-                    $(TEST_RFAIL_EXES_LLVM:.llvm$(CFG_EXE_SUFFIX)=.llvm.out)
 TEST_RFAIL_OUTS_SELF := \
                     $(TEST_RFAIL_EXES_SELF:.llvm$(CFG_EXE_SUFFIX)=.llvm.out)
 
 TEST_RFAIL_TMPS_X86  := \
     $(TEST_RFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86$(CFG_EXE_SUFFIX).tmp)
-TEST_RFAIL_TMPS_LLVM := \
-    $(TEST_RFAIL_EXES_LLVM:.llvm$(CFG_EXE_SUFFIX)=.llvm$(CFG_EXE_SUFFIX).tmp)
 TEST_RFAIL_TMPS_SELF := \
     $(TEST_RFAIL_EXES_SELF:.llvm$(CFG_EXE_SUFFIX)=.llvm$(CFG_EXE_SUFFIX).tmp)
 
 
 TEST_CFAIL_CRATES_X86 := $(filter-out $(TEST_XFAILS_X86), $(CFAIL_RC))
-TEST_CFAIL_CRATES_LLVM := $(filter-out $(TEST_XFAILS_LLVM), $(CFAIL_RC))
 TEST_CFAIL_CRATES_SELF := $(filter-out $(TEST_XFAILS_SELF), $(CFAIL_RC))
 TEST_CFAIL_SOURCES_X86 := $(filter-out $(TEST_XFAILS_X86), $(CFAIL_RS))
-TEST_CFAIL_SOURCES_LLVM := $(filter-out $(TEST_XFAILS_LLVM), $(CFAIL_RS))
 TEST_CFAIL_SOURCES_SELF := $(filter-out $(TEST_XFAILS_SELF), $(CFAIL_RS))
 
 TEST_CFAIL_EXES_X86 := \
               $(TEST_CFAIL_CRATES_X86:.rc=-boot.x86$(CFG_EXE_SUFFIX)) \
               $(TEST_CFAIL_SOURCES_X86:.rs=-boot.x86$(CFG_EXE_SUFFIX))
-TEST_CFAIL_EXES_LLVM := \
-              $(TEST_CFAIL_CRATES_LLVM:.rc=-boot.llvm$(CFG_EXE_SUFFIX)) \
-              $(TEST_CFAIL_SOURCES_LLVM:.rs=-boot.llvm$(CFG_EXE_SUFFIX))
 TEST_CFAIL_EXES_SELF := \
               $(TEST_CFAIL_CRATES_SELF:.rc=.llvm$(CFG_EXE_SUFFIX)) \
               $(TEST_CFAIL_SOURCES_SELF:.rs=.llvm$(CFG_EXE_SUFFIX))
 
 TEST_CFAIL_OUTS_X86 := \
                 $(TEST_CFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86.out)
-TEST_CFAIL_OUTS_LLVM := \
-                $(TEST_CFAIL_EXES_LLVM:.llvm$(CFG_EXE_SUFFIX)=.llvm.out)
 TEST_CFAIL_OUTS_SELF := \
                 $(TEST_CFAIL_EXES_SELF:.llvm$(CFG_EXE_SUFFIX)=.llvm.out)
 
 TEST_CFAIL_TMPS_X86 := \
     $(TEST_CFAIL_EXES_X86:.x86$(CFG_EXE_SUFFIX)=.x86$(CFG_EXE_SUFFIX).tmp)
-TEST_CFAIL_TMPS_LLVM := \
-    $(TEST_CFAIL_EXES_LLVM:.llvm$(CFG_EXE_SUFFIX)=.llvm$(CFG_EXE_SUFFIX).tmp)
 TEST_CFAIL_TMPS_SELF := \
     $(TEST_CFAIL_EXES_SELF:.llvm$(CFG_EXE_SUFFIX)=.llvm$(CFG_EXE_SUFFIX).tmp)
 
@@ -723,28 +590,6 @@ compile-check: tidy \
 
 ifdef CFG_LLVM_CONFIG
 
-ifneq ($(CFG_OCAML_LLVM),)
-
-ALL_TEST_CRATES += $(TEST_CFAIL_CRATES_LLVM) \
-                   $(TEST_RFAIL_CRATES_LLVM) \
-                   $(TEST_RPASS_CRATES_LLVM)
-
-ALL_TEST_SOURCES += $(TEST_CFAIL_SOURCES_LLVM) \
-                    $(TEST_RFAIL_SOURCES_LLVM) \
-                    $(TEST_RPASS_SOURCES_LLVM)
-
-check_nocompile: $(TEST_CFAIL_OUTS_LLVM)
-
-check:	tidy \
-        $(TEST_RPASS_EXES_LLVM) $(TEST_RFAIL_EXES_LLVM) \
-        $(TEST_RPASS_OUTS_LLVM) $(TEST_RFAIL_OUTS_LLVM) \
-        $(TEST_CFAIL_OUTS_LLVM)
-
-compile-check: tidy \
-       $(TEST_RPASS_EXES_LLVM) $(TEST_RFAIL_EXES_LLVM)
-
-endif
-
 ALL_TEST_CRATES += $(TEST_CFAIL_CRATES_SELF) \
                    $(TEST_RFAIL_CRATES_SELF) \
                    $(TEST_RPASS_CRATES_SELF)
@@ -761,7 +606,6 @@ check:  tidy \
         $(TEST_CFAIL_OUTS_SELF)
 
 compile-check: tidy \
-       $(TEST_RPASS_EXES_LLVM) $(TEST_RFAIL_EXES_LLVM) \
        $(TEST_RPASS_EXES_SELF) $(TEST_RFAIL_EXES_SELF)
 
 endif
