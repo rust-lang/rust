@@ -33,6 +33,7 @@ import std.option.some;
 type ty_table = hashmap[ast.def_id, @ty.t];
 type crate_ctxt = rec(session.session sess,
                       @ty_table item_types,
+                      vec[ast.obj_field] obj_fields,
                       mutable int next_var_id);
 
 type fn_ctxt = rec(@ty.t ret_ty,
@@ -410,6 +411,7 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         auto t = e.item_to_ty.get(id);
         let vec[method] meth_tys = get_ctor_obj_methods(t);
         let vec[@ast.method] methods = vec();
+        let vec[ast.obj_field] fields = vec();
 
         let uint n = 0u;
         for (method meth_ty in meth_tys) {
@@ -423,8 +425,16 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
             append[@ast.method](methods, m);
             n += 1u;
         }
+        auto g = bind getter(e.id_to_ty_item, e.item_to_ty, _);
+        for (ast.obj_field fld in ob.fields) {
+            let @ty.t fty = ast_ty_to_ty(g, fld.ty);
+            let ast.obj_field f = rec(ann=ast.ann_type(fty) with fld);
+            append[ast.obj_field](fields, f);
+        }
 
-        auto ob_ = rec(methods = methods with ob);
+        auto ob_ = rec(methods = methods,
+                       fields = fields
+                       with ob);
         auto item = ast.item_obj(i, ob_, ty_params, id,
                                  ast.ann_type(t));
         ret @fold.respan[ast.item_](sp, item);
@@ -914,6 +924,10 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                         case (some[@ty.t](?t1)) { t = t1; }
                         case (none[@ty.t]) { t = plain_ty(ty.ty_local(id)); }
                     }
+                }
+                case (ast.def_obj_field(?id)) {
+                    check (fcx.locals.contains_key(id));
+                    t = fcx.locals.get(id);
                 }
                 case (ast.def_fn(?id)) {
                     check (fcx.ccx.item_types.contains_key(id));
@@ -1456,11 +1470,18 @@ fn check_fn(&@crate_ctxt ccx, ast.effect effect,
     // and return type translated to typeck.ty values. We don't need do to it
     // again here, we can extract them.
 
+
+    for (ast.obj_field f in ccx.obj_fields) {
+        auto field_ty = ty.ann_to_type(f.ann);
+        local_ty_table.insert(f.id, field_ty);
+    }
+
     // Store the type of each argument in the table.
     for (ast.arg arg in inputs) {
         auto input_ty = ast_ty_to_ty_crate(ccx, arg.ty);
         local_ty_table.insert(arg.id, input_ty);
     }
+
     let @fn_ctxt fcx = @rec(ret_ty = ast_ty_to_ty_crate(ccx, output),
                             locals = local_ty_table,
                             ccx = ccx);
@@ -1496,14 +1517,31 @@ fn check_item_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
     ret @fold.respan[ast.item_](sp, item);
 }
 
+fn update_obj_fields(&@crate_ctxt ccx, @ast.item i) -> @crate_ctxt {
+    alt (i.node) {
+        case (ast.item_obj(_, ?ob, _, _, _)) {
+            ret @rec(obj_fields = ob.fields with *ccx);
+        }
+        case (_) {
+        }
+    }
+    ret ccx;
+}
+
 fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     auto result = collect_item_types(crate);
 
-    auto ccx = @rec(sess=sess, item_types=result._1, mutable next_var_id=0);
+    let vec[ast.obj_field] fields = vec();
+
+    auto ccx = @rec(sess=sess,
+                    item_types=result._1,
+                    obj_fields=fields,
+                    mutable next_var_id=0);
 
     auto fld = fold.new_identity_fold[@crate_ctxt]();
 
-    fld = @rec(fold_fn      = bind check_fn(_,_,_,_,_),
+    fld = @rec(update_env_for_item = bind update_obj_fields(_, _),
+               fold_fn      = bind check_fn(_,_,_,_,_),
                fold_item_fn = bind check_item_fn(_,_,_,_,_,_,_)
                with *fld);
     ret fold.fold_crate[@crate_ctxt](ccx, fld, result._0);
