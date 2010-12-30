@@ -115,6 +115,18 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
                             }
                         }
                     }
+                    case (ast.item_obj(_, ?ob, ?ty_params, _, _)) {
+                        for (ast.obj_field f in ob.fields) {
+                            if (_str.eq(f.ident, i)) {
+                                ret some[def](ast.def_obj_field(f.id));
+                            }
+                        }
+                        for (ast.ty_param tp in ty_params) {
+                            if (_str.eq(tp.ident, i)) {
+                                ret some[def](ast.def_ty_arg(tp.id));
+                            }
+                        }
+                    }
                     case (ast.item_mod(_, ?m, _)) {
                         ret check_mod(i, m);
                     }
