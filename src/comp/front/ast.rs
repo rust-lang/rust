@@ -26,6 +26,7 @@ tag ann {
 tag def {
     def_fn(def_id);
     def_obj(def_id);
+    def_obj_field(def_id);
     def_mod(def_id);
     def_const(def_id);
     def_arg(def_id);
