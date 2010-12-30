@@ -39,6 +39,20 @@ tag def {
 type crate = spanned[crate_];
 type crate_ = rec(_mod module);
 
+type use_node = spanned[use_node_];
+type use_node_ = rec(ident name, vec[@meta_item] metadata);
+
+type import_node = spanned[import_node_];
+type import_node_ = rec(vec[ident] identifiers);
+
+tag use_or_import {
+    use_or_import_use(@use_node);
+    use_or_import_import(@import_node);
+}
+
+type meta_item = spanned[meta_item_];
+type meta_item_ = rec(ident name, str value);
+
 type block = spanned[block_];
 type block_ = rec(vec[@stmt] stmts,
                   option.t[@expr] expr,

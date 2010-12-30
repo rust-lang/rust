@@ -1533,65 +1533,92 @@ impure fn parse_item(parser p) -> @ast.item {
     fail;
 }
 
-impure fn parse_meta_item(parser p) {
+impure fn parse_meta_item(parser p) -> @ast.meta_item {
+    auto lo = p.get_span();
+    auto hi = lo;
     auto ident = parse_ident(p);
     expect(p, token.EQ);
     alt (p.peek()) {
         case (token.LIT_STR(?s)) {
             p.bump();
+            ret @spanned(lo, hi, rec(name = ident, value = s));
         }
         case (_) {
             p.err("Metadata items must be string literals");
         }
     }
+    fail;
 }
 
-impure fn parse_meta(parser p) {
+impure fn parse_meta(parser p) -> vec[@ast.meta_item] {
     auto pf = parse_meta_item;
-    parse_seq[()](token.LPAREN, token.RPAREN, some(token.COMMA), pf, p);
+    ret parse_seq[@ast.meta_item](token.LPAREN, token.RPAREN,
+                                   some(token.COMMA), pf, p).node;
 }
 
-impure fn parse_optional_meta(parser p) {
+impure fn parse_optional_meta(parser p) -> vec[@ast.meta_item] {
+    auto lo = p.get_span();
+    auto hi = lo;
     alt (p.peek()) {
         case (token.LPAREN) {
             ret parse_meta(p);
         }
         case (_) {
-            ret;
+            let vec[@ast.meta_item] v = vec();
+            ret v;
         }
     }
 }
 
-impure fn parse_rest_import_name(parser p, ast.ident id) {
-    while (p.peek() != token.SEMI) {
-        expect(p, token.DOT);
-        parse_ident(p);
-    }
+impure fn parse_use(parser p) -> @ast.use_node {
+    auto lo = p.get_span();
+    auto hi = lo;
+    expect(p, token.USE);
+    auto ident = parse_ident(p);
+    auto metadata = parse_optional_meta(p);
+    expect(p, token.SEMI);
+    ret @spanned(lo, hi, rec(name = ident, metadata = metadata));
 }
 
-impure fn parse_full_import_name(parser p) {
+impure fn parse_rest_import_name(parser p, ast.ident id) -> @ast.import_node {
+    auto lo = p.get_span();
+    auto hi = lo;
+    let vec[ast.ident] identifiers = vec();
+    identifiers += id;
+    while (p.peek() != token.SEMI) {
+        expect(p, token.DOT);
+        auto i = parse_ident(p);
+        identifiers += i;
+    }
+    p.bump();
+    ret @spanned(lo, hi, rec(identifiers = identifiers));
+}
+
+impure fn parse_full_import_name(parser p) -> @ast.import_node {
     alt (p.peek()) {
         case (token.IDENT(?ident)) {
             p.bump();
-            parse_rest_import_name(p, ident);
+            ret parse_rest_import_name(p, ident);
         }
         case (_) {
             p.err("expecting an identifier");
         }
     }
+    fail;
 }
 
-impure fn parse_import(parser p) {
+impure fn parse_import(parser p) -> @ast.import_node {
+    expect(p, token.IMPORT);
     alt (p.peek()) {
         case (token.IDENT(?ident)) {
             p.bump();
             alt (p.peek()) {
                 case (token.EQ) {
                     p.bump();
-                    parse_full_import_name(p);
+                    ret parse_full_import_name(p);
                 }
                 case (_) {
-                    parse_rest_import_name(p, ident);
+                    ret parse_rest_import_name(p, ident);
                 }
             }
         }
@@ -1599,24 +1626,21 @@ impure fn parse_import(parser p) {
             p.err("expecting an identifier");
         }
     }
+    fail;
 }
 
-impure fn parse_use_and_imports(parser p) {
+impure fn parse_use_and_imports(parser p) -> vec[ast.use_or_import] {
+    let vec[ast.use_or_import] items = vec();
     while (true) {
         alt (p.peek()) {
             case (token.USE) {
-                p.bump();
-                auto ident = parse_ident(p);
-                parse_optional_meta(p);
-                expect(p, token.SEMI);
+                items += vec(ast.use_or_import_use(parse_use(p)));
             }
             case (token.IMPORT) {
-                p.bump();
-                parse_import(p);
-                expect(p, token.SEMI);
+                items += vec(ast.use_or_import_import(parse_import(p)));
             }
             case (_) {
-                ret;
+                ret items;
             }
         }
     }
