@@ -1103,6 +1103,12 @@ fn index_block(vec[@ast.stmt] stmts, option.t[@ast.expr] expr) -> ast.block_ {
                             case (ast.item_ty(?i, _, _, _, _)) {
                                 index.insert(i, u-1u);
                             }
+                            case (ast.item_tag(?i, _, _, _)) {
+                                index.insert(i, u-1u);
+                            }
+                            case (ast.item_obj(?i, _, _, _, _)) {
+                                index.insert(i, u-1u);
+                            }
                         }
                     }
                 }
