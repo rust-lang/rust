@@ -663,8 +663,19 @@ fn fold_obj[ENV](&ENV env, ast_fold[ENV] fld, &ast._obj ob) -> ast._obj {
     for (ast.obj_field f in ob.fields) {
         fields += fold_obj_field(env, fld, f);
     }
+    let vec[ast.ty_param] tp = vec();
     for (@ast.method m in ob.methods) {
-        append[@ast.method](meths, fold_method(env, fld, m));
+        // Fake-up an ast.item for this method.
+        // FIXME: this is kinda awful. Maybe we should reformulate
+        // the way we store methods in the AST?
+        let @ast.item i = @rec(node=ast.item_fn(m.node.ident,
+                                                m.node.meth,
+                                                tp,
+                                                m.node.id,
+                                                m.node.ann),
+                               span=m.span);
+        let ENV _env = fld.update_env_for_item(env, i);
+        append[@ast.method](meths, fold_method(_env, fld, m));
     }
     ret fld.fold_obj(env, fields, meths);
 }
