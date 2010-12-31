@@ -68,6 +68,7 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id, @ast.item] items,
                             hashmap[ast.def_id, @tag_info] tags,
                             hashmap[@ty.t, ValueRef] tydescs,
+                            vec[ast.obj_field] obj_fields,
                             @glue_fns glues,
                             namegen names,
                             str path);
@@ -77,6 +78,7 @@ state type fn_ctxt = rec(ValueRef llfn,
                          mutable option.t[ValueRef] llself,
                          mutable option.t[ValueRef] llretptr,
                          hashmap[ast.def_id, ValueRef] llargs,
+                         hashmap[ast.def_id, ValueRef] llobjfields,
                          hashmap[ast.def_id, ValueRef] lllocals,
                          hashmap[ast.def_id, ValueRef] lltydescs,
                          @crate_ctxt ccx);
@@ -1667,6 +1669,10 @@ fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt)
                     check (cx.fcx.lllocals.contains_key(did));
                     ret lval_mem(cx, cx.fcx.lllocals.get(did));
                 }
+                case (ast.def_obj_field(?did)) {
+                    check (cx.fcx.llobjfields.contains_key(did));
+                    ret lval_mem(cx, cx.fcx.llobjfields.get(did));
+                }
                 case (ast.def_fn(?did)) {
                     check (cx.fcx.ccx.item_ids.contains_key(did));
                     ret lval_val(cx, cx.fcx.ccx.item_ids.get(did));
@@ -2382,8 +2388,9 @@ fn new_fn_ctxt(@crate_ctxt cx,
 
     let ValueRef lltaskptr = llvm.LLVMGetParam(llfndecl, 0u);
 
-    let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] llargs = new_def_hash[ValueRef]();
+    let hashmap[ast.def_id, ValueRef] llobjfields = new_def_hash[ValueRef]();
+    let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] lltydescs = new_def_hash[ValueRef]();
 
     ret @rec(llfn=llfndecl,
@@ -2391,6 +2398,7 @@ fn new_fn_ctxt(@crate_ctxt cx,
              mutable llself=none[ValueRef],
              mutable llretptr=none[ValueRef],
              llargs=llargs,
+             llobjfields=llobjfields,
              lllocals=lllocals,
              lltydescs=lltydescs,
              ccx=cx);
@@ -2434,15 +2442,30 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx,
     }
 }
 
-
 // Recommended LLVM style, strange though this is, is to copy from args to
 // allocas immediately upon entry; this permits us to GEP into structures we
 // were passed and whatnot. Apparently mem2reg will mop up.
 
-fn copy_args_to_allocas(@block_ctxt cx, vec[ast.arg] args,
-                        vec[ty.arg] arg_tys) {
+impure fn copy_args_to_allocas(@block_ctxt cx,
+                               option.t[TypeRef] ty_self,
+                               vec[ast.arg] args,
+                               vec[ty.arg] arg_tys) {
 
     let uint arg_n = 0u;
+
+    alt (cx.fcx.llself) {
+        case (some[ValueRef](?self_v)) {
+            alt (ty_self) {
+                case (some[TypeRef](?self_t)) {
+                    auto alloca = cx.build.Alloca(self_t);
+                    cx.build.Store(self_v, alloca);
+                    cx.fcx.llself = some[ValueRef](alloca);
+                }
+            }
+        }
+        case (_) {
+        }
+    }
 
     for (ast.arg aarg in args) {
         if (aarg.mode != ast.alias) {
@@ -2481,19 +2504,66 @@ fn ret_ty_of_fn(ast.ann ann) -> @ty.t {
     fail;
 }
 
+fn create_llobjfields_for_fields(@block_ctxt cx, ValueRef llself) {
+
+    let vec[TypeRef] llfield_tys = vec();
+
+    for (ast.obj_field f in cx.fcx.ccx.obj_fields) {
+        llfield_tys += node_type(cx.fcx.ccx, f.ann);
+    }
+
+    let TypeRef llfields_ty = T_struct(llfield_tys);
+    let TypeRef lltydesc_ty = T_ptr(T_tydesc());
+    let TypeRef llobj_body_ty = T_struct(vec(lltydesc_ty,
+                                             llfields_ty));
+    let TypeRef llobj_box_ty = T_ptr(T_box(llobj_body_ty));
+
+    auto box_cell =
+        cx.build.GEP(llself,
+                     vec(C_int(0),
+                         C_int(abi.obj_field_box)));
+
+    auto box_ptr = cx.build.Load(box_cell);
+
+    box_ptr = cx.build.PointerCast(box_ptr, llobj_box_ty);
+
+    auto obj_fields = cx.build.GEP(box_ptr,
+                                   vec(C_int(0),
+                                       C_int(abi.box_rc_field_body),
+                                       C_int(abi.obj_body_elt_fields)));
+
+    let int i = 0;
+    for (ast.obj_field f in cx.fcx.ccx.obj_fields) {
+        let ValueRef llfield = cx.build.GEP(obj_fields,
+                                            vec(C_int(0),
+                                                C_int(i)));
+        cx.fcx.llobjfields.insert(f.id, llfield);
+        i += 1;
+    }
+}
+
 impure fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
+                   option.t[TypeRef] ty_self,
                    &vec[ast.ty_param] ty_params, &ast.ann ann) {
 
     auto llfndecl = cx.item_ids.get(fid);
     cx.item_names.insert(cx.path, llfndecl);
 
     auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
-    create_llargs_for_fn_args(fcx, none[TypeRef], ret_ty_of_fn(ann),
+    create_llargs_for_fn_args(fcx, ty_self, ret_ty_of_fn(ann),
                               f.inputs, ty_params);
-
     auto bcx = new_top_block_ctxt(fcx);
 
-    copy_args_to_allocas(bcx, f.inputs, arg_tys_of_fn(ann));
+    copy_args_to_allocas(bcx, ty_self, f.inputs,
+                         arg_tys_of_fn(ann));
+
+    alt (fcx.llself) {
+        case (some[ValueRef](?llself)) {
+            create_llobjfields_for_fields(bcx, llself);
+        }
+        case (_) {
+        }
+    }
 
     auto res = trans_block(bcx, f.body);
     if (!is_terminated(res.bcx)) {
@@ -2507,7 +2577,15 @@ impure fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
                      &ast._obj ob,
                      &vec[ast.ty_param] ty_params) -> ValueRef {
     let vec[ValueRef] methods = vec();
-    for (@ast.method m in ob.methods) {
+
+    fn meth_lteq(&@ast.method a, &@ast.method b) -> bool {
+        ret _str.lteq(a.node.ident, b.node.ident);
+    }
+
+    auto meths = std.sort.merge_sort[@ast.method](bind meth_lteq(_,_),
+                                                  ob.methods);
+
+    for (@ast.method m in meths) {
 
         auto llfnty = T_nil();
         alt (node_ann_type(cx, m.node.ann).struct) {
@@ -2518,11 +2596,15 @@ impure fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
             }
         }
 
-        let str s = cx.names.next("_rust_method") + "." + cx.path;
+        let @crate_ctxt mcx = @rec(path=cx.path + "." + m.node.ident
+                                   with *cx);
+
+        let str s = cx.names.next("_rust_method") + "." + mcx.path;
         let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfnty);
         cx.item_ids.insert(m.node.id, llfn);
 
-        trans_fn(cx, m.node.meth, m.node.id, ty_params, m.node.ann);
+        trans_fn(mcx, m.node.meth, m.node.id, some[TypeRef](self_ty),
+                 ty_params, m.node.ann);
         methods += llfn;
     }
     auto vtbl = C_struct(methods);
@@ -2556,7 +2638,7 @@ impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
     auto bcx = new_top_block_ctxt(fcx);
 
     let vec[ty.arg] arg_tys = arg_tys_of_fn(ann);
-    copy_args_to_allocas(bcx, fn_args, arg_tys);
+    copy_args_to_allocas(bcx, none[TypeRef], fn_args, arg_tys);
 
     auto llself_ty = type_of(cx, ret_ty_of_fn(ann));
     auto pair = bcx.build.Alloca(llself_ty);
@@ -2664,7 +2746,7 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     auto bcx = new_top_block_ctxt(fcx);
 
     auto arg_tys = arg_tys_of_fn(variant.ann);
-    copy_args_to_allocas(bcx, fn_args, arg_tys);
+    copy_args_to_allocas(bcx, none[TypeRef], fn_args, arg_tys);
 
     auto info = cx.tags.get(tag_id);
 
@@ -2707,10 +2789,11 @@ impure fn trans_item(@crate_ctxt cx, &ast.item item) {
     alt (item.node) {
         case (ast.item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
-            trans_fn(sub_cx, f, fid, tps, ann);
+            trans_fn(sub_cx, f, fid, none[TypeRef], tps, ann);
         }
         case (ast.item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
-            auto sub_cx = @rec(path=cx.path + "." + name with *cx);
+            auto sub_cx = @rec(path=cx.path + "." + name,
+                               obj_fields=ob.fields with *cx);
             trans_obj(sub_cx, ob, oid, tps, ann);
         }
         case (ast.item_mod(?name, ?m, _)) {
@@ -2927,6 +3010,7 @@ fn trans_exit_task_glue(@crate_ctxt cx) {
                     mutable llself=none[ValueRef],
                     mutable llretptr=none[ValueRef],
                     llargs=new_def_hash[ValueRef](),
+                    llobjfields=new_def_hash[ValueRef](),
                     lllocals=new_def_hash[ValueRef](),
                     lltydescs=new_def_hash[ValueRef](),
                     ccx=cx);
@@ -3097,6 +3181,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     auto hasher = ty.hash_ty;
     auto eqer = ty.eq_ty;
     auto tydescs = map.mk_hashmap[@ty.t,ValueRef](hasher, eqer);
+    let vec[ast.obj_field] obj_fields = vec();
 
     auto cx = @rec(sess = sess,
                    llmod = llmod,
@@ -3108,6 +3193,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    items = new_def_hash[@ast.item](),
                    tags = new_def_hash[@tag_info](),
                    tydescs = tydescs,
+                   obj_fields = obj_fields,
                    glues = glues,
                    names = namegen(0),
                    path = "_rust");
