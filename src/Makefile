@@ -440,7 +440,9 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         lazy-init.rs \
                         lazy-and-or.rs \
                         multiline-comment.rs \
+                        obj-drop.rs \
                         obj-recursion.rs \
+                        obj-with-vec.rs \
                         operator-associativity.rs \
                         output-slot-variants.rs \
                         readalias.rs \
