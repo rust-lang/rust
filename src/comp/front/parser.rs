@@ -1067,12 +1067,20 @@ impure fn parse_stmt(parser p) -> @ast.stmt {
         }
 
 
-        // Remainder are line-expr stmts.
-
         case (_) {
-            auto e = parse_expr(p);
-            auto hi = p.get_span();
-            ret @spanned(lo, hi, ast.stmt_expr(e));
+            if (peeking_at_item(p)) {
+                // Might be a local item decl.
+                auto i = parse_item(p);
+                auto hi = i.span;
+                auto decl = @spanned(lo, hi, ast.decl_item(i));
+                ret @spanned(lo, hi, ast.stmt_decl(decl));
+
+            } else {
+                // Remainder are line-expr stmts.
+                auto e = parse_expr(p);
+                auto hi = p.get_span();
+                ret @spanned(lo, hi, ast.stmt_expr(e));
+            }
         }
     }
     p.err("expected statement");
@@ -1147,7 +1155,12 @@ fn stmt_to_expr(@ast.stmt stmt) -> option.t[@ast.expr] {
 
 fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
     alt (stmt.node) {
-        case (ast.stmt_decl(_))                 { ret true; } // FIXME
+        case (ast.stmt_decl(?d)) {
+            alt (d.node) {
+                case (ast.decl_local(_)) { ret true; }
+                case (ast.decl_item(_)) { ret false; }
+            }
+        }
         case (ast.stmt_ret(_))                  { ret true; }
         case (ast.stmt_log(_))                  { ret true; }
         case (ast.stmt_check_expr(_))           { ret true; }
@@ -1498,6 +1511,23 @@ impure fn parse_effect(parser p) -> ast.effect {
         }
     }
     fail;
+}
+
+fn peeking_at_item(parser p) -> bool {
+    alt (p.peek()) {
+        case (token.STATE) { ret true; }
+        case (token.GC) { ret true; }
+        case (token.IMPURE) { ret true; }
+        case (token.UNSAFE) { ret true; }
+        case (token.CONST) { ret true; }
+        case (token.FN) { ret true; }
+        case (token.MOD) { ret true; }
+        case (token.TYPE) { ret true; }
+        case (token.TAG) { ret true; }
+        case (token.OBJ) { ret true; }
+        case (_) { ret false; }
+    }
+    ret false;
 }
 
 impure fn parse_item(parser p) -> @ast.item {
