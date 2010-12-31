@@ -399,9 +399,11 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
                 mtys += T_ptr(mty);
             }
             let TypeRef vtbl = T_struct(mtys);
+            let TypeRef body = T_struct(vec(T_ptr(T_tydesc()),
+                                            T_nil()));
             let TypeRef pair =
                 T_struct(vec(T_ptr(vtbl),
-                             T_ptr(T_box(T_nil()))));
+                             T_ptr(T_box(body))));
             auto abs_pair = llvm.LLVMResolveTypeHandle(th.llth);
             llvm.LLVMRefineType(abs_pair, pair);
             abs_pair = llvm.LLVMResolveTypeHandle(th.llth);
@@ -772,6 +774,50 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
             ret decr_refcnt_and_if_zero(cx, v,
                                         bind hit_zero(_, v, body_ty),
                                         "free box",
+                                        T_int(), C_int(0));
+        }
+
+        case (ty.ty_obj(_)) {
+            fn hit_zero(@block_ctxt cx, ValueRef v) -> result {
+
+                // Call through the obj's own fields-drop glue first.
+                auto body =
+                    cx.build.GEP(v,
+                                 vec(C_int(0),
+                                     C_int(abi.box_rc_field_body)));
+
+                auto fields =
+                    cx.build.GEP(body,
+                                 vec(C_int(0),
+                                     C_int(abi.obj_body_elt_fields)));
+                auto llrawptr = cx.build.BitCast(fields, T_ptr(T_i8()));
+
+                auto tydescptr =
+                    cx.build.GEP(body,
+                                 vec(C_int(0),
+                                     C_int(abi.obj_body_elt_tydesc)));
+                auto tydesc = cx.build.Load(tydescptr);
+                auto llfnptr =
+                    cx.build.GEP(tydesc,
+                                 vec(C_int(0),
+                                     C_int(abi.tydesc_field_drop_glue_off)));
+                auto llfn = cx.build.Load(llfnptr);
+                cx.build.FastCall(llfn, vec(cx.fcx.lltaskptr, llrawptr));
+
+                // Then free the body.
+                // FIXME: switch gc/non-gc on layer of the type.
+                ret trans_non_gc_free(cx, v);
+            }
+            auto box_cell =
+                cx.build.GEP(v,
+                             vec(C_int(0),
+                                 C_int(abi.obj_field_box)));
+
+            auto boxptr = cx.build.Load(box_cell);
+
+            ret decr_refcnt_and_if_zero(cx, boxptr,
+                                        bind hit_zero(_, boxptr),
+                                        "free obj",
                                         T_int(), C_int(0));
         }
 
@@ -2651,7 +2697,8 @@ impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
                                       C_int(abi.obj_field_box)));
     bcx.build.Store(vtbl, pair_vtbl);
 
-    let TypeRef llbox_ty = T_ptr(T_box(T_nil()));
+    let TypeRef llbox_ty = T_ptr(T_box(T_struct(vec(T_ptr(T_tydesc()),
+                                                    T_nil()))));
     if (_vec.len[ty.arg](arg_tys) == 0u) {
         // Store null into pair, if no args.
         bcx.build.Store(C_null(llbox_ty), pair_box);
