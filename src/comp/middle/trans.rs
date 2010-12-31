@@ -2306,6 +2306,9 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
                         }
                     }
                 }
+                case (ast.decl_item(?i)) {
+                    trans_item(cx.fcx.ccx, *i);
+                }
             }
         }
         case (_) {
