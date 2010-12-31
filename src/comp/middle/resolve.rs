@@ -168,14 +168,14 @@ fn fold_pat_tag(&env e, &span sp, ident i, vec[@ast.pat] args,
                     new_def = some[ast.variant_def](tup(did, vid));
                 }
                 case (_) {
-                    e.sess.err("not a tag variant: " + i);
+                    e.sess.span_err(sp, "not a tag variant: " + i);
                     new_def = none[ast.variant_def];
                 }
             }
         }
         case (none[def]) {
             new_def = none[ast.variant_def];
-            e.sess.err("unresolved name: " + i);
+            e.sess.span_err(sp, "unresolved name: " + i);
         }
     }
 
@@ -196,7 +196,7 @@ fn fold_expr_name(&env e, &span sp, &ast.name n,
             // log "resolved name " + n.node.ident;
         }
         case (none[def]) {
-            e.sess.err("unresolved name: " + n.node.ident);
+            e.sess.span_err(sp, "unresolved name: " + n.node.ident);
         }
     }
 
@@ -225,7 +225,7 @@ fn fold_ty_path(&env e, &span sp, ast.path p,
             // log "resolved name " + n.node.ident;
         }
         case (none[def]) {
-            e.sess.err("unresolved name: " + n.node.ident);
+            e.sess.span_err(sp, "unresolved name: " + n.node.ident);
         }
     }
 
