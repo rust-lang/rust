@@ -52,6 +52,9 @@ type ast_fold[ENV] =
          vec[ast.ty_field] elts) -> @ty)          fold_ty_rec,
 
      (fn(&ENV e, &span sp,
+         vec[ast.ty_method] meths) -> @ty)        fold_ty_obj,
+
+     (fn(&ENV e, &span sp,
          vec[rec(ast.mode mode, @ty ty)] inputs,
          @ty output) -> @ty)                      fold_ty_fn,
 
@@ -289,6 +292,21 @@ fn fold_ty[ENV](&ENV env, ast_fold[ENV] fld, @ty t) -> @ty {
                     (flds_, rec(ty=fold_ty(env, fld, f.ty) with f));
             }
             ret fld.fold_ty_rec(env_, t.span, flds_);
+        }
+
+        case (ast.ty_obj(?meths)) {
+            let vec[ast.ty_method] meths_ = vec();
+            for (ast.ty_method m in meths) {
+                auto tfn = fld.fold_ty_fn(env_, t.span,
+                                          m.inputs, m.output);
+                alt (tfn.node) {
+                    case (ast.ty_fn(?ins, ?out)) {
+                        append[ast.ty_method]
+                            (meths_, rec(inputs=ins, output=out with m));
+                    }
+                }
+            }
+            ret fld.fold_ty_obj(env_, t.span, meths_);
         }
 
         case (ast.ty_path(?pth, ?ref_opt)) {
@@ -787,6 +805,11 @@ fn identity_fold_ty_rec[ENV](&ENV env, &span sp,
     ret @respan(sp, ast.ty_rec(elts));
 }
 
+fn identity_fold_ty_obj[ENV](&ENV env, &span sp,
+                             vec[ast.ty_method] meths) -> @ty {
+    ret @respan(sp, ast.ty_obj(meths));
+}
+
 fn identity_fold_ty_fn[ENV](&ENV env, &span sp,
                             vec[rec(ast.mode mode, @ty ty)] inputs,
                             @ty output) -> @ty {
@@ -1091,6 +1114,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_ty_vec     = bind identity_fold_ty_vec[ENV](_,_,_),
          fold_ty_tup     = bind identity_fold_ty_tup[ENV](_,_,_),
          fold_ty_rec     = bind identity_fold_ty_rec[ENV](_,_,_),
+         fold_ty_obj     = bind identity_fold_ty_obj[ENV](_,_,_),
          fold_ty_fn      = bind identity_fold_ty_fn[ENV](_,_,_,_),
          fold_ty_path    = bind identity_fold_ty_path[ENV](_,_,_,_),
          fold_ty_mutable = bind identity_fold_ty_mutable[ENV](_,_,_),
