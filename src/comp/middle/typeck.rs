@@ -108,7 +108,7 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
 
         case (ast.ty_fn(?inputs, ?output)) {
             auto f = bind ast_arg_to_arg(getter, _);
-            auto i = _vec.map[rec(ast.mode mode, @ast.ty ty),arg](f, inputs);
+            auto i = _vec.map[ast.ty_arg, arg](f, inputs);
             sty = ty.ty_fn(i, ast_ty_to_ty(getter, output));
         }
 
@@ -134,8 +134,18 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
             cname = t0.cname;
         }
 
-        case (_) {
-            fail;
+        case (ast.ty_obj(?meths)) {
+            let vec[ty.method] tmeths = vec();
+            auto f = bind ast_arg_to_arg(getter, _);
+            for (ast.ty_method m in meths) {
+                auto ins = _vec.map[ast.ty_arg, arg](f, m.inputs);
+                auto out = ast_ty_to_ty(getter, m.output);
+                append[ty.method](tmeths,
+                                  rec(ident=m.ident,
+                                      inputs=ins,
+                                      output=out));
+            }
+            sty = ty.ty_obj(tmeths);
         }
     }
 
