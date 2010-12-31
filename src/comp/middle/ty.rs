@@ -60,6 +60,8 @@ tag type_err {
     terr_record_size(uint, uint);
     terr_record_mutability;
     terr_record_fields(ast.ident,ast.ident);
+    terr_meth_count;
+    terr_obj_meths(ast.ident,ast.ident);
     terr_arg_count;
 }
 
@@ -724,6 +726,67 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
 
     }
 
+    fn unify_obj(&hashmap[int,@ty.t] bindings,
+                @ty.t expected,
+                @ty.t actual,
+                &unify_handler handler,
+                vec[method] expected_meths,
+                vec[method] actual_meths) -> unify_result {
+      let vec[method] result_meths = vec();
+      let uint i = 0u;
+      let uint expected_len = _vec.len[method](expected_meths);
+      let uint actual_len = _vec.len[method](actual_meths);
+
+      if (expected_len != actual_len) {
+        ret ures_err(terr_meth_count, expected, actual);
+      }
+
+      // FIXME: work around buggy typestate logic for 'alt', sigh.
+      fn is_ok(&unify_result r) -> bool {
+        alt (r) {
+          case (ures_ok(?tfn)) {
+            ret true;
+          }
+          case (_) {}
+        }
+        ret false;
+      }
+
+      fn append_if_ok(&method e_meth,
+                      &unify_result r, &mutable vec[method] result_meths) {
+        alt (r) {
+          case (ures_ok(?tfn)) {
+            alt (tfn.struct) {
+              case (ty_fn(?ins, ?out)) {
+                result_meths += vec(rec(inputs = ins,
+                                        output = out
+                                        with e_meth));
+              }
+            }
+          }
+        }
+      }
+
+      while (i < expected_len) {
+        auto e_meth = expected_meths.(i);
+        auto a_meth = actual_meths.(i);
+        if (! _str.eq(e_meth.ident, a_meth.ident)) {
+          ret ures_err(terr_obj_meths(e_meth.ident, a_meth.ident),
+                       expected, actual);
+        }
+        auto r = unify_fn(bindings, expected, actual, handler,
+                          e_meth.inputs, e_meth.output,
+                          a_meth.inputs, a_meth.output);
+        if (!is_ok(r)) {
+          ret r;
+        }
+        append_if_ok(e_meth, r, result_meths);
+        i += 1u;
+      }
+      auto t = plain_ty(ty_obj(result_meths));
+      ret ures_ok(t);
+    }
+
     fn unify_step(&hashmap[int,@ty.t] bindings, @ty.t expected, @ty.t actual,
                   &unify_handler handler) -> unify_result {
         // TODO: rewrite this using tuple pattern matching when available, to
@@ -961,6 +1024,18 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                 }
             }
 
+            case (ty.ty_obj(?expected_meths)) {
+              alt (actual.struct) {
+                case (ty.ty_obj(?actual_meths)) {
+                  ret unify_obj(bindings, expected, actual, handler,
+                                expected_meths, actual_meths);
+                }
+                case (_) {
+                  ret ures_err(terr_mismatch, expected, actual);
+                }
+              }
+            }
+
             case (ty.ty_var(?expected_id)) {
                 alt (bindings.find(expected_id)) {
                     case (some[@ty.t](?expected_ty)) {
@@ -1041,6 +1116,14 @@ fn type_err_to_str(&ty.type_err err) -> str {
         }
         case (terr_arg_count) {
             ret "incorrect number of function parameters";
+        }
+        case (terr_meth_count) {
+            ret "incorrect number of object methods";
+        }
+        case (terr_obj_meths(?e_meth, ?a_meth)) {
+            ret "expected an obj with method '" + e_meth +
+                "' but found one with method '" + a_meth +
+                "'";
         }
     }
 }
