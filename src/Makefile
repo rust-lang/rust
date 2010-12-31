@@ -448,6 +448,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         rec-tup.rs \
                         return-nil.rs \
                         simple-obj.rs \
+                        stateful-obj.rs \
                         type-in-nested-module.rs \
                         tup.rs \
                         u32-decr.rs \
