@@ -363,6 +363,14 @@ debug_ptrcast(rust_task *task,
     return ptr;
 }
 
+extern "C" CDECL void
+debug_trap(rust_task *task, rust_str *s)
+{
+    task->log(rust_log::STDLIB, "trapping: %s", s->data);
+    // FIXME: x86-ism.
+    __asm__("int3");
+}
+
 
 //
 // Local Variables:
