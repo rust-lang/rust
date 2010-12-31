@@ -164,7 +164,8 @@ fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast.ty ast_ty) -> @ty.t {
 // We then annotate the AST with the resulting types and return the annotated
 // AST, along with a table mapping item IDs to their types.
 
-fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
+fn collect_item_types(session.session sess, @ast.crate crate)
+    -> tup(@ast.crate, @ty_table) {
 
     type ty_item_table = hashmap[ast.def_id,@ast.item];
 
@@ -344,9 +345,11 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
     // Second pass: translate the types of all items.
     let @ty_table item_to_ty = @common.new_def_hash[@ty.t]();
 
-    type env = rec(@ty_item_table id_to_ty_item,
+    type env = rec(session.session sess,
+                   @ty_item_table id_to_ty_item,
                    @ty_table item_to_ty);
-    let @env e = @rec(id_to_ty_item=id_to_ty_item,
+    let @env e = @rec(sess=sess,
+                      id_to_ty_item=id_to_ty_item,
                       item_to_ty=item_to_ty);
 
     fn convert(&@env e, @ast.item i) -> @env {
@@ -413,9 +416,11 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
         let vec[@ast.method] methods = vec();
         let vec[ast.obj_field] fields = vec();
 
-        let uint n = 0u;
-        for (method meth_ty in meth_tys) {
-            let @ast.method meth = ob.methods.(n);
+        for (@ast.method meth in ob.methods) {
+            let uint ix = ty.method_idx(e.sess,
+                                        sp, meth.node.ident,
+                                        meth_tys);
+            let method meth_ty = meth_tys.(ix);
             let ast.method_ m_;
             let @ast.method m;
             auto meth_tfn = plain_ty(ty.ty_fn(meth_ty.inputs,
@@ -423,7 +428,6 @@ fn collect_item_types(@ast.crate crate) -> tup(@ast.crate, @ty_table) {
             m_ = rec(ann=ast.ann_type(meth_tfn) with meth.node);
             m = @rec(node=m_ with *meth);
             append[@ast.method](methods, m);
-            n += 1u;
         }
         auto g = bind getter(e.id_to_ty_item, e.item_to_ty, _);
         for (ast.obj_field fld in ob.fields) {
@@ -1529,7 +1533,7 @@ fn update_obj_fields(&@crate_ctxt ccx, @ast.item i) -> @crate_ctxt {
 }
 
 fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
-    auto result = collect_item_types(crate);
+    auto result = collect_item_types(sess, crate);
 
     let vec[ast.obj_field] fields = vec();
 
