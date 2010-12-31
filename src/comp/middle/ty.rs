@@ -655,6 +655,75 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         ret ures_err(terr_mismatch, expected, actual);
     }
 
+    fn unify_fn(&hashmap[int,@ty.t] bindings,
+                @ty.t expected,
+                @ty.t actual,
+                &unify_handler handler,
+                vec[arg] expected_inputs, @t expected_output,
+                vec[arg] actual_inputs, @t actual_output)
+      -> unify_result {
+      auto expected_len = _vec.len[arg](expected_inputs);
+      auto actual_len = _vec.len[arg](actual_inputs);
+      if (expected_len != actual_len) {
+        ret ures_err(terr_arg_count, expected, actual);
+      }
+
+      // TODO: as above, we should have an iter2 iterator.
+      let vec[arg] result_ins = vec();
+      auto i = 0u;
+      while (i < expected_len) {
+        auto expected_input = expected_inputs.(i);
+        auto actual_input = actual_inputs.(i);
+
+        // This should be safe, I think?
+        auto result_mode;
+        if (mode_is_alias(expected_input.mode) ||
+            mode_is_alias(actual_input.mode)) {
+          result_mode = ast.alias;
+        } else {
+          result_mode = ast.val;
+        }
+
+        auto result = unify_step(bindings,
+                                 actual_input.ty,
+                                 expected_input.ty,
+                                 handler);
+
+        alt (result) {
+          case (ures_ok(?rty)) {
+            result_ins += vec(rec(mode=result_mode,
+                                  ty=rty));
+          }
+
+          case (_) {
+            ret result;
+          }
+        }
+
+        i += 1u;
+      }
+
+      // Check the output.
+      auto result_out;
+      auto result = unify_step(bindings,
+                               expected_output,
+                               actual_output,
+                               handler);
+      alt (result) {
+        case (ures_ok(?rty)) {
+          result_out = rty;
+        }
+
+        case (_) {
+          ret result;
+        }
+      }
+
+      auto t = plain_ty(ty.ty_fn(result_ins, result_out));
+      ret ures_ok(t);
+
+    }
+
     fn unify_step(&hashmap[int,@ty.t] bindings, @ty.t expected, @ty.t actual,
                   &unify_handler handler) -> unify_result {
         // TODO: rewrite this using tuple pattern matching when available, to
@@ -881,65 +950,9 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             case (ty.ty_fn(?expected_inputs, ?expected_output)) {
                 alt (actual.struct) {
                     case (ty.ty_fn(?actual_inputs, ?actual_output)) {
-                        auto expected_len = _vec.len[arg](expected_inputs);
-                        auto actual_len = _vec.len[arg](actual_inputs);
-                        if (expected_len != actual_len) {
-                            ret ures_err(terr_arg_count, expected, actual);
-                        }
-
-                        // TODO: as above, we should have an iter2 iterator.
-                        let vec[arg] result_ins = vec();
-                        auto i = 0u;
-                        while (i < expected_len) {
-                            auto expected_input = expected_inputs.(i);
-                            auto actual_input = actual_inputs.(i);
-
-                            // This should be safe, I think?
-                            auto result_mode;
-                            if (mode_is_alias(expected_input.mode) ||
-                                    mode_is_alias(actual_input.mode)) {
-                                result_mode = ast.alias;
-                            } else {
-                                result_mode = ast.val;
-                            }
-
-                            auto result = unify_step(bindings,
-                                                     actual_input.ty,
-                                                     expected_input.ty,
-                                                     handler);
-
-                            alt (result) {
-                                case (ures_ok(?rty)) {
-                                    result_ins += vec(rec(mode=result_mode,
-                                                          ty=rty));
-                                }
-
-                                case (_) {
-                                    ret result;
-                                }
-                            }
-
-                            i += 1u;
-                        }
-
-                        // Check the output.
-                        auto result_out;
-                        auto result = unify_step(bindings,
-                                                 expected_output,
-                                                 actual_output,
-                                                 handler);
-                        alt (result) {
-                            case (ures_ok(?rty)) {
-                                result_out = rty;
-                            }
-
-                            case (_) {
-                                ret result;
-                            }
-                        }
-
-                        auto t = plain_ty(ty.ty_fn(result_ins, result_out));
-                        ret ures_ok(t);
+                      ret unify_fn(bindings, expected, actual, handler,
+                                   expected_inputs, expected_output,
+                                   actual_inputs, actual_output);
                     }
 
                     case (_) {
