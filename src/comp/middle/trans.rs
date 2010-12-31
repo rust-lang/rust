@@ -2698,7 +2698,7 @@ impure fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
         let int i = 0;
         for (ast.obj_field f in ob.fields) {
             auto arg = r.bcx.fcx.llargs.get(f.id);
-            arg = r.bcx.build.Load(arg);
+            arg = load_non_structural(r.bcx, arg, arg_tys.(i).ty);
             auto field = r.bcx.build.GEP(body_fields,
                                          vec(C_int(0),C_int(i)));
             r = copy_ty(r.bcx, true, field, arg, arg_tys.(i).ty);
