@@ -67,10 +67,24 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
         ret none[def];
     }
 
+    fn found_def_view(@ast.view_item i) -> option.t[def] {
+        alt (i.node) {
+            case (ast.view_item_use(_, _, ?id)) {
+                ret some[def](ast.def_use(id));
+            }
+            case (ast.view_item_import(_,?id)) {
+                fail;
+            }
+        }
+    }
+
     fn check_mod(ast.ident i, ast._mod m) -> option.t[def] {
         alt (m.index.find(i)) {
             case (some[ast.mod_index_entry](?ent)) {
                 alt (ent) {
+                    case (ast.mie_use(?ix)) {
+                        ret found_def_view(m.view_items.(ix));
+                    }
                     case (ast.mie_item(?ix)) {
                         ret found_def_item(m.items.(ix));
                     }

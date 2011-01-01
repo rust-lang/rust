@@ -1405,11 +1405,10 @@ impure fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
 }
 
 impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
-    parse_view(p);
-
-    let vec[@ast.item] items = vec();
     auto index = new_str_hash[ast.mod_index_entry]();
+    auto view_items = parse_view(p, index);
     let uint u = 0u;
+    let vec[@ast.item] items = vec();
     while (p.peek() != term) {
         auto item = parse_item(p);
         items += vec(item);
@@ -1443,7 +1442,7 @@ impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
 
         u += 1u;
     }
-    ret rec(items=items, index=index);
+    ret rec(view_items=view_items, items=items, index=index);
  }
 
 impure fn parse_item_const(parser p) -> @ast.item {
@@ -1669,7 +1668,7 @@ impure fn parse_use(parser p) -> @ast.view_item {
     auto ident = parse_ident(p);
     auto metadata = parse_optional_meta(p);
     expect(p, token.SEMI);
-    auto use_decl = ast.view_item_use(ident, metadata);
+    auto use_decl = ast.view_item_use(ident, metadata, p.next_def_id());
     ret @spanned(lo, hi, use_decl);
 }
 
@@ -1684,7 +1683,7 @@ impure fn parse_rest_import_name(parser p, ast.ident id) -> @ast.view_item {
         identifiers += i;
     }
     p.bump();
-    auto import_decl = ast.view_item_import(identifiers);
+    auto import_decl = ast.view_item_import(identifiers, p.next_def_id());
     ret @spanned(lo, hi, import_decl);
 }
 
@@ -1744,11 +1743,21 @@ fn is_use_or_import(token.token t) -> bool {
     ret false;
 }
 
-impure fn parse_view(parser p) -> vec[@ast.view_item] {
+impure fn parse_view(parser p, ast.mod_index index) -> vec[@ast.view_item] {
     let vec[@ast.view_item] items = vec();
+    let uint u = 0u;
     while (is_use_or_import(p.peek())) {
         auto item = parse_use_or_import(p);
         items += vec(item);
+        alt (item.node) {
+            case(ast.view_item_use(?id, _, _)) {
+                index.insert(id, ast.mie_use(u));
+            }
+            case(ast.view_item_import(?ids,_)) {
+                // FIXME
+            }
+        }
+        u = u + 1u;
     }
     ret items;
 }

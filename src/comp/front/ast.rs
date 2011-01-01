@@ -35,6 +35,7 @@ tag def {
     def_ty(def_id);
     def_ty_arg(def_id);
     def_binding(def_id);
+    def_use(def_id);
 }
 
 type crate = spanned[crate_];
@@ -212,20 +213,23 @@ type _obj = rec(vec[obj_field] fields,
 
 
 tag mod_index_entry {
+    mie_use(uint);
     mie_item(uint);
     mie_tag_variant(uint /* tag item index */, uint /* variant index */);
 }
 
-type _mod = rec(vec[@item] items,
-                hashmap[ident,mod_index_entry] index);
+type mod_index = hashmap[ident,mod_index_entry];
+type _mod = rec(vec[@view_item] view_items,
+                vec[@item] items,
+                mod_index index);
 
 type variant_arg = rec(@ty ty, def_id id);
 type variant = rec(str name, vec[variant_arg] args, def_id id, ann ann);
 
 type view_item = spanned[view_item_];
 tag view_item_ {
-    view_item_use(ident, vec[@meta_item]);
-    view_item_import(vec[ident]);
+    view_item_use(ident, vec[@meta_item], def_id);
+    view_item_import(vec[ident], def_id);
 }
 
 type item = spanned[item_];
