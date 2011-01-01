@@ -15,6 +15,8 @@ state type parser =
           fn peek() -> token.token;
           impure fn bump();
           impure fn err(str s);
+          impure fn restrict(bool r);
+          fn is_restricted() -> bool;
           fn get_session() -> session.session;
           fn get_span() -> common.span;
           fn next_def_id() -> ast.def_id;
@@ -27,6 +29,7 @@ impure fn new_parser(session.session sess,
                            mutable common.pos lo,
                            mutable common.pos hi,
                            mutable ast.def_num def,
+                           mutable bool restricted,
                            ast.crate_num crate,
                            lexer.reader rdr)
         {
@@ -47,6 +50,14 @@ impure fn new_parser(session.session sess,
                 sess.span_err(span, m);
             }
 
+            impure fn restrict(bool r) {
+                restricted = r;
+            }
+
+            fn is_restricted() -> bool {
+                ret restricted;
+            }
+
             fn get_session() -> session.session {
                 ret sess;
             }
@@ -65,7 +76,7 @@ impure fn new_parser(session.session sess,
     auto rdr = lexer.new_reader(srdr, path);
     auto npos = rdr.get_curr_pos();
     ret stdio_parser(sess, lexer.next_token(rdr),
-                     npos, npos, 0, crate, rdr);
+                     npos, npos, 0, false, crate, rdr);
 }
 
 impure fn unexpected(parser p, token.token t) {
@@ -481,6 +492,32 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
             ex = ast.expr_rec(fs.node, ast.ann_none);
         }
 
+        case (token.BIND) {
+            p.bump();
+            auto e = parse_restricted_expr(p);
+            impure fn parse_expr_opt(parser p) -> option.t[@ast.expr] {
+                log "parse expr opt: " + token.to_str(p.peek());
+                alt (p.peek()) {
+                    case (token.UNDERSCORE) {
+                        p.bump();
+                        ret none[@ast.expr];
+                    }
+                    case (_) {
+                        ret some[@ast.expr](parse_expr(p));
+                    }
+                }
+            }
+
+            auto pf = parse_expr_opt;
+            auto es = parse_seq[option.t[@ast.expr]](token.LPAREN,
+                                                     token.RPAREN,
+                                                     some(token.COMMA),
+                                                     pf, p);
+            hi = es.span;
+            auto e_ = ast.expr_bind(e, es.node, ast.ann_none);
+            e = @spanned(lo, hi, e_);
+        }
+
         case (_) {
             alt (parse_lit(p)) {
                 case (some[ast.lit](?lit)) {
@@ -505,15 +542,19 @@ impure fn parse_path_expr(parser p) -> @ast.expr {
         alt (p.peek()) {
 
             case (token.LPAREN) {
-                // Call expr.
-                auto pf = parse_expr;
-                auto es = parse_seq[@ast.expr](token.LPAREN,
-                                               token.RPAREN,
-                                               some(token.COMMA),
-                                               pf, p);
-                hi = es.span;
-                auto e_ = ast.expr_call(e, es.node, ast.ann_none);
-                e = @spanned(lo, hi, e_);
+                if (p.is_restricted()) {
+                    ret e;
+                } else {
+                    // Call expr.
+                    auto pf = parse_expr;
+                    auto es = parse_seq[@ast.expr](token.LPAREN,
+                                                   token.RPAREN,
+                                                   some(token.COMMA),
+                                                   pf, p);
+                    hi = es.span;
+                    auto e_ = ast.expr_call(e, es.node, ast.ann_none);
+                    e = @spanned(lo, hi, e_);
+                }
             }
 
             case (token.DOT) {
@@ -865,7 +906,24 @@ impure fn parse_alt_expr(parser p) -> @ast.expr {
     ret @spanned(lo, hi, expr);
 }
 
+
+impure fn parse_restricted_expr(parser p) -> @ast.expr {
+    ret parse_expr_res(p, true);
+}
+
 impure fn parse_expr(parser p) -> @ast.expr {
+    ret parse_expr_res(p, false);
+}
+
+impure fn parse_expr_res(parser p, bool restrict) -> @ast.expr {
+    auto old = p.is_restricted();
+    p.restrict(restrict);
+    auto e = parse_expr_inner(p);
+    p.restrict(old);
+    ret e;
+}
+
+impure fn parse_expr_inner(parser p) -> @ast.expr {
     alt (p.peek()) {
         case (token.LBRACE) {
             auto blk = parse_block(p);
