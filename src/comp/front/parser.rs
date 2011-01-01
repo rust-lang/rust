@@ -1662,17 +1662,18 @@ impure fn parse_optional_meta(parser p) -> vec[@ast.meta_item] {
     }
 }
 
-impure fn parse_use(parser p) -> @ast.use_node {
+impure fn parse_use(parser p) -> @ast.view_item {
     auto lo = p.get_span();
     auto hi = lo;
     expect(p, token.USE);
     auto ident = parse_ident(p);
     auto metadata = parse_optional_meta(p);
     expect(p, token.SEMI);
-    ret @spanned(lo, hi, rec(name = ident, metadata = metadata));
+    auto use_decl = ast.view_item_use(ident, metadata);
+    ret @spanned(lo, hi, use_decl);
 }
 
-impure fn parse_rest_import_name(parser p, ast.ident id) -> @ast.import_node {
+impure fn parse_rest_import_name(parser p, ast.ident id) -> @ast.view_item {
     auto lo = p.get_span();
     auto hi = lo;
     let vec[ast.ident] identifiers = vec();
@@ -1683,10 +1684,11 @@ impure fn parse_rest_import_name(parser p, ast.ident id) -> @ast.import_node {
         identifiers += i;
     }
     p.bump();
-    ret @spanned(lo, hi, rec(identifiers = identifiers));
+    auto import_decl = ast.view_item_import(identifiers);
+    ret @spanned(lo, hi, import_decl);
 }
 
-impure fn parse_full_import_name(parser p) -> @ast.import_node {
+impure fn parse_full_import_name(parser p) -> @ast.view_item {
     alt (p.peek()) {
         case (token.IDENT(?ident)) {
             p.bump();
@@ -1699,7 +1701,7 @@ impure fn parse_full_import_name(parser p) -> @ast.import_node {
     fail;
 }
 
-impure fn parse_import(parser p) -> @ast.import_node {
+impure fn parse_import(parser p) -> @ast.view_item {
     expect(p, token.IMPORT);
     alt (p.peek()) {
         case (token.IDENT(?ident)) {
@@ -1721,21 +1723,34 @@ impure fn parse_import(parser p) -> @ast.import_node {
     fail;
 }
 
-impure fn parse_view(parser p) -> vec[ast.view_item] {
-    let vec[ast.view_item] items = vec();
-    while (true) {
-        alt (p.peek()) {
-            case (token.USE) {
-                items += vec(ast.view_item_use(parse_use(p)));
-            }
-            case (token.IMPORT) {
-                items += vec(ast.view_item_import(parse_import(p)));
-            }
-            case (_) {
-                ret items;
-            }
+impure fn parse_use_or_import(parser p) -> @ast.view_item {
+    alt (p.peek()) {
+        case (token.USE) {
+            ret parse_use(p);
+        }
+        case (token.IMPORT) {
+            ret parse_import(p);
         }
     }
+}
+
+fn is_use_or_import(token.token t) -> bool {
+    if (t == token.USE) {
+        ret true;
+    }
+    if (t == token.IMPORT) {
+        ret true;
+    }
+    ret false;
+}
+
+impure fn parse_view(parser p) -> vec[@ast.view_item] {
+    let vec[@ast.view_item] items = vec();
+    while (is_use_or_import(p.peek())) {
+        auto item = parse_use_or_import(p);
+        items += vec(item);
+    }
+    ret items;
 }
 
 impure fn parse_crate_from_crate_file(parser p) -> @ast.crate {

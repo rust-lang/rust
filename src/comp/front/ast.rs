@@ -40,17 +40,6 @@ tag def {
 type crate = spanned[crate_];
 type crate_ = rec(_mod module);
 
-type use_node = spanned[use_node_];
-type use_node_ = rec(ident name, vec[@meta_item] metadata);
-
-type import_node = spanned[import_node_];
-type import_node_ = rec(vec[ident] identifiers);
-
-tag view_item {
-    view_item_use(@use_node);
-    view_item_import(@import_node);
-}
-
 type meta_item = spanned[meta_item_];
 type meta_item_ = rec(ident name, str value);
 
@@ -232,6 +221,12 @@ type _mod = rec(vec[@item] items,
 
 type variant_arg = rec(@ty ty, def_id id);
 type variant = rec(str name, vec[variant_arg] args, def_id id, ann ann);
+
+type view_item = spanned[view_item_];
+tag view_item_ {
+    view_item_use(ident, vec[@meta_item]);
+    view_item_import(vec[ident]);
+}
 
 type item = spanned[item_];
 tag item_ {
