@@ -651,7 +651,7 @@ test/compile-fail/%.boot.out.tmp: test/compile-fail/%.rs $(BREQ)
 	$(CFG_QUIET)grep --text --quiet \
       "`awk -F: '/error-pattern/ { print $$2 }' $< | tr -d '\n\r'`" $@
 
-test/compile-fail/%.rustc.out.tmp: test/compile-fail/%.rs $(BREQ)
+test/compile-fail/%.rustc.out.tmp: test/compile-fail/%.rs $(SREQ)
 	@$(call CFG_ECHO, compile [rustc]: $<)
 	$(CFG_QUIET)rm -f $@
 	$(RUSTC) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1 || true
