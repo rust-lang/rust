@@ -34,6 +34,7 @@
 .hgignore
 .cproject
 .project
+.valgrindrc
 lexer.ml
 rustboot
 rustc
