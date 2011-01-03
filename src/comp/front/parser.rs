@@ -496,7 +496,6 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
             p.bump();
             auto e = parse_restricted_expr(p);
             impure fn parse_expr_opt(parser p) -> option.t[@ast.expr] {
-                log "parse expr opt: " + token.to_str(p.peek());
                 alt (p.peek()) {
                     case (token.UNDERSCORE) {
                         p.bump();
