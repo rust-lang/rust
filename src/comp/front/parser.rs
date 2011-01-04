@@ -1418,44 +1418,16 @@ impure fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
     ret @spanned(lo, meths.span, item);
 }
 
-fn index_mod_item(@ast.item item, ast.mod_index index, uint u) {
-    alt (item.node) {
-        case (ast.item_const(?id, _, _, _, _)) {
-            index.insert(id, ast.mie_item(u));
-        }
-        case (ast.item_fn(?id, _, _, _, _)) {
-            index.insert(id, ast.mie_item(u));
-        }
-        case (ast.item_mod(?id, _, _)) {
-            index.insert(id, ast.mie_item(u));
-        }
-        case (ast.item_ty(?id, _, _, _, _)) {
-            index.insert(id, ast.mie_item(u));
-        }
-        case (ast.item_tag(?id, ?variants, _, _)) {
-            index.insert(id, ast.mie_item(u));
-            let uint variant_idx = 0u;
-            for (ast.variant v in variants) {
-                index.insert(v.name, ast.mie_tag_variant(u, variant_idx));
-                variant_idx += 1u;
-            }
-        }
-        case (ast.item_obj(?id, _, _, _, _)) {
-            index.insert(id, ast.mie_item(u));
-        }
-    }
-}
-
 impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
     auto index = new_str_hash[ast.mod_index_entry]();
     auto view_items = parse_view(p, index);
-    let uint u = 0u;
     let vec[@ast.item] items = vec();
     while (p.peek() != term) {
         auto item = parse_item(p);
         items += vec(item);
-        index_mod_item(item, index, u);
-        u += 1u;
+
+        // Index the item.
+        ast.index_item(index, item);
     }
     ret rec(view_items=view_items, items=items, index=index);
 }
@@ -1760,21 +1732,11 @@ fn is_use_or_import(token.token t) -> bool {
 
 impure fn parse_view(parser p, ast.mod_index index) -> vec[@ast.view_item] {
     let vec[@ast.view_item] items = vec();
-    let uint u = 0u;
     while (is_use_or_import(p.peek())) {
         auto item = parse_use_or_import(p);
         items += vec(item);
-        alt (item.node) {
-            case(ast.view_item_use(?id, _, _)) {
-                index.insert(id, ast.mie_view_item(u));
-            }
-            case(ast.view_item_import(?ids,_)) {
-                auto len = _vec.len[ast.ident](ids);
-                auto last_id = ids.(len - 1u);
-                index.insert(last_id, ast.mie_view_item(u));
-            }
-        }
-        u = u + 1u;
+
+        ast.index_view_item(index, item);
     }
     ret items;
 }
@@ -1801,7 +1763,7 @@ impure fn parse_crate_directive(str prefix, parser p,
     alt (p.peek()) {
         case (token.CONST) {
             auto c = parse_item_const(p);
-            index_mod_item(c, index, _vec.len[@ast.item](items));
+            ast.index_item(index, c);
             append[@ast.item](items, c);
          }
         case (token.MOD) {
@@ -1834,7 +1796,7 @@ impure fn parse_crate_directive(str prefix, parser p,
                     auto m0 = parse_mod_items(p0, token.EOF);
                     auto im = ast.item_mod(id, m0, p.next_def_id());
                     auto i = @spanned(lo, hi, im);
-                    index_mod_item(i, index, _vec.len[@ast.item](items));
+                    ast.index_item(index, i);
                     append[@ast.item](items, i);
                 }
 
@@ -1848,7 +1810,7 @@ impure fn parse_crate_directive(str prefix, parser p,
                     expect(p, token.RBRACE);
                     auto im = ast.item_mod(id, m0, p.next_def_id());
                     auto i = @spanned(lo, hi, im);
-                    index_mod_item(i, index, _vec.len[@ast.item](items));
+                    ast.index_item(index, i);
                     append[@ast.item](items, i);
                 }
 

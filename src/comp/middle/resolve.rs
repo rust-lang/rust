@@ -166,14 +166,14 @@ fn lookup_name(&env e, option.t[import_map] index,
         alt (m.index.find(i)) {
             case (some[ast.mod_index_entry](?ent)) {
                 alt (ent) {
-                    case (ast.mie_view_item(?ix)) {
-                        ret found_def_view(e, index, m.view_items.(ix));
+                    case (ast.mie_view_item(?view_item)) {
+                        ret found_def_view(e, index, view_item);
                     }
-                    case (ast.mie_item(?ix)) {
-                        ret found_def_item(m.items.(ix));
+                    case (ast.mie_item(?item)) {
+                        ret found_def_item(item);
                     }
-                    case (ast.mie_tag_variant(?item_idx, ?variant_idx)) {
-                        alt (m.items.(item_idx).node) {
+                    case (ast.mie_tag_variant(?item, ?variant_idx)) {
+                        alt (item.node) {
                             case (ast.item_tag(_, ?variants, _, ?tid)) {
                                 auto vid = variants.(variant_idx).id;
                                 auto t = ast.def_variant(tid, vid);

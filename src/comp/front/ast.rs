@@ -1,6 +1,7 @@
 
 import std.map.hashmap;
 import std.option;
+import std._vec;
 import util.common.span;
 import util.common.spanned;
 import util.common.ty_mach;
@@ -213,9 +214,9 @@ type _obj = rec(vec[obj_field] fields,
 
 
 tag mod_index_entry {
-    mie_view_item(uint);
-    mie_item(uint);
-    mie_tag_variant(uint /* tag item index */, uint /* variant index */);
+    mie_view_item(@view_item);
+    mie_item(@item);
+    mie_tag_variant(@item /* tag item */, uint /* variant index */);
 }
 
 type mod_index = hashmap[ident,mod_index_entry];
@@ -242,6 +243,47 @@ tag item_ {
     item_obj(ident, _obj, vec[ty_param], def_id, ann);
 }
 
+fn index_view_item(mod_index index, @view_item it) {
+    alt (it.node) {
+        case(ast.view_item_use(?id, _, _)) {
+            index.insert(id, ast.mie_view_item(it));
+        }
+        case(ast.view_item_import(?ids,_)) {
+            auto len = _vec.len[ast.ident](ids);
+            auto last_id = ids.(len - 1u);
+            index.insert(last_id, ast.mie_view_item(it));
+        }
+    }
+}
+
+fn index_item(mod_index index, @item it) {
+    alt (it.node) {
+        case (ast.item_const(?id, _, _, _, _)) {
+            index.insert(id, ast.mie_item(it));
+        }
+        case (ast.item_fn(?id, _, _, _, _)) {
+            index.insert(id, ast.mie_item(it));
+        }
+        case (ast.item_mod(?id, _, _)) {
+            index.insert(id, ast.mie_item(it));
+        }
+        case (ast.item_ty(?id, _, _, _, _)) {
+            index.insert(id, ast.mie_item(it));
+        }
+        case (ast.item_tag(?id, ?variants, _, _)) {
+            index.insert(id, ast.mie_item(it));
+            let uint variant_idx = 0u;
+            for (ast.variant v in variants) {
+                index.insert(v.name,
+                             ast.mie_tag_variant(it, variant_idx));
+                variant_idx += 1u;
+            }
+        }
+        case (ast.item_obj(?id, _, _, _, _)) {
+            index.insert(id, ast.mie_item(it));
+        }
+    }
+}
 
 //
 // Local Variables:
