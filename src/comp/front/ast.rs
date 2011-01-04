@@ -36,6 +36,7 @@ tag def {
     def_ty_arg(def_id);
     def_binding(def_id);
     def_use(def_id);
+    def_import(def_id);
 }
 
 type crate = spanned[crate_];
@@ -213,7 +214,7 @@ type _obj = rec(vec[obj_field] fields,
 
 
 tag mod_index_entry {
-    mie_use(uint);
+    mie_view_item(uint);
     mie_item(uint);
     mie_tag_variant(uint /* tag item index */, uint /* variant index */);
 }
