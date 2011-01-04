@@ -672,6 +672,10 @@ fn demand_expr(&@fn_ctxt fcx, @ty.t expected, @ast.expr e) -> @ast.expr {
             }
             e_1 = ast.expr_rec(fields_1, ast.ann_type(t));
         }
+        case (ast.expr_bind(?sube, ?es, ?ann)) {
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            e_1 = ast.expr_bind(sube, es, ast.ann_type(t));
+        }
         case (ast.expr_call(?sube, ?es, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_call(sube, es, ast.ann_type(t));
@@ -1105,6 +1109,50 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                         ast.expr_alt(expr_1, arms_1, ann));
         }
 
+        case (ast.expr_bind(?f, ?args, _)) {
+            auto f_0 = check_expr(fcx, f);
+            auto t_0 = expr_ty(f_0);
+
+            if (!ty.is_fn_ty(t_0)) {
+                fcx.ccx.sess.span_err(f_0.span,
+                                      "mismatched types: bind callee has " +
+                                      "non-function type: " +
+                                      ty_to_str(t_0));
+            }
+
+            let vec[arg] arg_tys_0 = ty.ty_fn_args(t_0);
+            let @ty.t rt_0 = ty.ty_fn_ret(t_0);
+            let vec[option.t[@ast.expr]] args_1 = vec();
+
+            let uint i = 0u;
+
+            let vec[arg] residual_args = vec();
+            for (option.t[@ast.expr] a in args) {
+                alt (a) {
+                    case (none[@ast.expr]) {
+                        append[arg](residual_args,
+                                    arg_tys_0.(i));
+                        append[option.t[@ast.expr]](args_1,
+                                                    none[@ast.expr]);
+                    }
+                    case (some[@ast.expr](?sa)) {
+                        auto arg_1 = check_expr(fcx, sa);
+                        auto arg_t = expr_ty(arg_1);
+                        demand_expr(fcx, arg_tys_0.(i).ty, arg_1);
+                        append[option.t[@ast.expr]](args_1,
+                                                    some[@ast.expr](arg_1));
+                    }
+                }
+                i += 1u;
+            }
+
+            let @ty.t t_1 = plain_ty(ty.ty_fn(residual_args, rt_0));
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_bind(f_0, args_1,
+                                                      ast.ann_type(t_1)));
+
+        }
+
         case (ast.expr_call(?f, ?args, _)) {
 
             // Check the function.
@@ -1128,20 +1176,16 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             // Take the argument types out of the resulting function type.
             auto t_1 = expr_ty(f_1);
-            let vec[arg] arg_tys_1 = vec();        // TODO: typestate botch
-            let @ty.t rt_1 = plain_ty(ty.ty_nil);  // TODO: typestate botch
-            alt (t_1.struct) {
-                case (ty.ty_fn(?arg_tys, ?rt)) {
-                    arg_tys_1 = arg_tys;
-                    rt_1 = rt;
-                }
-                case (_) {
-                    fcx.ccx.sess.span_err(f_1.span,
-                                          "mismatched types: callee has " +
-                                          "non-function type: " +
-                                          ty_to_str(t_1));
-                }
+
+            if (!ty.is_fn_ty(t_1)) {
+                fcx.ccx.sess.span_err(f_1.span,
+                                      "mismatched types: callee has " +
+                                      "non-function type: " +
+                                      ty_to_str(t_1));
             }
+
+            let vec[arg] arg_tys_1 = ty.ty_fn_args(t_1);
+            let @ty.t rt_1 = ty.ty_fn_ret(t_1);
 
             // Unify and write back to the arguments.
             auto i = 0u;
