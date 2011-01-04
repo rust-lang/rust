@@ -1,4 +1,5 @@
 import std._io;
+import std._vec;
 import std.option;
 import std.option.some;
 import std.option.none;
@@ -1751,10 +1752,12 @@ impure fn parse_view(parser p, ast.mod_index index) -> vec[@ast.view_item] {
         items += vec(item);
         alt (item.node) {
             case(ast.view_item_use(?id, _, _)) {
-                index.insert(id, ast.mie_use(u));
+                index.insert(id, ast.mie_view_item(u));
             }
             case(ast.view_item_import(?ids,_)) {
-                // FIXME
+                auto len = _vec.len[ast.ident](ids);
+                auto last_id = ids.(len - 1u);
+                index.insert(last_id, ast.mie_view_item(u));
             }
         }
         u = u + 1u;

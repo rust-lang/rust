@@ -73,7 +73,7 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
                 ret some[def](ast.def_use(id));
             }
             case (ast.view_item_import(_,?id)) {
-                fail;
+                ret some[def](ast.def_import(id));
             }
         }
     }
@@ -82,7 +82,7 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
         alt (m.index.find(i)) {
             case (some[ast.mod_index_entry](?ent)) {
                 alt (ent) {
-                    case (ast.mie_use(?ix)) {
+                    case (ast.mie_view_item(?ix)) {
                         ret found_def_view(m.view_items.(ix));
                     }
                     case (ast.mie_item(?ix)) {
