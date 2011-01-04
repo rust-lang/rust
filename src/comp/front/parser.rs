@@ -1738,7 +1738,14 @@ impure fn parse_use_and_imports(parser p) -> vec[ast.use_or_import] {
     }
 }
 
-impure fn parse_crate(parser p) -> @ast.crate {
+impure fn parse_crate_from_crate_file(parser p) -> @ast.crate {
+    auto lo = p.get_span();
+    auto hi = lo;
+    auto m = parse_mod_items(p, token.EOF);
+    ret @spanned(lo, hi, rec(module=m));
+}
+
+impure fn parse_crate_from_source_file(parser p) -> @ast.crate {
     auto lo = p.get_span();
     auto hi = lo;
     auto m = parse_mod_items(p, token.EOF);

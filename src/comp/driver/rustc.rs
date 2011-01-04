@@ -13,10 +13,22 @@ import std.option.none;
 import std._str;
 import std._vec;
 
+impure fn parse_input(session.session sess,
+                      parser.parser p,
+                      str input) -> @front.ast.crate {
+    if (_str.ends_with(input, ".rc")) {
+        ret parser.parse_crate_from_crate_file(p);
+    } else if (_str.ends_with(input, ".rs")) {
+        ret parser.parse_crate_from_source_file(p);
+    }
+    sess.err("unknown unput file type: " + input);
+    fail;
+}
+
 impure fn compile_input(session.session sess, str input, str output,
                         bool shared) {
     auto p = parser.new_parser(sess, 0, input);
-    auto crate = parser.parse_crate(p);
+    auto crate = parse_input(sess, p, input);
     crate = resolve.resolve_crate(sess, crate);
     crate = typeck.check_crate(sess, crate);
     trans.trans_crate(sess, crate, output, shared);
