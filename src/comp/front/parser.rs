@@ -513,8 +513,7 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
                                                      some(token.COMMA),
                                                      pf, p);
             hi = es.span;
-            auto e_ = ast.expr_bind(e, es.node, ast.ann_none);
-            e = @spanned(lo, hi, e_);
+            ex = ast.expr_bind(e, es.node, ast.ann_none);
         }
 
         case (_) {
