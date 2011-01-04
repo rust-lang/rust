@@ -188,6 +188,35 @@ fn find(str haystack, str needle) -> int {
     ret  -1;
 }
 
+fn starts_with(str haystack, str needle) -> bool {
+    let uint haystack_len = byte_len(haystack);
+    let uint needle_len = byte_len(needle);
+    if (needle_len == 0u) {
+        ret true;
+    }
+    if (needle_len > haystack_len) {
+        ret false;
+    }
+    ret eq(substr(haystack, 0u, needle_len), needle);
+}
+
+
+fn ends_with(str haystack, str needle) -> bool {
+    let uint haystack_len = byte_len(haystack);
+    let uint needle_len = byte_len(needle);
+    if (needle_len == 0u) {
+        ret true;
+    }
+    if (needle_len > haystack_len) {
+        ret false;
+    }
+    ret eq(substr(haystack,
+                  haystack_len - needle_len,
+                  needle_len),
+           needle);
+}
+
+
 fn substr(str s, uint begin, uint len) -> str {
     let str accum = "";
     let uint i = begin;
