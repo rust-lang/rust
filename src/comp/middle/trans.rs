@@ -194,8 +194,8 @@ fn T_fn(vec[TypeRef] inputs, TypeRef output) -> TypeRef {
 }
 
 fn T_closure(TypeRef tfn) -> TypeRef {
-    ret T_struct(vec(tfn,
-                     T_ptr(T_opaque())));
+    ret T_struct(vec(T_ptr(tfn),
+                     T_ptr(T_box(T_nil()))));
 }
 
 fn T_ptr(TypeRef t) -> TypeRef {
