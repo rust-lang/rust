@@ -518,6 +518,29 @@ fn count_ty_params(@t ty) -> uint {
     ret _vec.len[ast.def_id](*param_ids);
 }
 
+// Type accessors for substructures of types
+
+fn ty_fn_args(@t fty) -> vec[arg] {
+  alt (fty.struct) {
+    case (ty.ty_fn(?a, _)) { ret a; }
+  }
+}
+
+fn ty_fn_ret(@t fty) -> @t {
+  alt (fty.struct) {
+    case (ty.ty_fn(_, ?r)) { ret r; }
+  }
+}
+
+fn is_fn_ty(@t fty) -> bool {
+  alt (fty.struct) {
+    case (ty.ty_fn(_, _)) { ret true; }
+    case (_) { ret false; }
+  }
+  ret false;
+}
+
+
 // Type accessors for AST nodes
 
 fn stmt_ty(@ast.stmt s) -> @t {
@@ -552,6 +575,7 @@ fn expr_ty(@ast.expr expr) -> @t {
         case (ast.expr_vec(_, ?ann))          { ret ann_to_type(ann); }
         case (ast.expr_tup(_, ?ann))          { ret ann_to_type(ann); }
         case (ast.expr_rec(_, ?ann))          { ret ann_to_type(ann); }
+        case (ast.expr_bind(_, _, ?ann))      { ret ann_to_type(ann); }
         case (ast.expr_call(_, _, ?ann))      { ret ann_to_type(ann); }
         case (ast.expr_binary(_, _, _, ?ann)) { ret ann_to_type(ann); }
         case (ast.expr_unary(_, _, ?ann))     { ret ann_to_type(ann); }
