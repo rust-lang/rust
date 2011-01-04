@@ -444,6 +444,9 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
             let vec[option.t[@ast.expr]] aargs_opt = vec();
             for (option.t[@ast.expr] t_opt in args_opt) {
                 alt (t_opt) {
+                    case (none[@ast.expr]) {
+                        aargs_opt += none[@ast.expr];
+                    }
                     case (some[@ast.expr](?e)) {
                         aargs_opt += vec(some(fold_expr(env_, fld, e)));
                     }
