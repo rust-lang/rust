@@ -1405,7 +1405,7 @@ impure fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
 }
 
 impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
-    parse_use_and_imports(p);
+    parse_view(p);
 
     let vec[@ast.item] items = vec();
     auto index = new_str_hash[ast.mod_index_entry]();
@@ -1721,15 +1721,15 @@ impure fn parse_import(parser p) -> @ast.import_node {
     fail;
 }
 
-impure fn parse_use_and_imports(parser p) -> vec[ast.use_or_import] {
-    let vec[ast.use_or_import] items = vec();
+impure fn parse_view(parser p) -> vec[ast.view_item] {
+    let vec[ast.view_item] items = vec();
     while (true) {
         alt (p.peek()) {
             case (token.USE) {
-                items += vec(ast.use_or_import_use(parse_use(p)));
+                items += vec(ast.view_item_use(parse_use(p)));
             }
             case (token.IMPORT) {
-                items += vec(ast.use_or_import_import(parse_import(p)));
+                items += vec(ast.view_item_import(parse_import(p)));
             }
             case (_) {
                 ret items;

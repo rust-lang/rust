@@ -46,9 +46,9 @@ type use_node_ = rec(ident name, vec[@meta_item] metadata);
 type import_node = spanned[import_node_];
 type import_node_ = rec(vec[ident] identifiers);
 
-tag use_or_import {
-    use_or_import_use(@use_node);
-    use_or_import_import(@import_node);
+tag view_item {
+    view_item_use(@use_node);
+    view_item_import(@import_node);
 }
 
 type meta_item = spanned[meta_item_];
