@@ -2,7 +2,7 @@
    our-failure-to-setup-freeres-structure
    Memcheck:Free
    fun:free
-   ...
+   fun:__libc_freeres
    fun:_vgnU_freeres
 }
 
