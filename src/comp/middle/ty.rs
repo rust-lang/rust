@@ -543,6 +543,44 @@ fn is_fn_ty(@t fty) -> bool {
 
 // Type accessors for AST nodes
 
+// Given an item, returns the associated type as well as a list of the IDs of
+// its type parameters.
+fn item_ty(@ast.item it) -> tup(vec[ast.def_id], @t) {
+    let vec[ast.ty_param] ty_params;
+    auto result_ty;
+    alt (it.node) {
+        case (ast.item_const(_, _, _, _, ?ann)) {
+            ty_params = vec();
+            result_ty = ann_to_type(ann);
+        }
+        case (ast.item_fn(_, _, ?tps, _, ?ann)) {
+            ty_params = tps;
+            result_ty = ann_to_type(ann);
+        }
+        case (ast.item_mod(_, _, _)) {
+            fail;   // modules are typeless
+        }
+        case (ast.item_ty(_, _, ?tps, _, ?ann)) {
+            ty_params = tps;
+            result_ty = ann_to_type(ann);
+        }
+        case (ast.item_tag(_, _, ?tps, ?did)) {
+            ty_params = tps;
+            result_ty = plain_ty(ty_tag(did));
+        }
+        case (ast.item_obj(_, _, ?tps, _, ?ann)) {
+            ty_params = tps;
+            result_ty = ann_to_type(ann);
+        }
+    }
+
+    let vec[ast.def_id] ty_param_ids = vec();
+    for (ast.ty_param tp in ty_params) {
+        ty_param_ids += vec(tp.id);
+    }
+    ret tup(ty_param_ids, result_ty);
+}
+
 fn stmt_ty(@ast.stmt s) -> @t {
     alt (s.node) {
         case (ast.stmt_expr(?e)) {
