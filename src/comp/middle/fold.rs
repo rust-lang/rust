@@ -779,14 +779,18 @@ fn fold_mod[ENV](&ENV e, ast_fold[ENV] fld, &ast._mod m) -> ast._mod {
 
     let vec[@view_item] view_items = vec();
     let vec[@item] items = vec();
-    auto index = m.index;
+    auto index = new_str_hash[ast.mod_index_entry]();
 
     for (@view_item vi in m.view_items) {
-        append[@view_item](view_items, fold_view_item[ENV](e, fld, vi));
+        auto new_vi = fold_view_item[ENV](e, fld, vi);
+        append[@view_item](view_items, new_vi);
+        ast.index_view_item(index, new_vi);
     }
 
     for (@item i in m.items) {
-        append[@item](items, fold_item[ENV](e, fld, i));
+        auto new_item = fold_item[ENV](e, fld, i);
+        append[@item](items, new_item);
+        ast.index_item(index, new_item);
     }
 
     ret fld.fold_mod(e, rec(view_items=view_items, items=items, index=index));
