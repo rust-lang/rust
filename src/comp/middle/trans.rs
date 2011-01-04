@@ -193,6 +193,11 @@ fn T_fn(vec[TypeRef] inputs, TypeRef output) -> TypeRef {
                               False);
 }
 
+fn T_closure(TypeRef tfn) -> TypeRef {
+    ret T_struct(vec(tfn,
+                     T_ptr(T_opaque())));
+}
+
 fn T_ptr(TypeRef t) -> TypeRef {
     ret llvm.LLVMPointerType(t, 0u);
 }
@@ -1932,12 +1937,42 @@ impure fn trans_args(@block_ctxt cx, option.t[ValueRef] llobj,
     ret tup(bcx, vs);
 }
 
+impure fn trans_bind(@block_ctxt cx, @ast.expr f,
+                     vec[option.t[@ast.expr]] args,
+                     &ast.ann ann) -> result {
+    auto f_res = trans_lval(cx, f);
+    auto bcx = f_res.res.bcx;
+    auto pair_t = T_closure(node_type(cx.fcx.ccx, ann));
+    auto pair_v = bcx.build.Alloca(pair_t);
+    if (f_res.is_mem) {
+        cx.fcx.ccx.sess.unimpl("re-binding existing function");
+    } else {
+        auto code_cell =
+            bcx.build.GEP(pair_v, vec(C_int(0),
+                                      C_int(abi.fn_field_code)));
+        bcx.build.Store(f_res.res.val, code_cell);
+    }
+    ret res(bcx, pair_v);
+}
+
 impure fn trans_call(@block_ctxt cx, @ast.expr f,
                      vec[@ast.expr] args, &ast.ann ann) -> result {
     auto f_res = trans_lval(cx, f);
     auto faddr = f_res.res.val;
     if (f_res.is_mem) {
-        faddr = f_res.res.bcx.build.Load(faddr);
+        alt (f_res.llobj) {
+            case (some[ValueRef](_)) {
+                // It's a vtbl entry.
+                faddr = f_res.res.bcx.build.Load(faddr);
+            }
+            case (none[ValueRef]) {
+                // It's a closure.
+                auto bcx = f_res.res.bcx;
+                faddr = bcx.build.GEP(faddr, vec(C_int(0),
+                                                 C_int(abi.fn_field_code)));
+                faddr = bcx.build.Load(faddr);
+            }
+        }
     }
     auto fn_ty = ty.expr_ty(f);
     auto ret_ty = ty.ann_to_type(ann);
@@ -2108,6 +2143,10 @@ impure fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             auto v = trans_eager_binop(rhs_res.bcx, op, lhs_val, rhs_res.val);
             // FIXME: calculate copy init-ness in typestate.
             ret copy_ty(rhs_res.bcx, false, lhs_res.res.val, v, t);
+        }
+
+        case (ast.expr_bind(?f, ?args, ?ann)) {
+            ret trans_bind(cx, f, args, ann);
         }
 
         case (ast.expr_call(?f, ?args, ?ann)) {
