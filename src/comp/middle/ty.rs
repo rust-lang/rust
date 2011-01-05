@@ -51,6 +51,8 @@ type unify_handler = obj {
     fn record_local(ast.def_id id, @t ty);
     fn unify_expected_param(ast.def_id id, @t expected, @t actual)
         -> unify_result;
+    fn unify_actual_param(ast.def_id id, @t expected, @t actual)
+        -> unify_result;
 };
 
 tag type_err {
@@ -854,9 +856,9 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         // TODO: rewrite this using tuple pattern matching when available, to
         // avoid all this rightward drift and spikiness.
 
-        // If the RHS is a variable type, then just do the appropriate
-        // binding.
         alt (actual.struct) {
+            // If the RHS is a variable type, then just do the appropriate
+            // binding.
             case (ty.ty_var(?actual_id)) {
                 alt (bindings.find(actual_id)) {
                     case (some[@ty.t](?actual_ty)) {
@@ -884,6 +886,9 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                     case (_) { /* empty */ }
                 }
                 ret result;
+            }
+            case (ty.ty_param(?actual_id)) {
+                ret handler.unify_actual_param(actual_id, expected, actual);
             }
             case (_) { /* empty */ }
         }
@@ -1131,8 +1136,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             }
 
             case (ty.ty_param(?expected_id)) {
-                ret handler.unify_expected_param(expected_id,
-                                                 expected,
+                ret handler.unify_expected_param(expected_id, expected,
                                                  actual);
             }
         }

@@ -509,6 +509,18 @@ fn unify(&@fn_ctxt fcx, @ty.t expected, @ty.t actual) -> ty.unify_result {
             }
             ret ty.ures_err(ty.terr_mismatch, expected, actual);
         }
+        fn unify_actual_param(ast.def_id id, @ty.t expected, @ty.t actual)
+                -> ty.unify_result {
+            alt (expected.struct) {
+                case (ty.ty_param(?expected_id)) {
+                    if (id._0 == expected_id._0 && id._1 == expected_id._1) {
+                        ret ty.ures_ok(actual);
+                    }
+                }
+                case (_) { /* fall through */ }
+            }
+            ret ty.ures_err(ty.terr_mismatch, expected, actual);
+        }
     }
 
     auto handler = unify_handler(fcx);
