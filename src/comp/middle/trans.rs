@@ -67,6 +67,8 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id, ValueRef] item_ids,
                             hashmap[ast.def_id, @ast.item] items,
                             hashmap[ast.def_id, @tag_info] tags,
+                            hashmap[ast.def_id, ValueRef] fn_pairs,
+                            hashmap[ast.def_id,()] obj_methods,
                             hashmap[@ty.t, ValueRef] tydescs,
                             vec[ast.obj_field] obj_fields,
                             @glue_fns glues,
@@ -193,7 +195,7 @@ fn T_fn(vec[TypeRef] inputs, TypeRef output) -> TypeRef {
                               False);
 }
 
-fn T_closure(TypeRef tfn) -> TypeRef {
+fn T_fn_pair(TypeRef tfn) -> TypeRef {
     ret T_struct(vec(T_ptr(tfn),
                      T_ptr(T_box(T_nil()))));
 }
@@ -389,7 +391,7 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
             ret T_struct(tys);
         }
         case (ty.ty_fn(?args, ?out)) {
-            ret type_of_fn(cx, args, out);
+            ret T_fn_pair(type_of_fn(cx, args, out));
         }
         case (ty.ty_obj(?meths)) {
             auto th = mk_type_handle();
@@ -500,6 +502,8 @@ fn C_str(@crate_ctxt cx, str s) -> ValueRef {
                                 _str.buf(cx.names.next("str")));
     llvm.LLVMSetInitializer(g, sc);
     llvm.LLVMSetGlobalConstant(g, True);
+    llvm.LLVMSetLinkage(g, lib.llvm.LLVMPrivateLinkage
+                        as llvm.Linkage);
     ret g;
 }
 
@@ -679,6 +683,8 @@ fn make_tydesc(@crate_ctxt cx, @ty.t t) {
     auto gvar = llvm.LLVMAddGlobal(cx.llmod, val_ty(tydesc), _str.buf(name));
     llvm.LLVMSetInitializer(gvar, tydesc);
     llvm.LLVMSetGlobalConstant(gvar, True);
+    llvm.LLVMSetLinkage(gvar, lib.llvm.LLVMPrivateLinkage
+                        as llvm.Linkage);
     cx.tydescs.insert(t, gvar);
 }
 
@@ -1725,17 +1731,22 @@ fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt)
                     ret lval_mem(cx, cx.fcx.llobjfields.get(did));
                 }
                 case (ast.def_fn(?did)) {
-                    check (cx.fcx.ccx.item_ids.contains_key(did));
-                    ret lval_val(cx, cx.fcx.ccx.item_ids.get(did));
+                    check (cx.fcx.ccx.fn_pairs.contains_key(did));
+                    ret lval_val(cx, cx.fcx.ccx.fn_pairs.get(did));
                 }
                 case (ast.def_obj(?did)) {
-                    check (cx.fcx.ccx.item_ids.contains_key(did));
-                    ret lval_val(cx, cx.fcx.ccx.item_ids.get(did));
+                    check (cx.fcx.ccx.fn_pairs.contains_key(did));
+                    ret lval_val(cx, cx.fcx.ccx.fn_pairs.get(did));
                 }
                 case (ast.def_variant(?tid, ?vid)) {
                     check (cx.fcx.ccx.tags.contains_key(tid));
-                    check (cx.fcx.ccx.item_ids.contains_key(vid));
-                    ret lval_val(cx, cx.fcx.ccx.item_ids.get(vid));
+                    if (cx.fcx.ccx.fn_pairs.contains_key(vid)) {
+                        ret lval_val(cx, cx.fcx.ccx.fn_pairs.get(vid));
+                    } else {
+                        // Nullary variants are just scalar constants.
+                        check (cx.fcx.ccx.item_ids.contains_key(vid));
+                        ret lval_val(cx, cx.fcx.ccx.item_ids.get(vid));
+                    }
                 }
                 case (_) {
                     cx.fcx.ccx.sess.unimpl("def variant in trans");
@@ -1942,7 +1953,7 @@ impure fn trans_bind(@block_ctxt cx, @ast.expr f,
                      &ast.ann ann) -> result {
     auto f_res = trans_lval(cx, f);
     auto bcx = f_res.res.bcx;
-    auto pair_t = T_closure(node_type(cx.fcx.ccx, ann));
+    auto pair_t = node_type(cx.fcx.ccx, ann);
     auto pair_v = bcx.build.Alloca(pair_t);
     if (f_res.is_mem) {
         cx.fcx.ccx.sess.unimpl("re-binding existing function");
@@ -1959,19 +1970,18 @@ impure fn trans_call(@block_ctxt cx, @ast.expr f,
                      vec[@ast.expr] args, &ast.ann ann) -> result {
     auto f_res = trans_lval(cx, f);
     auto faddr = f_res.res.val;
-    if (f_res.is_mem) {
-        alt (f_res.llobj) {
-            case (some[ValueRef](_)) {
-                // It's a vtbl entry.
-                faddr = f_res.res.bcx.build.Load(faddr);
-            }
-            case (none[ValueRef]) {
-                // It's a closure.
-                auto bcx = f_res.res.bcx;
-                faddr = bcx.build.GEP(faddr, vec(C_int(0),
-                                                 C_int(abi.fn_field_code)));
-                faddr = bcx.build.Load(faddr);
-            }
+
+    alt (f_res.llobj) {
+        case (some[ValueRef](_)) {
+            // It's a vtbl entry.
+            faddr = f_res.res.bcx.build.Load(faddr);
+        }
+        case (none[ValueRef]) {
+            // It's a closure.
+            auto bcx = f_res.res.bcx;
+            faddr = bcx.build.GEP(faddr, vec(C_int(0),
+                                             C_int(abi.fn_field_code)));
+            faddr = bcx.build.Load(faddr);
         }
     }
     auto fn_ty = ty.expr_ty(f);
@@ -2701,6 +2711,8 @@ impure fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
                                    _str.buf("_rust_vtbl" + "." + cx.path));
     llvm.LLVMSetInitializer(gvar, vtbl);
     llvm.LLVMSetGlobalConstant(gvar, True);
+    llvm.LLVMSetLinkage(gvar, lib.llvm.LLVMPrivateLinkage
+                        as llvm.Linkage);
     ret gvar;
 }
 
@@ -2818,15 +2830,8 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
                            id=varg.id));
     }
 
-    auto var_ty = ty.ann_to_type(variant.ann);
-    auto llfnty = type_of(cx, var_ty);
-
-    let str s = cx.names.next("_rust_tag") + "." + cx.path;
-    let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfnty);
-    cx.item_ids.insert(variant.id, llfn);
-
+    check (cx.item_ids.contains_key(variant.id));
     let ValueRef llfndecl = cx.item_ids.get(variant.id);
-    cx.item_names.insert(cx.path, llfndecl);
 
     auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
     create_llargs_for_fn_args(fcx, none[TypeRef], ret_ty_of_fn(variant.ann),
@@ -2907,25 +2912,59 @@ impure fn trans_mod(@crate_ctxt cx, &ast._mod m) {
     }
 }
 
+fn decl_fn_and_pair(@crate_ctxt cx,
+                    str kind,
+                    str name,
+                    &ast.ann ann,
+                    ast.def_id id) {
+
+    // Bit of a kludge: pick the fn typeref out of the pair.
+    auto llpairty = node_type(cx, ann);
+    let vec[TypeRef] pair_tys = vec(T_nil(), T_nil());
+    llvm.LLVMGetStructElementTypes(llpairty,
+                                   _vec.buf[TypeRef](pair_tys));
+    auto llfty = llvm.LLVMGetElementType(pair_tys.(0));
+
+    // Declare the function itself.
+    let str s = cx.names.next("_rust_" + kind) + "." + name;
+    let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfty);
+
+    // Declare the global constant pair that points to it.
+    let str ps = cx.names.next("_rust_" + kind + "_pair") + "." + name;
+    let ValueRef gvar = llvm.LLVMAddGlobal(cx.llmod, llpairty,
+                                           _str.buf(ps));
+    auto pair = C_struct(vec(llfn,
+                             C_null(T_ptr(T_box(T_nil())))));
+
+    llvm.LLVMSetInitializer(gvar, pair);
+    llvm.LLVMSetGlobalConstant(gvar, True);
+    llvm.LLVMSetLinkage(gvar,
+                        lib.llvm.LLVMPrivateLinkage
+                        as llvm.Linkage);
+
+    cx.item_ids.insert(id, llfn);
+    cx.fn_pairs.insert(id, gvar);
+}
+
 
 fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
+
     alt (i.node) {
         case (ast.item_fn(?name, ?f, _, ?fid, ?ann)) {
             // TODO: type-params
             cx.items.insert(fid, i);
-            auto llty = node_type(cx, ann);
-            let str s = cx.names.next("_rust_fn") + "." + name;
-            let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llty);
-            cx.item_ids.insert(fid, llfn);
+            if (! cx.obj_methods.contains_key(fid)) {
+                decl_fn_and_pair(cx, "fn", name, ann, fid);
+            }
         }
 
         case (ast.item_obj(?name, ?ob, _, ?oid, ?ann)) {
             // TODO: type-params
             cx.items.insert(oid, i);
-            auto llty = node_type(cx, ann);
-            let str s = cx.names.next("_rust_obj_ctor") + "." + name;
-            let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llty);
-            cx.item_ids.insert(oid, llfn);
+            decl_fn_and_pair(cx, "obj_ctor", name, ann, oid);
+            for (@ast.method m in ob.methods) {
+                cx.obj_methods.insert(m.node.id, ());
+            }
         }
 
         case (ast.item_const(?name, _, _, ?cid, _)) {
@@ -2962,6 +3001,36 @@ fn collect_items(@crate_ctxt cx, @ast.crate crate) {
 
     fold.fold_crate[@crate_ctxt](cx, fld, crate);
 }
+
+fn collect_tag_ctor(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
+
+    alt (i.node) {
+
+        case (ast.item_tag(_, ?variants, _, _)) {
+            for (ast.variant variant in variants) {
+                if (_vec.len[ast.variant_arg](variant.args) != 0u) {
+                    decl_fn_and_pair(cx, "tag", variant.name,
+                                     variant.ann, variant.id);
+                }
+            }
+        }
+
+        case (_) { /* fall through */ }
+    }
+    ret cx;
+}
+
+fn collect_tag_ctors(@crate_ctxt cx, @ast.crate crate) {
+
+    let fold.ast_fold[@crate_ctxt] fld =
+        fold.new_identity_fold[@crate_ctxt]();
+
+    fld = @rec( update_env_for_item = bind collect_tag_ctor(_,_)
+                with *fld );
+
+    fold.fold_crate[@crate_ctxt](cx, fld, crate);
+}
+
 
 // The tag type resolution pass, which determines all the LLVM types that
 // correspond to each tag type in the crate.
@@ -3048,6 +3117,9 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
                                                        _str.buf("tag"));
                         llvm.LLVMSetInitializer(gvar, val);
                         llvm.LLVMSetGlobalConstant(gvar, True);
+                        llvm.LLVMSetLinkage(gvar,
+                                            lib.llvm.LLVMPrivateLinkage
+                                            as llvm.Linkage);
                         cx.item_ids.insert(variant_info._0, gvar);
                     }
                     case (n_ary) {
@@ -3281,6 +3353,8 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    item_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
                    tags = new_def_hash[@tag_info](),
+                   fn_pairs = new_def_hash[ValueRef](),
+                   obj_methods = new_def_hash[()](),
                    tydescs = tydescs,
                    obj_fields = obj_fields,
                    glues = glues,
@@ -3291,6 +3365,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
 
     collect_items(cx, crate);
     resolve_tag_types(cx, crate);
+    collect_tag_ctors(cx, crate);
     trans_constants(cx, crate);
 
     trans_mod(cx, crate.node.module);

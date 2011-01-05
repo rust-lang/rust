@@ -42,6 +42,25 @@ const uint LLVMColdCallConv = 9u;
 const uint LLVMX86StdcallCallConv = 64u;
 const uint LLVMX86FastcallCallConv = 65u;
 
+
+const uint LLVMExternalLinkage = 0u;
+const uint LLVMAvailableExternallyLinkage = 1u;
+const uint LLVMLinkOnceAnyLinkage = 2u;
+const uint LLVMLinkOnceODRLinkage = 3u;
+const uint LLVMWeakAnyLinkage = 4u;
+const uint LLVMWeakODRLinkage = 5u;
+const uint LLVMAppendingLinkage = 6u;
+const uint LLVMInternalLinkage = 7u;
+const uint LLVMPrivateLinkage = 8u;
+const uint LLVMDLLImportLinkage = 9u;
+const uint LLVMDLLExportLinkage = 10u;
+const uint LLVMExternalWeakLinkage = 11u;
+const uint LLVMGhostLinkage = 12u;
+const uint LLVMCommonLinkage = 13u;
+const uint LLVMLinkerPrivateLinkage = 14u;
+const uint LLVMLinkerPrivateWeakLinkage = 15u;
+
+
 // Consts for the LLVM IntPredicate type, pre-cast to uint.
 // FIXME: as above.
 
