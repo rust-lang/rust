@@ -704,7 +704,7 @@ test/run-fail/%.boot$(CFG_EXE_SUFFIX): test/run-fail/%.rs $(BREQ)
 	@$(call CFG_ECHO, compile [boot]: $<)
 	$(BOOT) -o $@ $<
 
-test/run-fail/%.bc: test/run-fail/%.rs $(BREQ)
+test/run-fail/%.bc: test/run-fail/%.rs $(SREQ)
 	@$(call CFG_ECHO, compile [rustc]: $<)
 	$(RUSTC) -o $@ $<
 
