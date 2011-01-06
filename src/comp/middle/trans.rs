@@ -1990,8 +1990,7 @@ impure fn trans_bind(@block_ctxt cx, @ast.expr f,
 
             // Synthesize a closure type.
             let @ty.t bindings_ty = ty.plain_ty(ty.ty_tup(bound_tys));
-            let TypeRef llbindings_ty = type_of(bcx.fcx.ccx,
-                                                bindings_ty);
+            let TypeRef llbindings_ty = type_of(bcx.fcx.ccx, bindings_ty);
             let TypeRef llclosure_ty =
                 T_ptr(T_box(T_struct(vec(T_ptr(T_tydesc()),
                                          type_of(bcx.fcx.ccx,
@@ -2013,23 +2012,27 @@ impure fn trans_bind(@block_ctxt cx, @ast.expr f,
                                   C_int(abi.box_rc_field_body)));
             bcx.build.Store(C_int(1), rc);
 
-
             // Store bindings tydesc.
             auto bound_tydesc =
                 bcx.build.GEP(closure,
                               vec(C_int(0),
                                   C_int(abi.closure_elt_tydesc)));
-
             auto bindings_tydesc = get_tydesc(bcx, bindings_ty);
             bcx.build.Store(bindings_tydesc, bound_tydesc);
 
-            // Copy args into body fields.
+            // Store thunk-target.
+            auto bound_target =
+                bcx.build.GEP(closure,
+                              vec(C_int(0),
+                                  C_int(abi.closure_elt_target)));
+            bcx.build.Store(bcx.build.Load(f_res.res.val), bound_target);
+
+            // Copy expr values into boxed bindings.
+            let int i = 0;
             auto bindings =
                 bcx.build.GEP(closure,
                               vec(C_int(0),
                                   C_int(abi.closure_elt_bindings)));
-
-            let int i = 0;
             for (ValueRef v in bound_vals) {
                 auto bound = bcx.build.GEP(bindings,
                                            vec(C_int(0),C_int(i)));
