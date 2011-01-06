@@ -19,6 +19,8 @@ import front.ast.expr;
 import front.ast.stmt;
 import front.ast.block;
 import front.ast.item;
+import front.ast.view_item;
+import front.ast.meta_item;
 import front.ast.arg;
 import front.ast.pat;
 import front.ast.decl;
@@ -203,6 +205,14 @@ type ast_fold[ENV] =
          vec[ast.ty_param] ty_params,
          def_id id, ann a) -> @item)              fold_item_obj,
 
+     // View Item folds.
+     (fn(&ENV e, &span sp, ident ident,
+         vec[@meta_item] meta_items,
+         def_id id) -> @view_item)                fold_view_item_use,
+
+     (fn(&ENV e, &span sp, vec[ident] idents,
+         def_id id) -> @view_item)                fold_view_item_import,
+
      // Additional nodes.
      (fn(&ENV e, &span sp,
          &ast.block_) -> block)                   fold_block,
@@ -223,6 +233,7 @@ type ast_fold[ENV] =
      // Env updates.
      (fn(&ENV e, @ast.crate c) -> ENV) update_env_for_crate,
      (fn(&ENV e, @item i) -> ENV) update_env_for_item,
+     (fn(&ENV e, @view_item i) -> ENV) update_env_for_view_item,
      (fn(&ENV e, &block b) -> ENV) update_env_for_block,
      (fn(&ENV e, @stmt s) -> ENV) update_env_for_stmt,
      (fn(&ENV e, @decl i) -> ENV) update_env_for_decl,
@@ -683,6 +694,30 @@ fn fold_obj[ENV](&ENV env, ast_fold[ENV] fld, &ast._obj ob) -> ast._obj {
     ret fld.fold_obj(env, fields, meths);
 }
 
+fn fold_view_item[ENV](&ENV env, ast_fold[ENV] fld, @view_item vi)
+    -> @view_item {
+
+    let ENV env_ = fld.update_env_for_view_item(env, vi);
+
+    if (!fld.keep_going(env_)) {
+        ret vi;
+    }
+
+    alt (vi.node) {
+        case (ast.view_item_use(?ident, ?meta_items, ?def_id)) {
+            // FIXME: what other folding should be done in here?
+            ret fld.fold_view_item_use(env_, vi.span, ident, meta_items,
+                                       def_id);
+        }
+        case (ast.view_item_import(?idents, ?def_id)) {
+            // FIXME: what other folding should be done in here?
+            ret fld.fold_view_item_import(env_, vi.span, idents, def_id);
+        }
+    }
+
+    fail;
+}
+
 fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
 
     let ENV env_ = fld.update_env_for_item(env, i);
@@ -742,13 +777,19 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
 
 fn fold_mod[ENV](&ENV e, ast_fold[ENV] fld, &ast._mod m) -> ast._mod {
 
+    let vec[@view_item] view_items = vec();
     let vec[@item] items = vec();
+    auto index = m.index;
 
     for (@item i in m.items) {
         append[@item](items, fold_item[ENV](e, fld, i));
     }
 
-    ret fld.fold_mod(e, rec(items=items with m));
+    for (@view_item vi in m.view_items) {
+        append[@view_item](view_items, fold_view_item[ENV](e, fld, vi));
+    }
+
+    ret fld.fold_mod(e, rec(view_items=view_items, items=items, index=index));
  }
 
 fn fold_crate[ENV](&ENV env, ast_fold[ENV] fld, @ast.crate c) -> @ast.crate {
@@ -1036,6 +1077,18 @@ fn identity_fold_item_obj[ENV](&ENV e, &span sp, ident i,
     ret @respan(sp, ast.item_obj(i, ob, ty_params, id, a));
 }
 
+// View Item folds.
+
+fn identity_fold_view_item_use[ENV](&ENV e, &span sp, ident i,
+                                    vec[@meta_item] meta_items,
+                                    def_id id) -> @view_item {
+    ret @respan(sp, ast.view_item_use(i, meta_items, id));
+}
+
+fn identity_fold_view_item_import[ENV](&ENV e, &span sp, vec[ident] is,
+                                       def_id id) -> @view_item {
+    ret @respan(sp, ast.view_item_import(is, id));
+}
 
 // Additional identities.
 
@@ -1073,6 +1126,10 @@ fn identity_update_env_for_crate[ENV](&ENV e, @ast.crate c) -> ENV {
 }
 
 fn identity_update_env_for_item[ENV](&ENV e, @item i) -> ENV {
+    ret e;
+}
+
+fn identity_update_env_for_view_item[ENV](&ENV e, @view_item i) -> ENV {
     ret e;
 }
 
@@ -1176,6 +1233,11 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_item_tag  = bind identity_fold_item_tag[ENV](_,_,_,_,_,_),
          fold_item_obj  = bind identity_fold_item_obj[ENV](_,_,_,_,_,_,_),
 
+         fold_view_item_use =
+             bind identity_fold_view_item_use[ENV](_,_,_,_,_),
+         fold_view_item_import =
+             bind identity_fold_view_item_import[ENV](_,_,_,_),
+
          fold_block = bind identity_fold_block[ENV](_,_,_),
          fold_fn = bind identity_fold_fn[ENV](_,_,_,_,_),
          fold_mod = bind identity_fold_mod[ENV](_,_),
@@ -1184,6 +1246,8 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
 
          update_env_for_crate = bind identity_update_env_for_crate[ENV](_,_),
          update_env_for_item = bind identity_update_env_for_item[ENV](_,_),
+         update_env_for_view_item =
+             bind identity_update_env_for_view_item[ENV](_,_),
          update_env_for_block = bind identity_update_env_for_block[ENV](_,_),
          update_env_for_stmt = bind identity_update_env_for_stmt[ENV](_,_),
          update_env_for_decl = bind identity_update_env_for_decl[ENV](_,_),
