@@ -1955,24 +1955,93 @@ impure fn trans_bind(@block_ctxt cx, @ast.expr f,
     if (f_res.is_mem) {
         cx.fcx.ccx.sess.unimpl("re-binding existing function");
     } else {
-        let vec[@ty.t] bound = vec();
+        let vec[@ast.expr] bound = vec();
+
         for (option.t[@ast.expr] argopt in args) {
             alt (argopt) {
                 case (none[@ast.expr]) {
                 }
                 case (some[@ast.expr](?e)) {
-                    append[@ty.t](bound, ty.expr_ty(e));
+                    append[@ast.expr](bound, e);
                 }
             }
         }
-        if (_vec.len[@ty.t](bound) == 0u) {
+        if (_vec.len[@ast.expr](bound) == 0u) {
             // Trivial 'binding': just return the static pair-ptr.
             ret f_res.res;
         } else {
             auto bcx = f_res.res.bcx;
             auto pair_t = node_type(cx.fcx.ccx, ann);
             auto pair_v = bcx.build.Alloca(pair_t);
-            cx.fcx.ccx.sess.unimpl("nontrivial binding");
+
+            auto pair_box = bcx.build.GEP(pair_v,
+                                          vec(C_int(0),
+                                              C_int(abi.fn_field_box)));
+
+            // Translate the bound expressions.
+            let vec[@ty.t] bound_tys = vec();
+            let vec[ValueRef] bound_vals = vec();
+            for (@ast.expr e in bound) {
+                auto arg = trans_expr(bcx, e);
+                bcx = arg.bcx;
+                append[ValueRef](bound_vals, arg.val);
+                append[@ty.t](bound_tys, ty.expr_ty(e));
+            }
+
+            // Synthesize a closure type.
+            let @ty.t bindings_ty = ty.plain_ty(ty.ty_tup(bound_tys));
+            let TypeRef llbindings_ty = type_of(bcx.fcx.ccx,
+                                                bindings_ty);
+            let TypeRef llclosure_ty =
+                T_ptr(T_box(T_struct(vec(T_ptr(T_tydesc()),
+                                         type_of(bcx.fcx.ccx,
+                                                 ty.expr_ty(f)),
+                                         llbindings_ty)
+                                     // FIXME: add captured typarams.
+                                     )));
+
+            // Malloc a box for the body.
+            auto r = trans_malloc_inner(bcx, llclosure_ty);
+            auto box = r.val;
+            bcx = r.bcx;
+            auto rc = bcx.build.GEP(box,
+                                    vec(C_int(0),
+                                        C_int(abi.box_rc_field_refcnt)));
+            auto closure =
+                bcx.build.GEP(box,
+                              vec(C_int(0),
+                                  C_int(abi.box_rc_field_body)));
+            bcx.build.Store(C_int(1), rc);
+
+
+            // Store bindings tydesc.
+            auto bound_tydesc =
+                bcx.build.GEP(closure,
+                              vec(C_int(0),
+                                  C_int(abi.closure_elt_tydesc)));
+
+            auto bindings_tydesc = get_tydesc(bcx, bindings_ty);
+            bcx.build.Store(bindings_tydesc, bound_tydesc);
+
+            // Copy args into body fields.
+            auto bindings =
+                bcx.build.GEP(closure,
+                              vec(C_int(0),
+                                  C_int(abi.closure_elt_bindings)));
+
+            let int i = 0;
+            for (ValueRef v in bound_vals) {
+                auto bound = bcx.build.GEP(bindings,
+                                           vec(C_int(0),C_int(i)));
+                bcx = copy_ty(r.bcx, true, bound, v, bound_tys.(i)).bcx;
+                i += 1;
+            }
+
+            // Store box ptr in outer pair.
+            let TypeRef llbox_ty = T_ptr(T_box(T_nil()));
+            auto p = r.bcx.build.PointerCast(box, llbox_ty);
+            bcx.build.Store(p, pair_box);
+
             ret res(bcx, pair_v);
         }
     }

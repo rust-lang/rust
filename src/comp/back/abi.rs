@@ -49,6 +49,12 @@ const int obj_body_elt_fields = 1;
 const int fn_field_code = 0;
 const int fn_field_box = 1;
 
+const int closure_elt_tydesc = 0;
+const int closure_elt_target = 1;
+const int closure_elt_bindings = 2;
+const int closure_elt_ty_params = 3;
+
+
 const int worst_case_glue_call_args = 7;
 
 const int n_upcall_glues = 7;
