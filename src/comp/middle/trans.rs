@@ -1952,18 +1952,30 @@ impure fn trans_bind(@block_ctxt cx, @ast.expr f,
                      vec[option.t[@ast.expr]] args,
                      &ast.ann ann) -> result {
     auto f_res = trans_lval(cx, f);
-    auto bcx = f_res.res.bcx;
-    auto pair_t = node_type(cx.fcx.ccx, ann);
-    auto pair_v = bcx.build.Alloca(pair_t);
     if (f_res.is_mem) {
         cx.fcx.ccx.sess.unimpl("re-binding existing function");
     } else {
-        auto code_cell =
-            bcx.build.GEP(pair_v, vec(C_int(0),
-                                      C_int(abi.fn_field_code)));
-        bcx.build.Store(f_res.res.val, code_cell);
+        let vec[@ty.t] bound = vec();
+        for (option.t[@ast.expr] argopt in args) {
+            alt (argopt) {
+                case (none[@ast.expr]) {
+                }
+                case (some[@ast.expr](?e)) {
+                    append[@ty.t](bound, ty.expr_ty(e));
+                }
+            }
+        }
+        if (_vec.len[@ty.t](bound) == 0u) {
+            // Trivial 'binding': just return the static pair-ptr.
+            ret f_res.res;
+        } else {
+            auto bcx = f_res.res.bcx;
+            auto pair_t = node_type(cx.fcx.ccx, ann);
+            auto pair_v = bcx.build.Alloca(pair_t);
+            cx.fcx.ccx.sess.unimpl("nontrivial binding");
+            ret res(bcx, pair_v);
+        }
     }
-    ret res(bcx, pair_v);
 }
 
 impure fn trans_call(@block_ctxt cx, @ast.expr f,
