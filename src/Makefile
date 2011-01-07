@@ -375,20 +375,11 @@ CONST_TAG_XFAILS := test/run-pass/generic-tag.rs
 # Temporarily xfail some of the task tests, while debugging the
 # overhauled inter-domain messaging system.
 
-TASK_XFAILS := test/run-pass/task-comm-8.rs \
-               test/run-pass/task-comm-10.rs \
-               test/run-pass/task-comm-15.rs \
-               test/run-pass/task-comm-12.rs \
-               test/run-pass/task-comm-2.rs \
-               test/run-pass/task-comm-9.rs \
-               test/run-pass/task-life-0.rs \
-               test/run-pass/alt-type-simple.rs \
-               test/run-pass/many.rs
+TASK_XFAILS := test/run-pass/alt-type-simple.rs
 
 TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     $(NOMINAL_TAG_XFAILS) \
                     $(CONST_TAG_XFAILS) \
-                    test/run-pass/child-outlives-parent.rs \
                     test/run-pass/clone-with-exterior.rs \
                     test/run-pass/constrained-type.rs \
                     test/run-pass/destructor-ordering.rs \
@@ -398,12 +389,8 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/run-pass/generic-recursive-tag.rs \
                     test/run-pass/generic-tup.rs \
                     test/run-pass/iter-ret.rs \
-                    test/run-pass/lib-io.rs \
                     test/run-pass/mlist-cycle.rs \
-                    test/run-pass/obj-as.rs \
                     test/run-pass/task-comm.rs \
-                    test/run-pass/task-comm-3.rs \
-                    test/run-pass/vec-slice.rs \
                     test/run-pass/while-and-do-while.rs \
                     test/run-fail/task-comm-14.rs \
                     test/compile-fail/bad-expr-path.rs \
@@ -412,9 +399,7 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/compile-fail/import3.rs \
                     test/compile-fail/import4.rs \
                     test/compile-fail/bad-recv.rs \
-                    test/compile-fail/bad-send.rs \
-                    test/compile-fail/infinite-vec-type-recursion.rs \
-                    test/compile-fail/writing-through-read-alias.rs
+                    test/compile-fail/bad-send.rs
 
 # Same strategy here for the time being: just list the ones that
 # work and assume the others don't. Invert this when we're closer
