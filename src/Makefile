@@ -437,6 +437,8 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         int.rs \
                         i32-sub.rs \
                         i8-incr.rs \
+                        import2.rs \
+                        import3.rs \
                         item-name-overload.rs \
                         large-records.rs \
                         lazy-init.rs \
