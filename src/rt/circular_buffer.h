@@ -24,6 +24,9 @@ public:
     size_t size();
 
 private:
+    // Initial size of the buffer in bytes.
+    size_t _initial_sz;
+
     // Size of the buffer in bytes, should always be a power of two so that
     // modulo arithmetic (x % _buffer_sz) can optimized away with
     // (x & (_buffer_sz - 1)).
