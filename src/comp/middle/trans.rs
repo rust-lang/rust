@@ -298,7 +298,9 @@ fn T_closure_ptr(TypeRef lltarget_ty,
 }
 
 fn T_opaque_closure_ptr() -> TypeRef {
-    ret T_ptr(T_box(T_nil()));
+    ret T_closure_ptr(T_struct(vec(T_ptr(T_nil()),
+                                   T_ptr(T_nil()))),
+                      T_nil());
 }
 
 
@@ -846,6 +848,50 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
             ret decr_refcnt_and_if_zero(cx, boxptr,
                                         bind hit_zero(_, boxptr),
                                         "free obj",
+                                        T_int(), C_int(0));
+        }
+
+        case (ty.ty_fn(_,_)) {
+            fn hit_zero(@block_ctxt cx, ValueRef v) -> result {
+
+                // Call through the closure's own fields-drop glue first.
+                auto body =
+                    cx.build.GEP(v,
+                                 vec(C_int(0),
+                                     C_int(abi.box_rc_field_body)));
+
+                auto bindings =
+                    cx.build.GEP(body,
+                                 vec(C_int(0),
+                                     C_int(abi.closure_elt_bindings)));
+                auto llrawptr = cx.build.BitCast(bindings, T_ptr(T_i8()));
+
+                auto tydescptr =
+                    cx.build.GEP(body,
+                                 vec(C_int(0),
+                                     C_int(abi.closure_elt_tydesc)));
+                auto tydesc = cx.build.Load(tydescptr);
+                auto llfnptr =
+                    cx.build.GEP(tydesc,
+                                 vec(C_int(0),
+                                     C_int(abi.tydesc_field_drop_glue_off)));
+                auto llfn = cx.build.Load(llfnptr);
+                cx.build.FastCall(llfn, vec(cx.fcx.lltaskptr, llrawptr));
+
+                // Then free the body.
+                // FIXME: switch gc/non-gc on layer of the type.
+                ret trans_non_gc_free(cx, v);
+            }
+            auto box_cell =
+                cx.build.GEP(v,
+                             vec(C_int(0),
+                                 C_int(abi.fn_field_box)));
+
+            auto boxptr = cx.build.Load(box_cell);
+
+            ret decr_refcnt_and_if_zero(cx, boxptr,
+                                        bind hit_zero(_, boxptr),
+                                        "free fn",
                                         T_int(), C_int(0));
         }
 
@@ -2145,13 +2191,11 @@ impure fn trans_bind(@block_ctxt cx, @ast.expr f,
             auto pair_code = bcx.build.GEP(pair_v,
                                            vec(C_int(0),
                                                C_int(abi.fn_field_code)));
+
+            let @ty.t pair_ty = node_ann_type(cx.fcx.ccx, ann);
             let ValueRef llthunk =
-                trans_bind_thunk(cx.fcx.ccx,
-                                 node_ann_type(cx.fcx.ccx, ann),
-                                 ty.expr_ty(f),
-                                 args,
-                                 llclosure_ty,
-                                 bound_tys);
+                trans_bind_thunk(cx.fcx.ccx, pair_ty, ty.expr_ty(f),
+                                 args, llclosure_ty, bound_tys);
 
             bcx.build.Store(llthunk, pair_code);
 
@@ -2162,6 +2206,9 @@ impure fn trans_bind(@block_ctxt cx, @ast.expr f,
             bcx.build.Store(bcx.build.PointerCast(box,
                                                   T_opaque_closure_ptr()),
                             pair_box);
+
+            find_scope_cx(cx).cleanups +=
+                clean(bind drop_slot(_, pair_v, pair_ty));
 
             ret res(bcx, pair_v);
         }
