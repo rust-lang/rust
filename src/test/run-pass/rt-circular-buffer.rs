@@ -67,8 +67,6 @@ impure fn test_rotate() {
     let port[record] myport = port();
     auto mychan = chan(myport);
 
-    let record val = rec(val1=0u32, val2=0u32, val3=0u32);
-
     for each (uint j in _uint.range(0u, 10u)) {
         for each (uint i in _uint.range(0u, 10u)) {
             let record val = rec(val1=i as u32,
