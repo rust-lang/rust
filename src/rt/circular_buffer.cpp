@@ -4,20 +4,10 @@
 
 #include "rust_internal.h"
 
-bool
-is_power_of_two(size_t value) {
-    if (value > 0) {
-        return (value & (value - 1)) == 0;
-    }
-    return false;
-}
-
 circular_buffer::circular_buffer(rust_dom *dom, size_t unit_sz) :
     dom(dom),
     unit_sz(unit_sz),
-    _initial_sz(next_power_of_two(
-               INITIAL_CIRCULAR_BUFFFER_SIZE_IN_UNITS * unit_sz)),
-    _buffer_sz(_initial_sz),
+    _buffer_sz(INITIAL_CIRCULAR_BUFFER_SIZE_IN_UNITS * unit_sz),
     _next(0),
     _unread(0),
     _buffer((uint8_t *)dom->calloc(_buffer_sz)) {
@@ -46,11 +36,27 @@ circular_buffer::~circular_buffer() {
 void
 circular_buffer::transfer(void *dst) {
     I(dom, dst);
-    I(dom, is_power_of_two(_buffer_sz));
+    I(dom, _unread <= _buffer_sz);
+
     uint8_t *ptr = (uint8_t *) dst;
-    for (size_t i = 0; i < _unread; i += unit_sz) {
-        memcpy(&ptr[i], &_buffer[(_next + i) & (_buffer_sz - 1)], unit_sz);
+
+    // First copy from _next to either the end of the unread
+    // items or the end of the buffer
+    size_t head_sz;
+    if (_next + _unread > _buffer_sz) {
+        head_sz = _buffer_sz - _next;
+    } else {
+        head_sz = _unread;
     }
+    I(dom, _next + head_sz <= _buffer_sz);
+    I(dom, _next < _buffer_sz);
+    memcpy(ptr, _buffer + _next, head_sz);
+
+    // Then copy any other items from the beginning of the buffer
+    I(dom, _unread >= head_sz);
+    size_t tail_sz = _unread - head_sz;
+    I(dom, tail_sz <= _buffer_sz);
+    memcpy(ptr + head_sz, _buffer, tail_sz);
 }
 
 /**
@@ -61,11 +67,12 @@ void
 circular_buffer::enqueue(void *src) {
     I(dom, src);
     I(dom, _unread <= _buffer_sz);
+    I(dom, _buffer);
 
     // Grow if necessary.
-    if (_next + _unread + unit_sz > _buffer_sz) {
-        size_t new_buffer_sz = _buffer_sz << 1;
-        I(dom, new_buffer_sz <= MAX_CIRCULAR_BUFFFER_SIZE);
+    if (_unread == _buffer_sz) {
+        size_t new_buffer_sz = _buffer_sz * 2;
+        I(dom, new_buffer_sz <= MAX_CIRCULAR_BUFFER_SIZE);
         dom->log(rust_log::MEM | rust_log::COMM,
                  "circular_buffer is growing to %d bytes", new_buffer_sz);
         void *new_buffer = dom->malloc(new_buffer_sz);
@@ -81,12 +88,19 @@ circular_buffer::enqueue(void *src) {
              "unread: %d, next: %d, buffer_sz: %d, unit_sz: %d",
              _unread, _next, _buffer_sz, unit_sz);
 
-    I(dom, is_power_of_two(_buffer_sz));
     I(dom, _unread < _buffer_sz);
-    I(dom, _next + _unread + unit_sz <= _buffer_sz);
+    I(dom, _unread + unit_sz <= _buffer_sz);
 
     // Copy data
-    size_t i = (_next + _unread) & (_buffer_sz - 1);
+    size_t i;
+    if (_next + _unread < _buffer_sz) {
+        i = _next + _unread;
+    } else {
+        I(dom, _next >= unit_sz);
+        i = _next + _unread - _buffer_sz;
+        I(dom, i <= _next - unit_sz);
+    }
+
     I(dom, i + unit_sz <= _buffer_sz);
     memcpy(&_buffer[i], src, unit_sz);
     _unread += unit_sz;
@@ -112,6 +126,7 @@ circular_buffer::dequeue(void *dst) {
              "unread: %d, next: %d, buffer_sz: %d, unit_sz: %d",
              _unread, _next, _buffer_sz, unit_sz);
 
+    I(dom, _next + unit_sz <= _buffer_sz);
     if (dst != NULL) {
         memcpy(dst, &_buffer[_next], unit_sz);
     }
@@ -119,15 +134,16 @@ circular_buffer::dequeue(void *dst) {
              "shifted data from index %d", _next);
     _unread -= unit_sz;
     _next += unit_sz;
-    I(dom, _next <= _buffer_sz);
     if (_next == _buffer_sz) {
         _next = 0;
     }
 
     // Shrink if possible.
-    if (_buffer_sz > _initial_sz && _unread <= _buffer_sz / 4) {
-        size_t new_buffer_sz = _buffer_sz >> 1;
-        I(dom, _initial_sz <= new_buffer_sz);
+    if (_buffer_sz > INITIAL_CIRCULAR_BUFFER_SIZE_IN_UNITS * unit_sz &&
+        _unread <= _buffer_sz / 4) {
+        size_t new_buffer_sz = _buffer_sz / 2;
+        I(dom,
+          INITIAL_CIRCULAR_BUFFER_SIZE_IN_UNITS * unit_sz <= new_buffer_sz);
         dom->log(rust_log::MEM | rust_log::COMM,
                  "circular_buffer is shrinking to %d bytes", new_buffer_sz);
         void *tmp = dom->malloc(new_buffer_sz);
@@ -137,7 +153,6 @@ circular_buffer::dequeue(void *dst) {
         _next = 0;
         _buffer_sz = new_buffer_sz;
     }
-
 }
 
 uint8_t *
@@ -154,3 +169,14 @@ size_t
 circular_buffer::size() {
     return _unread;
 }
+
+//
+// Local Variables:
+// mode: C++
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//

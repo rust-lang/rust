@@ -67,6 +67,25 @@ impure fn test_rotate() {
     let port[record] myport = port();
     auto mychan = chan(myport);
 
+    for each (uint i in _uint.range(0u, 100u)) {
+        auto val = rec(val1=i as u32,
+                       val2=i as u32,
+                       val3=i as u32);
+        mychan <| val;
+
+        auto x <- myport;
+        check (x.val1 == i as u32);
+        check (x.val2 == i as u32);
+        check (x.val3 == i as u32);
+    }
+}
+
+// Test rotating and growing the buffer when
+// the unit size is not a power of two
+impure fn test_rotate_grow() {
+    let port[record] myport = port();
+    auto mychan = chan(myport);
+
     for each (uint j in _uint.range(0u, 10u)) {
         for each (uint i in _uint.range(0u, 10u)) {
             let record val = rec(val1=i as u32,
@@ -90,6 +109,7 @@ impure fn main() {
     test_shrink1();
     test_shrink2();
     test_rotate();
+    test_rotate_grow();
 }
 
 // Local Variables:
