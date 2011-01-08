@@ -24,6 +24,10 @@ public:
     size_t size();
 
 private:
+    size_t initial_size();
+    void grow();
+    void shrink();
+
     // Size of the buffer in bytes.
     size_t _buffer_sz;
 
