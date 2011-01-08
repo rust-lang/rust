@@ -38,9 +38,19 @@ impure fn test_grow() {
     }
 }
 
+// Don't allow the buffer to shrink below it's original size
+impure fn test_shrink() {
+    let port[i8] myport = port();
+    auto mychan = chan(myport);
+
+    mychan <| 0i8;
+    auto x <- myport;
+}
+
 impure fn main() {
     test_init();
     test_grow();
+    test_shrink();
 }
 
 // Local Variables:
