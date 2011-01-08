@@ -128,7 +128,7 @@ circular_buffer::dequeue(void *dst) {
         void *tmp = dom->malloc(_buffer_sz / 2);
         transfer(tmp);
         _buffer_sz >>= 1;
-	I(dom, _initial_sz <= _buffer_sz);
+        I(dom, _initial_sz <= _buffer_sz);
         dom->free(_buffer);
         _buffer = (uint8_t *)tmp;
         _next = 0;
