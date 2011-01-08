@@ -62,7 +62,7 @@ circular_buffer::enqueue(void *src) {
     I(dom, _unread <= _buffer_sz);
 
     // Grow if necessary.
-    if (_unread == _buffer_sz) {
+    if (_unread + unit_sz > _buffer_sz) {
         size_t new_buffer_sz = _buffer_sz << 1;
         I(dom, new_buffer_sz <= MAX_CIRCULAR_BUFFFER_SIZE);
         void *new_buffer = dom->malloc(new_buffer_sz);

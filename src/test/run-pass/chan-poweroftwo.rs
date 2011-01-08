@@ -25,8 +25,22 @@ impure fn test_init() {
     mychan <| val;
 }
 
+// Dump lots of items into the channel so it has to grow.
+// Don't trigger any assertions.
+impure fn test_grow() {
+    let port[record] myport = port();
+    auto mychan = chan(myport);
+
+    let record val = rec(val1=0i32, val2=0i32, val3=0i32);
+
+    for each (uint i in _uint.range(0u, 100u)) {
+        mychan <| val;
+    }
+}
+
 impure fn main() {
     test_init();
+    test_grow();
 }
 
 // Local Variables:
