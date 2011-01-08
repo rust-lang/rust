@@ -66,6 +66,8 @@ circular_buffer::enqueue(void *src) {
     if (_next + _unread + unit_sz > _buffer_sz) {
         size_t new_buffer_sz = _buffer_sz << 1;
         I(dom, new_buffer_sz <= MAX_CIRCULAR_BUFFFER_SIZE);
+        dom->log(rust_log::MEM | rust_log::COMM,
+                 "circular_buffer is growing to %d bytes", new_buffer_sz);
         void *new_buffer = dom->malloc(new_buffer_sz);
         transfer(new_buffer);
         dom->free(_buffer);
@@ -124,15 +126,16 @@ circular_buffer::dequeue(void *dst) {
 
     // Shrink if possible.
     if (_buffer_sz > _initial_sz && _unread <= _buffer_sz / 4) {
+        size_t new_buffer_sz = _buffer_sz >> 1;
+        I(dom, _initial_sz <= new_buffer_sz);
         dom->log(rust_log::MEM | rust_log::COMM,
-                 "circular_buffer is shrinking to %d bytes", _buffer_sz / 2);
-        void *tmp = dom->malloc(_buffer_sz / 2);
+                 "circular_buffer is shrinking to %d bytes", new_buffer_sz);
+        void *tmp = dom->malloc(new_buffer_sz);
         transfer(tmp);
-        _buffer_sz >>= 1;
-        I(dom, _initial_sz <= _buffer_sz);
         dom->free(_buffer);
         _buffer = (uint8_t *)tmp;
         _next = 0;
+        _buffer_sz = new_buffer_sz;
     }
 
 }
