@@ -15,8 +15,9 @@ is_power_of_two(size_t value) {
 circular_buffer::circular_buffer(rust_dom *dom, size_t unit_sz) :
     dom(dom),
     unit_sz(unit_sz),
-    _buffer_sz(next_power_of_two(
+    _initial_sz(next_power_of_two(
                INITIAL_CIRCULAR_BUFFFER_SIZE_IN_UNITS * unit_sz)),
+    _buffer_sz(_initial_sz),
     _next(0),
     _unread(0),
     _buffer((uint8_t *)dom->calloc(_buffer_sz)) {
@@ -121,15 +122,13 @@ circular_buffer::dequeue(void *dst) {
     }
 
     // Shrink if possible.
-    if (_buffer_sz > INITIAL_CIRCULAR_BUFFFER_SIZE_IN_UNITS * unit_sz &&
-        _unread <= _buffer_sz / 4) {
+    if (_buffer_sz > _initial_sz && _unread <= _buffer_sz / 4) {
         dom->log(rust_log::MEM | rust_log::COMM,
                  "circular_buffer is shrinking to %d bytes", _buffer_sz / 2);
         void *tmp = dom->malloc(_buffer_sz / 2);
         transfer(tmp);
         _buffer_sz >>= 1;
-	I(dom, _buffer_sz >=
-	  next_power_of_two(INITIAL_CIRCULAR_BUFFFER_SIZE_IN_UNITS * unit_sz));
+	I(dom, _initial_sz <= _buffer_sz);
         dom->free(_buffer);
         _buffer = (uint8_t *)tmp;
         _next = 0;
