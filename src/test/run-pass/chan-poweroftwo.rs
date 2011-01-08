@@ -1,6 +1,7 @@
 // -*- rust -*-
 
-// Regression test for circular_buffer initialization
+// Regression tests for circular_buffer when using a unit
+// that has a size that is not a power of two
 
 use std;
 
@@ -8,22 +9,24 @@ import std.option;
 import std._uint;
 import std._vec;
 
-// 12-byte unit for the channel buffer. Assuming that the default
-// buffer size needs to hold 8 units, then the minimum buffer size
-// needs to be 96. That's not a power of two so needs to be rounded up.
+// A 12-byte unit to send over the channel
 type record = rec(i32 val1, i32 val2, i32 val3);
 
-impure fn worker(chan[record] channel) {
-    let record val = rec(val1=0i32, val2=0i32, val3=0i32);
-    channel <| val;
-}
-
-impure fn main() {
+// Assuming that the default buffer size needs to hold 8 units,
+// then the minimum buffer size needs to be 96. That's not a
+// power of two so needs to be rounded up. Don't trigger any
+// assertions.
+impure fn test_init() {
     let port[record] myport = port();
     auto mychan = chan(myport);
 
-    auto temp = spawn worker(mychan);
-    auto val <- myport;
+    let record val = rec(val1=0i32, val2=0i32, val3=0i32);
+
+    mychan <| val;
+}
+
+impure fn main() {
+    test_init();
 }
 
 // Local Variables:
