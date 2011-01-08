@@ -7,8 +7,8 @@
 
 class
 circular_buffer : public dom_owned<circular_buffer> {
-    static const size_t INITIAL_CIRCULAR_BUFFFER_SIZE_IN_UNITS = 8;
-    static const size_t MAX_CIRCULAR_BUFFFER_SIZE = 1 << 24;
+    static const size_t INITIAL_CIRCULAR_BUFFER_SIZE_IN_UNITS = 8;
+    static const size_t MAX_CIRCULAR_BUFFER_SIZE = 1 << 24;
 
 public:
     rust_dom *dom;
@@ -24,12 +24,7 @@ public:
     size_t size();
 
 private:
-    // Initial size of the buffer in bytes.
-    size_t _initial_sz;
-
-    // Size of the buffer in bytes, should always be a power of two so that
-    // modulo arithmetic (x % _buffer_sz) can optimized away with
-    // (x & (_buffer_sz - 1)).
+    // Size of the buffer in bytes.
     size_t _buffer_sz;
 
     // Byte offset within the buffer where to read the next unit of data.
@@ -41,5 +36,16 @@ private:
     // The buffer itself.
     uint8_t *_buffer;
 };
+
+//
+// Local Variables:
+// mode: C++
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//
 
 #endif /* CIRCULAR_BUFFER_H */
