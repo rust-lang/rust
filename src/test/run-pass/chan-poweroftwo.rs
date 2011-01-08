@@ -10,7 +10,7 @@ import std._uint;
 import std._vec;
 
 // A 12-byte unit to send over the channel
-type record = rec(i32 val1, i32 val2, i32 val3);
+type record = rec(u32 val1, u32 val2, u32 val3);
 
 // Assuming that the default buffer size needs to hold 8 units,
 // then the minimum buffer size needs to be 96. That's not a
@@ -20,7 +20,7 @@ impure fn test_init() {
     let port[record] myport = port();
     auto mychan = chan(myport);
 
-    let record val = rec(val1=0i32, val2=0i32, val3=0i32);
+    let record val = rec(val1=0u32, val2=0u32, val3=0u32);
 
     mychan <| val;
 }
@@ -31,7 +31,7 @@ impure fn test_grow() {
     let port[record] myport = port();
     auto mychan = chan(myport);
 
-    let record val = rec(val1=0i32, val2=0i32, val3=0i32);
+    let record val = rec(val1=0u32, val2=0u32, val3=0u32);
 
     for each (uint i in _uint.range(0u, 100u)) {
         mychan <| val;
@@ -51,7 +51,7 @@ impure fn test_shrink2() {
     let port[record] myport = port();
     auto mychan = chan(myport);
 
-    let record val = rec(val1=0i32, val2=0i32, val3=0i32);
+    let record val = rec(val1=0u32, val2=0u32, val3=0u32);
 
     for each (uint i in _uint.range(0u, 100u)) {
         mychan <| val;
@@ -62,11 +62,36 @@ impure fn test_shrink2() {
     }
 }
 
+// Test rotating the buffer when the unit size is not a power of two
+impure fn test_rotate() {
+    let port[record] myport = port();
+    auto mychan = chan(myport);
+
+    let record val = rec(val1=0u32, val2=0u32, val3=0u32);
+
+    for each (uint j in _uint.range(0u, 10u)) {
+        for each (uint i in _uint.range(0u, 10u)) {
+            let record val = rec(val1=i as u32,
+                                 val2=i as u32,
+                                 val3=i as u32);
+            mychan <| val;
+        }
+
+        for each (uint i in _uint.range(0u, 10u)) {
+            auto x <- myport;
+            check (x.val1 == i as u32);
+            check (x.val2 == i as u32);
+            check (x.val3 == i as u32);
+        }
+    }
+}
+
 impure fn main() {
     test_init();
     test_grow();
     test_shrink1();
     test_shrink2();
+    test_rotate();
 }
 
 // Local Variables:

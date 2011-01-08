@@ -63,7 +63,7 @@ circular_buffer::enqueue(void *src) {
     I(dom, _unread <= _buffer_sz);
 
     // Grow if necessary.
-    if (_unread + unit_sz > _buffer_sz) {
+    if (_next + _unread + unit_sz > _buffer_sz) {
         size_t new_buffer_sz = _buffer_sz << 1;
         I(dom, new_buffer_sz <= MAX_CIRCULAR_BUFFFER_SIZE);
         void *new_buffer = dom->malloc(new_buffer_sz);
@@ -76,15 +76,16 @@ circular_buffer::enqueue(void *src) {
 
     dom->log(rust_log::MEM | rust_log::COMM,
              "circular_buffer enqueue "
-             "unread: %d, buffer_sz: %d, unit_sz: %d",
-             _unread, _buffer_sz, unit_sz);
+             "unread: %d, next: %d, buffer_sz: %d, unit_sz: %d",
+             _unread, _next, _buffer_sz, unit_sz);
 
     I(dom, is_power_of_two(_buffer_sz));
     I(dom, _unread < _buffer_sz);
-    I(dom, _unread + unit_sz <= _buffer_sz);
+    I(dom, _next + _unread + unit_sz <= _buffer_sz);
 
     // Copy data
     size_t i = (_next + _unread) & (_buffer_sz - 1);
+    I(dom, i + unit_sz <= _buffer_sz);
     memcpy(&_buffer[i], src, unit_sz);
     _unread += unit_sz;
 
@@ -106,8 +107,8 @@ circular_buffer::dequeue(void *dst) {
 
     dom->log(rust_log::MEM | rust_log::COMM,
              "circular_buffer dequeue "
-             "unread: %d, buffer_sz: %d, unit_sz: %d",
-             _unread, _buffer_sz, unit_sz);
+             "unread: %d, next: %d, buffer_sz: %d, unit_sz: %d",
+             _unread, _next, _buffer_sz, unit_sz);
 
     if (dst != NULL) {
         memcpy(dst, &_buffer[_next], unit_sz);
