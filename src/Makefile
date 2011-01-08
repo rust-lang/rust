@@ -432,6 +432,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         deep.rs \
                         deref.rs \
                         div-mod.rs \
+                        drop-bind-thunk-args.rs \
                         drop-on-ret.rs \
                         fact.rs \
                         hello.rs \
