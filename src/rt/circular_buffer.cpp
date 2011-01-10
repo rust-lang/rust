@@ -15,7 +15,8 @@ is_power_of_two(size_t value) {
 circular_buffer::circular_buffer(rust_dom *dom, size_t unit_sz) :
     dom(dom),
     unit_sz(unit_sz),
-    _buffer_sz(INITIAL_CIRCULAR_BUFFFER_SIZE_IN_UNITS * unit_sz),
+    _buffer_sz(next_power_of_two(
+               INITIAL_CIRCULAR_BUFFFER_SIZE_IN_UNITS * unit_sz)),
     _next(0),
     _unread(0),
     _buffer((uint8_t *)dom->calloc(_buffer_sz)) {

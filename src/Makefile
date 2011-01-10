@@ -418,6 +418,8 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         arith-0.rs \
                         arith-1.rs \
                         arith-2.rs \
+                        bind-interior.rs \
+                        bind-thunk.rs \
                         bind-trivial.rs \
                         bitwise.rs \
                         bool-not.rs \
@@ -430,6 +432,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         deep.rs \
                         deref.rs \
                         div-mod.rs \
+                        drop-bind-thunk-args.rs \
                         drop-on-ret.rs \
                         fact.rs \
                         hello.rs \

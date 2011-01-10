@@ -2,8 +2,8 @@
 *.x86
 *.llvm
 *.out
-*.x86.tmp
-*.llvm.tmp
+*.boot
+*.rustc
 *.cmx
 *.dll
 *.exe
