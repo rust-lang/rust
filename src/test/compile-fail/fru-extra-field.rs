@@ -1,5 +1,7 @@
 // -*- rust -*-
 
+// error-pattern: record
+
 type point = rec(int x, int y);
 
 fn main() {

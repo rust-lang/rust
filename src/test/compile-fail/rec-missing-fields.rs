@@ -1,5 +1,7 @@
 // -*- rust -*-
 
+// error-pattern: mismatched types
+
 // Issue #51.
 
 type point = rec(int x, int y);

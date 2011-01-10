@@ -642,6 +642,7 @@ test/run-fail/%.out.tmp: test/run-fail/%$(CFG_EXE_SUFFIX) \
                                   $(CFG_RUNTIME)
 	$(CFG_QUIET)rm -f $<.tmp
 	@$(call CFG_ECHO, run: $<)
+	$(CFG_QUIET)grep -q error-pattern test/run-fail/$(basename $*).rs
 	$(CFG_QUIET)rm -f $@
 	$(CFG_QUIET)$(call CFG_RUN_TARG, $<) >$@ 2>&1 ; X=$$? ; \
       if [ $$X -eq 0 ] ; then exit 1 ; else exit 0 ; fi
@@ -652,15 +653,17 @@ test/run-fail/%.out.tmp: test/run-fail/%$(CFG_EXE_SUFFIX) \
 
 test/compile-fail/%.boot.out.tmp: test/compile-fail/%.rs $(BREQ)
 	@$(call CFG_ECHO, compile [boot]: $<)
+	$(CFG_QUIET)grep -q error-pattern $<
 	$(CFG_QUIET)rm -f $@
-	$(BOOT) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1 || true
+	$(BOOT) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1; test $$? -ne 0
 	$(CFG_QUIET)grep --text --quiet \
       "`awk -F: '/error-pattern/ { print $$2 }' $< | tr -d '\n\r'`" $@
 
 test/compile-fail/%.rustc.out.tmp: test/compile-fail/%.rs $(SREQ)
 	@$(call CFG_ECHO, compile [rustc]: $<)
+	$(CFG_QUIET)grep -q error-pattern $<
 	$(CFG_QUIET)rm -f $@
-	$(RUSTC) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1 || true
+	$(RUSTC) -o $(@:.out=$(CFG_EXE_SUFFIX)) $< >$@ 2>&1; test $$? -ne 0
 	$(CFG_QUIET)grep --text --quiet \
       "`awk -F: '/error-pattern/ { print $$2 }' $< | tr -d '\n\r'`" $@
 

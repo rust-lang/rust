@@ -1,5 +1,7 @@
 // -*- rust -*-
 
+// error-pattern: dead
+
 fn f(str caller) {
   log caller;
 }
