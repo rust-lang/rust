@@ -3,9 +3,9 @@ use libc();
 use zed(name = "std");
 use bar(name = "std", ver = "0.0.1");
 
-import std._str;
-import x = std._str;
-
+// FIXME: commented out since resolve doesn't know how to handle crates yet.
+// import std._str;
+// import x = std._str;
 
 mod baz {
   use std;
@@ -13,8 +13,8 @@ mod baz {
   use zed(name = "std");
   use bar(name = "std", ver = "0.0.1");
 
-  import std._str;
-  import x = std._str;
+  // import std._str;
+  // import x = std._str;
 }
 
 fn main() {

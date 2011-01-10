@@ -66,23 +66,26 @@ fn unwrap_def(option.t[def_wrap] d_) -> option.t[def] {
 
 // Follow the path of an import and return what it ultimately points to.
 
-fn find_final_def(&env e, vec[ident] idents) -> option.t[def_wrap] {
+fn find_final_def(&env e, &span sp, vec[ident] idents) -> option.t[def_wrap] {
     auto len = _vec.len[ident](idents);
     auto first = idents.(0);
-    if (len == 1u) {
-        ret lookup_name(e, first);
-    }
     auto d_ = lookup_name(e, first);
+    if (len == 1u) {
+        ret d_;
+    }
     alt (d_) {
         case (none[def_wrap]) {
+            e.sess.span_err(sp, "unresolved name: " + first);
             ret d_;
         }
         case (some[def_wrap](?d)) {
-            alt(d) {
+            alt (d) {
                 case (def_wrap_mod(?i)) {
-                    auto new_env = update_env_for_item(e, i);
                     auto new_idents = _vec.slice[ident](idents, 1u, len);
-                    ret find_final_def(new_env, new_idents);
+                    auto tmp_e = rec(scopes = nil[scope],
+                                     sess = e.sess);
+                    auto new_e = update_env_for_item(tmp_e, i);
+                    ret find_final_def(new_e, sp, new_idents);
                 }
             }
         }
@@ -140,12 +143,7 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def_wrap] {
                 ret some[def_wrap](def_wrap_use(i));
             }
             case (ast.view_item_import(?idents,_)) {
-                auto d = find_final_def(e, idents);
-                alt (d) {
-                    case (some[def_wrap](_)) {
-                        ret d;
-                    }
-                }
+                ret find_final_def(e, i.span, idents);
             }
         }
         fail;
@@ -296,6 +294,24 @@ fn fold_expr_name(&env e, &span sp, &ast.name n,
     ret @fold.respan[ast.expr_](sp, ast.expr_name(n, d_, a));
 }
 
+fn fold_view_item_import(&env e, &span sp, vec[ident] is,
+                         ast.def_id id) -> @ast.view_item {
+    // Produce errors for invalid imports
+    auto len = _vec.len[ast.ident](is);
+    auto last_id = is.(len - 1u);
+    auto d = lookup_name(e, last_id);
+    alt (d) {
+        case (none[def_wrap]) {
+            e.sess.span_err(sp, "unresolved name: " + last_id);
+        }
+        case (some[def_wrap](_)) {
+        }
+    }
+
+    ret @fold.respan[ast.view_item_](sp, ast.view_item_import(is, id));
+}
+
+
 fn fold_ty_path(&env e, &span sp, ast.path p,
                 &option.t[def] d) -> @ast.ty {
 
@@ -347,6 +363,7 @@ fn resolve_crate(session.session sess, @ast.crate crate) -> @ast.crate {
 
     fld = @rec( fold_pat_tag = bind fold_pat_tag(_,_,_,_,_,_),
                 fold_expr_name = bind fold_expr_name(_,_,_,_,_),
+                fold_view_item_import = bind fold_view_item_import(_,_,_,_),
                 fold_ty_path = bind fold_ty_path(_,_,_,_),
                 update_env_for_crate = bind update_env_for_crate(_,_),
                 update_env_for_item = bind update_env_for_item(_,_),
