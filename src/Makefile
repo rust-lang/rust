@@ -402,6 +402,8 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/while-and-do-while.rs \
                     test/run-fail/task-comm-14.rs \
+                    test/compile-fail/import.rs \
+                    test/compile-fail/import2.rs \
                     test/compile-fail/bad-recv.rs \
                     test/compile-fail/bad-send.rs \
                     test/compile-fail/infinite-vec-type-recursion.rs \
@@ -477,6 +479,8 @@ TEST_XFAILS_RUSTC := $(filter-out \
                       $(addprefix test/compile-fail/, \
                         arg-count-mismatch.rs \
                         arg-type-mismatch.rs \
+                        import.rs \
+                        import2.rs \
                         while-type-error.rs \
                         ), \
                       $(wildcard test/*/*.rs test/*/*.rc))
