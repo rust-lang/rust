@@ -20,8 +20,9 @@ fn new_stdio_reader(str path) -> stdio_reader {
             os.libc.fclose(f);
         }
     }
-    ret stdio_FILE_reader(os.libc.fopen(_str.buf(path),
-                                        _str.buf("r")));
+    auto FILE = os.libc.fopen(_str.buf(path), _str.buf("r"));
+    check (FILE as uint != 0u);
+    ret stdio_FILE_reader(FILE);
 }
 
 
