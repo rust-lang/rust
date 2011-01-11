@@ -1,5 +1,6 @@
 import std._io;
 import std._vec;
+import std._str;
 import std.option;
 import std.option.some;
 import std.option.none;
@@ -113,6 +114,18 @@ impure fn parse_ident(parser p) -> ast.ident {
         }
     }
 }
+
+
+impure fn parse_str_lit(parser p) -> ast.ident {
+    alt (p.peek()) {
+        case (token.LIT_STR(?s)) { p.bump(); ret s; }
+        case (_) {
+            p.err("expecting string literal");
+            fail;
+        }
+    }
+}
+
 
 impure fn parse_ty_fn(parser p, ast.span lo) -> ast.ty_ {
     impure fn parse_fn_input_ty(parser p) -> rec(ast.mode mode, @ast.ty ty) {
@@ -1405,6 +1418,34 @@ impure fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
     ret @spanned(lo, meths.span, item);
 }
 
+fn index_mod_item(@ast.item item, ast.mod_index index, uint u) {
+    alt (item.node) {
+        case (ast.item_const(?id, _, _, _, _)) {
+            index.insert(id, ast.mie_item(u));
+        }
+        case (ast.item_fn(?id, _, _, _, _)) {
+            index.insert(id, ast.mie_item(u));
+        }
+        case (ast.item_mod(?id, _, _)) {
+            index.insert(id, ast.mie_item(u));
+        }
+        case (ast.item_ty(?id, _, _, _, _)) {
+            index.insert(id, ast.mie_item(u));
+        }
+        case (ast.item_tag(?id, ?variants, _, _)) {
+            index.insert(id, ast.mie_item(u));
+            let uint variant_idx = 0u;
+            for (ast.variant v in variants) {
+                index.insert(v.name, ast.mie_tag_variant(u, variant_idx));
+                variant_idx += 1u;
+            }
+        }
+        case (ast.item_obj(?id, _, _, _, _)) {
+            index.insert(id, ast.mie_item(u));
+        }
+    }
+}
+
 impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
     auto index = new_str_hash[ast.mod_index_entry]();
     auto view_items = parse_view(p, index);
@@ -1413,38 +1454,11 @@ impure fn parse_mod_items(parser p, token.token term) -> ast._mod {
     while (p.peek() != term) {
         auto item = parse_item(p);
         items += vec(item);
-
-        // Index the item.
-        alt (item.node) {
-            case (ast.item_const(?id, _, _, _, _)) {
-                index.insert(id, ast.mie_item(u));
-            }
-            case (ast.item_fn(?id, _, _, _, _)) {
-                index.insert(id, ast.mie_item(u));
-            }
-            case (ast.item_mod(?id, _, _)) {
-                index.insert(id, ast.mie_item(u));
-            }
-            case (ast.item_ty(?id, _, _, _, _)) {
-                index.insert(id, ast.mie_item(u));
-            }
-            case (ast.item_tag(?id, ?variants, _, _)) {
-                index.insert(id, ast.mie_item(u));
-                let uint variant_idx = 0u;
-                for (ast.variant v in variants) {
-                    index.insert(v.name, ast.mie_tag_variant(u, variant_idx));
-                    variant_idx += 1u;
-                }
-            }
-            case (ast.item_obj(?id, _, _, _, _)) {
-                index.insert(id, ast.mie_item(u));
-            }
-        }
-
+        index_mod_item(item, index, u);
         u += 1u;
     }
     ret rec(view_items=view_items, items=items, index=index);
- }
+}
 
 impure fn parse_item_const(parser p) -> @ast.item {
     auto lo = p.get_span();
@@ -1765,19 +1779,111 @@ impure fn parse_view(parser p, ast.mod_index index) -> vec[@ast.view_item] {
     ret items;
 }
 
-impure fn parse_crate_from_crate_file(parser p) -> @ast.crate {
-    auto lo = p.get_span();
-    auto hi = lo;
-    auto m = parse_mod_items(p, token.EOF);
-    ret @spanned(lo, hi, rec(module=m));
-}
-
 impure fn parse_crate_from_source_file(parser p) -> @ast.crate {
     auto lo = p.get_span();
     auto hi = lo;
     auto m = parse_mod_items(p, token.EOF);
     ret @spanned(lo, hi, rec(module=m));
 }
+
+// Logic for parsing crate files (.rc)
+//
+// Each crate file is a sequence of directives.
+//
+// Each directive imperatively extends its environment with 0 or more items.
+
+impure fn parse_crate_directive(str prefix, parser p,
+                                &mutable vec[@ast.item] items,
+                                hashmap[ast.ident,ast.mod_index_entry] index)
+{
+    auto lo = p.get_span();
+    auto hi = lo;
+    alt (p.peek()) {
+        case (token.CONST) {
+            auto c = parse_item_const(p);
+            index_mod_item(c, index, _vec.len[@ast.item](items));
+            append[@ast.item](items, c);
+         }
+        case (token.MOD) {
+            p.bump();
+            auto id = parse_ident(p);
+            auto file_path = id;
+            alt (p.peek()) {
+                case (token.EQ) {
+                    p.bump();
+                    // FIXME: turn this into parse+eval expr
+                    file_path = parse_str_lit(p);
+                }
+                case (_) {}
+            }
+
+            // dir-qualify file path.
+            auto full_path = prefix + std.os.path_sep() + file_path;
+
+            alt (p.peek()) {
+
+                // mod x = "foo.rs";
+
+                case (token.SEMI) {
+                    hi = p.get_span();
+                    p.bump();
+                    if (!_str.ends_with(full_path, ".rs")) {
+                        full_path += ".rs";
+                    }
+                    auto p0 = new_parser(p.get_session(), 0, full_path);
+                    auto m0 = parse_mod_items(p0, token.EOF);
+                    auto im = ast.item_mod(id, m0, p.next_def_id());
+                    auto i = @spanned(lo, hi, im);
+                    index_mod_item(i, index, _vec.len[@ast.item](items));
+                    append[@ast.item](items, i);
+                }
+
+                // mod x = "foo_dir" { ...directives... }
+
+                case (token.LBRACE) {
+                    p.bump();
+                    auto m0 = parse_crate_directives(full_path, p,
+                                                     token.RBRACE);
+                    hi = p.get_span();
+                    expect(p, token.RBRACE);
+                    auto im = ast.item_mod(id, m0, p.next_def_id());
+                    auto i = @spanned(lo, hi, im);
+                    index_mod_item(i, index, _vec.len[@ast.item](items));
+                    append[@ast.item](items, i);
+                }
+
+                case (?t) {
+                    unexpected(p, t);
+                }
+            }
+        }
+    }
+}
+
+impure fn parse_crate_directives(str prefix, parser p,
+                                 token.token term) -> ast._mod {
+    auto index = new_str_hash[ast.mod_index_entry]();
+    auto view_items = parse_view(p, index);
+
+    let vec[@ast.item] items = vec();
+
+    while (p.peek() != term) {
+        parse_crate_directive(prefix, p, items, index);
+    }
+
+    ret rec(view_items=view_items, items=items, index=index);
+}
+
+impure fn parse_crate_from_crate_file(parser p) -> @ast.crate {
+    auto lo = p.get_span();
+    auto hi = lo;
+    auto prefix = std.path.dirname(lo.filename);
+    auto m = parse_crate_directives(prefix, p, token.EOF);
+    hi = p.get_span();
+    expect(p, token.EOF);
+    ret @spanned(lo, hi, rec(module=m));
+}
+
 
 //
 // Local Variables:

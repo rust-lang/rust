@@ -1,0 +1,6 @@
+mod multi = "multi-src" {
+
+  mod foo; // implicitly = "foo.rs"
+
+  mod bar = "bar.rs";
+}
