@@ -1936,6 +1936,22 @@ let trans_visitor
   and get_drop_glue
       (ty:Ast.ty)
       : fixup =
+
+    (* obj and fn glue delegates to the body, so is always 'generic'. *)
+    let ty =
+      match ty with
+          Ast.TY_obj _ -> Ast.TY_obj (Ast.LAYER_value, Hashtbl.create 0)
+        | Ast.TY_fn _ ->
+            Ast.TY_fn ({ Ast.sig_input_slots = [| |];
+                         Ast.sig_input_constrs = [| |];
+                         Ast.sig_output_slot =
+                           { Ast.slot_mode = Ast.MODE_local;
+                             Ast.slot_ty = Some Ast.TY_nil }; },
+                       { Ast.fn_is_iter = false;
+                         Ast.fn_effect = Ast.EFF_pure })
+        | _ -> ty
+    in
+
     let g = GLUE_drop ty in
     let inner _ (args:Il.cell) =
       let ty_params = deref (get_element_ptr args 0) in
