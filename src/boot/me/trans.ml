@@ -1926,22 +1926,7 @@ let trans_visitor
   and get_drop_glue
       (ty:Ast.ty)
       : fixup =
-
-    (* obj and fn glue delegates to the body, so is always 'generic'. *)
-    let ty =
-      match ty with
-          Ast.TY_obj _ -> Ast.TY_obj (Ast.LAYER_value, Hashtbl.create 0)
-        | Ast.TY_fn _ ->
-            Ast.TY_fn ({ Ast.sig_input_slots = [| |];
-                         Ast.sig_input_constrs = [| |];
-                         Ast.sig_output_slot =
-                           { Ast.slot_mode = Ast.MODE_local;
-                             Ast.slot_ty = Some Ast.TY_nil }; },
-                       { Ast.fn_is_iter = false;
-                         Ast.fn_effect = Ast.EFF_pure })
-        | _ -> ty
-    in
-
+    let ty = get_genericized_ty ty in
     let g = GLUE_drop ty in
     let inner _ (args:Il.cell) =
       let ty_params = deref (get_element_ptr args 0) in
@@ -1960,6 +1945,7 @@ let trans_visitor
       (ty:Ast.ty)
       (is_gc:bool)
       : fixup =
+    let ty = get_genericized_ty ty in
     let g = GLUE_free ty in
     let inner _ (args:Il.cell) =
       (* Free-glue assumes it's called with a pointer to a box allocation with
@@ -1978,6 +1964,7 @@ let trans_visitor
   and get_sever_glue
       (ty:Ast.ty)
       : fixup =
+    let ty = get_genericized_ty ty in
     let g = GLUE_sever ty in
     let inner _ (args:Il.cell) =
       let ty_params = deref (get_element_ptr args 0) in
@@ -1994,6 +1981,7 @@ let trans_visitor
   and get_mark_glue
       (ty:Ast.ty)
       : fixup =
+    let ty = get_genericized_ty ty in
     let g = GLUE_mark ty in
     let inner _ (args:Il.cell) =
       let ty_params = deref (get_element_ptr args 0) in
@@ -2010,6 +1998,7 @@ let trans_visitor
   and get_clone_glue
       (ty:Ast.ty)
       : fixup =
+    let ty = get_genericized_ty ty in
     let g = GLUE_clone ty in
     let inner (out_ptr:Il.cell) (args:Il.cell) =
       let dst = deref out_ptr in
@@ -2034,6 +2023,7 @@ let trans_visitor
   and get_copy_glue
       (ty:Ast.ty)
       : fixup =
+    let ty = get_genericized_ty ty in
     let arg_ty_params_alias = 0 in
     let arg_src_alias = 1 in
     let arg_initflag = 2 in
@@ -2068,6 +2058,7 @@ let trans_visitor
       get_typed_mem_glue g fty inner
 
   and get_cmp_glue ty =
+    let ty = get_genericized_ty ty in
     let arg_ty_params_alias = 0 in
     let arg_lhs_alias = 1 in
     let arg_rhs_alias = 2 in

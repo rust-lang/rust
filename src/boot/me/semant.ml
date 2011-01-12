@@ -1146,6 +1146,37 @@ let get_nth_tag_tup
 ;;
 
 
+let generic_obj_ty =
+  Ast.TY_obj (Ast.LAYER_value, Hashtbl.create 0)
+;;
+
+let generic_fn_ty =
+  Ast.TY_fn ({ Ast.sig_input_slots = [| |];
+               Ast.sig_input_constrs = [| |];
+               Ast.sig_output_slot =
+                 { Ast.slot_mode = Ast.MODE_local;
+                   Ast.slot_ty = Some Ast.TY_nil }; },
+             { Ast.fn_is_iter = false;
+               Ast.fn_effect = Ast.EFF_pure })
+;;
+
+let rec get_genericized_ty ty =
+  (* Using a full-and-honest fold here is too slow, sadly. *)
+  let sub = get_genericized_ty in
+    match ty with
+        Ast.TY_obj _ -> generic_obj_ty
+      | Ast.TY_fn _ -> generic_fn_ty
+      | Ast.TY_vec t -> Ast.TY_vec (sub t)
+      | Ast.TY_tup tys -> Ast.TY_tup (Array.map sub tys)
+      | Ast.TY_rec elts ->
+          Ast.TY_rec (Array.map (fun (id, t) -> (id, sub t)) elts)
+      | Ast.TY_box t ->
+          Ast.TY_box (sub t)
+      | Ast.TY_mutable t ->
+          Ast.TY_mutable (sub t)
+      | _ -> ty
+;;
+
 
 let associative_binary_op_ty_fold
     (default:'a)
