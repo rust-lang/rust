@@ -316,7 +316,7 @@ fn fold_view_item_import(&env e, &span sp,
     // Produce errors for invalid imports
     auto len = _vec.len[ast.ident](is);
     auto last_id = is.(len - 1u);
-    auto d = lookup_name(e, none[import_map], last_id);
+    auto d = find_final_def(e, sp, is);
     alt (d) {
         case (none[def_wrap]) {
             e.sess.span_err(sp, "unresolved name: " + last_id);
