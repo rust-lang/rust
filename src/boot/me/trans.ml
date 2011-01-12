@@ -285,17 +285,7 @@ let trans_visitor
     string_of_name (path_to_name cx.ctxt_curr_path)
   in
 
-  let should_inline_structure_helpers t =
-    let n = 3 in
-      match t with
-          Ast.TY_tag ttag ->
-            get_n_tag_tups cx ttag < n
-        | Ast.TY_rec elts ->
-            Array.length elts < n
-        | Ast.TY_tup elts ->
-            Array.length elts < n
-        | _ -> false
-  in
+  let should_inline_structure_helpers _ = false in
 
   let based (reg:Il.reg) : Il.mem =
     Il.RegIn (reg, None)
