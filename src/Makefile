@@ -404,6 +404,7 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/run-fail/task-comm-14.rs \
                     test/compile-fail/import.rs \
                     test/compile-fail/import2.rs \
+                    test/compile-fail/import3.rs \
                     test/compile-fail/bad-recv.rs \
                     test/compile-fail/bad-send.rs \
                     test/compile-fail/infinite-vec-type-recursion.rs \

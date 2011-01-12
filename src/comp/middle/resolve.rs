@@ -90,6 +90,12 @@ fn find_final_def(&env e, &span sp, vec[ident] idents) -> option.t[def_wrap] {
                     auto new_e = update_env_for_item(tmp_e, i);
                     ret find_final_def(new_e, sp, new_idents);
                 }
+                case (def_wrap_use(?c)) {
+                    e.sess.span_err(sp, "Crate access is not implemented");
+                }
+                case (_) {
+                    e.sess.span_err(sp, first + " is not a module or crate");
+                }
             }
         }
     }
