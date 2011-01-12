@@ -12,6 +12,7 @@ import front.ast;
 import front.ast.mutability;
 import util.common;
 import util.common.append;
+import util.common.new_def_hash;
 import util.common.span;
 
 // Data types
@@ -1192,5 +1193,48 @@ fn type_err_to_str(&ty.type_err err) -> str {
                 "'";
         }
     }
+}
+
+// Type parameter resolution, used in translation
+
+fn resolve_ty_params(@ast.item item, @t monoty) -> vec[@t] {
+    obj resolve_ty_params_handler(@hashmap[ast.def_id,@t] bindings) {
+        fn resolve_local(ast.def_id id) -> @t { log "resolve local"; fail; }
+        fn record_local(ast.def_id id, @t ty) { log "record local"; fail; }
+        fn unify_expected_param(ast.def_id id, @t expected, @t actual)
+                -> unify_result {
+            bindings.insert(id, actual);
+            ret ures_ok(actual);
+        }
+        fn unify_actual_param(ast.def_id id, @t expected, @t actual)
+                -> unify_result {
+            bindings.insert(id, expected);
+            ret ures_ok(expected);
+        }
+    }
+
+    auto ty_params_and_polyty = item_ty(item);
+
+    auto bindings = @new_def_hash[@t]();
+    auto handler = resolve_ty_params_handler(bindings);
+
+    auto unify_res = unify(ty_params_and_polyty._1, monoty, handler);
+    alt (unify_res) {
+        case (ures_ok(_))       { /* fall through */ }
+        case (ures_err(_,?exp,?act))  {
+            log "resolve_ty_params mismatch: " + ty_to_str(exp) + " " +
+                ty_to_str(act);
+            fail;
+        }
+    }
+
+    let vec[@t] result_tys = vec();
+    auto ty_param_ids = ty_params_and_polyty._0;
+    for (ast.def_id tp in ty_param_ids) {
+        check (bindings.contains_key(tp));
+        result_tys += vec(bindings.get(tp));
+    }
+
+    ret result_tys;
 }
 

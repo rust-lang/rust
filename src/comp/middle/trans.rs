@@ -1772,8 +1772,8 @@ fn lval_val(@block_ctxt cx, ValueRef val) -> lval_result {
             llobj=none[ValueRef]);
 }
 
-fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt)
-    -> lval_result {
+fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt,
+        &ast.ann ann) -> lval_result {
     alt (dopt) {
         case (some[ast.def](?def)) {
             alt (def) {
@@ -1795,6 +1795,15 @@ fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt)
                 }
                 case (ast.def_fn(?did)) {
                     check (cx.fcx.ccx.fn_pairs.contains_key(did));
+                    check (cx.fcx.ccx.item_ids.contains_key(did));
+
+                    auto fn_item = cx.fcx.ccx.items.get(did);
+                    auto monoty = node_ann_type(cx.fcx.ccx, ann);
+                    auto tys = ty.resolve_ty_params(fn_item, monoty);
+
+                    // TODO: build a closure with the type parameters that
+                    // result
+
                     ret lval_val(cx, cx.fcx.ccx.fn_pairs.get(did));
                 }
                 case (ast.def_obj(?did)) {
@@ -1897,8 +1906,8 @@ impure fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
 
 impure fn trans_lval(@block_ctxt cx, @ast.expr e) -> lval_result {
     alt (e.node) {
-        case (ast.expr_name(?n, ?dopt, _)) {
-            ret trans_name(cx, n, dopt);
+        case (ast.expr_name(?n, ?dopt, ?ann)) {
+            ret trans_name(cx, n, dopt, ann);
         }
         case (ast.expr_field(?base, ?ident, ?ann)) {
             ret trans_field(cx, e.span, base, ident, ann);
