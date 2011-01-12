@@ -642,8 +642,9 @@ let lval_base_resolving_visitor
       (fun _ -> log cx "looking up slot or item with ident '%s'" ident);
     match lookup cx (!scopes) (Ast.KEY_ident ident) with
         RES_failed _ -> err (Some id) "unresolved identifier '%s'" ident
-      | RES_ok (_, id) -> ((iflog cx (fun _ -> log cx "resolved to node id #%d"
-                                        (int_of_node id))); id)
+      | RES_ok (_, id) ->
+          ((iflog cx (fun _ -> log cx "resolved to node id #%d"
+                        (int_of_node id))); id)
   in
   let lookup_slot_by_temp id temp =
     iflog cx (fun _ -> log cx "looking up temp slot #%d" (int_of_temp temp));
