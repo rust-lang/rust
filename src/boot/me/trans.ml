@@ -1344,8 +1344,10 @@ let trans_visitor
           let is_stateful =
             if (force_stateful || type_has_state cx t) then 1L else 0L
           in
-          log cx "tydesc for %a has sz=%Ld, align=%Ld, is_stateful=%Ld"
-            Ast.sprintf_ty t sz align is_stateful;
+            iflog
+              (fun _ ->
+                 log cx "tydesc for %a has sz=%Ld, align=%Ld, is_stateful=%Ld"
+                   Ast.sprintf_ty t sz align is_stateful);
             Asm.DEF
               (tydesc_fixup,
                Asm.SEQ
@@ -5955,7 +5957,7 @@ let trans_visitor
     let (header_tup, oid, i) = tag in
     let tinfo = Hashtbl.find cx.ctxt_all_tag_info oid in
     let (n, _, _) = Hashtbl.find tinfo.tag_nums i in
-    let _ = log cx "tag variant: %s -> tag value #%d" n i in
+    let _ = iflog (fun _ -> log cx "tag variant: %s -> tag value #%d" n i) in
     let (dst_cell, dst_slot) = get_current_output_cell_and_slot() in
     let dst_cell = deref_slot true dst_cell dst_slot in
     let tag_cell = get_element_ptr dst_cell Abi.tag_elt_discriminant in
