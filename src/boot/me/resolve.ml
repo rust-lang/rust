@@ -429,10 +429,13 @@ let type_resolving_visitor
   let visit_slot_identified_pre slot =
     let slot = resolve_slot_identified slot in
       htab_put cx.ctxt_all_defns slot.id (DEFN_slot slot.node);
-      log cx "collected resolved slot #%d with type %s" (int_of_node slot.id)
-        (match slot.node.Ast.slot_ty with
-             None -> "??"
-           | Some t -> (Fmt.fmt_to_str Ast.fmt_ty t));
+      iflog cx
+        (fun _ ->
+           log cx "collected resolved slot #%d with type %s"
+             (int_of_node slot.id)
+             (match slot.node.Ast.slot_ty with
+                  None -> "??"
+                | Some t -> (Fmt.fmt_to_str Ast.fmt_ty t)));
       inner.Walk.visit_slot_identified_pre slot
   in
 
@@ -440,7 +443,9 @@ let type_resolving_visitor
     let resolve_and_store_type _ =
       let t = ty_of_mod_item item in
       let ty = resolve_ty ~loc:item.id t in
-        log cx "resolved item %s, type as %a" id Ast.sprintf_ty ty;
+        iflog cx
+          (fun _ ->
+             log cx "resolved item %s, type as %a" id Ast.sprintf_ty ty);
         htab_put cx.ctxt_all_item_types item.id ty;
     in
     begin
@@ -448,8 +453,10 @@ let type_resolving_visitor
         match item.node.Ast.decl_item with
             Ast.MOD_ITEM_type (_, ty) ->
               let ty = resolve_ty ~loc:item.id ty in
-                log cx "resolved item %s, defining type %a"
-                  id Ast.sprintf_ty ty;
+                iflog cx
+                  (fun _ ->
+                     log cx "resolved item %s, defining type %a"
+                       id Ast.sprintf_ty ty);
                 htab_put cx.ctxt_all_type_items item.id ty;
                 htab_put cx.ctxt_all_item_types item.id Ast.TY_type;
                 if Hashtbl.mem cx.ctxt_all_item_names item.id then
@@ -492,7 +499,9 @@ let type_resolving_visitor
 
   let visit_obj_fn_pre obj ident fn =
     let fty = resolve_ty ~loc:fn.id (Ast.TY_fn (ty_fn_of_fn fn.node)) in
-      log cx "resolved obj fn %s as %a" ident Ast.sprintf_ty fty;
+      iflog cx
+        (fun _ ->
+           log cx "resolved obj fn %s as %a" ident Ast.sprintf_ty fty);
       htab_put cx.ctxt_all_item_types fn.id fty;
       inner.Walk.visit_obj_fn_pre obj ident fn
   in
@@ -629,20 +638,23 @@ let lval_base_resolving_visitor
     (inner:Walk.visitor)
     : Walk.visitor =
   let lookup_defn_by_ident id ident =
-    log cx "looking up slot or item with ident '%s'" ident;
+    iflog cx
+      (fun _ -> log cx "looking up slot or item with ident '%s'" ident);
     match lookup cx (!scopes) (Ast.KEY_ident ident) with
         RES_failed _ -> err (Some id) "unresolved identifier '%s'" ident
-      | RES_ok (_, id) -> (log cx "resolved to node id #%d"
-                           (int_of_node id); id)
+      | RES_ok (_, id) -> ((iflog cx (fun _ -> log cx "resolved to node id #%d"
+                                        (int_of_node id))); id)
   in
   let lookup_slot_by_temp id temp =
-    log cx "looking up temp slot #%d" (int_of_temp temp);
+    iflog cx (fun _ -> log cx "looking up temp slot #%d" (int_of_temp temp));
     let res = lookup cx (!scopes) (Ast.KEY_temp temp) in
       match res with
           RES_failed _ -> err
             (Some id) "unresolved temp node #%d" (int_of_temp temp)
         | RES_ok (_, id) ->
-            (log cx "resolved to node id #%d" (int_of_node id); id)
+            (iflog cx
+               (fun _ -> log cx "resolved to node id #%d" (int_of_node id));
+             id)
   in
   let lookup_defn_by_name_base id nb =
     match nb with

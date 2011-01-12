@@ -2925,8 +2925,9 @@ let trans_visitor
     let (dst_cell, dst_ty) =
       deref_ty DEREF_one_box true dst_cell dst_ty
     in
-    let _ = log cx "init_box: dst ty %a, src ty %a"
-      Ast.sprintf_ty dst_ty Ast.sprintf_ty src_ty
+    let _ =
+      iflog (fun _ -> log cx "init_box: dst ty %a, src ty %a"
+               Ast.sprintf_ty dst_ty Ast.sprintf_ty src_ty)
     in
     let _ = assert (dst_ty = src_ty) in
       trans_copy_ty (get_ty_params_of_current_frame()) true
@@ -2971,7 +2972,7 @@ let trans_visitor
       td
 
   and get_tydesc (idopt:node_id option) (ty:Ast.ty) : Il.cell =
-    log cx "getting tydesc for %a" Ast.sprintf_ty ty;
+    iflog (fun _ -> log cx "getting tydesc for %a" Ast.sprintf_ty ty);
     let (ty', mut) = simplified_ty_innermost_was_mutable ty in
     match ty' with
         Ast.TY_param (idx, _) ->
@@ -4402,8 +4403,8 @@ let trans_visitor
       (arg_slot:Ast.slot)
       (arg:Ast.atom)
       : unit =
-    log cx "trans_argN: arg slot %a, arg atom %a"
-      Ast.sprintf_slot arg_slot Ast.sprintf_atom arg;
+    iflog (fun _ -> log cx "trans_argN: arg slot %a, arg atom %a"
+             Ast.sprintf_slot arg_slot Ast.sprintf_atom arg);
     trans_init_slot_from_atom clone arg_cell arg_slot arg
 
   and code_of_cell (cell:Il.cell) : Il.code =
