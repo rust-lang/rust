@@ -483,6 +483,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         arg-type-mismatch.rs \
                         import.rs \
                         import2.rs \
+                        import3.rs \
                         while-type-error.rs \
                         ), \
                       $(wildcard test/*/*.rs test/*/*.rc))
