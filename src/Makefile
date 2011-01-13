@@ -445,6 +445,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         import2.rs \
                         import3.rs \
                         import4.rs \
+                        import5.rs \
                         item-name-overload.rs \
                         large-records.rs \
                         lazy-init.rs \
@@ -483,6 +484,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         arg-type-mismatch.rs \
                         import.rs \
                         import2.rs \
+                        import3.rs \
                         while-type-error.rs \
                         ), \
                       $(wildcard test/*/*.rs test/*/*.rc))
