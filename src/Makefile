@@ -405,6 +405,7 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/compile-fail/import.rs \
                     test/compile-fail/import2.rs \
                     test/compile-fail/import3.rs \
+                    test/compile-fail/import4.rs \
                     test/compile-fail/bad-recv.rs \
                     test/compile-fail/bad-send.rs \
                     test/compile-fail/infinite-vec-type-recursion.rs \
@@ -485,6 +486,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         import.rs \
                         import2.rs \
                         import3.rs \
+                        import4.rs \
                         while-type-error.rs \
                         ), \
                       $(wildcard test/*/*.rs test/*/*.rc))
