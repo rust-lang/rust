@@ -311,6 +311,7 @@ fn type_of(@crate_ctxt cx, @ty.t t) -> TypeRef {
     ret llty;
 }
 
+// NB: this function must match the ABI assumptions of trans_args exactly.
 fn type_of_fn_full(@crate_ctxt cx,
                    option.t[TypeRef] obj_self,
                    vec[ty.arg] inputs,
@@ -1758,17 +1759,20 @@ impure fn trans_alt(@block_ctxt cx, @ast.expr expr, vec[ast.arm] arms)
 
 type lval_result = rec(result res,
                        bool is_mem,
+                       option.t[vec[ValueRef]] lltys,
                        option.t[ValueRef] llobj);
 
 fn lval_mem(@block_ctxt cx, ValueRef val) -> lval_result {
     ret rec(res=res(cx, val),
             is_mem=true,
+            lltys=none[vec[ValueRef]],
             llobj=none[ValueRef]);
 }
 
 fn lval_val(@block_ctxt cx, ValueRef val) -> lval_result {
     ret rec(res=res(cx, val),
             is_mem=false,
+            lltys=none[vec[ValueRef]],
             llobj=none[ValueRef]);
 }
 
@@ -1800,11 +1804,19 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     auto fn_item = cx.fcx.ccx.items.get(did);
                     auto monoty = node_ann_type(cx.fcx.ccx, ann);
                     auto tys = ty.resolve_ty_params(fn_item, monoty);
+                    auto vt = none[vec[ValueRef]];
 
-                    // TODO: build a closure with the type parameters that
-                    // result
+                    if (_vec.len[@ty.t](tys) != 0u) {
+                        let vec[ValueRef] tydescs = vec();
+                        for (@ty.t t in tys) {
+                            append[ValueRef](tydescs,
+                                             get_tydesc(cx, t));
+                        }
+                        vt = some[vec[ValueRef]](tydescs);
+                    }
 
-                    ret lval_val(cx, cx.fcx.ccx.fn_pairs.get(did));
+                    auto lv = lval_val(cx, cx.fcx.ccx.fn_pairs.get(did));
+                    ret rec(lltys = vt with lv);
                 }
                 case (ast.def_obj(?did)) {
                     check (cx.fcx.ccx.fn_pairs.contains_key(did));
@@ -1952,9 +1964,13 @@ impure fn trans_cast(@block_ctxt cx, @ast.expr e, &ast.ann ann) -> result {
 }
 
 
-impure fn trans_args(@block_ctxt cx, ValueRef llclosure,
+// NB: this function must match the ABI assumptions of type_of_fn_full exactly.
+impure fn trans_args(@block_ctxt cx,
+                     ValueRef llclosure,
                      option.t[ValueRef] llobj,
-                     &vec[@ast.expr] es, @ty.t fn_ty)
+                     option.t[vec[ValueRef]] lltydescs,
+                     &vec[@ast.expr] es,
+                     @ty.t fn_ty)
     -> tup(@block_ctxt, vec[ValueRef]) {
     let vec[ValueRef] vs = vec(cx.fcx.lltaskptr);
     let @block_ctxt bcx = cx;
@@ -1963,6 +1979,15 @@ impure fn trans_args(@block_ctxt cx, ValueRef llclosure,
     alt (fn_ty.struct) {
         case (ty.ty_fn(?a, _)) { args = a; }
         case (_) { fail; }
+    }
+
+    alt (lltydescs) {
+        case (some[vec[ValueRef]](?tys)) {
+            for (ValueRef t in tys) {
+                vs += t;
+            }
+        }
+        case (_) { }
     }
 
     alt (llobj) {
@@ -2250,7 +2275,9 @@ impure fn trans_call(@block_ctxt cx, @ast.expr f,
     }
     auto fn_ty = ty.expr_ty(f);
     auto ret_ty = ty.ann_to_type(ann);
-    auto args_res = trans_args(f_res.res.bcx, llclosure, f_res.llobj,
+    auto args_res = trans_args(f_res.res.bcx,
+                               llclosure, f_res.llobj,
+                               f_res.lltys,
                                args, fn_ty);
 
     auto real_retval = args_res._0.build.FastCall(faddr, args_res._1);
