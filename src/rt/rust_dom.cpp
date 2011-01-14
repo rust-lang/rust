@@ -57,7 +57,7 @@ rust_dom::activate(rust_task *task) {
 
 void
 rust_dom::log(rust_task *task, uint32_t type_bits, char const *fmt, ...) {
-    char buf[256];
+    char buf[BUF_BYTES];
     if (_log.is_tracing(type_bits)) {
         va_list args;
         va_start(args, fmt);
@@ -69,7 +69,7 @@ rust_dom::log(rust_task *task, uint32_t type_bits, char const *fmt, ...) {
 
 void
 rust_dom::log(uint32_t type_bits, char const *fmt, ...) {
-    char buf[256];
+    char buf[BUF_BYTES];
     if (_log.is_tracing(type_bits)) {
         va_list args;
         va_start(args, fmt);

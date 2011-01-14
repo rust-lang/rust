@@ -88,6 +88,10 @@ static size_t const TIME_SLICE_IN_MS = 10;
 
 static intptr_t const CONST_REFCOUNT = 0x7badface;
 
+// This accounts for logging buffers.
+
+static size_t const BUF_BYTES = 1024;
+
 // Every reference counted object should derive from this base class.
 
 template <typename T> struct rc_base {

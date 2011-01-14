@@ -22,14 +22,14 @@ last_os_error(rust_task *task) {
         return NULL;
     }
 #elif defined(_GNU_SOURCE)
-    char cbuf[1024];
+    char cbuf[BUF_BYTES];
     char *buf = strerror_r(errno, cbuf, sizeof(cbuf));
     if (!buf) {
         task->fail(1);
         return NULL;
     }
 #else
-    char buf[1024];
+    char buf[BUF_BYTES];
     int err = strerror_r(errno, buf, sizeof(buf));
     if (err) {
         task->fail(1);

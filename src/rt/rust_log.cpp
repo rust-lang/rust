@@ -136,7 +136,7 @@ append_string(char *buffer, rust_log::ansi_color color,
 
 void
 rust_log::trace_ln(uint32_t thread_id, char *prefix, char *message) {
-    char buffer[1024] = "";
+    char buffer[BUF_BYTES] = "";
     _log_lock.lock();
     append_string(buffer, "%-34s", prefix);
     for (uint32_t i = 0; i < _indent; i++) {
@@ -158,7 +158,7 @@ rust_log::trace_ln(rust_task *task, char *message) {
 #else
     uint32_t thread_id = hash((uint32_t) pthread_self());
 #endif
-    char prefix[1024] = "";
+    char prefix[BUF_BYTES] = "";
     if (_dom && _dom->name) {
         append_string(prefix, "%04" PRIxPTR ":%.10s:",
                       thread_id, _dom->name);

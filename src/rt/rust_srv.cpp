@@ -12,7 +12,7 @@ rust_srv::rust_srv() :
 }
 
 rust_srv::~rust_srv() {
-//    char msg[1024];
+//    char msg[BUF_BYTES];
 //    snprintf(msg, sizeof(msg), "~rust_srv %" PRIxPTR, (uintptr_t) this);
 //    log(msg);
 }
@@ -43,13 +43,13 @@ rust_srv::fatal(const char *expression,
     size_t line,
     const char *format,
     ...) {
-    char buf[1024];
+    char buf[BUF_BYTES];
     va_list args;
     va_start(args, format);
     vsnprintf(buf, sizeof(buf), format, args);
     va_end(args);
 
-    char msg[1024];
+    char msg[BUF_BYTES];
     snprintf(msg, sizeof(msg),
              "fatal, '%s' failed, %s:%d %s",
              expression, file, (int)line, buf);
@@ -63,13 +63,13 @@ rust_srv::warning(char const *expression,
     size_t line,
     const char *format,
     ...) {
-    char buf[1024];
+    char buf[BUF_BYTES];
     va_list args;
     va_start(args, format);
     vsnprintf(buf, sizeof(buf), format, args);
     va_end(args);
 
-    char msg[1024];
+    char msg[BUF_BYTES];
     snprintf(msg, sizeof(msg),
              "warning: '%s', at: %s:%d %s",
              expression, file, (int)line, buf);
