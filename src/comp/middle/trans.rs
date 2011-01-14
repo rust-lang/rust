@@ -1757,22 +1757,25 @@ impure fn trans_alt(@block_ctxt cx, @ast.expr expr, vec[ast.arm] arms)
     ret res(last_cx, C_nil());
 }
 
+type generic_info = rec(@ty.t monotype,
+                        vec[ValueRef] tydescs);
+
 type lval_result = rec(result res,
                        bool is_mem,
-                       option.t[vec[ValueRef]] lltys,
+                       option.t[generic_info] generic,
                        option.t[ValueRef] llobj);
 
 fn lval_mem(@block_ctxt cx, ValueRef val) -> lval_result {
     ret rec(res=res(cx, val),
             is_mem=true,
-            lltys=none[vec[ValueRef]],
+            generic=none[generic_info],
             llobj=none[ValueRef]);
 }
 
 fn lval_val(@block_ctxt cx, ValueRef val) -> lval_result {
     ret rec(res=res(cx, val),
             is_mem=false,
-            lltys=none[vec[ValueRef]],
+            generic=none[generic_info],
             llobj=none[ValueRef]);
 }
 
@@ -1802,9 +1805,9 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     check (cx.fcx.ccx.item_ids.contains_key(did));
 
                     auto fn_item = cx.fcx.ccx.items.get(did);
+                    auto lv = lval_val(cx, cx.fcx.ccx.fn_pairs.get(did));
                     auto monoty = node_ann_type(cx.fcx.ccx, ann);
                     auto tys = ty.resolve_ty_params(fn_item, monoty);
-                    auto vt = none[vec[ValueRef]];
 
                     if (_vec.len[@ty.t](tys) != 0u) {
                         let vec[ValueRef] tydescs = vec();
@@ -1812,11 +1815,13 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                             append[ValueRef](tydescs,
                                              get_tydesc(cx, t));
                         }
-                        vt = some[vec[ValueRef]](tydescs);
+                        auto gen = rec( monotype = monoty,
+                                        tydescs = tydescs );
+                        lv = rec(generic = some[generic_info](gen)
+                                 with lv);
                     }
 
-                    auto lv = lval_val(cx, cx.fcx.ccx.fn_pairs.get(did));
-                    ret rec(lltys = vt with lv);
+                    ret lv;
                 }
                 case (ast.def_obj(?did)) {
                     check (cx.fcx.ccx.fn_pairs.contains_key(did));
@@ -1968,7 +1973,7 @@ impure fn trans_cast(@block_ctxt cx, @ast.expr e, &ast.ann ann) -> result {
 impure fn trans_args(@block_ctxt cx,
                      ValueRef llclosure,
                      option.t[ValueRef] llobj,
-                     option.t[vec[ValueRef]] lltydescs,
+                     option.t[generic_info] gen,
                      &vec[@ast.expr] es,
                      @ty.t fn_ty)
     -> tup(@block_ctxt, vec[ValueRef]) {
@@ -1981,9 +1986,9 @@ impure fn trans_args(@block_ctxt cx,
         case (_) { fail; }
     }
 
-    alt (lltydescs) {
-        case (some[vec[ValueRef]](?tys)) {
-            for (ValueRef t in tys) {
+    alt (gen) {
+        case (some[generic_info](?g)) {
+            for (ValueRef t in g.tydescs) {
                 vs += t;
             }
         }
@@ -2277,7 +2282,7 @@ impure fn trans_call(@block_ctxt cx, @ast.expr f,
     auto ret_ty = ty.ann_to_type(ann);
     auto args_res = trans_args(f_res.res.bcx,
                                llclosure, f_res.llobj,
-                               f_res.lltys,
+                               f_res.generic,
                                args, fn_ty);
 
     auto real_retval = args_res._0.build.FastCall(faddr, args_res._1);
