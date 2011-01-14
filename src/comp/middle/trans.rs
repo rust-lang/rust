@@ -311,7 +311,7 @@ fn type_of(@crate_ctxt cx, @ty.t t) -> TypeRef {
     ret llty;
 }
 
-// NB: this function must match the ABI assumptions of trans_args exactly.
+// NB: this function must match the ABI assumptions of trans_args.
 fn type_of_fn_full(@crate_ctxt cx,
                    option.t[TypeRef] obj_self,
                    vec[ty.arg] inputs,
@@ -1964,7 +1964,7 @@ impure fn trans_cast(@block_ctxt cx, @ast.expr e, &ast.ann ann) -> result {
 }
 
 
-// NB: this function must match the ABI assumptions of type_of_fn_full exactly.
+// NB: this function must match the ABI assumptions of type_of_fn_full.
 impure fn trans_args(@block_ctxt cx,
                      ValueRef llclosure,
                      option.t[ValueRef] llobj,
