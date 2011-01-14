@@ -146,20 +146,15 @@ fn ast_ty_to_str(&@ast.ty ty) -> str {
     ret s;
 }
 
-fn name_to_str(&ast.name nm) -> str {
-    auto result = nm.node.ident;
-    if (_vec.len[@ast.ty](nm.node.types) > 0u) {
+fn path_to_str(&ast.path pth) -> str {
+    auto result = _str.connect(pth.node.idents,  ".");
+    if (_vec.len[@ast.ty](pth.node.types) > 0u) {
         auto f = ast_ty_to_str;
         result += "[";
-        result += _str.connect(_vec.map[@ast.ty,str](f, nm.node.types), ",");
+        result += _str.connect(_vec.map[@ast.ty,str](f, pth.node.types), ",");
         result += "]";
     }
     ret result;
-}
-
-fn path_to_str(&ast.path path) -> str {
-    auto f = name_to_str;
-    ret _str.connect(_vec.map[ast.name,str](f, path), ".");
 }
 
 fn ty_to_str(&@t typ) -> str {
@@ -632,7 +627,7 @@ fn expr_ty(@ast.expr expr) -> @t {
                                               { ret ann_to_type(ann); }
         case (ast.expr_field(_, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_index(_, _, ?ann))     { ret ann_to_type(ann); }
-        case (ast.expr_name(_, _, ?ann))      { ret ann_to_type(ann); }
+        case (ast.expr_path(_, _, ?ann))      { ret ann_to_type(ann); }
     }
     fail;
 }
@@ -697,7 +692,7 @@ fn is_lval(@ast.expr expr) -> bool {
     alt (expr.node) {
         case (ast.expr_field(_,_,_))    { ret true;  }
         case (ast.expr_index(_,_,_))    { ret true;  }
-        case (ast.expr_name(_,_,_))     { ret true;  }
+        case (ast.expr_path(_,_,_))     { ret true;  }
         case (_)                        { ret false; }
     }
 }
@@ -1238,3 +1233,11 @@ fn resolve_ty_params(@ast.item item, @t monoty) -> vec[@t] {
     ret result_tys;
 }
 
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C ../.. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:

@@ -295,25 +295,63 @@ fn fold_pat_tag(&env e, &span sp, import_map index, ident i,
     ret @fold.respan[ast.pat_](sp, ast.pat_tag(i, args, new_def, a));
 }
 
-fn fold_expr_name(&env e, &span sp, import_map index,
-                  &ast.name n, &option.t[def] d, ann a) -> @ast.expr {
+// We received a path expression of the following form:
+//
+//     a.b.c.d
+//
+// Somewhere along this path there might be a split from a path-expr
+// to a runtime field-expr. For example:
+//
+//     'a' could be the name of a variable in the local scope
+//     and 'b.c.d' could be a field-sequence inside it.
+//
+// Or:
+//
+//     'a.b' could be a module path to a constant record, and 'c.d'
+//     could be a field within it.
+//
+// Our job here is to figure out what the prefix of 'a.b.c.d' is that
+// corresponds to a static binding-name (a module or slot, with no type info)
+// and split that off as the 'primary' expr_path, with secondary expr_field
+// expressions tacked on the end.
 
-    if (_vec.len[@ast.ty](n.node.types) > 0u) {
+fn fold_expr_path(&env e, &span sp, import_map index,
+                  &ast.path p, &option.t[def] d, ann a) -> @ast.expr {
+
+    if (_vec.len[@ast.ty](p.node.types) > 0u) {
         e.sess.unimpl("resolving name expr with ty params");
     }
 
-    auto d_ = unwrap_def(lookup_name(e, some(index), n.node.ident));
+    auto n_idents = _vec.len[ast.ident](p.node.idents);
+
+    check (n_idents != 0u);
+    auto id0 = p.node.idents.(0);
+
+    auto d_ = unwrap_def(lookup_name(e, some(index), id0));
 
     alt (d_) {
         case (some[def](_)) {
             // log "resolved name " + n.node.ident;
         }
         case (none[def]) {
-            e.sess.span_err(sp, "unresolved name: " + n.node.ident);
+            e.sess.span_err(sp, "unresolved name: " + id0);
         }
     }
 
-    ret @fold.respan[ast.expr_](sp, ast.expr_name(n, d_, a));
+    // FIXME: once espindola's modifications to lookup land, actually step
+    // through the path doing speculative lookup, and extend the maximal
+    // static prefix. For now we are always using the minimal prefix: first
+    // ident is static anchor, rest turn into fields.
+
+    auto p_ = rec(node=rec(idents = vec(id0) with p.node) with p);
+    auto ex = @fold.respan[ast.expr_](sp, ast.expr_path(p_, d_, a));
+    auto i = 1u;
+    while (i < n_idents) {
+        auto id = p.node.idents.(i);
+        ex = @fold.respan[ast.expr_](sp, ast.expr_field(ex, id, a));
+        i += 1u;
+    }
+    ret ex;
 }
 
 fn fold_view_item_import(&env e, &span sp,
@@ -339,26 +377,24 @@ fn fold_view_item_import(&env e, &span sp,
 fn fold_ty_path(&env e, &span sp, import_map index, ast.path p,
                 &option.t[def] d) -> @ast.ty {
 
-    let uint len = _vec.len[ast.name](p);
+    let uint len = _vec.len[ast.ident](p.node.idents);
     check (len != 0u);
     if (len > 1u) {
         e.sess.unimpl("resolving path ty with >1 component");
     }
 
-    let ast.name n = p.(0);
-
-    if (_vec.len[@ast.ty](n.node.types) > 0u) {
+    if (_vec.len[@ast.ty](p.node.types) > 0u) {
         e.sess.unimpl("resolving path ty with ty params");
     }
 
-    auto d_ = unwrap_def(lookup_name(e, some(index), n.node.ident));
+    auto d_ = unwrap_def(lookup_name(e, some(index), p.node.idents.(0)));
 
     alt (d_) {
-        case (some[def](_)) {
+        case (some[def](?d)) {
             // log "resolved name " + n.node.ident;
         }
         case (none[def]) {
-            e.sess.span_err(sp, "unresolved name: " + n.node.ident);
+            e.sess.span_err(sp, "unresolved name: " + p.node.idents.(0));
         }
     }
 
@@ -387,7 +423,7 @@ fn resolve_crate(session.session sess, @ast.crate crate) -> @ast.crate {
 
     auto import_index = new_def_hash[def_wrap]();
     fld = @rec( fold_pat_tag = bind fold_pat_tag(_,_,import_index,_,_,_,_),
-                fold_expr_name = bind fold_expr_name(_,_,import_index,_,_,_),
+                fold_expr_path = bind fold_expr_path(_,_,import_index,_,_,_),
                 fold_view_item_import
                     = bind fold_view_item_import(_,_,import_index,_,_),
                 fold_ty_path = bind fold_ty_path(_,_,import_index,_,_),

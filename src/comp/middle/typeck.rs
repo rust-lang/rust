@@ -753,9 +753,9 @@ fn demand_expr(&@fn_ctxt fcx, @ty.t expected, @ast.expr e) -> @ast.expr {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_index(base, index, ast.ann_type(t));
         }
-        case (ast.expr_name(?name, ?d, ?ann)) {
+        case (ast.expr_path(?pth, ?d, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_name(name, d, ast.ann_type(t));
+            e_1 = ast.expr_path(pth, d, ast.ann_type(t));
         }
         case (_) {
             fail;
@@ -941,7 +941,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                        ast.ann_type(oper_t)));
         }
 
-        case (ast.expr_name(?name, ?defopt, _)) {
+        case (ast.expr_path(?pth, ?defopt, _)) {
             auto t = plain_ty(ty.ty_nil);
             check (defopt != none[ast.def]);
             alt (option.get[ast.def](defopt)) {
@@ -980,16 +980,20 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     t = generalize_ty(fcx.ccx, fcx.ccx.item_types.get(id));
                 }
 
+                case (ast.def_mod(_)) {
+                    // Hopefully part of a path.
+                }
+
                 case (_) {
                     // FIXME: handle other names.
                     fcx.ccx.sess.unimpl("definition variant for: "
-                                        + name.node.ident);
+                                        + _str.connect(pth.node.idents, "."));
                     fail;
                 }
             }
 
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_name(name, defopt,
+                                        ast.expr_path(pth, defopt,
                                                       ast.ann_type(t)));
         }
 

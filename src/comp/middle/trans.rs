@@ -1772,7 +1772,7 @@ fn lval_val(@block_ctxt cx, ValueRef val) -> lval_result {
             llobj=none[ValueRef]);
 }
 
-fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt,
+fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
         &ast.ann ann) -> lval_result {
     alt (dopt) {
         case (some[ast.def](?def)) {
@@ -1826,7 +1826,7 @@ fn trans_name(@block_ctxt cx, &ast.name n, &option.t[ast.def] dopt,
             }
         }
         case (none[ast.def]) {
-            cx.fcx.ccx.sess.err("unresolved expr_name in trans");
+            cx.fcx.ccx.sess.err("unresolved expr_path in trans");
         }
     }
     fail;
@@ -1906,8 +1906,8 @@ impure fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
 
 impure fn trans_lval(@block_ctxt cx, @ast.expr e) -> lval_result {
     alt (e.node) {
-        case (ast.expr_name(?n, ?dopt, ?ann)) {
-            ret trans_name(cx, n, dopt, ann);
+        case (ast.expr_path(?p, ?dopt, ?ann)) {
+            ret trans_path(cx, p, dopt, ann);
         }
         case (ast.expr_field(?base, ?ident, ?ann)) {
             ret trans_field(cx, e.span, base, ident, ann);

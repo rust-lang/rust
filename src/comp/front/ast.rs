@@ -8,9 +8,8 @@ import util.common.ty_mach;
 
 type ident = str;
 
-type name_ = rec(ident ident, vec[@ty] types);
-type name = spanned[name_];
-type path = vec[name];
+type path_ = rec(vec[ident] idents, vec[@ty] types);
+type path = spanned[path_];
 
 type crate_num = int;
 type def_num = int;
@@ -158,7 +157,7 @@ tag expr_ {
     expr_assign_op(binop, @expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_field(@expr, ident, ann);
     expr_index(@expr, @expr, ann);
-    expr_name(name, option.t[def], ann);
+    expr_path(path, option.t[def], ann);
 }
 
 type lit = spanned[lit_];
