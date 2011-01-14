@@ -77,6 +77,10 @@ fn lookup_name(&env e, import_map index,
 // Follow the path of an import and return what it ultimately points to.
 
 fn find_final_def(&env e, &span sp, vec[ident] idents) -> def_wrap {
+
+    // We are given a series of identifiers (a.b.c.d) and we know that
+    // in the environment 'e' the identifier 'a' was resolved to 'd'. We
+    // should return what a.b.c.d points to in the end.
     fn found_something(&env e, std.map.hashmap[ast.def_id, bool] pending,
                        &span sp, vec[ident] idents, def_wrap d) -> def_wrap {
         alt (d) {
@@ -90,6 +94,7 @@ fn find_final_def(&env e, &span sp, vec[ident] idents) -> def_wrap {
                         }
                         pending.insert(d, true);
                         auto x = inner(e, pending, sp, new_idents);
+                        pending.remove(d);
                         ret found_something(e, pending, sp, idents, x);
                     }
                 }
@@ -103,11 +108,23 @@ fn find_final_def(&env e, &span sp, vec[ident] idents) -> def_wrap {
         }
         alt (d) {
             case (def_wrap_mod(?i)) {
-                auto new_idents = _vec.slice[ident](idents, 1u, len);
-                auto tmp_e = rec(scopes = nil[scope],
-                                 sess = e.sess);
-                auto new_e = update_env_for_item(tmp_e, i);
-                ret inner(new_e, pending, sp, new_idents);
+                auto rest_idents = _vec.slice[ident](idents, 1u, len);
+                auto empty_e = rec(scopes = nil[scope],
+                                   sess = e.sess);
+                auto tmp_e = update_env_for_item(empty_e, i);
+                auto next_i = rest_idents.(0);
+                auto next_ = lookup_name_wrapped(tmp_e, next_i);
+                alt (next_) {
+                    case (none[def_wrap]) {
+                        e.sess.span_err(sp, "unresolved name: " + next_i);
+                        fail;
+                    }
+                    case (some[def_wrap](?next)) {
+                        auto combined_e = update_env_for_item(e, i);
+                        ret found_something(combined_e, pending, sp,
+                                            rest_idents, next);
+                    }
+                }
             }
             case (def_wrap_use(?c)) {
                 e.sess.span_err(sp, "Crate access is not implemented");
