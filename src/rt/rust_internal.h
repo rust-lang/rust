@@ -90,7 +90,7 @@ static intptr_t const CONST_REFCOUNT = 0x7badface;
 
 // This accounts for logging buffers.
 
-static size_t const BUF_BYTES = 1024;
+static size_t const BUF_BYTES = 2048;
 
 // Every reference counted object should derive from this base class.
 

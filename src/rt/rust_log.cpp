@@ -114,7 +114,8 @@ append_string(char *buffer, const char *format, ...) {
     if (buffer != NULL && format) {
         va_list args;
         va_start(args, format);
-        vsprintf(buffer + strlen(buffer), format, args);
+        size_t off = strlen(buffer);
+        vsnprintf(buffer + off, BUF_BYTES - off, format, args);
         va_end(args);
     }
     return buffer;
@@ -127,7 +128,8 @@ append_string(char *buffer, rust_log::ansi_color color,
         append_string(buffer, "\x1b%s", _foreground_colors[color]);
         va_list args;
         va_start(args, format);
-        vsprintf(buffer + strlen(buffer), format, args);
+        size_t off = strlen(buffer);
+        vsnprintf(buffer + off, BUF_BYTES - off, format, args);
         va_end(args);
         append_string(buffer, "\x1b[0m");
     }
@@ -193,7 +195,7 @@ rust_log::trace_ln(rust_task *task, ansi_color color,
                    uint32_t type_bits, char *message) {
     if (is_tracing(type_bits)) {
         if (_use_colors) {
-            char buffer[512] = "";
+            char buffer[BUF_BYTES] = "";
             append_string(buffer, color, "%s", message);
             trace_ln(task, buffer);
         } else {

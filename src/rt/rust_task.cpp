@@ -631,7 +631,7 @@ rust_task::get_crate_cache(rust_crate const *curr_crate)
 
 void
 rust_task::log(uint32_t type_bits, char const *fmt, ...) {
-    char buf[256];
+    char buf[BUF_BYTES];
     if (dom->get_log().is_tracing(type_bits)) {
         va_list args;
         va_start(args, fmt);

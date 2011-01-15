@@ -119,7 +119,7 @@ rust_kernel::is_deadlocked() {
 
 void
 rust_kernel::log(uint32_t type_bits, char const *fmt, ...) {
-    char buf[256];
+    char buf[BUF_BYTES];
     if (_log.is_tracing(type_bits)) {
         va_list args;
         va_start(args, fmt);
