@@ -158,36 +158,36 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[def_wrap] {
 
     // log "resolving name " + i;
 
-    fn found_def_item(@ast.item i) -> option.t[def_wrap] {
+    fn found_def_item(@ast.item i) -> def_wrap {
         alt (i.node) {
             case (ast.item_const(_, _, _, ?id, _)) {
-                ret some[def_wrap](def_wrap_other(ast.def_const(id)));
+                ret def_wrap_other(ast.def_const(id));
             }
             case (ast.item_fn(_, _, _, ?id, _)) {
-                ret some[def_wrap](def_wrap_other(ast.def_fn(id)));
+                ret def_wrap_other(ast.def_fn(id));
             }
             case (ast.item_mod(_, _, ?id)) {
-                ret some[def_wrap](def_wrap_mod(i));
+                ret def_wrap_mod(i);
             }
             case (ast.item_ty(_, _, _, ?id, _)) {
-                ret some[def_wrap](def_wrap_other(ast.def_ty(id)));
+                ret def_wrap_other(ast.def_ty(id));
             }
             case (ast.item_tag(_, _, _, ?id)) {
-                ret some[def_wrap](def_wrap_other(ast.def_ty(id)));
+                ret def_wrap_other(ast.def_ty(id));
             }
             case (ast.item_obj(_, _, _, ?id, _)) {
-                ret some[def_wrap](def_wrap_other(ast.def_obj(id)));
+                ret def_wrap_other(ast.def_obj(id));
             }
         }
     }
 
-    fn found_decl_stmt(@ast.stmt s) -> option.t[def_wrap] {
+    fn found_decl_stmt(@ast.stmt s) -> def_wrap {
         alt (s.node) {
             case (ast.stmt_decl(?d)) {
                 alt (d.node) {
                     case (ast.decl_local(?loc)) {
                         auto t = ast.def_local(loc.id);
-                        ret some[def_wrap](def_wrap_other(t));
+                        ret def_wrap_other(t);
                     }
                     case (ast.decl_item(?it)) {
                         ret found_def_item(it);
@@ -195,30 +195,30 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[def_wrap] {
                 }
             }
         }
-        ret none[def_wrap];
+        fail;
     }
 
-    fn found_def_view(&env e, @ast.view_item i) -> option.t[def_wrap] {
+    fn found_def_view(@ast.view_item i) -> def_wrap {
         alt (i.node) {
             case (ast.view_item_use(_, _, ?id)) {
-                ret some[def_wrap](def_wrap_use(i));
+                ret def_wrap_use(i);
             }
             case (ast.view_item_import(?idents,?d)) {
-                ret some[def_wrap](def_wrap_import(i));
+                ret def_wrap_import(i);
             }
         }
         fail;
     }
 
-    fn check_mod(&env e, ast.ident i, ast._mod m) -> option.t[def_wrap] {
+    fn check_mod(ast.ident i, ast._mod m) -> option.t[def_wrap] {
         alt (m.index.find(i)) {
             case (some[ast.mod_index_entry](?ent)) {
                 alt (ent) {
                     case (ast.mie_view_item(?view_item)) {
-                        ret found_def_view(e, view_item);
+                        ret some(found_def_view(view_item));
                     }
                     case (ast.mie_item(?item)) {
-                        ret found_def_item(item);
+                        ret some(found_def_item(item));
                     }
                     case (ast.mie_tag_variant(?item, ?variant_idx)) {
                         alt (item.node) {
@@ -241,11 +241,11 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[def_wrap] {
     }
 
 
-    fn in_scope(ast.ident i, env e, &scope s) -> option.t[def_wrap] {
+    fn in_scope(ast.ident i, &scope s) -> option.t[def_wrap] {
         alt (s) {
 
             case (scope_crate(?c)) {
-                ret check_mod(e, i, c.node.module);
+                ret check_mod(i, c.node.module);
             }
 
             case (scope_item(?it)) {
@@ -254,13 +254,13 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[def_wrap] {
                         for (ast.arg a in f.inputs) {
                             if (_str.eq(a.ident, i)) {
                                 auto t = ast.def_arg(a.id);
-                                ret some[def_wrap](def_wrap_other(t));
+                                ret some(def_wrap_other(t));
                             }
                         }
                         for (ast.ty_param tp in ty_params) {
                             if (_str.eq(tp.ident, i)) {
                                 auto t = ast.def_ty_arg(tp.id);
-                                ret some[def_wrap](def_wrap_other(t));
+                                ret some(def_wrap_other(t));
                             }
                         }
                     }
@@ -268,18 +268,18 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[def_wrap] {
                         for (ast.obj_field f in ob.fields) {
                             if (_str.eq(f.ident, i)) {
                                 auto t = ast.def_obj_field(f.id);
-                                ret some[def_wrap](def_wrap_other(t));
+                                ret some(def_wrap_other(t));
                             }
                         }
                         for (ast.ty_param tp in ty_params) {
                             if (_str.eq(tp.ident, i)) {
                                 auto t = ast.def_ty_arg(tp.id);
-                                ret some[def_wrap](def_wrap_other(t));
+                                ret some(def_wrap_other(t));
                             }
                         }
                     }
                     case (ast.item_mod(_, ?m, _)) {
-                        ret check_mod(e, i, m);
+                        ret check_mod(i, m);
                     }
                     case (_) { /* fall through */ }
                 }
@@ -288,7 +288,8 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[def_wrap] {
             case (scope_block(?b)) {
                 alt (b.node.index.find(i)) {
                     case (some[uint](?ix)) {
-                        ret found_decl_stmt(b.node.stmts.(ix));
+                        auto x = found_decl_stmt(b.node.stmts.(ix));
+                        ret some(x);
                     }
                     case (_) { /* fall through */  }
                 }
@@ -308,7 +309,7 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[def_wrap] {
     }
 
     ret std.list.find[scope,def_wrap](e.scopes,
-                                      bind in_scope(i, e, _));
+                                      bind in_scope(i, _));
 }
 
 fn fold_pat_tag(&env e, &span sp, import_map index, ident i,
