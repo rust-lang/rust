@@ -2014,8 +2014,7 @@ impure fn trans_args(@block_ctxt cx,
                 auto retty = ty.ty_fn_ret(fn_ty);
                 auto llretty = type_of(cx.fcx.ccx, retty);
                 auto llretslot = cx.build.Alloca(llretty);
-                llretslot = cx.build.PointerCast(llretslot, T_ptr(T_i8()));
-                vs += llretslot;
+                vs += cx.build.PointerCast(llretslot, T_ptr(T_i8()));
                 llretslot_opt = some[ValueRef](llretslot);
             }
         }
@@ -2318,19 +2317,22 @@ impure fn trans_call(@block_ctxt cx, @ast.expr f,
 
     auto bcx = args_res._0;
     auto real_retval = bcx.build.FastCall(faddr, args_res._1);
-    auto retval;
+    auto retval = real_retval;
+
+    if (ty.type_is_nil(ret_ty)) {
+        retval = C_nil();
+    }
 
     // Check for a generic retslot.
     alt (args_res._2) {
-        case (some[ValueRef](?llretslot)) {
-            retval = bcx.build.Load(llretslot);
-        }
-        case (none[ValueRef]) {
-            retval = real_retval;
 
-            if (ty.type_is_nil(ret_ty)) {
-                retval = C_nil();
-            } else if (ty.type_is_structural(ret_ty)) {
+        case (some[ValueRef](?llretslot)) {
+            retval = load_scalar_or_boxed(bcx, llretslot, ret_ty);
+        }
+
+        case (none[ValueRef]) {
+            if (! (ty.type_is_scalar(ret_ty) ||
+                   ty.type_is_boxed(ret_ty))) {
                 // Structured returns come back as first-class values. This is
                 // nice for LLVM but wrong for us; we treat structured values
                 // by pointer in most of our code here. So spill it to an
@@ -2341,8 +2343,6 @@ impure fn trans_call(@block_ctxt cx, @ast.expr f,
             }
         }
     }
-
-
 
     // Retval doesn't correspond to anything really tangible in the frame, but
     // it's a ref all the same, so we put a note here to drop it when we're
