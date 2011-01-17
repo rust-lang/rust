@@ -1240,14 +1240,13 @@ fn drop_ty(@block_ctxt cx,
 fn build_memcpy(@block_ctxt cx,
                 ValueRef dst,
                 ValueRef src,
-                TypeRef llty) -> result {
+                ValueRef n_bytes) -> result {
     // FIXME: switch to the 64-bit variant when on such a platform.
     check (cx.fcx.ccx.intrinsics.contains_key("llvm.memcpy.p0i8.p0i8.i32"));
     auto memcpy = cx.fcx.ccx.intrinsics.get("llvm.memcpy.p0i8.p0i8.i32");
     auto src_ptr = cx.build.PointerCast(src, T_ptr(T_i8()));
     auto dst_ptr = cx.build.PointerCast(dst, T_ptr(T_i8()));
-    auto size = cx.build.IntCast(lib.llvm.llvm.LLVMSizeOf(llty),
-                                 T_i32());
+    auto size = cx.build.IntCast(n_bytes, T_i32());
     auto align = cx.build.IntCast(C_int(1), T_i32());
 
     // FIXME: align seems like it should be
@@ -1258,6 +1257,20 @@ fn build_memcpy(@block_ctxt cx,
     ret res(cx, cx.build.Call(memcpy,
                               vec(dst_ptr, src_ptr,
                                   size, align, volatile)));
+}
+
+fn memcpy_ty(@block_ctxt cx,
+             ValueRef dst,
+             ValueRef src,
+             @ty.t t) -> result {
+    if (ty.type_has_dynamic_size(t)) {
+        auto llszptr = field_of_tydesc(cx, t, abi.tydesc_field_size);
+        auto llsz = cx.build.Load(llszptr);
+        ret build_memcpy(cx, dst, src, llsz);
+
+    } else {
+        ret res(cx, cx.build.Store(cx.build.Load(src), dst));
+    }
 }
 
 fn copy_ty(@block_ctxt cx,
@@ -1278,15 +1291,13 @@ fn copy_ty(@block_ctxt cx,
         }
         ret res(r.bcx, r.bcx.build.Store(src, dst));
 
-    } else if (ty.type_is_structural(t)) {
+    } else if (ty.type_is_structural(t) ||
+               ty.type_has_dynamic_size(t)) {
         auto r = incr_all_refcnts(cx, src, t);
         if (! is_init) {
             r = drop_ty(r.bcx, dst, t);
         }
-        // In this one surprising case, we do a load/store on
-        // structure types. This results in a memcpy. Usually
-        // we talk about structures by pointers in this file.
-        ret res(r.bcx, r.bcx.build.Store(r.bcx.build.Load(src), dst));
+        ret memcpy_ty(r.bcx, dst, src, t);
     }
 
     cx.fcx.ccx.sess.bug("unexpected type in trans.copy_ty: " +
@@ -2598,7 +2609,9 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
 
     alt (e) {
         case (some[@ast.expr](?ex)) {
-            if (ty.type_is_nil(ty.expr_ty(ex))) {
+            auto t = ty.expr_ty(ex);
+
+            if (ty.type_is_nil(t)) {
                 r.bcx.build.RetVoid();
                 r.val = C_nil();
                 ret r;  // FIXME: early return needed due to typestate bug
@@ -2606,8 +2619,8 @@ impure fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
 
             alt (cx.fcx.llretptr) {
                 case (some[ValueRef](?llptr)) {
-                    // FIXME: Generic return: Needs to use tydesc.
-                    // r.bcx.build.Store(r.val, llptr);
+                    // Generic return via tydesc + retptr.
+                    r = copy_ty(r.bcx, true, llptr, r.val, t);
                     r.bcx.build.RetVoid();
                 }
                 case (none[ValueRef]) {
