@@ -1319,15 +1319,15 @@ impure fn trans_lit(@block_ctxt cx, &ast.lit lit, &ast.ann ann) -> result {
             // re-do the mach-int types using 'big' when that works.
             auto t = T_int();
             alt (tm) {
-                case (common.ty_u8) { t =  T_i8(); }
-                case (common.ty_u16) { t =  T_i16(); }
-                case (common.ty_u32) { t =  T_i32(); }
-                case (common.ty_u64) { t =  T_i64(); }
+                case (common.ty_u8) { t = T_i8(); }
+                case (common.ty_u16) { t = T_i16(); }
+                case (common.ty_u32) { t = T_i32(); }
+                case (common.ty_u64) { t = T_i64(); }
 
-                case (common.ty_i8) { t =  T_i8(); }
-                case (common.ty_i16) { t =  T_i16(); }
-                case (common.ty_i32) { t =  T_i32(); }
-                case (common.ty_i64) { t =  T_i64(); }
+                case (common.ty_i8) { t = T_i8(); }
+                case (common.ty_i16) { t = T_i16(); }
+                case (common.ty_i32) { t = T_i32(); }
+                case (common.ty_i64) { t = T_i64(); }
                 case (_) {
                     cx.fcx.ccx.sess.bug("bad mach int literal type");
                 }
