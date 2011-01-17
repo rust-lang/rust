@@ -40,11 +40,11 @@ fn lookup_name(&env e, import_map index,
                ast.ident i) -> option.t[def] {
     auto d_ = lookup_name_wrapped(e, i);
     alt (d_) {
-        case (none[def_wrap]) {
+        case (none[tup(@env, def_wrap)]) {
             ret none[def];
         }
-        case (some[def_wrap](?d)) {
-            alt (d) {
+        case (some[tup(@env, def_wrap)](?d)) {
+            alt (d._1) {
                 case (def_wrap_use(?it)) {
                     alt (it.node) {
                         case (ast.view_item_use(_, _, ?id)) {
@@ -115,14 +115,14 @@ fn find_final_def(&env e, &span sp, vec[ident] idents) -> def_wrap {
                 auto next_i = rest_idents.(0);
                 auto next_ = lookup_name_wrapped(tmp_e, next_i);
                 alt (next_) {
-                    case (none[def_wrap]) {
+                    case (none[tup(@env, def_wrap)]) {
                         e.sess.span_err(sp, "unresolved name: " + next_i);
                         fail;
                     }
-                    case (some[def_wrap](?next)) {
+                    case (some[tup(@env, def_wrap)](?next)) {
                         auto combined_e = update_env_for_item(e, i);
                         ret found_something(combined_e, pending, sp,
-                                            rest_idents, next);
+                                            rest_idents, next._1);
                     }
                 }
             }
@@ -141,12 +141,12 @@ fn find_final_def(&env e, &span sp, vec[ident] idents) -> def_wrap {
         auto first = idents.(0);
         auto d_ = lookup_name_wrapped(e, first);
         alt (d_) {
-            case (none[def_wrap]) {
+            case (none[tup(@env, def_wrap)]) {
                 e.sess.span_err(sp, "unresolved name: " + first);
                 fail;
             }
-            case (some[def_wrap](?d)) {
-                ret found_something(e, pending, sp, idents, d);
+            case (some[tup(@env, def_wrap)](?d)) {
+                ret found_something(*d._0, pending, sp, idents, d._1);
             }
         }
     }
@@ -154,7 +154,7 @@ fn find_final_def(&env e, &span sp, vec[ident] idents) -> def_wrap {
     ret inner(e, pending, sp, idents);
 }
 
-fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[def_wrap] {
+fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
 
     // log "resolving name " + i;
 
@@ -308,8 +308,23 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[def_wrap] {
         ret none[def_wrap];
     }
 
-    ret std.list.find[scope,def_wrap](e.scopes,
-                                      bind in_scope(i, _));
+    alt (e.scopes) {
+        case (nil[scope]) {
+            ret none[tup(@env, def_wrap)];
+        }
+        case (cons[scope](?hd, ?tl)) {
+            auto x = in_scope(i, hd);
+            alt (x) {
+                case (some[def_wrap](?x)) {
+                    ret some(tup(@e, x));
+                }
+                case (none[def_wrap]) {
+                    auto outer_env = rec(scopes = *tl with e);
+                    ret lookup_name_wrapped(outer_env, i);
+                }
+            }
+        }
+    }
 }
 
 fn fold_pat_tag(&env e, &span sp, import_map index, ident i,
