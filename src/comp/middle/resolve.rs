@@ -89,7 +89,7 @@ fn find_final_def(&env e, &span sp, vec[ident] idents) -> def_wrap {
                     case (ast.view_item_import(?new_idents, ?d)) {
                         if (pending.contains_key(d)) {
                             e.sess.span_err(sp,
-                                            "recursive import");
+                                            "cyclic import");
                             fail;
                         }
                         pending.insert(d, true);

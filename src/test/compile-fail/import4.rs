@@ -1,4 +1,4 @@
-// error-pattern: recursive import
+// error-pattern: cyclic import
 
 import zed.bar;
 import bar.zed;
