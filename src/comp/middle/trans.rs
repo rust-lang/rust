@@ -1996,11 +1996,13 @@ impure fn trans_args(@block_ctxt cx,
                      option.t[generic_info] gen,
                      &vec[@ast.expr] es,
                      @ty.t fn_ty)
-    -> tup(@block_ctxt, vec[ValueRef]) {
+    -> tup(@block_ctxt, vec[ValueRef], option.t[ValueRef]) {
     let vec[ValueRef] vs = vec(cx.fcx.lltaskptr);
     let @block_ctxt bcx = cx;
 
     let vec[ty.arg] args = ty.ty_fn_args(fn_ty);
+
+    let option.t[ValueRef] llretslot_opt = none[ValueRef];
 
     alt (gen) {
         case (some[generic_info](?g)) {
@@ -2009,9 +2011,12 @@ impure fn trans_args(@block_ctxt cx,
             }
             args = ty.ty_fn_args(g.item_type);
             if (ty.type_has_dynamic_size(ty.ty_fn_ret(g.item_type))) {
-                // FIXME: allocate real outptr in caller,
-                // pass in to here.
-                vs += C_null(T_typaram_ptr());
+                auto retty = ty.ty_fn_ret(fn_ty);
+                auto llretty = type_of(cx.fcx.ccx, retty);
+                auto llretslot = cx.build.Alloca(llretty);
+                llretslot = cx.build.PointerCast(llretslot, T_ptr(T_i8()));
+                vs += llretslot;
+                llretslot_opt = some[ValueRef](llretslot);
             }
         }
         case (_) { }
@@ -2076,7 +2081,7 @@ impure fn trans_args(@block_ctxt cx,
         i += 1u;
     }
 
-    ret tup(bcx, vs);
+    ret tup(bcx, vs, llretslot_opt);
 }
 
 impure fn trans_bind_thunk(@crate_ctxt cx,
@@ -2311,29 +2316,40 @@ impure fn trans_call(@block_ctxt cx, @ast.expr f,
                                f_res.generic,
                                args, fn_ty);
 
-    auto real_retval = args_res._0.build.FastCall(faddr, args_res._1);
+    auto bcx = args_res._0;
+    auto real_retval = bcx.build.FastCall(faddr, args_res._1);
     auto retval;
-    if (ty.type_is_nil(ret_ty)) {
-        retval = C_nil();
-    } else {
-        retval = real_retval;
+
+    // Check for a generic retslot.
+    alt (args_res._2) {
+        case (some[ValueRef](?llretslot)) {
+            retval = bcx.build.Load(llretslot);
+        }
+        case (none[ValueRef]) {
+            retval = real_retval;
+
+            if (ty.type_is_nil(ret_ty)) {
+                retval = C_nil();
+            } else if (ty.type_is_structural(ret_ty)) {
+                // Structured returns come back as first-class values. This is
+                // nice for LLVM but wrong for us; we treat structured values
+                // by pointer in most of our code here. So spill it to an
+                // alloca.
+                auto local = bcx.build.Alloca(type_of(cx.fcx.ccx, ret_ty));
+                bcx.build.Store(retval, local);
+                retval = local;
+            }
+        }
     }
 
-    // Structured returns come back as first-class values. This is nice for
-    // LLVM but wrong for us; we treat structured values by pointer in
-    // most of our code here. So spill it to an alloca.
-    if (ty.type_is_structural(ret_ty)) {
-        auto local = args_res._0.build.Alloca(type_of(cx.fcx.ccx, ret_ty));
-        args_res._0.build.Store(retval, local);
-        retval = local;
-    }
+
 
     // Retval doesn't correspond to anything really tangible in the frame, but
     // it's a ref all the same, so we put a note here to drop it when we're
     // done in this scope.
     find_scope_cx(cx).cleanups += clean(bind drop_ty(_, retval, ret_ty));
 
-    ret res(args_res._0, retval);
+    ret res(bcx, retval);
 }
 
 impure fn trans_tup(@block_ctxt cx, vec[ast.elt] elts,
