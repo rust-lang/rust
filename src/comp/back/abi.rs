@@ -63,6 +63,10 @@ fn memcpy_glue_name() -> str {
     ret "rust_memcpy_glue";
 }
 
+fn bzero_glue_name() -> str {
+    ret "rust_bzero_glue";
+}
+
 fn upcall_glue_name(int n) -> str {
     ret "rust_upcall_" + util.common.istr(n);
 }

@@ -52,7 +52,8 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef exit_task_glue,
                     vec[ValueRef] upcall_glues,
                     ValueRef no_op_type_glue,
-                    ValueRef memcpy_glue);
+                    ValueRef memcpy_glue,
+                    ValueRef bzero_glue);
 
 tag arity { nullary; n_ary; }
 type tag_info = rec(type_handle th,
@@ -632,19 +633,110 @@ fn find_scope_cx(@block_ctxt cx) -> @block_ctxt {
     }
 }
 
-fn size_of(TypeRef t) -> ValueRef {
+fn umax(@block_ctxt cx, ValueRef a, ValueRef b) -> ValueRef {
+    auto cond = cx.build.ICmp(lib.llvm.LLVMIntULT, a, b);
+    ret cx.build.Select(cond, b, a);
+}
+
+fn align_to(@block_ctxt cx, ValueRef off, ValueRef align) -> ValueRef {
+    auto mask = cx.build.Sub(align, C_int(1));
+    auto bumped = cx.build.Add(off, mask);
+    ret cx.build.And(bumped, cx.build.Not(mask));
+}
+
+fn llsize_of(TypeRef t) -> ValueRef {
     ret llvm.LLVMConstIntCast(lib.llvm.llvm.LLVMSizeOf(t), T_int(), False);
 }
 
-fn align_of(TypeRef t) -> ValueRef {
+fn llalign_of(TypeRef t) -> ValueRef {
     ret llvm.LLVMConstIntCast(lib.llvm.llvm.LLVMAlignOf(t), T_int(), False);
+}
+
+fn size_of(@block_ctxt cx, @ty.t t) -> ValueRef {
+    if (!ty.type_has_dynamic_size(t)) {
+        ret llsize_of(type_of(cx.fcx.ccx, t));
+    }
+    ret dynamic_size_of(cx, t);
+}
+
+fn align_of(@block_ctxt cx, @ty.t t) -> ValueRef {
+    if (!ty.type_has_dynamic_size(t)) {
+        ret llalign_of(type_of(cx.fcx.ccx, t));
+    }
+    ret dynamic_align_of(cx, t);
+}
+
+fn dynamic_size_of(@block_ctxt cx, @ty.t t) -> ValueRef {
+    alt (t.struct) {
+        case (ty.ty_param(?p)) {
+            auto szptr = field_of_tydesc(cx, t, abi.tydesc_field_size);
+            ret cx.build.Load(szptr);
+        }
+        case (ty.ty_tup(?elts)) {
+            //
+            // C padding rules:
+            //
+            //
+            //   - Pad after each element so that next element is aligned.
+            //   - Pad after final structure member so that whole structure
+            //     is aligned to max alignment of interior.
+            //
+            auto off = C_int(0);
+            auto max_align = C_int(1);
+            for (@ty.t e in elts) {
+                auto elt_align = align_of(cx, e);
+                auto elt_size = size_of(cx, e);
+                auto aligned_off = align_to(cx, off, elt_align);
+                off = cx.build.Add(aligned_off, elt_size);
+                max_align = umax(cx, max_align, elt_align);
+            }
+            off = align_to(cx, off, max_align);
+            ret off;
+        }
+        case (ty.ty_rec(?flds)) {
+            auto off = C_int(0);
+            auto max_align = C_int(1);
+            for (ty.field f in flds) {
+                auto elt_align = align_of(cx, f.ty);
+                auto elt_size = size_of(cx, f.ty);
+                auto aligned_off = align_to(cx, off, elt_align);
+                off = cx.build.Add(aligned_off, elt_size);
+                max_align = umax(cx, max_align, elt_align);
+            }
+            off = align_to(cx, off, max_align);
+            ret off;
+        }
+    }
+}
+
+fn dynamic_align_of(@block_ctxt cx, @ty.t t) -> ValueRef {
+    alt (t.struct) {
+        case (ty.ty_param(?p)) {
+            auto aptr = field_of_tydesc(cx, t, abi.tydesc_field_align);
+            ret cx.build.Load(aptr);
+        }
+        case (ty.ty_tup(?elts)) {
+            auto a = C_int(1);
+            for (@ty.t e in elts) {
+                a = umax(cx, a, align_of(cx, e));
+            }
+            ret a;
+        }
+        case (ty.ty_rec(?flds)) {
+            auto a = C_int(1);
+            for (ty.field f in flds) {
+                a = umax(cx, a, align_of(cx, f.ty));
+            }
+            ret a;
+        }
+    }
 }
 
 fn trans_malloc_inner(@block_ctxt cx, TypeRef llptr_ty) -> result {
     auto llbody_ty = lib.llvm.llvm.LLVMGetElementType(llptr_ty);
     // FIXME: need a table to collect tydesc globals.
     auto tydesc = C_int(0);
-    auto sz = size_of(llbody_ty);
+    auto sz = llsize_of(llbody_ty);
     auto sub = trans_upcall(cx, "upcall_malloc", vec(sz, tydesc));
     sub.val = sub.bcx.build.IntToPtr(sub.val, llptr_ty);
     ret sub;
@@ -699,8 +791,8 @@ fn make_tydesc(@crate_ctxt cx, @ty.t t) {
     auto pvoid = T_ptr(T_i8());
     auto glue_fn_ty = T_ptr(T_fn(vec(T_taskptr(), pvoid), T_void()));
     auto tydesc = C_struct(vec(C_null(pvoid),
-                               size_of(llty),
-                               align_of(llty),
+                               llsize_of(llty),
+                               llalign_of(llty),
                                take_glue,             // take_glue_off
                                drop_glue,             // drop_glue_off
                                C_null(glue_fn_ty),    // free_glue_off
@@ -1146,7 +1238,7 @@ fn iter_sequence(@block_ctxt cx,
                                           C_int(abi.vec_elt_fill)));
 
         auto llunit_ty = type_of(cx.fcx.ccx, elt_ty);
-        auto unit_sz = size_of(llunit_ty);
+        auto unit_sz = size_of(cx, elt_ty);
 
         auto len = cx.build.Load(lenptr);
         if (trailing_null) {
@@ -1247,6 +1339,15 @@ fn call_memcpy(@block_ctxt cx,
     auto size = cx.build.IntCast(n_bytes, T_int());
     ret res(cx, cx.build.FastCall(cx.fcx.ccx.glues.memcpy_glue,
                                   vec(dst_ptr, src_ptr, size)));
+}
+
+fn call_bzero(@block_ctxt cx,
+              ValueRef dst,
+              ValueRef n_bytes) -> result {
+    auto dst_ptr = cx.build.PointerCast(dst, T_ptr(T_i8()));
+    auto size = cx.build.IntCast(n_bytes, T_int());
+    ret res(cx, cx.build.FastCall(cx.fcx.ccx.glues.bzero_glue,
+                                  vec(dst_ptr, size)));
 }
 
 fn memcpy_ty(@block_ctxt cx,
@@ -1901,7 +2002,7 @@ impure fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
     auto v = lv.val;
 
     auto llunit_ty = node_type(cx.fcx.ccx, ann);
-    auto unit_sz = size_of(llunit_ty);
+    auto unit_sz = size_of(cx, node_ann_type(cx.fcx.ccx, ann));
     auto scaled_ix = ix.bcx.build.Mul(ix.val, unit_sz);
 
     auto lim = ix.bcx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_fill)));
@@ -2374,7 +2475,7 @@ impure fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
     }
 
     auto llunit_ty = type_of(cx.fcx.ccx, unit_ty);
-    auto unit_sz = size_of(llunit_ty);
+    auto unit_sz = size_of(cx, unit_ty);
     auto data_sz = llvm.LLVMConstMul(C_int(_vec.len[@ast.expr](args) as int),
                                      unit_sz);
 
@@ -2681,9 +2782,15 @@ impure fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
                             sub = copy_ty(sub.bcx, true, llptr, sub.val, ty);
                         }
                         case (_) {
-                            auto llty = type_of(cx.fcx.ccx, ty);
-                            auto null = lib.llvm.llvm.LLVMConstNull(llty);
-                            sub = res(cx, cx.build.Store(null, llptr));
+                            if (middle.ty.type_has_dynamic_size(ty)) {
+                                auto llsz = size_of(cx, ty);
+                                sub = call_bzero(cx, llptr, llsz);
+
+                            } else {
+                                auto llty = type_of(cx.fcx.ccx, ty);
+                                auto null = lib.llvm.llvm.LLVMConstNull(llty);
+                                sub = res(cx, cx.build.Store(null, llptr));
+                            }
                         }
                     }
                 }
@@ -2779,8 +2886,14 @@ impure fn trans_block(@block_ctxt cx, &ast.block b) -> result {
     auto bcx = cx;
 
     for each (@ast.local local in block_locals(b)) {
-        auto ty = node_type(cx.fcx.ccx, local.ann);
-        auto val = bcx.build.Alloca(ty);
+        auto t = node_ann_type(cx.fcx.ccx, local.ann);
+        auto val = C_int(0);
+        if (ty.type_has_dynamic_size(t)) {
+            auto n = size_of(bcx, t);
+            val = bcx.build.ArrayAlloca(T_i8(), n);
+        } else {
+            val = bcx.build.Alloca(type_of(cx.fcx.ccx, t));
+        }
         cx.fcx.lllocals.insert(local.id, val);
     }
     auto r = res(bcx, C_nil());
@@ -3684,6 +3797,47 @@ fn make_memcpy_glue(ModuleRef llmod) -> ValueRef {
     ret fun;
 }
 
+fn make_bzero_glue(ModuleRef llmod) -> ValueRef {
+
+    // We're not using the LLVM memset intrinsic. Same as with memcpy.
+
+    auto p8 = T_ptr(T_i8());
+
+    auto ty = T_fn(vec(p8, T_int()), T_void());
+    auto fun = decl_fastcall_fn(llmod, abi.bzero_glue_name(), ty);
+
+    auto initbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("init"));
+    auto hdrbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("hdr"));
+    auto loopbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("loop"));
+    auto endbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("end"));
+
+    auto dst = llvm.LLVMGetParam(fun, 0u);
+    auto count = llvm.LLVMGetParam(fun, 1u);
+
+    // Init block.
+    auto ib = new_builder(initbb);
+    auto ip = ib.Alloca(T_int());
+    ib.Store(C_int(0), ip);
+    ib.Br(hdrbb);
+
+    // Loop-header block
+    auto hb = new_builder(hdrbb);
+    auto i = hb.Load(ip);
+    hb.CondBr(hb.ICmp(lib.llvm.LLVMIntEQ, count, i), endbb, loopbb);
+
+    // Loop-body block
+    auto lb = new_builder(loopbb);
+    i = lb.Load(ip);
+    lb.Store(C_integral(0, T_i8()), lb.GEP(dst, vec(i)));
+    lb.Store(lb.Add(i, C_int(1)), ip);
+    lb.Br(hdrbb);
+
+    // End block
+    auto eb = new_builder(endbb);
+    eb.RetVoid();
+    ret fun;
+}
+
 fn make_glues(ModuleRef llmod) -> @glue_fns {
     ret @rec(activate_glue = decl_glue(llmod, abi.activate_glue_name()),
              yield_glue = decl_glue(llmod, abi.yield_glue_name()),
@@ -3704,7 +3858,8 @@ fn make_glues(ModuleRef llmod) -> @glue_fns {
               _vec.init_fn[ValueRef](bind decl_upcall(llmod, _),
                                      abi.n_upcall_glues as uint),
              no_op_type_glue = make_no_op_type_glue(llmod),
-             memcpy_glue = make_memcpy_glue(llmod));
+             memcpy_glue = make_memcpy_glue(llmod),
+             bzero_glue = make_bzero_glue(llmod));
 }
 
 fn trans_crate(session.session sess, @ast.crate crate, str output,
