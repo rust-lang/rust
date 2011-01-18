@@ -2027,7 +2027,7 @@ Rust; they cannot be used as user-defined identifiers in any context.
 * Ref.Type.Big::                The arbitrary-precision integer type.
 * Ref.Type.Text::               Strings and characters.
 * Ref.Type.Rec::                Labeled products of heterogeneous types.
-* Ref.Type.Tup::                Unlabeled products of homogeneous types.
+* Ref.Type.Tup::                Unlabeled products of heterogeneous types.
 * Ref.Type.Vec::                Open products of homogeneous types.
 * Ref.Type.Tag::                Disjoint unions of heterogeneous types.
 * Ref.Type.Fn::                 Subroutine types.
