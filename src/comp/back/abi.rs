@@ -59,6 +59,10 @@ const int worst_case_glue_call_args = 7;
 
 const int n_upcall_glues = 7;
 
+fn memcpy_glue_name() -> str {
+    ret "rust_memcpy_glue";
+}
+
 fn upcall_glue_name(int n) -> str {
     ret "rust_upcall_" + util.common.istr(n);
 }
@@ -73,6 +77,10 @@ fn yield_glue_name() -> str {
 
 fn exit_task_glue_name() -> str {
     ret "rust_exit_task_glue";
+}
+
+fn no_op_type_glue_name() -> str {
+    ret "rust_no_op_type_glue";
 }
 
 //

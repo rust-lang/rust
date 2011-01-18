@@ -51,7 +51,8 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef yield_glue,
                     ValueRef exit_task_glue,
                     vec[ValueRef] upcall_glues,
-                    ValueRef no_op_type_glue);
+                    ValueRef no_op_type_glue,
+                    ValueRef memcpy_glue);
 
 tag arity { nullary; n_ary; }
 type tag_info = rec(type_handle th,
@@ -1237,26 +1238,15 @@ fn drop_ty(@block_ctxt cx,
     ret res(cx, C_nil());
 }
 
-fn build_memcpy(@block_ctxt cx,
-                ValueRef dst,
-                ValueRef src,
-                ValueRef n_bytes) -> result {
-    // FIXME: switch to the 64-bit variant when on such a platform.
-    check (cx.fcx.ccx.intrinsics.contains_key("llvm.memcpy.p0i8.p0i8.i32"));
-    auto memcpy = cx.fcx.ccx.intrinsics.get("llvm.memcpy.p0i8.p0i8.i32");
+fn call_memcpy(@block_ctxt cx,
+               ValueRef dst,
+               ValueRef src,
+               ValueRef n_bytes) -> result {
     auto src_ptr = cx.build.PointerCast(src, T_ptr(T_i8()));
     auto dst_ptr = cx.build.PointerCast(dst, T_ptr(T_i8()));
-    auto size = cx.build.IntCast(n_bytes, T_i32());
-    auto align = cx.build.IntCast(C_int(1), T_i32());
-
-    // FIXME: align seems like it should be
-    //   lib.llvm.llvm.LLVMAlignOf(llty);
-    // but this makes it upset because it's not a constant.
-
-    auto volatile = C_integral(0, T_i1());
-    ret res(cx, cx.build.Call(memcpy,
-                              vec(dst_ptr, src_ptr,
-                                  size, align, volatile)));
+    auto size = cx.build.IntCast(n_bytes, T_int());
+    ret res(cx, cx.build.FastCall(cx.fcx.ccx.glues.memcpy_glue,
+                                  vec(dst_ptr, src_ptr, size)));
 }
 
 fn memcpy_ty(@block_ctxt cx,
@@ -1266,7 +1256,7 @@ fn memcpy_ty(@block_ctxt cx,
     if (ty.type_has_dynamic_size(t)) {
         auto llszptr = field_of_tydesc(cx, t, abi.tydesc_field_size);
         auto llsz = cx.build.Load(llszptr);
-        ret build_memcpy(cx, dst, src, llsz);
+        ret call_memcpy(cx, dst, src, llsz);
 
     } else {
         ret res(cx, cx.build.Store(cx.build.Load(src), dst));
@@ -3624,21 +3614,11 @@ fn trans_main_fn(@crate_ctxt cx, ValueRef llcrate) {
 fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
 
     let vec[TypeRef] T_trap_args = vec();
-    let vec[TypeRef] T_memcpy32_args = vec(T_ptr(T_i8()), T_ptr(T_i8()),
-                                           T_i32(), T_i32(), T_i1());
-    let vec[TypeRef] T_memcpy64_args = vec(T_ptr(T_i8()), T_ptr(T_i8()),
-                                           T_i32(), T_i32(), T_i1());
     auto trap = decl_cdecl_fn(llmod, "llvm.trap",
                               T_fn(T_trap_args, T_void()));
-    auto memcpy32 = decl_cdecl_fn(llmod, "llvm.memcpy.p0i8.p0i8.i32",
-                                  T_fn(T_memcpy32_args, T_void()));
-    auto memcpy64 = decl_cdecl_fn(llmod, "llvm.memcpy.p0i8.p0i8.i64",
-                                  T_fn(T_memcpy64_args, T_void()));
 
     auto intrinsics = new_str_hash[ValueRef]();
     intrinsics.insert("llvm.trap", trap);
-    intrinsics.insert("llvm.memcpy.p0i8.p0i8.i32", memcpy32);
-    intrinsics.insert("llvm.memcpy.p0i8.p0i8.i64", memcpy64);
     ret intrinsics;
 }
 
@@ -3652,10 +3632,55 @@ fn check_module(ModuleRef llmod) {
 
 fn make_no_op_type_glue(ModuleRef llmod) -> ValueRef {
     auto ty = T_fn(vec(T_taskptr(), T_ptr(T_i8())), T_void());
-    auto fun = decl_fastcall_fn(llmod, "_rust_no_op_type_glue", ty);
+    auto fun = decl_fastcall_fn(llmod, abi.no_op_type_glue_name(), ty);
     auto bb_name = _str.buf("_rust_no_op_type_glue_bb");
     auto llbb = llvm.LLVMAppendBasicBlock(fun, bb_name);
     new_builder(llbb).RetVoid();
+    ret fun;
+}
+
+fn make_memcpy_glue(ModuleRef llmod) -> ValueRef {
+
+    // We're not using the LLVM memcpy intrinsic. It appears to call through
+    // to the platform memcpy in some cases, which is not terribly safe to run
+    // on a rust stack.
+
+    auto p8 = T_ptr(T_i8());
+
+    auto ty = T_fn(vec(p8, p8, T_int()), T_void());
+    auto fun = decl_fastcall_fn(llmod, abi.memcpy_glue_name(), ty);
+
+    auto initbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("init"));
+    auto hdrbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("hdr"));
+    auto loopbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("loop"));
+    auto endbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("end"));
+
+    auto dst = llvm.LLVMGetParam(fun, 0u);
+    auto src = llvm.LLVMGetParam(fun, 1u);
+    auto count = llvm.LLVMGetParam(fun, 2u);
+
+    // Init block.
+    auto ib = new_builder(initbb);
+    auto ip = ib.Alloca(T_int());
+    ib.Store(C_int(0), ip);
+    ib.Br(hdrbb);
+
+    // Loop-header block
+    auto hb = new_builder(hdrbb);
+    auto i = hb.Load(ip);
+    hb.CondBr(hb.ICmp(lib.llvm.LLVMIntEQ, count, i), endbb, loopbb);
+
+    // Loop-body block
+    auto lb = new_builder(loopbb);
+    i = lb.Load(ip);
+    lb.Store(lb.Load(lb.GEP(src, vec(i))),
+             lb.GEP(dst, vec(i)));
+    lb.Store(lb.Add(i, C_int(1)), ip);
+    lb.Br(hdrbb);
+
+    // End block
+    auto eb = new_builder(endbb);
+    eb.RetVoid();
     ret fun;
 }
 
@@ -3678,7 +3703,8 @@ fn make_glues(ModuleRef llmod) -> @glue_fns {
              upcall_glues =
               _vec.init_fn[ValueRef](bind decl_upcall(llmod, _),
                                      abi.n_upcall_glues as uint),
-             no_op_type_glue = make_no_op_type_glue(llmod));
+             no_op_type_glue = make_no_op_type_glue(llmod),
+             memcpy_glue = make_memcpy_glue(llmod));
 }
 
 fn trans_crate(session.session sess, @ast.crate crate, str output,
