@@ -247,6 +247,11 @@ fn ty_to_str(&@t typ) -> str {
             s = "<T" + util.common.istr(v) + ">";
         }
 
+        case (ty_local(?id)) {
+            s = "<L" + util.common.istr(id._0) + ":" + util.common.istr(id._1)
+                + ">";
+        }
+
         case (ty_param(?id)) {
             s = "<P" + util.common.istr(id._0) + ":" + util.common.istr(id._1)
                 + ">";
