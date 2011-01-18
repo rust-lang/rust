@@ -229,7 +229,7 @@ type variant = rec(str name, vec[variant_arg] args, def_id id, ann ann);
 type view_item = spanned[view_item_];
 tag view_item_ {
     view_item_use(ident, vec[@meta_item], def_id);
-    view_item_import(vec[ident], def_id);
+    view_item_import(vec[ident], def_id, option.t[def]);
 }
 
 type item = spanned[item_];
@@ -247,7 +247,7 @@ fn index_view_item(mod_index index, @view_item it) {
         case(ast.view_item_use(?id, _, _)) {
             index.insert(id, ast.mie_view_item(it));
         }
-        case(ast.view_item_import(?ids,_)) {
+        case(ast.view_item_import(?ids,_,_)) {
             auto len = _vec.len[ast.ident](ids);
             auto last_id = ids.(len - 1u);
             index.insert(last_id, ast.mie_view_item(it));
