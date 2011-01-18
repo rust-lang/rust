@@ -1704,7 +1704,8 @@ impure fn parse_rest_import_name(parser p, ast.ident id) -> @ast.view_item {
         identifiers += i;
     }
     p.bump();
-    auto import_decl = ast.view_item_import(identifiers, p.next_def_id());
+    auto import_decl = ast.view_item_import(identifiers, p.next_def_id(),
+                                            none[ast.def]);
     ret @spanned(lo, hi, import_decl);
 }
 
