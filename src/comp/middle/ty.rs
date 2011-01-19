@@ -889,7 +889,19 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                 ret result;
             }
             case (ty.ty_param(?actual_id)) {
-                ret handler.unify_actual_param(actual_id, expected, actual);
+                alt (expected.struct) {
+
+                    // These two unify via logic lower down. Fall through.
+                    case (ty.ty_local(_)) { }
+                    case (ty.ty_var(_)) { }
+
+                    // More-concrete types can unify against params here.
+                    case (_) {
+                        ret handler.unify_actual_param(actual_id,
+                                                       expected,
+                                                       actual);
+                    }
+                }
             }
             case (_) { /* empty */ }
         }
