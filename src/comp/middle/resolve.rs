@@ -465,7 +465,7 @@ fn fold_ty_path(&env e, &span sp, ast.path p, &option.t[def] d) -> @ast.ty {
 
     alt (d_) {
         case (some[def](?d)) {
-            // log "resolved name " + n.node.ident;
+            // log "resolved name " + p.node.idents.(0);
         }
         case (none[def]) {
             e.sess.span_err(sp, "unresolved name: " + p.node.idents.(0));
