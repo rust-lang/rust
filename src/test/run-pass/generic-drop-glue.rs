@@ -1,9 +1,8 @@
 fn f[T](&T t) {
-  log "dropping";
+  let T t1 = t;
 }
 
 fn main() {
-  type r = rec(@int x, @int y);
   auto x = rec(x=@10, y=@12);
-  f[r](x);
+  f(x);
 }

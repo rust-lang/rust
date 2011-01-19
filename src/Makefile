@@ -439,6 +439,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         drop-on-ret.rs \
                         fact.rs \
                         generic-fn-infer.rs \
+                        generic-drop-glue.rs \
                         hello.rs \
                         int.rs \
                         i32-sub.rs \
