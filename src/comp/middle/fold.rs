@@ -307,8 +307,7 @@ fn fold_ty[ENV](&ENV env, ast_fold[ENV] fld, @ty t) -> @ty {
         case (ast.ty_obj(?meths)) {
             let vec[ast.ty_method] meths_ = vec();
             for (ast.ty_method m in meths) {
-                auto tfn = fld.fold_ty_fn(env_, t.span,
-                                          m.inputs, m.output);
+                auto tfn = fold_ty_fn(env_, fld, t.span, m.inputs, m.output);
                 alt (tfn.node) {
                     case (ast.ty_fn(?ins, ?out)) {
                         append[ast.ty_method]
@@ -330,9 +329,22 @@ fn fold_ty[ENV](&ENV env, ast_fold[ENV] fld, @ty t) -> @ty {
         }
 
         case (ast.ty_fn(?inputs, ?output)) {
-            ret fld.fold_ty_fn(env_, t.span, inputs, output);
+            ret fold_ty_fn(env_, fld, t.span, inputs, output);
         }
     }
+}
+
+fn fold_ty_fn[ENV](&ENV env, ast_fold[ENV] fld, &span sp,
+                   vec[rec(ast.mode mode, @ty ty)] inputs,
+                   @ty output) -> @ty {
+    auto output_ = fold_ty(env, fld, output);
+    let vec[rec(ast.mode mode, @ty ty)] inputs_ = vec();
+    for (rec(ast.mode mode, @ty ty) input in inputs) {
+        auto ty_ = fold_ty(env, fld, input.ty);
+        auto input_ = rec(ty=ty_ with input);
+        inputs_ += vec(input_);
+    }
+    ret fld.fold_ty_fn(env, sp, inputs_, output_);
 }
 
 fn fold_decl[ENV](&ENV env, ast_fold[ENV] fld, @decl d) -> @decl {
