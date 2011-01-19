@@ -305,6 +305,14 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
                     case (ast.item_mod(_, ?m, _)) {
                         ret check_mod(i, m);
                     }
+                    case (ast.item_ty(_, _, ?ty_params, _, _)) {
+                        for (ast.ty_param tp in ty_params) {
+                            if (_str.eq(tp.ident, i)) {
+                                auto t = ast.def_ty_arg(tp.id);
+                                ret some(def_wrap_other(t));
+                            }
+                        }
+                    }
                     case (_) { /* fall through */ }
                 }
             }
@@ -447,7 +455,6 @@ fn fold_view_item_import(&env e, &span sp,
     ret @fold.respan[ast.view_item_](sp, ast.view_item_import(is, id,
                                                               target_def));
 }
-
 
 fn fold_ty_path(&env e, &span sp, ast.path p, &option.t[def] d) -> @ast.ty {
 
