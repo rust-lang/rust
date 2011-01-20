@@ -891,6 +891,20 @@ impure fn parse_if_expr(parser p) -> @ast.expr {
     ret @spanned(lo, hi, ast.expr_if(cond, thn, els, ast.ann_none));
 }
 
+impure fn parse_head_local(parser p) -> @ast.decl {
+    auto lo = p.get_span();
+    let @ast.local local;
+    if (p.peek() == token.AUTO) {
+        local = parse_auto_local(p);
+    } else {
+        local = parse_typed_local(p);
+    }
+    auto hi = p.get_span();
+    ret @spanned(lo, hi, ast.decl_local(local));
+}
+
+
+
 impure fn parse_for_expr(parser p) -> @ast.expr {
     auto lo = p.get_span();
     auto hi = lo;
@@ -898,20 +912,14 @@ impure fn parse_for_expr(parser p) -> @ast.expr {
     expect(p, token.FOR);
     expect (p, token.LPAREN);
 
-    let @ast.local local;
-    if (p.peek() == token.AUTO) {
-        p.bump();
-        local = parse_auto_local(p);
-    } else {
-        local = parse_typed_local(p);
-    }
+    auto decl = parse_head_local(p);
     expect(p, token.IN);
 
     auto seq = parse_expr(p);
     expect(p, token.RPAREN);
     auto body = parse_block(p);
     hi = body.span;
-    ret @spanned(lo, hi, ast.expr_for(local, seq, body, ast.ann_none));
+    ret @spanned(lo, hi, ast.expr_for(decl, seq, body, ast.ann_none));
 }
 
 impure fn parse_while_expr(parser p) -> @ast.expr {
@@ -1078,7 +1086,8 @@ impure fn parse_pat(parser p) -> @ast.pat {
     ret @spanned(lo, hi, pat);
 }
 
-impure fn parse_local(&option.t[@ast.ty] tyopt, parser p) -> @ast.local {
+impure fn parse_local_full(&option.t[@ast.ty] tyopt,
+                           parser p) -> @ast.local {
     auto ident = parse_ident(p);
     auto init = parse_initializer(p);
     ret @rec(ty = tyopt,
@@ -1091,11 +1100,11 @@ impure fn parse_local(&option.t[@ast.ty] tyopt, parser p) -> @ast.local {
 
 impure fn parse_typed_local(parser p) -> @ast.local {
     auto ty = parse_ty(p);
-    ret parse_local(some(ty), p);
+    ret parse_local_full(some(ty), p);
 }
 
 impure fn parse_auto_local(parser p) -> @ast.local {
-    ret parse_local(none[@ast.ty], p);
+    ret parse_local_full(none[@ast.ty], p);
 }
 
 impure fn parse_let(parser p) -> @ast.decl {
