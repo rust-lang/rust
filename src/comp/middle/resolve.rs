@@ -18,6 +18,7 @@ import std._vec;
 tag scope {
     scope_crate(@ast.crate);
     scope_item(@ast.item);
+    scope_loop(@ast.decl); // there's only 1 decl per loop.
     scope_block(ast.block);
     scope_arm(ast.arm);
 }
@@ -317,6 +318,17 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
                 }
             }
 
+            case (scope_loop(?d)) {
+                alt (d.node) {
+                    case (ast.decl_local(?local)) {
+                        if (_str.eq(local.ident, i)) {
+                            auto lc = ast.def_local(local.id);
+                            ret some(def_wrap_other(lc));
+                        }
+                    }
+                }
+            }
+
             case (scope_block(?b)) {
                 alt (b.node.index.find(i)) {
                     case (some[uint](?ix)) {
@@ -494,6 +506,16 @@ fn update_env_for_block(&env e, &ast.block b) -> env {
     ret rec(scopes = cons[scope](scope_block(b), @e.scopes) with e);
 }
 
+fn update_env_for_expr(&env e, @ast.expr x) -> env {
+    alt (x.node) {
+        case (ast.expr_for(?d, _, _, _)) {
+            ret rec(scopes = cons[scope](scope_loop(d), @e.scopes) with e);
+        }
+        case (_) { }
+    }
+    ret e;
+}
+
 fn update_env_for_arm(&env e, &ast.arm p) -> env {
     ret rec(scopes = cons[scope](scope_arm(p), @e.scopes) with e);
 }
@@ -507,7 +529,8 @@ fn resolve_imports(session.session sess, @ast.crate crate) -> @ast.crate {
                 update_env_for_crate = bind update_env_for_crate(_,_),
                 update_env_for_item = bind update_env_for_item(_,_),
                 update_env_for_block = bind update_env_for_block(_,_),
-                update_env_for_arm = bind update_env_for_arm(_,_)
+                update_env_for_arm = bind update_env_for_arm(_,_),
+                update_env_for_expr = bind update_env_for_expr(_,_)
                 with *fld );
 
     auto e = rec(scopes = nil[scope],
@@ -528,7 +551,8 @@ fn resolve_crate(session.session sess, @ast.crate crate) -> @ast.crate {
                 update_env_for_crate = bind update_env_for_crate(_,_),
                 update_env_for_item = bind update_env_for_item(_,_),
                 update_env_for_block = bind update_env_for_block(_,_),
-                update_env_for_arm = bind update_env_for_arm(_,_)
+                update_env_for_arm = bind update_env_for_arm(_,_),
+                update_env_for_expr = bind update_env_for_expr(_,_)
                 with *fld );
 
     auto e = rec(scopes = nil[scope],
