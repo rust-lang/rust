@@ -891,6 +891,29 @@ impure fn parse_if_expr(parser p) -> @ast.expr {
     ret @spanned(lo, hi, ast.expr_if(cond, thn, els, ast.ann_none));
 }
 
+impure fn parse_for_expr(parser p) -> @ast.expr {
+    auto lo = p.get_span();
+    auto hi = lo;
+
+    expect(p, token.FOR);
+    expect (p, token.LPAREN);
+
+    let @ast.local local;
+    if (p.peek() == token.AUTO) {
+        p.bump();
+        local = parse_auto_local(p);
+    } else {
+        local = parse_typed_local(p);
+    }
+    expect(p, token.IN);
+
+    auto seq = parse_expr(p);
+    expect(p, token.RPAREN);
+    auto body = parse_block(p);
+    hi = body.span;
+    ret @spanned(lo, hi, ast.expr_for(local, seq, body, ast.ann_none));
+}
+
 impure fn parse_while_expr(parser p) -> @ast.expr {
     auto lo = p.get_span();
     auto hi = lo;
@@ -979,6 +1002,9 @@ impure fn parse_expr_inner(parser p) -> @ast.expr {
         case (token.IF) {
             ret parse_if_expr(p);
         }
+        case (token.FOR) {
+            ret parse_for_expr(p);
+        }
         case (token.WHILE) {
             ret parse_while_expr(p);
         }
@@ -1052,43 +1078,40 @@ impure fn parse_pat(parser p) -> @ast.pat {
     ret @spanned(lo, hi, pat);
 }
 
-impure fn parse_let(parser p) -> @ast.decl {
-    auto lo = p.get_span();
-
-    expect(p, token.LET);
-    auto ty = parse_ty(p);
+impure fn parse_local(&option.t[@ast.ty] tyopt, parser p) -> @ast.local {
     auto ident = parse_ident(p);
     auto init = parse_initializer(p);
+    ret @rec(ty = tyopt,
+             infer = false,
+             ident = ident,
+             init = init,
+             id = p.next_def_id(),
+             ann = ast.ann_none);
+}
 
+impure fn parse_typed_local(parser p) -> @ast.local {
+    auto ty = parse_ty(p);
+    ret parse_local(some(ty), p);
+}
+
+impure fn parse_auto_local(parser p) -> @ast.local {
+    ret parse_local(none[@ast.ty], p);
+}
+
+impure fn parse_let(parser p) -> @ast.decl {
+    auto lo = p.get_span();
+    expect(p, token.LET);
+    auto local = parse_typed_local(p);
     auto hi = p.get_span();
-
-    let ast.local local = rec(ty = some(ty),
-                              infer = false,
-                              ident = ident,
-                              init = init,
-                              id = p.next_def_id(),
-                              ann = ast.ann_none);
-
-    ret @spanned(lo, hi, ast.decl_local(@local));
+    ret @spanned(lo, hi, ast.decl_local(local));
 }
 
 impure fn parse_auto(parser p) -> @ast.decl {
     auto lo = p.get_span();
-
     expect(p, token.AUTO);
-    auto ident = parse_ident(p);
-    auto init = parse_initializer(p);
-
+    auto local = parse_auto_local(p);
     auto hi = p.get_span();
-
-    let ast.local local = rec(ty = none[@ast.ty],
-                              infer = true,
-                              ident = ident,
-                              init = init,
-                              id = p.next_def_id(),
-                              ann = ast.ann_none);
-
-    ret @spanned(lo, hi, ast.decl_local(@local));
+    ret @spanned(lo, hi, ast.decl_local(local));
 }
 
 impure fn parse_stmt(parser p) -> @ast.stmt {
@@ -1146,6 +1169,11 @@ impure fn parse_stmt(parser p) -> @ast.stmt {
         // Handle the (few) block-expr stmts first.
 
         case (token.IF) {
+            auto e = parse_expr(p);
+            ret @spanned(lo, e.span, ast.stmt_expr(e));
+        }
+
+        case (token.FOR) {
             auto e = parse_expr(p);
             ret @spanned(lo, e.span, ast.stmt_expr(e));
         }
@@ -1279,6 +1307,7 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_lit(_,_))        { ret true; }
                 case (ast.expr_cast(_,_,_))     { ret true; }
                 case (ast.expr_if(_,_,_,_))     { ret false; }
+                case (ast.expr_for(_,_,_,_))    { ret false; }
                 case (ast.expr_while(_,_,_))    { ret false; }
                 case (ast.expr_do_while(_,_,_)) { ret false; }
                 case (ast.expr_alt(_,_,_))      { ret false; }
@@ -1289,10 +1318,8 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_field(_,_,_))    { ret true; }
                 case (ast.expr_index(_,_,_))    { ret true; }
                 case (ast.expr_path(_,_,_))     { ret true; }
-                case (_)                        { fail; }
             }
         }
-        case (_)                                { fail; }
     }
 }
 

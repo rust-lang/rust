@@ -150,6 +150,7 @@ tag expr_ {
     expr_cast(@expr, @ty, ann);
     expr_if(@expr, block, option.t[block], ann);
     expr_while(@expr, block, ann);
+    expr_for(@local, @expr, block, ann);
     expr_do_while(block, @expr, ann);
     expr_alt(@expr, vec[arm], ann);
     expr_block(block, ann);
