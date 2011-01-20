@@ -517,7 +517,7 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
             auto ddecl = fold_decl(env_, fld, decl);
             auto sseq = fold_expr(env_, fld, seq);
             auto bbody = fold_block(env_, fld, body);
-            ret fld.fold_expr_for(env_, e.span, ddecl, seq, bbody, t);
+            ret fld.fold_expr_for(env_, e.span, ddecl, sseq, bbody, t);
         }
 
         case (ast.expr_while(?cnd, ?body, ?t)) {
