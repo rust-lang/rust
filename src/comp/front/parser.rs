@@ -202,7 +202,7 @@ impure fn parse_ty(parser p) -> @ast.ty {
     alt (p.peek()) {
         case (token.BOOL) { p.bump(); t = ast.ty_bool; }
         case (token.INT) { p.bump(); t = ast.ty_int; }
-        case (token.UINT) { p.bump(); t = ast.ty_int; }
+        case (token.UINT) { p.bump(); t = ast.ty_uint; }
         case (token.STR) { p.bump(); t = ast.ty_str; }
         case (token.CHAR) { p.bump(); t = ast.ty_char; }
         case (token.MACH(?tm)) { p.bump(); t = ast.ty_machine(tm); }
