@@ -361,6 +361,29 @@ fn type_is_structural(@t ty) -> bool {
     fail;
 }
 
+fn type_is_tup_like(@t ty) -> bool {
+    alt (ty.struct) {
+        case (ty_tup(_)) { ret true; }
+        case (ty_rec(_)) { ret true; }
+        case (ty_tag(_)) { ret true; }
+        case (_) { ret false; }
+    }
+    fail;
+}
+
+fn get_element_type(@t ty, uint i) -> @t {
+    check (type_is_tup_like(ty));
+    alt (ty.struct) {
+        case (ty_tup(?tys)) {
+            ret tys.(i);
+        }
+        case (ty_rec(?flds)) {
+            ret flds.(i).ty;
+        }
+    }
+    fail;
+}
+
 fn type_is_boxed(@t ty) -> bool {
     alt (ty.struct) {
         case (ty_str) { ret true; }

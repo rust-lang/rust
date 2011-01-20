@@ -392,6 +392,7 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
                     test/run-pass/generic-recursive-tag.rs \
+                    test/run-pass/generic-tup.rs \
                     test/run-pass/iter-ret.rs \
                     test/run-pass/lib-io.rs \
                     test/run-pass/mlist-cycle.rs \
@@ -440,6 +441,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         fact.rs \
                         generic-fn-infer.rs \
                         generic-drop-glue.rs \
+                        generic-tup.rs \
                         hello.rs \
                         int.rs \
                         i32-sub.rs \

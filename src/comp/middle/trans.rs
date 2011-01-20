@@ -732,6 +732,108 @@ fn dynamic_align_of(@block_ctxt cx, @ty.t t) -> ValueRef {
     }
 }
 
+// Replacement for the LLVM 'GEP' instruction when field-indexing into a
+// tuple-like structure (tup, rec, tag) with a static index. This one is
+// driven off ty.struct and knows what to do when it runs into a ty_param
+// stuck in the middle of the thing it's GEP'ing into. Much like size_of and
+// align_of, above.
+
+fn GEP_tup_like(@block_ctxt cx, @ty.t t,
+                ValueRef base, vec[int] ixs) -> ValueRef {
+
+    check (ty.type_is_tup_like(t));
+
+    // It might be a static-known type. Handle this.
+
+    if (! ty.type_has_dynamic_size(t)) {
+        let vec[ValueRef] v = vec();
+        for (int i in ixs) {
+            v += C_int(i);
+        }
+        ret cx.build.GEP(base, v);
+    }
+
+    // It is a dynamic-containing type that, if we convert directly to an LLVM
+    // TypeRef, will be all wrong; there's no proper LLVM type to represent
+    // it, and the lowering function will stick in i8* values for each
+    // ty_param, which is not right; the ty_params are all of some dynamic
+    // size.
+    //
+    // What we must do instead is sadder. We must look through the indices
+    // manually and split the input type into a prefix and a target. We then
+    // measure the prefix size, bump the input pointer by that amount, and
+    // cast to a pointer-to-target type.
+
+
+    // Given a type, an index vector and an element number N in that vector,
+    // calculate index X and the type that results by taking the first X-1
+    // elements of the type and splitting the Xth off. Return the prefix as
+    // well as the innermost Xth type.
+
+    fn split_type(@ty.t t, vec[int] ixs, uint n)
+        -> rec(vec[@ty.t] prefix, @ty.t target) {
+
+        let uint len = _vec.len[int](ixs);
+
+        // We don't support 0-index or 1-index GEPs. The former is nonsense
+        // and the latter would only be meaningful if we supported non-0
+        // values for the 0th index (we don't).
+
+        check (len > 1u);
+
+        if (n == 0u) {
+            // Since we're starting from a value that's a pointer to a
+            // *single* structure, the first index (in GEP-ese) should just be
+            // 0, to yield the pointee.
+            check (ixs.(n) == 0);
+            ret split_type(t, ixs, n+1u);
+        }
+
+        check (n < len);
+
+        let int ix = ixs.(n);
+        let vec[@ty.t] prefix = vec();
+        let int i = 0;
+        while (i < ix) {
+            append[@ty.t](prefix, ty.get_element_type(t, i as uint));
+            i +=1 ;
+        }
+
+        auto selected = ty.get_element_type(t, i as uint);
+
+        if (n == len-1u) {
+            // We are at the innermost index.
+            ret rec(prefix=prefix, target=selected);
+
+        } else {
+            // Not the innermost index; call self recursively to dig deeper.
+            // Once we get an inner result, append it current prefix and
+            // return to caller.
+            auto inner = split_type(selected, ixs, n+1u);
+            prefix += inner.prefix;
+            ret rec(prefix=prefix with inner);
+        }
+    }
+
+    // We make a fake prefix tuple-type here; luckily for measuring sizes
+    // the tuple parens are associative so it doesn't matter that we've
+    // flattened the incoming structure.
+
+    auto s = split_type(t, ixs, 0u);
+    auto prefix_ty = ty.plain_ty(ty.ty_tup(s.prefix));
+    auto sz = size_of(cx, prefix_ty);
+    auto raw = cx.build.PointerCast(base, T_ptr(T_i8()));
+    auto bumped = cx.build.GEP(raw, vec(sz));
+    alt (s.target.struct) {
+        case (ty.ty_param(_)) { ret bumped; }
+        case (_) {
+            auto ty = T_ptr(type_of(cx.fcx.ccx, s.target));
+            ret cx.build.PointerCast(bumped, ty);
+        }
+    }
+}
+
+
 fn trans_malloc_inner(@block_ctxt cx, TypeRef llptr_ty) -> result {
     auto llbody_ty = lib.llvm.llvm.LLVMGetElementType(llptr_ty);
     // FIXME: need a table to collect tydesc globals.
@@ -1969,12 +2071,12 @@ impure fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
     alt (t.struct) {
         case (ty.ty_tup(?fields)) {
             let uint ix = ty.field_num(cx.fcx.ccx.sess, sp, field);
-            auto v = r.bcx.build.GEP(r.val, vec(C_int(0), C_int(ix as int)));
+            auto v = GEP_tup_like(r.bcx, t, r.val, vec(0, ix as int));
             ret lval_mem(r.bcx, v);
         }
         case (ty.ty_rec(?fields)) {
             let uint ix = ty.field_idx(cx.fcx.ccx.sess, sp, field, fields);
-            auto v = r.bcx.build.GEP(r.val, vec(C_int(0), C_int(ix as int)));
+            auto v = GEP_tup_like(r.bcx, t, r.val, vec(0, ix as int));
             ret lval_mem(r.bcx, v);
         }
         case (ty.ty_obj(?methods)) {
