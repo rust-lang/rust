@@ -721,6 +721,10 @@ fn demand_expr(&@fn_ctxt fcx, @ty.t expected, @ast.expr e) -> @ast.expr {
             }
             e_1 = ast.expr_if(cond, then_1, else_1, ast.ann_type(t));
         }
+        case (ast.expr_for(?decl, ?seq, ?bloc, ?ann)) {
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            e_1 = ast.expr_for(decl, seq, bloc, ast.ann_type(t));
+        }
         case (ast.expr_while(?cond, ?bloc, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_while(cond, bloc, ast.ann_type(t));
@@ -1053,6 +1057,20 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_if(cond_1, thn_1, elsopt_1,
                                                     ast.ann_type(elsopt_t)));
+        }
+
+        case (ast.expr_for(?decl, ?seq, ?body, _)) {
+            auto decl_1 = check_decl_local(fcx, decl);
+            auto seq_1 = check_expr(fcx, seq);
+            auto body_1 = check_block(fcx, body);
+
+            // FIXME: enforce that the type of the decl is the element type
+            // of the seq.
+
+            auto ann = ast.ann_type(plain_ty(ty.ty_nil));
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_for(decl_1, seq_1,
+                                                     body_1, ann));
         }
 
         case (ast.expr_while(?cond, ?body, _)) {
@@ -1413,40 +1431,47 @@ fn next_ty_var(@crate_ctxt ccx) -> @ty.t {
     ret t;
 }
 
+fn check_decl_local(&@fn_ctxt fcx, &@ast.decl decl) -> @ast.decl {
+    alt (decl.node) {
+        case (ast.decl_local(?local)) {
+
+            auto local_ty;
+            alt (local.ty) {
+                case (none[@ast.ty]) {
+                    // Auto slot. Assign a ty_var.
+                    local_ty = next_ty_var(fcx.ccx);
+                }
+
+                case (some[@ast.ty](?ast_ty)) {
+                    local_ty = ast_ty_to_ty_crate(fcx.ccx, ast_ty);
+                }
+            }
+            fcx.locals.insert(local.id, local_ty);
+
+            auto rhs_ty = local_ty;
+            auto init = local.init;
+            alt (local.init) {
+                case (some[@ast.expr](?expr)) {
+                    auto expr_0 = check_expr(fcx, expr);
+                    auto lty = plain_ty(ty.ty_local(local.id));
+                    auto expr_1 = demand_expr(fcx, lty, expr_0);
+                    init = some[@ast.expr](expr_1);
+                }
+                case (_) { /* fall through */  }
+            }
+            auto local_1 = @rec(init = init with *local);
+            ret @rec(node=ast.decl_local(local_1)
+                     with *decl);
+        }
+    }
+}
+
 fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
     alt (stmt.node) {
         case (ast.stmt_decl(?decl)) {
             alt (decl.node) {
-                case (ast.decl_local(?local)) {
-
-                    auto local_ty;
-                    alt (local.ty) {
-                        case (none[@ast.ty]) {
-                            // Auto slot. Assign a ty_var.
-                            local_ty = next_ty_var(fcx.ccx);
-                        }
-
-                        case (some[@ast.ty](?ast_ty)) {
-                            local_ty = ast_ty_to_ty_crate(fcx.ccx, ast_ty);
-                        }
-                    }
-                    fcx.locals.insert(local.id, local_ty);
-
-                    auto rhs_ty = local_ty;
-                    auto init = local.init;
-                    alt (local.init) {
-                        case (some[@ast.expr](?expr)) {
-                            auto expr_0 = check_expr(fcx, expr);
-                            auto lty = plain_ty(ty.ty_local(local.id));
-                            auto expr_1 = demand_expr(fcx, lty, expr_0);
-                            init = some[@ast.expr](expr_1);
-                        }
-                        case (_) { /* fall through */  }
-                    }
-
-                    auto local_1 = @rec(init = init with *local);
-                    auto decl_1 = @rec(node=ast.decl_local(local_1)
-                                       with *decl);
+                case (ast.decl_local(_)) {
+                    auto decl_1 = check_decl_local(fcx, decl);
                     ret @fold.respan[ast.stmt_](stmt.span,
                                                 ast.stmt_decl(decl_1));
                 }
