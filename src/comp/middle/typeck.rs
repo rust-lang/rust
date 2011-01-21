@@ -81,6 +81,23 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
         ret rec(mode=arg.mode, ty=ast_ty_to_ty(getter, arg.ty));
     }
 
+    fn replace_type_params(@ty.t t, ty_table param_map) -> @ty.t {
+        state obj param_replacer(ty_table param_map) {
+            fn fold_simple_ty(@ty.t t) -> @ty.t {
+                alt (t.struct) {
+                    case (ty.ty_param(?param_def)) {
+                        ret param_map.get(param_def);
+                    }
+                    case (_) {
+                        ret t;
+                    }
+                }
+            }
+        }
+        auto replacer = param_replacer(param_map);
+        ret ty.fold_ty(replacer, t);
+    }
+
     auto mut = ast.imm;
     auto sty;
     auto cname = none[str];
@@ -122,7 +139,20 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
                 case (ast.def_ty(?id)) {
                     // TODO: maybe record cname chains so we can do
                     // "foo = int" like OCaml?
-                    sty = getter(id).ty.struct;
+                    auto ty_and_params = getter(id);
+                    auto params = ty_and_params.params;
+                    auto num_type_params = _vec.len[@ast.ty](path.node.types);
+                    check(num_type_params == _vec.len[ast.ty_param](params));
+
+                    auto param_map = common.new_def_hash[@ty.t]();
+                    for each (uint i in _uint.range(0u, num_type_params)) {
+                        auto x = path.node.types.(i);
+                        auto y = params.(i);
+                        param_map.insert(y.id, ast_ty_to_ty(getter, x));
+                    }
+
+                    sty = replace_type_params(ty_and_params.ty,
+                                              param_map).struct;
                 }
                 case (ast.def_ty_arg(?id))  { sty = ty.ty_param(id); }
                 case (_)                    { fail; }

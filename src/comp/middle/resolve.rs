@@ -476,10 +476,6 @@ fn fold_ty_path(&env e, &span sp, ast.path p, &option.t[def] d) -> @ast.ty {
         e.sess.unimpl("resolving path ty with >1 component");
     }
 
-    if (_vec.len[@ast.ty](p.node.types) > 0u) {
-        e.sess.unimpl("resolving path ty with ty params");
-    }
-
     auto d_ = lookup_name(e, p.node.idents.(0));
 
     alt (d_) {
