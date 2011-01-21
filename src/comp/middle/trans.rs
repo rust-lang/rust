@@ -70,6 +70,7 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id, @ast.item] items,
                             hashmap[ast.def_id, @tag_info] tags,
                             hashmap[ast.def_id, ValueRef] fn_pairs,
+                            hashmap[ast.def_id, ValueRef] consts,
                             hashmap[ast.def_id,()] obj_methods,
                             hashmap[@ty.t, ValueRef] tydescs,
                             vec[ast.obj_field] obj_fields,
@@ -527,7 +528,9 @@ fn C_int(int i) -> ValueRef {
     ret C_integral(i, T_int());
 }
 
-fn C_str(@crate_ctxt cx, str s) -> ValueRef {
+// This is a 'c-like' raw string, which differs from
+// our boxed-and-length-annotated strings.
+fn C_cstr(@crate_ctxt cx, str s) -> ValueRef {
     auto sc = llvm.LLVMConstString(_str.buf(s), _str.byte_len(s), False);
     auto g = llvm.LLVMAddGlobal(cx.llmod, val_ty(sc),
                                 _str.buf(cx.names.next("str")));
@@ -536,6 +539,23 @@ fn C_str(@crate_ctxt cx, str s) -> ValueRef {
     llvm.LLVMSetLinkage(g, lib.llvm.LLVMPrivateLinkage
                         as llvm.Linkage);
     ret g;
+}
+
+// A rust boxed-and-length-annotated string.
+fn C_str(@crate_ctxt cx, str s) -> ValueRef {
+    auto len = _str.byte_len(s);
+    auto box = C_struct(vec(C_int(abi.const_refcount as int),
+                            C_int(len + 1u as int), // 'alloc'
+                            C_int(len + 1u as int), // 'fill'
+                            llvm.LLVMConstString(_str.buf(s),
+                                                 len, False)));
+    auto g = llvm.LLVMAddGlobal(cx.llmod, val_ty(box),
+                                _str.buf(cx.names.next("str")));
+    llvm.LLVMSetInitializer(g, box);
+    llvm.LLVMSetGlobalConstant(g, True);
+    llvm.LLVMSetLinkage(g, lib.llvm.LLVMPrivateLinkage
+                        as llvm.Linkage);
+    ret llvm.LLVMConstPointerCast(g, T_ptr(T_str()));
 }
 
 fn C_zero_byte_arr(uint size) -> ValueRef {
@@ -1504,13 +1524,13 @@ fn copy_ty(@block_ctxt cx,
     fail;
 }
 
-fn trans_lit(@block_ctxt cx, &ast.lit lit, &ast.ann ann) -> result {
+fn trans_lit(@crate_ctxt cx, &ast.lit lit, &ast.ann ann) -> ValueRef {
     alt (lit.node) {
         case (ast.lit_int(?i)) {
-            ret res(cx, C_int(i));
+            ret C_int(i);
         }
         case (ast.lit_uint(?u)) {
-            ret res(cx, C_int(u as int));
+            ret C_int(u as int);
         }
         case (ast.lit_mach_int(?tm, ?i)) {
             // FIXME: the entire handling of mach types falls apart
@@ -1527,32 +1547,20 @@ fn trans_lit(@block_ctxt cx, &ast.lit lit, &ast.ann ann) -> result {
                 case (common.ty_i16) { t = T_i16(); }
                 case (common.ty_i32) { t = T_i32(); }
                 case (common.ty_i64) { t = T_i64(); }
-                case (_) {
-                    cx.fcx.ccx.sess.bug("bad mach int literal type");
-                }
             }
-            ret res(cx, C_integral(i, t));
+            ret C_integral(i, t);
         }
         case (ast.lit_char(?c)) {
-            ret res(cx, C_integral(c as int, T_char()));
+            ret C_integral(c as int, T_char());
         }
         case (ast.lit_bool(?b)) {
-            ret res(cx, C_bool(b));
+            ret C_bool(b);
         }
         case (ast.lit_nil) {
-            ret res(cx, C_nil());
+            ret C_nil();
         }
         case (ast.lit_str(?s)) {
-            auto len = (_str.byte_len(s) as int) + 1;
-            auto sub = trans_upcall(cx, "upcall_new_str",
-                                    vec(p2i(C_str(cx.fcx.ccx, s)),
-                                        C_int(len)));
-            auto val = sub.bcx.build.IntToPtr(sub.val,
-                                              T_ptr(T_str()));
-            auto t = node_ann_type(cx.fcx.ccx, ann);
-            find_scope_cx(cx).cleanups +=
-                clean(bind drop_ty(_, val, t));
-            ret res(sub.bcx, val);
+            ret C_str(cx, s);
         }
     }
 }
@@ -2087,6 +2095,10 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                         ret lval_val(cx, cx.fcx.ccx.item_ids.get(vid));
                     }
                 }
+                case (ast.def_const(?did)) {
+                    check (cx.fcx.ccx.consts.contains_key(did));
+                    ret lval_mem(cx, cx.fcx.ccx.consts.get(did));
+                }
                 case (_) {
                     cx.fcx.ccx.sess.unimpl("def variant in trans");
                 }
@@ -2155,8 +2167,8 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
     ix.bcx.build.CondBr(bounds_check, next_cx.llbb, fail_cx.llbb);
 
     // fail: bad bounds check.
-    auto V_expr_str = p2i(C_str(cx.fcx.ccx, "out-of-bounds access"));
-    auto V_filename = p2i(C_str(cx.fcx.ccx, sp.filename));
+    auto V_expr_str = p2i(C_cstr(cx.fcx.ccx, "out-of-bounds access"));
+    auto V_filename = p2i(C_cstr(cx.fcx.ccx, sp.filename));
     auto V_line = sp.lo.line as int;
     auto args = vec(V_expr_str, V_filename, C_int(V_line));
     auto fail_res = trans_upcall(fail_cx, "upcall_fail", args);
@@ -2667,7 +2679,7 @@ fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
 fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
     alt (e.node) {
         case (ast.expr_lit(?lit, ?ann)) {
-            ret trans_lit(cx, *lit, ann);
+            ret res(cx, trans_lit(cx.fcx.ccx, *lit, ann));
         }
 
         case (ast.expr_unary(?op, ?x, ?ann)) {
@@ -2806,8 +2818,8 @@ fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
     auto cond_res = trans_expr(cx, e);
 
     // FIXME: need pretty-printer.
-    auto V_expr_str = p2i(C_str(cx.fcx.ccx, "<expr>"));
-    auto V_filename = p2i(C_str(cx.fcx.ccx, e.span.filename));
+    auto V_expr_str = p2i(C_cstr(cx.fcx.ccx, "<expr>"));
+    auto V_filename = p2i(C_cstr(cx.fcx.ccx, e.span.filename));
     auto V_line = e.span.lo.line as int;
     auto args = vec(V_expr_str, V_filename, C_int(V_line));
 
@@ -3495,6 +3507,37 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     bcx.build.Ret(lltagval);
 }
 
+// FIXME: this should do some structural hash-consing to avoid
+// duplicate constants. I think. Maybe LLVM has a magical mode
+// that does so later on?
+
+fn trans_const_expr(@crate_ctxt cx, @ast.expr e) -> ValueRef {
+    alt (e.node) {
+        case (ast.expr_lit(?lit, ?ann)) {
+            ret trans_lit(cx, *lit, ann);
+        }
+    }
+}
+
+fn trans_const(@crate_ctxt cx, @ast.expr e,
+               &ast.def_id cid, &ast.ann ann) {
+    auto t = node_ann_type(cx, ann);
+    auto v = trans_const_expr(cx, e);
+    if (ty.type_is_scalar(t)) {
+        // The scalars come back as 1st class LLVM vals
+        // which we have to stick into global constants.
+        auto g = llvm.LLVMAddGlobal(cx.llmod, val_ty(v),
+                                    _str.buf(cx.names.next(cx.path)));
+        llvm.LLVMSetInitializer(g, v);
+        llvm.LLVMSetGlobalConstant(g, True);
+        llvm.LLVMSetLinkage(g, lib.llvm.LLVMPrivateLinkage
+                            as llvm.Linkage);
+        cx.consts.insert(cid, g);
+    } else {
+        cx.consts.insert(cid, v);
+    }
+}
+
 fn trans_item(@crate_ctxt cx, &ast.item item) {
     alt (item.node) {
         case (ast.item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
@@ -3517,6 +3560,10 @@ fn trans_item(@crate_ctxt cx, &ast.item item) {
                 trans_tag_variant(sub_cx, tag_id, variant, i, tps);
                 i += 1;
             }
+        }
+        case (ast.item_const(?name, _, ?expr, ?cid, ?ann)) {
+            auto sub_cx = @rec(path=cx.path + "." + name with *cx);
+            trans_const(sub_cx, expr, cid, ann);
         }
         case (_) { /* fall through */ }
     }
@@ -4055,6 +4102,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    items = new_def_hash[@ast.item](),
                    tags = new_def_hash[@tag_info](),
                    fn_pairs = new_def_hash[ValueRef](),
+                   consts = new_def_hash[ValueRef](),
                    obj_methods = new_def_hash[()](),
                    tydescs = tydescs,
                    obj_fields = obj_fields,

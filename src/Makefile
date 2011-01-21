@@ -432,6 +432,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         cast.rs \
                         char.rs \
                         complex.rs \
+                        const.rs \
                         dead-code-one-arm-if.rs \
                         deep.rs \
                         deref.rs \
