@@ -1793,6 +1793,40 @@ fn trans_if(@block_ctxt cx, @ast.expr cond,
                      vec(then_res, else_res));
 }
 
+fn trans_for(@block_ctxt cx,
+             @ast.decl decl,
+             @ast.expr seq,
+             &ast.block body) -> result {
+
+    fn inner(@block_ctxt cx,
+             @ast.local local, ValueRef curr,
+             @ty.t t, ast.block body) -> result {
+
+        auto scope_cx = new_scope_block_ctxt(cx, "for loop scope");
+        auto next_cx = new_sub_block_ctxt(cx, "next");
+
+        cx.build.Br(scope_cx.llbb);
+        auto local_res = alloc_local(scope_cx, local);
+        auto bcx = copy_ty(local_res.bcx, true, local_res.val, curr, t).bcx;
+        trans_block(bcx, body);
+        bcx.build.Br(next_cx.llbb);
+        ret res(next_cx, C_nil());
+    }
+
+
+    let @ast.local local;
+    alt (decl.node) {
+        case (ast.decl_local(?loc)) {
+            local = loc;
+        }
+    }
+
+    auto seq_ty = ty.expr_ty(seq);
+    auto seq_res = trans_expr(cx, seq);
+    ret iter_sequence(seq_res.bcx, seq_res.val, seq_ty,
+                      bind inner(_, local, _, _, body));
+}
+
 fn trans_while(@block_ctxt cx, @ast.expr cond,
                &ast.block body) -> result {
 
@@ -2646,6 +2680,10 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
 
         case (ast.expr_if(?cond, ?thn, ?els, _)) {
             ret trans_if(cx, cond, thn, els);
+        }
+
+        case (ast.expr_for(?decl, ?seq, ?body, _)) {
+            ret trans_for(cx, decl, seq, body);
         }
 
         case (ast.expr_while(?cond, ?body, _)) {
