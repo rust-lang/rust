@@ -179,8 +179,7 @@ let effect_checking_visitor
               then Ast.EFF_pure
               else Stack.top auth_stack
             in
-            let next = lower_effect_of e curr in
-              Stack.push next auth_stack;
+              Stack.push e auth_stack;
               iflog cx
                 begin
                   fun _ ->
@@ -189,40 +188,62 @@ let effect_checking_visitor
                         "entering '%a', adjusting auth effect: '%a' -> '%a'"
                         Ast.sprintf_name name
                         Ast.sprintf_effect curr
-                        Ast.sprintf_effect next
+                        Ast.sprintf_effect e
                 end
     end;
+    let report_mismatch declared_effect calculated_effect =
+      let name = Hashtbl.find cx.ctxt_all_item_names i.id in
+        err (Some i.id)
+          "%a claims effect '%a' but calculated effect is '%a'%s"
+          Ast.sprintf_name name
+          Ast.sprintf_effect declared_effect
+          Ast.sprintf_effect calculated_effect
+          begin
+            if Stack.is_empty auth_stack
+            then ""
+            else
+              Printf.sprintf " (auth effects are '%s')"
+                (stk_fold
+                   auth_stack
+                   (fun e s ->
+                      if s = ""
+                      then
+                        Printf.sprintf "%a"
+                          Ast.sprintf_effect e
+                      else
+                        Printf.sprintf "%s, %a" s
+                          Ast.sprintf_effect e) "")
+          end
+    in
     begin
       match i.node.Ast.decl_item with
           Ast.MOD_ITEM_fn f
             when htab_search cx.ctxt_required_items i.id = None ->
-            let e =
+            let calculated_effect =
               match htab_search item_effect i.id with
                 None -> Ast.EFF_pure
               | Some e -> e
             in
-            let fe = f.Ast.fn_aux.Ast.fn_effect in
-            let ae =
-              if Stack.is_empty auth_stack
-              then None
-              else Some (Stack.top auth_stack)
-            in
-              if e <> fe && (ae <> (Some e))
+            let declared_effect = f.Ast.fn_aux.Ast.fn_effect in
+              if calculated_effect <> declared_effect
               then
+                (* Something's fishy in this case. If the calculated effect
+                 * is equal to one auth'ed by an enclosing scope -- not just
+                 * a lower one -- we accept this mismatch; otherwise we
+                 * complain.
+                 * 
+                 * FIXME: this choice of "what constitutes an error" in
+                 * auth/effect mismatches is subjective and could do
+                 * with some discussion.  *)
                 begin
-                  let name = Hashtbl.find cx.ctxt_all_item_names i.id in
-                    err (Some i.id)
-                      "%a claims effect '%a' but calculated effect is '%a'%s"
-                      Ast.sprintf_name name
-                      Ast.sprintf_effect fe
-                      Ast.sprintf_effect e
-                      begin
-                        match ae with
-                            Some ae when ae <> fe ->
-                              Printf.sprintf " (auth effect is '%a')"
-                                Ast.sprintf_effect ae
-                          | _ -> ""
-                      end
+                  match
+                    stk_search auth_stack
+                      (fun e ->
+                         if e = calculated_effect then Some e else None)
+                  with
+                      Some _ -> ()
+                    | None ->
+                        report_mismatch declared_effect calculated_effect
                 end
         | _ -> ()
     end;
@@ -239,16 +260,16 @@ let effect_checking_visitor
             then Ast.EFF_pure
             else Stack.top auth_stack
           in
-          iflog cx
-            begin
-              fun _ ->
-                let name = Hashtbl.find cx.ctxt_all_item_names i.id in
-                  log cx
-                    "leaving '%a', restoring auth effect: '%a' -> '%a'"
-                    Ast.sprintf_name name
-                    Ast.sprintf_effect curr
-                    Ast.sprintf_effect next
-            end
+            iflog cx
+              begin
+                fun _ ->
+                  let name = Hashtbl.find cx.ctxt_all_item_names i.id in
+                    log cx
+                      "leaving '%a', restoring auth effect: '%a' -> '%a'"
+                      Ast.sprintf_name name
+                      Ast.sprintf_effect curr
+                      Ast.sprintf_effect next
+              end
   in
     { inner with
         Walk.visit_mod_item_pre = visit_mod_item_pre;
