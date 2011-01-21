@@ -31,8 +31,11 @@ import std.option.none;
 import std.option.some;
 
 type ty_table = hashmap[ast.def_id, @ty.t];
+type ty_item_table = hashmap[ast.def_id,@ast.item];
+
 type crate_ctxt = rec(session.session sess,
                       @ty_table item_types,
+                      @ty_item_table item_items,
                       vec[ast.obj_field] obj_fields,
                       mutable int next_var_id);
 
@@ -41,7 +44,8 @@ type fn_ctxt = rec(@ty.t ret_ty,
                    @crate_ctxt ccx);
 
 // Used for ast_ty_to_ty() below.
-type ty_getter = fn(ast.def_id) -> @ty.t;
+type ty_and_params = rec(vec[ast.ty_param] params, @ty.t ty);
+type ty_getter = fn(ast.def_id) -> ty_and_params;
 
 // Replaces parameter types inside a type with type variables.
 fn generalize_ty(@crate_ctxt cx, @ty.t t) -> @ty.t {
@@ -118,7 +122,7 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
                 case (ast.def_ty(?id)) {
                     // TODO: maybe record cname chains so we can do
                     // "foo = int" like OCaml?
-                    sty = getter(id).struct;
+                    sty = getter(id).ty.struct;
                 }
                 case (ast.def_ty_arg(?id))  { sty = ty.ty_param(id); }
                 case (_)                    { fail; }
@@ -155,12 +159,37 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
 // A convenience function to use a crate_ctxt to resolve names for
 // ast_ty_to_ty.
 fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast.ty ast_ty) -> @ty.t {
-    fn getter(@crate_ctxt ccx, ast.def_id id) -> @ty.t {
+    fn getter(@crate_ctxt ccx, ast.def_id id) -> ty_and_params {
         check (ccx.item_types.contains_key(id));
-        ret ccx.item_types.get(id);
+        check (ccx.item_items.contains_key(id));
+        auto ty = ccx.item_types.get(id);
+        auto item = ccx.item_items.get(id);
+        auto params = ty_params_of_item(item);
+        ret rec(params = params, ty = ty);
     }
     auto f = bind getter(ccx, _);
     ret ast_ty_to_ty(f, ast_ty);
+}
+
+fn ty_params_of_item(@ast.item item) -> vec[ast.ty_param] {
+    alt (item.node) {
+        case (ast.item_fn(_, _, ?p, _, _)) {
+            ret p;
+        }
+        case (ast.item_ty(_, _, ?p, _, _)) {
+            ret p;
+        }
+        case (ast.item_tag(_, _, ?p, _)) {
+            ret p;
+        }
+        case (ast.item_obj(_, _, ?p, _, _)) {
+            ret p;
+        }
+        case (_) {
+            let vec[ast.ty_param] r = vec();
+            ret r;
+        }
+    }
 }
 
 // Item collection - a pair of bootstrap passes:
@@ -175,16 +204,16 @@ fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast.ty ast_ty) -> @ty.t {
 // AST, along with a table mapping item IDs to their types.
 
 fn collect_item_types(session.session sess, @ast.crate crate)
-    -> tup(@ast.crate, @ty_table) {
-
-    type ty_item_table = hashmap[ast.def_id,@ast.item];
+    -> tup(@ast.crate, @ty_table, @ty_item_table) {
 
     fn getter(@ty_item_table id_to_ty_item,
               @ty_table item_to_ty,
-              ast.def_id id) -> @ty.t {
+              ast.def_id id) -> ty_and_params {
         check (id_to_ty_item.contains_key(id));
         auto item = id_to_ty_item.get(id);
-        ret ty_of_item(id_to_ty_item, item_to_ty, item);
+        auto ty = ty_of_item(id_to_ty_item, item_to_ty, item);
+        auto params = ty_params_of_item(item);
+        ret rec(params = params, ty = ty);
     }
 
     fn ty_of_arg(@ty_item_table id_to_ty_item,
@@ -485,7 +514,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
              fold_item_tag   = bind fold_item_tag(_,_,_,_,_,_)
              with *fld_2);
     auto crate_ = fold.fold_crate[@env](e, fld_2, crate);
-    ret tup(crate_, item_to_ty);
+    ret tup(crate_, item_to_ty, id_to_ty_item);
 }
 
 fn unify(&@fn_ctxt fcx, @ty.t expected, @ty.t actual) -> ty.unify_result {
@@ -1634,6 +1663,7 @@ fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
 
     auto ccx = @rec(sess=sess,
                     item_types=result._1,
+                    item_items=result._2,
                     obj_fields=fields,
                     mutable next_var_id=0);
 
