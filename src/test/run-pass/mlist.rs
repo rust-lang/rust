@@ -2,9 +2,9 @@
 
 tag mlist {
   cons(int,mutable @mlist);
-  nil();
+  nil;
 }
 
 fn main() {
-  cons(10, @cons(11, @cons(12, @nil())));
+  cons(10, @cons(11, @cons(12, @nil)));
 }

@@ -440,6 +440,9 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         drop-bind-thunk-args.rs \
                         drop-on-ret.rs \
                         fact.rs \
+                        fn-lval.rs \
+                        fun-call-variants.rs \
+                        fun-indirect-call.rs \
                         generic-fn-infer.rs \
                         generic-drop-glue.rs \
                         generic-tup.rs \
@@ -453,17 +456,21 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         import5.rs \
                         import6.rs \
                         import7.rs \
+                        integral-indexing.rs \
                         item-name-overload.rs \
                         large-records.rs \
                         lazy-init.rs \
                         lazy-and-or.rs \
                         linear-for-loop.rs \
                         multiline-comment.rs \
+                        mutual-recursion-group.rs \
                         obj-drop.rs \
                         obj-recursion.rs \
                         obj-with-vec.rs \
                         operator-associativity.rs \
+                        opeq.rs \
                         output-slot-variants.rs \
+                        over-constrained-vregs.rs \
                         readalias.rs \
                         rec.rs \
                         rec-auto.rs \
