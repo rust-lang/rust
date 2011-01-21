@@ -482,8 +482,8 @@ fn sanitize(str s) -> str {
                     result += "_of_";
                 } else {
                     if (c != 10u8 && c != ('}' as u8) && c != (')' as u8) &&
-                            c != (' ' as u8) && c != ('\t' as u8) &&
-                            c != (';' as u8)) {
+                        c != (' ' as u8) && c != ('\t' as u8) &&
+                        c != (';' as u8)) {
                         auto v = vec(c);
                         result += _str.from_bytes(v);
                     }
@@ -977,15 +977,17 @@ fn incr_refcnt_of_boxed(@block_ctxt cx, ValueRef box_ptr) -> result {
 fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
     alt (t.struct) {
         case (ty.ty_str) {
-            ret decr_refcnt_and_if_zero(cx, v,
-                                        bind trans_non_gc_free(_, v),
-                                        "free string",
-                                        T_int(), C_int(0));
+            ret decr_refcnt_and_if_zero
+                (cx, v, bind trans_non_gc_free(_, v),
+                 "free string",
+                 T_int(), C_int(0));
         }
 
         case (ty.ty_vec(_)) {
-            fn hit_zero(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
-                auto res = iter_sequence(cx, v, t, bind drop_ty(_,_,_));
+            fn hit_zero(@block_ctxt cx, ValueRef v,
+                        @ty.t t) -> result {
+                auto res = iter_sequence(cx, v, t,
+                                         bind drop_ty(_,_,_));
                 // FIXME: switch gc/non-gc on layer of the type.
                 ret trans_non_gc_free(res.bcx, v);
             }
@@ -996,7 +998,8 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
         }
 
         case (ty.ty_box(?body_ty)) {
-            fn hit_zero(@block_ctxt cx, ValueRef v, @ty.t body_ty) -> result {
+            fn hit_zero(@block_ctxt cx, ValueRef v,
+                        @ty.t body_ty) -> result {
                 auto body = cx.build.GEP(v,
                                          vec(C_int(0),
                                              C_int(abi.box_rc_field_body)));
@@ -1274,11 +1277,14 @@ fn iter_structural_ty(@block_ctxt cx,
 
                                 auto j = 0u;
                                 for (ty.arg a in args) {
-                                    auto llfldp = variant_cx.build.GEP(llvarp,
-                                        vec(C_int(0), C_int(j as int)));
+                                    auto v = vec(C_int(0),
+                                                 C_int(j as int));
+                                    auto llfldp =
+                                        variant_cx.build.GEP(llvarp, v);
+
                                     auto llfld =
                                         load_scalar_or_boxed(variant_cx,
-                                                            llfldp, a.ty);
+                                                             llfldp, a.ty);
 
                                     auto res = f(variant_cx, llfld, a.ty);
                                     variant_cx = res.bcx;
@@ -1830,7 +1836,7 @@ impure fn trans_do_while(@block_ctxt cx, &ast.block body,
 // Returns a pointer to the union part of the LLVM representation of a tag
 // type, cast to the appropriate type.
 fn get_pat_union_ptr(@block_ctxt cx, vec[@ast.pat] subpats, ValueRef llval)
-        -> ValueRef {
+    -> ValueRef {
     auto llblobptr = cx.build.GEP(llval, vec(C_int(0), C_int(1)));
 
     // Generate the union type.
@@ -1861,7 +1867,7 @@ impure fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
             for (tup(ast.def_id,arity) vinfo in tinfo.variants) {
                 auto this_variant_id = vinfo._0;
                 if (variant_id._0 == this_variant_id._0 &&
-                        variant_id._1 == this_variant_id._1) {
+                    variant_id._1 == this_variant_id._1) {
                     variant_tag = i;
                 }
                 i += 1;
@@ -1882,8 +1888,8 @@ impure fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
                                                             vec(C_int(0),
                                                                 C_int(i)));
                     auto llsubval = load_scalar_or_boxed(matched_cx,
-                                                        llsubvalptr,
-                                                        pat_ty(subpat));
+                                                         llsubvalptr,
+                                                         pat_ty(subpat));
                     auto subpat_res = trans_pat_match(matched_cx, subpat,
                                                       llsubval, next_cx);
                     matched_cx = subpat_res.bcx;
@@ -1923,7 +1929,7 @@ impure fn trans_pat_binding(@block_ctxt cx, @ast.pat pat, ValueRef llval)
                 auto llsubvalptr = this_cx.build.GEP(llunionptr,
                                                      vec(C_int(0), C_int(i)));
                 auto llsubval = load_scalar_or_boxed(this_cx, llsubvalptr,
-                                                    pat_ty(subpat));
+                                                     pat_ty(subpat));
                 auto subpat_res = trans_pat_binding(this_cx, subpat,
                                                     llsubval);
                 this_cx = subpat_res.bcx;
@@ -1993,7 +1999,7 @@ fn lval_val(@block_ctxt cx, ValueRef val) -> lval_result {
 }
 
 fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
-        &ast.ann ann) -> lval_result {
+              &ast.ann ann) -> lval_result {
     alt (dopt) {
         case (some[ast.def](?def)) {
             alt (def) {
@@ -2493,11 +2499,11 @@ impure fn trans_call(@block_ctxt cx, @ast.expr f,
             auto bcx = f_res.res.bcx;
             auto pair = faddr;
             faddr = bcx.build.GEP(pair, vec(C_int(0),
-                                             C_int(abi.fn_field_code)));
+                                            C_int(abi.fn_field_code)));
             faddr = bcx.build.Load(faddr);
 
             llclosure = bcx.build.GEP(pair, vec(C_int(0),
-                                                 C_int(abi.fn_field_box)));
+                                                C_int(abi.fn_field_box)));
             llclosure = bcx.build.Load(llclosure);
         }
     }
@@ -2680,7 +2686,7 @@ impure fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             auto lhs_res = trans_lval(cx, dst);
             check (lhs_res.is_mem);
             auto lhs_val = load_scalar_or_boxed(lhs_res.res.bcx,
-                                               lhs_res.res.val, t);
+                                                lhs_res.res.val, t);
             auto rhs_res = trans_expr(lhs_res.res.bcx, src);
             auto v = trans_eager_binop(rhs_res.bcx, op, lhs_val, rhs_res.val);
             // FIXME: calculate copy init-ness in typestate.
@@ -3609,10 +3615,12 @@ fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
                 auto arity_info;
                 if (_vec.len[ast.variant_arg](variant.args) > 0u) {
                     auto llvariantty = type_of_variant(cx, variant);
-                    auto align = llvm.LLVMPreferredAlignmentOfType(cx.td.lltd,
-                                                                 llvariantty);
-                    auto size = llvm.LLVMStoreSizeOfType(cx.td.lltd,
-                                                         llvariantty) as uint;
+                    auto align =
+                        llvm.LLVMPreferredAlignmentOfType(cx.td.lltd,
+                                                          llvariantty);
+                    auto size =
+                        llvm.LLVMStoreSizeOfType(cx.td.lltd,
+                                                 llvariantty) as uint;
                     if (max_align < align) { max_align = align; }
                     if (max_size < size) { max_size = size; }
 
@@ -3957,8 +3965,8 @@ fn make_glues(ModuleRef llmod) -> @glue_fns {
                                             T_fn(vec(T_taskptr()), T_void())),
 
              upcall_glues =
-              _vec.init_fn[ValueRef](bind decl_upcall(llmod, _),
-                                     abi.n_upcall_glues as uint),
+             _vec.init_fn[ValueRef](bind decl_upcall(llmod, _),
+                                    abi.n_upcall_glues as uint),
              no_op_type_glue = make_no_op_type_glue(llmod),
              memcpy_glue = make_memcpy_glue(llmod),
              bzero_glue = make_bzero_glue(llmod));
