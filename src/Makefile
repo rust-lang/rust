@@ -456,6 +456,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         large-records.rs \
                         lazy-init.rs \
                         lazy-and-or.rs \
+                        linear-for-loop.rs \
                         multiline-comment.rs \
                         obj-drop.rs \
                         obj-recursion.rs \

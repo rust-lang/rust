@@ -1808,7 +1808,7 @@ fn trans_for(@block_ctxt cx,
         cx.build.Br(scope_cx.llbb);
         auto local_res = alloc_local(scope_cx, local);
         auto bcx = copy_ty(local_res.bcx, true, local_res.val, curr, t).bcx;
-        trans_block(bcx, body);
+        bcx = trans_block(bcx, body).bcx;
         bcx.build.Br(next_cx.llbb);
         ret res(next_cx, C_nil());
     }
