@@ -1590,7 +1590,7 @@ fn check_const(&@crate_ctxt ccx, &span sp, ast.ident ident, @ast.ty t,
 }
 
 fn check_fn(&@crate_ctxt ccx, ast.effect effect,
-            vec[ast.arg] inputs,
+            bool is_iter, vec[ast.arg] inputs,
             @ast.ty output, &ast.block body) -> ast._fn {
     auto local_ty_table = @common.new_def_hash[@ty.t]();
 
@@ -1618,8 +1618,8 @@ fn check_fn(&@crate_ctxt ccx, ast.effect effect,
     auto block_t = check_block(fcx, body);
     auto block_wb = writeback(fcx, block_t);
 
-    auto fn_t = rec(effect=effect, inputs=inputs, output=output,
-                    body=block_wb);
+    auto fn_t = rec(effect=effect, is_iter=is_iter,
+                    inputs=inputs, output=output, body=block_wb);
     ret fn_t;
 }
 
@@ -1670,7 +1670,7 @@ fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     auto fld = fold.new_identity_fold[@crate_ctxt]();
 
     fld = @rec(update_env_for_item = bind update_obj_fields(_, _),
-               fold_fn      = bind check_fn(_,_,_,_,_),
+               fold_fn      = bind check_fn(_,_,_,_,_,_),
                fold_item_fn = bind check_item_fn(_,_,_,_,_,_,_)
                with *fld);
     ret fold.fold_crate[@crate_ctxt](ccx, fld, result._0);

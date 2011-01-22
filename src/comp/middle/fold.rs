@@ -221,6 +221,7 @@ type ast_fold[ENV] =
          &ast.block_) -> block)                   fold_block,
 
      (fn(&ENV e, ast.effect effect,
+         bool is_iter,
          vec[arg] inputs,
          @ty output, &block body) -> ast._fn)     fold_fn,
 
@@ -671,7 +672,7 @@ fn fold_fn[ENV](&ENV env, ast_fold[ENV] fld, &ast._fn f) -> ast._fn {
     auto output = fold_ty[ENV](env, fld, f.output);
     auto body = fold_block[ENV](env, fld, f.body);
 
-    ret fld.fold_fn(env, f.effect, inputs, output, body);
+    ret fld.fold_fn(env, f.effect, f.is_iter, inputs, output, body);
 }
 
 
@@ -1129,10 +1130,12 @@ fn identity_fold_block[ENV](&ENV e, &span sp, &ast.block_ blk) -> block {
 
 fn identity_fold_fn[ENV](&ENV e,
                          ast.effect effect,
+                         bool is_iter,
                          vec[arg] inputs,
                          @ast.ty output,
                          &block body) -> ast._fn {
-    ret rec(effect=effect, inputs=inputs, output=output, body=body);
+    ret rec(effect=effect, is_iter=is_iter, inputs=inputs,
+            output=output, body=body);
 }
 
 fn identity_fold_mod[ENV](&ENV e, &ast._mod m) -> ast._mod {
@@ -1271,7 +1274,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
              bind identity_fold_view_item_import[ENV](_,_,_,_,_),
 
          fold_block = bind identity_fold_block[ENV](_,_,_),
-         fold_fn = bind identity_fold_fn[ENV](_,_,_,_,_),
+         fold_fn = bind identity_fold_fn[ENV](_,_,_,_,_,_),
          fold_mod = bind identity_fold_mod[ENV](_,_),
          fold_crate = bind identity_fold_crate[ENV](_,_,_),
          fold_obj = bind identity_fold_obj[ENV](_,_,_),

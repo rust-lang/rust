@@ -200,6 +200,7 @@ tag ty_ {
 
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
 type _fn = rec(effect effect,
+               bool is_iter,
                vec[arg] inputs,
                @ty output,
                block body);
