@@ -456,7 +456,6 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         import5.rs \
                         import6.rs \
                         import7.rs \
-                        integral-indexing.rs \
                         item-name-overload.rs \
                         large-records.rs \
                         lazy-init.rs \
