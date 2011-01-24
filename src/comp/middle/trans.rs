@@ -93,10 +93,16 @@ tag cleanup {
     clean(fn(@block_ctxt cx) -> result);
 }
 
+
+tag block_kind {
+    SCOPE_BLOCK;
+    NON_SCOPE_BLOCK;
+}
+
 state type block_ctxt = rec(BasicBlockRef llbb,
                             builder build,
                             block_parent parent,
-                            bool is_scope,
+                            block_kind kind,
                             mutable vec[cleanup] cleanups,
                             @fn_ctxt fcx);
 
@@ -640,7 +646,7 @@ fn trans_non_gc_free(@block_ctxt cx, ValueRef v) -> result {
 }
 
 fn find_scope_cx(@block_ctxt cx) -> @block_ctxt {
-    if (cx.is_scope) {
+    if (cx.kind == SCOPE_BLOCK) {
         ret cx;
     }
     alt (cx.parent) {
@@ -1492,8 +1498,13 @@ fn memcpy_ty(@block_ctxt cx,
     }
 }
 
+tag copy_action {
+    INIT;
+    DROP_EXISTING;
+}
+
 fn copy_ty(@block_ctxt cx,
-           bool is_init,
+           copy_action action,
            ValueRef dst,
            ValueRef src,
            @ty.t t) -> result {
@@ -1505,7 +1516,7 @@ fn copy_ty(@block_ctxt cx,
 
     } else if (ty.type_is_boxed(t)) {
         auto r = incr_all_refcnts(cx, src, t);
-        if (! is_init) {
+        if (action == DROP_EXISTING) {
             r = drop_ty(r.bcx, r.bcx.build.Load(dst), t);
         }
         ret res(r.bcx, r.bcx.build.Store(src, dst));
@@ -1513,7 +1524,7 @@ fn copy_ty(@block_ctxt cx,
     } else if (ty.type_is_structural(t) ||
                ty.type_has_dynamic_size(t)) {
         auto r = incr_all_refcnts(cx, src, t);
-        if (! is_init) {
+        if (action == DROP_EXISTING) {
             r = drop_ty(r.bcx, dst, t);
         }
         ret memcpy_ty(r.bcx, dst, src, t);
@@ -1623,7 +1634,7 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
                                           vec(C_int(0),
                                               C_int(abi.box_rc_field_body)));
             sub.bcx.build.Store(C_int(1), rc);
-            sub = copy_ty(sub.bcx, true, body, e_val, e_ty);
+            sub = copy_ty(sub.bcx, INIT, body, e_val, e_ty);
             ret res(sub.bcx, box);
         }
         case (ast.deref) {
@@ -1815,7 +1826,7 @@ fn trans_for(@block_ctxt cx,
 
         cx.build.Br(scope_cx.llbb);
         auto local_res = alloc_local(scope_cx, local);
-        auto bcx = copy_ty(local_res.bcx, true, local_res.val, curr, t).bcx;
+        auto bcx = copy_ty(local_res.bcx, INIT, local_res.val, curr, t).bcx;
         bcx = trans_block(bcx, body).bcx;
         bcx.build.Br(next_cx.llbb);
         ret res(next_cx, C_nil());
@@ -1955,7 +1966,7 @@ fn trans_pat_binding(@block_ctxt cx, @ast.pat pat, ValueRef llval)
             cx.fcx.lllocals.insert(def_id, dst);
             cx.cleanups += clean(bind drop_slot(_, dst, ty));
 
-            ret copy_ty(cx, true, dst, llval, ty);
+            ret copy_ty(cx, INIT, dst, llval, ty);
         }
         case (ast.pat_tag(_, ?subpats, _, _)) {
             if (_vec.len[@ast.pat](subpats) == 0u) { ret res(cx, llval); }
@@ -2496,7 +2507,7 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
             for (ValueRef v in bound_vals) {
                 auto bound = bcx.build.GEP(bindings,
                                            vec(C_int(0),C_int(i)));
-                bcx = copy_ty(r.bcx, true, bound, v, bound_tys.(i)).bcx;
+                bcx = copy_ty(r.bcx, INIT, bound, v, bound_tys.(i)).bcx;
                 i += 1;
             }
 
@@ -2608,7 +2619,7 @@ fn trans_tup(@block_ctxt cx, vec[ast.elt] elts,
         auto t = ty.expr_ty(e.expr);
         auto src_res = trans_expr(r.bcx, e.expr);
         auto dst_elt = r.bcx.build.GEP(tup_val, vec(C_int(0), C_int(i)));
-        r = copy_ty(src_res.bcx, true, dst_elt, src_res.val, t);
+        r = copy_ty(src_res.bcx, INIT, dst_elt, src_res.val, t);
         i += 1;
     }
     ret res(r.bcx, tup_val);
@@ -2645,7 +2656,7 @@ fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
     for (@ast.expr e in args) {
         auto src_res = trans_expr(sub.bcx, e);
         auto dst_elt = sub.bcx.build.GEP(body, vec(C_int(0), C_int(i)));
-        sub = copy_ty(src_res.bcx, true, dst_elt, src_res.val, unit_ty);
+        sub = copy_ty(src_res.bcx, INIT, dst_elt, src_res.val, unit_ty);
         i += 1;
     }
     auto fill = sub.bcx.build.GEP(vec_val,
@@ -2668,7 +2679,7 @@ fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
         auto src_res = trans_expr(r.bcx, f.expr);
         auto dst_elt = r.bcx.build.GEP(rec_val, vec(C_int(0), C_int(i)));
         // FIXME: calculate copy init-ness in typestate.
-        r = copy_ty(src_res.bcx, true, dst_elt, src_res.val, t);
+        r = copy_ty(src_res.bcx, INIT, dst_elt, src_res.val, t);
         i += 1;
     }
     ret res(r.bcx, rec_val);
@@ -2727,7 +2738,8 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             auto rhs_res = trans_expr(lhs_res.res.bcx, src);
             auto t = node_ann_type(cx.fcx.ccx, ann);
             // FIXME: calculate copy init-ness in typestate.
-            ret copy_ty(rhs_res.bcx, false, lhs_res.res.val, rhs_res.val, t);
+            ret copy_ty(rhs_res.bcx, DROP_EXISTING,
+                        lhs_res.res.val, rhs_res.val, t);
         }
 
         case (ast.expr_assign_op(?op, ?dst, ?src, ?ann)) {
@@ -2739,7 +2751,8 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             auto rhs_res = trans_expr(lhs_res.res.bcx, src);
             auto v = trans_eager_binop(rhs_res.bcx, op, lhs_val, rhs_res.val);
             // FIXME: calculate copy init-ness in typestate.
-            ret copy_ty(rhs_res.bcx, false, lhs_res.res.val, v, t);
+            ret copy_ty(rhs_res.bcx, DROP_EXISTING,
+                        lhs_res.res.val, v, t);
         }
 
         case (ast.expr_bind(?f, ?args, ?ann)) {
@@ -2889,7 +2902,7 @@ fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
             alt (cx.fcx.llretptr) {
                 case (some[ValueRef](?llptr)) {
                     // Generic return via tydesc + retptr.
-                    bcx = copy_ty(bcx, true, llptr, val, t).bcx;
+                    bcx = copy_ty(bcx, INIT, llptr, val, t).bcx;
                     bcx.build.RetVoid();
                 }
                 case (none[ValueRef]) {
@@ -2921,7 +2934,7 @@ fn init_local(@block_ctxt cx, @ast.local local) -> result {
     alt (local.init) {
         case (some[@ast.expr](?e)) {
             auto sub = trans_expr(bcx, e);
-            bcx = copy_ty(sub.bcx, true, llptr, sub.val, ty).bcx;
+            bcx = copy_ty(sub.bcx, INIT, llptr, sub.val, ty).bcx;
         }
         case (_) {
             if (middle.ty.type_has_dynamic_size(ty)) {
@@ -2983,7 +2996,7 @@ fn new_builder(BasicBlockRef llbb) -> builder {
 // You probably don't want to use this one. See the
 // next three functions instead.
 fn new_block_ctxt(@fn_ctxt cx, block_parent parent,
-                  bool is_scope,
+                  block_kind kind,
                   str name) -> @block_ctxt {
     let vec[cleanup] cleanups = vec();
     let BasicBlockRef llbb =
@@ -2993,24 +3006,24 @@ fn new_block_ctxt(@fn_ctxt cx, block_parent parent,
     ret @rec(llbb=llbb,
              build=new_builder(llbb),
              parent=parent,
-             is_scope=is_scope,
+             kind=kind,
              mutable cleanups=cleanups,
              fcx=cx);
 }
 
 // Use this when you're at the top block of a function or the like.
 fn new_top_block_ctxt(@fn_ctxt fcx) -> @block_ctxt {
-    ret new_block_ctxt(fcx, parent_none, true, "function top level");
+    ret new_block_ctxt(fcx, parent_none, SCOPE_BLOCK, "function top level");
 }
 
 // Use this when you're at a curly-brace or similar lexical scope.
 fn new_scope_block_ctxt(@block_ctxt bcx, str n) -> @block_ctxt {
-    ret new_block_ctxt(bcx.fcx, parent_some(bcx), true, n);
+    ret new_block_ctxt(bcx.fcx, parent_some(bcx), SCOPE_BLOCK, n);
 }
 
 // Use this when you're making a general CFG BB within a scope.
 fn new_sub_block_ctxt(@block_ctxt bcx, str n) -> @block_ctxt {
-    ret new_block_ctxt(bcx.fcx, parent_some(bcx), false, n);
+    ret new_block_ctxt(bcx.fcx, parent_some(bcx), NON_SCOPE_BLOCK, n);
 }
 
 
@@ -3018,7 +3031,7 @@ fn trans_block_cleanups(@block_ctxt cx,
                         @block_ctxt cleanup_cx) -> @block_ctxt {
     auto bcx = cx;
 
-    if (!cleanup_cx.is_scope) {
+    if (cleanup_cx.kind != SCOPE_BLOCK) {
         check (_vec.len[cleanup](cleanup_cx.cleanups) == 0u);
     }
 
@@ -3430,7 +3443,7 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
             arg = load_scalar_or_boxed(r.bcx, arg, arg_tys.(i).ty);
             auto field = r.bcx.build.GEP(body_fields,
                                          vec(C_int(0),C_int(i)));
-            r = copy_ty(r.bcx, true, field, arg, arg_tys.(i).ty);
+            r = copy_ty(r.bcx, INIT, field, arg, arg_tys.(i).ty);
             i += 1;
         }
 
