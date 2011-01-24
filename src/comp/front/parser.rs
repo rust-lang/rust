@@ -1645,6 +1645,7 @@ fn peeking_at_item(parser p) -> bool {
         case (token.UNSAFE) { ret true; }
         case (token.CONST) { ret true; }
         case (token.FN) { ret true; }
+        case (token.ITER) { ret true; }
         case (token.MOD) { ret true; }
         case (token.TYPE) { ret true; }
         case (token.TAG) { ret true; }
