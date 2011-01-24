@@ -390,6 +390,20 @@ tag greed {
     MINIMAL;
 }
 
+impure fn parse_ty_args(parser p, span hi) ->
+    util.common.spanned[vec[@ast.ty]] {
+
+    if (p.peek() == token.LBRACKET) {
+        auto pf = parse_ty;
+        ret parse_seq[@ast.ty](token.LBRACKET,
+                               token.RBRACKET,
+                               some(token.COMMA),
+                               pf, p);
+    }
+    let vec[@ast.ty] v = vec();
+    ret spanned(hi, hi, v);
+}
+
 impure fn parse_path(parser p, greed g) -> ast.path {
 
     auto lo = p.get_span();
@@ -420,20 +434,7 @@ impure fn parse_path(parser p, greed g) -> ast.path {
         }
     }
 
-    let vec[@ast.ty] v = vec();
-    let util.common.spanned[vec[@ast.ty]] tys = rec(node=v, span=hi);
-
-    alt (p.peek()) {
-        case (token.LBRACKET) {
-            auto pf = parse_ty;
-            tys = parse_seq[@ast.ty](token.LBRACKET,
-                                     token.RBRACKET,
-                                     some(token.COMMA),
-                                     pf, p);
-        }
-        case (_) {
-        }
-    }
+    auto tys = parse_ty_args(p, hi);
     ret spanned(lo, tys.span, rec(idents=ids, types=tys.node));
 }
 
@@ -569,17 +570,20 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
     ret @spanned(lo, hi, ex);
 }
 
-fn append_dot_ident_to_expr(span lo, span hi,
-                            @ast.expr e, ast.ident i) -> @ast.expr {
+impure fn extend_expr_by_ident(parser p, span lo, span hi,
+                               @ast.expr e, ast.ident i) -> @ast.expr {
     auto e_ = e.node;
     alt (e.node) {
         case (ast.expr_path(?pth, ?def, ?ann)) {
             if (_vec.len[@ast.ty](pth.node.types) == 0u) {
                 auto idents_ = pth.node.idents;
                 idents_ += i;
-                auto pth_ = rec(node=rec(idents=idents_ with pth.node)
-                                with pth);
+                auto tys = parse_ty_args(p, hi);
+                auto pth_ = spanned(pth.span, tys.span,
+                                    rec(idents=idents_,
+                                        types=tys.node));
                 e_ = ast.expr_path(pth_, def, ann);
+                ret @spanned(pth_.span, pth_.span, e_);
             } else {
                 e_ = ast.expr_field(e, i, ann);
             }
@@ -621,7 +625,7 @@ impure fn parse_dot_or_call_expr(parser p) -> @ast.expr {
                     case (token.IDENT(?i)) {
                         hi = p.get_span();
                         p.bump();
-                        e = append_dot_ident_to_expr(lo, hi, e, i);
+                        e = extend_expr_by_ident(p, lo, hi, e, i);
                     }
 
                     case (token.LPAREN) {
