@@ -443,6 +443,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         fn-lval.rs \
                         fun-call-variants.rs \
                         fun-indirect-call.rs \
+                        generic-fn.rs \
                         generic-fn-infer.rs \
                         generic-drop-glue.rs \
                         generic-tup.rs \

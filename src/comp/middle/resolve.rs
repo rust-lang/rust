@@ -418,11 +418,6 @@ fn fold_pat_tag(&env e, &span sp, ident i, vec[@ast.pat] args,
 
 fn fold_expr_path(&env e, &span sp, &ast.path p, &option.t[def] d,
                   ann a) -> @ast.expr {
-
-    if (_vec.len[@ast.ty](p.node.types) > 0u) {
-        e.sess.unimpl("resolving name expr with ty params");
-    }
-
     auto n_idents = _vec.len[ast.ident](p.node.idents);
 
     check (n_idents != 0u);
