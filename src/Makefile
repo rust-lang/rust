@@ -480,6 +480,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         return-nil.rs \
                         simple-obj.rs \
                         stateful-obj.rs \
+                        str-idx.rs \
                         type-in-nested-module.rs \
                         type-param.rs \
                         tup.rs \
@@ -495,6 +496,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         vec-in-tup.rs \
                         vec-late-init.rs \
                         while-and-do-while.rs \
+                        while-flow-graph.rs \
                         writealias.rs \
                         ) \
                       $(addprefix test/compile-fail/, \
