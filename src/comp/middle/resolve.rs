@@ -35,6 +35,7 @@ tag def_wrap {
     def_wrap_import(@ast.view_item);
     def_wrap_mod(@ast.item);
     def_wrap_other(def);
+    def_wrap_expr_field(ident);
     def_wrap_resolving;
 }
 
@@ -88,9 +89,11 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
 
 // Follow the path of an import and return what it ultimately points to.
 
+// If used after imports are resolved, import_id is none.
+
 fn find_final_def(&env e, import_map index,
                   &span sp, vec[ident] idents,
-                  ast.def_id import_id) -> def_wrap {
+                  option.t[ast.def_id] import_id) -> def_wrap {
 
     // We are given a series of identifiers (a.b.c.d) and we know that
     // in the environment 'e' the identifier 'a' was resolved to 'd'. We
@@ -101,7 +104,8 @@ fn find_final_def(&env e, import_map index,
             case (def_wrap_import(?imp)) {
                 alt (imp.node) {
                     case (ast.view_item_import(?new_idents, ?d, _)) {
-                        auto x = inner(e, index, sp, new_idents, d);
+                        auto x = find_final_def(e, index, sp, new_idents,
+                                               some(d));
                         ret found_something(e, index, sp, idents, x);
                     }
                 }
@@ -138,15 +142,14 @@ fn find_final_def(&env e, import_map index,
             }
             case (_) {
                 auto first = idents.(0);
-                e.sess.span_err(sp, first + " is not a module or crate");
+                ret def_wrap_expr_field(first);
             }
         }
         fail;
     }
 
-    fn inner(&env e, import_map index, &span sp, vec[ident] idents,
-             ast.def_id import_id) -> def_wrap {
-        alt (index.find(import_id)) {
+    if (import_id != none[ast.def_id]) {
+        alt (index.find(option.get[ast.def_id](import_id))) {
             case (some[def_wrap](?x)) {
                 alt (x) {
                     case (def_wrap_resolving) {
@@ -161,22 +164,23 @@ fn find_final_def(&env e, import_map index,
             case (none[def_wrap]) {
             }
         }
-        auto first = idents.(0);
-        index.insert(import_id, def_wrap_resolving);
-        auto d_ = lookup_name_wrapped(e, first);
-        alt (d_) {
-            case (none[tup(@env, def_wrap)]) {
-                e.sess.span_err(sp, "unresolved name: " + first);
-                fail;
+        index.insert(option.get[ast.def_id](import_id), def_wrap_resolving);
+    }
+    auto first = idents.(0);
+    auto d_ = lookup_name_wrapped(e, first);
+    alt (d_) {
+        case (none[tup(@env, def_wrap)]) {
+            e.sess.span_err(sp, "unresolved name: " + first);
+            fail;
+        }
+        case (some[tup(@env, def_wrap)](?d)) {
+            auto x = found_something(*d._0, index, sp, idents, d._1);
+            if (import_id != none[ast.def_id]) {
+                index.insert(option.get[ast.def_id](import_id), x);
             }
-            case (some[tup(@env, def_wrap)](?d)) {
-                auto x = found_something(*d._0, index, sp, idents, d._1);
-                index.insert(import_id, x);
-                ret x;
-            }
+            ret x;
         }
     }
-    ret inner(e, index, sp, idents, import_id);
 }
 
 fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
@@ -434,10 +438,13 @@ fn fold_expr_path(&env e, &span sp, &ast.path p, &option.t[def] d,
         }
     }
 
-    // FIXME: once espindola's modifications to lookup land, actually step
-    // through the path doing speculative lookup, and extend the maximal
-    // static prefix. For now we are always using the minimal prefix: first
-    // ident is static anchor, rest turn into fields.
+    // FIXME: All this call to find_final_def does right now is find
+    // unresolved names. It should be extended to return a wrapper
+    // over ast.expr. It is in a perfect position to construct
+    // the expr_field(expr_field(...(expr_path(...)))) we should return.
+
+    auto index = new_def_hash[def_wrap]();
+    find_final_def(e, index, sp, p.node.idents, none[ast.def_id]);
 
     auto p_ = rec(node=rec(idents = vec(id0) with p.node) with p);
     auto ex = @fold.respan[ast.expr_](sp, ast.expr_path(p_, d_, a));
@@ -457,7 +464,14 @@ fn fold_view_item_import(&env e, &span sp,
     // Produce errors for invalid imports
     auto len = _vec.len[ast.ident](is);
     auto last_id = is.(len - 1u);
-    auto d = find_final_def(e, index, sp, is, id);
+    auto d = find_final_def(e, index, sp, is, some(id));
+    alt (d) {
+        case (def_wrap_expr_field(?ident)) {
+            e.sess.span_err(sp, ident + " is not a module or crate");
+        }
+        case (_) {
+        }
+    }
     let option.t[def] target_def = some(unwrap_def(d));
     ret @fold.respan[ast.view_item_](sp, ast.view_item_import(is, id,
                                                               target_def));
