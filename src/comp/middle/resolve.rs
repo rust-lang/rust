@@ -444,7 +444,17 @@ fn fold_expr_path(&env e, &span sp, &ast.path p, &option.t[def] d,
     // the expr_field(expr_field(...(expr_path(...)))) we should return.
 
     auto index = new_def_hash[def_wrap]();
-    find_final_def(e, index, sp, p.node.idents, none[ast.def_id]);
+    auto d = find_final_def(e, index, sp, p.node.idents, none[ast.def_id]);
+    alt (d) {
+        case (def_wrap_expr_field(_)) {
+        }
+        case (def_wrap_other(_)) {
+        }
+        case (def_wrap_mod(?m)) {
+            e.sess.span_err(sp,
+                            "can't refer to a module as a first-class value");
+        }
+    }
 
     auto p_ = rec(node=rec(idents = vec(id0) with p.node) with p);
     auto ex = @fold.respan[ast.expr_](sp, ast.expr_path(p_, d_, a));

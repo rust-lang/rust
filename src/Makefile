@@ -504,6 +504,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         arg-count-mismatch.rs \
                         arg-type-mismatch.rs \
                         bad-expr-path.rs \
+                        bad-expr-path2.rs \
                         import.rs \
                         import2.rs \
                         import3.rs \
