@@ -586,11 +586,68 @@ fn unify(&@fn_ctxt fcx, @ty.t expected, @ty.t actual) -> ty.unify_result {
     ret ty.unify(expected, actual, handler);
 }
 
+tag autoderef_kind {
+    AUTODEREF_OK;
+    NO_AUTODEREF;
+}
+
+fn strip_boxes(@ty.t t) -> @ty.t {
+    auto t1 = t;
+    while (true) {
+        alt (t1.struct) {
+            case (ty.ty_box(?inner)) { t1 = inner; }
+            case (_) { ret t1; }
+        }
+    }
+    fail;
+}
+
+fn add_boxes(uint n, @ty.t t) -> @ty.t {
+    auto t1 = t;
+    while (n != 0u) {
+        t1 = plain_ty(ty.ty_box(t1));
+        n -= 1u;
+    }
+    ret t1;
+}
+
+
+fn count_boxes(@ty.t t) -> uint {
+    auto n = 0u;
+    auto t1 = t;
+    while (true) {
+        alt (t1.struct) {
+            case (ty.ty_box(?inner)) { n += 1u; t1 = inner; }
+            case (_) { ret n; }
+        }
+    }
+    fail;
+}
+
+
+fn demand(&@fn_ctxt fcx, &span sp, @ty.t expected, @ty.t actual) -> @ty.t {
+    be demand_full(fcx, sp, expected, actual, NO_AUTODEREF);
+}
+
+
 // Requires that the two types unify, and prints an error message if they
 // don't. Returns the unified type.
-fn demand(&@fn_ctxt fcx, &span sp, @ty.t expected, @ty.t actual) -> @ty.t {
-    alt (unify(fcx, expected, actual)) {
-        case (ty.ures_ok(?t)) { ret t; }
+
+fn demand_full(&@fn_ctxt fcx, &span sp,
+               @ty.t expected, @ty.t actual, autoderef_kind adk) -> @ty.t {
+
+    auto expected_1 = expected;
+    auto actual_1 = actual;
+    auto implicit_boxes = 0u;
+
+    if (adk == AUTODEREF_OK) {
+        expected_1 = strip_boxes(expected);
+        actual_1 = strip_boxes(actual);
+        implicit_boxes = count_boxes(actual);
+    }
+
+    alt (unify(fcx, expected_1, actual_1)) {
+        case (ty.ures_ok(?t)) { ret add_boxes(implicit_boxes, t); }
 
         case (ty.ures_err(?err, ?expected, ?actual)) {
             fcx.ccx.sess.span_err(sp, "mismatched types: expected "
@@ -680,6 +737,11 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
 //       but we can mitigate that if expected == actual == unified.
 
 fn demand_expr(&@fn_ctxt fcx, @ty.t expected, @ast.expr e) -> @ast.expr {
+    be demand_expr_full(fcx, expected, e, NO_AUTODEREF);
+}
+
+fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
+                    autoderef_kind adk) -> @ast.expr {
     // FIXME: botch to work around typestate bug in rustboot
     let vec[@ast.expr] v = vec();
     auto e_1 = ast.expr_vec(v, ast.ann_none);
@@ -748,7 +810,11 @@ fn demand_expr(&@fn_ctxt fcx, @ty.t expected, @ast.expr e) -> @ast.expr {
             e_1 = ast.expr_bind(sube, es, ast.ann_type(t));
         }
         case (ast.expr_call(?sube, ?es, ?ann)) {
-            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            // NB: we call 'demand_full' and pass in adk only in cases where
+            // e is an expression that could *possibly* produce a box; things
+            // like expr_binary or expr_bind can't, so there's no need.
+            auto t = demand_full(fcx, e.span, expected,
+                                 ann_to_type(ann), adk);
             e_1 = ast.expr_call(sube, es, ast.ann_type(t));
         }
         case (ast.expr_binary(?bop, ?lhs, ?rhs, ?ann)) {
@@ -756,7 +822,9 @@ fn demand_expr(&@fn_ctxt fcx, @ty.t expected, @ast.expr e) -> @ast.expr {
             e_1 = ast.expr_binary(bop, lhs, rhs, ast.ann_type(t));
         }
         case (ast.expr_unary(?uop, ?sube, ?ann)) {
-            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            // See note in expr_unary for why we're calling demand_full.
+            auto t = demand_full(fcx, e.span, expected,
+                                 ann_to_type(ann), adk);
             e_1 = ast.expr_unary(uop, sube, ast.ann_type(t));
         }
         case (ast.expr_lit(?lit, ?ann)) {
@@ -768,7 +836,8 @@ fn demand_expr(&@fn_ctxt fcx, @ty.t expected, @ast.expr e) -> @ast.expr {
             e_1 = ast.expr_cast(sube, ast_ty, ast.ann_type(t));
         }
         case (ast.expr_if(?cond, ?then_0, ?else_0, ?ann)) {
-            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            auto t = demand_full(fcx, e.span, expected,
+                                 ann_to_type(ann), adk);
             auto then_1 = demand_block(fcx, expected, then_0);
             auto else_1;
             alt (else_0) {
@@ -793,35 +862,38 @@ fn demand_expr(&@fn_ctxt fcx, @ty.t expected, @ast.expr e) -> @ast.expr {
             e_1 = ast.expr_do_while(bloc, cond, ast.ann_type(t));
         }
         case (ast.expr_block(?bloc, ?ann)) {
-            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            auto t = demand_full(fcx, e.span, expected,
+                                 ann_to_type(ann), adk);
             e_1 = ast.expr_block(bloc, ast.ann_type(t));
         }
         case (ast.expr_assign(?lhs_0, ?rhs_0, ?ann)) {
-            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            auto t = demand_full(fcx, e.span, expected,
+                                 ann_to_type(ann), adk);
             auto lhs_1 = demand_expr(fcx, expected, lhs_0);
             auto rhs_1 = demand_expr(fcx, expected, rhs_0);
             e_1 = ast.expr_assign(lhs_1, rhs_1, ast.ann_type(t));
         }
         case (ast.expr_assign_op(?op, ?lhs_0, ?rhs_0, ?ann)) {
-            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            auto t = demand_full(fcx, e.span, expected,
+                                 ann_to_type(ann), adk);
             auto lhs_1 = demand_expr(fcx, expected, lhs_0);
             auto rhs_1 = demand_expr(fcx, expected, rhs_0);
             e_1 = ast.expr_assign_op(op, lhs_1, rhs_1, ast.ann_type(t));
         }
         case (ast.expr_field(?lhs, ?rhs, ?ann)) {
-            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            auto t = demand_full(fcx, e.span, expected,
+                                 ann_to_type(ann), adk);
             e_1 = ast.expr_field(lhs, rhs, ast.ann_type(t));
         }
         case (ast.expr_index(?base, ?index, ?ann)) {
-            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            auto t = demand_full(fcx, e.span, expected,
+                                 ann_to_type(ann), adk);
             e_1 = ast.expr_index(base, index, ast.ann_type(t));
         }
         case (ast.expr_path(?pth, ?d, ?ann)) {
-            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            auto t = demand_full(fcx, e.span, expected,
+                                 ann_to_type(ann), adk);
             e_1 = ast.expr_path(pth, d, ast.ann_type(t));
-        }
-        case (_) {
-            fail;
         }
     }
 
@@ -960,10 +1032,12 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto rhs_t0 = expr_ty(rhs_0);
 
             // FIXME: Binops have a bit more subtlety than this.
-            auto lhs_1 = demand_expr(fcx, rhs_t0, lhs_0);
-            auto rhs_1 = demand_expr(fcx, expr_ty(lhs_1), rhs_0);
+            auto lhs_1 = demand_expr_full(fcx, rhs_t0, lhs_0,
+                                          AUTODEREF_OK);
+            auto rhs_1 = demand_expr_full(fcx, expr_ty(lhs_1), rhs_0,
+                                          AUTODEREF_OK);
 
-            auto t = lhs_t0;
+            auto t = strip_boxes(lhs_t0);
             alt (binop) {
                 case (ast.eq) { t = plain_ty(ty.ty_bool); }
                 case (ast.lt) { t = plain_ty(ty.ty_bool); }
@@ -997,7 +1071,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                         }
                     }
                 }
-                case (_) { /* fall through */ }
+                case (_) { oper_t = strip_boxes(oper_t); }
             }
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_unary(unop, oper_1,
@@ -1378,7 +1452,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_field(?base, ?field, _)) {
             auto base_1 = check_expr(fcx, base);
-            auto base_t = expr_ty(base_1);
+            auto base_t = strip_boxes(expr_ty(base_1));
             alt (base_t.struct) {
                 case (ty.ty_tup(?args)) {
                     let uint ix = ty.field_num(fcx.ccx.sess,
@@ -1434,7 +1508,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_index(?base, ?idx, _)) {
             auto base_1 = check_expr(fcx, base);
-            auto base_t = expr_ty(base_1);
+            auto base_t = strip_boxes(expr_ty(base_1));
 
             auto idx_1 = check_expr(fcx, idx);
             auto idx_t = expr_ty(idx_1);

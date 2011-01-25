@@ -1613,13 +1613,16 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
 
     alt (op) {
         case (ast.bitnot) {
+            sub = autoderef(sub.bcx, sub.val, ty.expr_ty(e));
             ret res(sub.bcx, cx.build.Not(sub.val));
         }
         case (ast.not) {
+            sub = autoderef(sub.bcx, sub.val, ty.expr_ty(e));
             ret res(sub.bcx, cx.build.Not(sub.val));
         }
         case (ast.neg) {
             // FIXME: switch by signedness.
+            sub = autoderef(sub.bcx, sub.val, ty.expr_ty(e));
             ret res(sub.bcx, cx.build.Neg(sub.val));
         }
         case (ast.box) {
@@ -1688,6 +1691,26 @@ fn trans_eager_binop(@block_ctxt cx, ast.binop op,
     fail;
 }
 
+fn autoderef(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
+    let ValueRef v1 = v;
+    let @ty.t t1 = t;
+
+    while (true) {
+        alt (t1.struct) {
+            case (ty.ty_box(?inner)) {
+                auto body = cx.build.GEP(v1,
+                                         vec(C_int(0),
+                                             C_int(abi.box_rc_field_body)));
+                t1 = inner;
+                v1 = load_scalar_or_boxed(cx, body, inner);
+            }
+            case (_) {
+                ret res(cx, v1);
+            }
+        }
+    }
+}
+
 fn trans_binary(@block_ctxt cx, ast.binop op,
                 @ast.expr a, @ast.expr b) -> result {
 
@@ -1697,9 +1720,11 @@ fn trans_binary(@block_ctxt cx, ast.binop op,
         case (ast.and) {
             // Lazy-eval and
             auto lhs_res = trans_expr(cx, a);
+            lhs_res = autoderef(lhs_res.bcx, lhs_res.val, ty.expr_ty(a));
 
             auto rhs_cx = new_scope_block_ctxt(cx, "rhs");
             auto rhs_res = trans_expr(rhs_cx, b);
+            rhs_res = autoderef(rhs_res.bcx, rhs_res.val, ty.expr_ty(b));
 
             auto lhs_false_cx = new_scope_block_ctxt(cx, "lhs false");
             auto lhs_false_res = res(lhs_false_cx, C_bool(false));
@@ -1715,9 +1740,11 @@ fn trans_binary(@block_ctxt cx, ast.binop op,
         case (ast.or) {
             // Lazy-eval or
             auto lhs_res = trans_expr(cx, a);
+            lhs_res = autoderef(lhs_res.bcx, lhs_res.val, ty.expr_ty(a));
 
             auto rhs_cx = new_scope_block_ctxt(cx, "rhs");
             auto rhs_res = trans_expr(rhs_cx, b);
+            rhs_res = autoderef(rhs_res.bcx, rhs_res.val, ty.expr_ty(b));
 
             auto lhs_true_cx = new_scope_block_ctxt(cx, "lhs true");
             auto lhs_true_res = res(lhs_true_cx, C_bool(true));
@@ -1733,9 +1760,11 @@ fn trans_binary(@block_ctxt cx, ast.binop op,
         case (_) {
             // Remaining cases are eager:
             auto lhs = trans_expr(cx, a);
-            auto sub = trans_expr(lhs.bcx, b);
-            ret res(sub.bcx, trans_eager_binop(sub.bcx, op,
-                                               lhs.val, sub.val));
+            lhs = autoderef(lhs.bcx, lhs.val, ty.expr_ty(a));
+            auto rhs = trans_expr(lhs.bcx, b);
+            rhs = autoderef(rhs.bcx, rhs.val, ty.expr_ty(b));
+            ret res(rhs.bcx, trans_eager_binop(rhs.bcx, op,
+                                               lhs.val, rhs.val));
         }
     }
     fail;
@@ -2126,6 +2155,7 @@ fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
                &ast.ident field, &ast.ann ann) -> lval_result {
     auto lv = trans_lval(cx, base);
     auto r = lv.res;
+    r = autoderef(r.bcx, r.val, ty.expr_ty(base));
     check (lv.is_mem);
     auto t = ty.expr_ty(base);
     alt (t.struct) {
@@ -2160,6 +2190,7 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
                @ast.expr idx, &ast.ann ann) -> lval_result {
 
     auto lv = trans_expr(cx, base);
+    lv = autoderef(lv.bcx, lv.val, ty.expr_ty(base));
     auto ix = trans_expr(lv.bcx, idx);
     auto v = lv.val;
 

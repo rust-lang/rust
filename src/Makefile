@@ -422,6 +422,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         arith-0.rs \
                         arith-1.rs \
                         arith-2.rs \
+                        autoderef-full-lval.rs \
                         bind-interior.rs \
                         bind-thunk.rs \
                         bind-trivial.rs \
