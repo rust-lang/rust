@@ -98,6 +98,24 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
         ret ty.fold_ty(replacer, t);
     }
 
+    fn instantiate(ty_getter getter, ast.def_id id,
+                   vec[@ast.ty] args) -> @ty.t {
+        // TODO: maybe record cname chains so we can do
+        // "foo = int" like OCaml?
+        auto ty_and_params = getter(id);
+        auto params = ty_and_params.params;
+        auto num_type_args = _vec.len[@ast.ty](args);
+        check(num_type_args == _vec.len[ast.ty_param](params));
+
+        auto param_map = common.new_def_hash[@ty.t]();
+        for each (uint i in _uint.range(0u, num_type_args)) {
+            auto arg = args.(i);
+            auto param = params.(i);
+            param_map.insert(param.id, ast_ty_to_ty(getter, arg));
+        }
+        ret replace_type_params(ty_and_params.ty, param_map);
+    }
+
     auto mut = ast.imm;
     auto sty;
     auto cname = none[str];
@@ -137,22 +155,10 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
             check (def != none[ast.def]);
             alt (option.get[ast.def](def)) {
                 case (ast.def_ty(?id)) {
-                    // TODO: maybe record cname chains so we can do
-                    // "foo = int" like OCaml?
-                    auto ty_and_params = getter(id);
-                    auto params = ty_and_params.params;
-                    auto num_type_params = _vec.len[@ast.ty](path.node.types);
-                    check(num_type_params == _vec.len[ast.ty_param](params));
-
-                    auto param_map = common.new_def_hash[@ty.t]();
-                    for each (uint i in _uint.range(0u, num_type_params)) {
-                        auto x = path.node.types.(i);
-                        auto y = params.(i);
-                        param_map.insert(y.id, ast_ty_to_ty(getter, x));
-                    }
-
-                    sty = replace_type_params(ty_and_params.ty,
-                                              param_map).struct;
+                    sty = instantiate(getter, id, path.node.types).struct;
+                }
+                case (ast.def_obj(?id))     {
+                    sty = instantiate(getter, id, path.node.types).struct;
                 }
                 case (ast.def_ty_arg(?id))  { sty = ty.ty_param(id); }
                 case (_)                    { fail; }
@@ -190,11 +196,21 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
 // ast_ty_to_ty.
 fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast.ty ast_ty) -> @ty.t {
     fn getter(@crate_ctxt ccx, ast.def_id id) -> ty_and_params {
-        check (ccx.item_types.contains_key(id));
         check (ccx.item_items.contains_key(id));
-        auto ty = ccx.item_types.get(id);
+        check (ccx.item_types.contains_key(id));
         auto item = ccx.item_items.get(id);
+        auto ty = ccx.item_types.get(id);
         auto params = ty_params_of_item(item);
+
+        alt (item.node) {
+            case (ast.item_obj(_,_,_,_,_)) {
+                // An obj used as a type name refers to the output type of the
+                // item (constructor).
+                ty = middle.ty.ty_fn_ret(ty);
+            }
+            case (_) { }
+        }
+
         ret rec(params = params, ty = ty);
     }
     auto f = bind getter(ccx, _);
@@ -243,6 +259,16 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         auto item = id_to_ty_item.get(id);
         auto ty = ty_of_item(id_to_ty_item, item_to_ty, item);
         auto params = ty_params_of_item(item);
+
+        alt (item.node) {
+            case (ast.item_obj(_,_,_,_,_)) {
+                // An obj used as a type name refers to the output type of the
+                // item (constructor).
+                ty = middle.ty.ty_fn_ret(ty);
+            }
+            case (_) { }
+        }
+
         ret rec(params = params, ty = ty);
     }
 
@@ -398,6 +424,9 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                 id_to_ty_item.insert(def_id, i);
             }
             case (ast.item_tag(_, _, _, ?def_id)) {
+                id_to_ty_item.insert(def_id, i);
+            }
+            case (ast.item_obj(_, _, _, ?def_id, _)) {
                 id_to_ty_item.insert(def_id, i);
             }
             case (_) { /* empty */ }
