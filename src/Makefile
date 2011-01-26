@@ -190,6 +190,11 @@ MKFILES := Makefile
 
 CFG_BOOT_FLAGS += -L .
 
+# Commands we now know how to run.
+
+BOOT := $(CFG_QUIET)OCAMLRUNPARAM="b1" $(CFG_BOOT) $(CFG_BOOT_FLAGS)
+RUSTC := $(CFG_QUIET)$(CFG_RUSTC) $(CFG_RUSTC_FLAGS)
+
 ######################################################################
 # Boot targets and rules
 ######################################################################
@@ -308,8 +313,7 @@ $(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR)
 
 $(CFG_STDLIB): $(STDLIB_CRATE) $(CFG_BOOT) $(MKFILES)
 	@$(call CFG_ECHO, compile: $<)
-	$(CFG_QUIET)OCAMLRUNPARAM="b1" $(CFG_BOOT) $(CFG_BOOT_FLAGS) \
-      -shared -o $@ $(STDLIB_CRATE)
+	$(BOOT) -shared -o $@ $(STDLIB_CRATE)
 
 %$(CFG_OBJ_SUFFIX): %.cpp $(MKFILES)
 	@$(call CFG_ECHO, compile: $<)
@@ -347,13 +351,12 @@ endif
 
 $(CFG_RUSTC): $(COMPILER_INPUTS) $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
 	@$(call CFG_ECHO, compile: $<)
-	$(CFG_QUIET)OCAMLRUNPARAM="b1" $(CFG_BOOT) $(CFG_BOOT_FLAGS) \
-      -minimal -o $@ $<
+	$(BOOT) -minimal -o $@ $<
 	$(CFG_QUIET)chmod 0755 $@
 
 self: $(CFG_RUSTC)
 	@$(call CFG_ECHO, compile: $<)
-	$(CFG_QUIET)$(call CFG_RUN_TARG, $(CFG_RUSTC)) $(COMPILER_CRATE)
+	$(RUSTC) $(COMPILER_CRATE)
 
 
 ######################################################################
@@ -659,8 +662,6 @@ endif
 
 BREQ := $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
 SREQ := $(CFG_RUSTC) $(CFG_RUNTIME) $(CFG_STDLIB)
-BOOT := $(CFG_QUIET)OCAMLRUNPARAM="b1" $(CFG_BOOT) $(CFG_BOOT_FLAGS)
-RUSTC := $(CFG_QUIET)$(CFG_RUSTC) $(CFG_RUSTC_FLAGS)
 
 # Cancel the implicit .out rule in GNU make.
 %.out: %
