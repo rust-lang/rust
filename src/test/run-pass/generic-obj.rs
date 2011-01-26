@@ -12,7 +12,7 @@ obj buf[T](tup(T,T,T) data) {
   }
 
   fn take(&T t) {}
-  fn take2(T t) {}
+  fn take2(&T t) {}
 }
 
 fn main() {
