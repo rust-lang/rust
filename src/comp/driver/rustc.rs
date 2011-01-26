@@ -37,8 +37,8 @@ impure fn compile_input(session.session sess, str input, str output,
 fn warn_wrong_compiler() {
     log "This is the rust 'self-hosted' compiler.";
     log "The one written in rust.";
-    log "It does nothing yet, it's a placeholder.";
-    log "You want rustboot, the compiler next door.";
+    log "It is currently incomplete.";
+    log "You may want rustboot insteaad, the compiler next door.";
 }
 
 fn usage(session.session sess, str argv0) {
