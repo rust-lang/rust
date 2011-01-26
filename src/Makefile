@@ -511,6 +511,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         import4.rs \
                         import-loop.rs \
                         import-loop-2.rs \
+                        multiline-comment-line-tracking.rs \
                         while-type-error.rs \
                         ), \
                       $(wildcard test/*/*.rs test/*/*.rc))

@@ -1,5 +1,5 @@
 // -*- rust -*-
-// error-pattern:9:2:E
+// error-pattern:9:2
 
 /* 1
  * 2
