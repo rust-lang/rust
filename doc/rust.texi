@@ -3157,7 +3157,7 @@ fn read_file_lines(&str path) -> vec[str] @{
     note path;
     vec[str] r;
     file f = open_read(path);
-    for each (&str s in lines(f)) @{
+    for each (str s in lines(f)) @{
         vec.append(r,s);
     @}
     ret r;
@@ -3258,19 +3258,19 @@ Example of 4 for loops, all identical:
 @example
 let vec[foo] v = vec(a, b, c);
 
-for (&foo e in v.(0, _vec.len(v))) @{
+for (foo e in v.(0, _vec.len(v))) @{
     bar(e);
 @}
 
-for (&foo e in v.(0,)) @{
+for (foo e in v.(0,)) @{
     bar(e);
 @}
 
-for (&foo e in v.(,)) @{
+for (foo e in v.(,)) @{
     bar(e);
 @}
 
-for (&foo e in v) @{
+for (foo e in v) @{
     bar(e);
 @}
 @end example
@@ -3290,7 +3290,7 @@ Example of a foreach loop:
 @example
 let str txt;
 let vec[str] lines;
-for each (&str s in _str.split(txt, "\n")) @{
+for each (str s in _str.split(txt, "\n")) @{
     vec.push(lines, s);
 @}
 @end example
