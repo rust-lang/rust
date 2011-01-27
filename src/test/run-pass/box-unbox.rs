@@ -1,6 +1,6 @@
 type box[T] = tup(@T);
 
-fn unbox[T](box[T] b) -> T { ret *b._0; }
+fn unbox[T](&box[T] b) -> T { ret *b._0; }
 
 fn main() {
   let int foo = 17;
