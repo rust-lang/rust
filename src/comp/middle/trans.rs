@@ -1621,7 +1621,6 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
             ret res(sub.bcx, cx.build.Not(sub.val));
         }
         case (ast.neg) {
-            // FIXME: switch by signedness.
             sub = autoderef(sub.bcx, sub.val, ty.expr_ty(e));
             ret res(sub.bcx, cx.build.Neg(sub.val));
         }
@@ -1662,7 +1661,7 @@ fn trans_eager_binop(@block_ctxt cx, ast.binop op,
         case (ast.add) { ret cx.build.Add(lhs, rhs); }
         case (ast.sub) { ret cx.build.Sub(lhs, rhs); }
 
-        // FIXME: switch by signedness.
+        // FIXME (issue #57): switch by signedness.
         case (ast.mul) { ret cx.build.Mul(lhs, rhs); }
         case (ast.div) { ret cx.build.SDiv(lhs, rhs); }
         case (ast.rem) { ret cx.build.SRem(lhs, rhs); }
@@ -1679,7 +1678,7 @@ fn trans_eager_binop(@block_ctxt cx, ast.binop op,
                 case (ast.eq) { cmp = lib.llvm.LLVMIntEQ; }
                 case (ast.ne) { cmp = lib.llvm.LLVMIntNE; }
 
-                // FIXME: switch by signedness.
+                // FIXME (issue #57): switch by signedness.
                 case (ast.lt) { cmp = lib.llvm.LLVMIntSLT; }
                 case (ast.le) { cmp = lib.llvm.LLVMIntSLE; }
                 case (ast.ge) { cmp = lib.llvm.LLVMIntSGE; }
