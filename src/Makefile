@@ -428,6 +428,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         arith-1.rs \
                         arith-2.rs \
                         autoderef-full-lval.rs \
+                        bind-exterior.rs \
                         bind-interior.rs \
                         bind-thunk.rs \
                         bind-trivial.rs \
@@ -444,6 +445,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         deref.rs \
                         div-mod.rs \
                         drop-bind-thunk-args.rs \
+                        drop-on-empty-block-exit.rs \
                         drop-on-ret.rs \
                         fact.rs \
                         fn-lval.rs \
@@ -468,6 +470,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         large-records.rs \
                         lazy-init.rs \
                         lazy-and-or.rs \
+                        leak-box-as-tydesc.rs \
                         linear-for-loop.rs \
                         multiline-comment.rs \
                         mutual-recursion-group.rs \
