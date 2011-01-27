@@ -1,15 +1,15 @@
 An informal guide to reading and working on the rustboot compiler.
 ==================================================================
 
-First off, my sincerest apologies for the lightly-commented nature of the
-compiler, as well as the general immaturity of the codebase; rustboot is
-intended to be discarded in the near future as we transition off it, to a
-rust-based, LLVM-backed compiler. It has taken longer than expected for "the
-near future" to arrive, and here we are published and attracting contributors
-without a good place for them to start. It will be a priority for the next
-little while to make new contributors feel welcome and oriented within the
-project; best I can do at this point. We were in a tremendous rush even to get
-everything organized to this minimal point.
+First off, know that our current state of development is "bootstrapping";
+this means we've got two compilers on the go and one of them is being used
+to develop the other. Rustboot is written in ocaml and rustc in rust. The
+one you *probably* ought to be working on at present is rustc. Rustboot is
+more for historical comparison and bug-fixing whenever necessary to un-block
+development of rustc.
+
+There's a document similar to this next door, then, in comp/README. The
+comp directory is where we do work on rustc.
 
 If you wish to expand on this document, or have one of the
 slightly-more-familiar authors add anything else to it, please get in touch or

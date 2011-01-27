@@ -1,4 +1,4 @@
-This is preliminary version of the Rust compiler.
+This is preliminary version of the Rust compiler(s).
 
 Source layout:
 
@@ -11,8 +11,8 @@ boot/util          - Ubiquitous helpers
 boot/llvm          - LLVM-based alternative back end
 boot/driver        - Compiler driver
 
-comp/              The self-hosted compiler (doesn't exist yet)
-comp/*             - Same structure as in boot/
+comp/              The self-hosted compiler ("rustc": incomplete)
+comp/*             - Similar structure as in boot/
 
 rt/                The runtime system
 rt/rust_*.cpp      - The majority of the runtime services
