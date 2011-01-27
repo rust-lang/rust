@@ -35,7 +35,7 @@ tag def_wrap {
     def_wrap_import(@ast.view_item);
     def_wrap_mod(@ast.item);
     def_wrap_other(def);
-    def_wrap_expr_field(ident);
+    def_wrap_expr_field(uint);
     def_wrap_resolving;
 }
 
@@ -141,8 +141,8 @@ fn find_final_def(&env e, import_map index,
                 e.sess.span_err(sp, "Crate access is not implemented");
             }
             case (_) {
-                auto first = idents.(0);
-                ret def_wrap_expr_field(first);
+                let uint l = _vec.len[ident](idents);
+                ret def_wrap_expr_field(l);
             }
         }
         fail;
@@ -438,27 +438,28 @@ fn fold_expr_path(&env e, &span sp, &ast.path p, &option.t[def] d,
         }
     }
 
-    // FIXME: All this call to find_final_def does right now is find
-    // unresolved names. It should be extended to return a wrapper
-    // over ast.expr. It is in a perfect position to construct
-    // the expr_field(expr_field(...(expr_path(...)))) we should return.
-
     auto index = new_def_hash[def_wrap]();
     auto d = find_final_def(e, index, sp, p.node.idents, none[ast.def_id]);
+    let uint path_len = 0u;
     alt (d) {
-        case (def_wrap_expr_field(_)) {
+        case (def_wrap_expr_field(?remaining)) {
+            path_len = n_idents - remaining + 1u;
         }
         case (def_wrap_other(_)) {
+            check (n_idents == 1u);
+            path_len = 1u;
         }
         case (def_wrap_mod(?m)) {
             e.sess.span_err(sp,
                             "can't refer to a module as a first-class value");
+            fail;
         }
     }
-
+    auto path_elems =
+        _vec.slice[ident](p.node.idents, 0u, path_len);
     auto p_ = rec(node=rec(idents = vec(id0) with p.node) with p);
     auto ex = @fold.respan[ast.expr_](sp, ast.expr_path(p_, d_, a));
-    auto i = 1u;
+    auto i = path_len;
     while (i < n_idents) {
         auto id = p.node.idents.(i);
         ex = @fold.respan[ast.expr_](sp, ast.expr_field(ex, id, a));
@@ -476,7 +477,8 @@ fn fold_view_item_import(&env e, &span sp,
     auto last_id = is.(len - 1u);
     auto d = find_final_def(e, index, sp, is, some(id));
     alt (d) {
-        case (def_wrap_expr_field(?ident)) {
+        case (def_wrap_expr_field(?remain)) {
+            auto ident = is.(len - remain);
             e.sess.span_err(sp, ident + " is not a module or crate");
         }
         case (_) {
