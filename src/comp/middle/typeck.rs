@@ -993,9 +993,11 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
             auto ann = ast.ann_type(next_ty_var(fcx.ccx));
             new_pat = ast.pat_bind(id, def_id, ann);
         }
-        case (ast.pat_tag(?id, ?subpats, ?vdef_opt, _)) {
+        case (ast.pat_tag(?p, ?subpats, ?vdef_opt, _)) {
             auto vdef = option.get[ast.variant_def](vdef_opt);
-            auto t = fcx.ccx.item_types.get(vdef._1); 
+            auto t = fcx.ccx.item_types.get(vdef._1);
+            auto len = _vec.len[ast.ident](p.node.idents);
+            auto last_id = p.node.idents.(len - 1u);
             alt (t.struct) {
                 // N-ary variants have function types.
                 case (ty.ty_fn(?args, ?tag_ty)) {
@@ -1003,7 +1005,7 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
                     auto subpats_len = _vec.len[@ast.pat](subpats);
                     if (arg_len != subpats_len) {
                         // TODO: pluralize properly
-                        auto err_msg = "tag type " + id + " has " +
+                        auto err_msg = "tag type " + last_id + " has " +
                                        _uint.to_str(subpats_len, 10u) +
                                        " fields, but this pattern has " +
                                        _uint.to_str(arg_len, 10u) + " fields";
@@ -1018,7 +1020,7 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
                     }
 
                     auto ann = ast.ann_type(tag_ty);
-                    new_pat = ast.pat_tag(id, new_subpats, vdef_opt, ann);
+                    new_pat = ast.pat_tag(p, new_subpats, vdef_opt, ann);
                 }
 
                 // Nullary variants have tag types.
@@ -1026,7 +1028,8 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
                     auto subpats_len = _vec.len[@ast.pat](subpats);
                     if (subpats_len > 0u) {
                         // TODO: pluralize properly
-                        auto err_msg = "tag type " + id + " has no fields," +
+                        auto err_msg = "tag type " + last_id +
+                                       " has no fields," +
                                        " but this pattern has " +
                                        _uint.to_str(subpats_len, 10u) +
                                        " fields";
@@ -1036,7 +1039,7 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
                     }
 
                     auto ann = ast.ann_type(plain_ty(ty.ty_tag(tid)));
-                    new_pat = ast.pat_tag(id, subpats, vdef_opt, ann);
+                    new_pat = ast.pat_tag(p, subpats, vdef_opt, ann);
                 }
             }
         }

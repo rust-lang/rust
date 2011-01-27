@@ -1071,7 +1071,7 @@ impure fn parse_pat(parser p) -> @ast.pat {
             }
         }
         case (token.IDENT(?id)) {
-            p.bump();
+            auto tag_path = parse_path(p, GREEDY);
 
             let vec[@ast.pat] args;
             alt (p.peek()) {
@@ -1083,7 +1083,8 @@ impure fn parse_pat(parser p) -> @ast.pat {
                 case (_) { args = vec(); }
             }
 
-            pat = ast.pat_tag(id, args, none[ast.variant_def], ast.ann_none);
+            pat = ast.pat_tag(tag_path, args, none[ast.variant_def],
+                              ast.ann_none);
         }
         case (?tok) {
             p.err("expected pattern but found " + token.to_str(tok));

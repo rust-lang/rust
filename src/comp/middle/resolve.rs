@@ -375,29 +375,31 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
     }
 }
 
-fn fold_pat_tag(&env e, &span sp, ident i, vec[@ast.pat] args,
+fn fold_pat_tag(&env e, &span sp, ast.path p, vec[@ast.pat] args,
                 option.t[ast.variant_def] old_def,
                 ann a) -> @ast.pat {
+    auto len = _vec.len[ast.ident](p.node.idents);
+    auto last_id = p.node.idents.(len - 1u);
     auto new_def;
-    alt (lookup_name(e, i)) {
+    alt (lookup_name(e, last_id)) {
         case (some[def](?d)) {
             alt (d) {
                 case (ast.def_variant(?did, ?vid)) {
                     new_def = some[ast.variant_def](tup(did, vid));
                 }
                 case (_) {
-                    e.sess.span_err(sp, "not a tag variant: " + i);
+                    e.sess.span_err(sp, "not a tag variant: " + last_id);
                     new_def = none[ast.variant_def];
                 }
             }
         }
         case (none[def]) {
             new_def = none[ast.variant_def];
-            e.sess.span_err(sp, "unresolved name: " + i);
+            e.sess.span_err(sp, "unresolved name: " + last_id);
         }
     }
 
-    ret @fold.respan[ast.pat_](sp, ast.pat_tag(i, args, new_def, a));
+    ret @fold.respan[ast.pat_](sp, ast.pat_tag(p, args, new_def, a));
 }
 
 // We received a path expression of the following form:

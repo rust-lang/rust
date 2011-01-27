@@ -55,7 +55,7 @@ type pat = spanned[pat_];
 tag pat_ {
     pat_wild(ann);
     pat_bind(ident, def_id, ann);
-    pat_tag(ident, vec[@pat], option.t[variant_def], ann);
+    pat_tag(path, vec[@pat], option.t[variant_def], ann);
 }
 
 tag mutability {
