@@ -35,7 +35,7 @@ tag def_wrap {
     def_wrap_import(@ast.view_item);
     def_wrap_mod(@ast.item);
     def_wrap_other(def);
-    def_wrap_expr_field(uint);
+    def_wrap_expr_field(uint, def);
     def_wrap_resolving;
 }
 
@@ -70,6 +70,9 @@ fn unwrap_def(def_wrap d) -> def {
             }
         }
         case (def_wrap_other(?d)) {
+            ret d;
+        }
+        case (def_wrap_expr_field(_, ?d)) {
             ret d;
         }
     }
@@ -140,9 +143,9 @@ fn find_final_def(&env e, import_map index,
             case (def_wrap_use(?c)) {
                 e.sess.span_err(sp, "Crate access is not implemented");
             }
-            case (_) {
+            case (def_wrap_other(?d)) {
                 let uint l = _vec.len[ident](idents);
-                ret def_wrap_expr_field(l);
+                ret def_wrap_expr_field(l, d);
             }
         }
         fail;
@@ -419,26 +422,13 @@ fn fold_pat_tag(&env e, &span sp, ast.path p, vec[@ast.pat] args,
 fn fold_expr_path(&env e, &span sp, &ast.path p, &option.t[def] d,
                   ann a) -> @ast.expr {
     auto n_idents = _vec.len[ast.ident](p.node.idents);
-
     check (n_idents != 0u);
-    auto id0 = p.node.idents.(0);
-
-    auto d_ = lookup_name(e, id0);
-
-    alt (d_) {
-        case (some[def](_)) {
-            // log "resolved name " + n.node.ident;
-        }
-        case (none[def]) {
-            e.sess.span_err(sp, "unresolved name: " + id0);
-        }
-    }
 
     auto index = new_def_hash[def_wrap]();
     auto d = find_final_def(e, index, sp, p.node.idents, none[ast.def_id]);
     let uint path_len = 0u;
     alt (d) {
-        case (def_wrap_expr_field(?remaining)) {
+        case (def_wrap_expr_field(?remaining, _)) {
             path_len = n_idents - remaining + 1u;
         }
         case (def_wrap_other(_)) {
@@ -453,7 +443,8 @@ fn fold_expr_path(&env e, &span sp, &ast.path p, &option.t[def] d,
     }
     auto path_elems =
         _vec.slice[ident](p.node.idents, 0u, path_len);
-    auto p_ = rec(node=rec(idents = vec(id0) with p.node) with p);
+    auto p_ = rec(node=rec(idents = path_elems with p.node) with p);
+    auto d_ = some(unwrap_def(d));
     auto ex = @fold.respan[ast.expr_](sp, ast.expr_path(p_, d_, a));
     auto i = path_len;
     while (i < n_idents) {
@@ -473,7 +464,7 @@ fn fold_view_item_import(&env e, &span sp,
     auto last_id = is.(len - 1u);
     auto d = find_final_def(e, index, sp, is, some(id));
     alt (d) {
-        case (def_wrap_expr_field(?remain)) {
+        case (def_wrap_expr_field(?remain, _)) {
             auto ident = is.(len - remain);
             e.sess.span_err(sp, ident + " is not a module or crate");
         }
