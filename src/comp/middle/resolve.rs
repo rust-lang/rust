@@ -381,21 +381,15 @@ fn fold_pat_tag(&env e, &span sp, ast.path p, vec[@ast.pat] args,
     auto len = _vec.len[ast.ident](p.node.idents);
     auto last_id = p.node.idents.(len - 1u);
     auto new_def;
-    alt (lookup_name(e, last_id)) {
-        case (some[def](?d)) {
-            alt (d) {
-                case (ast.def_variant(?did, ?vid)) {
-                    new_def = some[ast.variant_def](tup(did, vid));
-                }
-                case (_) {
-                    e.sess.span_err(sp, "not a tag variant: " + last_id);
-                    new_def = none[ast.variant_def];
-                }
-            }
+    auto index = new_def_hash[def_wrap]();
+    auto d = find_final_def(e, index, sp, p.node.idents, none[ast.def_id]);
+    alt (unwrap_def(d)) {
+        case (ast.def_variant(?did, ?vid)) {
+            new_def = some[ast.variant_def](tup(did, vid));
         }
-        case (none[def]) {
+        case (_) {
+            e.sess.span_err(sp, "not a tag variant: " + last_id);
             new_def = none[ast.variant_def];
-            e.sess.span_err(sp, "unresolved name: " + last_id);
         }
     }
 
