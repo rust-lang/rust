@@ -486,25 +486,10 @@ fn fold_view_item_import(&env e, &span sp,
 }
 
 fn fold_ty_path(&env e, &span sp, ast.path p, &option.t[def] d) -> @ast.ty {
+    auto index = new_def_hash[def_wrap]();
+    auto d = find_final_def(e, index, sp, p.node.idents, none[ast.def_id]);
 
-    let uint len = _vec.len[ast.ident](p.node.idents);
-    check (len != 0u);
-    if (len > 1u) {
-        e.sess.unimpl("resolving path ty with >1 component");
-    }
-
-    auto d_ = lookup_name(e, p.node.idents.(0));
-
-    alt (d_) {
-        case (some[def](?d)) {
-            // log "resolved name " + p.node.idents.(0);
-        }
-        case (none[def]) {
-            e.sess.span_err(sp, "unresolved name: " + p.node.idents.(0));
-        }
-    }
-
-    ret @fold.respan[ast.ty_](sp, ast.ty_path(p, d_));
+    ret @fold.respan[ast.ty_](sp, ast.ty_path(p, some(unwrap_def(d))));
 }
 
 fn update_env_for_crate(&env e, @ast.crate c) -> env {
