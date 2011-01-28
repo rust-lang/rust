@@ -213,7 +213,7 @@ type ast_fold[ENV] =
          vec[@meta_item] meta_items,
          def_id id) -> @view_item)                fold_view_item_use,
 
-     (fn(&ENV e, &span sp, vec[ident] idents,
+     (fn(&ENV e, &span sp, ident i, vec[ident] idents,
          def_id id, option.t[def]) -> @view_item) fold_view_item_import,
 
      // Additional nodes.
@@ -725,14 +725,13 @@ fn fold_view_item[ENV](&ENV env, ast_fold[ENV] fld, @view_item vi)
 
     alt (vi.node) {
         case (ast.view_item_use(?ident, ?meta_items, ?def_id)) {
-            // FIXME: what other folding should be done in here?
             ret fld.fold_view_item_use(env_, vi.span, ident, meta_items,
                                        def_id);
         }
-        case (ast.view_item_import(?idents, ?def_id, ?target_def)) {
-            // FIXME: what other folding should be done in here?
-            ret fld.fold_view_item_import(env_, vi.span, idents, def_id,
-                                          target_def);
+        case (ast.view_item_import(?def_ident, ?idents, ?def_id,
+                                   ?target_def)) {
+            ret fld.fold_view_item_import(env_, vi.span, def_ident, idents,
+                                          def_id, target_def);
         }
     }
 
@@ -1116,10 +1115,11 @@ fn identity_fold_view_item_use[ENV](&ENV e, &span sp, ident i,
     ret @respan(sp, ast.view_item_use(i, meta_items, id));
 }
 
-fn identity_fold_view_item_import[ENV](&ENV e, &span sp, vec[ident] is,
-                                       def_id id, option.t[def] target_def)
+fn identity_fold_view_item_import[ENV](&ENV e, &span sp, ident i,
+                                       vec[ident] is, def_id id,
+                                       option.t[def] target_def)
     -> @view_item {
-    ret @respan(sp, ast.view_item_import(is, id, target_def));
+    ret @respan(sp, ast.view_item_import(i, is, id, target_def));
 }
 
 // Additional identities.
@@ -1271,7 +1271,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_view_item_use =
              bind identity_fold_view_item_use[ENV](_,_,_,_,_),
          fold_view_item_import =
-             bind identity_fold_view_item_import[ENV](_,_,_,_,_),
+             bind identity_fold_view_item_import[ENV](_,_,_,_,_,_),
 
          fold_block = bind identity_fold_block[ENV](_,_,_),
          fold_fn = bind identity_fold_fn[ENV](_,_,_,_,_,_),

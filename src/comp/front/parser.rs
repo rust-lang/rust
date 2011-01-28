@@ -1756,27 +1756,41 @@ impure fn parse_use(parser p) -> @ast.view_item {
     ret @spanned(lo, hi, use_decl);
 }
 
-impure fn parse_rest_import_name(parser p, ast.ident id) -> @ast.view_item {
+impure fn parse_rest_import_name(parser p, ast.ident first,
+                                 option.t[ast.ident] def_ident)
+        -> @ast.view_item {
     auto lo = p.get_span();
     auto hi = lo;
     let vec[ast.ident] identifiers = vec();
-    identifiers += id;
+    identifiers += first;
     while (p.peek() != token.SEMI) {
         expect(p, token.DOT);
         auto i = parse_ident(p);
         identifiers += i;
     }
     p.bump();
-    auto import_decl = ast.view_item_import(identifiers, p.next_def_id(),
+    auto defined_id;
+    alt (def_ident) {
+        case(some[ast.ident](?i)) {
+            defined_id = i;
+        }
+        case (_) {
+            auto len = _vec.len[ast.ident](identifiers);
+            defined_id = identifiers.(len - 1u);
+        }
+    }
+    auto import_decl = ast.view_item_import(defined_id, identifiers,
+                                            p.next_def_id(),
                                             none[ast.def]);
     ret @spanned(lo, hi, import_decl);
 }
 
-impure fn parse_full_import_name(parser p) -> @ast.view_item {
+impure fn parse_full_import_name(parser p, ast.ident def_ident)
+       -> @ast.view_item {
     alt (p.peek()) {
         case (token.IDENT(?ident)) {
             p.bump();
-            ret parse_rest_import_name(p, ident);
+            ret parse_rest_import_name(p, ident, some(def_ident));
         }
         case (_) {
             p.err("expecting an identifier");
@@ -1793,10 +1807,10 @@ impure fn parse_import(parser p) -> @ast.view_item {
             alt (p.peek()) {
                 case (token.EQ) {
                     p.bump();
-                    ret parse_full_import_name(p);
+                    ret parse_full_import_name(p, ident);
                 }
                 case (_) {
-                    ret parse_rest_import_name(p, ident);
+                    ret parse_rest_import_name(p, ident, none[ast.ident]);
                 }
             }
         }

@@ -50,7 +50,7 @@ fn unwrap_def(def_wrap d) -> def {
         }
         case (def_wrap_import(?it)) {
             alt (it.node) {
-                case (ast.view_item_import(_, ?id, ?target_def)) {
+                case (ast.view_item_import(_, _, ?id, ?target_def)) {
                     alt (target_def) {
                         case (some[def](?d)) {
                             ret d;
@@ -106,7 +106,7 @@ fn find_final_def(&env e, import_map index,
         alt (d) {
             case (def_wrap_import(?imp)) {
                 alt (imp.node) {
-                    case (ast.view_item_import(?new_idents, ?d, _)) {
+                    case (ast.view_item_import(_, ?new_idents, ?d, _)) {
                         auto x = find_final_def(e, index, sp, new_idents,
                                                some(d));
                         ret found_something(e, index, sp, idents, x);
@@ -235,7 +235,7 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
             case (ast.view_item_use(_, _, ?id)) {
                 ret def_wrap_use(i);
             }
-            case (ast.view_item_import(?idents,?d, _)) {
+            case (ast.view_item_import(_, ?idents,?d, _)) {
                 ret def_wrap_import(i);
             }
         }
@@ -456,7 +456,7 @@ fn fold_expr_path(&env e, &span sp, &ast.path p, &option.t[def] d,
 }
 
 fn fold_view_item_import(&env e, &span sp,
-                         import_map index,
+                         import_map index, ident i,
                          vec[ident] is, ast.def_id id,
                          option.t[def] target_id) -> @ast.view_item {
     // Produce errors for invalid imports
@@ -472,7 +472,7 @@ fn fold_view_item_import(&env e, &span sp,
         }
     }
     let option.t[def] target_def = some(unwrap_def(d));
-    ret @fold.respan[ast.view_item_](sp, ast.view_item_import(is, id,
+    ret @fold.respan[ast.view_item_](sp, ast.view_item_import(i, is, id,
                                                               target_def));
 }
 
@@ -514,7 +514,7 @@ fn resolve_imports(session.session sess, @ast.crate crate) -> @ast.crate {
 
     auto import_index = new_def_hash[def_wrap]();
     fld = @rec( fold_view_item_import
-                    = bind fold_view_item_import(_,_,import_index,_,_,_),
+                    = bind fold_view_item_import(_,_,import_index,_,_,_,_),
                 update_env_for_crate = bind update_env_for_crate(_,_),
                 update_env_for_item = bind update_env_for_item(_,_),
                 update_env_for_block = bind update_env_for_block(_,_),
