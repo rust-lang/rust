@@ -237,18 +237,27 @@ fn T_task() -> TypeRef {
 }
 
 fn T_tydesc() -> TypeRef {
+
+    auto th = mk_type_handle();
+    auto abs_tydesc = llvm.LLVMResolveTypeHandle(th.llth);
+
     auto pvoid = T_ptr(T_i8());
-    auto glue_fn_ty = T_ptr(T_fn(vec(T_taskptr(), pvoid), T_void()));
-    ret T_struct(vec(pvoid,             // first_param
-                     T_int(),           // size
-                     T_int(),           // align
-                     glue_fn_ty,        // take_glue_off
-                     glue_fn_ty,        // drop_glue_off
-                     glue_fn_ty,        // free_glue_off
-                     glue_fn_ty,        // sever_glue_off
-                     glue_fn_ty,        // mark_glue_off
-                     glue_fn_ty,        // obj_drop_glue_off
-                     glue_fn_ty));      // is_stateful
+    auto glue_fn_ty = T_ptr(T_fn(vec(T_taskptr(),
+                                     T_ptr(abs_tydesc),
+                                     pvoid), T_void()));
+    auto tydesc = T_struct(vec(T_ptr(abs_tydesc), // first_param
+                               T_int(),           // size
+                               T_int(),           // align
+                               glue_fn_ty,        // take_glue_off
+                               glue_fn_ty,        // drop_glue_off
+                               glue_fn_ty,        // free_glue_off
+                               glue_fn_ty,        // sever_glue_off
+                               glue_fn_ty,        // mark_glue_off
+                               glue_fn_ty,        // obj_drop_glue_off
+                               glue_fn_ty));      // is_stateful
+
+    llvm.LLVMRefineType(abs_tydesc, tydesc);
+    ret llvm.LLVMResolveTypeHandle(th.llth);
 }
 
 fn T_array(TypeRef t, uint n) -> TypeRef {
@@ -960,8 +969,10 @@ fn make_tydesc(@crate_ctxt cx, @ty.t t) {
 
     auto llty = type_of(cx, t);
     auto pvoid = T_ptr(T_i8());
-    auto glue_fn_ty = T_ptr(T_fn(vec(T_taskptr(), pvoid), T_void()));
-    auto tydesc = C_struct(vec(C_null(pvoid),
+    auto glue_fn_ty = T_ptr(T_fn(vec(T_taskptr(),
+                                     T_ptr(T_tydesc()),
+                                     pvoid), T_void()));
+    auto tydesc = C_struct(vec(C_null(T_ptr(T_tydesc())),
                                llsize_of(llty),
                                llalign_of(llty),
                                take_glue,             // take_glue_off
@@ -983,7 +994,9 @@ fn make_tydesc(@crate_ctxt cx, @ty.t t) {
 
 fn make_generic_glue(@crate_ctxt cx, @ty.t t, str name,
                      val_and_ty_fn helper) -> ValueRef {
-    auto llfnty = T_fn(vec(T_taskptr(), T_ptr(T_i8())), T_void());
+    auto llfnty = T_fn(vec(T_taskptr(),
+                           T_ptr(T_tydesc()),
+                           T_ptr(T_i8())), T_void());
 
     auto fn_name = cx.names.next("_rust_" + name) + "." + ty.ty_to_str(t);
     fn_name = sanitize(fn_name);
@@ -1001,7 +1014,7 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, str name,
             llty = type_of(cx, t);
         }
 
-        auto llrawptr = llvm.LLVMGetParam(llfn, 1u);
+        auto llrawptr = llvm.LLVMGetParam(llfn, 2u);
         auto llval = bcx.build.BitCast(llrawptr, llty);
 
         re = helper(bcx, llval, t);
@@ -1097,19 +1110,13 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                     cx.build.GEP(body,
                                  vec(C_int(0),
                                      C_int(abi.obj_body_elt_fields)));
-                auto llrawptr = cx.build.BitCast(fields, T_ptr(T_i8()));
-
                 auto tydescptr =
                     cx.build.GEP(body,
                                  vec(C_int(0),
                                      C_int(abi.obj_body_elt_tydesc)));
-                auto tydesc = cx.build.Load(tydescptr);
-                auto llfnptr =
-                    cx.build.GEP(tydesc,
-                                 vec(C_int(0),
-                                     C_int(abi.tydesc_field_drop_glue_off)));
-                auto llfn = cx.build.Load(llfnptr);
-                cx.build.FastCall(llfn, vec(cx.fcx.lltaskptr, llrawptr));
+
+                call_tydesc_glue_full(cx, fields, cx.build.Load(tydescptr),
+                                      abi.tydesc_field_drop_glue_off);
 
                 // Then free the body.
                 // FIXME: switch gc/non-gc on layer of the type.
@@ -1141,19 +1148,15 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                     cx.build.GEP(body,
                                  vec(C_int(0),
                                      C_int(abi.closure_elt_bindings)));
-                auto llrawptr = cx.build.BitCast(bindings, T_ptr(T_i8()));
 
                 auto tydescptr =
                     cx.build.GEP(body,
                                  vec(C_int(0),
                                      C_int(abi.closure_elt_tydesc)));
-                auto tydesc = cx.build.Load(tydescptr);
-                auto llfnptr =
-                    cx.build.GEP(tydesc,
-                                 vec(C_int(0),
-                                     C_int(abi.tydesc_field_drop_glue_off)));
-                auto llfn = cx.build.Load(llfnptr);
-                cx.build.FastCall(llfn, vec(cx.fcx.lltaskptr, llrawptr));
+
+                call_tydesc_glue_full(cx, bindings, cx.build.Load(tydescptr),
+                                      abi.tydesc_field_drop_glue_off);
+
 
                 // Then free the body.
                 // FIXME: switch gc/non-gc on layer of the type.
@@ -1469,15 +1472,28 @@ fn iter_sequence(@block_ctxt cx,
     fail;
 }
 
+fn call_tydesc_glue_full(@block_ctxt cx, ValueRef v,
+                         ValueRef tydesc, int field) {
+    auto llrawptr = cx.build.BitCast(v, T_ptr(T_i8()));
+    auto lltydescs = cx.build.GEP(tydesc,
+                                  vec(C_int(0),
+                                      C_int(abi.tydesc_field_first_param)));
+    lltydescs = cx.build.Load(lltydescs);
+    auto llfnptr = cx.build.GEP(tydesc, vec(C_int(0), C_int(field)));
+    auto llfn = cx.build.Load(llfnptr);
+    cx.build.FastCall(llfn, vec(cx.fcx.lltaskptr, lltydescs, llrawptr));
+}
+
+fn call_tydesc_glue(@block_ctxt cx, ValueRef v, @ty.t t, int field) {
+    call_tydesc_glue_full(cx, v, get_tydesc(cx, t), field);
+}
+
 fn incr_all_refcnts(@block_ctxt cx,
                     ValueRef v,
                     @ty.t t) -> result {
 
     if (!ty.type_is_scalar(t)) {
-        auto llrawptr = cx.build.BitCast(v, T_ptr(T_i8()));
-        auto llfnptr = field_of_tydesc(cx, t, abi.tydesc_field_take_glue_off);
-        auto llfn = cx.build.Load(llfnptr);
-        cx.build.FastCall(llfn, vec(cx.fcx.lltaskptr, llrawptr));
+        call_tydesc_glue(cx, v, t, abi.tydesc_field_take_glue_off);
     }
     ret res(cx, C_nil());
 }
@@ -1499,10 +1515,7 @@ fn drop_ty(@block_ctxt cx,
            @ty.t t) -> result {
 
     if (!ty.type_is_scalar(t)) {
-        auto llrawptr = cx.build.BitCast(v, T_ptr(T_i8()));
-        auto llfnptr = field_of_tydesc(cx, t, abi.tydesc_field_drop_glue_off);
-        auto llfn = cx.build.Load(llfnptr);
-        cx.build.FastCall(llfn, vec(cx.fcx.lltaskptr, llrawptr));
+        call_tydesc_glue(cx, v, t, abi.tydesc_field_drop_glue_off);
     }
     ret res(cx, C_nil());
 }
