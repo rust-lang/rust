@@ -889,6 +889,48 @@ fn field_of_tydesc(@block_ctxt cx, @ty.t t, int field) -> ValueRef {
     ret cx.build.GEP(tydesc, vec(C_int(0), C_int(field)));
 }
 
+// Given a type containing ty params, build a vector containing a ValueRef for
+// each of the ty params it uses (from the current frame), as well as a vec
+// containing a def_id for each such param. This is used solely for
+// constructing derived tydescs.
+fn linearize_ty_params(@block_ctxt cx, @ty.t t)
+    -> tup(vec[ast.def_id], vec[ValueRef]) {
+    let vec[ValueRef] param_vals = vec();
+    let vec[ast.def_id] param_defs = vec();
+    type rr = rec(@block_ctxt cx,
+                 mutable vec[ValueRef] vals,
+                 mutable vec[ast.def_id] defs);
+
+    state obj folder(@rr r) {
+        fn fold_simple_ty(@ty.t t) -> @ty.t {
+            alt(t.struct) {
+                case (ty.ty_param(?pid)) {
+                    let bool seen = false;
+                    for (ast.def_id d in r.defs) {
+                        if (d == pid) {
+                            seen = true;
+                        }
+                    }
+                    if (!seen) {
+                        r.vals += cx.fcx.lltydescs.get(pid);
+                        r.defs += pid;
+                    }
+                }
+            }
+            ret t;
+        }
+    }
+
+
+    auto x = @rec(cx = cx,
+                  mutable vals = param_vals,
+                  mutable defs = param_defs);
+
+    ty.fold_ty(folder(x), t);
+
+    ret tup(x.defs, x.vals);
+}
+
 fn get_tydesc(&@block_ctxt cx, @ty.t t) -> ValueRef {
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt (ty.type_param(t)) {
@@ -897,9 +939,10 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> ValueRef {
     }
 
     // Does it contain a type param? If so, generate a derived tydesc.
+    let uint n_params = ty.count_ty_params(t);
     if (ty.count_ty_params(t) > 0u) {
-        log "TODO: trans.get_tydesc(): generate a derived type descriptor";
-        fail;
+        auto tys = linearize_ty_params(cx, t);
+        cx.fcx.ccx.sess.unimpl("derived type descriptors");
     }
 
     // Otherwise, generate a tydesc if necessary, and return it.
