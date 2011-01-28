@@ -949,23 +949,30 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> ValueRef {
 
     // Does it contain a type param? If so, generate a derived tydesc.
     let uint n_params = ty.count_ty_params(t);
+
     if (ty.count_ty_params(t) > 0u) {
         auto tys = linearize_ty_params(cx, t);
+
+        if (!cx.fcx.ccx.tydescs.contains_key(t)) {
+            make_tydesc(cx.fcx.ccx, t, tys._0);
+        }
+
         cx.fcx.ccx.sess.unimpl("derived type descriptors");
     }
 
     // Otherwise, generate a tydesc if necessary, and return it.
     if (!cx.fcx.ccx.tydescs.contains_key(t)) {
-        make_tydesc(cx.fcx.ccx, t);
+        let vec[ast.def_id] defs = vec();
+        make_tydesc(cx.fcx.ccx, t, defs);
     }
     ret cx.fcx.ccx.tydescs.get(t);
 }
 
-fn make_tydesc(@crate_ctxt cx, @ty.t t) {
+fn make_tydesc(@crate_ctxt cx, @ty.t t, vec[ast.def_id] typaram_defs) {
     auto tg = make_take_glue;
-    auto take_glue = make_generic_glue(cx, t, "take", tg);
+    auto take_glue = make_generic_glue(cx, t, "take", tg, typaram_defs);
     auto dg = make_drop_glue;
-    auto drop_glue = make_generic_glue(cx, t, "drop", dg);
+    auto drop_glue = make_generic_glue(cx, t, "drop", dg, typaram_defs);
 
     auto llty = type_of(cx, t);
     auto pvoid = T_ptr(T_i8());
@@ -993,7 +1000,8 @@ fn make_tydesc(@crate_ctxt cx, @ty.t t) {
 }
 
 fn make_generic_glue(@crate_ctxt cx, @ty.t t, str name,
-                     val_and_ty_fn helper) -> ValueRef {
+                     val_and_ty_fn helper,
+                     vec[ast.def_id] typaram_defs) -> ValueRef {
     auto llfnty = T_fn(vec(T_taskptr(),
                            T_ptr(T_tydesc()),
                            T_ptr(T_i8())), T_void());
@@ -1012,6 +1020,15 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, str name,
             llty = T_ptr(type_of(cx, t));
         } else {
             llty = type_of(cx, t);
+        }
+
+        auto lltyparams = llvm.LLVMGetParam(llfn, 1u);
+        auto p = 0;
+        for (ast.def_id d in typaram_defs) {
+            auto llparam = bcx.build.GEP(lltyparams, vec(C_int(p)));
+            llparam = bcx.build.Load(llparam);
+            bcx.fcx.lltydescs.insert(d, llparam);
+            p += 1;
         }
 
         auto llrawptr = llvm.LLVMGetParam(llfn, 2u);
