@@ -240,12 +240,12 @@ fn T_tydesc() -> TypeRef {
 
     auto th = mk_type_handle();
     auto abs_tydesc = llvm.LLVMResolveTypeHandle(th.llth);
-
+    auto tydescpp = T_ptr(T_ptr(abs_tydesc));
     auto pvoid = T_ptr(T_i8());
     auto glue_fn_ty = T_ptr(T_fn(vec(T_taskptr(),
-                                     T_ptr(abs_tydesc),
+                                     tydescpp,
                                      pvoid), T_void()));
-    auto tydesc = T_struct(vec(T_ptr(abs_tydesc), // first_param
+    auto tydesc = T_struct(vec(tydescpp,          // first_param
                                T_int(),           // size
                                T_int(),           // align
                                glue_fn_ty,        // take_glue_off
@@ -907,8 +907,8 @@ fn linearize_ty_params(@block_ctxt cx, @ty.t t)
     let vec[ValueRef] param_vals = vec();
     let vec[ast.def_id] param_defs = vec();
     type rr = rec(@block_ctxt cx,
-                 mutable vec[ValueRef] vals,
-                 mutable vec[ast.def_id] defs);
+                  mutable vec[ValueRef] vals,
+                  mutable vec[ast.def_id] defs);
 
     state obj folder(@rr r) {
         fn fold_simple_ty(@ty.t t) -> @ty.t {
@@ -921,7 +921,7 @@ fn linearize_ty_params(@block_ctxt cx, @ty.t t)
                         }
                     }
                     if (!seen) {
-                        r.vals += cx.fcx.lltydescs.get(pid);
+                        r.vals += r.cx.fcx.lltydescs.get(pid);
                         r.defs += pid;
                     }
                 }
@@ -957,6 +957,8 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> ValueRef {
             make_tydesc(cx.fcx.ccx, t, tys._0);
         }
 
+        auto root = cx.fcx.ccx.tydescs.get(t);
+
         cx.fcx.ccx.sess.unimpl("derived type descriptors");
     }
 
@@ -977,9 +979,9 @@ fn make_tydesc(@crate_ctxt cx, @ty.t t, vec[ast.def_id] typaram_defs) {
     auto llty = type_of(cx, t);
     auto pvoid = T_ptr(T_i8());
     auto glue_fn_ty = T_ptr(T_fn(vec(T_taskptr(),
-                                     T_ptr(T_tydesc()),
+                                     T_ptr(T_ptr(T_tydesc())),
                                      pvoid), T_void()));
-    auto tydesc = C_struct(vec(C_null(T_ptr(T_tydesc())),
+    auto tydesc = C_struct(vec(C_null(T_ptr(T_ptr(T_tydesc()))),
                                llsize_of(llty),
                                llalign_of(llty),
                                take_glue,             // take_glue_off
@@ -1003,7 +1005,7 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, str name,
                      val_and_ty_fn helper,
                      vec[ast.def_id] typaram_defs) -> ValueRef {
     auto llfnty = T_fn(vec(T_taskptr(),
-                           T_ptr(T_tydesc()),
+                           T_ptr(T_ptr(T_tydesc())),
                            T_ptr(T_i8())), T_void());
 
     auto fn_name = cx.names.next("_rust_" + name) + "." + ty.ty_to_str(t);
