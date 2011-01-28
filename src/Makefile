@@ -46,6 +46,7 @@ ifeq ($(CFG_OSTYPE), Linux)
   CFG_VALGRIND := $(shell which valgrind)
   ifdef CFG_VALGRIND
     CFG_VALGRIND += --leak-check=full \
+                    --error-exitcode=1 \
                     --quiet --vex-iropt-level=0 \
                     --suppressions=etc/x86.supp
   endif
@@ -445,7 +446,6 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         deref.rs \
                         div-mod.rs \
                         drop-bind-thunk-args.rs \
-                        drop-on-empty-block-exit.rs \
                         drop-on-ret.rs \
                         fact.rs \
                         fn-lval.rs \
