@@ -2251,11 +2251,7 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
     ix.bcx.build.CondBr(bounds_check, next_cx.llbb, fail_cx.llbb);
 
     // fail: bad bounds check.
-    auto V_expr_str = p2i(C_cstr(cx.fcx.ccx, "out-of-bounds access"));
-    auto V_filename = p2i(C_cstr(cx.fcx.ccx, sp.filename));
-    auto V_line = sp.lo.line as int;
-    auto args = vec(V_expr_str, V_filename, C_int(V_line));
-    auto fail_res = trans_upcall(fail_cx, "upcall_fail", args);
+    auto fail_res = trans_fail(fail_cx, sp, "bounds check");
     fail_res.bcx.build.Br(next_cx.llbb);
 
     auto body = next_cx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_data)));
@@ -2904,13 +2900,9 @@ fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
     auto cond_res = trans_expr(cx, e);
 
     // FIXME: need pretty-printer.
-    auto V_expr_str = p2i(C_cstr(cx.fcx.ccx, "<expr>"));
-    auto V_filename = p2i(C_cstr(cx.fcx.ccx, e.span.filename));
-    auto V_line = e.span.lo.line as int;
-    auto args = vec(V_expr_str, V_filename, C_int(V_line));
-
+    auto expr_str = "<expr>";
     auto fail_cx = new_sub_block_ctxt(cx, "fail");
-    auto fail_res = trans_upcall(fail_cx, "upcall_fail", args);
+    auto fail_res = trans_fail(fail_cx, e.span, expr_str);
 
     auto next_cx = new_sub_block_ctxt(cx, "next");
     fail_res.bcx.build.Br(next_cx.llbb);
@@ -2918,6 +2910,15 @@ fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
                               next_cx.llbb,
                               fail_cx.llbb);
     ret res(next_cx, C_nil());
+}
+
+fn trans_fail(@block_ctxt cx, common.span sp, str fail_str) -> result {
+    auto V_fail_str = p2i(C_cstr(cx.fcx.ccx, fail_str));
+    auto V_filename = p2i(C_cstr(cx.fcx.ccx, sp.filename));
+    auto V_line = sp.lo.line as int;
+    auto args = vec(V_fail_str, V_filename, C_int(V_line));
+
+    ret trans_upcall(cx, "upcall_fail", args);
 }
 
 fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
@@ -3033,6 +3034,10 @@ fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
 
         case (ast.stmt_check_expr(?a)) {
             bcx = trans_check_expr(cx, a).bcx;
+        }
+
+        case (ast.stmt_fail) {
+            bcx = trans_fail(cx, s.span, "explicit failure").bcx;
         }
 
         case (ast.stmt_ret(?e)) {

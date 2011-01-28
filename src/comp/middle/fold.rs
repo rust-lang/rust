@@ -615,6 +615,10 @@ fn fold_stmt[ENV](&ENV env, ast_fold[ENV] fld, &@stmt s) -> @stmt {
             ret fld.fold_stmt_check_expr(env_, s.span, ee);
         }
 
+        case (ast.stmt_fail) {
+            ret s;
+        }
+
         case (ast.stmt_expr(?e)) {
             auto ee = fold_expr(env_, fld, e);
             ret fld.fold_stmt_expr(env_, s.span, ee);

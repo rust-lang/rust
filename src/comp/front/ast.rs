@@ -116,6 +116,7 @@ tag stmt_ {
     stmt_ret(option.t[@expr]);
     stmt_log(@expr);
     stmt_check_expr(@expr);
+    stmt_fail;
     stmt_expr(@expr);
 }
 

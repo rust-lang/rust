@@ -1682,6 +1682,10 @@ fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
                                         ast.stmt_check_expr(expr_t));
         }
 
+        case (ast.stmt_fail) {
+            ret stmt;
+        }
+
         case (ast.stmt_expr(?expr)) {
             auto expr_t = check_expr(fcx, expr);
             ret @fold.respan[ast.stmt_](stmt.span, ast.stmt_expr(expr_t));

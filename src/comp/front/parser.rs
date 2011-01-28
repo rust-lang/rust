@@ -1158,6 +1158,11 @@ impure fn parse_stmt(parser p) -> @ast.stmt {
             }
         }
 
+        case (token.FAIL) {
+            p.bump();
+            ret @spanned(lo, p.get_span(), ast.stmt_fail);
+        }
+
         case (token.RET) {
             p.bump();
             alt (p.peek()) {
@@ -1315,6 +1320,7 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
         case (ast.stmt_ret(_))                  { ret true; }
         case (ast.stmt_log(_))                  { ret true; }
         case (ast.stmt_check_expr(_))           { ret true; }
+        case (ast.stmt_fail)                    { ret true; }
         case (ast.stmt_expr(?e)) {
             alt (e.node) {
                 case (ast.expr_vec(_,_))        { ret true; }
