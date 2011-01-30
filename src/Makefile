@@ -517,6 +517,9 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         simple-obj.rs \
                         stateful-obj.rs \
                         str-idx.rs \
+                        tail-call-arg-leak.rs \
+                        tail-cps.rs \
+                        tail-direct.rs \
                         type-in-nested-module.rs \
                         type-param.rs \
                         tup.rs \

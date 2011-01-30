@@ -116,6 +116,7 @@ type stmt = spanned[stmt_];
 tag stmt_ {
     stmt_decl(@decl);
     stmt_ret(option.t[@expr]);
+    stmt_be(@expr);
     stmt_log(@expr);
     stmt_check_expr(@expr);
     stmt_fail;

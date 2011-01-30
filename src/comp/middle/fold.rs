@@ -177,6 +177,9 @@ type ast_fold[ENV] =
          &option.t[@expr] rv) -> @stmt)           fold_stmt_ret,
 
      (fn(&ENV e, &span sp,
+         @expr e) -> @stmt)                       fold_stmt_be,
+
+     (fn(&ENV e, &span sp,
          @expr e) -> @stmt)                       fold_stmt_log,
 
      (fn(&ENV e, &span sp,
@@ -634,6 +637,11 @@ fn fold_stmt[ENV](&ENV env, ast_fold[ENV] fld, &@stmt s) -> @stmt {
                 case (_) { /* fall through */  }
             }
             ret fld.fold_stmt_ret(env_, s.span, oee);
+        }
+
+        case (ast.stmt_be(?e)) {
+            auto ee = fold_expr(env_, fld, e);
+            ret fld.fold_stmt_be(env_, s.span, ee);
         }
 
         case (ast.stmt_log(?e)) {
@@ -1136,6 +1144,10 @@ fn identity_fold_stmt_ret[ENV](&ENV env, &span sp,
     ret @respan(sp, ast.stmt_ret(rv));
 }
 
+fn identity_fold_stmt_be[ENV](&ENV env, &span sp, @expr x) -> @stmt {
+    ret @respan(sp, ast.stmt_be(x));
+}
+
 fn identity_fold_stmt_log[ENV](&ENV e, &span sp, @expr x) -> @stmt {
     ret @respan(sp, ast.stmt_log(x));
 }
@@ -1366,6 +1378,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
 
          fold_stmt_decl   = bind identity_fold_stmt_decl[ENV](_,_,_),
          fold_stmt_ret    = bind identity_fold_stmt_ret[ENV](_,_,_),
+         fold_stmt_be     = bind identity_fold_stmt_be[ENV](_,_,_),
          fold_stmt_log    = bind identity_fold_stmt_log[ENV](_,_,_),
          fold_stmt_check_expr
                           = bind identity_fold_stmt_check_expr[ENV](_,_,_),

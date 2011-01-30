@@ -3128,6 +3128,11 @@ fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
     ret res(bcx, C_nil());
 }
 
+fn trans_be(@block_ctxt cx, @ast.expr e) -> result {
+    // FIXME: So this isn't actually a tail call
+    ret trans_ret(cx, some(e));
+}
+
 fn init_local(@block_ctxt cx, @ast.local local) -> result {
 
     // Make a note to drop this slot on the way out.
@@ -3176,6 +3181,10 @@ fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
 
         case (ast.stmt_ret(?e)) {
             bcx = trans_ret(cx, e).bcx;
+        }
+
+        case (ast.stmt_be(?e)) {
+            bcx = trans_be(cx, e).bcx;
         }
 
         case (ast.stmt_expr(?e)) {

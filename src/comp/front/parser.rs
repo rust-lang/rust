@@ -1200,6 +1200,12 @@ impure fn parse_stmt(parser p) -> @ast.stmt {
             }
         }
 
+        case (token.BE) {
+            p.bump();
+            auto e = parse_expr(p);
+            ret @spanned(lo, e.span, ast.stmt_be(e));
+        }
+
         case (token.LET) {
             auto decl = parse_let(p);
             auto hi = p.get_span();
@@ -1340,6 +1346,7 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
             }
         }
         case (ast.stmt_ret(_))                  { ret true; }
+        case (ast.stmt_be(_))                   { ret true; }
         case (ast.stmt_log(_))                  { ret true; }
         case (ast.stmt_check_expr(_))           { ret true; }
         case (ast.stmt_fail)                    { ret true; }

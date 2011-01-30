@@ -1719,6 +1719,21 @@ fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
             }
         }
 
+        case (ast.stmt_be(?expr)) {
+            alt (expr.node) {
+                case (ast.expr_call(_, _, _)) {
+                    auto expr_0 = check_expr(fcx, expr);
+                    auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
+                    ret @fold.respan[ast.stmt_](stmt.span,
+                                                ast.stmt_be(expr_1));
+                }
+                case (_) {
+                    fcx.ccx.sess.err("Non-call expression in tail call");
+                    fail;
+                }
+            }
+        }
+
         case (ast.stmt_log(?expr)) {
             auto expr_t = check_expr(fcx, expr);
             ret @fold.respan[ast.stmt_](stmt.span, ast.stmt_log(expr_t));
