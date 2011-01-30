@@ -434,6 +434,7 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/compile-fail/bad-recv.rs \
                     test/compile-fail/bad-send.rs \
                     test/compile-fail/infinite-vec-type-recursion.rs \
+                    test/compile-fail/tail-non-call.rs \
                     test/compile-fail/writing-through-read-alias.rs
 
 # Same strategy here for the time being: just list the ones that
@@ -555,6 +556,8 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         multiline-comment-line-tracking.rs \
                         output-type-mismatch.rs \
                         rec-missing-fields.rs \
+                        tail-non-call.rs \
+                        tail-typeck.rs \
                         type-shadow.rs \
                         while-type-error.rs \
                         wrong-ret-type.rs \
