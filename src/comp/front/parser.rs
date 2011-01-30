@@ -895,14 +895,28 @@ impure fn parse_if_expr(parser p) -> @ast.expr {
     hi = thn.span;
     alt (p.peek()) {
         case (token.ELSE) {
-            p.bump();
-            auto eblk = parse_block(p);
+            auto eblk = parse_else_block(p);
             els = some(eblk);
             hi = eblk.span;
         }
         case (_) { /* fall through */ }
     }
     ret @spanned(lo, hi, ast.expr_if(cond, thn, els, ast.ann_none));
+}
+
+impure fn parse_else_block(parser p) -> ast.block {
+    expect(p, token.ELSE);
+    alt (p.peek()) {
+        case (token.IF) {
+            let vec[@ast.stmt] stmts = vec();
+            auto ifexpr = parse_if_expr(p);
+            auto bloc = index_block(stmts, some(ifexpr));
+            ret spanned(ifexpr.span, ifexpr.span, bloc);
+        }
+        case (_) {
+            ret parse_block(p);
+        }
+    }
 }
 
 impure fn parse_head_local(parser p) -> @ast.decl {
