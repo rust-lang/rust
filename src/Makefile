@@ -494,10 +494,13 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         writealias.rs \
                         ) \
                       $(addprefix test/compile-fail/, \
+                        alt-tag-nullary.rs \
+                        alt-tag-unary.rs \
                         arg-count-mismatch.rs \
                         arg-type-mismatch.rs \
                         bad-expr-path.rs \
                         bad-expr-path2.rs \
+                        bogus-tag.rs \
                         import.rs \
                         import2.rs \
                         import3.rs \
@@ -505,7 +508,11 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         import-loop.rs \
                         import-loop-2.rs \
                         multiline-comment-line-tracking.rs \
+                        output-type-mismatch.rs \
+                        rec-missing-fields.rs \
+                        type-shadow.rs \
                         while-type-error.rs \
+                        wrong-ret-type.rs \
                         ), \
                       $(wildcard test/*/*.rs test/*/*.rc))
 
