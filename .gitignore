@@ -30,6 +30,7 @@
 *.tp
 *.vr
 *.swp
+*.tmp
 .hg/
 .hgignore
 .cproject
