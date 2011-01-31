@@ -63,6 +63,7 @@ type tag_info = rec(type_handle th,
 state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
                             target_data td,
+                            ValueRef crate_ptr,
                             hashmap[str, ValueRef] upcalls,
                             hashmap[str, ValueRef] intrinsics,
                             hashmap[str, ValueRef] item_names,
@@ -687,25 +688,25 @@ fn llalign_of(TypeRef t) -> ValueRef {
     ret llvm.LLVMConstIntCast(lib.llvm.llvm.LLVMAlignOf(t), T_int(), False);
 }
 
-fn size_of(@block_ctxt cx, @ty.t t) -> ValueRef {
+fn size_of(@block_ctxt cx, @ty.t t) -> result {
     if (!ty.type_has_dynamic_size(t)) {
-        ret llsize_of(type_of(cx.fcx.ccx, t));
+        ret res(cx, llsize_of(type_of(cx.fcx.ccx, t)));
     }
     ret dynamic_size_of(cx, t);
 }
 
-fn align_of(@block_ctxt cx, @ty.t t) -> ValueRef {
+fn align_of(@block_ctxt cx, @ty.t t) -> result {
     if (!ty.type_has_dynamic_size(t)) {
-        ret llalign_of(type_of(cx.fcx.ccx, t));
+        ret res(cx, llalign_of(type_of(cx.fcx.ccx, t)));
     }
     ret dynamic_align_of(cx, t);
 }
 
-fn dynamic_size_of(@block_ctxt cx, @ty.t t) -> ValueRef {
+fn dynamic_size_of(@block_ctxt cx, @ty.t t) -> result {
     alt (t.struct) {
         case (ty.ty_param(?p)) {
             auto szptr = field_of_tydesc(cx, t, abi.tydesc_field_size);
-            ret cx.build.Load(szptr);
+            ret res(szptr.bcx, szptr.bcx.build.Load(szptr.val));
         }
         case (ty.ty_tup(?elts)) {
             //
@@ -718,51 +719,63 @@ fn dynamic_size_of(@block_ctxt cx, @ty.t t) -> ValueRef {
             //
             auto off = C_int(0);
             auto max_align = C_int(1);
+            auto bcx = cx;
             for (@ty.t e in elts) {
-                auto elt_align = align_of(cx, e);
-                auto elt_size = size_of(cx, e);
-                auto aligned_off = align_to(cx, off, elt_align);
-                off = cx.build.Add(aligned_off, elt_size);
-                max_align = umax(cx, max_align, elt_align);
+                auto elt_align = align_of(bcx, e);
+                bcx = elt_align.bcx;
+                auto elt_size = size_of(bcx, e);
+                bcx = elt_size.bcx;
+                auto aligned_off = align_to(bcx, off, elt_align.val);
+                off = cx.build.Add(aligned_off, elt_size.val);
+                max_align = umax(bcx, max_align, elt_align.val);
             }
-            off = align_to(cx, off, max_align);
-            ret off;
+            off = align_to(bcx, off, max_align);
+            ret res(bcx, off);
         }
         case (ty.ty_rec(?flds)) {
             auto off = C_int(0);
             auto max_align = C_int(1);
+            auto bcx = cx;
             for (ty.field f in flds) {
-                auto elt_align = align_of(cx, f.ty);
-                auto elt_size = size_of(cx, f.ty);
-                auto aligned_off = align_to(cx, off, elt_align);
-                off = cx.build.Add(aligned_off, elt_size);
-                max_align = umax(cx, max_align, elt_align);
+                auto elt_align = align_of(bcx, f.ty);
+                bcx = elt_align.bcx;
+                auto elt_size = size_of(bcx, f.ty);
+                bcx = elt_size.bcx;
+                auto aligned_off = align_to(bcx, off, elt_align.val);
+                off = cx.build.Add(aligned_off, elt_size.val);
+                max_align = umax(bcx, max_align, elt_align.val);
             }
-            off = align_to(cx, off, max_align);
-            ret off;
+            off = align_to(bcx, off, max_align);
+            ret res(bcx, off);
         }
     }
 }
 
-fn dynamic_align_of(@block_ctxt cx, @ty.t t) -> ValueRef {
+fn dynamic_align_of(@block_ctxt cx, @ty.t t) -> result {
     alt (t.struct) {
         case (ty.ty_param(?p)) {
             auto aptr = field_of_tydesc(cx, t, abi.tydesc_field_align);
-            ret cx.build.Load(aptr);
+            ret res(aptr.bcx, aptr.bcx.build.Load(aptr.val));
         }
         case (ty.ty_tup(?elts)) {
             auto a = C_int(1);
+            auto bcx = cx;
             for (@ty.t e in elts) {
-                a = umax(cx, a, align_of(cx, e));
+                auto align = align_of(bcx, e);
+                bcx = align.bcx;
+                a = umax(bcx, a, align.val);
             }
-            ret a;
+            ret res(bcx, a);
         }
         case (ty.ty_rec(?flds)) {
             auto a = C_int(1);
+            auto bcx = cx;
             for (ty.field f in flds) {
-                a = umax(cx, a, align_of(cx, f.ty));
+                auto align = align_of(bcx, f.ty);
+                bcx = align.bcx;
+                a = umax(bcx, a, align.val);
             }
-            ret a;
+            ret res(bcx, a);
         }
     }
 }
@@ -774,7 +787,7 @@ fn dynamic_align_of(@block_ctxt cx, @ty.t t) -> ValueRef {
 // align_of, above.
 
 fn GEP_tup_like(@block_ctxt cx, @ty.t t,
-                ValueRef base, vec[int] ixs) -> ValueRef {
+                ValueRef base, vec[int] ixs) -> result {
 
     check (ty.type_is_tup_like(t));
 
@@ -785,7 +798,7 @@ fn GEP_tup_like(@block_ctxt cx, @ty.t t,
         for (int i in ixs) {
             v += C_int(i);
         }
-        ret cx.build.GEP(base, v);
+        ret res(cx, cx.build.GEP(base, v));
     }
 
     // It is a dynamic-containing type that, if we convert directly to an LLVM
@@ -856,14 +869,16 @@ fn GEP_tup_like(@block_ctxt cx, @ty.t t,
 
     auto s = split_type(t, ixs, 0u);
     auto prefix_ty = ty.plain_ty(ty.ty_tup(s.prefix));
-    auto sz = size_of(cx, prefix_ty);
-    auto raw = cx.build.PointerCast(base, T_ptr(T_i8()));
-    auto bumped = cx.build.GEP(raw, vec(sz));
+    auto bcx = cx;
+    auto sz = size_of(bcx, prefix_ty);
+    bcx = sz.bcx;
+    auto raw = bcx.build.PointerCast(base, T_ptr(T_i8()));
+    auto bumped = bcx.build.GEP(raw, vec(sz.val));
     alt (s.target.struct) {
-        case (ty.ty_param(_)) { ret bumped; }
+        case (ty.ty_param(_)) { ret res(bcx, bumped); }
         case (_) {
-            auto ty = T_ptr(type_of(cx.fcx.ccx, s.target));
-            ret cx.build.PointerCast(bumped, ty);
+            auto ty = T_ptr(type_of(bcx.fcx.ccx, s.target));
+            ret res(bcx, bcx.build.PointerCast(bumped, ty));
         }
     }
 }
@@ -893,9 +908,10 @@ fn trans_malloc(@block_ctxt cx, @ty.t t) -> result {
 // Given a type and a field index into its corresponding type descriptor,
 // returns an LLVM ValueRef of that field from the tydesc, generating the
 // tydesc if necessary.
-fn field_of_tydesc(@block_ctxt cx, @ty.t t, int field) -> ValueRef {
+fn field_of_tydesc(@block_ctxt cx, @ty.t t, int field) -> result {
     auto tydesc = get_tydesc(cx, t);
-    ret cx.build.GEP(tydesc, vec(C_int(0), C_int(field)));
+    ret res(tydesc.bcx,
+            tydesc.bcx.build.GEP(tydesc.val, vec(C_int(0), C_int(field))));
 }
 
 // Given a type containing ty params, build a vector containing a ValueRef for
@@ -940,10 +956,12 @@ fn linearize_ty_params(@block_ctxt cx, @ty.t t)
     ret tup(x.defs, x.vals);
 }
 
-fn get_tydesc(&@block_ctxt cx, @ty.t t) -> ValueRef {
+fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt (ty.type_param(t)) {
-        case (some[ast.def_id](?id)) { ret cx.fcx.lltydescs.get(id); }
+        case (some[ast.def_id](?id)) {
+            ret res(cx, cx.fcx.lltydescs.get(id));
+        }
         case (none[ast.def_id])      { /* fall through */ }
     }
 
@@ -953,13 +971,36 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> ValueRef {
     if (ty.count_ty_params(t) > 0u) {
         auto tys = linearize_ty_params(cx, t);
 
+        check (n_params == _vec.len[ast.def_id](tys._0));
+        check (n_params == _vec.len[ValueRef](tys._1));
+
         if (!cx.fcx.ccx.tydescs.contains_key(t)) {
             make_tydesc(cx.fcx.ccx, t, tys._0);
         }
 
         auto root = cx.fcx.ccx.tydescs.get(t);
 
-        cx.fcx.ccx.sess.unimpl("derived type descriptors");
+        auto tydescs = cx.build.Alloca(T_array(T_ptr(T_tydesc()), n_params));
+        auto i = 0;
+        for (ValueRef td in tys._1) {
+            auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
+            cx.build.Store(td, tdp);
+        }
+
+        auto bcx = cx;
+        auto sz = size_of(bcx, t);
+        bcx = sz.bcx;
+        auto align = align_of(bcx, t);
+        bcx = align.bcx;
+
+        auto v = trans_upcall(bcx, "upcall_get_type_desc",
+                              vec(p2i(bcx.fcx.ccx.crate_ptr),
+                                  sz.val,
+                                  align.val,
+                                  C_int(n_params as int),
+                                  bcx.build.PtrToInt(tydescs, T_int())));
+
+        ret res(v.bcx, v.bcx.build.IntToPtr(v.val, T_ptr(T_tydesc())));
     }
 
     // Otherwise, generate a tydesc if necessary, and return it.
@@ -967,7 +1008,7 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> ValueRef {
         let vec[ast.def_id] defs = vec();
         make_tydesc(cx.fcx.ccx, t, defs);
     }
-    ret cx.fcx.ccx.tydescs.get(t);
+    ret res(cx, cx.fcx.ccx.tydescs.get(t));
 }
 
 fn make_tydesc(@crate_ctxt cx, @ty.t t, vec[ast.def_id] typaram_defs) {
@@ -1437,20 +1478,20 @@ fn iter_sequence(@block_ctxt cx,
                                           C_int(abi.vec_elt_fill)));
 
         auto llunit_ty = type_of(cx.fcx.ccx, elt_ty);
-        auto unit_sz = size_of(cx, elt_ty);
+        auto bcx = cx;
+        auto unit_sz = size_of(bcx, elt_ty);
+        bcx = unit_sz.bcx;
 
-        auto len = cx.build.Load(lenptr);
+        auto len = bcx.build.Load(lenptr);
         if (trailing_null) {
-            len = cx.build.Sub(len, unit_sz);
+            len = bcx.build.Sub(len, unit_sz.val);
         }
-
-        auto r = res(cx, C_nil());
 
         auto cond_cx = new_scope_block_ctxt(cx, "sequence-iter cond");
         auto body_cx = new_scope_block_ctxt(cx, "sequence-iter body");
         auto next_cx = new_sub_block_ctxt(cx, "next");
 
-        cx.build.Br(cond_cx.llbb);
+        bcx.build.Br(cond_cx.llbb);
 
         auto ix = cond_cx.build.Phi(T_int(), vec(C_int(0)), vec(cx.llbb));
         auto scaled_ix = cond_cx.build.Phi(T_int(),
@@ -1465,7 +1506,7 @@ fn iter_sequence(@block_ctxt cx,
                           load_scalar_or_boxed(body_cx, elt, elt_ty),
                           elt_ty);
         auto next_ix = body_res.bcx.build.Add(ix, C_int(1));
-        auto next_scaled_ix = body_res.bcx.build.Add(scaled_ix, unit_sz);
+        auto next_scaled_ix = body_res.bcx.build.Add(scaled_ix, unit_sz.val);
 
         cond_cx.build.AddIncomingToPhi(ix, vec(next_ix),
                                        vec(body_res.bcx.llbb));
@@ -1504,7 +1545,8 @@ fn call_tydesc_glue_full(@block_ctxt cx, ValueRef v,
 }
 
 fn call_tydesc_glue(@block_ctxt cx, ValueRef v, @ty.t t, int field) {
-    call_tydesc_glue_full(cx, v, get_tydesc(cx, t), field);
+    auto td = get_tydesc(cx, t);
+    call_tydesc_glue_full(td.bcx, v, td.val, field);
 }
 
 fn incr_all_refcnts(@block_ctxt cx,
@@ -1565,8 +1607,8 @@ fn memcpy_ty(@block_ctxt cx,
              @ty.t t) -> result {
     if (ty.type_has_dynamic_size(t)) {
         auto llszptr = field_of_tydesc(cx, t, abi.tydesc_field_size);
-        auto llsz = cx.build.Load(llszptr);
-        ret call_memcpy(cx, dst, src, llsz);
+        auto llsz = llszptr.bcx.build.Load(llszptr.val);
+        ret call_memcpy(llszptr.bcx, dst, src, llsz);
 
     } else {
         ret res(cx, cx.build.Store(cx.build.Load(src), dst));
@@ -2182,14 +2224,17 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     auto tys = ty.resolve_ty_params(fn_item, monoty);
 
                     if (_vec.len[@ty.t](tys) != 0u) {
+                        auto bcx = cx;
                         let vec[ValueRef] tydescs = vec();
                         for (@ty.t t in tys) {
-                            append[ValueRef](tydescs,
-                                             get_tydesc(cx, t));
+                            auto td = get_tydesc(bcx, t);
+                            bcx = td.bcx;
+                            append[ValueRef](tydescs, td.val);
                         }
                         auto gen = rec( item_type = ty.item_ty(fn_item)._1,
                                         tydescs = tydescs );
-                        lv = rec(generic = some[generic_info](gen)
+                        lv = rec(res = res(bcx, lv.res.val),
+                                 generic = some[generic_info](gen)
                                  with lv);
                     }
 
@@ -2236,12 +2281,12 @@ fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
         case (ty.ty_tup(?fields)) {
             let uint ix = ty.field_num(cx.fcx.ccx.sess, sp, field);
             auto v = GEP_tup_like(r.bcx, t, r.val, vec(0, ix as int));
-            ret lval_mem(r.bcx, v);
+            ret lval_mem(v.bcx, v.val);
         }
         case (ty.ty_rec(?fields)) {
             let uint ix = ty.field_idx(cx.fcx.ccx.sess, sp, field, fields);
             auto v = GEP_tup_like(r.bcx, t, r.val, vec(0, ix as int));
-            ret lval_mem(r.bcx, v);
+            ret lval_mem(v.bcx, v.val);
         }
         case (ty.ty_obj(?methods)) {
             let uint ix = ty.method_idx(cx.fcx.ccx.sess, sp, field, methods);
@@ -2267,20 +2312,22 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
     lv = autoderef(lv.bcx, lv.val, ty.expr_ty(base));
     auto ix = trans_expr(lv.bcx, idx);
     auto v = lv.val;
+    auto bcx = ix.bcx;
 
     auto llunit_ty = node_type(cx.fcx.ccx, ann);
-    auto unit_sz = size_of(cx, node_ann_type(cx.fcx.ccx, ann));
-    auto scaled_ix = ix.bcx.build.Mul(ix.val, unit_sz);
+    auto unit_sz = size_of(bcx, node_ann_type(cx.fcx.ccx, ann));
+    bcx = unit_sz.bcx;
+    auto scaled_ix = bcx.build.Mul(ix.val, unit_sz.val);
 
-    auto lim = ix.bcx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_fill)));
-    lim = ix.bcx.build.Load(lim);
+    auto lim = bcx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_fill)));
+    lim = bcx.build.Load(lim);
 
-    auto bounds_check = ix.bcx.build.ICmp(lib.llvm.LLVMIntULT,
-                                          scaled_ix, lim);
+    auto bounds_check = bcx.build.ICmp(lib.llvm.LLVMIntULT,
+                                       scaled_ix, lim);
 
-    auto fail_cx = new_sub_block_ctxt(ix.bcx, "fail");
-    auto next_cx = new_sub_block_ctxt(ix.bcx, "next");
-    ix.bcx.build.CondBr(bounds_check, next_cx.llbb, fail_cx.llbb);
+    auto fail_cx = new_sub_block_ctxt(bcx, "fail");
+    auto next_cx = new_sub_block_ctxt(bcx, "next");
+    bcx.build.CondBr(bounds_check, next_cx.llbb, fail_cx.llbb);
 
     // fail: bad bounds check.
     auto fail_res = trans_fail(fail_cx, sp, "bounds check");
@@ -2590,7 +2637,8 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
                               vec(C_int(0),
                                   C_int(abi.closure_elt_tydesc)));
             auto bindings_tydesc = get_tydesc(bcx, bindings_ty);
-            bcx.build.Store(bindings_tydesc, bound_tydesc);
+            bcx = bindings_tydesc.bcx;
+            bcx.build.Store(bindings_tydesc.val, bound_tydesc);
 
             // Store thunk-target.
             auto bound_target =
@@ -2740,16 +2788,18 @@ fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
     }
 
     auto llunit_ty = type_of(cx.fcx.ccx, unit_ty);
-    auto unit_sz = size_of(cx, unit_ty);
+    auto bcx = cx;
+    auto unit_sz = size_of(bcx, unit_ty);
+    bcx = unit_sz.bcx;
     auto data_sz = llvm.LLVMConstMul(C_int(_vec.len[@ast.expr](args) as int),
-                                     unit_sz);
+                                     unit_sz.val);
 
     // FIXME: pass tydesc properly.
-    auto sub = trans_upcall(cx, "upcall_new_vec", vec(data_sz, C_int(0)));
+    auto sub = trans_upcall(bcx, "upcall_new_vec", vec(data_sz, C_int(0)));
 
-    auto llty = type_of(cx.fcx.ccx, t);
+    auto llty = type_of(bcx.fcx.ccx, t);
     auto vec_val = sub.bcx.build.IntToPtr(sub.val, llty);
-    find_scope_cx(cx).cleanups += clean(bind drop_ty(_, vec_val, t));
+    find_scope_cx(bcx).cleanups += clean(bind drop_ty(_, vec_val, t));
 
     auto body = sub.bcx.build.GEP(vec_val, vec(C_int(0),
                                                C_int(abi.vec_elt_data)));
@@ -3044,8 +3094,8 @@ fn init_local(@block_ctxt cx, @ast.local local) -> result {
         }
         case (_) {
             if (middle.ty.type_has_dynamic_size(ty)) {
-                auto llsz = size_of(cx, ty);
-                bcx = call_bzero(cx, llptr, llsz).bcx;
+                auto llsz = size_of(bcx, ty);
+                bcx = call_bzero(llsz.bcx, llptr, llsz.val).bcx;
 
             } else {
                 auto llty = type_of(bcx.fcx.ccx, ty);
@@ -3179,14 +3229,16 @@ iter block_locals(&ast.block b) -> @ast.local {
 fn alloc_local(@block_ctxt cx, @ast.local local) -> result {
     auto t = node_ann_type(cx.fcx.ccx, local.ann);
     auto val = C_int(0);
+    auto bcx = cx;
     if (ty.type_has_dynamic_size(t)) {
-        auto n = size_of(cx, t);
-        val = cx.build.ArrayAlloca(T_i8(), n);
+        auto n = size_of(bcx, t);
+        bcx = n.bcx;
+        val = bcx.build.ArrayAlloca(T_i8(), n.val);
     } else {
-        val = cx.build.Alloca(type_of(cx.fcx.ccx, t));
+        val = bcx.build.Alloca(type_of(cx.fcx.ccx, t));
     }
-    cx.fcx.lllocals.insert(local.id, val);
-    ret res(cx, val);
+    bcx.fcx.lllocals.insert(local.id, val);
+    ret res(bcx, val);
 }
 
 fn trans_block(@block_ctxt cx, &ast.block b) -> result {
@@ -3526,43 +3578,45 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
 
         // Malloc a box for the body.
         auto r = trans_malloc_inner(bcx, llobj_body_ty);
+        bcx = r.bcx;
         auto box = r.val;
-        auto rc = r.bcx.build.GEP(box,
+        auto rc = bcx.build.GEP(box,
+                                vec(C_int(0),
+                                    C_int(abi.box_rc_field_refcnt)));
+        auto body = bcx.build.GEP(box,
                                   vec(C_int(0),
-                                      C_int(abi.box_rc_field_refcnt)));
-        auto body = r.bcx.build.GEP(box,
-                                    vec(C_int(0),
-                                        C_int(abi.box_rc_field_body)));
-        r.bcx.build.Store(C_int(1), rc);
+                                      C_int(abi.box_rc_field_body)));
+        bcx.build.Store(C_int(1), rc);
 
         // Store body tydesc.
         auto body_tydesc =
-            r.bcx.build.GEP(body,
-                            vec(C_int(0),
-                                C_int(abi.obj_body_elt_tydesc)));
+            bcx.build.GEP(body,
+                          vec(C_int(0),
+                              C_int(abi.obj_body_elt_tydesc)));
 
         auto fields_tydesc = get_tydesc(r.bcx, fields_ty);
-        r.bcx.build.Store(fields_tydesc, body_tydesc);
+        bcx = fields_tydesc.bcx;
+        bcx.build.Store(fields_tydesc.val, body_tydesc);
 
         // Copy args into body fields.
         auto body_fields =
-            r.bcx.build.GEP(body,
-                            vec(C_int(0),
-                                C_int(abi.obj_body_elt_fields)));
+            bcx.build.GEP(body,
+                          vec(C_int(0),
+                              C_int(abi.obj_body_elt_fields)));
 
         let int i = 0;
         for (ast.obj_field f in ob.fields) {
-            auto arg = r.bcx.fcx.llargs.get(f.id);
-            arg = load_scalar_or_boxed(r.bcx, arg, arg_tys.(i).ty);
-            auto field = r.bcx.build.GEP(body_fields,
+            auto arg = bcx.fcx.llargs.get(f.id);
+            arg = load_scalar_or_boxed(bcx, arg, arg_tys.(i).ty);
+            auto field = bcx.build.GEP(body_fields,
                                          vec(C_int(0),C_int(i)));
-            r = copy_ty(r.bcx, INIT, field, arg, arg_tys.(i).ty);
+            bcx = copy_ty(bcx, INIT, field, arg, arg_tys.(i).ty).bcx;
             i += 1;
         }
 
         // Store box ptr in outer pair.
-        auto p = r.bcx.build.PointerCast(box, llbox_ty);
-        r.bcx.build.Store(p, pair_box);
+        auto p = bcx.build.PointerCast(box, llbox_ty);
+        bcx.build.Store(p, pair_box);
     }
     bcx.build.Ret(bcx.build.Load(pair));
 }
@@ -3983,13 +4037,9 @@ fn create_typedefs(@crate_ctxt cx) {
     llvm.LLVMAddTypeName(cx.llmod, _str.buf("rust_tydesc"), T_tydesc());
 }
 
-fn crate_constant(@crate_ctxt cx) -> ValueRef {
+fn create_crate_constant(@crate_ctxt cx) {
 
-    let ValueRef crate_ptr =
-        llvm.LLVMAddGlobal(cx.llmod, T_crate(),
-                           _str.buf("rust_crate"));
-
-    let ValueRef crate_addr = p2i(crate_ptr);
+    let ValueRef crate_addr = p2i(cx.crate_ptr);
 
     let ValueRef activate_glue_off =
         llvm.LLVMConstSub(p2i(cx.glues.activate_glue), crate_addr);
@@ -4002,7 +4052,7 @@ fn crate_constant(@crate_ctxt cx) -> ValueRef {
 
     let ValueRef crate_val =
         C_struct(vec(C_null(T_int()),     // ptrdiff_t image_base_off
-                     p2i(crate_ptr),      // uintptr_t self_addr
+                     p2i(cx.crate_ptr),   // uintptr_t self_addr
                      C_null(T_int()),     // ptrdiff_t debug_abbrev_off
                      C_null(T_int()),     // size_t debug_abbrev_sz
                      C_null(T_int()),     // ptrdiff_t debug_info_off
@@ -4017,8 +4067,7 @@ fn crate_constant(@crate_ctxt cx) -> ValueRef {
                      C_null(T_int())      // int n_libs
                      ));
 
-    llvm.LLVMSetInitializer(crate_ptr, crate_val);
-    ret crate_ptr;
+    llvm.LLVMSetInitializer(cx.crate_ptr, crate_val);
 }
 
 fn trans_main_fn(@crate_ctxt cx, ValueRef llcrate) {
@@ -4207,6 +4256,8 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     llvm.LLVMSetDataLayout(llmod, _str.buf(x86.get_data_layout()));
     llvm.LLVMSetTarget(llmod, _str.buf(x86.get_target_triple()));
     auto td = mk_target_data(x86.get_data_layout());
+    let ValueRef crate_ptr =
+        llvm.LLVMAddGlobal(llmod, T_crate(), _str.buf("rust_crate"));
 
     llvm.LLVMSetModuleInlineAsm(llmod, _str.buf(x86.get_module_asm()));
 
@@ -4221,6 +4272,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     auto cx = @rec(sess = sess,
                    llmod = llmod,
                    td = td,
+                   crate_ptr = crate_ptr,
                    upcalls = new_str_hash[ValueRef](),
                    intrinsics = intrinsics,
                    item_names = new_str_hash[ValueRef](),
@@ -4245,8 +4297,9 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
 
     trans_mod(cx, crate.node.module);
     trans_exit_task_glue(cx);
+    create_crate_constant(cx);
     if (!shared) {
-        trans_main_fn(cx, crate_constant(cx));
+        trans_main_fn(cx, cx.crate_ptr);
     }
 
     check_module(llmod);
