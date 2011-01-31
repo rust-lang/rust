@@ -3145,7 +3145,10 @@ fn trans_block_cleanups(@block_ctxt cx,
         check (_vec.len[cleanup](cleanup_cx.cleanups) == 0u);
     }
 
-    for (cleanup c in cleanup_cx.cleanups) {
+    auto i = _vec.len[cleanup](cleanup_cx.cleanups);
+    while (i > 0u) {
+        i -= 1u;
+        auto c = cleanup_cx.cleanups.(i);
         alt (c) {
             case (clean(?cfn)) {
                 bcx = cfn(bcx).bcx;
