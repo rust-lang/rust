@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-// error-pattern: Infinite type recursion
+// error-pattern: infinite recursive type definition
 
 type x = vec[x];
 

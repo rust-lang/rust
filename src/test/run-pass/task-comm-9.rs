@@ -1,8 +1,8 @@
-io fn main() -> () {
+impure fn main() -> () {
    test00();
 }
 
-io fn test00_start(chan[int] c, int number_of_messages) {
+impure fn test00_start(chan[int] c, int number_of_messages) {
     let int i = 0;
     while (i < number_of_messages) {
         c <| i;
@@ -10,7 +10,7 @@ io fn test00_start(chan[int] c, int number_of_messages) {
     }    
 }
 
-io fn test00() {
+impure fn test00() {
     let int r = 0;    
     let int sum = 0;
     let port[int] p = port();

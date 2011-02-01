@@ -1,11 +1,11 @@
-io fn main() -> () {
+impure fn main() -> () {
    log "===== WITHOUT THREADS =====";
    test00(false);
    log "====== WITH THREADS ======";
    test00(true);
 }
 
-io fn test00_start(chan[int] ch, int message, int count) {
+impure fn test00_start(chan[int] ch, int message, int count) {
     log "Starting test00_start";
     let int i = 0;
     while (i < count) {
@@ -16,7 +16,7 @@ io fn test00_start(chan[int] ch, int message, int count) {
     log "Ending test00_start";
 }
 
-io fn test00(bool is_multithreaded) {
+impure fn test00(bool is_multithreaded) {
     let int number_of_tasks = 16;
     let int number_of_messages = 4;
     

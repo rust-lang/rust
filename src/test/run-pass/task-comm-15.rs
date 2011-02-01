@@ -1,4 +1,4 @@
-io fn start(chan[int] c, int n) {
+impure fn start(chan[int] c, int n) {
     let int i = n;
 
     while(i > 0) {
@@ -7,7 +7,7 @@ io fn start(chan[int] c, int n) {
     }
 }
 
-io fn main() {
+impure fn main() {
     let port[int] p = port();
     // Spawn a task that sends us back messages. The parent task
     // is likely to terminate before the child completes, so from

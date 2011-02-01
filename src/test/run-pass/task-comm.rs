@@ -1,5 +1,5 @@
 
-io fn main() -> () {
+impure fn main() -> () {
     test00(true);
     // test01();
     test02();
@@ -9,7 +9,7 @@ io fn main() -> () {
     test06();
 }
 
-io fn test00_start(chan[int] ch, int message, int count) {
+impure fn test00_start(chan[int] ch, int message, int count) {
     log "Starting test00_start";
     let int i = 0;
     while (i < count) {
@@ -20,7 +20,7 @@ io fn test00_start(chan[int] ch, int message, int count) {
     log "Ending test00_start";
 }
 
-io fn test00(bool is_multithreaded) {
+impure fn test00(bool is_multithreaded) {
     let int number_of_tasks = 1;
     let int number_of_messages = 4;
     log "Creating tasks";
@@ -60,14 +60,14 @@ io fn test00(bool is_multithreaded) {
            (number_of_tasks * number_of_tasks + number_of_tasks) / 2);
 }
 
-io fn test01() {
+impure fn test01() {
     let port[int] p = port();
     log "Reading from a port that is never written to.";
     let int value <- p;
     log value;
 }
 
-io fn test02() {
+impure fn test02() {
     let port[int] p = port();
     let chan[int] c = chan(p);
     log "Writing to a local task channel.";
@@ -111,7 +111,7 @@ fn test04() {
     log "Finishing up.";
 }
 
-io fn test05_start(chan[int] ch) {
+impure fn test05_start(chan[int] ch) {
     ch <| 10;
     ch <| 20;
     ch <| 30;
@@ -119,7 +119,7 @@ io fn test05_start(chan[int] ch) {
     ch <| 30;    
 }
 
-io fn test05() {
+impure fn test05() {
     let port[int] po = port();
     let chan[int] ch = chan(po);
     spawn thread test05_start(ch);

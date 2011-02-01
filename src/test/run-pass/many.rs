@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-io fn sub(chan[int] parent, int id) {
+impure fn sub(chan[int] parent, int id) {
   if (id == 0) {
     parent <| 0;
   } else {
@@ -11,7 +11,7 @@ io fn sub(chan[int] parent, int id) {
   }
 }
 
-io fn main() {
+impure fn main() {
   let port[int] p = port();
   auto child = spawn sub(chan(p), 500);
   let int y <- p;
