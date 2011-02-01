@@ -197,6 +197,7 @@ tag ty_ {
     ty_obj(vec[ty_method]);
     ty_path(path, option.t[def]);
     ty_mutable(@ty);
+    ty_type;
 }
 
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);

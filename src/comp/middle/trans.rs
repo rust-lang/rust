@@ -471,6 +471,7 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
         case (ty.ty_param(_)) {
             ret T_typaram_ptr();
         }
+        case (ty.ty_type) { ret T_ptr(T_tydesc()); }
     }
     fail;
 }

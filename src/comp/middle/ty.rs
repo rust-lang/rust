@@ -42,6 +42,7 @@ tag sty {
     ty_var(int);                                    // ephemeral type var
     ty_local(ast.def_id);                           // type of a local var
     ty_param(ast.def_id);                           // fn type param
+    ty_type;
     // TODO: ty_fn_arg(@t), for a possibly-aliased function argument
 }
 
@@ -103,6 +104,7 @@ fn ast_ty_to_str(&@ast.ty ty) -> str {
         case (ast.ty_str)          { s = "str";                           }
         case (ast.ty_box(?t))      { s = "@" + ast_ty_to_str(t);          }
         case (ast.ty_vec(?t))      { s = "vec[" + ast_ty_to_str(t) + "]"; }
+        case (ast.ty_type)         { s = "type";                          }
 
         case (ast.ty_tup(?elts)) {
             auto f = ast_ty_to_str;
@@ -137,6 +139,7 @@ fn ast_ty_to_str(&@ast.ty ty) -> str {
         case (ast.ty_mutable(?t)) {
             s = "mutable " + ast_ty_to_str(t);
         }
+
 
         case (_) {
             fail;   // FIXME: typestate bug
@@ -215,6 +218,7 @@ fn ty_to_str(&@t typ) -> str {
         case (ty_str)          { s = "str";                       }
         case (ty_box(?t))      { s = "@" + ty_to_str(t);          }
         case (ty_vec(?t))      { s = "vec[" + ty_to_str(t) + "]"; }
+        case (ty_type)         { s = "type";                      }
 
         case (ty_tup(?elems)) {
             auto f = ty_to_str;
@@ -281,6 +285,7 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
         case (ty_char)          { ret fld.fold_simple_ty(ty); }
         case (ty_str)           { ret fld.fold_simple_ty(ty); }
         case (ty_tag(_))        { ret fld.fold_simple_ty(ty); }
+        case (ty_type)          { ret fld.fold_simple_ty(ty); }
         case (ty_box(?subty)) {
             ret rewrap(ty, ty_box(fold_ty(fld, subty)));
         }
@@ -363,6 +368,7 @@ fn type_is_structural(@t ty) -> bool {
 
 fn type_is_tup_like(@t ty) -> bool {
     alt (ty.struct) {
+        case (ty_box(_)) { ret true; }
         case (ty_tup(_)) { ret true; }
         case (ty_rec(_)) { ret true; }
         case (ty_tag(_)) { ret true; }
@@ -402,6 +408,7 @@ fn type_is_scalar(@t ty) -> bool {
         case (ty_uint) { ret true; }
         case (ty_machine(_)) { ret true; }
         case (ty_char) { ret true; }
+        case (ty_type) { ret true; }
         case (_) { ret false; }
     }
     fail;
@@ -939,6 +946,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             case (ty.ty_machine(_)) { ret struct_cmp(expected, actual); }
             case (ty.ty_char)       { ret struct_cmp(expected, actual); }
             case (ty.ty_str)        { ret struct_cmp(expected, actual); }
+            case (ty.ty_type)       { ret struct_cmp(expected, actual); }
 
             case (ty.ty_tag(?expected_id)) {
                 alt (actual.struct) {
