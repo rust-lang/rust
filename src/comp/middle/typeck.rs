@@ -870,10 +870,10 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
             auto then_1 = demand_block(fcx, expected, then_0);
             auto else_1;
             alt (else_0) {
-                case (none[ast.block]) { else_1 = none[ast.block]; }
-                case (some[ast.block](?b_0)) {
-                    auto b_1 = demand_block(fcx, expected, b_0);
-                    else_1 = some[ast.block](b_1);
+                case (none[@ast.expr]) { else_1 = none[@ast.expr]; }
+                case (some[@ast.expr](?e_0)) {
+                    auto e_1 = demand_expr(fcx, expected, e_0);
+                    else_1 = some[@ast.expr](e_1);
                 }
             }
             e_1 = ast.expr_if(cond, then_1, else_1, ast.ann_type(t));
@@ -1205,14 +1205,14 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto elsopt_1;
             auto elsopt_t;
             alt (elsopt) {
-                case (some[ast.block](?els)) {
-                    auto els_0 = check_block(fcx, els);
-                    auto els_1 = demand_block(fcx, thn_t, els_0);
-                    elsopt_1 = some[ast.block](els_1);
-                    elsopt_t = block_ty(els_1);
+                case (some[@ast.expr](?els)) {
+                    auto els_0 = check_expr(fcx, els);
+                    auto els_1 = demand_expr(fcx, thn_t, els_0);
+                    elsopt_1 = some[@ast.expr](els_1);
+                    elsopt_t = expr_ty(els_1);
                 }
-                case (none[ast.block]) {
-                    elsopt_1 = none[ast.block];
+                case (none[@ast.expr]) {
+                    elsopt_1 = none[@ast.expr];
                     elsopt_t = plain_ty(ty.ty_nil);
                 }
             }
@@ -1306,6 +1306,21 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto ann = ast.ann_type(result_ty);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_alt(expr_1, arms_1, ann));
+        }
+
+        case (ast.expr_block(?b, _)) {
+            auto b_0 = check_block(fcx, b);
+            auto ann;
+            alt (b_0.node.expr) {
+                case (some[@ast.expr](?expr)) {
+                    ann = ast.ann_type(expr_ty(expr));
+                }
+                case (none[@ast.expr]) {
+                    ann = ast.ann_type(plain_ty(ty.ty_nil));
+                }
+            }
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_block(b_0, ann));
         }
 
         case (ast.expr_bind(?f, ?args, _)) {

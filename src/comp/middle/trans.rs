@@ -1931,7 +1931,7 @@ fn join_results(@block_ctxt parent_cx,
 }
 
 fn trans_if(@block_ctxt cx, @ast.expr cond,
-            &ast.block thn, &option.t[ast.block] els) -> result {
+            &ast.block thn, &option.t[@ast.expr] els) -> result {
 
     auto cond_res = trans_expr(cx, cond);
 
@@ -1942,8 +1942,19 @@ fn trans_if(@block_ctxt cx, @ast.expr cond,
     auto else_res = res(else_cx, C_nil());
 
     alt (els) {
-        case (some[ast.block](?eblk)) {
-            else_res = trans_block(else_cx, eblk);
+        case (some[@ast.expr](?elexpr)) {
+            // FIXME: Shouldn't need to unwrap the block here,
+            // instead just use 'else_res = trans_expr(else_cx, elexpr)',
+            // but either a) trans_expr doesn't handle expr_block
+            // correctly or b) I have no idea what I'm doing...
+            alt (elexpr.node) {
+                case (ast.expr_if(_, _, _, _)) {
+                    else_res = trans_expr(else_cx, elexpr);
+                }
+                case (ast.expr_block(?b, _)) {
+                    else_res = trans_block(else_cx, b);
+                }
+            }
         }
         case (_) { /* fall through */ }
     }

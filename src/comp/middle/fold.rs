@@ -100,7 +100,7 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &span sp,
          @expr cond, &block thn,
-         &option.t[block] els,
+         &option.t[@expr] els,
          ann a) -> @expr)                         fold_expr_if,
 
      (fn(&ENV e, &span sp,
@@ -504,10 +504,10 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
         case (ast.expr_if(?cnd, ?thn, ?els, ?t)) {
             auto ccnd = fold_expr(env_, fld, cnd);
             auto tthn = fold_block(env_, fld, thn);
-            auto eels = none[block];
+            auto eels = none[@expr];
             alt (els) {
-                case (some[block](?b)) {
-                    eels = some(fold_block(env_, fld, b));
+                case (some[@expr](?e)) {
+                    eels = some(fold_expr(env_, fld, e));
                 }
                 case (_) { /* fall through */  }
             }
@@ -961,7 +961,7 @@ fn identity_fold_expr_cast[ENV](&ENV env, &span sp, @ast.expr e,
 
 fn identity_fold_expr_if[ENV](&ENV env, &span sp,
                               @expr cond, &block thn,
-                              &option.t[block] els, ann a) -> @expr {
+                              &option.t[@expr] els, ann a) -> @expr {
     ret @respan(sp, ast.expr_if(cond, thn, els, a));
 }
 

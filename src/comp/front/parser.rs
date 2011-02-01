@@ -891,30 +891,29 @@ impure fn parse_if_expr(parser p) -> @ast.expr {
     auto cond = parse_expr(p);
     expect(p, token.RPAREN);
     auto thn = parse_block(p);
-    let option.t[ast.block] els = none[ast.block];
+    let option.t[@ast.expr] els = none[@ast.expr];
     hi = thn.span;
     alt (p.peek()) {
         case (token.ELSE) {
-            auto eblk = parse_else_block(p);
-            els = some(eblk);
-            hi = eblk.span;
+            auto elexpr = parse_else_expr(p);
+            els = some(elexpr);
+            hi = elexpr.span;
         }
         case (_) { /* fall through */ }
     }
     ret @spanned(lo, hi, ast.expr_if(cond, thn, els, ast.ann_none));
 }
 
-impure fn parse_else_block(parser p) -> ast.block {
+impure fn parse_else_expr(parser p) -> @ast.expr {
     expect(p, token.ELSE);
     alt (p.peek()) {
         case (token.IF) {
-            let vec[@ast.stmt] stmts = vec();
-            auto ifexpr = parse_if_expr(p);
-            auto bloc = index_block(stmts, some(ifexpr));
-            ret spanned(ifexpr.span, ifexpr.span, bloc);
+            ret parse_if_expr(p);
         }
         case (_) {
-            ret parse_block(p);
+            auto blk = parse_block(p);
+            ret @spanned(blk.span, blk.span,
+                         ast.expr_block(blk, ast.ann_none));
         }
     }
 }
