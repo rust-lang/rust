@@ -197,6 +197,9 @@ type ast_fold[ENV] =
          &ast._mod m, def_id id) -> @item)        fold_item_mod,
 
      (fn(&ENV e, &span sp, ident ident,
+         &ast.native_mod m, def_id id) -> @item)  fold_item_native_mod,
+
+     (fn(&ENV e, &span sp, ident ident,
          @ty t, vec[ast.ty_param] ty_params,
          def_id id, ann a) -> @item)              fold_item_ty,
 
@@ -228,6 +231,8 @@ type ast_fold[ENV] =
          @ty output, &block body) -> ast._fn)     fold_fn,
 
      (fn(&ENV e, &ast._mod m) -> ast._mod)        fold_mod,
+
+     (fn(&ENV e, &ast.native_mod m) -> ast.native_mod) fold_native_mod,
 
      (fn(&ENV e, &span sp,
          &ast._mod m) -> @ast.crate)              fold_crate,
@@ -780,6 +785,11 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
             ret fld.fold_item_mod(env_, i.span, ident, mm_, id);
         }
 
+        case (ast.item_native_mod(?ident, ?mm, ?id)) {
+            let ast.native_mod mm_ = fold_native_mod[ENV](env_, fld, mm);
+            ret fld.fold_item_native_mod(env_, i.span, ident, mm_, id);
+        }
+
         case (ast.item_ty(?ident, ?ty, ?params, ?id, ?ann)) {
             let @ast.ty ty_ = fold_ty[ENV](env_, fld, ty);
             ret fld.fold_item_ty(env_, i.span, ident, ty_, params, id, ann);
@@ -810,7 +820,6 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
     fail;
 }
 
-
 fn fold_mod[ENV](&ENV e, ast_fold[ENV] fld, &ast._mod m) -> ast._mod {
 
     let vec[@view_item] view_items = vec();
@@ -830,7 +839,12 @@ fn fold_mod[ENV](&ENV e, ast_fold[ENV] fld, &ast._mod m) -> ast._mod {
     }
 
     ret fld.fold_mod(e, rec(view_items=view_items, items=items, index=index));
- }
+}
+
+fn fold_native_mod[ENV](&ENV e, ast_fold[ENV] fld,
+                        &ast.native_mod m) -> ast.native_mod {
+    ret fld.fold_native_mod(e, rec(native_name = m.native_name));
+}
 
 fn fold_crate[ENV](&ENV env, ast_fold[ENV] fld, @ast.crate c) -> @ast.crate {
     let ENV env_ = fld.update_env_for_crate(env, c);
@@ -1105,6 +1119,11 @@ fn identity_fold_item_mod[ENV](&ENV e, &span sp, ident i,
     ret @respan(sp, ast.item_mod(i, m, id));
 }
 
+fn identity_fold_item_native_mod[ENV](&ENV e, &span sp, ident i,
+                                      &ast.native_mod m, def_id id) -> @item {
+    ret @respan(sp, ast.item_native_mod(i, m, id));
+}
+
 fn identity_fold_item_ty[ENV](&ENV e, &span sp, ident i,
                               @ty t, vec[ast.ty_param] ty_params,
                               def_id id, ann a) -> @item {
@@ -1156,6 +1175,11 @@ fn identity_fold_fn[ENV](&ENV e,
 }
 
 fn identity_fold_mod[ENV](&ENV e, &ast._mod m) -> ast._mod {
+    ret m;
+}
+
+fn identity_fold_native_mod[ENV](&ENV e,
+                                 &ast.native_mod m) -> ast.native_mod {
     ret m;
 }
 
@@ -1281,6 +1305,8 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_item_const= bind identity_fold_item_const[ENV](_,_,_,_,_,_,_),
          fold_item_fn   = bind identity_fold_item_fn[ENV](_,_,_,_,_,_,_),
          fold_item_mod  = bind identity_fold_item_mod[ENV](_,_,_,_,_),
+         fold_item_native_mod =
+             bind identity_fold_item_native_mod[ENV](_,_,_,_,_),
          fold_item_ty   = bind identity_fold_item_ty[ENV](_,_,_,_,_,_,_),
          fold_item_tag  = bind identity_fold_item_tag[ENV](_,_,_,_,_,_),
          fold_item_obj  = bind identity_fold_item_obj[ENV](_,_,_,_,_,_,_),
@@ -1293,6 +1319,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_block = bind identity_fold_block[ENV](_,_,_),
          fold_fn = bind identity_fold_fn[ENV](_,_,_,_,_,_),
          fold_mod = bind identity_fold_mod[ENV](_,_),
+         fold_native_mod = bind identity_fold_native_mod[ENV](_,_),
          fold_crate = bind identity_fold_crate[ENV](_,_,_),
          fold_obj = bind identity_fold_obj[ENV](_,_,_),
 

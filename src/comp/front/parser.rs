@@ -1577,6 +1577,20 @@ impure fn parse_item_mod(parser p) -> @ast.item {
     ret @spanned(lo, hi, item);
 }
 
+impure fn parse_item_native_mod(parser p) -> @ast.item {
+    auto lo = p.get_span();
+    expect(p, token.NATIVE);
+    auto native_name = parse_str_lit(p);
+    expect(p, token.MOD);
+    auto id = parse_ident(p);
+    expect(p, token.LBRACE);
+    auto m = rec(native_name = native_name);
+    auto hi = p.get_span();
+    expect(p, token.RBRACE);
+    auto item = ast.item_native_mod(id, m, p.next_def_id());
+    ret @spanned(lo, hi, item);
+}
+
 impure fn parse_item_type(parser p) -> @ast.item {
     auto lo = p.get_span();
     expect(p, token.TYPE);
@@ -1716,6 +1730,11 @@ impure fn parse_item(parser p) -> @ast.item {
             check (eff == ast.eff_pure);
             check (lyr == ast.layer_value);
             ret parse_item_mod(p);
+        }
+        case (token.NATIVE) {
+            check (eff == ast.eff_pure);
+            check (lyr == ast.layer_value);
+            ret parse_item_native_mod(p);
         }
         case (token.TYPE) {
             check (eff == ast.eff_pure);
