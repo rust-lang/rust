@@ -997,7 +997,7 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
                               vec(p2i(bcx.fcx.ccx.crate_ptr),
                                   sz.val,
                                   align.val,
-                                  C_int(n_params as int),
+                                  C_int((1u + n_params) as int),
                                   bcx.build.PtrToInt(tydescs, T_int())));
 
         ret res(v.bcx, v.bcx.build.IntToPtr(v.val, T_ptr(T_tydesc())));
@@ -2193,6 +2193,34 @@ fn lval_val(@block_ctxt cx, ValueRef val) -> lval_result {
             llobj=none[ValueRef]);
 }
 
+fn lval_generic_fn(@block_ctxt cx,
+                   ty.ty_params_and_ty tpt,
+                   ast.def_id fn_id,
+                   &ast.ann ann)
+    -> lval_result {
+
+    check (cx.fcx.ccx.fn_pairs.contains_key(fn_id));
+    auto lv = lval_val(cx, cx.fcx.ccx.fn_pairs.get(fn_id));
+    auto monoty = node_ann_type(cx.fcx.ccx, ann);
+    auto tys = ty.resolve_ty_params(tpt, monoty);
+
+    if (_vec.len[@ty.t](tys) != 0u) {
+        auto bcx = cx;
+        let vec[ValueRef] tydescs = vec();
+        for (@ty.t t in tys) {
+            auto td = get_tydesc(bcx, t);
+            bcx = td.bcx;
+            append[ValueRef](tydescs, td.val);
+        }
+        auto gen = rec( item_type = tpt._1,
+                        tydescs = tydescs );
+        lv = rec(res = res(bcx, lv.res.val),
+                 generic = some[generic_info](gen)
+                 with lv);
+    }
+    ret lv;
+}
+
 fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
               &ast.ann ann) -> lval_result {
     alt (dopt) {
@@ -2215,39 +2243,33 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     ret lval_mem(cx, cx.fcx.llobjfields.get(did));
                 }
                 case (ast.def_fn(?did)) {
-                    check (cx.fcx.ccx.fn_pairs.contains_key(did));
-                    check (cx.fcx.ccx.item_ids.contains_key(did));
-
+                    check (cx.fcx.ccx.items.contains_key(did));
                     auto fn_item = cx.fcx.ccx.items.get(did);
-                    auto lv = lval_val(cx, cx.fcx.ccx.fn_pairs.get(did));
-                    auto monoty = node_ann_type(cx.fcx.ccx, ann);
-                    auto tys = ty.resolve_ty_params(fn_item, monoty);
-
-                    if (_vec.len[@ty.t](tys) != 0u) {
-                        auto bcx = cx;
-                        let vec[ValueRef] tydescs = vec();
-                        for (@ty.t t in tys) {
-                            auto td = get_tydesc(bcx, t);
-                            bcx = td.bcx;
-                            append[ValueRef](tydescs, td.val);
-                        }
-                        auto gen = rec( item_type = ty.item_ty(fn_item)._1,
-                                        tydescs = tydescs );
-                        lv = rec(res = res(bcx, lv.res.val),
-                                 generic = some[generic_info](gen)
-                                 with lv);
-                    }
-
-                    ret lv;
+                    ret lval_generic_fn(cx, ty.item_ty(fn_item), did, ann);
                 }
                 case (ast.def_obj(?did)) {
-                    check (cx.fcx.ccx.fn_pairs.contains_key(did));
-                    ret lval_val(cx, cx.fcx.ccx.fn_pairs.get(did));
+                    check (cx.fcx.ccx.items.contains_key(did));
+                    auto fn_item = cx.fcx.ccx.items.get(did);
+                    ret lval_generic_fn(cx, ty.item_ty(fn_item), did, ann);
                 }
                 case (ast.def_variant(?tid, ?vid)) {
                     check (cx.fcx.ccx.tags.contains_key(tid));
                     if (cx.fcx.ccx.fn_pairs.contains_key(vid)) {
-                        ret lval_val(cx, cx.fcx.ccx.fn_pairs.get(vid));
+                        check (cx.fcx.ccx.items.contains_key(tid));
+                        auto tag_item = cx.fcx.ccx.items.get(tid);
+                        auto params = ty.item_ty(tag_item)._0;
+                        auto fty = ty.plain_ty(ty.ty_nil);
+                        alt (tag_item.node) {
+                            case (ast.item_tag(_, ?variants, _, _)) {
+                                for (ast.variant v in variants) {
+                                    if (v.id == vid) {
+                                        fty = node_ann_type(cx.fcx.ccx,
+                                                            v.ann);
+                                    }
+                                }
+                            }
+                        }
+                        ret lval_generic_fn(cx, tup(params, fty), vid, ann);
                     } else {
                         // Nullary variants are just scalar constants.
                         check (cx.fcx.ccx.item_ids.contains_key(vid));
@@ -3798,7 +3820,6 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
 
     alt (i.node) {
         case (ast.item_fn(?name, ?f, _, ?fid, ?ann)) {
-            // TODO: type-params
             cx.items.insert(fid, i);
             if (! cx.obj_methods.contains_key(fid)) {
                 decl_fn_and_pair(cx, "fn", name, ann, fid);
@@ -3806,7 +3827,6 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
         }
 
         case (ast.item_obj(?name, ?ob, _, ?oid, ?ann)) {
-            // TODO: type-params
             cx.items.insert(oid, i);
             decl_fn_and_pair(cx, "obj_ctor", name, ann, oid);
             for (@ast.method m in ob.methods) {

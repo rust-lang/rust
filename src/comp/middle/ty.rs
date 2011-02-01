@@ -571,7 +571,8 @@ fn is_fn_ty(@t fty) -> bool {
 
 // Given an item, returns the associated type as well as a list of the IDs of
 // its type parameters.
-fn item_ty(@ast.item it) -> tup(vec[ast.def_id], @t) {
+type ty_params_and_ty = tup(vec[ast.def_id], @t);
+fn item_ty(@ast.item it) -> ty_params_and_ty {
     let vec[ast.ty_param] ty_params;
     auto result_ty;
     alt (it.node) {
@@ -1233,7 +1234,8 @@ fn type_err_to_str(&ty.type_err err) -> str {
 
 // Type parameter resolution, used in translation
 
-fn resolve_ty_params(@ast.item item, @t monoty) -> vec[@t] {
+fn resolve_ty_params(ty_params_and_ty ty_params_and_polyty,
+                     @t monoty) -> vec[@t] {
     obj resolve_ty_params_handler(@hashmap[ast.def_id,@t] bindings) {
         fn resolve_local(ast.def_id id) -> @t { log "resolve local"; fail; }
         fn record_local(ast.def_id id, @t ty) { log "record local"; fail; }
@@ -1248,8 +1250,6 @@ fn resolve_ty_params(@ast.item item, @t monoty) -> vec[@t] {
             ret ures_ok(expected);
         }
     }
-
-    auto ty_params_and_polyty = item_ty(item);
 
     auto bindings = @new_def_hash[@t]();
     auto handler = resolve_ty_params_handler(bindings);
