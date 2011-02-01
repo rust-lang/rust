@@ -16,6 +16,7 @@ import back.x86;
 import back.abi;
 
 import middle.ty.pat_ty;
+import middle.ty.plain_ty;
 
 import util.common;
 import util.common.append;
@@ -341,7 +342,7 @@ fn type_of_fn_full(@crate_ctxt cx,
                    @ty.t output) -> TypeRef {
     let vec[TypeRef] atys = vec(T_taskptr());
 
-    auto fn_ty = ty.plain_ty(ty.ty_fn(inputs, output));
+    auto fn_ty = plain_ty(ty.ty_fn(inputs, output));
     auto ty_param_count = ty.count_ty_params(fn_ty);
     auto i = 0u;
     while (i < ty_param_count) {
@@ -869,7 +870,7 @@ fn GEP_tup_like(@block_ctxt cx, @ty.t t,
     // flattened the incoming structure.
 
     auto s = split_type(t, ixs, 0u);
-    auto prefix_ty = ty.plain_ty(ty.ty_tup(s.prefix));
+    auto prefix_ty = plain_ty(ty.ty_tup(s.prefix));
     auto bcx = cx;
     auto sz = size_of(bcx, prefix_ty);
     bcx = sz.bcx;
@@ -985,7 +986,12 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
         auto i = 0;
         for (ValueRef td in tys._1) {
             auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
-            cx.build.Store(td, tdp);
+            if (i == 0) {
+                cx.build.Store(root, tdp);
+            } else {
+                cx.build.Store(td, tdp);
+            }
+            i += 1;
         }
 
         auto bcx = cx;
@@ -1023,19 +1029,30 @@ fn make_tydesc(@crate_ctxt cx, @ty.t t, vec[ast.def_id] typaram_defs) {
     auto glue_fn_ty = T_ptr(T_fn(vec(T_taskptr(),
                                      T_ptr(T_ptr(T_tydesc())),
                                      pvoid), T_void()));
+
+    // FIXME: this adjustment has to do with the ridiculous encoding of
+    // glue-pointer-constants in the tydesc records: They are tydesc-relative
+    // displacements.  This is purely for compatibility with rustboot and
+    // should go when it is discarded.
+    fn off(ValueRef tydescp,
+           ValueRef gluefn) -> ValueRef {
+        ret i2p(llvm.LLVMConstSub(p2i(gluefn), p2i(tydescp)),
+                val_ty(gluefn));
+    }
+
+    auto name = sanitize(cx.names.next("tydesc_" + ty.ty_to_str(t)));
+    auto gvar = llvm.LLVMAddGlobal(cx.llmod, T_tydesc(), _str.buf(name));
     auto tydesc = C_struct(vec(C_null(T_ptr(T_ptr(T_tydesc()))),
                                llsize_of(llty),
                                llalign_of(llty),
-                               take_glue,             // take_glue_off
-                               drop_glue,             // drop_glue_off
+                               off(gvar, take_glue),  // take_glue_off
+                               off(gvar, drop_glue),  // drop_glue_off
                                C_null(glue_fn_ty),    // free_glue_off
                                C_null(glue_fn_ty),    // sever_glue_off
                                C_null(glue_fn_ty),    // mark_glue_off
                                C_null(glue_fn_ty),    // obj_drop_glue_off
                                C_null(glue_fn_ty)));  // is_stateful
 
-    auto name = sanitize(cx.names.next("tydesc_" + ty.ty_to_str(t)));
-    auto gvar = llvm.LLVMAddGlobal(cx.llmod, val_ty(tydesc), _str.buf(name));
     llvm.LLVMSetInitializer(gvar, tydesc);
     llvm.LLVMSetGlobalConstant(gvar, True);
     llvm.LLVMSetLinkage(gvar, lib.llvm.LLVMPrivateLinkage
@@ -1322,8 +1339,8 @@ fn iter_structural_ty(@block_ctxt cx,
                   ValueRef box_cell,
                   val_and_ty_fn f) -> result {
         auto box_ptr = cx.build.Load(box_cell);
-        auto tnil = ty.plain_ty(ty.ty_nil);
-        auto tbox = ty.plain_ty(ty.ty_box(tnil));
+        auto tnil = plain_ty(ty.ty_nil);
+        auto tbox = plain_ty(ty.ty_box(tnil));
 
         auto inner_cx = new_sub_block_ctxt(cx, "iter box");
         auto next_cx = new_sub_block_ctxt(cx, "next");
@@ -1524,7 +1541,7 @@ fn iter_sequence(@block_ctxt cx,
             ret iter_sequence_body(cx, v, et, f, false);
         }
         case (ty.ty_str) {
-            auto et = ty.plain_ty(ty.ty_machine(common.ty_u8));
+            auto et = plain_ty(ty.ty_machine(common.ty_u8));
             ret iter_sequence_body(cx, v, et, f, true);
         }
         case (_) { fail; }
@@ -1542,6 +1559,15 @@ fn call_tydesc_glue_full(@block_ctxt cx, ValueRef v,
     lltydescs = cx.build.Load(lltydescs);
     auto llfnptr = cx.build.GEP(tydesc, vec(C_int(0), C_int(field)));
     auto llfn = cx.build.Load(llfnptr);
+
+    // FIXME: this adjustment has to do with the ridiculous encoding of
+    // glue-pointer-constants in the tydesc records: They are tydesc-relative
+    // displacements.  This is purely for compatibility with rustboot and
+    // should go when it is discarded.
+    llfn = cx.build.IntToPtr(cx.build.Add(cx.build.PtrToInt(llfn, T_int()),
+                                          cx.build.PtrToInt(tydesc, T_int())),
+                             val_ty(llfn));
+
     cx.build.FastCall(llfn, vec(cx.fcx.lltaskptr, lltydescs, llrawptr));
 }
 
@@ -2259,7 +2285,7 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                         check (cx.fcx.ccx.items.contains_key(tid));
                         auto tag_item = cx.fcx.ccx.items.get(tid);
                         auto params = ty.item_ty(tag_item)._0;
-                        auto fty = ty.plain_ty(ty.ty_nil);
+                        auto fty = plain_ty(ty.ty_nil);
                         alt (tag_item.node) {
                             case (ast.item_tag(_, ?variants, _, _)) {
                                 for (ast.variant v in variants) {
@@ -2635,7 +2661,7 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
             }
 
             // Synthesize a closure type.
-            let @ty.t bindings_ty = ty.plain_ty(ty.ty_tup(bound_tys));
+            let @ty.t bindings_ty = plain_ty(ty.ty_tup(bound_tys));
             let TypeRef lltarget_ty = type_of(bcx.fcx.ccx, ty.expr_ty(f));
             let TypeRef llbindings_ty = type_of(bcx.fcx.ccx, bindings_ty);
             let TypeRef llclosure_ty = T_closure_ptr(lltarget_ty,
@@ -3593,52 +3619,52 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
         }
 
         // Synthesize an obj body type.
-        let @ty.t fields_ty = ty.plain_ty(ty.ty_tup(obj_fields));
-        let TypeRef llfields_ty = type_of(bcx.fcx.ccx, fields_ty);
-        let TypeRef llobj_body_ty =
-            T_ptr(T_box(T_struct(vec(T_ptr(T_tydesc()),
-                                     llfields_ty))));
+        let @ty.t fields_ty = plain_ty(ty.ty_tup(obj_fields));
+        let @ty.t body_ty = plain_ty(ty.ty_tup(vec(plain_ty(ty.ty_type),
+                                                   fields_ty)));
+        let @ty.t boxed_body_ty = plain_ty(ty.ty_box(body_ty));
+
+        let TypeRef llboxed_body_ty = type_of(cx, boxed_body_ty);
 
         // Malloc a box for the body.
-        auto r = trans_malloc_inner(bcx, llobj_body_ty);
-        bcx = r.bcx;
-        auto box = r.val;
-        auto rc = bcx.build.GEP(box,
-                                vec(C_int(0),
-                                    C_int(abi.box_rc_field_refcnt)));
-        auto body = bcx.build.GEP(box,
-                                  vec(C_int(0),
-                                      C_int(abi.box_rc_field_body)));
-        bcx.build.Store(C_int(1), rc);
+        auto box = trans_malloc_inner(bcx, llboxed_body_ty);
+        bcx = box.bcx;
+        auto rc = GEP_tup_like(bcx, boxed_body_ty, box.val,
+                               vec(0, abi.box_rc_field_refcnt));
+        bcx = rc.bcx;
+        auto body = GEP_tup_like(bcx, boxed_body_ty, box.val,
+                                 vec(0, abi.box_rc_field_body));
+        bcx = body.bcx;
+        bcx.build.Store(C_int(1), rc.val);
 
         // Store body tydesc.
         auto body_tydesc =
-            bcx.build.GEP(body,
-                          vec(C_int(0),
-                              C_int(abi.obj_body_elt_tydesc)));
+            GEP_tup_like(bcx, body_ty, body.val,
+                         vec(0, abi.obj_body_elt_tydesc));
+        bcx = body_tydesc.bcx;
 
-        auto fields_tydesc = get_tydesc(r.bcx, fields_ty);
+        auto fields_tydesc = get_tydesc(bcx, fields_ty);
         bcx = fields_tydesc.bcx;
-        bcx.build.Store(fields_tydesc.val, body_tydesc);
+        bcx.build.Store(fields_tydesc.val, body_tydesc.val);
 
         // Copy args into body fields.
         auto body_fields =
-            bcx.build.GEP(body,
-                          vec(C_int(0),
-                              C_int(abi.obj_body_elt_fields)));
+            GEP_tup_like(bcx, body_ty, body.val,
+                         vec(0, abi.obj_body_elt_fields));
+        bcx = body_fields.bcx;
 
         let int i = 0;
         for (ast.obj_field f in ob.fields) {
             auto arg = bcx.fcx.llargs.get(f.id);
             arg = load_scalar_or_boxed(bcx, arg, arg_tys.(i).ty);
-            auto field = bcx.build.GEP(body_fields,
-                                         vec(C_int(0),C_int(i)));
-            bcx = copy_ty(bcx, INIT, field, arg, arg_tys.(i).ty).bcx;
+            auto field = GEP_tup_like(bcx, fields_ty, body_fields.val,
+                                      vec(0, i));
+            bcx = field.bcx;
+            bcx = copy_ty(bcx, INIT, field.val, arg, arg_tys.(i).ty).bcx;
             i += 1;
         }
-
         // Store box ptr in outer pair.
-        auto p = bcx.build.PointerCast(box, llbox_ty);
+        auto p = bcx.build.PointerCast(box.val, llbox_ty);
         bcx.build.Store(p, pair_box);
     }
     bcx.build.Ret(bcx.build.Load(pair));
@@ -4028,6 +4054,10 @@ fn trans_constants(@crate_ctxt cx, @ast.crate crate) {
 
 fn p2i(ValueRef v) -> ValueRef {
     ret llvm.LLVMConstPtrToInt(v, T_int());
+}
+
+fn i2p(ValueRef v, TypeRef t) -> ValueRef {
+    ret llvm.LLVMConstIntToPtr(v, t);
 }
 
 fn trans_exit_task_glue(@crate_ctxt cx) {
