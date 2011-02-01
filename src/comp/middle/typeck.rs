@@ -376,6 +376,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             }
 
             case (ast.item_mod(_, _, _)) { fail; }
+            case (ast.item_native_mod(_, _, _)) { fail; }
         }
     }
 
@@ -454,6 +455,9 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         alt (i.node) {
             case (ast.item_mod(_, _, _)) {
                 // ignore item_mod, it has no type.
+            }
+            case (ast.item_native_mod(_, _, _)) {
+                // ignore item_native_mod, it has no type.
             }
             case (_) {
                 // This call populates the ty_table with the converted type of
