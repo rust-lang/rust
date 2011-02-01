@@ -1261,7 +1261,7 @@ fn index_block(vec[@ast.stmt] stmts, option.t[@ast.expr] expr) -> ast.block_ {
                             case (ast.item_fn(?i, _, _, _, _)) {
                                 index.insert(i, u-1u);
                             }
-                            case (ast.item_mod(?i, _, _)) {
+                            case (ast.item_mod(?i, _, _, _)) {
                                 index.insert(i, u-1u);
                             }
                             case (ast.item_ty(?i, _, _, _, _)) {
@@ -1543,7 +1543,7 @@ impure fn parse_item_const(parser p) -> @ast.item {
     ret @spanned(lo, hi, item);
 }
 
-impure fn parse_item_mod(parser p) -> @ast.item {
+impure fn parse_item_mod(parser p, str native_name) -> @ast.item {
     auto lo = p.get_span();
     expect(p, token.MOD);
     auto id = parse_ident(p);
@@ -1551,7 +1551,7 @@ impure fn parse_item_mod(parser p) -> @ast.item {
     auto m = parse_mod_items(p, token.RBRACE);
     auto hi = p.get_span();
     expect(p, token.RBRACE);
-    auto item = ast.item_mod(id, m, p.next_def_id());
+    auto item = ast.item_mod(id, m, native_name, p.next_def_id());
     ret @spanned(lo, hi, item);
 }
 
@@ -1693,7 +1693,14 @@ impure fn parse_item(parser p) -> @ast.item {
         case (token.MOD) {
             check (eff == ast.eff_pure);
             check (lyr == ast.layer_value);
-            ret parse_item_mod(p);
+            ret parse_item_mod(p, "");
+        }
+        case (token.NATIVE) {
+            check (eff == ast.eff_pure);
+            check (lyr == ast.layer_value);
+            p.bump();
+            auto native_name = parse_str_lit(p);
+            ret parse_item_mod(p, native_name);
         }
         case (token.TYPE) {
             check (eff == ast.eff_pure);
@@ -1912,7 +1919,8 @@ impure fn parse_crate_directive(str prefix, parser p,
                     }
                     auto p0 = new_parser(p.get_session(), 0, full_path);
                     auto m0 = parse_mod_items(p0, token.EOF);
-                    auto im = ast.item_mod(id, m0, p.next_def_id());
+                    // FIXME: are these modules never native?
+                    auto im = ast.item_mod(id, m0, "", p.next_def_id());
                     auto i = @spanned(lo, hi, im);
                     ast.index_item(index, i);
                     append[@ast.item](items, i);
@@ -1926,7 +1934,8 @@ impure fn parse_crate_directive(str prefix, parser p,
                                                      token.RBRACE);
                     hi = p.get_span();
                     expect(p, token.RBRACE);
-                    auto im = ast.item_mod(id, m0, p.next_def_id());
+                    // FIXME: are these modules never native?
+                    auto im = ast.item_mod(id, m0, "", p.next_def_id());
                     auto i = @spanned(lo, hi, im);
                     ast.index_item(index, i);
                     append[@ast.item](items, i);

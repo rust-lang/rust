@@ -192,7 +192,8 @@ type ast_fold[ENV] =
          def_id id, ann a) -> @item)              fold_item_fn,
 
      (fn(&ENV e, &span sp, ident ident,
-         &ast._mod m, def_id id) -> @item)        fold_item_mod,
+         &ast._mod m, str native_name,
+         def_id id) -> @item)                     fold_item_mod,
 
      (fn(&ENV e, &span sp, ident ident,
          @ty t, vec[ast.ty_param] ty_params,
@@ -763,9 +764,9 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
             ret fld.fold_item_fn(env_, i.span, ident, ff_, tps, id, ann);
         }
 
-        case (ast.item_mod(?ident, ?mm, ?id)) {
+        case (ast.item_mod(?ident, ?mm, ?n, ?id)) {
             let ast._mod mm_ = fold_mod[ENV](env_, fld, mm);
-            ret fld.fold_item_mod(env_, i.span, ident, mm_, id);
+            ret fld.fold_item_mod(env_, i.span, ident, mm_, n, id);
         }
 
         case (ast.item_ty(?ident, ?ty, ?params, ?id, ?ann)) {
@@ -1088,8 +1089,9 @@ fn identity_fold_item_fn[ENV](&ENV e, &span sp, ident i,
 }
 
 fn identity_fold_item_mod[ENV](&ENV e, &span sp, ident i,
-                               &ast._mod m, def_id id) -> @item {
-    ret @respan(sp, ast.item_mod(i, m, id));
+                               &ast._mod m, str native_name,
+                               def_id id) -> @item {
+    ret @respan(sp, ast.item_mod(i, m, native_name, id));
 }
 
 fn identity_fold_item_ty[ENV](&ENV e, &span sp, ident i,
@@ -1267,7 +1269,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
 
          fold_item_const= bind identity_fold_item_const[ENV](_,_,_,_,_,_,_),
          fold_item_fn   = bind identity_fold_item_fn[ENV](_,_,_,_,_,_,_),
-         fold_item_mod  = bind identity_fold_item_mod[ENV](_,_,_,_,_),
+         fold_item_mod  = bind identity_fold_item_mod[ENV](_,_,_,_,_,_),
          fold_item_ty   = bind identity_fold_item_ty[ENV](_,_,_,_,_,_,_),
          fold_item_tag  = bind identity_fold_item_tag[ENV](_,_,_,_,_,_),
          fold_item_obj  = bind identity_fold_item_obj[ENV](_,_,_,_,_,_,_),

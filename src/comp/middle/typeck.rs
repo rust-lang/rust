@@ -375,7 +375,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                 ret t;
             }
 
-            case (ast.item_mod(_, _, _)) { fail; }
+            case (ast.item_mod(_, _, _, _)) { fail; }
         }
     }
 
@@ -452,7 +452,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
 
     fn convert(&@env e, @ast.item i) -> @env {
         alt (i.node) {
-            case (ast.item_mod(_, _, _)) {
+            case (ast.item_mod(_, _, _, _)) {
                 // ignore item_mod, it has no type.
             }
             case (_) {

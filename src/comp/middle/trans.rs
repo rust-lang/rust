@@ -3751,7 +3751,7 @@ fn trans_item(@crate_ctxt cx, &ast.item item) {
                                obj_fields=ob.fields with *cx);
             trans_obj(sub_cx, ob, oid, tps, ann);
         }
-        case (ast.item_mod(?name, ?m, _)) {
+        case (ast.item_mod(?name, ?m, _, _)) {
             auto sub_cx = @rec(path=cx.path + "." + name with *cx);
             trans_mod(sub_cx, m);
         }
@@ -3838,7 +3838,7 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             cx.items.insert(cid, i);
         }
 
-        case (ast.item_mod(?name, ?m, ?mid)) {
+        case (ast.item_mod(?name, ?m, _, ?mid)) {
             cx.items.insert(mid, i);
         }
 

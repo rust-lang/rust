@@ -584,7 +584,7 @@ fn item_ty(@ast.item it) -> ty_params_and_ty {
             ty_params = tps;
             result_ty = ann_to_type(ann);
         }
-        case (ast.item_mod(_, _, _)) {
+        case (ast.item_mod(_, _, _, _)) {
             fail;   // modules are typeless
         }
         case (ast.item_ty(_, _, ?tps, _, ?ann)) {

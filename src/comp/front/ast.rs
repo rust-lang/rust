@@ -239,7 +239,7 @@ type item = spanned[item_];
 tag item_ {
     item_const(ident, @ty, @expr, def_id, ann);
     item_fn(ident, _fn, vec[ty_param], def_id, ann);
-    item_mod(ident, _mod, def_id);
+    item_mod(ident, _mod, str, def_id);
     item_ty(ident, @ty, vec[ty_param], def_id, ann);
     item_tag(ident, vec[variant], vec[ty_param], def_id);
     item_obj(ident, _obj, vec[ty_param], def_id, ann);
@@ -264,7 +264,7 @@ fn index_item(mod_index index, @item it) {
         case (ast.item_fn(?id, _, _, _, _)) {
             index.insert(id, ast.mie_item(it));
         }
-        case (ast.item_mod(?id, _, _)) {
+        case (ast.item_mod(?id, _, _, _)) {
             index.insert(id, ast.mie_item(it));
         }
         case (ast.item_ty(?id, _, _, _, _)) {

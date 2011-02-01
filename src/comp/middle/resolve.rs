@@ -64,7 +64,7 @@ fn unwrap_def(def_wrap d) -> def {
         }
         case (def_wrap_mod(?m)) {
             alt (m.node) {
-                case (ast.item_mod(_, _, ?id)) {
+                case (ast.item_mod(_, _, _, ?id)) {
                     ret ast.def_mod(id);
                 }
             }
@@ -198,7 +198,7 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
             case (ast.item_fn(_, _, _, ?id, _)) {
                 ret def_wrap_other(ast.def_fn(id));
             }
-            case (ast.item_mod(_, _, ?id)) {
+            case (ast.item_mod(_, _, _, ?id)) {
                 ret def_wrap_mod(i);
             }
             case (ast.item_ty(_, _, _, ?id, _)) {
@@ -310,7 +310,7 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
                             }
                         }
                     }
-                    case (ast.item_mod(_, ?m, _)) {
+                    case (ast.item_mod(_, ?m, _, _)) {
                         ret check_mod(i, m);
                     }
                     case (ast.item_ty(_, _, ?ty_params, _, _)) {
