@@ -1333,6 +1333,21 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                         ast.expr_alt(expr_1, arms_1, ann));
         }
 
+        case (ast.expr_block(?b, _)) {
+            auto b_0 = check_block(fcx, b);
+            auto ann;
+            alt (b_0.node.expr) {
+                case (some[@ast.expr](?expr)) {
+                    ann = ast.ann_type(expr_ty(expr));
+                }
+                case (none[@ast.expr]) {
+                    ann = ast.ann_type(plain_ty(ty.ty_nil));
+                }
+            }
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_block(b_0, ann));
+        }
+
         case (ast.expr_bind(?f, ?args, _)) {
             auto f_0 = check_expr(fcx, f);
             auto t_0 = expr_ty(f_0);
