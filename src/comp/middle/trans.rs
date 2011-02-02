@@ -983,14 +983,14 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
         auto root = cx.fcx.ccx.tydescs.get(t);
 
         auto tydescs = cx.build.Alloca(T_array(T_ptr(T_tydesc()), n_params));
+
         auto i = 0;
+        auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
+        cx.build.Store(root, tdp);
+        i += 1;
         for (ValueRef td in tys._1) {
             auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
-            if (i == 0) {
-                cx.build.Store(root, tdp);
-            } else {
-                cx.build.Store(td, tdp);
-            }
+            cx.build.Store(td, tdp);
             i += 1;
         }
 
