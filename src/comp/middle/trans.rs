@@ -612,7 +612,7 @@ fn decl_glue(ModuleRef llmod, str s) -> ValueRef {
     ret decl_cdecl_fn(llmod, s, T_fn(vec(T_taskptr()), T_void()));
 }
 
-fn decl_upcall(ModuleRef llmod, uint _n) -> ValueRef {
+fn decl_upcall_glue(ModuleRef llmod, uint _n) -> ValueRef {
     // It doesn't actually matter what type we come up with here, at the
     // moment, as we cast the upcall function pointers to int before passing
     // them to the indirect upcall-invocation glue.  But eventually we'd like
@@ -4324,7 +4324,7 @@ fn make_glues(ModuleRef llmod) -> @glue_fns {
                                             T_fn(vec(T_taskptr()), T_void())),
 
              upcall_glues =
-             _vec.init_fn[ValueRef](bind decl_upcall(llmod, _),
+             _vec.init_fn[ValueRef](bind decl_upcall_glue(llmod, _),
                                     abi.n_upcall_glues as uint),
              no_op_type_glue = make_no_op_type_glue(llmod),
              memcpy_glue = make_memcpy_glue(llmod),
