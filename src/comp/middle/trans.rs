@@ -1185,16 +1185,12 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                                  vec(C_int(0),
                                      C_int(abi.box_rc_field_body)));
 
-                auto fields =
-                    cx.build.GEP(body,
-                                 vec(C_int(0),
-                                     C_int(abi.obj_body_elt_fields)));
                 auto tydescptr =
                     cx.build.GEP(body,
                                  vec(C_int(0),
                                      C_int(abi.obj_body_elt_tydesc)));
 
-                call_tydesc_glue_full(cx, fields, cx.build.Load(tydescptr),
+                call_tydesc_glue_full(cx, body, cx.build.Load(tydescptr),
                                       abi.tydesc_field_drop_glue_off);
 
                 // Then free the body.
@@ -1223,17 +1219,12 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                                  vec(C_int(0),
                                      C_int(abi.box_rc_field_body)));
 
-                auto bindings =
-                    cx.build.GEP(body,
-                                 vec(C_int(0),
-                                     C_int(abi.closure_elt_bindings)));
-
                 auto tydescptr =
                     cx.build.GEP(body,
                                  vec(C_int(0),
                                      C_int(abi.closure_elt_tydesc)));
 
-                call_tydesc_glue_full(cx, bindings, cx.build.Load(tydescptr),
+                call_tydesc_glue_full(cx, body, cx.build.Load(tydescptr),
                                       abi.tydesc_field_drop_glue_off);
 
 
@@ -3659,9 +3650,9 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
                          vec(0, abi.obj_body_elt_tydesc));
         bcx = body_tydesc.bcx;
 
-        auto fields_tydesc = get_tydesc(bcx, fields_ty);
-        bcx = fields_tydesc.bcx;
-        bcx.build.Store(fields_tydesc.val, body_tydesc.val);
+        auto body_td = get_tydesc(bcx, body_ty);
+        bcx = body_td.bcx;
+        bcx.build.Store(body_td.val, body_tydesc.val);
 
         // Copy args into body fields.
         auto body_fields =
