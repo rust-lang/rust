@@ -4186,6 +4186,24 @@ fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
     ret intrinsics;
 }
 
+
+fn trace_str(@block_ctxt cx, str s) {
+    trans_upcall(cx, "upcall_trace_str", vec(p2i(C_cstr(cx.fcx.ccx, s))));
+}
+
+fn trace_word(@block_ctxt cx, ValueRef v) {
+    trans_upcall(cx, "upcall_trace_word", vec(v));
+}
+
+fn trace_ptr(@block_ctxt cx, ValueRef v) {
+    trace_word(cx, cx.build.PtrToInt(v, T_int()));
+}
+
+fn trap(@block_ctxt bcx) {
+    let vec[ValueRef] v = vec();
+    bcx.build.Call(bcx.fcx.ccx.intrinsics.get("llvm.trap"), v);
+}
+
 fn check_module(ModuleRef llmod) {
     auto pm = mk_pass_manager();
     llvm.LLVMAddVerifierPass(pm.llpm);
