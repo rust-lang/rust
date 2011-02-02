@@ -943,6 +943,7 @@ fn linearize_ty_params(@block_ctxt cx, @ty.t t)
                         r.defs += pid;
                     }
                 }
+                case (_) { }
             }
             ret t;
         }
