@@ -149,7 +149,7 @@ tag expr_ {
     expr_unary(unop, @expr, ann);
     expr_lit(@lit, ann);
     expr_cast(@expr, @ty, ann);
-    expr_if(@expr, block, option.t[block], ann);
+    expr_if(@expr, block, vec[tup(@expr, block)], option.t[block], ann);
     expr_while(@expr, block, ann);
     expr_for(@decl, @expr, block, ann);
     expr_do_while(block, @expr, ann);

@@ -1957,8 +1957,9 @@ fn join_results(@block_ctxt parent_cx,
     ret res(join_cx, phi);
 }
 
-fn trans_if(@block_ctxt cx, @ast.expr cond,
-            &ast.block thn, &option.t[ast.block] els) -> result {
+fn trans_if(@block_ctxt cx, @ast.expr cond, &ast.block thn,
+            &vec[tup(@ast.expr, ast.block)] elifs,
+            &option.t[ast.block] els) -> result {
 
     auto cond_res = trans_expr(cx, cond);
 
@@ -1968,11 +1969,25 @@ fn trans_if(@block_ctxt cx, @ast.expr cond,
     auto else_cx = new_scope_block_ctxt(cx, "else");
     auto else_res = res(else_cx, C_nil());
 
-    alt (els) {
-        case (some[ast.block](?eblk)) {
-            else_res = trans_block(else_cx, eblk);
+    auto num_elifs = _vec.len[tup(@ast.expr, ast.block)](elifs);
+    if (num_elifs > 0u) {
+        auto next_elif = elifs.(0u);
+        auto next_elifthn = next_elif._0;
+        auto next_elifcnd = next_elif._1;
+        auto rest_elifs = _vec.shift[tup(@ast.expr, ast.block)](elifs);
+        else_res = trans_if(else_cx, next_elifthn, next_elifcnd,
+                            rest_elifs, els);
+    }
+
+    /* else: FIXME: rustboot has a problem here
+       with preconditions inside an else block */
+    if (num_elifs == 0u)  {
+        alt (els) {
+            case (some[ast.block](?eblk)) {
+                else_res = trans_block(else_cx, eblk);
+            }
+            case (_) { /* fall through */ }
         }
-        case (_) { /* fall through */ }
     }
 
     cond_res.bcx.build.CondBr(cond_res.val,
@@ -2901,8 +2916,8 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             ret trans_binary(cx, op, x, y);
         }
 
-        case (ast.expr_if(?cond, ?thn, ?els, _)) {
-            ret trans_if(cx, cond, thn, els);
+        case (ast.expr_if(?cond, ?thn, ?elifs, ?els, _)) {
+            ret trans_if(cx, cond, thn, elifs, els);
         }
 
         case (ast.expr_for(?decl, ?seq, ?body, _)) {

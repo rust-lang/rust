@@ -864,10 +864,19 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_cast(sube, ast_ty, ast.ann_type(t));
         }
-        case (ast.expr_if(?cond, ?then_0, ?else_0, ?ann)) {
+        case (ast.expr_if(?cond, ?then_0, ?elifs_0, ?else_0, ?ann)) {
             auto t = demand_full(fcx, e.span, expected,
                                  ann_to_type(ann), adk);
             auto then_1 = demand_block(fcx, expected, then_0);
+
+            let vec[tup(@ast.expr, ast.block)] elifs_1 = vec();
+            for (tup(@ast.expr, ast.block) elif in elifs_0) {
+                auto elifcond = elif._0;
+                auto elifthn_0 = elif._1;
+                auto elifthn_1 = demand_block(fcx, expected, elifthn_0);
+                elifs_1 += tup(elifcond, elifthn_1);
+            }
+
             auto else_1;
             alt (else_0) {
                 case (none[ast.block]) { else_1 = none[ast.block]; }
@@ -876,7 +885,7 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                     else_1 = some[ast.block](b_1);
                 }
             }
-            e_1 = ast.expr_if(cond, then_1, else_1, ast.ann_type(t));
+            e_1 = ast.expr_if(cond, then_1, elifs_1, else_1, ast.ann_type(t));
         }
         case (ast.expr_for(?decl, ?seq, ?bloc, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
@@ -1195,12 +1204,27 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                            ann));
         }
 
-        case (ast.expr_if(?cond, ?thn, ?elsopt, _)) {
+        case (ast.expr_if(?cond, ?thn, ?elifs, ?elsopt, _)) {
             auto cond_0 = check_expr(fcx, cond);
             auto cond_1 = demand_expr(fcx, plain_ty(ty.ty_bool), cond_0);
 
             auto thn_0 = check_block(fcx, thn);
             auto thn_t = block_ty(thn_0);
+
+            auto num_elifs = _vec.len[tup(@ast.expr, ast.block)](elifs);
+            let vec[tup(@ast.expr, ast.block)] elifs_1 = vec();
+            for each (uint i in _uint.range(0u, num_elifs)) {
+                auto elif = elifs.(i);
+                auto elifcond = elif._0;
+                auto elifcond_0 = check_expr(fcx, cond);
+                auto elifcond_1 = demand_expr(fcx,
+                                              plain_ty(ty.ty_bool),
+                                              elifcond_0);
+                auto elifthn = elif._1;
+                auto elifthn_0 = check_block(fcx, elifthn);
+                auto elifthn_1 = demand_block(fcx, thn_t, elifthn_0);
+                elifs_1 += tup(elifcond_1, elifthn_1);
+            }
 
             auto elsopt_1;
             auto elsopt_t;
@@ -1220,7 +1244,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto thn_1 = demand_block(fcx, elsopt_t, thn_0);
 
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_if(cond_1, thn_1, elsopt_1,
+                                        ast.expr_if(cond_1, thn_1,
+                                                    elifs_1, elsopt_1,
                                                     ast.ann_type(elsopt_t)));
         }
 

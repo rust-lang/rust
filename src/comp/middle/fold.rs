@@ -28,6 +28,7 @@ import front.ast.def;
 import front.ast.def_id;
 import front.ast.ann;
 
+import std._uint;
 import std._vec;
 
 type ast_fold[ENV] =
@@ -100,6 +101,7 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &span sp,
          @expr cond, &block thn,
+         &vec[tup(@expr, block)] elifs,
          &option.t[block] els,
          ann a) -> @expr)                         fold_expr_if,
 
@@ -501,9 +503,19 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
             ret fld.fold_expr_cast(env_, e.span, ee, tt, at);
         }
 
-        case (ast.expr_if(?cnd, ?thn, ?els, ?t)) {
+        case (ast.expr_if(?cnd, ?thn, ?elifs, ?els, ?t)) {
             auto ccnd = fold_expr(env_, fld, cnd);
             auto tthn = fold_block(env_, fld, thn);
+
+            let vec[tup(@ast.expr, ast.block)] eelifs = vec();
+            for (tup(@expr, block) elif in elifs) {
+                auto elifcnd = elif._0;
+                auto elifthn = elif._1;
+                auto elifccnd = fold_expr(env_, fld, elifcnd);
+                auto eliftthn = fold_block(env_, fld, elifthn);
+                eelifs += tup(elifccnd, eliftthn);
+            }
+
             auto eels = none[block];
             alt (els) {
                 case (some[block](?b)) {
@@ -511,7 +523,7 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
                 }
                 case (_) { /* fall through */  }
             }
-            ret fld.fold_expr_if(env_, e.span, ccnd, tthn, eels, t);
+            ret fld.fold_expr_if(env_, e.span, ccnd, tthn, eelifs, eels, t);
         }
 
         case (ast.expr_for(?decl, ?seq, ?body, ?t)) {
@@ -961,8 +973,9 @@ fn identity_fold_expr_cast[ENV](&ENV env, &span sp, @ast.expr e,
 
 fn identity_fold_expr_if[ENV](&ENV env, &span sp,
                               @expr cond, &block thn,
+                              &vec[tup(@expr, block)] elifs,
                               &option.t[block] els, ann a) -> @expr {
-    ret @respan(sp, ast.expr_if(cond, thn, els, a));
+    ret @respan(sp, ast.expr_if(cond, thn, elifs, els, a));
 }
 
 fn identity_fold_expr_for[ENV](&ENV env, &span sp,
@@ -1237,7 +1250,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_unary  = bind identity_fold_expr_unary[ENV](_,_,_,_,_),
          fold_expr_lit    = bind identity_fold_expr_lit[ENV](_,_,_,_),
          fold_expr_cast   = bind identity_fold_expr_cast[ENV](_,_,_,_,_),
-         fold_expr_if     = bind identity_fold_expr_if[ENV](_,_,_,_,_,_),
+         fold_expr_if     = bind identity_fold_expr_if[ENV](_,_,_,_,_,_,_),
          fold_expr_for    = bind identity_fold_expr_for[ENV](_,_,_,_,_,_),
          fold_expr_while  = bind identity_fold_expr_while[ENV](_,_,_,_,_),
          fold_expr_do_while

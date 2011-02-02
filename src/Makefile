@@ -447,6 +447,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         div-mod.rs \
                         drop-bind-thunk-args.rs \
                         drop-on-ret.rs \
+                        else-if.rs \
                         fact.rs \
                         fn-lval.rs \
                         fun-call-variants.rs \
