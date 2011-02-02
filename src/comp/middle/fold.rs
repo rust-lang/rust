@@ -20,6 +20,7 @@ import front.ast.block;
 import front.ast.item;
 import front.ast.view_item;
 import front.ast.meta_item;
+import front.ast.native_item;
 import front.ast.arg;
 import front.ast.pat;
 import front.ast.decl;
@@ -204,6 +205,9 @@ type ast_fold[ENV] =
          def_id id, ann a) -> @item)              fold_item_ty,
 
      (fn(&ENV e, &span sp, ident ident,
+         def_id id) -> @native_item)              fold_native_item_ty,
+
+     (fn(&ENV e, &span sp, ident ident,
          vec[ast.variant] variants,
          vec[ast.ty_param] ty_params,
          def_id id) -> @item)                     fold_item_tag,
@@ -244,6 +248,7 @@ type ast_fold[ENV] =
      // Env updates.
      (fn(&ENV e, @ast.crate c) -> ENV) update_env_for_crate,
      (fn(&ENV e, @item i) -> ENV) update_env_for_item,
+     (fn(&ENV e, @native_item i) -> ENV) update_env_for_native_item,
      (fn(&ENV e, @view_item i) -> ENV) update_env_for_view_item,
      (fn(&ENV e, &block b) -> ENV) update_env_for_block,
      (fn(&ENV e, @stmt s) -> ENV) update_env_for_stmt,
@@ -841,9 +846,34 @@ fn fold_mod[ENV](&ENV e, ast_fold[ENV] fld, &ast._mod m) -> ast._mod {
     ret fld.fold_mod(e, rec(view_items=view_items, items=items, index=index));
 }
 
+fn fold_native_item[ENV](&ENV env, ast_fold[ENV] fld,
+                         @native_item i) -> @native_item {
+    let ENV env_ = fld.update_env_for_native_item(env, i);
+
+    if (!fld.keep_going(env_)) {
+        ret i;
+    }
+    alt (i.node) {
+        case (ast.native_item_ty(?ident, ?id)) {
+            ret fld.fold_native_item_ty(env_, i.span, ident, id);
+        }
+    }
+}
+
 fn fold_native_mod[ENV](&ENV e, ast_fold[ENV] fld,
                         &ast.native_mod m) -> ast.native_mod {
-    ret fld.fold_native_mod(e, rec(native_name = m.native_name));
+    let vec[@native_item] items = vec();
+    auto index = new_str_hash[@ast.native_item]();
+
+    for (@native_item i in m.items) {
+        auto new_item = fold_native_item[ENV](e, fld, i);
+        append[@native_item](items, new_item);
+        ast.index_native_item(index, new_item);
+    }
+
+    ret fld.fold_native_mod(e, rec(native_name=m.native_name,
+                                   items=items,
+                                   index=index));
 }
 
 fn fold_crate[ENV](&ENV env, ast_fold[ENV] fld, @ast.crate c) -> @ast.crate {
@@ -1130,6 +1160,11 @@ fn identity_fold_item_ty[ENV](&ENV e, &span sp, ident i,
     ret @respan(sp, ast.item_ty(i, t, ty_params, id, a));
 }
 
+fn identity_fold_native_item_ty[ENV](&ENV e, &span sp, ident i,
+                                     def_id id) -> @native_item {
+    ret @respan(sp, ast.native_item_ty(i, id));
+}
+
 fn identity_fold_item_tag[ENV](&ENV e, &span sp, ident i,
                                vec[ast.variant] variants,
                                vec[ast.ty_param] ty_params,
@@ -1201,6 +1236,10 @@ fn identity_update_env_for_crate[ENV](&ENV e, @ast.crate c) -> ENV {
 }
 
 fn identity_update_env_for_item[ENV](&ENV e, @item i) -> ENV {
+    ret e;
+}
+
+fn identity_update_env_for_native_item[ENV](&ENV e, @native_item i) -> ENV {
     ret e;
 }
 
@@ -1308,6 +1347,8 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_item_native_mod =
              bind identity_fold_item_native_mod[ENV](_,_,_,_,_),
          fold_item_ty   = bind identity_fold_item_ty[ENV](_,_,_,_,_,_,_),
+         fold_native_item_ty =
+             bind identity_fold_native_item_ty[ENV](_,_,_,_),
          fold_item_tag  = bind identity_fold_item_tag[ENV](_,_,_,_,_,_),
          fold_item_obj  = bind identity_fold_item_obj[ENV](_,_,_,_,_,_,_),
 
@@ -1325,6 +1366,8 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
 
          update_env_for_crate = bind identity_update_env_for_crate[ENV](_,_),
          update_env_for_item = bind identity_update_env_for_item[ENV](_,_),
+         update_env_for_native_item =
+             bind identity_update_env_for_native_item[ENV](_,_),
          update_env_for_view_item =
              bind identity_update_env_for_view_item[ENV](_,_),
          update_env_for_block = bind identity_update_env_for_block[ENV](_,_),

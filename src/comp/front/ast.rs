@@ -215,7 +215,6 @@ type obj_field = rec(@ty ty, ident ident, def_id id, ann ann);
 type _obj = rec(vec[obj_field] fields,
                 vec[@method] methods);
 
-
 tag mod_index_entry {
     mie_view_item(@view_item);
     mie_item(@item);
@@ -227,7 +226,10 @@ type _mod = rec(vec[@view_item] view_items,
                 vec[@item] items,
                 mod_index index);
 
-type native_mod = rec(str native_name);
+type native_mod = rec(str native_name,
+                      vec[@native_item] items,
+                      native_mod_index index);
+type native_mod_index = hashmap[ident,@native_item];
 
 type variant_arg = rec(@ty ty, def_id id);
 type variant = rec(str name, vec[variant_arg] args, def_id id, ann ann);
@@ -247,6 +249,11 @@ tag item_ {
     item_ty(ident, @ty, vec[ty_param], def_id, ann);
     item_tag(ident, vec[variant], vec[ty_param], def_id);
     item_obj(ident, _obj, vec[ty_param], def_id, ann);
+}
+
+type native_item = spanned[native_item_];
+tag native_item_ {
+    native_item_ty(ident, def_id);
 }
 
 fn index_view_item(mod_index index, @view_item it) {
@@ -288,6 +295,14 @@ fn index_item(mod_index index, @item it) {
         }
         case (ast.item_obj(?id, _, _, _, _)) {
             index.insert(id, ast.mie_item(it));
+        }
+    }
+}
+
+fn index_native_item(native_mod_index index, @native_item it) {
+    alt (it.node) {
+        case (ast.native_item_ty(?id, _)) {
+            index.insert(id, it);
         }
     }
 }

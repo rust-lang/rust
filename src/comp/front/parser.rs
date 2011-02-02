@@ -1577,6 +1577,39 @@ impure fn parse_item_mod(parser p) -> @ast.item {
     ret @spanned(lo, hi, item);
 }
 
+
+impure fn parse_item_native_type(parser p) -> @ast.native_item {
+    auto lo = p.get_span();
+    expect(p, token.TYPE);
+    auto id = parse_ident(p);
+    auto hi = p.get_span();
+    expect(p, token.SEMI);
+    auto item = ast.native_item_ty(id, p.next_def_id());
+    ret @spanned(lo, hi, item);
+}
+
+impure fn parse_native_item(parser p) -> @ast.native_item {
+    alt (p.peek()) {
+        case (token.TYPE) {
+            ret parse_item_native_type(p);
+        }
+    }
+}
+
+impure fn parse_native_mod_items(parser p,
+                                 str native_name) -> ast.native_mod {
+    auto index = new_str_hash[@ast.native_item]();
+    let vec[@ast.native_item] items = vec();
+    while (p.peek() != token.RBRACE) {
+        auto item = parse_native_item(p);
+        items += vec(item);
+
+        // Index the item.
+        ast.index_native_item(index, item);
+    }
+    ret rec(native_name=native_name, items=items, index=index);
+}
+
 impure fn parse_item_native_mod(parser p) -> @ast.item {
     auto lo = p.get_span();
     expect(p, token.NATIVE);
@@ -1584,7 +1617,7 @@ impure fn parse_item_native_mod(parser p) -> @ast.item {
     expect(p, token.MOD);
     auto id = parse_ident(p);
     expect(p, token.LBRACE);
-    auto m = rec(native_name = native_name);
+    auto m = parse_native_mod_items(p, native_name);
     auto hi = p.get_span();
     expect(p, token.RBRACE);
     auto item = ast.item_native_mod(id, m, p.next_def_id());
