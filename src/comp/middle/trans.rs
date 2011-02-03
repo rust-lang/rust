@@ -75,6 +75,7 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id, ValueRef] consts,
                             hashmap[ast.def_id,()] obj_methods,
                             hashmap[@ty.t, ValueRef] tydescs,
+                            vec[ast.ty_param] obj_typarams,
                             vec[ast.obj_field] obj_fields,
                             @glue_fns glues,
                             namegen names,
@@ -327,6 +328,24 @@ fn T_opaque_closure_ptr() -> TypeRef {
                       T_nil());
 }
 
+fn T_captured_tydescs(uint n) -> TypeRef {
+    ret T_struct(_vec.init_elt[TypeRef](T_ptr(T_tydesc()), n));
+}
+
+fn T_obj(uint n_captured_tydescs, TypeRef llfields_ty) -> TypeRef {
+    ret T_struct(vec(T_ptr(T_tydesc()),
+                     T_captured_tydescs(n_captured_tydescs),
+                     llfields_ty));
+}
+
+fn T_obj_ptr(uint n_captured_tydescs, TypeRef llfields_ty) -> TypeRef {
+    ret T_ptr(T_box(T_obj(n_captured_tydescs, llfields_ty)));
+}
+
+fn T_opaque_obj_ptr() -> TypeRef {
+    ret T_obj_ptr(0u, T_nil());
+}
+
 
 fn type_of(@crate_ctxt cx, @ty.t t) -> TypeRef {
     let TypeRef llty = type_of_inner(cx, t);
@@ -455,11 +474,9 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
                 mtys += T_ptr(mty);
             }
             let TypeRef vtbl = T_struct(mtys);
-            let TypeRef body = T_struct(vec(T_ptr(T_tydesc()),
-                                            T_nil()));
-            let TypeRef pair =
-                T_struct(vec(T_ptr(vtbl),
-                             T_ptr(T_box(body))));
+            let TypeRef pair = T_struct(vec(T_ptr(vtbl),
+                                            T_opaque_obj_ptr()));
+
             auto abs_pair = llvm.LLVMResolveTypeHandle(th.llth);
             llvm.LLVMRefineType(abs_pair, pair);
             abs_pair = llvm.LLVMResolveTypeHandle(th.llth);
@@ -963,6 +980,7 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt (ty.type_param(t)) {
         case (some[ast.def_id](?id)) {
+            check (cx.fcx.lltydescs.contains_key(id));
             ret res(cx, cx.fcx.lltydescs.get(id));
         }
         case (none[ast.def_id])      { /* fall through */ }
@@ -3474,7 +3492,7 @@ fn ret_ty_of_fn(ast.ann ann) -> @ty.t {
     ret ret_ty_of_fn_ty(ty.ann_to_type(ann));
 }
 
-fn create_llobjfields_for_fields(@block_ctxt cx, ValueRef llself) {
+fn populate_fn_ctxt_from_llself(@block_ctxt cx, ValueRef llself) {
 
     let vec[TypeRef] llfield_tys = vec();
 
@@ -3482,11 +3500,9 @@ fn create_llobjfields_for_fields(@block_ctxt cx, ValueRef llself) {
         llfield_tys += node_type(cx.fcx.ccx, f.ann);
     }
 
-    let TypeRef llfields_ty = T_struct(llfield_tys);
-    let TypeRef lltydesc_ty = T_ptr(T_tydesc());
-    let TypeRef llobj_body_ty = T_struct(vec(lltydesc_ty,
-                                             llfields_ty));
-    let TypeRef llobj_box_ty = T_ptr(T_box(llobj_body_ty));
+    auto n_typarams = _vec.len[ast.ty_param](cx.fcx.ccx.obj_typarams);
+    let TypeRef llobj_box_ty = T_obj_ptr(n_typarams,
+                                         T_struct(llfield_tys));
 
     auto box_cell =
         cx.build.GEP(llself,
@@ -3497,12 +3513,28 @@ fn create_llobjfields_for_fields(@block_ctxt cx, ValueRef llself) {
 
     box_ptr = cx.build.PointerCast(box_ptr, llobj_box_ty);
 
+    auto obj_typarams = cx.build.GEP(box_ptr,
+                                     vec(C_int(0),
+                                         C_int(abi.box_rc_field_body),
+                                         C_int(abi.obj_body_elt_typarams)));
+
     auto obj_fields = cx.build.GEP(box_ptr,
                                    vec(C_int(0),
                                        C_int(abi.box_rc_field_body),
                                        C_int(abi.obj_body_elt_fields)));
 
     let int i = 0;
+
+    for (ast.ty_param p in cx.fcx.ccx.obj_typarams) {
+        let ValueRef lltyparam = cx.build.GEP(obj_typarams,
+                                              vec(C_int(0),
+                                                  C_int(i)));
+        lltyparam = cx.build.Load(lltyparam);
+        cx.fcx.lltydescs.insert(p.id, lltyparam);
+        i += 1;
+    }
+
+    i = 0;
     for (ast.obj_field f in cx.fcx.ccx.obj_fields) {
         let ValueRef llfield = cx.build.GEP(obj_fields,
                                             vec(C_int(0),
@@ -3529,7 +3561,7 @@ fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
 
     alt (fcx.llself) {
         case (some[ValueRef](?llself)) {
-            create_llobjfields_for_fields(bcx, llself);
+            populate_fn_ctxt_from_llself(bcx, llself);
         }
         case (_) {
         }
@@ -3623,10 +3655,11 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
                                       C_int(abi.obj_field_box)));
     bcx.build.Store(vtbl, pair_vtbl);
 
-    let TypeRef llbox_ty = T_ptr(T_box(T_struct(vec(T_ptr(T_tydesc()),
-                                                    T_nil()))));
-    if (_vec.len[ty.arg](arg_tys) == 0u) {
-        // Store null into pair, if no args.
+    let TypeRef llbox_ty = T_opaque_obj_ptr();
+
+    if (_vec.len[ast.ty_param](ty_params) == 0u &&
+        _vec.len[ty.arg](arg_tys) == 0u) {
+        // Store null into pair, if no args or typarams.
         bcx.build.Store(C_null(llbox_ty), pair_box);
     } else {
         // Malloc a box for the body and copy args in.
@@ -3636,8 +3669,16 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
         }
 
         // Synthesize an obj body type.
+        auto tydesc_ty = plain_ty(ty.ty_type);
+        let vec[@ty.t] tps = vec();
+        for (ast.ty_param tp in ty_params) {
+            append[@ty.t](tps, tydesc_ty);
+        }
+
+        let @ty.t typarams_ty = plain_ty(ty.ty_tup(tps));
         let @ty.t fields_ty = plain_ty(ty.ty_tup(obj_fields));
-        let @ty.t body_ty = plain_ty(ty.ty_tup(vec(plain_ty(ty.ty_type),
+        let @ty.t body_ty = plain_ty(ty.ty_tup(vec(tydesc_ty,
+                                                   typarams_ty,
                                                    fields_ty)));
         let @ty.t boxed_body_ty = plain_ty(ty.ty_box(body_ty));
 
@@ -3664,13 +3705,28 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
         bcx = body_td.bcx;
         bcx.build.Store(body_td.val, body_tydesc.val);
 
+        // Copy typarams into captured typarams.
+        auto body_typarams =
+            GEP_tup_like(bcx, body_ty, body.val,
+                         vec(0, abi.obj_body_elt_typarams));
+        bcx = body_typarams.bcx;
+        let int i = 0;
+        for (ast.ty_param tp in ty_params) {
+            auto typaram = bcx.fcx.lltydescs.get(tp.id);
+            auto capture = GEP_tup_like(bcx, typarams_ty, body_typarams.val,
+                                        vec(0, i));
+            bcx = capture.bcx;
+            bcx = copy_ty(bcx, INIT, capture.val, typaram, tydesc_ty).bcx;
+            i += 1;
+        }
+
         // Copy args into body fields.
         auto body_fields =
             GEP_tup_like(bcx, body_ty, body.val,
                          vec(0, abi.obj_body_elt_fields));
         bcx = body_fields.bcx;
 
-        let int i = 0;
+        i = 0;
         for (ast.obj_field f in ob.fields) {
             auto arg = bcx.fcx.llargs.get(f.id);
             arg = load_scalar_or_boxed(bcx, arg, arg_tys.(i).ty);
@@ -3792,6 +3848,7 @@ fn trans_item(@crate_ctxt cx, &ast.item item) {
         }
         case (ast.item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
             auto sub_cx = @rec(path=cx.path + "." + name,
+                               obj_typarams=tps,
                                obj_fields=ob.fields with *cx);
             trans_obj(sub_cx, ob, oid, tps, ann);
         }
@@ -4353,6 +4410,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     auto hasher = ty.hash_ty;
     auto eqer = ty.eq_ty;
     auto tydescs = map.mk_hashmap[@ty.t,ValueRef](hasher, eqer);
+    let vec[ast.ty_param] obj_typarams = vec();
     let vec[ast.obj_field] obj_fields = vec();
 
     auto cx = @rec(sess = sess,
@@ -4369,6 +4427,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    consts = new_def_hash[ValueRef](),
                    obj_methods = new_def_hash[()](),
                    tydescs = tydescs,
+                   obj_typarams = obj_typarams,
                    obj_fields = obj_fields,
                    glues = glues,
                    names = namegen(0),
