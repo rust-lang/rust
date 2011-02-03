@@ -3229,7 +3229,13 @@ fn new_block_ctxt(@fn_ctxt cx, block_parent parent,
 
 // Use this when you're at the top block of a function or the like.
 fn new_top_block_ctxt(@fn_ctxt fcx) -> @block_ctxt {
-    ret new_block_ctxt(fcx, parent_none, SCOPE_BLOCK, "function top level");
+    auto cx = new_block_ctxt(fcx, parent_none, SCOPE_BLOCK,
+                             "function top level");
+
+    // FIXME: hack to give us some spill room to make up for an LLVM
+    // bug where it destroys its own callee-saves.
+    cx.build.Alloca(T_array(T_int(), 10u));
+    ret cx;
 }
 
 // Use this when you're at a curly-brace or similar lexical scope.
