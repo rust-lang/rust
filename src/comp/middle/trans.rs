@@ -1218,13 +1218,17 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                     cx.build.GEP(v,
                                  vec(C_int(0),
                                      C_int(abi.box_rc_field_body)));
+                auto bindings =
+                    cx.build.GEP(body,
+                                 vec(C_int(0),
+                                     C_int(abi.closure_elt_bindings)));
 
                 auto tydescptr =
                     cx.build.GEP(body,
                                  vec(C_int(0),
                                      C_int(abi.closure_elt_tydesc)));
 
-                call_tydesc_glue_full(cx, body, cx.build.Load(tydescptr),
+                call_tydesc_glue_full(cx, bindings, cx.build.Load(tydescptr),
                                       abi.tydesc_field_drop_glue_off);
 
 
