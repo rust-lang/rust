@@ -1577,15 +1577,12 @@ impure fn parse_item_mod(parser p) -> @ast.item {
     ret @spanned(lo, hi, item);
 }
 
-
 impure fn parse_item_native_type(parser p) -> @ast.native_item {
-    auto lo = p.get_span();
-    expect(p, token.TYPE);
-    auto id = parse_ident(p);
+    auto t = parse_type_decl(p);
     auto hi = p.get_span();
     expect(p, token.SEMI);
-    auto item = ast.native_item_ty(id, p.next_def_id());
-    ret @spanned(lo, hi, item);
+    auto item = ast.native_item_ty(t._1, p.next_def_id());
+    ret @spanned(t._0, hi, item);
 }
 
 impure fn parse_native_item(parser p) -> @ast.native_item {
@@ -1624,18 +1621,23 @@ impure fn parse_item_native_mod(parser p) -> @ast.item {
     ret @spanned(lo, hi, item);
 }
 
-impure fn parse_item_type(parser p) -> @ast.item {
+impure fn parse_type_decl(parser p) -> tup(span, ast.ident) {
     auto lo = p.get_span();
     expect(p, token.TYPE);
     auto id = parse_ident(p);
+    ret tup(lo, id);
+}
+
+impure fn parse_item_type(parser p) -> @ast.item {
+    auto t = parse_type_decl(p);
     auto tps = parse_ty_params(p);
 
     expect(p, token.EQ);
     auto ty = parse_ty(p);
     auto hi = p.get_span();
     expect(p, token.SEMI);
-    auto item = ast.item_ty(id, ty, tps, p.next_def_id(), ast.ann_none);
-    ret @spanned(lo, hi, item);
+    auto item = ast.item_ty(t._1, ty, tps, p.next_def_id(), ast.ann_none);
+    ret @spanned(t._0, hi, item);
 }
 
 impure fn parse_item_tag(parser p) -> @ast.item {
