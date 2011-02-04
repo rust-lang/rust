@@ -32,6 +32,26 @@ CFG_RUSTC_FLAGS := -nowarn
 # embedded into the executable, so use a no-op command.
 DSYMUTIL := true
 
+ifeq ($(CFG_OSTYPE), FreeBSD)
+  CFG_RUNTIME := librustrt.so
+  CFG_STDLIB := libstd.so
+  CFG_GCC_CFLAGS += -fPIC -march=i686 -I/usr/local/include
+  CFG_GCC_LINK_FLAGS += -shared -fPIC -lpthread -lrt
+  ifeq ($(CFG_CPUTYPE), x86_64)
+    CFG_GCC_CFLAGS += -m32
+    CFG_GCC_LINK_FLAGS += -m32
+  endif
+  CFG_NATIVE := 1
+  CFG_UNIXY := 1
+  CFG_VALGRIND := $(shell which valgrind)
+  ifdef CFG_VALGRIND
+    CFG_VALGRIND += --leak-check=full \
+                    --error-exitcode=1 \
+                    --quiet --vex-iropt-level=0 \
+                    --suppressions=etc/x86.supp
+  endif
+endif
+
 ifeq ($(CFG_OSTYPE), Linux)
   CFG_RUNTIME := librustrt.so
   CFG_STDLIB := libstd.so
