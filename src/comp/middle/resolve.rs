@@ -283,7 +283,7 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
             case (scope_item(?it)) {
                 alt (it.node) {
                     case (ast.item_fn(_, ?f, ?ty_params, _, _)) {
-                        for (ast.arg a in f.inputs) {
+                        for (ast.arg a in f.decl.inputs) {
                             if (_str.eq(a.ident, i)) {
                                 auto t = ast.def_arg(a.id);
                                 ret some(def_wrap_other(t));

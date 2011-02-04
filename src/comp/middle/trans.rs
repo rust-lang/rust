@@ -3553,10 +3553,10 @@ fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
 
     auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
     create_llargs_for_fn_args(fcx, ty_self, ret_ty_of_fn(ann),
-                              f.inputs, ty_params);
+                              f.decl.inputs, ty_params);
     auto bcx = new_top_block_ctxt(fcx);
 
-    copy_args_to_allocas(bcx, ty_self, f.inputs,
+    copy_args_to_allocas(bcx, ty_self, f.decl.inputs,
                          arg_tys_of_fn(ann));
 
     alt (fcx.llself) {

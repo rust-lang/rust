@@ -285,8 +285,8 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         auto get = bind getter(id_to_ty_item, item_to_ty, _);
         auto convert = bind ast_ty_to_ty(get, _);
         auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
-        auto inputs = _vec.map[ast.arg,arg](f, m.node.meth.inputs);
-        auto output = convert(m.node.meth.output);
+        auto inputs = _vec.map[ast.arg,arg](f, m.node.meth.decl.inputs);
+        auto output = convert(m.node.meth.decl.output);
         ret rec(ident=m.node.ident, inputs=inputs, output=output);
     }
 
@@ -339,8 +339,9 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                 // TODO: handle ty-params
 
                 auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
-                auto input_tys = _vec.map[ast.arg,arg](f, fn_info.inputs);
-                auto output_ty = convert(fn_info.output);
+                auto input_tys = _vec.map[ast.arg,arg](f,
+                                                       fn_info.decl.inputs);
+                auto output_ty = convert(fn_info.decl.output);
 
                 auto t_fn = plain_ty(ty.ty_fn(input_tys, output_ty));
                 item_to_ty.insert(def_id, t_fn);
@@ -1773,9 +1774,8 @@ fn check_const(&@crate_ctxt ccx, &span sp, ast.ident ident, @ast.ty t,
     ret @fold.respan[ast.item_](sp, item);
 }
 
-fn check_fn(&@crate_ctxt ccx, ast.effect effect,
-            bool is_iter, vec[ast.arg] inputs,
-            @ast.ty output, &ast.block body) -> ast._fn {
+fn check_fn(&@crate_ctxt ccx, &ast.fn_decl decl,
+            bool is_iter, &ast.block body) -> ast._fn {
     auto local_ty_table = @common.new_def_hash[@ty.t]();
 
     // FIXME: duplicate work: the item annotation already has the arg types
@@ -1789,12 +1789,12 @@ fn check_fn(&@crate_ctxt ccx, ast.effect effect,
     }
 
     // Store the type of each argument in the table.
-    for (ast.arg arg in inputs) {
+    for (ast.arg arg in decl.inputs) {
         auto input_ty = ast_ty_to_ty_crate(ccx, arg.ty);
         local_ty_table.insert(arg.id, input_ty);
     }
 
-    let @fn_ctxt fcx = @rec(ret_ty = ast_ty_to_ty_crate(ccx, output),
+    let @fn_ctxt fcx = @rec(ret_ty = ast_ty_to_ty_crate(ccx, decl.output),
                             locals = local_ty_table,
                             ccx = ccx);
 
@@ -1802,8 +1802,8 @@ fn check_fn(&@crate_ctxt ccx, ast.effect effect,
     auto block_t = check_block(fcx, body);
     auto block_wb = writeback(fcx, block_t);
 
-    auto fn_t = rec(effect=effect, is_iter=is_iter,
-                    inputs=inputs, output=output, body=block_wb);
+     auto fn_t = rec(decl=decl, is_iter=is_iter,
+                    body=block_wb);
     ret fn_t;
 }
 
@@ -1816,12 +1816,12 @@ fn check_item_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
     // again here, we can extract them.
 
     let vec[arg] inputs = vec();
-    for (ast.arg arg in f.inputs) {
+    for (ast.arg arg in f.decl.inputs) {
         auto input_ty = ast_ty_to_ty_crate(ccx, arg.ty);
         inputs += vec(rec(mode=arg.mode, ty=input_ty));
     }
 
-    auto output_ty = ast_ty_to_ty_crate(ccx, f.output);
+    auto output_ty = ast_ty_to_ty_crate(ccx, f.decl.output);
     auto fn_sty = ty.ty_fn(inputs, output_ty);
     auto fn_ann = ast.ann_type(plain_ty(fn_sty));
 
@@ -1854,7 +1854,7 @@ fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     auto fld = fold.new_identity_fold[@crate_ctxt]();
 
     fld = @rec(update_env_for_item = bind update_obj_fields(_, _),
-               fold_fn      = bind check_fn(_,_,_,_,_,_),
+               fold_fn      = bind check_fn(_,_,_,_),
                fold_item_fn = bind check_item_fn(_,_,_,_,_,_,_)
                with *fld);
     ret fold.fold_crate[@crate_ctxt](ccx, fld, result._0);

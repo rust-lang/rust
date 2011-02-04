@@ -201,10 +201,11 @@ tag ty_ {
 }
 
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
-type _fn = rec(effect effect,
+type fn_decl = rec(effect effect,
+                   vec[arg] inputs,
+                   @ty output);
+type _fn = rec(fn_decl decl,
                bool is_iter,
-               vec[arg] inputs,
-               @ty output,
                block body);
 
 
@@ -254,6 +255,7 @@ tag item_ {
 type native_item = spanned[native_item_];
 tag native_item_ {
     native_item_ty(ident, def_id);
+    native_item_fn(ident, fn_decl, vec[ty_param], def_id);
 }
 
 fn index_view_item(mod_index index, @view_item it) {
@@ -302,6 +304,9 @@ fn index_item(mod_index index, @item it) {
 fn index_native_item(native_mod_index index, @native_item it) {
     alt (it.node) {
         case (ast.native_item_ty(?id, _)) {
+            index.insert(id, it);
+        }
+        case (ast.native_item_fn(?id, _, _, _)) {
             index.insert(id, it);
         }
     }
