@@ -59,7 +59,7 @@ let elf_identification ei_class ei_data =
              | ELFDATA2LSB -> 1
              | ELFDATA2MSB -> 2);
           1;                    (* EI_VERSION = EV_CURRENT *)
-          0;                    (* EI_PAD #7 *)
+          9;                    (* EI_PAD #7 *)
           0;                    (* EI_PAD #8 *)
           0;                    (* EI_PAD #9 *)
           0;                    (* EI_PAD #A *)
@@ -1290,7 +1290,7 @@ let elf32_linux_x86_file
   in
 
   let interp_section =
-    DEF (interp_section_fixup, ZSTRING "/lib/ld-linux.so.2")
+    DEF (interp_section_fixup, ZSTRING "/libexec/ld-elf.so.1")
   in
 
   let text_section =
@@ -1584,7 +1584,7 @@ let emit_file
 
   let needed_libs =
     [|
-      "libc.so.6";
+      "libc.so.7";
       "librustrt.so"
     |]
   in
