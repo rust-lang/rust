@@ -44,7 +44,7 @@ type ei_data =
 ;;
 
 
-let elf_identification ei_class ei_data =
+let elf_identification sess ei_class ei_data =
   SEQ
     [|
       STRING "\x7fELF";
@@ -58,9 +58,17 @@ let elf_identification ei_class ei_data =
                ELFDATANONE -> 0
              | ELFDATA2LSB -> 1
              | ELFDATA2MSB -> 2);
+
           1;                    (* EI_VERSION = EV_CURRENT *)
-          0;                    (* EI_PAD #7 *)
-          0;                    (* EI_PAD #8 *)
+
+                                (* EI_OSABI *)
+          (match sess.Session.sess_targ with
+               FreeBSD_x86_elf -> 9
+             | Linux_x86_elf -> 3
+             | _ -> 0);
+
+          0;                    (* EI_ABIVERSION *)
+
           0;                    (* EI_PAD #9 *)
           0;                    (* EI_PAD #A *)
           0;                    (* EI_PAD #B *)
@@ -117,7 +125,7 @@ let elf32_header
   in
     DEF
       (elf_header_fixup,
-       SEQ [| elf_identification ELFCLASS32 ei_data;
+       SEQ [| elf_identification sess ELFCLASS32 ei_data;
               WORD (TY_u16, (IMM (match e_type with
                                       ET_NONE -> 0L
                                     | ET_REL -> 1L
@@ -1290,7 +1298,11 @@ let elf32_linux_x86_file
   in
 
   let interp_section =
-    DEF (interp_section_fixup, ZSTRING "/lib/ld-linux.so.2")
+
+    DEF (interp_section_fixup, ZSTRING
+           (if sess.Session.sess_targ = FreeBSD_x86_elf
+            then "/libexec/ld-elf.so.1"
+            else "/lib/ld-linux.so.2"))
   in
 
   let text_section =
@@ -1584,7 +1596,9 @@ let emit_file
 
   let needed_libs =
     [|
-      "libc.so.6";
+      if sess.Session.sess_targ = FreeBSD_x86_elf
+      then "libc.so.7"
+      else "libc.so.6";
       "librustrt.so"
     |]
   in
