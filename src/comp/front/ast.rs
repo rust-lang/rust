@@ -36,6 +36,8 @@ tag def {
     def_ty_arg(def_id);
     def_binding(def_id);
     def_use(def_id);
+    def_native_ty(def_id);
+    def_native_fn(def_id);
 }
 
 type crate = spanned[crate_];
