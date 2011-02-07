@@ -551,6 +551,24 @@ fn count_ty_params(@t ty) -> uint {
     ret _vec.len[ast.def_id](*param_ids);
 }
 
+fn type_contains_ty_vars(@t ty) -> bool {
+    state obj checker(@mutable bool has_vars) {
+        fn fold_simple_ty(@t ty) -> @t {
+            alt (ty.struct) {
+                case (ty_var(_)) {
+                    *has_vars = true;
+                }
+                case (_) {}
+            }
+            ret ty;
+        }
+    }
+
+    let @mutable bool b = @mutable false;
+    fold_ty(checker(b), ty);
+    ret *b;
+}
+
 // Type accessors for substructures of types
 
 fn ty_fn_args(@t fty) -> vec[arg] {
@@ -1197,7 +1215,21 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
     auto eqer = eq_int;
     auto bindings = map.mk_hashmap[int,@ty.t](hasher, eqer);
 
-    ret unify_step(bindings, expected, actual, handler);
+    auto ures = unify_step(bindings, expected, actual, handler);
+    while (true) {
+        alt (ures) {
+            case (ures_ok(?t)) {
+                if (!type_contains_ty_vars(t)) {
+                    ret ures;
+                }
+                ures = unify_step(bindings, t, actual, handler);
+            }
+            case (_) {
+                ret ures;
+            }
+        }
+    }
+    fail;
 }
 
 fn type_err_to_str(&ty.type_err err) -> str {
