@@ -1630,9 +1630,20 @@ impure fn parse_native_mod_items(parser p,
 impure fn parse_item_native_mod(parser p) -> @ast.item {
     auto lo = p.get_span();
     expect(p, token.NATIVE);
-    auto native_name = parse_str_lit(p);
+    auto has_eq;
+    auto native_name = "";
+    if (p.peek() == token.MOD) {
+        has_eq = true;
+    } else {
+        native_name = parse_str_lit(p);
+        has_eq = false;
+    }
     expect(p, token.MOD);
     auto id = parse_ident(p);
+    if (has_eq) {
+        expect(p, token.EQ);
+        native_name = parse_str_lit(p);
+    }
     expect(p, token.LBRACE);
     auto m = parse_native_mod_items(p, native_name);
     auto hi = p.get_span();

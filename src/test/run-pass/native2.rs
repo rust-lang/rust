@@ -3,5 +3,9 @@ native "rust" mod rustrt {
     fn vec_buf[T](vec[T] v, uint offset) -> vbuf;
 }
 
+native mod libc = "libc.dylib" {
+    fn write(int fd, rustrt.vbuf buf, uint count) -> int;
+}
+
 fn main(vec[str] args) {
 }
