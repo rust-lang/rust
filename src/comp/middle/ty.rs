@@ -1215,6 +1215,10 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
     auto eqer = eq_int;
     auto bindings = map.mk_hashmap[int,@ty.t](hasher, eqer);
 
+    // FIXME: this is a slow way of driving types into residual vars that
+    // occur up in the leaves of result type; it can likely be done better
+    // when unification is actually ... down in the leaves.
+
     auto ures = unify_step(bindings, expected, actual, handler);
     while (true) {
         alt (ures) {
