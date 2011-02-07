@@ -432,8 +432,7 @@ fn fold_expr_path(&env e, &span sp, &ast.path p, &option.t[def] d,
             path_len = n_idents - remaining + 1u;
         }
         case (def_wrap_other(_)) {
-            check (n_idents == 1u);
-            path_len = 1u;
+            path_len = n_idents;
         }
         case (def_wrap_mod(?m)) {
             e.sess.span_err(sp,
