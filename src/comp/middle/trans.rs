@@ -83,9 +83,9 @@ state type crate_ctxt = rec(session.session sess,
 
 state type fn_ctxt = rec(ValueRef llfn,
                          ValueRef lltaskptr,
-                         ValueRef llclosure,
+                         ValueRef llenv,
+                         ValueRef llretptr,
                          mutable option.t[ValueRef] llself,
-                         mutable option.t[ValueRef] llretptr,
                          hashmap[ast.def_id, ValueRef] llargs,
                          hashmap[ast.def_id, ValueRef] llobjfields,
                          hashmap[ast.def_id, ValueRef] lllocals,
@@ -239,13 +239,23 @@ fn T_task() -> TypeRef {
                      ));
 }
 
+fn T_glue_fn() -> TypeRef {
+    // Bit of a kludge: pick the fn typeref out of the tydesc..
+    let vec[TypeRef] tydesc_elts = _vec.init_elt[TypeRef](T_nil(), 10u);
+    llvm.LLVMGetStructElementTypes(T_tydesc(),
+                                   _vec.buf[TypeRef](tydesc_elts));
+    ret llvm.LLVMGetElementType(tydesc_elts.(abi.tydesc_field_drop_glue_off));
+}
+
 fn T_tydesc() -> TypeRef {
 
     auto th = mk_type_handle();
     auto abs_tydesc = llvm.LLVMResolveTypeHandle(th.llth);
     auto tydescpp = T_ptr(T_ptr(abs_tydesc));
     auto pvoid = T_ptr(T_i8());
-    auto glue_fn_ty = T_ptr(T_fn(vec(T_taskptr(),
+    auto glue_fn_ty = T_ptr(T_fn(vec(T_ptr(T_nil()),
+                                     T_taskptr(),
+                                     T_ptr(T_nil()),
                                      tydescpp,
                                      pvoid), T_void()));
     auto tydesc = T_struct(vec(tydescpp,          // first_param
@@ -354,25 +364,31 @@ fn type_of(@crate_ctxt cx, @ty.t t) -> TypeRef {
     ret llty;
 }
 
-// NB: this must match trans_args and create_llargs_for_fn_args.
+
+// NB: must keep 4 fns in sync:
+//
+//  - type_of_fn_full
+//  - create_llargs_for_fn_args.
+//  - new_fn_ctxt
+//  - trans_args
+
 fn type_of_fn_full(@crate_ctxt cx,
                    option.t[TypeRef] obj_self,
                    vec[ty.arg] inputs,
                    @ty.t output) -> TypeRef {
-    let vec[TypeRef] atys = vec(T_taskptr());
+    let vec[TypeRef] atys = vec();
 
-    auto fn_ty = plain_ty(ty.ty_fn(inputs, output));
-    auto ty_param_count = ty.count_ty_params(fn_ty);
-    auto i = 0u;
-    while (i < ty_param_count) {
-        atys += T_ptr(T_tydesc());
-        i += 1u;
-    }
-
+    // Arg 0: Output pointer.
     if (ty.type_has_dynamic_size(output)) {
         atys += T_typaram_ptr();
+    } else {
+        atys += T_ptr(type_of(cx, output));
     }
 
+    // Arg 1: Task pointer.
+    atys += T_taskptr();
+
+    // Arg 2: Env (closure-bindings / self-obj)
     alt (obj_self) {
         case (some[TypeRef](?t)) {
             check (t as int != 0);
@@ -383,6 +399,16 @@ fn type_of_fn_full(@crate_ctxt cx,
         }
     }
 
+    // Args >3: ty params ...
+    auto ty_param_count =
+        ty.count_ty_params(plain_ty(ty.ty_fn(inputs, output)));
+    auto i = 0u;
+    while (i < ty_param_count) {
+        atys += T_ptr(T_tydesc());
+        i += 1u;
+    }
+
+    // ... then explicit args.
     for (ty.arg arg in inputs) {
         if (ty.type_has_dynamic_size(arg.ty)) {
             check (arg.mode == ast.alias);
@@ -399,14 +425,7 @@ fn type_of_fn_full(@crate_ctxt cx,
         }
     }
 
-    auto ret_ty;
-    if (ty.type_is_nil(output) || ty.type_has_dynamic_size(output)) {
-        ret_ty = llvm.LLVMVoidType();
-    } else {
-        ret_ty = type_of(cx, output);
-    }
-
-    ret T_fn(atys, ret_ty);
+    ret T_fn(atys, llvm.LLVMVoidType());
 }
 
 fn type_of_fn(@crate_ctxt cx, vec[ty.arg] inputs, @ty.t output) -> TypeRef {
@@ -663,9 +682,11 @@ fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> result {
 
     let ValueRef llglue = cx.fcx.ccx.glues.upcall_glues.(n);
     let vec[ValueRef] call_args = vec(cx.fcx.lltaskptr, llupcall);
+
     for (ValueRef a in args) {
         call_args += cx.build.ZExtOrBitCast(a, T_int());
     }
+
     ret res(cx, cx.build.FastCall(llglue, call_args));
 }
 
@@ -1044,10 +1065,7 @@ fn make_tydesc(@crate_ctxt cx, @ty.t t, vec[ast.def_id] typaram_defs) {
     auto drop_glue = make_generic_glue(cx, t, "drop", dg, typaram_defs);
 
     auto llty = type_of(cx, t);
-    auto pvoid = T_ptr(T_i8());
-    auto glue_fn_ty = T_ptr(T_fn(vec(T_taskptr(),
-                                     T_ptr(T_ptr(T_tydesc())),
-                                     pvoid), T_void()));
+    auto glue_fn_ty = T_ptr(T_glue_fn());
 
     // FIXME: this adjustment has to do with the ridiculous encoding of
     // glue-pointer-constants in the tydesc records: They are tydesc-relative
@@ -1082,9 +1100,7 @@ fn make_tydesc(@crate_ctxt cx, @ty.t t, vec[ast.def_id] typaram_defs) {
 fn make_generic_glue(@crate_ctxt cx, @ty.t t, str name,
                      val_and_ty_fn helper,
                      vec[ast.def_id] typaram_defs) -> ValueRef {
-    auto llfnty = T_fn(vec(T_taskptr(),
-                           T_ptr(T_ptr(T_tydesc())),
-                           T_ptr(T_i8())), T_void());
+    auto llfnty = T_glue_fn();
 
     auto fn_name = cx.names.next("_rust_" + name) + "." + ty.ty_to_str(t);
     fn_name = sanitize(fn_name);
@@ -1102,7 +1118,7 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, str name,
             llty = type_of(cx, t);
         }
 
-        auto lltyparams = llvm.LLVMGetParam(llfn, 1u);
+        auto lltyparams = llvm.LLVMGetParam(llfn, 3u);
         auto p = 0;
         for (ast.def_id d in typaram_defs) {
             auto llparam = bcx.build.GEP(lltyparams, vec(C_int(p)));
@@ -1111,7 +1127,7 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, str name,
             p += 1;
         }
 
-        auto llrawptr = llvm.LLVMGetParam(llfn, 2u);
+        auto llrawptr = llvm.LLVMGetParam(llfn, 4u);
         auto llval = bcx.build.BitCast(llrawptr, llty);
 
         re = helper(bcx, llval, t);
@@ -1582,7 +1598,11 @@ fn call_tydesc_glue_full(@block_ctxt cx, ValueRef v,
                                           cx.build.PtrToInt(tydesc, T_int())),
                              val_ty(llfn));
 
-    cx.build.FastCall(llfn, vec(cx.fcx.lltaskptr, lltydescs, llrawptr));
+    cx.build.FastCall(llfn, vec(C_null(T_ptr(T_nil())),
+                                cx.fcx.lltaskptr,
+                                C_null(T_ptr(T_nil())),
+                                lltydescs,
+                                llrawptr));
 }
 
 fn call_tydesc_glue(@block_ctxt cx, ValueRef v, @ty.t t, int field) {
@@ -2467,103 +2487,6 @@ fn trans_cast(@block_ctxt cx, @ast.expr e, &ast.ann ann) -> result {
     ret e_res;
 }
 
-
-// NB: this must match type_of_fn_full and create_llargs_for_fn_args.
-fn trans_args(@block_ctxt cx,
-              ValueRef llclosure,
-              option.t[ValueRef] llobj,
-              option.t[generic_info] gen,
-              &vec[@ast.expr] es,
-              @ty.t fn_ty)
-    -> tup(@block_ctxt, vec[ValueRef], option.t[ValueRef]) {
-    let vec[ValueRef] vs = vec(cx.fcx.lltaskptr);
-    let @block_ctxt bcx = cx;
-
-    let vec[ty.arg] args = ty.ty_fn_args(fn_ty);
-
-    let option.t[ValueRef] llretslot_opt = none[ValueRef];
-
-    alt (gen) {
-        case (some[generic_info](?g)) {
-            for (ValueRef t in g.tydescs) {
-                vs += t;
-            }
-            args = ty.ty_fn_args(g.item_type);
-            if (ty.type_has_dynamic_size(ty.ty_fn_ret(g.item_type))) {
-                auto retty = ty.ty_fn_ret(fn_ty);
-                auto llretty = type_of(cx.fcx.ccx, retty);
-                auto llretslot = cx.build.Alloca(llretty);
-                vs += cx.build.PointerCast(llretslot, T_ptr(T_i8()));
-                llretslot_opt = some[ValueRef](llretslot);
-            }
-        }
-        case (_) { }
-    }
-
-    alt (llobj) {
-        case (some[ValueRef](?ob)) {
-            // Every object is always found in memory,
-            // and not-yet-loaded (as part of an lval x.y
-            // doted method-call).
-            vs += cx.build.Load(ob);
-        }
-        case (_) {
-            vs += llclosure;
-        }
-    }
-
-    auto i = 0u;
-    for (@ast.expr e in es) {
-        auto mode = args.(i).mode;
-
-        auto val;
-        if (ty.type_is_structural(ty.expr_ty(e))) {
-            auto re = trans_expr(bcx, e);
-            val = re.val;
-            bcx = re.bcx;
-            if (mode == ast.val) {
-                // Until here we've been treating structures by pointer;
-                // we are now passing it as an arg, so need to load it.
-                val = bcx.build.Load(val);
-            }
-        } else if (mode == ast.alias) {
-            let lval_result lv;
-            if (ty.is_lval(e)) {
-                lv = trans_lval(bcx, e);
-            } else {
-                auto r = trans_expr(bcx, e);
-                lv = lval_val(r.bcx, r.val);
-            }
-            bcx = lv.res.bcx;
-
-            if (lv.is_mem) {
-                val = lv.res.val;
-            } else {
-                // Non-mem but we're trying to alias; synthesize an
-                // alloca, spill to it and pass its address.
-                auto llty = val_ty(lv.res.val);
-                auto llptr = lv.res.bcx.build.Alloca(llty);
-                lv.res.bcx.build.Store(lv.res.val, llptr);
-                val = llptr;
-            }
-
-        } else {
-            auto re = trans_expr(bcx, e);
-            val = re.val;
-            bcx = re.bcx;
-        }
-
-        if (ty.type_has_dynamic_size(args.(i).ty)) {
-            val = bcx.build.PointerCast(val, T_typaram_ptr());
-        }
-
-        vs += val;
-        i += 1u;
-    }
-
-    ret tup(bcx, vs, llretslot_opt);
-}
-
 fn trans_bind_thunk(@crate_ctxt cx,
                     @ty.t incoming_fty,
                     @ty.t outgoing_fty,
@@ -2577,15 +2500,13 @@ fn trans_bind_thunk(@crate_ctxt cx,
     let TypeRef llthunk_ty = get_pair_fn_ty(type_of(cx, incoming_fty));
     let ValueRef llthunk = decl_fastcall_fn(cx.llmod, s, llthunk_ty);
 
-    let @ty.t rty = ret_ty_of_fn_ty(incoming_fty);
-
     // FIXME: handle ty params properly.
     let vec[ast.ty_param] ty_params = vec();
 
     auto fcx = new_fn_ctxt(cx, s, llthunk);
     auto bcx = new_top_block_ctxt(fcx);
 
-    auto llclosure = bcx.build.PointerCast(fcx.llclosure, llclosure_ty);
+    auto llclosure = bcx.build.PointerCast(fcx.llenv, llclosure_ty);
 
     auto llbody = bcx.build.GEP(llclosure,
                                 vec(C_int(0),
@@ -2603,7 +2524,8 @@ fn trans_bind_thunk(@crate_ctxt cx,
                                          vec(C_int(0),
                                              C_int(abi.fn_field_box)));
     lltargetclosure = bcx.build.Load(lltargetclosure);
-    let vec[ValueRef] llargs = vec(fcx.lltaskptr,
+    let vec[ValueRef] llargs = vec(fcx.llretptr,
+                                   fcx.lltaskptr,
                                    lltargetclosure);
     let uint a = 0u;
     let int b = 0;
@@ -2635,20 +2557,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
                                         C_int(abi.fn_field_code)));
     lltargetfn = bcx.build.Load(lltargetfn);
     auto r = bcx.build.FastCall(lltargetfn, llargs);
-
-    alt (fcx.llretptr) {
-        case (some[ValueRef](?llptr)) {
-            bcx.build.Store(bcx.build.Load(r), llptr);
-            bcx.build.RetVoid();
-        }
-        case (none[ValueRef]) {
-            if (ty.type_is_nil(rty)) {
-                bcx.build.RetVoid();
-            } else {
-                bcx.build.Ret(r);
-            }
-        }
-    }
+    bcx.build.RetVoid();
 
     ret llthunk;
 }
@@ -2766,11 +2675,123 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
     }
 }
 
+// NB: must keep 4 fns in sync:
+//
+//  - type_of_fn_full
+//  - create_llargs_for_fn_args.
+//  - new_fn_ctxt
+//  - trans_args
+
+fn trans_args(@block_ctxt cx,
+              ValueRef llenv,
+              option.t[ValueRef] llobj,
+              option.t[generic_info] gen,
+              &vec[@ast.expr] es,
+              @ty.t fn_ty)
+    -> tup(@block_ctxt, vec[ValueRef], ValueRef) {
+
+    let vec[ty.arg] args = ty.ty_fn_args(fn_ty);
+    let vec[ValueRef] llargs = vec();
+    let vec[ValueRef] lltydescs = vec();
+    let @block_ctxt bcx = cx;
+
+
+    // Arg 0: Output pointer.
+    auto retty = ty.ty_fn_ret(fn_ty);
+    auto llretslot = cx.build.Alloca(type_of(cx.fcx.ccx, retty));
+    alt (gen) {
+        case (some[generic_info](?g)) {
+            lltydescs = g.tydescs;
+            args = ty.ty_fn_args(g.item_type);
+            retty = ty.ty_fn_ret(g.item_type);
+        }
+        case (_) {
+        }
+    }
+    if (ty.type_has_dynamic_size(retty)) {
+        llargs += cx.build.PointerCast(llretslot, T_typaram_ptr());
+    } else {
+        llargs += llretslot;
+    }
+
+
+    // Arg 1: Task pointer.
+    llargs += cx.fcx.lltaskptr;
+
+    // Arg 2: Env (closure-bindings / self-obj)
+    alt (llobj) {
+        case (some[ValueRef](?ob)) {
+            // Every object is always found in memory,
+            // and not-yet-loaded (as part of an lval x.y
+            // doted method-call).
+            llargs += cx.build.Load(ob);
+        }
+        case (_) {
+            llargs += llenv;
+        }
+    }
+
+    // Args >3: ty_params ...
+    llargs += lltydescs;
+
+    // ... then explicit args.
+    auto i = 0u;
+    for (@ast.expr e in es) {
+        auto mode = args.(i).mode;
+
+        auto val;
+        if (ty.type_is_structural(ty.expr_ty(e))) {
+            auto re = trans_expr(bcx, e);
+            val = re.val;
+            bcx = re.bcx;
+            if (mode == ast.val) {
+                // Until here we've been treating structures by pointer;
+                // we are now passing it as an arg, so need to load it.
+                val = bcx.build.Load(val);
+            }
+        } else if (mode == ast.alias) {
+            let lval_result lv;
+            if (ty.is_lval(e)) {
+                lv = trans_lval(bcx, e);
+            } else {
+                auto r = trans_expr(bcx, e);
+                lv = lval_val(r.bcx, r.val);
+            }
+            bcx = lv.res.bcx;
+
+            if (lv.is_mem) {
+                val = lv.res.val;
+            } else {
+                // Non-mem but we're trying to alias; synthesize an
+                // alloca, spill to it and pass its address.
+                auto llty = val_ty(lv.res.val);
+                auto llptr = lv.res.bcx.build.Alloca(llty);
+                lv.res.bcx.build.Store(lv.res.val, llptr);
+                val = llptr;
+            }
+
+        } else {
+            auto re = trans_expr(bcx, e);
+            val = re.val;
+            bcx = re.bcx;
+        }
+
+        if (ty.type_has_dynamic_size(args.(i).ty)) {
+            val = bcx.build.PointerCast(val, T_typaram_ptr());
+        }
+
+        llargs += val;
+        i += 1u;
+    }
+
+    ret tup(bcx, llargs, llretslot);
+}
+
 fn trans_call(@block_ctxt cx, @ast.expr f,
               vec[@ast.expr] args, &ast.ann ann) -> result {
     auto f_res = trans_lval(cx, f);
     auto faddr = f_res.res.val;
-    auto llclosure = C_null(T_opaque_closure_ptr());
+    auto llenv = C_null(T_opaque_closure_ptr());
 
     alt (f_res.llobj) {
         case (some[ValueRef](_)) {
@@ -2785,51 +2806,33 @@ fn trans_call(@block_ctxt cx, @ast.expr f,
                                             C_int(abi.fn_field_code)));
             faddr = bcx.build.Load(faddr);
 
-            llclosure = bcx.build.GEP(pair, vec(C_int(0),
-                                                C_int(abi.fn_field_box)));
-            llclosure = bcx.build.Load(llclosure);
+            auto llclosure = bcx.build.GEP(pair,
+                                           vec(C_int(0),
+                                               C_int(abi.fn_field_box)));
+            llenv = bcx.build.Load(llclosure);
         }
     }
     auto fn_ty = ty.expr_ty(f);
     auto ret_ty = ty.ann_to_type(ann);
     auto args_res = trans_args(f_res.res.bcx,
-                               llclosure, f_res.llobj,
+                               llenv, f_res.llobj,
                                f_res.generic,
                                args, fn_ty);
 
     auto bcx = args_res._0;
-    auto real_retval = bcx.build.FastCall(faddr, args_res._1);
-    auto retval = real_retval;
+    auto llargs = args_res._1;
+    auto llretslot = args_res._2;
 
-    if (ty.type_is_nil(ret_ty)) {
-        retval = C_nil();
+    bcx.build.FastCall(faddr, llargs);
+    auto retval = C_nil();
+
+    if (!ty.type_is_nil(ret_ty)) {
+        retval = load_scalar_or_boxed(bcx, llretslot, ret_ty);
+        // Retval doesn't correspond to anything really tangible in the frame,
+        // but it's a ref all the same, so we put a note here to drop it when
+        // we're done in this scope.
+        find_scope_cx(cx).cleanups += clean(bind drop_ty(_, retval, ret_ty));
     }
-
-    // Check for a generic retslot.
-    alt (args_res._2) {
-
-        case (some[ValueRef](?llretslot)) {
-            retval = load_scalar_or_boxed(bcx, llretslot, ret_ty);
-        }
-
-        case (none[ValueRef]) {
-            if (! (ty.type_is_scalar(ret_ty) ||
-                   ty.type_is_boxed(ret_ty))) {
-                // Structured returns come back as first-class values. This is
-                // nice for LLVM but wrong for us; we treat structured values
-                // by pointer in most of our code here. So spill it to an
-                // alloca.
-                auto local = bcx.build.Alloca(type_of(cx.fcx.ccx, ret_ty));
-                bcx.build.Store(retval, local);
-                retval = local;
-            }
-        }
-    }
-
-    // Retval doesn't correspond to anything really tangible in the frame, but
-    // it's a ref all the same, so we put a note here to drop it when we're
-    // done in this scope.
-    find_scope_cx(cx).cleanups += clean(bind drop_ty(_, retval, ret_ty));
 
     ret res(bcx, retval);
 }
@@ -3091,18 +3094,7 @@ fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
             auto r = trans_expr(cx, x);
             bcx = r.bcx;
             val = r.val;
-
-            // A return is an implicit copy into a newborn anonymous
-            // 'return value' in the caller frame.
-            bcx = incr_all_refcnts(bcx, val, t).bcx;
-
-            if (ty.type_is_structural(t)) {
-                // We usually treat structurals by-pointer; in particular,
-                // trans_expr will have given us a structure pointer. But in
-                // this case we're about to return. LLVM wants a first-class
-                // value here (which makes sense; the frame is going away!)
-                val = r.bcx.build.Load(val);
-            }
+            bcx = copy_ty(bcx, INIT, cx.fcx.llretptr, val, t).bcx;
         }
         case (_) { /* fall through */  }
     }
@@ -3122,34 +3114,6 @@ fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
         }
     }
 
-    alt (e) {
-        case (some[@ast.expr](?ex)) {
-            auto t = ty.expr_ty(ex);
-
-            if (ty.type_is_nil(t)) {
-                bcx.build.RetVoid();
-                val = C_nil();
-                ret res(bcx, val);  // FIXME: early return needed due to
-                                    // typestate bug
-            }
-
-            alt (cx.fcx.llretptr) {
-                case (some[ValueRef](?llptr)) {
-                    // Generic return via tydesc + retptr.
-                    bcx = copy_ty(bcx, INIT, llptr, val, t).bcx;
-                    bcx.build.RetVoid();
-                }
-                case (none[ValueRef]) {
-                    val = bcx.build.Ret(val);
-                }
-            }
-            ret res(bcx, val);
-        }
-        case (_) { /* fall through */  }
-    }
-
-    // FIXME: until LLVM has a unit type, we are moving around
-    // C_nil values rather than their void type.
     bcx.build.RetVoid();
     ret res(bcx, C_nil());
 }
@@ -3360,12 +3324,20 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
     ret res(bcx, r.val);
 }
 
+// NB: must keep 4 fns in sync:
+//
+//  - type_of_fn_full
+//  - create_llargs_for_fn_args.
+//  - new_fn_ctxt
+//  - trans_args
+
 fn new_fn_ctxt(@crate_ctxt cx,
                str name,
                ValueRef llfndecl) -> @fn_ctxt {
 
-    let ValueRef lltaskptr = llvm.LLVMGetParam(llfndecl, 0u);
-    let ValueRef llclosure = llvm.LLVMGetParam(llfndecl, 1u);
+    let ValueRef llretptr = llvm.LLVMGetParam(llfndecl, 0u);
+    let ValueRef lltaskptr = llvm.LLVMGetParam(llfndecl, 1u);
+    let ValueRef llenv = llvm.LLVMGetParam(llfndecl, 2u);
 
     let hashmap[ast.def_id, ValueRef] llargs = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] llobjfields = new_def_hash[ValueRef]();
@@ -3374,9 +3346,9 @@ fn new_fn_ctxt(@crate_ctxt cx,
 
     ret @rec(llfn=llfndecl,
              lltaskptr=lltaskptr,
-             llclosure=llclosure,
+             llenv=llenv,
+             llretptr=llretptr,
              mutable llself=none[ValueRef],
-             mutable llretptr=none[ValueRef],
              llargs=llargs,
              llobjfields=llobjfields,
              lllocals=lllocals,
@@ -3384,13 +3356,28 @@ fn new_fn_ctxt(@crate_ctxt cx,
              ccx=cx);
 }
 
-// NB: this must match trans_args and type_of_fn_full.
+// NB: must keep 4 fns in sync:
+//
+//  - type_of_fn_full
+//  - create_llargs_for_fn_args.
+//  - new_fn_ctxt
+//  - trans_args
+
 fn create_llargs_for_fn_args(&@fn_ctxt cx,
                              option.t[TypeRef] ty_self,
                              @ty.t ret_ty,
                              &vec[ast.arg] args,
                              &vec[ast.ty_param] ty_params) {
-    let uint arg_n = 1u;
+
+    alt (ty_self) {
+        case (some[TypeRef](_)) {
+            cx.llself = some[ValueRef](cx.llenv);
+        }
+        case (_) {
+        }
+    }
+
+    auto arg_n = 3u;
 
     for (ast.ty_param tp in ty_params) {
         auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
@@ -3399,23 +3386,6 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx,
         arg_n += 1u;
     }
 
-    if (ty.type_has_dynamic_size(ret_ty)) {
-        cx.llretptr = some[ValueRef](llvm.LLVMGetParam(cx.llfn, arg_n));
-        arg_n += 1u;
-    }
-
-    alt (ty_self) {
-        case (some[TypeRef](_)) {
-            auto llself = llvm.LLVMGetParam(cx.llfn, arg_n);
-            check (llself as int != 0);
-            cx.llself = some[ValueRef](llself);
-            arg_n += 1u;
-        }
-        case (_) {
-            // llclosure, we don't know what it is.
-            arg_n += 1u;
-        }
-    }
 
     for (ast.arg arg in args) {
         auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
@@ -3645,7 +3615,7 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
     copy_args_to_allocas(bcx, none[TypeRef], fn_args, arg_tys);
 
     auto llself_ty = type_of(cx, ret_ty_of_fn(ann));
-    auto pair = bcx.build.Alloca(llself_ty);
+    auto pair = bcx.fcx.llretptr;
     auto vtbl = trans_vtbl(cx, llself_ty, ob, ty_params);
     auto pair_vtbl = bcx.build.GEP(pair,
                                    vec(C_int(0),
@@ -3740,7 +3710,7 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
         auto p = bcx.build.PointerCast(box.val, llbox_ty);
         bcx.build.Store(p, pair_box);
     }
-    bcx.build.Ret(bcx.build.Load(pair));
+    bcx.build.RetVoid();
 }
 
 fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
@@ -3779,11 +3749,12 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     // FIXME: better name.
     llvm.LLVMAddTypeName(cx.llmod, _str.buf("tag"), lltagty);
 
-    auto lltagptr = bcx.build.Alloca(lltagty);
-    auto lldiscrimptr = bcx.build.GEP(lltagptr, vec(C_int(0), C_int(0)));
+    auto lldiscrimptr = bcx.build.GEP(fcx.llretptr,
+                                      vec(C_int(0), C_int(0)));
     bcx.build.Store(C_int(index), lldiscrimptr);
 
-    auto llblobptr = bcx.build.GEP(lltagptr, vec(C_int(0), C_int(1)));
+    auto llblobptr = bcx.build.GEP(fcx.llretptr,
+                                   vec(C_int(0), C_int(1)));
 
     // First, generate the union type.
     let vec[TypeRef] llargtys = vec();
@@ -3804,9 +3775,8 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
         i += 1u;
     }
 
-    auto lltagval = bcx.build.Load(lltagptr);
     bcx = trans_block_cleanups(bcx, find_scope_cx(bcx));
-    bcx.build.Ret(lltagval);
+    bcx.build.RetVoid();
 }
 
 // FIXME: this should do some structural hash-consing to avoid
@@ -4142,9 +4112,9 @@ fn trans_exit_task_glue(@crate_ctxt cx) {
     let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 0u);
     auto fcx = @rec(llfn=llfn,
                     lltaskptr=lltaskptr,
-                    llclosure=C_null(T_opaque_closure_ptr()),
+                    llenv=C_null(T_opaque_closure_ptr()),
+                    llretptr=C_null(T_ptr(T_nil())),
                     mutable llself=none[ValueRef],
-                    mutable llretptr=none[ValueRef],
                     llargs=new_def_hash[ValueRef](),
                     llobjfields=new_def_hash[ValueRef](),
                     lllocals=new_def_hash[ValueRef](),
