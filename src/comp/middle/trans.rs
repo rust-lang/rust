@@ -2710,6 +2710,14 @@ fn trans_args(@block_ctxt cx,
     }
     if (ty.type_has_dynamic_size(retty)) {
         llargs += cx.build.PointerCast(llretslot, T_typaram_ptr());
+    } else if (ty.count_ty_params(retty) != 0u) {
+        // It's possible that the callee has some generic-ness somewhere in
+        // its return value -- say a method signature within an obj or a fn
+        // type deep in a structure -- which the caller has a concrete view
+        // of. If so, cast the caller's view of the restlot to the callee's
+        // view, for the sake of making a type-compatible call.
+        llargs += cx.build.PointerCast(llretslot,
+                                       T_ptr(type_of(cx.fcx.ccx, retty)));
     } else {
         llargs += llretslot;
     }
