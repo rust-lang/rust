@@ -488,6 +488,7 @@ let elf32_linux_x86_file
     ~(entry_name:string)
     ~(text_frags:(string option, frag) Hashtbl.t)
     ~(data_frags:(string option, frag) Hashtbl.t)
+    ~(bss_frags:(string option, frag) Hashtbl.t)
     ~(rodata_frags:(string option, frag) Hashtbl.t)
     ~(required_fixups:(string, fixup) Hashtbl.t)
     ~(dwarf:Dwarf.debug_records)
@@ -652,7 +653,7 @@ let elf32_linux_x86_file
   (* let gotpltndx      = 8L in *)  (* Section index of .got.plt *)
   (* let relapltndx     = 9L in *)  (* Section index of .rela.plt *)
   let datandx        = 10L in  (* Section index of .data *)
-  (* let bssndx         = 11L in *) (* Section index of .bss *)
+  let bssndx         = 11L in  (* Section index of .bss *)
   (* let dynamicndx     = 12L in *) (* Section index of .dynamic *)
   let shstrtabndx    = 13L in (* Section index of .shstrtab *)
 
@@ -999,6 +1000,22 @@ let elf32_linux_x86_file
       (strtab_entry, symtab_entry)
   in
 
+  let bss_sym name st_bind fixup =
+    let name_fixup = new_fixup ("bss symbol name fixup: '" ^ name ^ "'") in
+    let strtab_entry = DEF (name_fixup, ZSTRING name) in
+    let symtab_entry =
+      symbol
+        ~string_table_fixup: dynstr_section_fixup
+        ~name_string_fixup: name_fixup
+        ~sym_target_fixup: (Some fixup)
+        ~st_bind
+        ~st_type: STT_OBJECT
+        ~st_shndx: bssndx
+    in
+      incr n_syms;
+      (strtab_entry, symtab_entry)
+  in
+
   let rodata_sym name st_bind fixup =
     let name_fixup = new_fixup ("rodata symbol name fixup: '" ^ name ^ "'") in
     let strtab_entry = DEF (name_fixup, ZSTRING name) in
@@ -1220,6 +1237,12 @@ let elf32_linux_x86_file
     Hashtbl.fold (frags_of_symbol data_sym STB_GLOBAL) data_frags ([],[],[])
   in
 
+  let (bss_strtab_frags,
+       bss_symtab_frags,
+       bss_body_frags) =
+    Hashtbl.fold (frags_of_symbol bss_sym STB_GLOBAL) bss_frags ([],[],[])
+  in
+
   let (_,
        require_strtab_frags,
        require_symtab_frags,
@@ -1285,7 +1308,8 @@ let elf32_linux_x86_file
                            global_text_symtab_frags @
                            local_text_symtab_frags @
                            rodata_symtab_frags @
-                           data_symtab_frags))
+                           data_symtab_frags @
+                           bss_symtab_frags))
   in
 
   let dynstr_frags = (null_strtab_frag ::
@@ -1294,6 +1318,7 @@ let elf32_linux_x86_file
                            local_text_strtab_frags @
                            rodata_strtab_frags @
                            data_strtab_frags @
+                           bss_strtab_frags @
                            (Array.to_list dynamic_needed_strtab_frags)))
   in
 
@@ -1319,7 +1344,7 @@ let elf32_linux_x86_file
   in
   let bss_section =
     DEF (bss_section_fixup,
-         SEQ [| |])
+         SEQ (Array.of_list bss_body_frags))
   in
   let dynsym_section =
     DEF (dynsym_section_fixup,
@@ -1498,6 +1523,7 @@ let emit_file
   let text_frags = Hashtbl.create 4 in
   let rodata_frags = Hashtbl.create 4 in
   let data_frags = Hashtbl.create 4 in
+  let bss_frags = Hashtbl.create 4 in
   let required_fixups = Hashtbl.create 4 in
 
   (*
@@ -1630,6 +1656,7 @@ let emit_file
       end
       sem.Semant.ctxt_native_required
   in
+
   let all_frags =
     elf32_linux_x86_file
       ~sess
@@ -1637,6 +1664,7 @@ let emit_file
       ~entry_name: "_start"
       ~text_frags
       ~data_frags
+      ~bss_frags
       ~dwarf
       ~sem
       ~rodata_frags
