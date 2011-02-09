@@ -628,6 +628,7 @@ let parse_crate_file
     let (os, arch, libc) =
       match sess.Session.sess_targ with
           Linux_x86_elf -> ("linux", "x86", "libc.so.6")
+        | FreeBSD_x86_elf -> ("freebsd", "x86", "libc.so.7")
         | Win32_x86_pe -> ("win32", "x86", "msvcrt.dll")
         | MacOS_x86_macho -> ("macos", "x86", "libc.dylib")
     in

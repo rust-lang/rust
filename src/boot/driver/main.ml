@@ -8,12 +8,21 @@ let _ =
 
 let (targ:Common.target) =
   match Sys.os_type with
-      "Unix" when Unix.system "test `uname -s` = 'Darwin'" = Unix.WEXITED 0 ->
-        MacOS_x86_macho
-    | "Unix" -> Linux_x86_elf
-    | "Win32" -> Win32_x86_pe
+
+    | "Win32"
     | "Cygwin" -> Win32_x86_pe
-    | _ -> Linux_x86_elf
+
+    | "Unix"
+        when Unix.system "test `uname -s` = 'Linux'" = Unix.WEXITED 0 ->
+        Linux_x86_elf
+    | "Unix"
+        when Unix.system "test `uname -s` = 'Darwin'" = Unix.WEXITED 0 ->
+        MacOS_x86_macho
+    | "Unix"
+        when Unix.system "test `uname -s` = 'FreeBSD'" = Unix.WEXITED 0 ->
+        FreeBSD_x86_elf
+    | _ ->
+        Linux_x86_elf
 ;;
 
 let (abi:Abi.abi) = X86.abi;;
@@ -96,6 +105,7 @@ let default_output_filename (sess:Session.sess) : filename option =
           else
             base ^ (match sess.Session.sess_targ with
                         Linux_x86_elf -> ""
+                      | FreeBSD_x86_elf -> ""
                       | MacOS_x86_macho -> ""
                       | Win32_x86_pe -> ".exe")
         in
@@ -144,16 +154,21 @@ let flag f opt desc =
 
 let argspecs =
   [
-    ("-t", Arg.Symbol (["linux-x86-elf"; "win32-x86-pe"; "macos-x86-macho"],
+    ("-t", Arg.Symbol (["linux-x86-elf";
+                        "win32-x86-pe";
+                        "macos-x86-macho";
+                        "freebsd-x86-elf"],
                        fun s -> (sess.Session.sess_targ <-
                                    (match s with
                                         "win32-x86-pe" -> Win32_x86_pe
                                       | "macos-x86-macho" -> MacOS_x86_macho
+                                      | "freebsd-x86-elf" -> FreeBSD_x86_elf
                                       | _ -> Linux_x86_elf))),
      (" target (default: " ^ (match sess.Session.sess_targ with
                                   Win32_x86_pe -> "win32-x86-pe"
                                 | Linux_x86_elf -> "linux-x86-elf"
                                 | MacOS_x86_macho -> "macos-x86-macho"
+                                | FreeBSD_x86_elf -> "freebsd-x86-elf"
                              ) ^ ")"));
     ("-o", Arg.String (fun s -> sess.Session.sess_out <- Some s),
      "file to output (default: "
@@ -320,6 +335,7 @@ let parse_input_crate
             let depfile =
               match sess.Session.sess_targ with
                   Linux_x86_elf
+                | FreeBSD_x86_elf
                 | MacOS_x86_macho -> outfile ^ ".d"
                 | Win32_x86_pe -> (Filename.chop_extension outfile) ^ ".d"
             in
@@ -473,6 +489,7 @@ let main_pipeline _ =
               Win32_x86_pe -> Pe.emit_file
             | MacOS_x86_macho -> Macho.emit_file
             | Linux_x86_elf -> Elf.emit_file
+            | FreeBSD_x86_elf -> Elf.emit_file
         in
           Session.time_inner "emit" sess
             (fun _ -> emitter sess crate code data sem_cx dwarf);
