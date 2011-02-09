@@ -474,10 +474,12 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         fun-indirect-call.rs \
                         generic-fn.rs \
                         generic-fn-infer.rs \
+                        generic-exterior-box.rs \
                         generic-drop-glue.rs \
                         generic-obj.rs \
                         generic-tup.rs \
                         generic-type.rs \
+                        generic-type-synonym.rs \
                         hello.rs \
                         int.rs \
                         i32-sub.rs \
@@ -489,6 +491,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         import6.rs \
                         import7.rs \
                         import8.rs \
+                        inner-module.rs \
                         item-name-overload.rs \
                         large-records.rs \
                         lazy-init.rs \
@@ -505,6 +508,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         opeq.rs \
                         output-slot-variants.rs \
                         over-constrained-vregs.rs \
+                        path.rs \
                         readalias.rs \
                         rec.rs \
                         rec-auto.rs \
