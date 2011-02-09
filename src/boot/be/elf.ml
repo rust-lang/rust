@@ -1644,6 +1644,27 @@ let emit_file
     htab_put text_frags None code;
     htab_put rodata_frags None data;
 
+    if sess.Session.sess_targ = FreeBSD_x86_elf
+    then
+      (* 
+       * FreeBSD wants some extra symbols in .bss so its libc can fill
+       * them in, I think.
+       *)
+      List.iter
+        (fun x -> htab_put bss_frags (Some x) (WORD (TY_u32, (IMM 0L))))
+        [
+          "environ";
+          "optind";
+          "optarg";
+          "_CurrentRuneLocale";
+          "__stack_chk_guard";
+          "__mb_sb_limit";
+          "__isthreaded";
+          "__stdinp";
+          "__stderrp";
+          "__stdoutp";
+        ];
+
     Hashtbl.iter
       begin
         fun _ tab ->
