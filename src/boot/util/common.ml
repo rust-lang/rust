@@ -56,6 +56,7 @@ type target =
     Linux_x86_elf
   | Win32_x86_pe
   | MacOS_x86_macho
+  | FreeBSD_x86_elf
 ;;
 
 type ty_mach =

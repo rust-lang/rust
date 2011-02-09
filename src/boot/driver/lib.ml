@@ -249,6 +249,7 @@ let get_ar
               Win32_x86_pe -> Pe.sniff
             | MacOS_x86_macho -> Macho.sniff
             | Linux_x86_elf -> Elf.sniff
+            | FreeBSD_x86_elf -> Elf.sniff
         in
           sniff sess filename
     end
@@ -270,6 +271,7 @@ let get_sects
                     Win32_x86_pe -> Pe.get_sections
                   | MacOS_x86_macho -> Macho.get_sections
                   | Linux_x86_elf -> Elf.get_sections
+                  | FreeBSD_x86_elf -> Elf.get_sections
               in
                 Some (ar, (get_sections sess ar))
     end
@@ -350,6 +352,7 @@ let get_mod
         Win32_x86_pe -> ".dll"
       | MacOS_x86_macho -> ".dylib"
       | Linux_x86_elf -> ".so"
+      | FreeBSD_x86_elf -> ".so"
   in
   let rec meta_matches i f_meta =
     if i >= (Array.length meta)
@@ -447,6 +450,7 @@ let infer_lib_name
       Win32_x86_pe -> ident ^ ".dll"
     | MacOS_x86_macho -> "lib" ^ ident ^ ".dylib"
     | Linux_x86_elf -> "lib" ^ ident ^ ".so"
+    | FreeBSD_x86_elf -> "lib" ^ ident ^ ".so"
 ;;
 
 
