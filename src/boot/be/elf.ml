@@ -1703,16 +1703,16 @@ let sniff
     : asm_reader option =
   try
     let stat = Unix.stat filename in
-    if (stat.Unix.st_kind = Unix.S_REG) &&
-      (stat.Unix.st_size > 4)
-    then
-      let ar = new_asm_reader sess filename in
-      let _ = log sess "sniffing ELF file" in
-        if (ar.asm_get_zstr_padded 4) = elf_magic
-        then (ar.asm_seek 0; Some ar)
-        else None
-    else
-      None
+      if (stat.Unix.st_kind = Unix.S_REG) &&
+        (stat.Unix.st_size > 4)
+      then
+        let ar = new_asm_reader sess filename in
+        let _ = log sess "sniffing ELF file" in
+          if (ar.asm_get_zstr_padded 4) = elf_magic
+          then (ar.asm_seek 0; Some ar)
+          else None
+      else
+        None
   with
       _ -> None
 ;;
