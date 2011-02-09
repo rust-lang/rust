@@ -399,13 +399,15 @@ fn type_of_fn_full(@crate_ctxt cx,
         }
     }
 
-    // Args >3: ty params ...
-    auto ty_param_count =
-        ty.count_ty_params(plain_ty(ty.ty_fn(inputs, output)));
-    auto i = 0u;
-    while (i < ty_param_count) {
-        atys += T_ptr(T_tydesc());
-        i += 1u;
+    // Args >3: ty params, if not acquired via capture...
+    if (obj_self == none[TypeRef]) {
+        auto ty_param_count =
+            ty.count_ty_params(plain_ty(ty.ty_fn(inputs, output)));
+        auto i = 0u;
+        while (i < ty_param_count) {
+            atys += T_ptr(T_tydesc());
+            i += 1u;
+        }
     }
 
     // ... then explicit args.
@@ -3387,11 +3389,13 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx,
 
     auto arg_n = 3u;
 
-    for (ast.ty_param tp in ty_params) {
-        auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
-        check (llarg as int != 0);
-        cx.lltydescs.insert(tp.id, llarg);
-        arg_n += 1u;
+    if (ty_self == none[TypeRef]) {
+        for (ast.ty_param tp in ty_params) {
+            auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
+            check (llarg as int != 0);
+            cx.lltydescs.insert(tp.id, llarg);
+            arg_n += 1u;
+        }
     }
 
 

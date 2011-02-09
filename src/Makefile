@@ -455,6 +455,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         generic-fn.rs \
                         generic-fn-infer.rs \
                         generic-drop-glue.rs \
+                        generic-obj.rs \
                         generic-tup.rs \
                         generic-type.rs \
                         hello.rs \
