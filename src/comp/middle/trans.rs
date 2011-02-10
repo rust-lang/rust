@@ -121,6 +121,10 @@ tag block_parent {
 state type result = rec(mutable @block_ctxt bcx,
                         mutable ValueRef val);
 
+fn sep() -> str {
+    ret "_";
+}
+
 fn res(@block_ctxt bcx, ValueRef val) -> result {
     ret rec(mutable bcx = bcx,
             mutable val = val);
@@ -1104,7 +1108,7 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, str name,
                      vec[ast.def_id] typaram_defs) -> ValueRef {
     auto llfnty = T_glue_fn();
 
-    auto fn_name = cx.names.next("_rust_" + name) + "." + ty.ty_to_str(t);
+    auto fn_name = cx.names.next("_rust_" + name) + sep() + ty.ty_to_str(t);
     fn_name = sanitize(fn_name);
     auto llfn = decl_fastcall_fn(cx.llmod, fn_name, llfnty);
 
@@ -2498,7 +2502,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
     // Construct a thunk-call with signature incoming_fty, and that copies
     // args forward into a call to outgoing_fty.
 
-    let str s = cx.names.next("_rust_thunk") + "." + cx.path;
+    let str s = cx.names.next("_rust_thunk") + sep() + cx.path;
     let TypeRef llthunk_ty = get_pair_fn_ty(type_of(cx, incoming_fty));
     let ValueRef llthunk = decl_fastcall_fn(cx.llmod, s, llthunk_ty);
 
@@ -3592,10 +3596,10 @@ fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
             }
         }
 
-        let @crate_ctxt mcx = @rec(path=cx.path + "." + m.node.ident
+        let @crate_ctxt mcx = @rec(path=cx.path + sep() + m.node.ident
                                    with *cx);
 
-        let str s = cx.names.next("_rust_method") + "." + mcx.path;
+        let str s = cx.names.next("_rust_method") + sep() + mcx.path;
         let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfnty);
         cx.item_ids.insert(m.node.id, llfn);
 
@@ -3606,7 +3610,7 @@ fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
     auto vtbl = C_struct(methods);
     auto gvar = llvm.LLVMAddGlobal(cx.llmod,
                                    val_ty(vtbl),
-                                   _str.buf("_rust_vtbl" + "." + cx.path));
+                                   _str.buf("_rust_vtbl" + sep() + cx.path));
     llvm.LLVMSetInitializer(gvar, vtbl);
     llvm.LLVMSetGlobalConstant(gvar, True);
     llvm.LLVMSetLinkage(gvar, lib.llvm.LLVMPrivateLinkage
@@ -3837,21 +3841,21 @@ fn trans_const(@crate_ctxt cx, @ast.expr e,
 fn trans_item(@crate_ctxt cx, &ast.item item) {
     alt (item.node) {
         case (ast.item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
-            auto sub_cx = @rec(path=cx.path + "." + name with *cx);
+            auto sub_cx = @rec(path=cx.path + sep() + name with *cx);
             trans_fn(sub_cx, f, fid, none[TypeRef], tps, ann);
         }
         case (ast.item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
-            auto sub_cx = @rec(path=cx.path + "." + name,
+            auto sub_cx = @rec(path=cx.path + sep() + name,
                                obj_typarams=tps,
                                obj_fields=ob.fields with *cx);
             trans_obj(sub_cx, ob, oid, tps, ann);
         }
         case (ast.item_mod(?name, ?m, _)) {
-            auto sub_cx = @rec(path=cx.path + "." + name with *cx);
+            auto sub_cx = @rec(path=cx.path + sep() + name with *cx);
             trans_mod(sub_cx, m);
         }
         case (ast.item_tag(?name, ?variants, ?tps, ?tag_id)) {
-            auto sub_cx = @rec(path=cx.path + "." + name with *cx);
+            auto sub_cx = @rec(path=cx.path + sep() + name with *cx);
             auto i = 0;
             for (ast.variant variant in variants) {
                 trans_tag_variant(sub_cx, tag_id, variant, i, tps);
@@ -3859,7 +3863,7 @@ fn trans_item(@crate_ctxt cx, &ast.item item) {
             }
         }
         case (ast.item_const(?name, _, ?expr, ?cid, ?ann)) {
-            auto sub_cx = @rec(path=cx.path + "." + name with *cx);
+            auto sub_cx = @rec(path=cx.path + sep() + name with *cx);
             trans_const(sub_cx, expr, cid, ann);
         }
         case (_) { /* fall through */ }
@@ -3890,11 +3894,11 @@ fn decl_fn_and_pair(@crate_ctxt cx,
     auto llfty = get_pair_fn_ty(llpairty);
 
     // Declare the function itself.
-    let str s = cx.names.next("_rust_" + kind) + "." + name;
+    let str s = cx.names.next("_rust_" + kind) + sep() + name;
     let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfty);
 
     // Declare the global constant pair that points to it.
-    let str ps = cx.names.next("_rust_" + kind + "_pair") + "." + name;
+    let str ps = cx.names.next("_rust_" + kind + "_pair") + sep() + name;
     let ValueRef gvar = llvm.LLVMAddGlobal(cx.llmod, llpairty,
                                            _str.buf(ps));
     auto pair = C_struct(vec(llfn,
@@ -4208,8 +4212,8 @@ fn trans_main_fn(@crate_ctxt cx, ValueRef llcrate) {
 
     auto llargc = llvm.LLVMGetParam(llmain, 0u);
     auto llargv = llvm.LLVMGetParam(llmain, 1u);
-    check (cx.item_names.contains_key("_rust.main"));
-    auto llrust_main = cx.item_names.get("_rust.main");
+    check (cx.item_names.contains_key("_rust" + sep() + "main"));
+    auto llrust_main = cx.item_names.get("_rust"  + sep() + "main");
 
     //
     // Emit the moral equivalent of:
