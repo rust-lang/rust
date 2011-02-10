@@ -86,7 +86,11 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
             fn fold_simple_ty(@ty.t t) -> @ty.t {
                 alt (t.struct) {
                     case (ty.ty_param(?param_def)) {
-                        ret param_map.get(param_def);
+                        if (param_map.contains_key(param_def)) {
+                            ret param_map.get(param_def);
+                        } else {
+                            ret t;
+                        }
                     }
                     case (_) {
                         ret t;
