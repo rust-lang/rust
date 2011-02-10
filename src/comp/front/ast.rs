@@ -315,6 +315,17 @@ fn index_native_item(native_mod_index index, @native_item it) {
     }
 }
 
+fn is_call_expr(@expr e) -> bool {
+    alt (e.node) {
+        case (expr_call(_, _, _)) {
+            ret true;
+        }
+        case (_) {
+            ret false;
+        }
+    }
+}
+
 //
 // Local Variables:
 // mode: rust

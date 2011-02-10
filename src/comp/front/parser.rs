@@ -1203,7 +1203,13 @@ impure fn parse_stmt(parser p) -> @ast.stmt {
         case (token.BE) {
             p.bump();
             auto e = parse_expr(p);
-            ret @spanned(lo, e.span, ast.stmt_be(e));
+            // FIXME: Is this the right place for this check?
+            if /*check*/ (ast.is_call_expr(e)) {
+                ret @spanned(lo, e.span, ast.stmt_be(e));
+            }
+            else {
+                p.err("Non-call expression in tail call");
+            }
         }
 
         case (token.LET) {
