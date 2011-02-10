@@ -253,6 +253,10 @@ upcall_fail(rust_task *task,
     task->log(rust_log::UPCALL | rust_log::ERR,
               "upcall fail '%s', %s:%" PRIdPTR, expr, file, line);
     task->fail(4);
+    if (getenv("RUST_TRAP_FAILURE")) {
+        // FIXME: x86-ism.
+        __asm__("int3");
+    }
 }
 
 /**
