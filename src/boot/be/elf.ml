@@ -64,7 +64,6 @@ let elf_identification sess ei_class ei_data =
                                 (* EI_OSABI *)
           (match sess.Session.sess_targ with
                FreeBSD_x86_elf -> 9
-             | Linux_x86_elf -> 3
              | _ -> 0);
 
           0;                    (* EI_ABIVERSION *)
