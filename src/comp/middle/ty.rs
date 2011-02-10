@@ -43,6 +43,7 @@ tag sty {
     ty_local(ast.def_id);                           // type of a local var
     ty_param(ast.def_id);                           // fn type param
     ty_type;
+    ty_native;
     // TODO: ty_fn_arg(@t), for a possibly-aliased function argument
 }
 
@@ -286,6 +287,7 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
         case (ty_str)           { ret fld.fold_simple_ty(ty); }
         case (ty_tag(_))        { ret fld.fold_simple_ty(ty); }
         case (ty_type)          { ret fld.fold_simple_ty(ty); }
+        case (ty_native)        { ret fld.fold_simple_ty(ty); }
         case (ty_box(?subty)) {
             ret rewrap(ty, ty_box(fold_ty(fld, subty)));
         }
