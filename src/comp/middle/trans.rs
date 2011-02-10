@@ -2704,7 +2704,10 @@ fn trans_args(@block_ctxt cx,
 
     // Arg 0: Output pointer.
     auto retty = ty.ty_fn_ret(fn_ty);
-    auto llretslot = cx.build.Alloca(type_of(cx.fcx.ccx, retty));
+    auto llretslot_res = alloc_ty(bcx, retty);
+    bcx = llretslot_res.bcx;
+    auto llretslot = llretslot_res.val;
+
     alt (gen) {
         case (some[generic_info](?g)) {
             lltydescs = g.tydescs;
@@ -2715,7 +2718,7 @@ fn trans_args(@block_ctxt cx,
         }
     }
     if (ty.type_has_dynamic_size(retty)) {
-        llargs += cx.build.PointerCast(llretslot, T_typaram_ptr());
+        llargs += bcx.build.PointerCast(llretslot, T_typaram_ptr());
     } else if (ty.count_ty_params(retty) != 0u) {
         // It's possible that the callee has some generic-ness somewhere in
         // its return value -- say a method signature within an obj or a fn
@@ -2723,14 +2726,14 @@ fn trans_args(@block_ctxt cx,
         // of. If so, cast the caller's view of the restlot to the callee's
         // view, for the sake of making a type-compatible call.
         llargs += cx.build.PointerCast(llretslot,
-                                       T_ptr(type_of(cx.fcx.ccx, retty)));
+                                       T_ptr(type_of(bcx.fcx.ccx, retty)));
     } else {
         llargs += llretslot;
     }
 
 
     // Arg 1: Task pointer.
-    llargs += cx.fcx.lltaskptr;
+    llargs += bcx.fcx.lltaskptr;
 
     // Arg 2: Env (closure-bindings / self-obj)
     alt (llobj) {
@@ -2738,7 +2741,7 @@ fn trans_args(@block_ctxt cx,
             // Every object is always found in memory,
             // and not-yet-loaded (as part of an lval x.y
             // doted method-call).
-            llargs += cx.build.Load(ob);
+            llargs += bcx.build.Load(ob);
         }
         case (_) {
             llargs += llenv;
@@ -2848,25 +2851,32 @@ fn trans_call(@block_ctxt cx, @ast.expr f,
         find_scope_cx(cx).cleanups += clean(bind drop_ty(_, retval, ret_ty));
     }
 
+    // log "call-result type: " + val_str(retval);
     ret res(bcx, retval);
 }
 
 fn trans_tup(@block_ctxt cx, vec[ast.elt] elts,
              &ast.ann ann) -> result {
-    auto t = node_ann_type(cx.fcx.ccx, ann);
-    auto llty = type_of(cx.fcx.ccx, t);
-    auto tup_val = cx.build.Alloca(llty);
+    auto bcx = cx;
+    auto t = node_ann_type(bcx.fcx.ccx, ann);
+    auto llty = type_of(bcx.fcx.ccx, t);
+    auto tup_res = alloc_ty(bcx, t);
+    auto tup_val = tup_res.val;
+    bcx = tup_res.bcx;
+
     find_scope_cx(cx).cleanups += clean(bind drop_ty(_, tup_val, t));
     let int i = 0;
-    auto r = res(cx, C_nil());
+
     for (ast.elt e in elts) {
-        auto t = ty.expr_ty(e.expr);
-        auto src_res = trans_expr(r.bcx, e.expr);
-        auto dst_elt = r.bcx.build.GEP(tup_val, vec(C_int(0), C_int(i)));
-        r = copy_ty(src_res.bcx, INIT, dst_elt, src_res.val, t);
+        auto e_ty = ty.expr_ty(e.expr);
+        auto src_res = trans_expr(bcx, e.expr);
+        bcx = src_res.bcx;
+        auto dst_res = GEP_tup_like(bcx, t, tup_val, vec(0, i));
+        bcx = dst_res.bcx;
+        bcx = copy_ty(src_res.bcx, INIT, dst_res.val, src_res.val, e_ty).bcx;
         i += 1;
     }
-    ret res(r.bcx, tup_val);
+    ret res(bcx, tup_val);
 }
 
 fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
@@ -2891,44 +2901,58 @@ fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
 
     // FIXME: pass tydesc properly.
     auto sub = trans_upcall(bcx, "upcall_new_vec", vec(data_sz, C_int(0)));
+    bcx = sub.bcx;
 
     auto llty = type_of(bcx.fcx.ccx, t);
-    auto vec_val = sub.bcx.build.IntToPtr(sub.val, llty);
+    auto vec_val = bcx.build.IntToPtr(sub.val, llty);
     find_scope_cx(bcx).cleanups += clean(bind drop_ty(_, vec_val, t));
 
-    auto body = sub.bcx.build.GEP(vec_val, vec(C_int(0),
-                                               C_int(abi.vec_elt_data)));
+    auto body = bcx.build.GEP(vec_val, vec(C_int(0),
+                                           C_int(abi.vec_elt_data)));
+
+    auto pseudo_tup_ty =
+        plain_ty(ty.ty_tup(_vec.init_elt[@ty.t](unit_ty,
+                                                _vec.len[@ast.expr](args))));
     let int i = 0;
+
     for (@ast.expr e in args) {
-        auto src_res = trans_expr(sub.bcx, e);
-        auto dst_elt = sub.bcx.build.GEP(body, vec(C_int(0), C_int(i)));
-        sub = copy_ty(src_res.bcx, INIT, dst_elt, src_res.val, unit_ty);
+        auto src_res = trans_expr(bcx, e);
+        bcx = src_res.bcx;
+        auto dst_res = GEP_tup_like(bcx, pseudo_tup_ty, body, vec(0, i));
+        bcx = dst_res.bcx;
+        bcx = copy_ty(bcx, INIT, dst_res.val, src_res.val, unit_ty).bcx;
         i += 1;
     }
-    auto fill = sub.bcx.build.GEP(vec_val,
-                                  vec(C_int(0), C_int(abi.vec_elt_fill)));
-    sub.bcx.build.Store(data_sz, fill);
+    auto fill = bcx.build.GEP(vec_val,
+                              vec(C_int(0), C_int(abi.vec_elt_fill)));
+    bcx.build.Store(data_sz, fill);
 
-    ret res(sub.bcx, vec_val);
+    ret res(bcx, vec_val);
 }
 
 fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
              &ast.ann ann) -> result {
-    auto t = node_ann_type(cx.fcx.ccx, ann);
-    auto llty = type_of(cx.fcx.ccx, t);
-    auto rec_val = cx.build.Alloca(llty);
+
+    auto bcx = cx;
+    auto t = node_ann_type(bcx.fcx.ccx, ann);
+    auto llty = type_of(bcx.fcx.ccx, t);
+    auto rec_res = alloc_ty(bcx, t);
+    auto rec_val = rec_res.val;
+    bcx = rec_res.bcx;
+
     find_scope_cx(cx).cleanups += clean(bind drop_ty(_, rec_val, t));
     let int i = 0;
-    auto r = res(cx, C_nil());
+
     for (ast.field f in fields) {
-        auto t = ty.expr_ty(f.expr);
-        auto src_res = trans_expr(r.bcx, f.expr);
-        auto dst_elt = r.bcx.build.GEP(rec_val, vec(C_int(0), C_int(i)));
-        // FIXME: calculate copy init-ness in typestate.
-        r = copy_ty(src_res.bcx, INIT, dst_elt, src_res.val, t);
+        auto e_ty = ty.expr_ty(f.expr);
+        auto src_res = trans_expr(bcx, f.expr);
+        bcx = src_res.bcx;
+        auto dst_res = GEP_tup_like(bcx, t, rec_val, vec(0, i));
+        bcx = dst_res.bcx;
+        bcx = copy_ty(src_res.bcx, INIT, dst_res.val, src_res.val, e_ty).bcx;
         i += 1;
     }
-    ret res(r.bcx, rec_val);
+    ret res(bcx, rec_val);
 }
 
 
@@ -3300,8 +3324,7 @@ iter block_locals(&ast.block b) -> @ast.local {
     }
 }
 
-fn alloc_local(@block_ctxt cx, @ast.local local) -> result {
-    auto t = node_ann_type(cx.fcx.ccx, local.ann);
+fn alloc_ty(@block_ctxt cx, @ty.t t) -> result {
     auto val = C_int(0);
     auto bcx = cx;
     if (ty.type_has_dynamic_size(t)) {
@@ -3311,8 +3334,14 @@ fn alloc_local(@block_ctxt cx, @ast.local local) -> result {
     } else {
         val = bcx.build.Alloca(type_of(cx.fcx.ccx, t));
     }
-    bcx.fcx.lllocals.insert(local.id, val);
     ret res(bcx, val);
+}
+
+fn alloc_local(@block_ctxt cx, @ast.local local) -> result {
+    auto t = node_ann_type(cx.fcx.ccx, local.ann);
+    auto r = alloc_ty(cx, t);
+    r.bcx.fcx.lllocals.insert(local.id, r.val);
+    ret r;
 }
 
 fn trans_block(@block_ctxt cx, &ast.block b) -> result {
