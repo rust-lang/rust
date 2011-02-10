@@ -18,6 +18,7 @@ import std._vec;
 tag scope {
     scope_crate(@ast.crate);
     scope_item(@ast.item);
+    scope_native_item(@ast.native_item);
     scope_loop(@ast.decl); // there's only 1 decl per loop.
     scope_block(ast.block);
     scope_arm(ast.arm);
@@ -309,6 +310,23 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
         }
     }
 
+    fn handle_fn_decl(ast.ident i, &ast.fn_decl decl,
+                      &vec[ast.ty_param] ty_params) -> option.t[def_wrap] {
+        for (ast.arg a in decl.inputs) {
+            if (_str.eq(a.ident, i)) {
+                auto t = ast.def_arg(a.id);
+                ret some(def_wrap_other(t));
+            }
+        }
+        for (ast.ty_param tp in ty_params) {
+            if (_str.eq(tp.ident, i)) {
+                auto t = ast.def_ty_arg(tp.id);
+                ret some(def_wrap_other(t));
+            }
+        }
+        ret none[def_wrap];
+    }
+
     fn in_scope(ast.ident i, &scope s) -> option.t[def_wrap] {
         alt (s) {
 
@@ -319,18 +337,7 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
             case (scope_item(?it)) {
                 alt (it.node) {
                     case (ast.item_fn(_, ?f, ?ty_params, _, _)) {
-                        for (ast.arg a in f.decl.inputs) {
-                            if (_str.eq(a.ident, i)) {
-                                auto t = ast.def_arg(a.id);
-                                ret some(def_wrap_other(t));
-                            }
-                        }
-                        for (ast.ty_param tp in ty_params) {
-                            if (_str.eq(tp.ident, i)) {
-                                auto t = ast.def_ty_arg(tp.id);
-                                ret some(def_wrap_other(t));
-                            }
-                        }
+                        ret handle_fn_decl(i, f.decl, ty_params);
                     }
                     case (ast.item_obj(_, ?ob, ?ty_params, _, _)) {
                         for (ast.obj_field f in ob.fields) {
@@ -361,6 +368,14 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
                         }
                     }
                     case (_) { /* fall through */ }
+                }
+            }
+
+            case (scope_native_item(?it)) {
+                alt (it.node) {
+                    case (ast.native_item_fn(_, ?decl, ?ty_params, _)) {
+                        ret handle_fn_decl(i, decl, ty_params);
+                    }
                 }
             }
 
@@ -529,6 +544,10 @@ fn update_env_for_item(&env e, @ast.item i) -> env {
     ret rec(scopes = cons[scope](scope_item(i), @e.scopes) with e);
 }
 
+fn update_env_for_native_item(&env e, @ast.native_item i) -> env {
+    ret rec(scopes = cons[scope](scope_native_item(i), @e.scopes) with e);
+}
+
 fn update_env_for_block(&env e, &ast.block b) -> env {
     ret rec(scopes = cons[scope](scope_block(b), @e.scopes) with e);
 }
@@ -555,6 +574,8 @@ fn resolve_imports(session.session sess, @ast.crate crate) -> @ast.crate {
                     = bind fold_view_item_import(_,_,import_index,_,_,_,_),
                 update_env_for_crate = bind update_env_for_crate(_,_),
                 update_env_for_item = bind update_env_for_item(_,_),
+                update_env_for_native_item =
+                    bind update_env_for_native_item(_,_),
                 update_env_for_block = bind update_env_for_block(_,_),
                 update_env_for_arm = bind update_env_for_arm(_,_),
                 update_env_for_expr = bind update_env_for_expr(_,_)
@@ -577,6 +598,8 @@ fn resolve_crate(session.session sess, @ast.crate crate) -> @ast.crate {
                 fold_ty_path = bind fold_ty_path(_,_,_,_),
                 update_env_for_crate = bind update_env_for_crate(_,_),
                 update_env_for_item = bind update_env_for_item(_,_),
+                update_env_for_native_item =
+                    bind update_env_for_native_item(_,_),
                 update_env_for_block = bind update_env_for_block(_,_),
                 update_env_for_arm = bind update_env_for_arm(_,_),
                 update_env_for_expr = bind update_env_for_expr(_,_)

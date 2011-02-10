@@ -872,7 +872,8 @@ fn fold_native_item[ENV](&ENV env, ast_fold[ENV] fld,
             ret fld.fold_native_item_ty(env_, i.span, ident, id);
         }
         case (ast.native_item_fn(?ident, ?fn_decl, ?ty_params, ?id)) {
-            ret fld.fold_native_item_fn(env_, i.span, ident, fn_decl,
+            auto d = fold_fn_decl[ENV](env_, fld, fn_decl);
+            ret fld.fold_native_item_fn(env_, i.span, ident, d,
                                         ty_params, id);
         }
     }
