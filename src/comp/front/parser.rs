@@ -351,9 +351,9 @@ impure fn parse_seq[T](token.token bra,
     ret spanned(lo, hi, v);
 }
 
-impure fn parse_lit(parser p) -> option.t[ast.lit] {
+impure fn parse_lit(parser p) -> ast.lit {
     auto lo = p.get_span();
-    let ast.lit_ lit;
+    let ast.lit_ lit = ast.lit_nil;
     alt (p.peek()) {
         case (token.LIT_INT(?i)) {
             p.bump();
@@ -379,12 +379,11 @@ impure fn parse_lit(parser p) -> option.t[ast.lit] {
             p.bump();
             lit = ast.lit_str(s);
         }
-        case (_) {
-            lit = ast.lit_nil;  // FIXME: typestate bug requires this
-            ret none[ast.lit];
+        case (?t) {
+            unexpected(p, t);
         }
     }
-    ret some(spanned(lo, lo, lit));
+    ret spanned(lo, lo, lit);
 }
 
 fn is_ident(token.token t) -> bool {
@@ -565,15 +564,9 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
         }
 
         case (_) {
-            alt (parse_lit(p)) {
-                case (some[ast.lit](?lit)) {
-                    hi = lit.span;
-                    ex = ast.expr_lit(@lit, ast.ann_none);
-                }
-                case (none[ast.lit]) {
-                    p.err("expecting expression");
-                }
-            }
+            auto lit = parse_lit(p);
+            hi = lit.span;
+            ex = ast.expr_lit(@lit, ast.ann_none);
         }
     }
 
@@ -1081,10 +1074,12 @@ impure fn parse_initializer(parser p) -> option.t[@ast.expr] {
 
 impure fn parse_pat(parser p) -> @ast.pat {
     auto lo = p.get_span();
-
+    auto hi = lo;
     auto pat = ast.pat_wild(ast.ann_none);  // FIXME: typestate bug
+
     alt (p.peek()) {
         case (token.UNDERSCORE) {
+            hi = p.get_span();
             p.bump();
             pat = ast.pat_wild(ast.ann_none);
         }
@@ -1092,6 +1087,7 @@ impure fn parse_pat(parser p) -> @ast.pat {
             p.bump();
             alt (p.peek()) {
                 case (token.IDENT(?id)) {
+                    hi = p.get_span();
                     p.bump();
                     pat = ast.pat_bind(id, p.next_def_id(), ast.ann_none);
                 }
@@ -1104,13 +1100,16 @@ impure fn parse_pat(parser p) -> @ast.pat {
         }
         case (token.IDENT(?id)) {
             auto tag_path = parse_path(p, GREEDY);
+            hi = tag_path.span;
 
             let vec[@ast.pat] args;
             alt (p.peek()) {
                 case (token.LPAREN) {
                     auto f = parse_pat;
-                    args = parse_seq[@ast.pat](token.LPAREN, token.RPAREN,
-                                               some(token.COMMA), f, p).node;
+                    auto a = parse_seq[@ast.pat](token.LPAREN, token.RPAREN,
+                                                 some(token.COMMA), f, p);
+                    args = a.node;
+                    hi = a.span;
                 }
                 case (_) { args = vec(); }
             }
@@ -1118,13 +1117,13 @@ impure fn parse_pat(parser p) -> @ast.pat {
             pat = ast.pat_tag(tag_path, args, none[ast.variant_def],
                               ast.ann_none);
         }
-        case (?tok) {
-            p.err("expected pattern but found " + token.to_str(tok));
-            fail;
+        case (_) {
+            auto lit = parse_lit(p);
+            hi = lit.span;
+            pat = ast.pat_lit(@lit, ast.ann_none);
         }
     }
 
-    auto hi = p.get_span();
     ret @spanned(lo, hi, pat);
 }
 
