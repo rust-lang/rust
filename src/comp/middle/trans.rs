@@ -2376,10 +2376,8 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
 
 fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
                &ast.ident field, &ast.ann ann) -> lval_result {
-    auto lv = trans_lval(cx, base);
-    auto r = lv.res;
+    auto r = trans_expr(cx, base);
     r = autoderef(r.bcx, r.val, ty.expr_ty(base));
-    check (lv.is_mem);
     auto t = ty.expr_ty(base);
     alt (t.struct) {
         case (ty.ty_tup(?fields)) {

@@ -449,6 +449,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         arith-0.rs \
                         arith-1.rs \
                         arith-2.rs \
+                        auto-instantiate.rs \
                         autoderef-full-lval.rs \
                         bind-exterior.rs \
                         bind-interior.rs \
@@ -479,6 +480,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         generic-exterior-box.rs \
                         generic-drop-glue.rs \
                         generic-obj.rs \
+                        generic-obj-with-derived-type.rs \
                         generic-tup.rs \
                         generic-type.rs \
                         generic-type-synonym.rs \
