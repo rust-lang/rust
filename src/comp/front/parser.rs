@@ -173,6 +173,10 @@ impure fn parse_ty_obj(parser p, &mutable ast.span hi) -> ast.ty_ {
     expect(p, token.OBJ);
     impure fn parse_method_sig(parser p) -> ast.ty_method {
         auto flo = p.get_span();
+
+        // FIXME: do something with this, currently it's dropped on the floor.
+        let ast.effect eff = parse_effect(p);
+
         expect(p, token.FN);
         auto ident = parse_ident(p);
         auto f = parse_ty_fn(p, flo);
@@ -204,6 +208,12 @@ impure fn parse_ty(parser p) -> @ast.ty {
     auto lo = p.get_span();
     auto hi = lo;
     let ast.ty_ t;
+
+    // FIXME: do something with these; currently they're
+    // dropped on the floor.
+    let ast.effect eff = parse_effect(p);
+    let ast.layer lyr = parse_layer(p);
+
     alt (p.peek()) {
         case (token.BOOL) { p.bump(); t = ast.ty_bool; }
         case (token.INT) { p.bump(); t = ast.ty_int; }
