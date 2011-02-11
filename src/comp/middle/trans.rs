@@ -1838,6 +1838,24 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
     fail;
 }
 
+// FIXME: implement proper structural comparison.
+
+fn trans_compare(@block_ctxt cx, ast.binop op,
+                 ValueRef lhs, ValueRef rhs) -> ValueRef {
+    auto cmp = lib.llvm.LLVMIntEQ;
+    alt (op) {
+        case (ast.eq) { cmp = lib.llvm.LLVMIntEQ; }
+        case (ast.ne) { cmp = lib.llvm.LLVMIntNE; }
+
+        // FIXME (issue #57): switch by signedness.
+        case (ast.lt) { cmp = lib.llvm.LLVMIntSLT; }
+        case (ast.le) { cmp = lib.llvm.LLVMIntSLE; }
+        case (ast.ge) { cmp = lib.llvm.LLVMIntSGE; }
+        case (ast.gt) { cmp = lib.llvm.LLVMIntSGT; }
+    }
+    ret cx.build.ICmp(cmp, lhs, rhs);
+}
+
 fn trans_eager_binop(@block_ctxt cx, ast.binop op,
                      ValueRef lhs, ValueRef rhs) -> ValueRef {
 
@@ -1857,18 +1875,7 @@ fn trans_eager_binop(@block_ctxt cx, ast.binop op,
         case (ast.lsr) { ret cx.build.LShr(lhs, rhs); }
         case (ast.asr) { ret cx.build.AShr(lhs, rhs); }
         case (_) {
-            auto cmp = lib.llvm.LLVMIntEQ;
-            alt (op) {
-                case (ast.eq) { cmp = lib.llvm.LLVMIntEQ; }
-                case (ast.ne) { cmp = lib.llvm.LLVMIntNE; }
-
-                // FIXME (issue #57): switch by signedness.
-                case (ast.lt) { cmp = lib.llvm.LLVMIntSLT; }
-                case (ast.le) { cmp = lib.llvm.LLVMIntSLE; }
-                case (ast.ge) { cmp = lib.llvm.LLVMIntSGE; }
-                case (ast.gt) { cmp = lib.llvm.LLVMIntSGT; }
-            }
-            ret cx.build.ICmp(cmp, lhs, rhs);
+            ret trans_compare(cx, op, lhs, rhs);
         }
     }
     fail;
@@ -2132,6 +2139,16 @@ fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
     alt (pat.node) {
         case (ast.pat_wild(_)) { ret res(cx, llval); }
         case (ast.pat_bind(_, _, _)) { ret res(cx, llval); }
+
+        case (ast.pat_lit(?lt, ?ann)) {
+            auto lllit = trans_lit(cx.fcx.ccx, *lt, ann);
+            auto lleq = trans_compare(cx, ast.eq, llval, lllit);
+
+            auto matched_cx = new_sub_block_ctxt(cx, "matched_cx");
+            cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
+            ret res(matched_cx, llval);
+        }
+
         case (ast.pat_tag(?id, ?subpats, ?vdef_opt, ?ann)) {
             auto lltagptr = cx.build.GEP(llval, vec(C_int(0), C_int(0)));
             auto lltag = cx.build.Load(lltagptr);
@@ -2184,6 +2201,7 @@ fn trans_pat_binding(@block_ctxt cx, @ast.pat pat, ValueRef llval)
     -> result {
     alt (pat.node) {
         case (ast.pat_wild(_)) { ret res(cx, llval); }
+        case (ast.pat_lit(_, _)) { ret res(cx, llval); }
         case (ast.pat_bind(?id, ?def_id, ?ann)) {
             auto ty = node_ann_type(cx.fcx.ccx, ann);
             auto llty = type_of(cx.fcx.ccx, ty);

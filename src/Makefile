@@ -444,6 +444,7 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
 TEST_XFAILS_RUSTC := $(filter-out \
                       $(addprefix test/run-pass/, \
                         alt-path.rs \
+                        alt-pattern-lit.rs \
                         alt-pattern-simple.rs \
                         alt-tag.rs \
                         arith-0.rs \
