@@ -656,6 +656,7 @@ fn block_ty(&ast.block b) -> @t {
 fn pat_ty(@ast.pat pat) -> @t {
     alt (pat.node) {
         case (ast.pat_wild(?ann))           { ret ann_to_type(ann); }
+        case (ast.pat_lit(_, ?ann))         { ret ann_to_type(ann); }
         case (ast.pat_bind(_, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.pat_tag(_, _, _, ?ann))   { ret ann_to_type(ann); }
     }

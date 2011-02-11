@@ -807,6 +807,10 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
             auto t = demand(fcx, pat.span, expected, ann_to_type(ann));
             p_1 = ast.pat_wild(ast.ann_type(t));
         }
+        case (ast.pat_lit(?lit, ?ann)) {
+            auto t = demand(fcx, pat.span, expected, ann_to_type(ann));
+            p_1 = ast.pat_lit(lit, ast.ann_type(t));
+        }
         case (ast.pat_bind(?id, ?did, ?ann)) {
             auto t = demand(fcx, pat.span, expected, ann_to_type(ann));
             fcx.locals.insert(did, t);
@@ -1092,6 +1096,9 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
     alt (pat.node) {
         case (ast.pat_wild(_)) {
             new_pat = ast.pat_wild(ast.ann_type(next_ty_var(fcx.ccx)));
+        }
+        case (ast.pat_lit(?lt, _)) {
+            new_pat = ast.pat_lit(lt, ast.ann_type(check_lit(lt)));
         }
         case (ast.pat_bind(?id, ?def_id, _)) {
             auto ann = ast.ann_type(next_ty_var(fcx.ccx));
