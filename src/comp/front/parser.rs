@@ -1331,6 +1331,7 @@ fn index_arm(@ast.pat pat) -> hashmap[ast.ident,ast.def_id] {
         alt (pat.node) {
             case (ast.pat_bind(?i, ?def_id, _)) { index.insert(i, def_id); }
             case (ast.pat_wild(_)) { /* empty */ }
+            case (ast.pat_lit(_, _)) { /* empty */ }
             case (ast.pat_tag(_, ?pats, _, _)) {
                 for (@ast.pat p in pats) {
                     do_index_arm(index, p);
