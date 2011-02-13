@@ -408,6 +408,7 @@ TASK_XFAILS := test/run-pass/task-comm-8.rs \
 TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     $(NOMINAL_TAG_XFAILS) \
                     $(CONST_TAG_XFAILS) \
+                    test/run-pass/arith-unsigned.rs \
                     test/run-pass/child-outlives-parent.rs \
                     test/run-pass/clone-with-exterior.rs \
                     test/run-pass/constrained-type.rs \
@@ -450,6 +451,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         arith-0.rs \
                         arith-1.rs \
                         arith-2.rs \
+                        arith-unsigned.rs \
                         auto-instantiate.rs \
                         autoderef-full-lval.rs \
                         bind-exterior.rs \
