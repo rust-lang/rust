@@ -1253,7 +1253,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 }
                 case (ast.def_variant(_, ?variant_id)) {
                     check (fcx.ccx.item_types.contains_key(variant_id));
-                    t = fcx.ccx.item_types.get(variant_id);
+                    t = generalize_ty(fcx.ccx,
+                                      fcx.ccx.item_types.get(variant_id));
                 }
                 case (ast.def_binding(?id)) {
                     check (fcx.locals.contains_key(id));
