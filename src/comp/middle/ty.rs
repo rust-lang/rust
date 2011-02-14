@@ -968,6 +968,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             case (ty.ty_char)       { ret struct_cmp(expected, actual); }
             case (ty.ty_str)        { ret struct_cmp(expected, actual); }
             case (ty.ty_type)       { ret struct_cmp(expected, actual); }
+            case (ty.ty_native)     { ret struct_cmp(expected, actual); }
 
             case (ty.ty_tag(?expected_id)) {
                 alt (actual.struct) {
