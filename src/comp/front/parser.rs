@@ -529,14 +529,37 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
 
         case (token.REC) {
             p.bump();
-            auto pf = parse_field;
-            auto fs =
-                parse_seq[ast.field](token.LPAREN,
-                                     token.RPAREN,
-                                     some(token.COMMA),
-                                     pf, p);
-            hi = fs.span;
-            ex = ast.expr_rec(fs.node, ast.ann_none);
+            expect(p, token.LPAREN);
+            auto fields = vec(parse_field(p));
+
+            auto more = true;
+            auto base = none[@ast.expr];
+            while (more) {
+                alt (p.peek()) {
+                    case (token.RPAREN) {
+                        hi = p.get_span();
+                        p.bump();
+                        more = false;
+                    }
+                    case (token.WITH) {
+                        p.bump();
+                        base = some[@ast.expr](parse_expr(p));
+                        hi = p.get_span();
+                        expect(p, token.RPAREN);
+                        more = false;
+                    }
+                    case (token.COMMA) {
+                        p.bump();
+                        fields += parse_field(p);
+                    }
+                    case (?t) {
+                        unexpected(p, t);
+                    }
+                }
+
+            }
+
+            ex = ast.expr_rec(fields, base, ast.ann_none);
         }
 
         case (token.BIND) {
@@ -1370,7 +1393,7 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
             alt (e.node) {
                 case (ast.expr_vec(_,_))        { ret true; }
                 case (ast.expr_tup(_,_))        { ret true; }
-                case (ast.expr_rec(_,_))        { ret true; }
+                case (ast.expr_rec(_,_,_))      { ret true; }
                 case (ast.expr_call(_,_,_))     { ret true; }
                 case (ast.expr_binary(_,_,_,_)) { ret true; }
                 case (ast.expr_unary(_,_,_))    { ret true; }

@@ -146,7 +146,7 @@ type expr = spanned[expr_];
 tag expr_ {
     expr_vec(vec[@expr], ann);
     expr_tup(vec[elt], ann);
-    expr_rec(vec[field], ann);
+    expr_rec(vec[field], option.t[@expr], ann);
     expr_call(@expr, vec[@expr], ann);
     expr_bind(@expr, vec[option.t[@expr]], ann);
     expr_binary(binop, @expr, @expr, ann);

@@ -2984,7 +2984,10 @@ fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
 }
 
 fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
-             &ast.ann ann) -> result {
+             option.t[@ast.expr] base, &ast.ann ann) -> result {
+
+    // FIXME: handle presence of a nonempty base.
+    check (base == none[@ast.expr]);
 
     auto bcx = cx;
     auto t = node_ann_type(bcx.fcx.ccx, ann);
@@ -3099,8 +3102,8 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             ret trans_tup(cx, args, ann);
         }
 
-        case (ast.expr_rec(?args, ?ann)) {
-            ret trans_rec(cx, args, ann);
+        case (ast.expr_rec(?args, ?base, ?ann)) {
+            ret trans_rec(cx, args, base, ann);
         }
 
         // lval cases fall through to trans_lval and then

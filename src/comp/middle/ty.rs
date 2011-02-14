@@ -667,7 +667,7 @@ fn expr_ty(@ast.expr expr) -> @t {
     alt (expr.node) {
         case (ast.expr_vec(_, ?ann))          { ret ann_to_type(ann); }
         case (ast.expr_tup(_, ?ann))          { ret ann_to_type(ann); }
-        case (ast.expr_rec(_, ?ann))          { ret ann_to_type(ann); }
+        case (ast.expr_rec(_, _, ?ann))       { ret ann_to_type(ann); }
         case (ast.expr_bind(_, _, ?ann))      { ret ann_to_type(ann); }
         case (ast.expr_call(_, _, ?ann))      { ret ann_to_type(ann); }
         case (ast.expr_binary(_, _, _, ?ann)) { ret ann_to_type(ann); }

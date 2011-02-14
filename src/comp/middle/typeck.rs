@@ -910,7 +910,12 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
             }
             e_1 = ast.expr_tup(elts_1, ast.ann_type(t));
         }
-        case (ast.expr_rec(?fields_0, ?ann)) {
+        case (ast.expr_rec(?fields_0, ?base_0, ?ann)) {
+
+            // FIXME: handle presence of a nonempty base.
+            check (base_0 == none[@ast.expr]);
+            auto base_1 = base_0;
+
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             let vec[ast.field] fields_1 = vec();
             alt (t.struct) {
@@ -931,7 +936,7 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                     fail;
                 }
             }
-            e_1 = ast.expr_rec(fields_1, ast.ann_type(t));
+            e_1 = ast.expr_rec(fields_1, base_1, ast.ann_type(t));
         }
         case (ast.expr_bind(?sube, ?es, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
@@ -1610,7 +1615,12 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                         ast.expr_tup(elts_1, ann));
         }
 
-        case (ast.expr_rec(?fields, _)) {
+        case (ast.expr_rec(?fields, ?base, _)) {
+
+            // FIXME: handle presence of a nonempty base.
+            check (base == none[@ast.expr]);
+            auto base_1 = base;
+
             let vec[ast.field] fields_1 = vec();
             let vec[field] fields_t = vec();
 
@@ -1626,7 +1636,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             auto ann = ast.ann_type(plain_ty(ty.ty_rec(fields_t)));
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_rec(fields_1, ann));
+                                        ast.expr_rec(fields_1, base_1, ann));
         }
 
         case (ast.expr_field(?base, ?field, _)) {
