@@ -353,6 +353,14 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
                             }
                         }
                     }
+                    case (ast.item_tag(_, _, ?ty_params, _)) {
+                        for (ast.ty_param tp in ty_params) {
+                            if (_str.eq(tp.ident, i)) {
+                                auto t = ast.def_ty_arg(tp.id);
+                                ret some(def_wrap_other(t));
+                            }
+                        }
+                    }
                     case (ast.item_mod(_, ?m, _)) {
                         ret check_mod(i, m);
                     }
