@@ -3215,7 +3215,7 @@ fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
 
 fn trans_be(@block_ctxt cx, @ast.expr e) -> result {
     // FIXME: This should be a typestate precondition
-    check ast.is_call_expr(e);
+    check (ast.is_call_expr(e));
     // FIXME: Turn this into a real tail call once
     // calling convention issues are settled
     ret trans_ret(cx, some(e));
