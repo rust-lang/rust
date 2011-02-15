@@ -1348,7 +1348,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_be(?e)) {
             /* FIXME: prove instead of check */
-            check ast.is_call_expr(e);
+            check (ast.is_call_expr(e));
             auto expr_0 = check_expr(fcx, e);
             auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
             ret @fold.respan[ast.expr_](expr.span,
