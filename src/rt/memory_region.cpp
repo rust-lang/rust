@@ -1,7 +1,7 @@
 #include "rust_internal.h"
 #include "memory_region.h"
 
-#define TRACK_ALLOCATIONS
+// #define TRACK_ALLOCATIONS
 
 memory_region::memory_region(rust_srv *srv, bool synchronized) :
     _srv(srv), _parent(NULL), _live_allocations(0),
