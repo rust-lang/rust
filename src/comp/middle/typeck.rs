@@ -1040,6 +1040,7 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
         case (ast.expr_fail) { e_1 = e.node; }
         case (ast.expr_log(_)) { e_1 = e.node; }
         case (ast.expr_ret(_)) { e_1 = e.node; }
+        case (ast.expr_put(_)) { e_1 = e.node; }
         case (ast.expr_be(_)) { e_1 = e.node; }
         case (ast.expr_check_expr(_)) { e_1 = e.node; }
     }
@@ -1313,6 +1314,27 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
                     ret @fold.respan[ast.expr_](expr.span,
                                                 ast.expr_ret(some(expr_1)));
+                }
+            }
+        }
+
+        case (ast.expr_put(?expr_opt)) {
+            alt (expr_opt) {
+                case (none[@ast.expr]) {
+                    auto nil = plain_ty(ty.ty_nil);
+                    if (!are_compatible(fcx, fcx.ret_ty, nil)) {
+                        fcx.ccx.sess.err("put; in function "
+                                         + "putting non-nil");
+                    }
+
+                    ret expr;
+                }
+
+                case (some[@ast.expr](?e)) {
+                    auto expr_0 = check_expr(fcx, e);
+                    auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
+                    ret @fold.respan[ast.expr_](expr.span,
+                                                ast.expr_put(some(expr_1)));
                 }
             }
         }

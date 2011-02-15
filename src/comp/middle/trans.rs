@@ -3122,6 +3122,10 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             ret trans_ret(cx, e);
         }
 
+        case (ast.expr_ret(?e)) {
+            ret trans_put(cx, e);
+        }
+
         case (ast.expr_be(?e)) {
             ret trans_be(cx, e);
         }
@@ -3197,6 +3201,11 @@ fn trans_fail(@block_ctxt cx, common.span sp, str fail_str) -> result {
     auto args = vec(V_fail_str, V_filename, C_int(V_line));
 
     ret trans_upcall(cx, "upcall_fail", args);
+}
+
+fn trans_put(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
+    cx.fcx.ccx.sess.unimpl("put expr");
+    fail;
 }
 
 fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {

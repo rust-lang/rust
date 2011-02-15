@@ -691,6 +691,7 @@ fn expr_ty(@ast.expr expr) -> @t {
         case (ast.expr_log(_))                { ret plain_ty(ty_nil); }
         case (ast.expr_check_expr(_))         { ret plain_ty(ty_nil); }
         case (ast.expr_ret(_))                { ret plain_ty(ty_nil); }
+        case (ast.expr_put(_))                { ret plain_ty(ty_nil); }
         case (ast.expr_be(_))                 { ret plain_ty(ty_nil); }
     }
     fail;

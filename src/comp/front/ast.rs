@@ -162,6 +162,7 @@ tag expr_ {
     expr_ext(vec[@expr], option.t[@expr], ann);
     expr_fail;
     expr_ret(option.t[@expr]);
+    expr_put(option.t[@expr]);
     expr_be(@expr);
     expr_log(@expr);
     expr_check_expr(@expr);
