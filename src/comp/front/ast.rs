@@ -160,7 +160,7 @@ tag expr_ {
     expr_field(@expr, ident, ann);
     expr_index(@expr, @expr, ann);
     expr_path(path, option.t[def], ann);
-    expr_ext(vec[@expr], option.t[@expr], ann);
+    expr_ext(path, vec[@expr], option.t[@expr], ann);
     expr_fail;
     expr_ret(option.t[@expr]);
     expr_put(option.t[@expr]);
