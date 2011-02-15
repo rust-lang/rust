@@ -106,6 +106,7 @@ tag unop {
     bitnot;
     not;
     neg;
+    _mutable;
 }
 
 tag mode {

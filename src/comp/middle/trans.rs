@@ -1834,6 +1834,9 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
             }
             ret res(sub.bcx, val);
         }
+        case (ast._mutable) {
+            ret trans_expr(cx, e);
+        }
     }
     fail;
 }

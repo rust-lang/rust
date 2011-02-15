@@ -1229,6 +1229,9 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                         }
                     }
                 }
+                case (ast._mutable) {
+                    oper_t = @rec(mut=ast.mut with *oper_t);
+                }
                 case (_) { oper_t = strip_boxes(oper_t); }
             }
             ret @fold.respan[ast.expr_](expr.span,
