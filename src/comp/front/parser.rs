@@ -41,11 +41,12 @@ impure fn new_parser(session.session sess,
                            lexer.reader rdr)
         {
             fn peek() -> token.token {
-                // log token.to_str(tok);
                 ret tok;
             }
 
             impure fn bump() {
+                // log rdr.get_filename()
+                //   + ":" + common.istr(lo.line as int);
                 tok = lexer.next_token(rdr);
                 lo = rdr.get_mark_pos();
                 hi = rdr.get_curr_pos();
