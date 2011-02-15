@@ -586,6 +586,17 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
             ex = ast.expr_bind(e, es.node, ast.ann_none);
         }
 
+        case (token.POUND) {
+            p.bump();
+            auto pf = parse_expr;
+            auto es = parse_seq[@ast.expr](token.LPAREN,
+                                           token.RPAREN,
+                                           some(token.COMMA),
+                                           pf, p);
+            hi = es.span;
+            ex = ast.expr_ext(es.node, none[@ast.expr], ast.ann_none);
+        }
+
         case (_) {
             auto lit = parse_lit(p);
             hi = lit.span;

@@ -164,6 +164,7 @@ tag expr_ {
     expr_field(@expr, ident, ann);
     expr_index(@expr, @expr, ann);
     expr_path(path, option.t[def], ann);
+    expr_ext(vec[@expr], option.t[@expr], ann);
 }
 
 type lit = spanned[lit_];
