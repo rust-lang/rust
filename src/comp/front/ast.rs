@@ -151,6 +151,7 @@ tag expr_ {
     expr_if(@expr, block, vec[tup(@expr, block)], option.t[block], ann);
     expr_while(@expr, block, ann);
     expr_for(@decl, @expr, block, ann);
+    expr_for_each(@decl, @expr, block, ann);
     expr_do_while(block, @expr, ann);
     expr_alt(@expr, vec[arm], ann);
     expr_block(block, ann);

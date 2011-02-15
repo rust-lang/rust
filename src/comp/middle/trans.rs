@@ -2116,6 +2116,15 @@ fn trans_for(@block_ctxt cx,
                       bind inner(_, local, _, _, body));
 }
 
+fn trans_for_each(@block_ctxt cx,
+                  @ast.decl decl,
+                  @ast.expr seq,
+                  &ast.block body) -> result {
+    cx.fcx.ccx.sess.unimpl("for each loop");
+    fail;
+}
+
+
 fn trans_while(@block_ctxt cx, @ast.expr cond,
                &ast.block body) -> result {
 
@@ -3033,6 +3042,10 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
 
         case (ast.expr_for(?decl, ?seq, ?body, _)) {
             ret trans_for(cx, decl, seq, body);
+        }
+
+        case (ast.expr_for_each(?decl, ?seq, ?body, _)) {
+            ret trans_for_each(cx, decl, seq, body);
         }
 
         case (ast.expr_while(?cond, ?body, _)) {

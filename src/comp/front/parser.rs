@@ -1049,8 +1049,14 @@ impure fn parse_head_local(parser p) -> @ast.decl {
 impure fn parse_for_expr(parser p) -> @ast.expr {
     auto lo = p.get_span();
     auto hi = lo;
+    auto is_each = false;
 
     expect(p, token.FOR);
+    if (p.peek() == token.EACH) {
+        is_each = true;
+        p.bump();
+    }
+
     expect (p, token.LPAREN);
 
     auto decl = parse_head_local(p);
@@ -1060,8 +1066,15 @@ impure fn parse_for_expr(parser p) -> @ast.expr {
     expect(p, token.RPAREN);
     auto body = parse_block(p);
     hi = body.span;
-    ret @spanned(lo, hi, ast.expr_for(decl, seq, body, ast.ann_none));
+    if (is_each) {
+        ret @spanned(lo, hi, ast.expr_for_each(decl, seq, body,
+                                               ast.ann_none));
+    } else {
+        ret @spanned(lo, hi, ast.expr_for(decl, seq, body,
+                                          ast.ann_none));
+    }
 }
+
 
 impure fn parse_while_expr(parser p) -> @ast.expr {
     auto lo = p.get_span();
@@ -1422,6 +1435,8 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_cast(_,_,_))     { ret true; }
                 case (ast.expr_if(_,_,_,_,_))   { ret false; }
                 case (ast.expr_for(_,_,_,_))    { ret false; }
+                case (ast.expr_for_each(_,_,_,_))
+                                                { ret false; }
                 case (ast.expr_while(_,_,_))    { ret false; }
                 case (ast.expr_do_while(_,_,_)) { ret false; }
                 case (ast.expr_alt(_,_,_))      { ret false; }

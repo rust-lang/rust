@@ -565,6 +565,9 @@ fn update_env_for_expr(&env e, @ast.expr x) -> env {
         case (ast.expr_for(?d, _, _, _)) {
             ret rec(scopes = cons[scope](scope_loop(d), @e.scopes) with e);
         }
+        case (ast.expr_for_each(?d, _, _, _)) {
+            ret rec(scopes = cons[scope](scope_loop(d), @e.scopes) with e);
+        }
         case (_) { }
     }
     ret e;

@@ -995,6 +995,10 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_for(decl, seq, bloc, ast.ann_type(t));
         }
+        case (ast.expr_for_each(?decl, ?seq, ?bloc, ?ann)) {
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            e_1 = ast.expr_for_each(decl, seq, bloc, ast.ann_type(t));
+        }
         case (ast.expr_while(?cond, ?bloc, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_while(cond, bloc, ast.ann_type(t));
@@ -1446,6 +1450,17 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_for(decl_1, seq_1,
                                                      body_1, ann));
+        }
+
+        case (ast.expr_for_each(?decl, ?seq, ?body, _)) {
+            auto decl_1 = check_decl_local(fcx, decl);
+            auto seq_1 = check_expr(fcx, seq);
+            auto body_1 = check_block(fcx, body);
+
+            auto ann = ast.ann_type(plain_ty(ty.ty_nil));
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_for_each(decl_1, seq_1,
+                                                          body_1, ann));
         }
 
         case (ast.expr_while(?cond, ?body, _)) {
