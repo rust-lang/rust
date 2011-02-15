@@ -598,6 +598,59 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
             ex = ast.expr_ext(es.node, none[@ast.expr], ast.ann_none);
         }
 
+        case (token.FAIL) {
+            p.bump();
+            ex = ast.expr_fail;
+        }
+
+        case (token.LOG) {
+            p.bump();
+            auto e = parse_expr(p);
+            auto hi = e.span;
+            ex = ast.expr_log(e);
+        }
+
+        case (token.CHECK) {
+            p.bump();
+            alt (p.peek()) {
+                case (token.LPAREN) {
+                    auto e = parse_expr(p);
+                    auto hi = e.span;
+                    ex = ast.expr_check_expr(e);
+                }
+                case (_) {
+                    p.get_session().unimpl("constraint-check stmt");
+                }
+            }
+        }
+
+        case (token.RET) {
+            p.bump();
+            alt (p.peek()) {
+                case (token.SEMI) {
+                    ex = ast.expr_ret(none[@ast.expr]);
+                }
+                case (_) {
+                    auto e = parse_expr(p);
+                    hi = e.span;
+                    ex = ast.expr_ret(some[@ast.expr](e));
+                }
+            }
+        }
+
+        case (token.BE) {
+            p.bump();
+            auto e = parse_expr(p);
+            // FIXME: Is this the right place for this check?
+            if /*check*/ (ast.is_call_expr(e)) {
+                    hi = e.span;
+                    ex = ast.expr_be(e);
+            }
+            else {
+                p.err("Non-call expression in tail call");
+            }
+        }
+
         case (_) {
             auto lit = parse_lit(p);
             hi = lit.span;
@@ -1203,59 +1256,6 @@ impure fn parse_stmt(parser p) -> @ast.stmt {
     auto lo = p.get_span();
     alt (p.peek()) {
 
-        case (token.LOG) {
-            p.bump();
-            auto e = parse_expr(p);
-            auto hi = p.get_span();
-            ret @spanned(lo, hi, ast.stmt_log(e));
-        }
-
-        case (token.CHECK) {
-            p.bump();
-            alt (p.peek()) {
-                case (token.LPAREN) {
-                    auto e = parse_expr(p);
-                    auto hi = p.get_span();
-                    ret @spanned(lo, hi, ast.stmt_check_expr(e));
-                }
-                case (_) {
-                    p.get_session().unimpl("constraint-check stmt");
-                }
-            }
-        }
-
-        case (token.FAIL) {
-            p.bump();
-            ret @spanned(lo, p.get_span(), ast.stmt_fail);
-        }
-
-        case (token.RET) {
-            p.bump();
-            alt (p.peek()) {
-                case (token.SEMI) {
-                    ret @spanned(lo, p.get_span(),
-                                 ast.stmt_ret(none[@ast.expr]));
-                }
-                case (_) {
-                    auto e = parse_expr(p);
-                    ret @spanned(lo, e.span,
-                                 ast.stmt_ret(some[@ast.expr](e)));
-                }
-            }
-        }
-
-        case (token.BE) {
-            p.bump();
-            auto e = parse_expr(p);
-            // FIXME: Is this the right place for this check?
-            if /*check*/ (ast.is_call_expr(e)) {
-                ret @spanned(lo, e.span, ast.stmt_be(e));
-            }
-            else {
-                p.err("Non-call expression in tail call");
-            }
-        }
-
         case (token.LET) {
             auto decl = parse_let(p);
             auto hi = p.get_span();
@@ -1396,11 +1396,6 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.decl_item(_)) { ret false; }
             }
         }
-        case (ast.stmt_ret(_))                  { ret true; }
-        case (ast.stmt_be(_))                   { ret true; }
-        case (ast.stmt_log(_))                  { ret true; }
-        case (ast.stmt_check_expr(_))           { ret true; }
-        case (ast.stmt_fail)                    { ret true; }
         case (ast.stmt_expr(?e)) {
             alt (e.node) {
                 case (ast.expr_vec(_,_))        { ret true; }
@@ -1423,6 +1418,11 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_field(_,_,_))    { ret true; }
                 case (ast.expr_index(_,_,_))    { ret true; }
                 case (ast.expr_path(_,_,_))     { ret true; }
+                case (ast.expr_fail)            { ret true; }
+                case (ast.expr_ret(_))          { ret true; }
+                case (ast.expr_be(_))           { ret true; }
+                case (ast.expr_log(_))          { ret true; }
+                case (ast.expr_check_expr(_))   { ret true; }
             }
         }
     }

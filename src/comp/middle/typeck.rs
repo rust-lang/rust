@@ -1037,6 +1037,11 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                                  ann_to_type(ann), adk);
             e_1 = ast.expr_path(pth, d, ast.ann_type(t));
         }
+        case (ast.expr_fail) { e_1 = e.node; }
+        case (ast.expr_log(_)) { e_1 = e.node; }
+        case (ast.expr_ret(_)) { e_1 = e.node; }
+        case (ast.expr_be(_)) { e_1 = e.node; }
+        case (ast.expr_check_expr(_)) { e_1 = e.node; }
     }
 
     ret @fold.respan[ast.expr_](e.span, e_1);
@@ -1285,6 +1290,52 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_path(pth, defopt,
                                                       ast.ann_type(t)));
+        }
+
+        case (ast.expr_fail) {
+            ret expr;
+        }
+
+        case (ast.expr_ret(?expr_opt)) {
+            alt (expr_opt) {
+                case (none[@ast.expr]) {
+                    auto nil = plain_ty(ty.ty_nil);
+                    if (!are_compatible(fcx, fcx.ret_ty, nil)) {
+                        fcx.ccx.sess.err("ret; in function "
+                                         + "returning non-nil");
+                    }
+
+                    ret expr;
+                }
+
+                case (some[@ast.expr](?e)) {
+                    auto expr_0 = check_expr(fcx, e);
+                    auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
+                    ret @fold.respan[ast.expr_](expr.span,
+                                                ast.expr_ret(some(expr_1)));
+                }
+            }
+        }
+
+        case (ast.expr_be(?e)) {
+            /* FIXME: prove instead of check */
+            check ast.is_call_expr(e);
+            auto expr_0 = check_expr(fcx, e);
+            auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_be(expr_1));
+        }
+
+        case (ast.expr_log(?e)) {
+            auto expr_t = check_expr(fcx, e);
+            ret @fold.respan[ast.expr_](expr.span, ast.expr_log(expr_t));
+        }
+
+        case (ast.expr_check_expr(?e)) {
+            auto expr_t = check_expr(fcx, e);
+            demand(fcx, expr.span, plain_ty(ty.ty_bool), expr_ty(expr_t));
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_check_expr(expr_t));
         }
 
         case (ast.expr_assign(?lhs, ?rhs, _)) {
@@ -1803,52 +1854,6 @@ fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
                 }
             }
 
-            ret stmt;
-        }
-
-        case (ast.stmt_ret(?expr_opt)) {
-            alt (expr_opt) {
-                case (none[@ast.expr]) {
-                    auto nil = plain_ty(ty.ty_nil);
-                    if (!are_compatible(fcx, fcx.ret_ty, nil)) {
-                        fcx.ccx.sess.err("ret; in function "
-                                         + "returning non-nil");
-                    }
-
-                    ret stmt;
-                }
-
-                case (some[@ast.expr](?expr)) {
-                    auto expr_0 = check_expr(fcx, expr);
-                    auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
-                    ret @fold.respan[ast.stmt_](stmt.span,
-                                                ast.stmt_ret(some(expr_1)));
-                }
-            }
-        }
-
-        case (ast.stmt_be(?expr)) {
-            /* FIXME: prove instead of check */
-            check ast.is_call_expr(expr);
-            auto expr_0 = check_expr(fcx, expr);
-            auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
-            ret @fold.respan[ast.stmt_](stmt.span,
-                                        ast.stmt_be(expr_1));
-        }
-
-        case (ast.stmt_log(?expr)) {
-            auto expr_t = check_expr(fcx, expr);
-            ret @fold.respan[ast.stmt_](stmt.span, ast.stmt_log(expr_t));
-        }
-
-        case (ast.stmt_check_expr(?expr)) {
-            auto expr_t = check_expr(fcx, expr);
-            demand(fcx, expr.span, plain_ty(ty.ty_bool), expr_ty(expr_t));
-            ret @fold.respan[ast.stmt_](stmt.span,
-                                        ast.stmt_check_expr(expr_t));
-        }
-
-        case (ast.stmt_fail) {
             ret stmt;
         }
 

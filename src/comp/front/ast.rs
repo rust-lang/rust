@@ -116,11 +116,6 @@ tag mode {
 type stmt = spanned[stmt_];
 tag stmt_ {
     stmt_decl(@decl);
-    stmt_ret(option.t[@expr]);
-    stmt_be(@expr);
-    stmt_log(@expr);
-    stmt_check_expr(@expr);
-    stmt_fail;
     stmt_expr(@expr);
 }
 
@@ -165,6 +160,11 @@ tag expr_ {
     expr_index(@expr, @expr, ann);
     expr_path(path, option.t[def], ann);
     expr_ext(vec[@expr], option.t[@expr], ann);
+    expr_fail;
+    expr_ret(option.t[@expr]);
+    expr_be(@expr);
+    expr_log(@expr);
+    expr_check_expr(@expr);
 }
 
 type lit = spanned[lit_];

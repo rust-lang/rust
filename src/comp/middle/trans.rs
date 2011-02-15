@@ -3106,6 +3106,26 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             ret trans_rec(cx, args, base, ann);
         }
 
+        case (ast.expr_fail) {
+            ret trans_fail(cx, e.span, "explicit failure");
+        }
+
+        case (ast.expr_log(?a)) {
+            ret trans_log(cx, a);
+        }
+
+        case (ast.expr_check_expr(?a)) {
+            ret trans_check_expr(cx, a);
+        }
+
+        case (ast.expr_ret(?e)) {
+            ret trans_ret(cx, e);
+        }
+
+        case (ast.expr_be(?e)) {
+            ret trans_be(cx, e);
+        }
+
         // lval cases fall through to trans_lval and then
         // possibly load the result (if it's non-structural).
 
@@ -3255,26 +3275,6 @@ fn init_local(@block_ctxt cx, @ast.local local) -> result {
 fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
     auto bcx = cx;
     alt (s.node) {
-        case (ast.stmt_log(?a)) {
-            bcx = trans_log(cx, a).bcx;
-        }
-
-        case (ast.stmt_check_expr(?a)) {
-            bcx = trans_check_expr(cx, a).bcx;
-        }
-
-        case (ast.stmt_fail) {
-            bcx = trans_fail(cx, s.span, "explicit failure").bcx;
-        }
-
-        case (ast.stmt_ret(?e)) {
-            bcx = trans_ret(cx, e).bcx;
-        }
-
-        case (ast.stmt_be(?e)) {
-            bcx = trans_be(cx, e).bcx;
-        }
-
         case (ast.stmt_expr(?e)) {
             bcx = trans_expr(cx, e).bcx;
         }

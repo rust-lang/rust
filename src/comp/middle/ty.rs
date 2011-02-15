@@ -686,6 +686,12 @@ fn expr_ty(@ast.expr expr) -> @t {
         case (ast.expr_field(_, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_index(_, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_path(_, _, ?ann))      { ret ann_to_type(ann); }
+
+        case (ast.expr_fail)                  { ret plain_ty(ty_nil); }
+        case (ast.expr_log(_))                { ret plain_ty(ty_nil); }
+        case (ast.expr_check_expr(_))         { ret plain_ty(ty_nil); }
+        case (ast.expr_ret(_))                { ret plain_ty(ty_nil); }
+        case (ast.expr_be(_))                 { ret plain_ty(ty_nil); }
     }
     fail;
 }
