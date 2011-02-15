@@ -553,6 +553,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         bad-expr-path.rs \
                         bad-expr-path2.rs \
                         bogus-tag.rs \
+                        fru-extra-field.rs \
                         import.rs \
                         import2.rs \
                         import3.rs \

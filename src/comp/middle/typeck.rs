@@ -912,23 +912,48 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
         }
         case (ast.expr_rec(?fields_0, ?base_0, ?ann)) {
 
-            // FIXME: handle presence of a nonempty base.
-            check (base_0 == none[@ast.expr]);
             auto base_1 = base_0;
 
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             let vec[ast.field] fields_1 = vec();
             alt (t.struct) {
                 case (ty.ty_rec(?field_tys)) {
-                    auto i = 0u;
-                    for (ast.field field_0 in fields_0) {
-                        check (_str.eq(field_0.ident, field_tys.(i).ident));
-                        auto e_1 = demand_expr(fcx, field_tys.(i).ty,
-                                               field_0.expr);
-                        fields_1 += vec(rec(mut=field_0.mut,
-                                            ident=field_0.ident,
-                                            expr=e_1));
-                        i += 1u;
+                    alt (base_0) {
+                        case (none[@ast.expr]) {
+                            auto i = 0u;
+                            for (ast.field field_0 in fields_0) {
+                                check (_str.eq(field_0.ident,
+                                               field_tys.(i).ident));
+                                auto e_1 = demand_expr(fcx,
+                                                       field_tys.(i).ty,
+                                                       field_0.expr);
+                                fields_1 += vec(rec(mut=field_0.mut,
+                                                    ident=field_0.ident,
+                                                    expr=e_1));
+                                i += 1u;
+                            }
+                        }
+                        case (some[@ast.expr](?bx)) {
+
+                            base_1 =
+                                some[@ast.expr](demand_expr(fcx, t, bx));
+
+                            let vec[field] base_fields = vec();
+
+                            for (ast.field field_0 in fields_0) {
+
+                                for (ty.field ft in field_tys) {
+                                    if (_str.eq(field_0.ident, ft.ident)) {
+                                        auto e_1 = demand_expr(fcx, ft.ty,
+                                                               field_0.expr);
+                                        fields_1 +=
+                                            vec(rec(mut=field_0.mut,
+                                                    ident=field_0.ident,
+                                                    expr=e_1));
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
                 case (_) {
@@ -1708,8 +1733,6 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_rec(?fields, ?base, _)) {
 
-            // FIXME: handle presence of a nonempty base.
-            check (base == none[@ast.expr]);
             auto base_1 = base;
 
             let vec[ast.field] fields_1 = vec();
@@ -1725,7 +1748,50 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 append[field](fields_t, rec(ident=f.ident, ty=expr_t));
             }
 
-            auto ann = ast.ann_type(plain_ty(ty.ty_rec(fields_t)));
+            auto ann = ast.ann_none;
+
+            alt (base) {
+                case (none[@ast.expr]) {
+                    ann = ast.ann_type(plain_ty(ty.ty_rec(fields_t)));
+                }
+
+                case (some[@ast.expr](?bexpr)) {
+                    auto bexpr_1 = check_expr(fcx, bexpr);
+                    auto bexpr_t = expr_ty(bexpr_1);
+
+                    let vec[field] base_fields = vec();
+
+                    alt (bexpr_t.struct) {
+                        case (ty.ty_rec(?flds)) {
+                            base_fields = flds;
+                        }
+                        case (_) {
+                            fcx.ccx.sess.span_err
+                                (expr.span,
+                                 "record update non-record base");
+                        }
+                    }
+
+                    ann = ast.ann_type(bexpr_t);
+
+                    for (ty.field f in fields_t) {
+                        auto found = false;
+                        for (ty.field bf in base_fields) {
+                            if (_str.eq(f.ident, bf.ident)) {
+                                demand(fcx, expr.span, f.ty, bf.ty);
+                                found = true;
+                            }
+                        }
+                        if (!found) {
+                            fcx.ccx.sess.span_err
+                                (expr.span,
+                                 "unknown field in record update: "
+                                 + f.ident);
+                        }
+                    }
+                }
+            }
+
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_rec(fields_1, base_1, ann));
         }
