@@ -1693,7 +1693,8 @@ impure fn parse_item_native_fn(parser p, ast.effect eff) -> @ast.native_item {
     auto decl = parse_fn_decl(p, eff);
     auto hi = p.get_span();
     expect(p, token.SEMI);
-    auto item = ast.native_item_fn(t._1, decl, t._2, p.next_def_id());
+    auto item = ast.native_item_fn(t._1, decl, t._2, p.next_def_id(),
+                                   ast.ann_none);
     ret @spanned(t._0, hi, item);
 }
 

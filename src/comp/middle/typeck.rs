@@ -266,7 +266,7 @@ fn ty_params_of_item(@ast.item item) -> vec[ast.ty_param] {
 
 fn ty_params_of_native_item(@ast.native_item item) -> vec[ast.ty_param] {
     alt (item.node) {
-        case (ast.native_item_fn(_, _, ?p, _)) {
+        case (ast.native_item_fn(_, _, ?p, _, _)) {
             ret p;
         }
         case (_) {
@@ -432,7 +432,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                          @ty_table item_to_ty,
                          @ast.native_item it) -> @ty.t {
         alt (it.node) {
-            case (ast.native_item_fn(?ident, ?fn_decl, ?params, ?def_id)) {
+            case (ast.native_item_fn(?ident, ?fn_decl, ?params, ?def_id, _)) {
                 auto get = bind getter(id_to_ty_item, item_to_ty, _);
                 auto convert = bind ast_ty_to_ty(get, _);
                 auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
@@ -512,8 +512,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             case (ast.native_item_ty(_, ?def_id)) {
                 id_to_ty_item.insert(def_id, any_item_native(i));
             }
-            case (ast.native_item_fn(_, _, _, ?def_id)) {
-                id_to_ty_item.insert(def_id, any_item_native(i));
+            case (_) {
             }
         }
         ret id_to_ty_item;
@@ -576,6 +575,16 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         auto item = ast.item_fn(i, f, ty_params, id,
                                 ast.ann_type(ty));
         ret @fold.respan[ast.item_](sp, item);
+    }
+
+    fn fold_native_item_fn(&@env e, &span sp, ast.ident i,
+                           &ast.fn_decl d, vec[ast.ty_param] ty_params,
+                           ast.def_id id, ast.ann a) -> @ast.native_item {
+        check (e.item_to_ty.contains_key(id));
+        auto ty = e.item_to_ty.get(id);
+        auto item = ast.native_item_fn(i, d, ty_params, id,
+                                       ast.ann_type(ty));
+        ret @fold.respan[ast.native_item_](sp, item);
     }
 
     fn get_ctor_obj_methods(@ty.t t) -> vec[method] {
@@ -663,6 +672,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
              update_env_for_native_item = bind convert_native(_,_),
              fold_item_const = bind fold_item_const(_,_,_,_,_,_,_),
              fold_item_fn    = bind fold_item_fn(_,_,_,_,_,_,_),
+             fold_native_item_fn = bind fold_native_item_fn(_,_,_,_,_,_,_),
              fold_item_obj   = bind fold_item_obj(_,_,_,_,_,_,_),
              fold_item_ty    = bind fold_item_ty(_,_,_,_,_,_,_),
              fold_item_tag   = bind fold_item_tag(_,_,_,_,_,_)

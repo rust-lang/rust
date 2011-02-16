@@ -70,6 +70,7 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[str, ValueRef] item_names,
                             hashmap[ast.def_id, ValueRef] item_ids,
                             hashmap[ast.def_id, @ast.item] items,
+                            hashmap[ast.def_id, @ast.native_item] native_items,
                             hashmap[ast.def_id, @tag_info] tags,
                             hashmap[ast.def_id, ValueRef] fn_pairs,
                             hashmap[ast.def_id, ValueRef] consts,
@@ -440,6 +441,7 @@ fn type_of_fn(@crate_ctxt cx, vec[ty.arg] inputs, @ty.t output) -> TypeRef {
 
 fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
     alt (t.struct) {
+        case (ty.ty_native) { ret T_ptr(T_i8()); }
         case (ty.ty_nil) { ret T_nil(); }
         case (ty.ty_bool) { ret T_bool(); }
         case (ty.ty_int) { ret T_int(); }
@@ -2429,6 +2431,12 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     check (cx.fcx.ccx.consts.contains_key(did));
                     ret lval_mem(cx, cx.fcx.ccx.consts.get(did));
                 }
+                case (ast.def_native_fn(?did)) {
+                    check (cx.fcx.ccx.native_items.contains_key(did));
+                    auto fn_item = cx.fcx.ccx.native_items.get(did);
+                    ret lval_generic_fn(cx, ty.native_item_ty(fn_item),
+                                        did, ann);
+                }
                 case (_) {
                     cx.fcx.ccx.sess.unimpl("def variant in trans");
                 }
@@ -4053,6 +4061,18 @@ fn decl_fn_and_pair(@crate_ctxt cx,
     cx.fn_pairs.insert(id, gvar);
 }
 
+fn collect_native_item(&@crate_ctxt cx, @ast.native_item i) -> @crate_ctxt {
+    alt (i.node) {
+        case (ast.native_item_fn(?name, _, _, ?fid, ?ann)) {
+            cx.native_items.insert(fid, i);
+            if (! cx.obj_methods.contains_key(fid)) {
+                decl_fn_and_pair(cx, "fn", name, ann, fid);
+            }
+        }
+        case (_) { /* fall through */ }
+    }
+    ret cx;
+}
 
 fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
 
@@ -4101,7 +4121,8 @@ fn collect_items(@crate_ctxt cx, @ast.crate crate) {
     let fold.ast_fold[@crate_ctxt] fld =
         fold.new_identity_fold[@crate_ctxt]();
 
-    fld = @rec( update_env_for_item = bind collect_item(_,_)
+    fld = @rec( update_env_for_item = bind collect_item(_,_),
+                update_env_for_native_item = bind collect_native_item(_,_)
                 with *fld );
 
     fold.fold_crate[@crate_ctxt](cx, fld, crate);
@@ -4559,6 +4580,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    item_names = new_str_hash[ValueRef](),
                    item_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
+                   native_items = new_def_hash[@ast.native_item](),
                    tags = new_def_hash[@tag_info](),
                    fn_pairs = new_def_hash[ValueRef](),
                    consts = new_def_hash[ValueRef](),

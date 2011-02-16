@@ -263,7 +263,7 @@ tag item_ {
 type native_item = spanned[native_item_];
 tag native_item_ {
     native_item_ty(ident, def_id);
-    native_item_fn(ident, fn_decl, vec[ty_param], def_id);
+    native_item_fn(ident, fn_decl, vec[ty_param], def_id, ann);
 }
 
 fn index_view_item(mod_index index, @view_item it) {
@@ -314,7 +314,7 @@ fn index_native_item(native_mod_index index, @native_item it) {
         case (ast.native_item_ty(?id, _)) {
             index.insert(id, it);
         }
-        case (ast.native_item_fn(?id, _, _, _)) {
+        case (ast.native_item_fn(?id, _, _, _, _)) {
             index.insert(id, it);
         }
     }

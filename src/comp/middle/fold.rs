@@ -214,7 +214,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp, ident ident,
          &ast.fn_decl decl,
          vec[ast.ty_param] ty_params,
-         def_id id) -> @native_item)              fold_native_item_fn,
+         def_id id, ann a) -> @native_item)       fold_native_item_fn,
 
      (fn(&ENV e, &span sp, ident ident,
          &ast._mod m, def_id id) -> @item)        fold_item_mod,
@@ -921,10 +921,10 @@ fn fold_native_item[ENV](&ENV env, ast_fold[ENV] fld,
         case (ast.native_item_ty(?ident, ?id)) {
             ret fld.fold_native_item_ty(env_, i.span, ident, id);
         }
-        case (ast.native_item_fn(?ident, ?fn_decl, ?ty_params, ?id)) {
+        case (ast.native_item_fn(?ident, ?fn_decl, ?ty_params, ?id, ?ann)) {
             auto d = fold_fn_decl[ENV](env_, fld, fn_decl);
             ret fld.fold_native_item_fn(env_, i.span, ident, d,
-                                        ty_params, id);
+                                        ty_params, id, ann);
         }
     }
 }
@@ -1240,8 +1240,8 @@ fn identity_fold_item_fn[ENV](&ENV e, &span sp, ident i,
 fn identity_fold_native_item_fn[ENV](&ENV e, &span sp, ident i,
                                      &ast.fn_decl decl,
                                      vec[ast.ty_param] ty_params,
-                                     def_id id) -> @native_item {
-    ret @respan(sp, ast.native_item_fn(i, decl, ty_params, id));
+                                     def_id id, ann a) -> @native_item {
+    ret @respan(sp, ast.native_item_fn(i, decl, ty_params, id, a));
 }
 
 fn identity_fold_item_mod[ENV](&ENV e, &span sp, ident i,
@@ -1454,7 +1454,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_item_const= bind identity_fold_item_const[ENV](_,_,_,_,_,_,_),
          fold_item_fn   = bind identity_fold_item_fn[ENV](_,_,_,_,_,_,_),
          fold_native_item_fn =
-             bind identity_fold_native_item_fn[ENV](_,_,_,_,_,_),
+             bind identity_fold_native_item_fn[ENV](_,_,_,_,_,_,_),
          fold_item_mod  = bind identity_fold_item_mod[ENV](_,_,_,_,_),
          fold_item_native_mod =
              bind identity_fold_item_native_mod[ENV](_,_,_,_,_),

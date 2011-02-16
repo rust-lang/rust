@@ -599,6 +599,22 @@ fn is_fn_ty(@t fty) -> bool {
 // Given an item, returns the associated type as well as a list of the IDs of
 // its type parameters.
 type ty_params_and_ty = tup(vec[ast.def_id], @t);
+fn native_item_ty(@ast.native_item it) -> ty_params_and_ty {
+    auto ty_params;
+    auto result_ty;
+    alt (it.node) {
+        case (ast.native_item_fn(_, _, ?tps, _, ?ann)) {
+            ty_params = tps;
+            result_ty = ann_to_type(ann);
+        }
+    }
+    let vec[ast.def_id] ty_param_ids = vec();
+    for (ast.ty_param tp in ty_params) {
+        ty_param_ids += vec(tp.id);
+    }
+    ret tup(ty_param_ids, result_ty);
+}
+
 fn item_ty(@ast.item it) -> ty_params_and_ty {
     let vec[ast.ty_param] ty_params;
     auto result_ty;

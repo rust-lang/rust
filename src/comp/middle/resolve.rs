@@ -233,7 +233,7 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
             case (ast.native_item_ty(_, ?id)) {
                 ret def_wrap_other(ast.def_native_ty(id));
             }
-            case (ast.native_item_fn(_, _, _, ?id)) {
+            case (ast.native_item_fn(_, _, _, ?id, _)) {
                 ret def_wrap_other(ast.def_native_fn(id));
             }
         }
@@ -381,7 +381,7 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
 
             case (scope_native_item(?it)) {
                 alt (it.node) {
-                    case (ast.native_item_fn(_, ?decl, ?ty_params, _)) {
+                    case (ast.native_item_fn(_, ?decl, ?ty_params, _, _)) {
                         ret handle_fn_decl(i, decl, ty_params);
                     }
                 }
