@@ -519,6 +519,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         readalias.rs \
                         rec.rs \
                         rec-auto.rs \
+                        rec-extend.rs \
                         rec-tup.rs \
                         return-nil.rs \
                         simple-obj.rs \

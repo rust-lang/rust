@@ -2998,9 +2998,6 @@ fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
 fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
              option.t[@ast.expr] base, &ast.ann ann) -> result {
 
-    // FIXME: handle presence of a nonempty base.
-    check (base == none[@ast.expr]);
-
     auto bcx = cx;
     auto t = node_ann_type(bcx.fcx.ccx, ann);
     auto llty = type_of(bcx.fcx.ccx, t);
@@ -3011,13 +3008,44 @@ fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
     find_scope_cx(cx).cleanups += clean(bind drop_ty(_, rec_val, t));
     let int i = 0;
 
-    for (ast.field f in fields) {
-        auto e_ty = ty.expr_ty(f.expr);
-        auto src_res = trans_expr(bcx, f.expr);
-        bcx = src_res.bcx;
+    auto base_val = C_nil();
+
+    alt (base) {
+        case (none[@ast.expr]) { }
+        case (some[@ast.expr](?bexp)) {
+            auto base_res = trans_expr(bcx, bexp);
+            bcx = base_res.bcx;
+            base_val = base_res.val;
+        }
+    }
+
+    let vec[ty.field] ty_fields = vec();
+    alt (t.struct) {
+        case (ty.ty_rec(?flds)) { ty_fields = flds; }
+    }
+
+    for (ty.field tf in ty_fields) {
+        auto e_ty = tf.ty;
         auto dst_res = GEP_tup_like(bcx, t, rec_val, vec(0, i));
         bcx = dst_res.bcx;
-        bcx = copy_ty(src_res.bcx, INIT, dst_res.val, src_res.val, e_ty).bcx;
+
+        auto expr_provided = false;
+        auto src_res = res(bcx, C_nil());
+
+        for (ast.field f in fields) {
+            if (_str.eq(f.ident, tf.ident)) {
+                expr_provided = true;
+                src_res = trans_expr(bcx, f.expr);
+            }
+        }
+        if (!expr_provided) {
+            src_res = GEP_tup_like(bcx, t, base_val, vec(0, i));
+            src_res = res(src_res.bcx,
+                          load_scalar_or_boxed(bcx, src_res.val, e_ty));
+        }
+
+        bcx = src_res.bcx;
+        bcx = copy_ty(bcx, INIT, dst_res.val, src_res.val, e_ty).bcx;
         i += 1;
     }
     ret res(bcx, rec_val);
