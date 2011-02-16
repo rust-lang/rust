@@ -506,6 +506,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         leak-box-as-tydesc.rs \
                         linear-for-loop.rs \
                         multiline-comment.rs \
+                        mutable-vec-drop.rs \
                         mutual-recursion-group.rs \
                         native2.rs \
                         obj-drop.rs \
