@@ -370,6 +370,26 @@ fn type_of(@crate_ctxt cx, @ty.t t) -> TypeRef {
     ret llty;
 }
 
+fn type_of_explicit_args(@crate_ctxt cx,
+                     vec[ty.arg] inputs) -> vec[TypeRef] {
+    let vec[TypeRef] atys = vec();
+    for (ty.arg arg in inputs) {
+        if (ty.type_has_dynamic_size(arg.ty)) {
+            check (arg.mode == ast.alias);
+            atys += T_typaram_ptr();
+        } else {
+            let TypeRef t = type_of(cx, arg.ty);
+            alt (arg.mode) {
+                case (ast.alias) {
+                    t = T_ptr(t);
+                }
+                case (_) { /* fall through */  }
+            }
+            atys += t;
+        }
+    }
+    ret atys;
+}
 
 // NB: must keep 4 fns in sync:
 //
@@ -417,27 +437,19 @@ fn type_of_fn_full(@crate_ctxt cx,
     }
 
     // ... then explicit args.
-    for (ty.arg arg in inputs) {
-        if (ty.type_has_dynamic_size(arg.ty)) {
-            check (arg.mode == ast.alias);
-            atys += T_typaram_ptr();
-        } else {
-            let TypeRef t = type_of(cx, arg.ty);
-            alt (arg.mode) {
-                case (ast.alias) {
-                    t = T_ptr(t);
-                }
-                case (_) { /* fall through */  }
-            }
-            atys += t;
-        }
-    }
+    atys += type_of_explicit_args(cx, inputs);
 
     ret T_fn(atys, llvm.LLVMVoidType());
 }
 
 fn type_of_fn(@crate_ctxt cx, vec[ty.arg] inputs, @ty.t output) -> TypeRef {
     ret type_of_fn_full(cx, none[TypeRef], inputs, output);
+}
+
+fn type_of_native_fn(@crate_ctxt cx, vec[ty.arg] inputs,
+                     @ty.t output) -> TypeRef {
+    let vec[TypeRef] atys = type_of_explicit_args(cx, inputs);
+    ret T_fn(atys, llvm.LLVMVoidType());
 }
 
 fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
@@ -488,6 +500,9 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
         }
         case (ty.ty_fn(?args, ?out)) {
             ret T_fn_pair(type_of_fn(cx, args, out));
+        }
+        case (ty.ty_native_fn(?args, ?out)) {
+            ret T_fn_pair(type_of_native_fn(cx, args, out));
         }
         case (ty.ty_obj(?meths)) {
             auto th = mk_type_handle();

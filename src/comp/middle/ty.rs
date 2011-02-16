@@ -38,6 +38,7 @@ tag sty {
     ty_tup(vec[@t]);
     ty_rec(vec[field]);
     ty_fn(vec[arg], @t);                            // TODO: effect
+    ty_native_fn(vec[arg], @t);                     // TODO: effect
     ty_obj(vec[method]);
     ty_var(int);                                    // ephemeral type var
     ty_local(ast.def_id);                           // type of a local var
@@ -240,6 +241,10 @@ fn ty_to_str(&@t typ) -> str {
         }
 
         case (ty_fn(?inputs, ?output)) {
+            s = fn_to_str(none[ast.ident], inputs, output);
+        }
+
+        case (ty_native_fn(?inputs, ?output)) {
             s = fn_to_str(none[ast.ident], inputs, output);
         }
 

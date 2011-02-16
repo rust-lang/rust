@@ -300,6 +300,19 @@ fn ty_of_fn_decl(@ty_item_table id_to_ty_item,
     ret t_fn;
 }
 
+fn ty_of_native_fn_decl(@ty_item_table id_to_ty_item,
+                 @ty_table item_to_ty,
+                 fn(&@ast.ty ast_ty) -> @ty.t convert,
+                 fn(&ast.arg a) -> arg ty_of_arg,
+                 &ast.fn_decl decl,
+                 ast.def_id def_id) -> @ty.t {
+    auto input_tys = _vec.map[ast.arg,arg](ty_of_arg, decl.inputs);
+    auto output_ty = convert(decl.output);
+    auto t_fn = plain_ty(ty.ty_native_fn(input_tys, output_ty));
+    item_to_ty.insert(def_id, t_fn);
+    ret t_fn;
+}
+
 fn collect_item_types(session.session sess, @ast.crate crate)
     -> tup(@ast.crate, @ty_table, @ty_item_table) {
 
@@ -436,8 +449,8 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                 auto get = bind getter(id_to_ty_item, item_to_ty, _);
                 auto convert = bind ast_ty_to_ty(get, _);
                 auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
-                ret ty_of_fn_decl(id_to_ty_item, item_to_ty, convert, f,
-                                  fn_decl, def_id);
+                ret ty_of_native_fn_decl(id_to_ty_item, item_to_ty, convert,
+                                         f, fn_decl, def_id);
             }
             case (ast.native_item_ty(_, ?def_id)) {
                 if (item_to_ty.contains_key(def_id)) {
