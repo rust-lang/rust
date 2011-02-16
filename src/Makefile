@@ -507,7 +507,6 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         linear-for-loop.rs \
                         multiline-comment.rs \
                         mutual-recursion-group.rs \
-                        native2.rs \
                         obj-drop.rs \
                         obj-recursion.rs \
                         obj-with-vec.rs \

@@ -210,6 +210,7 @@ fn ty_to_str(&@t typ) -> str {
     }
 
     alt (typ.struct) {
+        case (ty_native)       { s = "native";                    }
         case (ty_nil)          { s = "()";                        }
         case (ty_bool)         { s = "bool";                      }
         case (ty_int)          { s = "int";                       }
