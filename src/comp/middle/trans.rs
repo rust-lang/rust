@@ -4062,12 +4062,24 @@ fn decl_fn_and_pair(@crate_ctxt cx,
     cx.fn_pairs.insert(id, gvar);
 }
 
+fn decl_native_fn_and_pair(@crate_ctxt cx,
+                           str name,
+                           &ast.ann ann,
+                           ast.def_id id) {
+
+    auto llpairty = node_type(cx, ann);
+    auto llfty = get_pair_fn_ty(llpairty);
+
+    let ValueRef llfn = decl_fastcall_fn(cx.llmod, name, llfty);
+    cx.item_ids.insert(id, llfn);
+}
+
 fn collect_native_item(&@crate_ctxt cx, @ast.native_item i) -> @crate_ctxt {
     alt (i.node) {
         case (ast.native_item_fn(?name, _, _, ?fid, ?ann)) {
             cx.native_items.insert(fid, i);
             if (! cx.obj_methods.contains_key(fid)) {
-                decl_fn_and_pair(cx, "fn", name, ann, fid);
+                decl_native_fn_and_pair(cx, name, ann, fid);
             }
         }
         case (_) { /* fall through */ }
