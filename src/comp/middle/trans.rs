@@ -88,6 +88,7 @@ state type fn_ctxt = rec(ValueRef llfn,
                          ValueRef llenv,
                          ValueRef llretptr,
                          mutable option.t[ValueRef] llself,
+                         mutable option.t[ValueRef] lliterbody,
                          hashmap[ast.def_id, ValueRef] llargs,
                          hashmap[ast.def_id, ValueRef] llobjfields,
                          hashmap[ast.def_id, ValueRef] lllocals,
@@ -399,6 +400,8 @@ fn type_of_explicit_args(@crate_ctxt cx,
 //  - trans_args
 
 fn type_of_fn_full(@crate_ctxt cx,
+                   // FIXME: change bool flag to tag
+                   bool is_iter,
                    option.t[TypeRef] obj_self,
                    vec[ty.arg] inputs,
                    @ty.t output) -> TypeRef {
@@ -436,14 +439,26 @@ fn type_of_fn_full(@crate_ctxt cx,
         }
     }
 
+    if (is_iter) {
+        // If it's an iter, the 'output' type of the iter is actually the
+        // *input* type of the function we're given as our iter-block
+        // argument.
+        atys += T_fn_pair(type_of_fn_full(cx, false, none[TypeRef],
+                                          vec(rec(mode=ast.val, ty=output)),
+                                          plain_ty(ty.ty_nil)));
+    }
+
     // ... then explicit args.
     atys += type_of_explicit_args(cx, inputs);
 
     ret T_fn(atys, llvm.LLVMVoidType());
 }
 
-fn type_of_fn(@crate_ctxt cx, vec[ty.arg] inputs, @ty.t output) -> TypeRef {
-    ret type_of_fn_full(cx, none[TypeRef], inputs, output);
+fn type_of_fn(@crate_ctxt cx,
+              // FIXME: change bool flag to tag
+              bool is_iter,
+              vec[ty.arg] inputs, @ty.t output) -> TypeRef {
+    ret type_of_fn_full(cx, is_iter, none[TypeRef], inputs, output);
 }
 
 fn type_of_native_fn(@crate_ctxt cx, vec[ty.arg] inputs,
@@ -499,7 +514,8 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
             ret T_struct(tys);
         }
         case (ty.ty_fn(?args, ?out)) {
-            ret T_fn_pair(type_of_fn(cx, args, out));
+            // FIXME: put iter in ty_fn.
+            ret T_fn_pair(type_of_fn(cx, false, args, out));
         }
         case (ty.ty_native_fn(?args, ?out)) {
             ret T_fn_pair(type_of_native_fn(cx, args, out));
@@ -512,6 +528,8 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
             for (ty.method m in meths) {
                 let TypeRef mty =
                     type_of_fn_full(cx,
+                                    // FIXME: support method iters
+                                    false,
                                     some[TypeRef](self_ty),
                                     m.inputs, m.output);
                 mtys += T_ptr(mty);
@@ -2141,7 +2159,83 @@ fn trans_for_each(@block_ctxt cx,
                   @ast.decl decl,
                   @ast.expr seq,
                   &ast.block body) -> result {
-    cx.fcx.ccx.sess.unimpl("for each loop");
+
+    /*
+     * The translation is a little .. complex here. Code like:
+     *
+     *    let ty1 p = ...;
+     *
+     *    let ty1 q = ...;
+     *
+     *    foreach (ty v in foo(a,b)) { body(p,q,v) }
+     *
+     *
+     * Turns into a something like so (C/Rust mishmash):
+     *
+     *    type env = { *ty1 p, *ty2 q, ... };
+     *
+     *    let env e = { &p, &q, ... };
+     *
+     *    fn foreach123_body(env* e, ty v) { body(*(e->p),*(e->q),v) }
+     *
+     *    foo([foreach123_body, env*], a, b);
+     *
+     */
+
+    // Step 1: walk body and figure out which references it makes
+    // escape. This could be determined upstream, and probably ought
+    // to be so, eventualy. For first cut, skip this. Null env.
+
+    auto env_ty = T_struct(vec(T_ptr(T_i8())));
+
+
+    // Step 2: Declare foreach body function.
+
+    // FIXME: possibly support alias-mode here?
+    auto decl_ty = plain_ty(ty.ty_nil);
+    alt (decl.node) {
+        case (ast.decl_local(?local)) {
+            decl_ty = node_ann_type(cx.fcx.ccx, local.ann);
+        }
+    }
+
+    let str s =
+        cx.fcx.ccx.names.next("_rust_foreach")
+        + sep() + cx.fcx.ccx.path;
+
+    // The 'env' arg entering the body function is a fake env member (as in
+    // the env-part of the normal rust calling convention) that actually
+    // points to a stack allocated env in this frame. We bundle that env
+    // pointer along with the foreach-body-fn pointer into a 'normal' fn pair
+    // and pass it in as a first class fn-arg to the iterator.
+
+    auto foreach_llty = type_of_fn_full(cx.fcx.ccx, false, none[TypeRef],
+                                        vec(rec(mode=ast.val, ty=decl_ty)),
+                                        plain_ty(ty.ty_nil));
+
+    let ValueRef llforeach = decl_fastcall_fn(cx.fcx.ccx.llmod,
+                                              s, foreach_llty);
+
+    // FIXME: handle ty params properly.
+    let vec[ast.ty_param] ty_params = vec();
+
+    auto fcx = new_fn_ctxt(cx.fcx.ccx, s, llforeach);
+    auto bcx = new_top_block_ctxt(fcx);
+
+    // FIXME: populate lllocals from llenv here.
+    auto res = trans_block(bcx, body);
+    res.bcx.build.RetVoid();
+
+
+    // Step 3: Call iter passing [llforeach, llenv], plus other args.
+
+    alt (seq.node) {
+        case (ast.expr_call(?f, ?args, ?ann)) {
+            // FIXME_ finish here by transferring to trans_call,
+            // suitably refactored.
+            cx.fcx.ccx.sess.unimpl("for each loop in trans");
+        }
+    }
     fail;
 }
 
@@ -3538,6 +3632,7 @@ fn new_fn_ctxt(@crate_ctxt cx,
              llenv=llenv,
              llretptr=llretptr,
              mutable llself=none[ValueRef],
+             mutable lliterbody=none[ValueRef],
              llargs=llargs,
              llobjfields=llobjfields,
              lllocals=lllocals,
@@ -3553,6 +3648,8 @@ fn new_fn_ctxt(@crate_ctxt cx,
 //  - trans_args
 
 fn create_llargs_for_fn_args(&@fn_ctxt cx,
+                             // FIXME: change bool flag to tag
+                             bool is_iter,
                              option.t[TypeRef] ty_self,
                              @ty.t ret_ty,
                              &vec[ast.arg] args,
@@ -3577,6 +3674,12 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx,
         }
     }
 
+    if (is_iter) {
+        auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
+        check (llarg as int != 0);
+        cx.lliterbody = some[ValueRef](llarg);
+        arg_n += 1u;
+    }
 
     for (ast.arg arg in args) {
         auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
@@ -3713,7 +3816,8 @@ fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
     cx.item_names.insert(cx.path, llfndecl);
 
     auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
-    create_llargs_for_fn_args(fcx, ty_self, ret_ty_of_fn(ann),
+    create_llargs_for_fn_args(fcx, f.is_iter,
+                              ty_self, ret_ty_of_fn(ann),
                               f.decl.inputs, ty_params);
     auto bcx = new_top_block_ctxt(fcx);
 
@@ -3754,6 +3858,8 @@ fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
         alt (node_ann_type(cx, m.node.ann).struct) {
             case (ty.ty_fn(?inputs, ?output)) {
                 llfnty = type_of_fn_full(cx,
+                                         // FIXME: support method iters.
+                                         false,
                                          some[TypeRef](self_ty),
                                          inputs, output);
             }
@@ -3797,7 +3903,8 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
     }
 
     auto fcx = new_fn_ctxt(cx, cx.path, llctor_decl);
-    create_llargs_for_fn_args(fcx, none[TypeRef], ret_ty_of_fn(ann),
+    create_llargs_for_fn_args(fcx, false,
+                              none[TypeRef], ret_ty_of_fn(ann),
                               fn_args, ty_params);
 
     auto bcx = new_top_block_ctxt(fcx);
@@ -3925,7 +4032,8 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     let ValueRef llfndecl = cx.item_ids.get(variant.id);
 
     auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
-    create_llargs_for_fn_args(fcx, none[TypeRef], ret_ty_of_fn(variant.ann),
+    create_llargs_for_fn_args(fcx, false,
+                              none[TypeRef], ret_ty_of_fn(variant.ann),
                               fn_args, ty_params);
 
     auto bcx = new_top_block_ctxt(fcx);
@@ -4331,6 +4439,7 @@ fn trans_exit_task_glue(@crate_ctxt cx) {
                     llenv=C_null(T_opaque_closure_ptr()),
                     llretptr=C_null(T_ptr(T_nil())),
                     mutable llself=none[ValueRef],
+                    mutable lliterbody=none[ValueRef],
                     llargs=new_def_hash[ValueRef](),
                     llobjfields=new_def_hash[ValueRef](),
                     lllocals=new_def_hash[ValueRef](),
