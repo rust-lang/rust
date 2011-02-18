@@ -570,24 +570,6 @@ fn count_ty_params(@t ty) -> uint {
     ret _vec.len[ast.def_id](*param_ids);
 }
 
-fn type_contains_ty_vars(@t ty) -> bool {
-    state obj checker(@mutable bool has_vars) {
-        fn fold_simple_ty(@t ty) -> @t {
-            alt (ty.struct) {
-                case (ty_var(_)) {
-                    *has_vars = true;
-                }
-                case (_) {}
-            }
-            ret ty;
-        }
-    }
-
-    let @mutable bool b = @mutable false;
-    fold_ty(checker(b), ty);
-    ret *b;
-}
-
 // Type accessors for substructures of types
 
 fn ty_fn_args(@t fty) -> vec[arg] {
@@ -802,7 +784,10 @@ fn is_lval(@ast.expr expr) -> bool {
     }
 }
 
-// Type unification
+// Type unification via Robinson's algorithm (Robinson 1965). Implemented as
+// described in Hoder and Voronkov:
+//
+//     http://www.cs.man.ac.uk/~hoderk/ubench/unification_full.pdf
 
 fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         -> unify_result {
@@ -822,7 +807,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         ret ures_err(terr_mismatch, expected, actual);
     }
 
-    fn unify_fn(&hashmap[int,@ty.t] bindings,
+    fn unify_fn(@hashmap[int,@ty.t] bindings,
                 @ty.t expected,
                 @ty.t actual,
                 &unify_handler handler,
@@ -891,7 +876,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
 
     }
 
-    fn unify_obj(&hashmap[int,@ty.t] bindings,
+    fn unify_obj(@hashmap[int,@ty.t] bindings,
                 @ty.t expected,
                 @ty.t actual,
                 &unify_handler handler,
@@ -952,27 +937,44 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
       ret ures_ok(t);
     }
 
-    fn unify_step(&hashmap[int,@ty.t] bindings, @ty.t expected, @ty.t actual,
-                  &unify_handler handler) -> unify_result {
+    fn resolve(@hashmap[int,@t] bindings, @t typ) -> @t {
+        alt (typ.struct) {
+            case (ty_var(?id)) {
+                alt (bindings.find(id)) {
+                    case (some[@t](?typ2)) {
+                        ret resolve(bindings, typ2);
+                    }
+                    case (none[@t]) {
+                        // fall through
+                    }
+                }
+            }
+            case (_) {
+                // fall through
+            }
+        }
+        ret typ;
+    }
+
+    fn unify_step(@hashmap[int,@ty.t] bindings, @ty.t in_expected,
+                  @ty.t in_actual, &unify_handler handler) -> unify_result {
+
+        // Resolve any bindings.
+        auto expected = resolve(bindings, in_expected);
+        auto actual = resolve(bindings, in_actual);
+
         // TODO: rewrite this using tuple pattern matching when available, to
         // avoid all this rightward drift and spikiness.
+
+        // TODO: occurs check, to make sure we don't loop forever when
+        // unifying e.g. 'a and option['a]
 
         alt (actual.struct) {
             // If the RHS is a variable type, then just do the appropriate
             // binding.
             case (ty.ty_var(?actual_id)) {
-                alt (bindings.find(actual_id)) {
-                    case (some[@ty.t](?actual_ty)) {
-                        // FIXME: change the binding here?
-                        // FIXME: "be"
-                        ret unify_step(bindings, expected, actual_ty,
-                                       handler);
-                    }
-                    case (none[@ty.t]) {
-                        bindings.insert(actual_id, expected);
-                        ret ures_ok(expected);
-                    }
-                }
+                bindings.insert(actual_id, expected);
+                ret ures_ok(expected);
             }
             case (ty.ty_local(?actual_id)) {
                 auto actual_ty = handler.resolve_local(actual_id);
@@ -1077,8 +1079,6 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                         }
                     }
 
-                    // TODO: ty_var
-
                     case (_) {
                         ret ures_err(terr_mismatch, expected, actual);
                     }
@@ -1101,8 +1101,6 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                             }
                         }
                     }
-
-                    // TODO: ty_var
 
                     case (_) {
                         ret ures_err(terr_mismatch, expected, actual);
@@ -1151,8 +1149,6 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
 
                         ret ures_ok(plain_ty(ty.ty_tup(result_elems)));
                     }
-
-                    // TODO: ty_var
 
                     case (_) {
                         ret ures_err(terr_mismatch, expected, actual);
@@ -1213,8 +1209,6 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                         ret ures_ok(plain_ty(ty.ty_rec(result_fields)));
                     }
 
-                    // TODO: ty_var
-
                     case (_) {
                         ret ures_err(terr_mismatch, expected, actual);
                     }
@@ -1248,20 +1242,9 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             }
 
             case (ty.ty_var(?expected_id)) {
-                alt (bindings.find(expected_id)) {
-                    case (some[@ty.t](?expected_ty)) {
-                        // FIXME: change the binding here?
-                        // FIXME: "be"
-                        ret unify_step(bindings,
-                                       expected_ty,
-                                       actual,
-                                       handler);
-                    }
-                    case (none[@ty.t]) {
-                        bindings.insert(expected_id, actual);
-                        ret ures_ok(actual);
-                    }
-                }
+                // Add a binding.
+                bindings.insert(expected_id, actual);
+                ret ures_ok(actual);
             }
 
             case (ty.ty_local(?expected_id)) {
@@ -1289,31 +1272,43 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         fail;
     }
 
+    // Performs type binding substitution.
+    fn substitute(@hashmap[int,@t] bindings, @t typ) -> @t {
+        state obj folder(@hashmap[int,@t] bindings) {
+            fn fold_simple_ty(@t typ) -> @t {
+                alt (typ.struct) {
+                    case (ty_var(?id)) {
+                        alt (bindings.find(id)) {
+                            case (some[@t](?typ2)) {
+                                ret substitute(bindings, typ2);
+                            }
+                            case (none[@t]) {
+                                ret typ;
+                            }
+                        }
+                    }
+                    case (_) {
+                        ret typ;
+                    }
+                }
+            }
+        }
+
+        ret ty.fold_ty(folder(bindings), typ);
+    }
+
     fn hash_int(&int x) -> uint { ret x as uint; }
     fn eq_int(&int a, &int b) -> bool { ret a == b; }
     auto hasher = hash_int;
     auto eqer = eq_int;
-    auto bindings = map.mk_hashmap[int,@ty.t](hasher, eqer);
-
-    // FIXME: this is a slow way of driving types into residual vars that
-    // occur up in the leaves of result type; it can likely be done better
-    // when unification is actually ... down in the leaves.
+    auto bindings = @map.mk_hashmap[int,@ty.t](hasher, eqer);
 
     auto ures = unify_step(bindings, expected, actual, handler);
-    while (true) {
-        alt (ures) {
-            case (ures_ok(?t)) {
-                if (!type_contains_ty_vars(t)) {
-                    ret ures;
-                }
-                ures = unify_step(bindings, t, actual, handler);
-            }
-            case (_) {
-                ret ures;
-            }
-        }
+    alt (ures) {
+        case (ures_ok(?t))  { ret ures_ok(substitute(bindings, t)); }
+        case (_)            { ret ures;                             }
     }
-    fail;
+    fail;   // not reached
 }
 
 fn type_err_to_str(&ty.type_err err) -> str {
