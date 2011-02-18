@@ -490,7 +490,7 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
         }
         case (ty.ty_char) { ret T_char(); }
         case (ty.ty_str) { ret T_ptr(T_str()); }
-        case (ty.ty_tag(?tag_id)) {
+        case (ty.ty_tag(?tag_id, _)) {
             ret llvm.LLVMResolveTypeHandle(cx.tags.get(tag_id).th.llth);
         }
         case (ty.ty_box(?t)) {
@@ -1445,7 +1445,9 @@ fn iter_structural_ty(@block_ctxt cx,
                 i += 1;
             }
         }
-        case (ty.ty_tag(?tid)) {
+        case (ty.ty_tag(?tid, _)) {
+            // TODO: type params!
+
             check (cx.fcx.ccx.tags.contains_key(tid));
             auto info = cx.fcx.ccx.tags.get(tid);
             auto n_variants = _vec.len[tup(ast.def_id,arity)](info.variants);

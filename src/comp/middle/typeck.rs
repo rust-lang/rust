@@ -430,8 +430,13 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                 ret ty_;
             }
 
-            case (ast.item_tag(_, _, _, ?def_id)) {
-                auto t = plain_ty(ty.ty_tag(def_id));
+            case (ast.item_tag(_, _, ?tps, ?def_id)) {
+                // Create a new generic polytype.
+                let vec[@ty.t] subtys = vec();
+                for (ast.ty_param tp in tps) {
+                    subtys += vec(plain_ty(ty.ty_param(tp.id)));
+                }
+                auto t = plain_ty(ty.ty_tag(def_id, subtys));
                 item_to_ty.insert(def_id, t);
                 ret t;
             }
@@ -468,15 +473,23 @@ fn collect_item_types(session.session sess, @ast.crate crate)
     fn get_tag_variant_types(@ty_item_table id_to_ty_item,
                              @ty_table item_to_ty,
                              &ast.def_id tag_id,
-                             &vec[ast.variant] variants) -> vec[ast.variant] {
+                             &vec[ast.variant] variants,
+                             &vec[ast.ty_param] ty_params)
+            -> vec[ast.variant] {
         let vec[ast.variant] result = vec();
 
+        // Create a set of parameter types shared among all the variants.
+        let vec[@ty.t] ty_param_tys = vec();
+        for (ast.ty_param tp in ty_params) {
+            ty_param_tys += vec(plain_ty(ty.ty_param(tp.id)));
+        }
+
         for (ast.variant variant in variants) {
-            // Nullary tag constructors get truned into constants; n-ary tag
+            // Nullary tag constructors get turned into constants; n-ary tag
             // constructors get turned into functions.
             auto result_ty;
             if (_vec.len[ast.variant_arg](variant.args) == 0u) {
-                result_ty = plain_ty(ty.ty_tag(tag_id));
+                result_ty = plain_ty(ty.ty_tag(tag_id, ty_param_tys));
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
                 // should be called to resolve named types.
@@ -487,7 +500,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                     auto arg_ty = ast_ty_to_ty(f, va.ty);
                     args += vec(rec(mode=ast.alias, ty=arg_ty));
                 }
-                auto tag_t = plain_ty(ty.ty_tag(tag_id));
+                auto tag_t = plain_ty(ty.ty_tag(tag_id, ty_param_tys));
                 result_ty = plain_ty(ty.ty_fn(args, tag_t));
             }
 
@@ -674,7 +687,9 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                      ast.def_id id) -> @ast.item {
         auto variants_t = get_tag_variant_types(e.id_to_ty_item,
                                                 e.item_to_ty,
-                                                id, variants);
+                                                id,
+                                                variants,
+                                                ty_params);
         auto item = ast.item_tag(i, variants_t, ty_params, id);
         ret @fold.respan[ast.item_](sp, item);
     }
@@ -857,7 +872,7 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
 
             auto subpats_len = _vec.len[@ast.pat](subpats);
             alt (variant_ty.struct) {
-                case (ty.ty_tag(_)) {
+                case (ty.ty_tag(_, _)) {
                     // Nullary tag variant.
                     check (subpats_len == 0u);
                     p_1 = ast.pat_tag(id, subpats, vdef_opt, ast.ann_type(t));
@@ -1198,7 +1213,9 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
                 }
 
                 // Nullary variants have tag types.
-                case (ty.ty_tag(?tid)) {
+                case (ty.ty_tag(?tid, _)) {
+                    // TODO: ty params
+
                     auto subpats_len = _vec.len[@ast.pat](subpats);
                     if (subpats_len > 0u) {
                         // TODO: pluralize properly
@@ -1212,7 +1229,8 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
                         fail;   // TODO: recover
                     }
 
-                    auto ann = ast.ann_type(plain_ty(ty.ty_tag(tid)));
+                    let vec[@ty.t] tys = vec(); // FIXME
+                    auto ann = ast.ann_type(plain_ty(ty.ty_tag(tid, tys)));
                     new_pat = ast.pat_tag(p, subpats, vdef_opt, ann);
                 }
             }

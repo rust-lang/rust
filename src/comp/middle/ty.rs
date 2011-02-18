@@ -32,7 +32,7 @@ tag sty {
     ty_machine(util.common.ty_mach);
     ty_char;
     ty_str;
-    ty_tag(ast.def_id);
+    ty_tag(ast.def_id, vec[@t]);
     ty_box(@t);
     ty_vec(@t);
     ty_tup(vec[@t]);
@@ -42,7 +42,7 @@ tag sty {
     ty_obj(vec[method]);
     ty_var(int);                                    // ephemeral type var
     ty_local(ast.def_id);                           // type of a local var
-    ty_param(ast.def_id);                           // fn type param
+    ty_param(ast.def_id);                           // fn/tag type param
     ty_type;
     ty_native;
     // TODO: ty_fn_arg(@t), for a possibly-aliased function argument
@@ -235,9 +235,14 @@ fn ty_to_str(&@t typ) -> str {
             s = "rec(" + _str.connect(strs, ",") + ")";
         }
 
-        case (ty_tag(_)) {
+        case (ty_tag(_, ?tps)) {
             // The user should never see this if the cname is set properly!
             s = "<tag>";
+            if (_vec.len[@t](tps) > 0u) {
+                auto f = ty_to_str;
+                auto strs = _vec.map[@t,str](f, tps);
+                s += "[" + _str.connect(strs, ",") + "]";
+            }
         }
 
         case (ty_fn(?inputs, ?output)) {
@@ -291,7 +296,6 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
         case (ty_machine(_))    { ret fld.fold_simple_ty(ty); }
         case (ty_char)          { ret fld.fold_simple_ty(ty); }
         case (ty_str)           { ret fld.fold_simple_ty(ty); }
-        case (ty_tag(_))        { ret fld.fold_simple_ty(ty); }
         case (ty_type)          { ret fld.fold_simple_ty(ty); }
         case (ty_native)        { ret fld.fold_simple_ty(ty); }
         case (ty_box(?subty)) {
@@ -299,6 +303,13 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
         }
         case (ty_vec(?subty)) {
             ret rewrap(ty, ty_vec(fold_ty(fld, subty)));
+        }
+        case (ty_tag(?tid, ?subtys)) {
+            let vec[@t] new_subtys = vec();
+            for (@t subty in subtys) {
+                new_subtys += vec(fold_ty(fld, subty));
+            }
+            ret rewrap(ty, ty_tag(tid, new_subtys));
         }
         case (ty_tup(?subtys)) {
             let vec[@t] new_subtys = vec();
@@ -364,23 +375,23 @@ fn type_is_nil(@t ty) -> bool {
 
 fn type_is_structural(@t ty) -> bool {
     alt (ty.struct) {
-        case (ty_tup(_)) { ret true; }
-        case (ty_rec(_)) { ret true; }
-        case (ty_tag(_)) { ret true; }
-        case (ty_fn(_,_)) { ret true; }
-        case (ty_obj(_)) { ret true; }
-        case (_) { ret false; }
+        case (ty_tup(_))    { ret true; }
+        case (ty_rec(_))    { ret true; }
+        case (ty_tag(_,_))  { ret true; }
+        case (ty_fn(_,_))   { ret true; }
+        case (ty_obj(_))    { ret true; }
+        case (_)            { ret false; }
     }
     fail;
 }
 
 fn type_is_tup_like(@t ty) -> bool {
     alt (ty.struct) {
-        case (ty_box(_)) { ret true; }
-        case (ty_tup(_)) { ret true; }
-        case (ty_rec(_)) { ret true; }
-        case (ty_tag(_)) { ret true; }
-        case (_) { ret false; }
+        case (ty_box(_))    { ret true; }
+        case (ty_tup(_))    { ret true; }
+        case (ty_rec(_))    { ret true; }
+        case (ty_tag(_,_))  { ret true; }
+        case (_)            { ret false; }
     }
     fail;
 }
@@ -641,8 +652,13 @@ fn item_ty(@ast.item it) -> ty_params_and_ty {
             result_ty = ann_to_type(ann);
         }
         case (ast.item_tag(_, _, ?tps, ?did)) {
+            // Create a new generic polytype.
             ty_params = tps;
-            result_ty = plain_ty(ty_tag(did));
+            let vec[@t] subtys = vec();
+            for (ast.ty_param tp in tps) {
+                subtys += vec(plain_ty(ty_param(tp.id)));
+            }
+            result_ty = plain_ty(ty_tag(did, subtys));
         }
         case (ast.item_obj(_, _, ?tps, _, ?ann)) {
             ty_params = tps;
@@ -1001,13 +1017,42 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             case (ty.ty_type)       { ret struct_cmp(expected, actual); }
             case (ty.ty_native)     { ret struct_cmp(expected, actual); }
 
-            case (ty.ty_tag(?expected_id)) {
+            case (ty.ty_tag(?expected_id, ?expected_tps)) {
                 alt (actual.struct) {
-                    case (ty.ty_tag(?actual_id)) {
-                        if (expected_id._0 == actual_id._0 &&
-                                expected_id._1 == actual_id._1) {
-                            ret ures_ok(expected);
+                    case (ty.ty_tag(?actual_id, ?actual_tps)) {
+                        if (expected_id._0 != actual_id._0 ||
+                                expected_id._1 != actual_id._1) {
+                            ret ures_err(terr_mismatch, expected, actual);
                         }
+
+                        // TODO: factor this cruft out, see the TODO in the
+                        // ty.ty_tup case
+                        let vec[@ty.t] result_tps = vec();
+                        auto i = 0u;
+                        auto expected_len = _vec.len[@ty.t](expected_tps);
+                        while (i < expected_len) {
+                            auto expected_tp = expected_tps.(i);
+                            auto actual_tp = actual_tps.(i);
+
+                            auto result = unify_step(bindings,
+                                                     expected_tp,
+                                                     actual_tp,
+                                                     handler);
+
+                            alt (result) {
+                                case (ures_ok(?rty)) {
+                                    append[@ty.t](result_tps, rty);
+                                }
+                                case (_) {
+                                    ret result;
+                                }
+                            }
+
+                            i += 1u;
+                        }
+
+                        ret ures_ok(plain_ty(ty.ty_tag(expected_id,
+                                                       result_tps)));
                     }
                     case (_) { /* fall through */ }
                 }
