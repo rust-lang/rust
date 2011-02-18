@@ -1151,18 +1151,70 @@ fn mk_type_handle() -> type_handle {
     ret rec(llth=th, dtor=type_handle_dtor(th));
 }
 
-fn type_to_str(TypeRef ty) -> str {
-    let vec[TypeRef] v = vec();
-    ret type_to_str_inner(v, ty);
+
+state obj type_names(std.map.hashmap[TypeRef, str] type_names,
+                    std.map.hashmap[str, TypeRef] named_types) {
+
+    fn associate(str s, TypeRef t) {
+        check (!named_types.contains_key(s));
+        check (!type_names.contains_key(t));
+        type_names.insert(t, s);
+        named_types.insert(s, t);
+    }
+
+    fn type_has_name(TypeRef t) -> bool {
+        ret type_names.contains_key(t);
+    }
+
+    fn get_name(TypeRef t) -> str {
+        ret type_names.get(t);
+    }
+
+    fn name_has_type(str s) -> bool {
+        ret named_types.contains_key(s);
+    }
+
+    fn get_type(str s) -> TypeRef {
+        ret named_types.get(s);
+    }
 }
 
-fn type_to_str_inner(vec[TypeRef] outer0, TypeRef ty) -> str {
+fn mk_type_names() -> type_names {
+    auto nt = util.common.new_str_hash[TypeRef]();
+
+    fn hash(&TypeRef t) -> uint {
+        ret t as uint;
+    }
+
+    fn eq(&TypeRef a, &TypeRef b) -> bool {
+        ret (a as uint) == (b as uint);
+    }
+
+    let std.map.hashfn[TypeRef] hasher = hash;
+    let std.map.eqfn[TypeRef] eqer = eq;
+    auto tn = std.map.mk_hashmap[TypeRef,str](hasher, eqer);
+
+    ret type_names(tn, nt);
+}
+
+fn type_to_str(type_names names, TypeRef ty) -> str {
+    let vec[TypeRef] v = vec();
+    ret type_to_str_inner(names, v, ty);
+}
+
+fn type_to_str_inner(type_names names,
+                     vec[TypeRef] outer0, TypeRef ty) -> str {
+
+    if (names.type_has_name(ty)) {
+        ret names.get_name(ty);
+    }
 
     auto outer = outer0 + vec(ty);
 
     let int kind = llvm.LLVMGetTypeKind(ty);
 
-    fn tys_str(vec[TypeRef] outer, vec[TypeRef] tys) -> str {
+    fn tys_str(type_names names,
+               vec[TypeRef] outer, vec[TypeRef] tys) -> str {
         let str s = "";
         let bool first = true;
         for (TypeRef t in tys) {
@@ -1171,7 +1223,7 @@ fn type_to_str_inner(vec[TypeRef] outer0, TypeRef ty) -> str {
             } else {
                 s += ", ";
             }
-            s += type_to_str_inner(outer, t);
+            s += type_to_str_inner(names, outer, t);
         }
         ret s;
     }
@@ -1200,9 +1252,9 @@ fn type_to_str_inner(vec[TypeRef] outer0, TypeRef ty) -> str {
             let vec[TypeRef] args =
                 _vec.init_elt[TypeRef](0 as TypeRef, n_args);
             llvm.LLVMGetParamTypes(ty, _vec.buf[TypeRef](args));
-            s += tys_str(outer, args);
+            s += tys_str(names, outer, args);
             s += ") -> ";
-            s += type_to_str_inner(outer, out_ty);
+            s += type_to_str_inner(names, outer, out_ty);
             ret s;
         }
 
@@ -1212,7 +1264,7 @@ fn type_to_str_inner(vec[TypeRef] outer0, TypeRef ty) -> str {
             let vec[TypeRef] elts =
                 _vec.init_elt[TypeRef](0 as TypeRef, n_elts);
             llvm.LLVMGetStructElementTypes(ty, _vec.buf[TypeRef](elts));
-            s += tys_str(outer, elts);
+            s += tys_str(names, outer, elts);
             s += "}";
             ret s;
         }
@@ -1228,7 +1280,8 @@ fn type_to_str_inner(vec[TypeRef] outer0, TypeRef ty) -> str {
                     ret "*\\" + util.common.istr(n as int);
                 }
             }
-            ret "*" + type_to_str_inner(outer, llvm.LLVMGetElementType(ty));
+            ret "*" + type_to_str_inner(names, outer,
+                                        llvm.LLVMGetElementType(ty));
         }
 
         case (12) { ret "Opaque"; }
