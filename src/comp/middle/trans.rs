@@ -3454,8 +3454,35 @@ fn trans_fail(@block_ctxt cx, common.span sp, str fail_str) -> result {
 }
 
 fn trans_put(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
-    cx.fcx.ccx.sess.unimpl("put expr");
-    fail;
+    auto llcallee = C_nil();
+    auto llenv = C_nil();
+
+    alt (cx.fcx.lliterbody) {
+        case (some[ValueRef](?lli)) {
+            auto slot = cx.build.Alloca(val_ty(lli));
+            cx.build.Store(lli, slot);
+
+            llcallee = cx.build.GEP(slot, vec(C_int(0),
+                                              C_int(abi.fn_field_code)));
+            llcallee = cx.build.Load(llcallee);
+
+            llenv = cx.build.GEP(slot, vec(C_int(0),
+                                           C_int(abi.fn_field_box)));
+            llenv = cx.build.Load(llenv);
+        }
+    }
+    auto bcx = cx;
+    auto dummy_retslot = bcx.build.Alloca(T_nil());
+    let vec[ValueRef] llargs = vec(dummy_retslot, cx.fcx.lltaskptr, llenv);
+    alt (e) {
+        case (none[@ast.expr]) { }
+        case (some[@ast.expr](?x)) {
+            auto r = trans_expr(bcx, x);
+            llargs += r.val;
+            bcx = r.bcx;
+        }
+    }
+    ret res(bcx, bcx.build.FastCall(llcallee, llargs));
 }
 
 fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {

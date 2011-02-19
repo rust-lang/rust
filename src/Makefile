@@ -475,6 +475,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         else-if.rs \
                         fact.rs \
                         fn-lval.rs \
+                        foreach-simple.rs \
                         fun-call-variants.rs \
                         fun-indirect-call.rs \
                         generic-derived-type.rs \
