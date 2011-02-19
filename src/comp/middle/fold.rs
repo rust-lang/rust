@@ -59,6 +59,7 @@ type ast_fold[ENV] =
          vec[ast.ty_method] meths) -> @ty)        fold_ty_obj,
 
      (fn(&ENV e, &span sp,
+         ast.proto proto,
          vec[rec(ast.mode mode, @ty ty)] inputs,
          @ty output) -> @ty)                      fold_ty_fn,
 
@@ -252,11 +253,10 @@ type ast_fold[ENV] =
          &ast.block_) -> block)                   fold_block,
 
      (fn(&ENV e, &fn_decl decl,
-         bool is_iter,
          &block body) -> ast._fn)                 fold_fn,
 
      (fn(&ENV e, ast.effect effect,
-         vec[arg] inputs,
+         ast.proto proto, vec[arg] inputs,
          @ty output) -> ast.fn_decl)              fold_fn_decl,
 
      (fn(&ENV e, &ast._mod m) -> ast._mod)        fold_mod,
@@ -349,11 +349,13 @@ fn fold_ty[ENV](&ENV env, ast_fold[ENV] fld, @ty t) -> @ty {
         case (ast.ty_obj(?meths)) {
             let vec[ast.ty_method] meths_ = vec();
             for (ast.ty_method m in meths) {
-                auto tfn = fold_ty_fn(env_, fld, t.span, m.inputs, m.output);
+                auto tfn = fold_ty_fn(env_, fld, t.span, m.proto,
+                                      m.inputs, m.output);
                 alt (tfn.node) {
-                    case (ast.ty_fn(?ins, ?out)) {
+                    case (ast.ty_fn(?p, ?ins, ?out)) {
                         append[ast.ty_method]
-                            (meths_, rec(inputs=ins, output=out with m));
+                            (meths_, rec(proto=p, inputs=ins, output=out
+                                         with m));
                     }
                 }
             }
@@ -370,13 +372,14 @@ fn fold_ty[ENV](&ENV env, ast_fold[ENV] fld, @ty t) -> @ty {
             ret fld.fold_ty_mutable(env_, t.span, ty_);
         }
 
-        case (ast.ty_fn(?inputs, ?output)) {
-            ret fold_ty_fn(env_, fld, t.span, inputs, output);
+        case (ast.ty_fn(?proto, ?inputs, ?output)) {
+            ret fold_ty_fn(env_, fld, t.span, proto, inputs, output);
         }
     }
 }
 
 fn fold_ty_fn[ENV](&ENV env, ast_fold[ENV] fld, &span sp,
+                   ast.proto proto,
                    vec[rec(ast.mode mode, @ty ty)] inputs,
                    @ty output) -> @ty {
     auto output_ = fold_ty(env, fld, output);
@@ -386,7 +389,7 @@ fn fold_ty_fn[ENV](&ENV env, ast_fold[ENV] fld, &span sp,
         auto input_ = rec(ty=ty_ with input);
         inputs_ += vec(input_);
     }
-    ret fld.fold_ty_fn(env, sp, inputs_, output_);
+    ret fld.fold_ty_fn(env, sp, proto, inputs_, output_);
 }
 
 fn fold_decl[ENV](&ENV env, ast_fold[ENV] fld, @decl d) -> @decl {
@@ -754,7 +757,7 @@ fn fold_fn_decl[ENV](&ENV env, ast_fold[ENV] fld,
         inputs += fold_arg(env, fld, a);
     }
     auto output = fold_ty[ENV](env, fld, decl.output);
-    ret fld.fold_fn_decl(env, decl.effect, inputs, output);
+    ret fld.fold_fn_decl(env, decl.effect, decl.proto, inputs, output);
 }
 
 fn fold_fn[ENV](&ENV env, ast_fold[ENV] fld, &ast._fn f) -> ast._fn {
@@ -762,7 +765,7 @@ fn fold_fn[ENV](&ENV env, ast_fold[ENV] fld, &ast._fn f) -> ast._fn {
 
     auto body = fold_block[ENV](env, fld, f.body);
 
-    ret fld.fold_fn(env, decl, f.is_iter, body);
+    ret fld.fold_fn(env, decl, body);
 }
 
 
@@ -1019,9 +1022,10 @@ fn identity_fold_ty_obj[ENV](&ENV env, &span sp,
 }
 
 fn identity_fold_ty_fn[ENV](&ENV env, &span sp,
+                            ast.proto proto,
                             vec[rec(ast.mode mode, @ty ty)] inputs,
                             @ty output) -> @ty {
-    ret @respan(sp, ast.ty_fn(inputs, output));
+    ret @respan(sp, ast.ty_fn(proto, inputs, output));
 }
 
 fn identity_fold_ty_path[ENV](&ENV env, &span sp, ast.path p,
@@ -1301,16 +1305,16 @@ fn identity_fold_block[ENV](&ENV e, &span sp, &ast.block_ blk) -> block {
 
 fn identity_fold_fn_decl[ENV](&ENV e,
                               ast.effect effect,
+                              ast.proto proto,
                               vec[arg] inputs,
                               @ty output) -> ast.fn_decl {
-    ret rec(effect=effect, inputs=inputs, output=output);
+    ret rec(effect=effect, proto=proto, inputs=inputs, output=output);
 }
 
 fn identity_fold_fn[ENV](&ENV e,
                          &fn_decl decl,
-                         bool is_iter,
                          &block body) -> ast._fn {
-    ret rec(decl=decl, is_iter=is_iter, body=body);
+    ret rec(decl=decl, body=body);
 }
 
 fn identity_fold_mod[ENV](&ENV e, &ast._mod m) -> ast._mod {
@@ -1404,7 +1408,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_ty_tup     = bind identity_fold_ty_tup[ENV](_,_,_),
          fold_ty_rec     = bind identity_fold_ty_rec[ENV](_,_,_),
          fold_ty_obj     = bind identity_fold_ty_obj[ENV](_,_,_),
-         fold_ty_fn      = bind identity_fold_ty_fn[ENV](_,_,_,_),
+         fold_ty_fn      = bind identity_fold_ty_fn[ENV](_,_,_,_,_),
          fold_ty_path    = bind identity_fold_ty_path[ENV](_,_,_,_),
          fold_ty_mutable = bind identity_fold_ty_mutable[ENV](_,_,_),
 
@@ -1470,8 +1474,8 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
              bind identity_fold_view_item_import[ENV](_,_,_,_,_,_),
 
          fold_block = bind identity_fold_block[ENV](_,_,_),
-         fold_fn = bind identity_fold_fn[ENV](_,_,_,_),
-         fold_fn_decl = bind identity_fold_fn_decl[ENV](_,_,_,_),
+         fold_fn = bind identity_fold_fn[ENV](_,_,_),
+         fold_fn_decl = bind identity_fold_fn_decl[ENV](_,_,_,_,_),
          fold_mod = bind identity_fold_mod[ENV](_,_),
          fold_native_mod = bind identity_fold_native_mod[ENV](_,_),
          fold_crate = bind identity_fold_crate[ENV](_,_,_),

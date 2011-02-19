@@ -155,10 +155,10 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
             sty = ty.ty_rec(flds);
         }
 
-        case (ast.ty_fn(?inputs, ?output)) {
+        case (ast.ty_fn(?proto, ?inputs, ?output)) {
             auto f = bind ast_arg_to_arg(getter, _);
             auto i = _vec.map[ast.ty_arg, arg](f, inputs);
-            sty = ty.ty_fn(i, ast_ty_to_ty(getter, output));
+            sty = ty.ty_fn(proto, i, ast_ty_to_ty(getter, output));
         }
 
         case (ast.ty_path(?path, ?def)) {
@@ -194,7 +194,8 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
                 auto ins = _vec.map[ast.ty_arg, arg](f, m.inputs);
                 auto out = ast_ty_to_ty(getter, m.output);
                 append[ty.method](tmeths,
-                                  rec(ident=m.ident,
+                                  rec(proto=m.proto,
+                                      ident=m.ident,
                                       inputs=ins,
                                       output=out));
             }
@@ -295,7 +296,7 @@ fn ty_of_fn_decl(@ty_item_table id_to_ty_item,
                  ast.def_id def_id) -> @ty.t {
     auto input_tys = _vec.map[ast.arg,arg](ty_of_arg, decl.inputs);
     auto output_ty = convert(decl.output);
-    auto t_fn = plain_ty(ty.ty_fn(input_tys, output_ty));
+    auto t_fn = plain_ty(ty.ty_fn(decl.proto, input_tys, output_ty));
     item_to_ty.insert(def_id, t_fn);
     ret t_fn;
 }
@@ -354,7 +355,8 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
         auto inputs = _vec.map[ast.arg,arg](f, m.node.meth.decl.inputs);
         auto output = convert(m.node.meth.decl.output);
-        ret rec(ident=m.node.ident, inputs=inputs, output=output);
+        ret rec(proto=m.node.meth.decl.proto, ident=m.node.ident,
+                inputs=inputs, output=output);
     }
 
     fn ty_of_obj(@ty_item_table id_to_ty_item,
@@ -385,7 +387,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             auto t_field = ast_ty_to_ty(g, f.ty);
             append[arg](t_inputs, rec(mode=ast.alias, ty=t_field));
         }
-        auto t_fn = plain_ty(ty.ty_fn(t_inputs, t_obj));
+        auto t_fn = plain_ty(ty.ty_fn(ast.proto_fn, t_inputs, t_obj));
         ret t_fn;
     }
 
@@ -501,7 +503,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                     args += vec(rec(mode=ast.alias, ty=arg_ty));
                 }
                 auto tag_t = plain_ty(ty.ty_tag(tag_id, ty_param_tys));
-                result_ty = plain_ty(ty.ty_fn(args, tag_t));
+                result_ty = plain_ty(ty.ty_fn(ast.proto_fn, args, tag_t));
             }
 
             item_to_ty.insert(variant.id, result_ty);
@@ -615,7 +617,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
 
     fn get_ctor_obj_methods(@ty.t t) -> vec[method] {
         alt (t.struct) {
-            case (ty.ty_fn(_,?tobj)) {
+            case (ty.ty_fn(_,_,?tobj)) {
                 alt (tobj.struct) {
                     case (ty.ty_obj(?tm)) {
                         ret tm;
@@ -650,7 +652,8 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             let method meth_ty = meth_tys.(ix);
             let ast.method_ m_;
             let @ast.method m;
-            auto meth_tfn = plain_ty(ty.ty_fn(meth_ty.inputs,
+            auto meth_tfn = plain_ty(ty.ty_fn(meth_ty.proto,
+                                              meth_ty.inputs,
                                               meth_ty.output));
             m_ = rec(ann=ast.ann_type(meth_tfn) with meth.node);
             m = @rec(node=m_ with *meth);
@@ -877,7 +880,7 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
                     check (subpats_len == 0u);
                     p_1 = ast.pat_tag(id, subpats, vdef_opt, ast.ann_type(t));
                 }
-                case (ty.ty_fn(?args, ?tag_ty)) {
+                case (ty.ty_fn(_, ?args, ?tag_ty)) {
                     let vec[@ast.pat] new_subpats = vec();
                     auto i = 0u;
                     for (arg a in args) {
@@ -1189,7 +1192,7 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
             auto last_id = p.node.idents.(len - 1u);
             alt (t.struct) {
                 // N-ary variants have function types.
-                case (ty.ty_fn(?args, ?tag_ty)) {
+                case (ty.ty_fn(_, ?args, ?tag_ty)) {
                     auto arg_len = _vec.len[arg](args);
                     auto subpats_len = _vec.len[@ast.pat](subpats);
                     if (arg_len != subpats_len) {
@@ -1628,6 +1631,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                       ty_to_str(t_0));
             }
 
+            let ast.proto proto = ty.ty_fn_proto(t_0);
             let vec[arg] arg_tys_0 = ty.ty_fn_args(t_0);
             let @ty.t rt_0 = ty.ty_fn_ret(t_0);
             let vec[option.t[@ast.expr]] args_1 = vec();
@@ -1654,7 +1658,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 i += 1u;
             }
 
-            let @ty.t t_1 = plain_ty(ty.ty_fn(residual_args, rt_0));
+            let @ty.t t_1 = plain_ty(ty.ty_fn(proto,
+                                              residual_args, rt_0));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_bind(f_0, args_1,
                                                       ast.ann_type(t_1)));
@@ -1677,7 +1682,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 append[arg](arg_tys_0, rec(mode=ast.val, ty=expr_ty(a_0)));
             }
             auto rt_0 = next_ty_var(fcx.ccx);
-            auto t_0 = plain_ty(ty.ty_fn(arg_tys_0, rt_0));
+            auto t_0 = plain_ty(ty.ty_fn(ty.ty_fn_proto(expr_ty(f_0)),
+                                         arg_tys_0, rt_0));
 
             // Unify and write back to the function.
             auto f_1 = demand_expr(fcx, t_0, f_0);
@@ -1877,7 +1883,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                               "bad index on obj");
                     }
                     auto meth = methods.(ix);
-                    auto t = plain_ty(ty.ty_fn(meth.inputs, meth.output));
+                    auto t = plain_ty(ty.ty_fn(meth.proto,
+                                               meth.inputs, meth.output));
                     auto ann = ast.ann_type(t);
                     ret @fold.respan[ast.expr_](expr.span,
                                                 ast.expr_field(base_1,
@@ -2047,8 +2054,7 @@ fn check_const(&@crate_ctxt ccx, &span sp, ast.ident ident, @ast.ty t,
     ret @fold.respan[ast.item_](sp, item);
 }
 
-fn check_fn(&@crate_ctxt ccx, &ast.fn_decl decl,
-            bool is_iter, &ast.block body) -> ast._fn {
+fn check_fn(&@crate_ctxt ccx, &ast.fn_decl decl, &ast.block body) -> ast._fn {
     auto local_ty_table = @common.new_def_hash[@ty.t]();
 
     // FIXME: duplicate work: the item annotation already has the arg types
@@ -2075,8 +2081,8 @@ fn check_fn(&@crate_ctxt ccx, &ast.fn_decl decl,
     auto block_t = check_block(fcx, body);
     auto block_wb = writeback(fcx, block_t);
 
-     auto fn_t = rec(decl=decl, is_iter=is_iter,
-                    body=block_wb);
+     auto fn_t = rec(decl=decl,
+                     body=block_wb);
     ret fn_t;
 }
 
@@ -2095,7 +2101,7 @@ fn check_item_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
     }
 
     auto output_ty = ast_ty_to_ty_crate(ccx, f.decl.output);
-    auto fn_sty = ty.ty_fn(inputs, output_ty);
+    auto fn_sty = ty.ty_fn(f.decl.proto, inputs, output_ty);
     auto fn_ann = ast.ann_type(plain_ty(fn_sty));
 
     auto item = ast.item_fn(ident, f, ty_params, id, fn_ann);
@@ -2127,7 +2133,7 @@ fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     auto fld = fold.new_identity_fold[@crate_ctxt]();
 
     fld = @rec(update_env_for_item = bind update_obj_fields(_, _),
-               fold_fn      = bind check_fn(_,_,_,_),
+               fold_fn      = bind check_fn(_,_,_),
                fold_item_fn = bind check_item_fn(_,_,_,_,_,_,_)
                with *fld);
     ret fold.fold_crate[@crate_ctxt](ccx, fld, result._0);

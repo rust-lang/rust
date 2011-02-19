@@ -19,7 +19,10 @@ import util.common.span;
 
 type arg = rec(ast.mode mode, @t ty);
 type field = rec(ast.ident ident, @t ty);
-type method = rec(ast.ident ident, vec[arg] inputs, @t output);
+type method = rec(ast.proto proto,
+                  ast.ident ident,
+                  vec[arg] inputs,
+                  @t output);
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast.rs as well.
@@ -37,7 +40,7 @@ tag sty {
     ty_vec(@t);
     ty_tup(vec[@t]);
     ty_rec(vec[field]);
-    ty_fn(vec[arg], @t);                            // TODO: effect
+    ty_fn(ast.proto, vec[arg], @t);                 // TODO: effect
     ty_native_fn(vec[arg], @t);                     // TODO: effect
     ty_obj(vec[method]);
     ty_var(int);                                    // ephemeral type var
@@ -122,9 +125,13 @@ fn ast_ty_to_str(&@ast.ty ty) -> str {
             s += ")";
         }
 
-        case (ast.ty_fn(?inputs, ?output)) {
+        case (ast.ty_fn(?proto, ?inputs, ?output)) {
             auto f = ast_fn_input_to_str;
-            s = "fn(";
+            if (proto == ast.proto_fn) {
+                s = "fn(";
+            } else {
+                s = "iter(";
+            }
             auto is = _vec.map[rec(ast.mode mode, @ast.ty ty),str](f, inputs);
             s += _str.connect(is, ", ");
             s += ")";
@@ -175,10 +182,14 @@ fn ty_to_str(&@t typ) -> str {
         ret s + ty_to_str(input.ty);
     }
 
-    fn fn_to_str(option.t[ast.ident] ident,
+    fn fn_to_str(ast.proto proto,
+                 option.t[ast.ident] ident,
                  vec[arg] inputs, @t output) -> str {
             auto f = fn_input_to_str;
             auto s = "fn";
+            if (proto == ast.proto_iter) {
+                s = "iter";
+            }
             alt (ident) {
                 case (some[ast.ident](?i)) {
                     s += " ";
@@ -198,7 +209,8 @@ fn ty_to_str(&@t typ) -> str {
     }
 
     fn method_to_str(&method m) -> str {
-        ret fn_to_str(some[ast.ident](m.ident), m.inputs, m.output) + ";";
+        ret fn_to_str(m.proto, some[ast.ident](m.ident),
+                      m.inputs, m.output) + ";";
     }
 
     fn field_to_str(&field f) -> str {
@@ -245,12 +257,12 @@ fn ty_to_str(&@t typ) -> str {
             }
         }
 
-        case (ty_fn(?inputs, ?output)) {
-            s = fn_to_str(none[ast.ident], inputs, output);
+        case (ty_fn(?proto, ?inputs, ?output)) {
+            s = fn_to_str(proto, none[ast.ident], inputs, output);
         }
 
         case (ty_native_fn(?inputs, ?output)) {
-            s = fn_to_str(none[ast.ident], inputs, output);
+            s = fn_to_str(ast.proto_fn, none[ast.ident], inputs, output);
         }
 
         case (ty_obj(?meths)) {
@@ -326,13 +338,13 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
             }
             ret rewrap(ty, ty_rec(new_fields));
         }
-        case (ty_fn(?args, ?ret_ty)) {
+        case (ty_fn(?proto, ?args, ?ret_ty)) {
             let vec[arg] new_args = vec();
             for (arg a in args) {
                 auto new_ty = fold_ty(fld, a.ty);
                 new_args += vec(rec(mode=a.mode, ty=new_ty));
             }
-            ret rewrap(ty, ty_fn(new_args, fold_ty(fld, ret_ty)));
+            ret rewrap(ty, ty_fn(proto, new_args, fold_ty(fld, ret_ty)));
         }
         case (ty_obj(?methods)) {
             let vec[method] new_methods = vec();
@@ -341,7 +353,8 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
                 for (arg a in m.inputs) {
                     new_args += vec(rec(mode=a.mode, ty=fold_ty(fld, a.ty)));
                 }
-                new_methods += vec(rec(ident=m.ident, inputs=new_args,
+                new_methods += vec(rec(proto=m.proto, ident=m.ident,
+                                       inputs=new_args,
                                        output=fold_ty(fld, m.output)));
             }
             ret rewrap(ty, ty_obj(new_methods));
@@ -378,7 +391,7 @@ fn type_is_structural(@t ty) -> bool {
         case (ty_tup(_))    { ret true; }
         case (ty_rec(_))    { ret true; }
         case (ty_tag(_,_))  { ret true; }
-        case (ty_fn(_,_))   { ret true; }
+        case (ty_fn(_,_,_)) { ret true; }
         case (ty_obj(_))    { ret true; }
         case (_)            { ret false; }
     }
@@ -573,23 +586,29 @@ fn count_ty_params(@t ty) -> uint {
 // Type accessors for substructures of types
 
 fn ty_fn_args(@t fty) -> vec[arg] {
-  alt (fty.struct) {
-    case (ty.ty_fn(?a, _)) { ret a; }
-  }
+    alt (fty.struct) {
+        case (ty.ty_fn(_, ?a, _)) { ret a; }
+    }
+}
+
+fn ty_fn_proto(@t fty) -> ast.proto {
+    alt (fty.struct) {
+        case (ty.ty_fn(?p, _, _)) { ret p; }
+    }
 }
 
 fn ty_fn_ret(@t fty) -> @t {
-  alt (fty.struct) {
-    case (ty.ty_fn(_, ?r)) { ret r; }
-  }
+    alt (fty.struct) {
+        case (ty.ty_fn(_, _, ?r)) { ret r; }
+    }
 }
 
 fn is_fn_ty(@t fty) -> bool {
-  alt (fty.struct) {
-    case (ty.ty_fn(_, _)) { ret true; }
-    case (_) { ret false; }
-  }
-  ret false;
+    alt (fty.struct) {
+        case (ty.ty_fn(_, _, _)) { ret true; }
+        case (_) { ret false; }
+    }
+    ret false;
 }
 
 
@@ -808,80 +827,87 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
     }
 
     fn unify_fn(@hashmap[int,@ty.t] bindings,
+                ast.proto e_proto,
+                ast.proto a_proto,
                 @ty.t expected,
                 @ty.t actual,
                 &unify_handler handler,
                 vec[arg] expected_inputs, @t expected_output,
                 vec[arg] actual_inputs, @t actual_output)
-      -> unify_result {
-      auto expected_len = _vec.len[arg](expected_inputs);
-      auto actual_len = _vec.len[arg](actual_inputs);
-      if (expected_len != actual_len) {
-        ret ures_err(terr_arg_count, expected, actual);
-      }
+        -> unify_result {
 
-      // TODO: as above, we should have an iter2 iterator.
-      let vec[arg] result_ins = vec();
-      auto i = 0u;
-      while (i < expected_len) {
-        auto expected_input = expected_inputs.(i);
-        auto actual_input = actual_inputs.(i);
-
-        // This should be safe, I think?
-        auto result_mode;
-        if (mode_is_alias(expected_input.mode) ||
-            mode_is_alias(actual_input.mode)) {
-          result_mode = ast.alias;
-        } else {
-          result_mode = ast.val;
+        if (e_proto != a_proto) {
+            ret ures_err(terr_mismatch, expected, actual);
         }
 
+        auto expected_len = _vec.len[arg](expected_inputs);
+        auto actual_len = _vec.len[arg](actual_inputs);
+        if (expected_len != actual_len) {
+            ret ures_err(terr_arg_count, expected, actual);
+        }
+
+        // TODO: as above, we should have an iter2 iterator.
+        let vec[arg] result_ins = vec();
+        auto i = 0u;
+        while (i < expected_len) {
+            auto expected_input = expected_inputs.(i);
+            auto actual_input = actual_inputs.(i);
+
+            // This should be safe, I think?
+            auto result_mode;
+            if (mode_is_alias(expected_input.mode) ||
+                mode_is_alias(actual_input.mode)) {
+                result_mode = ast.alias;
+            } else {
+                result_mode = ast.val;
+            }
+
+            auto result = unify_step(bindings,
+                                     actual_input.ty,
+                                     expected_input.ty,
+                                     handler);
+
+            alt (result) {
+                case (ures_ok(?rty)) {
+                    result_ins += vec(rec(mode=result_mode,
+                                          ty=rty));
+                }
+
+                case (_) {
+                    ret result;
+                }
+            }
+
+            i += 1u;
+        }
+
+        // Check the output.
+        auto result_out;
         auto result = unify_step(bindings,
-                                 actual_input.ty,
-                                 expected_input.ty,
+                                 expected_output,
+                                 actual_output,
                                  handler);
-
         alt (result) {
-          case (ures_ok(?rty)) {
-            result_ins += vec(rec(mode=result_mode,
-                                  ty=rty));
-          }
+            case (ures_ok(?rty)) {
+                result_out = rty;
+            }
 
-          case (_) {
-            ret result;
-          }
+            case (_) {
+                ret result;
+            }
         }
 
-        i += 1u;
-      }
-
-      // Check the output.
-      auto result_out;
-      auto result = unify_step(bindings,
-                               expected_output,
-                               actual_output,
-                               handler);
-      alt (result) {
-        case (ures_ok(?rty)) {
-          result_out = rty;
-        }
-
-        case (_) {
-          ret result;
-        }
-      }
-
-      auto t = plain_ty(ty.ty_fn(result_ins, result_out));
-      ret ures_ok(t);
+        auto t = plain_ty(ty.ty_fn(e_proto, result_ins, result_out));
+        ret ures_ok(t);
 
     }
 
     fn unify_obj(@hashmap[int,@ty.t] bindings,
-                @ty.t expected,
-                @ty.t actual,
-                &unify_handler handler,
-                vec[method] expected_meths,
-                vec[method] actual_meths) -> unify_result {
+                 @ty.t expected,
+                 @ty.t actual,
+                 &unify_handler handler,
+                 vec[method] expected_meths,
+                 vec[method] actual_meths) -> unify_result {
       let vec[method] result_meths = vec();
       let uint i = 0u;
       let uint expected_len = _vec.len[method](expected_meths);
@@ -893,28 +919,28 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
 
       // FIXME: work around buggy typestate logic for 'alt', sigh.
       fn is_ok(&unify_result r) -> bool {
-        alt (r) {
-          case (ures_ok(?tfn)) {
-            ret true;
+          alt (r) {
+              case (ures_ok(?tfn)) {
+                  ret true;
+              }
+              case (_) {}
           }
-          case (_) {}
-        }
-        ret false;
+          ret false;
       }
 
       fn append_if_ok(&method e_meth,
                       &unify_result r, &mutable vec[method] result_meths) {
-        alt (r) {
-          case (ures_ok(?tfn)) {
-            alt (tfn.struct) {
-              case (ty_fn(?ins, ?out)) {
-                result_meths += vec(rec(inputs = ins,
-                                        output = out
-                                        with e_meth));
+          alt (r) {
+              case (ures_ok(?tfn)) {
+                  alt (tfn.struct) {
+                      case (ty_fn(?proto, ?ins, ?out)) {
+                          result_meths += vec(rec(inputs = ins,
+                                                  output = out
+                                                  with e_meth));
+                      }
+                  }
               }
-            }
           }
-        }
       }
 
       while (i < expected_len) {
@@ -924,7 +950,9 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
           ret ures_err(terr_obj_meths(e_meth.ident, a_meth.ident),
                        expected, actual);
         }
-        auto r = unify_fn(bindings, expected, actual, handler,
+        auto r = unify_fn(bindings,
+                          e_meth.proto, a_meth.proto,
+                          expected, actual, handler,
                           e_meth.inputs, e_meth.output,
                           a_meth.inputs, a_meth.output);
         if (!is_ok(r)) {
@@ -1215,12 +1243,13 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                 }
             }
 
-            case (ty.ty_fn(?expected_inputs, ?expected_output)) {
+            case (ty.ty_fn(?ep, ?expected_inputs, ?expected_output)) {
                 alt (actual.struct) {
-                    case (ty.ty_fn(?actual_inputs, ?actual_output)) {
-                      ret unify_fn(bindings, expected, actual, handler,
-                                   expected_inputs, expected_output,
-                                   actual_inputs, actual_output);
+                    case (ty.ty_fn(?ap, ?actual_inputs, ?actual_output)) {
+                        ret unify_fn(bindings, ep, ap,
+                                     expected, actual, handler,
+                                     expected_inputs, expected_output,
+                                     actual_inputs, actual_output);
                     }
 
                     case (_) {
@@ -1230,15 +1259,15 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             }
 
             case (ty.ty_obj(?expected_meths)) {
-              alt (actual.struct) {
-                case (ty.ty_obj(?actual_meths)) {
-                  ret unify_obj(bindings, expected, actual, handler,
-                                expected_meths, actual_meths);
+                alt (actual.struct) {
+                    case (ty.ty_obj(?actual_meths)) {
+                        ret unify_obj(bindings, expected, actual, handler,
+                                      expected_meths, actual_meths);
+                    }
+                    case (_) {
+                        ret ures_err(terr_mismatch, expected, actual);
+                    }
                 }
-                case (_) {
-                  ret ures_err(terr_mismatch, expected, actual);
-                }
-              }
             }
 
             case (ty.ty_var(?expected_id)) {

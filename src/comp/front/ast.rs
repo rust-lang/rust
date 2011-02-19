@@ -78,6 +78,11 @@ tag effect {
     eff_unsafe;
 }
 
+tag proto {
+    proto_iter;
+    proto_fn;
+}
+
 tag binop {
     add;
     sub;
@@ -187,7 +192,8 @@ tag lit_ {
 type ty_field = rec(ident ident, @ty ty);
 type ty_arg = rec(mode mode, @ty ty);
 // TODO: effect
-type ty_method = rec(ident ident, vec[ty_arg] inputs, @ty output);
+type ty_method = rec(proto proto, ident ident,
+                     vec[ty_arg] inputs, @ty output);
 type ty = spanned[ty_];
 tag ty_ {
     ty_nil;
@@ -201,7 +207,7 @@ tag ty_ {
     ty_vec(@ty);
     ty_tup(vec[@ty]);
     ty_rec(vec[ty_field]);
-    ty_fn(vec[ty_arg], @ty);        // TODO: effect
+    ty_fn(proto, vec[ty_arg], @ty);        // TODO: effect
     ty_obj(vec[ty_method]);
     ty_path(path, option.t[def]);
     ty_mutable(@ty);
@@ -210,10 +216,10 @@ tag ty_ {
 
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
 type fn_decl = rec(effect effect,
+                   proto proto,
                    vec[arg] inputs,
                    @ty output);
 type _fn = rec(fn_decl decl,
-               bool is_iter,
                block body);
 
 

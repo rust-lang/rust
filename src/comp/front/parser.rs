@@ -133,7 +133,8 @@ impure fn parse_str_lit(parser p) -> ast.ident {
 }
 
 
-impure fn parse_ty_fn(parser p, ast.span lo) -> ast.ty_ {
+impure fn parse_ty_fn(ast.proto proto, parser p,
+                      ast.span lo) -> ast.ty_ {
     impure fn parse_fn_input_ty(parser p) -> rec(ast.mode mode, @ast.ty ty) {
         auto mode;
         if (p.peek() == token.BINOP(token.AND)) {
@@ -167,7 +168,16 @@ impure fn parse_ty_fn(parser p, ast.span lo) -> ast.ty_ {
         output = @spanned(lo, inputs.span, ast.ty_nil);
     }
 
-    ret ast.ty_fn(inputs.node, output);
+    ret ast.ty_fn(proto, inputs.node, output);
+}
+
+impure fn parse_proto(parser p) -> ast.proto {
+    alt (p.peek()) {
+        case (token.ITER) { p.bump(); ret ast.proto_iter; }
+        case (token.FN) { p.bump(); ret ast.proto_fn; }
+        case (?t) { unexpected(p, t); }
+    }
+    fail;
 }
 
 impure fn parse_ty_obj(parser p, &mutable ast.span hi) -> ast.ty_ {
@@ -177,14 +187,14 @@ impure fn parse_ty_obj(parser p, &mutable ast.span hi) -> ast.ty_ {
 
         // FIXME: do something with this, currently it's dropped on the floor.
         let ast.effect eff = parse_effect(p);
-
-        expect(p, token.FN);
+        let ast.proto proto = parse_proto(p);
         auto ident = parse_ident(p);
-        auto f = parse_ty_fn(p, flo);
+        auto f = parse_ty_fn(proto, p, flo);
         expect(p, token.SEMI);
         alt (f) {
-            case (ast.ty_fn(?inputs, ?output)) {
-                ret rec(ident=ident, inputs=inputs, output=output);
+            case (ast.ty_fn(?proto, ?inputs, ?output)) {
+                ret rec(proto=proto, ident=ident,
+                        inputs=inputs, output=output);
             }
         }
         fail;
@@ -286,9 +296,20 @@ impure fn parse_ty(parser p) -> @ast.ty {
         case (token.FN) {
             auto flo = p.get_span();
             p.bump();
-            t = parse_ty_fn(p, flo);
+            t = parse_ty_fn(ast.proto_fn, p, flo);
             alt (t) {
-                case (ast.ty_fn(_, ?out)) {
+                case (ast.ty_fn(_, _, ?out)) {
+                    hi = out.span;
+                }
+            }
+        }
+
+        case (token.ITER) {
+            auto flo = p.get_span();
+            p.bump();
+            t = parse_ty_fn(ast.proto_iter, p, flo);
+            alt (t) {
+                case (ast.ty_fn(_, _, ?out)) {
                     hi = out.span;
                 }
             }
@@ -1537,7 +1558,8 @@ impure fn parse_ty_params(parser p) -> vec[ast.ty_param] {
     ret ty_params;
 }
 
-impure fn parse_fn_decl(parser p, ast.effect eff) -> ast.fn_decl {
+impure fn parse_fn_decl(parser p, ast.proto proto,
+                        ast.effect eff) -> ast.fn_decl {
     auto pf = parse_arg;
     let util.common.spanned[vec[ast.arg]] inputs =
         // FIXME: passing parse_arg as an lval doesn't work at the
@@ -1555,35 +1577,30 @@ impure fn parse_fn_decl(parser p, ast.effect eff) -> ast.fn_decl {
     } else {
         output = @spanned(inputs.span, inputs.span, ast.ty_nil);
     }
-    ret rec(effect=eff, inputs=inputs.node, output=output);
+    ret rec(effect=eff, proto=proto,
+            inputs=inputs.node, output=output);
 }
 
-impure fn parse_fn(parser p, ast.effect eff, bool is_iter) -> ast._fn {
-    auto decl = parse_fn_decl(p, eff);
+impure fn parse_fn(parser p, ast.effect eff, ast.proto proto) -> ast._fn {
+    auto decl = parse_fn_decl(p, proto, eff);
     auto body = parse_block(p);
     ret rec(decl = decl,
-            is_iter = is_iter,
             body = body);
 }
 
-impure fn parse_fn_header(parser p, bool is_iter) -> tup(span, ast.ident,
-                                                         vec[ast.ty_param]) {
+impure fn parse_fn_header(parser p)
+    -> tup(span, ast.proto, ast.ident, vec[ast.ty_param]) {
     auto lo = p.get_span();
-    if (is_iter) {
-        expect(p, token.ITER);
-    } else {
-        expect(p, token.FN);
-    }
+    auto proto = parse_proto(p);
     auto id = parse_ident(p);
     auto ty_params = parse_ty_params(p);
-    ret tup(lo, id, ty_params);
+    ret tup(lo, proto, id, ty_params);
 }
 
-impure fn parse_item_fn_or_iter(parser p, ast.effect eff,
-                                bool is_iter) -> @ast.item {
-    auto t = parse_fn_header(p, is_iter);
-    auto f = parse_fn(p, eff, is_iter);
-    auto item = ast.item_fn(t._1, f, t._2,
+impure fn parse_item_fn_or_iter(parser p, ast.effect eff) -> @ast.item {
+    auto t = parse_fn_header(p);
+    auto f = parse_fn(p, eff, t._1);
+    auto item = ast.item_fn(t._2, f, t._3,
                             p.next_def_id(), ast.ann_none);
     ret @spanned(t._0, f.body.span, item);
 }
@@ -1598,14 +1615,9 @@ impure fn parse_obj_field(parser p) -> ast.obj_field {
 impure fn parse_method(parser p) -> @ast.method {
     auto lo = p.get_span();
     auto eff = parse_effect(p);
-    auto is_iter = false;
-    alt (p.peek()) {
-        case (token.FN) { p.bump(); }
-        case (token.ITER) { p.bump(); is_iter = true; }
-        case (?t) { unexpected(p, t); }
-    }
+    auto proto = parse_proto(p);
     auto ident = parse_ident(p);
-    auto f = parse_fn(p, eff, is_iter);
+    auto f = parse_fn(p, eff, proto);
     auto meth = rec(ident=ident, meth=f,
                     id=p.next_def_id(), ann=ast.ann_none);
     ret @spanned(lo, f.body.span, meth);
@@ -1689,11 +1701,11 @@ impure fn parse_item_native_type(parser p) -> @ast.native_item {
 }
 
 impure fn parse_item_native_fn(parser p, ast.effect eff) -> @ast.native_item {
-    auto t = parse_fn_header(p, false);
-    auto decl = parse_fn_decl(p, eff);
+    auto t = parse_fn_header(p);
+    auto decl = parse_fn_decl(p, t._1, eff);
     auto hi = p.get_span();
     expect(p, token.SEMI);
-    auto item = ast.native_item_fn(t._1, decl, t._2, p.next_def_id(),
+    auto item = ast.native_item_fn(t._2, decl, t._3, p.next_def_id(),
                                    ast.ann_none);
     ret @spanned(t._0, hi, item);
 }
@@ -1883,11 +1895,11 @@ impure fn parse_item(parser p) -> @ast.item {
 
         case (token.FN) {
             check (lyr == ast.layer_value);
-            ret parse_item_fn_or_iter(p, eff, false);
+            ret parse_item_fn_or_iter(p, eff);
         }
         case (token.ITER) {
             check (lyr == ast.layer_value);
-            ret parse_item_fn_or_iter(p, eff, true);
+            ret parse_item_fn_or_iter(p, eff);
         }
         case (token.MOD) {
             check (eff == ast.eff_pure);

@@ -449,8 +449,7 @@ fn type_of_explicit_args(@crate_ctxt cx,
 //  - trans_args
 
 fn type_of_fn_full(@crate_ctxt cx,
-                   // FIXME: change bool flag to tag
-                   bool is_iter,
+                   ast.proto proto,
                    option.t[TypeRef] obj_self,
                    vec[ty.arg] inputs,
                    @ty.t output) -> TypeRef {
@@ -480,7 +479,9 @@ fn type_of_fn_full(@crate_ctxt cx,
     // Args >3: ty params, if not acquired via capture...
     if (obj_self == none[TypeRef]) {
         auto ty_param_count =
-            ty.count_ty_params(plain_ty(ty.ty_fn(inputs, output)));
+            ty.count_ty_params(plain_ty(ty.ty_fn(proto,
+                                                 inputs,
+                                                 output)));
         auto i = 0u;
         while (i < ty_param_count) {
             atys += T_ptr(T_tydesc(cx.tn));
@@ -488,12 +489,12 @@ fn type_of_fn_full(@crate_ctxt cx,
         }
     }
 
-    if (is_iter) {
+    if (proto == ast.proto_iter) {
         // If it's an iter, the 'output' type of the iter is actually the
         // *input* type of the function we're given as our iter-block
         // argument.
         atys += T_fn_pair(cx.tn,
-                          type_of_fn_full(cx, false, none[TypeRef],
+                          type_of_fn_full(cx, ast.proto_fn, none[TypeRef],
                                           vec(rec(mode=ast.val, ty=output)),
                                           plain_ty(ty.ty_nil)));
     }
@@ -505,10 +506,9 @@ fn type_of_fn_full(@crate_ctxt cx,
 }
 
 fn type_of_fn(@crate_ctxt cx,
-              // FIXME: change bool flag to tag
-              bool is_iter,
+              ast.proto proto,
               vec[ty.arg] inputs, @ty.t output) -> TypeRef {
-    ret type_of_fn_full(cx, is_iter, none[TypeRef], inputs, output);
+    ret type_of_fn_full(cx, proto, none[TypeRef], inputs, output);
 }
 
 fn type_of_native_fn(@crate_ctxt cx, vec[ty.arg] inputs,
@@ -563,9 +563,8 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
             }
             ret T_struct(tys);
         }
-        case (ty.ty_fn(?args, ?out)) {
-            // FIXME: put iter in ty_fn.
-            ret T_fn_pair(cx.tn, type_of_fn(cx, false, args, out));
+        case (ty.ty_fn(?proto, ?args, ?out)) {
+            ret T_fn_pair(cx.tn, type_of_fn(cx, proto, args, out));
         }
         case (ty.ty_native_fn(?args, ?out)) {
             ret T_fn_pair(cx.tn, type_of_native_fn(cx, args, out));
@@ -577,9 +576,7 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
             let vec[TypeRef] mtys = vec();
             for (ty.method m in meths) {
                 let TypeRef mty =
-                    type_of_fn_full(cx,
-                                    // FIXME: support method iters
-                                    false,
+                    type_of_fn_full(cx, m.proto,
                                     some[TypeRef](self_ty),
                                     m.inputs, m.output);
                 mtys += T_ptr(mty);
@@ -1339,7 +1336,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                                         T_int(), C_int(0));
         }
 
-        case (ty.ty_fn(_,_)) {
+        case (ty.ty_fn(_,_,_)) {
             fn hit_zero(@block_ctxt cx, ValueRef v) -> result {
 
                 // Call through the closure's own fields-drop glue first.
@@ -1440,7 +1437,7 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
 fn type_of_variant(@crate_ctxt cx, &ast.variant v) -> TypeRef {
     let vec[TypeRef] lltys = vec();
     alt (ty.ann_to_type(v.ann).struct) {
-        case (ty.ty_fn(?args, _)) {
+        case (ty.ty_fn(_, ?args, _)) {
             for (ty.arg arg in args) {
                 lltys += vec(type_of(cx, arg.ty));
             }
@@ -1547,7 +1544,7 @@ fn iter_structural_ty(@block_ctxt cx,
 
                         auto fn_ty = ty.ann_to_type(variants.(i).ann);
                         alt (fn_ty.struct) {
-                            case (ty.ty_fn(?args, _)) {
+                            case (ty.ty_fn(_, ?args, _)) {
                                 auto llvarp = variant_cx.build.
                                     TruncOrBitCast(llunion_ptr,
                                                    T_ptr(llvarty));
@@ -1584,7 +1581,7 @@ fn iter_structural_ty(@block_ctxt cx,
 
             ret res(next_cx, C_nil());
         }
-        case (ty.ty_fn(_,_)) {
+        case (ty.ty_fn(_,_,_)) {
             auto box_cell =
                 cx.build.GEP(v,
                              vec(C_int(0),
@@ -2264,17 +2261,18 @@ fn trans_for_each(@block_ctxt cx,
     // pointer along with the foreach-body-fn pointer into a 'normal' fn pair
     // and pass it in as a first class fn-arg to the iterator.
 
-    auto foreach_llty = type_of_fn_full(cx.fcx.ccx, false, none[TypeRef],
-                                        vec(rec(mode=ast.val, ty=decl_ty)),
-                                        plain_ty(ty.ty_nil));
+    auto iter_body_llty = type_of_fn_full(cx.fcx.ccx, ast.proto_fn,
+                                          none[TypeRef],
+                                          vec(rec(mode=ast.val, ty=decl_ty)),
+                                          plain_ty(ty.ty_nil));
 
-    let ValueRef llforeach = decl_fastcall_fn(cx.fcx.ccx.llmod,
-                                              s, foreach_llty);
+    let ValueRef lliterbody = decl_fastcall_fn(cx.fcx.ccx.llmod,
+                                               s, iter_body_llty);
 
     // FIXME: handle ty params properly.
     let vec[ast.ty_param] ty_params = vec();
 
-    auto fcx = new_fn_ctxt(cx.fcx.ccx, s, llforeach);
+    auto fcx = new_fn_ctxt(cx.fcx.ccx, s, lliterbody);
     auto bcx = new_top_block_ctxt(fcx);
 
     // FIXME: populate lllocals from llenv here.
@@ -2282,13 +2280,16 @@ fn trans_for_each(@block_ctxt cx,
     res.bcx.build.RetVoid();
 
 
-    // Step 3: Call iter passing [llforeach, llenv], plus other args.
+    // Step 3: Call iter passing [lliterbody, llenv], plus other args.
 
     alt (seq.node) {
         case (ast.expr_call(?f, ?args, ?ann)) {
-            // FIXME_ finish here by transferring to trans_call,
-            // suitably refactored.
-            cx.fcx.ccx.sess.unimpl("for each loop in trans");
+
+            // log "lliterbody: " + val_str(cx.fcx.ccx.tn, lliterbody);
+            ret trans_call(cx, f,
+                           some[ValueRef](lliterbody),
+                           args,
+                           ann);
         }
     }
     fail;
@@ -2933,6 +2934,7 @@ fn trans_args(@block_ctxt cx,
               ValueRef llenv,
               option.t[ValueRef] llobj,
               option.t[generic_info] gen,
+              option.t[ValueRef] lliterbody,
               &vec[@ast.expr] es,
               @ty.t fn_ty)
     -> tup(@block_ctxt, vec[ValueRef], ValueRef) {
@@ -2993,6 +2995,14 @@ fn trans_args(@block_ctxt cx,
     // Args >3: ty_params ...
     llargs += lltydescs;
 
+    // ... then possibly an lliterbody argument.
+    alt (lliterbody) {
+        case (none[ValueRef]) {}
+        case (some[ValueRef](?lli)) {
+            llargs += lli;
+        }
+    }
+
     // ... then explicit args.
     auto i = 0u;
     for (@ast.expr e in es) {
@@ -3048,7 +3058,9 @@ fn trans_args(@block_ctxt cx,
 }
 
 fn trans_call(@block_ctxt cx, @ast.expr f,
-              vec[@ast.expr] args, &ast.ann ann) -> result {
+              option.t[ValueRef] lliterbody,
+              vec[@ast.expr] args,
+              &ast.ann ann) -> result {
     auto f_res = trans_lval(cx, f);
     auto faddr = f_res.res.val;
     auto llenv = C_null(T_opaque_closure_ptr(cx.fcx.ccx.tn));
@@ -3077,11 +3089,20 @@ fn trans_call(@block_ctxt cx, @ast.expr f,
     auto args_res = trans_args(f_res.res.bcx,
                                llenv, f_res.llobj,
                                f_res.generic,
+                               lliterbody,
                                args, fn_ty);
 
     auto bcx = args_res._0;
     auto llargs = args_res._1;
     auto llretslot = args_res._2;
+
+    /*
+    log "calling: " + val_str(cx.fcx.ccx.tn, faddr);
+
+    for (ValueRef arg in llargs) {
+        log "arg: " + val_str(cx.fcx.ccx.tn, arg);
+    }
+    */
 
     bcx.build.FastCall(faddr, llargs);
     auto retval = C_nil();
@@ -3308,7 +3329,7 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
         }
 
         case (ast.expr_call(?f, ?args, ?ann)) {
-            ret trans_call(cx, f, args, ann);
+            ret trans_call(cx, f, none[ValueRef], args, ann);
         }
 
         case (ast.expr_cast(?e, _, ?ann)) {
@@ -3707,8 +3728,7 @@ fn new_fn_ctxt(@crate_ctxt cx,
 //  - trans_args
 
 fn create_llargs_for_fn_args(&@fn_ctxt cx,
-                             // FIXME: change bool flag to tag
-                             bool is_iter,
+                             ast.proto proto,
                              option.t[TypeRef] ty_self,
                              @ty.t ret_ty,
                              &vec[ast.arg] args,
@@ -3733,7 +3753,7 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx,
         }
     }
 
-    if (is_iter) {
+    if (proto == ast.proto_iter) {
         auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
         check (llarg as int != 0);
         cx.lliterbody = some[ValueRef](llarg);
@@ -3794,7 +3814,7 @@ fn is_terminated(@block_ctxt cx) -> bool {
 
 fn arg_tys_of_fn(ast.ann ann) -> vec[ty.arg] {
     alt (ty.ann_to_type(ann).struct) {
-        case (ty.ty_fn(?arg_tys, _)) {
+        case (ty.ty_fn(_, ?arg_tys, _)) {
             ret arg_tys;
         }
     }
@@ -3803,7 +3823,7 @@ fn arg_tys_of_fn(ast.ann ann) -> vec[ty.arg] {
 
 fn ret_ty_of_fn_ty(@ty.t t) -> @ty.t {
     alt (t.struct) {
-        case (ty.ty_fn(_, ?ret_ty)) {
+        case (ty.ty_fn(_, _, ?ret_ty)) {
             ret ret_ty;
         }
     }
@@ -3875,7 +3895,7 @@ fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
     cx.item_names.insert(cx.path, llfndecl);
 
     auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
-    create_llargs_for_fn_args(fcx, f.is_iter,
+    create_llargs_for_fn_args(fcx, f.decl.proto,
                               ty_self, ret_ty_of_fn(ann),
                               f.decl.inputs, ty_params);
     auto bcx = new_top_block_ctxt(fcx);
@@ -3915,10 +3935,8 @@ fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
 
         auto llfnty = T_nil();
         alt (node_ann_type(cx, m.node.ann).struct) {
-            case (ty.ty_fn(?inputs, ?output)) {
-                llfnty = type_of_fn_full(cx,
-                                         // FIXME: support method iters.
-                                         false,
+            case (ty.ty_fn(?proto, ?inputs, ?output)) {
+                llfnty = type_of_fn_full(cx, proto,
                                          some[TypeRef](self_ty),
                                          inputs, output);
             }
@@ -3962,7 +3980,7 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
     }
 
     auto fcx = new_fn_ctxt(cx, cx.path, llctor_decl);
-    create_llargs_for_fn_args(fcx, false,
+    create_llargs_for_fn_args(fcx, ast.proto_fn,
                               none[TypeRef], ret_ty_of_fn(ann),
                               fn_args, ty_params);
 
@@ -4091,7 +4109,7 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     let ValueRef llfndecl = cx.item_ids.get(variant.id);
 
     auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
-    create_llargs_for_fn_args(fcx, false,
+    create_llargs_for_fn_args(fcx, ast.proto_fn,
                               none[TypeRef], ret_ty_of_fn(variant.ann),
                               fn_args, ty_params);
 
