@@ -2238,7 +2238,7 @@ fn trans_for_each(@block_ctxt cx,
     // escape. This could be determined upstream, and probably ought
     // to be so, eventualy. For first cut, skip this. Null env.
 
-    auto env_ty = T_struct(vec(T_ptr(T_i8())));
+    auto env_ty = T_opaque_closure_ptr(cx.fcx.ccx.tn);
 
 
     // Step 2: Declare foreach body function.
@@ -2283,11 +2283,19 @@ fn trans_for_each(@block_ctxt cx,
     // Step 3: Call iter passing [lliterbody, llenv], plus other args.
 
     alt (seq.node) {
+
         case (ast.expr_call(?f, ?args, ?ann)) {
+
+            auto pair = cx.build.Alloca(T_fn_pair(cx.fcx.ccx.tn,
+                                                  iter_body_llty));
+            auto code_cell = cx.build.GEP(pair,
+                                          vec(C_int(0),
+                                              C_int(abi.fn_field_code)));
+            cx.build.Store(lliterbody, code_cell);
 
             // log "lliterbody: " + val_str(cx.fcx.ccx.tn, lliterbody);
             ret trans_call(cx, f,
-                           some[ValueRef](lliterbody),
+                           some[ValueRef](cx.build.Load(pair)),
                            args,
                            ann);
         }
@@ -3364,7 +3372,7 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             ret trans_ret(cx, e);
         }
 
-        case (ast.expr_ret(?e)) {
+        case (ast.expr_put(?e)) {
             ret trans_put(cx, e);
         }
 
