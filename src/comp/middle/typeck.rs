@@ -1244,6 +1244,87 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
 }
 
 fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
+    // A generic function to factor out common logic from call and bind
+    // expressions.
+    fn check_call_or_bind(&@fn_ctxt fcx, &@ast.expr f,
+                          &vec[option.t[@ast.expr]] args)
+            -> tup(@ast.expr, vec[option.t[@ast.expr]]) {
+
+        // Check the function.
+        auto f_0 = check_expr(fcx, f);
+
+        // Check the arguments and generate the argument signature.
+        let vec[option.t[@ast.expr]] args_0 = vec();
+        let vec[arg] arg_tys_0 = vec();
+        for (option.t[@ast.expr] a_opt in args) {
+            alt (a_opt) {
+                case (some[@ast.expr](?a)) {
+                    auto a_0 = check_expr(fcx, a);
+                    args_0 += vec(some[@ast.expr](a_0));
+
+                    // FIXME: this breaks aliases. We need a ty_fn_arg.
+                    auto arg_ty = rec(mode=ast.val, ty=expr_ty(a_0));
+                    append[arg](arg_tys_0, arg_ty);
+                }
+                case (none[@ast.expr]) {
+                    args_0 += vec(none[@ast.expr]);
+
+                    // FIXME: breaks aliases too?
+                    auto typ = next_ty_var(fcx.ccx);
+                    append[arg](arg_tys_0, rec(mode=ast.val, ty=typ));
+                }
+            }
+        }
+
+        auto proto_0 = ast.proto_fn;    // FIXME: typestate botch
+        alt (expr_ty(f_0).struct) {
+            case (ty.ty_fn(?proto, _, _))   { proto_0 = proto; }
+            case (_) {
+                log "check_call_or_bind(): fn expr doesn't have fn type";
+                fail;
+            }
+        }
+
+        auto rt_0 = next_ty_var(fcx.ccx);
+        auto t_0 = plain_ty(ty.ty_fn(proto_0, arg_tys_0, rt_0));
+
+        // Unify and write back to the function.
+        auto f_1 = demand_expr(fcx, t_0, f_0);
+
+        // Take the argument types out of the resulting function type.
+        auto t_1 = expr_ty(f_1);
+
+        if (!ty.is_fn_ty(t_1)) {
+            fcx.ccx.sess.span_err(f_1.span,
+                                  "mismatched types: callee has " +
+                                  "non-function type: " +
+                                  ty_to_str(t_1));
+        }
+
+        let vec[arg] arg_tys_1 = ty.ty_fn_args(t_1);
+        let @ty.t rt_1 = ty.ty_fn_ret(t_1);
+
+        // Unify and write back to the arguments.
+        auto i = 0u;
+        let vec[option.t[@ast.expr]] args_1 = vec();
+        while (i < _vec.len[option.t[@ast.expr]](args_0)) {
+            alt (args_0.(i)) {
+                case (some[@ast.expr](?e_0)) {
+                    auto arg_ty_1 = arg_tys_1.(i);
+                    auto e_1 = demand_expr(fcx, arg_ty_1.ty, e_0);
+                    append[option.t[@ast.expr]](args_1, some[@ast.expr](e_1));
+                }
+                case (none[@ast.expr]) {
+                    append[option.t[@ast.expr]](args_1, none[@ast.expr]);
+                }
+            }
+
+            i += 1u;
+        }
+
+        ret tup(f_1, args_1);
+    }
+
     alt (expr.node) {
         case (ast.expr_lit(?lit, _)) {
             auto ty = check_lit(lit);
@@ -1658,62 +1739,40 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 i += 1u;
             }
 
-            let @ty.t t_1 = plain_ty(ty.ty_fn(proto,
-                                              residual_args, rt_0));
+            let @ty.t t_1 = plain_ty(ty.ty_fn(proto, residual_args, rt_0));
+
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_bind(f_0, args_1,
                                                       ast.ann_type(t_1)));
-
         }
 
         case (ast.expr_call(?f, ?args, _)) {
-
-            // Check the function.
-            auto f_0 = check_expr(fcx, f);
-
-            // Check the arguments and generate the argument signature.
-            let vec[@ast.expr] args_0 = vec();
-            let vec[arg] arg_tys_0 = vec();
-            for (@ast.expr a in args) {
-                auto a_0 = check_expr(fcx, a);
-                append[@ast.expr](args_0, a_0);
-
-                // FIXME: this breaks aliases. We need a ty_fn_arg.
-                append[arg](arg_tys_0, rec(mode=ast.val, ty=expr_ty(a_0)));
-            }
-            auto rt_0 = next_ty_var(fcx.ccx);
-            auto t_0 = plain_ty(ty.ty_fn(ty.ty_fn_proto(expr_ty(f_0)),
-                                         arg_tys_0, rt_0));
-
-            // Unify and write back to the function.
-            auto f_1 = demand_expr(fcx, t_0, f_0);
-
-            // Take the argument types out of the resulting function type.
-            auto t_1 = expr_ty(f_1);
-
-            if (!ty.is_fn_ty(t_1)) {
-                fcx.ccx.sess.span_err(f_1.span,
-                                      "mismatched types: callee has " +
-                                      "non-function type: " +
-                                      ty_to_str(t_1));
+            let vec[option.t[@ast.expr]] args_opt_0 = vec();
+            for (@ast.expr arg in args) {
+                args_opt_0 += vec(some[@ast.expr](arg));
             }
 
-            let vec[arg] arg_tys_1 = ty.ty_fn_args(t_1);
-            let @ty.t rt_1 = ty.ty_fn_ret(t_1);
+            // Call the generic checker.
+            auto result = check_call_or_bind(fcx, f, args_opt_0);
 
-            // Unify and write back to the arguments.
-            auto i = 0u;
+            // Pull out the arguments.
             let vec[@ast.expr] args_1 = vec();
-            while (i < _vec.len[@ast.expr](args_0)) {
-                auto arg_ty_1 = arg_tys_1.(i);
-                auto e = demand_expr(fcx, arg_ty_1.ty, args_0.(i));
-                append[@ast.expr](args_1, e);
+            for (option.t[@ast.expr] arg in result._1) {
+                args_1 += vec(option.get[@ast.expr](arg));
+            }
 
-                i += 1u;
+            // Pull the return type out of the type of the function.
+            auto rt_1 = plain_ty(ty.ty_nil);    // FIXME: typestate botch
+            alt (expr_ty(result._0).struct) {
+                case (ty.ty_fn(_,_,?rt))    { rt_1 = rt; }
+                case (_) {
+                    log "LHS of call expr didn't have a function type?!";
+                    fail;
+                }
             }
 
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_call(f_1, args_1,
+                                        ast.expr_call(result._0, args_1,
                                                       ast.ann_type(rt_1)));
         }
 
