@@ -57,6 +57,7 @@ mod dbg;
 mod bitv;
 mod sort;
 mod path;
+mod sha1;
 
 // Local Variables:
 // mode: rust;
