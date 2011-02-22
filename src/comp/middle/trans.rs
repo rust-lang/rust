@@ -514,7 +514,7 @@ fn type_of_fn(@crate_ctxt cx,
 fn type_of_native_fn(@crate_ctxt cx, vec[ty.arg] inputs,
                      @ty.t output) -> TypeRef {
     let vec[TypeRef] atys = type_of_explicit_args(cx, inputs);
-    ret T_fn(atys, llvm.LLVMVoidType());
+    ret T_fn(atys, type_of(cx, output));
 }
 
 fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
@@ -4305,7 +4305,7 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
     auto llpairty = node_type(cx, ann);
     auto llfty = get_pair_fn_ty(llpairty);
 
-    let ValueRef llfn = decl_fastcall_fn(cx.llmod, name, llfty);
+    let ValueRef llfn = decl_cdecl_fn(cx.llmod, name, llfty);
     cx.item_ids.insert(id, llfn);
 }
 
