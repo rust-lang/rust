@@ -4602,6 +4602,30 @@ fn create_crate_constant(@crate_ctxt cx) {
     llvm.LLVMSetInitializer(cx.crate_ptr, crate_val);
 }
 
+fn find_main_fn(@crate_ctxt cx) -> ValueRef {
+    auto e = sep() + "main";
+    let ValueRef v = C_nil();
+    let uint n = 0u;
+    for each (tup(str,ValueRef) i in cx.item_names.items()) {
+        if (_str.ends_with(i._0, e)) {
+            n += 1u;
+            v = i._1;
+        }
+    }
+    alt (n) {
+        case (0u) {
+            cx.sess.err("main fn not found");
+        }
+        case (1u) {
+            ret v;
+        }
+        case (_) {
+            cx.sess.err("multiple main fns found");
+        }
+    }
+    fail;
+}
+
 fn trans_main_fn(@crate_ctxt cx, ValueRef llcrate) {
     auto T_main_args = vec(T_int(), T_int());
     auto T_rust_start_args = vec(T_int(), T_int(), T_int(), T_int());
@@ -4621,8 +4645,7 @@ fn trans_main_fn(@crate_ctxt cx, ValueRef llcrate) {
 
     auto llargc = llvm.LLVMGetParam(llmain, 0u);
     auto llargv = llvm.LLVMGetParam(llmain, 1u);
-    check (cx.item_names.contains_key("_rust" + sep() + "main"));
-    auto llrust_main = cx.item_names.get("_rust"  + sep() + "main");
+    auto llrust_main = find_main_fn(cx);
 
     //
     // Emit the moral equivalent of:
