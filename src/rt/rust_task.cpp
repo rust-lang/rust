@@ -174,8 +174,8 @@ rust_task::start(uintptr_t exit_task_glue,
         src += 1;                  // spawn-call output slot
         src += 1;                  // spawn-call task slot
         src += 1;                  // spawn-call closure-or-obj slot
-        // Memcpy all but the task and output pointers
-        callsz -= (2 * sizeof(uintptr_t));
+        // Memcpy all but the task, output and env pointers
+        callsz -= (3 * sizeof(uintptr_t));
         spp = (uintptr_t*) (((uintptr_t)spp) - callsz);
         memcpy(spp, src, callsz);
 
