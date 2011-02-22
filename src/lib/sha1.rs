@@ -185,8 +185,8 @@ fn mk_sha1() -> sha1 {
      * 512 bits.  The first padding bit must be a '1'.  The last 64 bits
      * represent the length of the original message.  All bits in between
      * should be 0.  This function will pad the message according to those
-     * rules by filling the message_block array accordingly.  It will also
-     * call ProcessMessageBlock() appropriately.  When it returns, it
+     * rules by filling the msg_block vector accordingly.  It will also
+     * call process_msg_block() appropriately.  When it returns, it
      * can be assumed that the message digest has been computed.
      */
     impure fn pad_msg(&sha1state st) {
