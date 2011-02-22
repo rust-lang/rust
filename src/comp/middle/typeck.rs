@@ -1702,47 +1702,40 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_bind(?f, ?args, _)) {
-            auto f_0 = check_expr(fcx, f);
-            auto t_0 = expr_ty(f_0);
+            // Call the generic checker.
+            auto result = check_call_or_bind(fcx, f, args);
 
-            if (!ty.is_fn_ty(t_0)) {
-                fcx.ccx.sess.span_err(f_0.span,
-                                      "mismatched types: bind callee has " +
-                                      "non-function type: " +
-                                      ty_to_str(t_0));
-            }
+            // Pull the argument and return types out.
+            auto proto_1 = ast.proto_fn;        // FIXME: typestate botch
+            let vec[ty.arg] arg_tys_1 = vec();
+            auto rt_1 = plain_ty(ty.ty_nil);    // FIXME: typestate botch
+            alt (expr_ty(result._0).struct) {
+                case (ty.ty_fn(?proto, ?arg_tys, ?rt)) {
+                    proto_1 = proto;
+                    rt_1 = rt;
 
-            let ast.proto proto = ty.ty_fn_proto(t_0);
-            let vec[arg] arg_tys_0 = ty.ty_fn_args(t_0);
-            let @ty.t rt_0 = ty.ty_fn_ret(t_0);
-            let vec[option.t[@ast.expr]] args_1 = vec();
-
-            let uint i = 0u;
-
-            let vec[arg] residual_args = vec();
-            for (option.t[@ast.expr] a in args) {
-                alt (a) {
-                    case (none[@ast.expr]) {
-                        append[arg](residual_args,
-                                    arg_tys_0.(i));
-                        append[option.t[@ast.expr]](args_1,
-                                                    none[@ast.expr]);
-                    }
-                    case (some[@ast.expr](?sa)) {
-                        auto arg_1 = check_expr(fcx, sa);
-                        auto arg_t = expr_ty(arg_1);
-                        demand_expr(fcx, arg_tys_0.(i).ty, arg_1);
-                        append[option.t[@ast.expr]](args_1,
-                                                    some[@ast.expr](arg_1));
+                    // For each blank argument, add the type of that argument
+                    // to the resulting function type.
+                    auto i = 0u;
+                    while (i < _vec.len[option.t[@ast.expr]](args)) {
+                        alt (args.(i)) {
+                            case (some[@ast.expr](_)) { /* no-op */ }
+                            case (none[@ast.expr]) {
+                                arg_tys_1 += vec(arg_tys.(i));
+                            }
+                        }
+                        i += 1u;
                     }
                 }
-                i += 1u;
+                case (_) {
+                    log "LHS of bind expr didn't have a function type?!";
+                    fail;
+                }
             }
 
-            let @ty.t t_1 = plain_ty(ty.ty_fn(proto, residual_args, rt_0));
-
+            auto t_1 = plain_ty(ty.ty_fn(proto_1, arg_tys_1, rt_1));
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_bind(f_0, args_1,
+                                        ast.expr_bind(result._0, result._1,
                                                       ast.ann_type(t_1)));
         }
 
