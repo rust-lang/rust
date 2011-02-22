@@ -14,7 +14,7 @@ mod _str;
 
 // General IO and system-services modules.
 
-mod _io;
+mod io;
 mod sys;
 mod _task;
 
@@ -25,7 +25,7 @@ mod util;
 
 // Authorize various rule-bendings.
 
-auth _io = unsafe;
+auth io = unsafe;
 auth _str = unsafe;
 auth _vec = unsafe;
 auth _task = unsafe;

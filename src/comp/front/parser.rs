@@ -1,4 +1,4 @@
-import std._io;
+import std.io;
 import std._vec;
 import std._str;
 import std.option;
@@ -80,7 +80,7 @@ impure fn new_parser(session.session sess,
                 ret tup(crate, def);
             }
         }
-    auto srdr = _io.new_stdio_reader(path);
+    auto srdr = io.new_stdio_reader(path);
     auto rdr = lexer.new_reader(srdr, path);
     auto npos = rdr.get_curr_pos();
     ret stdio_parser(sess, lexer.next_token(rdr),

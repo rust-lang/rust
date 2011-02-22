@@ -1,4 +1,4 @@
-import std._io.stdio_reader;
+import std.io.stdio_reader;
 import std._str;
 import std.map;
 import std.map.hashmap;
