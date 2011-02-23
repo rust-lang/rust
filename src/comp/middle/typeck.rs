@@ -25,6 +25,7 @@ import middle.ty.type_is_scalar;
 import std._str;
 import std._uint;
 import std._vec;
+import std.map;
 import std.map.hashmap;
 import std.option;
 import std.option.none;
@@ -76,6 +77,65 @@ fn generalize_ty(@crate_ctxt cx, @ty.t t) -> @ty.t {
 
     auto generalizer = ty_generalizer(cx, @common.new_def_hash[@ty.t]());
     ret ty.fold_ty(generalizer, t);
+}
+
+// Substitutes the user's explicit types for the parameters in a path
+// expression.
+fn substitute_ty_params(&@crate_ctxt ccx,
+                        @ty.t typ,
+                        vec[@ast.ty] supplied,
+                        &span sp) -> @ty.t {
+    state obj ty_substituter(@crate_ctxt ccx,
+                             @mutable uint i,
+                             vec[@ast.ty] supplied,
+                             @hashmap[int,@ty.t] substs) {
+        fn fold_simple_ty(@ty.t typ) -> @ty.t {
+            alt (typ.struct) {
+                case (ty.ty_var(?vid)) {
+                    alt (substs.find(vid)) {
+                        case (some[@ty.t](?resolved_ty)) {
+                            ret resolved_ty;
+                        }
+                        case (none[@ty.t]) {
+                            if (i >= _vec.len[@ast.ty](supplied)) {
+                                // Just leave it as an unresolved parameter
+                                // for now. (We will error out later.)
+                                ret typ;
+                            }
+
+                            auto result = ast_ty_to_ty_crate(ccx,
+                                                             supplied.(*i));
+                            *i += 1u;
+                            substs.insert(vid, result);
+                            ret result;
+                        }
+                    }
+                }
+                case (_) { ret typ; }
+            }
+        }
+    }
+
+    fn hash_int(&int x) -> uint { ret x as uint; }
+    fn eq_int(&int a, &int b) -> bool { ret a == b; }
+    auto hasher = hash_int;
+    auto eqer = eq_int;
+    auto substs = @map.mk_hashmap[int,@ty.t](hasher, eqer);
+
+    auto subst_count = @mutable 0u;
+    auto substituter = ty_substituter(ccx, subst_count, supplied, substs);
+
+    auto result = ty.fold_ty(substituter, typ);
+
+    auto supplied_len = _vec.len[@ast.ty](supplied);
+    if ((*subst_count) != supplied_len) {
+        ccx.sess.span_err(sp, "expected " + _uint.to_str(*subst_count, 10u) +
+                          " type parameter(s) but found " +
+                          _uint.to_str(supplied_len, 10u) + " parameter(s)");
+        fail;
+    }
+
+    ret result;
 }
 
 // Parses the programmer's textual representation of a type into our internal
@@ -1443,6 +1503,12 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                         + _str.connect(pth.node.idents, "."));
                     fail;
                 }
+            }
+
+            // Substitute type parameters if the user provided some.
+            if (_vec.len[@ast.ty](pth.node.types) > 0u) {
+                t = substitute_ty_params(fcx.ccx, t, pth.node.types,
+                                         expr.span);
             }
 
             ret @fold.respan[ast.expr_](expr.span,
