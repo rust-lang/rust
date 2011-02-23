@@ -448,6 +448,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         alt-pattern-lit.rs \
                         alt-pattern-simple.rs \
                         alt-tag.rs \
+                        argv.rs \
                         arith-0.rs \
                         arith-1.rs \
                         arith-2.rs \
@@ -464,6 +465,7 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         box-in-tup.rs \
                         cast.rs \
                         char.rs \
+                        command-line-args.rs \
                         complex.rs \
                         const.rs \
                         dead-code-one-arm-if.rs \
