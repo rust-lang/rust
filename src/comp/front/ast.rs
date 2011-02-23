@@ -5,6 +5,7 @@ import std._vec;
 import util.common.span;
 import util.common.spanned;
 import util.common.ty_mach;
+import util.common.filename;
 
 type ident = str;
 
@@ -42,6 +43,18 @@ tag def {
 
 type crate = spanned[crate_];
 type crate_ = rec(_mod module);
+
+tag crate_directive_ {
+    cdir_expr(@expr);
+    cdir_src_mod(ident, option.t[filename]);
+    cdir_dir_mod(ident, option.t[filename], vec[crate_directive]);
+    cdir_view_item(@view_item);
+    cdir_meta(@meta_item);
+    cdir_syntax(path);
+    cdir_auth(path, effect);
+}
+type crate_directive = spanned[crate_directive_];
+
 
 type meta_item = spanned[meta_item_];
 type meta_item_ = rec(ident name, str value);
@@ -161,6 +174,7 @@ tag expr_ {
     expr_do_while(block, @expr, ann);
     expr_alt(@expr, vec[arm], ann);
     expr_block(block, ann);
+    expr_crate_directive_block(vec[crate_directive_]);
     expr_assign(@expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_assign_op(binop, @expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_field(@expr, ident, ann);
