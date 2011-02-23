@@ -1336,17 +1336,20 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             }
         }
 
-        auto proto_0 = ast.proto_fn;    // FIXME: typestate botch
+        auto rt_0 = next_ty_var(fcx.ccx);
+        auto t_0 = plain_ty(ty.ty_uint); // FIXME: typestate botch
         alt (expr_ty(f_0).struct) {
-            case (ty.ty_fn(?proto, _, _))   { proto_0 = proto; }
+            case (ty.ty_fn(?proto, _, _))   {
+                t_0 = plain_ty(ty.ty_fn(proto, arg_tys_0, rt_0));
+            }
+            case (ty.ty_native_fn(_, _))   {
+                t_0 = plain_ty(ty.ty_native_fn(arg_tys_0, rt_0));
+            }
             case (_) {
                 log "check_call_or_bind(): fn expr doesn't have fn type";
                 fail;
             }
         }
-
-        auto rt_0 = next_ty_var(fcx.ccx);
-        auto t_0 = plain_ty(ty.ty_fn(proto_0, arg_tys_0, rt_0));
 
         // Unify and write back to the function.
         auto f_1 = demand_expr(fcx, t_0, f_0);
@@ -1824,6 +1827,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto rt_1 = plain_ty(ty.ty_nil);    // FIXME: typestate botch
             alt (expr_ty(result._0).struct) {
                 case (ty.ty_fn(_,_,?rt))    { rt_1 = rt; }
+                case (ty.ty_native_fn(_,?rt))    { rt_1 = rt; }
                 case (_) {
                     log "LHS of call expr didn't have a function type?!";
                     fail;

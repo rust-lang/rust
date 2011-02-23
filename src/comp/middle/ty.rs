@@ -346,6 +346,14 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
             }
             ret rewrap(ty, ty_fn(proto, new_args, fold_ty(fld, ret_ty)));
         }
+        case (ty_native_fn(?args, ?ret_ty)) {
+            let vec[arg] new_args = vec();
+            for (arg a in args) {
+                auto new_ty = fold_ty(fld, a.ty);
+                new_args += vec(rec(mode=a.mode, ty=new_ty));
+            }
+            ret rewrap(ty, ty_native_fn(new_args, fold_ty(fld, ret_ty)));
+        }
         case (ty_obj(?methods)) {
             let vec[method] new_methods = vec();
             for (method m in methods) {
@@ -588,6 +596,7 @@ fn count_ty_params(@t ty) -> uint {
 fn ty_fn_args(@t fty) -> vec[arg] {
     alt (fty.struct) {
         case (ty.ty_fn(_, ?a, _)) { ret a; }
+        case (ty.ty_native_fn(?a, _)) { ret a; }
     }
 }
 
@@ -600,12 +609,14 @@ fn ty_fn_proto(@t fty) -> ast.proto {
 fn ty_fn_ret(@t fty) -> @t {
     alt (fty.struct) {
         case (ty.ty_fn(_, _, ?r)) { ret r; }
+        case (ty.ty_native_fn(_, ?r)) { ret r; }
     }
 }
 
 fn is_fn_ty(@t fty) -> bool {
     alt (fty.struct) {
         case (ty.ty_fn(_, _, _)) { ret true; }
+        case (ty.ty_native_fn(_, _)) { ret true; }
         case (_) { ret false; }
     }
     ret false;
@@ -826,24 +837,23 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         ret ures_err(terr_mismatch, expected, actual);
     }
 
-    fn unify_fn(@hashmap[int,@ty.t] bindings,
-                ast.proto e_proto,
-                ast.proto a_proto,
-                @ty.t expected,
-                @ty.t actual,
-                &unify_handler handler,
-                vec[arg] expected_inputs, @t expected_output,
-                vec[arg] actual_inputs, @t actual_output)
-        -> unify_result {
+    tag fn_common_res {
+        fn_common_res_err(unify_result);
+        fn_common_res_ok(vec[arg], @t);
+    }
 
-        if (e_proto != a_proto) {
-            ret ures_err(terr_mismatch, expected, actual);
-        }
-
+    fn unify_fn_common(@hashmap[int,@ty.t] bindings,
+                       @ty.t expected,
+                       @ty.t actual,
+                       &unify_handler handler,
+                       vec[arg] expected_inputs, @t expected_output,
+                       vec[arg] actual_inputs, @t actual_output)
+        -> fn_common_res {
         auto expected_len = _vec.len[arg](expected_inputs);
         auto actual_len = _vec.len[arg](actual_inputs);
         if (expected_len != actual_len) {
-            ret ures_err(terr_arg_count, expected, actual);
+            ret fn_common_res_err(ures_err(terr_arg_count,
+                                           expected, actual));
         }
 
         // TODO: as above, we should have an iter2 iterator.
@@ -874,7 +884,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                 }
 
                 case (_) {
-                    ret result;
+                    ret fn_common_res_err(result);
                 }
             }
 
@@ -882,24 +892,67 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         }
 
         // Check the output.
-        auto result_out;
         auto result = unify_step(bindings,
                                  expected_output,
                                  actual_output,
                                  handler);
         alt (result) {
             case (ures_ok(?rty)) {
-                result_out = rty;
+                ret fn_common_res_ok(result_ins, rty);
             }
 
             case (_) {
-                ret result;
+                ret fn_common_res_err(result);
             }
         }
+    }
 
-        auto t = plain_ty(ty.ty_fn(e_proto, result_ins, result_out));
-        ret ures_ok(t);
+    fn unify_fn(@hashmap[int,@ty.t] bindings,
+                ast.proto e_proto,
+                ast.proto a_proto,
+                @ty.t expected,
+                @ty.t actual,
+                &unify_handler handler,
+                vec[arg] expected_inputs, @t expected_output,
+                vec[arg] actual_inputs, @t actual_output)
+        -> unify_result {
 
+        if (e_proto != a_proto) {
+            ret ures_err(terr_mismatch, expected, actual);
+        }
+        auto t = unify_fn_common(bindings, expected, actual,
+                                 handler, expected_inputs, expected_output,
+                                 actual_inputs, actual_output);
+        alt (t) {
+            case (fn_common_res_err(?r)) {
+                ret r;
+            }
+            case (fn_common_res_ok(?result_ins, ?result_out)) {
+                auto t2 = plain_ty(ty.ty_fn(e_proto, result_ins, result_out));
+                ret ures_ok(t2);
+            }
+        }
+    }
+
+    fn unify_native_fn(@hashmap[int,@ty.t] bindings,
+                       @ty.t expected,
+                       @ty.t actual,
+                       &unify_handler handler,
+                       vec[arg] expected_inputs, @t expected_output,
+                       vec[arg] actual_inputs, @t actual_output)
+        -> unify_result {
+        auto t = unify_fn_common(bindings, expected, actual,
+                                 handler, expected_inputs, expected_output,
+                                 actual_inputs, actual_output);
+        alt (t) {
+            case (fn_common_res_err(?r)) {
+                ret r;
+            }
+            case (fn_common_res_ok(?result_ins, ?result_out)) {
+                auto t2 = plain_ty(ty.ty_native_fn(result_ins, result_out));
+                ret ures_ok(t2);
+            }
+        }
     }
 
     fn unify_obj(@hashmap[int,@ty.t] bindings,
@@ -1252,6 +1305,20 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                                      actual_inputs, actual_output);
                     }
 
+                    case (_) {
+                        ret ures_err(terr_mismatch, expected, actual);
+                    }
+                }
+            }
+
+            case (ty.ty_native_fn(?expected_inputs, ?expected_output)) {
+                alt (actual.struct) {
+                    case (ty.ty_native_fn(?actual_inputs, ?actual_output)) {
+                        ret unify_native_fn(bindings,
+                                            expected, actual, handler,
+                                            expected_inputs, expected_output,
+                                            actual_inputs, actual_output);
+                    }
                     case (_) {
                         ret ures_err(terr_mismatch, expected, actual);
                     }
