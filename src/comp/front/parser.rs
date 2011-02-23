@@ -2117,6 +2117,15 @@ impure fn parse_crate_directive(str prefix, parser p,
     auto lo = p.get_span();
     auto hi = lo;
     alt (p.peek()) {
+        case (token.AUTH) {
+            // FIXME: currently dropping auth clauses on the floor,
+            // as there is no effect-checking pass.
+            p.bump();
+            auto n = parse_path(p, GREEDY);
+            expect(p, token.EQ);
+            auto e = parse_effect(p);
+            expect(p, token.SEMI);
+        }
         case (token.CONST) {
             auto c = parse_item_const(p);
             ast.index_item(index, c);
