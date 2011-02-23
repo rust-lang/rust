@@ -90,7 +90,6 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
         }
 
     auto keywords = new_str_hash[token.token]();
-    auto reserved = new_str_hash[()]();
 
     keywords.insert("mod", token.MOD);
     keywords.insert("use", token.USE);
@@ -190,6 +189,16 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
     keywords.insert("i64", token.MACH(common.ty_i64));
     keywords.insert("f32", token.MACH(common.ty_f32));
     keywords.insert("f64", token.MACH(common.ty_f64));
+
+    auto reserved = new_str_hash[()]();
+
+    reserved.insert("f16", ());  // IEEE 754-2008 'binary16' interchange fmt
+    reserved.insert("f80", ());  // IEEE 754-1985 'extended'
+    reserved.insert("f128", ()); // IEEE 754-2008 'binary128'
+    reserved.insert("m32", ());  // IEEE 754-2008 'decimal32'
+    reserved.insert("m64", ());  // IEEE 754-2008 'decimal64'
+    reserved.insert("m128", ()); // IEEE 754-2008 'decimal128'
+    reserved.insert("dec", ());  // One of m32, m64, m128
 
     ret reader(rdr, filename, rdr.getc() as char, rdr.getc() as char,
                1u, 0u, 1u, 0u, keywords, reserved);
@@ -423,6 +432,12 @@ impure fn next_token(reader rdr) -> token.token {
         auto kwds = rdr.get_keywords();
         if (kwds.contains_key(accum_str)) {
             ret kwds.get(accum_str);
+        }
+
+        auto rsvd = rdr.get_reserved();
+        if (rsvd.contains_key(accum_str)) {
+            log "reserved keyword";
+            fail;
         }
 
         ret token.IDENT(accum_str);

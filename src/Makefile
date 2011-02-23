@@ -569,6 +569,13 @@ TEST_XFAILS_RUSTC := $(filter-out \
                         multiline-comment-line-tracking.rs \
                         output-type-mismatch.rs \
                         rec-missing-fields.rs \
+                        reserved-dec.rs \
+                        reserved-f128.rs \
+                        reserved-f16.rs \
+                        reserved-f80.rs \
+                        reserved-m128.rs \
+                        reserved-m32.rs \
+                        reserved-m64.rs \
                         tail-non-call.rs \
                         tail-typeck.rs \
                         type-shadow.rs \
