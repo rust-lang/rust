@@ -1776,7 +1776,7 @@ impure fn parse_item_native_mod(parser p) -> @ast.item {
         native_name = default_native_name(p.get_session(), id);
     }
     expect(p, token.LBRACE);
-    auto m = parse_native_mod_items(p, native_name, ast.native_abi_cdecl);
+    auto m = parse_native_mod_items(p, native_name, abi);
     auto hi = p.get_span();
     expect(p, token.RBRACE);
     auto item = ast.item_native_mod(id, m, p.next_def_id());
