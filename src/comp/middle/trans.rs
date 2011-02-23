@@ -373,11 +373,12 @@ fn T_typaram_ptr(type_names tn) -> TypeRef {
 
 fn T_closure_ptr(type_names tn,
                  TypeRef lltarget_ty,
-                 TypeRef llbindings_ty) -> TypeRef {
+                 TypeRef llbindings_ty,
+                 uint n_ty_params) -> TypeRef {
     ret T_ptr(T_box(T_struct(vec(T_ptr(T_tydesc(tn)),
                                  lltarget_ty,
-                                 llbindings_ty)
-                             // FIXME: add captured typarams.
+                                 llbindings_ty,
+                                 T_captured_tydescs(tn, n_ty_params))
                              )));
 }
 
@@ -388,7 +389,8 @@ fn T_opaque_closure_ptr(type_names tn) -> TypeRef {
     }
     auto t = T_closure_ptr(tn, T_struct(vec(T_ptr(T_nil()),
                                             T_ptr(T_nil()))),
-                           T_nil());
+                           T_nil(),
+                           0u);
     tn.associate(s, t);
     ret t;
 }
@@ -2747,16 +2749,14 @@ fn trans_bind_thunk(@crate_ctxt cx,
                     @ty.t outgoing_fty,
                     vec[option.t[@ast.expr]] args,
                     TypeRef llclosure_ty,
-                    vec[@ty.t] bound_tys) -> ValueRef {
+                    vec[@ty.t] bound_tys,
+                    uint ty_param_count) -> ValueRef {
     // Construct a thunk-call with signature incoming_fty, and that copies
     // args forward into a call to outgoing_fty.
 
     let str s = cx.names.next("_rust_thunk") + sep() + cx.path;
     let TypeRef llthunk_ty = get_pair_fn_ty(type_of(cx, incoming_fty));
     let ValueRef llthunk = decl_fastcall_fn(cx.llmod, s, llthunk_ty);
-
-    // FIXME: handle ty params properly.
-    let vec[ast.ty_param] ty_params = vec();
 
     auto fcx = new_fn_ctxt(cx, s, llthunk);
     auto bcx = new_top_block_ctxt(fcx);
@@ -2779,11 +2779,33 @@ fn trans_bind_thunk(@crate_ctxt cx,
                                          vec(C_int(0),
                                              C_int(abi.fn_field_box)));
     lltargetclosure = bcx.build.Load(lltargetclosure);
-    let vec[ValueRef] llargs = vec(fcx.llretptr,
+
+    auto outgoing_ret_ty = ty.ty_fn_ret(outgoing_fty);
+    auto outgoing_arg_tys = ty.ty_fn_args(outgoing_fty);
+
+    auto llretptr = fcx.llretptr;
+    if (ty.type_has_dynamic_size(outgoing_ret_ty)) {
+        llretptr = bcx.build.PointerCast(llretptr, T_typaram_ptr(cx.tn));
+    }
+
+    let vec[ValueRef] llargs = vec(llretptr,
                                    fcx.lltaskptr,
                                    lltargetclosure);
-    let uint a = 0u;
+
+    // Copy in the type parameters.
+    let uint i = 0u;
+    while (i < ty_param_count) {
+        auto lltyparam_ptr =
+            bcx.build.GEP(llbody, vec(C_int(0),
+                                      C_int(abi.closure_elt_ty_params),
+                                      C_int(i as int)));
+        llargs += vec(bcx.build.Load(lltyparam_ptr));
+        i += 1u;
+    }
+
+    let uint a = 2u + i;    // retptr, task ptr, env come first
     let int b = 0;
+    let uint outgoing_arg_index = 0u;
     for (option.t[@ast.expr] arg in args) {
         alt (arg) {
 
@@ -2800,10 +2822,19 @@ fn trans_bind_thunk(@crate_ctxt cx,
             // Arg will be provided when the thunk is invoked.
             case (none[@ast.expr]) {
                 let ValueRef passed_arg = llvm.LLVMGetParam(llthunk, a);
+                if (ty.type_has_dynamic_size(outgoing_arg_tys.
+                        (outgoing_arg_index).ty)) {
+                    // Cast to a generic typaram pointer in order to make a
+                    // type-compatible call.
+                    passed_arg = bcx.build.PointerCast(passed_arg,
+                                                       T_typaram_ptr(cx.tn));
+                }
                 llargs += passed_arg;
                 a += 1u;
             }
         }
+
+        outgoing_arg_index += 0u;
     }
 
     // FIXME: turn this call + ret into a tail call.
@@ -2811,6 +2842,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
                                     vec(C_int(0),
                                         C_int(abi.fn_field_code)));
     lltargetfn = bcx.build.Load(lltargetfn);
+
     auto r = bcx.build.FastCall(lltargetfn, llargs);
     bcx.build.RetVoid();
 
@@ -2835,7 +2867,23 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
                 }
             }
         }
-        if (_vec.len[@ast.expr](bound) == 0u) {
+
+        // Figure out which tydescs we need to pass, if any.
+        // FIXME: typestate botch
+        let @ty.t outgoing_fty = ty.plain_ty(ty.ty_nil);
+        let vec[ValueRef] lltydescs = vec();
+        alt (f_res.generic) {
+            case (none[generic_info]) {
+                outgoing_fty = ty.expr_ty(f);
+            }
+            case (some[generic_info](?ginfo)) {
+                outgoing_fty = ginfo.item_type;
+                lltydescs = ginfo.tydescs;
+            }
+        }
+        auto ty_param_count = _vec.len[ValueRef](lltydescs);
+
+        if (_vec.len[@ast.expr](bound) == 0u && ty_param_count == 0u) {
             // Trivial 'binding': just return the static pair-ptr.
             ret f_res.res;
         } else {
@@ -2846,20 +2894,27 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
             // Translate the bound expressions.
             let vec[@ty.t] bound_tys = vec();
             let vec[ValueRef] bound_vals = vec();
+            auto i = 0u;
             for (@ast.expr e in bound) {
                 auto arg = trans_expr(bcx, e);
                 bcx = arg.bcx;
+
                 append[ValueRef](bound_vals, arg.val);
                 append[@ty.t](bound_tys, ty.expr_ty(e));
+
+                i += 1u;
             }
+
+            // Get the type of the bound function.
+            let TypeRef lltarget_ty = type_of(bcx.fcx.ccx, outgoing_fty);
 
             // Synthesize a closure type.
             let @ty.t bindings_ty = plain_ty(ty.ty_tup(bound_tys));
-            let TypeRef lltarget_ty = type_of(bcx.fcx.ccx, ty.expr_ty(f));
             let TypeRef llbindings_ty = type_of(bcx.fcx.ccx, bindings_ty);
             let TypeRef llclosure_ty = T_closure_ptr(cx.fcx.ccx.tn,
                                                      lltarget_ty,
-                                                     llbindings_ty);
+                                                     llbindings_ty,
+                                                     ty_param_count);
 
             // Malloc a box for the body.
             auto r = trans_malloc_inner(bcx, llclosure_ty);
@@ -2888,19 +2943,40 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
                 bcx.build.GEP(closure,
                               vec(C_int(0),
                                   C_int(abi.closure_elt_target)));
-            bcx.build.Store(bcx.build.Load(f_res.res.val), bound_target);
+            auto src = bcx.build.Load(f_res.res.val);
+            bcx.build.Store(src, bound_target);
 
             // Copy expr values into boxed bindings.
-            let int i = 0;
+            i = 0u;
             auto bindings =
                 bcx.build.GEP(closure,
                               vec(C_int(0),
                                   C_int(abi.closure_elt_bindings)));
             for (ValueRef v in bound_vals) {
                 auto bound = bcx.build.GEP(bindings,
-                                           vec(C_int(0),C_int(i)));
+                                           vec(C_int(0), C_int(i as int)));
                 bcx = copy_ty(r.bcx, INIT, bound, v, bound_tys.(i)).bcx;
-                i += 1;
+                i += 1u;
+            }
+
+            // If necessary, copy tydescs describing type parameters into the
+            // appropriate slot in the closure.
+            alt (f_res.generic) {
+                case (none[generic_info]) { /* nothing to do */ }
+                case (some[generic_info](?ginfo)) {
+                    auto ty_params_slot =
+                        bcx.build.GEP(closure,
+                                      vec(C_int(0),
+                                          C_int(abi.closure_elt_ty_params)));
+                    auto i = 0;
+                    for (ValueRef td in ginfo.tydescs) {
+                        auto ty_param_slot = bcx.build.GEP(ty_params_slot,
+                                                           vec(C_int(0),
+                                                               C_int(i)));
+                        bcx.build.Store(td, ty_param_slot);
+                        i += 1;
+                    }
+                }
             }
 
             // Make thunk and store thunk-ptr in outer pair's code slot.
@@ -2910,8 +2986,9 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
 
             let @ty.t pair_ty = node_ann_type(cx.fcx.ccx, ann);
             let ValueRef llthunk =
-                trans_bind_thunk(cx.fcx.ccx, pair_ty, ty.expr_ty(f),
-                                 args, llclosure_ty, bound_tys);
+                trans_bind_thunk(cx.fcx.ccx, pair_ty, outgoing_fty,
+                                 args, llclosure_ty, bound_tys,
+                                 ty_param_count);
 
             bcx.build.Store(llthunk, pair_code);
 

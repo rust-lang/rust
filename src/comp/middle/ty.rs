@@ -598,12 +598,14 @@ fn ty_fn_args(@t fty) -> vec[arg] {
         case (ty.ty_fn(_, ?a, _)) { ret a; }
         case (ty.ty_native_fn(?a, _)) { ret a; }
     }
+    fail;
 }
 
 fn ty_fn_proto(@t fty) -> ast.proto {
     alt (fty.struct) {
         case (ty.ty_fn(?p, _, _)) { ret p; }
     }
+    fail;
 }
 
 fn ty_fn_ret(@t fty) -> @t {
@@ -611,6 +613,7 @@ fn ty_fn_ret(@t fty) -> @t {
         case (ty.ty_fn(_, _, ?r)) { ret r; }
         case (ty.ty_native_fn(_, ?r)) { ret r; }
     }
+    fail;
 }
 
 fn is_fn_ty(@t fty) -> bool {
