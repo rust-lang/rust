@@ -241,7 +241,13 @@ type _mod = rec(vec[@view_item] view_items,
                 vec[@item] items,
                 mod_index index);
 
+tag native_abi {
+    native_abi_rust;
+    native_abi_cdecl;
+}
+
 type native_mod = rec(str native_name,
+                      native_abi abi,
                       vec[@native_item] items,
                       native_mod_index index);
 type native_mod_index = hashmap[ident,@native_item];

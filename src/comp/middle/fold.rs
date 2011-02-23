@@ -944,6 +944,7 @@ fn fold_native_mod[ENV](&ENV e, ast_fold[ENV] fld,
     }
 
     ret fld.fold_native_mod(e, rec(native_name=m.native_name,
+                                   abi=m.abi,
                                    items=items,
                                    index=index));
 }

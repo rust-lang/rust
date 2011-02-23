@@ -1723,7 +1723,8 @@ impure fn parse_native_item(parser p) -> @ast.native_item {
 }
 
 impure fn parse_native_mod_items(parser p,
-                                 str native_name) -> ast.native_mod {
+                                 str native_name,
+                                 ast.native_abi abi) -> ast.native_mod {
     auto index = new_str_hash[@ast.native_item]();
     let vec[@ast.native_item] items = vec();
     while (p.peek() != token.RBRACE) {
@@ -1733,28 +1734,49 @@ impure fn parse_native_mod_items(parser p,
         // Index the item.
         ast.index_native_item(index, item);
     }
-    ret rec(native_name=native_name, items=items, index=index);
+    ret rec(native_name=native_name, abi=abi,
+            items=items, index=index);
+}
+
+fn default_native_name(session.session sess, str id) -> str {
+    alt (sess.get_targ_cfg().os) {
+        case (session.os_win32) {
+            ret id + ".dll";
+        }
+        case (session.os_macos) {
+            ret "lib" + id + ".dylib";
+        }
+        case (session.os_linux) {
+            ret "lib" + id + ".so";
+        }
+    }
 }
 
 impure fn parse_item_native_mod(parser p) -> @ast.item {
     auto lo = p.get_span();
     expect(p, token.NATIVE);
-    auto has_eq;
-    auto native_name = "";
-    if (p.peek() == token.MOD) {
-        has_eq = true;
-    } else {
-        native_name = parse_str_lit(p);
-        has_eq = false;
+    auto abi = ast.native_abi_cdecl;
+    if (p.peek() != token.MOD) {
+        auto t = parse_str_lit(p);
+        if (t == "cdecl") {
+        } else if (t == "rust") {
+            abi = ast.native_abi_rust;
+        } else {
+            p.err("unsupported abi: " + t);
+            fail;
+        }
     }
     expect(p, token.MOD);
     auto id = parse_ident(p);
-    if (has_eq) {
+    auto native_name;
+    if (p.peek() == token.EQ) {
         expect(p, token.EQ);
         native_name = parse_str_lit(p);
+    } else {
+        native_name = default_native_name(p.get_session(), id);
     }
     expect(p, token.LBRACE);
-    auto m = parse_native_mod_items(p, native_name);
+    auto m = parse_native_mod_items(p, native_name, ast.native_abi_cdecl);
     auto hi = p.get_span();
     expect(p, token.RBRACE);
     auto item = ast.item_native_mod(id, m, p.next_def_id());
