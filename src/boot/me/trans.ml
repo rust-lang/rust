@@ -2727,6 +2727,7 @@ let trans_visitor
                   [|
                     Il.Cell new_task;
                     exit_task_glue_fptr;
+                     (imm (Int64.of_int abi.Abi.abi_tag));
                     fptr_operand;
                     callsz
                   |];
@@ -2739,6 +2740,7 @@ let trans_visitor
                    [|
                      Il.Cell new_task;
                      exit_task_glue_fptr;
+                     (imm (Int64.of_int abi.Abi.abi_tag));
                      fptr_operand;
                      callsz
                    |];
@@ -6183,6 +6185,8 @@ let trans_visitor
             tab_sz cx.ctxt_required_rust_sym_num;
             tab_sz cx.ctxt_required_c_sym_num;
             tab_sz cx.ctxt_required_lib_num;
+
+            Asm.WORD (word_ty_mach, Asm.IMM (Int64.of_int abi.Abi.abi_tag));
           |]))
     in
 

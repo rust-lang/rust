@@ -110,23 +110,33 @@ let indirect_args_elt_closure = 0;;
 (* Current worst case is by vec grow glue *)
 let worst_case_glue_call_args = 8;;
 
+(* 
+ * ABI tags used to inform the runtime which sort of frame to set up for new
+ * spawned functions. FIXME: There is almost certainly a better abstraction to
+ * use.
+ *)
+let abi_x86_rustboot_cdecl = 1;;
+let abi_x86_rustc_fastcall = 2;;
+
 type abi =
-  {
-    abi_word_sz: int64;
-    abi_word_bits: Il.bits;
-    abi_word_ty: Common.ty_mach;
+    {
+      abi_word_sz: int64;
+      abi_word_bits: Il.bits;
+      abi_word_ty: Common.ty_mach;
 
-    abi_has_pcrel_data: bool;
-    abi_has_pcrel_code: bool;
+      abi_tag: int;
 
-    abi_n_hardregs: int;
-    abi_str_of_hardreg: (int -> string);
+      abi_has_pcrel_data: bool;
+      abi_has_pcrel_code: bool;
 
-    abi_emit_target_specific: (Il.emitter -> Il.quad -> unit);
-    abi_constrain_vregs: (Il.quad -> (Il.vreg,Bits.t) Hashtbl.t -> unit);
+      abi_n_hardregs: int;
+      abi_str_of_hardreg: (int -> string);
 
-    abi_emit_fn_prologue: (Il.emitter
-                           -> Common.size        (* framesz *)
+      abi_emit_target_specific: (Il.emitter -> Il.quad -> unit);
+      abi_constrain_vregs: (Il.quad -> (Il.vreg,Bits.t) Hashtbl.t -> unit);
+
+      abi_emit_fn_prologue: (Il.emitter
+                             -> Common.size        (* framesz *)
                              -> Common.size      (* callsz  *)
                                -> Common.nabi
                                  -> Common.fixup (* grow_task *)

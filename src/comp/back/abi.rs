@@ -60,6 +60,9 @@ const int worst_case_glue_call_args = 7;
 
 const int n_upcall_glues = 7;
 
+const int abi_x86_rustboot_cdecl = 1;
+const int abi_x86_rustc_fastcall = 2;
+
 fn memcpy_glue_name() -> str {
     ret "rust_memcpy_glue";
 }

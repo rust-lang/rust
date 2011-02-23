@@ -98,12 +98,12 @@ fn rust_activate_glue() -> vec[str] {
          *      | esi    |
          *      | ebx    | <-- current task->rust_sp == current esp
          *
-         * 
+         *
          *      This is a problem. If we return to "esp <- task->rust_sp" it
          *      will push esp back down by 5 words. This manifests as a rust
          *      stack that grows by 5 words on each yield/reactivate. Not
          *      good.
-         * 
+         *
          *      So what we do here is just adjust task->rust_sp up 5 words as
          *      well, to mirror the movement in esp we're about to
          *      perform. That way the "esp <- task->rust_sp" we 'ret' to below

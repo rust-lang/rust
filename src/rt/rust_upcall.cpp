@@ -559,6 +559,7 @@ extern "C" CDECL rust_task *
 upcall_start_task(rust_task *spawner,
                   rust_task *task,
                   uintptr_t exit_task_glue,
+                  uintptr_t spawnee_abi,
                   uintptr_t spawnee_fn,
                   size_t callsz) {
     LOG_UPCALL_ENTRY(spawner);
@@ -570,7 +571,8 @@ upcall_start_task(rust_task *spawner,
              ", spawnee 0x%" PRIxPTR
              ", callsz %" PRIdPTR ")", task->name, task, exit_task_glue,
              spawnee_fn, callsz);
-    task->start(exit_task_glue, spawnee_fn, spawner->rust_sp, callsz);
+    task->start(exit_task_glue, spawnee_abi, spawnee_fn,
+                spawner->rust_sp, callsz);
     return task;
 }
 
@@ -623,6 +625,7 @@ extern "C" CDECL maybe_proxy<rust_task> *
 upcall_start_thread(rust_task *task,
                     rust_proxy<rust_task> *child_task_proxy,
                     uintptr_t exit_task_glue,
+                    uintptr_t spawnee_abi,
                     uintptr_t spawnee_fn,
                     size_t callsz) {
     LOG_UPCALL_ENTRY(task);
@@ -630,9 +633,11 @@ upcall_start_thread(rust_task *task,
     rust_handle<rust_task> *child_task_handle = child_task_proxy->handle();
     task->log(rust_log::UPCALL | rust_log::MEM | rust_log::TASK,
               "exit_task_glue: " PTR ", spawnee_fn " PTR
-              ", callsz %" PRIdPTR ")", exit_task_glue, spawnee_fn, callsz);
+              ", callsz %" PRIdPTR ")",
+              exit_task_glue, spawnee_fn, callsz);
     rust_task *child_task = child_task_handle->referent();
-    child_task->start(exit_task_glue, spawnee_fn, task->rust_sp, callsz);
+    child_task->start(exit_task_glue, spawnee_abi, spawnee_fn,
+                      task->rust_sp, callsz);
 #if defined(__WIN32__)
     HANDLE thread;
     thread = CreateThread(NULL, 0, rust_thread_start, child_task->dom, 0,

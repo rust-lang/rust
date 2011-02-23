@@ -345,7 +345,8 @@ fn T_crate(type_names tn) -> TypeRef {
                           T_int(),      // size_t main_exit_task_glue_off
                           T_int(),      // int n_rust_syms
                           T_int(),      // int n_c_syms
-                          T_int()       // int n_libs
+                          T_int(),      // int n_libs
+                          T_int()       // uintptr_t abi_tag
                           ));
     tn.associate(s, t);
     ret t;
@@ -4545,7 +4546,7 @@ fn trans_exit_task_glue(@crate_ctxt cx) {
     let vec[ValueRef] V_args = vec();
 
     auto llfn = cx.glues.exit_task_glue;
-    let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 0u);
+    let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 3u);
     auto fcx = @rec(llfn=llfn,
                     lltaskptr=lltaskptr,
                     llenv=C_null(T_opaque_closure_ptr(cx.tn)),
@@ -4596,7 +4597,8 @@ fn create_crate_constant(@crate_ctxt cx) {
                      exit_task_glue_off,  // size_t main_exit_task_glue_off
                      C_null(T_int()),     // int n_rust_syms
                      C_null(T_int()),     // int n_c_syms
-                     C_null(T_int())      // int n_libs
+                     C_null(T_int()),     // int n_libs
+                     C_int(abi.abi_x86_rustc_fastcall) // uintptr_t abi_tag
                      ));
 
     llvm.LLVMSetInitializer(cx.crate_ptr, crate_val);
@@ -4810,7 +4812,10 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
               * this is the signature required to retrieve it.
               */
              exit_task_glue = decl_cdecl_fn(llmod, abi.exit_task_glue_name(),
-                                            T_fn(vec(T_taskptr(tn)),
+                                            T_fn(vec(T_int(),
+                                                     T_int(),
+                                                     T_int(),
+                                                     T_taskptr(tn)),
                                                  T_void())),
 
              upcall_glues =
