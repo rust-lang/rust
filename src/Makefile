@@ -574,7 +574,7 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         while-type-error.rs \
                         wrong-ret-type.rs \
                         ), \
-                      $(wildcard test/*/*.rs test/*/*.rc))
+                      $(wildcard test/*fail/*.rs test/*fail/*.rc))
 
 
 ifdef MINGW_CROSS
