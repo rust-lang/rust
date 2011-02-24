@@ -5,6 +5,7 @@ use std;
 
 mod front {
     mod ast;
+    mod extfmt;
     mod lexer;
     mod parser;
     mod token;
