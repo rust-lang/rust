@@ -185,7 +185,7 @@ tag expr_ {
     expr_field(@expr, ident, ann);
     expr_index(@expr, @expr, ann);
     expr_path(path, option.t[def], ann);
-    expr_ext(path, vec[@expr], option.t[@expr], ann);
+    expr_ext(path, vec[@expr], option.t[@expr], option.t[@expr], ann);
     expr_fail;
     expr_ret(option.t[@expr]);
     expr_put(option.t[@expr]);
@@ -355,6 +355,17 @@ fn index_native_item(native_mod_index index, @native_item it) {
 fn is_call_expr(@expr e) -> bool {
     alt (e.node) {
         case (expr_call(_, _, _)) {
+            ret true;
+        }
+        case (_) {
+            ret false;
+        }
+    }
+}
+
+fn is_ext_expr(@expr e) -> bool {
+    alt (e.node) {
+        case (expr_ext(_, _, _, _, _)) {
             ret true;
         }
         case (_) {

@@ -656,7 +656,10 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
                                            some(token.COMMA),
                                            pf, p);
             hi = es.span;
-            ex = ast.expr_ext(pth, es.node, none[@ast.expr], ast.ann_none);
+            ex = ast.expr_ext(pth, es.node, none[@ast.expr],
+                              none[@ast.expr], ast.ann_none);
+            // FIXME: Here is probably not the right place for this
+            ex = expand_syntax_ext(p, @spanned(lo, hi, ex)).node;
         }
 
         case (token.FAIL) {
@@ -734,6 +737,36 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
     }
 
     ret @spanned(lo, hi, ex);
+}
+
+/* 
+ * FIXME: This is a crude approximation of the syntax-extension system,
+ * for purposes of prototyping and/or hard-wiring any extensions we
+ * wish to use while bootstrapping. The eventual aim is to permit
+ * loading rust crates to process extensions, but this will likely
+ * require a rust-based frontend, or an ocaml-FFI-based connection to
+ * rust crates. At the moment we have neither.
+ */
+
+impure fn expand_syntax_ext(parser p, @ast.expr ext) -> @ast.expr {
+    check (ast.is_ext_expr(ext));
+    alt (ext.node) {
+        case (ast.expr_ext(?path, ?args, ?body, _, ?ann)) {
+            check (_vec.len[ast.ident](path.node.idents) > 0u);
+            auto extname = path.node.idents.(0);
+            if (_str.eq(extname, "fmt")) {
+                auto expanded = extfmt.expand_syntax_ext(args, body);
+                check (ast.is_ext_expr(expanded));
+                auto newexpr = ast.expr_ext(path, args, body,
+                                            some[@ast.expr](expanded), ann);
+
+                ret @spanned(ext.span, ext.span, newexpr);
+            } else {
+                p.err("unknown syntax extension");
+            }
+        }
+    }
+    fail;
 }
 
 impure fn extend_expr_by_ident(parser p, span lo, span hi,
