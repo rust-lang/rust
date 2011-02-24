@@ -8,6 +8,7 @@ import std.map.hashmap;
 
 import driver.session;
 import util.common;
+import util.common.filename;
 import util.common.append;
 import util.common.span;
 import util.common.new_str_hash;
@@ -2110,9 +2111,81 @@ impure fn parse_crate_from_source_file(parser p) -> @ast.crate {
 //
 // Each directive imperatively extends its environment with 0 or more items.
 
-impure fn parse_crate_directive(str prefix, parser p,
-                                &mutable vec[@ast.item] items,
-                                hashmap[ast.ident,ast.mod_index_entry] index)
+impure fn eval_crate_directives(parser p,
+                                vec[@ast.crate_directive] cdirs,
+                                str prefix) -> ast._mod {
+    let vec[@ast.item] items = vec();
+    auto index = new_str_hash[ast.mod_index_entry]();
+    auto view_items = parse_view(p, index);
+
+    for (@ast.crate_directive sub_cdir in cdirs) {
+        eval_crate_directive(p, sub_cdir, prefix,
+                             view_items, items, index);
+    }
+
+    ret rec(view_items=view_items, items=items, index=index);
+}
+
+impure fn eval_crate_directive(parser p,
+                               @ast.crate_directive cdir,
+                               str prefix,
+                               &mutable vec[@ast.view_item] view_items,
+                               &mutable vec[@ast.item] items,
+                               hashmap[ast.ident,ast.mod_index_entry] index) {
+    alt (cdir.node) {
+        case (ast.cdir_expr(?e)) {}
+        case (ast.cdir_const(?i)) {}
+
+        case (ast.cdir_src_mod(?id, ?file_opt)) {
+
+            auto file_path = id + ".rs";
+            alt (file_opt) {
+                case (some[filename](?f)) {
+                    file_path = f;
+                }
+                case (none[filename]) {}
+            }
+
+            auto full_path = prefix + std.os.path_sep() + file_path;
+
+            auto p0 = new_parser(p.get_session(), 0, full_path);
+            auto m0 = parse_mod_items(p0, token.EOF);
+            auto im = ast.item_mod(id, m0, p.next_def_id());
+            auto i = @spanned(cdir.span, cdir.span, im);
+            ast.index_item(index, i);
+            append[@ast.item](items, i);
+        }
+
+        case (ast.cdir_dir_mod(?id, ?dir_opt, ?cdirs)) {
+
+            auto path = id;
+            alt (dir_opt) {
+                case (some[filename](?d)) {
+                    path = d;
+                }
+                case (none[filename]) {}
+            }
+
+            auto full_path = prefix + std.os.path_sep() + path;
+            auto m0 = eval_crate_directives(p, cdirs, path);
+            auto im = ast.item_mod(id, m0, p.next_def_id());
+            auto i = @spanned(cdir.span, cdir.span, im);
+            ast.index_item(index, i);
+            append[@ast.item](items, i);
+        }
+
+        case (ast.cdir_view_item(?vi)) {
+            append[@ast.view_item](view_items, vi);
+            ast.index_view_item(index, vi);
+        }
+
+        case (ast.cdir_meta(?mi)) {}
+        case (ast.cdir_syntax(?pth)) {}
+        case (ast.cdir_auth(?pth, ?eff)) {}
+    }
+}
+
+impure fn parse_crate_directive(parser p) -> ast.crate_directive
 {
     auto lo = p.get_span();
     auto hi = lo;
@@ -2124,28 +2197,27 @@ impure fn parse_crate_directive(str prefix, parser p,
             auto n = parse_path(p, GREEDY);
             expect(p, token.EQ);
             auto e = parse_effect(p);
+            hi = p.get_span();
             expect(p, token.SEMI);
+            ret spanned(lo, hi, ast.cdir_auth(n, e));
         }
         case (token.CONST) {
             auto c = parse_item_const(p);
-            ast.index_item(index, c);
-            append[@ast.item](items, c);
+            ret spanned(c.span, c.span, ast.cdir_const(c));
          }
         case (token.MOD) {
             p.bump();
             auto id = parse_ident(p);
-            auto file_path = id;
+            auto file_opt = none[filename];
             alt (p.peek()) {
                 case (token.EQ) {
                     p.bump();
                     // FIXME: turn this into parse+eval expr
-                    file_path = parse_str_lit(p);
+                    file_opt = some[filename](parse_str_lit(p));
                 }
                 case (_) {}
             }
 
-            // dir-qualify file path.
-            auto full_path = prefix + std.os.path_sep() + file_path;
 
             alt (p.peek()) {
 
@@ -2154,29 +2226,18 @@ impure fn parse_crate_directive(str prefix, parser p,
                 case (token.SEMI) {
                     hi = p.get_span();
                     p.bump();
-                    if (!_str.ends_with(full_path, ".rs")) {
-                        full_path += ".rs";
-                    }
-                    auto p0 = new_parser(p.get_session(), 0, full_path);
-                    auto m0 = parse_mod_items(p0, token.EOF);
-                    auto im = ast.item_mod(id, m0, p.next_def_id());
-                    auto i = @spanned(lo, hi, im);
-                    ast.index_item(index, i);
-                    append[@ast.item](items, i);
+                    ret spanned(lo, hi, ast.cdir_src_mod(id, file_opt));
                 }
 
                 // mod x = "foo_dir" { ...directives... }
 
                 case (token.LBRACE) {
                     p.bump();
-                    auto m0 = parse_crate_directives(full_path, p,
-                                                     token.RBRACE);
+                    auto cdirs = parse_crate_directives(p, token.RBRACE);
                     hi = p.get_span();
                     expect(p, token.RBRACE);
-                    auto im = ast.item_mod(id, m0, p.next_def_id());
-                    auto i = @spanned(lo, hi, im);
-                    ast.index_item(index, i);
-                    append[@ast.item](items, i);
+                    ret spanned(lo, hi,
+                                ast.cdir_dir_mod(id, file_opt, cdirs));
                 }
 
                 case (?t) {
@@ -2185,27 +2246,28 @@ impure fn parse_crate_directive(str prefix, parser p,
             }
         }
     }
+    fail;
 }
 
-impure fn parse_crate_directives(str prefix, parser p,
-                                 token.token term) -> ast._mod {
-    auto index = new_str_hash[ast.mod_index_entry]();
-    auto view_items = parse_view(p, index);
+impure fn parse_crate_directives(parser p, token.token term)
+    -> vec[@ast.crate_directive] {
 
-    let vec[@ast.item] items = vec();
+    let vec[@ast.crate_directive] cdirs = vec();
 
     while (p.peek() != term) {
-        parse_crate_directive(prefix, p, items, index);
+        auto cdir = @parse_crate_directive(p);
+        append[@ast.crate_directive](cdirs, cdir);
     }
 
-    ret rec(view_items=view_items, items=items, index=index);
+    ret cdirs;
 }
 
 impure fn parse_crate_from_crate_file(parser p) -> @ast.crate {
     auto lo = p.get_span();
     auto hi = lo;
     auto prefix = std.path.dirname(lo.filename);
-    auto m = parse_crate_directives(prefix, p, token.EOF);
+    auto cdirs = parse_crate_directives(p, token.EOF);
+    auto m = eval_crate_directives(p, cdirs, prefix);
     hi = p.get_span();
     expect(p, token.EOF);
     ret @spanned(lo, hi, rec(module=m));

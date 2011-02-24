@@ -46,8 +46,9 @@ type crate_ = rec(_mod module);
 
 tag crate_directive_ {
     cdir_expr(@expr);
+    cdir_const(@item);
     cdir_src_mod(ident, option.t[filename]);
-    cdir_dir_mod(ident, option.t[filename], vec[crate_directive]);
+    cdir_dir_mod(ident, option.t[filename], vec[@crate_directive]);
     cdir_view_item(@view_item);
     cdir_meta(@meta_item);
     cdir_syntax(path);
