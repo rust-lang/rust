@@ -3132,9 +3132,9 @@ fn trans_args(@block_ctxt cx,
             bcx = re.bcx;
         }
 
-        if (ty.type_has_dynamic_size(args.(i).ty)) {
-            val = bcx.build.PointerCast(val,
-                                        T_typaram_ptr(cx.fcx.ccx.tn));
+        if (ty.count_ty_params(args.(i).ty) > 0u) {
+            auto lldestty = type_of(cx.fcx.ccx, args.(i).ty);
+            val = bcx.build.PointerCast(val, lldestty);
         }
 
         llargs += val;
