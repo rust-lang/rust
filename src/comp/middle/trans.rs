@@ -3091,6 +3091,12 @@ fn trans_args(@block_ctxt cx,
     }
 
     // ... then explicit args.
+
+    // First we figure out the caller's view of the types of the arguments.
+    // This will be needed if this is a generic call, because the callee has
+    // to cast her view of the arguments to the caller's view.
+    auto arg_tys = type_of_explicit_args(cx.fcx.ccx, args);
+
     auto i = 0u;
     for (@ast.expr e in es) {
         auto mode = args.(i).mode;
@@ -3132,9 +3138,9 @@ fn trans_args(@block_ctxt cx,
             bcx = re.bcx;
         }
 
-        if (ty.type_has_dynamic_size(args.(i).ty)) {
-            val = bcx.build.PointerCast(val,
-                                        T_typaram_ptr(cx.fcx.ccx.tn));
+        if (ty.count_ty_params(args.(i).ty) > 0u) {
+            auto lldestty = arg_tys.(i);
+            val = bcx.build.PointerCast(val, lldestty);
         }
 
         llargs += val;

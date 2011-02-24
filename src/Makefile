@@ -416,6 +416,7 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/run-pass/obj-as.rs \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
+                    test/run-pass/generic-fn-box.rs \
                     test/run-pass/generic-recursive-tag.rs \
                     test/run-pass/generic-tup.rs \
                     test/run-pass/iter-ret.rs \
