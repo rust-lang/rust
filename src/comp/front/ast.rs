@@ -46,7 +46,10 @@ type crate_ = rec(_mod module);
 
 tag crate_directive_ {
     cdir_expr(@expr);
-    cdir_const(@item);
+    // FIXME: cdir_let should be eliminated
+    // and redirected to the use of const stmt_decls inside
+    // crate directive blocks.
+    cdir_let(ident, @expr, vec[@crate_directive]);
     cdir_src_mod(ident, option.t[filename]);
     cdir_dir_mod(ident, option.t[filename], vec[@crate_directive]);
     cdir_view_item(@view_item);
@@ -137,6 +140,8 @@ type stmt = spanned[stmt_];
 tag stmt_ {
     stmt_decl(@decl);
     stmt_expr(@expr);
+    // These only exist in crate-level blocks.
+    stmt_crate_directive(@crate_directive);
 }
 
 type local = rec(option.t[@ty] ty,
@@ -175,7 +180,6 @@ tag expr_ {
     expr_do_while(block, @expr, ann);
     expr_alt(@expr, vec[arm], ann);
     expr_block(block, ann);
-    expr_crate_directive_block(vec[crate_directive_]);
     expr_assign(@expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_assign_op(binop, @expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_field(@expr, ident, ann);

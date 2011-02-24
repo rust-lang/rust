@@ -8,6 +8,7 @@ mod front {
     mod lexer;
     mod parser;
     mod token;
+    mod eval;
 }
 
 mod middle {
@@ -37,7 +38,6 @@ auth middle.trans = unsafe;
 auth middle.trans.copy_args_to_allocas = impure;
 auth middle.trans.trans_block = impure;
 auth lib.llvm = unsafe;
-
 
 mod lib {
     alt (target_os) {
