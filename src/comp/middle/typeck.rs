@@ -919,8 +919,41 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
             // acquire here with the type parameters provided to us by
             // "expected".
 
+            // Grab the values for the type parameters of the tag from the
+            // expected type.
+            let vec[@ty.t] typaram_bindings = vec(); // FIXME: typestate botch
+            alt (expected.struct) {
+                case (ty.ty_tag(_, ?tps)) { typaram_bindings = tps; }
+                case (_) {
+                    log "tag pattern didn't have tag type?!";
+                    fail;
+                }
+            }
+
+            // Get the item corresponding to the tag and its type.
             auto vdef = option.get[ast.variant_def](vdef_opt);
             auto variant_ty = fcx.ccx.item_types.get(vdef._1);
+
+            // FIXME: typestate botch
+            let option.t[@ast.item] item_opt = none[@ast.item];
+            alt (fcx.ccx.item_items.get(vdef._0)) {
+                case (any_item_rust(?it)) { item_opt = some[@ast.item](it); }
+                case (_) {
+                    log "tag item isn't a Rust item?!";
+                    fail;
+                }
+            }
+            let @ast.item item = option.get[@ast.item](item_opt);
+
+            // Get the IDs of the type parameters from that item.
+            let vec[ast.ty_param] ty_params = vec(); // FIXME: typestate botch
+            alt (item.node) {
+                case (ast.item_tag(_, _, ?tps, _)) { ty_params = tps; }
+                case (_) {
+                    log "tag's corresponding item isn't a tag?!";
+                    fail;
+                }
+            }
 
             auto subpats_len = _vec.len[@ast.pat](subpats);
             alt (variant_ty.struct) {
@@ -930,10 +963,14 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
                     p_1 = ast.pat_tag(id, subpats, vdef_opt, ast.ann_type(t));
                 }
                 case (ty.ty_fn(_, ?args, ?tag_ty)) {
+                    // N-ary tag variant.
                     let vec[@ast.pat] new_subpats = vec();
                     auto i = 0u;
                     for (arg a in args) {
-                        auto new_subpat = demand_pat(fcx, a.ty, subpats.(i));
+                        auto arg_ty = ty.substitute_ty_params(ty_params,
+                            typaram_bindings, a.ty);
+                        auto new_subpat = demand_pat(fcx, arg_ty,
+                                                     subpats.(i));
                         new_subpats += vec(new_subpat);
                         i += 1u;
                     }
@@ -1260,14 +1297,13 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
                         new_subpats += vec(check_pat(fcx, subpat));
                     }
 
-                    auto ann = ast.ann_type(tag_ty);
+                    auto tag_ty_g = generalize_ty(fcx.ccx, tag_ty);
+                    auto ann = ast.ann_type(tag_ty_g);
                     new_pat = ast.pat_tag(p, new_subpats, vdef_opt, ann);
                 }
 
                 // Nullary variants have tag types.
-                case (ty.ty_tag(?tid, _)) {
-                    // TODO: ty params
-
+                case (ty.ty_tag(?tid, ?tps)) {
                     auto subpats_len = _vec.len[@ast.pat](subpats);
                     if (subpats_len > 0u) {
                         // TODO: pluralize properly
@@ -1281,7 +1317,14 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
                         fail;   // TODO: recover
                     }
 
-                    let vec[@ty.t] tys = vec(); // FIXME
+                    // Add the appropriate number of type variables.
+                    let vec[@ty.t] tys = vec();
+                    auto i = 0u;
+                    while (i < _vec.len[@ty.t](tps)) {
+                        tys += vec(next_ty_var(fcx.ccx));
+                        i += 1u;
+                    }
+
                     auto ann = ast.ann_type(plain_ty(ty.ty_tag(tid, tys)));
                     new_pat = ast.pat_tag(p, subpats, vdef_opt, ann);
                 }
