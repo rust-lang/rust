@@ -1170,6 +1170,23 @@ impure fn parse_alt_expr(parser p) -> @ast.expr {
                 auto block = parse_block(p);
                 arms += vec(rec(pat=pat, block=block, index=index));
             }
+
+            // FIXME: this is a vestigial form left over from
+            // rustboot, we're keeping it here for source-compat
+            // for the time being but it should be flushed out
+            // once we've bootstrapped. When we see 'else {' here,
+            // we pretend we saw 'case (_) {'. It has the same
+            // meaning, and only exists due to the cexp/pexp split
+            // in rustboot, which we're not maintaining.
+
+            case (token.ELSE) {
+                p.bump();
+                auto hi = p.get_span();
+                auto pat = @spanned(lo, hi, ast.pat_wild(ast.ann_none));
+                auto index = index_arm(pat);
+                auto block = parse_block(p);
+                arms += vec(rec(pat=pat, block=block, index=index));
+            }
             case (token.RBRACE) { /* empty */ }
             case (?tok) {
                 p.err("expected 'case' or '}' when parsing 'alt' statement " +
