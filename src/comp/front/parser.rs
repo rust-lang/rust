@@ -18,6 +18,11 @@ tag restriction {
     RESTRICT_NO_CALL_EXPRS;
 }
 
+tag file_type {
+    CRATE_FILE;
+    SOURCE_FILE;
+}
+
 state type parser =
     state obj {
           fn peek() -> token.token;
@@ -25,14 +30,17 @@ state type parser =
           impure fn err(str s);
           impure fn restrict(restriction r);
           fn get_restriction() -> restriction;
+          fn get_file_type() -> file_type;
           fn get_session() -> session.session;
           fn get_span() -> common.span;
           fn next_def_id() -> ast.def_id;
     };
 
 impure fn new_parser(session.session sess,
-                 ast.crate_num crate, str path) -> parser {
+                     ast.crate_num crate,
+                     str path) -> parser {
     state obj stdio_parser(session.session sess,
+                           file_type ftype,
                            mutable token.token tok,
                            mutable common.pos lo,
                            mutable common.pos hi,
@@ -80,11 +88,20 @@ impure fn new_parser(session.session sess,
                 def += 1;
                 ret tup(crate, def);
             }
+
+            fn get_file_type() -> file_type {
+                ret ftype;
+            }
+
         }
+    auto ftype = SOURCE_FILE;
+    if (_str.ends_with(path, ".rc")) {
+        ftype = CRATE_FILE;
+    }
     auto srdr = io.new_stdio_reader(path);
     auto rdr = lexer.new_reader(srdr, path);
     auto npos = rdr.get_curr_pos();
-    ret stdio_parser(sess, lexer.next_token(rdr),
+    ret stdio_parser(sess, ftype, lexer.next_token(rdr),
                      npos, npos, 0, UNRESTRICTED, crate, rdr);
 }
 
@@ -1310,6 +1327,20 @@ impure fn parse_auto(parser p) -> @ast.decl {
 }
 
 impure fn parse_stmt(parser p) -> @ast.stmt {
+    if (p.get_file_type() == SOURCE_FILE) {
+        ret parse_source_stmt(p);
+    } else {
+        ret parse_crate_stmt(p);
+    }
+}
+
+impure fn parse_crate_stmt(parser p) -> @ast.stmt {
+    auto cdir = parse_crate_directive(p);
+    ret @spanned(cdir.span, cdir.span,
+                 ast.stmt_crate_directive(@cdir));
+}
+
+impure fn parse_source_stmt(parser p) -> @ast.stmt {
     auto lo = p.get_span();
     alt (p.peek()) {
 
@@ -1483,6 +1514,16 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_be(_))           { ret true; }
                 case (ast.expr_log(_))          { ret true; }
                 case (ast.expr_check_expr(_))   { ret true; }
+            }
+        }
+        case (ast.stmt_crate_directive(?cdir)) {
+            alt (cdir.node) {
+                case (ast.cdir_src_mod(_, _))    { ret true; }
+                case (ast.cdir_view_item(_))     { ret true; }
+                case (ast.cdir_meta(_))          { ret true; }
+                case (ast.cdir_syntax(_))        { ret true; }
+                case (ast.cdir_auth(_, _))       { ret true; }
+                case (_)                         { ret false; }
             }
         }
     }
@@ -2181,6 +2222,21 @@ impure fn parse_crate_directive(parser p) -> ast.crate_directive
             hi = p.get_span();
             expect(p, token.RBRACE);
             ret spanned(lo, hi, ast.cdir_let(id, x, v));
+        }
+
+        case (token.USE) {
+            auto vi = parse_use_or_import(p);
+            ret spanned(lo, vi.span, ast.cdir_view_item(vi));
+        }
+
+        case (token.IMPORT) {
+            auto vi = parse_use_or_import(p);
+            ret spanned(lo, vi.span, ast.cdir_view_item(vi));
+        }
+
+        case (_) {
+            auto x = parse_expr(p);
+            ret spanned(lo, x.span, ast.cdir_expr(x));
         }
     }
     fail;
