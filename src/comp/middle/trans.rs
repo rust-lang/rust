@@ -4019,7 +4019,7 @@ fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
     cx.item_names.insert(cx.path, llfndecl);
 
     auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
-    create_llargs_for_fn_args(fcx, f.decl.proto,
+    create_llargs_for_fn_args(fcx, f.proto,
                               ty_self, ret_ty_of_fn(ann),
                               f.decl.inputs, ty_params);
     auto bcx = new_top_block_ctxt(fcx);

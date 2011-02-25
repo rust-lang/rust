@@ -1617,8 +1617,7 @@ impure fn parse_ty_params(parser p) -> vec[ast.ty_param] {
     ret ty_params;
 }
 
-impure fn parse_fn_decl(parser p, ast.proto proto,
-                        ast.effect eff) -> ast.fn_decl {
+impure fn parse_fn_decl(parser p, ast.effect eff) -> ast.fn_decl {
     auto pf = parse_arg;
     let util.common.spanned[vec[ast.arg]] inputs =
         // FIXME: passing parse_arg as an lval doesn't work at the
@@ -1636,32 +1635,32 @@ impure fn parse_fn_decl(parser p, ast.proto proto,
     } else {
         output = @spanned(inputs.span, inputs.span, ast.ty_nil);
     }
-    ret rec(effect=eff, proto=proto,
-            inputs=inputs.node, output=output);
+    ret rec(effect=eff, inputs=inputs.node, output=output);
 }
 
 impure fn parse_fn(parser p, ast.effect eff, ast.proto proto) -> ast._fn {
-    auto decl = parse_fn_decl(p, proto, eff);
+    auto decl = parse_fn_decl(p, eff);
     auto body = parse_block(p);
     ret rec(decl = decl,
+            proto = proto,
             body = body);
 }
 
 impure fn parse_fn_header(parser p)
-    -> tup(span, ast.proto, ast.ident, vec[ast.ty_param]) {
-    auto lo = p.get_span();
-    auto proto = parse_proto(p);
+    -> tup(ast.ident, vec[ast.ty_param]) {
     auto id = parse_ident(p);
     auto ty_params = parse_ty_params(p);
-    ret tup(lo, proto, id, ty_params);
+    ret tup(id, ty_params);
 }
 
 impure fn parse_item_fn_or_iter(parser p, ast.effect eff) -> @ast.item {
+    auto lo = p.get_span();
+    auto proto = parse_proto(p);
     auto t = parse_fn_header(p);
-    auto f = parse_fn(p, eff, t._1);
-    auto item = ast.item_fn(t._2, f, t._3,
+    auto f = parse_fn(p, eff, proto);
+    auto item = ast.item_fn(t._0, f, t._1,
                             p.next_def_id(), ast.ann_none);
-    ret @spanned(t._0, f.body.span, item);
+    ret @spanned(lo, f.body.span, item);
 }
 
 
@@ -1760,13 +1759,15 @@ impure fn parse_item_native_type(parser p) -> @ast.native_item {
 }
 
 impure fn parse_item_native_fn(parser p, ast.effect eff) -> @ast.native_item {
+    auto lo = p.get_span();
+    expect(p, token.FN);
     auto t = parse_fn_header(p);
-    auto decl = parse_fn_decl(p, t._1, eff);
+    auto decl = parse_fn_decl(p, eff);
     auto hi = p.get_span();
     expect(p, token.SEMI);
-    auto item = ast.native_item_fn(t._2, decl, t._3, p.next_def_id(),
+    auto item = ast.native_item_fn(t._0, decl, t._1, p.next_def_id(),
                                    ast.ann_none);
-    ret @spanned(t._0, hi, item);
+    ret @spanned(lo, hi, item);
 }
 
 impure fn parse_native_item(parser p) -> @ast.native_item {

@@ -332,10 +332,11 @@ fn ty_of_fn_decl(@ty_item_table id_to_ty_item,
                  fn(&@ast.ty ast_ty) -> @ty.t convert,
                  fn(&ast.arg a) -> arg ty_of_arg,
                  &ast.fn_decl decl,
+                 ast.proto proto,
                  ast.def_id def_id) -> @ty.t {
     auto input_tys = _vec.map[ast.arg,arg](ty_of_arg, decl.inputs);
     auto output_ty = convert(decl.output);
-    auto t_fn = plain_ty(ty.ty_fn(decl.proto, input_tys, output_ty));
+    auto t_fn = plain_ty(ty.ty_fn(proto, input_tys, output_ty));
     item_to_ty.insert(def_id, t_fn);
     ret t_fn;
 }
@@ -394,7 +395,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
         auto inputs = _vec.map[ast.arg,arg](f, m.node.meth.decl.inputs);
         auto output = convert(m.node.meth.decl.output);
-        ret rec(proto=m.node.meth.decl.proto, ident=m.node.ident,
+        ret rec(proto=m.node.meth.proto, ident=m.node.ident,
                 inputs=inputs, output=output);
     }
 
@@ -446,7 +447,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             case (ast.item_fn(?ident, ?fn_info, _, ?def_id, _)) {
                 auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
                 ret ty_of_fn_decl(id_to_ty_item, item_to_ty, convert, f,
-                                  fn_info.decl, def_id);
+                                  fn_info.decl, fn_info.proto, def_id);
             }
 
             case (ast.item_obj(?ident, ?obj_info, _, ?def_id, _)) {
@@ -2155,7 +2156,8 @@ fn check_const(&@crate_ctxt ccx, &span sp, ast.ident ident, @ast.ty t,
     ret @fold.respan[ast.item_](sp, item);
 }
 
-fn check_fn(&@crate_ctxt ccx, &ast.fn_decl decl, &ast.block body) -> ast._fn {
+fn check_fn(&@crate_ctxt ccx, &ast.fn_decl decl, ast.proto proto,
+            &ast.block body) -> ast._fn {
     auto local_ty_table = @common.new_def_hash[@ty.t]();
 
     // FIXME: duplicate work: the item annotation already has the arg types
@@ -2182,8 +2184,9 @@ fn check_fn(&@crate_ctxt ccx, &ast.fn_decl decl, &ast.block body) -> ast._fn {
     auto block_t = check_block(fcx, body);
     auto block_wb = writeback(fcx, block_t);
 
-     auto fn_t = rec(decl=decl,
-                     body=block_wb);
+    auto fn_t = rec(decl=decl,
+                    proto=proto,
+                    body=block_wb);
     ret fn_t;
 }
 
@@ -2202,7 +2205,7 @@ fn check_item_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
     }
 
     auto output_ty = ast_ty_to_ty_crate(ccx, f.decl.output);
-    auto fn_sty = ty.ty_fn(f.decl.proto, inputs, output_ty);
+    auto fn_sty = ty.ty_fn(f.proto, inputs, output_ty);
     auto fn_ann = ast.ann_type(plain_ty(fn_sty));
 
     auto item = ast.item_fn(ident, f, ty_params, id, fn_ann);
@@ -2234,7 +2237,7 @@ fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     auto fld = fold.new_identity_fold[@crate_ctxt]();
 
     fld = @rec(update_env_for_item = bind update_obj_fields(_, _),
-               fold_fn      = bind check_fn(_,_,_),
+               fold_fn      = bind check_fn(_,_,_,_),
                fold_item_fn = bind check_item_fn(_,_,_,_,_,_,_)
                with *fld);
     ret fold.fold_crate[@crate_ctxt](ccx, fld, result._0);

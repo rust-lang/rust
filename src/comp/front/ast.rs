@@ -235,10 +235,10 @@ tag ty_ {
 
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
 type fn_decl = rec(effect effect,
-                   proto proto,
                    vec[arg] inputs,
                    @ty output);
 type _fn = rec(fn_decl decl,
+               proto proto,
                block body);
 
 
