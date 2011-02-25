@@ -756,7 +756,6 @@ impure fn expand_syntax_ext(parser p, @ast.expr ext) -> @ast.expr {
             auto extname = path.node.idents.(0);
             if (_str.eq(extname, "fmt")) {
                 auto expanded = extfmt.expand_syntax_ext(args, body);
-                check (ast.is_ext_expr(expanded));
                 auto newexpr = ast.expr_ext(path, args, body,
                                             some[@ast.expr](expanded), ann);
 
