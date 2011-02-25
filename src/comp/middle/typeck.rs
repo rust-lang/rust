@@ -913,11 +913,6 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
             // of the variant, which is either a tag type in the case of
             // nullary variants or a function type in the case of n-ary
             // variants.
-            //
-            // TODO: When we have type-parametric tags, this will get a little
-            // trickier. Basically, we have to instantiate the variant type we
-            // acquire here with the type parameters provided to us by
-            // "expected".
 
             // Grab the values for the type parameters of the tag from the
             // expected type.
