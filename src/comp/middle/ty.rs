@@ -41,7 +41,7 @@ tag sty {
     ty_tup(vec[@t]);
     ty_rec(vec[field]);
     ty_fn(ast.proto, vec[arg], @t);                 // TODO: effect
-    ty_native_fn(vec[arg], @t);                     // TODO: effect
+    ty_native_fn(ast.native_abi, vec[arg], @t);     // TODO: effect
     ty_obj(vec[method]);
     ty_var(int);                                    // ephemeral type var
     ty_local(ast.def_id);                           // type of a local var
@@ -261,7 +261,7 @@ fn ty_to_str(&@t typ) -> str {
             s = fn_to_str(proto, none[ast.ident], inputs, output);
         }
 
-        case (ty_native_fn(?inputs, ?output)) {
+        case (ty_native_fn(_, ?inputs, ?output)) {
             s = fn_to_str(ast.proto_fn, none[ast.ident], inputs, output);
         }
 
@@ -346,13 +346,13 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
             }
             ret rewrap(ty, ty_fn(proto, new_args, fold_ty(fld, ret_ty)));
         }
-        case (ty_native_fn(?args, ?ret_ty)) {
+        case (ty_native_fn(?abi, ?args, ?ret_ty)) {
             let vec[arg] new_args = vec();
             for (arg a in args) {
                 auto new_ty = fold_ty(fld, a.ty);
                 new_args += vec(rec(mode=a.mode, ty=new_ty));
             }
-            ret rewrap(ty, ty_native_fn(new_args, fold_ty(fld, ret_ty)));
+            ret rewrap(ty, ty_native_fn(abi, new_args, fold_ty(fld, ret_ty)));
         }
         case (ty_obj(?methods)) {
             let vec[method] new_methods = vec();
@@ -596,7 +596,7 @@ fn count_ty_params(@t ty) -> uint {
 fn ty_fn_args(@t fty) -> vec[arg] {
     alt (fty.struct) {
         case (ty.ty_fn(_, ?a, _)) { ret a; }
-        case (ty.ty_native_fn(?a, _)) { ret a; }
+        case (ty.ty_native_fn(_, ?a, _)) { ret a; }
     }
     fail;
 }
@@ -611,7 +611,7 @@ fn ty_fn_proto(@t fty) -> ast.proto {
 fn ty_fn_ret(@t fty) -> @t {
     alt (fty.struct) {
         case (ty.ty_fn(_, _, ?r)) { ret r; }
-        case (ty.ty_native_fn(_, ?r)) { ret r; }
+        case (ty.ty_native_fn(_, _, ?r)) { ret r; }
     }
     fail;
 }
@@ -619,7 +619,7 @@ fn ty_fn_ret(@t fty) -> @t {
 fn is_fn_ty(@t fty) -> bool {
     alt (fty.struct) {
         case (ty.ty_fn(_, _, _)) { ret true; }
-        case (ty.ty_native_fn(_, _)) { ret true; }
+        case (ty.ty_native_fn(_, _, _)) { ret true; }
         case (_) { ret false; }
     }
     ret false;
@@ -938,12 +938,18 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
     }
 
     fn unify_native_fn(@hashmap[int,@ty.t] bindings,
+                       ast.native_abi e_abi,
+                       ast.native_abi a_abi,
                        @ty.t expected,
                        @ty.t actual,
                        &unify_handler handler,
                        vec[arg] expected_inputs, @t expected_output,
                        vec[arg] actual_inputs, @t actual_output)
         -> unify_result {
+        if (e_abi != a_abi) {
+            ret ures_err(terr_mismatch, expected, actual);
+        }
+
         auto t = unify_fn_common(bindings, expected, actual,
                                  handler, expected_inputs, expected_output,
                                  actual_inputs, actual_output);
@@ -952,7 +958,8 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                 ret r;
             }
             case (fn_common_res_ok(?result_ins, ?result_out)) {
-                auto t2 = plain_ty(ty.ty_native_fn(result_ins, result_out));
+                auto t2 = plain_ty(ty.ty_native_fn(e_abi, result_ins,
+                                                   result_out));
                 ret ures_ok(t2);
             }
         }
@@ -1314,10 +1321,12 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                 }
             }
 
-            case (ty.ty_native_fn(?expected_inputs, ?expected_output)) {
+            case (ty.ty_native_fn(?e_abi, ?expected_inputs,
+                                  ?expected_output)) {
                 alt (actual.struct) {
-                    case (ty.ty_native_fn(?actual_inputs, ?actual_output)) {
-                        ret unify_native_fn(bindings,
+                    case (ty.ty_native_fn(?a_abi, ?actual_inputs,
+                                          ?actual_output)) {
+                        ret unify_native_fn(bindings, e_abi, a_abi,
                                             expected, actual, handler,
                                             expected_inputs, expected_output,
                                             actual_inputs, actual_output);

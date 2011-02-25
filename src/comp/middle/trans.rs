@@ -516,7 +516,8 @@ fn type_of_fn(@crate_ctxt cx,
     ret type_of_fn_full(cx, proto, none[TypeRef], inputs, output);
 }
 
-fn type_of_native_fn(@crate_ctxt cx, vec[ty.arg] inputs,
+fn type_of_native_fn(@crate_ctxt cx, ast.native_abi abi,
+                     vec[ty.arg] inputs,
                      @ty.t output) -> TypeRef {
     let vec[TypeRef] atys = type_of_explicit_args(cx, inputs);
     ret T_fn(atys, type_of(cx, output));
@@ -571,8 +572,8 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
         case (ty.ty_fn(?proto, ?args, ?out)) {
             ret T_fn_pair(cx.tn, type_of_fn(cx, proto, args, out));
         }
-        case (ty.ty_native_fn(?args, ?out)) {
-            ret T_fn_pair(cx.tn, type_of_native_fn(cx, args, out));
+        case (ty.ty_native_fn(?abi, ?args, ?out)) {
+            ret T_fn_pair(cx.tn, type_of_native_fn(cx, abi, args, out));
         }
         case (ty.ty_obj(?meths)) {
             auto th = mk_type_handle();

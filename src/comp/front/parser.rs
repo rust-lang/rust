@@ -1818,8 +1818,8 @@ impure fn parse_item_native_mod(parser p) -> @ast.item {
     auto abi = ast.native_abi_cdecl;
     if (p.peek() != token.MOD) {
         auto t = parse_str_lit(p);
-        if (t == "cdecl") {
-        } else if (t == "rust") {
+        if (_str.eq(t, "cdecl")) {
+        } else if (_str.eq(t, "rust")) {
             abi = ast.native_abi_rust;
         } else {
             p.err("unsupported abi: " + t);

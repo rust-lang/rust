@@ -35,7 +35,7 @@ type ty_table = hashmap[ast.def_id, @ty.t];
 
 tag any_item {
     any_item_rust(@ast.item);
-    any_item_native(@ast.native_item);
+    any_item_native(@ast.native_item, ast.native_abi);
 }
 
 type ty_item_table = hashmap[ast.def_id,any_item];
@@ -272,7 +272,7 @@ fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast.ty ast_ty) -> @ty.t {
                 ty = actual_type(ty, item);
                 params = ty_params_of_item(item);
             }
-            case (any_item_native(?native_item)) {
+            case (any_item_native(?native_item, _)) {
                 params = ty_params_of_native_item(native_item);
            }
         }
@@ -346,10 +346,11 @@ fn ty_of_native_fn_decl(@ty_item_table id_to_ty_item,
                  fn(&@ast.ty ast_ty) -> @ty.t convert,
                  fn(&ast.arg a) -> arg ty_of_arg,
                  &ast.fn_decl decl,
+                 ast.native_abi abi,
                  ast.def_id def_id) -> @ty.t {
     auto input_tys = _vec.map[ast.arg,arg](ty_of_arg, decl.inputs);
     auto output_ty = convert(decl.output);
-    auto t_fn = plain_ty(ty.ty_native_fn(input_tys, output_ty));
+    auto t_fn = plain_ty(ty.ty_native_fn(abi, input_tys, output_ty));
     item_to_ty.insert(def_id, t_fn);
     ret t_fn;
 }
@@ -370,9 +371,9 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                 ty = actual_type(ty, item);
                 params = ty_params_of_item(item);
             }
-            case (any_item_native(?native_item)) {
+            case (any_item_native(?native_item, ?abi)) {
                 ty = ty_of_native_item(id_to_ty_item, item_to_ty,
-                                       native_item);
+                                       native_item, abi);
                 params = ty_params_of_native_item(native_item);
             }
         }
@@ -490,14 +491,15 @@ fn collect_item_types(session.session sess, @ast.crate crate)
 
     fn ty_of_native_item(@ty_item_table id_to_ty_item,
                          @ty_table item_to_ty,
-                         @ast.native_item it) -> @ty.t {
+                         @ast.native_item it,
+                         ast.native_abi abi) -> @ty.t {
         alt (it.node) {
             case (ast.native_item_fn(?ident, ?fn_decl, ?params, ?def_id, _)) {
                 auto get = bind getter(id_to_ty_item, item_to_ty, _);
                 auto convert = bind ast_ty_to_ty(get, _);
                 auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
                 ret ty_of_native_fn_decl(id_to_ty_item, item_to_ty, convert,
-                                         f, fn_decl, def_id);
+                                         f, fn_decl, abi, def_id);
             }
             case (ast.native_item_ty(_, ?def_id)) {
                 if (item_to_ty.contains_key(def_id)) {
@@ -578,7 +580,10 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         -> @ty_item_table {
         alt (i.node) {
             case (ast.native_item_ty(_, ?def_id)) {
-                id_to_ty_item.insert(def_id, any_item_native(i));
+                // The abi of types is not used.
+                id_to_ty_item.insert(def_id,
+                                     any_item_native(i,
+                                                     ast.native_abi_cdecl));
             }
             case (_) {
             }
@@ -598,18 +603,22 @@ fn collect_item_types(session.session sess, @ast.crate crate)
 
     type env = rec(session.session sess,
                    @ty_item_table id_to_ty_item,
-                   @ty_table item_to_ty);
+                   @ty_table item_to_ty,
+                   ast.native_abi abi);
     let @env e = @rec(sess=sess,
                       id_to_ty_item=id_to_ty_item,
-                      item_to_ty=item_to_ty);
+                      item_to_ty=item_to_ty,
+                      abi=ast.native_abi_cdecl);
 
     fn convert(&@env e, @ast.item i) -> @env {
+        auto abi = e.abi;
         alt (i.node) {
             case (ast.item_mod(_, _, _)) {
                 // ignore item_mod, it has no type.
             }
-            case (ast.item_native_mod(_, _, _)) {
+            case (ast.item_native_mod(_, ?native_mod, _)) {
                 // ignore item_native_mod, it has no type.
+                abi = native_mod.abi;
             }
             case (_) {
                 // This call populates the ty_table with the converted type of
@@ -617,11 +626,11 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                 ty_of_item(e.id_to_ty_item, e.item_to_ty, i);
             }
         }
-        ret e;
+        ret @rec(abi=abi with *e);
     }
 
     fn convert_native(&@env e, @ast.native_item i) -> @env {
-        ty_of_native_item(e.id_to_ty_item, e.item_to_ty, i);
+        ty_of_native_item(e.id_to_ty_item, e.item_to_ty, i, e.abi);
         ret e;
     }
 
@@ -1322,8 +1331,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             case (ty.ty_fn(?proto, _, _))   {
                 t_0 = plain_ty(ty.ty_fn(proto, arg_tys_0, rt_0));
             }
-            case (ty.ty_native_fn(_, _))   {
-                t_0 = plain_ty(ty.ty_native_fn(arg_tys_0, rt_0));
+            case (ty.ty_native_fn(?abi, _, _))   {
+                t_0 = plain_ty(ty.ty_native_fn(abi, arg_tys_0, rt_0));
             }
             case (_) {
                 log "check_call_or_bind(): fn expr doesn't have fn type";
@@ -1807,7 +1816,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto rt_1 = plain_ty(ty.ty_nil);    // FIXME: typestate botch
             alt (expr_ty(result._0).struct) {
                 case (ty.ty_fn(_,_,?rt))    { rt_1 = rt; }
-                case (ty.ty_native_fn(_,?rt))    { rt_1 = rt; }
+                case (ty.ty_native_fn(_, _, ?rt))    { rt_1 = rt; }
                 case (_) {
                     log "LHS of call expr didn't have a function type?!";
                     fail;
