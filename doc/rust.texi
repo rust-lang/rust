@@ -592,10 +592,12 @@ or interrupted by ignored characters.
 
 Most tokens in Rust follow rules similar to the C family.
 
-Most tokens (including identifiers, whitespace, keywords, operators and
-structural symbols) are drawn from the ASCII-compatible range of
-Unicode. String and character literals, however, may include the full range of
-Unicode characters.
+Most tokens (including whitespace, keywords, operators and structural symbols)
+are drawn from the ASCII-compatible range of Unicode. Identifiers are drawn
+from Unicode characters specified by the @code{XID_start} and
+@code{XID_continue} rules given by UAX #31@footnote{Unicode Standard Annex
+#31: Unicode Identifier and Pattern Syntax}. String and character literals may
+include the full range of Unicode characters.
 
 @emph{TODO: formalize this section much more}.
 
@@ -638,18 +640,22 @@ token or a syntactic extension token.  Multi-line comments may be nested.
 @c * Ref.Lex.Ident::             Identifier tokens.
 @cindex Identifier token
 
-Identifiers follow the pattern of C identifiers: they begin with a
-@emph{letter} or @emph{underscore}, and continue with any combination of
-@emph{letters}, @emph{decimal digits} and underscores, and must not be equal
-to any keyword or reserved token. @xref{Ref.Lex.Key}. @xref{Ref.Lex.Res}.
+Identifiers follow the rules given by Unicode Standard Annex #31, in the form
+closed under NFKC normalization, @emph{excluding} those tokens that are
+otherwise defined as keywords or reserved
+tokens. @xref{Ref.Lex.Key}. @xref{Ref.Lex.Res}.
 
-A @emph{letter} is a Unicode character in the ranges U+0061-U+007A and
-U+0041-U+005A (@code{'a'}-@code{'z'} and @code{'A'}-@code{'Z'}).
+That is: an identifier starts with any character having derived property
+@code{XID_Start} and continues with zero or more characters having derived
+property @code{XID_Continue}; and such an identifier is NFKC-normalized during
+lexing, such that all subsequent comparison of identifiers is performed on the
+NFKC-normalized forms.
 
-An @dfn{underscore} is the character U+005F ('_').
+@emph{TODO: define relationship between Unicode and Rust versions}.
 
-A @dfn{decimal digit} is a character in the range U+0030-U+0039
-(@code{'0'}-@code{'9'}).
+@footnote{This identifier syntax is a superset of the identifier syntaxes of C
+and Java, and is modeled on Python PEP #3131, which formed the definition of
+identifiers in Python 3.0 and later.}
 
 @node       Ref.Lex.Key
 @subsection Ref.Lex.Key
