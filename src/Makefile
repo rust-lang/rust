@@ -439,7 +439,8 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/compile-fail/tail-non-call.rs \
                     test/compile-fail/writing-through-read-alias.rs
 
-TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
+TEST_XFAILS_RUSTC := $(CONST_TAG_XFAILS) \
+                     $(addprefix test/run-pass/, \
                         acyclic-unwind.rs \
                         alt-pattern-drop.rs \
                         alt-type-simple.rs \
