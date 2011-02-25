@@ -412,7 +412,7 @@ impure fn eval_crate_directive(parser p,
             }
 
             auto full_path = prefix + std.os.path_sep() + path;
-            auto m0 = eval_crate_directives_to_mod(p, e, cdirs, path);
+            auto m0 = eval_crate_directives_to_mod(p, e, cdirs, full_path);
             auto im = ast.item_mod(id, m0, p.next_def_id());
             auto i = @spanned(cdir.span, cdir.span, im);
             ast.index_item(index, i);
