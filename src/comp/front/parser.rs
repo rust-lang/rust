@@ -2168,9 +2168,24 @@ impure fn parse_crate_directive(parser p) -> ast.crate_directive
                 }
             }
         }
+
+        case (token.LET) {
+            p.bump();
+            expect(p, token.LPAREN);
+            auto id = parse_ident(p);
+            expect(p, token.EQ);
+            auto x = parse_expr(p);
+            expect(p, token.RPAREN);
+            expect(p, token.LBRACE);
+            auto v = parse_crate_directives(p, token.RBRACE);
+            hi = p.get_span();
+            expect(p, token.RBRACE);
+            ret spanned(lo, hi, ast.cdir_let(id, x, v));
+        }
     }
     fail;
 }
+
 
 impure fn parse_crate_directives(parser p, token.token term)
     -> vec[@ast.crate_directive] {
