@@ -1450,7 +1450,7 @@ fn type_err_to_str(&ty.type_err err) -> str {
     }
 }
 
-// Type parameter resolution, used in translation
+// Type parameter resolution, used in translation and typechecking
 
 fn resolve_ty_params(ty_params_and_ty ty_params_and_polyty,
                      @t monoty) -> vec[@t] {
@@ -1490,6 +1490,47 @@ fn resolve_ty_params(ty_params_and_ty ty_params_and_polyty,
     }
 
     ret result_tys;
+}
+
+// Performs type parameter replacement using the supplied mapping from
+// parameter IDs to types.
+fn replace_type_params(@t typ, hashmap[ast.def_id,@t] param_map) -> @t {
+    state obj param_replacer(hashmap[ast.def_id,@t] param_map) {
+        fn fold_simple_ty(@t typ) -> @t {
+            alt (typ.struct) {
+                case (ty_param(?param_def)) {
+                    if (param_map.contains_key(param_def)) {
+                        ret param_map.get(param_def);
+                    } else {
+                        ret typ;
+                    }
+                }
+                case (_) {
+                    ret typ;
+                }
+            }
+        }
+    }
+    auto replacer = param_replacer(param_map);
+    ret fold_ty(replacer, typ);
+}
+
+// Substitutes the type parameters specified by @ty_params with the
+// corresponding types in @bound in the given type. The two vectors must have
+// the same length.
+fn substitute_ty_params(vec[ast.ty_param] ty_params, vec[@t] bound, @t ty)
+        -> @t {
+    auto ty_param_len = _vec.len[ast.ty_param](ty_params);
+    check (ty_param_len == _vec.len[@t](bound));
+
+    auto bindings = common.new_def_hash[@t]();
+    auto i = 0u;
+    while (i < ty_param_len) {
+        bindings.insert(ty_params.(i).id, bound.(i));
+        i += 1u;
+    }
+
+    ret replace_type_params(ty, bindings);
 }
 
 // Local Variables:

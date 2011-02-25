@@ -1,3 +1,4 @@
+import std._int;
 import std._str;
 import std._uint;
 import std._vec;
@@ -61,7 +62,8 @@ type glue_fns = rec(ValueRef activate_glue,
 tag arity { nullary; n_ary; }
 type tag_info = rec(type_handle th,
                     mutable vec[tup(ast.def_id,arity)] variants,
-                    mutable uint size);
+                    mutable uint size,
+                    vec[ast.ty_param] ty_params);
 
 state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
@@ -1498,9 +1500,7 @@ fn iter_structural_ty(@block_ctxt cx,
                 i += 1;
             }
         }
-        case (ty.ty_tag(?tid, _)) {
-            // TODO: type params!
-
+        case (ty.ty_tag(?tid, ?tps)) {
             check (cx.fcx.ccx.tags.contains_key(tid));
             auto info = cx.fcx.ccx.tags.get(tid);
             auto n_variants = _vec.len[tup(ast.def_id,arity)](info.variants);
@@ -1559,11 +1559,15 @@ fn iter_structural_ty(@block_ctxt cx,
                                     auto llfldp =
                                         variant_cx.build.GEP(llvarp, v);
 
+                                    auto ty_subst = ty.substitute_ty_params(
+                                        info.ty_params, tps, a.ty);
+
                                     auto llfld =
                                         load_scalar_or_boxed(variant_cx,
-                                                             llfldp, a.ty);
+                                                             llfldp,
+                                                             ty_subst);
 
-                                    auto res = f(variant_cx, llfld, a.ty);
+                                    auto res = f(variant_cx, llfld, ty_subst);
                                     variant_cx = res.bcx;
                                     j += 1u;
                                 }
@@ -4433,13 +4437,14 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             cx.items.insert(mid, i);
         }
 
-        case (ast.item_tag(_, ?variants, _, ?tag_id)) {
+        case (ast.item_tag(_, ?variants, ?tps, ?tag_id)) {
             auto vi = new_def_hash[uint]();
             auto navi = new_def_hash[uint]();
             let vec[tup(ast.def_id,arity)] variant_info = vec();
             cx.tags.insert(tag_id, @rec(th=mk_type_handle(),
                                         mutable variants=variant_info,
-                                        mutable size=0u));
+                                        mutable size=0u,
+                                        ty_params=tps));
             cx.items.insert(tag_id, i);
         }
 

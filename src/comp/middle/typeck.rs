@@ -147,27 +147,6 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
         ret rec(mode=arg.mode, ty=ast_ty_to_ty(getter, arg.ty));
     }
 
-    fn replace_type_params(@ty.t t, ty_table param_map) -> @ty.t {
-        state obj param_replacer(ty_table param_map) {
-            fn fold_simple_ty(@ty.t t) -> @ty.t {
-                alt (t.struct) {
-                    case (ty.ty_param(?param_def)) {
-                        if (param_map.contains_key(param_def)) {
-                            ret param_map.get(param_def);
-                        } else {
-                            ret t;
-                        }
-                    }
-                    case (_) {
-                        ret t;
-                    }
-                }
-            }
-        }
-        auto replacer = param_replacer(param_map);
-        ret ty.fold_ty(replacer, t);
-    }
-
     fn instantiate(ty_getter getter, ast.def_id id,
                    vec[@ast.ty] args) -> @ty.t {
         // TODO: maybe record cname chains so we can do
@@ -183,7 +162,7 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
             auto param = params.(i);
             param_map.insert(param.id, ast_ty_to_ty(getter, arg));
         }
-        ret replace_type_params(ty_and_params.ty, param_map);
+        ret ty.replace_type_params(ty_and_params.ty, param_map);
     }
 
     auto mut = ast.imm;
