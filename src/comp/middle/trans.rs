@@ -61,7 +61,6 @@ type glue_fns = rec(ValueRef activate_glue,
 
 tag arity { nullary; n_ary; }
 type tag_info = rec(type_handle th,
-                    mutable vec[tup(ast.def_id,arity)] variants,
                     mutable uint size,
                     vec[ast.ty_param] ty_params);
 
@@ -2384,11 +2383,12 @@ fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
 
             auto vdef = option.get[ast.variant_def](vdef_opt);
             auto variant_id = vdef._1;
-            auto tinfo = cx.fcx.ccx.tags.get(vdef._0);
             auto variant_tag = 0;
+
+            auto variants = tag_variants(cx.fcx.ccx, vdef._0);
             auto i = 0;
-            for (tup(ast.def_id,arity) vinfo in tinfo.variants) {
-                auto this_variant_id = vinfo._0;
+            for (ast.variant v in variants) {
+                auto this_variant_id = v.id;
                 if (variant_id._0 == this_variant_id._0 &&
                     variant_id._1 == this_variant_id._1) {
                     variant_tag = i;
@@ -4436,9 +4436,7 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
         case (ast.item_tag(_, ?variants, ?tps, ?tag_id)) {
             auto vi = new_def_hash[uint]();
             auto navi = new_def_hash[uint]();
-            let vec[tup(ast.def_id,arity)] variant_info = vec();
             cx.tags.insert(tag_id, @rec(th=mk_type_handle(),
-                                        mutable variants=variant_info,
                                         mutable size=0u,
                                         ty_params=tps));
             cx.items.insert(tag_id, i);
@@ -4502,10 +4500,8 @@ fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             auto max_size = 0u;
 
             auto info = cx.tags.get(tag_id);
-            let vec[tup(ast.def_id,arity)] variant_info = vec();
 
             for (ast.variant variant in variants) {
-                auto arity_info;
                 if (_vec.len[ast.variant_arg](variant.args) > 0u) {
                     auto llvariantty = type_of_variant(cx, variant);
                     auto align =
@@ -4516,16 +4512,9 @@ fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
                                                  llvariantty) as uint;
                     if (max_align < align) { max_align = align; }
                     if (max_size < size) { max_size = size; }
-
-                    arity_info = n_ary;
-                } else {
-                    arity_info = nullary;
                 }
-
-                variant_info += vec(tup(variant.id, arity_info));
             }
 
-            info.variants = variant_info;
             info.size = max_size;
 
             // FIXME: alignment is wrong here, manually insert padding I
@@ -4566,28 +4555,24 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
             auto union_ty = elts.(1);
 
             auto i = 0u;
-            while (i < _vec.len[tup(ast.def_id,arity)](info.variants)) {
-                auto variant_info = info.variants.(i);
-                alt (variant_info._1) {
-                    case (nullary) {
-                        // Nullary tags become constants.
-                        auto union_val = C_zero_byte_arr(info.size as uint);
-                        auto val = C_struct(vec(C_int(i as int), union_val));
+            auto n_variants = _vec.len[ast.variant](variants);
+            while (i < n_variants) {
+                auto variant = variants.(i);
+                if (_vec.len[ast.variant_arg](variant.args) == 0u) {
+                    // Nullary tags become constants. (N-ary tags are treated
+                    // as functions and generated later.)
 
-                        // FIXME: better name
-                        auto gvar = llvm.LLVMAddGlobal(cx.llmod, val_ty(val),
-                                                       _str.buf("tag"));
-                        llvm.LLVMSetInitializer(gvar, val);
-                        llvm.LLVMSetGlobalConstant(gvar, True);
-                        llvm.LLVMSetLinkage(gvar,
-                                            lib.llvm.LLVMPrivateLinkage
-                                            as llvm.Linkage);
-                        cx.item_ids.insert(variant_info._0, gvar);
-                    }
-                    case (n_ary) {
-                        // N-ary tags are treated as functions and generated
-                        // later.
-                    }
+                    auto union_val = C_zero_byte_arr(info.size as uint);
+                    auto val = C_struct(vec(C_int(i as int), union_val));
+
+                    // FIXME: better name
+                    auto gvar = llvm.LLVMAddGlobal(cx.llmod, val_ty(val),
+                                                   _str.buf("tag"));
+                    llvm.LLVMSetInitializer(gvar, val);
+                    llvm.LLVMSetGlobalConstant(gvar, True);
+                    llvm.LLVMSetLinkage(gvar, lib.llvm.LLVMPrivateLinkage
+                                        as llvm.Linkage);
+                    cx.item_ids.insert(variant.id, gvar);
                 }
 
                 i += 1u;
