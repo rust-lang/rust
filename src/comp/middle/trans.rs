@@ -419,10 +419,7 @@ fn T_opaque_obj_ptr(type_names tn) -> TypeRef {
 
 
 fn type_of(@crate_ctxt cx, @ty.t t) -> TypeRef {
-    let TypeRef llty = type_of_inner(cx, t);
-    check (llty as int != 0);
-    llvm.LLVMAddTypeName(cx.llmod, _str.buf(ty.ty_to_str(t)), llty);
-    ret llty;
+    ret type_of_inner(cx, t);
 }
 
 fn type_of_explicit_args(@crate_ctxt cx,
@@ -433,7 +430,7 @@ fn type_of_explicit_args(@crate_ctxt cx,
             check (arg.mode == ast.alias);
             atys += T_typaram_ptr(cx.tn);
         } else {
-            let TypeRef t = type_of(cx, arg.ty);
+            let TypeRef t = type_of_inner(cx, arg.ty);
             alt (arg.mode) {
                 case (ast.alias) {
                     t = T_ptr(t);
@@ -464,7 +461,7 @@ fn type_of_fn_full(@crate_ctxt cx,
     if (ty.type_has_dynamic_size(output)) {
         atys += T_typaram_ptr(cx.tn);
     } else {
-        atys += T_ptr(type_of(cx, output));
+        atys += T_ptr(type_of_inner(cx, output));
     }
 
     // Arg 1: Task pointer.
@@ -520,60 +517,62 @@ fn type_of_native_fn(@crate_ctxt cx, ast.native_abi abi,
                      vec[ty.arg] inputs,
                      @ty.t output) -> TypeRef {
     let vec[TypeRef] atys = type_of_explicit_args(cx, inputs);
-    ret T_fn(atys, type_of(cx, output));
+    ret T_fn(atys, type_of_inner(cx, output));
 }
 
 fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
+    let TypeRef llty = 0 as TypeRef;
+
     alt (t.struct) {
-        case (ty.ty_native) { ret T_ptr(T_i8()); }
-        case (ty.ty_nil) { ret T_nil(); }
-        case (ty.ty_bool) { ret T_bool(); }
-        case (ty.ty_int) { ret T_int(); }
-        case (ty.ty_uint) { ret T_int(); }
+        case (ty.ty_native) { llty = T_ptr(T_i8()); }
+        case (ty.ty_nil) { llty = T_nil(); }
+        case (ty.ty_bool) { llty = T_bool(); }
+        case (ty.ty_int) { llty = T_int(); }
+        case (ty.ty_uint) { llty = T_int(); }
         case (ty.ty_machine(?tm)) {
             alt (tm) {
-                case (common.ty_i8) { ret T_i8(); }
-                case (common.ty_u8) { ret T_i8(); }
-                case (common.ty_i16) { ret T_i16(); }
-                case (common.ty_u16) { ret T_i16(); }
-                case (common.ty_i32) { ret T_i32(); }
-                case (common.ty_u32) { ret T_i32(); }
-                case (common.ty_i64) { ret T_i64(); }
-                case (common.ty_u64) { ret T_i64(); }
-                case (common.ty_f32) { ret T_f32(); }
-                case (common.ty_f64) { ret T_f64(); }
+                case (common.ty_i8) { llty = T_i8(); }
+                case (common.ty_u8) { llty = T_i8(); }
+                case (common.ty_i16) { llty = T_i16(); }
+                case (common.ty_u16) { llty = T_i16(); }
+                case (common.ty_i32) { llty = T_i32(); }
+                case (common.ty_u32) { llty = T_i32(); }
+                case (common.ty_i64) { llty = T_i64(); }
+                case (common.ty_u64) { llty = T_i64(); }
+                case (common.ty_f32) { llty = T_f32(); }
+                case (common.ty_f64) { llty = T_f64(); }
             }
         }
-        case (ty.ty_char) { ret T_char(); }
-        case (ty.ty_str) { ret T_ptr(T_str()); }
+        case (ty.ty_char) { llty = T_char(); }
+        case (ty.ty_str) { llty = T_ptr(T_str()); }
         case (ty.ty_tag(?tag_id, _)) {
-            ret llvm.LLVMResolveTypeHandle(cx.tags.get(tag_id).th.llth);
+            llty = llvm.LLVMResolveTypeHandle(cx.tags.get(tag_id).th.llth);
         }
         case (ty.ty_box(?t)) {
-            ret T_ptr(T_box(type_of(cx, t)));
+            llty = T_ptr(T_box(type_of_inner(cx, t)));
         }
         case (ty.ty_vec(?t)) {
-            ret T_ptr(T_vec(type_of(cx, t)));
+            llty = T_ptr(T_vec(type_of_inner(cx, t)));
         }
         case (ty.ty_tup(?elts)) {
             let vec[TypeRef] tys = vec();
             for (@ty.t elt in elts) {
-                tys += type_of(cx, elt);
+                tys += type_of_inner(cx, elt);
             }
-            ret T_struct(tys);
+            llty = T_struct(tys);
         }
         case (ty.ty_rec(?fields)) {
             let vec[TypeRef] tys = vec();
             for (ty.field f in fields) {
-                tys += type_of(cx, f.ty);
+                tys += type_of_inner(cx, f.ty);
             }
-            ret T_struct(tys);
+            llty = T_struct(tys);
         }
         case (ty.ty_fn(?proto, ?args, ?out)) {
-            ret T_fn_pair(cx.tn, type_of_fn(cx, proto, args, out));
+            llty = T_fn_pair(cx.tn, type_of_fn(cx, proto, args, out));
         }
         case (ty.ty_native_fn(?abi, ?args, ?out)) {
-            ret T_fn_pair(cx.tn, type_of_native_fn(cx, abi, args, out));
+            llty = T_fn_pair(cx.tn, type_of_native_fn(cx, abi, args, out));
         }
         case (ty.ty_obj(?meths)) {
             auto th = mk_type_handle();
@@ -594,22 +593,25 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
             auto abs_pair = llvm.LLVMResolveTypeHandle(th.llth);
             llvm.LLVMRefineType(abs_pair, pair);
             abs_pair = llvm.LLVMResolveTypeHandle(th.llth);
-            ret abs_pair;
+            llty = abs_pair;
         }
         case (ty.ty_var(_)) {
             log "ty_var in trans.type_of";
             fail;
         }
         case (ty.ty_param(_)) {
-            ret T_typaram_ptr(cx.tn);
+            llty = T_typaram_ptr(cx.tn);
         }
-        case (ty.ty_type) { ret T_ptr(T_tydesc(cx.tn)); }
+        case (ty.ty_type) { llty = T_ptr(T_tydesc(cx.tn)); }
     }
-    fail;
+
+    check (llty as int != 0);
+    llvm.LLVMAddTypeName(cx.llmod, _str.buf(ty.ty_to_str(t)), llty);
+    ret llty;
 }
 
 fn type_of_arg(@crate_ctxt cx, &ty.arg arg) -> TypeRef {
-    auto ty = type_of(cx, arg.ty);
+    auto ty = type_of_inner(cx, arg.ty);
     if (arg.mode == ast.alias) {
         ty = T_ptr(ty);
     }
