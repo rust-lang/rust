@@ -60,9 +60,7 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef bzero_glue);
 
 tag arity { nullary; n_ary; }
-type tag_info = rec(type_handle th,
-                    mutable uint size,
-                    vec[ast.ty_param] ty_params);
+type tag_info = rec(type_handle th, mutable uint size);
 
 state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
@@ -1456,6 +1454,15 @@ fn type_of_variant(@crate_ctxt cx, &ast.variant v) -> TypeRef {
     ret T_struct(lltys);
 }
 
+// Returns the type parameters of a tag.
+fn tag_ty_params(@crate_ctxt cx, ast.def_id id) -> vec[ast.ty_param] {
+    check (cx.items.contains_key(id));
+    alt (cx.items.get(id).node) {
+        case (ast.item_tag(_, _, ?tps, _)) { ret tps; }
+    }
+    fail;   // not reached
+}
+
 // Returns the variants in a tag.
 fn tag_variants(@crate_ctxt cx, ast.def_id id) -> vec[ast.variant] {
     check (cx.items.contains_key(id));
@@ -1551,13 +1558,15 @@ fn iter_structural_ty(@block_ctxt cx,
                             auto llvarp = variant_cx.build.
                                 TruncOrBitCast(llunion_ptr, T_ptr(llvarty));
 
+                            auto ty_params = tag_ty_params(cx.fcx.ccx, tid);
+
                             auto j = 0u;
                             for (ty.arg a in args) {
                                 auto v = vec(C_int(0), C_int(j as int));
                                 auto llfldp = variant_cx.build.GEP(llvarp, v);
 
                                 auto ty_subst = ty.substitute_ty_params(
-                                    info.ty_params, tps, a.ty);
+                                    ty_params, tps, a.ty);
 
                                 auto llfld =
                                     load_scalar_or_boxed(variant_cx,
@@ -4437,8 +4446,7 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             auto vi = new_def_hash[uint]();
             auto navi = new_def_hash[uint]();
             cx.tags.insert(tag_id, @rec(th=mk_type_handle(),
-                                        mutable size=0u,
-                                        ty_params=tps));
+                                        mutable size=0u));
             cx.items.insert(tag_id, i);
         }
 
