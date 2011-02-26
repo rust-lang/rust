@@ -1457,13 +1457,11 @@ fn type_of_variant(@crate_ctxt cx, &ast.variant v) -> TypeRef {
     ret T_struct(lltys);
 }
 
-// Returns the number of variants in a tag.
-fn tag_variant_count(@crate_ctxt cx, ast.def_id id) -> uint {
+// Returns the variants in a tag.
+fn tag_variants(@crate_ctxt cx, ast.def_id id) -> vec[ast.variant] {
     check (cx.items.contains_key(id));
     alt (cx.items.get(id).node) {
-        case (ast.item_tag(_, ?variants, _, _)) {
-            ret _vec.len[ast.variant](variants);
-        }
+        case (ast.item_tag(_, ?variants, _, _)) { ret variants; }
     }
     fail;   // not reached
 }
@@ -1519,21 +1517,9 @@ fn iter_structural_ty(@block_ctxt cx,
         case (ty.ty_tag(?tid, ?tps)) {
             check (cx.fcx.ccx.tags.contains_key(tid));
             auto info = cx.fcx.ccx.tags.get(tid);
-            auto n_variants = tag_variant_count(cx.fcx.ccx, tid);
 
-            // Look up the tag in the typechecked AST.
-            check (cx.fcx.ccx.items.contains_key(tid));
-            auto tag_item = cx.fcx.ccx.items.get(tid);
-            let vec[ast.variant] variants = vec();  // FIXME: typestate bug
-            alt (tag_item.node) {
-                case (ast.item_tag(_, ?vs, _, _)) {
-                    variants = vs;
-                }
-                case (_) {
-                    log "trans: ty_tag doesn't actually refer to a tag";
-                    fail;
-                }
-            }
+            auto variants = tag_variants(cx.fcx.ccx, tid);
+            auto n_variants = _vec.len[ast.variant](variants);
 
             auto lldiscrim_ptr = cx.build.GEP(v, vec(C_int(0), C_int(0)));
             auto llunion_ptr = cx.build.GEP(v, vec(C_int(0), C_int(1)));
@@ -1548,55 +1534,49 @@ fn iter_structural_ty(@block_ctxt cx,
             auto next_cx = new_sub_block_ctxt(cx, "tag-iter-next");
 
             auto i = 0u;
-            for (tup(ast.def_id,arity) variant in info.variants) {
+            for (ast.variant variant in variants) {
                 auto variant_cx = new_sub_block_ctxt(cx, "tag-iter-variant-" +
                                                      _uint.to_str(i, 10u));
                 llvm.LLVMAddCase(llswitch, C_int(i as int), variant_cx.llbb);
 
-                alt (variant._1) {
-                    case (n_ary) {
-                        let vec[ValueRef] vals = vec(C_int(0), C_int(1),
-                                                     C_int(i as int));
-                        auto llvar = variant_cx.build.GEP(v, vals);
-                        auto llvarty = type_of_variant(cx.fcx.ccx,
-                                                       variants.(i));
+                if (_vec.len[ast.variant_arg](variant.args) > 0u) {
+                    // N-ary variant.
+                    let vec[ValueRef] vals = vec(C_int(0), C_int(1),
+                                                 C_int(i as int));
+                    auto llvar = variant_cx.build.GEP(v, vals);
+                    auto llvarty = type_of_variant(cx.fcx.ccx, variants.(i));
 
-                        auto fn_ty = ty.ann_to_type(variants.(i).ann);
-                        alt (fn_ty.struct) {
-                            case (ty.ty_fn(_, ?args, _)) {
-                                auto llvarp = variant_cx.build.
-                                    TruncOrBitCast(llunion_ptr,
-                                                   T_ptr(llvarty));
+                    auto fn_ty = ty.ann_to_type(variants.(i).ann);
+                    alt (fn_ty.struct) {
+                        case (ty.ty_fn(_, ?args, _)) {
+                            auto llvarp = variant_cx.build.
+                                TruncOrBitCast(llunion_ptr, T_ptr(llvarty));
 
-                                auto j = 0u;
-                                for (ty.arg a in args) {
-                                    auto v = vec(C_int(0),
-                                                 C_int(j as int));
-                                    auto llfldp =
-                                        variant_cx.build.GEP(llvarp, v);
+                            auto j = 0u;
+                            for (ty.arg a in args) {
+                                auto v = vec(C_int(0), C_int(j as int));
+                                auto llfldp = variant_cx.build.GEP(llvarp, v);
 
-                                    auto ty_subst = ty.substitute_ty_params(
-                                        info.ty_params, tps, a.ty);
+                                auto ty_subst = ty.substitute_ty_params(
+                                    info.ty_params, tps, a.ty);
 
-                                    auto llfld =
-                                        load_scalar_or_boxed(variant_cx,
-                                                             llfldp,
-                                                             ty_subst);
+                                auto llfld =
+                                    load_scalar_or_boxed(variant_cx,
+                                                         llfldp,
+                                                         ty_subst);
 
-                                    auto res = f(variant_cx, llfld, ty_subst);
-                                    variant_cx = res.bcx;
-                                    j += 1u;
-                                }
+                                auto res = f(variant_cx, llfld, ty_subst);
+                                variant_cx = res.bcx;
+                                j += 1u;
                             }
-                            case (_) { fail; }
                         }
+                        case (_) { fail; }
+                    }
 
-                        variant_cx.build.Br(next_cx.llbb);
-                    }
-                    case (nullary) {
-                        // Nothing to do.
-                        variant_cx.build.Br(next_cx.llbb);
-                    }
+                    variant_cx.build.Br(next_cx.llbb);
+                } else {
+                    // Nullary variant; nothing to do.
+                    variant_cx.build.Br(next_cx.llbb);
                 }
 
                 i += 1u;
