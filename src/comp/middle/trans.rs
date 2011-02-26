@@ -74,7 +74,7 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id, @ast.item] items,
                             hashmap[ast.def_id,
                                     @ast.native_item] native_items,
-                            hashmap[ast.def_id, @tag_info] tags,
+                            hashmap[@ty.t, @tag_info] tags,
                             hashmap[ast.def_id, ValueRef] fn_pairs,
                             hashmap[ast.def_id, ValueRef] consts,
                             hashmap[ast.def_id,()] obj_methods,
@@ -543,7 +543,7 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
         case (ty.ty_char) { llty = T_char(); }
         case (ty.ty_str) { llty = T_ptr(T_str()); }
         case (ty.ty_tag(?tag_id, _)) {
-            llty = llvm.LLVMResolveTypeHandle(cx.tags.get(tag_id).th.llth);
+            llty = llvm.LLVMResolveTypeHandle(cx.tags.get(t).th.llth);
         }
         case (ty.ty_box(?t)) {
             llty = T_ptr(T_box(type_of_inner(cx, t)));
@@ -1472,6 +1472,14 @@ fn tag_variants(@crate_ctxt cx, ast.def_id id) -> vec[ast.variant] {
     fail;   // not reached
 }
 
+// Returns a new plain tag type of the given ID with no type parameters. Don't
+// use this function in new code; it's a hack to keep things working for now.
+fn mk_plain_tag(ast.def_id tid) -> @ty.t {
+    let vec[@ty.t] tps = vec();
+    ret ty.plain_ty(ty.ty_tag(tid, tps));
+}
+
+
 type val_and_ty_fn = fn(@block_ctxt cx, ValueRef v, @ty.t t) -> result;
 
 // Iterates through the elements of a structural type.
@@ -1521,8 +1529,7 @@ fn iter_structural_ty(@block_ctxt cx,
             }
         }
         case (ty.ty_tag(?tid, ?tps)) {
-            check (cx.fcx.ccx.tags.contains_key(tid));
-            auto info = cx.fcx.ccx.tags.get(tid);
+            auto info = cx.fcx.ccx.tags.get(mk_plain_tag(tid));
 
             auto variants = tag_variants(cx.fcx.ccx, tid);
             auto n_variants = _vec.len[ast.variant](variants);
@@ -2591,7 +2598,6 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     ret lval_generic_fn(cx, ty.item_ty(fn_item), did, ann);
                 }
                 case (ast.def_variant(?tid, ?vid)) {
-                    check (cx.fcx.ccx.tags.contains_key(tid));
                     if (cx.fcx.ccx.fn_pairs.contains_key(vid)) {
                         check (cx.fcx.ccx.items.contains_key(tid));
                         auto tag_item = cx.fcx.ccx.items.get(tid);
@@ -4247,7 +4253,9 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     auto arg_tys = arg_tys_of_fn(variant.ann);
     copy_args_to_allocas(bcx, none[TypeRef], fn_args, arg_tys);
 
-    auto info = cx.tags.get(tag_id);
+    // FIXME: This is wrong for generic tags. We should be dynamically
+    // computing "size" below based on the tydescs passed in.
+    auto info = cx.tags.get(mk_plain_tag(tag_id));
 
     auto lltagty = T_struct(vec(T_int(), T_array(T_i8(), info.size)));
 
@@ -4445,8 +4453,8 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
         case (ast.item_tag(_, ?variants, ?tps, ?tag_id)) {
             auto vi = new_def_hash[uint]();
             auto navi = new_def_hash[uint]();
-            cx.tags.insert(tag_id, @rec(th=mk_type_handle(),
-                                        mutable size=0u));
+            cx.tags.insert(mk_plain_tag(tag_id), @rec(th=mk_type_handle(),
+                                                      mutable size=0u));
             cx.items.insert(tag_id, i);
         }
 
@@ -4507,7 +4515,7 @@ fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             auto max_align = 0u;
             auto max_size = 0u;
 
-            auto info = cx.tags.get(tag_id);
+            auto info = cx.tags.get(mk_plain_tag(tag_id));
 
             for (ast.variant variant in variants) {
                 if (_vec.len[ast.variant_arg](variant.args) > 0u) {
@@ -4528,7 +4536,7 @@ fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             // FIXME: alignment is wrong here, manually insert padding I
             // guess :(
             auto tag_ty = T_struct(vec(T_int(), T_array(T_i8(), max_size)));
-            auto th = cx.tags.get(tag_id).th.llth;
+            auto th = info.th.llth;
             llvm.LLVMRefineType(llvm.LLVMResolveTypeHandle(th), tag_ty);
         }
         case (_) {
@@ -4554,7 +4562,7 @@ fn resolve_tag_types(@crate_ctxt cx, @ast.crate crate) {
 fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
     alt (it.node) {
         case (ast.item_tag(_, ?variants, _, ?tag_id)) {
-            auto info = cx.tags.get(tag_id);
+            auto info = cx.tags.get(mk_plain_tag(tag_id));
 
             auto tag_ty = llvm.LLVMResolveTypeHandle(info.th.llth);
             check (llvm.LLVMCountStructElementTypes(tag_ty) == 2u);
@@ -4924,6 +4932,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     auto glues = make_glues(llmod, tn);
     auto hasher = ty.hash_ty;
     auto eqer = ty.eq_ty;
+    auto tags = map.mk_hashmap[@ty.t,@tag_info](hasher, eqer);
     auto tydescs = map.mk_hashmap[@ty.t,ValueRef](hasher, eqer);
     let vec[ast.ty_param] obj_typarams = vec();
     let vec[ast.obj_field] obj_fields = vec();
@@ -4939,7 +4948,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    item_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
                    native_items = new_def_hash[@ast.native_item](),
-                   tags = new_def_hash[@tag_info](),
+                   tags = tags,
                    fn_pairs = new_def_hash[ValueRef](),
                    consts = new_def_hash[ValueRef](),
                    obj_methods = new_def_hash[()](),

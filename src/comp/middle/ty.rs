@@ -247,9 +247,10 @@ fn ty_to_str(&@t typ) -> str {
             s = "rec(" + _str.connect(strs, ",") + ")";
         }
 
-        case (ty_tag(_, ?tps)) {
+        case (ty_tag(?id, ?tps)) {
             // The user should never see this if the cname is set properly!
-            s = "<tag>";
+            s = "<tag#" + util.common.istr(id._0) + ":" +
+                util.common.istr(id._1) + ">";
             if (_vec.len[@t](tps) > 0u) {
                 auto f = ty_to_str;
                 auto strs = _vec.map[@t,str](f, tps);
