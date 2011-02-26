@@ -1442,6 +1442,8 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
     ret res(next_cx, phi);
 }
 
+// Tag information
+
 fn type_of_variant(@crate_ctxt cx, &ast.variant v) -> TypeRef {
     let vec[TypeRef] lltys = vec();
     alt (ty.ann_to_type(v.ann).struct) {
@@ -1453,6 +1455,17 @@ fn type_of_variant(@crate_ctxt cx, &ast.variant v) -> TypeRef {
         case (_) { fail; }
     }
     ret T_struct(lltys);
+}
+
+// Returns the number of variants in a tag.
+fn tag_variant_count(@crate_ctxt cx, ast.def_id id) -> uint {
+    check (cx.items.contains_key(id));
+    alt (cx.items.get(id).node) {
+        case (ast.item_tag(_, ?variants, _, _)) {
+            ret _vec.len[ast.variant](variants);
+        }
+    }
+    fail;   // not reached
 }
 
 type val_and_ty_fn = fn(@block_ctxt cx, ValueRef v, @ty.t t) -> result;
@@ -1506,7 +1519,7 @@ fn iter_structural_ty(@block_ctxt cx,
         case (ty.ty_tag(?tid, ?tps)) {
             check (cx.fcx.ccx.tags.contains_key(tid));
             auto info = cx.fcx.ccx.tags.get(tid);
-            auto n_variants = _vec.len[tup(ast.def_id,arity)](info.variants);
+            auto n_variants = tag_variant_count(cx.fcx.ccx, tid);
 
             // Look up the tag in the typechecked AST.
             check (cx.fcx.ccx.items.contains_key(tid));
