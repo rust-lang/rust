@@ -154,6 +154,12 @@ type ast_fold[ENV] =
          &option.t[def] d,
          ann a) -> @expr)                         fold_expr_path,
 
+     (fn(&ENV e, &span sp,
+         &path p, vec[@expr] args,
+         option.t[@expr] body,
+         option.t[@expr] expanded,
+         ann a) -> @expr)                         fold_expr_ext,
+
      (fn(&ENV e, &span sp) -> @expr)              fold_expr_fail,
 
      (fn(&ENV e, &span sp,
@@ -642,6 +648,15 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
         case (ast.expr_path(?p, ?r, ?t)) {
             auto p_ = fold_path(env_, fld, p);
             ret fld.fold_expr_path(env_, e.span, p_, r, t);
+        }
+
+        case (ast.expr_ext(?p, ?args, ?body, ?expanded, ?t)) {
+            // Only fold the expanded expression, not the
+            // expressions involved in syntax extension
+            auto exp = option.get[@expr](expanded);
+            auto exp_ = fold_expr(env_, fld, exp);
+            ret fld.fold_expr_ext(env_, e.span, p, args, body,
+                                  some[@ast.expr](exp_), t);
         }
 
         case (ast.expr_fail) {
@@ -1166,6 +1181,14 @@ fn identity_fold_expr_path[ENV](&ENV env, &span sp,
     ret @respan(sp, ast.expr_path(p, d, a));
 }
 
+fn identity_fold_expr_ext[ENV](&ENV env, &span sp,
+                               &path p, vec[@expr] args,
+                               option.t[@expr] body,
+                               option.t[@expr] expanded,
+                               ann a) -> @expr {
+    ret @respan(sp, ast.expr_ext(p, args, body, expanded, a));
+}
+
 fn identity_fold_expr_fail[ENV](&ENV env, &span sp) -> @expr {
     ret @respan(sp, ast.expr_fail);
 }
@@ -1447,6 +1470,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_field  = bind identity_fold_expr_field[ENV](_,_,_,_,_),
          fold_expr_index  = bind identity_fold_expr_index[ENV](_,_,_,_,_),
          fold_expr_path   = bind identity_fold_expr_path[ENV](_,_,_,_,_),
+         fold_expr_ext    = bind identity_fold_expr_ext[ENV](_,_,_,_,_,_,_),
          fold_expr_fail   = bind identity_fold_expr_fail[ENV](_,_),
          fold_expr_ret    = bind identity_fold_expr_ret[ENV](_,_,_),
          fold_expr_put    = bind identity_fold_expr_put[ENV](_,_,_),
