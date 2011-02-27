@@ -18,6 +18,8 @@ import front.parser;
 import std._str;
 import std._vec;
 import std.option;
+import std.option.none;
+import std.option.some;
 
 tag signedness {
     signed;
@@ -55,13 +57,11 @@ tag count {
 }
 
 // A formatted conversion from an expression to a string
-tag conv {
-    conv_param(option.t[int]);
-    conv_flags(vec[flag]);
-    conv_width(count);
-    conv_precision(count);
-    conv_ty(ty);
-}
+type conv = rec(option.t[int] param,
+                vec[flag] flags,
+                count width,
+                count precision,
+                ty typ);
 
 // A fragment of the output sequence
 tag piece {
@@ -84,6 +84,18 @@ fn expand_syntax_ext(vec[@ast.expr] args,
     auto fmt = expr_to_str(args.(0));
     log fmt;
     auto pieces = parse_fmt_string(fmt);
+    log "printing all pieces";
+    for (piece p in pieces) {
+        alt (p) {
+            case (piece_string(?s)) {
+                log s;
+            }
+            case (piece_conv(_)) {
+                log "conv";
+            }
+        }
+    }
+    log "done printing all pieces";
     ret pieces_to_expr(pieces, args);
 }
 
@@ -107,33 +119,16 @@ fn parse_fmt_string(str s) -> vec[piece] {
     auto lim = _str.byte_len(s);
     auto buf = "";
 
-    // TODO: This is super ugly
-    fn flush_buf(str buf, vec[piece] pieces) -> str {
-        log "flushing";
+    fn flush_buf(str buf, &vec[piece] pieces) -> str {
         if (_str.byte_len(buf) > 0u) {
             auto piece = piece_string(buf);
             pieces += piece;
-        }
-        log "buf:";
-        log buf;
-        log "pieces:";
-        for (piece p in pieces) {
-            alt (p) {
-                case (piece_string(?s)) {
-                    log s;
-                }
-                case (piece_conv(_)) {
-                    log "conv";
-                }
-            }
         }
         ret "";
     }
 
     auto i = 0u;
     while (i < lim) {
-        log "step:";
-        log i;
         auto curr = _str.substr(s, i, 1u);
         if (_str.eq(curr, "%")) {
             i += 1u;
@@ -146,16 +141,113 @@ fn parse_fmt_string(str s) -> vec[piece] {
                 i += 1u;
             } else {
                 buf = flush_buf(buf, pieces);
+                auto res = parse_conversion(s, i, lim);
+                pieces += res._0;
+                i = res._1;
             }
         } else {
             buf += curr;
-            log "buf:";
-            log buf;
             i += 1u;
         }
     }
-
+    buf = flush_buf(buf, pieces);
     ret pieces;
+}
+
+fn peek_num(str s, uint i, uint lim) -> option.t[tup(int, int)] {
+    if (i >= lim) {
+        ret none[tup(int, int)];
+    } else {
+        ret none[tup(int, int)];
+        /*if ('0' <= c && c <= '9') {
+            log c;
+            fail;
+        } else {
+            ret option.none[tup(int, int)];
+        }
+        */
+    }
+}
+
+fn parse_conversion(str s, uint i, uint lim) -> tup(piece, uint) {
+    auto parm = parse_parameter(s, i, lim);
+    auto flags = parse_flags(s, parm._1, lim);
+    auto width = parse_width(s, flags._1, lim);
+    auto prec = parse_precision(s, width._1, lim);
+    auto ty = parse_type(s, prec._1, lim);
+    ret tup(piece_conv(rec(param = parm._0,
+                           flags = flags._0,
+                           width = width._0,
+                           precision = prec._0,
+                           typ = ty._0)),
+            ty._1);
+}
+
+fn parse_parameter(str s, uint i, uint lim) -> tup(option.t[int], uint) {
+    if (i >= lim) {
+        ret tup(none[int], i);
+    }
+
+    auto num = peek_num(s, i, lim);
+    alt (num) {
+        case (none[tup(int, int)]) {
+            ret tup(none[int], i);
+        }
+        case (some[tup(int, int)](?t)) {
+            fail;
+        }
+    }
+}
+
+fn parse_flags(str s, uint i, uint lim) -> tup(vec[flag], uint) {
+    let vec[flag] flags = vec();
+    ret tup(flags, i);
+}
+
+fn parse_width(str s, uint i, uint lim) -> tup(count, uint) {
+    ret tup(count_implied, i);
+}
+
+fn parse_precision(str s, uint i, uint lim) -> tup(count, uint) {
+    ret tup(count_implied, i);
+}
+
+fn parse_type(str s, uint i, uint lim) -> tup(ty, uint) {
+    if (i >= lim) {
+        log "missing type in conversion";
+        fail;
+    }
+
+    auto t;
+    auto tstr = _str.substr(s, i, 1u);
+    if (_str.eq(tstr, "b")) {
+        t = ty_bool;
+    } else if (_str.eq(tstr, "s")) {
+        t = ty_str;
+    } else if (_str.eq(tstr, "c")) {
+        t = ty_char;
+    } else if (_str.eq(tstr, "d")
+               || _str.eq(tstr, "i")) {
+        // TODO: Do we really want two signed types here?
+        // How important is it to be printf compatible?
+        t = ty_int(signed);
+    } else if (_str.eq(tstr, "u")) {
+        t = ty_int(unsigned);
+    } else if (_str.eq(tstr, "x")) {
+        t = ty_hex(case_lower);
+    } else if (_str.eq(tstr, "X")) {
+        t = ty_hex(case_upper);
+    } else if (_str.eq(tstr, "t")) {
+        t = ty_bits;
+    } else {
+        // FIXME: This is a hack to avoid 'unsatisfied precondition
+        // constraint' on uninitialized variable t below
+        t = ty_bool;
+        log "unknown type in conversion";
+        fail;
+    }
+
+    ret tup(t, i + 1u);
 }
 
 fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {

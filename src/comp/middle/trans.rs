@@ -1861,8 +1861,6 @@ fn trans_lit(@crate_ctxt cx, &ast.lit lit, &ast.ann ann) -> ValueRef {
             ret C_nil();
         }
         case (ast.lit_str(?s)) {
-            log "translating literal:";
-            log s;
             ret C_str(cx, s);
         }
     }
@@ -3364,7 +3362,6 @@ fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
 fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
     alt (e.node) {
         case (ast.expr_lit(?lit, ?ann)) {
-            log "translating literal";
             ret res(cx, trans_lit(cx.fcx.ccx, *lit, ann));
         }
 
@@ -3460,7 +3457,6 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
         }
 
         case (ast.expr_ext(_, _, _, ?expanded, _)) {
-            log "translating extension";
             ret trans_expr(cx, option.get[@ast.expr](expanded));
         }
 
