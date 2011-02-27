@@ -1156,6 +1156,11 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                                  ann_to_type(ann), adk);
             e_1 = ast.expr_path(pth, d, ast.ann_type(t));
         }
+        case (ast.expr_ext(?p, ?args, ?body, ?expanded, ?ann)) {
+            auto t = demand_full(fcx, e.span, expected,
+                                 ann_to_type(ann), adk);
+            e_1 = ast.expr_ext(p, args, body, expanded, ast.ann_type(t));
+        }
         case (ast.expr_fail) { e_1 = e.node; }
         case (ast.expr_log(_)) { e_1 = e.node; }
         case (ast.expr_ret(_)) { e_1 = e.node; }
@@ -1506,6 +1511,15 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_path(pth, defopt,
                                                       ast.ann_type(t)));
+        }
+
+        case (ast.expr_ext(?p, ?args, ?body, ?expanded, _)) {
+            auto exp_ = check_expr(fcx, option.get[@ast.expr](expanded));
+            auto t = expr_ty(exp_);
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_ext(p, args, body,
+                                                     some[@ast.expr](exp_),
+                                                     ast.ann_type(t)));
         }
 
         case (ast.expr_fail) {
