@@ -13,7 +13,7 @@
  * combinations at the moment.
  */
 
-import front.parser;
+import util.common;
 
 import std._str;
 import std._vec;
@@ -251,13 +251,39 @@ fn parse_type(str s, uint i, uint lim) -> tup(ty, uint) {
 }
 
 fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
-    auto lo = args.(0).span;
-    auto hi = args.(0).span;
-    auto strlit = ast.lit_str("TODO");
-    auto spstrlit = @parser.spanned[ast.lit_](lo, hi, strlit);
-    auto expr = ast.expr_lit(spstrlit, ast.ann_none);
-    auto spexpr = @parser.spanned[ast.expr_](lo, hi, expr);
-    ret spexpr;
+
+    fn make_new_str(common.span sp, str s) -> @ast.expr {
+        auto strlit = ast.lit_str(s);
+        auto spstrlit = @parser.spanned[ast.lit_](sp, sp, strlit);
+        auto expr = ast.expr_lit(spstrlit, ast.ann_none);
+        ret @parser.spanned[ast.expr_](sp, sp, expr);
+    }
+
+    fn make_add_expr(common.span sp,
+                     @ast.expr lhs, @ast.expr rhs) -> @ast.expr {
+        auto binexpr = ast.expr_binary(ast.add, lhs, rhs, ast.ann_none);
+        ret @parser.spanned[ast.expr_](sp, sp, binexpr);
+    }
+
+    auto sp = args.(0).span;
+    auto n = 0;
+    auto tmp_expr = make_new_str(sp, "whatever");
+
+    for (piece p in pieces) {
+        alt (p) {
+            case (piece_string(?s)) {
+                auto s_expr = make_new_str(sp, s);
+                tmp_expr = make_add_expr(sp, tmp_expr, s_expr);
+            }
+            case (piece_conv(?conv)) {
+            }
+        }
+    }
+
+    // TODO: Remove this print and return the real expanded AST
+    log "dumping expanded ast:";
+    log pretty.print_expr(tmp_expr);
+    ret make_new_str(sp, "TODO");
 }
 
 //
