@@ -656,10 +656,8 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
                                            some(token.COMMA),
                                            pf, p);
             hi = es.span;
-            ex = ast.expr_ext(pth, es.node, none[@ast.expr],
-                              none[@ast.expr], ast.ann_none);
-            // FIXME: Here is probably not the right place for this
-            ex = expand_syntax_ext(p, @spanned(lo, hi, ex)).node;
+            ex = expand_syntax_ext(p, es.span, pth, es.node,
+                                   none[@ast.expr]);
         }
 
         case (token.FAIL) {
@@ -748,24 +746,23 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
  * rust crates. At the moment we have neither.
  */
 
-impure fn expand_syntax_ext(parser p, @ast.expr ext) -> @ast.expr {
-    check (ast.is_ext_expr(ext));
-    alt (ext.node) {
-        case (ast.expr_ext(?path, ?args, ?body, _, ?ann)) {
-            check (_vec.len[ast.ident](path.node.idents) > 0u);
-            auto extname = path.node.idents.(0);
-            if (_str.eq(extname, "fmt")) {
-                auto expanded = extfmt.expand_syntax_ext(args, body);
-                auto newexpr = ast.expr_ext(path, args, body,
-                                            some[@ast.expr](expanded), ann);
+impure fn expand_syntax_ext(parser p, ast.span sp,
+                     &ast.path path, vec[@ast.expr] args,
+                     option.t[@ast.expr] body) -> ast.expr_ {
 
-                ret @spanned(ext.span, ext.span, newexpr);
-            } else {
-                p.err("unknown syntax extension");
-            }
-        }
+    check (_vec.len[ast.ident](path.node.idents) > 0u);
+    auto extname = path.node.idents.(0);
+    if (_str.eq(extname, "fmt")) {
+        auto expanded = extfmt.expand_syntax_ext(args, body);
+        auto newexpr = ast.expr_ext(path, args, body,
+                                    some[@ast.expr](expanded),
+                                    ast.ann_none);
+
+        ret newexpr;
+    } else {
+        p.err("unknown syntax extension");
+        fail;
     }
-    fail;
 }
 
 impure fn extend_expr_by_ident(parser p, span lo, span hi,
