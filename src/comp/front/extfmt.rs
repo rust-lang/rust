@@ -85,20 +85,7 @@ fn expand_syntax_ext(vec[@ast.expr] args,
     }
 
     auto fmt = expr_to_str(args.(0));
-    log fmt;
     auto pieces = parse_fmt_string(fmt);
-    log "printing all pieces";
-    for (piece p in pieces) {
-        alt (p) {
-            case (piece_string(?s)) {
-                log s;
-            }
-            case (piece_conv(_)) {
-                log "conv";
-            }
-        }
-    }
-    log "done printing all pieces";
     auto args_len = _vec.len[@ast.expr](args);
     auto fmt_args = _vec.slice[@ast.expr](args, 1u, args_len - 1u);
     ret pieces_to_expr(pieces, args);
