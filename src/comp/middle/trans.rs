@@ -4395,6 +4395,12 @@ fn decl_fn_and_pair(@crate_ctxt cx,
 
     // Declare the global constant pair that points to it.
     let str ps = cx.names.next("_rust_" + kind + "_pair") + sep() + name;
+
+    register_fn_pair(cx, ps, llpairty, llfn, id);
+}
+
+fn register_fn_pair(@crate_ctxt cx, str ps, TypeRef llpairty, ValueRef llfn,
+                    ast.def_id id) {
     let ValueRef gvar = llvm.LLVMAddGlobal(cx.llmod, llpairty,
                                            _str.buf(ps));
     auto pair = C_struct(vec(llfn,
@@ -4410,16 +4416,34 @@ fn decl_fn_and_pair(@crate_ctxt cx,
     cx.fn_pairs.insert(id, gvar);
 }
 
+fn native_fn_wrapper_type(@crate_ctxt cx, &ast.ann ann) -> TypeRef {
+    auto x = node_ann_type(cx, ann);
+    alt (x.struct) {
+        case (ty.ty_native_fn(?abi, ?args, ?out)) {
+            ret type_of_fn(cx, ast.proto_fn, args, out);
+        }
+    }
+    fail;
+}
+
 fn decl_native_fn_and_pair(@crate_ctxt cx,
                            str name,
                            &ast.ann ann,
                            ast.def_id id) {
+    // Declare the wrapper.
+    auto wrapper_type = native_fn_wrapper_type(cx, ann);
+    let str s = cx.names.next("_rust_wrapper") + sep() + name;
+    let ValueRef wrapper_fn = decl_fastcall_fn(cx.llmod, s, wrapper_type);
 
-    auto llpairty = node_type(cx, ann);
-    auto llfty = get_pair_fn_ty(llpairty);
+    // Declare the global constant pair that points to it.
+    auto wrapper_pair_type = T_fn_pair(cx.tn, wrapper_type);
+    let str ps = cx.names.next("_rust_wrapper_pair") + sep() + name;
 
-    let ValueRef llfn = decl_cdecl_fn(cx.llmod, name, llfty);
-    cx.item_ids.insert(id, llfn);
+    register_fn_pair(cx, ps, wrapper_pair_type, wrapper_fn, id);
+
+    // Declare the function itself.
+    auto llfty = get_pair_fn_ty(node_type(cx, ann));
+    decl_cdecl_fn(cx.llmod, name, llfty);
 }
 
 fn collect_native_item(&@crate_ctxt cx, @ast.native_item i) -> @crate_ctxt {

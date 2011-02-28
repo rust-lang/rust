@@ -491,6 +491,7 @@ TEST_XFAILS_RUSTC := $(CONST_TAG_XFAILS) \
                         mlist-cycle.rs \
                         mlist.rs \
                         mutable-alias-vec.rs \
+                        native2.rs \
                         native-opaque-type.rs \
                         obj-as.rs \
                         obj-dtor.rs \
