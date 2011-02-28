@@ -1514,11 +1514,10 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_ext(?p, ?args, ?body, ?expanded, _)) {
-            auto exp_ = check_expr(fcx, option.get[@ast.expr](expanded));
+            auto exp_ = check_expr(fcx, expanded);
             auto t = expr_ty(exp_);
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_ext(p, args, body,
-                                                     some[@ast.expr](exp_),
+                                        ast.expr_ext(p, args, body, exp_,
                                                      ast.ann_type(t)));
         }
 

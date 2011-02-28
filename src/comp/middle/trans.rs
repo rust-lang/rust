@@ -3694,7 +3694,7 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
         }
 
         case (ast.expr_ext(_, _, _, ?expanded, _)) {
-            ret trans_expr(cx, option.get[@ast.expr](expanded));
+            ret trans_expr(cx, expanded);
         }
 
         case (ast.expr_fail) {

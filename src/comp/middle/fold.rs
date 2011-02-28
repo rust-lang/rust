@@ -157,7 +157,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp,
          &path p, vec[@expr] args,
          option.t[@expr] body,
-         option.t[@expr] expanded,
+         @expr expanded,
          ann a) -> @expr)                         fold_expr_ext,
 
      (fn(&ENV e, &span sp) -> @expr)              fold_expr_fail,
@@ -653,10 +653,9 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
         case (ast.expr_ext(?p, ?args, ?body, ?expanded, ?t)) {
             // Only fold the expanded expression, not the
             // expressions involved in syntax extension
-            auto exp = option.get[@expr](expanded);
-            auto exp_ = fold_expr(env_, fld, exp);
+            auto exp = fold_expr(env_, fld, expanded);
             ret fld.fold_expr_ext(env_, e.span, p, args, body,
-                                  some[@ast.expr](exp_), t);
+                                  exp, t);
         }
 
         case (ast.expr_fail) {
@@ -1184,7 +1183,7 @@ fn identity_fold_expr_path[ENV](&ENV env, &span sp,
 fn identity_fold_expr_ext[ENV](&ENV env, &span sp,
                                &path p, vec[@expr] args,
                                option.t[@expr] body,
-                               option.t[@expr] expanded,
+                               @expr expanded,
                                ann a) -> @expr {
     ret @respan(sp, ast.expr_ext(p, args, body, expanded, a));
 }

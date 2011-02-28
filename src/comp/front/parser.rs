@@ -755,7 +755,7 @@ impure fn expand_syntax_ext(parser p, ast.span sp,
     if (_str.eq(extname, "fmt")) {
         auto expanded = extfmt.expand_syntax_ext(args, body);
         auto newexpr = ast.expr_ext(path, args, body,
-                                    some[@ast.expr](expanded),
+                                    expanded,
                                     ast.ann_none);
 
         ret newexpr;
