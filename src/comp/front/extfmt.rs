@@ -21,6 +21,8 @@ import std.option;
 import std.option.none;
 import std.option.some;
 
+export expand_syntax_ext;
+
 tag signedness {
     signed;
     unsigned;
@@ -61,7 +63,7 @@ type conv = rec(option.t[int] param,
                 vec[flag] flags,
                 count width,
                 count precision,
-                ty typ);
+                ty ty);
 
 // A fragment of the output sequence
 tag piece {
@@ -74,6 +76,7 @@ fn bad_fmt_call() {
     fail;
 }
 
+// TODO: Need to thread parser through here to handle errors correctly
 fn expand_syntax_ext(vec[@ast.expr] args,
                      option.t[@ast.expr] body) -> @ast.expr {
 
@@ -96,6 +99,8 @@ fn expand_syntax_ext(vec[@ast.expr] args,
         }
     }
     log "done printing all pieces";
+    auto args_len = _vec.len[@ast.expr](args);
+    auto fmt_args = _vec.slice[@ast.expr](args, 1u, args_len - 1u);
     ret pieces_to_expr(pieces, args);
 }
 
@@ -179,7 +184,7 @@ fn parse_conversion(str s, uint i, uint lim) -> tup(piece, uint) {
                            flags = flags._0,
                            width = width._0,
                            precision = prec._0,
-                           typ = ty._0)),
+                           ty = ty._0)),
             ty._1);
 }
 
@@ -252,11 +257,20 @@ fn parse_type(str s, uint i, uint lim) -> tup(ty, uint) {
 
 fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
 
-    fn make_new_str(common.span sp, str s) -> @ast.expr {
-        auto strlit = ast.lit_str(s);
-        auto spstrlit = @parser.spanned[ast.lit_](sp, sp, strlit);
-        auto expr = ast.expr_lit(spstrlit, ast.ann_none);
+    fn make_new_lit(common.span sp, ast.lit_ lit) -> @ast.expr {
+        auto sp_lit = @parser.spanned[ast.lit_](sp, sp, lit);
+        auto expr = ast.expr_lit(sp_lit, ast.ann_none);
         ret @parser.spanned[ast.expr_](sp, sp, expr);
+    }
+
+    fn make_new_str(common.span sp, str s) -> @ast.expr {
+        auto lit = ast.lit_str(s);
+        ret make_new_lit(sp, lit);
+    }
+
+    fn make_new_uint(common.span sp, uint u) -> @ast.expr {
+        auto lit = ast.lit_uint(u);
+        ret make_new_lit(sp, lit);
     }
 
     fn make_add_expr(common.span sp,
@@ -265,9 +279,85 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         ret @parser.spanned[ast.expr_](sp, sp, binexpr);
     }
 
+    fn make_call(common.span sp, vec[ast.ident] fn_path,
+                 vec[@ast.expr] args) -> @ast.expr {
+        let vec[ast.ident] path_idents = fn_path;
+        let vec[@ast.ty] path_types = vec();
+        auto path = rec(idents = path_idents, types = path_types);
+        auto sp_path = parser.spanned[ast.path_](sp, sp, path);
+        auto pathexpr = ast.expr_path(sp_path, none[ast.def], ast.ann_none);
+        auto sp_pathexpr = @parser.spanned[ast.expr_](sp, sp, pathexpr);
+        auto callexpr = ast.expr_call(sp_pathexpr, args, ast.ann_none);
+        auto sp_callexpr = @parser.spanned[ast.expr_](sp, sp, callexpr);
+        ret sp_callexpr;
+    }
+
+    fn make_new_conv(conv cnv, @ast.expr arg) -> @ast.expr {
+
+        auto unsupported = "conversion not supported in #fmt string";
+
+        alt (cnv.param) {
+            case (option.none[int]) {
+            }
+            case (_) {
+                log unsupported;
+                fail;
+            }
+        }
+
+        if (_vec.len[flag](cnv.flags) != 0u) {
+            log unsupported;
+            fail;
+        }
+
+        alt (cnv.width) {
+            case (count_implied) {
+            }
+            case (_) {
+                log unsupported;
+                fail;
+            }
+        }
+
+        alt (cnv.precision) {
+            case (count_implied) {
+            }
+            case (_) {
+                log unsupported;
+                fail;
+            }
+        }
+
+        alt (cnv.ty) {
+            case (ty_str) {
+                ret arg;
+            }
+            case (ty_int(?sign)) {
+                alt (sign) {
+                    case (signed) {
+                        let vec[str] path = vec("std", "_int", "to_str");
+                        auto radix_expr = make_new_uint(arg.span, 10u);
+                        let vec[@ast.expr] args = vec(arg, radix_expr);
+                        ret make_call(arg.span, path, args);
+                    }
+                    case (unsigned) {
+                        let vec[str] path = vec("std", "_uint", "to_str");
+                        auto radix_expr = make_new_uint(arg.span, 10u);
+                        let vec[@ast.expr] args = vec(arg, radix_expr);
+                        ret make_call(arg.span, path, args);
+                    }
+                }
+            }
+            case (_) {
+                log unsupported;
+                fail;
+            }
+        }
+    }
+
     auto sp = args.(0).span;
-    auto n = 0;
-    auto tmp_expr = make_new_str(sp, "whatever");
+    auto n = 0u;
+    auto tmp_expr = make_new_str(sp, "");
 
     for (piece p in pieces) {
         alt (p) {
@@ -276,6 +366,15 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                 tmp_expr = make_add_expr(sp, tmp_expr, s_expr);
             }
             case (piece_conv(?conv)) {
+                if (n >= _vec.len[@ast.expr](args)) {
+                    log "too many conversions in #fmt string";
+                    fail;
+                }
+
+                n += 1u;
+                auto arg_expr = args.(n);
+                auto c_expr = make_new_conv(conv, arg_expr);
+                tmp_expr = make_add_expr(sp, tmp_expr, c_expr);
             }
         }
     }
