@@ -1,4 +1,9 @@
-use std;
+import std._int;
+import std._str;
+import std._uint;
+import std._vec;
+
+export print_expr;
 
 fn unknown() -> str {
     ret "<unknown ast node>";
@@ -7,10 +12,16 @@ fn unknown() -> str {
 fn print_expr(@ast.expr expr) -> str {
     alt (expr.node) {
         case (ast.expr_lit(?lit, _)) {
-            ret print_expr_lit(lit);
+            ret print_lit(lit);
         }
         case (ast.expr_binary(?op, ?lhs, ?rhs, _)) {
             ret print_expr_binary(op, lhs, rhs);
+        }
+        case (ast.expr_call(?path, ?args, _)) {
+            ret print_expr_call(path, args);
+        }
+        case (ast.expr_path(?path, _, _)) {
+            ret print_path(path);
         }
         case (_) {
             ret unknown();
@@ -18,10 +29,16 @@ fn print_expr(@ast.expr expr) -> str {
     }
 }
 
-fn print_expr_lit(@ast.lit lit) -> str {
+fn print_lit(@ast.lit lit) -> str {
     alt (lit.node) {
         case (ast.lit_str(?s)) {
             ret "\"" + s + "\"";
+        }
+        case (ast.lit_int(?i)) {
+            ret _int.to_str(i, 10u);
+        }
+        case (ast.lit_uint(?u)) {
+            ret _uint.to_str(u, 10u);
         }
         case (_) {
             ret unknown();
@@ -37,6 +54,23 @@ fn print_expr_binary(ast.binop op, @ast.expr lhs, @ast.expr rhs) -> str {
             ret l + " + " + r;
         }
     }
+}
+
+fn print_expr_call(@ast.expr path_expr, vec[@ast.expr] args) -> str {
+    auto s = print_expr(path_expr);
+
+    s += "(";
+    fn print_expr_ref(&@ast.expr e) -> str { ret print_expr(e); }
+    auto mapfn = print_expr_ref;
+    auto argstrs = _vec.map[@ast.expr, str](mapfn, args);
+    s += _str.connect(argstrs, ", ");
+    s += ")";
+
+    ret s;
+}
+
+fn print_path(ast.path path) -> str {
+    ret _str.connect(path.node.idents, ".");
 }
 
 //
