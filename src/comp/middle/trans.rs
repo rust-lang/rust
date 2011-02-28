@@ -513,7 +513,18 @@ fn type_of_fn(@crate_ctxt cx,
 fn type_of_native_fn(@crate_ctxt cx, ast.native_abi abi,
                      vec[ty.arg] inputs,
                      @ty.t output) -> TypeRef {
-    let vec[TypeRef] atys = type_of_explicit_args(cx, inputs);
+    let vec[TypeRef] atys = vec();
+    if (abi == ast.native_abi_rust) {
+        atys += T_taskptr(cx.tn);
+        auto t = ty.ty_native_fn(abi, inputs, output);
+        auto ty_param_count = ty.count_ty_params(plain_ty(t));
+        auto i = 0u;
+        while (i < ty_param_count) {
+            atys += T_ptr(T_tydesc(cx.tn));
+            i += 1u;
+        }
+    }
+    atys += type_of_explicit_args(cx, inputs);
     ret T_fn(atys, type_of_inner(cx, output));
 }
 
