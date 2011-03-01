@@ -471,6 +471,13 @@ fn type_has_dynamic_size(@t ty) -> bool {
                 i += 1u;
             }
         }
+        case (ty_tag(_, ?subtys)) {
+            auto i = 0u;
+            while (i < _vec.len[@t](subtys)) {
+                if (type_has_dynamic_size(subtys.(i))) { ret true; }
+                i += 1u;
+            }
+        }
         case (ty_param(_)) { ret true; }
         case (_) { /* fall through */ }
     }
