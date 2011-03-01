@@ -4609,12 +4609,26 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
             auto n_variants = _vec.len[ast.variant](variants);
             while (i < n_variants) {
                 auto variant = variants.(i);
+
+                auto discrim_val = C_int(i as int);
+
+                // FIXME: better name.
+                auto discrim_gvar = llvm.LLVMAddGlobal(cx.llmod, T_int(),
+                    _str.buf("tag_discrim"));
+
+                // FIXME: Eventually we do want to export these, but we need
+                // to figure out what name they get first!
+                llvm.LLVMSetInitializer(discrim_gvar, discrim_val);
+                llvm.LLVMSetGlobalConstant(discrim_gvar, True);
+                llvm.LLVMSetLinkage(discrim_gvar, lib.llvm.LLVMPrivateLinkage
+                                    as llvm.Linkage);
+
                 if (_vec.len[ast.variant_arg](variant.args) == 0u) {
                     // Nullary tags become constants. (N-ary tags are treated
                     // as functions and generated later.)
 
                     auto union_val = C_zero_byte_arr(info.size as uint);
-                    auto val = C_struct(vec(C_int(i as int), union_val));
+                    auto val = C_struct(vec(discrim_val, union_val));
 
                     // FIXME: better name
                     auto gvar = llvm.LLVMAddGlobal(cx.llmod, val_ty(val),
