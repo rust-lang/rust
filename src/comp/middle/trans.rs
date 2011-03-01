@@ -1958,10 +1958,66 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
     fail;
 }
 
-// FIXME: implement proper structural comparison.
+fn trans_compare(@block_ctxt cx, ast.binop op, @ty.t t,
+                 ValueRef lhs, ValueRef rhs) -> result {
 
-fn trans_compare(@block_ctxt cx, ast.binop op, @ty.t intype,
-                 ValueRef lhs, ValueRef rhs) -> ValueRef {
+    if (ty.type_is_scalar(t)) {
+        ret res(cx, trans_scalar_compare(cx, op, t, lhs, rhs));
+
+    } else if (ty.type_is_structural(t)) {
+        auto scx = new_sub_block_ctxt(cx, "structural compare body");
+        auto next = new_sub_block_ctxt(cx, "structural compare completion");
+        cx.build.Br(scx.llbb);
+
+        // Start with the assumptioin that our predicate holds.
+        auto flag = scx.build.Alloca(T_i1());
+        scx.build.Store(C_integral(1, T_i1()), flag);
+
+        // Attempt to prove otherwise by inverting the sense of the comparison
+        // on each inner element and bailing if any succeed.
+
+        // FIXME: finish this.
+
+        auto v = scx.build.Load(flag);
+        scx.build.Br(next.llbb);
+        ret res(next, v);
+
+    } else {
+        // FIXME: compare vec, str, box?
+        cx.fcx.ccx.sess.unimpl("type in trans_compare");
+        ret res(cx, C_bool(false));
+    }
+}
+
+fn trans_scalar_compare(@block_ctxt cx, ast.binop op, @ty.t t,
+                        ValueRef lhs, ValueRef rhs) -> ValueRef {
+    if (ty.type_is_fp(t)) {
+        ret trans_fp_compare(cx, op, t, lhs, rhs);
+    } else {
+        ret trans_integral_compare(cx, op, t, lhs, rhs);
+    }
+}
+
+fn trans_fp_compare(@block_ctxt cx, ast.binop op, @ty.t fptype,
+                    ValueRef lhs, ValueRef rhs) -> ValueRef {
+
+    auto cmp = lib.llvm.LLVMIntEQ;
+    alt (op) {
+        // FIXME: possibly use the unordered-or-< predicates here,
+        // for now we're only going with ordered-and-< style (no NaNs).
+        case (ast.eq) { cmp = lib.llvm.LLVMRealOEQ; }
+        case (ast.ne) { cmp = lib.llvm.LLVMRealONE; }
+        case (ast.lt) { cmp = lib.llvm.LLVMRealOLT; }
+        case (ast.gt) { cmp = lib.llvm.LLVMRealOGT; }
+        case (ast.le) { cmp = lib.llvm.LLVMRealOLE; }
+        case (ast.ge) { cmp = lib.llvm.LLVMRealOGE; }
+    }
+
+    ret cx.build.FCmp(cmp, lhs, rhs);
+}
+
+fn trans_integral_compare(@block_ctxt cx, ast.binop op, @ty.t intype,
+                          ValueRef lhs, ValueRef rhs) -> ValueRef {
     auto cmp = lib.llvm.LLVMIntEQ;
     alt (op) {
         case (ast.eq) { cmp = lib.llvm.LLVMIntEQ; }
@@ -2000,34 +2056,34 @@ fn trans_compare(@block_ctxt cx, ast.binop op, @ty.t intype,
 }
 
 fn trans_eager_binop(@block_ctxt cx, ast.binop op, @ty.t intype,
-                     ValueRef lhs, ValueRef rhs) -> ValueRef {
+                     ValueRef lhs, ValueRef rhs) -> result {
 
     alt (op) {
-        case (ast.add) { ret cx.build.Add(lhs, rhs); }
-        case (ast.sub) { ret cx.build.Sub(lhs, rhs); }
+        case (ast.add) { ret res(cx, cx.build.Add(lhs, rhs)); }
+        case (ast.sub) { ret res(cx, cx.build.Sub(lhs, rhs)); }
 
-        case (ast.mul) { ret cx.build.Mul(lhs, rhs); }
+        case (ast.mul) { ret res(cx, cx.build.Mul(lhs, rhs)); }
         case (ast.div) {
             if (ty.type_is_signed(intype)) {
-                ret cx.build.SDiv(lhs, rhs);
+                ret res(cx, cx.build.SDiv(lhs, rhs));
             } else {
-                ret cx.build.UDiv(lhs, rhs);
+                ret res(cx, cx.build.UDiv(lhs, rhs));
             }
         }
         case (ast.rem) {
             if (ty.type_is_signed(intype)) {
-                ret cx.build.SRem(lhs, rhs);
+                ret res(cx, cx.build.SRem(lhs, rhs));
             } else {
-                ret cx.build.URem(lhs, rhs);
+                ret res(cx, cx.build.URem(lhs, rhs));
             }
         }
 
-        case (ast.bitor) { ret cx.build.Or(lhs, rhs); }
-        case (ast.bitand) { ret cx.build.And(lhs, rhs); }
-        case (ast.bitxor) { ret cx.build.Xor(lhs, rhs); }
-        case (ast.lsl) { ret cx.build.Shl(lhs, rhs); }
-        case (ast.lsr) { ret cx.build.LShr(lhs, rhs); }
-        case (ast.asr) { ret cx.build.AShr(lhs, rhs); }
+        case (ast.bitor) { ret res(cx, cx.build.Or(lhs, rhs)); }
+        case (ast.bitand) { ret res(cx, cx.build.And(lhs, rhs)); }
+        case (ast.bitxor) { ret res(cx, cx.build.Xor(lhs, rhs)); }
+        case (ast.lsl) { ret res(cx, cx.build.Shl(lhs, rhs)); }
+        case (ast.lsr) { ret res(cx, cx.build.LShr(lhs, rhs)); }
+        case (ast.asr) { ret res(cx, cx.build.AShr(lhs, rhs)); }
         case (_) {
             ret trans_compare(cx, op, intype, lhs, rhs);
         }
@@ -2050,6 +2106,21 @@ fn autoderef(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
             }
             case (_) {
                 ret res(cx, v1);
+            }
+        }
+    }
+}
+
+fn autoderefed_ty(@ty.t t) -> @ty.t {
+    let @ty.t t1 = t;
+
+    while (true) {
+        alt (t1.struct) {
+            case (ty.ty_box(?inner)) {
+                t1 = inner;
+            }
+            case (_) {
+                ret t1;
             }
         }
     }
@@ -2109,8 +2180,9 @@ fn trans_binary(@block_ctxt cx, ast.binop op,
             auto rhs = trans_expr(lhs.bcx, b);
             auto rhty = ty.expr_ty(b);
             rhs = autoderef(rhs.bcx, rhs.val, rhty);
-            ret res(rhs.bcx, trans_eager_binop(rhs.bcx, op, lhty,
-                                               lhs.val, rhs.val));
+            ret trans_eager_binop(rhs.bcx, op,
+                                  autoderefed_ty(lhty),
+                                  lhs.val, rhs.val);
         }
     }
     fail;
@@ -2399,8 +2471,8 @@ fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
             auto lltype = ty.ann_to_type(ann);
             auto lleq = trans_compare(cx, ast.eq, lltype, llval, lllit);
 
-            auto matched_cx = new_sub_block_ctxt(cx, "matched_cx");
-            cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
+            auto matched_cx = new_sub_block_ctxt(lleq.bcx, "matched_cx");
+            lleq.bcx.build.CondBr(lleq.val, matched_cx.llbb, next_cx.llbb);
             ret res(matched_cx, llval);
         }
 
@@ -2656,8 +2728,9 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
 fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
                &ast.ident field, &ast.ann ann) -> lval_result {
     auto r = trans_expr(cx, base);
-    r = autoderef(r.bcx, r.val, ty.expr_ty(base));
     auto t = ty.expr_ty(base);
+    r = autoderef(r.bcx, r.val, t);
+    t = autoderefed_ty(t);
     alt (t.struct) {
         case (ty.ty_tup(?fields)) {
             let uint ix = ty.field_num(cx.fcx.ccx.sess, sp, field);
@@ -3439,8 +3512,8 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             auto v = trans_eager_binop(rhs_res.bcx, op, t,
                                        lhs_val, rhs_res.val);
             // FIXME: calculate copy init-ness in typestate.
-            ret copy_ty(rhs_res.bcx, DROP_EXISTING,
-                        lhs_res.res.val, v, t);
+            ret copy_ty(v.bcx, DROP_EXISTING,
+                        lhs_res.res.val, v.val, t);
         }
 
         case (ast.expr_bind(?f, ?args, ?ann)) {
