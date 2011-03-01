@@ -505,7 +505,6 @@ TEST_XFAILS_RUSTC := $(CONST_TAG_XFAILS) \
                         spawn.rs \
                         str-append.rs \
                         str-concat.rs \
-                        structured-compare.rs \
                         syntax-extension-fmt.rs \
                         syntax-extension-shell.rs \
                         task-comm-0.rs \

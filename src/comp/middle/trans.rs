@@ -1583,24 +1583,30 @@ fn iter_structural_ty_full(@block_ctxt cx,
             auto llunion_b_ptr = cx.build.GEP(bv, vec(C_int(0), C_int(1)));
             auto lldiscrim_b = cx.build.Load(lldiscrim_b_ptr);
 
-            auto unr_cx = new_sub_block_ctxt(cx, "tag-iter-unr");
+            // NB: we must hit the discriminant first so that structural
+            // comparison know not to proceed when the discriminants differ.
+            auto bcx = cx;
+            bcx = f(bcx, lldiscrim_a, lldiscrim_b,
+                    plain_ty(ty.ty_int)).bcx;
+
+            auto unr_cx = new_sub_block_ctxt(bcx, "tag-iter-unr");
             unr_cx.build.Unreachable();
 
-            auto llswitch = cx.build.Switch(lldiscrim_a, unr_cx.llbb,
+            auto llswitch = bcx.build.Switch(lldiscrim_a, unr_cx.llbb,
                                              n_variants);
 
-            auto next_cx = new_sub_block_ctxt(cx, "tag-iter-next");
+            auto next_cx = new_sub_block_ctxt(bcx, "tag-iter-next");
 
             auto i = 0u;
             for (ast.variant variant in variants) {
-                auto variant_cx = new_sub_block_ctxt(cx,
+                auto variant_cx = new_sub_block_ctxt(bcx,
                                                      "tag-iter-variant-" +
                                                      _uint.to_str(i, 10u));
                 llvm.LLVMAddCase(llswitch, C_int(i as int), variant_cx.llbb);
 
                 if (_vec.len[ast.variant_arg](variant.args) > 0u) {
                     // N-ary variant.
-                    auto llvarty = type_of_variant(cx.fcx.ccx, variants.(i));
+                    auto llvarty = type_of_variant(bcx.fcx.ccx, variants.(i));
 
                     auto fn_ty = ty.ann_to_type(variants.(i).ann);
                     alt (fn_ty.struct) {
@@ -1611,7 +1617,7 @@ fn iter_structural_ty_full(@block_ctxt cx,
                             auto llvarp_b = variant_cx.build.
                                 TruncOrBitCast(llunion_b_ptr, T_ptr(llvarty));
 
-                            auto ty_params = tag_ty_params(cx.fcx.ccx, tid);
+                            auto ty_params = tag_ty_params(bcx.fcx.ccx, tid);
 
                             auto j = 0u;
                             for (ty.arg a in args) {
@@ -2023,36 +2029,64 @@ fn trans_compare(@block_ctxt cx, ast.binop op, @ty.t t,
         auto next = new_sub_block_ctxt(cx, "structural compare end");
         cx.build.Br(scx.llbb);
 
-        // Start with the assumptioin that our predicate holds.
+        /*
+         * We're doing lexicographic comparison here. We start with the
+         * assumption that the two input elements are equal. Depending on
+         * operator, this means that the result is either true or false;
+         * equality produces 'true' for ==, <= and >=. It produces 'false' for
+         * !=, < and >.
+         *
+         * We then move one element at a time through the structure checking
+         * for pairwise element equality. If we have equality, our assumption
+         * about overall sequence equality is not modified, so we have to move
+         * to the next element.
+         *
+         * If we do not have pairwise element equality, we have reached an
+         * element that 'decides' the lexicographic comparison. So we exit the
+         * loop with a flag that indicates the true/false sense of that
+         * decision, by testing the element again with the operator we're
+         * interested in.
+         *
+         * When we're lucky, LLVM should be able to fold some of these two
+         * tests together (as they're applied to the same operands and in some
+         * cases are sometimes redundant). But we don't bother trying to
+         * optimize combinations like that, at this level.
+         */
+
         auto flag = scx.build.Alloca(T_i1());
-        scx.build.Store(C_integral(1, T_i1()), flag);
 
-        // Attempt to prove otherwise by assuming true, comparing each element
-        // and writing 0 + early-exiting if any comparisons fail.
+        alt (op) {
+            // ==, <= and >= default to true if they find == all the way.
+            case (ast.eq) { scx.build.Store(C_integral(1, T_i1()), flag); }
+            case (ast.le) { scx.build.Store(C_integral(1, T_i1()), flag); }
+            case (ast.ge) { scx.build.Store(C_integral(1, T_i1()), flag); }
+            case (_) {
+                // ==, <= and >= default to false if they find == all the way.
+                scx.build.Store(C_integral(0, T_i1()), flag);
+            }
+        }
 
-        fn inner(@block_ctxt next_cx,
+        fn inner(@block_ctxt last_cx,
                  ValueRef flag,
                  ast.binop op,
                  @block_ctxt cx,
                  ValueRef av,
                  ValueRef bv,
                  @ty.t t) -> result {
-            // Compare av op bv
+
             auto cnt_cx = new_sub_block_ctxt(cx, "continue comparison");
             auto stop_cx = new_sub_block_ctxt(cx, "stop comparison");
 
-            auto r = trans_compare(cx, op, t, av, bv);
+            // First 'eq' comparison: if so, continue to next elts.
+            auto eq_r = trans_compare(cx, ast.eq, t, av, bv);
+            eq_r.bcx.build.CondBr(eq_r.val, cnt_cx.llbb, stop_cx.llbb);
 
-            // if true, then carry on, else write 0 to flag, branch to 'next'.
-            r.bcx.build.CondBr(r.val, cnt_cx.llbb, stop_cx.llbb);
-            stop_cx.build.Store(C_integral(0, T_i1()), flag);
-            stop_cx.build.Br(next_cx.llbb);
-
+            // Second 'op' comparison: find out how this elt-pair decides.
+            auto stop_r = trans_compare(stop_cx, op, t, av, bv);
+            stop_r.bcx.build.Store(stop_r.val, flag);
+            stop_r.bcx.build.Br(last_cx.llbb);
             ret res(cnt_cx, C_nil());
         }
-
-        // FIXME: this is wrong for tag types; need to confirm discriminants
-        // are equal before blindly walking over elements.
 
         auto r = iter_structural_ty_full(scx, lhs, rhs, t,
                                          bind inner(next, flag, op,
