@@ -59,7 +59,11 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef memcpy_glue,
                     ValueRef bzero_glue);
 
-type tag_info = rec(type_handle th, mutable uint size);
+type tag_info = rec(
+    type_handle th,
+    mutable uint size,
+    mutable @hashmap[ast.def_id,ValueRef] lldiscrims
+);
 
 state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
@@ -2774,9 +2778,23 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                         }
                         ret lval_generic_fn(cx, tup(params, fty), vid, ann);
                     } else {
-                        // Nullary variants are just scalar constants.
-                        check (cx.fcx.ccx.item_ids.contains_key(vid));
-                        ret lval_val(cx, cx.fcx.ccx.item_ids.get(vid));
+                        // Nullary variant.
+                        auto tag_ty = node_ann_type(cx.fcx.ccx, ann);
+                        auto info = cx.fcx.ccx.tags.get(tag_ty);
+                        check (info.lldiscrims.contains_key(vid));
+                        auto lldiscrim_gv = info.lldiscrims.get(vid);
+                        auto lldiscrim = cx.build.Load(lldiscrim_gv);
+
+                        auto alloc_result = alloc_ty(cx, tag_ty);
+                        auto lltagblob = alloc_result.val;
+                        auto lltagptr = alloc_result.bcx.build.PointerCast(
+                            lltagblob, T_ptr(type_of(cx.fcx.ccx, tag_ty)));
+
+                        auto lldiscrimptr = alloc_result.bcx.build.GEP(
+                            lltagptr, vec(C_int(0), C_int(0)));
+                        alloc_result.bcx.build.Store(lldiscrim, lldiscrimptr);
+
+                        ret lval_val(alloc_result.bcx, lltagptr);
                     }
                 }
                 case (ast.def_const(?did)) {
@@ -4637,8 +4655,14 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
         case (ast.item_tag(_, ?variants, ?tps, ?tag_id)) {
             auto vi = new_def_hash[uint]();
             auto navi = new_def_hash[uint]();
-            cx.tags.insert(mk_plain_tag(tag_id), @rec(th=mk_type_handle(),
-                                                      mutable size=0u));
+
+            auto info = @rec(
+                th=mk_type_handle(),
+                mutable size=0u,
+                mutable lldiscrims=@new_def_hash[ValueRef]()
+            );
+
+            cx.tags.insert(mk_plain_tag(tag_id), info);
             cx.items.insert(tag_id, i);
         }
 
@@ -4772,22 +4796,7 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
                 llvm.LLVMSetLinkage(discrim_gvar, lib.llvm.LLVMPrivateLinkage
                                     as llvm.Linkage);
 
-                if (_vec.len[ast.variant_arg](variant.args) == 0u) {
-                    // Nullary tags become constants. (N-ary tags are treated
-                    // as functions and generated later.)
-
-                    auto union_val = C_zero_byte_arr(info.size as uint);
-                    auto val = C_struct(vec(discrim_val, union_val));
-
-                    // FIXME: better name
-                    auto gvar = llvm.LLVMAddGlobal(cx.llmod, val_ty(val),
-                                                   _str.buf("tag"));
-                    llvm.LLVMSetInitializer(gvar, val);
-                    llvm.LLVMSetGlobalConstant(gvar, True);
-                    llvm.LLVMSetLinkage(gvar, lib.llvm.LLVMPrivateLinkage
-                                        as llvm.Linkage);
-                    cx.item_ids.insert(variant.id, gvar);
-                }
+                info.lldiscrims.insert(variant.id, discrim_gvar);
 
                 i += 1u;
             }
