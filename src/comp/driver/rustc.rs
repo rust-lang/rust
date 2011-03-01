@@ -2,6 +2,7 @@
 
 import front.parser;
 import front.token;
+import front.eval;
 import middle.trans;
 import middle.resolve;
 import middle.typeck;
@@ -12,6 +13,30 @@ import std.option.some;
 import std.option.none;
 import std._str;
 import std._vec;
+
+fn default_environment(session.session sess,
+                       str argv0,
+                       str input) -> eval.env {
+
+    auto libc = "libc.so";
+    alt (sess.get_targ_cfg().os) {
+        case (session.os_win32) { libc = "msvcrt.dll"; }
+        case (session.os_macos) { libc = "libc.dylib"; }
+        case (session.os_linux) { libc = "libc.so.6"; }
+    }
+
+    ret
+        vec(
+            // Target bindings.
+            tup("target_os", eval.val_str(std.os.target_os())),
+            tup("target_arch", eval.val_str("x86")),
+            tup("target_libc", eval.val_str(libc)),
+
+            // Build bindings.
+            tup("build_compiler", eval.val_str(argv0)),
+            tup("build_input", eval.val_str(input))
+            );
+}
 
 impure fn parse_input(session.session sess,
                       parser.parser p,
@@ -25,9 +50,11 @@ impure fn parse_input(session.session sess,
     fail;
 }
 
-impure fn compile_input(session.session sess, str input, str output,
+impure fn compile_input(session.session sess,
+                        eval.env env,
+                        str input, str output,
                         bool shared) {
-    auto p = parser.new_parser(sess, 0, input);
+    auto p = parser.new_parser(sess, env, 0, input);
     auto crate = parse_input(sess, p, input);
     crate = resolve.resolve_crate(sess, crate);
     crate = typeck.check_crate(sess, crate);
@@ -131,16 +158,19 @@ impure fn main(vec[str] args) {
             sess.err("no input filename");
         }
         case (some[str](?ifile)) {
+
+            auto env = default_environment(sess, args.(0), ifile);
+
             alt (output_file) {
                 case (none[str]) {
                     let vec[str] parts = _str.split(ifile, '.' as u8);
                     parts = _vec.pop[str](parts);
                     parts += ".bc";
                     auto ofile = _str.concat(parts);
-                    compile_input(sess, ifile, ofile, shared);
+                    compile_input(sess, env, ifile, ofile, shared);
                 }
                 case (some[str](?ofile)) {
-                    compile_input(sess, ifile, ofile, shared);
+                    compile_input(sess, env, ifile, ofile, shared);
                 }
             }
         }

@@ -393,7 +393,7 @@ impure fn eval_crate_directive(parser p,
 
             auto full_path = prefix + std.os.path_sep() + file_path;
 
-            auto p0 = new_parser(p.get_session(), 0, full_path);
+            auto p0 = new_parser(p.get_session(), e, 0, full_path);
             auto m0 = parse_mod_items(p0, token.EOF);
             auto im = ast.item_mod(id, m0, p.next_def_id());
             auto i = @spanned(cdir.span, cdir.span, im);

@@ -31,15 +31,18 @@ state type parser =
           impure fn restrict(restriction r);
           fn get_restriction() -> restriction;
           fn get_file_type() -> file_type;
+          fn get_env() -> eval.env;
           fn get_session() -> session.session;
           fn get_span() -> common.span;
           fn next_def_id() -> ast.def_id;
     };
 
 impure fn new_parser(session.session sess,
+                     eval.env env,
                      ast.crate_num crate,
                      str path) -> parser {
     state obj stdio_parser(session.session sess,
+                           eval.env env,
                            file_type ftype,
                            mutable token.token tok,
                            mutable common.pos lo,
@@ -93,6 +96,10 @@ impure fn new_parser(session.session sess,
                 ret ftype;
             }
 
+            fn get_env() -> eval.env {
+                ret env;
+            }
+
         }
     auto ftype = SOURCE_FILE;
     if (_str.ends_with(path, ".rc")) {
@@ -101,7 +108,7 @@ impure fn new_parser(session.session sess,
     auto srdr = io.new_stdio_reader(path);
     auto rdr = lexer.new_reader(srdr, path);
     auto npos = rdr.get_curr_pos();
-    ret stdio_parser(sess, ftype, lexer.next_token(rdr),
+    ret stdio_parser(sess, env, ftype, lexer.next_token(rdr),
                      npos, npos, 0, UNRESTRICTED, crate, rdr);
 }
 
@@ -2279,7 +2286,7 @@ impure fn parse_crate_from_crate_file(parser p) -> @ast.crate {
     auto hi = lo;
     auto prefix = std.path.dirname(lo.filename);
     auto cdirs = parse_crate_directives(p, token.EOF);
-    auto m = eval.eval_crate_directives_to_mod(p, eval.mk_env(),
+    auto m = eval.eval_crate_directives_to_mod(p, p.get_env(),
                                                cdirs, prefix);
     hi = p.get_span();
     expect(p, token.EOF);
