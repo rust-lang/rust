@@ -59,7 +59,6 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef memcpy_glue,
                     ValueRef bzero_glue);
 
-tag arity { nullary; n_ary; }
 type tag_info = rec(type_handle th, mutable uint size);
 
 state type crate_ctxt = rec(session.session sess,
