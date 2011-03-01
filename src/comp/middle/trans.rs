@@ -1493,27 +1493,50 @@ fn mk_plain_tag(ast.def_id tid) -> @ty.t {
 
 type val_and_ty_fn = fn(@block_ctxt cx, ValueRef v, @ty.t t) -> result;
 
+type val_pair_and_ty_fn =
+    fn(@block_ctxt cx, ValueRef av, ValueRef bv, @ty.t t) -> result;
+
 // Iterates through the elements of a structural type.
 fn iter_structural_ty(@block_ctxt cx,
                       ValueRef v,
                       @ty.t t,
                       val_and_ty_fn f)
     -> result {
+    fn adaptor_fn(val_and_ty_fn f,
+                  @block_ctxt cx,
+                  ValueRef av,
+                  ValueRef bv,
+                  @ty.t t) -> result {
+        ret f(cx, av, t);
+    }
+    be iter_structural_ty_full(cx, v, v, t,
+                               bind adaptor_fn(f, _, _, _, _));
+}
+
+
+fn iter_structural_ty_full(@block_ctxt cx,
+                           ValueRef av,
+                           ValueRef bv,
+                           @ty.t t,
+                           val_pair_and_ty_fn f)
+    -> result {
     let result r = res(cx, C_nil());
 
     fn iter_boxpp(@block_ctxt cx,
-                  ValueRef box_cell,
-                  val_and_ty_fn f) -> result {
-        auto box_ptr = cx.build.Load(box_cell);
+                  ValueRef box_a_cell,
+                  ValueRef box_b_cell,
+                  val_pair_and_ty_fn f) -> result {
+        auto box_a_ptr = cx.build.Load(box_a_cell);
+        auto box_b_ptr = cx.build.Load(box_b_cell);
         auto tnil = plain_ty(ty.ty_nil);
         auto tbox = plain_ty(ty.ty_box(tnil));
 
         auto inner_cx = new_sub_block_ctxt(cx, "iter box");
         auto next_cx = new_sub_block_ctxt(cx, "next");
-        auto null_test = cx.build.IsNull(box_ptr);
+        auto null_test = cx.build.IsNull(box_a_ptr);
         cx.build.CondBr(null_test, next_cx.llbb, inner_cx.llbb);
 
-        auto r = f(inner_cx, box_ptr, tbox);
+        auto r = f(inner_cx, box_a_ptr, box_b_ptr, tbox);
         r.bcx.build.Br(next_cx.llbb);
         ret res(next_cx, r.val);
     }
@@ -1522,9 +1545,11 @@ fn iter_structural_ty(@block_ctxt cx,
         case (ty.ty_tup(?args)) {
             let int i = 0;
             for (@ty.t arg in args) {
-                auto elt = r.bcx.build.GEP(v, vec(C_int(0), C_int(i)));
+                auto elt_a = r.bcx.build.GEP(av, vec(C_int(0), C_int(i)));
+                auto elt_b = r.bcx.build.GEP(bv, vec(C_int(0), C_int(i)));
                 r = f(r.bcx,
-                      load_scalar_or_boxed(r.bcx, elt, arg),
+                      load_scalar_or_boxed(r.bcx, elt_a, arg),
+                      load_scalar_or_boxed(r.bcx, elt_b, arg),
                       arg);
                 i += 1;
             }
@@ -1532,9 +1557,11 @@ fn iter_structural_ty(@block_ctxt cx,
         case (ty.ty_rec(?fields)) {
             let int i = 0;
             for (ty.field fld in fields) {
-                auto llfld = r.bcx.build.GEP(v, vec(C_int(0), C_int(i)));
+                auto llfld_a = r.bcx.build.GEP(av, vec(C_int(0), C_int(i)));
+                auto llfld_b = r.bcx.build.GEP(bv, vec(C_int(0), C_int(i)));
                 r = f(r.bcx,
-                      load_scalar_or_boxed(r.bcx, llfld, fld.ty),
+                      load_scalar_or_boxed(r.bcx, llfld_a, fld.ty),
+                      load_scalar_or_boxed(r.bcx, llfld_b, fld.ty),
                       fld.ty);
                 i += 1;
             }
@@ -1545,53 +1572,69 @@ fn iter_structural_ty(@block_ctxt cx,
             auto variants = tag_variants(cx.fcx.ccx, tid);
             auto n_variants = _vec.len[ast.variant](variants);
 
-            auto lldiscrim_ptr = cx.build.GEP(v, vec(C_int(0), C_int(0)));
-            auto llunion_ptr = cx.build.GEP(v, vec(C_int(0), C_int(1)));
-            auto lldiscrim = cx.build.Load(lldiscrim_ptr);
+            auto lldiscrim_a_ptr = cx.build.GEP(av, vec(C_int(0), C_int(0)));
+            auto llunion_a_ptr = cx.build.GEP(av, vec(C_int(0), C_int(1)));
+            auto lldiscrim_a = cx.build.Load(lldiscrim_a_ptr);
+
+            auto lldiscrim_b_ptr = cx.build.GEP(bv, vec(C_int(0), C_int(0)));
+            auto llunion_b_ptr = cx.build.GEP(bv, vec(C_int(0), C_int(1)));
+            auto lldiscrim_b = cx.build.Load(lldiscrim_b_ptr);
 
             auto unr_cx = new_sub_block_ctxt(cx, "tag-iter-unr");
             unr_cx.build.Unreachable();
 
-            auto llswitch = cx.build.Switch(lldiscrim, unr_cx.llbb,
-                                            n_variants);
+            auto llswitch = cx.build.Switch(lldiscrim_a, unr_cx.llbb,
+                                             n_variants);
 
             auto next_cx = new_sub_block_ctxt(cx, "tag-iter-next");
 
             auto i = 0u;
             for (ast.variant variant in variants) {
-                auto variant_cx = new_sub_block_ctxt(cx, "tag-iter-variant-" +
+                auto variant_cx = new_sub_block_ctxt(cx,
+                                                     "tag-iter-variant-" +
                                                      _uint.to_str(i, 10u));
                 llvm.LLVMAddCase(llswitch, C_int(i as int), variant_cx.llbb);
 
                 if (_vec.len[ast.variant_arg](variant.args) > 0u) {
                     // N-ary variant.
-                    let vec[ValueRef] vals = vec(C_int(0), C_int(1),
-                                                 C_int(i as int));
-                    auto llvar = variant_cx.build.GEP(v, vals);
                     auto llvarty = type_of_variant(cx.fcx.ccx, variants.(i));
 
                     auto fn_ty = ty.ann_to_type(variants.(i).ann);
                     alt (fn_ty.struct) {
                         case (ty.ty_fn(_, ?args, _)) {
-                            auto llvarp = variant_cx.build.
-                                TruncOrBitCast(llunion_ptr, T_ptr(llvarty));
+                            auto llvarp_a = variant_cx.build.
+                                TruncOrBitCast(llunion_a_ptr, T_ptr(llvarty));
+
+                            auto llvarp_b = variant_cx.build.
+                                TruncOrBitCast(llunion_b_ptr, T_ptr(llvarty));
 
                             auto ty_params = tag_ty_params(cx.fcx.ccx, tid);
 
                             auto j = 0u;
                             for (ty.arg a in args) {
                                 auto v = vec(C_int(0), C_int(j as int));
-                                auto llfldp = variant_cx.build.GEP(llvarp, v);
+
+                                auto llfldp_a =
+                                    variant_cx.build.GEP(llvarp_a, v);
+
+                                auto llfldp_b =
+                                    variant_cx.build.GEP(llvarp_b, v);
 
                                 auto ty_subst = ty.substitute_ty_params(
                                     ty_params, tps, a.ty);
 
-                                auto llfld =
+                                auto llfld_a =
                                     load_scalar_or_boxed(variant_cx,
-                                                         llfldp,
+                                                         llfldp_a,
                                                          ty_subst);
 
-                                auto res = f(variant_cx, llfld, ty_subst);
+                                auto llfld_b =
+                                    load_scalar_or_boxed(variant_cx,
+                                                         llfldp_b,
+                                                         ty_subst);
+
+                                auto res = f(variant_cx,
+                                             llfld_a, llfld_b, ty_subst);
                                 variant_cx = res.bcx;
                                 j += 1u;
                             }
@@ -1611,21 +1654,29 @@ fn iter_structural_ty(@block_ctxt cx,
             ret res(next_cx, C_nil());
         }
         case (ty.ty_fn(_,_,_)) {
-            auto box_cell =
-                cx.build.GEP(v,
+            auto box_cell_a =
+                cx.build.GEP(av,
                              vec(C_int(0),
                                  C_int(abi.fn_field_box)));
-            ret iter_boxpp(cx, box_cell, f);
+            auto box_cell_b =
+                cx.build.GEP(bv,
+                             vec(C_int(0),
+                                 C_int(abi.fn_field_box)));
+            ret iter_boxpp(cx, box_cell_a, box_cell_b, f);
         }
         case (ty.ty_obj(_)) {
-            auto box_cell =
-                cx.build.GEP(v,
+            auto box_cell_a =
+                cx.build.GEP(av,
                              vec(C_int(0),
                                  C_int(abi.obj_field_box)));
-            ret iter_boxpp(cx, box_cell, f);
+            auto box_cell_b =
+                cx.build.GEP(bv,
+                             vec(C_int(0),
+                                 C_int(abi.obj_field_box)));
+            ret iter_boxpp(cx, box_cell_a, box_cell_b, f);
         }
         case (_) {
-            cx.fcx.ccx.sess.unimpl("type in iter_structural_ty");
+            cx.fcx.ccx.sess.unimpl("type in iter_structural_ty_full");
         }
     }
     ret r;
@@ -1965,21 +2016,47 @@ fn trans_compare(@block_ctxt cx, ast.binop op, @ty.t t,
         ret res(cx, trans_scalar_compare(cx, op, t, lhs, rhs));
 
     } else if (ty.type_is_structural(t)) {
-        auto scx = new_sub_block_ctxt(cx, "structural compare body");
-        auto next = new_sub_block_ctxt(cx, "structural compare completion");
+        auto scx = new_sub_block_ctxt(cx, "structural compare start");
+        auto next = new_sub_block_ctxt(cx, "structural compare end");
         cx.build.Br(scx.llbb);
 
         // Start with the assumptioin that our predicate holds.
         auto flag = scx.build.Alloca(T_i1());
         scx.build.Store(C_integral(1, T_i1()), flag);
 
-        // Attempt to prove otherwise by inverting the sense of the comparison
-        // on each inner element and bailing if any succeed.
+        // Attempt to prove otherwise by assuming true, comparing each element
+        // and writing 0 + early-exiting if any comparisons fail.
 
-        // FIXME: finish this.
+        fn inner(@block_ctxt next_cx,
+                 ValueRef flag,
+                 ast.binop op,
+                 @block_ctxt cx,
+                 ValueRef av,
+                 ValueRef bv,
+                 @ty.t t) -> result {
+            // Compare av op bv
+            auto cnt_cx = new_sub_block_ctxt(cx, "continue comparison");
+            auto stop_cx = new_sub_block_ctxt(cx, "stop comparison");
 
-        auto v = scx.build.Load(flag);
-        scx.build.Br(next.llbb);
+            auto r = trans_compare(cx, op, t, av, bv);
+
+            // if true, then carry on, else write 0 to flag, branch to 'next'.
+            r.bcx.build.CondBr(r.val, cnt_cx.llbb, stop_cx.llbb);
+            stop_cx.build.Store(C_integral(0, T_i1()), flag);
+            stop_cx.build.Br(next_cx.llbb);
+
+            ret res(cnt_cx, C_nil());
+        }
+
+        // FIXME: this is wrong for tag types; need to confirm discriminants
+        // are equal before blindly walking over elements.
+
+        auto r = iter_structural_ty_full(scx, lhs, rhs, t,
+                                         bind inner(next, flag, op,
+                                                    _, _, _, _));
+
+        r.bcx.build.Br(next.llbb);
+        auto v = next.build.Load(flag);
         ret res(next, v);
 
     } else {
