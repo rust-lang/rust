@@ -61,7 +61,6 @@ type glue_fns = rec(ValueRef activate_glue,
 
 type tag_info = rec(
     type_handle th,
-    mutable uint size,
     mutable @hashmap[ast.def_id,ValueRef] lldiscrims
 );
 
@@ -909,7 +908,9 @@ fn dynamic_size_of(@block_ctxt cx, @ty.t t) -> result {
                 bcx.build.Store(umax(bcx, this_size, old_max_size), max_size);
             }
 
-            ret res(bcx, bcx.build.Load(max_size));
+            auto max_size_val = bcx.build.Load(max_size);
+            auto total_size = bcx.build.Add(max_size_val, llsize_of(T_int()));
+            ret res(bcx, total_size);
         }
     }
 }
@@ -4493,15 +4494,6 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     auto arg_tys = arg_tys_of_fn(variant.ann);
     copy_args_to_allocas(bcx, none[TypeRef], fn_args, arg_tys);
 
-    // FIXME: This is wrong for generic tags. We should be dynamically
-    // computing "size" below based on the tydescs passed in.
-    auto info = cx.tags.get(mk_plain_tag(tag_id));
-
-    auto lltagty = T_struct(vec(T_int(), T_array(T_i8(), info.size)));
-
-    // FIXME: better name.
-    llvm.LLVMAddTypeName(cx.llmod, _str.buf("tag"), lltagty);
-
     auto lldiscrimptr = bcx.build.GEP(fcx.llretptr,
                                       vec(C_int(0), C_int(0)));
     bcx.build.Store(C_int(index), lldiscrimptr);
@@ -4720,7 +4712,6 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
 
             auto info = @rec(
                 th=mk_type_handle(),
-                mutable size=0u,
                 mutable lldiscrims=@new_def_hash[ValueRef]()
             );
 
@@ -4782,6 +4773,9 @@ fn collect_tag_ctors(@crate_ctxt cx, @ast.crate crate) {
 fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
     alt (i.node) {
         case (ast.item_tag(_, ?variants, _, ?tag_id)) {
+            // FIXME: This is all wrong. Now sizes and alignments are computed
+            // dynamically instead of up front.
+
             auto max_align = 0u;
             auto max_size = 0u;
 
@@ -4800,8 +4794,6 @@ fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
                     if (max_size < size) { max_size = size; }
                 }
             }
-
-            info.size = max_size;
 
             // FIXME: alignment is wrong here, manually insert padding I
             // guess :(
