@@ -891,6 +891,26 @@ fn dynamic_size_of(@block_ctxt cx, @ty.t t) -> result {
             }
             ret align_elements(cx, tys);
         }
+        case (ty.ty_tag(?tid, ?tps)) {
+            auto bcx = cx;
+
+            // Compute max(variant sizes).
+            let ValueRef max_size = bcx.build.Alloca(T_int());
+            bcx.build.Store(C_int(0), max_size);
+
+            auto variants = tag_variants(bcx.fcx.ccx, tid);
+            for (ast.variant variant in variants) {
+                let vec[@ty.t] tys = variant_types(bcx.fcx.ccx, variant);
+                auto rslt = align_elements(bcx, tys);
+                bcx = rslt.bcx;
+
+                auto this_size = rslt.val;
+                auto old_max_size = bcx.build.Load(max_size);
+                bcx.build.Store(umax(bcx, this_size, old_max_size), max_size);
+            }
+
+            ret res(bcx, bcx.build.Load(max_size));
+        }
     }
 }
 
@@ -1450,15 +1470,24 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
 
 // Tag information
 
-fn type_of_variant(@crate_ctxt cx, &ast.variant v) -> TypeRef {
-    let vec[TypeRef] lltys = vec();
+fn variant_types(@crate_ctxt cx, &ast.variant v) -> vec[@ty.t] {
+    let vec[@ty.t] tys = vec();
     alt (ty.ann_to_type(v.ann).struct) {
         case (ty.ty_fn(_, ?args, _)) {
             for (ty.arg arg in args) {
-                lltys += vec(type_of(cx, arg.ty));
+                tys += vec(arg.ty);
             }
         }
         case (_) { fail; }
+    }
+    ret tys;
+}
+
+fn type_of_variant(@crate_ctxt cx, &ast.variant v) -> TypeRef {
+    let vec[TypeRef] lltys = vec();
+    auto tys = variant_types(cx, v);
+    for (@ty.t typ in tys) {
+        lltys += vec(type_of(cx, typ));
     }
     ret T_struct(lltys);
 }
