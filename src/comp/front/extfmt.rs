@@ -82,8 +82,8 @@ fn expand_syntax_ext(vec[@ast.expr] args,
 
     auto fmt = expr_to_str(args.(0));
 
-    log "Format string:";
-    log fmt;
+    // log "Format string:";
+    // log fmt;
 
     auto pieces = parse_fmt_string(fmt);
     auto args_len = _vec.len[@ast.expr](args);
@@ -539,8 +539,8 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                 }
 
                 // TODO: Remove debug logging
-                log "Building conversion:";
-                log_conv(conv);
+                // log "Building conversion:";
+                // log_conv(conv);
 
                 n += 1u;
                 auto arg_expr = args.(n);
@@ -551,8 +551,8 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
     }
 
     // TODO: Remove this debug logging
-    log "dumping expanded ast:";
-    log pretty.print_expr(tmp_expr);
+    // log "dumping expanded ast:";
+    // log pretty.print_expr(tmp_expr);
     ret tmp_expr;
 }
 
