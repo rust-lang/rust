@@ -147,9 +147,23 @@ impure fn parse_ident(parser p) -> ast.ident {
 }
 
 
-impure fn parse_str_lit(parser p) -> ast.ident {
+/* FIXME: gross hack copied from rustboot to make certain configuration-based
+ * decisions work at build-time.  We should probably change it to use a
+ * lexical sytnax-extension or something similar. For now we just imitate
+ * rustboot.
+ */
+impure fn parse_str_lit_or_env_ident(parser p) -> ast.ident {
     alt (p.peek()) {
         case (token.LIT_STR(?s)) { p.bump(); ret s; }
+        case (token.IDENT(?i)) {
+            auto v = eval.lookup(p.get_session(), p.get_env(),
+                                 p.get_span(), i);
+            if (!eval.val_is_str(v)) {
+                p.err("expecting string-valued variable");
+            }
+            p.bump();
+            ret eval.val_as_str(v);
+        }
         case (_) {
             p.err("expecting string literal");
             fail;
@@ -1824,7 +1838,7 @@ impure fn parse_item_native_mod(parser p) -> @ast.item {
     expect(p, token.NATIVE);
     auto abi = ast.native_abi_cdecl;
     if (p.peek() != token.MOD) {
-        auto t = parse_str_lit(p);
+        auto t = parse_str_lit_or_env_ident(p);
         if (_str.eq(t, "cdecl")) {
         } else if (_str.eq(t, "rust")) {
             abi = ast.native_abi_rust;
@@ -1838,7 +1852,7 @@ impure fn parse_item_native_mod(parser p) -> @ast.item {
     auto native_name;
     if (p.peek() == token.EQ) {
         expect(p, token.EQ);
-        native_name = parse_str_lit(p);
+        native_name = parse_str_lit_or_env_ident(p);
     } else {
         native_name = default_native_name(p.get_session(), id);
     }
@@ -2202,7 +2216,7 @@ impure fn parse_crate_directive(parser p) -> ast.crate_directive
                 case (token.EQ) {
                     p.bump();
                     // FIXME: turn this into parse+eval expr
-                    file_opt = some[filename](parse_str_lit(p));
+                    file_opt = some[filename](parse_str_lit_or_env_ident(p));
                 }
                 case (_) {}
             }
