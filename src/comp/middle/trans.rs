@@ -909,7 +909,9 @@ fn dynamic_size_of(@block_ctxt cx, @ty.t t) -> result {
                 bcx.build.Store(umax(bcx, this_size, old_max_size), max_size);
             }
 
-            ret res(bcx, bcx.build.Load(max_size));
+            auto max_size_val = bcx.build.Load(max_size);
+            auto total_size = bcx.build.Add(max_size_val, llsize_of(T_int()));
+            ret res(bcx, total_size);
         }
     }
 }
