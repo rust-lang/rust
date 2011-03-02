@@ -851,50 +851,45 @@ fn align_of(@block_ctxt cx, @ty.t t) -> result {
 }
 
 fn dynamic_size_of(@block_ctxt cx, @ty.t t) -> result {
+    fn align_elements(@block_ctxt cx, vec[@ty.t] elts) -> result {
+        //
+        // C padding rules:
+        //
+        //
+        //   - Pad after each element so that next element is aligned.
+        //   - Pad after final structure member so that whole structure
+        //     is aligned to max alignment of interior.
+        //
+        auto off = C_int(0);
+        auto max_align = C_int(1);
+        auto bcx = cx;
+        for (@ty.t e in elts) {
+            auto elt_align = align_of(bcx, e);
+            bcx = elt_align.bcx;
+            auto elt_size = size_of(bcx, e);
+            bcx = elt_size.bcx;
+            auto aligned_off = align_to(bcx, off, elt_align.val);
+            off = cx.build.Add(aligned_off, elt_size.val);
+            max_align = umax(bcx, max_align, elt_align.val);
+        }
+        off = align_to(bcx, off, max_align);
+        ret res(bcx, off);
+    }
+
     alt (t.struct) {
         case (ty.ty_param(?p)) {
             auto szptr = field_of_tydesc(cx, t, abi.tydesc_field_size);
             ret res(szptr.bcx, szptr.bcx.build.Load(szptr.val));
         }
         case (ty.ty_tup(?elts)) {
-            //
-            // C padding rules:
-            //
-            //
-            //   - Pad after each element so that next element is aligned.
-            //   - Pad after final structure member so that whole structure
-            //     is aligned to max alignment of interior.
-            //
-            auto off = C_int(0);
-            auto max_align = C_int(1);
-            auto bcx = cx;
-            for (@ty.t e in elts) {
-                auto elt_align = align_of(bcx, e);
-                bcx = elt_align.bcx;
-                auto elt_size = size_of(bcx, e);
-                bcx = elt_size.bcx;
-                auto aligned_off = align_to(bcx, off, elt_align.val);
-                off = cx.build.Add(aligned_off, elt_size.val);
-                max_align = umax(bcx, max_align, elt_align.val);
-            }
-            off = align_to(bcx, off, max_align);
-            ret res(bcx, off);
+            ret align_elements(cx, elts);
         }
         case (ty.ty_rec(?flds)) {
-            auto off = C_int(0);
-            auto max_align = C_int(1);
-            auto bcx = cx;
+            let vec[@ty.t] tys = vec();
             for (ty.field f in flds) {
-                auto elt_align = align_of(bcx, f.ty);
-                bcx = elt_align.bcx;
-                auto elt_size = size_of(bcx, f.ty);
-                bcx = elt_size.bcx;
-                auto aligned_off = align_to(bcx, off, elt_align.val);
-                off = cx.build.Add(aligned_off, elt_size.val);
-                max_align = umax(bcx, max_align, elt_align.val);
+                tys += vec(f.ty);
             }
-            off = align_to(bcx, off, max_align);
-            ret res(bcx, off);
+            ret align_elements(cx, tys);
         }
     }
 }
