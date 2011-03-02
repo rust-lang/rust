@@ -71,17 +71,13 @@ tag piece {
     piece_conv(conv);
 }
 
-fn bad_fmt_call() {
-    log "malformed #fmt call";
-    fail;
-}
-
 // TODO: Need to thread parser through here to handle errors correctly
 fn expand_syntax_ext(vec[@ast.expr] args,
                      option.t[@ast.expr] body) -> @ast.expr {
 
     if (_vec.len[@ast.expr](args) == 0u) {
-        bad_fmt_call();
+        log "malformed #fmt call";
+        fail;
     }
 
     auto fmt = expr_to_str(args.(0));
@@ -101,7 +97,7 @@ fn expr_to_str(@ast.expr expr) -> str {
             }
         }
     }
-    bad_fmt_call();
+    log "malformed #fmt call";
     fail;
 }
 
@@ -146,19 +142,29 @@ fn parse_fmt_string(str s) -> vec[piece] {
     ret pieces;
 }
 
-fn peek_num(str s, uint i, uint lim) -> option.t[tup(int, int)] {
+fn peek_num(str s, uint i, uint lim) -> option.t[tup(uint, uint)] {
     if (i >= lim) {
-        ret none[tup(int, int)];
-    } else {
-        ret none[tup(int, int)];
-        /*if ('0' <= c && c <= '9') {
-            log c;
-            fail;
-        } else {
-            ret option.none[tup(int, int)];
-        }
-        */
+        ret none[tup(uint, uint)];
     }
+
+    // FIXME: Presumably s.(i) will return char eventually
+    auto c = s.(i);
+    if (!('0' as u8 <= c && c <= '9' as u8)) {
+        ret option.none[tup(uint, uint)];
+    }
+
+    auto n = (c - ('0' as u8)) as uint;
+    alt (peek_num(s, i + 1u, lim)) {
+        case (none[tup(uint, uint)]) {
+            ret some[tup(uint, uint)](tup(n, i + 1u));
+        }
+        case (some[tup(uint, uint)](?next)) {
+            auto m = next._0;
+            auto j = next._1;
+            ret some[tup(uint, uint)](tup(n * 10u + m, j));
+        }
+    }
+
 }
 
 fn parse_conversion(str s, uint i, uint lim) -> tup(piece, uint) {
@@ -182,10 +188,10 @@ fn parse_parameter(str s, uint i, uint lim) -> tup(option.t[int], uint) {
 
     auto num = peek_num(s, i, lim);
     alt (num) {
-        case (none[tup(int, int)]) {
+        case (none[tup(uint, uint)]) {
             ret tup(none[int], i);
         }
-        case (some[tup(int, int)](?t)) {
+        case (some[tup(uint, uint)](?t)) {
             fail;
         }
     }
@@ -342,6 +348,98 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         }
     }
 
+    fn log_conv(conv c) {
+        alt (c.param) {
+            case (some[int](?p)) {
+                log "param: " + std._int.to_str(p, 10u);
+            }
+            case (_) {
+                log "param: none";
+            }
+        }
+        for (flag f in c.flags) {
+            alt (f) {
+                case (flag_left_justify) {
+                    log "flag: left justify";
+                }
+                case (flag_left_zero_pad) {
+                    log "flag: left zero pad";
+                }
+                case (flag_left_space_pad) {
+                    log "flag: left space pad";
+                }
+                case (flag_plus_if_positive) {
+                    log "flag: plus if positive";
+                }
+                case (flag_alternate) {
+                    log "flag: alternate";
+                }
+            }
+        }
+        alt (c.width) {
+            case (count_is(?i)) {
+                log "width: count is " + std._int.to_str(i, 10u);
+            }
+            case (count_is_param(?i)) {
+                log "width: count is param " + std._int.to_str(i, 10u);
+            }
+            case (count_is_next_param) {
+                log "width: count is next param";
+            }
+            case (count_implied) {
+                log "width: count is implied";
+            }
+        }
+        alt (c.precision) {
+            case (count_is(?i)) {
+                log "prec: count is " + std._int.to_str(i, 10u);
+            }
+            case (count_is_param(?i)) {
+                log "prec: count is param " + std._int.to_str(i, 10u);
+            }
+            case (count_is_next_param) {
+                log "prec: count is next param";
+            }
+            case (count_implied) {
+                log "prec: count is implied";
+            }
+        }
+        alt (c.ty) {
+            case (ty_bool) {
+                log "type: bool";
+            }
+            case (ty_str) {
+                log "type: str";
+            }
+            case (ty_char) {
+                log "type: char";
+            }
+            case (ty_int(?s)) {
+                alt (s) {
+                    case (signed) {
+                        log "type: signed";
+                    }
+                    case (unsigned) {
+                        log "type: unsigned";
+                    }
+                }
+            }
+            case (ty_bits) {
+                log "type: bits";
+            }
+            case (ty_hex(?cs)) {
+                alt (cs) {
+                    case (case_upper) {
+                        log "type: uhex";
+                    }
+                    case (case_lower) {
+                        log "type: lhex";
+                    }
+                }
+            }
+        }
+    }
+
     auto sp = args.(0).span;
     auto n = 0u;
     auto tmp_expr = make_new_str(sp, "");
@@ -358,6 +456,10 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                     fail;
                 }
 
+                // TODO: Remove debug logging
+                log "Building conversion:";
+                log_conv(conv);
+
                 n += 1u;
                 auto arg_expr = args.(n);
                 auto c_expr = make_new_conv(conv, arg_expr);
@@ -366,10 +468,10 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         }
     }
 
-    // TODO: Remove this print and return the real expanded AST
+    // TODO: Remove this debug logging
     log "dumping expanded ast:";
     log pretty.print_expr(tmp_expr);
-    ret make_new_str(sp, "TODO");
+    ret tmp_expr;
 }
 
 //
