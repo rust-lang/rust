@@ -76,6 +76,25 @@ const uint LLVMIntSLT = 40u;
 const uint LLVMIntSLE = 41u;
 
 
+// Consts for the LLVM RealPredicate type, pre-case to uint.
+// FIXME: as above.
+
+const uint LLVMRealOEQ = 1u;
+const uint LLVMRealOGT = 2u;
+const uint LLVMRealOGE = 3u;
+const uint LLVMRealOLT = 4u;
+const uint LLVMRealOLE = 5u;
+const uint LLVMRealONE = 6u;
+
+const uint LLVMRealORD = 7u;
+const uint LLVMRealUNO = 8u;
+const uint LLVMRealUEQ = 9u;
+const uint LLVMRealUGT = 10u;
+const uint LLVMRealUGE = 11u;
+const uint LLVMRealULT = 12u;
+const uint LLVMRealULE = 13u;
+const uint LLVMRealUNE = 14u;
+
 native mod llvm = llvm_lib {
 
     type ModuleRef;
@@ -657,7 +676,7 @@ native mod llvm = llvm_lib {
     fn LLVMBuildICmp(BuilderRef B, uint Op,
                      ValueRef LHS, ValueRef RHS,
                      sbuf Name) -> ValueRef;
-    fn LLVMBuildFCmp(BuilderRef B, RealPredicate Op,
+    fn LLVMBuildFCmp(BuilderRef B, uint Op,
                      ValueRef LHS, ValueRef RHS,
                      sbuf Name) -> ValueRef;
 
@@ -1034,7 +1053,7 @@ obj builder(BuilderRef B) {
         ret llvm.LLVMBuildICmp(B, Op, LHS, RHS, _str.buf(""));
     }
 
-    fn FCmp(RealPredicate Op, ValueRef LHS, ValueRef RHS) -> ValueRef {
+    fn FCmp(uint Op, ValueRef LHS, ValueRef RHS) -> ValueRef {
         ret llvm.LLVMBuildFCmp(B, Op, LHS, RHS, _str.buf(""));
     }
 
