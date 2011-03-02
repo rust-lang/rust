@@ -1715,21 +1715,33 @@ impure fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
          some(token.COMMA),
          pf, p);
 
-    auto pm = parse_method;
-    let util.common.spanned[vec[@ast.method]] meths =
-        parse_seq[@ast.method]
-        (token.LBRACE,
-         token.RBRACE,
-         none[token.token],
-         pm, p);
+    let vec[@ast.method] meths = vec();
+    let option.t[ast.block] dtor = none[ast.block];
+
+    expect(p, token.LBRACE);
+    while (p.peek() != token.RBRACE) {
+        alt (p.peek()) {
+            case (token.DROP) {
+                p.bump();
+                dtor = some[ast.block](parse_block(p));
+            }
+            case (_) {
+                append[@ast.method](meths,
+                                    parse_method(p));
+            }
+        }
+    }
+    auto hi = p.get_span();
+    expect(p, token.RBRACE);
 
     let ast._obj ob = rec(fields=fields.node,
-                          methods=meths.node);
+                          methods=meths,
+                          dtor=dtor);
 
     auto item = ast.item_obj(ident, ob, ty_params,
                              p.next_def_id(), ast.ann_none);
 
-    ret @spanned(lo, meths.span, item);
+    ret @spanned(lo, hi, item);
 }
 
 impure fn parse_mod_items(parser p, token.token term) -> ast._mod {

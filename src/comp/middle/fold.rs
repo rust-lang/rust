@@ -269,7 +269,8 @@ type ast_fold[ENV] =
 
      (fn(&ENV e,
          vec[ast.obj_field] fields,
-         vec[@ast.method] methods) -> ast._obj)   fold_obj,
+         vec[@ast.method] methods,
+         option.t[block] dtor) -> ast._obj)       fold_obj,
 
      // Env updates.
      (fn(&ENV e, @ast.crate c) -> ENV) update_env_for_crate,
@@ -791,6 +792,13 @@ fn fold_obj[ENV](&ENV env, ast_fold[ENV] fld, &ast._obj ob) -> ast._obj {
     for (ast.obj_field f in ob.fields) {
         fields += fold_obj_field(env, fld, f);
     }
+    let option.t[block] dtor = none[block];
+    alt (ob.dtor) {
+        case (none[block]) { }
+        case (some[block](?b)) {
+            dtor = some[block](fold_block[ENV](env, fld, b));
+        }
+    }
     let vec[ast.ty_param] tp = vec();
     for (@ast.method m in ob.methods) {
         // Fake-up an ast.item for this method.
@@ -805,7 +813,7 @@ fn fold_obj[ENV](&ENV env, ast_fold[ENV] fld, &ast._obj ob) -> ast._obj {
         let ENV _env = fld.update_env_for_item(env, i);
         append[@ast.method](meths, fold_method(_env, fld, m));
     }
-    ret fld.fold_obj(env, fields, meths);
+    ret fld.fold_obj(env, fields, meths, dtor);
 }
 
 fn fold_view_item[ENV](&ENV env, ast_fold[ENV] fld, @view_item vi)
@@ -1334,8 +1342,9 @@ fn identity_fold_crate[ENV](&ENV e, &span sp, &ast._mod m) -> @ast.crate {
 
 fn identity_fold_obj[ENV](&ENV e,
                           vec[ast.obj_field] fields,
-                          vec[@ast.method] methods) -> ast._obj {
-    ret rec(fields=fields, methods=methods);
+                          vec[@ast.method] methods,
+                          option.t[block] dtor) -> ast._obj {
+    ret rec(fields=fields, methods=methods, dtor=dtor);
 }
 
 
@@ -1481,7 +1490,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_mod = bind identity_fold_mod[ENV](_,_),
          fold_native_mod = bind identity_fold_native_mod[ENV](_,_),
          fold_crate = bind identity_fold_crate[ENV](_,_,_),
-         fold_obj = bind identity_fold_obj[ENV](_,_,_),
+         fold_obj = bind identity_fold_obj[ENV](_,_,_,_),
 
          update_env_for_crate = bind identity_update_env_for_crate[ENV](_,_),
          update_env_for_item = bind identity_update_env_for_item[ENV](_,_),

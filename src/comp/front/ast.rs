@@ -247,7 +247,8 @@ type method = spanned[method_];
 
 type obj_field = rec(@ty ty, ident ident, def_id id, ann ann);
 type _obj = rec(vec[obj_field] fields,
-                vec[@method] methods);
+                vec[@method] methods,
+                option.t[block] dtor);
 
 tag mod_index_entry {
     mie_view_item(@view_item);
