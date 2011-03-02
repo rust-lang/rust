@@ -363,17 +363,6 @@ fn is_call_expr(@expr e) -> bool {
     }
 }
 
-fn is_ext_expr(@expr e) -> bool {
-    alt (e.node) {
-        case (expr_ext(_, _, _, _, _)) {
-            ret true;
-        }
-        case (_) {
-            ret false;
-        }
-    }
-}
-
 //
 // Local Variables:
 // mode: rust
