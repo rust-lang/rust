@@ -279,6 +279,7 @@ type view_item = spanned[view_item_];
 tag view_item_ {
     view_item_use(ident, vec[@meta_item], def_id);
     view_item_import(ident, vec[ident], def_id, option.t[def]);
+    view_item_export(ident);
 }
 
 type item = spanned[item_];
@@ -305,6 +306,11 @@ fn index_view_item(mod_index index, @view_item it) {
         }
         case(ast.view_item_import(?def_ident,_,_,_)) {
             index.insert(def_ident, ast.mie_view_item(it));
+        }
+        case(ast.view_item_export(_)) {
+            // NB: don't index these, they might collide with
+            // the import or use that they're exporting. Have
+            // to do linear search for exports.
         }
     }
 }

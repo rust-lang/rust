@@ -2187,7 +2187,16 @@ impure fn parse_import(parser p) -> @ast.view_item {
     fail;
 }
 
-impure fn parse_use_or_import(parser p) -> @ast.view_item {
+impure fn parse_export(parser p) -> @ast.view_item {
+    auto lo = p.get_span();
+    expect(p, token.EXPORT);
+    auto id = parse_ident(p);
+    auto hi = p.get_span();
+    expect(p, token.SEMI);
+    ret @spanned(lo, hi, ast.view_item_export(id));
+}
+
+impure fn parse_view_item(parser p) -> @ast.view_item {
     alt (p.peek()) {
         case (token.USE) {
             ret parse_use(p);
@@ -2195,23 +2204,26 @@ impure fn parse_use_or_import(parser p) -> @ast.view_item {
         case (token.IMPORT) {
             ret parse_import(p);
         }
+        case (token.EXPORT) {
+            ret parse_export(p);
+        }
     }
 }
 
-fn is_use_or_import(token.token t) -> bool {
-    if (t == token.USE) {
-        ret true;
-    }
-    if (t == token.IMPORT) {
-        ret true;
+fn is_view_item(token.token t) -> bool {
+    alt (t) {
+        case (token.USE) { ret true; }
+        case (token.IMPORT) { ret true; }
+        case (token.EXPORT) { ret true; }
+        case (_) {}
     }
     ret false;
 }
 
 impure fn parse_view(parser p, ast.mod_index index) -> vec[@ast.view_item] {
     let vec[@ast.view_item] items = vec();
-    while (is_use_or_import(p.peek())) {
-        auto item = parse_use_or_import(p);
+    while (is_view_item(p.peek())) {
+        auto item = parse_view_item(p);
         items += vec(item);
 
         ast.index_view_item(index, item);
@@ -2305,12 +2317,17 @@ impure fn parse_crate_directive(parser p) -> ast.crate_directive
         }
 
         case (token.USE) {
-            auto vi = parse_use_or_import(p);
+            auto vi = parse_view_item(p);
             ret spanned(lo, vi.span, ast.cdir_view_item(vi));
         }
 
         case (token.IMPORT) {
-            auto vi = parse_use_or_import(p);
+            auto vi = parse_view_item(p);
+            ret spanned(lo, vi.span, ast.cdir_view_item(vi));
+        }
+
+        case (token.EXPORT) {
+            auto vi = parse_view_item(p);
             ret spanned(lo, vi.span, ast.cdir_view_item(vi));
         }
 
