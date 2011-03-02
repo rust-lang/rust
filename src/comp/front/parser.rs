@@ -737,7 +737,7 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
     ret @spanned(lo, hi, ex);
 }
 
-/* 
+/*
  * FIXME: This is a crude approximation of the syntax-extension system,
  * for purposes of prototyping and/or hard-wiring any extensions we
  * wish to use while bootstrapping. The eventual aim is to permit
