@@ -81,6 +81,10 @@ fn expand_syntax_ext(vec[@ast.expr] args,
     }
 
     auto fmt = expr_to_str(args.(0));
+
+    log "Format string:";
+    log fmt;
+
     auto pieces = parse_fmt_string(fmt);
     auto args_len = _vec.len[@ast.expr](args);
     auto fmt_args = _vec.slice[@ast.expr](args, 1u, args_len - 1u);
@@ -170,7 +174,7 @@ fn peek_num(str s, uint i, uint lim) -> option.t[tup(uint, uint)] {
 fn parse_conversion(str s, uint i, uint lim) -> tup(piece, uint) {
     auto parm = parse_parameter(s, i, lim);
     auto flags = parse_flags(s, parm._1, lim);
-    auto width = parse_width(s, flags._1, lim);
+    auto width = parse_count(s, flags._1, lim);
     auto prec = parse_precision(s, width._1, lim);
     auto ty = parse_type(s, prec._1, lim);
     ret tup(piece_conv(rec(param = parm._0,
@@ -192,22 +196,100 @@ fn parse_parameter(str s, uint i, uint lim) -> tup(option.t[int], uint) {
             ret tup(none[int], i);
         }
         case (some[tup(uint, uint)](?t)) {
-            fail;
+            auto n = t._0;
+            auto j = t._1;
+            if (j < lim && s.(j) == '$' as u8) {
+                ret tup(some[int](n as int), j + 1u);
+            }
+            else {
+                ret tup(none[int], i);
+            }
         }
     }
 }
 
 fn parse_flags(str s, uint i, uint lim) -> tup(vec[flag], uint) {
-    let vec[flag] flags = vec();
-    ret tup(flags, i);
+    let vec[flag] noflags = vec();
+
+    if (i >= lim) {
+        ret tup(noflags, i);
+    }
+
+    fn more_(flag f, str s, uint i, uint lim) -> tup(vec[flag], uint) {
+        auto next = parse_flags(s, i + 1u, lim);
+        auto rest = next._0;
+        auto j = next._1;
+        let vec[flag] curr = vec(f);
+        ret tup(curr + rest, j);
+    }
+
+    auto more = bind more_(_, s, i, lim);
+
+    auto f = s.(i);
+    if (f == ('-' as u8)) {
+        ret more(flag_left_justify);
+    } else if (f == ('0' as u8)) {
+        ret more(flag_left_zero_pad);
+    } else if (f == (' ' as u8)) {
+        ret more(flag_left_space_pad);
+    } else if (f == ('+' as u8)) {
+        ret more(flag_plus_if_positive);
+    } else if (f == ('#' as u8)) {
+        ret more(flag_alternate);
+    } else {
+        ret tup(noflags, i);
+    }
 }
 
-fn parse_width(str s, uint i, uint lim) -> tup(count, uint) {
-    ret tup(count_implied, i);
+fn parse_count(str s, uint i, uint lim) -> tup(count, uint) {
+    if (i >= lim) {
+        ret tup(count_implied, i);
+    }
+
+    // FIXME: These inner functions are just to avoid a rustboot
+    // "Unsatisfied precondition constraint" bug with alts nested in ifs
+    fn parse_star_count(str s, uint i, uint lim) -> tup(count, uint) {
+        auto param = parse_parameter(s, i + 1u, lim);
+        auto j = param._1;
+        alt (param._0) {
+            case (none[int]) {
+                ret tup(count_is_next_param, j);
+            }
+            case (some[int](?n)) {
+                ret tup(count_is_param(n), j);
+            }
+        }
+    }
+
+    fn parse_count_(str s, uint i, uint lim) -> tup(count, uint) {
+        auto num = peek_num(s, i, lim);
+        alt (num) {
+            case (none[tup(uint, uint)]) {
+                ret tup(count_implied, i);
+            }
+            case (some[tup(uint, uint)](?num)) {
+                ret tup(count_is(num._0 as int), num._1);
+            }
+        }
+    }
+
+    if (s.(i) == ('*' as u8)) {
+        ret parse_star_count(s, i, lim);
+    } else {
+        ret parse_count_(s, i, lim);
+    }
 }
 
 fn parse_precision(str s, uint i, uint lim) -> tup(count, uint) {
-    ret tup(count_implied, i);
+    if (i >= lim) {
+        ret tup(count_implied, i);
+    }
+
+    if (s.(i) == '.' as u8) {
+        ret parse_count(s, i + 1u, lim);
+    } else {
+        ret tup(count_implied, i);
+    }
 }
 
 fn parse_type(str s, uint i, uint lim) -> tup(ty, uint) {
