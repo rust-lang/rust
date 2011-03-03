@@ -1267,7 +1267,9 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, str name,
     auto re;
     if (!ty.type_is_scalar(t)) {
         auto llty;
-        if (ty.type_is_structural(t)) {
+        if (ty.type_has_dynamic_size(t)) {
+            llty = T_ptr(T_i8());
+        } else if (ty.type_is_structural(t)) {
             llty = T_ptr(type_of(cx, t));
         } else {
             llty = type_of(cx, t);
