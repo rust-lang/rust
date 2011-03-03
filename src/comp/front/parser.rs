@@ -429,6 +429,22 @@ impure fn parse_ty(parser p) -> @ast.ty {
             t = parse_ty_obj(p, hi);
         }
 
+        case (token.PORT) {
+            p.bump();
+            expect(p, token.LBRACKET);
+            t = ast.ty_port(parse_ty(p));
+            hi = p.get_span();
+            expect(p, token.RBRACKET);
+        }
+
+        case (token.CHAN) {
+            p.bump();
+            expect(p, token.LBRACKET);
+            t = ast.ty_chan(parse_ty(p));
+            hi = p.get_span();
+            expect(p, token.RBRACKET);
+        }
+
         case (token.IDENT(_)) {
             t = ast.ty_path(parse_path(p, GREEDY), none[ast.def]);
         }
@@ -799,6 +815,23 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
             }
         }
 
+        case (token.PORT) {
+            p.bump();
+            expect(p, token.LPAREN);
+            expect(p, token.RPAREN);
+            hi = p.get_span();
+            ex = ast.expr_port(ast.ann_none);
+        }
+
+        case (token.CHAN) {
+            p.bump();
+            expect(p, token.LPAREN);
+            auto e = parse_expr(p);
+            hi = e.span;
+            expect(p, token.RPAREN);
+            ex = ast.expr_chan(e, ast.ann_none);
+        }
+
         case (_) {
             auto lit = parse_lit(p);
             hi = lit.span;
@@ -1079,6 +1112,12 @@ impure fn parse_assign_expr(parser p) -> @ast.expr {
             }
             ret @spanned(lo, rhs.span,
                          ast.expr_assign_op(aop, lhs, rhs, ast.ann_none));
+        }
+        case (token.SEND) {
+            p.bump();
+            auto rhs = parse_expr(p);
+            ret @spanned(lo, rhs.span,
+                         ast.expr_send(lhs, rhs, ast.ann_none));
         }
         case (_) { /* fall through */ }
     }
