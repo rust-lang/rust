@@ -43,13 +43,6 @@ ifeq ($(CFG_OSTYPE), FreeBSD)
   endif
   CFG_NATIVE := 1
   CFG_UNIXY := 1
-  CFG_VALGRIND := $(shell which valgrind)
-  ifdef CFG_VALGRIND
-    CFG_VALGRIND += --leak-check=full \
-                    --error-exitcode=1 \
-                    --quiet --vex-iropt-level=0 \
-                    --suppressions=etc/x86.supp
-  endif
 endif
 
 ifeq ($(CFG_OSTYPE), Linux)
@@ -63,13 +56,6 @@ ifeq ($(CFG_OSTYPE), Linux)
   endif
   CFG_NATIVE := 1
   CFG_UNIXY := 1
-  CFG_VALGRIND := $(shell which valgrind)
-  ifdef CFG_VALGRIND
-    CFG_VALGRIND += --leak-check=full \
-                    --error-exitcode=1 \
-                    --quiet --vex-iropt-level=0 \
-                    --suppressions=etc/x86.supp
-  endif
 endif
 
 ifeq ($(CFG_OSTYPE), Darwin)
@@ -136,6 +122,13 @@ ifdef CFG_UNIXY
       CFG_GCC_CFLAGS += -m32
       CFG_GCC_LINK_FLAGS += -m32
     endif
+  endif
+  CFG_VALGRIND := $(shell which valgrind)
+  ifdef CFG_VALGRIND
+    CFG_VALGRIND += --leak-check=full \
+                    --error-exitcode=1 \
+                    --quiet --vex-iropt-level=0 \
+                    --suppressions=etc/x86.supp
   endif
 endif
 
