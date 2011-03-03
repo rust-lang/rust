@@ -1060,22 +1060,26 @@ fn GEP_tup_like(@block_ctxt cx, @ty.t t,
 }
 
 
-fn trans_malloc_inner(@block_ctxt cx, TypeRef llptr_ty) -> result {
-    auto llbody_ty = lib.llvm.llvm.LLVMGetElementType(llptr_ty);
+fn trans_raw_malloc(@block_ctxt cx, TypeRef llptr_ty, ValueRef llsize)
+        -> result {
     // FIXME: need a table to collect tydesc globals.
     auto tydesc = C_int(0);
-    auto sz = llsize_of(llbody_ty);
-    auto sub = trans_upcall(cx, "upcall_malloc", vec(sz, tydesc));
-    sub.val = vi2p(sub.bcx, sub.val, llptr_ty);
-    ret sub;
+    auto rslt = trans_upcall(cx, "upcall_malloc", vec(llsize, tydesc));
+    rslt = res(rslt.bcx, vi2p(cx, rslt.val, llptr_ty));
+    ret rslt;
+}
+
+fn trans_malloc_without_cleanup(@block_ctxt cx, @ty.t t) -> result {
+    auto llty = type_of(cx.fcx.ccx, t);
+    auto rslt = size_of(cx, t);
+    ret trans_raw_malloc(rslt.bcx, llty, rslt.val);
 }
 
 fn trans_malloc(@block_ctxt cx, @ty.t t) -> result {
     auto scope_cx = find_scope_cx(cx);
-    auto llptr_ty = type_of(cx.fcx.ccx, t);
-    auto sub = trans_malloc_inner(cx, llptr_ty);
-    scope_cx.cleanups += clean(bind drop_ty(_, sub.val, t));
-    ret sub;
+    auto rslt = trans_malloc_without_cleanup(cx, t);
+    scope_cx.cleanups += clean(bind drop_ty(_, rslt.val, t));
+    ret rslt;
 }
 
 
@@ -3216,7 +3220,9 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
                                                      ty_param_count);
 
             // Malloc a box for the body.
-            auto r = trans_malloc_inner(bcx, llclosure_ty);
+            // FIXME: this isn't generic-safe
+            auto r = trans_raw_malloc(bcx, llclosure_ty,
+                llsize_of(llvm.LLVMGetElementType(llclosure_ty)));
             auto box = r.val;
             bcx = r.bcx;
             auto rc = bcx.build.GEP(box,
@@ -4453,7 +4459,8 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
         let TypeRef llboxed_body_ty = type_of(cx, boxed_body_ty);
 
         // Malloc a box for the body.
-        auto box = trans_malloc_inner(bcx, llboxed_body_ty);
+        auto box = trans_raw_malloc(bcx, llboxed_body_ty,
+            llsize_of(llvm.LLVMGetElementType(llboxed_body_ty)));
         bcx = box.bcx;
         auto rc = GEP_tup_like(bcx, boxed_body_ty, box.val,
                                vec(0, abi.box_rc_field_refcnt));
