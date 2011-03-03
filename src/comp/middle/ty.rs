@@ -395,6 +395,7 @@ fn type_is_nil(@t ty) -> bool {
     fail;
 }
 
+
 fn type_is_structural(@t ty) -> bool {
     alt (ty.struct) {
         case (ty_tup(_))    { ret true; }
@@ -402,6 +403,15 @@ fn type_is_structural(@t ty) -> bool {
         case (ty_tag(_,_))  { ret true; }
         case (ty_fn(_,_,_)) { ret true; }
         case (ty_obj(_))    { ret true; }
+        case (_)            { ret false; }
+    }
+    fail;
+}
+
+fn type_is_sequence(@t ty) -> bool {
+    alt (ty.struct) {
+        case (ty_str)    { ret true; }
+        case (ty_vec(_))    { ret true; }
         case (_)            { ret false; }
     }
     fail;
