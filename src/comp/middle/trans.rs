@@ -1445,6 +1445,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                                        bind drop_ty(_, _, _));
 
             } else if (ty.type_is_scalar(t) ||
+                       ty.type_is_native(t) ||
                        ty.type_is_nil(t)) {
                 ret res(cx, C_nil());
             }
@@ -1927,7 +1928,7 @@ fn copy_ty(@block_ctxt cx,
            ValueRef dst,
            ValueRef src,
            @ty.t t) -> result {
-    if (ty.type_is_scalar(t)) {
+    if (ty.type_is_scalar(t) || ty.type_is_native(t)) {
         ret res(cx, cx.build.Store(src, dst));
 
     } else if (ty.type_is_nil(t)) {
@@ -3795,7 +3796,7 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
 fn load_scalar_or_boxed(@block_ctxt cx,
                         ValueRef v,
                         @ty.t t) -> ValueRef {
-    if (ty.type_is_scalar(t) || ty.type_is_boxed(t)) {
+    if (ty.type_is_scalar(t) || ty.type_is_boxed(t) || ty.type_is_native(t)) {
         ret cx.build.Load(v);
     } else {
         ret v;

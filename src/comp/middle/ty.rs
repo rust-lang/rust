@@ -465,6 +465,16 @@ fn type_is_scalar(@t ty) -> bool {
     fail;
 }
 
+// FIXME: should we just return true for native types in
+// type_is_scalar?
+fn type_is_native(@t ty) -> bool {
+    alt (ty.struct) {
+        case (ty_native) { ret true; }
+        case (_) { ret false; }
+    }
+    fail;
+}
+
 fn type_has_dynamic_size(@t ty) -> bool {
     alt (ty.struct) {
         case (ty_tup(?ts)) {
