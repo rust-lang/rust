@@ -3520,7 +3520,6 @@ fn trans_tup(@block_ctxt cx, vec[ast.elt] elts,
              &ast.ann ann) -> result {
     auto bcx = cx;
     auto t = node_ann_type(bcx.fcx.ccx, ann);
-    auto llty = type_of(bcx.fcx.ccx, t);
     auto tup_res = alloc_ty(bcx, t);
     auto tup_val = tup_res.val;
     bcx = tup_res.bcx;
