@@ -1201,7 +1201,19 @@ fn make_tydesc(@crate_ctxt cx, @ty.t t, vec[ast.def_id] typaram_defs) {
     auto dg = make_drop_glue;
     auto drop_glue = make_generic_glue(cx, t, "drop", dg, typaram_defs);
 
-    auto llty = type_of(cx, t);
+    auto llsize;
+    auto llalign;
+    if (!ty.type_has_dynamic_size(t)) {
+        auto llty = type_of(cx, t);
+        llsize = llsize_of(llty);
+        llalign = llalign_of(llty);
+    } else {
+        // These will be overwritten as the derived tydesc is generated, so
+        // we create placeholder values.
+        llsize = C_int(0);
+        llalign = C_int(0);
+    }
+
     auto glue_fn_ty = T_ptr(T_glue_fn(cx.tn));
 
     // FIXME: this adjustment has to do with the ridiculous encoding of
@@ -1218,8 +1230,8 @@ fn make_tydesc(@crate_ctxt cx, @ty.t t, vec[ast.def_id] typaram_defs) {
     auto gvar = llvm.LLVMAddGlobal(cx.llmod, T_tydesc(cx.tn),
                                    _str.buf(name));
     auto tydesc = C_struct(vec(C_null(T_ptr(T_ptr(T_tydesc(cx.tn)))),
-                               llsize_of(llty),
-                               llalign_of(llty),
+                               llsize,
+                               llalign,
                                off(gvar, take_glue),  // take_glue_off
                                off(gvar, drop_glue),  // drop_glue_off
                                C_null(glue_fn_ty),    // free_glue_off
