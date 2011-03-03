@@ -397,6 +397,16 @@ fn T_opaque_closure_ptr(type_names tn) -> TypeRef {
     ret t;
 }
 
+fn T_opaque_tag_ptr(type_names tn) -> TypeRef {
+    auto s = "*tag";
+    if (tn.name_has_type(s)) {
+        ret tn.get_type(s);
+    }
+    auto t = T_ptr(T_struct(vec(T_int(), T_i8())));
+    tn.associate(s, t);
+    ret t;
+}
+
 fn T_captured_tydescs(type_names tn, uint n) -> TypeRef {
     ret T_struct(_vec.init_elt[TypeRef](T_ptr(T_tydesc(tn)), n));
 }
@@ -4576,27 +4586,41 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     auto arg_tys = arg_tys_of_fn(variant.ann);
     copy_args_to_allocas(bcx, none[TypeRef], fn_args, arg_tys);
 
-    auto lldiscrimptr = bcx.build.GEP(fcx.llretptr,
+    // Now synthesize a tuple type for the arguments, so that GEP_tup_like()
+    // will know what the data part of the variant looks like.
+    let vec[@ty.t] true_arg_tys = vec();
+    for (ty.arg a in arg_tys) {
+        true_arg_tys += vec(a.ty);
+    }
+    auto tup_ty = ty.plain_ty(ty.ty_tup(true_arg_tys));
+
+    // Cast the tag to a type we can GEP into.
+    auto lltagptr = bcx.build.PointerCast(fcx.llretptr,
+                                          T_opaque_tag_ptr(fcx.ccx.tn));
+
+    auto lldiscrimptr = bcx.build.GEP(lltagptr,
                                       vec(C_int(0), C_int(0)));
     bcx.build.Store(C_int(index), lldiscrimptr);
 
-    auto llblobptr = bcx.build.GEP(fcx.llretptr,
+    auto llblobptr = bcx.build.GEP(lltagptr,
                                    vec(C_int(0), C_int(1)));
 
-    // First, generate the union type.
-    let vec[TypeRef] llargtys = vec();
-    for (ty.arg arg in arg_tys) {
-        llargtys += vec(type_of(cx, arg.ty));
+    // Cast the blob pointer to the appropriate type, if we need to (i.e. if
+    // the blob pointer isn't dynamically sized).
+    let ValueRef llunionptr;
+    if (!ty.type_has_dynamic_size(tup_ty)) {
+        auto llty = type_of(cx, tup_ty);
+        llunionptr = bcx.build.TruncOrBitCast(llblobptr, T_ptr(llty));
+    } else {
+        llunionptr = llblobptr;
     }
-
-    auto llunionty = T_struct(llargtys);
-    auto llunionptr = bcx.build.TruncOrBitCast(llblobptr, T_ptr(llunionty));
 
     i = 0u;
     for (ast.variant_arg va in variant.args) {
         auto llargval = bcx.build.Load(fcx.llargs.get(va.id));
-        auto lldestptr = bcx.build.GEP(llunionptr,
-                                       vec(C_int(0), C_int(i as int)));
+        auto rslt = GEP_tup_like(bcx, tup_ty, llunionptr, vec(0, i as int));
+        bcx = rslt.bcx;
+        auto lldestptr = rslt.val;
 
         bcx.build.Store(llargval, lldestptr);
         i += 1u;
