@@ -621,11 +621,22 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
 }
 
 fn type_of_arg(@crate_ctxt cx, &ty.arg arg) -> TypeRef {
-    auto ty = type_of_inner(cx, arg.ty);
-    if (arg.mode == ast.alias) {
-        ty = T_ptr(ty);
+    alt (arg.ty.struct) {
+        case (ty.ty_param(_)) {
+            if (arg.mode == ast.alias) {
+                ret T_typaram_ptr(cx.tn);
+            }
+        }
+        case (_) {
+            // fall through
+        }
     }
-    ret ty;
+
+    auto typ = type_of_inner(cx, arg.ty);
+    if (arg.mode == ast.alias) {
+        typ = T_ptr(typ);
+    }
+    ret typ;
 }
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
