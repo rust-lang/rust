@@ -521,6 +521,7 @@ TEST_XFAILS_RUSTC := $(CONST_TAG_XFAILS) \
                         task-life-0.rs \
                         threads.rs \
                         type-sizes.rs \
+                        typestate-cfg-nesting.rs \
                         use-import-export.rs \
                         user.rs \
                         utf8.rs \

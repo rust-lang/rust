@@ -24,7 +24,6 @@ type typestate_tables =
       ts_prestates: (node_id,Bits.t) Hashtbl.t;
       ts_poststates: (node_id,Bits.t) Hashtbl.t;
       ts_graph: node_graph;
-      ts_siblings: sibling_map;
       ts_stmts: Ast.stmt Stack.t;
       ts_maxid: int ref;
     }
@@ -38,7 +37,6 @@ let new_tables _ =
     ts_poststates = Hashtbl.create 0;
     ts_prestates = Hashtbl.create 0;
     ts_graph = Hashtbl.create 0;
-    ts_siblings = Hashtbl.create 0;
     ts_stmts = Stack.create ();
     ts_maxid = ref 0 }
 ;;
@@ -790,279 +788,143 @@ let show_node cx graph s i =
          s (int_of_node i) (lset_fmt (Hashtbl.find graph i)))
 ;;
 
-let graph_sequence_building_visitor
-    (cx:ctxt)
-    (tables_stack:typestate_tables Stack.t)
-    (inner:Walk.visitor)
-    : Walk.visitor =
-
-  let tables _ = Stack.top tables_stack in
-
-  (* Flow each stmt to its sequence-successor. *)
-  let visit_stmts stmts =
-    let ts = tables () in
-    let graph = ts.ts_graph in
-    let sibs = ts.ts_siblings in
-    let len = Array.length stmts in
-      for i = 0 to len - 2
-      do
-        let stmt = stmts.(i) in
-        let next = stmts.(i+1) in
-          log cx "sequential stmt edge %d -> %d"
-            (int_of_node stmt.id) (int_of_node next.id);
-          htab_put graph stmt.id [next.id];
-          htab_put sibs stmt.id next.id;
-      done;
-      (* Flow last node to nowhere. *)
-      if len > 0
-      then htab_put graph stmts.(len-1).id []
-  in
-
-  let visit_stmt_pre s =
-    (* Sequence the prelude nodes on special stmts. *)
-    begin
-      match s.node with
-          Ast.STMT_while sw ->
-            let (stmts, _) = sw.Ast.while_lval in
-              visit_stmts stmts
-        | _ -> ()
-    end;
-    inner.Walk.visit_stmt_pre s
-  in
-
-  let visit_block_pre b =
-    visit_stmts b.node;
-    inner.Walk.visit_block_pre b
-  in
-
-    { inner with
-        Walk.visit_stmt_pre = visit_stmt_pre;
-        Walk.visit_block_pre = visit_block_pre }
-;;
-
 let add_flow_edges (graph:node_graph) (n:node_id) (dsts:node_id list) : unit =
-  let existing = Hashtbl.find graph n in
-    Hashtbl.replace graph n (lset_union existing dsts)
+  if Hashtbl.mem graph n
+  then
+    let existing = Hashtbl.find graph n in
+      Hashtbl.replace graph n (lset_union existing dsts)
+  else
+    Hashtbl.add graph n dsts
 ;;
 
-let remove_flow_edges
+let rec build_flow_graph_for_stmt
     (graph:node_graph)
-    (n:node_id)
-    (dsts:node_id list)
-    : unit =
-  let existing = Hashtbl.find graph n in
-    Hashtbl.replace graph n (lset_diff existing dsts)
-;;
+    (predecessors:node_id list)
+    (s:Ast.stmt)
+    : node_id list =
 
-
-let last_id (nodes:('a identified) array) : node_id =
-  let len = Array.length nodes in
-    nodes.(len-1).id
-;;
-
-let last_id_or_block_id (block:Ast.block) : node_id =
-  let len = Array.length block.node in
-    if len = 0
-    then block.id
-    else last_id block.node
-;;
-
-let graph_general_block_structure_building_visitor
-    (cx:ctxt)
-    (tables_stack:typestate_tables Stack.t)
-    (inner:Walk.visitor)
-    : Walk.visitor =
-
-  let tables _ = Stack.top tables_stack in
-
-  let visit_stmt_pre s =
-    let ts = tables () in
-    let stmts = ts.ts_stmts in
-      Stack.push s stmts;
-      inner.Walk.visit_stmt_pre s
+  let connect ps qs =
+    List.iter
+      (fun pred -> add_flow_edges graph pred qs)
+      ps
   in
 
-  let visit_stmt_post s =
-    let ts = tables () in
-    let stmts = ts.ts_stmts in
-      inner.Walk.visit_stmt_post s;
-      ignore (Stack.pop stmts)
+  let seq ps (ss:Ast.stmt array) =
+    build_flow_graph_for_stmts graph ps ss
   in
 
-  let show_node =
-    fun n id -> show_node cx (tables()).ts_graph n id
+  let blk ps b =
+    connect ps [b.id];
+    seq [b.id] b.node
   in
 
-  let visit_block_pre b =
-    begin
-      let ts = tables () in
-      let graph = ts.ts_graph in
-      let sibs = ts.ts_siblings in
-      let stmts = ts.ts_stmts in
-      let len = Array.length b.node in
-      let _ = htab_put graph b.id
-        (if len > 0 then [b.node.(0).id] else [])
-      in
-
-      (*
-       * If block has len, 
-       * then flow block to block.node.(0) and block.node.(len-1) to dsts
-       * else flow block to dsts
-       * 
-       * so AST:
-       * 
-       *   block#n{ stmt#0 ... stmt#k };
-       *   stmt#j;
-       * 
-       * turns into graph:
-       * 
-       *   block#n -> stmt#0 -> ... -> stmt#k -> stmt#j
-       * 
-       *)
-        if Stack.is_empty stmts
-        then ()
-        else
-          let s = Stack.top stmts in
-            add_flow_edges graph s.id [b.id];
-            match htab_search sibs s.id with
-                None -> ()
-              | Some sib_id ->
-                  if len > 0
-                  then
-                    add_flow_edges graph (last_id b.node) [sib_id]
-                  else
-                    add_flow_edges graph b.id [sib_id]
-    end;
-    show_node "block" b.id;
-    inner.Walk.visit_block_pre b
+  let first ss =
+    if Array.length ss = 0
+    then []
+    else [ss.(0).id]
   in
 
-    { inner with
-        Walk.visit_stmt_pre = visit_stmt_pre;
-        Walk.visit_stmt_post = visit_stmt_post;
-        Walk.visit_block_pre = visit_block_pre }
-;;
-
-
-let graph_special_block_structure_building_visitor
-    (cx:ctxt)
-    (tables_stack:typestate_tables Stack.t)
-    (inner:Walk.visitor)
-    : Walk.visitor =
-
-  let tables _ = Stack.top tables_stack in
-
-  let visit_stmt_pre s =
-    begin
+    connect [s.id] [];
+    let outs =
       match s.node with
-
-          Ast.STMT_if sif ->
-            let ts = tables () in
-            let graph = ts.ts_graph in
-            let cond_id = s.id in
-            let succ = Hashtbl.find graph cond_id in
-            let then_id = sif.Ast.if_then.id in
-            let then_end_id = last_id_or_block_id sif.Ast.if_then in
-            let show_node = show_node cx graph in
-            let succ = List.filter (fun x -> not (x = then_id)) succ in
-              show_node "initial cond" cond_id;
-              show_node "initial then" then_id;
-              show_node "initial then_end" then_end_id;
-              begin
-                match sif.Ast.if_else with
-                    None ->
-                        Hashtbl.replace graph cond_id (then_id :: succ);
-                        (* Kill residual messed-up block wiring.*)
-                        remove_flow_edges graph then_end_id [then_id];
-                        show_node "cond" cond_id;
-                        show_node "then" then_id;
-                        show_node "then_end" then_end_id;
-
-                  | Some e ->
-                      let else_id = e.id in
-                      let succ =
-                        List.filter (fun x -> not (x = else_id)) succ
-                      in
-                      let else_end_id = last_id_or_block_id e in
-                        show_node "initial else" else_id;
-                        show_node "initial else_end" else_end_id;
-                        Hashtbl.replace graph cond_id [then_id; else_id];
-                        Hashtbl.replace graph then_end_id succ;
-                        Hashtbl.replace graph else_end_id succ;
-
-                        (* Kill residual messed-up block wiring.*)
-                        remove_flow_edges graph then_end_id [then_id];
-                        remove_flow_edges graph else_id [then_id];
-                        remove_flow_edges graph else_end_id [then_id];
-                        show_node "cond" cond_id;
-                        show_node "then" then_id;
-                        show_node "then_end" then_end_id;
-                        show_node "else" else_id;
-                        show_node "else_end" else_end_id;
-              end;
 
         | Ast.STMT_while sw ->
-            (* There are a bunch of rewirings to do on 'while' nodes. *)
+            let (pre_loop_stmts, _) = sw.Ast.while_lval in
+            let body = sw.Ast.while_body in
+            let preloop_end = seq [s.id] pre_loop_stmts in
+              connect predecessors [s.id];
+              connect (blk preloop_end body) (first pre_loop_stmts);
+              preloop_end
 
-            begin
-              let ts = tables () in
-              let graph = ts.ts_graph in
-              let dsts = Hashtbl.find graph s.id in
-              let body = sw.Ast.while_body in
-              let succ_stmts =
-                List.filter (fun x -> not (x = body.id)) dsts
-              in
+        | Ast.STMT_for sf ->
+            let body_end = blk [s.id] sf.Ast.for_body in
+              connect predecessors [s.id];
+              connect body_end (first sf.Ast.for_body.node);
+              body_end
 
-              let (pre_loop_stmts, _) = sw.Ast.while_lval in
-              let loop_head_id =
-                (* Splice loop prelude into flow graph, save loop-head
-                 * node.
-                 *)
-                let slen = Array.length pre_loop_stmts in
-                  if slen > 0
-                  then
-                    begin
-                      let pre_loop_begin = pre_loop_stmts.(0).id in
-                      let pre_loop_end = last_id pre_loop_stmts in
-                        remove_flow_edges graph s.id [body.id];
-                        add_flow_edges graph s.id [pre_loop_begin];
-                        add_flow_edges graph pre_loop_end [body.id];
-                        pre_loop_end
-                    end
-                  else
-                    body.id
-              in
+        | Ast.STMT_for_each sfe ->
+            let head_end = blk [s.id] sfe.Ast.for_each_head in
+            let body_end = blk head_end sfe.Ast.for_each_body in
+              connect predecessors [s.id];
+              connect body_end (first sfe.Ast.for_each_head.node);
+              body_end
 
-                (* Always flow s into the loop prelude; prelude may end
-                 * loop.
-                 *)
-                remove_flow_edges graph s.id succ_stmts;
-                add_flow_edges graph loop_head_id succ_stmts;
+        | Ast.STMT_if sif ->
+            connect predecessors [s.id];
+            (blk [s.id] sif.Ast.if_then) @
+              (match sif.Ast.if_else with
+                   None -> [s.id]
+                 | Some els -> blk [s.id] els)
 
-                (* Flow loop-end to loop-head. *)
-                let loop_end = last_id_or_block_id body in
-                  add_flow_edges graph loop_end [loop_head_id]
-            end
+        | Ast.STMT_alt_tag sat ->
+            connect predecessors [s.id];
+            Array.fold_left
+              (fun ends {node=(_, b); id=_} -> (blk [s.id] b) @ ends)
+              [] sat.Ast.alt_tag_arms
 
-        | Ast.STMT_alt_tag at ->
-            let ts = tables () in
-            let graph = ts.ts_graph in
-            let dsts = Hashtbl.find graph s.id in
-            let arm_blocks =
-              let arm_block_id { node = (_, block); id = _ } = block.id in
-              Array.to_list (Array.map arm_block_id at.Ast.alt_tag_arms)
-            in
-            let succ_stmts =
-              List.filter (fun x -> not (List.mem x arm_blocks)) dsts
-            in
-              remove_flow_edges graph s.id succ_stmts
+        | Ast.STMT_block b ->
+            blk predecessors b
 
+        | _ ->
+            connect predecessors [s.id];
+            [s.id]
+    in
+      connect outs [];
+      outs
+
+and build_flow_graph_for_stmts
+    (graph:node_graph)
+    (predecessors:node_id list)
+    (ss:Ast.stmt array)
+    : node_id list =
+  Array.fold_left (build_flow_graph_for_stmt graph) predecessors ss
+;;
+
+
+let graph_building_visitor
+    (cx:ctxt)
+    (tables_stack:typestate_tables Stack.t)
+    (inner:Walk.visitor)
+    : Walk.visitor =
+
+  let tables _ = Stack.top tables_stack in
+  let graph _ = (tables()).ts_graph in
+  let blk b =
+    add_flow_edges (graph()) b.id [];
+    ignore (build_flow_graph_for_stmts (graph()) [b.id] b.node)
+  in
+
+  let visit_mod_item_pre n p i =
+    begin
+      match i.node.Ast.decl_item with
+          Ast.MOD_ITEM_fn fn -> blk fn.Ast.fn_body
         | _ -> ()
     end;
-    inner.Walk.visit_stmt_post s
+    inner.Walk.visit_mod_item_pre n p i
   in
+
+  let visit_obj_fn_pre obj ident fn =
+    blk fn.node.Ast.fn_body;
+    inner.Walk.visit_obj_fn_pre obj ident fn
+  in
+
+  let visit_obj_drop_pre obj b =
+    blk b;
+    inner.Walk.visit_obj_drop_pre obj b
+  in
+
+  let visit_block_pre b =
+    if Hashtbl.mem cx.ctxt_block_is_loop_body b.id
+    then blk b;
+    inner.Walk.visit_block_pre b
+  in
+
     { inner with
-        Walk.visit_stmt_pre = visit_stmt_pre }
+        Walk.visit_mod_item_pre = visit_mod_item_pre;
+        Walk.visit_obj_fn_pre = visit_obj_fn_pre;
+        Walk.visit_obj_drop_pre = visit_obj_drop_pre;
+        Walk.visit_block_pre = visit_block_pre }
+
 ;;
 
 let find_roots
@@ -1631,13 +1493,7 @@ let process_crate
             (condition_assigning_visitor cx tables_stack scopes
                Walk.empty_visitor)));
       (table_managed
-         (graph_sequence_building_visitor cx tables_stack
-            Walk.empty_visitor));
-      (table_managed
-         (graph_general_block_structure_building_visitor cx tables_stack
-            Walk.empty_visitor));
-      (table_managed
-         (graph_special_block_structure_building_visitor cx tables_stack
+         (graph_building_visitor cx tables_stack
             Walk.empty_visitor));
     |]
   in
