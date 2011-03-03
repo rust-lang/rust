@@ -1049,13 +1049,13 @@ fn GEP_tup_like(@block_ctxt cx, @ty.t t,
     bcx = sz.bcx;
     auto raw = bcx.build.PointerCast(base, T_ptr(T_i8()));
     auto bumped = bcx.build.GEP(raw, vec(sz.val));
-    alt (s.target.struct) {
-        case (ty.ty_param(_)) { ret res(bcx, bumped); }
-        case (_) {
-            auto ty = T_ptr(type_of(bcx.fcx.ccx, s.target));
-            ret res(bcx, bcx.build.PointerCast(bumped, ty));
-        }
+
+    if (ty.type_has_dynamic_size(s.target)) {
+        ret res(bcx, bumped);
     }
+
+    auto typ = T_ptr(type_of(bcx.fcx.ccx, s.target));
+    ret res(bcx, bcx.build.PointerCast(bumped, typ));
 }
 
 
