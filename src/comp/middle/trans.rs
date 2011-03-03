@@ -417,7 +417,17 @@ fn T_opaque_obj_ptr(type_names tn) -> TypeRef {
 }
 
 
+// This function now fails if called on a type with dynamic size (as its
+// return value was always meaningless in that case anyhow). Beware!
+//
+// TODO: Enforce via a predicate.
 fn type_of(@crate_ctxt cx, @ty.t t) -> TypeRef {
+    if (ty.type_has_dynamic_size(t)) {
+        log "type_of() called on a type with dynamic size: " +
+            ty.ty_to_str(t);
+        fail;
+    }
+
     ret type_of_inner(cx, t);
 }
 
