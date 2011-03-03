@@ -107,7 +107,6 @@ fn expr_to_str(@ast.expr expr) -> str {
 
 fn parse_fmt_string(str s) -> vec[piece] {
     let vec[piece] pieces = vec();
-    // FIXME: Should be counting codepoints instead of bytes
     auto lim = _str.byte_len(s);
     auto buf = "";
 
@@ -151,7 +150,6 @@ fn peek_num(str s, uint i, uint lim) -> option.t[tup(uint, uint)] {
         ret none[tup(uint, uint)];
     }
 
-    // FIXME: Presumably s.(i) will return char eventually
     auto c = s.(i);
     if (!('0' as u8 <= c && c <= '9' as u8)) {
         ret option.none[tup(uint, uint)];
