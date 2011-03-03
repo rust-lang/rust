@@ -1596,8 +1596,10 @@ fn iter_structural_ty_full(@block_ctxt cx,
         case (ty.ty_tup(?args)) {
             let int i = 0;
             for (@ty.t arg in args) {
-                auto elt_a = r.bcx.build.GEP(av, vec(C_int(0), C_int(i)));
-                auto elt_b = r.bcx.build.GEP(bv, vec(C_int(0), C_int(i)));
+                r = GEP_tup_like(r.bcx, t, av, vec(0, i));
+                auto elt_a = r.val;
+                r = GEP_tup_like(r.bcx, t, bv, vec(0, i));
+                auto elt_b = r.val;
                 r = f(r.bcx,
                       load_scalar_or_boxed(r.bcx, elt_a, arg),
                       load_scalar_or_boxed(r.bcx, elt_b, arg),
@@ -1608,8 +1610,10 @@ fn iter_structural_ty_full(@block_ctxt cx,
         case (ty.ty_rec(?fields)) {
             let int i = 0;
             for (ty.field fld in fields) {
-                auto llfld_a = r.bcx.build.GEP(av, vec(C_int(0), C_int(i)));
-                auto llfld_b = r.bcx.build.GEP(bv, vec(C_int(0), C_int(i)));
+                r = GEP_tup_like(r.bcx, t, av, vec(0, i));
+                auto llfld_a = r.val;
+                r = GEP_tup_like(r.bcx, t, bv, vec(0, i));
+                auto llfld_b = r.val;
                 r = f(r.bcx,
                       load_scalar_or_boxed(r.bcx, llfld_a, fld.ty),
                       load_scalar_or_boxed(r.bcx, llfld_b, fld.ty),
