@@ -1071,8 +1071,8 @@ fn trans_raw_malloc(@block_ctxt cx, TypeRef llptr_ty, ValueRef llsize)
 
 fn trans_malloc_without_cleanup(@block_ctxt cx, @ty.t t) -> result {
     auto llty = type_of(cx.fcx.ccx, t);
-    auto rslt = size_of(cx, t);
-    ret trans_raw_malloc(rslt.bcx, llty, rslt.val);
+    auto llsize = llsize_of(llvm.LLVMGetElementType(llty));
+    ret trans_raw_malloc(cx, llty, llsize);
 }
 
 fn trans_malloc(@block_ctxt cx, @ty.t t) -> result {
