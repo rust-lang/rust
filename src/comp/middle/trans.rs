@@ -401,20 +401,19 @@ fn T_captured_tydescs(type_names tn, uint n) -> TypeRef {
     ret T_struct(_vec.init_elt[TypeRef](T_ptr(T_tydesc(tn)), n));
 }
 
-fn T_obj(type_names tn, uint n_captured_tydescs,
-         TypeRef llfields_ty) -> TypeRef {
-    ret T_struct(vec(T_ptr(T_tydesc(tn)),
-                     T_captured_tydescs(tn, n_captured_tydescs),
-                     llfields_ty));
-}
+fn T_obj_ptr(type_names tn, uint n_captured_tydescs) -> TypeRef {
+    // This function is not publicly exposed because it returns an incomplete
+    // type. The dynamically-sized fields follow the captured tydescs.
+    fn T_obj(type_names tn, uint n_captured_tydescs) -> TypeRef {
+        ret T_struct(vec(T_ptr(T_tydesc(tn)),
+                         T_captured_tydescs(tn, n_captured_tydescs)));
+    }
 
-fn T_obj_ptr(type_names tn, uint n_captured_tydescs,
-             TypeRef llfields_ty) -> TypeRef {
-    ret T_ptr(T_box(T_obj(tn, n_captured_tydescs, llfields_ty)));
+    ret T_ptr(T_box(T_obj(tn, n_captured_tydescs)));
 }
 
 fn T_opaque_obj_ptr(type_names tn) -> TypeRef {
-    ret T_obj_ptr(tn, 0u, T_nil());
+    ret T_obj_ptr(tn, 0u);
 }
 
 
@@ -4265,56 +4264,73 @@ fn ret_ty_of_fn(ast.ann ann) -> @ty.t {
     ret ret_ty_of_fn_ty(ty.ann_to_type(ann));
 }
 
-fn populate_fn_ctxt_from_llself(@block_ctxt cx, ValueRef llself) {
+fn populate_fn_ctxt_from_llself(@block_ctxt cx, ValueRef llself) -> result {
+    auto bcx = cx;
 
-    let vec[TypeRef] llfield_tys = vec();
+    let vec[@ty.t] field_tys = vec();
 
-    for (ast.obj_field f in cx.fcx.ccx.obj_fields) {
-        llfield_tys += node_type(cx.fcx.ccx, f.ann);
+    for (ast.obj_field f in bcx.fcx.ccx.obj_fields) {
+        field_tys += vec(node_ann_type(bcx.fcx.ccx, f.ann));
     }
 
-    auto n_typarams = _vec.len[ast.ty_param](cx.fcx.ccx.obj_typarams);
-    let TypeRef llobj_box_ty = T_obj_ptr(cx.fcx.ccx.tn, n_typarams,
-                                         T_struct(llfield_tys));
+    // Synthesize a tuple type for the fields so that GEP_tup_like() can work
+    // its magic.
+    auto fields_tup_ty = ty.plain_ty(ty.ty_tup(field_tys));
+
+    auto n_typarams = _vec.len[ast.ty_param](bcx.fcx.ccx.obj_typarams);
+    let TypeRef llobj_box_ty = T_obj_ptr(bcx.fcx.ccx.tn, n_typarams);
 
     auto box_cell =
-        cx.build.GEP(llself,
-                     vec(C_int(0),
-                         C_int(abi.obj_field_box)));
+        bcx.build.GEP(llself,
+                      vec(C_int(0),
+                          C_int(abi.obj_field_box)));
 
-    auto box_ptr = cx.build.Load(box_cell);
+    auto box_ptr = bcx.build.Load(box_cell);
 
-    box_ptr = cx.build.PointerCast(box_ptr, llobj_box_ty);
+    box_ptr = bcx.build.PointerCast(box_ptr, llobj_box_ty);
 
-    auto obj_typarams = cx.build.GEP(box_ptr,
+    auto obj_typarams = bcx.build.GEP(box_ptr,
                                      vec(C_int(0),
                                          C_int(abi.box_rc_field_body),
                                          C_int(abi.obj_body_elt_typarams)));
 
-    auto obj_fields = cx.build.GEP(box_ptr,
-                                   vec(C_int(0),
-                                       C_int(abi.box_rc_field_body),
-                                       C_int(abi.obj_body_elt_fields)));
+    // The object fields immediately follow the type parameters, so we skip
+    // over them to get the pointer.
+    auto obj_fields = bcx.build.Add(vp2i(bcx, obj_typarams),
+        llsize_of(llvm.LLVMGetElementType(val_ty(obj_typarams))));
+
+    // If we can (i.e. the type is statically sized), then cast the resulting
+    // fields pointer to the appropriate LLVM type. If not, just leave it as
+    // i8 *.
+    if (!ty.type_has_dynamic_size(fields_tup_ty)) {
+        auto llfields_ty = type_of(bcx.fcx.ccx, fields_tup_ty);
+        obj_fields = vi2p(bcx, obj_fields, T_ptr(llfields_ty));
+    } else {
+        obj_fields = vi2p(bcx, obj_fields, T_ptr(T_i8()));
+    }
+
 
     let int i = 0;
 
-    for (ast.ty_param p in cx.fcx.ccx.obj_typarams) {
-        let ValueRef lltyparam = cx.build.GEP(obj_typarams,
-                                              vec(C_int(0),
-                                                  C_int(i)));
-        lltyparam = cx.build.Load(lltyparam);
-        cx.fcx.lltydescs.insert(p.id, lltyparam);
+    for (ast.ty_param p in bcx.fcx.ccx.obj_typarams) {
+        let ValueRef lltyparam = bcx.build.GEP(obj_typarams,
+                                               vec(C_int(0),
+                                                   C_int(i)));
+        lltyparam = bcx.build.Load(lltyparam);
+        bcx.fcx.lltydescs.insert(p.id, lltyparam);
         i += 1;
     }
 
     i = 0;
-    for (ast.obj_field f in cx.fcx.ccx.obj_fields) {
-        let ValueRef llfield = cx.build.GEP(obj_fields,
-                                            vec(C_int(0),
-                                                C_int(i)));
+    for (ast.obj_field f in bcx.fcx.ccx.obj_fields) {
+        auto rslt = GEP_tup_like(bcx, fields_tup_ty, obj_fields, vec(0, i));
+        bcx = rslt.bcx;
+        auto llfield = rslt.val;
         cx.fcx.llobjfields.insert(f.id, llfield);
         i += 1;
     }
+
+    ret res(bcx, C_nil());
 }
 
 fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
@@ -4335,7 +4351,7 @@ fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
 
     alt (fcx.llself) {
         case (some[ValueRef](?llself)) {
-            populate_fn_ctxt_from_llself(bcx, llself);
+            bcx = populate_fn_ctxt_from_llself(bcx, llself).bcx;
         }
         case (_) {
         }
