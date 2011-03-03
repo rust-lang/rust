@@ -242,6 +242,9 @@ tag expr_ {
     expr_be(@expr);
     expr_log(@expr);
     expr_check_expr(@expr);
+    expr_port(ann);
+    expr_chan(@expr, ann);
+    expr_send(@expr /* TODO: @expr|is_lval */, @expr, ann);
 }
 
 type lit = spanned[lit_];
@@ -278,6 +281,8 @@ tag ty_ {
     ty_rec(vec[ty_field]);
     ty_fn(proto, vec[ty_arg], @ty);        // TODO: effect
     ty_obj(vec[ty_method]);
+    ty_chan(@ty);
+    ty_port(@ty);
     ty_path(path, option.t[def]);
     ty_mutable(@ty);
     ty_type;
