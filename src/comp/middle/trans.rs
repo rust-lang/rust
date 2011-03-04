@@ -4829,6 +4829,11 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
     let str s = cx.names.next("_rust_wrapper") + sep() + name;
     let ValueRef wrapper_fn = decl_fastcall_fn(cx.llmod, s, wrapper_type);
 
+    // Build the wrapper.
+    auto fcx = new_fn_ctxt(cx, wrapper_fn);
+    auto bcx = new_top_block_ctxt(fcx);
+    bcx.build.RetVoid();
+
     // Declare the global constant pair that points to it.
     auto wrapper_pair_type = T_fn_pair(cx.tn, wrapper_type);
     let str ps = cx.names.next("_rust_wrapper_pair") + sep() + name;
