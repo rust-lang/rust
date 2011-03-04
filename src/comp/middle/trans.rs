@@ -4932,12 +4932,6 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
         case (ast.item_tag(_, ?variants, _, ?tag_id)) {
             auto info = cx.tags.get(mk_plain_tag(tag_id));
 
-            auto tag_ty = llvm.LLVMResolveTypeHandle(info.th.llth);
-            check (llvm.LLVMCountStructElementTypes(tag_ty) == 2u);
-            auto elts = vec(0 as TypeRef, 0 as TypeRef);
-            llvm.LLVMGetStructElementTypes(tag_ty, _vec.buf[TypeRef](elts));
-            auto union_ty = elts.(1);
-
             auto i = 0u;
             auto n_variants = _vec.len[ast.variant](variants);
             while (i < n_variants) {
