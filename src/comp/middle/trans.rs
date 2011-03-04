@@ -1144,8 +1144,6 @@ fn linearize_ty_params(@block_ctxt cx, @ty.t t)
             }
             ret t;
         }
-
-        fn fold_tag_ty(@ty.t t) -> @ty.t { ret t; }
     }
 
 
