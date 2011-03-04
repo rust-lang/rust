@@ -58,7 +58,7 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef no_op_type_glue,
                     ValueRef memcpy_glue,
                     ValueRef bzero_glue,
-                    ValueRef vec_grow_glue);
+                    ValueRef vec_append_glue);
 
 type tag_info = rec(type_handle th);
 
@@ -2296,17 +2296,39 @@ fn trans_integral_compare(@block_ctxt cx, ast.binop op, @ty.t intype,
     ret cx.build.ICmp(cmp, lhs, rhs);
 }
 
-fn trans_sequence_append(@block_ctxt cx, @ty.t t,
-                         ValueRef lhs, ValueRef rhs) -> result {
-    cx.fcx.ccx.sess.unimpl("sequence append");
-    fail;
+fn trans_vec_append(@block_ctxt cx, @ty.t t,
+                    ValueRef lhs, ValueRef rhs) -> result {
+
+    auto elt_ty = ty.sequence_element_type(t);
+
+    auto skip_null = C_bool(false);
+    alt (t.struct) {
+        case (ty.ty_str) { skip_null = C_bool(true); }
+        case (_) { }
+    }
+
+    auto bcx = cx;
+
+    auto llvec_tydesc = get_tydesc(bcx, t);
+    bcx = llvec_tydesc.bcx;
+
+    auto llelt_tydesc = get_tydesc(bcx, elt_ty);
+    bcx = llelt_tydesc.bcx;
+
+    ret res(cx, cx.build.FastCall(cx.fcx.ccx.glues.memcpy_glue,
+                                  vec(cx.fcx.lltaskptr,
+                                      llvec_tydesc.val,
+                                      llelt_tydesc.val,
+                                      lhs,
+                                      load_scalar_or_boxed(cx, rhs, t),
+                                      skip_null)));
 }
 
-fn trans_sequence_add(@block_ctxt cx, @ty.t t,
-                      ValueRef lhs, ValueRef rhs) -> result {
+fn trans_vec_add(@block_ctxt cx, @ty.t t,
+                 ValueRef lhs, ValueRef rhs) -> result {
     auto r = alloc_ty(cx, t);
     r = copy_ty(r.bcx, INIT, r.val, lhs, t);
-    ret trans_sequence_append(r.bcx, t, lhs, rhs);
+    ret trans_vec_append(r.bcx, t, lhs, rhs);
 }
 
 
@@ -2316,7 +2338,7 @@ fn trans_eager_binop(@block_ctxt cx, ast.binop op, @ty.t intype,
     alt (op) {
         case (ast.add) {
             if (ty.type_is_sequence(intype)) {
-                ret trans_sequence_add(cx, intype, lhs, rhs);
+                ret trans_vec_add(cx, intype, lhs, rhs);
             }
             ret res(cx, cx.build.Add(lhs, rhs));
         }
@@ -5296,9 +5318,9 @@ fn make_bzero_glue(ModuleRef llmod) -> ValueRef {
     ret fun;
 }
 
-fn make_vec_grow_glue(ModuleRef llmod, type_names tn) -> ValueRef {
+fn make_vec_append_glue(ModuleRef llmod, type_names tn) -> ValueRef {
     /*
-     * Args to vec_grow_glue:
+     * Args to vec_append_glue:
      *
      *   0. (Implicit) task ptr
      *
@@ -5309,9 +5331,11 @@ fn make_vec_grow_glue(ModuleRef llmod, type_names tn) -> ValueRef {
      *      elements can be copied to a newly alloc'ed vec if one must be
      *      created.
      *
-     *   3. Alias to vec that needs to grow (i.e. ptr to ptr to rust_vec).
+     *   3. Dst vec alias (i.e. ptr to ptr to rust_vec, we will mutate it).
      *
-     *   4. Number of bytes of growth requested
+     *   4. Src vec (i.e. ptr to rust_vec).
+     *
+     *   5. Flag indicating whether to skip trailing null on dst.
      *
      */
 
@@ -5319,21 +5343,23 @@ fn make_vec_grow_glue(ModuleRef llmod, type_names tn) -> ValueRef {
                        T_ptr(T_tydesc(tn)),
                        T_ptr(T_tydesc(tn)),
                        T_ptr(T_ptr(T_vec(T_int()))), // a lie.
-                       T_int()), T_void());
+                       T_ptr(T_vec(T_int())), // a lie.
+                       T_bool()), T_void());
 
-    auto llfn = decl_fastcall_fn(llmod, abi.vec_grow_glue_name(), ty);
+    auto llfn = decl_fastcall_fn(llmod, abi.vec_append_glue_name(), ty);
     ret llfn;
 }
 
-fn trans_vec_grow_glue(@crate_ctxt cx) {
+fn trans_vec_append_glue(@crate_ctxt cx) {
 
-    auto llfn = cx.glues.vec_grow_glue;
+    auto llfn = cx.glues.vec_append_glue;
 
     let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 0u);
     let ValueRef llvec_tydesc = llvm.LLVMGetParam(llfn, 1u);
     let ValueRef llelt_tydesc = llvm.LLVMGetParam(llfn, 2u);
-    let ValueRef llvec_ptr = llvm.LLVMGetParam(llfn, 3u);
-    let ValueRef llnbytes = llvm.LLVMGetParam(llfn, 4u);
+    let ValueRef lldst_vec_ptr = llvm.LLVMGetParam(llfn, 3u);
+    let ValueRef llsrc_vec = llvm.LLVMGetParam(llfn, 4u);
+    let ValueRef llskipnull = llvm.LLVMGetParam(llfn, 5u);
 
     auto fcx = @rec(llfn=llfn,
                     lltaskptr=lltaskptr,
@@ -5349,12 +5375,23 @@ fn trans_vec_grow_glue(@crate_ctxt cx) {
 
     auto bcx = new_top_block_ctxt(fcx);
 
-    auto llneed_copy_ptr = bcx.build.Alloca(T_int());
+    // First the dst vec needs to grow to accommodate the src vec.
+    // To do this we have to figure out how many bytes to add.
+    auto n_bytes =
+        bcx.build.Load(bcx.build.GEP(llsrc_vec,
+                                     vec(C_int(0),
+                                         C_int(abi.vec_elt_fill))));
 
+    n_bytes = bcx.build.Select(llskipnull,
+                               bcx.build.Sub(n_bytes, C_int(1)),
+                               n_bytes);
+
+
+    auto llneed_copy_ptr = bcx.build.Alloca(T_int());
     auto llnew_vec_res =
         trans_upcall(bcx, "upcall_vec_grow",
-                     vec(vp2i(bcx, bcx.build.Load(llvec_ptr)),
-                         llnbytes,
+                     vec(vp2i(bcx, bcx.build.Load(lldst_vec_ptr)),
+                         n_bytes,
                          vp2i(bcx, llneed_copy_ptr),
                          vp2i(bcx, llvec_tydesc)));
 
@@ -5363,6 +5400,7 @@ fn trans_vec_grow_glue(@crate_ctxt cx) {
                           llnew_vec_res.val,
                           T_ptr(T_vec(T_int())) // a lie.
                           );
+
 
     // FIXME: complete this.
 
@@ -5396,7 +5434,7 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
              no_op_type_glue = make_no_op_type_glue(llmod, tn),
              memcpy_glue = make_memcpy_glue(llmod),
              bzero_glue = make_bzero_glue(llmod),
-             vec_grow_glue = make_vec_grow_glue(llmod, tn));
+             vec_append_glue = make_vec_append_glue(llmod, tn));
 }
 
 fn trans_crate(session.session sess, @ast.crate crate, str output,
@@ -5456,7 +5494,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
 
     trans_mod(cx, crate.node.module);
     trans_exit_task_glue(cx);
-    trans_vec_grow_glue(cx);
+    trans_vec_append_glue(cx);
     create_crate_constant(cx);
     if (!shared) {
         trans_main_fn(cx, cx.crate_ptr);

@@ -71,8 +71,8 @@ fn bzero_glue_name() -> str {
     ret "rust_bzero_glue";
 }
 
-fn vec_grow_glue_name() -> str {
-    ret "rust_vec_grow_glue";
+fn vec_append_glue_name() -> str {
+    ret "rust_vec_append_glue";
 }
 
 fn upcall_glue_name(int n) -> str {

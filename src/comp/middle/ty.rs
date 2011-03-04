@@ -417,6 +417,15 @@ fn type_is_sequence(@t ty) -> bool {
     fail;
 }
 
+fn sequence_element_type(@t ty) -> @t {
+    alt (ty.struct) {
+        case (ty_str)     { ret plain_ty(ty_machine(common.ty_u8)); }
+        case (ty_vec(?e)) { ret e; }
+    }
+    fail;
+}
+
+
 fn type_is_tup_like(@t ty) -> bool {
     alt (ty.struct) {
         case (ty_box(_))    { ret true; }
