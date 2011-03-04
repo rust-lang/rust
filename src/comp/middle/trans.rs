@@ -60,10 +60,7 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef bzero_glue,
                     ValueRef vec_grow_glue);
 
-type tag_info = rec(
-    type_handle th,
-    mutable @hashmap[ast.def_id,ValueRef] lldiscrims
-);
+type tag_info = rec(type_handle th);
 
 state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
@@ -78,6 +75,7 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id,
                                     @ast.native_item] native_items,
                             hashmap[@ty.t, @tag_info] tags,
+                            hashmap[ast.def_id, ValueRef] discrims,
                             hashmap[ast.def_id, ValueRef] fn_pairs,
                             hashmap[ast.def_id, ValueRef] consts,
                             hashmap[ast.def_id,()] obj_methods,
@@ -2962,9 +2960,7 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     } else {
                         // Nullary variant.
                         auto tag_ty = node_ann_type(cx.fcx.ccx, ann);
-                        auto info = cx.fcx.ccx.tags.get(tag_ty);
-                        check (info.lldiscrims.contains_key(vid));
-                        auto lldiscrim_gv = info.lldiscrims.get(vid);
+                        auto lldiscrim_gv = cx.fcx.ccx.discrims.get(vid);
                         auto lldiscrim = cx.build.Load(lldiscrim_gv);
 
                         auto alloc_result = alloc_ty(cx, tag_ty);
@@ -4866,10 +4862,7 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             auto vi = new_def_hash[uint]();
             auto navi = new_def_hash[uint]();
 
-            auto info = @rec(
-                th=mk_type_handle(),
-                mutable lldiscrims=@new_def_hash[ValueRef]()
-            );
+            auto info = @rec(th=mk_type_handle());
 
             cx.tags.insert(mk_plain_tag(tag_id), info);
             cx.items.insert(tag_id, i);
@@ -4980,8 +4973,6 @@ fn resolve_tag_types(@crate_ctxt cx, @ast.crate crate) {
 fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
     alt (it.node) {
         case (ast.item_tag(_, ?variants, _, ?tag_id)) {
-            auto info = cx.tags.get(mk_plain_tag(tag_id));
-
             auto i = 0u;
             auto n_variants = _vec.len[ast.variant](variants);
             while (i < n_variants) {
@@ -5000,7 +4991,7 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
                 llvm.LLVMSetLinkage(discrim_gvar, lib.llvm.LLVMPrivateLinkage
                                     as llvm.Linkage);
 
-                info.lldiscrims.insert(variant.id, discrim_gvar);
+                cx.discrims.insert(variant.id, discrim_gvar);
 
                 i += 1u;
             }
@@ -5445,6 +5436,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    items = new_def_hash[@ast.item](),
                    native_items = new_def_hash[@ast.native_item](),
                    tags = tags,
+                   discrims = new_def_hash[ValueRef](),
                    fn_pairs = new_def_hash[ValueRef](),
                    consts = new_def_hash[ValueRef](),
                    obj_methods = new_def_hash[()](),
