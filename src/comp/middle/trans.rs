@@ -1278,7 +1278,7 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, str name,
     fn_name = sanitize(fn_name);
     auto llfn = decl_fastcall_fn(cx.llmod, fn_name, llfnty);
 
-    auto fcx = new_fn_ctxt(cx, fn_name, llfn);
+    auto fcx = new_fn_ctxt(cx, llfn);
     auto bcx = new_top_block_ctxt(fcx);
 
     auto re;
@@ -2656,7 +2656,7 @@ fn trans_for_each(@block_ctxt cx,
     // FIXME: handle ty params properly.
     let vec[ast.ty_param] ty_params = vec();
 
-    auto fcx = new_fn_ctxt(cx.fcx.ccx, s, lliterbody);
+    auto fcx = new_fn_ctxt(cx.fcx.ccx, lliterbody);
     auto bcx = new_top_block_ctxt(fcx);
 
     // FIXME: populate lllocals from llenv here.
@@ -3151,7 +3151,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
     let TypeRef llthunk_ty = get_pair_fn_ty(type_of(cx, incoming_fty));
     let ValueRef llthunk = decl_fastcall_fn(cx.llmod, s, llthunk_ty);
 
-    auto fcx = new_fn_ctxt(cx, s, llthunk);
+    auto fcx = new_fn_ctxt(cx, llthunk);
     auto bcx = new_top_block_ctxt(fcx);
 
     auto llclosure = bcx.build.PointerCast(fcx.llenv, llclosure_ty);
@@ -4213,7 +4213,6 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
 //  - trans_args
 
 fn new_fn_ctxt(@crate_ctxt cx,
-               str name,
                ValueRef llfndecl) -> @fn_ctxt {
 
     let ValueRef llretptr = llvm.LLVMGetParam(llfndecl, 0u);
@@ -4429,7 +4428,7 @@ fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
     auto llfndecl = cx.item_ids.get(fid);
     cx.item_names.insert(cx.path, llfndecl);
 
-    auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
+    auto fcx = new_fn_ctxt(cx, llfndecl);
     create_llargs_for_fn_args(fcx, f.proto,
                               ty_self, ret_ty_of_fn(ann),
                               f.decl.inputs, ty_params);
@@ -4514,7 +4513,7 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
                            id=f.id));
     }
 
-    auto fcx = new_fn_ctxt(cx, cx.path, llctor_decl);
+    auto fcx = new_fn_ctxt(cx, llctor_decl);
     create_llargs_for_fn_args(fcx, ast.proto_fn,
                               none[TypeRef], ret_ty_of_fn(ann),
                               fn_args, ty_params);
@@ -4644,7 +4643,7 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     check (cx.item_ids.contains_key(variant.id));
     let ValueRef llfndecl = cx.item_ids.get(variant.id);
 
-    auto fcx = new_fn_ctxt(cx, cx.path, llfndecl);
+    auto fcx = new_fn_ctxt(cx, llfndecl);
     create_llargs_for_fn_args(fcx, ast.proto_fn,
                               none[TypeRef], ret_ty_of_fn(variant.ann),
                               fn_args, ty_params);
