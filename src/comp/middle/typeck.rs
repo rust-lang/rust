@@ -73,6 +73,8 @@ fn generalize_ty(@crate_ctxt cx, @ty.t t) -> @ty.t {
             }
             ret t;
         }
+
+        fn fold_tag_ty(@ty.t t) -> @ty.t { ret t; }
     }
 
     auto generalizer = ty_generalizer(cx, @common.new_def_hash[@ty.t]());
@@ -114,6 +116,8 @@ fn substitute_ty_params(&@crate_ctxt ccx,
                 case (_) { ret typ; }
             }
         }
+
+        fn fold_tag_ty(@ty.t typ) -> @ty.t { ret typ; }
     }
 
     fn hash_int(&int x) -> uint { ret x as uint; }

@@ -294,6 +294,7 @@ fn ty_to_str(&@t typ) -> str {
 
 type ty_fold = state obj {
     fn fold_simple_ty(@t ty) -> @t;
+    fn fold_tag_ty(@t ty) -> @t;
 };
 
 fn fold_ty(ty_fold fld, @t ty) -> @t {
@@ -322,7 +323,8 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
             for (@t subty in subtys) {
                 new_subtys += vec(fold_ty(fld, subty));
             }
-            ret rewrap(ty, ty_tag(tid, new_subtys));
+            auto typ = rewrap(ty, ty_tag(tid, new_subtys));
+            ret fld.fold_tag_ty(typ);
         }
         case (ty_tup(?subtys)) {
             let vec[@t] new_subtys = vec();
@@ -611,6 +613,8 @@ fn count_ty_params(@t ty) -> uint {
             }
             ret ty;
         }
+
+        fn fold_tag_ty(@t ty) -> @t { ret ty; }
     }
 
     let vec[ast.def_id] param_ids_inner = vec();
@@ -1429,6 +1433,8 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                     }
                 }
             }
+
+            fn fold_tag_ty(@t typ) -> @t { ret typ; }
         }
 
         ret ty.fold_ty(folder(bindings), typ);
@@ -1548,6 +1554,8 @@ fn replace_type_params(@t typ, hashmap[ast.def_id,@t] param_map) -> @t {
                 }
             }
         }
+
+        fn fold_tag_ty(@t typ) -> @t { ret typ; }
     }
     auto replacer = param_replacer(param_map);
     ret fold_ty(replacer, typ);
