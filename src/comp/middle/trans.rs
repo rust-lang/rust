@@ -4851,7 +4851,6 @@ fn trans_item(@crate_ctxt cx, &ast.item item) {
         case (ast.item_tag(?name, ?variants, ?tps, ?tag_id)) {
             auto sub_cx = @rec(path=cx.path + sep() + name with *cx);
             auto i = 0;
-            log "translating variants for " + name;
             for (ast.variant variant in variants) {
                 trans_tag_variant(sub_cx, tag_id, variant, i, tps);
                 i += 1;
