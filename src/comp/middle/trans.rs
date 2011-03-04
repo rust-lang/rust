@@ -1770,6 +1770,81 @@ fn iter_structural_ty_full(@block_ctxt cx,
     ret r;
 }
 
+// Iterates through a pair of sequences, until the src* hits the src_lim*.
+fn iter_sequence_pair_inner(@block_ctxt cx,
+                            ValueRef dst,     // elt*
+                            ValueRef src,     // elt*
+                            ValueRef src_lim, // elt*
+                            @ty.t elt_ty,
+                            val_pair_and_ty_fn f) -> result {
+
+    auto bcx = cx;
+
+    auto llunit_ty = type_of(cx.fcx.ccx, elt_ty);
+    auto unit_sz = size_of(bcx, elt_ty);
+    bcx = unit_sz.bcx;
+
+    let ValueRef src_int = vp2i(bcx, src);
+    let ValueRef src_lim_int = vp2i(bcx, src_lim);
+    let ValueRef dst_int = vp2i(bcx, dst);
+
+    auto cond_cx = new_scope_block_ctxt(cx, "sequence-iter cond");
+    auto body_cx = new_scope_block_ctxt(cx, "sequence-iter body");
+    auto next_cx = new_sub_block_ctxt(cx, "next");
+
+    bcx.build.Br(cond_cx.llbb);
+
+    let ValueRef src_curr = cond_cx.build.Phi(T_int(),
+                                              vec(src_int), vec(bcx.llbb));
+    let ValueRef dst_curr = cond_cx.build.Phi(T_int(),
+                                              vec(dst_int), vec(bcx.llbb));
+
+    auto end_test = cond_cx.build.ICmp(lib.llvm.LLVMIntNE,
+                                       src_curr, src_lim_int);
+
+    cond_cx.build.CondBr(end_test, body_cx.llbb, next_cx.llbb);
+
+    auto src_curr_ptr = vi2p(body_cx, src_curr, T_ptr(llunit_ty));
+    auto dst_curr_ptr = vi2p(body_cx, dst_curr, T_ptr(llunit_ty));
+
+    auto body_res = f(body_cx,
+                      dst_curr_ptr,
+                      load_scalar_or_boxed(body_cx, src_curr_ptr, elt_ty),
+                      elt_ty);
+    body_cx = body_res.bcx;
+
+    auto src_next = body_cx.build.Add(src_curr, unit_sz.val);
+    auto dst_next = body_cx.build.Add(dst_curr, unit_sz.val);
+    body_cx.build.Br(cond_cx.llbb);
+
+    cond_cx.build.AddIncomingToPhi(src_curr, vec(src_next),
+                                   vec(body_cx.llbb));
+
+    cond_cx.build.AddIncomingToPhi(dst_curr, vec(dst_next),
+                                   vec(body_cx.llbb));
+
+    ret res(next_cx, C_nil());
+}
+
+
+fn iter_sequence_inner(@block_ctxt cx,
+                       ValueRef src,     // elt*
+                       ValueRef src_lim, // elt*
+                       @ty.t elt_ty,
+                       val_and_ty_fn f) -> result {
+    fn adaptor_fn(val_and_ty_fn f,
+                  @block_ctxt cx,
+                  ValueRef av,
+                  ValueRef bv,
+                  @ty.t t) -> result {
+        ret f(cx, bv, t);
+    }
+
+    be iter_sequence_pair_inner(cx, src, src, src_lim, elt_ty,
+                                bind adaptor_fn(f, _, _, _, _));
+}
+
+
 // Iterates through the elements of a vec or str.
 fn iter_sequence(@block_ctxt cx,
                  ValueRef v,
@@ -1789,43 +1864,18 @@ fn iter_sequence(@block_ctxt cx,
 
         auto llunit_ty = type_of(cx.fcx.ccx, elt_ty);
         auto bcx = cx;
-        auto unit_sz = size_of(bcx, elt_ty);
-        bcx = unit_sz.bcx;
 
         auto len = bcx.build.Load(lenptr);
         if (trailing_null) {
+            auto unit_sz = size_of(bcx, elt_ty);
+            bcx = unit_sz.bcx;
             len = bcx.build.Sub(len, unit_sz.val);
         }
 
-        auto cond_cx = new_scope_block_ctxt(cx, "sequence-iter cond");
-        auto body_cx = new_scope_block_ctxt(cx, "sequence-iter body");
-        auto next_cx = new_sub_block_ctxt(cx, "next");
+        auto p1 = vi2p(bcx, bcx.build.Add(vp2i(bcx, p0), len),
+                       T_ptr(llunit_ty));
 
-        bcx.build.Br(cond_cx.llbb);
-
-        auto ix = cond_cx.build.Phi(T_int(), vec(C_int(0)), vec(cx.llbb));
-        auto scaled_ix = cond_cx.build.Phi(T_int(),
-                                           vec(C_int(0)), vec(cx.llbb));
-
-        auto end_test = cond_cx.build.ICmp(lib.llvm.LLVMIntNE,
-                                           scaled_ix, len);
-        cond_cx.build.CondBr(end_test, body_cx.llbb, next_cx.llbb);
-
-        auto elt = body_cx.build.GEP(p0, vec(C_int(0), ix));
-        auto body_res = f(body_cx,
-                          load_scalar_or_boxed(body_cx, elt, elt_ty),
-                          elt_ty);
-        auto next_ix = body_res.bcx.build.Add(ix, C_int(1));
-        auto next_scaled_ix = body_res.bcx.build.Add(scaled_ix, unit_sz.val);
-
-        cond_cx.build.AddIncomingToPhi(ix, vec(next_ix),
-                                       vec(body_res.bcx.llbb));
-
-        cond_cx.build.AddIncomingToPhi(scaled_ix, vec(next_scaled_ix),
-                                       vec(body_res.bcx.llbb));
-
-        body_res.bcx.build.Br(cond_cx.llbb);
-        ret res(next_cx, C_nil());
+        ret iter_sequence_inner(cx, p0, p1, elt_ty, f);
     }
 
     alt (t.struct) {
