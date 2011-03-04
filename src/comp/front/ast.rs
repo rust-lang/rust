@@ -231,7 +231,16 @@ tag ty_ {
     ty_path(path, option.t[def]);
     ty_mutable(@ty);
     ty_type;
+    ty_constr(@ty, vec[@constr]);
 }
+
+tag constr_arg_ {
+    carg_base;
+    carg_ident(ident);
+}
+type constr_arg = spanned[constr_arg_];
+type constr_ = rec(path path, vec[@constr_arg] args);
+type constr = spanned[constr_];
 
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
 type fn_decl = rec(effect effect,

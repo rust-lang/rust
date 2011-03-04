@@ -199,6 +199,10 @@ impure fn parse_ty_fn(ast.proto proto, parser p,
     auto inputs = parse_seq[rec(ast.mode mode, @ast.ty ty)](token.LPAREN,
         token.RPAREN, some(token.COMMA), f, p);
 
+    // FIXME: dropping constrs on the floor at the moment.
+    // pick them up when they're used by typestate pass.
+    parse_constrs(p);
+
     let @ast.ty output;
     if (p.peek() == token.RARROW) {
         p.bump();
@@ -252,6 +256,62 @@ impure fn parse_ty_field(parser p) -> ast.ty_field {
     auto ty = parse_ty(p);
     auto id = parse_ident(p);
     ret rec(ident=id, ty=ty);
+}
+
+impure fn parse_constr_arg(parser p) -> @ast.constr_arg {
+    auto lo = p.get_span();
+    auto carg = ast.carg_base;
+    if (p.peek() == token.BINOP(token.STAR)) {
+        p.bump();
+    } else {
+        carg = ast.carg_ident(parse_ident(p));
+    }
+    ret @spanned(lo, lo, carg);
+}
+
+impure fn parse_ty_constr(parser p) -> @ast.constr {
+    auto lo = p.get_span();
+    auto path = parse_path(p, GREEDY);
+    auto pf = parse_constr_arg;
+    auto args = parse_seq[@ast.constr_arg](token.LPAREN,
+                                         token.RPAREN,
+                                         some(token.COMMA), pf, p);
+    auto hi = args.span;
+    ret @spanned(lo, hi, rec(path=path, args=args.node));
+}
+
+impure fn parse_constrs(parser p) -> common.spanned[vec[@ast.constr]] {
+    auto lo = p.get_span();
+    auto hi = lo;
+    let vec[@ast.constr] constrs = vec();
+    if (p.peek() == token.COLON) {
+        p.bump();
+        let bool more = true;
+        while (more) {
+            alt (p.peek()) {
+                case (token.IDENT(_)) {
+                    auto constr = parse_ty_constr(p);
+                    hi = constr.span;
+                    append[@ast.constr](constrs, constr);
+                    if (p.peek() == token.COMMA) {
+                        p.bump();
+                        more = false;
+                    }
+                }
+                case (_) { more = false; }
+            }
+        }
+    }
+   ret spanned(lo, hi, constrs);
+}
+
+impure fn parse_ty_constrs(@ast.ty t, parser p) -> @ast.ty {
+   if (p.peek() == token.COLON) {
+       auto constrs = parse_constrs(p);
+       ret @spanned(t.span, constrs.span,
+                    ast.ty_constr(t, constrs.node));
+   }
+   ret t;
 }
 
 impure fn parse_ty(parser p) -> @ast.ty {
@@ -368,7 +428,8 @@ impure fn parse_ty(parser p) -> @ast.ty {
             fail;
         }
     }
-    ret @spanned(lo, hi, t);
+
+    ret parse_ty_constrs(@spanned(lo, hi, t), p);
 }
 
 impure fn parse_arg(parser p) -> ast.arg {
@@ -1676,6 +1737,11 @@ impure fn parse_fn_decl(parser p, ast.effect eff) -> ast.fn_decl {
          pf, p);
 
     let @ast.ty output;
+
+    // FIXME: dropping constrs on the floor at the moment.
+    // pick them up when they're used by typestate pass.
+    parse_constrs(p);
+
     if (p.peek() == token.RARROW) {
         p.bump();
         output = parse_ty(p);
