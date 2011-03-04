@@ -1564,14 +1564,14 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_if(_,_,_,_,_))   { ret false; }
                 case (ast.expr_for(_,_,_,_))    { ret false; }
                 case (ast.expr_for_each(_,_,_,_))
-                                                { ret false; }
+                    { ret false; }
                 case (ast.expr_while(_,_,_))    { ret false; }
                 case (ast.expr_do_while(_,_,_)) { ret false; }
                 case (ast.expr_alt(_,_,_))      { ret false; }
                 case (ast.expr_block(_,_))      { ret false; }
                 case (ast.expr_assign(_,_,_))   { ret true; }
                 case (ast.expr_assign_op(_,_,_,_))
-                                                { ret true; }
+                    { ret true; }
                 case (ast.expr_field(_,_,_))    { ret true; }
                 case (ast.expr_index(_,_,_))    { ret true; }
                 case (ast.expr_path(_,_,_))     { ret true; }
@@ -1583,16 +1583,8 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_check_expr(_))   { ret true; }
             }
         }
-        case (ast.stmt_crate_directive(?cdir)) {
-            alt (cdir.node) {
-                case (ast.cdir_src_mod(_, _))    { ret true; }
-                case (ast.cdir_view_item(_))     { ret true; }
-                case (ast.cdir_meta(_))          { ret true; }
-                case (ast.cdir_syntax(_))        { ret true; }
-                case (ast.cdir_auth(_, _))       { ret true; }
-                case (_)                         { ret false; }
-            }
-        }
+        // We should not be calling this on a cdir.
+        case (ast.stmt_crate_directive(?cdir))  { fail; }
     }
 }
 
@@ -1636,8 +1628,13 @@ impure fn parse_block(parser p) -> ast.block {
                     case (none[@ast.expr]) {
                         // Not an expression statement.
                         stmts += vec(stmt);
-                        if (stmt_ends_with_semi(stmt)) {
-                            expect(p, token.SEMI);
+                        // FIXME: crazy differentiation between conditions
+                        // used in branches and binary expressions in rustboot
+                        // means we cannot use && here. I know, right?
+                        if (p.get_file_type() == SOURCE_FILE) {
+                            if (stmt_ends_with_semi(stmt)) {
+                                expect(p, token.SEMI);
+                            }
                         }
                     }
                 }
@@ -2259,6 +2256,16 @@ impure fn parse_crate_directive(parser p) -> ast.crate_directive
             hi = p.get_span();
             expect(p, token.SEMI);
             ret spanned(lo, hi, ast.cdir_auth(n, e));
+        }
+
+        case (token.META) {
+            // FIXME: currently dropping meta clauses on the floor,
+            // as there is no crate metadata system
+            p.bump();
+            auto mis = parse_meta(p);
+            hi = p.get_span();
+            expect(p, token.SEMI);
+            ret spanned(lo, hi, ast.cdir_meta(mis));
         }
 
         case (token.MOD) {
