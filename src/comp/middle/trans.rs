@@ -60,8 +60,6 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef bzero_glue,
                     ValueRef vec_append_glue);
 
-type tag_info = rec(type_handle th);
-
 state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
                             target_data td,
@@ -74,7 +72,8 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id, @ast.item] items,
                             hashmap[ast.def_id,
                                     @ast.native_item] native_items,
-                            hashmap[@ty.t, @tag_info] tags,
+                            // TODO: hashmap[tup(tag_id,subtys), @tag_info]
+                            hashmap[@ty.t, uint] tag_sizes,
                             hashmap[ast.def_id, ValueRef] discrims,
                             hashmap[ast.def_id, ValueRef] fn_pairs,
                             hashmap[ast.def_id, ValueRef] consts,
@@ -395,14 +394,28 @@ fn T_opaque_closure_ptr(type_names tn) -> TypeRef {
     ret t;
 }
 
-fn T_opaque_tag_ptr(type_names tn) -> TypeRef {
-    auto s = "*tag";
+fn T_tag(type_names tn, uint size) -> TypeRef {
+    auto s = "tag_" + _uint.to_str(size, 10u);
     if (tn.name_has_type(s)) {
         ret tn.get_type(s);
     }
-    auto t = T_ptr(T_struct(vec(T_int(), T_i8())));
+    auto t = T_struct(vec(T_int(), T_array(T_i8(), size)));
     tn.associate(s, t);
     ret t;
+}
+
+fn T_opaque_tag(type_names tn) -> TypeRef {
+    auto s = "tag";
+    if (tn.name_has_type(s)) {
+        ret tn.get_type(s);
+    }
+    auto t = T_struct(vec(T_int(), T_i8()));
+    tn.associate(s, t);
+    ret t;
+}
+
+fn T_opaque_tag_ptr(type_names tn) -> TypeRef {
+    ret T_ptr(T_opaque_tag(tn));
 }
 
 fn T_captured_tydescs(type_names tn, uint n) -> TypeRef {
@@ -436,7 +449,7 @@ fn type_of(@crate_ctxt cx, @ty.t t) -> TypeRef {
         fail;
     }
 
-    ret type_of_inner(cx, t);
+    ret type_of_inner(cx, t, false);
 }
 
 fn type_of_explicit_args(@crate_ctxt cx,
@@ -447,12 +460,14 @@ fn type_of_explicit_args(@crate_ctxt cx,
             check (arg.mode == ast.alias);
             atys += T_typaram_ptr(cx.tn);
         } else {
-            let TypeRef t = type_of_inner(cx, arg.ty);
+            let TypeRef t;
             alt (arg.mode) {
                 case (ast.alias) {
-                    t = T_ptr(t);
+                    t = T_ptr(type_of_inner(cx, arg.ty, true));
                 }
-                case (_) { /* fall through */  }
+                case (_) {
+                    t = type_of_inner(cx, arg.ty, false);
+                }
             }
             atys += t;
         }
@@ -478,7 +493,7 @@ fn type_of_fn_full(@crate_ctxt cx,
     if (ty.type_has_dynamic_size(output)) {
         atys += T_typaram_ptr(cx.tn);
     } else {
-        atys += T_ptr(type_of_inner(cx, output));
+        atys += T_ptr(type_of_inner(cx, output, false));
     }
 
     // Arg 1: Task pointer.
@@ -545,10 +560,10 @@ fn type_of_native_fn(@crate_ctxt cx, ast.native_abi abi,
         }
     }
     atys += type_of_explicit_args(cx, inputs);
-    ret T_fn(atys, type_of_inner(cx, output));
+    ret T_fn(atys, type_of_inner(cx, output, false));
 }
 
-fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
+fn type_of_inner(@crate_ctxt cx, @ty.t t, bool boxed) -> TypeRef {
     let TypeRef llty = 0 as TypeRef;
 
     alt (t.struct) {
@@ -573,26 +588,31 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
         }
         case (ty.ty_char) { llty = T_char(); }
         case (ty.ty_str) { llty = T_ptr(T_str()); }
-        case (ty.ty_tag(?tag_id, _)) {
-            llty = llvm.LLVMResolveTypeHandle(cx.tags.get(t).th.llth);
+        case (ty.ty_tag(_, _)) {
+            if (boxed) {
+                llty = T_opaque_tag(cx.tn);
+            } else {
+                auto size = static_size_of_tag(cx, t);
+                llty = T_tag(cx.tn, size);
+            }
         }
         case (ty.ty_box(?t)) {
-            llty = T_ptr(T_box(type_of_inner(cx, t)));
+            llty = T_ptr(T_box(type_of_inner(cx, t, true)));
         }
         case (ty.ty_vec(?t)) {
-            llty = T_ptr(T_vec(type_of_inner(cx, t)));
+            llty = T_ptr(T_vec(type_of_inner(cx, t, true)));
         }
         case (ty.ty_tup(?elts)) {
             let vec[TypeRef] tys = vec();
             for (@ty.t elt in elts) {
-                tys += type_of_inner(cx, elt);
+                tys += type_of_inner(cx, elt, boxed);
             }
             llty = T_struct(tys);
         }
         case (ty.ty_rec(?fields)) {
             let vec[TypeRef] tys = vec();
             for (ty.field f in fields) {
-                tys += type_of_inner(cx, f.ty);
+                tys += type_of_inner(cx, f.ty, boxed);
             }
             llty = T_struct(tys);
         }
@@ -650,9 +670,11 @@ fn type_of_arg(@crate_ctxt cx, &ty.arg arg) -> TypeRef {
         }
     }
 
-    auto typ = type_of_inner(cx, arg.ty);
+    auto typ;
     if (arg.mode == ast.alias) {
-        typ = T_ptr(typ);
+        typ = T_ptr(type_of_inner(cx, arg.ty, true));
+    } else {
+        typ = type_of_inner(cx, arg.ty, false);
     }
     ret typ;
 }
@@ -856,6 +878,11 @@ fn align_to(@block_ctxt cx, ValueRef off, ValueRef align) -> ValueRef {
     ret cx.build.And(bumped, cx.build.Not(mask));
 }
 
+// Returns the real size of the given type for the current target.
+fn llsize_of_real(@crate_ctxt cx, TypeRef t) -> uint {
+    ret llvm.LLVMStoreSizeOfType(cx.td.lltd, t);
+}
+
 fn llsize_of(TypeRef t) -> ValueRef {
     ret llvm.LLVMConstIntCast(lib.llvm.llvm.LLVMSizeOf(t), T_int(), False);
 }
@@ -876,6 +903,49 @@ fn align_of(@block_ctxt cx, @ty.t t) -> result {
         ret res(cx, llalign_of(type_of(cx.fcx.ccx, t)));
     }
     ret dynamic_align_of(cx, t);
+}
+
+// Computes the size of the data part of a non-dynamically-sized tag.
+fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
+    if (ty.type_has_dynamic_size(t)) {
+        log "dynamically sized type passed to static_size_of_tag()";
+        fail;
+    }
+
+    if (cx.tag_sizes.contains_key(t)) {
+        ret cx.tag_sizes.get(t);
+    }
+
+    auto tid = tup(0, 0);           // FIXME (#250): typestate botch
+    let vec[@ty.t] subtys = vec();  // FIXME (#250): typestate botch
+    alt (t.struct) {
+        case (ty.ty_tag(?tid_, ?subtys_)) {
+            tid = tid_;
+            subtys = subtys_;
+        }
+        case (_) {
+            log "non-tag passed to static_size_of_tag()";
+            fail;
+        }
+    }
+
+    // Compute max(variant sizes).
+    auto max_size = 0u;
+    auto variants = tag_variants(cx, tid);
+    for (ast.variant variant in variants) {
+        let vec[@ty.t] tys = variant_types(cx, variant);
+        auto tup_ty = ty.plain_ty(ty.ty_tup(tys));
+
+        // Here we possibly do a recursive call.
+        auto this_size = llsize_of_real(cx, type_of(cx, tup_ty));
+
+        if (max_size < this_size) {
+            max_size = this_size;
+        }
+    }
+
+    cx.tag_sizes.insert(t, max_size);
+    ret max_size;
 }
 
 fn dynamic_size_of(@block_ctxt cx, @ty.t t) -> result {
@@ -974,10 +1044,10 @@ fn dynamic_align_of(@block_ctxt cx, @ty.t t) -> result {
 }
 
 // Replacement for the LLVM 'GEP' instruction when field-indexing into a
-// tuple-like structure (tup, rec, tag) with a static index. This one is
-// driven off ty.struct and knows what to do when it runs into a ty_param
-// stuck in the middle of the thing it's GEP'ing into. Much like size_of and
-// align_of, above.
+// tuple-like structure (tup, rec) with a static index. This one is driven off
+// ty.struct and knows what to do when it runs into a ty_param stuck in the
+// middle of the thing it's GEP'ing into. Much like size_of and align_of,
+// above.
 
 fn GEP_tup_like(@block_ctxt cx, @ty.t t,
                 ValueRef base, vec[int] ixs) -> result {
@@ -1074,6 +1144,53 @@ fn GEP_tup_like(@block_ctxt cx, @ty.t t,
 
     auto typ = T_ptr(type_of(bcx.fcx.ccx, s.target));
     ret res(bcx, bcx.build.PointerCast(bumped, typ));
+}
+
+// Replacement for the LLVM 'GEP' instruction when field indexing into a tag.
+// This function uses GEP_tup_like() above and automatically performs casts as
+// appropriate. @llblobptr is the data part of a tag value; its actual type is
+// meaningless, as it will be cast away.
+fn GEP_tag(@block_ctxt cx, ValueRef llblobptr, &ast.variant variant, int ix)
+        -> result {
+    // Synthesize a tuple type so that GEP_tup_like() can work its magic.
+    // Separately, store the type of the element we're interested in.
+    auto arg_tys = arg_tys_of_fn(variant.ann);
+    auto elem_ty = ty.plain_ty(ty.ty_nil);  // typestate infelicity
+    auto i = 0;
+    let vec[@ty.t] true_arg_tys = vec();
+    for (ty.arg a in arg_tys) {
+        true_arg_tys += vec(a.ty);
+        if (i == ix) {
+            elem_ty = a.ty;
+        }
+
+        i += 1;
+    }
+    auto tup_ty = ty.plain_ty(ty.ty_tup(true_arg_tys));
+
+    // Cast the blob pointer to the appropriate type, if we need to (i.e. if
+    // the blob pointer isn't dynamically sized).
+    let ValueRef llunionptr;
+    if (!ty.type_has_dynamic_size(tup_ty)) {
+        auto llty = type_of(cx.fcx.ccx, tup_ty);
+        llunionptr = cx.build.TruncOrBitCast(llblobptr, T_ptr(llty));
+    } else {
+        llunionptr = llblobptr;
+    }
+
+    // Do the GEP_tup_like().
+    auto rslt = GEP_tup_like(cx, tup_ty, llunionptr, vec(0, ix));
+
+    // Cast the result to the appropriate type, if necessary.
+    auto val;
+    if (!ty.type_has_dynamic_size(elem_ty)) {
+        auto llelemty = type_of(rslt.bcx.fcx.ccx, elem_ty);
+        val = rslt.bcx.build.PointerCast(rslt.val, T_ptr(llelemty));
+    } else {
+        val = rslt.val;
+    }
+
+    ret res(rslt.bcx, val);
 }
 
 
@@ -1527,6 +1644,7 @@ fn variant_types(@crate_ctxt cx, &ast.variant v) -> vec[@ty.t] {
                 tys += vec(arg.ty);
             }
         }
+        case (ty.ty_tag(_, _)) { /* nothing */ }
         case (_) { fail; }
     }
     ret tys;
@@ -1647,8 +1765,6 @@ fn iter_structural_ty_full(@block_ctxt cx,
             }
         }
         case (ty.ty_tag(?tid, ?tps)) {
-            auto info = cx.fcx.ccx.tags.get(mk_plain_tag(tid));
-
             auto variants = tag_variants(cx.fcx.ccx, tid);
             auto n_variants = _vec.len[ast.variant](variants);
 
@@ -4653,14 +4769,6 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     auto arg_tys = arg_tys_of_fn(variant.ann);
     copy_args_to_allocas(bcx, none[TypeRef], fn_args, arg_tys);
 
-    // Now synthesize a tuple type for the arguments, so that GEP_tup_like()
-    // will know what the data part of the variant looks like.
-    let vec[@ty.t] true_arg_tys = vec();
-    for (ty.arg a in arg_tys) {
-        true_arg_tys += vec(a.ty);
-    }
-    auto tup_ty = ty.plain_ty(ty.ty_tup(true_arg_tys));
-
     // Cast the tag to a type we can GEP into.
     auto lltagptr = bcx.build.PointerCast(fcx.llretptr,
                                           T_opaque_tag_ptr(fcx.ccx.tn));
@@ -4672,22 +4780,18 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     auto llblobptr = bcx.build.GEP(lltagptr,
                                    vec(C_int(0), C_int(1)));
 
-    // Cast the blob pointer to the appropriate type, if we need to (i.e. if
-    // the blob pointer isn't dynamically sized).
-    let ValueRef llunionptr;
-    if (!ty.type_has_dynamic_size(tup_ty)) {
-        auto llty = type_of(cx, tup_ty);
-        llunionptr = bcx.build.TruncOrBitCast(llblobptr, T_ptr(llty));
-    } else {
-        llunionptr = llblobptr;
-    }
-
     i = 0u;
     for (ast.variant_arg va in variant.args) {
-        auto llargval = bcx.build.Load(fcx.llargs.get(va.id));
-        auto rslt = GEP_tup_like(bcx, tup_ty, llunionptr, vec(0, i as int));
+        auto rslt = GEP_tag(bcx, llblobptr, variant, i as int);
         bcx = rslt.bcx;
         auto lldestptr = rslt.val;
+
+        // If this argument to this function is a tag, it'll have come in to
+        // this function as an opaque blob due to the way that type_of()
+        // works. So we have to cast to the destination's view of the type.
+        auto llargptr = bcx.build.PointerCast(fcx.llargs.get(va.id),
+            val_ty(lldestptr));
+        auto llargval = bcx.build.Load(llargptr);
 
         bcx.build.Store(llargval, lldestptr);
         i += 1u;
@@ -4747,6 +4851,7 @@ fn trans_item(@crate_ctxt cx, &ast.item item) {
         case (ast.item_tag(?name, ?variants, ?tps, ?tag_id)) {
             auto sub_cx = @rec(path=cx.path + sep() + name with *cx);
             auto i = 0;
+            log "translating variants for " + name;
             for (ast.variant variant in variants) {
                 trans_tag_variant(sub_cx, tag_id, variant, i, tps);
                 i += 1;
@@ -4885,12 +4990,6 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
         }
 
         case (ast.item_tag(_, ?variants, ?tps, ?tag_id)) {
-            auto vi = new_def_hash[uint]();
-            auto navi = new_def_hash[uint]();
-
-            auto info = @rec(th=mk_type_handle());
-
-            cx.tags.insert(mk_plain_tag(tag_id), info);
             cx.items.insert(tag_id, i);
         }
 
@@ -4941,58 +5040,6 @@ fn collect_tag_ctors(@crate_ctxt cx, @ast.crate crate) {
     fold.fold_crate[@crate_ctxt](cx, fld, crate);
 }
 
-
-// The tag type resolution pass, which determines all the LLVM types that
-// correspond to each tag type in the crate.
-
-fn resolve_tag_types_for_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
-    alt (i.node) {
-        case (ast.item_tag(_, ?variants, _, ?tag_id)) {
-            // FIXME: This is all wrong. Now sizes and alignments are computed
-            // dynamically instead of up front.
-
-            auto max_align = 0u;
-            auto max_size = 0u;
-
-            auto info = cx.tags.get(mk_plain_tag(tag_id));
-
-            for (ast.variant variant in variants) {
-                if (_vec.len[ast.variant_arg](variant.args) > 0u) {
-                    auto llvariantty = type_of_variant(cx, variant);
-                    auto align =
-                        llvm.LLVMPreferredAlignmentOfType(cx.td.lltd,
-                                                          llvariantty);
-                    auto size =
-                        llvm.LLVMStoreSizeOfType(cx.td.lltd,
-                                                 llvariantty) as uint;
-                    if (max_align < align) { max_align = align; }
-                    if (max_size < size) { max_size = size; }
-                }
-            }
-
-            // FIXME: alignment is wrong here, manually insert padding I
-            // guess :(
-            auto tag_ty = T_struct(vec(T_int(), T_array(T_i8(), max_size)));
-            auto th = info.th.llth;
-            llvm.LLVMRefineType(llvm.LLVMResolveTypeHandle(th), tag_ty);
-        }
-        case (_) {
-            // fall through
-        }
-    }
-
-    ret cx;
-}
-
-fn resolve_tag_types(@crate_ctxt cx, @ast.crate crate) {
-    let fold.ast_fold[@crate_ctxt] fld =
-        fold.new_identity_fold[@crate_ctxt]();
-
-    fld = @rec( update_env_for_item = bind resolve_tag_types_for_item(_,_)
-                with *fld );
-
-    fold.fold_crate[@crate_ctxt](cx, fld, crate);
-}
 
 // The constant translation pass.
 
@@ -5461,7 +5508,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     auto glues = make_glues(llmod, tn);
     auto hasher = ty.hash_ty;
     auto eqer = ty.eq_ty;
-    auto tags = map.mk_hashmap[@ty.t,@tag_info](hasher, eqer);
+    auto tag_sizes = map.mk_hashmap[@ty.t,uint](hasher, eqer);
     auto tydescs = map.mk_hashmap[@ty.t,ValueRef](hasher, eqer);
     let vec[ast.ty_param] obj_typarams = vec();
     let vec[ast.obj_field] obj_fields = vec();
@@ -5477,7 +5524,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    item_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
                    native_items = new_def_hash[@ast.native_item](),
-                   tags = tags,
+                   tag_sizes = tag_sizes,
                    discrims = new_def_hash[ValueRef](),
                    fn_pairs = new_def_hash[ValueRef](),
                    consts = new_def_hash[ValueRef](),
@@ -5492,7 +5539,6 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     create_typedefs(cx);
 
     collect_items(cx, crate);
-    resolve_tag_types(cx, crate);
     collect_tag_ctors(cx, crate);
     trans_constants(cx, crate);
 
