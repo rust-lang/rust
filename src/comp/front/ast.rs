@@ -122,6 +122,31 @@ tag binop {
     gt;
 }
 
+fn binop_to_str(binop op) -> str {
+    alt (op) {
+        case (add) {ret "+";}
+        case (sub) {ret "-";}
+        case (mul) {ret "*";}
+        case (div) {ret "/";}
+        case (rem) {ret "%";}
+        case (and) {ret "&&";}
+        case (or) {ret "||";}
+        case (bitxor) {ret "^";}
+        case (bitand) {ret "&";}
+        case (bitor) {ret "|";}
+        case (lsl) {ret "<<";}
+        case (lsr) {ret ">>";}
+        case (asr) {ret ">>>";}
+        case (eq) {ret "==";}
+        case (lt) {ret "<";}
+        case (le) {ret "<=";}
+        case (ne) {ret "!=";}
+        case (ge) {ret ">=";}
+        case (gt) {ret ">";}
+    }
+}
+
+
 tag unop {
     box;
     deref;
@@ -129,6 +154,17 @@ tag unop {
     not;
     neg;
     _mutable;
+}
+
+fn unop_to_str(unop op) -> str {
+    alt (op) {
+        case (box) {ret "@";}
+        case (deref) {ret "*";}
+        case (bitnot) {ret "~";}
+        case (not) {ret "!";}
+        case (neg) {ret "-";}
+        case (_mutable) {ret "mutable";}
+    }
 }
 
 tag mode {

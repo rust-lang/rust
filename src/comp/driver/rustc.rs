@@ -61,6 +61,14 @@ impure fn compile_input(session.session sess,
     trans.trans_crate(sess, crate, output, shared);
 }
 
+impure fn pretty_print_input(session.session sess,
+                             eval.env env,
+                             str input) {
+    auto p = front.parser.new_parser(sess, env, 0, input);
+    auto crate = front.parser.parse_crate_from_source_file(p);
+    pretty.pprust.print_ast(crate.node.module);
+}
+
 fn warn_wrong_compiler() {
     log "This is the rust 'self-hosted' compiler.";
     log "The one written in rust.";
@@ -75,6 +83,7 @@ fn usage(session.session sess, str argv0) {
     log "    -o <filename>      write output to <filename>";
     log "    -nowarn            suppress wrong-compiler warning";
     log "    -shared            compile a shared-library crate";
+    log "    -pp                pretty-print the input instead of compiling";
     log "    -h                 display this message";
     log "";
     log "";
@@ -101,6 +110,7 @@ impure fn main(vec[str] args) {
     let option.t[str] output_file = none[str];
     let bool do_warn = true;
     let bool shared = false;
+    let bool pretty = false;
 
     auto i = 1u;
     auto len = _vec.len[str](args);
@@ -113,6 +123,8 @@ impure fn main(vec[str] args) {
                 do_warn = false;
             } else if (_str.eq(arg, "-shared")) {
                 shared = true;
+            } else if (_str.eq(arg, "-pp")) {
+                pretty = true;
             } else if (_str.eq(arg, "-o")) {
                 if (i+1u < len) {
                     output_file = some(args.(i+1u));
@@ -153,23 +165,26 @@ impure fn main(vec[str] args) {
         case (some[str](?ifile)) {
 
             auto env = default_environment(sess, args.(0), ifile);
-
-            alt (output_file) {
-                case (none[str]) {
-                    let vec[str] parts = _str.split(ifile, '.' as u8);
-                    parts = _vec.pop[str](parts);
-                    parts += ".bc";
-                    auto ofile = _str.concat(parts);
-                    compile_input(sess, env, ifile, ofile, shared);
-                }
-                case (some[str](?ofile)) {
-                    compile_input(sess, env, ifile, ofile, shared);
+            if (pretty) {
+                pretty_print_input(sess, env, ifile);
+            }
+            else {
+                alt (output_file) {
+                    case (none[str]) {
+                        let vec[str] parts = _str.split(ifile, '.' as u8);
+                        parts = _vec.pop[str](parts);
+                        parts += ".bc";
+                        auto ofile = _str.concat(parts);
+                        compile_input(sess, env, ifile, ofile, shared);
+                    }
+                    case (some[str](?ofile)) {
+                        compile_input(sess, env, ifile, ofile, shared);
+                    }
                 }
             }
         }
     }
 }
-
 
 // Local Variables:
 // mode: rust

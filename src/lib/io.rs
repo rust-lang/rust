@@ -91,24 +91,28 @@ tag fileflag {
     truncate;
 }
 
+fn writefd(int fd, vec[u8] v) {
+    auto len = _vec.len[u8](v);
+    auto count = 0u;
+    auto vbuf;
+    while (count < len) {
+        vbuf = _vec.buf_off[u8](v, count);
+        auto nout = os.libc.write(fd, vbuf, len);
+        if (nout < 0) {
+            log "error dumping buffer";
+            log sys.rustrt.last_os_error();
+            fail;
+        }
+        count += nout as uint;
+    }
+}
+
 fn new_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
 
     state obj fd_buf_writer(int fd) {
 
         fn write(vec[u8] v) {
-            auto len = _vec.len[u8](v);
-            auto count = 0u;
-            auto vbuf;
-            while (count < len) {
-                vbuf = _vec.buf_off[u8](v, count);
-                auto nout = os.libc.write(fd, vbuf, len);
-                if (nout < 0) {
-                    log "error dumping buffer";
-                    log sys.rustrt.last_os_error();
-                    fail;
-                }
-                count += nout as uint;
-            }
+            writefd(fd, v);
         }
 
         drop {
