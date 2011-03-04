@@ -169,6 +169,8 @@ fn path_to_str(&ast.path pth) -> str {
     ret result;
 }
 
+// FIXME use the pretty-printer for this once it has a concept of an
+// abstract stream
 fn ty_to_str(&@t typ) -> str {
 
     fn fn_input_to_str(&rec(ast.mode mode, @t ty) input) -> str {

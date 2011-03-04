@@ -5,6 +5,8 @@ import std._vec;
 
 export print_expr;
 
+// FIXME this is superseded by ../pretty/pprust.rs. can it be dropped?
+
 fn unknown() -> str {
     ret "<unknown ast node>";
 }

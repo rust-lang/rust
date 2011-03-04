@@ -31,6 +31,11 @@ mod driver {
     mod session;
 }
 
+mod pretty {
+    mod pp;
+    mod pprust;
+}
+
 mod util {
     mod common;
 }

@@ -983,6 +983,7 @@ impure fn parse_prefix_expr(parser p) -> @ast.expr {
 
 type op_spec = rec(token.token tok, ast.binop op, int prec);
 
+// FIXME make this a const, don't store it in parser state
 fn prec_table() -> vec[op_spec] {
     ret vec(rec(tok=token.BINOP(token.STAR), op=ast.mul, prec=11),
             rec(tok=token.BINOP(token.SLASH), op=ast.div, prec=11),
