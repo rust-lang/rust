@@ -363,15 +363,20 @@ fn T_taskptr(type_names tn) -> TypeRef {
     ret T_ptr(T_task(tn));
 }
 
-fn T_typaram_ptr(type_names tn) -> TypeRef {
+// This type must never be used directly; it must always be cast away.
+fn T_typaram(type_names tn) -> TypeRef {
     auto s = "typaram";
     if (tn.name_has_type(s)) {
         ret tn.get_type(s);
     }
 
-    auto t = T_ptr(T_i8());
+    auto t = T_i8();
     tn.associate(s, t);
     ret t;
+}
+
+fn T_typaram_ptr(type_names tn) -> TypeRef {
+    ret T_ptr(T_typaram(tn));
 }
 
 fn T_closure_ptr(type_names tn,
@@ -2068,7 +2073,6 @@ fn call_tydesc_glue(@block_ctxt cx, ValueRef v, @ty.t t, int field) {
 fn incr_all_refcnts(@block_ctxt cx,
                     ValueRef v,
                     @ty.t t) -> result {
-
     if (!ty.type_is_scalar(t)) {
         call_tydesc_glue(cx, v, t, abi.tydesc_field_take_glue_off);
     }
@@ -4820,9 +4824,18 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
         // works. So we have to cast to the destination's view of the type.
         auto llargptr = bcx.build.PointerCast(fcx.llargs.get(va.id),
             val_ty(lldestptr));
-        auto llargval = bcx.build.Load(llargptr);
 
-        bcx.build.Store(llargval, lldestptr);
+        auto arg_ty = arg_tys.(i).ty;
+        auto llargval;
+        if (ty.type_is_structural(arg_ty)) {
+            llargval = llargptr;
+        } else {
+            llargval = bcx.build.Load(llargptr);
+        }
+
+        rslt = copy_ty(bcx, INIT, lldestptr, llargval, arg_ty);
+        bcx = rslt.bcx;
+
         i += 1u;
     }
 
