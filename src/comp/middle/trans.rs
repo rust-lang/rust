@@ -60,6 +60,10 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef bzero_glue,
                     ValueRef vec_append_glue);
 
+type tydesc_info = rec(ValueRef tydesc,
+                       ValueRef take_glue,
+                       ValueRef drop_glue);
+
 state type crate_ctxt = rec(session.session sess,
                             ModuleRef llmod,
                             target_data td,
@@ -78,7 +82,7 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id, ValueRef] fn_pairs,
                             hashmap[ast.def_id, ValueRef] consts,
                             hashmap[ast.def_id,()] obj_methods,
-                            hashmap[@ty.t, ValueRef] tydescs,
+                            hashmap[@ty.t, @tydesc_info] tydescs,
                             vec[ast.ty_param] obj_typarams,
                             vec[ast.obj_field] obj_fields,
                             @glue_fns glues,
@@ -1291,10 +1295,11 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
         check (n_params == _vec.len[ValueRef](tys._1));
 
         if (!cx.fcx.ccx.tydescs.contains_key(t)) {
-            make_tydesc(cx.fcx.ccx, t, tys._0);
+            declare_tydesc(cx.fcx.ccx, t);
+            define_tydesc(cx.fcx.ccx, t, tys._0);
         }
 
-        auto root = cx.fcx.ccx.tydescs.get(t);
+        auto root = cx.fcx.ccx.tydescs.get(t).tydesc;
 
         auto tydescs = cx.build.Alloca(T_array(T_ptr(T_tydesc(cx.fcx.ccx.tn)),
                                                n_params));
@@ -1329,16 +1334,18 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
     // Otherwise, generate a tydesc if necessary, and return it.
     if (!cx.fcx.ccx.tydescs.contains_key(t)) {
         let vec[ast.def_id] defs = vec();
-        make_tydesc(cx.fcx.ccx, t, defs);
+        declare_tydesc(cx.fcx.ccx, t);
+        define_tydesc(cx.fcx.ccx, t, defs);
     }
-    ret res(cx, cx.fcx.ccx.tydescs.get(t));
+    ret res(cx, cx.fcx.ccx.tydescs.get(t).tydesc);
 }
 
-fn make_tydesc(@crate_ctxt cx, @ty.t t, vec[ast.def_id] typaram_defs) {
-    auto tg = make_take_glue;
-    auto take_glue = make_generic_glue(cx, t, "take", tg, typaram_defs);
-    auto dg = make_drop_glue;
-    auto drop_glue = make_generic_glue(cx, t, "drop", dg, typaram_defs);
+// Generates the declaration for (but doesn't fill in) a type descriptor. This
+// needs to be separate from make_tydesc() below, because sometimes type glue
+// functions needs to refer to their own type descriptors.
+fn declare_tydesc(@crate_ctxt cx, @ty.t t) {
+    auto take_glue = declare_generic_glue(cx, t, "take");
+    auto drop_glue = declare_generic_glue(cx, t, "drop");
 
     auto llsize;
     auto llalign;
@@ -1383,18 +1390,40 @@ fn make_tydesc(@crate_ctxt cx, @ty.t t, vec[ast.def_id] typaram_defs) {
     llvm.LLVMSetGlobalConstant(gvar, True);
     llvm.LLVMSetLinkage(gvar, lib.llvm.LLVMPrivateLinkage
                         as llvm.Linkage);
-    cx.tydescs.insert(t, gvar);
+
+    auto info = rec(
+        tydesc=gvar,
+        take_glue=take_glue,
+        drop_glue=drop_glue
+    );
+
+    cx.tydescs.insert(t, @info);
 }
 
-fn make_generic_glue(@crate_ctxt cx, @ty.t t, str name,
-                     val_and_ty_fn helper,
-                     vec[ast.def_id] typaram_defs) -> ValueRef {
+// declare_tydesc() above must have been called first.
+fn define_tydesc(@crate_ctxt cx, @ty.t t, vec[ast.def_id] typaram_defs) {
+    auto info = cx.tydescs.get(t);
+    auto gvar = info.tydesc;
+
+    auto tg = make_take_glue;
+    auto take_glue = make_generic_glue(cx, t, info.take_glue, tg,
+                                       typaram_defs);
+    auto dg = make_drop_glue;
+    auto drop_glue = make_generic_glue(cx, t, info.drop_glue, dg,
+                                       typaram_defs);
+}
+
+fn declare_generic_glue(@crate_ctxt cx, @ty.t t, str name) -> ValueRef {
     auto llfnty = T_glue_fn(cx.tn);
 
     auto fn_name = cx.names.next("_rust_" + name) + sep() + ty.ty_to_str(t);
     fn_name = sanitize(fn_name);
-    auto llfn = decl_fastcall_fn(cx.llmod, fn_name, llfnty);
+    ret decl_fastcall_fn(cx.llmod, fn_name, llfnty);
+}
 
+fn make_generic_glue(@crate_ctxt cx, @ty.t t, ValueRef llfn,
+                     val_and_ty_fn helper,
+                     vec[ast.def_id] typaram_defs) -> ValueRef {
     auto fcx = new_fn_ctxt(cx, llfn);
     auto bcx = new_top_block_ctxt(fcx);
 
@@ -5508,7 +5537,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     auto hasher = ty.hash_ty;
     auto eqer = ty.eq_ty;
     auto tag_sizes = map.mk_hashmap[@ty.t,uint](hasher, eqer);
-    auto tydescs = map.mk_hashmap[@ty.t,ValueRef](hasher, eqer);
+    auto tydescs = map.mk_hashmap[@ty.t,@tydesc_info](hasher, eqer);
     let vec[ast.ty_param] obj_typarams = vec();
     let vec[ast.obj_field] obj_fields = vec();
 
