@@ -373,7 +373,7 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
         case (ty_param(_))      { ret fld.fold_simple_ty(ty); }
     }
 
-    ret ty;
+    fail;
 }
 
 // Type utilities

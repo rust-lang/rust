@@ -701,7 +701,7 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
 
     }
 
-    ret e;
+    fail;
 }
 
 
@@ -724,7 +724,7 @@ fn fold_stmt[ENV](&ENV env, ast_fold[ENV] fld, &@stmt s) -> @stmt {
             ret fld.fold_stmt_expr(env_, s.span, ee);
         }
     }
-    ret s;
+    fail;
 }
 
 fn fold_block[ENV](&ENV env, ast_fold[ENV] fld, &block blk) -> block {

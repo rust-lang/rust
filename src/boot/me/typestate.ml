@@ -865,6 +865,11 @@ let rec build_flow_graph_for_stmt
         | Ast.STMT_block b ->
             blk predecessors b
 
+        | Ast.STMT_fail
+        | Ast.STMT_ret _ ->
+            connect predecessors [s.id];
+            []
+
         | _ ->
             connect predecessors [s.id];
             [s.id]

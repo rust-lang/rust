@@ -665,12 +665,9 @@ impure fn next_token(reader rdr) -> token.token {
         case ('%') {
             ret binop(rdr, token.PERCENT);
         }
-
     }
 
-    log "lexer stopping at ";
-    log c;
-    ret token.EOF;
+    fail;
 }
 
 
