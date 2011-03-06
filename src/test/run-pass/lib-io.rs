@@ -11,7 +11,7 @@ fn test_simple(str tmpfilebase) {
   log frood;
 
   {
-    let io.buf_writer out = io.new_buf_writer(tmpfile, vec(io.create()));
+    let io.buf_writer out = io.new_buf_writer(tmpfile, vec(io.create));
     out.write(_str.bytes(frood));
   }
 
