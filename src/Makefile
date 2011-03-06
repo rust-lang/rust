@@ -574,7 +574,8 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         while-type-error.rs \
                         wrong-ret-type.rs \
                         ), \
-                      $(wildcard test/*fail/*.rs test/*fail/*.rc))
+                      $(wildcard test/*fail/*.rs test/*fail/*.rc)) \
+                     test/bench/shootout/fasta.rs
 
 
 ifdef MINGW_CROSS
@@ -586,8 +587,10 @@ TEST_XFAILS_BOOT += test/run-pass/native-mod.rc
 TEST_XFAILS_RUSTC += test/run-pass/native-mod.rc
 endif
 
-RPASS_RC := $(wildcard test/run-pass/*.rc)
-RPASS_RS := $(wildcard test/run-pass/*.rs)
+BENCH_RC := $(wildcard test/bench/shootout/*rc)
+BENCH_RS := $(wildcard test/bench/shootout/*rs)
+RPASS_RC := $(wildcard test/run-pass/*.rc) $(BENCH_RC)
+RPASS_RS := $(wildcard test/run-pass/*.rs) $(BENCH_RS)
 RFAIL_RC := $(wildcard test/run-fail/*.rc)
 RFAIL_RS := $(wildcard test/run-fail/*.rs)
 CFAIL_RC := $(wildcard test/compile-fail/*.rc)
@@ -727,6 +730,12 @@ SREQ := $(CFG_RUSTC) $(CFG_RUNTIME) $(CFG_STDLIB)
 	$(CFG_QUIET)mv $< $@
 
 test/run-pass/%.out.tmp: test/run-pass/%$(CFG_EXE_SUFFIX) $(CFG_RUNTIME)
+	$(CFG_QUIET)rm -f $<.tmp
+	@$(call CFG_ECHO, run: $<)
+	$(CFG_QUIET)$(call CFG_RUN_TARG, $<) > $@
+
+test/bench/shootout/%.out.tmp: test/bench/shootout/%$(CFG_EXE_SUFFIX) \
+                                  $(CFG_RUNTIME)
 	$(CFG_QUIET)rm -f $<.tmp
 	@$(call CFG_ECHO, run: $<)
 	$(CFG_QUIET)$(call CFG_RUN_TARG, $<) > $@
