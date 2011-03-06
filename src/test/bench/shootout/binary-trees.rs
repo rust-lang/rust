@@ -1,14 +1,14 @@
 tag tree {
-  nil();
+  nil;
   node(@tree, @tree, int);
 }
 
-fn item_check(&tree t) -> int {
-  alt (t) {
-    case (nil()) {
+fn item_check(@tree t) -> int {
+  alt (*t) {
+    case (nil) {
       ret 0;
     }
-    case (node(@tree left, @tree right, int item)) {
+    case (node(?left, ?right, ?item)) {
       ret item + item_check(left) - item_check(right);
     }
   }
