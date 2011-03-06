@@ -321,6 +321,10 @@ fn T_vec(TypeRef t) -> TypeRef {
                      ));
 }
 
+fn T_opaque_vec_ptr() -> TypeRef {
+    ret T_ptr(T_vec(T_int()));
+}
+
 fn T_str() -> TypeRef {
     ret T_vec(T_i8());
 }
@@ -2464,20 +2468,23 @@ fn trans_vec_append(@block_ctxt cx, @ty.t t,
     auto llelt_tydesc = get_tydesc(bcx, elt_ty);
     bcx = llelt_tydesc.bcx;
 
-    ret res(cx, cx.build.FastCall(cx.fcx.ccx.glues.memcpy_glue,
-                                  vec(cx.fcx.lltaskptr,
-                                      llvec_tydesc.val,
-                                      llelt_tydesc.val,
-                                      lhs,
-                                      load_scalar_or_boxed(cx, rhs, t),
-                                      skip_null)));
+    auto dst = bcx.build.PointerCast(lhs, T_ptr(T_opaque_vec_ptr()));
+    auto src = bcx.build.PointerCast(rhs, T_opaque_vec_ptr());
+
+    ret res(bcx, bcx.build.FastCall(cx.fcx.ccx.glues.vec_append_glue,
+                                    vec(cx.fcx.lltaskptr,
+                                        llvec_tydesc.val,
+                                        llelt_tydesc.val,
+                                        dst, src, skip_null)));
 }
 
 fn trans_vec_add(@block_ctxt cx, @ty.t t,
                  ValueRef lhs, ValueRef rhs) -> result {
     auto r = alloc_ty(cx, t);
-    r = copy_ty(r.bcx, INIT, r.val, lhs, t);
-    ret trans_vec_append(r.bcx, t, lhs, rhs);
+    auto tmp = r.val;
+    find_scope_cx(cx).cleanups += clean(bind drop_ty(_, tmp, t));
+    r = copy_ty(r.bcx, INIT, tmp, lhs, t);
+    ret trans_vec_append(r.bcx, t, tmp, rhs);
 }
 
 
@@ -5423,7 +5430,7 @@ fn make_vec_append_glue(ModuleRef llmod, type_names tn) -> ValueRef {
      *      elements can be copied to a newly alloc'ed vec if one must be
      *      created.
      *
-     *   3. Dst vec alias (i.e. ptr to ptr to rust_vec, we will mutate it).
+     *   3. Dst vec ptr (i.e. ptr to ptr to rust_vec).
      *
      *   4. Src vec (i.e. ptr to rust_vec).
      *
@@ -5434,9 +5441,9 @@ fn make_vec_append_glue(ModuleRef llmod, type_names tn) -> ValueRef {
     auto ty = T_fn(vec(T_taskptr(tn),
                        T_ptr(T_tydesc(tn)),
                        T_ptr(T_tydesc(tn)),
-                       T_ptr(T_ptr(T_vec(T_int()))), // a lie.
-                       T_ptr(T_vec(T_int())), // a lie.
-                       T_bool()), T_void());
+                       T_ptr(T_opaque_vec_ptr()),
+                       T_opaque_vec_ptr(), T_bool()),
+                   T_void());
 
     auto llfn = decl_fastcall_fn(llmod, abi.vec_append_glue_name(), ty);
     ret llfn;
@@ -5488,10 +5495,8 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
                          vp2i(bcx, llvec_tydesc)));
 
     bcx = llnew_vec_res.bcx;
-    auto llnew_vec = vi2p(bcx,
-                          llnew_vec_res.val,
-                          T_ptr(T_vec(T_int())) // a lie.
-                          );
+    auto llnew_vec = vi2p(bcx, llnew_vec_res.val,
+                          T_opaque_vec_ptr());
 
 
     // FIXME: complete this.
