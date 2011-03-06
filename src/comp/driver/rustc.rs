@@ -137,8 +137,6 @@ impure fn main(vec[str] args) {
                     input_file = some[str](arg);
                 }
             }
-            // FIXME: dummy node to work around typestate mis-wiring bug.
-            i = i;
         }
         i += 1u;
     }

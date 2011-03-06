@@ -1018,32 +1018,6 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         ret ures_err(terr_meth_count, expected, actual);
       }
 
-      // FIXME: work around buggy typestate logic for 'alt', sigh.
-      fn is_ok(&unify_result r) -> bool {
-          alt (r) {
-              case (ures_ok(?tfn)) {
-                  ret true;
-              }
-              case (_) {}
-          }
-          ret false;
-      }
-
-      fn append_if_ok(&method e_meth,
-                      &unify_result r, &mutable vec[method] result_meths) {
-          alt (r) {
-              case (ures_ok(?tfn)) {
-                  alt (tfn.struct) {
-                      case (ty_fn(?proto, ?ins, ?out)) {
-                          result_meths += vec(rec(inputs = ins,
-                                                  output = out
-                                                  with e_meth));
-                      }
-                  }
-              }
-          }
-      }
-
       while (i < expected_len) {
         auto e_meth = expected_meths.(i);
         auto a_meth = actual_meths.(i);
@@ -1056,10 +1030,20 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                           expected, actual, handler,
                           e_meth.inputs, e_meth.output,
                           a_meth.inputs, a_meth.output);
-        if (!is_ok(r)) {
-          ret r;
+        alt (r) {
+            case (ures_ok(?tfn)) {
+                alt (tfn.struct) {
+                    case (ty_fn(?proto, ?ins, ?out)) {
+                        result_meths += vec(rec(inputs = ins,
+                                                output = out
+                                                with e_meth));
+                    }
+                }
+            }
+            case (_) {
+                ret r;
+            }
         }
-        append_if_ok(e_meth, r, result_meths);
         i += 1u;
       }
       auto t = plain_ty(ty_obj(result_meths));

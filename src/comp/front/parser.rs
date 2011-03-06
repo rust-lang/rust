@@ -1365,7 +1365,7 @@ impure fn parse_initializer(parser p) -> option.t[@ast.expr] {
 impure fn parse_pat(parser p) -> @ast.pat {
     auto lo = p.get_span();
     auto hi = lo;
-    auto pat = ast.pat_wild(ast.ann_none);  // FIXME: typestate bug
+    auto pat;
 
     alt (p.peek()) {
         case (token.UNDERSCORE) {
@@ -1541,31 +1541,28 @@ fn index_block(vec[@ast.stmt] stmts, option.t[@ast.expr] expr) -> ast.block_ {
     auto index = new_str_hash[uint]();
     auto u = 0u;
     for (@ast.stmt s in stmts) {
-        // FIXME: typestate bug requires we do this up top, not
-        // down below loop. Sigh.
-        u += 1u;
         alt (s.node) {
             case (ast.stmt_decl(?d)) {
                 alt (d.node) {
                     case (ast.decl_local(?loc)) {
-                        index.insert(loc.ident, u-1u);
+                        index.insert(loc.ident, u);
                     }
                     case (ast.decl_item(?it)) {
                         alt (it.node) {
                             case (ast.item_fn(?i, _, _, _, _)) {
-                                index.insert(i, u-1u);
+                                index.insert(i, u);
                             }
                             case (ast.item_mod(?i, _, _)) {
-                                index.insert(i, u-1u);
+                                index.insert(i, u);
                             }
                             case (ast.item_ty(?i, _, _, _, _)) {
-                                index.insert(i, u-1u);
+                                index.insert(i, u);
                             }
                             case (ast.item_tag(?i, _, _, _)) {
-                                index.insert(i, u-1u);
+                                index.insert(i, u);
                             }
                             case (ast.item_obj(?i, _, _, _, _)) {
-                                index.insert(i, u-1u);
+                                index.insert(i, u);
                             }
                         }
                     }
@@ -1573,6 +1570,7 @@ fn index_block(vec[@ast.stmt] stmts, option.t[@ast.expr] expr) -> ast.block_ {
             }
             case (_) { /* fall through */ }
         }
+        u += 1u;
     }
     ret rec(stmts=stmts, expr=expr, index=index);
 }
