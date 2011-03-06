@@ -245,6 +245,7 @@ tag expr_ {
     expr_port(ann);
     expr_chan(@expr, ann);
     expr_send(@expr /* TODO: @expr|is_lval */, @expr, ann);
+    expr_recv(@expr /* TODO: @expr|is_lval */, @expr, ann);
 }
 
 type lit = spanned[lit_];
