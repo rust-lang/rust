@@ -2484,7 +2484,8 @@ fn trans_vec_add(@block_ctxt cx, @ty.t t,
     auto tmp = r.val;
     find_scope_cx(cx).cleanups += clean(bind drop_ty(_, tmp, t));
     r = copy_ty(r.bcx, INIT, tmp, lhs, t);
-    ret trans_vec_append(r.bcx, t, tmp, rhs);
+    auto bcx = trans_vec_append(r.bcx, t, tmp, rhs).bcx;
+    ret res(bcx, load_scalar_or_boxed(bcx, tmp, t));
 }
 
 
