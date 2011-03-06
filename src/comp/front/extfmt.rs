@@ -244,9 +244,7 @@ fn parse_count(str s, uint i, uint lim) -> tup(count, uint) {
         ret tup(count_implied, i);
     }
 
-    // FIXME: These inner functions are just to avoid a rustboot
-    // "Unsatisfied precondition constraint" bug with alts nested in ifs
-    fn parse_star_count(str s, uint i, uint lim) -> tup(count, uint) {
+    if (s.(i) == ('*' as u8)) {
         auto param = parse_parameter(s, i + 1u, lim);
         auto j = param._1;
         alt (param._0) {
@@ -257,9 +255,7 @@ fn parse_count(str s, uint i, uint lim) -> tup(count, uint) {
                 ret tup(count_is_param(n), j);
             }
         }
-    }
-
-    fn parse_count_(str s, uint i, uint lim) -> tup(count, uint) {
+    } else {
         auto num = peek_num(s, i, lim);
         alt (num) {
             case (none[tup(uint, uint)]) {
@@ -269,12 +265,6 @@ fn parse_count(str s, uint i, uint lim) -> tup(count, uint) {
                 ret tup(count_is(num._0 as int), num._1);
             }
         }
-    }
-
-    if (s.(i) == ('*' as u8)) {
-        ret parse_star_count(s, i, lim);
-    } else {
-        ret parse_count_(s, i, lim);
     }
 }
 
@@ -318,9 +308,6 @@ fn parse_type(str s, uint i, uint lim) -> tup(ty, uint) {
     } else if (_str.eq(tstr, "t")) {
         t = ty_bits;
     } else {
-        // FIXME: This is a hack to avoid 'unsatisfied precondition
-        // constraint' on uninitialized variable t below
-        t = ty_bool;
         log "unknown type in conversion";
         fail;
     }

@@ -929,8 +929,8 @@ fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
         ret cx.tag_sizes.get(t);
     }
 
-    auto tid = tup(0, 0);           // FIXME (#250): typestate botch
-    let vec[@ty.t] subtys = vec();  // FIXME (#250): typestate botch
+    auto tid;
+    let vec[@ty.t] subtys;
     alt (t.struct) {
         case (ty.ty_tag(?tid_, ?subtys_)) {
             tid = tid_;
@@ -3419,12 +3419,12 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
         }
 
         // Figure out which tydescs we need to pass, if any.
-        // FIXME: typestate botch
-        let @ty.t outgoing_fty = ty.plain_ty(ty.ty_nil);
-        let vec[ValueRef] lltydescs = vec();
+        let @ty.t outgoing_fty;
+        let vec[ValueRef] lltydescs;
         alt (f_res.generic) {
             case (none[generic_info]) {
                 outgoing_fty = ty.expr_ty(f);
+                lltydescs = vec();
             }
             case (some[generic_info](?ginfo)) {
                 outgoing_fty = ginfo.item_type;

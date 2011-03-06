@@ -890,7 +890,7 @@ fn are_compatible(&@fn_ctxt fcx, @ty.t expected, @ty.t actual) -> bool {
 // TODO: enforce this via a predicate.
 
 fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
-    auto p_1 = ast.pat_wild(ast.ann_none);  // FIXME: typestate botch
+    auto p_1;
 
     alt (pat.node) {
         case (ast.pat_wild(?ann)) {
@@ -960,9 +960,7 @@ fn demand_expr(&@fn_ctxt fcx, @ty.t expected, @ast.expr e) -> @ast.expr {
 
 fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                     autoderef_kind adk) -> @ast.expr {
-    // FIXME: botch to work around typestate bug in rustboot
-    let vec[@ast.expr] v = vec();
-    auto e_1 = ast.expr_vec(v, ast.ann_none);
+    auto e_1;
 
     alt (e.node) {
         case (ast.expr_vec(?es_0, ?ann)) {
@@ -1167,6 +1165,10 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
         case (ast.expr_put(_)) { e_1 = e.node; }
         case (ast.expr_be(_)) { e_1 = e.node; }
         case (ast.expr_check_expr(_)) { e_1 = e.node; }
+        case (_) {
+            fcx.ccx.sess.unimpl("type unification for expression variant");
+            fail;
+        }
     }
 
     ret @fold.respan[ast.expr_](e.span, e_1);
@@ -1331,7 +1333,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         auto rt_0 = next_ty_var(fcx.ccx);
-        auto t_0 = plain_ty(ty.ty_uint); // FIXME: typestate botch
+        auto t_0;
         alt (expr_ty(f_0).struct) {
             case (ty.ty_fn(?proto, _, _))   {
                 t_0 = plain_ty(ty.ty_fn(proto, arg_tys_0, rt_0));
@@ -1777,9 +1779,9 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto result = check_call_or_bind(fcx, f, args);
 
             // Pull the argument and return types out.
-            auto proto_1 = ast.proto_fn;        // FIXME: typestate botch
+            auto proto_1;
             let vec[ty.arg] arg_tys_1 = vec();
-            auto rt_1 = plain_ty(ty.ty_nil);    // FIXME: typestate botch
+            auto rt_1;
             alt (expr_ty(result._0).struct) {
                 case (ty.ty_fn(?proto, ?arg_tys, ?rt)) {
                     proto_1 = proto;
