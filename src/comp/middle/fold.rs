@@ -67,6 +67,8 @@ type ast_fold[ENV] =
          &option.t[def] d) -> @ty)                fold_ty_path,
 
      (fn(&ENV e, &span sp, @ty t) -> @ty)         fold_ty_mutable,
+     (fn(&ENV e, &span sp, @ty t) -> @ty)         fold_ty_chan,
+     (fn(&ENV e, &span sp, @ty t) -> @ty)         fold_ty_port,
 
      // Expr folds.
      (fn(&ENV e, &span sp,
@@ -385,6 +387,16 @@ fn fold_ty[ENV](&ENV env, ast_fold[ENV] fld, @ty t) -> @ty {
 
         case (ast.ty_fn(?proto, ?inputs, ?output)) {
             ret fold_ty_fn(env_, fld, t.span, proto, inputs, output);
+        }
+
+        case (ast.ty_chan(?ty)) {
+            auto ty_ = fold_ty(env, fld, ty);
+            ret fld.fold_ty_chan(env_, t.span, ty_);
+        }
+
+        case (ast.ty_port(?ty)) {
+            auto ty_ = fold_ty(env, fld, ty);
+            ret fld.fold_ty_port(env_, t.span, ty_);
         }
     }
 }
@@ -1083,6 +1095,13 @@ fn identity_fold_ty_mutable[ENV](&ENV env, &span sp, @ty t) -> @ty {
     ret @respan(sp, ast.ty_mutable(t));
 }
 
+fn identity_fold_ty_chan[ENV](&ENV env, &span sp, @ty t) -> @ty {
+    ret @respan(sp, ast.ty_chan(t));
+}
+
+fn identity_fold_ty_port[ENV](&ENV env, &span sp, @ty t) -> @ty {
+    ret @respan(sp, ast.ty_port(t));
+}
 
 // Expr identities.
 
@@ -1473,6 +1492,8 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_ty_fn      = bind identity_fold_ty_fn[ENV](_,_,_,_,_),
          fold_ty_path    = bind identity_fold_ty_path[ENV](_,_,_,_),
          fold_ty_mutable = bind identity_fold_ty_mutable[ENV](_,_,_),
+         fold_ty_chan    = bind identity_fold_ty_chan[ENV](_,_,_),
+         fold_ty_port    = bind identity_fold_ty_port[ENV](_,_,_),
 
          fold_expr_vec    = bind identity_fold_expr_vec[ENV](_,_,_,_),
          fold_expr_tup    = bind identity_fold_expr_tup[ENV](_,_,_,_),
