@@ -113,24 +113,19 @@ impure fn main(vec[str] args) {
                 do_warn = false;
             } else if (_str.eq(arg, "-shared")) {
                 shared = true;
-            } else {
-                // FIXME: rust could use an elif construct.
-                if (_str.eq(arg, "-o")) {
-                    if (i+1u < len) {
-                        output_file = some(args.(i+1u));
-                        i += 1u;
-                    } else {
-                        usage(sess, args.(0));
-                        sess.err("-o requires an argument");
-                    }
+            } else if (_str.eq(arg, "-o")) {
+                if (i+1u < len) {
+                    output_file = some(args.(i+1u));
+                    i += 1u;
                 } else {
-                    if (_str.eq(arg, "-h")) {
-                        usage(sess, args.(0));
-                    } else {
-                        usage(sess, args.(0));
-                        sess.err("unrecognized option: " + arg);
-                    }
+                    usage(sess, args.(0));
+                    sess.err("-o requires an argument");
                 }
+            } else if (_str.eq(arg, "-h")) {
+                usage(sess, args.(0));
+            } else {
+                usage(sess, args.(0));
+                sess.err("unrecognized option: " + arg);
             }
         } else {
             alt (input_file) {
