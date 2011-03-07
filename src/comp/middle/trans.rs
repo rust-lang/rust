@@ -3209,10 +3209,23 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
     auto v = lv.val;
     auto bcx = ix.bcx;
 
+    // Cast to an LLVM integer. Rust is less strict than LLVM in this regard.
+    auto ix_val;
+    auto ix_size = llsize_of_real(cx.fcx.ccx, val_ty(ix.val));
+    auto int_size = llsize_of_real(cx.fcx.ccx, T_int());
+    if (ix_size < int_size) {
+        ix_val = bcx.build.ZExt(ix.val, T_int());
+    } else if (ix_size > int_size) {
+        ix_val = bcx.build.Trunc(ix.val, T_int());
+    } else {
+        ix_val = ix.val;
+    }
+
     auto llunit_ty = node_type(cx.fcx.ccx, ann);
     auto unit_sz = size_of(bcx, node_ann_type(cx.fcx.ccx, ann));
     bcx = unit_sz.bcx;
-    auto scaled_ix = bcx.build.Mul(ix.val, unit_sz.val);
+
+    auto scaled_ix = bcx.build.Mul(ix_val, unit_sz.val);
 
     auto lim = bcx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_fill)));
     lim = bcx.build.Load(lim);
@@ -3229,7 +3242,7 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
     fail_res.bcx.build.Br(next_cx.llbb);
 
     auto body = next_cx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_data)));
-    auto elt = next_cx.build.GEP(body, vec(C_int(0), ix.val));
+    auto elt = next_cx.build.GEP(body, vec(C_int(0), ix_val));
     ret lval_mem(next_cx, elt);
 }
 

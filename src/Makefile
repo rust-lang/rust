@@ -456,7 +456,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         generic-recursive-tag.rs \
                         generic-tag-alt.rs \
                         generic-tag-values.rs \
-                        integral-indexing.rs \
                         iter-range.rs \
                         iter-ret.rs \
                         lazychan.rs \
