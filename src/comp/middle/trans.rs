@@ -5571,9 +5571,7 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
                             n_bytes).bcx;
 
     put_vec_fill(copy_dst_cx, llnew_vec, n_bytes);
-    copy_dst_cx.build.Store(vec_p1_adjusted(copy_dst_cx,
-                                            llnew_vec, llskipnull),
-                            pp0);
+    copy_dst_cx.build.Store(vec_p1(copy_dst_cx, llnew_vec), pp0);
     copy_dst_cx.build.Br(copy_src_cx.llbb);
 
 
