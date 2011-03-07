@@ -1723,6 +1723,8 @@ fn mk_plain_tag(ast.def_id tid) -> @ty.t {
 }
 
 
+type val_fn = fn(@block_ctxt cx, ValueRef v) -> result;
+
 type val_and_ty_fn = fn(@block_ctxt cx, ValueRef v, @ty.t t) -> result;
 
 type val_pair_and_ty_fn =
@@ -1922,23 +1924,17 @@ fn iter_structural_ty_full(@block_ctxt cx,
     ret r;
 }
 
-// Iterates through a pair of sequences, until the src* hits the src_lim*.
-fn iter_sequence_pair_inner(@block_ctxt cx,
-                            ValueRef dst,     // elt*
-                            ValueRef src,     // elt*
-                            ValueRef src_lim, // elt*
-                            @ty.t elt_ty,
-                            val_pair_and_ty_fn f) -> result {
+// Iterates through a pointer range, until the src* hits the src_lim*.
+fn iter_sequence_raw(@block_ctxt cx,
+                     ValueRef src,     // elt*
+                     ValueRef src_lim, // elt*
+                     ValueRef elt_sz,
+                     val_fn f) -> result {
 
     auto bcx = cx;
 
-    auto llunit_ty = type_of(cx.fcx.ccx, elt_ty);
-    auto unit_sz = size_of(bcx, elt_ty);
-    bcx = unit_sz.bcx;
-
     let ValueRef src_int = vp2i(bcx, src);
     let ValueRef src_lim_int = vp2i(bcx, src_lim);
-    let ValueRef dst_int = vp2i(bcx, dst);
 
     auto cond_cx = new_scope_block_ctxt(cx, "sequence-iter cond");
     auto body_cx = new_scope_block_ctxt(cx, "sequence-iter body");
@@ -1948,31 +1944,21 @@ fn iter_sequence_pair_inner(@block_ctxt cx,
 
     let ValueRef src_curr = cond_cx.build.Phi(T_int(),
                                               vec(src_int), vec(bcx.llbb));
-    let ValueRef dst_curr = cond_cx.build.Phi(T_int(),
-                                              vec(dst_int), vec(bcx.llbb));
 
-    auto end_test = cond_cx.build.ICmp(lib.llvm.LLVMIntNE,
+    auto end_test = cond_cx.build.ICmp(lib.llvm.LLVMIntULT,
                                        src_curr, src_lim_int);
 
     cond_cx.build.CondBr(end_test, body_cx.llbb, next_cx.llbb);
 
-    auto src_curr_ptr = vi2p(body_cx, src_curr, T_ptr(llunit_ty));
-    auto dst_curr_ptr = vi2p(body_cx, dst_curr, T_ptr(llunit_ty));
+    auto src_curr_ptr = vi2p(body_cx, src_curr, T_ptr(T_i8()));
 
-    auto body_res = f(body_cx,
-                      dst_curr_ptr,
-                      load_scalar_or_boxed(body_cx, src_curr_ptr, elt_ty),
-                      elt_ty);
+    auto body_res = f(body_cx, src_curr_ptr);
     body_cx = body_res.bcx;
 
-    auto src_next = body_cx.build.Add(src_curr, unit_sz.val);
-    auto dst_next = body_cx.build.Add(dst_curr, unit_sz.val);
+    auto src_next = body_cx.build.Add(src_curr, elt_sz);
     body_cx.build.Br(cond_cx.llbb);
 
     cond_cx.build.AddIncomingToPhi(src_curr, vec(src_next),
-                                   vec(body_cx.llbb));
-
-    cond_cx.build.AddIncomingToPhi(dst_curr, vec(dst_next),
                                    vec(body_cx.llbb));
 
     ret res(next_cx, C_nil());
@@ -1985,15 +1971,17 @@ fn iter_sequence_inner(@block_ctxt cx,
                        @ty.t elt_ty,
                        val_and_ty_fn f) -> result {
     fn adaptor_fn(val_and_ty_fn f,
+                  @ty.t elt_ty,
                   @block_ctxt cx,
-                  ValueRef av,
-                  ValueRef bv,
-                  @ty.t t) -> result {
-        ret f(cx, bv, t);
+                  ValueRef v) -> result {
+        auto llty = type_of(cx.fcx.ccx, elt_ty);
+        auto p = cx.build.PointerCast(v, T_ptr(llty));
+        ret f(cx, load_scalar_or_boxed(cx, p, elt_ty), elt_ty);
     }
 
-    be iter_sequence_pair_inner(cx, src, src, src_lim, elt_ty,
-                                bind adaptor_fn(f, _, _, _, _));
+    auto elt_sz = size_of(cx, elt_ty);
+    be iter_sequence_raw(elt_sz.bcx, src, src_lim, elt_sz.val,
+                         bind adaptor_fn(f, elt_ty, _, _));
 }
 
 
@@ -5475,34 +5463,136 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
 
     auto bcx = new_top_block_ctxt(fcx);
 
+    auto lldst_vec = bcx.build.Load(lldst_vec_ptr);
+
     // First the dst vec needs to grow to accommodate the src vec.
     // To do this we have to figure out how many bytes to add.
-    auto n_bytes =
-        bcx.build.Load(bcx.build.GEP(llsrc_vec,
-                                     vec(C_int(0),
-                                         C_int(abi.vec_elt_fill))));
 
-    n_bytes = bcx.build.Select(llskipnull,
-                               bcx.build.Sub(n_bytes, C_int(1)),
-                               n_bytes);
+    fn vec_fill(@block_ctxt bcx, ValueRef v) -> ValueRef {
+        ret bcx.build.Load(bcx.build.GEP(v, vec(C_int(0),
+                                                C_int(abi.vec_elt_fill))));
+    }
+
+    fn put_vec_fill(@block_ctxt bcx, ValueRef v, ValueRef fill) -> ValueRef {
+        ret bcx.build.Store(fill,
+                            bcx.build.GEP(v,
+                                          vec(C_int(0),
+                                              C_int(abi.vec_elt_fill))));
+    }
+
+    fn vec_fill_adjusted(@block_ctxt bcx, ValueRef v,
+                         ValueRef skipnull) -> ValueRef {
+        auto f = bcx.build.Load(bcx.build.GEP(v,
+                                              vec(C_int(0),
+                                                  C_int(abi.vec_elt_fill))));
+        ret bcx.build.Select(skipnull, bcx.build.Sub(f, C_int(1)), f);
+    }
+
+    fn vec_p0(@block_ctxt bcx, ValueRef v) -> ValueRef {
+        auto p = bcx.build.GEP(v, vec(C_int(0),
+                                      C_int(abi.vec_elt_data)));
+        ret bcx.build.PointerCast(p, T_ptr(T_i8()));
+    }
 
 
-    auto llneed_copy_ptr = bcx.build.Alloca(T_int());
+    fn vec_p1(@block_ctxt bcx, ValueRef v) -> ValueRef {
+        auto len = vec_fill(bcx, v);
+        ret bcx.build.GEP(vec_p0(bcx, v), vec(len));
+    }
+
+    fn vec_p1_adjusted(@block_ctxt bcx, ValueRef v,
+                       ValueRef skipnull) -> ValueRef {
+        auto len = vec_fill_adjusted(bcx, v, skipnull);
+        ret bcx.build.GEP(vec_p0(bcx, v), vec(len));
+    }
+
+
+    auto llcopy_dst_ptr = bcx.build.Alloca(T_int());
     auto llnew_vec_res =
         trans_upcall(bcx, "upcall_vec_grow",
-                     vec(vp2i(bcx, bcx.build.Load(lldst_vec_ptr)),
-                         n_bytes,
-                         vp2i(bcx, llneed_copy_ptr),
+                     vec(vp2i(bcx, lldst_vec),
+                         vec_fill_adjusted(bcx, llsrc_vec, llskipnull),
+                         vp2i(bcx, llcopy_dst_ptr),
                          vp2i(bcx, llvec_tydesc)));
 
     bcx = llnew_vec_res.bcx;
     auto llnew_vec = vi2p(bcx, llnew_vec_res.val,
                           T_opaque_vec_ptr());
 
+    put_vec_fill(bcx, llnew_vec, C_int(0));
 
-    // FIXME: complete this.
+    auto copy_dst_cx = new_sub_block_ctxt(bcx, "copy new <- dst");
+    auto copy_src_cx = new_sub_block_ctxt(bcx, "copy new <- src");
 
-    bcx.build.RetVoid();
+    auto pp0 = bcx.build.Alloca(T_ptr(T_i8()));
+    bcx.build.Store(vec_p0(bcx, llnew_vec), pp0);
+
+    bcx.build.CondBr(bcx.build.TruncOrBitCast
+                     (bcx.build.Load(llcopy_dst_ptr),
+                      T_i1()),
+                     copy_dst_cx.llbb,
+                     copy_src_cx.llbb);
+
+
+    fn copy_elts(@block_ctxt cx,
+                 ValueRef elt_tydesc,
+                 ValueRef dst,
+                 ValueRef src,
+                 ValueRef n_bytes) -> result {
+
+        auto src_lim = cx.build.GEP(src, vec(n_bytes));
+
+        auto elt_llsz =
+            cx.build.Load(cx.build.GEP(elt_tydesc,
+                                       vec(C_int(0),
+                                           C_int(abi.tydesc_field_size))));
+
+        fn take_one(ValueRef elt_tydesc,
+                    @block_ctxt cx, ValueRef v) -> result {
+            call_tydesc_glue_full(cx, v,
+                                  elt_tydesc,
+                                  abi.tydesc_field_take_glue_off);
+            ret res(cx, v);
+        }
+
+        auto bcx = iter_sequence_raw(cx, src, src_lim,
+                                     elt_llsz, bind take_one(elt_tydesc,
+                                                             _, _)).bcx;
+
+        ret call_memcpy(bcx, dst, src, n_bytes);
+    }
+
+    // Copy any dst elements in, omitting null if doing str.
+    auto n_bytes = vec_fill_adjusted(copy_dst_cx, lldst_vec, llskipnull);
+    copy_dst_cx = copy_elts(copy_dst_cx,
+                            llelt_tydesc,
+                            copy_dst_cx.build.Load(pp0),
+                            vec_p0(copy_dst_cx, lldst_vec),
+                            n_bytes).bcx;
+
+    put_vec_fill(copy_dst_cx, llnew_vec, n_bytes);
+    copy_dst_cx.build.Store(vec_p1_adjusted(copy_dst_cx,
+                                            llnew_vec, llskipnull),
+                            pp0);
+    copy_dst_cx.build.Br(copy_src_cx.llbb);
+
+
+    // Copy any src elements in, carrying along null if doing str.
+    n_bytes = vec_fill(copy_src_cx, llsrc_vec);
+    copy_src_cx = copy_elts(copy_src_cx,
+                            llelt_tydesc,
+                            copy_src_cx.build.Load(pp0),
+                            vec_p0(copy_src_cx, llsrc_vec),
+                            n_bytes).bcx;
+
+    put_vec_fill(copy_src_cx, llnew_vec,
+                 copy_src_cx.build.Add(vec_fill(copy_src_cx,
+                                                llnew_vec),
+                                        n_bytes));
+
+    // Write new_vec back through the alias we were given.
+    copy_src_cx.build.Store(llnew_vec, lldst_vec_ptr);
+    copy_src_cx.build.RetVoid();
 }
 
 
