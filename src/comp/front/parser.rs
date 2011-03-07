@@ -35,6 +35,7 @@ state type parser =
           fn get_session() -> session.session;
           fn get_span() -> common.span;
           fn next_def_id() -> ast.def_id;
+          fn get_prec_table() -> vec[op_spec];
     };
 
 impure fn new_parser(session.session sess,
@@ -50,7 +51,8 @@ impure fn new_parser(session.session sess,
                            mutable ast.def_num def,
                            mutable restriction res,
                            ast.crate_num crate,
-                           lexer.reader rdr)
+                           lexer.reader rdr,
+                           vec[op_spec] precs)
         {
             fn peek() -> token.token {
                 ret tok;
@@ -100,6 +102,9 @@ impure fn new_parser(session.session sess,
                 ret env;
             }
 
+            fn get_prec_table() -> vec[op_spec] {
+                ret precs;
+            }
         }
     auto ftype = SOURCE_FILE;
     if (_str.ends_with(path, ".rc")) {
@@ -109,7 +114,8 @@ impure fn new_parser(session.session sess,
     auto rdr = lexer.new_reader(srdr, path);
     auto npos = rdr.get_curr_pos();
     ret stdio_parser(sess, env, ftype, lexer.next_token(rdr),
-                     npos, npos, 0, UNRESTRICTED, crate, rdr);
+                     npos, npos, 0, UNRESTRICTED, crate, rdr,
+                     prec_table());
 }
 
 impure fn unexpected(parser p, token.token t) {
@@ -975,144 +981,72 @@ impure fn parse_prefix_expr(parser p) -> @ast.expr {
     ret @spanned(lo, hi, ex);
 }
 
-impure fn parse_binops(parser p,
-                   (impure fn(parser) -> @ast.expr) sub,
-                   vec[tup(token.binop, ast.binop)] ops)
+type op_spec = rec(token.token tok, ast.binop op, int prec);
+
+fn prec_table() -> vec[op_spec] {
+    ret vec(rec(tok=token.BINOP(token.STAR), op=ast.mul, prec=11),
+            rec(tok=token.BINOP(token.SLASH), op=ast.div, prec=11),
+            rec(tok=token.BINOP(token.PERCENT), op=ast.rem, prec=11),
+            rec(tok=token.BINOP(token.PLUS), op=ast.add, prec=10),
+            rec(tok=token.BINOP(token.MINUS), op=ast.sub, prec=10),
+            rec(tok=token.BINOP(token.LSL), op=ast.lsl, prec=9),
+            rec(tok=token.BINOP(token.LSR), op=ast.lsr, prec=9),
+            rec(tok=token.BINOP(token.ASR), op=ast.asr, prec=9),
+            rec(tok=token.BINOP(token.AND), op=ast.bitand, prec=8),
+            rec(tok=token.BINOP(token.CARET), op=ast.bitxor, prec=6),
+            rec(tok=token.BINOP(token.OR), op=ast.bitor, prec=6),
+            // ast.mul is a bogus placeholder here, AS is special
+            // cased in parse_more_binops
+            rec(tok=token.AS, op=ast.mul, prec=5),
+            rec(tok=token.LT, op=ast.lt, prec=4),
+            rec(tok=token.LE, op=ast.le, prec=4),
+            rec(tok=token.GE, op=ast.ge, prec=4),
+            rec(tok=token.GT, op=ast.gt, prec=4),
+            rec(tok=token.EQEQ, op=ast.eq, prec=3),
+            rec(tok=token.NE, op=ast.ne, prec=3),
+            rec(tok=token.ANDAND, op=ast.and, prec=2),
+            rec(tok=token.OROR, op=ast.or, prec=1));
+}
+
+impure fn parse_binops(parser p) -> @ast.expr {
+    ret parse_more_binops(p, parse_prefix_expr(p), 0);
+}
+
+impure fn parse_more_binops(parser p, @ast.expr lhs, int min_prec)
     -> @ast.expr {
-    auto lo = p.get_span();
-    auto hi = lo;
-    auto e = sub(p);
-    auto more = true;
-    while (more) {
-        more = false;
-        for (tup(token.binop, ast.binop) pair in ops) {
-            alt (p.peek()) {
-                case (token.BINOP(?op)) {
-                    if (pair._0 == op) {
-                        p.bump();
-                        auto rhs = sub(p);
-                        hi = rhs.span;
-                        auto exp = ast.expr_binary(pair._1, e, rhs,
-                                                   ast.ann_none);
-                        e = @spanned(lo, hi, exp);
-                        more = true;
-                    }
+    // Magic nonsense to work around rustboot bug
+    fn op_eq(token.token a, token.token b) -> bool {
+        if (a == b) {ret true;}
+        else {ret false;}
+    }
+    auto peeked = p.peek();
+    for (op_spec cur in p.get_prec_table()) {
+        if (cur.prec > min_prec && op_eq(cur.tok, peeked)) {
+            p.bump();
+            alt (cur.tok) {
+                case (token.AS) {
+                    auto rhs = parse_ty(p);
+                    auto _as = ast.expr_cast(lhs, rhs, ast.ann_none);
+                    auto span = @spanned(lhs.span, rhs.span, _as);
+                    ret parse_more_binops(p, span, min_prec);
                 }
-                case (_) { /* fall through */ }
+                case (_) {
+                    auto rhs = parse_more_binops(p, parse_prefix_expr(p),
+                                                 cur.prec);
+                    auto bin = ast.expr_binary(cur.op, lhs, rhs,
+                                               ast.ann_none);
+                    auto span = @spanned(lhs.span, rhs.span, bin);
+                    ret parse_more_binops(p, span, min_prec);
+                }
             }
         }
     }
-    ret e;
-}
-
-impure fn parse_binary_exprs(parser p,
-                            (impure fn(parser) -> @ast.expr) sub,
-                            vec[tup(token.token, ast.binop)] ops)
-    -> @ast.expr {
-    auto lo = p.get_span();
-    auto hi = lo;
-    auto e = sub(p);
-    auto more = true;
-    while (more) {
-        more = false;
-        for (tup(token.token, ast.binop) pair in ops) {
-            if (pair._0 == p.peek()) {
-                p.bump();
-                auto rhs = sub(p);
-                hi = rhs.span;
-                auto exp = ast.expr_binary(pair._1, e, rhs, ast.ann_none);
-                e = @spanned(lo, hi, exp);
-                more = true;
-            }
-        }
-    }
-    ret e;
-}
-
-impure fn parse_factor_expr(parser p) -> @ast.expr {
-    auto sub = parse_prefix_expr;
-    ret parse_binops(p, sub, vec(tup(token.STAR, ast.mul),
-                                 tup(token.SLASH, ast.div),
-                                 tup(token.PERCENT, ast.rem)));
-}
-
-impure fn parse_term_expr(parser p) -> @ast.expr {
-    auto sub = parse_factor_expr;
-    ret parse_binops(p, sub, vec(tup(token.PLUS, ast.add),
-                                 tup(token.MINUS, ast.sub)));
-}
-
-impure fn parse_shift_expr(parser p) -> @ast.expr {
-    auto sub = parse_term_expr;
-    ret parse_binops(p, sub, vec(tup(token.LSL, ast.lsl),
-                                 tup(token.LSR, ast.lsr),
-                                 tup(token.ASR, ast.asr)));
-}
-
-impure fn parse_bitand_expr(parser p) -> @ast.expr {
-    auto sub = parse_shift_expr;
-    ret parse_binops(p, sub, vec(tup(token.AND, ast.bitand)));
-}
-
-impure fn parse_bitxor_expr(parser p) -> @ast.expr {
-    auto sub = parse_bitand_expr;
-    ret parse_binops(p, sub, vec(tup(token.CARET, ast.bitxor)));
-}
-
-impure fn parse_bitor_expr(parser p) -> @ast.expr {
-    auto sub = parse_bitxor_expr;
-    ret parse_binops(p, sub, vec(tup(token.OR, ast.bitor)));
-}
-
-impure fn parse_cast_expr(parser p) -> @ast.expr {
-    auto lo = p.get_span();
-    auto e = parse_bitor_expr(p);
-    auto hi = e.span;
-    while (true) {
-        alt (p.peek()) {
-            case (token.AS) {
-                p.bump();
-                auto t = parse_ty(p);
-                hi = t.span;
-                e = @spanned(lo, hi, ast.expr_cast(e, t, ast.ann_none));
-            }
-
-            case (_) {
-                ret e;
-            }
-        }
-    }
-    ret e;
-}
-
-impure fn parse_relational_expr(parser p) -> @ast.expr {
-    auto sub = parse_cast_expr;
-    ret parse_binary_exprs(p, sub, vec(tup(token.LT, ast.lt),
-                                       tup(token.LE, ast.le),
-                                       tup(token.GE, ast.ge),
-                                       tup(token.GT, ast.gt)));
-}
-
-
-impure fn parse_equality_expr(parser p) -> @ast.expr {
-    auto sub = parse_relational_expr;
-    ret parse_binary_exprs(p, sub, vec(tup(token.EQEQ, ast.eq),
-                                       tup(token.NE, ast.ne)));
-}
-
-impure fn parse_and_expr(parser p) -> @ast.expr {
-    auto sub = parse_equality_expr;
-    ret parse_binary_exprs(p, sub, vec(tup(token.ANDAND, ast.and)));
-}
-
-impure fn parse_or_expr(parser p) -> @ast.expr {
-    auto sub = parse_and_expr;
-    ret parse_binary_exprs(p, sub, vec(tup(token.OROR, ast.or)));
+    ret lhs;
 }
 
 impure fn parse_assign_expr(parser p) -> @ast.expr {
     auto lo = p.get_span();
-    auto lhs = parse_or_expr(p);
+    auto lhs = parse_binops(p);
     alt (p.peek()) {
         case (token.EQ) {
             p.bump();
