@@ -437,7 +437,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         alt-pattern-drop.rs \
                         alt-type-simple.rs \
                         append-units.rs \
-                        autoderef-objfn.rs \
                         basic-1.rs \
                         basic-2.rs \
                         basic.rs \
@@ -447,10 +446,8 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         comm.rs \
                         constrained-type.rs \
                         destructor-ordering.rs \
-                        drop-on-empty-block-exit.rs \
                         drop-parametric-closure-with-bound-box.rs \
                         export-non-interference.rs \
-                        exterior.rs \
                         foreach-nested-2.rs \
                         foreach-nested.rs \
                         foreach-put-structured.rs \
@@ -482,7 +479,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         mlist-cycle.rs \
                         mlist.rs \
                         mutable-alias-vec.rs \
-                        native-opaque-type.rs \
                         obj-as.rs \
                         obj-dtor.rs \
                         obj-return-polytypes.rs \
@@ -523,7 +519,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         utf8.rs \
                         vec-alloc-append.rs \
                         vec-append.rs \
-                        vec-concat.rs \
                         vec-slice.rs \
                         while-prelude-drop.rs \
                         while-with-break.rs \
