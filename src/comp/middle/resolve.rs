@@ -300,11 +300,19 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
     }
 
     fn check_native_mod(ast.ident i, ast.native_mod m) -> option.t[def_wrap] {
+
         alt (m.index.find(i)) {
-            case (some[@ast.native_item](?item)) {
-                ret some(found_def_native_item(item));
+            case (some[ast.native_mod_index_entry](?ent)) {
+                alt (ent) {
+                    case (ast.nmie_view_item(?view_item)) {
+                        ret some(found_def_view(view_item));
+                    }
+                    case (ast.nmie_item(?item)) {
+                        ret some(found_def_native_item(item));
+                    }
+                }
             }
-            case (_) {
+            case (none[ast.native_mod_index_entry]) {
                 ret none[def_wrap];
             }
         }

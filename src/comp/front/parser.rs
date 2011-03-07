@@ -1846,8 +1846,11 @@ impure fn parse_native_item(parser p) -> @ast.native_item {
 impure fn parse_native_mod_items(parser p,
                                  str native_name,
                                  ast.native_abi abi) -> ast.native_mod {
-    auto index = new_str_hash[@ast.native_item]();
+    auto index = new_str_hash[ast.native_mod_index_entry]();
     let vec[@ast.native_item] items = vec();
+
+    auto view_items = parse_native_view(p, index);
+
     while (p.peek() != token.RBRACE) {
         auto item = parse_native_item(p);
         items += vec(item);
@@ -1856,7 +1859,9 @@ impure fn parse_native_mod_items(parser p,
         ast.index_native_item(index, item);
     }
     ret rec(native_name=native_name, abi=abi,
-            items=items, index=index);
+            view_items=view_items,
+            items=items,
+            index=index);
 }
 
 fn default_native_name(session.session sess, str id) -> str {
@@ -2229,6 +2234,19 @@ impure fn parse_view(parser p, ast.mod_index index) -> vec[@ast.view_item] {
     }
     ret items;
 }
+
+impure fn parse_native_view(parser p, ast.native_mod_index index)
+    -> vec[@ast.view_item] {
+    let vec[@ast.view_item] items = vec();
+    while (is_view_item(p.peek())) {
+        auto item = parse_view_item(p);
+        items += vec(item);
+
+        ast.index_native_view_item(index, item);
+    }
+    ret items;
+}
+
 
 impure fn parse_crate_from_source_file(parser p) -> @ast.crate {
     auto lo = p.get_span();
