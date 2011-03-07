@@ -645,6 +645,13 @@ fn ty_fn_proto(@t fty) -> ast.proto {
     fail;
 }
 
+fn ty_fn_abi(@t fty) -> ast.native_abi {
+    alt (fty.struct) {
+        case (ty.ty_native_fn(?a, _, _)) { ret a; }
+    }
+    fail;
+}
+
 fn ty_fn_ret(@t fty) -> @t {
     alt (fty.struct) {
         case (ty.ty_fn(_, _, ?r)) { ret r; }

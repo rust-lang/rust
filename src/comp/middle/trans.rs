@@ -4972,11 +4972,6 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
     let str s = cx.names.next("_rust_wrapper") + sep() + name;
     let ValueRef wrapper_fn = decl_fastcall_fn(cx.llmod, s, wrapper_type);
 
-    // Build the wrapper.
-    auto fcx = new_fn_ctxt(cx, wrapper_fn);
-    auto bcx = new_top_block_ctxt(fcx);
-    bcx.build.RetVoid();
-
     // Declare the global constant pair that points to it.
     auto wrapper_pair_type = T_fn_pair(cx.tn, wrapper_type);
     let str ps = cx.names.next("_rust_wrapper_pair") + sep() + name;
@@ -4985,7 +4980,40 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
 
     // Declare the function itself.
     auto llfty = get_pair_fn_ty(node_type(cx, ann));
-    decl_cdecl_fn(cx.llmod, name, llfty);
+    auto function = decl_cdecl_fn(cx.llmod, name, llfty);
+
+    // Build the wrapper.
+    auto fcx = new_fn_ctxt(cx, wrapper_fn);
+    auto bcx = new_top_block_ctxt(fcx);
+    auto fn_type = node_ann_type(cx, ann);
+
+    let vec[ValueRef] call_args = vec();
+    auto abi = ty.ty_fn_abi(fn_type);
+    auto arg_n = 3u;
+    alt (abi) {
+        case (ast.native_abi_rust) {
+            call_args += vec(fcx.lltaskptr);
+            auto num_ty_param = ty.count_ty_params(plain_ty(fn_type.struct));
+            for each (uint i in _uint.range(0u, num_ty_param)) {
+                auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
+                check (llarg as int != 0);
+                call_args += vec(llarg);
+                arg_n += 1u;
+            }
+        }
+        case (ast.native_abi_cdecl) {
+        }
+    }
+    auto args = ty.ty_fn_args(fn_type);
+    for (ty.arg arg in args) {
+        auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
+        check (llarg as int != 0);
+        call_args += vec(llarg);
+        arg_n += 1u;
+    }
+    auto r = bcx.build.Call(function, call_args);
+    bcx.build.Store(r, fcx.llretptr);
+    bcx.build.RetVoid();
 }
 
 fn collect_native_item(&@crate_ctxt cx, @ast.native_item i) -> @crate_ctxt {
