@@ -1836,6 +1836,9 @@ impure fn parse_native_item(parser p) -> @ast.native_item {
         case (token.FN) {
             ret parse_item_native_fn(p, eff);
         }
+        case (?t) {
+            unexpected(p, t);
+        }
     }
 }
 
