@@ -442,7 +442,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         basic-2.rs \
                         basic.rs \
                         bind-obj-ctor.rs \
-                        box-unbox.rs \
                         child-outlives-parent.rs \
                         clone-with-exterior.rs \
                         comm.rs \
