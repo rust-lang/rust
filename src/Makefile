@@ -759,14 +759,13 @@ test/compile-fail/%.rustc.out.tmp: test/compile-fail/%.rs $(SREQ)
 	$(CFG_QUIET)grep --text --quiet \
       "$$(grep error-pattern $< | cut -d : -f 2- | tr -d '\n\r')" $@
 
-test/run-pass/%.boot$(CFG_EXE_SUFFIX): test/run-pass/%.rc $(BREQ)
-	@$(call CFG_ECHO, compile [boot]: $<)
-	$(BOOT) -o $@ $<
+%.bc: %.rc $(SREQ)
+	@$(call CFG_ECHO, compile [rustc]: $<)
+	$(RUSTC) -o $@ $<
 
-test/bench/shootout/%.boot$(CFG_EXE_SUFFIX): \
-  test/bench/shootout/%.rs $(BREQ)
-	@$(call CFG_ECHO, compile [boot]: $<)
-	$(BOOT) -o $@ $<
+%.bc: %.rs $(SREQ)
+	@$(call CFG_ECHO, compile [rustc]: $<)
+	$(RUSTC) -o $@ $<
 
 %.ll: %.bc
 	@$(call CFG_ECHO, dis [llvm]: $<)
@@ -789,25 +788,13 @@ test/bench/shootout/%.boot$(CFG_EXE_SUFFIX): \
 	@# programs, I\'ll live with the noise.
 	-$(CFG_QUIET)$(DSYMUTIL) $@
 
-test/run-pass/%.bc: test/run-pass/%.rc $(SREQ)
-	@$(call CFG_ECHO, compile [rustc]: $<)
-	$(RUSTC) -o $@ $<
-
-test/run-pass/%.boot$(CFG_EXE_SUFFIX): test/run-pass/%.rs $(BREQ)
+%.boot$(CFG_EXE_SUFFIX): %.rs $(BREQ)
 	@$(call CFG_ECHO, compile [boot]: $<)
 	$(BOOT) -o $@ $<
 
-test/run-pass/%.bc: test/run-pass/%.rs $(SREQ)
-	@$(call CFG_ECHO, compile [rustc]: $<)
-	$(RUSTC) -o $@ $<
-
-test/run-fail/%.boot$(CFG_EXE_SUFFIX): test/run-fail/%.rs $(BREQ)
+%.boot$(CFG_EXE_SUFFIX): %.rc $(BREQ)
 	@$(call CFG_ECHO, compile [boot]: $<)
 	$(BOOT) -o $@ $<
-
-test/run-fail/%.bc: test/run-fail/%.rs $(SREQ)
-	@$(call CFG_ECHO, compile [rustc]: $<)
-	$(RUSTC) -o $@ $<
 
 
 ######################################################################
