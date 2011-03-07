@@ -495,7 +495,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         spawn-module-qualified.rs \
                         spawn.rs \
                         str-append.rs \
-                        str-concat.rs \
                         syntax-extension-fmt.rs \
                         syntax-extension-shell.rs \
                         task-comm-0.rs \
