@@ -1838,6 +1838,7 @@ impure fn parse_native_item(parser p) -> @ast.native_item {
         }
         case (?t) {
             unexpected(p, t);
+            fail;
         }
     }
 }
