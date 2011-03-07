@@ -661,7 +661,7 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t, bool boxed) -> TypeRef {
             fail;
         }
         case (ty.ty_param(_)) {
-            llty = T_typaram_ptr(cx.tn);
+            llty = T_i8();
         }
         case (ty.ty_type) { llty = T_ptr(T_tydesc(cx.tn)); }
     }
@@ -1216,17 +1216,14 @@ fn trans_raw_malloc(@block_ctxt cx, TypeRef llptr_ty, ValueRef llsize)
     ret rslt;
 }
 
-fn trans_malloc_without_cleanup(@block_ctxt cx, @ty.t t) -> result {
-    auto llty = type_of(cx.fcx.ccx, t);
-    auto llsize = llsize_of(llvm.LLVMGetElementType(llty));
-    ret trans_raw_malloc(cx, llty, llsize);
-}
-
-fn trans_malloc(@block_ctxt cx, @ty.t t) -> result {
-    auto scope_cx = find_scope_cx(cx);
-    auto rslt = trans_malloc_without_cleanup(cx, t);
-    scope_cx.cleanups += clean(bind drop_ty(_, rslt.val, t));
-    ret rslt;
+fn trans_malloc_boxed(@block_ctxt cx, @ty.t t) -> result {
+    // Synthesize a fake box type structurally so we have something
+    // to measure the size of.
+    auto boxed_body = plain_ty(ty.ty_tup(vec(plain_ty(ty.ty_int), t)));
+    auto box_ptr = plain_ty(ty.ty_box(t));
+    auto sz = size_of(cx, boxed_body);
+    auto llty = type_of(cx.fcx.ccx, box_ptr);
+    ret trans_raw_malloc(sz.bcx, llty, sz.val);
 }
 
 
@@ -2256,7 +2253,11 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
         case (ast.box) {
             auto e_ty = ty.expr_ty(e);
             auto e_val = sub.val;
-            sub = trans_malloc(sub.bcx, node_ann_type(sub.bcx.fcx.ccx, a));
+            auto box_ty = node_ann_type(sub.bcx.fcx.ccx, a);
+            sub = trans_malloc_boxed(sub.bcx, e_ty);
+            find_scope_cx(cx).cleanups +=
+                clean(bind drop_ty(_, sub.val, box_ty));
+
             auto box = sub.val;
             auto rc = sub.bcx.build.GEP(box,
                                         vec(C_int(0),
@@ -4707,11 +4708,8 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
                                                    fields_ty)));
         let @ty.t boxed_body_ty = plain_ty(ty.ty_box(body_ty));
 
-        let TypeRef llboxed_body_ty = type_of(cx, boxed_body_ty);
-
         // Malloc a box for the body.
-        auto box = trans_raw_malloc(bcx, llboxed_body_ty,
-            llsize_of(llvm.LLVMGetElementType(llboxed_body_ty)));
+        auto box = trans_malloc_boxed(bcx, body_ty);
         bcx = box.bcx;
         auto rc = GEP_tup_like(bcx, boxed_body_ty, box.val,
                                vec(0, abi.box_rc_field_refcnt));
