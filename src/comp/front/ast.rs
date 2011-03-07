@@ -83,6 +83,11 @@ tag mutability {
     imm;
 }
 
+tag opacity {
+    op_abstract;
+    op_transparent;
+}
+
 tag layer {
     layer_value;
     layer_state;
