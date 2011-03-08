@@ -21,7 +21,7 @@ type ty_param = rec(ident ident, def_id id);
 // Annotations added during successive passes.
 tag ann {
     ann_none;
-    ann_type(@middle.ty.t);
+    ann_type(@middle.ty.t, option.t[vec[@middle.ty.t]] /* ty param substs */);
 }
 
 tag def {

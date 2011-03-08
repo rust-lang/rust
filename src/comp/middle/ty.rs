@@ -599,7 +599,7 @@ fn ann_to_type(&ast.ann ann) -> @t {
             // shouldn't happen, but can until the typechecker is complete
             ret plain_ty(ty_var(-1));    // FIXME: broken, broken, broken
         }
-        case (ast.ann_type(?ty)) {
+        case (ast.ann_type(?ty, _)) {
             ret ty;
         }
     }

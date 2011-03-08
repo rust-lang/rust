@@ -2238,7 +2238,7 @@ fn node_ann_type(@crate_ctxt cx, &ast.ann a) -> @ty.t {
         case (ast.ann_none) {
             cx.sess.bug("missing type annotation");
         }
-        case (ast.ann_type(?t)) {
+        case (ast.ann_type(?t, _)) {
             ret target_type(cx, t);
         }
     }
