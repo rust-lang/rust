@@ -5708,8 +5708,6 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     let ValueRef crate_ptr =
         llvm.LLVMAddGlobal(llmod, T_crate(tn), _str.buf("rust_crate"));
 
-    llvm.LLVMSetModuleInlineAsm(llmod, _str.buf(x86.get_module_asm()));
-
     auto intrinsics = declare_intrinsics(llmod);
 
     auto glues = make_glues(llmod, tn);
