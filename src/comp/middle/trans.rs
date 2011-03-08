@@ -387,6 +387,10 @@ fn T_closure_ptr(type_names tn,
                  TypeRef lltarget_ty,
                  TypeRef llbindings_ty,
                  uint n_ty_params) -> TypeRef {
+
+    // NB: keep this in sync with code in trans_bind; we're making
+    // an LLVM typeref structure that has the same "shape" as the ty.t
+    // it constructs.
     ret T_ptr(T_box(T_struct(vec(T_ptr(T_tydesc(tn)),
                                  lltarget_ty,
                                  llbindings_ty,
@@ -3322,7 +3326,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
                     @ty.t incoming_fty,
                     @ty.t outgoing_fty,
                     vec[option.t[@ast.expr]] args,
-                    TypeRef llclosure_ty,
+                    @ty.t closure_ty,
                     vec[@ty.t] bound_tys,
                     uint ty_param_count) -> ValueRef {
     // Construct a thunk-call with signature incoming_fty, and that copies
@@ -3335,21 +3339,15 @@ fn trans_bind_thunk(@crate_ctxt cx,
     auto fcx = new_fn_ctxt(cx, llthunk);
     auto bcx = new_top_block_ctxt(fcx);
 
-    auto llclosure = bcx.build.PointerCast(fcx.llenv, llclosure_ty);
+    auto llclosure_ptr_ty = type_of(cx, plain_ty(ty.ty_box(closure_ty)));
+    auto llclosure = bcx.build.PointerCast(fcx.llenv, llclosure_ptr_ty);
 
-    auto llbody = bcx.build.GEP(llclosure,
-                                vec(C_int(0),
-                                    C_int(abi.box_rc_field_body)));
-
-    auto lltarget = bcx.build.GEP(llbody,
-                                  vec(C_int(0),
-                                      C_int(abi.closure_elt_target)));
-
-    auto llbound = bcx.build.GEP(llbody,
-                                 vec(C_int(0),
-                                     C_int(abi.closure_elt_bindings)));
-
-    auto lltargetclosure = bcx.build.GEP(lltarget,
+    auto lltarget = GEP_tup_like(bcx, closure_ty, llclosure,
+                                 vec(0,
+                                     abi.box_rc_field_body,
+                                     abi.closure_elt_target));
+    bcx = lltarget.bcx;
+    auto lltargetclosure = bcx.build.GEP(lltarget.val,
                                          vec(C_int(0),
                                              C_int(abi.fn_field_box)));
     lltargetclosure = bcx.build.Load(lltargetclosure);
@@ -3370,10 +3368,13 @@ fn trans_bind_thunk(@crate_ctxt cx,
     let uint i = 0u;
     while (i < ty_param_count) {
         auto lltyparam_ptr =
-            bcx.build.GEP(llbody, vec(C_int(0),
-                                      C_int(abi.closure_elt_ty_params),
-                                      C_int(i as int)));
-        llargs += vec(bcx.build.Load(lltyparam_ptr));
+            GEP_tup_like(bcx, closure_ty, llclosure,
+                         vec(0,
+                             abi.box_rc_field_body,
+                             abi.closure_elt_ty_params,
+                             (i as int)));
+        bcx = lltyparam_ptr.bcx;
+        llargs += vec(bcx.build.Load(lltyparam_ptr.val));
         i += 1u;
     }
 
@@ -3385,11 +3386,15 @@ fn trans_bind_thunk(@crate_ctxt cx,
 
             // Arg provided at binding time; thunk copies it from closure.
             case (some[@ast.expr](_)) {
-                let ValueRef bound_arg = bcx.build.GEP(llbound,
-                                                       vec(C_int(0),
-                                                           C_int(b)));
+                auto bound_arg =
+                    GEP_tup_like(bcx, closure_ty, llclosure,
+                                 vec(0,
+                                     abi.box_rc_field_body,
+                                     abi.closure_elt_bindings,
+                                     b));
                 // FIXME: possibly support passing aliases someday.
-                llargs += bcx.build.Load(bound_arg);
+                bcx = bound_arg.bcx;
+                llargs += bcx.build.Load(bound_arg.val);
                 b += 1;
             }
 
@@ -3412,7 +3417,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
     }
 
     // FIXME: turn this call + ret into a tail call.
-    auto lltargetfn = bcx.build.GEP(lltarget,
+    auto lltargetfn = bcx.build.GEP(lltarget.val,
                                     vec(C_int(0),
                                         C_int(abi.fn_field_code)));
     lltargetfn = bcx.build.Load(lltargetfn);
@@ -3479,21 +3484,26 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
                 i += 1u;
             }
 
-            // Get the type of the bound function.
-            let TypeRef lltarget_ty = type_of(bcx.fcx.ccx, outgoing_fty);
-
             // Synthesize a closure type.
             let @ty.t bindings_ty = plain_ty(ty.ty_tup(bound_tys));
-            let TypeRef llbindings_ty = type_of(bcx.fcx.ccx, bindings_ty);
-            let TypeRef llclosure_ty = T_closure_ptr(cx.fcx.ccx.tn,
-                                                     lltarget_ty,
-                                                     llbindings_ty,
-                                                     ty_param_count);
 
-            // Malloc a box for the body.
-            // FIXME: this isn't generic-safe
-            auto r = trans_raw_malloc(bcx, llclosure_ty,
-                llsize_of(llvm.LLVMGetElementType(llclosure_ty)));
+            // NB: keep this in sync with T_closure_ptr; we're making
+            // a ty.t structure that has the same "shape" as the LLVM type
+            // it constructs.
+            let @ty.t tydesc_ty = plain_ty(ty.ty_type);
+
+            let vec[@ty.t] captured_tys =
+                _vec.init_elt[@ty.t](tydesc_ty, ty_param_count);
+
+            let vec[@ty.t] closure_tys =
+                vec(tydesc_ty,
+                    outgoing_fty,
+                    bindings_ty,
+                    plain_ty(ty.ty_tup(captured_tys)));
+
+            let @ty.t closure_ty = plain_ty(ty.ty_tup(closure_tys));
+
+            auto r = trans_malloc_boxed(bcx, closure_ty);
             auto box = r.val;
             bcx = r.bcx;
             auto rc = bcx.build.GEP(box,
@@ -3561,9 +3571,10 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
                                                C_int(abi.fn_field_code)));
 
             let @ty.t pair_ty = node_ann_type(cx.fcx.ccx, ann);
+
             let ValueRef llthunk =
                 trans_bind_thunk(cx.fcx.ccx, pair_ty, outgoing_fty,
-                                 args, llclosure_ty, bound_tys,
+                                 args, closure_ty, bound_tys,
                                  ty_param_count);
 
             bcx.build.Store(llthunk, pair_code);
