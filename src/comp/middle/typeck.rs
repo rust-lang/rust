@@ -86,11 +86,11 @@ fn generalize_ty(@crate_ctxt cx, @ty.t t) -> @ty.t {
 fn substitute_ty_params(&@crate_ctxt ccx,
                         @ty.t typ,
                         vec[ast.def_id] ty_params,
-                        vec[@ast.ty] supplied,
+                        vec[@ty.t] supplied,
                         &span sp) -> @ty.t {
     state obj ty_substituter(@crate_ctxt ccx,
                              vec[ast.def_id] ty_params,
-                             vec[@ast.ty] supplied) {
+                             vec[@ty.t] supplied) {
         fn fold_simple_ty(@ty.t typ) -> @ty.t {
             alt (typ.struct) {
                 case (ty.ty_param(?pid)) {
@@ -108,7 +108,7 @@ fn substitute_ty_params(&@crate_ctxt ccx,
                     }
 
                     // Substitute it in.
-                    ret ast_ty_to_ty_crate(ccx, supplied.(i));
+                    ret supplied.(i);
                 }
                 case (_) { ret typ; }
             }
@@ -116,7 +116,7 @@ fn substitute_ty_params(&@crate_ctxt ccx,
     }
 
     auto ty_param_len = _vec.len[ast.def_id](ty_params);
-    auto supplied_len = _vec.len[@ast.ty](supplied);
+    auto supplied_len = _vec.len[@ty.t](supplied);
     if (ty_param_len != supplied_len) {
         ccx.sess.span_err(sp, "expected " + _uint.to_str(ty_param_len, 10u) +
                           " type parameter(s) but found " +
@@ -1564,19 +1564,33 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             }
 
             // Substitute type parameters if the user provided some.
-            if (_vec.len[@ast.ty](pth.node.types) > 0u) {
+            auto ty_substs_opt;
+            auto ty_substs_len = _vec.len[@ast.ty](pth.node.types);
+            if (ty_substs_len > 0u) {
+                let vec[@ty.t] ty_substs = vec();
+                auto i = 0u;
+                while (i < ty_substs_len) {
+                    ty_substs += vec(ast_ty_to_ty_crate(fcx.ccx,
+                                                        pth.node.types.(i)));
+                    i += 1u;
+                }
+                ty_substs_opt = some[vec[@ty.t]](ty_substs);
+
                 alt (ty_params) {
                     case (none[vec[ast.def_id]]) {
                         fcx.ccx.sess.span_err(expr.span, "this kind of " +
                                               "item may not take type " +
                                               "parameters");
+                        fail;
                     }
                     case (some[vec[ast.def_id]](?tps)) {
-                        t = substitute_ty_params(fcx.ccx, t, tps,
-                                                 pth.node.types, expr.span);
+                        t = substitute_ty_params(fcx.ccx, t, tps, ty_substs,
+                                                 expr.span);
                     }
                 }
             } else {
+                ty_substs_opt = none[vec[@ty.t]];
+
                 alt (ty_params) {
                     case (none[vec[ast.def_id]]) {  /* nothing */ }
                     case (some[vec[ast.def_id]](_)) {
@@ -1587,7 +1601,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 }
             }
 
-            auto ann = ast.ann_type(t, none[vec[@ty.t]]);
+            auto ann = ast.ann_type(t, ty_substs_opt);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_path(pth, defopt, ann));
         }
