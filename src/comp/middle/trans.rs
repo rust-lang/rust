@@ -1053,6 +1053,9 @@ fn dynamic_align_of(@block_ctxt cx, @ty.t t) -> result {
             }
             ret res(bcx, a);
         }
+        case (ty.ty_tag(_, _)) {
+            ret res(cx, C_int(1)); // FIXME: stub
+        }
     }
 }
 
@@ -1805,12 +1808,21 @@ fn iter_structural_ty_full(@block_ctxt cx,
             auto variants = tag_variants(cx.fcx.ccx, tid);
             auto n_variants = _vec.len[ast.variant](variants);
 
-            auto lldiscrim_a_ptr = cx.build.GEP(av, vec(C_int(0), C_int(0)));
-            auto llunion_a_ptr = cx.build.GEP(av, vec(C_int(0), C_int(1)));
+            // Cast the tags to types we can GEP into.
+            auto lltagty = T_opaque_tag_ptr(cx.fcx.ccx.tn);
+            auto av_tag = cx.build.PointerCast(av, lltagty);
+            auto bv_tag = cx.build.PointerCast(bv, lltagty);
+
+            auto lldiscrim_a_ptr = cx.build.GEP(av_tag,
+                                                vec(C_int(0), C_int(0)));
+            auto llunion_a_ptr = cx.build.GEP(av_tag,
+                                              vec(C_int(0), C_int(1)));
             auto lldiscrim_a = cx.build.Load(lldiscrim_a_ptr);
 
-            auto lldiscrim_b_ptr = cx.build.GEP(bv, vec(C_int(0), C_int(0)));
-            auto llunion_b_ptr = cx.build.GEP(bv, vec(C_int(0), C_int(1)));
+            auto lldiscrim_b_ptr = cx.build.GEP(bv_tag,
+                                                vec(C_int(0), C_int(0)));
+            auto llunion_b_ptr = cx.build.GEP(bv_tag,
+                                              vec(C_int(0), C_int(1)));
             auto lldiscrim_b = cx.build.Load(lldiscrim_b_ptr);
 
             // NB: we must hit the discriminant first so that structural
