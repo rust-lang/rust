@@ -88,6 +88,10 @@ static size_t const TIME_SLICE_IN_MS = 10;
 
 static intptr_t const CONST_REFCOUNT = 0x7badface;
 
+// ABI tags for rust_start, rust_task::start and friends.
+static uintptr_t const ABI_X86_RUSTBOOT_CDECL = 1;
+static uintptr_t const ABI_X86_RUSTC_FASTCALL = 2;
+
 // This accounts for logging buffers.
 
 static size_t const BUF_BYTES = 2048;
@@ -240,6 +244,8 @@ public:
     size_t n_rust_syms;
     size_t n_c_syms;
     size_t n_libs;
+
+    uintptr_t abi_tag;
 
     // Crates are immutable, constructed by the compiler.
 

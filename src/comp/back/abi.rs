@@ -44,7 +44,8 @@ const int obj_field_vtbl = 0;
 const int obj_field_box = 1;
 
 const int obj_body_elt_tydesc = 0;
-const int obj_body_elt_fields = 1;
+const int obj_body_elt_typarams = 1;
+const int obj_body_elt_fields = 2;
 
 const int fn_field_code = 0;
 const int fn_field_box = 1;
@@ -59,12 +60,19 @@ const int worst_case_glue_call_args = 7;
 
 const int n_upcall_glues = 7;
 
+const int abi_x86_rustboot_cdecl = 1;
+const int abi_x86_rustc_fastcall = 2;
+
 fn memcpy_glue_name() -> str {
     ret "rust_memcpy_glue";
 }
 
 fn bzero_glue_name() -> str {
     ret "rust_bzero_glue";
+}
+
+fn vec_append_glue_name() -> str {
+    ret "rust_vec_append_glue";
 }
 
 fn upcall_glue_name(int n) -> str {

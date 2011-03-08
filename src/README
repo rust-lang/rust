@@ -8,7 +8,6 @@ boot/fe            - Front end (lexer, parser, AST)
 boot/me            - Middle end (resolve, check, layout, trans)
 boot/be            - Back end (IL, RA, insns, asm, objfiles)
 boot/util          - Ubiquitous helpers
-boot/llvm          - LLVM-based alternative back end
 boot/driver        - Compiler driver
 
 comp/              The self-hosted compiler ("rustc": incomplete)

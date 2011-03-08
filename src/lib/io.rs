@@ -85,37 +85,34 @@ fn new_buf_reader(str path) -> buf_reader {
     ret fd_buf_reader(fd, new_buf());
 }
 
-/**
- * FIXME (issue #150):  This should be
- *
- *   type fileflag = tag(append(), create(), truncate());
- *
- * but then the tag value ctors are not found from crate-importers of std, so
- * we manually simulate the enum below.
- */
-type fileflag = uint;
-fn append() -> uint { ret 0u; }
-fn create() -> uint { ret 1u; }
-fn truncate() -> uint { ret 2u; }
+tag fileflag {
+    append;
+    create;
+    truncate;
+}
+
+fn writefd(int fd, vec[u8] v) {
+    auto len = _vec.len[u8](v);
+    auto count = 0u;
+    auto vbuf;
+    while (count < len) {
+        vbuf = _vec.buf_off[u8](v, count);
+        auto nout = os.libc.write(fd, vbuf, len);
+        if (nout < 0) {
+            log "error dumping buffer";
+            log sys.rustrt.last_os_error();
+            fail;
+        }
+        count += nout as uint;
+    }
+}
 
 fn new_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
 
     state obj fd_buf_writer(int fd) {
 
         fn write(vec[u8] v) {
-            auto len = _vec.len[u8](v);
-            auto count = 0u;
-            auto vbuf;
-            while (count < len) {
-                vbuf = _vec.buf_off[u8](v, count);
-                auto nout = os.libc.write(fd, vbuf, len);
-                if (nout < 0) {
-                    log "error dumping buffer";
-                    log sys.rustrt.last_os_error();
-                    fail;
-                }
-                count += nout as uint;
-            }
+            writefd(fd, v);
         }
 
         drop {
@@ -129,13 +126,9 @@ fn new_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
 
     for (fileflag f in flags) {
         alt (f) {
-            // FIXME (issue #150): cf comment above defn of fileflag type
-            //case (append())   { fflags |= os.libc_constants.O_APPEND(); }
-            //case (create())   { fflags |= os.libc_constants.O_CREAT(); }
-            //case (truncate()) { fflags |= os.libc_constants.O_TRUNC(); }
-            case (0u)   { fflags |= os.libc_constants.O_APPEND(); }
-            case (1u)   { fflags |= os.libc_constants.O_CREAT(); }
-            case (2u) { fflags |= os.libc_constants.O_TRUNC(); }
+            case (append)   { fflags |= os.libc_constants.O_APPEND(); }
+            case (create)   { fflags |= os.libc_constants.O_CREAT(); }
+            case (truncate) { fflags |= os.libc_constants.O_TRUNC(); }
         }
     }
 

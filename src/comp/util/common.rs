@@ -2,8 +2,10 @@ import std._uint;
 import std._int;
 import front.ast;
 
+
+type filename = str;
 type pos = rec(uint line, uint col);
-type span = rec(str filename, pos lo, pos hi);
+type span = rec(filename filename, pos lo, pos hi);
 type spanned[T] = rec(T node, span span);
 
 tag ty_mach {

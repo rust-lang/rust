@@ -1851,6 +1851,8 @@ let (abi:Abi.abi) =
     Abi.abi_word_bits = word_bits;
     Abi.abi_word_ty = word_ty;
 
+    Abi.abi_tag = Abi.abi_x86_rustboot_cdecl;
+
     Abi.abi_has_pcrel_data = false;
     Abi.abi_has_pcrel_code = true;
 

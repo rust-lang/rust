@@ -78,7 +78,7 @@ command_line_args : public dom_owned<command_line_args>
 
 extern "C" CDECL int
 rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
-    char **argv) {
+           char **argv) {
 
     rust_srv *srv = new rust_srv();
     rust_kernel *kernel = new rust_kernel(srv);
@@ -87,7 +87,8 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
     rust_dom *dom = handle->referent();
     command_line_args *args = new (dom) command_line_args(dom, argc, argv);
 
-    dom->log(rust_log::DOM, "startup: %d args", args->argc);
+    dom->log(rust_log::DOM, "startup: %d args in 0x%" PRIxPTR,
+             args->argc, (uintptr_t)args->args);
     for (int i = 0; i < args->argc; i++) {
         dom->log(rust_log::DOM,
             "startup: arg[%d] = '%s'", i, args->argv[i]);
@@ -99,7 +100,8 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
 
     uintptr_t main_args[4] = {0, 0, 0, (uintptr_t)args->args};
     dom->root_task->start(crate->get_exit_task_glue(),
-        main_fn, (uintptr_t)&main_args, sizeof(main_args));
+                          crate->abi_tag, main_fn,
+                          (uintptr_t)&main_args, sizeof(main_args));
     int ret = dom->start_main_loop();
     delete args;
     kernel->destroy_domain(dom);

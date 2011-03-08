@@ -44,7 +44,7 @@ type ei_data =
 ;;
 
 
-let elf_identification ei_class ei_data =
+let elf_identification sess ei_class ei_data =
   SEQ
     [|
       STRING "\x7fELF";
@@ -58,9 +58,16 @@ let elf_identification ei_class ei_data =
                ELFDATANONE -> 0
              | ELFDATA2LSB -> 1
              | ELFDATA2MSB -> 2);
+
           1;                    (* EI_VERSION = EV_CURRENT *)
-          0;                    (* EI_PAD #7 *)
-          0;                    (* EI_PAD #8 *)
+
+                                (* EI_OSABI *)
+          (match sess.Session.sess_targ with
+               FreeBSD_x86_elf -> 9
+             | _ -> 0);
+
+          0;                    (* EI_ABIVERSION *)
+
           0;                    (* EI_PAD #9 *)
           0;                    (* EI_PAD #A *)
           0;                    (* EI_PAD #B *)
@@ -117,7 +124,7 @@ let elf32_header
   in
     DEF
       (elf_header_fixup,
-       SEQ [| elf_identification ELFCLASS32 ei_data;
+       SEQ [| elf_identification sess ELFCLASS32 ei_data;
               WORD (TY_u16, (IMM (match e_type with
                                       ET_NONE -> 0L
                                     | ET_REL -> 1L
@@ -480,6 +487,7 @@ let elf32_linux_x86_file
     ~(entry_name:string)
     ~(text_frags:(string option, frag) Hashtbl.t)
     ~(data_frags:(string option, frag) Hashtbl.t)
+    ~(bss_frags:(string option, frag) Hashtbl.t)
     ~(rodata_frags:(string option, frag) Hashtbl.t)
     ~(required_fixups:(string, fixup) Hashtbl.t)
     ~(dwarf:Dwarf.debug_records)
@@ -644,7 +652,7 @@ let elf32_linux_x86_file
   (* let gotpltndx      = 8L in *)  (* Section index of .got.plt *)
   (* let relapltndx     = 9L in *)  (* Section index of .rela.plt *)
   let datandx        = 10L in  (* Section index of .data *)
-  (* let bssndx         = 11L in *) (* Section index of .bss *)
+  let bssndx         = 11L in  (* Section index of .bss *)
   (* let dynamicndx     = 12L in *) (* Section index of .dynamic *)
   let shstrtabndx    = 13L in (* Section index of .shstrtab *)
 
@@ -991,6 +999,22 @@ let elf32_linux_x86_file
       (strtab_entry, symtab_entry)
   in
 
+  let bss_sym name st_bind fixup =
+    let name_fixup = new_fixup ("bss symbol name fixup: '" ^ name ^ "'") in
+    let strtab_entry = DEF (name_fixup, ZSTRING name) in
+    let symtab_entry =
+      symbol
+        ~string_table_fixup: dynstr_section_fixup
+        ~name_string_fixup: name_fixup
+        ~sym_target_fixup: (Some fixup)
+        ~st_bind
+        ~st_type: STT_OBJECT
+        ~st_shndx: bssndx
+    in
+      incr n_syms;
+      (strtab_entry, symtab_entry)
+  in
+
   let rodata_sym name st_bind fixup =
     let name_fixup = new_fixup ("rodata symbol name fixup: '" ^ name ^ "'") in
     let strtab_entry = DEF (name_fixup, ZSTRING name) in
@@ -1212,6 +1236,12 @@ let elf32_linux_x86_file
     Hashtbl.fold (frags_of_symbol data_sym STB_GLOBAL) data_frags ([],[],[])
   in
 
+  let (bss_strtab_frags,
+       bss_symtab_frags,
+       bss_body_frags) =
+    Hashtbl.fold (frags_of_symbol bss_sym STB_GLOBAL) bss_frags ([],[],[])
+  in
+
   let (_,
        require_strtab_frags,
        require_symtab_frags,
@@ -1277,7 +1307,8 @@ let elf32_linux_x86_file
                            global_text_symtab_frags @
                            local_text_symtab_frags @
                            rodata_symtab_frags @
-                           data_symtab_frags))
+                           data_symtab_frags @
+                           bss_symtab_frags))
   in
 
   let dynstr_frags = (null_strtab_frag ::
@@ -1286,11 +1317,16 @@ let elf32_linux_x86_file
                            local_text_strtab_frags @
                            rodata_strtab_frags @
                            data_strtab_frags @
+                           bss_strtab_frags @
                            (Array.to_list dynamic_needed_strtab_frags)))
   in
 
   let interp_section =
-    DEF (interp_section_fixup, ZSTRING "/lib/ld-linux.so.2")
+
+    DEF (interp_section_fixup, ZSTRING
+           (if sess.Session.sess_targ = FreeBSD_x86_elf
+            then "/libexec/ld-elf.so.1"
+            else "/lib/ld-linux.so.2"))
   in
 
   let text_section =
@@ -1307,7 +1343,7 @@ let elf32_linux_x86_file
   in
   let bss_section =
     DEF (bss_section_fixup,
-         SEQ [| |])
+         SEQ (Array.of_list bss_body_frags))
   in
   let dynsym_section =
     DEF (dynsym_section_fixup,
@@ -1486,6 +1522,7 @@ let emit_file
   let text_frags = Hashtbl.create 4 in
   let rodata_frags = Hashtbl.create 4 in
   let data_frags = Hashtbl.create 4 in
+  let bss_frags = Hashtbl.create 4 in
   let required_fixups = Hashtbl.create 4 in
 
   (*
@@ -1584,7 +1621,9 @@ let emit_file
 
   let needed_libs =
     [|
-      "libc.so.6";
+      if sess.Session.sess_targ = FreeBSD_x86_elf
+      then "libc.so.7"
+      else "libc.so.6";
       "librustrt.so"
     |]
   in
@@ -1604,6 +1643,27 @@ let emit_file
     htab_put text_frags None code;
     htab_put rodata_frags None data;
 
+    if sess.Session.sess_targ = FreeBSD_x86_elf
+    then
+      (* 
+       * FreeBSD wants some extra symbols in .bss so its libc can fill
+       * them in, I think.
+       *)
+      List.iter
+        (fun x -> htab_put bss_frags (Some x) (WORD (TY_u32, (IMM 0L))))
+        [
+          "environ";
+          "optind";
+          "optarg";
+          "_CurrentRuneLocale";
+          "__stack_chk_guard";
+          "__mb_sb_limit";
+          "__isthreaded";
+          "__stdinp";
+          "__stderrp";
+          "__stdoutp";
+        ];
+
     Hashtbl.iter
       begin
         fun _ tab ->
@@ -1616,6 +1676,7 @@ let emit_file
       end
       sem.Semant.ctxt_native_required
   in
+
   let all_frags =
     elf32_linux_x86_file
       ~sess
@@ -1623,6 +1684,7 @@ let emit_file
       ~entry_name: "_start"
       ~text_frags
       ~data_frags
+      ~bss_frags
       ~dwarf
       ~sem
       ~rodata_frags
@@ -1640,16 +1702,16 @@ let sniff
     : asm_reader option =
   try
     let stat = Unix.stat filename in
-    if (stat.Unix.st_kind = Unix.S_REG) &&
-      (stat.Unix.st_size > 4)
-    then
-      let ar = new_asm_reader sess filename in
-      let _ = log sess "sniffing ELF file" in
-        if (ar.asm_get_zstr_padded 4) = elf_magic
-        then (ar.asm_seek 0; Some ar)
-        else None
-    else
-      None
+      if (stat.Unix.st_kind = Unix.S_REG) &&
+        (stat.Unix.st_size > 4)
+      then
+        let ar = new_asm_reader sess filename in
+        let _ = log sess "sniffing ELF file" in
+          if (ar.asm_get_zstr_padded 4) = elf_magic
+          then (ar.asm_seek 0; Some ar)
+          else None
+      else
+        None
   with
       _ -> None
 ;;

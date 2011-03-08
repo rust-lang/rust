@@ -96,25 +96,10 @@ fn buf(str s) -> sbuf {
 }
 
 fn bytes(str s) -> vec[u8] {
-    /* FIXME (issue #58):
-     * Should be...
-     *
-     *  fn ith(str s, uint i) -> u8 {
-     *      ret s.(i);
-     *  }
-     *  ret _vec.init_fn[u8](bind ith(s, _), byte_len(s));
-     *
-     * but we do not correctly decrement refcount of s when
-     * the binding dies, so we have to do this manually.
-     */
-    let uint n = _str.byte_len(s);
-    let vec[u8] v = _vec.alloc[u8](n);
-    let uint i = 0u;
-    while (i < n) {
-        v += vec(s.(i));
-        i += 1u;
+    fn ith(str s, uint i) -> u8 {
+        ret s.(i);
     }
-    ret v;
+    ret _vec.init_fn[u8](bind ith(s, _), byte_len(s));
 }
 
 fn from_bytes(vec[u8] v) : is_utf8(v) -> str {
