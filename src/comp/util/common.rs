@@ -46,6 +46,10 @@ fn new_str_hash[V]() -> std.map.hashmap[str,V] {
     ret std.map.mk_hashmap[str,V](hasher, eqer);
 }
 
+fn def_eq(&ast.def_id a, &ast.def_id b) -> bool {
+    ret a._0 == b._0 && a._1 == b._1;
+}
+
 fn new_def_hash[V]() -> std.map.hashmap[ast.def_id,V] {
 
     fn hash(&ast.def_id d) -> uint {
@@ -55,12 +59,8 @@ fn new_def_hash[V]() -> std.map.hashmap[ast.def_id,V] {
         ret u;
     }
 
-    fn eq(&ast.def_id a, &ast.def_id b) -> bool {
-        ret a._0 == b._0 && a._1 == b._1;
-    }
-
     let std.map.hashfn[ast.def_id] hasher = hash;
-    let std.map.eqfn[ast.def_id] eqer = eq;
+    let std.map.eqfn[ast.def_id] eqer = def_eq;
     ret std.map.mk_hashmap[ast.def_id,V](hasher, eqer);
 }
 
