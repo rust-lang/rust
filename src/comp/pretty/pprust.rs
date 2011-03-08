@@ -512,8 +512,17 @@ impure fn print_expr(ps s, @ast.expr expr) {
       wrd1(s, "check");
       print_expr(s, expr);
     }
+    case (ast.expr_ext(?path, ?args, ?body, _, _)) {
+      wrd(s, "#");
+      print_path(s, path);
+      if (_vec.len[@ast.expr](args) > 0u) {
+        popen(s);
+        commasep[@ast.expr](s, args, pe);
+        pclose(s);
+      }
+      // TODO: extension 'body'
+    }
     case (_) {wrd(s, "X");}
-    // TODO expr_ext(path, vec[@expr], option.t[@expr], @expr, ann);
   }
   end(s);
 }
