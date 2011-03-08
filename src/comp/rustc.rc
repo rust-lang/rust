@@ -8,7 +8,6 @@ mod front {
     mod extfmt;
     mod lexer;
     mod parser;
-    mod pretty;
     mod token;
     mod eval;
 }
