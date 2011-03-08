@@ -384,6 +384,7 @@ impure fn print_expr(ps s, @ast.expr expr) {
           wrd1(s, "else");
           print_block(s, blk);
         }
+        case (_) { /* fall through */ }
       }
     }
     case (ast.expr_while(?test,?block,_)) {
