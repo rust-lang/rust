@@ -85,59 +85,47 @@ fn generalize_ty(@crate_ctxt cx, @ty.t t) -> @ty.t {
 // expression.
 fn substitute_ty_params(&@crate_ctxt ccx,
                         @ty.t typ,
+                        vec[ast.def_id] ty_params,
                         vec[@ast.ty] supplied,
                         &span sp) -> @ty.t {
     state obj ty_substituter(@crate_ctxt ccx,
-                             @mutable uint i,
-                             vec[@ast.ty] supplied,
-                             @hashmap[int,@ty.t] substs) {
+                             vec[ast.def_id] ty_params,
+                             vec[@ast.ty] supplied) {
         fn fold_simple_ty(@ty.t typ) -> @ty.t {
             alt (typ.struct) {
-                case (ty.ty_var(?vid)) {
-                    alt (substs.find(vid)) {
-                        case (some[@ty.t](?resolved_ty)) {
-                            ret resolved_ty;
-                        }
-                        case (none[@ty.t]) {
-                            if (i >= _vec.len[@ast.ty](supplied)) {
-                                // Just leave it as an unresolved parameter
-                                // for now. (We will error out later.)
-                                ret typ;
-                            }
-
-                            auto result = ast_ty_to_ty_crate(ccx,
-                                                             supplied.(*i));
-                            *i += 1u;
-                            substs.insert(vid, result);
-                            ret result;
-                        }
+                case (ty.ty_param(?pid)) {
+                    // Find the index of the type parameter.
+                    auto ty_param_len = _vec.len[ast.def_id](ty_params);
+                    auto i = 0u;
+                    while (i < ty_param_len &&
+                            !common.def_eq(pid, ty_params.(i))) {
+                        i += 1u;
                     }
+                    if (i == ty_param_len) {
+                        log "substitute_ty_params(): " +
+                            "no ty param for param id!";
+                        fail;
+                    }
+
+                    // Substitute it in.
+                    ret ast_ty_to_ty_crate(ccx, supplied.(i));
                 }
                 case (_) { ret typ; }
             }
         }
     }
 
-    fn hash_int(&int x) -> uint { ret x as uint; }
-    fn eq_int(&int a, &int b) -> bool { ret a == b; }
-    auto hasher = hash_int;
-    auto eqer = eq_int;
-    auto substs = @map.mk_hashmap[int,@ty.t](hasher, eqer);
-
-    auto subst_count = @mutable 0u;
-    auto substituter = ty_substituter(ccx, subst_count, supplied, substs);
-
-    auto result = ty.fold_ty(substituter, typ);
-
+    auto ty_param_len = _vec.len[ast.def_id](ty_params);
     auto supplied_len = _vec.len[@ast.ty](supplied);
-    if ((*subst_count) != supplied_len) {
-        ccx.sess.span_err(sp, "expected " + _uint.to_str(*subst_count, 10u) +
+    if (ty_param_len != supplied_len) {
+        ccx.sess.span_err(sp, "expected " + _uint.to_str(ty_param_len, 10u) +
                           " type parameter(s) but found " +
                           _uint.to_str(supplied_len, 10u) + " parameter(s)");
         fail;
     }
 
-    ret result;
+    auto substituter = ty_substituter(ccx, ty_params, supplied);
+    ret ty.fold_ty(substituter, typ);
 }
 
 // Parses the programmer's textual representation of a type into our internal
@@ -1476,49 +1464,60 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         case (ast.expr_path(?pth, ?defopt, _)) {
             auto t = plain_ty(ty.ty_nil);
             check (defopt != none[ast.def]);
+
+            auto ty_params;
             alt (option.get[ast.def](defopt)) {
                 case (ast.def_arg(?id)) {
                     check (fcx.locals.contains_key(id));
                     t = fcx.locals.get(id);
+                    ty_params = none[vec[ast.def_id]];
                 }
                 case (ast.def_local(?id)) {
                     alt (fcx.locals.find(id)) {
                         case (some[@ty.t](?t1)) { t = t1; }
                         case (none[@ty.t]) { t = plain_ty(ty.ty_local(id)); }
                     }
+                    ty_params = none[vec[ast.def_id]];
                 }
                 case (ast.def_obj_field(?id)) {
                     check (fcx.locals.contains_key(id));
                     t = fcx.locals.get(id);
+                    ty_params = none[vec[ast.def_id]];
                 }
                 case (ast.def_fn(?id)) {
                     check (fcx.ccx.item_types.contains_key(id));
-                    t = generalize_ty(fcx.ccx, fcx.ccx.item_types.get(id));
+                    t = fcx.ccx.item_types.get(id);
+                    ty_params = some(fcx.ccx.item_ty_params.get(id));
                 }
                 case (ast.def_native_fn(?id)) {
                     check (fcx.ccx.item_types.contains_key(id));
-                    t = generalize_ty(fcx.ccx, fcx.ccx.item_types.get(id));
+                    t = fcx.ccx.item_types.get(id);
+                    ty_params = some(fcx.ccx.item_ty_params.get(id));
                 }
                 case (ast.def_const(?id)) {
                     check (fcx.ccx.item_types.contains_key(id));
                     t = fcx.ccx.item_types.get(id);
+                    ty_params = none[vec[ast.def_id]];
                 }
-                case (ast.def_variant(_, ?variant_id)) {
+                case (ast.def_variant(?tag_id, ?variant_id)) {
                     check (fcx.ccx.item_types.contains_key(variant_id));
-                    t = generalize_ty(fcx.ccx,
-                                      fcx.ccx.item_types.get(variant_id));
+                    t = fcx.ccx.item_types.get(variant_id);
+                    ty_params = some(fcx.ccx.item_ty_params.get(tag_id));
                 }
                 case (ast.def_binding(?id)) {
                     check (fcx.locals.contains_key(id));
                     t = fcx.locals.get(id);
+                    ty_params = none[vec[ast.def_id]];
                 }
                 case (ast.def_obj(?id)) {
                     check (fcx.ccx.item_types.contains_key(id));
-                    t = generalize_ty(fcx.ccx, fcx.ccx.item_types.get(id));
+                    t = fcx.ccx.item_types.get(id);
+                    ty_params = some(fcx.ccx.item_ty_params.get(id));
                 }
 
                 case (ast.def_mod(_)) {
                     // Hopefully part of a path.
+                    ty_params = none[vec[ast.def_id]];
                 }
 
                 case (_) {
@@ -1531,8 +1530,26 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             // Substitute type parameters if the user provided some.
             if (_vec.len[@ast.ty](pth.node.types) > 0u) {
-                t = substitute_ty_params(fcx.ccx, t, pth.node.types,
-                                         expr.span);
+                alt (ty_params) {
+                    case (none[vec[ast.def_id]]) {
+                        fcx.ccx.sess.span_err(expr.span, "this kind of " +
+                                              "item may not take type " +
+                                              "parameters");
+                    }
+                    case (some[vec[ast.def_id]](?tps)) {
+                        t = substitute_ty_params(fcx.ccx, t, tps,
+                                                 pth.node.types, expr.span);
+                    }
+                }
+            } else {
+                alt (ty_params) {
+                    case (none[vec[ast.def_id]]) {  /* nothing */ }
+                    case (some[vec[ast.def_id]](_)) {
+                        // We will acquire the type parameters through
+                        // unification.
+                        t = generalize_ty(fcx.ccx, t);
+                    }
+                }
             }
 
             ret @fold.respan[ast.expr_](expr.span,
