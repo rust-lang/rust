@@ -90,7 +90,6 @@ ifdef CFG_WINDOWSY
   CFG_EXE_SUFFIX := .exe
   CFG_BOOT := ./rustboot.exe
   CFG_RUSTC := ./rustc.exe
-  CFG_GLUE := ./glue.exe
   CFG_GCC_CFLAGS += -march=i686
   CFG_GCC_LINK_FLAGS += -shared -fPIC
   CFG_RUN_TARG = $(1)
@@ -102,7 +101,6 @@ ifdef CFG_UNIXY
   CFG_INFO := $(info cfg: unix-y environment)
   CFG_BOOT := ./rustboot
   CFG_RUSTC := ./rustc
-  CFG_GLUE := ./glue
   CFG_OBJ_SUFFIX := .o
   CFG_RUN_TARG = LD_LIBRARY_PATH=. $(CFG_VALGRIND) $(1)
   CFG_GCC := 1
@@ -113,7 +111,6 @@ ifdef CFG_UNIXY
     CFG_RUNTIME := rustrt.dll
     CFG_STDLIB := std.dll
     CFG_RUSTC := ./rustc.exe
-    CFG_GLUE := ./glue
     ifdef CFG_VALGRIND
       CFG_VALGRIND += wine
     endif
@@ -311,13 +308,11 @@ RUNTIME_LIBS := $(CFG_RUNTIME_LIBS)
 STDLIB_CRATE := lib/std.rc
 STDLIB_INPUTS := $(wildcard lib/*.rc lib/*.rs lib/*/*.rs)
 COMPILER_CRATE := comp/rustc.rc
-COMPILER_INPUTS := $(wildcard comp/rustc.rc comp/*.rs comp/*/*.rs)
-GLUE_CRATE := comp/glue.rc
-GLUE_INPUTS := $(wildcard comp/glue.rc comp/*.rs comp/*/*.rs)
+COMPILER_INPUTS := $(wildcard comp/*.rc comp/*.rs comp/*/*.rs)
 
 GENERATED := boot/fe/lexer.ml boot/util/version.ml
 
-all: $(CFG_RUSTC) $(CFG_GLUE) $(MKFILES) $(GENERATED) glue.o
+all: $(CFG_RUSTC) $(MKFILES) $(GENERATED)
 
 boot/util/version.ml: Makefile
 	$(CFG_QUIET)git log -1 \
@@ -372,16 +367,6 @@ $(CFG_RUSTC): $(COMPILER_INPUTS) $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
 	@$(call CFG_ECHO, compile: $<)
 	$(BOOT) -minimal -o $@ $<
 	$(CFG_QUIET)chmod 0755 $@
-
-$(CFG_GLUE): $(GLUE_INPUTS) $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
-	@$(call CFG_ECHO, compile: $<)
-	$(BOOT) -minimal -o $@ $<
-	$(CFG_QUIET)chmod 0755 $@
-
-glue.o: glue.s
-
-glue.s: $(CFG_GLUE)
-	$(CFG_GLUE) > $@
 
 self: $(CFG_RUSTC)
 	@$(call CFG_ECHO, compile: $<)
@@ -778,9 +763,9 @@ test/bench/shootout/%.boot$(CFG_EXE_SUFFIX): \
 	@$(call CFG_ECHO, assemble [llvm]: $<)
 	$(CFG_QUIET)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
 
-%.rustc$(CFG_EXE_SUFFIX): %.o $(CFG_RUNTIME) glue.o
+%.rustc$(CFG_EXE_SUFFIX): %.o $(CFG_RUNTIME)
 	@$(call CFG_ECHO, link [llvm]: $<)
-	$(CFG_QUIET)gcc $(CFG_GCC_CFLAGS) glue.o -o $@ $< -L. -lrustrt
+	$(CFG_QUIET)gcc $(CFG_GCC_CFLAGS) -o $@ $< -L. -lrustrt
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
