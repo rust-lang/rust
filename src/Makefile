@@ -472,7 +472,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         lib-uint.rs \
                         lib-vec-str-conversions.rs \
                         lib-vec.rs \
-                        list.rs \
                         many.rs \
                         mlist-cycle.rs \
                         mlist.rs \

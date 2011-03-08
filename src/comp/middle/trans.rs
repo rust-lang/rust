@@ -2266,6 +2266,15 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
                                           vec(C_int(0),
                                               C_int(abi.box_rc_field_body)));
             sub.bcx.build.Store(C_int(1), rc);
+
+            // Cast the body type to the type of the value. This is needed to
+            // make tags work, since tags have a different LLVM type depending
+            // on whether they're boxed or not.
+            if (!ty.type_has_dynamic_size(e_ty)) {
+                auto llety = T_ptr(type_of(sub.bcx.fcx.ccx, e_ty));
+                body = sub.bcx.build.PointerCast(body, llety);
+            }
+
             sub = copy_ty(sub.bcx, INIT, body, e_val, e_ty);
             ret res(sub.bcx, box);
         }
