@@ -3083,8 +3083,19 @@ fn lval_generic_fn(@block_ctxt cx,
 
     check (cx.fcx.ccx.fn_pairs.contains_key(fn_id));
     auto lv = lval_val(cx, cx.fcx.ccx.fn_pairs.get(fn_id));
-    auto monoty = node_ann_type(cx.fcx.ccx, ann);
-    auto tys = ty.resolve_ty_params(tpt, monoty);
+
+    auto monoty;
+    auto tys;
+    alt (ann) {
+        case (ast.ann_none) {
+            cx.fcx.ccx.sess.bug("no type annotation for path!");
+            fail;
+        }
+        case (ast.ann_type(?monoty_, ?tps)) {
+            monoty = monoty_;
+            tys = option.get[vec[@ty.t]](tps);
+        }
+    }
 
     if (_vec.len[@ty.t](tys) != 0u) {
         auto bcx = cx;

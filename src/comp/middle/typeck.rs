@@ -128,6 +128,37 @@ fn substitute_ty_params(&@crate_ctxt ccx,
     ret ty.fold_ty(substituter, typ);
 }
 
+// Returns the type parameters and polytype of an item, if it's an item that
+// supports type parameters.
+fn ty_params_for_item(@crate_ctxt ccx, &ast.def d)
+        -> option.t[ty.ty_params_and_ty] {
+    auto params_id;
+    auto types_id;
+    alt (d) {
+        case (ast.def_fn(?id))          { params_id = id; types_id = id; }
+        case (ast.def_obj(?id))         { params_id = id; types_id = id; }
+        case (ast.def_obj_field(_))     { ret none[ty.ty_params_and_ty]; }
+        case (ast.def_mod(_))           { ret none[ty.ty_params_and_ty]; }
+        case (ast.def_const(_))         { ret none[ty.ty_params_and_ty]; }
+        case (ast.def_arg(_))           { ret none[ty.ty_params_and_ty]; }
+        case (ast.def_local(_))         { ret none[ty.ty_params_and_ty]; }
+        case (ast.def_variant(?tid, ?vid)) {
+            params_id = tid;
+            types_id = vid;
+        }
+        case (ast.def_ty(_))            { ret none[ty.ty_params_and_ty]; }
+        case (ast.def_ty_arg(_))        { ret none[ty.ty_params_and_ty]; }
+        case (ast.def_binding(_))       { ret none[ty.ty_params_and_ty]; }
+        case (ast.def_use(_))           { ret none[ty.ty_params_and_ty]; }
+        case (ast.def_native_ty(_))     { ret none[ty.ty_params_and_ty]; }
+        case (ast.def_native_fn(?id))   { params_id = id; types_id = id; }
+    }
+
+    auto tps = ccx.item_ty_params.get(params_id);
+    auto polyty = ccx.item_types.get(types_id);
+    ret some[ty.ty_params_and_ty](tup(tps, polyty));
+}
+
 // Parses the programmer's textual representation of a type into our internal
 // notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID.
@@ -1190,7 +1221,38 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
         case (ast.expr_path(?pth, ?d, ?ann)) {
             auto t = demand_full(fcx, e.span, expected,
                                  ann_to_type(ann), adk);
-            e_1 = ast.expr_path(pth, d, ast.ann_type(t, none[vec[@ty.t]]));
+
+            // Fill in the type parameter substitutions if they weren't
+            // provided by the programmer.
+            auto ty_params_opt;
+            alt (ann) {
+                case (ast.ann_none) {
+                    log "demand_expr(): no type annotation for path expr; " +
+                        "did you pass it to check_expr() first?";
+                    fail;
+                }
+                case (ast.ann_type(_, ?tps_opt)) {
+                    alt (tps_opt) {
+                        case (none[vec[@ty.t]]) {
+                            auto defn = option.get[ast.def](d);
+                            alt (ty_params_for_item(fcx.ccx, defn)) {
+                                case (none[ty.ty_params_and_ty]) {
+                                    ty_params_opt = none[vec[@ty.t]];
+                                }
+                                case (some[ty.ty_params_and_ty](?tpt)) {
+                                    auto tps = ty.resolve_ty_params(tpt, t);
+                                    ty_params_opt = some[vec[@ty.t]](tps);
+                                }
+                            }
+                        }
+                        case (some[vec[@ty.t]](?tps)) {
+                            ty_params_opt = some[vec[@ty.t]](tps);
+                        }
+                    }
+                }
+            }
+
+            e_1 = ast.expr_path(pth, d, ast.ann_type(t, ty_params_opt));
         }
         case (ast.expr_ext(?p, ?args, ?body, ?expanded, ?ann)) {
             auto t = demand_full(fcx, e.span, expected,
