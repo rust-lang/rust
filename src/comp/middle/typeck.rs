@@ -39,10 +39,12 @@ tag any_item {
 }
 
 type ty_item_table = hashmap[ast.def_id,any_item];
+type ty_param_count_table = hashmap[ast.def_id,uint];
 
 type crate_ctxt = rec(session.session sess,
                       @ty_table item_types,
                       @ty_item_table item_items,
+                      @ty_param_count_table ty_param_counts,
                       vec[ast.obj_field] obj_fields,
                       mutable int next_var_id);
 
@@ -356,7 +358,7 @@ fn ty_of_native_fn_decl(@ty_item_table id_to_ty_item,
 }
 
 fn collect_item_types(session.session sess, @ast.crate crate)
-    -> tup(@ast.crate, @ty_table, @ty_item_table) {
+    -> tup(@ast.crate, @ty_table, @ty_item_table, @ty_param_count_table) {
 
     fn getter(@ty_item_table id_to_ty_item,
               @ty_table item_to_ty,
@@ -600,14 +602,17 @@ fn collect_item_types(session.session sess, @ast.crate crate)
 
     // Second pass: translate the types of all items.
     let @ty_table item_to_ty = @common.new_def_hash[@ty.t]();
+    let @ty_param_count_table ty_param_counts = @common.new_def_hash[uint]();
 
     type env = rec(session.session sess,
                    @ty_item_table id_to_ty_item,
                    @ty_table item_to_ty,
+                   @ty_param_count_table ty_param_counts,
                    ast.native_abi abi);
     let @env e = @rec(sess=sess,
                       id_to_ty_item=id_to_ty_item,
                       item_to_ty=item_to_ty,
+                      ty_param_counts=ty_param_counts,
                       abi=ast.native_abi_cdecl);
 
     fn convert(&@env e, @ast.item i) -> @env {
@@ -647,6 +652,8 @@ fn collect_item_types(session.session sess, @ast.crate crate)
     fn fold_item_fn(&@env e, &span sp, ast.ident i,
                     &ast._fn f, vec[ast.ty_param] ty_params,
                     ast.def_id id, ast.ann a) -> @ast.item {
+        e.ty_param_counts.insert(id, _vec.len[ast.ty_param](ty_params));
+
         check (e.item_to_ty.contains_key(id));
         auto ty = e.item_to_ty.get(id);
         auto item = ast.item_fn(i, f, ty_params, id,
@@ -657,6 +664,8 @@ fn collect_item_types(session.session sess, @ast.crate crate)
     fn fold_native_item_fn(&@env e, &span sp, ast.ident i,
                            &ast.fn_decl d, vec[ast.ty_param] ty_params,
                            ast.def_id id, ast.ann a) -> @ast.native_item {
+        e.ty_param_counts.insert(id, _vec.len[ast.ty_param](ty_params));
+
         check (e.item_to_ty.contains_key(id));
         auto ty = e.item_to_ty.get(id);
         auto item = ast.native_item_fn(i, d, ty_params, id,
@@ -688,6 +697,8 @@ fn collect_item_types(session.session sess, @ast.crate crate)
     fn fold_item_obj(&@env e, &span sp, ast.ident i,
                     &ast._obj ob, vec[ast.ty_param] ty_params,
                     ast.def_id id, ast.ann a) -> @ast.item {
+        e.ty_param_counts.insert(id, _vec.len[ast.ty_param](ty_params));
+
         check (e.item_to_ty.contains_key(id));
         auto t = e.item_to_ty.get(id);
         let vec[method] meth_tys = get_ctor_obj_methods(t);
@@ -726,6 +737,8 @@ fn collect_item_types(session.session sess, @ast.crate crate)
     fn fold_item_ty(&@env e, &span sp, ast.ident i,
                     @ast.ty t, vec[ast.ty_param] ty_params,
                     ast.def_id id, ast.ann a) -> @ast.item {
+        e.ty_param_counts.insert(id, _vec.len[ast.ty_param](ty_params));
+
         check (e.item_to_ty.contains_key(id));
         auto ty = e.item_to_ty.get(id);
         auto item = ast.item_ty(i, t, ty_params, id,
@@ -737,6 +750,8 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                      vec[ast.variant] variants,
                      vec[ast.ty_param] ty_params,
                      ast.def_id id) -> @ast.item {
+        e.ty_param_counts.insert(id, _vec.len[ast.ty_param](ty_params));
+
         auto variants_t = get_tag_variant_types(e.id_to_ty_item,
                                                 e.item_to_ty,
                                                 id,
@@ -758,7 +773,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
              fold_item_tag   = bind fold_item_tag(_,_,_,_,_,_)
              with *fld_2);
     auto crate_ = fold.fold_crate[@env](e, fld_2, crate);
-    ret tup(crate_, item_to_ty, id_to_ty_item);
+    ret tup(crate_, item_to_ty, id_to_ty_item, ty_param_counts);
 }
 
 fn unify(&@fn_ctxt fcx, @ty.t expected, @ty.t actual) -> ty.unify_result {
@@ -2255,6 +2270,7 @@ fn check_crate(session.session sess, @ast.crate crate) -> @ast.crate {
     auto ccx = @rec(sess=sess,
                     item_types=result._1,
                     item_items=result._2,
+                    ty_param_counts=result._3,
                     obj_fields=fields,
                     mutable next_var_id=0);
 
