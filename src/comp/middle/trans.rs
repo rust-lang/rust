@@ -923,6 +923,18 @@ fn align_of(@block_ctxt cx, @ty.t t) -> result {
     ret dynamic_align_of(cx, t);
 }
 
+// Returns the type parameters associated with the tag with the given ID.
+fn ty_params_of_tag(@crate_ctxt cx, &ast.def_id tid) -> vec[ast.ty_param] {
+    alt (cx.items.get(tid).node) {
+        case (ast.item_tag(_, _, ?tps, _)) { ret tps; }
+        case (_) {
+            log "ty_params_of_tag(): tag ID doesn't actually refer to a " +
+                "tag item";
+            fail;
+        }
+    }
+}
+
 // Computes the size of the data part of a non-dynamically-sized tag.
 fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
     if (ty.type_has_dynamic_size(t)) {
@@ -947,12 +959,18 @@ fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
         }
     }
 
+    // Pull the type parameters out of the corresponding tag item.
+    let vec[ast.ty_param] ty_params = ty_params_of_tag(cx, tid);
+
     // Compute max(variant sizes).
     auto max_size = 0u;
     auto variants = tag_variants(cx, tid);
     for (ast.variant variant in variants) {
         let vec[@ty.t] tys = variant_types(cx, variant);
         auto tup_ty = ty.plain_ty(ty.ty_tup(tys));
+
+        // Perform any type parameter substitutions.
+        tup_ty = ty.substitute_ty_params(ty_params, subtys, tup_ty);
 
         // Here we possibly do a recursive call.
         auto this_size = llsize_of_real(cx, type_of(cx, tup_ty));
