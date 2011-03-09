@@ -2943,8 +2943,8 @@ fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
         }
 
         case (ast.pat_tag(?id, ?subpats, ?vdef_opt, ?ann)) {
-            auto lltagptr = cx.build.GEP(llval, vec(C_int(0), C_int(0)));
-            auto lltag = cx.build.Load(lltagptr);
+            auto lldiscrimptr = cx.build.GEP(llval, vec(C_int(0), C_int(0)));
+            auto lldiscrim = cx.build.Load(lldiscrimptr);
 
             auto vdef = option.get[ast.variant_def](vdef_opt);
             auto variant_id = vdef._1;
@@ -2963,7 +2963,7 @@ fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
 
             auto matched_cx = new_sub_block_ctxt(cx, "matched_cx");
 
-            auto lleq = cx.build.ICmp(lib.llvm.LLVMIntEQ, lltag,
+            auto lleq = cx.build.ICmp(lib.llvm.LLVMIntEQ, lldiscrim,
                                       C_int(variant_tag));
             cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
 
