@@ -1071,15 +1071,25 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
         case (ast.pat_tag(?id, ?subpats, ?vdef_opt, ?ann)) {
             auto t = demand(fcx, pat.span, expected, ann_to_type(ann));
 
+            // Figure out the type parameters of the tag.
+            auto tag_id = option.get[ast.variant_def](vdef_opt)._0;
+            auto ty_params = fcx.ccx.item_ty_params.get(tag_id);
+
+            // Take the type parameters out of the expected type.
+            auto ty_param_substs;
+            alt (t.struct) {
+                case (ty.ty_tag(_, ?tps)) { ty_param_substs = tps; }
+                case (_) {
+                    log "demand_pat(): expected type for tag pat isn't " +
+                        "actually a tag?!";
+                    fail;
+                }
+            }
+
             // The type of the tag isn't enough; we also have to get the type
             // of the variant, which is either a tag type in the case of
             // nullary variants or a function type in the case of n-ary
             // variants.
-            //
-            // TODO: When we have type-parametric tags, this will get a little
-            // trickier. Basically, we have to instantiate the variant type we
-            // acquire here with the type parameters provided to us by
-            // "expected".
 
             auto vdef = option.get[ast.variant_def](vdef_opt);
             auto variant_ty = fcx.ccx.item_types.get(vdef._1);
@@ -1088,18 +1098,19 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
             alt (variant_ty.struct) {
                 case (ty.ty_tag(_, _)) {
                     // Nullary tag variant.
-                    // TODO: ty param substs
                     check (subpats_len == 0u);
                     p_1 = ast.pat_tag(id, subpats, vdef_opt,
                                       ast.ann_type(t, none[vec[@ty.t]]));
                 }
                 case (ty.ty_fn(_, ?args, ?tag_ty)) {
                     // N-ary tag variant.
-                    // TODO: ty param substs
                     let vec[@ast.pat] new_subpats = vec();
                     auto i = 0u;
                     for (arg a in args) {
-                        auto new_subpat = demand_pat(fcx, a.ty, subpats.(i));
+                        auto subpat_ty = substitute_ty_params(fcx.ccx, a.ty,
+                            ty_params, ty_param_substs, pat.span);
+                        auto new_subpat = demand_pat(fcx, subpat_ty,
+                                                     subpats.(i));
                         new_subpats += vec(new_subpat);
                         i += 1u;
                     }
