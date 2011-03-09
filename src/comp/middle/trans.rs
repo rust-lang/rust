@@ -503,7 +503,8 @@ fn type_of_fn_full(@crate_ctxt cx,
                    ast.proto proto,
                    option.t[TypeRef] obj_self,
                    vec[ty.arg] inputs,
-                   @ty.t output) -> TypeRef {
+                   @ty.t output,
+                   uint ty_param_count) -> TypeRef {
     let vec[TypeRef] atys = vec();
 
     // Arg 0: Output pointer.
@@ -529,10 +530,6 @@ fn type_of_fn_full(@crate_ctxt cx,
 
     // Args >3: ty params, if not acquired via capture...
     if (obj_self == none[TypeRef]) {
-        auto ty_param_count =
-            ty.count_ty_params(plain_ty(ty.ty_fn(proto,
-                                                 inputs,
-                                                 output)));
         auto i = 0u;
         while (i < ty_param_count) {
             atys += T_ptr(T_tydesc(cx.tn));
@@ -547,7 +544,7 @@ fn type_of_fn_full(@crate_ctxt cx,
         atys += T_fn_pair(cx.tn,
                           type_of_fn_full(cx, ast.proto_fn, none[TypeRef],
                                           vec(rec(mode=ast.val, ty=output)),
-                                          plain_ty(ty.ty_nil)));
+                                          plain_ty(ty.ty_nil), 0u));
     }
 
     // ... then explicit args.
@@ -558,8 +555,11 @@ fn type_of_fn_full(@crate_ctxt cx,
 
 fn type_of_fn(@crate_ctxt cx,
               ast.proto proto,
-              vec[ty.arg] inputs, @ty.t output) -> TypeRef {
-    ret type_of_fn_full(cx, proto, none[TypeRef], inputs, output);
+              vec[ty.arg] inputs,
+              @ty.t output,
+              uint ty_param_count) -> TypeRef {
+    ret type_of_fn_full(cx, proto, none[TypeRef], inputs, output,
+                        ty_param_count);
 }
 
 fn type_of_native_fn(@crate_ctxt cx, ast.native_abi abi,
@@ -634,7 +634,7 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t, bool boxed) -> TypeRef {
             llty = T_struct(tys);
         }
         case (ty.ty_fn(?proto, ?args, ?out)) {
-            llty = T_fn_pair(cx.tn, type_of_fn(cx, proto, args, out));
+            llty = T_fn_pair(cx.tn, type_of_fn(cx, proto, args, out, 0u));
         }
         case (ty.ty_native_fn(?abi, ?args, ?out)) {
             llty = T_fn_pair(cx.tn, type_of_native_fn(cx, abi, args, out));
@@ -648,7 +648,7 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t, bool boxed) -> TypeRef {
                 let TypeRef mty =
                     type_of_fn_full(cx, m.proto,
                                     some[TypeRef](self_ty),
-                                    m.inputs, m.output);
+                                    m.inputs, m.output, 0u);
                 mtys += T_ptr(mty);
             }
             let TypeRef vtbl = T_struct(mtys);
@@ -2820,7 +2820,7 @@ fn trans_for_each(@block_ctxt cx,
     auto iter_body_llty = type_of_fn_full(cx.fcx.ccx, ast.proto_fn,
                                           none[TypeRef],
                                           vec(rec(mode=ast.val, ty=decl_ty)),
-                                          plain_ty(ty.ty_nil));
+                                          plain_ty(ty.ty_nil), 0u);
 
     let ValueRef lliterbody = decl_fastcall_fn(cx.fcx.ccx.llmod,
                                                s, iter_body_llty);
@@ -3447,6 +3447,16 @@ fn trans_bind_thunk(@crate_ctxt cx,
     auto lltargetfn = bcx.build.GEP(lltarget.val,
                                     vec(C_int(0),
                                         C_int(abi.fn_field_code)));
+
+    // Cast the outgoing function to the appropriate type (see the comments in
+    // trans_bind below for why this is necessary).
+    auto lltargetty = type_of_fn(bcx.fcx.ccx,
+                                 ty.ty_fn_proto(outgoing_fty),
+                                 outgoing_args,
+                                 outgoing_ret_ty,
+                                 ty_param_count);
+    lltargetfn = bcx.build.PointerCast(lltargetfn, T_ptr(T_ptr(lltargetty)));
+
     lltargetfn = bcx.build.Load(lltargetfn);
 
     auto r = bcx.build.FastCall(lltargetfn, llargs);
@@ -3551,12 +3561,26 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
             bcx = bindings_tydesc.bcx;
             bcx.build.Store(bindings_tydesc.val, bound_tydesc);
 
+            // Determine the LLVM type for the outgoing function type. This
+            // may be different from the type returned by trans_malloc_boxed()
+            // since we have more information than that function does;
+            // specifically, we know how many type descriptors the outgoing
+            // function has, which type_of() doesn't, as only we know which
+            // item the function refers to.
+            auto llfnty = type_of_fn(bcx.fcx.ccx,
+                                     ty.ty_fn_proto(outgoing_fty),
+                                     ty.ty_fn_args(outgoing_fty),
+                                     ty.ty_fn_ret(outgoing_fty),
+                                     ty_param_count);
+            auto llclosurety = T_ptr(T_fn_pair(bcx.fcx.ccx.tn, llfnty));
+
             // Store thunk-target.
             auto bound_target =
                 bcx.build.GEP(closure,
                               vec(C_int(0),
                                   C_int(abi.closure_elt_target)));
             auto src = bcx.build.Load(f_res.res.val);
+            bound_target = bcx.build.PointerCast(bound_target, llclosurety);
             bcx.build.Store(src, bound_target);
 
             // Copy expr values into boxed bindings.
@@ -4691,7 +4715,8 @@ fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
             case (ty.ty_fn(?proto, ?inputs, ?output)) {
                 llfnty = type_of_fn_full(cx, proto,
                                          some[TypeRef](self_ty),
-                                         inputs, output);
+                                         inputs, output,
+                                         _vec.len[ast.ty_param](ty_params));
             }
         }
 
@@ -4990,11 +5015,23 @@ fn get_pair_fn_ty(TypeRef llpairty) -> TypeRef {
 fn decl_fn_and_pair(@crate_ctxt cx,
                     str kind,
                     str name,
+                    vec[ast.ty_param] ty_params,
                     &ast.ann ann,
                     ast.def_id id) {
 
-    auto llpairty = node_type(cx, ann);
-    auto llfty = get_pair_fn_ty(llpairty);
+    auto llfty;
+    auto llpairty;
+    alt (node_ann_type(cx, ann).struct) {
+        case (ty.ty_fn(?proto, ?inputs, ?output)) {
+            llfty = type_of_fn(cx, proto, inputs, output,
+                               _vec.len[ast.ty_param](ty_params));
+            llpairty = T_fn_pair(cx.tn, llfty);
+        }
+        case (_) {
+            cx.sess.bug("decl_fn_and_pair(): fn item doesn't have fn type?!");
+            fail;
+        }
+    }
 
     // Declare the function itself.
     let str s = cx.names.next("_rust_" + kind) + sep() + name;
@@ -5023,11 +5060,29 @@ fn register_fn_pair(@crate_ctxt cx, str ps, TypeRef llpairty, ValueRef llfn,
     cx.fn_pairs.insert(id, gvar);
 }
 
-fn native_fn_wrapper_type(@crate_ctxt cx, &ast.ann ann) -> TypeRef {
+// Returns the number of type parameters that the given native function has.
+fn native_fn_ty_param_count(@crate_ctxt cx, &ast.def_id id) -> uint {
+    auto count;
+    auto native_item = cx.native_items.get(id);
+    alt (native_item.node) {
+        case (ast.native_item_ty(_,_)) {
+            cx.sess.bug("decl_native_fn_and_pair(): native fn isn't " +
+                        "actually a fn?!");
+            fail;
+        }
+        case (ast.native_item_fn(_, _, ?tps, _, _)) {
+            count = _vec.len[ast.ty_param](tps);
+        }
+    }
+    ret count;
+}
+
+fn native_fn_wrapper_type(@crate_ctxt cx, uint ty_param_count, &ast.ann ann)
+        -> TypeRef {
     auto x = node_ann_type(cx, ann);
     alt (x.struct) {
         case (ty.ty_native_fn(?abi, ?args, ?out)) {
-            ret type_of_fn(cx, ast.proto_fn, args, out);
+            ret type_of_fn(cx, ast.proto_fn, args, out, ty_param_count);
         }
     }
     fail;
@@ -5037,8 +5092,10 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
                            str name,
                            &ast.ann ann,
                            ast.def_id id) {
+    auto num_ty_param = native_fn_ty_param_count(cx, id);
+
     // Declare the wrapper.
-    auto wrapper_type = native_fn_wrapper_type(cx, ann);
+    auto wrapper_type = native_fn_wrapper_type(cx, num_ty_param, ann);
     let str s = cx.names.next("_rust_wrapper") + sep() + name;
     let ValueRef wrapper_fn = decl_fastcall_fn(cx.llmod, s, wrapper_type);
 
@@ -5063,7 +5120,6 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
     alt (abi) {
         case (ast.native_abi_rust) {
             call_args += vec(fcx.lltaskptr);
-            auto num_ty_param = ty.count_ty_params(plain_ty(fn_type.struct));
             for each (uint i in _uint.range(0u, num_ty_param)) {
                 auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
                 check (llarg as int != 0);
@@ -5081,6 +5137,7 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
         call_args += vec(llarg);
         arg_n += 1u;
     }
+
     auto r = bcx.build.Call(function, call_args);
     bcx.build.Store(r, fcx.llretptr);
     bcx.build.RetVoid();
@@ -5102,16 +5159,16 @@ fn collect_native_item(&@crate_ctxt cx, @ast.native_item i) -> @crate_ctxt {
 fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
 
     alt (i.node) {
-        case (ast.item_fn(?name, ?f, _, ?fid, ?ann)) {
+        case (ast.item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
             cx.items.insert(fid, i);
             if (! cx.obj_methods.contains_key(fid)) {
-                decl_fn_and_pair(cx, "fn", name, ann, fid);
+                decl_fn_and_pair(cx, "fn", name, tps, ann, fid);
             }
         }
 
-        case (ast.item_obj(?name, ?ob, _, ?oid, ?ann)) {
+        case (ast.item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
             cx.items.insert(oid, i);
-            decl_fn_and_pair(cx, "obj_ctor", name, ann, oid);
+            decl_fn_and_pair(cx, "obj_ctor", name, tps, ann, oid);
             for (@ast.method m in ob.methods) {
                 cx.obj_methods.insert(m.node.id, ());
             }
@@ -5151,11 +5208,11 @@ fn collect_tag_ctor(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
 
     alt (i.node) {
 
-        case (ast.item_tag(_, ?variants, _, _)) {
+        case (ast.item_tag(_, ?variants, ?tps, _)) {
             for (ast.variant variant in variants) {
                 if (_vec.len[ast.variant_arg](variant.args) != 0u) {
                     decl_fn_and_pair(cx, "tag", variant.name,
-                                     variant.ann, variant.id);
+                                     tps, variant.ann, variant.id);
                 }
             }
         }
