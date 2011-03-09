@@ -1,11 +1,6 @@
 
 open Common;;
 
-let _ =
-  Gc.set { (Gc.get()) with
-             Gc.space_overhead = 400; }
-;;
-
 let (targ:Common.target) =
   match Sys.os_type with
 
