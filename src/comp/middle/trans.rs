@@ -3287,7 +3287,6 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
         ix_val = ix.val;
     }
 
-    auto llunit_ty = node_type(cx.fcx.ccx, ann);
     auto unit_sz = size_of(bcx, node_ann_type(cx.fcx.ccx, ann));
     bcx = unit_sz.bcx;
 
