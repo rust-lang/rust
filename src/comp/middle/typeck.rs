@@ -1467,8 +1467,9 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
                         // TODO: pluralize properly
                         auto err_msg = "tag type " + last_id + " has " +
                                        _uint.to_str(subpats_len, 10u) +
-                                       " fields, but this pattern has " +
-                                       _uint.to_str(arg_len, 10u) + " fields";
+                                       " field(s), but this pattern has " +
+                                       _uint.to_str(arg_len, 10u) +
+                                       " field(s)";
 
                         fcx.ccx.sess.span_err(pat.span, err_msg);
                         fail;   // TODO: recover
@@ -1491,10 +1492,10 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
                     if (subpats_len > 0u) {
                         // TODO: pluralize properly
                         auto err_msg = "tag type " + last_id +
-                                       " has no fields," +
+                                       " has no field(s)," +
                                        " but this pattern has " +
                                        _uint.to_str(subpats_len, 10u) +
-                                       " fields";
+                                       " field(s)";
 
                         fcx.ccx.sess.span_err(pat.span, err_msg);
                         fail;   // TODO: recover
