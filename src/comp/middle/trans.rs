@@ -3364,7 +3364,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
     lltargetclosure = bcx.build.Load(lltargetclosure);
 
     auto outgoing_ret_ty = ty.ty_fn_ret(outgoing_fty);
-    auto outgoing_arg_tys = ty.ty_fn_args(outgoing_fty);
+    auto outgoing_args = ty.ty_fn_args(outgoing_fty);
 
     auto llretptr = fcx.llretptr;
     if (ty.type_has_dynamic_size(outgoing_ret_ty)) {
@@ -3392,7 +3392,14 @@ fn trans_bind_thunk(@crate_ctxt cx,
     let uint a = 2u + i;    // retptr, task ptr, env come first
     let int b = 0;
     let uint outgoing_arg_index = 0u;
+    let vec[TypeRef] llout_arg_tys =
+        type_of_explicit_args(cx, outgoing_args);
+
     for (option.t[@ast.expr] arg in args) {
+
+        auto out_arg = outgoing_args.(outgoing_arg_index);
+        auto llout_arg_ty = llout_arg_tys.(outgoing_arg_index);
+
         alt (arg) {
 
             // Arg provided at binding time; thunk copies it from closure.
@@ -3403,22 +3410,31 @@ fn trans_bind_thunk(@crate_ctxt cx,
                                      abi.box_rc_field_body,
                                      abi.closure_elt_bindings,
                                      b));
-                // FIXME: possibly support passing aliases someday.
+
                 bcx = bound_arg.bcx;
-                llargs += bcx.build.Load(bound_arg.val);
+                auto val = bound_arg.val;
+
+                if (out_arg.mode == ast.val) {
+                    val = bcx.build.Load(val);
+                } else if (ty.count_ty_params(out_arg.ty) > 0u) {
+                    check (out_arg.mode == ast.alias);
+                    val = bcx.build.PointerCast(val, llout_arg_ty);
+                }
+
+                llargs += val;
                 b += 1;
             }
 
             // Arg will be provided when the thunk is invoked.
             case (none[@ast.expr]) {
                 let ValueRef passed_arg = llvm.LLVMGetParam(llthunk, a);
-                if (ty.type_has_dynamic_size(outgoing_arg_tys.
-                        (outgoing_arg_index).ty)) {
-                    // Cast to a generic typaram pointer in order to make a
-                    // type-compatible call.
+
+                if (ty.count_ty_params(out_arg.ty) > 0u) {
+                    check (out_arg.mode == ast.alias);
                     passed_arg = bcx.build.PointerCast(passed_arg,
-                                                       T_typaram_ptr(cx.tn));
+                                                       llout_arg_ty);
                 }
+
                 llargs += passed_arg;
                 a += 1u;
             }
