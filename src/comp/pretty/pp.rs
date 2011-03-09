@@ -17,17 +17,19 @@ type context = rec(contexttype tp, uint indent);
 
 type ps = @rec(mutable vec[context] context,
                uint width,
+               io.writer out,
                mutable vec[token] buffered,
                mutable uint scandepth,
                mutable uint bufferedcol,
                mutable uint col,
                mutable bool start_of_line);
 
-fn mkstate(uint width) -> ps {
+fn mkstate(io.writer out, uint width) -> ps {
   let vec[context] stack = vec(rec(tp=cx_v, indent=0u));
   let vec[token] buff = vec();
   ret @rec(mutable context=stack,
            width=width,
+           out=out,
            mutable buffered=buff,
            mutable scandepth=0u,
            mutable bufferedcol=0u,
@@ -46,8 +48,20 @@ impure fn pop_context(ps p) {
 }
 
 impure fn add_token(ps p, token tok) {
-  if (p.scandepth == 0u) {do_token(p, tok);}
+  if (p.width == 0u) {direct_token(p, tok);}
+  else if (p.scandepth == 0u) {do_token(p, tok);}
   else {buffer_token(p, tok);}
+}
+
+impure fn direct_token(ps p, token tok) {
+  alt (tok) {
+    case (brk(?sz)) {
+      while (sz > 0u) {p.out.write_str(" "); sz -= 1u;}
+    }
+    case (word(?w)) {p.out.write_str(w);}
+    case (cword(?w)) {p.out.write_str(w);}
+    case (_) {}
+  }
 }
 
 impure fn buffer_token(ps p, token tok) {
@@ -101,14 +115,13 @@ impure fn finish_block_scan(ps p, contexttype tp) {
 
 impure fn finish_break_scan(ps p) {
   if (p.bufferedcol > p.width) {
-    write_str("\n");
-    p.col = 0u;
+    line_break(p);
   }
   else {
     auto width;
     alt (p.buffered.(0)) {case(brk(?w)) {width = w;}}
     auto i = 0u;
-    while (i < width) {write_str(" "); i+=1u;}
+    while (i < width) {p.out.write_str(" "); i+=1u;}
     p.col += width;
   }
   p.scandepth = 0u;
@@ -142,20 +155,18 @@ impure fn do_token(ps p, token tok) {
           start_scan(p, tok);
         }
         case (cx_v) {
-          write_str("\n");
-          p.col = 0u;
-          p.start_of_line = true;
+          line_break(p);
         }
       }
     }
     case (word(?w)) {
       before_print(p, false);
-      write_str(w);
+      p.out.write_str(w);
       p.col += _str.byte_len(w); // TODO char_len
     }
     case (cword(?w)) {
       before_print(p, true);
-      write_str(w);
+      p.out.write_str(w);
       p.col += _str.byte_len(w); // TODO char_len
     }
     case (open(?tp, ?indent)) {
@@ -170,6 +181,12 @@ impure fn do_token(ps p, token tok) {
   }
 }
 
+impure fn line_break(ps p) {
+  p.out.write_str("\n");
+  p.col = 0u;
+  p.start_of_line = true;
+}
+
 impure fn before_print(ps p, bool closing) {
   if (p.start_of_line) {
     p.start_of_line = false;
@@ -177,12 +194,8 @@ impure fn before_print(ps p, bool closing) {
     if (closing) {ind = base_indent(p);}
     else {ind = cur_context(p).indent;}
     p.col = ind;
-    while (ind > 0u) {write_str(" "); ind -= 1u;}
+    while (ind > 0u) {p.out.write_str(" "); ind -= 1u;}
   }
-}
-
-fn write_str(str s) {
-  io.writefd(1, _str.bytes(s));
 }
 
 fn token_size(token tok) -> uint {

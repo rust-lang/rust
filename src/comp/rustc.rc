@@ -44,6 +44,7 @@ auth middle.trans = unsafe;
 auth middle.trans.copy_args_to_allocas = impure;
 auth middle.trans.trans_block = impure;
 auth lib.llvm = unsafe;
+auth pretty.pprust = impure;
 
 mod lib {
     alt (target_os) {

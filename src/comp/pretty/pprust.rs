@@ -11,11 +11,17 @@ import foo = std.io;
 const uint indent_unit = 2u;
 const int as_prec = 5;
 
-impure fn print_ast(ast._mod _mod) {
-  auto s = pp.mkstate(80u);
+impure fn print_ast(ast._mod _mod, std.io.writer out) {
+  auto s = pp.mkstate(out, 80u);
   for (@ast.view_item vitem in _mod.view_items) {print_view_item(s, vitem);}
   line(s);
   for (@ast.item item in _mod.items) {print_item(s, item);}
+}
+
+fn ty_to_str(&@ast.ty ty) -> str {
+  auto writer = std.io.string_writer();
+  print_type(pp.mkstate(writer.get_writer(), 0u), ty);
+  ret writer.get_str();
 }
 
 impure fn hbox(ps s) {

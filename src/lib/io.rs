@@ -91,26 +91,21 @@ tag fileflag {
     truncate;
 }
 
-// FIXME move into fd_buf_writer
-fn writefd(int fd, vec[u8] v) {
-    auto len = _vec.len[u8](v);
-    auto count = 0u;
-    auto vbuf;
-    while (count < len) {
-        vbuf = _vec.buf_off[u8](v, count);
-        auto nout = os.libc.write(fd, vbuf, len);
-        if (nout < 0) {
-            log "error dumping buffer";
-            log sys.rustrt.last_os_error();
-            fail;
-        }
-        count += nout as uint;
-    }
-}
-
 state obj fd_buf_writer(int fd, bool must_close) {
     fn write(vec[u8] v) {
-        writefd(fd, v);
+        auto len = _vec.len[u8](v);
+        auto count = 0u;
+        auto vbuf;
+        while (count < len) {
+            vbuf = _vec.buf_off[u8](v, count);
+            auto nout = os.libc.write(fd, vbuf, len);
+            if (nout < 0) {
+                log "error dumping buffer";
+                log sys.rustrt.last_os_error();
+                fail;
+            }
+            count += nout as uint;
+        }
     }
 
     drop {
@@ -152,9 +147,15 @@ type writer =
     };
 
 state obj new_writer(buf_writer out) {
-    impure fn write_str(str s)   { out.write(_str.bytes(s)); }
-    impure fn write_int(int n)   { out.write(_str.bytes(_int.to_str(n, 10u))); }
-    impure fn write_uint(uint n) { out.write(_str.bytes(_uint.to_str(n, 10u))); }
+    impure fn write_str(str s) {
+        out.write(_str.bytes(s));
+    }
+    impure fn write_int(int n) {
+        out.write(_str.bytes(_int.to_str(n, 10u)));
+    }
+    impure fn write_uint(uint n) {
+        out.write(_str.bytes(_uint.to_str(n, 10u)));
+    }
 }
 
 fn file_writer(str path, vec[fileflag] flags) -> writer {
