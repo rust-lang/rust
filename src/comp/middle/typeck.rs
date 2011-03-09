@@ -128,74 +128,77 @@ fn substitute_ty_params(&@crate_ctxt ccx,
     ret ty.fold_ty(substituter, typ);
 }
 
-// Instantiates the given path, which must refer to an item with the given
-// definition.
-fn instantiate_path(@fn_ctxt fcx, &ast.path pth, &ast.def defn, &span sp)
-        -> ast.ann {
-    auto t;
-    auto ty_params;
+type ty_params_opt_and_ty = tup(option.t[vec[ast.def_id]], @ty.t);
+
+// Returns the type parameters and the type for the given definition.
+fn ty_params_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
+        -> ty_params_opt_and_ty {
     alt (defn) {
         case (ast.def_arg(?id)) {
             check (fcx.locals.contains_key(id));
-            t = fcx.locals.get(id);
-            ty_params = none[vec[ast.def_id]];
+            ret tup(none[vec[ast.def_id]], fcx.locals.get(id));
         }
         case (ast.def_local(?id)) {
+            auto t;
             alt (fcx.locals.find(id)) {
                 case (some[@ty.t](?t1)) { t = t1; }
                 case (none[@ty.t]) { t = plain_ty(ty.ty_local(id)); }
             }
-            ty_params = none[vec[ast.def_id]];
+            ret tup(none[vec[ast.def_id]], t);
         }
         case (ast.def_obj_field(?id)) {
             check (fcx.locals.contains_key(id));
-            t = fcx.locals.get(id);
-            ty_params = none[vec[ast.def_id]];
+            ret tup(none[vec[ast.def_id]], fcx.locals.get(id));
         }
         case (ast.def_fn(?id)) {
             check (fcx.ccx.item_types.contains_key(id));
-            t = fcx.ccx.item_types.get(id);
-            ty_params = some(fcx.ccx.item_ty_params.get(id));
+            ret tup(some(fcx.ccx.item_ty_params.get(id)),
+                    fcx.ccx.item_types.get(id));
         }
         case (ast.def_native_fn(?id)) {
             check (fcx.ccx.item_types.contains_key(id));
-            t = fcx.ccx.item_types.get(id);
-            ty_params = some(fcx.ccx.item_ty_params.get(id));
+            ret tup(some(fcx.ccx.item_ty_params.get(id)),
+                    fcx.ccx.item_types.get(id));
         }
         case (ast.def_const(?id)) {
             check (fcx.ccx.item_types.contains_key(id));
-            t = fcx.ccx.item_types.get(id);
-            ty_params = none[vec[ast.def_id]];
+            ret tup(none[vec[ast.def_id]], fcx.ccx.item_types.get(id));
         }
         case (ast.def_variant(?tag_id, ?variant_id)) {
             check (fcx.ccx.item_types.contains_key(variant_id));
-            t = fcx.ccx.item_types.get(variant_id);
-            ty_params = some(fcx.ccx.item_ty_params.get(tag_id));
+            ret tup(some(fcx.ccx.item_ty_params.get(tag_id)),
+                    fcx.ccx.item_types.get(variant_id));
         }
         case (ast.def_binding(?id)) {
             check (fcx.locals.contains_key(id));
-            t = fcx.locals.get(id);
-            ty_params = none[vec[ast.def_id]];
+            ret tup(none[vec[ast.def_id]], fcx.locals.get(id));
         }
         case (ast.def_obj(?id)) {
             check (fcx.ccx.item_types.contains_key(id));
-            t = fcx.ccx.item_types.get(id);
-            ty_params = some(fcx.ccx.item_ty_params.get(id));
+            ret tup(some(fcx.ccx.item_ty_params.get(id)),
+                    fcx.ccx.item_types.get(id));
         }
 
         case (ast.def_mod(_)) {
             // Hopefully part of a path.
-            t = plain_ty(ty.ty_nil);    // TODO: something more poisonous?
-            ty_params = none[vec[ast.def_id]];
+            // TODO: return a type that's more poisonous, perhaps?
+            ret tup(none[vec[ast.def_id]], plain_ty(ty.ty_nil));
         }
 
         case (_) {
             // FIXME: handle other names.
-            fcx.ccx.sess.unimpl("definition variant for: "
-                                + _str.connect(pth.node.idents, "."));
+            fcx.ccx.sess.unimpl("definition variant");
             fail;
         }
     }
+}
+
+// Instantiates the given path, which must refer to an item with the given
+// type parameters and type.
+fn instantiate_path(@fn_ctxt fcx, &ast.path pth, &ty_params_opt_and_ty tpt,
+        &span sp) -> ast.ann {
+    auto ty_params = tpt._0;
+    auto t = tpt._1;
 
     auto ty_substs_opt;
     auto ty_substs_len = _vec.len[@ast.ty](pth.node.types);
@@ -1669,7 +1672,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto t = plain_ty(ty.ty_nil);
             check (defopt != none[ast.def]);
             auto defn = option.get[ast.def](defopt);
-            auto ann = instantiate_path(fcx, pth, defn, expr.span);
+            auto tpt = ty_params_and_ty_for_def(fcx, defn);
+            auto ann = instantiate_path(fcx, pth, tpt, expr.span);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_path(pth, defopt, ann));
         }
