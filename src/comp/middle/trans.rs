@@ -4920,7 +4920,8 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
 
         auto arg_ty = arg_tys.(i).ty;
         auto llargval;
-        if (ty.type_is_structural(arg_ty)) {
+        if (ty.type_is_structural(arg_ty) ||
+                ty.type_has_dynamic_size(arg_ty)) {
             llargval = llargptr;
         } else {
             llargval = bcx.build.Load(llargptr);
