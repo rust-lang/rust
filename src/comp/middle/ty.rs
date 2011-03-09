@@ -596,8 +596,8 @@ fn eq_ty(&@t a, &@t b) -> bool {
 fn ann_to_type(&ast.ann ann) -> @t {
     alt (ann) {
         case (ast.ann_none) {
-            // shouldn't happen, but can until the typechecker is complete
-            ret plain_ty(ty_var(-1));    // FIXME: broken, broken, broken
+            log "ann_to_type() called on node with no type";
+            fail;
         }
         case (ast.ann_type(?ty, _)) {
             ret ty;
