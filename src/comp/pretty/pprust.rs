@@ -91,24 +91,21 @@ impure fn print_type(ps s, @ast.ty ty) {
       commasep[ast.ty_field](s, fields, f);
       pclose(s);
     }
-    case (ast.ty_fn(?proto,?inputs,?output)) {
-      if (proto == ast.proto_fn) {wrd(s, "fn");}
-      else {wrd(s, "iter");}
-      popen(s);
-      impure fn print_arg(ps s, ast.ty_arg input) {
-        if (middle.ty.mode_is_alias(input.mode)) {wrd(s, "&");}
-        print_type(s, input.ty);
-      }
-      auto f = print_arg;
-      commasep[ast.ty_arg](s, inputs, f);
-      pclose(s);
-      if (output.node != ast.ty_nil) {
-        space(s);
+    case (ast.ty_obj(?methods)) {
+      wrd1(s, "obj");
+      bopen(s);
+      for (ast.ty_method m in methods) {
         hbox(s);
-        wrd1(s, "->");
-        print_type(s, output);
+        print_ty_fn(s, m.proto, option.some[str](m.ident),
+                    m.inputs, m.output);
+        wrd(s, ";");
         end(s);
+        line(s);
       }
+      bclose(s);
+    }
+    case (ast.ty_fn(?proto,?inputs,?output)) {
+      print_ty_fn(s, proto, option.none[str], inputs, output);
     }
     case (ast.ty_path(?path,_)) {
       print_path(s, path);
@@ -528,7 +525,6 @@ impure fn print_expr(ps s, @ast.expr expr) {
       }
       // TODO: extension 'body'
     }
-    case (_) {wrd(s, "X");}
   }
   end(s);
 }
@@ -729,4 +725,29 @@ fn escape_str(str st, char to_escape) -> str {
 
 impure fn print_string(ps s, str st) {
   wrd(s, "\""); wrd(s, escape_str(st, '"')); wrd(s, "\"");
+}
+
+impure fn print_ty_fn(ps s, ast.proto proto, option.t[str] id,
+                      vec[ast.ty_arg] inputs, @ast.ty output) {
+  if (proto == ast.proto_fn) {wrd(s, "fn");}
+  else {wrd(s, "iter");}
+  alt (id) {
+    case (option.some[str](?id)) {space(s); wrd(s, id);}
+    case (_) {}
+  }
+  popen(s);
+  impure fn print_arg(ps s, ast.ty_arg input) {
+    if (middle.ty.mode_is_alias(input.mode)) {wrd(s, "&");}
+    print_type(s, input.ty);
+  }
+  auto f = print_arg;
+  commasep[ast.ty_arg](s, inputs, f);
+  pclose(s);
+  if (output.node != ast.ty_nil) {
+    space(s);
+    hbox(s);
+    wrd1(s, "->");
+    print_type(s, output);
+    end(s);
+  }
 }
