@@ -477,7 +477,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         mutable-alias-vec.rs \
                         obj-as.rs \
                         obj-dtor.rs \
-                        obj-return-polytypes.rs \
                         pred.rs \
                         preempt.rs \
                         rec-extend.rs \
