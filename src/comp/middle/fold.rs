@@ -452,11 +452,14 @@ fn fold_pat[ENV](&ENV env, ast_fold[ENV] fld, @ast.pat p) -> @ast.pat {
             ret fld.fold_pat_bind(env_, p.span, id, did, t);
         }
         case (ast.pat_tag(?path, ?pats, ?d, ?t)) {
+            auto ppath = fold_path(env, fld, path);
+
             let vec[@ast.pat] ppats = vec();
             for (@ast.pat pat in pats) {
                 ppats += vec(fold_pat(env_, fld, pat));
             }
-            ret fld.fold_pat_tag(env_, p.span, path, ppats, d, t);
+
+            ret fld.fold_pat_tag(env_, p.span, ppath, ppats, d, t);
         }
     }
 }
