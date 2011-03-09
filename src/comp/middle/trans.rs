@@ -831,8 +831,8 @@ fn decl_upcall_glue(ModuleRef llmod, type_names tn, uint _n) -> ValueRef {
     let int n = _n as int;
     let str s = abi.upcall_glue_name(n);
     let vec[TypeRef] args =
-        vec(T_taskptr(tn), // taskptr
-            T_int())     // callee
+        vec(T_int(),     // callee
+            T_taskptr(tn)) // taskptr
         + _vec.init_elt[TypeRef](T_int(), n as uint);
 
     ret decl_fastcall_fn(llmod, s, T_fn(args, T_int()));
@@ -856,7 +856,7 @@ fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> result {
     llupcall = llvm.LLVMConstPointerCast(llupcall, T_int());
 
     let ValueRef llglue = cx.fcx.ccx.glues.upcall_glues.(n);
-    let vec[ValueRef] call_args = vec(cx.fcx.lltaskptr, llupcall);
+    let vec[ValueRef] call_args = vec(llupcall, cx.fcx.lltaskptr);
 
     for (ValueRef a in args) {
         call_args += cx.build.ZExtOrBitCast(a, T_int());
