@@ -479,7 +479,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         obj-dtor.rs \
                         pred.rs \
                         preempt.rs \
-                        rec-extend.rs \
                         rt-circular-buffer.rs \
                         size-and-align.rs \
                         spawn-fn.rs \

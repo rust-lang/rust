@@ -2064,7 +2064,13 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_rec(?fields, ?base, _)) {
 
-            auto base_1 = base;
+            auto base_1;
+            alt (base) {
+                case (none[@ast.expr]) { base_1 = none[@ast.expr]; }
+                case (some[@ast.expr](?b_0)) {
+                    base_1 = some[@ast.expr](check_expr(fcx, b_0));
+                }
+            }
 
             let vec[ast.field] fields_1 = vec();
             let vec[field] fields_t = vec();
