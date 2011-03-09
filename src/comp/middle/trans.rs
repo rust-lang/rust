@@ -1699,11 +1699,15 @@ fn variant_types(@crate_ctxt cx, &ast.variant v) -> vec[@ty.t] {
     ret tys;
 }
 
-fn type_of_variant(@crate_ctxt cx, &ast.variant v) -> TypeRef {
+fn type_of_variant(@crate_ctxt cx,
+                   &ast.variant v,
+                   vec[ast.ty_param] ty_params,
+                   vec[@ty.t] ty_param_substs) -> TypeRef {
     let vec[TypeRef] lltys = vec();
     auto tys = variant_types(cx, v);
     for (@ty.t typ in tys) {
-        lltys += vec(type_of(cx, typ));
+        auto typ2 = ty.substitute_ty_params(ty_params, ty_param_substs, typ);
+        lltys += vec(type_of(cx, typ2));
     }
     ret T_struct(lltys);
 }
@@ -1850,6 +1854,8 @@ fn iter_structural_ty_full(@block_ctxt cx,
 
             auto next_cx = new_sub_block_ctxt(bcx, "tag-iter-next");
 
+            auto ty_params = tag_ty_params(bcx.fcx.ccx, tid);
+
             auto i = 0u;
             for (ast.variant variant in variants) {
                 auto variant_cx = new_sub_block_ctxt(bcx,
@@ -1859,7 +1865,8 @@ fn iter_structural_ty_full(@block_ctxt cx,
 
                 if (_vec.len[ast.variant_arg](variant.args) > 0u) {
                     // N-ary variant.
-                    auto llvarty = type_of_variant(bcx.fcx.ccx, variants.(i));
+                    auto llvarty = type_of_variant(bcx.fcx.ccx, variants.(i),
+                                                   ty_params, tps);
 
                     auto fn_ty = ty.ann_to_type(variants.(i).ann);
                     alt (fn_ty.struct) {
@@ -1869,8 +1876,6 @@ fn iter_structural_ty_full(@block_ctxt cx,
 
                             auto llvarp_b = variant_cx.build.
                                 TruncOrBitCast(llunion_b_ptr, T_ptr(llvarty));
-
-                            auto ty_params = tag_ty_params(bcx.fcx.ccx, tid);
 
                             auto j = 0u;
                             for (ty.arg a in args) {
