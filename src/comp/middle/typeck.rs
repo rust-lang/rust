@@ -1461,6 +1461,12 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
             auto t = fcx.ccx.item_types.get(vdef._1);
             auto len = _vec.len[ast.ident](p.node.idents);
             auto last_id = p.node.idents.(len - 1u);
+
+            auto ty_params = fcx.ccx.item_ty_params.get(vdef._0);
+            auto tag_ty = fcx.ccx.item_types.get(vdef._0);
+            auto tpt = tup(some(ty_params), tag_ty);
+            auto ann = instantiate_path(fcx, p, tpt, pat.span);
+
             alt (t.struct) {
                 // N-ary variants have function types.
                 case (ty.ty_fn(_, ?args, ?tag_ty)) {
@@ -1483,14 +1489,11 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
                         new_subpats += vec(check_pat(fcx, subpat));
                     }
 
-                    auto ann = ast.ann_type(tag_ty, none[vec[@ty.t]]);
                     new_pat = ast.pat_tag(p, new_subpats, vdef_opt, ann);
                 }
 
                 // Nullary variants have tag types.
                 case (ty.ty_tag(?tid, _)) {
-                    // TODO: ty params
-
                     auto subpats_len = _vec.len[@ast.pat](subpats);
                     if (subpats_len > 0u) {
                         // TODO: pluralize properly
@@ -1504,9 +1507,6 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
                         fail;   // TODO: recover
                     }
 
-                    let vec[@ty.t] tys = vec(); // FIXME
-                    auto ann = ast.ann_type(plain_ty(ty.ty_tag(tid, tys)),
-                                            none[vec[@ty.t]]);
                     new_pat = ast.pat_tag(p, subpats, vdef_opt, ann);
                 }
             }
