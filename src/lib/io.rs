@@ -91,6 +91,7 @@ tag fileflag {
     truncate;
 }
 
+// FIXME move into fd_buf_writer
 fn writefd(int fd, vec[u8] v) {
     auto len = _vec.len[u8](v);
     auto count = 0u;
@@ -107,19 +108,17 @@ fn writefd(int fd, vec[u8] v) {
     }
 }
 
-fn new_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
-
-    state obj fd_buf_writer(int fd) {
-
-        fn write(vec[u8] v) {
-            writefd(fd, v);
-        }
-
-        drop {
-            os.libc.close(fd);
-        }
+state obj fd_buf_writer(int fd, bool must_close) {
+    fn write(vec[u8] v) {
+        writefd(fd, v);
     }
 
+    drop {
+        if (must_close) {os.libc.close(fd);}
+    }
+}
+
+fn file_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
     let int fflags =
         os.libc_constants.O_WRONLY() |
         os.libc_constants.O_BINARY();
@@ -142,26 +141,52 @@ fn new_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
         log sys.rustrt.last_os_error();
         fail;
     }
-    ret fd_buf_writer(fd);
+    ret fd_buf_writer(fd, true);
 }
 
 type writer =
     state obj {
-          fn write_str(str s);
-          fn write_int(int n);
-          fn write_uint(uint n);
+          impure fn write_str(str s);
+          impure fn write_int(int n);
+          impure fn write_uint(uint n);
     };
 
-fn file_writer(str path,
-               vec[fileflag] flags)
-    -> writer
-{
-    state obj fw(buf_writer out) {
-        fn write_str(str s)   { out.write(_str.bytes(s)); }
-        fn write_int(int n)   { out.write(_str.bytes(_int.to_str(n, 10u))); }
-        fn write_uint(uint n) { out.write(_str.bytes(_uint.to_str(n, 10u))); }
+state obj new_writer(buf_writer out) {
+    impure fn write_str(str s)   { out.write(_str.bytes(s)); }
+    impure fn write_int(int n)   { out.write(_str.bytes(_int.to_str(n, 10u))); }
+    impure fn write_uint(uint n) { out.write(_str.bytes(_uint.to_str(n, 10u))); }
+}
+
+fn file_writer(str path, vec[fileflag] flags) -> writer {
+    ret new_writer(file_buf_writer(path, flags));
+}
+
+// FIXME it would be great if this could be a const named stdout
+fn stdout_writer() -> writer {
+    ret new_writer(fd_buf_writer(1, false));
+}
+
+type str_writer =
+    state obj {
+          fn get_writer() -> writer;
+          fn get_str() -> str;
+    };
+
+type str_buf = @rec(mutable str buf);
+
+// TODO awkward! it's not possible to implement a writer with an extra method
+fn string_writer() -> str_writer {
+    auto buf = @rec(mutable buf = "");
+    state obj str_writer_writer(str_buf buf) {
+        impure fn write_str(str s)   { buf.buf += s; }
+        impure fn write_int(int n)   { buf.buf += _int.to_str(n, 10u); }
+        impure fn write_uint(uint n) { buf.buf += _uint.to_str(n, 10u); }
     }
-    ret fw(new_buf_writer(path, flags));
+    state obj str_writer_wrap(writer wr, str_buf buf) {
+        fn get_writer() -> writer {ret wr;}
+        fn get_str() -> str {ret buf.buf;}
+    }
+    ret str_writer_wrap(str_writer_writer(buf), buf);
 }
 
 //
