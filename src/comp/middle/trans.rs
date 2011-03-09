@@ -1730,6 +1730,25 @@ fn tag_variants(@crate_ctxt cx, ast.def_id id) -> vec[ast.variant] {
     fail;   // not reached
 }
 
+// Returns the tag variant with the given ID.
+fn tag_variant_with_id(@crate_ctxt cx,
+                       &ast.def_id tag_id,
+                       &ast.def_id variant_id) -> ast.variant {
+    auto variants = tag_variants(cx, tag_id);
+
+    auto i = 0u;
+    while (i < _vec.len[ast.variant](variants)) {
+        auto variant = variants.(i);
+        if (common.def_eq(variant.id, variant_id)) {
+            ret variant;
+        }
+        i += 1u;
+    }
+
+    log "tag_variant_with_id(): no variant exists with that ID";
+    fail;
+}
+
 // Returns a new plain tag type of the given ID with no type parameters. Don't
 // use this function in new code; it's a hack to keep things working for now.
 fn mk_plain_tag(ast.def_id tid) -> @ty.t {
@@ -2909,23 +2928,6 @@ fn trans_do_while(@block_ctxt cx, &ast.block body,
 
 // Pattern matching translation
 
-// Returns a pointer to the union part of the LLVM representation of a tag
-// type, cast to the appropriate type.
-fn get_pat_union_ptr(@block_ctxt cx, vec[@ast.pat] subpats, ValueRef llval)
-    -> ValueRef {
-    auto llblobptr = cx.build.GEP(llval, vec(C_int(0), C_int(1)));
-
-    // Generate the union type.
-    let vec[TypeRef] llsubpattys = vec();
-    for (@ast.pat subpat in subpats) {
-        llsubpattys += vec(type_of(cx.fcx.ccx, pat_ty(subpat)));
-    }
-
-    // Recursively check subpatterns.
-    auto llunionty = T_struct(llsubpattys);
-    ret cx.build.TruncOrBitCast(llblobptr, T_ptr(llunionty));
-}
-
 fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
                    @block_ctxt next_cx) -> result {
     alt (pat.node) {
@@ -2943,7 +2945,11 @@ fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
         }
 
         case (ast.pat_tag(?id, ?subpats, ?vdef_opt, ?ann)) {
-            auto lldiscrimptr = cx.build.GEP(llval, vec(C_int(0), C_int(0)));
+            auto lltagptr = cx.build.PointerCast(llval,
+                T_opaque_tag_ptr(cx.fcx.ccx.tn));
+
+            auto lldiscrimptr = cx.build.GEP(lltagptr,
+                                             vec(C_int(0), C_int(0)));
             auto lldiscrim = cx.build.Load(lldiscrimptr);
 
             auto vdef = option.get[ast.variant_def](vdef_opt);
@@ -2968,13 +2974,15 @@ fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
             cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
 
             if (_vec.len[@ast.pat](subpats) > 0u) {
-                auto llunionptr = get_pat_union_ptr(matched_cx, subpats,
-                                                    llval);
+                auto llblobptr = matched_cx.build.GEP(lltagptr,
+                    vec(C_int(0), C_int(1)));
                 auto i = 0;
                 for (@ast.pat subpat in subpats) {
-                    auto llsubvalptr = matched_cx.build.GEP(llunionptr,
-                                                            vec(C_int(0),
-                                                                C_int(i)));
+                    auto rslt = GEP_tag(matched_cx, llblobptr, variants.(i),
+                                        i);
+                    auto llsubvalptr = rslt.val;
+                    matched_cx = rslt.bcx;
+
                     auto llsubval = load_scalar_or_boxed(matched_cx,
                                                          llsubvalptr,
                                                          pat_ty(subpat));
@@ -2998,25 +3006,35 @@ fn trans_pat_binding(@block_ctxt cx, @ast.pat pat, ValueRef llval)
         case (ast.pat_lit(_, _)) { ret res(cx, llval); }
         case (ast.pat_bind(?id, ?def_id, ?ann)) {
             auto ty = node_ann_type(cx.fcx.ccx, ann);
-            auto llty = type_of(cx.fcx.ccx, ty);
 
-            auto dst = cx.build.Alloca(llty);
+            auto rslt = alloc_ty(cx, ty);
+            auto dst = rslt.val;
+            auto bcx = rslt.bcx;
+
             llvm.LLVMSetValueName(dst, _str.buf(id));
-            cx.fcx.lllocals.insert(def_id, dst);
-            cx.cleanups += clean(bind drop_slot(_, dst, ty));
+            bcx.fcx.lllocals.insert(def_id, dst);
+            bcx.cleanups += clean(bind drop_slot(_, dst, ty));
 
-            ret copy_ty(cx, INIT, dst, llval, ty);
+            ret copy_ty(bcx, INIT, dst, llval, ty);
         }
-        case (ast.pat_tag(_, ?subpats, _, _)) {
+        case (ast.pat_tag(_, ?subpats, ?vdef_opt, _)) {
             if (_vec.len[@ast.pat](subpats) == 0u) { ret res(cx, llval); }
 
-            auto llunionptr = get_pat_union_ptr(cx, subpats, llval);
+            // Get the appropriate variant for this tag.
+            auto vdef = option.get[ast.variant_def](vdef_opt);
+            auto variant = tag_variant_with_id(cx.fcx.ccx, vdef._0, vdef._1);
+
+            auto lltagptr = cx.build.PointerCast(llval,
+                T_opaque_tag_ptr(cx.fcx.ccx.tn));
+            auto llblobptr = cx.build.GEP(lltagptr, vec(C_int(0), C_int(1)));
 
             auto this_cx = cx;
             auto i = 0;
             for (@ast.pat subpat in subpats) {
-                auto llsubvalptr = this_cx.build.GEP(llunionptr,
-                                                     vec(C_int(0), C_int(i)));
+                auto rslt = GEP_tag(this_cx, llblobptr, variant, i);
+                this_cx = rslt.bcx;
+                auto llsubvalptr = rslt.val;
+
                 auto llsubval = load_scalar_or_boxed(this_cx, llsubvalptr,
                                                      pat_ty(subpat));
                 auto subpat_res = trans_pat_binding(this_cx, subpat,
