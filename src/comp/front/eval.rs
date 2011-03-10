@@ -42,7 +42,7 @@ fn val_is_bool(val v) -> bool {
 
 fn val_is_int(val v) -> bool {
     alt (v) {
-        case (val_bool(_)) { ret true; }
+        case (val_int(_)) { ret true; }
         case (_) { }
     }
     ret false;
