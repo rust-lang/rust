@@ -12,6 +12,8 @@ native mod libc = "msvcrt.dll" {
     fn fclose(FILE f);
     fn fgetc(FILE f) -> int;
     fn ungetc(int c, FILE f);
+    fn fread(vbuf buf, uint size, uint n, FILE f) -> uint;
+    fn fseek(FILE f, int offset, int whence) -> int;
 }
 
 mod libc_constants {
