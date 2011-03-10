@@ -3526,7 +3526,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
         i += 1u;
     }
 
-    let uint a = 2u + i;    // retptr, task ptr, env come first
+    let uint a = 3u;    // retptr, task ptr, env come first
     let int b = 0;
     let uint outgoing_arg_index = 0u;
     let vec[TypeRef] llout_arg_tys =
