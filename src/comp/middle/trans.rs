@@ -3750,6 +3750,8 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
                         bcx.build.Store(td, ty_param_slot);
                         i += 1;
                     }
+
+                    outgoing_fty = ginfo.item_type;
                 }
             }
 
