@@ -1020,9 +1020,17 @@ fn dynamic_size_of(@block_ctxt cx, @ty.t t) -> result {
             let ValueRef max_size = bcx.build.Alloca(T_int());
             bcx.build.Store(C_int(0), max_size);
 
+            auto ty_params = tag_ty_params(bcx.fcx.ccx, tid);
             auto variants = tag_variants(bcx.fcx.ccx, tid);
             for (ast.variant variant in variants) {
-                let vec[@ty.t] tys = variant_types(bcx.fcx.ccx, variant);
+                // Perform type substitution on the raw variant types.
+                let vec[@ty.t] raw_tys = variant_types(bcx.fcx.ccx, variant);
+                let vec[@ty.t] tys = vec();
+                for (@ty.t raw_ty in raw_tys) {
+                    auto t = ty.substitute_ty_params(ty_params, tps, raw_ty);
+                    tys += vec(t);
+                }
+
                 auto rslt = align_elements(bcx, tys);
                 bcx = rslt.bcx;
 
