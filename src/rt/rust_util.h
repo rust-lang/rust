@@ -177,11 +177,8 @@ rust_vec : public rc_base<rust_vec>
         alloc(alloc),
         fill(fill)
     {
-        if (d || fill) {
-            I(dom, d);
-            I(dom, fill);
+        if (d)
             memcpy(&data[0], d, fill);
-        }
     }
     ~rust_vec() {}
 };

@@ -26,6 +26,8 @@ mod util;
 // Authorize various rule-bendings.
 
 auth io = unsafe;
+auth fs = unsafe;
+auth os_fs = unsafe;
 auth _str = unsafe;
 auth _vec = unsafe;
 auth _task = unsafe;
@@ -41,12 +43,17 @@ auth rand.mk_rng = unsafe;
 alt (target_os) {
     case ("win32") {
         mod os = "win32_os.rs";
+        mod os_fs = "win32_fs.rs";
     } case ("macos") {
         mod os = "macos_os.rs";
+        mod os_fs = "posix_fs.rs";
     } else {
         mod os = "linux_os.rs";
+        mod os_fs = "posix_fs.rs";
     }
- }
+}
+mod fs;
+
 
 // FIXME: parametric
 mod map;
@@ -56,7 +63,6 @@ mod rand;
 mod dbg;
 mod bitv;
 mod sort;
-mod path;
 mod sha1;
 
 // Local Variables:

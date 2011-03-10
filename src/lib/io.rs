@@ -86,6 +86,7 @@ tag fileflag {
     append;
     create;
     truncate;
+    none;
 }
 
 state obj fd_buf_writer(int fd, bool must_close) {
@@ -120,6 +121,7 @@ fn file_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
             case (append)   { fflags |= os.libc_constants.O_APPEND(); }
             case (create)   { fflags |= os.libc_constants.O_CREAT(); }
             case (truncate) { fflags |= os.libc_constants.O_TRUNC(); }
+            case (none) {}
         }
     }
 

@@ -15,9 +15,10 @@ native mod libc = "libc.so.6" {
     fn ungetc(int c, FILE f);
 
     type dir;
-    // readdir is a mess; handle via wrapper function in rustrt.
     fn opendir(sbuf d) -> dir;
     fn closedir(dir d) -> int;
+    type dirent;
+    fn readdir(dir d) -> dirent;
 
     fn getenv(sbuf n) -> sbuf;
     fn setenv(sbuf n, sbuf v, int overwrite) -> int;
@@ -37,10 +38,6 @@ mod libc_constants {
 
     fn S_IRUSR() -> uint { ret 0x0100u; }
     fn S_IWUSR() -> uint { ret 0x0080u; }
-}
-
-fn path_sep() -> str {
-    ret "/";
 }
 
 fn exec_suffix() -> str {
