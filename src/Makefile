@@ -453,7 +453,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         foreach-put-structured.rs \
                         foreach-simple-outer-slot.rs \
                         generic-iter-frame.rs \
-                        generic-tag-values.rs \
                         iter-range.rs \
                         iter-ret.rs \
                         lazychan.rs \

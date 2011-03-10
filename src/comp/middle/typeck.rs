@@ -1085,6 +1085,7 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
                     fail;
                 }
             }
+            auto tps_opt = some[vec[@ty.t]](ty_param_substs);
 
             // The type of the tag isn't enough; we also have to get the type
             // of the variant, which is either a tag type in the case of
@@ -1100,7 +1101,7 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
                     // Nullary tag variant.
                     check (subpats_len == 0u);
                     p_1 = ast.pat_tag(id, subpats, vdef_opt,
-                                      ast.ann_type(t, none[vec[@ty.t]]));
+                                      ast.ann_type(t, tps_opt));
                 }
                 case (ty.ty_fn(_, ?args, ?tag_ty)) {
                     // N-ary tag variant.
@@ -1115,7 +1116,7 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
                         i += 1u;
                     }
                     p_1 = ast.pat_tag(id, new_subpats, vdef_opt,
-                                      ast.ann_type(tag_ty, none[vec[@ty.t]]));
+                                      ast.ann_type(tag_ty, tps_opt));
                 }
             }
         }

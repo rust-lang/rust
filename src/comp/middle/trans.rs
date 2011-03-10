@@ -1185,8 +1185,16 @@ fn GEP_tup_like(@block_ctxt cx, @ty.t t,
 // This function uses GEP_tup_like() above and automatically performs casts as
 // appropriate. @llblobptr is the data part of a tag value; its actual type is
 // meaningless, as it will be cast away.
-fn GEP_tag(@block_ctxt cx, ValueRef llblobptr, &ast.variant variant, int ix)
+fn GEP_tag(@block_ctxt cx,
+           ValueRef llblobptr,
+           &ast.def_id tag_id,
+           &ast.def_id variant_id,
+           vec[@ty.t] ty_substs,
+           int ix)
         -> result {
+    auto ty_params = tag_ty_params(cx.fcx.ccx, tag_id);
+    auto variant = tag_variant_with_id(cx.fcx.ccx, tag_id, variant_id);
+
     // Synthesize a tuple type so that GEP_tup_like() can work its magic.
     // Separately, store the type of the element we're interested in.
     auto arg_tys = arg_tys_of_fn(variant.ann);
@@ -1194,9 +1202,10 @@ fn GEP_tag(@block_ctxt cx, ValueRef llblobptr, &ast.variant variant, int ix)
     auto i = 0;
     let vec[@ty.t] true_arg_tys = vec();
     for (ty.arg a in arg_tys) {
-        true_arg_tys += vec(a.ty);
+        auto arg_ty = ty.substitute_ty_params(ty_params, ty_substs, a.ty);
+        true_arg_tys += vec(arg_ty);
         if (i == ix) {
-            elem_ty = a.ty;
+            elem_ty = arg_ty;
         }
 
         i += 1;
@@ -2283,6 +2292,24 @@ fn node_ann_type(@crate_ctxt cx, &ast.ann a) -> @ty.t {
     }
 }
 
+fn node_ann_ty_params(&ast.ann a) -> vec[@ty.t] {
+    alt (a) {
+        case (ast.ann_none) {
+            log "missing type annotation";
+            fail;
+        }
+        case (ast.ann_type(_, ?tps_opt)) {
+            alt (tps_opt) {
+                case (none[vec[@ty.t]]) {
+                    log "type annotation has no ty params";
+                    fail;
+                }
+                case (some[vec[@ty.t]](?tps)) { ret tps; }
+            }
+        }
+    }
+}
+
 fn node_type(@crate_ctxt cx, &ast.ann a) -> TypeRef {
     ret type_of(cx, node_ann_type(cx, a));
 }
@@ -2981,13 +3008,15 @@ fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
                                       C_int(variant_tag));
             cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
 
+            auto ty_params = node_ann_ty_params(ann);
+
             if (_vec.len[@ast.pat](subpats) > 0u) {
                 auto llblobptr = matched_cx.build.GEP(lltagptr,
                     vec(C_int(0), C_int(1)));
                 auto i = 0;
                 for (@ast.pat subpat in subpats) {
-                    auto rslt = GEP_tag(matched_cx, llblobptr, variants.(i),
-                                        i);
+                    auto rslt = GEP_tag(matched_cx, llblobptr, vdef._0,
+                                        vdef._1, ty_params, i);
                     auto llsubvalptr = rslt.val;
                     matched_cx = rslt.bcx;
 
@@ -3025,7 +3054,7 @@ fn trans_pat_binding(@block_ctxt cx, @ast.pat pat, ValueRef llval)
 
             ret copy_ty(bcx, INIT, dst, llval, ty);
         }
-        case (ast.pat_tag(_, ?subpats, ?vdef_opt, _)) {
+        case (ast.pat_tag(_, ?subpats, ?vdef_opt, ?ann)) {
             if (_vec.len[@ast.pat](subpats) == 0u) { ret res(cx, llval); }
 
             // Get the appropriate variant for this tag.
@@ -3036,10 +3065,13 @@ fn trans_pat_binding(@block_ctxt cx, @ast.pat pat, ValueRef llval)
                 T_opaque_tag_ptr(cx.fcx.ccx.tn));
             auto llblobptr = cx.build.GEP(lltagptr, vec(C_int(0), C_int(1)));
 
+            auto ty_param_substs = node_ann_ty_params(ann);
+
             auto this_cx = cx;
             auto i = 0;
             for (@ast.pat subpat in subpats) {
-                auto rslt = GEP_tag(this_cx, llblobptr, variant, i);
+                auto rslt = GEP_tag(this_cx, llblobptr, vdef._0, vdef._1,
+                                    ty_param_substs, i);
                 this_cx = rslt.bcx;
                 auto llsubvalptr = rslt.val;
 
@@ -4926,6 +4958,11 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
                               none[TypeRef], ret_ty_of_fn(variant.ann),
                               fn_args, ty_params);
 
+    let vec[@ty.t] ty_param_substs = vec();
+    for (ast.ty_param tp in ty_params) {
+        ty_param_substs += vec(plain_ty(ty.ty_param(tp.id)));
+    }
+
     auto bcx = new_top_block_ctxt(fcx);
 
     auto arg_tys = arg_tys_of_fn(variant.ann);
@@ -4944,7 +4981,8 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
 
     i = 0u;
     for (ast.variant_arg va in variant.args) {
-        auto rslt = GEP_tag(bcx, llblobptr, variant, i as int);
+        auto rslt = GEP_tag(bcx, llblobptr, tag_id, variant.id,
+                            ty_param_substs, i as int);
         bcx = rslt.bcx;
         auto lldestptr = rslt.val;
 
