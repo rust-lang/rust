@@ -4050,7 +4050,27 @@ fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
         bcx = src_res.bcx;
         auto dst_res = GEP_tup_like(bcx, pseudo_tup_ty, body, vec(0, i));
         bcx = dst_res.bcx;
-        bcx = copy_ty(bcx, INIT, dst_res.val, src_res.val, unit_ty).bcx;
+
+        // Cast the destination type to the source type. This is needed to
+        // make tags work, for a subtle combination of reasons:
+        //
+        // (1) "dst_res" above is derived from "body", which is in turn
+        //     derived from "vec_val".
+        // (2) "vec_val" has the LLVM type "llty".
+        // (3) "llty" is the result of calling type_of() on a vector type.
+        // (4) For tags, type_of() returns a different type depending on
+        //     on whether the tag is behind a box or not. Vector types are
+        //     considered boxes.
+        // (5) "src_res" is derived from "unit_ty", which is not behind a box.
+
+        auto dst_val;
+        if (!ty.type_has_dynamic_size(unit_ty)) {
+            dst_val = bcx.build.PointerCast(dst_res.val, T_ptr(llunit_ty));
+        } else {
+            dst_val = dst_res.val;
+        }
+
+        bcx = copy_ty(bcx, INIT, dst_val, src_res.val, unit_ty).bcx;
         i += 1;
     }
     auto fill = bcx.build.GEP(vec_val,
