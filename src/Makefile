@@ -447,7 +447,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         constrained-type.rs \
                         destructor-ordering.rs \
                         drop-parametric-closure-with-bound-box.rs \
-                        export-non-interference.rs \
                         foreach-nested-2.rs \
                         foreach-nested.rs \
                         foreach-put-structured.rs \
@@ -507,7 +506,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         threads.rs \
                         type-sizes.rs \
                         typestate-cfg-nesting.rs \
-                        use-import-export.rs \
                         user.rs \
                         utf8.rs \
                         vec-alloc-append.rs \
