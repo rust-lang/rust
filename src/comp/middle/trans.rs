@@ -3577,7 +3577,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
             }
         }
 
-        outgoing_arg_index += 0u;
+        outgoing_arg_index += 1u;
     }
 
     // FIXME: turn this call + ret into a tail call.
