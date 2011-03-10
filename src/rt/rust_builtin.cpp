@@ -408,6 +408,9 @@ rust_file_is_dir(rust_task *task, rust_str *path) {
     return S_ISDIR(buf.st_mode);
 }
 
+extern "C" CDECL FILE* rust_get_stdin() {return stdin;}
+extern "C" CDECL FILE* rust_get_stdout() {return stdout;}
+
 //
 // Local Variables:
 // mode: C++

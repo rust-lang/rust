@@ -1,4 +1,4 @@
-import std.io.stdio_reader;
+import std.io;
 import std._str;
 import std.map;
 import std.map.hashmap;
@@ -18,9 +18,9 @@ state type reader = state obj {
                           fn get_reserved() -> hashmap[str,()];
 };
 
-fn new_reader(stdio_reader rdr, str filename) -> reader
+impure fn new_reader(io.reader rdr, str filename) -> reader
 {
-    state obj reader(stdio_reader rdr,
+    state obj reader(io.reader rdr,
                      str filename,
                      mutable char c,
                      mutable char n,
@@ -72,7 +72,7 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
                     col += 1u;
                 }
 
-                n = rdr.getc() as char;
+                n = rdr.read_char() as char;
             }
 
             fn mark() {
@@ -200,8 +200,8 @@ fn new_reader(stdio_reader rdr, str filename) -> reader
     reserved.insert("m128", ()); // IEEE 754-2008 'decimal128'
     reserved.insert("dec", ());  // One of m32, m64, m128
 
-    ret reader(rdr, filename, rdr.getc() as char, rdr.getc() as char,
-               1u, 0u, 1u, 0u, keywords, reserved);
+    ret reader(rdr, filename, rdr.read_char() as char,
+               rdr.read_char() as char, 1u, 0u, 1u, 0u, keywords, reserved);
 }
 
 
