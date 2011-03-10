@@ -3005,9 +3005,9 @@ fn trans_while(@block_ctxt cx, @ast.expr cond,
     auto cond_res = trans_expr(cond_cx, cond);
 
     body_res.bcx.build.Br(cond_cx.llbb);
-    cond_res.bcx.build.CondBr(cond_res.val,
-                              body_cx.llbb,
-                              next_cx.llbb);
+
+    auto cond_bcx = trans_block_cleanups(cond_res.bcx, cond_cx);
+    cond_bcx.build.CondBr(cond_res.val, body_cx.llbb, next_cx.llbb);
 
     cx.build.Br(cond_cx.llbb);
     ret res(next_cx, C_nil());

@@ -513,7 +513,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         vec-alloc-append.rs \
                         vec-append.rs \
                         vec-slice.rs \
-                        while-prelude-drop.rs \
                         while-with-break.rs \
                         yield.rs \
                         yield2.rs \
