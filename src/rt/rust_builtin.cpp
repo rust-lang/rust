@@ -1,4 +1,7 @@
 
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "rust_internal.h"
 
 /* Native builtins. */
@@ -371,6 +374,46 @@ debug_trap(rust_task *task, rust_str *s)
     __asm__("int3");
 }
 
+rust_str* c_str_to_rust(rust_task *task, char const *str) {
+    size_t len = strlen(str) + 1;
+    return str_alloc_with_data(task, len, len, (uint8_t const *)str);
+}
+
+#if defined(__WIN32__)
+extern "C" CDECL rust_vec*
+rust_list_files(rust_task *task, type_desc *vec_desc,
+                type_desc *str_desc, rust_str *path) {
+    rust_str* strings[200];
+    size_t pos = 0;
+    WIN32_FIND_DATA FindFileData;
+    HANDLE hFind = FindFirstFile((char*)path->data, &FindFileData);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        strings[pos++] = c_str_to_rust(task, FindFileData.cFileName);
+        while (FindNextFile(hFind, &FindFileData)) {
+            strings[pos++] = c_str_to_rust(task, FindFileData.cFileName);
+        }
+        FindClose(hFind);
+    }
+    rust_vec* result = vec_alloc(task, vec_desc, str_desc, pos);
+    for (size_t i = 0; i < pos; ++i) {
+        *(rust_str**)vec_buf(task, str_desc, result, i) = strings[i];
+    }
+    vec_len_set(task, str_desc, result, pos);
+    return result;
+}
+#else
+extern "C" CDECL rust_str *
+rust_dirent_filename(rust_task *task, dirent* ent) {
+    return c_str_to_rust(task, ent->d_name);
+}
+#endif
+
+extern "C" CDECL int
+rust_file_is_dir(rust_task *task, rust_str *path) {
+    struct stat buf;
+    stat((char*)path->data, &buf);
+    return S_ISDIR(buf.st_mode);
+}
 
 //
 // Local Variables:
