@@ -890,6 +890,11 @@ fn umax(@block_ctxt cx, ValueRef a, ValueRef b) -> ValueRef {
     ret cx.build.Select(cond, b, a);
 }
 
+fn umin(@block_ctxt cx, ValueRef a, ValueRef b) -> ValueRef {
+    auto cond = cx.build.ICmp(lib.llvm.LLVMIntULT, a, b);
+    ret cx.build.Select(cond, a, b);
+}
+
 fn align_to(@block_ctxt cx, ValueRef off, ValueRef align) -> ValueRef {
     auto mask = cx.build.Sub(align, C_int(1));
     auto bumped = cx.build.Add(off, mask);
@@ -1774,7 +1779,7 @@ fn mk_plain_tag(ast.def_id tid) -> @ty.t {
 }
 
 
-type val_fn = fn(@block_ctxt cx, ValueRef v) -> result;
+type val_pair_fn = fn(@block_ctxt cx, ValueRef dst, ValueRef src) -> result;
 
 type val_and_ty_fn = fn(@block_ctxt cx, ValueRef v, @ty.t t) -> result;
 
@@ -1987,13 +1992,15 @@ fn iter_structural_ty_full(@block_ctxt cx,
 
 // Iterates through a pointer range, until the src* hits the src_lim*.
 fn iter_sequence_raw(@block_ctxt cx,
+                     ValueRef dst,     // elt*
                      ValueRef src,     // elt*
                      ValueRef src_lim, // elt*
                      ValueRef elt_sz,
-                     val_fn f) -> result {
+                     val_pair_fn f) -> result {
 
     auto bcx = cx;
 
+    let ValueRef dst_int = vp2i(bcx, dst);
     let ValueRef src_int = vp2i(bcx, src);
     let ValueRef src_lim_int = vp2i(bcx, src_lim);
 
@@ -2003,6 +2010,8 @@ fn iter_sequence_raw(@block_ctxt cx,
 
     bcx.build.Br(cond_cx.llbb);
 
+    let ValueRef dst_curr = cond_cx.build.Phi(T_int(),
+                                              vec(dst_int), vec(bcx.llbb));
     let ValueRef src_curr = cond_cx.build.Phi(T_int(),
                                               vec(src_int), vec(bcx.llbb));
 
@@ -2011,14 +2020,18 @@ fn iter_sequence_raw(@block_ctxt cx,
 
     cond_cx.build.CondBr(end_test, body_cx.llbb, next_cx.llbb);
 
+    auto dst_curr_ptr = vi2p(body_cx, dst_curr, T_ptr(T_i8()));
     auto src_curr_ptr = vi2p(body_cx, src_curr, T_ptr(T_i8()));
 
-    auto body_res = f(body_cx, src_curr_ptr);
+    auto body_res = f(body_cx, dst_curr_ptr, src_curr_ptr);
     body_cx = body_res.bcx;
 
+    auto dst_next = body_cx.build.Add(dst_curr, elt_sz);
     auto src_next = body_cx.build.Add(src_curr, elt_sz);
     body_cx.build.Br(cond_cx.llbb);
 
+    cond_cx.build.AddIncomingToPhi(dst_curr, vec(dst_next),
+                                   vec(body_cx.llbb));
     cond_cx.build.AddIncomingToPhi(src_curr, vec(src_next),
                                    vec(body_cx.llbb));
 
@@ -2034,15 +2047,16 @@ fn iter_sequence_inner(@block_ctxt cx,
     fn adaptor_fn(val_and_ty_fn f,
                   @ty.t elt_ty,
                   @block_ctxt cx,
-                  ValueRef v) -> result {
+                  ValueRef dst,
+                  ValueRef src) -> result {
         auto llty = type_of(cx.fcx.ccx, elt_ty);
-        auto p = cx.build.PointerCast(v, T_ptr(llty));
+        auto p = cx.build.PointerCast(src, T_ptr(llty));
         ret f(cx, load_scalar_or_boxed(cx, p, elt_ty), elt_ty);
     }
 
     auto elt_sz = size_of(cx, elt_ty);
-    be iter_sequence_raw(elt_sz.bcx, src, src_lim, elt_sz.val,
-                         bind adaptor_fn(f, elt_ty, _, _));
+    be iter_sequence_raw(elt_sz.bcx, src, src, src_lim, elt_sz.val,
+                         bind adaptor_fn(f, elt_ty, _, _, _));
 }
 
 
@@ -2378,13 +2392,27 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
     fail;
 }
 
-fn trans_compare(@block_ctxt cx, ast.binop op, @ty.t t,
-                 ValueRef lhs, ValueRef rhs) -> result {
+fn trans_compare(@block_ctxt cx0, ast.binop op, @ty.t t0,
+                 ValueRef lhs0, ValueRef rhs0) -> result {
+
+    auto cx = cx0;
+
+    auto lhs_r = autoderef(cx, lhs0, t0);
+    auto lhs = lhs_r.val;
+    cx = lhs_r.bcx;
+
+    auto rhs_r = autoderef(cx, rhs0, t0);
+    auto rhs = rhs_r.val;
+    cx = rhs_r.bcx;
+
+    auto t = autoderefed_ty(t0);
 
     if (ty.type_is_scalar(t)) {
         ret res(cx, trans_scalar_compare(cx, op, t, lhs, rhs));
 
-    } else if (ty.type_is_structural(t)) {
+    } else if (ty.type_is_structural(t)
+               || ty.type_is_sequence(t)) {
+
         auto scx = new_sub_block_ctxt(cx, "structural compare start");
         auto next = new_sub_block_ctxt(cx, "structural compare end");
         cx.build.Br(scx.llbb);
@@ -2415,27 +2443,51 @@ fn trans_compare(@block_ctxt cx, ast.binop op, @ty.t t,
 
         auto flag = scx.build.Alloca(T_i1());
 
-        alt (op) {
-            // ==, <= and >= default to true if they find == all the way.
-            case (ast.eq) { scx.build.Store(C_integral(1, T_i1()), flag); }
-            case (ast.le) { scx.build.Store(C_integral(1, T_i1()), flag); }
-            case (ast.ge) { scx.build.Store(C_integral(1, T_i1()), flag); }
-            case (_) {
-                // ==, <= and >= default to false if they find == all the way.
-                scx.build.Store(C_integral(0, T_i1()), flag);
+        if (ty.type_is_sequence(t)) {
+
+            // If we hit == all the way through the minimum-shared-length
+            // section, default to judging the relative sequence lengths.
+            auto len_cmp =
+                trans_integral_compare(scx, op, plain_ty(ty.ty_uint),
+                                       vec_fill(scx, lhs),
+                                       vec_fill(scx, rhs));
+            scx.build.Store(len_cmp, flag);
+
+        } else {
+            auto T = C_integral(1, T_i1());
+            auto F = C_integral(0, T_i1());
+
+            alt (op) {
+                // ==, <= and >= default to true if they find == all the way.
+                case (ast.eq) { scx.build.Store(T, flag); }
+                case (ast.le) { scx.build.Store(T, flag); }
+                case (ast.ge) { scx.build.Store(T, flag); }
+                case (_) {
+                    // < > default to false if they find == all the way.
+                    scx.build.Store(F, flag);
+                }
+
             }
         }
 
         fn inner(@block_ctxt last_cx,
+                 bool load_inner,
                  ValueRef flag,
                  ast.binop op,
                  @block_ctxt cx,
-                 ValueRef av,
-                 ValueRef bv,
+                 ValueRef av0,
+                 ValueRef bv0,
                  @ty.t t) -> result {
 
             auto cnt_cx = new_sub_block_ctxt(cx, "continue comparison");
             auto stop_cx = new_sub_block_ctxt(cx, "stop comparison");
+
+            auto av = av0;
+            auto bv = bv0;
+            if (load_inner) {
+                av = load_scalar_or_boxed(cx, av, t);
+                bv = load_scalar_or_boxed(cx, bv, t);
+            }
 
             // First 'eq' comparison: if so, continue to next elts.
             auto eq_r = trans_compare(cx, ast.eq, t, av, bv);
@@ -2448,16 +2500,32 @@ fn trans_compare(@block_ctxt cx, ast.binop op, @ty.t t,
             ret res(cnt_cx, C_nil());
         }
 
-        auto r = iter_structural_ty_full(scx, lhs, rhs, t,
-                                         bind inner(next, flag, op,
-                                                    _, _, _, _));
+        auto r;
+        if (ty.type_is_structural(t)) {
+            r = iter_structural_ty_full(scx, lhs, rhs, t,
+                                        bind inner(next, false, flag, op,
+                                                   _, _, _, _));
+        } else {
+            auto lhs_p0 = vec_p0(scx, lhs);
+            auto rhs_p0 = vec_p0(scx, rhs);
+            auto min_len = umin(scx, vec_fill(scx, lhs), vec_fill(scx, rhs));
+            auto rhs_lim = scx.build.GEP(rhs_p0, vec(min_len));
+            auto elt_ty = ty.sequence_element_type(t);
+            auto elt_llsz_r = size_of(scx, elt_ty);
+            scx = elt_llsz_r.bcx;
+            r = iter_sequence_raw(scx, lhs, rhs, rhs_lim,
+                                  elt_llsz_r.val,
+                                  bind inner(next, true, flag, op,
+                                             _, _, _, elt_ty));
+        }
 
         r.bcx.build.Br(next.llbb);
         auto v = next.build.Load(flag);
         ret res(next, v);
 
+
     } else {
-        // FIXME: compare vec, str, box?
+        // FIXME: compare obj, fn by pointer?
         cx.fcx.ccx.sess.unimpl("type in trans_compare");
         ret res(cx, C_bool(false));
     }
@@ -5670,6 +5738,45 @@ fn make_vec_append_glue(ModuleRef llmod, type_names tn) -> ValueRef {
     ret llfn;
 }
 
+
+fn vec_fill(@block_ctxt bcx, ValueRef v) -> ValueRef {
+    ret bcx.build.Load(bcx.build.GEP(v, vec(C_int(0),
+                                            C_int(abi.vec_elt_fill))));
+}
+
+fn put_vec_fill(@block_ctxt bcx, ValueRef v, ValueRef fill) -> ValueRef {
+    ret bcx.build.Store(fill,
+                        bcx.build.GEP(v,
+                                      vec(C_int(0),
+                                          C_int(abi.vec_elt_fill))));
+}
+
+fn vec_fill_adjusted(@block_ctxt bcx, ValueRef v,
+                     ValueRef skipnull) -> ValueRef {
+    auto f = bcx.build.Load(bcx.build.GEP(v,
+                                          vec(C_int(0),
+                                              C_int(abi.vec_elt_fill))));
+    ret bcx.build.Select(skipnull, bcx.build.Sub(f, C_int(1)), f);
+}
+
+fn vec_p0(@block_ctxt bcx, ValueRef v) -> ValueRef {
+    auto p = bcx.build.GEP(v, vec(C_int(0),
+                                  C_int(abi.vec_elt_data)));
+    ret bcx.build.PointerCast(p, T_ptr(T_i8()));
+}
+
+
+fn vec_p1(@block_ctxt bcx, ValueRef v) -> ValueRef {
+    auto len = vec_fill(bcx, v);
+    ret bcx.build.GEP(vec_p0(bcx, v), vec(len));
+}
+
+fn vec_p1_adjusted(@block_ctxt bcx, ValueRef v,
+                   ValueRef skipnull) -> ValueRef {
+    auto len = vec_fill_adjusted(bcx, v, skipnull);
+    ret bcx.build.GEP(vec_p0(bcx, v), vec(len));
+}
+
 fn trans_vec_append_glue(@crate_ctxt cx) {
 
     auto llfn = cx.glues.vec_append_glue;
@@ -5699,45 +5806,6 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
 
     // First the dst vec needs to grow to accommodate the src vec.
     // To do this we have to figure out how many bytes to add.
-
-    fn vec_fill(@block_ctxt bcx, ValueRef v) -> ValueRef {
-        ret bcx.build.Load(bcx.build.GEP(v, vec(C_int(0),
-                                                C_int(abi.vec_elt_fill))));
-    }
-
-    fn put_vec_fill(@block_ctxt bcx, ValueRef v, ValueRef fill) -> ValueRef {
-        ret bcx.build.Store(fill,
-                            bcx.build.GEP(v,
-                                          vec(C_int(0),
-                                              C_int(abi.vec_elt_fill))));
-    }
-
-    fn vec_fill_adjusted(@block_ctxt bcx, ValueRef v,
-                         ValueRef skipnull) -> ValueRef {
-        auto f = bcx.build.Load(bcx.build.GEP(v,
-                                              vec(C_int(0),
-                                                  C_int(abi.vec_elt_fill))));
-        ret bcx.build.Select(skipnull, bcx.build.Sub(f, C_int(1)), f);
-    }
-
-    fn vec_p0(@block_ctxt bcx, ValueRef v) -> ValueRef {
-        auto p = bcx.build.GEP(v, vec(C_int(0),
-                                      C_int(abi.vec_elt_data)));
-        ret bcx.build.PointerCast(p, T_ptr(T_i8()));
-    }
-
-
-    fn vec_p1(@block_ctxt bcx, ValueRef v) -> ValueRef {
-        auto len = vec_fill(bcx, v);
-        ret bcx.build.GEP(vec_p0(bcx, v), vec(len));
-    }
-
-    fn vec_p1_adjusted(@block_ctxt bcx, ValueRef v,
-                       ValueRef skipnull) -> ValueRef {
-        auto len = vec_fill_adjusted(bcx, v, skipnull);
-        ret bcx.build.GEP(vec_p0(bcx, v), vec(len));
-    }
-
 
     auto llcopy_dst_ptr = bcx.build.Alloca(T_int());
     auto llnew_vec_res =
@@ -5780,16 +5848,17 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
                                            C_int(abi.tydesc_field_size))));
 
         fn take_one(ValueRef elt_tydesc,
-                    @block_ctxt cx, ValueRef v) -> result {
-            call_tydesc_glue_full(cx, v,
+                    @block_ctxt cx,
+                    ValueRef dst, ValueRef src) -> result {
+            call_tydesc_glue_full(cx, src,
                                   elt_tydesc,
                                   abi.tydesc_field_take_glue_off);
-            ret res(cx, v);
+            ret res(cx, src);
         }
 
-        auto bcx = iter_sequence_raw(cx, src, src_lim,
+        auto bcx = iter_sequence_raw(cx, dst, src, src_lim,
                                      elt_llsz, bind take_one(elt_tydesc,
-                                                             _, _)).bcx;
+                                                             _, _, _)).bcx;
 
         ret call_memcpy(bcx, dst, src, n_bytes);
     }

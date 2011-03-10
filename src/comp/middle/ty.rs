@@ -373,6 +373,14 @@ fn get_element_type(@t ty, uint i) -> @t {
     fail;
 }
 
+fn type_is_box(@t ty) -> bool {
+    alt (ty.struct) {
+        case (ty_box(_)) { ret true; }
+        case (_) { ret false; }
+    }
+    fail;
+}
+
 fn type_is_boxed(@t ty) -> bool {
     alt (ty.struct) {
         case (ty_str) { ret true; }

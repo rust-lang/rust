@@ -402,6 +402,7 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     $(NOMINAL_TAG_XFAILS) \
                     $(CONST_TAG_XFAILS) \
                     test/run-pass/arith-unsigned.rs \
+                    test/run-pass/box-compare.rs \
                     test/run-pass/child-outlives-parent.rs \
                     test/run-pass/clone-with-exterior.rs \
                     test/run-pass/constrained-type.rs \
@@ -416,6 +417,7 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/run-pass/lib-io.rs \
                     test/run-pass/mlist-cycle.rs \
                     test/run-pass/obj-as.rs \
+                    test/run-pass/seq-compare.rs \
                     test/run-pass/task-comm.rs \
                     test/run-pass/task-comm-3.rs \
                     test/run-pass/vec-slice.rs \
