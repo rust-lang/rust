@@ -391,7 +391,7 @@ impure fn eval_crate_directive(parser p,
                 case (none[filename]) {}
             }
 
-            auto full_path = prefix + std.os.path_sep() + file_path;
+            auto full_path = prefix + std.fs.path_sep() + file_path;
 
             auto start_id = p.next_def_id();
             auto p0 = new_parser(p.get_session(), e, start_id, full_path);
@@ -414,7 +414,7 @@ impure fn eval_crate_directive(parser p,
                 case (none[filename]) {}
             }
 
-            auto full_path = prefix + std.os.path_sep() + path;
+            auto full_path = prefix + std.fs.path_sep() + path;
             auto m0 = eval_crate_directives_to_mod(p, e, cdirs, full_path);
             auto im = ast.item_mod(id, m0, p.next_def_id());
             auto i = @spanned(cdir.span, cdir.span, im);

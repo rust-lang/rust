@@ -106,6 +106,11 @@ fn from_bytes(vec[u8] v) : is_utf8(v) -> str {
     ret rustrt.str_from_vec(v);
 }
 
+// FIXME temp thing
+fn unsafe_from_bytes(vec[u8] v) -> str {
+    ret rustrt.str_from_vec(v);
+}
+
 fn refcount(str s) -> uint {
     auto r = rustrt.refcount[u8](s);
     if (r == dbg.const_refcount) {

@@ -2373,7 +2373,7 @@ impure fn parse_crate_directives(parser p, token.token term)
 impure fn parse_crate_from_crate_file(parser p) -> @ast.crate {
     auto lo = p.get_span();
     auto hi = lo;
-    auto prefix = std.path.dirname(lo.filename);
+    auto prefix = std.fs.dirname(lo.filename);
     auto cdirs = parse_crate_directives(p, token.EOF);
     auto m = eval.eval_crate_directives_to_mod(p, p.get_env(),
                                                cdirs, prefix);

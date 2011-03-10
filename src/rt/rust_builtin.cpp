@@ -1,4 +1,7 @@
 
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include "rust_internal.h"
 
 /* Native builtins. */
@@ -150,28 +153,27 @@ vec_print_debug_info(rust_task *task, type_desc *ty, rust_vec *v)
 }
 
 /* Helper for str_alloc and str_from_vec.  Returns NULL as failure. */
-static rust_str *
-str_alloc_with_data(rust_task *task,
-                    size_t n_bytes,
+static rust_vec*
+vec_alloc_with_data(rust_task *task,
+                    size_t n_elts,
                     size_t fill,
-                    uint8_t const *d)
+                    size_t elt_size,
+                    void *d)
 {
     rust_dom *dom = task->dom;
-    size_t alloc = next_power_of_two(sizeof(rust_str) + n_bytes);
+    size_t alloc = next_power_of_two(sizeof(rust_vec) + (n_elts * elt_size));
     void *mem = dom->malloc(alloc, memory_region::LOCAL);
-    if (!mem)
-        return NULL;
-    rust_str *st = new (mem) rust_str(dom, alloc, fill, d);
-    return st;
+    if (!mem) return NULL;
+    return new (mem) rust_vec(dom, alloc, fill * elt_size, (uint8_t*)d);
 }
 
 extern "C" CDECL rust_str*
 str_alloc(rust_task *task, size_t n_bytes)
 {
-    rust_str *st = str_alloc_with_data(task,
+    rust_str *st = vec_alloc_with_data(task,
                                        n_bytes + 1,  // +1 to fit at least ""
-                                       1,
-                                       (uint8_t const *)"");
+                                       1, 1,
+                                       (void*)"");
     if (!st) {
         task->fail(2);
         return NULL;
@@ -195,10 +197,11 @@ extern "C" CDECL rust_str *
 str_from_vec(rust_task *task, rust_vec *v)
 {
     rust_str *st =
-        str_alloc_with_data(task,
+        vec_alloc_with_data(task,
                             v->fill + 1,  // +1 to fit at least '\0'
                             v->fill,
-                            v->fill ? (uint8_t const *)v->data : NULL);
+                            1,
+                            v->fill ? (void*)v->data : NULL);
     if (!st) {
         task->fail(2);
         return NULL;
@@ -371,6 +374,39 @@ debug_trap(rust_task *task, rust_str *s)
     __asm__("int3");
 }
 
+rust_str* c_str_to_rust(rust_task *task, char const *str) {
+    size_t len = strlen(str) + 1;
+    return vec_alloc_with_data(task, len, len, 1, (void*)str);
+}
+
+#if defined(__WIN32__)
+extern "C" CDECL rust_vec*
+rust_list_files(rust_task *task, rust_str *path) {
+    array_list<rust_str*> strings;
+    WIN32_FIND_DATA FindFileData;
+    HANDLE hFind = FindFirstFile((char*)path->data, &FindFileData);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            strings.push(c_str_to_rust(task, FindFileData.cFileName));
+        } while (FindNextFile(hFind, &FindFileData));
+        FindClose(hFind);
+    }
+    return vec_alloc_with_data(task, strings.size(), strings.size(),
+                               sizeof(rust_str*), strings.data());
+}
+#else
+extern "C" CDECL rust_str *
+rust_dirent_filename(rust_task *task, dirent* ent) {
+    return c_str_to_rust(task, ent->d_name);
+}
+#endif
+
+extern "C" CDECL int
+rust_file_is_dir(rust_task *task, rust_str *path) {
+    struct stat buf;
+    stat((char*)path->data, &buf);
+    return S_ISDIR(buf.st_mode);
+}
 
 //
 // Local Variables:

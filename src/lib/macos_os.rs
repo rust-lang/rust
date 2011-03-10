@@ -1,5 +1,4 @@
-import _str.sbuf;
-import _vec.vbuf;
+import libc = posix;
 
 native mod libc = "libc.dylib" {
 
@@ -15,9 +14,10 @@ native mod libc = "libc.dylib" {
     fn ungetc(int c, FILE f);
 
     type dir;
-    // readdir is a mess; handle via wrapper function in rustrt.
     fn opendir(sbuf d) -> dir;
     fn closedir(dir d) -> int;
+    type dirent;
+    fn readdir(dir d) -> dirent;
 
     fn getenv(sbuf n) -> sbuf;
     fn setenv(sbuf n, sbuf v, int overwrite) -> int;
@@ -37,10 +37,6 @@ mod libc_constants {
 
     fn S_IRUSR() -> uint { ret 0x0400u; }
     fn S_IWUSR() -> uint { ret 0x0200u; }
-}
-
-fn path_sep() -> str {
-    ret "/";
 }
 
 fn exec_suffix() -> str {

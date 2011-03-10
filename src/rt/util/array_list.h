@@ -19,6 +19,7 @@ public:
     bool replace(T old_value, T new_value);
     int32_t index_of(T value);
     bool is_empty();
+    T* data();
     T & operator[](size_t index);
 };
 
@@ -99,6 +100,11 @@ array_list<T>::operator[](size_t index) {
 template<typename T> bool
 array_list<T>::is_empty() {
     return _size == 0;
+}
+
+template<typename T> T*
+array_list<T>::data() {
+    return _data;
 }
 
 #endif /* ARRAY_LIST_H */
