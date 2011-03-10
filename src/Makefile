@@ -414,6 +414,7 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/run-pass/generic-fn-box.rs \
                     test/run-pass/generic-tup.rs \
                     test/run-pass/iter-ret.rs \
+                    test/run-pass/leak-tag-copy.rs \
                     test/run-pass/lib-io.rs \
                     test/run-pass/mlist-cycle.rs \
                     test/run-pass/obj-as.rs \
