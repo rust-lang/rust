@@ -3914,7 +3914,7 @@ let trans_visitor
               then
                 iter_ty_parts_full ty_params dst src ty
                   (fun dst src ty ->
-                     trans_copy_ty ty_params true
+                     trans_copy_ty ty_params initializing
                        dst ty src ty)
               else
                 let initflag = Il.Reg (force_to_reg one) in
