@@ -1,7 +1,4 @@
-import std.os.libc;
-import std._str;
-import std._vec;
-
+import os.libc;
 
 type stdio_reader = state obj {
                           fn getc() -> int;

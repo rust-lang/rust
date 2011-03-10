@@ -4,9 +4,6 @@
  * point this will want to be rewritten.
  */
 
-import std._vec;
-import std._str;
-
 export sha1;
 export mk_sha1;
 

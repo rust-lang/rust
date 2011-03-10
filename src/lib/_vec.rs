@@ -1,5 +1,4 @@
 import vbuf = rustrt.vbuf;
-import std.option;
 
 type operator2[T,U,V] = fn(&T, &U) -> V;
 
