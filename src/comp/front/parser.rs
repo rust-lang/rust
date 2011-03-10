@@ -115,7 +115,7 @@ impure fn new_parser(session.session sess,
     if (_str.ends_with(path, ".rc")) {
         ftype = CRATE_FILE;
     }
-    auto srdr = io.new_stdio_reader(path);
+    auto srdr = io.file_reader(path);
     auto rdr = lexer.new_reader(srdr, path);
     auto npos = rdr.get_curr_pos();
     ret stdio_parser(sess, env, ftype, lexer.next_token(rdr),
