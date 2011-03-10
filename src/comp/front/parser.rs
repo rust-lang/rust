@@ -35,12 +35,13 @@ state type parser =
           fn get_session() -> session.session;
           fn get_span() -> common.span;
           fn next_def_id() -> ast.def_id;
+          fn set_def(ast.def_num);
           fn get_prec_table() -> vec[op_spec];
     };
 
 impure fn new_parser(session.session sess,
                      eval.env env,
-                     ast.crate_num crate,
+                     ast.def_id initial_def,
                      str path) -> parser {
     state obj stdio_parser(session.session sess,
                            eval.env env,
@@ -94,6 +95,10 @@ impure fn new_parser(session.session sess,
                 ret tup(crate, def);
             }
 
+            fn set_def(ast.def_num d) {
+                def = d;
+            }
+
             fn get_file_type() -> file_type {
                 ret ftype;
             }
@@ -114,8 +119,8 @@ impure fn new_parser(session.session sess,
     auto rdr = lexer.new_reader(srdr, path);
     auto npos = rdr.get_curr_pos();
     ret stdio_parser(sess, env, ftype, lexer.next_token(rdr),
-                     npos, npos, 0, UNRESTRICTED, crate, rdr,
-                     prec_table());
+                     npos, npos, initial_def._1, UNRESTRICTED, initial_def._0,
+                     rdr, prec_table());
 }
 
 impure fn unexpected(parser p, token.token t) {

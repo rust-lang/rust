@@ -54,7 +54,8 @@ impure fn compile_input(session.session sess,
                         eval.env env,
                         str input, str output,
                         bool shared) {
-    auto p = parser.new_parser(sess, env, 0, input);
+    auto def = tup(0, 0);
+    auto p = parser.new_parser(sess, env, def, input);
     auto crate = parse_input(sess, p, input);
     crate = resolve.resolve_crate(sess, crate);
     crate = typeck.check_crate(sess, crate);
@@ -64,7 +65,8 @@ impure fn compile_input(session.session sess,
 impure fn pretty_print_input(session.session sess,
                              eval.env env,
                              str input) {
-    auto p = front.parser.new_parser(sess, env, 0, input);
+    auto def = tup(0, 0);
+    auto p = front.parser.new_parser(sess, env, def, input);
     auto crate = front.parser.parse_crate_from_source_file(p);
     pretty.pprust.print_ast(crate.node.module, std.io.stdout_writer());
 }
