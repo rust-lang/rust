@@ -365,7 +365,7 @@ $(CFG_RUSTC): $(COMPILER_INPUTS) $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
 	$(BOOT) -minimal -o $@ $<
 	$(CFG_QUIET)chmod 0755 $@
 
-glue.bc: $(CFG_RUSTC)
+glue.bc: $(CFG_RUSTC) $(CFG_RUNTIME) $(CFG_STDLIB)
 	@$(call CFG_ECHO, generate: $@)
 	$(RUSTC) -o $@ -glue
 
