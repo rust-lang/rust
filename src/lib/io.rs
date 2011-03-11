@@ -17,6 +17,8 @@ type reader =
           impure fn read_bytes(uint len) -> vec[u8];
           impure fn read_char() -> int;
           impure fn unread_char(int i);
+          impure fn eof() -> bool;
+          impure fn read_line() -> str;
           impure fn read_c_str() -> str;
           impure fn read_le_uint(uint size) -> uint;
           impure fn read_le_int(uint size) -> int;
@@ -31,7 +33,7 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
     impure fn read_bytes(uint len) -> vec[u8] {
         auto buf = _vec.alloc[u8](len);
         auto read = os.libc.fread(_vec.buf[u8](buf), 1u, len, f);
-        check(read == len);
+        _vec.len_set[u8](buf, read);
         ret buf;
     }
     impure fn read_char() -> int {
@@ -39,6 +41,21 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
     }
     impure fn unread_char(int ch) {
         os.libc.ungetc(ch, f);
+    }
+    impure fn eof() -> bool {
+      auto ch = os.libc.fgetc(f);
+      if (ch == -1) {ret true;}
+      os.libc.ungetc(ch, f);
+      ret false;
+    }
+    impure fn read_line() -> str {
+      auto buf = "";
+      while (true) {
+        auto ch = os.libc.fgetc(f);
+        if (ch == -1) {break;} if (ch == 10) {break;}
+        buf += _str.unsafe_from_bytes(vec(ch as u8));
+      }
+      ret buf;
     }
     impure fn read_c_str() -> str {
         auto buf = "";

@@ -9,11 +9,14 @@ native mod libc = "msvcrt.dll" {
 
     type FILE;
     fn fopen(sbuf path, sbuf mode) -> FILE;
+    fn _fdopen(int fd, sbuf mode) -> FILE;
     fn fclose(FILE f);
     fn fgetc(FILE f) -> int;
     fn ungetc(int c, FILE f);
     fn fread(vbuf buf, uint size, uint n, FILE f) -> uint;
     fn fseek(FILE f, int offset, int whence) -> int;
+
+    fn _pipe(vbuf fds, uint size, int mode) -> int;
 }
 
 mod libc_constants {
@@ -37,6 +40,25 @@ fn exec_suffix() -> str {
 
 fn target_os() -> str {
     ret "win32";
+}
+
+fn pipe() -> tup(int, int) {
+    let vec[mutable int] fds = vec(mutable 0, 0);
+    check(os.libc._pipe(_vec.buf[mutable int](fds), 1024u,
+                        libc_constants.O_BINARY()) == 0);
+    ret tup(fds.(0), fds.(1));
+}
+
+fn fd_FILE(int fd) -> libc.FILE {
+    ret libc._fdopen(fd, _str.buf("r"));
+}
+
+native "rust" mod rustrt {
+    fn rust_process_wait(int handle) -> int;
+}
+
+fn waitpid(int pid) -> int {
+    ret rustrt.rust_process_wait(pid);
 }
 
 // Local Variables:
