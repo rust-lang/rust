@@ -2683,18 +2683,7 @@ fn trans_if(@block_ctxt cx, @ast.expr cond,
 
     alt (els) {
         case (some[@ast.expr](?elexpr)) {
-            // FIXME: Shouldn't need to unwrap the block here,
-            // instead just use 'else_res = trans_expr(else_cx, elexpr)',
-            // but either a) trans_expr doesn't handle expr_block
-            // correctly or b) I have no idea what I'm doing...
-            alt (elexpr.node) {
-                case (ast.expr_if(_, _, _, _)) {
-                    else_res = trans_expr(else_cx, elexpr);
-                }
-                case (ast.expr_block(?b, _)) {
-                    else_res = trans_block(else_cx, b);
-                }
-            }
+            else_res = trans_expr(else_cx, elexpr);
         }
         case (_) { /* fall through */ }
     }
@@ -3942,14 +3931,7 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
         }
 
         case (ast.expr_block(?blk, _)) {
-            auto sub_cx = new_scope_block_ctxt(cx, "block-expr body");
-            auto next_cx = new_sub_block_ctxt(cx, "next");
-            auto sub = trans_block(sub_cx, blk);
-
-            cx.build.Br(sub_cx.llbb);
-            sub.bcx.build.Br(next_cx.llbb);
-
-            ret res(next_cx, sub.val);
+            ret trans_block(cx, blk);
         }
 
         case (ast.expr_assign(?dst, ?src, ?ann)) {
