@@ -273,6 +273,16 @@ fn get_module_asm() -> str {
     ret _str.connect(glues, "\n\n");
 }
 
+fn get_meta_sect_name() -> str {
+    if (_str.eq(target_os(), "macos")) {
+        ret "__DATA,__note.rustc";
+    }
+    if (_str.eq(target_os(), "win32")) {
+        ret ".note.rustc";
+    }
+    ret ".note.rustc";
+}
+
 fn get_data_layout() -> str {
     if (_str.eq(target_os(), "macos")) {
       ret "e-p:32:32-f64:32:64-i64:32:64-f80:128:128-n8:16:32";

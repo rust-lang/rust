@@ -6192,6 +6192,9 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
         trans_main_fn(cx, cx.crate_ptr);
     }
 
+    // Translate the metadata.
+    middle.metadata.write_metadata(cx, crate);
+
     check_module(llmod);
 
     llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(output));

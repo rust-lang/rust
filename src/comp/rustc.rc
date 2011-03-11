@@ -14,6 +14,7 @@ mod front {
 
 mod middle {
     mod fold;
+    mod metadata;
     mod resolve;
     mod trans;
     mod ty;
@@ -40,6 +41,7 @@ mod util {
 }
 
 auth driver.rustc.main = impure;
+auth middle.metadata = unsafe;
 auth middle.trans = unsafe;
 auth middle.trans.copy_args_to_allocas = impure;
 auth middle.trans.trans_block = impure;
