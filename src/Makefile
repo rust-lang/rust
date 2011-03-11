@@ -86,7 +86,6 @@ ifdef CFG_WINDOWSY
   endif
   CFG_RUNTIME := rustrt.dll
   CFG_STDLIB := std.dll
-  CFG_OBJ_SUFFIX := .o
   CFG_EXE_SUFFIX := .exe
   CFG_BOOT := ./rustboot.exe
   CFG_RUSTC := ./rustc.exe
@@ -101,7 +100,6 @@ ifdef CFG_UNIXY
   CFG_INFO := $(info cfg: unix-y environment)
   CFG_BOOT := ./rustboot
   CFG_RUSTC := ./rustc
-  CFG_OBJ_SUFFIX := .o
   CFG_RUN_TARG = LD_LIBRARY_PATH=. $(CFG_VALGRIND) $(1)
   CFG_GCC := 1
   ifdef MINGW_CROSS
@@ -114,7 +112,6 @@ ifdef CFG_UNIXY
     ifdef CFG_VALGRIND
       CFG_VALGRIND += wine
     endif
-    CFG_OBJ_SUFFIX := .o
     CFG_EXE_SUFFIX := .exe
     CFG_GCC_CFLAGS := -march=i686
     CFG_GCC_LINK_FLAGS := -shared
@@ -302,15 +299,15 @@ RUNTIME_HDR := rt/globals.h \
                rt/test/rust_test_util.h
 
 RUNTIME_INCS := -Irt/isaac -Irt/uthash
-RUNTIME_OBJS := $(RUNTIME_CS:.cpp=$(CFG_OBJ_SUFFIX))
+RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o)
 RUNTIME_LIBS := $(CFG_RUNTIME_LIBS)
 
 STDLIB_CRATE := lib/std.rc
 STDLIB_INPUTS := $(wildcard lib/*.rc lib/*.rs lib/*/*.rs)
 COMPILER_CRATE := comp/rustc.rc
-COMPILER_INPUTS := $(wildcard comp/*.rc comp/*.rs comp/*/*.rs)
+COMPILER_INPUTS := $(wildcard comp/rustc.rc comp/*.rs comp/*/*.rs)
 
-GENERATED := boot/fe/lexer.ml boot/util/version.ml
+GENERATED := boot/fe/lexer.ml boot/util/version.ml glue.o
 
 all: $(CFG_RUSTC) $(MKFILES) $(GENERATED)
 
@@ -329,7 +326,7 @@ $(CFG_STDLIB): $(STDLIB_CRATE) $(CFG_BOOT) $(MKFILES)
 	@$(call CFG_ECHO, compile: $<)
 	$(BOOT) -shared -o $@ $(STDLIB_CRATE)
 
-%$(CFG_OBJ_SUFFIX): %.cpp $(MKFILES)
+%.o: %.cpp $(MKFILES)
 	@$(call CFG_ECHO, compile: $<)
 	$(CFG_QUIET)$(call CFG_COMPILE_C, $@, $(RUNTIME_INCS)) $<
 
@@ -368,8 +365,12 @@ $(CFG_RUSTC): $(COMPILER_INPUTS) $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
 	$(BOOT) -minimal -o $@ $<
 	$(CFG_QUIET)chmod 0755 $@
 
+glue.bc: $(CFG_RUSTC)
+	@$(call CFG_ECHO, generate: $@)
+	$(RUSTC) -o $@ -glue
+
 self: $(CFG_RUSTC)
-	@$(call CFG_ECHO, compile: $<)
+	@$(call CFG_ECHO, compile: $(COMPILER_CRATE))
 	$(RUSTC) $(COMPILER_CRATE)
 
 
@@ -758,9 +759,9 @@ test/bench/shootout/%.boot$(CFG_EXE_SUFFIX): \
 	@$(call CFG_ECHO, assemble [llvm]: $<)
 	$(CFG_QUIET)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
 
-%.rustc$(CFG_EXE_SUFFIX): %.o $(CFG_RUNTIME)
+%.rustc$(CFG_EXE_SUFFIX): %.o $(CFG_RUNTIME) glue.o
 	@$(call CFG_ECHO, link [llvm]: $<)
-	$(CFG_QUIET)gcc $(CFG_GCC_CFLAGS) -o $@ $< -L. -lrustrt
+	$(CFG_QUIET)gcc $(CFG_GCC_CFLAGS) glue.o -o $@ $< -L. -lrustrt
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
@@ -797,7 +798,7 @@ C_DEPFILES := $(RUNTIME_CS:%.cpp=%.d)
 %.d: %.cpp $(MKFILES)
 	@$(call CFG_ECHO, dep: $<)
 	$(CFG_QUIET)$(call CFG_DEPEND_C, $@ \
-      $(patsubst %.cpp, %$(CFG_OBJ_SUFFIX), $<), \
+      $(patsubst %.cpp, %.o, $<), \
       $(RUNTIME_INCS)) $< $(CFG_PATH_MUNGE) >$@.tmp \
       && mv $@.tmp $@
 
@@ -914,12 +915,12 @@ clean:
 	$(CFG_QUIET)rm -f $(ML_DEPFILES:%.d=%.d.tmp)
 	$(CFG_QUIET)rm -f $(C_DEPFILES:%.d=%.d.tmp)
 	$(CFG_QUIET)rm -f $(CRATE_DEPFILES:%.d=%.d.tmp)
-	$(CFG_QUIET)rm -f $(GENERATED)
+	$(CFG_QUIET)rm -f $(GENERATED) glue.bc glue.s
 	$(CFG_QUIET)rm -f $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
 	$(CFG_QUIET)rm -Rf $(PKG_NAME)-*.tar.gz dist
-	$(CFG_QUIET)rm -f $(foreach ext,cmx cmi cmo cma o a d exe,\
+	$(CFG_QUIET)rm -f $(foreach ext,cmx cmi cmo cma bc o a d exe,\
                         $(wildcard boot/*/*.$(ext) boot/*/*/*.$(ext)))
-	$(CFG_QUIET)rm -Rf $(foreach ext,out llvm x86 boot rustc o s exe dSYM,\
+	$(CFG_QUIET)rm -Rf $(foreach ext,out llvm x86 boot rustc bc o s exe dSYM,\
                         $(wildcard test/*/*.$(ext)))
 
 

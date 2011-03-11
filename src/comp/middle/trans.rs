@@ -839,32 +839,44 @@ fn decl_upcall_glue(ModuleRef llmod, type_names tn, uint _n) -> ValueRef {
     ret decl_fastcall_fn(llmod, s, T_fn(args, T_int()));
 }
 
-fn get_upcall(@crate_ctxt cx, str name, int n_args) -> ValueRef {
-    if (cx.upcalls.contains_key(name)) {
-        ret cx.upcalls.get(name);
+fn get_upcall(&hashmap[str, ValueRef] upcalls,
+              type_names tn, ModuleRef llmod,
+              str name, int n_args) -> ValueRef {
+    if (upcalls.contains_key(name)) {
+        ret upcalls.get(name);
     }
-    auto inputs = vec(T_taskptr(cx.tn));
+    auto inputs = vec(T_taskptr(tn));
     inputs += _vec.init_elt[TypeRef](T_int(), n_args as uint);
     auto output = T_int();
-    auto f = decl_cdecl_fn(cx.llmod, name, T_fn(inputs, output));
-    cx.upcalls.insert(name, f);
+    auto f = decl_cdecl_fn(llmod, name, T_fn(inputs, output));
+    upcalls.insert(name, f);
     ret f;
 }
 
 fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> result {
+    auto cxx = cx.fcx.ccx;
+    auto t = trans_upcall2(cx.build, cxx.glues, cx.fcx.lltaskptr,
+                           cxx.upcalls, cxx.tn, cxx.llmod, name, args);
+    ret res(cx, t);
+}
+
+fn trans_upcall2(builder b, @glue_fns glues, ValueRef lltaskptr,
+                 &hashmap[str, ValueRef] upcalls,
+                 type_names tn, ModuleRef llmod, str name,
+                 vec[ValueRef] args) -> ValueRef {
     let int n = _vec.len[ValueRef](args) as int;
-    let ValueRef llupcall = get_upcall(cx.fcx.ccx, name, n);
+    let ValueRef llupcall = get_upcall(upcalls, tn, llmod, name, n);
     llupcall = llvm.LLVMConstPointerCast(llupcall, T_int());
 
-    let ValueRef llglue = cx.fcx.ccx.glues.upcall_glues.(n);
+    let ValueRef llglue = glues.upcall_glues.(n);
     let vec[ValueRef] call_args = vec(llupcall);
-    call_args += cx.build.PtrToInt(cx.fcx.lltaskptr, T_int());
+    call_args += b.PtrToInt(lltaskptr, T_int());
 
     for (ValueRef a in args) {
-        call_args += cx.build.ZExtOrBitCast(a, T_int());
+        call_args += b.ZExtOrBitCast(a, T_int());
     }
 
-    ret res(cx, cx.build.FastCall(llglue, call_args));
+    ret b.FastCall(llglue, call_args);
 }
 
 fn trans_non_gc_free(@block_ctxt cx, ValueRef v) -> result {
@@ -5537,28 +5549,21 @@ fn i2p(ValueRef v, TypeRef t) -> ValueRef {
     ret llvm.LLVMConstIntToPtr(v, t);
 }
 
-fn trans_exit_task_glue(@crate_ctxt cx) {
+fn trans_exit_task_glue(@glue_fns glues,
+                        &hashmap[str, ValueRef] upcalls,
+                        type_names tn, ModuleRef llmod) {
     let vec[TypeRef] T_args = vec();
     let vec[ValueRef] V_args = vec();
 
-    auto llfn = cx.glues.exit_task_glue;
+    auto llfn = glues.exit_task_glue;
     let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 3u);
-    auto fcx = @rec(llfn=llfn,
-                    lltaskptr=lltaskptr,
-                    llenv=C_null(T_opaque_closure_ptr(cx.tn)),
-                    llretptr=C_null(T_ptr(T_nil())),
-                    mutable llself=none[ValueRef],
-                    mutable lliterbody=none[ValueRef],
-                    llargs=new_def_hash[ValueRef](),
-                    llobjfields=new_def_hash[ValueRef](),
-                    lllocals=new_def_hash[ValueRef](),
-                    llupvars=new_def_hash[ValueRef](),
-                    lltydescs=new_def_hash[ValueRef](),
-                    ccx=cx);
 
-    auto bcx = new_top_block_ctxt(fcx);
-    trans_upcall(bcx, "upcall_exit", V_args);
-    bcx.build.RetVoid();
+    auto entrybb = llvm.LLVMAppendBasicBlock(llfn, _str.buf("entry"));
+    auto build = new_builder(entrybb);
+
+    trans_upcall2(build, glues, lltaskptr,
+                  upcalls, tn, llmod, "upcall_exit", V_args);
+    build.RetVoid();
 }
 
 fn create_typedefs(@crate_ctxt cx) {
@@ -5567,22 +5572,22 @@ fn create_typedefs(@crate_ctxt cx) {
     llvm.LLVMAddTypeName(cx.llmod, _str.buf("tydesc"), T_tydesc(cx.tn));
 }
 
-fn create_crate_constant(@crate_ctxt cx) {
+fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
 
-    let ValueRef crate_addr = p2i(cx.crate_ptr);
+    let ValueRef crate_addr = p2i(crate_ptr);
 
     let ValueRef activate_glue_off =
-        llvm.LLVMConstSub(p2i(cx.glues.activate_glue), crate_addr);
+        llvm.LLVMConstSub(p2i(glues.activate_glue), crate_addr);
 
     let ValueRef yield_glue_off =
-        llvm.LLVMConstSub(p2i(cx.glues.yield_glue), crate_addr);
+        llvm.LLVMConstSub(p2i(glues.yield_glue), crate_addr);
 
     let ValueRef exit_task_glue_off =
-        llvm.LLVMConstSub(p2i(cx.glues.exit_task_glue), crate_addr);
+        llvm.LLVMConstSub(p2i(glues.exit_task_glue), crate_addr);
 
     let ValueRef crate_val =
         C_struct(vec(C_null(T_int()),     // ptrdiff_t image_base_off
-                     p2i(cx.crate_ptr),   // uintptr_t self_addr
+                     p2i(crate_ptr),   // uintptr_t self_addr
                      C_null(T_int()),     // ptrdiff_t debug_abbrev_off
                      C_null(T_int()),     // size_t debug_abbrev_sz
                      C_null(T_int()),     // ptrdiff_t debug_info_off
@@ -5598,7 +5603,7 @@ fn create_crate_constant(@crate_ctxt cx) {
                      C_int(abi.abi_x86_rustc_fastcall) // uintptr_t abi_tag
                      ));
 
-    llvm.LLVMSetInitializer(cx.crate_ptr, crate_val);
+    llvm.LLVMSetInitializer(crate_ptr, crate_val);
 }
 
 fn find_main_fn(@crate_ctxt cx) -> ValueRef {
@@ -5700,26 +5705,28 @@ fn check_module(ModuleRef llmod) {
     // TODO: run the linter here also, once there are llvm-c bindings for it.
 }
 
-fn make_no_op_type_glue(ModuleRef llmod, type_names tn) -> ValueRef {
+fn decl_no_op_type_glue(ModuleRef llmod, type_names tn) -> ValueRef {
     auto ty = T_fn(vec(T_taskptr(tn), T_ptr(T_i8())), T_void());
-    auto fun = decl_fastcall_fn(llmod, abi.no_op_type_glue_name(), ty);
+    ret decl_fastcall_fn(llmod, abi.no_op_type_glue_name(), ty);
+}
+
+fn make_no_op_type_glue(ValueRef fun) {
     auto bb_name = _str.buf("_rust_no_op_type_glue_bb");
     auto llbb = llvm.LLVMAppendBasicBlock(fun, bb_name);
     new_builder(llbb).RetVoid();
-    ret fun;
 }
 
-fn make_memcpy_glue(ModuleRef llmod) -> ValueRef {
-
-    // We're not using the LLVM memcpy intrinsic. It appears to call through
-    // to the platform memcpy in some cases, which is not terribly safe to run
-    // on a rust stack.
-
+fn decl_memcpy_glue(ModuleRef llmod) -> ValueRef {
     auto p8 = T_ptr(T_i8());
 
     auto ty = T_fn(vec(p8, p8, T_int()), T_void());
-    auto fun = decl_fastcall_fn(llmod, abi.memcpy_glue_name(), ty);
+    ret decl_fastcall_fn(llmod, abi.memcpy_glue_name(), ty);
+}
 
+fn make_memcpy_glue(ValueRef fun) {
+    // We're not using the LLVM memcpy intrinsic. It appears to call through
+    // to the platform memcpy in some cases, which is not terribly safe to run
+    // on a rust stack.
     auto initbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("init"));
     auto hdrbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("hdr"));
     auto loopbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("loop"));
@@ -5751,18 +5758,18 @@ fn make_memcpy_glue(ModuleRef llmod) -> ValueRef {
     // End block
     auto eb = new_builder(endbb);
     eb.RetVoid();
-    ret fun;
 }
 
-fn make_bzero_glue(ModuleRef llmod) -> ValueRef {
-
-    // We're not using the LLVM memset intrinsic. Same as with memcpy.
-
+fn decl_bzero_glue(ModuleRef llmod) -> ValueRef {
     auto p8 = T_ptr(T_i8());
 
     auto ty = T_fn(vec(p8, T_int()), T_void());
-    auto fun = decl_fastcall_fn(llmod, abi.bzero_glue_name(), ty);
+    ret decl_fastcall_fn(llmod, abi.bzero_glue_name(), ty);
+}
 
+fn make_bzero_glue(ModuleRef llmod) -> ValueRef {
+    // We're not using the LLVM memset intrinsic. Same as with memcpy.
+    auto fun = decl_bzero_glue(llmod);
     auto initbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("init"));
     auto hdrbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("hdr"));
     auto loopbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("loop"));
@@ -6008,10 +6015,41 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
              upcall_glues =
              _vec.init_fn[ValueRef](bind decl_upcall_glue(llmod, tn, _),
                                     abi.n_upcall_glues as uint),
-             no_op_type_glue = make_no_op_type_glue(llmod, tn),
-             memcpy_glue = make_memcpy_glue(llmod),
-             bzero_glue = make_bzero_glue(llmod),
+             no_op_type_glue = decl_no_op_type_glue(llmod, tn),
+             memcpy_glue = decl_memcpy_glue(llmod),
+             bzero_glue = decl_bzero_glue(llmod),
              vec_append_glue = make_vec_append_glue(llmod, tn));
+}
+
+fn make_common_glue(str output) {
+    // FIXME: part of this is repetitive and is probably a good idea
+    // to autogen it, but things like the memcpy implementation are not
+    // and it might be better to just check in a .ll file.
+    auto llmod =
+        llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
+                                               llvm.LLVMGetGlobalContext());
+
+    llvm.LLVMSetDataLayout(llmod, _str.buf(x86.get_data_layout()));
+    llvm.LLVMSetTarget(llmod, _str.buf(x86.get_target_triple()));
+    auto td = mk_target_data(x86.get_data_layout());
+    auto tn = mk_type_names();
+    let ValueRef crate_ptr =
+        llvm.LLVMAddGlobal(llmod, T_crate(tn), _str.buf("rust_crate"));
+
+    auto intrinsics = declare_intrinsics(llmod);
+
+    llvm.LLVMSetModuleInlineAsm(llmod, _str.buf(x86.get_module_asm()));
+
+    auto glues = make_glues(llmod, tn);
+    create_crate_constant(crate_ptr, glues);
+    make_memcpy_glue(glues.memcpy_glue);
+
+    trans_exit_task_glue(glues, new_str_hash[ValueRef](), tn, llmod);
+
+    check_module(llmod);
+
+    llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(output));
+    llvm.LLVMDisposeModule(llmod);
 }
 
 fn trans_crate(session.session sess, @ast.crate crate, str output,
@@ -6026,8 +6064,6 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     auto tn = mk_type_names();
     let ValueRef crate_ptr =
         llvm.LLVMAddGlobal(llmod, T_crate(tn), _str.buf("rust_crate"));
-
-    llvm.LLVMSetModuleInlineAsm(llmod, _str.buf(x86.get_module_asm()));
 
     auto intrinsics = declare_intrinsics(llmod);
 
@@ -6069,9 +6105,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     trans_constants(cx, crate);
 
     trans_mod(cx, crate.node.module);
-    trans_exit_task_glue(cx);
     trans_vec_append_glue(cx);
-    create_crate_constant(cx);
     if (!shared) {
         trans_main_fn(cx, cx.crate_ptr);
     }
