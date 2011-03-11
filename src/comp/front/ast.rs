@@ -435,6 +435,44 @@ fn index_native_view_item(native_mod_index index, @view_item it) {
     }
 }
 
+fn index_stmt(block_index index, @stmt s) {
+    alt (s.node) {
+        case (ast.stmt_decl(?d)) {
+            alt (d.node) {
+                case (ast.decl_local(?loc)) {
+                    index.insert(loc.ident, ast.bie_local(loc));
+                }
+                case (ast.decl_item(?it)) {
+                    alt (it.node) {
+                        case (ast.item_fn(?i, _, _, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                        }
+                        case (ast.item_mod(?i, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                        }
+                        case (ast.item_ty(?i, _, _, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                        }
+                        case (ast.item_tag(?i, ?variants, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                            let uint vid = 0u;
+                            for (ast.variant v in variants) {
+                                auto t = ast.bie_tag_variant(it, vid);
+                                index.insert(v.name, t);
+                                vid += 1u;
+                            }
+                        }
+                        case (ast.item_obj(?i, _, _, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                        }
+                    }
+                }
+            }
+        }
+        case (_) { /* fall through */ }
+    }
+}
+
 fn is_call_expr(@expr e) -> bool {
     alt (e.node) {
         case (expr_call(_, _, _)) {
