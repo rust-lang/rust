@@ -1478,31 +1478,36 @@ impure fn parse_source_stmt(parser p) -> @ast.stmt {
 }
 
 fn index_block(vec[@ast.stmt] stmts, option.t[@ast.expr] expr) -> ast.block_ {
-    auto index = new_str_hash[uint]();
-    auto u = 0u;
+    auto index = new_str_hash[ast.block_index_entry]();
     for (@ast.stmt s in stmts) {
         alt (s.node) {
             case (ast.stmt_decl(?d)) {
                 alt (d.node) {
                     case (ast.decl_local(?loc)) {
-                        index.insert(loc.ident, u);
+                        index.insert(loc.ident, ast.bie_local(loc));
                     }
                     case (ast.decl_item(?it)) {
                         alt (it.node) {
                             case (ast.item_fn(?i, _, _, _, _)) {
-                                index.insert(i, u);
+                                index.insert(i, ast.bie_item(it));
                             }
                             case (ast.item_mod(?i, _, _)) {
-                                index.insert(i, u);
+                                index.insert(i, ast.bie_item(it));
                             }
                             case (ast.item_ty(?i, _, _, _, _)) {
-                                index.insert(i, u);
+                                index.insert(i, ast.bie_item(it));
                             }
-                            case (ast.item_tag(?i, _, _, _)) {
-                                index.insert(i, u);
+                            case (ast.item_tag(?i, ?variants, _, _)) {
+                                index.insert(i, ast.bie_item(it));
+                                let uint vid = 0u;
+                                for (ast.variant v in variants) {
+                                    auto t = ast.bie_tag_variant(it, vid);
+                                    index.insert(v.name, t);
+                                    vid += 1u;
+                                }
                             }
                             case (ast.item_obj(?i, _, _, _, _)) {
-                                index.insert(i, u);
+                                index.insert(i, ast.bie_item(it));
                             }
                         }
                     }
@@ -1510,7 +1515,6 @@ fn index_block(vec[@ast.stmt] stmts, option.t[@ast.expr] expr) -> ast.block_ {
             }
             case (_) { /* fall through */ }
         }
-        u += 1u;
     }
     ret rec(stmts=stmts, expr=expr, index=index);
 }

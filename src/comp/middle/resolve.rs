@@ -342,6 +342,40 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
         ret none[def_wrap];
     }
 
+    fn found_tag(@ast.item item, uint variant_idx) -> def_wrap {
+        alt (item.node) {
+            case (ast.item_tag(_, ?variants, _, ?tid)) {
+                auto vid = variants.(variant_idx).id;
+                auto t = ast.def_variant(tid, vid);
+                ret def_wrap_other(t);
+            }
+            case (_) {
+                log "tag item not actually a tag";
+                fail;
+            }
+        }
+    }
+
+    fn check_block(ast.ident i, &ast.block_ b) -> option.t[def_wrap] {
+        alt (b.index.find(i)) {
+            case (some[ast.block_index_entry](?ix)) {
+                alt(ix) {
+                    case (ast.bie_item(?it)) {
+                        ret some(found_def_item(it));
+                    }
+                    case (ast.bie_local(?l)) {
+                        auto t = ast.def_local(l.id);
+                        ret some(def_wrap_other(t));
+                    }
+                    case (ast.bie_tag_variant(?item, ?variant_idx)) {
+                        ret some(found_tag(item, variant_idx));
+                    }
+                }
+            }
+            case (_) { ret none[def_wrap]; }
+        }
+    }
+
     fn in_scope(ast.ident i, &scope s) -> option.t[def_wrap] {
         alt (s) {
 
@@ -368,7 +402,7 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
                             }
                         }
                     }
-                    case (ast.item_tag(_, _, ?ty_params, _)) {
+                    case (ast.item_tag(_, ?variants, ?ty_params, ?tag_id)) {
                         for (ast.ty_param tp in ty_params) {
                             if (_str.eq(tp.ident, i)) {
                                 auto t = ast.def_ty_arg(tp.id);
@@ -414,13 +448,7 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
             }
 
             case (scope_block(?b)) {
-                alt (b.node.index.find(i)) {
-                    case (some[uint](?ix)) {
-                        auto x = found_decl_stmt(b.node.stmts.(ix));
-                        ret some(x);
-                    }
-                    case (_) { /* fall through */  }
-                }
+                ret check_block(i, b.node);
             }
 
             case (scope_arm(?a)) {

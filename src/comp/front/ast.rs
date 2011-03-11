@@ -66,9 +66,15 @@ type meta_item = spanned[meta_item_];
 type meta_item_ = rec(ident name, str value);
 
 type block = spanned[block_];
+type block_index = hashmap[ident, block_index_entry];
+tag block_index_entry {
+    bie_item(@item);
+    bie_local(@local);
+    bie_tag_variant(@item /* tag item */, uint /* variant index */);
+}
 type block_ = rec(vec[@stmt] stmts,
                   option.t[@expr] expr,
-                  hashmap[ident,uint] index);
+                  hashmap[ident,block_index_entry] index);
 
 type variant_def = tup(def_id /* tag */, def_id /* variant */);
 
