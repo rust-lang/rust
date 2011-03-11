@@ -3338,8 +3338,15 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     ret lval_mem(cx, cx.fcx.llargs.get(did));
                 }
                 case (ast.def_local(?did)) {
-                    check (cx.fcx.lllocals.contains_key(did));
-                    ret lval_mem(cx, cx.fcx.lllocals.get(did));
+                    alt (cx.fcx.lllocals.find(did)) {
+                        case (none[ValueRef]) {
+                            check (cx.fcx.llupvars.contains_key(did));
+                            ret lval_mem(cx, cx.fcx.llupvars.get(did));
+                        }
+                        case (some[ValueRef](?llval)) {
+                            ret lval_mem(cx, llval);
+                        }
+                    }
                 }
                 case (ast.def_binding(?did)) {
                     check (cx.fcx.lllocals.contains_key(did));
