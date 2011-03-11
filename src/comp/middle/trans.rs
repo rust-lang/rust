@@ -98,6 +98,7 @@ state type fn_ctxt = rec(ValueRef llfn,
                          hashmap[ast.def_id, ValueRef] llargs,
                          hashmap[ast.def_id, ValueRef] llobjfields,
                          hashmap[ast.def_id, ValueRef] lllocals,
+                         hashmap[ast.def_id, ValueRef] llupvars,
                          hashmap[ast.def_id, ValueRef] lltydescs,
                          @crate_ctxt ccx);
 
@@ -2897,6 +2898,62 @@ fn trans_for(@block_ctxt cx,
                       bind inner(_, local, _, _, body));
 }
 
+
+// Iterator translation
+
+// Searches through a block for all references to locals or upvars in this
+// frame and returns the list of definition IDs thus found.
+fn collect_upvars(@block_ctxt cx, &ast.block bloc, &ast.def_id initial_decl)
+        -> vec[ast.def_id] {
+    type env = @rec(
+        mutable vec[ast.def_id] refs,
+        hashmap[ast.def_id,()] decls
+    );
+
+    fn fold_expr_path(&env e, &common.span sp, &ast.path p,
+                      &option.t[ast.def] d, ast.ann a) -> @ast.expr {
+        alt (option.get[ast.def](d)) {
+            case (ast.def_arg(?did))    { e.refs += vec(did);   }
+            case (ast.def_local(?did))  { e.refs += vec(did);   }
+            case (ast.def_upvar(?did))  { e.refs += vec(did);   }
+            case (_)                    { /* ignore */          }
+        }
+
+        ret @fold.respan[ast.expr_](sp, ast.expr_path(p, d, a));
+    }
+
+    fn fold_decl_local(&env e, &common.span sp, @ast.local local)
+            -> @ast.decl {
+        e.decls.insert(local.id, ());
+        ret @fold.respan[ast.decl_](sp, ast.decl_local(local));
+    }
+
+    auto fep = fold_expr_path;
+    auto fdl = fold_decl_local;
+    auto fld = @rec(
+        fold_expr_path=fep,
+        fold_decl_local=fdl
+        with *fold.new_identity_fold[env]()
+    );
+
+    let vec[ast.def_id] refs = vec();
+    let hashmap[ast.def_id,()] decls = new_def_hash[()]();
+    decls.insert(initial_decl, ());
+    let env e = @rec(mutable refs=refs, decls=decls);
+
+    fold.fold_block[env](e, fld, bloc);
+
+    // Calculate (refs - decls). This is the set of captured upvars.
+    let vec[ast.def_id] result = vec();
+    for (ast.def_id ref_id in e.refs) {
+        if (!decls.contains_key(ref_id)) {
+            result += vec(ref_id);
+        }
+    }
+
+    ret result;
+}
+
 fn trans_for_each(@block_ctxt cx,
                   @ast.decl decl,
                   @ast.expr seq,
@@ -2928,18 +2985,25 @@ fn trans_for_each(@block_ctxt cx,
     // escape. This could be determined upstream, and probably ought
     // to be so, eventualy. For first cut, skip this. Null env.
 
-    auto env_ty = T_opaque_closure_ptr(cx.fcx.ccx.tn);
-
-
-    // Step 2: Declare foreach body function.
-
     // FIXME: possibly support alias-mode here?
     auto decl_ty = plain_ty(ty.ty_nil);
+    auto decl_id;
     alt (decl.node) {
         case (ast.decl_local(?local)) {
             decl_ty = node_ann_type(cx.fcx.ccx, local.ann);
+            decl_id = local.id;
         }
     }
+
+    auto upvars = collect_upvars(cx, body, decl_id);
+    if (_vec.len[ast.def_id](upvars) > 0u) {
+        cx.fcx.ccx.sess.unimpl("upvars in for each");
+        fail;
+    }
+
+    auto env_ty = T_opaque_closure_ptr(cx.fcx.ccx.tn);
+
+    // Step 2: Declare foreach body function.
 
     let str s =
         cx.fcx.ccx.names.next("_rust_foreach")
@@ -4624,6 +4688,7 @@ fn new_fn_ctxt(@crate_ctxt cx,
     let hashmap[ast.def_id, ValueRef] llargs = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] llobjfields = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
+    let hashmap[ast.def_id, ValueRef] llupvars = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] lltydescs = new_def_hash[ValueRef]();
 
     ret @rec(llfn=llfndecl,
@@ -4635,6 +4700,7 @@ fn new_fn_ctxt(@crate_ctxt cx,
              llargs=llargs,
              llobjfields=llobjfields,
              lllocals=lllocals,
+             llupvars=llupvars,
              lltydescs=lltydescs,
              ccx=cx);
 }
@@ -5486,6 +5552,7 @@ fn trans_exit_task_glue(@crate_ctxt cx) {
                     llargs=new_def_hash[ValueRef](),
                     llobjfields=new_def_hash[ValueRef](),
                     lllocals=new_def_hash[ValueRef](),
+                    llupvars=new_def_hash[ValueRef](),
                     lltydescs=new_def_hash[ValueRef](),
                     ccx=cx);
 
@@ -5819,6 +5886,7 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
                     llargs=new_def_hash[ValueRef](),
                     llobjfields=new_def_hash[ValueRef](),
                     lllocals=new_def_hash[ValueRef](),
+                    llupvars=new_def_hash[ValueRef](),
                     lltydescs=new_def_hash[ValueRef](),
                     ccx=cx);
 

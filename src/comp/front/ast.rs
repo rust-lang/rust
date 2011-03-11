@@ -32,6 +32,7 @@ tag def {
     def_const(def_id);
     def_arg(def_id);
     def_local(def_id);
+    def_upvar(def_id);
     def_variant(def_id /* tag */, def_id /* variant */);
     def_ty(def_id);
     def_ty_arg(def_id);
