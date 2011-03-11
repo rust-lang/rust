@@ -71,6 +71,13 @@ fn unwrap_def(def_wrap d) -> def {
                 }
             }
         }
+        case (def_wrap_native_mod(?m)) {
+            alt (m.node) {
+                case (ast.item_native_mod(_, _, ?id)) {
+                    ret ast.def_native_mod(id);
+                }
+            }
+        }
         case (def_wrap_other(?d)) {
             ret d;
         }
