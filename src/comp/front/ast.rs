@@ -44,7 +44,8 @@ tag def {
 }
 
 type crate = spanned[crate_];
-type crate_ = rec(_mod module);
+type crate_ = rec(vec[@crate_directive] directives,
+                  _mod module);
 
 tag crate_directive_ {
     cdir_expr(@expr);

@@ -2244,7 +2244,9 @@ impure fn parse_crate_from_source_file(parser p) -> @ast.crate {
     auto lo = p.get_span();
     auto hi = lo;
     auto m = parse_mod_items(p, token.EOF);
-    ret @spanned(lo, hi, rec(module=m));
+    let vec[@ast.crate_directive] cdirs = vec();
+    ret @spanned(lo, hi, rec(directives=cdirs,
+                             module=m));
 }
 
 // Logic for parsing crate files (.rc)
@@ -2259,8 +2261,6 @@ impure fn parse_crate_directive(parser p) -> ast.crate_directive
     auto hi = lo;
     alt (p.peek()) {
         case (token.AUTH) {
-            // FIXME: currently dropping auth clauses on the floor,
-            // as there is no effect-checking pass.
             p.bump();
             auto n = parse_path(p, GREEDY);
             expect(p, token.EQ);
@@ -2271,8 +2271,6 @@ impure fn parse_crate_directive(parser p) -> ast.crate_directive
         }
 
         case (token.META) {
-            // FIXME: currently dropping meta clauses on the floor,
-            // as there is no crate metadata system
             p.bump();
             auto mis = parse_meta(p);
             hi = p.get_span();
@@ -2381,7 +2379,8 @@ impure fn parse_crate_from_crate_file(parser p) -> @ast.crate {
                                                cdirs, prefix);
     hi = p.get_span();
     expect(p, token.EOF);
-    ret @spanned(lo, hi, rec(module=m));
+    ret @spanned(lo, hi, rec(directives=cdirs,
+                             module=m));
 }
 
 

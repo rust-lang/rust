@@ -273,6 +273,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, &ast.native_mod m) -> ast.native_mod) fold_native_mod,
 
      (fn(&ENV e, &span sp,
+         vec[@ast.crate_directive] cdirs,
          &ast._mod m) -> @ast.crate)              fold_crate,
 
      (fn(&ENV e,
@@ -991,9 +992,12 @@ fn fold_native_mod[ENV](&ENV e, ast_fold[ENV] fld,
 }
 
 fn fold_crate[ENV](&ENV env, ast_fold[ENV] fld, @ast.crate c) -> @ast.crate {
+    // FIXME: possibly fold the directives so you process any expressions
+    // within them? Not clear. After front/eval.rs, nothing else should look
+    // at crate directives.
     let ENV env_ = fld.update_env_for_crate(env, c);
     let ast._mod m = fold_mod[ENV](env_, fld, c.node.module);
-    ret fld.fold_crate(env_, c.span, m);
+    ret fld.fold_crate(env_, c.span, c.node.directives, m);
 }
 
 //// Identity folds.
@@ -1381,8 +1385,10 @@ fn identity_fold_native_mod[ENV](&ENV e,
     ret m;
 }
 
-fn identity_fold_crate[ENV](&ENV e, &span sp, &ast._mod m) -> @ast.crate {
-    ret @respan(sp, rec(module=m));
+fn identity_fold_crate[ENV](&ENV e, &span sp,
+                            vec[@ast.crate_directive] cdirs,
+                            &ast._mod m) -> @ast.crate {
+    ret @respan(sp, rec(directives=cdirs, module=m));
 }
 
 fn identity_fold_obj[ENV](&ENV e,
@@ -1537,7 +1543,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_fn_decl = bind identity_fold_fn_decl[ENV](_,_,_,_),
          fold_mod = bind identity_fold_mod[ENV](_,_),
          fold_native_mod = bind identity_fold_native_mod[ENV](_,_),
-         fold_crate = bind identity_fold_crate[ENV](_,_,_),
+         fold_crate = bind identity_fold_crate[ENV](_,_,_,_),
          fold_obj = bind identity_fold_obj[ENV](_,_,_,_),
 
          update_env_for_crate = bind identity_update_env_for_crate[ENV](_,_),
