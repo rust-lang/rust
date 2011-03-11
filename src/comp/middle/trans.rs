@@ -4512,10 +4512,19 @@ fn trans_put(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
         case (none[@ast.expr]) { }
         case (some[@ast.expr](?x)) {
             auto r = trans_expr(bcx, x);
-            llargs += r.val;
+
+            auto llarg = r.val;
             bcx = r.bcx;
+            if (ty.type_is_structural(ty.expr_ty(x))) {
+                // Until here we've been treating structures by pointer; we
+                // are now passing it as an arg, so need to load it.
+                llarg = bcx.build.Load(llarg);
+            }
+
+            llargs += llarg;
         }
     }
+
     ret res(bcx, bcx.build.FastCall(llcallee, llargs));
 }
 
