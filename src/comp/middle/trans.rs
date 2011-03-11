@@ -3008,12 +3008,49 @@ fn trans_for_each(@block_ctxt cx,
     }
 
     auto upvars = collect_upvars(cx, body, decl_id);
-    if (_vec.len[ast.def_id](upvars) > 0u) {
-        cx.fcx.ccx.sess.unimpl("upvars in for each");
-        fail;
+    auto upvar_count = _vec.len[ast.def_id](upvars);
+
+    auto llbindingsptr;
+    if (upvar_count > 0u) {
+        // Gather up the upvars.
+        let vec[ValueRef] llbindings = vec();
+        let vec[TypeRef] llbindingtys = vec();
+        for (ast.def_id did in upvars) {
+            auto llbinding;
+            alt (cx.fcx.lllocals.find(did)) {
+                case (none[ValueRef]) {
+                    llbinding = cx.fcx.llupvars.get(did);
+                }
+                case (some[ValueRef](?llval)) { llbinding = llval; }
+            }
+            llbindings += vec(llbinding);
+            llbindingtys += vec(val_ty(llbinding));
+        }
+
+        // Create an array of bindings and copy in aliases to the upvars.
+        llbindingsptr = cx.build.Alloca(T_struct(llbindingtys));
+        auto i = 0u;
+        while (i < upvar_count) {
+            auto llbindingptr = cx.build.GEP(llbindingsptr,
+                                             vec(C_int(0), C_int(i as int)));
+            cx.build.Store(llbindings.(i), llbindingptr);
+            i += 1u;
+        }
+    } else {
+        // Null bindings.
+        llbindingsptr = C_null(T_ptr(T_i8()));
     }
 
-    auto env_ty = T_opaque_closure_ptr(cx.fcx.ccx.tn);
+    // Create an environment and populate it with the bindings.
+    auto llenvptrty = T_closure_ptr(cx.fcx.ccx.tn, T_ptr(T_nil()),
+                                    val_ty(llbindingsptr), 0u);
+    auto llenvptr = cx.build.Alloca(llvm.LLVMGetElementType(llenvptrty));
+
+    auto llbindingsptrptr = cx.build.GEP(llenvptr,
+                                         vec(C_int(0),
+                                             C_int(abi.box_rc_field_body),
+                                             C_int(2)));
+    cx.build.Store(llbindingsptr, llbindingsptrptr);
 
     // Step 2: Declare foreach body function.
 
@@ -3041,7 +3078,30 @@ fn trans_for_each(@block_ctxt cx,
     auto fcx = new_fn_ctxt(cx.fcx.ccx, lliterbody);
     auto bcx = new_top_block_ctxt(fcx);
 
-    // FIXME: populate lllocals from llenv here.
+    // Populate the upvars from the environment.
+    auto llremoteenvptr = bcx.build.PointerCast(fcx.llenv, llenvptrty);
+    auto llremotebindingsptrptr = bcx.build.GEP(llremoteenvptr,
+        vec(C_int(0), C_int(abi.box_rc_field_body), C_int(2)));
+    auto llremotebindingsptr = bcx.build.Load(llremotebindingsptrptr);
+
+    auto i = 0u;
+    while (i < upvar_count) {
+        auto upvar_id = upvars.(i);
+        auto llupvarptrptr = bcx.build.GEP(llremotebindingsptr,
+                                           vec(C_int(0), C_int(i as int)));
+        auto llupvarptr = bcx.build.Load(llupvarptrptr);
+        fcx.llupvars.insert(upvar_id, llupvarptr);
+
+        i += 1u;
+    }
+
+    // Treat the loop variable as an upvar as well. We copy it to an alloca
+    // as usual.
+    auto lllvar = llvm.LLVMGetParam(fcx.llfn, 3u);
+    auto lllvarptr = bcx.build.Alloca(val_ty(lllvar));
+    bcx.build.Store(lllvar, lllvarptr);
+    fcx.llupvars.insert(decl_id, lllvarptr);
+
     auto res = trans_block(bcx, body);
     res.bcx.build.RetVoid();
 
@@ -3058,6 +3118,12 @@ fn trans_for_each(@block_ctxt cx,
                                           vec(C_int(0),
                                               C_int(abi.fn_field_code)));
             cx.build.Store(lliterbody, code_cell);
+
+            auto env_cell = cx.build.GEP(pair, vec(C_int(0),
+                                                   C_int(abi.fn_field_box)));
+            auto llenvblobptr = cx.build.PointerCast(llenvptr,
+                T_opaque_closure_ptr(cx.fcx.ccx.tn));
+            cx.build.Store(llenvblobptr, env_cell);
 
             // log "lliterbody: " + val_str(cx.fcx.ccx.tn, lliterbody);
             ret trans_call(cx, f,
