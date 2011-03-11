@@ -38,6 +38,8 @@ tag sty {
     ty_tag(ast.def_id, vec[@t]);
     ty_box(@t);
     ty_vec(@t);
+    ty_port(@t);
+    ty_chan(@t);
     ty_tup(vec[@t]);
     ty_rec(vec[field]);
     ty_fn(ast.proto, vec[arg], @t);                 // TODO: effect
@@ -239,6 +241,12 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
         }
         case (ty_vec(?subty)) {
             ret rewrap(ty, ty_vec(fold_ty(fld, subty)));
+        }
+        case (ty_port(?subty)) {
+            ret rewrap(ty, ty_port(fold_ty(fld, subty)));
+        }
+        case (ty_chan(?subty)) {
+            ret rewrap(ty, ty_chan(fold_ty(fld, subty)));
         }
         case (ty_tag(?tid, ?subtys)) {
             let vec[@t] new_subtys = vec();
@@ -1156,6 +1164,52 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                     case (_) {
                         ret ures_err(terr_mismatch, expected, actual);
                    }
+                }
+            }
+
+            case (ty.ty_port(?expected_sub)) {
+                alt (actual.struct) {
+                    case (ty.ty_port(?actual_sub)) {
+                        auto result = unify_step(bindings,
+                                                 expected_sub,
+                                                 actual_sub,
+                                                 handler);
+                        alt (result) {
+                            case (ures_ok(?result_sub)) {
+                                ret ures_ok(plain_ty(ty.ty_port(result_sub)));
+                            }
+                            case (_) {
+                                ret result;
+                            }
+                        }
+                    }
+
+                    case (_) {
+                        ret ures_err(terr_mismatch, expected, actual);
+                    }
+                }
+            }
+
+            case (ty.ty_chan(?expected_sub)) {
+                alt (actual.struct) {
+                    case (ty.ty_chan(?actual_sub)) {
+                        auto result = unify_step(bindings,
+                                                 expected_sub,
+                                                 actual_sub,
+                                                 handler);
+                        alt (result) {
+                            case (ures_ok(?result_sub)) {
+                                ret ures_ok(plain_ty(ty.ty_chan(result_sub)));
+                            }
+                            case (_) {
+                                ret result;
+                            }
+                        }
+                    }
+
+                    case (_) {
+                        ret ures_err(terr_mismatch, expected, actual);
+                    }
                 }
             }
 

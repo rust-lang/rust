@@ -308,6 +308,15 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
         case (ast.ty_str)          { sty = ty.ty_str; }
         case (ast.ty_box(?t)) { sty = ty.ty_box(ast_ty_to_ty(getter, t)); }
         case (ast.ty_vec(?t)) { sty = ty.ty_vec(ast_ty_to_ty(getter, t)); }
+
+        case (ast.ty_port(?t)) {
+            sty = ty.ty_port(ast_ty_to_ty(getter, t));
+        }
+
+        case (ast.ty_chan(?t)) {
+            sty = ty.ty_chan(ast_ty_to_ty(getter, t));
+        }
+
         case (ast.ty_tup(?fields)) {
             let vec[@ty.t] flds = vec();
             for (@ast.ty field in fields) {
@@ -1387,6 +1396,28 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
         case (ast.expr_put(_)) { e_1 = e.node; }
         case (ast.expr_be(_)) { e_1 = e.node; }
         case (ast.expr_check_expr(_)) { e_1 = e.node; }
+
+        case (ast.expr_port(?ann)) {
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            e_1 = ast.expr_port(ast.ann_type(t, none[vec[@ty.t]]));
+        }
+
+        case (ast.expr_chan(?es, ?ann)) {
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            let @ast.expr es_1;
+            alt (t.struct) {
+                case (ty.ty_chan(?subty)) {
+                    auto pt = plain_ty(ty.ty_port(subty));
+                    es_1 = demand_expr(fcx, pt, es);
+                }
+                case (_) {
+                    log "chan expr doesn't have a chan type!";
+                    fail;
+                }
+            }
+            e_1 = ast.expr_chan(es_1, ast.ann_type(t, none[vec[@ty.t]]));
+        }
+
         case (_) {
             fcx.ccx.sess.unimpl("type unification for expression variant");
             fail;
@@ -2253,6 +2284,31 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                         (expr.span,
                          "vector-indexing bad type: "
                          + ty_to_str(base_t));
+                }
+            }
+        }
+
+        case (ast.expr_port(_)) {
+            auto t = next_ty_var(fcx.ccx);
+            auto pt = plain_ty(ty.ty_port(t));
+            auto ann = ast.ann_type(pt, none[vec[@ty.t]]);
+            ret @fold.respan[ast.expr_](expr.span, ast.expr_port(ann));
+        }
+
+        case (ast.expr_chan(?x, _)) {
+            auto expr_1 = check_expr(fcx, x);
+            auto port_t = expr_ty(expr_1);
+            alt (port_t.struct) {
+                case (ty.ty_port(?subtype)) {
+                    auto ct = plain_ty(ty.ty_chan(subtype));
+                    auto ann = ast.ann_type(ct, none[vec[@ty.t]]);
+                    ret @fold.respan[ast.expr_](expr.span,
+                                                ast.expr_chan(expr_1, ann));
+                }
+                case (_) {
+                    fcx.ccx.sess.span_err(expr.span,
+                                          "bad port type: "
+                                          + ty_to_str(port_t));
                 }
             }
         }
