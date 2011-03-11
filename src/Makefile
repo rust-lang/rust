@@ -449,8 +449,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         comm.rs \
                         constrained-type.rs \
                         destructor-ordering.rs \
-                        foreach-nested-2.rs \
-                        foreach-nested.rs \
                         foreach-put-structured.rs \
                         foreach-simple-outer-slot.rs \
                         generic-iter-frame.rs \
