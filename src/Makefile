@@ -255,6 +255,7 @@ RUNTIME_CS := rt/sync/timer.cpp \
               rt/sync/lock_and_signal.cpp \
               rt/rust.cpp \
               rt/rust_builtin.cpp \
+              rt/rust_run_program.cpp \
               rt/rust_crate.cpp \
               rt/rust_crate_cache.cpp \
               rt/rust_crate_reader.cpp \

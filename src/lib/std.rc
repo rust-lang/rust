@@ -27,7 +27,9 @@ mod util;
 
 auth io = unsafe;
 auth fs = unsafe;
+auth os = unsafe;
 auth os_fs = unsafe;
+auth run = unsafe;
 auth _str = unsafe;
 auth _vec = unsafe;
 auth _task = unsafe;
@@ -52,8 +54,8 @@ alt (target_os) {
         mod os_fs = "posix_fs.rs";
     }
 }
+mod run = "run_program.rs";
 mod fs;
-
 
 // FIXME: parametric
 mod map;

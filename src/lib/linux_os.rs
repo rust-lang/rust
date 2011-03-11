@@ -1,6 +1,9 @@
 import _str.sbuf;
 import _vec.vbuf;
 
+// FIXE Somehow merge stuff duplicated here and macosx_os.rs. Made difficult
+// by https://github.com/graydon/rust/issues#issue/268
+
 native mod libc = "libc.so.6" {
 
     fn open(sbuf s, int flags, uint mode) -> int;
@@ -10,6 +13,7 @@ native mod libc = "libc.so.6" {
 
     type FILE;
     fn fopen(sbuf path, sbuf mode) -> FILE;
+    fn fdopen(int fd, sbuf mode) -> FILE;
     fn fclose(FILE f);
     fn fgetc(FILE f) -> int;
     fn ungetc(int c, FILE f);
@@ -25,6 +29,9 @@ native mod libc = "libc.so.6" {
     fn getenv(sbuf n) -> sbuf;
     fn setenv(sbuf n, sbuf v, int overwrite) -> int;
     fn unsetenv(sbuf n) -> int;
+
+    fn pipe(vbuf buf) -> int;
+    fn waitpid(int pid, vbuf status, int options) -> int;
 }
 
 mod libc_constants {
@@ -48,6 +55,22 @@ fn exec_suffix() -> str {
 
 fn target_os() -> str {
     ret "linux";
+}
+
+fn pipe() -> tup(int, int) {
+    let vec[mutable int] fds = vec(mutable 0, 0);
+    check(os.libc.pipe(_vec.buf[mutable int](fds)) == 0);
+    ret tup(fds.(0), fds.(1));
+}
+
+fn fd_FILE(int fd) -> libc.FILE {
+    ret libc.fdopen(fd, _str.buf("r"));
+}
+
+fn waitpid(int pid) -> int {
+    let vec[mutable int] status = vec(mutable 0);
+    check(os.libc.waitpid(pid, _vec.buf[mutable int](status), 0) != -1);
+    ret status.(0);
 }
 
 // Local Variables:

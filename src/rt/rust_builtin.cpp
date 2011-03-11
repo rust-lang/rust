@@ -1,7 +1,4 @@
 
-#include <dirent.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include "rust_internal.h"
 
 /* Native builtins. */

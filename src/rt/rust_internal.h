@@ -11,9 +11,12 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <stdarg.h>
-
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <stdio.h>
 #include <string.h>
+#include <fcntl.h>
+
 #include "rust.h"
 #include "rand.h"
 #include "uthash.h"
@@ -26,12 +29,10 @@ extern "C" {
 }
 #elif defined(__GNUC__)
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <dlfcn.h>
 #include <pthread.h>
 #include <errno.h>
+#include <dirent.h>
 #else
 #error "Platform not supported."
 #endif
