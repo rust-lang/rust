@@ -300,7 +300,6 @@ RUNTIME_HDR := rt/globals.h \
 
 RUNTIME_INCS := -Irt/isaac -Irt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o)
-RUNTIME_LIBS := $(CFG_RUNTIME_LIBS)
 
 STDLIB_CRATE := lib/std.rc
 STDLIB_INPUTS := $(wildcard lib/*.rc lib/*.rs lib/*/*.rs)
