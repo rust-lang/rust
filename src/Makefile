@@ -450,7 +450,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         constrained-type.rs \
                         destructor-ordering.rs \
                         foreach-put-structured.rs \
-                        foreach-simple-outer-slot.rs \
                         iter-ret.rs \
                         lazychan.rs \
                         lib-bitv.rs \
