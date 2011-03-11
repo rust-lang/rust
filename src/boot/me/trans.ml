@@ -1355,7 +1355,7 @@ let trans_visitor
                    Asm.WORD (word_ty_mach, Asm.IMM 0L);
                    Asm.WORD (word_ty_mach, Asm.IMM sz);
                    Asm.WORD (word_ty_mach, Asm.IMM align);
-                   fix (get_copy_glue t);
+                   fix (get_take_glue t);
                    fix (get_drop_glue t);
                    begin
                      match ty_mem_ctrl cx t with
@@ -2022,34 +2022,18 @@ let trans_visitor
       get_typed_mem_glue g fty inner
 
 
-  and get_copy_glue
+  and get_take_glue
       (ty:Ast.ty)
       : fixup =
     let ty = get_genericized_ty ty in
     let arg_ty_params_alias = 0 in
     let arg_src_alias = 1 in
-    let arg_initflag = 2 in
 
-    let g = GLUE_copy ty in
-    let inner (out_ptr:Il.cell) (args:Il.cell) =
-      let dst = deref out_ptr in
+    let g = GLUE_take ty in
+    let inner (_:Il.cell) (args:Il.cell) =
       let ty_params = deref (get_element_ptr args arg_ty_params_alias) in
       let src = deref (get_element_ptr args arg_src_alias) in
-
-      (* Translate copy code for the dst-initializing and
-       * dst-non-initializing cases and branch accordingly. *)
-      let initflag = get_element_ptr args arg_initflag in
-      let jmps = trans_compare_simple Il.JNE (Il.Cell initflag) one in
-
-        trans_copy_ty_full true ty_params true dst ty src ty;
-
-        let skip_noninit_jmp = mark() in
-          emit (Il.jmp Il.JMP Il.CodeNone);
-          List.iter patch jmps;
-
-          trans_copy_ty_full true ty_params false dst ty src ty;
-
-          patch skip_noninit_jmp;
+        trans_take_ty true ty_params src ty;
     in
     let ty_params_ptr = ty_params_covering ty in
     let fty =
@@ -2186,17 +2170,23 @@ let trans_visitor
               get_tydesc_params ty_params_cell elt_td_ptr_cell
             in
 
-            let initflag = Il.Reg (force_to_reg one) in
-
+              (* Take all *)
               copy_loop dst_buf src_buf (Il.Cell fill) (Il.Cell elt_sz)
                 begin
-                  fun dptr sptr ->
+                  fun _ sptr ->
                     trans_call_dynamic_glue
                       elt_td_ptr_cell
-                      Abi.tydesc_field_copy_glue
-                      (Some (deref dptr))
-                      [| ty_params_ptr; sptr; initflag |]
+                      Abi.tydesc_field_take_glue
                       None
+                      [| ty_params_ptr; sptr |]
+                      None;
+                end;
+
+              (* Memcpy all *)
+              copy_loop dst_buf src_buf (Il.Cell fill) one
+                begin
+                  fun dptr sptr ->
+                    mov (deref dptr) (Il.Cell (deref sptr))
                 end;
 
               (* Set the new vec's fill to the original vec's fill *)
@@ -3734,17 +3724,58 @@ let trans_visitor
       end
       tys
 
-  and trans_copy_ty
-      (ty_params:Il.cell)
-      (initializing:bool)
-      (dst:Il.cell) (dst_ty:Ast.ty)
-      (src:Il.cell) (src_ty:Ast.ty)
-      : unit =
-    trans_copy_ty_full
-      false ty_params initializing dst dst_ty src src_ty
-
-  and trans_copy_ty_full
+  and trans_take_ty
       (force_inline:bool)
+      (ty_params:Il.cell)
+      (v:Il.cell)
+      (ty:Ast.ty)
+      : unit =
+    let ty = strip_mutable_or_constrained_ty ty in
+    match ty_mem_ctrl cx ty with
+        MEM_rc_opaque | MEM_gc | MEM_rc_struct -> incr_refcount v
+      | _ ->
+          begin
+            match ty with
+                Ast.TY_fn _
+              | Ast.TY_obj _ ->
+                  let binding =
+                    get_element_ptr v Abi.binding_field_bound_data
+                  in
+                  let null_jmp = null_check binding in
+                    incr_refcount binding;
+                    patch null_jmp
+
+              | Ast.TY_param (i, _) ->
+                  aliasing false v
+                    begin
+                      fun v ->
+                        let td = get_ty_param ty_params i in
+                        let ty_params_ptr = get_tydesc_params ty_params td in
+                          trans_call_dynamic_glue
+                            td Abi.tydesc_field_take_glue
+                            None
+                            [| ty_params_ptr; v; |]
+                            None
+                    end
+
+              | Ast.TY_rec _
+              | Ast.TY_tag _
+              | Ast.TY_tup _ ->
+                  if force_inline
+                  then
+                    iter_ty_parts ty_params v ty
+                      (trans_take_ty force_inline ty_params)
+                  else
+                    trans_call_static_glue
+                      (code_fixup_to_ptr_operand (get_take_glue ty))
+                      None
+                      [| alias ty_params; alias v; |]
+                      None
+
+              | _ -> ()
+          end
+
+  and trans_copy_ty
       (ty_params:Il.cell)
       (initializing:bool)
       (dst:Il.cell) (dst_ty:Ast.ty)
@@ -3789,7 +3820,7 @@ let trans_visitor
               | _ ->
                   (* Heavyweight copy: duplicate 1 level of the referent. *)
                   anno "heavy";
-                  trans_copy_ty_heavy force_inline ty_params initializing
+                  trans_copy_ty_heavy ty_params initializing
                     dst dst_ty src src_ty
         end
 
@@ -3821,7 +3852,6 @@ let trans_visitor
    *)
 
   and trans_copy_ty_heavy
-      (force_inline:bool)
       (ty_params:Il.cell)
       (initializing:bool)
       (dst:Il.cell) (dst_ty:Ast.ty)
@@ -3863,68 +3893,14 @@ let trans_visitor
                       (ty_sz cx ty)));
               mov dst (Il.Cell src)
 
-          | Ast.TY_param (i, _) ->
-              iflog
-                (fun _ -> annotate
-                   (Printf.sprintf "copy_ty: parametric copy %#d" i));
-              let initflag = Il.Reg (force_to_reg one) in
-              aliasing false src
-                begin
-                  fun src ->
-                    let td = get_ty_param ty_params i in
-                    let ty_params_ptr = get_tydesc_params ty_params td in
-                      trans_call_dynamic_glue
-                        td Abi.tydesc_field_copy_glue
-                        (Some dst)
-                        [| ty_params_ptr; src; initflag |]
-                        None
-                end
-
-          | Ast.TY_fn _
-          | Ast.TY_obj _ ->
-              begin
-                let src_item =
-                  get_element_ptr src Abi.binding_field_dispatch
-                in
-                let dst_item =
-                  get_element_ptr dst Abi.binding_field_dispatch
-                in
-                let src_binding =
-                  get_element_ptr src Abi.binding_field_bound_data
-                in
-                let dst_binding =
-                  get_element_ptr dst Abi.binding_field_bound_data
-                in
-                  mov dst_item (Il.Cell src_item);
-                  mov dst_binding zero;
-                  let null_jmp = null_check src_binding in
-                    (* Copy if we have a src binding. *)
-                    (* FIXME (issue #58): this is completely wrong, call
-                     * through to the binding's self-copy fptr. For now
-                     * this only works by accident.
-                     *)
-                    trans_copy_ty ty_params true
-                      dst_binding (Ast.TY_box Ast.TY_int)
-                      src_binding (Ast.TY_box Ast.TY_int);
-                    patch null_jmp
-              end
-
           | _ ->
-              if force_inline || should_inline_structure_helpers ty
-              then
-                iter_ty_parts_full ty_params dst src ty
-                  (fun dst src ty ->
-                     trans_copy_ty ty_params initializing
-                       dst ty src ty)
-              else
-                let initflag = Il.Reg (force_to_reg one) in
-                  trans_call_static_glue
-                    (code_fixup_to_ptr_operand (get_copy_glue ty))
-                    (Some dst)
-                    [| alias ty_params;
-                       alias src;
-                       initflag |]
-                    None
+              trans_take_ty false ty_params src ty;
+              if not initializing
+              then drop_ty ty_params dst ty;
+              let sz = ty_sz_with_ty_params ty_params ty in
+                copy_loop dst src sz (imm 1L)
+                  (fun dptr sptr ->
+                     mov (deref dptr) (Il.Cell (deref sptr)))
 
 
   and trans_copy

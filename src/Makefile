@@ -475,7 +475,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         pred.rs \
                         preempt.rs \
                         rt-circular-buffer.rs \
-                        size-and-align.rs \
                         spawn-fn.rs \
                         spawn-module-qualified.rs \
                         spawn.rs \

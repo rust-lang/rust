@@ -20,7 +20,7 @@ type glue =
   | GLUE_yield
   | GLUE_exit_main_task
   | GLUE_exit_task
-  | GLUE_copy of Ast.ty           (* One-level copy.                    *)
+  | GLUE_take of Ast.ty           (* One-level refcounts++.             *)
   | GLUE_drop of Ast.ty           (* De-initialize local memory.        *)
   | GLUE_free of Ast.ty           (* Drop body + free() box ptr.        *)
   | GLUE_sever of Ast.ty          (* Null all box state slots.          *)
@@ -2776,7 +2776,7 @@ let glue_str (cx:ctxt) (g:glue) : string =
     | GLUE_yield -> "glue$yield"
     | GLUE_exit_main_task -> "glue$exit_main_task"
     | GLUE_exit_task -> "glue$exit_task"
-    | GLUE_copy ty -> "glue$copy$" ^ (ty_str cx ty)
+    | GLUE_take ty -> "glue$take$" ^ (ty_str cx ty)
     | GLUE_drop ty -> "glue$drop$" ^ (ty_str cx ty)
     | GLUE_free ty -> "glue$free$" ^ (ty_str cx ty)
     | GLUE_sever ty -> "glue$sever$" ^ (ty_str cx ty)
