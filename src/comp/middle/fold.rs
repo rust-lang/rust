@@ -179,6 +179,18 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp,
          @expr e) -> @expr)                       fold_expr_check_expr,
 
+     (fn(&ENV e, &span sp,
+         ann a) -> @expr)                         fold_expr_port,
+
+     (fn(&ENV e, &span sp,
+         @expr e, ann a) -> @expr)                fold_expr_chan,
+
+     (fn(&ENV e, &span sp,
+         @expr lhs, @expr rhs, ann a) -> @expr)   fold_expr_send,
+
+     (fn(&ENV e, &span sp,
+         @expr lhs, @expr rhs, ann a) -> @expr)   fold_expr_recv,
+
      // Decl folds.
      (fn(&ENV e, &span sp,
          @ast.local local) -> @decl)              fold_decl_local,
@@ -717,6 +729,26 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
             ret fld.fold_expr_check_expr(env_, e.span, ee);
         }
 
+        case (ast.expr_port(?t)) {
+            ret fld.fold_expr_port(env_, e.span, t);
+        }
+
+        case (ast.expr_chan(?x, ?t)) {
+            auto ee = fold_expr(env_, fld, x);
+            ret fld.fold_expr_chan(env_, e.span, ee, t);
+        }
+
+        case (ast.expr_send(?lhs, ?rhs, ?t)) {
+            auto llhs = fold_expr(env_, fld, lhs);
+            auto rrhs = fold_expr(env_, fld, rhs);
+            ret fld.fold_expr_send(env_, e.span, llhs, rrhs, t);
+        }
+
+        case (ast.expr_recv(?lhs, ?rhs, ?t)) {
+            auto llhs = fold_expr(env_, fld, lhs);
+            auto rrhs = fold_expr(env_, fld, rhs);
+            ret fld.fold_expr_recv(env_, e.span, llhs, rrhs, t);
+        }
     }
 
     fail;
@@ -1255,6 +1287,23 @@ fn identity_fold_expr_check_expr[ENV](&ENV e, &span sp, @expr x) -> @expr {
     ret @respan(sp, ast.expr_check_expr(x));
 }
 
+fn identity_fold_expr_port[ENV](&ENV e, &span sp, ann a) -> @expr {
+    ret @respan(sp, ast.expr_port(a));
+}
+
+fn identity_fold_expr_chan[ENV](&ENV e, &span sp, @expr x, ann a) -> @expr {
+    ret @respan(sp, ast.expr_chan(x, a));
+}
+
+fn identity_fold_expr_send[ENV](&ENV e, &span sp,
+                                @expr lhs, @expr rhs, ann a) -> @expr {
+    ret @respan(sp, ast.expr_send(lhs, rhs, a));
+}
+
+fn identity_fold_expr_recv[ENV](&ENV e, &span sp,
+                                @expr lhs, @expr rhs, ann a) -> @expr {
+    ret @respan(sp, ast.expr_recv(lhs, rhs, a));
+}
 
 // Decl identities.
 
@@ -1527,6 +1576,10 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_log    = bind identity_fold_expr_log[ENV](_,_,_),
          fold_expr_check_expr
                           = bind identity_fold_expr_check_expr[ENV](_,_,_),
+         fold_expr_port   = bind identity_fold_expr_port[ENV](_,_,_),
+         fold_expr_chan   = bind identity_fold_expr_chan[ENV](_,_,_,_),
+         fold_expr_send   = bind identity_fold_expr_send[ENV](_,_,_,_,_),
+         fold_expr_recv   = bind identity_fold_expr_recv[ENV](_,_,_,_,_),
 
          fold_decl_local  = bind identity_fold_decl_local[ENV](_,_,_),
          fold_decl_item   = bind identity_fold_decl_item[ENV](_,_,_),
