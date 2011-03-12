@@ -24,5 +24,6 @@ test/              Testsuite (for both bootstrap and self-hosted)
 test/compile-fail  - Tests that should fail to compile
 test/run-fail      - Tests that should compile, run and fail
 test/run-pass      - Tests that should compile, run and succeed
+test/bench         - Benchmarks and miscellanea
 
 Please be gentle, it's a work in progress.
