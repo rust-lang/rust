@@ -15,6 +15,7 @@ Jason Orendorff <jorendorff@mozilla.com>
 Jeff Balogh <jbalogh@mozilla.com>
 Jeff Mulzelaar <jmuizelaar@mozilla.com>
 Jeffrey Yasskin <jyasskin@gmail.com>
+Marijn Haverbeke <marijnh@gmail.com>
 Matt Brubeck <mbrubeck@limpet.net>
 Michael Bebenita <mbebenita@mozilla.com>
 Or Brostovski <tohava@gmail.com>

@@ -34,6 +34,7 @@ DSYMUTIL := true
 
 ifeq ($(CFG_OSTYPE), FreeBSD)
   CFG_RUNTIME := librustrt.so
+  CFG_SUPPORT := librustllvm.so
   CFG_STDLIB := libstd.so
   CFG_GCC_CFLAGS += -fPIC -march=i686 -I/usr/local/include
   CFG_GCC_LINK_FLAGS += -shared -fPIC -lpthread -lrt
@@ -47,6 +48,7 @@ endif
 
 ifeq ($(CFG_OSTYPE), Linux)
   CFG_RUNTIME := librustrt.so
+  CFG_SUPPORT := librustllvm.so
   CFG_STDLIB := libstd.so
   CFG_GCC_CFLAGS += -fPIC -march=i686
   CFG_GCC_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
@@ -60,6 +62,7 @@ endif
 
 ifeq ($(CFG_OSTYPE), Darwin)
   CFG_RUNTIME := librustrt.dylib
+  CFG_SUPPORT := librustllvm.dylib
   CFG_STDLIB := libstd.dylib
   CFG_UNIXY := 1
   CFG_GCC_LINK_FLAGS += -dynamiclib -lpthread
@@ -85,8 +88,8 @@ ifdef CFG_WINDOWSY
     CFG_NATIVE := 1
   endif
   CFG_RUNTIME := rustrt.dll
+  CFG_SUPPORT := rustllvm.dll
   CFG_STDLIB := std.dll
-  CFG_OBJ_SUFFIX := .o
   CFG_EXE_SUFFIX := .exe
   CFG_BOOT := ./rustboot.exe
   CFG_RUSTC := ./rustc.exe
@@ -101,7 +104,6 @@ ifdef CFG_UNIXY
   CFG_INFO := $(info cfg: unix-y environment)
   CFG_BOOT := ./rustboot
   CFG_RUSTC := ./rustc
-  CFG_OBJ_SUFFIX := .o
   CFG_RUN_TARG = LD_LIBRARY_PATH=. $(CFG_VALGRIND) $(1)
   CFG_GCC := 1
   ifdef MINGW_CROSS
@@ -109,12 +111,12 @@ ifdef CFG_UNIXY
     CFG_GCC_CROSS := i586-mingw32msvc-
     CFG_BOOT_FLAGS += -t win32-x86-pe
     CFG_RUNTIME := rustrt.dll
+    CFG_SUPPORT := rustllvm.dll
     CFG_STDLIB := std.dll
     CFG_RUSTC := ./rustc.exe
     ifdef CFG_VALGRIND
       CFG_VALGRIND += wine
     endif
-    CFG_OBJ_SUFFIX := .o
     CFG_EXE_SUFFIX := .exe
     CFG_GCC_CFLAGS := -march=i686
     CFG_GCC_LINK_FLAGS := -shared
@@ -182,7 +184,7 @@ endif
 ifneq ($(CFG_LLVM_CONFIG),)
   CFG_LLVM_VERSION := $(shell $(CFG_LLVM_CONFIG) --version)
   $(info cfg: found llvm-config at $(CFG_LLVM_CONFIG))
-  CFG_LLVM_ALLOWED_VERSIONS := 2.8svn 2.8 2.9svn
+  CFG_LLVM_ALLOWED_VERSIONS := 2.8svn 2.8 2.9svn 3.0svn
   ifneq ($(findstring $(CFG_LLVM_VERSION),$(CFG_LLVM_ALLOWED_VERSIONS)),)
     $(info cfg: using LLVM version $(CFG_LLVM_VERSION))
   else
@@ -196,6 +198,10 @@ ifdef CFG_LLVM_CONFIG
   LLC := "$(shell $(CFG_LLVM_CONFIG) --bindir)/llc"
   CFG_LLC_CFLAGS := -march=x86
   LLVM-DIS := "$(shell $(CFG_LLVM_CONFIG) --bindir)/llvm-dis"
+  CFG_LLVM_INCDIR := $(shell $(CFG_LLVM_CONFIG) --includedir)
+  CFG_LLVM_CXXFLAGS := $(shell $(CFG_LLVM_CONFIG) --cxxflags)
+  CFG_LLVM_LDFLAGS := $(shell $(CFG_LLVM_CONFIG) --ldflags)
+  CFG_LLVM_LIBS := $(shell $(CFG_LLVM_CONFIG) --libs)
 endif
 
 MKFILES := Makefile
@@ -302,15 +308,22 @@ RUNTIME_HDR := rt/globals.h \
                rt/test/rust_test_util.h
 
 RUNTIME_INCS := -Irt/isaac -Irt/uthash
-RUNTIME_OBJS := $(RUNTIME_CS:.cpp=$(CFG_OBJ_SUFFIX))
-RUNTIME_LIBS := $(CFG_RUNTIME_LIBS)
+RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o)
+
+SUPPORT_CS := llvmext/Object.cpp
+
+SUPPORT_HDR := llvmext/include/llvm-c/Object.h
+
+SUPPORT_INCS := -iquote $(CFG_LLVM_INCDIR) -iquote llvmext/include
+SUPPORT_OBJS := $(SUPPORT_CS:.cpp=.o)
+SUPPORT_LIBS := $(CFG_LLVM_LDFLAGS) $(CFG_LLVM_LIBS)
 
 STDLIB_CRATE := lib/std.rc
 STDLIB_INPUTS := $(wildcard lib/*.rc lib/*.rs lib/*/*.rs)
 COMPILER_CRATE := comp/rustc.rc
-COMPILER_INPUTS := $(wildcard comp/*.rc comp/*.rs comp/*/*.rs)
+COMPILER_INPUTS := $(wildcard comp/rustc.rc comp/*.rs comp/*/*.rs)
 
-GENERATED := boot/fe/lexer.ml boot/util/version.ml
+GENERATED := boot/fe/lexer.ml boot/util/version.ml glue.o
 
 all: $(CFG_RUSTC) $(MKFILES) $(GENERATED)
 
@@ -325,13 +338,23 @@ $(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR)
 	@$(call CFG_ECHO, compile: $<)
 	$(CFG_QUIET)$(call CFG_LINK_C, $@) $(RUNTIME_OBJS)
 
+$(CFG_SUPPORT): $(SUPPORT_OBJS) $(MKFILES) $(SUPPORT_HDR)
+	@$(call CFG_ECHO, compile: $<)
+	$(CFG_QUIET)$(call CFG_LINK_C, $@ $(CFG_LLVM_LDFLAGS) $(CFG_LLVM_LIBS)) \
+		$(SUPPORT_OBJS)
+
 $(CFG_STDLIB): $(STDLIB_CRATE) $(CFG_BOOT) $(MKFILES)
 	@$(call CFG_ECHO, compile: $<)
 	$(BOOT) -shared -o $@ $(STDLIB_CRATE)
 
-%$(CFG_OBJ_SUFFIX): %.cpp $(MKFILES)
+rt/%.o: rt/%.cpp $(MKFILES)
 	@$(call CFG_ECHO, compile: $<)
 	$(CFG_QUIET)$(call CFG_COMPILE_C, $@, $(RUNTIME_INCS)) $<
+
+llvmext/%.o: llvmext/%.cpp $(MKFILES)
+	@$(call CFG_ECHO, compile: $<)
+	$(CFG_QUIET)$(call CFG_COMPILE_C, $@, $(CFG_LLVM_CXXFLAGS) \
+		$(SUPPORT_INCS)) $<
 
 ifdef CFG_NATIVE
 $(CFG_BOOT): $(BOOT_CMXS) $(MKFILES)
@@ -363,13 +386,18 @@ endif
 # Main compiler targets and rules
 ######################################################################
 
-$(CFG_RUSTC): $(COMPILER_INPUTS) $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
+$(CFG_RUSTC): $(COMPILER_INPUTS) $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB) \
+		$(CFG_SUPPORT)
 	@$(call CFG_ECHO, compile: $<)
 	$(BOOT) -minimal -o $@ $<
 	$(CFG_QUIET)chmod 0755 $@
 
+glue.bc: $(CFG_RUSTC) $(CFG_RUNTIME) $(CFG_STDLIB)
+	@$(call CFG_ECHO, generate: $@)
+	$(RUSTC) -o $@ -glue
+
 self: $(CFG_RUSTC)
-	@$(call CFG_ECHO, compile: $<)
+	@$(call CFG_ECHO, compile: $(COMPILER_CRATE))
 	$(RUSTC) $(COMPILER_CRATE)
 
 
@@ -402,6 +430,7 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     $(NOMINAL_TAG_XFAILS) \
                     $(CONST_TAG_XFAILS) \
                     test/run-pass/arith-unsigned.rs \
+                    test/run-pass/box-compare.rs \
                     test/run-pass/child-outlives-parent.rs \
                     test/run-pass/clone-with-exterior.rs \
                     test/run-pass/constrained-type.rs \
@@ -409,13 +438,15 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/run-pass/obj-as.rs \
                     test/run-pass/vec-slice.rs \
                     test/run-pass/fn-lval.rs \
+                    test/run-pass/generic-bind-2.rs \
                     test/run-pass/generic-fn-box.rs \
-                    test/run-pass/generic-recursive-tag.rs \
                     test/run-pass/generic-tup.rs \
                     test/run-pass/iter-ret.rs \
+                    test/run-pass/leak-tag-copy.rs \
                     test/run-pass/lib-io.rs \
                     test/run-pass/mlist-cycle.rs \
                     test/run-pass/obj-as.rs \
+                    test/run-pass/seq-compare.rs \
                     test/run-pass/task-comm.rs \
                     test/run-pass/task-comm-3.rs \
                     test/run-pass/vec-slice.rs \
@@ -437,32 +468,14 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         alt-pattern-drop.rs \
                         alt-type-simple.rs \
                         append-units.rs \
-                        autoderef-objfn.rs \
                         basic-1.rs \
                         basic-2.rs \
                         basic.rs \
-                        bind-obj-ctor.rs \
-                        box-unbox.rs \
                         child-outlives-parent.rs \
                         clone-with-exterior.rs \
                         comm.rs \
                         constrained-type.rs \
                         destructor-ordering.rs \
-                        drop-on-empty-block-exit.rs \
-                        drop-parametric-closure-with-bound-box.rs \
-                        export-non-interference.rs \
-                        exterior.rs \
-                        foreach-nested-2.rs \
-                        foreach-nested.rs \
-                        foreach-put-structured.rs \
-                        foreach-simple-outer-slot.rs \
-                        generic-fn-twice.rs \
-                        generic-iter-frame.rs \
-                        generic-recursive-tag.rs \
-                        generic-tag-alt.rs \
-                        generic-tag-values.rs \
-                        integral-indexing.rs \
-                        iter-range.rs \
                         iter-ret.rs \
                         lazychan.rs \
                         lib-bitv.rs \
@@ -478,15 +491,12 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         lib-uint.rs \
                         lib-vec-str-conversions.rs \
                         lib-vec.rs \
-                        list.rs \
                         many.rs \
                         mlist-cycle.rs \
                         mlist.rs \
                         mutable-alias-vec.rs \
-                        native-opaque-type.rs \
                         obj-as.rs \
                         obj-dtor.rs \
-                        obj-return-polytypes.rs \
                         pred.rs \
                         preempt.rs \
                         rt-circular-buffer.rs \
@@ -495,7 +505,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         spawn-module-qualified.rs \
                         spawn.rs \
                         str-append.rs \
-                        str-concat.rs \
                         syntax-extension-fmt.rs \
                         syntax-extension-shell.rs \
                         task-comm-0.rs \
@@ -520,14 +529,11 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         threads.rs \
                         type-sizes.rs \
                         typestate-cfg-nesting.rs \
-                        use-import-export.rs \
                         user.rs \
                         utf8.rs \
                         vec-alloc-append.rs \
                         vec-append.rs \
-                        vec-concat.rs \
                         vec-slice.rs \
-                        while-prelude-drop.rs \
                         while-with-break.rs \
                         yield.rs \
                         yield2.rs \
@@ -788,9 +794,9 @@ test/compile-fail/%.rustc.out.tmp: test/compile-fail/%.rs $(SREQ)
 	@$(call CFG_ECHO, assemble [llvm]: $<)
 	$(CFG_QUIET)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
 
-%.rustc$(CFG_EXE_SUFFIX): %.o $(CFG_RUNTIME)
+%.rustc$(CFG_EXE_SUFFIX): %.o $(CFG_RUNTIME) glue.o
 	@$(call CFG_ECHO, link [llvm]: $<)
-	$(CFG_QUIET)gcc $(CFG_GCC_CFLAGS) -o $@ $< -L. -lrustrt
+	$(CFG_QUIET)gcc $(CFG_GCC_CFLAGS) glue.o -o $@ $< -L. -lrustrt
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
@@ -815,7 +821,7 @@ C_DEPFILES := $(RUNTIME_CS:%.cpp=%.d)
 %.d: %.cpp $(MKFILES)
 	@$(call CFG_ECHO, dep: $<)
 	$(CFG_QUIET)$(call CFG_DEPEND_C, $@ \
-      $(patsubst %.cpp, %$(CFG_OBJ_SUFFIX), $<), \
+      $(patsubst %.cpp, %.o, $<), \
       $(RUNTIME_INCS)) $< $(CFG_PATH_MUNGE) >$@.tmp \
       && mv $@.tmp $@
 
@@ -838,9 +844,15 @@ RUSTBOOT_PROBE := $(wildcard $(CFG_BOOT))
 ifneq ($(RUSTBOOT_PROBE),)
 CFG_INFO := $(info cfg: using built $(CFG_BOOT) for rust deps)
 STDLIB_DEPFILE := $(CFG_STDLIB).d
+RUSTC_DEPFILE := $(CFG_RUSTC).d
 CRATE_DEPFILES := $(ALL_TEST_CRATES:%.rc=%.d) $(STDLIB_DEPFILE)
 
-$(STDLIB_DEPFILE): $(STDLIB_CRATE) $(MKFILES) $(CFG_BOOT)
+$(STDLIB_DEPFILE): $(STDLIB_CRATE) $(MKFILES) $(CFG_BOOT) $(STDLIB_INPUTS)
+	@$(call CFG_ECHO, dep: $<)
+	$(BOOT) -shared -rdeps $< $(CFG_PATH_MUNGE) >$@.tmp \
+    && mv $@.tmp $@
+
+$(RUSTC_DEPFILE): $(STDLIB_CRATE) $(MKFILES) $(CFG_BOOT) $(COMPILER_INPUTS)
 	@$(call CFG_ECHO, dep: $<)
 	$(BOOT) -shared -rdeps $< $(CFG_PATH_MUNGE) >$@.tmp \
     && mv $@.tmp $@
@@ -932,12 +944,12 @@ clean:
 	$(CFG_QUIET)rm -f $(ML_DEPFILES:%.d=%.d.tmp)
 	$(CFG_QUIET)rm -f $(C_DEPFILES:%.d=%.d.tmp)
 	$(CFG_QUIET)rm -f $(CRATE_DEPFILES:%.d=%.d.tmp)
-	$(CFG_QUIET)rm -f $(GENERATED)
+	$(CFG_QUIET)rm -f $(GENERATED) glue.bc glue.s
 	$(CFG_QUIET)rm -f $(CFG_BOOT) $(CFG_RUNTIME) $(CFG_STDLIB)
 	$(CFG_QUIET)rm -Rf $(PKG_NAME)-*.tar.gz dist
-	$(CFG_QUIET)rm -f $(foreach ext,cmx cmi cmo cma o a d exe,\
+	$(CFG_QUIET)rm -f $(foreach ext,cmx cmi cmo cma bc o a d exe,\
                         $(wildcard boot/*/*.$(ext) boot/*/*/*.$(ext)))
-	$(CFG_QUIET)rm -Rf $(foreach ext,out llvm x86 boot rustc o s exe dSYM,\
+	$(CFG_QUIET)rm -Rf $(foreach ext,out llvm x86 boot rustc bc o s exe dSYM,\
                         $(wildcard test/*/*.$(ext)))
 
 

@@ -8,13 +8,13 @@ mod front {
     mod extfmt;
     mod lexer;
     mod parser;
-    mod pretty;
     mod token;
     mod eval;
 }
 
 mod middle {
     mod fold;
+    mod metadata;
     mod resolve;
     mod trans;
     mod ty;
@@ -31,15 +31,22 @@ mod driver {
     mod session;
 }
 
+mod pretty {
+    mod pp;
+    mod pprust;
+}
+
 mod util {
     mod common;
 }
 
 auth driver.rustc.main = impure;
+auth middle.metadata = unsafe;
 auth middle.trans = unsafe;
 auth middle.trans.copy_args_to_allocas = impure;
 auth middle.trans.trans_block = impure;
 auth lib.llvm = unsafe;
+auth pretty.pprust = impure;
 
 mod lib {
     alt (target_os) {

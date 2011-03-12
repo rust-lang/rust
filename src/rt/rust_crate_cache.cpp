@@ -49,7 +49,8 @@ rust_crate_cache::c_sym::c_sym(rust_dom *dom, lib *library, char const *name)
         dom->log(rust_log::CACHE, "resolved symbol '%s' to 0x%"  PRIxPTR,
                  name, val);
     } else {
-        dom->log(rust_log::CACHE, "unresolved symbol '%s', null lib handle",
+        dom->log(rust_log::CACHE | rust_log::ERR,
+                 "unresolved symbol '%s', null lib handle",
                  name);
     }
 }
@@ -79,7 +80,7 @@ rust_crate_cache::rust_sym::rust_sym(rust_dom *dom,
     typedef rust_crate_reader::die die;
     rust_crate const *crate = (rust_crate*)crate_sym->get_val();
     if (!crate) {
-        dom->log(rust_log::CACHE,
+        dom->log(rust_log::CACHE | rust_log::ERR,
                  "failed to resolve symbol, null crate symbol");
         return;
     }

@@ -21,7 +21,7 @@ type ty_param = rec(ident ident, def_id id);
 // Annotations added during successive passes.
 tag ann {
     ann_none;
-    ann_type(@middle.ty.t);
+    ann_type(@middle.ty.t, option.t[vec[@middle.ty.t]] /* ty param substs */);
 }
 
 tag def {
@@ -29,9 +29,11 @@ tag def {
     def_obj(def_id);
     def_obj_field(def_id);
     def_mod(def_id);
+    def_native_mod(def_id);
     def_const(def_id);
     def_arg(def_id);
     def_local(def_id);
+    def_upvar(def_id);
     def_variant(def_id /* tag */, def_id /* variant */);
     def_ty(def_id);
     def_ty_arg(def_id);
@@ -42,7 +44,8 @@ tag def {
 }
 
 type crate = spanned[crate_];
-type crate_ = rec(_mod module);
+type crate_ = rec(vec[@crate_directive] directives,
+                  _mod module);
 
 tag crate_directive_ {
     cdir_expr(@expr);
@@ -64,9 +67,15 @@ type meta_item = spanned[meta_item_];
 type meta_item_ = rec(ident name, str value);
 
 type block = spanned[block_];
+type block_index = hashmap[ident, block_index_entry];
+tag block_index_entry {
+    bie_item(@item);
+    bie_local(@local);
+    bie_tag_variant(@item /* tag item */, uint /* variant index */);
+}
 type block_ = rec(vec[@stmt] stmts,
                   option.t[@expr] expr,
-                  hashmap[ident,uint] index);
+                  hashmap[ident,block_index_entry] index);
 
 type variant_def = tup(def_id /* tag */, def_id /* variant */);
 
@@ -81,6 +90,11 @@ tag pat_ {
 tag mutability {
     mut;
     imm;
+}
+
+tag opacity {
+    op_abstract;
+    op_transparent;
 }
 
 tag layer {
@@ -122,6 +136,31 @@ tag binop {
     gt;
 }
 
+fn binop_to_str(binop op) -> str {
+    alt (op) {
+        case (add) {ret "+";}
+        case (sub) {ret "-";}
+        case (mul) {ret "*";}
+        case (div) {ret "/";}
+        case (rem) {ret "%";}
+        case (and) {ret "&&";}
+        case (or) {ret "||";}
+        case (bitxor) {ret "^";}
+        case (bitand) {ret "&";}
+        case (bitor) {ret "|";}
+        case (lsl) {ret "<<";}
+        case (lsr) {ret ">>";}
+        case (asr) {ret ">>>";}
+        case (eq) {ret "==";}
+        case (lt) {ret "<";}
+        case (le) {ret "<=";}
+        case (ne) {ret "!=";}
+        case (ge) {ret ">=";}
+        case (gt) {ret ">";}
+    }
+}
+
+
 tag unop {
     box;
     deref;
@@ -129,6 +168,17 @@ tag unop {
     not;
     neg;
     _mutable;
+}
+
+fn unop_to_str(unop op) -> str {
+    alt (op) {
+        case (box) {ret "@";}
+        case (deref) {ret "*";}
+        case (bitnot) {ret "~";}
+        case (not) {ret "!";}
+        case (neg) {ret "-";}
+        case (_mutable) {ret "mutable";}
+    }
 }
 
 tag mode {
@@ -265,6 +315,11 @@ tag mod_index_entry {
     mie_tag_variant(@item /* tag item */, uint /* variant index */);
 }
 
+tag native_mod_index_entry {
+    nmie_view_item(@view_item);
+    nmie_item(@native_item);
+}
+
 type mod_index = hashmap[ident,mod_index_entry];
 type _mod = rec(vec[@view_item] view_items,
                 vec[@item] items,
@@ -277,9 +332,10 @@ tag native_abi {
 
 type native_mod = rec(str native_name,
                       native_abi abi,
+                      vec[@view_item] view_items,
                       vec[@native_item] items,
                       native_mod_index index);
-type native_mod_index = hashmap[ident,@native_item];
+type native_mod_index = hashmap[ident,native_mod_index_entry];
 
 type variant_arg = rec(@ty ty, def_id id);
 type variant = rec(str name, vec[variant_arg] args, def_id id, ann ann);
@@ -359,11 +415,62 @@ fn index_item(mod_index index, @item it) {
 fn index_native_item(native_mod_index index, @native_item it) {
     alt (it.node) {
         case (ast.native_item_ty(?id, _)) {
-            index.insert(id, it);
+            index.insert(id, ast.nmie_item(it));
         }
         case (ast.native_item_fn(?id, _, _, _, _)) {
-            index.insert(id, it);
+            index.insert(id, ast.nmie_item(it));
         }
+    }
+}
+
+fn index_native_view_item(native_mod_index index, @view_item it) {
+    alt (it.node) {
+        case(ast.view_item_import(?def_ident,_,_,_)) {
+            index.insert(def_ident, ast.nmie_view_item(it));
+        }
+        case(ast.view_item_export(_)) {
+            // NB: don't index these, they might collide with
+            // the import or use that they're exporting. Have
+            // to do linear search for exports.
+        }
+    }
+}
+
+fn index_stmt(block_index index, @stmt s) {
+    alt (s.node) {
+        case (ast.stmt_decl(?d)) {
+            alt (d.node) {
+                case (ast.decl_local(?loc)) {
+                    index.insert(loc.ident, ast.bie_local(loc));
+                }
+                case (ast.decl_item(?it)) {
+                    alt (it.node) {
+                        case (ast.item_fn(?i, _, _, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                        }
+                        case (ast.item_mod(?i, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                        }
+                        case (ast.item_ty(?i, _, _, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                        }
+                        case (ast.item_tag(?i, ?variants, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                            let uint vid = 0u;
+                            for (ast.variant v in variants) {
+                                auto t = ast.bie_tag_variant(it, vid);
+                                index.insert(v.name, t);
+                                vid += 1u;
+                            }
+                        }
+                        case (ast.item_obj(?i, _, _, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                        }
+                    }
+                }
+            }
+        }
+        case (_) { /* fall through */ }
     }
 }
 

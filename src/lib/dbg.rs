@@ -5,8 +5,6 @@
  * logging.
  */
 
-import std._vec;
-
 // FIXME: handle 64-bit case.
 const uint const_refcount = 0x7bad_face_u;
 

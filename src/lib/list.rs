@@ -1,5 +1,3 @@
-
-import std.option;
 import option.some;
 import option.none;
 

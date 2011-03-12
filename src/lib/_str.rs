@@ -1,6 +1,6 @@
 import rustrt.sbuf;
 
-import std._vec.rustrt.vbuf;
+import _vec.rustrt.vbuf;
 
 native "rust" mod rustrt {
     type sbuf;
