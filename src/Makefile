@@ -34,7 +34,7 @@ DSYMUTIL := true
 
 ifeq ($(CFG_OSTYPE), FreeBSD)
   CFG_RUNTIME := librustrt.so
-  CFG_SUPPORT := librustsupport.so
+  CFG_SUPPORT := librustllvm.so
   CFG_STDLIB := libstd.so
   CFG_GCC_CFLAGS += -fPIC -march=i686 -I/usr/local/include
   CFG_GCC_LINK_FLAGS += -shared -fPIC -lpthread -lrt
@@ -48,7 +48,7 @@ endif
 
 ifeq ($(CFG_OSTYPE), Linux)
   CFG_RUNTIME := librustrt.so
-  CFG_SUPPORT := librustsupport.so
+  CFG_SUPPORT := librustllvm.so
   CFG_STDLIB := libstd.so
   CFG_GCC_CFLAGS += -fPIC -march=i686
   CFG_GCC_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
@@ -62,7 +62,7 @@ endif
 
 ifeq ($(CFG_OSTYPE), Darwin)
   CFG_RUNTIME := librustrt.dylib
-  CFG_SUPPORT := librustsupport.dylib
+  CFG_SUPPORT := librustllvm.dylib
   CFG_STDLIB := libstd.dylib
   CFG_UNIXY := 1
   CFG_GCC_LINK_FLAGS += -dynamiclib -lpthread
@@ -88,7 +88,7 @@ ifdef CFG_WINDOWSY
     CFG_NATIVE := 1
   endif
   CFG_RUNTIME := rustrt.dll
-  CFG_SUPPORT := rustsupport.dll
+  CFG_SUPPORT := rustllvm.dll
   CFG_STDLIB := std.dll
   CFG_EXE_SUFFIX := .exe
   CFG_BOOT := ./rustboot.exe
@@ -111,7 +111,7 @@ ifdef CFG_UNIXY
     CFG_GCC_CROSS := i586-mingw32msvc-
     CFG_BOOT_FLAGS += -t win32-x86-pe
     CFG_RUNTIME := rustrt.dll
-    CFG_SUPPORT := rustsupport.dll
+    CFG_SUPPORT := rustllvm.dll
     CFG_STDLIB := std.dll
     CFG_RUSTC := ./rustc.exe
     ifdef CFG_VALGRIND
@@ -310,9 +310,9 @@ RUNTIME_HDR := rt/globals.h \
 RUNTIME_INCS := -Irt/isaac -Irt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o)
 
-SUPPORT_CS := support/Object.cpp
+SUPPORT_CS := llvmext/Object.cpp
 
-SUPPORT_HDR := support/include/llvm-c/Object.h
+SUPPORT_HDR := llvmext/include/llvm-c/Object.h
 
 SUPPORT_INCS := -iquote $(CFG_LLVM_INCDIR)
 SUPPORT_OBJS := $(SUPPORT_CS:.cpp=.o)
@@ -351,7 +351,7 @@ rt/%.o: rt/%.cpp $(MKFILES)
 	@$(call CFG_ECHO, compile: $<)
 	$(CFG_QUIET)$(call CFG_COMPILE_C, $@, $(RUNTIME_INCS)) $<
 
-support/%.o: support/%.cpp $(MKFILES)
+llvmext/%.o: llvmext/%.cpp $(MKFILES)
 	@$(call CFG_ECHO, compile: $<)
 	$(CFG_QUIET)$(call CFG_COMPILE_C, $@, $(CFG_LLVM_CXXFLAGS) \
 		$(SUPPORT_INCS)) $<
