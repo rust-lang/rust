@@ -814,9 +814,15 @@ RUSTBOOT_PROBE := $(wildcard $(CFG_BOOT))
 ifneq ($(RUSTBOOT_PROBE),)
 CFG_INFO := $(info cfg: using built $(CFG_BOOT) for rust deps)
 STDLIB_DEPFILE := $(CFG_STDLIB).d
+RUSTC_DEPFILE := $(CFG_RUSTC).d
 CRATE_DEPFILES := $(ALL_TEST_CRATES:%.rc=%.d) $(STDLIB_DEPFILE)
 
-$(STDLIB_DEPFILE): $(STDLIB_CRATE) $(MKFILES) $(CFG_BOOT)
+$(STDLIB_DEPFILE): $(STDLIB_CRATE) $(MKFILES) $(CFG_BOOT) $(STDLIB_INPUTS)
+	@$(call CFG_ECHO, dep: $<)
+	$(BOOT) -shared -rdeps $< $(CFG_PATH_MUNGE) >$@.tmp \
+    && mv $@.tmp $@
+
+$(RUSTC_DEPFILE): $(STDLIB_CRATE) $(MKFILES) $(CFG_BOOT) $(COMPILER_INPUTS)
 	@$(call CFG_ECHO, dep: $<)
 	$(BOOT) -shared -rdeps $< $(CFG_PATH_MUNGE) >$@.tmp \
     && mv $@.tmp $@
