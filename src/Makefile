@@ -314,7 +314,7 @@ SUPPORT_CS := llvmext/Object.cpp
 
 SUPPORT_HDR := llvmext/include/llvm-c/Object.h
 
-SUPPORT_INCS := -iquote $(CFG_LLVM_INCDIR)
+SUPPORT_INCS := -iquote $(CFG_LLVM_INCDIR) -iquote llvmext/include
 SUPPORT_OBJS := $(SUPPORT_CS:.cpp=.o)
 SUPPORT_LIBS := $(CFG_LLVM_LDFLAGS) $(CFG_LLVM_LIBS)
 
