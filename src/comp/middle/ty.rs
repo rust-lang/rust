@@ -148,17 +148,19 @@ fn ty_to_str(&@t typ) -> str {
     }
 
     alt (typ.struct) {
-        case (ty_native)       { s = "native";                    }
-        case (ty_nil)          { s = "()";                        }
-        case (ty_bool)         { s = "bool";                      }
-        case (ty_int)          { s = "int";                       }
-        case (ty_uint)         { s = "uint";                      }
-        case (ty_machine(?tm)) { s = common.ty_mach_to_str(tm);   }
-        case (ty_char)         { s = "char";                      }
-        case (ty_str)          { s = "str";                       }
-        case (ty_box(?t))      { s = "@" + ty_to_str(t);          }
-        case (ty_vec(?t))      { s = "vec[" + ty_to_str(t) + "]"; }
-        case (ty_type)         { s = "type";                      }
+        case (ty_native)       { s = "native";                     }
+        case (ty_nil)          { s = "()";                         }
+        case (ty_bool)         { s = "bool";                       }
+        case (ty_int)          { s = "int";                        }
+        case (ty_uint)         { s = "uint";                       }
+        case (ty_machine(?tm)) { s = common.ty_mach_to_str(tm);    }
+        case (ty_char)         { s = "char";                       }
+        case (ty_str)          { s = "str";                        }
+        case (ty_box(?t))      { s = "@" + ty_to_str(t);           }
+        case (ty_vec(?t))      { s = "vec[" + ty_to_str(t) + "]";  }
+        case (ty_port(?t))     { s = "port[" + ty_to_str(t) + "]"; }
+        case (ty_chan(?t))     { s = "chan[" + ty_to_str(t) + "]"; }
+        case (ty_type)         { s = "type";                       }
 
         case (ty_tup(?elems)) {
             auto f = ty_to_str;
