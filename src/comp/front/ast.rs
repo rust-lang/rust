@@ -232,6 +232,8 @@ tag expr_ {
     expr_block(block, ann);
     expr_assign(@expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_assign_op(binop, @expr /* TODO: @expr|is_lval */, @expr, ann);
+    expr_send(@expr /* TODO: @expr|is_lval */, @expr, ann);
+    expr_recv(@expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_field(@expr, ident, ann);
     expr_index(@expr, @expr, ann);
     expr_path(path, option.t[def], ann);
@@ -244,8 +246,6 @@ tag expr_ {
     expr_check_expr(@expr);
     expr_port(ann);
     expr_chan(@expr, ann);
-    expr_send(@expr /* TODO: @expr|is_lval */, @expr, ann);
-    expr_recv(@expr /* TODO: @expr|is_lval */, @expr, ann);
 }
 
 type lit = spanned[lit_];
