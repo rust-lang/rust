@@ -576,6 +576,7 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         ), \
                       $(wildcard test/*fail/*.rs test/*fail/*.rc)) \
                      test/bench/shootout/fasta.rs \
+                     test/bench/shootout/binary-trees.rs \
                      $(wildcard test/bench/99-bottles/*rs)
 
 ifdef MINGW_CROSS
