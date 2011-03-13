@@ -35,12 +35,13 @@ state type parser =
           fn get_session() -> session.session;
           fn get_span() -> common.span;
           fn next_def_id() -> ast.def_id;
+          fn set_def(ast.def_num);
           fn get_prec_table() -> vec[op_spec];
     };
 
 impure fn new_parser(session.session sess,
                      eval.env env,
-                     ast.crate_num crate,
+                     ast.def_id initial_def,
                      str path) -> parser {
     state obj stdio_parser(session.session sess,
                            eval.env env,
@@ -94,6 +95,10 @@ impure fn new_parser(session.session sess,
                 ret tup(crate, def);
             }
 
+            fn set_def(ast.def_num d) {
+                def = d;
+            }
+
             fn get_file_type() -> file_type {
                 ret ftype;
             }
@@ -114,8 +119,8 @@ impure fn new_parser(session.session sess,
     auto rdr = lexer.new_reader(srdr, path);
     auto npos = rdr.get_curr_pos();
     ret stdio_parser(sess, env, ftype, lexer.next_token(rdr),
-                     npos, npos, 0, UNRESTRICTED, crate, rdr,
-                     prec_table());
+                     npos, npos, initial_def._1, UNRESTRICTED, initial_def._0,
+                     rdr, prec_table());
 }
 
 impure fn unexpected(parser p, token.token t) {
@@ -1465,39 +1470,9 @@ impure fn parse_source_stmt(parser p) -> @ast.stmt {
 }
 
 fn index_block(vec[@ast.stmt] stmts, option.t[@ast.expr] expr) -> ast.block_ {
-    auto index = new_str_hash[uint]();
-    auto u = 0u;
+    auto index = new_str_hash[ast.block_index_entry]();
     for (@ast.stmt s in stmts) {
-        alt (s.node) {
-            case (ast.stmt_decl(?d)) {
-                alt (d.node) {
-                    case (ast.decl_local(?loc)) {
-                        index.insert(loc.ident, u);
-                    }
-                    case (ast.decl_item(?it)) {
-                        alt (it.node) {
-                            case (ast.item_fn(?i, _, _, _, _)) {
-                                index.insert(i, u);
-                            }
-                            case (ast.item_mod(?i, _, _)) {
-                                index.insert(i, u);
-                            }
-                            case (ast.item_ty(?i, _, _, _, _)) {
-                                index.insert(i, u);
-                            }
-                            case (ast.item_tag(?i, _, _, _)) {
-                                index.insert(i, u);
-                            }
-                            case (ast.item_obj(?i, _, _, _, _)) {
-                                index.insert(i, u);
-                            }
-                        }
-                    }
-                }
-            }
-            case (_) { /* fall through */ }
-        }
-        u += 1u;
+        ast.index_stmt(index, s);
     }
     ret rec(stmts=stmts, expr=expr, index=index);
 }
@@ -2261,7 +2236,9 @@ impure fn parse_crate_from_source_file(parser p) -> @ast.crate {
     auto lo = p.get_span();
     auto hi = lo;
     auto m = parse_mod_items(p, token.EOF);
-    ret @spanned(lo, hi, rec(module=m));
+    let vec[@ast.crate_directive] cdirs = vec();
+    ret @spanned(lo, hi, rec(directives=cdirs,
+                             module=m));
 }
 
 // Logic for parsing crate files (.rc)
@@ -2276,8 +2253,6 @@ impure fn parse_crate_directive(parser p) -> ast.crate_directive
     auto hi = lo;
     alt (p.peek()) {
         case (token.AUTH) {
-            // FIXME: currently dropping auth clauses on the floor,
-            // as there is no effect-checking pass.
             p.bump();
             auto n = parse_path(p, GREEDY);
             expect(p, token.EQ);
@@ -2288,8 +2263,6 @@ impure fn parse_crate_directive(parser p) -> ast.crate_directive
         }
 
         case (token.META) {
-            // FIXME: currently dropping meta clauses on the floor,
-            // as there is no crate metadata system
             p.bump();
             auto mis = parse_meta(p);
             hi = p.get_span();
@@ -2398,7 +2371,8 @@ impure fn parse_crate_from_crate_file(parser p) -> @ast.crate {
                                                cdirs, prefix);
     hi = p.get_span();
     expect(p, token.EOF);
-    ret @spanned(lo, hi, rec(module=m));
+    ret @spanned(lo, hi, rec(directives=cdirs,
+                             module=m));
 }
 
 

@@ -11,11 +11,17 @@ import foo = std.io;
 const uint indent_unit = 2u;
 const int as_prec = 5;
 
-impure fn print_ast(ast._mod _mod) {
-  auto s = pp.mkstate(80u);
+impure fn print_ast(ast._mod _mod, std.io.writer out) {
+  auto s = pp.mkstate(out, 80u);
   for (@ast.view_item vitem in _mod.view_items) {print_view_item(s, vitem);}
   line(s);
   for (@ast.item item in _mod.items) {print_item(s, item);}
+}
+
+fn ty_to_str(&@ast.ty ty) -> str {
+  auto writer = std.io.string_writer();
+  print_type(pp.mkstate(writer.get_writer(), 0u), ty);
+  ret writer.get_str();
 }
 
 impure fn hbox(ps s) {
@@ -85,24 +91,21 @@ impure fn print_type(ps s, @ast.ty ty) {
       commasep[ast.ty_field](s, fields, f);
       pclose(s);
     }
-    case (ast.ty_fn(?proto,?inputs,?output)) {
-      if (proto == ast.proto_fn) {wrd(s, "fn");}
-      else {wrd(s, "iter");}
-      popen(s);
-      impure fn print_arg(ps s, ast.ty_arg input) {
-        if (middle.ty.mode_is_alias(input.mode)) {wrd(s, "&");}
-        print_type(s, input.ty);
-      }
-      auto f = print_arg;
-      commasep[ast.ty_arg](s, inputs, f);
-      pclose(s);
-      if (output.node != ast.ty_nil) {
-        space(s);
+    case (ast.ty_obj(?methods)) {
+      wrd1(s, "obj");
+      bopen(s);
+      for (ast.ty_method m in methods) {
         hbox(s);
-        wrd1(s, "->");
-        print_type(s, output);
+        print_ty_fn(s, m.proto, option.some[str](m.ident),
+                    m.inputs, m.output);
+        wrd(s, ";");
         end(s);
+        line(s);
       }
+      bclose(s);
+    }
+    case (ast.ty_fn(?proto,?inputs,?output)) {
+      print_ty_fn(s, proto, option.none[str], inputs, output);
     }
     case (ast.ty_path(?path,_)) {
       print_path(s, path);
@@ -376,6 +379,7 @@ impure fn print_expr(ps s, @ast.expr expr) {
           wrd1(s, "else");
           print_expr(s, _else);
         }
+        case (_) { /* fall through */ }
       }
     }
     case (ast.expr_while(?test,?block,_)) {
@@ -503,8 +507,16 @@ impure fn print_expr(ps s, @ast.expr expr) {
       wrd1(s, "check");
       print_expr(s, expr);
     }
-    case (_) {wrd(s, "X");}
-    // TODO expr_ext(path, vec[@expr], option.t[@expr], @expr, ann);
+    case (ast.expr_ext(?path, ?args, ?body, _, _)) {
+      wrd(s, "#");
+      print_path(s, path);
+      if (_vec.len[@ast.expr](args) > 0u) {
+        popen(s);
+        commasep[@ast.expr](s, args, pe);
+        pclose(s);
+      }
+      // TODO: extension 'body'
+    }
   }
   end(s);
 }
@@ -705,4 +717,29 @@ fn escape_str(str st, char to_escape) -> str {
 
 impure fn print_string(ps s, str st) {
   wrd(s, "\""); wrd(s, escape_str(st, '"')); wrd(s, "\"");
+}
+
+impure fn print_ty_fn(ps s, ast.proto proto, option.t[str] id,
+                      vec[ast.ty_arg] inputs, @ast.ty output) {
+  if (proto == ast.proto_fn) {wrd(s, "fn");}
+  else {wrd(s, "iter");}
+  alt (id) {
+    case (option.some[str](?id)) {space(s); wrd(s, id);}
+    case (_) {}
+  }
+  popen(s);
+  impure fn print_arg(ps s, ast.ty_arg input) {
+    if (middle.ty.mode_is_alias(input.mode)) {wrd(s, "&");}
+    print_type(s, input.ty);
+  }
+  auto f = print_arg;
+  commasep[ast.ty_arg](s, inputs, f);
+  pclose(s);
+  if (output.node != ast.ty_nil) {
+    space(s);
+    hbox(s);
+    wrd1(s, "->");
+    print_type(s, output);
+    end(s);
+  }
 }

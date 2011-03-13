@@ -81,87 +81,10 @@ tag unify_result {
 
 // Stringification
 
-fn ast_ty_to_str(&@ast.ty ty) -> str {
-
-    fn ast_fn_input_to_str(&rec(ast.mode mode, @ast.ty ty) input) -> str {
-        auto s;
-        if (mode_is_alias(input.mode)) {
-            s = "&";
-        } else {
-            s = "";
-        }
-
-        ret s + ast_ty_to_str(input.ty);
-    }
-
-    fn ast_ty_field_to_str(&ast.ty_field f) -> str {
-        ret ast_ty_to_str(f.ty) + " " + f.ident;
-    }
-
-    auto s;
-    alt (ty.node) {
-        case (ast.ty_nil)          { s = "()";                            }
-        case (ast.ty_bool)         { s = "bool";                          }
-        case (ast.ty_int)          { s = "int";                           }
-        case (ast.ty_uint)         { s = "uint";                          }
-        case (ast.ty_machine(?tm)) { s = common.ty_mach_to_str(tm);       }
-        case (ast.ty_char)         { s = "char";                          }
-        case (ast.ty_str)          { s = "str";                           }
-        case (ast.ty_box(?t))      { s = "@" + ast_ty_to_str(t);          }
-        case (ast.ty_vec(?t))      { s = "vec[" + ast_ty_to_str(t) + "]"; }
-        case (ast.ty_type)         { s = "type";                          }
-
-        case (ast.ty_tup(?elts)) {
-            auto f = ast_ty_to_str;
-            s = "tup(";
-            s += _str.connect(_vec.map[@ast.ty,str](f, elts), ",");
-            s += ")";
-        }
-
-        case (ast.ty_rec(?fields)) {
-            auto f = ast_ty_field_to_str;
-            s = "rec(";
-            s += _str.connect(_vec.map[ast.ty_field,str](f, fields), ",");
-            s += ")";
-        }
-
-        case (ast.ty_fn(?proto, ?inputs, ?output)) {
-            auto f = ast_fn_input_to_str;
-            if (proto == ast.proto_fn) {
-                s = "fn(";
-            } else {
-                s = "iter(";
-            }
-            auto is = _vec.map[rec(ast.mode mode, @ast.ty ty),str](f, inputs);
-            s += _str.connect(is, ", ");
-            s += ")";
-
-            if (output.node != ast.ty_nil) {
-                s += " -> " + ast_ty_to_str(output);
-            }
-        }
-
-        case (ast.ty_path(?path, _)) {
-            s = path_to_str(path);
-        }
-
-        case (ast.ty_mutable(?t)) {
-            s = "mutable " + ast_ty_to_str(t);
-        }
-
-
-        case (_) {
-            fail;   // FIXME: typestate bug
-        }
-    }
-
-    ret s;
-}
-
 fn path_to_str(&ast.path pth) -> str {
     auto result = _str.connect(pth.node.idents,  ".");
     if (_vec.len[@ast.ty](pth.node.types) > 0u) {
-        auto f = ast_ty_to_str;
+        auto f = pretty.pprust.ty_to_str;
         result += "[";
         result += _str.connect(_vec.map[@ast.ty,str](f, pth.node.types), ",");
         result += "]";
@@ -169,8 +92,6 @@ fn path_to_str(&ast.path pth) -> str {
     ret result;
 }
 
-// FIXME use the pretty-printer for this once it has a concept of an
-// abstract stream
 fn ty_to_str(&@t typ) -> str {
 
     fn fn_input_to_str(&rec(ast.mode mode, @t ty) input) -> str {
@@ -452,6 +373,14 @@ fn get_element_type(@t ty, uint i) -> @t {
     fail;
 }
 
+fn type_is_box(@t ty) -> bool {
+    alt (ty.struct) {
+        case (ty_box(_)) { ret true; }
+        case (_) { ret false; }
+    }
+    fail;
+}
+
 fn type_is_boxed(@t ty) -> bool {
     alt (ty.struct) {
         case (ty_str) { ret true; }
@@ -596,10 +525,10 @@ fn eq_ty(&@t a, &@t b) -> bool {
 fn ann_to_type(&ast.ann ann) -> @t {
     alt (ann) {
         case (ast.ann_none) {
-            // shouldn't happen, but can until the typechecker is complete
-            ret plain_ty(ty_var(-1));    // FIXME: broken, broken, broken
+            log "ann_to_type() called on node with no type";
+            fail;
         }
-        case (ast.ann_type(?ty)) {
+        case (ast.ann_type(?ty, _)) {
             ret ty;
         }
     }

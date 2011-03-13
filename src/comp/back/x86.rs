@@ -25,21 +25,38 @@ fn restore_callee_saves() -> vec[str] {
             "popl  %ebp");
 }
 
-fn load_esp_from_rust_sp() -> vec[str] {
+fn load_esp_from_rust_sp_first_arg() -> vec[str] {
     ret vec("movl  " + wstr(abi.task_field_rust_sp) + "(%ecx), %esp");
 }
 
-fn load_esp_from_runtime_sp() -> vec[str] {
+fn load_esp_from_runtime_sp_first_arg() -> vec[str] {
     ret vec("movl  " + wstr(abi.task_field_runtime_sp) + "(%ecx), %esp");
 }
 
-fn store_esp_to_rust_sp() -> vec[str] {
+fn store_esp_to_rust_sp_first_arg() -> vec[str] {
     ret vec("movl  %esp, " + wstr(abi.task_field_rust_sp) + "(%ecx)");
 }
 
-fn store_esp_to_runtime_sp() -> vec[str] {
+fn store_esp_to_runtime_sp_first_arg() -> vec[str] {
     ret vec("movl  %esp, " + wstr(abi.task_field_runtime_sp) + "(%ecx)");
 }
+
+fn load_esp_from_rust_sp_second_arg() -> vec[str] {
+    ret vec("movl  " + wstr(abi.task_field_rust_sp) + "(%edx), %esp");
+}
+
+fn load_esp_from_runtime_sp_second_arg() -> vec[str] {
+    ret vec("movl  " + wstr(abi.task_field_runtime_sp) + "(%edx), %esp");
+}
+
+fn store_esp_to_rust_sp_second_arg() -> vec[str] {
+    ret vec("movl  %esp, " + wstr(abi.task_field_rust_sp) + "(%edx)");
+}
+
+fn store_esp_to_runtime_sp_second_arg() -> vec[str] {
+    ret vec("movl  %esp, " + wstr(abi.task_field_runtime_sp) + "(%edx)");
+}
+
 
 /*
  * This is a bit of glue-code. It should be emitted once per
@@ -61,8 +78,8 @@ fn store_esp_to_runtime_sp() -> vec[str] {
 fn rust_activate_glue() -> vec[str] {
     ret vec("movl  4(%esp), %ecx    # ecx = rust_task")
         + save_callee_saves()
-        + store_esp_to_runtime_sp()
-        + load_esp_from_rust_sp()
+        + store_esp_to_runtime_sp_first_arg()
+        + load_esp_from_rust_sp_first_arg()
 
         /*
          * There are two paths we can arrive at this code from:
@@ -154,10 +171,10 @@ fn rust_activate_glue() -> vec[str] {
 
 fn rust_yield_glue() -> vec[str] {
     ret vec("movl  0(%esp), %ecx    # ecx = rust_task")
-        + load_esp_from_rust_sp()
+        + load_esp_from_rust_sp_first_arg()
         + save_callee_saves()
-        + store_esp_to_rust_sp()
-        + load_esp_from_runtime_sp()
+        + store_esp_to_rust_sp_first_arg()
+        + load_esp_from_runtime_sp_first_arg()
         + restore_callee_saves()
         + vec("ret");
 }
@@ -175,8 +192,11 @@ fn upcall_glue(int n_args) -> vec[str] {
      */
 
     fn copy_arg(uint i) -> str {
-        auto src_off = wstr(5 + (i as int));
-        auto dst_off = wstr(1 + (i as int));
+        if (i == 0u) {
+            ret "movl  %edx, (%esp)";
+        }
+        auto src_off = wstr(4 + (i as int));
+        auto dst_off = wstr(0 + (i as int));
         auto m = vec("movl  " + src_off + "(%ebp),%eax",
                      "movl  %eax," + dst_off + "(%esp)");
         ret _str.connect(m, "\n\t");
@@ -189,20 +209,19 @@ fn upcall_glue(int n_args) -> vec[str] {
 
         + vec("movl  %esp, %ebp     # ebp = rust_sp")
 
-        + store_esp_to_rust_sp()
-        + load_esp_from_runtime_sp()
+        + store_esp_to_rust_sp_second_arg()
+        + load_esp_from_runtime_sp_second_arg()
 
         + vec("subl  $" + wstr(n_args + 1) + ", %esp   # esp -= args",
-              "andl  $~0xf, %esp    # align esp down",
-              "movl  %ecx, (%esp)   # arg[0] = rust_task ")
+              "andl  $~0xf, %esp    # align esp down")
 
-        + _vec.init_fn[str](carg, n_args as uint)
+        + _vec.init_fn[str](carg, (n_args + 1) as uint)
 
-        +  vec("movl  %ecx, %edi     # save task from ecx to edi",
-               "call  *%edx          # call *%edx",
-               "movl  %edi, %ecx     # restore edi-saved task to ecx")
+        +  vec("movl  %edx, %edi     # save task from edx to edi",
+               "call  *%ecx          # call *%ecx",
+               "movl  %edi, %edx     # restore edi-saved task to edx")
 
-        + load_esp_from_rust_sp()
+        + load_esp_from_rust_sp_second_arg()
         + restore_callee_saves()
         + vec("ret");
 
@@ -252,6 +271,16 @@ fn get_module_asm() -> str {
                             abi.n_upcall_glues as uint);
 
     ret _str.connect(glues, "\n\n");
+}
+
+fn get_meta_sect_name() -> str {
+    if (_str.eq(target_os(), "macos")) {
+        ret "__DATA,__note.rustc";
+    }
+    if (_str.eq(target_os(), "win32")) {
+        ret ".note.rustc";
+    }
+    ret ".note.rustc";
 }
 
 fn get_data_layout() -> str {

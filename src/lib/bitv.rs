@@ -1,7 +1,3 @@
-import std._uint;
-import std._int;
-import std._vec;
-
 // FIXME: With recursive object types, we could implement binary methods like
 //        union, intersection, and difference. At that point, we could write
 //        an optimizing version of this module that produces a different obj

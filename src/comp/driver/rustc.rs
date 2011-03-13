@@ -54,7 +54,8 @@ impure fn compile_input(session.session sess,
                         eval.env env,
                         str input, str output,
                         bool shared) {
-    auto p = parser.new_parser(sess, env, 0, input);
+    auto def = tup(0, 0);
+    auto p = parser.new_parser(sess, env, def, input);
     auto crate = parse_input(sess, p, input);
     crate = resolve.resolve_crate(sess, crate);
     crate = typeck.check_crate(sess, crate);
@@ -64,9 +65,10 @@ impure fn compile_input(session.session sess,
 impure fn pretty_print_input(session.session sess,
                              eval.env env,
                              str input) {
-    auto p = front.parser.new_parser(sess, env, 0, input);
+    auto def = tup(0, 0);
+    auto p = front.parser.new_parser(sess, env, def, input);
     auto crate = front.parser.parse_crate_from_source_file(p);
-    pretty.pprust.print_ast(crate.node.module);
+    pretty.pprust.print_ast(crate.node.module, std.io.stdout_writer());
 }
 
 fn warn_wrong_compiler() {
@@ -82,6 +84,7 @@ fn usage(session.session sess, str argv0) {
     log "";
     log "    -o <filename>      write output to <filename>";
     log "    -nowarn            suppress wrong-compiler warning";
+    log "    -glue              generate glue.bc file";
     log "    -shared            compile a shared-library crate";
     log "    -pp                pretty-print the input instead of compiling";
     log "    -h                 display this message";
@@ -111,6 +114,7 @@ impure fn main(vec[str] args) {
     let bool do_warn = true;
     let bool shared = false;
     let bool pretty = false;
+    let bool glue = false;
 
     auto i = 1u;
     auto len = _vec.len[str](args);
@@ -121,6 +125,8 @@ impure fn main(vec[str] args) {
         if (_str.byte_len(arg) > 0u && arg.(0) == '-' as u8) {
             if (_str.eq(arg, "-nowarn")) {
                 do_warn = false;
+            } else if (_str.eq(arg, "-glue")) {
+                glue = true;
             } else if (_str.eq(arg, "-shared")) {
                 shared = true;
             } else if (_str.eq(arg, "-pp")) {
@@ -155,6 +161,18 @@ impure fn main(vec[str] args) {
 
     if (do_warn) {
         warn_wrong_compiler();
+    }
+
+    if (glue) {
+        alt (output_file) {
+            case (none[str]) {
+                middle.trans.make_common_glue("glue.bc");
+            }
+            case (some[str](?s)) {
+                middle.trans.make_common_glue(s);
+            }
+        }
+        ret;
     }
 
     alt (input_file) {

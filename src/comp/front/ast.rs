@@ -21,7 +21,7 @@ type ty_param = rec(ident ident, def_id id);
 // Annotations added during successive passes.
 tag ann {
     ann_none;
-    ann_type(@middle.ty.t);
+    ann_type(@middle.ty.t, option.t[vec[@middle.ty.t]] /* ty param substs */);
 }
 
 tag def {
@@ -29,9 +29,11 @@ tag def {
     def_obj(def_id);
     def_obj_field(def_id);
     def_mod(def_id);
+    def_native_mod(def_id);
     def_const(def_id);
     def_arg(def_id);
     def_local(def_id);
+    def_upvar(def_id);
     def_variant(def_id /* tag */, def_id /* variant */);
     def_ty(def_id);
     def_ty_arg(def_id);
@@ -42,7 +44,8 @@ tag def {
 }
 
 type crate = spanned[crate_];
-type crate_ = rec(_mod module);
+type crate_ = rec(vec[@crate_directive] directives,
+                  _mod module);
 
 tag crate_directive_ {
     cdir_expr(@expr);
@@ -64,9 +67,15 @@ type meta_item = spanned[meta_item_];
 type meta_item_ = rec(ident name, str value);
 
 type block = spanned[block_];
+type block_index = hashmap[ident, block_index_entry];
+tag block_index_entry {
+    bie_item(@item);
+    bie_local(@local);
+    bie_tag_variant(@item /* tag item */, uint /* variant index */);
+}
 type block_ = rec(vec[@stmt] stmts,
                   option.t[@expr] expr,
-                  hashmap[ident,uint] index);
+                  hashmap[ident,block_index_entry] index);
 
 type variant_def = tup(def_id /* tag */, def_id /* variant */);
 
@@ -424,6 +433,44 @@ fn index_native_view_item(native_mod_index index, @view_item it) {
             // the import or use that they're exporting. Have
             // to do linear search for exports.
         }
+    }
+}
+
+fn index_stmt(block_index index, @stmt s) {
+    alt (s.node) {
+        case (ast.stmt_decl(?d)) {
+            alt (d.node) {
+                case (ast.decl_local(?loc)) {
+                    index.insert(loc.ident, ast.bie_local(loc));
+                }
+                case (ast.decl_item(?it)) {
+                    alt (it.node) {
+                        case (ast.item_fn(?i, _, _, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                        }
+                        case (ast.item_mod(?i, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                        }
+                        case (ast.item_ty(?i, _, _, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                        }
+                        case (ast.item_tag(?i, ?variants, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                            let uint vid = 0u;
+                            for (ast.variant v in variants) {
+                                auto t = ast.bie_tag_variant(it, vid);
+                                index.insert(v.name, t);
+                                vid += 1u;
+                            }
+                        }
+                        case (ast.item_obj(?i, _, _, _, _)) {
+                            index.insert(i, ast.bie_item(it));
+                        }
+                    }
+                }
+            }
+        }
+        case (_) { /* fall through */ }
     }
 }
 

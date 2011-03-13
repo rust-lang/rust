@@ -253,6 +253,8 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp, ident i, vec[ident] idents,
          def_id id, option.t[def]) -> @view_item) fold_view_item_import,
 
+     (fn(&ENV e, &span sp, ident i) -> @view_item) fold_view_item_export,
+
      // Additional nodes.
      (fn(&ENV e, &span sp,
          &ast.block_) -> block)                   fold_block,
@@ -270,6 +272,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, &ast.native_mod m) -> ast.native_mod) fold_native_mod,
 
      (fn(&ENV e, &span sp,
+         vec[@ast.crate_directive] cdirs,
          &ast._mod m) -> @ast.crate)              fold_crate,
 
      (fn(&ENV e,
@@ -451,11 +454,14 @@ fn fold_pat[ENV](&ENV env, ast_fold[ENV] fld, @ast.pat p) -> @ast.pat {
             ret fld.fold_pat_bind(env_, p.span, id, did, t);
         }
         case (ast.pat_tag(?path, ?pats, ?d, ?t)) {
+            auto ppath = fold_path(env, fld, path);
+
             let vec[@ast.pat] ppats = vec();
             for (@ast.pat pat in pats) {
                 ppats += vec(fold_pat(env_, fld, pat));
             }
-            ret fld.fold_pat_tag(env_, p.span, path, ppats, d, t);
+
+            ret fld.fold_pat_tag(env_, p.span, ppath, ppats, d, t);
         }
     }
 }
@@ -718,6 +724,7 @@ fn fold_stmt[ENV](&ENV env, ast_fold[ENV] fld, &@stmt s) -> @stmt {
 
 fn fold_block[ENV](&ENV env, ast_fold[ENV] fld, &block blk) -> block {
 
+    auto index = new_str_hash[ast.block_index_entry]();
     let ENV env_ = fld.update_env_for_block(env, blk);
 
     if (!fld.keep_going(env_)) {
@@ -726,7 +733,9 @@ fn fold_block[ENV](&ENV env, ast_fold[ENV] fld, &block blk) -> block {
 
     let vec[@ast.stmt] stmts = vec();
     for (@ast.stmt s in blk.node.stmts) {
-        append[@ast.stmt](stmts, fold_stmt[ENV](env_, fld, s));
+        auto new_stmt = fold_stmt[ENV](env_, fld, s);
+        append[@ast.stmt](stmts, new_stmt);
+        ast.index_stmt(index, new_stmt);
     }
 
     auto expr = none[@ast.expr];
@@ -739,8 +748,7 @@ fn fold_block[ENV](&ENV env, ast_fold[ENV] fld, &block blk) -> block {
         }
     }
 
-    // FIXME: should we reindex?
-    ret respan(blk.span, rec(stmts=stmts, expr=expr, index=blk.node.index));
+    ret respan(blk.span, rec(stmts=stmts, expr=expr, index=index));
 }
 
 fn fold_arm[ENV](&ENV env, ast_fold[ENV] fld, &arm a) -> arm {
@@ -837,6 +845,10 @@ fn fold_view_item[ENV](&ENV env, ast_fold[ENV] fld, @view_item vi)
                                    ?target_def)) {
             ret fld.fold_view_item_import(env_, vi.span, def_ident, idents,
                                           def_id, target_def);
+        }
+
+        case (ast.view_item_export(?def_ident)) {
+            ret fld.fold_view_item_export(env_, vi.span, def_ident);
         }
     }
 
@@ -969,9 +981,12 @@ fn fold_native_mod[ENV](&ENV e, ast_fold[ENV] fld,
 }
 
 fn fold_crate[ENV](&ENV env, ast_fold[ENV] fld, @ast.crate c) -> @ast.crate {
+    // FIXME: possibly fold the directives so you process any expressions
+    // within them? Not clear. After front/eval.rs, nothing else should look
+    // at crate directives.
     let ENV env_ = fld.update_env_for_crate(env, c);
     let ast._mod m = fold_mod[ENV](env_, fld, c.node.module);
-    ret fld.fold_crate(env_, c.span, m);
+    ret fld.fold_crate(env_, c.span, c.node.directives, m);
 }
 
 //// Identity folds.
@@ -1324,6 +1339,11 @@ fn identity_fold_view_item_import[ENV](&ENV e, &span sp, ident i,
     ret @respan(sp, ast.view_item_import(i, is, id, target_def));
 }
 
+fn identity_fold_view_item_export[ENV](&ENV e, &span sp, ident i)
+    -> @view_item {
+    ret @respan(sp, ast.view_item_export(i));
+}
+
 // Additional identities.
 
 fn identity_fold_block[ENV](&ENV e, &span sp, &ast.block_ blk) -> block {
@@ -1353,8 +1373,10 @@ fn identity_fold_native_mod[ENV](&ENV e,
     ret m;
 }
 
-fn identity_fold_crate[ENV](&ENV e, &span sp, &ast._mod m) -> @ast.crate {
-    ret @respan(sp, rec(module=m));
+fn identity_fold_crate[ENV](&ENV e, &span sp,
+                            vec[@ast.crate_directive] cdirs,
+                            &ast._mod m) -> @ast.crate {
+    ret @respan(sp, rec(directives=cdirs, module=m));
 }
 
 fn identity_fold_obj[ENV](&ENV e,
@@ -1501,13 +1523,15 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
              bind identity_fold_view_item_use[ENV](_,_,_,_,_),
          fold_view_item_import =
              bind identity_fold_view_item_import[ENV](_,_,_,_,_,_),
+         fold_view_item_export =
+             bind identity_fold_view_item_export[ENV](_,_,_),
 
          fold_block = bind identity_fold_block[ENV](_,_,_),
          fold_fn = bind identity_fold_fn[ENV](_,_,_,_),
          fold_fn_decl = bind identity_fold_fn_decl[ENV](_,_,_,_),
          fold_mod = bind identity_fold_mod[ENV](_,_),
          fold_native_mod = bind identity_fold_native_mod[ENV](_,_),
-         fold_crate = bind identity_fold_crate[ENV](_,_,_),
+         fold_crate = bind identity_fold_crate[ENV](_,_,_,_),
          fold_obj = bind identity_fold_obj[ENV](_,_,_,_),
 
          update_env_for_crate = bind identity_update_env_for_crate[ENV](_,_),

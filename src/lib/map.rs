@@ -3,12 +3,6 @@
  * use, but useful as a stress test for rustboot.
  */
 
-import std._int;
-import std.sys;
-import std.option;
-import std._vec;
-
-
 type hashfn[K] = fn(&K) -> uint;
 type eqfn[K] = fn(&K, &K) -> bool;
 

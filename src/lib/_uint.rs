@@ -1,4 +1,3 @@
-import std.sys;
 
 fn add(uint x, uint y) -> uint { ret x + y; }
 fn sub(uint x, uint y) -> uint { ret x - y; }

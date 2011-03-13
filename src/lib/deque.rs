@@ -2,10 +2,6 @@
  * A deque, for fun.  Untested as of yet.  Likely buggy.
  */
 
-import std.option;
-import std._vec;
-import std._int;
-
 type t[T] = obj {
             fn size() -> uint;
 

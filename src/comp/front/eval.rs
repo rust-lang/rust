@@ -42,7 +42,7 @@ fn val_is_bool(val v) -> bool {
 
 fn val_is_int(val v) -> bool {
     alt (v) {
-        case (val_bool(_)) { ret true; }
+        case (val_int(_)) { ret true; }
         case (_) { }
     }
     ret false;
@@ -386,9 +386,12 @@ impure fn eval_crate_directive(parser p,
 
             auto full_path = prefix + std.os.path_sep() + file_path;
 
-            auto p0 = new_parser(p.get_session(), e, 0, full_path);
+            auto start_id = p.next_def_id();
+            auto p0 = new_parser(p.get_session(), e, start_id, full_path);
             auto m0 = parse_mod_items(p0, token.EOF);
-            auto im = ast.item_mod(id, m0, p.next_def_id());
+            auto next_id = p0.next_def_id();
+            p.set_def(next_id._1);
+            auto im = ast.item_mod(id, m0, next_id);
             auto i = @spanned(cdir.span, cdir.span, im);
             ast.index_item(index, i);
             append[@ast.item](items, i);
