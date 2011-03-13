@@ -34,6 +34,23 @@ fn to_str(mutable int n, uint radix) -> str
     }
 }
 
+fn pow(int base, uint exponent) -> int {
+
+    if (exponent == 0u) {
+        ret 1;
+    } else if (base == 0) {
+        ret 0;
+    } else {
+        auto accum = base;
+        auto count = exponent;
+        while (count > 1u) {
+            accum *= base;
+            count -= 1u;
+        }
+        ret accum;
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
