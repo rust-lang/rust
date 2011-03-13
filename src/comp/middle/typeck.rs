@@ -1830,6 +1830,22 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             ret @fold.respan[ast.expr_](expr.span, newexpr);
         }
 
+        case (ast.expr_send(?lhs, ?rhs, _)) {
+            auto checked = check_assignment_like(fcx, lhs, rhs);
+            auto newexpr = ast.expr_send(checked._0,
+                                         checked._1,
+                                         checked._2);
+            ret @fold.respan[ast.expr_](expr.span, newexpr);
+        }
+
+        case (ast.expr_recv(?lhs, ?rhs, _)) {
+            auto checked = check_assignment_like(fcx, lhs, rhs);
+            auto newexpr = ast.expr_recv(checked._0,
+                                         checked._1,
+                                         checked._2);
+            ret @fold.respan[ast.expr_](expr.span, newexpr);
+        }
+
         case (ast.expr_if(?cond, ?thn, ?elifs, ?elsopt, _)) {
             auto cond_0 = check_expr(fcx, cond);
             auto cond_1 = demand_expr(fcx, plain_ty(ty.ty_bool), cond_0);
