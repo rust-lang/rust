@@ -1644,6 +1644,22 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         ret tup(f_1, args_1);
     }
 
+    // A generic function for checking expressions that have a form
+    // similar to assignment.
+    fn check_assignment_like(&@fn_ctxt fcx, @ast.expr lhs, @ast.expr rhs)
+        -> tup(@ast.expr, @ast.expr, ast.ann) {
+        auto lhs_0 = check_expr(fcx, lhs);
+        auto rhs_0 = check_expr(fcx, rhs);
+        auto lhs_t0 = expr_ty(lhs_0);
+        auto rhs_t0 = expr_ty(rhs_0);
+
+        auto lhs_1 = demand_expr(fcx, rhs_t0, lhs_0);
+        auto rhs_1 = demand_expr(fcx, expr_ty(lhs_1), rhs_0);
+
+        auto ann = ast.ann_type(rhs_t0, none[vec[@ty.t]]);
+        ret tup(lhs_1, rhs_1, ann);
+    }
+
     alt (expr.node) {
         case (ast.expr_lit(?lit, _)) {
             auto typ = check_lit(lit);
@@ -1798,32 +1814,20 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_assign(?lhs, ?rhs, _)) {
-            auto lhs_0 = check_expr(fcx, lhs);
-            auto rhs_0 = check_expr(fcx, rhs);
-            auto lhs_t0 = expr_ty(lhs_0);
-            auto rhs_t0 = expr_ty(rhs_0);
-
-            auto lhs_1 = demand_expr(fcx, rhs_t0, lhs_0);
-            auto rhs_1 = demand_expr(fcx, expr_ty(lhs_1), rhs_0);
-
-            auto ann = ast.ann_type(rhs_t0, none[vec[@ty.t]]);
-            ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_assign(lhs_1, rhs_1, ann));
+            auto checked = check_assignment_like(fcx, lhs, rhs);
+            auto newexpr = ast.expr_assign(checked._0,
+                                           checked._1,
+                                           checked._2);
+            ret @fold.respan[ast.expr_](expr.span, newexpr);
         }
 
         case (ast.expr_assign_op(?op, ?lhs, ?rhs, _)) {
-            auto lhs_0 = check_expr(fcx, lhs);
-            auto rhs_0 = check_expr(fcx, rhs);
-            auto lhs_t0 = expr_ty(lhs_0);
-            auto rhs_t0 = expr_ty(rhs_0);
-
-            auto lhs_1 = demand_expr(fcx, rhs_t0, lhs_0);
-            auto rhs_1 = demand_expr(fcx, expr_ty(lhs_1), rhs_0);
-
-            auto ann = ast.ann_type(rhs_t0, none[vec[@ty.t]]);
-            ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_assign_op(op, lhs_1, rhs_1,
-                                                           ann));
+            auto checked = check_assignment_like(fcx, lhs, rhs);
+            auto newexpr = ast.expr_assign_op(op,
+                                              checked._0,
+                                              checked._1,
+                                              checked._2);
+            ret @fold.respan[ast.expr_](expr.span, newexpr);
         }
 
         case (ast.expr_if(?cond, ?thn, ?elifs, ?elsopt, _)) {
