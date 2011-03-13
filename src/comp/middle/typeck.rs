@@ -1831,18 +1831,48 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_send(?lhs, ?rhs, _)) {
-            auto checked = check_assignment_like(fcx, lhs, rhs);
-            auto newexpr = ast.expr_send(checked._0,
-                                         checked._1,
-                                         checked._2);
+            auto lhs_0 = check_expr(fcx, lhs);
+            auto rhs_0 = check_expr(fcx, rhs);
+            auto rhs_t = expr_ty(rhs_0);
+
+            auto chan_t = plain_ty(ty.ty_chan(rhs_t));
+            auto lhs_1 = demand_expr(fcx, chan_t, lhs_0);
+            auto item_t;
+            alt (expr_ty(lhs_1).struct) {
+                case (ty.ty_chan(?it)) {
+                    item_t = it;
+                }
+                case (_) {
+                    fail;
+                }
+            }
+            auto rhs_1 = demand_expr(fcx, item_t, rhs_0);
+
+            auto ann = ast.ann_type(chan_t, none[vec[@ty.t]]);
+            auto newexpr = ast.expr_send(lhs_1, rhs_1, ann);
             ret @fold.respan[ast.expr_](expr.span, newexpr);
         }
 
         case (ast.expr_recv(?lhs, ?rhs, _)) {
-            auto checked = check_assignment_like(fcx, lhs, rhs);
-            auto newexpr = ast.expr_recv(checked._0,
-                                         checked._1,
-                                         checked._2);
+            auto lhs_0 = check_expr(fcx, lhs);
+            auto rhs_0 = check_expr(fcx, rhs);
+            auto lhs_t1 = expr_ty(lhs_0);
+
+            auto port_t = plain_ty(ty.ty_port(lhs_t1));
+            auto rhs_1 = demand_expr(fcx, port_t, rhs_0);
+            auto item_t;
+            alt (expr_ty(rhs_0).struct) {
+                case (ty.ty_port(?it)) {
+                    item_t = it;
+                }
+                case (_) {
+                    fail;
+                }
+            }
+            auto lhs_1 = demand_expr(fcx, item_t, lhs_0);
+
+            auto ann = ast.ann_type(item_t, none[vec[@ty.t]]);
+            auto newexpr = ast.expr_recv(lhs_1, rhs_1, ann);
             ret @fold.respan[ast.expr_](expr.span, newexpr);
         }
 
