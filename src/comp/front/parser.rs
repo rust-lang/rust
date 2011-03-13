@@ -1123,7 +1123,7 @@ impure fn parse_assign_expr(parser p) -> @ast.expr {
             p.bump();
             auto rhs = parse_expr(p);
             ret @spanned(lo, rhs.span,
-                         ast.expr_send(lhs, rhs, ast.ann_none));
+                         ast.expr_recv(lhs, rhs, ast.ann_none));
         }
         case (_) { /* fall through */ }
     }
