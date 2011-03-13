@@ -1644,9 +1644,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         ret tup(f_1, args_1);
     }
 
-    // A generic function for checking expressions that have a form
-    // similar to assignment.
-    fn check_assignment_like(&@fn_ctxt fcx, @ast.expr lhs, @ast.expr rhs)
+    // A generic function for checking assignment expressions
+    fn check_assignment(&@fn_ctxt fcx, @ast.expr lhs, @ast.expr rhs)
         -> tup(@ast.expr, @ast.expr, ast.ann) {
         auto lhs_0 = check_expr(fcx, lhs);
         auto rhs_0 = check_expr(fcx, rhs);
@@ -1814,7 +1813,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_assign(?lhs, ?rhs, _)) {
-            auto checked = check_assignment_like(fcx, lhs, rhs);
+            auto checked = check_assignment(fcx, lhs, rhs);
             auto newexpr = ast.expr_assign(checked._0,
                                            checked._1,
                                            checked._2);
@@ -1822,7 +1821,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_assign_op(?op, ?lhs, ?rhs, _)) {
-            auto checked = check_assignment_like(fcx, lhs, rhs);
+            auto checked = check_assignment(fcx, lhs, rhs);
             auto newexpr = ast.expr_assign_op(op,
                                               checked._0,
                                               checked._1,
