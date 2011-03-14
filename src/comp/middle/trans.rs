@@ -5485,21 +5485,6 @@ fn collect_native_item(&@crate_ctxt cx, @ast.native_item i) -> @crate_ctxt {
 fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
 
     alt (i.node) {
-        case (ast.item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
-            cx.items.insert(fid, i);
-            if (! cx.obj_methods.contains_key(fid)) {
-                decl_fn_and_pair(cx, "fn", name, tps, ann, fid);
-            }
-        }
-
-        case (ast.item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
-            cx.items.insert(oid, i);
-            decl_fn_and_pair(cx, "obj_ctor", name, tps, ann, oid);
-            for (@ast.method m in ob.methods) {
-                cx.obj_methods.insert(m.node.id, ());
-            }
-        }
-
         case (ast.item_const(?name, _, _, ?cid, _)) {
             cx.items.insert(cid, i);
         }
@@ -5517,17 +5502,48 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
     ret cx;
 }
 
+fn collect_item_pass2(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
+    alt (i.node) {
+        case (ast.item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
+            cx.items.insert(fid, i);
+            if (! cx.obj_methods.contains_key(fid)) {
+                decl_fn_and_pair(cx, "fn", name, tps, ann, fid);
+            }
+        }
+
+        case (ast.item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
+            cx.items.insert(oid, i);
+            decl_fn_and_pair(cx, "obj_ctor", name, tps, ann, oid);
+            for (@ast.method m in ob.methods) {
+                cx.obj_methods.insert(m.node.id, ());
+            }
+        }
+
+        case (_) { /* fall through */ }
+    }
+    ret cx;
+}
+
 
 fn collect_items(@crate_ctxt cx, @ast.crate crate) {
 
     let fold.ast_fold[@crate_ctxt] fld =
         fold.new_identity_fold[@crate_ctxt]();
 
-    fld = @rec( update_env_for_item = bind collect_item(_,_),
-                update_env_for_native_item = bind collect_native_item(_,_)
-                with *fld );
+    // FIXME: if ty_tag had a pointer directly to the definition instead
+    // of a def_id, we wouldn't need the second pass.
 
-    fold.fold_crate[@crate_ctxt](cx, fld, crate);
+    auto fld1 =
+        @rec( update_env_for_item = bind collect_item(_,_),
+              update_env_for_native_item = bind collect_native_item(_,_)
+              with *fld );
+
+    fold.fold_crate[@crate_ctxt](cx, fld1, crate);
+
+    auto fld2 = @rec( update_env_for_item = bind collect_item_pass2(_,_)
+                      with *fld );
+
+    fold.fold_crate[@crate_ctxt](cx, fld2, crate);
 }
 
 fn collect_tag_ctor(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
