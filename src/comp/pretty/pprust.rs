@@ -308,7 +308,7 @@ impure fn print_expr(ps s, @ast.expr expr) {
       commasep[ast.elt](s, exprs, f);
       pclose(s);
     }
-    case (ast.expr_rec(?fields,_,_)) {
+    case (ast.expr_rec(?fields,?wth,_)) {
       impure fn print_field(ps s, ast.field field) {
         hbox(s);
         if (field.mut == ast.mut) {wrd1(s, "mutable");}
@@ -321,6 +321,16 @@ impure fn print_expr(ps s, @ast.expr expr) {
       popen(s);
       auto f = print_field;
       commasep[ast.field](s, fields, f);
+      alt (wth) {
+        case (option.some[@ast.expr](?expr)) {
+          if (_vec.len[ast.field](fields) > 0u) {space(s);}
+          hbox(s);
+          wrd1(s, "with");
+          print_expr(s, expr);
+          end(s);
+        }
+        case (_) {}
+      }
       pclose(s);
     }
     case (ast.expr_call(?func,?args,_)) {
