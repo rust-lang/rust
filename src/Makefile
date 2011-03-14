@@ -575,6 +575,7 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         wrong-ret-type.rs \
                         ), \
                       $(wildcard test/*fail/*.rs test/*fail/*.rc)) \
+                     test/bench/shootout/fannkuchredux.rs \
                      test/bench/shootout/fasta.rs \
                      test/bench/shootout/binarytrees.rs \
                      $(wildcard test/bench/99-bottles/*rs)
