@@ -289,7 +289,7 @@ impure fn eval_crate_directive_expr(parser p,
 
     alt (x.node) {
 
-        case (ast.expr_if(?cond, ?thn, ?elifs, ?elopt, _)) {
+        case (ast.expr_if(?cond, ?thn, ?elopt, _)) {
             auto cv = eval_expr(sess, e, cond);
             if (!val_is_bool(cv)) {
                 sess.span_err(x.span, "bad cond type in 'if'");
@@ -301,24 +301,11 @@ impure fn eval_crate_directive_expr(parser p,
                                                index);
             }
 
-            for (tup(@ast.expr, ast.block) elif in elifs) {
-                auto cv = eval_expr(sess, e, elif._0);
-                if (!val_is_bool(cv)) {
-                    sess.span_err(x.span, "bad cond type in 'else if'");
-                }
-
-                if (val_as_bool(cv)) {
-                    ret eval_crate_directive_block(p, e, elif._1, prefix,
-                                                   view_items, items,
-                                                   index);
-                }
-            }
-
             alt (elopt) {
-                case (some[ast.block](?els)) {
-                    ret eval_crate_directive_block(p, e, els, prefix,
-                                                   view_items, items,
-                                                   index);
+                case (some[@ast.expr](?els)) {
+                    ret eval_crate_directive_expr(p, e, els, prefix,
+                                                  view_items, items,
+                                                  index);
                 }
                 case (_) {
                     // Absent-else is ok.
@@ -351,6 +338,12 @@ impure fn eval_crate_directive_expr(parser p,
                 }
             }
             sess.span_err(x.span, "no cases matched in 'alt'");
+        }
+
+        case (ast.expr_block(?block, _)) {
+            ret eval_crate_directive_block(p, e, block, prefix,
+                                           view_items, items,
+                                           index);
         }
 
         case (_) {

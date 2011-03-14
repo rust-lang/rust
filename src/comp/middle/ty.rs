@@ -712,7 +712,7 @@ fn expr_ty(@ast.expr expr) -> @t {
         case (ast.expr_unary(_, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_lit(_, ?ann))          { ret ann_to_type(ann); }
         case (ast.expr_cast(_, _, ?ann))      { ret ann_to_type(ann); }
-        case (ast.expr_if(_, _, _, _, ?ann))  { ret ann_to_type(ann); }
+        case (ast.expr_if(_, _, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_for(_, _, _, ?ann))    { ret ann_to_type(ann); }
         case (ast.expr_for_each(_, _, _, ?ann))
                                               { ret ann_to_type(ann); }

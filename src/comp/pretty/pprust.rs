@@ -376,26 +376,18 @@ impure fn print_expr(ps s, @ast.expr expr) {
       wrd1(s, "as");
       print_type(s, ty);
     }
-    case (ast.expr_if(?test,?block,?clauses,?_else,_)) {
-      impure fn print_clause(ps s, @ast.expr test, ast.block blk) {
-        wrd1(s, "if");
-        popen(s);
-        print_expr(s, test);
-        pclose(s);
-        space(s);
-        print_block(s, blk);
-      }
-      print_clause(s, test, block);
-      for (tup(@ast.expr, ast.block) clause in clauses) {
-        space(s);
-        wrd1(s, "else");
-        print_clause(s, clause._0, clause._1);
-      }
-      alt (_else) {
-        case (option.some[ast.block](?blk)) {
+    case (ast.expr_if(?test,?block,?elseopt,_)) {
+      wrd1(s, "if");
+      popen(s);
+      print_expr(s, test);
+      pclose(s);
+      space(s);
+      print_block(s, block);
+      alt (elseopt) {
+        case (option.some[@ast.expr](?_else)) {
           space(s);
           wrd1(s, "else");
-          print_block(s, blk);
+          print_expr(s, _else);
         }
         case (_) { /* fall through */ }
       }

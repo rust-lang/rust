@@ -1139,40 +1139,32 @@ impure fn parse_if_expr(parser p) -> @ast.expr {
     auto cond = parse_expr(p);
     expect(p, token.RPAREN);
     auto thn = parse_block(p);
+    let option.t[@ast.expr] els = none[@ast.expr];
     hi = thn.span;
-
-    let vec[tup(@ast.expr, ast.block)] elifs = vec();
-    let option.t[ast.block] els = none[ast.block];
-    let bool parsing_elses = true;
-    while (parsing_elses) {
-        alt (p.peek()) {
-            case (token.ELSE) {
-                expect(p, token.ELSE);
-                alt (p.peek()) {
-                    case (token.IF) {
-                        expect(p, token.IF);
-                        expect(p, token.LPAREN);
-                        auto elifcond = parse_expr(p);
-                        expect(p, token.RPAREN);
-                        auto elifthn = parse_block(p);
-                        elifs += tup(elifcond, elifthn);
-                        hi = elifthn.span;
-                    }
-                    case (_) {
-                        auto eblk = parse_block(p);
-                        els = some(eblk);
-                        hi = eblk.span;
-                        parsing_elses = false;
-                    }
-                }
-            }
-            case (_) {
-                parsing_elses = false;
-            }
+    alt (p.peek()) {
+        case (token.ELSE) {
+            auto elexpr = parse_else_expr(p);
+            els = some(elexpr);
+            hi = elexpr.span;
         }
+        case (_) { /* fall through */ }
     }
 
-    ret @spanned(lo, hi, ast.expr_if(cond, thn, elifs, els, ast.ann_none));
+    ret @spanned(lo, hi, ast.expr_if(cond, thn, els, ast.ann_none));
+}
+
+impure fn parse_else_expr(parser p) -> @ast.expr {
+    expect(p, token.ELSE);
+    alt (p.peek()) {
+        case (token.IF) {
+            ret parse_if_expr(p);
+        }
+        case (_) {
+            auto blk = parse_block(p);
+            ret @spanned(blk.span, blk.span,
+                         ast.expr_block(blk, ast.ann_none));
+        }
+    }
 }
 
 impure fn parse_head_local(parser p) -> @ast.decl {
@@ -1575,7 +1567,7 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_unary(_,_,_))    { ret true; }
                 case (ast.expr_lit(_,_))        { ret true; }
                 case (ast.expr_cast(_,_,_))     { ret true; }
-                case (ast.expr_if(_,_,_,_,_))   { ret false; }
+                case (ast.expr_if(_,_,_,_))     { ret false; }
                 case (ast.expr_for(_,_,_,_))    { ret false; }
                 case (ast.expr_for_each(_,_,_,_))
                     { ret false; }
