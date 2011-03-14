@@ -1,4 +1,5 @@
-import libc = posix;
+import _str.sbuf;
+import _vec.vbuf;
 
 native mod libc = "libc.dylib" {
 
