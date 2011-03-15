@@ -738,9 +738,7 @@ native mod llvm = llvm_lib {
     /** Adds a verification pass. */
     fn LLVMAddVerifierPass(PassManagerRef PM);
 
-    // TODO: LLVMCreateMemoryBufferWithContentsOfFile is unrepresentable. Make
-    // a shim.
-    /** Destroys the memory buffer. */
+    /** Destroys a memory buffer. */
     fn LLVMDisposeMemoryBuffer(MemoryBufferRef MemBuf);
 }
 
@@ -770,6 +768,15 @@ native mod llvmext = llvmext_lib {
     fn LLVMGetSectionSize(SectionIteratorRef SI) -> uint;
     /** Returns the current section contents as a string buffer. */
     fn LLVMGetSectionContents(SectionIteratorRef SI) -> sbuf;
+
+    /** Reads the given file and returns it as a memory buffer. Use
+        LLVMDisposeMemoryBuffer() to get rid of it. */
+    fn LLVMRustCreateMemoryBufferWithContentsOfFile(sbuf Path) ->
+        MemoryBufferRef;
+
+    /** Returns a string describing the last error caused by an LLVMRust*
+        call. */
+    fn LLVMRustGetLastError() -> sbuf;
 }
 
 /* Slightly more terse object-interface to LLVM's 'builder' functions. */
@@ -1382,8 +1389,13 @@ obj memory_buffer_dtor(MemoryBufferRef MemBuf) {
 
 type memory_buffer = rec(MemoryBufferRef llmb, memory_buffer_dtor dtor);
 
-fn mk_memory_buffer() -> memory_buffer {
-    fail;   // TODO
+fn mk_memory_buffer(sbuf path) -> memory_buffer {
+    auto llmb = llvmext.LLVMRustCreateMemoryBufferWithContentsOfFile(path);
+    if ((llmb as int) == 0) {
+        log "failed to create memory buffer";
+        fail;
+    }
+    ret rec(llmb=llmb, dtor=memory_buffer_dtor(llmb));
 }
 
 /* Memory-managed interface to object files. */

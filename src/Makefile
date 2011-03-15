@@ -311,7 +311,8 @@ RUNTIME_HDR := rt/globals.h \
 RUNTIME_INCS := -Irt/isaac -Irt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o)
 
-SUPPORT_CS := llvmext/MachOObjectFile.cpp llvmext/Object.cpp
+SUPPORT_CS := $(addprefix llvmext/, \
+    MachOObjectFile.cpp Object.cpp RustWrapper.cpp)
 
 SUPPORT_HDR := llvmext/include/llvm-c/Object.h
 
