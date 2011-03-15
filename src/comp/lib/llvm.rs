@@ -22,6 +22,8 @@ import llvm.CallConv;
 import llvm.IntPredicate;
 import llvm.RealPredicate;
 import llvm.Opcode;
+import llvmext.ObjectFileRef;
+import llvmext.SectionIteratorRef;
 
 type ULongLong = u64;
 type LongLong = i64;
@@ -735,6 +737,39 @@ native mod llvm = llvm_lib {
 
     /** Adds a verification pass. */
     fn LLVMAddVerifierPass(PassManagerRef PM);
+
+    // TODO: LLVMCreateMemoryBufferWithContentsOfFile is unrepresentable. Make
+    // a shim.
+    /** Destroys the memory buffer. */
+    fn LLVMDisposeMemoryBuffer(MemoryBufferRef MemBuf);
+}
+
+native mod llvmext = llvmext_lib {
+    type ObjectFileRef;
+    type SectionIteratorRef;
+
+    /** Opens an object file. */
+    fn LLVMCreateObjectFile(MemoryBufferRef MemBuf) -> ObjectFileRef;
+    /** Closes an object file. */
+    fn LLVMDisposeObjectFile(ObjectFileRef ObjectFile);
+
+    /** Enumerates the sections in an object file. */
+    fn LLVMGetSections(ObjectFileRef ObjectFile) -> SectionIteratorRef;
+    /** Destroys a section iterator. */
+    fn LLVMDisposeSectionIterator(SectionIteratorRef SI);
+    /** Returns true if the section iterator is at the end of the section
+        list. */
+    fn LLVMIsSectionIteratorAtEnd(ObjectFileRef ObjectFile,
+                                  SectionIteratorRef SI) -> Bool;
+    /** Moves the section iterator to point to the next section. */
+    fn LLVMMoveToNextSection(SectionIteratorRef SI);
+    /** Returns the current section name. */
+    fn LLVMGetSectionName(SectionIteratorRef SI) -> sbuf;
+    /** Returns the current section size.
+        FIXME: The return value is actually a uint64_t! */
+    fn LLVMGetSectionSize(SectionIteratorRef SI) -> uint;
+    /** Returns the current section contents as a string buffer. */
+    fn LLVMGetSectionContents(SectionIteratorRef SI) -> sbuf;
 }
 
 /* Slightly more terse object-interface to LLVM's 'builder' functions. */
@@ -1339,6 +1374,43 @@ fn mk_pass_manager() -> pass_manager {
     ret rec(llpm=llpm, dtor=pass_manager_dtor(llpm));
 }
 
+/* Memory-managed interface to memory buffers. */
+
+obj memory_buffer_dtor(MemoryBufferRef MemBuf) {
+    drop { llvm.LLVMDisposeMemoryBuffer(MemBuf); }
+}
+
+type memory_buffer = rec(MemoryBufferRef llmb, memory_buffer_dtor dtor);
+
+fn mk_memory_buffer() -> memory_buffer {
+    fail;   // TODO
+}
+
+/* Memory-managed interface to object files. */
+
+obj object_file_dtor(ObjectFileRef ObjectFile) {
+    drop { llvmext.LLVMDisposeObjectFile(ObjectFile); }
+}
+
+type object_file = rec(ObjectFileRef llof, object_file_dtor dtor);
+
+fn mk_object_file(MemoryBufferRef llmb) -> object_file {
+    auto llof = llvmext.LLVMCreateObjectFile(llmb);
+    ret rec(llof=llof, dtor=object_file_dtor(llof));
+}
+
+/* Memory-managed interface to section iterators. */
+
+obj section_iter_dtor(SectionIteratorRef SI) {
+    drop { llvmext.LLVMDisposeSectionIterator(SI); }
+}
+
+type section_iter = rec(SectionIteratorRef llsi, section_iter_dtor dtor);
+
+fn mk_section_iter(ObjectFileRef llof) -> section_iter {
+    auto llsi = llvmext.LLVMGetSections(llof);
+    ret rec(llsi=llsi, dtor=section_iter_dtor(llsi));
+}
 
 //
 // Local Variables:

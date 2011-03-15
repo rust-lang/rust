@@ -52,17 +52,23 @@ mod lib {
     alt (target_os) {
         case ("win32") {
             let (llvm_lib = "LLVM-3.0.dll") {
-                mod llvm;
+                let (llvmext_lib = "rustllvm.dll") {
+                    mod llvm;
+                }
             }
         }
         case ("macos") {
             let (llvm_lib = "libLLVM-3.0svn.dylib") {
-                mod llvm;
+                let (llvmext_lib = "librustllvm.dylib") {
+                    mod llvm;
+                }
             }
         }
         else {
             let (llvm_lib = "libLLVM-3.0svn.so") {
-                mod llvm;
+                let (llvmext_lib = "librustllvm.so") {
+                    mod llvm;
+                }
             }
         }
     }
