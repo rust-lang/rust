@@ -54,6 +54,10 @@ fn target_os() -> str {
     ret "macos";
 }
 
+fn dylib_filename(str base) -> str {
+    ret "lib" + base + ".dylib";
+}
+
 fn pipe() -> tup(int, int) {
     let vec[mutable int] fds = vec(mutable 0, 0);
     check(os.libc.pipe(_vec.buf[mutable int](fds)) == 0);

@@ -42,6 +42,10 @@ fn target_os() -> str {
     ret "win32";
 }
 
+fn dylib_filename(str base) -> str {
+    ret base + ".dll";
+}
+
 fn pipe() -> tup(int, int) {
     let vec[mutable int] fds = vec(mutable 0, 0);
     check(os.libc._pipe(_vec.buf[mutable int](fds), 1024u,
