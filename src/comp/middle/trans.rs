@@ -832,8 +832,7 @@ fn decl_upcall_glue(ModuleRef llmod, type_names tn, uint _n) -> ValueRef {
     let int n = _n as int;
     let str s = abi.upcall_glue_name(n);
     let vec[TypeRef] args =
-        vec(T_int(),     // callee
-            T_int()) // taskptr
+        vec(T_int())     // callee
         + _vec.init_elt[TypeRef](T_int(), n as uint);
 
     ret decl_fastcall_fn(llmod, s, T_fn(args, T_int()));
@@ -864,7 +863,7 @@ fn trans_upcall2(builder b, @glue_fns glues, ValueRef lltaskptr,
                  &hashmap[str, ValueRef] upcalls,
                  type_names tn, ModuleRef llmod, str name,
                  vec[ValueRef] args) -> ValueRef {
-    let int n = _vec.len[ValueRef](args) as int;
+    let int n = (_vec.len[ValueRef](args) as int) + 1;
     let ValueRef llupcall = get_upcall(upcalls, tn, llmod, name, n);
     llupcall = llvm.LLVMConstPointerCast(llupcall, T_int());
 
@@ -6090,7 +6089,7 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
 
              upcall_glues =
              _vec.init_fn[ValueRef](bind decl_upcall_glue(llmod, tn, _),
-                                    abi.n_upcall_glues as uint),
+                                    abi.n_upcall_glues + 1 as uint),
              no_op_type_glue = decl_no_op_type_glue(llmod, tn),
              memcpy_glue = decl_memcpy_glue(llmod),
              bzero_glue = decl_bzero_glue(llmod),
