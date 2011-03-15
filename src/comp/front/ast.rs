@@ -21,6 +21,7 @@ type ty_param = rec(ident ident, def_id id);
 // Annotations added during successive passes.
 tag ann {
     ann_none;
+    ann_crate(@external_crate_info);
     ann_type(@middle.ty.t, option.t[vec[@middle.ty.t]] /* ty param substs */);
 }
 
@@ -369,6 +370,9 @@ tag native_item_ {
     native_item_ty(ident, def_id);
     native_item_fn(ident, fn_decl, vec[ty_param], def_id, ann);
 }
+
+// TODO: Actually store something here.
+type external_crate_info = ();
 
 fn index_view_item(mod_index index, @view_item it) {
     alt (it.node) {

@@ -1,5 +1,6 @@
 // -*- rust -*-
 
+import front.creader;
 import front.parser;
 import front.token;
 import front.eval;
@@ -53,10 +54,12 @@ impure fn parse_input(session.session sess,
 impure fn compile_input(session.session sess,
                         eval.env env,
                         str input, str output,
-                        bool shared) {
+                        bool shared,
+                        vec[str] library_search_paths) {
     auto def = tup(0, 0);
     auto p = parser.new_parser(sess, env, def, input);
     auto crate = parse_input(sess, p, input);
+    crate = creader.read_crates(sess, crate);
     crate = resolve.resolve_crate(sess, crate);
     crate = typeck.check_crate(sess, crate);
     trans.trans_crate(sess, crate, output, shared);
@@ -87,6 +90,7 @@ fn usage(session.session sess, str argv0) {
     log "    -glue              generate glue.bc file";
     log "    -shared            compile a shared-library crate";
     log "    -pp                pretty-print the input instead of compiling";
+    log "    -L <path>          add a directory to the library search path";
     log "    -h                 display this message";
     log "";
     log "";
@@ -111,6 +115,7 @@ impure fn main(vec[str] args) {
     auto sess = session.session(target_cfg);
     let option.t[str] input_file = none[str];
     let option.t[str] output_file = none[str];
+    let vec[str] library_search_paths = vec();
     let bool do_warn = true;
     let bool shared = false;
     let bool pretty = false;
@@ -138,6 +143,14 @@ impure fn main(vec[str] args) {
                 } else {
                     usage(sess, args.(0));
                     sess.err("-o requires an argument");
+                }
+            } else if (_str.eq(arg, "-L")) {
+                if (i+1u < len) {
+                    library_search_paths += vec(args.(i+1u));
+                    i += 1u;
+                } else {
+                    usage(sess, args.(0));
+                    sess.err("-L requires an argument");
                 }
             } else if (_str.eq(arg, "-h")) {
                 usage(sess, args.(0));
@@ -193,10 +206,12 @@ impure fn main(vec[str] args) {
                         parts = _vec.pop[str](parts);
                         parts += ".bc";
                         auto ofile = _str.concat(parts);
-                        compile_input(sess, env, ifile, ofile, shared);
+                        compile_input(sess, env, ifile, ofile, shared,
+                                      library_search_paths);
                     }
                     case (some[str](?ofile)) {
-                        compile_input(sess, env, ifile, ofile, shared);
+                        compile_input(sess, env, ifile, ofile, shared,
+                                      library_search_paths);
                     }
                 }
             }
