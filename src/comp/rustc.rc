@@ -51,7 +51,7 @@ auth pretty.pprust = impure;
 mod lib {
     alt (target_os) {
         case ("win32") {
-            let (llvm_lib = "LLVM-3.0.dll") {
+            let (llvm_lib = "LLVM-3.0svn.dll") {
                 let (llvmext_lib = "rustllvm.dll") {
                     mod llvm;
                 }
