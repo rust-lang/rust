@@ -33,11 +33,13 @@ typedef struct LLVMOpaqueObjectFile *LLVMObjectFileRef;
 
 typedef struct LLVMOpaqueSectionIterator *LLVMSectionIteratorRef;
 
-LLVMObjectFileRef LLVMCreateObjectFile(const char *ObjectPath);
+LLVMObjectFileRef LLVMCreateObjectFile(LLVMMemoryBufferRef MemBuf);
 void LLVMDisposeObjectFile(LLVMObjectFileRef ObjectFile);
 
 LLVMSectionIteratorRef LLVMGetSections(LLVMObjectFileRef ObjectFile);
 void LLVMDisposeSectionIterator(LLVMSectionIteratorRef SI);
+bool LLVMIsSectionIteratorAtEnd(LLVMObjectFileRef ObjectFile,
+                                LLVMSectionIteratorRef SI);
 void LLVMMoveToNextSection(LLVMSectionIteratorRef SI);
 const char *LLVMGetSectionName(LLVMSectionIteratorRef SI);
 uint64_t LLVMGetSectionSize(LLVMSectionIteratorRef SI);

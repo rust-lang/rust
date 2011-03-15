@@ -18,9 +18,8 @@
 using namespace llvm;
 using namespace object;
 
-LLVMObjectFileRef LLVMCreateObjectFile(const char *ObjectPath) {
-  StringRef SR(ObjectPath);
-  return wrap(ObjectFile::createObjectFile(SR));
+LLVMObjectFileRef LLVMCreateObjectFile(LLVMMemoryBufferRef MemBuf) {
+  return wrap(ObjectFile::createObjectFile(unwrap(MemBuf)));
 }
 
 void LLVMDisposeObjectFile(LLVMObjectFileRef ObjectFile) {
@@ -36,9 +35,14 @@ void LLVMDisposeSectionIterator(LLVMSectionIteratorRef SI) {
   delete unwrap(SI);
 }
 
+bool LLVMIsSectionIteratorAtEnd(LLVMObjectFileRef ObjectFile,
+                                LLVMSectionIteratorRef SI) {
+  return *unwrap(SI) == unwrap(ObjectFile)->end_sections();
+}
+
 void LLVMMoveToNextSection(LLVMSectionIteratorRef SI) {
-  ObjectFile::section_iterator UnwrappedSI = *unwrap(SI);
-  ++UnwrappedSI;
+  // We can't use unwrap() here because the argument to ++ must be an lvalue.
+  ++*reinterpret_cast<ObjectFile::section_iterator*>(SI);
 }
 
 const char *LLVMGetSectionName(LLVMSectionIteratorRef SI) {
