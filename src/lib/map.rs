@@ -176,7 +176,6 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
             fn get(&K key) -> V {
                 alt (find_common[K, V](hasher, eqer, bkts, nbkts, key)) {
                     case (option.some[V](?val)) { ret val; }
-                    case (_) { fail; }
                 }
                 fail;   // FIXME: remove me when exhaustiveness checking works
             }

@@ -1861,9 +1861,6 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (ty.ty_chan(?it)) {
                     item_t = it;
                 }
-                case (_) {
-                    fail;
-                }
             }
             auto rhs_1 = demand_expr(fcx, item_t, rhs_0);
 
@@ -1883,9 +1880,6 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             alt (expr_ty(rhs_0).struct) {
                 case (ty.ty_port(?it)) {
                     item_t = it;
-                }
-                case (_) {
-                    fail;
                 }
             }
             auto lhs_1 = demand_expr(fcx, item_t, lhs_0);
