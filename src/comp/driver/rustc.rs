@@ -46,7 +46,7 @@ impure fn parse_input(session.session sess,
     } else if (_str.ends_with(input, ".rs")) {
         ret parser.parse_crate_from_source_file(p);
     }
-    sess.err("unknown unput file type: " + input);
+    sess.err("unknown input file type: " + input);
     fail;
 }
 
