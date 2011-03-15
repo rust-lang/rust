@@ -184,7 +184,7 @@ endif
 ifneq ($(CFG_LLVM_CONFIG),)
   CFG_LLVM_VERSION := $(shell $(CFG_LLVM_CONFIG) --version)
   $(info cfg: found llvm-config at $(CFG_LLVM_CONFIG))
-  CFG_LLVM_ALLOWED_VERSIONS := 2.8svn 2.8 2.9svn 3.0svn
+  CFG_LLVM_ALLOWED_VERSIONS := 3.0svn
   ifneq ($(findstring $(CFG_LLVM_VERSION),$(CFG_LLVM_ALLOWED_VERSIONS)),)
     $(info cfg: using LLVM version $(CFG_LLVM_VERSION))
   else

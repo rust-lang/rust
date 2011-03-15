@@ -51,17 +51,17 @@ auth pretty.pprust = impure;
 mod lib {
     alt (target_os) {
         case ("win32") {
-            let (llvm_lib = "LLVM-2.8.dll") {
+            let (llvm_lib = "LLVM-3.0.dll") {
                 mod llvm;
             }
         }
         case ("macos") {
-            let (llvm_lib = "libLLVM-2.8svn.dylib") {
+            let (llvm_lib = "libLLVM-3.0svn.dylib") {
                 mod llvm;
             }
         }
         else {
-            let (llvm_lib = "libLLVM-2.8svn.so") {
+            let (llvm_lib = "libLLVM-3.0svn.so") {
                 mod llvm;
             }
         }
