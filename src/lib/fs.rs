@@ -18,6 +18,14 @@ fn dirname(path p) -> path {
     ret _str.substr(p, 0u, i as uint);
 }
 
+fn connect(path pre, path post) -> path {
+    auto len = _str.byte_len(pre);
+    if (pre.(len - 1u) == (os_fs.path_sep as u8)) { // Trailing '/'?
+        ret pre + post;
+    }
+    ret pre + path_sep() + post;
+}
+
 impure fn file_is_dir(path p) -> bool {
   ret rustrt.rust_file_is_dir(p) != 0;
 }
