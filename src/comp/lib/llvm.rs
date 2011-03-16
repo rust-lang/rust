@@ -1381,23 +1381,6 @@ fn mk_pass_manager() -> pass_manager {
     ret rec(llpm=llpm, dtor=pass_manager_dtor(llpm));
 }
 
-/* Memory-managed interface to memory buffers. */
-
-obj memory_buffer_dtor(MemoryBufferRef MemBuf) {
-    drop { llvm.LLVMDisposeMemoryBuffer(MemBuf); }
-}
-
-type memory_buffer = rec(MemoryBufferRef llmb, memory_buffer_dtor dtor);
-
-fn mk_memory_buffer(sbuf path) -> memory_buffer {
-    auto llmb = llvmext.LLVMRustCreateMemoryBufferWithContentsOfFile(path);
-    if ((llmb as int) == 0) {
-        log "failed to create memory buffer";
-        fail;
-    }
-    ret rec(llmb=llmb, dtor=memory_buffer_dtor(llmb));
-}
-
 /* Memory-managed interface to object files. */
 
 obj object_file_dtor(ObjectFileRef ObjectFile) {

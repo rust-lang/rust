@@ -3,7 +3,6 @@
 import driver.session;
 import front.ast;
 import lib.llvm.llvmext;
-import lib.llvm.mk_memory_buffer;
 import lib.llvm.mk_object_file;
 import lib.llvm.mk_section_iter;
 import middle.fold;
