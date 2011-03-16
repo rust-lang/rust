@@ -2,11 +2,17 @@
 
 import driver.session;
 import front.ast;
+import lib.llvm.llvmext;
+import lib.llvm.mk_memory_buffer;
+import lib.llvm.mk_object_file;
+import lib.llvm.mk_section_iter;
 import middle.fold;
 import util.common;
 import util.common.span;
 
+import std._str;
 import std.fs;
+import std.os;
 import std.map.hashmap;
 
 // TODO: map to a real type here.
@@ -17,12 +23,29 @@ type env = @rec(
 
 // TODO: return something
 fn load_crate(ast.ident ident, vec[str] library_search_paths) -> @() {
+    auto filename = os.dylib_filename(ident);
     for (str library_search_path in library_search_paths) {
-        auto path = fs.connect(library_search_path, ident);
-        // TODO
+        auto path = fs.connect(library_search_path, filename);
+        auto pb = _str.buf(path);
+        auto llmb = llvmext.LLVMRustCreateMemoryBufferWithContentsOfFile(pb);
+        if ((llmb as int) != 0) {
+            auto llof = mk_object_file(llmb);
+            if ((llof.llof as int) != 0) {
+                auto llsi = mk_section_iter(llof.llof);
+                while ((llvmext.LLVMIsSectionIteratorAtEnd(llof.llof,
+                        llsi.llsi) as int) == 0) {
+                    // TODO: check name, pass contents off.
+
+                    llvmext.LLVMMoveToNextSection(llsi.llsi);
+                }
+            }
+        }
     }
 
-    ret @();
+    // TODO: write line number of "use" statement
+    log #fmt("can't find a crate named '%s' (looked for '%s' in %s)",
+        ident, filename, _str.connect(library_search_paths, ", "));
+    fail;
 }
 
 fn fold_view_item_use(&env e, &span sp, ast.ident ident,
