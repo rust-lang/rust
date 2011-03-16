@@ -37,5 +37,83 @@
    fun:upcall_require_c_sym
 }
 
+{
+   mac-dlopen-weirdness-2
+   Memcheck:Value4
+   fun:_ZNK16ImageLoaderMachO9getRPathsERKN11ImageLoader11LinkContextERSt6vectorIPKcSaIS6_EE
+   fun:_ZN11ImageLoader22recursiveLoadLibrariesERKNS_11LinkContextEbRKNS_10RPathChainE
+   fun:_ZN11ImageLoader4linkERKNS_11LinkContextEbbRKNS_10RPathChainE
+   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
+   fun:dlopen
+   fun:dlopen
+   fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
+   fun:_ZN16rust_crate_cache7get_libEmPKc
+   fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
+   fun:upcall_require_c_sym
+}
 
+{
+   mac-dlopen-weirdness-3
+   Memcheck:Value4
+   fun:strcpy
+   fun:_ZN11ImageLoader22recursiveLoadLibrariesERKNS_11LinkContextEbRKNS_10RPathChainE
+   fun:_ZN11ImageLoader4linkERKNS_11LinkContextEbbRKNS_10RPathChainE
+   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
+   fun:dlopen
+   fun:dlopen
+   fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
+   fun:_ZN16rust_crate_cache7get_libEmPKc
+   fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
+   fun:upcall_require_c_sym
+}
+
+{
+   mac-dlopen-weirdness-4
+   Memcheck:Value4
+   obj:*
+   fun:_ZNK16ImageLoaderMachO9getRPathsERKN11ImageLoader11LinkContextERSt6vectorIPKcSaIS6_EE
+   fun:_ZN11ImageLoader22recursiveLoadLibrariesERKNS_11LinkContextEbRKNS_10RPathChainE
+   fun:_ZN11ImageLoader4linkERKNS_11LinkContextEbbRKNS_10RPathChainE
+   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
+   fun:dlopen
+   fun:dlopen
+   fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
+   fun:_ZN16rust_crate_cache7get_libEmPKc
+   fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
+   fun:upcall_require_c_sym
+}
+
+{
+   mac-dlopen-weirdness-5
+   Memcheck:Cond
+   fun:memcpy
+   fun:strdup
+   fun:_ZNK16ImageLoaderMachO9getRPathsERKN11ImageLoader11LinkContextERSt6vectorIPKcSaIS6_EE
+   fun:_ZN11ImageLoader22recursiveLoadLibrariesERKNS_11LinkContextEbRKNS_10RPathChainE
+   fun:_ZN11ImageLoader4linkERKNS_11LinkContextEbbRKNS_10RPathChainE
+   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
+   fun:dlopen
+   fun:dlopen
+   fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
+   fun:_ZN16rust_crate_cache7get_libEmPKc
+   fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
+   fun:upcall_require_c_sym
+}
+
+{
+   mac-dlopen-weirdness-6
+   Memcheck:Value4
+   fun:memcpy
+   fun:strdup
+   fun:_ZNK16ImageLoaderMachO9getRPathsERKN11ImageLoader11LinkContextERSt6vectorIPKcSaIS6_EE
+   fun:_ZN11ImageLoader22recursiveLoadLibrariesERKNS_11LinkContextEbRKNS_10RPathChainE
+   fun:_ZN11ImageLoader4linkERKNS_11LinkContextEbbRKNS_10RPathChainE
+   fun:_ZN4dyld4linkEP11ImageLoaderbRKNS0_10RPathChainE
+   fun:dlopen
+   fun:dlopen
+   fun:_ZN16rust_crate_cache3libC1EP8rust_domPKc
+   fun:_ZN16rust_crate_cache7get_libEmPKc
+   fun:_ZL11fetch_c_symP9rust_taskPK10rust_cratemmPKcS5_
+   fun:upcall_require_c_sym
+}
 
