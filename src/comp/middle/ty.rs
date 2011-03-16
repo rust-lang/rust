@@ -11,7 +11,6 @@ import driver.session;
 import front.ast;
 import front.ast.mutability;
 import util.common;
-import util.common.append;
 import util.common.new_def_hash;
 import util.common.span;
 
@@ -756,7 +755,7 @@ fn field_num(session.session sess, &span sp, &ast.ident id) -> uint {
                 accum += (c as uint) - ('0' as uint);
             } else {
                 auto s = "";
-                s += c;
+                s += _str.unsafe_from_byte(c);
                 sess.span_err(sp,
                               "bad numeric field on tuple: "
                               + " non-digit character: "
@@ -1104,7 +1103,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
 
                             alt (result) {
                                 case (ures_ok(?rty)) {
-                                    append[@ty.t](result_tps, rty);
+                                    _vec.push[@ty.t](result_tps, rty);
                                 }
                                 case (_) {
                                     ret result;
@@ -1244,7 +1243,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                                                      handler);
                             alt (result) {
                                 case (ures_ok(?rty)) {
-                                    append[@ty.t](result_elems,rty);
+                                    _vec.push[@ty.t](result_elems,rty);
                                 }
                                 case (_) {
                                     ret result;
@@ -1301,7 +1300,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                                                      handler);
                             alt (result) {
                                 case (ures_ok(?rty)) {
-                                    append[field]
+                                    _vec.push[field]
                                         (result_fields,
                                          rec(ty=rty with expected_field));
                                 }

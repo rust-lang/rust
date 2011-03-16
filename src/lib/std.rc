@@ -34,6 +34,17 @@ auth _str = unsafe;
 auth _vec = unsafe;
 auth _task = unsafe;
 
+
+// FIXME: impure on these will infect caller in a way that is totally
+// beyond reason, if the caller's mutated-argument doesn't escape;
+// 'impure' needs work.
+auth _str.unshift_byte = impure;
+auth _str.shift_byte = impure;
+auth _str.pop_byte = impure;
+auth _vec.shift = impure;
+auth _vec.unshift = impure;
+auth _vec.pop = impure;
+
 auth dbg = unsafe;
 
 auth _uint.next_power_of_two = unsafe;

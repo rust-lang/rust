@@ -111,6 +111,11 @@ fn unsafe_from_bytes(vec[u8] v) -> str {
     ret rustrt.str_from_vec(v);
 }
 
+fn unsafe_from_byte(u8 u) -> str {
+    ret rustrt.str_from_vec(vec(u));
+}
+
+
 fn refcount(str s) -> uint {
     auto r = rustrt.refcount[u8](s);
     if (r == dbg.const_refcount) {
@@ -190,7 +195,6 @@ fn starts_with(str haystack, str needle) -> bool {
     ret eq(substr(haystack, 0u, needle_len), needle);
 }
 
-
 fn ends_with(str haystack, str needle) -> bool {
     let uint haystack_len = byte_len(haystack);
     let uint needle_len = byte_len(needle);
@@ -206,15 +210,41 @@ fn ends_with(str haystack, str needle) -> bool {
            needle);
 }
 
-
 fn substr(str s, uint begin, uint len) -> str {
     let str accum = "";
     let uint i = begin;
     while (i < begin+len) {
-        accum += s.(i);
+        accum += unsafe_from_byte(s.(i));
         i += 1u;
     }
     ret accum;
+}
+
+fn shift_byte(&mutable str s) -> u8 {
+    auto len = byte_len(s);
+    check(len > 0u);
+    auto b = s.(0);
+    s = substr(s, 1u, len - 1u);
+    ret b;
+}
+
+fn pop_byte(&mutable str s) -> u8 {
+    auto len = byte_len(s);
+    check(len > 0u);
+    auto b = s.(len - 1u);
+    s = substr(s, 0u, len - 1u);
+    ret b;
+}
+
+fn push_byte(&mutable str s, u8 b) {
+    s += unsafe_from_byte(b);
+}
+
+fn unshift_byte(&mutable str s, u8 b) {
+    auto res = alloc(byte_len(s) + 1u);
+    res += unsafe_from_byte(b);
+    res += s;
+    s = res;
 }
 
 fn split(str s, u8 sep) -> vec[str] {
@@ -223,17 +253,17 @@ fn split(str s, u8 sep) -> vec[str] {
     let bool ends_with_sep = false;
     for (u8 c in s) {
         if (c == sep) {
-            v += accum;
+            v += vec(accum);
             accum = "";
             ends_with_sep = true;
         } else {
-            accum += c;
+            accum += unsafe_from_byte(c);
             ends_with_sep = false;
         }
     }
     if (_str.byte_len(accum) != 0u ||
         ends_with_sep) {
-        v += accum;
+        v += vec(accum);
     }
     ret v;
 }

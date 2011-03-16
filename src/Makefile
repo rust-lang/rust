@@ -469,7 +469,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         acyclic-unwind.rs \
                         alt-pattern-drop.rs \
                         alt-type-simple.rs \
-                        append-units.rs \
                         basic-1.rs \
                         basic-2.rs \
                         basic.rs \

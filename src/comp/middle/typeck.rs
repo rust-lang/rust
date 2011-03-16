@@ -4,7 +4,6 @@ import front.ast.mutability;
 import middle.fold;
 import driver.session;
 import util.common;
-import util.common.append;
 import util.common.span;
 
 import middle.ty;
@@ -320,14 +319,14 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
         case (ast.ty_tup(?fields)) {
             let vec[@ty.t] flds = vec();
             for (@ast.ty field in fields) {
-                append[@ty.t](flds, ast_ty_to_ty(getter, field));
+                _vec.push[@ty.t](flds, ast_ty_to_ty(getter, field));
             }
             sty = ty.ty_tup(flds);
         }
         case (ast.ty_rec(?fields)) {
             let vec[field] flds = vec();
             for (ast.ty_field f in fields) {
-                append[field](flds, rec(ident=f.ident,
+                _vec.push[field](flds, rec(ident=f.ident,
                                         ty=ast_ty_to_ty(getter, f.ty)));
             }
             sty = ty.ty_rec(flds);
@@ -371,7 +370,7 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
             for (ast.ty_method m in meths) {
                 auto ins = _vec.map[ast.ty_arg, arg](f, m.inputs);
                 auto out = ast_ty_to_ty(getter, m.output);
-                append[ty.method](tmeths,
+                _vec.push[ty.method](tmeths,
                                   rec(proto=m.proto,
                                       ident=m.ident,
                                       inputs=ins,
@@ -565,7 +564,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         for (ast.obj_field f in obj_info.fields) {
             auto g = bind getter(id_to_ty_item, item_to_ty, _);
             auto t_field = ast_ty_to_ty(g, f.ty);
-            append[arg](t_inputs, rec(mode=ast.alias, ty=t_field));
+            _vec.push[arg](t_inputs, rec(mode=ast.alias, ty=t_field));
         }
         auto t_fn = plain_ty(ty.ty_fn(ast.proto_fn, t_inputs, t_obj));
         ret t_fn;
@@ -870,7 +869,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                 with meth.node
             );
             m = @rec(node=m_ with *meth);
-            append[@ast.method](methods, m);
+            _vec.push[@ast.method](methods, m);
         }
         auto g = bind getter(e.id_to_ty_item, e.item_to_ty, _);
         for (ast.obj_field fld in ob.fields) {
@@ -879,7 +878,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                 ann=ast.ann_type(fty, none[vec[@ty.t]])
                 with fld
             );
-            append[ast.obj_field](fields, f);
+            _vec.push[ast.obj_field](fields, f);
         }
 
         auto ob_ = rec(methods = methods,
@@ -1572,14 +1571,14 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
                     // FIXME: this breaks aliases. We need a ty_fn_arg.
                     auto arg_ty = rec(mode=ast.val, ty=expr_ty(a_0));
-                    append[arg](arg_tys_0, arg_ty);
+                    _vec.push[arg](arg_tys_0, arg_ty);
                 }
                 case (none[@ast.expr]) {
                     args_0 += vec(none[@ast.expr]);
 
                     // FIXME: breaks aliases too?
                     auto typ = next_ty_var(fcx.ccx);
-                    append[arg](arg_tys_0, rec(mode=ast.val, ty=typ));
+                    _vec.push[arg](arg_tys_0, rec(mode=ast.val, ty=typ));
                 }
             }
         }
@@ -1623,10 +1622,11 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (some[@ast.expr](?e_0)) {
                     auto arg_ty_1 = arg_tys_1.(i);
                     auto e_1 = demand_expr(fcx, arg_ty_1.ty, e_0);
-                    append[option.t[@ast.expr]](args_1, some[@ast.expr](e_1));
+                    _vec.push[option.t[@ast.expr]](args_1,
+                                                   some[@ast.expr](e_1));
                 }
                 case (none[@ast.expr]) {
-                    append[option.t[@ast.expr]](args_1, none[@ast.expr]);
+                    _vec.push[option.t[@ast.expr]](args_1, none[@ast.expr]);
                 }
             }
 
@@ -2114,7 +2114,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 auto expr_1 = check_expr(fcx, e);
                 auto expr_t = expr_ty(expr_1);
                 demand(fcx, expr.span, t, expr_t);
-                append[@ast.expr](args_1,expr_1);
+                _vec.push[@ast.expr](args_1,expr_1);
             }
             auto ann = ast.ann_type(plain_ty(ty.ty_vec(t)), none[vec[@ty.t]]);
             ret @fold.respan[ast.expr_](expr.span,
@@ -2131,8 +2131,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 if (e.mut == ast.mut) {
                     expr_t = @rec(mut=ast.mut with *expr_t);
                 }
-                append[ast.elt](elts_1, rec(expr=expr_1 with e));
-                append[@ty.t](elts_t, expr_t);
+                _vec.push[ast.elt](elts_1, rec(expr=expr_1 with e));
+                _vec.push[@ty.t](elts_t, expr_t);
             }
 
             auto ann = ast.ann_type(plain_ty(ty.ty_tup(elts_t)),
@@ -2160,8 +2160,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 if (f.mut == ast.mut) {
                     expr_t = @rec(mut=ast.mut with *expr_t);
                 }
-                append[ast.field](fields_1, rec(expr=expr_1 with f));
-                append[field](fields_t, rec(ident=f.ident, ty=expr_t));
+                _vec.push[ast.field](fields_1, rec(expr=expr_1 with f));
+                _vec.push[field](fields_t, rec(ident=f.ident, ty=expr_t));
             }
 
             auto ann = ast.ann_none;
@@ -2418,7 +2418,7 @@ fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
 fn check_block(&@fn_ctxt fcx, &ast.block block) -> ast.block {
     let vec[@ast.stmt] stmts = vec();
     for (@ast.stmt s in block.node.stmts) {
-        append[@ast.stmt](stmts, check_stmt(fcx, s));
+        _vec.push[@ast.stmt](stmts, check_stmt(fcx, s));
     }
 
     auto expr = none[@ast.expr];

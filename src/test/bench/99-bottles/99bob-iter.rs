@@ -40,7 +40,7 @@ case (1) {
       b += ns;
     }
     else {
-      b += t.(i);
+      _str.push_byte(b, t.(i));
     }
     i += 1u;
   }

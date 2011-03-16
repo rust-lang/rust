@@ -103,28 +103,32 @@ fn slice[T](vec[T] v, uint start, uint end) -> vec[T] {
     ret result;
 }
 
-fn shift[T](vec[T] v) -> vec[T] {
-    check(len[T](v) > 0u);
-    ret slice[T](v, 1u, len[T](v));
+fn shift[T](&mutable vec[T] v) -> T {
+    auto ln = len[T](v);
+    check(ln > 0u);
+    auto e = v.(0);
+    v = slice[T](v, 1u, ln);
+    ret e;
 }
 
-fn pop[T](vec[T] v) -> vec[T] {
-    check(len[T](v) > 0u);
-    ret slice[T](v, 0u, len[T](v) - 1u);
+fn pop[T](&mutable vec[T] v) -> T {
+    auto ln = len[T](v);
+    check(ln > 0u);
+    ln -= 1u;
+    auto e = v.(ln);
+    v = slice[T](v, 0u, ln);
+    ret e;
 }
 
-fn push[T](vec[T] v, &T t) -> vec[T] {
-    v += t;
-    ret v;
+fn push[T](&mutable vec[T] v, &T t) {
+    v += vec(t);
 }
 
-fn unshift[T](vec[T] v, &T t) -> vec[T] {
+fn unshift[T](&mutable vec[T] v, &T t) {
     auto res = alloc[T](len[T](v) + 1u);
-    res += t;
-    for (T t_ in v) {
-        res += t_;
-    }
-    ret res;
+    res += vec(t);
+    res += v;
+    v = res;
 }
 
 fn grow[T](&mutable vec[T] v, int n, &T initval) {
@@ -152,7 +156,7 @@ fn map2[T,U,V](&operator2[T,U,V] f, &vec[T] v0, &vec[U] v1) -> vec[V] {
     let vec[V] u = alloc[V](v0_len);
     auto i = 0u;
     while (i < v0_len) {
-        u += f(v0.(i), v1.(i));
+        u += vec(f(v0.(i), v1.(i)));
         i += 1u;
     }
 

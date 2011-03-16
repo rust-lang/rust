@@ -420,7 +420,7 @@ impure fn next_token(reader rdr) -> token.token {
 
     if (is_alpha(c) || c == '_') {
         while (is_alnum(c) || c == '_') {
-            accum_str += (c as u8);
+            _str.push_byte(accum_str, (c as u8));
             rdr.bump();
             c = rdr.curr();
         }
@@ -580,23 +580,23 @@ impure fn next_token(reader rdr) -> token.token {
                         alt (rdr.next()) {
                             case ('n') {
                                 rdr.bump();
-                                accum_str += '\n' as u8;
+                                _str.push_byte(accum_str, '\n' as u8);
                             }
                             case ('r') {
                                 rdr.bump();
-                                accum_str += '\r' as u8;
+                                _str.push_byte(accum_str, '\r' as u8);
                             }
                             case ('t') {
                                 rdr.bump();
-                                accum_str += '\t' as u8;
+                                _str.push_byte(accum_str, '\t' as u8);
                             }
                             case ('\\') {
                                 rdr.bump();
-                                accum_str += '\\' as u8;
+                                _str.push_byte(accum_str, '\\' as u8);
                             }
                             case ('"') {
                                 rdr.bump();
-                                accum_str += '"' as u8;
+                                _str.push_byte(accum_str, '"' as u8);
                             }
                             // FIXME: unicode numeric escapes.
                             case (?c2) {
@@ -607,7 +607,7 @@ impure fn next_token(reader rdr) -> token.token {
                         }
                     }
                     case (_) {
-                        accum_str += rdr.curr() as u8;
+                        _str.push_byte(accum_str, rdr.curr() as u8);
                     }
                 }
                 rdr.bump();

@@ -8,9 +8,9 @@ native "rust" mod rustrt {
 fn argvec(str prog, vec[str] args) -> vec[sbuf] {
     auto argptrs = vec(_str.buf(prog));
     for (str arg in args) {
-        argptrs = _vec.push[sbuf](argptrs, _str.buf(arg));
+        _vec.push[sbuf](argptrs, _str.buf(arg));
     }
-    argptrs = _vec.push[sbuf](argptrs, 0 as sbuf);
+    _vec.push[sbuf](argptrs, 0 as sbuf);
     ret argptrs;
 }
 

@@ -61,7 +61,7 @@ fn to_str(mutable uint n, uint radix) -> str
 
     let str s = "";
     while (n != 0u) {
-        s += digit(n % radix) as u8;
+        s += _str.unsafe_from_byte(digit(n % radix) as u8);
         n /= radix;
     }
 
@@ -69,7 +69,7 @@ fn to_str(mutable uint n, uint radix) -> str
     let uint len = _str.byte_len(s);
     while (len != 0u) {
         len -= 1u;
-        s1 += s.(len);
+        s1 += _str.unsafe_from_byte(s.(len));
     }
     ret s1;
 

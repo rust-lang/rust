@@ -9,7 +9,6 @@ import std.map.hashmap;
 import driver.session;
 import util.common;
 import util.common.filename;
-import util.common.append;
 import util.common.span;
 import util.common.new_str_hash;
 
@@ -303,7 +302,7 @@ impure fn parse_constrs(parser p) -> common.spanned[vec[@ast.constr]] {
                 case (token.IDENT(_)) {
                     auto constr = parse_ty_constr(p);
                     hi = constr.span;
-                    append[@ast.constr](constrs, constr);
+                    _vec.push[@ast.constr](constrs, constr);
                     if (p.peek() == token.COMMA) {
                         p.bump();
                         more = false;
@@ -573,7 +572,7 @@ impure fn parse_path(parser p, greed g) -> ast.path {
         alt (p.peek()) {
             case (token.IDENT(?i)) {
                 hi = p.get_span();
-                ids += i;
+                ids += vec(i);
                 p.bump();
                 if (p.peek() == token.DOT) {
                     if (g == GREEDY) {
@@ -699,7 +698,7 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
                     }
                     case (token.COMMA) {
                         p.bump();
-                        fields += parse_field(p);
+                        fields += vec(parse_field(p));
                     }
                     case (?t) {
                         unexpected(p, t);
@@ -877,7 +876,7 @@ impure fn extend_expr_by_ident(parser p, span lo, span hi,
         case (ast.expr_path(?pth, ?def, ?ann)) {
             if (_vec.len[@ast.ty](pth.node.types) == 0u) {
                 auto idents_ = pth.node.idents;
-                idents_ += i;
+                idents_ += vec(i);
                 auto tys = parse_ty_args(p, hi);
                 auto pth_ = spanned(pth.span, tys.span,
                                     rec(idents=idents_,
@@ -1763,8 +1762,8 @@ impure fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
                 dtor = some[ast.block](parse_block(p));
             }
             case (_) {
-                append[@ast.method](meths,
-                                    parse_method(p));
+                _vec.push[@ast.method](meths,
+                                       parse_method(p));
             }
         }
     }
@@ -2161,12 +2160,11 @@ impure fn parse_rest_import_name(parser p, ast.ident first,
         -> @ast.view_item {
     auto lo = p.get_span();
     auto hi = lo;
-    let vec[ast.ident] identifiers = vec();
-    identifiers += first;
+    let vec[ast.ident] identifiers = vec(first);
     while (p.peek() != token.SEMI) {
         expect(p, token.DOT);
         auto i = parse_ident(p);
-        identifiers += i;
+        identifiers += vec(i);
     }
     p.bump();
     auto defined_id;
@@ -2402,7 +2400,7 @@ impure fn parse_crate_directives(parser p, token.token term)
 
     while (p.peek() != term) {
         auto cdir = @parse_crate_directive(p);
-        append[@ast.crate_directive](cdirs, cdir);
+        _vec.push[@ast.crate_directive](cdirs, cdir);
     }
 
     ret cdirs;

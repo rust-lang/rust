@@ -717,7 +717,7 @@ fn escape_str(str st, char to_escape) -> str {
       case ('\\') {out += "\\\\";}
       case (?cur) {
         if (cur == to_escape) {out += "\\";}
-        out += cur as u8;
+        _str.push_byte(out, cur as u8);
       }
     }
     i += 1u;
