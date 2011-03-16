@@ -1,3 +1,13 @@
+# Delete the built-in rules.
+# This speeds builds up substantially on win32, maybe elsewhere.
+
+.SUFFIXES:
+%:: %,v
+%:: RCS/%,v
+%:: RCS/%
+%:: s.%
+%:: SCCS/s.%
+
 ######################################################################
 # Auto-configuration
 ######################################################################
