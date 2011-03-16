@@ -5508,8 +5508,8 @@ fn collect_items(@crate_ctxt cx, @ast.crate crate) {
     let fold.ast_fold[@crate_ctxt] fld =
         fold.new_identity_fold[@crate_ctxt]();
 
-    // FIXME: if ty_tag had a pointer directly to the definition instead
-    // of a def_id, we wouldn't need the second pass.
+    // FIXME: It might be better to use a worklist for this. An item
+    // would be added to it if it depends on a not yet seen tag for example.
 
     auto fld1 =
         @rec( update_env_for_item = bind collect_item(_,_),
