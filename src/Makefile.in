@@ -1,0 +1,129 @@
+######################################################################
+# Residual auto-configuration
+######################################################################
+
+include config.mk
+MKFILES := Makefile config.mk
+
+ifneq ($(MAKE_RESTARTS),)
+CFG_INFO := $(info cfg: make restarts: $(MAKE_RESTARTS))
+endif
+
+CFG_INFO := $(info cfg: building on $(CFG_OSTYPE) $(CFG_CPUTYPE))
+
+ifdef CFG_OCAMLC_OPT
+  $(info cfg: using ocaml native compiler)
+  OPT=.opt
+else
+  $(info cfg: using ocaml bytecode compiler)
+endif
+
+ifdef PROFILE_BOOT
+  $(info cfg: building bootstrap compiler with profiling (forcing native))
+  CFG_NATIVE_BOOT := 1
+  CFG_OCAMLOPT_PROFILE_FLAGS := -p
+endif
+
+ifdef DEBUG
+  $(info cfg: forcing bytecode bootstrap compiler)
+  CFG_NATIVE_BOOT :=
+endif
+
+ifdef CFG_NATIVE_BOOT
+  $(info cfg: building native bootstrap compiler)
+else
+  $(info cfg: building bytecode bootstrap compiler)
+endif
+
+ifdef NO_VALGRIND
+    CFG_VALGRIND :=
+endif
+
+
+######################################################################
+# Bootstrap compiler variables
+######################################################################
+
+# We must list them in link order.
+# Nobody calculates the link-order DAG automatically, sadly.
+
+BOOT_MLS :=                                              \
+    $(addsuffix .ml,                                     \
+        $(addprefix boot/util/, version fmt common bits) \
+        $(addprefix boot/driver/, session)               \
+        $(addprefix boot/fe/, ast token lexer parser     \
+          extfmt pexp item cexp fuzz)                    \
+        $(addprefix boot/be/, asm il abi)                \
+        $(addprefix boot/me/, walk semant resolve alias  \
+          simplify type dead layer effect typestate      \
+         loop layout transutil trans dwarf)              \
+        $(addprefix boot/be/, x86 ra pe elf macho)       \
+        $(addprefix boot/driver/, lib glue main))        \
+
+BOOT_CMOS := $(BOOT_MLS:.ml=.cmo)
+BOOT_CMXS := $(BOOT_MLS:.ml=.cmx)
+BOOT_OBJS := $(BOOT_MLS:.ml=.o)
+BOOT_CMIS := $(BOOT_MLS:.ml=.cmi)
+
+ML_DEP_INCS := -I $(S)boot/fe     -I $(S)boot/me   -I $(S)boot/be \
+               -I $(S)boot/driver -I $(S)boot/util
+
+ML_INCS        := $(ML_DEP_INCS)
+ML_LIBS        := unix.cma  nums.cma  bigarray.cma
+ML_NATIVE_LIBS := unix.cmxa nums.cmxa bigarray.cmxa
+OCAMLC_FLAGS   := -g $(ML_INCS) -w Ael -warn-error Ael
+
+
+######################################################################
+# Target-and-rule "utility variables"
+######################################################################
+
+ifdef VERBOSE
+  Q :=
+  E =
+else
+  Q := @
+  E = echo $(1)
+endif
+
+S := $(CFG_SRC_DIR)
+X := $(CFG_EXE_SUFFIX)
+
+# Look in src dir.
+VPATH := $(CFG_SRC_DIR)
+
+# Delete the built-in rules.
+.SUFFIXES:
+%:: %,v
+%:: RCS/%,v
+%:: RCS/%
+%:: s.%
+%:: SCCS/s.%
+
+######################################################################
+# Targets and rules
+######################################################################
+
+all: rustboot$(X)
+
+ifdef CFG_NATIVE_BOOT
+rustboot$(X): $(BOOT_CMXS) $(MKFILES)
+	@$(call E, compile: $@)
+	$(Q)ocamlopt$(OPT) -o $@ $(OCAMLOPT_FLAGS) $(ML_NATIVE_LIBS) \
+        $(BOOT_CMXS)
+else
+rustboot$(X): $(BOOT_CMOS) $(MKFILES)
+	@$(call E, compile: $@)
+	$(Q)ocamlc$(OPT) -o $@ $(OCAMLC_FLAGS) $(ML_LIBS) $(BOOT_CMOS)
+endif
+
+
+boot/util/version.ml: $(MKFILES)
+	$(Q)git log -1 \
+      --pretty=format:'let version = "prerelease (%h %ci)";;' >$@ || exit 1
+
+%.cmo: %.ml $(MKFILES)
+	@$(call E, compile: $@)
+	$(Q)ocamlc$(OPT) -c -o $@ $(OCAMLC_FLAGS) $<
+
+%.cmo: %.cmi $(MKFILES)
