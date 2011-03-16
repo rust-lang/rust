@@ -637,7 +637,7 @@ impure fn print_type_params(ps s, vec[ast.ty_param] params) {
 impure fn print_view_item(ps s, @ast.view_item item) {
   hbox(s);
   alt (item.node) {
-    case (ast.view_item_use(?id,?mta,_)) {
+    case (ast.view_item_use(?id,?mta,_,_)) {
       wrd1(s, "use");
       wrd(s, id);
       if (_vec.len[@ast.meta_item](mta) > 0u) {

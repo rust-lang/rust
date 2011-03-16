@@ -2151,7 +2151,8 @@ impure fn parse_use(parser p) -> @ast.view_item {
     auto ident = parse_ident(p);
     auto metadata = parse_optional_meta(p);
     expect(p, token.SEMI);
-    auto use_decl = ast.view_item_use(ident, metadata, p.next_def_id());
+    auto use_decl = ast.view_item_use(ident, metadata, p.next_def_id(),
+                                      ast.ann_none);
     ret @spanned(lo, hi, use_decl);
 }
 

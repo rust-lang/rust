@@ -45,7 +45,7 @@ fn unwrap_def(def_wrap d) -> def {
     alt (d) {
         case (def_wrap_use(?it)) {
             alt (it.node) {
-                case (ast.view_item_use(_, _, ?id)) {
+                case (ast.view_item_use(_, _, ?id, _)) {
                     ret ast.def_use(id);
                 }
             }
@@ -265,7 +265,7 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
 
     fn found_def_view(@ast.view_item i) -> def_wrap {
         alt (i.node) {
-            case (ast.view_item_use(_, _, ?id)) {
+            case (ast.view_item_use(_, _, ?id, _)) {
                 ret def_wrap_use(i);
             }
             case (ast.view_item_import(_, ?idents,?d, _)) {

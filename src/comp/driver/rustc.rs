@@ -59,7 +59,7 @@ impure fn compile_input(session.session sess,
     auto def = tup(0, 0);
     auto p = parser.new_parser(sess, env, def, input);
     auto crate = parse_input(sess, p, input);
-    crate = creader.read_crates(sess, crate);
+    crate = creader.read_crates(sess, crate, library_search_paths);
     crate = resolve.resolve_crate(sess, crate);
     crate = typeck.check_crate(sess, crate);
     trans.trans_crate(sess, crate, output, shared);
