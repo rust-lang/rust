@@ -22,29 +22,12 @@ type env = @rec(
 
 // TODO: return something
 fn load_crate(ast.ident ident, vec[str] library_search_paths) -> @() {
-    auto filename = os.dylib_filename(ident);
     for (str library_search_path in library_search_paths) {
-        auto path = fs.connect(library_search_path, filename);
-        auto pb = _str.buf(path);
-        auto llmb = llvmext.LLVMRustCreateMemoryBufferWithContentsOfFile(pb);
-        if ((llmb as int) != 0) {
-            auto llof = mk_object_file(llmb);
-            if ((llof.llof as int) != 0) {
-                auto llsi = mk_section_iter(llof.llof);
-                while ((llvmext.LLVMIsSectionIteratorAtEnd(llof.llof,
-                        llsi.llsi) as int) == 0) {
-                    // TODO: check name, pass contents off.
-
-                    llvmext.LLVMMoveToNextSection(llsi.llsi);
-                }
-            }
-        }
+        auto path = fs.connect(library_search_path, ident);
+        // TODO
     }
 
-    // TODO: write line number of "use" statement
-    log #fmt("can't find a crate named '%s' (looked for '%s' in %s)",
-        ident, filename, _str.connect(library_search_paths, ", "));
-    fail;
+    ret @();
 }
 
 fn fold_view_item_use(&env e, &span sp, ast.ident ident,
