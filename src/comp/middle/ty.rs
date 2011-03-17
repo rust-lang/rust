@@ -411,6 +411,8 @@ fn type_is_boxed(@t ty) -> bool {
         case (ty_str) { ret true; }
         case (ty_vec(_)) { ret true; }
         case (ty_box(_)) { ret true; }
+        case (ty_port(_)) { ret true; }
+        case (ty_chan(_)) { ret true; }
         case (_) { ret false; }
     }
     fail;
@@ -759,6 +761,10 @@ fn expr_ty(@ast.expr expr) -> @t {
         case (ast.expr_index(_, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_path(_, _, ?ann))      { ret ann_to_type(ann); }
         case (ast.expr_ext(_, _, _, _, ?ann)) { ret ann_to_type(ann); }
+        case (ast.expr_port(?ann))            { ret ann_to_type(ann); }
+        case (ast.expr_chan(_, ?ann))         { ret ann_to_type(ann); }
+        case (ast.expr_send(_, _, ?ann))      { ret ann_to_type(ann); }
+        case (ast.expr_recv(_, _, ?ann))      { ret ann_to_type(ann); }
 
         case (ast.expr_fail)                  { ret plain_ty(ty_nil); }
         case (ast.expr_log(_))                { ret plain_ty(ty_nil); }
