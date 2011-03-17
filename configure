@@ -8,12 +8,26 @@ echo '' >config.mk
 
 echo "configure: making directories"
 for i in \
+    doc \
     boot/fe boot/me boot/be boot/driver boot/util \
-    rt/isaac rt/bigint rt/sync rt/test \
-    stage0 stage1 stage2 \
-    test/run-pass test/compile-pass test/compile-fail
+    rt/isaac rt/bigint rt/sync rt/test
 do
     mkdir -p -v $i
+done
+
+make_test_subdirs() {
+    for t in run-pass run-fail compile-fail
+    do
+        mkdir -p -v $1/test/$t
+    done
+}
+
+make_test_subdirs boot
+
+for i in 0 1 2
+do
+    mkdir -p -v stage$i
+    make_test_subdirs stage$i
 done
 
 echo "configure: copying Makefile"

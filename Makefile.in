@@ -49,7 +49,8 @@ endif
 
 BOOT_MLS :=                                              \
     $(addsuffix .ml,                                     \
-        $(addprefix boot/util/, version fmt common bits) \
+        boot/version                                     \
+        $(addprefix boot/util/, fmt common bits)         \
         $(addprefix boot/driver/, session)               \
         $(addprefix boot/fe/, ast token lexer parser     \
           extfmt pexp item cexp fuzz)                    \
@@ -65,13 +66,15 @@ BOOT_CMXS := $(BOOT_MLS:.ml=.cmx)
 BOOT_OBJS := $(BOOT_MLS:.ml=.o)
 BOOT_CMIS := $(BOOT_MLS:.ml=.cmi)
 
-ML_DEP_INCS := -I $(S)boot/fe     -I $(S)boot/me   -I $(S)boot/be \
-               -I $(S)boot/driver -I $(S)boot/util
+BOOT_ML_DEP_INCS := -I boot                              \
+                    -I $(S)boot/fe   -I $(S)boot/me      \
+                    -I $(S)boot/be   -I $(S)boot/driver  \
+                    -I $(S)boot/util
 
-ML_INCS        := $(ML_DEP_INCS)
-ML_LIBS        := unix.cma  nums.cma  bigarray.cma
-ML_NATIVE_LIBS := unix.cmxa nums.cmxa bigarray.cmxa
-OCAMLC_FLAGS   := -g $(ML_INCS) -w Ael -warn-error Ael
+BOOT_ML_INCS        := $(BOOT_ML_DEP_INCS)
+BOOT_ML_LIBS        := unix.cma  nums.cma  bigarray.cma
+BOOT_ML_NATIVE_LIBS := unix.cmxa nums.cmxa bigarray.cmxa
+BOOT_OCAMLC_FLAGS   := -g $(BOOT_ML_INCS) -w Ael -warn-error Ael
 
 
 ######################################################################
@@ -89,8 +92,8 @@ endif
 S := $(CFG_SRC_DIR)
 X := $(CFG_EXE_SUFFIX)
 
-# Look in src dir.
-VPATH := $(CFG_SRC_DIR)
+# Look in doc and src dirs.
+VPATH := $(CFG_SRC_DIR)/doc $(CFG_SRC_DIR)/src
 
 # Delete the built-in rules.
 .SUFFIXES:
@@ -104,26 +107,47 @@ VPATH := $(CFG_SRC_DIR)
 # Targets and rules
 ######################################################################
 
-all: rustboot$(X)
+all: boot/rustboot$(X)
 
 ifdef CFG_NATIVE_BOOT
-rustboot$(X): $(BOOT_CMXS) $(MKFILES)
+boot/rustboot$(X): $(BOOT_CMXS) $(MKFILES)
 	@$(call E, compile: $@)
-	$(Q)ocamlopt$(OPT) -o $@ $(OCAMLOPT_FLAGS) $(ML_NATIVE_LIBS) \
+	$(Q)ocamlopt$(OPT) -o $@ $(BOOT_OCAMLOPT_FLAGS) $(ML_NATIVE_LIBS) \
         $(BOOT_CMXS)
 else
-rustboot$(X): $(BOOT_CMOS) $(MKFILES)
+boot/rustboot$(X): $(BOOT_CMOS) $(MKFILES)
 	@$(call E, compile: $@)
-	$(Q)ocamlc$(OPT) -o $@ $(OCAMLC_FLAGS) $(ML_LIBS) $(BOOT_CMOS)
+	$(Q)ocamlc$(OPT) -o $@ $(BOOT_OCAMLC_FLAGS) $(BOOT_ML_LIBS) $(BOOT_CMOS)
 endif
 
 
-boot/util/version.ml: $(MKFILES)
+boot/version.ml: $(MKFILES)
+	@$(call E, git: $@)
 	$(Q)git log -1 \
       --pretty=format:'let version = "prerelease (%h %ci)";;' >$@ || exit 1
 
 %.cmo: %.ml $(MKFILES)
 	@$(call E, compile: $@)
-	$(Q)ocamlc$(OPT) -c -o $@ $(OCAMLC_FLAGS) $<
+	$(Q)ocamlc$(OPT) -c -o $@ $(BOOT_OCAMLC_FLAGS) $<
 
 %.cmo: %.cmi $(MKFILES)
+
+
+
+######################################################################
+# Cleanup
+######################################################################
+
+.PHONY: clean
+
+clean:
+	@$(call E, cleaning)
+	$(Q)rm -f $(foreach ext, cmx cmi cmo cma bc o a d $(X)     \
+                             h cpp ml s                        \
+                             out bc dSYM                       \
+                             ,                                 \
+                  $(wildcard     *.$(ext)                      \
+                               */*.$(ext)                      \
+                             */*/*.$(ext)                      \
+                           */*/*/*.$(ext)                      \
+                   ))
