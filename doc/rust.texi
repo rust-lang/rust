@@ -3310,11 +3310,14 @@ for each (str s in _str.split(txt, "\n")) @{
 
 An @code{if} statement is a conditional branch in program control. The form of
 an @code{if} statement is a parenthesized condition expression, followed by a
-consequent block, and an optional trailing @code{else} block. The condition
-expression must have type @code{bool}. If the condition expression evaluates
-to @code{true}, the consequent block is executed and any @code{else} block is
-skipped. If the condition expression evaluates to @code{false}, the consequent
-block is skipped and any @code{else} block is executed.
+consequent block, any number of @code{else if} conditions and blocks, and an
+optional trailing @code{else} block. The condition expressions must have type
+@code{bool}. If a condition expression evaluates to @code{true}, the
+consequent block is executed and any subsequent @code{else if} or @code{else}
+block is skipped. If a condition expression evaluates to @code{false}, the
+consequent block is skipped and any subsequent @code{else if} condition is
+evaluated. If all @code{if} and @code{else if} conditions evaluate to @code{false}
+then any @code{else} block is executed.
 
 @node       Ref.Stmt.Alt
 @subsection Ref.Stmt.Alt
