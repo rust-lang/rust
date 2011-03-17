@@ -595,7 +595,7 @@ impure fn parse_path(parser p, greed g) -> ast.path {
     ret spanned(lo, tys.span, rec(idents=ids, types=tys.node));
 }
 
-impure fn parse_mutabliity(parser p) -> ast.mutability {
+impure fn parse_mutability(parser p) -> ast.mutability {
     if (p.peek() == token.MUTABLE) {
         p.bump();
         ret ast.mut;
@@ -604,7 +604,7 @@ impure fn parse_mutabliity(parser p) -> ast.mutability {
 }
 
 impure fn parse_field(parser p) -> ast.field {
-    auto m = parse_mutabliity(p);
+    auto m = parse_mutability(p);
     auto i = parse_ident(p);
     expect(p, token.EQ);
     auto e = parse_expr(p);
@@ -650,7 +650,7 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
         case (token.TUP) {
             p.bump();
             impure fn parse_elt(parser p) -> ast.elt {
-                auto m = parse_mutabliity(p);
+                auto m = parse_mutability(p);
                 auto e = parse_expr(p);
                 ret rec(mut=m, expr=e);
             }
