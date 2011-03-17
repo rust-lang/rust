@@ -409,6 +409,7 @@ fn type_is_scalar(@t ty) -> bool {
         case (ty_machine(_)) { ret true; }
         case (ty_char) { ret true; }
         case (ty_type) { ret true; }
+        case (ty_native) { ret true; }
         case (_) { ret false; }
     }
     fail;
