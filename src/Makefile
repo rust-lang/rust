@@ -498,6 +498,7 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         lib-sha1.rs \
                         lib-sort.rs \
                         lib-str.rs \
+                        lib-str-buf.rs \
                         lib-task.rs \
                         lib-uint.rs \
                         lib-vec-str-conversions.rs \
