@@ -339,6 +339,14 @@ fn T_box(TypeRef t) -> TypeRef {
     ret T_struct(vec(T_int(), t));
 }
 
+fn T_port(TypeRef t) -> TypeRef {
+    ret T_struct(vec(T_int())); // Refcount
+}
+
+fn T_chan(TypeRef t) -> TypeRef {
+    ret T_struct(vec(T_int())); // Refcount
+}
+
 fn T_crate(type_names tn) -> TypeRef {
     auto s = "crate";
     if (tn.name_has_type(s)) {
@@ -622,6 +630,12 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t, bool boxed) -> TypeRef {
         }
         case (ty.ty_vec(?mt)) {
             llty = T_ptr(T_vec(type_of_inner(cx, mt.ty, true)));
+        }
+        case (ty.ty_port(?t)) {
+            llty = T_ptr(T_port(type_of_inner(cx, t, true)));
+        }
+        case (ty.ty_chan(?t)) {
+            llty = T_ptr(T_chan(type_of_inner(cx, t, true)));
         }
         case (ty.ty_tup(?elts)) {
             let vec[TypeRef] tys = vec();
@@ -1606,6 +1620,28 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
             ret decr_refcnt_and_if_zero(cx, v,
                                         bind hit_zero(_, v, body_mt.ty),
                                         "free box",
+                                        T_int(), C_int(0));
+        }
+
+        case (ty.ty_port(_)) {
+            fn hit_zero(@block_ctxt cx, ValueRef v) -> result {
+                ret trans_upcall(cx, "upcall_del_port",
+                                 vec(vp2i(cx, v)));
+            }
+            ret decr_refcnt_and_if_zero(cx, v,
+                                        bind hit_zero(_, v),
+                                        "free port",
+                                        T_int(), C_int(0));
+        }
+
+        case (ty.ty_chan(_)) {
+            fn hit_zero(@block_ctxt cx, ValueRef v) -> result {
+                ret trans_upcall(cx, "upcall_del_chan",
+                                 vec(vp2i(cx, v)));
+            }
+            ret decr_refcnt_and_if_zero(cx, v,
+                                        bind hit_zero(_, v),
+                                        "free chan",
                                         T_int(), C_int(0));
         }
 
@@ -4496,6 +4532,22 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             ret trans_be(cx, e);
         }
 
+        case (ast.expr_port(?ann)) {
+            ret trans_port(cx, ann);
+        }
+
+        case (ast.expr_chan(?e, ?ann)) {
+            ret trans_chan(cx, e, ann);
+        }
+
+        case (ast.expr_send(?lhs, ?rhs, ?ann)) {
+            ret trans_send(cx, lhs, rhs, ann);
+        }
+
+        case (ast.expr_recv(?lhs, ?rhs, ?ann)) {
+            ret trans_recv(cx, lhs, rhs, ann);
+        }
+
         // lval cases fall through to trans_lval and then
         // possibly load the result (if it's non-structural).
 
@@ -4665,6 +4717,68 @@ fn trans_be(@block_ctxt cx, @ast.expr e) -> result {
     // FIXME: Turn this into a real tail call once
     // calling convention issues are settled
     ret trans_ret(cx, some(e));
+}
+
+fn trans_port(@block_ctxt cx, ast.ann ann) -> result {
+
+    auto t = node_ann_type(cx.fcx.ccx, ann);
+    auto unit_ty;
+    alt (t.struct) {
+        case (ty.ty_port(?t)) {
+            unit_ty = t;
+        }
+        case (_) {
+            cx.fcx.ccx.sess.bug("non-port type in trans_port");
+            fail;
+        }
+    }
+
+    auto llunit_ty = type_of(cx.fcx.ccx, unit_ty);
+
+    auto bcx = cx;
+    auto unit_sz = size_of(bcx, unit_ty);
+    bcx = unit_sz.bcx;
+    auto sub = trans_upcall(bcx, "upcall_new_port", vec(unit_sz.val));
+    bcx = sub.bcx;
+    auto llty = type_of(cx.fcx.ccx, t);
+    auto port_val = vi2p(bcx, sub.val, llty);
+    auto dropref = clean(bind drop_ty(_, port_val, t));
+    find_scope_cx(bcx).cleanups += vec(dropref);
+
+    ret res(bcx, port_val);
+}
+
+fn trans_chan(@block_ctxt cx, @ast.expr e, ast.ann ann) -> result {
+
+    auto bcx = cx;
+    auto prt = trans_expr(bcx, e);
+    bcx = prt.bcx;
+
+    auto prt_ty = ty.expr_ty(e);
+    auto prt_llty = type_of(bcx.fcx.ccx, prt_ty);
+    auto prt_val = vp2i(bcx, prt.val);
+    auto sub = trans_upcall(bcx, "upcall_new_chan", vec(prt_val));
+    bcx = sub.bcx;
+
+    auto chan_ty = node_ann_type(bcx.fcx.ccx, ann);
+    auto chan_llty = type_of(bcx.fcx.ccx, chan_ty);
+    auto chan_val = vi2p(bcx, sub.val, chan_llty);
+    auto dropref = clean(bind drop_ty(_, chan_val, chan_ty));
+    find_scope_cx(bcx).cleanups += vec(dropref);
+
+    // TODO: Do I need to do anything with the port's refcount?
+
+    ret res(bcx, chan_val);
+}
+
+fn trans_send(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
+              ast.ann ann) -> result {
+    fail;
+}
+
+fn trans_recv(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
+              ast.ann ann) -> result {
+    fail;
 }
 
 fn init_local(@block_ctxt cx, @ast.local local) -> result {
