@@ -147,35 +147,35 @@ fn ty_to_str(&@t typ) -> str {
     }
 
     alt (typ.struct) {
-        case (ty_native)       { s = "native";                     }
-        case (ty_nil)          { s = "()";                         }
-        case (ty_bool)         { s = "bool";                       }
-        case (ty_int)          { s = "int";                        }
-        case (ty_uint)         { s = "uint";                       }
-        case (ty_machine(?tm)) { s = common.ty_mach_to_str(tm);    }
-        case (ty_char)         { s = "char";                       }
-        case (ty_str)          { s = "str";                        }
-        case (ty_box(?t))      { s = "@" + ty_to_str(t);           }
-        case (ty_vec(?t))      { s = "vec[" + ty_to_str(t) + "]";  }
-        case (ty_port(?t))     { s = "port[" + ty_to_str(t) + "]"; }
-        case (ty_chan(?t))     { s = "chan[" + ty_to_str(t) + "]"; }
-        case (ty_type)         { s = "type";                       }
+        case (ty_native)       { s += "native";                     }
+        case (ty_nil)          { s += "()";                         }
+        case (ty_bool)         { s += "bool";                       }
+        case (ty_int)          { s += "int";                        }
+        case (ty_uint)         { s += "uint";                       }
+        case (ty_machine(?tm)) { s += common.ty_mach_to_str(tm);    }
+        case (ty_char)         { s += "char";                       }
+        case (ty_str)          { s += "str";                        }
+        case (ty_box(?t))      { s += "@" + ty_to_str(t);           }
+        case (ty_vec(?t))      { s += "vec[" + ty_to_str(t) + "]";  }
+        case (ty_port(?t))     { s += "port[" + ty_to_str(t) + "]"; }
+        case (ty_chan(?t))     { s += "chan[" + ty_to_str(t) + "]"; }
+        case (ty_type)         { s += "type";                       }
 
         case (ty_tup(?elems)) {
             auto f = ty_to_str;
             auto strs = _vec.map[@t,str](f, elems);
-            s = "tup(" + _str.connect(strs, ",") + ")";
+            s += "tup(" + _str.connect(strs, ",") + ")";
         }
 
         case (ty_rec(?elems)) {
             auto f = field_to_str;
             auto strs = _vec.map[field,str](f, elems);
-            s = "rec(" + _str.connect(strs, ",") + ")";
+            s += "rec(" + _str.connect(strs, ",") + ")";
         }
 
         case (ty_tag(?id, ?tps)) {
             // The user should never see this if the cname is set properly!
-            s = "<tag#" + util.common.istr(id._0) + ":" +
+            s += "<tag#" + util.common.istr(id._0) + ":" +
                 util.common.istr(id._1) + ">";
             if (_vec.len[@t](tps) > 0u) {
                 auto f = ty_to_str;
@@ -185,31 +185,31 @@ fn ty_to_str(&@t typ) -> str {
         }
 
         case (ty_fn(?proto, ?inputs, ?output)) {
-            s = fn_to_str(proto, none[ast.ident], inputs, output);
+            s += fn_to_str(proto, none[ast.ident], inputs, output);
         }
 
         case (ty_native_fn(_, ?inputs, ?output)) {
-            s = fn_to_str(ast.proto_fn, none[ast.ident], inputs, output);
+            s += fn_to_str(ast.proto_fn, none[ast.ident], inputs, output);
         }
 
         case (ty_obj(?meths)) {
             auto f = method_to_str;
             auto m = _vec.map[method,str](f, meths);
-            s = "obj {\n\t" + _str.connect(m, "\n\t") + "\n}";
+            s += "obj {\n\t" + _str.connect(m, "\n\t") + "\n}";
         }
 
         case (ty_var(?v)) {
-            s = "<T" + util.common.istr(v) + ">";
+            s += "<T" + util.common.istr(v) + ">";
         }
 
         case (ty_local(?id)) {
-            s = "<L" + util.common.istr(id._0) + ":" + util.common.istr(id._1)
-                + ">";
+            s += "<L" + util.common.istr(id._0) + ":" +
+                util.common.istr(id._1) + ">";
         }
 
         case (ty_param(?id)) {
-            s = "<P" + util.common.istr(id._0) + ":" + util.common.istr(id._1)
-                + ">";
+            s += "<P" + util.common.istr(id._0) + ":" +
+                util.common.istr(id._1) + ">";
         }
     }
 
