@@ -793,6 +793,14 @@ fn method_idx(session.session sess, &span sp,
     fail;
 }
 
+fn sort_methods(vec[method] meths) -> vec[method] {
+    fn method_lteq(&method a, &method b) -> bool {
+        ret _str.lteq(a.ident, b.ident);
+    }
+
+    ret std.sort.merge_sort[method](bind method_lteq(_,_), meths);
+}
+
 fn is_lval(@ast.expr expr) -> bool {
     alt (expr.node) {
         case (ast.expr_field(_,_,_))    { ret true;  }

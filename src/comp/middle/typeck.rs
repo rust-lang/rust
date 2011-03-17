@@ -376,7 +376,8 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
                                       inputs=ins,
                                       output=out));
             }
-            sty = ty.ty_obj(tmeths);
+
+            sty = ty.ty_obj(ty.sort_methods(tmeths));
         }
     }
 
@@ -545,14 +546,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         auto methods =
             _vec.map[@ast.method,method](f, obj_info.methods);
 
-        fn method_lteq(&method a, &method b) -> bool {
-            ret _str.lteq(a.ident, b.ident);
-        }
-
-        methods = std.sort.merge_sort[method](bind method_lteq(_,_),
-                                              methods);
-
-        auto t_obj = plain_ty(ty.ty_obj(methods));
+        auto t_obj = plain_ty(ty.ty_obj(ty.sort_methods(methods)));
         ret t_obj;
     }
 
