@@ -1437,8 +1437,10 @@ fn demand_block(&@fn_ctxt fcx, @ty.t expected, &ast.block bloc) -> ast.block {
 
 // Writeback: the phase that writes inferred types back into the AST.
 
-fn writeback_local(&@fn_ctxt fcx, &span sp, @ast.local local)
+fn writeback_local(&option.t[@fn_ctxt] env, &span sp, @ast.local local)
         -> @ast.decl {
+    auto fcx = option.get[@fn_ctxt](env);
+
     if (!fcx.locals.contains_key(local.id)) {
         fcx.ccx.sess.span_err(sp, "unable to determine type of local: "
                               + local.ident);
@@ -1452,10 +1454,25 @@ fn writeback_local(&@fn_ctxt fcx, &span sp, @ast.local local)
 }
 
 fn writeback(&@fn_ctxt fcx, &ast.block block) -> ast.block {
-    auto fld = fold.new_identity_fold[@fn_ctxt]();
-    auto f = writeback_local;
-    fld = @rec(fold_decl_local = f with *fld);
-    ret fold.fold_block[@fn_ctxt](fcx, fld, block);
+    fn update_env_for_item(&option.t[@fn_ctxt] env, @ast.item i)
+            -> option.t[@fn_ctxt] {
+        ret none[@fn_ctxt];
+    }
+    fn keep_going(&option.t[@fn_ctxt] env) -> bool {
+        ret !option.is_none[@fn_ctxt](env);
+    }
+
+    auto fld = fold.new_identity_fold[option.t[@fn_ctxt]]();
+    auto wbl = writeback_local;
+    auto uefi = update_env_for_item;
+    auto kg = keep_going;
+    fld = @rec(
+        fold_decl_local = wbl,
+        update_env_for_item = uefi,
+        keep_going = kg
+        with *fld
+    );
+    ret fold.fold_block[option.t[@fn_ctxt]](some[@fn_ctxt](fcx), fld, block);
 }
 
 // AST fragment checking
