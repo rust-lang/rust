@@ -5277,19 +5277,12 @@ fn trans_const(@crate_ctxt cx, @ast.expr e,
                &ast.def_id cid, &ast.ann ann) {
     auto t = node_ann_type(cx, ann);
     auto v = trans_const_expr(cx, e);
-    if (ty.type_is_scalar(t)) {
-        // The scalars come back as 1st class LLVM vals
-        // which we have to stick into global constants.
-        auto g = llvm.LLVMAddGlobal(cx.llmod, val_ty(v),
-                                    _str.buf(cx.names.next(cx.path)));
-        llvm.LLVMSetInitializer(g, v);
-        llvm.LLVMSetGlobalConstant(g, True);
-        llvm.LLVMSetLinkage(g, lib.llvm.LLVMPrivateLinkage
-                            as llvm.Linkage);
-        cx.consts.insert(cid, g);
-    } else {
-        cx.consts.insert(cid, v);
-    }
+
+    // The scalars come back as 1st class LLVM vals
+    // which we have to stick into global constants.
+    auto g = cx.consts.get(cid);
+    llvm.LLVMSetInitializer(g, v);
+    llvm.LLVMSetGlobalConstant(g, True);
 }
 
 fn trans_item(@crate_ctxt cx, &ast.item item) {
@@ -5488,8 +5481,14 @@ fn collect_native_item(&@crate_ctxt cx, @ast.native_item i) -> @crate_ctxt {
 fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
 
     alt (i.node) {
-        case (ast.item_const(?name, _, _, ?cid, _)) {
+        case (ast.item_const(?name, _, _, ?cid, ?ann)) {
+            auto typ = node_ann_type(cx, ann);
+            auto g = llvm.LLVMAddGlobal(cx.llmod, type_of(cx, typ),
+                                        _str.buf(cx.names.next(name)));
+            llvm.LLVMSetLinkage(g, lib.llvm.LLVMPrivateLinkage
+                                as llvm.Linkage);
             cx.items.insert(cid, i);
+            cx.consts.insert(cid, g);
         }
 
         case (ast.item_mod(?name, ?m, ?mid)) {
