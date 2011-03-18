@@ -452,6 +452,15 @@ impure fn parse_ty(parser p) -> @ast.ty {
             t = ast.ty_path(parse_path(p, GREEDY), none[ast.def]);
         }
 
+        case (token.MUTABLE) {
+            p.bump();
+            p.get_session().span_warn(p.get_span(),
+                "ignoring deprecated 'mutable' type constructor");
+            auto typ = parse_ty(p);
+            t = typ.node;
+            hi = typ.span;
+        }
+
         case (_) {
             p.err("expecting type");
             t = ast.ty_nil;
