@@ -45,6 +45,15 @@ obj session(cfg targ) {
         fail;
     }
 
+    fn span_unimpl(span sp, str msg) {
+        log #fmt("%s:%u:%u:%u:%u: error: unimplemented %s",
+                 sp.filename,
+                 sp.lo.line, sp.lo.col,
+                 sp.hi.line, sp.hi.col,
+                 msg);
+        fail;
+    }
+
     fn unimpl(str msg) {
         log #fmt("error: unimplemented %s", msg);
         fail;

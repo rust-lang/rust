@@ -1402,7 +1402,8 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
         }
 
         case (_) {
-            fcx.ccx.sess.unimpl("type unification for expression variant");
+            fcx.ccx.sess.span_unimpl(e.span,
+                "type unification for expression variant");
             fail;
         }
     }
