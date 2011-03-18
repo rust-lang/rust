@@ -4754,8 +4754,6 @@ fn trans_chan(@block_ctxt cx, @ast.expr e, ast.ann ann) -> result {
     auto prt = trans_expr(bcx, e);
     bcx = prt.bcx;
 
-    auto prt_ty = ty.expr_ty(e);
-    auto prt_llty = type_of(bcx.fcx.ccx, prt_ty);
     auto prt_val = vp2i(bcx, prt.val);
     auto sub = trans_upcall(bcx, "upcall_new_chan", vec(prt_val));
     bcx = sub.bcx;
@@ -4773,12 +4771,52 @@ fn trans_chan(@block_ctxt cx, @ast.expr e, ast.ann ann) -> result {
 
 fn trans_send(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
               ast.ann ann) -> result {
-    fail;
+
+    auto bcx = cx;
+    auto chn = trans_expr(bcx, lhs);
+    bcx = chn.bcx;
+    auto data = trans_expr(bcx, rhs);
+    bcx = data.bcx;
+
+    auto chan_ty = node_ann_type(cx.fcx.ccx, ann);
+    auto unit_ty;
+    alt (chan_ty.struct) {
+        case (ty.ty_chan(?t)) {
+            unit_ty = t;
+        }
+        case (_) {
+            bcx.fcx.ccx.sess.bug("non-chan type in trans_send");
+            fail;
+        }
+    }
+
+    auto llunit_ty = type_of(bcx.fcx.ccx, unit_ty);
+    auto data_alloca = bcx.build.Alloca(llunit_ty);
+    bcx.build.Store(data.val, data_alloca);
+
+    auto chn_val = vp2i(bcx, chn.val);
+    auto data_val = vp2i(bcx, data_alloca);
+
+    auto sub = trans_upcall(bcx, "upcall_send", vec(chn_val, data_val));
+    bcx = sub.bcx;
+
+    ret res(bcx, chn_val);
 }
 
 fn trans_recv(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
               ast.ann ann) -> result {
-    fail;
+
+    auto bcx = cx;
+    auto data = trans_expr(bcx, lhs);
+    bcx = data.bcx;
+    auto prt = trans_expr(bcx, rhs);
+    bcx = prt.bcx;
+    auto data_val = vp2i(bcx, data.val);
+    auto prt_val = vp2i(bcx, prt.val);
+    auto sub = trans_upcall(bcx, "upcall_recv", vec(data_val, prt_val));
+    bcx = sub.bcx;
+
+    ret res(bcx, data_val);
 }
 
 fn init_local(@block_ctxt cx, @ast.local local) -> result {
