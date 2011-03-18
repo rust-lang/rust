@@ -456,6 +456,7 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/run-pass/iter-ret.rs \
                     test/run-pass/leak-tag-copy.rs \
                     test/run-pass/lib-io.rs \
+                    test/run-pass/maybe-mutable.rs \
                     test/run-pass/mlist-cycle.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/seq-compare.rs \

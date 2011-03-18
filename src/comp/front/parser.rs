@@ -615,6 +615,10 @@ impure fn parse_path(parser p, greed g) -> ast.path {
 impure fn parse_mutability(parser p) -> ast.mutability {
     if (p.peek() == token.MUTABLE) {
         p.bump();
+        if (p.peek() == token.QUES) {
+            p.bump();
+            ret ast.maybe_mut;
+        }
         ret ast.mut;
     }
     ret ast.imm;

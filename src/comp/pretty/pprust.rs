@@ -58,8 +58,10 @@ impure fn commasep[IN](ps s, vec[IN] elts, impure fn (ps, &IN) op) {
 }
 
 impure fn print_mt(ps s, &ast.mt mt) {
-    if (mt.mut == ast.mut) {
-        wrd1(s, "mutable");
+    alt (mt.mut) {
+        case (ast.mut)       { wrd1(s, "mutable");  }
+        case (ast.maybe_mut) { wrd1(s, "mutable?"); }
+        case (ast.imm)       { /* nothing */        }
     }
     print_type(s, mt.ty);
 }

@@ -91,6 +91,7 @@ tag pat_ {
 tag mutability {
     mut;
     imm;
+    maybe_mut;
 }
 
 tag opacity {

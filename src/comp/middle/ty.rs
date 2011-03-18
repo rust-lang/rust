@@ -148,8 +148,9 @@ fn ty_to_str(&@t typ) -> str {
     fn mt_to_str(&mt m) -> str {
         auto mstr;
         alt (m.mut) {
-            case (ast.mut) { mstr = "mutable "; }
-            case (ast.imm) { mstr = "";         }
+            case (ast.mut)       { mstr = "mutable "; }
+            case (ast.imm)       { mstr = "";         }
+            case (ast.maybe_mut) { mstr = "mutable? "; }
         }
 
         ret mstr + ty_to_str(m.ty);
@@ -858,6 +859,21 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         ret ures_err(terr_mismatch, expected, actual);
     }
 
+    // Unifies two mutability flags.
+    fn unify_mut(ast.mutability expected, ast.mutability actual)
+            -> option.t[ast.mutability] {
+        if (expected == actual) {
+            ret some[ast.mutability](expected);
+        }
+        if (expected == ast.maybe_mut) {
+            ret some[ast.mutability](actual);
+        }
+        if (actual == ast.maybe_mut) {
+            ret some[ast.mutability](expected);
+        }
+        ret none[ast.mutability];
+    }
+
     tag fn_common_res {
         fn_common_res_err(unify_result);
         fn_common_res_ok(vec[arg], @t);
@@ -1158,9 +1174,13 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             case (ty.ty_box(?expected_mt)) {
                 alt (actual.struct) {
                     case (ty.ty_box(?actual_mt)) {
-                        if (expected_mt.mut != actual_mt.mut) {
-                            ret ures_err(terr_box_mutability, expected,
-                                         actual);
+                        auto mut;
+                        alt (unify_mut(expected_mt.mut, actual_mt.mut)) {
+                            case (none[ast.mutability]) {
+                                ret ures_err(terr_box_mutability, expected,
+                                             actual);
+                            }
+                            case (some[ast.mutability](?m)) { mut = m; }
                         }
 
                         auto result = unify_step(bindings,
@@ -1169,8 +1189,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                                                  handler);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
-                                auto mt = rec(ty=result_sub,
-                                              mut=expected_mt.mut);
+                                auto mt = rec(ty=result_sub, mut=mut);
                                 ret ures_ok(plain_ty(ty.ty_box(mt)));
                             }
                             case (_) {
@@ -1188,9 +1207,13 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             case (ty.ty_vec(?expected_mt)) {
                 alt (actual.struct) {
                     case (ty.ty_vec(?actual_mt)) {
-                        if (expected_mt.mut != actual_mt.mut) {
-                            ret ures_err(terr_vec_mutability, expected,
-                                         actual);
+                        auto mut;
+                        alt (unify_mut(expected_mt.mut, actual_mt.mut)) {
+                            case (none[ast.mutability]) {
+                                ret ures_err(terr_vec_mutability, expected,
+                                             actual);
+                            }
+                            case (some[ast.mutability](?m)) { mut = m; }
                         }
 
                         auto result = unify_step(bindings,
@@ -1199,8 +1222,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                                                  handler);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
-                                auto mt = rec(ty=result_sub,
-                                              mut=expected_mt.mut);
+                                auto mt = rec(ty=result_sub, mut=mut);
                                 ret ures_ok(plain_ty(ty.ty_vec(mt)));
                             }
                             case (_) {
@@ -1279,9 +1301,15 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                         while (i < expected_len) {
                             auto expected_elem = expected_elems.(i);
                             auto actual_elem = actual_elems.(i);
-                            if (expected_elem.mut != actual_elem.mut) {
-                                auto err = terr_tuple_mutability;
-                                ret ures_err(err, expected, actual);
+
+                            auto mut;
+                            alt (unify_mut(expected_elem.mut,
+                                           actual_elem.mut)) {
+                                case (none[ast.mutability]) {
+                                    auto err = terr_tuple_mutability;
+                                    ret ures_err(err, expected, actual);
+                                }
+                                case (some[ast.mutability](?m)) { mut = m; }
                             }
 
                             auto result = unify_step(bindings,
@@ -1290,8 +1318,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                                                      handler);
                             alt (result) {
                                 case (ures_ok(?rty)) {
-                                    auto mt = rec(ty=rty,
-                                                  mut=expected_elem.mut);
+                                    auto mt = rec(ty=rty, mut=mut);
                                     result_elems += vec(mt);
                                 }
                                 case (_) {
@@ -1329,10 +1356,15 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                         while (i < expected_len) {
                             auto expected_field = expected_fields.(i);
                             auto actual_field = actual_fields.(i);
-                            if (expected_field.mt.mut
-                                    != actual_field.mt.mut) {
-                                auto err = terr_record_mutability;
-                                ret ures_err(err, expected, actual);
+
+                            auto mut;
+                            alt (unify_mut(expected_field.mt.mut,
+                                           actual_field.mt.mut)) {
+                                case (none[ast.mutability]) {
+                                    ret ures_err(terr_record_mutability,
+                                                 expected, actual);
+                                }
+                                case (some[ast.mutability](?m)) { mut = m; }
                             }
 
                             if (!_str.eq(expected_field.ident,
@@ -1349,8 +1381,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                                                      handler);
                             alt (result) {
                                 case (ures_ok(?rty)) {
-                                    auto mt = rec(ty=rty,
-                                                  mut=expected_field.mt.mut);
+                                    auto mt = rec(ty=rty, mut=mut);
                                     _vec.push[field]
                                         (result_fields,
                                          rec(mt=mt with expected_field));
@@ -1489,6 +1520,12 @@ fn type_err_to_str(&ty.type_err err) -> str {
     alt (err) {
         case (terr_mismatch) {
             ret "types differ";
+        }
+        case (terr_box_mutability) {
+            ret "boxed values differ in mutability";
+        }
+        case (terr_vec_mutability) {
+            ret "vectors differ in mutability";
         }
         case (terr_tuple_size(?e_sz, ?a_sz)) {
             ret "expected a tuple with " + _uint.to_str(e_sz, 10u) +
