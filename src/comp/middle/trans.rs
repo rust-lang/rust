@@ -4807,16 +4807,23 @@ fn trans_recv(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
               ast.ann ann) -> result {
 
     auto bcx = cx;
-    auto data = trans_expr(bcx, lhs);
-    bcx = data.bcx;
+    auto data = trans_lval(bcx, lhs);
+    check (data.is_mem);
+    bcx = data.res.bcx;
     auto prt = trans_expr(bcx, rhs);
     bcx = prt.bcx;
-    auto data_val = vp2i(bcx, data.val);
+
+    auto unit_ty = node_ann_type(cx.fcx.ccx, ann);
+    auto llunit_ty = type_of(bcx.fcx.ccx, unit_ty);
+    auto data_alloca = bcx.build.Alloca(llunit_ty);
+
+    auto data_val = vp2i(bcx, data_alloca);
     auto prt_val = vp2i(bcx, prt.val);
     auto sub = trans_upcall(bcx, "upcall_recv", vec(data_val, prt_val));
     bcx = sub.bcx;
 
-    ret res(bcx, data_val);
+    auto data_load = bcx.build.Load(data_alloca);
+    ret copy_ty(bcx, DROP_EXISTING, data.res.val, data_load, unit_ty);
 }
 
 fn init_local(@block_ctxt cx, @ast.local local) -> result {
