@@ -530,9 +530,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         task-comm-15.rs \
                         task-comm-2.rs \
                         task-comm-3.rs \
-                        task-comm-4.rs \
-                        task-comm-5.rs \
-                        task-comm-6.rs \
                         task-comm-7.rs \
                         task-comm-8.rs \
                         task-comm-9.rs \
