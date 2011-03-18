@@ -79,7 +79,7 @@ ifdef CFG_UNIXY
   CFG_INFO := $(info cfg: unix-y environment)
 
   CFG_EXE_SUFFIX :=
-  CFG_RUN_PROGRAM = LD_LIBRARY_PATH=$(dir $(1)) $(CFG_VALGRIND) $(1)
+  CFG_RUN_PROGRAM=LD_LIBRARY_PATH=$(dir $(1)) $(CFG_VALGRIND) $(1)
 
   CFG_BOOT_NATIVE := 1
 
