@@ -20,6 +20,7 @@ native "rust" mod rustrt {
      * want to invoke this as vec_alloc[vec[U], U].
      */
     fn vec_alloc[T, U](uint n_elts) -> vec[U];
+    fn vec_alloc_mut[T, U](uint n_elts) -> vec[mutable U];
 
     fn refcount[T](vec[T] v) -> uint;
 
@@ -28,6 +29,10 @@ native "rust" mod rustrt {
 
 fn alloc[T](uint n_elts) -> vec[T] {
     ret rustrt.vec_alloc[vec[T], T](n_elts);
+}
+
+fn alloc_mut[T](uint n_elts) -> vec[mutable T] {
+    ret rustrt.vec_alloc_mut[vec[mutable T], T](n_elts);
 }
 
 fn refcount[T](vec[T] v) -> uint {
@@ -52,6 +57,16 @@ fn init_fn[T](&init_op[T] op, uint n_elts) -> vec[T] {
     ret v;
 }
 
+fn init_fn_mut[T](&init_op[T] op, uint n_elts) -> vec[mutable T] {
+    let vec[mutable T] v = alloc_mut[T](n_elts);
+    let uint i = 0u;
+    while (i < n_elts) {
+        v += vec(mutable op(i));
+        i += 1u;
+    }
+    ret v;
+}
+
 fn init_elt[T](&T t, uint n_elts) -> vec[T] {
     /**
      * FIXME (issue #81): should be:
@@ -65,6 +80,16 @@ fn init_elt[T](&T t, uint n_elts) -> vec[T] {
     while (i > 0u) {
         i -= 1u;
         v += vec(t);
+    }
+    ret v;
+}
+
+fn init_elt_mut[T](&T t, uint n_elts) -> vec[mutable T] {
+    let vec[mutable T] v = alloc_mut[T](n_elts);
+    let uint i = n_elts;
+    while (i > 0u) {
+        i -= 1u;
+        v += vec(mutable t);
     }
     ret v;
 }
