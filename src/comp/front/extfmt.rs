@@ -113,7 +113,7 @@ fn parse_fmt_string(str s) -> vec[piece] {
     fn flush_buf(str buf, &vec[piece] pieces) -> str {
         if (_str.byte_len(buf) > 0u) {
             auto piece = piece_string(buf);
-            pieces += piece;
+            pieces += vec(piece);
         }
         ret "";
     }
@@ -133,7 +133,7 @@ fn parse_fmt_string(str s) -> vec[piece] {
             } else {
                 buf = flush_buf(buf, pieces);
                 auto res = parse_conversion(s, i, lim);
-                pieces += res._0;
+                pieces += vec(res._0);
                 i = res._1;
             }
         } else {

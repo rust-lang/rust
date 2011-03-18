@@ -31,6 +31,13 @@ fn map[T, U](&operator[T, U] f, &t[T] opt) -> t[U] {
     fail;   // FIXME: remove me when exhaustiveness checking works
 }
 
+fn is_none[T](&t[T] opt) -> bool {
+    alt (opt) {
+        case (none[T])      { ret true; }
+        case (some[T](_))   { ret false; }
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

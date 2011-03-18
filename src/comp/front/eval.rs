@@ -13,7 +13,6 @@ import front.parser.new_parser;
 import front.parser.parse_mod_items;
 import util.common;
 import util.common.filename;
-import util.common.append;
 import util.common.span;
 import util.common.new_str_hash;
 
@@ -394,7 +393,7 @@ impure fn eval_crate_directive(parser p,
             auto im = ast.item_mod(id, m0, next_id);
             auto i = @spanned(cdir.span, cdir.span, im);
             ast.index_item(index, i);
-            append[@ast.item](items, i);
+            _vec.push[@ast.item](items, i);
         }
 
         case (ast.cdir_dir_mod(?id, ?dir_opt, ?cdirs)) {
@@ -412,11 +411,11 @@ impure fn eval_crate_directive(parser p,
             auto im = ast.item_mod(id, m0, p.next_def_id());
             auto i = @spanned(cdir.span, cdir.span, im);
             ast.index_item(index, i);
-            append[@ast.item](items, i);
+            _vec.push[@ast.item](items, i);
         }
 
         case (ast.cdir_view_item(?vi)) {
-            append[@ast.view_item](view_items, vi);
+            _vec.push[@ast.view_item](view_items, vi);
             ast.index_view_item(index, vi);
         }
 

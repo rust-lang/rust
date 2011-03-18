@@ -28,7 +28,7 @@ fn make_cumulative(vec[aminoacids] aa) -> vec[aminoacids] {
   let vec[aminoacids] ans = vec();
   for (aminoacids a in aa) {
     cp += a._1;
-    ans += tup(a._0, cp);
+    ans += vec(tup(a._0, cp));
   }
   ret ans;
 }
@@ -59,7 +59,7 @@ fn make_random_fasta(str id, str desc, vec[aminoacids] genelist, int n) {
   auto rng = myrandom(std.rand.mk_rng().next());
   let str op = "";
   for each (uint i in _uint.range(0u, n as uint)) {
-    op += select_random(rng.next(100u32), genelist) as u8;
+    _str.push_byte(op, select_random(rng.next(100u32), genelist) as u8);
     if (_str.byte_len(op) >= LINE_LENGTH()) {
       log(op);
       op = "";
@@ -76,7 +76,7 @@ fn make_repeat_fasta(str id, str desc, str s, int n) {
   let uint sl = _str.byte_len(s);
   for each (uint i in _uint.range(0u, n as uint)) {
 
-    op += s.(i % sl);
+    _str.push_byte(op, s.(i % sl));
     if (_str.byte_len(op) >= LINE_LENGTH()) {
       log(op);
       op = "";

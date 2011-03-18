@@ -169,10 +169,11 @@ fn mk_sha1() -> sha1 {
 
         let vec[u8] res = vec();
         for (u32 hpart in st.h) {
-            res += (hpart >> 24u32) & 0xFFu32 as u8;
-            res += (hpart >> 16u32) & 0xFFu32 as u8;
-            res += (hpart >> 8u32) & 0xFFu32 as u8;
-            res += hpart & 0xFFu32 as u8;
+            auto a = (hpart >> 24u32) & 0xFFu32 as u8;
+            auto b = (hpart >> 16u32) & 0xFFu32 as u8;
+            auto c = (hpart >> 8u32) & 0xFFu32 as u8;
+            auto d = (hpart & 0xFFu32 as u8);
+            res += vec(a,b,c,d);
         }
         ret res;
     }

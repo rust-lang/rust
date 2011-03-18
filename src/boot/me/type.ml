@@ -993,8 +993,7 @@ let check_block (cx:Semant.ctxt) : (fn_ctx -> Ast.block -> unit) =
             let src_ty = check_atom ~deref:true src in
             let dst_ty = check_lval dst in
               match fundamental_ty dst_ty, fundamental_ty src_ty with
-                  Ast.TY_vec elt1, Ast.TY_vec elt2
-                | Ast.TY_vec elt1, elt2 ->
+                  Ast.TY_vec elt1, Ast.TY_vec elt2 ->
                     if elt1 = elt2
                     then ()
                     else
@@ -1002,7 +1001,6 @@ let check_block (cx:Semant.ctxt) : (fn_ctx -> Ast.block -> unit) =
                         "mismatched types in vec-append: %s += %s"
                         (pretty_ty_str dst_ty)
                         (pretty_ty_str src_ty)
-                | Ast.TY_str, (Ast.TY_mach Common.TY_u8)
                 | Ast.TY_str, Ast.TY_str -> ()
                 | _ ->
                     infer_lval src_ty dst;

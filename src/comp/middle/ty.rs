@@ -11,22 +11,23 @@ import driver.session;
 import front.ast;
 import front.ast.mutability;
 import util.common;
-import util.common.append;
 import util.common.new_def_hash;
 import util.common.span;
 
 // Data types
 
 type arg = rec(ast.mode mode, @t ty);
-type field = rec(ast.ident ident, @t ty);
+type field = rec(ast.ident ident, mt mt);
 type method = rec(ast.proto proto,
                   ast.ident ident,
                   vec[arg] inputs,
                   @t output);
 
+type mt = rec(@t ty, ast.mutability mut);
+
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast.rs as well.
-type t = rec(sty struct, mutability mut, option.t[str] cname);
+type t = rec(sty struct, option.t[str] cname);
 tag sty {
     ty_nil;
     ty_bool;
@@ -36,11 +37,11 @@ tag sty {
     ty_char;
     ty_str;
     ty_tag(ast.def_id, vec[@t]);
-    ty_box(@t);
-    ty_vec(@t);
+    ty_box(mt);
+    ty_vec(mt);
     ty_port(@t);
     ty_chan(@t);
-    ty_tup(vec[@t]);
+    ty_tup(vec[mt]);
     ty_rec(vec[field]);
     ty_fn(ast.proto, vec[arg], @t);                 // TODO: effect
     ty_native_fn(ast.native_abi, vec[arg], @t);     // TODO: effect
@@ -66,6 +67,8 @@ type unify_handler = obj {
 
 tag type_err {
     terr_mismatch;
+    terr_box_mutability;
+    terr_vec_mutability;
     terr_tuple_size(uint, uint);
     terr_tuple_mutability;
     terr_record_size(uint, uint);
@@ -139,44 +142,51 @@ fn ty_to_str(&@t typ) -> str {
     }
 
     fn field_to_str(&field f) -> str {
-        ret ty_to_str(f.ty) + " " + f.ident;
+        ret mt_to_str(f.mt) + " " + f.ident;
+    }
+
+    fn mt_to_str(&mt m) -> str {
+        auto mstr;
+        alt (m.mut) {
+            case (ast.mut)       { mstr = "mutable "; }
+            case (ast.imm)       { mstr = "";         }
+            case (ast.maybe_mut) { mstr = "mutable? "; }
+        }
+
+        ret mstr + ty_to_str(m.ty);
     }
 
     auto s = "";
-    if (typ.mut == ast.mut) {
-        s += "mutable ";
-    }
-
     alt (typ.struct) {
-        case (ty_native)       { s = "native";                     }
-        case (ty_nil)          { s = "()";                         }
-        case (ty_bool)         { s = "bool";                       }
-        case (ty_int)          { s = "int";                        }
-        case (ty_uint)         { s = "uint";                       }
-        case (ty_machine(?tm)) { s = common.ty_mach_to_str(tm);    }
-        case (ty_char)         { s = "char";                       }
-        case (ty_str)          { s = "str";                        }
-        case (ty_box(?t))      { s = "@" + ty_to_str(t);           }
-        case (ty_vec(?t))      { s = "vec[" + ty_to_str(t) + "]";  }
-        case (ty_port(?t))     { s = "port[" + ty_to_str(t) + "]"; }
-        case (ty_chan(?t))     { s = "chan[" + ty_to_str(t) + "]"; }
-        case (ty_type)         { s = "type";                       }
+        case (ty_native)       { s += "native";                     }
+        case (ty_nil)          { s += "()";                         }
+        case (ty_bool)         { s += "bool";                       }
+        case (ty_int)          { s += "int";                        }
+        case (ty_uint)         { s += "uint";                       }
+        case (ty_machine(?tm)) { s += common.ty_mach_to_str(tm);    }
+        case (ty_char)         { s += "char";                       }
+        case (ty_str)          { s += "str";                        }
+        case (ty_box(?tm))     { s += "@" + mt_to_str(tm);          }
+        case (ty_vec(?tm))     { s += "vec[" + mt_to_str(tm) + "]"; }
+        case (ty_port(?t))     { s += "port[" + ty_to_str(t) + "]"; }
+        case (ty_chan(?t))     { s += "chan[" + ty_to_str(t) + "]"; }
+        case (ty_type)         { s += "type";                       }
 
         case (ty_tup(?elems)) {
-            auto f = ty_to_str;
-            auto strs = _vec.map[@t,str](f, elems);
-            s = "tup(" + _str.connect(strs, ",") + ")";
+            auto f = mt_to_str;
+            auto strs = _vec.map[mt,str](f, elems);
+            s += "tup(" + _str.connect(strs, ",") + ")";
         }
 
         case (ty_rec(?elems)) {
             auto f = field_to_str;
             auto strs = _vec.map[field,str](f, elems);
-            s = "rec(" + _str.connect(strs, ",") + ")";
+            s += "rec(" + _str.connect(strs, ",") + ")";
         }
 
         case (ty_tag(?id, ?tps)) {
             // The user should never see this if the cname is set properly!
-            s = "<tag#" + util.common.istr(id._0) + ":" +
+            s += "<tag#" + util.common.istr(id._0) + ":" +
                 util.common.istr(id._1) + ">";
             if (_vec.len[@t](tps) > 0u) {
                 auto f = ty_to_str;
@@ -186,31 +196,31 @@ fn ty_to_str(&@t typ) -> str {
         }
 
         case (ty_fn(?proto, ?inputs, ?output)) {
-            s = fn_to_str(proto, none[ast.ident], inputs, output);
+            s += fn_to_str(proto, none[ast.ident], inputs, output);
         }
 
         case (ty_native_fn(_, ?inputs, ?output)) {
-            s = fn_to_str(ast.proto_fn, none[ast.ident], inputs, output);
+            s += fn_to_str(ast.proto_fn, none[ast.ident], inputs, output);
         }
 
         case (ty_obj(?meths)) {
             auto f = method_to_str;
             auto m = _vec.map[method,str](f, meths);
-            s = "obj {\n\t" + _str.connect(m, "\n\t") + "\n}";
+            s += "obj {\n\t" + _str.connect(m, "\n\t") + "\n}";
         }
 
         case (ty_var(?v)) {
-            s = "<T" + util.common.istr(v) + ">";
+            s += "<T" + util.common.istr(v) + ">";
         }
 
         case (ty_local(?id)) {
-            s = "<L" + util.common.istr(id._0) + ":" + util.common.istr(id._1)
-                + ">";
+            s += "<L" + util.common.istr(id._0) + ":" +
+                util.common.istr(id._1) + ">";
         }
 
         case (ty_param(?id)) {
-            s = "<P" + util.common.istr(id._0) + ":" + util.common.istr(id._1)
-                + ">";
+            s += "<P" + util.common.istr(id._0) + ":" +
+                util.common.istr(id._1) + ">";
         }
     }
 
@@ -225,7 +235,7 @@ type ty_fold = state obj {
 
 fn fold_ty(ty_fold fld, @t ty) -> @t {
     fn rewrap(@t orig, &sty new) -> @t {
-        ret @rec(struct=new, mut=orig.mut, cname=orig.cname);
+        ret @rec(struct=new, cname=orig.cname);
     }
 
     alt (ty.struct) {
@@ -238,11 +248,11 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
         case (ty_str)           { ret fld.fold_simple_ty(ty); }
         case (ty_type)          { ret fld.fold_simple_ty(ty); }
         case (ty_native)        { ret fld.fold_simple_ty(ty); }
-        case (ty_box(?subty)) {
-            ret rewrap(ty, ty_box(fold_ty(fld, subty)));
+        case (ty_box(?tm)) {
+            ret rewrap(ty, ty_box(rec(ty=fold_ty(fld, tm.ty), mut=tm.mut)));
         }
-        case (ty_vec(?subty)) {
-            ret rewrap(ty, ty_vec(fold_ty(fld, subty)));
+        case (ty_vec(?tm)) {
+            ret rewrap(ty, ty_vec(rec(ty=fold_ty(fld, tm.ty), mut=tm.mut)));
         }
         case (ty_port(?subty)) {
             ret rewrap(ty, ty_port(fold_ty(fld, subty)));
@@ -257,18 +267,20 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
             }
             ret rewrap(ty, ty_tag(tid, new_subtys));
         }
-        case (ty_tup(?subtys)) {
-            let vec[@t] new_subtys = vec();
-            for (@t subty in subtys) {
-                new_subtys += vec(fold_ty(fld, subty));
+        case (ty_tup(?mts)) {
+            let vec[mt] new_mts = vec();
+            for (mt tm in mts) {
+                auto new_subty = fold_ty(fld, tm.ty);
+                new_mts += vec(rec(ty=new_subty, mut=tm.mut));
             }
-            ret rewrap(ty, ty_tup(new_subtys));
+            ret rewrap(ty, ty_tup(new_mts));
         }
         case (ty_rec(?fields)) {
             let vec[field] new_fields = vec();
             for (field fl in fields) {
-                auto new_ty = fold_ty(fld, fl.ty);
-                new_fields += vec(rec(ident=fl.ident, ty=new_ty));
+                auto new_ty = fold_ty(fld, fl.mt.ty);
+                auto new_mt = rec(ty=new_ty, mut=fl.mt.mut);
+                new_fields += vec(rec(ident=fl.ident, mt=new_mt));
             }
             ret rewrap(ty, ty_rec(new_fields));
         }
@@ -352,8 +364,8 @@ fn type_is_sequence(@t ty) -> bool {
 
 fn sequence_element_type(@t ty) -> @t {
     alt (ty.struct) {
-        case (ty_str)     { ret plain_ty(ty_machine(common.ty_u8)); }
-        case (ty_vec(?e)) { ret e; }
+        case (ty_str)      { ret plain_ty(ty_machine(common.ty_u8)); }
+        case (ty_vec(?mt)) { ret mt.ty; }
     }
     fail;
 }
@@ -373,11 +385,11 @@ fn type_is_tup_like(@t ty) -> bool {
 fn get_element_type(@t ty, uint i) -> @t {
     check (type_is_tup_like(ty));
     alt (ty.struct) {
-        case (ty_tup(?tys)) {
-            ret tys.(i);
+        case (ty_tup(?mts)) {
+            ret mts.(i).ty;
         }
         case (ty_rec(?flds)) {
-            ret flds.(i).ty;
+            ret flds.(i).mt.ty;
         }
     }
     fail;
@@ -410,6 +422,7 @@ fn type_is_scalar(@t ty) -> bool {
         case (ty_machine(_)) { ret true; }
         case (ty_char) { ret true; }
         case (ty_type) { ret true; }
+        case (ty_native) { ret true; }
         case (_) { ret false; }
     }
     fail;
@@ -427,17 +440,17 @@ fn type_is_native(@t ty) -> bool {
 
 fn type_has_dynamic_size(@t ty) -> bool {
     alt (ty.struct) {
-        case (ty_tup(?ts)) {
+        case (ty_tup(?mts)) {
             auto i = 0u;
-            while (i < _vec.len[@t](ts)) {
-                if (type_has_dynamic_size(ts.(i))) { ret true; }
+            while (i < _vec.len[mt](mts)) {
+                if (type_has_dynamic_size(mts.(i).ty)) { ret true; }
                 i += 1u;
             }
         }
         case (ty_rec(?fields)) {
             auto i = 0u;
             while (i < _vec.len[field](fields)) {
-                if (type_has_dynamic_size(fields.(i).ty)) { ret true; }
+                if (type_has_dynamic_size(fields.(i).mt.ty)) { ret true; }
                 i += 1u;
             }
         }
@@ -518,7 +531,19 @@ fn type_param(@t ty) -> option.t[ast.def_id] {
 }
 
 fn plain_ty(&sty st) -> @t {
-    ret @rec(struct=st, mut=ast.imm, cname=none[str]);
+    ret @rec(struct=st, cname=none[str]);
+}
+
+fn plain_box_ty(@t subty) -> @t {
+    ret plain_ty(ty_box(rec(ty=subty, mut=ast.imm)));
+}
+
+fn plain_tup_ty(vec[@t] elem_tys) -> @t {
+    let vec[ty.mt] mts = vec();
+    for (@ty.t typ in elem_tys) {
+        mts += vec(rec(ty=typ, mut=ast.imm));
+    }
+    ret plain_ty(ty_tup(mts));
 }
 
 fn hash_ty(&@t ty) -> uint {
@@ -703,7 +728,7 @@ fn pat_ty(@ast.pat pat) -> @t {
 
 fn expr_ty(@ast.expr expr) -> @t {
     alt (expr.node) {
-        case (ast.expr_vec(_, ?ann))          { ret ann_to_type(ann); }
+        case (ast.expr_vec(_, _, ?ann))       { ret ann_to_type(ann); }
         case (ast.expr_tup(_, ?ann))          { ret ann_to_type(ann); }
         case (ast.expr_rec(_, _, ?ann))       { ret ann_to_type(ann); }
         case (ast.expr_bind(_, _, ?ann))      { ret ann_to_type(ann); }
@@ -756,7 +781,7 @@ fn field_num(session.session sess, &span sp, &ast.ident id) -> uint {
                 accum += (c as uint) - ('0' as uint);
             } else {
                 auto s = "";
-                s += c;
+                s += _str.unsafe_from_byte(c);
                 sess.span_err(sp,
                               "bad numeric field on tuple: "
                               + " non-digit character: "
@@ -794,6 +819,14 @@ fn method_idx(session.session sess, &span sp,
     fail;
 }
 
+fn sort_methods(vec[method] meths) -> vec[method] {
+    fn method_lteq(&method a, &method b) -> bool {
+        ret _str.lteq(a.ident, b.ident);
+    }
+
+    ret std.sort.merge_sort[method](bind method_lteq(_,_), meths);
+}
+
 fn is_lval(@ast.expr expr) -> bool {
     alt (expr.node) {
         case (ast.expr_field(_,_,_))    { ret true;  }
@@ -824,6 +857,21 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         }
 
         ret ures_err(terr_mismatch, expected, actual);
+    }
+
+    // Unifies two mutability flags.
+    fn unify_mut(ast.mutability expected, ast.mutability actual)
+            -> option.t[ast.mutability] {
+        if (expected == actual) {
+            ret some[ast.mutability](expected);
+        }
+        if (expected == ast.maybe_mut) {
+            ret some[ast.mutability](actual);
+        }
+        if (actual == ast.maybe_mut) {
+            ret some[ast.mutability](expected);
+        }
+        ret none[ast.mutability];
     }
 
     tag fn_common_res {
@@ -1104,7 +1152,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
 
                             alt (result) {
                                 case (ures_ok(?rty)) {
-                                    append[@ty.t](result_tps, rty);
+                                    _vec.push[@ty.t](result_tps, rty);
                                 }
                                 case (_) {
                                     ret result;
@@ -1123,16 +1171,26 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                 ret ures_err(terr_mismatch, expected, actual);
             }
 
-            case (ty.ty_box(?expected_sub)) {
+            case (ty.ty_box(?expected_mt)) {
                 alt (actual.struct) {
-                    case (ty.ty_box(?actual_sub)) {
+                    case (ty.ty_box(?actual_mt)) {
+                        auto mut;
+                        alt (unify_mut(expected_mt.mut, actual_mt.mut)) {
+                            case (none[ast.mutability]) {
+                                ret ures_err(terr_box_mutability, expected,
+                                             actual);
+                            }
+                            case (some[ast.mutability](?m)) { mut = m; }
+                        }
+
                         auto result = unify_step(bindings,
-                                                 expected_sub,
-                                                 actual_sub,
+                                                 expected_mt.ty,
+                                                 actual_mt.ty,
                                                  handler);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
-                                ret ures_ok(plain_ty(ty.ty_box(result_sub)));
+                                auto mt = rec(ty=result_sub, mut=mut);
+                                ret ures_ok(plain_ty(ty.ty_box(mt)));
                             }
                             case (_) {
                                 ret result;
@@ -1146,16 +1204,26 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                 }
             }
 
-            case (ty.ty_vec(?expected_sub)) {
+            case (ty.ty_vec(?expected_mt)) {
                 alt (actual.struct) {
-                    case (ty.ty_vec(?actual_sub)) {
+                    case (ty.ty_vec(?actual_mt)) {
+                        auto mut;
+                        alt (unify_mut(expected_mt.mut, actual_mt.mut)) {
+                            case (none[ast.mutability]) {
+                                ret ures_err(terr_vec_mutability, expected,
+                                             actual);
+                            }
+                            case (some[ast.mutability](?m)) { mut = m; }
+                        }
+
                         auto result = unify_step(bindings,
-                                                 expected_sub,
-                                                 actual_sub,
+                                                 expected_mt.ty,
+                                                 actual_mt.ty,
                                                  handler);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
-                                ret ures_ok(plain_ty(ty.ty_vec(result_sub)));
+                                auto mt = rec(ty=result_sub, mut=mut);
+                                ret ures_ok(plain_ty(ty.ty_vec(mt)));
                             }
                             case (_) {
                                 ret result;
@@ -1218,8 +1286,8 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             case (ty.ty_tup(?expected_elems)) {
                 alt (actual.struct) {
                     case (ty.ty_tup(?actual_elems)) {
-                        auto expected_len = _vec.len[@ty.t](expected_elems);
-                        auto actual_len = _vec.len[@ty.t](actual_elems);
+                        auto expected_len = _vec.len[ty.mt](expected_elems);
+                        auto actual_len = _vec.len[ty.mt](actual_elems);
                         if (expected_len != actual_len) {
                             auto err = terr_tuple_size(expected_len,
                                                        actual_len);
@@ -1228,23 +1296,30 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
 
                         // TODO: implement an iterator that can iterate over
                         // two arrays simultaneously.
-                        let vec[@ty.t] result_elems = vec();
+                        let vec[ty.mt] result_elems = vec();
                         auto i = 0u;
                         while (i < expected_len) {
                             auto expected_elem = expected_elems.(i);
                             auto actual_elem = actual_elems.(i);
-                            if (expected_elem.mut != actual_elem.mut) {
-                                auto err = terr_tuple_mutability;
-                                ret ures_err(err, expected, actual);
+
+                            auto mut;
+                            alt (unify_mut(expected_elem.mut,
+                                           actual_elem.mut)) {
+                                case (none[ast.mutability]) {
+                                    auto err = terr_tuple_mutability;
+                                    ret ures_err(err, expected, actual);
+                                }
+                                case (some[ast.mutability](?m)) { mut = m; }
                             }
 
                             auto result = unify_step(bindings,
-                                                     expected_elem,
-                                                     actual_elem,
+                                                     expected_elem.ty,
+                                                     actual_elem.ty,
                                                      handler);
                             alt (result) {
                                 case (ures_ok(?rty)) {
-                                    append[@ty.t](result_elems,rty);
+                                    auto mt = rec(ty=rty, mut=mut);
+                                    result_elems += vec(mt);
                                 }
                                 case (_) {
                                     ret result;
@@ -1281,14 +1356,19 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                         while (i < expected_len) {
                             auto expected_field = expected_fields.(i);
                             auto actual_field = actual_fields.(i);
-                            if (expected_field.ty.mut
-                                != actual_field.ty.mut) {
-                                auto err = terr_record_mutability;
-                                ret ures_err(err, expected, actual);
+
+                            auto mut;
+                            alt (unify_mut(expected_field.mt.mut,
+                                           actual_field.mt.mut)) {
+                                case (none[ast.mutability]) {
+                                    ret ures_err(terr_record_mutability,
+                                                 expected, actual);
+                                }
+                                case (some[ast.mutability](?m)) { mut = m; }
                             }
 
                             if (!_str.eq(expected_field.ident,
-                                        actual_field.ident)) {
+                                         actual_field.ident)) {
                                 auto err =
                                     terr_record_fields(expected_field.ident,
                                                        actual_field.ident);
@@ -1296,14 +1376,15 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                             }
 
                             auto result = unify_step(bindings,
-                                                     expected_field.ty,
-                                                     actual_field.ty,
+                                                     expected_field.mt.ty,
+                                                     actual_field.mt.ty,
                                                      handler);
                             alt (result) {
                                 case (ures_ok(?rty)) {
-                                    append[field]
+                                    auto mt = rec(ty=rty, mut=mut);
+                                    _vec.push[field]
                                         (result_fields,
-                                         rec(ty=rty with expected_field));
+                                         rec(mt=mt with expected_field));
                                 }
                                 case (_) {
                                     ret result;
@@ -1439,6 +1520,12 @@ fn type_err_to_str(&ty.type_err err) -> str {
     alt (err) {
         case (terr_mismatch) {
             ret "types differ";
+        }
+        case (terr_box_mutability) {
+            ret "boxed values differ in mutability";
+        }
+        case (terr_vec_mutability) {
+            ret "vectors differ in mutability";
         }
         case (terr_tuple_size(?e_sz, ?a_sz)) {
             ret "expected a tuple with " + _uint.to_str(e_sz, 10u) +

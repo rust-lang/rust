@@ -48,7 +48,7 @@ impure fn bclose(ps s) {
   end(s);
   pp.cwrd(s, "}");
 }
-impure fn commasep[IN](ps s, vec[IN] elts, impure fn (ps, IN) op) {
+impure fn commasep[IN](ps s, vec[IN] elts, impure fn (ps, &IN) op) {
   auto first = true;
   for (IN elt in elts) {
     if (first) {first = false;}
@@ -57,7 +57,16 @@ impure fn commasep[IN](ps s, vec[IN] elts, impure fn (ps, IN) op) {
   }
 }
 
-impure fn print_type(ps s, @ast.ty ty) {
+impure fn print_mt(ps s, &ast.mt mt) {
+    alt (mt.mut) {
+        case (ast.mut)       { wrd1(s, "mutable");  }
+        case (ast.maybe_mut) { wrd1(s, "mutable?"); }
+        case (ast.imm)       { /* nothing */        }
+    }
+    print_type(s, mt.ty);
+}
+
+impure fn print_type(ps s, &@ast.ty ty) {
   hbox(s);
   alt (ty.node) {
     case (ast.ty_nil) {wrd(s, "()");}
@@ -67,22 +76,22 @@ impure fn print_type(ps s, @ast.ty ty) {
     case (ast.ty_machine(?tm)) {wrd(s, util.common.ty_mach_to_str(tm));}
     case (ast.ty_char) {wrd(s, "char");}
     case (ast.ty_str) {wrd(s, "str");}
-    case (ast.ty_box(?t)) {wrd(s, "@"); print_type(s, t);}
-    case (ast.ty_vec(?t)) {wrd(s, "vec["); print_type(s, t); wrd(s, "]");}
+    case (ast.ty_box(?mt)) {wrd(s, "@"); print_mt(s, mt);}
+    case (ast.ty_vec(?mt)) {wrd(s, "vec["); print_mt(s, mt); wrd(s, "]");}
     case (ast.ty_type) {wrd(s, "type");}
     case (ast.ty_tup(?elts)) {
       wrd(s, "tup");
       popen(s);
-      auto f = print_type;
-      commasep[@ast.ty](s, elts, f);
+      auto f = print_mt;
+      commasep[ast.mt](s, elts, f);
       pclose(s);
     }
     case (ast.ty_rec(?fields)) {
       wrd(s, "rec");
       popen(s);
-      impure fn print_field(ps s, ast.ty_field f) {
+      impure fn print_field(ps s, &ast.ty_field f) {
         hbox(s);
-        print_type(s, f.ty);
+        print_mt(s, f.mt);
         space(s);
         wrd(s, f.ident);
         end(s);
@@ -109,10 +118,6 @@ impure fn print_type(ps s, @ast.ty ty) {
     }
     case (ast.ty_path(?path,_)) {
       print_path(s, path);
-    }
-    case (ast.ty_mutable(?t)) {
-      wrd1(s, "mutable");
-      print_type(s, t);
     }
   }
   end(s);
@@ -186,7 +191,7 @@ impure fn print_item(ps s, @ast.item item) {
         wrd(s, v.name);
         if (_vec.len[ast.variant_arg](v.args) > 0u) {
           popen(s);
-          impure fn print_variant_arg(ps s, ast.variant_arg arg) {
+          impure fn print_variant_arg(ps s, &ast.variant_arg arg) {
             print_type(s, arg.ty);
           }
           auto f = print_variant_arg;
@@ -203,7 +208,7 @@ impure fn print_item(ps s, @ast.item item) {
       wrd(s, id);
       print_type_params(s, params);
       popen(s);
-      impure fn print_field(ps s, ast.obj_field field) {
+      impure fn print_field(ps s, &ast.obj_field field) {
         hbox(s);
         print_type(s, field.ty);
         space(s);
@@ -285,18 +290,21 @@ impure fn print_literal(ps s, @ast.lit lit) {
   }
 }
 
-impure fn print_expr(ps s, @ast.expr expr) {
+impure fn print_expr(ps s, &@ast.expr expr) {
   auto pe = print_expr;
   hbox(s);
   alt (expr.node) {
-    case (ast.expr_vec(?exprs,_)) {
+    case (ast.expr_vec(?exprs,?mut,_)) {
+      if (mut == ast.mut) {
+        wrd1(s, "mutable");
+      }
       wrd(s, "vec");
       popen(s);
       commasep[@ast.expr](s, exprs, pe);
       pclose(s);
     }
     case (ast.expr_tup(?exprs,_)) {
-      impure fn printElt(ps s, ast.elt elt) {
+      impure fn printElt(ps s, &ast.elt elt) {
         hbox(s);
         if (elt.mut == ast.mut) {wrd1(s, "mutable");}
         print_expr(s, elt.expr);
@@ -309,7 +317,7 @@ impure fn print_expr(ps s, @ast.expr expr) {
       pclose(s);
     }
     case (ast.expr_rec(?fields,?wth,_)) {
-      impure fn print_field(ps s, ast.field field) {
+      impure fn print_field(ps s, &ast.field field) {
         hbox(s);
         if (field.mut == ast.mut) {wrd1(s, "mutable");}
         wrd(s, field.ident);
@@ -340,7 +348,7 @@ impure fn print_expr(ps s, @ast.expr expr) {
       pclose(s);
     }
     case (ast.expr_bind(?func,?args,_)) {
-      impure fn print_opt(ps s, option.t[@ast.expr] expr) {
+      impure fn print_opt(ps s, &option.t[@ast.expr] expr) {
         alt (expr) {
           case (option.some[@ast.expr](?expr)) {
             print_expr(s, expr);
@@ -364,7 +372,6 @@ impure fn print_expr(ps s, @ast.expr expr) {
     }
     case (ast.expr_unary(?op,?expr,_)) {
       wrd(s, ast.unop_to_str(op));
-      if (op == ast._mutable) {space(s);}
       print_expr(s, expr);
     }
     case (ast.expr_lit(?lit,_)) {
@@ -577,7 +584,7 @@ impure fn print_path(ps s, ast.path path) {
   }
 }
 
-impure fn print_pat(ps s, @ast.pat pat) {
+impure fn print_pat(ps s, &@ast.pat pat) {
   alt (pat.node) {
     case (ast.pat_wild(_)) {wrd(s, "_");}
     case (ast.pat_bind(?id,_,_)) {wrd(s, "?" + id);}
@@ -605,7 +612,7 @@ impure fn print_fn(ps s, ast.fn_decl decl, str name,
   wrd(s, name);
   print_type_params(s, typarams);
   popen(s);
-  impure fn print_arg(ps s, ast.arg x) {
+  impure fn print_arg(ps s, &ast.arg x) {
     hbox(s);
     print_type(s, x.ty);
     space(s);
@@ -627,7 +634,7 @@ impure fn print_fn(ps s, ast.fn_decl decl, str name,
 impure fn print_type_params(ps s, vec[ast.ty_param] params) {
   if (_vec.len[ast.ty_param](params) > 0u) {
     wrd(s, "[");
-    impure fn printParam(ps s, ast.ty_param param) {wrd(s, param.ident);}
+    impure fn printParam(ps s, &ast.ty_param param) {wrd(s, param.ident);}
     auto f = printParam;
     commasep[ast.ty_param](s, params, f);
     wrd(s, "]");
@@ -642,7 +649,7 @@ impure fn print_view_item(ps s, @ast.view_item item) {
       wrd(s, id);
       if (_vec.len[@ast.meta_item](mta) > 0u) {
         popen(s);
-        impure fn print_meta(ps s, @ast.meta_item item) {
+        impure fn print_meta(ps s, &@ast.meta_item item) {
           hbox(s);
           wrd1(s, item.node.name);
           wrd1(s, "=");
@@ -717,7 +724,7 @@ fn escape_str(str st, char to_escape) -> str {
       case ('\\') {out += "\\\\";}
       case (?cur) {
         if (cur == to_escape) {out += "\\";}
-        out += cur as u8;
+        _str.push_byte(out, cur as u8);
       }
     }
     i += 1u;
@@ -738,7 +745,7 @@ impure fn print_ty_fn(ps s, ast.proto proto, option.t[str] id,
     case (_) {}
   }
   popen(s);
-  impure fn print_arg(ps s, ast.ty_arg input) {
+  impure fn print_arg(ps s, &ast.ty_arg input) {
     if (middle.ty.mode_is_alias(input.mode)) {wrd(s, "&");}
     print_type(s, input.ty);
   }

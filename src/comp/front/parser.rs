@@ -9,7 +9,6 @@ import std.map.hashmap;
 import driver.session;
 import util.common;
 import util.common.filename;
-import util.common.append;
 import util.common.span;
 import util.common.new_str_hash;
 
@@ -190,6 +189,11 @@ impure fn parse_ty_fn(ast.proto proto, parser p,
         if (p.peek() == token.BINOP(token.AND)) {
             p.bump();
             mode = ast.alias;
+
+            if (p.peek() == token.MUTABLE) {
+                p.bump();
+                // TODO: handle mutable alias args
+            }
         } else {
             mode = ast.val;
         }
@@ -263,10 +267,16 @@ impure fn parse_ty_obj(parser p, &mutable ast.span hi) -> ast.ty_ {
     ret ast.ty_obj(meths.node);
 }
 
+impure fn parse_mt(parser p) -> ast.mt {
+    auto mut = parse_mutability(p);
+    auto t = parse_ty(p);
+    ret rec(ty=t, mut=mut);
+}
+
 impure fn parse_ty_field(parser p) -> ast.ty_field {
-    auto ty = parse_ty(p);
+    auto mt = parse_mt(p);
     auto id = parse_ident(p);
-    ret rec(ident=id, ty=ty);
+    ret rec(ident=id, mt=mt);
 }
 
 impure fn parse_constr_arg(parser p) -> @ast.constr_arg {
@@ -303,7 +313,7 @@ impure fn parse_constrs(parser p) -> common.spanned[vec[@ast.constr]] {
                 case (token.IDENT(_)) {
                     auto constr = parse_ty_constr(p);
                     hi = constr.span;
-                    append[@ast.constr](constrs, constr);
+                    _vec.push[@ast.constr](constrs, constr);
                     if (p.peek() == token.COMMA) {
                         p.bump();
                         more = false;
@@ -361,25 +371,25 @@ impure fn parse_ty(parser p) -> @ast.ty {
 
         case (token.AT) {
             p.bump();
-            auto t0 = parse_ty(p);
-            hi = t0.span;
-            t = ast.ty_box(t0);
+            auto mt = parse_mt(p);
+            hi = mt.ty.span;
+            t = ast.ty_box(mt);
         }
 
         case (token.VEC) {
             p.bump();
             expect(p, token.LBRACKET);
-            t = ast.ty_vec(parse_ty(p));
+            t = ast.ty_vec(parse_mt(p));
             hi = p.get_span();
             expect(p, token.RBRACKET);
         }
 
         case (token.TUP) {
             p.bump();
-            auto f = parse_ty; // FIXME: trans_const_lval bug
-            auto elems = parse_seq[@ast.ty] (token.LPAREN,
-                                             token.RPAREN,
-                                             some(token.COMMA), f, p);
+            auto f = parse_mt; // FIXME: trans_const_lval bug
+            auto elems = parse_seq[ast.mt] (token.LPAREN,
+                                            token.RPAREN,
+                                            some(token.COMMA), f, p);
             hi = elems.span;
             t = ast.ty_tup(elems.node);
         }
@@ -394,13 +404,6 @@ impure fn parse_ty(parser p) -> @ast.ty {
                                         f, p);
             hi = elems.span;
             t = ast.ty_rec(elems.node);
-        }
-
-        case (token.MUTABLE) {
-            p.bump();
-            auto t0 = parse_ty(p);
-            hi = t0.span;
-            t = ast.ty_mutable(t0);
         }
 
         case (token.FN) {
@@ -464,20 +467,22 @@ impure fn parse_arg(parser p) -> ast.arg {
     if (p.peek() == token.BINOP(token.AND)) {
         m = ast.alias;
         p.bump();
+
+        if (p.peek() == token.MUTABLE) {
+            // TODO: handle mutable alias args
+            p.bump();
+        }
     }
     let @ast.ty t = parse_ty(p);
     let ast.ident i = parse_ident(p);
     ret rec(mode=m, ty=t, ident=i, id=p.next_def_id());
 }
 
-impure fn parse_seq[T](token.token bra,
-                      token.token ket,
-                      option.t[token.token] sep,
-                      (impure fn(parser) -> T) f,
-                      parser p) -> util.common.spanned[vec[T]] {
+impure fn parse_seq_to_end[T](token.token ket,
+                              option.t[token.token] sep,
+                              (impure fn(parser) -> T) f,
+                              parser p) -> vec[T] {
     let bool first = true;
-    auto lo = p.get_span();
-    expect(p, bra);
     let vec[T] v = vec();
     while (p.peek() != ket) {
         alt(sep) {
@@ -495,9 +500,20 @@ impure fn parse_seq[T](token.token bra,
         let T t = f(p);
         v += vec(t);
     }
-    auto hi = p.get_span();
     expect(p, ket);
-    ret spanned(lo, hi, v);
+    ret v;
+}
+
+impure fn parse_seq[T](token.token bra,
+                      token.token ket,
+                      option.t[token.token] sep,
+                      (impure fn(parser) -> T) f,
+                      parser p) -> util.common.spanned[vec[T]] {
+    auto lo = p.get_span();
+    expect(p, bra);
+    auto result = parse_seq_to_end[T](ket, sep, f, p);
+    auto hi = p.get_span();
+    ret spanned(lo, hi, result);
 }
 
 impure fn parse_lit(parser p) -> ast.lit {
@@ -573,7 +589,7 @@ impure fn parse_path(parser p, greed g) -> ast.path {
         alt (p.peek()) {
             case (token.IDENT(?i)) {
                 hi = p.get_span();
-                ids += i;
+                ids += vec(i);
                 p.bump();
                 if (p.peek() == token.DOT) {
                     if (g == GREEDY) {
@@ -596,16 +612,20 @@ impure fn parse_path(parser p, greed g) -> ast.path {
     ret spanned(lo, tys.span, rec(idents=ids, types=tys.node));
 }
 
-impure fn parse_mutabliity(parser p) -> ast.mutability {
+impure fn parse_mutability(parser p) -> ast.mutability {
     if (p.peek() == token.MUTABLE) {
         p.bump();
+        if (p.peek() == token.QUES) {
+            p.bump();
+            ret ast.maybe_mut;
+        }
         ret ast.mut;
     }
     ret ast.imm;
 }
 
 impure fn parse_field(parser p) -> ast.field {
-    auto m = parse_mutabliity(p);
+    auto m = parse_mutability(p);
     auto i = parse_ident(p);
     expect(p, token.EQ);
     auto e = parse_expr(p);
@@ -651,7 +671,7 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
         case (token.TUP) {
             p.bump();
             impure fn parse_elt(parser p) -> ast.elt {
-                auto m = parse_mutabliity(p);
+                auto m = parse_mutability(p);
                 auto e = parse_expr(p);
                 ret rec(mut=m, expr=e);
             }
@@ -668,12 +688,15 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
         case (token.VEC) {
             p.bump();
             auto pf = parse_expr;
-            auto es = parse_seq[@ast.expr](token.LPAREN,
-                                           token.RPAREN,
-                                           some(token.COMMA),
-                                           pf, p);
-            hi = es.span;
-            ex = ast.expr_vec(es.node, ast.ann_none);
+
+            expect(p, token.LPAREN);
+            auto mut = parse_mutability(p);
+
+            auto es = parse_seq_to_end[@ast.expr](token.RPAREN,
+                                                  some(token.COMMA),
+                                                  pf, p);
+            hi = p.get_span();
+            ex = ast.expr_vec(es, mut, ast.ann_none);
         }
 
         case (token.REC) {
@@ -699,7 +722,7 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
                     }
                     case (token.COMMA) {
                         p.bump();
-                        fields += parse_field(p);
+                        fields += vec(parse_field(p));
                     }
                     case (?t) {
                         unexpected(p, t);
@@ -877,7 +900,7 @@ impure fn extend_expr_by_ident(parser p, span lo, span hi,
         case (ast.expr_path(?pth, ?def, ?ann)) {
             if (_vec.len[@ast.ty](pth.node.types) == 0u) {
                 auto idents_ = pth.node.idents;
-                idents_ += i;
+                idents_ += vec(i);
                 auto tys = parse_ty_args(p, hi);
                 auto pth_ = spanned(pth.span, tys.span,
                                     rec(idents=idents_,
@@ -1003,13 +1026,6 @@ impure fn parse_prefix_expr(parser p) -> @ast.expr {
             auto e = parse_prefix_expr(p);
             hi = e.span;
             ex = ast.expr_unary(ast.box, e, ast.ann_none);
-        }
-
-        case (token.MUTABLE) {
-            p.bump();
-            auto e = parse_prefix_expr(p);
-            hi = e.span;
-            ex = ast.expr_unary(ast._mutable, e, ast.ann_none);
         }
 
         case (_) {
@@ -1559,7 +1575,7 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
         }
         case (ast.stmt_expr(?e)) {
             alt (e.node) {
-                case (ast.expr_vec(_,_))        { ret true; }
+                case (ast.expr_vec(_,_,_))      { ret true; }
                 case (ast.expr_tup(_,_))        { ret true; }
                 case (ast.expr_rec(_,_,_))      { ret true; }
                 case (ast.expr_call(_,_,_))     { ret true; }
@@ -1723,6 +1739,7 @@ impure fn parse_item_fn_or_iter(parser p, ast.effect eff) -> @ast.item {
 
 
 impure fn parse_obj_field(parser p) -> ast.obj_field {
+    auto mut = parse_mutability(p); // TODO: store this, use it in typeck
     auto ty = parse_ty(p);
     auto ident = parse_ident(p);
     ret rec(ty=ty, ident=ident, id=p.next_def_id(), ann=ast.ann_none);
@@ -1763,8 +1780,8 @@ impure fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
                 dtor = some[ast.block](parse_block(p));
             }
             case (_) {
-                append[@ast.method](meths,
-                                    parse_method(p));
+                _vec.push[@ast.method](meths,
+                                       parse_method(p));
             }
         }
     }
@@ -2161,12 +2178,11 @@ impure fn parse_rest_import_name(parser p, ast.ident first,
         -> @ast.view_item {
     auto lo = p.get_span();
     auto hi = lo;
-    let vec[ast.ident] identifiers = vec();
-    identifiers += first;
+    let vec[ast.ident] identifiers = vec(first);
     while (p.peek() != token.SEMI) {
         expect(p, token.DOT);
         auto i = parse_ident(p);
-        identifiers += i;
+        identifiers += vec(i);
     }
     p.bump();
     auto defined_id;
@@ -2402,7 +2418,7 @@ impure fn parse_crate_directives(parser p, token.token term)
 
     while (p.peek() != term) {
         auto cdir = @parse_crate_directive(p);
-        append[@ast.crate_directive](cdirs, cdir);
+        _vec.push[@ast.crate_directive](cdirs, cdir);
     }
 
     ret cdirs;

@@ -203,8 +203,8 @@ impure fn main(vec[str] args) {
                 alt (output_file) {
                     case (none[str]) {
                         let vec[str] parts = _str.split(ifile, '.' as u8);
-                        parts = _vec.pop[str](parts);
-                        parts += ".bc";
+                        _vec.pop[str](parts);
+                        parts += vec(".bc");
                         auto ofile = _str.concat(parts);
                         compile_input(sess, env, ifile, ofile, shared,
                                       library_search_paths);

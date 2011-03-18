@@ -52,7 +52,8 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
       auto buf = "";
       while (true) {
         auto ch = os.libc.fgetc(f);
-        if (ch == -1) {break;} if (ch == 10) {break;}
+        if (ch == -1) { ret buf; }
+        if (ch == 10) { ret buf; }
         buf += _str.unsafe_from_bytes(vec(ch as u8));
       }
       ret buf;
@@ -61,7 +62,7 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
         auto buf = "";
         while (true) {
             auto ch = os.libc.fgetc(f);
-            if (ch < 1) {break;}
+            if (ch < 1) { ret buf; }
             buf += _str.unsafe_from_bytes(vec(ch as u8));
         }
         ret buf;

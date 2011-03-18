@@ -3,6 +3,7 @@ import util.common.ty_mach_to_str;
 import util.common.new_str_hash;
 import std._int;
 import std._uint;
+import std._str;
 
 tag binop {
     PLUS;
@@ -302,8 +303,8 @@ fn to_str(token t) -> str {
         case (LIT_CHAR(?c)) {
             // FIXME: escape and encode.
             auto tmp = "'";
-            tmp += c as u8;
-            tmp += '\'' as u8;
+            _str.push_byte(tmp, c as u8);
+            _str.push_byte(tmp, '\'' as u8);
             ret tmp;
         }
 

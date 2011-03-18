@@ -212,10 +212,10 @@ fn upcall_glue(int n_args) -> vec[str] {
         + store_esp_to_rust_sp_second_arg()
         + load_esp_from_runtime_sp_second_arg()
 
-        + vec("subl  $" + wstr(n_args + 1) + ", %esp   # esp -= args",
+        + vec("subl  $" + wstr(n_args) + ", %esp   # esp -= args",
               "andl  $~0xf, %esp    # align esp down")
 
-        + _vec.init_fn[str](carg, (n_args + 1) as uint)
+        + _vec.init_fn[str](carg, (n_args) as uint)
 
         +  vec("movl  %edx, %edi     # save task from edx to edi",
                "call  *%ecx          # call *%ecx",
@@ -268,7 +268,7 @@ fn get_module_asm() -> str {
                       rust_yield_glue()))
 
         + _vec.init_fn[str](bind decl_upcall_glue(align, prefix, _),
-                            abi.n_upcall_glues as uint);
+                            (abi.n_upcall_glues + 1) as uint);
 
     ret _str.connect(glues, "\n\n");
 }

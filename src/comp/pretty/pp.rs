@@ -39,12 +39,12 @@ fn mkstate(io.writer out, uint width) -> ps {
 
 impure fn push_context(ps p, contexttype tp, uint indent) {
   before_print(p, false);
-  p.context = _vec.push[context](p.context, rec(tp=tp, indent=base_indent(p)
-                                                + indent));
+  _vec.push[context](p.context, rec(tp=tp, indent=base_indent(p)
+                                    + indent));
 }
 
-impure fn pop_context(ps p) {
-  p.context = _vec.pop[context](p.context);
+fn pop_context(ps p) {
+  _vec.pop[context](p.context);
 }
 
 impure fn add_token(ps p, token tok) {
@@ -110,7 +110,8 @@ impure fn finish_block_scan(ps p, contexttype tp) {
   }
   p.scandepth = 0u;
   push_context(p, tp, indent);
-  for (token t in _vec.shift[token](p.buffered)) {add_token(p, t);}
+  _vec.shift[token](p.buffered);
+  for (token t in p.buffered) { add_token(p, t); }
 }
 
 impure fn finish_break_scan(ps p) {
@@ -125,7 +126,8 @@ impure fn finish_break_scan(ps p) {
     p.col += width;
   }
   p.scandepth = 0u;
-  for (token t in _vec.shift[token](p.buffered)) {add_token(p, t);}
+  _vec.shift[token](p.buffered);
+  for (token t in p.buffered) { add_token(p, t); }
 }
 
 impure fn start_scan(ps p, token tok) {

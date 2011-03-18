@@ -207,6 +207,29 @@ str_from_vec(rust_task *task, rust_vec *v)
     return st;
 }
 
+extern "C" CDECL rust_str *
+str_from_cstr(rust_task *task, char *sbuf)
+{
+    size_t len = strlen(sbuf) + 1;
+    rust_str *st = vec_alloc_with_data(task, len, len, 1, sbuf);
+    if (!st) {
+        task->fail(2);
+        return NULL;
+    }
+    return st;
+}
+
+extern "C" CDECL rust_str *
+str_from_buf(rust_task *task, char *buf, unsigned int len) {
+    rust_str *st = vec_alloc_with_data(task, len + 1, len, 1, buf);
+    if (!st) {
+        task->fail(2);
+        return NULL;
+    }
+    st->data[st->fill++] = '\0';
+    return st;
+}
+
 extern "C" CDECL void *
 rand_new(rust_task *task)
 {

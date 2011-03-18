@@ -1,3 +1,13 @@
+# Delete the built-in rules.
+# This speeds builds up substantially on win32, maybe elsewhere.
+
+.SUFFIXES:
+%:: %,v
+%:: RCS/%,v
+%:: RCS/%
+%:: s.%
+%:: SCCS/s.%
+
 ######################################################################
 # Auto-configuration
 ######################################################################
@@ -446,6 +456,7 @@ TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     test/run-pass/iter-ret.rs \
                     test/run-pass/leak-tag-copy.rs \
                     test/run-pass/lib-io.rs \
+                    test/run-pass/maybe-mutable.rs \
                     test/run-pass/mlist-cycle.rs \
                     test/run-pass/obj-as.rs \
                     test/run-pass/seq-compare.rs \
@@ -469,7 +480,6 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         acyclic-unwind.rs \
                         alt-pattern-drop.rs \
                         alt-type-simple.rs \
-                        append-units.rs \
                         basic-1.rs \
                         basic-2.rs \
                         basic.rs \
@@ -489,6 +499,7 @@ TEST_XFAILS_RUSTC := $(addprefix test/run-pass/, \
                         lib-sha1.rs \
                         lib-sort.rs \
                         lib-str.rs \
+                        lib-str-buf.rs \
                         lib-task.rs \
                         lib-uint.rs \
                         lib-vec-str-conversions.rs \

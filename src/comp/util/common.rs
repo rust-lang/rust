@@ -68,15 +68,6 @@ fn istr(int i) -> str {
     ret _int.to_str(i, 10u);
 }
 
-
-// FIXME: Weird bug. Due to the way we auto-deref + in +=, we can't append a
-// boxed value to a vector-of-boxes using +=.  Best to figure out a way to fix
-// this. Deref-on-demand or something? It's a hazard of the ambiguity between
-// single-element and vector append.
-fn append[T](&mutable vec[T] v, &T t) {
-    v += t;
-}
-
 //
 // Local Variables:
 // mode: rust
