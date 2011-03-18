@@ -5698,7 +5698,7 @@ fn find_main_fn(@crate_ctxt cx) -> ValueRef {
     auto e = sep() + "main";
     let ValueRef v = C_nil();
     let uint n = 0u;
-    for each (tup(str,ValueRef) i in cx.item_names.items()) {
+    for each (@tup(str,ValueRef) i in cx.item_names.items()) {
         if (_str.ends_with(i._0, e)) {
             n += 1u;
             v = i._1;
