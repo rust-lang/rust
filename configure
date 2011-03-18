@@ -71,7 +71,8 @@ msg "making directories"
 for i in \
     doc \
     boot/fe boot/me boot/be boot/driver boot/util \
-    rt/isaac rt/bigint rt/sync rt/test
+    rt rt/isaac rt/bigint rt/sync rt/test \
+    llvmext
 do
     make_dir $i
 done
