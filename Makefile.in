@@ -304,7 +304,8 @@ LLVMEXT_CS := $(addprefix llvmext/, \
 
 LLVMEXT_HDR := llvmext/include/llvm-c/Object.h
 
-LLVMEXT_INCS := -iquote $(CFG_LLVM_INCDIR) -iquote llvmext/include
+LLVMEXT_INCS := -iquote $(CFG_LLVM_INCDIR) \
+                -iquote $(S)/src/llvmext/include
 LLVMEXT_OBJS := $(LLVMEXT_CS:.cpp=.o)
 LLVMEXT_LIBS := $(CFG_LLVM_LDFLAGS) $(CFG_LLVM_LIBS)
 
