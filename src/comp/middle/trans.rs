@@ -4178,7 +4178,6 @@ fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
         }
     }
 
-    auto llunit_ty = type_of(cx.fcx.ccx, unit_ty);
     auto bcx = cx;
     auto unit_sz = size_of(bcx, unit_ty);
     bcx = unit_sz.bcx;
@@ -4222,6 +4221,7 @@ fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
 
         auto dst_val;
         if (!ty.type_has_dynamic_size(unit_ty)) {
+            auto llunit_ty = type_of(cx.fcx.ccx, unit_ty);
             dst_val = bcx.build.PointerCast(dst_res.val, T_ptr(llunit_ty));
         } else {
             dst_val = dst_res.val;
