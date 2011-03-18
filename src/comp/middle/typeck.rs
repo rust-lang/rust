@@ -1401,6 +1401,20 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
             e_1 = ast.expr_chan(es_1, ast.ann_type(t, none[vec[@ty.t]]));
         }
 
+        case (ast.expr_alt(?discrim, ?arms_0, ?ann)) {
+            auto t = expected;
+            let vec[ast.arm] arms_1 = vec();
+            for (ast.arm arm_0 in arms_0) {
+                auto block_1 = demand_block(fcx, expected, arm_0.block);
+                t = demand(fcx, e.span, t, block_ty(block_1));
+                auto arm_1 = rec(pat=arm_0.pat, block=block_1,
+                                 index=arm_0.index);
+                arms_1 += vec(arm_1);
+            }
+            e_1 = ast.expr_alt(discrim, arms_1,
+                               ast.ann_type(t, none[vec[@ty.t]]));
+        }
+
         case (_) {
             fcx.ccx.sess.span_unimpl(e.span,
                 "type unification for expression variant");
