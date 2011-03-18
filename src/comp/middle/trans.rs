@@ -2066,8 +2066,15 @@ fn iter_sequence_inner(@block_ctxt cx,
                   @block_ctxt cx,
                   ValueRef dst,
                   ValueRef src) -> result {
-        auto llty = type_of(cx.fcx.ccx, elt_ty);
-        auto p = cx.build.PointerCast(src, T_ptr(llty));
+        auto llptrty;
+        if (!ty.type_has_dynamic_size(elt_ty)) {
+            auto llty = type_of(cx.fcx.ccx, elt_ty);
+            llptrty = T_ptr(llty);
+        } else {
+            llptrty = T_ptr(T_ptr(T_i8()));
+        }
+
+        auto p = cx.build.PointerCast(src, llptrty);
         ret f(cx, load_scalar_or_boxed(cx, p, elt_ty), elt_ty);
     }
 
@@ -2094,7 +2101,13 @@ fn iter_sequence(@block_ctxt cx,
         auto lenptr = cx.build.GEP(v, vec(C_int(0),
                                           C_int(abi.vec_elt_fill)));
 
-        auto llunit_ty = type_of(cx.fcx.ccx, elt_ty);
+        auto llunit_ty;
+        if (ty.type_has_dynamic_size(elt_ty)) {
+            llunit_ty = T_i8();
+        } else {
+            llunit_ty = type_of(cx.fcx.ccx, elt_ty);
+        }
+
         auto bcx = cx;
 
         auto len = bcx.build.Load(lenptr);
