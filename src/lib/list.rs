@@ -10,7 +10,7 @@ tag list[T] {
     nil;
 }
 
-fn foldl[T,U](&list[T] ls, &U u, fn(&T t, U u) -> U f) -> U {
+fn foldl[T,U](&list[T] ls, &U u, fn(&T t, &U u) -> U f) -> U {
   alt(ls) {
     case (cons[T](?hd, ?tl)) {
       auto u_ = f(hd, u);
@@ -50,7 +50,7 @@ fn find[T,U](&list[T] ls,
 }
 
 fn length[T](&list[T] ls) -> uint {
-  fn count[T](&T t, uint u) -> uint {
+  fn count[T](&T t, &uint u) -> uint {
     ret u + 1u;
   }
   ret foldl[T,uint](ls, 0u, bind count[T](_, _));
