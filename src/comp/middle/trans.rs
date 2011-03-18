@@ -4181,8 +4181,8 @@ fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
     auto bcx = cx;
     auto unit_sz = size_of(bcx, unit_ty);
     bcx = unit_sz.bcx;
-    auto data_sz = llvm.LLVMConstMul(C_int(_vec.len[@ast.expr](args) as int),
-                                     unit_sz.val);
+    auto data_sz = bcx.build.Mul(C_int(_vec.len[@ast.expr](args) as int),
+                                 unit_sz.val);
 
     // FIXME: pass tydesc properly.
     auto sub = trans_upcall(bcx, "upcall_new_vec", vec(data_sz, C_int(0)));
