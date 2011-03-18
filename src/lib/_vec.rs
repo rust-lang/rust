@@ -35,7 +35,7 @@ fn alloc_mut[T](uint n_elts) -> vec[mutable T] {
     ret rustrt.vec_alloc_mut[vec[mutable T], T](n_elts);
 }
 
-fn refcount[T](vec[T] v) -> uint {
+fn refcount[T](vec[mutable? T] v) -> uint {
     auto r = rustrt.refcount[T](v);
     if (r == dbg.const_refcount) {
         ret r;
@@ -94,29 +94,29 @@ fn init_elt_mut[T](&T t, uint n_elts) -> vec[mutable T] {
     ret v;
 }
 
-fn buf[T](vec[T] v) -> vbuf {
+fn buf[T](vec[mutable? T] v) -> vbuf {
     ret rustrt.vec_buf[T](v, 0u);
 }
 
-fn len[T](vec[T] v) -> uint {
+fn len[T](vec[mutable? T] v) -> uint {
     ret rustrt.vec_len[T](v);
 }
 
-fn len_set[T](vec[T] v, uint n) {
+fn len_set[T](vec[mutable? T] v, uint n) {
     rustrt.vec_len_set[T](v, n);
 }
 
-fn buf_off[T](vec[T] v, uint offset) -> vbuf {
+fn buf_off[T](vec[mutable? T] v, uint offset) -> vbuf {
     check (offset < len[T](v));
     ret rustrt.vec_buf[T](v, offset);
 }
 
-fn print_debug_info[T](vec[T] v) {
+fn print_debug_info[T](vec[mutable? T] v) {
     rustrt.vec_print_debug_info[T](v);
 }
 
 // Returns elements from [start..end) from v.
-fn slice[T](vec[T] v, uint start, uint end) -> vec[T] {
+fn slice[T](vec[mutable? T] v, uint start, uint end) -> vec[T] {
     check (start <= end);
     check (end <= len[T](v));
     auto result = alloc[T](end - start);
@@ -128,7 +128,7 @@ fn slice[T](vec[T] v, uint start, uint end) -> vec[T] {
     ret result;
 }
 
-fn shift[T](&mutable vec[T] v) -> T {
+fn shift[T](&mutable vec[mutable? T] v) -> T {
     auto ln = len[T](v);
     check(ln > 0u);
     auto e = v.(0);
@@ -136,7 +136,7 @@ fn shift[T](&mutable vec[T] v) -> T {
     ret e;
 }
 
-fn pop[T](&mutable vec[T] v) -> T {
+fn pop[T](&mutable vec[mutable? T] v) -> T {
     auto ln = len[T](v);
     check(ln > 0u);
     ln -= 1u;
@@ -145,18 +145,18 @@ fn pop[T](&mutable vec[T] v) -> T {
     ret e;
 }
 
-fn push[T](&mutable vec[T] v, &T t) {
+fn push[T](&mutable vec[mutable? T] v, &T t) {
     v += vec(t);
 }
 
-fn unshift[T](&mutable vec[T] v, &T t) {
+fn unshift[T](&mutable vec[mutable? T] v, &T t) {
     auto res = alloc[T](len[T](v) + 1u);
     res += vec(t);
     res += v;
     v = res;
 }
 
-fn grow[T](&mutable vec[T] v, int n, &T initval) {
+fn grow[T](&mutable vec[mutable? T] v, int n, &T initval) {
     let int i = n;
     while (i > 0) {
         i -= 1;
@@ -164,7 +164,7 @@ fn grow[T](&mutable vec[T] v, int n, &T initval) {
     }
 }
 
-fn map[T, U](&option.operator[T,U] f, &vec[T] v) -> vec[U] {
+fn map[T, U](&option.operator[T,U] f, &vec[mutable? T] v) -> vec[U] {
     let vec[U] u = alloc[U](len[T](v));
     for (T ve in v) {
         u += vec(f(ve));
@@ -172,7 +172,8 @@ fn map[T, U](&option.operator[T,U] f, &vec[T] v) -> vec[U] {
     ret u;
 }
 
-fn map2[T,U,V](&operator2[T,U,V] f, &vec[T] v0, &vec[U] v1) -> vec[V] {
+fn map2[T,U,V](&operator2[T,U,V] f, &vec[mutable? T] v0, &vec[mutable? U] v1)
+        -> vec[V] {
     auto v0_len = len[T](v0);
     if (v0_len != len[U](v1)) {
         fail;

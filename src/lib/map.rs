@@ -29,7 +29,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     }
 
     fn make_buckets[K, V](uint nbkts) -> vec[mutable bucket[K, V]] {
-        ret _vec.init_elt[mutable bucket[K, V]](nil[K, V], nbkts);
+        ret _vec.init_elt_mut[bucket[K, V]](nil[K, V], nbkts);
     }
 
     // Derive two hash functions from the one given by taking the upper

@@ -21,7 +21,7 @@ fn create(uint nbits, bool init) -> t {
         elt = 0u;
     }
 
-    auto storage = _vec.init_elt[mutable uint](elt, nbits / uint_bits() + 1u);
+    auto storage = _vec.init_elt_mut[uint](elt, nbits / uint_bits() + 1u);
     ret rec(storage = storage, nbits = nbits);
 }
 
