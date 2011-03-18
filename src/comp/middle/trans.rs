@@ -565,12 +565,12 @@ fn type_of_fn(@crate_ctxt cx,
 
 fn type_of_native_fn(@crate_ctxt cx, ast.native_abi abi,
                      vec[ty.arg] inputs,
-                     @ty.t output) -> TypeRef {
+                     @ty.t output,
+                     uint ty_param_count) -> TypeRef {
     let vec[TypeRef] atys = vec();
     if (abi == ast.native_abi_rust) {
         atys += vec(T_taskptr(cx.tn));
         auto t = ty.ty_native_fn(abi, inputs, output);
-        auto ty_param_count = ty.count_ty_params(plain_ty(t));
         auto i = 0u;
         while (i < ty_param_count) {
             atys += vec(T_ptr(T_tydesc(cx.tn)));
@@ -638,7 +638,8 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t, bool boxed) -> TypeRef {
             llty = T_fn_pair(cx.tn, type_of_fn(cx, proto, args, out, 0u));
         }
         case (ty.ty_native_fn(?abi, ?args, ?out)) {
-            llty = T_fn_pair(cx.tn, type_of_native_fn(cx, abi, args, out));
+            auto nft = type_of_native_fn(cx, abi, args, out, 0u);
+            llty = T_fn_pair(cx.tn, nft);
         }
         case (ty.ty_obj(?meths)) {
             auto th = mk_type_handle();
@@ -5417,17 +5418,20 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
 
     register_fn_pair(cx, ps, wrapper_pair_type, wrapper_fn, id);
 
-    // Declare the function itself.
-    auto llfty = get_pair_fn_ty(node_type(cx, ann));
-    auto function = decl_cdecl_fn(cx.llmod, name, llfty);
-
     // Build the wrapper.
     auto fcx = new_fn_ctxt(cx, wrapper_fn);
     auto bcx = new_top_block_ctxt(fcx);
-    auto fn_type = node_ann_type(cx, ann);
+
+    // Declare the function itself.
+    auto item = cx.native_items.get(id);
+    auto fn_type = node_ann_type(cx, ann);  // NB: has no type params
+
+    auto abi = ty.ty_fn_abi(fn_type);
+    auto llfnty = type_of_native_fn(cx, abi, ty.ty_fn_args(fn_type),
+                                    ty.ty_fn_ret(fn_type), num_ty_param);
+    auto function = decl_cdecl_fn(cx.llmod, name, llfnty);
 
     let vec[ValueRef] call_args = vec();
-    auto abi = ty.ty_fn_abi(fn_type);
     auto arg_n = 3u;
     alt (abi) {
         case (ast.native_abi_rust) {
