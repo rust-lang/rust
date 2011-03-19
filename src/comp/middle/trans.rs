@@ -3585,8 +3585,11 @@ fn trans_cast(@block_ctxt cx, @ast.expr e, &ast.ann ann) -> result {
     auto t = node_ann_type(cx.fcx.ccx, ann);
     auto lldsttype = type_of(cx.fcx.ccx, t);
     if (!ty.type_is_fp(t)) {
+        // TODO: native-to-native casts
         if (ty.type_is_native(ty.expr_ty(e))) {
             e_res.val = e_res.bcx.build.PtrToInt(e_res.val, lldsttype);
+        } else if (ty.type_is_native(t)) {
+            e_res.val = e_res.bcx.build.IntToPtr(e_res.val, lldsttype);
         } else if (llvm.LLVMGetIntTypeWidth(lldsttype) >
             llvm.LLVMGetIntTypeWidth(llsrctype)) {
             if (ty.type_is_signed(t)) {
