@@ -105,7 +105,7 @@ ifdef CFG_UNIXY
     CFG_VALGRIND += --leak-check=full \
                     --error-exitcode=1 \
                     --quiet --vex-iropt-level=0 \
-                    --suppressions=$(S)src/etc/x86.supp
+                    --suppressions=etc/x86.supp
   endif
 endif
 
@@ -174,8 +174,8 @@ VPATH := $(S)doc $(S)src
 
 # Compilers we build, we now know how to run.
 BOOT := $(Q)OCAMLRUNPARAM="b1" boot/rustboot$(X) $(CFG_BOOT_FLAGS) -L stage0
-STAGE0 := $(Q)stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1
-STAGE1 := $(Q)stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage2
+STAGE0 := $(Q)$(CFG_RUN_PROGRAM) stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1
+STAGE1 := $(Q)$(CFG_RUN_PROGRAM) stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage2
 
 # "Source" files we generate in builddir along the way.
 GENERATED := boot/fe/lexer.ml boot/version.ml
