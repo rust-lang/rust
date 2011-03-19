@@ -366,8 +366,7 @@ rt/%.o: rt/%.cpp $(MKFILES)
 
 llvmext/%.o: llvmext/%.cpp $(MKFILES)
 	@$(call E, compile: $@)
-	$(Q)$(call CFG_COMPILE_C, $@, $(CFG_LLVM_CXXFLAGS) \
-		$(SUPPORT_INCS)) $<
+	$(Q)$(call CFG_COMPILE_C, $@, $(CFG_LLVM_CXXFLAGS) $(LLVMEXT_INCS)) $<
 
 %.cmo: %.ml $(MKFILES)
 	@$(call E, compile: $@)
