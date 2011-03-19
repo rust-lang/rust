@@ -924,7 +924,9 @@ fn collect_item_types(session.session sess, @ast.crate crate)
 fn unify(&@fn_ctxt fcx, @ty.t expected, @ty.t actual) -> ty.unify_result {
     obj unify_handler(@fn_ctxt fcx) {
         fn resolve_local(ast.def_id id) -> @ty.t {
-            check (fcx.locals.contains_key(id));
+            if (!fcx.locals.contains_key(id)) {
+                ret next_ty_var(fcx.ccx);
+            }
             ret fcx.locals.get(id);
         }
         fn record_local(ast.def_id id, @ty.t t) {
@@ -2377,20 +2379,17 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast.decl decl) -> @ast.decl {
     alt (decl.node) {
         case (ast.decl_local(?local)) {
 
-            auto local_ty;
             alt (local.ty) {
                 case (none[@ast.ty]) {
-                    // Auto slot. Assign a ty_var.
-                    local_ty = next_ty_var(fcx.ccx);
+                    // Auto slot. Do nothing for now.
                 }
 
                 case (some[@ast.ty](?ast_ty)) {
-                    local_ty = ast_ty_to_ty_crate(fcx.ccx, ast_ty);
+                    auto local_ty = ast_ty_to_ty_crate(fcx.ccx, ast_ty);
+                    fcx.locals.insert(local.id, local_ty);
                 }
             }
-            fcx.locals.insert(local.id, local_ty);
 
-            auto rhs_ty = local_ty;
             auto init = local.init;
             alt (local.init) {
                 case (some[@ast.expr](?expr)) {
