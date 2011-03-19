@@ -3441,8 +3441,15 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
 
                         auto alloc_result = alloc_ty(cx, tag_ty);
                         auto lltagblob = alloc_result.val;
+
+                        auto lltagty;
+                        if (ty.type_has_dynamic_size(tag_ty)) {
+                            lltagty = T_opaque_tag(cx.fcx.ccx.tn);
+                        } else {
+                            lltagty = type_of(cx.fcx.ccx, tag_ty);
+                        }
                         auto lltagptr = alloc_result.bcx.build.PointerCast(
-                            lltagblob, T_ptr(type_of(cx.fcx.ccx, tag_ty)));
+                            lltagblob, T_ptr(lltagty));
 
                         auto lldiscrimptr = alloc_result.bcx.build.GEP(
                             lltagptr, vec(C_int(0), C_int(0)));
