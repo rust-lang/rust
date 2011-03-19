@@ -1738,19 +1738,6 @@ fn variant_types(@crate_ctxt cx, &ast.variant v) -> vec[@ty.t] {
     ret tys;
 }
 
-fn type_of_variant(@crate_ctxt cx,
-                   &ast.variant v,
-                   vec[ast.ty_param] ty_params,
-                   vec[@ty.t] ty_param_substs) -> TypeRef {
-    let vec[TypeRef] lltys = vec();
-    auto tys = variant_types(cx, v);
-    for (@ty.t typ in tys) {
-        auto typ2 = ty.substitute_ty_params(ty_params, ty_param_substs, typ);
-        lltys += vec(type_of(cx, typ2));
-    }
-    ret T_struct(lltys);
-}
-
 // Returns the type parameters of a tag.
 fn tag_ty_params(@crate_ctxt cx, ast.def_id id) -> vec[ast.ty_param] {
     check (cx.items.contains_key(id));
@@ -1923,27 +1910,22 @@ fn iter_structural_ty_full(@block_ctxt cx,
 
                 if (_vec.len[ast.variant_arg](variant.args) > 0u) {
                     // N-ary variant.
-                    auto llvarty = type_of_variant(bcx.fcx.ccx, variants.(i),
-                                                   ty_params, tps);
-
                     auto fn_ty = ty.ann_to_type(variants.(i).ann);
                     alt (fn_ty.struct) {
                         case (ty.ty_fn(_, ?args, _)) {
-                            auto llvarp_a = variant_cx.build.
-                                TruncOrBitCast(llunion_a_ptr, T_ptr(llvarty));
-
-                            auto llvarp_b = variant_cx.build.
-                                TruncOrBitCast(llunion_b_ptr, T_ptr(llvarty));
-
-                            auto j = 0u;
+                            auto j = 0;
                             for (ty.arg a in args) {
                                 auto v = vec(C_int(0), C_int(j as int));
 
-                                auto llfldp_a =
-                                    variant_cx.build.GEP(llvarp_a, v);
+                                auto rslt = GEP_tag(variant_cx, llunion_a_ptr,
+                                    tid, variants.(i).id, tps, j);
+                                auto llfldp_a = rslt.val;
+                                variant_cx = rslt.bcx;
 
-                                auto llfldp_b =
-                                    variant_cx.build.GEP(llvarp_b, v);
+                                rslt = GEP_tag(variant_cx, llunion_b_ptr, tid,
+                                    variants.(i).id, tps, j);
+                                auto llfldp_b = rslt.val;
+                                variant_cx = rslt.bcx;
 
                                 auto ty_subst = ty.substitute_ty_params(
                                     ty_params, tps, a.ty);
@@ -1961,7 +1943,7 @@ fn iter_structural_ty_full(@block_ctxt cx,
                                 auto res = f(variant_cx,
                                              llfld_a, llfld_b, ty_subst);
                                 variant_cx = res.bcx;
-                                j += 1u;
+                                j += 1;
                             }
                         }
                         case (_) { fail; }
