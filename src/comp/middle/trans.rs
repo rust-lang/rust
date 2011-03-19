@@ -2348,15 +2348,15 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
     alt (op) {
         case (ast.bitnot) {
             sub = autoderef(sub.bcx, sub.val, ty.expr_ty(e));
-            ret res(sub.bcx, cx.build.Not(sub.val));
+            ret res(sub.bcx, sub.bcx.build.Not(sub.val));
         }
         case (ast.not) {
             sub = autoderef(sub.bcx, sub.val, ty.expr_ty(e));
-            ret res(sub.bcx, cx.build.Not(sub.val));
+            ret res(sub.bcx, sub.bcx.build.Not(sub.val));
         }
         case (ast.neg) {
             sub = autoderef(sub.bcx, sub.val, ty.expr_ty(e));
-            ret res(sub.bcx, cx.build.Neg(sub.val));
+            ret res(sub.bcx, sub.bcx.build.Neg(sub.val));
         }
         case (ast.box) {
             auto e_ty = ty.expr_ty(e);
