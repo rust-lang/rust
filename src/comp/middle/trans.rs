@@ -3002,7 +3002,12 @@ fn trans_for_each(@block_ctxt cx,
             auto llbinding;
             alt (cx.fcx.lllocals.find(did)) {
                 case (none[ValueRef]) {
-                    llbinding = cx.fcx.llupvars.get(did);
+                    alt (cx.fcx.llupvars.find(did)) {
+                        case (none[ValueRef]) {
+                            llbinding = cx.fcx.llargs.get(did);
+                        }
+                        case (some[ValueRef](?llval)) { llbinding = llval; }
+                    }
                 }
                 case (some[ValueRef](?llval)) { llbinding = llval; }
             }
@@ -3384,8 +3389,15 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
         case (some[ast.def](?def)) {
             alt (def) {
                 case (ast.def_arg(?did)) {
-                    check (cx.fcx.llargs.contains_key(did));
-                    ret lval_mem(cx, cx.fcx.llargs.get(did));
+                    alt (cx.fcx.llargs.find(did)) {
+                        case (none[ValueRef]) {
+                            check (cx.fcx.llupvars.contains_key(did));
+                            ret lval_mem(cx, cx.fcx.llupvars.get(did));
+                        }
+                        case (some[ValueRef](?llval)) {
+                            ret lval_mem(cx, llval);
+                        }
+                    }
                 }
                 case (ast.def_local(?did)) {
                     alt (cx.fcx.lllocals.find(did)) {
