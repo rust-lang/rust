@@ -4029,11 +4029,6 @@ fn trans_args(@block_ctxt cx,
             auto re = trans_expr(bcx, e);
             val = re.val;
             bcx = re.bcx;
-            if (mode == ast.val) {
-                // Until here we've been treating structures by pointer;
-                // we are now passing it as an arg, so need to load it.
-                val = bcx.build.Load(val);
-            }
         } else if (mode == ast.alias) {
             let lval_result lv;
             if (ty.is_lval(e)) {
@@ -4063,7 +4058,23 @@ fn trans_args(@block_ctxt cx,
 
         if (ty.count_ty_params(args.(i).ty) > 0u) {
             auto lldestty = arg_tys.(i);
+            if (mode == ast.val) {
+                // FIXME: we'd prefer to use &&, but rustboot doesn't like it
+                if (ty.type_is_structural(ty.expr_ty(e))) {
+                    lldestty = T_ptr(lldestty);
+                }
+            }
+
             val = bcx.build.PointerCast(val, lldestty);
+        }
+
+        if (mode == ast.val) {
+            // FIXME: we'd prefer to use &&, but rustboot doesn't like it
+            if (ty.type_is_structural(ty.expr_ty(e))) {
+                // Until here we've been treating structures by pointer;
+                // we are now passing it as an arg, so need to load it.
+                val = bcx.build.Load(val);
+            }
         }
 
         llargs += vec(val);
