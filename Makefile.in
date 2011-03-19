@@ -173,10 +173,9 @@ X := $(CFG_EXE_SUFFIX)
 VPATH := $(S)doc $(S)src
 
 # Compilers we build, we now know how to run.
-BOOT := $(Q)OCAMLRUNPARAM="b1" boot/rustboot$(X) $(CFG_BOOT_FLAGS)
-STAGE0 := $(Q)stage0/rustc$(X) $(CFG_RUSTC_FLAGS)
-STAGE1 := $(Q)stage1/rustc$(X) $(CFG_RUSTC_FLAGS)
-STAGE2 := $(Q)stage2/rustc$(X) $(CFG_RUSTC_FLAGS)
+BOOT := $(Q)OCAMLRUNPARAM="b1" boot/rustboot$(X) $(CFG_BOOT_FLAGS) -L stage0
+STAGE0 := $(Q)stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1
+STAGE1 := $(Q)stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage2
 
 # "Source" files we generate in builddir along the way.
 GENERATED := boot/fe/lexer.ml boot/version.ml
@@ -328,7 +327,11 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
 # Single-target rules
 ######################################################################
 
-all: boot/rustboot$(X) rt/$(CFG_RUNTIME) llvmext/$(CFG_LLVMEXT)
+all: boot/rustboot$(X)          \
+     rt/$(CFG_RUNTIME)          \
+     llvmext/$(CFG_LLVMEXT)     \
+     stage0/rustc$(X)           \
+     $(GENERATED)
 
 rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR)
 	@$(call E, link: $@)
@@ -355,6 +358,21 @@ boot/version.ml: $(MKFILES)
 	$(Q)git log -1 \
       --pretty=format:'let version = "prerelease (%h %ci)";;' >$@ || exit 1
 
+stage0/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
+                      boot/rustboot$(X) $(MKFILES)
+	@$(call E, compile: $@)
+	$(BOOT) -shared -o $@ $<
+
+stage0/rustc$(X): $(S)src/$(COMPILER_CRATE) $(COMPILER_INPUTS) \
+                  boot/rustboot$(X) rt/$(CFG_RUNTIME) \
+                  stage0/$(CFG_STDLIB)
+	@$(call E, compile: $@)
+	$(BOOT) -minimal -o $@ $<
+	$(Q)chmod 0755 $@
+
+stage0/glue.bc: stage0/rustc$(X) rt/$(CFG_RUNTIME) stage0/$(CFG_STDLIB)
+	@$(call E, generate: $@)
+	$(STAGE0) -o $@ -glue
 
 ######################################################################
 # Pattern rules
