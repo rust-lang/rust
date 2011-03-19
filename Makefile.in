@@ -105,13 +105,15 @@ ifdef CFG_UNIXY
     CFG_VALGRIND += --leak-check=full \
                     --error-exitcode=1 \
                     --quiet --vex-iropt-level=0 \
-                    --suppressions=etc/x86.supp
+                    --suppressions=$(S)src/etc/x86.supp
   endif
 endif
 
 CFG_RUNTIME :=$(call CFG_LIB_NAME,rustrt)
 CFG_LLVMEXT :=$(call CFG_LIB_NAME,llvmext)
 CFG_STDLIB :=$(call CFG_LIB_NAME,std)
+
+CFG_LLC_CFLAGS := -march=x86
 
 ifdef CFG_GCC
   CFG_INFO := $(info cfg: using gcc)
@@ -331,6 +333,7 @@ all: boot/rustboot$(X)          \
      rt/$(CFG_RUNTIME)          \
      llvmext/$(CFG_LLVMEXT)     \
      stage0/rustc$(X)           \
+     stage0/glue.o              \
      $(GENERATED)
 
 rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR)
@@ -399,6 +402,19 @@ llvmext/%.o: llvmext/%.cpp $(MKFILES)
 %.ml: %.mll $(MKFILES)
 	@$(call E, lex-gen: $@)
 	$(Q)ocamllex$(OPT) -q -o $@ $<
+
+%.o: %.s
+	@$(call E, assemble [llvm]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
+
+%.ll: %.bc
+	@$(call E, dis [llvm]: $@)
+	$(Q)$(CFG_LLVM_BINDIR)/llvm-dis -o $@ $<
+
+
+%.s: %.bc
+	@$(call E, compile [llvm]: $@)
+	$(Q)$(CFG_LLVM_BINDIR)/llc $(CFG_LLC_CFLAGS) -o $@ $<
 
 
 ######################################################################
