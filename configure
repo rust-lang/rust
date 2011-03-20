@@ -119,12 +119,14 @@ case $CFG_LLVM_VERSION in
 esac
 CFG_LLVM_INCDIR=$(llvm-config --includedir)
 CFG_LLVM_BINDIR=$(llvm-config --bindir)
+CFG_LLVM_LIBDIR=$(llvm-config --libdir)
 CFG_LLVM_CXXFLAGS=$(llvm-config --cxxflags)
 CFG_LLVM_LDFLAGS=$(llvm-config --ldflags)
 CFG_LLVM_LIBS=$(llvm-config --libs)
 
 putvar CFG_LLVM_INCDIR
 putvar CFG_LLVM_BINDIR
+putvar CFG_LLVM_LIBDIR
 putvar CFG_LLVM_CXXFLAGS
 putvar CFG_LLVM_LDFLAGS
 putvar CFG_LLVM_LIBS
