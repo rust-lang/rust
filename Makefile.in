@@ -67,7 +67,9 @@ ifdef CFG_WINDOWSY
   CFG_LIB_NAME=$(1).dll
   CFG_RUN_PROGRAM=$(1)
 
-  CFG_PATH_MUNGE := | sed -e 's/\\\(.\)/\/\1/g'
+  CFG_PATH_MUNGE := $(strip | perl -p                  \
+                           -e 's@\\(.)@/\1@go;'        \
+                           -e 's@^/([a-zA-Z])/@\1:/@o;')
   ifdef CFG_FLEXLINK
     CFG_BOOT_NATIVE := 1
   endif
