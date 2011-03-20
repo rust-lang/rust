@@ -60,12 +60,17 @@ ifneq ($(findstring MINGW,$(CFG_OSTYPE)),)
   CFG_WINDOWSY := 1
 endif
 
+CFG_LDPATH :=$(CFG_BUILD_DIR)/rt
+CFG_LDPATH :=$(CFG_LDPATH):$(CFG_BUILD_DIR)/llvmext
+
 ifdef CFG_WINDOWSY
   CFG_INFO := $(info cfg: windows-y environment)
 
   CFG_EXE_SUFFIX := .exe
   CFG_LIB_NAME=$(1).dll
-  CFG_RUN_PROGRAM=$(1)
+  CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
+  CFG_LDPATH :=$(CFG_LDPATH):$$PATH
+  CFG_RUN_PROGRAM=PATH=$(CFG_LDPATH) $(1)
 
   CFG_PATH_MUNGE := $(strip | perl -p                  \
                            -e 's@\\(.)@/\1@go;'        \
@@ -81,14 +86,18 @@ ifdef CFG_UNIXY
   CFG_INFO := $(info cfg: unix-y environment)
 
   CFG_EXE_SUFFIX :=
-  CFG_RUN_PROGRAM=LD_LIBRARY_PATH=$(dir $(1)) $(CFG_VALGRIND) $(1)
+  CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_LIBDIR)
+  CFG_RUN_PROGRAM=\
+      LD_LIBRARY_PATH=$(dir $(1)):$(CFG_LDPATH) $(CFG_VALGRIND) $(1)
 
   CFG_BOOT_NATIVE := 1
 
   ifdef MINGW_CROSS
     CFG_EXE_SUFFIX := .exe
     CFG_LIB_NAME=$(1).dll
-    CFG_RUN_PROGRAM=$(1)
+    CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
+    CFG_LDPATH :=$(CFG_LDPATH):$$PATH
+    CFG_RUN_PROGRAM=PATH=$(CFG_LDPATH) $(1)
 
     CFG_INFO := $(info cfg: mingw-cross)
     CFG_GCC_CROSS := i586-mingw32msvc-
