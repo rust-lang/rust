@@ -95,18 +95,21 @@ putvar CFG_BUILD_DIR
 putvar CFG_OSTYPE
 putvar CFG_CPUTYPE
 
-msg "looking for programs"
+msg "looking for build programs"
 probe_need CFG_GCC          gcc
+probe_need CFG_GIT          git
 probe_need CFG_LLVM_CONFIG  llvm-config
 probe_need CFG_OCAMLC       ocamlc
 probe_need CFG_PERL         perl
-probe_need CFG_SED          sed
+probe_need CFG_PYTHON       python
 
 probe CFG_VALGRIND         valgrind
 probe CFG_OCAMLOPT         ocamlopt
 probe CFG_OCAMLC_OPT       ocamlc.opt
 probe CFG_OCAMLOPT_OPT     ocamlopt.opt
 probe CFG_FLEXLINK         flexlink
+probe CFG_MAKEINFO         makeinfo
+probe CFG_TEXI2PDF         texi2pdf
 
 CFG_LLVM_VERSION=$(llvm-config --version)
 case $CFG_LLVM_VERSION in
