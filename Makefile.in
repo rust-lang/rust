@@ -375,7 +375,8 @@ stage0/rustc$(X): $(S)src/$(COMPILER_CRATE) $(COMPILER_INPUTS) \
 	$(BOOT) -minimal -o $@ $<
 	$(Q)chmod 0755 $@
 
-stage0/glue.bc: stage0/rustc$(X) rt/$(CFG_RUNTIME) stage0/$(CFG_STDLIB)
+stage0/glue.bc: stage0/rustc$(X) stage0/$(CFG_STDLIB) \
+                llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
 	$(STAGE0) -o $@ -glue
 
