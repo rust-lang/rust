@@ -7,7 +7,7 @@ cols=78
 
 # Be careful to support Python 2.4, 2.6, and 3.x here!
 config_proc=subprocess.Popen([ "git", "config", "core.autocrlf" ],
-    stdout=subprocess.PIPE)
+                             stdout=subprocess.PIPE)
 result=config_proc.communicate()[0]
 
 true="true".encode('utf8')
