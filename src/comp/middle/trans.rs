@@ -71,6 +71,7 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[str, ValueRef] upcalls,
                             hashmap[str, ValueRef] intrinsics,
                             hashmap[str, ValueRef] item_names,
+                            hashmap[str, ValueRef] native_fns,
                             hashmap[ast.def_id, ValueRef] item_ids,
                             hashmap[ast.def_id, @ast.item] items,
                             hashmap[ast.def_id,
@@ -5452,7 +5453,19 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
     auto abi = ty.ty_fn_abi(fn_type);
     auto llfnty = type_of_native_fn(cx, abi, ty.ty_fn_args(fn_type),
                                     ty.ty_fn_ret(fn_type), num_ty_param);
-    auto function = decl_cdecl_fn(cx.llmod, name, llfnty);
+
+    // We can only declare a native function with a given name once; LLVM
+    // unhelpfully mangles the names if we try to multiply declare one.
+    auto function;
+    if (!cx.native_fns.contains_key(name)) {
+        function = decl_cdecl_fn(cx.llmod, name, llfnty);
+        cx.native_fns.insert(name, function);
+    } else {
+        // We support type-punning a native function by giving it different
+        // Rust types.
+        auto llorigfn = cx.native_fns.get(name);
+        function = bcx.build.PointerCast(llorigfn, T_ptr(llfnty));
+    }
 
     let vec[ValueRef] call_args = vec();
     auto arg_n = 3u;
@@ -6200,6 +6213,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    upcalls = new_str_hash[ValueRef](),
                    intrinsics = intrinsics,
                    item_names = new_str_hash[ValueRef](),
+                   native_fns = new_str_hash[ValueRef](),
                    item_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
                    native_items = new_def_hash[@ast.native_item](),
