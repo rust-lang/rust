@@ -43,7 +43,13 @@ make_test_subdirs() {
 putvar() {
     local T
     eval T=\$$1
-    printf "%-20s := %s\n" $1 "$T"
+    eval TLEN=\${#$1}
+    if [ $TLEN -gt 35 ]
+    then
+        printf "configure: %-20s := %.35s ...\n" $1 "$T"
+    else
+        printf "configure: %-20s := %s\n" $1 "$T"
+    fi
     printf "%-20s := %s\n" $1 "$T" >>config.mk
 }
 
