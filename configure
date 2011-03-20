@@ -33,13 +33,6 @@ copy() {
     cp $1 $2
 }
 
-make_test_subdirs() {
-    for t in run-pass run-fail compile-fail
-    do
-        make_dir $1/test/$t
-    done
-}
-
 putvar() {
     local T
     eval T=\$$1
@@ -89,17 +82,11 @@ for i in \
     doc \
     boot/fe boot/me boot/be boot/driver boot/util \
     rt rt/isaac rt/bigint rt/sync rt/test \
-    llvmext
+    llvmext \
+    state0 stage1 stage2 \
+    test/run-pass test/run-fail test/compile-fail
 do
     make_dir $i
-done
-
-make_test_subdirs boot
-
-for i in 0 1 2
-do
-    make_dir stage$i
-    make_test_subdirs stage$i
 done
 
 msg "inspecting environment"

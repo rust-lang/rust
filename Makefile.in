@@ -70,7 +70,7 @@ ifdef CFG_WINDOWSY
   CFG_LIB_NAME=$(1).dll
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
-  CFG_RUN_PROGRAM=PATH=$(CFG_LDPATH) $(1)
+  CFG_RUN_TARG=PATH=$(CFG_LDPATH) $(1)
 
   CFG_PATH_MUNGE := $(strip | perl -p                  \
                            -e 's@\\(.)@/\1@go;'        \
@@ -87,7 +87,7 @@ ifdef CFG_UNIXY
 
   CFG_EXE_SUFFIX :=
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_LIBDIR)
-  CFG_RUN_PROGRAM=\
+  CFG_RUN_TARG=\
       LD_LIBRARY_PATH=$(dir $(1)):$(CFG_LDPATH) $(CFG_VALGRIND) $(1)
 
   CFG_BOOT_NATIVE := 1
@@ -97,7 +97,7 @@ ifdef CFG_UNIXY
     CFG_LIB_NAME=$(1).dll
     CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
     CFG_LDPATH :=$(CFG_LDPATH):$$PATH
-    CFG_RUN_PROGRAM=PATH=$(CFG_LDPATH) $(1)
+    CFG_RUN_TARG=PATH=$(CFG_LDPATH) $(1)
 
     CFG_INFO := $(info cfg: mingw-cross)
     CFG_GCC_CROSS := i586-mingw32msvc-
@@ -178,7 +178,7 @@ else
   E = echo $(1)
 endif
 
-R := $(CFG_RUN_PROGRAM)
+R := $(CFG_RUN_TARG)
 S := $(CFG_SRC_DIR)
 X := $(CFG_EXE_SUFFIX)
 
@@ -187,8 +187,8 @@ VPATH := $(S)doc $(S)src
 
 # Compilers we build, we now know how to run.
 BOOT := $(Q)OCAMLRUNPARAM="b1" boot/rustboot$(X) $(CFG_BOOT_FLAGS) -L stage0
-STAGE0 := $(Q)$(CFG_RUN_PROGRAM) stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1
-STAGE1 := $(Q)$(CFG_RUN_PROGRAM) stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage2
+STAGE0 := $(Q)$(CFG_RUN_TARG) stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1
+STAGE1 := $(Q)$(CFG_RUN_TARG) stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage2
 
 # "Source" files we generate in builddir along the way.
 GENERATED := boot/fe/lexer.ml boot/version.ml
@@ -337,16 +337,25 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
                                 rustc.rc *.rs */*.rs))
 
 ######################################################################
+# test dependency variables
+######################################################################
+
+LREQ := rt/$(CFG_RUNTIME) llvmext/$(CFG_LLVMEXT)
+BREQ := boot/rustboot$(X) boot/$(CFG_STDLIB)
+SREQ0 := stage0/rustc$(X) $(LREQ)
+SREQ1 := stage1/rustc$(X) $(LREQ)
+
+######################################################################
 # Single-target rules
 ######################################################################
 
 all: boot/rustboot$(X)          \
+     boot/$(CFG_STDLIB)         \
      rt/$(CFG_RUNTIME)          \
      llvmext/$(CFG_LLVMEXT)     \
-     stage0/$(CFG_STDLIB)       \
-     stage1/$(CFG_STDLIB)       \
      stage0/rustc$(X)           \
      stage0/glue.o              \
+     stage0/$(CFG_STDLIB)       \
      $(GENERATED)
 
 rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR)
@@ -375,27 +384,25 @@ boot/version.ml: $(MKFILES)
       --pretty=format:'let version = "prerelease (%h %ci)";;' >$@ || exit 1
 
 
-stage0/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
-                      boot/rustboot$(X) $(MKFILES)
+boot/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
+                    boot/rustboot$(X) $(MKFILES)
 	@$(call E, compile: $@)
 	$(BOOT) -shared -o $@ $<
 
-stage1/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
+stage0/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
                       stage0/rustc$(X) $(MKFILES)
 	@$(call E, compile: $@)
 	$(STAGE0) -shared -o $@ $<
 
 
 stage0/rustc$(X): $(S)src/$(COMPILER_CRATE) $(COMPILER_INPUTS) \
-                  boot/rustboot$(X) rt/$(CFG_RUNTIME) \
-                  stage0/$(CFG_STDLIB)
+                  $(BREQ)
 	@$(call E, compile: $@)
 	$(BOOT) -minimal -o $@ $<
 	$(Q)chmod 0755 $@
 
 stage1/rustc$(X): $(S)src/$(COMPILER_CRATE) $(COMPILER_INPUTS) \
-                  stage0/rustc$(X) rt/$(CFG_RUNTIME) \
-                  stage1/$(CFG_STDLIB)
+                  $(SREQ0) stage0/$(CFG_STDLIB)
 	@$(call E, compile: $@)
 	$(STAGE0) -o $@ $<
 	$(Q)chmod 0755 $@
@@ -412,7 +419,7 @@ stage1/glue.bc: stage1/rustc$(X) stage1/$(CFG_STDLIB) \
 	$(STAGE1) -o $@ -glue
 
 ######################################################################
-# Pattern rules
+# Library and boot rules
 ######################################################################
 
 rt/%.o: rt/%.cpp $(MKFILES)
@@ -437,6 +444,35 @@ llvmext/%.o: llvmext/%.cpp $(MKFILES)
 	@$(call E, lex-gen: $@)
 	$(Q)ocamllex$(OPT) -q -o $@ $<
 
+
+######################################################################
+# Testing rules
+######################################################################
+
+%.boot$(X): %.rs $(BREQ)
+	@$(call E, compile [boot]: $@)
+	$(BOOT) -o $@ $<
+
+%.boot$(X): %.rc $(BREQ)
+	@$(call E, compile [boot]: $@)
+	$(BOOT) -o $@ $<
+
+%.stage0$(X): %.o rt/$(CFG_RUNTIME) stage0/glue.o
+	@$(call E, link [llvm]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage0/glue.o -o $@ $< -Lstage0 -lrustrt
+	@# dsymutil sometimes fails or prints a warning, but the
+	@# program still runs.  Since it simplifies debugging other
+	@# programs, I\'ll live with the noise.
+	-$(Q)$(DSYMUTIL) $@
+
+%.stage0.bc: %.rc $(SREQ0)
+	@$(call E, compile [stage0]: $@)
+	$(STAGE0) -o $@ $<
+
+%.stage0.bc: %.rs $(SREQ0)
+	@$(call E, compile [stage0]: $@)
+	$(STAGE0) -o $@ $<
+
 %.o: %.s
 	@$(call E, assemble [llvm]: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
@@ -445,10 +481,60 @@ llvmext/%.o: llvmext/%.cpp $(MKFILES)
 	@$(call E, dis [llvm]: $@)
 	$(Q)$(CFG_LLVM_BINDIR)/llvm-dis -o $@ $<
 
-
 %.s: %.bc
 	@$(call E, compile [llvm]: $@)
 	$(Q)$(CFG_LLVM_BINDIR)/llc $(CFG_LLC_CFLAGS) -o $@ $<
+
+# Cancel the implicit .out rule in GNU make.
+%.out: %
+
+%.out: %.out.tmp
+	$(Q)mv $< $@
+
+test/run-pass/%.out.tmp: test/run-pass/%$(CFG_EXE_SUFFIX) rt/$(CFG_RUNTIME)
+	$(Q)rm -f $<.tmp
+	@$(call E, run: $@)
+	$(Q)$(call CFG_RUN_TARG, $<) > $@
+
+test/bench/shootout/%.out.tmp: test/bench/shootout/%$(X) \
+                               rt/$(CFG_RUNTIME)
+	$(Q)rm -f $<.tmp
+	@$(call E, run: $@)
+	$(Q)$(call CFG_RUN_TARG, $<) > $@
+
+test/bench/99-bottles/%.out.tmp: test/bench/99-bottles/%$(X) \
+                                 rt/$(CFG_RUNTIME)
+	$(Q)rm -f $<.tmp
+	@$(call E, run: $@)
+	$(Q)$(call CFG_RUN_TARG, $<) > $@
+
+test/run-fail/%.out.tmp: test/run-fail/%$(X) \
+                         rt/$(CFG_RUNTIME)
+	$(Q)rm -f $<.tmp
+	@$(call E, run: $@)
+	$(Q)grep -q error-pattern $(S)src/test/run-fail/$(basename $*).rs
+	$(Q)rm -f $@
+	$(Q)$(call CFG_RUN_TARG, $<) >$@ 2>&1 ; X=$$? ; \
+      if [ $$X -eq 0 ] ; then exit 1 ; else exit 0 ; fi
+	$(Q)grep --text --quiet \
+      "$$(grep error-pattern $(S)src/test/run-fail/$(basename $*).rs \
+        | cut -d : -f 2- | tr -d '\n\r')" $@
+
+test/compile-fail/%.boot.out.tmp: test/compile-fail/%.rs $(BREQ)
+	@$(call E, compile [boot]: $@)
+	$(Q)grep -q error-pattern $<
+	$(Q)rm -f $@
+	$(BOOT) -o $(@:.out=$(X)) $< >$@ 2>&1; test $$? -ne 0
+	$(Q)grep --text --quiet \
+      "$$(grep error-pattern $< | cut -d : -f 2- | tr -d '\n\r')" $@
+
+test/compile-fail/%.stage0.out.tmp: test/compile-fail/%.rs $(SREQ0)
+	@$(call E, compile [stage0]: $@)
+	$(Q)grep -q error-pattern $<
+	$(Q)rm -f $@
+	$(STAGE0) -o $(@:.out=$(X)) $< >$@ 2>&1; test $$? -ne 0
+	$(Q)grep --text --quiet \
+      "$$(grep error-pattern $< | cut -d : -f 2- | tr -d '\n\r')" $@
 
 
 ######################################################################
