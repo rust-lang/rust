@@ -69,7 +69,7 @@ probe() {
 probe_need() {
     local V=$1
     local P=$2
-    probe $1 $2
+    probe $V $P
     eval VV=\$$V
     if [ -z "$VV" ]
     then
