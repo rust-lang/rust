@@ -343,6 +343,8 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
 all: boot/rustboot$(X)          \
      rt/$(CFG_RUNTIME)          \
      llvmext/$(CFG_LLVMEXT)     \
+     stage0/$(CFG_STDLIB)       \
+     stage1/$(CFG_STDLIB)       \
      stage0/rustc$(X)           \
      stage0/glue.o              \
      $(GENERATED)
@@ -372,10 +374,17 @@ boot/version.ml: $(MKFILES)
 	$(Q)git log -1 \
       --pretty=format:'let version = "prerelease (%h %ci)";;' >$@ || exit 1
 
+
 stage0/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
                       boot/rustboot$(X) $(MKFILES)
 	@$(call E, compile: $@)
 	$(BOOT) -shared -o $@ $<
+
+stage1/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
+                      stage0/rustc$(X) $(MKFILES)
+	@$(call E, compile: $@)
+	$(STAGE0) -shared -o $@ $<
+
 
 stage0/rustc$(X): $(S)src/$(COMPILER_CRATE) $(COMPILER_INPUTS) \
                   boot/rustboot$(X) rt/$(CFG_RUNTIME) \
@@ -384,10 +393,23 @@ stage0/rustc$(X): $(S)src/$(COMPILER_CRATE) $(COMPILER_INPUTS) \
 	$(BOOT) -minimal -o $@ $<
 	$(Q)chmod 0755 $@
 
+stage1/rustc$(X): $(S)src/$(COMPILER_CRATE) $(COMPILER_INPUTS) \
+                  stage0/rustc$(X) rt/$(CFG_RUNTIME) \
+                  stage1/$(CFG_STDLIB)
+	@$(call E, compile: $@)
+	$(STAGE0) -o $@ $<
+	$(Q)chmod 0755 $@
+
+
 stage0/glue.bc: stage0/rustc$(X) stage0/$(CFG_STDLIB) \
                 llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
 	$(STAGE0) -o $@ -glue
+
+stage1/glue.bc: stage1/rustc$(X) stage1/$(CFG_STDLIB) \
+                llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
+	@$(call E, generate: $@)
+	$(STAGE1) -o $@ -glue
 
 ######################################################################
 # Pattern rules
