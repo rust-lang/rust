@@ -12,6 +12,14 @@ err() {
     exit 1
 }
 
+
+need_cmd() {
+    if which $1 >/dev/null 2>&1
+    then msg "found $1"
+    else err "need $1"
+    fi
+}
+
 make_dir() {
     if [ ! -d $1 ]
     then
@@ -63,6 +71,9 @@ probe_need() {
     fi
 }
 
+msg "looking for configure programs"
+need_cmd mkdir
+need_cmd printf
 
 msg "recreating config.mk"
 echo '' >config.mk
