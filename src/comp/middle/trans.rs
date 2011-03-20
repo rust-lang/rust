@@ -1478,7 +1478,9 @@ fn declare_generic_glue(@crate_ctxt cx, @ty.t t, str name) -> ValueRef {
 
     auto fn_name = cx.names.next("_rust_" + name) + sep() + ty.ty_to_str(t);
     fn_name = sanitize(fn_name);
-    ret decl_fastcall_fn(cx.llmod, fn_name, llfnty);
+    auto llfn = decl_fastcall_fn(cx.llmod, fn_name, llfnty);
+    llvm.LLVMSetLinkage(llfn, lib.llvm.LLVMPrivateLinkage as llvm.Linkage);
+    ret llfn;
 }
 
 fn make_generic_glue(@crate_ctxt cx, @ty.t t, ValueRef llfn,
