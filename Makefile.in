@@ -601,6 +601,15 @@ test/compile-fail/%.stage0.out.tmp: test/compile-fail/%.rs $(SREQ0)
 	$(Q)grep --text --quiet \
       "$$(grep error-pattern $< | cut -d : -f 2- | tr -d '\n\r')" $@
 
+######################################################################
+# Distribution
+######################################################################
+
+PKG_NAME := rust
+PKG_VER  = $(shell date +"%Y-%m-%d")-snap
+PKG_DIR = $(PKG_NAME)-$(PKG_VER)
+PKG_TAR = $(PKG_DIR).tar.gz
+
 
 ######################################################################
 # Cleanup
@@ -610,12 +619,23 @@ test/compile-fail/%.stage0.out.tmp: test/compile-fail/%.rs $(SREQ0)
 
 clean:
 	@$(call E, cleaning)
-	$(Q)rm -f $(foreach ext, cmx cmi cmo cma bc o a d $(X)     \
-                             h cpp ml s                        \
-                             out bc dSYM                       \
-                             ,                                 \
-                  $(wildcard     *.$(ext)                      \
-                               */*.$(ext)                      \
-                             */*/*.$(ext)                      \
-                           */*/*/*.$(ext)                      \
-                   ))
+	$(Q)rm -f $(RUNTIME_OBJS)
+	$(Q)rm -f $(LLVMEXT_OBJS)
+	$(Q)rm -f $(BOOT_CMOS) $(BOOT_CMIS) $(BOOT_CMXS) $(BOOT_OBJS)
+	$(Q)rm -f $(ML_DEPFILES) $(C_DEPFILES) $(CRATE_DEPFILES)
+	$(Q)rm -f $(ML_DEPFILES:%.d=%.d.tmp)
+	$(Q)rm -f $(C_DEPFILES:%.d=%.d.tmp)
+	$(Q)rm -f $(CRATE_DEPFILES:%.d=%.d.tmp)
+	$(Q)rm -f $(GENERATED)
+	$(Q)rm -f boot/rustboot$(X) boot/$(CFG_STDLIB)
+	$(Q)rm -f stage0/rustc$(X) stage0/$(CFG_STDLIB) stage0/glue*
+	$(Q)rm -f stage1/rustc$(X) stage1/$(CFG_STDLIB) stage1/glue*
+	$(Q)rm -f stage2/rustc$(X) stage2/$(CFG_STDLIB) stage2/glue*
+	$(Q)rm -f llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
+	$(Q)rm -Rf $(PKG_NAME)-*.tar.gz dist
+	$(Q)rm -f $(foreach ext,cmx cmi cmo cma bc o a d exe,\
+                        $(wildcard boot/*/*.$(ext) boot/*/*/*.$(ext)))
+	$(Q)rm -Rf $(foreach ext,out out.tmp                               \
+                             boot$(X) stage0$(X) stage1$(X) stage2$(X) \
+                             bc o s exe dSYM,                          \
+                        $(wildcard test/*/*.$(ext)))
