@@ -7,7 +7,13 @@ impure fn list_dir(str path) -> vec[str] {
   ret rustrt.rust_list_files(path+"*");
 }
 
-const char path_sep = '\\';
+/* FIXME: win32 path handling actually accepts '/' or '\' and has subtly
+ * different semantics for each. Since we build on mingw, we are usually
+ * dealing with /-separated paths. But the whole interface to splitting and
+ * joining pathnames needs a bit more abstraction on win32. Possibly a vec or
+ * tag type.
+ */
+const char path_sep = '/';
 
 // Local Variables:
 // mode: rust;
