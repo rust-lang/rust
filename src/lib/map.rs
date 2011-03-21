@@ -14,7 +14,7 @@ abs state type hashmap[K, V] = state obj {
                                  fn find(&K key) -> option.t[V];
                                  fn remove(&K key) -> option.t[V];
                                  fn rehash();
-                                 iter items() -> tup(K,V);
+                                 iter items() -> @tup(K,V);
 };
 
 fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
@@ -29,7 +29,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     }
 
     fn make_buckets[K, V](uint nbkts) -> vec[mutable bucket[K, V]] {
-        ret _vec.init_elt[mutable bucket[K, V]](nil[K, V], nbkts);
+        ret _vec.init_elt_mut[bucket[K, V]](nil[K, V], nbkts);
     }
 
     // Derive two hash functions from the one given by taking the upper
@@ -216,11 +216,11 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                 bkts = newbkts;
             }
 
-            iter items() -> tup(K,V) {
+            iter items() -> @tup(K,V) {
                 for (bucket[K,V] b in bkts) {
                     alt (b) {
                         case(some[K,V](?k,?v)) {
-                            put tup(k,v);
+                            put @tup(k,v);
                         }
                         case (_) { }
                     }

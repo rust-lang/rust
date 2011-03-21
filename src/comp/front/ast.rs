@@ -91,6 +91,7 @@ tag pat_ {
 tag mutability {
     mut;
     imm;
+    maybe_mut;
 }
 
 tag opacity {
@@ -168,7 +169,6 @@ tag unop {
     bitnot;
     not;
     neg;
-    _mutable;
 }
 
 fn unop_to_str(unop op) -> str {
@@ -178,7 +178,6 @@ fn unop_to_str(unop op) -> str {
         case (bitnot) {ret "~";}
         case (not) {ret "!";}
         case (neg) {ret "-";}
-        case (_mutable) {ret "mutable";}
     }
 }
 
@@ -215,7 +214,7 @@ type field = rec(mutability mut, ident ident, @expr expr);
 
 type expr = spanned[expr_];
 tag expr_ {
-    expr_vec(vec[@expr], ann);
+    expr_vec(vec[@expr], mutability, ann);
     expr_tup(vec[elt], ann);
     expr_rec(vec[field], option.t[@expr], ann);
     expr_call(@expr, vec[@expr], ann);
@@ -264,7 +263,8 @@ tag lit_ {
 // NB: If you change this, you'll probably want to change the corresponding
 // type structure in middle/ty.rs as well.
 
-type ty_field = rec(ident ident, @ty ty);
+type mt = rec(@ty ty, mutability mut);
+type ty_field = rec(ident ident, mt mt);
 type ty_arg = rec(mode mode, @ty ty);
 // TODO: effect
 type ty_method = rec(proto proto, ident ident,
@@ -279,16 +279,15 @@ tag ty_ {
     ty_machine(util.common.ty_mach);
     ty_char;
     ty_str;
-    ty_box(@ty);
-    ty_vec(@ty);
+    ty_box(mt);
+    ty_vec(mt);
     ty_port(@ty);
     ty_chan(@ty);
-    ty_tup(vec[@ty]);
+    ty_tup(vec[mt]);
     ty_rec(vec[ty_field]);
     ty_fn(proto, vec[ty_arg], @ty);        // TODO: effect
     ty_obj(vec[ty_method]);
     ty_path(path, option.t[def]);
-    ty_mutable(@ty);
     ty_type;
     ty_constr(@ty, vec[@constr]);
 }
@@ -370,7 +369,8 @@ tag item_ {
 type native_item = spanned[native_item_];
 tag native_item_ {
     native_item_ty(ident, def_id);
-    native_item_fn(ident, fn_decl, vec[ty_param], def_id, ann);
+    native_item_fn(ident, option.t[str],
+                   fn_decl, vec[ty_param], def_id, ann);
 }
 
 // TODO: Actually store something here.
@@ -429,7 +429,7 @@ fn index_native_item(native_mod_index index, @native_item it) {
         case (ast.native_item_ty(?id, _)) {
             index.insert(id, ast.nmie_item(it));
         }
-        case (ast.native_item_fn(?id, _, _, _, _)) {
+        case (ast.native_item_fn(?id, _, _, _, _, _)) {
             index.insert(id, ast.nmie_item(it));
         }
     }

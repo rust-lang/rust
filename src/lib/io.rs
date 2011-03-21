@@ -108,7 +108,10 @@ fn stdin() -> reader {
 
 fn file_reader(str path) -> reader {
     auto f = os.libc.fopen(_str.buf(path), _str.buf("r"));
-    check (f as uint != 0u);
+    if (f as uint == 0u) {
+        log "error opening " + path;
+        fail;
+    }
     ret FILE_reader(f, true);
 }
 

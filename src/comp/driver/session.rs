@@ -40,8 +40,25 @@ obj session(cfg targ) {
         fail;
     }
 
+    fn span_warn(span sp, str msg) {
+        log #fmt("%s:%u:%u:%u:%u: warning: %s",
+                 sp.filename,
+                 sp.lo.line, sp.lo.col,
+                 sp.hi.line, sp.hi.col,
+                 msg);
+    }
+
     fn bug(str msg) {
         log #fmt("error: internal compiler error %s", msg);
+        fail;
+    }
+
+    fn span_unimpl(span sp, str msg) {
+        log #fmt("%s:%u:%u:%u:%u: error: unimplemented %s",
+                 sp.filename,
+                 sp.lo.line, sp.lo.col,
+                 sp.hi.line, sp.hi.col,
+                 msg);
         fail;
     }
 

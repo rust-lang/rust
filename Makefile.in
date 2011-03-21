@@ -1,0 +1,1011 @@
+######################################################################
+# Residual auto-configuration
+######################################################################
+
+include config.mk
+MKFILES := Makefile config.mk
+
+ifneq ($(MAKE_RESTARTS),)
+CFG_INFO := $(info cfg: make restarts: $(MAKE_RESTARTS))
+endif
+
+CFG_INFO := $(info cfg: building on $(CFG_OSTYPE) $(CFG_CPUTYPE))
+
+CFG_GCC_CFLAGS :=
+CFG_GCC_LINK_FLAGS :=
+CFG_BOOT_FLAGS := $(BOOT_FLAGS)
+CFG_RUSTC_FLAGS := -nowarn
+
+# On Darwin, we need to run dsymutil so the debugging information ends
+# up in the right place.  On other platforms, it automatically gets
+# embedded into the executable, so use a no-op command.
+CFG_DSYMUTIL := true
+
+ifeq ($(CFG_OSTYPE), FreeBSD)
+  CFG_LIB_NAME=lib$(1).so
+  CFG_GCC_CFLAGS += -fPIC -march=i686 -I/usr/local/include
+  CFG_GCC_LINK_FLAGS += -shared -fPIC -lpthread -lrt
+  ifeq ($(CFG_CPUTYPE), x86_64)
+    CFG_GCC_CFLAGS += -m32
+    CFG_GCC_LINK_FLAGS += -m32
+  endif
+  CFG_UNIXY := 1
+endif
+
+ifeq ($(CFG_OSTYPE), Linux)
+  CFG_LIB_NAME=lib$(1).so
+  CFG_GCC_CFLAGS += -fPIC -march=i686
+  CFG_GCC_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
+  ifeq ($(CFG_CPUTYPE), x86_64)
+    CFG_GCC_CFLAGS += -m32
+    CFG_GCC_LINK_FLAGS += -m32
+  endif
+  CFG_UNIXY := 1
+endif
+
+ifeq ($(CFG_OSTYPE), Darwin)
+  CFG_LIB_NAME=lib$(1).dylib
+  CFG_UNIXY := 1
+  CFG_GCC_LINK_FLAGS += -dynamiclib -lpthread
+  # Darwin has a very blurry notion of "64 bit", and claims it's running
+  # "on an i386" when the whole userspace is 64-bit and the compiler
+  # emits 64-bit binaries by default. So we just force -m32 here. Smarter
+  # approaches welcome!
+  CFG_GCC_CFLAGS += -m32
+  CFG_GCC_LINK_FLAGS += -m32
+  CFG_DSYMUTIL := dsymutil
+endif
+
+ifneq ($(findstring MINGW,$(CFG_OSTYPE)),)
+  CFG_WINDOWSY := 1
+endif
+
+CFG_LDPATH :=$(CFG_BUILD_DIR)/rt
+CFG_LDPATH :=$(CFG_LDPATH):$(CFG_BUILD_DIR)/llvmext
+
+ifdef CFG_WINDOWSY
+  CFG_INFO := $(info cfg: windows-y environment)
+
+  CFG_EXE_SUFFIX := .exe
+  CFG_LIB_NAME=$(1).dll
+  CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
+  CFG_LDPATH :=$(CFG_LDPATH):$$PATH
+  CFG_RUN_TEST=PATH="$(CFG_LDPATH)" $(1)
+  CFG_RUN_TARG=PATH="$(CFG_LDPATH)" $(1)
+
+  CFG_PATH_MUNGE := $(strip | perl -p                  \
+                           -e 's@\\(.)@/\1@go;'        \
+                           -e 's@^/([a-zA-Z])/@\1:/@o;')
+  ifdef CFG_FLEXLINK
+    CFG_BOOT_NATIVE := 1
+  endif
+  CFG_GCC_CFLAGS += -march=i686
+  CFG_GCC_LINK_FLAGS += -shared -fPIC
+endif
+
+ifdef CFG_UNIXY
+  CFG_INFO := $(info cfg: unix-y environment)
+
+  CFG_EXE_SUFFIX :=
+  CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_LIBDIR)
+  CFG_RUN_TARG=\
+      LD_LIBRARY_PATH=$(dir $(1)):$(CFG_LDPATH) $(1)
+  CFG_RUN_TEST=\
+      LD_LIBRARY_PATH=$(dir $(1)):$(CFG_LDPATH) $(CFG_VALGRIND) $(1)
+
+  CFG_BOOT_NATIVE := 1
+
+  ifdef MINGW_CROSS
+    CFG_EXE_SUFFIX := .exe
+    CFG_LIB_NAME=$(1).dll
+    CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
+    CFG_LDPATH :=$(CFG_LDPATH):$$PATH
+    CFG_RUN_TARG=PATH=$(CFG_LDPATH) $(1)
+    CFG_RUN_TEST=PATH=$(CFG_LDPATH) $(1)
+
+    CFG_INFO := $(info cfg: mingw-cross)
+    CFG_GCC_CROSS := i586-mingw32msvc-
+    CFG_BOOT_FLAGS += -t win32-x86-pe
+    ifdef CFG_VALGRIND
+      CFG_VALGRIND += wine
+    endif
+    CFG_GCC_CFLAGS := -march=i686
+    CFG_GCC_LINK_FLAGS := -shared
+    ifeq ($(CFG_CPUTYPE), x86_64)
+      CFG_GCC_CFLAGS += -m32
+      CFG_GCC_LINK_FLAGS += -m32
+    endif
+  endif
+  ifdef CFG_VALGRIND
+    CFG_VALGRIND += --leak-check=full \
+                    --error-exitcode=1 \
+                    --quiet --vex-iropt-level=0 \
+                    --suppressions=$(CFG_SRC_DIR)src/etc/x86.supp
+  endif
+endif
+
+CFG_RUNTIME :=$(call CFG_LIB_NAME,rustrt)
+CFG_LLVMEXT :=$(call CFG_LIB_NAME,llvmext)
+CFG_STDLIB :=$(call CFG_LIB_NAME,std)
+
+CFG_LLC_CFLAGS := -march=x86
+
+ifdef CFG_GCC
+  CFG_INFO := $(info cfg: using gcc)
+  CFG_GCC_CFLAGS += -Wall -Werror -fno-rtti -fno-exceptions -g
+  CFG_GCC_LINK_FLAGS += -g
+  CFG_COMPILE_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_CFLAGS) -c -o $(1) $(2)
+  CFG_LINK_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_LINK_FLAGS) -o $(1)
+  CFG_DEPEND_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_CFLAGS) -MT "$(1)" -MM $(2)
+else
+  CFG_ERR := $(error please try on a system with gcc)
+endif
+
+ifdef CFG_OCAMLC_OPT
+  $(info cfg: have ocaml native compiler)
+  OPT=.opt
+else
+  $(info cfg: have only ocaml bytecode compiler)
+endif
+
+ifdef BOOT_PROFILE
+  $(info cfg: forcing native bootstrap compiler (BOOT_PROFILE))
+  CFG_BOOT_NATIVE := 1
+  CFG_OCAMLOPT_PROFILE_FLAGS := -p
+endif
+
+ifdef BOOT_DEBUG
+  $(info cfg: forcing bytecode bootstrap compiler (DEBUG))
+  CFG_BOOT_NATIVE :=
+endif
+
+ifdef CFG_BOOT_NATIVE
+  $(info cfg: building native bootstrap compiler)
+else
+  $(info cfg: building bytecode bootstrap compiler)
+endif
+
+ifdef NO_VALGRIND
+  $(info cfg: disabling valgrind (NO_VALGRIND))
+  CFG_VALGRIND :=
+endif
+
+######################################################################
+# Target-and-rule "utility variables"
+######################################################################
+
+ifdef VERBOSE
+  Q :=
+  E =
+else
+  Q := @
+  E = echo $(1)
+endif
+
+R := $(CFG_RUN_TARG)
+T := $(CFG_RUN_TEST)
+S := $(CFG_SRC_DIR)
+X := $(CFG_EXE_SUFFIX)
+
+# Look in doc and src dirs.
+VPATH := $(S)doc $(S)src
+
+# Compilers we build, we now know how to run.
+BOOT := $(Q)OCAMLRUNPARAM="b1" boot/rustboot$(X) $(CFG_BOOT_FLAGS) -L boot
+STAGE0 := $(Q)$(R) stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage0
+STAGE1 := $(Q)$(R) stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1
+
+# "Source" files we generate in builddir along the way.
+GENERATED := boot/fe/lexer.ml boot/version.ml
+
+# Delete the built-in rules.
+.SUFFIXES:
+%:: %,v
+%:: RCS/%,v
+%:: RCS/%
+%:: s.%
+%:: SCCS/s.%
+
+######################################################################
+# Bootstrap compiler variables
+######################################################################
+
+# We must list them in link order.
+# Nobody calculates the link-order DAG automatically, sadly.
+
+BOOT_MLS :=                                              \
+    $(addsuffix .ml,                                     \
+        boot/version                                     \
+        $(addprefix boot/util/, fmt common bits)         \
+        $(addprefix boot/driver/, session)               \
+        $(addprefix boot/fe/, ast token lexer parser     \
+          extfmt pexp item cexp fuzz)                    \
+        $(addprefix boot/be/, asm il abi)                \
+        $(addprefix boot/me/, walk semant resolve alias  \
+          simplify type dead layer effect typestate      \
+         loop layout transutil trans dwarf)              \
+        $(addprefix boot/be/, x86 ra pe elf macho)       \
+        $(addprefix boot/driver/, lib glue main))        \
+
+BOOT_CMOS := $(BOOT_MLS:.ml=.cmo)
+BOOT_CMXS := $(BOOT_MLS:.ml=.cmx)
+BOOT_OBJS := $(BOOT_MLS:.ml=.o)
+BOOT_CMIS := $(BOOT_MLS:.ml=.cmi)
+
+BS := $(S)src/boot/
+
+BOOT_ML_DEP_INCS := -I $(BS)/fe   -I $(BS)/me      \
+                    -I $(BS)/be   -I $(BS)/driver  \
+                    -I $(BS)/util -I boot
+
+BOOT_ML_INCS    :=  -I boot/fe   -I boot/me      \
+                    -I boot/be   -I boot/driver  \
+                    -I boot/util -I boot
+
+BOOT_ML_LIBS        := unix.cma  nums.cma  bigarray.cma
+BOOT_ML_NATIVE_LIBS := unix.cmxa nums.cmxa bigarray.cmxa
+BOOT_OCAMLC_FLAGS   := -g $(BOOT_ML_INCS) -w Ael -warn-error Ael
+BOOT_OCAMLOPT_FLAGS := -g $(BOOT_ML_INCS) -w Ael -warn-error Ael
+
+######################################################################
+# Runtime (C++) library variables
+######################################################################
+
+RUNTIME_CS := rt/sync/timer.cpp \
+              rt/sync/sync.cpp \
+              rt/sync/lock_and_signal.cpp \
+              rt/rust.cpp \
+              rt/rust_builtin.cpp \
+              rt/rust_run_program.cpp \
+              rt/rust_crate.cpp \
+              rt/rust_crate_cache.cpp \
+              rt/rust_crate_reader.cpp \
+              rt/rust_comm.cpp \
+              rt/rust_dom.cpp \
+              rt/rust_task.cpp \
+              rt/rust_task_list.cpp \
+              rt/rust_proxy.cpp \
+              rt/rust_chan.cpp \
+              rt/rust_port.cpp \
+              rt/rust_upcall.cpp \
+              rt/rust_log.cpp \
+              rt/rust_message.cpp \
+              rt/rust_timer.cpp \
+              rt/circular_buffer.cpp \
+              rt/isaac/randport.cpp \
+              rt/rust_srv.cpp \
+              rt/rust_kernel.cpp \
+              rt/memory_region.cpp \
+              rt/test/rust_test_harness.cpp \
+              rt/test/rust_test_runtime.cpp \
+              rt/test/rust_test_util.cpp
+
+RUNTIME_HDR := rt/globals.h \
+               rt/rust.h \
+               rt/rust_dwarf.h \
+               rt/rust_internal.h \
+               rt/rust_util.h \
+               rt/rust_chan.h \
+               rt/rust_port.h \
+               rt/rust_dom.h \
+               rt/rust_task.h \
+               rt/rust_task_list.h \
+               rt/rust_proxy.h \
+               rt/rust_log.h \
+               rt/rust_message.h \
+               rt/circular_buffer.h \
+               rt/util/array_list.h \
+               rt/util/indexed_list.h \
+               rt/util/synchronized_indexed_list.h \
+               rt/util/hash_map.h \
+               rt/sync/sync.h \
+               rt/sync/timer.h \
+               rt/sync/lock_free_queue.h \
+               rt/rust_srv.h \
+               rt/rust_kernel.h \
+               rt/memory_region.h \
+               rt/memory.h \
+               rt/test/rust_test_harness.h \
+               rt/test/rust_test_runtime.h \
+               rt/test/rust_test_util.h
+
+RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash
+RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o)
+
+######################################################################
+# rustc LLVM-extensions (C++) library variables
+######################################################################
+
+LLVMEXT_CS := $(addprefix llvmext/, \
+                MachOObjectFile.cpp Object.cpp RustWrapper.cpp)
+
+LLVMEXT_HDR := llvmext/include/llvm-c/Object.h
+
+LLVMEXT_INCS := -iquote $(CFG_LLVM_INCDIR) \
+                -iquote $(S)src/llvmext/include
+LLVMEXT_OBJS := $(LLVMEXT_CS:.cpp=.o)
+LLVMEXT_LIBS := $(CFG_LLVM_LDFLAGS) $(CFG_LLVM_LIBS)
+
+######################################################################
+# Standard library variables
+######################################################################
+
+STDLIB_CRATE := $(S)src/lib/std.rc
+STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/lib/,*.rc *.rs */*.rs))
+
+######################################################################
+# rustc crate variables
+######################################################################
+
+COMPILER_CRATE := $(S)src/comp/rustc.rc
+COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
+                                rustc.rc *.rs */*.rs))
+
+######################################################################
+# test dependency variables
+######################################################################
+
+LREQ := rt/$(CFG_RUNTIME) llvmext/$(CFG_LLVMEXT)
+BREQ := boot/rustboot$(X) boot/$(CFG_STDLIB)
+SREQ0 := stage0/rustc$(X) $(LREQ)
+SREQ1 := stage1/rustc$(X) $(LREQ)
+
+######################################################################
+# Single-target rules
+######################################################################
+
+all: boot/rustboot$(X)          \
+     boot/$(CFG_STDLIB)         \
+     rt/$(CFG_RUNTIME)          \
+     llvmext/$(CFG_LLVMEXT)     \
+     stage0/rustc$(X)           \
+     stage0/glue.o              \
+     stage0/$(CFG_STDLIB)       \
+     $(GENERATED)
+
+rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR)
+	@$(call E, link: $@)
+	$(Q)$(call CFG_LINK_C, $@) $(RUNTIME_OBJS)
+
+llvmext/$(CFG_LLVMEXT): $(LLVMEXT_OBJS) $(MKFILES) $(LLVMEXT_HDR)
+	@$(call E, link: $@)
+	$(Q)$(call CFG_LINK_C, $@ $(LLVMEXT_OBJS) \
+        $(CFG_LLVM_LIBS) $(CFG_LLVM_LDFLAGS))
+
+ifdef CFG_BOOT_NATIVE
+boot/rustboot$(X): $(BOOT_CMXS) $(MKFILES)
+	@$(call E, link: $@)
+	$(Q)ocamlopt$(OPT) -o $@ $(BOOT_OCAMLOPT_FLAGS) $(BOOT_ML_NATIVE_LIBS) \
+        $(BOOT_CMXS)
+else
+boot/rustboot$(X): $(BOOT_CMOS) $(MKFILES)
+	@$(call E, link: $@)
+	$(Q)ocamlc$(OPT) -o $@ $(BOOT_OCAMLC_FLAGS) $(BOOT_ML_LIBS) $(BOOT_CMOS)
+endif
+
+boot/version.ml: $(MKFILES)
+	@$(call E, git: $@)
+	$(Q)git log -1 \
+      --pretty=format:'let version = "prerelease (%h %ci)";;' >$@ || exit 1
+
+
+
+boot/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
+                    boot/rustboot$(X) $(MKFILES)
+	@$(call E, compile: $@)
+	$(BOOT) -shared -o $@ $<
+
+stage0/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
+                      stage0/rustc$(X) $(MKFILES)
+	@$(call E, compile: $@)
+	$(STAGE0) -shared -o $@ $<
+
+stage1/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
+                      stage1/rustc$(X) $(MKFILES)
+	@$(call E, compile: $@)
+	$(STAGE1) -shared -o $@ $<
+
+stage2/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
+                      stage2/rustc$(X) $(MKFILES)
+	@$(call E, compile: $@)
+	$(STAGE2) -shared -o $@ $<
+
+
+
+stage0/rustc$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) \
+                  $(BREQ)
+	@$(call E, compile: $@)
+	$(BOOT) -minimal -o $@ $<
+	$(Q)chmod 0755 $@
+
+stage1/rustc$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) \
+                  $(SREQ0) stage0/$(CFG_STDLIB)
+	@$(call E, compile: $@)
+	$(STAGE0) -o $@ $<
+	$(Q)chmod 0755 $@
+
+stage2/rustc$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) \
+                  $(SREQ1) stage1/$(CFG_STDLIB)
+	@$(call E, compile: $@)
+	$(STAGE1) -o $@ $<
+	$(Q)chmod 0755 $@
+
+
+
+stage0/glue.bc: stage0/rustc$(X) stage0/$(CFG_STDLIB) \
+                llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
+	@$(call E, generate: $@)
+	$(STAGE0) -o $@ -glue
+
+stage1/glue.bc: stage1/rustc$(X) stage1/$(CFG_STDLIB) \
+                llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
+	@$(call E, generate: $@)
+	$(STAGE1) -o $@ -glue
+
+stage2/glue.bc: stage2/rustc$(X) stage2/$(CFG_STDLIB) \
+                llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
+	@$(call E, generate: $@)
+	$(STAGE2) -o $@ -glue
+
+######################################################################
+# Library and boot rules
+######################################################################
+
+rt/%.o: rt/%.cpp $(MKFILES)
+	@$(call E, compile: $@)
+	$(Q)$(call CFG_COMPILE_C, $@, $(RUNTIME_INCS)) $<
+
+llvmext/%.o: llvmext/%.cpp $(MKFILES)
+	@$(call E, compile: $@)
+	$(Q)$(call CFG_COMPILE_C, $@, $(CFG_LLVM_CXXFLAGS) $(LLVMEXT_INCS)) $<
+
+%.cmo: %.ml $(MKFILES)
+	@$(call E, compile: $@)
+	$(Q)ocamlc$(OPT) -c -o $@ $(BOOT_OCAMLC_FLAGS) $<
+
+%.cmo: %.cmi $(MKFILES)
+
+%.cmx %.o: %.ml $(MKFILES)
+	@$(call E, compile: $@)
+	$(Q)ocamlopt$(OPT) -c -o $@ $(BOOT_OCAMLOPT_FLAGS) $<
+
+%.ml: %.mll $(MKFILES)
+	@$(call E, lex-gen: $@)
+	$(Q)ocamllex$(OPT) -q -o $@ $<
+
+
+######################################################################
+# Testing variables
+######################################################################
+
+# Temporarily xfail tests broken by the nominal-tags change.
+
+NOMINAL_TAG_XFAILS := $(S)src/test/run-pass/mlist.rs
+
+# Temporarily xfail tests broken by the constant-tags change.
+
+CONST_TAG_XFAILS := $(S)src/test/run-pass/generic-tag.rs
+
+# Temporarily xfail some of the task tests, while debugging the
+# overhauled inter-domain messaging system.
+
+TASK_XFAILS := $(addprefix $(S)src/test/run-pass/, \
+                 task-comm-8.rs \
+                 task-comm-10.rs \
+                 task-comm-15.rs \
+                 task-comm-12.rs \
+                 task-comm-2.rs \
+                 task-comm-9.rs \
+                 task-life-0.rs \
+                 alt-type-simple.rs \
+                 many.rs)
+
+TEST_XFAILS_BOOT := $(TASK_XFAILS) \
+                    $(NOMINAL_TAG_XFAILS) \
+                    $(CONST_TAG_XFAILS) \
+                    $(addprefix $(S)src/test/run-pass/, \
+                      arith-unsigned.rs \
+                      box-compare.rs \
+                      child-outlives-parent.rs \
+                      clone-with-exterior.rs \
+                      constrained-type.rs \
+                      destructor-ordering.rs \
+                      obj-as.rs \
+                      vec-slice.rs \
+                      fn-lval.rs \
+                      generic-bind-2.rs \
+                      generic-fn-box.rs \
+                      generic-tup.rs \
+                      iter-ret.rs \
+                      leak-tag-copy.rs \
+                      lib-io.rs \
+                      maybe-mutable.rs \
+                      mlist-cycle.rs \
+                      obj-as.rs \
+                      seq-compare.rs \
+                      task-comm.rs \
+                      task-comm-3.rs \
+                      vec-slice.rs \
+                      while-and-do-while.rs) \
+                    $(addprefix $(S)src/test/run-fail/, \
+                      task-comm-14.rs) \
+                    $(addprefix $(S)src/test/compile-fail/, \
+                      bad-expr-path.rs \
+                      import.rs \
+                      import2.rs \
+                      import3.rs \
+                      import4.rs \
+                      bad-recv.rs \
+                      bad-send.rs \
+                      infinite-vec-type-recursion.rs \
+                      tail-non-call.rs \
+                      writing-through-read-alias.rs)
+
+TEST_XFAILS_STAGE0 := $(addprefix $(S)src/test/run-pass/, \
+                        acyclic-unwind.rs \
+                        alt-pattern-drop.rs \
+                        alt-type-simple.rs \
+                        basic-1.rs \
+                        basic-2.rs \
+                        basic.rs \
+                        child-outlives-parent.rs \
+                        clone-with-exterior.rs \
+                        comm.rs \
+                        constrained-type.rs \
+                        destructor-ordering.rs \
+                        iter-ret.rs \
+                        lazychan.rs \
+                        lib-bitv.rs \
+                        lib-deque.rs \
+                        lib-int.rs \
+                        lib-io.rs \
+                        lib-map.rs \
+                        lib-rand.rs \
+                        lib-sha1.rs \
+                        lib-sort.rs \
+                        lib-str.rs \
+                        lib-str-buf.rs \
+                        lib-task.rs \
+                        lib-uint.rs \
+                        lib-vec-str-conversions.rs \
+                        lib-vec.rs \
+                        many.rs \
+                        mlist-cycle.rs \
+                        mlist.rs \
+                        mutable-alias-vec.rs \
+                        obj-as.rs \
+                        obj-dtor.rs \
+                        pred.rs \
+                        preempt.rs \
+                        rt-circular-buffer.rs \
+                        size-and-align.rs \
+                        spawn-fn.rs \
+                        spawn-module-qualified.rs \
+                        spawn.rs \
+                        str-append.rs \
+                        syntax-extension-fmt.rs \
+                        syntax-extension-shell.rs \
+                        task-comm-0.rs \
+                        task-comm-1.rs \
+                        task-comm-10.rs \
+                        task-comm-11.rs \
+                        task-comm-12.rs \
+                        task-comm-13-thread.rs \
+                        task-comm-13.rs \
+                        task-comm-15.rs \
+                        task-comm-2.rs \
+                        task-comm-3.rs \
+                        task-comm-4.rs \
+                        task-comm-5.rs \
+                        task-comm-6.rs \
+                        task-comm-7.rs \
+                        task-comm-8.rs \
+                        task-comm-9.rs \
+                        task-comm.rs \
+                        task-killjoin.rs \
+                        task-life-0.rs \
+                        threads.rs \
+                        type-sizes.rs \
+                        typestate-cfg-nesting.rs \
+                        user.rs \
+                        utf8.rs \
+                        vec-alloc-append.rs \
+                        vec-append.rs \
+                        vec-slice.rs \
+                        while-with-break.rs \
+                        yield.rs \
+                        yield2.rs \
+                        multi.rc \
+                        native-mod.rc \
+                        native.rc \
+                        ) \
+                     $(filter-out \
+                      $(addprefix $(S)src/test/compile-fail/, \
+                        alt-tag-nullary.rs \
+                        alt-tag-unary.rs \
+                        arg-count-mismatch.rs \
+                        arg-type-mismatch.rs \
+                        bad-expr-path.rs \
+                        bad-expr-path2.rs \
+                        bogus-tag.rs \
+                        fru-extra-field.rs \
+                        import.rs \
+                        import2.rs \
+                        import3.rs \
+                        import4.rs \
+                        import-loop.rs \
+                        import-loop-2.rs \
+                        multiline-comment-line-tracking.rs \
+                        output-type-mismatch.rs \
+                        rec-missing-fields.rs \
+                        reserved-dec.rs \
+                        reserved-f128.rs \
+                        reserved-f16.rs \
+                        reserved-f80.rs \
+                        reserved-m128.rs \
+                        reserved-m32.rs \
+                        reserved-m64.rs \
+                        tail-non-call.rs \
+                        tail-typeck.rs \
+                        type-shadow.rs \
+                        while-type-error.rs \
+                        wrong-ret-type.rs \
+                        ), \
+                     $(wildcard $(S)src/test/*fail/*.rs test/*fail/*.rc)) \
+                     $(S)src/test/bench/shootout/fannkuchredux.rs \
+                     $(S)src/test/bench/shootout/fasta.rs \
+                     $(S)src/test/bench/shootout/binarytrees.rs \
+                     $(wildcard $(S)src/test/bench/99-bottles/*rs)
+
+ifdef MINGW_CROSS
+TEST_XFAILS_BOOT += $(S)src/test/run-pass/native-mod.rc
+TEST_XFAILS_STAGE0 += $(S)src/test/run-pass/native-mod.rc
+endif
+ifdef CFG_WINDOWSY
+TEST_XFAILS_BOOT += $(S)src/test/run-pass/native-mod.rc
+TEST_XFAILS_STAGE0 += $(S)src/test/run-pass/native-mod.rc
+endif
+
+BENCH_RS := $(wildcard $(S)src/test/bench/shootout/*.rs) \
+            $(wildcard $(S)src/test/bench/99-bottles/*.rs)
+RPASS_RC := $(wildcard $(S)src/test/run-pass/*.rc)
+RPASS_RS := $(wildcard $(S)src/test/run-pass/*.rs) $(BENCH_RS)
+RFAIL_RC := $(wildcard $(S)src/test/run-fail/*.rc)
+RFAIL_RS := $(wildcard $(S)src/test/run-fail/*.rs)
+CFAIL_RC := $(wildcard $(S)src/test/compile-fail/*.rc)
+CFAIL_RS := $(wildcard $(S)src/test/compile-fail/*.rs)
+
+ifdef CHECK_XFAILS
+TEST_RPASS_CRATES_BOOT := $(filter $(TEST_XFAILS_BOOT), $(RPASS_RC))
+TEST_RPASS_CRATES_STAGE0 := $(filter $(TEST_XFAILS_STAGE0), $(RPASS_RC))
+TEST_RPASS_SOURCES_BOOT := $(filter $(TEST_XFAILS_BOOT), $(RPASS_RS))
+TEST_RPASS_SOURCES_STAGE0 := $(filter $(TEST_XFAILS_STAGE0), $(RPASS_RS))
+else
+TEST_RPASS_CRATES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(RPASS_RC))
+TEST_RPASS_CRATES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(RPASS_RC))
+TEST_RPASS_SOURCES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(RPASS_RS))
+TEST_RPASS_SOURCES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(RPASS_RS))
+endif
+
+TEST_RPASS_EXES_BOOT := \
+  $(subst $(S)src/,,$(TEST_RPASS_CRATES_BOOT:.rc=.boot$(X))) \
+  $(subst $(S)src/,,$(TEST_RPASS_SOURCES_BOOT:.rs=.boot$(X)))
+TEST_RPASS_EXES_STAGE0 := \
+  $(subst $(S)src/,,$(TEST_RPASS_CRATES_STAGE0:.rc=.stage0$(X))) \
+  $(subst $(S)src/,,$(TEST_RPASS_SOURCES_STAGE0:.rs=.stage0$(X)))
+
+TEST_RPASS_OUTS_BOOT  := \
+  $(TEST_RPASS_EXES_BOOT:.boot$(X)=.boot.out)
+TEST_RPASS_OUTS_STAGE0 := \
+  $(TEST_RPASS_EXES_STAGE0:.stage0$(X)=.stage0.out)
+
+TEST_RPASS_TMPS_BOOT  := \
+  $(TEST_RPASS_EXES_BOOT:.boot$(X)=.boot$(X).tmp)
+TEST_RPASS_TMPS_STAGE0 := \
+  $(TEST_RPASS_EXES_STAGE0:.stage0$(X)=.stage0$(X).tmp)
+
+
+TEST_RFAIL_CRATES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(RFAIL_RC))
+TEST_RFAIL_CRATES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(RFAIL_RC))
+TEST_RFAIL_SOURCES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(RFAIL_RS))
+TEST_RFAIL_SOURCES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(RFAIL_RS))
+
+TEST_RFAIL_EXES_BOOT := \
+  $(subst $(S)src/,,$(TEST_RFAIL_CRATES_BOOT:.rc=.boot$(X))) \
+  $(subst $(S)src/,,$(TEST_RFAIL_SOURCES_BOOT:.rs=.boot$(X)))
+TEST_RFAIL_EXES_STAGE0 := \
+  $(subst $(S)src/,,$(TEST_RFAIL_CRATES_STAGE0:.rc=.stage0$(X))) \
+  $(subst $(S)src/,,$(TEST_RFAIL_SOURCES_STAGE0:.rs=.stage0$(X)))
+
+TEST_RFAIL_OUTS_BOOT  := \
+  $(TEST_RFAIL_EXES_BOOT:.boot$(X)=.boot.out)
+TEST_RFAIL_OUTS_STAGE0 := \
+  $(TEST_RFAIL_EXES_STAGE0:.stage0$(X)=.stage0.out)
+
+TEST_RFAIL_TMPS_BOOT  := \
+  $(TEST_RFAIL_EXES_BOOT:.boot$(X)=.boot$(X).tmp)
+TEST_RFAIL_TMPS_STAGE0 := \
+  $(TEST_RFAIL_EXES_STAGE0:.stage0$(X)=.stage0(X).tmp)
+
+
+TEST_CFAIL_CRATES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(CFAIL_RC))
+TEST_CFAIL_CRATES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(CFAIL_RC))
+TEST_CFAIL_SOURCES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(CFAIL_RS))
+TEST_CFAIL_SOURCES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(CFAIL_RS))
+
+TEST_CFAIL_EXES_BOOT := \
+  $(subst $(S)src/,,$(TEST_CFAIL_CRATES_BOOT:.rc=.boot$(X))) \
+  $(subst $(S)src/,,$(TEST_CFAIL_SOURCES_BOOT:.rs=.boot$(X)))
+TEST_CFAIL_EXES_STAGE0 := \
+  $(subst $(S)src/,,$(TEST_CFAIL_CRATES_STAGE0:.rc=.stage0(X))) \
+  $(subst $(S)src/,,$(TEST_CFAIL_SOURCES_STAGE0:.rs=.stage0$(X)))
+
+TEST_CFAIL_OUTS_BOOT := \
+  $(TEST_CFAIL_EXES_BOOT:.boot$(X)=.boot.out)
+TEST_CFAIL_OUTS_STAGE0 := \
+  $(TEST_CFAIL_EXES_STAGE0:.stage0$(X)=.stage0.out)
+
+TEST_CFAIL_TMPS_BOOT := \
+  $(TEST_CFAIL_EXES_BOOT:.boot$(X)=.boot$(X).tmp)
+TEST_CFAIL_TMPS_STAGE0 := \
+  $(TEST_CFAIL_EXES_STAGE0:.stage0$(X)=.stage0$(X).tmp)
+
+
+ALL_TEST_CRATES := $(TEST_CFAIL_CRATES_BOOT) \
+                   $(TEST_RFAIL_CRATES_BOOT) \
+                   $(TEST_RPASS_CRATES_BOOT) \
+                   $(TEST_CFAIL_CRATES_STAGE0) \
+                   $(TEST_RFAIL_CRATES_STAGE0) \
+                   $(TEST_RPASS_CRATES_STAGE0)
+
+ALL_TEST_SOURCES := $(TEST_CFAIL_SOURCES_BOOT) \
+                    $(TEST_RFAIL_SOURCES_BOOT) \
+                    $(TEST_RPASS_SOURCES_BOOT) \
+                    $(TEST_CFAIL_SOURCES_STAGE0) \
+                    $(TEST_RFAIL_SOURCES_STAGE0) \
+                    $(TEST_RPASS_SOURCES_STAGE0)
+
+ALL_TEST_INPUTS := $(wildcard $(S)src/test/*/*.rs   \
+                              $(S)src/test/*/*/*.rs \
+                              $(S)src/test/*/*.rc)
+
+# The test suite currently relies on logging to validate results so
+# make sure that logging uses the default configuration
+unexport RUST_LOG
+
+
+check_nocompile: $(TEST_CFAIL_OUTS_BOOT) \
+                 $(TEST_CFAIL_OUTS_STAGE0)
+
+check: tidy \
+       $(TEST_RPASS_EXES_BOOT) $(TEST_RFAIL_EXES_BOOT) \
+       $(TEST_RPASS_OUTS_BOOT) $(TEST_RFAIL_OUTS_BOOT) \
+       $(TEST_CFAIL_OUTS_BOOT) \
+       $(TEST_RPASS_EXES_STAGE0) $(TEST_RFAIL_EXES_STAGE0) \
+       $(TEST_RPASS_OUTS_STAGE0) $(TEST_RFAIL_OUTS_STAGE0) \
+       $(TEST_CFAIL_OUTS_STAGE0)
+
+
+compile-check: tidy \
+       $(TEST_RPASS_EXES_BOOT) $(TEST_RFAIL_EXES_BOOT) \
+       $(TEST_RPASS_EXES_STAGE0) $(TEST_RFAIL_EXES_STAGE0)
+
+
+######################################################################
+# Testing rules
+######################################################################
+
+%.stage0$(X): %.stage0.o rt/$(CFG_RUNTIME) stage0/glue.o
+	@$(call E, link [gcc]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage0/glue.o -o $@ $< -Lstage0 -Lrt -lrustrt
+	@# dsymutil sometimes fails or prints a warning, but the
+	@# program still runs.  Since it simplifies debugging other
+	@# programs, I\'ll live with the noise.
+	-$(Q)$(CFG_DSYMUTIL) $@
+
+%.stage1(X): %.stage1.o rt/$(CFG_RUNTIME) stage1/glue.o
+	@$(call E, link [gcc]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage1/glue.o -o $@ $< -Lstage1 -Lrt -lrustrt
+	@# dsymutil sometimes fails or prints a warning, but the
+	@# program still runs.  Since it simplifies debugging other
+	@# programs, I\'ll live with the noise.
+	-$(Q)$(CFG_DSYMUTIL) $@
+
+%.stage2(X): %.stage2.o rt/$(CFG_RUNTIME) stage2/glue.o
+	@$(call E, link [gcc]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage2/glue.o -o $@ $< -Lstage2 -Lrt -lrustrt
+	@# dsymutil sometimes fails or prints a warning, but the
+	@# program still runs.  Since it simplifies debugging other
+	@# programs, I\'ll live with the noise.
+	-$(Q)$(CFG_DSYMUTIL) $@
+
+
+
+%.boot$(X): %.rs $(BREQ)
+	@$(call E, compile [boot]: $@)
+	$(BOOT) -o $@ $<
+
+%.boot$(X): %.rc $(BREQ)
+	@$(call E, compile [boot]: $@)
+	$(BOOT) -o $@ $<
+
+%.stage0.bc: %.rc $(SREQ0)
+	@$(call E, compile [stage0]: $@)
+	$(STAGE0) -o $@ $<
+
+%.stage0.bc: %.rs $(SREQ0)
+	@$(call E, compile [stage0]: $@)
+	$(STAGE0) -o $@ $<
+
+%.stage1.bc: %.rc $(SREQ1)
+	@$(call E, compile [stage1]: $@)
+	$(STAGE1) -o $@ $<
+
+%.stage1.bc: %.rs $(SREQ1)
+	@$(call E, compile [stage1]: $@)
+	$(STAGE1) -o $@ $<
+
+%.stage2.bc: %.rc $(SREQ2)
+	@$(call E, compile [stage2]: $@)
+	$(STAGE2) -o $@ $<
+
+%.stage2.bc: %.rs $(SREQ2)
+	@$(call E, compile [stage2]: $@)
+	$(STAGE2) -o $@ $<
+
+
+
+%.o: %.s
+	@$(call E, assemble [llvm]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
+
+%.ll: %.bc
+	@$(call E, dis [llvm]: $@)
+	$(Q)$(CFG_LLVM_BINDIR)/llvm-dis -o $@ $<
+
+%.s: %.bc
+	@$(call E, compile [llvm]: $@)
+	$(Q)$(CFG_LLVM_BINDIR)/llc $(CFG_LLC_CFLAGS) -o $@ $<
+
+# Cancel the implicit .out rule in GNU make.
+%.out: %
+
+%.out: %.out.tmp
+	$(Q)mv $< $@
+
+test/run-pass/%.out.tmp: test/run-pass/%$(X) rt/$(CFG_RUNTIME)
+	$(Q)rm -f $<.tmp
+	@$(call E, run: $@)
+	$(Q)$(call T, $<) > $@
+
+test/bench/shootout/%.out.tmp: test/bench/shootout/%$(X) \
+                               rt/$(CFG_RUNTIME)
+	$(Q)rm -f $<.tmp
+	@$(call E, run: $@)
+	$(Q)$(call T, $<) > $@
+
+test/bench/99-bottles/%.out.tmp: test/bench/99-bottles/%$(X) \
+                                 rt/$(CFG_RUNTIME)
+	$(Q)rm -f $<.tmp
+	@$(call E, run: $@)
+	$(Q)$(call T, $<) > $@
+
+test/run-fail/%.out.tmp: test/run-fail/%$(X) \
+                         rt/$(CFG_RUNTIME)
+	$(Q)rm -f $<.tmp
+	@$(call E, run: $@)
+	$(Q)grep -q error-pattern $(S)src/test/run-fail/$(basename $*).rs
+	$(Q)rm -f $@
+	$(Q)$(call T, $<) >$@ 2>&1 ; X=$$? ; \
+      if [ $$X -eq 0 ] ; then exit 1 ; else exit 0 ; fi
+	$(Q)grep --text --quiet \
+      "$$(grep error-pattern $(S)src/test/run-fail/$(basename $*).rs \
+        | cut -d : -f 2- | tr -d '\n\r')" $@
+
+test/compile-fail/%.boot.out.tmp: test/compile-fail/%.rs $(BREQ)
+	@$(call E, compile [boot]: $@)
+	$(Q)grep -q error-pattern $<
+	$(Q)rm -f $@
+	$(BOOT) -o $(@:.out=$(X)) $< >$@ 2>&1; test $$? -ne 0
+	$(Q)grep --text --quiet \
+      "$$(grep error-pattern $< | cut -d : -f 2- | tr -d '\n\r')" $@
+
+test/compile-fail/%.stage0.out.tmp: test/compile-fail/%.rs $(SREQ0)
+	@$(call E, compile [stage0]: $@)
+	$(Q)grep -q error-pattern $<
+	$(Q)rm -f $@
+	$(STAGE0) -o $(@:.out=$(X)) $< >$@ 2>&1; test $$? -ne 0
+	$(Q)grep --text --quiet \
+      "$$(grep error-pattern $< | cut -d : -f 2- | tr -d '\n\r')" $@
+
+######################################################################
+# Distribution
+######################################################################
+
+PKG_NAME := rust
+PKG_VER  = $(shell date +"%Y-%m-%d")-snap
+PKG_DIR = $(PKG_NAME)-$(PKG_VER)
+PKG_TAR = $(PKG_DIR).tar.gz
+
+PKG_3RDPARTY := rt/valgrind.h rt/memcheck.h \
+                rt/isaac/rand.h rt/isaac/standard.h \
+                rt/uthash/uthash.h rt/uthash/utlist.h \
+                rt/bigint/bigint.h rt/bigint/bigint_int.cpp \
+                rt/bigint/bigint_ext.cpp rt/bigint/low_primes.h
+
+PKG_FILES :=\
+    $(wildcard $(S)src/etc/*.*)                \
+    $(S)LICENSE.txt $(S)README                 \
+    $(S)configure $(S)Makefile.in              \
+    $(addprefix $(S)src/,                      \
+      README boot/README comp/README           \
+      $(filter-out $(GENERATED), $(BOOT_MLS))  \
+      $(RUNTIME_CS) $(RUNTIME_HDR)             \
+      $(LLVMEXT_CS) $(LLVMEXT_HDR)             \
+      $(PKG_3RDPARTY))                         \
+    $(COMPILER_INPUTS)                         \
+    $(STDLIB_INPUTS)                           \
+    $(ALL_TEST_INPUTS)                         \
+    $(GENERATED)
+
+dist: $(PKG_TAR)
+
+$(PKG_TAR):
+	@$(call E, making dist dir)
+	$(Q)rm -Rf dist
+	$(Q)mkdir -p dist/$(PKG_DIR)
+	$(Q)tar -c $(PKG_FILES) | tar -x -C dist/$(PKG_DIR)
+	$(Q)tar -czf $(PKG_TAR) -C dist $(PKG_DIR)
+	$(Q)rm -Rf dist
+
+distcheck: $(PKG_TAR)
+	$(Q)tar -c $(PKG_FILES) | tar -x -C dist/$(PKG_DIR)
+	@$(call E, configuring in dist/$(PKG_DIR)-build)
+	$(Q)mkdir -p dist/build
+	$(Q)cd dist/$(PKG_DIR)-build && ../$(PKG_DIR)/configure
+	@$(call E, making 'check' in dist/$(PKG_DIR)-build)
+	$(Q)make -C dist/$(PKG_DIR)-build check
+	@$(call E, making 'clean' in dist/$(PKG_DIR)-build)
+	$(Q)make -C dist/$(PKG_DIR)-build clean
+	$(Q)rm -Rf dist
+	@echo
+	@echo -----------------------------------------------
+	@echo $(PKG_TAR) ready for distribution
+	@echo -----------------------------------------------
+
+
+######################################################################
+# Cleanup
+######################################################################
+
+.PHONY: clean
+
+tidy:
+	@$(call E, check: formatting)
+	$(Q)python $(S)src/etc/tidy.py \
+      $(filter-out $(GENERATED) \
+        $(addprefix $(S)src/, $(LLVMEXT_CS) $(LLVMEXT_HDR) $(PKG_3RDPARTY)) \
+        $(S)src/etc/%, $(PKG_FILES))
+
+clean:
+	@$(call E, cleaning)
+	$(Q)rm -f $(RUNTIME_OBJS)
+	$(Q)rm -f $(LLVMEXT_OBJS)
+	$(Q)rm -f $(BOOT_CMOS) $(BOOT_CMIS) $(BOOT_CMXS) $(BOOT_OBJS)
+	$(Q)rm -f $(ML_DEPFILES) $(C_DEPFILES) $(CRATE_DEPFILES)
+	$(Q)rm -f $(ML_DEPFILES:%.d=%.d.tmp)
+	$(Q)rm -f $(C_DEPFILES:%.d=%.d.tmp)
+	$(Q)rm -f $(CRATE_DEPFILES:%.d=%.d.tmp)
+	$(Q)rm -f $(GENERATED)
+	$(Q)rm -f boot/rustboot$(X) boot/$(CFG_STDLIB)
+	$(Q)rm -f stage0/rustc$(X) stage0/$(CFG_STDLIB) stage0/glue*
+	$(Q)rm -f stage1/rustc$(X) stage1/$(CFG_STDLIB) stage1/glue*
+	$(Q)rm -f stage2/rustc$(X) stage2/$(CFG_STDLIB) stage2/glue*
+	$(Q)rm -f llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
+	$(Q)rm -Rf $(PKG_NAME)-*.tar.gz dist
+	$(Q)rm -f $(foreach ext,cmx cmi cmo cma bc o a d exe,\
+                        $(wildcard boot/*/*.$(ext) boot/*/*/*.$(ext)))
+	$(Q)rm -Rf $(foreach ext,out out.tmp                               \
+                             boot$(X) stage0$(X) stage1$(X) stage2$(X) \
+                             bc o s exe dSYM,                          \
+                        $(wildcard test/*/*.$(ext)))

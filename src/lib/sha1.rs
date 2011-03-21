@@ -73,7 +73,7 @@ fn mk_sha1() -> sha1 {
                      0xCA62C1D6u32);
 
         let int t; // Loop counter
-        let vec[mutable u32] w = _vec.init_elt[mutable u32](0u32, 80u);
+        let vec[mutable u32] w = _vec.init_elt_mut[u32](0u32, 80u);
 
         // Initialize the first 16 words of the vector w
         t = 0;
@@ -261,10 +261,10 @@ fn mk_sha1() -> sha1 {
         }
     }
 
-    auto st = rec(h = _vec.init_elt[mutable u32](0u32, digest_buf_len),
+    auto st = rec(h = _vec.init_elt_mut[u32](0u32, digest_buf_len),
                   mutable len_low = 0u32,
                   mutable len_high = 0u32,
-                  msg_block = _vec.init_elt[mutable u8](0u8, msg_block_len),
+                  msg_block = _vec.init_elt_mut[u8](0u8, msg_block_len),
                   mutable msg_block_idx = 0u,
                   mutable computed = false);
     auto sh = sha1(st);

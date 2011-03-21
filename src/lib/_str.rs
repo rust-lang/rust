@@ -41,7 +41,7 @@ fn lteq(&str a, &str b) -> bool {
     while (x < n) {
         auto cha = a.(x);
         auto chb = b.(x);
-        if (cha <= chb) {
+        if (cha < chb) {
             ret true;
         }
         else if (cha > chb) {

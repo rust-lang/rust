@@ -17,14 +17,15 @@ fn negative(int x) -> bool { ret x < 0; }
 fn nonpositive(int x) -> bool { ret x <= 0; }
 fn nonnegative(int x) -> bool { ret x >= 0; }
 
-iter range(mutable int lo, int hi) -> int {
-    while (lo < hi) {
-        put lo;
-        lo += 1;
+iter range(int lo, int hi) -> int {
+    let int lo_ = lo;
+    while (lo_ < hi) {
+        put lo_;
+        lo_ += 1;
     }
 }
 
-fn to_str(mutable int n, uint radix) -> str
+fn to_str(int n, uint radix) -> str
 {
     check (0u < radix && radix <= 16u);
     if (n < 0) {

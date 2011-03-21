@@ -12,10 +12,11 @@ fn ne(uint x, uint y) -> bool { ret x != y; }
 fn ge(uint x, uint y) -> bool { ret x >= y; }
 fn gt(uint x, uint y) -> bool { ret x > y; }
 
-iter range(mutable uint lo, uint hi) -> uint {
-    while (lo < hi) {
-        put lo;
-        lo += 1u;
+iter range(uint lo, uint hi) -> uint {
+    auto lo_ = lo;
+    while (lo_ < hi) {
+        put lo_;
+        lo_ += 1u;
     }
 }
 
@@ -32,8 +33,10 @@ fn next_power_of_two(uint n) -> uint {
     ret tmp + 1u;
 }
 
-fn to_str(mutable uint n, uint radix) -> str
+fn to_str(uint num, uint radix) -> str
 {
+    auto n = num;
+
     check (0u < radix && radix <= 16u);
     fn digit(uint n) -> char {
         alt (n) {

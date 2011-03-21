@@ -159,7 +159,14 @@ and parse_effect (ps:pstate) : Ast.effect =
 
 and parse_mutability (ps:pstate) : Ast.mutability =
   match peek ps with
-      MUTABLE -> bump ps; Ast.MUT_mutable
+      MUTABLE ->
+        begin
+          (* HACK: ignore "mutable?" *)
+          bump ps;
+          match peek ps with
+              QUES -> bump ps; Ast.MUT_immutable
+            | _ -> Ast.MUT_mutable
+        end
     | _ -> Ast.MUT_immutable
 
 and parse_ty_fn
@@ -310,7 +317,12 @@ and parse_atomic_ty (ps:pstate) : Ast.ty =
 
     | MUTABLE ->
         bump ps;
-        Ast.TY_mutable (parse_ty ps)
+        begin
+          (* HACK: ignore "mutable?" *)
+          match peek ps with
+              QUES -> bump ps; parse_ty ps
+            | _ -> Ast.TY_mutable (parse_ty ps)
+        end
 
     | LPAREN ->
         begin

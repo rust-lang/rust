@@ -100,6 +100,12 @@ vec_alloc(rust_task *task, type_desc *t, type_desc *elem_t, size_t n_elts)
     return vec;
 }
 
+extern "C" CDECL rust_vec*
+vec_alloc_mut(rust_task *task, type_desc *t, type_desc *elem_t, size_t n_elts)
+{
+    return vec_alloc(task, t, elem_t, n_elts);
+}
+
 extern "C" CDECL void *
 vec_buf(rust_task *task, type_desc *ty, rust_vec *v, size_t offset)
 {
