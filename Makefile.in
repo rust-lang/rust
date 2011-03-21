@@ -186,9 +186,9 @@ X := $(CFG_EXE_SUFFIX)
 VPATH := $(S)doc $(S)src
 
 # Compilers we build, we now know how to run.
-BOOT := $(Q)OCAMLRUNPARAM="b1" boot/rustboot$(X) $(CFG_BOOT_FLAGS) -L stage0
-STAGE0 := $(Q)$(CFG_RUN_TARG) stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1
-STAGE1 := $(Q)$(CFG_RUN_TARG) stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage2
+BOOT := $(Q)OCAMLRUNPARAM="b1" boot/rustboot$(X) $(CFG_BOOT_FLAGS) -L boot
+STAGE0 := $(Q)$(CFG_RUN_TARG) stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage0
+STAGE1 := $(Q)$(CFG_RUN_TARG) stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1
 
 # "Source" files we generate in builddir along the way.
 GENERATED := boot/fe/lexer.ml boot/version.ml
@@ -384,6 +384,7 @@ boot/version.ml: $(MKFILES)
       --pretty=format:'let version = "prerelease (%h %ci)";;' >$@ || exit 1
 
 
+
 boot/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
                     boot/rustboot$(X) $(MKFILES)
 	@$(call E, compile: $@)
@@ -393,6 +394,17 @@ stage0/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
                       stage0/rustc$(X) $(MKFILES)
 	@$(call E, compile: $@)
 	$(STAGE0) -shared -o $@ $<
+
+stage1/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
+                      stage1/rustc$(X) $(MKFILES)
+	@$(call E, compile: $@)
+	$(STAGE1) -shared -o $@ $<
+
+stage2/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
+                      stage2/rustc$(X) $(MKFILES)
+	@$(call E, compile: $@)
+	$(STAGE2) -shared -o $@ $<
+
 
 
 stage0/rustc$(X): $(S)src/$(COMPILER_CRATE) $(COMPILER_INPUTS) \
@@ -407,6 +419,13 @@ stage1/rustc$(X): $(S)src/$(COMPILER_CRATE) $(COMPILER_INPUTS) \
 	$(STAGE0) -o $@ $<
 	$(Q)chmod 0755 $@
 
+stage2/rustc$(X): $(S)src/$(COMPILER_CRATE) $(COMPILER_INPUTS) \
+                  $(SREQ1) stage1/$(CFG_STDLIB)
+	@$(call E, compile: $@)
+	$(STAGE1) -o $@ $<
+	$(Q)chmod 0755 $@
+
+
 
 stage0/glue.bc: stage0/rustc$(X) stage0/$(CFG_STDLIB) \
                 llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
@@ -417,6 +436,11 @@ stage1/glue.bc: stage1/rustc$(X) stage1/$(CFG_STDLIB) \
                 llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
 	$(STAGE1) -o $@ -glue
+
+stage2/glue.bc: stage2/rustc$(X) stage2/$(CFG_STDLIB) \
+                llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
+	@$(call E, generate: $@)
+	$(STAGE2) -o $@ -glue
 
 ######################################################################
 # Library and boot rules
@@ -449,14 +473,6 @@ llvmext/%.o: llvmext/%.cpp $(MKFILES)
 # Testing rules
 ######################################################################
 
-%.boot$(X): %.rs $(BREQ)
-	@$(call E, compile [boot]: $@)
-	$(BOOT) -o $@ $<
-
-%.boot$(X): %.rc $(BREQ)
-	@$(call E, compile [boot]: $@)
-	$(BOOT) -o $@ $<
-
 %.stage0$(X): %.stage0.o rt/$(CFG_RUNTIME) stage0/glue.o
 	@$(call E, link [llvm]: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) stage0/glue.o -o $@ $< -Lstage0 -lrustrt
@@ -465,6 +481,32 @@ llvmext/%.o: llvmext/%.cpp $(MKFILES)
 	@# programs, I\'ll live with the noise.
 	-$(Q)$(DSYMUTIL) $@
 
+%.stage1(X): %.stage1.o rt/$(CFG_RUNTIME) stage1/glue.o
+	@$(call E, link [llvm]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage1/glue.o -o $@ $< -Lstage1 -lrustrt
+	@# dsymutil sometimes fails or prints a warning, but the
+	@# program still runs.  Since it simplifies debugging other
+	@# programs, I\'ll live with the noise.
+	-$(Q)$(DSYMUTIL) $@
+
+%.stage2(X): %.stage2.o rt/$(CFG_RUNTIME) stage2/glue.o
+	@$(call E, link [llvm]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage2/glue.o -o $@ $< -Lstage2 -lrustrt
+	@# dsymutil sometimes fails or prints a warning, but the
+	@# program still runs.  Since it simplifies debugging other
+	@# programs, I\'ll live with the noise.
+	-$(Q)$(DSYMUTIL) $@
+
+
+
+%.boot$(X): %.rs $(BREQ)
+	@$(call E, compile [boot]: $@)
+	$(BOOT) -o $@ $<
+
+%.boot$(X): %.rc $(BREQ)
+	@$(call E, compile [boot]: $@)
+	$(BOOT) -o $@ $<
+
 %.stage0.bc: %.rc $(SREQ0)
 	@$(call E, compile [stage0]: $@)
 	$(STAGE0) -o $@ $<
@@ -472,6 +514,24 @@ llvmext/%.o: llvmext/%.cpp $(MKFILES)
 %.stage0.bc: %.rs $(SREQ0)
 	@$(call E, compile [stage0]: $@)
 	$(STAGE0) -o $@ $<
+
+%.stage1.bc: %.rc $(SREQ1)
+	@$(call E, compile [stage1]: $@)
+	$(STAGE1) -o $@ $<
+
+%.stage1.bc: %.rs $(SREQ1)
+	@$(call E, compile [stage1]: $@)
+	$(STAGE1) -o $@ $<
+
+%.stage2.bc: %.rc $(SREQ2)
+	@$(call E, compile [stage2]: $@)
+	$(STAGE2) -o $@ $<
+
+%.stage2.bc: %.rs $(SREQ2)
+	@$(call E, compile [stage2]: $@)
+	$(STAGE2) -o $@ $<
+
+
 
 %.o: %.s
 	@$(call E, assemble [llvm]: $@)
