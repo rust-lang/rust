@@ -726,7 +726,7 @@ TEST_RFAIL_OUTS_STAGE0 := \
 TEST_RFAIL_TMPS_BOOT  := \
   $(TEST_RFAIL_EXES_BOOT:.boot$(X)=.boot$(X).tmp)
 TEST_RFAIL_TMPS_STAGE0 := \
-  $(TEST_RFAIL_EXES_STAGE0:.stage0$(X)=.stage0(X).tmp)
+  $(TEST_RFAIL_EXES_STAGE0:.stage0$(X)=.stage0$(X).tmp)
 
 
 TEST_CFAIL_CRATES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(CFAIL_RC))
@@ -738,7 +738,7 @@ TEST_CFAIL_EXES_BOOT := \
   $(subst $(S)src/,,$(TEST_CFAIL_CRATES_BOOT:.rc=.boot$(X))) \
   $(subst $(S)src/,,$(TEST_CFAIL_SOURCES_BOOT:.rs=.boot$(X)))
 TEST_CFAIL_EXES_STAGE0 := \
-  $(subst $(S)src/,,$(TEST_CFAIL_CRATES_STAGE0:.rc=.stage0(X))) \
+  $(subst $(S)src/,,$(TEST_CFAIL_CRATES_STAGE0:.rc=.stage0$(X))) \
   $(subst $(S)src/,,$(TEST_CFAIL_SOURCES_STAGE0:.rs=.stage0$(X)))
 
 TEST_CFAIL_OUTS_BOOT := \
@@ -812,7 +812,7 @@ compile-check: tidy \
 	@# programs, I\'ll live with the noise.
 	-$(Q)$(CFG_DSYMUTIL) $@
 
-%.stage2(X): %.stage2.o rt/$(CFG_RUNTIME) stage2/glue.o
+%.stage2$(X): %.stage2.o rt/$(CFG_RUNTIME) stage2/glue.o
 	@$(call E, link [gcc]: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) stage2/glue.o -o $@ $< -Lstage2 -Lrt -lrustrt
 	@# dsymutil sometimes fails or prints a warning, but the
