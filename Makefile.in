@@ -89,9 +89,10 @@ ifdef CFG_UNIXY
   CFG_EXE_SUFFIX :=
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_LIBDIR)
   CFG_RUN_TARG=\
-      LD_LIBRARY_PATH=$(dir $(1)):$(CFG_LDPATH) $(1)
+      LD_LIBRARY_PATH=$(dir $(firstword $(1))):$(CFG_LDPATH) $(1)
   CFG_RUN_TEST=\
-      LD_LIBRARY_PATH=$(dir $(1)):$(CFG_LDPATH) $(CFG_VALGRIND) $(1)
+      LD_LIBRARY_PATH=$(dir $(firstword $(1))):$(CFG_LDPATH) \
+      $(CFG_VALGRIND) $(1)
 
   CFG_BOOT_NATIVE := 1
 
