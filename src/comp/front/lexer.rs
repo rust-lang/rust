@@ -1,5 +1,6 @@
 import std.io;
 import std._str;
+import std._int;
 import std.map;
 import std.map.hashmap;
 import util.common;
@@ -314,6 +315,24 @@ impure fn consume_block_comment(reader rdr) {
     be consume_any_whitespace(rdr);
 }
 
+impure fn scan_dec_digits(reader rdr) -> int {
+
+    auto c = rdr.curr();
+
+    let int accum_int = 0;
+
+    while (is_dec_digit(c) || c == '_') {
+            if (c != '_') {
+                accum_int *= 10;
+                accum_int += dec_digit_val(c);
+            }
+            rdr.bump();
+            c = rdr.curr();
+    }
+
+    ret accum_int;
+}
+
 impure fn scan_number(mutable char c, reader rdr) -> token.token {
     auto accum_int = 0;
     auto n = rdr.next();
@@ -346,14 +365,11 @@ impure fn scan_number(mutable char c, reader rdr) -> token.token {
         }
     }
 
-    while (is_dec_digit(c) || c == '_') {
-        if (c != '_') {
-            accum_int *= 10;
-            accum_int += dec_digit_val(c);
-        }
-        rdr.bump();
-        c = rdr.curr();
+    if (c != '0' || (n != 'x' && n != 'b')) {
+        accum_int = scan_dec_digits(rdr);
     }
+
+    c = rdr.curr();
 
     if (c == 'u' || c == 'i') {
         let bool signed = (c == 'i');
@@ -405,7 +421,18 @@ impure fn scan_number(mutable char c, reader rdr) -> token.token {
             ret token.LIT_UINT(accum_int as uint);
         }
     }
-    ret token.LIT_INT(accum_int);
+    n = rdr.curr();
+    if(n == '.') {
+        /* parse a floating-point number */
+        rdr.bump();
+        auto accum_int1 = scan_dec_digits(rdr);
+        ret token.LIT_FLOAT(_int.to_str(accum_int, 10u) + "."
+                          + _int.to_str(accum_int1, 10u));
+        /* TODO: exponent */
+    }
+    else {
+        ret token.LIT_INT(accum_int);
+    }
 }
 
 impure fn next_token(reader rdr) -> token.token {

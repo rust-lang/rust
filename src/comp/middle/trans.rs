@@ -589,6 +589,7 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t, bool boxed) -> TypeRef {
         case (ty.ty_nil) { llty = T_nil(); }
         case (ty.ty_bool) { llty = T_bool(); }
         case (ty.ty_int) { llty = T_int(); }
+        case (ty.ty_float) { llty = T_f64(); }
         case (ty.ty_uint) { llty = T_int(); }
         case (ty.ty_machine(?tm)) {
             alt (tm) {
@@ -739,6 +740,13 @@ fn C_integral(int i, TypeRef t) -> ValueRef {
     // ret llvm.LLVMConstInt(T_int(), t as LLVM.ULongLong, False);
     //
     ret llvm.LLVMConstIntOfString(t, _str.buf(istr(i)), 10);
+}
+
+fn C_float(str s) -> ValueRef {
+    // FIXME: shouldn't use strings
+    // also, assuming 64-bit floats for now.
+    auto res = llvm.LLVMConstRealOfString(T_f64(), _str.buf(s));
+    ret res;
 }
 
 fn C_nil() -> ValueRef {
@@ -2276,6 +2284,9 @@ fn trans_lit(@crate_ctxt cx, &ast.lit lit, &ast.ann ann) -> ValueRef {
                 case (common.ty_i64) { t = T_i64(); }
             }
             ret C_integral(i, t);
+        }
+        case(ast.lit_float(?fs)) {
+            ret C_float(fs);
         }
         case (ast.lit_char(?c)) {
             ret C_integral(c as int, T_char());
@@ -4432,12 +4443,27 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
     auto sub = trans_expr(cx, e);
     auto e_ty = ty.expr_ty(e);
     alt (e_ty.struct) {
+        case(ty.ty_float) {
+            auto sub1 = (sub.bcx).build.Alloca(T_double()); /* guess we're assuming double = float64 for now */
+            (sub.bcx).build.Store(sub.val, sub1);
+            sub.val = sub1;
+
+        case(_) {
+            sub = trans_expr(cx, e);
+        }
+    }
+    alt (e_ty.struct) {
         case (ty.ty_str) {
             auto v = vp2i(sub.bcx, sub.val);
             ret trans_upcall(sub.bcx,
                              "upcall_log_str",
                              vec(v));
         }
+        case (ty.ty_float) {
+            auto v = vp2i(sub.bcx, sub.val);
+            ret trans_upcall(sub.bcx,
+                             "upcall_log_float",
+                             vec(v));
         case (_) {
             ret trans_upcall(sub.bcx,
                              "upcall_log_int",
