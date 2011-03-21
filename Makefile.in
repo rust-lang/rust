@@ -479,7 +479,7 @@ llvmext/%.o: llvmext/%.cpp $(MKFILES)
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
-	-$(Q)$(DSYMUTIL) $@
+	-$(Q)$(CFG_DSYMUTIL) $@
 
 %.stage1(X): %.stage1.o rt/$(CFG_RUNTIME) stage1/glue.o
 	@$(call E, link [gcc]: $@)
@@ -487,7 +487,7 @@ llvmext/%.o: llvmext/%.cpp $(MKFILES)
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
-	-$(Q)$(DSYMUTIL) $@
+	-$(Q)$(CFG_DSYMUTIL) $@
 
 %.stage2(X): %.stage2.o rt/$(CFG_RUNTIME) stage2/glue.o
 	@$(call E, link [gcc]: $@)
@@ -495,7 +495,7 @@ llvmext/%.o: llvmext/%.cpp $(MKFILES)
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
-	-$(Q)$(DSYMUTIL) $@
+	-$(Q)$(CFG_DSYMUTIL) $@
 
 
 
