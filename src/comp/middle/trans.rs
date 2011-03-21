@@ -747,8 +747,7 @@ fn C_integral(int i, TypeRef t) -> ValueRef {
 fn C_float(str s) -> ValueRef {
     // FIXME: shouldn't use strings
     // also, assuming 64-bit floats for now.
-    auto res = llvm.LLVMConstRealOfString(T_f64(), _str.buf(s));
-    ret res;
+    ret llvm.LLVMConstRealOfString(T_f64(), _str.buf(s));
 }
 
 fn C_nil() -> ValueRef {
@@ -879,8 +878,10 @@ fn trans_upcall2(builder b, @glue_fns glues,
 
     let ValueRef llglue = glues.upcall_glues.(n);
     let vec[ValueRef] call_args = vec(llupcall);
+    call_args += vec( b.PtrToInt(lltaskptr, T_int()));
 
     for (ValueRef a in args) {
+        llvm.LLVMDumpValue(a);
         call_args += vec(b.ZExtOrBitCast(a, T_int()));
     }
 
@@ -4476,16 +4477,18 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
 
     auto sub = trans_expr(cx, e);
     auto e_ty = ty.expr_ty(e);
+
     alt (e_ty.struct) {
         case(ty.ty_float) {
             auto sub1 = (sub.bcx).build.Alloca(T_double()); /* guess we're assuming double = float64 for now */
             (sub.bcx).build.Store(sub.val, sub1);
             sub.val = sub1;
-
+        }
         case(_) {
             sub = trans_expr(cx, e);
         }
     }
+
     alt (e_ty.struct) {
         case (ty.ty_str) {
             auto v = vp2i(sub.bcx, sub.val);
@@ -4498,6 +4501,7 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
             ret trans_upcall(sub.bcx,
                              "upcall_log_float",
                              vec(v));
+        }
         case (_) {
             ret trans_upcall(sub.bcx,
                              "upcall_log_int",
@@ -6214,6 +6218,7 @@ fn make_common_glue(str output) {
 
 fn trans_crate(session.session sess, @ast.crate crate, str output,
                bool shared) {
+
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
@@ -6234,6 +6239,8 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     auto tydescs = map.mk_hashmap[@ty.t,@tydesc_info](hasher, eqer);
     let vec[ast.ty_param] obj_typarams = vec();
     let vec[ast.obj_field] obj_fields = vec();
+
+    log("creating cx");
 
     auto cx = @rec(sess = sess,
                    llmod = llmod,
@@ -6263,9 +6270,11 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
 
     collect_items(cx, crate);
     collect_tag_ctors(cx, crate);
+
     trans_constants(cx, crate);
 
     trans_mod(cx, crate.node.module);
+
     trans_vec_append_glue(cx);
     if (!shared) {
         trans_main_fn(cx, cx.crate_ptr);
