@@ -457,7 +457,7 @@ llvmext/%.o: llvmext/%.cpp $(MKFILES)
 	@$(call E, compile [boot]: $@)
 	$(BOOT) -o $@ $<
 
-%.stage0$(X): %.o rt/$(CFG_RUNTIME) stage0/glue.o
+%.stage0$(X): %.stage0.o rt/$(CFG_RUNTIME) stage0/glue.o
 	@$(call E, link [llvm]: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) stage0/glue.o -o $@ $< -Lstage0 -lrustrt
 	@# dsymutil sometimes fails or prints a warning, but the
