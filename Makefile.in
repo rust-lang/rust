@@ -182,8 +182,6 @@ else
   E = echo $(1)
 endif
 
-R := $(CFG_RUN_TARG)
-T := $(CFG_RUN_TEST)
 S := $(CFG_SRC_DIR)
 X := $(CFG_EXE_SUFFIX)
 
@@ -192,8 +190,10 @@ VPATH := $(S)doc $(S)src
 
 # Compilers we build, we now know how to run.
 BOOT := $(Q)OCAMLRUNPARAM="b1" boot/rustboot$(X) $(CFG_BOOT_FLAGS) -L boot
-STAGE0 := $(Q)$(R) stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage0
-STAGE1 := $(Q)$(R) stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1
+STAGE0 := $(Q)$(call CFG_RUN_TARG,\
+                stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage0)
+STAGE1 := $(Q)$(call CFG_RUN_TARG,\
+                stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1)
 
 # "Source" files we generate in builddir along the way.
 GENERATED := boot/fe/lexer.ml boot/version.ml
@@ -876,19 +876,19 @@ compile-check: tidy \
 test/run-pass/%.out.tmp: test/run-pass/%$(X) rt/$(CFG_RUNTIME)
 	$(Q)rm -f $<.tmp
 	@$(call E, run: $@)
-	$(Q)$(call T, $<) > $@
+	$(Q)$(call CFG_RUN_TEST, $<) > $@
 
 test/bench/shootout/%.out.tmp: test/bench/shootout/%$(X) \
                                rt/$(CFG_RUNTIME)
 	$(Q)rm -f $<.tmp
 	@$(call E, run: $@)
-	$(Q)$(call T, $<) > $@
+	$(Q)$(call CFG_RUN_TEST, $<) > $@
 
 test/bench/99-bottles/%.out.tmp: test/bench/99-bottles/%$(X) \
                                  rt/$(CFG_RUNTIME)
 	$(Q)rm -f $<.tmp
 	@$(call E, run: $@)
-	$(Q)$(call T, $<) > $@
+	$(Q)$(call CFG_RUN_TEST, $<) > $@
 
 test/run-fail/%.out.tmp: test/run-fail/%$(X) \
                          rt/$(CFG_RUNTIME)
@@ -896,7 +896,7 @@ test/run-fail/%.out.tmp: test/run-fail/%$(X) \
 	@$(call E, run: $@)
 	$(Q)grep -q error-pattern $(S)src/test/run-fail/$(basename $*).rs
 	$(Q)rm -f $@
-	$(Q)$(call T, $<) >$@ 2>&1 ; X=$$? ; \
+	$(Q)$(call CFG_RUN_TEST, $<) >$@ 2>&1 ; X=$$? ; \
       if [ $$X -eq 0 ] ; then exit 1 ; else exit 0 ; fi
 	$(Q)grep --text --quiet \
       "$$(grep error-pattern $(S)src/test/run-fail/$(basename $*).rs \
