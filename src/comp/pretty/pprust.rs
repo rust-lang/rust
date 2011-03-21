@@ -163,8 +163,12 @@ impure fn print_item(ps s, @ast.item item) {
             wrd1(s, "type");
             wrd(s, id);
           }
-          case (ast.native_item_fn(?id,?decl,?typarams,_,_)) {
+          case (ast.native_item_fn(?id,?lname,?decl,?typarams,_,_)) {
             print_fn(s, decl, id, typarams);
+            alt (lname) {
+              case (option.none[str]) {}
+              case (option.some[str](?ss)) {print_string(s,ss);}
+            }
           }
         }
         wrd(s, ";");

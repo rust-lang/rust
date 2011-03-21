@@ -645,7 +645,7 @@ fn native_item_ty(@ast.native_item it) -> ty_params_and_ty {
     auto ty_params;
     auto result_ty;
     alt (it.node) {
-        case (ast.native_item_fn(_, _, ?tps, _, ?ann)) {
+        case (ast.native_item_fn(_, _, _, ?tps, _, ?ann)) {
             ty_params = tps;
             result_ty = ann_to_type(ann);
         }

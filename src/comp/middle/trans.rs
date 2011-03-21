@@ -5409,7 +5409,7 @@ fn native_fn_ty_param_count(@crate_ctxt cx, &ast.def_id id) -> uint {
                         "actually a fn?!");
             fail;
         }
-        case (ast.native_item_fn(_, _, ?tps, _, _)) {
+        case (ast.native_item_fn(_, _, _, ?tps, _, _)) {
             count = _vec.len[ast.ty_param](tps);
         }
     }
@@ -5499,7 +5499,7 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
 
 fn collect_native_item(&@crate_ctxt cx, @ast.native_item i) -> @crate_ctxt {
     alt (i.node) {
-        case (ast.native_item_fn(?name, _, _, ?fid, ?ann)) {
+        case (ast.native_item_fn(?name, _, _, _, ?fid, ?ann)) {
             cx.native_items.insert(fid, i);
             if (! cx.obj_methods.contains_key(fid)) {
                 decl_native_fn_and_pair(cx, name, ann, fid);

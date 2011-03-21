@@ -1859,9 +1859,15 @@ impure fn parse_item_native_fn(parser p, ast.effect eff) -> @ast.native_item {
     expect(p, token.FN);
     auto t = parse_fn_header(p);
     auto decl = parse_fn_decl(p, eff);
+    auto link_name = none[str];
+    if (p.peek() == token.EQ) {
+        p.bump();
+        link_name = some[str](parse_str_lit_or_env_ident(p));
+    }
     auto hi = p.get_span();
     expect(p, token.SEMI);
-    auto item = ast.native_item_fn(t._0, decl, t._1, p.next_def_id(),
+    auto item = ast.native_item_fn(t._0, link_name, decl,
+                                   t._1, p.next_def_id(),
                                    ast.ann_none);
     ret @spanned(lo, hi, item);
 }
