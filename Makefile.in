@@ -330,14 +330,14 @@ LLVMEXT_LIBS := $(CFG_LLVM_LDFLAGS) $(CFG_LLVM_LIBS)
 # Standard library variables
 ######################################################################
 
-STDLIB_CRATE := lib/std.rc
+STDLIB_CRATE := $(S)src/lib/std.rc
 STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/lib/,*.rc *.rs */*.rs))
 
 ######################################################################
 # rustc crate variables
 ######################################################################
 
-COMPILER_CRATE := comp/rustc.rc
+COMPILER_CRATE := $(S)src/comp/rustc.rc
 COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
                                 rustc.rc *.rs */*.rs))
 
@@ -390,41 +390,41 @@ boot/version.ml: $(MKFILES)
 
 
 
-boot/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
+boot/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
                     boot/rustboot$(X) $(MKFILES)
 	@$(call E, compile: $@)
 	$(BOOT) -shared -o $@ $<
 
-stage0/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
+stage0/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
                       stage0/rustc$(X) $(MKFILES)
 	@$(call E, compile: $@)
 	$(STAGE0) -shared -o $@ $<
 
-stage1/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
+stage1/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
                       stage1/rustc$(X) $(MKFILES)
 	@$(call E, compile: $@)
 	$(STAGE1) -shared -o $@ $<
 
-stage2/$(CFG_STDLIB): $(S)src/$(STDLIB_CRATE) $(STDLIB_INPUTS) \
+stage2/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
                       stage2/rustc$(X) $(MKFILES)
 	@$(call E, compile: $@)
 	$(STAGE2) -shared -o $@ $<
 
 
 
-stage0/rustc$(X): $(S)src/$(COMPILER_CRATE) $(COMPILER_INPUTS) \
+stage0/rustc$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) \
                   $(BREQ)
 	@$(call E, compile: $@)
 	$(BOOT) -minimal -o $@ $<
 	$(Q)chmod 0755 $@
 
-stage1/rustc$(X): $(S)src/$(COMPILER_CRATE) $(COMPILER_INPUTS) \
+stage1/rustc$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) \
                   $(SREQ0) stage0/$(CFG_STDLIB)
 	@$(call E, compile: $@)
 	$(STAGE0) -o $@ $<
 	$(Q)chmod 0755 $@
 
-stage2/rustc$(X): $(S)src/$(COMPILER_CRATE) $(COMPILER_INPUTS) \
+stage2/rustc$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) \
                   $(SREQ1) stage1/$(CFG_STDLIB)
 	@$(call E, compile: $@)
 	$(STAGE1) -o $@ $<
@@ -873,7 +873,7 @@ compile-check: tidy \
 %.out: %.out.tmp
 	$(Q)mv $< $@
 
-test/run-pass/%.out.tmp: test/run-pass/%$(CFG_EXE_SUFFIX) rt/$(CFG_RUNTIME)
+test/run-pass/%.out.tmp: test/run-pass/%$(X) rt/$(CFG_RUNTIME)
 	$(Q)rm -f $<.tmp
 	@$(call E, run: $@)
 	$(Q)$(call T, $<) > $@
