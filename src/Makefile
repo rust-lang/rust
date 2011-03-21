@@ -417,6 +417,10 @@ self: $(CFG_RUSTC)
 # Testing
 ######################################################################
 
+# Float doesn't work in boot
+
+FLOAT_XFAILS := test/run-pass/float.rs
+
 # Temporarily xfail tests broken by the nominal-tags change.
 
 NOMINAL_TAG_XFAILS := test/run-pass/mlist.rs
@@ -442,6 +446,7 @@ TASK_XFAILS := test/run-pass/task-comm-8.rs \
 TEST_XFAILS_BOOT :=  $(TASK_XFAILS) \
                     $(NOMINAL_TAG_XFAILS) \
                     $(CONST_TAG_XFAILS) \
+                    $(FLOAT_XFAILS) \
                     test/run-pass/arith-unsigned.rs \
                     test/run-pass/box-compare.rs \
                     test/run-pass/child-outlives-parent.rs \
