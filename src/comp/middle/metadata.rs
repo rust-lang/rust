@@ -26,6 +26,16 @@ fn ty_str(@ty.t t, def_str ds) -> str {
     ret sty_str(t.struct, ds);
 }
 
+fn mt_str(&ty.mt mt, def_str ds) -> str {
+    auto mut_str;
+    alt (mt.mut) {
+        case (ast.imm)       { mut_str = "";  }
+        case (ast.mut)       { mut_str = "m"; }
+        case (ast.maybe_mut) { mut_str = "?"; }
+    }
+    ret mut_str + ty_str(mt.ty, ds);
+}
+
 fn sty_str(ty.sty st, def_str ds) -> str {
     alt (st) {
         case (ty.ty_nil) {ret "n";}
@@ -53,20 +63,20 @@ fn sty_str(ty.sty st, def_str ds) -> str {
             for (@ty.t t in tys) {acc += ty_str(t, ds);}
             ret acc + "]";
         }
-        case (ty.ty_box(?t)) {ret "@" + ty_str(t, ds);}
-        case (ty.ty_vec(?t)) {ret "V" + ty_str(t, ds);}
+        case (ty.ty_box(?mt)) {ret "@" + mt_str(mt, ds);}
+        case (ty.ty_vec(?mt)) {ret "V" + mt_str(mt, ds);}
         case (ty.ty_port(?t)) {ret "P" + ty_str(t, ds);}
         case (ty.ty_chan(?t)) {ret "C" + ty_str(t, ds);}
-        case (ty.ty_tup(?tys)) {
+        case (ty.ty_tup(?mts)) {
             auto acc = "T[";
-            for (@ty.t t in tys) {acc += ty_str(t, ds);}
+            for (ty.mt mt in mts) {acc += mt_str(mt, ds);}
             ret acc + "]";
         }
         case (ty.ty_rec(?fields)) {
             auto acc = "R[";
             for (ty.field field in fields) {
                 acc += field.ident + "=";
-                acc += ty_str(field.ty, ds);
+                acc += mt_str(field.mt, ds);
             }
             ret acc + "]";
         }

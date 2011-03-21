@@ -59,6 +59,16 @@ impure fn parse_ty(@pstate st, str_def sd) -> @ty.t {
              cname=option.none[str]);
 }
 
+impure fn parse_mt(@pstate st, str_def sd) -> ty.mt {
+    auto mut;
+    alt (peek(st)) {
+        case ('m') {next(st); mut = ast.mut;}
+        case ('?') {next(st); mut = ast.maybe_mut;}
+        case (_)   {mut=ast.imm;}
+    }
+    ret rec(ty=parse_ty(st, sd), mut=mut);
+}
+
 impure fn parse_sty(@pstate st, str_def sd) -> ty.sty {
     alt (next(st)) {
         case ('n') {ret ty.ty_nil;}
@@ -93,15 +103,15 @@ impure fn parse_sty(@pstate st, str_def sd) -> ty.sty {
             st.pos = st.pos + 1u;
             ret ty.ty_tag(sd(def), params);
         }      
-        case ('@') {ret ty.ty_box(parse_ty(st, sd));}
-        case ('V') {ret ty.ty_vec(parse_ty(st, sd));}
+        case ('@') {ret ty.ty_box(parse_mt(st, sd));}
+        case ('V') {ret ty.ty_vec(parse_mt(st, sd));}
         case ('P') {ret ty.ty_port(parse_ty(st, sd));}
         case ('C') {ret ty.ty_chan(parse_ty(st, sd));}
         case ('T') {
             check(next(st) == '[');
-            let vec[@ty.t] params = vec();
+            let vec[ty.mt] params = vec();
             while (peek(st) != ']') {
-                params = _vec.push[@ty.t](params, parse_ty(st, sd));
+                params = _vec.push[ty.mt](params, parse_mt(st, sd));
             }
             st.pos = st.pos + 1u;
             ret ty.ty_tup(params);
@@ -114,7 +124,7 @@ impure fn parse_sty(@pstate st, str_def sd) -> ty.sty {
                 while (peek(st) != '=') {name += _str.from_char(next(st));}
                 st.pos = st.pos + 1u;
                 fields = _vec.push[ty.field]
-                    (fields, rec(ident=name, ty=parse_ty(st, sd)));
+                    (fields, rec(ident=name, mt=parse_mt(st, sd)));
             }
             st.pos = st.pos + 1u;
             ret ty.ty_rec(fields);
