@@ -83,7 +83,7 @@ for i in \
     boot/fe boot/me boot/be boot/driver boot/util \
     rt rt/isaac rt/bigint rt/sync rt/test \
     llvmext \
-    state0 stage1 stage2 \
+    stage0 stage1 stage2 \
     test/run-pass test/run-fail test/compile-fail
 do
     make_dir $i
