@@ -841,13 +841,11 @@ fn decl_upcall_glue(ModuleRef llmod, type_names tn, uint _n) -> ValueRef {
 }
 
 fn get_upcall(&hashmap[str, ValueRef] upcalls,
-              type_names tn, ModuleRef llmod,
-              str name, int n_args) -> ValueRef {
+              ModuleRef llmod, str name, int n_args) -> ValueRef {
     if (upcalls.contains_key(name)) {
         ret upcalls.get(name);
     }
-    auto inputs = vec(T_taskptr(tn));
-    inputs += _vec.init_elt[TypeRef](T_int(), n_args as uint);
+    auto inputs = _vec.init_elt[TypeRef](T_int(), n_args as uint);
     auto output = T_int();
     auto f = decl_cdecl_fn(llmod, name, T_fn(inputs, output));
     upcalls.insert(name, f);
@@ -868,7 +866,7 @@ fn trans_upcall2(builder b, @glue_fns glues,
                  type_names tn, ModuleRef llmod, str name,
                  vec[ValueRef] args) -> ValueRef {
     let int n = (_vec.len[ValueRef](args) as int);
-    let ValueRef llupcall = get_upcall(upcalls, tn, llmod, name, n);
+    let ValueRef llupcall = get_upcall(upcalls, llmod, name, n);
     llupcall = llvm.LLVMConstPointerCast(llupcall, T_int());
 
     let ValueRef llglue = glues.upcall_glues.(n);
