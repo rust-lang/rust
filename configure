@@ -84,7 +84,8 @@ for i in \
     rt rt/isaac rt/bigint rt/sync rt/test \
     llvmext \
     stage0 stage1 stage2 \
-    test/run-pass test/run-fail test/compile-fail
+    test/run-pass test/run-fail test/compile-fail \
+    test/bench/99-bottles test/bench/shootout
 do
     make_dir $i
 done
