@@ -245,6 +245,7 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
         case (ty_bool)          { ret fld.fold_simple_ty(ty); }
         case (ty_int)           { ret fld.fold_simple_ty(ty); }
         case (ty_uint)          { ret fld.fold_simple_ty(ty); }
+        case (ty_float)         { ret fld.fold_simple_ty(ty); }
         case (ty_machine(_))    { ret fld.fold_simple_ty(ty); }
         case (ty_char)          { ret fld.fold_simple_ty(ty); }
         case (ty_str)           { ret fld.fold_simple_ty(ty); }
@@ -502,6 +503,9 @@ fn type_is_fp(@t ty) -> bool {
                 case (common.ty_f64) { ret true; }
                 case (_) { ret false; }
             }
+        }
+        case (ty_float) {
+            ret true;
         }
         case (_) { ret false; }
     }
@@ -1126,6 +1130,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             case (ty.ty_int)        { ret struct_cmp(expected, actual); }
             case (ty.ty_uint)       { ret struct_cmp(expected, actual); }
             case (ty.ty_machine(_)) { ret struct_cmp(expected, actual); }
+            case (ty.ty_float)      { ret struct_cmp(expected, actual); }
             case (ty.ty_char)       { ret struct_cmp(expected, actual); }
             case (ty.ty_str)        { ret struct_cmp(expected, actual); }
             case (ty.ty_type)       { ret struct_cmp(expected, actual); }

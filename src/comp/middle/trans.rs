@@ -2367,6 +2367,7 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
                @ast.expr e, &ast.ann a) -> result {
 
     auto sub = trans_expr(cx, e);
+    auto e_ty = ty.expr_ty(e);
 
     alt (op) {
         case (ast.bitnot) {
@@ -2379,7 +2380,12 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
         }
         case (ast.neg) {
             sub = autoderef(sub.bcx, sub.val, ty.expr_ty(e));
-            ret res(sub.bcx, sub.bcx.build.Neg(sub.val));
+            if(e_ty.struct == ty.ty_float) {
+                ret res(sub.bcx, sub.bcx.build.FNeg(sub.val));
+            }
+            else {
+                ret res(sub.bcx, sub.bcx.build.Neg(sub.val));
+            }
         }
         case (ast.box) {
             auto e_ty = ty.expr_ty(e);
@@ -2674,17 +2680,50 @@ fn trans_vec_add(@block_ctxt cx, @ty.t t,
 fn trans_eager_binop(@block_ctxt cx, ast.binop op, @ty.t intype,
                      ValueRef lhs, ValueRef rhs) -> result {
 
+    auto is_float = false;
+    alt(intype.struct) {
+        case (ty.ty_float) {
+            is_float = true;
+        }
+        case (_) {
+            is_float = false;
+        }
+    }
+     
     alt (op) {
         case (ast.add) {
             if (ty.type_is_sequence(intype)) {
                 ret trans_vec_add(cx, intype, lhs, rhs);
             }
-            ret res(cx, cx.build.Add(lhs, rhs));
+            if (is_float) {
+                ret res(cx, cx.build.FAdd(lhs, rhs));
+            }
+            else {
+                ret res(cx, cx.build.Add(lhs, rhs));
+            }
         }
-        case (ast.sub) { ret res(cx, cx.build.Sub(lhs, rhs)); }
+        case (ast.sub) {
+            if (is_float) {
+                ret res(cx, cx.build.FSub(lhs, rhs));
+            }
+            else {
+                ret res(cx, cx.build.Sub(lhs, rhs));
+            }
+        }
 
-        case (ast.mul) { ret res(cx, cx.build.Mul(lhs, rhs)); }
+        case (ast.mul) { 
+            if (is_float) {
+                ret res(cx, cx.build.FMul(lhs, rhs));
+            }
+            else {
+                ret res(cx, cx.build.Mul(lhs, rhs));
+            }
+        }
+
         case (ast.div) {
+            if (is_float) {
+                ret res(cx, cx.build.FDiv(lhs, rhs));
+            }
             if (ty.type_is_signed(intype)) {
                 ret res(cx, cx.build.SDiv(lhs, rhs));
             } else {
@@ -2692,6 +2731,9 @@ fn trans_eager_binop(@block_ctxt cx, ast.binop op, @ty.t intype,
             }
         }
         case (ast.rem) {
+            if (is_float) {
+                ret res(cx, cx.build.FRem(lhs, rhs));
+            }
             if (ty.type_is_signed(intype)) {
                 ret res(cx, cx.build.SRem(lhs, rhs));
             } else {
