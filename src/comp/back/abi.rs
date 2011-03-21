@@ -75,8 +75,11 @@ fn vec_append_glue_name() -> str {
     ret "rust_vec_append_glue";
 }
 
-fn upcall_glue_name(int n) -> str {
-    ret "rust_upcall_" + util.common.istr(n);
+fn upcall_glue_name(int n, bool pass_task) -> str {
+    if (pass_task) {
+        ret "rust_upcall_rust_" + util.common.istr(n);
+    }
+    ret "rust_upcall_cdecl_" + util.common.istr(n);
 }
 
 fn activate_glue_name() -> str {

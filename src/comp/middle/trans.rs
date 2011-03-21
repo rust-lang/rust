@@ -53,7 +53,8 @@ state obj namegen(mutable int i) {
 type glue_fns = rec(ValueRef activate_glue,
                     ValueRef yield_glue,
                     ValueRef exit_task_glue,
-                    vec[ValueRef] upcall_glues,
+                    vec[ValueRef] upcall_glues_rust,
+                    vec[ValueRef] upcall_glues_cdecl,
                     ValueRef no_op_type_glue,
                     ValueRef memcpy_glue,
                     ValueRef bzero_glue,
@@ -71,7 +72,6 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[str, ValueRef] upcalls,
                             hashmap[str, ValueRef] intrinsics,
                             hashmap[str, ValueRef] item_names,
-                            hashmap[str, ValueRef] native_fns,
                             hashmap[ast.def_id, ValueRef] item_ids,
                             hashmap[ast.def_id, @ast.item] items,
                             hashmap[ast.def_id,
@@ -826,16 +826,19 @@ fn decl_glue(ModuleRef llmod, type_names tn, str s) -> ValueRef {
     ret decl_cdecl_fn(llmod, s, T_fn(vec(T_taskptr(tn)), T_void()));
 }
 
-fn decl_upcall_glue(ModuleRef llmod, type_names tn, uint _n) -> ValueRef {
+fn decl_upcall_glue(ModuleRef llmod, type_names tn,
+                    bool pass_task, uint _n) -> ValueRef {
     // It doesn't actually matter what type we come up with here, at the
     // moment, as we cast the upcall function pointers to int before passing
     // them to the indirect upcall-invocation glue.  But eventually we'd like
     // to call them directly, once we have a calling convention worked out.
     let int n = _n as int;
-    let str s = abi.upcall_glue_name(n);
-    let vec[TypeRef] args =
-        vec(T_int())     // callee
-        + _vec.init_elt[TypeRef](T_int(), n as uint);
+    let str s = abi.upcall_glue_name(n, pass_task);
+    let vec[TypeRef] args = vec(T_int()); // callee
+    if (!pass_task) {
+        args += vec(T_int()); // taskptr, will not be passed
+    }
+    args += _vec.init_elt[TypeRef](T_int(), n as uint);
 
     ret decl_fastcall_fn(llmod, s, T_fn(args, T_int()));
 }
@@ -856,21 +859,29 @@ fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> result {
     auto cxx = cx.fcx.ccx;
     auto lltaskptr = cx.build.PtrToInt(cx.fcx.lltaskptr, T_int());
     auto args2 = vec(lltaskptr) + args;
-    auto t = trans_upcall2(cx.build, cxx.glues,
-                           cxx.upcalls, cxx.tn, cxx.llmod, name, args2);
+    auto t = trans_upcall2(cx.build, cxx.glues, lltaskptr,
+                           cxx.upcalls, cxx.tn, cxx.llmod, name, true, args2);
     ret res(cx, t);
 }
 
-fn trans_upcall2(builder b, @glue_fns glues,
+fn trans_upcall2(builder b, @glue_fns glues, ValueRef lltaskptr,
                  &hashmap[str, ValueRef] upcalls,
                  type_names tn, ModuleRef llmod, str name,
-                 vec[ValueRef] args) -> ValueRef {
+                 bool pass_task, vec[ValueRef] args) -> ValueRef {
     let int n = (_vec.len[ValueRef](args) as int);
     let ValueRef llupcall = get_upcall(upcalls, llmod, name, n);
     llupcall = llvm.LLVMConstPointerCast(llupcall, T_int());
 
-    let ValueRef llglue = glues.upcall_glues.(n);
+    let ValueRef llglue;
+    if (pass_task) {
+        llglue = glues.upcall_glues_rust.(n);
+    } else {
+        llglue = glues.upcall_glues_cdecl.(n);
+    }
     let vec[ValueRef] call_args = vec(llupcall);
+    if (!pass_task) {
+        call_args += vec(lltaskptr);
+    }
 
     for (ValueRef a in args) {
         call_args += vec(b.ZExtOrBitCast(a, T_int()));
@@ -5457,44 +5468,38 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
     auto llfnty = type_of_native_fn(cx, abi, ty.ty_fn_args(fn_type),
                                     ty.ty_fn_ret(fn_type), num_ty_param);
 
-    // We can only declare a native function with a given name once; LLVM
-    // unhelpfully mangles the names if we try to multiply declare one.
-    auto function;
-    if (!cx.native_fns.contains_key(name)) {
-        function = decl_cdecl_fn(cx.llmod, name, llfnty);
-        cx.native_fns.insert(name, function);
-    } else {
-        // We support type-punning a native function by giving it different
-        // Rust types.
-        auto llorigfn = cx.native_fns.get(name);
-        function = bcx.build.PointerCast(llorigfn, T_ptr(llfnty));
-    }
-
     let vec[ValueRef] call_args = vec();
     auto arg_n = 3u;
+    auto pass_task;
+
+    auto lltaskptr = bcx.build.PtrToInt(fcx.lltaskptr, T_int());
     alt (abi) {
         case (ast.native_abi_rust) {
-            call_args += vec(fcx.lltaskptr);
+            pass_task = true;
+            call_args += vec(lltaskptr);
             for each (uint i in _uint.range(0u, num_ty_param)) {
                 auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
                 check (llarg as int != 0);
-                call_args += vec(llarg);
+                call_args += vec(bcx.build.PointerCast(llarg, T_i32()));
                 arg_n += 1u;
             }
         }
         case (ast.native_abi_cdecl) {
+            pass_task = false;
         }
     }
     auto args = ty.ty_fn_args(fn_type);
     for (ty.arg arg in args) {
         auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
         check (llarg as int != 0);
-        call_args += vec(llarg);
+        call_args += vec(bcx.build.PointerCast(llarg, T_i32()));
         arg_n += 1u;
     }
 
-    auto r = bcx.build.Call(function, call_args);
-    bcx.build.Store(r, fcx.llretptr);
+    auto r = trans_upcall2(bcx.build, cx.glues, lltaskptr, cx.upcalls, cx.tn,
+                           cx.llmod, name, pass_task, call_args);
+    auto rptr = bcx.build.BitCast(fcx.llretptr, T_ptr(T_i32()));
+    bcx.build.Store(r, rptr);
     bcx.build.RetVoid();
 }
 
@@ -5695,8 +5700,8 @@ fn trans_exit_task_glue(@glue_fns glues,
     auto build = new_builder(entrybb);
     auto tptr = build.PtrToInt(lltaskptr, T_int());
     auto V_args2 = vec(tptr) + V_args;
-    trans_upcall2(build, glues,
-                  upcalls, tn, llmod, "upcall_exit", V_args2);
+    trans_upcall2(build, glues, lltaskptr,
+                  upcalls, tn, llmod, "upcall_exit", true, V_args2);
     build.RetVoid();
 }
 
@@ -6146,8 +6151,13 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
                                                      T_taskptr(tn)),
                                                  T_void())),
 
-             upcall_glues =
-             _vec.init_fn[ValueRef](bind decl_upcall_glue(llmod, tn, _),
+             upcall_glues_rust =
+             _vec.init_fn[ValueRef](bind decl_upcall_glue(llmod, tn, true,
+                                                          _),
+                                    abi.n_upcall_glues + 1 as uint),
+             upcall_glues_cdecl =
+             _vec.init_fn[ValueRef](bind decl_upcall_glue(llmod, tn, false,
+                                                          _),
                                     abi.n_upcall_glues + 1 as uint),
              no_op_type_glue = decl_no_op_type_glue(llmod, tn),
              memcpy_glue = decl_memcpy_glue(llmod),
@@ -6217,7 +6227,6 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    upcalls = new_str_hash[ValueRef](),
                    intrinsics = intrinsics,
                    item_names = new_str_hash[ValueRef](),
-                   native_fns = new_str_hash[ValueRef](),
                    item_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
                    native_items = new_def_hash[@ast.native_item](),

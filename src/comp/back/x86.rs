@@ -179,7 +179,7 @@ fn rust_yield_glue() -> vec[str] {
         + vec("ret");
 }
 
-fn upcall_glue(int n_args) -> vec[str] {
+fn upcall_glue(int n_args, bool pass_task) -> vec[str] {
 
     /*
      * 0, 4, 8, 12 are callee-saves
@@ -191,18 +191,23 @@ fn upcall_glue(int n_args) -> vec[str] {
      *
      */
 
-    fn copy_arg(uint i) -> str {
-        if (i == 0u) {
+    fn copy_arg(bool pass_task, uint i) -> str {
+        if (i == 0u && pass_task) {
             ret "movl  %edx, (%esp)";
         }
-        auto src_off = wstr(4 + (i as int));
         auto dst_off = wstr(0 + (i as int));
+        auto src_off;
+        if (pass_task) {
+            src_off = wstr(4 + (i as int));
+        } else {
+            src_off = wstr(5 + (i as int));
+        }
         auto m = vec("movl  " + src_off + "(%ebp),%eax",
                      "movl  %eax," + dst_off + "(%esp)");
         ret _str.connect(m, "\n\t");
     }
 
-    auto carg = copy_arg;
+    auto carg = bind copy_arg(pass_task, _);
 
     ret
         save_callee_saves()
@@ -237,11 +242,11 @@ fn decl_glue(int align, str prefix, str name, vec[str] insns) -> str {
 }
 
 
-fn decl_upcall_glue(int align, str prefix, uint n) -> str {
+fn decl_upcall_glue(int align, str prefix, bool pass_task, uint n) -> str {
     let int i = n as int;
     ret decl_glue(align, prefix,
-                  abi.upcall_glue_name(i),
-                  upcall_glue(i));
+                  abi.upcall_glue_name(i, pass_task),
+                  upcall_glue(i, pass_task));
 }
 
 fn get_symbol_prefix() -> str {
@@ -267,8 +272,11 @@ fn get_module_asm() -> str {
                       abi.yield_glue_name(),
                       rust_yield_glue()))
 
-        + _vec.init_fn[str](bind decl_upcall_glue(align, prefix, _),
+        + _vec.init_fn[str](bind decl_upcall_glue(align, prefix, true, _),
+                            (abi.n_upcall_glues + 1) as uint)
+        + _vec.init_fn[str](bind decl_upcall_glue(align, prefix, false, _),
                             (abi.n_upcall_glues + 1) as uint);
+
 
     ret _str.connect(glues, "\n\n");
 }
