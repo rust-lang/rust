@@ -301,6 +301,7 @@ RUNTIME_HDR := rt/globals.h \
                rt/util/hash_map.h \
                rt/sync/sync.h \
                rt/sync/timer.h \
+               rt/sync/lock_and_signal.h \
                rt/sync/lock_free_queue.h \
                rt/rust_srv.h \
                rt/rust_kernel.h \
@@ -944,6 +945,8 @@ PKG_FILES :=\
       $(RUNTIME_CS) $(RUNTIME_HDR)             \
       $(LLVMEXT_CS) $(LLVMEXT_HDR)             \
       $(PKG_3RDPARTY))                         \
+    $(GENERATED)                               \
+    $(S)src/boot/fe/lexer.ml                   \
     $(COMPILER_INPUTS)                         \
     $(STDLIB_INPUTS)                           \
     $(ALL_TEST_INPUTS)                         \
@@ -951,7 +954,7 @@ PKG_FILES :=\
 
 dist: $(PKG_TAR)
 
-$(PKG_TAR):
+$(PKG_TAR): $(GENERATED)
 	@$(call E, making dist dir)
 	$(Q)rm -Rf dist
 	$(Q)mkdir -p dist/$(PKG_DIR)
@@ -960,9 +963,12 @@ $(PKG_TAR):
 	$(Q)rm -Rf dist
 
 distcheck: $(PKG_TAR)
-	$(Q)tar -c $(PKG_FILES) | tar -x -C dist/$(PKG_DIR)
+	$(Q)rm -Rf dist
+	$(Q)mkdir -p dist
+	@$(call E, unpacking $(PKG_TAR) in dist/$(PKG_DIR))
+	$(Q)cd dist && tar -xzf ../$(PKG_TAR)
 	@$(call E, configuring in dist/$(PKG_DIR)-build)
-	$(Q)mkdir -p dist/build
+	$(Q)mkdir -p dist/$(PKG_DIR)-build
 	$(Q)cd dist/$(PKG_DIR)-build && ../$(PKG_DIR)/configure
 	@$(call E, making 'check' in dist/$(PKG_DIR)-build)
 	$(Q)make -C dist/$(PKG_DIR)-build check
@@ -984,7 +990,7 @@ distcheck: $(PKG_TAR)
 tidy:
 	@$(call E, check: formatting)
 	$(Q)python $(S)src/etc/tidy.py \
-      $(filter-out $(GENERATED) \
+      $(filter-out $(GENERATED) $(addprefix $(S)src/, $(GENERATED)) \
         $(addprefix $(S)src/, $(LLVMEXT_CS) $(LLVMEXT_HDR) $(PKG_3RDPARTY)) \
         $(S)src/etc/%, $(PKG_FILES))
 
