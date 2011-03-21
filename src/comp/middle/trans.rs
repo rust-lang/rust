@@ -878,8 +878,7 @@ fn trans_upcall2(builder b, @glue_fns glues,
 
     let ValueRef llglue = glues.upcall_glues.(n);
     let vec[ValueRef] call_args = vec(llupcall);
-    call_args += vec( b.PtrToInt(lltaskptr, T_int()));
-
+  
     for (ValueRef a in args) {
         call_args += vec(b.ZExtOrBitCast(a, T_int()));
     }

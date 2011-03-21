@@ -168,8 +168,8 @@ fn ty_to_str(&@t typ) -> str {
         case (ty_machine(?tm)) { s = common.ty_mach_to_str(tm);    }
         case (ty_char)         { s = "char";                       }
         case (ty_str)          { s = "str";                        }
-        case (ty_box(?t))      { s = "@" + ty_to_str(t);           }
-        case (ty_vec(?t))      { s = "vec[" + ty_to_str(t) + "]";  }
+        case (ty_box(?tm))     { s += "@" + mt_to_str(tm);          }
+        case (ty_vec(?tm))     { s += "vec[" + mt_to_str(tm) + "]"; }
         case (ty_port(?t))     { s = "port[" + ty_to_str(t) + "]"; }
         case (ty_chan(?t))     { s = "chan[" + ty_to_str(t) + "]"; }
         case (ty_type)         { s = "type";                       }
