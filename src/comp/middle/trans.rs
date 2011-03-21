@@ -5436,6 +5436,8 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
     auto wrapper_type = native_fn_wrapper_type(cx, num_ty_param, ann);
     let str s = cx.names.next("_rust_wrapper") + sep() + name;
     let ValueRef wrapper_fn = decl_fastcall_fn(cx.llmod, s, wrapper_type);
+    llvm.LLVMSetLinkage(wrapper_fn, lib.llvm.LLVMPrivateLinkage
+                        as llvm.Linkage);
 
     // Declare the global constant pair that points to it.
     auto wrapper_pair_type = T_fn_pair(cx.tn, wrapper_type);
