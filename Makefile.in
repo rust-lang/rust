@@ -70,8 +70,8 @@ ifdef CFG_WINDOWSY
   CFG_LIB_NAME=$(1).dll
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
-  CFG_RUN_TEST=PATH=$(CFG_LDPATH) $(1)
-  CFG_RUN_TARG=PATH=$(CFG_LDPATH) $(1)
+  CFG_RUN_TEST=PATH="$(CFG_LDPATH)" $(1)
+  CFG_RUN_TARG=PATH="$(CFG_LDPATH)" $(1)
 
   CFG_PATH_MUNGE := $(strip | perl -p                  \
                            -e 's@\\(.)@/\1@go;'        \
