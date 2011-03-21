@@ -688,21 +688,21 @@ TEST_RPASS_SOURCES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(RPASS_RS))
 endif
 
 TEST_RPASS_EXES_BOOT := \
-              $(TEST_RPASS_CRATES_BOOT:.rc=.boot$(X)) \
-              $(TEST_RPASS_SOURCES_BOOT:.rs=.boot$(X))
+  $(subst $(S)src/,,$(TEST_RPASS_CRATES_BOOT:.rc=.boot$(X))) \
+  $(subst $(S)src/,,$(TEST_RPASS_SOURCES_BOOT:.rs=.boot$(X)))
 TEST_RPASS_EXES_STAGE0 := \
-              $(TEST_RPASS_CRATES_STAGE0:.rc=.rustc$(X)) \
-              $(TEST_RPASS_SOURCES_STAGE0:.rs=.rustc$(X))
+  $(subst $(S)src/,,$(TEST_RPASS_CRATES_STAGE0:.rc=.stage0$(X))) \
+  $(subst $(S)src/,,$(TEST_RPASS_SOURCES_STAGE0:.rs=.stage0$(X)))
 
 TEST_RPASS_OUTS_BOOT  := \
-                 $(TEST_RPASS_EXES_BOOT:.boot$(X)=.boot.out)
+  $(TEST_RPASS_EXES_BOOT:.boot$(X)=.boot.out)
 TEST_RPASS_OUTS_STAGE0 := \
-                 $(TEST_RPASS_EXES_STAGE0:.rustc$(X)=.rustc.out)
+  $(TEST_RPASS_EXES_STAGE0:.stage0$(X)=.stage0.out)
 
 TEST_RPASS_TMPS_BOOT  := \
   $(TEST_RPASS_EXES_BOOT:.boot$(X)=.boot$(X).tmp)
 TEST_RPASS_TMPS_STAGE0 := \
-  $(TEST_RPASS_EXES_STAGE0:.rustc$(X)=.rustc$(X).tmp)
+  $(TEST_RPASS_EXES_STAGE0:.stage0$(X)=.stage0$(X).tmp)
 
 
 TEST_RFAIL_CRATES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(RFAIL_RC))
@@ -711,21 +711,21 @@ TEST_RFAIL_SOURCES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(RFAIL_RS))
 TEST_RFAIL_SOURCES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(RFAIL_RS))
 
 TEST_RFAIL_EXES_BOOT := \
-              $(TEST_RFAIL_CRATES_BOOT:.rc=.boot$(X)) \
-              $(TEST_RFAIL_SOURCES_BOOT:.rs=.boot$(X))
+  $(subst $(S)src/,,$(TEST_RFAIL_CRATES_BOOT:.rc=.boot$(X))) \
+  $(subst $(S)src/,,$(TEST_RFAIL_SOURCES_BOOT:.rs=.boot$(X)))
 TEST_RFAIL_EXES_STAGE0 := \
-              $(TEST_RFAIL_CRATES_STAGE0:.rc=.rustc$(X)) \
-              $(TEST_RFAIL_SOURCES_STAGE0:.rs=.rustc$(X))
+  $(subst $(S)src/,,$(TEST_RFAIL_CRATES_STAGE0:.rc=.stage0$(X))) \
+  $(subst $(S)src/,,$(TEST_RFAIL_SOURCES_STAGE0:.rs=.stage0$(X)))
 
 TEST_RFAIL_OUTS_BOOT  := \
-                  $(TEST_RFAIL_EXES_BOOT:.boot$(X)=.boot.out)
+  $(TEST_RFAIL_EXES_BOOT:.boot$(X)=.boot.out)
 TEST_RFAIL_OUTS_STAGE0 := \
-                  $(TEST_RFAIL_EXES_STAGE0:.rustc$(X)=.rustc.out)
+  $(TEST_RFAIL_EXES_STAGE0:.stage0$(X)=.stage0.out)
 
 TEST_RFAIL_TMPS_BOOT  := \
   $(TEST_RFAIL_EXES_BOOT:.boot$(X)=.boot$(X).tmp)
 TEST_RFAIL_TMPS_STAGE0 := \
-  $(TEST_RFAIL_EXES_STAGE0:.rustc$(X)=.rustc$(X).tmp)
+  $(TEST_RFAIL_EXES_STAGE0:.stage0$(X)=.stage0(X).tmp)
 
 
 TEST_CFAIL_CRATES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(CFAIL_RC))
@@ -734,21 +734,21 @@ TEST_CFAIL_SOURCES_BOOT := $(filter-out $(TEST_XFAILS_BOOT), $(CFAIL_RS))
 TEST_CFAIL_SOURCES_STAGE0 := $(filter-out $(TEST_XFAILS_STAGE0), $(CFAIL_RS))
 
 TEST_CFAIL_EXES_BOOT := \
-              $(TEST_CFAIL_CRATES_BOOT:.rc=.boot$(X)) \
-              $(TEST_CFAIL_SOURCES_BOOT:.rs=.boot$(X))
+  $(subst $(S)src/,,$(TEST_CFAIL_CRATES_BOOT:.rc=.boot$(X))) \
+  $(subst $(S)src/,,$(TEST_CFAIL_SOURCES_BOOT:.rs=.boot$(X)))
 TEST_CFAIL_EXES_STAGE0 := \
-              $(TEST_CFAIL_CRATES_STAGE0:.rc=.rustc$(X)) \
-              $(TEST_CFAIL_SOURCES_STAGE0:.rs=.rustc$(X))
+  $(subst $(S)src/,,$(TEST_CFAIL_CRATES_STAGE0:.rc=.stage0(X))) \
+  $(subst $(S)src/,,$(TEST_CFAIL_SOURCES_STAGE0:.rs=.stage0$(X)))
 
 TEST_CFAIL_OUTS_BOOT := \
-                $(TEST_CFAIL_EXES_BOOT:.boot$(X)=.boot.out)
+  $(TEST_CFAIL_EXES_BOOT:.boot$(X)=.boot.out)
 TEST_CFAIL_OUTS_STAGE0 := \
-                $(TEST_CFAIL_EXES_STAGE0:.rustc$(X)=.rustc.out)
+  $(TEST_CFAIL_EXES_STAGE0:.stage0$(X)=.stage0.out)
 
 TEST_CFAIL_TMPS_BOOT := \
   $(TEST_CFAIL_EXES_BOOT:.boot$(X)=.boot$(X).tmp)
 TEST_CFAIL_TMPS_STAGE0 := \
-  $(TEST_CFAIL_EXES_STAGE0:.rustc$(X)=.rustc$(X).tmp)
+  $(TEST_CFAIL_EXES_STAGE0:.stage0$(X)=.stage0$(X).tmp)
 
 
 ALL_TEST_CRATES := $(TEST_CFAIL_CRATES_BOOT) \
