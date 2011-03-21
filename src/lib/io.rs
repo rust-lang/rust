@@ -24,6 +24,7 @@ type reader =
           impure fn read_le_int(uint size) -> int;
 
           impure fn seek(int offset, seek_style whence);
+          impure fn tell() -> uint; // TODO: eventually u64
     };
 
 state obj FILE_reader(os.libc.FILE f, bool must_close) {
@@ -96,6 +97,9 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
             case (seek_end) {wh = 2;}
         }
         check(os.libc.fseek(f, offset, wh) == 0);
+    }
+    impure fn tell() -> uint {
+        ret os.libc.ftell(f) as uint;
     }
     drop {
         if (must_close) {os.libc.fclose(f);}

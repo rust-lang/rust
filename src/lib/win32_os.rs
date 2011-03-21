@@ -15,6 +15,7 @@ native mod libc = "msvcrt.dll" {
     fn ungetc(int c, FILE f);
     fn fread(vbuf buf, uint size, uint n, FILE f) -> uint;
     fn fseek(FILE f, int offset, int whence) -> int;
+    fn ftell(FILE f) -> int;
 
     fn _pipe(vbuf fds, uint size, int mode) -> int;
 }

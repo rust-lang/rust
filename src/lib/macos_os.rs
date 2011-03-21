@@ -16,6 +16,7 @@ native mod libc = "libc.dylib" {
     fn ungetc(int c, FILE f);
     fn fread(vbuf buf, uint size, uint n, FILE f) -> uint;
     fn fseek(FILE f, int offset, int whence) -> int;
+    fn ftell(FILE f) -> int;
 
     type dir;
     fn opendir(sbuf d) -> dir;
