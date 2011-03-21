@@ -856,7 +856,8 @@ fn get_upcall(&hashmap[str, ValueRef] upcalls,
 
 fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> result {
     auto cxx = cx.fcx.ccx;
-    auto t = trans_upcall2(cx.build, cxx.glues, cx.fcx.lltaskptr,
+    auto lltaskptr = cx.build.PtrToInt(cx.fcx.lltaskptr, T_int());
+    auto t = trans_upcall2(cx.build, cxx.glues, lltaskptr,
                            cxx.upcalls, cxx.tn, cxx.llmod, name, args);
     ret res(cx, t);
 }
@@ -871,7 +872,7 @@ fn trans_upcall2(builder b, @glue_fns glues, ValueRef lltaskptr,
 
     let ValueRef llglue = glues.upcall_glues.(n);
     let vec[ValueRef] call_args = vec(llupcall);
-    call_args += vec( b.PtrToInt(lltaskptr, T_int()));
+    call_args += vec( b.ZExtOrBitCast(lltaskptr, T_int()));
 
     for (ValueRef a in args) {
         call_args += vec(b.ZExtOrBitCast(a, T_int()));
@@ -5692,8 +5693,9 @@ fn trans_exit_task_glue(@glue_fns glues,
 
     auto entrybb = llvm.LLVMAppendBasicBlock(llfn, _str.buf("entry"));
     auto build = new_builder(entrybb);
+    auto tptr = build.PtrToInt(lltaskptr, T_int());
 
-    trans_upcall2(build, glues, lltaskptr,
+    trans_upcall2(build, glues, tptr,
                   upcalls, tn, llmod, "upcall_exit", V_args);
     build.RetVoid();
 }
