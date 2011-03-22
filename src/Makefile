@@ -434,6 +434,7 @@ TASK_XFAILS := test/run-pass/task-comm-8.rs \
                test/run-pass/task-comm-12.rs \
                test/run-pass/task-comm-2.rs \
                test/run-pass/task-comm-9.rs \
+               test/run-pass/task-comm-chan-nil.rs \
                test/run-pass/task-life-0.rs \
                test/run-pass/alt-type-simple.rs \
                test/run-pass/many.rs
