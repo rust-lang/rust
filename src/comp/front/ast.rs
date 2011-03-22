@@ -256,6 +256,7 @@ tag lit_ {
     lit_uint(uint);
     lit_mach_int(ty_mach, int);
     lit_float(str);
+    lit_mach_float(ty_mach, str);
     lit_nil;
     lit_bool(bool);
 }

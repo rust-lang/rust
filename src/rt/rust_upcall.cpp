@@ -40,7 +40,14 @@ void upcall_log_int(rust_task *task, int32_t i) {
 }
 
 extern "C" CDECL
-void upcall_log_float(rust_task *task, double *f) {
+void upcall_log_float(rust_task *task, float f) {
+    LOG_UPCALL_ENTRY(task);
+    task->log(rust_log::UPCALL | rust_log::ULOG,
+              "rust: %12.12f", f);
+}
+
+extern "C" CDECL
+void upcall_log_double(rust_task *task, double *f) {
     LOG_UPCALL_ENTRY(task);
     task->log(rust_log::UPCALL | rust_log::ULOG,
               "rust: %12.12f", *f);

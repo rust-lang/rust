@@ -127,6 +127,7 @@ tag token {
     LIT_UINT(uint);
     LIT_MACH_INT(ty_mach, int);
     LIT_FLOAT(str);
+    LIT_MACH_FLOAT(ty_mach, str);
     LIT_STR(str);
     LIT_CHAR(char);
     LIT_BOOL(bool);
