@@ -1789,6 +1789,7 @@ fn variant_types(@crate_ctxt cx, &ast.variant v) -> vec[@ty.t] {
             }
         }
         case (ty.ty_tag(_, _)) { /* nothing */ }
+        case (_) { fail; }
     }
     ret tys;
 }
@@ -2001,6 +2002,7 @@ fn iter_structural_ty_full(@block_ctxt cx,
                                 j += 1;
                             }
                         }
+                        case (_) { fail; }
                     }
 
                     variant_cx.build.Br(next_cx.llbb);
@@ -2167,6 +2169,7 @@ fn iter_sequence(@block_ctxt cx,
             auto et = plain_ty(ty.ty_machine(common.ty_u8));
             ret iter_sequence_body(cx, v, et, f, true);
         }
+        case (_) { fail; }
     }
     cx.fcx.ccx.sess.bug("bad type in trans.iter_sequence");
     fail;

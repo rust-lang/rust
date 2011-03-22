@@ -47,6 +47,7 @@ fn create[T]() -> t[T] {
     fn get[T](vec[cell[T]] elts, uint i) -> T {
         alt (elts.(i)) {
             case (option.some[T](?t)) { ret t; }
+            case (_) { fail; }
         }
         fail;   // FIXME: remove me when exhaustiveness checking works
     }
