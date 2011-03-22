@@ -73,7 +73,7 @@ ifdef CFG_WINDOWSY
   CFG_RUN_TEST=PATH="$(CFG_LDPATH)" $(1)
   CFG_RUN_TARG=PATH="$(CFG_LDPATH)" $(1)
 
-  CFG_PATH_MUNGE := $(strip | perl -p                  \
+  CFG_PATH_MUNGE := $(strip perl -i -p                 \
                            -e 's@\\(.)@/\1@go;'        \
                            -e 's@^/([a-zA-Z])/@\1:/@o;')
   ifdef CFG_FLEXLINK
@@ -86,6 +86,7 @@ endif
 ifdef CFG_UNIXY
   CFG_INFO := $(info cfg: unix-y environment)
 
+  CFG_PATH_MUNGE := /bin/true
   CFG_EXE_SUFFIX :=
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_LIBDIR)
   CFG_RUN_TARG=\
@@ -923,6 +924,84 @@ test/compile-fail/%.stage0.out.tmp: test/compile-fail/%.rs $(SREQ0)
 	$(STAGE0) -o $(@:.out=$(X)) $< >$@ 2>&1; test $$? -ne 0
 	$(Q)grep --text --quiet \
       "$$(grep error-pattern $< | cut -d : -f 2- | tr -d '\n\r')" $@
+
+
+######################################################################
+# Auto-dependency
+######################################################################
+
+ML_DEPFILES := $(BOOT_MLS:%.ml=%.d)
+C_DEPFILES := $(RUNTIME_CS:%.cpp=%.d) $(RUSTLLVM_CS:%.cpp=%.d)
+
+rt/%.d: rt/%.cpp $(MKFILES)
+	@$(call E, dep: $@)
+	$(Q)$(call CFG_DEPEND_C, $@ \
+      $(subst $(S)src/,,$(patsubst %.cpp, %.o, $<)), \
+      $(RUNTIME_INCS)) $< >$@.tmp
+	$(Q)$(CFG_PATH_MUNGE) $@.tmp
+	$(Q)mv $@.tmp $@
+
+rustllvm/%.d: rustllvm/%.cpp $(MKFILES)
+	@$(call E, dep: $@)
+	$(Q)$(call CFG_DEPEND_C, $@ \
+      $(subst $(S)src/,,$(patsubst %.cpp, %.o, $<)), \
+      $(CFG_LLVM_CXXFLAGS) $(RUSTLLVM_INCS)) $< >$@.tmp
+	$(Q)$(CFG_PATH_MUNGE) $@.tmp
+	$(Q)mv $@.tmp $@
+
+%.d: %.ml $(MKFILES)
+	@$(call E, dep: $@)
+	$(Q)ocamldep$(OPT) -slash $(BOOT_ML_DEP_INCS) $< >$@.tmp
+	$(Q)$(CFG_PATH_MUNGE) $@.tmp
+	$(Q)perl -i -pe "s@$(S)src/@@go" $@.tmp
+	$(Q)mv $@.tmp $@
+
+%.d: %.mli $(MKFILES)
+	@$(call E, dep: $@)
+	$(Q)ocamldep$(OPT) -slash $(BOOT_ML_DEP_INCS) $< >$@.tmp
+	$(Q)$(CFG_PATH_MUNGE) $@.tmp
+	$(Q)perl -i -pe "s@$(S)src/@@go" $@.tmp
+	$(Q)mv $@.tmp $@
+
+ifneq ($(MAKECMDGOALS),clean)
+-include $(ML_DEPFILES) $(C_DEPFILES)
+endif
+
+RUSTBOOT_PROBE := $(wildcard boot/rustboot$(X))
+
+ifneq ($(RUSTBOOT_PROBE),)
+CFG_INFO := $(info cfg: using built boot/rustboot$(X) for rust deps)
+CRATE_DEPFILES := $(subst $(S)src/,,$(ALL_TEST_CRATES:%.rc=%.d)) \
+                  boot/$(CFG_STDLIB).d \
+                  stage0/rustc$(X).d \
+                  stage0/$(CFG_STDLIB).d
+
+boot/$(CFG_STDLIB).d: $(STDLIB_CRATE) $(STDLIB_INPUTS) \
+                      $(MKFILES) boot/rustboot$(X)
+	@$(call E, dep: $@)
+	$(BOOT) -o $(patsubst %.d,%,$@) -shared -rdeps $< >$@.tmp
+	$(Q)$(CFG_PATH_MUNGE) $@.tmp
+	$(Q)mv $@.tmp $@
+
+stage0/rustc$(X).d: $(COMPILER_CRATE) $(COMPILER_INPUTS) \
+                    $(STDLIB_CRATE) $(MKFILES) boot/rustboot$(X)
+	@$(call E, dep: $@)
+	$(BOOT) -o $(patsubst %.d,%,$@) -shared -rdeps $< >$@.tmp
+	$(Q)$(CFG_PATH_MUNGE) $@.tmp
+	$(Q)mv $@.tmp $@
+
+%.d: %.rc $(MKFILES) boot/rustboot$(X)
+	@$(call E, dep: $@)
+	$(BOOT)  -o $(patsubst %.d,%,$@) -rdeps $< >$@.tmp
+	$(Q)$(CFG_PATH_MUNGE) $@.tmp
+	$(Q)mv $@.tmp $@
+
+ifneq ($(MAKECMDGOALS),clean)
+-include $(CRATE_DEPFILES)
+endif
+endif
+
+depend: boot/rustboot$(X) $(CRATE_DEPFILES) $(ML_DEPFILES) $(C_DEPFILES)
 
 ######################################################################
 # Distribution
