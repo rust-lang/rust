@@ -388,7 +388,7 @@ impure fn scan_number(mutable char c, reader rdr) -> token.token {
     } else {
         accum_int = scan_dec_digits(rdr);
     }
-
+        
     c = rdr.curr();
     n = rdr.next();
 
@@ -443,6 +443,7 @@ impure fn scan_number(mutable char c, reader rdr) -> token.token {
         }
     }
     c = rdr.curr();
+
     if (c == '.') {
         // Parse a floating-point number.
         rdr.bump();

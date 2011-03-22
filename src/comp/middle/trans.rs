@@ -4594,6 +4594,7 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
 
     auto sub = trans_expr(cx, e);
     auto e_ty = ty.expr_ty(e);
+
     if (ty.type_is_fp(e_ty)) {
         let TypeRef tr;
         let bool is32bit = false;
