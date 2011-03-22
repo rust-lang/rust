@@ -126,7 +126,7 @@ ifdef CFG_UNIXY
 endif
 
 CFG_RUNTIME :=$(call CFG_LIB_NAME,rustrt)
-CFG_LLVMEXT :=$(call CFG_LIB_NAME,llvmext)
+CFG_LLVMEXT :=$(call CFG_LIB_NAME,rustllvm)
 CFG_STDLIB :=$(call CFG_LIB_NAME,std)
 
 CFG_LLC_CFLAGS := -march=x86
