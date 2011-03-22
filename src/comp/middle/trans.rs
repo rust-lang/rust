@@ -855,8 +855,11 @@ fn decl_upcall_glue(ModuleRef llmod, type_names tn,
     let int n = _n as int;
     let str s = abi.upcall_glue_name(n, pass_task);
     let vec[TypeRef] args = vec(T_int()); // callee
-    if (!pass_task) {
-        args += vec(T_int()); // taskptr, will not be passed
+
+    args += vec(T_taskptr(tn));
+
+    if (pass_task) {
+        n -= 1; // taskptr is included in n
     }
     args += _vec.init_elt[TypeRef](T_int(), n as uint);
 
@@ -877,10 +880,8 @@ fn get_upcall(&hashmap[str, ValueRef] upcalls,
 
 fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> result {
     auto cxx = cx.fcx.ccx;
-    auto lltaskptr = cx.build.PtrToInt(cx.fcx.lltaskptr, T_int());
-    auto args2 = vec(lltaskptr) + args;
-    auto t = trans_upcall2(cx.build, cxx.glues, lltaskptr,
-                           cxx.upcalls, cxx.tn, cxx.llmod, name, true, args2);
+    auto t = trans_upcall2(cx.build, cxx.glues, cx.fcx.lltaskptr,
+                           cxx.upcalls, cxx.tn, cxx.llmod, name, true, args);
     ret res(cx, t);
 }
 
@@ -889,6 +890,9 @@ fn trans_upcall2(builder b, @glue_fns glues, ValueRef lltaskptr,
                  type_names tn, ModuleRef llmod, str name,
                  bool pass_task, vec[ValueRef] args) -> ValueRef {
     let int n = (_vec.len[ValueRef](args) as int);
+    if (pass_task) {
+        n += 1;
+    }
     let ValueRef llupcall = get_upcall(upcalls, llmod, name, n);
     llupcall = llvm.LLVMConstPointerCast(llupcall, T_int());
 
@@ -900,9 +904,7 @@ fn trans_upcall2(builder b, @glue_fns glues, ValueRef lltaskptr,
     }
     let vec[ValueRef] call_args = vec(llupcall);
 
-    if (!pass_task) {
-        call_args += vec(lltaskptr);
-    }
+    call_args += vec(lltaskptr);
 
     for (ValueRef a in args) {
         call_args += vec(b.ZExtOrBitCast(a, T_int()));
@@ -5701,11 +5703,9 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
     auto arg_n = 3u;
     auto pass_task;
 
-    auto lltaskptr = bcx.build.PtrToInt(fcx.lltaskptr, T_int());
     alt (abi) {
         case (ast.native_abi_rust) {
             pass_task = true;
-            call_args += vec(lltaskptr);
             for each (uint i in _uint.range(0u, num_ty_param)) {
                 auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
                 check (llarg as int != 0);
@@ -5725,8 +5725,8 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
         arg_n += 1u;
     }
 
-    auto r = trans_upcall2(bcx.build, cx.glues, lltaskptr, cx.upcalls, cx.tn,
-                           cx.llmod, name, pass_task, call_args);
+    auto r = trans_upcall2(bcx.build, cx.glues, fcx.lltaskptr, cx.upcalls,
+                           cx.tn, cx.llmod, name, pass_task, call_args);
     auto rptr = bcx.build.BitCast(fcx.llretptr, T_ptr(T_i32()));
     bcx.build.Store(r, rptr);
     bcx.build.RetVoid();
