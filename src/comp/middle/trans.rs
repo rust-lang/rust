@@ -4764,8 +4764,6 @@ fn trans_chan(@block_ctxt cx, @ast.expr e, ast.ann ann) -> result {
     auto dropref = clean(bind drop_ty(_, chan_val, chan_ty));
     find_scope_cx(bcx).cleanups += vec(dropref);
 
-    // TODO: Do I need to do anything with the port's refcount?
-
     ret res(bcx, chan_val);
 }
 
