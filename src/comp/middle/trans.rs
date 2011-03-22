@@ -4793,7 +4793,8 @@ fn trans_send(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
     auto data_tmp = copy_ty(bcx, INIT, data_alloc.val, data.val, unit_ty);
     bcx = data_tmp.bcx;
 
-    // TODO: Cleanups?
+    find_scope_cx(bcx).cleanups +=
+        vec(clean(bind drop_ty(_, data_alloc.val, unit_ty)));
 
     auto sub = trans_upcall(bcx, "upcall_send",
                             vec(vp2i(bcx, chn.val),
@@ -4823,7 +4824,7 @@ fn trans_recv(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
     auto cp = copy_ty(bcx, DROP_EXISTING, data.res.val, data_load, unit_ty);
     bcx = cp.bcx;
 
-    // TODO: Cleanups?
+    // TODO: Any cleanup need to be done here?
 
     ret res(bcx, data.res.val);
 }
