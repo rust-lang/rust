@@ -311,6 +311,7 @@ RUNTIME_HDR := rt/globals.h \
                rt/test/rust_test_runtime.h \
                rt/test/rust_test_util.h
 
+RUNTIME_DEF := $(S)src/rt/rustrt.def
 RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o)
 
@@ -322,6 +323,7 @@ LLVMEXT_CS := $(addprefix llvmext/, \
                 MachOObjectFile.cpp Object.cpp RustWrapper.cpp)
 
 LLVMEXT_HDR := llvmext/include/llvm-c/Object.h
+LLVMEXT_DEF := $(S)src/llvmext/rustllvm.def
 
 LLVMEXT_INCS := -iquote $(CFG_LLVM_INCDIR) \
                 -iquote $(S)src/llvmext/include
@@ -365,14 +367,15 @@ all: boot/rustboot$(X)          \
      stage0/$(CFG_STDLIB)       \
      $(GENERATED)
 
-rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR)
+rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF)
 	@$(call E, link: $@)
-	$(Q)$(call CFG_LINK_C, $@) $(RUNTIME_OBJS)
+	$(Q)$(call CFG_LINK_C,$@,$(RUNTIME_OBJS),$(RUNTIME_DEF))
 
-llvmext/$(CFG_LLVMEXT): $(LLVMEXT_OBJS) $(MKFILES) $(LLVMEXT_HDR)
+llvmext/$(CFG_LLVMEXT): $(LLVMEXT_OBJS) $(MKFILES) $(LLVMEXT_HDR) \
+					    $(LLVMEXT_DEF)
 	@$(call E, link: $@)
-	$(Q)$(call CFG_LINK_C, $@ $(LLVMEXT_OBJS) \
-        $(CFG_LLVM_LIBS) $(CFG_LLVM_LDFLAGS))
+	$(Q)$(call CFG_LINK_C,$@,$(CFG_LLVM_LDFLAGS) $(LLVMEXT_OBJS) \
+        $(CFG_LLVM_LIBS),$(LLVMEXT_DEF))
 
 ifdef CFG_BOOT_NATIVE
 boot/rustboot$(X): $(BOOT_CMXS) $(MKFILES)
