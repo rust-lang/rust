@@ -538,19 +538,22 @@ fn collect_item_types(session.session sess, @ast.crate crate)
 
     fn ty_of_obj(@ty_item_table id_to_ty_item,
                  @ty_table item_to_ty,
+                 &ast.ident id,
                  &ast._obj obj_info) -> @ty.t {
         auto f = bind ty_of_method(id_to_ty_item, item_to_ty, _);
         auto methods =
             _vec.map[@ast.method,method](f, obj_info.methods);
 
-        auto t_obj = plain_ty(ty.ty_obj(ty.sort_methods(methods)));
+        auto t_obj = @rec(struct=ty.ty_obj(ty.sort_methods(methods)),
+                          cname=some[str](id));
         ret t_obj;
     }
 
     fn ty_of_obj_ctor(@ty_item_table id_to_ty_item,
                       @ty_table item_to_ty,
+                      &ast.ident id,
                       &ast._obj obj_info) -> @ty.t {
-        auto t_obj = ty_of_obj(id_to_ty_item, item_to_ty, obj_info);
+        auto t_obj = ty_of_obj(id_to_ty_item, item_to_ty, id, obj_info);
         let vec[arg] t_inputs = vec();
         for (ast.obj_field f in obj_info.fields) {
             auto g = bind getter(id_to_ty_item, item_to_ty, _);
@@ -584,6 +587,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                 // TODO: handle ty-params
                 auto t_ctor = ty_of_obj_ctor(id_to_ty_item,
                                              item_to_ty,
+                                             ident,
                                              obj_info);
                 item_to_ty.insert(def_id, t_ctor);
                 ret t_ctor;

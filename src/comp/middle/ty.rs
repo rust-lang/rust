@@ -115,10 +115,17 @@ fn ty_to_str(&@t typ) -> str {
                  option.t[ast.ident] ident,
                  vec[arg] inputs, @t output) -> str {
             auto f = fn_input_to_str;
-            auto s = "fn";
-            if (proto == ast.proto_iter) {
-                s = "iter";
+
+            auto s;
+            alt (proto) {
+                case (ast.proto_iter) {
+                    s = "iter";
+                }
+                case (ast.proto_fn) {
+                    s = "fn";
+                }
             }
+
             alt (ident) {
                 case (some[ast.ident](?i)) {
                     s += " ";
@@ -206,9 +213,16 @@ fn ty_to_str(&@t typ) -> str {
         }
 
         case (ty_obj(?meths)) {
-            auto f = method_to_str;
-            auto m = _vec.map[method,str](f, meths);
-            s += "obj {\n\t" + _str.connect(m, "\n\t") + "\n}";
+            alt (typ.cname) {
+                case (some[str](?cs)) {
+                    s += cs;
+                }
+                case (_) {
+                    auto f = method_to_str;
+                    auto m = _vec.map[method,str](f, meths);
+                    s += "obj {\n\t" + _str.connect(m, "\n\t") + "\n}";
+                }
+            }
         }
 
         case (ty_var(?v)) {
