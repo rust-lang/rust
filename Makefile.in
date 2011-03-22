@@ -484,6 +484,10 @@ rustllvm/%.o: rustllvm/%.cpp $(MKFILES)
 # Testing variables
 ######################################################################
 
+# Float doesn't work in boot
+
+FLOAT_XFAILS := test/run-pass/float.rs
+
 # Temporarily xfail tests broken by the nominal-tags change.
 
 NOMINAL_TAG_XFAILS := $(S)src/test/run-pass/mlist.rs
@@ -510,6 +514,7 @@ TASK_XFAILS := $(addprefix $(S)src/test/run-pass/, \
 TEST_XFAILS_BOOT := $(TASK_XFAILS) \
                     $(NOMINAL_TAG_XFAILS) \
                     $(CONST_TAG_XFAILS) \
+                    $(FLOAT_XFAILS) \
                     $(addprefix $(S)src/test/run-pass/, \
                       arith-unsigned.rs \
                       box-compare.rs \
