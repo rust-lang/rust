@@ -1,3 +1,6 @@
+import option.none;
+import option.some;
+
 import vbuf = rustrt.vbuf;
 
 type operator2[T,U,V] = fn(&T, &U) -> V;
@@ -113,6 +116,15 @@ fn buf_off[T](vec[mutable? T] v, uint offset) -> vbuf {
 
 fn print_debug_info[T](vec[mutable? T] v) {
     rustrt.vec_print_debug_info[T](v);
+}
+
+// Returns the last element of v.
+fn last[T](vec[mutable? T] v) -> option.t[T] {
+    auto l = len[T](v);
+    if (l == 0u) {
+        ret none[T];
+    }
+    ret some[T](v.(l - 1u));
 }
 
 // Returns elements from [start..end) from v.
