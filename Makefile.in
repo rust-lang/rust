@@ -234,7 +234,7 @@ BOOT_CMXS := $(BOOT_MLS:.ml=.cmx)
 BOOT_OBJS := $(BOOT_MLS:.ml=.o)
 BOOT_CMIS := $(BOOT_MLS:.ml=.cmi)
 
-BS := $(S)src/boot/
+BS := $(S)src/boot
 
 BOOT_ML_DEP_INCS := -I $(BS)/fe   -I $(BS)/me      \
                     -I $(BS)/be   -I $(BS)/driver  \
