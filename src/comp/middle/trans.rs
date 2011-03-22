@@ -4790,17 +4790,19 @@ fn trans_send(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
         }
     }
 
-    auto llunit_ty = type_of(bcx.fcx.ccx, unit_ty);
-    auto data_alloca = bcx.build.Alloca(llunit_ty);
-    bcx.build.Store(data.val, data_alloca);
+    auto data_alloc = alloc_ty(bcx, unit_ty);
+    bcx = data_alloc.bcx;
+    auto data_tmp = copy_ty(bcx, INIT, data_alloc.val, data.val, unit_ty);
+    bcx = data_tmp.bcx;
 
-    auto chn_val = vp2i(bcx, chn.val);
-    auto data_val = vp2i(bcx, data_alloca);
+    // TODO: Cleanups?
 
-    auto sub = trans_upcall(bcx, "upcall_send", vec(chn_val, data_val));
+    auto sub = trans_upcall(bcx, "upcall_send",
+                            vec(vp2i(bcx, chn.val),
+                                vp2i(bcx, data_alloc.val)));
     bcx = sub.bcx;
 
-    ret res(bcx, chn_val);
+    ret res(bcx, chn.val);
 }
 
 fn trans_recv(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
@@ -4813,17 +4815,19 @@ fn trans_recv(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
     auto prt = trans_expr(bcx, rhs);
     bcx = prt.bcx;
 
-    auto unit_ty = node_ann_type(cx.fcx.ccx, ann);
-    auto llunit_ty = type_of(bcx.fcx.ccx, unit_ty);
-    auto data_alloca = bcx.build.Alloca(llunit_ty);
-
-    auto data_val = vp2i(bcx, data_alloca);
-    auto prt_val = vp2i(bcx, prt.val);
-    auto sub = trans_upcall(bcx, "upcall_recv", vec(data_val, prt_val));
+    auto sub = trans_upcall(bcx, "upcall_recv",
+                            vec(vp2i(bcx, data.res.val),
+                                vp2i(bcx, prt.val)));
     bcx = sub.bcx;
 
-    auto data_load = bcx.build.Load(data_alloca);
-    ret copy_ty(bcx, DROP_EXISTING, data.res.val, data_load, unit_ty);
+    auto unit_ty = node_ann_type(cx.fcx.ccx, ann);
+    auto data_load = load_scalar_or_boxed(bcx, data.res.val, unit_ty);
+    auto cp = copy_ty(bcx, DROP_EXISTING, data.res.val, data_load, unit_ty);
+    bcx = cp.bcx;
+
+    // TODO: Cleanups?
+
+    ret res(bcx, data.res.val);
 }
 
 fn init_local(@block_ctxt cx, @ast.local local) -> result {
