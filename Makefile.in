@@ -501,6 +501,7 @@ TASK_XFAILS := $(addprefix $(S)src/test/run-pass/, \
                  task-comm-12.rs \
                  task-comm-2.rs \
                  task-comm-9.rs \
+                 task-comm-chan-nil.rs \
                  task-life-0.rs \
                  alt-type-simple.rs \
                  many.rs)
