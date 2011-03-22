@@ -27,6 +27,14 @@ type reader =
           impure fn tell() -> uint; // TODO: eventually u64
     };
 
+fn convert_whence(seek_style whence) -> int {
+    alt (whence) {
+        case (seek_set) {ret 0;}
+        case (seek_cur) {ret 1;}
+        case (seek_end) {ret 2;}
+    }
+}
+
 state obj FILE_reader(os.libc.FILE f, bool must_close) {
     impure fn read_byte() -> u8 {
         ret os.libc.fgetc(f) as u8;
@@ -90,13 +98,7 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
         ret val as int; // TODO does that work?
     }
     impure fn seek(int offset, seek_style whence) {
-        auto wh;
-        alt (whence) {
-            case (seek_set) {wh = 0;}
-            case (seek_cur) {wh = 1;}
-            case (seek_end) {wh = 2;}
-        }
-        check(os.libc.fseek(f, offset, wh) == 0);
+        check(os.libc.fseek(f, offset, convert_whence(whence)) == 0);
     }
     impure fn tell() -> uint {
         ret os.libc.ftell(f) as uint;
@@ -132,7 +134,33 @@ tag fileflag {
 
 type buf_writer = state obj {
   fn write(vec[u8] v);
+
+  fn seek(int offset, seek_style whence);
+  fn tell() -> uint; // TODO: eventually u64
 };
+
+state obj FILE_writer(os.libc.FILE f, bool must_close) {
+    fn write(vec[u8] v) {
+        auto len = _vec.len[u8](v);
+        auto vbuf = _vec.buf[u8](v);
+        auto nout = os.libc.fwrite(vbuf, len, 1u, f);
+        if (nout < 1u) {
+            log "error dumping buffer";
+        }
+    }
+
+    fn seek(int offset, seek_style whence) {
+        check(os.libc.fseek(f, offset, convert_whence(whence)) == 0);
+    }
+
+    fn tell() -> uint {
+        ret os.libc.ftell(f) as uint;
+    }
+
+    drop {
+        if (must_close) {os.libc.fclose(f);}
+    }
+}
 
 state obj fd_buf_writer(int fd, bool must_close) {
     fn write(vec[u8] v) {
@@ -149,6 +177,16 @@ state obj fd_buf_writer(int fd, bool must_close) {
             }
             count += nout as uint;
         }
+    }
+
+    fn seek(int offset, seek_style whence) {
+        log "need 64-bit native calls for seek, sorry";
+        fail;
+    }
+
+    fn tell() -> uint {
+        log "need 64-bit native calls for tell, sorry";
+        fail;
     }
 
     drop {
@@ -239,19 +277,56 @@ type str_writer =
           fn get_str() -> str;
     };
 
-type byte_buf = @rec(mutable vec[u8] buf);
+type byte_buf = @rec(mutable vec[mutable u8] buf, mutable uint pos);
 
 state obj byte_buf_writer(byte_buf buf) {
-    fn write(vec[u8] v) {buf.buf += v;}
+    fn write(vec[u8] v) {
+        // TODO: optimize
+        auto vlen = _vec.len[u8](v);
+        auto vpos = 0u;
+        while (vpos < vlen) {
+            auto b = v.(vpos);
+            if (buf.pos == _vec.len[mutable u8](buf.buf)) {
+                buf.buf += vec(mutable b);
+            } else {
+                buf.buf.(buf.pos) = b;
+            }
+            buf.pos += 1u;
+            vpos += 1u;
+        }
+    }
+
+    fn seek(int offset, seek_style whence) {
+        auto pos = buf.pos as int;
+        auto len = _vec.len[mutable u8](buf.buf) as int;
+        alt (whence) {
+            case (seek_set) { pos = offset;         }
+            case (seek_cur) { pos += offset;        }
+            case (seek_end) { pos = len + offset;   }
+        }
+
+        if (pos < 0) {
+            pos = 0;
+        } else if (pos > len) {
+            pos = len;
+        }
+
+        buf.pos = pos as uint;
+    }
+
+    fn tell() -> uint { ret buf.pos; }
 }
 
 // TODO awkward! it's not possible to implement a writer with an extra method
 fn string_writer() -> str_writer {
-    let vec[u8] b = vec();
-    let byte_buf buf = @rec(mutable buf = b);
+    // FIXME: yikes, this is bad. Needs fixing of mutable syntax.
+    let vec[mutable u8] b = vec(mutable 0u8);
+    _vec.pop[mutable u8](b);
+
+    let byte_buf buf = @rec(mutable buf = b, mutable pos = 0u);
     state obj str_writer_wrap(writer wr, byte_buf buf) {
         fn get_writer() -> writer {ret wr;}
-        fn get_str() -> str {ret _str.unsafe_from_bytes(buf.buf);}
+        fn get_str() -> str {ret _str.unsafe_from_mutable_bytes(buf.buf);}
     }
     ret str_writer_wrap(new_writer(byte_buf_writer(buf)), buf);
 }

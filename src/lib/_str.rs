@@ -7,7 +7,7 @@ native "rust" mod rustrt {
     fn str_buf(str s) -> sbuf;
     fn str_byte_len(str s) -> uint;
     fn str_alloc(uint n_bytes) -> str;
-    fn str_from_vec(vec[u8] b) -> str;
+    fn str_from_vec(vec[mutable? u8] b) -> str;
     fn str_from_cstr(sbuf cstr) -> str;
     fn str_from_buf(sbuf buf, uint len) -> str;
     fn refcount[T](str s) -> uint;
@@ -109,7 +109,16 @@ fn from_bytes(vec[u8] v) : is_utf8(v) -> str {
 }
 
 // FIXME temp thing
-fn unsafe_from_bytes(vec[u8] v) -> str {
+fn unsafe_from_bytes(vec[mutable? u8] v) -> str {
+    ret rustrt.str_from_vec(v);
+}
+
+// FIXME even temp-er thing; rustc can use "unsafe_from_bytes" above
+fn unsafe_from_mutable_bytes(vec[mutable u8] mv) -> str {
+    let vec[u8] v = vec();
+    for (mutable u8 b in mv) {
+        v += vec(b);
+    }
     ret rustrt.str_from_vec(v);
 }
 
