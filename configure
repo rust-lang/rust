@@ -103,11 +103,11 @@ putvar CFG_CPUTYPE
 msg "looking for build programs"
 probe_need CFG_GCC          gcc
 probe_need CFG_GIT          git
-probe_need CFG_LLVM_CONFIG  llvm-config
 probe_need CFG_OCAMLC       ocamlc
 probe_need CFG_PERL         perl
 probe_need CFG_PYTHON       python
 
+probe CFG_LLVM_CONFIG      llvm-config
 probe CFG_VALGRIND         valgrind
 probe CFG_OCAMLOPT         ocamlopt
 probe CFG_OCAMLC_OPT       ocamlc.opt
@@ -116,7 +116,29 @@ probe CFG_FLEXLINK         flexlink
 probe CFG_MAKEINFO         makeinfo
 probe CFG_TEXI2PDF         texi2pdf
 
-CFG_LLVM_VERSION=$(llvm-config --version)
+if [ ! -z "$CFG_LLVM_ROOT" ]
+then
+    CFG_LLVM_INCDIR="$CFG_LLVM_ROOT/include"
+    CFG_LLVM_BINDIR="$CFG_LLVM_ROOT/bin"
+    CFG_LLVM_LIBDIR="$CFG_LLVM_ROOT/lib"
+    CFG_LLVM_CXXFLAGS="-I$CFG_LLVM_INCDIR"
+    CFG_LLVM_LDFLAGS=""
+    CFG_LLVM_LIBS=$(find "$CFG_LLVM_LIBDIR" -name '*.lib' -exec echo '\"{}\"' ';' | xargs echo)
+    CFG_LLVM_VERSION=$("$CFG_LLVM_BINDIR/llc" --version | grep version | cut -d ' ' -f 5-)
+elif [ ! -z "$CFG_LLVM_VERSION" ]
+then
+    CFG_LLVM_VERSION=$(llvm-config --version)
+    CFG_LLVM_INCDIR=$(llvm-config --includedir)
+    CFG_LLVM_BINDIR=$(llvm-config --bindir)
+    CFG_LLVM_LIBDIR=$(llvm-config --libdir)
+    CFG_LLVM_CXXFLAGS=$(llvm-config --cxxflags)
+    CFG_LLVM_LDFLAGS=$(llvm-config --ldflags)
+    CFG_LLVM_LIBS=$(llvm-config --libs)
+else
+    err "either the \"CFG_LLVM_ROOT\" environment variable must be set, or a \
+\"llvm-version\" script must be present"
+fi
+
 case $CFG_LLVM_VERSION in
     (3.0svn | 3.0)
     msg "found ok version of LLVM: $CFG_LLVM_VERSION"
@@ -125,12 +147,6 @@ case $CFG_LLVM_VERSION in
     err "bad LLVM version: $CFG_LLVM_VERSION, need >=3.0svn"
     ;;
 esac
-CFG_LLVM_INCDIR=$(llvm-config --includedir)
-CFG_LLVM_BINDIR=$(llvm-config --bindir)
-CFG_LLVM_LIBDIR=$(llvm-config --libdir)
-CFG_LLVM_CXXFLAGS=$(llvm-config --cxxflags)
-CFG_LLVM_LDFLAGS=$(llvm-config --ldflags)
-CFG_LLVM_LIBS=$(llvm-config --libs)
 
 putvar CFG_LLVM_INCDIR
 putvar CFG_LLVM_BINDIR
