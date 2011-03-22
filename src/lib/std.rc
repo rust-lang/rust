@@ -77,6 +77,7 @@ mod dbg;
 mod bitv;
 mod sort;
 mod sha1;
+mod ebml;
 
 // Local Variables:
 // mode: rust;
