@@ -34,6 +34,22 @@ impure fn test_vec() {
   check (v1.(2) == 2);
 }
 
+impure fn test_str() {
+  let port[str] po = port();
+  let chan[str] ch = chan(po);
+  let str s0 = "test";
+
+  ch <| s0;
+
+  let str s1;
+  s1 <- po;
+
+  check (s1.(0) as u8 == 't' as u8);
+  check (s1.(1) as u8 == 'e' as u8);
+  check (s1.(2) as u8 == 's' as u8);
+  check (s1.(3) as u8 == 't' as u8);
+}
+
 impure fn test_tup() {
   type t = tup(int, u8, char);
 
@@ -99,6 +115,7 @@ impure fn test_chan() {
 impure fn main() {
   test_rec();
   test_vec();
+  test_str();
   test_tup();
   test_tag();
   test_chan();
