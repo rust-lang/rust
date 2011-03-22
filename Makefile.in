@@ -1104,4 +1104,4 @@ clean:
 	$(Q)rm -Rf $(foreach ext,out out.tmp                               \
                              boot$(X) stage0$(X) stage1$(X) stage2$(X) \
                              bc o s exe dSYM,                          \
-                        $(wildcard test/*/*.$(ext)))
+                        $(wildcard test/*/*.$(ext) test/bench/*/*.$(ext)))
