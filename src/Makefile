@@ -321,12 +321,12 @@ RUNTIME_HDR := rt/globals.h \
 RUNTIME_INCS := -Irt/isaac -Irt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o)
 
-SUPPORT_CS := $(addprefix llvmext/, \
+SUPPORT_CS := $(addprefix rustllvm/, \
     MachOObjectFile.cpp Object.cpp RustWrapper.cpp)
 
-SUPPORT_HDR := llvmext/include/llvm-c/Object.h
+SUPPORT_HDR := rustllvm/include/llvm-c/Object.h
 
-SUPPORT_INCS := -iquote $(CFG_LLVM_INCDIR) -iquote llvmext/include
+SUPPORT_INCS := -iquote $(CFG_LLVM_INCDIR) -iquote rustllvm/include
 SUPPORT_OBJS := $(SUPPORT_CS:.cpp=.o)
 SUPPORT_LIBS := $(CFG_LLVM_LDFLAGS) $(CFG_LLVM_LIBS)
 
@@ -363,7 +363,7 @@ rt/%.o: rt/%.cpp $(MKFILES)
 	@$(call CFG_ECHO, compile: $<)
 	$(CFG_QUIET)$(call CFG_COMPILE_C, $@, $(RUNTIME_INCS)) $<
 
-llvmext/%.o: llvmext/%.cpp $(MKFILES)
+rustllvm/%.o: rustllvm/%.cpp $(MKFILES)
 	@$(call CFG_ECHO, compile: $<)
 	$(CFG_QUIET)$(call CFG_COMPILE_C, $@, $(CFG_LLVM_CXXFLAGS) \
 		$(SUPPORT_INCS)) $<

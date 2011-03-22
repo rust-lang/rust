@@ -61,7 +61,7 @@ ifneq ($(findstring MINGW,$(CFG_OSTYPE)),)
 endif
 
 CFG_LDPATH :=$(CFG_BUILD_DIR)/rt
-CFG_LDPATH :=$(CFG_LDPATH):$(CFG_BUILD_DIR)/llvmext
+CFG_LDPATH :=$(CFG_LDPATH):$(CFG_BUILD_DIR)/rustllvm
 
 ifdef CFG_WINDOWSY
   CFG_INFO := $(info cfg: windows-y environment)
@@ -126,7 +126,7 @@ ifdef CFG_UNIXY
 endif
 
 CFG_RUNTIME :=$(call CFG_LIB_NAME,rustrt)
-CFG_LLVMEXT :=$(call CFG_LIB_NAME,rustllvm)
+CFG_RUSTLLVM :=$(call CFG_LIB_NAME,rustllvm)
 CFG_STDLIB :=$(call CFG_LIB_NAME,std)
 
 CFG_LLC_CFLAGS := -march=x86
@@ -136,7 +136,7 @@ ifdef CFG_GCC
   CFG_GCC_CFLAGS += -Wall -Werror -fno-rtti -fno-exceptions -g
   CFG_GCC_LINK_FLAGS += -g
   CFG_COMPILE_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_CFLAGS) -c -o $(1) $(2)
-  CFG_LINK_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_LINK_FLAGS) -o $(1)
+  CFG_LINK_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_LINK_FLAGS) -o $(1) $(2)
   CFG_DEPEND_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_CFLAGS) -MT "$(1)" -MM $(2)
 else
   CFG_ERR := $(error please try on a system with gcc)
@@ -319,16 +319,16 @@ RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o)
 # rustc LLVM-extensions (C++) library variables
 ######################################################################
 
-LLVMEXT_CS := $(addprefix llvmext/, \
+RUSTLLVM_CS := $(addprefix rustllvm/, \
                 MachOObjectFile.cpp Object.cpp RustWrapper.cpp)
 
-LLVMEXT_HDR := llvmext/include/llvm-c/Object.h
-LLVMEXT_DEF := $(S)src/llvmext/rustllvm.def
+RUSTLLVM_HDR := rustllvm/include/llvm-c/Object.h
+RUSTLLVM_DEF := $(S)src/rustllvm/rustllvm.def
 
-LLVMEXT_INCS := -iquote $(CFG_LLVM_INCDIR) \
-                -iquote $(S)src/llvmext/include
-LLVMEXT_OBJS := $(LLVMEXT_CS:.cpp=.o)
-LLVMEXT_LIBS := $(CFG_LLVM_LDFLAGS) $(CFG_LLVM_LIBS)
+RUSTLLVM_INCS := -iquote $(CFG_LLVM_INCDIR) \
+                 -iquote $(S)src/rustllvm/include
+RUSTLLVM_OBJS := $(RUSTLLVM_CS:.cpp=.o)
+RUSTLLVM_LIBS := $(CFG_LLVM_LDFLAGS) $(CFG_LLVM_LIBS)
 
 ######################################################################
 # Standard library variables
@@ -349,7 +349,7 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
 # test dependency variables
 ######################################################################
 
-LREQ := rt/$(CFG_RUNTIME) llvmext/$(CFG_LLVMEXT)
+LREQ := rt/$(CFG_RUNTIME) rustllvm/$(CFG_RUSTLLVM)
 BREQ := boot/rustboot$(X) boot/$(CFG_STDLIB)
 SREQ0 := stage0/rustc$(X) $(LREQ)
 SREQ1 := stage1/rustc$(X) $(LREQ)
@@ -361,7 +361,7 @@ SREQ1 := stage1/rustc$(X) $(LREQ)
 all: boot/rustboot$(X)          \
      boot/$(CFG_STDLIB)         \
      rt/$(CFG_RUNTIME)          \
-     llvmext/$(CFG_LLVMEXT)     \
+     rustllvm/$(CFG_RUSTLLVM)   \
      stage0/rustc$(X)           \
      stage0/glue.o              \
      stage0/$(CFG_STDLIB)       \
@@ -371,11 +371,11 @@ rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF)
 	@$(call E, link: $@)
 	$(Q)$(call CFG_LINK_C,$@,$(RUNTIME_OBJS),$(RUNTIME_DEF))
 
-llvmext/$(CFG_LLVMEXT): $(LLVMEXT_OBJS) $(MKFILES) $(LLVMEXT_HDR) \
-					    $(LLVMEXT_DEF)
+rustllvm/$(CFG_RUSTLLVM): $(RUSTLLVM_OBJS) $(MKFILES) $(RUSTLLVM_HDR) \
+                          $(RUSTLLVM_DEF)
 	@$(call E, link: $@)
-	$(Q)$(call CFG_LINK_C,$@,$(CFG_LLVM_LDFLAGS) $(LLVMEXT_OBJS) \
-        $(CFG_LLVM_LIBS),$(LLVMEXT_DEF))
+	$(Q)$(call CFG_LINK_C,$@,$(CFG_LLVM_LDFLAGS) $(RUSTLLVM_OBJS) \
+          $(CFG_LLVM_LIBS) $(CFG_LLVM_LDFLAGS),$(RUSTLLVM_DEF))
 
 ifdef CFG_BOOT_NATIVE
 boot/rustboot$(X): $(BOOT_CMXS) $(MKFILES)
@@ -438,17 +438,17 @@ stage2/rustc$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) \
 
 
 stage0/glue.bc: stage0/rustc$(X) stage0/$(CFG_STDLIB) \
-                llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
+                rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
 	$(STAGE0) -o $@ -glue
 
 stage1/glue.bc: stage1/rustc$(X) stage1/$(CFG_STDLIB) \
-                llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
+                rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
 	$(STAGE1) -o $@ -glue
 
 stage2/glue.bc: stage2/rustc$(X) stage2/$(CFG_STDLIB) \
-                llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
+                rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
 	$(STAGE2) -o $@ -glue
 
@@ -460,9 +460,9 @@ rt/%.o: rt/%.cpp $(MKFILES)
 	@$(call E, compile: $@)
 	$(Q)$(call CFG_COMPILE_C, $@, $(RUNTIME_INCS)) $<
 
-llvmext/%.o: llvmext/%.cpp $(MKFILES)
+rustllvm/%.o: rustllvm/%.cpp $(MKFILES)
 	@$(call E, compile: $@)
-	$(Q)$(call CFG_COMPILE_C, $@, $(CFG_LLVM_CXXFLAGS) $(LLVMEXT_INCS)) $<
+	$(Q)$(call CFG_COMPILE_C, $@, $(CFG_LLVM_CXXFLAGS) $(RUSTLLVM_INCS)) $<
 
 %.cmo: %.ml $(MKFILES)
 	@$(call E, compile: $@)
@@ -946,7 +946,7 @@ PKG_FILES :=\
       README boot/README comp/README           \
       $(filter-out $(GENERATED), $(BOOT_MLS))  \
       $(RUNTIME_CS) $(RUNTIME_HDR)             \
-      $(LLVMEXT_CS) $(LLVMEXT_HDR)             \
+      $(RUSTLLVM_CS) $(RUSTLLVM_HDR)           \
       $(PKG_3RDPARTY))                         \
     $(GENERATED)                               \
     $(S)src/boot/fe/lexer.ml                   \
@@ -994,13 +994,14 @@ tidy:
 	@$(call E, check: formatting)
 	$(Q)python $(S)src/etc/tidy.py \
       $(filter-out $(GENERATED) $(addprefix $(S)src/, $(GENERATED)) \
-        $(addprefix $(S)src/, $(LLVMEXT_CS) $(LLVMEXT_HDR) $(PKG_3RDPARTY)) \
+        $(addprefix $(S)src/, $(RUSTLLVM_CS) $(RUSTLLVM_HDR) \
+          $(PKG_3RDPARTY)) \
         $(S)src/etc/%, $(PKG_FILES))
 
 clean:
 	@$(call E, cleaning)
 	$(Q)rm -f $(RUNTIME_OBJS)
-	$(Q)rm -f $(LLVMEXT_OBJS)
+	$(Q)rm -f $(RUSTLLVM_OBJS)
 	$(Q)rm -f $(BOOT_CMOS) $(BOOT_CMIS) $(BOOT_CMXS) $(BOOT_OBJS)
 	$(Q)rm -f $(ML_DEPFILES) $(C_DEPFILES) $(CRATE_DEPFILES)
 	$(Q)rm -f $(ML_DEPFILES:%.d=%.d.tmp)
@@ -1011,7 +1012,7 @@ clean:
 	$(Q)rm -f stage0/rustc$(X) stage0/$(CFG_STDLIB) stage0/glue*
 	$(Q)rm -f stage1/rustc$(X) stage1/$(CFG_STDLIB) stage1/glue*
 	$(Q)rm -f stage2/rustc$(X) stage2/$(CFG_STDLIB) stage2/glue*
-	$(Q)rm -f llvmext/$(CFG_LLVMEXT) rt/$(CFG_RUNTIME)
+	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	$(Q)rm -Rf $(PKG_NAME)-*.tar.gz dist
 	$(Q)rm -f $(foreach ext,cmx cmi cmo cma bc o a d exe,\
                         $(wildcard boot/*/*.$(ext) boot/*/*/*.$(ext)))
