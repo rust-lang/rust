@@ -211,6 +211,11 @@ fn T_int() -> TypeRef {
     ret T_i32();
 }
 
+fn T_float() -> TypeRef {
+    // FIXME: switch on target type.
+    ret T_f64();
+}
+
 fn T_char() -> TypeRef {
     ret T_i32();
 }
@@ -358,10 +363,6 @@ fn T_crate(type_names tn) -> TypeRef {
                           ));
     tn.associate(s, t);
     ret t;
-}
-
-fn T_double() -> TypeRef {
-    ret llvm.LLVMDoubleType();
 }
 
 fn T_taskptr(type_names tn) -> TypeRef {
@@ -590,6 +591,7 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t, bool boxed) -> TypeRef {
         case (ty.ty_nil) { llty = T_nil(); }
         case (ty.ty_bool) { llty = T_bool(); }
         case (ty.ty_int) { llty = T_int(); }
+        case (ty.ty_float) { llty = T_float(); }
         case (ty.ty_uint) { llty = T_int(); }
         case (ty.ty_machine(?tm)) {
             alt (tm) {
@@ -743,6 +745,10 @@ fn C_integral(int i, TypeRef t) -> ValueRef {
     ret llvm.LLVMConstIntOfString(t, _str.buf(istr(i)), 10);
 }
 
+fn C_float(str s) -> ValueRef {
+    ret llvm.LLVMConstRealOfString(T_float(), _str.buf(s));
+}
+
 fn C_nil() -> ValueRef {
     // NB: See comment above in T_void().
     ret C_integral(0, T_i1());
@@ -879,6 +885,7 @@ fn trans_upcall2(builder b, @glue_fns glues, ValueRef lltaskptr,
         llglue = glues.upcall_glues_cdecl.(n);
     }
     let vec[ValueRef] call_args = vec(llupcall);
+
     if (!pass_task) {
         call_args += vec(lltaskptr);
     }
@@ -2289,6 +2296,9 @@ fn trans_lit(@crate_ctxt cx, &ast.lit lit, &ast.ann ann) -> ValueRef {
                 case (common.ty_i64) { t = T_i64(); }
             }
             ret C_integral(i, t);
+        }
+        case(ast.lit_float(?fs)) {
+            ret C_float(fs);
         }
         case (ast.lit_char(?c)) {
             ret C_integral(c as int, T_char());
@@ -4477,10 +4487,25 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
     auto sub = trans_expr(cx, e);
     auto e_ty = ty.expr_ty(e);
     alt (e_ty.struct) {
+        case(ty.ty_float) {
+            auto tmp = sub.bcx.build.Alloca(T_float());
+            sub.bcx.build.Store(sub.val, tmp);
+            sub = res(sub.bcx, tmp);
+        }
+        case(_) { }
+    }
+
+    alt (e_ty.struct) {
         case (ty.ty_str) {
             auto v = vp2i(sub.bcx, sub.val);
             ret trans_upcall(sub.bcx,
                              "upcall_log_str",
+                             vec(v));
+        }
+        case (ty.ty_float) {
+            auto v = vp2i(sub.bcx, sub.val);
+            ret trans_upcall(sub.bcx,
+                             "upcall_log_float",
                              vec(v));
         }
         case (_) {
@@ -6247,7 +6272,6 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     collect_items(cx, crate);
     collect_tag_ctors(cx, crate);
     trans_constants(cx, crate);
-
     trans_mod(cx, crate.node.module);
     trans_vec_append_glue(cx);
     if (!shared) {

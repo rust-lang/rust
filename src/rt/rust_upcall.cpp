@@ -39,6 +39,13 @@ void upcall_log_int(rust_task *task, int32_t i) {
               "rust: %" PRId32 " (0x%" PRIx32 ")", i, i);
 }
 
+extern "C" CDECL
+void upcall_log_float(rust_task *task, double *f) {
+    LOG_UPCALL_ENTRY(task);
+    task->log(rust_log::UPCALL | rust_log::ULOG,
+              "rust: %12.12f", *f);
+}
+
 extern "C" CDECL void
 upcall_log_str(rust_task *task, rust_str *str) {
     LOG_UPCALL_ENTRY(task);

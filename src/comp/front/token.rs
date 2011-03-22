@@ -126,6 +126,7 @@ tag token {
     LIT_INT(int);
     LIT_UINT(uint);
     LIT_MACH_INT(ty_mach, int);
+    LIT_FLOAT(str);
     LIT_STR(str);
     LIT_CHAR(char);
     LIT_BOOL(bool);
@@ -295,7 +296,7 @@ fn to_str(token t) -> str {
             ret  _int.to_str(i, 10u)
                 + "_" + ty_mach_to_str(tm);
         }
-
+        case (LIT_FLOAT(?s)) { ret s; }
         case (LIT_STR(?s)) {
             // FIXME: escape.
             ret "\"" + s + "\"";

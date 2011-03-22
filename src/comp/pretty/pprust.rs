@@ -283,6 +283,9 @@ impure fn print_literal(ps s, @ast.lit lit) {
     case (ast.lit_uint(?val)) { // TODO clipping? uistr?
       wrd(s, util.common.istr(val as int) + "u");
     }
+    case (ast.lit_float(?fstr)) {
+      wrd(s, fstr);
+    }
     case (ast.lit_mach_int(?mach,?val)) {
       wrd(s, util.common.istr(val as int));
       wrd(s, util.common.ty_mach_to_str(mach));

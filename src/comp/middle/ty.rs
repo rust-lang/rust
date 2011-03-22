@@ -32,6 +32,7 @@ tag sty {
     ty_nil;
     ty_bool;
     ty_int;
+    ty_float;
     ty_uint;
     ty_machine(util.common.ty_mach);
     ty_char;
@@ -162,6 +163,7 @@ fn ty_to_str(&@t typ) -> str {
         case (ty_nil)          { s += "()";                         }
         case (ty_bool)         { s += "bool";                       }
         case (ty_int)          { s += "int";                        }
+        case (ty_float)        { s += "float";                      }
         case (ty_uint)         { s += "uint";                       }
         case (ty_machine(?tm)) { s += common.ty_mach_to_str(tm);    }
         case (ty_char)         { s += "char";                       }
@@ -418,6 +420,7 @@ fn type_is_scalar(@t ty) -> bool {
         case (ty_nil) { ret true; }
         case (ty_bool) { ret true; }
         case (ty_int) { ret true; }
+        case (ty_float) { ret true; }
         case (ty_uint) { ret true; }
         case (ty_machine(_)) { ret true; }
         case (ty_char) { ret true; }

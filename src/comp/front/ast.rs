@@ -255,6 +255,7 @@ tag lit_ {
     lit_int(int);
     lit_uint(uint);
     lit_mach_int(ty_mach, int);
+    lit_float(str);
     lit_nil;
     lit_bool(bool);
 }
@@ -274,6 +275,7 @@ tag ty_ {
     ty_bool;
     ty_int;
     ty_uint;
+    ty_float;
     ty_machine(util.common.ty_mach);
     ty_char;
     ty_str;
