@@ -86,12 +86,12 @@ CFG_CPUTYPE=$(uname -m)
 case $CFG_OSTYPE in
 
     MINGW*)
-        CFG_SRC_DIR=CFG_SRC_DIR=${0%${0##*\\}}
+        CFG_SRC_DIR=${0%${0##*\\}}
         CFG_BUILD_DIR=$PWD
         ;;
 
     *)
-        CFG_SRC_DIR=CFG_SRC_DIR=${0%${0##*/}}
+        CFG_SRC_DIR=${0%${0##*/}}
         CFG_BUILD_DIR=$PWD
         ;;
 esac
