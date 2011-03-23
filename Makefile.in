@@ -270,6 +270,10 @@ BOOT_ML_NATIVE_LIBS := unix.cmxa nums.cmxa bigarray.cmxa
 BOOT_OCAMLC_FLAGS   := -g $(BOOT_ML_INCS) -w Ael -warn-error Ael
 BOOT_OCAMLOPT_FLAGS := -g $(BOOT_ML_INCS) -w Ael -warn-error Ael
 
+ifdef CFG_FLEXLINK
+  BOOT_OCAMLOPT_FLAGS += -cclib -L/usr/lib
+endif
+
 ######################################################################
 # Runtime (C++) library variables
 ######################################################################
