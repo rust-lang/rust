@@ -1129,11 +1129,12 @@ distcheck: $(PKG_TAR)
 
 tidy:
 	@$(call E, check: formatting)
-	$(Q)python $(S)src/etc/tidy.py \
+	$(Q)echo \
       $(filter-out $(GENERATED) $(addprefix $(S)src/, $(GENERATED)) \
         $(addprefix $(S)src/, $(RUSTLLVM_CS) $(RUSTLLVM_HDR) \
           $(PKG_3RDPARTY)) \
-        $(S)src/etc/%, $(PKG_FILES))
+        $(S)src/etc/%, $(PKG_FILES)) \
+    | xargs -n 10 python $(S)src/etc/tidy.py
 
 clean:
 	@$(call E, cleaning)
