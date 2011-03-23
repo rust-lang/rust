@@ -520,8 +520,8 @@ docsnap: doc/rust.pdf
 
 # Float doesn't work in boot
 
-FLOAT_XFAILS := test/run-pass/float.rs \
-                test/run-pass/float2.rs
+FLOAT_XFAILS := $(S)src/test/run-pass/float.rs \
+                $(S)src/test/run-pass/float2.rs
 
 # Temporarily xfail tests broken by the nominal-tags change.
 
