@@ -77,24 +77,16 @@ need_cmd cp
 need_cmd find
 need_cmd uname
 need_cmd date
+need_cmd tr
 
 msg "inspecting environment"
 
 CFG_OSTYPE=$(uname -s)
 CFG_CPUTYPE=$(uname -m)
 
-case $CFG_OSTYPE in
-
-    MINGW*)
-        CFG_SRC_DIR=${0%${0##*\\}}
-        CFG_BUILD_DIR=$PWD
-        ;;
-
-    *)
-        CFG_SRC_DIR=${0%${0##*/}}
-        CFG_BUILD_DIR=$PWD
-        ;;
-esac
+CFG_SELF=$(echo $0 | tr '\' '/')
+CFG_SRC_DIR=${CFG_SELF%${CFG_SELF##*/}}
+CFG_BUILD_DIR=$(echo $PWD | tr '\' '/')
 
 msg "recreating config.mk"
 echo '' >config.mk
@@ -180,7 +172,7 @@ putvar CFG_LLVM_LDFLAGS
 putvar CFG_LLVM_LIBS
 
 # Munge any paths that appear in config.mk back to posix-y
-perl -i.bak -p -e 's@ ([a-zA-Z]):\\@ /\1/@go;' \
+perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' \
                -e 's@\\@/@go;' config.mk
 rm -f config.mk.bak
 
