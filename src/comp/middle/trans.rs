@@ -76,9 +76,11 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id, @ast.item] items,
                             hashmap[ast.def_id,
                                     @ast.native_item] native_items,
+                            hashmap[ast.def_id, str] item_symbols,
                             // TODO: hashmap[tup(tag_id,subtys), @tag_info]
                             hashmap[@ty.t, uint] tag_sizes,
                             hashmap[ast.def_id, ValueRef] discrims,
+                            hashmap[ast.def_id, str] discrim_symbols,
                             hashmap[ast.def_id, ValueRef] fn_pairs,
                             hashmap[ast.def_id, ValueRef] consts,
                             hashmap[ast.def_id,()] obj_methods,
@@ -5332,6 +5334,7 @@ fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
         let str s = cx.names.next("_rust_method") + sep() + mcx.path;
         let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfnty);
         cx.item_ids.insert(m.node.id, llfn);
+        cx.item_symbols.insert(m.node.id, s);
 
         trans_fn(mcx, m.node.meth, m.node.id, some[TypeRef](self_ty),
                  ty_params, m.node.ann);
@@ -5663,6 +5666,7 @@ fn register_fn_pair(@crate_ctxt cx, str ps, TypeRef llpairty, ValueRef llfn,
                         as llvm.Linkage);
 
     cx.item_ids.insert(id, llfn);
+    cx.item_symbols.insert(id, ps);
     cx.fn_pairs.insert(id, gvar);
 }
 
@@ -5884,8 +5888,9 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
                 auto discrim_val = C_int(i as int);
 
                 // FIXME: better name.
+                auto s = cx.names.next("_rust_tag_discrim");
                 auto discrim_gvar = llvm.LLVMAddGlobal(cx.llmod, T_int(),
-                    _str.buf("tag_discrim"));
+                                                       _str.buf(s));
 
                 // FIXME: Eventually we do want to export these, but we need
                 // to figure out what name they get first!
@@ -5895,6 +5900,7 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
                                     as llvm.Linkage);
 
                 cx.discrims.insert(variant.id, discrim_gvar);
+                cx.discrim_symbols.insert(variant.id, s);
 
                 i += 1u;
             }
@@ -5905,6 +5911,8 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
             // with consts.
             auto v = C_int(1);
             cx.item_ids.insert(cid, v);
+            auto s = cx.names.next("_rust_const") + sep() + name;
+            cx.item_symbols.insert(cid, s);
         }
 
         case (_) {
@@ -6485,8 +6493,10 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    item_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
                    native_items = new_def_hash[@ast.native_item](),
+                   item_symbols = new_def_hash[str](),
                    tag_sizes = tag_sizes,
                    discrims = new_def_hash[ValueRef](),
+                   discrim_symbols = new_def_hash[str](),
                    fn_pairs = new_def_hash[ValueRef](),
                    consts = new_def_hash[ValueRef](),
                    obj_methods = new_def_hash[()](),

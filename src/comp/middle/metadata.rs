@@ -1,8 +1,11 @@
 import std._str;
 import std._vec;
+import std.ebml;
+import std.io;
 import std.option;
 
 import front.ast;
+import middle.fold;
 import middle.trans;
 import middle.ty;
 import back.x86;
@@ -11,6 +14,22 @@ import util.common;
 import lib.llvm.llvm;
 import lib.llvm.llvm.ValueRef;
 import lib.llvm.False;
+
+const uint tag_paths = 0x01u;
+const uint tag_items = 0x02u;
+
+const uint tag_paths_name = 0x03u;
+const uint tag_paths_item = 0x04u;
+const uint tag_paths_mod = 0x05u;
+
+const uint tag_items_item = 0x06u;
+const uint tag_items_def_id = 0x07u;
+const uint tag_items_kind = 0x08u;
+const uint tag_items_ty_param = 0x09u;
+const uint tag_items_type = 0x0au;
+const uint tag_items_symbol = 0x0bu;
+const uint tag_items_variant = 0x0cu;
+const uint tag_items_tag_id = 0x0du;
 
 // Type encoding
 
@@ -102,7 +121,8 @@ fn sty_str(ty.sty st, def_str ds) -> str {
         }
         case (ty.ty_var(?id)) {ret "X" + common.istr(id);}
         case (ty.ty_native) {ret "E";}
-        // TODO (maybe?)   ty_param(ast.def_id), ty_type;
+        case (ty.ty_param(?def)) {ret "p" + ds(def);}
+        // TODO (maybe?)   ty_type;
     }
 }
 
@@ -128,13 +148,270 @@ fn C_postr(str s) -> ValueRef {
     ret llvm.LLVMConstString(_str.buf(s), _str.byte_len(s), False);
 }
 
-fn collect_meta_directives(@trans.crate_ctxt cx, @ast.crate crate)
-        -> ValueRef {
-    ret C_postr("Hello world!");    // TODO
+
+// Path table encoding
+
+fn encode_name(&ebml.writer ebml_w, str name) {
+    ebml.start_tag(ebml_w, tag_paths_name);
+    ebml_w.writer.write(_str.bytes(name));
+    ebml.end_tag(ebml_w);
+}
+
+fn encode_def_id(&ebml.writer ebml_w, &ast.def_id id) {
+    ebml.start_tag(ebml_w, tag_items_def_id);
+    ebml_w.writer.write(_str.bytes(def_to_str(id)));
+    ebml.end_tag(ebml_w);
+}
+
+fn encode_tag_variant_paths(&ebml.writer ebml_w, vec[ast.variant] variants) {
+    for (ast.variant variant in variants) {
+        ebml.start_tag(ebml_w, tag_paths_item);
+        encode_name(ebml_w, variant.name);
+        encode_def_id(ebml_w, variant.id);
+        ebml.end_tag(ebml_w);
+    }
+}
+
+fn encode_native_module_item_paths(&ebml.writer ebml_w,
+                                   &ast.native_mod nmod) {
+    for (@ast.native_item nitem in nmod.items) {
+        alt (nitem.node) {
+            case (ast.native_item_ty(?id, ?did)) {
+                ebml.start_tag(ebml_w, tag_paths_item);
+                encode_name(ebml_w, id);
+                encode_def_id(ebml_w, did);
+                ebml.end_tag(ebml_w);
+            }
+            case (ast.native_item_fn(?id, _, _, _, ?did, _)) {
+                ebml.start_tag(ebml_w, tag_paths_item);
+                encode_name(ebml_w, id);
+                encode_def_id(ebml_w, did);
+                ebml.end_tag(ebml_w);
+            }
+        }
+    }
+}
+
+fn encode_module_item_paths(&ebml.writer ebml_w, &ast._mod module) {
+    // TODO: only encode exported items
+    for (@ast.item it in module.items) {
+        alt (it.node) {
+            case (ast.item_const(?id, _, ?tps, ?did, ?ann)) {
+                ebml.start_tag(ebml_w, tag_paths_item);
+                encode_name(ebml_w, id);
+                encode_def_id(ebml_w, did);
+                ebml.end_tag(ebml_w);
+            }
+            case (ast.item_fn(?id, _, ?tps, ?did, ?ann)) {
+                ebml.start_tag(ebml_w, tag_paths_item);
+                encode_name(ebml_w, id);
+                encode_def_id(ebml_w, did);
+                ebml.end_tag(ebml_w);
+            }
+            case (ast.item_mod(?id, ?_mod, _)) {
+                ebml.start_tag(ebml_w, tag_paths_mod);
+                encode_name(ebml_w, id);
+                encode_module_item_paths(ebml_w, _mod);
+                ebml.end_tag(ebml_w);
+            }
+            case (ast.item_native_mod(?id, ?nmod, _)) {
+                ebml.start_tag(ebml_w, tag_paths_mod);
+                encode_name(ebml_w, id);
+                encode_native_module_item_paths(ebml_w, nmod);
+                ebml.end_tag(ebml_w);
+            }
+            case (ast.item_ty(?id, _, ?tps, ?did, ?ann)) {
+                ebml.start_tag(ebml_w, tag_paths_item);
+                encode_name(ebml_w, id);
+                encode_def_id(ebml_w, did);
+                ebml.end_tag(ebml_w);
+            }
+            case (ast.item_tag(?id, ?variants, ?tps, ?did)) {
+                ebml.start_tag(ebml_w, tag_paths_item);
+                encode_name(ebml_w, id);
+                encode_tag_variant_paths(ebml_w, variants);
+                encode_def_id(ebml_w, did);
+                ebml.end_tag(ebml_w);
+            }
+            case (ast.item_obj(?id, _, ?tps, ?did, ?ann)) {
+                ebml.start_tag(ebml_w, tag_paths_item);
+                encode_name(ebml_w, id);
+                encode_def_id(ebml_w, did);
+                ebml.end_tag(ebml_w);
+            }
+        }
+    }
+}
+
+fn encode_item_paths(&ebml.writer ebml_w, @ast.crate crate) {
+    ebml.start_tag(ebml_w, tag_paths);
+    encode_module_item_paths(ebml_w, crate.node.module);
+    ebml.end_tag(ebml_w);
+}
+
+
+// Item info table encoding
+
+fn encode_kind(&ebml.writer ebml_w, u8 c) {
+    ebml.start_tag(ebml_w, tag_items_kind);
+    ebml_w.writer.write(vec(c));
+    ebml.end_tag(ebml_w);
+}
+
+fn def_to_str(ast.def_id did) -> str {
+    ret #fmt("%d:%d", did._0, did._1);
+}
+
+// TODO: We need to encode the "crate numbers" somewhere for diamond imports.
+fn encode_type_params(&ebml.writer ebml_w, vec[ast.ty_param] tps) {
+    for (ast.ty_param tp in tps) {
+        ebml.start_tag(ebml_w, tag_items_ty_param);
+        ebml_w.writer.write(_str.bytes(def_to_str(tp.id)));
+        ebml.end_tag(ebml_w);
+    }
+}
+
+fn encode_type(&ebml.writer ebml_w, @ty.t typ) {
+    ebml.start_tag(ebml_w, tag_items_type);
+    auto f = def_to_str;
+    ebml_w.writer.write(_str.bytes(ty_str(typ, f)));
+    ebml.end_tag(ebml_w);
+}
+
+fn encode_symbol(@trans.crate_ctxt cx, &ebml.writer ebml_w, ast.def_id did) {
+    ebml.start_tag(ebml_w, tag_items_symbol);
+    ebml_w.writer.write(_str.bytes(cx.item_symbols.get(did)));
+    ebml.end_tag(ebml_w);
+}
+
+fn encode_discriminant(@trans.crate_ctxt cx, &ebml.writer ebml_w,
+                       ast.def_id did) {
+    ebml.start_tag(ebml_w, tag_items_symbol);
+    ebml_w.writer.write(_str.bytes(cx.discrim_symbols.get(did)));
+    ebml.end_tag(ebml_w);
+}
+
+fn encode_tag_id(&ebml.writer ebml_w, &ast.def_id id) {
+    ebml.start_tag(ebml_w, tag_items_tag_id);
+    ebml_w.writer.write(_str.bytes(def_to_str(id)));
+    ebml.end_tag(ebml_w);
+}
+
+
+fn encode_tag_variant_info(@trans.crate_ctxt cx, &ebml.writer ebml_w,
+                           ast.def_id did, vec[ast.variant] variants) {
+    for (ast.variant variant in variants) {
+        ebml.start_tag(ebml_w, tag_items_variant);
+        encode_def_id(ebml_w, variant.id);
+        encode_tag_id(ebml_w, did);
+        encode_type(ebml_w, trans.node_ann_type(cx, variant.ann));
+        if (_vec.len[ast.variant_arg](variant.args) > 0u) {
+            encode_symbol(cx, ebml_w, variant.id);
+        }
+        encode_discriminant(cx, ebml_w, variant.id);
+        ebml.end_tag(ebml_w);
+    }
+}
+
+fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
+                        @ast.item item) {
+    alt (item.node) {
+        case (ast.item_const(_, _, _, ?did, ?ann)) {
+            ebml.start_tag(ebml_w, tag_items_item);
+            encode_def_id(ebml_w, did);
+            encode_kind(ebml_w, 'c' as u8);
+            encode_type(ebml_w, trans.node_ann_type(cx, ann));
+            encode_symbol(cx, ebml_w, did);
+            ebml.end_tag(ebml_w);
+        }
+        case (ast.item_fn(_, _, ?tps, ?did, ?ann)) {
+            ebml.start_tag(ebml_w, tag_items_item);
+            encode_def_id(ebml_w, did);
+            encode_kind(ebml_w, 'f' as u8);
+            encode_type_params(ebml_w, tps);
+            encode_type(ebml_w, trans.node_ann_type(cx, ann));
+            encode_symbol(cx, ebml_w, did);
+            ebml.end_tag(ebml_w);
+        }
+        case (ast.item_mod(_, _, _)) {
+            // nothing to do
+        }
+        case (ast.item_native_mod(_, _, _)) {
+            // nothing to do
+        }
+        case (ast.item_ty(?id, _, ?tps, ?did, ?ann)) {
+            ebml.start_tag(ebml_w, tag_items_item);
+            encode_def_id(ebml_w, did);
+            encode_kind(ebml_w, 'y' as u8);
+            encode_type_params(ebml_w, tps);
+            encode_type(ebml_w, trans.node_ann_type(cx, ann));
+            ebml.end_tag(ebml_w);
+        }
+        case (ast.item_tag(?id, ?variants, ?tps, ?did)) {
+            ebml.start_tag(ebml_w, tag_items_item);
+            encode_def_id(ebml_w, did);
+            encode_kind(ebml_w, 't' as u8);
+            encode_type_params(ebml_w, tps);
+            ebml.end_tag(ebml_w);
+
+            encode_tag_variant_info(cx, ebml_w, did, variants);
+        }
+        case (ast.item_obj(?id, _, ?tps, ?did, ?ann)) {
+            ebml.start_tag(ebml_w, tag_items_item);
+            encode_def_id(ebml_w, did);
+            encode_kind(ebml_w, 'o' as u8);
+            encode_type_params(ebml_w, tps);
+            encode_type(ebml_w, trans.node_ann_type(cx, ann));
+            encode_symbol(cx, ebml_w, did);
+            ebml.end_tag(ebml_w);
+        }
+    }
+}
+
+fn encode_info_for_native_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
+                               @ast.native_item nitem) {
+    ebml.start_tag(ebml_w, tag_items_item);
+    alt (nitem.node) {
+        case (ast.native_item_ty(_, ?did)) {
+            encode_def_id(ebml_w, did);
+            encode_kind(ebml_w, 'T' as u8);
+        }
+        case (ast.native_item_fn(_, _, _, ?tps, ?did, ?ann)) {
+            encode_def_id(ebml_w, did);
+            encode_kind(ebml_w, 'F' as u8);
+            encode_type_params(ebml_w, tps);
+            encode_type(ebml_w, trans.node_ann_type(cx, ann));
+        }
+    }
+    ebml.end_tag(ebml_w);
+}
+
+fn encode_info_for_items(@trans.crate_ctxt cx, &ebml.writer ebml_w) {
+    ebml.start_tag(ebml_w, tag_items);
+    for each (@tup(ast.def_id, @ast.item) kvp in cx.items.items()) {
+        encode_info_for_item(cx, ebml_w, kvp._1);
+    }
+    for each (@tup(ast.def_id, @ast.native_item) kvp in
+            cx.native_items.items()) {
+        encode_info_for_native_item(cx, ebml_w, kvp._1);
+    }
+    ebml.end_tag(ebml_w);
+}
+
+
+fn encode_metadata(@trans.crate_ctxt cx, @ast.crate crate) -> ValueRef {
+    auto string_w = io.string_writer();
+    auto buf_w = string_w.get_writer().get_buf_writer();
+    auto ebml_w = ebml.create_writer(buf_w);
+
+    encode_item_paths(ebml_w, crate);
+    encode_info_for_items(cx, ebml_w);
+
+    ret C_postr(string_w.get_str());
 }
 
 fn write_metadata(@trans.crate_ctxt cx, @ast.crate crate) {
-    auto llmeta = collect_meta_directives(cx, crate);
+    auto llmeta = encode_metadata(cx, crate);
 
     auto llconst = trans.C_struct(vec(llmeta));
     auto llglobal = llvm.LLVMAddGlobal(cx.llmod, trans.val_ty(llconst),
