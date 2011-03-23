@@ -3,6 +3,9 @@ import std._str;
 import std._int;
 import std.map;
 import std.map.hashmap;
+import std.option;
+import std.option.some;
+import std.option.none;
 import util.common;
 import util.common.new_str_hash;
 
@@ -333,6 +336,27 @@ impure fn scan_dec_digits(reader rdr) -> int {
     ret accum_int;
 }
 
+impure fn scan_exponent(reader rdr) -> option.t[int] {
+    auto c = rdr.curr();
+    auto sign = 1;
+
+    if (c == 'e' || c == 'E') {
+        rdr.bump();
+        c = rdr.curr();
+        if (c == '-') {
+            sign = -1;
+            rdr.bump();
+        } else if (c == '+') {
+            rdr.bump();
+        }
+        auto exponent = scan_dec_digits(rdr);
+        ret(some(sign * exponent));
+    }
+    else {
+        ret none[int];
+    }
+}
+
 impure fn scan_number(mutable char c, reader rdr) -> token.token {
     auto accum_int = 0;
     auto n = rdr.next();
@@ -418,17 +442,54 @@ impure fn scan_number(mutable char c, reader rdr) -> token.token {
             ret token.LIT_UINT(accum_int as uint);
         }
     }
-    n = rdr.curr();
-    if(n == '.') {
+    c = rdr.curr();
+    if (c == '.') {
         // Parse a floating-point number.
         rdr.bump();
         auto accum_int1 = scan_dec_digits(rdr);
-        ret token.LIT_FLOAT(_int.to_str(accum_int, 10u) + "."
-                          + _int.to_str(accum_int1, 10u));
-        // FIXME: Parse exponent.
+        auto base_str =   _int.to_str(accum_int, 10u) + "."
+            + _int.to_str(accum_int1, 10u);
+        c = rdr.curr();
+        auto exponent_str = "";
+        let option.t[int] maybe_exponent = scan_exponent(rdr);
+        alt(maybe_exponent) {
+            case(some[int](?i)) {
+                exponent_str = "e" + _int.to_str(i, 10u);
+            }
+            case(none[int]) {
+            }
+        }
+
+        c = rdr.curr();
+        if (c == 'f') {
+            rdr.bump();
+            c = rdr.curr();
+            n = rdr.next();
+            if (c == '3' && n == '2') {
+                rdr.bump(); rdr.bump();
+                ret token.LIT_MACH_FLOAT(util.common.ty_f32,
+                                         base_str + exponent_str);
+            }
+            else if (c == '6' && n == '4') {
+                rdr.bump(); rdr.bump();
+                ret token.LIT_MACH_FLOAT(util.common.ty_f64,
+                                         base_str + exponent_str);
+            }
+        }
+        else {
+            ret token.LIT_FLOAT(base_str + exponent_str);
+        }
     }
-    else {
-        ret token.LIT_INT(accum_int);
+
+    auto maybe_exponent = scan_exponent(rdr);
+    alt(maybe_exponent) {
+        case(some[int](?i)) {
+            ret token.LIT_FLOAT(_int.to_str(accum_int, 10u)
+                                + "e" + _int.to_str(i, 10u));
+        }
+        case(none[int]) {
+            ret token.LIT_INT(accum_int);
+        }
     }
 }
 

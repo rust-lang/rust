@@ -545,6 +545,10 @@ impure fn parse_lit(parser p) -> ast.lit {
             p.bump();
             lit = ast.lit_mach_int(tm, i);
         }
+        case (token.LIT_MACH_FLOAT(?tm, ?s)) {
+            p.bump();
+            lit = ast.lit_mach_float(tm, s);
+        }
         case (token.LIT_CHAR(?c)) {
             p.bump();
             lit = ast.lit_char(c);

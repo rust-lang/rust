@@ -763,6 +763,10 @@ fn C_float(str s) -> ValueRef {
     ret llvm.LLVMConstRealOfString(T_float(), _str.buf(s));
 }
 
+fn C_floating(str s, TypeRef t) -> ValueRef {
+    ret llvm.LLVMConstRealOfString(t, _str.buf(s));
+}
+
 fn C_nil() -> ValueRef {
     // NB: See comment above in T_void().
     ret C_integral(0, T_i1());
@@ -2338,6 +2342,14 @@ fn trans_lit(@crate_ctxt cx, &ast.lit lit, &ast.ann ann) -> ValueRef {
         case(ast.lit_float(?fs)) {
             ret C_float(fs);
         }
+        case(ast.lit_mach_float(?tm, ?s)) {
+            auto t = T_float();
+            alt(tm) {
+                case(common.ty_f32) { t = T_f32(); }
+                case(common.ty_f64) { t = T_f64(); }
+            }
+            ret C_floating(s, t);
+        }
         case (ast.lit_char(?c)) {
             ret C_integral(c as int, T_char());
         }
@@ -2719,7 +2731,7 @@ fn trans_eager_binop(@block_ctxt cx, ast.binop op, @ty.t intype,
                      ValueRef lhs, ValueRef rhs) -> result {
 
     auto is_float = false;
-    alt(intype.struct) {
+    alt (intype.struct) {
         case (ty.ty_float) {
             is_float = true;
         }
@@ -2727,7 +2739,7 @@ fn trans_eager_binop(@block_ctxt cx, ast.binop op, @ty.t intype,
             is_float = false;
         }
     }
-     
+
     alt (op) {
         case (ast.add) {
             if (ty.type_is_sequence(intype)) {
@@ -2749,7 +2761,7 @@ fn trans_eager_binop(@block_ctxt cx, ast.binop op, @ty.t intype,
             }
         }
 
-        case (ast.mul) { 
+        case (ast.mul) {
             if (is_float) {
                 ret res(cx, cx.build.FMul(lhs, rhs));
             }
@@ -4582,13 +4594,33 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
 
     auto sub = trans_expr(cx, e);
     auto e_ty = ty.expr_ty(e);
-    alt (e_ty.struct) {
-        case(ty.ty_float) {
-            auto tmp = sub.bcx.build.Alloca(T_float());
-            sub.bcx.build.Store(sub.val, tmp);
-            sub = res(sub.bcx, tmp);
+    if (ty.type_is_fp(e_ty)) {
+        let TypeRef tr;
+        let bool is32bit = false;
+        alt (e_ty.struct) {
+            case (ty.ty_machine(util.common.ty_f32)) {
+                tr = T_f32();
+                is32bit = true;
+            }
+            case (ty.ty_machine(util.common.ty_f64)) {
+                tr = T_f64();
+            }
+            case (_) {
+                tr = T_float();
+            }
         }
-        case(_) { }
+        if (is32bit) {
+            ret trans_upcall(sub.bcx,
+                             "upcall_log_float",
+                             vec(sub.val));
+        } else {
+            auto tmp = sub.bcx.build.Alloca(tr);
+            sub.bcx.build.Store(sub.val, tmp);
+            auto v = vp2i(sub.bcx, tmp);
+            ret trans_upcall(sub.bcx,
+                             "upcall_log_double",
+                             vec(v));
+        }
     }
 
     alt (e_ty.struct) {
@@ -4596,12 +4628,6 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
             auto v = vp2i(sub.bcx, sub.val);
             ret trans_upcall(sub.bcx,
                              "upcall_log_str",
-                             vec(v));
-        }
-        case (ty.ty_float) {
-            auto v = vp2i(sub.bcx, sub.val);
-            ret trans_upcall(sub.bcx,
-                             "upcall_log_float",
                              vec(v));
         }
         case (_) {
