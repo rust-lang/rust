@@ -26,7 +26,7 @@ make_dir() {
 }
 
 copy() {
-    msg "cp $1 $1"
+    msg "cp $1 $2"
     cp $1 $2
 }
 
