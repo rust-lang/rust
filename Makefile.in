@@ -172,6 +172,20 @@ ifdef NO_VALGRIND
   CFG_VALGRIND :=
 endif
 
+DOCS :=
+ifeq ($(CFG_MAKEINFO),)
+  $(info cfg: no makeinfo found, omitting doc/rust.html)
+else
+  DOCS += doc/rust.html
+endif
+
+ifeq ($(CFG_TEXI2PDF),)
+  $(info cfg: no texi2pdf found, omitting doc/rust.pdf)
+else
+  DOCS += doc/rust.pdf
+endif
+
+
 ######################################################################
 # Target-and-rule "utility variables"
 ######################################################################
@@ -347,13 +361,14 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
                                 rustc.rc *.rs */*.rs))
 
 ######################################################################
-# test dependency variables
+# Test dependency variables
 ######################################################################
 
 LREQ := rt/$(CFG_RUNTIME) rustllvm/$(CFG_RUSTLLVM)
 BREQ := boot/rustboot$(X) boot/$(CFG_STDLIB)
 SREQ0 := stage0/rustc$(X) $(LREQ)
 SREQ1 := stage1/rustc$(X) $(LREQ)
+
 
 ######################################################################
 # Single-target rules
@@ -366,7 +381,8 @@ all: boot/rustboot$(X)          \
      stage0/rustc$(X)           \
      stage0/glue.o              \
      stage0/$(CFG_STDLIB)       \
-     $(GENERATED)
+     $(GENERATED)               \
+     $(DOCS)
 
 rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF)
 	@$(call E, link: $@)
@@ -478,6 +494,24 @@ rustllvm/%.o: rustllvm/%.cpp $(MKFILES)
 %.ml: %.mll $(MKFILES)
 	@$(call E, lex-gen: $@)
 	$(Q)ocamllex$(OPT) -q -o $@ $<
+
+
+######################################################################
+# Doc rules
+######################################################################
+
+doc/version.texi: $(MKFILES) rust.texi
+	git log -1 \
+      --pretty=format:'@macro gitversion%n%h %ci%n@end macro%n' >$@
+
+doc/%.pdf: %.texi doc/version.texi
+	texi2pdf -I doc -o $@ --clean $<
+
+doc/%.html: %.texi doc/version.texi
+	makeinfo -I doc --html --ifhtml --force --no-split --output=$@ $<
+
+docsnap: doc/rust.pdf
+	mv $< doc/rust-$(shell date +"%Y-%m-%d")-snap.pdf
 
 
 ######################################################################
@@ -1106,3 +1140,6 @@ clean:
                              boot$(X) stage0$(X) stage1$(X) stage2$(X) \
                              bc o s exe dSYM,                          \
                         $(wildcard test/*/*.$(ext) test/bench/*/*.$(ext)))
+	$(Q)rm -Rf $(foreach ext, \
+                 aux cp fn ky log pdf html pg toc tp vr cps texi \
+                 $(wildcard doc/*.$(ext)))
