@@ -407,8 +407,8 @@ endif
 
 boot/version.ml: $(MKFILES)
 	@$(call E, git: $@)
-	$(Q)git log -1 \
-      --pretty=format:'let version = "prerelease (%h %ci)";;' >$@ || exit 1
+	$(Q)(cd $(S) && git log -1 \
+      --pretty=format:'let version = "prerelease (%h %ci)";;') >$@ || exit 1
 
 
 
@@ -501,8 +501,8 @@ rustllvm/%.o: rustllvm/%.cpp $(MKFILES)
 ######################################################################
 
 doc/version.texi: $(MKFILES) rust.texi
-	git log -1 \
-      --pretty=format:'@macro gitversion%n%h %ci%n@end macro%n' >$@
+	(cd $(S) && git log -1 \
+      --pretty=format:'@macro gitversion%n%h %ci%n@end macro%n') >$@
 
 doc/%.pdf: %.texi doc/version.texi
 	texi2pdf -I doc -o $@ --clean $<
