@@ -103,7 +103,72 @@ impure fn peek(&reader r) -> ebml_tag {
 
 // EBML writing
 
-type writer = rec(io.writer writer, mutable vec[ebml_state] states);
+type writer = rec(io.buf_writer writer, mutable vec[uint] size_positions);
 
-// TODO
+fn write_sized_vint(&io.buf_writer w, uint n, uint size) {
+    let vec[u8] buf;
+    alt (size) {
+        case (1u) {
+            buf = vec(0x80u8 | (n as u8));
+        }
+        case (2u) {
+            buf = vec(0x40u8 | ((n >> 8u) as u8),
+                      (n & 0xffu) as u8);
+        }
+        case (3u) {
+            buf = vec(0x20u8 | ((n >> 16u) as u8),
+                      ((n >> 8u) & 0xffu) as u8,
+                      (n & 0xffu) as u8);
+        }
+        case (4u) {
+            buf = vec(0x10u8 | ((n >> 24u) as u8),
+                      ((n >> 16u) & 0xffu) as u8,
+                      ((n >> 8u) & 0xffu) as u8,
+                      (n & 0xffu) as u8);
+        }
+        case (_) {
+            log "vint to write too big";
+            fail;
+        }
+    }
+
+    w.write(buf);
+}
+
+fn write_vint(&io.buf_writer w, uint n) {
+    if (n < 0x7fu)          { write_sized_vint(w, n, 1u); ret; }
+    if (n < 0x4000u)        { write_sized_vint(w, n, 2u); ret; }
+    if (n < 0x200000u)      { write_sized_vint(w, n, 3u); ret; }
+    if (n < 0x10000000u)    { write_sized_vint(w, n, 4u); ret; }
+    log "vint to write too big";
+    fail;
+}
+
+fn create_writer(&io.buf_writer w) -> writer {
+    let vec[uint] size_positions = vec();
+    ret rec(writer=w, mutable size_positions=size_positions);
+}
+
+// TODO: Provide a function to write the standard EBML header.
+
+fn start_tag(&writer w, uint tag_id) {
+    // Write the tag ID.
+    write_vint(w.writer, tag_id);
+
+    // Write a placeholder four-byte size.
+    w.size_positions += vec(w.writer.tell());
+    let vec[u8] zeroes = vec(0u8, 0u8, 0u8, 0u8);
+    w.writer.write(zeroes);
+}
+
+fn end_tag(&writer w) {
+    auto last_size_pos = _vec.pop[uint](w.size_positions);
+    auto cur_pos = w.writer.tell();
+    w.writer.seek(last_size_pos as int, io.seek_set);
+    write_sized_vint(w.writer, cur_pos - last_size_pos - 4u, 4u);
+    w.writer.seek(cur_pos as int, io.seek_set);
+}
+
+// TODO: optionally perform "relaxations" on end_tag to more efficiently
+// encode sizes; this is a fixed point iteration
 
