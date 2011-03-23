@@ -179,6 +179,11 @@ putvar CFG_LLVM_CXXFLAGS
 putvar CFG_LLVM_LDFLAGS
 putvar CFG_LLVM_LIBS
 
+# Munge any paths that appear in config.mk back to posix-y
+perl -i.bak -p -e 's@ ([a-zA-Z]):\\@ /\1/@go;' \
+               -e 's@\\@/@go;' config.mk
+rm -f config.mk.bak
+
 copy ${CFG_SRC_DIR}Makefile.in ./Makefile
 
 echo "configure: complete"

@@ -76,8 +76,8 @@ ifdef CFG_WINDOWSY
   CFG_RUN_TEST=PATH="$(CFG_LDPATH)" $(1)
   CFG_RUN_TARG=PATH="$(CFG_LDPATH)" $(1)
 
-  CFG_PATH_MUNGE := $(strip perl -i -p                 \
-                           -e 's@\\(.)@/\1@go;'        \
+  CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
+                           -e 's@\\(\S)@/\1@go;'       \
                            -e 's@^/([a-zA-Z])/@\1:/@o;')
   ifdef CFG_FLEXLINK
     CFG_BOOT_NATIVE := 1
@@ -987,6 +987,7 @@ rt/%.d: rt/%.cpp $(MKFILES)
       $(subst $(S)src/,,$(patsubst %.cpp, %.o, $<)), \
       $(RUNTIME_INCS)) $< >$@.tmp
 	$(Q)$(CFG_PATH_MUNGE) $@.tmp
+	$(Q)rm -f $@.tmp.bak
 	$(Q)mv $@.tmp $@
 
 rustllvm/%.d: rustllvm/%.cpp $(MKFILES)
@@ -995,20 +996,25 @@ rustllvm/%.d: rustllvm/%.cpp $(MKFILES)
       $(subst $(S)src/,,$(patsubst %.cpp, %.o, $<)), \
       $(CFG_LLVM_CXXFLAGS) $(RUSTLLVM_INCS)) $< >$@.tmp
 	$(Q)$(CFG_PATH_MUNGE) $@.tmp
+	$(Q)rm -f $@.tmp.bak
 	$(Q)mv $@.tmp $@
 
 %.d: %.ml $(MKFILES)
 	@$(call E, dep: $@)
 	$(Q)ocamldep$(OPT) -slash $(BOOT_ML_DEP_INCS) $< >$@.tmp
 	$(Q)$(CFG_PATH_MUNGE) $@.tmp
-	$(Q)perl -i -pe "s@$(S)src/@@go" $@.tmp
+	$(Q)rm -f $@.tmp.bak
+	$(Q)perl -i.bak -pe "s@$(S)src/@@go" $@.tmp
+	$(Q)rm -f $@.tmp.bak
 	$(Q)mv $@.tmp $@
 
 %.d: %.mli $(MKFILES)
 	@$(call E, dep: $@)
 	$(Q)ocamldep$(OPT) -slash $(BOOT_ML_DEP_INCS) $< >$@.tmp
 	$(Q)$(CFG_PATH_MUNGE) $@.tmp
-	$(Q)perl -i -pe "s@$(S)src/@@go" $@.tmp
+	$(Q)rm -f $@.tmp.bak
+	$(Q)perl -i.bak -pe "s@$(S)src/@@go" $@.tmp
+	$(Q)rm -f $@.tmp.bak
 	$(Q)mv $@.tmp $@
 
 ifneq ($(MAKECMDGOALS),clean)
@@ -1029,6 +1035,7 @@ boot/$(CFG_STDLIB).d: $(STDLIB_CRATE) $(STDLIB_INPUTS) \
 	@$(call E, dep: $@)
 	$(BOOT) -o $(patsubst %.d,%,$@) -shared -rdeps $< >$@.tmp
 	$(Q)$(CFG_PATH_MUNGE) $@.tmp
+	$(Q)rm -f $@.tmp.bak
 	$(Q)mv $@.tmp $@
 
 stage0/rustc$(X).d: $(COMPILER_CRATE) $(COMPILER_INPUTS) \
@@ -1036,12 +1043,14 @@ stage0/rustc$(X).d: $(COMPILER_CRATE) $(COMPILER_INPUTS) \
 	@$(call E, dep: $@)
 	$(BOOT) -o $(patsubst %.d,%,$@) -shared -rdeps $< >$@.tmp
 	$(Q)$(CFG_PATH_MUNGE) $@.tmp
+	$(Q)rm -f $@.tmp.bak
 	$(Q)mv $@.tmp $@
 
 %.d: %.rc $(MKFILES) boot/rustboot$(X)
 	@$(call E, dep: $@)
 	$(BOOT)  -o $(patsubst %.d,%,$@) -rdeps $< >$@.tmp
 	$(Q)$(CFG_PATH_MUNGE) $@.tmp
+	$(Q)rm -f $@.tmp.bak
 	$(Q)mv $@.tmp $@
 
 ifneq ($(MAKECMDGOALS),clean)
@@ -1149,5 +1158,5 @@ clean:
                              bc o s exe dSYM,                          \
                         $(wildcard test/*/*.$(ext) test/bench/*/*.$(ext)))
 	$(Q)rm -Rf $(foreach ext, \
-                 aux cp fn ky log pdf html pg toc tp vr cps texi \
+                 aux cp fn ky log pdf html pg toc tp vr cps texi, \
                  $(wildcard doc/*.$(ext)))
