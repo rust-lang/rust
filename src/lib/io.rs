@@ -223,6 +223,7 @@ fn file_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
 
 type writer =
     state obj {
+          fn get_buf_writer() -> buf_writer;
           impure fn write_str(str s);
           impure fn write_int(int n);
           impure fn write_uint(uint n);
@@ -242,6 +243,9 @@ fn uint_to_le_bytes(uint n, uint size) -> vec[u8] {
 }
 
 state obj new_writer(buf_writer out) {
+    fn get_buf_writer() -> buf_writer {
+        ret out;
+    }
     impure fn write_str(str s) {
         out.write(_str.bytes(s));
     }
@@ -260,6 +264,11 @@ state obj new_writer(buf_writer out) {
     impure fn write_le_int(int n, uint size) {
         out.write(uint_to_le_bytes(n as uint, size));
     }
+}
+
+// FIXME: Remove me once objects are exported.
+fn new_writer_(buf_writer out) -> writer {
+    ret new_writer(out);
 }
 
 fn file_writer(str path, vec[fileflag] flags) -> writer {
