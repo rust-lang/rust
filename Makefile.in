@@ -560,6 +560,7 @@ TEST_XFAILS_BOOT := $(TASK_XFAILS) \
                       obj-as.rs \
                       vec-slice.rs \
                       fn-lval.rs \
+                      empty-mutable-vec.rs \
                       generic-bind-2.rs \
                       generic-fn-box.rs \
                       generic-tup.rs \
