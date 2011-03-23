@@ -30,6 +30,7 @@ ifeq ($(CFG_OSTYPE), FreeBSD)
     CFG_GCC_LINK_FLAGS += -m32
   endif
   CFG_UNIXY := 1
+  CFG_LDENV := LD_LIBRARY_PATH
 endif
 
 ifeq ($(CFG_OSTYPE), Linux)
@@ -41,11 +42,13 @@ ifeq ($(CFG_OSTYPE), Linux)
     CFG_GCC_LINK_FLAGS += -m32
   endif
   CFG_UNIXY := 1
+  CFG_LDENV := LD_LIBRARY_PATH
 endif
 
 ifeq ($(CFG_OSTYPE), Darwin)
   CFG_LIB_NAME=lib$(1).dylib
   CFG_UNIXY := 1
+  CFG_LDENV := DYLD_LIBRARY_PATH
   CFG_GCC_LINK_FLAGS += -dynamiclib -lpthread
   # Darwin has a very blurry notion of "64 bit", and claims it's running
   # "on an i386" when the whole userspace is 64-bit and the compiler
@@ -90,9 +93,9 @@ ifdef CFG_UNIXY
   CFG_EXE_SUFFIX :=
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_LIBDIR)
   CFG_RUN_TARG=\
-      LD_LIBRARY_PATH=$(dir $(firstword $(1))):$(CFG_LDPATH) $(1)
+      $(CFG_LDENV)=$(dir $(firstword $(1))):$(CFG_LDPATH) $(1)
   CFG_RUN_TEST=\
-      LD_LIBRARY_PATH=$(dir $(firstword $(1))):$(CFG_LDPATH) \
+      $(CFG_LDENV)=$(dir $(firstword $(1))):$(CFG_LDPATH) \
       $(CFG_VALGRIND) $(1)
 
   CFG_BOOT_NATIVE := 1
