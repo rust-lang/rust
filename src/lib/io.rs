@@ -266,6 +266,16 @@ fn file_writer(str path, vec[fileflag] flags) -> writer {
     ret new_writer(file_buf_writer(path, flags));
 }
 
+// TODO: fileflags
+fn buffered_file_buf_writer(str path) -> buf_writer {
+    auto f = os.libc.fopen(_str.buf(path), _str.buf("w"));
+    if (f as uint == 0u) {
+        log "error opening " + path;
+        fail;
+    }
+    ret FILE_writer(f, true);
+}
+
 // FIXME it would be great if this could be a const
 fn stdout() -> writer {
     ret new_writer(fd_buf_writer(1, false));
