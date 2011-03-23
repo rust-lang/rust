@@ -132,6 +132,7 @@ probe CFG_OCAMLOPT_OPT     ocamlopt.opt
 probe CFG_FLEXLINK         flexlink
 probe CFG_MAKEINFO         makeinfo
 probe CFG_TEXI2PDF         texi2pdf
+probe CFG_TEX              tex
 
 if [ ! -z "$CFG_LLVM_ROOT" ]
 then

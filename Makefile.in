@@ -185,7 +185,11 @@ endif
 ifeq ($(CFG_TEXI2PDF),)
   $(info cfg: no texi2pdf found, omitting doc/rust.pdf)
 else
-  DOCS += doc/rust.pdf
+  ifeq ($(CFG_TEX),)
+    $(info cfg: no tex found, omitting doc/rust.pdf)
+  else
+    DOCS += doc/rust.pdf
+  endif
 endif
 
 
