@@ -306,6 +306,7 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
         case (ast.ty_bool)         { sty = ty.ty_bool; }
         case (ast.ty_int)          { sty = ty.ty_int; }
         case (ast.ty_uint)         { sty = ty.ty_uint; }
+        case (ast.ty_float)        { sty = ty.ty_float; }
         case (ast.ty_machine(?tm)) { sty = ty.ty_machine(tm); }
         case (ast.ty_char)         { sty = ty.ty_char; }
         case (ast.ty_str)          { sty = ty.ty_str; }

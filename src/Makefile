@@ -420,7 +420,8 @@ self: $(CFG_RUSTC)
 # Float doesn't work in boot
 
 FLOAT_XFAILS := test/run-pass/float.rs \
-                test/run-pass/float2.rs
+                test/run-pass/float2.rs \
+                test/run-pass/float-signature.rs
 
 # Temporarily xfail tests broken by the nominal-tags change.
 

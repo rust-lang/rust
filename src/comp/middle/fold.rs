@@ -1,5 +1,5 @@
 import std.map.hashmap;
-import std.option;
+ import std.option;
 import std.option.some;
 import std.option.none;
 
@@ -44,6 +44,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp) -> @ty)                fold_ty_bool,
      (fn(&ENV e, &span sp) -> @ty)                fold_ty_int,
      (fn(&ENV e, &span sp) -> @ty)                fold_ty_uint,
+     (fn(&ENV e, &span sp) -> @ty)                fold_ty_float,
      (fn(&ENV e, &span sp, ty_mach tm) -> @ty)    fold_ty_machine,
      (fn(&ENV e, &span sp) -> @ty)                fold_ty_char,
      (fn(&ENV e, &span sp) -> @ty)                fold_ty_str,
@@ -337,6 +338,7 @@ fn fold_ty[ENV](&ENV env, ast_fold[ENV] fld, @ty t) -> @ty {
         case (ast.ty_bool) { ret fld.fold_ty_bool(env_, t.span); }
         case (ast.ty_int) { ret fld.fold_ty_int(env_, t.span); }
         case (ast.ty_uint) { ret fld.fold_ty_uint(env_, t.span); }
+        case (ast.ty_float) { ret fld.fold_ty_float(env_, t.span); }
 
         case (ast.ty_machine(?m)) {
             ret fld.fold_ty_machine(env_, t.span, m);
@@ -1064,6 +1066,10 @@ fn identity_fold_ty_uint[ENV](&ENV env, &span sp) -> @ty {
     ret @respan(sp, ast.ty_uint);
 }
 
+fn identity_fold_ty_float[ENV](&ENV env, &span sp) -> @ty {
+    ret @respan(sp, ast.ty_float);
+}
+
 fn identity_fold_ty_machine[ENV](&ENV env, &span sp,
                                  ty_mach tm) -> @ty {
     ret @respan(sp, ast.ty_machine(tm));
@@ -1515,6 +1521,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_ty_bool    = bind identity_fold_ty_bool[ENV](_,_),
          fold_ty_int     = bind identity_fold_ty_int[ENV](_,_),
          fold_ty_uint    = bind identity_fold_ty_uint[ENV](_,_),
+         fold_ty_float   = bind identity_fold_ty_float[ENV](_,_),
          fold_ty_machine = bind identity_fold_ty_machine[ENV](_,_,_),
          fold_ty_char    = bind identity_fold_ty_char[ENV](_,_),
          fold_ty_str     = bind identity_fold_ty_str[ENV](_,_),

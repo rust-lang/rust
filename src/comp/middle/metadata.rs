@@ -61,6 +61,7 @@ fn sty_str(ty.sty st, def_str ds) -> str {
         case (ty.ty_bool) {ret "b";}
         case (ty.ty_int) {ret "i";}
         case (ty.ty_uint) {ret "u";}
+        case (ty.ty_float) {ret "l";}
         case (ty.ty_machine(?mach)) {
             alt (mach) {
                 case (common.ty_u8) {ret "Mb";}
