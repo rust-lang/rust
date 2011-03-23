@@ -1,8 +1,5 @@
 #!/bin/sh
 
-CFG_SRC_DIR=${0%${0##*/}}
-CFG_BUILD_DIR=$PWD
-
 msg() {
     echo "configure: $1"
 }
@@ -78,6 +75,26 @@ need_cmd grep
 need_cmd xargs
 need_cmd cp
 need_cmd find
+need_cmd uname
+need_cmd date
+
+msg "inspecting environment"
+
+CFG_OSTYPE=$(uname -s)
+CFG_CPUTYPE=$(uname -m)
+
+case $CFG_OSTYPE in
+
+    MINGW*)
+        CFG_SRC_DIR=CFG_SRC_DIR=${0%${0##*\\}}
+        CFG_BUILD_DIR=$PWD
+        ;;
+
+    *)
+        CFG_SRC_DIR=CFG_SRC_DIR=${0%${0##*/}}
+        CFG_BUILD_DIR=$PWD
+        ;;
+esac
 
 msg "recreating config.mk"
 echo '' >config.mk
@@ -94,11 +111,6 @@ for i in \
 do
     make_dir $i
 done
-
-msg "inspecting environment"
-
-CFG_OSTYPE=$(uname -s)
-CFG_CPUTYPE=$(uname -m)
 
 putvar CFG_SRC_DIR
 putvar CFG_BUILD_DIR
