@@ -95,7 +95,7 @@ endif
 ifdef CFG_UNIXY
   CFG_INFO := $(info cfg: unix-y environment)
 
-  CFG_PATH_MUNGE := /bin/true
+  CFG_PATH_MUNGE := true
   CFG_EXE_SUFFIX :=
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_LIBDIR)
   CFG_RUN_TARG=\
