@@ -2497,7 +2497,7 @@ fn node_ann_type(@crate_ctxt cx, &ast.ann a) -> @ty.t {
         case (ast.ann_none) {
             cx.sess.bug("missing type annotation");
         }
-        case (ast.ann_type(?t, _)) {
+        case (ast.ann_type(?t, _, _)) {
             ret target_type(cx, t);
         }
     }
@@ -2509,7 +2509,7 @@ fn node_ann_ty_params(&ast.ann a) -> vec[@ty.t] {
             log "missing type annotation";
             fail;
         }
-        case (ast.ann_type(_, ?tps_opt)) {
+        case (ast.ann_type(_, ?tps_opt, _)) {
             alt (tps_opt) {
                 case (none[vec[@ty.t]]) {
                     log "type annotation has no ty params";
@@ -3638,7 +3638,7 @@ fn lval_generic_fn(@block_ctxt cx,
             cx.fcx.ccx.sess.bug("no type annotation for path!");
             fail;
         }
-        case (ast.ann_type(?monoty_, ?tps)) {
+        case (ast.ann_type(?monoty_, ?tps, _)) {
             monoty = monoty_;
             tys = option.get[vec[@ty.t]](tps);
         }
@@ -4775,35 +4775,35 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             ret trans_expr(cx, expanded);
         }
 
-        case (ast.expr_fail) {
+        case (ast.expr_fail(_)) {
             ret trans_fail(cx, e.span, "explicit failure");
         }
 
-        case (ast.expr_log(?a)) {
+        case (ast.expr_log(?a, _)) {
             ret trans_log(cx, a);
         }
 
-        case (ast.expr_check_expr(?a)) {
+        case (ast.expr_check_expr(?a, _)) {
             ret trans_check_expr(cx, a);
         }
 
-        case (ast.expr_break) {
+        case (ast.expr_break(?a)) {
             ret trans_break(cx);
         }
 
-        case (ast.expr_cont) {
+        case (ast.expr_cont(?a)) {
             ret trans_cont(cx);
         }
 
-        case (ast.expr_ret(?e)) {
+        case (ast.expr_ret(?e, _)) {
             ret trans_ret(cx, e);
         }
 
-        case (ast.expr_put(?e)) {
+        case (ast.expr_put(?e, _)) {
             ret trans_put(cx, e);
         }
 
-        case (ast.expr_be(?e)) {
+        case (ast.expr_be(?e, _)) {
             ret trans_be(cx, e);
         }
 
@@ -4855,6 +4855,7 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
 
     auto sub = trans_expr(cx, e);
     auto e_ty = ty.expr_ty(e);
+
     if (ty.type_is_fp(e_ty)) {
         let TypeRef tr;
         let bool is32bit = false;

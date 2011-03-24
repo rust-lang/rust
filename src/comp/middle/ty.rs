@@ -593,7 +593,7 @@ fn ann_to_type(&ast.ann ann) -> @t {
             log "ann_to_type() called on node with no type";
             fail;
         }
-        case (ast.ann_type(?ty, _)) {
+        case (ast.ann_type(?ty, _, _)) {
             ret ty;
         }
     }
@@ -785,12 +785,12 @@ fn expr_ty(@ast.expr expr) -> @t {
         case (ast.expr_send(_, _, ?ann))      { ret ann_to_type(ann); }
         case (ast.expr_recv(_, _, ?ann))      { ret ann_to_type(ann); }
 
-        case (ast.expr_fail)                  { ret plain_ty(ty_nil); }
-        case (ast.expr_log(_))                { ret plain_ty(ty_nil); }
-        case (ast.expr_check_expr(_))         { ret plain_ty(ty_nil); }
-        case (ast.expr_ret(_))                { ret plain_ty(ty_nil); }
-        case (ast.expr_put(_))                { ret plain_ty(ty_nil); }
-        case (ast.expr_be(_))                 { ret plain_ty(ty_nil); }
+        case (ast.expr_fail(_))               { ret plain_ty(ty_nil); }
+        case (ast.expr_log(_,_))              { ret plain_ty(ty_nil); }
+        case (ast.expr_check_expr(_,_))       { ret plain_ty(ty_nil); }
+        case (ast.expr_ret(_,_))              { ret plain_ty(ty_nil); }
+        case (ast.expr_put(_,_))              { ret plain_ty(ty_nil); }
+        case (ast.expr_be(_,_))               { ret plain_ty(ty_nil); }
     }
     fail;
 }

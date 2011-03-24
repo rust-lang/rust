@@ -1,5 +1,6 @@
 import front.ast;
 import front.ast.ann;
+import front.ast.ann_none;
 import front.ast.mutability;
 import front.creader;
 import middle.fold;
@@ -32,6 +33,8 @@ import std.option;
 import std.option.none;
 import std.option.some;
 
+import util.typestate_ann.ts_ann;
+
 type ty_table = hashmap[ast.def_id, @ty.t];
 
 tag any_item {
@@ -53,6 +56,11 @@ type fn_ctxt = rec(@ty.t ret_ty,
 
 // Used for ast_ty_to_ty() below.
 type ty_getter = fn(ast.def_id) -> ty.ty_params_opt_and_ty;
+
+// Turns a type into an ann_type, using defaults for other fields.
+fn triv_ann(@ty.t t) -> ann {
+    ret ast.ann_type(t, none[vec[@ty.t]], none[@ts_ann]);
+}
 
 // Replaces parameter types inside a type with type variables.
 fn generalize_ty(@crate_ctxt cx, @ty.t t) -> @ty.t {
@@ -227,7 +235,7 @@ fn instantiate_path(@fn_ctxt fcx, &ast.path pth, &ty_params_opt_and_ty tpt,
         }
     }
 
-    ret ast.ann_type(t, ty_substs_opt);
+    ret ast.ann_type(t, ty_substs_opt, none[@ts_ann]);
 }
 
 // Returns the type parameters and polytype of an item, if it's an item that
@@ -674,9 +682,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
 
             auto tpt = tup(params_opt, result_ty);
             type_cache.insert(variant.node.id, tpt);
-
-            auto variant_t = rec(
-                ann=ast.ann_type(result_ty, none[vec[@ty.t]])
+            auto variant_t = rec(ann=triv_ann(result_ty)
                 with variant.node
             );
             result += vec(fold.respan[ast.variant_](variant.span, variant_t));
@@ -767,8 +773,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                        ast.def_id id, ast.ann a) -> @ast.item {
         check (e.type_cache.contains_key(id));
         auto typ = e.type_cache.get(id)._1;
-        auto item = ast.item_const(i, t, ex, id,
-                                   ast.ann_type(typ, none[vec[@ty.t]]));
+        auto item = ast.item_const(i, t, ex, id, triv_ann(typ));
         ret @fold.respan[ast.item_](sp, item);
     }
 
@@ -777,8 +782,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                     ast.def_id id, ast.ann a) -> @ast.item {
         check (e.type_cache.contains_key(id));
         auto typ = e.type_cache.get(id)._1;
-        auto item = ast.item_fn(i, f, ty_params, id,
-                                ast.ann_type(typ, none[vec[@ty.t]]));
+        auto item = ast.item_fn(i, f, ty_params, id, triv_ann(typ));
         ret @fold.respan[ast.item_](sp, item);
     }
 
@@ -788,7 +792,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         check (e.type_cache.contains_key(id));
         auto typ = e.type_cache.get(id)._1;
         auto item = ast.native_item_fn(i, ln, d, ty_params, id,
-                                       ast.ann_type(typ, none[vec[@ty.t]]));
+                                       triv_ann(typ));
         ret @fold.respan[ast.native_item_](sp, item);
     }
 
@@ -832,8 +836,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             auto meth_tfn = plain_ty(ty.ty_fn(meth_ty.proto,
                                               meth_ty.inputs,
                                               meth_ty.output));
-            m_ = rec(
-                ann=ast.ann_type(meth_tfn, none[vec[@ty.t]])
+            m_ = rec(ann=triv_ann(meth_tfn)
                 with meth.node
             );
             m = @rec(node=m_ with *meth);
@@ -842,8 +845,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         auto g = bind getter(e.sess, e.id_to_ty_item, e.type_cache, _);
         for (ast.obj_field fld in ob.fields) {
             let @ty.t fty = ast_ty_to_ty(g, fld.ty);
-            let ast.obj_field f = rec(
-                ann=ast.ann_type(fty, none[vec[@ty.t]])
+            let ast.obj_field f = rec(ann=triv_ann(fty)
                 with fld
             );
             _vec.push[ast.obj_field](fields, f);
@@ -852,8 +854,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         auto ob_ = rec(methods = methods,
                        fields = fields
                        with ob);
-        auto item = ast.item_obj(i, ob_, ty_params, odid,
-                                 ast.ann_type(t, none[vec[@ty.t]]));
+        auto item = ast.item_obj(i, ob_, ty_params, odid, triv_ann(t));
         ret @fold.respan[ast.item_](sp, item);
     }
 
@@ -862,8 +863,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                     ast.def_id id, ast.ann a) -> @ast.item {
         check (e.type_cache.contains_key(id));
         auto typ = e.type_cache.get(id)._1;
-        auto item = ast.item_ty(i, t, ty_params, id,
-                                ast.ann_type(typ, none[vec[@ty.t]]));
+        auto item = ast.item_ty(i, t, ty_params, id, triv_ann(typ));
         ret @fold.respan[ast.item_](sp, item);
     }
 
@@ -879,7 +879,8 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                                                 ty_params);
         auto typ = e.type_cache.get(id)._1;
         auto item = ast.item_tag(i, variants_t, ty_params, id,
-                                 ast.ann_type(typ, none[vec[@ty.t]]));
+                                 ast.ann_type(typ, none[vec[@ty.t]],
+                                              none[@ts_ann]));
         ret @fold.respan[ast.item_](sp, item);
     }
 
@@ -1034,16 +1035,20 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
     alt (pat.node) {
         case (ast.pat_wild(?ann)) {
             auto t = demand(fcx, pat.span, expected, ann_to_type(ann));
-            p_1 = ast.pat_wild(ast.ann_type(t, none[vec[@ty.t]]));
+            p_1 = ast.pat_wild(ast.ann_type(t, none[vec[@ty.t]],
+                                            none[@ts_ann]));
         }
         case (ast.pat_lit(?lit, ?ann)) {
             auto t = demand(fcx, pat.span, expected, ann_to_type(ann));
-            p_1 = ast.pat_lit(lit, ast.ann_type(t, none[vec[@ty.t]]));
+            p_1 = ast.pat_lit(lit, ast.ann_type(t, none[vec[@ty.t]],
+                                                none[@ts_ann]));
         }
         case (ast.pat_bind(?id, ?did, ?ann)) {
             auto t = demand(fcx, pat.span, expected, ann_to_type(ann));
             fcx.locals.insert(did, t);
-            p_1 = ast.pat_bind(id, did, ast.ann_type(t, none[vec[@ty.t]]));
+            p_1 = ast.pat_bind(id, did, ast.ann_type(t,
+                                                     none[vec[@ty.t]],
+                                                     none[@ts_ann]));
         }
         case (ast.pat_tag(?id, ?subpats, ?vdef_opt, ?ann)) {
             auto t = demand(fcx, pat.span, expected, ann_to_type(ann));
@@ -1086,7 +1091,8 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
                     // Nullary tag variant.
                     check (subpats_len == 0u);
                     p_1 = ast.pat_tag(id, subpats, vdef_opt,
-                                      ast.ann_type(t, tps_opt));
+                                      ast.ann_type(t, tps_opt,
+                                                   none[@ts_ann]));
                 }
                 case (ty.ty_fn(_, ?args, ?tag_ty)) {
                     // N-ary tag variant.
@@ -1101,7 +1107,8 @@ fn demand_pat(&@fn_ctxt fcx, @ty.t expected, @ast.pat pat) -> @ast.pat {
                         i += 1u;
                     }
                     p_1 = ast.pat_tag(id, new_subpats, vdef_opt,
-                                      ast.ann_type(tag_ty, tps_opt));
+                                      ast.ann_type(tag_ty, tps_opt,
+                                                   none[@ts_ann]));
                 }
             }
         }
@@ -1142,7 +1149,7 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                     fail;
                 }
             }
-            e_1 = ast.expr_vec(es_1, mut, ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_vec(es_1, mut, triv_ann(t));
         }
         case (ast.expr_tup(?es_0, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
@@ -1161,7 +1168,7 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                     fail;
                 }
             }
-            e_1 = ast.expr_tup(elts_1, ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_tup(elts_1, triv_ann(t));
         }
         case (ast.expr_rec(?fields_0, ?base_0, ?ann)) {
 
@@ -1214,12 +1221,11 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                     fail;
                 }
             }
-            e_1 = ast.expr_rec(fields_1, base_1,
-                               ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_rec(fields_1, base_1, triv_ann(t));
         }
         case (ast.expr_bind(?sube, ?es, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_bind(sube, es, ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_bind(sube, es, triv_ann(t));
         }
         case (ast.expr_call(?sube, ?es, ?ann)) {
             // NB: we call 'demand_full' and pass in adk only in cases where
@@ -1227,35 +1233,30 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
             // like expr_binary or expr_bind can't, so there's no need.
             auto t = demand_full(fcx, e.span, expected,
                                  ann_to_type(ann), adk);
-            e_1 = ast.expr_call(sube, es, ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_call(sube, es, triv_ann(t));
         }
         case (ast.expr_call_self(?sube, ?es, ?ann)) {
             auto t = demand_full(fcx, e.span, expected,
                                  ann_to_type(ann), adk);
-            e_1 = ast.expr_call_self(sube, 
-                                     es, 
-                                     ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_call_self(sube, es, triv_ann(t));
         }
         case (ast.expr_binary(?bop, ?lhs, ?rhs, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_binary(bop, lhs, rhs,
-                                  ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_binary(bop, lhs, rhs, triv_ann(t));
         }
         case (ast.expr_unary(?uop, ?sube, ?ann)) {
             // See note in expr_unary for why we're calling demand_full.
             auto t = demand_full(fcx, e.span, expected,
                                  ann_to_type(ann), adk);
-            e_1 = ast.expr_unary(uop, sube,
-                                 ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_unary(uop, sube, triv_ann(t));
         }
         case (ast.expr_lit(?lit, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_lit(lit, ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_lit(lit, triv_ann(t));
         }
         case (ast.expr_cast(?sube, ?ast_ty, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_cast(sube, ast_ty,
-                                ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_cast(sube, ast_ty, triv_ann(t));
         }
         case (ast.expr_if(?cond, ?then_0, ?else_0, ?ann)) {
             auto t = demand_full(fcx, e.span, expected,
@@ -1270,60 +1271,52 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                     else_1 = some[@ast.expr](e_1);
                 }
             }
-            e_1 = ast.expr_if(cond, then_1, else_1,
-                              ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_if(cond, then_1, else_1, triv_ann(t));
         }
         case (ast.expr_for(?decl, ?seq, ?bloc, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_for(decl, seq, bloc,
-                               ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_for(decl, seq, bloc, triv_ann(t));
         }
         case (ast.expr_for_each(?decl, ?seq, ?bloc, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_for_each(decl, seq, bloc,
-                                    ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_for_each(decl, seq, bloc, triv_ann(t));
         }
         case (ast.expr_while(?cond, ?bloc, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_while(cond, bloc,
-                                 ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_while(cond, bloc, triv_ann(t));
         }
         case (ast.expr_do_while(?bloc, ?cond, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_do_while(bloc, cond,
-                                    ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_do_while(bloc, cond, triv_ann(t));
         }
         case (ast.expr_block(?bloc, ?ann)) {
             auto t = demand_full(fcx, e.span, expected,
                                  ann_to_type(ann), adk);
-            e_1 = ast.expr_block(bloc, ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_block(bloc, triv_ann(t));
         }
         case (ast.expr_assign(?lhs_0, ?rhs_0, ?ann)) {
             auto t = demand_full(fcx, e.span, expected,
                                  ann_to_type(ann), adk);
             auto lhs_1 = demand_expr(fcx, expected, lhs_0);
             auto rhs_1 = demand_expr(fcx, expected, rhs_0);
-            e_1 = ast.expr_assign(lhs_1, rhs_1,
-                                  ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_assign(lhs_1, rhs_1, triv_ann(t));
         }
         case (ast.expr_assign_op(?op, ?lhs_0, ?rhs_0, ?ann)) {
             auto t = demand_full(fcx, e.span, expected,
                                  ann_to_type(ann), adk);
             auto lhs_1 = demand_expr(fcx, expected, lhs_0);
             auto rhs_1 = demand_expr(fcx, expected, rhs_0);
-            e_1 = ast.expr_assign_op(op, lhs_1, rhs_1,
-                                     ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_assign_op(op, lhs_1, rhs_1, triv_ann(t));
         }
         case (ast.expr_field(?lhs, ?rhs, ?ann)) {
             auto t = demand_full(fcx, e.span, expected,
                                  ann_to_type(ann), adk);
-            e_1 = ast.expr_field(lhs, rhs, ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_field(lhs, rhs, triv_ann(t));
         }
         case (ast.expr_index(?base, ?index, ?ann)) {
             auto t = demand_full(fcx, e.span, expected,
                                  ann_to_type(ann), adk);
-            e_1 = ast.expr_index(base, index,
-                                 ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_index(base, index, triv_ann(t));
         }
         case (ast.expr_path(?pth, ?d, ?ann)) {
             auto t = demand_full(fcx, e.span, expected,
@@ -1338,7 +1331,7 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                         "did you pass it to check_expr() first?";
                     fail;
                 }
-                case (ast.ann_type(_, ?tps_opt)) {
+                case (ast.ann_type(_, ?tps_opt, _)) {
                     alt (tps_opt) {
                         case (none[vec[@ty.t]]) {
                             auto defn = option.get[ast.def](d);
@@ -1359,26 +1352,28 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                 }
             }
 
-            e_1 = ast.expr_path(pth, d, ast.ann_type(t, ty_params_opt));
+            e_1 = ast.expr_path(pth, d,
+                                ast.ann_type(t, ty_params_opt,
+                                             none[@ts_ann]));
         }
         case (ast.expr_ext(?p, ?args, ?body, ?expanded, ?ann)) {
             auto t = demand_full(fcx, e.span, expected,
                                  ann_to_type(ann), adk);
-            e_1 = ast.expr_ext(p, args, body, expanded,
-                               ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_ext(p, args, body, expanded, triv_ann(t));
         }
-        case (ast.expr_fail) { e_1 = e.node; }
-        case (ast.expr_log(_)) { e_1 = e.node; }
-        case (ast.expr_break) { e_1 = e.node; }
-        case (ast.expr_cont) { e_1 = e.node; }
-        case (ast.expr_ret(_)) { e_1 = e.node; }
-        case (ast.expr_put(_)) { e_1 = e.node; }
-        case (ast.expr_be(_)) { e_1 = e.node; }
-        case (ast.expr_check_expr(_)) { e_1 = e.node; }
+        /* FIXME: this should probably check the type annotations */
+        case (ast.expr_fail(_))  { e_1 = e.node; } 
+        case (ast.expr_log(_,_)) { e_1 = e.node; } 
+        case (ast.expr_break(_)) { e_1 = e.node; }
+        case (ast.expr_cont(_))  { e_1 = e.node; }
+        case (ast.expr_ret(_,_)) { e_1 = e.node; }
+        case (ast.expr_put(_,_)) { e_1 = e.node; }
+        case (ast.expr_be(_,_))  { e_1 = e.node; }
+        case (ast.expr_check_expr(_,_)) { e_1 = e.node; }
 
         case (ast.expr_port(?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
-            e_1 = ast.expr_port(ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_port(triv_ann(t));
         }
 
         case (ast.expr_chan(?es, ?ann)) {
@@ -1394,7 +1389,7 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                     fail;
                 }
             }
-            e_1 = ast.expr_chan(es_1, ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_chan(es_1, triv_ann(t));
         }
 
         case (ast.expr_alt(?discrim, ?arms_0, ?ann)) {
@@ -1407,8 +1402,7 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                                  index=arm_0.index);
                 arms_1 += vec(arm_1);
             }
-            e_1 = ast.expr_alt(discrim, arms_1,
-                               ast.ann_type(t, none[vec[@ty.t]]));
+            e_1 = ast.expr_alt(discrim, arms_1, triv_ann(t));
         }
 
         case (_) {
@@ -1449,8 +1443,7 @@ fn writeback_local(&option.t[@fn_ctxt] env, &span sp, @ast.local local)
                               + local.ident);
     }
     auto local_ty = fcx.locals.get(local.id);
-    auto local_wb = @rec(
-        ann=ast.ann_type(local_ty, none[vec[@ty.t]])
+    auto local_wb = @rec(ann=triv_ann(local_ty)
         with *local
     );
     ret @fold.respan[ast.decl_](sp, ast.decl_local(local_wb));
@@ -1502,15 +1495,13 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
     auto new_pat;
     alt (pat.node) {
         case (ast.pat_wild(_)) {
-            new_pat = ast.pat_wild(ast.ann_type(next_ty_var(fcx.ccx),
-                                                none[vec[@ty.t]]));
+            new_pat = ast.pat_wild(triv_ann(next_ty_var(fcx.ccx)));
         }
         case (ast.pat_lit(?lt, _)) {
-            new_pat = ast.pat_lit(lt, ast.ann_type(check_lit(lt),
-                                                   none[vec[@ty.t]]));
+            new_pat = ast.pat_lit(lt, triv_ann(check_lit(lt)));
         }
         case (ast.pat_bind(?id, ?def_id, _)) {
-            auto ann = ast.ann_type(next_ty_var(fcx.ccx), none[vec[@ty.t]]);
+            auto ann = triv_ann(next_ty_var(fcx.ccx));
             new_pat = ast.pat_bind(id, def_id, ann);
         }
         case (ast.pat_tag(?p, ?subpats, ?vdef_opt, _)) {
@@ -1670,7 +1661,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         auto lhs_1 = demand_expr(fcx, rhs_t0, lhs_0);
         auto rhs_1 = demand_expr(fcx, expr_ty(lhs_1), rhs_0);
 
-        auto ann = ast.ann_type(rhs_t0, none[vec[@ty.t]]);
+        auto ann = triv_ann(rhs_t0);
         ret tup(lhs_1, rhs_1, ann);
     }
 
@@ -1698,7 +1689,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
     alt (expr.node) {
         case (ast.expr_lit(?lit, _)) {
             auto typ = check_lit(lit);
-            auto ann = ast.ann_type(typ, none[vec[@ty.t]]);
+            auto ann = triv_ann(typ);
             ret @fold.respan[ast.expr_](expr.span, ast.expr_lit(lit, ann));
         }
 
@@ -1726,7 +1717,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (_) { /* fall through */ }
             }
 
-            auto ann = ast.ann_type(t, none[vec[@ty.t]]);
+            auto ann = triv_ann(t);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_binary(binop, lhs_1, rhs_1,
                                                         ann));
@@ -1757,7 +1748,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (_) { oper_t = strip_boxes(oper_t); }
             }
 
-            auto ann = ast.ann_type(oper_t, none[vec[@ty.t]]);
+            auto ann = triv_ann(oper_t);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_unary(unop, oper_1, ann));
         }
@@ -1775,25 +1766,25 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         case (ast.expr_ext(?p, ?args, ?body, ?expanded, _)) {
             auto exp_ = check_expr(fcx, expanded);
             auto t = expr_ty(exp_);
-            auto ann = ast.ann_type(t, none[vec[@ty.t]]);
+            auto ann = triv_ann(t);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_ext(p, args, body, exp_,
                                                      ann));
         }
 
-        case (ast.expr_fail) {
+        case (ast.expr_fail(_)) { // ??? ignoring ann
             ret expr;
         }
 
-        case (ast.expr_break) {
+        case (ast.expr_break(_)) {
             ret expr;
         }
 
-        case (ast.expr_cont) {
+        case (ast.expr_cont(_)) {
             ret expr;
         }
 
-        case (ast.expr_ret(?expr_opt)) {
+        case (ast.expr_ret(?expr_opt, _)) {
             alt (expr_opt) {
                 case (none[@ast.expr]) {
                     auto nil = plain_ty(ty.ty_nil);
@@ -1808,13 +1799,13 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (some[@ast.expr](?e)) {
                     auto expr_0 = check_expr(fcx, e);
                     auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
-                    ret @fold.respan[ast.expr_](expr.span,
-                                                ast.expr_ret(some(expr_1)));
+                    ret @fold.respan[ast.expr_]
+                        (expr.span, ast.expr_ret(some(expr_1), ann_none));
                 }
             }
         }
 
-        case (ast.expr_put(?expr_opt)) {
+        case (ast.expr_put(?expr_opt, _)) {
             alt (expr_opt) {
                 case (none[@ast.expr]) {
                     auto nil = plain_ty(ty.ty_nil);
@@ -1829,31 +1820,32 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (some[@ast.expr](?e)) {
                     auto expr_0 = check_expr(fcx, e);
                     auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
-                    ret @fold.respan[ast.expr_](expr.span,
-                                                ast.expr_put(some(expr_1)));
+                    ret @fold.respan[ast.expr_]
+                        (expr.span, ast.expr_put(some(expr_1), ann_none));
                 }
             }
         }
 
-        case (ast.expr_be(?e)) {
+        case (ast.expr_be(?e, _)) {
             /* FIXME: prove instead of check */
             check (ast.is_call_expr(e));
             auto expr_0 = check_expr(fcx, e);
             auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_be(expr_1));
+                                        ast.expr_be(expr_1, ann_none));
         }
 
-        case (ast.expr_log(?e)) {
+        case (ast.expr_log(?e,_)) {
             auto expr_t = check_expr(fcx, e);
-            ret @fold.respan[ast.expr_](expr.span, ast.expr_log(expr_t));
+            ret @fold.respan[ast.expr_]
+                (expr.span, ast.expr_log(expr_t, ann_none));
         }
 
-        case (ast.expr_check_expr(?e)) {
+        case (ast.expr_check_expr(?e, _)) {
             auto expr_t = check_expr(fcx, e);
             demand(fcx, expr.span, plain_ty(ty.ty_bool), expr_ty(expr_t));
-            ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_check_expr(expr_t));
+            ret @fold.respan[ast.expr_]
+                (expr.span, ast.expr_check_expr(expr_t, ann_none));
         }
 
         case (ast.expr_assign(?lhs, ?rhs, _)) {
@@ -1891,7 +1883,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             }
             auto rhs_1 = demand_expr(fcx, item_t, rhs_0);
 
-            auto ann = ast.ann_type(chan_t, none[vec[@ty.t]]);
+            auto ann = triv_ann(chan_t);
             auto newexpr = ast.expr_send(lhs_1, rhs_1, ann);
             ret @fold.respan[ast.expr_](expr.span, newexpr);
         }
@@ -1914,7 +1906,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             }
             auto lhs_1 = demand_expr(fcx, item_t, lhs_0);
 
-            auto ann = ast.ann_type(item_t, none[vec[@ty.t]]);
+            auto ann = triv_ann(item_t);
             auto newexpr = ast.expr_recv(lhs_1, rhs_1, ann);
             ret @fold.respan[ast.expr_](expr.span, newexpr);
         }
@@ -1943,7 +1935,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             auto thn_1 = demand_block(fcx, elsopt_t, thn_0);
 
-            auto ann = ast.ann_type(elsopt_t, none[vec[@ty.t]]);
+            auto ann = triv_ann(elsopt_t);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_if(cond_1, thn_1,
                                                     elsopt_1, ann));
@@ -1957,7 +1949,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             // FIXME: enforce that the type of the decl is the element type
             // of the seq.
 
-            auto ann = ast.ann_type(plain_ty(ty.ty_nil), none[vec[@ty.t]]);
+            auto ann = triv_ann(plain_ty(ty.ty_nil));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_for(decl_1, seq_1,
                                                      body_1, ann));
@@ -1968,7 +1960,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto seq_1 = check_expr(fcx, seq);
             auto body_1 = check_block(fcx, body);
 
-            auto ann = ast.ann_type(plain_ty(ty.ty_nil), none[vec[@ty.t]]);
+            auto ann = triv_ann(plain_ty(ty.ty_nil));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_for_each(decl_1, seq_1,
                                                           body_1, ann));
@@ -1979,7 +1971,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto cond_1 = demand_expr(fcx, plain_ty(ty.ty_bool), cond_0);
             auto body_1 = check_block(fcx, body);
 
-            auto ann = ast.ann_type(plain_ty(ty.ty_nil), none[vec[@ty.t]]);
+            auto ann = triv_ann(plain_ty(ty.ty_nil));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_while(cond_1, body_1, ann));
         }
@@ -1989,7 +1981,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto cond_1 = demand_expr(fcx, plain_ty(ty.ty_bool), cond_0);
             auto body_1 = check_block(fcx, body);
 
-            auto ann = ast.ann_type(block_ty(body_1), none[vec[@ty.t]]);
+            auto ann = triv_ann(block_ty(body_1));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_do_while(body_1, cond_1,
                                                           ann));
@@ -2039,7 +2031,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             auto expr_1 = demand_expr(fcx, pattern_ty, expr_0);
 
-            auto ann = ast.ann_type(result_ty, none[vec[@ty.t]]);
+            auto ann = triv_ann(result_ty);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_alt(expr_1, arms_1, ann));
         }
@@ -2049,10 +2041,10 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto ann;
             alt (b_0.node.expr) {
                 case (some[@ast.expr](?expr)) {
-                    ann = ast.ann_type(expr_ty(expr), none[vec[@ty.t]]);
+                    ann = triv_ann(expr_ty(expr));
                 }
                 case (none[@ast.expr]) {
-                    ann = ast.ann_type(plain_ty(ty.ty_nil), none[vec[@ty.t]]);
+                    ann = triv_ann(plain_ty(ty.ty_nil));
                 }
             }
             ret @fold.respan[ast.expr_](expr.span,
@@ -2092,7 +2084,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             }
 
             auto t_1 = plain_ty(ty.ty_fn(proto_1, arg_tys_1, rt_1));
-            auto ann = ast.ann_type(t_1, none[vec[@ty.t]]);
+            auto ann = triv_ann(t_1);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_bind(result._0, result._1,
                                                       ann));
@@ -2114,7 +2106,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 }
             }
 
-            auto ann = ast.ann_type(rt_1, none[vec[@ty.t]]);
+            auto ann = triv_ann(rt_1);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_call(f_1, args_1, ann));
         }
@@ -2143,7 +2135,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             // FIXME: Other typechecks needed
 
-            auto ann = ast.ann_type(plain_ty(ty.ty_task), none[vec[@ty.t]]);
+            auto ann = triv_ann(plain_ty(ty.ty_task));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_spawn(dom, name,
                                                        f_1, args_1, ann));
@@ -2162,7 +2154,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                       +  ty_to_str(t_1));
             }
 
-            auto ann = ast.ann_type(t_1, none[vec[@ty.t]]);
+            auto ann = triv_ann(t_1);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_cast(e_1, t, ann));
         }
@@ -2186,7 +2178,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             }
 
             auto vec_sty = ty.ty_vec(rec(ty=t, mut=mut));
-            auto ann = ast.ann_type(plain_ty(vec_sty), none[vec[@ty.t]]);
+            auto ann = triv_ann(plain_ty(vec_sty));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_vec(args_1, mut, ann));
         }
@@ -2202,8 +2194,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 elts_mt += vec(rec(ty=expr_t, mut=e.mut));
             }
 
-            auto ann = ast.ann_type(plain_ty(ty.ty_tup(elts_mt)),
-                                    none[vec[@ty.t]]);
+            auto ann = triv_ann(plain_ty(ty.ty_tup(elts_mt)));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_tup(elts_1, ann));
         }
@@ -2234,8 +2225,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             alt (base) {
                 case (none[@ast.expr]) {
-                    ann = ast.ann_type(plain_ty(ty.ty_rec(fields_t)),
-                                       none[vec[@ty.t]]);
+                    ann = triv_ann(plain_ty(ty.ty_rec(fields_t)));
                 }
 
                 case (some[@ast.expr](?bexpr)) {
@@ -2255,7 +2245,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                         }
                     }
 
-                    ann = ast.ann_type(bexpr_t, none[vec[@ty.t]]);
+                    ann = triv_ann(bexpr_t);
 
                     for (ty.field f in fields_t) {
                         auto found = false;
@@ -2290,7 +2280,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                         fcx.ccx.sess.span_err(expr.span,
                                               "bad index on tuple");
                     }
-                    auto ann = ast.ann_type(args.(ix).ty, none[vec[@ty.t]]);
+                    auto ann = triv_ann(args.(ix).ty);
                     ret @fold.respan[ast.expr_](expr.span,
                                                 ast.expr_field(base_1,
                                                                field,
@@ -2304,8 +2294,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                         fcx.ccx.sess.span_err(expr.span,
                                               "bad index on record");
                     }
-                    auto ann = ast.ann_type(fields.(ix).mt.ty,
-                                            none[vec[@ty.t]]);
+                    auto ann = triv_ann(fields.(ix).mt.ty);
                     ret @fold.respan[ast.expr_](expr.span,
                                                 ast.expr_field(base_1,
                                                                field,
@@ -2322,7 +2311,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     auto meth = methods.(ix);
                     auto t = plain_ty(ty.ty_fn(meth.proto,
                                                meth.inputs, meth.output));
-                    auto ann = ast.ann_type(t, none[vec[@ty.t]]);
+                    auto ann = triv_ann(t);
                     ret @fold.respan[ast.expr_](expr.span,
                                                 ast.expr_field(base_1,
                                                                field,
@@ -2352,7 +2341,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                              "non-integral type of vec index: "
                              + ty_to_str(idx_t));
                     }
-                    auto ann = ast.ann_type(mt.ty, none[vec[@ty.t]]);
+                    auto ann = triv_ann(mt.ty);
                     ret @fold.respan[ast.expr_](expr.span,
                                                 ast.expr_index(base_1,
                                                                idx_1,
@@ -2366,7 +2355,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                              + ty_to_str(idx_t));
                     }
                     auto t = ty.ty_machine(common.ty_u8);
-                    auto ann = ast.ann_type(plain_ty(t), none[vec[@ty.t]]);
+                    auto ann = triv_ann(plain_ty(t));
                     ret @fold.respan[ast.expr_](expr.span,
                                                 ast.expr_index(base_1,
                                                                idx_1,
@@ -2384,7 +2373,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         case (ast.expr_port(_)) {
             auto t = next_ty_var(fcx.ccx);
             auto pt = plain_ty(ty.ty_port(t));
-            auto ann = ast.ann_type(pt, none[vec[@ty.t]]);
+            auto ann = triv_ann(pt);
             ret @fold.respan[ast.expr_](expr.span, ast.expr_port(ann));
         }
 
@@ -2394,7 +2383,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             alt (port_t.struct) {
                 case (ty.ty_port(?subtype)) {
                     auto ct = plain_ty(ty.ty_chan(subtype));
-                    auto ann = ast.ann_type(ct, none[vec[@ty.t]]);
+                    auto ann = triv_ann(ct);
                     ret @fold.respan[ast.expr_](expr.span,
                                                 ast.expr_chan(expr_1, ann));
                 }
@@ -2573,7 +2562,7 @@ fn check_item_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
 
     auto output_ty = ast_ty_to_ty_crate(ccx, f.decl.output);
     auto fn_sty = ty.ty_fn(f.proto, inputs, output_ty);
-    auto fn_ann = ast.ann_type(plain_ty(fn_sty), none[vec[@ty.t]]);
+    auto fn_ann = triv_ann(plain_ty(fn_sty));
 
     auto item = ast.item_fn(ident, f, ty_params, id, fn_ann);
     ret @fold.respan[ast.item_](sp, item);

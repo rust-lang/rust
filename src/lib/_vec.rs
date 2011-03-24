@@ -207,6 +207,29 @@ fn map2[T,U,V](&operator2[T,U,V] f, &vec[mutable? T] v0, &vec[mutable? U] v1)
     ret u;
 }
 
+fn find[T](fn (&T) -> bool f, &vec[mutable? T] v) -> option.t[T] {
+    for (T elt in v) {
+        if (f(elt)) {
+            ret some[T](elt);
+        }
+    }
+
+    ret none[T];
+}
+
+fn foldl[T, U](fn (&U, &T) -> U p, &U z, &vec[T] v) -> U {
+    auto sz = len[T](v);
+
+    if (sz == 0u) {
+        ret z;
+    }
+    else {
+        auto rest = slice[T](v, 1u, sz);
+
+        ret (p(foldl[T,U](p, z, rest), v.(0)));
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

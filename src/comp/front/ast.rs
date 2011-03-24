@@ -6,6 +6,7 @@ import util.common.span;
 import util.common.spanned;
 import util.common.ty_mach;
 import util.common.filename;
+import util.typestate_ann.ts_ann;
 
 type ident = str;
 
@@ -21,7 +22,9 @@ type ty_param = rec(ident ident, def_id id);
 // Annotations added during successive passes.
 tag ann {
     ann_none;
-    ann_type(@middle.ty.t, option.t[vec[@middle.ty.t]] /* ty param substs */);
+    ann_type(@middle.ty.t,
+             option.t[vec[@middle.ty.t]], /* ty param substs */
+             option.t[@ts_ann]); /* pre- and postcondition for typestate */
 }
 
 tag def {
@@ -274,14 +277,14 @@ tag expr_ {
     expr_index(@expr, @expr, ann);
     expr_path(path, option.t[def], ann);
     expr_ext(path, vec[@expr], option.t[@expr], @expr, ann);
-    expr_fail;
-    expr_break;
-    expr_cont;
-    expr_ret(option.t[@expr]);
-    expr_put(option.t[@expr]);
-    expr_be(@expr);
-    expr_log(@expr);
-    expr_check_expr(@expr);
+    expr_fail(ann);
+    expr_break(ann);
+    expr_cont(ann);
+    expr_ret(option.t[@expr], ann);
+    expr_put(option.t[@expr], ann);
+    expr_be(@expr, ann);
+    expr_log(@expr, ann);
+    expr_check_expr(@expr, ann);
     expr_port(ann);
     expr_chan(@expr, ann);
 }

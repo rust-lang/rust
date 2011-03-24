@@ -611,16 +611,16 @@ impure fn print_expr(ps s, &@ast.expr expr) {
         case (ast.expr_path(?path,_,_)) {
             print_path(s, path);
         }
-        case (ast.expr_fail) {
+        case (ast.expr_fail(_)) {
             wrd(s.s, "fail");
         }
-        case (ast.expr_break) {
+        case (ast.expr_break(_)) {
             wrd(s.s, "break");
         }
-        case (ast.expr_cont) {
+        case (ast.expr_cont(_)) {
             wrd(s.s, "cont");
         }
-        case (ast.expr_ret(?result)) {
+        case (ast.expr_ret(?result,_)) {
             wrd(s.s, "ret");
             alt (result) {
                 case (option.some[@ast.expr](?expr)) {
@@ -630,7 +630,7 @@ impure fn print_expr(ps s, &@ast.expr expr) {
                 case (_) {}
             }
         }
-        case (ast.expr_put(?result)) {
+        case (ast.expr_put(?result,_)) {
             wrd(s.s, "put");
             alt (result) {
                 case (option.some[@ast.expr](?expr)) {
@@ -640,15 +640,15 @@ impure fn print_expr(ps s, &@ast.expr expr) {
                 case (_) {}
             }
         }
-        case (ast.expr_be(?result)) {
+        case (ast.expr_be(?result,_)) {
             wrd1(s, "be");
             print_expr(s, result);
         }
-        case (ast.expr_log(?expr)) {
+        case (ast.expr_log(?expr,_)) {
             wrd1(s, "log");
             print_expr(s, expr);
         }
-        case (ast.expr_check_expr(?expr)) {
+        case (ast.expr_check_expr(?expr,_)) {
             wrd1(s, "check");
             popen_h(s);
             print_expr(s, expr);

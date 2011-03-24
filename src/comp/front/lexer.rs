@@ -419,7 +419,7 @@ impure fn scan_number(mutable char c, reader rdr) -> token.token {
     if (is_dec_integer) {
         accum_int = digits_to_string(dec_str);
     }
-
+        
     c = rdr.curr();
     n = rdr.next();
 

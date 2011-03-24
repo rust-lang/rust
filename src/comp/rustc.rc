@@ -39,6 +39,7 @@ mod pretty {
 
 mod util {
     mod common;
+    mod typestate_ann;
 }
 
 auth driver.rustc.main = impure;
@@ -55,8 +56,10 @@ auth middle.trans.copy_any_self_to_alloca = impure;
 auth middle.trans.copy_args_to_allocas = impure;
 auth middle.trans.trans_block = impure;
 auth middle.trans.alloc_ty = impure;
+auth middle.typestate_check.log_expr = impure;
 auth lib.llvm = unsafe;
 auth pretty.pprust = impure;
+auth middle.typestate_check.find_pre_post_block = impure;
 
 mod lib {
     alt (target_os) {

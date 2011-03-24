@@ -8,6 +8,7 @@ import middle.trans;
 import middle.resolve;
 import middle.ty;
 import middle.typeck;
+import middle.typestate_check;
 import util.common;
 
 import std.map.mk_hashmap;
@@ -63,11 +64,11 @@ impure fn compile_input(session.session sess,
     auto crate = parse_input(sess, p, input);
     crate = creader.read_crates(sess, crate, library_search_paths);
     crate = resolve.resolve_crate(sess, crate);
-
     auto typeck_result = typeck.check_crate(sess, crate);
     crate = typeck_result._0;
     auto type_cache = typeck_result._1;
-
+    // FIXME: uncomment once typestate_check works
+    // crate = typestate_check.check_crate(crate);
     trans.trans_crate(sess, crate, type_cache, output, shared);
 }
 

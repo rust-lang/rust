@@ -178,26 +178,26 @@ type ast_fold[ENV] =
          @expr expanded,
          ann a) -> @expr)                         fold_expr_ext,
 
-     (fn(&ENV e, &span sp) -> @expr)              fold_expr_fail,
+     (fn(&ENV e, &span sp, ann a) -> @expr)       fold_expr_fail,
 
-     (fn(&ENV e, &span sp) -> @expr)              fold_expr_break,
+     (fn(&ENV e, &span sp, ann a) -> @expr)       fold_expr_break,
 
-     (fn(&ENV e, &span sp) -> @expr)              fold_expr_cont,
-
-     (fn(&ENV e, &span sp,
-         &option.t[@expr] rv) -> @expr)           fold_expr_ret,
+     (fn(&ENV e, &span sp, ann a) -> @expr)       fold_expr_cont,
 
      (fn(&ENV e, &span sp,
-         &option.t[@expr] rv) -> @expr)           fold_expr_put,
+         &option.t[@expr] rv, ann a) -> @expr)    fold_expr_ret,
 
      (fn(&ENV e, &span sp,
-         @expr e) -> @expr)                       fold_expr_be,
+         &option.t[@expr] rv, ann a) -> @expr)    fold_expr_put,
 
      (fn(&ENV e, &span sp,
-         @expr e) -> @expr)                       fold_expr_log,
+         @expr e, ann a) -> @expr)                fold_expr_be,
 
      (fn(&ENV e, &span sp,
-         @expr e) -> @expr)                       fold_expr_check_expr,
+         @expr e, ann a) -> @expr)                fold_expr_log,
+
+     (fn(&ENV e, &span sp,
+         @expr e, ann a) -> @expr)                fold_expr_check_expr,
 
      (fn(&ENV e, &span sp,
          ann a) -> @expr)                         fold_expr_port,
@@ -717,19 +717,19 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
                                   exp, t);
         }
 
-        case (ast.expr_fail) {
-            ret fld.fold_expr_fail(env_, e.span);
+        case (ast.expr_fail(?t)) {
+            ret fld.fold_expr_fail(env_, e.span, t);
         }
 
-        case (ast.expr_break) {
-            ret fld.fold_expr_break(env_, e.span);
+        case (ast.expr_break(?t)) {
+            ret fld.fold_expr_break(env_, e.span, t);
         }
 
-        case (ast.expr_cont) {
-            ret fld.fold_expr_cont(env_, e.span);
+        case (ast.expr_cont(?t)) {
+            ret fld.fold_expr_cont(env_, e.span, t);
         }
 
-        case (ast.expr_ret(?oe)) {
+        case (ast.expr_ret(?oe, ?t)) {
             auto oee = none[@expr];
             alt (oe) {
                 case (some[@expr](?x)) {
@@ -737,10 +737,10 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
                 }
                 case (_) { /* fall through */  }
             }
-            ret fld.fold_expr_ret(env_, e.span, oee);
+            ret fld.fold_expr_ret(env_, e.span, oee, t);
         }
 
-        case (ast.expr_put(?oe)) {
+        case (ast.expr_put(?oe, ?t)) {
             auto oee = none[@expr];
             alt (oe) {
                 case (some[@expr](?x)) {
@@ -748,22 +748,22 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
                 }
                 case (_) { /* fall through */  }
             }
-            ret fld.fold_expr_put(env_, e.span, oee);
+            ret fld.fold_expr_put(env_, e.span, oee, t);
         }
 
-        case (ast.expr_be(?x)) {
+        case (ast.expr_be(?x, ?t)) {
             auto ee = fold_expr(env_, fld, x);
-            ret fld.fold_expr_be(env_, e.span, ee);
+            ret fld.fold_expr_be(env_, e.span, ee, t);
         }
 
-        case (ast.expr_log(?x)) {
+        case (ast.expr_log(?x, ?t)) {
             auto ee = fold_expr(env_, fld, x);
-            ret fld.fold_expr_log(env_, e.span, ee);
+            ret fld.fold_expr_log(env_, e.span, ee, t);
         }
 
-        case (ast.expr_check_expr(?x)) {
+        case (ast.expr_check_expr(?x, ?t)) {
             auto ee = fold_expr(env_, fld, x);
-            ret fld.fold_expr_check_expr(env_, e.span, ee);
+            ret fld.fold_expr_check_expr(env_, e.span, ee, t);
         }
 
         case (ast.expr_port(?t)) {
@@ -1308,38 +1308,40 @@ fn identity_fold_expr_ext[ENV](&ENV env, &span sp,
     ret @respan(sp, ast.expr_ext(p, args, body, expanded, a));
 }
 
-fn identity_fold_expr_fail[ENV](&ENV env, &span sp) -> @expr {
-    ret @respan(sp, ast.expr_fail);
+fn identity_fold_expr_fail[ENV](&ENV env, &span sp, ann a) -> @expr {
+    ret @respan(sp, ast.expr_fail(a));
 }
 
-fn identity_fold_expr_break[ENV](&ENV env, &span sp) -> @expr {
-    ret @respan(sp, ast.expr_break);
+fn identity_fold_expr_break[ENV](&ENV env, &span sp, ann a) -> @expr {
+    ret @respan(sp, ast.expr_break(a));
 }
 
-fn identity_fold_expr_cont[ENV](&ENV env, &span sp) -> @expr {
-    ret @respan(sp, ast.expr_cont);
+fn identity_fold_expr_cont[ENV](&ENV env, &span sp, ann a) -> @expr {
+    ret @respan(sp, ast.expr_cont(a));
 }
 
 fn identity_fold_expr_ret[ENV](&ENV env, &span sp,
-                               &option.t[@expr] rv) -> @expr {
-    ret @respan(sp, ast.expr_ret(rv));
+                               &option.t[@expr] rv, ann a) -> @expr {
+    ret @respan(sp, ast.expr_ret(rv, a));
 }
 
 fn identity_fold_expr_put[ENV](&ENV env, &span sp,
-                               &option.t[@expr] rv) -> @expr {
-    ret @respan(sp, ast.expr_put(rv));
+                               &option.t[@expr] rv, ann a) -> @expr {
+    ret @respan(sp, ast.expr_put(rv, a));
 }
 
-fn identity_fold_expr_be[ENV](&ENV env, &span sp, @expr x) -> @expr {
-    ret @respan(sp, ast.expr_be(x));
+fn identity_fold_expr_be[ENV](&ENV env, &span sp, @expr x, ann a) -> @expr {
+    ret @respan(sp, ast.expr_be(x, a));
 }
 
-fn identity_fold_expr_log[ENV](&ENV e, &span sp, @expr x) -> @expr {
-    ret @respan(sp, ast.expr_log(x));
+fn identity_fold_expr_log[ENV](&ENV e, &span sp, @expr x,
+                               ann a) -> @expr {
+    ret @respan(sp, ast.expr_log(x, a));
 }
 
-fn identity_fold_expr_check_expr[ENV](&ENV e, &span sp, @expr x) -> @expr {
-    ret @respan(sp, ast.expr_check_expr(x));
+fn identity_fold_expr_check_expr[ENV](&ENV e, &span sp, @expr x, ann a)
+    -> @expr {
+    ret @respan(sp, ast.expr_check_expr(x, a));
 }
 
 fn identity_fold_expr_port[ENV](&ENV e, &span sp, ann a) -> @expr {
@@ -1621,15 +1623,15 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_index  = bind identity_fold_expr_index[ENV](_,_,_,_,_),
          fold_expr_path   = bind identity_fold_expr_path[ENV](_,_,_,_,_),
          fold_expr_ext    = bind identity_fold_expr_ext[ENV](_,_,_,_,_,_,_),
-         fold_expr_fail   = bind identity_fold_expr_fail[ENV](_,_),
-         fold_expr_break  = bind identity_fold_expr_break[ENV](_,_),
-         fold_expr_cont   = bind identity_fold_expr_cont[ENV](_,_),
-         fold_expr_ret    = bind identity_fold_expr_ret[ENV](_,_,_),
-         fold_expr_put    = bind identity_fold_expr_put[ENV](_,_,_),
-         fold_expr_be     = bind identity_fold_expr_be[ENV](_,_,_),
-         fold_expr_log    = bind identity_fold_expr_log[ENV](_,_,_),
+         fold_expr_fail   = bind identity_fold_expr_fail[ENV](_,_,_),
+         fold_expr_break  = bind identity_fold_expr_break[ENV](_,_,_),
+         fold_expr_cont   = bind identity_fold_expr_cont[ENV](_,_,_),
+         fold_expr_ret    = bind identity_fold_expr_ret[ENV](_,_,_,_),
+         fold_expr_put    = bind identity_fold_expr_put[ENV](_,_,_,_),
+         fold_expr_be     = bind identity_fold_expr_be[ENV](_,_,_,_),
+         fold_expr_log    = bind identity_fold_expr_log[ENV](_,_,_,_),
          fold_expr_check_expr
-                          = bind identity_fold_expr_check_expr[ENV](_,_,_),
+         = bind identity_fold_expr_check_expr[ENV](_,_,_,_),
          fold_expr_port   = bind identity_fold_expr_port[ENV](_,_,_),
          fold_expr_chan   = bind identity_fold_expr_chan[ENV](_,_,_,_),
 
