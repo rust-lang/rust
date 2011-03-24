@@ -77,7 +77,7 @@ impure fn pretty_print_input(session.session sess,
     auto def = tup(0, 0);
     auto p = front.parser.new_parser(sess, env, def, input);
     auto crate = front.parser.parse_crate_from_source_file(p);
-    pretty.pprust.print_ast(crate.node.module, std.io.stdout());
+    pretty.pprust.print_file(crate.node.module, input, std.io.stdout());
 }
 
 fn warn_wrong_compiler() {

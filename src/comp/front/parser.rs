@@ -116,6 +116,8 @@ impure fn new_parser(session.session sess,
     }
     auto srdr = io.file_reader(path);
     auto rdr = lexer.new_reader(srdr, path);
+    // Make sure npos points at first actual token.
+    lexer.consume_any_whitespace(rdr);
     auto npos = rdr.get_curr_pos();
     ret stdio_parser(sess, env, ftype, lexer.next_token(rdr),
                      npos, npos, initial_def._1, UNRESTRICTED, initial_def._0,
@@ -1748,8 +1750,8 @@ impure fn parse_block(parser p) -> ast.block {
         }
     }
 
-    p.bump();
     auto hi = p.get_span();
+    p.bump();
 
     auto bloc = index_block(stmts, expr);
     ret spanned[ast.block_](lo, hi, bloc);
