@@ -606,7 +606,8 @@ TEST_XFAILS_BOOT := $(TASK_XFAILS) \
                       tail-non-call.rs \
                       writing-through-read-alias.rs)
 
-TEST_XFAILS_STAGE0 := $(addprefix $(S)src/test/run-pass/, \
+TEST_XFAILS_STAGE0 := $(FLOAT_XFAILS) \
+                      $(addprefix $(S)src/test/run-pass/, \
                         acyclic-unwind.rs \
                         alt-pattern-drop.rs \
                         alt-type-simple.rs \
