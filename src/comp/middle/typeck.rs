@@ -184,6 +184,11 @@ fn ty_params_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
             ret tup(none[vec[ast.def_id]], plain_ty(ty.ty_nil));
         }
 
+        case (ast.def_ty(_)) {
+            fcx.ccx.sess.err("expected value but found type");
+            fail;
+        }
+
         case (_) {
             // FIXME: handle other names.
             fcx.ccx.sess.unimpl("definition variant");
