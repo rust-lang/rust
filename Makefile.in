@@ -712,6 +712,7 @@ TEST_XFAILS_STAGE0 := $(FLOAT_XFAILS) \
                         use-import-export.rs \
                         user.rs \
                         utf8.rs \
+                        utf8_chars.rs \
                         vec-alloc-append.rs \
                         vec-append.rs \
                         vec-slice.rs \

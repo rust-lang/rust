@@ -7,16 +7,16 @@ native "rust" mod rustrt {
 
 // Reading
 
-// TODO This is all buffered. We might need an unbuffered variant as well
+// FIXME This is all buffered. We might need an unbuffered variant as well
 
 tag seek_style {seek_set; seek_end; seek_cur;}
 
 type reader =
     state obj {
-          impure fn read_byte() -> u8;
+          impure fn read_byte() -> int;
+          impure fn unread_byte(int byte);
           impure fn read_bytes(uint len) -> vec[u8];
-          impure fn read_char() -> int;
-          impure fn unread_char(int i);
+          impure fn read_char() -> char;
           impure fn eof() -> bool;
           impure fn read_line() -> str;
           impure fn read_c_str() -> str;
@@ -24,7 +24,7 @@ type reader =
           impure fn read_le_int(uint size) -> int;
 
           impure fn seek(int offset, seek_style whence);
-          impure fn tell() -> uint; // TODO: eventually u64
+          impure fn tell() -> uint; // FIXME: eventually u64
     };
 
 fn convert_whence(seek_style whence) -> int {
@@ -36,8 +36,11 @@ fn convert_whence(seek_style whence) -> int {
 }
 
 state obj FILE_reader(os.libc.FILE f, bool must_close) {
-    impure fn read_byte() -> u8 {
-        ret os.libc.fgetc(f) as u8;
+    impure fn read_byte() -> int {
+        ret os.libc.fgetc(f);
+    }
+    impure fn unread_byte(int byte) {
+        os.libc.ungetc(byte, f);
     }
     impure fn read_bytes(uint len) -> vec[u8] {
         auto buf = _vec.alloc[u8](len);
@@ -45,12 +48,26 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
         _vec.len_set[u8](buf, read);
         ret buf;
     }
-    impure fn read_char() -> int {
-        ret os.libc.fgetc(f);
-    }
-    impure fn unread_char(int ch) {
-        os.libc.ungetc(ch, f);
-    }
+    impure fn read_char() -> char {
+        auto c0 = os.libc.fgetc(f);
+        if (c0 == -1) {ret -1 as char;} // FIXME will this stay valid?
+        auto b0 = c0 as u8;
+        auto w = _str.utf8_char_width(b0);
+        check(w > 0u);
+        if (w == 1u) {ret b0 as char;}
+        auto val = 0u;
+        while (w > 1u) {
+            w -= 1u;
+            auto next = os.libc.fgetc(f);
+            check(next > -1);
+            check(next & 0xc0 == 0x80);
+            val <<= 6u;
+            val += (next & 0x3f) as uint;
+        }
+        // See _str.char_at
+        val += ((b0 << ((w + 1u) as u8)) as uint) << ((w - 1u) * 6u - w - 1u);
+        ret val as char;
+    }        
     impure fn eof() -> bool {
       auto ch = os.libc.fgetc(f);
       if (ch == -1) {ret true;}
@@ -58,25 +75,27 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
       ret false;
     }
     impure fn read_line() -> str {
-      auto buf = "";
-      while (true) {
-        auto ch = os.libc.fgetc(f);
-        if (ch == -1) { ret buf; }
-        if (ch == 10) { ret buf; }
-        buf += _str.unsafe_from_bytes(vec(ch as u8));
-      }
-      ret buf;
+        let vec[u8] buf = vec();
+        // No break yet in rustc
+        auto go_on = true;
+        while (go_on) {
+            auto ch = os.libc.fgetc(f);
+            if (ch == -1 || ch == 10) {go_on = false;}
+            else {_vec.push[u8](buf, ch as u8);}
+        }
+        ret _str.unsafe_from_bytes(buf);
     }
     impure fn read_c_str() -> str {
-        auto buf = "";
-        while (true) {
+        let vec[u8] buf = vec();
+        auto go_on = true;
+        while (go_on) {
             auto ch = os.libc.fgetc(f);
-            if (ch < 1) { ret buf; }
-            buf += _str.unsafe_from_bytes(vec(ch as u8));
+            if (ch < 1) {go_on = false;}
+            else {_vec.push[u8](buf, ch as u8);}
         }
-        ret buf;
+        ret _str.unsafe_from_bytes(buf);
     }
-    // TODO deal with eof?
+    // FIXME deal with eof?
     impure fn read_le_uint(uint size) -> uint {
         auto val = 0u;
         auto pos = 0u;
@@ -95,7 +114,7 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
             pos += 8u;
             size -= 1u;
         }
-        ret val as int; // TODO does that work?
+        ret val as int;
     }
     impure fn seek(int offset, seek_style whence) {
         check(os.libc.fseek(f, offset, convert_whence(whence)) == 0);
@@ -123,8 +142,6 @@ fn file_reader(str path) -> reader {
 
 // Writing
 
-// TODO This is all unbuffered. We might need a buffered variant as well
-
 tag fileflag {
     append;
     create;
@@ -136,7 +153,7 @@ type buf_writer = state obj {
   fn write(vec[u8] v);
 
   fn seek(int offset, seek_style whence);
-  fn tell() -> uint; // TODO: eventually u64
+  fn tell() -> uint; // FIXME: eventually u64
 };
 
 state obj FILE_writer(os.libc.FILE f, bool must_close) {
@@ -224,7 +241,10 @@ fn file_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
 type writer =
     state obj {
           fn get_buf_writer() -> buf_writer;
+          // write_str will continue to do utf-8 output only. an alternative
+          // function will be provided for general encoded string output
           impure fn write_str(str s);
+          impure fn write_char(char ch);
           impure fn write_int(int n);
           impure fn write_uint(uint n);
           impure fn write_bytes(vec[u8] bytes);
@@ -248,6 +268,10 @@ state obj new_writer(buf_writer out) {
     }
     impure fn write_str(str s) {
         out.write(_str.bytes(s));
+    }
+    impure fn write_char(char ch) {
+        // FIXME needlessly consy
+        out.write(_str.bytes(_str.from_char(ch)));
     }
     impure fn write_int(int n) {
         out.write(_str.bytes(_int.to_str(n, 10u)));
@@ -275,7 +299,7 @@ fn file_writer(str path, vec[fileflag] flags) -> writer {
     ret new_writer(file_buf_writer(path, flags));
 }
 
-// TODO: fileflags
+// FIXME: fileflags
 fn buffered_file_buf_writer(str path) -> buf_writer {
     auto f = os.libc.fopen(_str.buf(path), _str.buf("w"));
     if (f as uint == 0u) {
@@ -300,7 +324,7 @@ type byte_buf = @rec(mutable vec[mutable u8] buf, mutable uint pos);
 
 state obj byte_buf_writer(byte_buf buf) {
     fn write(vec[u8] v) {
-        // TODO: optimize
+        // FIXME: optimize
         auto vlen = _vec.len[u8](v);
         auto vpos = 0u;
         while (vpos < vlen) {
@@ -336,7 +360,6 @@ state obj byte_buf_writer(byte_buf buf) {
     fn tell() -> uint { ret buf.pos; }
 }
 
-// TODO awkward! it's not possible to implement a writer with an extra method
 fn string_writer() -> str_writer {
     // FIXME: yikes, this is bad. Needs fixing of mutable syntax.
     let vec[mutable u8] b = vec(mutable 0u8);

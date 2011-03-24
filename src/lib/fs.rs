@@ -3,7 +3,7 @@ native "rust" mod rustrt {
 }
 
 fn path_sep() -> str {
-  ret _str.unsafe_from_bytes(vec(os_fs.path_sep as u8));
+    ret _str.from_char(os_fs.path_sep);
 }
 
 type path = str;
