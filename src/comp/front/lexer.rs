@@ -76,7 +76,7 @@ impure fn new_reader(io.reader rdr, str filename) -> reader
                     col += 1u;
                 }
 
-                n = rdr.read_char() as char;
+                n = rdr.read_byte() as char;
             }
 
             fn mark() {
@@ -204,8 +204,8 @@ impure fn new_reader(io.reader rdr, str filename) -> reader
     reserved.insert("m128", ()); // IEEE 754-2008 'decimal128'
     reserved.insert("dec", ());  // One of m32, m64, m128
 
-    ret reader(rdr, filename, rdr.read_char() as char,
-               rdr.read_char() as char, 1u, 0u, 1u, 0u, keywords, reserved);
+    ret reader(rdr, filename, rdr.read_byte() as char,
+               rdr.read_byte() as char, 1u, 0u, 1u, 0u, keywords, reserved);
 }
 
 

@@ -21,18 +21,18 @@ type reader = rec(
 
 // TODO: eventually use u64 or big here
 impure fn read_vint(&io.reader reader) -> uint {
-    auto a = reader.read_byte();
+    auto a = reader.read_byte() as u8;
     if (a & 0x80u8 != 0u8) { ret (a & 0x7fu8) as uint; }
-    auto b = reader.read_byte();
+    auto b = reader.read_byte() as u8;
     if (a & 0x40u8 != 0u8) {
         ret (((a & 0x3fu8) as uint) << 8u) | (b as uint);
     }
-    auto c = reader.read_byte();
+    auto c = reader.read_byte() as u8;
     if (a & 0x20u8 != 0u8) {
         ret (((a & 0x1fu8) as uint) << 16u) | ((b as uint) << 8u) |
             (c as uint);
     }
-    auto d = reader.read_byte();
+    auto d = reader.read_byte() as u8;
     if (a & 0x10u8 != 0u8) {
         ret (((a & 0x0fu8) as uint) << 24u) | ((b as uint) << 16u) |
             ((c as uint) << 8u) | (d as uint);

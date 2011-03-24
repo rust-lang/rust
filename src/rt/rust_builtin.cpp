@@ -196,6 +196,27 @@ str_alloc(rust_task *task, size_t n_bytes)
     return st;
 }
 
+extern "C" CDECL rust_str*
+str_push_byte(rust_task* task, rust_str* v, size_t byte)
+{
+    size_t fill = v->fill;
+    size_t alloc = next_power_of_two(sizeof(rust_vec) + fill + 1);
+    if (v->ref_count > 1 || v->alloc < alloc) {
+        v = vec_alloc_with_data(task, fill + 1, fill, 1, (void*)&v->data[0]);
+        if (!v) {
+            task->fail(2);
+            return NULL;
+        }
+    }
+    else if (v->ref_count != CONST_REFCOUNT) {
+        v->ref();
+    }
+    v->data[fill-1] = (char)byte;
+    v->data[fill] = '\0';
+    v->fill++;
+    return v;
+}
+
 extern "C" CDECL char const *
 str_buf(rust_task *task, rust_str *s)
 {
