@@ -535,8 +535,8 @@ upcall_require_c_sym(rust_task *task,
         task->log(rust_log::UPCALL | rust_log::CACHE,
                   "found-or-cached addr: 0x%" PRIxPTR, addr);
     } else {
-        task->log(rust_log::UPCALL | rust_log::CACHE,
-                  "failed to resolve symbol");
+        task->log(rust_log::UPCALL | rust_log::CACHE | rust_log::ERR,
+                  "failed to resolve symbol %s in %s", symbol, library);
         task->fail(6);
     }
     return addr;

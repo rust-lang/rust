@@ -120,7 +120,8 @@ rust_crate_cache::rust_sym::rust_sym(rust_dom *dom,
     if (found_leaf) {
         dom->log(rust_log::CACHE, "resolved symbol to 0x%"  PRIxPTR, val);
     } else {
-        dom->log(rust_log::CACHE, "failed to resolve symbol");
+        dom->log(rust_log::CACHE | rust_log::ERR,
+                 "failed to resolve symbol");
     }
 }
 
