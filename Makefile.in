@@ -38,7 +38,8 @@ ifeq ($(CFG_OSTYPE), Linux)
   CFG_LIB_NAME=lib$(1).so
   CFG_GCC_CFLAGS += -fPIC -march=i686
   CFG_GCC_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
-  CFG_GCC_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
+  CFG_GCC_DEF_FLAG := -Wl,-whole-archive,--export-dynamic,--dynamic-list=
+  CFG_GCC_POST_LIB_FLAGS := -Wl,-no-whole-archive
   ifeq ($(CFG_CPUTYPE), x86_64)
     CFG_GCC_CFLAGS += -m32
     CFG_GCC_LINK_FLAGS += -m32
@@ -347,6 +348,7 @@ RUNTIME_HDR := rt/globals.h \
 RUNTIME_DEF := rt/rustrt$(CFG_DEF_SUFFIX)
 RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o)
+RUNTIME_LIBS := $(CFG_GCC_POST_LIB_FLAGS)
 
 ######################################################################
 # rustc LLVM-extensions (C++) library variables
@@ -361,7 +363,8 @@ RUSTLLVM_DEF := rustllvm/rustllvm$(CFG_DEF_SUFFIX)
 RUSTLLVM_INCS := -iquote $(CFG_LLVM_INCDIR) \
                  -iquote $(S)src/rustllvm/include
 RUSTLLVM_OBJS := $(RUSTLLVM_CS:.cpp=.o)
-RUSTLLVM_LIBS := $(CFG_LLVM_LDFLAGS) $(CFG_LLVM_LIBS)
+RUSTLLVM_LIBS := $(CFG_LLVM_LDFLAGS) $(CFG_LLVM_LIBS) \
+                 $(CFG_GCC_POST_LIB_FLAGS)
 
 ######################################################################
 # Standard library variables
@@ -404,12 +407,12 @@ all: boot/rustboot$(X)          \
 
 rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF)
 	@$(call E, link: $@)
-	$(Q)$(call CFG_LINK_C,$@,$(RUNTIME_OBJS),$(RUNTIME_DEF))
+	$(Q)$(call CFG_LINK_C,$@,$(RUNTIME_LIBS) $(RUNTIME_OBJS),$(RUNTIME_DEF))
 
 rustllvm/$(CFG_RUSTLLVM): $(RUSTLLVM_OBJS) $(MKFILES) $(RUSTLLVM_HDR) \
                           $(RUSTLLVM_DEF)
 	@$(call E, link: $@)
-	$(Q)$(call CFG_LINK_C,$@,$(CFG_LLVM_LDFLAGS) $(RUSTLLVM_OBJS) \
+	$(Q)$(call CFG_LINK_C,$@,$(RUSTLLVM_LIBS) $(RUSTLLVM_OBJS) \
           $(CFG_LLVM_LIBS) $(CFG_LLVM_LDFLAGS),$(RUSTLLVM_DEF))
 
 ifdef CFG_BOOT_NATIVE
