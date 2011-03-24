@@ -586,5 +586,5 @@
     LLVMX86FP80TypeInContext;
     LLVMX86MMXType;
     LLVMX86MMXTypeInContext;
-}
+};
 

@@ -66,5 +66,5 @@
 	vec_len;
 	vec_len_set;
 	vec_print_debug_info;
-}
+};
 
