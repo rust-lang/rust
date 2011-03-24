@@ -344,7 +344,7 @@ RUNTIME_HDR := rt/globals.h \
                rt/test/rust_test_runtime.h \
                rt/test/rust_test_util.h
 
-RUNTIME_DEF := $(S)src/rt/rustrt$(CFG_DEF_SUFFIX)
+RUNTIME_DEF := rt/rustrt$(CFG_DEF_SUFFIX)
 RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o)
 
@@ -356,7 +356,7 @@ RUSTLLVM_CS := $(addprefix rustllvm/, \
                 MachOObjectFile.cpp Object.cpp RustWrapper.cpp)
 
 RUSTLLVM_HDR := rustllvm/include/llvm-c/Object.h
-RUSTLLVM_DEF := $(S)src/rustllvm/rustllvm$(CFG_DEF_SUFFIX)
+RUSTLLVM_DEF := rustllvm/rustllvm$(CFG_DEF_SUFFIX)
 
 RUSTLLVM_INCS := -iquote $(CFG_LLVM_INCDIR) \
                  -iquote $(S)src/rustllvm/include
@@ -513,6 +513,24 @@ rustllvm/%.o: rustllvm/%.cpp $(MKFILES)
 	@$(call E, lex-gen: $@)
 	$(Q)ocamllex$(OPT) -q -o $@ $<
 
+
+%.linux.def:    %.def.in $(MKFILES)
+	@$(call E, def: $@)
+	$(Q)echo "{" > $@
+	$(Q)sed 's/.$$/&;/' $< >> $@
+	$(Q)echo "};" >> $@
+
+%.darwin.def:	%.def.in $(MKFILES)
+	@$(call E, def: $@)
+	$(Q)sed 's/^./_&/' $< > $@
+
+ifdef CFG_WINDOWSY
+%.def:	%.def.in $(MKFILES)
+	@$(call E, def: $@)
+	$(Q)echo LIBRARY $* > $@
+	$(Q)echo EXPORTS >> $@
+	$(Q)sed 's/^./    &/' $< >> $@
+endif
 
 ######################################################################
 # Doc rules
