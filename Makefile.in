@@ -38,7 +38,7 @@ ifeq ($(CFG_OSTYPE), Linux)
   CFG_LIB_NAME=lib$(1).so
   CFG_GCC_CFLAGS += -fPIC -march=i686
   CFG_GCC_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
-  CFG_GCC_DEF_FLAG :=
+  CFG_GCC_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
   ifeq ($(CFG_CPUTYPE), x86_64)
     CFG_GCC_CFLAGS += -m32
     CFG_GCC_LINK_FLAGS += -m32
@@ -53,7 +53,7 @@ ifeq ($(CFG_OSTYPE), Darwin)
   CFG_UNIXY := 1
   CFG_LDENV := DYLD_LIBRARY_PATH
   CFG_GCC_LINK_FLAGS += -dynamiclib -lpthread
-  CFG_GCC_DEF_FLAG := -exported_symbols_list
+  CFG_GCC_DEF_FLAG := -Wl,-exported_symbols_list,
   # Darwin has a very blurry notion of "64 bit", and claims it's running
   # "on an i386" when the whole userspace is 64-bit and the compiler
   # emits 64-bit binaries by default. So we just force -m32 here. Smarter
@@ -148,7 +148,7 @@ ifdef CFG_GCC
   CFG_COMPILE_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_CFLAGS) -c -o $(1) $(2)
   CFG_DEPEND_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_CFLAGS) -MT "$(1)" -MM $(2)
   CFG_LINK_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_LINK_FLAGS) -o $(1) \
-               $(CFG_GCC_DEF_FLAG) $(3) $(2)
+               $(CFG_GCC_DEF_FLAG)$(3) $(2)
 else
   CFG_ERR := $(error please try on a system with gcc)
 endif
