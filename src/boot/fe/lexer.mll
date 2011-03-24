@@ -297,7 +297,8 @@ rule token = parse
 | '\''                         { char lexbuf                       }
 | '"'                          { let buf = Buffer.create 32 in
                                    str buf lexbuf                  }
-
+| _ as c                       { let s = Char.escaped c in
+                                   fail lexbuf ("Bad character: " ^ s) }
 | eof                          { EOF        }
 
 and str buf = parse
