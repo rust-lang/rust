@@ -76,7 +76,7 @@ impure fn new_reader(io.reader rdr, str filename) -> reader
                     col += 1u;
                 }
 
-                n = rdr.read_byte() as char;
+                n = rdr.read_char();
             }
 
             fn mark() {
@@ -204,8 +204,8 @@ impure fn new_reader(io.reader rdr, str filename) -> reader
     reserved.insert("m128", ()); // IEEE 754-2008 'decimal128'
     reserved.insert("dec", ());  // One of m32, m64, m128
 
-    ret reader(rdr, filename, rdr.read_byte() as char,
-               rdr.read_byte() as char, 1u, 0u, 1u, 0u, keywords, reserved);
+    ret reader(rdr, filename, rdr.read_char(),
+               rdr.read_char(), 1u, 0u, 1u, 0u, keywords, reserved);
 }
 
 
@@ -505,7 +505,7 @@ impure fn next_token(reader rdr) -> token.token {
 
     if (is_alpha(c) || c == '_') {
         while (is_alnum(c) || c == '_') {
-            _str.push_byte(accum_str, (c as u8));
+            _str.push_char(accum_str, c);
             rdr.bump();
             c = rdr.curr();
         }
@@ -692,7 +692,7 @@ impure fn next_token(reader rdr) -> token.token {
                         }
                     }
                     case (_) {
-                        _str.push_byte(accum_str, rdr.curr() as u8);
+                        _str.push_char(accum_str, rdr.curr());
                     }
                 }
                 rdr.bump();
