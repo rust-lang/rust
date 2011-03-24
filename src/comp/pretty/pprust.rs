@@ -718,7 +718,6 @@ impure fn print_maybe_parens(ps s, @ast.expr expr, int outer_prec) {
   if (add_them) {pclose(s);}
 }
 
-// TODO non-ascii
 fn escape_str(str st, char to_escape) -> str {
   let str out = "";
   auto len = _str.byte_len(st);

@@ -303,9 +303,9 @@ fn to_str(token t) -> str {
             ret "\"" + s + "\"";
         }
         case (LIT_CHAR(?c)) {
-            // FIXME: escape and encode.
+            // FIXME: escape.
             auto tmp = "'";
-            _str.push_byte(tmp, c as u8);
+            _str.push_char(tmp, c);
             _str.push_byte(tmp, '\'' as u8);
             ret tmp;
         }
