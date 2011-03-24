@@ -1,5 +1,6 @@
 import std.io;
 import std._str;
+import std._vec;
 import std._int;
 import std.map;
 import std.map.hashmap;
@@ -779,6 +780,85 @@ impure fn next_token(reader rdr) -> token.token {
     }
 
     fail;
+}
+
+tag cmnt_ {
+    cmnt_line(str);
+    cmnt_block(vec[str]);
+}
+type cmnt = rec(cmnt_ val, common.pos pos, bool space_after);
+
+impure fn consume_whitespace(reader rdr) -> uint {
+    auto lines = 0u;
+    while (is_whitespace(rdr.curr())) {
+        if (rdr.curr() == '\n') {lines += 1u;}
+        rdr.bump();
+    }
+    ret lines;
+}
+
+impure fn read_line_comment(reader rdr) -> cmnt {
+    auto p = rdr.get_curr_pos();
+    rdr.bump(); rdr.bump();
+    consume_whitespace(rdr);
+    auto val = "";
+    while (rdr.curr() != '\n') {
+        _str.push_char(val, rdr.curr());
+        rdr.bump();
+    }
+    ret rec(val=cmnt_line(val),
+            pos=p,
+            space_after=consume_whitespace(rdr) > 1u);
+}
+
+impure fn read_block_comment(reader rdr) -> cmnt {
+    auto p = rdr.get_curr_pos();
+    rdr.bump(); rdr.bump();
+    consume_whitespace(rdr);
+    let vec[str] lines = vec();
+    auto val = "";
+    auto level = 1;
+    while (true) {
+        if (rdr.curr() == '\n') {
+            _vec.push[str](lines, val);
+            val = "";
+            consume_whitespace(rdr);
+        } else {
+            if (rdr.curr() == '*' && rdr.next() == '/') {
+                level -= 1;
+                if (level == 0) {
+                    rdr.bump(); rdr.bump();
+                    _vec.push[str](lines, val);
+                    break;
+                }
+            } else if (rdr.curr() == '/' && rdr.next() == '*') {
+                level += 1;
+            }
+            _str.push_char(val, rdr.curr());
+            rdr.bump();
+        }
+    }
+    ret rec(val=cmnt_block(lines),
+            pos=p,
+            space_after=consume_whitespace(rdr) > 1u);
+}
+
+impure fn gather_comments(str path) -> vec[cmnt] {
+    auto srdr = io.file_reader(path);
+    auto rdr = lexer.new_reader(srdr, path);
+    let vec[cmnt] comments = vec();
+    while (!rdr.is_eof()) {
+        while (true) {
+            consume_whitespace(rdr);
+            if (rdr.curr() == '/' && rdr.next() == '/') {
+                _vec.push[cmnt](comments, read_line_comment(rdr));
+            } else if (rdr.curr() == '/' && rdr.next() == '*') {
+                _vec.push[cmnt](comments, read_block_comment(rdr));
+            } else { break; }
+        }
+        next_token(rdr);
+    }
+    ret comments;
 }
 
 
