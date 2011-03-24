@@ -75,6 +75,7 @@ impure fn parse_sty(@pstate st, str_def sd) -> ty.sty {
         case ('b') {ret ty.ty_bool;}
         case ('i') {ret ty.ty_int;}
         case ('u') {ret ty.ty_uint;}
+        case ('l') {ret ty.ty_float;}
         case ('M') {
             alt (next(st) as char) {
                 case ('b') {ret ty.ty_machine(common.ty_u8);}
@@ -104,7 +105,7 @@ impure fn parse_sty(@pstate st, str_def sd) -> ty.sty {
             }
             st.pos = st.pos + 1u;
             ret ty.ty_tag(sd(def), params);
-        }      
+        }
         case ('@') {ret ty.ty_box(parse_mt(st, sd));}
         case ('V') {ret ty.ty_vec(parse_mt(st, sd));}
         case ('P') {ret ty.ty_port(parse_ty(st, sd));}
