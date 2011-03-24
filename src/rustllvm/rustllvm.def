@@ -386,55 +386,14 @@ EXPORTS
     LLVMGetVectorSize
     LLVMGetVisibility
     LLVMHasMetadata
-    LLVMInitializeARMAsmLexer
-    LLVMInitializeARMAsmLexer
-    LLVMInitializeARMAsmParser
-    LLVMInitializeARMAsmParser
-    LLVMInitializeARMAsmPrinter
-    LLVMInitializeARMAsmPrinter
-    LLVMInitializeARMDisassembler
-    LLVMInitializeARMDisassembler
-    LLVMInitializeARMTarget
-    LLVMInitializeARMTarget
-    LLVMInitializeARMTargetInfo
-    LLVMInitializeARMTargetInfo
-    LLVMInitializeAlphaAsmPrinter
-    LLVMInitializeAlphaTarget
-    LLVMInitializeAlphaTargetInfo
-    LLVMInitializeBlackfinAsmPrinter
-    LLVMInitializeBlackfinTarget
-    LLVMInitializeBlackfinTargetInfo
     LLVMInitializeCBackendTarget
     LLVMInitializeCBackendTargetInfo
-    LLVMInitializeCellSPUAsmPrinter
-    LLVMInitializeCellSPUTarget
-    LLVMInitializeCellSPUTargetInfo
     LLVMInitializeCodeGen
-    LLVMInitializeCppBackendTarget
-    LLVMInitializeCppBackendTargetInfo
     LLVMInitializeFunctionPassManager
     LLVMInitializeIPA
     LLVMInitializeInstCombine
     LLVMInitializeInstrumentation
-    LLVMInitializeMBlazeAsmPrinter
-    LLVMInitializeMBlazeTarget
-    LLVMInitializeMBlazeTargetInfo
-    LLVMInitializeMSP430AsmPrinter
-    LLVMInitializeMSP430Target
-    LLVMInitializeMSP430TargetInfo
-    LLVMInitializeMipsAsmPrinter
-    LLVMInitializeMipsTarget
-    LLVMInitializeMipsTargetInfo
-    LLVMInitializePowerPCAsmPrinter
-    LLVMInitializePowerPCTarget
-    LLVMInitializePowerPCTargetInfo
     LLVMInitializeScalarOpts
-    LLVMInitializeSparcAsmPrinter
-    LLVMInitializeSparcTarget
-    LLVMInitializeSparcTargetInfo
-    LLVMInitializeSystemZAsmPrinter
-    LLVMInitializeSystemZTarget
-    LLVMInitializeSystemZTargetInfo
     LLVMInitializeTarget
     LLVMInitializeTransformUtils
     LLVMInitializeX86AsmLexer
@@ -449,9 +408,6 @@ EXPORTS
     LLVMInitializeX86Target
     LLVMInitializeX86TargetInfo
     LLVMInitializeX86TargetInfo
-    LLVMInitializeXCoreAsmPrinter
-    LLVMInitializeXCoreTarget
-    LLVMInitializeXCoreTargetInfo
     LLVMInsertBasicBlock
     LLVMInsertBasicBlockInContext
     LLVMInsertIntoBuilder
