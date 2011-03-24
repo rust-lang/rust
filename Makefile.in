@@ -140,10 +140,15 @@ ifdef CFG_GCC
   CFG_GCC_CFLAGS += -Wall -Werror -fno-rtti -fno-exceptions -g
   CFG_GCC_LINK_FLAGS += -g
   CFG_COMPILE_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_CFLAGS) -c -o $(1) $(2)
-  CFG_LINK_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_LINK_FLAGS) -o $(1) $(2)
   CFG_DEPEND_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_CFLAGS) -MT "$(1)" -MM $(2)
 else
   CFG_ERR := $(error please try on a system with gcc)
+endif
+
+ifdef CFG_WINDOWSY
+  CFG_LINK_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_LINK_FLAGS) -o $(1) $(3) $(2)
+else
+  CFG_LINK_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_LINK_FLAGS) -o $(1) $(2)
 endif
 
 ifdef CFG_OCAMLC_OPT
