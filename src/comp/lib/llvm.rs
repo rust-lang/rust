@@ -742,7 +742,7 @@ native mod llvm = llvm_lib {
     fn LLVMDisposeMemoryBuffer(MemoryBufferRef MemBuf);
 }
 
-native mod llvmext = llvmext_lib {
+native mod llvmext = llvm_lib {
     type ObjectFileRef;
     type SectionIteratorRef;
 
