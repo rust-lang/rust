@@ -829,6 +829,16 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
             }
         }
 
+        case (token.BREAK) {
+            p.bump();
+            ex = ast.expr_break;
+        }
+
+        case (token.CONT) {
+            p.bump();
+            ex = ast.expr_cont;
+        }
+
         case (token.PUT) {
             p.bump();
             alt (p.peek()) {

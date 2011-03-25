@@ -170,6 +170,10 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &span sp) -> @expr)              fold_expr_fail,
 
+     (fn(&ENV e, &span sp) -> @expr)              fold_expr_break,
+
+     (fn(&ENV e, &span sp) -> @expr)              fold_expr_cont,
+
      (fn(&ENV e, &span sp,
          &option.t[@expr] rv) -> @expr)           fold_expr_ret,
 
@@ -693,6 +697,14 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
 
         case (ast.expr_fail) {
             ret fld.fold_expr_fail(env_, e.span);
+        }
+
+        case (ast.expr_break) {
+            ret fld.fold_expr_break(env_, e.span);
+        }
+
+        case (ast.expr_cont) {
+            ret fld.fold_expr_cont(env_, e.span);
         }
 
         case (ast.expr_ret(?oe)) {
@@ -1266,6 +1278,14 @@ fn identity_fold_expr_fail[ENV](&ENV env, &span sp) -> @expr {
     ret @respan(sp, ast.expr_fail);
 }
 
+fn identity_fold_expr_break[ENV](&ENV env, &span sp) -> @expr {
+    ret @respan(sp, ast.expr_break);
+}
+
+fn identity_fold_expr_cont[ENV](&ENV env, &span sp) -> @expr {
+    ret @respan(sp, ast.expr_cont);
+}
+
 fn identity_fold_expr_ret[ENV](&ENV env, &span sp,
                                &option.t[@expr] rv) -> @expr {
     ret @respan(sp, ast.expr_ret(rv));
@@ -1565,6 +1585,8 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_path   = bind identity_fold_expr_path[ENV](_,_,_,_,_),
          fold_expr_ext    = bind identity_fold_expr_ext[ENV](_,_,_,_,_,_,_),
          fold_expr_fail   = bind identity_fold_expr_fail[ENV](_,_),
+         fold_expr_break  = bind identity_fold_expr_break[ENV](_,_),
+         fold_expr_cont   = bind identity_fold_expr_cont[ENV](_,_),
          fold_expr_ret    = bind identity_fold_expr_ret[ENV](_,_,_),
          fold_expr_put    = bind identity_fold_expr_put[ENV](_,_,_),
          fold_expr_be     = bind identity_fold_expr_be[ENV](_,_,_),

@@ -74,6 +74,9 @@ tag token {
     ALT;
     CASE;
 
+    BREAK;
+    CONT;
+
     FAIL;
     DROP;
 
@@ -241,6 +244,9 @@ fn to_str(token t) -> str {
         case (WHILE) { ret "while"; }
         case (ALT) { ret "alt"; }
         case (CASE) { ret "case"; }
+
+        case (BREAK) { ret "break"; }
+        case (CONT) { ret "cont"; }
 
         case (FAIL) { ret "fail"; }
         case (DROP) { ret "drop"; }

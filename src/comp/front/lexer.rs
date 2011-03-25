@@ -111,6 +111,8 @@ impure fn new_reader(io.reader rdr, str filename) -> reader
 
     keywords.insert("for", token.FOR);
     keywords.insert("each", token.EACH);
+    keywords.insert("break", token.BREAK);
+    keywords.insert("cont", token.CONT);
     keywords.insert("put", token.PUT);
     keywords.insert("ret", token.RET);
     keywords.insert("be", token.BE);

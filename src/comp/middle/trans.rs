@@ -130,6 +130,7 @@ tag cleanup {
 
 tag block_kind {
     SCOPE_BLOCK;
+    LOOP_SCOPE_BLOCK(option.t[@block_ctxt], @block_ctxt);
     NON_SCOPE_BLOCK;
 }
 
@@ -990,7 +991,7 @@ fn trans_non_gc_free(@block_ctxt cx, ValueRef v) -> result {
 }
 
 fn find_scope_cx(@block_ctxt cx) -> @block_ctxt {
-    if (cx.kind == SCOPE_BLOCK) {
+    if (cx.kind != NON_SCOPE_BLOCK) {
         ret cx;
     }
     alt (cx.parent) {
@@ -3043,13 +3044,15 @@ fn trans_for(@block_ctxt cx,
              @ast.decl decl,
              @ast.expr seq,
              &ast.block body) -> result {
-
     fn inner(@block_ctxt cx,
              @ast.local local, ValueRef curr,
-             @ty.t t, ast.block body) -> result {
+             @ty.t t, ast.block body,
+             @block_ctxt outer_next_cx) -> result {
 
-        auto scope_cx = new_scope_block_ctxt(cx, "for loop scope");
         auto next_cx = new_sub_block_ctxt(cx, "next");
+        auto scope_cx =
+            new_loop_scope_block_ctxt(cx, option.some[@block_ctxt](next_cx),
+                                      outer_next_cx, "for loop scope");
 
         cx.build.Br(scope_cx.llbb);
         auto local_res = alloc_local(scope_cx, local);
@@ -3069,10 +3072,13 @@ fn trans_for(@block_ctxt cx,
         }
     }
 
+    auto next_cx = new_sub_block_ctxt(cx, "next");
     auto seq_ty = ty.expr_ty(seq);
     auto seq_res = trans_expr(cx, seq);
-    ret iter_sequence(seq_res.bcx, seq_res.val, seq_ty,
-                      bind inner(_, local, _, _, body));
+    auto it = iter_sequence(seq_res.bcx, seq_res.val, seq_ty,
+                            bind inner(_, local, _, _, body, next_cx));
+    it.bcx.build.Br(next_cx.llbb);
+    ret res(next_cx, it.val);
 }
 
 
@@ -3308,8 +3314,9 @@ fn trans_while(@block_ctxt cx, @ast.expr cond,
                &ast.block body) -> result {
 
     auto cond_cx = new_scope_block_ctxt(cx, "while cond");
-    auto body_cx = new_scope_block_ctxt(cx, "while loop body");
     auto next_cx = new_sub_block_ctxt(cx, "next");
+    auto body_cx = new_loop_scope_block_ctxt(cx, option.none[@block_ctxt],
+                                             next_cx, "while loop body");
 
     auto body_res = trans_block(body_cx, body);
     auto cond_res = trans_expr(cond_cx, cond);
@@ -3326,8 +3333,9 @@ fn trans_while(@block_ctxt cx, @ast.expr cond,
 fn trans_do_while(@block_ctxt cx, &ast.block body,
                   @ast.expr cond) -> result {
 
-    auto body_cx = new_scope_block_ctxt(cx, "do-while loop body");
     auto next_cx = new_sub_block_ctxt(cx, "next");
+    auto body_cx = new_loop_scope_block_ctxt(cx, option.none[@block_ctxt],
+                                             next_cx, "do-while loop body");
 
     auto body_res = trans_block(body_cx, body);
     auto cond_res = trans_expr(body_res.bcx, cond);
@@ -4599,6 +4607,14 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             ret trans_check_expr(cx, a);
         }
 
+        case (ast.expr_break) {
+            ret trans_break(cx);
+        }
+
+        case (ast.expr_cont) {
+            ret trans_cont(cx);
+        }
+
         case (ast.expr_ret(?e)) {
             ret trans_ret(cx, e);
         }
@@ -4769,6 +4785,47 @@ fn trans_put(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
 
     ret res(bcx, bcx.build.FastCall(llcallee, llargs));
 }
+
+fn trans_break_cont(@block_ctxt cx, bool to_end) -> result {
+    auto bcx = cx;
+    // Locate closest loop block, outputting cleanup as we go.
+    auto cleanup_cx = cx;
+    while (true) {
+        bcx = trans_block_cleanups(bcx, cleanup_cx);
+        alt (cleanup_cx.kind) {
+            case (LOOP_SCOPE_BLOCK(?_cont, ?_break)) {
+                if (to_end) {
+                    bcx.build.Br(_break.llbb);
+                } else {
+                    alt (_cont) {
+                        case (option.some[@block_ctxt](?_cont)) {
+                            bcx.build.Br(_cont.llbb);
+                        }
+                        case (_) {
+                            bcx.build.Br(cleanup_cx.llbb);
+                        }
+                    }
+                }
+                ret res(new_sub_block_ctxt(cx, "unreachable"), C_nil());
+            }
+            case (_) {
+                alt (cleanup_cx.parent) {
+                    case (parent_some(?cx)) { cleanup_cx = cx; }
+                }
+            }
+        }
+    }
+    ret res(cx, C_nil()); // Never reached. Won't compile otherwise.
+}
+
+fn trans_break(@block_ctxt cx) -> result {
+    ret trans_break_cont(cx, true);
+}
+
+fn trans_cont(@block_ctxt cx) -> result {
+    ret trans_break_cont(cx, false);
+}
+
 
 fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
     auto bcx = cx;
@@ -5033,6 +5090,12 @@ fn new_scope_block_ctxt(@block_ctxt bcx, str n) -> @block_ctxt {
     ret new_block_ctxt(bcx.fcx, parent_some(bcx), SCOPE_BLOCK, n);
 }
 
+fn new_loop_scope_block_ctxt(@block_ctxt bcx, option.t[@block_ctxt] _cont,
+                             @block_ctxt _break, str n) -> @block_ctxt {
+    ret new_block_ctxt(bcx.fcx, parent_some(bcx),
+                       LOOP_SCOPE_BLOCK(_cont, _break), n);
+}
+
 // Use this when you're making a general CFG BB within a scope.
 fn new_sub_block_ctxt(@block_ctxt bcx, str n) -> @block_ctxt {
     ret new_block_ctxt(bcx.fcx, parent_some(bcx), NON_SCOPE_BLOCK, n);
@@ -5043,7 +5106,7 @@ fn trans_block_cleanups(@block_ctxt cx,
                         @block_ctxt cleanup_cx) -> @block_ctxt {
     auto bcx = cx;
 
-    if (cleanup_cx.kind != SCOPE_BLOCK) {
+    if (cleanup_cx.kind == NON_SCOPE_BLOCK) {
         check (_vec.len[cleanup](cleanup_cx.cleanups) == 0u);
     }
 

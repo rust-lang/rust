@@ -1413,6 +1413,8 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
         }
         case (ast.expr_fail) { e_1 = e.node; }
         case (ast.expr_log(_)) { e_1 = e.node; }
+        case (ast.expr_break) { e_1 = e.node; }
+        case (ast.expr_cont) { e_1 = e.node; }
         case (ast.expr_ret(_)) { e_1 = e.node; }
         case (ast.expr_put(_)) { e_1 = e.node; }
         case (ast.expr_be(_)) { e_1 = e.node; }
@@ -1803,6 +1805,14 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_fail) {
+            ret expr;
+        }
+
+        case (ast.expr_break) {
+            ret expr;
+        }
+
+        case (ast.expr_cont) {
             ret expr;
         }
 

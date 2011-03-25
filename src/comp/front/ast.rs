@@ -246,6 +246,8 @@ tag expr_ {
     expr_path(path, option.t[def], ann);
     expr_ext(path, vec[@expr], option.t[@expr], @expr, ann);
     expr_fail;
+    expr_break;
+    expr_cont;
     expr_ret(option.t[@expr]);
     expr_put(option.t[@expr]);
     expr_be(@expr);
