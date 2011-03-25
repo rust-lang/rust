@@ -58,7 +58,7 @@ const int closure_elt_ty_params = 3;
 
 const int worst_case_glue_call_args = 7;
 
-const int n_upcall_glues = 7;
+const int n_native_glues = 7;
 
 const int abi_x86_rustboot_cdecl = 1;
 const int abi_x86_rustc_fastcall = 2;
@@ -75,11 +75,11 @@ fn vec_append_glue_name() -> str {
     ret "rust_vec_append_glue";
 }
 
-fn upcall_glue_name(int n, bool pass_task) -> str {
+fn native_glue_name(int n, bool pass_task) -> str {
     if (pass_task) {
-        ret "rust_upcall_rust_" + util.common.istr(n);
+        ret "rust_native_rust_" + util.common.istr(n);
     }
-    ret "rust_upcall_cdecl_" + util.common.istr(n);
+    ret "rust_native_cdecl_" + util.common.istr(n);
 }
 
 fn activate_glue_name() -> str {

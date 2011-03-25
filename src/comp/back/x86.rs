@@ -90,7 +90,7 @@ fn rust_activate_glue() -> vec[str] {
          *      start doing whatever the first instruction says. Probably
          *      saving registers and starting to establish a frame. Harmless
          *      stuff, doesn't look at task->rust_sp again except when it
-         *      clobbers it during a later upcall.
+         *      clobbers it during a later native call.
          *
          *
          *   2. We are resuming a task that was descheduled by the yield glue
@@ -100,8 +100,9 @@ fn rust_activate_glue() -> vec[str] {
          *              "esp <- task->rust_sp"
          *
          *      this is the first instruction we 'ret' to after this glue,
-         *      because it is the first instruction following *any* upcall,
-         *      and the task we are activating was descheduled mid-upcall.
+         *      because it is the first instruction following *any* native
+         *      call, and the task we are activating was descheduled
+         *      mid-native-call.
          *
          *      Unfortunately for us, we have already restored esp from
          *      task->rust_sp and are about to eat the 5 words off the top of
@@ -132,7 +133,7 @@ fn rust_activate_glue() -> vec[str] {
 
         /*
          * In most cases, the function we're returning to (activating)
-         * will have saved any caller-saves before it yielded via upcalling,
+         * will have saved any caller-saves before it yielded via native call,
          * so no work to do here. With one exception: when we're initially
          * activating, the task needs to be in the fastcall 2nd parameter
          * expected by the rust main function. That's edx.
@@ -145,14 +146,14 @@ fn rust_activate_glue() -> vec[str] {
 
 /* More glue code, this time the 'bottom half' of yielding.
  *
- * We arrived here because an upcall decided to deschedule the
- * running task. So the upcall's return address got patched to the
+ * We arrived here because an native call decided to deschedule the
+ * running task. So the native call's return address got patched to the
  * first instruction of this glue code.
  *
- * When the upcall does 'ret' it will come here, and its esp will be
+ * When the native call does 'ret' it will come here, and its esp will be
  * pointing to the last argument pushed on the C stack before making
- * the upcall: the 0th argument to the upcall, which is always the
- * task ptr performing the upcall. That's where we take over.
+ * the native call: the 0th argument to the native call, which is always
+ * the task ptr performing the native call. That's where we take over.
  *
  * Our goal is to complete the descheduling
  *
@@ -179,7 +180,7 @@ fn rust_yield_glue() -> vec[str] {
         + vec("ret");
 }
 
-fn upcall_glue(int n_args, bool pass_task) -> vec[str] {
+fn native_glue(int n_args, bool pass_task) -> vec[str] {
 
     /*
      * 0, 4, 8, 12 are callee-saves
@@ -242,11 +243,11 @@ fn decl_glue(int align, str prefix, str name, vec[str] insns) -> str {
 }
 
 
-fn decl_upcall_glue(int align, str prefix, bool pass_task, uint n) -> str {
+fn decl_native_glue(int align, str prefix, bool pass_task, uint n) -> str {
     let int i = n as int;
     ret decl_glue(align, prefix,
-                  abi.upcall_glue_name(i, pass_task),
-                  upcall_glue(i, pass_task));
+                  abi.native_glue_name(i, pass_task),
+                  native_glue(i, pass_task));
 }
 
 fn get_symbol_prefix() -> str {
@@ -272,10 +273,10 @@ fn get_module_asm() -> str {
                       abi.yield_glue_name(),
                       rust_yield_glue()))
 
-        + _vec.init_fn[str](bind decl_upcall_glue(align, prefix, true, _),
-                            (abi.n_upcall_glues + 1) as uint)
-        + _vec.init_fn[str](bind decl_upcall_glue(align, prefix, false, _),
-                            (abi.n_upcall_glues + 1) as uint);
+        + _vec.init_fn[str](bind decl_native_glue(align, prefix, true, _),
+                            (abi.n_native_glues + 1) as uint)
+        + _vec.init_fn[str](bind decl_native_glue(align, prefix, false, _),
+                            (abi.n_native_glues + 1) as uint);
 
 
     ret _str.connect(glues, "\n\n");
