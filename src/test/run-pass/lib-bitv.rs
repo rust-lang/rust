@@ -1,3 +1,4 @@
+// xfail-stage0
 use std;
 import std._vec;
 import std.bitv;

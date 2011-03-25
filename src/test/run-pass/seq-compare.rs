@@ -1,3 +1,4 @@
+// xfail-boot
 fn main() {
   check ("hello" < "hellr");
   check ("hello " > "hello");

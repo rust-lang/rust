@@ -1,3 +1,4 @@
+// xfail-boot
 // Unsigned integer operations
 
 fn main() {

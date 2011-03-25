@@ -1,3 +1,4 @@
+// xfail-stage0
 // -*- rust -*-
 
 // error-pattern: Unsatisfied .* lt(a, c)

@@ -265,7 +265,7 @@ type ast_fold[ENV] =
      // View Item folds.
      (fn(&ENV e, &span sp, ident ident,
          vec[@meta_item] meta_items,
-         def_id id, ann a) -> @view_item)         fold_view_item_use,
+         def_id id, option.t[int]) -> @view_item) fold_view_item_use,
 
      (fn(&ENV e, &span sp, ident i, vec[ident] idents,
          def_id id, option.t[def]) -> @view_item) fold_view_item_import,
@@ -437,7 +437,7 @@ fn fold_decl[ENV](&ENV env, ast_fold[ENV] fld, @decl d) -> @decl {
     alt (d.node) {
         case (ast.decl_local(?local)) {
             auto ty_ = none[@ast.ty];
-            auto init_ = none[@ast.expr];
+            auto init_ = none[ast.initializer];
             alt (local.ty) {
                 case (some[@ast.ty](?t)) {
                     ty_ = some[@ast.ty](fold_ty(env, fld, t));
@@ -445,8 +445,9 @@ fn fold_decl[ENV](&ENV env, ast_fold[ENV] fld, @decl d) -> @decl {
                 case (_) { /* fall through */  }
             }
             alt (local.init) {
-                case (some[@ast.expr](?e)) {
-                    init_ = some[@ast.expr](fold_expr(env, fld, e));
+                case (some[ast.initializer](?init)) {
+                    auto e =  fold_expr(env, fld, init.expr);
+                    init_ = some[ast.initializer](rec(expr = e with init));
                 }
                 case (_) { /* fall through */  }
             }
@@ -882,9 +883,9 @@ fn fold_view_item[ENV](&ENV env, ast_fold[ENV] fld, @view_item vi)
     }
 
     alt (vi.node) {
-        case (ast.view_item_use(?ident, ?meta_items, ?def_id, ?ann)) {
+        case (ast.view_item_use(?ident, ?meta_items, ?def_id, ?cnum)) {
             ret fld.fold_view_item_use(env_, vi.span, ident, meta_items,
-                                       def_id, ann);
+                                       def_id, cnum);
         }
         case (ast.view_item_import(?def_ident, ?idents, ?def_id,
                                    ?target_def)) {
@@ -1399,8 +1400,9 @@ fn identity_fold_item_obj[ENV](&ENV e, &span sp, ident i,
 
 fn identity_fold_view_item_use[ENV](&ENV e, &span sp, ident i,
                                     vec[@meta_item] meta_items,
-                                    def_id id, ann a) -> @view_item {
-    ret @respan(sp, ast.view_item_use(i, meta_items, id, a));
+                                    def_id id, option.t[int] cnum)
+    -> @view_item {
+    ret @respan(sp, ast.view_item_use(i, meta_items, id, cnum));
 }
 
 fn identity_fold_view_item_import[ENV](&ENV e, &span sp, ident i,

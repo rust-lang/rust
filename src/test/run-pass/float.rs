@@ -1,3 +1,4 @@
+// xfail-boot
 fn main() {
   auto pi = 3.1415927;
 

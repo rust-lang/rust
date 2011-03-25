@@ -1,3 +1,4 @@
+// xfail-boot
 tag t {
   a;
   b(@int);

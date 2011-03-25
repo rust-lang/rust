@@ -1364,13 +1364,22 @@ impure fn parse_expr_inner(parser p) -> @ast.expr {
     }
 }
 
-impure fn parse_initializer(parser p) -> option.t[@ast.expr] {
-    if (p.peek() == token.EQ) {
-        p.bump();
-        ret some(parse_expr(p));
+impure fn parse_initializer(parser p) -> option.t[ast.initializer] {
+    alt (p.peek()) {
+        case (token.EQ) {
+            p.bump();
+            ret some(rec(op = ast.init_assign,
+                         expr = parse_expr(p)));
+        }
+        case (token.LARROW) {
+            p.bump();
+            ret some(rec(op = ast.init_recv,
+                         expr = parse_expr(p)));
+        }
+        case (_) {
+            ret none[ast.initializer];
+        }
     }
-
-    ret none[@ast.expr];
 }
 
 impure fn parse_pat(parser p) -> @ast.pat {
@@ -1612,6 +1621,8 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_assign(_,_,_))   { ret true; }
                 case (ast.expr_assign_op(_,_,_,_))
                     { ret true; }
+                case (ast.expr_send(_,_,_))     { ret true; }
+                case (ast.expr_recv(_,_,_))     { ret true; }
                 case (ast.expr_field(_,_,_))    { ret true; }
                 case (ast.expr_index(_,_,_))    { ret true; }
                 case (ast.expr_path(_,_,_))     { ret true; }
@@ -2193,7 +2204,7 @@ impure fn parse_use(parser p) -> @ast.view_item {
     auto metadata = parse_optional_meta(p);
     expect(p, token.SEMI);
     auto use_decl = ast.view_item_use(ident, metadata, p.next_def_id(),
-                                      ast.ann_none);
+                                      none[int]);
     ret @spanned(lo, hi, use_decl);
 }
 

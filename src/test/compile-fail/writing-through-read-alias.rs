@@ -1,3 +1,5 @@
+// xfail-boot
+// xfail-stage0
 // -*- rust -*-
 
 // error-pattern: writing to immutable type

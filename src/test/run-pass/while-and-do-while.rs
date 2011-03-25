@@ -1,3 +1,4 @@
+// xfail-boot
 fn main() {
   let int x = 10;
   let int y = 0;

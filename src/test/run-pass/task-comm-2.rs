@@ -1,3 +1,5 @@
+// xfail-boot
+// xfail-stage0
 fn main() -> () {    
     log "===== SPAWNING and JOINING TASKS =====";
     test00(false);

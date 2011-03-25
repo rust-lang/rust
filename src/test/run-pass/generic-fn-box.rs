@@ -1,3 +1,4 @@
+// xfail-boot
 fn f[T](@T x) -> @T {
     ret x;
 }

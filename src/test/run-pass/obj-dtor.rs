@@ -1,3 +1,4 @@
+// xfail-stage0
 obj worker(chan[int] c) {
   drop {
     log "in dtor";

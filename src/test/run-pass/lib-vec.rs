@@ -1,3 +1,4 @@
+// xfail-stage0
 use std;
 
 fn test_init_elt() {

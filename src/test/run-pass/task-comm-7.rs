@@ -1,3 +1,4 @@
+// xfail-stage0
 impure fn main() -> () {
    test00();
 }

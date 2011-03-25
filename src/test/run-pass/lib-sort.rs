@@ -1,3 +1,4 @@
+// xfail-stage0
 use std;
 
 fn check_sort(vec[int] v1, vec[int] v2) {

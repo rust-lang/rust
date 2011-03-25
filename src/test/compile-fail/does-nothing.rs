@@ -1,3 +1,4 @@
+// xfail-stage0
 // error-pattern: does nothing
 fn main() {
   log "doing";

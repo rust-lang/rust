@@ -1,3 +1,5 @@
+// xfail-boot
+// xfail-stage0
 impure fn main() -> () {
    log "===== WITHOUT THREADS =====";
    test00(false);

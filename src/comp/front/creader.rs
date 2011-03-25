@@ -17,14 +17,16 @@ import std._str;
 import std._vec;
 import std.fs;
 import std.option;
+import std.option.some;
 import std.os;
 import std.map.hashmap;
 
 // TODO: map to a real type here.
 type env = @rec(
     session.session sess,
-    @hashmap[str, @ast.external_crate_info] crate_cache,
-    vec[str] library_search_paths
+    @hashmap[str, int] crate_cache,
+    vec[str] library_search_paths,
+    mutable int next_crate_num
 );
 
 // Type decoding
@@ -215,7 +217,7 @@ impure fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty.arg], @ty.t) {
 
 fn load_crate(session.session sess,
               ast.ident ident,
-              vec[str] library_search_paths) -> @ast.external_crate_info {
+              vec[str] library_search_paths) {
     auto filename = parser.default_native_name(sess, ident);
     for (str library_search_path in library_search_paths) {
         auto path = fs.connect(library_search_path, filename);
@@ -232,8 +234,9 @@ fn load_crate(session.session sess,
                     auto cbuf = llvmext.LLVMGetSectionContents(si.llsi);
                     auto csz = llvmext.LLVMGetSectionSize(si.llsi);
                     auto cvbuf = cbuf as _vec.vbuf;
-                    ret @rec(data=_vec.vec_from_vbuf[u8](cvbuf, csz));
+                    ret;
                 }
+                llvmext.LLVMMoveToNextSection(si.llsi);
             }
         }
     }
@@ -244,18 +247,19 @@ fn load_crate(session.session sess,
 }
 
 fn fold_view_item_use(&env e, &span sp, ast.ident ident,
-        vec[@ast.meta_item] meta_items, ast.def_id id, ast.ann orig_ann)
+        vec[@ast.meta_item] meta_items, ast.def_id id, option.t[int] cnum_opt)
         -> @ast.view_item {
-    auto external_crate;
+    auto cnum;
     if (!e.crate_cache.contains_key(ident)) {
-        external_crate = load_crate(e.sess, ident, e.library_search_paths);
-        e.crate_cache.insert(ident, external_crate);
+        load_crate(e.sess, ident, e.library_search_paths);
+        cnum = e.next_crate_num;
+        e.crate_cache.insert(ident, e.next_crate_num);
+        e.next_crate_num += 1;
     } else {
-        external_crate = e.crate_cache.get(ident);
+        cnum = e.crate_cache.get(ident);
     }
 
-    auto ann = ast.ann_crate(external_crate);
-    auto viu = ast.view_item_use(ident, meta_items, id, ann);
+    auto viu = ast.view_item_use(ident, meta_items, id, some[int](cnum));
     ret @fold.respan[ast.view_item_](sp, viu);
 }
 
@@ -265,8 +269,9 @@ fn read_crates(session.session sess,
                vec[str] library_search_paths) -> @ast.crate {
     auto e = @rec(
         sess=sess,
-        crate_cache=@common.new_str_hash[@ast.external_crate_info](),
-        library_search_paths=library_search_paths
+        crate_cache=@common.new_str_hash[int](),
+        library_search_paths=library_search_paths,
+        mutable next_crate_num=1
     );
 
     auto f = fold_view_item_use;
@@ -274,9 +279,8 @@ fn read_crates(session.session sess,
     ret fold.fold_crate[env](e, fld, crate);
 }
 
-fn lookup_def(&span sp,
-              @ast.external_crate_info cinfo,
-              vec[ast.ident] path) -> ast.def {
+fn lookup_def(session.session sess, &span sp, int cnum, vec[ast.ident] path)
+    -> ast.def {
   // FIXME: fill in.
   fail;
 }

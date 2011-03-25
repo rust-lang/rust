@@ -1,3 +1,4 @@
+// xfail-stage0
 
 mod foo {
   export x;

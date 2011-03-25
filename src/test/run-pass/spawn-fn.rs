@@ -1,3 +1,4 @@
+// xfail-stage0
 // -*- rust -*-
 
 fn x(str s, int n) {

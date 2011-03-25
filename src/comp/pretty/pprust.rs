@@ -78,6 +78,8 @@ impure fn print_type(ps s, &@ast.ty ty) {
     case (ast.ty_str) {wrd(s, "str");}
     case (ast.ty_box(?mt)) {wrd(s, "@"); print_mt(s, mt);}
     case (ast.ty_vec(?mt)) {wrd(s, "vec["); print_mt(s, mt); wrd(s, "]");}
+    case (ast.ty_port(?t)) {wrd(s, "port["); print_type(s, t); wrd(s, "]");}
+    case (ast.ty_chan(?t)) {wrd(s, "chan["); print_type(s, t); wrd(s, "]");}
     case (ast.ty_type) {wrd(s, "type");}
     case (ast.ty_tup(?elts)) {
       wrd(s, "tup");
@@ -481,6 +483,18 @@ impure fn print_expr(ps s, &@ast.expr expr) {
       wrd1(s, "=");
       print_expr(s, rhs);
     }
+    case (ast.expr_send(?lhs, ?rhs, _)) {
+      print_expr(s, lhs);
+      space(s);
+      wrd1(s, "<|");
+      print_expr(s, rhs);
+    }
+    case (ast.expr_recv(?lhs, ?rhs, _)) {
+      print_expr(s, lhs);
+      space(s);
+      wrd1(s, "<-");
+      print_expr(s, rhs);
+    }
     case (ast.expr_field(?expr,?id,_)) {
       print_expr(s, expr);
       wrd(s, ".");
@@ -541,6 +555,17 @@ impure fn print_expr(ps s, &@ast.expr expr) {
       }
       // TODO: extension 'body'
     }
+    case (ast.expr_port(_)) {
+      wrd(s, "port");
+      popen(s);
+      pclose(s);
+    }
+    case (ast.expr_chan(?expr, _)) {
+      wrd(s, "chan");
+      popen(s);
+      print_expr(s, expr);
+      pclose(s);
+    }
   }
   end(s);
 }
@@ -561,10 +586,17 @@ impure fn print_decl(ps s, @ast.decl decl) {
       }
       wrd(s, loc.ident);
       alt (loc.init) {
-        case (option.some[@ast.expr](?init)) {
+        case (option.some[ast.initializer](?init)) {
           space(s);
-          wrd1(s, "=");
-          print_expr(s, init);
+          alt (init.op) {
+            case (ast.init_assign) {
+              wrd1(s, "=");
+            }
+            case (ast.init_recv) {
+              wrd1(s, "<-");
+            }
+          }
+          print_expr(s, init.expr);
         }
         case (_) {}
       }

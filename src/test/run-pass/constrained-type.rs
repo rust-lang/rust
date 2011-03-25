@@ -1,3 +1,5 @@
+// xfail-boot
+// xfail-stage0
 // -*- rust -*-
 
 // Reported as issue #141, as a parse error. Ought to work in full though.

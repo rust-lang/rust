@@ -1,3 +1,5 @@
+// xfail-boot
+// xfail-stage0
 fn main() -> () {
     spawn child("Hello");
 }

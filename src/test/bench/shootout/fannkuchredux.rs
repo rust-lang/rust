@@ -1,3 +1,4 @@
+// xfail-stage0
 // Based on Isaac Gouy's fannkuchredux.csharp
 
 use std;

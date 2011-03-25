@@ -1,3 +1,4 @@
+// xfail-stage0
 // error-pattern: mismatched types
 
 fn f(int x) -> int {

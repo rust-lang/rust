@@ -77,6 +77,10 @@ obj session(cfg targ, map.hashmap[int, crate_metadata] crates) {
     fn set_external_crate(int num, &crate_metadata metadata) {
         crates.insert(num, metadata);
     }
+
+    fn has_external_crate(int num) -> bool {
+        ret crates.contains_key(num);
+    }
 }
 
 

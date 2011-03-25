@@ -1,3 +1,5 @@
+// xfail-boot
+// xfail-stage0
 // -*- rust -*-
 
 impure fn sub(chan[int] parent, int id) {

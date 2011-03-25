@@ -1,3 +1,4 @@
+// xfail-stage0
 // This is a test for issue #109.
 
 use std;

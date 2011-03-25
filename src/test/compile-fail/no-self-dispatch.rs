@@ -1,3 +1,4 @@
+// xfail-stage0
 // error-pattern: unresolved identifier
 obj oT() {
   fn get() -> int {

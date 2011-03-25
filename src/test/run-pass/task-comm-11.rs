@@ -1,3 +1,4 @@
+// xfail-stage0
 impure fn start(chan[chan[str]] c) {
     let port[str] p = port();
     c <| chan(p);
