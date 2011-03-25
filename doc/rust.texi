@@ -1499,7 +1499,7 @@ messages. Ports receive messages from channels.
 A @dfn{channel} is a communication endpoint that can @emph{send}
 messages. Channels send messages to ports.
 
-Each port is implicitly boxed and mutable; as such a port has has a unique
+Each port is implicitly boxed and mutable; as such a port has a unique
 per-task identity and cannot be replicated or transmitted. If a port value is
 copied, both copies refer to the @emph{same} port. New ports can be
 constructed dynamically and stored in data structures.
