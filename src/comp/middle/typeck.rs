@@ -2409,7 +2409,16 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast.decl decl) -> @ast.decl {
                 case (some[ast.initializer](?init)) {
                     auto expr_0 = check_expr(fcx, init.expr);
                     auto lty = plain_ty(ty.ty_local(local.id));
-                    auto expr_1 = demand_expr(fcx, lty, expr_0);
+                    auto expr_1;
+                    alt (init.op) {
+                        case (ast.init_assign) {
+                            expr_1 = demand_expr(fcx, lty, expr_0);
+                        }
+                        case (ast.init_recv) {
+                            auto port_ty = plain_ty(ty.ty_port(lty));
+                            expr_1 = demand_expr(fcx, port_ty, expr_0);
+                        }
+                    }
                     auto init_0 = rec(expr = expr_1 with init);
                     initopt = some[ast.initializer](init_0);
                 }
