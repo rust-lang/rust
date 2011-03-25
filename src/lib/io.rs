@@ -191,9 +191,38 @@ fn file_reader(str path) -> reader {
 
 // Byte buffer readers
 
-//state obj byte_buf_reader(vec[mutable? u8] buf) {
-//    fn read(
-//}
+// TODO: mutable? u8, but this fails with rustboot.
+type byte_buf = @rec(vec[u8] buf, mutable uint pos);
+
+state obj byte_buf_reader(byte_buf bbuf) {
+    impure fn read(uint len) -> vec[u8] {
+        auto rest = _vec.len[u8](bbuf.buf) - bbuf.pos;
+        auto to_read = len;
+        if (rest < to_read) {
+            to_read = rest;
+        }
+        auto range = _vec.slice[u8](bbuf.buf, bbuf.pos, bbuf.pos + to_read);
+        bbuf.pos += to_read;
+        ret range;
+    }
+
+    impure fn unread_byte(int byte) {
+        log "TODO: unread_byte";
+        fail;
+    }
+
+    impure fn eof() -> bool {
+        ret bbuf.pos == _vec.len[u8](bbuf.buf);
+    }
+
+    impure fn seek(int offset, seek_style whence) {
+        auto pos = bbuf.pos;
+        auto len = _vec.len[u8](bbuf.buf);
+        bbuf.pos = seek_in_buf(offset, pos, len, whence);
+    }
+
+    impure fn tell() -> uint { ret bbuf.pos; }
+}
 
 
 // Writing
@@ -377,9 +406,9 @@ type str_writer =
           fn get_str() -> str;
     };
 
-type byte_buf = @rec(mutable vec[mutable u8] buf, mutable uint pos);
+type mutable_byte_buf = @rec(mutable vec[mutable u8] buf, mutable uint pos);
 
-state obj byte_buf_writer(byte_buf buf) {
+state obj byte_buf_writer(mutable_byte_buf buf) {
     fn write(vec[u8] v) {
         // FIXME: optimize
         auto vlen = _vec.len[u8](v);
@@ -397,21 +426,9 @@ state obj byte_buf_writer(byte_buf buf) {
     }
 
     fn seek(int offset, seek_style whence) {
-        auto pos = buf.pos as int;
-        auto len = _vec.len[mutable u8](buf.buf) as int;
-        alt (whence) {
-            case (seek_set) { pos = offset;         }
-            case (seek_cur) { pos += offset;        }
-            case (seek_end) { pos = len + offset;   }
-        }
-
-        if (pos < 0) {
-            pos = 0;
-        } else if (pos > len) {
-            pos = len;
-        }
-
-        buf.pos = pos as uint;
+        auto pos = buf.pos;
+        auto len = _vec.len[mutable u8](buf.buf);
+        buf.pos = seek_in_buf(offset, pos, len, whence);
     }
 
     fn tell() -> uint { ret buf.pos; }
@@ -422,13 +439,35 @@ fn string_writer() -> str_writer {
     let vec[mutable u8] b = vec(mutable 0u8);
     _vec.pop[mutable u8](b);
 
-    let byte_buf buf = @rec(mutable buf = b, mutable pos = 0u);
-    state obj str_writer_wrap(writer wr, byte_buf buf) {
+    let mutable_byte_buf buf = @rec(mutable buf = b, mutable pos = 0u);
+    state obj str_writer_wrap(writer wr, mutable_byte_buf buf) {
         fn get_writer() -> writer {ret wr;}
         fn get_str() -> str {ret _str.unsafe_from_mutable_bytes(buf.buf);}
     }
     ret str_writer_wrap(new_writer(byte_buf_writer(buf)), buf);
 }
+
+
+// Utility functions
+
+fn seek_in_buf(int offset, uint pos, uint len, seek_style whence) -> uint {
+    auto bpos = pos as int;
+    auto blen = len as int;
+    alt (whence) {
+        case (seek_set) { bpos = offset;        }
+        case (seek_cur) { bpos += offset;       }
+        case (seek_end) { bpos = blen + offset; }
+    }
+
+    if (bpos < 0) {
+        bpos = 0;
+    } else if (bpos > blen) {
+        bpos = blen;
+    }
+
+    ret bpos as uint;
+}
+
 
 //
 // Local Variables:
