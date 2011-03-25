@@ -137,11 +137,10 @@ fn find_final_def(&env e, import_map index,
         }
 
         fn found_crate(&env e, &import_map index, &span sp,
-                       vec[ident] idents,
-                       @ast.external_crate_info cinfo) -> def_wrap {
+                       vec[ident] idents, int cnum) -> def_wrap {
             auto len = _vec.len[ident](idents);
             auto rest_idents = _vec.slice[ident](idents, 1u, len);
-            auto def = creader.lookup_def(sp, cinfo, rest_idents);
+            auto def = creader.lookup_def(e.sess, sp, cnum, rest_idents);
             ret def_wrap_other(def);
         }
 
@@ -171,12 +170,9 @@ fn find_final_def(&env e, import_map index,
             }
             case (def_wrap_use(?vi)) {
                 alt (vi.node) {
-                    case (ast.view_item_use(_, _, _, ?ann)) {
-                        alt (ann) {
-                            case (ast.ann_crate(?cinfo)) {
-                                ret found_crate(e, index, sp, idents, cinfo);
-                            }
-                        }
+                    case (ast.view_item_use(_, _, _, ?cnum_opt)) {
+                        auto cnum = option.get[int](cnum_opt);
+                        ret found_crate(e, index, sp, idents, cnum);
                     }
                 }
             }

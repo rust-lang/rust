@@ -21,7 +21,6 @@ type ty_param = rec(ident ident, def_id id);
 // Annotations added during successive passes.
 tag ann {
     ann_none;
-    ann_crate(@external_crate_info);
     ann_type(@middle.ty.t, option.t[vec[@middle.ty.t]] /* ty param substs */);
 }
 
@@ -359,7 +358,7 @@ type variant = rec(str name, vec[variant_arg] args, def_id id, ann ann);
 
 type view_item = spanned[view_item_];
 tag view_item_ {
-    view_item_use(ident, vec[@meta_item], def_id, ann);
+    view_item_use(ident, vec[@meta_item], def_id, option.t[int]);
     view_item_import(ident, vec[ident], def_id, option.t[def]);
     view_item_export(ident);
 }
@@ -381,8 +380,6 @@ tag native_item_ {
     native_item_fn(ident, option.t[str],
                    fn_decl, vec[ty_param], def_id, ann);
 }
-
-type external_crate_info = rec(vec[u8] data);
 
 fn index_view_item(mod_index index, @view_item it) {
     alt (it.node) {
