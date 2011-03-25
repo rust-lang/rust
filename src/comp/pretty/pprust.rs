@@ -561,10 +561,10 @@ impure fn print_decl(ps s, @ast.decl decl) {
       }
       wrd(s, loc.ident);
       alt (loc.init) {
-        case (option.some[@ast.expr](?init)) {
+        case (option.some[ast.initializer](?init)) {
           space(s);
           wrd1(s, "=");
-          print_expr(s, init);
+          print_expr(s, init.expr);
         }
         case (_) {}
       }

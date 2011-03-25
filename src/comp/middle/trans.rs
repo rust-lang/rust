@@ -4869,8 +4869,8 @@ fn init_local(@block_ctxt cx, @ast.local local) -> result {
         vec(clean(bind drop_slot(_, llptr, ty)));
 
     alt (local.init) {
-        case (some[@ast.expr](?e)) {
-            auto sub = trans_expr(bcx, e);
+        case (some[ast.initializer](?init)) {
+            auto sub = trans_expr(bcx, init.expr);
             bcx = copy_ty(sub.bcx, INIT, llptr, sub.val, ty).bcx;
         }
         case (_) {

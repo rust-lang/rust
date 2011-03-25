@@ -194,10 +194,18 @@ tag stmt_ {
     stmt_crate_directive(@crate_directive);
 }
 
+tag init_op {
+    init_assign;
+    init_recv;
+}
+
+type initializer = rec(init_op op,
+                       @expr expr);
+
 type local = rec(option.t[@ty] ty,
                  bool infer,
                  ident ident,
-                 option.t[@expr] init,
+                 option.t[initializer] init,
                  def_id id,
                  ann ann);
 

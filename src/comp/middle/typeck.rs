@@ -2404,17 +2404,18 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast.decl decl) -> @ast.decl {
                 }
             }
 
-            auto init = local.init;
+            auto initopt = local.init;
             alt (local.init) {
-                case (some[@ast.expr](?expr)) {
-                    auto expr_0 = check_expr(fcx, expr);
+                case (some[ast.initializer](?init)) {
+                    auto expr_0 = check_expr(fcx, init.expr);
                     auto lty = plain_ty(ty.ty_local(local.id));
                     auto expr_1 = demand_expr(fcx, lty, expr_0);
-                    init = some[@ast.expr](expr_1);
+                    auto init_0 = rec(expr = expr_1 with init);
+                    initopt = some[ast.initializer](init_0);
                 }
                 case (_) { /* fall through */  }
             }
-            auto local_1 = @rec(init = init with *local);
+            auto local_1 = @rec(init = initopt with *local);
             ret @rec(node=ast.decl_local(local_1)
                      with *decl);
         }
