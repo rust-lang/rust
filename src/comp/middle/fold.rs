@@ -437,7 +437,7 @@ fn fold_decl[ENV](&ENV env, ast_fold[ENV] fld, @decl d) -> @decl {
     alt (d.node) {
         case (ast.decl_local(?local)) {
             auto ty_ = none[@ast.ty];
-            auto initopt = none[ast.initializer];
+            auto init_ = none[ast.initializer];
             alt (local.ty) {
                 case (some[@ast.ty](?t)) {
                     ty_ = some[@ast.ty](fold_ty(env, fld, t));
@@ -446,13 +446,12 @@ fn fold_decl[ENV](&ENV env, ast_fold[ENV] fld, @decl d) -> @decl {
             }
             alt (local.init) {
                 case (some[ast.initializer](?init)) {
-                    auto init_ = rec(expr = fold_expr(env, fld, init.expr)
-                                     with init);
-                    initopt = some[ast.initializer](init_);
+                    auto e =  fold_expr(env, fld, init.expr);
+                    init_ = some[ast.initializer](rec(expr = e with init));
                 }
                 case (_) { /* fall through */  }
             }
-            let @ast.local local_ = @rec(ty=ty_, init=initopt with *local);
+            let @ast.local local_ = @rec(ty=ty_, init=init_ with *local);
             ret fld.fold_decl_local(env_, d.span, local_);
         }
 

@@ -4839,22 +4839,31 @@ fn trans_recv(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
     auto data = trans_lval(bcx, lhs);
     check (data.is_mem);
     bcx = data.res.bcx;
+    auto unit_ty = node_ann_type(bcx.fcx.ccx, ann);
+
+    // FIXME: calculate copy init-ness in typestate.
+    ret recv_val(bcx, data.res.val, rhs, unit_ty, DROP_EXISTING);
+ }
+
+fn recv_val(@block_ctxt cx, ValueRef lhs, @ast.expr rhs,
+            @ty.t unit_ty, copy_action action) -> result {
+
+    auto bcx = cx;
     auto prt = trans_expr(bcx, rhs);
     bcx = prt.bcx;
 
     auto sub = trans_upcall(bcx, "upcall_recv",
-                            vec(vp2i(bcx, data.res.val),
+                            vec(vp2i(bcx, lhs),
                                 vp2i(bcx, prt.val)));
     bcx = sub.bcx;
 
-    auto unit_ty = node_ann_type(cx.fcx.ccx, ann);
-    auto data_load = load_scalar_or_boxed(bcx, data.res.val, unit_ty);
-    auto cp = copy_ty(bcx, DROP_EXISTING, data.res.val, data_load, unit_ty);
+    auto data_load = load_scalar_or_boxed(bcx, lhs, unit_ty);
+    auto cp = copy_ty(bcx, action, lhs, data_load, unit_ty);
     bcx = cp.bcx;
 
     // TODO: Any cleanup need to be done here?
 
-    ret res(bcx, data.res.val);
+    ret res(bcx, lhs);
 }
 
 fn init_local(@block_ctxt cx, @ast.local local) -> result {
@@ -4870,8 +4879,15 @@ fn init_local(@block_ctxt cx, @ast.local local) -> result {
 
     alt (local.init) {
         case (some[ast.initializer](?init)) {
-            auto sub = trans_expr(bcx, init.expr);
-            bcx = copy_ty(sub.bcx, INIT, llptr, sub.val, ty).bcx;
+            alt (init.op) {
+                case (ast.init_assign) {
+                    auto sub = trans_expr(bcx, init.expr);
+                    bcx = copy_ty(sub.bcx, INIT, llptr, sub.val, ty).bcx;
+                }
+                case (ast.init_recv) {
+                    bcx = recv_val(bcx, llptr, init.expr, ty, INIT).bcx;
+                }
+            }
         }
         case (_) {
             if (middle.ty.type_has_dynamic_size(ty)) {

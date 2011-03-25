@@ -652,7 +652,6 @@ TEST_XFAILS_STAGE0 := $(FLOAT_XFAILS) \
                         clone-with-exterior.rs \
                         comm.rs \
                         constrained-type.rs \
-                        decl-with-recv.rs \
                         destructor-ordering.rs \
                         iter-ret.rs \
                         lazychan.rs \

@@ -1365,13 +1365,21 @@ impure fn parse_expr_inner(parser p) -> @ast.expr {
 }
 
 impure fn parse_initializer(parser p) -> option.t[ast.initializer] {
-    if (p.peek() == token.EQ) {
-        p.bump();
-        ret some(rec(op = ast.init_assign,
-                     expr = parse_expr(p)));
+    alt (p.peek()) {
+        case (token.EQ) {
+            p.bump();
+            ret some(rec(op = ast.init_assign,
+                         expr = parse_expr(p)));
+        }
+        case (token.LARROW) {
+            p.bump();
+            ret some(rec(op = ast.init_recv,
+                         expr = parse_expr(p)));
+        }
+        case (_) {
+            ret none[ast.initializer];
+        }
     }
-
-    ret none[ast.initializer];
 }
 
 impure fn parse_pat(parser p) -> @ast.pat {
