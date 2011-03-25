@@ -1364,13 +1364,14 @@ impure fn parse_expr_inner(parser p) -> @ast.expr {
     }
 }
 
-impure fn parse_initializer(parser p) -> option.t[@ast.expr] {
+impure fn parse_initializer(parser p) -> option.t[ast.initializer] {
     if (p.peek() == token.EQ) {
         p.bump();
-        ret some(parse_expr(p));
+        ret some(rec(op = ast.init_assign,
+                     expr = parse_expr(p)));
     }
 
-    ret none[@ast.expr];
+    ret none[ast.initializer];
 }
 
 impure fn parse_pat(parser p) -> @ast.pat {
