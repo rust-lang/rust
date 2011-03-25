@@ -99,8 +99,10 @@ impure fn buffer_token(ps p, token tok) {
 }
 
 impure fn finish_block_scan(ps p, contexttype tp) {
+  auto buf = p.buffered;
+  auto front = _vec.shift[token](buf);
   auto indent;
-  alt (p.buffered.(0)){
+  alt (front){
     case (open(box_hv,?ind)) {
       indent = ind;
     }
@@ -109,25 +111,27 @@ impure fn finish_block_scan(ps p, contexttype tp) {
     }
   }
   p.scandepth = 0u;
+  p.buffered = vec();
   push_context(p, tp, indent);
-  _vec.shift[token](p.buffered);
-  for (token t in p.buffered) { add_token(p, t); }
+  for (token t in buf) { add_token(p, t); }
 }
 
 impure fn finish_break_scan(ps p) {
+  auto buf = p.buffered;
+  auto front = _vec.shift[token](buf);
   if (p.bufferedcol > p.width) {
     line_break(p);
   }
   else {
     auto width;
-    alt (p.buffered.(0)) {case(brk(?w)) {width = w;}}
+    alt (front) {case(brk(?w)) {width = w;}}
     auto i = 0u;
     while (i < width) {p.out.write_str(" "); i+=1u;}
     p.col += width;
   }
   p.scandepth = 0u;
-  _vec.shift[token](p.buffered);
-  for (token t in p.buffered) { add_token(p, t); }
+  p.buffered = vec();
+  for (token t in buf) { add_token(p, t); }
 }
 
 impure fn start_scan(ps p, token tok) {
