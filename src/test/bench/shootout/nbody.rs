@@ -3,6 +3,8 @@
 
 fn main() {
 
+    log "foo";
+
     let vec[int] inputs = vec(
         50000
         //these segfault :(
@@ -55,7 +57,9 @@ mod NBodySystem {
             py += body.vy * body.mass;
             pz += body.vz * body.mass;
         }
-        bodies.(0) = Body.offsetMomentum(bodies.(0), px, py, pz);
+
+        // side-effecting
+        Body.offsetMomentum(bodies.(0), px, py, pz);
 
         ret bodies;
     }
@@ -75,6 +79,14 @@ mod NBodySystem {
                 let float distance;
                 rustrt.squareroot(dSquared, distance);
                 let float mag = dt / (dSquared * distance);
+
+                iBody.vx -= dx * jbody.mass * mag;
+                iBody.vy -= dy * jbody.mass * mag;
+                iBody.vz -= dz * jbody.mass * mag;
+
+                jbody.vx += dx * iBody.mass * mag;
+                jbody.vy += dy * iBody.mass * mag;
+                jbody.vz += dz * iBody.mass * mag;
             }
         }        
 
@@ -124,8 +136,8 @@ mod NBodySystem {
 
 mod Body {
     
-    const float PI = 3.141592;
-    const float SOLAR_MASS = 39.478417; // was 4 * PI * PI originally
+    const float PI = 3.14;
+    const float SOLAR_MASS = 39.47; // was 4 * PI * PI originally
     const float DAYS_PER_YEAR = 365.24;
 
     type props = rec(float x, 
@@ -141,49 +153,49 @@ mod Body {
         // fit into a 32-bit int.
         
         let Body.props p;
-        p.x    =  4.841431e+00;
-        p.y    = -1.160320e+00;
-        p.z    = -1.036220e-01;
-        p.vx   =  1.660076e-03 * DAYS_PER_YEAR;
-        p.vy   =  7.699011e-03 * DAYS_PER_YEAR;
-        p.vz   = -6.904600e-05 * DAYS_PER_YEAR;
-        p.mass =  9.547919e-04 * SOLAR_MASS;
+        p.x    =  4.84e+00;
+        p.y    = -1.16e+00;
+        p.z    = -1.03e-01;
+        p.vx   =  1.66e-03 * DAYS_PER_YEAR;
+        p.vy   =  7.69e-03 * DAYS_PER_YEAR;
+        p.vz   = -6.90e-05 * DAYS_PER_YEAR;
+        p.mass =  9.54e-04 * SOLAR_MASS;
         ret p;
     }
 
     fn saturn() -> Body.props {
         let Body.props p;
-        p.x    =  8.343366e+00;
-        p.y    =  4.124798e+00;
-        p.z    = -4.035234e-01;
-        p.vx   = -2.767425e-03 * DAYS_PER_YEAR;
-        p.vy   =  4.998528e-03 * DAYS_PER_YEAR;
-        p.vz   =  2.304172e-05 * DAYS_PER_YEAR;
-        p.mass =  2.858859e-04 * SOLAR_MASS;
+        p.x    =  8.34e+00;
+        p.y    =  4.12e+00;
+        p.z    = -4.03e-01;
+        p.vx   = -2.76e-03 * DAYS_PER_YEAR;
+        p.vy   =  4.99e-03 * DAYS_PER_YEAR;
+        p.vz   =  2.30e-05 * DAYS_PER_YEAR;
+        p.mass =  2.85e-04 * SOLAR_MASS;
         ret p;
    }
 
     fn uranus() -> Body.props {
         let Body.props p;
-        p.x    =  1.289436e+01;
-        p.y    = -1.511115e+01;
-        p.z    = -2.233075e-01;
-        p.vx   =  2.964601e-03 * DAYS_PER_YEAR;
-        p.vy   =  2.378471e-03 * DAYS_PER_YEAR;
-        p.vz   = -2.965895e-05 * DAYS_PER_YEAR;
-        p.mass =  4.366244e-05 * SOLAR_MASS;
+        p.x    =  1.28e+01;
+        p.y    = -1.51e+01;
+        p.z    = -2.23e-01;
+        p.vx   =  2.96e-03 * DAYS_PER_YEAR;
+        p.vy   =  2.37e-03 * DAYS_PER_YEAR;
+        p.vz   = -2.96e-05 * DAYS_PER_YEAR;
+        p.mass =  4.36e-05 * SOLAR_MASS;
         ret p;
     }
 
     fn neptune() -> Body.props {
         let Body.props p;
-        p.x    =  1.537969e+01;
-        p.y    = -2.591931e+01;
-        p.z    =  1.792587e-01;
-        p.vx   =  2.680677e-03 * DAYS_PER_YEAR;
-        p.vy   =  1.628241e-03 * DAYS_PER_YEAR;
-        p.vz   = -9.515922e-05 * DAYS_PER_YEAR;
-        p.mass =  5.151389e-05 * SOLAR_MASS;
+        p.x    =  1.53e+01;
+        p.y    = -2.59e+01;
+        p.z    =  1.79e-01;
+        p.vx   =  2.68e-03 * DAYS_PER_YEAR;
+        p.vy   =  1.62e-03 * DAYS_PER_YEAR;
+        p.vz   = -9.51e-05 * DAYS_PER_YEAR;
+        p.mass =  5.15e-05 * SOLAR_MASS;
         ret p;
    }
 
@@ -193,17 +205,14 @@ mod Body {
         ret p;
    }
 
-   fn offsetMomentum(Body.props props,
+   impure fn offsetMomentum(mutable Body.props props,
                      float px, 
                      float py, 
                      float pz) -> Body.props {
 
-       // TODO: should we create a new one or mutate the original?
-       let Body.props p = props;
-       p.vx = -px / SOLAR_MASS;
-       p.vy = -py / SOLAR_MASS;
-       p.vz = -pz / SOLAR_MASS;
-       ret p;
+       props.vx = -px / SOLAR_MASS;
+       props.vy = -py / SOLAR_MASS;
+       props.vz = -pz / SOLAR_MASS;
    }
 
 }
