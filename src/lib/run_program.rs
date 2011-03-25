@@ -48,7 +48,7 @@ impure fn start_program(str prog, vec[str] args) -> @program {
             ret io.new_writer(io.fd_buf_writer(in_fd, false));
         }
         fn output() -> io.reader {
-            ret io.FILE_reader(out_file, false);
+            ret io.new_reader(io.FILE_buf_reader(out_file, false));
         }
         impure fn close_input() {
             os.libc.close(in_fd);

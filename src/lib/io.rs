@@ -11,8 +11,25 @@ native "rust" mod rustrt {
 
 tag seek_style {seek_set; seek_end; seek_cur;}
 
+// The raw underlying reader class. All readers must implement this.
+type buf_reader =
+    state obj {
+        impure fn read(uint len) -> vec[u8];
+        impure fn unread_byte(int byte);
+        impure fn eof() -> bool;
+
+        // FIXME: Seekable really should be orthogonal. We will need
+        // inheritance.
+        impure fn seek(int offset, seek_style whence);
+        impure fn tell() -> uint;
+    };
+
+// Convenience methods for reading.
 type reader =
     state obj {
+          // FIXME: This should inherit from buf_reader.
+          impure fn get_buf_reader() -> buf_reader;
+
           impure fn read_byte() -> int;
           impure fn unread_byte(int byte);
           impure fn read_bytes(uint len) -> vec[u8];
@@ -35,21 +52,58 @@ fn convert_whence(seek_style whence) -> int {
     }
 }
 
-state obj FILE_reader(os.libc.FILE f, bool must_close) {
-    impure fn read_byte() -> int {
-        ret os.libc.fgetc(f);
-    }
-    impure fn unread_byte(int byte) {
-        os.libc.ungetc(byte, f);
-    }
-    impure fn read_bytes(uint len) -> vec[u8] {
+state obj FILE_buf_reader(os.libc.FILE f, bool must_close) {
+    impure fn read(uint len) -> vec[u8] {
         auto buf = _vec.alloc[u8](len);
         auto read = os.libc.fread(_vec.buf[u8](buf), 1u, len, f);
         _vec.len_set[u8](buf, read);
         ret buf;
     }
+    impure fn unread_byte(int byte) {
+        os.libc.ungetc(byte, f);
+    }
+    impure fn eof() -> bool {
+        ret os.libc.feof(f) != 0;
+    }
+    impure fn seek(int offset, seek_style whence) {
+        check (os.libc.fseek(f, offset, convert_whence(whence)) == 0);
+    }
+    impure fn tell() -> uint {
+        ret os.libc.ftell(f) as uint;
+    }
+    drop {
+        if (must_close) { os.libc.fclose(f); }
+    }
+}
+
+// FIXME: When we have a "self" keyword, move this into read_byte(). This is
+// only here so that multiple method implementations below can use it.
+//
+// FIXME: Return value should be option[u8], not int.
+impure fn read_byte_from_buf_reader(buf_reader rdr) -> int {
+    auto buf = rdr.read(1u);
+    if (_vec.len[u8](buf) == 0u) {
+        ret -1;
+    }
+    ret buf.(0) as int;
+}
+
+// FIXME: Convert this into pseudomethods on buf_reader.
+state obj new_reader(buf_reader rdr) {
+    impure fn get_buf_reader() -> buf_reader {
+        ret rdr;
+    }
+    impure fn read_byte() -> int {
+        ret read_byte_from_buf_reader(rdr);
+    }
+    impure fn unread_byte(int byte) {
+        ret rdr.unread_byte(byte);
+    }
+    impure fn read_bytes(uint len) -> vec[u8] {
+        ret rdr.read(len);
+    }
     impure fn read_char() -> char {
-        auto c0 = os.libc.fgetc(f);
+        auto c0 = read_byte_from_buf_reader(rdr);
         if (c0 == -1) {ret -1 as char;} // FIXME will this stay valid?
         auto b0 = c0 as u8;
         auto w = _str.utf8_char_width(b0);
@@ -58,7 +112,7 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
         auto val = 0u;
         while (w > 1u) {
             w -= 1u;
-            auto next = os.libc.fgetc(f);
+            auto next = read_byte_from_buf_reader(rdr);
             check(next > -1);
             check(next & 0xc0 == 0x80);
             val <<= 6u;
@@ -69,17 +123,14 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
         ret val as char;
     }        
     impure fn eof() -> bool {
-      auto ch = os.libc.fgetc(f);
-      if (ch == -1) {ret true;}
-      os.libc.ungetc(ch, f);
-      ret false;
+        ret rdr.eof();
     }
     impure fn read_line() -> str {
         let vec[u8] buf = vec();
         // No break yet in rustc
         auto go_on = true;
         while (go_on) {
-            auto ch = os.libc.fgetc(f);
+            auto ch = read_byte_from_buf_reader(rdr);
             if (ch == -1 || ch == 10) {go_on = false;}
             else {_vec.push[u8](buf, ch as u8);}
         }
@@ -89,7 +140,7 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
         let vec[u8] buf = vec();
         auto go_on = true;
         while (go_on) {
-            auto ch = os.libc.fgetc(f);
+            auto ch = read_byte_from_buf_reader(rdr);
             if (ch < 1) {go_on = false;}
             else {_vec.push[u8](buf, ch as u8);}
         }
@@ -100,7 +151,7 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
         auto val = 0u;
         auto pos = 0u;
         while (size > 0u) {
-            val += (os.libc.fgetc(f) as uint) << pos;
+            val += (read_byte_from_buf_reader(rdr) as uint) << pos;
             pos += 8u;
             size -= 1u;
         }
@@ -110,25 +161,22 @@ state obj FILE_reader(os.libc.FILE f, bool must_close) {
         auto val = 0u;
         auto pos = 0u;
         while (size > 0u) {
-            val += (os.libc.fgetc(f) as uint) << pos;
+            val += (read_byte_from_buf_reader(rdr) as uint) << pos;
             pos += 8u;
             size -= 1u;
         }
         ret val as int;
     }
     impure fn seek(int offset, seek_style whence) {
-        check(os.libc.fseek(f, offset, convert_whence(whence)) == 0);
+        ret rdr.seek(offset, whence);
     }
     impure fn tell() -> uint {
-        ret os.libc.ftell(f) as uint;
-    }
-    drop {
-        if (must_close) {os.libc.fclose(f);}
+        ret rdr.tell();
     }
 }
 
 fn stdin() -> reader {
-    ret FILE_reader(rustrt.rust_get_stdin(), false);
+    ret new_reader(FILE_buf_reader(rustrt.rust_get_stdin(), false));
 }
 
 fn file_reader(str path) -> reader {
@@ -137,8 +185,16 @@ fn file_reader(str path) -> reader {
         log "error opening " + path;
         fail;
     }
-    ret FILE_reader(f, true);
+    ret new_reader(FILE_buf_reader(f, true));
 }
+
+
+// Byte buffer readers
+
+//state obj byte_buf_reader(vec[mutable? u8] buf) {
+//    fn read(
+//}
+
 
 // Writing
 
@@ -152,6 +208,7 @@ tag fileflag {
 type buf_writer = state obj {
   fn write(vec[u8] v);
 
+  // FIXME: Seekable really should be orthogonal. We will need inheritance.
   fn seek(int offset, seek_style whence);
   fn tell() -> uint; // FIXME: eventually u64
 };
