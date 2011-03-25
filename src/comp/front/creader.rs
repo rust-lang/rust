@@ -274,3 +274,18 @@ fn read_crates(session.session sess,
     ret fold.fold_crate[env](e, fld, crate);
 }
 
+fn lookup_def(&span sp,
+              @ast.external_crate_info cinfo,
+              vec[ast.ident] path) -> ast.def {
+  // FIXME: fill in.
+  fail;
+}
+
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C ../.. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:

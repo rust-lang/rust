@@ -2,6 +2,7 @@ import front.ast;
 import front.ast.ident;
 import front.ast.def;
 import front.ast.ann;
+import front.creader;
 import driver.session;
 import util.common.new_def_hash;
 import util.common.span;
@@ -107,9 +108,9 @@ fn find_final_def(&env e, import_map index,
                   &span sp, vec[ident] idents,
                   option.t[ast.def_id] import_id) -> def_wrap {
 
-    // We are given a series of identifiers (a.b.c.d) and we know that
-    // in the environment 'e' the identifier 'a' was resolved to 'd'. We
-    // should return what a.b.c.d points to in the end.
+    // We are given a series of identifiers (p.q.r) and we know that
+    // in the environment 'e' the identifier 'p' was resolved to 'd'. We
+    // should return what p.q.r points to in the end.
     fn found_something(&env e, import_map index,
                        &span sp, vec[ident] idents, def_wrap d) -> def_wrap {
 
@@ -133,6 +134,15 @@ fn find_final_def(&env e, import_map index,
                                         rest_idents, next._1);
                 }
             }
+        }
+
+        fn found_crate(&env e, &import_map index, &span sp,
+                       vec[ident] idents,
+                       @ast.external_crate_info cinfo) -> def_wrap {
+            auto len = _vec.len[ident](idents);
+            auto rest_idents = _vec.slice[ident](idents, 1u, len);
+            auto def = creader.lookup_def(sp, cinfo, rest_idents);
+            ret def_wrap_other(def);
         }
 
         alt (d) {
@@ -159,8 +169,16 @@ fn find_final_def(&env e, import_map index,
             case (def_wrap_native_mod(?i)) {
                 ret found_mod(e, index, sp, idents, i);
             }
-            case (def_wrap_use(?c)) {
-                e.sess.span_err(sp, "Crate access is not implemented");
+            case (def_wrap_use(?vi)) {
+                alt (vi.node) {
+                    case (ast.view_item_use(_, _, _, ?ann)) {
+                        alt (ann) {
+                            case (ast.ann_crate(?cinfo)) {
+                                ret found_crate(e, index, sp, idents, cinfo);
+                            }
+                        }
+                    }
+                }
             }
             case (def_wrap_other(?d)) {
                 let uint l = _vec.len[ident](idents);
