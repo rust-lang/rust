@@ -318,47 +318,65 @@ impure fn consume_block_comment(reader rdr) {
     be consume_any_whitespace(rdr);
 }
 
-impure fn scan_dec_digits(reader rdr) -> int {
-
-    auto c = rdr.curr();
+fn digits_to_string(str s) -> int {
 
     let int accum_int = 0;
+    let int i = 0;
 
-    while (is_dec_digit(c) || c == '_') {
-            if (c != '_') {
-                accum_int *= 10;
-                accum_int += dec_digit_val(c);
-            }
-            rdr.bump();
-            c = rdr.curr();
+    for (u8 c in s) {
+        accum_int *= 10;
+        accum_int += dec_digit_val(c as char);
     }
 
     ret accum_int;
 }
 
-impure fn scan_exponent(reader rdr) -> option.t[int] {
+impure fn scan_exponent(reader rdr) -> option.t[str] {
     auto c = rdr.curr();
-    auto sign = 1;
+    auto res = "";
 
     if (c == 'e' || c == 'E') {
+        res += _str.from_bytes(vec(c as u8));
         rdr.bump();
         c = rdr.curr();
-        if (c == '-') {
-            sign = -1;
-            rdr.bump();
-        } else if (c == '+') {
+        if (c == '-' || c == '+') {
+            res += _str.from_bytes(vec(c as u8));
             rdr.bump();
         }
         auto exponent = scan_dec_digits(rdr);
-        ret(some(sign * exponent));
+        if (_str.byte_len(exponent) > 0u) {
+            ret(some(res + exponent));
+        }
+        else {
+            log ("scan_exponent: bad fp literal");
+            fail;
+        }
     }
     else {
-        ret none[int];
+        ret none[str];
     }
+}
+
+impure fn scan_dec_digits(reader rdr) -> str {
+    
+    auto c = rdr.curr();
+    let str res = "";
+
+    while (is_dec_digit (c) || c == '_') {
+        if (c != '_') {
+            res += _str.from_bytes(vec(c as u8));
+        }
+        rdr.bump();
+        c = rdr.curr();
+    }
+
+    ret res;
 }
 
 impure fn scan_number(mutable char c, reader rdr) -> token.token {
     auto accum_int = 0;
+    let str dec_str = "";
+    let bool is_dec_integer = false;
     auto n = rdr.next();
 
     if (c == '0' && n == 'x') {
@@ -386,7 +404,12 @@ impure fn scan_number(mutable char c, reader rdr) -> token.token {
             c = rdr.curr();
         }
     } else {
-        accum_int = scan_dec_digits(rdr);
+        dec_str = scan_dec_digits(rdr);
+        is_dec_integer = true;
+    }
+        
+    if (is_dec_integer) {
+        accum_int = digits_to_string(dec_str);
     }
 
     c = rdr.curr();
@@ -443,20 +466,19 @@ impure fn scan_number(mutable char c, reader rdr) -> token.token {
         }
     }
     c = rdr.curr();
+
     if (c == '.') {
         // Parse a floating-point number.
         rdr.bump();
-        auto accum_int1 = scan_dec_digits(rdr);
-        auto base_str =   _int.to_str(accum_int, 10u) + "."
-            + _int.to_str(accum_int1, 10u);
+        auto dec_part = scan_dec_digits(rdr);
+        auto float_str = dec_str + "." + dec_part;
         c = rdr.curr();
-        auto exponent_str = "";
-        let option.t[int] maybe_exponent = scan_exponent(rdr);
-        alt(maybe_exponent) {
-            case(some[int](?i)) {
-                exponent_str = "e" + _int.to_str(i, 10u);
+        auto exponent_str = scan_exponent(rdr);
+        alt (exponent_str) {
+            case (some[str](?s)) {
+                float_str += s;
             }
-            case(none[int]) {
+            case (none[str]) {
             }
         }
 
@@ -468,27 +490,28 @@ impure fn scan_number(mutable char c, reader rdr) -> token.token {
             if (c == '3' && n == '2') {
                 rdr.bump(); rdr.bump();
                 ret token.LIT_MACH_FLOAT(util.common.ty_f32,
-                                         base_str + exponent_str);
+                                         float_str);
             }
             else if (c == '6' && n == '4') {
                 rdr.bump(); rdr.bump();
                 ret token.LIT_MACH_FLOAT(util.common.ty_f64,
-                                         base_str + exponent_str);
+                                         float_str);
+                /* FIXME: if this is out of range for either a 32-bit or
+                   64-bit float, it won't be noticed till the back-end */
             }
         }
         else {
-            ret token.LIT_FLOAT(base_str + exponent_str);
+            ret token.LIT_FLOAT(float_str);
         }
     }
 
     auto maybe_exponent = scan_exponent(rdr);
     alt(maybe_exponent) {
-        case(some[int](?i)) {
-            ret token.LIT_FLOAT(_int.to_str(accum_int, 10u)
-                                + "e" + _int.to_str(i, 10u));
+        case(some[str](?s)) {
+            ret token.LIT_FLOAT(dec_str + s);
         }
-        case(none[int]) {
-            ret token.LIT_INT(accum_int);
+        case(none[str]) {
+                ret token.LIT_INT(accum_int);
         }
     }
 }
