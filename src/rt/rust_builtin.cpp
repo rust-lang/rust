@@ -51,6 +51,13 @@ last_os_error(rust_task *task) {
     return st;
 }
 
+extern "C" CDECL
+void squareroot(rust_task *task, double *input, double *output) {
+    double f = *input;
+    double res = sqrt(f);
+    output = &res;
+}
+
 extern "C" CDECL size_t
 size_of(rust_task *task, type_desc *t) {
   return t->size;

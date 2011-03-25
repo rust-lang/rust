@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
+#include <math.h>
 
 #include "rust.h"
 #include "rand.h"
