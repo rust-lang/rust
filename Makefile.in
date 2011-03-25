@@ -1207,5 +1207,6 @@ clean:
                              bc o s exe dSYM,                          \
                         $(wildcard test/*/*.$(ext) test/bench/*/*.$(ext)))
 	$(Q)rm -Rf $(foreach ext, \
-                 aux cp fn ky log pdf html pg toc tp vr cps texi, \
+                 aux cp fn ky log pdf html pg toc tp vr cps, \
                  $(wildcard doc/*.$(ext)))
+	$(Q)rm -Rf doc/version.texi
