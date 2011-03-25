@@ -1106,6 +1106,16 @@ endif
 
 depend: boot/rustboot$(X) $(CRATE_DEPFILES) $(ML_DEPFILES) $(C_DEPFILES)
 
+
+######################################################################
+# Re-configuration
+######################################################################
+
+config.mk: $(S)configure $(S)Makefile.in
+	@$(call E, cfg: reconfiguring)
+	$(S)configure $(CFG_CONFIGURE_ARGS)
+
+
 ######################################################################
 # Distribution
 ######################################################################

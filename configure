@@ -87,6 +87,8 @@ CFG_CPUTYPE=$(uname -m)
 CFG_SELF=$(echo $0 | tr '\' '/')
 CFG_SRC_DIR=${CFG_SELF%${CFG_SELF##*/}}
 CFG_BUILD_DIR=$(echo $PWD | tr '\' '/')
+CFG_CONFIGURE_ARGS="$@"
+
 
 msg "recreating config.mk"
 echo '' >config.mk
@@ -108,6 +110,7 @@ putvar CFG_SRC_DIR
 putvar CFG_BUILD_DIR
 putvar CFG_OSTYPE
 putvar CFG_CPUTYPE
+putvar CFG_CONFIGURE_ARGS
 
 msg "looking for build programs"
 probe_need CFG_GCC          gcc
