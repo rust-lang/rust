@@ -374,8 +374,7 @@ tag native_item_ {
                    fn_decl, vec[ty_param], def_id, ann);
 }
 
-// TODO: Actually store something here.
-type external_crate_info = ();
+type external_crate_info = rec(vec[u8] data);
 
 fn index_view_item(mod_index index, @view_item it) {
     alt (it.node) {

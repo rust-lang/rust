@@ -170,6 +170,13 @@ vec_alloc_with_data(rust_task *task,
     return new (mem) rust_vec(dom, alloc, fill * elt_size, (uint8_t*)d);
 }
 
+extern "C" CDECL rust_vec*
+vec_from_vbuf(rust_task *task, type_desc *ty, void *vbuf, size_t n_elts)
+{
+    return vec_alloc_with_data(task, n_elts, n_elts * ty->size, ty->size,
+                               vbuf);
+}
+
 extern "C" CDECL rust_str*
 str_alloc(rust_task *task, size_t n_bytes)
 {

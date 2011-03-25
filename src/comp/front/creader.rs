@@ -2,11 +2,14 @@
 
 import driver.session;
 import front.ast;
+import lib.llvm.False;
+import lib.llvm.llvm;
 import lib.llvm.llvmext;
 import lib.llvm.mk_object_file;
 import lib.llvm.mk_section_iter;
 import middle.fold;
 import middle.ty;
+import back.x86;
 import util.common;
 import util.common.span;
 
@@ -19,6 +22,7 @@ import std.map.hashmap;
 
 // TODO: map to a real type here.
 type env = @rec(
+    session.session sess,
     @hashmap[str, @ast.external_crate_info] crate_cache,
     vec[str] library_search_paths
 );
@@ -204,15 +208,39 @@ impure fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty.arg], @ty.t) {
 }
 
 
+// Rust metadata parsing
 
-// TODO: return something
-fn load_crate(ast.ident ident, vec[str] library_search_paths) -> @() {
+// TODO
+
+
+fn load_crate(session.session sess,
+              ast.ident ident,
+              vec[str] library_search_paths) -> @ast.external_crate_info {
+    auto filename = parser.default_native_name(sess, ident);
     for (str library_search_path in library_search_paths) {
-        auto path = fs.connect(library_search_path, ident);
-        // TODO
+        auto path = fs.connect(library_search_path, filename);
+        auto pbuf = _str.buf(path);
+        auto mb = llvmext.LLVMRustCreateMemoryBufferWithContentsOfFile(pbuf);
+        if (mb as int != 0) {
+            auto of = mk_object_file(mb);
+            auto si = mk_section_iter(of.llof);
+            while (llvmext.LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) ==
+                    False) {
+                auto name_buf = llvmext.LLVMGetSectionName(si.llsi);
+                auto name = _str.str_from_cstr(name_buf);
+                if (_str.eq(name, x86.get_meta_sect_name())) {
+                    auto cbuf = llvmext.LLVMGetSectionContents(si.llsi);
+                    auto csz = llvmext.LLVMGetSectionSize(si.llsi);
+                    auto cvbuf = cbuf as _vec.vbuf;
+                    ret @rec(data=_vec.vec_from_vbuf[u8](cvbuf, csz));
+                }
+            }
+        }
     }
 
-    ret @();
+    log #fmt("can't open crate '%s' (looked for '%s' in lib search paths)",
+        ident, filename);
+    fail;
 }
 
 fn fold_view_item_use(&env e, &span sp, ast.ident ident,
@@ -220,7 +248,7 @@ fn fold_view_item_use(&env e, &span sp, ast.ident ident,
         -> @ast.view_item {
     auto external_crate;
     if (!e.crate_cache.contains_key(ident)) {
-        external_crate = load_crate(ident, e.library_search_paths);
+        external_crate = load_crate(e.sess, ident, e.library_search_paths);
         e.crate_cache.insert(ident, external_crate);
     } else {
         external_crate = e.crate_cache.get(ident);
@@ -236,6 +264,7 @@ fn read_crates(session.session sess,
                @ast.crate crate,
                vec[str] library_search_paths) -> @ast.crate {
     auto e = @rec(
+        sess=sess,
         crate_cache=@common.new_str_hash[@ast.external_crate_info](),
         library_search_paths=library_search_paths
     );

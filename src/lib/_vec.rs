@@ -1,7 +1,7 @@
 import option.none;
 import option.some;
 
-import vbuf = rustrt.vbuf;
+type vbuf = rustrt.vbuf;
 
 type operator2[T,U,V] = fn(&T, &U) -> V;
 
@@ -28,6 +28,8 @@ native "rust" mod rustrt {
     fn refcount[T](vec[T] v) -> uint;
 
     fn vec_print_debug_info[T](vec[T] v);
+
+    fn vec_from_vbuf[T](vbuf v, uint n_elts) -> vec[T];
 }
 
 fn alloc[T](uint n_elts) -> vec[T] {
@@ -46,6 +48,10 @@ fn refcount[T](vec[mutable? T] v) -> uint {
         // -1 because calling this function incremented the refcount.
         ret  r - 1u;
     }
+}
+
+unsafe fn vec_from_vbuf[T](vbuf v, uint n_elts) -> vec[T] {
+    ret rustrt.vec_from_vbuf[T](v, n_elts);
 }
 
 type init_op[T] = fn(uint i) -> T;
