@@ -76,6 +76,12 @@ rust_run_program(rust_task* task, char* argv[],
     exit(1);
 }
 
+extern "C" CDECL int
+rust_process_wait(void* task, int proc) {
+    // FIXME: stub; exists to placate linker.
+    return 0;
+}
+
 #else
 #error "Platform not supported."
 #endif

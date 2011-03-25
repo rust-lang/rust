@@ -417,9 +417,9 @@ rust_str* c_str_to_rust(rust_task *task, char const *str) {
     return vec_alloc_with_data(task, len, len, 1, (void*)str);
 }
 
-#if defined(__WIN32__)
 extern "C" CDECL rust_vec*
 rust_list_files(rust_task *task, rust_str *path) {
+#if defined(__WIN32__)
     array_list<rust_str*> strings;
     WIN32_FIND_DATA FindFileData;
     HANDLE hFind = FindFirstFile((char*)path->data, &FindFileData);
@@ -431,6 +431,15 @@ rust_list_files(rust_task *task, rust_str *path) {
     }
     return vec_alloc_with_data(task, strings.size(), strings.size(),
                                sizeof(rust_str*), strings.data());
+#else
+    return NULL;
+#endif
+}
+
+#if defined(__WIN32__)
+extern "C" CDECL rust_str *
+rust_dirent_filename(rust_task *task, void* ent) {
+    return NULL;
 }
 #else
 extern "C" CDECL rust_str *
