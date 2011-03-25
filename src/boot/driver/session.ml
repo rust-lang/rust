@@ -145,6 +145,6 @@ let make_crate_id (sess:sess) : crate_id =
  * fill-column: 78;
  * indent-tabs-mode: nil
  * buffer-file-coding-system: utf-8-unix
- * compile-command: "make -k -C ../../../build 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+ * compile-command: "make -k -C ../.. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
  * End:
  *)
