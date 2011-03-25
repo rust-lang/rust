@@ -1621,6 +1621,8 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_assign(_,_,_))   { ret true; }
                 case (ast.expr_assign_op(_,_,_,_))
                     { ret true; }
+                case (ast.expr_send(_,_,_))     { ret true; }
+                case (ast.expr_recv(_,_,_))     { ret true; }
                 case (ast.expr_field(_,_,_))    { ret true; }
                 case (ast.expr_index(_,_,_))    { ret true; }
                 case (ast.expr_path(_,_,_))     { ret true; }
