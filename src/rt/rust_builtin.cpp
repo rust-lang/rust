@@ -53,9 +53,7 @@ last_os_error(rust_task *task) {
 
 extern "C" CDECL
 void squareroot(rust_task *task, double *input, double *output) {
-    double f = *input;
-    double res = sqrt(f);
-    output = &res;
+    *output = sqrt(*input);
 }
 
 extern "C" CDECL size_t

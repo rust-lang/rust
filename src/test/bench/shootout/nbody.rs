@@ -13,10 +13,10 @@ fn main() {
 
     let vec[Body.props] bodies = NBodySystem.MakeNBodySystem();
 
-    // TODO: make #fmt handle floats?
-    log NBodySystem.energy(bodies);
-
     for (int n in inputs) {
+        // TODO: make #fmt handle floats?
+        log NBodySystem.energy(bodies);
+
         let int i = 0;
         while (i < n) {
             bodies = NBodySystem.advance(bodies, 0.01);
@@ -29,7 +29,6 @@ fn main() {
 // making a native call to sqrt
 native "rust" mod rustrt {
     fn squareroot(&float input, &mutable float output);
-    //fn squareroot(&float input, &float output);
 }
 
 // Body.props is a record of floats, so
@@ -126,10 +125,7 @@ mod NBodySystem {
 mod Body {
     
     const float PI = 3.141592;
-
-    //let float SOLAR_MASS = 4 * PI * PI;
-    const float SOLAR_MASS = 39.478417; 
-
+    const float SOLAR_MASS = 39.478417; // was 4 * PI * PI originally
     const float DAYS_PER_YEAR = 365.24;
 
     type props = rec(float x, 
