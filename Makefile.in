@@ -638,7 +638,8 @@ TEST_XFAILS_BOOT := $(TASK_XFAILS) \
                       bad-send.rs \
                       infinite-vec-type-recursion.rs \
                       tail-non-call.rs \
-                      writing-through-read-alias.rs)
+                      writing-through-read-alias.rs) \
+                    $(S)src/test/bench/shootout/nbody.rs
 
 TEST_XFAILS_STAGE0 := $(FLOAT_XFAILS) \
                       $(addprefix $(S)src/test/run-pass/, \

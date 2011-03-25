@@ -20,6 +20,7 @@ rust_get_stdout
 rust_run_program
 rust_start
 size_of
+squareroot
 str_alloc
 str_buf
 str_byte_len
@@ -39,6 +40,7 @@ upcall_get_type_desc
 upcall_grow_task
 upcall_join
 upcall_kill
+upcall_log_double
 upcall_log_int
 upcall_log_str
 upcall_malloc
