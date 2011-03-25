@@ -13,6 +13,7 @@ rand_free
 rand_new
 rand_next
 refcount
+rust_dirent_filename
 rust_file_is_dir
 rust_get_stdin
 rust_get_stdout
