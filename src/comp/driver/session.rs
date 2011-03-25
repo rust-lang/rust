@@ -1,3 +1,4 @@
+import front.ast;
 import util.common.span;
 import util.common.ty_mach;
 import std._uint;
@@ -23,10 +24,15 @@ type cfg = rec(os os,
 
 type crate_metadata = vec[u8];
 
-obj session(cfg targ, map.hashmap[int, crate_metadata] crates) {
+obj session(ast.crate_num cnum, cfg targ,
+            map.hashmap[int, crate_metadata] crates) {
 
     fn get_targ_cfg() -> cfg {
         ret targ;
+    }
+
+    fn get_targ_crate_num() -> ast.crate_num {
+        ret cnum;
     }
 
     fn span_err(span sp, str msg) {

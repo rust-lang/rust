@@ -1,6 +1,7 @@
 import front.ast;
 import front.ast.ann;
 import front.ast.mutability;
+import front.creader;
 import middle.fold;
 import driver.session;
 import util.common;
@@ -404,6 +405,12 @@ fn actual_type(@ty.t t, @ast.item item) -> @ty.t {
 // ast_ty_to_ty.
 fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast.ty ast_ty) -> @ty.t {
     fn getter(@crate_ctxt ccx, ast.def_id id) -> ty_and_params {
+
+        if (id._0 != ccx.sess.get_targ_crate_num()) {
+            // This is a type we need to load in from the crate reader.
+            ret creader.get_type(ccx.sess, id);
+        }
+
         check (ccx.item_items.contains_key(id));
         check (ccx.item_types.contains_key(id));
         auto it = ccx.item_items.get(id);
@@ -500,21 +507,29 @@ fn ty_of_native_fn_decl(@ty_item_table id_to_ty_item,
 fn collect_item_types(session.session sess, @ast.crate crate)
     -> tup(@ast.crate, @ty_table, @ty_item_table, @ty_param_table) {
 
-    fn getter(@ty_item_table id_to_ty_item,
+    fn getter(session.session sess,
+              @ty_item_table id_to_ty_item,
               @ty_table item_to_ty,
               ast.def_id id) -> ty_and_params {
+
+        if (id._0 != sess.get_targ_crate_num()) {
+            // This is a type we need to load in from the crate reader.
+            ret creader.get_type(sess, id);
+        }
+
         check (id_to_ty_item.contains_key(id));
+
         auto it = id_to_ty_item.get(id);
         auto ty;
         auto params;
         alt (it) {
             case (any_item_rust(?item)) {
-                ty = ty_of_item(id_to_ty_item, item_to_ty, item);
+                ty = ty_of_item(sess, id_to_ty_item, item_to_ty, item);
                 ty = actual_type(ty, item);
                 params = ty_params_of_item(item);
             }
             case (any_item_native(?native_item, ?abi)) {
-                ty = ty_of_native_item(id_to_ty_item, item_to_ty,
+                ty = ty_of_native_item(sess, id_to_ty_item, item_to_ty,
                                        native_item, abi);
                 params = ty_params_of_native_item(native_item);
             }
@@ -523,30 +538,33 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         ret rec(params = params, ty = ty);
     }
 
-    fn ty_of_arg(@ty_item_table id_to_ty_item,
+    fn ty_of_arg(session.session sess,
+                 @ty_item_table id_to_ty_item,
                  @ty_table item_to_ty,
                  &ast.arg a) -> arg {
-        auto f = bind getter(id_to_ty_item, item_to_ty, _);
+        auto f = bind getter(sess, id_to_ty_item, item_to_ty, _);
         ret rec(mode=a.mode, ty=ast_ty_to_ty(f, a.ty));
     }
 
-    fn ty_of_method(@ty_item_table id_to_ty_item,
+    fn ty_of_method(session.session sess,
+                    @ty_item_table id_to_ty_item,
                     @ty_table item_to_ty,
                     &@ast.method m) -> method {
-        auto get = bind getter(id_to_ty_item, item_to_ty, _);
+        auto get = bind getter(sess, id_to_ty_item, item_to_ty, _);
         auto convert = bind ast_ty_to_ty(get, _);
-        auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
+        auto f = bind ty_of_arg(sess, id_to_ty_item, item_to_ty, _);
         auto inputs = _vec.map[ast.arg,arg](f, m.node.meth.decl.inputs);
         auto output = convert(m.node.meth.decl.output);
         ret rec(proto=m.node.meth.proto, ident=m.node.ident,
                 inputs=inputs, output=output);
     }
 
-    fn ty_of_obj(@ty_item_table id_to_ty_item,
+    fn ty_of_obj(session.session sess,
+                 @ty_item_table id_to_ty_item,
                  @ty_table item_to_ty,
                  &ast.ident id,
                  &ast._obj obj_info) -> @ty.t {
-        auto f = bind ty_of_method(id_to_ty_item, item_to_ty, _);
+        auto f = bind ty_of_method(sess, id_to_ty_item, item_to_ty, _);
         auto methods =
             _vec.map[@ast.method,method](f, obj_info.methods);
 
@@ -555,14 +573,16 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         ret t_obj;
     }
 
-    fn ty_of_obj_ctor(@ty_item_table id_to_ty_item,
+    fn ty_of_obj_ctor(session.session sess,
+                      @ty_item_table id_to_ty_item,
                       @ty_table item_to_ty,
                       &ast.ident id,
                       &ast._obj obj_info) -> @ty.t {
-        auto t_obj = ty_of_obj(id_to_ty_item, item_to_ty, id, obj_info);
+        auto t_obj = ty_of_obj(sess, id_to_ty_item, item_to_ty,
+                               id, obj_info);
         let vec[arg] t_inputs = vec();
         for (ast.obj_field f in obj_info.fields) {
-            auto g = bind getter(id_to_ty_item, item_to_ty, _);
+            auto g = bind getter(sess, id_to_ty_item, item_to_ty, _);
             auto t_field = ast_ty_to_ty(g, f.ty);
             _vec.push[arg](t_inputs, rec(mode=ast.alias, ty=t_field));
         }
@@ -570,11 +590,12 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         ret t_fn;
     }
 
-    fn ty_of_item(@ty_item_table id_to_ty_item,
+    fn ty_of_item(session.session sess,
+                  @ty_item_table id_to_ty_item,
                   @ty_table item_to_ty,
                   @ast.item it) -> @ty.t {
 
-        auto get = bind getter(id_to_ty_item, item_to_ty, _);
+        auto get = bind getter(sess, id_to_ty_item, item_to_ty, _);
         auto convert = bind ast_ty_to_ty(get, _);
 
         alt (it.node) {
@@ -584,14 +605,15 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             }
 
             case (ast.item_fn(?ident, ?fn_info, _, ?def_id, _)) {
-                auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
-                ret ty_of_fn_decl(id_to_ty_item, item_to_ty, convert, f,
-                                  fn_info.decl, fn_info.proto, def_id);
+                auto f = bind ty_of_arg(sess, id_to_ty_item, item_to_ty, _);
+                ret ty_of_fn_decl(id_to_ty_item, item_to_ty, convert,
+                                  f, fn_info.decl, fn_info.proto, def_id);
             }
 
             case (ast.item_obj(?ident, ?obj_info, _, ?def_id, _)) {
                 // TODO: handle ty-params
-                auto t_ctor = ty_of_obj_ctor(id_to_ty_item,
+                auto t_ctor = ty_of_obj_ctor(sess,
+                                             id_to_ty_item,
                                              item_to_ty,
                                              ident,
                                              obj_info);
@@ -628,18 +650,19 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         }
     }
 
-    fn ty_of_native_item(@ty_item_table id_to_ty_item,
+    fn ty_of_native_item(session.session sess,
+                         @ty_item_table id_to_ty_item,
                          @ty_table item_to_ty,
                          @ast.native_item it,
                          ast.native_abi abi) -> @ty.t {
         alt (it.node) {
             case (ast.native_item_fn(?ident, ?lname, ?fn_decl,
                                      ?params, ?def_id, _)) {
-                auto get = bind getter(id_to_ty_item, item_to_ty, _);
+                auto get = bind getter(sess, id_to_ty_item, item_to_ty, _);
                 auto convert = bind ast_ty_to_ty(get, _);
-                auto f = bind ty_of_arg(id_to_ty_item, item_to_ty, _);
-                ret ty_of_native_fn_decl(id_to_ty_item, item_to_ty, convert,
-                                         f, fn_decl, abi, def_id);
+                auto f = bind ty_of_arg(sess, id_to_ty_item, item_to_ty, _);
+                ret ty_of_native_fn_decl(id_to_ty_item, item_to_ty,
+                                         convert, f, fn_decl, abi, def_id);
             }
             case (ast.native_item_ty(_, ?def_id)) {
                 if (item_to_ty.contains_key(def_id)) {
@@ -653,7 +676,8 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         }
     }
 
-    fn get_tag_variant_types(@ty_item_table id_to_ty_item,
+    fn get_tag_variant_types(session.session sess,
+                             @ty_item_table id_to_ty_item,
                              @ty_table item_to_ty,
                              &ast.def_id tag_id,
                              &vec[ast.variant] variants,
@@ -676,7 +700,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
                 // should be called to resolve named types.
-                auto f = bind getter(id_to_ty_item, item_to_ty, _);
+                auto f = bind getter(sess, id_to_ty_item, item_to_ty, _);
 
                 let vec[arg] args = vec();
                 for (ast.variant_arg va in variant.args) {
@@ -778,14 +802,14 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             case (_) {
                 // This call populates the ty_table with the converted type of
                 // the item in passing; we don't need to do anything else.
-                ty_of_item(e.id_to_ty_item, e.item_to_ty, i);
+                ty_of_item(e.sess, e.id_to_ty_item, e.item_to_ty, i);
             }
         }
         ret @rec(abi=abi with *e);
     }
 
     fn convert_native(&@env e, @ast.native_item i) -> @env {
-        ty_of_native_item(e.id_to_ty_item, e.item_to_ty, i, e.abi);
+        ty_of_native_item(e.sess, e.id_to_ty_item, e.item_to_ty, i, e.abi);
         ret e;
     }
 
@@ -872,7 +896,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             m = @rec(node=m_ with *meth);
             _vec.push[@ast.method](methods, m);
         }
-        auto g = bind getter(e.id_to_ty_item, e.item_to_ty, _);
+        auto g = bind getter(e.sess, e.id_to_ty_item, e.item_to_ty, _);
         for (ast.obj_field fld in ob.fields) {
             let @ty.t fty = ast_ty_to_ty(g, fld.ty);
             let ast.obj_field f = rec(
@@ -908,7 +932,8 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                      ast.def_id id) -> @ast.item {
         collect_ty_params(e, id, ty_params);
 
-        auto variants_t = get_tag_variant_types(e.id_to_ty_item,
+        auto variants_t = get_tag_variant_types(e.sess,
+                                                e.id_to_ty_item,
                                                 e.item_to_ty,
                                                 id,
                                                 variants,

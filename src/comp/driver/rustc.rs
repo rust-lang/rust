@@ -114,8 +114,9 @@ impure fn main(vec[str] args) {
                           float_type = common.ty_f64 );
 
     auto crate_cache = common.new_int_hash[session.crate_metadata]();
+    auto target_crate_num = 0;
+    auto sess = session.session(target_crate_num, target_cfg, crate_cache);
 
-    auto sess = session.session(target_cfg, crate_cache);
     let option.t[str] input_file = none[str];
     let option.t[str] output_file = none[str];
     let vec[str] library_search_paths = vec();
