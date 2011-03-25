@@ -708,7 +708,7 @@ TEST_XFAILS_STAGE0 := $(FLOAT_XFAILS) \
                         threads.rs \
                         type-sizes.rs \
                         typestate-cfg-nesting.rs \
-						use.rs \
+                        use.rs \
                         use-import-export.rs \
                         user.rs \
                         utf8.rs \
