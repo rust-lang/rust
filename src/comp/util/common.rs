@@ -64,6 +64,14 @@ fn new_def_hash[V]() -> std.map.hashmap[ast.def_id,V] {
     ret std.map.mk_hashmap[ast.def_id,V](hasher, eqer);
 }
 
+fn new_int_hash[V]() -> std.map.hashmap[int,V] {
+    fn hash_int(&int x) -> uint { ret x as uint; }
+    fn eq_int(&int a, &int b) -> bool { ret a == b; }
+    auto hasher = hash_int;
+    auto eqer = eq_int;
+    ret std.map.mk_hashmap[int,V](hasher, eqer);
+}
+
 fn istr(int i) -> str {
     ret _int.to_str(i, 10u);
 }

@@ -1,6 +1,7 @@
 import util.common.span;
 import util.common.ty_mach;
 import std._uint;
+import std.map;
 
 tag os {
     os_win32;
@@ -20,7 +21,9 @@ type cfg = rec(os os,
                ty_mach uint_type,
                ty_mach float_type);
 
-obj session(cfg targ) {
+type crate_metadata = vec[u8];
+
+obj session(cfg targ, map.hashmap[int, crate_metadata] crates) {
 
     fn get_targ_cfg() -> cfg {
         ret targ;
@@ -65,6 +68,14 @@ obj session(cfg targ) {
     fn unimpl(str msg) {
         log #fmt("error: unimplemented %s", msg);
         fail;
+    }
+
+    fn get_external_crate(int num) -> crate_metadata {
+        ret crates.get(num);
+    }
+
+    fn set_external_crate(int num, &crate_metadata metadata) {
+        crates.insert(num, metadata);
     }
 }
 

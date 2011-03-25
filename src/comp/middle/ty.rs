@@ -1530,11 +1530,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         ret ty.fold_ty(folder(bindings), typ);
     }
 
-    fn hash_int(&int x) -> uint { ret x as uint; }
-    fn eq_int(&int a, &int b) -> bool { ret a == b; }
-    auto hasher = hash_int;
-    auto eqer = eq_int;
-    auto bindings = @map.mk_hashmap[int,@ty.t](hasher, eqer);
+    auto bindings = @common.new_int_hash[@ty.t]();
 
     auto ures = unify_step(bindings, expected, actual, handler);
     alt (ures) {

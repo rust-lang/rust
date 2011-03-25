@@ -9,6 +9,7 @@ import middle.resolve;
 import middle.typeck;
 import util.common;
 
+import std.map.mk_hashmap;
 import std.option;
 import std.option.some;
 import std.option.none;
@@ -112,7 +113,9 @@ impure fn main(vec[str] args) {
                           uint_type = common.ty_u32,
                           float_type = common.ty_f64 );
 
-    auto sess = session.session(target_cfg);
+    auto crate_cache = common.new_int_hash[session.crate_metadata]();
+
+    auto sess = session.session(target_cfg, crate_cache);
     let option.t[str] input_file = none[str];
     let option.t[str] output_file = none[str];
     let vec[str] library_search_paths = vec();
