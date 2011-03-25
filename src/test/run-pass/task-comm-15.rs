@@ -1,3 +1,5 @@
+// xfail-boot
+// xfail-stage0
 impure fn start(chan[int] c, int n) {
     let int i = n;
 

@@ -1,3 +1,4 @@
+// xfail-boot
 
 fn get_third[T](&tup(T,T,T) t) -> T {
   ret t._2;

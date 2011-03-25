@@ -1,3 +1,4 @@
+// xfail-stage0
 /* -*- mode: rust; indent-tabs-mode: nil -*-
  * Implementation of 'fasta' benchmark from
  * Computer Language Benchmarks Game

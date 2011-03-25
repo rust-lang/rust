@@ -1,3 +1,4 @@
+// xfail-stage0
 fn main() {
   auto x = spawn m.child(10);
   join x;

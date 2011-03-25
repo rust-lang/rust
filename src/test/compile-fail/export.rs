@@ -1,3 +1,4 @@
+// xfail-stage0
 // error-pattern: unknown module item
 mod foo {
   export x;

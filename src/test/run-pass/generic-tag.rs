@@ -1,3 +1,4 @@
+// xfail-boot
 tag option[T] {
   some(@T);
   none;

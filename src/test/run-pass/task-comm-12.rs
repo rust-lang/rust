@@ -1,3 +1,5 @@
+// xfail-boot
+// xfail-stage0
 use std;
 import std._task;
 

@@ -1,3 +1,5 @@
+// xfail-boot
+// xfail-stage0
 fn altsimple(any x) {
   alt type (f) {
     case (int i) { print("int"); }

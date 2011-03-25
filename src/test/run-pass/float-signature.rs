@@ -1,3 +1,4 @@
+// xfail-boot
 fn main() {
     fn foo(float n) -> float {
         ret n + 0.12345;

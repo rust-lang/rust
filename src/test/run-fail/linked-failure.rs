@@ -1,3 +1,4 @@
+// xfail-stage0
 // -*- rust -*-
 
 // error-pattern:1 == 2

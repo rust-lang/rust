@@ -1,3 +1,4 @@
+// xfail-stage0
 // error-pattern: writing to immutable type
 fn main() {
   let rec(int x) r = rec(x=1);

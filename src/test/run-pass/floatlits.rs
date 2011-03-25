@@ -1,3 +1,4 @@
+// xfail-boot
 fn main() {
   auto f = 4.999999999999;
   check (f > 4.90);

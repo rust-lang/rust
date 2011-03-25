@@ -1,3 +1,4 @@
+// xfail-stage0
 // -*- rust -*-
 
 native mod libc = target_libc {

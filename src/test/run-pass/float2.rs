@@ -1,3 +1,4 @@
+// xfail-boot
 fn main() {
   auto a = 1.5e6;
   auto b = 1.5E6;

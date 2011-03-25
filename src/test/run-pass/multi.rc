@@ -1,3 +1,4 @@
+// xfail-stage0
 mod multi = "multi-src" {
 
   mod foo; // implicitly = "foo.rs"

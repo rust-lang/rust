@@ -1,3 +1,4 @@
+// xfail-stage0
 use std;
 use libc();
 use zed(name = "std");

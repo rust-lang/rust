@@ -1,3 +1,5 @@
+// xfail-boot
+// xfail-stage0
 // This test checks that destructors run in the right order.  Because
 // stateful objects can't have destructors, we have the destructors
 // record their expected order into a channel when they execute (so

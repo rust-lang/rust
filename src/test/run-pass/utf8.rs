@@ -1,3 +1,4 @@
+// xfail-stage0
 fn main() {
   let char yen = '¥';         // 0xa5
   let char c_cedilla = 'ç';   // 0xe7

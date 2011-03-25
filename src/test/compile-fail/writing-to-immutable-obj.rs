@@ -1,3 +1,4 @@
+// xfail-stage0
 // error-pattern: writing to immutable type
 obj objy(int x) {
     fn foo() -> () {

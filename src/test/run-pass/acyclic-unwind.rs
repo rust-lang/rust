@@ -1,3 +1,4 @@
+// xfail-stage0
 // -*- rust -*-
 
 impure fn f(chan[int] c)

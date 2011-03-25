@@ -1,3 +1,6 @@
+// xfail-boot
+// xfail-boot
+// xfail-stage0
 
 obj big() {
   fn one() -> int { ret 1; }

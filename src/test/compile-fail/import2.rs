@@ -1,3 +1,4 @@
+// xfail-boot
 // error-pattern: unresolved name: zed
 import baz.zed.bar;
 mod baz {
