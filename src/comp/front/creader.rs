@@ -4,7 +4,6 @@ import driver.session;
 import front.ast;
 import lib.llvm.False;
 import lib.llvm.llvm;
-import lib.llvm.llvmext;
 import lib.llvm.mk_object_file;
 import lib.llvm.mk_section_iter;
 import middle.fold;
@@ -331,23 +330,23 @@ fn load_crate(session.session sess,
     for (str library_search_path in library_search_paths) {
         auto path = fs.connect(library_search_path, filename);
         auto pbuf = _str.buf(path);
-        auto mb = llvmext.LLVMRustCreateMemoryBufferWithContentsOfFile(pbuf);
+        auto mb = llvm.LLVMRustCreateMemoryBufferWithContentsOfFile(pbuf);
         if (mb as int != 0) {
             auto of = mk_object_file(mb);
             auto si = mk_section_iter(of.llof);
-            while (llvmext.LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) ==
+            while (llvm.LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) ==
                     False) {
-                auto name_buf = llvmext.LLVMGetSectionName(si.llsi);
+                auto name_buf = llvm.LLVMGetSectionName(si.llsi);
                 auto name = _str.str_from_cstr(name_buf);
                 if (_str.eq(name, x86.get_meta_sect_name())) {
-                    auto cbuf = llvmext.LLVMGetSectionContents(si.llsi);
-                    auto csz = llvmext.LLVMGetSectionSize(si.llsi);
+                    auto cbuf = llvm.LLVMGetSectionContents(si.llsi);
+                    auto csz = llvm.LLVMGetSectionSize(si.llsi);
                     auto cvbuf = cbuf as _vec.vbuf;
                     auto cvec = _vec.vec_from_vbuf[u8](cvbuf, csz);
                     sess.set_external_crate(cnum, cvec);
                     ret;
                 }
-                llvmext.LLVMMoveToNextSection(si.llsi);
+                llvm.LLVMMoveToNextSection(si.llsi);
             }
         }
     }

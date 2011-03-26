@@ -22,8 +22,8 @@ import llvm.CallConv;
 import llvm.IntPredicate;
 import llvm.RealPredicate;
 import llvm.Opcode;
-import llvmext.ObjectFileRef;
-import llvmext.SectionIteratorRef;
+import llvm.ObjectFileRef;
+import llvm.SectionIteratorRef;
 
 type ULongLong = u64;
 type LongLong = i64;
@@ -740,9 +740,10 @@ native mod llvm = llvm_lib {
 
     /** Destroys a memory buffer. */
     fn LLVMDisposeMemoryBuffer(MemoryBufferRef MemBuf);
-}
 
-native mod llvmext = llvm_lib {
+
+    /* Stuff that's in rustllvm/ because it's not upstream yet. */
+
     type ObjectFileRef;
     type SectionIteratorRef;
 
@@ -777,6 +778,11 @@ native mod llvmext = llvm_lib {
     /** Returns a string describing the last error caused by an LLVMRust*
         call. */
     fn LLVMRustGetLastError() -> sbuf;
+
+
+}
+
+native mod rustllvm = llvm_lib {
 }
 
 /* Slightly more terse object-interface to LLVM's 'builder' functions. */
@@ -1384,26 +1390,26 @@ fn mk_pass_manager() -> pass_manager {
 /* Memory-managed interface to object files. */
 
 obj object_file_dtor(ObjectFileRef ObjectFile) {
-    drop { llvmext.LLVMDisposeObjectFile(ObjectFile); }
+    drop { llvm.LLVMDisposeObjectFile(ObjectFile); }
 }
 
 type object_file = rec(ObjectFileRef llof, object_file_dtor dtor);
 
 fn mk_object_file(MemoryBufferRef llmb) -> object_file {
-    auto llof = llvmext.LLVMCreateObjectFile(llmb);
+    auto llof = llvm.LLVMCreateObjectFile(llmb);
     ret rec(llof=llof, dtor=object_file_dtor(llof));
 }
 
 /* Memory-managed interface to section iterators. */
 
 obj section_iter_dtor(SectionIteratorRef SI) {
-    drop { llvmext.LLVMDisposeSectionIterator(SI); }
+    drop { llvm.LLVMDisposeSectionIterator(SI); }
 }
 
 type section_iter = rec(SectionIteratorRef llsi, section_iter_dtor dtor);
 
 fn mk_section_iter(ObjectFileRef llof) -> section_iter {
-    auto llsi = llvmext.LLVMGetSections(llof);
+    auto llsi = llvm.LLVMGetSections(llof);
     ret rec(llsi=llsi, dtor=section_iter_dtor(llsi));
 }
 
