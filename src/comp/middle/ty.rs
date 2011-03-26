@@ -42,6 +42,7 @@ tag sty {
     ty_vec(mt);
     ty_port(@t);
     ty_chan(@t);
+    ty_task;
     ty_tup(vec[mt]);
     ty_rec(vec[field]);
     ty_fn(ast.proto, vec[arg], @t);                 // TODO: effect
@@ -756,6 +757,8 @@ fn expr_ty(@ast.expr expr) -> @t {
         case (ast.expr_rec(_, _, ?ann))       { ret ann_to_type(ann); }
         case (ast.expr_bind(_, _, ?ann))      { ret ann_to_type(ann); }
         case (ast.expr_call(_, _, ?ann))      { ret ann_to_type(ann); }
+        case (ast.expr_spawn(_, _, _, _, ?ann))
+                                              { ret ann_to_type(ann); }
         case (ast.expr_binary(_, _, _, ?ann)) { ret ann_to_type(ann); }
         case (ast.expr_unary(_, _, ?ann))     { ret ann_to_type(ann); }
         case (ast.expr_lit(_, ?ann))          { ret ann_to_type(ann); }

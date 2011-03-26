@@ -219,6 +219,11 @@ type arm = rec(@pat pat, block block, hashmap[ident,def_id] index);
 type elt = rec(mutability mut, @expr expr);
 type field = rec(mutability mut, ident ident, @expr expr);
 
+tag spawn_dom {
+    dom_implicit;
+    dom_thread;
+}
+
 type expr = spanned[expr_];
 tag expr_ {
     expr_vec(vec[@expr], mutability, ann);
@@ -226,6 +231,7 @@ tag expr_ {
     expr_rec(vec[field], option.t[@expr], ann);
     expr_call(@expr, vec[@expr], ann);
     expr_bind(@expr, vec[option.t[@expr]], ann);
+    expr_spawn(spawn_dom, option.t[str], @expr, vec[@expr], ann);
     expr_binary(binop, @expr, @expr, ann);
     expr_unary(unop, @expr, ann);
     expr_lit(@lit, ann);
