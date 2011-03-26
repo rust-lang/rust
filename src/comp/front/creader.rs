@@ -16,6 +16,7 @@ import util.common;
 import util.common.span;
 
 import std._str;
+import std._uint;
 import std._vec;
 import std.ebml;
 import std.fs;
@@ -222,8 +223,22 @@ impure fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty.arg], @ty.t) {
 
 // Rust metadata parsing
 
-fn parse_def_id(str s) -> ast.def_id {
-    ret tup(1, 0);  // TODO
+fn parse_def_id(vec[u8] buf) -> ast.def_id {
+    auto colon_idx = 0u;
+    auto len = _vec.len[u8](buf);
+    while (colon_idx < len && buf.(colon_idx) != (':' as u8)) {
+        colon_idx += 1u;
+    }
+    if (colon_idx == len) {
+        log "didn't find ':' when parsing def id";
+        fail;
+    }
+
+    auto crate_part = _vec.slice[u8](buf, 0u, colon_idx);
+    auto def_part = _vec.slice[u8](buf, colon_idx + 1u, len);
+    auto crate_num = _uint.parse_buf(crate_part, 10u) as int;
+    auto def_num = _uint.parse_buf(def_part, 10u) as int;
+    ret tup(crate_num, def_num);
 }
 
 // Given a path and serialized crate metadata, returns the ID of the
@@ -259,9 +274,7 @@ impure fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
                         ebml.move_to_first_child(ebml_r);
                         auto did_data = ebml.read_data(ebml_r);
                         ebml.move_to_parent(ebml_r);
-                        auto did_str = _str.unsafe_from_bytes(did_data);
-                        log "did_str: " + did_str;
-                        did_opt = some[ast.def_id](parse_def_id(did_str));
+                        did_opt = some[ast.def_id](parse_def_id(did_data));
                     }
                     ebml.move_to_next_sibling(ebml_r);
                 }
@@ -394,6 +407,9 @@ fn lookup_def(session.session sess, &span sp, int cnum, vec[ast.ident] path)
             fail;
         }
     }
+
+    log #fmt("resolved '%s' to %d:%d", _str.connect(path, "."), did._0,
+             did._1);
 
     // TODO: Look up item type, use that to determine the type of def.
 
