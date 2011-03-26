@@ -35,9 +35,9 @@ void LLVMDisposeSectionIterator(LLVMSectionIteratorRef SI) {
   delete unwrap(SI);
 }
 
-bool LLVMIsSectionIteratorAtEnd(LLVMObjectFileRef ObjectFile,
+LLVMBool LLVMIsSectionIteratorAtEnd(LLVMObjectFileRef ObjectFile,
                                 LLVMSectionIteratorRef SI) {
-  return *unwrap(SI) == unwrap(ObjectFile)->end_sections();
+  return (*unwrap(SI) == unwrap(ObjectFile)->end_sections()) ? 1 : 0;
 }
 
 void LLVMMoveToNextSection(LLVMSectionIteratorRef SI) {

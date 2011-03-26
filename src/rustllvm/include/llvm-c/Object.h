@@ -38,7 +38,7 @@ void LLVMDisposeObjectFile(LLVMObjectFileRef ObjectFile);
 
 LLVMSectionIteratorRef LLVMGetSections(LLVMObjectFileRef ObjectFile);
 void LLVMDisposeSectionIterator(LLVMSectionIteratorRef SI);
-bool LLVMIsSectionIteratorAtEnd(LLVMObjectFileRef ObjectFile,
+LLVMBool LLVMIsSectionIteratorAtEnd(LLVMObjectFileRef ObjectFile,
                                 LLVMSectionIteratorRef SI);
 void LLVMMoveToNextSection(LLVMSectionIteratorRef SI);
 const char *LLVMGetSectionName(LLVMSectionIteratorRef SI);
