@@ -6,7 +6,7 @@ import option.none;
 import option.some;
 
 type ebml_tag = rec(uint id, uint size);
-type ebml_state = rec(ebml_tag ebml_tag, uint pos);
+type ebml_state = rec(ebml_tag ebml_tag, uint tag_pos, uint data_pos);
 
 // TODO: When we have module renaming, make "reader" and "writer" separate
 // modules within this file.
@@ -56,8 +56,10 @@ impure fn create_reader(&io.reader r) -> reader {
 impure fn bytes_left(&reader r) -> uint {
     auto pos = r.reader.tell();
     alt (_vec.last[ebml_state](r.states)) {
-        case (none[ebml_state])      { ret r.size - pos; }
-        case (some[ebml_state](?st)) { ret st.pos + st.ebml_tag.size - pos; }
+        case (none[ebml_state]) { ret r.size - pos; }
+        case (some[ebml_state](?st)) {
+            ret st.data_pos + st.ebml_tag.size - pos;
+        }
     }
 }
 
@@ -69,9 +71,10 @@ impure fn read_tag(&reader r) -> ebml_tag {
 
 // Reads a tag and moves the cursor to its first child or data segment.
 impure fn move_to_first_child(&reader r) {
-    auto pos = r.reader.tell();
+    auto tag_pos = r.reader.tell();
     auto t = read_tag(r);
-    r.states += vec(rec(ebml_tag=t, pos=pos));
+    auto data_pos = r.reader.tell();
+    r.states += vec(rec(ebml_tag=t, tag_pos=tag_pos, data_pos=data_pos));
 }
 
 // Reads a tag and skips over its contents, moving to its next sibling.
@@ -84,7 +87,7 @@ impure fn move_to_next_sibling(&reader r) {
 impure fn move_to_parent(&reader r) {
     check (_vec.len[ebml_state](r.states) > 0u);
     auto st = _vec.pop[ebml_state](r.states);
-    r.reader.seek(st.pos as int, io.seek_set);
+    r.reader.seek(st.tag_pos as int, io.seek_set);
 }
 
 // Reads the data segment of a tag.

@@ -188,6 +188,11 @@ fn file_reader(str path) -> reader {
     ret new_reader(FILE_buf_reader(f, true));
 }
 
+// FIXME: Remove me once objects are exported.
+fn new_reader_(buf_reader bufr) -> reader {
+    ret new_reader(bufr);
+}
+
 
 // Byte buffer readers
 
@@ -222,6 +227,10 @@ state obj byte_buf_reader(byte_buf bbuf) {
     }
 
     impure fn tell() -> uint { ret bbuf.pos; }
+}
+
+fn new_byte_buf_reader(vec[u8] buf) -> byte_buf_reader {
+    ret byte_buf_reader(@rec(buf=buf, mutable pos=0u));
 }
 
 

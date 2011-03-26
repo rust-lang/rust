@@ -8,6 +8,7 @@ import lib.llvm.llvmext;
 import lib.llvm.mk_object_file;
 import lib.llvm.mk_section_iter;
 import middle.fold;
+import middle.metadata;
 import middle.ty;
 import middle.typeck;
 import back.x86;
@@ -16,8 +17,11 @@ import util.common.span;
 
 import std._str;
 import std._vec;
+import std.ebml;
 import std.fs;
+import std.io;
 import std.option;
+import std.option.none;
 import std.option.some;
 import std.os;
 import std.map.hashmap;
@@ -29,6 +33,11 @@ type env = @rec(
     vec[str] library_search_paths,
     mutable int next_crate_num
 );
+
+tag resolve_result {
+    rr_ok(ast.def_id);
+    rr_not_found(vec[ast.ident], ast.ident);
+}
 
 // Type decoding
 
@@ -213,10 +222,96 @@ impure fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty.arg], @ty.t) {
 
 // Rust metadata parsing
 
-// TODO
+fn parse_def_id(str s) -> ast.def_id {
+    ret tup(1, 0);  // TODO
+}
+
+// Given a path and serialized crate metadata, returns the ID of the
+// definition the path refers to.
+impure fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
+    impure fn resolve_path_inner(vec[ast.ident] path, &ebml.reader ebml_r)
+            -> resolve_result {
+        auto i = 0u;
+        auto len = _vec.len[ast.ident](path);
+        while (i < len) {
+            auto name = path.(i);
+            auto last = i == len - 1u;
+
+            // Search this level for the identifier.
+            auto found = false;
+            while (ebml.bytes_left(ebml_r) > 0u && !found) {
+                auto ebml_tag = ebml.peek(ebml_r);
+                check ((ebml_tag.id == metadata.tag_paths_item) ||
+                       (ebml_tag.id == metadata.tag_paths_mod));
+
+                ebml.move_to_first_child(ebml_r);
+                auto did_opt = none[ast.def_id];
+                auto name_opt = none[ast.ident];
+                while (ebml.bytes_left(ebml_r) > 0u) {
+                    auto inner_tag = ebml.peek(ebml_r);
+                    if (inner_tag.id == metadata.tag_paths_name) {
+                        ebml.move_to_first_child(ebml_r);
+                        auto name_data = ebml.read_data(ebml_r);
+                        ebml.move_to_parent(ebml_r);
+                        auto nm = _str.unsafe_from_bytes(name_data);
+                        name_opt = some[ast.ident](nm);
+                    } else if (inner_tag.id == metadata.tag_items_def_id) {
+                        ebml.move_to_first_child(ebml_r);
+                        auto did_data = ebml.read_data(ebml_r);
+                        ebml.move_to_parent(ebml_r);
+                        auto did_str = _str.unsafe_from_bytes(did_data);
+                        log "did_str: " + did_str;
+                        did_opt = some[ast.def_id](parse_def_id(did_str));
+                    }
+                    ebml.move_to_next_sibling(ebml_r);
+                }
+                ebml.move_to_parent(ebml_r);
+
+                if (_str.eq(option.get[ast.ident](name_opt), name)) {
+                    // Matched!
+                    if (last) {
+                        ret rr_ok(option.get[ast.def_id](did_opt));
+                    }
+
+                    // Move to the module/item we found for the next iteration
+                    // of the loop...
+                    ebml.move_to_first_child(ebml_r);
+                    found = true;
+                }
+
+                ebml.move_to_next_sibling(ebml_r);
+            }
+
+            if (!found) {
+                auto prev = _vec.slice[ast.ident](path, 0u, i);
+                ret rr_not_found(prev, name);
+            }
+
+            i += 1u;
+        }
+
+        fail;   // not reached
+    }
+
+    auto io_r = io.new_reader_(io.new_byte_buf_reader(data));
+    auto ebml_r = ebml.create_reader(io_r);
+    while (ebml.bytes_left(ebml_r) > 0u) {
+        auto ebml_tag = ebml.peek(ebml_r);
+        log #fmt("outer ebml tag id: %u", ebml_tag.id);
+        if (ebml_tag.id == metadata.tag_paths) {
+            ebml.move_to_first_child(ebml_r);
+            ret resolve_path_inner(path, ebml_r);
+        }
+        ebml.move_to_next_sibling(ebml_r);
+    }
+
+    log "resolve_path(): no names in file";
+    fail;
+}
 
 
 fn load_crate(session.session sess,
+              int cnum,
               ast.ident ident,
               vec[str] library_search_paths) {
     auto filename = parser.default_native_name(sess, ident);
@@ -235,6 +330,8 @@ fn load_crate(session.session sess,
                     auto cbuf = llvmext.LLVMGetSectionContents(si.llsi);
                     auto csz = llvmext.LLVMGetSectionSize(si.llsi);
                     auto cvbuf = cbuf as _vec.vbuf;
+                    auto cvec = _vec.vec_from_vbuf[u8](cvbuf, csz);
+                    sess.set_external_crate(cnum, cvec);
                     ret;
                 }
                 llvmext.LLVMMoveToNextSection(si.llsi);
@@ -252,8 +349,8 @@ fn fold_view_item_use(&env e, &span sp, ast.ident ident,
         -> @ast.view_item {
     auto cnum;
     if (!e.crate_cache.contains_key(ident)) {
-        load_crate(e.sess, ident, e.library_search_paths);
         cnum = e.next_crate_num;
+        load_crate(e.sess, cnum, ident, e.library_search_paths);
         e.crate_cache.insert(ident, e.next_crate_num);
         e.next_crate_num += 1;
     } else {
@@ -280,10 +377,27 @@ fn read_crates(session.session sess,
     ret fold.fold_crate[env](e, fld, crate);
 }
 
+
+// Crate metadata queries
+
 fn lookup_def(session.session sess, &span sp, int cnum, vec[ast.ident] path)
-    -> ast.def {
-  // FIXME: fill in.
-  fail;
+        -> ast.def {
+    auto data = sess.get_external_crate(cnum);
+
+    auto did;
+    alt (resolve_path(path, data)) {
+        case (rr_ok(?di)) { did = di; }
+        case (rr_not_found(?prev, ?name)) {
+            sess.span_err(sp,
+                #fmt("unbound name '%s' (no item named '%s' found in '%s')",
+                     _str.connect(path, "."), name, _str.connect(prev, ".")));
+            fail;
+        }
+    }
+
+    // TODO: Look up item type, use that to determine the type of def.
+
+    fail;
 }
 
 fn get_type(session.session sess, ast.def_id def) -> typeck.ty_and_params {
