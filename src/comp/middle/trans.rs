@@ -888,16 +888,33 @@ fn decl_native_glue(ModuleRef llmod, type_names tn,
     ret decl_fastcall_fn(llmod, s, T_fn(args, T_int()));
 }
 
-fn get_extern(&hashmap[str, ValueRef] externs,
-              ModuleRef llmod, str name, int n_args) -> ValueRef {
+fn get_extern_fn(&hashmap[str, ValueRef] externs,
+                 ModuleRef llmod, str name,
+                 uint cc, TypeRef ty) -> ValueRef {
     if (externs.contains_key(name)) {
         ret externs.get(name);
     }
-    auto inputs = _vec.init_elt[TypeRef](T_int(), n_args as uint);
-    auto output = T_int();
-    auto f = decl_cdecl_fn(llmod, name, T_fn(inputs, output));
+    auto f = decl_fn(llmod, name, cc, ty);
     externs.insert(name, f);
     ret f;
+}
+
+fn get_extern_const(&hashmap[str, ValueRef] externs,
+                    ModuleRef llmod, str name, TypeRef ty) -> ValueRef {
+    if (externs.contains_key(name)) {
+        ret externs.get(name);
+    }
+    auto c = llvm.LLVMAddGlobal(llmod, ty, _str.buf(name));
+    externs.insert(name, c);
+    ret c;
+}
+
+fn get_simple_extern_fn(&hashmap[str, ValueRef] externs,
+                     ModuleRef llmod, str name, int n_args) -> ValueRef {
+    auto inputs = _vec.init_elt[TypeRef](T_int(), n_args as uint);
+    auto output = T_int();
+    auto t = T_fn(inputs, output);
+    ret get_extern_fn(externs, llmod, name, lib.llvm.LLVMCCallConv, t);
 }
 
 fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> result {
@@ -914,7 +931,7 @@ fn trans_native(builder b, @glue_fns glues, ValueRef lltaskptr,
                 type_names tn, ModuleRef llmod, str name,
                 bool pass_task, vec[ValueRef] args) -> ValueRef {
     let int n = (_vec.len[ValueRef](args) as int);
-    let ValueRef llnative = get_extern(externs, llmod, name, n);
+    let ValueRef llnative = get_simple_extern_fn(externs, llmod, name, n);
     llnative = llvm.LLVMConstPointerCast(llnative, T_int());
 
     let ValueRef llglue;
