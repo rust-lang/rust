@@ -1750,6 +1750,27 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         ret tup(lhs_1, rhs_1, ann);
     }
 
+    // A generic function for checking call expressions
+    fn check_call(&@fn_ctxt fcx, @ast.expr f, vec[@ast.expr] args)
+        -> tup(@ast.expr, vec[@ast.expr]) {
+
+        let vec[option.t[@ast.expr]] args_opt_0 = vec();
+        for (@ast.expr arg in args) {
+            args_opt_0 += vec(some[@ast.expr](arg));
+        }
+
+        // Call the generic checker.
+        auto result = check_call_or_bind(fcx, f, args_opt_0);
+
+        // Pull out the arguments.
+        let vec[@ast.expr] args_1 = vec();
+        for (option.t[@ast.expr] arg in result._1) {
+            args_1 += vec(option.get[@ast.expr](arg));
+        }
+
+        ret tup(result._0, args_1);
+    }
+
     alt (expr.node) {
         case (ast.expr_lit(?lit, _)) {
             auto typ = check_lit(lit);
@@ -2154,23 +2175,13 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_call(?f, ?args, _)) {
-            let vec[option.t[@ast.expr]] args_opt_0 = vec();
-            for (@ast.expr arg in args) {
-                args_opt_0 += vec(some[@ast.expr](arg));
-            }
-
-            // Call the generic checker.
-            auto result = check_call_or_bind(fcx, f, args_opt_0);
-
-            // Pull out the arguments.
-            let vec[@ast.expr] args_1 = vec();
-            for (option.t[@ast.expr] arg in result._1) {
-                args_1 += vec(option.get[@ast.expr](arg));
-            }
+            auto result = check_call(fcx, f, args);
+            auto f_1 = result._0;
+            auto args_1 = result._1;
 
             // Pull the return type out of the type of the function.
             auto rt_1 = plain_ty(ty.ty_nil);    // FIXME: typestate botch
-            alt (expr_ty(result._0).struct) {
+            alt (expr_ty(f_1).struct) {
                 case (ty.ty_fn(_,_,?rt))    { rt_1 = rt; }
                 case (ty.ty_native_fn(_, _, ?rt))    { rt_1 = rt; }
                 case (_) {
@@ -2181,8 +2192,37 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             auto ann = ast.ann_type(rt_1, none[vec[@ty.t]]);
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_call(result._0, args_1,
-                                                      ann));
+                                        ast.expr_call(f_1, args_1, ann));
+        }
+
+        case (ast.expr_spawn(?dom, ?name, ?f, ?args, _)) {
+            auto result = check_call(fcx, f, args);
+            auto f_1 = result._0;
+            auto args_1 = result._1;
+
+            // Check the return type
+            alt (expr_ty(f_1).struct) {
+                case (ty.ty_fn(_,_,?rt)) {
+                    alt (rt.struct) {
+                        case (ty.ty_nil) {
+                            // This is acceptable
+                        }
+                        case (_) {
+                            auto err = "non-nil return type in "
+                                + "spawned function";
+                            fcx.ccx.sess.span_err(expr.span, err);
+                            fail;
+                        }
+                    }
+                }
+            }
+
+            // FIXME: Other typechecks needed
+
+            auto ann = ast.ann_type(plain_ty(ty.ty_task), none[vec[@ty.t]]);
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_spawn(dom, name,
+                                                       f_1, args_1, ann));
         }
 
         case (ast.expr_cast(?e, ?t, _)) {

@@ -1333,6 +1333,27 @@ impure fn parse_alt_expr(parser p) -> @ast.expr {
     ret @spanned(lo, hi, expr);
 }
 
+impure fn parse_spawn_expr(parser p) -> @ast.expr {
+    auto lo = p.get_span();
+    expect(p, token.SPAWN);
+
+    // FIXME: Parse domain and name
+
+    auto fn_expr = parse_bottom_expr(p);
+    auto pf = parse_expr;
+    auto es = parse_seq[@ast.expr](token.LPAREN,
+                                   token.RPAREN,
+                                   some(token.COMMA),
+                                   pf, p);
+    auto hi = es.span;
+    auto spawn_expr = ast.expr_spawn(ast.dom_implicit,
+                                     option.none[str],
+                                     fn_expr,
+                                     es.node,
+                                     ast.ann_none);
+    ret @spanned(lo, hi, spawn_expr);
+}
+
 impure fn parse_expr(parser p) -> @ast.expr {
     ret parse_expr_res(p, UNRESTRICTED);
 }
@@ -1366,6 +1387,9 @@ impure fn parse_expr_inner(parser p) -> @ast.expr {
         }
         case (token.ALT) {
             ret parse_alt_expr(p);
+        }
+        case (token.SPAWN) {
+            ret parse_spawn_expr(p);
         }
         case (_) {
             ret parse_assign_expr(p);
