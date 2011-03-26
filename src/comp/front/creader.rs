@@ -309,7 +309,6 @@ impure fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
     auto ebml_r = ebml.create_reader(io_r);
     while (ebml.bytes_left(ebml_r) > 0u) {
         auto ebml_tag = ebml.peek(ebml_r);
-        log #fmt("outer ebml tag id: %u", ebml_tag.id);
         if (ebml_tag.id == metadata.tag_paths) {
             ebml.move_to_first_child(ebml_r);
             ret resolve_path_inner(path, ebml_r);
@@ -318,6 +317,57 @@ impure fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
     }
 
     log "resolve_path(): no names in file";
+    fail;
+}
+
+impure fn move_to_item(&ebml.reader ebml_r, ast.def_id did) {
+    while (ebml.bytes_left(ebml_r) > 0u) {
+        auto outer_ebml_tag = ebml.peek(ebml_r);
+        if (outer_ebml_tag.id == metadata.tag_items) {
+            ebml.move_to_first_child(ebml_r);
+
+            while (ebml.bytes_left(ebml_r) > 0u) {
+                auto inner_ebml_tag = ebml.peek(ebml_r);
+                if (inner_ebml_tag.id == metadata.tag_items_item) {
+                    ebml.move_to_first_child(ebml_r);
+
+                    while (ebml.bytes_left(ebml_r) > 0u) {
+                        auto innermost_ebml_tag = ebml.peek(ebml_r);
+                        if (innermost_ebml_tag.id ==
+                                metadata.tag_items_def_id) {
+                            ebml.move_to_first_child(ebml_r);
+                            auto did_data = ebml.read_data(ebml_r);
+                            ebml.move_to_parent(ebml_r);
+
+                            auto this_did = parse_def_id(did_data);
+                            if (did._0 == this_did._0 &&
+                                    did._1 == this_did._1) {
+                                // Move to the start of this item's data.
+                                ebml.move_to_parent(ebml_r);
+                                ebml.move_to_first_child(ebml_r);
+                                ret;
+                            }
+                        }
+                        ebml.move_to_next_sibling(ebml_r);
+                    }
+                    ebml.move_to_parent(ebml_r);
+                }
+                ebml.move_to_next_sibling(ebml_r);
+            }
+            ebml.move_to_parent(ebml_r);
+        }
+        ebml.move_to_next_sibling(ebml_r);
+    }
+
+    log #fmt("move_to_item: item not found: %d:%d", did._0, did._1);
+}
+
+impure fn get_item_kind(ast.def_id did, vec[u8] data) -> u8 {
+    auto io_r = io.new_reader_(io.new_byte_buf_reader(data));
+    auto ebml_r = ebml.create_reader(io_r);
+    move_to_item(ebml_r, did);
+
+    log "found item";
     fail;
 }
 
@@ -407,10 +457,8 @@ fn lookup_def(session.session sess, &span sp, int cnum, vec[ast.ident] path)
         }
     }
 
-    log #fmt("resolved '%s' to %d:%d", _str.connect(path, "."), did._0,
-             did._1);
-
     // TODO: Look up item type, use that to determine the type of def.
+    auto kind_ch = get_item_kind(did, data);
 
     fail;
 }
