@@ -47,6 +47,6 @@ version.ml
 version.texi
 Makefile
 config.mk
-rt/
-rustllvm/
-test/
+/rt/
+/rustllvm/
+/test/
