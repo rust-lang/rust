@@ -1561,39 +1561,6 @@ impure fn parse_source_stmt(parser p) -> @ast.stmt {
             ret @spanned(lo, hi, ast.stmt_decl(decl));
         }
 
-        // Handle the (few) block-expr stmts first.
-
-        case (token.IF) {
-            auto e = parse_expr(p);
-            ret @spanned(lo, e.span, ast.stmt_expr(e));
-        }
-
-        case (token.FOR) {
-            auto e = parse_expr(p);
-            ret @spanned(lo, e.span, ast.stmt_expr(e));
-        }
-
-        case (token.WHILE) {
-            auto e = parse_expr(p);
-            ret @spanned(lo, e.span, ast.stmt_expr(e));
-        }
-
-        case (token.DO) {
-            auto e = parse_expr(p);
-            ret @spanned(lo, e.span, ast.stmt_expr(e));
-        }
-
-        case (token.ALT) {
-            auto e = parse_expr(p);
-            ret @spanned(lo, e.span, ast.stmt_expr(e));
-        }
-
-        case (token.LBRACE) {
-            auto e = parse_expr(p);
-            ret @spanned(lo, e.span, ast.stmt_expr(e));
-        }
-
-
         case (_) {
             if (peeking_at_item(p)) {
                 // Might be a local item decl.
