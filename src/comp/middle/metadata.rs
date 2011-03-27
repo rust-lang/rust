@@ -123,7 +123,7 @@ fn sty_str(ty.sty st, def_str ds) -> str {
         case (ty.ty_var(?id)) {ret "X" + common.istr(id);}
         case (ty.ty_native) {ret "E";}
         case (ty.ty_param(?def)) {ret "p" + ds(def);}
-        // TODO (maybe?)   ty_type;
+        case (ty.ty_type) {ret "Y";}
     }
 }
 
@@ -421,3 +421,13 @@ fn write_metadata(@trans.crate_ctxt cx, @ast.crate crate) {
     llvm.LLVMSetSection(llglobal, _str.buf(x86.get_meta_sect_name()));
 }
 
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//

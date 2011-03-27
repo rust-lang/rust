@@ -189,6 +189,7 @@ impure fn parse_sty(@pstate st, str_def sd) -> ty.sty {
         }
         case ('X') {ret ty.ty_var(parse_int(st));}
         case ('E') {ret ty.ty_native;}
+        case ('Y') {ret ty.ty_type;}
     }
 }
 
