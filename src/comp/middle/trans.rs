@@ -90,7 +90,6 @@ state type crate_ctxt = rec(session.session sess,
                             ValueRef crate_ptr,
                             hashmap[str, ValueRef] externs,
                             hashmap[str, ValueRef] intrinsics,
-                            hashmap[str, ValueRef] item_names,
                             hashmap[ast.def_id, ValueRef] item_ids,
                             hashmap[ast.def_id, @ast.item] items,
                             hashmap[ast.def_id,
@@ -108,7 +107,8 @@ state type crate_ctxt = rec(session.session sess,
                             vec[ast.obj_field] obj_fields,
                             @glue_fns glues,
                             namegen names,
-                            str path);
+                            vec[str] path,
+                            std.sha1.sha1 sha);
 
 state type fn_ctxt = rec(ValueRef llfn,
                          ValueRef lltaskptr,
@@ -154,6 +154,30 @@ state type result = rec(mutable @block_ctxt bcx,
 
 fn sep() -> str {
     ret "_";
+}
+
+fn extend_path(@crate_ctxt cx, str name) -> @crate_ctxt {
+  ret @rec(path = cx.path + vec(name) with *cx);
+}
+
+fn path_name(vec[str] path) -> str {
+    ret _str.connect(path, sep());
+}
+
+
+fn mangle_name_by_type(@crate_ctxt cx, @ty.t t) -> str {
+    cx.sha.reset();
+    auto f = metadata.def_to_str;
+    cx.sha.input_str(metadata.ty_str(t, f));
+    ret sep() + "rust" + sep()
+        + cx.sha.result_str() + sep()
+        + path_name(cx.path);
+}
+
+fn mangle_name_by_seq(@crate_ctxt cx, str flav) -> str {
+    ret sep() + "rust" + sep()
+        + cx.names.next(flav) + sep()
+        + path_name(cx.path);
 }
 
 fn res(@block_ctxt bcx, ValueRef val) -> result {
@@ -1549,7 +1573,8 @@ fn define_tydesc(@crate_ctxt cx, @ty.t t, vec[ast.def_id] typaram_defs) {
 fn declare_generic_glue(@crate_ctxt cx, @ty.t t, str name) -> ValueRef {
     auto llfnty = T_glue_fn(cx.tn);
 
-    auto fn_name = cx.names.next("_rust_" + name) + sep() + ty.ty_to_str(t);
+    auto gcx = @rec(path=vec("glue", name) with *cx);
+    auto fn_name = mangle_name_by_type(gcx, t);
     fn_name = sanitize(fn_name);
     auto llfn = decl_fastcall_fn(cx.llmod, fn_name, llfnty);
     llvm.LLVMSetLinkage(llfn, lib.llvm.LLVMPrivateLinkage as llvm.Linkage);
@@ -3193,9 +3218,7 @@ fn trans_for_each(@block_ctxt cx,
 
     // Step 2: Declare foreach body function.
 
-    let str s =
-        cx.fcx.ccx.names.next("_rust_foreach")
-        + sep() + cx.fcx.ccx.path;
+    let str s = mangle_name_by_seq(cx.fcx.ccx, "foreach");
 
     // The 'env' arg entering the body function is a fake env member (as in
     // the env-part of the normal rust calling convention) that actually
@@ -3788,7 +3811,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
     // Construct a thunk-call with signature incoming_fty, and that copies
     // args forward into a call to outgoing_fty.
 
-    let str s = cx.names.next("_rust_thunk") + sep() + cx.path;
+    let str s = mangle_name_by_seq(cx, "thunk");
     let TypeRef llthunk_ty = get_pair_fn_ty(type_of(cx, incoming_fty));
     let ValueRef llthunk = decl_fastcall_fn(cx.llmod, s, llthunk_ty);
 
@@ -5327,7 +5350,6 @@ fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
             &vec[ast.ty_param] ty_params, &ast.ann ann) {
 
     auto llfndecl = cx.item_ids.get(fid);
-    cx.item_names.insert(cx.path, llfndecl);
 
     auto fcx = new_fn_ctxt(cx, llfndecl);
     create_llargs_for_fn_args(fcx, f.proto,
@@ -5378,22 +5400,21 @@ fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
             }
         }
 
-        let @crate_ctxt mcx = @rec(path=cx.path + sep() + m.node.ident
-                                   with *cx);
-
-        let str s = cx.names.next("_rust_method") + sep() + mcx.path;
+        let @crate_ctxt mcx = extend_path(cx, m.node.ident);
+        let str s = mangle_name_by_seq(mcx, "method");
         let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfnty);
         cx.item_ids.insert(m.node.id, llfn);
         cx.item_symbols.insert(m.node.id, s);
+
 
         trans_fn(mcx, m.node.meth, m.node.id, some[TypeRef](self_ty),
                  ty_params, m.node.ann);
         methods += vec(llfn);
     }
     auto vtbl = C_struct(methods);
-    auto gvar = llvm.LLVMAddGlobal(cx.llmod,
-                                   val_ty(vtbl),
-                                   _str.buf("_rust_vtbl" + sep() + cx.path));
+    auto vtbl_name = mangle_name_by_seq(cx, "vtbl");
+    auto gvar = llvm.LLVMAddGlobal(cx.llmod, val_ty(vtbl),
+                                   _str.buf(vtbl_name));
     llvm.LLVMSetInitializer(gvar, vtbl);
     llvm.LLVMSetGlobalConstant(gvar, True);
     llvm.LLVMSetLinkage(gvar, lib.llvm.LLVMPrivateLinkage
@@ -5405,7 +5426,6 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
              &vec[ast.ty_param] ty_params, &ast.ann ann) {
 
     auto llctor_decl = cx.item_ids.get(oid);
-    cx.item_names.insert(cx.path, llctor_decl);
 
     // Translate obj ctor args to function arguments.
     let vec[ast.arg] fn_args = vec();
@@ -5628,21 +5648,21 @@ fn trans_const(@crate_ctxt cx, @ast.expr e,
 fn trans_item(@crate_ctxt cx, &ast.item item) {
     alt (item.node) {
         case (ast.item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
-            auto sub_cx = @rec(path=cx.path + sep() + name with *cx);
+            auto sub_cx = extend_path(cx, name);
             trans_fn(sub_cx, f, fid, none[TypeRef], tps, ann);
         }
         case (ast.item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
-            auto sub_cx = @rec(path=cx.path + sep() + name,
-                               obj_typarams=tps,
-                               obj_fields=ob.fields with *cx);
+            auto sub_cx = @rec(obj_typarams=tps,
+                               obj_fields=ob.fields with
+                               *extend_path(cx, name));
             trans_obj(sub_cx, ob, oid, tps, ann);
         }
         case (ast.item_mod(?name, ?m, _)) {
-            auto sub_cx = @rec(path=cx.path + sep() + name with *cx);
+            auto sub_cx = extend_path(cx, name);
             trans_mod(sub_cx, m);
         }
         case (ast.item_tag(?name, ?variants, ?tps, ?tag_id)) {
-            auto sub_cx = @rec(path=cx.path + sep() + name with *cx);
+            auto sub_cx = extend_path(cx, name);
             auto i = 0;
             for (ast.variant variant in variants) {
                 trans_tag_variant(sub_cx, tag_id, variant, i, tps);
@@ -5650,7 +5670,7 @@ fn trans_item(@crate_ctxt cx, &ast.item item) {
             }
         }
         case (ast.item_const(?name, _, ?expr, ?cid, ?ann)) {
-            auto sub_cx = @rec(path=cx.path + sep() + name with *cx);
+            auto sub_cx = extend_path(cx, name);
             trans_const(sub_cx, expr, cid, ann);
         }
         case (_) { /* fall through */ }
@@ -5672,8 +5692,7 @@ fn get_pair_fn_ty(TypeRef llpairty) -> TypeRef {
 }
 
 fn decl_fn_and_pair(@crate_ctxt cx,
-                    str kind,
-                    str name,
+                    str flav,
                     vec[ast.ty_param] ty_params,
                     &ast.ann ann,
                     ast.def_id id) {
@@ -5693,11 +5712,11 @@ fn decl_fn_and_pair(@crate_ctxt cx,
     }
 
     // Declare the function itself.
-    let str s = cx.names.next("_rust_" + kind) + sep() + name;
+    let str s = mangle_name_by_seq(cx, flav);
     let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfty);
 
     // Declare the global constant pair that points to it.
-    let str ps = cx.names.next("_rust_" + kind + "_pair") + sep() + name;
+    let str ps = mangle_name_by_type(cx, node_ann_type(cx, ann));
 
     register_fn_pair(cx, ps, llpairty, llfn, id);
 }
@@ -5756,14 +5775,14 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
 
     // Declare the wrapper.
     auto wrapper_type = native_fn_wrapper_type(cx, num_ty_param, ann);
-    let str s = cx.names.next("_rust_wrapper") + sep() + name;
+    let str s = mangle_name_by_seq(cx, "wrapper");
     let ValueRef wrapper_fn = decl_fastcall_fn(cx.llmod, s, wrapper_type);
     llvm.LLVMSetLinkage(wrapper_fn, lib.llvm.LLVMPrivateLinkage
                         as llvm.Linkage);
 
     // Declare the global constant pair that points to it.
     auto wrapper_pair_type = T_fn_pair(cx.tn, wrapper_type);
-    let str ps = cx.names.next("_rust_wrapper_pair") + sep() + name;
+    let str ps = mangle_name_by_type(cx, node_ann_type(cx, ann));
 
     register_fn_pair(cx, ps, wrapper_pair_type, wrapper_fn, id);
 
@@ -5827,8 +5846,33 @@ fn collect_native_item(&@crate_ctxt cx, @ast.native_item i) -> @crate_ctxt {
     ret cx;
 }
 
-fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
+fn item_name(@ast.item i) -> str {
+    alt (i.node) {
+        case (ast.item_mod(?name, _, _)) {
+            ret name;
+        }
+        case (ast.item_tag(?name, _, _, _)) {
+            ret name;
+        }
+        case (ast.item_const(?name, _, _, _, _)) {
+            ret name;
+        }
+        case (ast.item_fn(?name, _, _, _, _)) {
+            ret name;
+        }
+        case (ast.item_native_mod(?name, _, _)) {
+            ret name;
+        }
+        case (ast.item_ty(?name, _, _, _, _)) {
+            ret name;
+        }
+        case (ast.item_obj(?name, _, _, _, _)) {
+            ret name;
+        }
+    }
+}
 
+fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
     alt (i.node) {
         case (ast.item_const(?name, _, _, ?cid, ?ann)) {
             auto typ = node_ann_type(cx, ann);
@@ -5844,13 +5888,12 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             cx.items.insert(mid, i);
         }
 
-        case (ast.item_tag(_, ?variants, ?tps, ?tag_id)) {
+        case (ast.item_tag(?name, ?variants, ?tps, ?tag_id)) {
             cx.items.insert(tag_id, i);
         }
-
         case (_) { /* fall through */ }
     }
-    ret cx;
+    ret extend_path(cx, item_name(i));
 }
 
 fn collect_item_pass2(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
@@ -5858,13 +5901,15 @@ fn collect_item_pass2(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
         case (ast.item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
             cx.items.insert(fid, i);
             if (! cx.obj_methods.contains_key(fid)) {
-                decl_fn_and_pair(cx, "fn", name, tps, ann, fid);
+                decl_fn_and_pair(extend_path(cx, name), "fn",
+                                 tps, ann, fid);
             }
         }
 
         case (ast.item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
             cx.items.insert(oid, i);
-            decl_fn_and_pair(cx, "obj_ctor", name, tps, ann, oid);
+            decl_fn_and_pair(extend_path(cx, name), "obj_ctor",
+                             tps, ann, oid);
             for (@ast.method m in ob.methods) {
                 cx.obj_methods.insert(m.node.id, ());
             }
@@ -5872,7 +5917,7 @@ fn collect_item_pass2(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
 
         case (_) { /* fall through */ }
     }
-    ret cx;
+    ret extend_path(cx, item_name(i));
 }
 
 
@@ -5904,7 +5949,7 @@ fn collect_tag_ctor(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
         case (ast.item_tag(_, ?variants, ?tps, _)) {
             for (ast.variant variant in variants) {
                 if (_vec.len[ast.variant_arg](variant.args) != 0u) {
-                    decl_fn_and_pair(cx, "tag", variant.name,
+                    decl_fn_and_pair(extend_path(cx, variant.name), "tag",
                                      tps, variant.ann, variant.id);
                 }
             }
@@ -5963,7 +6008,8 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
             // with consts.
             auto v = C_int(1);
             cx.item_ids.insert(cid, v);
-            auto s = cx.names.next("_rust_const") + sep() + name;
+            auto s = mangle_name_by_type(extend_path(cx, name),
+                                         node_ann_type(cx, ann));
             cx.item_symbols.insert(cid, s);
         }
 
@@ -6064,10 +6110,10 @@ fn find_main_fn(@crate_ctxt cx) -> ValueRef {
     auto e = sep() + "main";
     let ValueRef v = C_nil();
     let uint n = 0u;
-    for each (@tup(str,ValueRef) i in cx.item_names.items()) {
-        if (_str.ends_with(i._0, e)) {
+    for each (@tup(ast.def_id, str) i in cx.item_symbols.items()) {
+        if (_str.ends_with(i._1, e)) {
             n += 1u;
-            v = i._1;
+            v = cx.item_ids.get(i._0);
         }
     }
     alt (n) {
@@ -6534,6 +6580,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
     let vec[ast.ty_param] obj_typarams = vec();
     let vec[ast.obj_field] obj_fields = vec();
 
+    let vec[str] pth = vec();
     auto cx = @rec(sess = sess,
                    llmod = llmod,
                    td = td,
@@ -6541,7 +6588,6 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    crate_ptr = crate_ptr,
                    externs = new_str_hash[ValueRef](),
                    intrinsics = intrinsics,
-                   item_names = new_str_hash[ValueRef](),
                    item_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
                    native_items = new_def_hash[@ast.native_item](),
@@ -6557,7 +6603,8 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    obj_fields = obj_fields,
                    glues = glues,
                    names = namegen(0),
-                   path = "_rust");
+                   path = pth,
+                   sha = std.sha1.mk_sha1());
 
     create_typedefs(cx);
 
