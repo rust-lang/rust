@@ -568,17 +568,12 @@ docsnap: doc/rust.pdf
 # Testing variables
 ######################################################################
 
-TEST_XFAILS_BOOT = $(shell grep \
-                       --recursive \
-                       --files-with-matches \
-                       --include=*.rs --include=*.rc \
-                       xfail-boot $(S)src/test)
+ALL_TEST_INPUTS = $(wildcard $(S)src/test/*/*.rs   \
+                              $(S)src/test/*/*/*.rs \
+                              $(S)src/test/*/*.rc)
 
-TEST_XFAILS_STAGE0 = $(shell grep \
-                       --recursive \
-                       --files-with-matches \
-                       --include=*.rs --include=*.rc \
-                       xfail-stage0 $(S)src/test)
+TEST_XFAILS_BOOT = $(shell grep -l xfail-boot $(ALL_TEST_INPUTS))
+TEST_XFAILS_STAGE0 = $(shell grep -l xfail-stage0 $(ALL_TEST_INPUTS))
 
 ifdef MINGW_CROSS
 TEST_XFAILS_BOOT += $(S)src/test/run-pass/native-mod.rc
@@ -687,10 +682,6 @@ ALL_TEST_SOURCES = $(TEST_CFAIL_SOURCES_BOOT) \
                     $(TEST_CFAIL_SOURCES_STAGE0) \
                     $(TEST_RFAIL_SOURCES_STAGE0) \
                     $(TEST_RPASS_SOURCES_STAGE0)
-
-ALL_TEST_INPUTS = $(wildcard $(S)src/test/*/*.rs   \
-                              $(S)src/test/*/*/*.rs \
-                              $(S)src/test/*/*.rc)
 
 # The test suite currently relies on logging to validate results so
 # make sure that logging uses the default configuration
