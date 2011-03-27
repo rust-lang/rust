@@ -19,6 +19,9 @@ state type sha1 = state obj {
                         // until reset is called
                         fn result() -> vec[u8];
 
+                        // Same as above, just a hex-string version.
+                        fn result_str() -> str;
+
                         // Reset the sha1 state for reuse. This is called
                         // automatically during construction
                         fn reset();
@@ -258,6 +261,15 @@ fn mk_sha1() -> sha1 {
 
         fn result() -> vec[u8] {
             ret mk_result(st);
+        }
+
+        fn result_str() -> str {
+            auto r = mk_result(st);
+            auto s = "";
+            for (u8 b in r) {
+                s += _uint.to_str(b as uint, 16u);
+            }
+            ret s;
         }
     }
 
