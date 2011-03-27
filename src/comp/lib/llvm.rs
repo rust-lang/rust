@@ -44,6 +44,9 @@ const uint LLVMColdCallConv = 9u;
 const uint LLVMX86StdcallCallConv = 64u;
 const uint LLVMX86FastcallCallConv = 65u;
 
+const uint LLVMDefaultVisibility = 0u;
+const uint LLVMHiddenVisibility = 1u;
+const uint LLVMProtectedVisibility = 2u;
 
 const uint LLVMExternalLinkage = 0u;
 const uint LLVMAvailableExternallyLinkage = 1u;
