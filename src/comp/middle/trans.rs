@@ -3037,21 +3037,30 @@ fn trans_if(@block_ctxt cx, @ast.expr cond,
     auto then_res = trans_block(then_cx, thn);
 
     auto else_cx = new_scope_block_ctxt(cx, "else");
-    auto else_res = res(else_cx, C_nil());
 
+    auto else_res;
+    auto expr_llty;
     alt (els) {
         case (some[@ast.expr](?elexpr)) {
             else_res = trans_expr(else_cx, elexpr);
+
+            // If we have an else expression, then the entire
+            // if expression can have a non-nil type.
+            // FIXME: Handle dynamic type sizes
+            auto expr_ty = ty.expr_ty(elexpr);
+            expr_llty = type_of(else_res.bcx.fcx.ccx, expr_ty);
         }
-        case (_) { /* fall through */ }
+        case (_) {
+            else_res = res(else_cx, C_nil());
+            expr_llty = T_nil();
+        }
     }
 
     cond_res.bcx.build.CondBr(cond_res.val,
                               then_cx.llbb,
                               else_cx.llbb);
 
-    // FIXME: use inferred type when available.
-    ret join_results(cx, T_nil(),
+    ret join_results(cx, expr_llty,
                      vec(then_res, else_res));
 }
 
