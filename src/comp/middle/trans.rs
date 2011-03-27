@@ -3049,6 +3049,9 @@ fn trans_if(@block_ctxt cx, @ast.expr cond,
             // FIXME: Handle dynamic type sizes
             auto expr_ty = ty.expr_ty(elexpr);
             expr_llty = type_of(else_res.bcx.fcx.ccx, expr_ty);
+            if (ty.type_is_structural(expr_ty)) {
+                expr_llty = T_ptr(expr_llty);
+            }
         }
         case (_) {
             else_res = res(else_cx, C_nil());
