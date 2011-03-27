@@ -170,7 +170,7 @@ fn mangle_name_by_type(@crate_ctxt cx, @ty.t t) -> str {
     auto f = metadata.def_to_str;
     cx.sha.input_str(metadata.ty_str(t, f));
     ret sep() + "rust" + sep()
-        + cx.sha.result_str() + sep()
+        + _str.substr(cx.sha.result_str(), 0u, 16u) + sep()
         + path_name(cx.path);
 }
 
@@ -891,6 +891,13 @@ fn decl_fastcall_fn(ModuleRef llmod, str name, TypeRef llty) -> ValueRef {
     ret decl_fn(llmod, name, lib.llvm.LLVMFastCallConv, llty);
 }
 
+fn decl_private_fastcall_fn(ModuleRef llmod,
+                            str name, TypeRef llty) -> ValueRef {
+    auto llfn = decl_fn(llmod, name, lib.llvm.LLVMFastCallConv, llty);
+    llvm.LLVMSetLinkage(llfn, lib.llvm.LLVMPrivateLinkage as llvm.Linkage);
+    ret llfn;
+}
+
 fn decl_glue(ModuleRef llmod, type_names tn, str s) -> ValueRef {
     ret decl_cdecl_fn(llmod, s, T_fn(vec(T_taskptr(tn)), T_void()));
 }
@@ -1576,8 +1583,7 @@ fn declare_generic_glue(@crate_ctxt cx, @ty.t t, str name) -> ValueRef {
     auto gcx = @rec(path=vec("glue", name) with *cx);
     auto fn_name = mangle_name_by_type(gcx, t);
     fn_name = sanitize(fn_name);
-    auto llfn = decl_fastcall_fn(cx.llmod, fn_name, llfnty);
-    llvm.LLVMSetLinkage(llfn, lib.llvm.LLVMPrivateLinkage as llvm.Linkage);
+    auto llfn = decl_private_fastcall_fn(cx.llmod, fn_name, llfnty);
     ret llfn;
 }
 
@@ -3231,8 +3237,8 @@ fn trans_for_each(@block_ctxt cx,
                                           vec(rec(mode=ast.val, ty=decl_ty)),
                                           plain_ty(ty.ty_nil), 0u);
 
-    let ValueRef lliterbody = decl_fastcall_fn(cx.fcx.ccx.llmod,
-                                               s, iter_body_llty);
+    let ValueRef lliterbody = decl_private_fastcall_fn(cx.fcx.ccx.llmod,
+                                                       s, iter_body_llty);
 
     // FIXME: handle ty params properly.
     let vec[ast.ty_param] ty_params = vec();
@@ -3813,7 +3819,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
 
     let str s = mangle_name_by_seq(cx, "thunk");
     let TypeRef llthunk_ty = get_pair_fn_ty(type_of(cx, incoming_fty));
-    let ValueRef llthunk = decl_fastcall_fn(cx.llmod, s, llthunk_ty);
+    let ValueRef llthunk = decl_private_fastcall_fn(cx.llmod, s, llthunk_ty);
 
     auto fcx = new_fn_ctxt(cx, llthunk);
     auto bcx = new_top_block_ctxt(fcx);
@@ -5402,10 +5408,9 @@ fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
 
         let @crate_ctxt mcx = extend_path(cx, m.node.ident);
         let str s = mangle_name_by_seq(mcx, "method");
-        let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfnty);
+        let ValueRef llfn = decl_private_fastcall_fn(cx.llmod, s, llfnty);
         cx.item_ids.insert(m.node.id, llfn);
         cx.item_symbols.insert(m.node.id, s);
-
 
         trans_fn(mcx, m.node.meth, m.node.id, some[TypeRef](self_ty),
                  ty_params, m.node.ann);
@@ -5713,7 +5718,7 @@ fn decl_fn_and_pair(@crate_ctxt cx,
 
     // Declare the function itself.
     let str s = mangle_name_by_seq(cx, flav);
-    let ValueRef llfn = decl_fastcall_fn(cx.llmod, s, llfty);
+    let ValueRef llfn = decl_private_fastcall_fn(cx.llmod, s, llfty);
 
     // Declare the global constant pair that points to it.
     let str ps = mangle_name_by_type(cx, node_ann_type(cx, ann));
@@ -5730,9 +5735,9 @@ fn register_fn_pair(@crate_ctxt cx, str ps, TypeRef llpairty, ValueRef llfn,
 
     llvm.LLVMSetInitializer(gvar, pair);
     llvm.LLVMSetGlobalConstant(gvar, True);
-    llvm.LLVMSetLinkage(gvar,
-                        lib.llvm.LLVMPrivateLinkage
-                        as llvm.Linkage);
+    llvm.LLVMSetVisibility(gvar,
+                           lib.llvm.LLVMProtectedVisibility
+                           as llvm.Visibility);
 
     cx.item_ids.insert(id, llfn);
     cx.item_symbols.insert(id, ps);
@@ -5776,9 +5781,8 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
     // Declare the wrapper.
     auto wrapper_type = native_fn_wrapper_type(cx, num_ty_param, ann);
     let str s = mangle_name_by_seq(cx, "wrapper");
-    let ValueRef wrapper_fn = decl_fastcall_fn(cx.llmod, s, wrapper_type);
-    llvm.LLVMSetLinkage(wrapper_fn, lib.llvm.LLVMPrivateLinkage
-                        as llvm.Linkage);
+    let ValueRef wrapper_fn = decl_private_fastcall_fn(cx.llmod, s,
+                                                       wrapper_type);
 
     // Declare the global constant pair that points to it.
     auto wrapper_pair_type = T_fn_pair(cx.tn, wrapper_type);
@@ -6267,9 +6271,8 @@ fn decl_bzero_glue(ModuleRef llmod) -> ValueRef {
     ret decl_fastcall_fn(llmod, abi.bzero_glue_name(), ty);
 }
 
-fn make_bzero_glue(ModuleRef llmod) -> ValueRef {
+fn make_bzero_glue(ValueRef fun) -> ValueRef {
     // We're not using the LLVM memset intrinsic. Same as with memcpy.
-    auto fun = decl_bzero_glue(llmod);
     auto initbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("init"));
     auto hdrbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("hdr"));
     auto loopbb = llvm.LLVMAppendBasicBlock(fun, _str.buf("loop"));
@@ -6548,6 +6551,7 @@ fn make_common_glue(str output) {
     auto glues = make_glues(llmod, tn);
     create_crate_constant(crate_ptr, glues);
     make_memcpy_glue(glues.memcpy_glue);
+    make_bzero_glue(glues.bzero_glue);
 
     trans_exit_task_glue(glues, new_str_hash[ValueRef](), tn, llmod);
 
