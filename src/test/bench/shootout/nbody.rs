@@ -70,26 +70,8 @@ mod NBodySystem {
         while (i < 5) {
             let int j = i+1;
             while (j < 5) {
-                let float dx = bodies.(i).x - bodies.(j).x;
-                let float dy = bodies.(i).y - bodies.(j).y;
-                let float dz = bodies.(i).z - bodies.(j).z;
-
-                let float dSquared = dx * dx + dy * dy + dz * dz;
-
-                let float distance;
-                rustrt.squareroot(dSquared, distance);
-                let float mag = dt / (dSquared * distance);
-
-                bodies.(i).vx -= dx * bodies.(j).mass * mag;
-                bodies.(i).vy -= dy * bodies.(j).mass * mag;
-                bodies.(i).vz -= dz * bodies.(j).mass * mag;
-
-                bodies.(j).vx += dx * bodies.(i).mass * mag;
-                bodies.(j).vy += dy * bodies.(i).mass * mag;
-                bodies.(j).vz += dz * bodies.(i).mass * mag;
-
+                advance_one(bodies.(i), bodies.(j), dt);
                 j += 1;
-
             }
 
             i += 1;
@@ -104,6 +86,26 @@ mod NBodySystem {
 
             i += 1;
         }
+    }
+
+    fn advance_one(&Body.props bi, &Body.props bj, float dt) {
+        let float dx = bi.x - bj.x;
+        let float dy = bi.y - bj.y;
+        let float dz = bi.z - bj.z;
+
+        let float dSquared = dx * dx + dy * dy + dz * dz;
+
+        let float distance;
+        rustrt.squareroot(dSquared, distance);
+        let float mag = dt / (dSquared * distance);
+
+        bi.vx -= dx * bj.mass * mag;
+        bi.vy -= dy * bj.mass * mag;
+        bi.vz -= dz * bj.mass * mag;
+
+        bj.vx += dx * bi.mass * mag;
+        bj.vy += dy * bi.mass * mag;
+        bj.vz += dz * bi.mass * mag;
     }
 
     fn energy(vec[Body.props] bodies) -> float {
