@@ -337,7 +337,7 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
             sty = ty.ty_rec(flds);
         }
 
-        case (ast.ty_fn(?proto, ?inputs, ?output)) {
+        case (ast.ty_fn(_, ?proto, ?inputs, ?output)) {
             auto f = bind ast_arg_to_arg(getter, _);
             auto i = _vec.map[ast.ty_arg, arg](f, inputs);
             sty = ty.ty_fn(proto, i, ast_ty_to_ty(getter, output));

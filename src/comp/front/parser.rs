@@ -184,7 +184,7 @@ impure fn parse_str_lit_or_env_ident(parser p) -> ast.ident {
 }
 
 
-impure fn parse_ty_fn(ast.proto proto, parser p,
+impure fn parse_ty_fn(ast.effect eff, ast.proto proto, parser p,
                       ast.span lo) -> ast.ty_ {
     impure fn parse_fn_input_ty(parser p) -> rec(ast.mode mode, @ast.ty ty) {
         auto mode;
@@ -228,7 +228,7 @@ impure fn parse_ty_fn(ast.proto proto, parser p,
         output = @spanned(lo, inputs.span, ast.ty_nil);
     }
 
-    ret ast.ty_fn(proto, inputs.node, output);
+    ret ast.ty_fn(eff, proto, inputs.node, output);
 }
 
 impure fn parse_proto(parser p) -> ast.proto {
@@ -245,15 +245,14 @@ impure fn parse_ty_obj(parser p, &mutable ast.span hi) -> ast.ty_ {
     impure fn parse_method_sig(parser p) -> ast.ty_method {
         auto flo = p.get_span();
 
-        // FIXME: do something with this, currently it's dropped on the floor.
         let ast.effect eff = parse_effect(p);
         let ast.proto proto = parse_proto(p);
         auto ident = parse_ident(p);
-        auto f = parse_ty_fn(proto, p, flo);
+        auto f = parse_ty_fn(eff, proto, p, flo);
         expect(p, token.SEMI);
         alt (f) {
-            case (ast.ty_fn(?proto, ?inputs, ?output)) {
-                ret rec(proto=proto, ident=ident,
+            case (ast.ty_fn(?eff, ?proto, ?inputs, ?output)) {
+                ret rec(effect=eff, proto=proto, ident=ident,
                         inputs=inputs, output=output);
             }
         }
@@ -342,9 +341,9 @@ impure fn parse_ty(parser p) -> @ast.ty {
     auto hi = lo;
     let ast.ty_ t;
 
-    // FIXME: do something with these; currently they're
-    // dropped on the floor.
+    // FIXME: make sure these are only used when valid
     let ast.effect eff = parse_effect(p);
+    // FIXME: do something with this
     let ast.layer lyr = parse_layer(p);
 
     alt (p.peek()) {
@@ -412,9 +411,9 @@ impure fn parse_ty(parser p) -> @ast.ty {
         case (token.FN) {
             auto flo = p.get_span();
             p.bump();
-            t = parse_ty_fn(ast.proto_fn, p, flo);
+            t = parse_ty_fn(eff, ast.proto_fn, p, flo);
             alt (t) {
-                case (ast.ty_fn(_, _, ?out)) {
+                case (ast.ty_fn(_, _, _, ?out)) {
                     hi = out.span;
                 }
             }
@@ -423,9 +422,9 @@ impure fn parse_ty(parser p) -> @ast.ty {
         case (token.ITER) {
             auto flo = p.get_span();
             p.bump();
-            t = parse_ty_fn(ast.proto_iter, p, flo);
+            t = parse_ty_fn(eff, ast.proto_iter, p, flo);
             alt (t) {
-                case (ast.ty_fn(_, _, ?out)) {
+                case (ast.ty_fn(_, _, _, ?out)) {
                     hi = out.span;
                 }
             }
