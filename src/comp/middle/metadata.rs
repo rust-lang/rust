@@ -145,9 +145,9 @@ fn ty_fn_str(vec[ty.arg] args, @ty.t out, def_str ds) -> str {
 }
 
 
-// Returns a Plain Old LLVM String.
+// Returns a Plain Old LLVM String, *without* the trailing zero byte.
 fn C_postr(str s) -> ValueRef {
-    ret llvm.LLVMConstString(_str.buf(s), _str.byte_len(s), False);
+    ret llvm.LLVMConstString(_str.buf(s), _str.byte_len(s) - 1u, False);
 }
 
 
@@ -303,8 +303,9 @@ fn encode_tag_id(&ebml.writer ebml_w, &ast.def_id id) {
 fn encode_tag_variant_info(@trans.crate_ctxt cx, &ebml.writer ebml_w,
                            ast.def_id did, vec[ast.variant] variants) {
     for (ast.variant variant in variants) {
-        ebml.start_tag(ebml_w, tag_items_variant);
+        ebml.start_tag(ebml_w, tag_items_item);
         encode_def_id(ebml_w, variant.id);
+        encode_kind(ebml_w, 'v' as u8);
         encode_tag_id(ebml_w, did);
         encode_type(ebml_w, trans.node_ann_type(cx, variant.ann));
         if (_vec.len[ast.variant_arg](variant.args) > 0u) {
@@ -356,7 +357,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_type_params(ebml_w, tps);
             ebml.end_tag(ebml_w);
 
-            encode_tag_variant_info(cx, ebml_w, did, variants);
+            //encode_tag_variant_info(cx, ebml_w, did, variants);
         }
         case (ast.item_obj(?id, _, ?tps, ?did, ?ann)) {
             ebml.start_tag(ebml_w, tag_items_item);
