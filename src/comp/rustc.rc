@@ -44,6 +44,8 @@ mod util {
 auth driver.rustc.main = impure;
 auth front.creader.load_crate = unsafe;
 auth front.creader.lookup_def = impure;
+auth front.creader.get_type = impure;
+auth front.creader.impure_no_op = impure;
 auth middle.metadata = unsafe;
 auth middle.trans = unsafe;
 auth middle.trans.copy_args_to_allocas = impure;
