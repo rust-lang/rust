@@ -162,6 +162,7 @@ impure fn parse_sty(@pstate st, str_def sd) -> ty.sty {
             alt (next(st) as char) {
                 case ('r') {abi = ast.native_abi_rust;}
                 case ('c') {abi = ast.native_abi_cdecl;}
+                case ('l') {abi = ast.native_abi_llvm;}
             }
             auto func = parse_ty_fn(st, sd);
             ret ty.ty_native_fn(abi,func._0,func._1);

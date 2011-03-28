@@ -5884,18 +5884,44 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
         case (ast.native_abi_cdecl) {
             pass_task = false;
         }
-    }
-    auto args = ty.ty_fn_args(fn_type);
-    for (ty.arg arg in args) {
-        auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
-        check (llarg as int != 0);
-        call_args += vec(bcx.build.PointerCast(llarg, T_i32()));
-        arg_n += 1u;
+        case (ast.native_abi_llvm) {
+            pass_task = false;
+            // We handle this case below.
+        }
     }
 
-    auto r = trans_native(bcx.build, cx.glues, lltaskptr, cx.externs, cx.tn,
-                          cx.llmod, name, pass_task, call_args);
-    auto rptr = bcx.build.BitCast(fcx.llretptr, T_ptr(T_i32()));
+    auto r;
+    auto rptr;
+    auto args = ty.ty_fn_args(fn_type);
+    if (abi == ast.native_abi_llvm) {
+        let vec[ValueRef] call_args = vec();
+        let vec[TypeRef] call_arg_tys = vec();
+        auto i = 0u;
+        while (i < _vec.len[ty.arg](args)) {
+            auto call_arg = llvm.LLVMGetParam(fcx.llfn, i + 3u);
+            call_args += vec(call_arg);
+            call_arg_tys += vec(val_ty(call_arg));
+            i += 1u;
+        }
+        auto llnativefnty = T_fn(call_arg_tys,
+                                 type_of(cx, ty.ty_fn_ret(fn_type)));
+        auto llnativefn = get_extern_fn(cx.externs, cx.llmod, name,
+                                        lib.llvm.LLVMCCallConv, llnativefnty);
+        r = bcx.build.Call(llnativefn, call_args);
+        rptr = fcx.llretptr;
+    } else {
+        for (ty.arg arg in args) {
+            auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
+            check (llarg as int != 0);
+            call_args += vec(bcx.build.PointerCast(llarg, T_i32()));
+            arg_n += 1u;
+        }
+
+        r = trans_native(bcx.build, cx.glues, lltaskptr, cx.externs,
+                              cx.tn, cx.llmod, name, pass_task, call_args);
+        rptr = bcx.build.BitCast(fcx.llretptr, T_ptr(T_i32()));
+    }
+
     bcx.build.Store(r, rptr);
     bcx.build.RetVoid();
 }

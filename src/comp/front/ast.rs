@@ -346,6 +346,7 @@ type _mod = rec(vec[@view_item] view_items,
 tag native_abi {
     native_abi_rust;
     native_abi_cdecl;
+    native_abi_llvm;
 }
 
 type native_mod = rec(str native_name,

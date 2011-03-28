@@ -108,6 +108,7 @@ fn sty_str(ty.sty st, def_str ds) -> str {
             alt (abi) {
                 case (ast.native_abi_rust) {abistr = "r";}
                 case (ast.native_abi_cdecl) {abistr = "c";}
+                case (ast.native_abi_llvm) {abistr = "l";}
             }
             ret "N" + abistr + ty_fn_str(args, out, ds);
         }
