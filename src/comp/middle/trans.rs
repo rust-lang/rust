@@ -1467,7 +1467,7 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
         auto root = cx.fcx.ccx.tydescs.get(t).tydesc;
 
         auto tydescs = cx.build.Alloca(T_array(T_ptr(T_tydesc(cx.fcx.ccx.tn)),
-                                               n_params));
+                                               1u /* for root*/ + n_params));
 
         auto i = 0;
         auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
@@ -5076,13 +5076,8 @@ fn new_block_ctxt(@fn_ctxt cx, block_parent parent,
 
 // Use this when you're at the top block of a function or the like.
 fn new_top_block_ctxt(@fn_ctxt fcx) -> @block_ctxt {
-    auto cx = new_block_ctxt(fcx, parent_none, SCOPE_BLOCK,
-                             "function top level");
-
-    // FIXME: hack to give us some spill room to make up for an LLVM
-    // bug where it destroys its own callee-saves.
-    cx.build.Alloca(T_array(T_int(), 10u));
-    ret cx;
+    ret new_block_ctxt(fcx, parent_none, SCOPE_BLOCK,
+                       "function top level");
 }
 
 // Use this when you're at a curly-brace or similar lexical scope.
