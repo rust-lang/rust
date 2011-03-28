@@ -127,7 +127,7 @@ impure fn print_type(ps s, &@ast.ty ty) {
             bopen(s);
             for (ast.ty_method m in methods) {
                 hbox(s);
-                print_ty_fn(s, m.proto, option.some[str](m.ident),
+                print_ty_fn(s, m.effect, m.proto, option.some[str](m.ident),
                             m.inputs, m.output);
                 wrd(s.s, ";");
                 end(s.s);
@@ -135,8 +135,8 @@ impure fn print_type(ps s, &@ast.ty ty) {
             }
             bclose_c(s, ty.span);
         }
-        case (ast.ty_fn(?proto,?inputs,?output)) {
-            print_ty_fn(s, proto, option.none[str], inputs, output);
+        case (ast.ty_fn(?eff, ?proto,?inputs,?output)) {
+            print_ty_fn(s, eff, proto, option.none[str], inputs, output);
         }
         case (ast.ty_path(?path,_)) {
             print_path(s, path);
@@ -843,8 +843,13 @@ impure fn print_string(ps s, str st) {
     wrd(s.s, "\""); wrd(s.s, escape_str(st, '"')); wrd(s.s, "\"");
 }
 
-impure fn print_ty_fn(ps s, ast.proto proto, option.t[str] id,
+impure fn print_ty_fn(ps s, ast.effect eff, ast.proto proto, option.t[str] id,
                       vec[ast.ty_arg] inputs, @ast.ty output) {
+    alt (eff) {
+        case (ast.eff_impure) {wrd1(s, "impure");}
+        case (ast.eff_unsafe) {wrd1(s, "unsafe");}
+        case (_) {}
+    }
     if (proto == ast.proto_fn) {wrd(s.s, "fn");}
     else {wrd(s.s, "iter");}
     alt (id) {
