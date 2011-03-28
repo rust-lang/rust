@@ -364,12 +364,54 @@ impure fn move_to_item(&ebml.reader ebml_r, ast.def_id did) {
     log #fmt("move_to_item: item not found: %d:%d", did._0, did._1);
 }
 
-impure fn get_item_kind(ast.def_id did, vec[u8] data) -> u8 {
+// Looks up an item in the given metadata and returns an EBML reader pointing
+// to the item data.
+impure fn lookup_item(ast.def_id did, vec[u8] data) -> ebml.reader {
     auto io_r = io.new_reader_(io.new_byte_buf_reader(data));
     auto ebml_r = ebml.create_reader(io_r);
     move_to_item(ebml_r, did);
+    ret ebml_r;
+}
 
-    log "found item";
+impure fn get_item_kind(&ebml.reader ebml_r) -> u8 {
+    while (ebml.bytes_left(ebml_r) > 0u) {
+        auto ebml_tag = ebml.peek(ebml_r);
+        if (ebml_tag.id == metadata.tag_items_kind) {
+            ebml.move_to_first_child(ebml_r);
+            auto kind_ch = ebml.read_data(ebml_r).(0);
+
+            // Reset the EBML reader so the callee can use it to look up
+            // additional info about the item.
+            ebml.move_to_parent(ebml_r);
+            ebml.move_to_parent(ebml_r);
+            ebml.move_to_first_child(ebml_r);
+
+            ret kind_ch;
+        }
+        ebml.move_to_next_sibling(ebml_r);
+    }
+
+    log "get_item_kind(): no kind found";
+    fail;
+}
+
+impure fn get_variant_tag_id(&ebml.reader ebml_r) -> ast.def_id {
+    while (ebml.bytes_left(ebml_r) > 0u) {
+        auto ebml_tag = ebml.peek(ebml_r);
+        if (ebml_tag.id == metadata.tag_items_tag_id) {
+            ebml.move_to_first_child(ebml_r);
+            auto tid = parse_def_id(ebml.read_data(ebml_r));
+
+            // Be kind, rewind.
+            ebml.move_to_parent(ebml_r);
+            ebml.move_to_parent(ebml_r);
+            ebml.move_to_first_child(ebml_r);
+
+            ret tid;
+        }
+    }
+
+    log "get_variant_tag_id(): no tag ID found";
     fail;
 }
 
@@ -459,9 +501,24 @@ fn lookup_def(session.session sess, &span sp, int cnum, vec[ast.ident] path)
         }
     }
 
-    // TODO: Look up item type, use that to determine the type of def.
-    auto kind_ch = get_item_kind(did, data);
+    auto ebml_r = lookup_item(did, data);
+    auto kind_ch = get_item_kind(ebml_r);
 
+    did = tup(cnum, did._1);
+
+    // FIXME: It'd be great if we had u8 char literals.
+    if (kind_ch == ('c' as u8))      { ret ast.def_const(did);  }
+    else if (kind_ch == ('f' as u8)) { ret ast.def_fn(did);     }
+    else if (kind_ch == ('y' as u8)) { ret ast.def_ty(did);     }
+    else if (kind_ch == ('o' as u8)) { ret ast.def_obj(did);    }
+    else if (kind_ch == ('t' as u8)) { ret ast.def_ty(did);     }
+    else if (kind_ch == ('v' as u8)) {
+        auto tid = get_variant_tag_id(ebml_r);
+        tid = tup(cnum, tid._1);
+        ret ast.def_variant(tid, did);
+    }
+
+    log #fmt("lookup_def(): unknown kind char: %d", kind_ch as int);
     fail;
 }
 
