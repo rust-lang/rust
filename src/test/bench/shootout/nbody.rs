@@ -2,6 +2,10 @@
 // based on:
 // http://shootout.alioth.debian.org/u32/benchmark.php?test=nbody&lang=java
 
+native "llvm" mod llvm {
+    fn sqrt(float n) -> float = "sqrt.f64";
+}
+
 fn main() {
 
     let vec[int] inputs = vec(
@@ -24,11 +28,6 @@ fn main() {
         }
         log NBodySystem.energy(bodies);
     }
-}
-
-// making a native call to sqrt
-native "rust" mod rustrt {
-    fn squareroot(&float input, &mutable float output);
 }
 
 // Body.props is a record of floats, so
@@ -79,11 +78,7 @@ mod NBodySystem {
 
         i = 0;
         while (i < 5) {
-
-            bodies.(i).x += dt * bodies.(i).vx;
-            bodies.(i).y += dt * bodies.(i).vy;
-            bodies.(i).z += dt * bodies.(i).vz;
-
+            move(bodies.(i), dt);
             i += 1;
         }
     }
@@ -95,8 +90,7 @@ mod NBodySystem {
 
         let float dSquared = dx * dx + dy * dy + dz * dz;
 
-        let float distance;
-        rustrt.squareroot(dSquared, distance);
+        let float distance = llvm.sqrt(dSquared);
         let float mag = dt / (dSquared * distance);
 
         bi.vx -= dx * bj.mass * mag;
@@ -106,6 +100,12 @@ mod NBodySystem {
         bj.vx += dx * bi.mass * mag;
         bj.vy += dy * bi.mass * mag;
         bj.vz += dz * bi.mass * mag;
+    }
+
+    fn move(&Body.props b, float dt) {
+        b.x += dt * b.vx;
+        b.y += dt * b.vy;
+        b.z += dt * b.vz;
     }
 
     fn energy(vec[Body.props] bodies) -> float {
@@ -128,7 +128,7 @@ mod NBodySystem {
                 dy = bodies.(i).y - bodies.(j).y;
                 dz = bodies.(i).z - bodies.(j).z;
 
-                rustrt.squareroot(dx*dx + dy*dy + dz*dz, distance);
+                distance = llvm.sqrt(dx*dx + dy*dy + dz*dz);
                 e -= (bodies.(i).mass * bodies.(j).mass) / distance;
                 
                 j += 1;
