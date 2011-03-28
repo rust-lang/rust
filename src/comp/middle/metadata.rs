@@ -357,7 +357,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_type_params(ebml_w, tps);
             ebml.end_tag(ebml_w);
 
-            //encode_tag_variant_info(cx, ebml_w, did, variants);
+            encode_tag_variant_info(cx, ebml_w, did, variants);
         }
         case (ast.item_obj(?id, _, ?tps, ?did, ?ann)) {
             ebml.start_tag(ebml_w, tag_items_item);
