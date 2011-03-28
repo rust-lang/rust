@@ -9,7 +9,6 @@ import lib.llvm.mk_section_iter;
 import middle.fold;
 import middle.metadata;
 import middle.ty;
-import middle.typeck;
 import back.x86;
 import util.common;
 import util.common.span;
@@ -522,7 +521,7 @@ fn lookup_def(session.session sess, &span sp, int cnum, vec[ast.ident] path)
     fail;
 }
 
-fn get_type(session.session sess, ast.def_id def) -> typeck.ty_and_params {
+fn get_type(session.session sess, ast.def_id def) -> ty.ty_params_and_ty {
     // FIXME: fill in.
     fail;
 }

@@ -53,8 +53,7 @@ type fn_ctxt = rec(@ty.t ret_ty,
                    @crate_ctxt ccx);
 
 // Used for ast_ty_to_ty() below.
-type ty_and_params = rec(vec[ast.ty_param] params, @ty.t ty);
-type ty_getter = fn(ast.def_id) -> ty_and_params;
+type ty_getter = fn(ast.def_id) -> ty.ty_params_and_ty;
 
 // Replaces parameter types inside a type with type variables.
 fn generalize_ty(@crate_ctxt cx, @ty.t t) -> @ty.t {
@@ -128,6 +127,23 @@ fn substitute_ty_params(&@crate_ctxt ccx,
     ret ty.fold_ty(substituter, typ);
 }
 
+
+// Looks up the type of the given item in an external crate.
+fn lookup_item_type_if_necessary(@crate_ctxt ccx, ast.def_id did) {
+    if (did._0 == ccx.sess.get_targ_crate_num()) {
+        ret;    // Nothing to do; it should already be in the tables.
+    }
+
+    if (ccx.item_types.contains_key(did)) {
+        ret;    // Nothing to do; we already looked up this item's type.
+    }
+
+    auto tyt = creader.get_type(ccx.sess, did);
+    ccx.item_types.insert(did, tyt._1);
+    ccx.item_ty_params.insert(did, tyt._0);
+}
+
+
 type ty_params_opt_and_ty = tup(option.t[vec[ast.def_id]], @ty.t);
 
 // Returns the type parameters and the type for the given definition.
@@ -151,20 +167,25 @@ fn ty_params_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
             ret tup(none[vec[ast.def_id]], fcx.locals.get(id));
         }
         case (ast.def_fn(?id)) {
+            lookup_item_type_if_necessary(fcx.ccx, id);
             check (fcx.ccx.item_types.contains_key(id));
             ret tup(some(fcx.ccx.item_ty_params.get(id)),
                     fcx.ccx.item_types.get(id));
         }
         case (ast.def_native_fn(?id)) {
+            lookup_item_type_if_necessary(fcx.ccx, id);
             check (fcx.ccx.item_types.contains_key(id));
             ret tup(some(fcx.ccx.item_ty_params.get(id)),
                     fcx.ccx.item_types.get(id));
         }
         case (ast.def_const(?id)) {
+            lookup_item_type_if_necessary(fcx.ccx, id);
             check (fcx.ccx.item_types.contains_key(id));
             ret tup(none[vec[ast.def_id]], fcx.ccx.item_types.get(id));
         }
         case (ast.def_variant(?tag_id, ?variant_id)) {
+            lookup_item_type_if_necessary(fcx.ccx, tag_id);
+            lookup_item_type_if_necessary(fcx.ccx, variant_id);
             check (fcx.ccx.item_types.contains_key(variant_id));
             ret tup(some(fcx.ccx.item_ty_params.get(tag_id)),
                     fcx.ccx.item_types.get(variant_id));
@@ -174,6 +195,7 @@ fn ty_params_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
             ret tup(none[vec[ast.def_id]], fcx.locals.get(id));
         }
         case (ast.def_obj(?id)) {
+            lookup_item_type_if_necessary(fcx.ccx, id);
             check (fcx.ccx.item_types.contains_key(id));
             ret tup(some(fcx.ccx.item_ty_params.get(id)),
                     fcx.ccx.item_types.get(id));
@@ -291,17 +313,17 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
         // TODO: maybe record cname chains so we can do
         // "foo = int" like OCaml?
         auto ty_and_params = getter(id);
-        auto params = ty_and_params.params;
+        auto params = ty_and_params._0;
         auto num_type_args = _vec.len[@ast.ty](args);
-        check(num_type_args == _vec.len[ast.ty_param](params));
+        check(num_type_args == _vec.len[ast.def_id](params));
 
         auto param_map = common.new_def_hash[@ty.t]();
         for each (uint i in _uint.range(0u, num_type_args)) {
             auto arg = args.(i);
             auto param = params.(i);
-            param_map.insert(param.id, ast_ty_to_ty(getter, arg));
+            param_map.insert(param, ast_ty_to_ty(getter, arg));
         }
-        ret ty.replace_type_params(ty_and_params.ty, param_map);
+        ret ty.replace_type_params(ty_and_params._1, param_map);
     }
 
     auto mut = ast.imm;
@@ -404,7 +426,7 @@ fn actual_type(@ty.t t, @ast.item item) -> @ty.t {
 // A convenience function to use a crate_ctxt to resolve names for
 // ast_ty_to_ty.
 fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast.ty ast_ty) -> @ty.t {
-    fn getter(@crate_ctxt ccx, ast.def_id id) -> ty_and_params {
+    fn getter(@crate_ctxt ccx, ast.def_id id) -> ty.ty_params_and_ty {
 
         if (id._0 != ccx.sess.get_targ_crate_num()) {
             // This is a type we need to load in from the crate reader.
@@ -426,7 +448,12 @@ fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast.ty ast_ty) -> @ty.t {
            }
         }
 
-        ret rec(params = params, ty = ty);
+        let vec[ast.def_id] param_ids = vec();
+        for (ast.ty_param tp in params) {
+            param_ids += vec(tp.id);
+        }
+
+        ret tup(param_ids, ty);
     }
     auto f = bind getter(ccx, _);
     ret ast_ty_to_ty(f, ast_ty);
@@ -510,7 +537,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
     fn getter(session.session sess,
               @ty_item_table id_to_ty_item,
               @ty_table item_to_ty,
-              ast.def_id id) -> ty_and_params {
+              ast.def_id id) -> ty.ty_params_and_ty {
 
         if (id._0 != sess.get_targ_crate_num()) {
             // This is a type we need to load in from the crate reader.
@@ -535,7 +562,12 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             }
         }
 
-        ret rec(params = params, ty = ty);
+        let vec[ast.def_id] param_ids = vec();
+        for (ast.ty_param tp in params) {
+            param_ids += vec(tp.id);
+        }
+
+        ret tup(param_ids, ty);
     }
 
     fn ty_of_arg(session.session sess,
