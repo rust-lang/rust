@@ -3030,11 +3030,14 @@ fn trans_if(@block_ctxt cx, @ast.expr cond,
 
             // If we have an else expression, then the entire
             // if expression can have a non-nil type.
-            // FIXME: Handle dynamic type sizes
             auto expr_ty = ty.expr_ty(elexpr);
-            expr_llty = type_of(else_res.bcx.fcx.ccx, expr_ty);
-            if (ty.type_is_structural(expr_ty)) {
-                expr_llty = T_ptr(expr_llty);
+            if (ty.type_has_dynamic_size(expr_ty)) {
+                expr_llty = T_typaram_ptr(cx.fcx.ccx.tn);
+            } else {
+                expr_llty = type_of(else_res.bcx.fcx.ccx, expr_ty);
+                if (ty.type_is_structural(expr_ty)) {
+                    expr_llty = T_ptr(expr_llty);
+                }
             }
         }
         case (_) {
