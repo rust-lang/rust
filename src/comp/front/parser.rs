@@ -451,7 +451,9 @@ impure fn parse_ty(parser p) -> @ast.ty {
         }
 
         case (token.IDENT(_)) {
-            t = ast.ty_path(parse_path(p, GREEDY), none[ast.def]);
+            auto path = parse_path(p, GREEDY);
+            t = ast.ty_path(path, none[ast.def]);
+            hi = path.span;
         }
 
         case (token.MUTABLE) {
@@ -2067,6 +2069,7 @@ impure fn parse_item_tag(parser p) -> @ast.item {
         auto tok = p.peek();
         alt (tok) {
             case (token.IDENT(?name)) {
+                auto vlo = p.get_span();
                 p.bump();
 
                 let vec[ast.variant_arg] args = vec();
@@ -2084,11 +2087,12 @@ impure fn parse_item_tag(parser p) -> @ast.item {
                     case (_) { /* empty */ }
                 }
 
+                auto vhi = p.get_span();
                 expect(p, token.SEMI);
 
                 auto id = p.next_def_id();
-                variants += vec(rec(name=name, args=args, id=id,
-                                    ann=ast.ann_none));
+                auto vr = rec(name=name, args=args, id=id, ann=ast.ann_none);
+                variants += vec(spanned[ast.variant_](vlo, vhi, vr));
             }
             case (token.RBRACE) { /* empty */ }
             case (_) {

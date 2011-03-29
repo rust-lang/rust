@@ -169,8 +169,8 @@ fn encode_def_id(&ebml.writer ebml_w, &ast.def_id id) {
 fn encode_tag_variant_paths(&ebml.writer ebml_w, vec[ast.variant] variants) {
     for (ast.variant variant in variants) {
         ebml.start_tag(ebml_w, tag_paths_item);
-        encode_name(ebml_w, variant.name);
-        encode_def_id(ebml_w, variant.id);
+        encode_name(ebml_w, variant.node.name);
+        encode_def_id(ebml_w, variant.node.id);
         ebml.end_tag(ebml_w);
     }
 }
@@ -314,14 +314,14 @@ fn encode_tag_variant_info(@trans.crate_ctxt cx, &ebml.writer ebml_w,
                            ast.def_id did, vec[ast.variant] variants) {
     for (ast.variant variant in variants) {
         ebml.start_tag(ebml_w, tag_items_item);
-        encode_def_id(ebml_w, variant.id);
+        encode_def_id(ebml_w, variant.node.id);
         encode_kind(ebml_w, 'v' as u8);
         encode_tag_id(ebml_w, did);
-        encode_type(ebml_w, trans.node_ann_type(cx, variant.ann));
-        if (_vec.len[ast.variant_arg](variant.args) > 0u) {
-            encode_symbol(cx, ebml_w, variant.id);
+        encode_type(ebml_w, trans.node_ann_type(cx, variant.node.ann));
+        if (_vec.len[ast.variant_arg](variant.node.args) > 0u) {
+            encode_symbol(cx, ebml_w, variant.node.id);
         }
-        encode_discriminant(cx, ebml_w, variant.id);
+        encode_discriminant(cx, ebml_w, variant.node.id);
         ebml.end_tag(ebml_w);
     }
 }
