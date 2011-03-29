@@ -48,8 +48,10 @@ auth front.creader.get_type = impure;
 auth front.creader.impure_no_op = impure;
 auth middle.metadata = unsafe;
 auth middle.trans = unsafe;
+auth middle.trans.copy_any_self_to_alloca = impure;
 auth middle.trans.copy_args_to_allocas = impure;
 auth middle.trans.trans_block = impure;
+auth middle.trans.alloc_ty = impure;
 auth lib.llvm = unsafe;
 auth pretty.pprust = impure;
 

@@ -9,11 +9,14 @@ native "llvm" mod llvm {
 fn main() {
 
     let vec[int] inputs = vec(
-        50000
-        //these segfault :(
-        //500000,
-        //5000000,
-        //50000000
+                              50000,
+                              500000
+                              //
+                              // Leave these commented out to
+                              // finish in a reasonable time
+                              // during 'make check' under valgrind
+                              // 5000000
+                              // 50000000
         );
 
     let vec[Body.props] bodies = NBodySystem.MakeNBodySystem();

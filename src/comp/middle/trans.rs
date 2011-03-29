@@ -114,6 +114,7 @@ state type fn_ctxt = rec(ValueRef llfn,
                          ValueRef lltaskptr,
                          ValueRef llenv,
                          ValueRef llretptr,
+                         mutable BasicBlockRef llallocas,
                          mutable option.t[ValueRef] llself,
                          mutable option.t[ValueRef] lliterbody,
                          hashmap[ast.def_id, ValueRef] llargs,
@@ -1047,6 +1048,15 @@ fn align_of(@block_ctxt cx, @ty.t t) -> result {
     ret dynamic_align_of(cx, t);
 }
 
+fn alloca(@block_ctxt cx, TypeRef t) -> ValueRef {
+    ret new_builder(cx.fcx.llallocas).Alloca(t);
+}
+
+fn array_alloca(@block_ctxt cx, TypeRef t, ValueRef n) -> ValueRef {
+    ret new_builder(cx.fcx.llallocas).ArrayAlloca(t, n);
+}
+
+
 // Computes the size of the data part of a non-dynamically-sized tag.
 fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
     if (ty.type_has_dynamic_size(t)) {
@@ -1144,7 +1154,7 @@ fn dynamic_size_of(@block_ctxt cx, @ty.t t) -> result {
             auto bcx = cx;
 
             // Compute max(variant sizes).
-            let ValueRef max_size = bcx.build.Alloca(T_int());
+            let ValueRef max_size = alloca(bcx, T_int());
             bcx.build.Store(C_int(0), max_size);
 
             auto ty_params = tag_ty_params(bcx.fcx.ccx, tid);
@@ -1466,8 +1476,8 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
 
         auto root = cx.fcx.ccx.tydescs.get(t).tydesc;
 
-        auto tydescs = cx.build.Alloca(T_array(T_ptr(T_tydesc(cx.fcx.ccx.tn)),
-                                               1u /* for root*/ + n_params));
+        auto tydescs = alloca(cx, T_array(T_ptr(T_tydesc(cx.fcx.ccx.tn)),
+                                          1u /* for root*/ + n_params));
 
         auto i = 0;
         auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
@@ -1593,6 +1603,7 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, ValueRef llfn,
                      vec[ast.def_id] typaram_defs) -> ValueRef {
     auto fcx = new_fn_ctxt(cx, llfn);
     auto bcx = new_top_block_ctxt(fcx);
+    auto lltop = bcx.llbb;
 
     auto re;
     if (!ty.type_is_scalar(t)) {
@@ -1623,6 +1634,10 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, ValueRef llfn,
     }
 
     re.bcx.build.RetVoid();
+
+    // Tie up the llallocas -> lltop edge.
+    new_builder(fcx.llallocas).Br(lltop);
+
     ret llfn;
 }
 
@@ -2597,7 +2612,7 @@ fn trans_compare(@block_ctxt cx0, ast.binop op, @ty.t t0,
          * optimize combinations like that, at this level.
          */
 
-        auto flag = scx.build.Alloca(T_i1());
+        auto flag = alloca(scx, T_i1());
 
         if (ty.type_is_sequence(t)) {
 
@@ -3204,7 +3219,7 @@ fn trans_for_each(@block_ctxt cx,
         }
 
         // Create an array of bindings and copy in aliases to the upvars.
-        llbindingsptr = cx.build.Alloca(T_struct(llbindingtys));
+        llbindingsptr = alloca(cx, T_struct(llbindingtys));
         auto i = 0u;
         while (i < upvar_count) {
             auto llbindingptr = cx.build.GEP(llbindingsptr,
@@ -3220,7 +3235,7 @@ fn trans_for_each(@block_ctxt cx,
     // Create an environment and populate it with the bindings.
     auto llenvptrty = T_closure_ptr(cx.fcx.ccx.tn, T_ptr(T_nil()),
                                     val_ty(llbindingsptr), 0u);
-    auto llenvptr = cx.build.Alloca(llvm.LLVMGetElementType(llenvptrty));
+    auto llenvptr = alloca(cx, llvm.LLVMGetElementType(llenvptrty));
 
     auto llbindingsptrptr = cx.build.GEP(llenvptr,
                                          vec(C_int(0),
@@ -3251,6 +3266,7 @@ fn trans_for_each(@block_ctxt cx,
 
     auto fcx = new_fn_ctxt(cx.fcx.ccx, lliterbody);
     auto bcx = new_top_block_ctxt(fcx);
+    auto lltop = bcx.llbb;
 
     // Populate the upvars from the environment.
     auto llremoteenvptr = bcx.build.PointerCast(fcx.llenv, llenvptrty);
@@ -3272,11 +3288,15 @@ fn trans_for_each(@block_ctxt cx,
     // Treat the loop variable as an upvar as well. We copy it to an alloca
     // as usual.
     auto lllvar = llvm.LLVMGetParam(fcx.llfn, 3u);
-    auto lllvarptr = bcx.build.Alloca(val_ty(lllvar));
+    auto lllvarptr = alloca(bcx, val_ty(lllvar));
     bcx.build.Store(lllvar, lllvarptr);
     fcx.llupvars.insert(decl_id, lllvarptr);
 
     auto res = trans_block(bcx, body);
+
+    // Tie up the llallocas -> lltop edge.
+    new_builder(fcx.llallocas).Br(lltop);
+
     res.bcx.build.RetVoid();
 
 
@@ -3286,8 +3306,8 @@ fn trans_for_each(@block_ctxt cx,
 
         case (ast.expr_call(?f, ?args, ?ann)) {
 
-            auto pair = cx.build.Alloca(T_fn_pair(cx.fcx.ccx.tn,
-                                                  iter_body_llty));
+            auto pair = alloca(cx, T_fn_pair(cx.fcx.ccx.tn,
+                                             iter_body_llty));
             auto code_cell = cx.build.GEP(pair,
                                           vec(C_int(0),
                                               C_int(abi.fn_field_code)));
@@ -3831,6 +3851,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
 
     auto fcx = new_fn_ctxt(cx, llthunk);
     auto bcx = new_top_block_ctxt(fcx);
+    auto lltop = bcx.llbb;
 
     auto llclosure_ptr_ty = type_of(cx, ty.plain_box_ty(closure_ty));
     auto llclosure = bcx.build.PointerCast(fcx.llenv, llclosure_ptr_ty);
@@ -3944,6 +3965,9 @@ fn trans_bind_thunk(@crate_ctxt cx,
     auto r = bcx.build.FastCall(lltargetfn, llargs);
     bcx.build.RetVoid();
 
+    // Tie up the llallocas -> lltop edge.
+    new_builder(fcx.llallocas).Br(lltop);
+
     ret llthunk;
 }
 
@@ -3987,7 +4011,7 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
         } else {
             auto bcx = f_res.res.bcx;
             auto pair_t = node_type(cx.fcx.ccx, ann);
-            auto pair_v = bcx.build.Alloca(pair_t);
+            auto pair_v = alloca(bcx, pair_t);
 
             // Translate the bound expressions.
             let vec[@ty.t] bound_tys = vec();
@@ -4245,7 +4269,7 @@ fn trans_args(@block_ctxt cx,
                 // Non-mem but we're trying to alias; synthesize an
                 // alloca, spill to it and pass its address.
                 auto llty = val_ty(lv.res.val);
-                auto llptr = lv.res.bcx.build.Alloca(llty);
+                auto llptr = alloca(lv.res.bcx, llty);
                 lv.res.bcx.build.Store(lv.res.val, llptr);
                 val = llptr;
             }
@@ -4695,7 +4719,7 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
                              "upcall_log_float",
                              vec(sub.val));
         } else {
-            auto tmp = sub.bcx.build.Alloca(tr);
+            auto tmp = alloca(sub.bcx, tr);
             sub.bcx.build.Store(sub.val, tmp);
             auto v = vp2i(sub.bcx, tmp);
             ret trans_upcall(sub.bcx,
@@ -4751,7 +4775,7 @@ fn trans_put(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
 
     alt (cx.fcx.lliterbody) {
         case (some[ValueRef](?lli)) {
-            auto slot = cx.build.Alloca(val_ty(lli));
+            auto slot = alloca(cx, val_ty(lli));
             cx.build.Store(lli, slot);
 
             llcallee = cx.build.GEP(slot, vec(C_int(0),
@@ -4764,7 +4788,7 @@ fn trans_put(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
         }
     }
     auto bcx = cx;
-    auto dummy_retslot = bcx.build.Alloca(T_nil());
+    auto dummy_retslot = alloca(bcx, T_nil());
     let vec[ValueRef] llargs = vec(dummy_retslot, cx.fcx.lltaskptr, llenv);
     alt (e) {
         case (none[@ast.expr]) { }
@@ -5136,17 +5160,38 @@ iter block_locals(&ast.block b) -> @ast.local {
     }
 }
 
+fn llallocas_block_ctxt(@fn_ctxt fcx) -> @block_ctxt {
+    let vec[cleanup] cleanups = vec();
+    ret @rec(llbb=fcx.llallocas,
+             build=new_builder(fcx.llallocas),
+             parent=parent_none,
+             kind=SCOPE_BLOCK,
+             mutable cleanups=cleanups,
+             fcx=fcx);
+}
+
 fn alloc_ty(@block_ctxt cx, @ty.t t) -> result {
     auto val = C_int(0);
-    auto bcx = cx;
     if (ty.type_has_dynamic_size(t)) {
-        auto n = size_of(bcx, t);
-        bcx = n.bcx;
-        val = bcx.build.ArrayAlloca(T_i8(), n.val);
+
+        // NB: we have to run this particular 'size_of' in a
+        // block_ctxt built on the llallocas block for the fn,
+        // so that the size dominates the array_alloca that
+        // comes next.
+
+        auto n = size_of(llallocas_block_ctxt(cx.fcx), t);
+        cx.fcx.llallocas = n.bcx.llbb;
+        val = array_alloca(cx, T_i8(), n.val);
     } else {
-        val = bcx.build.Alloca(type_of(cx.fcx.ccx, t));
+        val = alloca(cx, type_of(cx.fcx.ccx, t));
     }
-    ret res(bcx, val);
+    // NB: since we've pushed all size calculations in this
+    // function up to the alloca block, we actually return the
+    // block passed into us unmodified; it doesn't really
+    // have to be passed-and-returned here, but it fits
+    // past caller conventions and may well make sense again,
+    // so we leave it as-is.
+    ret res(cx, val);
 }
 
 fn alloc_local(@block_ctxt cx, @ast.local local) -> result {
@@ -5211,10 +5256,14 @@ fn new_fn_ctxt(@crate_ctxt cx,
     let hashmap[ast.def_id, ValueRef] llupvars = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] lltydescs = new_def_hash[ValueRef]();
 
+    let BasicBlockRef llallocas =
+        llvm.LLVMAppendBasicBlock(llfndecl, _str.buf("allocas"));
+
     ret @rec(llfn=llfndecl,
              lltaskptr=lltaskptr,
              llenv=llenv,
              llretptr=llretptr,
+             mutable llallocas = llallocas,
              mutable llself=none[ValueRef],
              mutable lliterbody=none[ValueRef],
              llargs=llargs,
@@ -5277,39 +5326,49 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx,
 // allocas immediately upon entry; this permits us to GEP into structures we
 // were passed and whatnot. Apparently mem2reg will mop up.
 
-fn copy_args_to_allocas(@block_ctxt cx,
-                        option.t[TypeRef] ty_self,
-                        vec[ast.arg] args,
-                        vec[ty.arg] arg_tys) {
+fn copy_any_self_to_alloca(@fn_ctxt fcx,
+                           option.t[TypeRef] ty_self) {
 
-    let uint arg_n = 0u;
+    auto bcx = llallocas_block_ctxt(fcx);
 
-    alt (cx.fcx.llself) {
+    alt (fcx.llself) {
         case (some[ValueRef](?self_v)) {
             alt (ty_self) {
                 case (some[TypeRef](?self_t)) {
-                    auto alloca = cx.build.Alloca(self_t);
-                    cx.build.Store(self_v, alloca);
-                    cx.fcx.llself = some[ValueRef](alloca);
+                    auto a = alloca(bcx, self_t);
+                    bcx.build.Store(self_v, a);
+                    fcx.llself = some[ValueRef](a);
                 }
             }
         }
         case (_) {
         }
     }
+}
+
+
+fn copy_args_to_allocas(@fn_ctxt fcx,
+                        vec[ast.arg] args,
+                        vec[ty.arg] arg_tys) {
+
+    auto bcx = llallocas_block_ctxt(fcx);
+
+    let uint arg_n = 0u;
 
     for (ast.arg aarg in args) {
         if (aarg.mode != ast.alias) {
-            auto arg_t = type_of_arg(cx.fcx.ccx, arg_tys.(arg_n));
-            auto alloca = cx.build.Alloca(arg_t);
-            auto argval = cx.fcx.llargs.get(aarg.id);
-            cx.build.Store(argval, alloca);
+            auto arg_t = type_of_arg(fcx.ccx, arg_tys.(arg_n));
+            auto a = alloca(bcx, arg_t);
+            auto argval = fcx.llargs.get(aarg.id);
+            bcx.build.Store(argval, a);
             // Overwrite the llargs entry for this arg with its alloca.
-            cx.fcx.llargs.insert(aarg.id, alloca);
+            fcx.llargs.insert(aarg.id, a);
         }
 
         arg_n += 1u;
     }
+
+    fcx.llallocas = bcx.llbb;
 }
 
 fn is_terminated(@block_ctxt cx) -> bool {
@@ -5340,8 +5399,8 @@ fn ret_ty_of_fn(ast.ann ann) -> @ty.t {
     ret ret_ty_of_fn_ty(ty.ann_to_type(ann));
 }
 
-fn populate_fn_ctxt_from_llself(@block_ctxt cx, ValueRef llself) -> result {
-    auto bcx = cx;
+fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, ValueRef llself) {
+    auto bcx = llallocas_block_ctxt(fcx);
 
     let vec[@ty.t] field_tys = vec();
 
@@ -5379,7 +5438,7 @@ fn populate_fn_ctxt_from_llself(@block_ctxt cx, ValueRef llself) -> result {
     // fields pointer to the appropriate LLVM type. If not, just leave it as
     // i8 *.
     if (!ty.type_has_dynamic_size(fields_tup_ty)) {
-        auto llfields_ty = type_of(bcx.fcx.ccx, fields_tup_ty);
+        auto llfields_ty = type_of(fcx.ccx, fields_tup_ty);
         obj_fields = vi2p(bcx, obj_fields, T_ptr(llfields_ty));
     } else {
         obj_fields = vi2p(bcx, obj_fields, T_ptr(T_i8()));
@@ -5388,25 +5447,25 @@ fn populate_fn_ctxt_from_llself(@block_ctxt cx, ValueRef llself) -> result {
 
     let int i = 0;
 
-    for (ast.ty_param p in bcx.fcx.ccx.obj_typarams) {
+    for (ast.ty_param p in fcx.ccx.obj_typarams) {
         let ValueRef lltyparam = bcx.build.GEP(obj_typarams,
                                                vec(C_int(0),
                                                    C_int(i)));
         lltyparam = bcx.build.Load(lltyparam);
-        bcx.fcx.lltydescs.insert(p.id, lltyparam);
+        fcx.lltydescs.insert(p.id, lltyparam);
         i += 1;
     }
 
     i = 0;
-    for (ast.obj_field f in bcx.fcx.ccx.obj_fields) {
+    for (ast.obj_field f in fcx.ccx.obj_fields) {
         auto rslt = GEP_tup_like(bcx, fields_tup_ty, obj_fields, vec(0, i));
-        bcx = rslt.bcx;
+        bcx = llallocas_block_ctxt(fcx);
         auto llfield = rslt.val;
-        cx.fcx.llobjfields.insert(f.id, llfield);
+        fcx.llobjfields.insert(f.id, llfield);
         i += 1;
     }
 
-    ret res(bcx, C_nil());
+    fcx.llallocas = bcx.llbb;
 }
 
 fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
@@ -5419,18 +5478,21 @@ fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
     create_llargs_for_fn_args(fcx, f.proto,
                               ty_self, ret_ty_of_fn(ann),
                               f.decl.inputs, ty_params);
-    auto bcx = new_top_block_ctxt(fcx);
 
-    copy_args_to_allocas(bcx, ty_self, f.decl.inputs,
-                         arg_tys_of_fn(ann));
+    copy_any_self_to_alloca(fcx, ty_self);
 
     alt (fcx.llself) {
         case (some[ValueRef](?llself)) {
-            bcx = populate_fn_ctxt_from_llself(bcx, llself).bcx;
+            populate_fn_ctxt_from_llself(fcx, llself);
         }
         case (_) {
         }
     }
+
+    copy_args_to_allocas(fcx, f.decl.inputs, arg_tys_of_fn(ann));
+
+    auto bcx = new_top_block_ctxt(fcx);
+    auto lltop = bcx.llbb;
 
     auto res = trans_block(bcx, f.body);
     if (!is_terminated(res.bcx)) {
@@ -5438,6 +5500,9 @@ fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
         // C_nil values rather than their void type.
         res.bcx.build.RetVoid();
     }
+
+    // Tie up the llallocas -> lltop edge.
+    new_builder(fcx.llallocas).Br(lltop);
 }
 
 fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
@@ -5504,10 +5569,11 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
                               none[TypeRef], ret_ty_of_fn(ann),
                               fn_args, ty_params);
 
-    auto bcx = new_top_block_ctxt(fcx);
-
     let vec[ty.arg] arg_tys = arg_tys_of_fn(ann);
-    copy_args_to_allocas(bcx, none[TypeRef], fn_args, arg_tys);
+    copy_args_to_allocas(fcx, fn_args, arg_tys);
+
+    auto bcx = new_top_block_ctxt(fcx);
+    auto lltop = bcx.llbb;
 
     auto llself_ty = type_of(cx, ret_ty_of_fn(ann));
     auto pair = bcx.fcx.llretptr;
@@ -5604,6 +5670,9 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
         bcx.build.Store(p, pair_box);
     }
     bcx.build.RetVoid();
+
+    // Tie up the llallocas -> lltop edge.
+    new_builder(fcx.llallocas).Br(lltop);
 }
 
 fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
@@ -5627,6 +5696,7 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     let ValueRef llfndecl = cx.item_ids.get(variant.id);
 
     auto fcx = new_fn_ctxt(cx, llfndecl);
+
     create_llargs_for_fn_args(fcx, ast.proto_fn,
                               none[TypeRef], ret_ty_of_fn(variant.ann),
                               fn_args, ty_params);
@@ -5636,10 +5706,11 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
         ty_param_substs += vec(plain_ty(ty.ty_param(tp.id)));
     }
 
-    auto bcx = new_top_block_ctxt(fcx);
-
     auto arg_tys = arg_tys_of_fn(variant.ann);
-    copy_args_to_allocas(bcx, none[TypeRef], fn_args, arg_tys);
+    copy_args_to_allocas(fcx, fn_args, arg_tys);
+
+    auto bcx = new_top_block_ctxt(fcx);
+    auto lltop = bcx.llbb;
 
     // Cast the tag to a type we can GEP into.
     auto lltagptr = bcx.build.PointerCast(fcx.llretptr,
@@ -5682,6 +5753,9 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
 
     bcx = trans_block_cleanups(bcx, find_scope_cx(bcx));
     bcx.build.RetVoid();
+
+    // Tie up the llallocas -> lltop edge.
+    new_builder(fcx.llallocas).Br(lltop);
 }
 
 // FIXME: this should do some structural hash-consing to avoid
@@ -5851,6 +5925,7 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
     // Build the wrapper.
     auto fcx = new_fn_ctxt(cx, wrapper_fn);
     auto bcx = new_top_block_ctxt(fcx);
+    auto lltop = bcx.llbb;
 
     // Declare the function itself.
     auto item = cx.native_items.get(id);
@@ -5919,6 +5994,9 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
 
     bcx.build.Store(r, rptr);
     bcx.build.RetVoid();
+
+    // Tie up the llallocas -> lltop edge.
+    new_builder(fcx.llallocas).Br(lltop);
 }
 
 fn collect_native_item(&@crate_ctxt cx, @ast.native_item i) -> @crate_ctxt {
@@ -6471,10 +6549,14 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
     let ValueRef llsrc_vec = llvm.LLVMGetParam(llfn, 4u);
     let ValueRef llskipnull = llvm.LLVMGetParam(llfn, 5u);
 
+    let BasicBlockRef llallocas =
+        llvm.LLVMAppendBasicBlock(llfn, _str.buf("allocas"));
+
     auto fcx = @rec(llfn=llfn,
                     lltaskptr=lltaskptr,
                     llenv=C_null(T_ptr(T_nil())),
                     llretptr=C_null(T_ptr(T_nil())),
+                    mutable llallocas = llallocas,
                     mutable llself=none[ValueRef],
                     mutable lliterbody=none[ValueRef],
                     llargs=new_def_hash[ValueRef](),
@@ -6485,13 +6567,14 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
                     ccx=cx);
 
     auto bcx = new_top_block_ctxt(fcx);
+    auto lltop = bcx.llbb;
 
     auto lldst_vec = bcx.build.Load(lldst_vec_ptr);
 
     // First the dst vec needs to grow to accommodate the src vec.
     // To do this we have to figure out how many bytes to add.
 
-    auto llcopy_dst_ptr = bcx.build.Alloca(T_int());
+    auto llcopy_dst_ptr = alloca(bcx, T_int());
     auto llnew_vec_res =
         trans_upcall(bcx, "upcall_vec_grow",
                      vec(vp2i(bcx, lldst_vec),
@@ -6508,7 +6591,7 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
     auto copy_dst_cx = new_sub_block_ctxt(bcx, "copy new <- dst");
     auto copy_src_cx = new_sub_block_ctxt(bcx, "copy new <- src");
 
-    auto pp0 = bcx.build.Alloca(T_ptr(T_i8()));
+    auto pp0 = alloca(bcx, T_ptr(T_i8()));
     bcx.build.Store(vec_p0(bcx, llnew_vec), pp0);
 
     bcx.build.CondBr(bcx.build.TruncOrBitCast
@@ -6576,6 +6659,9 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
     // Write new_vec back through the alias we were given.
     copy_src_cx.build.Store(llnew_vec, lldst_vec_ptr);
     copy_src_cx.build.RetVoid();
+
+    // Tie up the llallocas -> lltop edge.
+    new_builder(fcx.llallocas).Br(lltop);
 }
 
 
@@ -6640,7 +6726,6 @@ fn make_common_glue(str output) {
     trans_exit_task_glue(glues, new_str_hash[ValueRef](), tn, llmod);
 
     check_module(llmod);
-
     llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(output));
     llvm.LLVMDisposeModule(llmod);
 }
