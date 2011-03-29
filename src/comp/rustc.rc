@@ -45,6 +45,7 @@ auth driver.rustc.main = impure;
 auth front.creader.load_crate = unsafe;
 auth front.creader.lookup_def = impure;
 auth front.creader.get_type = impure;
+auth front.creader.get_symbol = impure;
 auth front.creader.impure_no_op = impure;
 auth middle.metadata = unsafe;
 auth middle.trans = unsafe;

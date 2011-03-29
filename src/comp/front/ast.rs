@@ -43,6 +43,28 @@ tag def {
     def_native_fn(def_id);
 }
 
+fn def_id_of_def(def d) -> def_id {
+    alt (d) {
+        case (def_fn(?id)) { ret id; }
+        case (def_obj(?id)) { ret id; }
+        case (def_obj_field(?id)) { ret id; }
+        case (def_mod(?id)) { ret id; }
+        case (def_native_mod(?id)) { ret id; }
+        case (def_const(?id)) { ret id; }
+        case (def_arg(?id)) { ret id; }
+        case (def_local(?id)) { ret id; }
+        case (def_upvar(?id)) { ret id; }
+        case (def_variant(_, ?id)) { ret id; }
+        case (def_ty(?id)) { ret id; }
+        case (def_ty_arg(?id)) { ret id; }
+        case (def_binding(?id)) { ret id; }
+        case (def_use(?id)) { ret id; }
+        case (def_native_ty(?id)) { ret id; }
+        case (def_native_fn(?id)) { ret id; }
+    }
+    fail;
+}
+
 type crate = spanned[crate_];
 type crate_ = rec(vec[@crate_directive] directives,
                   _mod module);

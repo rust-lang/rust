@@ -11,6 +11,7 @@ import std.option.some;
 import std.option.none;
 
 import front.ast;
+import front.creader;
 import driver.session;
 import middle.ty;
 import back.x86;
@@ -3606,10 +3607,30 @@ fn lval_generic_fn(@block_ctxt cx,
     ret lv;
 }
 
+fn trans_external_path(@block_ctxt cx, &ast.path p,
+                       ast.def def, ast.ann a) -> lval_result {
+    auto ccx = cx.fcx.ccx;
+    auto ty = node_ann_type(ccx, a);
+    auto name = creader.get_symbol(ccx.sess, ast.def_id_of_def(def));
+    auto v = get_extern_const(ccx.externs, ccx.llmod,
+                              name, type_of(ccx, ty));
+    ret lval_mem(cx, v);
+}
+
+fn def_is_external(@crate_ctxt cx, ast.def d) -> bool {
+    auto id = ast.def_id_of_def(d);
+    ret id._0 != cx.sess.get_targ_crate_num();
+}
+
 fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
               &ast.ann ann) -> lval_result {
     alt (dopt) {
         case (some[ast.def](?def)) {
+
+            if (def_is_external(cx.fcx.ccx, def)) {
+                ret trans_external_path(cx, p, def, ann);
+            }
+
             alt (def) {
                 case (ast.def_arg(?did)) {
                     alt (cx.fcx.llargs.find(did)) {

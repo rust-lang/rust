@@ -403,6 +403,16 @@ impure fn get_item_kind(&ebml.reader ebml_r) -> u8 {
     ret get_item_generic[u8](ebml_r, metadata.tag_items_kind, f);
 }
 
+impure fn get_item_symbol(&ebml.reader ebml_r) -> str {
+    impure fn converter(vec[u8] data) -> str {
+        auto x = @mutable 3;
+        *x = 5;
+        ret _str.unsafe_from_bytes(data);
+    }
+    auto f = converter;
+    ret get_item_generic[str](ebml_r, metadata.tag_items_symbol, f);
+}
+
 // FIXME: This is a *terrible* botch.
 impure fn impure_parse_def_id(vec[u8] data) -> ast.def_id {
     auto x = @mutable 3;
@@ -571,6 +581,13 @@ fn get_type(session.session sess, ast.def_id def) -> ty.ty_params_and_ty {
     auto t = get_item_type(ebml_r, external_crate_id);
     auto tps = get_item_ty_params(ebml_r, external_crate_id);
     ret tup(tps, t);
+}
+
+fn get_symbol(session.session sess, ast.def_id def) -> str {
+    auto external_crate_id = def._0;
+    auto data = sess.get_external_crate(external_crate_id);
+    auto ebml_r = lookup_item(def._1, data);
+    ret get_item_symbol(ebml_r);
 }
 
 // Local Variables:
