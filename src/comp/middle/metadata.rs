@@ -210,15 +210,17 @@ fn encode_module_item_paths(&ebml.writer ebml_w, &ast._mod module) {
                 encode_def_id(ebml_w, did);
                 ebml.end_tag(ebml_w);
             }
-            case (ast.item_mod(?id, ?_mod, _)) {
+            case (ast.item_mod(?id, ?_mod, ?did)) {
                 ebml.start_tag(ebml_w, tag_paths_mod);
                 encode_name(ebml_w, id);
+                encode_def_id(ebml_w, did);
                 encode_module_item_paths(ebml_w, _mod);
                 ebml.end_tag(ebml_w);
             }
-            case (ast.item_native_mod(?id, ?nmod, _)) {
+            case (ast.item_native_mod(?id, ?nmod, ?did)) {
                 ebml.start_tag(ebml_w, tag_paths_mod);
                 encode_name(ebml_w, id);
+                encode_def_id(ebml_w, did);
                 encode_native_module_item_paths(ebml_w, nmod);
                 ebml.end_tag(ebml_w);
             }
@@ -336,11 +338,17 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_symbol(cx, ebml_w, did);
             ebml.end_tag(ebml_w);
         }
-        case (ast.item_mod(_, _, _)) {
-            // nothing to do
+        case (ast.item_mod(_, _, ?did)) {
+            ebml.start_tag(ebml_w, tag_items_item);
+            encode_def_id(ebml_w, did);
+            encode_kind(ebml_w, 'm' as u8);
+            ebml.end_tag(ebml_w);
         }
-        case (ast.item_native_mod(_, _, _)) {
-            // nothing to do
+        case (ast.item_native_mod(_, _, ?did)) {
+            ebml.start_tag(ebml_w, tag_items_item);
+            encode_def_id(ebml_w, did);
+            encode_kind(ebml_w, 'n' as u8);
+            ebml.end_tag(ebml_w);
         }
         case (ast.item_ty(?id, _, ?tps, ?did, ?ann)) {
             ebml.start_tag(ebml_w, tag_items_item);
