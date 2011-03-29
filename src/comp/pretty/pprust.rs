@@ -553,6 +553,12 @@ impure fn print_expr(ps s, &@ast.expr expr) {
         case (ast.expr_fail) {
             wrd(s.s, "fail");
         }
+        case (ast.expr_break) {
+            wrd(s.s, "break");
+        }
+        case (ast.expr_cont) {
+            wrd(s.s, "cont");
+        }
         case (ast.expr_ret(?result)) {
             wrd(s.s, "ret");
             alt (result) {

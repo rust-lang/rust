@@ -1683,6 +1683,8 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_index(_,_,_))    { ret true; }
                 case (ast.expr_path(_,_,_))     { ret true; }
                 case (ast.expr_fail)            { ret true; }
+                case (ast.expr_break)           { ret true; }
+                case (ast.expr_cont)            { ret true; }
                 case (ast.expr_ret(_))          { ret true; }
                 case (ast.expr_put(_))          { ret true; }
                 case (ast.expr_be(_))           { ret true; }
