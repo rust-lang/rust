@@ -71,6 +71,8 @@ endif
 
 CFG_LDPATH :=$(CFG_BUILD_DIR)/rt
 CFG_LDPATH :=$(CFG_LDPATH):$(CFG_BUILD_DIR)/rustllvm
+CFG_TESTLIB=$(dir $(firstword $(1))):$(patsubst .%,%,$(suffix $(1)))
+CFG_EXE_TESTLIB=$(call CFG_TESTLIB,$(patsubst %.exe,%))
 
 ifdef CFG_WINDOWSY
   CFG_INFO := $(info cfg: windows-y environment)
@@ -79,7 +81,7 @@ ifdef CFG_WINDOWSY
   CFG_LIB_NAME=$(1).dll
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
-  CFG_RUN_TEST=PATH="$(CFG_LDPATH)" $(1)
+  CFG_RUN_TEST=PATH="$(CFG_LDPATH):$(call CFG_EXE_TESTLIB,$(1))" $(1)
   CFG_RUN_TARG=PATH="$(CFG_LDPATH)" $(1)
 
   CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
@@ -101,7 +103,7 @@ ifdef CFG_UNIXY
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_LIBDIR)
   CFG_RUN_TARG=$(CFG_LDENV)=$(CFG_LDPATH) $(1)
   CFG_RUN_TEST=\
-      $(CFG_LDENV)=$(dir $(firstword $(1))):$(CFG_LDPATH) \
+      $(CFG_LDENV)=$(call CFG_TESTLIB,$(1)):$(CFG_LDPATH) \
       $(CFG_VALGRIND) $(1)
 
   CFG_BOOT_NATIVE := 1
@@ -112,7 +114,7 @@ ifdef CFG_UNIXY
     CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
     CFG_LDPATH :=$(CFG_LDPATH):$$PATH
     CFG_RUN_TARG=PATH=$(CFG_LDPATH) $(1)
-    CFG_RUN_TEST=PATH=$(CFG_LDPATH) $(1)
+    CFG_RUN_TEST=PATH=$(CFG_LDPATH):$(call CFG_EXE_TESTLIB,$(1)) $(1)
 
     CFG_INFO := $(info cfg: mingw-cross)
     CFG_GCC_CROSS := i586-mingw32msvc-
@@ -714,7 +716,8 @@ compile-check: tidy \
 
 %.stage0$(X): %.stage0.o rt/$(CFG_RUNTIME) stage0/glue.o
 	@$(call E, link [gcc]: $@)
-	$(Q)gcc $(CFG_GCC_CFLAGS) stage0/glue.o -o $@ $< -Lstage0 -Lrt -lrustrt
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage0/glue.o -o $@ $< \
+      -Lstage0 -Lrt -lrustrt -lstd
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
@@ -722,7 +725,8 @@ compile-check: tidy \
 
 %.stage1(X): %.stage1.o rt/$(CFG_RUNTIME) stage1/glue.o
 	@$(call E, link [gcc]: $@)
-	$(Q)gcc $(CFG_GCC_CFLAGS) stage1/glue.o -o $@ $< -Lstage1 -Lrt -lrustrt
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage1/glue.o -o $@ $< \
+      -Lstage1 -Lrt -lrustrt -lstd
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
@@ -730,7 +734,8 @@ compile-check: tidy \
 
 %.stage2$(X): %.stage2.o rt/$(CFG_RUNTIME) stage2/glue.o
 	@$(call E, link [gcc]: $@)
-	$(Q)gcc $(CFG_GCC_CFLAGS) stage2/glue.o -o $@ $< -Lstage2 -Lrt -lrustrt
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage2/glue.o -o $@ $< \
+      -Lstage2 -Lrt -lrustrt -lstd
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
