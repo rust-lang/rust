@@ -256,42 +256,43 @@ impure fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
             auto found = false;
             while (ebml.bytes_left(ebml_r) > 0u && !found) {
                 auto ebml_tag = ebml.peek(ebml_r);
-                check ((ebml_tag.id == metadata.tag_paths_item) ||
-                       (ebml_tag.id == metadata.tag_paths_mod));
-
-                ebml.move_to_first_child(ebml_r);
-                auto did_opt = none[ast.def_id];
-                auto name_opt = none[ast.ident];
-                while (ebml.bytes_left(ebml_r) > 0u) {
-                    auto inner_tag = ebml.peek(ebml_r);
-                    if (inner_tag.id == metadata.tag_paths_name) {
-                        ebml.move_to_first_child(ebml_r);
-                        auto name_data = ebml.read_data(ebml_r);
-                        ebml.move_to_parent(ebml_r);
-                        auto nm = _str.unsafe_from_bytes(name_data);
-                        name_opt = some[ast.ident](nm);
-                    } else if (inner_tag.id == metadata.tag_items_def_id) {
-                        ebml.move_to_first_child(ebml_r);
-                        auto did_data = ebml.read_data(ebml_r);
-                        ebml.move_to_parent(ebml_r);
-                        did_opt = some[ast.def_id](parse_def_id(did_data));
-                    }
-                    ebml.move_to_next_sibling(ebml_r);
-                }
-                ebml.move_to_parent(ebml_r);
-
-                if (_str.eq(option.get[ast.ident](name_opt), name)) {
-                    // Matched!
-                    if (last) {
-                        ret rr_ok(option.get[ast.def_id](did_opt));
-                    }
-
-                    // Move to the module/item we found for the next iteration
-                    // of the loop...
+                if ((ebml_tag.id == metadata.tag_paths_item) ||
+                        (ebml_tag.id == metadata.tag_paths_mod)) {
                     ebml.move_to_first_child(ebml_r);
-                    found = true;
-                }
+                    auto did_opt = none[ast.def_id];
+                    auto name_opt = none[ast.ident];
+                    while (ebml.bytes_left(ebml_r) > 0u) {
+                        auto inner_tag = ebml.peek(ebml_r);
+                        if (inner_tag.id == metadata.tag_paths_name) {
+                            ebml.move_to_first_child(ebml_r);
+                            auto name_data = ebml.read_data(ebml_r);
+                            ebml.move_to_parent(ebml_r);
+                            auto nm = _str.unsafe_from_bytes(name_data);
+                            name_opt = some[ast.ident](nm);
+                        } else if (inner_tag.id ==
+                                metadata.tag_items_def_id) {
+                            ebml.move_to_first_child(ebml_r);
+                            auto did_data = ebml.read_data(ebml_r);
+                            ebml.move_to_parent(ebml_r);
+                            auto did = parse_def_id(did_data);
+                            did_opt = some[ast.def_id](did);
+                        }
+                        ebml.move_to_next_sibling(ebml_r);
+                    }
+                    ebml.move_to_parent(ebml_r);
 
+                    if (_str.eq(option.get[ast.ident](name_opt), name)) {
+                        // Matched!
+                        if (last) {
+                            ret rr_ok(option.get[ast.def_id](did_opt));
+                        }
+
+                        // Move to the module/item we found for the next
+                        // iteration of the loop...
+                        ebml.move_to_first_child(ebml_r);
+                        found = true;
+                    }
+                }
                 ebml.move_to_next_sibling(ebml_r);
             }
 
