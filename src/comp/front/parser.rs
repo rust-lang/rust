@@ -1003,6 +1003,12 @@ impure fn parse_dot_or_call_expr(parser p) -> @ast.expr {
 
 impure fn parse_prefix_expr(parser p) -> @ast.expr {
 
+    if (p.peek() == token.MUTABLE) {
+        p.bump();
+        p.get_session().span_warn(p.get_span(),
+            "ignoring deprecated 'mutable' prefix operator");
+    }
+
     auto lo = p.get_span();
     auto hi = lo;
 
