@@ -282,7 +282,7 @@ impure fn consume_any_line_comment(reader rdr) {
     if (rdr.curr() == '/') {
         alt (rdr.next()) {
             case ('/') {
-                while (rdr.curr() != '\n') {
+                while (rdr.curr() != '\n' && !rdr.is_eof()) {
                     rdr.bump();
                 }
                 // Restart whitespace munch.
@@ -316,6 +316,10 @@ impure fn consume_block_comment(reader rdr) {
             } else {
                 rdr.bump();
             }
+        }
+        if (rdr.is_eof()) {
+            log "unterminated block comment";
+            fail;
         }
     }
     // restart whitespace munch.
@@ -800,9 +804,9 @@ impure fn consume_whitespace(reader rdr) -> uint {
 impure fn read_line_comment(reader rdr) -> cmnt {
     auto p = rdr.get_curr_pos();
     rdr.bump(); rdr.bump();
-    consume_whitespace(rdr);
+    while (rdr.curr() == ' ') {rdr.bump();}
     auto val = "";
-    while (rdr.curr() != '\n') {
+    while (rdr.curr() != '\n' && !rdr.is_eof()) {
         _str.push_char(val, rdr.curr());
         rdr.bump();
     }
@@ -814,7 +818,7 @@ impure fn read_line_comment(reader rdr) -> cmnt {
 impure fn read_block_comment(reader rdr) -> cmnt {
     auto p = rdr.get_curr_pos();
     rdr.bump(); rdr.bump();
-    consume_whitespace(rdr);
+    while (rdr.curr() == ' ') {rdr.bump();}
     let vec[str] lines = vec();
     auto val = "";
     auto level = 1;
@@ -837,6 +841,7 @@ impure fn read_block_comment(reader rdr) -> cmnt {
             _str.push_char(val, rdr.curr());
             rdr.bump();
         }
+        if (rdr.is_eof()) {fail;}
     }
     ret rec(val=cmnt_block(lines),
             pos=p,
