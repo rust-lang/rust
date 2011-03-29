@@ -685,6 +685,7 @@ The keywords are:
 @item @code{auth}
 @tab @code{impure}
 @tab @code{unsafe}
+@tab @code{self}
 @item @code{bind}
 @tab @code{type}
 @tab @code{true}
