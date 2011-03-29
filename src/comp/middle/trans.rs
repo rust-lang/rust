@@ -1355,7 +1355,7 @@ fn GEP_tag(@block_ctxt cx,
 
     // Synthesize a tuple type so that GEP_tup_like() can work its magic.
     // Separately, store the type of the element we're interested in.
-    auto arg_tys = arg_tys_of_fn(variant.ann);
+    auto arg_tys = arg_tys_of_fn(variant.node.ann);
     auto elem_ty = ty.plain_ty(ty.ty_nil);  // typestate infelicity
     auto i = 0;
     let vec[@ty.t] true_arg_tys = vec();
@@ -1892,7 +1892,7 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
 
 fn variant_types(@crate_ctxt cx, &ast.variant v) -> vec[@ty.t] {
     let vec[@ty.t] tys = vec();
-    alt (ty.ann_to_type(v.ann).struct) {
+    alt (ty.ann_to_type(v.node.ann).struct) {
         case (ty.ty_fn(_, ?args, _)) {
             for (ty.arg arg in args) {
                 tys += vec(arg.ty);
@@ -1931,7 +1931,7 @@ fn tag_variant_with_id(@crate_ctxt cx,
     auto i = 0u;
     while (i < _vec.len[ast.variant](variants)) {
         auto variant = variants.(i);
-        if (common.def_eq(variant.id, variant_id)) {
+        if (common.def_eq(variant.node.id, variant_id)) {
             ret variant;
         }
         i += 1u;
@@ -2074,9 +2074,9 @@ fn iter_structural_ty_full(@block_ctxt cx,
                                                      _uint.to_str(i, 10u));
                 llvm.LLVMAddCase(llswitch, C_int(i as int), variant_cx.llbb);
 
-                if (_vec.len[ast.variant_arg](variant.args) > 0u) {
+                if (_vec.len[ast.variant_arg](variant.node.args) > 0u) {
                     // N-ary variant.
-                    auto fn_ty = ty.ann_to_type(variants.(i).ann);
+                    auto fn_ty = ty.ann_to_type(variants.(i).node.ann);
                     alt (fn_ty.struct) {
                         case (ty.ty_fn(_, ?args, _)) {
                             auto j = 0;
@@ -2084,12 +2084,12 @@ fn iter_structural_ty_full(@block_ctxt cx,
                                 auto v = vec(C_int(0), C_int(j as int));
 
                                 auto rslt = GEP_tag(variant_cx, llunion_a_ptr,
-                                    tid, variants.(i).id, tps, j);
+                                    tid, variants.(i).node.id, tps, j);
                                 auto llfldp_a = rslt.val;
                                 variant_cx = rslt.bcx;
 
                                 rslt = GEP_tag(variant_cx, llunion_b_ptr, tid,
-                                    variants.(i).id, tps, j);
+                                    variants.(i).node.id, tps, j);
                                 auto llfldp_b = rslt.val;
                                 variant_cx = rslt.bcx;
 
@@ -3436,7 +3436,7 @@ fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
             auto variants = tag_variants(cx.fcx.ccx, vdef._0);
             auto i = 0;
             for (ast.variant v in variants) {
-                auto this_variant_id = v.id;
+                auto this_variant_id = v.node.id;
                 if (variant_id._0 == this_variant_id._0 &&
                     variant_id._1 == this_variant_id._1) {
                     variant_tag = i;
@@ -3698,9 +3698,9 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                         alt (tag_item.node) {
                             case (ast.item_tag(_, ?variants, _, _)) {
                                 for (ast.variant v in variants) {
-                                    if (v.id == vid) {
+                                    if (v.node.id == vid) {
                                         fty = node_ann_type(cx.fcx.ccx,
-                                                            v.ann);
+                                                            v.node.ann);
                                     }
                                 }
                             }
@@ -5731,27 +5731,27 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
 fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
                      &ast.variant variant, int index,
                      &vec[ast.ty_param] ty_params) {
-    if (_vec.len[ast.variant_arg](variant.args) == 0u) {
+    if (_vec.len[ast.variant_arg](variant.node.args) == 0u) {
         ret;    // nullary constructors are just constants
     }
 
     // Translate variant arguments to function arguments.
     let vec[ast.arg] fn_args = vec();
     auto i = 0u;
-    for (ast.variant_arg varg in variant.args) {
+    for (ast.variant_arg varg in variant.node.args) {
         fn_args += vec(rec(mode=ast.alias,
                            ty=varg.ty,
                            ident="arg" + _uint.to_str(i, 10u),
                            id=varg.id));
     }
 
-    check (cx.item_ids.contains_key(variant.id));
-    let ValueRef llfndecl = cx.item_ids.get(variant.id);
+    check (cx.item_ids.contains_key(variant.node.id));
+    let ValueRef llfndecl = cx.item_ids.get(variant.node.id);
 
     auto fcx = new_fn_ctxt(cx, llfndecl);
 
     create_llargs_for_fn_args(fcx, ast.proto_fn,
-                              none[TypeRef], ret_ty_of_fn(variant.ann),
+                              none[TypeRef], ret_ty_of_fn(variant.node.ann),
                               fn_args, ty_params);
 
     let vec[@ty.t] ty_param_substs = vec();
@@ -5759,7 +5759,7 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
         ty_param_substs += vec(plain_ty(ty.ty_param(tp.id)));
     }
 
-    auto arg_tys = arg_tys_of_fn(variant.ann);
+    auto arg_tys = arg_tys_of_fn(variant.node.ann);
     copy_args_to_allocas(fcx, fn_args, arg_tys);
 
     auto bcx = new_top_block_ctxt(fcx);
@@ -5777,8 +5777,8 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
                                    vec(C_int(0), C_int(1)));
 
     i = 0u;
-    for (ast.variant_arg va in variant.args) {
-        auto rslt = GEP_tag(bcx, llblobptr, tag_id, variant.id,
+    for (ast.variant_arg va in variant.node.args) {
+        auto rslt = GEP_tag(bcx, llblobptr, tag_id, variant.node.id,
                             ty_param_substs, i as int);
         bcx = rslt.bcx;
         auto lldestptr = rslt.val;
@@ -6182,9 +6182,10 @@ fn collect_tag_ctor(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
 
         case (ast.item_tag(_, ?variants, ?tps, _)) {
             for (ast.variant variant in variants) {
-                if (_vec.len[ast.variant_arg](variant.args) != 0u) {
-                    decl_fn_and_pair(extend_path(cx, variant.name), "tag",
-                                     tps, variant.ann, variant.id);
+                if (_vec.len[ast.variant_arg](variant.node.args) != 0u) {
+                    decl_fn_and_pair(extend_path(cx, variant.node.name),
+                                     "tag", tps, variant.node.ann,
+                                     variant.node.id);
                 }
             }
         }
@@ -6229,8 +6230,8 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
                 llvm.LLVMSetLinkage(discrim_gvar, lib.llvm.LLVMPrivateLinkage
                                     as llvm.Linkage);
 
-                cx.discrims.insert(variant.id, discrim_gvar);
-                cx.discrim_symbols.insert(variant.id, s);
+                cx.discrims.insert(variant.node.id, discrim_gvar);
+                cx.discrim_symbols.insert(variant.node.id, s);
 
                 i += 1u;
             }

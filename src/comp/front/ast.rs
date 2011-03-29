@@ -385,7 +385,8 @@ type native_mod = rec(str native_name,
 type native_mod_index = hashmap[ident,native_mod_index_entry];
 
 type variant_arg = rec(@ty ty, def_id id);
-type variant = rec(str name, vec[variant_arg] args, def_id id, ann ann);
+type variant_ = rec(str name, vec[variant_arg] args, def_id id, ann ann);
+type variant = spanned[variant_];
 
 type view_item = spanned[view_item_];
 tag view_item_ {
@@ -451,7 +452,7 @@ fn index_item(mod_index index, @item it) {
             index.insert(id, ast.mie_item(it));
             let uint variant_idx = 0u;
             for (ast.variant v in variants) {
-                index.insert(v.name,
+                index.insert(v.node.name,
                              ast.mie_tag_variant(it, variant_idx));
                 variant_idx += 1u;
             }
@@ -509,7 +510,7 @@ fn index_stmt(block_index index, @stmt s) {
                             let uint vid = 0u;
                             for (ast.variant v in variants) {
                                 auto t = ast.bie_tag_variant(it, vid);
-                                index.insert(v.name, t);
+                                index.insert(v.node.name, t);
                                 vid += 1u;
                             }
                         }

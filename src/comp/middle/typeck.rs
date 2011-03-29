@@ -656,7 +656,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             // Nullary tag constructors get turned into constants; n-ary tag
             // constructors get turned into functions.
             auto result_ty;
-            if (_vec.len[ast.variant_arg](variant.args) == 0u) {
+            if (_vec.len[ast.variant_arg](variant.node.args) == 0u) {
                 result_ty = plain_ty(ty.ty_tag(tag_id, ty_param_tys));
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
@@ -664,7 +664,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                 auto f = bind getter(sess, id_to_ty_item, type_cache, _);
 
                 let vec[arg] args = vec();
-                for (ast.variant_arg va in variant.args) {
+                for (ast.variant_arg va in variant.node.args) {
                     auto arg_ty = ast_ty_to_ty(f, va.ty);
                     args += vec(rec(mode=ast.alias, ty=arg_ty));
                 }
@@ -673,13 +673,13 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             }
 
             auto tpt = tup(params_opt, result_ty);
-            type_cache.insert(variant.id, tpt);
+            type_cache.insert(variant.node.id, tpt);
 
             auto variant_t = rec(
                 ann=ast.ann_type(result_ty, none[vec[@ty.t]])
-                with variant
+                with variant.node
             );
-            result += vec(variant_t);
+            result += vec(fold.respan[ast.variant_](variant.span, variant_t));
         }
 
         ret result;

@@ -4,6 +4,7 @@ import std.io;
 import std.option;
 import front.ast;
 import front.lexer;
+import util.common;
 import pp.end; import pp.wrd; import pp.space; import pp.line;
 
 const uint indent_unit = 4u;
@@ -59,17 +60,36 @@ impure fn bclose(ps s) {
     end(s.s);
     pp.cwrd(s.s, "}");
 }
-impure fn bclose_c(ps s, util.common.span span) {
+impure fn bclose_c(ps s, common.span span) {
     maybe_print_comment(s, span.hi);
     bclose(s);
 }
-impure fn commasep[IN](ps s, vec[IN] elts, impure fn (ps, &IN) op) {
+impure fn commasep[IN](ps s, vec[IN] elts, impure fn(ps, &IN) op) {
     auto first = true;
     for (IN elt in elts) {
         if (first) {first = false;}
         else {wrd1(s, ",");}
         op(s, elt);
     }
+}
+impure fn commasep_cmnt[IN](ps s, vec[IN] elts, impure fn(ps, &IN) op,
+                            fn(&IN) -> common.span get_span) {
+    auto len = _vec.len[IN](elts);
+    auto i = 0u;
+    for (IN elt in elts) {
+        op(s, elt);
+        i += 1u;
+        if (i < len) {
+            wrd(s.s, ",");
+            if (!maybe_print_line_comment(s, get_span(elt))) {space(s.s);}
+        }
+    }
+}
+impure fn commasep_exprs(ps s, vec[@ast.expr] exprs) {
+    fn expr_span(&@ast.expr expr) -> common.span {ret expr.span;}
+    auto f = print_expr;
+    auto gs = expr_span;
+    commasep_cmnt[@ast.expr](s, exprs, f, gs);
 }
 
 impure fn print_mod(ps s, ast._mod _mod) {
@@ -87,7 +107,7 @@ impure fn print_type(ps s, &@ast.ty ty) {
         case (ast.ty_bool) {wrd(s.s, "bool");}
         case (ast.ty_int) {wrd(s.s, "int");}
         case (ast.ty_uint) {wrd(s.s, "uint");}
-        case (ast.ty_machine(?tm)) {wrd(s.s, util.common.ty_mach_to_str(tm));}
+        case (ast.ty_machine(?tm)) {wrd(s.s, common.ty_mach_to_str(tm));}
         case (ast.ty_char) {wrd(s.s, "char");}
         case (ast.ty_str) {wrd(s.s, "str");}
         case (ast.ty_box(?mt)) {wrd(s.s, "@"); print_mt(s, mt);}
@@ -118,8 +138,16 @@ impure fn print_type(ps s, &@ast.ty ty) {
                 wrd(s.s, f.ident);
                 end(s.s);
             }
+            fn get_span(&ast.ty_field f) -> common.span {
+              // Try to reconstruct the span for this field
+              auto sp = f.mt.ty.span;
+              auto hi = rec(line=sp.hi.line,
+                            col=sp.hi.col + _str.char_len(f.ident) + 1u);
+              ret rec(hi=hi with sp);
+            }
             auto f = print_field;
-            commasep[ast.ty_field](s, fields, f);
+            auto gs = get_span;
+            commasep_cmnt[ast.ty_field](s, fields, f, gs);
             pclose(s);
         }
         case (ast.ty_obj(?methods)) {
@@ -219,18 +247,19 @@ impure fn print_item(ps s, @ast.item item) {
             space(s.s);
             bopen(s);
             for (ast.variant v in variants) {
-                wrd(s.s, v.name);
-                if (_vec.len[ast.variant_arg](v.args) > 0u) {
+                maybe_print_comment(s, v.span.lo);
+                wrd(s.s, v.node.name);
+                if (_vec.len[ast.variant_arg](v.node.args) > 0u) {
                     popen(s);
                     impure fn print_variant_arg(ps s, &ast.variant_arg arg) {
                         print_type(s, arg.ty);
                     }
                     auto f = print_variant_arg;
-                    commasep[ast.variant_arg](s, v.args, f);
+                    commasep[ast.variant_arg](s, v.node.args, f);
                     pclose(s);
                 }
                 wrd(s.s, ";");
-                line(s.s);
+                if (!maybe_print_line_comment(s, v.span)) {line(s.s);}
             }
             bclose_c(s, item.span);
         }
@@ -246,8 +275,10 @@ impure fn print_item(ps s, @ast.item item) {
                 wrd(s.s, field.ident);
                 end(s.s);
             }
+            fn get_span(&ast.obj_field f) -> common.span {ret f.ty.span;}
             auto f = print_field;
-            commasep[ast.obj_field](s, _obj.fields, f);
+            auto gs = get_span;
+            commasep_cmnt[ast.obj_field](s, _obj.fields, f, gs);
             pclose(s);
             space(s.s);
             bopen(s);
@@ -284,25 +315,25 @@ impure fn print_block(ps s, ast.block blk) {
     maybe_print_comment(s, blk.span.lo);
     bopen(s);
     for (@ast.stmt st in blk.node.stmts) {
-        if (cur_line != 0u && blk.span.lo.line > cur_line + 1u) {
+        if (cur_line != 0u && st.span.lo.line > cur_line + 1u) {
             line(s.s);
         }
-        cur_line = blk.span.hi.line;
+        cur_line = st.span.hi.line;
         maybe_print_comment(s, st.span.lo);
         alt (st.node) {
             case (ast.stmt_decl(?decl)) {print_decl(s, decl);}
             case (ast.stmt_expr(?expr)) {print_expr(s, expr);}
         }
         if (front.parser.stmt_ends_with_semi(st)) {wrd(s.s, ";");}
-        if (!maybe_print_stmt_comment(s, st.span)) {line(s.s);}
+        if (!maybe_print_line_comment(s, st.span)) {line(s.s);}
     }
     alt (blk.node.expr) {
         case (option.some[@ast.expr](?expr)) {
-            if (cur_line != 0u && blk.span.lo.line > cur_line + 1u) {
+            if (cur_line != 0u && expr.span.lo.line > cur_line + 1u) {
                 line(s.s);
             }
             print_expr(s, expr);
-            if (!maybe_print_stmt_comment(s, expr.span)) {line(s.s);}
+            if (!maybe_print_line_comment(s, expr.span)) {line(s.s);}
         }
         case (_) {}
     }
@@ -318,17 +349,17 @@ impure fn print_literal(ps s, @ast.lit lit) {
                 + "'");
         }
         case (ast.lit_int(?val)) {
-            wrd(s.s, util.common.istr(val));
+            wrd(s.s, common.istr(val));
         }
         case (ast.lit_uint(?val)) { // FIXME clipping? uistr?
-            wrd(s.s, util.common.istr(val as int) + "u");
+            wrd(s.s, common.istr(val as int) + "u");
         }
         case (ast.lit_float(?fstr)) {
             wrd(s.s, fstr);
         }
         case (ast.lit_mach_int(?mach,?val)) {
-            wrd(s.s, util.common.istr(val as int));
-            wrd(s.s, util.common.ty_mach_to_str(mach));
+            wrd(s.s, common.istr(val as int));
+            wrd(s.s, common.ty_mach_to_str(mach));
         }
         case (ast.lit_nil) {wrd(s.s, "()");}
         case (ast.lit_bool(?val)) {
@@ -339,7 +370,6 @@ impure fn print_literal(ps s, @ast.lit lit) {
 
 impure fn print_expr(ps s, &@ast.expr expr) {
     maybe_print_comment(s, expr.span.lo);
-    auto pe = print_expr;
     hbox(s);
     alt (expr.node) {
         case (ast.expr_vec(?exprs,?mut,_)) {
@@ -348,7 +378,7 @@ impure fn print_expr(ps s, &@ast.expr expr) {
             }
             wrd(s.s, "vec");
             popen(s);
-            commasep[@ast.expr](s, exprs, pe);
+            commasep_exprs(s, exprs);
             pclose(s);
         }
         case (ast.expr_tup(?exprs,_)) {
@@ -358,10 +388,12 @@ impure fn print_expr(ps s, &@ast.expr expr) {
                 print_expr(s, elt.expr);
                 end(s.s);
             }
+            fn get_span(&ast.elt elt) -> common.span {ret elt.expr.span;}
             wrd(s.s, "tup");
             popen(s);
             auto f = printElt;
-            commasep[ast.elt](s, exprs, f);
+            auto gs = get_span;
+            commasep_cmnt[ast.elt](s, exprs, f, gs);
             pclose(s);
         }
         case (ast.expr_rec(?fields,?wth,_)) {
@@ -373,10 +405,14 @@ impure fn print_expr(ps s, &@ast.expr expr) {
                 print_expr(s, field.expr);
                 end(s.s);
             }
+            fn get_span(&ast.field field) -> common.span {
+                ret field.expr.span;
+            }
             wrd(s.s, "rec");
             popen(s);
             auto f = print_field;
-            commasep[ast.field](s, fields, f);
+            auto gs = get_span;
+            commasep_cmnt[ast.field](s, fields, f, gs);
             alt (wth) {
                 case (option.some[@ast.expr](?expr)) {
                     if (_vec.len[ast.field](fields) > 0u) {space(s.s);}
@@ -392,7 +428,7 @@ impure fn print_expr(ps s, &@ast.expr expr) {
         case (ast.expr_call(?func,?args,_)) {
             print_expr(s, func);
             popen(s);
-            commasep[@ast.expr](s, args, pe);
+            commasep_exprs(s, args);
             pclose(s);
         }
         case (ast.expr_bind(?func,?args,_)) {
@@ -598,7 +634,7 @@ impure fn print_expr(ps s, &@ast.expr expr) {
             print_path(s, path);
             if (_vec.len[@ast.expr](args) > 0u) {
                 popen(s);
-                commasep[@ast.expr](s, args, pe);
+                commasep_exprs(s, args);
                 pclose(s);
             }
             // FIXME: extension 'body'
@@ -891,7 +927,7 @@ fn next_comment(ps s) -> option.t[lexer.cmnt] {
     }
 }
 
-impure fn maybe_print_comment(ps s, util.common.pos pos) {
+impure fn maybe_print_comment(ps s, common.pos pos) {
     while (true) {
         alt (next_comment(s)) {
             case (option.some[lexer.cmnt](?cmnt)) {
@@ -907,10 +943,11 @@ impure fn maybe_print_comment(ps s, util.common.pos pos) {
     }
 }
 
-impure fn maybe_print_stmt_comment(ps s, util.common.span span) -> bool {
+impure fn maybe_print_line_comment(ps s, common.span span) -> bool {
     alt (next_comment(s)) {
         case (option.some[lexer.cmnt](?cmnt)) {
-            if (span.hi.line == cmnt.pos.line) {
+            if (span.hi.line == cmnt.pos.line &&
+                span.hi.col + 4u >= cmnt.pos.col) {
                 wrd(s.s, " ");
                 print_comment(s, cmnt.val);
                 s.cur_cmnt += 1u;
