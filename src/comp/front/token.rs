@@ -160,8 +160,9 @@ tag token {
     FN;
     ITER;
 
-    /* Object type */
+    /* Object type and related keywords */
     OBJ;
+    SELF;
 
     /* Comm and task types */
     CHAN;

@@ -883,6 +883,20 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
             ex = ast.expr_chan(e, ast.ann_none);
         }
 
+        case (token.SELF) {
+            p.bump();
+            expect(p, token.DOT);
+            // The rest is a call expression.
+            auto e = parse_bottom_expr(p);
+            auto pf = parse_expr;
+            auto es = parse_seq[@ast.expr](token.LPAREN,
+                                           token.RPAREN,
+                                           some(token.COMMA),
+                                           pf, p);
+            hi = es.span;
+            auto ex = ast.expr_call_self(e, es.node, ast.ann_none);
+        }
+
         case (_) {
             auto lit = parse_lit(p);
             hi = lit.span;
@@ -1646,6 +1660,7 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_tup(_,_))        { ret true; }
                 case (ast.expr_rec(_,_,_))      { ret true; }
                 case (ast.expr_call(_,_,_))     { ret true; }
+                case (ast.expr_call_self(_,_,_)){ ret true; }
                 case (ast.expr_binary(_,_,_,_)) { ret true; }
                 case (ast.expr_unary(_,_,_))    { ret true; }
                 case (ast.expr_lit(_,_))        { ret true; }

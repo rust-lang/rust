@@ -1312,6 +1312,13 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                                  ann_to_type(ann), adk);
             e_1 = ast.expr_call(sube, es, ast.ann_type(t, none[vec[@ty.t]]));
         }
+        case (ast.expr_call_self(?sube, ?es, ?ann)) {
+            auto t = demand_full(fcx, e.span, expected,
+                                 ann_to_type(ann), adk);
+            e_1 = ast.expr_call_self(sube, 
+                                     es, 
+                                     ast.ann_type(t, none[vec[@ty.t]]));
+        }
         case (ast.expr_binary(?bop, ?lhs, ?rhs, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
             e_1 = ast.expr_binary(bop, lhs, rhs,

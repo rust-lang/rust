@@ -757,6 +757,7 @@ fn expr_ty(@ast.expr expr) -> @t {
         case (ast.expr_rec(_, _, ?ann))       { ret ann_to_type(ann); }
         case (ast.expr_bind(_, _, ?ann))      { ret ann_to_type(ann); }
         case (ast.expr_call(_, _, ?ann))      { ret ann_to_type(ann); }
+        case (ast.expr_call_self(_, _, ?ann)) { ret ann_to_type(ann); }
         case (ast.expr_spawn(_, _, _, _, ?ann))
                                               { ret ann_to_type(ann); }
         case (ast.expr_binary(_, _, _, ?ann)) { ret ann_to_type(ann); }

@@ -169,6 +169,7 @@ impure fn new_reader(io.reader rdr, str filename) -> reader
     keywords.insert("any", token.ANY);
 
     keywords.insert("obj", token.OBJ);
+    keywords.insert("self", token.SELF);
 
     keywords.insert("port", token.PORT);
     keywords.insert("chan", token.CHAN);
