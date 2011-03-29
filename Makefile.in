@@ -72,7 +72,7 @@ endif
 CFG_LDPATH :=$(CFG_BUILD_DIR)/rt
 CFG_LDPATH :=$(CFG_LDPATH):$(CFG_BUILD_DIR)/rustllvm
 CFG_TESTLIB=$(dir $(firstword $(1))):$(patsubst .%,%,$(suffix $(1)))
-CFG_EXE_TESTLIB=$(call CFG_TESTLIB,$(patsubst %.exe,%))
+CFG_EXE_TESTLIB=$(call CFG_TESTLIB,$(patsubst %.exe,%,$(1)))
 
 ifdef CFG_WINDOWSY
   CFG_INFO := $(info cfg: windows-y environment)
