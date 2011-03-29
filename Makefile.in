@@ -583,6 +583,9 @@ ifdef CFG_WINDOWSY
 TEST_XFAILS_BOOT += $(S)src/test/run-pass/native-mod.rc
 TEST_XFAILS_STAGE0 += $(S)src/test/run-pass/native-mod.rc
 endif
+ifeq ($(CFG_OSTYPE), Darwin)
+TEST_XFAILS_STAGE0 += $(S)src/test/bench/shootout/nbody.rs
+endif
 
 BENCH_RS = $(wildcard $(S)src/test/bench/shootout/*.rs) \
             $(wildcard $(S)src/test/bench/99-bottles/*.rs)
