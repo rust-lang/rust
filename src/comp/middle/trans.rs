@@ -955,15 +955,16 @@ fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> result {
     auto cxx = cx.fcx.ccx;
     auto lltaskptr = cx.build.PtrToInt(cx.fcx.lltaskptr, T_int());
     auto args2 = vec(lltaskptr) + args;
-    auto t = trans_native(cx.build, cxx.glues, lltaskptr,
-                          cxx.externs, cxx.tn, cxx.llmod, name, true, args2);
+    auto t = trans_native_call(cx.build, cxx.glues, lltaskptr,
+                               cxx.externs, cxx.tn, cxx.llmod, name,
+                               true, args2);
     ret res(cx, t);
 }
 
-fn trans_native(builder b, @glue_fns glues, ValueRef lltaskptr,
-                &hashmap[str, ValueRef] externs,
-                type_names tn, ModuleRef llmod, str name,
-                bool pass_task, vec[ValueRef] args) -> ValueRef {
+fn trans_native_call(builder b, @glue_fns glues, ValueRef lltaskptr,
+                     &hashmap[str, ValueRef] externs,
+                     type_names tn, ModuleRef llmod, str name,
+                     bool pass_task, vec[ValueRef] args) -> ValueRef {
     let int n = (_vec.len[ValueRef](args) as int);
     let ValueRef llnative = get_simple_extern_fn(externs, llmod, name, n);
     llnative = llvm.LLVMConstPointerCast(llnative, T_int());
@@ -6023,7 +6024,7 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
             arg_n += 1u;
         }
 
-        r = trans_native(bcx.build, cx.glues, lltaskptr, cx.externs,
+        r = trans_native_call(bcx.build, cx.glues, lltaskptr, cx.externs,
                               cx.tn, cx.llmod, name, pass_task, call_args);
         rptr = bcx.build.BitCast(fcx.llretptr, T_ptr(T_i32()));
     }
@@ -6173,7 +6174,6 @@ fn collect_tag_ctors(@crate_ctxt cx, @ast.crate crate) {
     fold.fold_crate[@crate_ctxt](cx, fld, crate);
 }
 
-
 // The constant translation pass.
 
 fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
@@ -6263,8 +6263,8 @@ fn trans_exit_task_glue(@glue_fns glues,
     auto build = new_builder(entrybb);
     auto tptr = build.PtrToInt(lltaskptr, T_int());
     auto V_args2 = vec(tptr) + V_args;
-    trans_native(build, glues, lltaskptr,
-                 externs, tn, llmod, "upcall_exit", true, V_args2);
+    trans_native_call(build, glues, lltaskptr,
+                      externs, tn, llmod, "upcall_exit", true, V_args2);
     build.RetVoid();
 }
 
