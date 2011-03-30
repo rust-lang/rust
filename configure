@@ -4,6 +4,12 @@ msg() {
     echo "configure: $1"
 }
 
+step_msg() {
+    msg
+    msg "$1"
+    msg
+}
+
 err() {
     echo "configure: error: $1"
     exit 1
@@ -67,6 +73,44 @@ probe_need() {
     fi
 }
 
+opt() {
+    local OP=$1
+    local DEFAULT=$2
+    shift
+    shift
+    local DOC="$*"
+    local FLAG=""
+
+    if [ $DEFAULT -eq 0 ]
+    then
+        FLAG="enable"
+    else
+        FLAG="disable"
+        DOC="don't $DOC"
+    fi
+
+    if [ $HELP -eq 0 ]
+    then
+        for arg in $CFG_CONFIGURE_ARGS
+        do
+            if [ "$arg" = "--${FLAG}-${OP}" ]
+            then
+                OP=$(echo $OP | tr 'a-z' 'A-Z')
+                FLAG=$(echo $FLAG | tr 'a-z' 'A-Z')
+                local V="CFG_${FLAG}_${OP}"
+                eval $V=1
+                putvar $V
+            fi
+        done
+    else
+        if [ ! -z "$META" ]
+        then
+            OP="$OP=<$META>"
+        fi
+        printf "    --%-30s %s\n" "$FLAG-$OP" "$DOC"
+     fi
+}
+
 msg "looking for configure programs"
 need_cmd mkdir
 need_cmd printf
@@ -84,16 +128,40 @@ msg "inspecting environment"
 CFG_OSTYPE=$(uname -s)
 CFG_CPUTYPE=$(uname -m)
 
-CFG_SELF=$(echo $0 | tr '\' '/')
+CFG_SELF=$(echo $0 | tr '\\' '/')
 CFG_SRC_DIR=${CFG_SELF%${CFG_SELF##*/}}
-CFG_BUILD_DIR=$(echo $PWD | tr '\' '/')
+CFG_BUILD_DIR=$(echo $PWD | tr '\\' '/')
 CFG_CONFIGURE_ARGS="$@"
 
+OPTIONS=""
+HELP=0
+if [ "$1" = "--help" ]
+then
+    HELP=1
+    shift
+    echo ""
+    echo "Usage: $CFG_SELF [options]"
+    echo ""
+    echo "Options:"
+    echo ""
+else
+    msg "recreating config.mk"
+    echo '' >config.mk
 
-msg "recreating config.mk"
-echo '' >config.mk
+    step_msg "processing $CFG_SELF args"
+fi
 
-msg "making directories"
+opt valgrind 1 "run tests with valgrind"
+opt docs     1 "build documentation"
+
+
+if [ $HELP -eq 1 ]
+then
+    echo ""
+    exit 0
+fi
+
+step_msg "making directories"
 for i in \
     doc \
     boot/fe boot/me boot/be boot/driver boot/util \
@@ -106,13 +174,14 @@ do
     make_dir $i
 done
 
+step_msg "writing out basic parameters"
 putvar CFG_SRC_DIR
 putvar CFG_BUILD_DIR
 putvar CFG_OSTYPE
 putvar CFG_CPUTYPE
 putvar CFG_CONFIGURE_ARGS
 
-msg "looking for build programs"
+step_msg "looking for build programs"
 probe_need CFG_GCC          gcc
 probe_need CFG_GIT          git
 probe_need CFG_OCAMLC       ocamlc
@@ -160,7 +229,7 @@ fi
 
 case $CFG_LLVM_VERSION in
     (3.0svn | 3.0)
-    msg "found ok version of LLVM: $CFG_LLVM_VERSION"
+    step_msg "found ok version of LLVM: $CFG_LLVM_VERSION"
     ;;
     (*)
     err "bad LLVM version: $CFG_LLVM_VERSION, need >=3.0svn"
@@ -181,4 +250,4 @@ rm -f config.mk.bak
 
 copy ${CFG_SRC_DIR}Makefile.in ./Makefile
 
-echo "configure: complete"
+step_msg "complete"

@@ -162,14 +162,14 @@ else
   $(info cfg: have only ocaml bytecode compiler)
 endif
 
-ifdef BOOT_PROFILE
-  $(info cfg: forcing native bootstrap compiler (BOOT_PROFILE))
+ifdef CFG_BOOT_PROFILE
+  $(info cfg: forcing native bootstrap compiler (CFG_BOOT_PROFILE))
   CFG_BOOT_NATIVE := 1
   CFG_OCAMLOPT_PROFILE_FLAGS := -p
 endif
 
-ifdef BOOT_DEBUG
-  $(info cfg: forcing bytecode bootstrap compiler (DEBUG))
+ifdef CFG_BOOT_DEBUG
+  $(info cfg: forcing bytecode bootstrap compiler (CFG_BOOT_DEBUG))
   CFG_BOOT_NATIVE :=
 endif
 
@@ -179,8 +179,8 @@ else
   $(info cfg: building bytecode bootstrap compiler)
 endif
 
-ifdef NO_VALGRIND
-  $(info cfg: disabling valgrind (NO_VALGRIND))
+ifdef CFG_DISABLE_VALGRIND
+  $(info cfg: disabling valgrind (CFG_DISABLE_VALGRIND))
   CFG_VALGRIND :=
 endif
 
@@ -201,6 +201,10 @@ else
   endif
 endif
 
+ifdef CFG_DISABLE_DOCS
+  $(info cfg: disabling doc build (CFG_DISABLE_DOCS))
+  DOCS :=
+endif
 
 ######################################################################
 # Target-and-rule "utility variables"
