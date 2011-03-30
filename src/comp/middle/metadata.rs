@@ -123,7 +123,7 @@ fn sty_str(ty.sty st, def_str ds) -> str {
         }
         case (ty.ty_var(?id)) {ret "X" + common.istr(id);}
         case (ty.ty_native) {ret "E";}
-        case (ty.ty_param(?def)) {ret "p" + ds(def);}
+        case (ty.ty_param(?def)) {ret "p" + ds(def) + "|";}
         case (ty.ty_type) {ret "Y";}
     }
 }

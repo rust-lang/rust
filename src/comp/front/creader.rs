@@ -84,6 +84,15 @@ impure fn parse_mt(@pstate st, str_def sd) -> ty.mt {
     ret rec(ty=parse_ty(st, sd), mut=mut);
 }
 
+impure fn parse_def(@pstate st, str_def sd) -> ast.def_id {
+    auto def = "";
+    while (peek(st) as char != '|') {
+        def += _str.unsafe_from_byte(next(st));
+    }
+    st.pos = st.pos + 1u;
+    ret sd(def);
+}
+
 impure fn parse_sty(@pstate st, str_def sd) -> ty.sty {
     alt (next(st) as char) {
         case ('n') {ret ty.ty_nil;}
@@ -109,18 +118,15 @@ impure fn parse_sty(@pstate st, str_def sd) -> ty.sty {
         case ('s') {ret ty.ty_str;}
         case ('t') {
             check(next(st) as char == '[');
-            auto def = "";
-            while (peek(st) as char != '|') {
-                def += _str.unsafe_from_byte(next(st));
-            }
-            st.pos = st.pos + 1u;
+            auto def = parse_def(st, sd);
             let vec[@ty.t] params = vec();
             while (peek(st) as char != ']') {
                 params += vec(parse_ty(st, sd));
             }
             st.pos = st.pos + 1u;
-            ret ty.ty_tag(sd(def), params);
+            ret ty.ty_tag(def, params);
         }
+        case ('p') {ret ty.ty_param(parse_def(st, sd));}
         case ('@') {ret ty.ty_box(parse_mt(st, sd));}
         case ('V') {ret ty.ty_vec(parse_mt(st, sd));}
         case ('P') {ret ty.ty_port(parse_ty(st, sd));}
