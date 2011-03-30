@@ -150,8 +150,8 @@ rust_task::start(uintptr_t exit_task_glue,
     rust_sp -= sizeof(uintptr_t);
 
     // NB: Darwin needs "16-byte aligned" stacks *at the point of the call
-    // instruction in the caller*. This means that the address at which a
-    // retpc is pushed must always be 16-byte aligned.
+    // instruction in the caller*. This means that the address at which the
+    // word before retpc is pushed must always be 16-byte aligned.
     //
     // see: "Mac OS X ABI Function Call Guide"
 
@@ -168,11 +168,11 @@ rust_task::start(uintptr_t exit_task_glue,
 
 
     // The exit_task_glue frame we synthesize above the frame we activate:
-    make_aligned_room_for_bytes(spp, 3 * sizeof(uintptr_t));
+    make_aligned_room_for_bytes(spp, 2 * sizeof(uintptr_t));
     *spp-- = (uintptr_t) 0;          // closure-or-obj
     *spp-- = (uintptr_t) this;       // task
-    *spp-- = (uintptr_t) 0x0;        // output
     I(dom, spp == align_down(spp));
+    *spp-- = (uintptr_t) 0x0;        // output
     *spp-- = (uintptr_t) 0x0;        // retpc
 
     uintptr_t exit_task_frame_base;
@@ -198,9 +198,9 @@ rust_task::start(uintptr_t exit_task_glue,
 
     I(dom, args);
     if (spawnee_abi == ABI_X86_RUSTBOOT_CDECL)
-        make_aligned_room_for_bytes(spp, callsz);
+        make_aligned_room_for_bytes(spp, callsz - sizeof(uintptr_t));
     else
-        make_aligned_room_for_bytes(spp, callsz - 2 * sizeof(uintptr_t));
+        make_aligned_room_for_bytes(spp, callsz - 3 * sizeof(uintptr_t));
 
     // Copy args from spawner to spawnee.
     uintptr_t *src = (uintptr_t *)args;
@@ -233,7 +233,7 @@ rust_task::start(uintptr_t exit_task_glue,
         I(dom, spawnee_abi == ABI_X86_RUSTC_FASTCALL);
     }
 
-    I(dom, spp == align_down(spp));
+    I(dom, spp+1 == align_down(spp+1));
     *spp-- = (uintptr_t) exit_task_glue;  // retpc
 
     // The context the activate_glue needs to switch stack.
