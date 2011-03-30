@@ -20,6 +20,7 @@ tag scope {
     scope_crate(@ast.crate);
     scope_item(@ast.item);
     scope_native_item(@ast.native_item);
+    scope_external_mod(ast.def_id, vec[ast.ident]);
     scope_loop(@ast.decl); // there's only 1 decl per loop.
     scope_block(ast.block);
     scope_arm(ast.arm);
@@ -37,6 +38,8 @@ tag def_wrap {
     def_wrap_import(@ast.view_item);
     def_wrap_mod(@ast.item);
     def_wrap_native_mod(@ast.item);
+    def_wrap_external_mod(ast.def_id);
+    def_wrap_external_native_mod(ast.def_id);
     def_wrap_other(def);
     def_wrap_expr_field(uint, def);
     def_wrap_resolving;
@@ -79,6 +82,12 @@ fn unwrap_def(def_wrap d) -> def {
                 }
             }
         }
+        case (def_wrap_external_mod(?mod_id)) {
+            ret ast.def_mod(mod_id);
+        }
+        case (def_wrap_external_native_mod(?mod_id)) {
+            ret ast.def_native_mod(mod_id);
+        }
         case (def_wrap_other(?d)) {
             ret d;
         }
@@ -96,6 +105,30 @@ fn lookup_name(&env e, ast.ident i) -> option.t[def] {
         }
         case (some[tup(@env, def_wrap)](?d)) {
             ret some(unwrap_def(d._1));
+        }
+    }
+}
+
+fn lookup_external_def(session.session sess, int cnum, vec[ident] idents)
+        -> option.t[def_wrap] {
+    alt (creader.lookup_def(sess, cnum, idents)) {
+        case (none[ast.def]) {
+            ret none[def_wrap];
+        }
+        case (some[ast.def](?def)) {
+            auto dw;
+            alt (def) {
+                case (ast.def_mod(?mod_id)) {
+                    dw = def_wrap_external_mod(mod_id);
+                }
+                case (ast.def_native_mod(?mod_id)) {
+                    dw = def_wrap_external_native_mod(mod_id);
+                }
+                case (_) {
+                    dw = def_wrap_other(def);
+                }
+            }
+            ret some[def_wrap](dw);
         }
     }
 }
@@ -136,12 +169,43 @@ fn find_final_def(&env e, import_map index,
             }
         }
 
+        // TODO: Refactor with above.
+        fn found_external_mod(&env e, &import_map index, &span sp,
+                              vec[ident] idents, ast.def_id mod_id)
+                -> def_wrap {
+            auto len = _vec.len[ident](idents);
+            auto rest_idents = _vec.slice[ident](idents, 1u, len);
+            auto empty_e = rec(scopes = nil[scope], sess = e.sess);
+            auto tmp_e = update_env_for_external_mod(empty_e, mod_id, idents);
+            auto next_i = rest_idents.(0);
+            auto next_ = lookup_name_wrapped(tmp_e, next_i);
+            alt (next_) {
+                case (none[tup(@env, def_wrap)]) {
+                    e.sess.span_err(sp, "unresolved name: " + next_i);
+                    fail;
+                }
+                case (some[tup(@env, def_wrap)](?next)) {
+                    auto combined_e = update_env_for_external_mod(e,
+                                                                  mod_id,
+                                                                  idents);
+                    ret found_something(combined_e, index, sp,
+                                        rest_idents, next._1);
+                }
+            }
+        }
+
         fn found_crate(&env e, &import_map index, &span sp,
                        vec[ident] idents, int cnum) -> def_wrap {
             auto len = _vec.len[ident](idents);
             auto rest_idents = _vec.slice[ident](idents, 1u, len);
-            auto def = creader.lookup_def(e.sess, sp, cnum, rest_idents);
-            ret def_wrap_other(def);
+            alt (lookup_external_def(e.sess, cnum, rest_idents)) {
+                case (none[def_wrap]) {
+                    e.sess.span_err(sp, #fmt("unbound name '%s'",
+                                             _str.connect(idents, ".")));
+                    fail;
+                }
+                case (some[def_wrap](?dw)) { ret dw; }
+            }
         }
 
         alt (d) {
@@ -167,6 +231,12 @@ fn find_final_def(&env e, import_map index,
             }
             case (def_wrap_native_mod(?i)) {
                 ret found_mod(e, index, sp, idents, i);
+            }
+            case (def_wrap_external_mod(?mod_id)) {
+                ret found_external_mod(e, index, sp, idents, mod_id);
+            }
+            case (def_wrap_external_native_mod(?mod_id)) {
+                ret found_external_mod(e, index, sp, idents, mod_id);
             }
             case (def_wrap_use(?vi)) {
                 alt (vi.node) {
@@ -390,7 +460,8 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
         }
     }
 
-    fn in_scope(ast.ident i, &scope s) -> option.t[def_wrap] {
+    fn in_scope(&session.session sess, ast.ident i, &scope s)
+            -> option.t[def_wrap] {
         alt (s) {
 
             case (scope_crate(?c)) {
@@ -450,6 +521,10 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
                 }
             }
 
+            case (scope_external_mod(?mod_id, ?path)) {
+                ret lookup_external_def(sess, mod_id._0, path);
+            }
+
             case (scope_loop(?d)) {
                 alt (d.node) {
                     case (ast.decl_local(?local)) {
@@ -483,7 +558,7 @@ fn lookup_name_wrapped(&env e, ast.ident i) -> option.t[tup(@env, def_wrap)] {
             ret none[tup(@env, def_wrap)];
         }
         case (cons[scope](?hd, ?tl)) {
-            auto x = in_scope(i, hd);
+            auto x = in_scope(e.sess, i, hd);
             alt (x) {
                 case (some[def_wrap](?x)) {
                     ret some(tup(@e, x));
@@ -611,6 +686,15 @@ fn update_env_for_item(&env e, @ast.item i) -> env {
 
 fn update_env_for_native_item(&env e, @ast.native_item i) -> env {
     ret rec(scopes = cons[scope](scope_native_item(i), @e.scopes) with e);
+}
+
+// Not actually called by fold, but here since this is analogous to
+// update_env_for_item() above and is called by find_final_def().
+fn update_env_for_external_mod(&env e, ast.def_id mod_id,
+                               vec[ast.ident] idents) -> env {
+    ret rec(scopes = cons[scope](scope_external_mod(mod_id, idents),
+                                 @e.scopes)
+            with e);
 }
 
 fn update_env_for_block(&env e, &ast.block b) -> env {

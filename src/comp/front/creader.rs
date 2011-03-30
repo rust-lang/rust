@@ -540,18 +540,15 @@ fn read_crates(session.session sess,
 
 // Crate metadata queries
 
-fn lookup_def(session.session sess, &span sp, int cnum, vec[ast.ident] path)
-        -> ast.def {
+fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
+        -> option.t[ast.def] {
     auto data = sess.get_external_crate(cnum);
 
     auto did;
     alt (resolve_path(path, data)) {
         case (rr_ok(?di)) { did = di; }
         case (rr_not_found(?prev, ?name)) {
-            sess.span_err(sp,
-                #fmt("unbound name '%s' (no item named '%s' found in '%s')",
-                     _str.connect(path, "."), name, _str.connect(prev, ".")));
-            fail;
+            ret none[ast.def];
         }
     }
 
@@ -561,21 +558,24 @@ fn lookup_def(session.session sess, &span sp, int cnum, vec[ast.ident] path)
     did = tup(cnum, did._1);
 
     // FIXME: It'd be great if we had u8 char literals.
-    if (kind_ch == ('c' as u8))      { ret ast.def_const(did);      }
-    else if (kind_ch == ('f' as u8)) { ret ast.def_fn(did);         }
-    else if (kind_ch == ('y' as u8)) { ret ast.def_ty(did);         }
-    else if (kind_ch == ('o' as u8)) { ret ast.def_obj(did);        }
-    else if (kind_ch == ('t' as u8)) { ret ast.def_ty(did);         }
-    else if (kind_ch == ('m' as u8)) { ret ast.def_mod(did);        }
-    else if (kind_ch == ('n' as u8)) { ret ast.def_native_mod(did); }
+    auto def;
+    if (kind_ch == ('c' as u8))      { def = ast.def_const(did);        }
+    else if (kind_ch == ('f' as u8)) { def = ast.def_fn(did);           }
+    else if (kind_ch == ('y' as u8)) { def = ast.def_ty(did);           }
+    else if (kind_ch == ('o' as u8)) { def = ast.def_obj(did);          }
+    else if (kind_ch == ('t' as u8)) { def = ast.def_ty(did);           }
+    else if (kind_ch == ('m' as u8)) { def = ast.def_mod(did);          }
+    else if (kind_ch == ('n' as u8)) { def = ast.def_native_mod(did);   }
     else if (kind_ch == ('v' as u8)) {
         auto tid = get_variant_tag_id(ebml_r);
         tid = tup(cnum, tid._1);
-        ret ast.def_variant(tid, did);
+        def = ast.def_variant(tid, did);
+    } else {
+        log #fmt("lookup_def(): unknown kind char: %d", kind_ch as int);
+        fail;
     }
 
-    log #fmt("lookup_def(): unknown kind char: %d", kind_ch as int);
-    fail;
+    ret some[ast.def](def);
 }
 
 fn get_type(session.session sess, ast.def_id def) -> ty.ty_params_and_ty {
