@@ -6087,14 +6087,29 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             cx.consts.insert(cid, g);
         }
 
+        case (ast.item_fn(_, _, _, ?did, _)) {
+            // handled below
+        }
+
         case (ast.item_mod(?name, ?m, ?mid)) {
             cx.items.insert(mid, i);
+        }
+
+        case (ast.item_native_mod(_, _, _)) {
+            // empty
+        }
+
+        case (ast.item_ty(_, _, _, ?did, _)) {
+            cx.items.insert(did, i);
         }
 
         case (ast.item_tag(?name, ?variants, ?tps, ?tag_id)) {
             cx.items.insert(tag_id, i);
         }
-        case (_) { /* fall through */ }
+
+        case (ast.item_obj(_, _, _, ?did, _)) {
+            // handled below
+        }
     }
     ret extend_path(cx, item_name(i));
 }
