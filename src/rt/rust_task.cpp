@@ -58,6 +58,21 @@ align_down(uintptr_t sp)
     return sp & ~(16 - 1);
 }
 
+static uintptr_t*
+align_down(uintptr_t* sp)
+{
+    return (uintptr_t*) align_down((uintptr_t)sp);
+}
+
+
+static void
+make_aligned_room_for_bytes(uintptr_t*& sp, size_t n)
+{
+    uintptr_t tmp = (uintptr_t) sp;
+    tmp = align_down(tmp - n) + n;
+    sp = (uintptr_t*) tmp;
+}
+
 
 rust_task::rust_task(rust_dom *dom, rust_task_list *state,
                      rust_task *spawner, const char *name) :
@@ -131,9 +146,15 @@ rust_task::start(uintptr_t exit_task_glue,
     dom->logptr("exit-task glue", exit_task_glue);
     dom->logptr("from spawnee", spawnee_fn);
 
-    // Set sp to last uintptr_t-sized cell of segment and align down.
+    // Set sp to last uintptr_t-sized cell of segment
     rust_sp -= sizeof(uintptr_t);
-    rust_sp = align_down(rust_sp);
+
+    // NB: Darwin needs "16-byte aligned" stacks *at the point of the call
+    // instruction in the caller*. This means that the address at which a
+    // retpc is pushed must always be 16-byte aligned.
+    //
+    // see: "Mac OS X ABI Function Call Guide"
+
 
     // Begin synthesizing frames. There are two: a "fully formed"
     // exit-task frame at the top of the stack -- that pretends to be
@@ -145,10 +166,13 @@ rust_task::start(uintptr_t exit_task_glue,
     // frame when it's done, and exit.
     uintptr_t *spp = (uintptr_t *)rust_sp;
 
+
     // The exit_task_glue frame we synthesize above the frame we activate:
+    make_aligned_room_for_bytes(spp, 3 * sizeof(uintptr_t));
     *spp-- = (uintptr_t) 0;          // closure-or-obj
     *spp-- = (uintptr_t) this;       // task
     *spp-- = (uintptr_t) 0x0;        // output
+    I(dom, spp == align_down(spp));
     *spp-- = (uintptr_t) 0x0;        // retpc
 
     uintptr_t exit_task_frame_base;
@@ -172,27 +196,28 @@ rust_task::start(uintptr_t exit_task_glue,
         *spp-- = (uintptr_t) 0;                // frame_glue_fns
     }
 
+    I(dom, args);
+    if (spawnee_abi == ABI_X86_RUSTBOOT_CDECL)
+        make_aligned_room_for_bytes(spp, callsz);
+    else
+        make_aligned_room_for_bytes(spp, callsz - 2 * sizeof(uintptr_t));
+
     // Copy args from spawner to spawnee.
-    if (args)  {
-        uintptr_t *src = (uintptr_t *)args;
-        src += 1;                  // spawn-call output slot
-        src += 1;                  // spawn-call task slot
-        src += 1;                  // spawn-call closure-or-obj slot
+    uintptr_t *src = (uintptr_t *)args;
+    src += 1;                  // spawn-call output slot
+    src += 1;                  // spawn-call task slot
+    src += 1;                  // spawn-call closure-or-obj slot
 
-        // Undo previous sp-- so we're pointing at the last word pushed.
-        ++spp;
+    // Undo previous sp-- so we're pointing at the last word pushed.
+    ++spp;
 
-        // Memcpy all but the task, output and env pointers
-        callsz -= (3 * sizeof(uintptr_t));
-        spp = (uintptr_t*) (((uintptr_t)spp) - callsz);
-        memcpy(spp, src, callsz);
+    // Memcpy all but the task, output and env pointers
+    callsz -= (3 * sizeof(uintptr_t));
+    spp = (uintptr_t*) (((uintptr_t)spp) - callsz);
+    memcpy(spp, src, callsz);
 
-        // Move sp down to point to last implicit-arg cell (env).
-        spp--;
-    } else {
-        // We're at root, starting up.
-        I(dom, callsz==0);
-    }
+    // Move sp down to point to last implicit-arg cell (env).
+    spp--;
 
     // The *implicit* incoming args to the spawnee frame we're
     // activating:
@@ -208,6 +233,7 @@ rust_task::start(uintptr_t exit_task_glue,
         I(dom, spawnee_abi == ABI_X86_RUSTC_FASTCALL);
     }
 
+    I(dom, spp == align_down(spp));
     *spp-- = (uintptr_t) exit_task_glue;  // retpc
 
     // The context the activate_glue needs to switch stack.

@@ -6272,7 +6272,7 @@ fn trans_exit_task_glue(@glue_fns glues,
     let vec[ValueRef] V_args = vec();
 
     auto llfn = glues.exit_task_glue;
-    let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 3u);
+    let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 4u);
 
     auto entrybb = llvm.LLVMAppendBasicBlock(llfn, _str.buf("entry"));
     auto build = new_builder(entrybb);
@@ -6731,6 +6731,7 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
               */
              exit_task_glue = decl_cdecl_fn(llmod, abi.exit_task_glue_name(),
                                             T_fn(vec(T_int(),
+                                                     T_int(),
                                                      T_int(),
                                                      T_int(),
                                                      T_taskptr(tn)),
