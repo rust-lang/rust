@@ -432,7 +432,7 @@ impure fn print_expr(ps s, &@ast.expr expr) {
             pclose(s);
         }
         case (ast.expr_call_self(?func,?args,_)) {
-            wrd(s, "self.");
+            wrd(s.s, "self.");
             print_expr(s, func);
             popen(s);
             commasep_exprs(s, args);
