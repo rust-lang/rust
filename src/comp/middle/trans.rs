@@ -764,6 +764,24 @@ fn type_of_arg(@crate_ctxt cx, &ty.arg arg) -> TypeRef {
     ret typ;
 }
 
+fn type_of_ty_params_opt_and_ty(@crate_ctxt ccx, ty.ty_params_opt_and_ty tpt)
+        -> TypeRef {
+    alt (tpt._1.struct) {
+        case (ty.ty_fn(?proto, ?inputs, ?output)) {
+            auto ty_params = option.get[vec[ast.def_id]](tpt._0);
+            auto ty_param_count = _vec.len[ast.def_id](ty_params);
+            auto llfnty = type_of_fn(ccx, proto, inputs, output,
+                                     ty_param_count);
+            ret T_fn_pair(ccx.tn, llfnty);
+        }
+        case (_) {
+            // fall through
+        }
+    }
+    ret type_of(ccx, tpt._1);
+}
+
+
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
 
@@ -3570,14 +3588,30 @@ fn lval_val(@block_ctxt cx, ValueRef val) -> lval_result {
             llobj=none[ValueRef]);
 }
 
+fn trans_external_path(@block_ctxt cx, ast.def_id did,
+                       ty.ty_params_opt_and_ty tpt) -> lval_result {
+    auto ccx = cx.fcx.ccx;
+    auto name = creader.get_symbol(ccx.sess, did);
+    auto v = get_extern_const(ccx.externs, ccx.llmod,
+                              name, type_of_ty_params_opt_and_ty(ccx, tpt));
+    ret lval_val(cx, v);
+}
+
 fn lval_generic_fn(@block_ctxt cx,
                    ty.ty_params_and_ty tpt,
                    ast.def_id fn_id,
                    &ast.ann ann)
-    -> lval_result {
-
-    check (cx.fcx.ccx.fn_pairs.contains_key(fn_id));
-    auto lv = lval_val(cx, cx.fcx.ccx.fn_pairs.get(fn_id));
+        -> lval_result {
+    auto lv;
+    if (cx.fcx.ccx.sess.get_targ_crate_num() == fn_id._0) {
+        // Internal reference.
+        check (cx.fcx.ccx.fn_pairs.contains_key(fn_id));
+        lv = lval_val(cx, cx.fcx.ccx.fn_pairs.get(fn_id));
+    } else {
+        // External reference.
+        auto tpot = tup(some[vec[ast.def_id]](tpt._0), tpt._1);
+        lv = trans_external_path(cx, fn_id, tpot);
+    }
 
     auto monoty;
     auto tys;
@@ -3609,22 +3643,10 @@ fn lval_generic_fn(@block_ctxt cx,
     ret lv;
 }
 
-fn trans_external_path(@block_ctxt cx, &ast.path p,
-                       ast.def def, ast.ann a) -> lval_result {
-    // FIXME: This isn't generic-safe.
-    auto ccx = cx.fcx.ccx;
-    auto ty = node_ann_type(ccx, a);
-    auto name = creader.get_symbol(ccx.sess, ast.def_id_of_def(def));
-    auto v = get_extern_const(ccx.externs, ccx.llmod,
-                              name, type_of(ccx, ty));
-    ret lval_mem(cx, v);
-}
-
 fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
               &ast.ann ann) -> lval_result {
     alt (dopt) {
         case (some[ast.def](?def)) {
-
             alt (def) {
                 case (ast.def_arg(?did)) {
                     alt (cx.fcx.llargs.find(did)) {
@@ -3657,13 +3679,11 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     ret lval_mem(cx, cx.fcx.llobjfields.get(did));
                 }
                 case (ast.def_fn(?did)) {
-                    check (cx.fcx.ccx.items.contains_key(did));
                     auto tyt = ty.lookup_generic_item_type(cx.fcx.ccx.sess,
                         cx.fcx.ccx.type_cache, did);
                     ret lval_generic_fn(cx, tyt, did, ann);
                 }
                 case (ast.def_obj(?did)) {
-                    check (cx.fcx.ccx.items.contains_key(did));
                     auto tyt = ty.lookup_generic_item_type(cx.fcx.ccx.sess,
                         cx.fcx.ccx.type_cache, did);
                     ret lval_generic_fn(cx, tyt, did, ann);
@@ -3717,7 +3737,6 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     ret lval_mem(cx, cx.fcx.ccx.consts.get(did));
                 }
                 case (ast.def_native_fn(?did)) {
-                    check (cx.fcx.ccx.native_items.contains_key(did));
                     auto tyt = ty.lookup_generic_item_type(cx.fcx.ccx.sess,
                         cx.fcx.ccx.type_cache, did);
                     ret lval_generic_fn(cx, tyt, did, ann);
