@@ -548,6 +548,7 @@ fn kind_has_type_params(u8 kind_ch) -> bool {
     // FIXME: It'd be great if we had u8 char literals.
     if (kind_ch == ('c' as u8))      { ret false; }
     else if (kind_ch == ('f' as u8)) { ret true;  }
+    else if (kind_ch == ('y' as u8)) { ret true;  }
     else if (kind_ch == ('o' as u8)) { ret true;  }
     else if (kind_ch == ('t' as u8)) { ret true;  }
     else if (kind_ch == ('m' as u8)) { ret false; }
@@ -582,12 +583,15 @@ fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
 
     // FIXME: It'd be great if we had u8 char literals.
     auto def;
-    if (kind_ch == ('c' as u8))      { def = ast.def_const(did);        }
-    else if (kind_ch == ('f' as u8)) { def = ast.def_fn(did);           }
-    else if (kind_ch == ('o' as u8)) { def = ast.def_obj(did);          }
-    else if (kind_ch == ('t' as u8)) { def = ast.def_ty(did);           }
-    else if (kind_ch == ('m' as u8)) { def = ast.def_mod(did);          }
-    else if (kind_ch == ('n' as u8)) { def = ast.def_native_mod(did);   }
+    if (kind_ch == ('c' as u8))         { def = ast.def_const(did);      }
+    else if (kind_ch == ('f' as u8))    { def = ast.def_fn(did);         }
+    else if (kind_ch == ('y' as u8))    { def = ast.def_ty(did);         }
+    else if (kind_ch == ('o' as u8))    { def = ast.def_obj(did);        }
+    else if (kind_ch == ('t' as u8)) {
+        // We treat references to tags as references to types.
+        def = ast.def_ty(did);
+    } else if (kind_ch == ('m' as u8))  { def = ast.def_mod(did);        }
+    else if (kind_ch == ('n' as u8))    { def = ast.def_native_mod(did); }
     else if (kind_ch == ('v' as u8)) {
         auto tid = get_variant_tag_id(ebml_r);
         tid = tup(cnum, tid._1);
