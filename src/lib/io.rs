@@ -345,6 +345,7 @@ type writer =
           impure fn write_bytes(vec[u8] bytes);
           impure fn write_le_uint(uint n, uint size);
           impure fn write_le_int(int n, uint size);
+          impure fn write_be_uint(uint n, uint size);
     };
 
 fn uint_to_le_bytes(uint n, uint size) -> vec[u8] {
@@ -353,6 +354,16 @@ fn uint_to_le_bytes(uint n, uint size) -> vec[u8] {
         bytes += vec((n & 255u) as u8);
         n >>= 8u;
         size -= 1u;
+    }
+    ret bytes;
+}
+
+fn uint_to_be_bytes(uint n, uint size) -> vec[u8] {
+    let vec[u8] bytes = vec();
+    auto i = (size - 1u) as int;
+    while (i >= 0) {
+        bytes += vec(((n >> ((i * 8) as uint)) & 255u) as u8);
+        i -= 1;
     }
     ret bytes;
 }
@@ -382,6 +393,9 @@ state obj new_writer(buf_writer out) {
     }
     impure fn write_le_int(int n, uint size) {
         out.write(uint_to_le_bytes(n as uint, size));
+    }
+    impure fn write_be_uint(uint n, uint size) {
+        out.write(uint_to_be_bytes(n, size));
     }
 }
 
