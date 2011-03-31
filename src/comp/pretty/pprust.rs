@@ -431,6 +431,13 @@ impure fn print_expr(ps s, &@ast.expr expr) {
             commasep_exprs(s, args);
             pclose(s);
         }
+        case (ast.expr_call_self(?func,?args,_)) {
+            wrd(s.s, "self.");
+            print_expr(s, func);
+            popen(s);
+            commasep_exprs(s, args);
+            pclose(s);
+        }
         case (ast.expr_bind(?func,?args,_)) {
             impure fn print_opt(ps s, &option.t[@ast.expr] expr) {
                 alt (expr) {
