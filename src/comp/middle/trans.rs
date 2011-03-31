@@ -3063,7 +3063,18 @@ fn trans_if(@block_ctxt cx, @ast.expr cond,
     auto expr_llty;
     alt (els) {
         case (some[@ast.expr](?elexpr)) {
-            else_res = trans_expr(else_cx, elexpr);
+            alt (elexpr.node) {
+                case (ast.expr_if(_, _, _, _)) {
+                    else_res = trans_expr(else_cx, elexpr);
+                }
+                case (ast.expr_block(?blk, _)) {
+                    // Calling trans_block directly instead of trans_expr
+                    // because trans_expr will create another scope block
+                    // context for the block, but we've already got the
+                    // 'else' context
+                    else_res = trans_block(else_cx, blk);
+                }
+            }
 
             // If we have an else expression, then the entire
             // if expression can have a non-nil type.
@@ -4617,7 +4628,14 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
         }
 
         case (ast.expr_block(?blk, _)) {
-            ret trans_block(cx, blk);
+            auto sub_cx = new_scope_block_ctxt(cx, "block-expr body");
+            auto next_cx = new_sub_block_ctxt(cx, "next");
+            auto sub = trans_block(sub_cx, blk);
+
+            cx.build.Br(sub_cx.llbb);
+            sub.bcx.build.Br(next_cx.llbb);
+
+            ret res(next_cx, sub.val);
         }
 
         case (ast.expr_assign(?dst, ?src, ?ann)) {
