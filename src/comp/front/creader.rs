@@ -65,6 +65,11 @@ impure fn parse_ty_str(str rep, str_def sd) -> @ty.t {
     auto len = _str.byte_len(rep);
     auto st = @rec(rep=rep, mutable pos=0u, len=len);
     auto result = parse_ty(st, sd);
+    if (st.pos != len) {
+        log "parse_ty_str: incomplete parse, stopped at byte "
+            + _uint.to_str(st.pos, 10u) + " of "
+            + _uint.to_str(len, 10u) + " in str '" + rep + "'";
+    }
     check(st.pos == len);
     ret result;
 }
@@ -191,6 +196,7 @@ impure fn parse_sty(@pstate st, str_def sd) -> ty.sty {
                                    inputs=func._0,
                                    output=func._1));
             }
+            st.pos += 1u;
             ret ty.ty_obj(methods);
         }
         case ('X') {ret ty.ty_var(parse_int(st));}
@@ -544,6 +550,7 @@ fn kind_has_type_params(u8 kind_ch) -> bool {
     // FIXME: It'd be great if we had u8 char literals.
     if (kind_ch == ('c' as u8))      { ret false; }
     else if (kind_ch == ('f' as u8)) { ret true;  }
+    else if (kind_ch == ('F' as u8)) { ret true;  }
     else if (kind_ch == ('y' as u8)) { ret true;  }
     else if (kind_ch == ('o' as u8)) { ret true;  }
     else if (kind_ch == ('t' as u8)) { ret true;  }
@@ -581,6 +588,7 @@ fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
     auto def;
     if (kind_ch == ('c' as u8))         { def = ast.def_const(did);      }
     else if (kind_ch == ('f' as u8))    { def = ast.def_fn(did);         }
+    else if (kind_ch == ('F' as u8))    { def = ast.def_native_fn(did);  }
     else if (kind_ch == ('y' as u8))    { def = ast.def_ty(did);         }
     else if (kind_ch == ('o' as u8))    { def = ast.def_obj(did);        }
     else if (kind_ch == ('t' as u8)) {
