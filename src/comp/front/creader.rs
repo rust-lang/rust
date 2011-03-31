@@ -544,6 +544,23 @@ fn read_crates(session.session sess,
 }
 
 
+fn kind_has_type_params(u8 kind_ch) -> bool {
+    // FIXME: It'd be great if we had u8 char literals.
+    if (kind_ch == ('c' as u8))      { ret false; }
+    else if (kind_ch == ('f' as u8)) { ret true;  }
+    else if (kind_ch == ('o' as u8)) { ret true;  }
+    else if (kind_ch == ('t' as u8)) { ret true;  }
+    else if (kind_ch == ('m' as u8)) { ret false; }
+    else if (kind_ch == ('n' as u8)) { ret false; }
+    else if (kind_ch == ('v' as u8)) { ret true;  }
+    else {
+        log #fmt("kind_has_type_params(): unknown kind char: %d",
+                 kind_ch as int);
+        fail;
+    }
+}
+
+
 // Crate metadata queries
 
 fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
@@ -567,7 +584,6 @@ fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
     auto def;
     if (kind_ch == ('c' as u8))      { def = ast.def_const(did);        }
     else if (kind_ch == ('f' as u8)) { def = ast.def_fn(did);           }
-    else if (kind_ch == ('y' as u8)) { def = ast.def_ty(did);           }
     else if (kind_ch == ('o' as u8)) { def = ast.def_obj(did);          }
     else if (kind_ch == ('t' as u8)) { def = ast.def_ty(did);           }
     else if (kind_ch == ('m' as u8)) { def = ast.def_mod(did);          }
@@ -584,13 +600,23 @@ fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
     ret some[ast.def](def);
 }
 
-fn get_type(session.session sess, ast.def_id def) -> ty.ty_params_and_ty {
+fn get_type(session.session sess, ast.def_id def) -> ty.ty_params_opt_and_ty {
     auto external_crate_id = def._0;
     auto data = sess.get_external_crate(external_crate_id);
     auto ebml_r = lookup_item(def._1, data);
     auto t = get_item_type(ebml_r, external_crate_id);
-    auto tps = get_item_ty_params(ebml_r, external_crate_id);
-    ret tup(tps, t);
+
+    auto tps_opt;
+    auto kind_ch = get_item_kind(ebml_r);
+    auto has_ty_params = kind_has_type_params(kind_ch);
+    if (has_ty_params) {
+        auto tps = get_item_ty_params(ebml_r, external_crate_id);
+        tps_opt = some[vec[ast.def_id]](tps);
+    } else {
+        tps_opt = none[vec[ast.def_id]];
+    }
+
+    ret tup(tps_opt, t);
 }
 
 fn get_symbol(session.session sess, ast.def_id def) -> str {

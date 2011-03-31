@@ -95,6 +95,7 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id, @ast.item] items,
                             hashmap[ast.def_id,
                                     @ast.native_item] native_items,
+                            ty.type_cache type_cache,
                             hashmap[ast.def_id, str] item_symbols,
                             // TODO: hashmap[tup(tag_id,subtys), @tag_info]
                             hashmap[@ty.t, uint] tag_sizes,
@@ -3610,6 +3611,7 @@ fn lval_generic_fn(@block_ctxt cx,
 
 fn trans_external_path(@block_ctxt cx, &ast.path p,
                        ast.def def, ast.ann a) -> lval_result {
+    // FIXME: This isn't generic-safe.
     auto ccx = cx.fcx.ccx;
     auto ty = node_ann_type(ccx, a);
     auto name = creader.get_symbol(ccx.sess, ast.def_id_of_def(def));
@@ -3618,19 +3620,10 @@ fn trans_external_path(@block_ctxt cx, &ast.path p,
     ret lval_mem(cx, v);
 }
 
-fn def_is_external(@crate_ctxt cx, ast.def d) -> bool {
-    auto id = ast.def_id_of_def(d);
-    ret id._0 != cx.sess.get_targ_crate_num();
-}
-
 fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
               &ast.ann ann) -> lval_result {
     alt (dopt) {
         case (some[ast.def](?def)) {
-
-            if (def_is_external(cx.fcx.ccx, def)) {
-                ret trans_external_path(cx, p, def, ann);
-            }
 
             alt (def) {
                 case (ast.def_arg(?did)) {
@@ -3665,15 +3658,18 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                 }
                 case (ast.def_fn(?did)) {
                     check (cx.fcx.ccx.items.contains_key(did));
-                    auto fn_item = cx.fcx.ccx.items.get(did);
-                    ret lval_generic_fn(cx, ty.item_ty(fn_item), did, ann);
+                    auto tyt = ty.lookup_generic_item_type(cx.fcx.ccx.sess,
+                        cx.fcx.ccx.type_cache, did);
+                    ret lval_generic_fn(cx, tyt, did, ann);
                 }
                 case (ast.def_obj(?did)) {
                     check (cx.fcx.ccx.items.contains_key(did));
-                    auto fn_item = cx.fcx.ccx.items.get(did);
-                    ret lval_generic_fn(cx, ty.item_ty(fn_item), did, ann);
+                    auto tyt = ty.lookup_generic_item_type(cx.fcx.ccx.sess,
+                        cx.fcx.ccx.type_cache, did);
+                    ret lval_generic_fn(cx, tyt, did, ann);
                 }
                 case (ast.def_variant(?tid, ?vid)) {
+                    // TODO: externals
                     if (cx.fcx.ccx.fn_pairs.contains_key(vid)) {
                         check (cx.fcx.ccx.items.contains_key(tid));
                         auto tag_item = cx.fcx.ccx.items.get(tid);
@@ -3716,14 +3712,15 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     }
                 }
                 case (ast.def_const(?did)) {
+                    // TODO: externals
                     check (cx.fcx.ccx.consts.contains_key(did));
                     ret lval_mem(cx, cx.fcx.ccx.consts.get(did));
                 }
                 case (ast.def_native_fn(?did)) {
                     check (cx.fcx.ccx.native_items.contains_key(did));
-                    auto fn_item = cx.fcx.ccx.native_items.get(did);
-                    ret lval_generic_fn(cx, ty.native_item_ty(fn_item),
-                                        did, ann);
+                    auto tyt = ty.lookup_generic_item_type(cx.fcx.ccx.sess,
+                        cx.fcx.ccx.type_cache, did);
+                    ret lval_generic_fn(cx, tyt, did, ann);
                 }
                 case (_) {
                     cx.fcx.ccx.sess.unimpl("def variant in trans");
@@ -5829,7 +5826,7 @@ fn trans_item(@crate_ctxt cx, &ast.item item) {
             auto sub_cx = @rec(obj_typarams=tps,
                                obj_fields=ob.fields with
                                *extend_path(cx, name));
-            trans_obj(sub_cx, ob, oid, tps, ann);
+            trans_obj(sub_cx, ob, oid.ctor, tps, ann);
         }
         case (ast.item_mod(?name, ?m, _)) {
             auto sub_cx = extend_path(cx, name);
@@ -6125,9 +6122,9 @@ fn collect_item_pass2(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
         }
 
         case (ast.item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
-            cx.items.insert(oid, i);
+            cx.items.insert(oid.ctor, i);
             decl_fn_and_pair(extend_path(cx, name), "obj_ctor",
-                             tps, ann, oid);
+                             tps, ann, oid.ctor);
             for (@ast.method m in ob.methods) {
                 cx.obj_methods.insert(m.node.id, ());
             }
@@ -6782,8 +6779,8 @@ fn make_common_glue(str output) {
     llvm.LLVMDisposeModule(llmod);
 }
 
-fn trans_crate(session.session sess, @ast.crate crate, str output,
-               bool shared) {
+fn trans_crate(session.session sess, @ast.crate crate,
+               &ty.type_cache type_cache, str output, bool shared) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
@@ -6816,6 +6813,7 @@ fn trans_crate(session.session sess, @ast.crate crate, str output,
                    item_ids = new_def_hash[ValueRef](),
                    items = new_def_hash[@ast.item](),
                    native_items = new_def_hash[@ast.native_item](),
+                   type_cache = type_cache,
                    item_symbols = new_def_hash[str](),
                    tag_sizes = tag_sizes,
                    discrims = new_def_hash[ValueRef](),

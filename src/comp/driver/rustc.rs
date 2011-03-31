@@ -6,6 +6,7 @@ import front.token;
 import front.eval;
 import middle.trans;
 import middle.resolve;
+import middle.ty;
 import middle.typeck;
 import util.common;
 
@@ -62,8 +63,12 @@ impure fn compile_input(session.session sess,
     auto crate = parse_input(sess, p, input);
     crate = creader.read_crates(sess, crate, library_search_paths);
     crate = resolve.resolve_crate(sess, crate);
-    crate = typeck.check_crate(sess, crate);
-    trans.trans_crate(sess, crate, output, shared);
+
+    auto typeck_result = typeck.check_crate(sess, crate);
+    crate = typeck_result._0;
+    auto type_cache = typeck_result._1;
+
+    trans.trans_crate(sess, crate, type_cache, output, shared);
 }
 
 impure fn pretty_print_input(session.session sess,

@@ -1876,8 +1876,8 @@ impure fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
                           methods=meths,
                           dtor=dtor);
 
-    auto item = ast.item_obj(ident, ob, ty_params,
-                             p.next_def_id(), ast.ann_none);
+    auto odid = rec(ty=p.next_def_id(), ctor=p.next_def_id());
+    auto item = ast.item_obj(ident, ob, ty_params, odid, ast.ann_none);
 
     ret @spanned(lo, hi, item);
 }

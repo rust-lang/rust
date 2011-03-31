@@ -269,7 +269,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp, ident ident,
          &ast._obj ob,
          vec[ast.ty_param] ty_params,
-         def_id id, ann a) -> @item)              fold_item_obj,
+         ast.obj_def_ids odid, ann a) -> @item)   fold_item_obj,
 
      // View Item folds.
      (fn(&ENV e, &span sp, ident ident,
@@ -975,9 +975,9 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
                                   ty_params, id);
         }
 
-        case (ast.item_obj(?ident, ?ob, ?tps, ?id, ?ann)) {
+        case (ast.item_obj(?ident, ?ob, ?tps, ?odid, ?ann)) {
             let ast._obj ob_ = fold_obj[ENV](env_, fld, ob);
-            ret fld.fold_item_obj(env_, i.span, ident, ob_, tps, id, ann);
+            ret fld.fold_item_obj(env_, i.span, ident, ob_, tps, odid, ann);
         }
 
     }
@@ -1429,8 +1429,8 @@ fn identity_fold_item_tag[ENV](&ENV e, &span sp, ident i,
 
 fn identity_fold_item_obj[ENV](&ENV e, &span sp, ident i,
                                &ast._obj ob, vec[ast.ty_param] ty_params,
-                               def_id id, ann a) -> @item {
-    ret @respan(sp, ast.item_obj(i, ob, ty_params, id, a));
+                               ast.obj_def_ids odid, ann a) -> @item {
+    ret @respan(sp, ast.item_obj(i, ob, ty_params, odid, a));
 }
 
 // View Item folds.

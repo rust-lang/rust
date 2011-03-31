@@ -30,6 +30,7 @@ const uint tag_items_type = 0x0au;
 const uint tag_items_symbol = 0x0bu;
 const uint tag_items_variant = 0x0cu;
 const uint tag_items_tag_id = 0x0du;
+const uint tag_items_obj_type_id = 0x0eu;
 
 // Type encoding
 
@@ -237,10 +238,11 @@ fn encode_module_item_paths(&ebml.writer ebml_w, &ast._mod module) {
                 encode_def_id(ebml_w, did);
                 ebml.end_tag(ebml_w);
             }
-            case (ast.item_obj(?id, _, ?tps, ?did, ?ann)) {
+            case (ast.item_obj(?id, _, ?tps, ?odid, ?ann)) {
                 ebml.start_tag(ebml_w, tag_paths_item);
                 encode_name(ebml_w, id);
-                encode_def_id(ebml_w, did);
+                encode_def_id(ebml_w, odid.ctor);
+                encode_obj_type_id(ebml_w, odid.ty);
                 ebml.end_tag(ebml_w);
             }
         }
@@ -297,6 +299,12 @@ fn encode_discriminant(@trans.crate_ctxt cx, &ebml.writer ebml_w,
 
 fn encode_tag_id(&ebml.writer ebml_w, &ast.def_id id) {
     ebml.start_tag(ebml_w, tag_items_tag_id);
+    ebml_w.writer.write(_str.bytes(def_to_str(id)));
+    ebml.end_tag(ebml_w);
+}
+
+fn encode_obj_type_id(&ebml.writer ebml_w, &ast.def_id id) {
+    ebml.start_tag(ebml_w, tag_items_obj_type_id);
     ebml_w.writer.write(_str.bytes(def_to_str(id)));
     ebml.end_tag(ebml_w);
 }
@@ -367,13 +375,21 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
 
             encode_tag_variant_info(cx, ebml_w, did, variants);
         }
-        case (ast.item_obj(?id, _, ?tps, ?did, ?ann)) {
+        case (ast.item_obj(?id, _, ?tps, ?odid, ?ann)) {
             ebml.start_tag(ebml_w, tag_items_item);
-            encode_def_id(ebml_w, did);
+            encode_def_id(ebml_w, odid.ctor);
             encode_kind(ebml_w, 'o' as u8);
             encode_type_params(ebml_w, tps);
-            encode_type(ebml_w, trans.node_ann_type(cx, ann));
-            encode_symbol(cx, ebml_w, did);
+            auto fn_ty = trans.node_ann_type(cx, ann);
+            encode_type(ebml_w, fn_ty);
+            encode_symbol(cx, ebml_w, odid.ctor);
+            ebml.end_tag(ebml_w);
+
+            ebml.start_tag(ebml_w, tag_items_item);
+            encode_def_id(ebml_w, odid.ty);
+            encode_kind(ebml_w, 'y' as u8);
+            encode_type_params(ebml_w, tps);
+            encode_type(ebml_w, ty.ty_fn_ret(fn_ty));
             ebml.end_tag(ebml_w);
         }
     }

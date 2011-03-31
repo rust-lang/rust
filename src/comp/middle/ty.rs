@@ -10,6 +10,7 @@ import std.option.some;
 import driver.session;
 import front.ast;
 import front.ast.mutability;
+import front.creader;
 import util.common;
 import util.common.new_def_hash;
 import util.common.span;
@@ -85,6 +86,11 @@ tag unify_result {
     ures_ok(@ty.t);
     ures_err(type_err, @ty.t, @ty.t);
 }
+
+
+type ty_params_opt_and_ty = tup(option.t[vec[ast.def_id]], @ty.t);
+type type_cache = hashmap[ast.def_id,ty_params_opt_and_ty];
+
 
 // Stringification
 
@@ -1672,6 +1678,55 @@ fn substitute_ty_params(vec[ast.ty_param] ty_params, vec[@t] bound, @t ty)
 
     ret replace_type_params(ty, bindings);
 }
+
+
+fn def_has_ty_params(&ast.def def) -> bool {
+    alt (def) {
+        case (ast.def_fn(_))            { ret true;  }
+        case (ast.def_obj(_))           { ret true;  }
+        case (ast.def_obj_field(_))     { ret false; }
+        case (ast.def_mod(_))           { ret false; }
+        case (ast.def_const(_))         { ret false; }
+        case (ast.def_arg(_))           { ret false; }
+        case (ast.def_local(_))         { ret false; }
+        case (ast.def_variant(_, _))    { ret true;  }
+        case (ast.def_ty(_))            { ret false; }
+        case (ast.def_ty_arg(_))        { ret false; }
+        case (ast.def_binding(_))       { ret false; }
+        case (ast.def_use(_))           { ret false; }
+        case (ast.def_native_ty(_))     { ret false; }
+        case (ast.def_native_fn(_))     { ret true;  }
+    }
+}
+
+// If the given item is in an external crate, looks up its type and adds it to
+// the type cache. Returns the type parameters and type.
+fn lookup_item_type(session.session sess, &type_cache cache,
+                    ast.def_id did) -> ty_params_opt_and_ty {
+    if (did._0 == sess.get_targ_crate_num()) {
+        // The item is in this crate. The caller should have added it to the
+        // type cache already; we simply return it.
+        check (cache.contains_key(did));
+        ret cache.get(did);
+    }
+
+    if (cache.contains_key(did)) {
+        ret cache.get(did);
+    }
+
+    auto tyt = creader.get_type(sess, did);
+    cache.insert(did, tyt);
+    ret tyt;
+}
+
+// A convenience function to retrive type parameters and a type when it's
+// known that the item supports generics (functions, variants, objects).
+fn lookup_generic_item_type(session.session sess, &type_cache cache,
+                            ast.def_id did) -> ty_params_and_ty {
+    auto tp_opt_and_ty = lookup_item_type(sess, cache, did);
+    ret tup(option.get[vec[ast.def_id]](tp_opt_and_ty._0), tp_opt_and_ty._1);
+}
+
 
 // Local Variables:
 // mode: rust

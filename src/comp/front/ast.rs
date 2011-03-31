@@ -395,6 +395,8 @@ tag view_item_ {
     view_item_export(ident);
 }
 
+type obj_def_ids = rec(def_id ty, def_id ctor);
+
 type item = spanned[item_];
 tag item_ {
     item_const(ident, @ty, @expr, def_id, ann);
@@ -403,7 +405,7 @@ tag item_ {
     item_native_mod(ident, native_mod, def_id);
     item_ty(ident, @ty, vec[ty_param], def_id, ann);
     item_tag(ident, vec[variant], vec[ty_param], def_id);
-    item_obj(ident, _obj, vec[ty_param], def_id, ann);
+    item_obj(ident, _obj, vec[ty_param], obj_def_ids, ann);
 }
 
 type native_item = spanned[native_item_];
