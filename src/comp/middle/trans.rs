@@ -4444,6 +4444,70 @@ fn trans_call(@block_ctxt cx, @ast.expr f,
     ret res(bcx, retval);
 }
 
+fn trans_call_self(@block_ctxt cx, @ast.expr f,
+                   option.t[ValueRef] lliterbody,
+                   vec[@ast.expr] args,
+                   &ast.ann ann) -> result {
+    log "translating a self-call";
+
+    auto f_res = trans_lval(cx, f);
+    auto faddr = f_res.res.val;
+    auto llenv = C_null(T_opaque_closure_ptr(cx.fcx.ccx.tn));
+
+    alt (f_res.llobj) {
+        case (some[ValueRef](_)) {
+            // It's a vtbl entry.
+            faddr = f_res.res.bcx.build.Load(faddr);
+        }
+        case (none[ValueRef]) {
+            // It's a closure.
+            auto bcx = f_res.res.bcx;
+            auto pair = faddr;
+            faddr = bcx.build.GEP(pair, vec(C_int(0),
+                                            C_int(abi.fn_field_code)));
+            faddr = bcx.build.Load(faddr);
+
+            auto llclosure = bcx.build.GEP(pair,
+                                           vec(C_int(0),
+                                               C_int(abi.fn_field_box)));
+            llenv = bcx.build.Load(llclosure);
+        }
+    }
+    auto fn_ty = ty.expr_ty(f);
+    auto ret_ty = ty.ann_to_type(ann);
+    auto args_res = trans_args(f_res.res.bcx,
+                               llenv, f_res.llobj,
+                               f_res.generic,
+                               lliterbody,
+                               args, fn_ty);
+
+    auto bcx = args_res._0;
+    auto llargs = args_res._1;
+    auto llretslot = args_res._2;
+
+    /*
+    log "calling: " + val_str(cx.fcx.ccx.tn, faddr);
+
+    for (ValueRef arg in llargs) {
+        log "arg: " + val_str(cx.fcx.ccx.tn, arg);
+    }
+    */
+
+    bcx.build.FastCall(faddr, llargs);
+    auto retval = C_nil();
+
+    if (!ty.type_is_nil(ret_ty)) {
+        retval = load_scalar_or_boxed(bcx, llretslot, ret_ty);
+        // Retval doesn't correspond to anything really tangible in the frame,
+        // but it's a ref all the same, so we put a note here to drop it when
+        // we're done in this scope.
+        find_scope_cx(cx).cleanups +=
+            vec(clean(bind drop_ty(_, retval, ret_ty)));
+    }
+
+    ret res(bcx, retval);
+}
+
 fn trans_tup(@block_ctxt cx, vec[ast.elt] elts,
              &ast.ann ann) -> result {
     auto bcx = cx;
@@ -4678,6 +4742,10 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
 
         case (ast.expr_call(?f, ?args, ?ann)) {
             ret trans_call(cx, f, none[ValueRef], args, ann);
+        }
+
+        case (ast.expr_call_self(?f, ?args, ?ann)) {
+            ret trans_call_self(cx, f, none[ValueRef], args, ann);
         }
 
         case (ast.expr_cast(?e, _, ?ann)) {
