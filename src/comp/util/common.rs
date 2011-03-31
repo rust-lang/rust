@@ -50,16 +50,15 @@ fn def_eq(&ast.def_id a, &ast.def_id b) -> bool {
     ret a._0 == b._0 && a._1 == b._1;
 }
 
+fn hash_def(&ast.def_id d) -> uint {
+    auto h = 5381u;
+    h = ((h << 5u) + h) ^ (d._0 as uint);
+    h = ((h << 5u) + h) ^ (d._1 as uint);
+    ret h;
+}
+
 fn new_def_hash[V]() -> std.map.hashmap[ast.def_id,V] {
-
-    fn hash(&ast.def_id d) -> uint {
-        let uint u = d._0 as uint;
-        u <<= 16u;
-        u |= d._1 as uint;
-        ret u;
-    }
-
-    let std.map.hashfn[ast.def_id] hasher = hash;
+    let std.map.hashfn[ast.def_id] hasher = hash_def;
     let std.map.eqfn[ast.def_id] eqer = def_eq;
     ret std.map.mk_hashmap[ast.def_id,V](hasher, eqer);
 }
