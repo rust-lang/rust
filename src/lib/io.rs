@@ -39,6 +39,7 @@ type reader =
           impure fn read_c_str() -> str;
           impure fn read_le_uint(uint size) -> uint;
           impure fn read_le_int(uint size) -> int;
+          impure fn read_be_uint(uint size) -> uint;
 
           impure fn seek(int offset, seek_style whence);
           impure fn tell() -> uint; // FIXME: eventually u64
@@ -166,6 +167,16 @@ state obj new_reader(buf_reader rdr) {
             size -= 1u;
         }
         ret val as int;
+    }
+    // FIXME deal with eof?
+    impure fn read_be_uint(uint size) -> uint {
+        auto val = 0u;
+        auto sz = size; // FIXME: trans.ml bug workaround
+        while (sz > 0u) {
+            sz -= 1u;
+            val += (read_byte_from_buf_reader(rdr) as uint) << (sz * 8u);
+        }
+        ret val;
     }
     impure fn seek(int offset, seek_style whence) {
         ret rdr.seek(offset, whence);

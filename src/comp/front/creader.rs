@@ -328,43 +328,40 @@ impure fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
 }
 
 impure fn move_to_item(&ebml.reader ebml_r, int item_id) {
+    ebml.move_to_sibling_with_id(ebml_r, metadata.tag_items);
+    ebml.move_to_child_with_id(ebml_r, metadata.tag_items_index);
+    ebml.move_to_child_with_id(ebml_r, metadata.tag_items_index_table);
+    ebml.move_to_first_child(ebml_r);
+
+    // Move to the bucket.
+    auto bucket_index = metadata.hash_def_num(item_id) % 256u;
+    auto buf_reader = ebml_r.reader.get_buf_reader();
+    buf_reader.seek((bucket_index * 4u) as int, io.seek_cur);
+    auto bucket_pos = ebml_r.reader.read_be_uint(4u);
+    ebml.reset_reader(ebml_r, bucket_pos);
+
+    // Search to find the item ID in the bucket.
+    check (ebml.peek(ebml_r).id == metadata.tag_items_index_buckets_bucket);
+    ebml.move_to_first_child(ebml_r);
     while (ebml.bytes_left(ebml_r) > 0u) {
-        auto outer_ebml_tag = ebml.peek(ebml_r);
-        if (outer_ebml_tag.id == metadata.tag_items) {
+        if (ebml.peek(ebml_r).id ==
+                metadata.tag_items_index_buckets_bucket_elt) {
             ebml.move_to_first_child(ebml_r);
-
-            while (ebml.bytes_left(ebml_r) > 0u) {
-                auto inner_ebml_tag = ebml.peek(ebml_r);
-                if (inner_ebml_tag.id == metadata.tag_items_data_item) {
-                    ebml.move_to_first_child(ebml_r);
-
-                    while (ebml.bytes_left(ebml_r) > 0u) {
-                        auto innermost_ebml_tag = ebml.peek(ebml_r);
-                        if (innermost_ebml_tag.id == metadata.tag_def_id) {
-                            ebml.move_to_first_child(ebml_r);
-                            auto did_data = ebml.read_data(ebml_r);
-                            ebml.move_to_parent(ebml_r);
-
-                            auto this_did = parse_def_id(did_data);
-                            if (this_did._1 == item_id) {
-                                // Move to the start of this item's data.
-                                ebml.move_to_parent(ebml_r);
-                                ebml.move_to_first_child(ebml_r);
-                                ret;
-                            }
-                        }
-                        ebml.move_to_next_sibling(ebml_r);
-                    }
-                    ebml.move_to_parent(ebml_r);
-                }
-                ebml.move_to_next_sibling(ebml_r);
+            auto pos = ebml_r.reader.read_be_uint(4u);
+            auto this_item_id = ebml_r.reader.read_be_uint(4u) as int;
+            if (item_id == this_item_id) {
+                // Found the item. Move to its data and return.
+                ebml.reset_reader(ebml_r, pos);
+                check (ebml.peek(ebml_r).id == metadata.tag_items_data_item);
+                ebml.move_to_first_child(ebml_r);
+                ret;
             }
             ebml.move_to_parent(ebml_r);
         }
         ebml.move_to_next_sibling(ebml_r);
     }
 
-    log #fmt("move_to_item: item not found: %d", item_id);
+    log #fmt("item %d not found in bucket at pos %u", item_id, bucket_pos);
     fail;
 }
 

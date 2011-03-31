@@ -90,9 +90,30 @@ impure fn move_to_parent(&reader r) {
     r.reader.seek(st.tag_pos as int, io.seek_set);
 }
 
+// Moves to the sibling of the current item with the given tag ID.
+impure fn move_to_sibling_with_id(&reader r, uint tag_id) {
+    while (peek(r).id != tag_id) {
+        move_to_next_sibling(r);
+    }
+}
+
+// Moves to the first child of the current item with the given tag ID.
+impure fn move_to_child_with_id(&reader r, uint tag_id) {
+    move_to_first_child(r);
+    move_to_sibling_with_id(r, tag_id);
+}
+
 // Reads the data segment of a tag.
 impure fn read_data(&reader r) -> vec[u8] {
     ret r.reader.read_bytes(bytes_left(r));
+}
+
+// Blows away the tag stack and moves the reader to the given byte position.
+impure fn reset_reader(&reader r, uint pos) {
+    // FIXME: rustc "ty_var in trans.type_of" bug
+    let vec[ebml_state] states = vec();
+    r.states = states;
+    r.reader.seek(pos as int, io.seek_set);
 }
 
 impure fn peek(&reader r) -> ebml_tag {
