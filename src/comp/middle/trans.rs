@@ -1668,7 +1668,7 @@ fn make_take_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
 
     } else if (ty.type_is_structural(t)) {
         ret iter_structural_ty(cx, v, t,
-                               bind incr_all_refcnts(_, _, _));
+                               bind take_ty(_, _, _));
     }
     ret res(cx, C_nil());
 }
@@ -2315,7 +2315,7 @@ fn call_tydesc_glue(@block_ctxt cx, ValueRef v, @ty.t t, int field) {
     call_tydesc_glue_full(td.bcx, v, td.val, field);
 }
 
-fn incr_all_refcnts(@block_ctxt cx,
+fn take_ty(@block_ctxt cx,
                     ValueRef v,
                     @ty.t t) -> result {
     if (!ty.type_is_scalar(t)) {
@@ -2397,7 +2397,7 @@ fn copy_ty(@block_ctxt cx,
         ret res(cx, C_nil());
 
     } else if (ty.type_is_boxed(t)) {
-        auto r = incr_all_refcnts(cx, src, t);
+        auto r = take_ty(cx, src, t);
         if (action == DROP_EXISTING) {
             r = drop_ty(r.bcx, r.bcx.build.Load(dst), t);
         }
@@ -2405,7 +2405,7 @@ fn copy_ty(@block_ctxt cx,
 
     } else if (ty.type_is_structural(t) ||
                ty.type_has_dynamic_size(t)) {
-        auto r = incr_all_refcnts(cx, src, t);
+        auto r = take_ty(cx, src, t);
         if (action == DROP_EXISTING) {
             r = drop_ty(r.bcx, dst, t);
         }
