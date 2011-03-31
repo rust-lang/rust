@@ -505,6 +505,38 @@ stage2/glue.bc: stage2/rustc$(X) stage1/$(CFG_STDLIB) \
 	@$(call E, generate: $@)
 	$(STAGE2) -o $@ -glue
 
+# Due to make not wanting to run the same implicit rules twice on the same
+# rule tree (implicit-rule recursion prevention, see "Chains of Implicit
+# Rules" in GNU Make manual) we have to re-state the %.o and %.s patterns here
+# for different directories, to handle cases where (say) a test relies on a
+# compiler that relies on a .o file.
+
+stage0/%.o: stage0/%.s
+	@$(call E, assemble [llvm]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
+
+stage0/%.s: stage0/%.bc
+	@$(call E, compile [llvm]: $@)
+	$(Q)$(CFG_LLVM_BINDIR)/llc $(CFG_LLC_CFLAGS) -o $@ $<
+
+stage1/%.o: stage1/%.s
+	@$(call E, assemble [llvm]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
+
+stage1/%.s: stage1/%.bc
+	@$(call E, compile [llvm]: $@)
+	$(Q)$(CFG_LLVM_BINDIR)/llc $(CFG_LLC_CFLAGS) -o $@ $<
+
+stage2/%.o: stage2/%.s
+	@$(call E, assemble [llvm]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
+
+stage2/%.s: stage2/%.bc
+	@$(call E, compile [llvm]: $@)
+	$(Q)$(CFG_LLVM_BINDIR)/llc $(CFG_LLC_CFLAGS) -o $@ $<
+
+
+
 ######################################################################
 # Library and boot rules
 ######################################################################
