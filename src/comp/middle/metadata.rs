@@ -1,4 +1,5 @@
 import std._str;
+import std._uint;
 import std._vec;
 import std.ebml;
 import std.io;
@@ -22,15 +23,23 @@ const uint tag_paths_name = 0x03u;
 const uint tag_paths_item = 0x04u;
 const uint tag_paths_mod = 0x05u;
 
-const uint tag_items_item = 0x06u;
-const uint tag_items_def_id = 0x07u;
-const uint tag_items_kind = 0x08u;
-const uint tag_items_ty_param = 0x09u;
-const uint tag_items_type = 0x0au;
-const uint tag_items_symbol = 0x0bu;
-const uint tag_items_variant = 0x0cu;
-const uint tag_items_tag_id = 0x0du;
-const uint tag_items_obj_type_id = 0x0eu;
+const uint tag_def_id = 0x06u;
+
+const uint tag_items_data = 0x07u;
+const uint tag_items_data_item = 0x08u;
+const uint tag_items_data_item_kind = 0x09u;
+const uint tag_items_data_item_ty_param = 0x0au;
+const uint tag_items_data_item_type = 0x0bu;
+const uint tag_items_data_item_symbol = 0x0cu;
+const uint tag_items_data_item_variant = 0x0du;
+const uint tag_items_data_item_tag_id = 0x0eu;
+const uint tag_items_data_item_obj_type_id = 0x0fu;
+
+const uint tag_items_index = 0x10u;
+const uint tag_items_index_buckets = 0x11u;
+const uint tag_items_index_buckets_bucket = 0x12u;
+const uint tag_items_index_buckets_bucket_elt = 0x13u;
+const uint tag_items_index_table = 0x14u;
 
 // Type encoding
 
@@ -161,7 +170,7 @@ fn encode_name(&ebml.writer ebml_w, str name) {
 }
 
 fn encode_def_id(&ebml.writer ebml_w, &ast.def_id id) {
-    ebml.start_tag(ebml_w, tag_items_def_id);
+    ebml.start_tag(ebml_w, tag_def_id);
     ebml_w.writer.write(_str.bytes(def_to_str(id)));
     ebml.end_tag(ebml_w);
 }
@@ -259,7 +268,7 @@ fn encode_item_paths(&ebml.writer ebml_w, @ast.crate crate) {
 // Item info table encoding
 
 fn encode_kind(&ebml.writer ebml_w, u8 c) {
-    ebml.start_tag(ebml_w, tag_items_kind);
+    ebml.start_tag(ebml_w, tag_items_data_item_kind);
     ebml_w.writer.write(vec(c));
     ebml.end_tag(ebml_w);
 }
@@ -271,40 +280,40 @@ fn def_to_str(ast.def_id did) -> str {
 // TODO: We need to encode the "crate numbers" somewhere for diamond imports.
 fn encode_type_params(&ebml.writer ebml_w, vec[ast.ty_param] tps) {
     for (ast.ty_param tp in tps) {
-        ebml.start_tag(ebml_w, tag_items_ty_param);
+        ebml.start_tag(ebml_w, tag_items_data_item_ty_param);
         ebml_w.writer.write(_str.bytes(def_to_str(tp.id)));
         ebml.end_tag(ebml_w);
     }
 }
 
 fn encode_type(&ebml.writer ebml_w, @ty.t typ) {
-    ebml.start_tag(ebml_w, tag_items_type);
+    ebml.start_tag(ebml_w, tag_items_data_item_type);
     auto f = def_to_str;
     ebml_w.writer.write(_str.bytes(ty_str(typ, f)));
     ebml.end_tag(ebml_w);
 }
 
 fn encode_symbol(@trans.crate_ctxt cx, &ebml.writer ebml_w, ast.def_id did) {
-    ebml.start_tag(ebml_w, tag_items_symbol);
+    ebml.start_tag(ebml_w, tag_items_data_item_symbol);
     ebml_w.writer.write(_str.bytes(cx.item_symbols.get(did)));
     ebml.end_tag(ebml_w);
 }
 
 fn encode_discriminant(@trans.crate_ctxt cx, &ebml.writer ebml_w,
                        ast.def_id did) {
-    ebml.start_tag(ebml_w, tag_items_symbol);
+    ebml.start_tag(ebml_w, tag_items_data_item_symbol);
     ebml_w.writer.write(_str.bytes(cx.discrim_symbols.get(did)));
     ebml.end_tag(ebml_w);
 }
 
 fn encode_tag_id(&ebml.writer ebml_w, &ast.def_id id) {
-    ebml.start_tag(ebml_w, tag_items_tag_id);
+    ebml.start_tag(ebml_w, tag_items_data_item_tag_id);
     ebml_w.writer.write(_str.bytes(def_to_str(id)));
     ebml.end_tag(ebml_w);
 }
 
 fn encode_obj_type_id(&ebml.writer ebml_w, &ast.def_id id) {
-    ebml.start_tag(ebml_w, tag_items_obj_type_id);
+    ebml.start_tag(ebml_w, tag_items_data_item_obj_type_id);
     ebml_w.writer.write(_str.bytes(def_to_str(id)));
     ebml.end_tag(ebml_w);
 }
@@ -313,7 +322,7 @@ fn encode_obj_type_id(&ebml.writer ebml_w, &ast.def_id id) {
 fn encode_tag_variant_info(@trans.crate_ctxt cx, &ebml.writer ebml_w,
                            ast.def_id did, vec[ast.variant] variants) {
     for (ast.variant variant in variants) {
-        ebml.start_tag(ebml_w, tag_items_item);
+        ebml.start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, variant.node.id);
         encode_kind(ebml_w, 'v' as u8);
         encode_tag_id(ebml_w, did);
@@ -330,7 +339,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
                         @ast.item item) {
     alt (item.node) {
         case (ast.item_const(_, _, _, ?did, ?ann)) {
-            ebml.start_tag(ebml_w, tag_items_item);
+            ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'c' as u8);
             encode_type(ebml_w, trans.node_ann_type(cx, ann));
@@ -338,7 +347,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             ebml.end_tag(ebml_w);
         }
         case (ast.item_fn(_, _, ?tps, ?did, ?ann)) {
-            ebml.start_tag(ebml_w, tag_items_item);
+            ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'f' as u8);
             encode_type_params(ebml_w, tps);
@@ -347,19 +356,19 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             ebml.end_tag(ebml_w);
         }
         case (ast.item_mod(_, _, ?did)) {
-            ebml.start_tag(ebml_w, tag_items_item);
+            ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'm' as u8);
             ebml.end_tag(ebml_w);
         }
         case (ast.item_native_mod(_, _, ?did)) {
-            ebml.start_tag(ebml_w, tag_items_item);
+            ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'n' as u8);
             ebml.end_tag(ebml_w);
         }
         case (ast.item_ty(?id, _, ?tps, ?did, ?ann)) {
-            ebml.start_tag(ebml_w, tag_items_item);
+            ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'y' as u8);
             encode_type_params(ebml_w, tps);
@@ -367,7 +376,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             ebml.end_tag(ebml_w);
         }
         case (ast.item_tag(?id, ?variants, ?tps, ?did)) {
-            ebml.start_tag(ebml_w, tag_items_item);
+            ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 't' as u8);
             encode_type_params(ebml_w, tps);
@@ -376,7 +385,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_tag_variant_info(cx, ebml_w, did, variants);
         }
         case (ast.item_obj(?id, _, ?tps, ?odid, ?ann)) {
-            ebml.start_tag(ebml_w, tag_items_item);
+            ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, odid.ctor);
             encode_kind(ebml_w, 'o' as u8);
             encode_type_params(ebml_w, tps);
@@ -385,7 +394,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_symbol(cx, ebml_w, odid.ctor);
             ebml.end_tag(ebml_w);
 
-            ebml.start_tag(ebml_w, tag_items_item);
+            ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, odid.ty);
             encode_kind(ebml_w, 'y' as u8);
             encode_type_params(ebml_w, tps);
@@ -397,7 +406,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
 
 fn encode_info_for_native_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
                                @ast.native_item nitem) {
-    ebml.start_tag(ebml_w, tag_items_item);
+    ebml.start_tag(ebml_w, tag_items_data_item);
     alt (nitem.node) {
         case (ast.native_item_ty(_, ?did)) {
             encode_def_id(ebml_w, did);
@@ -413,26 +422,87 @@ fn encode_info_for_native_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
     ebml.end_tag(ebml_w);
 }
 
-fn encode_info_for_items(@trans.crate_ctxt cx, &ebml.writer ebml_w) {
+fn encode_info_for_items(@trans.crate_ctxt cx, &ebml.writer ebml_w)
+        -> vec[tup(ast.def_id, uint)] {
+    let vec[tup(ast.def_id, uint)] index = vec();
+
     ebml.start_tag(ebml_w, tag_items);
     for each (@tup(ast.def_id, @ast.item) kvp in cx.items.items()) {
+        index += vec(tup(kvp._0, ebml_w.writer.tell()));
         encode_info_for_item(cx, ebml_w, kvp._1);
     }
     for each (@tup(ast.def_id, @ast.native_item) kvp in
             cx.native_items.items()) {
+        index += vec(tup(kvp._0, ebml_w.writer.tell()));
         encode_info_for_native_item(cx, ebml_w, kvp._1);
     }
+    ebml.end_tag(ebml_w);
+
+    ret index;
+}
+
+
+// Definition ID indexing
+
+fn create_index(vec[tup(ast.def_id, uint)] index)
+        -> vec[vec[tup(ast.def_id, uint)]] {
+    let vec[vec[tup(ast.def_id, uint)]] buckets = vec();
+    for each (uint i in _uint.range(0u, 256u)) {
+        let vec[tup(ast.def_id, uint)] bucket = vec();
+        buckets += vec(bucket);
+    }
+
+    for (tup(ast.def_id, uint) elt in index) {
+        auto h = common.hash_def(elt._0);
+        buckets.(h % 256u) += vec(elt);
+    }
+
+    ret buckets;
+}
+
+impure fn encode_index(&ebml.writer ebml_w,
+                       vec[tup(ast.def_id, uint)] index) {
+    auto writer = io.new_writer_(ebml_w.writer);
+
+    auto buckets = create_index(index);
+
+    ebml.start_tag(ebml_w, tag_items_index);
+
+    let vec[uint] bucket_locs = vec();
+    ebml.start_tag(ebml_w, tag_items_index_buckets);
+    for (vec[tup(ast.def_id, uint)] bucket in buckets) {
+        bucket_locs += vec(ebml_w.writer.tell());
+
+        ebml.start_tag(ebml_w, tag_items_index_buckets_bucket);
+        for (tup(ast.def_id, uint) elt in bucket) {
+            ebml.start_tag(ebml_w, tag_items_index_buckets_bucket_elt);
+            writer.write_be_uint(elt._1, 4u);
+            writer.write_str(def_to_str(elt._0));
+            ebml.end_tag(ebml_w);
+        }
+        ebml.end_tag(ebml_w);
+    }
+    ebml.end_tag(ebml_w);
+
+    ebml.start_tag(ebml_w, tag_items_index_table);
+    for (uint pos in bucket_locs) {
+        writer.write_be_uint(pos, 4u);
+    }
+    ebml.end_tag(ebml_w);
+
     ebml.end_tag(ebml_w);
 }
 
 
-fn encode_metadata(@trans.crate_ctxt cx, @ast.crate crate) -> ValueRef {
+impure fn encode_metadata(@trans.crate_ctxt cx, @ast.crate crate)
+        -> ValueRef {
     auto string_w = io.string_writer();
     auto buf_w = string_w.get_writer().get_buf_writer();
     auto ebml_w = ebml.create_writer(buf_w);
 
     encode_item_paths(ebml_w, crate);
-    encode_info_for_items(cx, ebml_w);
+    auto index = encode_info_for_items(cx, ebml_w);
+    encode_index(ebml_w, index);
 
     ret C_postr(string_w.get_str());
 }

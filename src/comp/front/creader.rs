@@ -275,8 +275,7 @@ impure fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
                             ebml.move_to_parent(ebml_r);
                             auto nm = _str.unsafe_from_bytes(name_data);
                             name_opt = some[ast.ident](nm);
-                        } else if (inner_tag.id ==
-                                metadata.tag_items_def_id) {
+                        } else if (inner_tag.id == metadata.tag_def_id) {
                             ebml.move_to_first_child(ebml_r);
                             auto did_data = ebml.read_data(ebml_r);
                             ebml.move_to_parent(ebml_r);
@@ -336,13 +335,12 @@ impure fn move_to_item(&ebml.reader ebml_r, int item_id) {
 
             while (ebml.bytes_left(ebml_r) > 0u) {
                 auto inner_ebml_tag = ebml.peek(ebml_r);
-                if (inner_ebml_tag.id == metadata.tag_items_item) {
+                if (inner_ebml_tag.id == metadata.tag_items_data_item) {
                     ebml.move_to_first_child(ebml_r);
 
                     while (ebml.bytes_left(ebml_r) > 0u) {
                         auto innermost_ebml_tag = ebml.peek(ebml_r);
-                        if (innermost_ebml_tag.id ==
-                                metadata.tag_items_def_id) {
+                        if (innermost_ebml_tag.id == metadata.tag_def_id) {
                             ebml.move_to_first_child(ebml_r);
                             auto did_data = ebml.read_data(ebml_r);
                             ebml.move_to_parent(ebml_r);
@@ -408,7 +406,7 @@ impure fn get_item_kind(&ebml.reader ebml_r) -> u8 {
         ret data.(0);
     }
     auto f = converter;
-    ret get_item_generic[u8](ebml_r, metadata.tag_items_kind, f);
+    ret get_item_generic[u8](ebml_r, metadata.tag_items_data_item_kind, f);
 }
 
 impure fn get_item_symbol(&ebml.reader ebml_r) -> str {
@@ -418,7 +416,7 @@ impure fn get_item_symbol(&ebml.reader ebml_r) -> str {
         ret _str.unsafe_from_bytes(data);
     }
     auto f = converter;
-    ret get_item_generic[str](ebml_r, metadata.tag_items_symbol, f);
+    ret get_item_generic[str](ebml_r, metadata.tag_items_data_item_symbol, f);
 }
 
 // FIXME: This is a *terrible* botch.
@@ -430,7 +428,8 @@ impure fn impure_parse_def_id(vec[u8] data) -> ast.def_id {
 
 impure fn get_variant_tag_id(&ebml.reader ebml_r) -> ast.def_id {
     auto f = impure_parse_def_id;
-    ret get_item_generic[ast.def_id](ebml_r, metadata.tag_items_tag_id, f);
+    ret get_item_generic[ast.def_id](ebml_r,
+                                     metadata.tag_items_data_item_tag_id, f);
 }
 
 impure fn get_item_type(&ebml.reader ebml_r, int this_cnum) -> @ty.t {
@@ -448,7 +447,7 @@ impure fn get_item_type(&ebml.reader ebml_r, int this_cnum) -> @ty.t {
         ret parse_ty_str(s, bind parse_external_def_id(this_cnum, _));
     }
     auto f = bind converter(this_cnum, _);
-    ret get_item_generic[@ty.t](ebml_r, metadata.tag_items_type, f);
+    ret get_item_generic[@ty.t](ebml_r, metadata.tag_items_data_item_type, f);
 }
 
 impure fn get_item_ty_params(&ebml.reader ebml_r, int this_cnum)
@@ -456,7 +455,7 @@ impure fn get_item_ty_params(&ebml.reader ebml_r, int this_cnum)
     let vec[ast.def_id] tps = vec();
     while (ebml.bytes_left(ebml_r) > 0u) {
         auto ebml_tag = ebml.peek(ebml_r);
-        if (ebml_tag.id == metadata.tag_items_ty_param) {
+        if (ebml_tag.id == metadata.tag_items_data_item_ty_param) {
             ebml.move_to_first_child(ebml_r);
 
             auto data = ebml.read_data(ebml_r);
