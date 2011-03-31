@@ -423,17 +423,17 @@ fn encode_info_for_native_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
 }
 
 fn encode_info_for_items(@trans.crate_ctxt cx, &ebml.writer ebml_w)
-        -> vec[tup(ast.def_id, uint)] {
-    let vec[tup(ast.def_id, uint)] index = vec();
+        -> vec[tup(int, uint)] {
+    let vec[tup(int, uint)] index = vec();
 
-    ebml.start_tag(ebml_w, tag_items);
+    ebml.start_tag(ebml_w, tag_items_data);
     for each (@tup(ast.def_id, @ast.item) kvp in cx.items.items()) {
-        index += vec(tup(kvp._0, ebml_w.writer.tell()));
+        index += vec(tup(kvp._0._1, ebml_w.writer.tell()));
         encode_info_for_item(cx, ebml_w, kvp._1);
     }
     for each (@tup(ast.def_id, @ast.native_item) kvp in
             cx.native_items.items()) {
-        index += vec(tup(kvp._0, ebml_w.writer.tell()));
+        index += vec(tup(kvp._0._1, ebml_w.writer.tell()));
         encode_info_for_native_item(cx, ebml_w, kvp._1);
     }
     ebml.end_tag(ebml_w);
@@ -444,24 +444,26 @@ fn encode_info_for_items(@trans.crate_ctxt cx, &ebml.writer ebml_w)
 
 // Definition ID indexing
 
-fn create_index(vec[tup(ast.def_id, uint)] index)
-        -> vec[vec[tup(ast.def_id, uint)]] {
-    let vec[vec[tup(ast.def_id, uint)]] buckets = vec();
+fn hash_def_num(int def_num) -> uint {
+    ret 177573u ^ (def_num as uint);
+}
+
+fn create_index(vec[tup(int, uint)] index) -> vec[vec[tup(int, uint)]] {
+    let vec[vec[tup(int, uint)]] buckets = vec();
     for each (uint i in _uint.range(0u, 256u)) {
-        let vec[tup(ast.def_id, uint)] bucket = vec();
+        let vec[tup(int, uint)] bucket = vec();
         buckets += vec(bucket);
     }
 
-    for (tup(ast.def_id, uint) elt in index) {
-        auto h = common.hash_def(elt._0);
+    for (tup(int, uint) elt in index) {
+        auto h = hash_def_num(elt._0);
         buckets.(h % 256u) += vec(elt);
     }
 
     ret buckets;
 }
 
-impure fn encode_index(&ebml.writer ebml_w,
-                       vec[tup(ast.def_id, uint)] index) {
+impure fn encode_index(&ebml.writer ebml_w, vec[tup(int, uint)] index) {
     auto writer = io.new_writer_(ebml_w.writer);
 
     auto buckets = create_index(index);
@@ -470,14 +472,14 @@ impure fn encode_index(&ebml.writer ebml_w,
 
     let vec[uint] bucket_locs = vec();
     ebml.start_tag(ebml_w, tag_items_index_buckets);
-    for (vec[tup(ast.def_id, uint)] bucket in buckets) {
+    for (vec[tup(int, uint)] bucket in buckets) {
         bucket_locs += vec(ebml_w.writer.tell());
 
         ebml.start_tag(ebml_w, tag_items_index_buckets_bucket);
-        for (tup(ast.def_id, uint) elt in bucket) {
+        for (tup(int, uint) elt in bucket) {
             ebml.start_tag(ebml_w, tag_items_index_buckets_bucket_elt);
             writer.write_be_uint(elt._1, 4u);
-            writer.write_str(def_to_str(elt._0));
+            writer.write_be_uint(elt._0 as uint, 4u);
             ebml.end_tag(ebml_w);
         }
         ebml.end_tag(ebml_w);
@@ -501,8 +503,11 @@ impure fn encode_metadata(@trans.crate_ctxt cx, @ast.crate crate)
     auto ebml_w = ebml.create_writer(buf_w);
 
     encode_item_paths(ebml_w, crate);
+
+    ebml.start_tag(ebml_w, tag_items);
     auto index = encode_info_for_items(cx, ebml_w);
     encode_index(ebml_w, index);
+    ebml.end_tag(ebml_w);
 
     ret C_postr(string_w.get_str());
 }
