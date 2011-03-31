@@ -3819,10 +3819,13 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
         ix_val = ix.val;
     }
 
-    auto unit_sz = size_of(bcx, node_ann_type(cx.fcx.ccx, ann));
+    auto unit_ty = node_ann_type(cx.fcx.ccx, ann);
+    auto unit_sz = size_of(bcx, unit_ty);
     bcx = unit_sz.bcx;
+    llvm.LLVMSetValueName(unit_sz.val, _str.buf("unit_sz"));
 
     auto scaled_ix = bcx.build.Mul(ix_val, unit_sz.val);
+    llvm.LLVMSetValueName(scaled_ix, _str.buf("scaled_ix"));
 
     auto lim = bcx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_fill)));
     lim = bcx.build.Load(lim);
@@ -3839,7 +3842,14 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
     fail_res.bcx.build.Br(next_cx.llbb);
 
     auto body = next_cx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_data)));
-    auto elt = next_cx.build.GEP(body, vec(C_int(0), ix_val));
+    auto elt;
+    if (ty.type_has_dynamic_size(unit_ty)) {
+        body = next_cx.build.PointerCast(body, T_ptr(T_array(T_i8(), 0u)));
+        elt = next_cx.build.GEP(body, vec(C_int(0), scaled_ix));
+    } else {
+        elt = next_cx.build.GEP(body, vec(C_int(0), ix_val));
+    }
+
     ret lval_mem(next_cx, elt);
 }
 
