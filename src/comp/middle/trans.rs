@@ -1103,7 +1103,7 @@ fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
     }
 
     // Pull the type parameters out of the corresponding tag item.
-    let vec[ast.ty_param] ty_params = tag_ty_params(cx, tid);
+    let vec[ast.def_id] ty_params = tag_ty_params(cx, tid);
 
     // Compute max(variant sizes).
     auto max_size = 0u;
@@ -1905,12 +1905,8 @@ fn variant_types(@crate_ctxt cx, &ast.variant v) -> vec[@ty.t] {
 }
 
 // Returns the type parameters of a tag.
-fn tag_ty_params(@crate_ctxt cx, ast.def_id id) -> vec[ast.ty_param] {
-    check (cx.items.contains_key(id));
-    alt (cx.items.get(id).node) {
-        case (ast.item_tag(_, _, ?tps, _)) { ret tps; }
-    }
-    fail;   // not reached
+fn tag_ty_params(@crate_ctxt cx, ast.def_id id) -> vec[ast.def_id] {
+    ret ty.lookup_generic_item_type(cx.sess, cx.type_cache, id)._0;
 }
 
 // Returns the variants in a tag.

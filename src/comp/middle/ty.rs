@@ -1664,15 +1664,15 @@ fn replace_type_params(@t typ, hashmap[ast.def_id,@t] param_map) -> @t {
 // Substitutes the type parameters specified by @ty_params with the
 // corresponding types in @bound in the given type. The two vectors must have
 // the same length.
-fn substitute_ty_params(vec[ast.ty_param] ty_params, vec[@t] bound, @t ty)
+fn substitute_ty_params(vec[ast.def_id] ty_params, vec[@t] bound, @t ty)
         -> @t {
-    auto ty_param_len = _vec.len[ast.ty_param](ty_params);
+    auto ty_param_len = _vec.len[ast.def_id](ty_params);
     check (ty_param_len == _vec.len[@t](bound));
 
     auto bindings = common.new_def_hash[@t]();
     auto i = 0u;
     while (i < ty_param_len) {
-        bindings.insert(ty_params.(i).id, bound.(i));
+        bindings.insert(ty_params.(i), bound.(i));
         i += 1u;
     }
 
