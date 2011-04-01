@@ -5393,25 +5393,10 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
 
                 auto r_ty = ty.expr_ty(e);
 
-                fn is_nil(@ty.t r_ty) -> bool {
-                    alt (r_ty.struct) {
-                        case (ty.ty_nil) {
-                            ret true;
-                        }
-                        case (_) {
-                            ret false;
-                        }
-                    }
-                }
+                if (ty.type_is_boxed(r_ty)) {
 
-                // FIXME: This is a temporary hack to prevent compile
-                // failures. There's some expression variant that claims
-                // to be ty_nil but but does not translate to T_nil. Need
-                // to hunt it down. Of course, if we're talking about nil,
-                // do we really want to do this whole business anyway?
-                if (!is_nil(r_ty)) {
-                    // This alloca is declared at the function level, above
-                    // the block scope
+                    // Create an alloca up in the llallocas block to hold the
+                    // expression result.
                     auto res_alloca = alloc_ty(bcx, r_ty);
                     bcx = res_alloca.bcx;
                     auto res_copy = copy_ty(bcx, INIT,
