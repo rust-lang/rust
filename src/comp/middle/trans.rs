@@ -5407,7 +5407,8 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
                 // FIXME: This is a temporary hack to prevent compile
                 // failures. There's some expression variant that claims
                 // to be ty_nil but but does not translate to T_nil. Need
-                // to hunt it down.
+                // to hunt it down. Of course, if we're talking about nil,
+                // do we really want to do this whole business anyway?
                 if (!is_nil(r_ty)) {
                     // This alloca is declared at the function level, above
                     // the block scope
