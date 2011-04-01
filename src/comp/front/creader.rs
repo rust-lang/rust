@@ -268,14 +268,14 @@ impure fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
             auto found = false;
             while (ebml.bytes_left(ebml_r) > 0u && !found) {
                 auto ebml_tag = ebml.peek(ebml_r);
-                if ((ebml_tag.id == metadata.tag_paths_item) ||
-                        (ebml_tag.id == metadata.tag_paths_mod)) {
+                if ((ebml_tag.id == metadata.tag_paths_data_item) ||
+                        (ebml_tag.id == metadata.tag_paths_data_mod)) {
                     ebml.move_to_first_child(ebml_r);
                     auto did_opt = none[ast.def_id];
                     auto name_opt = none[ast.ident];
                     while (ebml.bytes_left(ebml_r) > 0u) {
                         auto inner_tag = ebml.peek(ebml_r);
-                        if (inner_tag.id == metadata.tag_paths_name) {
+                        if (inner_tag.id == metadata.tag_paths_data_name) {
                             ebml.move_to_first_child(ebml_r);
                             auto name_data = ebml.read_data(ebml_r);
                             ebml.move_to_parent(ebml_r);
@@ -335,8 +335,8 @@ impure fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
 
 impure fn move_to_item(&ebml.reader ebml_r, int item_id) {
     ebml.move_to_sibling_with_id(ebml_r, metadata.tag_items);
-    ebml.move_to_child_with_id(ebml_r, metadata.tag_items_index);
-    ebml.move_to_child_with_id(ebml_r, metadata.tag_items_index_table);
+    ebml.move_to_child_with_id(ebml_r, metadata.tag_index);
+    ebml.move_to_child_with_id(ebml_r, metadata.tag_index_table);
     ebml.move_to_first_child(ebml_r);
 
     // Move to the bucket.
@@ -347,11 +347,10 @@ impure fn move_to_item(&ebml.reader ebml_r, int item_id) {
     ebml.reset_reader(ebml_r, bucket_pos);
 
     // Search to find the item ID in the bucket.
-    check (ebml.peek(ebml_r).id == metadata.tag_items_index_buckets_bucket);
+    check (ebml.peek(ebml_r).id == metadata.tag_index_buckets_bucket);
     ebml.move_to_first_child(ebml_r);
     while (ebml.bytes_left(ebml_r) > 0u) {
-        if (ebml.peek(ebml_r).id ==
-                metadata.tag_items_index_buckets_bucket_elt) {
+        if (ebml.peek(ebml_r).id == metadata.tag_index_buckets_bucket_elt) {
             ebml.move_to_first_child(ebml_r);
             auto pos = ebml_r.reader.read_be_uint(4u);
             auto this_item_id = ebml_r.reader.read_be_uint(4u) as int;
