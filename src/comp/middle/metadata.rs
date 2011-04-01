@@ -463,6 +463,7 @@ fn encode_info_for_native_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_kind(ebml_w, 'F' as u8);
             encode_type_params(ebml_w, tps);
             encode_type(ebml_w, trans.node_ann_type(cx, ann));
+            encode_symbol(cx, ebml_w, did);
         }
     }
     ebml.end_tag(ebml_w);
