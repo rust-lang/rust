@@ -32,6 +32,24 @@ fn ty_to_str(&@ast.ty ty) -> str {
     ret writer.get_str();
 }
 
+fn block_to_str(&ast.block blk) -> str {
+    auto writer = io.string_writer();
+    auto s = @rec(s=pp.mkstate(writer.get_writer(), 78u),
+                  comments=option.none[vec[lexer.cmnt]],
+                  mutable cur_cmnt=0u);
+    print_block(s, blk);
+    ret writer.get_str();
+}
+
+fn expr_to_str(&@ast.expr e) -> str {
+    auto writer = io.string_writer();
+    auto s = @rec(s=pp.mkstate(writer.get_writer(), 78u),
+                  comments=option.none[vec[lexer.cmnt]],
+                  mutable cur_cmnt=0u);
+    print_expr(s, e);
+    ret writer.get_str();
+}
+
 impure fn hbox(ps s) {
     pp.hbox(s.s, indent_unit);
 }
