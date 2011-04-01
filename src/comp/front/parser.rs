@@ -2071,7 +2071,8 @@ impure fn parse_item_tag(parser p) -> @ast.item {
     p.bump();
 
     auto hi = p.get_span();
-    auto item = ast.item_tag(id, variants, ty_params, p.next_def_id());
+    auto item = ast.item_tag(id, variants, ty_params, p.next_def_id(),
+                             ast.ann_none);
     ret @spanned(lo, hi, item);
 }
 

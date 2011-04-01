@@ -706,14 +706,9 @@ fn item_ty(@ast.item it) -> ty_params_and_ty {
             ty_params = tps;
             result_ty = ann_to_type(ann);
         }
-        case (ast.item_tag(_, _, ?tps, ?did)) {
-            // Create a new generic polytype.
+        case (ast.item_tag(_, _, ?tps, ?did, ?ann)) {
             ty_params = tps;
-            let vec[@t] subtys = vec();
-            for (ast.ty_param tp in tps) {
-                subtys += vec(plain_ty(ty_param(tp.id)));
-            }
-            result_ty = plain_ty(ty_tag(did, subtys));
+            result_ty = ann_to_type(ann);
         }
         case (ast.item_obj(_, _, ?tps, _, ?ann)) {
             ty_params = tps;

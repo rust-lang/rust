@@ -269,7 +269,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp, ident ident,
          vec[ast.variant] variants,
          vec[ast.ty_param] ty_params,
-         def_id id) -> @item)                     fold_item_tag,
+         def_id id, ann a) -> @item)              fold_item_tag,
 
      (fn(&ENV e, &span sp, ident ident,
          &ast._obj ob,
@@ -971,7 +971,7 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
             ret fld.fold_item_ty(env_, i.span, ident, ty_, params, id, ann);
         }
 
-        case (ast.item_tag(?ident, ?variants, ?ty_params, ?id)) {
+        case (ast.item_tag(?ident, ?variants, ?ty_params, ?id, ?ann)) {
             let vec[ast.variant] new_variants = vec();
             for (ast.variant v in variants) {
                 let vec[ast.variant_arg] new_args = vec();
@@ -984,7 +984,7 @@ fn fold_item[ENV](&ENV env, ast_fold[ENV] fld, @item i) -> @item {
                 new_variants += vec(respan[ast.variant_](v.span, new_v));
             }
             ret fld.fold_item_tag(env_, i.span, ident, new_variants,
-                                  ty_params, id);
+                                  ty_params, id, ann);
         }
 
         case (ast.item_obj(?ident, ?ob, ?tps, ?odid, ?ann)) {
@@ -1440,8 +1440,8 @@ fn identity_fold_native_item_ty[ENV](&ENV e, &span sp, ident i,
 fn identity_fold_item_tag[ENV](&ENV e, &span sp, ident i,
                                vec[ast.variant] variants,
                                vec[ast.ty_param] ty_params,
-                               def_id id) -> @item {
-    ret @respan(sp, ast.item_tag(i, variants, ty_params, id));
+                               def_id id, ann a) -> @item {
+    ret @respan(sp, ast.item_tag(i, variants, ty_params, id, a));
 }
 
 fn identity_fold_item_obj[ENV](&ENV e, &span sp, ident i,
@@ -1654,7 +1654,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_item_ty   = bind identity_fold_item_ty[ENV](_,_,_,_,_,_,_),
          fold_native_item_ty =
              bind identity_fold_native_item_ty[ENV](_,_,_,_),
-         fold_item_tag  = bind identity_fold_item_tag[ENV](_,_,_,_,_,_),
+         fold_item_tag  = bind identity_fold_item_tag[ENV](_,_,_,_,_,_,_),
          fold_item_obj  = bind identity_fold_item_obj[ENV](_,_,_,_,_,_,_),
 
          fold_view_item_use =

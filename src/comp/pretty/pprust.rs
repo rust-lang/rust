@@ -240,7 +240,7 @@ impure fn print_item(ps s, @ast.item item) {
             print_type(s, ty);
             wrd(s.s, ";");
         }
-        case (ast.item_tag(?id,?variants,?params,_)) {
+        case (ast.item_tag(?id,?variants,?params,_,_)) {
             wrd1(s, "tag");
             wrd(s.s, id);
             print_type_params(s, params);

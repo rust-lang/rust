@@ -404,7 +404,7 @@ tag item_ {
     item_mod(ident, _mod, def_id);
     item_native_mod(ident, native_mod, def_id);
     item_ty(ident, @ty, vec[ty_param], def_id, ann);
-    item_tag(ident, vec[variant], vec[ty_param], def_id);
+    item_tag(ident, vec[variant], vec[ty_param], def_id, ann);
     item_obj(ident, _obj, vec[ty_param], obj_def_ids, ann);
 }
 
@@ -448,7 +448,7 @@ fn index_item(mod_index index, @item it) {
         case (ast.item_ty(?id, _, _, _, _)) {
             index.insert(id, ast.mie_item(it));
         }
-        case (ast.item_tag(?id, ?variants, _, _)) {
+        case (ast.item_tag(?id, ?variants, _, _, _)) {
             index.insert(id, ast.mie_item(it));
             let uint variant_idx = 0u;
             for (ast.variant v in variants) {
@@ -505,7 +505,7 @@ fn index_stmt(block_index index, @stmt s) {
                         case (ast.item_ty(?i, _, _, _, _)) {
                             index.insert(i, ast.bie_item(it));
                         }
-                        case (ast.item_tag(?i, ?variants, _, _)) {
+                        case (ast.item_tag(?i, ?variants, _, _, _)) {
                             index.insert(i, ast.bie_item(it));
                             let uint vid = 0u;
                             for (ast.variant v in variants) {

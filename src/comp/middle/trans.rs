@@ -1913,7 +1913,7 @@ fn tag_ty_params(@crate_ctxt cx, ast.def_id id) -> vec[ast.def_id] {
 fn tag_variants(@crate_ctxt cx, ast.def_id id) -> vec[ast.variant] {
     check (cx.items.contains_key(id));
     alt (cx.items.get(id).node) {
-        case (ast.item_tag(_, ?variants, _, _)) { ret variants; }
+        case (ast.item_tag(_, ?variants, _, _, _)) { ret variants; }
     }
     fail;   // not reached
 }
@@ -3703,7 +3703,7 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                         auto params = ty.item_ty(tag_item)._0;
                         auto fty = plain_ty(ty.ty_nil);
                         alt (tag_item.node) {
-                            case (ast.item_tag(_, ?variants, _, _)) {
+                            case (ast.item_tag(_, ?variants, _, _, _)) {
                                 for (ast.variant v in variants) {
                                     if (v.node.id == vid) {
                                         fty = node_ann_type(cx.fcx.ccx,
@@ -5943,7 +5943,7 @@ fn trans_item(@crate_ctxt cx, &ast.item item) {
             auto sub_cx = extend_path(cx, name);
             trans_mod(sub_cx, m);
         }
-        case (ast.item_tag(?name, ?variants, ?tps, ?tag_id)) {
+        case (ast.item_tag(?name, ?variants, ?tps, ?tag_id, _)) {
             auto sub_cx = extend_path(cx, name);
             auto i = 0;
             for (ast.variant variant in variants) {
@@ -6162,7 +6162,7 @@ fn item_name(@ast.item i) -> str {
         case (ast.item_mod(?name, _, _)) {
             ret name;
         }
-        case (ast.item_tag(?name, _, _, _)) {
+        case (ast.item_tag(?name, _, _, _, _)) {
             ret name;
         }
         case (ast.item_const(?name, _, _, _, _)) {
@@ -6211,7 +6211,7 @@ fn collect_item(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
             cx.items.insert(did, i);
         }
 
-        case (ast.item_tag(?name, ?variants, ?tps, ?tag_id)) {
+        case (ast.item_tag(?name, ?variants, ?tps, ?tag_id, _)) {
             cx.items.insert(tag_id, i);
         }
 
@@ -6272,7 +6272,7 @@ fn collect_tag_ctor(&@crate_ctxt cx, @ast.item i) -> @crate_ctxt {
 
     alt (i.node) {
 
-        case (ast.item_tag(_, ?variants, ?tps, _)) {
+        case (ast.item_tag(_, ?variants, ?tps, _, _)) {
             for (ast.variant variant in variants) {
                 if (_vec.len[ast.variant_arg](variant.node.args) != 0u) {
                     decl_fn_and_pair(extend_path(cx, variant.node.name),
@@ -6302,7 +6302,7 @@ fn collect_tag_ctors(@crate_ctxt cx, @ast.crate crate) {
 
 fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
     alt (it.node) {
-        case (ast.item_tag(_, ?variants, _, ?tag_id)) {
+        case (ast.item_tag(_, ?variants, _, ?tag_id, _)) {
             auto i = 0u;
             auto n_variants = _vec.len[ast.variant](variants);
             while (i < n_variants) {

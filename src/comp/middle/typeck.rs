@@ -586,7 +586,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                 ret tpt;
             }
 
-            case (ast.item_tag(_, _, ?tps, ?def_id)) {
+            case (ast.item_tag(_, _, ?tps, ?def_id, _)) {
                 // Create a new generic polytype.
                 let vec[@ty.t] subtys = vec();
                 for (ast.ty_param tp in tps) {
@@ -694,7 +694,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             case (ast.item_ty(_, _, _, ?def_id, _)) {
                 id_to_ty_item.insert(def_id, any_item_rust(i));
             }
-            case (ast.item_tag(_, _, _, ?def_id)) {
+            case (ast.item_tag(_, _, _, ?def_id, _)) {
                 id_to_ty_item.insert(def_id, any_item_rust(i));
             }
             case (ast.item_obj(_, _, _, ?odid, _)) {
@@ -870,14 +870,16 @@ fn collect_item_types(session.session sess, @ast.crate crate)
     fn fold_item_tag(&@env e, &span sp, ast.ident i,
                      vec[ast.variant] variants,
                      vec[ast.ty_param] ty_params,
-                     ast.def_id id) -> @ast.item {
+                     ast.def_id id, ast.ann a) -> @ast.item {
         auto variants_t = get_tag_variant_types(e.sess,
                                                 e.id_to_ty_item,
                                                 e.type_cache,
                                                 id,
                                                 variants,
                                                 ty_params);
-        auto item = ast.item_tag(i, variants_t, ty_params, id);
+        auto typ = e.type_cache.get(id)._1;
+        auto item = ast.item_tag(i, variants_t, ty_params, id,
+                                 ast.ann_type(typ, none[vec[@ty.t]]));
         ret @fold.respan[ast.item_](sp, item);
     }
 
@@ -890,7 +892,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
              fold_native_item_fn = bind fold_native_item_fn(_,_,_,_,_,_,_,_),
              fold_item_obj   = bind fold_item_obj(_,_,_,_,_,_,_),
              fold_item_ty    = bind fold_item_ty(_,_,_,_,_,_,_),
-             fold_item_tag   = bind fold_item_tag(_,_,_,_,_,_)
+             fold_item_tag   = bind fold_item_tag(_,_,_,_,_,_,_)
              with *fld_2);
     auto crate_ = fold.fold_crate[@env](e, fld_2, crate);
     ret tup(crate_, type_cache, id_to_ty_item);

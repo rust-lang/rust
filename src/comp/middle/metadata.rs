@@ -262,7 +262,7 @@ fn encode_module_item_paths(&ebml.writer ebml_w,
                 encode_def_id(ebml_w, did);
                 ebml.end_tag(ebml_w);
             }
-            case (ast.item_tag(?id, ?variants, ?tps, ?did)) {
+            case (ast.item_tag(?id, ?variants, ?tps, ?did, _)) {
                 add_to_index(ebml_w, path, index, id);
                 ebml.start_tag(ebml_w, tag_paths_data_item);
                 encode_name(ebml_w, id);
@@ -403,11 +403,12 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_type(ebml_w, trans.node_ann_type(cx, ann));
             ebml.end_tag(ebml_w);
         }
-        case (ast.item_tag(?id, ?variants, ?tps, ?did)) {
+        case (ast.item_tag(?id, ?variants, ?tps, ?did, ?ann)) {
             ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 't' as u8);
             encode_type_params(ebml_w, tps);
+            encode_type(ebml_w, trans.node_ann_type(cx, ann));
             ebml.end_tag(ebml_w);
 
             encode_tag_variant_info(cx, ebml_w, did, variants);

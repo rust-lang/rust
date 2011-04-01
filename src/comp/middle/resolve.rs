@@ -319,7 +319,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
             case (ast.item_ty(_, _, _, ?id, _)) {
                 ret def_wrap_other(ast.def_ty(id));
             }
-            case (ast.item_tag(_, _, _, ?id)) {
+            case (ast.item_tag(_, _, _, ?id, _)) {
                 ret def_wrap_other(ast.def_ty(id));
             }
             case (ast.item_obj(_, _, _, ?odid, _)) {
@@ -388,7 +388,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
                     }
                     case (ast.mie_tag_variant(?item, ?variant_idx)) {
                         alt (item.node) {
-                            case (ast.item_tag(_, ?variants, _, ?tid)) {
+                            case (ast.item_tag(_, ?variants, _, ?tid, _)) {
                                 auto vid = variants.(variant_idx).node.id;
                                 auto t = ast.def_variant(tid, vid);
                                 ret some[def_wrap](def_wrap_other(t));
@@ -445,7 +445,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
 
     fn found_tag(@ast.item item, uint variant_idx) -> def_wrap {
         alt (item.node) {
-            case (ast.item_tag(_, ?variants, _, ?tid)) {
+            case (ast.item_tag(_, ?variants, _, ?tid, _)) {
                 auto vid = variants.(variant_idx).node.id;
                 auto t = ast.def_variant(tid, vid);
                 ret def_wrap_other(t);
@@ -505,7 +505,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
                             }
                         }
                     }
-                    case (ast.item_tag(_, ?variants, ?ty_params, ?tag_id)) {
+                    case (ast.item_tag(_,?variants,?ty_params,?tag_id,_)) {
                         for (ast.ty_param tp in ty_params) {
                             if (_str.eq(tp.ident, i)) {
                                 auto t = ast.def_ty_arg(tp.id);
