@@ -35,7 +35,7 @@ type env = @rec(
 
 tag resolve_result {
     rr_ok(ast.def_id);
-    rr_not_found(vec[ast.ident], ast.ident);
+    rr_not_found(ast.ident);
 }
 
 // Type decoding
@@ -253,94 +253,15 @@ fn parse_def_id(vec[u8] buf) -> ast.def_id {
     ret tup(crate_num, def_num);
 }
 
-// Given a path and serialized crate metadata, returns the ID of the
-// definition the path refers to.
-impure fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
-    impure fn resolve_path_inner(vec[ast.ident] path, &ebml.reader ebml_r)
-            -> resolve_result {
-        auto i = 0u;
-        auto len = _vec.len[ast.ident](path);
-        while (i < len) {
-            auto name = path.(i);
-            auto last = i == len - 1u;
-
-            // Search this level for the identifier.
-            auto found = false;
-            while (ebml.bytes_left(ebml_r) > 0u && !found) {
-                auto ebml_tag = ebml.peek(ebml_r);
-                if ((ebml_tag.id == metadata.tag_paths_data_item) ||
-                        (ebml_tag.id == metadata.tag_paths_data_mod)) {
-                    ebml.move_to_first_child(ebml_r);
-                    auto did_opt = none[ast.def_id];
-                    auto name_opt = none[ast.ident];
-                    while (ebml.bytes_left(ebml_r) > 0u) {
-                        auto inner_tag = ebml.peek(ebml_r);
-                        if (inner_tag.id == metadata.tag_paths_data_name) {
-                            ebml.move_to_first_child(ebml_r);
-                            auto name_data = ebml.read_data(ebml_r);
-                            ebml.move_to_parent(ebml_r);
-                            auto nm = _str.unsafe_from_bytes(name_data);
-                            name_opt = some[ast.ident](nm);
-                        } else if (inner_tag.id == metadata.tag_def_id) {
-                            ebml.move_to_first_child(ebml_r);
-                            auto did_data = ebml.read_data(ebml_r);
-                            ebml.move_to_parent(ebml_r);
-                            auto did = parse_def_id(did_data);
-                            did_opt = some[ast.def_id](did);
-                        }
-                        ebml.move_to_next_sibling(ebml_r);
-                    }
-                    ebml.move_to_parent(ebml_r);
-
-                    if (_str.eq(option.get[ast.ident](name_opt), name)) {
-                        // Matched!
-                        if (last) {
-                            ret rr_ok(option.get[ast.def_id](did_opt));
-                        }
-
-                        // Move to the module/item we found for the next
-                        // iteration of the loop...
-                        ebml.move_to_first_child(ebml_r);
-                        found = true;
-                    }
-                }
-                ebml.move_to_next_sibling(ebml_r);
-            }
-
-            if (!found) {
-                auto prev = _vec.slice[ast.ident](path, 0u, i);
-                ret rr_not_found(prev, name);
-            }
-
-            i += 1u;
-        }
-
-        fail;   // not reached
-    }
-
-    auto io_r = io.new_reader_(io.new_byte_buf_reader(data));
-    auto ebml_r = ebml.create_reader(io_r);
-    while (ebml.bytes_left(ebml_r) > 0u) {
-        auto ebml_tag = ebml.peek(ebml_r);
-        if (ebml_tag.id == metadata.tag_paths) {
-            ebml.move_to_first_child(ebml_r);
-            ret resolve_path_inner(path, ebml_r);
-        }
-        ebml.move_to_next_sibling(ebml_r);
-    }
-
-    log "resolve_path(): no names in file";
-    fail;
-}
-
-impure fn move_to_item(&ebml.reader ebml_r, int item_id) {
-    ebml.move_to_sibling_with_id(ebml_r, metadata.tag_items);
+impure fn lookup_hash_entry(&ebml.reader ebml_r,
+                            impure fn(&ebml.reader) -> bool eq_fn,
+                            uint hash) -> bool {
     ebml.move_to_child_with_id(ebml_r, metadata.tag_index);
     ebml.move_to_child_with_id(ebml_r, metadata.tag_index_table);
     ebml.move_to_first_child(ebml_r);
 
     // Move to the bucket.
-    auto bucket_index = metadata.hash_def_num(item_id) % 256u;
+    auto bucket_index = hash % 256u;
     auto buf_reader = ebml_r.reader.get_buf_reader();
     buf_reader.seek((bucket_index * 4u) as int, io.seek_cur);
     auto bucket_pos = ebml_r.reader.read_be_uint(4u);
@@ -353,21 +274,57 @@ impure fn move_to_item(&ebml.reader ebml_r, int item_id) {
         if (ebml.peek(ebml_r).id == metadata.tag_index_buckets_bucket_elt) {
             ebml.move_to_first_child(ebml_r);
             auto pos = ebml_r.reader.read_be_uint(4u);
-            auto this_item_id = ebml_r.reader.read_be_uint(4u) as int;
-            if (item_id == this_item_id) {
+            if (eq_fn(ebml_r)) {
                 // Found the item. Move to its data and return.
                 ebml.reset_reader(ebml_r, pos);
-                check (ebml.peek(ebml_r).id == metadata.tag_items_data_item);
                 ebml.move_to_first_child(ebml_r);
-                ret;
+                ret true;
             }
             ebml.move_to_parent(ebml_r);
         }
         ebml.move_to_next_sibling(ebml_r);
     }
 
-    log #fmt("item %d not found in bucket at pos %u", item_id, bucket_pos);
-    fail;
+    ret false;
+}
+
+// Given a path and serialized crate metadata, returns the ID of the
+// definition the path refers to.
+impure fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
+    impure fn eq_item(&ebml.reader ebml_r, str s) -> bool {
+        auto this_str = _str.unsafe_from_bytes(ebml.read_data(ebml_r));
+        ret _str.eq(this_str, s);
+    }
+
+    auto s = _str.connect(path, ".");
+
+    auto io_r = io.new_reader_(io.new_byte_buf_reader(data));
+    auto ebml_r = ebml.create_reader(io_r);
+    ebml.move_to_sibling_with_id(ebml_r, metadata.tag_paths);
+
+    auto eqer = bind eq_item(_, s);
+    auto hash = metadata.hash_path(s);
+    if (!lookup_hash_entry(ebml_r, eqer, hash)) {
+        ret rr_not_found(s);
+    }
+
+    ebml.move_to_sibling_with_id(ebml_r, metadata.tag_def_id);
+    ebml.move_to_first_child(ebml_r);
+    auto did_data = ebml.read_data(ebml_r);
+    ebml.move_to_parent(ebml_r);
+    auto did = parse_def_id(did_data);
+    ret rr_ok(did);
+}
+
+impure fn move_to_item(&ebml.reader ebml_r, int item_id) {
+    impure fn eq_item(&ebml.reader ebml_r, int item_id) -> bool {
+        ret (ebml_r.reader.read_be_uint(4u) as int) == item_id;
+    }
+
+    auto eqer = bind eq_item(_, item_id);
+    auto hash = metadata.hash_def_num(item_id);
+    ebml.move_to_sibling_with_id(ebml_r, metadata.tag_items);
+    lookup_hash_entry(ebml_r, eqer, hash);
 }
 
 // Looks up an item in the given metadata and returns an EBML reader pointing
@@ -573,7 +530,7 @@ fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
     auto did;
     alt (resolve_path(path, data)) {
         case (rr_ok(?di)) { did = di; }
-        case (rr_not_found(?prev, ?name)) {
+        case (rr_not_found(?name)) {
             ret none[ast.def];
         }
     }
