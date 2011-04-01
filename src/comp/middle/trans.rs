@@ -1026,6 +1026,18 @@ fn find_scope_cx(@block_ctxt cx) -> @block_ctxt {
     }
 }
 
+fn find_outer_scope_cx(@block_ctxt cx) -> @block_ctxt {
+    auto scope_cx = find_scope_cx(cx);
+    alt (cx.parent) {
+        case (parent_some(?b)) {
+            be find_scope_cx(b);
+        }
+        case (parent_none) {
+            fail;
+        }
+    }
+}
+
 fn umax(@block_ctxt cx, ValueRef a, ValueRef b) -> ValueRef {
     auto cond = cx.build.ICmp(lib.llvm.LLVMIntULT, a, b);
     ret cx.build.Select(cond, b, a);
@@ -5368,8 +5380,55 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
         case (some[@ast.expr](?e)) {
             r = trans_expr(bcx, e);
             bcx = r.bcx;
+
             if (is_terminated(bcx)) {
                 ret r;
+            } else {
+                // The value resulting from the block gets copied into an
+                // alloca created in an enclosing scope and it's refcount
+                // bumped so that it can escape this block. This means that
+                // it will definitely live until the end of the enclosing
+                // scope, even if nobody uses it, which may be something of
+                // a surprise.
+
+                auto r_ty = ty.expr_ty(e);
+
+                fn is_nil(@ty.t r_ty) -> bool {
+                    alt (r_ty.struct) {
+                        case (ty.ty_nil) {
+                            ret true;
+                        }
+                        case (_) {
+                            ret false;
+                        }
+                    }
+                }
+
+                // FIXME: This is a temporary hack to prevent compile
+                // failures. There's some expression variant that claims
+                // to be ty_nil but but does not translate to T_nil. Need
+                // to hunt it down.
+                if (!is_nil(r_ty)) {
+                    // This alloca is declared at the function level, above
+                    // the block scope
+                    auto res_alloca = alloc_ty(bcx, r_ty);
+                    bcx = res_alloca.bcx;
+                    auto res_copy = copy_ty(bcx, INIT,
+                                            res_alloca.val, r.val, r_ty);
+                    bcx = res_copy.bcx;
+
+                    fn drop_hoisted_ty(@block_ctxt cx,
+                                       ValueRef alloca_val,
+                                       @ty.t t) -> result {
+                        auto reg_val = load_scalar_or_boxed(cx,
+                                                            alloca_val, t);
+                        ret drop_ty(cx, reg_val, t);
+                    }
+
+                    auto cleanup = bind drop_hoisted_ty(_, res_alloca.val,
+                                                        r_ty);
+                    find_outer_scope_cx(bcx).cleanups += vec(clean(cleanup));
+                }
             }
         }
         case (none[@ast.expr]) {
