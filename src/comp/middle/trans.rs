@@ -5388,7 +5388,7 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
 
                 if (ty.type_is_boxed(r_ty)) {
                     // The value resulting from the block gets copied into an
-                    // alloca created in an outer scope and it's refcount
+                    // alloca created in an outer scope and its refcount
                     // bumped so that it can escape this block. This means
                     // that it will definitely live until the end of the
                     // enclosing scope, even if nobody uses it, which may be
