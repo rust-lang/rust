@@ -1911,7 +1911,10 @@ type variant_info = rec(vec[@ty.t] args, @ty.t ctor_ty, ast.def_id id);
 
 // Returns information about the variants in a tag.
 fn tag_variants(@crate_ctxt cx, ast.def_id id) -> vec[variant_info] {
-    // FIXME: This doesn't work for external variants.
+    if (cx.sess.get_targ_crate_num() != id._0) {
+        ret creader.get_tag_variants(cx.sess, id);
+    }
+
     check (cx.items.contains_key(id));
     alt (cx.items.get(id).node) {
         case (ast.item_tag(_, ?variants, _, _, _)) {

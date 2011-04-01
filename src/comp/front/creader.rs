@@ -8,6 +8,7 @@ import lib.llvm.mk_object_file;
 import lib.llvm.mk_section_iter;
 import middle.fold;
 import middle.metadata;
+import middle.trans;
 import middle.ty;
 import back.x86;
 import util.common;
@@ -324,7 +325,8 @@ impure fn move_to_item(&ebml.reader ebml_r, int item_id) {
     auto eqer = bind eq_item(_, item_id);
     auto hash = metadata.hash_def_num(item_id);
     ebml.move_to_sibling_with_id(ebml_r, metadata.tag_items);
-    lookup_hash_entry(ebml_r, eqer, hash);
+    auto found = lookup_hash_entry(ebml_r, eqer, hash);
+    check (found);
 }
 
 // Looks up an item in the given metadata and returns an EBML reader pointing
@@ -409,17 +411,17 @@ impure fn get_item_type(&ebml.reader ebml_r, int this_cnum) -> @ty.t {
     ret get_item_generic[@ty.t](ebml_r, metadata.tag_items_data_item_type, f);
 }
 
-impure fn get_item_ty_params(&ebml.reader ebml_r, int this_cnum)
+impure fn collect_def_ids(&ebml.reader ebml_r, int this_cnum, uint tag_id)
         -> vec[ast.def_id] {
-    let vec[ast.def_id] tps = vec();
+    let vec[ast.def_id] def_ids = vec();
     while (ebml.bytes_left(ebml_r) > 0u) {
         auto ebml_tag = ebml.peek(ebml_r);
-        if (ebml_tag.id == metadata.tag_items_data_item_ty_param) {
+        if (ebml_tag.id == tag_id) {
             ebml.move_to_first_child(ebml_r);
 
             auto data = ebml.read_data(ebml_r);
             auto external_def_id = parse_def_id(data);
-            tps += vec(tup(this_cnum, external_def_id._1));
+            def_ids += vec(tup(this_cnum, external_def_id._1));
 
             ebml.move_to_parent(ebml_r);
         }
@@ -430,7 +432,19 @@ impure fn get_item_ty_params(&ebml.reader ebml_r, int this_cnum)
     ebml.move_to_parent(ebml_r);
     ebml.move_to_first_child(ebml_r);
 
-    ret tps;
+    ret def_ids;
+}
+
+impure fn get_item_ty_params(&ebml.reader ebml_r, int this_cnum)
+        -> vec[ast.def_id] {
+    ret collect_def_ids(ebml_r, this_cnum,
+                        metadata.tag_items_data_item_ty_param);
+}
+
+impure fn collect_tag_variant_ids(&ebml.reader ebml_r, int this_cnum)
+        -> vec[ast.def_id] {
+    ret collect_def_ids(ebml_r, this_cnum,
+                        metadata.tag_items_data_item_variant);
 }
 
 
@@ -588,6 +602,35 @@ fn get_symbol(session.session sess, ast.def_id def) -> str {
     auto data = sess.get_external_crate(external_crate_id);
     auto ebml_r = lookup_item(def._1, data);
     ret get_item_symbol(ebml_r);
+}
+
+fn get_tag_variants(session.session sess, ast.def_id def)
+        -> vec[trans.variant_info] {
+    auto external_crate_id = def._0;
+    auto data = sess.get_external_crate(external_crate_id);
+    auto ebml_r = lookup_item(def._1, data);
+
+    let vec[trans.variant_info] infos = vec();
+    auto variant_ids = collect_tag_variant_ids(ebml_r, external_crate_id);
+    for (ast.def_id did in variant_ids) {
+        ebml.reset_reader(ebml_r, 0u);
+        move_to_item(ebml_r, did._1);
+        auto ctor_ty = get_item_type(ebml_r, external_crate_id);
+        let vec[@ty.t] arg_tys = vec();
+        alt (ctor_ty.struct) {
+            case (ty.ty_fn(_, ?args, _)) {
+                for (ty.arg a in args) {
+                    arg_tys += vec(a.ty);
+                }
+            }
+            case (_) {
+                // Nullary tag variant.
+            }
+        }
+        infos += vec(rec(args=arg_tys, ctor_ty=ctor_ty, id=did));
+    }
+
+    ret infos;
 }
 
 // Local Variables:

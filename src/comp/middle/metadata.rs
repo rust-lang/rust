@@ -176,8 +176,12 @@ fn encode_def_id(&ebml.writer ebml_w, &ast.def_id id) {
     ebml.end_tag(ebml_w);
 }
 
-fn encode_tag_variant_paths(&ebml.writer ebml_w, vec[ast.variant] variants) {
+fn encode_tag_variant_paths(&ebml.writer ebml_w,
+                            vec[ast.variant] variants,
+                            vec[str] path,
+                            &mutable vec[tup(str, uint)] index) {
     for (ast.variant variant in variants) {
+        add_to_index(ebml_w, path, index, variant.node.name);
         ebml.start_tag(ebml_w, tag_paths_data_item);
         encode_name(ebml_w, variant.node.name);
         encode_def_id(ebml_w, variant.node.id);
@@ -266,9 +270,10 @@ fn encode_module_item_paths(&ebml.writer ebml_w,
                 add_to_index(ebml_w, path, index, id);
                 ebml.start_tag(ebml_w, tag_paths_data_item);
                 encode_name(ebml_w, id);
-                encode_tag_variant_paths(ebml_w, variants);
                 encode_def_id(ebml_w, did);
                 ebml.end_tag(ebml_w);
+
+                encode_tag_variant_paths(ebml_w, variants, path, index);
             }
             case (ast.item_obj(?id, _, ?tps, ?odid, ?ann)) {
                 add_to_index(ebml_w, path, index, id);
@@ -314,6 +319,12 @@ fn encode_type_params(&ebml.writer ebml_w, vec[ast.ty_param] tps) {
     }
 }
 
+fn encode_variant_id(&ebml.writer ebml_w, ast.def_id vid) {
+    ebml.start_tag(ebml_w, tag_items_data_item_variant);
+    ebml_w.writer.write(_str.bytes(def_to_str(vid)));
+    ebml.end_tag(ebml_w);
+}
+
 fn encode_type(&ebml.writer ebml_w, @ty.t typ) {
     ebml.start_tag(ebml_w, tag_items_data_item_type);
     auto f = def_to_str;
@@ -348,23 +359,24 @@ fn encode_obj_type_id(&ebml.writer ebml_w, &ast.def_id id) {
 
 
 fn encode_tag_variant_info(@trans.crate_ctxt cx, &ebml.writer ebml_w,
-                           ast.def_id did, vec[ast.variant] variants) {
+                           ast.def_id did, vec[ast.variant] variants,
+                           &mutable vec[tup(int, uint)] index) {
     for (ast.variant variant in variants) {
+        index += vec(tup(variant.node.id._1, ebml_w.writer.tell()));
+
         ebml.start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, variant.node.id);
         encode_kind(ebml_w, 'v' as u8);
         encode_tag_id(ebml_w, did);
         encode_type(ebml_w, trans.node_ann_type(cx, variant.node.ann));
-        if (_vec.len[ast.variant_arg](variant.node.args) > 0u) {
-            encode_symbol(cx, ebml_w, variant.node.id);
-        }
+        encode_symbol(cx, ebml_w, variant.node.id);
         encode_discriminant(cx, ebml_w, variant.node.id);
         ebml.end_tag(ebml_w);
     }
 }
 
 fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
-                        @ast.item item) {
+                        @ast.item item, &mutable vec[tup(int, uint)] index) {
     alt (item.node) {
         case (ast.item_const(_, _, _, ?did, ?ann)) {
             ebml.start_tag(ebml_w, tag_items_data_item);
@@ -409,9 +421,12 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_kind(ebml_w, 't' as u8);
             encode_type_params(ebml_w, tps);
             encode_type(ebml_w, trans.node_ann_type(cx, ann));
+            for (ast.variant v in variants) {
+                encode_variant_id(ebml_w, v.node.id);
+            }
             ebml.end_tag(ebml_w);
 
-            encode_tag_variant_info(cx, ebml_w, did, variants);
+            encode_tag_variant_info(cx, ebml_w, did, variants, index);
         }
         case (ast.item_obj(?id, _, ?tps, ?odid, ?ann)) {
             ebml.start_tag(ebml_w, tag_items_data_item);
@@ -458,7 +473,7 @@ fn encode_info_for_items(@trans.crate_ctxt cx, &ebml.writer ebml_w)
     ebml.start_tag(ebml_w, tag_items_data);
     for each (@tup(ast.def_id, @ast.item) kvp in cx.items.items()) {
         index += vec(tup(kvp._0._1, ebml_w.writer.tell()));
-        encode_info_for_item(cx, ebml_w, kvp._1);
+        encode_info_for_item(cx, ebml_w, kvp._1, index);
     }
     for each (@tup(ast.def_id, @ast.native_item) kvp in
             cx.native_items.items()) {
