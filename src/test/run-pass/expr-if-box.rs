@@ -9,6 +9,12 @@ fn test_box() {
   check (*res == 100);
 }
 
+fn test_str() {
+  auto res = if (true) { "happy" } else { "sad" };
+  check (res == "happy");
+}
+
 fn main() {
   test_box();
+  test_str();
 }

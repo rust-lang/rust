@@ -80,11 +80,6 @@ fn test_if_as_block_result() {
   check (res);
 }
 
-fn test_str() {
-  auto res = if (true) { "happy" } else { "sad" };
-  check (res == "happy");
-}
-
 fn main() {
   test_if();
   test_else();
@@ -94,5 +89,4 @@ fn main() {
   test_inferrence();
   test_if_as_if_condition();
   test_if_as_block_result();
-  test_str();
 }
