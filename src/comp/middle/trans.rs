@@ -5384,21 +5384,29 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
             if (is_terminated(bcx)) {
                 ret r;
             } else {
-                // The value resulting from the block gets copied into an
-                // alloca created in an enclosing scope and it's refcount
-                // bumped so that it can escape this block. This means that
-                // it will definitely live until the end of the enclosing
-                // scope, even if nobody uses it, which may be something of
-                // a surprise.
-
                 auto r_ty = ty.expr_ty(e);
 
                 if (ty.type_is_boxed(r_ty)) {
+                    // The value resulting from the block gets copied into an
+                    // alloca created in an outer scope and it's refcount
+                    // bumped so that it can escape this block. This means
+                    // that it will definitely live until the end of the
+                    // enclosing scope, even if nobody uses it, which may be
+                    // something of a surprise.
 
-                    // Create an alloca up in the llallocas block to hold the
-                    // expression result.
+                    // It's possible we never hit this block, so the alloca
+                    // must be initialized to null, then when the potential
+                    // value finally goes out of scope the drop glue will see
+                    // that it was never used and ignore it.
+
+                    // NB: Here we're building and initalizing the alloca in
+                    // the alloca context, not this block's context.
                     auto res_alloca = alloc_ty(bcx, r_ty);
-                    bcx = res_alloca.bcx;
+                    auto alloca_ty = type_of(bcx.fcx.ccx, r_ty);
+                    auto builder = new_builder(bcx.fcx.llallocas);
+                    builder.Store(C_null(alloca_ty), res_alloca.val);
+
+                    // Now we're working in our own block context again
                     auto res_copy = copy_ty(bcx, INIT,
                                             res_alloca.val, r.val, r_ty);
                     bcx = res_copy.bcx;
