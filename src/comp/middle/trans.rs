@@ -3521,7 +3521,6 @@ fn trans_pat_binding(@block_ctxt cx, @ast.pat pat, ValueRef llval)
 
             // Get the appropriate variant for this tag.
             auto vdef = option.get[ast.variant_def](vdef_opt);
-            auto variant = tag_variant_with_id(cx.fcx.ccx, vdef._0, vdef._1);
 
             auto lltagptr = cx.build.PointerCast(llval,
                 T_opaque_tag_ptr(cx.fcx.ccx.tn));
