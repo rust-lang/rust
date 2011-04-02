@@ -360,7 +360,8 @@ fn encode_obj_type_id(&ebml.writer ebml_w, &ast.def_id id) {
 
 fn encode_tag_variant_info(@trans.crate_ctxt cx, &ebml.writer ebml_w,
                            ast.def_id did, vec[ast.variant] variants,
-                           &mutable vec[tup(int, uint)] index) {
+                           &mutable vec[tup(int, uint)] index,
+                           vec[ast.ty_param] ty_params) {
     for (ast.variant variant in variants) {
         index += vec(tup(variant.node.id._1, ebml_w.writer.tell()));
 
@@ -373,6 +374,7 @@ fn encode_tag_variant_info(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_symbol(cx, ebml_w, variant.node.id);
         }
         encode_discriminant(cx, ebml_w, variant.node.id);
+        encode_type_params(ebml_w, ty_params);
         ebml.end_tag(ebml_w);
     }
 }
@@ -428,7 +430,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             }
             ebml.end_tag(ebml_w);
 
-            encode_tag_variant_info(cx, ebml_w, did, variants, index);
+            encode_tag_variant_info(cx, ebml_w, did, variants, index, tps);
         }
         case (ast.item_obj(?id, _, ?tps, ?odid, ?ann)) {
             ebml.start_tag(ebml_w, tag_items_data_item);
