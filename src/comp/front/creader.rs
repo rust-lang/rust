@@ -524,6 +524,7 @@ fn kind_has_type_params(u8 kind_ch) -> bool {
     else if (kind_ch == ('y' as u8)) { ret true;  }
     else if (kind_ch == ('o' as u8)) { ret true;  }
     else if (kind_ch == ('t' as u8)) { ret true;  }
+    else if (kind_ch == ('T' as u8)) { ret false;  }
     else if (kind_ch == ('m' as u8)) { ret false; }
     else if (kind_ch == ('n' as u8)) { ret false; }
     else if (kind_ch == ('v' as u8)) { ret true;  }
@@ -561,6 +562,7 @@ fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
     else if (kind_ch == ('F' as u8))    { def = ast.def_native_fn(did);  }
     else if (kind_ch == ('y' as u8))    { def = ast.def_ty(did);         }
     else if (kind_ch == ('o' as u8))    { def = ast.def_obj(did);        }
+    else if (kind_ch == ('T' as u8))    { def = ast.def_native_ty(did);  }
     else if (kind_ch == ('t' as u8)) {
         // We treat references to tags as references to types.
         def = ast.def_ty(did);

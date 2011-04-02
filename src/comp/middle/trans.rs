@@ -6211,7 +6211,9 @@ fn collect_native_item(&@crate_ctxt cx, @ast.native_item i) -> @crate_ctxt {
                 decl_native_fn_and_pair(cx, name, ann, fid);
             }
         }
-        case (_) { /* fall through */ }
+        case (ast.native_item_ty(_, ?tid)) {
+            cx.native_items.insert(tid, i);
+        }
     }
     ret cx;
 }
