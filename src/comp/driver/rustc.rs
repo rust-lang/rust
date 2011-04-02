@@ -8,7 +8,7 @@ import middle.trans;
 import middle.resolve;
 import middle.ty;
 import middle.typeck;
-import middle.typestate_check;
+// import middle.typestate_check;
 import util.common;
 
 import std.map.mk_hashmap;
