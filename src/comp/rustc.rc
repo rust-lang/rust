@@ -20,6 +20,7 @@ mod middle {
     mod trans;
     mod ty;
     mod typeck;
+    mod typestate_check;
 }
 
 mod back {

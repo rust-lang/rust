@@ -341,7 +341,7 @@ impure fn find_pre_post_item(fn_info enclosing, &item i) -> item {
     case (ast.item_ty(_,_,_,_,_)) {
       ret i;
     }
-    case (ast.item_tag(_,_,_,_)) {
+    case (ast.item_tag(_,_,_,_,_)) {
       ret i;
     }
     case (ast.item_obj(?id, ?o, ?ps, ?di, ?a)) {
