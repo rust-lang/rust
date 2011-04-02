@@ -16,7 +16,6 @@ import front.ast.decl_item;
 import front.ast.ident;
 import front.ast.def_id;
 import front.ast.ann;
-import front.ast.init;
 import front.ast.expr;
 import front.ast.expr_call;
 import front.ast.expr_path;
