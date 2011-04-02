@@ -3045,12 +3045,6 @@ fn join_results(@block_ctxt parent_cx,
             ret ins.(0);
         }
 
-        case (1u) {
-            // Only one incoming edge is live, so we just feed that block
-            // onward.
-            ret live.(0);
-        }
-
         case (_) { /* fall through */ }
     }
 
