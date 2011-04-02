@@ -3852,7 +3852,6 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
 
     // fail: bad bounds check.
     auto fail_res = trans_fail(fail_cx, sp, "bounds check");
-    fail_res.bcx.build.Br(next_cx.llbb);
 
     auto body = next_cx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_data)));
     auto elt;
@@ -4916,7 +4915,6 @@ fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
     auto fail_res = trans_fail(fail_cx, e.span, expr_str);
 
     auto next_cx = new_sub_block_ctxt(cx, "next");
-    fail_res.bcx.build.Br(next_cx.llbb);
     cond_res.bcx.build.CondBr(cond_res.val,
                               next_cx.llbb,
                               fail_cx.llbb);
@@ -4929,7 +4927,9 @@ fn trans_fail(@block_ctxt cx, common.span sp, str fail_str) -> result {
     auto V_line = sp.lo.line as int;
     auto args = vec(V_fail_str, V_filename, C_int(V_line));
 
-    ret trans_upcall(cx, "upcall_fail", args);
+    auto sub = trans_upcall(cx, "upcall_fail", args);
+    sub.bcx.build.Unreachable();
+    ret res(sub.bcx, C_nil());
 }
 
 fn trans_put(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
