@@ -379,6 +379,11 @@ impure fn print_literal(ps s, @ast.lit lit) {
             wrd(s.s, common.istr(val as int));
             wrd(s.s, common.ty_mach_to_str(mach));
         }
+        case (ast.lit_mach_float(?mach,?val)) {
+            // val is already a str
+            wrd(s.s, val);
+            wrd(s.s, common.ty_mach_to_str(mach));
+        }
         case (ast.lit_nil) {wrd(s.s, "()");}
         case (ast.lit_bool(?val)) {
             if (val) {wrd(s.s, "true");} else {wrd(s.s, "false");}
