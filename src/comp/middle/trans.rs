@@ -17,6 +17,8 @@ import middle.ty;
 import back.x86;
 import back.abi;
 
+import pretty.pprust;
+
 import middle.ty.pat_ty;
 import middle.ty.plain_ty;
 
@@ -4913,8 +4915,7 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
 fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
     auto cond_res = trans_expr(cx, e);
 
-    // FIXME: need pretty-printer.
-    auto expr_str = "<expr>";
+    auto expr_str = pretty.pprust.expr_to_str(e);
     auto fail_cx = new_sub_block_ctxt(cx, "fail");
     auto fail_res = trans_fail(fail_cx, e.span, expr_str);
 
