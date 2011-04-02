@@ -3086,6 +3086,7 @@ fn trans_if(@block_ctxt cx, @ast.expr cond,
 
             // If we have an else expression, then the entire
             // if expression can have a non-nil type.
+            // FIXME: This isn't quite right, particularly re: dynamic types
             auto expr_ty = ty.expr_ty(elexpr);
             if (ty.type_has_dynamic_size(expr_ty)) {
                 expr_llty = T_typaram_ptr(cx.fcx.ccx.tn);
@@ -3576,6 +3577,7 @@ fn trans_alt(@block_ctxt cx, @ast.expr expr,
     auto default_res = trans_fail(default_cx, expr.span,
                                   "non-exhaustive match failure");
 
+    // FIXME: This isn't quite right, particularly re: dynamic types
     auto expr_ty = ty.ann_to_type(ann);
     auto expr_llty;
     if (ty.type_has_dynamic_size(expr_ty)) {
