@@ -3549,13 +3549,12 @@ fn trans_pat_binding(@block_ctxt cx, @ast.pat pat, ValueRef llval)
     }
 }
 
-fn trans_alt(@block_ctxt cx, @ast.expr expr, vec[ast.arm] arms)
-    -> result {
+fn trans_alt(@block_ctxt cx, @ast.expr expr,
+             vec[ast.arm] arms, ast.ann ann) -> result {
     auto expr_res = trans_expr(cx, expr);
 
-    auto last_cx = new_sub_block_ctxt(expr_res.bcx, "last");
-
     auto this_cx = expr_res.bcx;
+    let vec[result] arm_results = vec();
     for (ast.arm arm in arms) {
         auto next_cx = new_sub_block_ctxt(expr_res.bcx, "next");
         auto match_res = trans_pat_match(this_cx, arm.pat, expr_res.val,
@@ -3568,9 +3567,7 @@ fn trans_alt(@block_ctxt cx, @ast.expr expr, vec[ast.arm] arms)
                                              expr_res.val);
 
         auto block_res = trans_block(binding_res.bcx, arm.block);
-        if (!is_terminated(block_res.bcx)) {
-            block_res.bcx.build.Br(last_cx.llbb);
-        }
+        arm_results += vec(block_res);
 
         this_cx = next_cx;
     }
@@ -3579,9 +3576,18 @@ fn trans_alt(@block_ctxt cx, @ast.expr expr, vec[ast.arm] arms)
     auto default_res = trans_fail(default_cx, expr.span,
                                   "non-exhaustive match failure");
 
-    // FIXME: This is very wrong; we should phi together all the arm blocks,
-    // since this is an expression.
-    ret res(last_cx, C_nil());
+    auto expr_ty = ty.ann_to_type(ann);
+    auto expr_llty;
+    if (ty.type_has_dynamic_size(expr_ty)) {
+        expr_llty = T_typaram_ptr(cx.fcx.ccx.tn);
+    } else {
+        expr_llty = type_of(cx.fcx.ccx, expr_ty);
+        if (ty.type_is_structural(expr_ty)) {
+            expr_llty = T_ptr(expr_llty);
+        }
+    }
+
+    ret join_results(cx, expr_llty, arm_results);
 }
 
 type generic_info = rec(@ty.t item_type,
@@ -4703,8 +4709,8 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             ret trans_do_while(cx, body, cond);
         }
 
-        case (ast.expr_alt(?expr, ?arms, _)) {
-            ret trans_alt(cx, expr, arms);
+        case (ast.expr_alt(?expr, ?arms, ?ann)) {
+            ret trans_alt(cx, expr, arms, ann);
         }
 
         case (ast.expr_block(?blk, _)) {

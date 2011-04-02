@@ -1,5 +1,4 @@
 // xfail-boot
-// xfail-stage0
 // -*- rust -*-
 
 // Tests for using alt as an expression
