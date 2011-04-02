@@ -3581,9 +3581,9 @@ fn trans_alt(@block_ctxt cx, @ast.expr expr, vec[ast.arm] arms)
         this_cx = next_cx;
     }
 
-    // FIXME: This is executed when none of the patterns match; it should fail
-    // instead!
-    this_cx.build.Br(last_cx.llbb);
+    auto default_cx = this_cx;
+    auto default_res = trans_fail(default_cx, expr.span,
+                                  "non-exhaustive match failure");
 
     // FIXME: This is very wrong; we should phi together all the arm blocks,
     // since this is an expression.
