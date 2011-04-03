@@ -50,4 +50,5 @@ config.mk
 /rt/
 /rustllvm/
 /test/
+/build/
 src/.DS_Store
