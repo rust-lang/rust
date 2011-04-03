@@ -2721,7 +2721,7 @@ fn trans_compare(@block_ctxt cx0, ast.binop op, @ty.t t0,
             auto elt_ty = ty.sequence_element_type(t);
             auto elt_llsz_r = size_of(scx, elt_ty);
             scx = elt_llsz_r.bcx;
-            r = iter_sequence_raw(scx, lhs, rhs, rhs_lim,
+            r = iter_sequence_raw(scx, lhs_p0, rhs_p0, rhs_lim,
                                   elt_llsz_r.val,
                                   bind inner(next, true, flag, op,
                                              _, _, _, elt_ty));
