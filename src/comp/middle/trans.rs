@@ -705,7 +705,7 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t, bool boxed) -> TypeRef {
             llty = T_fn_pair(cx.tn, type_of_fn(cx, proto, args, out, 0u));
         }
         case (ty.ty_native_fn(?abi, ?args, ?out)) {
-            auto nft = type_of_native_fn(cx, abi, args, out, 0u);
+            auto nft = native_fn_wrapper_type(cx, 0u, t);
             llty = T_fn_pair(cx.tn, nft);
         }
         case (ty.ty_obj(?meths)) {
@@ -6101,9 +6101,8 @@ fn native_fn_ty_param_count(@crate_ctxt cx, &ast.def_id id) -> uint {
     ret count;
 }
 
-fn native_fn_wrapper_type(@crate_ctxt cx, uint ty_param_count, &ast.ann ann)
+fn native_fn_wrapper_type(@crate_ctxt cx, uint ty_param_count, @ty.t x)
         -> TypeRef {
-    auto x = node_ann_type(cx, ann);
     alt (x.struct) {
         case (ty.ty_native_fn(?abi, ?args, ?out)) {
             ret type_of_fn(cx, ast.proto_fn, args, out, ty_param_count);
@@ -6119,7 +6118,8 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
     auto num_ty_param = native_fn_ty_param_count(cx, id);
 
     // Declare the wrapper.
-    auto wrapper_type = native_fn_wrapper_type(cx, num_ty_param, ann);
+    auto t = node_ann_type(cx, ann);
+    auto wrapper_type = native_fn_wrapper_type(cx, num_ty_param, t);
     let str s = mangle_name_by_seq(cx, "wrapper");
     let ValueRef wrapper_fn = decl_internal_fastcall_fn(cx.llmod, s,
                                                        wrapper_type);
