@@ -372,6 +372,7 @@ fn T_vec(TypeRef t) -> TypeRef {
     ret T_struct(vec(T_int(),       // Refcount
                      T_int(),       // Alloc
                      T_int(),       // Fill
+                     T_int(),       // Pad
                      T_array(t, 0u) // Body elements
                      ));
 }
@@ -870,6 +871,7 @@ fn C_str(@crate_ctxt cx, str s) -> ValueRef {
     auto box = C_struct(vec(C_int(abi.const_refcount as int),
                             C_int(len + 1u as int), // 'alloc'
                             C_int(len + 1u as int), // 'fill'
+                            C_int(0),               // 'pad'
                             llvm.LLVMConstString(_str.buf(s),
                                                  len, False)));
     auto g = llvm.LLVMAddGlobal(cx.llmod, val_ty(box),

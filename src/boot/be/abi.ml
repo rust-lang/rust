@@ -93,7 +93,8 @@ let tydesc_field_stateflag = 11;;
 let vec_elt_rc = 0;;
 let vec_elt_alloc = 1;;
 let vec_elt_fill = 2;;
-let vec_elt_data = 3;;
+let vec_elt_pad = 3;;
+let vec_elt_data = 4;;
 
 let calltup_elt_out_ptr = 0;;
 let calltup_elt_task_ptr = 1;;

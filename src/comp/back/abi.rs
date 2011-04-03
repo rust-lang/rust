@@ -26,7 +26,8 @@ const int general_code_alignment = 16;
 const int vec_elt_rc = 0;
 const int vec_elt_alloc = 1;
 const int vec_elt_fill = 2;
-const int vec_elt_data = 3;
+const int vec_elt_pad = 3;
+const int vec_elt_data = 4;
 
 const int tydesc_field_first_param = 0;
 const int tydesc_field_size = 1;

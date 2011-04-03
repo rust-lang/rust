@@ -1549,6 +1549,7 @@ let trans_visitor
                              Asm.IMM Abi.const_refcount);
                    Asm.WORD (word_ty_mach, Asm.IMM init_sz);
                    Asm.WORD (word_ty_mach, Asm.IMM init_sz);
+                   Asm.WORD (word_ty_mach, Asm.IMM 0L);
                    Asm.ZSTRING s
                  |]))
           (referent_type cx Ast.TY_str)
@@ -2850,15 +2851,16 @@ let trans_visitor
 
   (*
    * A vec is implicitly boxed: every slot vec[T] is 1 word and
-   * points to a refcounted structure. That structure has 3 words with
+   * points to a refcounted structure. That structure has 4 words with
    * defined meaning at the beginning; data follows the header.
    *
    *   word 0: refcount or gc control word
    *   word 1: allocated size of data
    *   word 2: initialised size of data
-   *   word 3...N: data
+   *   word 3: padding word to hit even multiple of 16
+   *   word 4...N: data
    * 
-   * This 3-word prefix is shared with strings, we factor the common
+   * This 4-word prefix is shared with strings, we factor the common
    * part out for reuse in string code.
    *)
 

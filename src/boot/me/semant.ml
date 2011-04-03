@@ -2382,7 +2382,7 @@ and fn_rty (cx:ctxt) (opaque_box_body:bool) : Il.referent_ty =
 and vec_sty (word_bits:Il.bits) : Il.scalar_ty =
   let word = word_rty word_bits in
   let ptr = Il.ScalarTy (Il.AddrTy Il.OpaqueTy) in
-    Il.AddrTy (Il.StructTy [| word; word; word; ptr |])
+    Il.AddrTy (Il.StructTy [| word; word; word; word; ptr |])
 
 and referent_type
     ?parent_tags:parent_tags
@@ -2442,7 +2442,7 @@ and referent_type
       | Ast.TY_mach (TY_i64)
       | Ast.TY_mach (TY_f64) -> sv Il.Bits64
 
-      | Ast.TY_str -> sp (Il.StructTy [| word; word; word; ptr |])
+      | Ast.TY_str -> sp (Il.StructTy [| word; word; word; word; ptr |])
       | Ast.TY_vec _ -> s (vec_sty word_bits)
       | Ast.TY_tup tt -> tup tt
       | Ast.TY_rec tr -> tup (Array.map snd tr)

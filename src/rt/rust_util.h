@@ -172,6 +172,7 @@ rust_vec : public rc_base<rust_vec>
 {
     size_t alloc;
     size_t fill;
+    size_t pad; // Pad to align data[0] to 16 bytes.
     uint8_t data[];
     rust_vec(rust_dom *dom, size_t alloc, size_t fill, uint8_t const *d) :
         alloc(alloc),
