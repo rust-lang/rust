@@ -62,6 +62,8 @@ auth middle.typestate_check.log_expr = impure;
 auth lib.llvm = unsafe;
 auth pretty.pprust = impure;
 auth middle.typestate_check.find_pre_post_block = impure;
+auth middle.typestate_check.find_pre_post_expr = impure;
+auth util.typestate_ann.implies = impure;
 
 mod lib {
     alt (target_os) {
