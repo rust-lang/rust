@@ -959,7 +959,7 @@ fn strip_boxes(@ty.t t) -> @ty.t {
 fn add_boxes(uint n, @ty.t t) -> @ty.t {
     auto t1 = t;
     while (n != 0u) {
-        t1 = ty.plain_box_ty(t1);
+        t1 = ty.plain_box_ty(t1, ast.imm);
         n -= 1u;
     }
     ret t1;
@@ -1728,9 +1728,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto oper_1 = check_expr(fcx, oper);
             auto oper_t = expr_ty(oper_1);
             alt (unop) {
-                case (ast.box) {
-                    // TODO: mutable
-                    oper_t = ty.plain_box_ty(oper_t);
+                case (ast.box(?mut)) {
+                    oper_t = ty.plain_box_ty(oper_t, mut);
                 }
                 case (ast.deref) {
                     alt (oper_t.struct) {

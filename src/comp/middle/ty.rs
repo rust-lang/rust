@@ -564,8 +564,8 @@ fn plain_ty(&sty st) -> @t {
     ret @rec(struct=st, cname=none[str]);
 }
 
-fn plain_box_ty(@t subty) -> @t {
-    ret plain_ty(ty_box(rec(ty=subty, mut=ast.imm)));
+fn plain_box_ty(@t subty, ast.mutability mut) -> @t {
+    ret plain_ty(ty_box(rec(ty=subty, mut=mut)));
 }
 
 fn plain_tup_ty(vec[@t] elem_tys) -> @t {

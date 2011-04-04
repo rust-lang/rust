@@ -1424,7 +1424,7 @@ fn trans_malloc_boxed(@block_ctxt cx, @ty.t t) -> result {
     // Synthesize a fake box type structurally so we have something
     // to measure the size of.
     auto boxed_body = ty.plain_tup_ty(vec(plain_ty(ty.ty_int), t));
-    auto box_ptr = ty.plain_box_ty(t);
+    auto box_ptr = ty.plain_box_ty(t, ast.imm);
     auto sz = size_of(cx, boxed_body);
     auto llty = type_of(cx.fcx.ccx, box_ptr);
     ret trans_raw_malloc(sz.bcx, llty, sz.val);
@@ -2005,7 +2005,7 @@ fn iter_structural_ty_full(@block_ctxt cx,
         auto box_a_ptr = cx.build.Load(box_a_cell);
         auto box_b_ptr = cx.build.Load(box_b_cell);
         auto tnil = plain_ty(ty.ty_nil);
-        auto tbox = ty.plain_box_ty(tnil);
+        auto tbox = ty.plain_box_ty(tnil, ast.imm);
 
         auto inner_cx = new_sub_block_ctxt(cx, "iter box");
         auto next_cx = new_sub_block_ctxt(cx, "next");
@@ -2557,7 +2557,7 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
                 ret res(sub.bcx, sub.bcx.build.Neg(sub.val));
             }
         }
-        case (ast.box) {
+        case (ast.box(_)) {
             auto e_ty = ty.expr_ty(e);
             auto e_val = sub.val;
             auto box_ty = node_ann_type(sub.bcx.fcx.ccx, a);
@@ -3943,7 +3943,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
 
-    auto llclosure_ptr_ty = type_of(cx, ty.plain_box_ty(closure_ty));
+    auto llclosure_ptr_ty = type_of(cx, ty.plain_box_ty(closure_ty, ast.imm));
     auto llclosure = bcx.build.PointerCast(fcx.llenv, llclosure_ptr_ty);
 
     auto lltarget = GEP_tup_like(bcx, closure_ty, llclosure,
@@ -5819,7 +5819,7 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
         let @ty.t body_ty = ty.plain_tup_ty(vec(tydesc_ty,
                                                 typarams_ty,
                                                 fields_ty));
-        let @ty.t boxed_body_ty = ty.plain_box_ty(body_ty);
+        let @ty.t boxed_body_ty = ty.plain_box_ty(body_ty, ast.imm);
 
         // Malloc a box for the body.
         auto box = trans_malloc_boxed(bcx, body_ty);

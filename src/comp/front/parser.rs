@@ -1074,9 +1074,10 @@ impure fn parse_prefix_expr(parser p) -> @ast.expr {
 
         case (token.AT) {
             p.bump();
+            auto m = parse_mutability(p);
             auto e = parse_prefix_expr(p);
             hi = e.span;
-            ex = ast.expr_unary(ast.box, e, ast.ann_none);
+            ex = ast.expr_unary(ast.box(m), e, ast.ann_none);
         }
 
         case (_) {
