@@ -120,7 +120,7 @@ table. The task ahead involves combining, trimming, and implementing.
 @end quotation
 @sp 2
 
-Rust is a curly-brace, block-structured statement language. It visually
+Rust is a curly-brace, block-structured expression language. It visually
 resembles the C language family, but differs significantly in syntactic and
 semantic details. Its design is oriented toward concerns of ``programming in
 the large'', that is, of creating and maintaining @emph{boundaries} -- both
