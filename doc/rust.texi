@@ -334,7 +334,7 @@ The Rust type system is primarily structural, and contains the standard
 assortment of useful ``algebraic'' type constructors from functional
 languages, such as function types, tuples, record types, vectors, and
 nominally-tagged disjoint unions. Such values may be @emph{pattern-matched} in
-an @code{alt} statement.
+an @code{alt} expression.
 
 @sp 1
 @item Generic code
@@ -394,8 +394,8 @@ the surrounding text by skipping over the bracketed ``extension text''.
 @sp 1
 @item Idempotent failure
 
-If a task fails due to a signal, or if it executes the special @code{fail}
-statement, it enters the @emph{failing} state. A failing task unwinds its
+If a task fails due to a signal, or if it evaluates the special @code{fail}
+expression, it enters the @emph{failing} state. A failing task unwinds its
 control stack, frees all of its owned resources (executing destructors) and
 enters the @emph{dead} state. Failure is idempotent and non-recoverable.
 
@@ -1486,8 +1486,8 @@ operating-system processes.
 @cindex Port
 @cindex Channel
 @cindex Message passing
-@cindex Send statement
-@cindex Receive statement
+@cindex Send expression
+@cindex Receive expression
 
 With the exception of @emph{unsafe} constructs, Rust tasks are isolated from
 interfering with one another's memory directly. Instead of manipulating shared
@@ -1563,14 +1563,14 @@ A task begins its lifecycle -- once it has been spawned -- in the
 function, and any functions called by the entry function.
 
 A task may transition from the @emph{running} state to the @emph{blocked}
-state any time it executes a communication statement on a port or channel that
-cannot be immediately completed.  When the communication statement can be
+state any time it evaluates a communication expression on a port or channel that
+cannot be immediately completed.  When the communication expression can be
 completed -- when a message arrives at a sender, or a queue drains
 sufficiently to complete a semi-synchronous send -- then the blocked task will
 unblock and transition back to @emph{running}.
 
 A task may transition to the @emph{failing} state at any time, due to an
-un-trapped signal or the execution of a @code{fail} statement. Once
+un-trapped signal or the evaluation of a @code{fail} expression. Once
 @emph{failing}, a task unwinds its stack and transitions to the @emph{dead}
 state. Unwinding the stack of a task is done by the task itself, on its own
 control stack. If a value with a destructor is freed during unwinding, the
