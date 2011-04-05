@@ -3605,20 +3605,23 @@ type generic_info = rec(@ty.t item_type,
 type lval_result = rec(result res,
                        bool is_mem,
                        option.t[generic_info] generic,
-                       option.t[ValueRef] llobj);
+                       option.t[ValueRef] llobj,
+                       option.t[@ty.t] method_ty);
 
 fn lval_mem(@block_ctxt cx, ValueRef val) -> lval_result {
     ret rec(res=res(cx, val),
             is_mem=true,
             generic=none[generic_info],
-            llobj=none[ValueRef]);
+            llobj=none[ValueRef],
+            method_ty=none[@ty.t]);
 }
 
 fn lval_val(@block_ctxt cx, ValueRef val) -> lval_result {
     ret rec(res=res(cx, val),
             is_mem=false,
             generic=none[generic_info],
-            llobj=none[ValueRef]);
+            llobj=none[ValueRef],
+            method_ty=none[@ty.t]);
 }
 
 fn trans_external_path(@block_ctxt cx, ast.def_id did,
@@ -3813,7 +3816,10 @@ fn trans_field(@block_ctxt cx, &ast.span sp, ValueRef v, @ty.t t0,
                                                 C_int(ix as int)));
 
             auto lvo = lval_mem(r.bcx, v);
-            ret rec(llobj = some[ValueRef](r.val) with lvo);
+            let @ty.t fn_ty = ty.method_ty_to_fn_ty(methods.(ix));
+            ret rec(llobj = some[ValueRef](r.val),
+                    method_ty = some[@ty.t](fn_ty)
+                    with lvo);
         }
         case (_) { cx.fcx.ccx.sess.unimpl("field variant in trans_field"); }
     }
@@ -4426,6 +4432,11 @@ fn trans_call(@block_ctxt cx, @ast.expr f,
               option.t[ValueRef] lliterbody,
               vec[@ast.expr] args,
               &ast.ann ann) -> result {
+
+    // NB: 'f' isn't necessarily a function; it might be an entire self-call
+    // expression because of the hack that allows us to process self-calls
+    // with trans_call.
+
     auto f_res = trans_lval(cx, f);
     auto faddr = f_res.res.val;
     auto llenv = C_null(T_opaque_closure_ptr(cx.fcx.ccx.tn));
@@ -4449,7 +4460,21 @@ fn trans_call(@block_ctxt cx, @ast.expr f,
             llenv = bcx.build.Load(llclosure);
         }
     }
-    auto fn_ty = ty.expr_ty(f);
+
+    let @ty.t fn_ty;
+    alt (f_res.method_ty) {
+        case (some[@ty.t](?meth)) {
+            // self-call
+            fn_ty = meth;
+        }
+        
+        case (_) {
+            fn_ty = ty.expr_ty(f);
+
+        }
+
+    }
+
     auto ret_ty = ty.ann_to_type(ann);
     auto args_res = trans_args(f_res.res.bcx,
                                llenv, f_res.llobj,

@@ -899,7 +899,7 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
                                            some(token.COMMA),
                                            pf, p);
             hi = es.span;
-            auto ex = ast.expr_call_self(e, es.node, ast.ann_none);
+            ex = ast.expr_call_self(e, es.node, ast.ann_none);
         }
 
         case (_) {

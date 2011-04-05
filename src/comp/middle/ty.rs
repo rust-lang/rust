@@ -26,6 +26,12 @@ type method = rec(ast.proto proto,
 
 type mt = rec(@t ty, ast.mutability mut);
 
+// Convert from method type to function type.  Pretty easy; we just drop
+// 'ident'.
+fn method_ty_to_fn_ty(method m) -> @ty.t {
+    ret plain_ty(ty_fn(m.proto, m.inputs, m.output));
+}
+
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast.rs as well.
 type t = rec(sty struct, option.t[str] cname);
