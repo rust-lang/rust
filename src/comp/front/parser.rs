@@ -887,10 +887,12 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
         }
 
         case (token.SELF) {
+            log "parsing a self-call...";
+
             p.bump();
             expect(p, token.DOT);
             // The rest is a call expression.
-            auto e = parse_bottom_expr(p);
+            auto e = parse_ident(p);
             auto pf = parse_expr;
             auto es = parse_seq[@ast.expr](token.LPAREN,
                                            token.RPAREN,
