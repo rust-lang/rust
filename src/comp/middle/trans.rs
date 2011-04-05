@@ -6148,7 +6148,7 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
     auto arg_n = 3u;
     auto pass_task;
 
-    auto lltaskptr = bcx.build.PtrToInt(fcx.lltaskptr, T_int());
+    auto lltaskptr = vp2i(bcx, fcx.lltaskptr);
     alt (abi) {
         case (ast.native_abi_rust) {
             pass_task = true;
@@ -6156,7 +6156,7 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
             for each (uint i in _uint.range(0u, num_ty_param)) {
                 auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
                 check (llarg as int != 0);
-                call_args += vec(bcx.build.PointerCast(llarg, T_i32()));
+                call_args += vec(vp2i(bcx, llarg));
                 arg_n += 1u;
             }
         }
@@ -6166,6 +6166,26 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
         case (ast.native_abi_llvm) {
             pass_task = false;
             // We handle this case below.
+        }
+    }
+
+    fn push_arg(@block_ctxt cx,
+                &mutable vec[ValueRef] args,
+                ValueRef v,
+                @ty.t t) {
+        if (ty.type_is_integral(t)) {
+            auto lldsttype = T_int();
+            auto llsrctype = type_of(cx.fcx.ccx, t);
+            if (llvm.LLVMGetIntTypeWidth(lldsttype) >
+                llvm.LLVMGetIntTypeWidth(llsrctype)) {
+                args += vec(cx.build.ZExtOrBitCast(v, T_int()));
+            } else {
+                args += vec(cx.build.TruncOrBitCast(v, T_int()));
+            }
+        } else if (ty.type_is_fp(t)) {
+            args += vec(cx.build.FPToSI(v, T_int()));
+        } else {
+            args += vec(vp2i(cx, v));
         }
     }
 
@@ -6192,7 +6212,7 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
         for (ty.arg arg in args) {
             auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
             check (llarg as int != 0);
-            call_args += vec(bcx.build.PointerCast(llarg, T_i32()));
+            push_arg(bcx, call_args, llarg, arg.ty);
             arg_n += 1u;
         }
 
