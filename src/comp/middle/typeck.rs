@@ -2110,6 +2110,18 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                         ast.expr_call(f_1, args_1, ann));
         }
 
+        case (ast.expr_call_self(?ident, ?args, _)) {
+            // FIXME: What's to check here?
+
+            // FIXME: These two lines are ripped off from the expr_call case;
+            // what should they be really?
+            auto rt_1 = plain_ty(ty.ty_nil);
+            auto ann = triv_ann(rt_1);
+
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_call_self(ident, args, ann));
+        }
+
         case (ast.expr_spawn(?dom, ?name, ?f, ?args, _)) {
             auto result = check_call(fcx, f, args);
             auto f_1 = result._0;

@@ -258,7 +258,7 @@ tag expr_ {
     expr_tup(vec[elt], ann);
     expr_rec(vec[field], option.t[@expr], ann);
     expr_call(@expr, vec[@expr], ann);
-    expr_call_self(@expr, vec[@expr], ann);
+    expr_call_self(ident, vec[@expr], ann);
     expr_bind(@expr, vec[option.t[@expr]], ann);
     expr_spawn(spawn_dom, option.t[str], @expr, vec[@expr], ann);
     expr_binary(binop, @expr, @expr, ann);

@@ -88,7 +88,7 @@ type ast_fold[ENV] =
          ann a) -> @expr)                         fold_expr_call,
 
      (fn(&ENV e, &span sp,
-         @expr f, vec[@expr] args,
+         ident id, vec[@expr] args,
          ann a) -> @expr)                         fold_expr_call_self,
 
      (fn(&ENV e, &span sp,
@@ -566,10 +566,9 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
             ret fld.fold_expr_call(env_, e.span, ff, aargs, t);
         }
 
-        case (ast.expr_call_self(?f, ?args, ?t)) {
-            auto ff = fold_expr(env_, fld, f);
+        case (ast.expr_call_self(?ident, ?args, ?t)) {
             auto aargs = fold_exprs(env_, fld, args);
-            ret fld.fold_expr_call_self(env_, e.span, ff, aargs, t);
+            ret fld.fold_expr_call_self(env_, e.span, ident, aargs, t);
         }
 
         case (ast.expr_bind(?f, ?args_opt, ?t)) {
@@ -1185,9 +1184,9 @@ fn identity_fold_expr_call[ENV](&ENV env, &span sp, @expr f,
     ret @respan(sp, ast.expr_call(f, args, a));
 }
 
-fn identity_fold_expr_call_self[ENV](&ENV env, &span sp, @expr f,
+fn identity_fold_expr_call_self[ENV](&ENV env, &span sp, ident id,
                                 vec[@expr] args, ann a) -> @expr {
-    ret @respan(sp, ast.expr_call_self(f, args, a));
+    ret @respan(sp, ast.expr_call_self(id, args, a));
 }
 
 fn identity_fold_expr_bind[ENV](&ENV env, &span sp, @expr f,

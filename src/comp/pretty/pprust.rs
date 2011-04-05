@@ -454,9 +454,9 @@ impure fn print_expr(ps s, &@ast.expr expr) {
             commasep_exprs(s, args);
             pclose(s);
         }
-        case (ast.expr_call_self(?func,?args,_)) {
+        case (ast.expr_call_self(?ident,?args,_)) {
             wrd(s.s, "self.");
-            print_expr(s, func);
+            print_ident(s, ident);
             popen(s);
             commasep_exprs(s, args);
             pclose(s);
@@ -721,6 +721,10 @@ impure fn print_decl(ps s, @ast.decl decl) {
         }
     }
     end(s.s);
+}
+
+impure fn print_ident(ps s, ast.ident ident) {
+    wrd(s.s, ident);
 }
 
 impure fn print_for_decl(ps s, @ast.decl decl) {
