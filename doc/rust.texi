@@ -1804,8 +1804,8 @@ otherwise exactly as a function item (with a minor additional cost of calling
 the function, as such a call is indirect). @xref{Ref.Type.Fn}.
 
 Every control path in a function ends with either a @code{ret} or @code{be}
-statement. If a control path lacks a @code{ret} statement in source code, an
-implicit @code{ret} statement is appended to the end of the control path
+expression. If a control path lacks a @code{ret} expression in source code, an
+implicit @code{ret} expression is appended to the end of the control path
 during compilation, returning the implicit @code{()} value.
 
 A function may have an @emph{effect}, which may be either @code{impure} or
@@ -1827,9 +1827,9 @@ fn add(int x, int y) -> int @{
 @c * Ref.Item.Iter::          Items defining iterators.
 
 @cindex Iterators
-@cindex Put statement
-@cindex Put each statement
-@cindex Foreach statement
+@cindex Put expression
+@cindex Put each expression
+@cindex Foreach expression
 
 Iterators are function-like items that can @code{put} multiple values during
 their execution before returning or tail-calling.
@@ -1841,11 +1841,11 @@ but the iterator frame is only @emph{suspended} during the put, and will be
 the caller's loop.
 
 The output type of an iterator is the type of value that the function will
-@code{put}, before it eventually executes a @code{ret} or @code{be} statement
+@code{put}, before it eventually evaluates a @code{ret} or @code{be} expression
 of type @code{()} and completes its execution.
 
 An iterator can only be called in the loop header of a matching @code{for
-each} loop or as the argument in a @code{put each} statement.
+each} loop or as the argument in a @code{put each} expression.
 @xref{Ref.Stmt.Foreach}.
 
 An example of an iterator:
@@ -2052,13 +2052,13 @@ Rust; they cannot be used as user-defined identifiers in any context.
 @cindex Any type
 @cindex Dynamic type, see @i{Any type}
 @cindex Reflection
-@cindex Alt type statement
+@cindex Alt type expression
 
 The type @code{any} is the union of all possible Rust types. A value of type
 @code{any} is represented in memory as a pair consisting of a boxed value of
 some non-@code{any} type @var{T} and a reflection of the type @var{T}.
 
-Values of type @code{any} can be used in an @code{alt type} statement, in
+Values of type @code{any} can be used in an @code{alt type} expression, in
 which the reflection is used to select a block corresponding to a particular
 type extraction. @xref{Ref.Stmt.Alt}.
 
@@ -2549,7 +2549,7 @@ right hand side of copy statements, @xref{Ref.Stmt.Copy}.
 @c * Ref.Stmt::               Executable statements.
 @cindex Statements
 
-A @dfn{statement} is a component of a block, which is in turn a components of
+A @dfn{statement} is a component of a block, which is in turn a component of
 an outer block, a function or an iterator. When a function is spawned into a
 task, the task @emph{executes} statements in an order determined by the body
 of the enclosing structure. Each statement causes the task to perform certain
