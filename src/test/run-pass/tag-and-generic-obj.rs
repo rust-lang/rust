@@ -1,5 +1,3 @@
-// xfail-stage0
-
 tag colour { red; green; }
 
 obj foo[T]() {

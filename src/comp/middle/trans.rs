@@ -4410,6 +4410,9 @@ fn trans_args(@block_ctxt cx,
             }
 
             val = bcx.build.PointerCast(val, lldestty);
+        } else if (mode == ast.alias) {
+            auto lldestty = arg_tys.(i);
+            val = bcx.build.PointerCast(val, lldestty);
         }
 
         if (mode == ast.val) {
