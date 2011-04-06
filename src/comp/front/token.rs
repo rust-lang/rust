@@ -348,6 +348,8 @@ fn to_str(token t) -> str {
 
         /* Object type */
         case (OBJ) { ret "obj"; }
+        case (SELF) { ret "self"; }
+
 
         /* Comm and task types */
         case (CHAN) { ret "chan"; }

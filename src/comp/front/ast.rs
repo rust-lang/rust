@@ -188,7 +188,7 @@ fn binop_to_str(binop op) -> str {
 
 
 tag unop {
-    box;
+    box(mutability);
     deref;
     bitnot;
     not;
@@ -197,7 +197,10 @@ tag unop {
 
 fn unop_to_str(unop op) -> str {
     alt (op) {
-        case (box) {ret "@";}
+        case (box(?mt)) {
+            if (mt == mut) { ret "@mutable"; }
+            ret "@";
+        }
         case (deref) {ret "*";}
         case (bitnot) {ret "~";}
         case (not) {ret "!";}
@@ -255,7 +258,7 @@ tag expr_ {
     expr_tup(vec[elt], ann);
     expr_rec(vec[field], option.t[@expr], ann);
     expr_call(@expr, vec[@expr], ann);
-    expr_call_self(@expr, vec[@expr], ann);
+    expr_call_self(ident, vec[@expr], ann);
     expr_bind(@expr, vec[option.t[@expr]], ann);
     expr_spawn(spawn_dom, option.t[str], @expr, vec[@expr], ann);
     expr_binary(binop, @expr, @expr, ann);

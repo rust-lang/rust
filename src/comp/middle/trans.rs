@@ -12,10 +12,13 @@ import std.option.none;
 
 import front.ast;
 import front.creader;
+import pretty.pprust;
 import driver.session;
 import middle.ty;
 import back.x86;
 import back.abi;
+
+import pretty.pprust;
 
 import middle.ty.pat_ty;
 import middle.ty.plain_ty;
@@ -112,12 +115,14 @@ state type crate_ctxt = rec(session.session sess,
                             vec[str] path,
                             std.sha1.sha1 sha);
 
+type self_vt = rec(ValueRef v, @ty.t t);
+
 state type fn_ctxt = rec(ValueRef llfn,
                          ValueRef lltaskptr,
                          ValueRef llenv,
                          ValueRef llretptr,
                          mutable BasicBlockRef llallocas,
-                         mutable option.t[ValueRef] llself,
+                         mutable option.t[self_vt] llself,
                          mutable option.t[ValueRef] lliterbody,
                          hashmap[ast.def_id, ValueRef] llargs,
                          hashmap[ast.def_id, ValueRef] llobjfields,
@@ -1424,7 +1429,7 @@ fn trans_malloc_boxed(@block_ctxt cx, @ty.t t) -> result {
     // Synthesize a fake box type structurally so we have something
     // to measure the size of.
     auto boxed_body = ty.plain_tup_ty(vec(plain_ty(ty.ty_int), t));
-    auto box_ptr = ty.plain_box_ty(t);
+    auto box_ptr = ty.plain_box_ty(t, ast.imm);
     auto sz = size_of(cx, boxed_body);
     auto llty = type_of(cx.fcx.ccx, box_ptr);
     ret trans_raw_malloc(sz.bcx, llty, sz.val);
@@ -2005,7 +2010,7 @@ fn iter_structural_ty_full(@block_ctxt cx,
         auto box_a_ptr = cx.build.Load(box_a_cell);
         auto box_b_ptr = cx.build.Load(box_b_cell);
         auto tnil = plain_ty(ty.ty_nil);
-        auto tbox = ty.plain_box_ty(tnil);
+        auto tbox = ty.plain_box_ty(tnil, ast.imm);
 
         auto inner_cx = new_sub_block_ctxt(cx, "iter box");
         auto next_cx = new_sub_block_ctxt(cx, "next");
@@ -2557,7 +2562,7 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
                 ret res(sub.bcx, sub.bcx.build.Neg(sub.val));
             }
         }
-        case (ast.box) {
+        case (ast.box(_)) {
             auto e_ty = ty.expr_ty(e);
             auto e_val = sub.val;
             auto box_ty = node_ann_type(sub.bcx.fcx.ccx, a);
@@ -3600,20 +3605,23 @@ type generic_info = rec(@ty.t item_type,
 type lval_result = rec(result res,
                        bool is_mem,
                        option.t[generic_info] generic,
-                       option.t[ValueRef] llobj);
+                       option.t[ValueRef] llobj,
+                       option.t[@ty.t] method_ty);
 
 fn lval_mem(@block_ctxt cx, ValueRef val) -> lval_result {
     ret rec(res=res(cx, val),
             is_mem=true,
             generic=none[generic_info],
-            llobj=none[ValueRef]);
+            llobj=none[ValueRef],
+            method_ty=none[@ty.t]);
 }
 
 fn lval_val(@block_ctxt cx, ValueRef val) -> lval_result {
     ret rec(res=res(cx, val),
             is_mem=false,
             generic=none[generic_info],
-            llobj=none[ValueRef]);
+            llobj=none[ValueRef],
+            method_ty=none[@ty.t]);
 }
 
 fn trans_external_path(@block_ctxt cx, ast.def_id did,
@@ -3781,12 +3789,12 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
     fail;
 }
 
-fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
+fn trans_field(@block_ctxt cx, &ast.span sp, ValueRef v, @ty.t t0,
                &ast.ident field, &ast.ann ann) -> lval_result {
-    auto r = trans_expr(cx, base);
-    auto t = ty.expr_ty(base);
-    r = autoderef(r.bcx, r.val, t);
-    t = autoderefed_ty(t);
+
+    auto r = autoderef(cx, v, t0);
+    auto t = autoderefed_ty(t0);
+
     alt (t.struct) {
         case (ty.ty_tup(_)) {
             let uint ix = ty.field_num(cx.fcx.ccx.sess, sp, field);
@@ -3808,7 +3816,10 @@ fn trans_field(@block_ctxt cx, &ast.span sp, @ast.expr base,
                                                 C_int(ix as int)));
 
             auto lvo = lval_mem(r.bcx, v);
-            ret rec(llobj = some[ValueRef](r.val) with lvo);
+            let @ty.t fn_ty = ty.method_ty_to_fn_ty(methods.(ix));
+            ret rec(llobj = some[ValueRef](r.val),
+                    method_ty = some[@ty.t](fn_ty)
+                    with lvo);
         }
         case (_) { cx.fcx.ccx.sess.unimpl("field variant in trans_field"); }
     }
@@ -3879,10 +3890,29 @@ fn trans_lval(@block_ctxt cx, @ast.expr e) -> lval_result {
             ret trans_path(cx, p, dopt, ann);
         }
         case (ast.expr_field(?base, ?ident, ?ann)) {
-            ret trans_field(cx, e.span, base, ident, ann);
+            auto r = trans_expr(cx, base);
+            auto t = ty.expr_ty(base);
+            ret trans_field(r.bcx, e.span, r.val, t, ident, ann);
         }
         case (ast.expr_index(?base, ?idx, ?ann)) {
             ret trans_index(cx, e.span, base, idx, ann);
+        }
+
+        // Kind of bizarre to pass an *entire* self-call here...but let's try
+        // it
+        case (ast.expr_call_self(?ident, _, ?ann)) {
+            alt (cx.fcx.llself) {
+                case (some[self_vt](?s_vt)) {
+                    auto r =  s_vt.v;
+                    auto t =  s_vt.t;
+                    ret trans_field(cx, e.span, r, t, ident, ann);
+                }
+                case (_) {
+                    // Shouldn't happen.
+                    fail;
+                }
+
+            }
         }
         case (_) { cx.fcx.ccx.sess.unimpl("expr variant in trans_lval"); }
     }
@@ -3943,7 +3973,7 @@ fn trans_bind_thunk(@crate_ctxt cx,
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
 
-    auto llclosure_ptr_ty = type_of(cx, ty.plain_box_ty(closure_ty));
+    auto llclosure_ptr_ty = type_of(cx, ty.plain_box_ty(closure_ty, ast.imm));
     auto llclosure = bcx.build.PointerCast(fcx.llenv, llclosure_ptr_ty);
 
     auto lltarget = GEP_tup_like(bcx, closure_ty, llclosure,
@@ -4380,6 +4410,9 @@ fn trans_args(@block_ctxt cx,
             }
 
             val = bcx.build.PointerCast(val, lldestty);
+        } else if (mode == ast.alias) {
+            auto lldestty = arg_tys.(i);
+            val = bcx.build.PointerCast(val, lldestty);
         }
 
         if (mode == ast.val) {
@@ -4402,69 +4435,10 @@ fn trans_call(@block_ctxt cx, @ast.expr f,
               option.t[ValueRef] lliterbody,
               vec[@ast.expr] args,
               &ast.ann ann) -> result {
-    auto f_res = trans_lval(cx, f);
-    auto faddr = f_res.res.val;
-    auto llenv = C_null(T_opaque_closure_ptr(cx.fcx.ccx.tn));
 
-    alt (f_res.llobj) {
-        case (some[ValueRef](_)) {
-            // It's a vtbl entry.
-            faddr = f_res.res.bcx.build.Load(faddr);
-        }
-        case (none[ValueRef]) {
-            // It's a closure.
-            auto bcx = f_res.res.bcx;
-            auto pair = faddr;
-            faddr = bcx.build.GEP(pair, vec(C_int(0),
-                                            C_int(abi.fn_field_code)));
-            faddr = bcx.build.Load(faddr);
-
-            auto llclosure = bcx.build.GEP(pair,
-                                           vec(C_int(0),
-                                               C_int(abi.fn_field_box)));
-            llenv = bcx.build.Load(llclosure);
-        }
-    }
-    auto fn_ty = ty.expr_ty(f);
-    auto ret_ty = ty.ann_to_type(ann);
-    auto args_res = trans_args(f_res.res.bcx,
-                               llenv, f_res.llobj,
-                               f_res.generic,
-                               lliterbody,
-                               args, fn_ty);
-
-    auto bcx = args_res._0;
-    auto llargs = args_res._1;
-    auto llretslot = args_res._2;
-
-    /*
-    log "calling: " + val_str(cx.fcx.ccx.tn, faddr);
-
-    for (ValueRef arg in llargs) {
-        log "arg: " + val_str(cx.fcx.ccx.tn, arg);
-    }
-    */
-
-    bcx.build.FastCall(faddr, llargs);
-    auto retval = C_nil();
-
-    if (!ty.type_is_nil(ret_ty)) {
-        retval = load_scalar_or_boxed(bcx, llretslot, ret_ty);
-        // Retval doesn't correspond to anything really tangible in the frame,
-        // but it's a ref all the same, so we put a note here to drop it when
-        // we're done in this scope.
-        find_scope_cx(cx).cleanups +=
-            vec(clean(bind drop_ty(_, retval, ret_ty)));
-    }
-
-    ret res(bcx, retval);
-}
-
-fn trans_call_self(@block_ctxt cx, @ast.expr f,
-                   option.t[ValueRef] lliterbody,
-                   vec[@ast.expr] args,
-                   &ast.ann ann) -> result {
-    log "translating a self-call";
+    // NB: 'f' isn't necessarily a function; it might be an entire self-call
+    // expression because of the hack that allows us to process self-calls
+    // with trans_call.
 
     auto f_res = trans_lval(cx, f);
     auto faddr = f_res.res.val;
@@ -4489,7 +4463,21 @@ fn trans_call_self(@block_ctxt cx, @ast.expr f,
             llenv = bcx.build.Load(llclosure);
         }
     }
-    auto fn_ty = ty.expr_ty(f);
+
+    let @ty.t fn_ty;
+    alt (f_res.method_ty) {
+        case (some[@ty.t](?meth)) {
+            // self-call
+            fn_ty = meth;
+        }
+        
+        case (_) {
+            fn_ty = ty.expr_ty(f);
+
+        }
+
+    }
+
     auto ret_ty = ty.ann_to_type(ann);
     auto args_res = trans_args(f_res.res.bcx,
                                llenv, f_res.llobj,
@@ -4760,8 +4748,9 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             ret trans_call(cx, f, none[ValueRef], args, ann);
         }
 
-        case (ast.expr_call_self(?f, ?args, ?ann)) {
-            ret trans_call_self(cx, f, none[ValueRef], args, ann);
+        case (ast.expr_call_self(?ident, ?args, ?ann)) {
+            // A weird hack to make self-calls work.
+            ret trans_call(cx, e, none[ValueRef], args, ann);
         }
 
         case (ast.expr_cast(?e, _, ?ann)) {
@@ -4913,8 +4902,7 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
 fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
     auto cond_res = trans_expr(cx, e);
 
-    // FIXME: need pretty-printer.
-    auto expr_str = "<expr>";
+    auto expr_str = pretty.pprust.expr_to_str(e);
     auto fail_cx = new_sub_block_ctxt(cx, "fail");
     auto fail_res = trans_fail(fail_cx, e.span, expr_str);
 
@@ -5472,7 +5460,7 @@ fn new_fn_ctxt(@crate_ctxt cx,
              llenv=llenv,
              llretptr=llretptr,
              mutable llallocas = llallocas,
-             mutable llself=none[ValueRef],
+             mutable llself=none[self_vt],
              mutable lliterbody=none[ValueRef],
              llargs=llargs,
              llobjfields=llobjfields,
@@ -5491,27 +5479,24 @@ fn new_fn_ctxt(@crate_ctxt cx,
 
 fn create_llargs_for_fn_args(&@fn_ctxt cx,
                              ast.proto proto,
-                             option.t[TypeRef] ty_self,
+                             option.t[tup(TypeRef, @ty.t)] ty_self,
                              @ty.t ret_ty,
                              &vec[ast.arg] args,
                              &vec[ast.ty_param] ty_params) {
 
-    alt (ty_self) {
-        case (some[TypeRef](_)) {
-            cx.llself = some[ValueRef](cx.llenv);
-        }
-        case (_) {
-        }
-    }
-
     auto arg_n = 3u;
 
-    if (ty_self == none[TypeRef]) {
-        for (ast.ty_param tp in ty_params) {
-            auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
-            check (llarg as int != 0);
-            cx.lltydescs.insert(tp.id, llarg);
-            arg_n += 1u;
+    alt (ty_self) {
+        case (some[tup(TypeRef, @ty.t)](?tt)) {
+            cx.llself = some[self_vt](rec(v = cx.llenv, t = tt._1));
+        }
+        case (none[tup(TypeRef, @ty.t)]) {
+            for (ast.ty_param tp in ty_params) {
+                auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
+                check (llarg as int != 0);
+                cx.lltydescs.insert(tp.id, llarg);
+                arg_n += 1u;
+            }
         }
     }
 
@@ -5535,17 +5520,17 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx,
 // were passed and whatnot. Apparently mem2reg will mop up.
 
 fn copy_any_self_to_alloca(@fn_ctxt fcx,
-                           option.t[TypeRef] ty_self) {
+                           option.t[tup(TypeRef, @ty.t)] ty_self) {
 
     auto bcx = llallocas_block_ctxt(fcx);
 
     alt (fcx.llself) {
-        case (some[ValueRef](?self_v)) {
+        case (some[self_vt](?s_vt)) {
             alt (ty_self) {
-                case (some[TypeRef](?self_t)) {
-                    auto a = alloca(bcx, self_t);
-                    bcx.build.Store(self_v, a);
-                    fcx.llself = some[ValueRef](a);
+                case (some[tup(TypeRef, @ty.t)](?tt)) {
+                    auto a = alloca(bcx, tt._0);
+                    bcx.build.Store(s_vt.v, a);
+                    fcx.llself = some[self_vt](rec(v = a, t = s_vt.t));
                 }
             }
         }
@@ -5607,7 +5592,7 @@ fn ret_ty_of_fn(ast.ann ann) -> @ty.t {
     ret ret_ty_of_fn_ty(ty.ann_to_type(ann));
 }
 
-fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, ValueRef llself) {
+fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, self_vt llself) {
     auto bcx = llallocas_block_ctxt(fcx);
 
     let vec[@ty.t] field_tys = vec();
@@ -5624,7 +5609,7 @@ fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, ValueRef llself) {
     let TypeRef llobj_box_ty = T_obj_ptr(bcx.fcx.ccx.tn, n_typarams);
 
     auto box_cell =
-        bcx.build.GEP(llself,
+        bcx.build.GEP(llself.v,
                       vec(C_int(0),
                           C_int(abi.obj_field_box)));
 
@@ -5677,7 +5662,7 @@ fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, ValueRef llself) {
 }
 
 fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
-            option.t[TypeRef] ty_self,
+            option.t[tup(TypeRef, @ty.t)] ty_self,
             &vec[ast.ty_param] ty_params, &ast.ann ann) {
 
     auto llfndecl = cx.item_ids.get(fid);
@@ -5690,7 +5675,7 @@ fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
     copy_any_self_to_alloca(fcx, ty_self);
 
     alt (fcx.llself) {
-        case (some[ValueRef](?llself)) {
+        case (some[self_vt](?llself)) {
             populate_fn_ctxt_from_llself(fcx, llself);
         }
         case (_) {
@@ -5713,7 +5698,9 @@ fn trans_fn(@crate_ctxt cx, &ast._fn f, ast.def_id fid,
     new_builder(fcx.llallocas).Br(lltop);
 }
 
-fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
+fn trans_vtbl(@crate_ctxt cx, 
+              TypeRef llself_ty,
+              @ty.t self_ty,
               &ast._obj ob,
               &vec[ast.ty_param] ty_params) -> ValueRef {
     let vec[ValueRef] methods = vec();
@@ -5731,7 +5718,7 @@ fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
         alt (node_ann_type(cx, m.node.ann).struct) {
             case (ty.ty_fn(?proto, ?inputs, ?output)) {
                 llfnty = type_of_fn_full(cx, proto,
-                                         some[TypeRef](self_ty),
+                                         some[TypeRef](llself_ty),
                                          inputs, output,
                                          _vec.len[ast.ty_param](ty_params));
             }
@@ -5743,7 +5730,8 @@ fn trans_vtbl(@crate_ctxt cx, TypeRef self_ty,
         cx.item_ids.insert(m.node.id, llfn);
         cx.item_symbols.insert(m.node.id, s);
 
-        trans_fn(mcx, m.node.meth, m.node.id, some[TypeRef](self_ty),
+        trans_fn(mcx, m.node.meth, m.node.id, 
+                 some[tup(TypeRef, @ty.t)](tup(llself_ty, self_ty)),
                  ty_params, m.node.ann);
         methods += vec(llfn);
     }
@@ -5774,7 +5762,8 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
 
     auto fcx = new_fn_ctxt(cx, llctor_decl);
     create_llargs_for_fn_args(fcx, ast.proto_fn,
-                              none[TypeRef], ret_ty_of_fn(ann),
+                              none[tup(TypeRef, @ty.t)], 
+                              ret_ty_of_fn(ann),
                               fn_args, ty_params);
 
     let vec[ty.arg] arg_tys = arg_tys_of_fn(ann);
@@ -5783,9 +5772,10 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
 
-    auto llself_ty = type_of(cx, ret_ty_of_fn(ann));
+    auto self_ty = ret_ty_of_fn(ann);
+    auto llself_ty = type_of(cx, self_ty);
     auto pair = bcx.fcx.llretptr;
-    auto vtbl = trans_vtbl(cx, llself_ty, ob, ty_params);
+    auto vtbl = trans_vtbl(cx, llself_ty, self_ty, ob, ty_params);
     auto pair_vtbl = bcx.build.GEP(pair,
                                    vec(C_int(0),
                                        C_int(abi.obj_field_vtbl)));
@@ -5819,7 +5809,7 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
         let @ty.t body_ty = ty.plain_tup_ty(vec(tydesc_ty,
                                                 typarams_ty,
                                                 fields_ty));
-        let @ty.t boxed_body_ty = ty.plain_box_ty(body_ty);
+        let @ty.t boxed_body_ty = ty.plain_box_ty(body_ty, ast.imm);
 
         // Malloc a box for the body.
         auto box = trans_malloc_boxed(bcx, body_ty);
@@ -5906,7 +5896,8 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
     auto fcx = new_fn_ctxt(cx, llfndecl);
 
     create_llargs_for_fn_args(fcx, ast.proto_fn,
-                              none[TypeRef], ret_ty_of_fn(variant.node.ann),
+                              none[tup(TypeRef, @ty.t)], 
+                              ret_ty_of_fn(variant.node.ann),
                               fn_args, ty_params);
 
     let vec[@ty.t] ty_param_substs = vec();
@@ -5994,7 +5985,7 @@ fn trans_item(@crate_ctxt cx, &ast.item item) {
     alt (item.node) {
         case (ast.item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
             auto sub_cx = extend_path(cx, name);
-            trans_fn(sub_cx, f, fid, none[TypeRef], tps, ann);
+            trans_fn(sub_cx, f, fid, none[tup(TypeRef, @ty.t)], tps, ann);
         }
         case (ast.item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
             auto sub_cx = @rec(obj_typarams=tps,
@@ -6147,7 +6138,7 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
     auto arg_n = 3u;
     auto pass_task;
 
-    auto lltaskptr = bcx.build.PtrToInt(fcx.lltaskptr, T_int());
+    auto lltaskptr = vp2i(bcx, fcx.lltaskptr);
     alt (abi) {
         case (ast.native_abi_rust) {
             pass_task = true;
@@ -6155,7 +6146,7 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
             for each (uint i in _uint.range(0u, num_ty_param)) {
                 auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
                 check (llarg as int != 0);
-                call_args += vec(bcx.build.PointerCast(llarg, T_i32()));
+                call_args += vec(vp2i(bcx, llarg));
                 arg_n += 1u;
             }
         }
@@ -6165,6 +6156,26 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
         case (ast.native_abi_llvm) {
             pass_task = false;
             // We handle this case below.
+        }
+    }
+
+    fn push_arg(@block_ctxt cx,
+                &mutable vec[ValueRef] args,
+                ValueRef v,
+                @ty.t t) {
+        if (ty.type_is_integral(t)) {
+            auto lldsttype = T_int();
+            auto llsrctype = type_of(cx.fcx.ccx, t);
+            if (llvm.LLVMGetIntTypeWidth(lldsttype) >
+                llvm.LLVMGetIntTypeWidth(llsrctype)) {
+                args += vec(cx.build.ZExtOrBitCast(v, T_int()));
+            } else {
+                args += vec(cx.build.TruncOrBitCast(v, T_int()));
+            }
+        } else if (ty.type_is_fp(t)) {
+            args += vec(cx.build.FPToSI(v, T_int()));
+        } else {
+            args += vec(vp2i(cx, v));
         }
     }
 
@@ -6191,7 +6202,7 @@ fn decl_native_fn_and_pair(@crate_ctxt cx,
         for (ty.arg arg in args) {
             auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
             check (llarg as int != 0);
-            call_args += vec(bcx.build.PointerCast(llarg, T_i32()));
+            push_arg(bcx, call_args, llarg, arg.ty);
             arg_n += 1u;
         }
 
@@ -6782,7 +6793,7 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
                     llenv=C_null(T_ptr(T_nil())),
                     llretptr=C_null(T_ptr(T_nil())),
                     mutable llallocas = llallocas,
-                    mutable llself=none[ValueRef],
+                    mutable llself=none[self_vt],
                     mutable lliterbody=none[ValueRef],
                     llargs=new_def_hash[ValueRef](),
                     llobjfields=new_def_hash[ValueRef](),

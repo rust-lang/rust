@@ -23,6 +23,7 @@ import middle.ty.ty_to_str;
 import middle.ty.type_is_integral;
 import middle.ty.type_is_scalar;
 import middle.ty.ty_params_opt_and_ty;
+import middle.ty.ty_nil;
 
 import std._str;
 import std._uint;
@@ -60,6 +61,12 @@ type ty_getter = fn(ast.def_id) -> ty.ty_params_opt_and_ty;
 // Turns a type into an ann_type, using defaults for other fields.
 fn triv_ann(@ty.t t) -> ann {
     ret ast.ann_type(t, none[vec[@ty.t]], none[@ts_ann]);
+}
+
+// Used to fill in the annotation for things that have uninteresting
+// types
+fn boring_ann() -> ann {
+    ret triv_ann(plain_ty(ty_nil));
 }
 
 // Replaces parameter types inside a type with type variables.
@@ -959,7 +966,7 @@ fn strip_boxes(@ty.t t) -> @ty.t {
 fn add_boxes(uint n, @ty.t t) -> @ty.t {
     auto t1 = t;
     while (n != 0u) {
-        t1 = ty.plain_box_ty(t1);
+        t1 = ty.plain_box_ty(t1, ast.imm);
         n -= 1u;
     }
     ret t1;
@@ -1361,7 +1368,7 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                                  ann_to_type(ann), adk);
             e_1 = ast.expr_ext(p, args, body, expanded, triv_ann(t));
         }
-        /* FIXME: this should probably check the type annotations */
+        /* FIXME: should this check the type annotations? */
         case (ast.expr_fail(_))  { e_1 = e.node; } 
         case (ast.expr_log(_,_)) { e_1 = e.node; } 
         case (ast.expr_break(_)) { e_1 = e.node; }
@@ -1728,9 +1735,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto oper_1 = check_expr(fcx, oper);
             auto oper_t = expr_ty(oper_1);
             alt (unop) {
-                case (ast.box) {
-                    // TODO: mutable
-                    oper_t = ty.plain_box_ty(oper_t);
+                case (ast.box(?mut)) {
+                    oper_t = ty.plain_box_ty(oper_t, mut);
                 }
                 case (ast.deref) {
                     alt (oper_t.struct) {
@@ -1772,16 +1778,19 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                      ann));
         }
 
-        case (ast.expr_fail(_)) { // ??? ignoring ann
-            ret expr;
+        case (ast.expr_fail(_)) {
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_fail(boring_ann()));
         }
 
         case (ast.expr_break(_)) {
-            ret expr;
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_break(boring_ann()));
         }
 
         case (ast.expr_cont(_)) {
-            ret expr;
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_cont(boring_ann()));
         }
 
         case (ast.expr_ret(?expr_opt, _)) {
@@ -1793,14 +1802,16 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                          + "returning non-nil");
                     }
 
-                    ret expr;
+                    ret @fold.respan[ast.expr_]
+                        (expr.span,
+                         ast.expr_ret(none[@ast.expr], boring_ann()));
                 }
 
                 case (some[@ast.expr](?e)) {
                     auto expr_0 = check_expr(fcx, e);
                     auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
                     ret @fold.respan[ast.expr_]
-                        (expr.span, ast.expr_ret(some(expr_1), ann_none));
+                        (expr.span, ast.expr_ret(some(expr_1), boring_ann()));
                 }
             }
         }
@@ -1814,14 +1825,16 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                          + "putting non-nil");
                     }
 
-                    ret expr;
+                    ret @fold.respan[ast.expr_]
+                        (expr.span, ast.expr_put(none[@ast.expr],
+                                                 boring_ann()));
                 }
 
                 case (some[@ast.expr](?e)) {
                     auto expr_0 = check_expr(fcx, e);
                     auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
                     ret @fold.respan[ast.expr_]
-                        (expr.span, ast.expr_put(some(expr_1), ann_none));
+                        (expr.span, ast.expr_put(some(expr_1), boring_ann()));
                 }
             }
         }
@@ -1832,20 +1845,21 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto expr_0 = check_expr(fcx, e);
             auto expr_1 = demand_expr(fcx, fcx.ret_ty, expr_0);
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_be(expr_1, ann_none));
+                                        ast.expr_be(expr_1,
+                                                    boring_ann()));
         }
 
         case (ast.expr_log(?e,_)) {
             auto expr_t = check_expr(fcx, e);
             ret @fold.respan[ast.expr_]
-                (expr.span, ast.expr_log(expr_t, ann_none));
+                (expr.span, ast.expr_log(expr_t, boring_ann()));
         }
 
         case (ast.expr_check_expr(?e, _)) {
             auto expr_t = check_expr(fcx, e);
             demand(fcx, expr.span, plain_ty(ty.ty_bool), expr_ty(expr_t));
             ret @fold.respan[ast.expr_]
-                (expr.span, ast.expr_check_expr(expr_t, ann_none));
+                (expr.span, ast.expr_check_expr(expr_t, boring_ann()));
         }
 
         case (ast.expr_assign(?lhs, ?rhs, _)) {
@@ -2109,6 +2123,18 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto ann = triv_ann(rt_1);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_call(f_1, args_1, ann));
+        }
+
+        case (ast.expr_call_self(?ident, ?args, _)) {
+            // FIXME: What's to check here?
+
+            // FIXME: These two lines are ripped off from the expr_call case;
+            // what should they be really?
+            auto rt_1 = plain_ty(ty.ty_nil);
+            auto ann = triv_ann(rt_1);
+
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_call_self(ident, args, ann));
         }
 
         case (ast.expr_spawn(?dom, ?name, ?f, ?args, _)) {
