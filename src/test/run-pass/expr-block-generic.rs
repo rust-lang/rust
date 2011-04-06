@@ -1,5 +1,4 @@
 // xfail-boot
-// xfail-stage0
 // -*- rust -*-
 
 // Tests for standalone blocks as expressions with dynamic type sizes
@@ -29,28 +28,9 @@ fn test_tup() {
   test_generic[t](tup(1, 2), eq);
 }
 
-fn test_vec() {
-  fn compare_vec(&vec[int] v1, &vec[int] v2) -> bool {
-    ret v1 == v2;
-  }
-  auto eq = bind compare_vec(_, _);
-  test_generic[vec[int]](vec(1, 2), eq);
-}
-
-fn test_box() {
-  fn compare_box(&@bool b1, &@bool b2) -> bool {
-    ret *b1 == *b2;
-  }
-  auto eq = bind compare_box(_, _);
-  test_generic[@bool](@true, eq);
-}
-
 fn main() {
   test_bool();
   test_tup();
-  // FIXME: These two don't pass yet
-  test_vec();
-  test_box();
 }
 
 

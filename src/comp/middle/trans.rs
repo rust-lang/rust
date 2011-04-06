@@ -5215,19 +5215,24 @@ fn init_local(@block_ctxt cx, @ast.local local) -> result {
             }
         }
         case (_) {
-            if (middle.ty.type_has_dynamic_size(ty)) {
-                auto llsz = size_of(bcx, ty);
-                bcx = call_bzero(llsz.bcx, llptr, llsz.val).bcx;
-
-            } else {
-                auto llty = type_of(bcx.fcx.ccx, ty);
-                auto null = lib.llvm.llvm.LLVMConstNull(llty);
-                bcx.build.Store(null, llptr);
-            }
+            bcx = zero_alloca(bcx, llptr, ty).bcx;
         }
     }
     ret res(bcx, llptr);
 }
+
+fn zero_alloca(@block_ctxt cx, ValueRef llptr, @ty.t t) -> result {
+    auto bcx = cx;
+    if (ty.type_has_dynamic_size(t)) {
+        auto llsz = size_of(bcx, t);
+        bcx = call_bzero(llsz.bcx, llptr, llsz.val).bcx;
+    } else {
+        auto llty = type_of(bcx.fcx.ccx, t);
+        auto null = lib.llvm.llvm.LLVMConstNull(llty);
+        bcx.build.Store(null, llptr);
+    }
+    ret res(bcx, llptr);
+ }
 
 fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
     auto bcx = cx;
@@ -5407,8 +5412,7 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
                 ret r;
             } else {
                 auto r_ty = ty.expr_ty(e);
-
-                if (ty.type_is_boxed(r_ty)) {
+                if (!ty.type_is_nil(r_ty)) {
                     // The value resulting from the block gets copied into an
                     // alloca created in an outer scope and its refcount
                     // bumped so that it can escape this block. This means
@@ -5424,9 +5428,8 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
                     // NB: Here we're building and initalizing the alloca in
                     // the alloca context, not this block's context.
                     auto res_alloca = alloc_ty(bcx, r_ty);
-                    auto alloca_ty = type_of(bcx.fcx.ccx, r_ty);
-                    auto builder = new_builder(bcx.fcx.llallocas);
-                    builder.Store(C_null(alloca_ty), res_alloca.val);
+                    auto llbcx = llallocas_block_ctxt(bcx.fcx);
+                    zero_alloca(llbcx, res_alloca.val, r_ty);
 
                     // Now we're working in our own block context again
                     auto res_copy = copy_ty(bcx, INIT,

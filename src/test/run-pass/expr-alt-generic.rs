@@ -1,12 +1,14 @@
 // xfail-boot
 // -*- rust -*-
 
-// Tests for if as expressions with dynamic type sizes
-
 type compare[T] = fn(&T t1, &T t2) -> bool;
 
-fn test_generic[T](&T expected, &T not_expected, &compare[T] eq) {
-  let T actual = if (true) { expected } else { not_expected };
+fn test_generic[T](&T expected, &compare[T] eq) {
+  let T actual = alt (true) {
+    case (true) {
+      expected
+    }
+  };
   check (eq(expected, actual));
 }
 
@@ -15,7 +17,7 @@ fn test_bool() {
     ret b1 == b2;
   }
   auto eq = bind compare_bool(_, _);
-  test_generic[bool](true, false, eq);
+  test_generic[bool](true, eq);
 }
 
 fn test_tup() {
@@ -24,7 +26,7 @@ fn test_tup() {
     ret t1 == t2;
   }
   auto eq = bind compare_tup(_, _);
-  test_generic[t](tup(1, 2), tup(2, 3), eq);
+  test_generic[t](tup(1, 2), eq);
 }
 
 fn main() {
