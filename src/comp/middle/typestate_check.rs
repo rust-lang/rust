@@ -45,7 +45,6 @@ import front.ast.ann_type;
 import front.ast._obj;
 import front.ast._mod;
 import front.ast.crate;
-import front.ast.module;
 import front.ast.mod_index_entry;
 import front.ast.mie_item;
 import front.ast.item_fn;
