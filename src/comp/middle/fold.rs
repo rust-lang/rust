@@ -89,8 +89,7 @@ type ast_fold[ENV] =
          ann a) -> @expr)                         fold_expr_call,
 
      (fn(&ENV e, &span sp,
-         ident id, vec[@expr] args,
-         ann a) -> @expr)                         fold_expr_call_self,
+         ident id, ann a) -> @expr)               fold_expr_self_method,
 
      (fn(&ENV e, &span sp,
          @expr f, vec[option.t[@expr]] args,
@@ -569,9 +568,8 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
             ret fld.fold_expr_call(env_, e.span, ff, aargs, t);
         }
 
-        case (ast.expr_call_self(?ident, ?args, ?t)) {
-            auto aargs = fold_exprs(env_, fld, args);
-            ret fld.fold_expr_call_self(env_, e.span, ident, aargs, t);
+        case (ast.expr_self_method(?ident, ?t)) {
+            ret fld.fold_expr_self_method(env_, e.span, ident, t);
         }
 
         case (ast.expr_bind(?f, ?args_opt, ?t)) {
@@ -1187,9 +1185,9 @@ fn identity_fold_expr_call[ENV](&ENV env, &span sp, @expr f,
     ret @respan(sp, ast.expr_call(f, args, a));
 }
 
-fn identity_fold_expr_call_self[ENV](&ENV env, &span sp, ident id,
-                                vec[@expr] args, ann a) -> @expr {
-    ret @respan(sp, ast.expr_call_self(id, args, a));
+fn identity_fold_expr_self_method[ENV](&ENV env, &span sp, ident id,
+                                       ann a) -> @expr {
+    ret @respan(sp, ast.expr_self_method(id, a));
 }
 
 fn identity_fold_expr_bind[ENV](&ENV env, &span sp, @expr f,
@@ -1601,8 +1599,8 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_tup    = bind identity_fold_expr_tup[ENV](_,_,_,_),
          fold_expr_rec    = bind identity_fold_expr_rec[ENV](_,_,_,_,_),
          fold_expr_call   = bind identity_fold_expr_call[ENV](_,_,_,_,_),
-         fold_expr_call_self
-                          = bind identity_fold_expr_call_self[ENV](_,_,_,_,_),
+         fold_expr_self_method
+                          = bind identity_fold_expr_self_method[ENV](_,_,_,_),
          fold_expr_bind   = bind identity_fold_expr_bind[ENV](_,_,_,_,_),
          fold_expr_spawn  = bind identity_fold_expr_spawn[ENV](_,_,_,_,_,_,_),
          fold_expr_binary = bind identity_fold_expr_binary[ENV](_,_,_,_,_,_),

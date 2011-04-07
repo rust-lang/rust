@@ -34,6 +34,8 @@ import std.option;
 import std.option.none;
 import std.option.some;
 
+import pretty.pprust;
+
 import util.typestate_ann.ts_ann;
 
 type ty_table = hashmap[ast.def_id, @ty.t];
@@ -49,6 +51,7 @@ type crate_ctxt = rec(session.session sess,
                       ty.type_cache type_cache,
                       @ty_item_table item_items,
                       vec[ast.obj_field] obj_fields,
+                      option.t[ast.def_id] this_obj,
                       mutable int next_var_id);
 
 type fn_ctxt = rec(@ty.t ret_ty,
@@ -1242,10 +1245,9 @@ fn demand_expr_full(&@fn_ctxt fcx, @ty.t expected, @ast.expr e,
                                  ann_to_type(ann), adk);
             e_1 = ast.expr_call(sube, es, triv_ann(t));
         }
-        case (ast.expr_call_self(?sube, ?es, ?ann)) {
-            auto t = demand_full(fcx, e.span, expected,
-                                 ann_to_type(ann), adk);
-            e_1 = ast.expr_call_self(sube, es, triv_ann(t));
+        case (ast.expr_self_method(?id, ?ann)) {
+            auto t = demand(fcx, e.span, expected, ann_to_type(ann));
+            e_1 = ast.expr_self_method(id, triv_ann(t));
         }
         case (ast.expr_binary(?bop, ?lhs, ?rhs, ?ann)) {
             auto t = demand(fcx, e.span, expected, ann_to_type(ann));
@@ -1572,6 +1574,8 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
 }
 
 fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
+    // log "typechecking expr " + pretty.pprust.expr_to_str(expr);
+
     // A generic function to factor out common logic from call and bind
     // expressions.
     fn check_call_or_bind(&@fn_ctxt fcx, &@ast.expr f,
@@ -2125,16 +2129,44 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                         ast.expr_call(f_1, args_1, ann));
         }
 
-        case (ast.expr_call_self(?ident, ?args, _)) {
-            // FIXME: What's to check here?
+        case (ast.expr_self_method(?id, _)) {
+            auto t = plain_ty(ty.ty_nil);
+            let @ty.t this_obj_ty;
 
-            // FIXME: These two lines are ripped off from the expr_call case;
-            // what should they be really?
-            auto rt_1 = plain_ty(ty.ty_nil);
-            auto ann = triv_ann(rt_1);
+            // Grab the type of the current object
+            auto this_obj_id = fcx.ccx.this_obj;
+            alt (this_obj_id) {
+                case (some[ast.def_id](?def_id)) {
+                    auto this_obj_tpt = fcx.ccx.type_cache.find(def_id);
+                    alt (this_obj_tpt) {
+                        case (some[ty_params_opt_and_ty](?tpt)) {
+                            this_obj_ty = tpt._1;
+                        }
+                        case (_) { fail; }
+                    }
+                }
+                case (_) { fail; }
+            }
+
+
+            // Grab this method's type out of the current object type
+
+            // this_obj_ty is an @ty.t
+            alt (this_obj_ty.struct) {
+                case (ty.ty_obj(?methods)) {
+                    for (ty.method method in methods) {
+                        if (method.ident == id) {
+                            t = ty.method_ty_to_fn_ty(method);
+                        }
+                    }
+                }
+                case (_) { fail; }
+            }
+
+            auto ann = triv_ann(t);
 
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_call_self(ident, args, ann));
+                                        ast.expr_self_method(id, ann));
         }
 
         case (ast.expr_spawn(?dom, ?name, ?f, ?args, _)) {
@@ -2596,8 +2628,10 @@ fn check_item_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
 
 fn update_obj_fields(&@crate_ctxt ccx, @ast.item i) -> @crate_ctxt {
     alt (i.node) {
-        case (ast.item_obj(_, ?ob, _, _, _)) {
-            ret @rec(obj_fields = ob.fields with *ccx);
+        case (ast.item_obj(_, ?ob, _, ?obj_def_ids, _)) {
+            let ast.def_id di = obj_def_ids.ty;
+            ret @rec(obj_fields = ob.fields, 
+                     this_obj = some[ast.def_id](di) with *ccx);
         }
         case (_) {
         }
@@ -2617,6 +2651,7 @@ fn check_crate(session.session sess, @ast.crate crate) -> typecheck_result {
                     type_cache=result._1,
                     item_items=result._2,
                     obj_fields=fields,
+                    this_obj=none[ast.def_id],
                     mutable next_var_id=0);
 
     auto fld = fold.new_identity_fold[@crate_ctxt]();

@@ -454,12 +454,9 @@ impure fn print_expr(ps s, &@ast.expr expr) {
             commasep_exprs(s, args);
             pclose(s);
         }
-        case (ast.expr_call_self(?ident,?args,_)) {
+        case (ast.expr_self_method(?ident,_)) {
             wrd(s.s, "self.");
             print_ident(s, ident);
-            popen(s);
-            commasep_exprs(s, args);
-            pclose(s);
         }
         case (ast.expr_bind(?func,?args,_)) {
             impure fn print_opt(ps s, &option.t[@ast.expr] expr) {
