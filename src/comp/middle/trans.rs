@@ -4629,7 +4629,6 @@ fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
 
     auto bcx = cx;
     auto t = node_ann_type(bcx.fcx.ccx, ann);
-    auto llty = type_of(bcx.fcx.ccx, t);
     auto rec_res = alloc_ty(bcx, t);
     auto rec_val = rec_res.val;
     bcx = rec_res.bcx;
