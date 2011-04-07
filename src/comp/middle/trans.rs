@@ -487,7 +487,7 @@ fn T_tag(type_names tn, uint size) -> TypeRef {
 }
 
 fn T_opaque_tag(type_names tn) -> TypeRef {
-    auto s = "tag";
+    auto s = "opaque_tag";
     if (tn.name_has_type(s)) {
         ret tn.get_type(s);
     }
