@@ -2934,7 +2934,19 @@ fn autoderef(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                                          vec(C_int(0),
                                              C_int(abi.box_rc_field_body)));
                 t1 = mt.ty;
-                v1 = load_scalar_or_boxed(cx, body, t1);
+
+                // Since we're changing levels of box indirection, we may have
+                // to cast this pointer, since statically-sized tag types have
+                // different types depending on whether they're behind a box
+                // or not.
+                if (!ty.type_has_dynamic_size(mt.ty)) {
+                    auto llty = type_of(cx.fcx.ccx, mt.ty);
+                    v1 = cx.build.PointerCast(body, T_ptr(llty));
+                } else {
+                    v1 = body;
+                }
+
+                v1 = load_scalar_or_boxed(cx, v1, t1);
             }
             case (_) {
                 ret res(cx, v1);
