@@ -62,7 +62,7 @@ impure fn next(@pstate st) -> u8 { // ?? somehow not recognized as impure
     ret ch as u8;
 }
 
-impure fn parse_ty_str(str rep, str_def sd) -> @ty.t {
+fn parse_ty_str(str rep, str_def sd) -> @ty.t {
     auto len = _str.byte_len(rep);
     auto st = @rec(rep=rep, mutable pos=0u, len=len);
     auto result = parse_ty(st, sd);
@@ -71,7 +71,6 @@ impure fn parse_ty_str(str rep, str_def sd) -> @ty.t {
             + _uint.to_str(st.pos, 10u) + " of "
             + _uint.to_str(len, 10u) + " in str '" + rep + "'";
     }
-    check(st.pos == len);
     ret result;
 }
 
@@ -254,197 +253,142 @@ fn parse_def_id(vec[u8] buf) -> ast.def_id {
     ret tup(crate_num, def_num);
 }
 
-impure fn lookup_hash_entry(&ebml.reader ebml_r,
-                            impure fn(&ebml.reader) -> bool eq_fn,
-                            uint hash) -> bool {
-    ebml.move_to_child_with_id(ebml_r, metadata.tag_index);
-    ebml.move_to_child_with_id(ebml_r, metadata.tag_index_table);
-    ebml.move_to_first_child(ebml_r);
+fn lookup_hash(&ebml.doc d, fn(vec[u8]) -> bool eq_fn, uint hash)
+    -> option.t[ebml.doc] {
+    auto index = ebml.get_doc(d, metadata.tag_index);
+    auto table = ebml.get_doc(index, metadata.tag_index_table);
 
-    // Move to the bucket.
-    auto bucket_index = hash % 256u;
-    auto buf_reader = ebml_r.reader.get_buf_reader();
-    buf_reader.seek((bucket_index * 4u) as int, io.seek_cur);
-    auto bucket_pos = ebml_r.reader.read_be_uint(4u);
-    ebml.reset_reader(ebml_r, bucket_pos);
-
-    // Search to find the item ID in the bucket.
-    check (ebml.peek(ebml_r).id == metadata.tag_index_buckets_bucket);
-    ebml.move_to_first_child(ebml_r);
-    while (ebml.bytes_left(ebml_r) > 0u) {
-        if (ebml.peek(ebml_r).id == metadata.tag_index_buckets_bucket_elt) {
-            ebml.move_to_first_child(ebml_r);
-            auto pos = ebml_r.reader.read_be_uint(4u);
-            if (eq_fn(ebml_r)) {
-                // Found the item. Move to its data and return.
-                ebml.reset_reader(ebml_r, pos);
-                ebml.move_to_first_child(ebml_r);
-                ret true;
+    auto hash_pos = table.start + (hash % 256u) * 4u;
+    auto pos = ebml.be_uint_from_bytes(d.data, hash_pos, 4u);
+    auto bucket = ebml.doc_at(d.data, pos);
+    // Awkward logic because we can't ret from foreach yet
+    auto result = option.none[ebml.doc];
+    auto belt = metadata.tag_index_buckets_bucket_elt;
+    for each (ebml.doc elt in ebml.tagged_docs(bucket, belt)) {
+        alt (result) {
+            case (option.none[ebml.doc]) {
+                auto pos = ebml.be_uint_from_bytes(elt.data, elt.start, 4u);
+                if (eq_fn(_vec.slice[u8](elt.data, elt.start+4u, elt.end))) {
+                    result = option.some[ebml.doc](ebml.doc_at(d.data, pos));
+                }
             }
-            ebml.move_to_parent(ebml_r);
+            case (_) {}
         }
-        ebml.move_to_next_sibling(ebml_r);
     }
-
-    ret false;
+    ret result;
 }
 
 // Given a path and serialized crate metadata, returns the ID of the
 // definition the path refers to.
-impure fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
-    impure fn eq_item(&ebml.reader ebml_r, str s) -> bool {
-        auto this_str = _str.unsafe_from_bytes(ebml.read_data(ebml_r));
-        ret _str.eq(this_str, s);
+fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
+    fn eq_item(vec[u8] data, str s) -> bool {
+        ret _str.eq(_str.unsafe_from_bytes(data), s);
     }
-
     auto s = _str.connect(path, ".");
-
-    auto io_r = io.new_reader_(io.new_byte_buf_reader(data));
-    auto ebml_r = ebml.create_reader(io_r);
-    ebml.move_to_sibling_with_id(ebml_r, metadata.tag_paths);
-
+    auto md = ebml.new_doc(data);
+    auto paths = ebml.get_doc(md, metadata.tag_paths);
     auto eqer = bind eq_item(_, s);
-    auto hash = metadata.hash_path(s);
-    if (!lookup_hash_entry(ebml_r, eqer, hash)) {
-        ret rr_not_found(s);
+    alt (lookup_hash(paths, eqer, metadata.hash_path(s))) {
+        case (option.some[ebml.doc](?d)) {
+            auto did_doc = ebml.get_doc(d, metadata.tag_def_id);
+            ret rr_ok(parse_def_id(ebml.doc_data(did_doc)));
+        }
+        case (option.none[ebml.doc]) {
+            ret rr_not_found(s);
+        }
     }
-
-    ebml.move_to_sibling_with_id(ebml_r, metadata.tag_def_id);
-    ebml.move_to_first_child(ebml_r);
-    auto did_data = ebml.read_data(ebml_r);
-    ebml.move_to_parent(ebml_r);
-    auto did = parse_def_id(did_data);
-    ret rr_ok(did);
 }
 
-impure fn move_to_item(&ebml.reader ebml_r, int item_id) {
-    impure fn eq_item(&ebml.reader ebml_r, int item_id) -> bool {
-        ret (ebml_r.reader.read_be_uint(4u) as int) == item_id;
+fn maybe_find_item(int item_id, &ebml.doc items) -> option.t[ebml.doc] {
+    fn eq_item(vec[u8] bytes, int item_id) -> bool {
+        ret ebml.be_uint_from_bytes(bytes, 0u, 4u) as int == item_id;
     }
-
     auto eqer = bind eq_item(_, item_id);
-    auto hash = metadata.hash_def_num(item_id);
-    ebml.move_to_sibling_with_id(ebml_r, metadata.tag_items);
-    auto found = lookup_hash_entry(ebml_r, eqer, hash);
-    check (found);
+    ret lookup_hash(items, eqer, metadata.hash_def_num(item_id));
 }
 
-// Looks up an item in the given metadata and returns an EBML reader pointing
+fn find_item(int item_id, &ebml.doc items) -> ebml.doc {
+    alt (maybe_find_item(item_id, items)) {
+        case (option.some[ebml.doc](?d)) {ret d;}
+    }
+}
+
+// Looks up an item in the given metadata and returns an EBML doc pointing
 // to the item data.
-impure fn lookup_item(int item_id, vec[u8] data) -> ebml.reader {
-    auto io_r = io.new_reader_(io.new_byte_buf_reader(data));
-    auto ebml_r = ebml.create_reader(io_r);
-    move_to_item(ebml_r, item_id);
-    ret ebml_r;
+fn lookup_item(int item_id, vec[u8] data) -> ebml.doc {
+    auto items = ebml.get_doc(ebml.new_doc(data), metadata.tag_items);
+    ret find_item(item_id, items);
 }
 
-impure fn get_item_generic[T](&ebml.reader ebml_r, uint tag_id,
-        impure fn(vec[u8] buf) -> T converter) -> T {
-    while (ebml.bytes_left(ebml_r) > 0u) {
-        auto ebml_tag = ebml.peek(ebml_r);
-        if (ebml_tag.id == tag_id) {
-            ebml.move_to_first_child(ebml_r);
-            auto result = converter(ebml.read_data(ebml_r));
+fn item_kind(&ebml.doc item) -> u8 {
+    auto kind = ebml.get_doc(item, metadata.tag_items_data_item_kind);
+    ret ebml.doc_as_uint(kind) as u8;
+}
 
-            // Be kind, rewind.
-            ebml.move_to_parent(ebml_r);
-            ebml.move_to_parent(ebml_r);
-            ebml.move_to_first_child(ebml_r);
+fn item_symbol(&ebml.doc item) -> str {
+    auto sym = ebml.get_doc(item, metadata.tag_items_data_item_symbol);
+    ret _str.unsafe_from_bytes(ebml.doc_data(sym));
+}
 
-            ret result;
+fn variant_tag_id(&ebml.doc d) -> ast.def_id {
+    auto tagdoc = ebml.get_doc(d, metadata.tag_items_data_item_tag_id);
+    ret parse_def_id(ebml.doc_data(tagdoc));
+}
+
+fn item_type(&ebml.doc item, int this_cnum) -> @ty.t {
+    fn parse_external_def_id(int this_cnum, str s) -> ast.def_id {
+        // FIXME: This is completely wrong when linking against a crate
+        // that, in turn, links against another crate. We need a mapping
+        // from crate ID to crate "meta" attributes as part of the crate
+        // metadata.
+        auto buf = _str.bytes(s);
+        auto external_def_id = parse_def_id(buf);
+        ret tup(this_cnum, external_def_id._1);
+    }
+
+    auto tp = ebml.get_doc(item, metadata.tag_items_data_item_type);
+    auto s = _str.unsafe_from_bytes(ebml.doc_data(tp));
+    ret parse_ty_str(s, bind parse_external_def_id(this_cnum, _));
+}
+
+fn item_ty_params(&ebml.doc item, int this_cnum) -> vec[ast.def_id] {
+    let vec[ast.def_id] params = vec();
+    auto tp = metadata.tag_items_data_item_ty_param;
+    for each (ebml.doc p in ebml.tagged_docs(item, tp)) {
+        auto ext = parse_def_id(ebml.doc_data(p));
+        _vec.push[ast.def_id](params, tup(this_cnum, ext._1));
+    }
+    ret params;
+}
+
+fn tag_variant_ids(&ebml.doc item, int this_cnum) -> vec[ast.def_id] {
+    let vec[ast.def_id] ids = vec();
+    auto v = metadata.tag_items_data_item_variant;
+    for each (ebml.doc p in ebml.tagged_docs(item, v)) {
+        auto ext = parse_def_id(ebml.doc_data(p));
+        _vec.push[ast.def_id](ids, tup(this_cnum, ext._1));
+    }
+    ret ids;
+}
+
+fn get_metadata_section(str filename) -> option.t[vec[u8]] {
+    auto mb = llvm.LLVMRustCreateMemoryBufferWithContentsOfFile
+        (_str.buf(filename));
+    if (mb as int == 0) {ret option.none[vec[u8]];}
+    auto of = mk_object_file(mb);
+    auto si = mk_section_iter(of.llof);
+    while (llvm.LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False) {
+        auto name_buf = llvm.LLVMGetSectionName(si.llsi);
+        auto name = _str.str_from_cstr(name_buf);
+        if (_str.eq(name, x86.get_meta_sect_name())) {
+            auto cbuf = llvm.LLVMGetSectionContents(si.llsi);
+            auto csz = llvm.LLVMGetSectionSize(si.llsi);
+            auto cvbuf = cbuf as _vec.vbuf;
+            ret option.some[vec[u8]](_vec.vec_from_vbuf[u8](cvbuf, csz));
         }
-        ebml.move_to_next_sibling(ebml_r);
+        llvm.LLVMMoveToNextSection(si.llsi);
     }
-
-    log #fmt("get_item_generic(): tag %u not found", tag_id);
-    fail;
-}
-
-impure fn get_item_kind(&ebml.reader ebml_r) -> u8 {
-    impure fn converter(vec[u8] data) -> u8 {
-        auto x = @mutable 3;
-        *x = 5;
-        ret data.(0);
-    }
-    auto f = converter;
-    ret get_item_generic[u8](ebml_r, metadata.tag_items_data_item_kind, f);
-}
-
-impure fn get_item_symbol(&ebml.reader ebml_r) -> str {
-    impure fn converter(vec[u8] data) -> str {
-        auto x = @mutable 3;
-        *x = 5;
-        ret _str.unsafe_from_bytes(data);
-    }
-    auto f = converter;
-    ret get_item_generic[str](ebml_r, metadata.tag_items_data_item_symbol, f);
-}
-
-// FIXME: This is a *terrible* botch.
-impure fn impure_parse_def_id(vec[u8] data) -> ast.def_id {
-    auto x = @mutable 3;
-    *x = 5;
-    ret parse_def_id(data);
-}
-
-impure fn get_variant_tag_id(&ebml.reader ebml_r) -> ast.def_id {
-    auto f = impure_parse_def_id;
-    ret get_item_generic[ast.def_id](ebml_r,
-                                     metadata.tag_items_data_item_tag_id, f);
-}
-
-impure fn get_item_type(&ebml.reader ebml_r, int this_cnum) -> @ty.t {
-    impure fn converter(int this_cnum, vec[u8] data) -> @ty.t {
-        fn parse_external_def_id(int this_cnum, str s) -> ast.def_id {
-            // FIXME: This is completely wrong when linking against a crate
-            // that, in turn, links against another crate. We need a mapping
-            // from crate ID to crate "meta" attributes as part of the crate
-            // metadata.
-            auto buf = _str.bytes(s);
-            auto external_def_id = parse_def_id(buf);
-            ret tup(this_cnum, external_def_id._1);
-        }
-        auto s = _str.unsafe_from_bytes(data);
-        ret parse_ty_str(s, bind parse_external_def_id(this_cnum, _));
-    }
-    auto f = bind converter(this_cnum, _);
-    ret get_item_generic[@ty.t](ebml_r, metadata.tag_items_data_item_type, f);
-}
-
-impure fn collect_def_ids(&ebml.reader ebml_r, int this_cnum, uint tag_id)
-        -> vec[ast.def_id] {
-    let vec[ast.def_id] def_ids = vec();
-    while (ebml.bytes_left(ebml_r) > 0u) {
-        auto ebml_tag = ebml.peek(ebml_r);
-        if (ebml_tag.id == tag_id) {
-            ebml.move_to_first_child(ebml_r);
-
-            auto data = ebml.read_data(ebml_r);
-            auto external_def_id = parse_def_id(data);
-            def_ids += vec(tup(this_cnum, external_def_id._1));
-
-            ebml.move_to_parent(ebml_r);
-        }
-        ebml.move_to_next_sibling(ebml_r);
-    }
-
-    // Be kind, rewind.
-    ebml.move_to_parent(ebml_r);
-    ebml.move_to_first_child(ebml_r);
-
-    ret def_ids;
-}
-
-impure fn get_item_ty_params(&ebml.reader ebml_r, int this_cnum)
-        -> vec[ast.def_id] {
-    ret collect_def_ids(ebml_r, this_cnum,
-                        metadata.tag_items_data_item_ty_param);
-}
-
-impure fn collect_tag_variant_ids(&ebml.reader ebml_r, int this_cnum)
-        -> vec[ast.def_id] {
-    ret collect_def_ids(ebml_r, this_cnum,
-                        metadata.tag_items_data_item_variant);
+    ret option.none[vec[u8]];
 }
 
 
@@ -455,25 +399,12 @@ fn load_crate(session.session sess,
     auto filename = parser.default_native_name(sess, ident);
     for (str library_search_path in library_search_paths) {
         auto path = fs.connect(library_search_path, filename);
-        auto pbuf = _str.buf(path);
-        auto mb = llvm.LLVMRustCreateMemoryBufferWithContentsOfFile(pbuf);
-        if (mb as int != 0) {
-            auto of = mk_object_file(mb);
-            auto si = mk_section_iter(of.llof);
-            while (llvm.LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) ==
-                    False) {
-                auto name_buf = llvm.LLVMGetSectionName(si.llsi);
-                auto name = _str.str_from_cstr(name_buf);
-                if (_str.eq(name, x86.get_meta_sect_name())) {
-                    auto cbuf = llvm.LLVMGetSectionContents(si.llsi);
-                    auto csz = llvm.LLVMGetSectionSize(si.llsi);
-                    auto cvbuf = cbuf as _vec.vbuf;
-                    auto cvec = _vec.vec_from_vbuf[u8](cvbuf, csz);
-                    sess.set_external_crate(cnum, cvec);
-                    ret;
-                }
-                llvm.LLVMMoveToNextSection(si.llsi);
+        alt (get_metadata_section(path)) {
+            case (option.some[vec[u8]](?cvec)) {
+                sess.set_external_crate(cnum, cvec);
+                ret;
             }
+            case (_) {}
         }
     }
 
@@ -550,8 +481,8 @@ fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
         }
     }
 
-    auto ebml_r = lookup_item(did._1, data);
-    auto kind_ch = get_item_kind(ebml_r);
+    auto item = lookup_item(did._1, data);
+    auto kind_ch = item_kind(item);
 
     did = tup(cnum, did._1);
 
@@ -569,7 +500,7 @@ fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
     } else if (kind_ch == ('m' as u8))  { def = ast.def_mod(did);        }
     else if (kind_ch == ('n' as u8))    { def = ast.def_native_mod(did); }
     else if (kind_ch == ('v' as u8)) {
-        auto tid = get_variant_tag_id(ebml_r);
+        auto tid = variant_tag_id(item);
         tid = tup(cnum, tid._1);
         def = ast.def_variant(tid, did);
     } else {
@@ -583,14 +514,14 @@ fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
 fn get_type(session.session sess, ast.def_id def) -> ty.ty_params_opt_and_ty {
     auto external_crate_id = def._0;
     auto data = sess.get_external_crate(external_crate_id);
-    auto ebml_r = lookup_item(def._1, data);
-    auto t = get_item_type(ebml_r, external_crate_id);
+    auto item = lookup_item(def._1, data);
+    auto t = item_type(item, external_crate_id);
 
     auto tps_opt;
-    auto kind_ch = get_item_kind(ebml_r);
+    auto kind_ch = item_kind(item);
     auto has_ty_params = kind_has_type_params(kind_ch);
     if (has_ty_params) {
-        auto tps = get_item_ty_params(ebml_r, external_crate_id);
+        auto tps = item_ty_params(item, external_crate_id);
         tps_opt = some[vec[ast.def_id]](tps);
     } else {
         tps_opt = none[vec[ast.def_id]];
@@ -602,22 +533,22 @@ fn get_type(session.session sess, ast.def_id def) -> ty.ty_params_opt_and_ty {
 fn get_symbol(session.session sess, ast.def_id def) -> str {
     auto external_crate_id = def._0;
     auto data = sess.get_external_crate(external_crate_id);
-    auto ebml_r = lookup_item(def._1, data);
-    ret get_item_symbol(ebml_r);
+    auto item = lookup_item(def._1, data);
+    ret item_symbol(item);
 }
 
 fn get_tag_variants(session.session sess, ast.def_id def)
         -> vec[trans.variant_info] {
     auto external_crate_id = def._0;
     auto data = sess.get_external_crate(external_crate_id);
-    auto ebml_r = lookup_item(def._1, data);
+    auto items = ebml.get_doc(ebml.new_doc(data), metadata.tag_items);
+    auto item = find_item(def._1, items);
 
     let vec[trans.variant_info] infos = vec();
-    auto variant_ids = collect_tag_variant_ids(ebml_r, external_crate_id);
+    auto variant_ids = tag_variant_ids(item, external_crate_id);
     for (ast.def_id did in variant_ids) {
-        ebml.reset_reader(ebml_r, 0u);
-        move_to_item(ebml_r, did._1);
-        auto ctor_ty = get_item_type(ebml_r, external_crate_id);
+        auto item = find_item(did._1, items);
+        auto ctor_ty = item_type(item, external_crate_id);
         let vec[@ty.t] arg_tys = vec();
         alt (ctor_ty.struct) {
             case (ty.ty_fn(_, ?args, _)) {

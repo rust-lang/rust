@@ -44,7 +44,9 @@ mod util {
 }
 
 auth driver.rustc.main = impure;
+auth front.creader.parse_ty_str = impure;
 auth front.creader.load_crate = unsafe;
+auth front.creader.get_metadata_section = unsafe;
 auth front.creader.lookup_def = impure;
 auth front.creader.get_type = impure;
 auth front.creader.get_symbol = impure;
