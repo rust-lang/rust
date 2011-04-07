@@ -13,117 +13,106 @@ type ebml_state = rec(ebml_tag ebml_tag, uint tag_pos, uint data_pos);
 
 // EBML reading
 
-type reader = rec(
-    io.reader reader,
-    mutable vec[ebml_state] states,
-    uint size
-);
+type doc = rec(vec[u8] data,
+               uint start,
+               uint end);
 
-// TODO: eventually use u64 or big here
-impure fn read_vint(&io.reader reader) -> uint {
-    auto a = reader.read_byte() as u8;
-    if (a & 0x80u8 != 0u8) { ret (a & 0x7fu8) as uint; }
-    auto b = reader.read_byte() as u8;
+fn vint_at(vec[u8] data, uint start) -> tup(uint, uint) {
+    auto a = data.(start);
+    if (a & 0x80u8 != 0u8) { ret tup((a & 0x7fu8) as uint, start + 1u); }
     if (a & 0x40u8 != 0u8) {
-        ret (((a & 0x3fu8) as uint) << 8u) | (b as uint);
+        ret tup((((a & 0x3fu8) as uint) << 8u) | (data.(start + 1u) as uint),
+                start + 2u);
+    } else if (a & 0x20u8 != 0u8) {
+        ret tup((((a & 0x1fu8) as uint) << 16u) |
+                ((data.(start + 1u) as uint) << 8u) |
+                (data.(start + 2u) as uint), start + 3u);
+    } else if (a & 0x10u8 != 0u8) {
+        ret tup((((a & 0x0fu8) as uint) << 24u) |
+                ((data.(start + 1u) as uint) << 16u) |
+                ((data.(start + 2u) as uint) << 8u) |
+                (data.(start + 3u) as uint), start + 4u);
+    } else {
+        log "vint too big"; fail;
     }
-    auto c = reader.read_byte() as u8;
-    if (a & 0x20u8 != 0u8) {
-        ret (((a & 0x1fu8) as uint) << 16u) | ((b as uint) << 8u) |
-            (c as uint);
-    }
-    auto d = reader.read_byte() as u8;
-    if (a & 0x10u8 != 0u8) {
-        ret (((a & 0x0fu8) as uint) << 24u) | ((b as uint) << 16u) |
-            ((c as uint) << 8u) | (d as uint);
-    }
-
-    log "vint too big"; fail;
 }
 
-impure fn create_reader(&io.reader r) -> reader {
-    let vec[ebml_state] states = vec();
-
-    // Calculate the size of the stream.
-    auto pos = r.tell();
-    r.seek(0, io.seek_end);
-    auto size = r.tell() - pos;
-    r.seek(pos as int, io.seek_set);
-
-    ret rec(reader=r, mutable states=states, size=size);
+fn new_doc(vec[u8] data) -> doc {
+    ret rec(data=data, start=0u, end=_vec.len[u8](data));
 }
 
-impure fn bytes_left(&reader r) -> uint {
-    auto pos = r.reader.tell();
-    alt (_vec.last[ebml_state](r.states)) {
-        case (none[ebml_state]) { ret r.size - pos; }
-        case (some[ebml_state](?st)) {
-            ret st.data_pos + st.ebml_tag.size - pos;
+fn doc_at(vec[u8] data, uint start) -> doc {
+    auto elt_tag = vint_at(data, start);
+    auto elt_size = vint_at(data, elt_tag._1);
+    auto end = elt_size._1 + elt_size._0;
+    ret rec(data=data, start=elt_size._1, end=end);
+}
+
+fn maybe_get_doc(doc d, uint tg) -> option.t[doc] {
+    auto pos = d.start;
+    while (pos < d.end) {
+        auto elt_tag = vint_at(d.data, pos);
+        auto elt_size = vint_at(d.data, elt_tag._1);
+        pos = elt_size._1 + elt_size._0;
+        if (elt_tag._0 == tg) {
+            ret some[doc](rec(data=d.data, start=elt_size._1, end=pos));
+        }
+    }
+    ret none[doc];
+}
+
+fn get_doc(doc d, uint tg) -> doc {
+    alt (maybe_get_doc(d, tg)) {
+        case (some[doc](?d)) {ret d;}
+        case (none[doc]) {
+            log "failed to find block with tag " + _uint.to_str(tg, 10u);
+            fail;
         }
     }
 }
 
-impure fn read_tag(&reader r) -> ebml_tag {
-    auto id = read_vint(r.reader);
-    auto size = read_vint(r.reader);
-    ret rec(id=id, size=size);
-}
-
-// Reads a tag and moves the cursor to its first child or data segment.
-impure fn move_to_first_child(&reader r) {
-    auto tag_pos = r.reader.tell();
-    auto t = read_tag(r);
-    auto data_pos = r.reader.tell();
-    r.states += vec(rec(ebml_tag=t, tag_pos=tag_pos, data_pos=data_pos));
-}
-
-// Reads a tag and skips over its contents, moving to its next sibling.
-impure fn move_to_next_sibling(&reader r) {
-    auto t = read_tag(r);
-    r.reader.seek(t.size as int, io.seek_cur);
-}
-
-// Moves to the parent of this tag.
-impure fn move_to_parent(&reader r) {
-    check (_vec.len[ebml_state](r.states) > 0u);
-    auto st = _vec.pop[ebml_state](r.states);
-    r.reader.seek(st.tag_pos as int, io.seek_set);
-}
-
-// Moves to the sibling of the current item with the given tag ID.
-impure fn move_to_sibling_with_id(&reader r, uint tag_id) {
-    while (peek(r).id != tag_id) {
-        move_to_next_sibling(r);
+iter docs(doc d) -> tup(uint, doc) {
+    auto pos = d.start;
+    while (pos < d.end) {
+        auto elt_tag = vint_at(d.data, pos);
+        auto elt_size = vint_at(d.data, elt_tag._1);
+        pos = elt_size._1 + elt_size._0;
+        put tup(elt_tag._0, rec(data=d.data, start=elt_size._1, end=pos));
     }
 }
 
-// Moves to the first child of the current item with the given tag ID.
-impure fn move_to_child_with_id(&reader r, uint tag_id) {
-    move_to_first_child(r);
-    move_to_sibling_with_id(r, tag_id);
+iter tagged_docs(doc d, uint tg) -> doc {
+    auto pos = d.start;
+    while (pos < d.end) {
+        auto elt_tag = vint_at(d.data, pos);
+        auto elt_size = vint_at(d.data, elt_tag._1);
+        pos = elt_size._1 + elt_size._0;
+        if (elt_tag._0 == tg) {
+            put rec(data=d.data, start=elt_size._1, end=pos);
+        }
+    }
 }
 
-// Reads the data segment of a tag.
-impure fn read_data(&reader r) -> vec[u8] {
-    ret r.reader.read_bytes(bytes_left(r));
+fn doc_data(doc d) -> vec[u8] {
+    ret _vec.slice[u8](d.data, d.start, d.end);
 }
 
-// Blows away the tag stack and moves the reader to the given byte position.
-impure fn reset_reader(&reader r, uint pos) {
-    // FIXME: rustc "ty_var in trans.type_of" bug
-    let vec[ebml_state] states = vec();
-    r.states = states;
-    r.reader.seek(pos as int, io.seek_set);
+fn be_uint_from_bytes(vec[u8] data, uint start, uint size) -> uint {
+    auto sz = size;
+    check (sz <= 4u);
+    auto val = 0u;
+    auto pos = start;
+    while (sz > 0u) {
+        sz -= 1u;
+        val += (data.(pos) as uint) << (sz * 8u);
+        pos += 1u;
+    }
+    ret val;
 }
 
-impure fn peek(&reader r) -> ebml_tag {
-    check (bytes_left(r) > 0u);
-    auto pos = r.reader.tell();
-    auto t = read_tag(r);
-    r.reader.seek(pos as int, io.seek_set);
-    ret t;
+fn doc_as_uint(doc d) -> uint {
+    ret be_uint_from_bytes(d.data, d.start, d.end - d.start);
 }
-
 
 // EBML writing
 
@@ -195,4 +184,3 @@ fn end_tag(&writer w) {
 
 // TODO: optionally perform "relaxations" on end_tag to more efficiently
 // encode sizes; this is a fixed point iteration
-
