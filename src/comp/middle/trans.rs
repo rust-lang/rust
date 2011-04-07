@@ -3766,8 +3766,8 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                             } else {
                                 lltagty = type_of(cx.fcx.ccx, tag_ty);
                             }
-                            auto lltagptr = alloc_result.bcx.build.PointerCast(
-                                lltagblob, T_ptr(lltagty));
+                            auto lltagptr = alloc_result.bcx.build.
+                                PointerCast(lltagblob, T_ptr(lltagty));
 
                             auto lldiscrimptr = alloc_result.bcx.build.GEP(
                                 lltagptr, vec(C_int(0), C_int(0)));
