@@ -11,6 +11,7 @@ import front.ast.stmt;
 import front.ast.stmt_;
 import front.ast.stmt_decl;
 import front.ast.stmt_expr;
+import front.ast.stmt_crate_directive;
 import front.ast.decl_local;
 import front.ast.decl_item;
 import front.ast.ident;
@@ -70,9 +71,17 @@ import util.typestate_ann.prestate;
 import util.typestate_ann.pre_and_post;
 import util.typestate_ann.get_pre;
 import util.typestate_ann.get_post;
+import util.typestate_ann.ann_precond;
+import util.typestate_ann.ann_prestate;
+import util.typestate_ann.set_precondition;
+import util.typestate_ann.set_postcondition;
+import util.typestate_ann.set_in_postcond;
 import util.typestate_ann.implies;
 import util.typestate_ann.pre_and_post_state;
 import util.typestate_ann.empty_states;
+import util.typestate_ann.empty_prestate;
+import util.typestate_ann.empty_ann;
+import util.typestate_ann.extend_prestate;
 
 import middle.ty;
 import middle.ty.ann_to_type;
@@ -97,6 +106,7 @@ import std.option;
 import std.option.t;
 import std.option.some;
 import std.option.none;
+import std.option.from_maybe;
 import std.map.hashmap;
 import std.list;
 import std.list.list;
@@ -106,6 +116,8 @@ import std.list.foldl;
 import std.list.find;
 import std._uint;
 import std.bitv;
+import std.util.fst;
+import std.util.snd;
 
 import util.typestate_ann;
 import util.typestate_ann.difference;
@@ -342,25 +354,58 @@ fn expr_ann(&expr e) -> ann {
   }
 }
 
-/* returns ann_none if this is the sort
- of statement where an ann doesn't make sense */
-fn stmt_ann(&stmt s) -> ann {
-  alt (s.node) {
-    case (stmt_decl(?d)) {
-      alt (d.node) {
-        case (decl_local(?l)) {
-          ret l.ann;
-        }
-        case (decl_item(?i)) {
-          ret ann_none; /* ????? */
-        }
+fn ann_to_ts_ann(ann a, uint nv) -> ts_ann {
+  alt (a) {
+    case (ann_none)         { ret empty_ann(nv); }
+    case (ann_type(_,_,?t)) {
+      alt (t) {
+        /* Kind of inconsistent. empty_ann()s everywhere
+         or an option of a ts_ann? */
+        case (none[@ts_ann])     { ret empty_ann(nv); }
+        case (some[@ts_ann](?t)) { ret *t; }
       }
     }
-    case (stmt_expr(?e)) {
-      ret expr_ann(*e);
+  }
+}
+
+fn stmt_ann(&stmt s) -> option.t[@ts_ann] {
+  alt (s.node) {
+    case (stmt_decl(_,?a)) {
+      ret a;
     }
-    case (_) {
-      ret ann_none;
+    case (stmt_expr(_,?a)) {
+      ret a;
+    }
+    case (stmt_crate_directive(_)) {
+      ret none[@ts_ann];
+    }
+  }
+}
+
+/*
+/* fails if no annotation */
+fn stmt_pp(&stmt s) -> pre_and_post {
+  ret (stmt_ann(s)).conditions;
+}
+*/
+
+/* fails if e has no annotation */
+fn expr_states(&expr e) -> pre_and_post_state {
+  alt (expr_ann(e)) {
+    case (ann_none) {
+      log "expr_pp: the impossible happened (no annotation)";
+      fail;
+    }
+    case (ann_type(_, _, ?maybe_pp)) {
+      alt (maybe_pp) {
+        case (none[@ts_ann]) {
+          log "expr_pp: the impossible happened (no pre/post)";
+          fail;
+        }
+        case (some[@ts_ann](?p)) {
+          // ret p.states;
+        }
+      }
     }
   }
 }
@@ -386,64 +431,17 @@ fn expr_pp(&expr e) -> pre_and_post {
   }
 }
 
-/* fails if e has no annotation */
-fn expr_states(&expr e) -> pre_and_post_state {
-  alt (expr_ann(e)) {
-    case (ann_none) {
-      log "expr_pp: the impossible happened (no annotation)";
-      fail;
+fn stmt_states(&stmt s, uint nv) -> pre_and_post_state {
+  alt (stmt_ann(s)) {
+    case (none[@ts_ann]) {
+      ret empty_states(nv);
     }
-    case (ann_type(_, _, ?maybe_pp)) {
-      alt (maybe_pp) {
-        case (none[@ts_ann]) {
-          log "expr_pp: the impossible happened (no pre/post)";
-          fail;
-        }
-        case (some[@ts_ann](?p)) {
-          ret p.states;
-        }
-      }
+    case (some[@ts_ann](?a)) {
+      ret a.states;
     }
   }
 }
 
-/* fails if no annotation */
-fn stmt_pp(&stmt s) -> pre_and_post {
-  alt (stmt_ann(s)) {
-    case (ann_none) {
-      fail;
-    }
-    case (ann_type(_, _, ?maybe_pp)) {
-      alt (maybe_pp) {
-        case (none[@ts_ann]) {
-          fail;
-        }
-        case (some[@ts_ann](?p)) {
-          ret p.conditions;
-        }
-      }
-    }
-  }
-}
-
-/* fails if no annotation */
-fn stmt_states(&stmt s) -> pre_and_post_state {
-  alt (stmt_ann(s)) {
-    case (ann_none) {
-      fail;
-    }
-    case (ann_type(_, _, ?maybe_pp)) {
-      alt (maybe_pp) {
-        case (none[@ts_ann]) {
-          fail;
-        }
-        case (some[@ts_ann](?p)) {
-          ret p.states;
-        }
-      }
-    }
-  }
-}
 
 fn expr_precond(&expr e) -> precond {
   ret (expr_pp(e)).precondition;
@@ -461,6 +459,7 @@ fn expr_poststate(&expr e) -> poststate {
   ret (expr_states(e)).poststate;
 }
 
+/*
 fn stmt_precond(&stmt s) -> precond {
   ret (stmt_pp(s)).precondition;
 }
@@ -468,13 +467,19 @@ fn stmt_precond(&stmt s) -> precond {
 fn stmt_postcond(&stmt s) -> postcond {
   ret (stmt_pp(s)).postcondition;
 }
+*/
 
+fn states_to_poststate(&pre_and_post_state ss) -> poststate {
+  ret ss.poststate;
+}
+
+/*
 fn stmt_prestate(&stmt s) -> prestate {
   ret (stmt_states(s)).prestate;
 }
-
-fn stmt_poststate(&stmt s) -> poststate {
-  ret (stmt_states(s)).poststate;
+*/
+fn stmt_poststate(&stmt s, uint nv) -> poststate {
+  ret (stmt_states(s, nv)).poststate;
 }
 
 /* returns a new annotation where the pre_and_post is p */
@@ -684,12 +689,19 @@ fn find_pre_post_expr(&fn_info enclosing, &expr e) -> @expr {
   }
 }
 
-fn find_pre_post_for_each_stmt(_fn_info_map fm, &fn_info enclosing,
-                               &ast.stmt s) -> ast.stmt {
+impure fn gen(&fn_info enclosing, ts_ann a, def_id id) {
+  check(enclosing.contains_key(id));
+  let uint i = enclosing.get(id);
+
+  set_in_postcond(i, a.conditions);
+}
+
+fn find_pre_post_stmt(_fn_info_map fm, &fn_info enclosing, &ast.stmt s)
+  -> ast.stmt {
   auto num_local_vars = num_locals(enclosing);
 
   alt(s.node) {
-    case(ast.stmt_decl(?adecl)) {
+    case(ast.stmt_decl(?adecl, ?a)) {
       alt(adecl.node) {
         case(ast.decl_local(?alocal)) {
           alt(alocal.init) {
@@ -702,9 +714,25 @@ fn find_pre_post_for_each_stmt(_fn_info_map fm, &fn_info enclosing,
                 @rec(ty=alocal.ty, infer=alocal.infer,
                      ident=alocal.ident, init=some[initializer](a_i),
                      id=alocal.id, ann=res_ann);
+
+              let ts_ann stmt_ann;
+              alt (a) {
+                case (none[@ts_ann]) {
+                  stmt_ann = empty_ann(num_local_vars);
+                }
+                case (some[@ts_ann](?aa)) {
+                  stmt_ann = *aa;
+                }
+              }
+              /* Inherit ann from initializer, and add var being
+                 initialized to the postcondition */
+              set_precondition(stmt_ann, expr_precond(*r));
+              set_postcondition(stmt_ann, expr_postcond(*r));
+              gen(enclosing, stmt_ann, alocal.id); 
               let stmt_ res = stmt_decl(@respan(adecl.span,
-                                                decl_local(res_local)));
-              ret (respan(s.span, res));
+                                                decl_local(res_local)),
+                                        some[@ts_ann](@stmt_ann));
+              ret (respan(s.span, res)); 
             }
             case(none[ast.initializer]) {
               // log("pre/post for init of " + alocal.ident + ": none");
@@ -716,22 +744,30 @@ fn find_pre_post_for_each_stmt(_fn_info_map fm, &fn_info enclosing,
                      id=alocal.id, ann=res_ann);
               let stmt_ res =
                 stmt_decl
-                (@respan(adecl.span, decl_local(res_local)));
-              ret (respan (s.span, res));
+                (@respan(adecl.span, decl_local(res_local)),
+                 some[@ts_ann](@empty_ann(num_local_vars)));
+              ret respan(s.span, res); /* inherit ann from initializer */
             }
           }
         }
         case(decl_item(?anitem)) {
           auto res_item = find_pre_post_item(fm, enclosing, *anitem);
-          ret (respan(s.span, stmt_decl(@respan(adecl.span,
-                                               decl_item(@res_item))))); 
+          ret respan(s.span,
+                     stmt_decl(@respan(adecl.span,
+                                       decl_item(@res_item)),
+                               some[@ts_ann](@empty_ann(num_local_vars))));
         }
       }
     }
-    case(stmt_expr(?e)) {
+    case(stmt_expr(?e,_)) {
       log_expr(e);
       let @expr e_pp = find_pre_post_expr(enclosing, *e);
-      ret (respan(s.span, stmt_expr(e_pp)));
+      /* inherit ann from expr */
+      ret respan(s.span,
+                 stmt_expr(e_pp,
+                           some[@ts_ann]
+                           (@ann_to_ts_ann(expr_ann(*e_pp),
+                                           num_local_vars)))); 
     }    
   }
 }
@@ -739,7 +775,7 @@ fn find_pre_post_for_each_stmt(_fn_info_map fm, &fn_info enclosing,
 fn find_pre_post_block(&_fn_info_map fm, &fn_info enclosing, block b)
   -> block {
   fn do_one_(_fn_info_map fm, fn_info i, &@stmt s) -> @stmt {
-    ret (@find_pre_post_for_each_stmt(fm, i, *s));
+    ret (@find_pre_post_stmt(fm, i, *s));
   }
   auto do_one = bind do_one_(fm, enclosing, _);
  
@@ -767,22 +803,93 @@ fn check_item_fn(&_fn_info_map fm, &span sp, ident i, &ast._fn f,
   ret @respan(sp, ast.item_fn(i, res_f, ty_params, id, a));
 }
 
-/* Returns a pair of a new function, with possibly a changed pre- or
-   post-state, and a boolean flag saying whether the function's pre- or 
-   poststate changed */
-fn find_pre_post_state_fn(fn_info f_info, &ast._fn f) -> tup(bool, ast._fn) {
-  log ("Implement find_pre_post_state_fn!");
+/* FIXME */
+fn find_pre_post_state_expr(&_fn_info_map fm, &fn_info enclosing,
+                            &prestate pres, expr e)
+  -> tup(bool, @expr) {
+  log("Implement find_pre_post_state_expr!");
   fail;
 }
 
-fn fixed_point_states(fn_info f_info,
-                      fn (fn_info, &ast._fn) -> tup(bool, ast._fn) f,
+/* FIXME: This isn't done yet. */
+fn find_pre_post_state_stmt(&_fn_info_map fm, &fn_info enclosing,
+                            &prestate pres, @stmt s) -> bool {
+  auto changed = false;
+  alt (s.node) {
+    case (stmt_decl(?adecl, ?a)) {
+      alt (adecl.node) {
+        case (ast.decl_local(?alocal)) {
+          alt (alocal.init) {
+            case (some[ast.initializer](?an_init)) {
+              auto p = find_pre_post_state_expr(fm, enclosing,
+                                                pres, *an_init.expr);
+              fail; /* FIXME */
+              /* Next: copy pres into a's prestate;
+                 find the poststate by taking p's poststate
+                 and setting the bit for alocal.id */
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/* Returns a pair of a new block, with possibly a changed pre- or
+   post-state, and a boolean flag saying whether the function's pre- or 
+   poststate changed */
+fn find_pre_post_state_block(&_fn_info_map fm, &fn_info enclosing, block b)
+  -> tup(bool, block) {
+  auto changed = false;
+  auto num_local_vars = num_locals(enclosing);
+
+  /* First, set the pre-states and post-states for every expression */
+  auto pres = empty_prestate(num_local_vars);
+  
+  /* Iterate over each stmt. The new prestate is <pres>. The poststate
+   consist of improving <pres> with whatever variables this stmt initializes.
+  Then <pres> becomes the new poststate. */ 
+  for (@stmt s in b.node.stmts) {
+    changed = changed || find_pre_post_state_stmt(fm, enclosing, pres, s);
+      /* Shouldn't need to rebuild the stmt.
+         This just updates bit-vectors
+         in a side-effecting way. */
+    extend_prestate(pres, stmt_poststate(*s, num_local_vars));
+  }
+
+  fn do_inner_(_fn_info_map fm, fn_info i, prestate p, &@expr e)
+    -> tup (bool, @expr) {
+    ret find_pre_post_state_expr(fm, i, p, *e);
+  }
+  auto do_inner = bind do_inner_(fm, enclosing, pres, _);
+  let option.t[tup(bool, @expr)] e_ =
+    option.map[@expr, tup(bool, @expr)](do_inner, b.node.expr);
+  auto s = snd[bool, @expr];
+  auto f = fst[bool, @expr];
+  changed = changed ||
+    from_maybe[bool](false,
+                     option.map[tup(bool, @expr), bool](f, e_));
+  let block_ b_res = rec(stmts=b.node.stmts,
+                         expr=option.map[tup(bool, @expr), @expr](s, e_),
+                         index=b.node.index);
+  ret tup(changed, respan(b.span, b_res));
+}
+
+fn find_pre_post_state_fn(_fn_info_map f_info, fn_info fi, &ast._fn f)
+  -> tup(bool, ast._fn) {
+  auto p = find_pre_post_state_block(f_info, fi, f.body);
+  ret tup(p._0, rec(decl=f.decl, proto=f.proto, body=p._1));
+}
+
+fn fixed_point_states(_fn_info_map fm, fn_info f_info,
+                      fn (_fn_info_map, fn_info, &ast._fn)
+                           -> tup(bool, ast._fn) f,
                       &ast._fn start) -> ast._fn {
-  auto next = f(f_info, start);
+  auto next = f(fm, f_info, start);
 
   if (next._0) {
     // something changed
-    be fixed_point_states(f_info, f, next._1);
+    be fixed_point_states(fm, f_info, f, next._1);
   }
   else {
     // we're done!
@@ -790,40 +897,27 @@ fn fixed_point_states(fn_info f_info,
   }
 }
 
-fn check_states_expr(fn_info enclosing, &expr e) -> () {
+impure fn check_states_expr(fn_info enclosing, &expr e) -> () {
   let precond prec    = expr_precond(e);
-  let postcond postc  = expr_postcond(e);
   let prestate pres   = expr_prestate(e);
-  let poststate posts = expr_poststate(e);
 
   if (!implies(pres, prec)) {
     log("check_states_expr: unsatisfied precondition");
-    fail;
-  }
-  if (!implies(posts, postc)) {
-    log("check_states_expr: unsatisfied postcondition");
     fail;
   }
 }
 
 fn check_states_stmt(fn_info enclosing, &stmt s) -> () {
   alt (stmt_ann(s)) {
-    case (ann_none) {
-      // Statement doesn't require an annotation -- do nothing
+    case (none[@ts_ann]) {
       ret;
     }
-    case (ann_type(_,_,?m_pp)) {
-      let precond prec    = stmt_precond(s);
-      let postcond postc  = stmt_postcond(s);
-      let prestate pres   = stmt_prestate(s);
-      let poststate posts = stmt_poststate(s);
+    case (some[@ts_ann](?a)) {
+      let precond prec    = ann_precond(*a);
+      let prestate pres   = ann_prestate(*a);
 
       if (!implies(pres, prec)) {
         log("check_states_stmt: unsatisfied precondition");
-        fail;
-      }
-      if (!implies(posts, postc)) {
-        log("check_states_stmt: unsatisfied postcondition");
         fail;
       }
     }
@@ -855,7 +949,7 @@ fn check_item_fn_state(&_fn_info_map f_info_map, &span sp, ident i,
 
   /* Compute the pre- and post-states for this function */
   auto g = find_pre_post_state_fn;
-  auto res_f = fixed_point_states(f_info, g, f);
+  auto res_f = fixed_point_states(f_info_map, f_info, g, f);
 
   /* Now compare each expr's pre-state to its precondition
      and post-state to its postcondition */

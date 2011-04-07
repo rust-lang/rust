@@ -135,6 +135,28 @@ impure fn set(&t v, uint i, bool x) {
     }
 }
 
+/* true if all bits are 1 */
+fn is_true(&t v) -> bool {
+    for(uint i in v.storage) {
+        if (i != 1u) {
+            ret false;
+        }
+    }
+
+    ret true;
+}
+
+/* true if all bits are non-1 */
+fn is_false(&t v) -> bool {
+    for(uint i in v.storage) {
+        if (i == 1u) {
+            ret false;
+        }
+    }
+
+    ret true;
+}
+
 fn init_to_vec(t v, uint i) -> uint {
     if (get(v, i)) {
         ret 1u;

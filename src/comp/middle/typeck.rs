@@ -2479,12 +2479,12 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast.decl decl) -> @ast.decl {
 
 fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
     alt (stmt.node) {
-        case (ast.stmt_decl(?decl)) {
+        case (ast.stmt_decl(?decl,?a)) {
             alt (decl.node) {
                 case (ast.decl_local(_)) {
                     auto decl_1 = check_decl_local(fcx, decl);
                     ret @fold.respan[ast.stmt_](stmt.span,
-                                                ast.stmt_decl(decl_1));
+                                                ast.stmt_decl(decl_1, a));
                 }
 
                 case (ast.decl_item(_)) {
@@ -2495,9 +2495,9 @@ fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
             ret stmt;
         }
 
-        case (ast.stmt_expr(?expr)) {
+        case (ast.stmt_expr(?expr,?a)) {
             auto expr_t = check_expr(fcx, expr);
-            ret @fold.respan[ast.stmt_](stmt.span, ast.stmt_expr(expr_t));
+            ret @fold.respan[ast.stmt_](stmt.span, ast.stmt_expr(expr_t, a));
         }
     }
 

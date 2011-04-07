@@ -6,6 +6,7 @@ import front.creader;
 import driver.session;
 import util.common.new_def_hash;
 import util.common.span;
+import util.typestate_ann.ts_ann;
 import std.map.hashmap;
 import std.list.list;
 import std.list.nil;
@@ -348,7 +349,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
 
     fn found_decl_stmt(@ast.stmt s, namespace ns) -> def_wrap {
         alt (s.node) {
-            case (ast.stmt_decl(?d)) {
+            case (ast.stmt_decl(?d,_)) {
                 alt (d.node) {
                     case (ast.decl_local(?loc)) {
                         auto t = ast.def_local(loc.id);

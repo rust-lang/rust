@@ -339,8 +339,8 @@ impure fn print_block(ps s, ast.block blk) {
         cur_line = st.span.hi.line;
         maybe_print_comment(s, st.span.lo);
         alt (st.node) {
-            case (ast.stmt_decl(?decl)) {print_decl(s, decl);}
-            case (ast.stmt_expr(?expr)) {print_expr(s, expr);}
+          case (ast.stmt_decl(?decl,_)) {print_decl(s, decl);}
+          case (ast.stmt_expr(?expr,_)) {print_expr(s, expr);}
         }
         if (front.parser.stmt_ends_with_semi(st)) {wrd(s.s, ";");}
         if (!maybe_print_line_comment(s, st.span)) {line(s.s);}

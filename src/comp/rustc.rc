@@ -62,7 +62,11 @@ auth middle.typestate_check.log_expr = impure;
 auth lib.llvm = unsafe;
 auth pretty.pprust = impure;
 auth middle.typestate_check.find_pre_post_block = impure;
-auth middle.typestate_check.find_pre_post_expr = impure;
+auth middle.typestate_check.find_pre_post_state_block = impure;
+auth middle.typestate_check.find_pre_post_expr  = impure;
+auth middle.typestate_check.find_pre_post_stmt  = impure;
+auth middle.typestate_check.check_states_against_conditions = impure;
+auth middle.typestate_check.check_states_stmt   = impure;
 auth util.typestate_ann.implies = impure;
 
 mod lib {

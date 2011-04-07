@@ -5208,11 +5208,11 @@ fn init_local(@block_ctxt cx, @ast.local local) -> result {
 fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
     auto bcx = cx;
     alt (s.node) {
-        case (ast.stmt_expr(?e)) {
+        case (ast.stmt_expr(?e,_)) {
             bcx = trans_expr(cx, e).bcx;
         }
 
-        case (ast.stmt_decl(?d)) {
+        case (ast.stmt_decl(?d,_)) {
             alt (d.node) {
                 case (ast.decl_local(?local)) {
                     bcx = init_local(bcx, local).bcx;
@@ -5302,7 +5302,7 @@ iter block_locals(&ast.block b) -> @ast.local {
     // use the index here.
     for (@ast.stmt s in b.node.stmts) {
         alt (s.node) {
-            case (ast.stmt_decl(?d)) {
+            case (ast.stmt_decl(?d,_)) {
                 alt (d.node) {
                     case (ast.decl_local(?local)) {
                         put local;
@@ -6599,12 +6599,71 @@ fn trap(@block_ctxt bcx) {
     bcx.build.Call(bcx.fcx.ccx.intrinsics.get("llvm.trap"), v);
 }
 
-fn check_module(ModuleRef llmod) {
+fn run_passes(ModuleRef llmod, bool opt) {
     auto pm = mk_pass_manager();
-    llvm.LLVMAddVerifierPass(pm.llpm);
-    llvm.LLVMRunPassManager(pm.llpm, llmod);
 
     // TODO: run the linter here also, once there are llvm-c bindings for it.
+
+    // FIXME: This is mostly a copy of the bits of opt's -O2 that are
+    // available in the C api.
+    // FIXME2: We might want to add optmization levels like -O1, -O2, -Os, etc
+    // FIXME3: Should we expose and use the pass lists used by the opt tool?
+    if (opt) {
+        auto fpm = mk_pass_manager();
+
+        // createStandardFunctionPasses
+        llvm.LLVMAddCFGSimplificationPass(fpm.llpm);
+        llvm.LLVMAddScalarReplAggregatesPass(fpm.llpm);
+        //llvm.LLVMAddEarlyCSEPass(fpm.llpm);
+
+        llvm.LLVMRunPassManager(fpm.llpm, llmod);
+
+        // createStandardModulePasses
+        llvm.LLVMAddGlobalOptimizerPass(pm.llpm);
+        llvm.LLVMAddIPSCCPPass(pm.llpm);
+        llvm.LLVMAddDeadArgEliminationPass(pm.llpm);
+        llvm.LLVMAddInstructionCombiningPass(pm.llpm);
+        llvm.LLVMAddCFGSimplificationPass(pm.llpm);
+        llvm.LLVMAddPruneEHPass(pm.llpm);
+        llvm.LLVMAddFunctionInliningPass(pm.llpm);
+
+        // FIXME: crashes!
+        // llvm.LLVMAddFunctionAttrsPass(pm.llpm);
+
+        // llvm.LLVMAddScalarReplAggregatesPassSSA(pm.llpm);
+        // llvm.LLVMAddEarlyCSEPass(pm.llpm);
+        llvm.LLVMAddSimplifyLibCallsPass(pm.llpm);
+        llvm.LLVMAddJumpThreadingPass(pm.llpm);
+        // llvm.LLVMAddCorrelatedValuePropagationPass(pm.llpm);
+        llvm.LLVMAddCFGSimplificationPass(pm.llpm);
+        llvm.LLVMAddInstructionCombiningPass(pm.llpm);
+        llvm.LLVMAddTailCallEliminationPass(pm.llpm);
+        llvm.LLVMAddCFGSimplificationPass(pm.llpm);
+        llvm.LLVMAddReassociatePass(pm.llpm);
+        llvm.LLVMAddLoopRotatePass(pm.llpm);
+        llvm.LLVMAddLICMPass(pm.llpm);
+        llvm.LLVMAddLoopUnswitchPass(pm.llpm);
+        llvm.LLVMAddInstructionCombiningPass(pm.llpm);
+        llvm.LLVMAddIndVarSimplifyPass(pm.llpm);
+        // llvm.LLVMAddLoopIdiomPass(pm.llpm);
+        llvm.LLVMAddLoopDeletionPass(pm.llpm);
+        llvm.LLVMAddLoopUnrollPass(pm.llpm);
+        llvm.LLVMAddInstructionCombiningPass(pm.llpm);
+        llvm.LLVMAddGVNPass(pm.llpm);
+        llvm.LLVMAddMemCpyOptPass(pm.llpm);
+        llvm.LLVMAddSCCPPass(pm.llpm);
+        llvm.LLVMAddInstructionCombiningPass(pm.llpm);
+        llvm.LLVMAddJumpThreadingPass(pm.llpm);
+        // llvm.LLVMAddCorrelatedValuePropagationPass(pm.llpm);
+        llvm.LLVMAddDeadStoreEliminationPass(pm.llpm);
+        llvm.LLVMAddAggressiveDCEPass(pm.llpm);
+        llvm.LLVMAddCFGSimplificationPass(pm.llpm);
+        llvm.LLVMAddStripDeadPrototypesPass(pm.llpm);
+        llvm.LLVMAddDeadTypeEliminationPass(pm.llpm);
+        llvm.LLVMAddConstantMergePass(pm.llpm);
+    }
+    llvm.LLVMAddVerifierPass(pm.llpm);
+    llvm.LLVMRunPassManager(pm.llpm, llmod);
 }
 
 fn decl_no_op_type_glue(ModuleRef llmod, type_names tn) -> ValueRef {
@@ -6962,7 +7021,8 @@ fn make_common_glue(str output) {
 
     trans_exit_task_glue(glues, new_str_hash[ValueRef](), tn, llmod);
 
-    check_module(llmod);
+    run_passes(llmod, true);
+
     llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(output));
     llvm.LLVMDisposeModule(llmod);
 }
@@ -7031,7 +7091,8 @@ fn trans_crate(session.session sess, @ast.crate crate,
     // Translate the metadata.
     middle.metadata.write_metadata(cx, crate);
 
-    check_module(llmod);
+    // FIXME: Add an -O option
+    run_passes(llmod, true);
 
     llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(output));
     llvm.LLVMDisposeModule(llmod);

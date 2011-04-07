@@ -1,5 +1,6 @@
 import option.none;
 import option.some;
+import util.orb;
 
 type vbuf = rustrt.vbuf;
 
@@ -228,6 +229,26 @@ fn foldl[T, U](fn (&U, &T) -> U p, &U z, &vec[T] v) -> U {
 
         ret (p(foldl[T,U](p, z, rest), v.(0)));
     }
+}
+
+fn unzip[T, U](&vec[tup(T, U)] v) -> tup(vec[T], vec[U]) {
+    auto sz = len[tup(T, U)](v);
+
+    if (sz == 0u) {
+        ret tup(alloc[T](0u), alloc[U](0u));
+    }
+    else {
+        auto rest = slice[tup(T, U)](v, 1u, sz);
+        auto tl   = unzip[T, U](rest);
+        auto a    = vec(v.(0)._0);
+        auto b    = vec(v.(0)._1);
+        ret tup(a + tl._0, b + tl._1);
+    }
+}
+
+fn or(&vec[bool] v) -> bool {
+    auto f = orb;
+    be _vec.foldl[bool, bool](f, false, v);
 }
 
 // Local Variables:

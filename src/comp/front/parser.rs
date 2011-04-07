@@ -11,6 +11,7 @@ import util.common;
 import util.common.filename;
 import util.common.span;
 import util.common.new_str_hash;
+import util.typestate_ann.ts_ann;
 
 tag restriction {
     UNRESTRICTED;
@@ -1555,13 +1556,13 @@ impure fn parse_source_stmt(parser p) -> @ast.stmt {
         case (token.LET) {
             auto decl = parse_let(p);
             auto hi = p.get_span();
-            ret @spanned(lo, hi, ast.stmt_decl(decl));
+            ret @spanned(lo, hi, ast.stmt_decl(decl, none[@ts_ann]));
         }
 
         case (token.AUTO) {
             auto decl = parse_auto(p);
             auto hi = p.get_span();
-            ret @spanned(lo, hi, ast.stmt_decl(decl));
+            ret @spanned(lo, hi, ast.stmt_decl(decl, none[@ts_ann]));
         }
 
         case (_) {
@@ -1570,13 +1571,13 @@ impure fn parse_source_stmt(parser p) -> @ast.stmt {
                 auto i = parse_item(p);
                 auto hi = i.span;
                 auto decl = @spanned(lo, hi, ast.decl_item(i));
-                ret @spanned(lo, hi, ast.stmt_decl(decl));
+                ret @spanned(lo, hi, ast.stmt_decl(decl, none[@ts_ann]));
 
             } else {
                 // Remainder are line-expr stmts.
                 auto e = parse_expr(p);
                 auto hi = p.get_span();
-                ret @spanned(lo, hi, ast.stmt_expr(e));
+                ret @spanned(lo, hi, ast.stmt_expr(e, none[@ts_ann]));
             }
         }
     }
@@ -1613,7 +1614,7 @@ fn index_arm(@ast.pat pat) -> hashmap[ast.ident,ast.def_id] {
 
 fn stmt_to_expr(@ast.stmt stmt) -> option.t[@ast.expr] {
     alt (stmt.node) {
-        case (ast.stmt_expr(?e)) { ret some[@ast.expr](e); }
+        case (ast.stmt_expr(?e,_)) { ret some[@ast.expr](e); }
         case (_) { /* fall through */ }
     }
     ret none[@ast.expr];
@@ -1621,13 +1622,13 @@ fn stmt_to_expr(@ast.stmt stmt) -> option.t[@ast.expr] {
 
 fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
     alt (stmt.node) {
-        case (ast.stmt_decl(?d)) {
+        case (ast.stmt_decl(?d,_)) {
             alt (d.node) {
                 case (ast.decl_local(_)) { ret true; }
                 case (ast.decl_item(_)) { ret false; }
             }
         }
-        case (ast.stmt_expr(?e)) {
+        case (ast.stmt_expr(?e,_)) {
             alt (e.node) {
                 case (ast.expr_vec(_,_,_))      { ret true; }
                 case (ast.expr_tup(_,_))        { ret true; }
