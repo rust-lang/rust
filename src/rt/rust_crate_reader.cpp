@@ -312,8 +312,8 @@ rust_crate_reader::die::step_attr(attr &a) const
     a.at = (dw_at)ai;
     a.form = (dw_form)fi;
 
-    uint32_t u32;
-    uint8_t u8;
+    uint32_t u32 = 0;
+    uint8_t u8 = 0;
 
     switch (a.form) {
     case DW_FORM_string:
