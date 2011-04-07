@@ -2591,15 +2591,9 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
             ret res(sub.bcx, box);
         }
         case (ast.deref) {
-            auto val = sub.bcx.build.GEP(sub.val,
-                                         vec(C_int(0),
-                                             C_int(abi.box_rc_field_body)));
-            auto e_ty = node_ann_type(sub.bcx.fcx.ccx, a);
-            if (ty.type_is_scalar(e_ty) ||
-                ty.type_is_nil(e_ty)) {
-                val = sub.bcx.build.Load(val);
-            }
-            ret res(sub.bcx, val);
+            log "deref expressions should have been translated using " +
+                "trans_lval(), not trans_unary()";
+            fail;
         }
     }
     fail;
@@ -3908,6 +3902,15 @@ fn trans_lval(@block_ctxt cx, @ast.expr e) -> lval_result {
         case (ast.expr_index(?base, ?idx, ?ann)) {
             ret trans_index(cx, e.span, base, idx, ann);
         }
+        case (ast.expr_unary(?unop, ?base, ?ann)) {
+            check (unop == ast.deref);
+
+            auto sub = trans_expr(cx, base);
+            auto val = sub.bcx.build.GEP(sub.val,
+                                         vec(C_int(0),
+                                             C_int(abi.box_rc_field_body)));
+            ret lval_mem(sub.bcx, val);
+        }
 
         // Kind of bizarre to pass an *entire* self-call here...but let's try
         // it
@@ -3925,7 +3928,9 @@ fn trans_lval(@block_ctxt cx, @ast.expr e) -> lval_result {
 
             }
         }
-        case (_) { cx.fcx.ccx.sess.unimpl("expr variant in trans_lval"); }
+        case (_) {
+            cx.fcx.ccx.sess.span_unimpl(e.span, "expr variant in trans_lval");
+        }
     }
     fail;
 }
@@ -4685,7 +4690,9 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
         }
 
         case (ast.expr_unary(?op, ?x, ?ann)) {
-            ret trans_unary(cx, op, x, ann);
+            if (op != ast.deref) {
+                ret trans_unary(cx, op, x, ann);
+            }
         }
 
         case (ast.expr_binary(?op, ?x, ?y, _)) {
@@ -4832,18 +4839,17 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             ret trans_recv(cx, lhs, rhs, ann);
         }
 
-        // lval cases fall through to trans_lval and then
-        // possibly load the result (if it's non-structural).
-
         case (_) {
-            auto t = ty.expr_ty(e);
-            auto sub = trans_lval(cx, e);
-            ret res(sub.res.bcx,
-                    load_scalar_or_boxed(sub.res.bcx, sub.res.val, t));
+            // The expression is an lvalue. Fall through.
         }
     }
-    cx.fcx.ccx.sess.unimpl("expr variant in trans_expr");
-    fail;
+
+    // lval cases fall through to trans_lval and then
+    // possibly load the result (if it's non-structural).
+
+    auto t = ty.expr_ty(e);
+    auto sub = trans_lval(cx, e);
+    ret res(sub.res.bcx, load_scalar_or_boxed(sub.res.bcx, sub.res.val, t));
 }
 
 // We pass structural values around the compiler "by pointer" and
