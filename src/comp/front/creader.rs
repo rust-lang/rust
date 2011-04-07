@@ -566,6 +566,72 @@ fn get_tag_variants(session.session sess, ast.def_id def)
     ret infos;
 }
 
+impure fn list_file_metadata(str path, io.writer out) {
+    alt (get_metadata_section(path)) {
+        case (option.some[vec[u8]](?bytes)) {
+            list_crate_metadata(bytes, out);
+        }
+        case (option.none[vec[u8]]) {
+            out.write_str("Could not find metadata in " + path + ".\n");
+        }
+    }
+}
+
+fn read_path(&ebml.doc d) -> tup(str, uint) {
+    auto desc = ebml.doc_data(d);
+    auto pos = ebml.be_uint_from_bytes(desc, 0u, 4u);
+    auto pathbytes = _vec.slice[u8](desc, 4u, _vec.len[u8](desc));
+    auto path = _str.unsafe_from_bytes(pathbytes);
+    ret tup(path, pos);
+}
+
+impure fn list_crate_metadata(vec[u8] bytes, io.writer out) {
+    auto md = ebml.new_doc(bytes);
+    auto paths = ebml.get_doc(md, metadata.tag_paths);
+    auto items = ebml.get_doc(md, metadata.tag_items);
+    auto index = ebml.get_doc(paths, metadata.tag_index);
+    auto bs = ebml.get_doc(index, metadata.tag_index_buckets);
+    for each (ebml.doc bucket in
+              ebml.tagged_docs(bs, metadata.tag_index_buckets_bucket)) {
+        auto et = metadata.tag_index_buckets_bucket_elt;
+        for each (ebml.doc elt in ebml.tagged_docs(bucket, et)) {
+            auto data = read_path(elt);
+            auto def = ebml.doc_at(bytes, data._1);
+            auto did_doc = ebml.get_doc(def, metadata.tag_def_id);
+            auto did = parse_def_id(ebml.doc_data(did_doc));
+            out.write_str(#fmt("%s (%s)\n", data._0,
+                               describe_def(items, did)));
+        }
+    }
+}
+
+fn describe_def(&ebml.doc items, ast.def_id id) -> str {
+    if (id._0 != 0) {ret "external";}
+    alt (maybe_find_item(id._1 as int, items)) {
+        case (option.some[ebml.doc](?item)) {
+            ret item_kind_to_str(item_kind(item));
+        }
+        case (option.none[ebml.doc]) {
+            ret "??"; // Native modules don't seem to get item entries.
+        }
+    }
+}
+
+fn item_kind_to_str(u8 kind) -> str {
+    alt (kind as char) {
+        case ('c') {ret "const";}
+        case ('f') {ret "fn";}
+        case ('F') {ret "native fn";}
+        case ('y') {ret "type";}
+        case ('o') {ret "obj";}
+        case ('T') {ret "native type";}
+        case ('t') {ret "type";}
+        case ('m') {ret "mod";}
+        case ('n') {ret "native mod";}
+        case ('v') {ret "tag";}
+    }
+}
+
 // Local Variables:
 // mode: rust
 // fill-column: 78;

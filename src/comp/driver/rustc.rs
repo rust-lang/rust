@@ -97,6 +97,7 @@ fn usage(session.session sess, str argv0) {
     log "    -glue              generate glue.bc file";
     log "    -shared            compile a shared-library crate";
     log "    -pp                pretty-print the input instead of compiling";
+    log "    -ls                list the symbols defined by a crate file";
     log "    -L <path>          add a directory to the library search path";
     log "    -h                 display this message";
     log "";
@@ -129,6 +130,7 @@ impure fn main(vec[str] args) {
     let bool do_warn = true;
     let bool shared = false;
     let bool pretty = false;
+    let bool ls = false;
     let bool glue = false;
 
     auto i = 1u;
@@ -146,6 +148,8 @@ impure fn main(vec[str] args) {
                 shared = true;
             } else if (_str.eq(arg, "-pp")) {
                 pretty = true;
+            } else if (_str.eq(arg, "-ls")) {
+                ls = true;
             } else if (_str.eq(arg, "-o")) {
                 if (i+1u < len) {
                     output_file = some(args.(i+1u));
@@ -208,8 +212,9 @@ impure fn main(vec[str] args) {
             auto env = default_environment(sess, args.(0), ifile);
             if (pretty) {
                 pretty_print_input(sess, env, ifile);
-            }
-            else {
+            } else if (ls) {
+                front.creader.list_file_metadata(ifile, std.io.stdout());
+            } else {
                 alt (output_file) {
                     case (none[str]) {
                         let vec[str] parts = _str.split(ifile, '.' as u8);
