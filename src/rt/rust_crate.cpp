@@ -41,7 +41,7 @@ rust_crate::mem_area::mem_area(rust_dom *dom, uintptr_t pos, size_t sz)
     base(pos),
     lim(pos + sz)
 {
-  dom->log(rust_log::MEM, "new mem_area [0x%" PRIxPTR ",0x%" PRIxPTR "]",
+  DLOG(dom, rust_log::MEM, "new mem_area [0x%" PRIxPTR ",0x%" PRIxPTR "]",
            base, lim);
 }
 

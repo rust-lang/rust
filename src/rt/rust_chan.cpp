@@ -13,14 +13,14 @@ rust_chan::rust_chan(rust_task *task,
     if (port) {
         associate(port);
     }
-    task->log(rust_log::MEM | rust_log::COMM,
+    LOG(task, rust_log::MEM | rust_log::COMM,
               "new rust_chan(task=0x%" PRIxPTR
               ", port=0x%" PRIxPTR ") -> chan=0x%" PRIxPTR,
               (uintptr_t) task, (uintptr_t) port, (uintptr_t) this);
 }
 
 rust_chan::~rust_chan() {
-    task->log(rust_log::MEM | rust_log::COMM,
+    LOG(task, rust_log::MEM | rust_log::COMM,
               "del rust_chan(task=0x%" PRIxPTR ")", (uintptr_t) this);
 
     A(task->dom, is_associated() == false,
@@ -33,7 +33,7 @@ rust_chan::~rust_chan() {
 void rust_chan::associate(maybe_proxy<rust_port> *port) {
     this->port = port;
     if (port->is_proxy() == false) {
-        task->log(rust_log::TASK,
+        LOG(task, rust_log::TASK,
             "associating chan: 0x%" PRIxPTR " with port: 0x%" PRIxPTR,
             this, port);
         this->port->referent()->chans.push(this);
@@ -51,7 +51,7 @@ void rust_chan::disassociate() {
     A(task->dom, is_associated(), "Channel must be associated with a port.");
 
     if (port->is_proxy() == false) {
-        task->log(rust_log::TASK,
+        LOG(task, rust_log::TASK,
             "disassociating chan: 0x%" PRIxPTR " from port: 0x%" PRIxPTR,
             this, port->referent());
         port->referent()->chans.swap_delete(this);
@@ -84,7 +84,7 @@ void rust_chan::send(void *sptr) {
     } else {
         rust_port *target_port = port->referent();
         if (target_port->task->blocked_on(target_port)) {
-            dom->log(rust_log::COMM, "dequeued in rendezvous_ptr");
+            DLOG(dom, rust_log::COMM, "dequeued in rendezvous_ptr");
             buffer.dequeue(target_port->task->rendezvous_ptr);
             target_port->task->rendezvous_ptr = 0;
             target_port->task->wakeup(target_port);

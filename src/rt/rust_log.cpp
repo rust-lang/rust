@@ -204,11 +204,6 @@ rust_log::trace_ln(rust_task *task, ansi_color color,
     }
 }
 
-bool
-rust_log::is_tracing(uint32_t type_bits) {
-    return type_bits & _type_bit_mask;
-}
-
 void
 rust_log::indent() {
     _indent++;

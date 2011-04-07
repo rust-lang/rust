@@ -87,10 +87,10 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
     rust_dom *dom = handle->referent();
     command_line_args *args = new (dom) command_line_args(dom, argc, argv);
 
-    dom->log(rust_log::DOM, "startup: %d args in 0x%" PRIxPTR,
+    DLOG(dom, rust_log::DOM, "startup: %d args in 0x%" PRIxPTR,
              args->argc, (uintptr_t)args->args);
     for (int i = 0; i < args->argc; i++) {
-        dom->log(rust_log::DOM,
+        DLOG(dom, rust_log::DOM,
             "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
