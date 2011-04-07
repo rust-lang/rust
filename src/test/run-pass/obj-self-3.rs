@@ -18,14 +18,12 @@ fn main() {
   auto a = foo();
   let int i = 0;
 
-  // output should be: 0, 1, 2, 4
-  log i;
   i = a.m1(i);
-  log i;
+  check (i == 1);
   i = a.m2(i);
-  log i;
+  check (i == 2);
   i = a.m3(i);
-  log i;
+  check (i == 4);
 }
 
 
