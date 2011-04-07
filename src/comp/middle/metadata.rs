@@ -589,6 +589,10 @@ impure fn encode_metadata(@trans.crate_ctxt cx, @ast.crate crate)
     encode_index[int](ebml_w, items_buckets, int_writer);
     ebml.end_tag(ebml_w);
 
+    // Pad this, since something (LLVM, presumably) is cutting off the
+    // remaining % 4 bytes.
+    buf_w.write(vec(0u8, 0u8, 0u8, 0u8));
+
     ret C_postr(string_w.get_str());
 }
 
