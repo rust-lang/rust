@@ -36,14 +36,27 @@ fn true_postcond(uint num_vars) -> postcond {
   be true_precond(num_vars);
 }
 
+fn empty_prestate(uint num_vars) -> prestate {
+  be true_precond(num_vars);
+}
+
+fn empty_poststate(uint num_vars) -> poststate {
+  be true_precond(num_vars);
+}
+
 fn empty_pre_post(uint num_vars) -> pre_and_post {
-  ret(rec(precondition=true_precond(num_vars),
-           postcondition=true_postcond(num_vars)));
+  ret(rec(precondition=empty_prestate(num_vars),
+          postcondition=empty_poststate(num_vars)));
 }
 
 fn empty_states(uint num_vars) -> pre_and_post_state {
   ret(rec(prestate=true_precond(num_vars),
            poststate=true_postcond(num_vars)));
+}
+
+fn empty_ann(uint num_vars) -> ts_ann {
+  ret(rec(conditions=empty_pre_post(num_vars),
+          states=empty_states(num_vars)));
 }
 
 fn get_pre(&pre_and_post p) -> precond {
@@ -74,7 +87,37 @@ impure fn require_and_preserve(uint i, &pre_and_post p) -> () {
   bitv.set(p.postcondition, i, true);
 }
 
-fn implies(bitv.t a, bitv.t b) -> bool {
+impure fn set_in_postcond(uint i, &pre_and_post p) -> () {
+  // sets the ith bit in p's post
+  bitv.set(p.postcondition, i, true);
+}
+
+// Sets all the bits in a's precondition to equal the
+// corresponding bit in p's precondition.
+impure fn set_precondition(&ts_ann a, &precond p) -> () {
+  bitv.copy(p, a.conditions.precondition);
+}
+
+// Sets all the bits in a's postcondition to equal the
+// corresponding bit in p's postcondition.
+impure fn set_postcondition(&ts_ann a, &postcond p) -> () {
+  bitv.copy(p, a.conditions.postcondition);
+}
+
+// Set all the bits in p that are set in new
+impure fn extend_prestate(&prestate p, &poststate new) -> () {
+  bitv.union(p, new);
+}
+
+fn ann_precond(&ts_ann a) -> precond {
+  ret a.conditions.precondition;
+}
+
+fn ann_prestate(&ts_ann a) -> prestate {
+  ret a.states.prestate;
+}
+
+impure fn implies(bitv.t a, bitv.t b) -> bool {
   bitv.difference(b, a);
-  ret (bitv.equal(b, bitv.create(b.nbits, false)));
+  be bitv.is_false(b);
 }

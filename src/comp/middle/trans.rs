@@ -5208,11 +5208,11 @@ fn init_local(@block_ctxt cx, @ast.local local) -> result {
 fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
     auto bcx = cx;
     alt (s.node) {
-        case (ast.stmt_expr(?e)) {
+        case (ast.stmt_expr(?e,_)) {
             bcx = trans_expr(cx, e).bcx;
         }
 
-        case (ast.stmt_decl(?d)) {
+        case (ast.stmt_decl(?d,_)) {
             alt (d.node) {
                 case (ast.decl_local(?local)) {
                     bcx = init_local(bcx, local).bcx;
@@ -5302,7 +5302,7 @@ iter block_locals(&ast.block b) -> @ast.local {
     // use the index here.
     for (@ast.stmt s in b.node.stmts) {
         alt (s.node) {
-            case (ast.stmt_decl(?d)) {
+            case (ast.stmt_decl(?d,_)) {
                 alt (d.node) {
                     case (ast.decl_local(?local)) {
                         put local;

@@ -215,8 +215,8 @@ tag mode {
 
 type stmt = spanned[stmt_];
 tag stmt_ {
-    stmt_decl(@decl);
-    stmt_expr(@expr);
+    stmt_decl(@decl, option.t[@ts_ann]);
+    stmt_expr(@expr, option.t[@ts_ann]);
     // These only exist in crate-level blocks.
     stmt_crate_directive(@crate_directive);
 }
@@ -495,7 +495,7 @@ fn index_native_view_item(native_mod_index index, @view_item it) {
 
 fn index_stmt(block_index index, @stmt s) {
     alt (s.node) {
-        case (ast.stmt_decl(?d)) {
+        case (ast.stmt_decl(?d,_)) {
             alt (d.node) {
                 case (ast.decl_local(?loc)) {
                     index.insert(loc.ident, ast.bie_local(loc));

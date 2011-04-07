@@ -52,3 +52,4 @@ config.mk
 /test/
 /build/
 src/.DS_Store
+/stage0/

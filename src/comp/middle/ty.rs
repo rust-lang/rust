@@ -731,7 +731,7 @@ fn item_ty(@ast.item it) -> ty_params_and_ty {
 
 fn stmt_ty(@ast.stmt s) -> @t {
     alt (s.node) {
-        case (ast.stmt_expr(?e)) {
+        case (ast.stmt_expr(?e,_)) {
             ret expr_ty(e);
         }
         case (_) {
