@@ -59,10 +59,12 @@ impure fn compile_input(session.session sess,
                         str input, str output,
                         bool shared,
                         bool optimize,
+                        bool parse_only,
                         vec[str] library_search_paths) {
     auto def = tup(0, 0);
     auto p = parser.new_parser(sess, env, def, input);
     auto crate = parse_input(sess, p, input);
+    if (parse_only) {ret;}
     crate = creader.read_crates(sess, crate, library_search_paths);
     crate = resolve.resolve_crate(sess, crate);
     auto typeck_result = typeck.check_crate(sess, crate);
@@ -132,6 +134,7 @@ impure fn main(vec[str] args) {
     let bool shared = false;
     let bool pretty = false;
     let bool ls = false;
+    let bool parse_only = false;
     let bool glue = false;
 
     // FIXME: Maybe we should support -O0, -O1, -Os, etc
@@ -156,6 +159,8 @@ impure fn main(vec[str] args) {
                 pretty = true;
             } else if (_str.eq(arg, "-ls")) {
                 ls = true;
+            } else if (_str.eq(arg, "-parse-only")) {
+                parse_only = true;
             } else if (_str.eq(arg, "-o")) {
                 if (i+1u < len) {
                     output_file = some(args.(i+1u));
@@ -228,11 +233,13 @@ impure fn main(vec[str] args) {
                         parts += vec(".bc");
                         auto ofile = _str.concat(parts);
                         compile_input(sess, env, ifile, ofile, shared,
-                                      optimize, library_search_paths);
+                                      optimize, parse_only,
+                                      library_search_paths);
                     }
                     case (some[str](?ofile)) {
                         compile_input(sess, env, ifile, ofile, shared,
-                                      optimize, library_search_paths);
+                                      optimize, parse_only,
+                                      library_search_paths);
                     }
                 }
             }
