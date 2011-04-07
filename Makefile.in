@@ -11,7 +11,7 @@ endif
 
 CFG_INFO := $(info cfg: building on $(CFG_OSTYPE) $(CFG_CPUTYPE))
 
-CFG_GCC_CFLAGS :=
+CFG_GCC_CFLAGS := -O2 -fno-strict-aliasing
 CFG_GCC_LINK_FLAGS :=
 CFG_BOOT_FLAGS := $(BOOT_FLAGS)
 CFG_RUSTC_FLAGS := -nowarn -O

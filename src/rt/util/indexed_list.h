@@ -59,7 +59,7 @@ indexed_list<T>::remove(T *value) {
     assert (value->list_index >= 0);
     assert (value->list_index < (int32_t)list.size());
     int32_t removeIndex = value->list_index;
-    T *last;
+    T *last = 0;
     list.pop(&last);
     if (last->list_index == removeIndex) {
         last->list_index = -1;

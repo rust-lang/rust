@@ -65,7 +65,7 @@ rust_crate_reader::mem_reader::adv_zstr(size_t sz)
 {
   sz = 0;
   while (ok) {
-    char c;
+    char c = 0;
     get(c);
     ++sz;
     if (c == '\0')
@@ -124,7 +124,7 @@ rust_crate_reader::abbrev_reader::abbrev_reader
     //          tell_off());
 
     uintptr_t idx, tag;
-    uint8_t has_children;
+    uint8_t has_children = 0;
     get_uleb(idx);
     get_uleb(tag);
     get(has_children);

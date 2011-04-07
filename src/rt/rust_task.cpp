@@ -175,7 +175,7 @@ rust_task::start(uintptr_t exit_task_glue,
     *spp-- = (uintptr_t) 0x0;        // output
     *spp-- = (uintptr_t) 0x0;        // retpc
 
-    uintptr_t exit_task_frame_base;
+    uintptr_t exit_task_frame_base = 0;
 
     if (spawnee_abi == ABI_X86_RUSTBOOT_CDECL) {
         for (size_t j = 0; j < n_callee_saves; ++j) {
@@ -454,7 +454,7 @@ rust_task::notify_tasks_waiting_to_join() {
     while (tasks_waiting_to_join.is_empty() == false) {
         log(rust_log::TASK, "notify_tasks_waiting_to_join: %d",
             tasks_waiting_to_join.size());
-        maybe_proxy<rust_task> *waiting_task;
+        maybe_proxy<rust_task> *waiting_task = 0;
         tasks_waiting_to_join.pop(&waiting_task);
         if (waiting_task->is_proxy()) {
             notify_message::send(notify_message::WAKEUP, "wakeup",

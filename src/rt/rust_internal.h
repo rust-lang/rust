@@ -403,7 +403,7 @@ rust_crate_reader
         void get_uleb(T &out) {
             out = T(0);
             for (size_t i = 0; i < sizeof(T) && ok; ++i) {
-                uint8_t byte;
+                uint8_t byte = 0;
                 get(byte);
                 out <<= 7;
                 out |= byte & 0x7f;
