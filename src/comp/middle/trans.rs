@@ -3679,6 +3679,24 @@ fn lval_generic_fn(@block_ctxt cx,
     ret lv;
 }
 
+fn lookup_discriminant(@crate_ctxt ccx, ast.def_id tid, ast.def_id vid)
+        -> ValueRef {
+    alt (ccx.discrims.find(vid)) {
+        case (none[ValueRef]) {
+            // It's an external discriminant that we haven't seen yet.
+            check (ccx.sess.get_targ_crate_num() != vid._0);
+            auto sym = creader.get_symbol(ccx.sess, vid);
+            auto gvar = llvm.LLVMAddGlobal(ccx.llmod, T_int(), _str.buf(sym));
+            llvm.LLVMSetLinkage(gvar,
+                                lib.llvm.LLVMExternalLinkage as llvm.Linkage);
+            llvm.LLVMSetGlobalConstant(gvar, True);
+            ccx.discrims.insert(vid, gvar);
+            ret gvar;
+        }
+        case (some[ValueRef](?llval)) { ret llval; }
+    }
+}
+
 fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
               &ast.ann ann) -> lval_result {
     alt (dopt) {
@@ -3725,46 +3743,39 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     ret lval_generic_fn(cx, tyt, did, ann);
                 }
                 case (ast.def_variant(?tid, ?vid)) {
-                    // TODO: externals
-                    if (cx.fcx.ccx.fn_pairs.contains_key(vid)) {
-                        check (cx.fcx.ccx.items.contains_key(tid));
-                        auto tag_item = cx.fcx.ccx.items.get(tid);
-                        auto params = ty.item_ty(tag_item)._0;
-                        auto fty = plain_ty(ty.ty_nil);
-                        alt (tag_item.node) {
-                            case (ast.item_tag(_, ?variants, _, _, _)) {
-                                for (ast.variant v in variants) {
-                                    if (v.node.id == vid) {
-                                        fty = node_ann_type(cx.fcx.ccx,
-                                                            v.node.ann);
-                                    }
-                                }
+                    auto v_tyt = ty.lookup_generic_item_type(cx.fcx.ccx.sess,
+                        cx.fcx.ccx.type_cache, vid);
+                    alt (v_tyt._1.struct) {
+                        case (ty.ty_fn(_, _, _)) {
+                            // N-ary variant.
+                            ret lval_generic_fn(cx, v_tyt, vid, ann);
+                        }
+                        case (_) {
+                            // Nullary variant.
+                            auto tag_ty = node_ann_type(cx.fcx.ccx, ann);
+                            auto lldiscrim_gv =
+                                lookup_discriminant(cx.fcx.ccx, tid, vid);
+                            auto lldiscrim = cx.build.Load(lldiscrim_gv);
+
+                            auto alloc_result = alloc_ty(cx, tag_ty);
+                            auto lltagblob = alloc_result.val;
+
+                            auto lltagty;
+                            if (ty.type_has_dynamic_size(tag_ty)) {
+                                lltagty = T_opaque_tag(cx.fcx.ccx.tn);
+                            } else {
+                                lltagty = type_of(cx.fcx.ccx, tag_ty);
                             }
+                            auto lltagptr = alloc_result.bcx.build.PointerCast(
+                                lltagblob, T_ptr(lltagty));
+
+                            auto lldiscrimptr = alloc_result.bcx.build.GEP(
+                                lltagptr, vec(C_int(0), C_int(0)));
+                            alloc_result.bcx.build.Store(lldiscrim,
+                                                         lldiscrimptr);
+
+                            ret lval_val(alloc_result.bcx, lltagptr);
                         }
-                        ret lval_generic_fn(cx, tup(params, fty), vid, ann);
-                    } else {
-                        // Nullary variant.
-                        auto tag_ty = node_ann_type(cx.fcx.ccx, ann);
-                        auto lldiscrim_gv = cx.fcx.ccx.discrims.get(vid);
-                        auto lldiscrim = cx.build.Load(lldiscrim_gv);
-
-                        auto alloc_result = alloc_ty(cx, tag_ty);
-                        auto lltagblob = alloc_result.val;
-
-                        auto lltagty;
-                        if (ty.type_has_dynamic_size(tag_ty)) {
-                            lltagty = T_opaque_tag(cx.fcx.ccx.tn);
-                        } else {
-                            lltagty = type_of(cx.fcx.ccx, tag_ty);
-                        }
-                        auto lltagptr = alloc_result.bcx.build.PointerCast(
-                            lltagblob, T_ptr(lltagty));
-
-                        auto lldiscrimptr = alloc_result.bcx.build.GEP(
-                            lltagptr, vec(C_int(0), C_int(0)));
-                        alloc_result.bcx.build.Store(lldiscrim, lldiscrimptr);
-
-                        ret lval_val(alloc_result.bcx, lltagptr);
                     }
                 }
                 case (ast.def_const(?did)) {
@@ -6378,7 +6389,7 @@ fn collect_tag_ctors(@crate_ctxt cx, @ast.crate crate) {
 
 fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
     alt (it.node) {
-        case (ast.item_tag(_, ?variants, _, ?tag_id, _)) {
+        case (ast.item_tag(?ident, ?variants, _, ?tag_id, _)) {
             auto i = 0u;
             auto n_variants = _vec.len[ast.variant](variants);
             while (i < n_variants) {
@@ -6386,17 +6397,14 @@ fn trans_constant(&@crate_ctxt cx, @ast.item it) -> @crate_ctxt {
 
                 auto discrim_val = C_int(i as int);
 
-                // FIXME: better name.
-                auto s = cx.names.next("_rust_tag_discrim");
+                auto s = mangle_name_by_seq(cx,
+                                            #fmt("_rust_tag_discrim_%s_%u",
+                                                 ident, i));
                 auto discrim_gvar = llvm.LLVMAddGlobal(cx.llmod, T_int(),
                                                        _str.buf(s));
 
-                // FIXME: Eventually we do want to export these, but we need
-                // to figure out what name they get first!
                 llvm.LLVMSetInitializer(discrim_gvar, discrim_val);
                 llvm.LLVMSetGlobalConstant(discrim_gvar, True);
-                llvm.LLVMSetLinkage(discrim_gvar, lib.llvm.LLVMInternalLinkage
-                                    as llvm.Linkage);
 
                 cx.discrims.insert(variant.node.id, discrim_gvar);
                 cx.discrim_symbols.insert(variant.node.id, s);
