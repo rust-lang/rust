@@ -14,7 +14,7 @@ CFG_INFO := $(info cfg: building on $(CFG_OSTYPE) $(CFG_CPUTYPE))
 CFG_GCC_CFLAGS :=
 CFG_GCC_LINK_FLAGS :=
 CFG_BOOT_FLAGS := $(BOOT_FLAGS)
-CFG_RUSTC_FLAGS := -nowarn
+CFG_RUSTC_FLAGS := -nowarn -O
 
 # On Darwin, we need to run dsymutil so the debugging information ends
 # up in the right place.  On other platforms, it automatically gets

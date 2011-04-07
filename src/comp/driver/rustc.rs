@@ -58,6 +58,7 @@ impure fn compile_input(session.session sess,
                         eval.env env,
                         str input, str output,
                         bool shared,
+                        bool optimize,
                         vec[str] library_search_paths) {
     auto def = tup(0, 0);
     auto p = parser.new_parser(sess, env, def, input);
@@ -69,7 +70,7 @@ impure fn compile_input(session.session sess,
     auto type_cache = typeck_result._1;
     // FIXME: uncomment once typestate_check works
     // crate = typestate_check.check_crate(crate);
-    trans.trans_crate(sess, crate, type_cache, output, shared);
+    trans.trans_crate(sess, crate, type_cache, output, shared, optimize);
 }
 
 impure fn pretty_print_input(session.session sess,
@@ -131,6 +132,9 @@ impure fn main(vec[str] args) {
     let bool pretty = false;
     let bool glue = false;
 
+    // FIXME: Maybe we should support -O0, -O1, -Os, etc
+    let bool optimize = false;
+
     auto i = 1u;
     auto len = _vec.len[str](args);
 
@@ -140,6 +144,8 @@ impure fn main(vec[str] args) {
         if (_str.byte_len(arg) > 0u && arg.(0) == '-' as u8) {
             if (_str.eq(arg, "-nowarn")) {
                 do_warn = false;
+            } else if (_str.eq(arg, "-O")) {
+                optimize = true;
             } else if (_str.eq(arg, "-glue")) {
                 glue = true;
             } else if (_str.eq(arg, "-shared")) {
@@ -189,10 +195,10 @@ impure fn main(vec[str] args) {
     if (glue) {
         alt (output_file) {
             case (none[str]) {
-                middle.trans.make_common_glue("glue.bc");
+                middle.trans.make_common_glue("glue.bc", optimize);
             }
             case (some[str](?s)) {
-                middle.trans.make_common_glue(s);
+                middle.trans.make_common_glue(s, optimize);
             }
         }
         ret;
@@ -217,11 +223,11 @@ impure fn main(vec[str] args) {
                         parts += vec(".bc");
                         auto ofile = _str.concat(parts);
                         compile_input(sess, env, ifile, ofile, shared,
-                                      library_search_paths);
+                                      optimize, library_search_paths);
                     }
                     case (some[str](?ofile)) {
                         compile_input(sess, env, ifile, ofile, shared,
-                                      library_search_paths);
+                                      optimize, library_search_paths);
                     }
                 }
             }

@@ -7003,7 +7003,7 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
              vec_append_glue = make_vec_append_glue(llmod, tn));
 }
 
-fn make_common_glue(str output) {
+fn make_common_glue(str output, bool optimize) {
     // FIXME: part of this is repetitive and is probably a good idea
     // to autogen it, but things like the memcpy implementation are not
     // and it might be better to just check in a .ll file.
@@ -7029,14 +7029,15 @@ fn make_common_glue(str output) {
 
     trans_exit_task_glue(glues, new_str_hash[ValueRef](), tn, llmod);
 
-    run_passes(llmod, true);
+    run_passes(llmod, optimize);
 
     llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(output));
     llvm.LLVMDisposeModule(llmod);
 }
 
 fn trans_crate(session.session sess, @ast.crate crate,
-               &ty.type_cache type_cache, str output, bool shared) {
+               &ty.type_cache type_cache, str output, bool shared,
+               bool optimize) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
@@ -7099,8 +7100,7 @@ fn trans_crate(session.session sess, @ast.crate crate,
     // Translate the metadata.
     middle.metadata.write_metadata(cx, crate);
 
-    // FIXME: Add an -O option
-    run_passes(llmod, true);
+    run_passes(llmod, optimize);
 
     llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(output));
     llvm.LLVMDisposeModule(llmod);
