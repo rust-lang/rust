@@ -24,7 +24,7 @@ ptr_vec<T>::ptr_vec(rust_dom *dom) :
     data(new (dom) T*[alloc])
 {
     I(dom, data);
-    dom->log(rust_log::MEM,
+    DLOG(dom, rust_log::MEM,
              "new ptr_vec(data=0x%" PRIxPTR ") -> 0x%" PRIxPTR,
              (uintptr_t)data, (uintptr_t)this);
 }
@@ -33,7 +33,7 @@ template <typename T>
 ptr_vec<T>::~ptr_vec()
 {
     I(dom, data);
-    dom->log(rust_log::MEM,
+    DLOG(dom, rust_log::MEM,
              "~ptr_vec 0x%" PRIxPTR ", data=0x%" PRIxPTR,
              (uintptr_t)this, (uintptr_t)data);
     I(dom, fill == 0);

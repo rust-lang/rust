@@ -1,6 +1,21 @@
 #ifndef RUST_LOG_H
 #define RUST_LOG_H
 
+#define DLOG(dom, mask, ...)                      \
+  if ((dom)->get_log().is_tracing(mask)) {        \
+      (dom)->log(mask, __VA_ARGS__);              \
+  } else
+#define LOG(task, mask, ...)                      \
+  DLOG((task)->dom, mask, __VA_ARGS__)
+#define LOG_I(task, mask, ...)                    \
+  if ((task)->dom->get_log().is_tracing(mask)) {  \
+      (task)->dom->get_log().reset_indent(0);     \
+      (task)->dom->log(mask, __VA_ARGS__);        \
+      (task)->dom->get_log().indent();            \
+  } else
+#define LOGPTR(dom, msg, ptrval)                  \
+  DLOG(dom, rust_log::MEM, "%s 0x%" PRIxPTR, msg, ptrval)
+
 class rust_dom;
 class rust_task;
 
@@ -64,5 +79,10 @@ private:
     uint32_t _indent;
     void trace_ln(rust_task *task, char *message);
 };
+
+inline bool
+rust_log::is_tracing(uint32_t type_bits) {
+    return type_bits & _type_bit_mask;
+}
 
 #endif /* RUST_LOG_H */

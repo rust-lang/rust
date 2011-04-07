@@ -24,10 +24,10 @@ new_stk(rust_dom *dom, size_t minsz)
         minsz = min_stk_bytes;
     size_t sz = sizeof(stk_seg) + minsz;
     stk_seg *stk = (stk_seg *)dom->malloc(sz);
-    dom->logptr("new stk", (uintptr_t)stk);
+    LOGPTR(dom, "new stk", (uintptr_t)stk);
     memset(stk, 0, sizeof(stk_seg));
     stk->limit = (uintptr_t) &stk->data[minsz];
-    dom->logptr("stk limit", stk->limit);
+    LOGPTR(dom, "stk limit", stk->limit);
     stk->valgrind_id =
         VALGRIND_STACK_REGISTER(&stk->data[0],
                                 &stk->data[minsz]);
@@ -38,7 +38,7 @@ static void
 del_stk(rust_dom *dom, stk_seg *stk)
 {
     VALGRIND_STACK_DEREGISTER(stk->valgrind_id);
-    dom->logptr("freeing stk segment", (uintptr_t)stk);
+    LOGPTR(dom, "freeing stk segment", (uintptr_t)stk);
     dom->free(stk);
 }
 
@@ -93,7 +93,7 @@ rust_task::rust_task(rust_dom *dom, rust_task_list *state,
     alarm(this),
     handle(NULL)
 {
-    dom->logptr("new task", (uintptr_t)this);
+    LOGPTR(dom, "new task", (uintptr_t)this);
 
     if (spawner == NULL) {
         ref_count = 0;
@@ -102,24 +102,24 @@ rust_task::rust_task(rust_dom *dom, rust_task_list *state,
 
 rust_task::~rust_task()
 {
-    dom->log(rust_log::MEM|rust_log::TASK,
+    DLOG(dom, rust_log::MEM|rust_log::TASK,
              "~rust_task %s @0x%" PRIxPTR ", refcnt=%d",
              name, (uintptr_t)this, ref_count);
 
     /*
       for (uintptr_t fp = get_fp(); fp; fp = get_previous_fp(fp)) {
       frame_glue_fns *glue_fns = get_frame_glue_fns(fp);
-      dom->log(rust_log::MEM|rust_log::TASK,
+      DLOG(dom, rust_log::MEM|rust_log::TASK,
       "~rust_task, frame fp=0x%" PRIxPTR ", glue_fns=0x%" PRIxPTR,
       fp, glue_fns);
       if (glue_fns) {
-      dom->log(rust_log::MEM|rust_log::TASK,
+      DLOG(dom, rust_log::MEM|rust_log::TASK,
                "~rust_task, mark_glue=0x%" PRIxPTR,
                glue_fns->mark_glue);
-      dom->log(rust_log::MEM|rust_log::TASK,
+      DLOG(dom, rust_log::MEM|rust_log::TASK,
                "~rust_task, drop_glue=0x%" PRIxPTR,
                glue_fns->drop_glue);
-      dom->log(rust_log::MEM|rust_log::TASK,
+      DLOG(dom, rust_log::MEM|rust_log::TASK,
                "~rust_task, reloc_glue=0x%" PRIxPTR,
                glue_fns->reloc_glue);
       }
@@ -143,8 +143,8 @@ rust_task::start(uintptr_t exit_task_glue,
                  uintptr_t args,
                  size_t callsz)
 {
-    dom->logptr("exit-task glue", exit_task_glue);
-    dom->logptr("from spawnee", spawnee_fn);
+    LOGPTR(dom, "exit-task glue", exit_task_glue);
+    LOGPTR(dom, "from spawnee", spawnee_fn);
 
     // Set sp to last uintptr_t-sized cell of segment
     rust_sp -= sizeof(uintptr_t);
@@ -266,7 +266,7 @@ rust_task::grow(size_t n_frame_bytes)
     uintptr_t old_bottom = (uintptr_t) &old_stk->data[0];
     uintptr_t rust_sp_disp = old_top - this->rust_sp;
     size_t ssz = old_top - old_bottom;
-    dom->log(rust_log::MEM|rust_log::TASK|rust_log::UPCALL,
+    DLOG(dom, rust_log::MEM|rust_log::TASK|rust_log::UPCALL,
              "upcall_grow_task(%" PRIdPTR
              "), old size %" PRIdPTR
              " bytes (old lim: 0x%" PRIxPTR ")",
@@ -276,13 +276,13 @@ rust_task::grow(size_t n_frame_bytes)
         ssz = n_frame_bytes;
     ssz = next_power_of_two(ssz);
 
-    dom->log(rust_log::MEM|rust_log::TASK, "upcall_grow_task growing stk 0x%"
+    DLOG(dom, rust_log::MEM|rust_log::TASK, "upcall_grow_task growing stk 0x%"
              PRIxPTR " to %d bytes", old_stk, ssz);
 
     stk_seg *nstk = new_stk(dom, ssz);
     uintptr_t new_top = (uintptr_t) &nstk->data[ssz];
     size_t n_copy = old_top - old_bottom;
-    dom->log(rust_log::MEM|rust_log::TASK,
+    DLOG(dom, rust_log::MEM|rust_log::TASK,
              "copying %d bytes of stack from [0x%" PRIxPTR ", 0x%" PRIxPTR "]"
              " to [0x%" PRIxPTR ", 0x%" PRIxPTR "]",
              n_copy,
@@ -296,7 +296,7 @@ rust_task::grow(size_t n_frame_bytes)
     this->stk = nstk;
     this->rust_sp = new_top - rust_sp_disp;
 
-    dom->log(rust_log::MEM|rust_log::TASK, "processing relocations");
+    DLOG(dom, rust_log::MEM|rust_log::TASK, "processing relocations");
 
     // FIXME (issue #32): this is the most ridiculously crude
     // relocation scheme ever. Try actually, you know, writing out
@@ -305,16 +305,16 @@ rust_task::grow(size_t n_frame_bytes)
     for (uintptr_t* p = (uintptr_t*)(new_top - n_copy);
          p < (uintptr_t*)new_top; ++p) {
         if (old_bottom <= *p && *p < old_top) {
-            //dom->log(rust_log::MEM, "relocating pointer 0x%" PRIxPTR
+            //DLOG(dom, rust_log::MEM, "relocating pointer 0x%" PRIxPTR
             //        " by %d bytes", *p, (new_top - old_top));
             n_relocs++;
             *p += (new_top - old_top);
         }
     }
-    dom->log(rust_log::MEM|rust_log::TASK,
+    DLOG(dom, rust_log::MEM|rust_log::TASK,
              "processed %d relocations", n_relocs);
     del_stk(dom, old_stk);
-    dom->logptr("grown stk limit", new_top);
+    LOGPTR(dom, "grown stk limit", new_top);
 #endif
 }
 
@@ -342,7 +342,7 @@ rust_task::run_after_return(size_t nargs, uintptr_t glue)
     sp = align_down(sp - nargs * sizeof(uintptr_t));
 
     uintptr_t *retpc = ((uintptr_t *) sp) - 1;
-    dom->log(rust_log::TASK|rust_log::MEM,
+    DLOG(dom, rust_log::TASK|rust_log::MEM,
              "run_after_return: overwriting retpc=0x%" PRIxPTR
              " @ runtime_sp=0x%" PRIxPTR
              " with glue=0x%" PRIxPTR,
@@ -363,7 +363,7 @@ rust_task::run_on_resume(uintptr_t glue)
     // Inject glue as resume address in the suspended frame.
     uintptr_t* rsp = (uintptr_t*) rust_sp;
     rsp += n_callee_saves;
-    dom->log(rust_log::TASK|rust_log::MEM,
+    DLOG(dom, rust_log::TASK|rust_log::MEM,
              "run_on_resume: overwriting retpc=0x%" PRIxPTR
              " @ rust_sp=0x%" PRIxPTR
              " with glue=0x%" PRIxPTR,
@@ -415,7 +415,7 @@ rust_task::kill() {
 void
 rust_task::fail(size_t nargs) {
     // See note in ::kill() regarding who should call this.
-    dom->log(rust_log::TASK, "task %s @0x%" PRIxPTR " failing", name, this);
+    DLOG(dom, rust_log::TASK, "task %s @0x%" PRIxPTR " failing", name, this);
     backtrace();
     // Unblock the task so it can unwind.
     unblock();
@@ -423,7 +423,7 @@ rust_task::fail(size_t nargs) {
         dom->fail();
     run_after_return(nargs, dom->root_crate->get_unwind_glue());
     if (supervisor) {
-        dom->log(rust_log::TASK,
+        DLOG(dom, rust_log::TASK,
                  "task %s @0x%" PRIxPTR
                  " propagating failure to supervisor %s @0x%" PRIxPTR,
                  name, this, supervisor->name, supervisor);
@@ -434,7 +434,7 @@ rust_task::fail(size_t nargs) {
 void
 rust_task::gc(size_t nargs)
 {
-    dom->log(rust_log::TASK|rust_log::MEM,
+    DLOG(dom, rust_log::TASK|rust_log::MEM,
              "task %s @0x%" PRIxPTR " garbage collecting", name, this);
     run_after_return(nargs, dom->root_crate->get_gc_glue());
 }
@@ -442,7 +442,7 @@ rust_task::gc(size_t nargs)
 void
 rust_task::unsupervise()
 {
-    dom->log(rust_log::TASK,
+    DLOG(dom, rust_log::TASK,
              "task %s @0x%" PRIxPTR
              " disconnecting from supervisor %s @0x%" PRIxPTR,
              name, this, supervisor->name, supervisor);
@@ -551,7 +551,7 @@ rust_task::malloc(size_t sz, type_desc *td)
         return mem;
     if (td) {
         gc_alloc *gcm = (gc_alloc*) mem;
-        dom->log(rust_log::TASK|rust_log::MEM|rust_log::GC,
+        DLOG(dom, rust_log::TASK|rust_log::MEM|rust_log::GC,
                  "task %s @0x%" PRIxPTR
                  " allocated %d GC bytes = 0x%" PRIxPTR,
                  name, (uintptr_t)this, sz, gcm);
@@ -575,7 +575,7 @@ rust_task::realloc(void *data, size_t sz, bool is_gc)
         unlink_gc(gcm);
         sz += sizeof(gc_alloc);
         gcm = (gc_alloc*) dom->realloc((void*)gcm, sz);
-        dom->log(rust_log::TASK|rust_log::MEM|rust_log::GC,
+        DLOG(dom, rust_log::TASK|rust_log::MEM|rust_log::GC,
                  "task %s @0x%" PRIxPTR
                  " reallocated %d GC bytes = 0x%" PRIxPTR,
                  name, (uintptr_t)this, sz, gcm);
@@ -598,7 +598,7 @@ rust_task::free(void *p, bool is_gc)
     if (is_gc) {
         gc_alloc *gcm = (gc_alloc*)(((char *)p) - sizeof(gc_alloc));
         unlink_gc(gcm);
-        dom->log(rust_log::TASK|rust_log::MEM|rust_log::GC,
+        DLOG(dom, rust_log::TASK|rust_log::MEM|rust_log::GC,
                  "task %s @0x%" PRIxPTR " freeing GC memory = 0x%" PRIxPTR,
                  name, (uintptr_t)this, gcm);
         dom->free(gcm);
@@ -610,7 +610,7 @@ rust_task::free(void *p, bool is_gc)
 void
 rust_task::transition(rust_task_list *src, rust_task_list *dst) {
     I(dom, state == src);
-    dom->log(rust_log::TASK,
+    DLOG(dom, rust_log::TASK,
              "task %s " PTR " state change '%s' -> '%s'",
              name, (uintptr_t)this, src->name, dst->name);
     src->remove(this);
@@ -658,14 +658,14 @@ rust_crate_cache *
 rust_task::get_crate_cache(rust_crate const *curr_crate)
 {
     if (cache && cache->crate != curr_crate) {
-        dom->log(rust_log::TASK, "switching task crate-cache to crate 0x%"
+        DLOG(dom, rust_log::TASK, "switching task crate-cache to crate 0x%"
                  PRIxPTR, curr_crate);
         cache->deref();
         cache = NULL;
     }
 
     if (!cache) {
-        dom->log(rust_log::TASK, "fetching cache for current crate");
+        DLOG(dom, rust_log::TASK, "fetching cache for current crate");
         cache = dom->get_cache(curr_crate);
     }
     return cache;

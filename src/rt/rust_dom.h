@@ -88,6 +88,11 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
     rust_task *create_task(rust_task *spawner, const char *name);
 };
 
+inline rust_log &
+rust_dom::get_log() {
+    return _log;
+}
+
 //
 // Local Variables:
 // mode: C++

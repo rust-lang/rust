@@ -14,7 +14,7 @@ circular_buffer::circular_buffer(rust_dom *dom, size_t unit_sz) :
 
     A(dom, unit_sz, "Unit size must be larger than zero.");
 
-    dom->log(rust_log::MEM | rust_log::COMM,
+    DLOG(dom, rust_log::MEM | rust_log::COMM,
              "new circular_buffer(buffer_sz=%d, unread=%d)"
              "-> circular_buffer=0x%" PRIxPTR,
              _buffer_sz, _unread, this);
@@ -23,7 +23,7 @@ circular_buffer::circular_buffer(rust_dom *dom, size_t unit_sz) :
 }
 
 circular_buffer::~circular_buffer() {
-    dom->log(rust_log::MEM, "~circular_buffer 0x%" PRIxPTR, this);
+    DLOG(dom, rust_log::MEM, "~circular_buffer 0x%" PRIxPTR, this);
     I(dom, _buffer);
     W(dom, _unread == 0,
       "freeing circular_buffer with %d unread bytes", _unread);
@@ -79,7 +79,7 @@ circular_buffer::enqueue(void *src) {
         grow();
     }
 
-    dom->log(rust_log::MEM | rust_log::COMM,
+    DLOG(dom, rust_log::MEM | rust_log::COMM,
              "circular_buffer enqueue "
              "unread: %d, next: %d, buffer_sz: %d, unit_sz: %d",
              _unread, _next, _buffer_sz, unit_sz);
@@ -101,7 +101,7 @@ circular_buffer::enqueue(void *src) {
     memcpy(&_buffer[dst_idx], src, unit_sz);
     _unread += unit_sz;
 
-    dom->log(rust_log::MEM | rust_log::COMM,
+    DLOG(dom, rust_log::MEM | rust_log::COMM,
              "circular_buffer pushed data at index: %d", dst_idx);
 }
 
@@ -117,7 +117,7 @@ circular_buffer::dequeue(void *dst) {
     I(dom, _unread <= _buffer_sz);
     I(dom, _buffer);
 
-    dom->log(rust_log::MEM | rust_log::COMM,
+    DLOG(dom, rust_log::MEM | rust_log::COMM,
              "circular_buffer dequeue "
              "unread: %d, next: %d, buffer_sz: %d, unit_sz: %d",
              _unread, _next, _buffer_sz, unit_sz);
@@ -126,7 +126,7 @@ circular_buffer::dequeue(void *dst) {
     if (dst != NULL) {
         memcpy(dst, &_buffer[_next], unit_sz);
     }
-    dom->log(rust_log::MEM | rust_log::COMM,
+    DLOG(dom, rust_log::MEM | rust_log::COMM,
              "shifted data from index %d", _next);
     _unread -= unit_sz;
     _next += unit_sz;
@@ -144,7 +144,7 @@ void
 circular_buffer::grow() {
     size_t new_buffer_sz = _buffer_sz * 2;
     I(dom, new_buffer_sz <= MAX_CIRCULAR_BUFFER_SIZE);
-    dom->log(rust_log::MEM | rust_log::COMM,
+    DLOG(dom, rust_log::MEM | rust_log::COMM,
              "circular_buffer is growing to %d bytes", new_buffer_sz);
     void *new_buffer = dom->malloc(new_buffer_sz);
     transfer(new_buffer);
@@ -158,7 +158,7 @@ void
 circular_buffer::shrink() {
     size_t new_buffer_sz = _buffer_sz / 2;
     I(dom, initial_size() <= new_buffer_sz);
-    dom->log(rust_log::MEM | rust_log::COMM,
+    DLOG(dom, rust_log::MEM | rust_log::COMM,
              "circular_buffer is shrinking to %d bytes", new_buffer_sz);
     void *new_buffer = dom->malloc(new_buffer_sz);
     transfer(new_buffer);

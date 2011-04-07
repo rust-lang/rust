@@ -1,5 +1,10 @@
 #include "rust_internal.h"
 
+#define KLOG(...)                                 \
+  if (_log.is_tracing(rust_log::KERN)) {          \
+      log(rust_log::KERN, __VA_ARGS__);           \
+  } else
+
 rust_kernel::rust_kernel(rust_srv *srv) :
     _region(&srv->local_region),
     _log(srv, NULL),
@@ -20,9 +25,8 @@ rust_kernel::create_domain(const rust_crate *crate, const char *name) {
     message_queue->associate(handle);
     domains.append(dom);
     message_queues.append(message_queue);
-    log(rust_log::KERN | rust_log::TASK,
-        "created domain: " PTR ", name: %s, index: %d, domains %d",
-        dom, name, dom->list_index, domains.length());
+    KLOG("created domain: " PTR ", name: %s, index: %d, domains %d",
+         dom, name, dom->list_index, domains.length());
     _kernel_lock.signal_all();
     _kernel_lock.unlock();
     return handle;
@@ -31,8 +35,7 @@ rust_kernel::create_domain(const rust_crate *crate, const char *name) {
 void
 rust_kernel::destroy_domain(rust_dom *dom) {
     _kernel_lock.lock();
-    log(rust_log::KERN,
-        "deleting domain: " PTR ", name: %s, index: %d, domains %d",
+    KLOG("deleting domain: " PTR ", name: %s, index: %d, domains %d",
         dom, dom->name, dom->list_index, domains.length());
     domains.remove(dom);
     dom->message_queue->disassociate();
@@ -98,12 +101,12 @@ rust_kernel::join_all_domains() {
         _kernel_lock.wait();
     }
     _kernel_lock.unlock();
-    log(rust_log::KERN, "joined domains");
+    KLOG("joined domains");
 }
 
 void
 rust_kernel::log_all_domain_state() {
-    log(rust_log::KERN, "log_all_domain_state: %d domains", domains.length());
+    KLOG("log_all_domain_state: %d domains", domains.length());
     for (uint32_t i = 0; i < domains.length(); i++) {
         domains[i]->log_state();
     }
@@ -155,14 +158,14 @@ rust_kernel::start_kernel_loop() {
 
 void
 rust_kernel::run() {
-    log(rust_log::KERN, "started kernel loop");
+    KLOG("started kernel loop");
     start_kernel_loop();
-    log(rust_log::KERN, "finished kernel loop");
+    KLOG("finished kernel loop");
 }
 
 void
 rust_kernel::terminate_kernel_loop() {
-    log(rust_log::KERN, "terminating kernel loop");
+    KLOG("terminating kernel loop");
     _interrupt_kernel_loop = true;
     signal_kernel_lock();
     join();
@@ -181,13 +184,13 @@ rust_kernel::~rust_kernel() {
     // messages.
     pump_message_queues();
 
-    log(rust_log::KERN, "freeing handles");
+    KLOG("freeing handles");
 
     free_handles(_task_handles);
     free_handles(_port_handles);
     free_handles(_dom_handles);
 
-    log(rust_log::KERN, "freeing queues");
+    KLOG("freeing queues");
 
     rust_message_queue *queue = NULL;
     while (message_queues.pop(&queue)) {

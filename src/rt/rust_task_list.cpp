@@ -7,10 +7,10 @@ rust_task_list::rust_task_list (rust_dom *dom, const char* name) :
 
 void
 rust_task_list::delete_all() {
-    dom->log(rust_log::TASK, "deleting all %s tasks", name);
+    DLOG(dom, rust_log::TASK, "deleting all %s tasks", name);
     while (is_empty() == false) {
         rust_task *task = pop_value();
-        dom->log(rust_log::TASK, "deleting task " PTR, task);
+        DLOG(dom, rust_log::TASK, "deleting task " PTR, task);
         delete task;
     }
 }
