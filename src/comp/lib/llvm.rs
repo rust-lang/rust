@@ -741,6 +741,40 @@ native mod llvm = llvm_lib {
     /** Adds a verification pass. */
     fn LLVMAddVerifierPass(PassManagerRef PM);
 
+    fn LLVMAddGlobalOptimizerPass(PassManagerRef PM);
+    fn LLVMAddIPSCCPPass(PassManagerRef PM);
+    fn LLVMAddDeadArgEliminationPass(PassManagerRef PM);
+    fn LLVMAddInstructionCombiningPass(PassManagerRef PM);
+    fn LLVMAddCFGSimplificationPass(PassManagerRef PM);
+    fn LLVMAddFunctionInliningPass(PassManagerRef PM);
+    fn LLVMAddFunctionAttrsPass(PassManagerRef PM);
+    fn LLVMAddScalarReplAggregatesPass(PassManagerRef PM);
+    // fn LLVMAddScalarReplAggregatesPassSSA(PassManagerRef PM);
+    fn LLVMAddJumpThreadingPass(PassManagerRef PM);
+    fn LLVMAddConstantPropagationPass(PassManagerRef PM);
+    fn LLVMAddReassociatePass(PassManagerRef PM);
+    fn LLVMAddLoopRotatePass(PassManagerRef PM);
+    fn LLVMAddLICMPass(PassManagerRef PM);
+    fn LLVMAddLoopUnswitchPass(PassManagerRef PM);
+    fn LLVMAddLoopDeletionPass(PassManagerRef PM);
+    fn LLVMAddLoopUnrollPass(PassManagerRef PM);
+    fn LLVMAddGVNPass(PassManagerRef PM);
+    fn LLVMAddMemCpyOptPass(PassManagerRef PM);
+    fn LLVMAddSCCPPass(PassManagerRef PM);
+    fn LLVMAddDeadStoreEliminationPass(PassManagerRef PM);
+    fn LLVMAddStripDeadPrototypesPass(PassManagerRef PM);
+    fn LLVMAddDeadTypeEliminationPass(PassManagerRef PM);
+    fn LLVMAddConstantMergePass(PassManagerRef PM);
+    fn LLVMAddArgumentPromotionPass(PassManagerRef PM);
+    fn LLVMAddTailCallEliminationPass(PassManagerRef PM);
+    fn LLVMAddIndVarSimplifyPass(PassManagerRef PM);
+    fn LLVMAddAggressiveDCEPass(PassManagerRef PM);
+    fn LLVMAddGlobalDCEPass(PassManagerRef PM);
+    // fn LLVMAddCorrelatedValuePropagationPass(PassManagerRef PM);
+    fn LLVMAddPruneEHPass(PassManagerRef PM);
+    fn LLVMAddSimplifyLibCallsPass(PassManagerRef PM);
+    // fn LLVMAddLoopIdiomPass(PassManagerRef PM);
+
     /** Destroys a memory buffer. */
     fn LLVMDisposeMemoryBuffer(MemoryBufferRef MemBuf);
 
