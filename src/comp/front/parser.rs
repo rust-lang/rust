@@ -893,14 +893,14 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
             p.bump();
             expect(p, token.DOT);
             // The rest is a call expression.
-            auto e = parse_ident(p);
+            let @ast.expr f = parse_self_method(p);
             auto pf = parse_expr;
             auto es = parse_seq[@ast.expr](token.LPAREN,
                                            token.RPAREN,
                                            some(token.COMMA),
                                            pf, p);
             hi = es.span;
-            ex = ast.expr_call_self(e, es.node, ast.ann_none);
+            ex = ast.expr_call(f, es.node, ast.ann_none);
         }
 
         case (_) {
@@ -964,6 +964,13 @@ impure fn extend_expr_by_ident(parser p, span lo, span hi,
         }
     }
     ret @spanned(lo, hi, e_);
+}
+
+impure fn parse_self_method(parser p) -> @ast.expr {
+    auto lo = p.get_span();
+    let ast.ident f_name = parse_ident(p);
+    auto hi = p.get_span();
+    ret @spanned(lo, hi, ast.expr_self_method(f_name, ast.ann_none));
 }
 
 impure fn parse_dot_or_call_expr(parser p) -> @ast.expr {
@@ -1634,7 +1641,7 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_tup(_,_))        { ret true; }
                 case (ast.expr_rec(_,_,_))      { ret true; }
                 case (ast.expr_call(_,_,_))     { ret true; }
-                case (ast.expr_call_self(_,_,_)){ ret true; }
+                case (ast.expr_self_method(_,_)){ ret false; }
                 case (ast.expr_binary(_,_,_,_)) { ret true; }
                 case (ast.expr_unary(_,_,_))    { ret true; }
                 case (ast.expr_lit(_,_))        { ret true; }

@@ -3911,10 +3911,7 @@ fn trans_lval(@block_ctxt cx, @ast.expr e) -> lval_result {
                                              C_int(abi.box_rc_field_body)));
             ret lval_mem(sub.bcx, val);
         }
-
-        // Kind of bizarre to pass an *entire* self-call here...but let's try
-        // it
-        case (ast.expr_call_self(?ident, _, ?ann)) {
+        case (ast.expr_self_method(?ident, ?ann)) {
             alt (cx.fcx.llself) {
                 case (some[self_vt](?s_vt)) {
                     auto r =  s_vt.v;
@@ -4764,11 +4761,6 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
 
         case (ast.expr_call(?f, ?args, ?ann)) {
             ret trans_call(cx, f, none[ValueRef], args, ann);
-        }
-
-        case (ast.expr_call_self(?ident, ?args, ?ann)) {
-            // A weird hack to make self-calls work.
-            ret trans_call(cx, e, none[ValueRef], args, ann);
         }
 
         case (ast.expr_cast(?e, _, ?ann)) {
