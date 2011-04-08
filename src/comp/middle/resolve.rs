@@ -103,18 +103,6 @@ fn unwrap_def(def_wrap d) -> def {
     }
 }
 
-fn lookup_name(&env e, ast.ident i, namespace ns) -> option.t[def] {
-    auto d_ = lookup_name_wrapped(e, i, ns);
-    alt (d_) {
-        case (none[tup(@env, def_wrap)]) {
-            ret none[def];
-        }
-        case (some[tup(@env, def_wrap)](?d)) {
-            ret some(unwrap_def(d._1));
-        }
-    }
-}
-
 fn lookup_external_def(session.session sess, int cnum, vec[ident] idents)
         -> option.t[def_wrap] {
     alt (creader.lookup_def(sess, cnum, idents)) {
