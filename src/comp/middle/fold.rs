@@ -288,6 +288,9 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &span sp, ident i) -> @view_item) fold_view_item_export,
 
+     // Annotation folds.
+     (fn(&ENV e, ann a) -> ann)                   fold_ann,
+
      // Additional nodes.
      (fn(&ENV e, &span sp,
          &ast.block_) -> block)                   fold_block,
@@ -536,7 +539,8 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
     alt (e.node) {
         case (ast.expr_vec(?es, ?mut, ?t)) {
             auto ees = fold_exprs(env_, fld, es);
-            ret fld.fold_expr_vec(env_, e.span, ees, mut, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_vec(env_, e.span, ees, mut, t2);
         }
 
         case (ast.expr_tup(?es, ?t)) {
@@ -544,7 +548,8 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
             for (ast.elt e in es) {
                 elts += vec(fold_tup_elt[ENV](env, fld, e));
             }
-            ret fld.fold_expr_tup(env_, e.span, elts, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_tup(env_, e.span, elts, t2);
         }
 
         case (ast.expr_rec(?fs, ?base, ?t)) {
@@ -559,17 +564,20 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
                     b = some[@expr](fold_expr(env_, fld, eb));
                 }
             }
-            ret fld.fold_expr_rec(env_, e.span, fields, b, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_rec(env_, e.span, fields, b, t2);
         }
 
         case (ast.expr_call(?f, ?args, ?t)) {
             auto ff = fold_expr(env_, fld, f);
             auto aargs = fold_exprs(env_, fld, args);
-            ret fld.fold_expr_call(env_, e.span, ff, aargs, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_call(env_, e.span, ff, aargs, t2);
         }
 
         case (ast.expr_self_method(?ident, ?t)) {
-            ret fld.fold_expr_self_method(env_, e.span, ident, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_self_method(env_, e.span, ident, t2);
         }
 
         case (ast.expr_bind(?f, ?args_opt, ?t)) {
@@ -586,34 +594,40 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
                     case (none[@ast.expr]) { /* empty */ }
                 }
             }
-            ret fld.fold_expr_bind(env_, e.span, ff, aargs_opt, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_bind(env_, e.span, ff, aargs_opt, t2);
         }
 
         case (ast.expr_spawn(?dom, ?name, ?f, ?args, ?t)) {
             auto ff = fold_expr(env_, fld, f);
             auto aargs = fold_exprs(env_, fld, args);
-            ret fld.fold_expr_spawn(env_, e.span, dom, name, ff, aargs, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_spawn(env_, e.span, dom, name, ff, aargs, t2);
         }
 
         case (ast.expr_binary(?op, ?a, ?b, ?t)) {
             auto aa = fold_expr(env_, fld, a);
             auto bb = fold_expr(env_, fld, b);
-            ret fld.fold_expr_binary(env_, e.span, op, aa, bb, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_binary(env_, e.span, op, aa, bb, t2);
         }
 
         case (ast.expr_unary(?op, ?a, ?t)) {
             auto aa = fold_expr(env_, fld, a);
-            ret fld.fold_expr_unary(env_, e.span, op, aa, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_unary(env_, e.span, op, aa, t2);
         }
 
         case (ast.expr_lit(?lit, ?t)) {
-            ret fld.fold_expr_lit(env_, e.span, lit, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_lit(env_, e.span, lit, t2);
         }
 
         case (ast.expr_cast(?e, ?t, ?at)) {
             auto ee = fold_expr(env_, fld, e);
             auto tt = fold_ty(env, fld, t);
-            ret fld.fold_expr_cast(env_, e.span, ee, tt, at);
+            auto at2 = fld.fold_ann(env_, at);
+            ret fld.fold_expr_cast(env_, e.span, ee, tt, at2);
         }
 
         case (ast.expr_if(?cnd, ?thn, ?els, ?t)) {
@@ -626,33 +640,38 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
                 }
                 case (_) { /* fall through */  }
             }
-            ret fld.fold_expr_if(env_, e.span, ccnd, tthn, eels, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_if(env_, e.span, ccnd, tthn, eels, t2);
         }
 
         case (ast.expr_for(?decl, ?seq, ?body, ?t)) {
             auto ddecl = fold_decl(env_, fld, decl);
             auto sseq = fold_expr(env_, fld, seq);
             auto bbody = fold_block(env_, fld, body);
-            ret fld.fold_expr_for(env_, e.span, ddecl, sseq, bbody, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_for(env_, e.span, ddecl, sseq, bbody, t2);
         }
 
         case (ast.expr_for_each(?decl, ?seq, ?body, ?t)) {
             auto ddecl = fold_decl(env_, fld, decl);
             auto sseq = fold_expr(env_, fld, seq);
             auto bbody = fold_block(env_, fld, body);
-            ret fld.fold_expr_for_each(env_, e.span, ddecl, sseq, bbody, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_for_each(env_, e.span, ddecl, sseq, bbody, t2);
         }
 
         case (ast.expr_while(?cnd, ?body, ?t)) {
             auto ccnd = fold_expr(env_, fld, cnd);
             auto bbody = fold_block(env_, fld, body);
-            ret fld.fold_expr_while(env_, e.span, ccnd, bbody, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_while(env_, e.span, ccnd, bbody, t2);
         }
 
         case (ast.expr_do_while(?body, ?cnd, ?t)) {
             auto bbody = fold_block(env_, fld, body);
             auto ccnd = fold_expr(env_, fld, cnd);
-            ret fld.fold_expr_do_while(env_, e.span, bbody, ccnd, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_do_while(env_, e.span, bbody, ccnd, t2);
         }
 
         case (ast.expr_alt(?expr, ?arms, ?t)) {
@@ -661,72 +680,85 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
             for (ast.arm a in arms) {
                 aarms += vec(fold_arm(env_, fld, a));
             }
-            ret fld.fold_expr_alt(env_, e.span, eexpr, aarms, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_alt(env_, e.span, eexpr, aarms, t2);
         }
 
         case (ast.expr_block(?b, ?t)) {
             auto bb = fold_block(env_, fld, b);
-            ret fld.fold_expr_block(env_, e.span, bb, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_block(env_, e.span, bb, t2);
         }
 
         case (ast.expr_assign(?lhs, ?rhs, ?t)) {
             auto llhs = fold_expr(env_, fld, lhs);
             auto rrhs = fold_expr(env_, fld, rhs);
-            ret fld.fold_expr_assign(env_, e.span, llhs, rrhs, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_assign(env_, e.span, llhs, rrhs, t2);
         }
 
         case (ast.expr_assign_op(?op, ?lhs, ?rhs, ?t)) {
             auto llhs = fold_expr(env_, fld, lhs);
             auto rrhs = fold_expr(env_, fld, rhs);
-            ret fld.fold_expr_assign_op(env_, e.span, op, llhs, rrhs, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_assign_op(env_, e.span, op, llhs, rrhs, t2);
         }
 
         case (ast.expr_send(?lhs, ?rhs, ?t)) {
             auto llhs = fold_expr(env_, fld, lhs);
             auto rrhs = fold_expr(env_, fld, rhs);
-            ret fld.fold_expr_send(env_, e.span, llhs, rrhs, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_send(env_, e.span, llhs, rrhs, t2);
         }
 
         case (ast.expr_recv(?lhs, ?rhs, ?t)) {
             auto llhs = fold_expr(env_, fld, lhs);
             auto rrhs = fold_expr(env_, fld, rhs);
-            ret fld.fold_expr_recv(env_, e.span, llhs, rrhs, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_recv(env_, e.span, llhs, rrhs, t2);
         }
 
         case (ast.expr_field(?e, ?i, ?t)) {
             auto ee = fold_expr(env_, fld, e);
-            ret fld.fold_expr_field(env_, e.span, ee, i, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_field(env_, e.span, ee, i, t2);
         }
 
         case (ast.expr_index(?e, ?ix, ?t)) {
             auto ee = fold_expr(env_, fld, e);
             auto iix = fold_expr(env_, fld, ix);
-            ret fld.fold_expr_index(env_, e.span, ee, iix, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_index(env_, e.span, ee, iix, t2);
         }
 
         case (ast.expr_path(?p, ?r, ?t)) {
             auto p_ = fold_path(env_, fld, p);
-            ret fld.fold_expr_path(env_, e.span, p_, r, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_path(env_, e.span, p_, r, t2);
         }
 
         case (ast.expr_ext(?p, ?args, ?body, ?expanded, ?t)) {
             // Only fold the expanded expression, not the
             // expressions involved in syntax extension
             auto exp = fold_expr(env_, fld, expanded);
+            auto t2 = fld.fold_ann(env_, t);
             ret fld.fold_expr_ext(env_, e.span, p, args, body,
-                                  exp, t);
+                                  exp, t2);
         }
 
         case (ast.expr_fail(?t)) {
-            ret fld.fold_expr_fail(env_, e.span, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_fail(env_, e.span, t2);
         }
 
         case (ast.expr_break(?t)) {
-            ret fld.fold_expr_break(env_, e.span, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_break(env_, e.span, t2);
         }
 
         case (ast.expr_cont(?t)) {
-            ret fld.fold_expr_cont(env_, e.span, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_cont(env_, e.span, t2);
         }
 
         case (ast.expr_ret(?oe, ?t)) {
@@ -737,7 +769,8 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
                 }
                 case (_) { /* fall through */  }
             }
-            ret fld.fold_expr_ret(env_, e.span, oee, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_ret(env_, e.span, oee, t2);
         }
 
         case (ast.expr_put(?oe, ?t)) {
@@ -748,31 +781,37 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
                 }
                 case (_) { /* fall through */  }
             }
-            ret fld.fold_expr_put(env_, e.span, oee, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_put(env_, e.span, oee, t2);
         }
 
         case (ast.expr_be(?x, ?t)) {
             auto ee = fold_expr(env_, fld, x);
-            ret fld.fold_expr_be(env_, e.span, ee, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_be(env_, e.span, ee, t2);
         }
 
         case (ast.expr_log(?x, ?t)) {
             auto ee = fold_expr(env_, fld, x);
-            ret fld.fold_expr_log(env_, e.span, ee, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_log(env_, e.span, ee, t2);
         }
 
         case (ast.expr_check_expr(?x, ?t)) {
             auto ee = fold_expr(env_, fld, x);
-            ret fld.fold_expr_check_expr(env_, e.span, ee, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_check_expr(env_, e.span, ee, t2);
         }
 
         case (ast.expr_port(?t)) {
-            ret fld.fold_expr_port(env_, e.span, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_port(env_, e.span, t2);
         }
 
         case (ast.expr_chan(?x, ?t)) {
             auto ee = fold_expr(env_, fld, x);
-            ret fld.fold_expr_chan(env_, e.span, ee, t);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_chan(env_, e.span, ee, t2);
         }
     }
 
@@ -1475,6 +1514,12 @@ fn identity_fold_view_item_export[ENV](&ENV e, &span sp, ident i)
     ret @respan(sp, ast.view_item_export(i));
 }
 
+// Annotation folding.
+
+fn identity_fold_ann[ENV](&ENV e, ann a) -> ann {
+    ret a;
+}
+
 // Additional identities.
 
 fn identity_fold_block[ENV](&ENV e, &span sp, &ast.block_ blk) -> block {
@@ -1667,6 +1712,8 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
              bind identity_fold_view_item_import[ENV](_,_,_,_,_,_),
          fold_view_item_export =
              bind identity_fold_view_item_export[ENV](_,_,_),
+
+         fold_ann = bind identity_fold_ann[ENV](_,_),
 
          fold_block = bind identity_fold_block[ENV](_,_,_),
          fold_fn = bind identity_fold_fn[ENV](_,_,_,_),
