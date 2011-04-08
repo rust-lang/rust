@@ -15,6 +15,7 @@ tag seek_style {seek_set; seek_end; seek_cur;}
 type buf_reader =
     state obj {
         impure fn read(uint len) -> vec[u8];
+        impure fn read_byte() -> int;
         impure fn unread_byte(int byte);
         impure fn eof() -> bool;
 
@@ -60,6 +61,9 @@ state obj FILE_buf_reader(os.libc.FILE f, bool must_close) {
         _vec.len_set[u8](buf, read);
         ret buf;
     }
+    impure fn read_byte() -> int {
+        ret os.libc.fgetc(f);
+    }
     impure fn unread_byte(int byte) {
         os.libc.ungetc(byte, f);
     }
@@ -77,25 +81,13 @@ state obj FILE_buf_reader(os.libc.FILE f, bool must_close) {
     }
 }
 
-// FIXME: When we have a "self" keyword, move this into read_byte(). This is
-// only here so that multiple method implementations below can use it.
-//
-// FIXME: Return value should be option[u8], not int.
-impure fn read_byte_from_buf_reader(buf_reader rdr) -> int {
-    auto buf = rdr.read(1u);
-    if (_vec.len[u8](buf) == 0u) {
-        ret -1;
-    }
-    ret buf.(0) as int;
-}
-
 // FIXME: Convert this into pseudomethods on buf_reader.
 state obj new_reader(buf_reader rdr) {
     impure fn get_buf_reader() -> buf_reader {
         ret rdr;
     }
     impure fn read_byte() -> int {
-        ret read_byte_from_buf_reader(rdr);
+        ret rdr.read_byte();
     }
     impure fn unread_byte(int byte) {
         ret rdr.unread_byte(byte);
@@ -104,7 +96,7 @@ state obj new_reader(buf_reader rdr) {
         ret rdr.read(len);
     }
     impure fn read_char() -> char {
-        auto c0 = read_byte_from_buf_reader(rdr);
+        auto c0 = rdr.read_byte();
         if (c0 == -1) {ret -1 as char;} // FIXME will this stay valid?
         auto b0 = c0 as u8;
         auto w = _str.utf8_char_width(b0);
@@ -113,7 +105,7 @@ state obj new_reader(buf_reader rdr) {
         auto val = 0u;
         while (w > 1u) {
             w -= 1u;
-            auto next = read_byte_from_buf_reader(rdr);
+            auto next = rdr.read_byte();
             check(next > -1);
             check(next & 0xc0 == 0x80);
             val <<= 6u;
@@ -131,7 +123,7 @@ state obj new_reader(buf_reader rdr) {
         // No break yet in rustc
         auto go_on = true;
         while (go_on) {
-            auto ch = read_byte_from_buf_reader(rdr);
+            auto ch = rdr.read_byte();
             if (ch == -1 || ch == 10) {go_on = false;}
             else {_vec.push[u8](buf, ch as u8);}
         }
@@ -141,7 +133,7 @@ state obj new_reader(buf_reader rdr) {
         let vec[u8] buf = vec();
         auto go_on = true;
         while (go_on) {
-            auto ch = read_byte_from_buf_reader(rdr);
+            auto ch = rdr.read_byte();
             if (ch < 1) {go_on = false;}
             else {_vec.push[u8](buf, ch as u8);}
         }
@@ -152,7 +144,7 @@ state obj new_reader(buf_reader rdr) {
         auto val = 0u;
         auto pos = 0u;
         while (size > 0u) {
-            val += (read_byte_from_buf_reader(rdr) as uint) << pos;
+            val += (rdr.read_byte() as uint) << pos;
             pos += 8u;
             size -= 1u;
         }
@@ -162,7 +154,7 @@ state obj new_reader(buf_reader rdr) {
         auto val = 0u;
         auto pos = 0u;
         while (size > 0u) {
-            val += (read_byte_from_buf_reader(rdr) as uint) << pos;
+            val += (rdr.read_byte() as uint) << pos;
             pos += 8u;
             size -= 1u;
         }
@@ -174,7 +166,7 @@ state obj new_reader(buf_reader rdr) {
         auto sz = size; // FIXME: trans.ml bug workaround
         while (sz > 0u) {
             sz -= 1u;
-            val += (read_byte_from_buf_reader(rdr) as uint) << (sz * 8u);
+            val += (rdr.read_byte() as uint) << (sz * 8u);
         }
         ret val;
     }
@@ -220,6 +212,12 @@ state obj byte_buf_reader(byte_buf bbuf) {
         auto range = _vec.slice[u8](bbuf.buf, bbuf.pos, bbuf.pos + to_read);
         bbuf.pos += to_read;
         ret range;
+    }
+    impure fn read_byte() -> int {
+        if (bbuf.pos == _vec.len[u8](bbuf.buf)) {ret -1;}
+        auto b = bbuf.buf.(bbuf.pos);
+        bbuf.pos += 1u;
+        ret b as int;
     }
 
     impure fn unread_byte(int byte) {
