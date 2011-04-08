@@ -3892,6 +3892,10 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
         elt = next_cx.build.GEP(body, vec(C_int(0), scaled_ix));
     } else {
         elt = next_cx.build.GEP(body, vec(C_int(0), ix_val));
+
+        // We're crossing a box boundary here, so we may need to pointer cast.
+        auto llunitty = type_of(next_cx.fcx.ccx, unit_ty);
+        elt = next_cx.build.PointerCast(elt, T_ptr(llunitty));
     }
 
     ret lval_mem(next_cx, elt);
