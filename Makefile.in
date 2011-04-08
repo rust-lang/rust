@@ -38,7 +38,8 @@ ifeq ($(CFG_OSTYPE), Linux)
   CFG_LIB_NAME=lib$(1).so
   CFG_GCC_CFLAGS += -fPIC -march=i686 -O2
   CFG_GCC_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
-  CFG_GCC_DEF_FLAG := -Wl,-whole-archive,--export-dynamic,--dynamic-list=
+  CFG_GCC_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
+  CFG_GCC_PRE_LIB_FLAGS := -Wl,-whole-archive
   CFG_GCC_POST_LIB_FLAGS := -Wl,-no-whole-archive
   ifeq ($(CFG_CPUTYPE), x86_64)
     CFG_GCC_CFLAGS += -m32
@@ -417,11 +418,19 @@ rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF)
 	@$(call E, link: $@)
 	$(Q)$(call CFG_LINK_C,$@,$(RUNTIME_LIBS) $(RUNTIME_OBJS),$(RUNTIME_DEF))
 
-rustllvm/$(CFG_RUSTLLVM): $(RUSTLLVM_OBJS) $(MKFILES) $(RUSTLLVM_HDR) \
+# FIXME: Building a .a is a hack so that we build with both older and newer
+# versions of LLVM. In newer versions some of the bits of this library are
+# already in LLVM itself, so they are skipped.
+rustllvm/rustllvmbits.a: $(RUSTLLVM_OBJS)
+	rm -f $@
+	ar crs $@ $^
+
+rustllvm/$(CFG_RUSTLLVM): rustllvm/rustllvmbits.a $(MKFILES) $(RUSTLLVM_HDR) \
                           $(RUSTLLVM_DEF)
 	@$(call E, link: $@)
-	$(Q)$(call CFG_LINK_C,$@,$(RUSTLLVM_LIBS) $(RUSTLLVM_OBJS) \
-          $(CFG_LLVM_LIBS) $(CFG_LLVM_LDFLAGS),$(RUSTLLVM_DEF))
+	$(Q)$(call CFG_LINK_C,$@,$(RUSTLLVM_LIBS) rustllvm/rustllvmbits.a \
+          $(CFG_GCC_PRE_LIB_FLAGS) $(CFG_LLVM_LIBS) \
+          $(CFG_GCC_POST_LIB_FLAGS) $(CFG_LLVM_LDFLAGS),$(RUSTLLVM_DEF))
 
 ifdef CFG_BOOT_NATIVE
 boot/rustboot$(X): $(BOOT_CMXS) $(MKFILES)
