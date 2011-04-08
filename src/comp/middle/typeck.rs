@@ -1441,7 +1441,8 @@ fn demand_block(&@fn_ctxt fcx, @ty.t expected, &ast.block bloc) -> ast.block {
     }
 }
 
-// Writeback: the phase that writes inferred types back into the AST.
+// Local variable resolution: the phase that finds all the types in the AST
+// and replaces opaque "ty_local" types with the resolved local types.
 
 fn writeback_local(&option.t[@fn_ctxt] env, &span sp, @ast.local local)
         -> @ast.decl {
@@ -1458,7 +1459,32 @@ fn writeback_local(&option.t[@fn_ctxt] env, &span sp, @ast.local local)
     ret @fold.respan[ast.decl_](sp, ast.decl_local(local_wb));
 }
 
-fn writeback(&@fn_ctxt fcx, &ast.block block) -> ast.block {
+fn resolve_local_types_in_annotation(&option.t[@fn_ctxt] env, ast.ann ann)
+        -> ast.ann {
+    state obj folder(@fn_ctxt fcx) {
+        fn fold_simple_ty(@ty.t typ) -> @ty.t {
+            alt (typ.struct) {
+            case (ty.ty_local(?lid)) { ret fcx.locals.get(lid); }
+            case (_)                 { ret typ; }
+            }
+        }
+    }
+
+    auto fcx = option.get[@fn_ctxt](env);
+    alt (ann) {
+    case (ast.ann_none) {
+        log "warning: no type for expression";
+        ret ann;
+    }
+    case (ast.ann_type(?typ, ?tps, ?ts_info)) {
+        auto new_type = ty.fold_ty(folder(fcx), ann_to_type(ann));
+        ret ast.ann_type(new_type, tps, ts_info);
+    }
+    }
+}
+
+fn resolve_local_types_in_block(&@fn_ctxt fcx, &ast.block block)
+        -> ast.block {
     fn update_env_for_item(&option.t[@fn_ctxt] env, @ast.item i)
             -> option.t[@fn_ctxt] {
         ret none[@fn_ctxt];
@@ -1467,12 +1493,15 @@ fn writeback(&@fn_ctxt fcx, &ast.block block) -> ast.block {
         ret !option.is_none[@fn_ctxt](env);
     }
 
+    // FIXME: rustboot bug prevents us from using these functions directly
     auto fld = fold.new_identity_fold[option.t[@fn_ctxt]]();
     auto wbl = writeback_local;
+    auto rltia = resolve_local_types_in_annotation;
     auto uefi = update_env_for_item;
     auto kg = keep_going;
     fld = @rec(
         fold_decl_local = wbl,
+        fold_ann = rltia,
         update_env_for_item = uefi,
         keep_going = kg
         with *fld
@@ -2596,7 +2625,7 @@ fn check_fn(&@crate_ctxt ccx, &ast.fn_decl decl, ast.proto proto,
 
     // TODO: Make sure the type of the block agrees with the function type.
     auto block_t = check_block(fcx, body);
-    auto block_wb = writeback(fcx, block_t);
+    auto block_wb = resolve_local_types_in_block(fcx, block_t);
 
     auto fn_t = rec(decl=decl,
                     proto=proto,
