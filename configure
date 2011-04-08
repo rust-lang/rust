@@ -153,6 +153,7 @@ fi
 
 opt valgrind 1 "run tests with valgrind"
 opt docs     1 "build documentation"
+opt optimize 1 "build optimized rust code"
 
 
 if [ $HELP -eq 1 ]
