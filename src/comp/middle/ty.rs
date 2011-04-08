@@ -1,6 +1,7 @@
 import std._str;
 import std._uint;
 import std._vec;
+import std.UFind;
 import std.map;
 import std.map.hashmap;
 import std.option;
@@ -879,6 +880,10 @@ fn is_lval(@ast.expr expr) -> bool {
 //
 //     http://www.cs.man.ac.uk/~hoderk/ubench/unification_full.pdf
 
+type var_bindings = rec(UFind.ufind sets,
+                        hashmap[int,uint] var_ids,
+                        mutable vec[mutable vec[@t]] types);
+
 fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         -> unify_result {
     // Wraps the given type in an appropriate cname.
@@ -917,7 +922,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         fn_common_res_ok(vec[arg], @t);
     }
 
-    fn unify_fn_common(@hashmap[int,@ty.t] bindings,
+    fn unify_fn_common(&var_bindings bindings,
                        @ty.t expected,
                        @ty.t actual,
                        &unify_handler handler,
@@ -982,7 +987,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         }
     }
 
-    fn unify_fn(@hashmap[int,@ty.t] bindings,
+    fn unify_fn(&var_bindings bindings,
                 ast.proto e_proto,
                 ast.proto a_proto,
                 @ty.t expected,
@@ -1009,7 +1014,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         }
     }
 
-    fn unify_native_fn(@hashmap[int,@ty.t] bindings,
+    fn unify_native_fn(&var_bindings bindings,
                        ast.native_abi e_abi,
                        ast.native_abi a_abi,
                        @ty.t expected,
@@ -1037,7 +1042,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         }
     }
 
-    fn unify_obj(@hashmap[int,@ty.t] bindings,
+    fn unify_obj(&var_bindings bindings,
                  @ty.t expected,
                  @ty.t actual,
                  &unify_handler handler,
@@ -1084,32 +1089,20 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
       ret ures_ok(t);
     }
 
-    fn resolve(@hashmap[int,@t] bindings, @t typ) -> @t {
-        alt (typ.struct) {
-            case (ty_var(?id)) {
-                alt (bindings.find(id)) {
-                    case (some[@t](?typ2)) {
-                        ret resolve(bindings, typ2);
-                    }
-                    case (none[@t]) {
-                        // fall through
-                    }
-                }
-            }
-            case (_) {
-                // fall through
-            }
+    fn get_or_create_set(&var_bindings bindings, int id) -> uint {
+        auto set_num;
+        alt (bindings.var_ids.find(id)) {
+        case (none[uint]) {
+            set_num = UFind.make_set(bindings.sets);
+            bindings.var_ids.insert(id, set_num);
         }
-        ret typ;
+        case (some[uint](?n)) { set_num = n; }
+        }
+        ret set_num;
     }
 
-    fn unify_step(@hashmap[int,@ty.t] bindings, @ty.t in_expected,
-                  @ty.t in_actual, &unify_handler handler) -> unify_result {
-
-        // Resolve any bindings.
-        auto expected = resolve(bindings, in_expected);
-        auto actual = resolve(bindings, in_actual);
-
+    fn unify_step(&var_bindings bindings, @ty.t expected, @ty.t actual,
+                  &unify_handler handler) -> unify_result {
         // TODO: rewrite this using tuple pattern matching when available, to
         // avoid all this rightward drift and spikiness.
 
@@ -1120,8 +1113,26 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             // If the RHS is a variable type, then just do the appropriate
             // binding.
             case (ty.ty_var(?actual_id)) {
-                bindings.insert(actual_id, expected);
-                ret ures_ok(expected);
+                auto actual_n = get_or_create_set(bindings, actual_id);
+                alt (expected.struct) {
+                    case (ty.ty_var(?expected_id)) {
+                        auto expected_n = get_or_create_set(bindings,
+                                                            expected_id);
+                        UFind.union(bindings.sets, expected_n, actual_n);
+                    }
+
+                    case (_) {
+                        // Just bind the type variable to the expected type.
+                        auto vlen = _vec.len[mutable vec[@t]](bindings.types);
+                        if (actual_n < vlen) {
+                            bindings.types.(actual_n) += vec(expected);
+                        } else {
+                            check (actual_n == vlen);
+                            bindings.types += vec(mutable vec(expected));
+                        }
+                    }
+                }
+                ret ures_ok(actual);
             }
             case (ty.ty_local(?actual_id)) {
                 auto actual_ty = handler.resolve_local(actual_id);
@@ -1487,8 +1498,15 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
 
             case (ty.ty_var(?expected_id)) {
                 // Add a binding.
-                bindings.insert(expected_id, actual);
-                ret ures_ok(actual);
+                auto expected_n = get_or_create_set(bindings, expected_id);
+                auto vlen = _vec.len[mutable vec[@t]](bindings.types);
+                if (expected_n < vlen) {
+                    bindings.types.(expected_n) += vec(actual);
+                } else {
+                    check (expected_n == vlen);
+                    bindings.types += vec(mutable vec(actual));
+                }
+                ret ures_ok(expected);
             }
 
             case (ty.ty_local(?expected_id)) {
@@ -1517,36 +1535,73 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
     }
 
     // Performs type binding substitution.
-    fn substitute(@hashmap[int,@t] bindings, @t typ) -> @t {
-        state obj folder(@hashmap[int,@t] bindings) {
+    fn substitute(var_bindings bindings, vec[@t] set_types, @t typ) -> @t {
+        state obj folder(tup(var_bindings, vec[@t]) env) {
             fn fold_simple_ty(@t typ) -> @t {
+                auto bindings = env._0;
+                auto types = env._1;
                 alt (typ.struct) {
-                    case (ty_var(?id)) {
-                        alt (bindings.find(id)) {
-                            case (some[@t](?typ2)) {
-                                ret substitute(bindings, typ2);
-                            }
-                            case (none[@t]) {
-                                ret typ;
-                            }
-                        }
+                case (ty_var(?id)) {
+                    alt (bindings.var_ids.find(id)) {
+                    case (some[uint](?n)) {
+                        auto root = UFind.find(bindings.sets, n);
+                        ret types.(root);
                     }
-                    case (_) {
-                        ret typ;
+                    case (none[uint]) { ret typ; }
                     }
+                }
+                case (_) { ret typ; }
                 }
             }
         }
 
-        ret ty.fold_ty(folder(bindings), typ);
+        ret ty.fold_ty(folder(tup(bindings, set_types)), typ);
     }
 
-    auto bindings = @common.new_int_hash[@ty.t]();
+    fn unify_sets(&var_bindings bindings) -> vec[@t] {
+        let vec[@t] throwaway = vec();
+        let vec[mutable vec[@t]] set_types = vec(mutable throwaway);
+        _vec.pop[mutable vec[@t]](set_types);   // FIXME: botch
+
+        for (UFind.node node in bindings.sets.nodes) {
+            let vec[@t] v = vec();
+            set_types += vec(mutable v);
+        }
+
+        auto i = 0u;
+        while (i < _vec.len[mutable vec[@t]](set_types)) {
+            auto root = UFind.find(bindings.sets, i);
+            set_types.(root) += bindings.types.(i);
+            i += 1u;
+        }
+
+        let vec[@t] result = vec();
+        for (vec[@t] types in set_types) {
+            if (_vec.len[@t](types) > 1u) {
+                log "unification of > 1 types in a type set is unimplemented";
+                fail;
+            }
+            result += vec(types.(0));
+        }
+
+        ret result;
+    }
+
+    let vec[@t] throwaway = vec();
+    let vec[mutable vec[@t]] types = vec(mutable throwaway);
+    _vec.pop[mutable vec[@t]](types);   // FIXME: botch
+
+    auto bindings = rec(sets=UFind.make(),
+                        var_ids=common.new_int_hash[uint](),
+                        mutable types=types);
 
     auto ures = unify_step(bindings, expected, actual, handler);
     alt (ures) {
-        case (ures_ok(?t))  { ret ures_ok(substitute(bindings, t)); }
-        case (_)            { ret ures;                             }
+    case (ures_ok(?t)) {
+        auto set_types = unify_sets(bindings);
+        ret ures_ok(substitute(bindings, set_types, t));
+    }
+    case (_) { ret ures; }
     }
     fail;   // not reached
 }
