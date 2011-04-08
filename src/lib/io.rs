@@ -41,6 +41,7 @@ type reader =
           impure fn read_le_uint(uint size) -> uint;
           impure fn read_le_int(uint size) -> int;
           impure fn read_be_uint(uint size) -> uint;
+          impure fn read_whole_stream() -> vec[u8];
 
           impure fn seek(int offset, seek_style whence);
           impure fn tell() -> uint; // FIXME: eventually u64
@@ -169,6 +170,13 @@ state obj new_reader(buf_reader rdr) {
             val += (rdr.read_byte() as uint) << (sz * 8u);
         }
         ret val;
+    }
+    impure fn read_whole_stream() -> vec[u8] {
+        let vec[u8] buf = vec();
+        while (!rdr.eof()) {
+            buf += rdr.read(2048u);
+        }
+        ret buf;
     }
     impure fn seek(int offset, seek_style whence) {
         ret rdr.seek(offset, whence);

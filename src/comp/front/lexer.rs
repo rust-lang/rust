@@ -11,24 +11,26 @@ import util.common;
 import util.common.new_str_hash;
 
 state type reader = state obj {
-                          fn is_eof() -> bool;
-                          fn curr() -> char;
-                          fn next() -> char;
-                          impure fn bump();
-                          fn mark();
-                          fn get_filename() -> str;
-                          fn get_mark_pos() -> common.pos;
-                          fn get_curr_pos() -> common.pos;
-                          fn get_keywords() -> hashmap[str,token.token];
-                          fn get_reserved() -> hashmap[str,()];
+    fn is_eof() -> bool;
+    fn curr() -> char;
+    fn next() -> char;
+    impure fn init();
+    impure fn bump();
+    fn mark();
+    fn get_filename() -> str;
+    fn get_mark_pos() -> common.pos;
+    fn get_curr_pos() -> common.pos;
+    fn get_keywords() -> hashmap[str,token.token];
+    fn get_reserved() -> hashmap[str,()];
 };
 
 impure fn new_reader(io.reader rdr, str filename) -> reader
 {
-    state obj reader(io.reader rdr,
+    state obj reader(str file,
                      str filename,
-                     mutable char c,
-                     mutable char n,
+                     uint len,
+                     mutable uint pos,
+                     mutable char ch,
                      mutable uint mark_line,
                      mutable uint mark_col,
                      mutable uint line,
@@ -36,63 +38,68 @@ impure fn new_reader(io.reader rdr, str filename) -> reader
                      hashmap[str,token.token] keywords,
                      hashmap[str,()] reserved) {
 
-            fn is_eof() -> bool {
-                ret c == (-1) as char;
+        fn is_eof() -> bool {
+            ret ch == -1 as char;
+        }
+
+        fn get_curr_pos() -> common.pos {
+            ret rec(line=line, col=col);
+        }
+
+        fn get_mark_pos() -> common.pos {
+            ret rec(line=mark_line, col=mark_col);
+        }
+
+        fn get_filename() -> str {
+            ret filename;
+        }
+
+        fn curr() -> char {
+            ret ch;
+        }
+
+        fn next() -> char {
+            if (pos < len) {ret _str.char_at(file, pos);}
+            else {ret -1 as char;}
+        }
+            
+        impure fn init() {
+            if (pos < len) {
+                auto next = _str.char_range_at(file, pos);
+                pos = next._1;
+                ch = next._0;
             }
+        }
 
-            fn get_curr_pos() -> common.pos {
-                ret rec(line=line, col=col);
-            }
-
-            fn get_mark_pos() -> common.pos {
-                ret rec(line=mark_line, col=mark_col);
-            }
-
-            fn get_filename() -> str {
-                ret filename;
-            }
-
-            fn curr() -> char {
-                ret c;
-            }
-
-            fn next() -> char {
-                ret n;
-            }
-
-            impure fn bump() {
-
-                let char prev = c;
-
-                c = n;
-
-                if (c == (-1) as char) {
-                    ret;
-                }
-
-                if (prev == '\n') {
+        impure fn bump() {
+            if (pos < len) {
+                if (ch == '\n') {
                     line += 1u;
                     col = 0u;
                 } else {
                     col += 1u;
                 }
-
-                n = rdr.read_char();
-            }
-
-            fn mark() {
-                mark_line = line;
-                mark_col = col;
-            }
-
-            fn get_keywords() -> hashmap[str,token.token] {
-                ret keywords;
-            }
-
-            fn get_reserved() -> hashmap[str,()] {
-                ret reserved;
+                auto next = _str.char_range_at(file, pos);
+                pos = next._1;
+                ch = next._0;
+            } else {
+                ch = -1 as char;
             }
         }
+
+        fn mark() {
+            mark_line = line;
+            mark_col = col;
+        }
+
+        fn get_keywords() -> hashmap[str,token.token] {
+            ret keywords;
+        }
+
+        fn get_reserved() -> hashmap[str,()] {
+            ret reserved;
+        }
+    }
 
     auto keywords = new_str_hash[token.token]();
 
@@ -208,11 +215,12 @@ impure fn new_reader(io.reader rdr, str filename) -> reader
     reserved.insert("m128", ()); // IEEE 754-2008 'decimal128'
     reserved.insert("dec", ());  // One of m32, m64, m128
 
-    ret reader(rdr, filename, rdr.read_char(),
-               rdr.read_char(), 1u, 0u, 1u, 0u, keywords, reserved);
+    auto file = _str.unsafe_from_bytes(rdr.read_whole_stream());
+    auto rd = reader(file, filename, _str.byte_len(file), 0u, -1 as char,
+                     1u, 0u, 1u, 0u, keywords, reserved);
+    rd.init();
+    ret rd;
 }
-
-
 
 
 fn in_range(char c, char lo, char hi) -> bool {
@@ -689,7 +697,6 @@ impure fn next_token(reader rdr) -> token.token {
 
         case ('"') {
             rdr.bump();
-            // FIXME: general utf8-consumption support.
             while (rdr.curr() != '"') {
                 alt (rdr.curr()) {
                     case ('\\') {
@@ -850,7 +857,7 @@ impure fn read_block_comment(reader rdr) -> cmnt {
 
 impure fn gather_comments(str path) -> vec[cmnt] {
     auto srdr = io.file_reader(path);
-    auto rdr = lexer.new_reader(srdr, path);
+    auto rdr = new_reader(srdr, path);
     let vec[cmnt] comments = vec();
     while (!rdr.is_eof()) {
         while (true) {
