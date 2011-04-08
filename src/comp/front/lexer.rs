@@ -17,42 +17,32 @@ state type reader = state obj {
     impure fn init();
     impure fn bump();
     fn mark();
-    fn get_filename() -> str;
-    fn get_mark_pos() -> common.pos;
-    fn get_curr_pos() -> common.pos;
+    fn get_mark_chpos() -> uint;
+    fn get_chpos() -> uint;
     fn get_keywords() -> hashmap[str,token.token];
     fn get_reserved() -> hashmap[str,()];
+    fn get_filemap() -> codemap.filemap;
 };
 
-impure fn new_reader(io.reader rdr, str filename) -> reader
-{
+impure fn new_reader(io.reader rdr, str filename, codemap.filemap filemap)
+    -> reader {
     state obj reader(str file,
-                     str filename,
                      uint len,
                      mutable uint pos,
                      mutable char ch,
-                     mutable uint mark_line,
-                     mutable uint mark_col,
-                     mutable uint line,
-                     mutable uint col,
+                     mutable uint mark_chpos,
+                     mutable uint chpos,
                      hashmap[str,token.token] keywords,
-                     hashmap[str,()] reserved) {
+                     hashmap[str,()] reserved,
+                     codemap.filemap fm) {
 
         fn is_eof() -> bool {
             ret ch == -1 as char;
         }
 
-        fn get_curr_pos() -> common.pos {
-            ret rec(line=line, col=col);
-        }
-
-        fn get_mark_pos() -> common.pos {
-            ret rec(line=mark_line, col=mark_col);
-        }
-
-        fn get_filename() -> str {
-            ret filename;
-        }
+        fn mark() { mark_chpos = chpos; }
+        fn get_mark_chpos() -> uint { ret mark_chpos; }
+        fn get_chpos() -> uint { ret chpos; }
 
         fn curr() -> char {
             ret ch;
@@ -73,11 +63,9 @@ impure fn new_reader(io.reader rdr, str filename) -> reader
 
         impure fn bump() {
             if (pos < len) {
+                chpos += 1u;
                 if (ch == '\n') {
-                    line += 1u;
-                    col = 0u;
-                } else {
-                    col += 1u;
+                    codemap.next_line(fm, chpos);
                 }
                 auto next = _str.char_range_at(file, pos);
                 pos = next._1;
@@ -87,11 +75,6 @@ impure fn new_reader(io.reader rdr, str filename) -> reader
             }
         }
 
-        fn mark() {
-            mark_line = line;
-            mark_col = col;
-        }
-
         fn get_keywords() -> hashmap[str,token.token] {
             ret keywords;
         }
@@ -99,8 +82,22 @@ impure fn new_reader(io.reader rdr, str filename) -> reader
         fn get_reserved() -> hashmap[str,()] {
             ret reserved;
         }
-    }
 
+        fn get_filemap() -> codemap.filemap {
+            ret fm;
+        }
+    }
+    auto file = _str.unsafe_from_bytes(rdr.read_whole_stream());
+    auto rd = reader(file, _str.byte_len(file), 0u, -1 as char,
+                     filemap.start_pos, filemap.start_pos,
+                     keyword_table(),
+                     reserved_word_table(),
+                     filemap);
+    rd.init();
+    ret rd;
+}
+
+fn keyword_table() -> std.map.hashmap[str, token.token] {
     auto keywords = new_str_hash[token.token]();
 
     keywords.insert("mod", token.MOD);
@@ -205,8 +202,11 @@ impure fn new_reader(io.reader rdr, str filename) -> reader
     keywords.insert("f32", token.MACH(common.ty_f32));
     keywords.insert("f64", token.MACH(common.ty_f64));
 
-    auto reserved = new_str_hash[()]();
+    ret keywords;
+}
 
+fn reserved_word_table() -> std.map.hashmap[str, ()] {
+    auto reserved = new_str_hash[()]();
     reserved.insert("f16", ());  // IEEE 754-2008 'binary16' interchange fmt
     reserved.insert("f80", ());  // IEEE 754-1985 'extended'
     reserved.insert("f128", ()); // IEEE 754-2008 'binary128'
@@ -214,14 +214,8 @@ impure fn new_reader(io.reader rdr, str filename) -> reader
     reserved.insert("m64", ());  // IEEE 754-2008 'decimal64'
     reserved.insert("m128", ()); // IEEE 754-2008 'decimal128'
     reserved.insert("dec", ());  // One of m32, m64, m128
-
-    auto file = _str.unsafe_from_bytes(rdr.read_whole_stream());
-    auto rd = reader(file, filename, _str.byte_len(file), 0u, -1 as char,
-                     1u, 0u, 1u, 0u, keywords, reserved);
-    rd.init();
-    ret rd;
+    ret reserved;
 }
-
 
 fn in_range(char c, char lo, char hi) -> bool {
     ret lo <= c && c <= hi;
@@ -797,7 +791,8 @@ tag cmnt_ {
     cmnt_line(str);
     cmnt_block(vec[str]);
 }
-type cmnt = rec(cmnt_ val, common.pos pos, bool space_after);
+
+type cmnt = rec(cmnt_ val, uint pos, bool space_after);
 
 impure fn consume_whitespace(reader rdr) -> uint {
     auto lines = 0u;
@@ -809,7 +804,7 @@ impure fn consume_whitespace(reader rdr) -> uint {
 }
 
 impure fn read_line_comment(reader rdr) -> cmnt {
-    auto p = rdr.get_curr_pos();
+    auto p = rdr.get_chpos();
     rdr.bump(); rdr.bump();
     while (rdr.curr() == ' ') {rdr.bump();}
     auto val = "";
@@ -823,7 +818,7 @@ impure fn read_line_comment(reader rdr) -> cmnt {
 }
 
 impure fn read_block_comment(reader rdr) -> cmnt {
-    auto p = rdr.get_curr_pos();
+    auto p = rdr.get_chpos();
     rdr.bump(); rdr.bump();
     while (rdr.curr() == ' ') {rdr.bump();}
     let vec[str] lines = vec();
@@ -857,7 +852,7 @@ impure fn read_block_comment(reader rdr) -> cmnt {
 
 impure fn gather_comments(str path) -> vec[cmnt] {
     auto srdr = io.file_reader(path);
-    auto rdr = new_reader(srdr, path);
+    auto rdr = new_reader(srdr, path, codemap.new_filemap(path, 0u));
     let vec[cmnt] comments = vec();
     while (!rdr.is_eof()) {
         while (true) {

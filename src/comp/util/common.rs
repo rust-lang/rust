@@ -5,8 +5,7 @@ import front.ast;
 
 
 type filename = str;
-type pos = rec(uint line, uint col);
-type span = rec(filename filename, pos lo, pos hi);
+type span = rec(uint lo, uint hi);
 type spanned[T] = rec(T node, span span);
 
 tag ty_mach {

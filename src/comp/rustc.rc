@@ -7,6 +7,7 @@ mod front {
     mod ast;
     mod creader;
     mod extfmt;
+    mod codemap;
     mod lexer;
     mod parser;
     mod token;

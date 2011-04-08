@@ -159,8 +159,7 @@ impure fn print_type(ps s, &@ast.ty ty) {
             fn get_span(&ast.ty_field f) -> common.span {
               // Try to reconstruct the span for this field
               auto sp = f.mt.ty.span;
-              auto hi = rec(line=sp.hi.line,
-                            col=sp.hi.col + _str.char_len(f.ident) + 1u);
+              auto hi = sp.hi + _str.char_len(f.ident) + 1u;
               ret rec(hi=hi with sp);
             }
             auto f = print_field;
@@ -329,14 +328,9 @@ impure fn print_item(ps s, @ast.item item) {
 }
 
 impure fn print_block(ps s, ast.block blk) {
-    auto cur_line = 0u;
     maybe_print_comment(s, blk.span.lo);
     bopen(s);
     for (@ast.stmt st in blk.node.stmts) {
-        if (cur_line != 0u && st.span.lo.line > cur_line + 1u) {
-            line(s.s);
-        }
-        cur_line = st.span.hi.line;
         maybe_print_comment(s, st.span.lo);
         alt (st.node) {
           case (ast.stmt_decl(?decl,_)) {print_decl(s, decl);}
@@ -347,9 +341,6 @@ impure fn print_block(ps s, ast.block blk) {
     }
     alt (blk.node.expr) {
         case (option.some[@ast.expr](?expr)) {
-            if (cur_line != 0u && expr.span.lo.line > cur_line + 1u) {
-                line(s.s);
-            }
             print_expr(s, expr);
             if (!maybe_print_line_comment(s, expr.span)) {line(s.s);}
         }
@@ -958,12 +949,11 @@ fn next_comment(ps s) -> option.t[lexer.cmnt] {
     }
 }
 
-impure fn maybe_print_comment(ps s, common.pos pos) {
+impure fn maybe_print_comment(ps s, uint pos) {
     while (true) {
         alt (next_comment(s)) {
             case (option.some[lexer.cmnt](?cmnt)) {
-                if (cmnt.pos.line < pos.line ||
-                    (cmnt.pos.line == pos.line && cmnt.pos.col < pos.col)) {
+                if (cmnt.pos < pos) {
                     print_comment(s, cmnt.val);
                     if (cmnt.space_after) {line(s.s);}
                     s.cur_cmnt += 1u;
@@ -977,8 +967,7 @@ impure fn maybe_print_comment(ps s, common.pos pos) {
 impure fn maybe_print_line_comment(ps s, common.span span) -> bool {
     alt (next_comment(s)) {
         case (option.some[lexer.cmnt](?cmnt)) {
-            if (span.hi.line == cmnt.pos.line &&
-                span.hi.col + 4u >= cmnt.pos.col) {
+            if (span.hi + 4u >= cmnt.pos) {
                 wrd(s.s, " ");
                 print_comment(s, cmnt.val);
                 s.cur_cmnt += 1u;

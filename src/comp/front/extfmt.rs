@@ -318,9 +318,9 @@ fn parse_type(str s, uint i, uint lim) -> tup(ty, uint) {
 fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
 
     fn make_new_lit(common.span sp, ast.lit_ lit) -> @ast.expr {
-        auto sp_lit = @parser.spanned[ast.lit_](sp, sp, lit);
+        auto sp_lit = @rec(node=lit, span=sp);
         auto expr = ast.expr_lit(sp_lit, ast.ann_none);
-        ret @parser.spanned[ast.expr_](sp, sp, expr);
+        ret @rec(node=expr, span=sp);
     }
 
     fn make_new_str(common.span sp, str s) -> @ast.expr {
@@ -336,7 +336,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
     fn make_add_expr(common.span sp,
                      @ast.expr lhs, @ast.expr rhs) -> @ast.expr {
         auto binexpr = ast.expr_binary(ast.add, lhs, rhs, ast.ann_none);
-        ret @parser.spanned[ast.expr_](sp, sp, binexpr);
+        ret @rec(node=binexpr, span=sp);
     }
 
     fn make_call(common.span sp, vec[ast.ident] fn_path,
@@ -344,11 +344,11 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         let vec[ast.ident] path_idents = fn_path;
         let vec[@ast.ty] path_types = vec();
         auto path = rec(idents = path_idents, types = path_types);
-        auto sp_path = parser.spanned[ast.path_](sp, sp, path);
+        auto sp_path = rec(node=path, span=sp);
         auto pathexpr = ast.expr_path(sp_path, none[ast.def], ast.ann_none);
-        auto sp_pathexpr = @parser.spanned[ast.expr_](sp, sp, pathexpr);
+        auto sp_pathexpr = @rec(node=pathexpr, span=sp);
         auto callexpr = ast.expr_call(sp_pathexpr, args, ast.ann_none);
-        auto sp_callexpr = @parser.spanned[ast.expr_](sp, sp, callexpr);
+        auto sp_callexpr = @rec(node=callexpr, span=sp);
         ret sp_callexpr;
     }
 

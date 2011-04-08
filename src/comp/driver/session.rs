@@ -1,4 +1,5 @@
 import front.ast;
+import front.codemap;
 import util.common.span;
 import util.common.ty_mach;
 import std._uint;
@@ -25,7 +26,8 @@ type cfg = rec(os os,
 type crate_metadata = vec[u8];
 
 obj session(ast.crate_num cnum, cfg targ,
-            map.hashmap[int, crate_metadata] crates) {
+            map.hashmap[int, crate_metadata] crates,
+            codemap.codemap cm) {
 
     fn get_targ_cfg() -> cfg {
         ret targ;
@@ -36,10 +38,12 @@ obj session(ast.crate_num cnum, cfg targ,
     }
 
     fn span_err(span sp, str msg) {
+        auto lo = codemap.lookup_pos(cm, sp.lo);
+        auto hi = codemap.lookup_pos(cm, sp.hi);
         log #fmt("%s:%u:%u:%u:%u: error: %s",
-                 sp.filename,
-                 sp.lo.line, sp.lo.col,
-                 sp.hi.line, sp.hi.col,
+                 lo.filename,
+                 lo.line, lo.col,
+                 hi.line, hi.col,
                  msg);
         fail;
     }
@@ -50,10 +54,12 @@ obj session(ast.crate_num cnum, cfg targ,
     }
 
     fn span_warn(span sp, str msg) {
+        auto lo = codemap.lookup_pos(cm, sp.lo);
+        auto hi = codemap.lookup_pos(cm, sp.hi);
         log #fmt("%s:%u:%u:%u:%u: warning: %s",
-                 sp.filename,
-                 sp.lo.line, sp.lo.col,
-                 sp.hi.line, sp.hi.col,
+                 lo.filename,
+                 lo.line, lo.col,
+                 hi.line, hi.col,
                  msg);
     }
 
@@ -63,10 +69,12 @@ obj session(ast.crate_num cnum, cfg targ,
     }
 
     fn span_unimpl(span sp, str msg) {
+        auto lo = codemap.lookup_pos(cm, sp.lo);
+        auto hi = codemap.lookup_pos(cm, sp.hi);
         log #fmt("%s:%u:%u:%u:%u: error: unimplemented %s",
-                 sp.filename,
-                 sp.lo.line, sp.lo.col,
-                 sp.hi.line, sp.hi.col,
+                 lo.filename,
+                 lo.line, lo.col,
+                 hi.line, hi.col,
                  msg);
         fail;
     }
@@ -86,6 +94,14 @@ obj session(ast.crate_num cnum, cfg targ,
 
     fn has_external_crate(int num) -> bool {
         ret crates.contains_key(num);
+    }
+
+    fn get_codemap() -> codemap.codemap {
+        ret cm;
+    }
+
+    fn lookup_pos(uint pos) -> codemap.loc {
+        ret codemap.lookup_pos(cm, pos);
     }
 }
 

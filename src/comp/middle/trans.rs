@@ -4939,8 +4939,9 @@ fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
 
 fn trans_fail(@block_ctxt cx, common.span sp, str fail_str) -> result {
     auto V_fail_str = p2i(C_cstr(cx.fcx.ccx, fail_str));
-    auto V_filename = p2i(C_cstr(cx.fcx.ccx, sp.filename));
-    auto V_line = sp.lo.line as int;
+    auto loc = cx.fcx.ccx.sess.lookup_pos(sp.lo);
+    auto V_filename = p2i(C_cstr(cx.fcx.ccx, loc.filename));
+    auto V_line = loc.line as int;
     auto args = vec(V_fail_str, V_filename, C_int(V_line));
 
     auto sub = trans_upcall(cx, "upcall_fail", args);

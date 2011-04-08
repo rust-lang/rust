@@ -62,7 +62,7 @@ impure fn compile_input(session.session sess,
                         bool parse_only,
                         vec[str] library_search_paths) {
     auto def = tup(0, 0);
-    auto p = parser.new_parser(sess, env, def, input);
+    auto p = parser.new_parser(sess, env, def, input, 0u);
     auto crate = parse_input(sess, p, input);
     if (parse_only) {ret;}
     crate = creader.read_crates(sess, crate, library_search_paths);
@@ -79,7 +79,7 @@ impure fn pretty_print_input(session.session sess,
                              eval.env env,
                              str input) {
     auto def = tup(0, 0);
-    auto p = front.parser.new_parser(sess, env, def, input);
+    auto p = front.parser.new_parser(sess, env, def, input, 0u);
     auto crate = front.parser.parse_crate_from_source_file(p);
     pretty.pprust.print_file(crate.node.module, input, std.io.stdout());
 }
@@ -125,7 +125,8 @@ impure fn main(vec[str] args) {
 
     auto crate_cache = common.new_int_hash[session.crate_metadata]();
     auto target_crate_num = 0;
-    auto sess = session.session(target_crate_num, target_cfg, crate_cache);
+    auto sess = session.session(target_crate_num, target_cfg, crate_cache,
+                                front.codemap.new_codemap());
 
     let option.t[str] input_file = none[str];
     let option.t[str] output_file = none[str];

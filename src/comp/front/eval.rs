@@ -25,6 +25,9 @@ tag val {
 }
 
 type env = vec[tup(ident, val)];
+type ctx = @rec(parser p,
+                session.session sess,
+                mutable uint chpos);
 
 fn mk_env() -> env {
     let env e = vec();
@@ -89,50 +92,50 @@ fn lookup(session.session sess, env e, span sp, ident i) -> val {
     fail;
 }
 
-fn eval_lit(session.session sess, env e, span sp, @ast.lit lit) -> val {
+fn eval_lit(ctx cx, span sp, @ast.lit lit) -> val {
     alt (lit.node) {
         case (ast.lit_bool(?b)) { ret val_bool(b); }
         case (ast.lit_int(?i)) { ret val_int(i); }
         case (ast.lit_str(?s)) { ret val_str(s); }
         case (_) {
-            sess.span_err(sp, "evaluating unsupported literal");
+            cx.sess.span_err(sp, "evaluating unsupported literal");
         }
     }
     fail;
 }
 
-fn eval_expr(session.session sess, env e, @ast.expr x) -> val {
+fn eval_expr(ctx cx, env e, @ast.expr x) -> val {
     alt (x.node) {
         case (ast.expr_path(?pth, _, _)) {
             if (_vec.len[ident](pth.node.idents) == 1u &&
                 _vec.len[@ast.ty](pth.node.types) == 0u) {
-                ret lookup(sess, e, x.span, pth.node.idents.(0));
+                ret lookup(cx.sess, e, x.span, pth.node.idents.(0));
             }
-            sess.span_err(x.span, "evaluating structured path-name");
+            cx.sess.span_err(x.span, "evaluating structured path-name");
         }
 
         case (ast.expr_lit(?lit, _)) {
-            ret eval_lit(sess, e, x.span, lit);
+            ret eval_lit(cx, x.span, lit);
         }
 
         case (ast.expr_unary(?op, ?a, _)) {
-            auto av = eval_expr(sess, e, a);
+            auto av = eval_expr(cx, e, a);
             alt (op) {
                 case (ast.not) {
                     if (val_is_bool(av)) {
                         ret val_bool(!val_as_bool(av));
                     }
-                    sess.span_err(x.span, "bad types in '!' expression");
+                    cx.sess.span_err(x.span, "bad types in '!' expression");
                 }
                 case (_) {
-                    sess.span_err(x.span, "evaluating unsupported unop");
+                    cx.sess.span_err(x.span, "evaluating unsupported unop");
                 }
             }
         }
 
         case (ast.expr_binary(?op, ?a, ?b, _)) {
-            auto av = eval_expr(sess, e, a);
-            auto bv = eval_expr(sess, e, b);
+            auto av = eval_expr(cx, e, a);
+            auto bv = eval_expr(cx, e, b);
             alt (op) {
                 case (ast.add) {
                     if (val_is_int(av) && val_is_int(bv)) {
@@ -141,66 +144,66 @@ fn eval_expr(session.session sess, env e, @ast.expr x) -> val {
                     if (val_is_str(av) && val_is_str(bv)) {
                         ret val_str(val_as_str(av) + val_as_str(bv));
                     }
-                    sess.span_err(x.span, "bad types in '+' expression");
+                    cx.sess.span_err(x.span, "bad types in '+' expression");
                 }
 
                 case (ast.sub) {
                     if (val_is_int(av) && val_is_int(bv)) {
                         ret val_int(val_as_int(av) - val_as_int(bv));
                     }
-                    sess.span_err(x.span, "bad types in '-' expression");
+                    cx.sess.span_err(x.span, "bad types in '-' expression");
                 }
 
                 case (ast.mul) {
                     if (val_is_int(av) && val_is_int(bv)) {
                         ret val_int(val_as_int(av) * val_as_int(bv));
                     }
-                    sess.span_err(x.span, "bad types in '*' expression");
+                    cx.sess.span_err(x.span, "bad types in '*' expression");
                 }
 
                 case (ast.div) {
                     if (val_is_int(av) && val_is_int(bv)) {
                         ret val_int(val_as_int(av) / val_as_int(bv));
                     }
-                    sess.span_err(x.span, "bad types in '/' expression");
+                    cx.sess.span_err(x.span, "bad types in '/' expression");
                 }
 
                 case (ast.rem) {
                     if (val_is_int(av) && val_is_int(bv)) {
                         ret val_int(val_as_int(av) % val_as_int(bv));
                     }
-                    sess.span_err(x.span, "bad types in '%' expression");
+                    cx.sess.span_err(x.span, "bad types in '%' expression");
                 }
 
                 case (ast.and) {
                     if (val_is_bool(av) && val_is_bool(bv)) {
                         ret val_bool(val_as_bool(av) && val_as_bool(bv));
                     }
-                    sess.span_err(x.span, "bad types in '&&' expression");
+                    cx.sess.span_err(x.span, "bad types in '&&' expression");
                 }
 
                 case (ast.or) {
                     if (val_is_bool(av) && val_is_bool(bv)) {
                         ret val_bool(val_as_bool(av) || val_as_bool(bv));
                     }
-                    sess.span_err(x.span, "bad types in '||' expression");
+                    cx.sess.span_err(x.span, "bad types in '||' expression");
                 }
 
                 case (ast.eq) {
-                    ret val_bool(val_eq(sess, x.span, av, bv));
+                    ret val_bool(val_eq(cx.sess, x.span, av, bv));
                 }
 
                 case (ast.ne) {
-                    ret val_bool(! val_eq(sess, x.span, av, bv));
+                    ret val_bool(! val_eq(cx.sess, x.span, av, bv));
                 }
 
                 case (_) {
-                    sess.span_err(x.span, "evaluating unsupported binop");
+                    cx.sess.span_err(x.span, "evaluating unsupported binop");
                 }
             }
         }
         case (_) {
-            sess.span_err(x.span, "evaluating unsupported expression");
+            cx.sess.span_err(x.span, "evaluating unsupported expression");
         }
     }
     fail;
@@ -221,7 +224,7 @@ fn val_eq(session.session sess, span sp, val av, val bv) -> bool {
     fail;
 }
 
-impure fn eval_crate_directives(parser p,
+impure fn eval_crate_directives(ctx cx,
                                 env e,
                                 vec[@ast.crate_directive] cdirs,
                                 str prefix,
@@ -231,28 +234,27 @@ impure fn eval_crate_directives(parser p,
                                         ast.mod_index_entry] index) {
 
     for (@ast.crate_directive sub_cdir in cdirs) {
-        eval_crate_directive(p, e, sub_cdir, prefix,
+        eval_crate_directive(cx, e, sub_cdir, prefix,
                              view_items, items, index);
     }
 }
 
 
-impure fn eval_crate_directives_to_mod(parser p,
-                                       env e,
+impure fn eval_crate_directives_to_mod(ctx cx, env e,
                                        vec[@ast.crate_directive] cdirs,
                                        str prefix) -> ast._mod {
     let vec[@ast.view_item] view_items = vec();
     let vec[@ast.item] items = vec();
     auto index = new_str_hash[ast.mod_index_entry]();
 
-    eval_crate_directives(p, e, cdirs, prefix,
+    eval_crate_directives(cx, e, cdirs, prefix,
                           view_items, items, index);
 
     ret rec(view_items=view_items, items=items, index=index);
 }
 
 
-impure fn eval_crate_directive_block(parser p,
+impure fn eval_crate_directive_block(ctx cx,
                                      env e,
                                      &ast.block blk,
                                      str prefix,
@@ -264,19 +266,18 @@ impure fn eval_crate_directive_block(parser p,
     for (@ast.stmt s in blk.node.stmts) {
         alt (s.node) {
             case (ast.stmt_crate_directive(?cdir)) {
-                eval_crate_directive(p, e, cdir, prefix,
+                eval_crate_directive(cx, e, cdir, prefix,
                                      view_items, items, index);
             }
             case (_) {
-                auto sess = p.get_session();
-                sess.span_err(s.span,
-                              "unsupported stmt in crate-directive block");
+                cx.sess.span_err(s.span,
+                                 "unsupported stmt in crate-directive block");
             }
         }
     }
 }
 
-impure fn eval_crate_directive_expr(parser p,
+impure fn eval_crate_directive_expr(ctx cx,
                                     env e,
                                     @ast.expr x,
                                     str prefix,
@@ -284,25 +285,23 @@ impure fn eval_crate_directive_expr(parser p,
                                     &mutable vec[@ast.item] items,
                                     hashmap[ast.ident,
                                             ast.mod_index_entry] index) {
-    auto sess = p.get_session();
-
     alt (x.node) {
 
         case (ast.expr_if(?cond, ?thn, ?elopt, _)) {
-            auto cv = eval_expr(sess, e, cond);
+            auto cv = eval_expr(cx, e, cond);
             if (!val_is_bool(cv)) {
-                sess.span_err(x.span, "bad cond type in 'if'");
+                cx.sess.span_err(x.span, "bad cond type in 'if'");
             }
 
             if (val_as_bool(cv)) {
-                ret eval_crate_directive_block(p, e, thn, prefix,
+                ret eval_crate_directive_block(cx, e, thn, prefix,
                                                view_items, items,
                                                index);
             }
 
             alt (elopt) {
                 case (some[@ast.expr](?els)) {
-                    ret eval_crate_directive_expr(p, e, els, prefix,
+                    ret eval_crate_directive_expr(cx, e, els, prefix,
                                                   view_items, items,
                                                   index);
                 }
@@ -313,45 +312,44 @@ impure fn eval_crate_directive_expr(parser p,
         }
 
         case (ast.expr_alt(?v, ?arms, _)) {
-            auto vv = eval_expr(sess, e, v);
+            auto vv = eval_expr(cx, e, v);
             for (ast.arm arm in arms) {
                 alt (arm.pat.node) {
                     case (ast.pat_lit(?lit, _)) {
-                        auto pv = eval_lit(sess, e,
-                                           arm.pat.span, lit);
-                        if (val_eq(sess, arm.pat.span, vv, pv)) {
+                        auto pv = eval_lit(cx, arm.pat.span, lit);
+                        if (val_eq(cx.sess, arm.pat.span, vv, pv)) {
                             ret eval_crate_directive_block
-                                (p, e, arm.block, prefix,
+                                (cx, e, arm.block, prefix,
                                  view_items, items, index);
                         }
                     }
                     case (ast.pat_wild(_)) {
                         ret eval_crate_directive_block
-                            (p, e, arm.block, prefix,
+                            (cx, e, arm.block, prefix,
                              view_items, items, index);
                     }
                     case (_) {
-                        sess.span_err(arm.pat.span,
-                                      "bad pattern type in 'alt'");
+                        cx.sess.span_err(arm.pat.span,
+                                         "bad pattern type in 'alt'");
                     }
                 }
             }
-            sess.span_err(x.span, "no cases matched in 'alt'");
+            cx.sess.span_err(x.span, "no cases matched in 'alt'");
         }
 
         case (ast.expr_block(?block, _)) {
-            ret eval_crate_directive_block(p, e, block, prefix,
+            ret eval_crate_directive_block(cx, e, block, prefix,
                                            view_items, items,
                                            index);
         }
 
         case (_) {
-            sess.span_err(x.span, "unsupported expr type");
+            cx.sess.span_err(x.span, "unsupported expr type");
         }
     }
 }
 
-impure fn eval_crate_directive(parser p,
+impure fn eval_crate_directive(ctx cx,
                                env e,
                                @ast.crate_directive cdir,
                                str prefix,
@@ -362,14 +360,14 @@ impure fn eval_crate_directive(parser p,
     alt (cdir.node) {
 
         case (ast.cdir_let(?id, ?x, ?cdirs)) {
-            auto v = eval_expr(p.get_session(), e, x);
+            auto v = eval_expr(cx, e, x);
             auto e0 = vec(tup(id, v)) + e;
-            eval_crate_directives(p, e0, cdirs, prefix,
+            eval_crate_directives(cx, e0, cdirs, prefix,
                                   view_items, items, index);
         }
 
         case (ast.cdir_expr(?x)) {
-            eval_crate_directive_expr(p, e, x, prefix,
+            eval_crate_directive_expr(cx, e, x, prefix,
                                       view_items, items, index);
         }
 
@@ -385,13 +383,15 @@ impure fn eval_crate_directive(parser p,
 
             auto full_path = prefix + std.fs.path_sep() + file_path;
 
-            auto start_id = p.next_def_id();
-            auto p0 = new_parser(p.get_session(), e, start_id, full_path);
+            auto start_id = cx.p.next_def_id();
+            auto p0 = new_parser(cx.sess, e, start_id, full_path, cx.chpos);
             auto m0 = parse_mod_items(p0, token.EOF);
             auto next_id = p0.next_def_id();
-            p.set_def(next_id._1);
+            // Thread defids and chpos through the parsers
+            cx.p.set_def(next_id._1);
+            cx.chpos = p0.get_chpos();
             auto im = ast.item_mod(id, m0, next_id);
-            auto i = @spanned(cdir.span, cdir.span, im);
+            auto i = @spanned(cdir.span.lo, cdir.span.hi, im);
             ast.index_item(index, i);
             _vec.push[@ast.item](items, i);
         }
@@ -407,9 +407,9 @@ impure fn eval_crate_directive(parser p,
             }
 
             auto full_path = prefix + std.fs.path_sep() + path;
-            auto m0 = eval_crate_directives_to_mod(p, e, cdirs, full_path);
-            auto im = ast.item_mod(id, m0, p.next_def_id());
-            auto i = @spanned(cdir.span, cdir.span, im);
+            auto m0 = eval_crate_directives_to_mod(cx, e, cdirs, full_path);
+            auto im = ast.item_mod(id, m0, cx.p.next_def_id());
+            auto i = @spanned(cdir.span.lo, cdir.span.hi, im);
             ast.index_item(index, i);
             _vec.push[@ast.item](items, i);
         }
