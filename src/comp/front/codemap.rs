@@ -18,10 +18,9 @@ fn new_codemap() -> codemap {
 }
 
 fn new_filemap(str filename, uint start_pos) -> filemap {
-    let vec[uint] lines = vec();
     ret @rec(name=filename,
              start_pos=start_pos,
-             mutable lines=lines);
+             mutable lines=vec(0u));
 }
 
 fn next_line(filemap file, uint pos) {
@@ -29,24 +28,22 @@ fn next_line(filemap file, uint pos) {
 }
 
 fn lookup_pos(codemap map, uint pos) -> loc {
-    for (filemap f in map.files) {
-        if (f.start_pos < pos) {
-            auto line_num = 1u;
-            auto line_start = 0u;
+    auto i = _vec.len[filemap](map.files);
+    while (i > 0u) {
+        i -= 1u;
+        auto f = map.files.(i);
+        if (f.start_pos <= pos) {
             // FIXME this can be a binary search if we need to be faster
-            for (uint line_start_ in f.lines) {
-                // FIXME duplicate code due to lack of working break
-                if (line_start_ > pos) {
+            auto line = _vec.len[uint](f.lines);
+            while (line > 0u) {
+                line -= 1u;
+                auto line_start = f.lines.(line);
+                if (line_start <= pos) {
                     ret rec(filename=f.name,
-                            line=line_num,
+                            line=line + 1u,
                             col=pos-line_start);
                 }
-                line_start = line_start_;
-                line_num += 1u;
             }
-            ret rec(filename=f.name,
-                    line=line_num,
-                    col=pos-line_start);
         }
     }
     log #fmt("Failed to find a location for character %u", pos);
