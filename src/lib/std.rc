@@ -47,6 +47,7 @@ auth _str.pop_char = impure;
 auth _vec.shift = impure;
 auth _vec.unshift = impure;
 auth _vec.pop = impure;
+auth UFind.union = impure;
 
 auth dbg = unsafe;
 
@@ -81,6 +82,7 @@ mod bitv;
 mod sort;
 mod sha1;
 mod ebml;
+mod UFind;
 
 // Local Variables:
 // mode: rust;
