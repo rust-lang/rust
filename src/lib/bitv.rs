@@ -170,6 +170,21 @@ fn to_vec(&t v) -> vec[uint] {
     ret _vec.init_fn[uint](sub, v.nbits);
 }
 
+fn to_str(&t v) -> str {
+    auto res = "";
+
+    for(uint i in v.storage) {
+        if (i == 1u) {
+            res += "1";
+        }
+        else {
+            res += "0";
+        }
+    }
+
+    ret res;
+}
+
 // FIXME: can we just use structural equality on to_vec?
 fn eq_vec(&t v0, &vec[uint] v1) -> bool {
     check (v0.nbits == _vec.len[uint](v1));
