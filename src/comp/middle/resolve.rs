@@ -335,23 +335,6 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
         }
     }
 
-    fn found_decl_stmt(@ast.stmt s, namespace ns) -> def_wrap {
-        alt (s.node) {
-            case (ast.stmt_decl(?d,_)) {
-                alt (d.node) {
-                    case (ast.decl_local(?loc)) {
-                        auto t = ast.def_local(loc.id);
-                        ret def_wrap_other(t);
-                    }
-                    case (ast.decl_item(?it)) {
-                        ret found_def_item(it, ns);
-                    }
-                }
-            }
-        }
-        fail;
-    }
-
     fn found_def_view(@ast.view_item i) -> def_wrap {
         alt (i.node) {
             case (ast.view_item_use(_, _, ?id, _)) {
