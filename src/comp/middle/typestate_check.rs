@@ -890,9 +890,9 @@ fn seq_states(&_fn_info_map fm, &fn_info enclosing,
 }
 
 fn find_pre_post_state_exprs(&_fn_info_map fm,
-			     &fn_info enclosing,
-			     &prestate pres,
-			     &ann a, &vec[@expr] es) -> bool {
+                             &fn_info enclosing,
+                             &prestate pres,
+                             &ann a, &vec[@expr] es) -> bool {
   auto res = seq_states(fm, enclosing, pres, es);
   set_prestate_ann(a, pres);
   set_poststate_ann(a, res._1);
@@ -918,21 +918,21 @@ fn find_pre_post_state_expr(&_fn_info_map fm, &fn_info enclosing,
     case (expr_call(?operator, ?operands, ?a)) {
       /* do the prestate for the rator */
       changed = find_pre_post_state_expr(fm, enclosing, pres, operator)
-	|| changed;
+        || changed;
       /* rands go left-to-right */
       ret(find_pre_post_state_exprs(fm, enclosing,
-				    expr_poststate(*operator), a, operands)
-	  || changed);
+                                    expr_poststate(*operator), a, operands)
+          || changed);
     }
     case (expr_path(_,_,?a)) {
       pure_exp(a, pres);
       ret false;
     }
     case (expr_log(?e,?a)) {
-	changed = find_pre_post_state_expr(fm, enclosing, pres, e);
-	set_prestate_ann(a, pres);
-	set_poststate_ann(a, expr_poststate(*e));
-	ret changed;
+        changed = find_pre_post_state_expr(fm, enclosing, pres, e);
+        set_prestate_ann(a, pres);
+        set_poststate_ann(a, expr_poststate(*e));
+        ret changed;
     }
     case (_) {
       log("find_pre_post_state_expr: implement this case!");
@@ -954,23 +954,23 @@ fn find_pre_post_state_stmt(&_fn_info_map fm, &fn_info enclosing,
         case (ast.decl_local(?alocal)) {
           alt (alocal.init) {
             case (some[ast.initializer](?an_init)) {
-	      changed = find_pre_post_state_expr
-		(fm, enclosing,	pres, an_init.expr) || changed;
-	      set_prestate(stmt_ann, expr_prestate(*an_init.expr));
-	      set_poststate(stmt_ann, expr_poststate(*an_init.expr));
-	      gen(enclosing, stmt_ann, alocal.id);
-	      ret changed;
-	    }
-	    case (none[ast.initializer]) {
-	      set_prestate(stmt_ann, pres);
-	      set_poststate(stmt_ann, pres);
-	      ret false;
-	    }
+              changed = find_pre_post_state_expr
+                (fm, enclosing, pres, an_init.expr) || changed;
+              set_prestate(stmt_ann, expr_prestate(*an_init.expr));
+              set_poststate(stmt_ann, expr_poststate(*an_init.expr));
+              gen(enclosing, stmt_ann, alocal.id);
+              ret changed;
+            }
+            case (none[ast.initializer]) {
+              set_prestate(stmt_ann, pres);
+              set_poststate(stmt_ann, pres);
+              ret false;
+            }
           }
         }
-	case (ast.decl_item(?an_item)) {
-	  be find_pre_post_state_item(fm, an_item);
-	}
+        case (ast.decl_item(?an_item)) {
+          be find_pre_post_state_item(fm, an_item);
+        }
       }
     }
     case (stmt_expr(?e, ?a)) {
@@ -989,7 +989,6 @@ fn find_pre_post_state_stmt(&_fn_info_map fm, &fn_info enclosing,
    returns a boolean flag saying whether any pre- or poststates changed */
 fn find_pre_post_state_block(&_fn_info_map fm, &fn_info enclosing, block b)
   -> bool {
-  log("pre_post_state_block: " + uistr(fm.size()) + " " + uistr(enclosing.size()));
 
   auto changed = false;
   auto num_local_vars = num_locals(enclosing);
@@ -1023,11 +1022,8 @@ fn find_pre_post_state_fn(&_fn_info_map f_info, &fn_info fi, &ast._fn f)
 }
 
 fn fixed_point_states(_fn_info_map fm, fn_info f_info,
-		      // with no ampersands for the first two args, and likewise for find_pre_post_state_fn,
-		      // I got a segfault
                       fn (&_fn_info_map, &fn_info, &ast._fn) -> bool f,
                       &ast._fn start) -> () {
-  log("fixed_point_states: " + uistr(fm.size()) + " " + uistr(f_info.size()));
 
   auto changed = f(fm, f_info, start);
 
@@ -1061,11 +1057,11 @@ fn check_states_stmt(fn_info enclosing, &stmt s) -> () {
 
       if (!implies(pres, prec)) {
         log("check_states_stmt: unsatisfied precondition for ");
-	log_stmt(s);
-	log("Precondition: ");
-	log_bitv(enclosing, prec);
-	log("Prestate: ");
-	log_bitv(enclosing, pres);
+        log_stmt(s);
+        log("Precondition: ");
+        log_bitv(enclosing, prec);
+        log("Prestate: ");
+        log_bitv(enclosing, pres);
         fail;
       }
     }
@@ -1094,8 +1090,6 @@ fn check_item_fn_state(&_fn_info_map f_info_map, &span sp, ident i,
   /* Look up the var-to-bit-num map for this function */
   check(f_info_map.contains_key(id));
   auto f_info = f_info_map.get(id);
-
-  log("check_item_fn_state: id = " + i + " " + uistr(f_info_map.size()) + " " + uistr(f_info.size()));
 
   /* Compute the pre- and post-states for this function */
   auto g = find_pre_post_state_fn;
