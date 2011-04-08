@@ -104,6 +104,18 @@ impure fn set_postcondition(&ts_ann a, &postcond p) -> () {
   bitv.copy(p, a.conditions.postcondition);
 }
 
+// Sets all the bits in a's prestate to equal the
+// corresponding bit in p's prestate.
+impure fn set_prestate(&ts_ann a, &prestate p) -> () {
+  bitv.copy(p, a.states.prestate);
+}
+
+// Sets all the bits in a's postcondition to equal the
+// corresponding bit in p's postcondition.
+impure fn set_poststate(&ts_ann a, &poststate p) -> () {
+  bitv.copy(p, a.states.poststate);
+}
+
 // Set all the bits in p that are set in new
 impure fn extend_prestate(&prestate p, &poststate new) -> () {
   bitv.union(p, new);
@@ -119,5 +131,5 @@ fn ann_prestate(&ts_ann a) -> prestate {
 
 impure fn implies(bitv.t a, bitv.t b) -> bool {
   bitv.difference(b, a);
-  be bitv.is_false(b);
+  ret bitv.is_false(b);
 }

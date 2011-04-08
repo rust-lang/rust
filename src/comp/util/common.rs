@@ -1,5 +1,6 @@
 import std._uint;
 import std._int;
+import std._vec;
 import front.ast;
 
 
@@ -73,6 +74,17 @@ fn new_int_hash[V]() -> std.map.hashmap[int,V] {
 
 fn istr(int i) -> str {
     ret _int.to_str(i, 10u);
+}
+
+fn uistr(uint i) -> str {
+    ret _uint.to_str(i, 10u);
+}
+
+fn elt_expr(&ast.elt e) -> @ast.expr { ret e.expr; }
+
+fn elt_exprs(vec[ast.elt] elts) -> vec[@ast.expr] {
+    auto f = elt_expr;
+    be _vec.map[ast.elt, @ast.expr](f, elts);
 }
 
 //
