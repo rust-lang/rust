@@ -1,19 +1,27 @@
 #ifndef RUST_LOG_H
 #define RUST_LOG_H
 
-#define DLOG(dom, mask, ...)                      \
-  if ((dom)->get_log().is_tracing(mask)) {        \
-      (dom)->log(mask, __VA_ARGS__);              \
-  } else
-#define LOG(task, mask, ...)                      \
+#define DLOG(dom, mask, ...)                         \
+  do {                                               \
+    rust_dom *_dom = dom;                            \
+    uint32_t _mask = mask;                           \
+    if ((_dom)->get_log().is_tracing(_mask)) {       \
+        (_dom)->log(_mask, __VA_ARGS__);             \
+    }                                                \
+  } while(0)
+#define LOG(task, mask, ...)                         \
   DLOG((task)->dom, mask, __VA_ARGS__)
-#define LOG_I(task, mask, ...)                    \
-  if ((task)->dom->get_log().is_tracing(mask)) {  \
-      (task)->dom->get_log().reset_indent(0);     \
-      (task)->dom->log(mask, __VA_ARGS__);        \
-      (task)->dom->get_log().indent();            \
-  } else
-#define LOGPTR(dom, msg, ptrval)                  \
+#define LOG_I(task, mask, ...)                       \
+  do {                                               \
+    rust_task *_task = task;                         \
+    uint32_t _mask = mask;                           \
+    if ((_task)->dom->get_log().is_tracing(_mask)) { \
+      (_task)->dom->get_log().reset_indent(0);       \
+      (_task)->dom->log(_mask, __VA_ARGS__);         \
+      (_task)->dom->get_log().indent();              \
+    }                                                \
+  } while(0)
+#define LOGPTR(dom, msg, ptrval)                     \
   DLOG(dom, rust_log::MEM, "%s 0x%" PRIxPTR, msg, ptrval)
 
 class rust_dom;

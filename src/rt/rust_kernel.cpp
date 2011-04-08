@@ -1,9 +1,11 @@
 #include "rust_internal.h"
 
 #define KLOG(...)                                 \
-  if (_log.is_tracing(rust_log::KERN)) {          \
-      log(rust_log::KERN, __VA_ARGS__);           \
-  } else
+  do {                                            \
+    if (_log.is_tracing(rust_log::KERN)) {        \
+        log(rust_log::KERN, __VA_ARGS__);         \
+    }                                             \
+  } while(0)
 
 rust_kernel::rust_kernel(rust_srv *srv) :
     _region(&srv->local_region),
