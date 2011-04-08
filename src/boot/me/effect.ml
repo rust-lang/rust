@@ -278,9 +278,9 @@ let effect_checking_visitor
 
 
 let process_crate
-    (cx:ctxt)
-    (crate:Ast.crate)
-    : unit =
+    (_cx:ctxt)
+    (_crate:Ast.crate)
+    : unit = (*
   let item_auth = Hashtbl.create 0 in
   let item_effect = Hashtbl.create 0 in
   let passes =
@@ -303,6 +303,8 @@ let process_crate
     Hashtbl.iter auth_effect crate.node.Ast.crate_auth;
     run_passes cx "effect" passes
       cx.ctxt_sess.Session.sess_log_effect log crate
+  *)
+  ()
 ;;
 
 (*
