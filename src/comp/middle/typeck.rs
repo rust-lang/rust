@@ -1437,9 +1437,28 @@ mod Pushdown {
                 e_1 = ast.expr_alt(discrim, arms_1, triv_ann(t));
             }
 
+            case (ast.expr_recv(?lval_0, ?expr_0, ?ann)) {
+                auto lval_1 = pushdown_expr(fcx, next_ty_var(fcx.ccx),
+                                            lval_0);
+                auto t = expr_ty(lval_1);
+                auto expr_1 = pushdown_expr(fcx, plain_ty(ty.ty_port(t)),
+                                            expr_0);
+                e_1 = ast.expr_recv(lval_1, expr_1, ann);
+            }
+
+            case (ast.expr_send(?lval_0, ?expr_0, ?ann)) {
+                auto expr_1 = pushdown_expr(fcx, next_ty_var(fcx.ccx),
+                                            expr_0);
+                auto t = expr_ty(expr_1);
+                auto lval_1 = pushdown_expr(fcx, plain_ty(ty.ty_chan(t)),
+                                            lval_0);
+                e_1 = ast.expr_send(lval_1, expr_1, ann);
+            }
+
             case (_) {
                 fcx.ccx.sess.span_unimpl(e.span,
-                    "type unification for expression variant");
+                    #fmt("type unification for expression variant: %s",
+                         pretty.pprust.expr_to_str(e)));
                 fail;
             }
         }
@@ -2591,6 +2610,7 @@ fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
 
         case (ast.stmt_expr(?expr,?a)) {
             auto expr_t = check_expr(fcx, expr);
+            expr_t = Pushdown.pushdown_expr(fcx, expr_ty(expr_t), expr_t);
             ret @fold.respan[ast.stmt_](stmt.span, ast.stmt_expr(expr_t, a));
         }
     }
@@ -2608,7 +2628,9 @@ fn check_block(&@fn_ctxt fcx, &ast.block block) -> ast.block {
     alt (block.node.expr) {
         case (none[@ast.expr]) { /* empty */ }
         case (some[@ast.expr](?e)) {
-            expr = some[@ast.expr](check_expr(fcx, e));
+            auto expr_t = check_expr(fcx, e);
+            expr_t = Pushdown.pushdown_expr(fcx, expr_ty(expr_t), expr_t);
+            expr = some[@ast.expr](expr_t);
         }
     }
 

@@ -792,6 +792,8 @@ fn expr_ty(@ast.expr expr) -> @t {
         case (ast.expr_recv(_, _, ?ann))      { ret ann_to_type(ann); }
 
         case (ast.expr_fail(_))               { ret plain_ty(ty_nil); }
+        case (ast.expr_break(_))              { ret plain_ty(ty_nil); }
+        case (ast.expr_cont(_))               { ret plain_ty(ty_nil); }
         case (ast.expr_log(_,_))              { ret plain_ty(ty_nil); }
         case (ast.expr_check_expr(_,_))       { ret plain_ty(ty_nil); }
         case (ast.expr_ret(_,_))              { ret plain_ty(ty_nil); }
