@@ -50,6 +50,15 @@ fn expr_to_str(&@ast.expr e) -> str {
     ret writer.get_str();
 }
 
+fn pat_to_str(&@ast.pat p) -> str {
+    auto writer = io.string_writer();
+    auto s = @rec(s=pp.mkstate(writer.get_writer(), 78u),
+                  comments=option.none[vec[lexer.cmnt]],
+                  mutable cur_cmnt=0u);
+    print_pat(s, p);
+    ret writer.get_str();
+}
+
 impure fn hbox(ps s) {
     pp.hbox(s.s, indent_unit);
 }

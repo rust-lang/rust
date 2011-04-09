@@ -15,6 +15,7 @@ import front.creader;
 import util.common;
 import util.common.new_def_hash;
 import util.common.span;
+import util.typestate_ann.ts_ann;
 
 // Data types
 
@@ -59,6 +60,7 @@ tag sty {
     ty_var(int);                                    // ephemeral type var
     ty_local(ast.def_id);                           // type of a local var
     ty_param(uint);                                 // fn/tag type param
+    ty_bound_param(uint);                           // bound param, only paths
     ty_type;
     ty_native;
     // TODO: ty_fn_arg(@t), for a possibly-aliased function argument
@@ -67,10 +69,9 @@ tag sty {
 // Data structures used in type unification
 
 type unify_handler = obj {
-    fn resolve_local(ast.def_id id) -> @t;
-    fn record_local(ast.def_id id, @t ty);
-    fn unify_expected_param(uint id, @t expected, @t actual) -> unify_result;
-    fn unify_actual_param(uint id, @t expected, @t actual) -> unify_result;
+    fn resolve_local(ast.def_id id) -> option.t[@t];
+    fn record_local(ast.def_id id, @t ty);  // TODO: -> unify_result
+    fn record_param(uint index, @t binding) -> unify_result;
 };
 
 tag type_err {
@@ -249,6 +250,10 @@ fn ty_to_str(&@t typ) -> str {
         case (ty_param(?id)) {
             s += "'" + _str.unsafe_from_bytes(vec(('a' as u8) + (id as u8)));
         }
+
+        case (ty_bound_param(?id)) {
+            s += "''" + _str.unsafe_from_bytes(vec(('a' as u8) + (id as u8)));
+        }
     }
 
     ret s;
@@ -341,9 +346,10 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
             }
             ret rewrap(ty, ty_obj(new_methods));
         }
-        case (ty_var(_))        { ret fld.fold_simple_ty(ty); }
-        case (ty_local(_))      { ret fld.fold_simple_ty(ty); }
-        case (ty_param(_))      { ret fld.fold_simple_ty(ty); }
+        case (ty_var(_))         { ret fld.fold_simple_ty(ty); }
+        case (ty_local(_))       { ret fld.fold_simple_ty(ty); }
+        case (ty_param(_))       { ret fld.fold_simple_ty(ty); }
+        case (ty_bound_param(_)) { ret fld.fold_simple_ty(ty); }
     }
 
     fail;
@@ -603,6 +609,50 @@ fn ann_to_type(&ast.ann ann) -> @t {
     }
 }
 
+fn ann_to_type_params(&ast.ann ann) -> vec[@t] {
+    alt (ann) {
+        case (ast.ann_none) {
+            log "ann_to_type_params() called on node with no type params";
+            fail;
+        }
+        case (ast.ann_type(_, ?tps, _)) {
+            alt (tps) {
+                case (none[vec[@ty.t]]) {
+                    let vec[@t] result = vec();
+                    ret result;
+                }
+                case (some[vec[@ty.t]](?tps)) { ret tps; }
+            }
+        }
+    }
+}
+
+// Returns the type of an annotation, with type parameter substitutions
+// performed if applicable.
+fn ann_to_monotype(ast.ann a) -> @ty.t {
+    // TODO: Refactor to use recursive pattern matching when we're more
+    // confident that it works.
+    alt (a) {
+        case (ast.ann_none) {
+            log "ann_to_monotype() called on expression with no type!";
+            fail;
+        }
+        case (ast.ann_type(?typ, ?tps_opt, _)) {
+            alt (tps_opt) {
+                case (none[vec[@ty.t]]) { ret typ; }
+                case (some[vec[@ty.t]](?tps)) {
+                    ret substitute_type_params(tps, typ);
+                }
+            }
+        }
+    }
+}
+
+// Turns a type into an ann_type, using defaults for other fields.
+fn triv_ann(@ty.t typ) -> ast.ann {
+    ret ast.ann_type(typ, none[vec[@ty.t]], none[@ts_ann]);
+}
+
 // Returns the number of distinct type parameters in the given type.
 fn count_ty_params(@t ty) -> uint {
     state obj ty_param_counter(@mutable vec[uint] param_indices) {
@@ -629,6 +679,22 @@ fn count_ty_params(@t ty) -> uint {
     let @mutable vec[uint] param_indices = @mutable v;
     fold_ty(ty_param_counter(param_indices), ty);
     ret _vec.len[uint](*param_indices);
+}
+
+fn type_contains_vars(@t typ) -> bool {
+    state obj ty_var_counter(@mutable bool flag) {
+        fn fold_simple_ty(@t typ) -> @t {
+            alt (typ.struct) {
+            case (ty_var(_)) { *flag = true; }
+            case (_) { /* fall through */ }
+            }
+            ret typ;
+        }
+    }
+
+    let @mutable bool flag = @mutable false;
+    fold_ty(ty_var_counter(flag), typ);
+    ret *flag;
 }
 
 // Type accessors for substructures of types
@@ -739,12 +805,14 @@ fn block_ty(&ast.block b) -> @t {
     }
 }
 
+// Returns the type of a pattern as a monotype. Like @expr_ty, this function
+// doesn't provide type parameter substitutions.
 fn pat_ty(@ast.pat pat) -> @t {
     alt (pat.node) {
-        case (ast.pat_wild(?ann))           { ret ann_to_type(ann); }
-        case (ast.pat_lit(_, ?ann))         { ret ann_to_type(ann); }
-        case (ast.pat_bind(_, _, ?ann))     { ret ann_to_type(ann); }
-        case (ast.pat_tag(_, _, _, ?ann))   { ret ann_to_type(ann); }
+        case (ast.pat_wild(?ann))           { ret ann_to_monotype(ann); }
+        case (ast.pat_lit(_, ?ann))         { ret ann_to_monotype(ann); }
+        case (ast.pat_bind(_, _, ?ann))     { ret ann_to_monotype(ann); }
+        case (ast.pat_tag(_, _, _, ?ann))   { ret ann_to_monotype(ann); }
     }
     fail;   // not reached
 }
@@ -795,10 +863,83 @@ fn expr_ann(@ast.expr expr) -> option.t[ast.ann] {
     fail;
 }
 
+// Returns the type of an expression as a monotype.
+//
+// NB: This type doesn't provide type parameter substitutions; e.g. if you
+// ask for the type of "id" in "id(3)", it will return "fn(&int) -> int"
+// instead of "fn(&T) -> T with T = int". If this isn't what you want, see
+// expr_ty_params_and_ty() below.
 fn expr_ty(@ast.expr expr) -> @t {
     alt (expr_ann(expr)) {
-        case (none[ast.ann])     { ret plain_ty(ty_nil); }
-        case (some[ast.ann](?a)) { ret ann_to_type(a); }
+        case (none[ast.ann])     { ret plain_ty(ty_nil);   }
+        case (some[ast.ann](?a)) { ret ann_to_monotype(a); }
+    }
+}
+
+fn expr_ty_params_and_ty(@ast.expr expr) -> tup(vec[@t], @t) {
+    alt (expr_ann(expr)) {
+        case (none[ast.ann]) {
+            let vec[@t] tps = vec();
+            ret tup(tps, plain_ty(ty_nil));
+        }
+        case (some[ast.ann](?a)) {
+            ret tup(ann_to_type_params(a), ann_to_type(a));
+        }
+    }
+}
+
+fn expr_has_ty_params(@ast.expr expr) -> bool {
+    // FIXME: Rewrite using complex patterns when they're trustworthy.
+    alt (expr_ann(expr)) {
+        case (none[ast.ann]) { fail; }
+        case (some[ast.ann](?a)) {
+            alt (a) {
+                case (ast.ann_none) { fail; }
+                case (ast.ann_type(_, ?tps_opt, _)) {
+                    ret !option.is_none[vec[@t]](tps_opt);
+                }
+            }
+        }
+    }
+}
+
+// FIXME: At the moment this works only for call, bind, and path expressions.
+fn replace_expr_type(@ast.expr expr, tup(vec[@t], @t) new_tyt) -> @ast.expr {
+    auto new_tps;
+    if (expr_has_ty_params(expr)) {
+        new_tps = some[vec[@t]](new_tyt._0);
+    } else {
+        new_tps = none[vec[@t]];
+    }
+
+    auto ann = ast.ann_type(new_tyt._1, new_tps, none[@ts_ann]);
+
+    alt (expr.node) {
+        case (ast.expr_call(?callee, ?args, _)) {
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_call(callee, args, ann));
+        }
+        case (ast.expr_self_method(?ident, _)) {
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_self_method(ident, ann));
+        }
+        case (ast.expr_bind(?callee, ?args, _)) {
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_bind(callee, args, ann));
+        }
+        case (ast.expr_field(?e, ?i, _)) {
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_field(e, i, ann));
+        }
+        case (ast.expr_path(?p, ?dopt, _)) {
+            ret @fold.respan[ast.expr_](expr.span,
+                                        ast.expr_path(p, dopt, ann));
+        }
+        case (_) {
+            log "unhandled expr type in replace_expr_type(): " +
+                pretty.pprust.expr_to_str(expr);
+            fail;
+        }
     }
 }
 
@@ -1135,31 +1276,33 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                 ret ures_ok(actual);
             }
             case (ty.ty_local(?actual_id)) {
-                auto actual_ty = handler.resolve_local(actual_id);
-                auto result = unify_step(bindings,
-                                         expected,
-                                         actual_ty,
-                                         handler);
-                alt (result) {
-                    case (ures_ok(?result_ty)) {
-                        handler.record_local(actual_id, result_ty);
+                auto result_ty;
+                alt (handler.resolve_local(actual_id)) {
+                    case (none[@ty.t]) { result_ty = expected; }
+                    case (some[@ty.t](?actual_ty)) {
+                        auto result = unify_step(bindings,
+                                                 expected,
+                                                 actual_ty,
+                                                 handler);
+                        alt (result) {
+                            case (ures_ok(?rty)) { result_ty = rty; }
+                            case (_) { ret result; }
+                        }
                     }
-                    case (_) { /* empty */ }
                 }
-                ret result;
+
+                handler.record_local(actual_id, result_ty);
+                ret ures_ok(result_ty);
             }
-            case (ty.ty_param(?actual_id)) {
+            case (ty.ty_bound_param(?actual_id)) {
                 alt (expected.struct) {
+                    case (ty.ty_local(_)) {
+                        log "TODO: bound param unifying with local";
+                        fail;
+                    }
 
-                    // These two unify via logic lower down. Fall through.
-                    case (ty.ty_local(_)) { }
-                    case (ty.ty_var(_)) { }
-
-                    // More-concrete types can unify against params here.
                     case (_) {
-                        ret handler.unify_actual_param(actual_id,
-                                                       expected,
-                                                       actual);
+                        ret handler.record_param(actual_id, expected);
                     }
                 }
             }
@@ -1177,6 +1320,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             case (ty.ty_str)        { ret struct_cmp(expected, actual); }
             case (ty.ty_type)       { ret struct_cmp(expected, actual); }
             case (ty.ty_native)     { ret struct_cmp(expected, actual); }
+            case (ty.ty_param(_))   { ret struct_cmp(expected, actual); }
 
             case (ty.ty_tag(?expected_id, ?expected_tps)) {
                 alt (actual.struct) {
@@ -1510,23 +1654,27 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             }
 
             case (ty.ty_local(?expected_id)) {
-                auto expected_ty = handler.resolve_local(expected_id);
-                auto result = unify_step(bindings,
-                                         expected_ty,
-                                         actual,
-                                         handler);
-                alt (result) {
-                    case (ures_ok(?result_ty)) {
-                        handler.record_local(expected_id, result_ty);
+                auto result_ty;
+                alt (handler.resolve_local(expected_id)) {
+                    case (none[@ty.t]) { result_ty = actual; }
+                    case (some[@ty.t](?expected_ty)) {
+                        auto result = unify_step(bindings,
+                                                 expected_ty,
+                                                 actual,
+                                                 handler);
+                        alt (result) {
+                            case (ures_ok(?rty)) { result_ty = rty; }
+                            case (_) { ret result; }
+                        }
                     }
-                    case (_) { /* empty */ }
                 }
-                ret result;
+
+                handler.record_local(expected_id, result_ty);
+                ret ures_ok(result_ty);
             }
 
-            case (ty.ty_param(?expected_id)) {
-                ret handler.unify_expected_param(expected_id, expected,
-                                                 actual);
+            case (ty.ty_bound_param(?expected_id)) {
+                ret handler.record_param(expected_id, actual);
             }
         }
 
@@ -1599,7 +1747,8 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
     alt (ures) {
     case (ures_ok(?t)) {
         auto set_types = unify_sets(bindings);
-        ret ures_ok(substitute(bindings, set_types, t));
+        auto t2 = substitute(bindings, set_types, t);
+        ret ures_ok(t2);
     }
     case (_) { ret ures; }
     }
@@ -1652,64 +1801,44 @@ fn type_err_to_str(&ty.type_err err) -> str {
     }
 }
 
-// Type parameter resolution, used in translation and typechecking
-
-fn resolve_ty_params(ty_param_count_and_ty ty_params_and_polyty,
-                     @t monoty) -> vec[@t] {
-    // TODO: Use a vector, not a hashmap here.
-    obj resolve_ty_params_handler(@hashmap[uint,@t] bindings) {
-        fn resolve_local(ast.def_id id) -> @t { log "resolve local"; fail; }
-        fn record_local(ast.def_id id, @t ty) { log "record local"; fail; }
-        fn unify_expected_param(uint id, @t expected, @t actual)
-                -> unify_result {
-            bindings.insert(id, actual);
-            ret ures_ok(actual);
-        }
-        fn unify_actual_param(uint id, @t expected, @t actual)
-                -> unify_result {
-            bindings.insert(id, expected);
-            ret ures_ok(expected);
-        }
-    }
-
-    auto bindings = @common.new_uint_hash[@t]();
-    auto handler = resolve_ty_params_handler(bindings);
-
-    auto unify_res = unify(ty_params_and_polyty._1, monoty, handler);
-    alt (unify_res) {
-        case (ures_ok(_))       { /* fall through */ }
-        case (ures_err(_,?exp,?act))  {
-            log "resolve_ty_params mismatch: " + ty_to_str(exp) + " " +
-                ty_to_str(act);
-            fail;
-        }
-    }
-
-    let vec[@t] result_tys = vec();
-    auto ty_param_count = ty_params_and_polyty._0;
-    auto i = 0u;
-    while (i < ty_param_count) {
-        check (bindings.contains_key(i));
-        result_tys += vec(bindings.get(i));
-        i += 1u;
-    }
-
-    ret result_tys;
-}
-
-// Performs type parameter replacement using the supplied mapping from
+// Performs bound type parameter replacement using the supplied mapping from
 // parameter IDs to types.
 fn substitute_type_params(vec[@t] bindings, @t typ) -> @t {
     state obj param_replacer(vec[@t] bindings) {
         fn fold_simple_ty(@t typ) -> @t {
             alt (typ.struct) {
-                case (ty_param(?param_index)) { ret bindings.(param_index); }
+                case (ty_bound_param(?param_index)) {
+                    ret bindings.(param_index);
+                }
                 case (_) { ret typ; }
             }
         }
     }
     auto replacer = param_replacer(bindings);
     ret fold_ty(replacer, typ);
+}
+
+// Converts type parameters in a type to bound type parameters.
+fn bind_params_in_type(@t typ) -> @t {
+    state obj folder(() env) {
+        fn fold_simple_ty(@t typ) -> @t {
+            alt (typ.struct) {
+                case (ty_bound_param(?index)) {
+                    log "bind_params_in_type() called on type that already " +
+                        "has bound params in it";
+                    fail;
+                }
+                case (ty_param(?index)) {
+                    ret plain_ty(ty_bound_param(index));
+                }
+                case (_) {
+                    ret typ;
+                }
+            }
+        }
+    }
+
+    ret fold_ty(folder(()), typ);
 }
 
 

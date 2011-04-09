@@ -742,6 +742,10 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t, bool boxed) -> TypeRef {
         case (ty.ty_param(_)) {
             llty = T_i8();
         }
+        case (ty.ty_bound_param(_)) {
+            log "ty_bound_param in trans.type_of";
+            fail;
+        }
         case (ty.ty_type) { llty = T_ptr(T_tydesc(cx.tn)); }
     }
 
@@ -1144,6 +1148,7 @@ fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
         auto tup_ty = ty.plain_tup_ty(args);
 
         // Perform any type parameter substitutions.
+        tup_ty = ty.bind_params_in_type(tup_ty);
         tup_ty = ty.substitute_type_params(subtys, tup_ty);
 
         // Here we possibly do a recursive call.
@@ -1216,7 +1221,8 @@ fn dynamic_size_of(@block_ctxt cx, @ty.t t) -> result {
                 let vec[@ty.t] raw_tys = variant.args;
                 let vec[@ty.t] tys = vec();
                 for (@ty.t raw_ty in raw_tys) {
-                    auto t = ty.substitute_type_params(tps, raw_ty);
+                    auto t = ty.bind_params_in_type(raw_ty);
+                    t = ty.substitute_type_params(tps, t);
                     tys += vec(t);
                 }
 
@@ -1390,7 +1396,8 @@ fn GEP_tag(@block_ctxt cx,
     auto i = 0;
     let vec[@ty.t] true_arg_tys = vec();
     for (@ty.t aty in arg_tys) {
-        auto arg_ty = ty.substitute_type_params(ty_substs, aty);
+        auto arg_ty = ty.bind_params_in_type(aty);
+        arg_ty = ty.substitute_type_params(ty_substs, arg_ty);
         true_arg_tys += vec(arg_ty);
         if (i == ix) {
             elem_ty = arg_ty;
@@ -2118,8 +2125,9 @@ fn iter_structural_ty_full(@block_ctxt cx,
                                 auto llfldp_b = rslt.val;
                                 variant_cx = rslt.bcx;
 
-                                auto ty_subst =
-                                    ty.substitute_type_params(tps, a.ty);
+                                auto ty_subst = ty.bind_params_in_type(a.ty);
+                                ty_subst =
+                                    ty.substitute_type_params(tps, ty_subst);
 
                                 auto llfld_a =
                                     load_if_immediate(variant_cx,
@@ -2501,15 +2509,10 @@ fn target_type(@crate_ctxt cx, @ty.t t) -> @ty.t {
     ret t;
 }
 
+
+// Converts an annotation to a type
 fn node_ann_type(@crate_ctxt cx, &ast.ann a) -> @ty.t {
-    alt (a) {
-        case (ast.ann_none) {
-            cx.sess.bug("missing type annotation");
-        }
-        case (ast.ann_type(?t, _, _)) {
-            ret target_type(cx, t);
-        }
-    }
+    ret target_type(cx, ty.ann_to_monotype(a));
 }
 
 fn node_ann_ty_params(&ast.ann a) -> vec[@ty.t] {
