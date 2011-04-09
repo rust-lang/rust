@@ -32,12 +32,12 @@ const int vec_elt_data = 4;
 const int tydesc_field_first_param = 0;
 const int tydesc_field_size = 1;
 const int tydesc_field_align = 2;
-const int tydesc_field_take_glue_off = 3;
-const int tydesc_field_drop_glue_off = 4;
-const int tydesc_field_free_glue_off = 5;
-const int tydesc_field_sever_glue_off = 6;
-const int tydesc_field_mark_glue_off = 7;
-const int tydesc_field_obj_drop_glue_off = 8;
+const int tydesc_field_take_glue = 3;
+const int tydesc_field_drop_glue = 4;
+const int tydesc_field_free_glue = 5;
+const int tydesc_field_sever_glue = 6;
+const int tydesc_field_mark_glue = 7;
+const int tydesc_field_obj_drop_glue = 8;
 const int tydesc_field_is_stateful = 9;
 
 

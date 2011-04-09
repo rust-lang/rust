@@ -331,7 +331,7 @@ fn T_glue_fn(type_names tn) -> TypeRef {
                                    _vec.buf[TypeRef](tydesc_elts));
     auto t =
         llvm.LLVMGetElementType
-        (tydesc_elts.(abi.tydesc_field_drop_glue_off));
+        (tydesc_elts.(abi.tydesc_field_drop_glue));
     tn.associate(s, t);
     ret t;
 }
@@ -355,12 +355,12 @@ fn T_tydesc(type_names tn) -> TypeRef {
     auto tydesc = T_struct(vec(tydescpp,          // first_param
                                T_int(),           // size
                                T_int(),           // align
-                               glue_fn_ty,        // take_glue_off
-                               glue_fn_ty,        // drop_glue_off
-                               glue_fn_ty,        // free_glue_off
-                               glue_fn_ty,        // sever_glue_off
-                               glue_fn_ty,        // mark_glue_off
-                               glue_fn_ty,        // obj_drop_glue_off
+                               glue_fn_ty,        // take_glue
+                               glue_fn_ty,        // drop_glue
+                               glue_fn_ty,        // free_glue
+                               glue_fn_ty,        // sever_glue
+                               glue_fn_ty,        // mark_glue
+                               glue_fn_ty,        // obj_drop_glue
                                glue_fn_ty));      // is_stateful
 
     llvm.LLVMRefineType(abs_tydesc, tydesc);
@@ -414,11 +414,11 @@ fn T_crate(type_names tn) -> TypeRef {
                           T_int(),      // size_t debug_abbrev_sz
                           T_int(),      // ptrdiff_t debug_info_off
                           T_int(),      // size_t debug_info_sz
-                          T_int(),      // size_t activate_glue_off
-                          T_int(),      // size_t yield_glue_off
-                          T_int(),      // size_t unwind_glue_off
-                          T_int(),      // size_t gc_glue_off
-                          T_int(),      // size_t main_exit_task_glue_off
+                          T_int(),      // size_t activate_glue
+                          T_int(),      // size_t yield_glue
+                          T_int(),      // size_t unwind_glue
+                          T_int(),      // size_t gc_glue
+                          T_int(),      // size_t main_exit_task_glue
                           T_int(),      // int n_rust_syms
                           T_int(),      // int n_c_syms
                           T_int(),      // int n_libs
@@ -1576,29 +1576,19 @@ fn declare_tydesc(@crate_ctxt cx, @ty.t t) {
     }
 
     auto glue_fn_ty = T_ptr(T_glue_fn(cx.tn));
-
-    // FIXME: this adjustment has to do with the ridiculous encoding of
-    // glue-pointer-constants in the tydesc records: They are tydesc-relative
-    // displacements.  This is purely for compatibility with rustboot and
-    // should go when it is discarded.
-    fn off(ValueRef tydescp,
-           ValueRef gluefn) -> ValueRef {
-        ret i2p(llvm.LLVMConstSub(p2i(gluefn), p2i(tydescp)),
-                val_ty(gluefn));
-    }
-
+ 
     auto name = sanitize(cx.names.next("tydesc_" + ty.ty_to_str(t)));
     auto gvar = llvm.LLVMAddGlobal(cx.llmod, T_tydesc(cx.tn),
                                    _str.buf(name));
     auto tydesc = C_struct(vec(C_null(T_ptr(T_ptr(T_tydesc(cx.tn)))),
                                llsize,
                                llalign,
-                               off(gvar, take_glue),  // take_glue_off
-                               off(gvar, drop_glue),  // drop_glue_off
-                               C_null(glue_fn_ty),    // free_glue_off
-                               C_null(glue_fn_ty),    // sever_glue_off
-                               C_null(glue_fn_ty),    // mark_glue_off
-                               C_null(glue_fn_ty),    // obj_drop_glue_off
+                               take_glue,             // take_glue
+                               drop_glue,             // drop_glue
+                               C_null(glue_fn_ty),    // free_glue
+                               C_null(glue_fn_ty),    // sever_glue
+                               C_null(glue_fn_ty),    // mark_glue
+                               C_null(glue_fn_ty),    // obj_drop_glue
                                C_null(glue_fn_ty)));  // is_stateful
 
     llvm.LLVMSetInitializer(gvar, tydesc);
@@ -1789,7 +1779,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                                      C_int(abi.obj_body_elt_tydesc)));
 
                 call_tydesc_glue_full(cx, body, cx.build.Load(tydescptr),
-                                      abi.tydesc_field_drop_glue_off);
+                                      abi.tydesc_field_drop_glue);
 
                 // Then free the body.
                 // FIXME: switch gc/non-gc on layer of the type.
@@ -1827,7 +1817,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                                      C_int(abi.closure_elt_tydesc)));
 
                 call_tydesc_glue_full(cx, bindings, cx.build.Load(tydescptr),
-                                      abi.tydesc_field_drop_glue_off);
+                                      abi.tydesc_field_drop_glue);
 
 
                 // Then free the body.
@@ -2316,14 +2306,6 @@ fn call_tydesc_glue_full(@block_ctxt cx, ValueRef v,
     auto llfnptr = cx.build.GEP(tydesc, vec(C_int(0), C_int(field)));
     auto llfn = cx.build.Load(llfnptr);
 
-    // FIXME: this adjustment has to do with the ridiculous encoding of
-    // glue-pointer-constants in the tydesc records: They are tydesc-relative
-    // displacements.  This is purely for compatibility with rustboot and
-    // should go when it is discarded.
-    llfn = vi2p(cx, cx.build.Add(vp2i(cx, llfn),
-                                 vp2i(cx, tydesc)),
-                val_ty(llfn));
-
     cx.build.FastCall(llfn, vec(C_null(T_ptr(T_nil())),
                                 cx.fcx.lltaskptr,
                                 C_null(T_ptr(T_nil())),
@@ -2340,7 +2322,7 @@ fn take_ty(@block_ctxt cx,
                     ValueRef v,
                     @ty.t t) -> result {
     if (!ty.type_is_scalar(t)) {
-        call_tydesc_glue(cx, v, t, abi.tydesc_field_take_glue_off);
+        call_tydesc_glue(cx, v, t, abi.tydesc_field_take_glue);
     }
     ret res(cx, C_nil());
 }
@@ -2362,7 +2344,7 @@ fn drop_ty(@block_ctxt cx,
            @ty.t t) -> result {
 
     if (!ty.type_is_scalar(t)) {
-        call_tydesc_glue(cx, v, t, abi.tydesc_field_drop_glue_off);
+        call_tydesc_glue(cx, v, t, abi.tydesc_field_drop_glue);
     }
     ret res(cx, C_nil());
 }
@@ -6939,7 +6921,7 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
                     ValueRef dst, ValueRef src) -> result {
             call_tydesc_glue_full(cx, src,
                                   elt_tydesc,
-                                  abi.tydesc_field_take_glue_off);
+                                  abi.tydesc_field_take_glue);
             ret res(cx, src);
         }
 
