@@ -21,55 +21,37 @@ import std.option;
 import std.option.none;
 import std.option.some;
 
+import std.ExtFmt;
+import std.ExtFmt.signedness;
+import std.ExtFmt.signed;
+import std.ExtFmt.unsigned;
+import std.ExtFmt.caseness;
+import std.ExtFmt.case_upper;
+import std.ExtFmt.case_lower;
+import std.ExtFmt.ty;
+import std.ExtFmt.ty_bool;
+import std.ExtFmt.ty_str;
+import std.ExtFmt.ty_char;
+import std.ExtFmt.ty_int;
+import std.ExtFmt.ty_bits;
+import std.ExtFmt.ty_hex;
+import std.ExtFmt.flag;
+import std.ExtFmt.flag_left_justify;
+import std.ExtFmt.flag_left_zero_pad;
+import std.ExtFmt.flag_left_space_pad;
+import std.ExtFmt.flag_plus_if_positive;
+import std.ExtFmt.flag_alternate;
+import std.ExtFmt.count;
+import std.ExtFmt.count_is;
+import std.ExtFmt.count_is_param;
+import std.ExtFmt.count_is_next_param;
+import std.ExtFmt.count_implied;
+import std.ExtFmt.conv;
+import std.ExtFmt.piece;
+import std.ExtFmt.piece_string;
+import std.ExtFmt.piece_conv;
+
 export expand_syntax_ext;
-
-tag signedness {
-    signed;
-    unsigned;
-}
-
-tag caseness {
-    case_upper;
-    case_lower;
-}
-
-tag ty {
-    ty_bool;
-    ty_str;
-    ty_char;
-    ty_int(signedness);
-    ty_bits;
-    ty_hex(caseness);
-    // FIXME: More types
-}
-
-tag flag {
-    flag_left_justify;
-    flag_left_zero_pad;
-    flag_left_space_pad;
-    flag_plus_if_positive;
-    flag_alternate;
-}
-
-tag count {
-    count_is(int);
-    count_is_param(int);
-    count_is_next_param;
-    count_implied;
-}
-
-// A formatted conversion from an expression to a string
-type conv = rec(option.t[int] param,
-                vec[flag] flags,
-                count width,
-                count precision,
-                ty ty);
-
-// A fragment of the output sequence
-tag piece {
-    piece_string(str);
-    piece_conv(conv);
-}
 
 // TODO: Need to thread parser through here to handle errors correctly
 fn expand_syntax_ext(vec[@ast.expr] args,
