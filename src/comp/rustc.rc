@@ -18,6 +18,7 @@ mod middle {
     mod fold;
     mod metadata;
     mod resolve;
+    mod capture;
     mod trans;
     mod ty;
     mod typeck;

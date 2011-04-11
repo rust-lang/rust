@@ -6,6 +6,7 @@ import front.token;
 import front.eval;
 import middle.trans;
 import middle.resolve;
+import middle.capture;
 import middle.ty;
 import middle.typeck;
 import middle.typestate_check;
@@ -67,6 +68,7 @@ impure fn compile_input(session.session sess,
     if (parse_only) {ret;}
     crate = creader.read_crates(sess, crate, library_search_paths);
     crate = resolve.resolve_crate(sess, crate);
+    capture.check_for_captures(sess, crate);
     auto typeck_result = typeck.check_crate(sess, crate);
     crate = typeck_result._0;
     auto type_cache = typeck_result._1;
