@@ -673,7 +673,7 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t, bool boxed) -> TypeRef {
         case (ty.ty_char) { llty = T_char(); }
         case (ty.ty_str) { llty = T_ptr(T_str()); }
         case (ty.ty_tag(_, _)) {
-            if (boxed) {
+            if (ty.type_has_dynamic_size(t)) {
                 llty = T_opaque_tag(cx.tn);
             } else {
                 auto size = static_size_of_tag(cx, t);
@@ -1128,7 +1128,25 @@ fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
     auto max_size = 0u;
     auto variants = tag_variants(cx, tid);
     for (variant_info variant in variants) {
-        auto tup_ty = ty.plain_tup_ty(variant.args);
+
+        let vec[@ty.t] args = vec();
+        for (@ty.t t in variant.args) {
+            alt (t.struct) {
+                // NB: We're just going for 'size' here, so we can do a little
+                // faking work here and substitute all boxes to boxed ints;
+                // this will break any tag cycles we might otherwise traverse
+                // (which would cause infinite recursion while measuring
+                // size).
+                case (ty.ty_box(_)) {
+                    args += vec(ty.plain_box_ty(ty.plain_ty(ty.ty_int),
+                                                ast.imm));
+                }
+                case (_) {
+                    args += vec(t);
+                }
+            }
+        }
+        auto tup_ty = ty.plain_tup_ty(args);
 
         // Perform any type parameter substitutions.
         tup_ty = ty.substitute_ty_params(ty_params, subtys, tup_ty);
@@ -4420,9 +4438,6 @@ fn trans_args(@block_ctxt cx,
                 }
             }
 
-            val = bcx.build.PointerCast(val, lldestty);
-        } else if (mode == ast.alias) {
-            auto lldestty = arg_tys.(i);
             val = bcx.build.PointerCast(val, lldestty);
         }
 
