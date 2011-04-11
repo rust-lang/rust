@@ -29,3 +29,5 @@ extern "C" const char *LLVMRustGetLastError(void) {
   return LLVMRustError;
 }
 
+LLVMOpaqueObjectFile* (*RustHackToFetchObjectO)(LLVMOpaqueMemoryBuffer*)
+  = LLVMCreateObjectFile;
