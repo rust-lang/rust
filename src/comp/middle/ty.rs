@@ -757,50 +757,57 @@ fn pat_ty(@ast.pat pat) -> @t {
     fail;   // not reached
 }
 
-fn expr_ty(@ast.expr expr) -> @t {
+fn expr_ann(@ast.expr expr) -> option.t[ast.ann] {
     alt (expr.node) {
-        case (ast.expr_vec(_, _, ?ann))       { ret ann_to_type(ann); }
-        case (ast.expr_tup(_, ?ann))          { ret ann_to_type(ann); }
-        case (ast.expr_rec(_, _, ?ann))       { ret ann_to_type(ann); }
-        case (ast.expr_bind(_, _, ?ann))      { ret ann_to_type(ann); }
-        case (ast.expr_call(_, _, ?ann))      { ret ann_to_type(ann); }
-        case (ast.expr_self_method(_, ?ann))  { ret ann_to_type(ann); }
+        case (ast.expr_vec(_, _, ?ann))       { ret some[ast.ann](ann); }
+        case (ast.expr_tup(_, ?ann))          { ret some[ast.ann](ann); }
+        case (ast.expr_rec(_, _, ?ann))       { ret some[ast.ann](ann); }
+        case (ast.expr_bind(_, _, ?ann))      { ret some[ast.ann](ann); }
+        case (ast.expr_call(_, _, ?ann))      { ret some[ast.ann](ann); }
+        case (ast.expr_self_method(_, ?ann))  { ret some[ast.ann](ann); }
         case (ast.expr_spawn(_, _, _, _, ?ann))
-                                              { ret ann_to_type(ann); }
-        case (ast.expr_binary(_, _, _, ?ann)) { ret ann_to_type(ann); }
-        case (ast.expr_unary(_, _, ?ann))     { ret ann_to_type(ann); }
-        case (ast.expr_lit(_, ?ann))          { ret ann_to_type(ann); }
-        case (ast.expr_cast(_, _, ?ann))      { ret ann_to_type(ann); }
-        case (ast.expr_if(_, _, _, ?ann))     { ret ann_to_type(ann); }
-        case (ast.expr_for(_, _, _, ?ann))    { ret ann_to_type(ann); }
+                                              { ret some[ast.ann](ann); }
+        case (ast.expr_binary(_, _, _, ?ann)) { ret some[ast.ann](ann); }
+        case (ast.expr_unary(_, _, ?ann))     { ret some[ast.ann](ann); }
+        case (ast.expr_lit(_, ?ann))          { ret some[ast.ann](ann); }
+        case (ast.expr_cast(_, _, ?ann))      { ret some[ast.ann](ann); }
+        case (ast.expr_if(_, _, _, ?ann))     { ret some[ast.ann](ann); }
+        case (ast.expr_for(_, _, _, ?ann))    { ret some[ast.ann](ann); }
         case (ast.expr_for_each(_, _, _, ?ann))
-                                              { ret ann_to_type(ann); }
-        case (ast.expr_while(_, _, ?ann))     { ret ann_to_type(ann); }
-        case (ast.expr_do_while(_, _, ?ann))  { ret ann_to_type(ann); }
-        case (ast.expr_alt(_, _, ?ann))       { ret ann_to_type(ann); }
-        case (ast.expr_block(_, ?ann))        { ret ann_to_type(ann); }
-        case (ast.expr_assign(_, _, ?ann))    { ret ann_to_type(ann); }
+                                              { ret some[ast.ann](ann); }
+        case (ast.expr_while(_, _, ?ann))     { ret some[ast.ann](ann); }
+        case (ast.expr_do_while(_, _, ?ann))  { ret some[ast.ann](ann); }
+        case (ast.expr_alt(_, _, ?ann))       { ret some[ast.ann](ann); }
+        case (ast.expr_block(_, ?ann))        { ret some[ast.ann](ann); }
+        case (ast.expr_assign(_, _, ?ann))    { ret some[ast.ann](ann); }
         case (ast.expr_assign_op(_, _, _, ?ann))
-                                              { ret ann_to_type(ann); }
-        case (ast.expr_field(_, _, ?ann))     { ret ann_to_type(ann); }
-        case (ast.expr_index(_, _, ?ann))     { ret ann_to_type(ann); }
-        case (ast.expr_path(_, _, ?ann))      { ret ann_to_type(ann); }
-        case (ast.expr_ext(_, _, _, _, ?ann)) { ret ann_to_type(ann); }
-        case (ast.expr_port(?ann))            { ret ann_to_type(ann); }
-        case (ast.expr_chan(_, ?ann))         { ret ann_to_type(ann); }
-        case (ast.expr_send(_, _, ?ann))      { ret ann_to_type(ann); }
-        case (ast.expr_recv(_, _, ?ann))      { ret ann_to_type(ann); }
+                                              { ret some[ast.ann](ann); }
+        case (ast.expr_field(_, _, ?ann))     { ret some[ast.ann](ann); }
+        case (ast.expr_index(_, _, ?ann))     { ret some[ast.ann](ann); }
+        case (ast.expr_path(_, _, ?ann))      { ret some[ast.ann](ann); }
+        case (ast.expr_ext(_, _, _, _, ?ann)) { ret some[ast.ann](ann); }
+        case (ast.expr_port(?ann))            { ret some[ast.ann](ann); }
+        case (ast.expr_chan(_, ?ann))         { ret some[ast.ann](ann); }
+        case (ast.expr_send(_, _, ?ann))      { ret some[ast.ann](ann); }
+        case (ast.expr_recv(_, _, ?ann))      { ret some[ast.ann](ann); }
 
-        case (ast.expr_fail(_))               { ret plain_ty(ty_nil); }
-        case (ast.expr_break(_))              { ret plain_ty(ty_nil); }
-        case (ast.expr_cont(_))               { ret plain_ty(ty_nil); }
-        case (ast.expr_log(_,_))              { ret plain_ty(ty_nil); }
-        case (ast.expr_check_expr(_,_))       { ret plain_ty(ty_nil); }
-        case (ast.expr_ret(_,_))              { ret plain_ty(ty_nil); }
-        case (ast.expr_put(_,_))              { ret plain_ty(ty_nil); }
-        case (ast.expr_be(_,_))               { ret plain_ty(ty_nil); }
+        case (ast.expr_fail(_))               { ret none[ast.ann]; }
+        case (ast.expr_break(_))              { ret none[ast.ann]; }
+        case (ast.expr_cont(_))               { ret none[ast.ann]; }
+        case (ast.expr_log(_,_))              { ret none[ast.ann]; }
+        case (ast.expr_check_expr(_,_))       { ret none[ast.ann]; }
+        case (ast.expr_ret(_,_))              { ret none[ast.ann]; }
+        case (ast.expr_put(_,_))              { ret none[ast.ann]; }
+        case (ast.expr_be(_,_))               { ret none[ast.ann]; }
     }
     fail;
+}
+
+fn expr_ty(@ast.expr expr) -> @t {
+    alt (expr_ann(expr)) {
+        case (none[ast.ann])     { ret plain_ty(ty_nil); }
+        case (some[ast.ann](?a)) { ret ann_to_type(a); }
+    }
 }
 
 // Expression utilities
