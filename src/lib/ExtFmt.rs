@@ -258,3 +258,14 @@ fn parse_type(str s, uint i, uint lim) -> tup(ty, uint) {
 
     ret tup(t, i + 1u);
 }
+
+// Functions used by the fmt extension at runtime
+mod RT {
+  fn int_to_str(int i) -> str {
+    ret _int.to_str(i, 10u);
+  }
+
+  fn uint_to_str(uint u) -> str {
+    ret _uint.to_str(u, 10u);
+  }
+}

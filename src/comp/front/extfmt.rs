@@ -168,15 +168,13 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
             case (ty_int(?sign)) {
                 alt (sign) {
                     case (signed) {
-                        let vec[str] path = vec("std", "_int", "to_str");
-                        auto radix_expr = make_new_uint(arg.span, 10u);
-                        let vec[@ast.expr] args = vec(arg, radix_expr);
+                        let vec[str] path = vec("std", "ExtFmt", "RT", "int_to_str");
+                        let vec[@ast.expr] args = vec(arg);
                         ret make_call(arg.span, path, args);
                     }
                     case (unsigned) {
-                        let vec[str] path = vec("std", "_uint", "to_str");
-                        auto radix_expr = make_new_uint(arg.span, 10u);
-                        let vec[@ast.expr] args = vec(arg, radix_expr);
+                        let vec[str] path = vec("std", "ExtFmt", "RT", "int_to_str");
+                        let vec[@ast.expr] args = vec(arg);
                         ret make_call(arg.span, path, args);
                     }
                 }
