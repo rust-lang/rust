@@ -261,11 +261,20 @@ fn parse_type(str s, uint i, uint lim) -> tup(ty, uint) {
 
 // Functions used by the fmt extension at runtime
 mod RT {
-  fn int_to_str(int i) -> str {
-    ret _int.to_str(i, 10u);
-  }
+    fn int_to_str(int i) -> str {
+        ret _int.to_str(i, 10u);
+    }
 
-  fn uint_to_str(uint u) -> str {
-    ret _uint.to_str(u, 10u);
-  }
+    fn uint_to_str(uint u) -> str {
+        ret _uint.to_str(u, 10u);
+    }
 }
+
+// Local Variables:
+// mode: rust;
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
