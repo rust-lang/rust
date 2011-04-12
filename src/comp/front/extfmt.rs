@@ -50,7 +50,7 @@ import std.ExtFmt.conv;
 import std.ExtFmt.piece;
 import std.ExtFmt.piece_string;
 import std.ExtFmt.piece_conv;
-import std.ExtFmt.parse_fmt_string;
+import std.ExtFmt.CT.parse_fmt_string;
 
 export expand_syntax_ext;
 
