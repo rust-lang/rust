@@ -125,6 +125,7 @@ impure fn print_type(ps s, &@ast.ty ty) {
         case (ast.ty_bool) {wrd(s.s, "bool");}
         case (ast.ty_int) {wrd(s.s, "int");}
         case (ast.ty_uint) {wrd(s.s, "uint");}
+        case (ast.ty_float) {wrd(s.s, "float");}
         case (ast.ty_machine(?tm)) {wrd(s.s, common.ty_mach_to_str(tm));}
         case (ast.ty_char) {wrd(s.s, "char");}
         case (ast.ty_str) {wrd(s.s, "str");}
