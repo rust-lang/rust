@@ -58,6 +58,7 @@ LLVMAddRaiseAllocationsPass
 LLVMAddReassociatePass
 LLVMAddSCCPPass
 LLVMAddScalarReplAggregatesPass
+LLVMAddScalarReplAggregatesPassSSA
 LLVMAddScalarReplAggregatesPassWithThreshold
 LLVMAddSimplifyLibCallsPass
 LLVMAddStripDeadPrototypesPass
