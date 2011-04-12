@@ -264,15 +264,15 @@ mod CT {
 
 // Functions used by the fmt extension at runtime
 mod RT {
-    fn int_to_str(int i) -> str {
+    fn conv_int(int i) -> str {
         ret _int.to_str(i, 10u);
     }
 
-    fn uint_to_str(uint u) -> str {
+    fn conv_uint(uint u) -> str {
         ret _uint.to_str(u, 10u);
     }
 
-    fn bool_to_str(bool b) -> str {
+    fn conv_bool(bool b) -> str {
         if (b) {
             ret "true";
         } else {
@@ -280,7 +280,7 @@ mod RT {
         }
     }
 
-    fn char_to_str(char c) -> str {
+    fn conv_char(char c) -> str {
         ret _str.from_char(c);
     }
 }

@@ -125,6 +125,14 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         ret sp_callexpr;
     }
 
+    fn make_conv_call(common.span sp, str conv_type,
+                      @ast.expr arg) -> @ast.expr {
+        auto fname = "conv_" + conv_type;
+        let vec[str] path = vec("std", "ExtFmt", "RT", fname);
+        let vec[@ast.expr] args = vec(arg);
+        ret make_call(arg.span, path, args);
+    }
+
     fn make_new_conv(conv cnv, @ast.expr arg) -> @ast.expr {
 
         auto unsupported = "conversion not supported in #fmt string";
@@ -168,26 +176,18 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
             case (ty_int(?sign)) {
                 alt (sign) {
                     case (signed) {
-                        let vec[str] path = vec("std", "ExtFmt", "RT", "int_to_str");
-                        let vec[@ast.expr] args = vec(arg);
-                        ret make_call(arg.span, path, args);
+                        ret make_conv_call(arg.span, "int", arg);
                     }
                     case (unsigned) {
-                        let vec[str] path = vec("std", "ExtFmt", "RT", "int_to_str");
-                        let vec[@ast.expr] args = vec(arg);
-                        ret make_call(arg.span, path, args);
+                        ret make_conv_call(arg.span, "uint", arg);
                     }
                 }
             }
             case (ty_bool) {
-                let vec[str] path = vec("std", "ExtFmt", "RT", "bool_to_str");
-                let vec[@ast.expr] args = vec(arg);
-                ret make_call(arg.span, path, args);
+                ret make_conv_call(arg.span, "bool", arg);
             }
             case (ty_char) {
-                let vec[str] path = vec("std", "ExtFmt", "RT", "char_to_str");
-                let vec[@ast.expr] args = vec(arg);
-                ret make_call(arg.span, path, args);
+                ret make_conv_call(arg.span, "char", arg);
             }
             case (_) {
                 log unsupported;
