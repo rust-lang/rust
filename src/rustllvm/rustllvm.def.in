@@ -46,6 +46,7 @@ LLVMAddInternalizePass
 LLVMAddJumpThreadingPass
 LLVMAddLICMPass
 LLVMAddLoopDeletionPass
+LLVMAddLoopIdiomPass
 LLVMAddLoopRotatePass
 LLVMAddLoopUnrollPass
 LLVMAddLoopUnswitchPass
