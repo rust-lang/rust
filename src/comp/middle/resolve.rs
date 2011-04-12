@@ -398,19 +398,22 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
         }
     }
 
-    fn handle_fn_decl(ast.ident i, &ast.fn_decl decl,
+    fn handle_fn_decl(ast.ident identifier, &ast.fn_decl decl,
                       &vec[ast.ty_param] ty_params) -> option.t[def_wrap] {
         for (ast.arg a in decl.inputs) {
-            if (_str.eq(a.ident, i)) {
+            if (_str.eq(a.ident, identifier)) {
                 auto t = ast.def_arg(a.id);
                 ret some(def_wrap_other(t));
             }
         }
+
+        auto i = 0u;
         for (ast.ty_param tp in ty_params) {
-            if (_str.eq(tp.ident, i)) {
-                auto t = ast.def_ty_arg(tp.id);
+            if (_str.eq(tp, identifier)) {
+                auto t = ast.def_ty_arg(i);
                 ret some(def_wrap_other(t));
             }
+            i += 1u;
         }
         ret none[def_wrap];
     }
@@ -450,53 +453,60 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
         }
     }
 
-    fn in_scope(&session.session sess, ast.ident i, &scope s, namespace ns)
-            -> option.t[def_wrap] {
+    fn in_scope(&session.session sess, ast.ident identifier, &scope s,
+            namespace ns) -> option.t[def_wrap] {
         alt (s) {
 
             case (scope_crate(?c)) {
-                ret check_mod(i, c.node.module, ns);
+                ret check_mod(identifier, c.node.module, ns);
             }
 
             case (scope_item(?it)) {
                 alt (it.node) {
                     case (ast.item_fn(_, ?f, ?ty_params, _, _)) {
-                        ret handle_fn_decl(i, f.decl, ty_params);
+                        ret handle_fn_decl(identifier, f.decl, ty_params);
                     }
                     case (ast.item_obj(_, ?ob, ?ty_params, _, _)) {
                         for (ast.obj_field f in ob.fields) {
-                            if (_str.eq(f.ident, i)) {
+                            if (_str.eq(f.ident, identifier)) {
                                 auto t = ast.def_obj_field(f.id);
                                 ret some(def_wrap_other(t));
                             }
                         }
+
+                        auto i = 0u;
                         for (ast.ty_param tp in ty_params) {
-                            if (_str.eq(tp.ident, i)) {
-                                auto t = ast.def_ty_arg(tp.id);
+                            if (_str.eq(tp, identifier)) {
+                                auto t = ast.def_ty_arg(i);
                                 ret some(def_wrap_other(t));
                             }
+                            i += 1u;
                         }
                     }
                     case (ast.item_tag(_,?variants,?ty_params,?tag_id,_)) {
+                        auto i = 0u;
                         for (ast.ty_param tp in ty_params) {
-                            if (_str.eq(tp.ident, i)) {
-                                auto t = ast.def_ty_arg(tp.id);
+                            if (_str.eq(tp, identifier)) {
+                                auto t = ast.def_ty_arg(i);
                                 ret some(def_wrap_other(t));
                             }
+                            i += 1u;
                         }
                     }
                     case (ast.item_mod(_, ?m, _)) {
-                        ret check_mod(i, m, ns);
+                        ret check_mod(identifier, m, ns);
                     }
                     case (ast.item_native_mod(_, ?m, _)) {
-                        ret check_native_mod(i, m);
+                        ret check_native_mod(identifier, m);
                     }
                     case (ast.item_ty(_, _, ?ty_params, _, _)) {
+                        auto i = 0u;
                         for (ast.ty_param tp in ty_params) {
-                            if (_str.eq(tp.ident, i)) {
-                                auto t = ast.def_ty_arg(tp.id);
+                            if (_str.eq(tp, identifier)) {
+                                auto t = ast.def_ty_arg(i);
                                 ret some(def_wrap_other(t));
                             }
+                            i += 1u;
                         }
                     }
                     case (_) { /* fall through */ }
@@ -506,7 +516,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
             case (scope_native_item(?it)) {
                 alt (it.node) {
                     case (ast.native_item_fn(_, _, ?decl, ?ty_params, _, _)) {
-                        ret handle_fn_decl(i, decl, ty_params);
+                        ret handle_fn_decl(identifier, decl, ty_params);
                     }
                 }
             }
@@ -518,7 +528,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
             case (scope_loop(?d)) {
                 alt (d.node) {
                     case (ast.decl_local(?local)) {
-                        if (_str.eq(local.ident, i)) {
+                        if (_str.eq(local.ident, identifier)) {
                             auto lc = ast.def_local(local.id);
                             ret some(def_wrap_other(lc));
                         }
@@ -527,11 +537,11 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
             }
 
             case (scope_block(?b)) {
-                ret check_block(i, b.node, ns);
+                ret check_block(identifier, b.node, ns);
             }
 
             case (scope_arm(?a)) {
-                alt (a.index.find(i)) {
+                alt (a.index.find(identifier)) {
                     case (some[ast.def_id](?did)) {
                         auto t = ast.def_binding(did);
                         ret some[def_wrap](def_wrap_other(t));

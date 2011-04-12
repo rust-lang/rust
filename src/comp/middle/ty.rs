@@ -57,7 +57,7 @@ tag sty {
     ty_obj(vec[method]);
     ty_var(int);                                    // ephemeral type var
     ty_local(ast.def_id);                           // type of a local var
-    ty_param(ast.def_id);                           // fn/tag type param
+    ty_param(uint);                                 // fn/tag type param
     ty_type;
     ty_native;
     // TODO: ty_fn_arg(@t), for a possibly-aliased function argument
@@ -68,10 +68,8 @@ tag sty {
 type unify_handler = obj {
     fn resolve_local(ast.def_id id) -> @t;
     fn record_local(ast.def_id id, @t ty);
-    fn unify_expected_param(ast.def_id id, @t expected, @t actual)
-        -> unify_result;
-    fn unify_actual_param(ast.def_id id, @t expected, @t actual)
-        -> unify_result;
+    fn unify_expected_param(uint id, @t expected, @t actual) -> unify_result;
+    fn unify_actual_param(uint id, @t expected, @t actual) -> unify_result;
 };
 
 tag type_err {
@@ -94,8 +92,8 @@ tag unify_result {
 }
 
 
-type ty_params_opt_and_ty = tup(option.t[vec[ast.def_id]], @ty.t);
-type type_cache = hashmap[ast.def_id,ty_params_opt_and_ty];
+type ty_param_count_and_ty = tup(uint, @t);
+type type_cache = hashmap[ast.def_id,ty_param_count_and_ty];
 
 
 // Stringification
@@ -248,8 +246,7 @@ fn ty_to_str(&@t typ) -> str {
         }
 
         case (ty_param(?id)) {
-            s += "<P" + util.common.istr(id._0) + ":" +
-                util.common.istr(id._1) + ">";
+            s += "'" + _str.unsafe_from_bytes(vec(('a' as u8) + (id as u8)));
         }
     }
 
@@ -558,12 +555,12 @@ fn type_is_signed(@t ty) -> bool {
     fail;
 }
 
-fn type_param(@t ty) -> option.t[ast.def_id] {
+fn type_param(@t ty) -> option.t[uint] {
     alt (ty.struct) {
-        case (ty_param(?id)) { ret some[ast.def_id](id); }
-        case (_)             { /* fall through */        }
+        case (ty_param(?id)) { ret some[uint](id); }
+        case (_)             { /* fall through */  }
     }
-    ret none[ast.def_id];
+    ret none[uint];
 }
 
 fn plain_ty(&sty st) -> @t {
@@ -605,18 +602,21 @@ fn ann_to_type(&ast.ann ann) -> @t {
     }
 }
 
+// Returns the number of distinct type parameters in the given type.
 fn count_ty_params(@t ty) -> uint {
-    state obj ty_param_counter(@mutable vec[ast.def_id] param_ids) {
+    state obj ty_param_counter(@mutable vec[uint] param_indices) {
         fn fold_simple_ty(@t ty) -> @t {
             alt (ty.struct) {
-                case (ty_param(?param_id)) {
-                    for (ast.def_id other_param_id in *param_ids) {
-                        if (param_id._0 == other_param_id._0 &&
-                                param_id._1 == other_param_id._1) {
-                            ret ty;
+                case (ty_param(?param_idx)) {
+                    auto seen = false;
+                    for (uint other_param_idx in *param_indices) {
+                        if (param_idx == other_param_idx) {
+                            seen = true;
                         }
                     }
-                    *param_ids += vec(param_id);
+                    if (!seen) {
+                        *param_indices += vec(param_idx);
+                    }
                 }
                 case (_) { /* fall through */ }
             }
@@ -624,10 +624,10 @@ fn count_ty_params(@t ty) -> uint {
         }
     }
 
-    let vec[ast.def_id] param_ids_inner = vec();
-    let @mutable vec[ast.def_id] param_ids = @mutable param_ids_inner;
-    fold_ty(ty_param_counter(param_ids), ty);
-    ret _vec.len[ast.def_id](*param_ids);
+    let vec[uint] v = vec();    // FIXME: typechecker botch
+    let @mutable vec[uint] param_indices = @mutable v;
+    fold_ty(ty_param_counter(param_indices), ty);
+    ret _vec.len[uint](*param_indices);
 }
 
 // Type accessors for substructures of types
@@ -674,59 +674,50 @@ fn is_fn_ty(@t fty) -> bool {
 
 // Type accessors for AST nodes
 
-// Given an item, returns the associated type as well as a list of the IDs of
-// its type parameters.
-type ty_params_and_ty = tup(vec[ast.def_id], @t);
-fn native_item_ty(@ast.native_item it) -> ty_params_and_ty {
-    auto ty_params;
+// Given an item, returns the associated type as well as the number of type
+// parameters it has.
+fn native_item_ty(@ast.native_item it) -> ty_param_count_and_ty {
+    auto ty_param_count;
     auto result_ty;
     alt (it.node) {
         case (ast.native_item_fn(_, _, _, ?tps, _, ?ann)) {
-            ty_params = tps;
+            ty_param_count = _vec.len[ast.ty_param](tps);
             result_ty = ann_to_type(ann);
         }
     }
-    let vec[ast.def_id] ty_param_ids = vec();
-    for (ast.ty_param tp in ty_params) {
-        ty_param_ids += vec(tp.id);
-    }
-    ret tup(ty_param_ids, result_ty);
+    ret tup(ty_param_count, result_ty);
 }
 
-fn item_ty(@ast.item it) -> ty_params_and_ty {
-    let vec[ast.ty_param] ty_params;
+fn item_ty(@ast.item it) -> ty_param_count_and_ty {
+    auto ty_param_count;
     auto result_ty;
     alt (it.node) {
         case (ast.item_const(_, _, _, _, ?ann)) {
-            ty_params = vec();
+            ty_param_count = 0u;
             result_ty = ann_to_type(ann);
         }
         case (ast.item_fn(_, _, ?tps, _, ?ann)) {
-            ty_params = tps;
+            ty_param_count = _vec.len[ast.ty_param](tps);
             result_ty = ann_to_type(ann);
         }
         case (ast.item_mod(_, _, _)) {
             fail;   // modules are typeless
         }
         case (ast.item_ty(_, _, ?tps, _, ?ann)) {
-            ty_params = tps;
+            ty_param_count = _vec.len[ast.ty_param](tps);
             result_ty = ann_to_type(ann);
         }
         case (ast.item_tag(_, _, ?tps, ?did, ?ann)) {
-            ty_params = tps;
+            ty_param_count = _vec.len[ast.ty_param](tps);
             result_ty = ann_to_type(ann);
         }
         case (ast.item_obj(_, _, ?tps, _, ?ann)) {
-            ty_params = tps;
+            ty_param_count = _vec.len[ast.ty_param](tps);
             result_ty = ann_to_type(ann);
         }
     }
 
-    let vec[ast.def_id] ty_param_ids = vec();
-    for (ast.ty_param tp in ty_params) {
-        ty_param_ids += vec(tp.id);
-    }
-    ret tup(ty_param_ids, result_ty);
+    ret tup(ty_param_count, result_ty);
 }
 
 fn stmt_ty(@ast.stmt s) -> @t {
@@ -1608,24 +1599,25 @@ fn type_err_to_str(&ty.type_err err) -> str {
 
 // Type parameter resolution, used in translation and typechecking
 
-fn resolve_ty_params(ty_params_and_ty ty_params_and_polyty,
+fn resolve_ty_params(ty_param_count_and_ty ty_params_and_polyty,
                      @t monoty) -> vec[@t] {
-    obj resolve_ty_params_handler(@hashmap[ast.def_id,@t] bindings) {
+    // TODO: Use a vector, not a hashmap here.
+    obj resolve_ty_params_handler(@hashmap[uint,@t] bindings) {
         fn resolve_local(ast.def_id id) -> @t { log "resolve local"; fail; }
         fn record_local(ast.def_id id, @t ty) { log "record local"; fail; }
-        fn unify_expected_param(ast.def_id id, @t expected, @t actual)
+        fn unify_expected_param(uint id, @t expected, @t actual)
                 -> unify_result {
             bindings.insert(id, actual);
             ret ures_ok(actual);
         }
-        fn unify_actual_param(ast.def_id id, @t expected, @t actual)
+        fn unify_actual_param(uint id, @t expected, @t actual)
                 -> unify_result {
             bindings.insert(id, expected);
             ret ures_ok(expected);
         }
     }
 
-    auto bindings = @new_def_hash[@t]();
+    auto bindings = @common.new_uint_hash[@t]();
     auto handler = resolve_ty_params_handler(bindings);
 
     auto unify_res = unify(ty_params_and_polyty._1, monoty, handler);
@@ -1639,10 +1631,12 @@ fn resolve_ty_params(ty_params_and_ty ty_params_and_polyty,
     }
 
     let vec[@t] result_tys = vec();
-    auto ty_param_ids = ty_params_and_polyty._0;
-    for (ast.def_id tp in ty_param_ids) {
-        check (bindings.contains_key(tp));
-        result_tys += vec(bindings.get(tp));
+    auto ty_param_count = ty_params_and_polyty._0;
+    auto i = 0u;
+    while (i < ty_param_count) {
+        check (bindings.contains_key(i));
+        result_tys += vec(bindings.get(i));
+        i += 1u;
     }
 
     ret result_tys;
@@ -1650,43 +1644,17 @@ fn resolve_ty_params(ty_params_and_ty ty_params_and_polyty,
 
 // Performs type parameter replacement using the supplied mapping from
 // parameter IDs to types.
-fn replace_type_params(@t typ, hashmap[ast.def_id,@t] param_map) -> @t {
-    state obj param_replacer(hashmap[ast.def_id,@t] param_map) {
+fn substitute_type_params(vec[@t] bindings, @t typ) -> @t {
+    state obj param_replacer(vec[@t] bindings) {
         fn fold_simple_ty(@t typ) -> @t {
             alt (typ.struct) {
-                case (ty_param(?param_def)) {
-                    if (param_map.contains_key(param_def)) {
-                        ret param_map.get(param_def);
-                    } else {
-                        ret typ;
-                    }
-                }
-                case (_) {
-                    ret typ;
-                }
+                case (ty_param(?param_index)) { ret bindings.(param_index); }
+                case (_) { ret typ; }
             }
         }
     }
-    auto replacer = param_replacer(param_map);
+    auto replacer = param_replacer(bindings);
     ret fold_ty(replacer, typ);
-}
-
-// Substitutes the type parameters specified by @ty_params with the
-// corresponding types in @bound in the given type. The two vectors must have
-// the same length.
-fn substitute_ty_params(vec[ast.def_id] ty_params, vec[@t] bound, @t ty)
-        -> @t {
-    auto ty_param_len = _vec.len[ast.def_id](ty_params);
-    check (ty_param_len == _vec.len[@t](bound));
-
-    auto bindings = common.new_def_hash[@t]();
-    auto i = 0u;
-    while (i < ty_param_len) {
-        bindings.insert(ty_params.(i), bound.(i));
-        i += 1u;
-    }
-
-    ret replace_type_params(ty, bindings);
 }
 
 
@@ -1712,7 +1680,7 @@ fn def_has_ty_params(&ast.def def) -> bool {
 // If the given item is in an external crate, looks up its type and adds it to
 // the type cache. Returns the type parameters and type.
 fn lookup_item_type(session.session sess, &type_cache cache,
-                    ast.def_id did) -> ty_params_opt_and_ty {
+                    ast.def_id did) -> ty_param_count_and_ty {
     if (did._0 == sess.get_targ_crate_num()) {
         // The item is in this crate. The caller should have added it to the
         // type cache already; we simply return it.
@@ -1727,14 +1695,6 @@ fn lookup_item_type(session.session sess, &type_cache cache,
     auto tyt = creader.get_type(sess, did);
     cache.insert(did, tyt);
     ret tyt;
-}
-
-// A convenience function to retrive type parameters and a type when it's
-// known that the item supports generics (functions, variants, objects).
-fn lookup_generic_item_type(session.session sess, &type_cache cache,
-                            ast.def_id did) -> ty_params_and_ty {
-    auto tp_opt_and_ty = lookup_item_type(sess, cache, did);
-    ret tup(option.get[vec[ast.def_id]](tp_opt_and_ty._0), tp_opt_and_ty._1);
 }
 
 

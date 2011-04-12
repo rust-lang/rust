@@ -1740,8 +1740,7 @@ impure fn parse_block(parser p) -> ast.block {
 }
 
 impure fn parse_ty_param(parser p) -> ast.ty_param {
-    auto ident = parse_ident(p);
-    ret rec(ident=ident, id=p.next_def_id());
+    ret parse_ident(p);
 }
 
 impure fn parse_ty_params(parser p) -> vec[ast.ty_param] {

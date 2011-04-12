@@ -131,7 +131,7 @@ impure fn parse_sty(@pstate st, str_def sd) -> ty.sty {
             st.pos = st.pos + 1u;
             ret ty.ty_tag(def, params);
         }
-        case ('p') {ret ty.ty_param(parse_def(st, sd));}
+        case ('p') {ret ty.ty_param(parse_int(st) as uint);}
         case ('@') {ret ty.ty_box(parse_mt(st, sd));}
         case ('V') {ret ty.ty_vec(parse_mt(st, sd));}
         case ('P') {ret ty.ty_port(parse_ty(st, sd));}
@@ -351,14 +351,13 @@ fn item_type(&ebml.doc item, int this_cnum) -> @ty.t {
     ret parse_ty_str(s, bind parse_external_def_id(this_cnum, _));
 }
 
-fn item_ty_params(&ebml.doc item, int this_cnum) -> vec[ast.def_id] {
-    let vec[ast.def_id] params = vec();
-    auto tp = metadata.tag_items_data_item_ty_param;
+fn item_ty_param_count(&ebml.doc item, int this_cnum) -> uint {
+    let uint ty_param_count = 0u;
+    auto tp = metadata.tag_items_data_item_ty_param_count;
     for each (ebml.doc p in ebml.tagged_docs(item, tp)) {
-        auto ext = parse_def_id(ebml.doc_data(p));
-        _vec.push[ast.def_id](params, tup(this_cnum, ext._1));
+        ty_param_count = ebml.vint_at(ebml.doc_data(p), 0u)._0;
     }
-    ret params;
+    ret ty_param_count;
 }
 
 fn tag_variant_ids(&ebml.doc item, int this_cnum) -> vec[ast.def_id] {
@@ -511,23 +510,23 @@ fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
     ret some[ast.def](def);
 }
 
-fn get_type(session.session sess, ast.def_id def) -> ty.ty_params_opt_and_ty {
+fn get_type(session.session sess, ast.def_id def)
+        -> ty.ty_param_count_and_ty {
     auto external_crate_id = def._0;
     auto data = sess.get_external_crate(external_crate_id);
     auto item = lookup_item(def._1, data);
     auto t = item_type(item, external_crate_id);
 
-    auto tps_opt;
+    auto tp_count;
     auto kind_ch = item_kind(item);
     auto has_ty_params = kind_has_type_params(kind_ch);
     if (has_ty_params) {
-        auto tps = item_ty_params(item, external_crate_id);
-        tps_opt = some[vec[ast.def_id]](tps);
+        tp_count = item_ty_param_count(item, external_crate_id);
     } else {
-        tps_opt = none[vec[ast.def_id]];
+        tp_count = 0u;
     }
 
-    ret tup(tps_opt, t);
+    ret tup(tp_count, t);
 }
 
 fn get_symbol(session.session sess, ast.def_id def) -> str {

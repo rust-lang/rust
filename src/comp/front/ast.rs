@@ -17,7 +17,7 @@ type crate_num = int;
 type def_num = int;
 type def_id = tup(crate_num, def_num);
 
-type ty_param = rec(ident ident, def_id id);
+type ty_param = ident;
 
 // Annotations added during successive passes.
 tag ann {
@@ -39,7 +39,7 @@ tag def {
     def_upvar(def_id);
     def_variant(def_id /* tag */, def_id /* variant */);
     def_ty(def_id);
-    def_ty_arg(def_id);
+    def_ty_arg(uint);
     def_binding(def_id);
     def_use(def_id);
     def_native_ty(def_id);
@@ -59,7 +59,7 @@ fn def_id_of_def(def d) -> def_id {
         case (def_upvar(?id)) { ret id; }
         case (def_variant(_, ?id)) { ret id; }
         case (def_ty(?id)) { ret id; }
-        case (def_ty_arg(?id)) { ret id; }
+        case (def_ty_arg(_)) { fail; }
         case (def_binding(?id)) { ret id; }
         case (def_use(?id)) { ret id; }
         case (def_native_ty(?id)) { ret id; }

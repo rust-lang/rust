@@ -29,7 +29,7 @@ const uint tag_def_id = 0x07u;
 const uint tag_items_data = 0x08u;
 const uint tag_items_data_item = 0x09u;
 const uint tag_items_data_item_kind = 0x0au;
-const uint tag_items_data_item_ty_param = 0x0bu;
+const uint tag_items_data_item_ty_param_count = 0x0bu;
 const uint tag_items_data_item_type = 0x0cu;
 const uint tag_items_data_item_symbol = 0x0du;
 const uint tag_items_data_item_variant = 0x0eu;
@@ -134,7 +134,7 @@ fn sty_str(ty.sty st, def_str ds) -> str {
         }
         case (ty.ty_var(?id)) {ret "X" + common.istr(id);}
         case (ty.ty_native) {ret "E";}
-        case (ty.ty_param(?def)) {ret "p" + ds(def) + "|";}
+        case (ty.ty_param(?id)) {ret "p" + common.uistr(id);}
         case (ty.ty_type) {ret "Y";}
     }
 }
@@ -310,13 +310,10 @@ fn def_to_str(ast.def_id did) -> str {
     ret #fmt("%d:%d", did._0, did._1);
 }
 
-// TODO: We need to encode the "crate numbers" somewhere for diamond imports.
-fn encode_type_params(&ebml.writer ebml_w, vec[ast.ty_param] tps) {
-    for (ast.ty_param tp in tps) {
-        ebml.start_tag(ebml_w, tag_items_data_item_ty_param);
-        ebml_w.writer.write(_str.bytes(def_to_str(tp.id)));
-        ebml.end_tag(ebml_w);
-    }
+fn encode_type_param_count(&ebml.writer ebml_w, vec[ast.ty_param] tps) {
+    ebml.start_tag(ebml_w, tag_items_data_item_ty_param_count);
+    ebml.write_vint(ebml_w.writer, _vec.len[ast.ty_param](tps));
+    ebml.end_tag(ebml_w);
 }
 
 fn encode_variant_id(&ebml.writer ebml_w, ast.def_id vid) {
@@ -374,7 +371,7 @@ fn encode_tag_variant_info(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_symbol(cx, ebml_w, variant.node.id);
         }
         encode_discriminant(cx, ebml_w, variant.node.id);
-        encode_type_params(ebml_w, ty_params);
+        encode_type_param_count(ebml_w, ty_params);
         ebml.end_tag(ebml_w);
     }
 }
@@ -394,7 +391,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'f' as u8);
-            encode_type_params(ebml_w, tps);
+            encode_type_param_count(ebml_w, tps);
             encode_type(ebml_w, trans.node_ann_type(cx, ann));
             encode_symbol(cx, ebml_w, did);
             ebml.end_tag(ebml_w);
@@ -415,7 +412,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'y' as u8);
-            encode_type_params(ebml_w, tps);
+            encode_type_param_count(ebml_w, tps);
             encode_type(ebml_w, trans.node_ann_type(cx, ann));
             ebml.end_tag(ebml_w);
         }
@@ -423,7 +420,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 't' as u8);
-            encode_type_params(ebml_w, tps);
+            encode_type_param_count(ebml_w, tps);
             encode_type(ebml_w, trans.node_ann_type(cx, ann));
             for (ast.variant v in variants) {
                 encode_variant_id(ebml_w, v.node.id);
@@ -436,7 +433,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, odid.ctor);
             encode_kind(ebml_w, 'o' as u8);
-            encode_type_params(ebml_w, tps);
+            encode_type_param_count(ebml_w, tps);
             auto fn_ty = trans.node_ann_type(cx, ann);
             encode_type(ebml_w, fn_ty);
             encode_symbol(cx, ebml_w, odid.ctor);
@@ -445,7 +442,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, odid.ty);
             encode_kind(ebml_w, 'y' as u8);
-            encode_type_params(ebml_w, tps);
+            encode_type_param_count(ebml_w, tps);
             encode_type(ebml_w, ty.ty_fn_ret(fn_ty));
             ebml.end_tag(ebml_w);
         }
@@ -464,7 +461,7 @@ fn encode_info_for_native_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
         case (ast.native_item_fn(_, _, _, ?tps, ?did, ?ann)) {
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'F' as u8);
-            encode_type_params(ebml_w, tps);
+            encode_type_param_count(ebml_w, tps);
             encode_type(ebml_w, trans.node_ann_type(cx, ann));
             encode_symbol(cx, ebml_w, did);
         }

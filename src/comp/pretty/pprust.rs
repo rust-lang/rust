@@ -796,7 +796,7 @@ impure fn print_type_params(ps s, vec[ast.ty_param] params) {
     if (_vec.len[ast.ty_param](params) > 0u) {
         wrd(s.s, "[");
         impure fn printParam(ps s, &ast.ty_param param) {
-            wrd(s.s, param.ident);
+            wrd(s.s, param);
         }
         auto f = printParam;
         commasep[ast.ty_param](s, params, f);

@@ -128,7 +128,8 @@ state type fn_ctxt = rec(ValueRef llfn,
                          hashmap[ast.def_id, ValueRef] llobjfields,
                          hashmap[ast.def_id, ValueRef] lllocals,
                          hashmap[ast.def_id, ValueRef] llupvars,
-                         hashmap[ast.def_id, ValueRef] lltydescs,
+                         // FIXME: this should probably be just vec[ValueRef]
+                         hashmap[uint, ValueRef] lltydescs,
                          @crate_ctxt ccx);
 
 tag cleanup {
@@ -770,14 +771,11 @@ fn type_of_arg(@crate_ctxt cx, &ty.arg arg) -> TypeRef {
     ret typ;
 }
 
-fn type_of_ty_params_opt_and_ty(@crate_ctxt ccx, ty.ty_params_opt_and_ty tpt)
-        -> TypeRef {
+fn type_of_ty_param_count_and_ty(@crate_ctxt ccx,
+                                 ty.ty_param_count_and_ty tpt) -> TypeRef {
     alt (tpt._1.struct) {
         case (ty.ty_fn(?proto, ?inputs, ?output)) {
-            auto ty_params = option.get[vec[ast.def_id]](tpt._0);
-            auto ty_param_count = _vec.len[ast.def_id](ty_params);
-            auto llfnty = type_of_fn(ccx, proto, inputs, output,
-                                     ty_param_count);
+            auto llfnty = type_of_fn(ccx, proto, inputs, output, tpt._0);
             ret T_fn_pair(ccx.tn, llfnty);
         }
         case (_) {
@@ -1121,9 +1119,6 @@ fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
         }
     }
 
-    // Pull the type parameters out of the corresponding tag item.
-    let vec[ast.def_id] ty_params = tag_ty_params(cx, tid);
-
     // Compute max(variant sizes).
     auto max_size = 0u;
     auto variants = tag_variants(cx, tid);
@@ -1149,7 +1144,7 @@ fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
         auto tup_ty = ty.plain_tup_ty(args);
 
         // Perform any type parameter substitutions.
-        tup_ty = ty.substitute_ty_params(ty_params, subtys, tup_ty);
+        tup_ty = ty.substitute_type_params(subtys, tup_ty);
 
         // Here we possibly do a recursive call.
         auto this_size = llsize_of_real(cx, type_of(cx, tup_ty));
@@ -1215,14 +1210,13 @@ fn dynamic_size_of(@block_ctxt cx, @ty.t t) -> result {
             let ValueRef max_size = alloca(bcx, T_int());
             bcx.build.Store(C_int(0), max_size);
 
-            auto ty_params = tag_ty_params(bcx.fcx.ccx, tid);
             auto variants = tag_variants(bcx.fcx.ccx, tid);
             for (variant_info variant in variants) {
                 // Perform type substitution on the raw argument types.
                 let vec[@ty.t] raw_tys = variant.args;
                 let vec[@ty.t] tys = vec();
                 for (@ty.t raw_ty in raw_tys) {
-                    auto t = ty.substitute_ty_params(ty_params, tps, raw_ty);
+                    auto t = ty.substitute_type_params(tps, raw_ty);
                     tys += vec(t);
                 }
 
@@ -1387,7 +1381,6 @@ fn GEP_tag(@block_ctxt cx,
            vec[@ty.t] ty_substs,
            int ix)
         -> result {
-    auto ty_params = tag_ty_params(cx.fcx.ccx, tag_id);
     auto variant = tag_variant_with_id(cx.fcx.ccx, tag_id, variant_id);
 
     // Synthesize a tuple type so that GEP_tup_like() can work its magic.
@@ -1397,7 +1390,7 @@ fn GEP_tag(@block_ctxt cx,
     auto i = 0;
     let vec[@ty.t] true_arg_tys = vec();
     for (@ty.t aty in arg_tys) {
-        auto arg_ty = ty.substitute_ty_params(ty_params, ty_substs, aty);
+        auto arg_ty = ty.substitute_type_params(ty_substs, aty);
         true_arg_tys += vec(arg_ty);
         if (i == ix) {
             elem_ty = arg_ty;
@@ -1466,23 +1459,23 @@ fn field_of_tydesc(@block_ctxt cx, @ty.t t, int field) -> result {
 }
 
 // Given a type containing ty params, build a vector containing a ValueRef for
-// each of the ty params it uses (from the current frame), as well as a vec
-// containing a def_id for each such param. This is used solely for
+// each of the ty params it uses (from the current frame) and a vector of the
+// indices of the ty params present in the type. This is used solely for
 // constructing derived tydescs.
-fn linearize_ty_params(@block_ctxt cx, @ty.t t)
-    -> tup(vec[ast.def_id], vec[ValueRef]) {
+fn linearize_ty_params(@block_ctxt cx, @ty.t t) ->
+        tup(vec[uint], vec[ValueRef]) {
     let vec[ValueRef] param_vals = vec();
-    let vec[ast.def_id] param_defs = vec();
+    let vec[uint] param_defs = vec();
     type rr = rec(@block_ctxt cx,
                   mutable vec[ValueRef] vals,
-                  mutable vec[ast.def_id] defs);
+                  mutable vec[uint] defs);
 
     state obj folder(@rr r) {
         fn fold_simple_ty(@ty.t t) -> @ty.t {
             alt(t.struct) {
                 case (ty.ty_param(?pid)) {
                     let bool seen = false;
-                    for (ast.def_id d in r.defs) {
+                    for (uint d in r.defs) {
                         if (d == pid) {
                             seen = true;
                         }
@@ -1511,11 +1504,11 @@ fn linearize_ty_params(@block_ctxt cx, @ty.t t)
 fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt (ty.type_param(t)) {
-        case (some[ast.def_id](?id)) {
+        case (some[uint](?id)) {
             check (cx.fcx.lltydescs.contains_key(id));
             ret res(cx, cx.fcx.lltydescs.get(id));
         }
-        case (none[ast.def_id])      { /* fall through */ }
+        case (none[uint])      { /* fall through */ }
     }
 
     // Does it contain a type param? If so, generate a derived tydesc.
@@ -1524,7 +1517,7 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
     if (ty.count_ty_params(t) > 0u) {
         auto tys = linearize_ty_params(cx, t);
 
-        check (n_params == _vec.len[ast.def_id](tys._0));
+        check (n_params == _vec.len[uint](tys._0));
         check (n_params == _vec.len[ValueRef](tys._1));
 
         if (!cx.fcx.ccx.tydescs.contains_key(t)) {
@@ -1566,9 +1559,9 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
 
     // Otherwise, generate a tydesc if necessary, and return it.
     if (!cx.fcx.ccx.tydescs.contains_key(t)) {
-        let vec[ast.def_id] defs = vec();
+        let vec[uint] tps = vec();
         declare_tydesc(cx.fcx.ccx, t);
-        define_tydesc(cx.fcx.ccx, t, defs);
+        define_tydesc(cx.fcx.ccx, t, tps);
     }
     ret res(cx, cx.fcx.ccx.tydescs.get(t).tydesc);
 }
@@ -1624,16 +1617,14 @@ fn declare_tydesc(@crate_ctxt cx, @ty.t t) {
 }
 
 // declare_tydesc() above must have been called first.
-fn define_tydesc(@crate_ctxt cx, @ty.t t, vec[ast.def_id] typaram_defs) {
+fn define_tydesc(@crate_ctxt cx, @ty.t t, vec[uint] ty_params) {
     auto info = cx.tydescs.get(t);
     auto gvar = info.tydesc;
 
     auto tg = make_take_glue;
-    auto take_glue = make_generic_glue(cx, t, info.take_glue, tg,
-                                       typaram_defs);
+    auto take_glue = make_generic_glue(cx, t, info.take_glue, tg, ty_params);
     auto dg = make_drop_glue;
-    auto drop_glue = make_generic_glue(cx, t, info.drop_glue, dg,
-                                       typaram_defs);
+    auto drop_glue = make_generic_glue(cx, t, info.drop_glue, dg, ty_params);
 }
 
 fn declare_generic_glue(@crate_ctxt cx, @ty.t t, str name) -> ValueRef {
@@ -1647,8 +1638,7 @@ fn declare_generic_glue(@crate_ctxt cx, @ty.t t, str name) -> ValueRef {
 }
 
 fn make_generic_glue(@crate_ctxt cx, @ty.t t, ValueRef llfn,
-                     val_and_ty_fn helper,
-                     vec[ast.def_id] typaram_defs) -> ValueRef {
+                     val_and_ty_fn helper, vec[uint] ty_params) -> ValueRef {
     auto fcx = new_fn_ctxt(cx, llfn);
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
@@ -1668,13 +1658,15 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, ValueRef llfn,
             llty = T_ptr(type_of(cx, t));
         }
 
+        auto ty_param_count = _vec.len[uint](ty_params);
+
         auto lltyparams = llvm.LLVMGetParam(llfn, 3u);
-        auto p = 0;
-        for (ast.def_id d in typaram_defs) {
-            auto llparam = bcx.build.GEP(lltyparams, vec(C_int(p)));
+        auto p = 0u;
+        while (p < ty_param_count) {
+            auto llparam = bcx.build.GEP(lltyparams, vec(C_int(p as int)));
             llparam = bcx.build.Load(llparam);
-            bcx.fcx.lltydescs.insert(d, llparam);
-            p += 1;
+            bcx.fcx.lltydescs.insert(ty_params.(p), llparam);
+            p += 1u;
         }
 
         auto llrawptr = llvm.LLVMGetParam(llfn, 4u);
@@ -1928,11 +1920,6 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
 
 // Tag information
 
-// Returns the type parameters of a tag.
-fn tag_ty_params(@crate_ctxt cx, ast.def_id id) -> vec[ast.def_id] {
-    ret ty.lookup_generic_item_type(cx.sess, cx.type_cache, id)._0;
-}
-
 type variant_info = rec(vec[@ty.t] args, @ty.t ctor_ty, ast.def_id id);
 
 // Returns information about the variants in a tag.
@@ -2105,8 +2092,6 @@ fn iter_structural_ty_full(@block_ctxt cx,
 
             auto next_cx = new_sub_block_ctxt(bcx, "tag-iter-next");
 
-            auto ty_params = tag_ty_params(bcx.fcx.ccx, tid);
-
             auto i = 0u;
             for (variant_info variant in variants) {
                 auto variant_cx = new_sub_block_ctxt(bcx,
@@ -2133,8 +2118,8 @@ fn iter_structural_ty_full(@block_ctxt cx,
                                 auto llfldp_b = rslt.val;
                                 variant_cx = rslt.bcx;
 
-                                auto ty_subst = ty.substitute_ty_params(
-                                    ty_params, tps, a.ty);
+                                auto ty_subst =
+                                    ty.substitute_type_params(tps, a.ty);
 
                                 auto llfld_a =
                                     load_if_immediate(variant_cx,
@@ -3642,16 +3627,16 @@ fn lval_val(@block_ctxt cx, ValueRef val) -> lval_result {
 }
 
 fn trans_external_path(@block_ctxt cx, ast.def_id did,
-                       ty.ty_params_opt_and_ty tpt) -> lval_result {
+                       ty.ty_param_count_and_ty tpt) -> lval_result {
     auto ccx = cx.fcx.ccx;
     auto name = creader.get_symbol(ccx.sess, did);
     auto v = get_extern_const(ccx.externs, ccx.llmod,
-                              name, type_of_ty_params_opt_and_ty(ccx, tpt));
+                              name, type_of_ty_param_count_and_ty(ccx, tpt));
     ret lval_val(cx, v);
 }
 
 fn lval_generic_fn(@block_ctxt cx,
-                   ty.ty_params_and_ty tpt,
+                   ty.ty_param_count_and_ty tpt,
                    ast.def_id fn_id,
                    &ast.ann ann)
         -> lval_result {
@@ -3662,12 +3647,11 @@ fn lval_generic_fn(@block_ctxt cx,
         lv = lval_val(cx, cx.fcx.ccx.fn_pairs.get(fn_id));
     } else {
         // External reference.
-        auto tpot = tup(some[vec[ast.def_id]](tpt._0), tpt._1);
-        lv = trans_external_path(cx, fn_id, tpot);
+        lv = trans_external_path(cx, fn_id, tpt);
     }
 
     auto monoty;
-    auto tys;
+    let vec[@ty.t] tys;
     alt (ann) {
         case (ast.ann_none) {
             cx.fcx.ccx.sess.bug("no type annotation for path!");
@@ -3750,17 +3734,17 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     ret lval_mem(cx, cx.fcx.llobjfields.get(did));
                 }
                 case (ast.def_fn(?did)) {
-                    auto tyt = ty.lookup_generic_item_type(cx.fcx.ccx.sess,
+                    auto tyt = ty.lookup_item_type(cx.fcx.ccx.sess,
                         cx.fcx.ccx.type_cache, did);
                     ret lval_generic_fn(cx, tyt, did, ann);
                 }
                 case (ast.def_obj(?did)) {
-                    auto tyt = ty.lookup_generic_item_type(cx.fcx.ccx.sess,
+                    auto tyt = ty.lookup_item_type(cx.fcx.ccx.sess,
                         cx.fcx.ccx.type_cache, did);
                     ret lval_generic_fn(cx, tyt, did, ann);
                 }
                 case (ast.def_variant(?tid, ?vid)) {
-                    auto v_tyt = ty.lookup_generic_item_type(cx.fcx.ccx.sess,
+                    auto v_tyt = ty.lookup_item_type(cx.fcx.ccx.sess,
                         cx.fcx.ccx.type_cache, vid);
                     alt (v_tyt._1.struct) {
                         case (ty.ty_fn(_, _, _)) {
@@ -3801,7 +3785,7 @@ fn trans_path(@block_ctxt cx, &ast.path p, &option.t[ast.def] dopt,
                     ret lval_mem(cx, cx.fcx.ccx.consts.get(did));
                 }
                 case (ast.def_native_fn(?did)) {
-                    auto tyt = ty.lookup_generic_item_type(cx.fcx.ccx.sess,
+                    auto tyt = ty.lookup_item_type(cx.fcx.ccx.sess,
                         cx.fcx.ccx.type_cache, did);
                     ret lval_generic_fn(cx, tyt, did, ann);
                 }
@@ -5500,7 +5484,7 @@ fn new_fn_ctxt(@crate_ctxt cx,
     let hashmap[ast.def_id, ValueRef] llobjfields = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] llupvars = new_def_hash[ValueRef]();
-    let hashmap[ast.def_id, ValueRef] lltydescs = new_def_hash[ValueRef]();
+    let hashmap[uint, ValueRef] lltydescs = common.new_uint_hash[ValueRef]();
 
     let BasicBlockRef llallocas =
         llvm.LLVMAppendBasicBlock(llfndecl, _str.buf("allocas"));
@@ -5541,11 +5525,13 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx,
             cx.llself = some[self_vt](rec(v = cx.llenv, t = tt._1));
         }
         case (none[tup(TypeRef, @ty.t)]) {
+            auto i = 0u;
             for (ast.ty_param tp in ty_params) {
                 auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
                 check (llarg as int != 0);
-                cx.lltydescs.insert(tp.id, llarg);
+                cx.lltydescs.insert(i, llarg);
                 arg_n += 1u;
+                i += 1u;
             }
         }
     }
@@ -5695,7 +5681,7 @@ fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, self_vt llself) {
                                                vec(C_int(0),
                                                    C_int(i)));
         lltyparam = bcx.build.Load(lltyparam);
-        fcx.lltydescs.insert(p.id, lltyparam);
+        fcx.lltydescs.insert(i as uint, lltyparam);
         i += 1;
     }
 
@@ -5889,7 +5875,7 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
         bcx = body_typarams.bcx;
         let int i = 0;
         for (ast.ty_param tp in ty_params) {
-            auto typaram = bcx.fcx.lltydescs.get(tp.id);
+            auto typaram = bcx.fcx.lltydescs.get(i as uint);
             auto capture = GEP_tup_like(bcx, typarams_ty, body_typarams.val,
                                         vec(0, i));
             bcx = capture.bcx;
@@ -5951,8 +5937,10 @@ fn trans_tag_variant(@crate_ctxt cx, ast.def_id tag_id,
                               fn_args, ty_params);
 
     let vec[@ty.t] ty_param_substs = vec();
+    i = 0u;
     for (ast.ty_param tp in ty_params) {
-        ty_param_substs += vec(plain_ty(ty.ty_param(tp.id)));
+        ty_param_substs += vec(plain_ty(ty.ty_param(i)));
+        i += 1u;
     }
 
     auto arg_tys = arg_tys_of_fn(variant.node.ann);
@@ -6905,7 +6893,7 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
                     llobjfields=new_def_hash[ValueRef](),
                     lllocals=new_def_hash[ValueRef](),
                     llupvars=new_def_hash[ValueRef](),
-                    lltydescs=new_def_hash[ValueRef](),
+                    lltydescs=common.new_uint_hash[ValueRef](),
                     ccx=cx);
 
     auto bcx = new_top_block_ctxt(fcx);
