@@ -17,6 +17,7 @@ fn main() {
   test(#fmt("%d", 1), "1");
   test(#fmt("%i", 2), "2");
   test(#fmt("%i", -1), "-1");
+  test(#fmt("%u", 10u), "10");
   test(#fmt("%s", "test"), "test");
   test(#fmt("%b", true), "true");
   test(#fmt("%b", false), "false");
