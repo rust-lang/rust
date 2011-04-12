@@ -24,6 +24,7 @@ LLVMAddDeadStoreEliminationPass
 LLVMAddDeadTypeEliminationPass
 LLVMAddDemoteMemoryToRegisterPass
 LLVMAddDestination
+LLVMAddEarlyCSEPass
 LLVMAddFunction
 LLVMAddFunctionAttr
 LLVMAddFunctionAttrsPass
