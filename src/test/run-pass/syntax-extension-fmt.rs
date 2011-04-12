@@ -1,3 +1,4 @@
+// xfail-boot
 // xfail-stage0
 use std;
 import std._str;
@@ -11,7 +12,13 @@ fn test(str actual, str expected) {
 fn main() {
   test(#fmt("hello %d friends and %s things", 10, "formatted"),
     "hello 10 friends and formatted things");
-  test(#fmt("d: %d", 1), "d: 1");
-  test(#fmt("i: %i", 2), "i: 2");
-  test(#fmt("s: %s", "test"), "s: test");
+
+  // Simple tests for types
+  test(#fmt("%d", 1), "1");
+  test(#fmt("%i", 2), "2");
+  test(#fmt("%i", -1), "-1");
+  test(#fmt("%s", "test"), "test");
+  test(#fmt("%b", true), "true");
+  test(#fmt("%b", false), "false");
+  test(#fmt("%c", 'A'), "A");
 }

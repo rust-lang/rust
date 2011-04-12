@@ -271,6 +271,18 @@ mod RT {
     fn uint_to_str(uint u) -> str {
         ret _uint.to_str(u, 10u);
     }
+
+    fn bool_to_str(bool b) -> str {
+        if (b) {
+            ret "true";
+        } else {
+            ret "false";
+        }
+    }
+
+    fn char_to_str(char c) -> str {
+        ret _str.from_char(c);
+    }
 }
 
 // Local Variables:

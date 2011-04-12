@@ -179,6 +179,16 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                     }
                 }
             }
+            case (ty_bool) {
+                let vec[str] path = vec("std", "ExtFmt", "RT", "bool_to_str");
+                let vec[@ast.expr] args = vec(arg);
+                ret make_call(arg.span, path, args);
+            }
+            case (ty_char) {
+                let vec[str] path = vec("std", "ExtFmt", "RT", "char_to_str");
+                let vec[@ast.expr] args = vec(arg);
+                ret make_call(arg.span, path, args);
+            }
             case (_) {
                 log unsupported;
                 fail;
