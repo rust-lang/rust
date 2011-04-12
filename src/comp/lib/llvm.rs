@@ -749,7 +749,7 @@ native mod llvm = llvm_lib {
     fn LLVMAddFunctionInliningPass(PassManagerRef PM);
     fn LLVMAddFunctionAttrsPass(PassManagerRef PM);
     fn LLVMAddScalarReplAggregatesPass(PassManagerRef PM);
-    // fn LLVMAddScalarReplAggregatesPassSSA(PassManagerRef PM);
+    fn LLVMAddScalarReplAggregatesPassSSA(PassManagerRef PM);
     fn LLVMAddJumpThreadingPass(PassManagerRef PM);
     fn LLVMAddConstantPropagationPass(PassManagerRef PM);
     fn LLVMAddReassociatePass(PassManagerRef PM);
@@ -770,10 +770,11 @@ native mod llvm = llvm_lib {
     fn LLVMAddIndVarSimplifyPass(PassManagerRef PM);
     fn LLVMAddAggressiveDCEPass(PassManagerRef PM);
     fn LLVMAddGlobalDCEPass(PassManagerRef PM);
-    // fn LLVMAddCorrelatedValuePropagationPass(PassManagerRef PM);
+    fn LLVMAddCorrelatedValuePropagationPass(PassManagerRef PM);
     fn LLVMAddPruneEHPass(PassManagerRef PM);
     fn LLVMAddSimplifyLibCallsPass(PassManagerRef PM);
-    // fn LLVMAddLoopIdiomPass(PassManagerRef PM);
+    fn LLVMAddLoopIdiomPass(PassManagerRef PM);
+    fn LLVMAddEarlyCSEPass(PassManagerRef PM);
 
     /** Destroys a memory buffer. */
     fn LLVMDisposeMemoryBuffer(MemoryBufferRef MemBuf);

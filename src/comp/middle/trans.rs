@@ -6621,7 +6621,7 @@ fn run_passes(ModuleRef llmod, bool opt) {
         // createStandardFunctionPasses
         llvm.LLVMAddCFGSimplificationPass(fpm.llpm);
         llvm.LLVMAddScalarReplAggregatesPass(fpm.llpm);
-        //llvm.LLVMAddEarlyCSEPass(fpm.llpm);
+        llvm.LLVMAddEarlyCSEPass(fpm.llpm);
 
         llvm.LLVMRunPassManager(fpm.llpm, llmod);
 
@@ -6637,11 +6637,11 @@ fn run_passes(ModuleRef llmod, bool opt) {
         // FIXME: crashes!
         // llvm.LLVMAddFunctionAttrsPass(pm.llpm);
 
-        // llvm.LLVMAddScalarReplAggregatesPassSSA(pm.llpm);
-        // llvm.LLVMAddEarlyCSEPass(pm.llpm);
+        llvm.LLVMAddScalarReplAggregatesPassSSA(pm.llpm);
+        llvm.LLVMAddEarlyCSEPass(pm.llpm);
         llvm.LLVMAddSimplifyLibCallsPass(pm.llpm);
         llvm.LLVMAddJumpThreadingPass(pm.llpm);
-        // llvm.LLVMAddCorrelatedValuePropagationPass(pm.llpm);
+        llvm.LLVMAddCorrelatedValuePropagationPass(pm.llpm);
         llvm.LLVMAddCFGSimplificationPass(pm.llpm);
         llvm.LLVMAddInstructionCombiningPass(pm.llpm);
         llvm.LLVMAddTailCallEliminationPass(pm.llpm);
@@ -6652,7 +6652,7 @@ fn run_passes(ModuleRef llmod, bool opt) {
         llvm.LLVMAddLoopUnswitchPass(pm.llpm);
         llvm.LLVMAddInstructionCombiningPass(pm.llpm);
         llvm.LLVMAddIndVarSimplifyPass(pm.llpm);
-        // llvm.LLVMAddLoopIdiomPass(pm.llpm);
+        llvm.LLVMAddLoopIdiomPass(pm.llpm);
         llvm.LLVMAddLoopDeletionPass(pm.llpm);
         llvm.LLVMAddLoopUnrollPass(pm.llpm);
         llvm.LLVMAddInstructionCombiningPass(pm.llpm);
@@ -6661,7 +6661,7 @@ fn run_passes(ModuleRef llmod, bool opt) {
         llvm.LLVMAddSCCPPass(pm.llpm);
         llvm.LLVMAddInstructionCombiningPass(pm.llpm);
         llvm.LLVMAddJumpThreadingPass(pm.llpm);
-        // llvm.LLVMAddCorrelatedValuePropagationPass(pm.llpm);
+        llvm.LLVMAddCorrelatedValuePropagationPass(pm.llpm);
         llvm.LLVMAddDeadStoreEliminationPass(pm.llpm);
         llvm.LLVMAddAggressiveDCEPass(pm.llpm);
         llvm.LLVMAddCFGSimplificationPass(pm.llpm);
