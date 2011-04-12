@@ -1594,7 +1594,7 @@ fn declare_tydesc(@crate_ctxt cx, @ty.t t) {
     }
 
     auto glue_fn_ty = T_ptr(T_glue_fn(cx.tn));
- 
+
     auto name = sanitize(cx.names.next("tydesc_" + ty.ty_to_str(t)));
     auto gvar = llvm.LLVMAddGlobal(cx.llmod, T_tydesc(cx.tn),
                                    _str.buf(name));
@@ -1655,13 +1655,17 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, ValueRef llfn,
 
     auto re;
     if (!ty.type_is_scalar(t)) {
+
+        // Any nontrivial glue is with values passed *by alias*; this is a
+        // requirement since in many contexts glue is invoked indirectly and
+        // the caller has no idea if it's dealing with something that can be
+        // passed by value.
+
         auto llty;
         if (ty.type_has_dynamic_size(t)) {
             llty = T_ptr(T_i8());
-        } else if (ty.type_is_structural(t)) {
-            llty = T_ptr(type_of(cx, t));
         } else {
-            llty = type_of(cx, t);
+            llty = T_ptr(type_of(cx, t));
         }
 
         auto lltyparams = llvm.LLVMGetParam(llfn, 3u);
@@ -1690,8 +1694,9 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, ValueRef llfn,
 }
 
 fn make_take_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
+    // NB: v is an *alias* of type t here, not a direct value.
     if (ty.type_is_boxed(t)) {
-        ret incr_refcnt_of_boxed(cx, v);
+        ret incr_refcnt_of_boxed(cx, cx.build.Load(v));
 
     } else if (ty.type_is_structural(t)) {
         ret iter_structural_ty(cx, v, t,
@@ -1719,9 +1724,11 @@ fn incr_refcnt_of_boxed(@block_ctxt cx, ValueRef box_ptr) -> result {
     ret res(next_cx, C_nil());
 }
 
-fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
+fn make_drop_glue(@block_ctxt cx, ValueRef v0, @ty.t t) -> result {
+    // NB: v0 is an *alias* of type t here, not a direct value.
     alt (t.struct) {
         case (ty.ty_str) {
+            auto v = cx.build.Load(v0);
             ret decr_refcnt_and_if_zero
                 (cx, v, bind trans_non_gc_free(_, v),
                  "free string",
@@ -1736,6 +1743,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                 // FIXME: switch gc/non-gc on layer of the type.
                 ret trans_non_gc_free(res.bcx, v);
             }
+            auto v = cx.build.Load(v0);
             ret decr_refcnt_and_if_zero(cx, v,
                                         bind hit_zero(_, v, t),
                                         "free vector",
@@ -1749,11 +1757,12 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                                          vec(C_int(0),
                                              C_int(abi.box_rc_field_body)));
 
-                auto body_val = load_scalar_or_boxed(cx, body, body_ty);
+                auto body_val = load_if_immediate(cx, body, body_ty);
                 auto res = drop_ty(cx, body_val, body_ty);
                 // FIXME: switch gc/non-gc on layer of the type.
                 ret trans_non_gc_free(res.bcx, v);
             }
+            auto v = cx.build.Load(v0);
             ret decr_refcnt_and_if_zero(cx, v,
                                         bind hit_zero(_, v, body_mt.ty),
                                         "free box",
@@ -1765,6 +1774,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                 ret trans_upcall(cx, "upcall_del_port",
                                  vec(vp2i(cx, v)));
             }
+            auto v = cx.build.Load(v0);
             ret decr_refcnt_and_if_zero(cx, v,
                                         bind hit_zero(_, v),
                                         "free port",
@@ -1776,6 +1786,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                 ret trans_upcall(cx, "upcall_del_chan",
                                  vec(vp2i(cx, v)));
             }
+            auto v = cx.build.Load(v0);
             ret decr_refcnt_and_if_zero(cx, v,
                                         bind hit_zero(_, v),
                                         "free chan",
@@ -1804,7 +1815,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                 ret trans_non_gc_free(cx, v);
             }
             auto box_cell =
-                cx.build.GEP(v,
+                cx.build.GEP(v0,
                              vec(C_int(0),
                                  C_int(abi.obj_field_box)));
 
@@ -1843,7 +1854,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                 ret trans_non_gc_free(cx, v);
             }
             auto box_cell =
-                cx.build.GEP(v,
+                cx.build.GEP(v0,
                              vec(C_int(0),
                                  C_int(abi.fn_field_box)));
 
@@ -1857,7 +1868,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
 
         case (_) {
             if (ty.type_is_structural(t)) {
-                ret iter_structural_ty(cx, v, t,
+                ret iter_structural_ty(cx, v0, t,
                                        bind drop_ty(_, _, _));
 
             } else if (ty.type_is_scalar(t) ||
@@ -2039,8 +2050,8 @@ fn iter_structural_ty_full(@block_ctxt cx,
                 r = GEP_tup_like(r.bcx, t, bv, vec(0, i));
                 auto elt_b = r.val;
                 r = f(r.bcx,
-                      load_scalar_or_boxed(r.bcx, elt_a, arg.ty),
-                      load_scalar_or_boxed(r.bcx, elt_b, arg.ty),
+                      load_if_immediate(r.bcx, elt_a, arg.ty),
+                      load_if_immediate(r.bcx, elt_b, arg.ty),
                       arg.ty);
                 i += 1;
             }
@@ -2053,8 +2064,8 @@ fn iter_structural_ty_full(@block_ctxt cx,
                 r = GEP_tup_like(r.bcx, t, bv, vec(0, i));
                 auto llfld_b = r.val;
                 r = f(r.bcx,
-                      load_scalar_or_boxed(r.bcx, llfld_a, fld.mt.ty),
-                      load_scalar_or_boxed(r.bcx, llfld_b, fld.mt.ty),
+                      load_if_immediate(r.bcx, llfld_a, fld.mt.ty),
+                      load_if_immediate(r.bcx, llfld_b, fld.mt.ty),
                       fld.mt.ty);
                 i += 1;
             }
@@ -2126,12 +2137,12 @@ fn iter_structural_ty_full(@block_ctxt cx,
                                     ty_params, tps, a.ty);
 
                                 auto llfld_a =
-                                    load_scalar_or_boxed(variant_cx,
+                                    load_if_immediate(variant_cx,
                                                          llfldp_a,
                                                          ty_subst);
 
                                 auto llfld_b =
-                                    load_scalar_or_boxed(variant_cx,
+                                    load_if_immediate(variant_cx,
                                                          llfldp_b,
                                                          ty_subst);
 
@@ -2252,7 +2263,7 @@ fn iter_sequence_inner(@block_ctxt cx,
         }
 
         auto p = cx.build.PointerCast(src, llptrty);
-        ret f(cx, load_scalar_or_boxed(cx, p, elt_ty), elt_ty);
+        ret f(cx, load_if_immediate(cx, p, elt_ty), elt_ty);
     }
 
     auto elt_sz = size_of(cx, elt_ty);
@@ -2333,12 +2344,12 @@ fn call_tydesc_glue_full(@block_ctxt cx, ValueRef v,
 
 fn call_tydesc_glue(@block_ctxt cx, ValueRef v, @ty.t t, int field) {
     auto td = get_tydesc(cx, t);
-    call_tydesc_glue_full(td.bcx, v, td.val, field);
+    call_tydesc_glue_full(td.bcx,
+                          spill_if_immediate(td.bcx, v, t),
+                          td.val, field);
 }
 
-fn take_ty(@block_ctxt cx,
-                    ValueRef v,
-                    @ty.t t) -> result {
+fn take_ty(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
     if (!ty.type_is_scalar(t)) {
         call_tydesc_glue(cx, v, t, abi.tydesc_field_take_glue);
     }
@@ -2348,7 +2359,7 @@ fn take_ty(@block_ctxt cx,
 fn drop_slot(@block_ctxt cx,
              ValueRef slot,
              @ty.t t) -> result {
-    auto llptr = load_scalar_or_boxed(cx, slot, t);
+    auto llptr = load_if_immediate(cx, slot, t);
     auto re = drop_ty(cx, llptr, t);
 
     auto llty = val_ty(slot);
@@ -2692,8 +2703,8 @@ fn trans_compare(@block_ctxt cx0, ast.binop op, @ty.t t0,
             auto av = av0;
             auto bv = bv0;
             if (load_inner) {
-                av = load_scalar_or_boxed(cx, av, t);
-                bv = load_scalar_or_boxed(cx, bv, t);
+                av = load_if_immediate(cx, av, t);
+                bv = load_if_immediate(cx, bv, t);
             }
 
             // First 'eq' comparison: if so, continue to next elts.
@@ -2839,7 +2850,7 @@ fn trans_vec_add(@block_ctxt cx, @ty.t t,
     auto tmp = r.val;
     r = copy_ty(r.bcx, INIT, tmp, lhs, t);
     auto bcx = trans_vec_append(r.bcx, t, tmp, rhs).bcx;
-    tmp = load_scalar_or_boxed(bcx, tmp, t);
+    tmp = load_if_immediate(bcx, tmp, t);
     find_scope_cx(cx).cleanups +=
         vec(clean(bind drop_ty(_, tmp, t)));
     ret res(bcx, tmp);
@@ -2946,7 +2957,7 @@ fn autoderef(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
                     v1 = body;
                 }
 
-                v1 = load_scalar_or_boxed(cx, v1, t1);
+                v1 = load_if_immediate(cx, v1, t1);
             }
             case (_) {
                 ret res(cx, v1);
@@ -3495,7 +3506,7 @@ fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
                     auto llsubvalptr = rslt.val;
                     matched_cx = rslt.bcx;
 
-                    auto llsubval = load_scalar_or_boxed(matched_cx,
+                    auto llsubval = load_if_immediate(matched_cx,
                                                          llsubvalptr,
                                                          pat_ty(subpat));
                     auto subpat_res = trans_pat_match(matched_cx, subpat,
@@ -3550,7 +3561,7 @@ fn trans_pat_binding(@block_ctxt cx, @ast.pat pat, ValueRef llval)
                 this_cx = rslt.bcx;
                 auto llsubvalptr = rslt.val;
 
-                auto llsubval = load_scalar_or_boxed(this_cx, llsubvalptr,
+                auto llsubval = load_if_immediate(this_cx, llsubvalptr,
                                                      pat_ty(subpat));
                 auto subpat_res = trans_pat_binding(this_cx, subpat,
                                                     llsubval);
@@ -4417,10 +4428,7 @@ fn trans_args(@block_ctxt cx,
             } else {
                 // Non-mem but we're trying to alias; synthesize an
                 // alloca, spill to it and pass its address.
-                auto llty = val_ty(lv.res.val);
-                auto llptr = alloca(lv.res.bcx, llty);
-                lv.res.bcx.build.Store(lv.res.val, llptr);
-                val = llptr;
+                val = do_spill(lv.res.bcx, lv.res.val);
             }
 
         } else {
@@ -4496,7 +4504,7 @@ fn trans_call(@block_ctxt cx, @ast.expr f,
             // self-call
             fn_ty = meth;
         }
-        
+
         case (_) {
             fn_ty = ty.expr_ty(f);
 
@@ -4527,7 +4535,7 @@ fn trans_call(@block_ctxt cx, @ast.expr f,
     auto retval = C_nil();
 
     if (!ty.type_is_nil(ret_ty)) {
-        retval = load_scalar_or_boxed(bcx, llretslot, ret_ty);
+        retval = load_if_immediate(bcx, llretslot, ret_ty);
         // Retval doesn't correspond to anything really tangible in the frame,
         // but it's a ref all the same, so we put a note here to drop it when
         // we're done in this scope.
@@ -4680,7 +4688,7 @@ fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
         if (!expr_provided) {
             src_res = GEP_tup_like(bcx, t, base_val, vec(0, i));
             src_res = res(src_res.bcx,
-                          load_scalar_or_boxed(bcx, src_res.val, e_ty));
+                          load_if_immediate(bcx, src_res.val, e_ty));
         }
 
         bcx = src_res.bcx;
@@ -4757,7 +4765,7 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             auto t = node_ann_type(cx.fcx.ccx, ann);
             auto lhs_res = trans_lval(cx, dst);
             check (lhs_res.is_mem);
-            auto lhs_val = load_scalar_or_boxed(lhs_res.res.bcx,
+            auto lhs_val = load_if_immediate(lhs_res.res.bcx,
                                                 lhs_res.res.val, t);
             auto rhs_res = trans_expr(lhs_res.res.bcx, src);
             auto v = trans_eager_binop(rhs_res.bcx, op, t,
@@ -4853,21 +4861,38 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
 
     auto t = ty.expr_ty(e);
     auto sub = trans_lval(cx, e);
-    ret res(sub.res.bcx, load_scalar_or_boxed(sub.res.bcx, sub.res.val, t));
+    ret res(sub.res.bcx, load_if_immediate(sub.res.bcx, sub.res.val, t));
 }
 
 // We pass structural values around the compiler "by pointer" and
-// non-structural values (scalars and boxes) "by value". This function selects
-// whether to load a pointer or pass it.
+// non-structural values (scalars, boxes, pointers) "by value". We call the
+// latter group "immediates" and, in some circumstances when we know we have a
+// pointer (or need one), perform load/store operations based on the
+// immediate-ness of the type.
 
-fn load_scalar_or_boxed(@block_ctxt cx,
-                        ValueRef v,
-                        @ty.t t) -> ValueRef {
-    if (ty.type_is_scalar(t) || ty.type_is_boxed(t) || ty.type_is_native(t)) {
-        ret cx.build.Load(v);
-    } else {
-        ret v;
+fn type_is_immediate(@ty.t t) -> bool {
+    ret ty.type_is_scalar(t) || ty.type_is_boxed(t) || ty.type_is_native(t);
+}
+
+fn do_spill(@block_ctxt cx, ValueRef v) -> ValueRef {
+    // We have a value but we have to spill it to pass by alias.
+    auto llptr = alloca(cx, val_ty(v));
+    cx.build.Store(v, llptr);
+    ret llptr;
+}
+
+fn spill_if_immediate(@block_ctxt cx, ValueRef v, @ty.t t) -> ValueRef {
+    if (type_is_immediate(t)) {
+        ret do_spill(cx, v);
     }
+    ret v;
+}
+
+fn load_if_immediate(@block_ctxt cx, ValueRef v, @ty.t t) -> ValueRef {
+    if (type_is_immediate(t)) {
+        ret cx.build.Load(v);
+    }
+    ret v;
 }
 
 fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
@@ -5180,7 +5205,7 @@ fn recv_val(@block_ctxt cx, ValueRef lhs, @ast.expr rhs,
                                 vp2i(bcx, prt.val)));
     bcx = sub.bcx;
 
-    auto data_load = load_scalar_or_boxed(bcx, lhs, unit_ty);
+    auto data_load = load_if_immediate(bcx, lhs, unit_ty);
     auto cp = copy_ty(bcx, action, lhs, data_load, unit_ty);
     bcx = cp.bcx;
 
@@ -5437,7 +5462,7 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
                     fn drop_hoisted_ty(@block_ctxt cx,
                                        ValueRef alloca_val,
                                        @ty.t t) -> result {
-                        auto reg_val = load_scalar_or_boxed(cx,
+                        auto reg_val = load_if_immediate(cx,
                                                             alloca_val, t);
                         ret drop_ty(cx, reg_val, t);
                     }
@@ -5881,7 +5906,7 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
         i = 0;
         for (ast.obj_field f in ob.fields) {
             auto arg = bcx.fcx.llargs.get(f.id);
-            arg = load_scalar_or_boxed(bcx, arg, arg_tys.(i).ty);
+            arg = load_if_immediate(bcx, arg, arg_tys.(i).ty);
             auto field = GEP_tup_like(bcx, fields_ty, body_fields.val,
                                       vec(0, i));
             bcx = field.bcx;
