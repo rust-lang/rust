@@ -19,6 +19,7 @@ LLVMAddCFGSimplificationPass
 LLVMAddCase
 LLVMAddConstantMergePass
 LLVMAddConstantPropagationPass
+LLVMAddCorrelatedValuePropagationPass
 LLVMAddDeadArgEliminationPass
 LLVMAddDeadStoreEliminationPass
 LLVMAddDeadTypeEliminationPass
