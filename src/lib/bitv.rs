@@ -74,6 +74,15 @@ impure fn copy(&t v0, t v1) -> bool {
     ret process(sub, v0, v1);
 }
 
+fn clone(t v) -> t {
+    auto storage = _vec.init_elt_mut[uint](0u, v.nbits / uint_bits() + 1u);
+    auto len = _vec.len[mutable uint](v.storage);
+    for each (uint i in _uint.range(0u, len)) {
+        storage.(i) = v.storage.(i);
+    }
+    ret rec(storage = storage, nbits = v.nbits);
+}
+
 fn get(&t v, uint i) -> bool {
     check (i < v.nbits);
 
@@ -137,7 +146,7 @@ impure fn set(&t v, uint i, bool x) {
 
 /* true if all bits are 1 */
 fn is_true(&t v) -> bool {
-    for(uint i in v.storage) {
+    for (uint i in to_vec(v)) {
         if (i != 1u) {
             ret false;
         }
@@ -148,7 +157,7 @@ fn is_true(&t v) -> bool {
 
 /* true if all bits are non-1 */
 fn is_false(&t v) -> bool {
-    for(uint i in v.storage) {
+    for (uint i in to_vec(v)) {
         if (i == 1u) {
             ret false;
         }
@@ -173,7 +182,7 @@ fn to_vec(&t v) -> vec[uint] {
 fn to_str(&t v) -> str {
     auto res = "";
 
-    for(uint i in v.storage) {
+    for (uint i in bitv.to_vec(v)) {
         if (i == 1u) {
             res += "1";
         }

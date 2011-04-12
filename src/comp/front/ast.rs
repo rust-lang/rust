@@ -215,8 +215,10 @@ tag mode {
 
 type stmt = spanned[stmt_];
 tag stmt_ {
-    stmt_decl(@decl, option.t[@ts_ann]);
-    stmt_expr(@expr, option.t[@ts_ann]);
+/* Only the ts_ann field is meaningful for statements,
+   but we make it an ann to make traversals simpler */
+    stmt_decl(@decl, ann); 
+    stmt_expr(@expr, ann);
     // These only exist in crate-level blocks.
     stmt_crate_directive(@crate_directive);
 }

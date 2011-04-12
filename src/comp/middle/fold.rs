@@ -232,11 +232,11 @@ type ast_fold[ENV] =
 
      // Stmt folds.
      (fn(&ENV e, &span sp,
-         @decl decl, option.t[@ts_ann] a)
+         @decl decl, ann a)
       -> @stmt)                                   fold_stmt_decl,
 
      (fn(&ENV e, &span sp,
-         @expr e, option.t[@ts_ann] a)
+         @expr e, ann a)
       -> @stmt)                                   fold_stmt_expr,
 
      // Item folds.
@@ -470,7 +470,9 @@ fn fold_decl[ENV](&ENV env, ast_fold[ENV] fld, @decl d) -> @decl {
                 }
                 case (_) { /* fall through */  }
             }
-            let @ast.local local_ = @rec(ty=ty_, init=init_ with *local);
+            auto ann_ = fld.fold_ann(env_, local.ann);
+            let @ast.local local_ =
+                @rec(ty=ty_, init=init_, ann=ann_ with *local);
             ret fld.fold_decl_local(env_, d.span, local_);
         }
 
@@ -830,12 +832,14 @@ fn fold_stmt[ENV](&ENV env, ast_fold[ENV] fld, &@stmt s) -> @stmt {
     alt (s.node) {
         case (ast.stmt_decl(?d, ?a)) {
             auto dd = fold_decl(env_, fld, d);
-            ret fld.fold_stmt_decl(env_, s.span, dd, a);
+            auto aa = fld.fold_ann(env_, a);
+            ret fld.fold_stmt_decl(env_, s.span, dd, aa);
         }
 
         case (ast.stmt_expr(?e, ?a)) {
             auto ee = fold_expr(env_, fld, e);
-            ret fld.fold_stmt_expr(env_, s.span, ee, a);
+            auto aa = fld.fold_ann(env_, a);
+            ret fld.fold_stmt_expr(env_, s.span, ee, aa);
         }
     }
     fail;
@@ -1426,13 +1430,11 @@ fn identity_fold_pat_tag[ENV](&ENV e, &span sp, path p, vec[@pat] args,
 
 // Stmt identities.
 
-fn identity_fold_stmt_decl[ENV](&ENV env, &span sp, @decl d,
-                                option.t[@ts_ann] a) -> @stmt {
+fn identity_fold_stmt_decl[ENV](&ENV env, &span sp, @decl d, ann a) -> @stmt {
     ret @respan(sp, ast.stmt_decl(d, a));
 }
 
-fn identity_fold_stmt_expr[ENV](&ENV e, &span sp, @expr x,
-                                option.t[@ts_ann] a) -> @stmt {
+fn identity_fold_stmt_expr[ENV](&ENV e, &span sp, @expr x, ann a) -> @stmt {
     ret @respan(sp, ast.stmt_expr(x, a));
 }
 
@@ -1705,7 +1707,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
              bind identity_fold_native_item_ty[ENV](_,_,_,_),
          fold_item_tag  = bind identity_fold_item_tag[ENV](_,_,_,_,_,_,_),
          fold_item_obj  = bind identity_fold_item_obj[ENV](_,_,_,_,_,_,_),
-
+       
          fold_view_item_use =
              bind identity_fold_view_item_use[ENV](_,_,_,_,_,_),
          fold_view_item_import =

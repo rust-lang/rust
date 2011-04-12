@@ -72,7 +72,7 @@ fn difference(&precond p1, &precond p2) -> bool {
 }
 
 fn union(&precond p1, &precond p2) -> bool {
-  be bitv.difference(p1, p2);
+  be bitv.union(p1, p2);
 }
 
 fn pps_len(&pre_and_post p) -> uint {
@@ -87,38 +87,52 @@ impure fn require_and_preserve(uint i, &pre_and_post p) -> () {
   bitv.set(p.postcondition, i, true);
 }
 
-impure fn set_in_postcond(uint i, &pre_and_post p) -> () {
+impure fn set_in_postcond(uint i, &pre_and_post p) -> bool {
   // sets the ith bit in p's post
+  auto was_set = bitv.get(p.postcondition, i);
   bitv.set(p.postcondition, i, true);
+  ret !was_set;
+}
+
+impure fn set_in_poststate(uint i, &pre_and_post_state s) -> bool {
+  // sets the ith bit in p's post
+  auto was_set = bitv.get(s.poststate, i);
+  bitv.set(s.poststate, i, true);
+  ret !was_set;
 }
 
 // Sets all the bits in a's precondition to equal the
 // corresponding bit in p's precondition.
 impure fn set_precondition(&ts_ann a, &precond p) -> () {
-  bitv.copy(p, a.conditions.precondition);
+  bitv.copy(a.conditions.precondition, p);
 }
 
 // Sets all the bits in a's postcondition to equal the
 // corresponding bit in p's postcondition.
 impure fn set_postcondition(&ts_ann a, &postcond p) -> () {
-  bitv.copy(p, a.conditions.postcondition);
+  bitv.copy(a.conditions.postcondition, p);
 }
 
 // Sets all the bits in a's prestate to equal the
 // corresponding bit in p's prestate.
-impure fn set_prestate(&ts_ann a, &prestate p) -> () {
-  bitv.copy(p, a.states.prestate);
+impure fn set_prestate(&ts_ann a, &prestate p) -> bool {
+  ret bitv.copy(a.states.prestate, p);
 }
 
 // Sets all the bits in a's postcondition to equal the
 // corresponding bit in p's postcondition.
-impure fn set_poststate(&ts_ann a, &poststate p) -> () {
-  bitv.copy(p, a.states.poststate);
+impure fn set_poststate(&ts_ann a, &poststate p) -> bool {
+  ret bitv.copy(a.states.poststate, p);
 }
 
 // Set all the bits in p that are set in new
-impure fn extend_prestate(&prestate p, &poststate new) -> () {
-  bitv.union(p, new);
+impure fn extend_prestate(&prestate p, &poststate new) -> bool {
+  ret bitv.union(p, new);
+}
+
+// Set all the bits in p that are set in new
+impure fn extend_poststate(&poststate p, &poststate new) -> bool {
+  ret bitv.union(p, new);
 }
 
 fn ann_precond(&ts_ann a) -> precond {
@@ -129,7 +143,11 @@ fn ann_prestate(&ts_ann a) -> prestate {
   ret a.states.prestate;
 }
 
+// returns true if a implies b
+// that is, returns true except if for some bits c and d,
+// c = 1 and d = 0
 impure fn implies(bitv.t a, bitv.t b) -> bool {
-  bitv.difference(b, a);
-  ret bitv.is_false(b);
+  auto tmp = bitv.clone(b);
+  bitv.difference(tmp, a);
+  ret bitv.is_false(tmp);
 }

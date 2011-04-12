@@ -1,8 +1,17 @@
 import std._uint;
 import std._int;
 import std._vec;
+import std.option.none;
 import front.ast;
+import util.typestate_ann.ts_ann;
 
+import std.io.stdout;
+import std.io.str_writer;
+import std.io.string_writer;
+import pretty.pprust.print_block;
+import pretty.pprust.print_expr;
+import pretty.pprust.print_decl;
+import pretty.pp.mkstate;
 
 type filename = str;
 type span = rec(uint lo, uint hi);
@@ -92,6 +101,40 @@ fn elt_expr(&ast.elt e) -> @ast.expr { ret e.expr; }
 fn elt_exprs(vec[ast.elt] elts) -> vec[@ast.expr] {
     auto f = elt_expr;
     be _vec.map[ast.elt, @ast.expr](f, elts);
+}
+
+fn field_expr(&ast.field f) -> @ast.expr { ret f.expr; }
+
+fn field_exprs(vec[ast.field] fields) -> vec [@ast.expr] {
+    auto f = field_expr;
+    ret _vec.map[ast.field, @ast.expr](f, fields);
+}
+
+fn plain_ann() -> ast.ann {
+  ret ast.ann_type(middle.ty.plain_ty(middle.ty.ty_nil),
+                   none[vec[@middle.ty.t]], none[@ts_ann]);
+}
+
+fn log_expr(@ast.expr e) -> () {
+  let str_writer s = string_writer();
+  auto out_ = mkstate(s.get_writer(), 80u);
+  auto out = @rec(s=out_,
+                  comments=none[vec[front.lexer.cmnt]],
+                  mutable cur_cmnt=0u);
+
+  print_expr(out, e);
+  log(s.get_str());
+}
+
+fn log_block(&ast.block b) -> () {
+  let str_writer s = string_writer();
+  auto out_ = mkstate(s.get_writer(), 80u);
+  auto out = @rec(s=out_,
+                  comments=none[vec[front.lexer.cmnt]],
+                  mutable cur_cmnt=0u);
+
+  print_block(out, b);
+  log(s.get_str());
 }
 
 //

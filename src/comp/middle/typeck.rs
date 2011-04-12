@@ -1541,7 +1541,7 @@ fn resolve_local_types_in_block(&@fn_ctxt fcx, &ast.block block)
     // FIXME: rustboot bug prevents us from using these functions directly
     auto fld = fold.new_identity_fold[option.t[@fn_ctxt]]();
     auto wbl = writeback_local;
-    auto rltia = resolve_local_types_in_annotation;
+    auto rltia = bind resolve_local_types_in_annotation(_,_);
     auto uefi = update_env_for_item;
     auto kg = keep_going;
     fld = @rec(
@@ -2551,6 +2551,10 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast.decl decl) -> @ast.decl {
     alt (decl.node) {
         case (ast.decl_local(?local)) {
 
+            auto t;
+
+            t = plain_ty(middle.ty.ty_nil);
+            
             alt (local.ty) {
                 case (none[@ast.ty]) {
                     // Auto slot. Do nothing for now.
@@ -2559,7 +2563,16 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast.decl decl) -> @ast.decl {
                 case (some[@ast.ty](?ast_ty)) {
                     auto local_ty = ast_ty_to_ty_crate(fcx.ccx, ast_ty);
                     fcx.locals.insert(local.id, local_ty);
+                    t = local_ty;
                 }
+            }
+
+            auto a_res = local.ann; 
+            alt (a_res) {
+                case (ann_none) {
+                    a_res = triv_ann(t);
+                }
+                case (_) {}
             }
 
             auto initopt = local.init;
@@ -2583,7 +2596,7 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast.decl decl) -> @ast.decl {
                 }
                 case (_) { /* fall through */  }
             }
-            auto local_1 = @rec(init = initopt with *local);
+            auto local_1 = @rec(init = initopt, ann = a_res with *local);
             ret @rec(node=ast.decl_local(local_1)
                      with *decl);
         }
