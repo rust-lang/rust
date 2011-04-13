@@ -450,7 +450,7 @@ similar fashion to the way the type system permits user-defined types.
 
 A short way of thinking of this is: types statically model values,
 typestates statically model @emph{assertions that hold} before and
-after statements.
+after statements and expressions.
 
 @end itemize
 
@@ -571,8 +571,9 @@ Additional specific influences can be seen from the following languages:
 * Ref.Task::                    Semantic model of tasks.
 * Ref.Item::                    The components of a module.
 * Ref.Type::                    The types of values held in memory.
-* Ref.Expr::                    Parsed and primitive expressions.
-* Ref.Stmt::                    Executable statements.
+* Ref.Typestate::               Predicates that hold at points in time.
+* Ref.Stmt::                    Components of an executable block.
+* Ref.Expr::                    Units of execution and evaluation.
 * Ref.Run::                     Organization of runtime services.
 @end menu
 
@@ -1028,7 +1029,7 @@ the associated value, starting from the task stack frame, at run time.
 In some contexts, the Rust grammar accepts a general @emph{path}, but a
 subsequent syntactic restriction requires the path to be an lval or a name. In
 other words: in some contexts an lval is required (for example, on the left
-hand side of the copy operator, @pxref{Ref.Stmt.Copy}) and in other contexts a
+hand side of the copy operator, @pxref{Ref.Expr.Copy}) and in other contexts a
 name is required (for example, as a type parameter, @pxref{Ref.Item}). In no
 case is the grammar made ambiguous by accepting a general path and restricting
 allowed paths to names or lvals after parsing. These restrictions are noted in
@@ -1532,8 +1533,8 @@ possibility, a semi-synchronous send operation is possible, which blocks until
 there is room in the existing queue and then executes an asynchronous send.
 
 The asynchronous message-send operator is @code{<+}. The semi-synchronous
-message-send operator is @code{<|}. @xref{Ref.Stmt.Send}. The message-receive
-operator is @code{<-}. @xref{Ref.Stmt.Recv}.
+message-send operator is @code{<|}. @xref{Ref.Expr.Send}. The message-receive
+operator is @code{<-}. @xref{Ref.Expr.Recv}.
 
 @node       Ref.Task.Life
 @subsection Ref.Task.Life
@@ -1813,7 +1814,7 @@ A function may have an @emph{effect}, which may be either @code{impure} or
 @dfn{pure}.
 
 Any pure boolean function is also called a @emph{predicate}, and may be used
-as part of the static typestate system. @xref{Ref.Stmt.Stat.Constr}.
+as part of the static typestate system. @xref{Ref.Typestate.Constr}.
 
 An example of a function:
 @example
@@ -1837,7 +1838,7 @@ their execution before returning or tail-calling.
 Putting a value is similar to returning a value -- the argument to @code{put}
 is copied into the caller's frame and control transfers back to the caller --
 but the iterator frame is only @emph{suspended} during the put, and will be
-@emph{resumed} at the statement after the @code{put}, on the next iteration of
+@emph{resumed} at the point after the @code{put}, on the next iteration of
 the caller's loop.
 
 The output type of an iterator is the type of value that the function will
@@ -1846,7 +1847,7 @@ of type @code{()} and completes its execution.
 
 An iterator can only be called in the loop header of a matching @code{for
 each} loop or as the argument in a @code{put each} expression.
-@xref{Ref.Stmt.Foreach}.
+@xref{Ref.Expr.Foreach}.
 
 An example of an iterator:
 @example
@@ -2060,7 +2061,7 @@ some non-@code{any} type @var{T} and a reflection of the type @var{T}.
 
 Values of type @code{any} can be used in an @code{alt type} expression, in
 which the reflection is used to select a block corresponding to a particular
-type extraction. @xref{Ref.Stmt.Alt}.
+type extraction. @xref{Ref.Expr.Alt}.
 
 @node       Ref.Type.Mach
 @subsection Ref.Type.Mach
@@ -2306,7 +2307,7 @@ by named reference to a @emph{tag item} declaration. @xref{Ref.Item.Tag}.
 
 The function type-constructor @code{fn} forms new function types. A function
 type consists of a sequence of input slots, an optional set of input
-constraints (@pxref{Ref.Stmt.Stat.Constr}), an output slot, and an
+constraints (@pxref{Ref.Typestate.Constr}), an output slot, and an
 @emph{effect}. @xref{Ref.Item.Fn}.
 
 An example of a @code{fn} type:
@@ -2498,14 +2499,14 @@ give_ints(t2);
 @cindex Constrained types
 
 A @dfn{constrained type} is a type that carries a @emph{formal constraint}
-(@pxref{Ref.Stmt.Stat.Constr}), which is similar to a normal constraint except
+(@pxref{Ref.Typestate.Constr}), which is similar to a normal constraint except
 that the @emph{base name} of any slots mentioned in the constraint must be the
 special @emph{formal symbol} @emph{*}.
 
 When a constrained type is instantiated in a particular slot declaration, the
 formal symbol in the constraint is replaced with the name of the declared slot
 and the resulting constraint is checked immediately after the slot is
-declared. @xref{Ref.Stmt.Check}.
+declared. @xref{Ref.Expr.Check}.
 
 An example of a constrained type with two separate instantiations:
 @example
@@ -2525,93 +2526,40 @@ let ordered_range rng2 = rec(low=15, high=17);
 
 @emph{TODO}.
 
-@page
-@node    Ref.Expr
-@section Ref.Expr
-@c * Ref.Expr::               Parsed and primitive expressions.
-@cindex Expressions
 
-Rust has two kinds of expressions: @emph{parsed expressions} and
-@emph{primitive expressions}.  The former are syntactic sugar and are
-eliminated during parsing. The latter are very minimal, consisting only of
-paths and primitive literals, possibly combined via a single level
-(non-recursive) unary or binary machine-level operation (ALU or
-FPU). @xref{Ref.Path}.
 
-For the most part, Rust semantics are defined in terms of @emph{statements},
-which parsed expressions are desugared to. The desugaring is defined in the
-grammar. @xref{Ref.Gram}. The residual primitive statements appear only in the
-right hand side of copy statements, @xref{Ref.Stmt.Copy}.
-
-@page
-@node    Ref.Stmt
-@section Ref.Stmt
-@c * Ref.Stmt::               Executable statements.
-@cindex Statements
-
-A @dfn{statement} is a component of a block, which is in turn a component of
-an outer block, a function or an iterator. When a function is spawned into a
-task, the task @emph{executes} statements in an order determined by the body
-of the enclosing structure. Each statement causes the task to perform certain
-actions.
-
-@menu
-* Ref.Stmt.Stat::               The static typestate system of statement analysis.
-* Ref.Stmt.Decl::               Statement declaring an item or slot.
-* Ref.Stmt.Copy::               Statement for copying a value.
-* Ref.Stmt.Spawn::              Statements for creating new tasks.
-* Ref.Stmt.Send::               Statements for sending a value into a channel.
-* Ref.Stmt.Recv::               Statement for receiving a value from a channel.
-* Ref.Stmt.Call::               Statement for calling a function.
-* Ref.Stmt.Bind::               Statement for binding arguments to functions.
-* Ref.Stmt.Ret::                Statement for stopping and producing a value.
-* Ref.Stmt.Be::                 Statement for stopping and executing a tail call.
-* Ref.Stmt.Put::                Statement for pausing and producing a value.
-* Ref.Stmt.Fail::               Statement for causing task failure.
-* Ref.Stmt.Log::                Statement for logging values to diagnostic buffers.
-* Ref.Stmt.Note::               Statement for logging values during failure.
-* Ref.Stmt.While::              Statement for simple conditional looping.
-* Ref.Stmt.Break::              Statement for terminating a loop.
-* Ref.Stmt.Cont::               Statement for terminating a single loop iteration.
-* Ref.Stmt.For::                Statement for looping over strings and vectors.
-* Ref.Stmt.Foreach::            Statement for looping via an iterator.
-* Ref.Stmt.If::                 Statement for simple conditional branching.
-* Ref.Stmt.Alt::                Statement for complex conditional branching.
-* Ref.Stmt.Prove::              Statement for static assertion of typestate.
-* Ref.Stmt.Check::              Statement for dynamic assertion of typestate.
-* Ref.Stmt.IfCheck::            Statement for dynamic testing of typestate.
-@end menu
-
-@node       Ref.Stmt.Stat
-@subsection Ref.Stmt.Stat
-@c * Ref.Stmt.Stat::         The static typestate system of statement analysis.
+* Ref.Typestate::            The static system of predicate analysis.
+@node       Ref.Typestate
+@section    Ref.Typestate
+@c * Ref.Typestate::         The static system of predicate analysis.
 @cindex Typestate system
 
-Statements have a detailed static semantics. The static semantics determine,
-on a statement-by-statement basis, the @emph{effects} the statement has on its
-environment, as well the @emph{legality} of the statement in its environment.
+Rust programs have a static semantics that determine the types of values
+produced by each expression, as well as the @emph{predicates} that hold over
+slots in the environment at each point in time during execution.
 
-The legality of a statement is partly governed by syntactic rules, partly by
-its conformance to the types of value it affects, and partly by a
-statement-oriented static dataflow analysis. This section describes the
-statement-oriented static dataflow analysis, also called the @emph{typestate}
-system.
+The latter semantics -- the dataflow analysis of predicates holding over slots
+-- is called the @emph{typestate} system.
 
 @menu
-* Ref.Stmt.Stat.Point::         Inter-statement positions of logical judgements.
-* Ref.Stmt.Stat.CFG::           The control-flow graph formed by statements.
-* Ref.Stmt.Stat.Constr::        Predicates applied to slots.
-* Ref.Stmt.Stat.Cond::          Constraints required and implied by a statement.
-* Ref.Stmt.Stat.Typestate::     Constraints that hold at points.
-* Ref.Stmt.Stat.Check::         Relating dynamic state to static typestate.
+* Ref.Typestate.Point::         Discrete positions in execution.
+* Ref.Typestate.CFG::           The control-flow graph formed by points.
+* Ref.Typestate.Constr::        Predicates applied to slots.
+* Ref.Typestate.Cond::          Constraints required and implied by a point.
+* Ref.Typestate.State::         Constraints that hold at points.
+* Ref.Typestate.Check::         Relating dynamic state to static typestate.
 @end menu
 
-@node          Ref.Stmt.Stat.Point
-@subsubsection Ref.Stmt.Stat.Point
-@c * Ref.Stmt.Stat.Point::         Inter-statement positions of logical judgements.
+@node       Ref.Typestate.Point
+@subsection Ref.Typestate.Point
+@c * Ref.Typestate.Point::         Discrete positions in execution.
 @cindex Points
 
-A @dfn{point} exists before and after any statement in a Rust program.
+Control flows from statement to statement in a block, and through the
+evaluation of each expression, from one sub-expression to another. This
+sequential control flow is specified as a set of @dfn{points}, each of which
+has a set of points before and after it in the implied control flow.
+
 For example, this code:
 
 @example
@@ -2619,42 +2567,77 @@ For example, this code:
  print(s);
 @end example
 
-Consists of two statements and four points:
+Consists of 2 statements, 3 expressions and 12 points:
 
 @itemize
 @item the point before the first statement
+@item the point before evaluating the static initializer @code{"hello, world"}
+@item the point after evaluating the static initializer @code{"hello, world"}
 @item the point after the first statement
 @item the point before the second statement
+@item the point before evaluating the function value @code{print}
+@item the point after evaluating the function value @code{print}
+@item the point before evaluating the arguments to @code{print}
+@item the point before evaluating the symbol @code{s}
+@item the point after evaluating the symbol @code{s}
+@item the point after evaluating the arguments to @code{print}
 @item the point after the second statement
 @end itemize
 
-The typestate system reasons over points, rather than statements. This may
-seem counter-intuitive, but points are the more primitive concept. Another way
-of thinking about a point is as a set of @emph{instants in time} at which the
-state of a task is fixed. By contrast, a statement represents a @emph{duration
-in time}, during which the state of the task changes. The typestate system is
-concerned with constraining the possible states of a task's memory at
-@emph{instants}; it is meaningless to speak of the state of a task's memory
-``at'' a statement, as each statement is likely to change the contents of
-memory.
+Whereas this code:
 
-@node          Ref.Stmt.Stat.CFG
-@subsubsection Ref.Stmt.Stat.CFG
-@c * Ref.Stmt.Stat.CFG::           The control-flow graph formed by statements.
+@example
+ print(x() + y());
+@end example
+
+Consists of 1 statement, 7 expressions and 14 points:
+
+@itemize
+@item the point before the statement
+@item the point before evaluating the function value @code{print}
+@item the point after evaluating the function value @code{print}
+@item the point before evaluating the arguments to @code{print}
+@item the point before evaluating the arguments to @code{+}
+@item the point before evaluating the function value @code{x}
+@item the point after evaluating the function value @code{x}
+@item the point before evaluating the arguments to @code{x}
+@item the point after evaluating the arguments to @code{x}
+@item the point before evaluating the function value @code{y}
+@item the point after evaluating the function value @code{y}
+@item the point before evaluating the arguments to @code{y}
+@item the point after evaluating the arguments to @code{y}
+@item the point after evaluating the arguments to @code{+}
+@item the point after evaluating the arguments to @code{print}
+@end itemize
+
+
+The typestate system reasons over points, rather than statements or
+expressions. This may seem counter-intuitive, but points are the more
+primitive concept. Another way of thinking about a point is as a set of
+@emph{instants in time} at which the state of a task is fixed. By contrast, a
+statement or expression represents a @emph{duration in time}, during which the
+state of the task changes. The typestate system is concerned with constraining
+the possible states of a task's memory at @emph{instants}; it is meaningless
+to speak of the state of a task's memory ``at'' a statement or expression, as
+each statement or expression is likely to change the contents of memory.
+
+@node       Ref.Typestate.CFG
+@subsection Ref.Typestate.CFG
+@c * Ref.Typestate.CFG::           The control-flow graph formed by points.
 @cindex Control-flow graph
 
 Each @emph{point} can be considered a vertex in a directed @emph{graph}. Each
-kind of statement implies a single edge in this graph between the point before
-the statement and the point after it, as well as a set of zero or more edges
-from the points of the statement to points before other statements. The edges
-between points represent @emph{possible} indivisible control transfers that
-might occur during execution.
+kind of expression or statement implies a number of points @emph{and edges} in
+this graph. The edges connect the points within each statement or expression,
+as well as between those points and those of nearby statements and expressions
+in the program. The edges between points represent @emph{possible} indivisible
+control transfers that might occur during execution.
 
 This implicit graph is called the @dfn{control-flow graph}, or @dfn{CFG}.
 
-@node          Ref.Stmt.Stat.Constr
-@subsubsection Ref.Stmt.Stat.Constr
-@c * Ref.Stmt.Stat.Constr::          Predicates applied to slots.
+@node       Ref.Typestate.Constr
+@subsection Ref.Typestate.Constr
+@c * Ref.Typestate.Constr::          Predicates applied to slots.
 @cindex Predicate
 @cindex Constraint
 
@@ -2684,9 +2667,9 @@ Predicates can only apply to slots holding immutable values. The slots a
 predicate applies to can themselves be mutable, but the types of values held
 in those slots must be immutable.
 
-@node          Ref.Stmt.Stat.Cond
-@subsubsection Ref.Stmt.Stat.Cond
-@c * Ref.Stmt.Stat.Cond::          Constraints required and implied by a statement.
+@node       Ref.Typestate.Cond
+@subsection Ref.Typestate.Cond
+@c * Ref.Typestate.Cond::          Constraints required and implied by a point.
 @cindex Condition
 @cindex Precondition
 @cindex Postcondition
@@ -2696,32 +2679,33 @@ A @dfn{condition} is a set of zero or more constraints.
 Each @emph{point} has an associated @emph{condition}:
 
 @itemize
-@item The @dfn{precondition} of a statement is the condition the statement
-requires in the point before the condition.
-@item The @dfn{postcondition} of a statement is the condition the statement
-enforces in the point after the statement.
+@item The @dfn{precondition} of a statement or expression is the condition
+required at in the point before it.
+@item The @dfn{postcondition} of a statement or expression is the condition
+enforced in the point after it.
 @end itemize
 
 Any constraint present in the precondition and @emph{absent} in the
-postcondition is considered to be @emph{dropped} by the statement.
+postcondition is considered to be @emph{dropped} by the statement or
+expression.
 
-@node          Ref.Stmt.Stat.Typestate
-@subsubsection Ref.Stmt.Stat.Typestate
-@c * Ref.Stmt.Stat.Typestate::     Constraints that hold at points.
+@node       Ref.Typestate.State
+@subsection Ref.Typestate.State
+@c * Ref.Typestate.State::     Constraints that hold at points.
 @cindex Typestate
 @cindex Prestate
 @cindex Poststate
 
-The typestate checking system @emph{calculates} an additional
-condition for each point called its typestate. For a given statement,
-we call the two typestates associated with its two points the prestate
-and a poststate.
+The typestate checking system @emph{calculates} an additional condition for
+each point called its typestate. For a given statement or expression, we call
+the two typestates associated with its two points the prestate and a
+poststate.
 
 @itemize
-@item The @dfn{prestate} of a statement is the typestate of the point
-before the statement.
-@item The @dfn{poststate} of a statement is the typestate of the point
-after the statement.
+@item The @dfn{prestate} of a statement or expression is the typestate of the
+point before it.
+@item The @dfn{poststate} of a statement or expression is the typestate of the
+point after it.
 @end itemize
 
 A @dfn{typestate} is a condition that has @emph{been determined by the
@@ -2731,17 +2715,17 @@ typestate algorithm; prestates and poststates are @emph{outputs} from the
 typestate algorithm.
 
 The typestate algorithm analyses the preconditions and postconditions of every
-statement in a block, and computes a condition for each
+statement and expression in a block, and computes a condition for each
 typestate. Specifically:
 
 @itemize
 @item Initially, every typestate is empty.
-@item Each statement's poststate is given the union of the statement's
+@item Each statement or expression's poststate is given the union of the its
 prestate, precondition, and postcondition.
-@item Each statement's poststate has the difference between the statement's
+@item Each statement or expression's poststate has the difference between its
 precondition and postcondition removed.
-@item Each statement's prestate is given the intersection of the poststates
-of every parent statement in the CFG.
+@item Each statement or expression's prestate is given the intersection of the
+poststates of every predecessor point in the CFG.
 @item The previous three steps are repeated until no typestates in the
 block change.
 @end itemize
@@ -2756,21 +2740,21 @@ prestate. If any preconditions are not satisfied, the mismatch is considered a
 static (compile-time) error.
 
 
-@node          Ref.Stmt.Stat.Check
-@subsubsection Ref.Stmt.Stat.Check
-@c * Ref.Stmt.Stat.Check::         Relating dynamic state to static typestate.
+@node       Ref.Typestate.Check
+@subsection Ref.Typestate.Check
+@c * Ref.Typestate.Check::         Relating dynamic state to static typestate.
 @cindex Check statement
 @cindex Assertions, see @i{Check statement}
 
 The key mechanism that connects run-time semantics and compile-time analysis
-of typestates is the use of @code{check} statements. @xref{Ref.Stmt.Check}. A
-@code{check} statement guarantees that @emph{if} control were to proceed past
+of typestates is the use of @code{check} expressions. @xref{Ref.Expr.Check}. A
+@code{check} expression guarantees that @emph{if} control were to proceed past
 it, the predicate associated with the @code{check} would have succeeded, so
 the constraint being checked @emph{statically} holds in subsequent
-statements.@footnote{A @code{check} statement is similar to an @code{assert}
+points.@footnote{A @code{check} expression is similar to an @code{assert}
 call in a C program, with the significant difference that the Rust compiler
-@emph{tracks} the constraint that each @code{check} statement
-enforces. Naturally, @code{check} statements cannot be omitted from a
+@emph{tracks} the constraint that each @code{check} expression
+enforces. Naturally, @code{check} expressions cannot be omitted from a
 ``production build'' of a Rust program the same way @code{asserts} are
 frequently disabled in deployed C programs.}
 
@@ -2782,12 +2766,49 @@ system does is track which of those predicates -- whatever they calculate --
 @emph{must have been checked already} in order for program control to reach a
 particular point in the CFG. The fundamental building block, therefore, is the
 @code{check} statement, which tells the typestate system ``if control passes
-this statement, the checked predicate holds''.
+this point, the checked predicate holds''.
 
 From this building block, constraints can be propagated to function signatures
 and constrained types, and the responsibility to @code{check} a constraint
 pushed further and further away from the site at which the program requires it
 to hold in order to execute properly.
+
+
+@page
+@node    Ref.Stmt
+@section Ref.Stmt
+@c * Ref.Stmt::               Components of an executable block.
+@cindex Statements
+
+A @dfn{statement} is a component of a block, which is in turn a component of
+an outer block-expression, a function or an iterator. When a function is
+spawned into a task, the task @emph{executes} statements in an order
+determined by the body of the enclosing structure. Each statement causes the
+task to perform certain actions.
+
+Rust has two kinds of statement: declarations and expressions.
+
+A declaration serves to introduce a @emph{name} that can be used in the block
+@emph{scope} enclosing the statement: all statements before and after the
+name, from the previous opening curly-brace (@code{@{}) up to the next closing
+curly-brace (@code{@}}).
+
+An expression serves the dual roles of causing side effects and producing a
+@emph{value}. Expressions are said to @emph{evaluate to} a value, and the side
+effects are caused during @emph{evaluation}. Many expressions contain
+sub-expressions as operands; the definition of each kind of expression
+dictates whether or not, and in which order, it will evaluate its
+sub-expressions, and how the expression's value derives from the value of its
+sub-expressions.
+
+In this way, the structure of execution -- both the overall sequence of
+observable side effects and the final produced value -- is dictated by the
+structure of expressions. Blocks themselves are expressions, so the nesting
+sequence of block, statement, expression, and block can repeatedly nest to an
+arbitrary depth.
+
+* Ref.Stmt.Decl::               Statement declaring an item or slot.
+* Ref.Stmt.Expr::               Statement evaluating an expression.
 
 @node       Ref.Stmt.Decl
 @subsection Ref.Stmt.Decl
@@ -2848,18 +2869,58 @@ occurs on frame-local slots, not argument slots. Function, iterator and object
 signatures must always declared types for all argument slots.
 @xref{Ref.Mem.Slot}.
 
+@node       Ref.Stmt.Expr
+@subsection Ref.Stmt.Expr
+@c * Ref.Stmt.Expr::                Statement evaluating an expression
+@cindex Expression statement
+
+An @dfn{expression statement} is one that evaluates an expression and drops
+its result. The purpose of an expression statement is often to cause the side
+effects of the expression's evaluation.
+
+@page
+@node    Ref.Expr
+@section Ref.Expr
+@c * Ref.Expr::               Parsed and primitive expressions.
+@cindex Expressions
 
 
-@node       Ref.Stmt.Copy
-@subsection Ref.Stmt.Copy
-@c * Ref.Stmt.Copy::                Statement for copying a value.
-@cindex Copy statement
-@cindex Assignment operator, see @i{Copy statement}
+@menu
+* Ref.Expr.Copy::               Expression for copying a value.
+* Ref.Expr.Spawn::              Expressions for creating new tasks.
+* Ref.Expr.Send::               Expressions for sending a value into a channel.
+* Ref.Expr.Recv::               Expression for receiving a value from a channel.
+* Ref.Expr.Call::               Expression for calling a function.
+* Ref.Expr.Bind::               Expression for binding arguments to functions.
+* Ref.Expr.Ret::                Expression for stopping and producing a value.
+* Ref.Expr.Be::                 Expression for stopping and executing a tail call.
+* Ref.Expr.Put::                Expression for pausing and producing a value.
+* Ref.Expr.Fail::               Expression for causing task failure.
+* Ref.Expr.Log::                Expression for logging values to diagnostic buffers.
+* Ref.Expr.Note::               Expression for logging values during failure.
+* Ref.Expr.While::              Expression for simple conditional looping.
+* Ref.Expr.Break::              Expression for terminating a loop.
+* Ref.Expr.Cont::               Expression for terminating a single loop iteration.
+* Ref.Expr.For::                Expression for looping over strings and vectors.
+* Ref.Expr.Foreach::            Expression for looping via an iterator.
+* Ref.Expr.If::                 Expression for simple conditional branching.
+* Ref.Expr.Alt::                Expression for complex conditional branching.
+* Ref.Expr.Prove::              Expression for static assertion of typestate.
+* Ref.Expr.Check::              Expression for dynamic assertion of typestate.
+* Ref.Expr.IfCheck::            Expression for dynamic testing of typestate.
+@end menu
 
-A @dfn{copy statement} consists of an @emph{lval} followed by an equals-sign
+
+@node       Ref.Expr.Copy
+@subsection Ref.Expr.Copy
+@c * Ref.Expr.Copy::                Expression for copying a value.
+@cindex Copy expression
+@cindex Assignment operator, see @i{Copy expression}
+
+A @dfn{copy expression} consists of an @emph{lval} followed by an equals-sign
 (@code{=}) and a primitive expression. @xref{Ref.Expr}.
 
-Executing a copy statement causes the value denoted by the expression --
+Executing a copy expression causes the value denoted by the expression --
 either a value or a primitive combination of values -- to be copied into the
 memory location denoted by the @emph{lval}.
 
@@ -2869,34 +2930,34 @@ implied by the @code{lval}, as well as any existing value held in the memory
 being written-to. All such adjustment is automatic and implied by the @code{=}
 operator.
 
-An example of three different copy statements:
+An example of three different copy expressions:
 @example
 x = y;
 x.y = z;
 x.y = z + 2;
 @end example
 
-@node       Ref.Stmt.Spawn
-@subsection Ref.Stmt.Spawn
-@c * Ref.Stmt.Spawn::               Statements creating new tasks.
-@cindex Spawn statement
+@node       Ref.Expr.Spawn
+@subsection Ref.Expr.Spawn
+@c * Ref.Expr.Spawn::               Expressions creating new tasks.
+@cindex Spawn expression
 
-A @code{spawn} statement consists of keyword @code{spawn}, followed by
+A @code{spawn} expression consists of keyword @code{spawn}, followed by
 an optional literal string naming the new task and then a normal
-@emph{call} statement (@pxref{Ref.Stmt.Call}).  A @code{spawn}
-statement causes the runtime to construct a new task executing the
+@emph{call} expression (@pxref{Ref.Expr.Call}).  A @code{spawn}
+expression causes the runtime to construct a new task executing the
 called function with the given name.  The called function is referred
 to as the @dfn{entry function} for the spawned task, and its arguments
 are copied from the spawning task to the spawned task before the
 spawned task begins execution.  If no explicit name is present, the
-task is implicitly named with the string of the call statement.
+task is implicitly named with the string of the call expression.
 
 Functions taking alias-slot arguments, or returning non-nil values, cannot be
 spawned. Iterators cannot be spawned.
 
-The result of a @code{spawn} statement is a @code{task} value.
+The result of a @code{spawn} expression is a @code{task} value.
 
-An example of a @code{spawn} statement:
+An example of a @code{spawn} expression:
 @example
 fn helper(chan[u8] out) @{
     // do some work.
@@ -2911,14 +2972,14 @@ auto result <- out;
 
 @end example
 
-@node       Ref.Stmt.Send
-@subsection Ref.Stmt.Send
-@c * Ref.Stmt.Send::            Statements for sending a value into a channel.
-@cindex Send statement
+@node       Ref.Expr.Send
+@subsection Ref.Expr.Send
+@c * Ref.Expr.Send::            Expressions for sending a value into a channel.
+@cindex Send expression
 @cindex Communication
 
-Sending a value through a channel can be done via two different statements.
-Both statements take an @emph{lval}, denoting a channel, and a value to send
+Sending a value through a channel can be done via two different expressions.
+Both expressions take an @emph{lval}, denoting a channel, and a value to send
 into the channel. The action of @emph{sending} varies depending on the
 @dfn{send operator} employed.
 
@@ -2943,16 +3004,16 @@ chan[str] c = @dots{};
 c <| "hello, world";
 @end example
 
-@node       Ref.Stmt.Recv
-@subsection Ref.Stmt.Recv
-@c * Ref.Stmt.Recv::           Statement for receiving a value from a channel.
-@cindex Receive statement
+@node       Ref.Expr.Recv
+@subsection Ref.Expr.Recv
+@c * Ref.Expr.Recv::           Expression for receiving a value from a channel.
+@cindex Receive expression
 @cindex Communication
 
-The @dfn{receive statement} takes an @var{lval} to receive into and an
+The @dfn{receive expression} takes an @var{lval} to receive into and an
 expression denoting a port, and applies the @emph{receive operator}
 (@code{<-}) to the pair, copying a value out of the port and into the
-@var{lval}. The statement causes the receiving task to enter the @emph{blocked
+@var{lval}. The expression causes the receiving task to enter the @emph{blocked
 reading} state until a task is sending a value to the port, at which point the
 runtime pseudo-randomly selects a sending task and copies a value from the
 head of one of the task queues to the receiving location in memory, and
@@ -2964,48 +3025,48 @@ port[str] p = @dots{};
 let str s <- p;
 @end example
 
-@node       Ref.Stmt.Call
-@subsection Ref.Stmt.Call
-@c * Ref.Stmt.Call::               Statement for calling a function.
-@cindex Call statement
+@node       Ref.Expr.Call
+@subsection Ref.Expr.Call
+@c * Ref.Expr.Call::               Expression for calling a function.
+@cindex Call expression
 @cindex Function calls
 
-A @dfn{call statement} invokes a function, providing a tuple of input slots
+A @dfn{call expression} invokes a function, providing a tuple of input slots
 and an alias slot to serve as the function's output, bound to the @var{lval}
 on the right hand side of the call. If the function eventually returns, then
-the statement completes.
+the expression completes.
 
-A call statement statically requires that the precondition declared in the
-callee's signature is satisfied by the statement prestate. In this way,
-typestates propagate through function boundaries. @xref{Ref.Stmt.Stat}.
+A call expression statically requires that the precondition declared in the
+callee's signature is satisfied by the expression prestate. In this way,
+typestates propagate through function boundaries. @xref{Ref.Typestate}.
 
-An example of a call statement:
+An example of a call expression:
 @example
 let int x = add(1, 2);
 @end example
 
-@node       Ref.Stmt.Bind
-@subsection Ref.Stmt.Bind
-@c * Ref.Stmt.Bind::          Statement for binding arguments to functions.
-@cindex Bind statement
+@node       Ref.Expr.Bind
+@subsection Ref.Expr.Bind
+@c * Ref.Expr.Bind::          Expression for binding arguments to functions.
+@cindex Bind expression
 @cindex Closures
 @cindex Currying
 
-A @dfn{bind statement} constructs a new function from an existing
-function.@footnote{The @code{bind} statement is analogous to the @code{bind}
+A @dfn{bind expression} constructs a new function from an existing
+function.@footnote{The @code{bind} expression is analogous to the @code{bind}
 expression in the Sather language.} The new function has zero or more of its
 arguments @emph{bound} into a new, hidden boxed tuple that holds the
-bindings. For each concrete argument passed in the @code{bind} statement, the
+bindings. For each concrete argument passed in the @code{bind} expression, the
 corresponding parameter in the existing function is @emph{omitted} as a
 parameter of the new function. For each argument passed the placeholder symbol
-@code{_} in the @code{bind} statement, the corresponding parameter of the
+@code{_} in the @code{bind} expression, the corresponding parameter of the
 existing function is @emph{retained} as a parameter of the new function.
 
 Any subsequent invocation of the new function with residual arguments causes
 invocation of the existing function with the combination of bound arguments
 and residual arguments that was specified during the binding.
 
-An example of a @code{bind} statement:
+An example of a @code{bind} expression:
 @example
 fn add(int x, int y) -> int @{
     ret x + y;
@@ -3021,28 +3082,28 @@ check (add(4,5) == add5(4));
 
 @end example
 
-A @code{bind} statement generally stores a copy of the bound arguments in the
+A @code{bind} expression generally stores a copy of the bound arguments in the
 hidden, boxed tuple, owned by the resulting first-class function. For each
 bound slot in the bound function's signature, space is allocated in the hidden
 tuple and populated with a copy of the bound value.
 
-The @code{bind} statement is a lightweight mechanism for simulating the more
+The @code{bind} expression is a lightweight mechanism for simulating the more
 elaborate construct of @emph{lexical closures} that exist in other
 languages. Rust has no support for lexical closures, but many realistic uses
-of them can be achieved with @code{bind} statements.
+of them can be achieved with @code{bind} expressions.
 
 
-@node       Ref.Stmt.Ret
-@subsection Ref.Stmt.Ret
-@c * Ref.Stmt.Ret::                Statement for stopping and producing a value.
-@cindex Return statement
+@node       Ref.Expr.Ret
+@subsection Ref.Expr.Ret
+@c * Ref.Expr.Ret::                Expression for stopping and producing a value.
+@cindex Return expression
 
-Executing a @code{ret} statement@footnote{A @code{ret} statement is analogous
-to a @code{return} statement in the C family.}  copies a value into the output
+Executing a @code{ret} expression@footnote{A @code{ret} expression is analogous
+to a @code{return} expression in the C family.}  copies a value into the output
 slot of the current function, destroys the current function activation frame,
 and transfers control to the caller frame.
 
-An example of a @code{ret} statement:
+An example of a @code{ret} expression:
 @example
 fn max(int a, int b) -> int @{
    if (a > b) @{
@@ -3052,21 +3113,21 @@ fn max(int a, int b) -> int @{
 @}
 @end example
 
-@node       Ref.Stmt.Be
-@subsection Ref.Stmt.Be
-@c * Ref.Stmt.Be::                 Statement for stopping and executing a tail call.
-@cindex Be statement
+@node       Ref.Expr.Be
+@subsection Ref.Expr.Be
+@c * Ref.Expr.Be::                 Expression for stopping and executing a tail call.
+@cindex Be expression
 @cindex Tail calls
 
-Executing a @code{be} statement @footnote{A @code{be} statement in is
-analogous to a @code{become} statement in Newsqueak or Alef.}  destroys the
+Executing a @code{be} expression @footnote{A @code{be} expression in is
+analogous to a @code{become} expression in Newsqueak or Alef.}  destroys the
 current function activation frame and replaces it with an activation frame for
 the called function. In other words, @code{be} executes a tail-call. The
-syntactic form of a @code{be} statement is therefore limited to @emph{tail
+syntactic form of a @code{be} expression is therefore limited to @emph{tail
 position}: its argument must be a @emph{call expression}, and it must be the
-last statement in a block.
+last expression in a block.
 
-An example of a @code{be} statement:
+An example of a @code{be} expression:
 @example
 fn print_loop(int n) @{
   if (n <= 0) @{
@@ -3083,82 +3144,82 @@ copy of itself.
 
 
 
-@node       Ref.Stmt.Put
-@subsection Ref.Stmt.Put
-@c * Ref.Stmt.Put::                Statement for pausing and producing a value.
-@cindex Put statement
+@node       Ref.Expr.Put
+@subsection Ref.Expr.Put
+@c * Ref.Expr.Put::                Expression for pausing and producing a value.
+@cindex Put expression
 @cindex Iterators
 
-Executing a @code{put} statement copies a value into the output slot of the
+Executing a @code{put} expression copies a value into the output slot of the
 current iterator, suspends execution of the current iterator, and transfers
 control to the current put-recipient frame.
 
-A @code{put} statement is only valid within an iterator.  @footnote{A
-@code{put} statement is analogous to a @code{yield} statement in the CLU, and
+A @code{put} expression is only valid within an iterator.  @footnote{A
+@code{put} expression is analogous to a @code{yield} expression in the CLU, and
 Sather languages, or in more recent languages providing a ``generator''
 facility, such as Python, Javascript or C#. Like the generators of CLU and
 Sather but @emph{unlike} these later languages, Rust's iterators reside on the
 stack and obey a strict stack discipline.} The current put-recipient will
-eventually resume the suspended iterator containing the @code{put} statement,
-either continuing execution after the @code{put} statement, or terminating its
+eventually resume the suspended iterator containing the @code{put} expression,
+either continuing execution after the @code{put} expression, or terminating its
 execution and destroying the iterator frame.
 
 
-@node       Ref.Stmt.Fail
-@subsection Ref.Stmt.Fail
-@c * Ref.Stmt.Fail::               Statement for causing task failure.
-@cindex Fail statement
+@node       Ref.Expr.Fail
+@subsection Ref.Expr.Fail
+@c * Ref.Expr.Fail::               Expression for causing task failure.
+@cindex Fail expression
 @cindex Failure
 @cindex Unwinding
 
-Executing a @code{fail} statement causes a task to enter the @emph{failing}
+Executing a @code{fail} expression causes a task to enter the @emph{failing}
 state. In the @emph{failing} state, a task unwinds its stack, destroying all
 frames and freeing all resources until it reaches its entry frame, at which
 point it halts execution in the @emph{dead} state.
 
-@node       Ref.Stmt.Log
-@subsection Ref.Stmt.Log
-@c * Ref.Stmt.Log::                Statement for logging values to diagnostic buffers.
-@cindex Log statement
+@node       Ref.Expr.Log
+@subsection Ref.Expr.Log
+@c * Ref.Expr.Log::                Expression for logging values to diagnostic buffers.
+@cindex Log expression
 @cindex Logging
 
-Executing a @code{log} statement may, depending on runtime configuration,
+Executing a @code{log} expression may, depending on runtime configuration,
 cause a value to be appended to an internal diagnostic logging buffer provided
-by the runtime or emitted to a system console. Log statements are enabled or
+by the runtime or emitted to a system console. Log expressions are enabled or
 disabled dynamically at run-time on a per-task and per-item
 basis. @xref{Ref.Run.Log}.
 
-Executing a @code{log} statement is not considered an impure effect in the
+Executing a @code{log} expression is not considered an impure effect in the
 effect system. In other words, a pure function remains pure even if it
-contains a log statement.
+contains a log expression.
 
 @example
 @end example
 
-@node       Ref.Stmt.Note
-@subsection Ref.Stmt.Note
-@c * Ref.Stmt.Note::                Statement for logging values during failure.
-@cindex Note statement
+@node       Ref.Expr.Note
+@subsection Ref.Expr.Note
+@c * Ref.Expr.Note::                Expression for logging values during failure.
+@cindex Note expression
 @cindex Logging
 @cindex Unwinding
 @cindex Failure
 
-A @code{note} statement has no effect during normal execution. The purpose of
-a @code{note} statement is to provide additional diagnostic information to the
-logging subsystem during task failure. @xref{Ref.Stmt.Log}. Using @code{note}
-statements, normal diagnostic logging can be kept relatively sparse, while
+A @code{note} expression has no effect during normal execution. The purpose of
+a @code{note} expression is to provide additional diagnostic information to the
+logging subsystem during task failure. @xref{Ref.Expr.Log}. Using @code{note}
+expressions, normal diagnostic logging can be kept relatively sparse, while
 still providing verbose diagnostic ``back-traces'' when a task fails.
 
 When a task is failing, control frames @emph{unwind} from the innermost frame
 to the outermost, and from the innermost lexical block within an unwinding
 frame to the outermost. When unwinding a lexical block, the runtime processes
-all the @code{note} statements in the block sequentially, from the first
-statement of the block to the last.  During processing, a @code{note}
-statement has equivalent meaning to a @code{log} statement: it causes the
+all the @code{note} expressions in the block sequentially, from the first
+expression of the block to the last.  During processing, a @code{note}
+expression has equivalent meaning to a @code{log} expression: it causes the
 runtime to append the argument of the @code{note} to the internal logging
 diagnostic buffer.
 
-An example of a @code{note} statement:
+An example of a @code{note} expression:
 @example
 fn read_file_lines(&str path) -> vec[str] @{
     note path;
@@ -3175,36 +3236,36 @@ In this example, if the task fails while attempting to open or read a file,
 the runtime will log the path name that was being read. If the function
 completes normally, the runtime will not log the path.
 
-A value that is marked by a @code{note} statement is @emph{not} copied aside
+A value that is marked by a @code{note} expression is @emph{not} copied aside
 when control passes through the @code{note}. In other words, if a @code{note}
-statement notes a particular @var{lval}, and code after the @code{note}
+expression notes a particular @var{lval}, and code after the @code{note}
 mutates that slot, and then a subsequent failure occurs, the @emph{mutated}
 value will be logged during unwinding, @emph{not} the original value that was
 denoted by the @var{lval} at the moment control passed through the @code{note}
-statement.
+expression.
 
-@node       Ref.Stmt.While
-@subsection Ref.Stmt.While
-@c * Ref.Stmt.While::              Statement for simple conditional looping.
-@cindex While statement
+@node       Ref.Expr.While
+@subsection Ref.Expr.While
+@c * Ref.Expr.While::              Expression for simple conditional looping.
+@cindex While expression
 @cindex Loops
 @cindex Control-flow
 
-A @code{while} statement is a loop construct. A @code{while} loop may be
+A @code{while} expression is a loop construct. A @code{while} loop may be
 either a simple @code{while} or a @code{do}-@code{while} loop.
 
 In the case of a simple @code{while}, the loop begins by evaluating the
 boolean loop conditional expression. If the loop conditional expression
 evaluates to @code{true}, the loop body block executes and control returns to
 the loop conditional expression. If the loop conditional expression evaluates
-to @code{false}, the @code{while} statement completes.
+to @code{false}, the @code{while} expression completes.
 
 In the case of a @code{do}-@code{while}, the loop begins with an execution of
 the loop body. After the loop body executes, it evaluates the loop conditional
 expression. If it evaluates to @code{true}, control returns to the beginning
 of the loop body. If it evaluates to @code{false}, control exits the loop.
 
-An example of a simple @code{while} statement:
+An example of a simple @code{while} expression:
 @example
 while (i < 10) @{
     print("hello\n");
@@ -3212,7 +3273,7 @@ while (i < 10) @{
 @}
 @end example
 
-An example of a @code{do}-@code{while} statement:
+An example of a @code{do}-@code{while} expression:
 @example
 do @{
     print("hello\n");
@@ -3220,37 +3281,37 @@ do @{
 @} while (i < 10);
 @end example
 
-@node       Ref.Stmt.Break
-@subsection Ref.Stmt.Break
-@c * Ref.Stmt.Break::              Statement for terminating a loop.
-@cindex Break statement
+@node       Ref.Expr.Break
+@subsection Ref.Expr.Break
+@c * Ref.Expr.Break::              Expression for terminating a loop.
+@cindex Break expression
 @cindex Loops
 @cindex Control-flow
 
-Executing a @code{break} statement immediately terminates the innermost loop
+Executing a @code{break} expression immediately terminates the innermost loop
 enclosing it. It is only permitted in the body of a loop.
 
-@node       Ref.Stmt.Cont
-@subsection Ref.Stmt.Cont
-@c * Ref.Stmt.Cont::               Statement for terminating a single loop iteration.
-@cindex Continue statement
+@node       Ref.Expr.Cont
+@subsection Ref.Expr.Cont
+@c * Ref.Expr.Cont::               Expression for terminating a single loop iteration.
+@cindex Continue expression
 @cindex Loops
 @cindex Control-flow
 
-Executing a @code{cont} statement immediately terminates the current iteration
+Executing a @code{cont} expression immediately terminates the current iteration
 of the innermost loop enclosing it, returning control to the loop
 @emph{head}. In the case of a @code{while} loop, the head is the conditional
 expression controlling the loop. In the case of a @code{for} or @code{for
 each} loop, the head is the iterator or vector-slice increment controlling the
 loop.
 
-A @code{cont} statement is only permitted in the body of a loop.
+A @code{cont} expression is only permitted in the body of a loop.
 
 
-@node       Ref.Stmt.For
-@subsection Ref.Stmt.For
-@c * Ref.Stmt.For::                Statement for looping over strings and vectors.
-@cindex For statement
+@node       Ref.Expr.For
+@subsection Ref.Expr.For
+@c * Ref.Expr.For::                Expression for looping over strings and vectors.
+@cindex For expression
 @cindex Loops
 @cindex Control-flow
 
@@ -3282,10 +3343,10 @@ for (foo e in v) @{
 @}
 @end example
 
-@node          Ref.Stmt.Foreach
-@subsection    Ref.Stmt.Foreach
-@c * Ref.Stmt.Foreach::           Statement for general conditional looping.
-@cindex Foreach statement
+@node          Ref.Expr.Foreach
+@subsection    Ref.Expr.Foreach
+@c * Ref.Expr.Foreach::           Expression for general conditional looping.
+@cindex Foreach expression
 @cindex Loops
 @cindex Control-flow
 
@@ -3303,14 +3364,14 @@ for each (str s in _str.split(txt, "\n")) @{
 @end example
 
 
-@node       Ref.Stmt.If
-@subsection Ref.Stmt.If
-@c * Ref.Stmt.If::                 Statement for simple conditional branching.
-@cindex If statement
+@node       Ref.Expr.If
+@subsection Ref.Expr.If
+@c * Ref.Expr.If::                 Expression for simple conditional branching.
+@cindex If expression
 @cindex Control-flow
 
-An @code{if} statement is a conditional branch in program control. The form of
-an @code{if} statement is a parenthesized condition expression, followed by a
+An @code{if} expression is a conditional branch in program control. The form of
+an @code{if} expression is a parenthesized condition expression, followed by a
 consequent block, any number of @code{else if} conditions and blocks, and an
 optional trailing @code{else} block. The condition expressions must have type
 @code{bool}. If a condition expression evaluates to @code{true}, the
@@ -3320,52 +3381,52 @@ consequent block is skipped and any subsequent @code{else if} condition is
 evaluated. If all @code{if} and @code{else if} conditions evaluate to @code{false}
 then any @code{else} block is executed.
 
-@node       Ref.Stmt.Alt
-@subsection Ref.Stmt.Alt
-@c * Ref.Stmt.Alt::                Statement for complex conditional branching.
-@cindex Alt statement
+@node       Ref.Expr.Alt
+@subsection Ref.Expr.Alt
+@c * Ref.Expr.Alt::                Expression for complex conditional branching.
+@cindex Alt expression
 @cindex Control-flow
-@cindex Switch statement, see @i{Alt statement}
+@cindex Switch expression, see @i{Alt expression}
 
-An @code{alt} statement is a multi-directional branch in program control.
-There are three kinds of @code{alt} statement: communication @code{alt}
-statements, pattern @code{alt} statements, and @code{alt type} statements.
+An @code{alt} expression is a multi-directional branch in program control.
+There are three kinds of @code{alt} expression: communication @code{alt}
+expressions, pattern @code{alt} expressions, and @code{alt type} expressions.
 
 The form of each kind of @code{alt} is similar: an initial @emph{head} that
 describes the criteria for branching, followed by a sequence of zero or more
 @emph{arms}, each of which describes a @emph{case} and provides a @emph{block}
-of statements associated with the case. When an @code{alt} is executed,
+of expressions associated with the case. When an @code{alt} is executed,
 control enters the head, determines which of the cases to branch to, branches
 to the block associated with the chosen case, and then proceeds to the
-statement following the @code{alt} when the case block completes.
+expression following the @code{alt} when the case block completes.
 
 @menu
-* Ref.Stmt.Alt.Comm::         Statement for branching on communication events.
-* Ref.Stmt.Alt.Pat::          Statement for branching on pattern matches.
-* Ref.Stmt.Alt.Type::         Statement for branching on types.
+* Ref.Expr.Alt.Comm::         Expression for branching on communication events.
+* Ref.Expr.Alt.Pat::          Expression for branching on pattern matches.
+* Ref.Expr.Alt.Type::         Expression for branching on types.
 @end menu
 
-@node          Ref.Stmt.Alt.Comm
-@subsubsection Ref.Stmt.Alt.Comm
-@c * Ref.Stmt.Alt.Comm::           Statement for branching on communication events.
-@cindex Communication alt statement
+@node          Ref.Expr.Alt.Comm
+@subsubsection Ref.Expr.Alt.Comm
+@c * Ref.Expr.Alt.Comm::           Expression for branching on communication events.
+@cindex Communication alt expression
 @cindex Control-flow
 @cindex Communication
 @cindex Multiplexing
 
-The simplest form of @code{alt} statement is the a @emph{communication}
+The simplest form of @code{alt} expression is the a @emph{communication}
 @code{alt}. The cases of a communication @code{alt}'s arms are send and
-receive statements. @xref{Ref.Task.Comm}.
+receive expressions. @xref{Ref.Task.Comm}.
 
 To execute a communication @code{alt}, the runtime checks all of the ports and
-channels involved in the arms of the statement to see if any @code{case} can
+channels involved in the arms of the expression to see if any @code{case} can
 execute without blocking.  If no @code{case} can execute, the task blocks, and
 the runtime unblocks the task when a @code{case} @emph{can} execute. The
 runtime then makes a pseudo-random choice from among the set of @code{case}
-statements that can execute, executes the statement of the @code{case} and
+expressions that can execute, executes the expression of the @code{case} and
 branches to the block of that arm.
 
-An example of a communication @code{alt} statement:
+An example of a communication @code{alt} expression:
 @example
 let chan c[int] = foo();
 let port p[str] = bar();
@@ -3382,27 +3443,27 @@ alt @{
 @}
 @end example
 
-@node          Ref.Stmt.Alt.Pat
-@subsubsection Ref.Stmt.Alt.Pat
-@c * Ref.Stmt.Alt.Pat::            Statement for branching on pattern matches.
-@cindex Pattern alt statement
+@node          Ref.Expr.Alt.Pat
+@subsubsection Ref.Expr.Alt.Pat
+@c * Ref.Expr.Alt.Pat::            Expression for branching on pattern matches.
+@cindex Pattern alt expression
 @cindex Control-flow
 
-A pattern @code{alt} statement branches on a @emph{pattern}. The exact form of
+A pattern @code{alt} expression branches on a @emph{pattern}. The exact form of
 matching that occurs depends on the pattern. Patterns consist of some
 combination of literals, tag constructors, variable binding specifications and
 placeholders (@code{_}). A pattern @code{alt} has a parenthesized @emph{head
 expression}, which is the value to compare to the patterns. The type of the
 patterns must equal the type of the head expression.
 
-To execute a pattern @code{alt} statement, first the head expression is
+To execute a pattern @code{alt} expression, first the head expression is
 evaluated, then its value is sequentially compared to the patterns in the arms
 until a match is found. The first arm with a matching @code{case} pattern is
 chosen as the branch target of the @code{alt}, any variables bound by the
 pattern are assigned to local @emph{auto} slots in the arm's block, and
 control enters the block.
 
-An example of a pattern @code{alt} statement:
+An example of a pattern @code{alt} expression:
 
 @example
 type list[X] = tag(nil, cons(X, @@list[X]));
@@ -3423,20 +3484,20 @@ alt (x) @{
 @end example
 
 
-@node          Ref.Stmt.Alt.Type
-@subsubsection Ref.Stmt.Alt.Type
-@c * Ref.Stmt.Alt.Type::           Statement for branching on type.
-@cindex Type alt statement
+@node          Ref.Expr.Alt.Type
+@subsubsection Ref.Expr.Alt.Type
+@c * Ref.Expr.Alt.Type::           Expression for branching on type.
+@cindex Type alt expression
 @cindex Control-flow
 
-An @code{alt type} statement is similar to a pattern @code{alt}, but branches
+An @code{alt type} expression is similar to a pattern @code{alt}, but branches
 on the @emph{type} of its head expression, rather than the value. The head
-expression of an @code{alt type} statement must be of type @code{any}, and the
-arms of the statement are slot patterns rather than value patterns. Control
+expression of an @code{alt type} expression must be of type @code{any}, and the
+arms of the expression are slot patterns rather than value patterns. Control
 branches to the arm with a @code{case} that matches the @emph{actual type} of
 the value in the @code{any}.
 
-An example of an @code{alt type} statement:
+An example of an @code{alt type} expression:
 
 @example
 let any x = foo();
@@ -3458,38 +3519,38 @@ alt type (x) @{
 @end example
 
 
-@node       Ref.Stmt.Prove
-@subsection Ref.Stmt.Prove
-@c * Ref.Stmt.Prove::              Statement for static assertion of typestate.
-@cindex Prove statement
+@node       Ref.Expr.Prove
+@subsection Ref.Expr.Prove
+@c * Ref.Expr.Prove::              Expression for static assertion of typestate.
+@cindex Prove expression
 @cindex Typestate system
 
-A @code{prove} statement has no run-time effect. Its purpose is to statically
-check (and document) that its argument constraint holds at its statement entry
+A @code{prove} expression has no run-time effect. Its purpose is to statically
+check (and document) that its argument constraint holds at its expression entry
 point. If its argument typestate does not hold, under the typestate algorithm,
 the program containing it will fail to compile.
 
-@node       Ref.Stmt.Check
-@subsection Ref.Stmt.Check
-@c * Ref.Stmt.Check::              Statement for dynamic assertion of typestate.
-@cindex Check statement
+@node       Ref.Expr.Check
+@subsection Ref.Expr.Check
+@c * Ref.Expr.Check::              Expression for dynamic assertion of typestate.
+@cindex Check expression
 @cindex Typestate system
 
-A @code{check} statement connects dynamic assertions made at run-time to the
-static typestate system. A @code{check} statement takes a constraint to check
+A @code{check} expression connects dynamic assertions made at run-time to the
+static typestate system. A @code{check} expression takes a constraint to check
 at run-time. If the constraint holds at run-time, control passes through the
-@code{check} and on to the next statement in the enclosing block. If the
-condition fails to hold at run-time, the @code{check} statement behaves as a
-@code{fail} statement.
+@code{check} and on to the next expression in the enclosing block. If the
+condition fails to hold at run-time, the @code{check} expression behaves as a
+@code{fail} expression.
 
-The typestate algorithm is built around @code{check} statements, and in
-particular the fact that control @emph{will not pass} a check statement with a
+The typestate algorithm is built around @code{check} expressions, and in
+particular the fact that control @emph{will not pass} a check expression with a
 condition that fails to hold. The typestate algorithm can therefore assume
-that the (static) postcondition of a @code{check} statement includes the
+that the (static) postcondition of a @code{check} expression includes the
 checked constraint itself. From there, the typestate algorithm can perform
-dataflow calculations on subsequent statements, propagating conditions forward
+dataflow calculations on subsequent expressions, propagating conditions forward
 and statically comparing implied states and their
-specifications. @xref{Ref.Stmt.Stat}.
+specifications. @xref{Ref.Typestate}.
 
 @example
 fn even(&int x) -> bool @{
@@ -3512,18 +3573,18 @@ fn test() @{
 @}
 @end example
 
-@node       Ref.Stmt.IfCheck
-@subsection Ref.Stmt.IfCheck
-@c * Ref.Stmt.IfCheck::            Statement for dynamic testing of typestate.
-@cindex If check statement
+@node       Ref.Expr.IfCheck
+@subsection Ref.Expr.IfCheck
+@c * Ref.Expr.IfCheck::            Expression for dynamic testing of typestate.
+@cindex If check expression
 @cindex Typestate system
 @cindex Control-flow
 
-An @code{if check} statement combines a @code{if} statement and a @code{check}
-statement in an indivisible unit that can be used to build more complex
-conditional control-flow than the @code{check} statement affords.
+An @code{if check} expression combines a @code{if} expression and a @code{check}
+expression in an indivisible unit that can be used to build more complex
+conditional control-flow than the @code{check} expression affords.
 
-In fact, @code{if check} is a ``more primitive'' statement @code{check};
+In fact, @code{if check} is a ``more primitive'' expression @code{check};
 instances of the latter can be rewritten as instances of the former. The
 following two examples are equivalent:
 
@@ -3625,9 +3686,9 @@ structure corresponding to the DWARF DIE for that slot or item.
 @c * Ref.Run.Log::                 Runtime logging system.
 @cindex Logging
 
-The runtime contains a system for directing logging statements to a logging
-console and/or internal logging buffers. @xref{Ref.Stmt.Log}.  Logging
-statements can be enabled or disabled via a two-dimensional filtering process:
+The runtime contains a system for directing logging expressions to a logging
+console and/or internal logging buffers. @xref{Ref.Expr.Log}.  Logging
+expressions can be enabled or disabled via a two-dimensional filtering process:
 
 @itemize
 
@@ -3680,5 +3741,5 @@ to the task's domain; if the queue grows too big, the task will fail.
 @c fill-column: 78;
 @c indent-tabs-mode: nil
 @c buffer-file-coding-system: utf-8-unix
-@c compile-command: "make -k 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+@c compile-command: "make -C $RBUILD -k 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 @c End:
