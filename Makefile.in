@@ -368,7 +368,7 @@ RUNTIME_LIBS := $(CFG_GCC_POST_LIB_FLAGS)
 ######################################################################
 
 RUSTLLVM_LIB_CS := $(addprefix rustllvm/, \
-                     MachOObjectFile.cpp Object.cpp Passes.cpp)
+                     MachOObjectFile.cpp Passes.cpp)
 
 RUSTLLVM_OBJS_CS := $(addprefix rustllvm/, RustWrapper.cpp)
 
