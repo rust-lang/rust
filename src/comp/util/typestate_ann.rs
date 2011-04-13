@@ -75,6 +75,10 @@ fn union(&precond p1, &precond p2) -> bool {
   be bitv.union(p1, p2);
 }
 
+fn intersect(&precond p1, &precond p2) -> bool {
+  be bitv.intersect(p1, p2);
+}
+
 fn pps_len(&pre_and_post p) -> uint {
   // gratuitous check
   check (p.precondition.nbits == p.postcondition.nbits);

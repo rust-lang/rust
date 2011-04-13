@@ -27,8 +27,11 @@ import front.ast.expr_index;
 import front.ast.expr_log;
 import front.ast.expr_block;
 import front.ast.expr_rec;
+import front.ast.expr_if;
+import front.ast.expr_binary;
 import front.ast.expr_assign;
 import front.ast.expr_lit;
+import front.ast.expr_ret;
 import front.ast.path;
 import front.ast.crate_directive;
 import front.ast.fn_decl;
@@ -71,6 +74,7 @@ import util.common.field_exprs;
 import util.typestate_ann;
 import util.typestate_ann.ts_ann;
 import util.typestate_ann.empty_pre_post;
+import util.typestate_ann.empty_poststate;
 import util.typestate_ann.true_precond;
 import util.typestate_ann.true_postcond;
 import util.typestate_ann.postcond;
@@ -95,6 +99,7 @@ import util.typestate_ann.empty_prestate;
 import util.typestate_ann.empty_ann;
 import util.typestate_ann.extend_prestate;
 import util.typestate_ann.extend_poststate;
+import util.typestate_ann.intersect;
 
 import middle.ty;
 import middle.ty.ann_to_type;
@@ -494,6 +499,48 @@ fn expr_pp(&expr e) -> pre_and_post {
   }
 }
 
+/* fails if b has no annotation */
+/* FIXME: factor out code in the following two functions (block_ts_ann) */
+fn block_pp(&block b) -> pre_and_post {
+    alt (b.node.a) {
+       case (ann_none) {
+           log "block_pp: the impossible happened (no ann)";
+           fail;
+       }
+       case (ann_type(_,_,?t)) {
+           alt (t) {
+               case (none[@ts_ann]) {
+                   log "block_pp: the impossible happened (no ty)";
+                   fail;
+               }
+               case (some[@ts_ann](?ts)) {
+                   ret ts.conditions;
+               }
+           }
+       }
+    }
+}
+
+fn block_states(&block b) -> pre_and_post_state {
+    alt (b.node.a) {
+       case (ann_none) {
+           log "block_pp: the impossible happened (no ann)";
+           fail;
+       }
+       case (ann_type(_,_,?t)) {
+           alt (t) {
+               case (none[@ts_ann]) {
+                   log "block_states: the impossible happened (no ty)";
+                   fail;
+               }
+               case (some[@ts_ann](?ts)) {
+                   ret ts.states;
+               }
+           }
+       }
+    }
+}
+
 fn stmt_states(&stmt s, uint nv) -> pre_and_post_state {
   alt (stmt_to_ann(s)) {
     case (none[@ts_ann]) {
@@ -545,6 +592,14 @@ fn stmt_poststate(&stmt s, uint nv) -> poststate {
   ret (stmt_states(s, nv)).poststate;
 }
 
+fn block_postcond(&block b) -> postcond {
+    ret (block_pp(b)).postcondition;
+}
+
+fn block_poststate(&block b) -> poststate {
+    ret (block_states(b)).poststate;
+}
+
 /* returns a new annotation where the pre_and_post is p */
 fn with_pp(ann a, pre_and_post p) -> ann {
   alt (a) {
@@ -581,6 +636,8 @@ fn seq_preconds(uint num_vars, vec[pre_and_post] pps) -> precond {
   ret (first.precondition);
 }
 
+/* works on either postconds or preconds
+ should probably rethink the whole type synonym situation */
 fn union_postconds_go(&postcond first, &vec[postcond] rest) -> postcond {
   auto sz = _vec.len[postcond](rest);
 
@@ -597,6 +654,26 @@ fn union_postconds(&vec[postcond] pcs) -> postcond {
   check (len[postcond](pcs) > 0u);
 
   ret union_postconds_go(bitv.clone(pcs.(0)), pcs);
+}
+
+/* Gee, maybe we could use foldl or something */
+fn intersect_postconds_go(&postcond first, &vec[postcond] rest) -> postcond {
+  auto sz = _vec.len[postcond](rest);
+
+  if (sz > 0u) {
+    auto other = rest.(0);
+    intersect(first, other);
+    intersect_postconds_go(first, slice[postcond](rest, 1u,
+                                                  len[postcond](rest)));
+  }
+
+  ret first;
+}
+
+fn intersect_postconds(&vec[postcond] pcs) -> postcond {
+  check (len[postcond](pcs) > 0u);
+
+  ret intersect_postconds_go(bitv.clone(pcs.(0)), pcs);
 }
 
 /******* AST-traversing code ********/
@@ -616,7 +693,7 @@ fn find_pre_post_obj(_obj o) -> _obj {
 fn find_pre_post_item(_fn_info_map fm, fn_info enclosing, &item i) -> () {
   alt (i.node) {
     case (ast.item_const(?id, ?t, ?e, ?di, ?a)) {
-      find_pre_post_expr(enclosing, *e);
+        find_pre_post_expr(fm, enclosing, *e);
     }
     case (ast.item_fn(?id, ?f, ?ps, ?di, ?a)) {
       check (fm.contains_key(di));
@@ -641,167 +718,230 @@ fn find_pre_post_item(_fn_info_map fm, fn_info enclosing, &item i) -> () {
 }
 
 /* Fills in annotations as a side effect. Does not rebuild the expr */
-fn find_pre_post_expr(&fn_info enclosing, &expr e) -> () {
-  auto num_local_vars = num_locals(enclosing);
+fn find_pre_post_expr(&_fn_info_map fm, &fn_info enclosing, &expr e) -> () {
+    auto num_local_vars = num_locals(enclosing);
 
-  fn do_rand_(fn_info enclosing, &@expr e) -> () {
-    find_pre_post_expr(enclosing, *e);
-  }
-  fn pp_one(&@expr e) -> pre_and_post {
-      be expr_pp(*e);
-  }
-
-  alt(e.node) {
-    case(expr_call(?operator, ?operands, ?a)) {
-      find_pre_post_expr(enclosing, *operator);
-
-      auto do_rand = bind do_rand_(enclosing,_);
-      auto f = do_rand;
-      _vec.map[@expr, ()](f, operands);
-      
-      auto g = pp_one;
-      auto pps = _vec.map[@expr, pre_and_post](g, operands);
-      _vec.push[pre_and_post](pps, expr_pp(*operator));
-      auto h = get_post;
-      auto res_postconds = _vec.map[pre_and_post, postcond](h, pps);
-      auto res_postcond = union_postconds(res_postconds);
-      
-      let pre_and_post pp =
-        rec(precondition=seq_preconds(num_local_vars, pps),
-             postcondition=res_postcond);
-      set_pre_and_post(a, pp);
-      ret;
+    fn do_rand_(_fn_info_map fm, fn_info enclosing, &@expr e) -> () {
+        find_pre_post_expr(fm, enclosing, *e);
     }
-    case(expr_path(?p, ?maybe_def, ?a)) {
-      auto df;
-      alt (maybe_def) {
-        case (none[def])
-          { log("expr_path should have a def"); fail; }
-        case (some[def](?d)) { df = d; }
-      }
+    fn pp_one(&@expr e) -> pre_and_post {
+        be expr_pp(*e);
+    }
 
-      auto res = empty_pre_post(num_local_vars);
+    alt(e.node) {
+        case(expr_call(?operator, ?operands, ?a)) {
+            find_pre_post_expr(fm, enclosing, *operator);
 
-      alt (df) {
-        case (def_local(?d_id)) {
-          auto i = bit_num(d_id, enclosing);
-          require_and_preserve(i, res);
+            auto do_rand = bind do_rand_(fm, enclosing,_);
+            auto f = do_rand;
+            _vec.map[@expr, ()](f, operands);
+      
+            auto g = pp_one;
+            auto pps = _vec.map[@expr, pre_and_post](g, operands);
+            _vec.push[pre_and_post](pps, expr_pp(*operator));
+            auto h = get_post;
+            auto res_postconds = _vec.map[pre_and_post, postcond](h, pps);
+            auto res_postcond = union_postconds(res_postconds);
+      
+            let pre_and_post pp =
+                rec(precondition=seq_preconds(num_local_vars, pps),
+                    postcondition=res_postcond);
+            set_pre_and_post(a, pp);
+            ret;
         }
-        case (_) { /* nothing to check */ }
-      }
-
-      // Otherwise, variable is global, so it must be initialized
-      set_pre_and_post(a, res);
-    }
-    case(expr_log(?arg, ?a)) {
-      find_pre_post_expr(enclosing, *arg);
-      set_pre_and_post(a, expr_pp(*arg));
-    }
-    case (expr_block(?b, ?a)) {
-      log("block!");
-      fail;
-    }
-    case (expr_rec(?fields,?maybe_base,?a)) {
-        /* factor out this code */
-        auto es = field_exprs(fields);
-        auto do_rand = bind do_rand_(enclosing,_);
-        auto f = do_rand;
-        _vec.map[@expr, ()](f, es);
-        auto g = pp_one;
-        auto h = get_post;
-        /* FIXME avoid repeated code */
-        alt (maybe_base) {
-            case (none[@expr]) {
-                auto pps = _vec.map[@expr, pre_and_post](g, es);
-                auto res_postconds = _vec.map[pre_and_post, postcond](h, pps);
-                auto res_postcond = union_postconds(res_postconds);
-                let pre_and_post pp =
-                    rec(precondition=seq_preconds(num_local_vars, pps),
-                        postcondition=res_postcond);
-                set_pre_and_post(a, pp);
+        case(expr_path(?p, ?maybe_def, ?a)) {
+            auto df;
+            alt (maybe_def) {
+                case (none[def])
+                    { log("expr_path should have a def"); fail; }
+                case (some[def](?d)) { df = d; }
             }
-            case (some[@expr](?base_exp)) {
-                find_pre_post_expr(enclosing, *base_exp);
+
+            auto res = empty_pre_post(num_local_vars);
+
+            alt (df) {
+                case (def_local(?d_id)) {
+                    auto i = bit_num(d_id, enclosing);
+                    require_and_preserve(i, res);
+                }
+                case (_) { /* nothing to check */ }
+            }
+
+            // Otherwise, variable is global, so it must be initialized
+            set_pre_and_post(a, res);
+        }
+        case(expr_log(?arg, ?a)) {
+            find_pre_post_expr(fm, enclosing, *arg);
+            set_pre_and_post(a, expr_pp(*arg));
+        }
+        case (expr_block(?b, ?a)) {
+            find_pre_post_block(fm, enclosing, b);
+            set_pre_and_post(a, block_pp(b));
+        }
+        case (expr_rec(?fields,?maybe_base,?a)) {
+            /* factor out this code */
+            auto es = field_exprs(fields);
+            auto do_rand = bind do_rand_(fm, enclosing,_);
+            auto f = do_rand;
+            _vec.map[@expr, ()](f, es);
+            auto g = pp_one;
+            auto h = get_post;
+            /* FIXME avoid repeated code */
+            alt (maybe_base) {
+                case (none[@expr]) {
+                    auto pps = _vec.map[@expr, pre_and_post](g, es);
+                    auto res_postconds = _vec.map[pre_and_post, postcond]
+                        (h, pps);
+                    auto res_postcond = union_postconds(res_postconds);
+                    let pre_and_post pp =
+                        rec(precondition=seq_preconds(num_local_vars, pps),
+                            postcondition=res_postcond);
+                    set_pre_and_post(a, pp);
+                }
+                case (some[@expr](?base_exp)) {
+                    find_pre_post_expr(fm, enclosing, *base_exp);
         
-                es += vec(base_exp);
-                auto pps = _vec.map[@expr, pre_and_post](g, es);
-                auto res_postconds = _vec.map[pre_and_post, postcond](h, pps);
-                auto res_postcond = union_postconds(res_postconds);
+                    es += vec(base_exp);
+                    auto pps = _vec.map[@expr, pre_and_post](g, es);
+                    auto res_postconds = _vec.map[pre_and_post, postcond]
+                        (h, pps);
+                    auto res_postcond = union_postconds(res_postconds);
 
-                let pre_and_post pp =
-                    rec(precondition=seq_preconds(num_local_vars, pps),
-                        postcondition=res_postcond);
-                set_pre_and_post(a, pp);
-            }
-        }
-        ret;
-    }
-    case (expr_assign(?lhs, ?rhs, ?a)) {
-        // what's below should be compressed into two cases:
-        // path of a local, and non-path-of-a-local
-        alt (lhs.node) {
-            case (expr_field(?e,?id,?a_lhs)) {
-                // lhs is already initialized, so this doesn't initialize
-                // anything anew
-                find_pre_post_expr(enclosing, *e);
-                set_pre_and_post(a_lhs, expr_pp(*e));
-
-                find_pre_post_expr(enclosing, *rhs);
-                let pre_and_post expr_assign_pp = 
-                    rec(precondition=seq_preconds
-                         (num_local_vars,
-                          vec(expr_pp(*e), expr_pp(*rhs))),
-                        postcondition=union_postconds
-                        (vec(expr_postcond(*e), expr_postcond(*rhs))));
-                set_pre_and_post(a, expr_assign_pp);
-            }
-            case (expr_path(?p,?maybe_def,?a_lhs)) {
-                find_pre_post_expr(enclosing, *rhs);
-                set_pre_and_post(a_lhs, empty_pre_post(num_local_vars));
-                find_pre_post_expr(enclosing, *rhs);
-                alt (maybe_def) {
-                    // is this a local variable?
-                    // if so, the only case in which an assign actually
-                    // causes a variable to become initialized
-                    case (some[def](def_local(?d_id))) {
-                        set_pre_and_post(a, expr_pp(*rhs));
-                        gen(enclosing, a, d_id);
-                    }
-                    case (_) {
-                        // already initialized
-                        set_pre_and_post(a, expr_pp(*rhs));
-                    }
+                    let pre_and_post pp =
+                        rec(precondition=seq_preconds(num_local_vars, pps),
+                            postcondition=res_postcond);
+                    set_pre_and_post(a, pp);
                 }
             }
-            case (expr_index(?e,?sub,_)) {
-                // lhs is already initialized
-                // assuming the array subscript gets evaluated before the
-                // array
-                find_pre_post_expr(enclosing, *lhs);
-                find_pre_post_expr(enclosing, *rhs);
-                set_pre_and_post(a, 
-                   rec(precondition=
-                        seq_preconds
-                          (num_local_vars, vec(expr_pp(*lhs), expr_pp(*rhs))),
-                       postcondition=
-                          union_postconds(vec(expr_postcond(*lhs),
-                                              expr_postcond(*rhs)))));
+            ret;
+        }
+        case (expr_assign(?lhs, ?rhs, ?a)) {
+            // what's below should be compressed into two cases:
+            // path of a local, and non-path-of-a-local
+            alt (lhs.node) {
+                case (expr_field(?e,?id,?a_lhs)) {
+                    // lhs is already initialized, so this doesn't initialize
+                    // anything anew
+                    find_pre_post_expr(fm, enclosing, *e);
+                    set_pre_and_post(a_lhs, expr_pp(*e));
+
+                    find_pre_post_expr(fm, enclosing, *rhs);
+                    let pre_and_post expr_assign_pp = 
+                        rec(precondition=seq_preconds
+                            (num_local_vars,
+                             vec(expr_pp(*e), expr_pp(*rhs))),
+                            postcondition=union_postconds
+                            (vec(expr_postcond(*e), expr_postcond(*rhs))));
+                    set_pre_and_post(a, expr_assign_pp);
+                }
+                case (expr_path(?p,?maybe_def,?a_lhs)) {
+                    find_pre_post_expr(fm, enclosing, *rhs);
+                    set_pre_and_post(a_lhs, empty_pre_post(num_local_vars));
+                    find_pre_post_expr(fm, enclosing, *rhs);
+                    alt (maybe_def) {
+                        // is this a local variable?
+                        // if so, the only case in which an assign actually
+                        // causes a variable to become initialized
+                        case (some[def](def_local(?d_id))) {
+                            set_pre_and_post(a, expr_pp(*rhs));
+                            gen(enclosing, a, d_id);
+                        }
+                        case (_) {
+                            // already initialized
+                            set_pre_and_post(a, expr_pp(*rhs));
+                        }
+                    }
+                }
+                case (expr_index(?e,?sub,_)) {
+                    // lhs is already initialized
+                    // assuming the array subscript gets evaluated before the
+                    // array
+                    find_pre_post_expr(fm, enclosing, *lhs);
+                    find_pre_post_expr(fm, enclosing, *rhs);
+                    set_pre_and_post(a, 
+                       rec(precondition=
+                           seq_preconds
+                           (num_local_vars, vec(expr_pp(*lhs), 
+                                                expr_pp(*rhs))),
+                           postcondition=
+                           union_postconds(vec(expr_postcond(*lhs),
+                                               expr_postcond(*rhs)))));
                 
-            }
-            case (_) {
-                log("find_pre_post_for_expr: non-lval on lhs of assign");
-                fail;
+                }
+                case (_) {
+                    log("find_pre_post_for_expr: non-lval on lhs of assign");
+                    fail;
+                }
             }
         }
+        case (expr_lit(_,?a)) {
+            set_pre_and_post(a, empty_pre_post(num_local_vars));
+        }
+        case (expr_ret(?maybe_val, ?a)) {
+            alt (maybe_val) {
+                case (none[@expr]) {
+                    set_pre_and_post(a, empty_pre_post(num_local_vars));
+                }
+                case (some[@expr](?ret_val)) {
+                    find_pre_post_expr(fm, enclosing, *ret_val);
+                    let pre_and_post pp =
+                        rec(precondition=expr_precond(*ret_val),
+                            postcondition=empty_poststate(num_local_vars));
+                    set_pre_and_post(a, pp);
+                }
+            }
+        }
+        case (expr_if(?antec, ?conseq, ?maybe_alt, ?a)) {
+            find_pre_post_expr(fm, enclosing, *antec);
+            find_pre_post_block(fm, enclosing, conseq);
+            alt (maybe_alt) {
+                case (none[@expr]) {
+                    auto precond_res = seq_preconds(num_local_vars,
+                                                    vec(expr_pp(*antec),
+                                                        block_pp(conseq)));
+                    set_pre_and_post(a, rec(precondition=precond_res,
+                                            postcondition=
+                                            expr_poststate(*antec)));
+                }
+                case (some[@expr](?altern)) {
+                    find_pre_post_expr(fm, enclosing, *altern);
+                    auto precond_true_case =
+                        seq_preconds(num_local_vars,
+                                     vec(expr_pp(*antec), block_pp(conseq)));
+                    auto postcond_true_case = union_postconds
+                        (vec(expr_postcond(*antec), block_postcond(conseq)));
+                    auto precond_false_case = seq_preconds
+                        (num_local_vars,
+                         vec(expr_pp(*antec), expr_pp(*altern)));
+                    auto postcond_false_case = union_postconds
+                        (vec(expr_postcond(*antec), expr_postcond(*altern)));
+                    auto precond_res = union_postconds(vec(precond_true_case,
+                                                       precond_false_case));
+                    auto postcond_res = intersect_postconds
+                        (vec(postcond_true_case, postcond_false_case));
+                    set_pre_and_post(a, rec(precondition=precond_res,
+                                            postcondition=postcond_res));
+                }
+            }
+        }
+        case (expr_binary(?bop,?l,?r,?a)) {
+            /* *unless* bop is lazy (e.g. and, or)? 
+             FIXME */
+            find_pre_post_expr(fm, enclosing, *l);
+            find_pre_post_expr(fm, enclosing, *r);
+            set_pre_and_post(a, 
+                             rec(precondition=
+                                 seq_preconds(num_local_vars,
+                                              vec(expr_pp(*l), expr_pp(*r))),
+                                 postcondition=
+                                 union_postconds(vec(expr_postcond(*l),
+                                                     expr_postcond(*r)))));
+        }
+        case(_) {
+            log("this sort of expr isn't implemented!");
+            fail;
+        }
     }
-    case (expr_lit(_,?a)) {
-        set_pre_and_post(a, empty_pre_post(num_local_vars));
-    }
-    case(_) {
-      log("this sort of expr isn't implemented!");
-      fail;
-    }
-  }
 }
 
 impure fn gen(&fn_info enclosing, &ann a, def_id id) -> bool {
@@ -827,7 +967,7 @@ fn find_pre_post_stmt(_fn_info_map fm, &fn_info enclosing, &ast.stmt s)
             case(ast.decl_local(?alocal)) {
                 alt(alocal.init) {
                     case(some[ast.initializer](?an_init)) {
-                        find_pre_post_expr(enclosing, *an_init.expr);
+                        find_pre_post_expr(fm, enclosing, *an_init.expr);
                         auto rhs_pp = expr_pp(*an_init.expr);
                         set_pre_and_post(alocal.ann, rhs_pp);
 
@@ -851,7 +991,7 @@ fn find_pre_post_stmt(_fn_info_map fm, &fn_info enclosing, &ast.stmt s)
         }
     }
     case(stmt_expr(?e,?a)) {
-        find_pre_post_expr(enclosing, *e);
+        find_pre_post_expr(fm, enclosing, *e);
         set_pre_and_post(a, expr_pp(*e));
     }    
   }
@@ -865,11 +1005,12 @@ fn find_pre_post_block(&_fn_info_map fm, &fn_info enclosing, block b)
     auto do_one = bind do_one_(fm, enclosing, _);
     
     _vec.map[@stmt, ()](do_one, b.node.stmts);
-    fn do_inner_(fn_info i, &@expr e) -> () {
-        find_pre_post_expr(i, *e);
+    fn do_inner_(_fn_info_map fm, fn_info i, &@expr e) -> () {
+        find_pre_post_expr(fm, i, *e);
     }
-    auto do_inner = bind do_inner_(enclosing, _);
+    auto do_inner = bind do_inner_(fm, enclosing, _);
     option.map[@expr, ()](do_inner, b.node.expr);
+    /* FIXME needs to set up the ann for b!!!!!!!!!!! */
 }
 
 fn find_pre_post_fn(&_fn_info_map fm, &fn_info fi, &_fn f) -> () {
@@ -993,8 +1134,7 @@ impure fn pure_exp(&ann a, &prestate p) -> bool {
 fn find_pre_post_state_expr(&_fn_info_map fm, &fn_info enclosing,
                             &prestate pres, &@expr e) -> bool {
   auto changed = false;
-
-  /* a bit confused about when setting the states happens */
+  auto num_local_vars = num_locals(enclosing);
 
   alt (e.node) {
     case (expr_vec(?elts, _, ?a)) {
@@ -1025,8 +1165,11 @@ fn find_pre_post_state_expr(&_fn_info_map fm, &fn_info enclosing,
         ret pure_exp(a, pres);
     }
     case (expr_block(?b,?a)) {
-        log("find_pre_post_state_expr: block!");
-        fail;
+        changed = find_pre_post_state_block(fm, enclosing, pres, b)
+           || changed;
+        changed = extend_prestate_ann(a, pres) || changed;
+        changed = extend_poststate_ann(a, block_poststate(b)) || changed;
+        ret changed;
     }
     case (expr_rec(?fields,?maybe_base,?a)) {
         changed = find_pre_post_state_exprs(fm, enclosing, pres, a,
@@ -1065,6 +1208,49 @@ fn find_pre_post_state_expr(&_fn_info_map fm, &fn_info enclosing,
                     || changed;
             }
         }
+        ret changed;
+    }
+    case (expr_ret(?maybe_ret_val, ?a)) {
+        changed = extend_prestate_ann(a, pres) || changed;
+        set_poststate_ann(a, empty_poststate(num_local_vars));
+        alt(maybe_ret_val) {
+            case (none[@expr]) { /* do nothing */ }
+            case (some[@expr](?ret_val)) {
+                changed = find_pre_post_state_expr(fm, enclosing,
+                             pres, ret_val) || changed;
+            }
+        }
+        ret changed;
+    }
+    case (expr_if(?antec, ?conseq, ?maybe_alt, ?a)) {
+        changed = extend_prestate_ann(a, pres) || changed;
+        changed = find_pre_post_state_expr(fm, enclosing, pres, antec)
+            || changed;
+        changed = find_pre_post_state_block(fm, enclosing,
+          expr_poststate(*antec), conseq) || changed;
+        alt (maybe_alt) {
+            case (none[@expr]) {
+                changed = extend_poststate_ann(a, expr_poststate(*antec))
+                    || changed;
+            }
+            case (some[@expr](?altern)) {
+                changed = find_pre_post_state_expr(fm, enclosing,
+                   expr_poststate(*antec), altern) || changed;
+                auto poststate_res = intersect_postconds
+                    (vec(block_poststate(conseq), expr_poststate(*altern)));
+                changed = extend_poststate_ann(a, poststate_res) || changed;
+            }
+        }
+        ret changed;
+    }
+    case (expr_binary(?bop, ?l, ?r, ?a)) {
+        /* FIXME: what if bop is lazy? */
+        changed = extend_prestate_ann(a, pres) || changed;
+        changed = find_pre_post_state_expr(fm, enclosing, pres, l)
+                    || changed;
+        changed = find_pre_post_state_expr(fm,
+                    enclosing, expr_poststate(*l), r) || changed;
+        changed = extend_poststate_ann(a, expr_poststate(*r)) || changed;
         ret changed;
     }
     case (_) {
@@ -1157,14 +1343,15 @@ fn find_pre_post_state_stmt(&_fn_info_map fm, &fn_info enclosing,
 
 /* Updates the pre- and post-states of statements in the block,
    returns a boolean flag saying whether any pre- or poststates changed */
-fn find_pre_post_state_block(&_fn_info_map fm, &fn_info enclosing, block b)
+fn find_pre_post_state_block(&_fn_info_map fm, &fn_info enclosing,
+                             &prestate pres0, block b)
   -> bool {
 
   auto changed = false;
   auto num_local_vars = num_locals(enclosing);
 
   /* First, set the pre-states and post-states for every expression */
-  auto pres = empty_prestate(num_local_vars);
+  auto pres = pres0;
   
   /* Iterate over each stmt. The new prestate is <pres>. The poststate
    consist of improving <pres> with whatever variables this stmt initializes.
@@ -1185,7 +1372,9 @@ fn find_pre_post_state_block(&_fn_info_map fm, &fn_info enclosing, block b)
 
 fn find_pre_post_state_fn(&_fn_info_map f_info, &fn_info fi, &ast._fn f)
   -> bool {
-  ret find_pre_post_state_block(f_info, fi, f.body);
+    auto num_local_vars = num_locals(fi);
+    ret find_pre_post_state_block(f_info, fi,
+                                  empty_prestate(num_local_vars), f.body);
 }
 
 fn fixed_point_states(_fn_info_map fm, fn_info f_info,

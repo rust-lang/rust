@@ -871,7 +871,8 @@ fn fold_block[ENV](&ENV env, ast_fold[ENV] fld, &block blk) -> block {
         }
     }
 
-    ret respan(blk.span, rec(stmts=stmts, expr=expr, index=index));
+    auto aa = fld.fold_ann(env, blk.node.a); 
+    ret respan(blk.span, rec(stmts=stmts, expr=expr, index=index, a=aa));
 }
 
 fn fold_arm[ENV](&ENV env, ast_fold[ENV] fld, &arm a) -> arm {

@@ -1598,7 +1598,7 @@ fn index_block(vec[@ast.stmt] stmts, option.t[@ast.expr] expr) -> ast.block_ {
     for (@ast.stmt s in stmts) {
         ast.index_stmt(index, s);
     }
-    ret rec(stmts=stmts, expr=expr, index=index);
+    ret rec(stmts=stmts, expr=expr, index=index, a=ast.ann_none);
 }
 
 fn index_arm(@ast.pat pat) -> hashmap[ast.ident,ast.def_id] {

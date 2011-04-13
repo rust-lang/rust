@@ -100,7 +100,8 @@ tag block_index_entry {
 }
 type block_ = rec(vec[@stmt] stmts,
                   option.t[@expr] expr,
-                  hashmap[ident,block_index_entry] index);
+                  hashmap[ident,block_index_entry] index,
+                  ann a); /* ann is only meaningful for the ts_ann field */
 
 type variant_def = tup(def_id /* tag */, def_id /* variant */);
 
