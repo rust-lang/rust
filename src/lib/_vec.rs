@@ -251,6 +251,17 @@ fn or(&vec[bool] v) -> bool {
     be _vec.foldl[bool, bool](f, false, v);
 }
 
+fn clone[T](&vec[T] v) -> vec[T] {
+    ret slice[T](v, 0u, len[T](v));
+}
+
+fn plus_option[T](&vec[T] v, &option.t[T] o) -> () {
+    alt (o) {
+        case (none[T]) {}
+        case (some[T](?x)) { v += vec(x); }
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

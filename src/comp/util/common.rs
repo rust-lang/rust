@@ -115,14 +115,14 @@ fn plain_ann() -> ast.ann {
                    none[vec[@middle.ty.t]], none[@ts_ann]);
 }
 
-fn log_expr(@ast.expr e) -> () {
+fn log_expr(&ast.expr e) -> () {
   let str_writer s = string_writer();
   auto out_ = mkstate(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front.lexer.cmnt]],
                   mutable cur_cmnt=0u);
 
-  print_expr(out, e);
+  print_expr(out, @e);
   log(s.get_str());
 }
 
