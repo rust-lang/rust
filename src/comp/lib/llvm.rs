@@ -775,6 +775,8 @@ native mod llvm = llvm_lib {
     fn LLVMAddSimplifyLibCallsPass(PassManagerRef PM);
     fn LLVMAddLoopIdiomPass(PassManagerRef PM);
     fn LLVMAddEarlyCSEPass(PassManagerRef PM);
+    fn LLVMAddTypeBasedAliasAnalysisPass(PassManagerRef PM);
+    fn LLVMAddBasicAliasAnalysisPass(PassManagerRef PM);
 
     /** Destroys a memory buffer. */
     fn LLVMDisposeMemoryBuffer(MemoryBufferRef MemBuf);

@@ -6647,6 +6647,8 @@ fn run_passes(ModuleRef llmod, bool opt) {
         auto fpm = mk_pass_manager();
 
         // createStandardFunctionPasses
+        llvm.LLVMAddTypeBasedAliasAnalysisPass(fpm.llpm);
+        llvm.LLVMAddBasicAliasAnalysisPass(fpm.llpm);
         llvm.LLVMAddCFGSimplificationPass(fpm.llpm);
         llvm.LLVMAddScalarReplAggregatesPass(fpm.llpm);
         llvm.LLVMAddEarlyCSEPass(fpm.llpm);
@@ -6654,6 +6656,8 @@ fn run_passes(ModuleRef llmod, bool opt) {
         llvm.LLVMRunPassManager(fpm.llpm, llmod);
 
         // createStandardModulePasses
+        llvm.LLVMAddTypeBasedAliasAnalysisPass(pm.llpm);
+        llvm.LLVMAddBasicAliasAnalysisPass(pm.llpm);
         llvm.LLVMAddGlobalOptimizerPass(pm.llpm);
         llvm.LLVMAddIPSCCPPass(pm.llpm);
         llvm.LLVMAddDeadArgEliminationPass(pm.llpm);
@@ -6661,10 +6665,7 @@ fn run_passes(ModuleRef llmod, bool opt) {
         llvm.LLVMAddCFGSimplificationPass(pm.llpm);
         llvm.LLVMAddPruneEHPass(pm.llpm);
         llvm.LLVMAddFunctionInliningPass(pm.llpm);
-
-        // FIXME: crashes!
-        // llvm.LLVMAddFunctionAttrsPass(pm.llpm);
-
+        llvm.LLVMAddFunctionAttrsPass(pm.llpm);
         llvm.LLVMAddScalarReplAggregatesPassSSA(pm.llpm);
         llvm.LLVMAddEarlyCSEPass(pm.llpm);
         llvm.LLVMAddSimplifyLibCallsPass(pm.llpm);

@@ -31,3 +31,8 @@ extern "C" const char *LLVMRustGetLastError(void) {
 
 LLVMOpaqueObjectFile* (*RustHackToFetchObjectO)(LLVMOpaqueMemoryBuffer*)
   = LLVMCreateObjectFile;
+
+extern "C" void LLVMAddBasicAliasAnalysisPass(LLVMPassManagerRef PM);
+
+void (*RustHackToFetchPassesO)(LLVMPassManagerRef PM) =
+  LLVMAddBasicAliasAnalysisPass;

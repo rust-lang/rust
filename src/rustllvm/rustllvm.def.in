@@ -15,6 +15,7 @@ LLVMAddAggressiveDCEPass
 LLVMAddAlias
 LLVMAddArgumentPromotionPass
 LLVMAddAttribute
+LLVMaddBasicAliasAnalysisPass
 LLVMAddCFGSimplificationPass
 LLVMAddCase
 LLVMAddConstantMergePass
@@ -67,6 +68,7 @@ LLVMAddStripDeadPrototypesPass
 LLVMAddStripSymbolsPass
 LLVMAddTailCallEliminationPass
 LLVMAddTargetData
+LLVMAddTypeBasedAliasAnalysisPass
 LLVMAddTypeName
 LLVMAddVerifierPass
 LLVMAlignOf
