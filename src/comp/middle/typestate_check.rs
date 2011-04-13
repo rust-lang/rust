@@ -73,7 +73,6 @@ import util.common.uistr;
 import util.common.elt_exprs;
 import util.common.field_exprs;
 import util.common.log_expr;
-import util.common.lift;
 import util.typestate_ann;
 import util.typestate_ann.ts_ann;
 import util.typestate_ann.empty_pre_post;
