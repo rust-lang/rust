@@ -91,7 +91,7 @@ fn test_boxes(@int a, @int b, @int c, @int d) {
   check (deq.get(3) == d);
 }
 
-type eqfn[T] = fn(T a, T b) -> bool;
+type eqfn[T] = fn(&T a, &T b) -> bool;
 
 fn test_parameterized[T](eqfn[T] e, &T a, &T b, &T c, &T d) {
   let deque.t[T] deq = deque.create[T]();
@@ -142,15 +142,15 @@ tag taggypar[T] {
 type reccy = rec(int x, int y, taggy t);
 
 fn main() {
-  fn inteq(int a, int b) -> bool {
+  fn inteq(&int a, &int b) -> bool {
     ret a == b;
   }
 
-  fn intboxeq(@int a, @int b) -> bool {
+  fn intboxeq(&@int a, &@int b) -> bool {
     ret a == b;
   }
 
-  fn taggyeq(taggy a, taggy b) -> bool {
+  fn taggyeq(&taggy a, &taggy b) -> bool {
     alt (a) {
       case (one(?a1)) {
         alt (b) {
@@ -175,7 +175,7 @@ fn main() {
     }
   }
 
-  fn taggypareq[T](taggypar[T] a, taggypar[T] b) -> bool {
+  fn taggypareq[T](&taggypar[T] a, &taggypar[T] b) -> bool {
     alt (a) {
       case (onepar[T](?a1)) {
         alt (b) {
@@ -200,7 +200,7 @@ fn main() {
     }
   }
 
-  fn reccyeq(reccy a, reccy b) -> bool {
+  fn reccyeq(&reccy a, &reccy b) -> bool {
     ret (a.x == b.x && a.y == b.y && taggyeq(a.t, b.t));
   }
 
