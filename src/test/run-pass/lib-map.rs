@@ -347,6 +347,4 @@ fn main() {
   test_simple();
   test_growth();
   test_removal();
-
-  std.sys.rustrt.do_gc();
 }
