@@ -52,7 +52,7 @@ impure fn new_reader(io.reader rdr, str filename, codemap.filemap filemap)
             if (pos < len) {ret _str.char_at(file, pos);}
             else {ret -1 as char;}
         }
-            
+
         impure fn init() {
             if (pos < len) {
                 auto next = _str.char_range_at(file, pos);
@@ -368,7 +368,7 @@ impure fn scan_exponent(reader rdr) -> option.t[str] {
 }
 
 impure fn scan_dec_digits(reader rdr) -> str {
-    
+
     auto c = rdr.curr();
     let str res = "";
 
@@ -417,11 +417,11 @@ impure fn scan_number(mutable char c, reader rdr) -> token.token {
         dec_str = scan_dec_digits(rdr);
         is_dec_integer = true;
     }
-        
+
     if (is_dec_integer) {
         accum_int = digits_to_string(dec_str);
     }
-        
+
     c = rdr.curr();
     n = rdr.next();
 
@@ -525,6 +525,44 @@ impure fn scan_number(mutable char c, reader rdr) -> token.token {
         }
     }
 }
+
+impure fn scan_numeric_escape(reader rdr) -> char {
+
+    auto n_hex_digits = 0;
+
+    check (rdr.curr() == '\\');
+
+    alt (rdr.next()) {
+        case ('x') { n_hex_digits = 2; }
+        case ('u') { n_hex_digits = 4; }
+        case ('U') { n_hex_digits = 8; }
+        case (?c) {
+            log "unknown numeric character escape";
+            log c;
+            fail;
+        }
+    }
+
+    rdr.bump(); // advance curr past \
+
+    auto n = rdr.next();
+    auto accum_int = 0;
+
+    while (n_hex_digits != 0) {
+        if (!is_hex_digit(n)) {
+            log "illegal numeric character escape";
+            log n;
+            fail;
+        }
+        accum_int *= 16;
+        accum_int += hex_digit_val(n);
+        rdr.bump();
+        n = rdr.next();
+        n_hex_digits -= 1;
+    }
+    ret accum_int as char;
+}
+
 
 impure fn next_token(reader rdr) -> token.token {
     auto accum_str = "";
@@ -666,26 +704,31 @@ impure fn next_token(reader rdr) -> token.token {
             auto c2 = rdr.curr();
             if (c2 == '\\') {
                 alt (rdr.next()) {
-                    case ('n') { rdr.bump(); c2 = '\n'; }
-                    case ('r') { rdr.bump(); c2 = '\r'; }
-                    case ('t') { rdr.bump(); c2 = '\t'; }
-                    case ('\\') { rdr.bump(); c2 = '\\'; }
-                    case ('\'') { rdr.bump(); c2 = '\''; }
-                    // FIXME: unicode numeric escapes.
+                    case ('n') { c2 = '\n'; }
+                    case ('r') { c2 = '\r'; }
+                    case ('t') { c2 = '\t'; }
+                    case ('\\') { c2 = '\\'; }
+                    case ('\'') { c2 = '\''; }
+
+                    case ('x') { c2 = scan_numeric_escape(rdr); }
+                    case ('u') { c2 = scan_numeric_escape(rdr); }
+                    case ('U') { c2 = scan_numeric_escape(rdr); }
+
                     case (?c2) {
                         log "unknown character escape";
                         log c2;
                         fail;
                     }
                 }
+                rdr.bump();
             }
 
             if (rdr.next() != '\'') {
                 log "unterminated character constant";
                 fail;
             }
-            rdr.bump();
-            rdr.bump();
+            rdr.bump(); // advance curr to closing '
+            rdr.bump(); // advance curr past token
             ret token.LIT_CHAR(c2);
         }
 
@@ -715,7 +758,22 @@ impure fn next_token(reader rdr) -> token.token {
                                 rdr.bump();
                                 _str.push_byte(accum_str, '"' as u8);
                             }
-                            // FIXME: unicode numeric escapes.
+
+                            case ('x') {
+                                _str.push_char(accum_str,
+                                               scan_numeric_escape(rdr));
+                            }
+
+                            case ('u') {
+                                _str.push_char(accum_str,
+                                               scan_numeric_escape(rdr));
+                            }
+
+                            case ('U') {
+                                _str.push_char(accum_str,
+                                               scan_numeric_escape(rdr));
+                            }
+
                             case (?c2) {
                                 log "unknown string escape";
                                 log c2;
@@ -781,6 +839,12 @@ impure fn next_token(reader rdr) -> token.token {
 
         case ('%') {
             ret binop(rdr, token.PERCENT);
+        }
+
+        case (?c) {
+            log "unkown start of token";
+            log c;
+            fail;
         }
     }
 
