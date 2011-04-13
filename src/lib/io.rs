@@ -115,7 +115,7 @@ state obj new_reader(buf_reader rdr) {
         // See _str.char_at
         val += ((b0 << ((w + 1u) as u8)) as uint) << ((w - 1u) * 6u - w - 1u);
         ret val as char;
-    }        
+    }
     impure fn eof() -> bool {
         ret rdr.eof();
     }

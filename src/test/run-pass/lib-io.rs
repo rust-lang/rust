@@ -13,12 +13,12 @@ fn test_simple(str tmpfilebase) {
   log frood;
 
   {
-    let io.buf_writer out = io.new_buf_writer(tmpfile, vec(io.create));
-    out.write(_str.bytes(frood));
+    let io.writer out = io.file_writer(tmpfile, vec(io.create));
+    out.write_str(frood);
   }
 
-  let io.buf_reader inp = io.new_buf_reader(tmpfile);
-  let str frood2 = _str.from_bytes(inp.read());
+  let io.reader inp = io.file_reader(tmpfile);
+  let str frood2 = inp.read_c_str();
   log frood2;
   check (_str.eq(frood, frood2));
 }
