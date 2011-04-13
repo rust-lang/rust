@@ -210,28 +210,18 @@ fn main() {
   test_simple();
   log "*** end test simple";
 
-  /*
-   * FIXME: Causes "Invalid read of size 4" under valgrind.
-
   log "*** test boxes";
   test_boxes(@5, @72, @64, @175);
   log "*** end test boxes";
-
-   */
 
   log "test parameterized: int";
   let eqfn[int] eq1 = inteq;
   test_parameterized[int](eq1, 5, 72, 64, 175);
 
-  /*
-   * FIXME: Appears to segfault after an upcall_grow_task
-
   log "*** test parameterized: @int";
   let eqfn[@int] eq2 = intboxeq;
   test_parameterized[@int](eq2, @5, @72, @64, @175);
   log "*** end test parameterized @int";
-
-  */
 
   log "test parameterized: taggy";
   let eqfn[taggy] eq3 = taggyeq;

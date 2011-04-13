@@ -4403,7 +4403,11 @@ fn trans_args(@block_ctxt cx,
                 lv = trans_lval(bcx, e);
             } else {
                 auto r = trans_expr(bcx, e);
-                lv = lval_val(r.bcx, r.val);
+                if (type_is_immediate(ty.expr_ty(e))) {
+                    lv = lval_val(r.bcx, r.val);
+                } else {
+                    lv = lval_mem(r.bcx, r.val);
+                }
             }
             bcx = lv.res.bcx;
 
