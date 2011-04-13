@@ -15,7 +15,7 @@ LLVMAddAggressiveDCEPass
 LLVMAddAlias
 LLVMAddArgumentPromotionPass
 LLVMAddAttribute
-LLVMaddBasicAliasAnalysisPass
+LLVMAddBasicAliasAnalysisPass
 LLVMAddCFGSimplificationPass
 LLVMAddCase
 LLVMAddConstantMergePass
