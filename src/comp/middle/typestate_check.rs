@@ -30,6 +30,7 @@ import front.ast.expr_rec;
 import front.ast.expr_if;
 import front.ast.expr_binary;
 import front.ast.expr_assign;
+import front.ast.expr_while;
 import front.ast.expr_lit;
 import front.ast.expr_ret;
 import front.ast.path;
@@ -71,6 +72,8 @@ import util.common.new_def_hash;
 import util.common.uistr;
 import util.common.elt_exprs;
 import util.common.field_exprs;
+import util.common.log_expr;
+import util.common.lift;
 import util.typestate_ann;
 import util.typestate_ann.ts_ann;
 import util.typestate_ann.empty_pre_post;
@@ -717,6 +720,33 @@ fn find_pre_post_item(_fn_info_map fm, fn_info enclosing, &item i) -> () {
   }
 }
 
+/* Finds the pre and postcondition for each expr in <args>;
+   sets the precondition in a to be the result of combining
+   the preconditions for <args>, and the postcondition in a to 
+   be the union of all postconditions for <args> */
+fn find_pre_post_exprs(&_fn_info_map fm, &fn_info enclosing,
+                       &vec[@expr] args, ann a) {
+    fn do_one(_fn_info_map fm, fn_info enclosing,
+              &@expr e) -> () {
+        find_pre_post_expr(fm, enclosing, *e);
+    }
+    auto f = bind do_one(fm, enclosing, _);
+
+    _vec.map[@expr, ()](f, args);
+
+    fn get_pp(&@expr e) -> pre_and_post {
+        ret expr_pp(*e);
+    }
+    auto g = get_pp;
+    auto pps = _vec.map[@expr, pre_and_post](g, args);
+    auto h = get_post;
+
+    set_pre_and_post(a,
+       rec(precondition=seq_preconds(num_locals(enclosing), pps),
+           postcondition=union_postconds
+           (_vec.map[pre_and_post, postcond](h, pps))));
+}
+
 /* Fills in annotations as a side effect. Does not rebuild the expr */
 fn find_pre_post_expr(&_fn_info_map fm, &fn_info enclosing, &expr e) -> () {
     auto num_local_vars = num_locals(enclosing);
@@ -730,24 +760,9 @@ fn find_pre_post_expr(&_fn_info_map fm, &fn_info enclosing, &expr e) -> () {
 
     alt(e.node) {
         case(expr_call(?operator, ?operands, ?a)) {
-            find_pre_post_expr(fm, enclosing, *operator);
-
-            auto do_rand = bind do_rand_(fm, enclosing,_);
-            auto f = do_rand;
-            _vec.map[@expr, ()](f, operands);
-      
-            auto g = pp_one;
-            auto pps = _vec.map[@expr, pre_and_post](g, operands);
-            _vec.push[pre_and_post](pps, expr_pp(*operator));
-            auto h = get_post;
-            auto res_postconds = _vec.map[pre_and_post, postcond](h, pps);
-            auto res_postcond = union_postconds(res_postconds);
-      
-            let pre_and_post pp =
-                rec(precondition=seq_preconds(num_local_vars, pps),
-                    postcondition=res_postcond);
-            set_pre_and_post(a, pp);
-            ret;
+            auto args = _vec.clone[@expr](operands);
+            _vec.push[@expr](args, operator);
+            find_pre_post_exprs(fm, enclosing, args, a);
         }
         case(expr_path(?p, ?maybe_def, ?a)) {
             auto df;
@@ -779,98 +794,21 @@ fn find_pre_post_expr(&_fn_info_map fm, &fn_info enclosing, &expr e) -> () {
             set_pre_and_post(a, block_pp(b));
         }
         case (expr_rec(?fields,?maybe_base,?a)) {
-            /* factor out this code */
             auto es = field_exprs(fields);
-            auto do_rand = bind do_rand_(fm, enclosing,_);
-            auto f = do_rand;
-            _vec.map[@expr, ()](f, es);
-            auto g = pp_one;
-            auto h = get_post;
-            /* FIXME avoid repeated code */
-            alt (maybe_base) {
-                case (none[@expr]) {
-                    auto pps = _vec.map[@expr, pre_and_post](g, es);
-                    auto res_postconds = _vec.map[pre_and_post, postcond]
-                        (h, pps);
-                    auto res_postcond = union_postconds(res_postconds);
-                    let pre_and_post pp =
-                        rec(precondition=seq_preconds(num_local_vars, pps),
-                            postcondition=res_postcond);
-                    set_pre_and_post(a, pp);
-                }
-                case (some[@expr](?base_exp)) {
-                    find_pre_post_expr(fm, enclosing, *base_exp);
-        
-                    es += vec(base_exp);
-                    auto pps = _vec.map[@expr, pre_and_post](g, es);
-                    auto res_postconds = _vec.map[pre_and_post, postcond]
-                        (h, pps);
-                    auto res_postcond = union_postconds(res_postconds);
-
-                    let pre_and_post pp =
-                        rec(precondition=seq_preconds(num_local_vars, pps),
-                            postcondition=res_postcond);
-                    set_pre_and_post(a, pp);
-                }
-            }
-            ret;
+            _vec.plus_option[@expr](es, maybe_base);
+            find_pre_post_exprs(fm, enclosing, es, a);
         }
         case (expr_assign(?lhs, ?rhs, ?a)) {
-            // what's below should be compressed into two cases:
-            // path of a local, and non-path-of-a-local
             alt (lhs.node) {
-                case (expr_field(?e,?id,?a_lhs)) {
-                    // lhs is already initialized, so this doesn't initialize
-                    // anything anew
-                    find_pre_post_expr(fm, enclosing, *e);
-                    set_pre_and_post(a_lhs, expr_pp(*e));
-
+                case (expr_path(?p, some[def](def_local(?d_id)), ?a_lhs)) {
                     find_pre_post_expr(fm, enclosing, *rhs);
-                    let pre_and_post expr_assign_pp = 
-                        rec(precondition=seq_preconds
-                            (num_local_vars,
-                             vec(expr_pp(*e), expr_pp(*rhs))),
-                            postcondition=union_postconds
-                            (vec(expr_postcond(*e), expr_postcond(*rhs))));
-                    set_pre_and_post(a, expr_assign_pp);
-                }
-                case (expr_path(?p,?maybe_def,?a_lhs)) {
-                    find_pre_post_expr(fm, enclosing, *rhs);
-                    set_pre_and_post(a_lhs, empty_pre_post(num_local_vars));
-                    find_pre_post_expr(fm, enclosing, *rhs);
-                    alt (maybe_def) {
-                        // is this a local variable?
-                        // if so, the only case in which an assign actually
-                        // causes a variable to become initialized
-                        case (some[def](def_local(?d_id))) {
-                            set_pre_and_post(a, expr_pp(*rhs));
-                            gen(enclosing, a, d_id);
-                        }
-                        case (_) {
-                            // already initialized
-                            set_pre_and_post(a, expr_pp(*rhs));
-                        }
-                    }
-                }
-                case (expr_index(?e,?sub,_)) {
-                    // lhs is already initialized
-                    // assuming the array subscript gets evaluated before the
-                    // array
-                    find_pre_post_expr(fm, enclosing, *lhs);
-                    find_pre_post_expr(fm, enclosing, *rhs);
-                    set_pre_and_post(a, 
-                       rec(precondition=
-                           seq_preconds
-                           (num_local_vars, vec(expr_pp(*lhs), 
-                                                expr_pp(*rhs))),
-                           postcondition=
-                           union_postconds(vec(expr_postcond(*lhs),
-                                               expr_postcond(*rhs)))));
-                
+                    set_pre_and_post(a, expr_pp(*rhs));
+                    gen(enclosing, a, d_id);
                 }
                 case (_) {
-                    log("find_pre_post_for_expr: non-lval on lhs of assign");
-                    fail;
+                    // doesn't check that lhs is an lval, but
+                    // that's probably ok
+                    find_pre_post_exprs(fm, enclosing, vec(lhs, rhs), a);
                 }
             }
         }
@@ -927,15 +865,22 @@ fn find_pre_post_expr(&_fn_info_map fm, &fn_info enclosing, &expr e) -> () {
         case (expr_binary(?bop,?l,?r,?a)) {
             /* *unless* bop is lazy (e.g. and, or)? 
              FIXME */
-            find_pre_post_expr(fm, enclosing, *l);
-            find_pre_post_expr(fm, enclosing, *r);
-            set_pre_and_post(a, 
-                             rec(precondition=
-                                 seq_preconds(num_local_vars,
-                                              vec(expr_pp(*l), expr_pp(*r))),
-                                 postcondition=
-                                 union_postconds(vec(expr_postcond(*l),
-                                                     expr_postcond(*r)))));
+            find_pre_post_exprs(fm, enclosing, vec(l, r), a);
+        }
+        case (expr_while(?test, ?body, ?a)) {
+            find_pre_post_expr(fm, enclosing, *test);
+            find_pre_post_block(fm, enclosing, body);
+            set_pre_and_post(a,
+              rec(precondition=
+                    seq_preconds(num_local_vars,
+                                 vec(expr_pp(*test), 
+                                     block_pp(body))),
+                  postcondition=
+                  intersect_postconds(vec(expr_postcond(*test),
+                                          block_postcond(body)))));
+        }
+        case (expr_index(?e, ?sub, ?a)) {
+            find_pre_post_exprs(fm, enclosing, vec(e, sub), a);
         }
         case(_) {
             log("this sort of expr isn't implemented!");
@@ -1253,6 +1198,33 @@ fn find_pre_post_state_expr(&_fn_info_map fm, &fn_info enclosing,
         changed = extend_poststate_ann(a, expr_poststate(*r)) || changed;
         ret changed;
     }
+    case (expr_while(?test, ?body, ?a)) {
+        changed = extend_prestate_ann(a, pres) || changed;
+        /* to handle general predicates, we need to pass in
+            pres `intersect` (poststate(a)) 
+         like: auto test_pres = intersect_postconds(pres, expr_postcond(a));
+         However, this doesn't work right now because we would be passing
+         in an all-zero prestate initially
+           FIXME
+           maybe need a "don't know" state in addition to 0 or 1?
+        */
+        changed = find_pre_post_state_expr(fm, enclosing, pres, test)
+            || changed;
+        changed = find_pre_post_state_block(fm, 
+                   enclosing, expr_poststate(*test), body) || changed; 
+        changed = extend_poststate_ann(a,
+                    intersect_postconds(vec(expr_poststate(*test),
+                                        block_poststate(body)))) || changed;
+        ret changed;
+    }
+    case (expr_index(?e, ?sub, ?a)) {
+        changed = extend_prestate_ann(a, pres) || changed; 
+        changed = find_pre_post_state_expr(fm, enclosing, pres, e) || changed;
+        changed = find_pre_post_state_expr(fm, enclosing,
+                     expr_poststate(*e), sub) || changed;
+        changed = extend_poststate_ann(a, expr_poststate(*sub));
+        ret changed;
+    }
     case (_) {
       log("find_pre_post_state_expr: implement this case!");
       fail;
@@ -1397,8 +1369,13 @@ impure fn check_states_expr(fn_info enclosing, &expr e) -> () {
   let prestate pres   = expr_prestate(e);
 
   if (!implies(pres, prec)) {
-    log("check_states_expr: unsatisfied precondition");
-    fail;
+      log("check_states_stmt: unsatisfied precondition for ");
+      log_expr(e);
+      log("Precondition: ");
+      log_bitv(enclosing, prec);
+      log("Prestate: ");
+      log_bitv(enclosing, pres);
+      fail;
   }
 }
 
