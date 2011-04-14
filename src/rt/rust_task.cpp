@@ -252,23 +252,6 @@ rust_task::start(uintptr_t exit_task_glue,
     transition(&dom->newborn_tasks, &dom->running_tasks);
 }
 
-#if 0
-void
-rust_task::print_stack_trace()
-{
-    void *addrs[256];
-    uintptr_t sp = this->rust_sp;
-
-    // We need to be careful to not use any Rust stack space here, since this
-    // may be called on stack overflow.
-    asm("xchgl %0, %%esp\n"
-        "pushl $256\n"
-        "pushl %1\n"
-        "calll %3\n"
-        "xchgl %%esp, %0\n"
-}
-#endif
-
 void
 rust_task::grow(size_t n_frame_bytes)
 {
