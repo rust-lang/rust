@@ -25,4 +25,11 @@ fn main() {
   test(#fmt("%x", 0xff_u), "ff");
   test(#fmt("%X", 0x12ab_u), "12AB");
   test(#fmt("%t", 0b11010101_u), "11010101");
+
+  // 32-bit limits
+  test(#fmt("%i", -2147483648), "-2147483648");
+  test(#fmt("%i", 2147483647), "2147483647");
+  test(#fmt("%u", 4294967295u), "4294967295");
+  test(#fmt("%x", 0xffffffff_u), "ffffffff");
+  test(#fmt("%t", 0xffffffff_u), "11111111111111111111111111111111");
 }
