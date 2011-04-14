@@ -858,6 +858,15 @@ mod Unify {
                         }
                     }
                 }
+
+                // TODO: "freeze"
+                let vec[@ty.t] param_substs_1 = vec();
+                for (@ty.t subst in param_substs) {
+                    param_substs_1 += vec(subst);
+                }
+
+                unified_type =
+                    ty.substitute_type_params(param_substs_1, unified_type);
                 fcx.locals.insert(id, unified_type);
             }
             fn record_param(uint index, @ty.t binding) -> ty.unify_result {
@@ -1617,7 +1626,8 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
 }
 
 fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
-    // log "typechecking expr " + pretty.pprust.expr_to_str(expr);
+    //fcx.ccx.sess.span_warn(expr.span, "typechecking expr " +
+    //                       pretty.pprust.expr_to_str(expr));
 
     // A generic function to factor out common logic from call and bind
     // expressions.
