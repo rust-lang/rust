@@ -111,24 +111,86 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         ret @rec(node=binexpr, span=sp);
     }
 
-    fn make_call(common.span sp, vec[ast.ident] fn_path,
-                 vec[@ast.expr] args) -> @ast.expr {
-        let vec[ast.ident] path_idents = fn_path;
-        let vec[@ast.ty] path_types = vec();
-        auto path = rec(idents = path_idents, types = path_types);
+    fn make_path_expr(common.span sp, vec[ast.ident] idents) -> @ast.expr {
+        let vec[@ast.ty] types = vec();
+        auto path = rec(idents=idents, types=types);
         auto sp_path = rec(node=path, span=sp);
         auto pathexpr = ast.expr_path(sp_path, none[ast.def], ast.ann_none);
         auto sp_pathexpr = @rec(node=pathexpr, span=sp);
-        auto callexpr = ast.expr_call(sp_pathexpr, args, ast.ann_none);
+        ret sp_pathexpr;
+    }
+
+    fn make_call(common.span sp, vec[ast.ident] fn_path,
+                 vec[@ast.expr] args) -> @ast.expr {
+        auto pathexpr = make_path_expr(sp, fn_path);
+        auto callexpr = ast.expr_call(pathexpr, args, ast.ann_none);
         auto sp_callexpr = @rec(node=callexpr, span=sp);
         ret sp_callexpr;
     }
 
+    fn make_rec_expr(common.span sp,
+                     vec[tup(ast.ident, @ast.expr)] fields) -> @ast.expr {
+        let vec[ast.field] astfields = vec();
+        for (tup(ast.ident, @ast.expr) field in fields) {
+            auto ident = field._0;
+            auto val = field._1;
+            auto astfield = rec(mut = ast.imm,
+                                ident = ident,
+                                expr = val);
+            astfields += vec(astfield);
+        }
+
+        auto recexpr = ast.expr_rec(astfields,
+                                    option.none[@ast.expr],
+                                    ast.ann_none);
+        auto sp_recexpr = @rec(node=recexpr, span=sp);
+        ret sp_recexpr;
+    }
+
+    fn make_path_vec(str ident) -> vec[str] {
+        ret vec("std", "ExtFmt", "RT", ident);
+    }
+
+    fn make_rt_conv_expr(common.span sp, &conv cnv) -> @ast.expr {
+        fn make_ty(common.span sp, &ty t) -> @ast.expr {
+            auto rt_type;
+            alt (t) {
+                case (ty_hex(?c)) {
+                    alt (c) {
+                        case (case_upper) {
+                            rt_type = "ty_hex_upper";
+                        }
+                        case (case_lower) {
+                            rt_type = "ty_hex_lower";
+                        }
+                    }
+                }
+                case (ty_bits) {
+                    rt_type = "ty_bits";
+                }
+                case (_) {
+                    rt_type = "ty_default";
+                }
+            }
+
+            auto idents = make_path_vec(rt_type);
+            ret make_path_expr(sp, idents);
+        }
+
+        fn make_conv_rec(common.span sp, &@ast.expr ty_expr) -> @ast.expr {
+            ret make_rec_expr(sp, vec(tup("ty", ty_expr)));
+        }
+
+        auto rt_conv_ty = make_ty(sp, cnv.ty);
+        ret make_conv_rec(sp, rt_conv_ty);
+    }
+
     fn make_conv_call(common.span sp, str conv_type,
-                      @ast.expr arg) -> @ast.expr {
+                      &conv cnv, @ast.expr arg) -> @ast.expr {
         auto fname = "conv_" + conv_type;
-        let vec[str] path = vec("std", "ExtFmt", "RT", fname);
-        let vec[@ast.expr] args = vec(arg);
+        auto path = make_path_vec(fname);
+        auto cnv_expr = make_rt_conv_expr(sp, cnv);
+        auto args = vec(cnv_expr, arg);
         ret make_call(arg.span, path, args);
     }
 
@@ -175,18 +237,21 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
             case (ty_int(?sign)) {
                 alt (sign) {
                     case (signed) {
-                        ret make_conv_call(arg.span, "int", arg);
+                        ret make_conv_call(arg.span, "int", cnv, arg);
                     }
                     case (unsigned) {
-                        ret make_conv_call(arg.span, "uint", arg);
+                        ret make_conv_call(arg.span, "uint", cnv, arg);
                     }
                 }
             }
             case (ty_bool) {
-                ret make_conv_call(arg.span, "bool", arg);
+                ret make_conv_call(arg.span, "bool", cnv, arg);
             }
             case (ty_char) {
-                ret make_conv_call(arg.span, "char", arg);
+                ret make_conv_call(arg.span, "char", cnv, arg);
+            }
+            case (ty_hex(_)) {
+                ret make_conv_call(arg.span, "uint", cnv, arg);
             }
             case (_) {
                 log unsupported;

@@ -264,15 +264,32 @@ mod CT {
 
 // Functions used by the fmt extension at runtime
 mod RT {
-    fn conv_int(int i) -> str {
+
+    tag ty {
+        ty_default;
+        ty_bits;
+        ty_hex_upper;
+        ty_hex_lower;
+    }
+
+    type conv = rec(ty ty);
+
+    fn conv_int(&conv cv, int i) -> str {
         ret _int.to_str(i, 10u);
     }
 
-    fn conv_uint(uint u) -> str {
-        ret _uint.to_str(u, 10u);
+    fn conv_uint(&conv cv, uint u) -> str {
+        alt (cv.ty) {
+            case (ty_default) {
+                ret _uint.to_str(u, 10u);
+            }
+            case (ty_hex_lower) {
+                ret _uint.to_str(u, 16u);
+            }
+        }
     }
 
-    fn conv_bool(bool b) -> str {
+    fn conv_bool(&conv cv, bool b) -> str {
         if (b) {
             ret "true";
         } else {
@@ -280,7 +297,7 @@ mod RT {
         }
     }
 
-    fn conv_char(char c) -> str {
+    fn conv_char(&conv cv, char c) -> str {
         ret _str.from_char(c);
     }
 }

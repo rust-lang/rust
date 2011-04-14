@@ -22,4 +22,5 @@ fn main() {
   test(#fmt("%b", true), "true");
   test(#fmt("%b", false), "false");
   test(#fmt("%c", 'A'), "A");
+  test(#fmt("%x", 0xff_u), "ff");
 }
