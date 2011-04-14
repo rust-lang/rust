@@ -246,6 +246,9 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
             case (ty_hex(_)) {
                 ret make_conv_call(arg.span, "uint", cnv, arg);
             }
+            case (ty_bits) {
+                ret make_conv_call(arg.span, "uint", cnv, arg);
+            }
             case (_) {
                 log unsupported;
                 fail;

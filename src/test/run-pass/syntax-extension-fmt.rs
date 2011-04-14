@@ -23,4 +23,6 @@ fn main() {
   test(#fmt("%b", false), "false");
   test(#fmt("%c", 'A'), "A");
   test(#fmt("%x", 0xff_u), "ff");
+  test(#fmt("%X", 0x12ab_u), "12AB");
+  test(#fmt("%t", 0b11010101_u), "11010101");
 }

@@ -89,6 +89,16 @@ fn test_connect() {
   t(vec("hi"), " ", "hi");
 }
 
+fn test_to_upper() {
+  // to_upper doesn't understand unicode yet,
+  // but we need to at least preserve it
+  auto unicode = "\u65e5\u672c";
+  auto input = "abcDEF" + unicode + "xyz:.;";
+  auto expected = "ABCDEF" + unicode + "XYZ:.;";
+  auto actual = _str.to_upper(input);
+  check (_str.eq(expected, actual));
+}
+
 
 fn main() {
   test_bytes_len();
@@ -98,4 +108,5 @@ fn main() {
   test_substr();
   test_concat();
   test_connect();
+  test_to_upper();
 }

@@ -470,6 +470,24 @@ fn connect(vec[str] v, str sep) -> str {
     ret s;
 }
 
+// FIXME: This only handles ASCII
+fn to_upper(str s) -> str {
+    auto outstr = "";
+    auto ascii_a = 'a' as u8;
+    auto ascii_z = 'z' as u8;
+    auto diff = 32u8;
+    for (u8 byte in s) {
+        auto next;
+        if (ascii_a <= byte && byte <= ascii_z) {
+            next = byte - diff;
+        } else {
+            next = byte;
+        }
+        push_byte(outstr, next);
+    }
+    ret outstr;
+}
+
 
 // Local Variables:
 // mode: rust;

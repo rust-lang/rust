@@ -315,6 +315,12 @@ mod RT {
             case (ty_hex_lower) {
                 ret _uint.to_str(u, 16u);
             }
+            case (ty_hex_upper) {
+                ret _str.to_upper(_uint.to_str(u, 16u));
+            }
+            case (ty_bits) {
+                ret _uint.to_str(u, 2u);
+            }
         }
     }
 
