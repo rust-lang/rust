@@ -320,10 +320,10 @@ impure fn print_item(ps s, @ast.item item) {
                 line(s.s);
             }
             alt (_obj.dtor) {
-                case (option.some[ast.block](?dtor)) {
+                case (option.some[@ast.method](?dtor)) {
                     hbox(s);
                     wrd1(s, "close");
-                    print_block(s, dtor);
+                    print_block(s, dtor.node.meth.body);
                     end(s.s);
                     line(s.s);
                 }

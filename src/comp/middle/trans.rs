@@ -5789,6 +5789,35 @@ fn trans_vtbl(@crate_ctxt cx,
     ret gvar;
 }
 
+fn trans_dtor(@crate_ctxt cx,
+              TypeRef llself_ty,
+              @ty.t self_ty,
+              &vec[ast.ty_param] ty_params,
+              &@ast.method dtor) -> ValueRef {
+
+    auto llfnty = T_nil();
+    alt (node_ann_type(cx, dtor.node.ann).struct) {
+        case (ty.ty_fn(?proto, ?inputs, ?output)) {
+            llfnty = type_of_fn_full(cx, proto,
+                                     some[TypeRef](llself_ty),
+                                     inputs, output,
+                                     _vec.len[ast.ty_param](ty_params));
+        }
+    }
+
+    let @crate_ctxt dcx = extend_path(cx, "drop");
+    let str s = mangle_name_by_seq(dcx, "drop");
+    let ValueRef llfn = decl_internal_fastcall_fn(cx.llmod, s, llfnty);
+    cx.item_ids.insert(dtor.node.id, llfn);
+    cx.item_symbols.insert(dtor.node.id, s);
+
+    trans_fn(dcx, dtor.node.meth, dtor.node.id,
+             some[tup(TypeRef, @ty.t)](tup(llself_ty, self_ty)),
+             ty_params, dtor.node.ann);
+
+    ret llfn;
+}
+
 fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
              &vec[ast.ty_param] ty_params, &ast.ann ann) {
 
@@ -5870,6 +5899,14 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
             GEP_tup_like(bcx, body_ty, body.val,
                          vec(0, abi.obj_body_elt_tydesc));
         bcx = body_tydesc.bcx;
+
+        auto dtor = C_null(T_ptr(T_glue_fn(cx.tn)));
+        alt (ob.dtor) {
+            case (some[@ast.method](?d)) {
+                dtor = trans_dtor(cx, llself_ty, self_ty, ty_params, d);
+            }
+            case (none[@ast.method]) {}
+        }
 
         auto body_td = get_tydesc(bcx, body_ty);
         bcx = body_td.bcx;

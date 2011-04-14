@@ -314,7 +314,7 @@ type ast_fold[ENV] =
      (fn(&ENV e,
          vec[ast.obj_field] fields,
          vec[@ast.method] methods,
-         option.t[block] dtor) -> ast._obj)       fold_obj,
+         option.t[@ast.method] dtor) -> ast._obj) fold_obj,
 
      // Env updates.
      (fn(&ENV e, @ast.crate c) -> ENV) update_env_for_crate,
@@ -927,11 +927,11 @@ fn fold_obj[ENV](&ENV env, ast_fold[ENV] fld, &ast._obj ob) -> ast._obj {
     for (ast.obj_field f in ob.fields) {
         fields += vec(fold_obj_field(env, fld, f));
     }
-    let option.t[block] dtor = none[block];
+    let option.t[@ast.method] dtor = none[@ast.method];
     alt (ob.dtor) {
-        case (none[block]) { }
-        case (some[block](?b)) {
-            dtor = some[block](fold_block[ENV](env, fld, b));
+        case (none[@ast.method]) { }
+        case (some[@ast.method](?m)) {
+            dtor = some[@ast.method](fold_method[ENV](env, fld, m));
         }
     }
     let vec[ast.ty_param] tp = vec();
@@ -1561,7 +1561,7 @@ fn identity_fold_crate[ENV](&ENV e, &span sp,
 fn identity_fold_obj[ENV](&ENV e,
                           vec[ast.obj_field] fields,
                           vec[@ast.method] methods,
-                          option.t[block] dtor) -> ast._obj {
+                          option.t[@ast.method] dtor) -> ast._obj {
     ret rec(fields=fields, methods=methods, dtor=dtor);
 }
 

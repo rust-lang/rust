@@ -1823,6 +1823,25 @@ impure fn parse_method(parser p) -> @ast.method {
     ret @spanned(lo, f.body.span.hi, meth);
 }
 
+impure fn parse_dtor(parser p) -> @ast.method {
+    auto lo = p.get_lo_pos();
+    expect(p, token.DROP);
+    let ast.block b = parse_block(p);
+    let vec[ast.arg] inputs = vec();
+    let @ast.ty output = @spanned(lo, lo, ast.ty_nil);
+    let ast.fn_decl d = rec(effect=ast.eff_pure,
+                            inputs=inputs,
+                            output=output);
+    let ast._fn f = rec(decl = d,
+                        proto = ast.proto_fn,
+                        body = b);
+    let ast.method_ m = rec(ident="drop",
+                            meth=f,
+                            id=p.next_def_id(),
+                            ann=ast.ann_none);
+    ret @spanned(lo, f.body.span.hi, m);
+}
+
 impure fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
     auto lo = p.get_lo_pos();
     expect(p, token.OBJ);
@@ -1837,14 +1856,13 @@ impure fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
          pf, p);
 
     let vec[@ast.method] meths = vec();
-    let option.t[ast.block] dtor = none[ast.block];
+    let option.t[@ast.method] dtor = none[@ast.method];
 
     expect(p, token.LBRACE);
     while (p.peek() != token.RBRACE) {
         alt (p.peek()) {
             case (token.DROP) {
-                p.bump();
-                dtor = some[ast.block](parse_block(p));
+                dtor = some[@ast.method](parse_dtor(p));
             }
             case (_) {
                 _vec.push[@ast.method](meths,

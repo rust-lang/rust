@@ -770,8 +770,22 @@ fn collect_item_types(session.session sess, @ast.crate crate)
             _vec.push[ast.obj_field](fields, f);
         }
 
+        auto dtor = none[@ast.method];
+        alt (ob.dtor) {
+            case (some[@ast.method](?d)) {
+                let vec[arg] inputs = vec();
+                let @ty.t output = @rec(struct=ty.ty_nil, cname=none[str]);
+                auto dtor_tfn = plain_ty(ty.ty_fn(ast.proto_fn,
+                                                  inputs, output));
+                auto d_ = rec(ann=triv_ann(dtor_tfn) with d.node);
+                dtor = some[@ast.method](@rec(node=d_ with *d));
+            }
+            case (none[@ast.method]) { }
+        }
+
         auto ob_ = rec(methods = methods,
-                       fields = fields
+                       fields = fields,
+                       dtor = dtor
                        with ob);
         auto item = ast.item_obj(i, ob_, ty_params, odid, triv_ann(t));
         ret @fold.respan[ast.item_](sp, item);
