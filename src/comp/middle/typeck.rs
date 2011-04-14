@@ -1696,7 +1696,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         auto lhs_1 = Pushdown.pushdown_expr(fcx, rhs_t0, lhs_0);
         auto rhs_1 = Pushdown.pushdown_expr(fcx, expr_ty(lhs_1), rhs_0);
 
-        auto ann = triv_ann(rhs_t0);
+        auto ann = triv_ann(expr_ty(rhs_1));
         ret tup(lhs_1, rhs_1, ann);
     }
 
