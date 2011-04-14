@@ -1,5 +1,31 @@
+/* The 'fmt' extension is modeled on the posix printf system.
+ *
+ * A posix conversion ostensibly looks like this:
+ *
+ * %[parameter][flags][width][.precision][length]type
+ *
+ * Given the different numeric type bestiary we have, we omit the 'length'
+ * parameter and support slightly different conversions for 'type':
+ *
+ * %[parameter][flags][width][.precision]type
+ *
+ * we also only support translating-to-rust a tiny subset of the possible
+ * combinations at the moment.
+ */
+
 import option.none;
 import option.some;
+
+/*
+ * We have a CT (compile-time) module that parses format strings into a
+ * sequence of conversions. From those conversions AST fragments are built
+ * that call into properly-typed functions in the RT (run-time) module.  Each
+ * of those run-time conversion functions accepts another conversion
+ * description that specifies how to format its output.
+ *
+ * The building of the AST is currently done in a module inside the compiler,
+ * but should migrate over here as the plugin interface is defined.
+ */
 
 // Functions used by the fmt extension at compile time
 mod CT {
@@ -262,7 +288,10 @@ mod CT {
     }
 }
 
-// Functions used by the fmt extension at runtime
+// Functions used by the fmt extension at runtime. For now there are a lot of
+// decisions made a runtime. If it proves worthwhile then some of these
+// conditions can be evaluated at compile-time. For now though it's cleaner to
+// implement it this way, I think.
 mod RT {
 
     tag ty {

@@ -1,16 +1,7 @@
-/* The 'fmt' extension is modeled on the posix printf system.
- *
- * A posix conversion ostensibly looks like this:
- *
- * %[parameter][flags][width][.precision][length]type
- *
- * Given the different numeric type bestiary we have, we omit the 'length'
- * parameter and support slightly different conversions for 'type':
- *
- * %[parameter][flags][width][.precision]type
- *
- * we also only support translating-to-rust a tiny subset of the possible
- * combinations at the moment.
+/*
+ * The compiler code necessary to support the #fmt extension.  Eventually this
+ * should all get sucked into either the standard library ExtFmt module or the
+ * compiler syntax extension plugin interface.
  */
 
 import util.common;
@@ -53,7 +44,7 @@ import std.ExtFmt.CT.parse_fmt_string;
 
 export expand_syntax_ext;
 
-// TODO: Need to thread parser through here to handle errors correctly
+// FIXME: Need to thread parser through here to handle errors correctly
 fn expand_syntax_ext(vec[@ast.expr] args,
                      option.t[@ast.expr] body) -> @ast.expr {
 
@@ -148,6 +139,8 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
     }
 
     fn make_path_vec(str ident) -> vec[str] {
+        // FIXME: #fmt can't currently be used from within std
+        // because we're explicitly referencing the 'std' crate here
         ret vec("std", "ExtFmt", "RT", ident);
     }
 
