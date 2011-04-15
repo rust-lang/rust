@@ -532,7 +532,7 @@ fn type_of(@crate_ctxt cx, @ty.t t) -> TypeRef {
         fail;
     }
 
-    ret type_of_inner(cx, t, false);
+    ret type_of_inner(cx, t);
 }
 
 fn type_of_explicit_args(@crate_ctxt cx,
@@ -546,10 +546,10 @@ fn type_of_explicit_args(@crate_ctxt cx,
             let TypeRef t;
             alt (arg.mode) {
                 case (ast.alias) {
-                    t = T_ptr(type_of_inner(cx, arg.ty, true));
+                    t = T_ptr(type_of_inner(cx, arg.ty));
                 }
                 case (_) {
-                    t = type_of_inner(cx, arg.ty, false);
+                    t = type_of_inner(cx, arg.ty);
                 }
             }
             atys += vec(t);
@@ -577,7 +577,7 @@ fn type_of_fn_full(@crate_ctxt cx,
     if (ty.type_has_dynamic_size(output)) {
         atys += vec(T_typaram_ptr(cx.tn));
     } else {
-        atys += vec(T_ptr(type_of_inner(cx, output, false)));
+        atys += vec(T_ptr(type_of_inner(cx, output)));
     }
 
     // Arg 1: Task pointer.
@@ -644,10 +644,10 @@ fn type_of_native_fn(@crate_ctxt cx, ast.native_abi abi,
         }
     }
     atys += type_of_explicit_args(cx, inputs);
-    ret T_fn(atys, type_of_inner(cx, output, false));
+    ret T_fn(atys, type_of_inner(cx, output));
 }
 
-fn type_of_inner(@crate_ctxt cx, @ty.t t, bool boxed) -> TypeRef {
+fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
     let TypeRef llty = 0 as TypeRef;
 
     alt (t.struct) {
@@ -682,28 +682,28 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t, bool boxed) -> TypeRef {
             }
         }
         case (ty.ty_box(?mt)) {
-            llty = T_ptr(T_box(type_of_inner(cx, mt.ty, true)));
+            llty = T_ptr(T_box(type_of_inner(cx, mt.ty)));
         }
         case (ty.ty_vec(?mt)) {
-            llty = T_ptr(T_vec(type_of_inner(cx, mt.ty, true)));
+            llty = T_ptr(T_vec(type_of_inner(cx, mt.ty)));
         }
         case (ty.ty_port(?t)) {
-            llty = T_ptr(T_port(type_of_inner(cx, t, true)));
+            llty = T_ptr(T_port(type_of_inner(cx, t)));
         }
         case (ty.ty_chan(?t)) {
-            llty = T_ptr(T_chan(type_of_inner(cx, t, true)));
+            llty = T_ptr(T_chan(type_of_inner(cx, t)));
         }
         case (ty.ty_tup(?elts)) {
             let vec[TypeRef] tys = vec();
             for (ty.mt elt in elts) {
-                tys += vec(type_of_inner(cx, elt.ty, boxed));
+                tys += vec(type_of_inner(cx, elt.ty));
             }
             llty = T_struct(tys);
         }
         case (ty.ty_rec(?fields)) {
             let vec[TypeRef] tys = vec();
             for (ty.field f in fields) {
-                tys += vec(type_of_inner(cx, f.mt.ty, boxed));
+                tys += vec(type_of_inner(cx, f.mt.ty));
             }
             llty = T_struct(tys);
         }
@@ -768,9 +768,9 @@ fn type_of_arg(@crate_ctxt cx, &ty.arg arg) -> TypeRef {
 
     auto typ;
     if (arg.mode == ast.alias) {
-        typ = T_ptr(type_of_inner(cx, arg.ty, true));
+        typ = T_ptr(type_of_inner(cx, arg.ty));
     } else {
-        typ = type_of_inner(cx, arg.ty, false);
+        typ = type_of_inner(cx, arg.ty);
     }
     ret typ;
 }
@@ -1099,6 +1099,23 @@ fn array_alloca(@block_ctxt cx, TypeRef t, ValueRef n) -> ValueRef {
 }
 
 
+// Creates a simpler, size-equivalent type. The resulting type is guaranteed
+// to have (a) the same size as the type that was passed in; (b) to be non-
+// recursive. This is done by replacing all boxes in a type with boxed unit
+// types.
+fn simplify_type(@ty.t typ) -> @ty.t {
+    fn simplifier(@ty.t typ) -> @ty.t {
+        alt (typ.struct) {
+            case (ty.ty_box(_)) {
+                ret ty.plain_box_ty(ty.plain_ty(ty.ty_nil), ast.imm);
+            }
+            case (_) { ret typ; }
+        }
+    }
+    auto f = simplifier;
+    ret ty.fold_ty(f, typ);
+}
+
 // Computes the size of the data part of a non-dynamically-sized tag.
 fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
     if (ty.type_has_dynamic_size(t)) {
@@ -1127,25 +1144,7 @@ fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
     auto max_size = 0u;
     auto variants = tag_variants(cx, tid);
     for (variant_info variant in variants) {
-
-        let vec[@ty.t] args = vec();
-        for (@ty.t t in variant.args) {
-            alt (t.struct) {
-                // NB: We're just going for 'size' here, so we can do a little
-                // faking work here and substitute all boxes to boxed ints;
-                // this will break any tag cycles we might otherwise traverse
-                // (which would cause infinite recursion while measuring
-                // size).
-                case (ty.ty_box(_)) {
-                    args += vec(ty.plain_box_ty(ty.plain_ty(ty.ty_int),
-                                                ast.imm));
-                }
-                case (_) {
-                    args += vec(t);
-                }
-            }
-        }
-        auto tup_ty = ty.plain_tup_ty(args);
+        auto tup_ty = simplify_type(ty.plain_tup_ty(variant.args));
 
         // Perform any type parameter substitutions.
         tup_ty = ty.bind_params_in_type(tup_ty);
