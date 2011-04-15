@@ -1,4 +1,5 @@
 LLVMRustCreateMemoryBufferWithContentsOfFile
+LLVMRustWriteAssembly
 LLVMRustGetLastError
 LLVMCreateObjectFile
 LLVMDisposeObjectFile

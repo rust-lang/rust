@@ -6675,8 +6675,14 @@ fn trap(@block_ctxt bcx) {
     let vec[ValueRef] v = vec();
     bcx.build.Call(bcx.fcx.ccx.intrinsics.get("llvm.trap"), v);
 }
+tag output_type {
+    output_type_none;
+    output_type_bitcode;
+    output_type_assembly;
+}
 
-fn run_passes(ModuleRef llmod, bool opt) {
+fn run_passes(ModuleRef llmod, bool opt, str output,
+              output_type ot) {
     auto pm = mk_pass_manager();
 
     // TODO: run the linter here also, once there are llvm-c bindings for it.
@@ -6741,7 +6747,18 @@ fn run_passes(ModuleRef llmod, bool opt) {
         llvm.LLVMAddConstantMergePass(pm.llpm);
     }
     llvm.LLVMAddVerifierPass(pm.llpm);
+
+    if (ot == output_type_assembly) {
+        llvm.LLVMRustWriteAssembly(pm.llpm, llmod,
+                                   _str.buf(x86.get_target_triple()),
+                                   _str.buf(output));
+        ret;
+    }
+
     llvm.LLVMRunPassManager(pm.llpm, llmod);
+
+    llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(output));
+    llvm.LLVMDisposeModule(llmod);
 }
 
 fn decl_no_op_type_glue(ModuleRef llmod, type_names tn) -> ValueRef {
@@ -7073,7 +7090,8 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
              vec_append_glue = make_vec_append_glue(llmod, tn));
 }
 
-fn make_common_glue(str output, bool optimize) {
+fn make_common_glue(str output, bool optimize,
+                    output_type ot) {
     // FIXME: part of this is repetitive and is probably a good idea
     // to autogen it, but things like the memcpy implementation are not
     // and it might be better to just check in a .ll file.
@@ -7099,15 +7117,12 @@ fn make_common_glue(str output, bool optimize) {
 
     trans_exit_task_glue(glues, new_str_hash[ValueRef](), tn, llmod);
 
-    run_passes(llmod, optimize);
-
-    llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(output));
-    llvm.LLVMDisposeModule(llmod);
+    run_passes(llmod, optimize, output, ot);
 }
 
 fn trans_crate(session.session sess, @ast.crate crate,
                &ty.type_cache type_cache, str output, bool shared,
-               bool optimize) {
+               bool optimize, output_type ot) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
@@ -7170,10 +7185,7 @@ fn trans_crate(session.session sess, @ast.crate crate,
     // Translate the metadata.
     middle.metadata.write_metadata(cx, crate);
 
-    run_passes(llmod, optimize);
-
-    llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(output));
-    llvm.LLVMDisposeModule(llmod);
+    run_passes(llmod, optimize, output, ot);
 }
 
 //

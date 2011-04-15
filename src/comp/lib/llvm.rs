@@ -815,6 +815,9 @@ native mod llvm = llvm_lib {
     fn LLVMRustCreateMemoryBufferWithContentsOfFile(sbuf Path) ->
         MemoryBufferRef;
 
+    fn LLVMRustWriteAssembly(PassManagerRef PM, ModuleRef M,
+                             sbuf Triple, sbuf Output);
+
     /** Returns a string describing the last error caused by an LLVMRust*
         call. */
     fn LLVMRustGetLastError() -> sbuf;

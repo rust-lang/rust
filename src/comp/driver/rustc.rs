@@ -60,12 +60,12 @@ impure fn compile_input(session.session sess,
                         str input, str output,
                         bool shared,
                         bool optimize,
-                        bool parse_only,
+                        trans.output_type ot,
                         vec[str] library_search_paths) {
     auto def = tup(0, 0);
     auto p = parser.new_parser(sess, env, def, input, 0u);
     auto crate = parse_input(sess, p, input);
-    if (parse_only) {ret;}
+    if (ot == trans.output_type_none) {ret;}
     crate = creader.read_crates(sess, crate, library_search_paths);
     crate = resolve.resolve_crate(sess, crate);
     capture.check_for_captures(sess, crate);
@@ -74,7 +74,8 @@ impure fn compile_input(session.session sess,
     auto type_cache = typeck_result._1;
     // FIXME: uncomment once typestate_check works
     // crate = typestate_check.check_crate(crate);
-    trans.trans_crate(sess, crate, type_cache, output, shared, optimize);
+    trans.trans_crate(sess, crate, type_cache, output, shared, optimize,
+                      ot);
 }
 
 impure fn pretty_print_input(session.session sess,
@@ -137,7 +138,7 @@ impure fn main(vec[str] args) {
     let bool shared = false;
     let bool pretty = false;
     let bool ls = false;
-    let bool parse_only = false;
+    auto ot = trans.output_type_bitcode;
     let bool glue = false;
 
     // FIXME: Maybe we should support -O0, -O1, -Os, etc
@@ -163,7 +164,9 @@ impure fn main(vec[str] args) {
             } else if (_str.eq(arg, "-ls")) {
                 ls = true;
             } else if (_str.eq(arg, "-parse-only")) {
-                parse_only = true;
+                ot = trans.output_type_none;
+            } else if (_str.eq(arg, "-S")) {
+                ot = trans.output_type_assembly;
             } else if (_str.eq(arg, "-o")) {
                 if (i+1u < len) {
                     output_file = some(args.(i+1u));
@@ -207,10 +210,10 @@ impure fn main(vec[str] args) {
     if (glue) {
         alt (output_file) {
             case (none[str]) {
-                middle.trans.make_common_glue("glue.bc", optimize);
+                middle.trans.make_common_glue("glue.bc", optimize, ot);
             }
             case (some[str](?s)) {
-                middle.trans.make_common_glue(s, optimize);
+                middle.trans.make_common_glue(s, optimize, ot);
             }
         }
         ret;
@@ -236,12 +239,12 @@ impure fn main(vec[str] args) {
                         parts += vec(".bc");
                         auto ofile = _str.concat(parts);
                         compile_input(sess, env, ifile, ofile, shared,
-                                      optimize, parse_only,
+                                      optimize, ot,
                                       library_search_paths);
                     }
                     case (some[str](?ofile)) {
                         compile_input(sess, env, ifile, ofile, shared,
-                                      optimize, parse_only,
+                                      optimize, ot,
                                       library_search_paths);
                     }
                 }
