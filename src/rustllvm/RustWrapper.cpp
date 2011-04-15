@@ -46,6 +46,7 @@ extern "C" void LLVMRustWriteAssembly(LLVMPassManagerRef PMR, LLVMModuleRef M,
                                       const char *triple, const char *path) {
   InitializeAllTargets();
   InitializeAllAsmPrinters();
+  TargetMachine::setRelocationModel(Reloc::PIC_);
   std::string Err;
   const Target *TheTarget = TargetRegistry::lookupTarget(triple, Err);
   std::string FeaturesStr;
