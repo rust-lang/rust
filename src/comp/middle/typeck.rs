@@ -76,12 +76,10 @@ fn substitute_ty_params(&@crate_ctxt ccx,
                         uint ty_param_count,
                         vec[@ty.t] supplied,
                         &span sp) -> @ty.t {
-    state obj ty_substituter(@crate_ctxt ccx, vec[@ty.t] supplied) {
-        fn fold_simple_ty(@ty.t typ) -> @ty.t {
-            alt (typ.struct) {
-                case (ty.ty_bound_param(?pid)) { ret supplied.(pid); }
-                case (_) { ret typ; }
-            }
+    fn substituter(@crate_ctxt ccx, vec[@ty.t] supplied, @ty.t typ) -> @ty.t {
+        alt (typ.struct) {
+            case (ty.ty_bound_param(?pid)) { ret supplied.(pid); }
+            case (_) { ret typ; }
         }
     }
 
@@ -94,8 +92,8 @@ fn substitute_ty_params(&@crate_ctxt ccx,
         fail;
     }
 
-    auto substituter = ty_substituter(ccx, supplied);
-    ret ty.fold_ty(substituter, typ);
+    auto f = bind substituter(ccx, supplied, _);
+    ret ty.fold_ty(f, typ);
 }
 
 
@@ -1498,12 +1496,10 @@ fn writeback_local(&option.t[@fn_ctxt] env, &span sp, @ast.local local)
 
 fn resolve_local_types_in_annotation(&option.t[@fn_ctxt] env, ast.ann ann)
         -> ast.ann {
-    state obj folder(@fn_ctxt fcx) {
-        fn fold_simple_ty(@ty.t typ) -> @ty.t {
-            alt (typ.struct) {
+    fn resolver(@fn_ctxt fcx, @ty.t typ) -> @ty.t {
+        alt (typ.struct) {
             case (ty.ty_local(?lid)) { ret fcx.locals.get(lid); }
             case (_)                 { ret typ; }
-            }
         }
     }
 
@@ -1514,7 +1510,8 @@ fn resolve_local_types_in_annotation(&option.t[@fn_ctxt] env, ast.ann ann)
             ret ann;
         }
         case (ast.ann_type(?typ, ?tps, ?ts_info)) {
-            auto new_type = ty.fold_ty(folder(fcx), ann_to_type(ann));
+            auto f = bind resolver(fcx, _);
+            auto new_type = ty.fold_ty(f, ann_to_type(ann));
             ret ast.ann_type(new_type, tps, ts_info);
         }
     }

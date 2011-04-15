@@ -1477,24 +1477,21 @@ fn linearize_ty_params(@block_ctxt cx, @ty.t t) ->
                   mutable vec[ValueRef] vals,
                   mutable vec[uint] defs);
 
-    state obj folder(@rr r) {
-        fn fold_simple_ty(@ty.t t) -> @ty.t {
-            alt(t.struct) {
-                case (ty.ty_param(?pid)) {
-                    let bool seen = false;
-                    for (uint d in r.defs) {
-                        if (d == pid) {
-                            seen = true;
-                        }
-                    }
-                    if (!seen) {
-                        r.vals += vec(r.cx.fcx.lltydescs.get(pid));
-                        r.defs += vec(pid);
+    fn linearizer(@rr r, @ty.t t) {
+        alt(t.struct) {
+            case (ty.ty_param(?pid)) {
+                let bool seen = false;
+                for (uint d in r.defs) {
+                    if (d == pid) {
+                        seen = true;
                     }
                 }
-                case (_) { }
+                if (!seen) {
+                    r.vals += vec(r.cx.fcx.lltydescs.get(pid));
+                    r.defs += vec(pid);
+                }
             }
-            ret t;
+            case (_) { }
         }
     }
 
@@ -1503,7 +1500,8 @@ fn linearize_ty_params(@block_ctxt cx, @ty.t t) ->
                   mutable vals = param_vals,
                   mutable defs = param_defs);
 
-    ty.fold_ty(folder(x), t);
+    auto f = bind linearizer(x, _);
+    ty.walk_ty(f, t);
 
     ret tup(x.defs, x.vals);
 }

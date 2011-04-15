@@ -261,44 +261,106 @@ fn ty_to_str(&@t typ) -> str {
 
 // Type folds
 
-type ty_fold = state obj {
-    fn fold_simple_ty(@t ty) -> @t;
-};
+type ty_walk = fn(@t);
 
-fn fold_ty(ty_fold fld, @t ty) -> @t {
+fn walk_ty(ty_walk walker, @t ty) {
+    alt (ty.struct) {
+        case (ty_nil)           { /* no-op */ }
+        case (ty_bool)          { /* no-op */ }
+        case (ty_int)           { /* no-op */ }
+        case (ty_uint)          { /* no-op */ }
+        case (ty_float)         { /* no-op */ }
+        case (ty_machine(_))    { /* no-op */ }
+        case (ty_char)          { /* no-op */ }
+        case (ty_str)           { /* no-op */ }
+        case (ty_type)          { /* no-op */ }
+        case (ty_native)        { /* no-op */ }
+        case (ty_box(?tm))      { walk_ty(walker, tm.ty); }
+        case (ty_vec(?tm))      { walk_ty(walker, tm.ty); }
+        case (ty_port(?subty))  { walk_ty(walker, subty); }
+        case (ty_chan(?subty))  { walk_ty(walker, subty); }
+        case (ty_tag(?tid, ?subtys)) {
+            for (@t subty in subtys) {
+                walk_ty(walker, subty);
+            }
+        }
+        case (ty_tup(?mts)) {
+            for (mt tm in mts) {
+                walk_ty(walker, tm.ty);
+            }
+        }
+        case (ty_rec(?fields)) {
+            for (field fl in fields) {
+                walk_ty(walker, fl.mt.ty);
+            }
+        }
+        case (ty_fn(?proto, ?args, ?ret_ty)) {
+            for (arg a in args) {
+                walk_ty(walker, a.ty);
+            }
+            walk_ty(walker, ret_ty);
+        }
+        case (ty_native_fn(?abi, ?args, ?ret_ty)) {
+            for (arg a in args) {
+                walk_ty(walker, a.ty);
+            }
+            walk_ty(walker, ret_ty);
+        }
+        case (ty_obj(?methods)) {
+            let vec[method] new_methods = vec();
+            for (method m in methods) {
+                for (arg a in m.inputs) {
+                    walk_ty(walker, a.ty);
+                }
+                walk_ty(walker, m.output);
+            }
+        }
+        case (ty_var(_))         { /* no-op */ }
+        case (ty_local(_))       { /* no-op */ }
+        case (ty_param(_))       { /* no-op */ }
+        case (ty_bound_param(_)) { /* no-op */ }
+    }
+
+    walker(ty);
+}
+
+type ty_fold = fn(@t) -> @t;
+
+fn fold_ty(ty_fold fld, @t ty_0) -> @t {
     fn rewrap(@t orig, &sty new) -> @t {
         ret @rec(struct=new, cname=orig.cname);
     }
 
+    auto ty = ty_0;
     alt (ty.struct) {
-        case (ty_nil)           { ret fld.fold_simple_ty(ty); }
-        case (ty_bool)          { ret fld.fold_simple_ty(ty); }
-        case (ty_int)           { ret fld.fold_simple_ty(ty); }
-        case (ty_uint)          { ret fld.fold_simple_ty(ty); }
-        case (ty_float)         { ret fld.fold_simple_ty(ty); }
-        case (ty_machine(_))    { ret fld.fold_simple_ty(ty); }
-        case (ty_char)          { ret fld.fold_simple_ty(ty); }
-        case (ty_str)           { ret fld.fold_simple_ty(ty); }
-        case (ty_type)          { ret fld.fold_simple_ty(ty); }
-        case (ty_native)        { ret fld.fold_simple_ty(ty); }
+        case (ty_nil)           { /* no-op */ }
+        case (ty_bool)          { /* no-op */ }
+        case (ty_int)           { /* no-op */ }
+        case (ty_uint)          { /* no-op */ }
+        case (ty_float)         { /* no-op */ }
+        case (ty_machine(_))    { /* no-op */ }
+        case (ty_char)          { /* no-op */ }
+        case (ty_str)           { /* no-op */ }
+        case (ty_type)          { /* no-op */ }
+        case (ty_native)        { /* no-op */ }
         case (ty_box(?tm)) {
-            ret rewrap(ty, ty_box(rec(ty=fold_ty(fld, tm.ty), mut=tm.mut)));
+            ty = rewrap(ty, ty_box(rec(ty=fold_ty(fld, tm.ty), mut=tm.mut)));
         }
         case (ty_vec(?tm)) {
-            ret rewrap(ty, ty_vec(rec(ty=fold_ty(fld, tm.ty), mut=tm.mut)));
+            ty = rewrap(ty, ty_vec(rec(ty=fold_ty(fld, tm.ty), mut=tm.mut)));
         }
         case (ty_port(?subty)) {
-            ret rewrap(ty, ty_port(fold_ty(fld, subty)));
+            ty = rewrap(ty, ty_port(fold_ty(fld, subty)));
         }
         case (ty_chan(?subty)) {
-            ret rewrap(ty, ty_chan(fold_ty(fld, subty)));
+            ty = rewrap(ty, ty_chan(fold_ty(fld, subty)));
         }
         case (ty_tag(?tid, ?subtys)) {
             let vec[@t] new_subtys = vec();
             for (@t subty in subtys) {
                 new_subtys += vec(fold_ty(fld, subty));
             }
-            ret rewrap(ty, ty_tag(tid, new_subtys));
+            ty = rewrap(ty, ty_tag(tid, new_subtys));
         }
         case (ty_tup(?mts)) {
             let vec[mt] new_mts = vec();
@@ -306,7 +368,7 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
                 auto new_subty = fold_ty(fld, tm.ty);
                 new_mts += vec(rec(ty=new_subty, mut=tm.mut));
             }
-            ret rewrap(ty, ty_tup(new_mts));
+            ty = rewrap(ty, ty_tup(new_mts));
         }
         case (ty_rec(?fields)) {
             let vec[field] new_fields = vec();
@@ -315,7 +377,7 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
                 auto new_mt = rec(ty=new_ty, mut=fl.mt.mut);
                 new_fields += vec(rec(ident=fl.ident, mt=new_mt));
             }
-            ret rewrap(ty, ty_rec(new_fields));
+            ty = rewrap(ty, ty_rec(new_fields));
         }
         case (ty_fn(?proto, ?args, ?ret_ty)) {
             let vec[arg] new_args = vec();
@@ -323,7 +385,7 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
                 auto new_ty = fold_ty(fld, a.ty);
                 new_args += vec(rec(mode=a.mode, ty=new_ty));
             }
-            ret rewrap(ty, ty_fn(proto, new_args, fold_ty(fld, ret_ty)));
+            ty = rewrap(ty, ty_fn(proto, new_args, fold_ty(fld, ret_ty)));
         }
         case (ty_native_fn(?abi, ?args, ?ret_ty)) {
             let vec[arg] new_args = vec();
@@ -331,7 +393,8 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
                 auto new_ty = fold_ty(fld, a.ty);
                 new_args += vec(rec(mode=a.mode, ty=new_ty));
             }
-            ret rewrap(ty, ty_native_fn(abi, new_args, fold_ty(fld, ret_ty)));
+            ty = rewrap(ty, ty_native_fn(abi, new_args,
+                                         fold_ty(fld, ret_ty)));
         }
         case (ty_obj(?methods)) {
             let vec[method] new_methods = vec();
@@ -344,15 +407,15 @@ fn fold_ty(ty_fold fld, @t ty) -> @t {
                                        inputs=new_args,
                                        output=fold_ty(fld, m.output)));
             }
-            ret rewrap(ty, ty_obj(new_methods));
+            ty = rewrap(ty, ty_obj(new_methods));
         }
-        case (ty_var(_))         { ret fld.fold_simple_ty(ty); }
-        case (ty_local(_))       { ret fld.fold_simple_ty(ty); }
-        case (ty_param(_))       { ret fld.fold_simple_ty(ty); }
-        case (ty_bound_param(_)) { ret fld.fold_simple_ty(ty); }
+        case (ty_var(_))         { /* no-op */ }
+        case (ty_local(_))       { /* no-op */ }
+        case (ty_param(_))       { /* no-op */ }
+        case (ty_bound_param(_)) { /* no-op */ }
     }
 
-    fail;
+    ret fld(ty);
 }
 
 // Type utilities
@@ -655,45 +718,41 @@ fn triv_ann(@ty.t typ) -> ast.ann {
 
 // Returns the number of distinct type parameters in the given type.
 fn count_ty_params(@t ty) -> uint {
-    state obj ty_param_counter(@mutable vec[uint] param_indices) {
-        fn fold_simple_ty(@t ty) -> @t {
-            alt (ty.struct) {
-                case (ty_param(?param_idx)) {
-                    auto seen = false;
-                    for (uint other_param_idx in *param_indices) {
-                        if (param_idx == other_param_idx) {
-                            seen = true;
-                        }
-                    }
-                    if (!seen) {
-                        *param_indices += vec(param_idx);
+    fn counter(@mutable vec[uint] param_indices, @t ty) {
+        alt (ty.struct) {
+            case (ty_param(?param_idx)) {
+                auto seen = false;
+                for (uint other_param_idx in *param_indices) {
+                    if (param_idx == other_param_idx) {
+                        seen = true;
                     }
                 }
-                case (_) { /* fall through */ }
+                if (!seen) {
+                    *param_indices += vec(param_idx);
+                }
             }
-            ret ty;
+            case (_) { /* fall through */ }
         }
     }
 
     let vec[uint] v = vec();    // FIXME: typechecker botch
     let @mutable vec[uint] param_indices = @mutable v;
-    fold_ty(ty_param_counter(param_indices), ty);
+    auto f = bind counter(param_indices, _);
+    walk_ty(f, ty);
     ret _vec.len[uint](*param_indices);
 }
 
 fn type_contains_vars(@t typ) -> bool {
-    state obj ty_var_counter(@mutable bool flag) {
-        fn fold_simple_ty(@t typ) -> @t {
-            alt (typ.struct) {
+    fn checker(@mutable bool flag, @t typ) {
+        alt (typ.struct) {
             case (ty_var(_)) { *flag = true; }
             case (_) { /* fall through */ }
-            }
-            ret typ;
         }
     }
 
     let @mutable bool flag = @mutable false;
-    fold_ty(ty_var_counter(flag), typ);
+    auto f = bind checker(flag, _);
+    walk_ty(f, typ);
     ret *flag;
 }
 
@@ -1684,26 +1743,23 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
 
     // Performs type binding substitution.
     fn substitute(var_bindings bindings, vec[@t] set_types, @t typ) -> @t {
-        state obj folder(tup(var_bindings, vec[@t]) env) {
-            fn fold_simple_ty(@t typ) -> @t {
-                auto bindings = env._0;
-                auto types = env._1;
-                alt (typ.struct) {
+        fn substituter(var_bindings bindings, vec[@t] types, @t typ) -> @t {
+            alt (typ.struct) {
                 case (ty_var(?id)) {
                     alt (bindings.var_ids.find(id)) {
-                    case (some[uint](?n)) {
-                        auto root = UFind.find(bindings.sets, n);
-                        ret types.(root);
-                    }
-                    case (none[uint]) { ret typ; }
+                        case (some[uint](?n)) {
+                            auto root = UFind.find(bindings.sets, n);
+                            ret types.(root);
+                        }
+                        case (none[uint]) { ret typ; }
                     }
                 }
                 case (_) { ret typ; }
-                }
             }
         }
 
-        ret ty.fold_ty(folder(tup(bindings, set_types)), typ);
+        auto f = bind substituter(bindings, set_types, _);
+        ret fold_ty(f, typ);
     }
 
     fn unify_sets(&var_bindings bindings) -> vec[@t] {
@@ -1804,41 +1860,35 @@ fn type_err_to_str(&ty.type_err err) -> str {
 // Performs bound type parameter replacement using the supplied mapping from
 // parameter IDs to types.
 fn substitute_type_params(vec[@t] bindings, @t typ) -> @t {
-    state obj param_replacer(vec[@t] bindings) {
-        fn fold_simple_ty(@t typ) -> @t {
-            alt (typ.struct) {
-                case (ty_bound_param(?param_index)) {
-                    ret bindings.(param_index);
-                }
-                case (_) { ret typ; }
+    fn replacer(vec[@t] bindings, @t typ) -> @t {
+        alt (typ.struct) {
+            case (ty_bound_param(?param_index)) {
+                ret bindings.(param_index);
             }
+            case (_) { ret typ; }
         }
     }
-    auto replacer = param_replacer(bindings);
-    ret fold_ty(replacer, typ);
+
+    auto f = bind replacer(bindings, _);
+    ret fold_ty(f, typ);
 }
 
 // Converts type parameters in a type to bound type parameters.
 fn bind_params_in_type(@t typ) -> @t {
-    state obj folder(() env) {
-        fn fold_simple_ty(@t typ) -> @t {
-            alt (typ.struct) {
-                case (ty_bound_param(?index)) {
-                    log "bind_params_in_type() called on type that already " +
-                        "has bound params in it";
-                    fail;
-                }
-                case (ty_param(?index)) {
-                    ret plain_ty(ty_bound_param(index));
-                }
-                case (_) {
-                    ret typ;
-                }
+    fn binder(@t typ) -> @t {
+        alt (typ.struct) {
+            case (ty_bound_param(?index)) {
+                log "bind_params_in_type() called on type that already " +
+                    "has bound params in it";
+                fail;
             }
+            case (ty_param(?index)) { ret plain_ty(ty_bound_param(index)); }
+            case (_) { ret typ; }
         }
     }
 
-    ret fold_ty(folder(()), typ);
+    auto f = binder;
+    ret fold_ty(f, typ);
 }
 
 
