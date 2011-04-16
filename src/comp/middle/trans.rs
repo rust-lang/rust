@@ -128,8 +128,7 @@ state type fn_ctxt = rec(ValueRef llfn,
                          hashmap[ast.def_id, ValueRef] llobjfields,
                          hashmap[ast.def_id, ValueRef] lllocals,
                          hashmap[ast.def_id, ValueRef] llupvars,
-                         // FIXME: this should probably be just vec[ValueRef]
-                         hashmap[uint, ValueRef] lltydescs,
+                         mutable vec[ValueRef] lltydescs,
                          @crate_ctxt ccx);
 
 tag cleanup {
@@ -1486,7 +1485,7 @@ fn linearize_ty_params(@block_ctxt cx, @ty.t t) ->
                     }
                 }
                 if (!seen) {
-                    r.vals += vec(r.cx.fcx.lltydescs.get(pid));
+                    r.vals += vec(r.cx.fcx.lltydescs.(pid));
                     r.defs += vec(pid);
                 }
             }
@@ -1508,10 +1507,7 @@ fn linearize_ty_params(@block_ctxt cx, @ty.t t) ->
 fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt (ty.type_param(t)) {
-        case (some[uint](?id)) {
-            check (cx.fcx.lltydescs.contains_key(id));
-            ret res(cx, cx.fcx.lltydescs.get(id));
-        }
+        case (some[uint](?id)) { ret res(cx, cx.fcx.lltydescs.(id)); }
         case (none[uint])      { /* fall through */ }
     }
 
@@ -1665,13 +1661,17 @@ fn make_generic_glue(@crate_ctxt cx, @ty.t t, ValueRef llfn,
         auto ty_param_count = _vec.len[uint](ty_params);
 
         auto lltyparams = llvm.LLVMGetParam(llfn, 3u);
+
+        auto lltydescs = _vec.empty_mut[ValueRef]();
         auto p = 0u;
         while (p < ty_param_count) {
             auto llparam = bcx.build.GEP(lltyparams, vec(C_int(p as int)));
             llparam = bcx.build.Load(llparam);
-            bcx.fcx.lltydescs.insert(ty_params.(p), llparam);
+            _vec.grow_set[ValueRef](lltydescs, ty_params.(p), 0 as ValueRef,
+                                    llparam);
             p += 1u;
         }
+        bcx.fcx.lltydescs = _vec.freeze[ValueRef](lltydescs);
 
         auto llrawptr = llvm.LLVMGetParam(llfn, 4u);
         auto llval = bcx.build.BitCast(llrawptr, llty);
@@ -5488,7 +5488,6 @@ fn new_fn_ctxt(@crate_ctxt cx,
     let hashmap[ast.def_id, ValueRef] llobjfields = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] llupvars = new_def_hash[ValueRef]();
-    let hashmap[uint, ValueRef] lltydescs = common.new_uint_hash[ValueRef]();
 
     let BasicBlockRef llallocas =
         llvm.LLVMAppendBasicBlock(llfndecl, _str.buf("allocas"));
@@ -5504,7 +5503,7 @@ fn new_fn_ctxt(@crate_ctxt cx,
              llobjfields=llobjfields,
              lllocals=lllocals,
              llupvars=llupvars,
-             lltydescs=lltydescs,
+             mutable lltydescs=_vec.empty[ValueRef](),
              ccx=cx);
 }
 
@@ -5533,7 +5532,7 @@ fn create_llargs_for_fn_args(&@fn_ctxt cx,
             for (ast.ty_param tp in ty_params) {
                 auto llarg = llvm.LLVMGetParam(cx.llfn, arg_n);
                 check (llarg as int != 0);
-                cx.lltydescs.insert(i, llarg);
+                cx.lltydescs += vec(llarg);
                 arg_n += 1u;
                 i += 1u;
             }
@@ -5685,7 +5684,7 @@ fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, self_vt llself) {
                                                vec(C_int(0),
                                                    C_int(i)));
         lltyparam = bcx.build.Load(lltyparam);
-        fcx.lltydescs.insert(i as uint, lltyparam);
+        fcx.lltydescs += vec(lltyparam);
         i += 1;
     }
 
@@ -5916,7 +5915,7 @@ fn trans_obj(@crate_ctxt cx, &ast._obj ob, ast.def_id oid,
         bcx = body_typarams.bcx;
         let int i = 0;
         for (ast.ty_param tp in ty_params) {
-            auto typaram = bcx.fcx.lltydescs.get(i as uint);
+            auto typaram = bcx.fcx.lltydescs.(i);
             auto capture = GEP_tup_like(bcx, typarams_ty, body_typarams.val,
                                         vec(0, i));
             bcx = capture.bcx;
@@ -6952,7 +6951,7 @@ fn trans_vec_append_glue(@crate_ctxt cx) {
                     llobjfields=new_def_hash[ValueRef](),
                     lllocals=new_def_hash[ValueRef](),
                     llupvars=new_def_hash[ValueRef](),
-                    lltydescs=common.new_uint_hash[ValueRef](),
+                    mutable lltydescs=_vec.empty[ValueRef](),
                     ccx=cx);
 
     auto bcx = new_top_block_ctxt(fcx);
