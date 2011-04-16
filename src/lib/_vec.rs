@@ -55,6 +55,16 @@ unsafe fn vec_from_vbuf[T](vbuf v, uint n_elts) -> vec[T] {
     ret rustrt.vec_from_vbuf[T](v, n_elts);
 }
 
+// FIXME: Remove me; this is a botch to get around rustboot's bad typechecker.
+fn empty[T]() -> vec[T] {
+    ret alloc[T](0u);
+}
+
+// FIXME: Remove me; this is a botch to get around rustboot's bad typechecker.
+fn empty_mut[T]() -> vec[mutable T] {
+    ret alloc_mut[T](0u);
+}
+
 type init_op[T] = fn(uint i) -> T;
 
 fn init_fn[T](&init_op[T] op, uint n_elts) -> vec[T] {
@@ -175,12 +185,20 @@ fn unshift[T](&mutable vec[mutable? T] v, &T t) {
     v = res;
 }
 
-fn grow[T](&mutable vec[mutable? T] v, int n, &T initval) {
-    let int i = n;
-    while (i > 0) {
-        i -= 1;
+fn grow[T](&mutable vec[mutable? T] v, uint n, &T initval) {
+    let uint i = n;
+    while (i > 0u) {
+        i -= 1u;
         v += vec(initval);
     }
+}
+
+fn grow_set[T](&mutable vec[mutable T] v, uint index, &T initval, &T val) {
+    auto length = _vec.len[mutable T](v);
+    if (index >= length) {
+        grow[mutable T](v, index - length + 1u, initval);
+    }
+    v.(index) = val;
 }
 
 fn map[T, U](&option.operator[T,U] f, &vec[mutable? T] v) -> vec[U] {
@@ -260,6 +278,15 @@ fn plus_option[T](&vec[T] v, &option.t[T] o) -> () {
         case (none[T]) {}
         case (some[T](?x)) { v += vec(x); }
     }
+}
+
+// TODO: Remove in favor of built-in "freeze" operation when it's implemented.
+fn freeze[T](vec[mutable T] v) -> vec[T] {
+    let vec[T] result = vec();
+    for (T elem in v) {
+        result += vec(elem);
+    }
+    ret result;
 }
 
 // Local Variables:
