@@ -3298,8 +3298,9 @@ fn trans_for_each(@block_ctxt cx,
     }
 
     // Create an environment and populate it with the bindings.
+    auto tydesc_count = _vec.len[ValueRef](cx.fcx.lltydescs);
     auto llenvptrty = T_closure_ptr(cx.fcx.ccx.tn, T_ptr(T_nil()),
-                                    val_ty(llbindingsptr), 0u);
+                                    val_ty(llbindingsptr), tydesc_count);
     auto llenvptr = alloca(cx, llvm.LLVMGetElementType(llenvptrty));
 
     auto llbindingsptrptr = cx.build.GEP(llenvptr,
@@ -3307,6 +3308,20 @@ fn trans_for_each(@block_ctxt cx,
                                              C_int(abi.box_rc_field_body),
                                              C_int(2)));
     cx.build.Store(llbindingsptr, llbindingsptrptr);
+
+    // Copy in our type descriptors, in case the iterator body needs to refer
+    // to them.
+    auto lltydescsptr = cx.build.GEP(llenvptr,
+                                     vec(C_int(0),
+                                         C_int(abi.box_rc_field_body),
+                                         C_int(3)));
+    auto i = 0u;
+    while (i < tydesc_count) {
+        auto lltydescptr = cx.build.GEP(lltydescsptr,
+                                        vec(C_int(0), C_int(i as int)));
+        cx.build.Store(cx.fcx.lltydescs.(i), lltydescptr);
+        i += 1u;
+    }
 
     // Step 2: Declare foreach body function.
 
@@ -3339,7 +3354,7 @@ fn trans_for_each(@block_ctxt cx,
         vec(C_int(0), C_int(abi.box_rc_field_body), C_int(2)));
     auto llremotebindingsptr = bcx.build.Load(llremotebindingsptrptr);
 
-    auto i = 0u;
+    i = 0u;
     while (i < upvar_count) {
         auto upvar_id = upvars.(i);
         auto llupvarptrptr = bcx.build.GEP(llremotebindingsptr,
@@ -3347,6 +3362,22 @@ fn trans_for_each(@block_ctxt cx,
         auto llupvarptr = bcx.build.Load(llupvarptrptr);
         fcx.llupvars.insert(upvar_id, llupvarptr);
 
+        i += 1u;
+    }
+
+    // Populate the type parameters from the environment.
+    auto llremotetydescsptr = bcx.build.GEP(llremoteenvptr,
+                                            vec(C_int(0),
+                                                C_int(abi.box_rc_field_body),
+                                                C_int(3)));
+
+    i = 0u;
+    while (i < tydesc_count) {
+        auto llremotetydescptr = bcx.build.GEP(llremotetydescsptr,
+                                               vec(C_int(0),
+                                                   C_int(i as int)));
+        auto llremotetydesc = bcx.build.Load(llremotetydescptr);
+        fcx.lltydescs += vec(llremotetydesc);
         i += 1u;
     }
 
