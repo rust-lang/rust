@@ -78,6 +78,10 @@ fn expr_to_str(@ast.expr expr) -> str {
     fail;
 }
 
+// FIXME: A lot of these functions for producing expressions can probably
+// be factored out in common with other code that builds expressions.
+// FIXME: Probably should be using the parser's span functions
+// FIXME: Cleanup the naming of these functions
 fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
 
     fn make_new_lit(common.span sp, ast.lit_ lit) -> @ast.expr {
@@ -116,6 +120,12 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         ret sp_pathexpr;
     }
 
+    fn make_vec_expr(common.span sp, vec[@ast.expr] exprs) -> @ast.expr {
+        auto vecexpr = ast.expr_vec(exprs, ast.imm, ast.ann_none);
+        auto sp_vecexpr = @rec(node=vecexpr, span=sp);
+        ret sp_vecexpr;
+    }
+
     fn make_call(common.span sp, vec[ast.ident] fn_path,
                  vec[@ast.expr] args) -> @ast.expr {
         auto pathexpr = make_path_expr(sp, fn_path);
@@ -149,13 +159,40 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         ret vec("std", "ExtFmt", "RT", ident);
     }
 
+    fn make_rt_path_expr(common.span sp, str ident) -> @ast.expr {
+        auto path = make_path_vec(ident);
+        ret make_path_expr(sp, path);
+    }
+
+    // Produces an AST expression that represents a RT.conv record,
+    // which tells the RT.conv* functions how to perform the conversion
     fn make_rt_conv_expr(common.span sp, &conv cnv) -> @ast.expr {
+
+        fn make_flags(common.span sp, vec[flag] flags) -> @ast.expr {
+            let vec[@ast.expr] flagexprs = vec();
+            for (flag f in flags) {
+                alt (f) {
+                    case (flag_left_justify) {
+                        auto fstr = "flag_left_justify";
+                        flagexprs += vec(make_rt_path_expr(sp, fstr));
+                    }
+                }
+            }
+
+            // FIXME: 0-length vectors can't have their type inferred
+            // through the rec that these flags are a member of, so
+            // this is a hack placeholder flag
+            if (_vec.len[@ast.expr](flagexprs) == 0u) {
+                flagexprs += vec(make_rt_path_expr(sp, "flag_none"));
+            }
+
+            ret make_vec_expr(sp, flagexprs);
+        }
 
         fn make_count(common.span sp, &count cnt) -> @ast.expr {
             alt (cnt) {
                 case (count_implied) {
-                    auto idents = make_path_vec("count_implied");
-                    ret make_path_expr(sp, idents);
+                    ret make_rt_path_expr(sp, "count_implied");
                 }
                 case (count_is(?c)) {
                     auto count_lit = make_new_int(sp, c);
@@ -191,19 +228,23 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                 }
             }
 
-            auto idents = make_path_vec(rt_type);
-            ret make_path_expr(sp, idents);
+            ret make_rt_path_expr(sp, rt_type);
         }
 
-        fn make_conv_rec(common.span sp, @ast.expr width_expr,
+        fn make_conv_rec(common.span sp,
+                         @ast.expr flags_expr,
+                         @ast.expr width_expr,
                          @ast.expr ty_expr) -> @ast.expr {
-            ret make_rec_expr(sp, vec(tup("width", width_expr),
+            ret make_rec_expr(sp, vec(tup("flags", flags_expr),
+                                      tup("width", width_expr),
                                       tup("ty", ty_expr)));
         }
 
+        auto rt_conv_flags = make_flags(sp, cnv.flags);
         auto rt_conv_width = make_count(sp, cnv.width);
         auto rt_conv_ty = make_ty(sp, cnv.ty);
         ret make_conv_rec(sp,
+                          rt_conv_flags,
                           rt_conv_width,
                           rt_conv_ty);
     }
@@ -230,9 +271,15 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
             }
         }
 
-        if (_vec.len[flag](cnv.flags) != 0u) {
-            log unsupported;
-            fail;
+        for (flag f in cnv.flags) {
+            alt (f) {
+                case (flag_left_justify) {
+                }
+                case (_) {
+                    log unsupported;
+                    fail;
+                }
+            }
         }
 
         alt (cnv.width) {

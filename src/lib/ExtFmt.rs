@@ -294,6 +294,14 @@ mod CT {
 // implement it this way, I think.
 mod RT {
 
+    tag flag {
+        flag_left_justify;
+        // FIXME: This is a hack to avoid creating 0-length vec exprs,
+        // which have some difficulty typechecking currently. See
+        // comments in front.extfmt.make_flags
+        flag_none;
+    }
+
     tag count {
         count_is(int);
         count_implied;
@@ -306,7 +314,10 @@ mod RT {
         ty_hex_lower;
     }
 
-    type conv = rec(count width,
+    // FIXME: May not want to use a vector here for flags;
+    // instead just use a bool per flag
+    type conv = rec(vec[flag] flags,
+                    count width,
                     ty ty);
 
     fn conv_int(&conv cv, int i) -> str {
@@ -359,17 +370,32 @@ mod RT {
                 auto strlen = _str.char_len(s);
                 if (strlen < uwidth) {
                     auto diff = uwidth - strlen;
-                    // FIXME: Probably should be a _str fn for this
+                    // FIXME: Probably should be a _str fn for
+                    // initializing from n chars
                     auto padvec = _vec.init_elt[u8](' ' as u8, diff);
                     // FIXME: Using unsafe_from_bytes because rustboot
                     // can't figure out the is_utf8 predicate on from_bytes?
                     auto padstr = _str.unsafe_from_bytes(padvec);
-                    ret padstr + s;
+
+                    if (have_flag(cv.flags, flag_left_justify)) {
+                        ret s + padstr;
+                    } else {
+                        ret padstr + s;
+                    }
                 } else {
                     ret s;
                 }
             }
         }
+    }
+
+    fn have_flag(vec[flag] flags, flag f) -> bool {
+        for (flag candidate in flags) {
+            if (candidate == f) {
+                ret true;
+            }
+        }
+        ret false;
     }
 }
 

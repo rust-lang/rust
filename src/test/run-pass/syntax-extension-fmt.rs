@@ -43,4 +43,14 @@ fn main() {
   test(#fmt("%10x", 0xff_u), "        ff");
   test(#fmt("%10X", 0xff_u), "        FF");
   test(#fmt("%10t", 0xff_u), "  11111111");
+
+  // Left justify
+  test(#fmt("%-10d", 500), "500       ");
+  test(#fmt("%-10d", -500), "-500      ");
+  test(#fmt("%-10u", 500u), "500       ");
+  test(#fmt("%-10s", "test"), "test      ");
+  test(#fmt("%-10b", true), "true      ");
+  test(#fmt("%-10x", 0xff_u), "ff        ");
+  test(#fmt("%-10X", 0xff_u), "FF        ");
+  test(#fmt("%-10t", 0xff_u), "11111111  ");
 }
