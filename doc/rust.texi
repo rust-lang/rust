@@ -1651,7 +1651,7 @@ compile-time, remain constant during execution, and may reside in read-only
 memory.
 
 There are five primary kinds of item: modules, functions, iterators, objects and
-types.
+type definitions.
 
 All items form an implicit scope for the declaration of sub-items. In other
 words, within a function, object or iterator, declarations of items can (in
@@ -1662,8 +1662,8 @@ the item's @emph{path name} within the module namespace is qualified by the
 name of the enclosing item. The exact locations in which sub-items may be
 declared is given by the grammar.  @xref{Ref.Gram}.
 
-Functions, iterators, objects and types may be @emph{parametrized} by
-type. Type parameters are given as a comma-separated list of identifiers
+Functions, iterators, objects and type definitions may be @emph{parametrized}
+by type. Type parameters are given as a comma-separated list of identifiers
 enclosed in square brackets (@code{[]}), after the name of the item and before
 its definition.  The type parameters of an item are part of the name, not the
 type of the item; in order to refer to the type-parametrized item, a
@@ -1946,10 +1946,10 @@ variables to initial values.
 @node       Ref.Item.Type
 @subsection Ref.Item.Type
 @c * Ref.Item.Type::          Items defining the types of values and slots.
-@cindex Types
+@cindex Type definitions
 
-A @dfn{type} defines a set of possible values in
-memory. @xref{Ref.Type}. Types are declared with the keyword
+A @dfn{type definition} defines a set of possible values in
+memory. @xref{Ref.Type}. Type definitions are declared with the keyword
 @code{type}. Every value has a single, specific type; the type-specified
 aspects of a value include:
 
