@@ -91,6 +91,11 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         ret make_new_lit(sp, lit);
     }
 
+    fn make_new_int(common.span sp, int i) -> @ast.expr {
+        auto lit = ast.lit_int(i);
+        ret make_new_lit(sp, lit);
+    }
+
     fn make_new_uint(common.span sp, uint u) -> @ast.expr {
         auto lit = ast.lit_uint(u);
         ret make_new_lit(sp, lit);
@@ -145,6 +150,26 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
     }
 
     fn make_rt_conv_expr(common.span sp, &conv cnv) -> @ast.expr {
+
+        fn make_count(common.span sp, &count cnt) -> @ast.expr {
+            alt (cnt) {
+                case (count_implied) {
+                    auto idents = make_path_vec("count_implied");
+                    ret make_path_expr(sp, idents);
+                }
+                case (count_is(?c)) {
+                    auto count_lit = make_new_int(sp, c);
+                    auto count_is_path = make_path_vec("count_is");
+                    auto count_is_args = vec(count_lit);
+                    ret make_call(sp, count_is_path, count_is_args);
+                }
+                case (_) {
+                    log "not implemented";
+                    fail;
+                }
+            }
+        }
+
         fn make_ty(common.span sp, &ty t) -> @ast.expr {
             auto rt_type;
             alt (t) {
@@ -170,12 +195,17 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
             ret make_path_expr(sp, idents);
         }
 
-        fn make_conv_rec(common.span sp, &@ast.expr ty_expr) -> @ast.expr {
-            ret make_rec_expr(sp, vec(tup("ty", ty_expr)));
+        fn make_conv_rec(common.span sp, @ast.expr width_expr,
+                         @ast.expr ty_expr) -> @ast.expr {
+            ret make_rec_expr(sp, vec(tup("width", width_expr),
+                                      tup("ty", ty_expr)));
         }
 
+        auto rt_conv_width = make_count(sp, cnv.width);
         auto rt_conv_ty = make_ty(sp, cnv.ty);
-        ret make_conv_rec(sp, rt_conv_ty);
+        ret make_conv_rec(sp,
+                          rt_conv_width,
+                          rt_conv_ty);
     }
 
     fn make_conv_call(common.span sp, str conv_type,
@@ -208,6 +238,8 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         alt (cnv.width) {
             case (count_implied) {
             }
+            case (count_is(_)) {
+            }
             case (_) {
                 log unsupported;
                 fail;
@@ -225,7 +257,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
 
         alt (cnv.ty) {
             case (ty_str) {
-                ret arg;
+                ret make_conv_call(arg.span, "str", cnv, arg);
             }
             case (ty_int(?sign)) {
                 alt (sign) {

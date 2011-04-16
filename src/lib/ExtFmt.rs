@@ -294,6 +294,11 @@ mod CT {
 // implement it this way, I think.
 mod RT {
 
+    tag count {
+        count_is(int);
+        count_implied;
+    }
+
     tag ty {
         ty_default;
         ty_bits;
@@ -301,39 +306,70 @@ mod RT {
         ty_hex_lower;
     }
 
-    type conv = rec(ty ty);
+    type conv = rec(count width,
+                    ty ty);
 
     fn conv_int(&conv cv, int i) -> str {
-        ret _int.to_str(i, 10u);
+        ret pad(cv, _int.to_str(i, 10u));
     }
 
     fn conv_uint(&conv cv, uint u) -> str {
+        auto res;
         alt (cv.ty) {
             case (ty_default) {
-                ret _uint.to_str(u, 10u);
+                res = _uint.to_str(u, 10u);
             }
             case (ty_hex_lower) {
-                ret _uint.to_str(u, 16u);
+                res = _uint.to_str(u, 16u);
             }
             case (ty_hex_upper) {
-                ret _str.to_upper(_uint.to_str(u, 16u));
+                res = _str.to_upper(_uint.to_str(u, 16u));
             }
             case (ty_bits) {
-                ret _uint.to_str(u, 2u);
+                res = _uint.to_str(u, 2u);
             }
         }
+        ret pad(cv, res);
     }
 
     fn conv_bool(&conv cv, bool b) -> str {
         if (b) {
-            ret "true";
+            ret pad(cv, "true");
         } else {
-            ret "false";
+            ret pad(cv, "false");
         }
     }
 
     fn conv_char(&conv cv, char c) -> str {
-        ret _str.from_char(c);
+        ret pad(cv, _str.from_char(c));
+    }
+
+    fn conv_str(&conv cv, str s) -> str {
+        ret pad(cv, s);
+    }
+
+    fn pad(&conv cv, str s) -> str {
+        alt (cv.width) {
+            case (count_implied) {
+                ret s;
+            }
+            case (count_is(?width)) {
+                // FIXME: Maybe width should be uint
+                auto uwidth = width as uint;
+                auto strlen = _str.char_len(s);
+                if (strlen < uwidth) {
+                    auto diff = uwidth - strlen;
+                    // FIXME: Probably should be a _str fn for this
+                    auto padvec = _vec.init_elt[u8](' ' as u8, diff);
+                    // FIXME: Using unsafe_from_bytes because rustboot
+                    // can't figure out the is_utf8 predicate on from_bytes?
+                    auto padstr = _str.unsafe_from_bytes(padvec);
+                    ret padstr + s;
+                } else {
+                    ret s;
+                }
+            }
+        }
     }
 }
 
