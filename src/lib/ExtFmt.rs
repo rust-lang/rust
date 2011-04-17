@@ -336,19 +336,55 @@ mod RT {
     }
 
     fn conv_uint(&conv cv, uint u) -> str {
+
+        // Convert a uint to string with a minimum number of digits.  If
+        // precision is 0 and num is 0 then the result is the empty
+        // string. Could move this to _str, but it doesn't seem all that
+        // useful.
+        fn uint_to_str_prec(uint num, uint radix, uint prec) -> str {
+            auto s;
+
+            if (prec == 0u && num == 0u) {
+                s = "";
+            } else {
+                s = _uint.to_str(num, radix);
+                auto len = _str.char_len(s);
+                if (len < prec) {
+                    auto diff = prec - len;
+                    auto pad = str_init_elt('0', diff);
+                    s = pad + s;
+                }
+            }
+
+            ret s;
+        }
+
+        fn get_precision(&conv cv) -> uint {
+            alt (cv.precision) {
+                case (count_is(?c)) {
+                    ret c as uint;
+                }
+                case (count_implied) {
+                    ret 1u;
+                }
+            }
+        }
+
+        auto prec = get_precision(cv);
+
         auto res;
         alt (cv.ty) {
             case (ty_default) {
-                res = _uint.to_str(u, 10u);
+                res = uint_to_str_prec(u, 10u, prec);
             }
             case (ty_hex_lower) {
-                res = _uint.to_str(u, 16u);
+                res = uint_to_str_prec(u, 16u, prec);
             }
             case (ty_hex_upper) {
-                res = _str.to_upper(_uint.to_str(u, 16u));
+                res = _str.to_upper(uint_to_str_prec(u, 16u, prec));
             }
             case (ty_bits) {
-                res = _uint.to_str(u, 2u);
+                res = uint_to_str_prec(u, 2u, prec);
             }
         }
         ret pad(cv, res);
@@ -382,6 +418,14 @@ mod RT {
         ret pad(cv, unpadded);
     }
 
+    // FIXME: This might be useful in _str, but needs to be utf8 safe first
+    fn str_init_elt(char c, uint n_elts) -> str {
+        auto svec = _vec.init_elt[u8](c as u8, n_elts);
+        // FIXME: Using unsafe_from_bytes because rustboot
+        // can't figure out the is_utf8 predicate on from_bytes?
+        ret _str.unsafe_from_bytes(svec);
+    }
+
     fn pad(&conv cv, str s) -> str {
         alt (cv.width) {
             case (count_implied) {
@@ -393,13 +437,7 @@ mod RT {
                 auto strlen = _str.char_len(s);
                 if (strlen < uwidth) {
                     auto diff = uwidth - strlen;
-                    // FIXME: Probably should be a _str fn for
-                    // initializing from n chars
-                    auto padvec = _vec.init_elt[u8](' ' as u8, diff);
-                    // FIXME: Using unsafe_from_bytes because rustboot
-                    // can't figure out the is_utf8 predicate on from_bytes?
-                    auto padstr = _str.unsafe_from_bytes(padvec);
-
+                    auto padstr = str_init_elt(' ', diff);
                     if (have_flag(cv.flags, flag_left_justify)) {
                         ret s + padstr;
                     } else {
