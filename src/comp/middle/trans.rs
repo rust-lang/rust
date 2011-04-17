@@ -108,12 +108,14 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id, ValueRef] consts,
                             hashmap[ast.def_id,()] obj_methods,
                             hashmap[@ty.t, @tydesc_info] tydescs,
+                            hashmap[str, ValueRef] module_data,
                             @glue_fns glues,
                             namegen names,
                             vec[str] path,
                             std.sha1.sha1 sha);
 
 type local_ctxt = rec(vec[str] path,
+                      vec[str] module_path,
                       vec[ast.ty_param] obj_typarams,
                       vec[ast.obj_field] obj_fields,
                       @crate_ctxt ccx);
@@ -426,7 +428,8 @@ fn T_crate(type_names tn) -> TypeRef {
                           T_int(),      // int n_rust_syms
                           T_int(),      // int n_c_syms
                           T_int(),      // int n_libs
-                          T_int()       // uintptr_t abi_tag
+                          T_int(),      // uintptr_t abi_tag
+                          T_int()       // void* crate_map
                           ));
     tn.associate(s, t);
     ret t;
@@ -907,6 +910,11 @@ fn C_struct(vec[ValueRef] elts) -> ValueRef {
     ret llvm.LLVMConstStruct(_vec.buf[ValueRef](elts),
                              _vec.len[ValueRef](elts),
                              False);
+}
+
+fn C_array(TypeRef ty, vec[ValueRef] elts) -> ValueRef {
+    ret llvm.LLVMConstArray(ty, _vec.buf[ValueRef](elts),
+                            _vec.len[ValueRef](elts));
 }
 
 fn decl_fn(ModuleRef llmod, str name, uint cc, TypeRef llty) -> ValueRef {
@@ -4925,8 +4933,28 @@ fn load_if_immediate(@block_ctxt cx, ValueRef v, @ty.t t) -> ValueRef {
 }
 
 fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
+    auto lcx = cx.fcx.lcx;
+    auto modname = _str.connect(lcx.module_path, ".");
+    auto global;
+    if (lcx.ccx.module_data.contains_key(modname)) {
+        global = lcx.ccx.module_data.get(modname);
+    } else {
+        global = llvm.LLVMAddGlobal(lcx.ccx.llmod, T_int(),
+                                    _str.buf("_rust_mod_log_" + modname));
+        llvm.LLVMSetGlobalConstant(global, False);
+        llvm.LLVMSetInitializer(global, C_null(T_int()));
+        llvm.LLVMSetLinkage(global, lib.llvm.LLVMInternalLinkage
+                            as llvm.Linkage);
+        lcx.ccx.module_data.insert(modname, global);
+    }
 
-    auto sub = trans_expr(cx, e);
+    auto log_cx = new_sub_block_ctxt(cx, "log");
+    auto after_cx = new_sub_block_ctxt(cx, "after");
+    auto load = cx.build.Load(global);
+    auto test = cx.build.ICmp(lib.llvm.LLVMIntSGE, load, C_int(1));
+    cx.build.CondBr(test, log_cx.llbb, after_cx.llbb);
+
+    auto sub = trans_expr(log_cx, e);
     auto e_ty = ty.expr_ty(e);
 
     if (ty.type_is_fp(e_ty)) {
@@ -4945,33 +4973,34 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
             }
         }
         if (is32bit) {
-            ret trans_upcall(sub.bcx,
-                             "upcall_log_float",
-                             vec(sub.val));
+            trans_upcall(sub.bcx,
+                         "upcall_log_float",
+                         vec(sub.val)).bcx.build.Br(after_cx.llbb);
         } else {
             auto tmp = alloca(sub.bcx, tr);
             sub.bcx.build.Store(sub.val, tmp);
             auto v = vp2i(sub.bcx, tmp);
-            ret trans_upcall(sub.bcx,
-                             "upcall_log_double",
-                             vec(v));
+            trans_upcall(sub.bcx,
+                         "upcall_log_double",
+                         vec(v)).bcx.build.Br(after_cx.llbb);
+        }
+    } else {
+        alt (e_ty.struct) {
+            case (ty.ty_str) {
+                auto v = vp2i(sub.bcx, sub.val);
+                trans_upcall(sub.bcx,
+                             "upcall_log_str",
+                             vec(v)).bcx.build.Br(after_cx.llbb);
+            }
+            case (_) {
+                trans_upcall(sub.bcx,
+                             "upcall_log_int",
+                             vec(sub.val)).bcx.build.Br(after_cx.llbb);
+            }
         }
     }
 
-    alt (e_ty.struct) {
-        case (ty.ty_str) {
-            auto v = vp2i(sub.bcx, sub.val);
-            ret trans_upcall(sub.bcx,
-                             "upcall_log_str",
-                             vec(v));
-        }
-        case (_) {
-            ret trans_upcall(sub.bcx,
-                             "upcall_log_int",
-                             vec(sub.val));
-        }
-    }
-    fail;
+    ret res(after_cx, C_nil());
 }
 
 fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
@@ -6114,7 +6143,9 @@ fn trans_item(@local_ctxt cx, &ast.item item) {
             trans_obj(sub_cx, ob, oid.ctor, tps, ann);
         }
         case (ast.item_mod(?name, ?m, _)) {
-            auto sub_cx = extend_path(cx, name);
+            auto sub_cx = @rec(path = cx.path + vec(name),
+                               module_path = cx.module_path + vec(name)
+                               with *cx);
             trans_mod(sub_cx, m);
         }
         case (ast.item_tag(?name, ?variants, ?tps, ?tag_id, _)) {
@@ -6593,7 +6624,8 @@ fn create_typedefs(@crate_ctxt cx) {
     llvm.LLVMAddTypeName(cx.llmod, _str.buf("tydesc"), T_tydesc(cx.tn));
 }
 
-fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
+fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues,
+                         ValueRef crate_map) {
 
     let ValueRef crate_addr = p2i(crate_ptr);
 
@@ -6608,7 +6640,7 @@ fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
 
     let ValueRef crate_val =
         C_struct(vec(C_null(T_int()),     // ptrdiff_t image_base_off
-                     p2i(crate_ptr),   // uintptr_t self_addr
+                     p2i(crate_ptr),      // uintptr_t self_addr
                      C_null(T_int()),     // ptrdiff_t debug_abbrev_off
                      C_null(T_int()),     // size_t debug_abbrev_sz
                      C_null(T_int()),     // ptrdiff_t debug_info_off
@@ -6621,7 +6653,8 @@ fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
                      C_null(T_int()),     // int n_rust_syms
                      C_null(T_int()),     // int n_c_syms
                      C_null(T_int()),     // int n_libs
-                     C_int(abi.abi_x86_rustc_fastcall) // uintptr_t abi_tag
+                     C_int(abi.abi_x86_rustc_fastcall), // uintptr_t abi_tag
+                     p2i(crate_map)       // void* crate_map
                      ));
 
     llvm.LLVMSetInitializer(crate_ptr, crate_val);
@@ -7159,6 +7192,54 @@ fn make_common_glue(str output, bool optimize,
     run_passes(llmod, optimize, output, ot);
 }
 
+fn create_module_map(@crate_ctxt ccx) -> ValueRef {
+    auto elttype = T_struct(vec(T_int(), T_int()));
+    auto maptype = T_array(elttype, ccx.module_data.size() + 1u);
+    auto map = llvm.LLVMAddGlobal(ccx.llmod, maptype,
+                                  _str.buf("_rust_mod_map"));
+    llvm.LLVMSetLinkage(map, lib.llvm.LLVMInternalLinkage as llvm.Linkage);
+    let vec[ValueRef] elts = vec();
+    for each (@tup(str, ValueRef) item in ccx.module_data.items()) {
+        auto elt = C_struct(vec(p2i(C_cstr(ccx, item._0)), p2i(item._1)));
+        _vec.push[ValueRef](elts, elt);
+    }
+    auto term = C_struct(vec(C_int(0), C_int(0)));
+    _vec.push[ValueRef](elts, term);
+    llvm.LLVMSetInitializer(map, C_array(elttype, elts));
+    ret map;
+}
+
+fn crate_name(@crate_ctxt ccx, str deflt) -> str {
+    for (@ast.meta_item item in ccx.sess.get_metadata()) {
+        if (_str.eq(item.node.name, "name")) {
+            ret item.node.value;
+        }
+    }
+    ret deflt;
+}
+
+// FIXME use hashed metadata instead of crate names once we have that
+fn create_crate_map(@crate_ctxt ccx) -> ValueRef {
+    let vec[ValueRef] subcrates = vec();
+    auto i = 1;
+    while (ccx.sess.has_external_crate(i)) {
+        auto name = ccx.sess.get_external_crate(i).name;
+        auto cr = llvm.LLVMAddGlobal(ccx.llmod, T_int(),
+                                     _str.buf("_rust_crate_map_" + name));
+        _vec.push[ValueRef](subcrates, p2i(cr));
+        i += 1;
+    }
+    _vec.push[ValueRef](subcrates, C_int(0));
+    auto sym_name = "_rust_crate_map_" + crate_name(ccx, "__none__");
+    auto arrtype = T_array(T_int(), _vec.len[ValueRef](subcrates));
+    auto maptype = T_struct(vec(T_int(), arrtype));
+    auto map = llvm.LLVMAddGlobal(ccx.llmod, maptype, _str.buf(sym_name));
+    llvm.LLVMSetLinkage(map, lib.llvm.LLVMExternalLinkage as llvm.Linkage);
+    llvm.LLVMSetInitializer(map, C_struct(vec(p2i(create_module_map(ccx)),
+                                              C_array(T_int(), subcrates))));
+    ret map;
+}
+
 fn trans_crate(session.session sess, @ast.crate crate,
                &ty.type_cache type_cache, str output, bool shared,
                bool optimize, output_type ot) {
@@ -7203,25 +7284,28 @@ fn trans_crate(session.session sess, @ast.crate crate,
                     consts = new_def_hash[ValueRef](),
                     obj_methods = new_def_hash[()](),
                     tydescs = tydescs,
+                    module_data = new_str_hash[ValueRef](),
                     glues = glues,
                     names = namegen(0),
                     path = pth,
                     sha = std.sha1.mk_sha1());
     auto cx = @rec(path=pth,
+                   module_path=vec(crate_name(ccx, "main")),
                    obj_typarams = obj_typarams,
                    obj_fields = obj_fields,
                    ccx = ccx);
 
-    create_typedefs(cx.ccx);
+    create_typedefs(ccx);
 
     collect_items(cx, crate);
     collect_tag_ctors(cx, crate);
     trans_constants(cx, crate);
     trans_mod(cx, crate.node.module);
     trans_vec_append_glue(cx);
+    auto crate_map = create_crate_map(ccx);
     if (!shared) {
         trans_main_fn(cx, crate_ptr);
-        create_crate_constant(crate_ptr, ccx.glues);
+        create_crate_constant(crate_ptr, ccx.glues, crate_map);
     }
 
     // Translate the metadata.

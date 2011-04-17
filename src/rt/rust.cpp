@@ -80,6 +80,7 @@ extern "C" CDECL int
 rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
            char **argv) {
 
+    crate->update_log_settings(getenv("RUST_LOG"));
     rust_srv *srv = new rust_srv();
     rust_kernel *kernel = new rust_kernel(srv);
     kernel->start();
@@ -102,6 +103,7 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
     dom->root_task->start(crate->get_exit_task_glue(),
                           crate->abi_tag, main_fn,
                           (uintptr_t)&main_args, sizeof(main_args));
+
     int ret = dom->start_main_loop();
     delete args;
     kernel->destroy_domain(dom);

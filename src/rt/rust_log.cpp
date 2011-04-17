@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+// FIXME somehow unify this with the parsing happening in rust_crate.cpp
 static uint32_t
 read_type_bit_mask() {
     uint32_t bits = rust_log::ULOG | rust_log::ERR;
@@ -18,14 +19,13 @@ read_type_bit_mask() {
         str[0] = ',';
         strcpy(str + 1, env_str);
 
-        bits = 0;
+        bits = rust_log::ULOG;
         bits |= strstr(str, ",err") ? rust_log::ERR : 0;
         bits |= strstr(str, ",mem") ? rust_log::MEM : 0;
         bits |= strstr(str, ",comm") ? rust_log::COMM : 0;
         bits |= strstr(str, ",task") ? rust_log::TASK : 0;
         bits |= strstr(str, ",up") ? rust_log::UPCALL : 0;
         bits |= strstr(str, ",dom") ? rust_log::DOM : 0;
-        bits |= strstr(str, ",ulog") ? rust_log::ULOG : 0;
         bits |= strstr(str, ",trace") ? rust_log::TRACE : 0;
         bits |= strstr(str, ",dwarf") ? rust_log::DWARF : 0;
         bits |= strstr(str, ",cache") ? rust_log::CACHE : 0;
