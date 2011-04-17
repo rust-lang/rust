@@ -112,4 +112,9 @@ fn main() {
   test(#fmt("%.b", true), "");
   test(#fmt("%.0b", true), "");
   test(#fmt("%.1b", true), "t");
+
+  // Explicit + sign. Only for signed conversions
+  test(#fmt("%+d", 0), "+0");
+  test(#fmt("%+d", 1), "+1");
+  test(#fmt("%+d", -1), "-1");
 }

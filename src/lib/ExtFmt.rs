@@ -53,7 +53,7 @@ mod CT {
         flag_left_justify;
         flag_left_zero_pad;
         flag_left_space_pad;
-        flag_plus_if_positive;
+        flag_sign_always;
         flag_alternate;
     }
 
@@ -203,7 +203,7 @@ mod CT {
         } else if (f == (' ' as u8)) {
             ret more(flag_left_space_pad);
         } else if (f == ('+' as u8)) {
-            ret more(flag_plus_if_positive);
+            ret more(flag_sign_always);
         } else if (f == ('#' as u8)) {
             ret more(flag_alternate);
         } else {
@@ -306,6 +306,7 @@ mod RT {
 
     tag flag {
         flag_left_justify;
+        flag_sign_always;
         // FIXME: This is a hack to avoid creating 0-length vec exprs,
         // which have some difficulty typechecking currently. See
         // comments in front.extfmt.make_flags
@@ -334,7 +335,11 @@ mod RT {
     fn conv_int(&conv cv, int i) -> str {
         auto radix = 10u;
         auto prec = get_int_precision(cv);
-        ret pad(cv, int_to_str_prec(i, radix, prec));
+        auto s = int_to_str_prec(i, radix, prec);
+        if (0 <= i && have_flag(cv.flags, flag_sign_always)) {
+            s = "+" + s;
+        }
+        ret pad(cv, s);
     }
 
     fn conv_uint(&conv cv, uint u) -> str {
