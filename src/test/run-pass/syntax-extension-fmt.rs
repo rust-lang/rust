@@ -55,39 +55,47 @@ fn main() {
   test(#fmt("%-10t", 0xff_u), "11111111  ");
 
   // Precision
-//   test(#fmt("%.d", 0), "");
+   test(#fmt("%.d", 0), "");
    test(#fmt("%.u", 0u), "");
    test(#fmt("%.x", 0u), "");
-//   test(#fmt("%.d", 10), "10");
-//   test(#fmt("%.d", -10), "-10");
+   test(#fmt("%.t", 0u), "");
+   test(#fmt("%.d", 10), "10");
+   test(#fmt("%.d", -10), "-10");
    test(#fmt("%.u", 10u), "10");
    test(#fmt("%.s", "test"), "");
    test(#fmt("%.x", 127u), "7f");
+   test(#fmt("%.t", 3u), "11");
 
-//   test(#fmt("%.0d", 0), "");
+   test(#fmt("%.0d", 0), "");
    test(#fmt("%.0u", 0u), "");
    test(#fmt("%.0x", 0u), "");
-//   test(#fmt("%.0d", 10), "10");
-//   test(#fmt("%.0d", -10), "-10");
+   test(#fmt("%.0t", 0u), "");
+   test(#fmt("%.0d", 10), "10");
+   test(#fmt("%.0d", -10), "-10");
    test(#fmt("%.0u", 10u), "10");
    test(#fmt("%.0s", "test"), "");
    test(#fmt("%.0x", 127u), "7f");
+   test(#fmt("%.0t", 3u), "11");
 
-//   test(#fmt("%.1d", 0), "0");
+   test(#fmt("%.1d", 0), "0");
    test(#fmt("%.1u", 0u), "0");
    test(#fmt("%.1x", 0u), "0");
-//   test(#fmt("%.1d", 10), "10");
-//   test(#fmt("%.1d", -10), "-10");
+   test(#fmt("%.1t", 0u), "0");
+   test(#fmt("%.1d", 10), "10");
+   test(#fmt("%.1d", -10), "-10");
    test(#fmt("%.1u", 10u), "10");
    test(#fmt("%.1s", "test"), "t");
    test(#fmt("%.1x", 127u), "7f");
+   test(#fmt("%.1t", 3u), "11");
 
-//   test(#fmt("%.5d", 0), "00000");
+   test(#fmt("%.5d", 0), "00000");
    test(#fmt("%.5u", 0u), "00000");
    test(#fmt("%.5x", 0u), "00000");
-//   test(#fmt("%.5d", 10), "00010");
-//   test(#fmt("%.5d", -10), "-00010");
+   test(#fmt("%.5t", 0u), "00000");
+   test(#fmt("%.5d", 10), "00010");
+   test(#fmt("%.5d", -10), "-00010");
    test(#fmt("%.5u", 10u), "00010");
    test(#fmt("%.5s", "test"), "test");
    test(#fmt("%.5x", 127u), "0007f");
+   test(#fmt("%.5t", 3u), "00011");
 }

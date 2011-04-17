@@ -332,46 +332,13 @@ mod RT {
                     ty ty);
 
     fn conv_int(&conv cv, int i) -> str {
-        ret pad(cv, _int.to_str(i, 10u));
+        auto radix = 10u;
+        auto prec = get_int_precision(cv);
+        ret pad(cv, int_to_str_prec(i, radix, prec));
     }
 
     fn conv_uint(&conv cv, uint u) -> str {
-
-        // Convert a uint to string with a minimum number of digits.  If
-        // precision is 0 and num is 0 then the result is the empty
-        // string. Could move this to _str, but it doesn't seem all that
-        // useful.
-        fn uint_to_str_prec(uint num, uint radix, uint prec) -> str {
-            auto s;
-
-            if (prec == 0u && num == 0u) {
-                s = "";
-            } else {
-                s = _uint.to_str(num, radix);
-                auto len = _str.char_len(s);
-                if (len < prec) {
-                    auto diff = prec - len;
-                    auto pad = str_init_elt('0', diff);
-                    s = pad + s;
-                }
-            }
-
-            ret s;
-        }
-
-        fn get_precision(&conv cv) -> uint {
-            alt (cv.precision) {
-                case (count_is(?c)) {
-                    ret c as uint;
-                }
-                case (count_implied) {
-                    ret 1u;
-                }
-            }
-        }
-
-        auto prec = get_precision(cv);
-
+        auto prec = get_int_precision(cv);
         auto res;
         alt (cv.ty) {
             case (ty_default) {
@@ -416,6 +383,48 @@ mod RT {
             }
         }
         ret pad(cv, unpadded);
+    }
+
+    // Convert an int to string with minimum number of digits. If precision is
+    // 0 and num is 0 then the result is the empty string.
+    fn int_to_str_prec(int num, uint radix, uint prec) -> str {
+        if (num < 0) {
+            ret "-" + uint_to_str_prec((-num) as uint, radix, prec);
+        } else {
+            ret uint_to_str_prec(num as uint, radix, prec);
+        }
+    }
+
+    // Convert a uint to string with a minimum number of digits.  If precision
+    // is 0 and num is 0 then the result is the empty string. Could move this
+    // to _uint, but it doesn't seem all that useful.
+    fn uint_to_str_prec(uint num, uint radix, uint prec) -> str {
+        auto s;
+
+        if (prec == 0u && num == 0u) {
+            s = "";
+        } else {
+            s = _uint.to_str(num, radix);
+            auto len = _str.char_len(s);
+            if (len < prec) {
+                auto diff = prec - len;
+                auto pad = str_init_elt('0', diff);
+                s = pad + s;
+            }
+        }
+
+        ret s;
+    }
+
+    fn get_int_precision(&conv cv) -> uint {
+        alt (cv.precision) {
+            case (count_is(?c)) {
+                ret c as uint;
+            }
+            case (count_implied) {
+                ret 1u;
+            }
+        }
     }
 
     // FIXME: This might be useful in _str, but needs to be utf8 safe first
