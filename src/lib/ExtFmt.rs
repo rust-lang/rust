@@ -52,7 +52,7 @@ mod CT {
     tag flag {
         flag_left_justify;
         flag_left_zero_pad;
-        flag_left_space_pad;
+        flag_space_for_sign;
         flag_sign_always;
         flag_alternate;
     }
@@ -201,7 +201,7 @@ mod CT {
         } else if (f == ('0' as u8)) {
             ret more(flag_left_zero_pad);
         } else if (f == (' ' as u8)) {
-            ret more(flag_left_space_pad);
+            ret more(flag_space_for_sign);
         } else if (f == ('+' as u8)) {
             ret more(flag_sign_always);
         } else if (f == ('#' as u8)) {
@@ -306,6 +306,7 @@ mod RT {
 
     tag flag {
         flag_left_justify;
+        flag_space_for_sign;
         flag_sign_always;
         // FIXME: This is a hack to avoid creating 0-length vec exprs,
         // which have some difficulty typechecking currently. See
@@ -336,8 +337,12 @@ mod RT {
         auto radix = 10u;
         auto prec = get_int_precision(cv);
         auto s = int_to_str_prec(i, radix, prec);
-        if (0 <= i && have_flag(cv.flags, flag_sign_always)) {
-            s = "+" + s;
+        if (0 <= i) {
+            if (have_flag(cv.flags, flag_sign_always)) {
+                s = "+" + s;
+            } else if (have_flag(cv.flags, flag_space_for_sign)) {
+                s = " " + s;
+            }
         }
         ret pad(cv, s);
     }

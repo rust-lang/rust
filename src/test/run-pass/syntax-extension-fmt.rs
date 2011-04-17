@@ -117,4 +117,13 @@ fn main() {
   test(#fmt("%+d", 0), "+0");
   test(#fmt("%+d", 1), "+1");
   test(#fmt("%+d", -1), "-1");
+
+  // Leave space for sign
+  test(#fmt("% d", 0), " 0");
+  test(#fmt("% d", 1), " 1");
+  test(#fmt("% d", -1), "-1");
+
+  // Plus overrides space
+  test(#fmt("% +d", 0), "+0");
+  test(#fmt("%+ d", 0), "+0");
 }

@@ -28,7 +28,7 @@ import std.ExtFmt.CT.ty_hex;
 import std.ExtFmt.CT.flag;
 import std.ExtFmt.CT.flag_left_justify;
 import std.ExtFmt.CT.flag_left_zero_pad;
-import std.ExtFmt.CT.flag_left_space_pad;
+import std.ExtFmt.CT.flag_space_for_sign;
 import std.ExtFmt.CT.flag_sign_always;
 import std.ExtFmt.CT.flag_alternate;
 import std.ExtFmt.CT.count;
@@ -180,6 +180,10 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                         auto fstr = "flag_sign_always";
                         flagexprs += vec(make_rt_path_expr(sp, fstr));
                     }
+                    case (flag_space_for_sign) {
+                        auto fstr = "flag_space_for_sign";
+                        flagexprs += vec(make_rt_path_expr(sp, fstr));
+                    }
                 }
             }
 
@@ -268,6 +272,25 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
 
     fn make_new_conv(conv cnv, @ast.expr arg) -> @ast.expr {
 
+        // FIXME: Extract all this validation into ExtFmt.CT
+        fn is_signed_type(conv cnv) -> bool {
+            alt (cnv.ty) {
+                case (ty_int(?s)) {
+                    alt (s) {
+                        case (signed) {
+                            ret true;
+                        }
+                        case (unsigned) {
+                            ret false;
+                        }
+                    }
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+
         auto unsupported = "conversion not supported in #fmt string";
 
         alt (cnv.param) {
@@ -284,23 +307,16 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                 case (flag_left_justify) {
                 }
                 case (flag_sign_always) {
-                    auto err = "+ flag only valid in signed #fmt conversions";
-                    alt (cnv.ty) {
-                        case (ty_int(?s)) {
-                            alt (s) {
-                                case (signed) {
-                                    // Valid
-                                }
-                                case (unsigned) {
-                                    log err;
-                                    fail;
-                                }
-                            }
-                        }
-                        case (_) {
-                            log err;
-                            fail;
-                        }
+                    if (!is_signed_type(cnv)) {
+                        log "+ flag only valid in signed #fmt conversions";
+                        fail;
+                    }
+                }
+                case (flag_space_for_sign) {
+                    if (!is_signed_type(cnv)) {
+                        log "space flag only valid in "
+                            + "signed #fmt conversions";
+                        fail;
                     }
                 }
                 case (_) {
@@ -382,7 +398,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                 case (flag_left_zero_pad) {
                     log "flag: left zero pad";
                 }
-                case (flag_left_space_pad) {
+                case (flag_space_for_sign) {
                     log "flag: left space pad";
                 }
                 case (flag_sign_always) {
