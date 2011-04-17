@@ -358,11 +358,15 @@ mod RT {
     }
 
     fn conv_bool(&conv cv, bool b) -> str {
+        auto s;
         if (b) {
-            ret pad(cv, "true");
+            s = "true";
         } else {
-            ret pad(cv, "false");
+            s = "false";
         }
+        // Run the boolean conversion through the string conversion logic,
+        // giving it the same rules for precision, etc.
+        ret conv_str(cv, s);
     }
 
     fn conv_char(&conv cv, char c) -> str {

@@ -104,4 +104,12 @@ fn main() {
   test(#fmt("%.5x", 127u), "0007f");
   test(#fmt("%.5t", 3u), "00011");
   test(#fmt("%.5c", 'A'), "A");
+
+  // Bool precision. I'm not sure if it's good or bad to have bool
+  // conversions support precision - it's not standard printf so we
+  // can do whatever. For now I'm making it behave the same as string
+  // conversions.
+  test(#fmt("%.b", true), "");
+  test(#fmt("%.0b", true), "");
+  test(#fmt("%.1b", true), "t");
 }
