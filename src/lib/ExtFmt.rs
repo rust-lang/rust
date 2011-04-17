@@ -246,7 +246,17 @@ mod CT {
         }
 
         if (s.(i) == '.' as u8) {
-            ret parse_count(s, i + 1u, lim);
+            auto count = parse_count(s, i + 1u, lim);
+            // If there were no digits specified, i.e. the precision
+            // was ".", then the precision is 0
+            alt (count._0) {
+                case (count_implied) {
+                    ret tup(count_is(0), count._1);
+                }
+                case (_) {
+                    ret count;
+                }
+            }
         } else {
             ret tup(count_implied, i);
         }
@@ -318,6 +328,7 @@ mod RT {
     // instead just use a bool per flag
     type conv = rec(vec[flag] flags,
                     count width,
+                    count precision,
                     ty ty);
 
     fn conv_int(&conv cv, int i) -> str {
@@ -356,7 +367,19 @@ mod RT {
     }
 
     fn conv_str(&conv cv, str s) -> str {
-        ret pad(cv, s);
+        auto unpadded = s;
+        alt (cv.precision) {
+            case (count_implied) {
+            }
+            case (count_is(?max)) {
+                // For strings, precision is the maximum characters displayed
+                if (max as uint < _str.char_len(s)) {
+                    // FIXME: substr works on bytes, not chars!
+                    unpadded = _str.substr(s, 0u, max as uint);
+                }
+            }
+        }
+        ret pad(cv, unpadded);
     }
 
     fn pad(&conv cv, str s) -> str {

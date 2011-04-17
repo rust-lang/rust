@@ -234,18 +234,22 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         fn make_conv_rec(common.span sp,
                          @ast.expr flags_expr,
                          @ast.expr width_expr,
+                         @ast.expr precision_expr,
                          @ast.expr ty_expr) -> @ast.expr {
             ret make_rec_expr(sp, vec(tup("flags", flags_expr),
                                       tup("width", width_expr),
+                                      tup("precision", precision_expr),
                                       tup("ty", ty_expr)));
         }
 
         auto rt_conv_flags = make_flags(sp, cnv.flags);
         auto rt_conv_width = make_count(sp, cnv.width);
+        auto rt_conv_precision = make_count(sp, cnv.precision);
         auto rt_conv_ty = make_ty(sp, cnv.ty);
         ret make_conv_rec(sp,
                           rt_conv_flags,
                           rt_conv_width,
+                          rt_conv_precision,
                           rt_conv_ty);
     }
 
@@ -295,6 +299,8 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
 
         alt (cnv.precision) {
             case (count_implied) {
+            }
+            case (count_is(_)) {
             }
             case (_) {
                 log unsupported;
@@ -444,8 +450,8 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                 }
 
                 // TODO: Remove debug logging
-                // log "Building conversion:";
-                // log_conv(conv);
+                //log "Building conversion:";
+                //log_conv(conv);
 
                 n += 1u;
                 auto arg_expr = args.(n);
