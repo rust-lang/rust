@@ -366,7 +366,7 @@ mod RT {
     }
 
     fn conv_char(&conv cv, char c) -> str {
-        ret pad(cv, _str.from_char(c));
+        ret conv_str(cv, _str.from_char(c));
     }
 
     fn conv_str(&conv cv, str s) -> str {

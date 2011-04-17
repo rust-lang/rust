@@ -43,6 +43,7 @@ fn main() {
   test(#fmt("%10x", 0xff_u), "        ff");
   test(#fmt("%10X", 0xff_u), "        FF");
   test(#fmt("%10t", 0xff_u), "  11111111");
+  test(#fmt("%10c", 'A'), "         A");
 
   // Left justify
   test(#fmt("%-10d", 500), "500       ");
@@ -53,6 +54,7 @@ fn main() {
   test(#fmt("%-10x", 0xff_u), "ff        ");
   test(#fmt("%-10X", 0xff_u), "FF        ");
   test(#fmt("%-10t", 0xff_u), "11111111  ");
+  test(#fmt("%-10c", 'A'), "A         ");
 
   // Precision
    test(#fmt("%.d", 0), "");
@@ -65,6 +67,7 @@ fn main() {
    test(#fmt("%.s", "test"), "");
    test(#fmt("%.x", 127u), "7f");
    test(#fmt("%.t", 3u), "11");
+   test(#fmt("%.c", 'A'), "");
 
    test(#fmt("%.0d", 0), "");
    test(#fmt("%.0u", 0u), "");
@@ -76,6 +79,7 @@ fn main() {
    test(#fmt("%.0s", "test"), "");
    test(#fmt("%.0x", 127u), "7f");
    test(#fmt("%.0t", 3u), "11");
+   test(#fmt("%.0c", 'A'), "");
 
    test(#fmt("%.1d", 0), "0");
    test(#fmt("%.1u", 0u), "0");
@@ -87,6 +91,7 @@ fn main() {
    test(#fmt("%.1s", "test"), "t");
    test(#fmt("%.1x", 127u), "7f");
    test(#fmt("%.1t", 3u), "11");
+   test(#fmt("%.1c", 'A'), "A");
 
    test(#fmt("%.5d", 0), "00000");
    test(#fmt("%.5u", 0u), "00000");
@@ -98,4 +103,5 @@ fn main() {
    test(#fmt("%.5s", "test"), "test");
    test(#fmt("%.5x", 127u), "0007f");
    test(#fmt("%.5t", 3u), "00011");
+   test(#fmt("%.5c", 'A'), "A");
 }
