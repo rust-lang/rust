@@ -7145,15 +7145,12 @@ fn make_common_glue(str output, bool optimize,
     llvm.LLVMSetTarget(llmod, _str.buf(x86.get_target_triple()));
     auto td = mk_target_data(x86.get_data_layout());
     auto tn = mk_type_names();
-    let ValueRef crate_ptr =
-        llvm.LLVMAddGlobal(llmod, T_crate(tn), _str.buf("rust_crate"));
 
     auto intrinsics = declare_intrinsics(llmod);
 
     llvm.LLVMSetModuleInlineAsm(llmod, _str.buf(x86.get_module_asm()));
 
     auto glues = make_glues(llmod, tn);
-    create_crate_constant(crate_ptr, glues);
     make_memcpy_glue(glues.memcpy_glue);
     make_bzero_glue(glues.bzero_glue);
 
@@ -7223,7 +7220,8 @@ fn trans_crate(session.session sess, @ast.crate crate,
     trans_mod(cx, crate.node.module);
     trans_vec_append_glue(cx);
     if (!shared) {
-        trans_main_fn(cx, cx.ccx.crate_ptr);
+        trans_main_fn(cx, crate_ptr);
+        create_crate_constant(crate_ptr, ccx.glues);
     }
 
     // Translate the metadata.
