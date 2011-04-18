@@ -400,7 +400,7 @@ fn load_crate(session.session sess,
         auto path = fs.connect(library_search_path, filename);
         alt (get_metadata_section(path)) {
             case (option.some[vec[u8]](?cvec)) {
-                sess.set_external_crate(cnum, cvec);
+                sess.set_external_crate(cnum, rec(name=ident, data=cvec));
                 ret;
             }
             case (_) {}
@@ -470,7 +470,7 @@ fn kind_has_type_params(u8 kind_ch) -> bool {
 
 fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
         -> option.t[ast.def] {
-    auto data = sess.get_external_crate(cnum);
+    auto data = sess.get_external_crate(cnum).data;
 
     auto did;
     alt (resolve_path(path, data)) {
@@ -513,7 +513,7 @@ fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
 fn get_type(session.session sess, ast.def_id def)
         -> ty.ty_param_count_and_ty {
     auto external_crate_id = def._0;
-    auto data = sess.get_external_crate(external_crate_id);
+    auto data = sess.get_external_crate(external_crate_id).data;
     auto item = lookup_item(def._1, data);
     auto t = item_type(item, external_crate_id);
 
@@ -531,7 +531,7 @@ fn get_type(session.session sess, ast.def_id def)
 
 fn get_symbol(session.session sess, ast.def_id def) -> str {
     auto external_crate_id = def._0;
-    auto data = sess.get_external_crate(external_crate_id);
+    auto data = sess.get_external_crate(external_crate_id).data;
     auto item = lookup_item(def._1, data);
     ret item_symbol(item);
 }
@@ -539,7 +539,7 @@ fn get_symbol(session.session sess, ast.def_id def) -> str {
 fn get_tag_variants(session.session sess, ast.def_id def)
         -> vec[trans.variant_info] {
     auto external_crate_id = def._0;
-    auto data = sess.get_external_crate(external_crate_id);
+    auto data = sess.get_external_crate(external_crate_id).data;
     auto items = ebml.get_doc(ebml.new_doc(data), metadata.tag_items);
     auto item = find_item(def._1, items);
 

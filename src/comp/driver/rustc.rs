@@ -128,8 +128,9 @@ impure fn main(vec[str] args) {
 
     auto crate_cache = common.new_int_hash[session.crate_metadata]();
     auto target_crate_num = 0;
+    let vec[@front.ast.meta_item] md = vec();
     auto sess = session.session(target_crate_num, target_cfg, crate_cache,
-                                front.codemap.new_codemap());
+                                md, front.codemap.new_codemap());
 
     let option.t[str] input_file = none[str];
     let option.t[str] output_file = none[str];

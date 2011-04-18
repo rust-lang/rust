@@ -419,7 +419,10 @@ impure fn eval_crate_directive(ctx cx,
             ast.index_view_item(index, vi);
         }
 
-        case (ast.cdir_meta(?mi)) {}
+        case (ast.cdir_meta(?mi)) {
+            cx.sess.add_metadata(mi);
+        }
+
         case (ast.cdir_syntax(?pth)) {}
         case (ast.cdir_auth(?pth, ?eff)) {}
     }

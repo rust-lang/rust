@@ -23,11 +23,13 @@ type cfg = rec(os os,
                ty_mach uint_type,
                ty_mach float_type);
 
-type crate_metadata = vec[u8];
+type crate_metadata = rec(str name,
+                          vec[u8] data);
 
-obj session(ast.crate_num cnum, cfg targ,
-            map.hashmap[int, crate_metadata] crates,
-            codemap.codemap cm) {
+state obj session(ast.crate_num cnum, cfg targ,
+                  map.hashmap[int, crate_metadata] crates,
+                  mutable vec[@ast.meta_item] metadata,
+                  codemap.codemap cm) {
 
     fn get_targ_cfg() -> cfg {
         ret targ;
@@ -51,6 +53,13 @@ obj session(ast.crate_num cnum, cfg targ,
     fn err(str msg) {
         log #fmt("error: %s", msg);
         fail;
+    }
+
+    fn add_metadata(vec[@ast.meta_item] data) {
+        metadata = metadata + data;
+    }
+    fn get_metadata() -> vec[@ast.meta_item] {
+        ret metadata;
     }
 
     fn span_warn(span sp, str msg) {
