@@ -168,6 +168,8 @@ impure fn main(vec[str] args) {
                 ot = trans.output_type_none;
             } else if (_str.eq(arg, "-S")) {
                 ot = trans.output_type_assembly;
+            } else if (_str.eq(arg, "-c")) {
+                ot = trans.output_type_object;
             } else if (_str.eq(arg, "-o")) {
                 if (i+1u < len) {
                     output_file = some(args.(i+1u));

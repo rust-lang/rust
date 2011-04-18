@@ -815,8 +815,10 @@ native mod llvm = llvm_lib {
     fn LLVMRustCreateMemoryBufferWithContentsOfFile(sbuf Path) ->
         MemoryBufferRef;
 
-    fn LLVMRustWriteAssembly(PassManagerRef PM, ModuleRef M,
-                             sbuf Triple, sbuf Output);
+    /* FIXME: The FileType is an enum.*/
+    fn LLVMRustWriteOutputFile(PassManagerRef PM, ModuleRef M,
+                               sbuf Triple, sbuf Output,
+                               int FileType);
 
     /** Returns a string describing the last error caused by an LLVMRust*
         call. */

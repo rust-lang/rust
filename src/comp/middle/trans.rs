@@ -6754,6 +6754,17 @@ tag output_type {
     output_type_none;
     output_type_bitcode;
     output_type_assembly;
+    output_type_object;
+}
+
+fn is_object_or_assembly(output_type ot) -> bool {
+    if (ot == output_type_assembly) {
+        ret true;
+    }
+    if (ot == output_type_object) {
+        ret true;
+    }
+    ret false;
 }
 
 fn run_passes(ModuleRef llmod, bool opt, str output,
@@ -6823,10 +6834,21 @@ fn run_passes(ModuleRef llmod, bool opt, str output,
     }
     llvm.LLVMAddVerifierPass(pm.llpm);
 
-    if (ot == output_type_assembly) {
-        llvm.LLVMRustWriteAssembly(pm.llpm, llmod,
-                                   _str.buf(x86.get_target_triple()),
-                                   _str.buf(output));
+    if (is_object_or_assembly(ot)) {
+        let int LLVMAssemblyFile = 0;
+        let int LLVMObjectFile = 1;
+        let int LLVMNullFile = 2;
+        auto FileType;
+        if (ot == output_type_object) {
+            FileType = LLVMObjectFile;
+        } else {
+            FileType = LLVMAssemblyFile;
+        }
+
+        llvm.LLVMRustWriteOutputFile(pm.llpm, llmod,
+                                     _str.buf(x86.get_target_triple()),
+                                     _str.buf(output),
+                                     FileType);
         ret;
     }
 

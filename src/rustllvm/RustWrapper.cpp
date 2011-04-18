@@ -42,8 +42,15 @@ extern "C" void LLVMAddBasicAliasAnalysisPass(LLVMPassManagerRef PM);
 void (*RustHackToFetchPassesO)(LLVMPassManagerRef PM) =
   LLVMAddBasicAliasAnalysisPass;
 
-extern "C" void LLVMRustWriteAssembly(LLVMPassManagerRef PMR, LLVMModuleRef M,
-                                      const char *triple, const char *path) {
+enum LLVMCodeGenFileType {
+  LLVMAssemblyFile,
+  LLVMObjectFile,
+  LLVMNullFile         // Do not emit any output.
+};
+
+extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR, LLVMModuleRef M,
+                                        const char *triple, const char *path,
+                                        LLVMCodeGenFileType FileType) {
   InitializeAllTargets();
   InitializeAllAsmPrinters();
   TargetMachine::setRelocationModel(Reloc::PIC_);
@@ -53,13 +60,15 @@ extern "C" void LLVMRustWriteAssembly(LLVMPassManagerRef PMR, LLVMModuleRef M,
   TargetMachine &Target = *TheTarget->createTargetMachine(triple, FeaturesStr);
   bool NoVerify = false;
   CodeGenOpt::Level OLvl = CodeGenOpt::Default;
-  TargetMachine::CodeGenFileType  FileType = TargetMachine::CGFT_AssemblyFile;
   PassManager *PM = unwrap<PassManager>(PMR);
   std::string ErrorInfo;
   raw_fd_ostream OS(path, ErrorInfo,
                     raw_fd_ostream::F_Binary);
   formatted_raw_ostream FOS(OS);
-  bool foo = Target.addPassesToEmitFile(*PM, FOS, FileType, OLvl, NoVerify);
+  TargetMachine::CodeGenFileType FileType2 =
+    static_cast<TargetMachine::CodeGenFileType>(FileType);
+
+  bool foo = Target.addPassesToEmitFile(*PM, FOS, FileType2, OLvl, NoVerify);
   assert(!foo);
   PM->run(*unwrap(M));
 }
