@@ -475,6 +475,13 @@ fn print_expr(ps s, &@ast.expr expr) {
             commasep[option.t[@ast.expr]](s, args, f);
             pclose(s);
         }
+    case (ast.expr_spawn(_,_,?e,?es,_)) {
+          wrd1(s, "spawn");
+          print_expr(s, e);
+          popen(s);
+          commasep_exprs(s, es);
+          pclose(s);
+        }
         case (ast.expr_binary(?op,?lhs,?rhs,_)) {
             auto prec = operator_prec(op);
             print_maybe_parens(s, lhs, prec);
@@ -1018,3 +1025,13 @@ fn print_comment(ps s, lexer.cmnt_ cmnt) {
         }
     }
 }
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//

@@ -39,12 +39,16 @@ fn is_none[T](&t[T] opt) -> bool {
 }
 
 fn from_maybe[T](&T def, &t[T] opt) -> T {
-    alt(opt) {
-        case (none[T])     { ret def; }
-        case (some[T](?t)) { ret t; }
-    }
+    auto f = bind util.id[T](_);
+    ret maybe[T, T](def, f, opt);
 }
 
+fn maybe[T, U](&U def, fn(&T) -> U f, &t[T] opt) -> U {
+    alt (opt) {
+        case (none[T]) { ret def; }
+        case (some[T](?t)) { ret f(t); }
+    }
+}
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

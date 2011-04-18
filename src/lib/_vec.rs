@@ -266,7 +266,7 @@ fn unzip[T, U](&vec[tup(T, U)] v) -> tup(vec[T], vec[U]) {
 
 fn or(&vec[bool] v) -> bool {
     auto f = orb;
-    be _vec.foldl[bool, bool](f, false, v);
+    ret _vec.foldl[bool, bool](f, false, v);
 }
 
 fn clone[T](&vec[T] v) -> vec[T] {

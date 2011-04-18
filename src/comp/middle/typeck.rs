@@ -1469,7 +1469,8 @@ mod Pushdown {
             }
             case (none[@ast.expr]) {
                 Demand.simple(fcx, bloc.span, expected, plain_ty(ty.ty_nil));
-                ret bloc;
+                ret fold.respan[ast.block_](bloc.span,
+                      rec(a = boring_ann() with bloc.node));
             }
         }
     }
