@@ -428,8 +428,7 @@ fn T_crate(type_names tn) -> TypeRef {
                           T_int(),      // int n_rust_syms
                           T_int(),      // int n_c_syms
                           T_int(),      // int n_libs
-                          T_int(),      // uintptr_t abi_tag
-                          T_int()       // void* crate_map
+                          T_int()       // uintptr_t abi_tag
                           ));
     tn.associate(s, t);
     ret t;
@@ -6624,8 +6623,7 @@ fn create_typedefs(@crate_ctxt cx) {
     llvm.LLVMAddTypeName(cx.llmod, _str.buf("tydesc"), T_tydesc(cx.tn));
 }
 
-fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues,
-                         ValueRef crate_map) {
+fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
 
     let ValueRef crate_addr = p2i(crate_ptr);
 
@@ -6653,8 +6651,7 @@ fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues,
                      C_null(T_int()),     // int n_rust_syms
                      C_null(T_int()),     // int n_c_syms
                      C_null(T_int()),     // int n_libs
-                     C_int(abi.abi_x86_rustc_fastcall), // uintptr_t abi_tag
-                     p2i(crate_map)       // void* crate_map
+                     C_int(abi.abi_x86_rustc_fastcall) // uintptr_t abi_tag
                      ));
 
     llvm.LLVMSetInitializer(crate_ptr, crate_val);
@@ -6684,9 +6681,9 @@ fn find_main_fn(@crate_ctxt cx) -> ValueRef {
     fail;
 }
 
-fn trans_main_fn(@local_ctxt cx, ValueRef llcrate) {
+fn trans_main_fn(@local_ctxt cx, ValueRef llcrate, ValueRef crate_map) {
     auto T_main_args = vec(T_int(), T_int());
-    auto T_rust_start_args = vec(T_int(), T_int(), T_int(), T_int());
+    auto T_rust_start_args = vec(T_int(), T_int(), T_int(), T_int(), T_int());
 
     auto main_name;
     if (_str.eq(std.os.target_os(), "win32")) {
@@ -6717,7 +6714,8 @@ fn trans_main_fn(@local_ctxt cx, ValueRef llcrate) {
         llvm.LLVMAppendBasicBlock(llmain, _str.buf(""));
     auto b = new_builder(llbb);
 
-    auto start_args = vec(p2i(llrust_main), p2i(llcrate), llargc, llargv);
+    auto start_args = vec(p2i(llrust_main), p2i(llcrate), llargc, llargv,
+                          p2i(crate_map));
 
     b.Ret(b.Call(llrust_start, start_args));
 }
@@ -7200,12 +7198,15 @@ fn make_common_glue(str output, bool optimize,
     llvm.LLVMSetTarget(llmod, _str.buf(x86.get_target_triple()));
     auto td = mk_target_data(x86.get_data_layout());
     auto tn = mk_type_names();
+    let ValueRef crate_ptr =
+        llvm.LLVMAddGlobal(llmod, T_crate(tn), _str.buf("rust_crate"));
 
     auto intrinsics = declare_intrinsics(llmod);
 
     llvm.LLVMSetModuleInlineAsm(llmod, _str.buf(x86.get_module_asm()));
 
     auto glues = make_glues(llmod, tn);
+    create_crate_constant(crate_ptr, glues);
     make_memcpy_glue(glues.memcpy_glue);
     make_bzero_glue(glues.bzero_glue);
 
@@ -7326,8 +7327,7 @@ fn trans_crate(session.session sess, @ast.crate crate,
     trans_vec_append_glue(cx);
     auto crate_map = create_crate_map(ccx);
     if (!shared) {
-        trans_main_fn(cx, crate_ptr);
-        create_crate_constant(crate_ptr, ccx.glues, crate_map);
+        trans_main_fn(cx, crate_ptr, crate_map);
     }
 
     // Translate the metadata.

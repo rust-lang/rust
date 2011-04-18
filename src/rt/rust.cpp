@@ -78,9 +78,11 @@ command_line_args : public dom_owned<command_line_args>
 
 extern "C" CDECL int
 rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
-           char **argv) {
+           char **argv, void* crate_map) {
 
-    crate->update_log_settings(getenv("RUST_LOG"));
+    // Only when we're on rustc is the last argument passed
+    if (!crate->get_image_base())
+        update_log_settings(crate_map, getenv("RUST_LOG"));
     rust_srv *srv = new rust_srv();
     rust_kernel *kernel = new rust_kernel(srv);
     kernel->start();

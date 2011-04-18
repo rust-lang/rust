@@ -93,4 +93,6 @@ rust_log::is_tracing(uint32_t type_bits) {
     return type_bits & _type_bit_mask;
 }
 
+void update_log_settings(void* crate_map, char* settings);
+
 #endif /* RUST_LOG_H */

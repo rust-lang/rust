@@ -218,3 +218,86 @@ void
 rust_log::reset_indent(uint32_t indent) {
     _indent = indent;
 }
+
+struct mod_entry {
+    const char* name;
+    int* state;
+};
+
+struct cratemap {
+    mod_entry* entries;
+    cratemap* children[1];
+};
+
+struct log_directive {
+    char* name;
+    size_t level;
+};
+
+const size_t max_log_directives = 255;
+
+// This is a rather ugly parser for strings in the form
+// "crate1,crate2.mod3,crate3.x=2". Log levels range 0=err, 1=warn, 2=info,
+// 3=debug. Default is 1. Words without an '=X' part set the log level for
+// that module (and submodules) to 3.
+size_t parse_logging_spec(char* spec, log_directive* dirs) {
+    size_t dir = 0;
+    while (dir < max_log_directives && *spec) {
+        char* start = spec;
+        char cur;
+        while (true) {
+            cur = *spec;
+            if (cur == ',' || cur == '=' || cur == '\0') {
+                if (start == spec) {spec++; break;}
+                *spec = '\0';
+                spec++;
+                size_t level = 3;
+                if (cur == '=') {
+                    level = *spec - '0';
+                    if (level > 3) level = 1;
+                    if (*spec) ++spec;
+                }
+                dirs[dir].name = start;
+                dirs[dir++].level = level;
+                break;
+            }
+            spec++;
+        }
+    }
+    return dir;
+}
+
+void update_crate_map(cratemap* map, log_directive* dirs, size_t n_dirs) {
+    // First update log levels for this crate
+    for (mod_entry* cur = map->entries; cur->name; cur++) {
+        size_t level = 1, longest_match = 0;
+        for (size_t d = 0; d < n_dirs; d++) {
+            if (strstr(cur->name, dirs[d].name) == cur->name &&
+                strlen(dirs[d].name) > longest_match) {
+                longest_match = strlen(dirs[d].name);
+                level = dirs[d].level;
+            }
+        }
+        *cur->state = level;
+    }
+
+    // Then recurse on linked crates
+    for (size_t i = 0; map->children[i]; i++) {
+        update_crate_map(map->children[i], dirs, n_dirs);
+    }
+}
+
+void update_log_settings(void* crate_map, char* settings) {
+    char* buffer = NULL;
+    log_directive dirs[256];
+    size_t dir = 0;
+    if (settings) {
+        buffer = (char*)malloc(strlen(settings));
+        strcpy(buffer, settings);
+        dir = parse_logging_spec(buffer, &dirs[0]);
+    }
+
+    update_crate_map((cratemap*)crate_map, &dirs[0], dir);
+
+    free(buffer);
+}
