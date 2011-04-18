@@ -53,7 +53,6 @@ extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR, LLVMModuleRef M,
                                         LLVMCodeGenFileType FileType) {
   InitializeAllTargets();
   InitializeAllAsmPrinters();
-  InitializeAllAsmParsers();
   TargetMachine::setRelocationModel(Reloc::PIC_);
   std::string Err;
   const Target *TheTarget = TargetRegistry::lookupTarget(triple, Err);
