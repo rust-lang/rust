@@ -39,6 +39,8 @@ const int tydesc_field_sever_glue = 6;
 const int tydesc_field_mark_glue = 7;
 const int tydesc_field_obj_drop_glue = 8;
 const int tydesc_field_is_stateful = 9;
+const int tydesc_field_cmp_glue = 10;
+const int n_tydesc_fields = 11;
 
 
 const int obj_field_vtbl = 0;

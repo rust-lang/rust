@@ -66,7 +66,8 @@ type glue_fns = rec(ValueRef activate_glue,
 
 type tydesc_info = rec(ValueRef tydesc,
                        ValueRef take_glue,
-                       ValueRef drop_glue);
+                       ValueRef drop_glue,
+                       ValueRef cmp_glue);
 
 /*
  * A note on nomenclature of linking: "upcall", "extern" and "native".
@@ -325,19 +326,34 @@ fn T_task(type_names tn) -> TypeRef {
     ret t;
 }
 
+fn T_tydesc_field(type_names tn, int field) -> TypeRef {
+    // Bit of a kludge: pick the fn typeref out of the tydesc..
+    let vec[TypeRef] tydesc_elts =
+        _vec.init_elt[TypeRef](T_nil(), abi.n_tydesc_fields as uint);
+    llvm.LLVMGetStructElementTypes(T_tydesc(tn),
+                                   _vec.buf[TypeRef](tydesc_elts));
+    auto t = llvm.LLVMGetElementType(tydesc_elts.(field));
+    ret t;
+}
+
 fn T_glue_fn(type_names tn) -> TypeRef {
     auto s = "glue_fn";
     if (tn.name_has_type(s)) {
         ret tn.get_type(s);
     }
 
-    // Bit of a kludge: pick the fn typeref out of the tydesc..
-    let vec[TypeRef] tydesc_elts = _vec.init_elt[TypeRef](T_nil(), 10u);
-    llvm.LLVMGetStructElementTypes(T_tydesc(tn),
-                                   _vec.buf[TypeRef](tydesc_elts));
-    auto t =
-        llvm.LLVMGetElementType
-        (tydesc_elts.(abi.tydesc_field_drop_glue));
+    auto t = T_tydesc_field(tn, abi.tydesc_field_drop_glue);
+    tn.associate(s, t);
+    ret t;
+}
+
+fn T_cmp_glue_fn(type_names tn) -> TypeRef {
+    auto s = "cmp_glue_fn";
+    if (tn.name_has_type(s)) {
+        ret tn.get_type(s);
+    }
+
+    auto t = T_tydesc_field(tn, abi.tydesc_field_cmp_glue);
     tn.associate(s, t);
     ret t;
 }
@@ -358,6 +374,12 @@ fn T_tydesc(type_names tn) -> TypeRef {
                                      T_ptr(T_nil()),
                                      tydescpp,
                                      pvoid), T_void()));
+    auto cmp_glue_fn_ty = T_ptr(T_fn(vec(T_ptr(T_nil()),
+                                         T_taskptr(tn),
+                                         T_ptr(T_nil()),
+                                         tydescpp,
+                                         pvoid,
+                                         pvoid), T_void()));
     auto tydesc = T_struct(vec(tydescpp,          // first_param
                                T_int(),           // size
                                T_int(),           // align
@@ -367,7 +389,8 @@ fn T_tydesc(type_names tn) -> TypeRef {
                                glue_fn_ty,        // sever_glue
                                glue_fn_ty,        // mark_glue
                                glue_fn_ty,        // obj_drop_glue
-                               glue_fn_ty));      // is_stateful
+                               glue_fn_ty,        // is_stateful
+                               cmp_glue_fn_ty));  // cmp_glue
 
     llvm.LLVMRefineType(abs_tydesc, tydesc);
     auto t = llvm.LLVMResolveTypeHandle(th.llth);
@@ -1580,8 +1603,12 @@ fn get_tydesc(&@block_ctxt cx, @ty.t t) -> result {
 // needs to be separate from make_tydesc() below, because sometimes type glue
 // functions needs to refer to their own type descriptors.
 fn declare_tydesc(@local_ctxt cx, @ty.t t) {
-    auto take_glue = declare_generic_glue(cx, t, "take");
-    auto drop_glue = declare_generic_glue(cx, t, "drop");
+    auto take_glue = declare_generic_glue(cx, t, T_glue_fn(cx.ccx.tn),
+                                          "take");
+    auto drop_glue = declare_generic_glue(cx, t, T_glue_fn(cx.ccx.tn),
+                                          "drop");
+    auto cmp_glue = declare_generic_glue(cx, t, T_cmp_glue_fn(cx.ccx.tn),
+                                         "cmp");
     auto ccx = cx.ccx;
 
     auto llsize;
@@ -1611,7 +1638,8 @@ fn declare_tydesc(@local_ctxt cx, @ty.t t) {
                                C_null(glue_fn_ty),    // sever_glue
                                C_null(glue_fn_ty),    // mark_glue
                                C_null(glue_fn_ty),    // obj_drop_glue
-                               C_null(glue_fn_ty)));  // is_stateful
+                               C_null(glue_fn_ty),    // is_stateful
+                               cmp_glue));            // cmp_glue
 
     llvm.LLVMSetInitializer(gvar, tydesc);
     llvm.LLVMSetGlobalConstant(gvar, True);
@@ -1621,10 +1649,16 @@ fn declare_tydesc(@local_ctxt cx, @ty.t t) {
     auto info = rec(
         tydesc=gvar,
         take_glue=take_glue,
-        drop_glue=drop_glue
+        drop_glue=drop_glue,
+        cmp_glue=cmp_glue
     );
 
     ccx.tydescs.insert(t, @info);
+}
+
+tag make_generic_glue_helper_fn {
+    mgghf_single(val_and_ty_fn);
+    mgghf_pair(val_pair_and_ty_fn);
 }
 
 // declare_tydesc() above must have been called first.
@@ -1633,14 +1667,17 @@ fn define_tydesc(@local_ctxt cx, @ty.t t, vec[uint] ty_params) {
     auto gvar = info.tydesc;
 
     auto tg = make_take_glue;
-    auto take_glue = make_generic_glue(cx, t, info.take_glue, tg, ty_params);
+    make_generic_glue(cx, t, info.take_glue, mgghf_single(tg), ty_params);
     auto dg = make_drop_glue;
-    auto drop_glue = make_generic_glue(cx, t, info.drop_glue, dg, ty_params);
+    make_generic_glue(cx, t, info.drop_glue, mgghf_single(dg), ty_params);
+    auto cg = make_cmp_glue;
+    make_generic_glue(cx, t, info.cmp_glue, mgghf_pair(cg), ty_params);
 }
 
-fn declare_generic_glue(@local_ctxt cx, @ty.t t, str name) -> ValueRef {
-    auto llfnty = T_glue_fn(cx.ccx.tn);
-
+fn declare_generic_glue(@local_ctxt cx,
+                        @ty.t t,
+                        TypeRef llfnty,
+                        str name) -> ValueRef {
     auto gcx = @rec(path=vec("glue", name) with *cx);
     auto fn_name = mangle_name_by_type(gcx, t);
     fn_name = sanitize(fn_name);
@@ -1648,8 +1685,11 @@ fn declare_generic_glue(@local_ctxt cx, @ty.t t, str name) -> ValueRef {
     ret llfn;
 }
 
-fn make_generic_glue(@local_ctxt cx, @ty.t t, ValueRef llfn,
-                     val_and_ty_fn helper, vec[uint] ty_params) -> ValueRef {
+fn make_generic_glue(@local_ctxt cx,
+                     @ty.t t,
+                     ValueRef llfn,
+                     make_generic_glue_helper_fn helper,
+                     vec[uint] ty_params) -> ValueRef {
     auto fcx = new_fn_ctxt(cx, llfn);
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
@@ -1684,10 +1724,19 @@ fn make_generic_glue(@local_ctxt cx, @ty.t t, ValueRef llfn,
         }
         bcx.fcx.lltydescs = _vec.freeze[ValueRef](lltydescs);
 
-        auto llrawptr = llvm.LLVMGetParam(llfn, 4u);
-        auto llval = bcx.build.BitCast(llrawptr, llty);
+        auto llrawptr0 = llvm.LLVMGetParam(llfn, 4u);
+        auto llval0 = bcx.build.BitCast(llrawptr0, llty);
 
-        re = helper(bcx, llval, t);
+        alt (helper) {
+            case (mgghf_single(?single_fn)) {
+                re = single_fn(bcx, llval0, t);
+            }
+            case (mgghf_pair(?pair_fn)) {
+                auto llrawptr1 = llvm.LLVMGetParam(llfn, 5u);
+                auto llval1 = bcx.build.BitCast(llrawptr0, llty);
+                re = pair_fn(bcx, llval0, llval1, t);
+            }
+        }
     } else {
         re = res(bcx, C_nil());
     }
@@ -1932,6 +1981,12 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
 
     ret res(next_cx, phi);
 }
+
+fn make_cmp_glue(@block_ctxt cx, ValueRef v0, ValueRef v1, @ty.t t)
+        -> result {
+    ret res(cx, C_nil());   // TODO
+}
+
 
 // Tag information
 
