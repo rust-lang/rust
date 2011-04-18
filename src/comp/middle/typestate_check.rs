@@ -1092,7 +1092,9 @@ fn find_pre_post_block(&fn_info_map fm, &fn_info enclosing, block b)
     auto block_precond  = seq_preconds(num_locals(enclosing), pps);
     auto h = get_post;
     auto postconds =  _vec.map[pre_and_post, postcond](h, pps);
-    _vec.push[postcond](postconds, block_precond); // ensures that length(postconds) > 0 
+    /* A block may be empty, so this next line ensures that the postconds
+       vector is non-empty. */
+    _vec.push[postcond](postconds, block_precond);
     auto block_postcond = union_postconds(postconds);
     set_pre_and_post(b.node.a, rec(precondition=block_precond,
                                    postcondition=block_postcond));
