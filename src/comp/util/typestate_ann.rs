@@ -147,6 +147,11 @@ fn ann_prestate(&ts_ann a) -> prestate {
   ret a.states.prestate;
 }
 
+fn pp_clone(&pre_and_post p) -> pre_and_post {
+  ret rec(precondition=bitv.clone(p.precondition),
+          postcondition=bitv.clone(p.postcondition));
+}
+
 // returns true if a implies b
 // that is, returns true except if for some bits c and d,
 // c = 1 and d = 0
@@ -155,3 +160,14 @@ impure fn implies(bitv.t a, bitv.t b) -> bool {
   bitv.difference(tmp, a);
   ret bitv.is_false(tmp);
 }
+
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//

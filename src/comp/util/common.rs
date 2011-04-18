@@ -137,6 +137,35 @@ fn log_block(&ast.block b) -> () {
   log(s.get_str());
 }
 
+fn log_ann(&ast.ann a) -> () {
+    alt (a) {
+        case (ast.ann_none) {
+            log("ann_none");
+        }
+        case (ast.ann_type(_,_,_)) {
+            log("ann_type");
+        }
+    }
+}
+
+fn log_stmt(ast.stmt st) -> () {
+  let str_writer s = string_writer();
+  auto out_ = mkstate(s.get_writer(), 80u);
+  auto out = @rec(s=out_,
+                  comments=none[vec[front.lexer.cmnt]],
+                  mutable cur_cmnt=0u);
+  alt (st.node) {
+    case (ast.stmt_decl(?decl,_)) {
+      print_decl(out, decl);
+    }
+    case (ast.stmt_expr(?ex,_)) {
+      print_expr(out, ex);
+    }
+    case (_) { /* do nothing */ }
+  }
+  log(s.get_str());
+}
+
 //
 // Local Variables:
 // mode: rust

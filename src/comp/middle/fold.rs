@@ -292,8 +292,6 @@ type ast_fold[ENV] =
      (fn(&ENV e, ann a) -> ann)                   fold_ann,
 
      // Additional nodes.
-     (fn(&ENV e, &span sp,
-         &ast.block_) -> block)                   fold_block,
 
      (fn(&ENV e, &fn_decl decl,
          ast.proto proto,
@@ -1718,7 +1716,6 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
 
          fold_ann = bind identity_fold_ann[ENV](_,_),
 
-         fold_block = bind identity_fold_block[ENV](_,_,_),
          fold_fn = bind identity_fold_fn[ENV](_,_,_,_),
          fold_fn_decl = bind identity_fold_fn_decl[ENV](_,_,_,_),
          fold_mod = bind identity_fold_mod[ENV](_,_),
