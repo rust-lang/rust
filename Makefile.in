@@ -463,27 +463,27 @@ boot/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
 	@$(call E, compile: $@)
 	$(BOOT) -shared -o $@ $<
 
-stage0/std.s: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage0/rustc$(X) $(MKFILES)
+stage0/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage0/rustc$(X) $(MKFILES)
 	@$(call E, compile: $@)
-	$(STAGE0) -S -shared -o $@ $<
+	$(STAGE0) -c -shared -o $@ $<
 
 stage0/$(CFG_STDLIB): stage0/std.o stage0/glue.o
 	@$(call E, link: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) stage0/glue.o $(CFG_GCC_LINK_FLAGS) -o $@ $< \
 		-Lstage0 -Lrt -lrustrt
 
-stage1/std.s: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage1/rustc$(X) $(MKFILES)
+stage1/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage1/rustc$(X) $(MKFILES)
 	@$(call E, compile: $@)
-	$(STAGE1) -S -shared -o $@ $<
+	$(STAGE1) -c -shared -o $@ $<
 
 stage1/$(CFG_STDLIB): stage1/std.o stage1/glue.o
 	@$(call E, link: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) stage1/glue.o $(CFG_GCC_LINK_FLAGS) -o $@ $< \
 		-Lstage1 -Lrt -lrustrt
 
-stage2/std.s: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage2/rustc$(X) $(MKFILES)
+stage2/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage2/rustc$(X) $(MKFILES)
 	@$(call E, compile: $@)
-	$(STAGE2) -S -shared -o $@ $<
+	$(STAGE2) -c -shared -o $@ $<
 
 stage2/$(CFG_STDLIB): stage2/std.o stage2/glue.o
 	@$(call E, link: $@)
@@ -509,20 +509,20 @@ stage2/rustc$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ1)
 
 
 
-stage0/glue.s: stage0/rustc$(X) boot/$(CFG_STDLIB) \
+stage0/glue.o: stage0/rustc$(X) boot/$(CFG_STDLIB) \
                 rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
-	$(STAGE0) -S -o $@ -glue
+	$(STAGE0) -c -o $@ -glue
 
-stage1/glue.s: stage1/rustc$(X) stage0/$(CFG_STDLIB) \
+stage1/glue.o: stage1/rustc$(X) stage0/$(CFG_STDLIB) \
                 rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
-	$(STAGE1) -S -o $@ -glue
+	$(STAGE1) -c -o $@ -glue
 
-stage2/glue.s: stage2/rustc$(X) stage1/$(CFG_STDLIB) \
+stage2/glue.o: stage2/rustc$(X) stage1/$(CFG_STDLIB) \
                 rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
-	$(STAGE2) -S -o $@ -glue
+	$(STAGE2) -c -o $@ -glue
 
 # Due to make not wanting to run the same implicit rules twice on the same
 # rule tree (implicit-rule recursion prevention, see "Chains of Implicit
@@ -789,35 +789,29 @@ compile-check: tidy \
 	@$(call E, compile [boot]: $@)
 	$(BOOT) -o $@ $<
 
-%.stage0.s: %.rc $(SREQ0)
+%.stage0.o: %.rc $(SREQ0)
 	@$(call E, compile [stage0]: $@)
-	$(STAGE0) -S -o $@ $<
+	$(STAGE0) -c -o $@ $<
 
-%.stage0.s: %.rs $(SREQ0)
+%.stage0.o: %.rs $(SREQ0)
 	@$(call E, compile [stage0]: $@)
-	$(STAGE0) -S -o $@ $<
+	$(STAGE0) -c -o $@ $<
 
-%.stage1.s: %.rc $(SREQ1)
+%.stage1.o: %.rc $(SREQ1)
 	@$(call E, compile [stage1]: $@)
-	$(STAGE1) -S -o $@ $<
+	$(STAGE1) -c -o $@ $<
 
-%.stage1.s: %.rs $(SREQ1)
+%.stage1.o: %.rs $(SREQ1)
 	@$(call E, compile [stage1]: $@)
-	$(STAGE1) -S -o $@ $<
+	$(STAGE1) -c -o $@ $<
 
-%.stage2.s: %.rc $(SREQ2)
+%.stage2.o: %.rc $(SREQ2)
 	@$(call E, compile [stage2]: $@)
-	$(STAGE2) -S -o $@ $<
+	$(STAGE2) -c -o $@ $<
 
-%.stage2.s: %.rs $(SREQ2)
+%.stage2.o: %.rs $(SREQ2)
 	@$(call E, compile [stage2]: $@)
-	$(STAGE2) -S -o $@ $<
-
-
-
-%.o: %.s
-	@$(call E, assemble [llvm]: $@)
-	$(Q)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
+	$(STAGE2) -c -o $@ $<
 
 # Cancel the implicit .out rule in GNU make.
 %.out: %
