@@ -374,12 +374,13 @@ fn T_tydesc(type_names tn) -> TypeRef {
                                      T_ptr(T_nil()),
                                      tydescpp,
                                      pvoid), T_void()));
-    auto cmp_glue_fn_ty = T_ptr(T_fn(vec(T_ptr(T_nil()),
+    auto cmp_glue_fn_ty = T_ptr(T_fn(vec(T_ptr(T_i8()),
                                          T_taskptr(tn),
                                          T_ptr(T_nil()),
                                          tydescpp,
                                          pvoid,
-                                         pvoid), T_void()));
+                                         pvoid,
+                                         T_i8()), T_void()));
     auto tydesc = T_struct(vec(tydescpp,          // first_param
                                T_int(),           // size
                                T_int(),           // align
@@ -1658,7 +1659,7 @@ fn declare_tydesc(@local_ctxt cx, @ty.t t) {
 
 tag make_generic_glue_helper_fn {
     mgghf_single(val_and_ty_fn);
-    mgghf_pair(val_pair_and_ty_fn);
+    mgghf_cmp;
 }
 
 // declare_tydesc() above must have been called first.
@@ -1670,8 +1671,7 @@ fn define_tydesc(@local_ctxt cx, @ty.t t, vec[uint] ty_params) {
     make_generic_glue(cx, t, info.take_glue, mgghf_single(tg), ty_params);
     auto dg = make_drop_glue;
     make_generic_glue(cx, t, info.drop_glue, mgghf_single(dg), ty_params);
-    auto cg = make_cmp_glue;
-    make_generic_glue(cx, t, info.cmp_glue, mgghf_pair(cg), ty_params);
+    make_generic_glue(cx, t, info.cmp_glue, mgghf_cmp, ty_params);
 }
 
 fn declare_generic_glue(@local_ctxt cx,
@@ -1731,10 +1731,13 @@ fn make_generic_glue(@local_ctxt cx,
             case (mgghf_single(?single_fn)) {
                 re = single_fn(bcx, llval0, t);
             }
-            case (mgghf_pair(?pair_fn)) {
+            case (mgghf_cmp) {
                 auto llrawptr1 = llvm.LLVMGetParam(llfn, 5u);
                 auto llval1 = bcx.build.BitCast(llrawptr0, llty);
-                re = pair_fn(bcx, llval0, llval1, t);
+
+                auto llcmpval = llvm.LLVMGetParam(llfn, 6u);
+
+                re = make_cmp_glue(bcx, llval0, llval1, t, llcmpval);
             }
         }
     } else {
@@ -1982,8 +1985,8 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
     ret res(next_cx, phi);
 }
 
-fn make_cmp_glue(@block_ctxt cx, ValueRef v0, ValueRef v1, @ty.t t)
-        -> result {
+fn make_cmp_glue(@block_ctxt cx, ValueRef v0, ValueRef v1, @ty.t t,
+        ValueRef llop) -> result {
     ret res(cx, C_nil());   // TODO
 }
 

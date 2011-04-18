@@ -1,3 +1,4 @@
+// FIXME: Most of these should be uints.
 
 const int rc_base_field_refcnt = 0;
 
@@ -41,6 +42,10 @@ const int tydesc_field_obj_drop_glue = 8;
 const int tydesc_field_is_stateful = 9;
 const int tydesc_field_cmp_glue = 10;
 const int n_tydesc_fields = 11;
+
+const uint cmp_glue_op_eq = 0u;
+const uint cmp_glue_op_lt = 1u;
+const uint cmp_glue_op_le = 2u;
 
 
 const int obj_field_vtbl = 0;
