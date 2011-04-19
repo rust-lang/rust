@@ -1,6 +1,4 @@
 
-// xfail-stage0
-
 fn mk() -> int {
   ret 1;
 }

@@ -1,5 +1,4 @@
 // xfail-boot
-// xfail-stage0
 
 fn id[T](&T t) -> T {
   ret t;

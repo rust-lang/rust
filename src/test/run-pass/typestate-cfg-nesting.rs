@@ -1,5 +1,3 @@
-// xfail-stage0
-
 fn f() {
 
   auto x = 10;
