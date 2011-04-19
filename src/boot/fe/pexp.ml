@@ -140,11 +140,6 @@ and parse_optional_trailing_constrs (ps:pstate) : Ast.constrs =
       COLON -> (bump ps; parse_constrs ps)
     | _ -> [| |]
 
-and parse_opacity (ps:pstate) : Ast.opacity =
-  match peek ps with
-      ABS -> bump ps; Ast.OPA_abstract
-    |  _ -> Ast.OPA_transparent
-
 and parse_layer (ps:pstate) : Ast.layer =
   match peek ps with
       STATE -> bump ps; Ast.LAYER_state

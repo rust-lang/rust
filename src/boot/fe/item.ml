@@ -609,8 +609,7 @@ and parse_stmts_including_none (ps:pstate) : Ast.stmt array =
             spans ps stmts apos (Ast.STMT_join lval)
 
 
-       | STATE | GC
-       | ABS | NATIVE
+       | STATE | GC | NATIVE
        | MOD | OBJ | TAG | TYPE | FN | USE ->
           let items = ctxt "stmt: decl" parse_mod_item ps in
           let bpos = lexpos ps in
@@ -695,7 +694,6 @@ and parse_stmts_including_none (ps:pstate) : Ast.stmt array =
 
 and parse_ty_param (iref:int ref) (ps:pstate) : Ast.ty_param identified =
   let apos = lexpos ps in
-  let _ = Pexp.parse_opacity ps in
   let s = Pexp.parse_layer ps in
   let ident = Pexp.parse_ident ps in
   let i = !iref in
@@ -990,9 +988,8 @@ and parse_mod_item (ps:pstate)
 
     match peek ps with
 
-        STATE | GC | ABS
+        STATE | GC
       | TYPE | OBJ | TAG | FN | ITER ->
-          let _ = Pexp.parse_opacity ps in
           let layer = Pexp.parse_layer ps in
             begin
               match peek ps with

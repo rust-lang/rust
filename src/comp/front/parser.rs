@@ -1951,7 +1951,6 @@ fn parse_item_native_fn(parser p) -> @ast.native_item {
 }
 
 fn parse_native_item(parser p) -> @ast.native_item {
-    let ast.opacity opa = parse_opacity(p);
     let ast.layer lyr = parse_layer(p);
     alt (p.peek()) {
         case (token.TYPE) {
@@ -2106,18 +2105,6 @@ fn parse_item_tag(parser p) -> @ast.item {
     ret @spanned(lo, hi, item);
 }
 
-fn parse_opacity(parser p) -> ast.opacity {
-    alt (p.peek()) {
-        case (token.ABS) {
-            p.bump();
-            ret ast.op_abstract;
-        }
-        case (_) {
-            ret ast.op_transparent;
-        }
-    }
-    fail;
-}
 
 fn parse_layer(parser p) -> ast.layer {
     alt (p.peek()) {
@@ -2167,7 +2154,6 @@ fn peeking_at_item(parser p) -> bool {
 }
 
 fn parse_item(parser p) -> @ast.item {
-    let ast.opacity opa = parse_opacity(p);
     let ast.layer lyr = parse_layer(p);
 
     alt (p.peek()) {

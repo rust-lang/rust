@@ -37,11 +37,6 @@ type layer =
   | LAYER_gc
 ;;
 
-type opacity =
-    OPA_transparent
-  | OPA_abstract
-;;
-
 type mutability =
     MUT_mutable
   | MUT_immutable
@@ -719,22 +714,6 @@ and fmt_layer_qual
     : unit =
   fmt_layer ff s;
   if s <> LAYER_value then fmt ff " ";
-
-and fmt_opacity
-    (ff:Format.formatter)
-    (opa:opacity)
-    : unit =
-  match opa with
-      OPA_transparent -> ()
-    | OPA_abstract -> fmt ff "abs"
-
-and fmt_opacity_qual
-    (ff:Format.formatter)
-    (op:opacity)
-    : unit =
-  fmt_opacity ff op;
-  if op <> OPA_transparent then fmt ff " ";
-
 
 and fmt_ty_fn
     (ff:Format.formatter)

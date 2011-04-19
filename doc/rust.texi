@@ -678,7 +678,6 @@ The keywords are:
 @tab @code{auto}
 @item @code{state}
 @tab @code{gc}
-@tab @code{abs}
 @tab @code{const}
 @tab @code{thread}
 @item @code{auth}

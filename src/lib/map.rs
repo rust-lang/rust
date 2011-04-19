@@ -6,7 +6,7 @@
 type hashfn[K] = fn(&K) -> uint;
 type eqfn[K] = fn(&K, &K) -> bool;
 
-abs state type hashmap[K, V] = state obj {
+state type hashmap[K, V] = state obj {
                                  fn size() -> uint;
                                  fn insert(&K key, &V val) -> bool;
                                  fn contains_key(&K key) -> bool;
@@ -241,5 +241,5 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:

@@ -95,8 +95,6 @@
                 ("claim", CLAIM);
                 ("prove", PROVE);
 
-                ("abs", ABS);
-
                 ("state", STATE);
                 ("gc", GC);
 

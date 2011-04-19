@@ -80,9 +80,6 @@ type token =
   | CLAIM
   | PROVE
 
-  (* Opacity keywords *)
-  | ABS
-
   (* Layer keywords *)
   | STATE
   | GC
@@ -242,9 +239,6 @@ let rec string_of_tok t =
     | CHECK      -> "check"
     | CLAIM      -> "claim"
     | PROVE      -> "prove"
-
-    (* Opacity keywords *)
-    | ABS        -> "abs"
 
     (* Layer keywords *)
     | STATE      -> "state"

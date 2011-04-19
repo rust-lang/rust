@@ -119,11 +119,6 @@ tag mutability {
     maybe_mut;
 }
 
-tag opacity {
-    op_abstract;
-    op_transparent;
-}
-
 tag layer {
     layer_value;
     layer_state;

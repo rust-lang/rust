@@ -93,9 +93,6 @@ tag token {
     CLAIM;
     PROVE;
 
-    /* Opacity keywords */
-    ABS;
-
     /* Layer keywords */
     STATE;
     GC;
@@ -264,9 +261,6 @@ fn to_str(token t) -> str {
         case (CHECK) { ret "check"; }
         case (CLAIM) { ret "claim"; }
         case (PROVE) { ret "prove"; }
-
-        /* Opacity keywords */
-        case (ABS) { ret "abs"; }
 
         /* Layer keywords */
         case (STATE) { ret "state"; }

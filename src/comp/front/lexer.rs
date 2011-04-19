@@ -130,8 +130,6 @@ fn keyword_table() -> std.map.hashmap[str, token.token] {
     keywords.insert("claim", token.CLAIM);
     keywords.insert("prove", token.PROVE);
 
-    keywords.insert("abs", token.ABS);
-
     keywords.insert("state", token.STATE);
     keywords.insert("gc", token.GC);
 
