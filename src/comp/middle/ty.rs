@@ -12,6 +12,7 @@ import driver.session;
 import front.ast;
 import front.ast.mutability;
 import front.creader;
+import middle.metadata;
 import util.common;
 import util.common.new_def_hash;
 import util.common.span;
@@ -656,15 +657,21 @@ fn plain_tup_ty(vec[@t] elem_tys) -> @t {
     ret plain_ty(ty_tup(mts));
 }
 
+fn def_to_str(ast.def_id did) -> str {
+    ret #fmt("%d:%d", did._0, did._1);
+}
+
 fn hash_ty(&@t ty) -> uint {
-    ret _str.hash(ty_to_str(ty));
+    auto f = def_to_str;
+    ret _str.hash(metadata.ty_str(ty, f));
 }
 
 fn eq_ty(&@t a, &@t b) -> bool {
     // FIXME: this is gross, but I think it's safe, and I don't think writing
     // a giant function to handle all the cases is necessary when structural
     // equality will someday save the day.
-    ret _str.eq(ty_to_str(a), ty_to_str(b));
+    auto f = def_to_str;
+    ret _str.eq(metadata.ty_str(a, f), metadata.ty_str(b, f));
 }
 
 fn ann_to_type(&ast.ann ann) -> @t {
