@@ -150,7 +150,17 @@ fn main() {
   test(#fmt("%-05s", "test"), "test ");
   test(#fmt("%-05b", true), "true ");
 
-  // TODO: Precision overrides 0-padding
+  // Precision overrides 0-padding
+  test(#fmt("%06.5d", 0), " 00000");
+  test(#fmt("%06.5u", 0u), " 00000");
+  test(#fmt("%06.5x", 0u), " 00000");
+  test(#fmt("%06.5d", 10), " 00010");
+  test(#fmt("%06.5d", -10), "-00010");
+  test(#fmt("%06.5u", 10u), " 00010");
+  test(#fmt("%06.5s", "test"), "  test");
+  test(#fmt("%06.5x", 127u), " 0007f");
+  test(#fmt("%06.5X", 127u), " 0007F");
+
   // TODO: Padding and +
   // TODO: Padding and ' '
 }
