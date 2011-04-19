@@ -171,20 +171,25 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         fn make_flags(common.span sp, vec[flag] flags) -> @ast.expr {
             let vec[@ast.expr] flagexprs = vec();
             for (flag f in flags) {
+                auto fstr;
                 alt (f) {
                     case (flag_left_justify) {
-                        auto fstr = "flag_left_justify";
-                        flagexprs += vec(make_rt_path_expr(sp, fstr));
+                        fstr = "flag_left_justify";
                     }
-                    case (flag_sign_always) {
-                        auto fstr = "flag_sign_always";
-                        flagexprs += vec(make_rt_path_expr(sp, fstr));
+                    case (flag_left_zero_pad) {
+                        fstr = "flag_left_zero_pad";
                     }
                     case (flag_space_for_sign) {
-                        auto fstr = "flag_space_for_sign";
-                        flagexprs += vec(make_rt_path_expr(sp, fstr));
+                        fstr = "flag_space_for_sign";
+                    }
+                    case (flag_sign_always) {
+                        fstr = "flag_sign_always";
+                    }
+                    case (flag_alternate) {
+                        fstr = "flag_alternate";
                     }
                 }
+                flagexprs += vec(make_rt_path_expr(sp, fstr));
             }
 
             // FIXME: 0-length vectors can't have their type inferred
@@ -318,6 +323,8 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                             + "signed #fmt conversions";
                         fail;
                     }
+                }
+                case (flag_left_zero_pad) {
                 }
                 case (_) {
                     log unsupported;

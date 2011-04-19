@@ -306,8 +306,10 @@ mod RT {
 
     tag flag {
         flag_left_justify;
+        flag_left_zero_pad;
         flag_space_for_sign;
         flag_sign_always;
+        flag_alternate;
         // FIXME: This is a hack to avoid creating 0-length vec exprs,
         // which have some difficulty typechecking currently. See
         // comments in front.extfmt.make_flags
@@ -344,7 +346,7 @@ mod RT {
                 s = " " + s;
             }
         }
-        ret pad(cv, s);
+        ret pad(cv, s, pad_signed);
     }
 
     fn conv_uint(&conv cv, uint u) -> str {
@@ -364,7 +366,7 @@ mod RT {
                 res = uint_to_str_prec(u, 2u, prec);
             }
         }
-        ret pad(cv, res);
+        ret pad(cv, res, pad_unsigned);
     }
 
     fn conv_bool(&conv cv, bool b) -> str {
@@ -396,7 +398,7 @@ mod RT {
                 }
             }
         }
-        ret pad(cv, unpadded);
+        ret pad(cv, unpadded, pad_nozero);
     }
 
     // Convert an int to string with minimum number of digits. If precision is
@@ -449,7 +451,13 @@ mod RT {
         ret _str.unsafe_from_bytes(svec);
     }
 
-    fn pad(&conv cv, str s) -> str {
+    tag pad_type {
+        pad_signed;
+        pad_unsigned;
+        pad_nozero;
+    }
+
+    fn pad(&conv cv, str s, pad_type pt) -> str {
         alt (cv.width) {
             case (count_implied) {
                 ret s;
@@ -459,11 +467,47 @@ mod RT {
                 auto uwidth = width as uint;
                 auto strlen = _str.char_len(s);
                 if (strlen < uwidth) {
+                    auto zero_padding = false;
+                    auto signed = false;
+                    auto padchar = ' ';
+                    alt (pt) {
+                        case (pad_nozero) {
+                            // fallthrough
+                        }
+                        case (pad_signed) {
+                            signed = true;
+                            if (have_flag(cv.flags, flag_left_zero_pad)) {
+                                padchar = '0';
+                                zero_padding = true;
+                            }
+                        }
+                        case (pad_unsigned) {
+                            if (have_flag(cv.flags, flag_left_zero_pad)) {
+                                padchar = '0';
+                                zero_padding = true;
+                            }
+                        }
+                    }
+
                     auto diff = uwidth - strlen;
-                    auto padstr = str_init_elt(' ', diff);
+                    auto padstr = str_init_elt(padchar, diff);
                     if (have_flag(cv.flags, flag_left_justify)) {
                         ret s + padstr;
                     } else {
+                        // This is completely heinous. If we have a signed
+                        // value then potentially rip apart the intermediate
+                        // result and insert some zeros. It may make sense
+                        // to convert zero padding to a precision instead.
+                        if (signed
+                            && zero_padding
+                            && _str.byte_len(s) > 0u
+                            && s.(0) == '-' as u8) {
+
+                            auto bytelen = _str.byte_len(s);
+                            auto numpart = _str.substr(s, 1u, bytelen - 1u);
+                            ret "-" + padstr + numpart;
+                        }
+
                         ret padstr + s;
                     }
                 } else {

@@ -126,4 +126,21 @@ fn main() {
   // Plus overrides space
   test(#fmt("% +d", 0), "+0");
   test(#fmt("%+ d", 0), "+0");
+
+  // 0-padding
+  test(#fmt("%05d", 0), "00000");
+  test(#fmt("%05d", 1), "00001");
+  test(#fmt("%05d", -1), "-0001");
+  test(#fmt("%05u", 1u), "00001");
+  test(#fmt("%05x", 127u), "0007f");
+  test(#fmt("%05X", 127u), "0007F");
+  test(#fmt("%05t", 3u), "00011");
+  // 0-padding a string is undefined but glibc does this:
+  test(#fmt("%05s", "test"), " test");
+  test(#fmt("%05b", true), " true");
+
+  // TODO: Left-justify overrides 0-padding
+  // TODO: Precision overrides 0-padding
+  // TODO: Padding and +
+  // TODO: Padding and ' '
 }
