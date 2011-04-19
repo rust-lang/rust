@@ -3583,12 +3583,12 @@ fn trans_for_each(@block_ctxt cx,
     bcx.build.Store(lllvar, lllvarptr);
     fcx.llupvars.insert(decl_id, lllvarptr);
 
-    auto res = trans_block(bcx, body);
+    auto r = trans_block(bcx, body);
 
     // Tie up the llallocas -> lltop edge.
     new_builder(fcx.llallocas).Br(lltop);
 
-    res.bcx.build.RetVoid();
+    r.bcx.build.RetVoid();
 
 
     // Step 3: Call iter passing [lliterbody, llenv], plus other args.
@@ -3611,10 +3611,11 @@ fn trans_for_each(@block_ctxt cx,
             cx.build.Store(llenvblobptr, env_cell);
 
             // log "lliterbody: " + val_str(cx.fcx.lcx.ccx.tn, lliterbody);
-            ret trans_call(cx, f,
+            r = trans_call(cx, f,
                            some[ValueRef](cx.build.Load(pair)),
                            args,
                            ann);
+            ret res(r.bcx, C_nil());
         }
     }
     fail;
