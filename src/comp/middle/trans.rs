@@ -1658,7 +1658,7 @@ fn declare_tydesc(@local_ctxt cx, @ty.t t) {
 }
 
 tag make_generic_glue_helper_fn {
-    mgghf_single(val_and_ty_fn);
+    mgghf_single(fn(@block_ctxt cx, ValueRef v, @ty.t t));
     mgghf_cmp;
 }
 
@@ -1694,7 +1694,6 @@ fn make_generic_glue(@local_ctxt cx,
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
 
-    auto re;
     if (!ty.type_is_scalar(t)) {
 
         // Any nontrivial glue is with values passed *by alias*; this is a
@@ -1729,7 +1728,7 @@ fn make_generic_glue(@local_ctxt cx,
 
         alt (helper) {
             case (mgghf_single(?single_fn)) {
-                re = single_fn(bcx, llval0, t);
+                single_fn(bcx, llval0, t);
             }
             case (mgghf_cmp) {
                 auto llrawptr1 = llvm.LLVMGetParam(llfn, 5u);
@@ -1737,14 +1736,12 @@ fn make_generic_glue(@local_ctxt cx,
 
                 auto llcmpval = llvm.LLVMGetParam(llfn, 6u);
 
-                re = make_cmp_glue(bcx, llval0, llval1, t, llcmpval);
+                make_cmp_glue(bcx, llval0, llval1, t, llcmpval);
             }
         }
     } else {
-        re = res(bcx, C_nil());
+        bcx.build.RetVoid();
     }
-
-    re.bcx.build.RetVoid();
 
     // Tie up the llallocas -> lltop edge.
     new_builder(fcx.llallocas).Br(lltop);
@@ -1752,16 +1749,19 @@ fn make_generic_glue(@local_ctxt cx,
     ret llfn;
 }
 
-fn make_take_glue(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
+fn make_take_glue(@block_ctxt cx, ValueRef v, @ty.t t) {
     // NB: v is an *alias* of type t here, not a direct value.
+    auto bcx;
     if (ty.type_is_boxed(t)) {
-        ret incr_refcnt_of_boxed(cx, cx.build.Load(v));
+        bcx = incr_refcnt_of_boxed(cx, cx.build.Load(v)).bcx;
 
     } else if (ty.type_is_structural(t)) {
-        ret iter_structural_ty(cx, v, t,
-                               bind take_ty(_, _, _));
+        bcx = iter_structural_ty(cx, v, t,
+                                 bind take_ty(_, _, _)).bcx;
+    } else {
+        bcx = cx;
     }
-    ret res(cx, C_nil());
+    bcx.build.RetVoid();
 }
 
 fn incr_refcnt_of_boxed(@block_ctxt cx, ValueRef box_ptr) -> result {
@@ -1783,12 +1783,13 @@ fn incr_refcnt_of_boxed(@block_ctxt cx, ValueRef box_ptr) -> result {
     ret res(next_cx, C_nil());
 }
 
-fn make_drop_glue(@block_ctxt cx, ValueRef v0, @ty.t t) -> result {
+fn make_drop_glue(@block_ctxt cx, ValueRef v0, @ty.t t) {
     // NB: v0 is an *alias* of type t here, not a direct value.
+    auto rslt;
     alt (t.struct) {
         case (ty.ty_str) {
             auto v = cx.build.Load(v0);
-            ret decr_refcnt_and_if_zero
+            rslt = decr_refcnt_and_if_zero
                 (cx, v, bind trans_non_gc_free(_, v),
                  "free string",
                  T_int(), C_int(0));
@@ -1803,10 +1804,10 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, @ty.t t) -> result {
                 ret trans_non_gc_free(res.bcx, v);
             }
             auto v = cx.build.Load(v0);
-            ret decr_refcnt_and_if_zero(cx, v,
-                                        bind hit_zero(_, v, t),
-                                        "free vector",
-                                        T_int(), C_int(0));
+            rslt = decr_refcnt_and_if_zero(cx, v,
+                                          bind hit_zero(_, v, t),
+                                          "free vector",
+                                          T_int(), C_int(0));
         }
 
         case (ty.ty_box(?body_mt)) {
@@ -1822,10 +1823,10 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, @ty.t t) -> result {
                 ret trans_non_gc_free(res.bcx, v);
             }
             auto v = cx.build.Load(v0);
-            ret decr_refcnt_and_if_zero(cx, v,
-                                        bind hit_zero(_, v, body_mt.ty),
-                                        "free box",
-                                        T_int(), C_int(0));
+            rslt = decr_refcnt_and_if_zero(cx, v,
+                                           bind hit_zero(_, v, body_mt.ty),
+                                           "free box",
+                                           T_int(), C_int(0));
         }
 
         case (ty.ty_port(_)) {
@@ -1834,10 +1835,10 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, @ty.t t) -> result {
                                  vec(vp2i(cx, v)));
             }
             auto v = cx.build.Load(v0);
-            ret decr_refcnt_and_if_zero(cx, v,
-                                        bind hit_zero(_, v),
-                                        "free port",
-                                        T_int(), C_int(0));
+            rslt = decr_refcnt_and_if_zero(cx, v,
+                                           bind hit_zero(_, v),
+                                           "free port",
+                                           T_int(), C_int(0));
         }
 
         case (ty.ty_chan(_)) {
@@ -1846,10 +1847,10 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, @ty.t t) -> result {
                                  vec(vp2i(cx, v)));
             }
             auto v = cx.build.Load(v0);
-            ret decr_refcnt_and_if_zero(cx, v,
-                                        bind hit_zero(_, v),
-                                        "free chan",
-                                        T_int(), C_int(0));
+            rslt = decr_refcnt_and_if_zero(cx, v,
+                                           bind hit_zero(_, v),
+                                           "free chan",
+                                           T_int(), C_int(0));
         }
 
         case (ty.ty_obj(_)) {
@@ -1880,10 +1881,10 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, @ty.t t) -> result {
 
             auto boxptr = cx.build.Load(box_cell);
 
-            ret decr_refcnt_and_if_zero(cx, boxptr,
-                                        bind hit_zero(_, boxptr),
-                                        "free obj",
-                                        T_int(), C_int(0));
+            rslt = decr_refcnt_and_if_zero(cx, boxptr,
+                                           bind hit_zero(_, boxptr),
+                                           "free obj",
+                                           T_int(), C_int(0));
         }
 
         case (ty.ty_fn(_,_,_)) {
@@ -1919,27 +1920,26 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, @ty.t t) -> result {
 
             auto boxptr = cx.build.Load(box_cell);
 
-            ret decr_refcnt_and_if_zero(cx, boxptr,
-                                        bind hit_zero(_, boxptr),
-                                        "free fn",
-                                        T_int(), C_int(0));
+            rslt = decr_refcnt_and_if_zero(cx, boxptr,
+                                           bind hit_zero(_, boxptr),
+                                           "free fn",
+                                           T_int(), C_int(0));
         }
 
         case (_) {
             if (ty.type_is_structural(t)) {
-                ret iter_structural_ty(cx, v0, t,
-                                       bind drop_ty(_, _, _));
+                rslt = iter_structural_ty(cx, v0, t,
+                                          bind drop_ty(_, _, _));
 
             } else if (ty.type_is_scalar(t) ||
                        ty.type_is_native(t) ||
                        ty.type_is_nil(t)) {
-                ret res(cx, C_nil());
+                rslt = res(cx, C_nil());
             }
         }
     }
-    cx.fcx.lcx.ccx.sess.bug("bad type in trans.make_drop_glue_inner: " +
-                        ty.ty_to_str(t));
-    fail;
+
+    rslt.bcx.build.RetVoid();
 }
 
 fn decr_refcnt_and_if_zero(@block_ctxt cx,
@@ -1986,8 +1986,8 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
 }
 
 fn make_cmp_glue(@block_ctxt cx, ValueRef v0, ValueRef v1, @ty.t t,
-        ValueRef llop) -> result {
-    ret res(cx, C_nil());   // TODO
+        ValueRef llop) {
+    cx.build.RetVoid();     // TODO
 }
 
 
