@@ -467,33 +467,35 @@ mod RT {
                 auto uwidth = width as uint;
                 auto strlen = _str.char_len(s);
                 if (strlen < uwidth) {
-                    auto zero_padding = false;
-                    auto signed = false;
                     auto padchar = ' ';
-                    alt (pt) {
-                        case (pad_nozero) {
-                            // fallthrough
-                        }
-                        case (pad_signed) {
-                            signed = true;
-                            if (have_flag(cv.flags, flag_left_zero_pad)) {
-                                padchar = '0';
-                                zero_padding = true;
-                            }
-                        }
-                        case (pad_unsigned) {
-                            if (have_flag(cv.flags, flag_left_zero_pad)) {
-                                padchar = '0';
-                                zero_padding = true;
-                            }
-                        }
-                    }
-
                     auto diff = uwidth - strlen;
-                    auto padstr = str_init_elt(padchar, diff);
                     if (have_flag(cv.flags, flag_left_justify)) {
+                        auto padstr = str_init_elt(padchar, diff);
                         ret s + padstr;
                     } else {
+                        auto zero_padding = false;
+                        auto signed = false;
+                        alt (pt) {
+                            case (pad_nozero) {
+                                // fallthrough
+                            }
+                            case (pad_signed) {
+                                signed = true;
+                                if (have_flag(cv.flags, flag_left_zero_pad)) {
+                                    padchar = '0';
+                                    zero_padding = true;
+                                }
+                            }
+                            case (pad_unsigned) {
+                                if (have_flag(cv.flags, flag_left_zero_pad)) {
+                                    padchar = '0';
+                                    zero_padding = true;
+                                }
+                            }
+                        }
+
+                        auto padstr = str_init_elt(padchar, diff);
+
                         // This is completely heinous. If we have a signed
                         // value then potentially rip apart the intermediate
                         // result and insert some zeros. It may make sense

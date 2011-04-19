@@ -139,7 +139,17 @@ fn main() {
   test(#fmt("%05s", "test"), " test");
   test(#fmt("%05b", true), " true");
 
-  // TODO: Left-justify overrides 0-padding
+  // Left-justify overrides 0-padding
+  test(#fmt("%-05d", 0), "0    ");
+  test(#fmt("%-05d", 1), "1    ");
+  test(#fmt("%-05d", -1), "-1   ");
+  test(#fmt("%-05u", 1u), "1    ");
+  test(#fmt("%-05x", 127u), "7f   ");
+  test(#fmt("%-05X", 127u), "7F   ");
+  test(#fmt("%-05t", 3u), "11   ");
+  test(#fmt("%-05s", "test"), "test ");
+  test(#fmt("%-05b", true), "true ");
+
   // TODO: Precision overrides 0-padding
   // TODO: Padding and +
   // TODO: Padding and ' '
