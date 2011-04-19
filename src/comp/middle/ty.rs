@@ -437,6 +437,13 @@ fn type_is_nil(@t ty) -> bool {
     fail;
 }
 
+fn type_is_bool(@t ty) -> bool {
+    alt (ty.struct) {
+        case (ty_bool) { ret true; }
+        case (_) { ret false; }
+    }
+}
+
 
 fn type_is_structural(@t ty) -> bool {
     alt (ty.struct) {

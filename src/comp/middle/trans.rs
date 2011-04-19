@@ -374,7 +374,7 @@ fn T_tydesc(type_names tn) -> TypeRef {
                                      T_ptr(T_nil()),
                                      tydescpp,
                                      pvoid), T_void()));
-    auto cmp_glue_fn_ty = T_ptr(T_fn(vec(T_ptr(T_i8()),
+    auto cmp_glue_fn_ty = T_ptr(T_fn(vec(T_ptr(T_i1()),
                                          T_taskptr(tn),
                                          T_ptr(T_nil()),
                                          tydescpp,
@@ -885,6 +885,10 @@ fn C_bool(bool b) -> ValueRef {
 
 fn C_int(int i) -> ValueRef {
     ret C_integral(i, T_int());
+}
+
+fn C_i8(uint i) -> ValueRef {
+    ret C_integral(i as int, T_i8());
 }
 
 // This is a 'c-like' raw string, which differs from
@@ -1730,7 +1734,7 @@ fn make_generic_glue(@local_ctxt cx,
         }
         case (mgghf_cmp) {
             auto llrawptr1 = llvm.LLVMGetParam(llfn, 5u);
-            auto llval1 = bcx.build.BitCast(llrawptr0, llty);
+            auto llval1 = bcx.build.BitCast(llrawptr1, llty);
 
             auto llcmpval = llvm.LLVMGetParam(llfn, 6u);
 
@@ -1980,9 +1984,257 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
     ret res(next_cx, phi);
 }
 
-fn make_cmp_glue(@block_ctxt cx, ValueRef v0, ValueRef v1, @ty.t t,
-        ValueRef llop) {
-    cx.build.RetVoid();     // TODO
+// Structural comparison: a rather involved form of glue.
+
+fn make_cmp_glue(@block_ctxt cx,
+                 ValueRef lhs0,
+                 ValueRef rhs0,
+                 @ty.t t,
+                 ValueRef llop) {
+    auto lhs = load_if_immediate(cx, lhs0, t);
+    auto rhs = load_if_immediate(cx, rhs0, t);
+
+    if (ty.type_is_scalar(t)) {
+        make_scalar_cmp_glue(cx, lhs, rhs, t, llop);
+
+    } else if (ty.type_is_box(t)) {
+        lhs = cx.build.GEP(lhs, vec(C_int(0), C_int(abi.box_rc_field_body)));
+        rhs = cx.build.GEP(rhs, vec(C_int(0), C_int(abi.box_rc_field_body)));
+        auto rslt = call_cmp_glue(cx, lhs, rhs, t, llop);
+
+        rslt.bcx.build.Store(rslt.val, cx.fcx.llretptr);
+        rslt.bcx.build.RetVoid();
+
+    } else if (ty.type_is_structural(t)
+               || ty.type_is_sequence(t)) {
+
+        auto scx = new_sub_block_ctxt(cx, "structural compare start");
+        auto next = new_sub_block_ctxt(cx, "structural compare end");
+        cx.build.Br(scx.llbb);
+
+        /*
+         * We're doing lexicographic comparison here. We start with the
+         * assumption that the two input elements are equal. Depending on
+         * operator, this means that the result is either true or false;
+         * equality produces 'true' for ==, <= and >=. It produces 'false' for
+         * !=, < and >.
+         *
+         * We then move one element at a time through the structure checking
+         * for pairwise element equality. If we have equality, our assumption
+         * about overall sequence equality is not modified, so we have to move
+         * to the next element.
+         *
+         * If we do not have pairwise element equality, we have reached an
+         * element that 'decides' the lexicographic comparison. So we exit the
+         * loop with a flag that indicates the true/false sense of that
+         * decision, by testing the element again with the operator we're
+         * interested in.
+         *
+         * When we're lucky, LLVM should be able to fold some of these two
+         * tests together (as they're applied to the same operands and in some
+         * cases are sometimes redundant). But we don't bother trying to
+         * optimize combinations like that, at this level.
+         */
+
+        auto flag = alloca(scx, T_i1());
+        llvm.LLVMSetValueName(flag, _str.buf("flag"));
+
+        auto r;
+        if (ty.type_is_sequence(t)) {
+
+            // If we hit == all the way through the minimum-shared-length
+            // section, default to judging the relative sequence lengths.
+            r = compare_integral_values(scx,
+                                        vec_fill(scx, lhs),
+                                        vec_fill(scx, rhs),
+                                        false,
+                                        llop);
+            r.bcx.build.Store(r.val, flag);
+
+        } else {
+            // == and <= default to true if they find == all the way. <
+            // defaults to false if it finds == all the way.
+            auto result_if_equal = scx.build.ICmp(lib.llvm.LLVMIntNE, llop,
+                                                  C_i8(abi.cmp_glue_op_lt));
+            scx.build.Store(result_if_equal, flag);
+            r = res(scx, C_nil());
+        }
+
+        fn inner(@block_ctxt last_cx,
+                 bool load_inner,
+                 ValueRef flag,
+                 ValueRef llop,
+                 @block_ctxt cx,
+                 ValueRef av0,
+                 ValueRef bv0,
+                 @ty.t t) -> result {
+
+            auto cnt_cx = new_sub_block_ctxt(cx, "continue_comparison");
+            auto stop_cx = new_sub_block_ctxt(cx, "stop_comparison");
+
+            auto av = av0;
+            auto bv = bv0;
+            if (load_inner) {
+                // If `load_inner` is true, then the pointer type will always
+                // be i8, because the data part of a vector always has type
+                // i8[]. So we need to cast it to the proper type.
+
+                if (!ty.type_has_dynamic_size(t)) {
+                    auto llelemty = T_ptr(type_of(last_cx.fcx.lcx.ccx, t));
+                    av = cx.build.PointerCast(av, llelemty);
+                    bv = cx.build.PointerCast(bv, llelemty);
+                }
+
+                av = load_if_immediate(cx, av, t);
+                bv = load_if_immediate(cx, bv, t);
+            }
+
+            // First 'eq' comparison: if so, continue to next elts.
+            auto eq_r = call_cmp_glue(cx, av, bv, t,
+                                      C_i8(abi.cmp_glue_op_eq));
+            eq_r.bcx.build.CondBr(eq_r.val, cnt_cx.llbb, stop_cx.llbb);
+
+            // Second 'op' comparison: find out how this elt-pair decides.
+            auto stop_r = call_cmp_glue(stop_cx, av, bv, t, llop);
+            stop_r.bcx.build.Store(stop_r.val, flag);
+            stop_r.bcx.build.Br(last_cx.llbb);
+            ret res(cnt_cx, C_nil());
+        }
+
+        if (ty.type_is_structural(t)) {
+            r = iter_structural_ty_full(r.bcx, lhs, rhs, t,
+                                        bind inner(next, false, flag, llop,
+                                                   _, _, _, _));
+        } else {
+            auto lhs_p0 = vec_p0(r.bcx, lhs);
+            auto rhs_p0 = vec_p0(r.bcx, rhs);
+            auto min_len = umin(r.bcx, vec_fill(r.bcx, lhs),
+                                vec_fill(r.bcx, rhs));
+            auto rhs_lim = r.bcx.build.GEP(rhs_p0, vec(min_len));
+            auto elt_ty = ty.sequence_element_type(t);
+            r = size_of(r.bcx, elt_ty);
+            r = iter_sequence_raw(r.bcx, lhs_p0, rhs_p0, rhs_lim, r.val,
+                                  bind inner(next, true, flag, llop,
+                                             _, _, _, elt_ty));
+        }
+
+        r.bcx.build.Br(next.llbb);
+        auto v = next.build.Load(flag);
+
+        next.build.Store(v, cx.fcx.llretptr);
+        next.build.RetVoid();
+
+
+    } else {
+        // FIXME: compare obj, fn by pointer?
+        trans_fail(cx, none[common.span],
+                   "attempt to compare values of type " + ty.ty_to_str(t));
+    }
+}
+
+// A helper function to create scalar comparison glue.
+fn make_scalar_cmp_glue(@block_ctxt cx, ValueRef lhs, ValueRef rhs, @ty.t t,
+                        ValueRef llop) {
+    if (ty.type_is_fp(t)) {
+        make_fp_cmp_glue(cx, lhs, rhs, t, llop);
+        ret;
+    }
+
+    if (ty.type_is_integral(t) || ty.type_is_bool(t)) {
+        make_integral_cmp_glue(cx, lhs, rhs, t, llop);
+        ret;
+    }
+
+    if (ty.type_is_nil(t)) {
+        cx.build.Store(C_bool(true), cx.fcx.llretptr);
+        cx.build.RetVoid();
+        ret;
+    }
+
+    trans_fail(cx, none[common.span],
+               "attempt to compare values of type " + ty.ty_to_str(t));
+}
+
+// A helper function to create floating point comparison glue.
+fn make_fp_cmp_glue(@block_ctxt cx, ValueRef lhs, ValueRef rhs, @ty.t fptype,
+                    ValueRef llop) {
+    auto last_cx = new_sub_block_ctxt(cx, "last");
+
+    auto eq_cx = new_sub_block_ctxt(cx, "eq");
+    auto eq_result = eq_cx.build.FCmp(lib.llvm.LLVMRealUEQ, lhs, rhs);
+    eq_cx.build.Br(last_cx.llbb);
+
+    auto lt_cx = new_sub_block_ctxt(cx, "lt");
+    auto lt_result = lt_cx.build.FCmp(lib.llvm.LLVMRealULT, lhs, rhs);
+    lt_cx.build.Br(last_cx.llbb);
+
+    auto le_cx = new_sub_block_ctxt(cx, "le");
+    auto le_result = le_cx.build.FCmp(lib.llvm.LLVMRealULE, lhs, rhs);
+    le_cx.build.Br(last_cx.llbb);
+
+    auto unreach_cx = new_sub_block_ctxt(cx, "unreach");
+    unreach_cx.build.Unreachable();
+
+    auto llswitch = cx.build.Switch(llop, unreach_cx.llbb, 3u);
+    llvm.LLVMAddCase(llswitch, C_i8(abi.cmp_glue_op_eq), eq_cx.llbb);
+    llvm.LLVMAddCase(llswitch, C_i8(abi.cmp_glue_op_lt), lt_cx.llbb);
+    llvm.LLVMAddCase(llswitch, C_i8(abi.cmp_glue_op_le), le_cx.llbb);
+
+    auto last_result =
+        last_cx.build.Phi(T_i1(), vec(eq_result, lt_result, le_result),
+                          vec(eq_cx.llbb, lt_cx.llbb, le_cx.llbb));
+    last_cx.build.Store(last_result, cx.fcx.llretptr);
+    last_cx.build.RetVoid();
+}
+
+// A helper function to compare integral values. This is used by both
+// `make_integral_cmp_glue` and `make_cmp_glue`.
+fn compare_integral_values(@block_ctxt cx, ValueRef lhs, ValueRef rhs,
+                           bool signed, ValueRef llop) -> result {
+    auto lt_cmp; auto le_cmp;
+    if (signed) {
+        lt_cmp = lib.llvm.LLVMIntSLT;
+        le_cmp = lib.llvm.LLVMIntSLE;
+    } else {
+        lt_cmp = lib.llvm.LLVMIntULT;
+        le_cmp = lib.llvm.LLVMIntULE;
+    }
+
+    auto last_cx = new_sub_block_ctxt(cx, "last");
+
+    auto eq_cx = new_sub_block_ctxt(cx, "eq");
+    auto eq_result = eq_cx.build.ICmp(lib.llvm.LLVMIntEQ, lhs, rhs);
+    eq_cx.build.Br(last_cx.llbb);
+
+    auto lt_cx = new_sub_block_ctxt(cx, "lt");
+    auto lt_result = lt_cx.build.ICmp(lt_cmp, lhs, rhs);
+    lt_cx.build.Br(last_cx.llbb);
+
+    auto le_cx = new_sub_block_ctxt(cx, "le");
+    auto le_result = le_cx.build.ICmp(le_cmp, lhs, rhs);
+    le_cx.build.Br(last_cx.llbb);
+
+    auto unreach_cx = new_sub_block_ctxt(cx, "unreach");
+    unreach_cx.build.Unreachable();
+
+    auto llswitch = cx.build.Switch(llop, unreach_cx.llbb, 3u);
+    llvm.LLVMAddCase(llswitch, C_i8(abi.cmp_glue_op_eq), eq_cx.llbb);
+    llvm.LLVMAddCase(llswitch, C_i8(abi.cmp_glue_op_lt), lt_cx.llbb);
+    llvm.LLVMAddCase(llswitch, C_i8(abi.cmp_glue_op_le), le_cx.llbb);
+
+    auto last_result =
+        last_cx.build.Phi(T_i1(), vec(eq_result, lt_result, le_result),
+                          vec(eq_cx.llbb, lt_cx.llbb, le_cx.llbb));
+    ret res(last_cx, last_result);
+}
+
+// A helper function to create integral comparison glue.
+fn make_integral_cmp_glue(@block_ctxt cx, ValueRef lhs, ValueRef rhs,
+                          @ty.t intype, ValueRef llop) {
+    auto r = compare_integral_values(cx, lhs, rhs, ty.type_is_signed(intype),
+                                     llop);
+    r.bcx.build.Store(r.val, r.bcx.fcx.llretptr);
+    r.bcx.build.RetVoid();
 }
 
 
@@ -2403,6 +2655,42 @@ fn call_tydesc_glue(@block_ctxt cx, ValueRef v, @ty.t t, int field) {
                           td.val, field);
 }
 
+fn call_cmp_glue(@block_ctxt cx, ValueRef lhs, ValueRef rhs, @ty.t t,
+                 ValueRef llop) -> result {
+    // We can't use call_tydesc_glue_full() and friends here because compare
+    // glue has a special signature.
+
+    auto lllhs = spill_if_immediate(cx, lhs, t);
+    auto llrhs = spill_if_immediate(cx, rhs, t);
+
+    auto llrawlhsptr = cx.build.BitCast(lllhs, T_ptr(T_i8()));
+    auto llrawrhsptr = cx.build.BitCast(llrhs, T_ptr(T_i8()));
+
+    auto r = get_tydesc(cx, t);
+    auto lltydescs =
+        r.bcx.build.GEP(r.val, vec(C_int(0),
+                                   C_int(abi.tydesc_field_first_param)));
+    lltydescs = r.bcx.build.Load(lltydescs);
+    auto llfnptr =
+        r.bcx.build.GEP(r.val, vec(C_int(0),
+                                   C_int(abi.tydesc_field_cmp_glue)));
+    auto llfn = r.bcx.build.Load(llfnptr);
+
+    auto llcmpresultptr = r.bcx.build.Alloca(T_i1());
+
+    let vec[ValueRef] llargs = vec(llcmpresultptr,
+                                   r.bcx.fcx.lltaskptr,
+                                   C_null(T_ptr(T_nil())),
+                                   lltydescs,
+                                   llrawlhsptr,
+                                   llrawrhsptr,
+                                   llop);
+
+    r.bcx.build.FastCall(llfn, llargs);
+
+    ret res(r.bcx, r.bcx.build.Load(llcmpresultptr));
+}
+
 fn take_ty(@block_ctxt cx, ValueRef v, @ty.t t) -> result {
     if (!ty.type_is_scalar(t)) {
         call_tydesc_glue(cx, v, t, abi.tydesc_field_take_glue);
@@ -2661,7 +2949,7 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
 
 fn trans_compare(@block_ctxt cx0, ast.binop op, @ty.t t0,
                  ValueRef lhs0, ValueRef rhs0) -> result {
-
+    // Autoderef both sides.
     auto cx = cx0;
 
     auto lhs_r = autoderef(cx, lhs0, t0);
@@ -2674,194 +2962,30 @@ fn trans_compare(@block_ctxt cx0, ast.binop op, @ty.t t0,
 
     auto t = autoderefed_ty(t0);
 
-    if (ty.type_is_scalar(t)) {
-        ret res(cx, trans_scalar_compare(cx, op, t, lhs, rhs));
-
-    } else if (ty.type_is_structural(t)
-               || ty.type_is_sequence(t)) {
-
-        auto scx = new_sub_block_ctxt(cx, "structural compare start");
-        auto next = new_sub_block_ctxt(cx, "structural compare end");
-        cx.build.Br(scx.llbb);
-
-        /*
-         * We're doing lexicographic comparison here. We start with the
-         * assumption that the two input elements are equal. Depending on
-         * operator, this means that the result is either true or false;
-         * equality produces 'true' for ==, <= and >=. It produces 'false' for
-         * !=, < and >.
-         *
-         * We then move one element at a time through the structure checking
-         * for pairwise element equality. If we have equality, our assumption
-         * about overall sequence equality is not modified, so we have to move
-         * to the next element.
-         *
-         * If we do not have pairwise element equality, we have reached an
-         * element that 'decides' the lexicographic comparison. So we exit the
-         * loop with a flag that indicates the true/false sense of that
-         * decision, by testing the element again with the operator we're
-         * interested in.
-         *
-         * When we're lucky, LLVM should be able to fold some of these two
-         * tests together (as they're applied to the same operands and in some
-         * cases are sometimes redundant). But we don't bother trying to
-         * optimize combinations like that, at this level.
-         */
-
-        auto flag = alloca(scx, T_i1());
-
-        if (ty.type_is_sequence(t)) {
-
-            // If we hit == all the way through the minimum-shared-length
-            // section, default to judging the relative sequence lengths.
-            auto len_cmp =
-                trans_integral_compare(scx, op, plain_ty(ty.ty_uint),
-                                       vec_fill(scx, lhs),
-                                       vec_fill(scx, rhs));
-            scx.build.Store(len_cmp, flag);
-
-        } else {
-            auto T = C_integral(1, T_i1());
-            auto F = C_integral(0, T_i1());
-
-            alt (op) {
-                // ==, <= and >= default to true if they find == all the way.
-                case (ast.eq) { scx.build.Store(T, flag); }
-                case (ast.le) { scx.build.Store(T, flag); }
-                case (ast.ge) { scx.build.Store(T, flag); }
-                case (_) {
-                    // < > default to false if they find == all the way.
-                    scx.build.Store(F, flag);
-                }
-
-            }
-        }
-
-        fn inner(@block_ctxt last_cx,
-                 bool load_inner,
-                 ValueRef flag,
-                 ast.binop op,
-                 @block_ctxt cx,
-                 ValueRef av0,
-                 ValueRef bv0,
-                 @ty.t t) -> result {
-
-            auto cnt_cx = new_sub_block_ctxt(cx, "continue comparison");
-            auto stop_cx = new_sub_block_ctxt(cx, "stop comparison");
-
-            auto av = av0;
-            auto bv = bv0;
-            if (load_inner) {
-                av = load_if_immediate(cx, av, t);
-                bv = load_if_immediate(cx, bv, t);
-            }
-
-            // First 'eq' comparison: if so, continue to next elts.
-            auto eq_r = trans_compare(cx, ast.eq, t, av, bv);
-            eq_r.bcx.build.CondBr(eq_r.val, cnt_cx.llbb, stop_cx.llbb);
-
-            // Second 'op' comparison: find out how this elt-pair decides.
-            auto stop_r = trans_compare(stop_cx, op, t, av, bv);
-            stop_r.bcx.build.Store(stop_r.val, flag);
-            stop_r.bcx.build.Br(last_cx.llbb);
-            ret res(cnt_cx, C_nil());
-        }
-
-        auto r;
-        if (ty.type_is_structural(t)) {
-            r = iter_structural_ty_full(scx, lhs, rhs, t,
-                                        bind inner(next, false, flag, op,
-                                                   _, _, _, _));
-        } else {
-            auto lhs_p0 = vec_p0(scx, lhs);
-            auto rhs_p0 = vec_p0(scx, rhs);
-            auto min_len = umin(scx, vec_fill(scx, lhs), vec_fill(scx, rhs));
-            auto rhs_lim = scx.build.GEP(rhs_p0, vec(min_len));
-            auto elt_ty = ty.sequence_element_type(t);
-            auto elt_llsz_r = size_of(scx, elt_ty);
-            scx = elt_llsz_r.bcx;
-            r = iter_sequence_raw(scx, lhs_p0, rhs_p0, rhs_lim,
-                                  elt_llsz_r.val,
-                                  bind inner(next, true, flag, op,
-                                             _, _, _, elt_ty));
-        }
-
-        r.bcx.build.Br(next.llbb);
-        auto v = next.build.Load(flag);
-        ret res(next, v);
-
-
-    } else {
-        // FIXME: compare obj, fn by pointer?
-        cx.fcx.lcx.ccx.sess.unimpl("type in trans_compare");
-        ret res(cx, C_bool(false));
-    }
-}
-
-fn trans_scalar_compare(@block_ctxt cx, ast.binop op, @ty.t t,
-                        ValueRef lhs, ValueRef rhs) -> ValueRef {
-    if (ty.type_is_fp(t)) {
-        ret trans_fp_compare(cx, op, t, lhs, rhs);
-    } else {
-        ret trans_integral_compare(cx, op, t, lhs, rhs);
-    }
-}
-
-fn trans_fp_compare(@block_ctxt cx, ast.binop op, @ty.t fptype,
-                    ValueRef lhs, ValueRef rhs) -> ValueRef {
-
-    auto cmp = lib.llvm.LLVMIntEQ;
+    // Determine the operation we need.
+    // FIXME: Use or-patterns when we have them.
+    auto llop;
     alt (op) {
-        // FIXME: possibly use the unordered-or-< predicates here,
-        // for now we're only going with ordered-and-< style (no NaNs).
-        case (ast.eq) { cmp = lib.llvm.LLVMRealOEQ; }
-        case (ast.ne) { cmp = lib.llvm.LLVMRealONE; }
-        case (ast.lt) { cmp = lib.llvm.LLVMRealOLT; }
-        case (ast.gt) { cmp = lib.llvm.LLVMRealOGT; }
-        case (ast.le) { cmp = lib.llvm.LLVMRealOLE; }
-        case (ast.ge) { cmp = lib.llvm.LLVMRealOGE; }
+        case (ast.eq) { llop = C_i8(abi.cmp_glue_op_eq); }
+        case (ast.lt) { llop = C_i8(abi.cmp_glue_op_lt); }
+        case (ast.le) { llop = C_i8(abi.cmp_glue_op_le); }
+        case (ast.ne) { llop = C_i8(abi.cmp_glue_op_eq); }
+        case (ast.ge) { llop = C_i8(abi.cmp_glue_op_lt); }
+        case (ast.gt) { llop = C_i8(abi.cmp_glue_op_le); }
     }
 
-    ret cx.build.FCmp(cmp, lhs, rhs);
-}
+    auto rslt = call_cmp_glue(cx, lhs, rhs, t, llop);
 
-fn trans_integral_compare(@block_ctxt cx, ast.binop op, @ty.t intype,
-                          ValueRef lhs, ValueRef rhs) -> ValueRef {
-    auto cmp = lib.llvm.LLVMIntEQ;
+    // Invert the result if necessary.
+    // FIXME: Use or-patterns when we have them.
     alt (op) {
-        case (ast.eq) { cmp = lib.llvm.LLVMIntEQ; }
-        case (ast.ne) { cmp = lib.llvm.LLVMIntNE; }
-
-        case (ast.lt) {
-            if (ty.type_is_signed(intype)) {
-                cmp = lib.llvm.LLVMIntSLT;
-            } else {
-                cmp = lib.llvm.LLVMIntULT;
-            }
-        }
-        case (ast.le) {
-            if (ty.type_is_signed(intype)) {
-                cmp = lib.llvm.LLVMIntSLE;
-            } else {
-                cmp = lib.llvm.LLVMIntULE;
-            }
-        }
-        case (ast.gt) {
-            if (ty.type_is_signed(intype)) {
-                cmp = lib.llvm.LLVMIntSGT;
-            } else {
-                cmp = lib.llvm.LLVMIntUGT;
-            }
-        }
-        case (ast.ge) {
-            if (ty.type_is_signed(intype)) {
-                cmp = lib.llvm.LLVMIntSGE;
-            } else {
-                cmp = lib.llvm.LLVMIntUGE;
-            }
-        }
+        case (ast.eq) { ret res(rslt.bcx, rslt.val);                     }
+        case (ast.lt) { ret res(rslt.bcx, rslt.val);                     }
+        case (ast.le) { ret res(rslt.bcx, rslt.val);                     }
+        case (ast.ne) { ret res(rslt.bcx, rslt.bcx.build.Not(rslt.val)); }
+        case (ast.ge) { ret res(rslt.bcx, rslt.bcx.build.Not(rslt.val)); }
+        case (ast.gt) { ret res(rslt.bcx, rslt.bcx.build.Not(rslt.val)); }
     }
-    ret cx.build.ICmp(cmp, lhs, rhs);
 }
 
 fn trans_vec_append(@block_ctxt cx, @ty.t t,
@@ -3678,7 +3802,7 @@ fn trans_alt(@block_ctxt cx, @ast.expr expr,
     }
 
     auto default_cx = this_cx;
-    auto default_res = trans_fail(default_cx, expr.span,
+    auto default_res = trans_fail(default_cx, some[common.span](expr.span),
                                   "non-exhaustive match failure");
 
     // FIXME: This isn't quite right, particularly re: dynamic types
@@ -3976,7 +4100,8 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
     bcx.build.CondBr(bounds_check, next_cx.llbb, fail_cx.llbb);
 
     // fail: bad bounds check.
-    auto fail_res = trans_fail(fail_cx, sp, "bounds check");
+    auto fail_res = trans_fail(fail_cx, some[common.span](sp),
+                               "bounds check");
 
     auto body = next_cx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_data)));
     auto elt;
@@ -4893,7 +5018,7 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
         }
 
         case (ast.expr_fail(_)) {
-            ret trans_fail(cx, e.span, "explicit failure");
+            ret trans_fail(cx, some[common.span](e.span), "explicit failure");
         }
 
         case (ast.expr_log(?lvl, ?a, _)) {
@@ -5062,7 +5187,7 @@ fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
 
     auto expr_str = pretty.pprust.expr_to_str(e);
     auto fail_cx = new_sub_block_ctxt(cx, "fail");
-    auto fail_res = trans_fail(fail_cx, e.span, expr_str);
+    auto fail_res = trans_fail(fail_cx, some[common.span](e.span), expr_str);
 
     auto next_cx = new_sub_block_ctxt(cx, "next");
     cond_res.bcx.build.CondBr(cond_res.val,
@@ -5071,11 +5196,23 @@ fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
     ret res(next_cx, C_nil());
 }
 
-fn trans_fail(@block_ctxt cx, common.span sp, str fail_str) -> result {
+fn trans_fail(@block_ctxt cx, option.t[common.span] sp_opt, str fail_str)
+        -> result {
     auto V_fail_str = p2i(C_cstr(cx.fcx.lcx.ccx, fail_str));
-    auto loc = cx.fcx.lcx.ccx.sess.lookup_pos(sp.lo);
-    auto V_filename = p2i(C_cstr(cx.fcx.lcx.ccx, loc.filename));
-    auto V_line = loc.line as int;
+
+    auto V_filename; auto V_line;
+    alt (sp_opt) {
+        case (some[common.span](?sp)) {
+            auto loc = cx.fcx.lcx.ccx.sess.lookup_pos(sp.lo);
+            V_filename = p2i(C_cstr(cx.fcx.lcx.ccx, loc.filename));
+            V_line = loc.line as int;
+        }
+        case (none[common.span]) {
+            V_filename = p2i(C_str(cx.fcx.lcx.ccx, "<runtime>"));
+            V_line = 0;
+        }
+    }
+
     auto args = vec(V_fail_str, V_filename, C_int(V_line));
 
     auto sub = trans_upcall(cx, "upcall_fail", args);
