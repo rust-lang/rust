@@ -5401,7 +5401,7 @@ fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
 fn new_builder(BasicBlockRef llbb) -> builder {
     let BuilderRef llbuild = llvm.LLVMCreateBuilder();
     llvm.LLVMPositionBuilderAtEnd(llbuild, llbb);
-    ret builder(llbuild);
+    ret builder(llbuild, @mutable false);
 }
 
 // You probably don't want to use this one. See the
