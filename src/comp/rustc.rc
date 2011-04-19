@@ -45,37 +45,11 @@ mod util {
     mod typestate_ann;
 }
 
-auth driver.rustc.main = impure;
-auth front.creader.parse_ty_str = impure;
 auth front.creader.load_crate = unsafe;
 auth front.creader.get_metadata_section = unsafe;
-auth front.creader.lookup_def = impure;
-auth front.creader.get_type = impure;
-auth front.creader.get_symbol = impure;
-auth front.creader.get_tag_variants = impure;
-auth front.creader.impure_no_op = impure;
 auth middle.metadata = unsafe;
-auth middle.metadata.encode_index = impure;
-auth middle.metadata.encode_metadata = impure;
 auth middle.trans = unsafe;
-auth middle.trans.copy_any_self_to_alloca = impure;
-auth middle.trans.copy_args_to_allocas = impure;
-auth middle.trans.trans_block = impure;
-auth middle.trans.alloc_ty = impure;
-auth middle.typestate_check.log_expr = impure;
 auth lib.llvm = unsafe;
-auth pretty.pprust = impure;
-auth middle.typestate_check.find_pre_post_block = impure;
-auth middle.typestate_check.find_pre_post_state_block = impure;
-auth middle.typestate_check.find_pre_post_state_stmt = impure;
-auth middle.typestate_check.find_pre_post_state_expr = impure;
-auth middle.typestate_check.find_pre_post_state_exprs = impure;
-auth middle.typestate_check.find_pre_post_expr  = impure;
-auth middle.typestate_check.find_pre_post_stmt  = impure;
-auth middle.typestate_check.check_states_against_conditions = impure;
-auth middle.typestate_check.check_states_stmt   = impure;
-auth middle.typestate_check.log_stmt            = impure;
-auth util.typestate_ann.implies = impure;
 
 mod lib {
     alt (target_os) {

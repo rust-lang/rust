@@ -51,7 +51,7 @@ fn refcount[T](vec[mutable? T] v) -> uint {
     }
 }
 
-unsafe fn vec_from_vbuf[T](vbuf v, uint n_elts) -> vec[T] {
+fn vec_from_vbuf[T](vbuf v, uint n_elts) -> vec[T] {
     ret rustrt.vec_from_vbuf[T](v, n_elts);
 }
 

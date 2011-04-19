@@ -100,7 +100,6 @@
                 ("state", STATE);
                 ("gc", GC);
 
-                ("impure", IMPURE);
                 ("unsafe", UNSAFE);
 
                 ("native", NATIVE);

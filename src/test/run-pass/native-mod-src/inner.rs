@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-unsafe fn main() {
+fn main() {
    auto f = "Makefile";
    auto s = rustrt.str_buf(f);
    auto buf = libc.malloc(1024);

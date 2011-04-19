@@ -14,8 +14,8 @@ state type reader = state obj {
     fn is_eof() -> bool;
     fn curr() -> char;
     fn next() -> char;
-    impure fn init();
-    impure fn bump();
+    fn init();
+    fn bump();
     fn mark();
     fn get_mark_chpos() -> uint;
     fn get_chpos() -> uint;
@@ -24,7 +24,7 @@ state type reader = state obj {
     fn get_filemap() -> codemap.filemap;
 };
 
-impure fn new_reader(io.reader rdr, str filename, codemap.filemap filemap)
+fn new_reader(io.reader rdr, str filename, codemap.filemap filemap)
     -> reader {
     state obj reader(str file,
                      uint len,
@@ -53,7 +53,7 @@ impure fn new_reader(io.reader rdr, str filename, codemap.filemap filemap)
             else {ret -1 as char;}
         }
 
-        impure fn init() {
+        fn init() {
             if (pos < len) {
                 auto next = _str.char_range_at(file, pos);
                 pos = next._1;
@@ -61,7 +61,7 @@ impure fn new_reader(io.reader rdr, str filename, codemap.filemap filemap)
             }
         }
 
-        impure fn bump() {
+        fn bump() {
             if (pos < len) {
                 chpos += 1u;
                 if (ch == '\n') {
@@ -135,7 +135,6 @@ fn keyword_table() -> std.map.hashmap[str, token.token] {
     keywords.insert("state", token.STATE);
     keywords.insert("gc", token.GC);
 
-    keywords.insert("impure", token.IMPURE);
     keywords.insert("unsafe", token.UNSAFE);
 
     keywords.insert("native", token.NATIVE);
@@ -274,14 +273,14 @@ fn is_whitespace(char c) -> bool {
     ret c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
-impure fn consume_any_whitespace(reader rdr) {
+fn consume_any_whitespace(reader rdr) {
     while (is_whitespace(rdr.curr())) {
         rdr.bump();
     }
     be consume_any_line_comment(rdr);
 }
 
-impure fn consume_any_line_comment(reader rdr) {
+fn consume_any_line_comment(reader rdr) {
     if (rdr.curr() == '/') {
         alt (rdr.next()) {
             case ('/') {
@@ -304,7 +303,7 @@ impure fn consume_any_line_comment(reader rdr) {
 }
 
 
-impure fn consume_block_comment(reader rdr) {
+fn consume_block_comment(reader rdr) {
     let int level = 1;
     while (level > 0) {
         if (rdr.curr() == '/' && rdr.next() == '*') {
@@ -342,7 +341,7 @@ fn digits_to_string(str s) -> int {
     ret accum_int;
 }
 
-impure fn scan_exponent(reader rdr) -> option.t[str] {
+fn scan_exponent(reader rdr) -> option.t[str] {
     auto c = rdr.curr();
     auto res = "";
 
@@ -368,7 +367,7 @@ impure fn scan_exponent(reader rdr) -> option.t[str] {
     }
 }
 
-impure fn scan_dec_digits(reader rdr) -> str {
+fn scan_dec_digits(reader rdr) -> str {
 
     auto c = rdr.curr();
     let str res = "";
@@ -384,7 +383,7 @@ impure fn scan_dec_digits(reader rdr) -> str {
     ret res;
 }
 
-impure fn scan_number(mutable char c, reader rdr) -> token.token {
+fn scan_number(mutable char c, reader rdr) -> token.token {
     auto accum_int = 0;
     let str dec_str = "";
     let bool is_dec_integer = false;
@@ -527,7 +526,7 @@ impure fn scan_number(mutable char c, reader rdr) -> token.token {
     }
 }
 
-impure fn scan_numeric_escape(reader rdr) -> char {
+fn scan_numeric_escape(reader rdr) -> char {
 
     auto n_hex_digits = 0;
 
@@ -563,7 +562,7 @@ impure fn scan_numeric_escape(reader rdr) -> char {
 }
 
 
-impure fn next_token(reader rdr) -> token.token {
+fn next_token(reader rdr) -> token.token {
     auto accum_str = "";
 
     consume_any_whitespace(rdr);
@@ -602,7 +601,7 @@ impure fn next_token(reader rdr) -> token.token {
         ret scan_number(c, rdr);
     }
 
-    impure fn binop(reader rdr, token.binop op) -> token.token {
+    fn binop(reader rdr, token.binop op) -> token.token {
         rdr.bump();
         if (rdr.curr() == '=') {
             rdr.bump();
@@ -856,7 +855,7 @@ tag cmnt_ {
 
 type cmnt = rec(cmnt_ val, uint pos, bool space_after);
 
-impure fn consume_whitespace(reader rdr) -> uint {
+fn consume_whitespace(reader rdr) -> uint {
     auto lines = 0u;
     while (is_whitespace(rdr.curr())) {
         if (rdr.curr() == '\n') {lines += 1u;}
@@ -865,7 +864,7 @@ impure fn consume_whitespace(reader rdr) -> uint {
     ret lines;
 }
 
-impure fn read_line_comment(reader rdr) -> cmnt {
+fn read_line_comment(reader rdr) -> cmnt {
     auto p = rdr.get_chpos();
     rdr.bump(); rdr.bump();
     while (rdr.curr() == ' ') {rdr.bump();}
@@ -879,7 +878,7 @@ impure fn read_line_comment(reader rdr) -> cmnt {
             space_after=consume_whitespace(rdr) > 1u);
 }
 
-impure fn read_block_comment(reader rdr) -> cmnt {
+fn read_block_comment(reader rdr) -> cmnt {
     auto p = rdr.get_chpos();
     rdr.bump(); rdr.bump();
     while (rdr.curr() == ' ') {rdr.bump();}
@@ -912,7 +911,7 @@ impure fn read_block_comment(reader rdr) -> cmnt {
             space_after=consume_whitespace(rdr) > 1u);
 }
 
-impure fn gather_comments(str path) -> vec[cmnt] {
+fn gather_comments(str path) -> vec[cmnt] {
     auto srdr = io.file_reader(path);
     auto rdr = new_reader(srdr, path, codemap.new_filemap(path, 0u));
     let vec[cmnt] comments = vec();

@@ -29,7 +29,7 @@ type meta = (Ast.ident * Ast.pexp) array;;
 
 type meta_pat = (Ast.ident * (Ast.pexp option)) array;;
 
-type auth = (Ast.name * Ast.effect);;
+type auth = (Ast.name * Ast.auth);;
 
 type cexp =
     CEXP_alt of cexp_alt identified
@@ -274,10 +274,10 @@ and parse_cexp (ps:pstate) : cexp =
           bump ps;
           let name = Pexp.parse_name ps in
             expect ps EQ;
-            let effect = Pexp.parse_effect ps in
+            let au = Pexp.parse_auth ps in
               expect ps SEMI;
               let bpos = lexpos ps in
-                CEXP_auth (span ps apos bpos (name, effect))
+                CEXP_auth (span ps apos bpos (name, au))
 
       | _ -> raise (unexpected ps)
 

@@ -28,10 +28,7 @@ type slot_key =
    write foo[int,int].bar but not foo.bar.
  *)
 
-type effect =
-    EFF_pure
-  | EFF_impure
-  | EFF_unsafe
+type auth = AUTH_unsafe
 ;;
 
 type layer =
@@ -174,7 +171,6 @@ and ty_sig =
 and ty_fn_aux =
     {
       fn_is_iter: bool;
-      fn_effect: effect;
     }
 
 and ty_fn = (ty_sig * ty_fn_aux)
@@ -485,7 +481,7 @@ and crate' =
     {
       crate_items: (mod_view * mod_items);
       crate_meta: Session.meta;
-      crate_auth: (name, effect) Hashtbl.t;
+      crate_auth: (name, auth) Hashtbl.t;
       crate_required: (node_id, (required_lib * nabi_conv)) Hashtbl.t;
       crate_required_syms: (node_id, string) Hashtbl.t;
       crate_files: (node_id,filename) Hashtbl.t;
@@ -708,22 +704,6 @@ and fmt_slots
   done;
   fmt ff "@])"
 
-and fmt_effect
-    (ff:Format.formatter)
-    (effect:effect)
-    : unit =
-  match effect with
-      EFF_pure -> ()
-    | EFF_impure -> fmt ff "impure"
-    | EFF_unsafe -> fmt ff "unsafe"
-
-and fmt_effect_qual
-    (ff:Format.formatter)
-    (e:effect)
-    : unit =
-  fmt_effect ff e;
-  if e <> EFF_pure then fmt ff " ";
-
 and fmt_layer
     (ff:Format.formatter)
     (la:layer)
@@ -762,7 +742,6 @@ and fmt_ty_fn
     (tf:ty_fn)
     : unit =
   let (tsig, ta) = tf in
-    fmt_effect_qual ff ta.fn_effect;
     fmt ff "%s" (if ta.fn_is_iter then "iter" else "fn");
     begin
       match ident_and_params with
@@ -1667,7 +1646,6 @@ and fmt_fn
     (f:fn)
     : unit =
   fmt_obox ff;
-  fmt_effect_qual ff f.fn_aux.fn_effect;
   fmt ff "%s "(if f.fn_aux.fn_is_iter then "iter" else "fn");
   fmt_ident_and_params ff id params;
   fmt_header_slots ff f.fn_input_slots;
@@ -1816,7 +1794,6 @@ let sprintf_atom = sprintf_fmt fmt_atom;;
 let sprintf_slot = sprintf_fmt fmt_slot;;
 let sprintf_slot_key = sprintf_fmt fmt_slot_key;;
 let sprintf_ty = sprintf_fmt fmt_ty;;
-let sprintf_effect = sprintf_fmt fmt_effect;;
 let sprintf_carg = sprintf_fmt fmt_carg;;
 let sprintf_constr = sprintf_fmt fmt_constr;;
 let sprintf_mod_item =

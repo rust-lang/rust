@@ -2,7 +2,7 @@ native "rust" mod rustrt {
   fn rust_dirent_filename(os.libc.dirent ent) -> str;
 }
 
-impure fn list_dir(str path) -> vec[str] {
+fn list_dir(str path) -> vec[str] {
   // TODO ensure this is always closed
   auto dir = os.libc.opendir(_str.buf(path));
   check (dir as uint != 0u);

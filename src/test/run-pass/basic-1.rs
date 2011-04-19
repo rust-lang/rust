@@ -1,11 +1,11 @@
 // xfail-stage0
 // -*- rust -*-
 
-impure fn a(chan[int] c) {
+fn a(chan[int] c) {
     c <| 10;
 }
 
-impure fn main() {
+fn main() {
     let port[int] p = port();
     spawn a(chan(p));
     spawn b(chan(p));
@@ -15,7 +15,7 @@ impure fn main() {
 //    log "Finished.";
 }
 
-impure fn b(chan[int] c) {
+fn b(chan[int] c) {
 //    log "task b0";
 //    log "task b1";
 //    log "task b2";

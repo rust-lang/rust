@@ -1,7 +1,7 @@
 // xfail-stage0
 // -*- rust -*-
 
-impure fn a(chan[int] c) {
+fn a(chan[int] c) {
   if (true) {
     log "task a";
     log "task a";
@@ -23,7 +23,7 @@ fn g(int x, str y) -> int {
   ret z;
 }
 
-impure fn main() {
+fn main() {
     let int n = 2 + 3 * 7;
     let str s = "hello there";
     let port[int] p = port();
@@ -38,7 +38,7 @@ impure fn main() {
     log "children finished, root finishing";
 }
 
-impure fn b(chan[int] c) {
+fn b(chan[int] c) {
   if (true) {
     log "task b";
     log "task b";

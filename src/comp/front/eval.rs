@@ -224,7 +224,7 @@ fn val_eq(session.session sess, span sp, val av, val bv) -> bool {
     fail;
 }
 
-impure fn eval_crate_directives(ctx cx,
+fn eval_crate_directives(ctx cx,
                                 env e,
                                 vec[@ast.crate_directive] cdirs,
                                 str prefix,
@@ -240,7 +240,7 @@ impure fn eval_crate_directives(ctx cx,
 }
 
 
-impure fn eval_crate_directives_to_mod(ctx cx, env e,
+fn eval_crate_directives_to_mod(ctx cx, env e,
                                        vec[@ast.crate_directive] cdirs,
                                        str prefix) -> ast._mod {
     let vec[@ast.view_item] view_items = vec();
@@ -254,7 +254,7 @@ impure fn eval_crate_directives_to_mod(ctx cx, env e,
 }
 
 
-impure fn eval_crate_directive_block(ctx cx,
+fn eval_crate_directive_block(ctx cx,
                                      env e,
                                      &ast.block blk,
                                      str prefix,
@@ -277,7 +277,7 @@ impure fn eval_crate_directive_block(ctx cx,
     }
 }
 
-impure fn eval_crate_directive_expr(ctx cx,
+fn eval_crate_directive_expr(ctx cx,
                                     env e,
                                     @ast.expr x,
                                     str prefix,
@@ -349,7 +349,7 @@ impure fn eval_crate_directive_expr(ctx cx,
     }
 }
 
-impure fn eval_crate_directive(ctx cx,
+fn eval_crate_directive(ctx cx,
                                env e,
                                @ast.crate_directive cdir,
                                str prefix,

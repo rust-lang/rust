@@ -264,7 +264,7 @@ BOOT_MLS :=                                              \
           extfmt pexp item cexp fuzz)                    \
         $(addprefix boot/be/, asm il abi)                \
         $(addprefix boot/me/, walk semant resolve alias  \
-          simplify type dead layer effect typestate      \
+          simplify type dead layer typestate             \
          loop layout transutil trans dwarf)              \
         $(addprefix boot/be/, x86 ra pe elf macho)       \
         $(addprefix boot/driver/, lib glue main))        \

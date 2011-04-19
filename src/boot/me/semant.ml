@@ -1010,13 +1010,11 @@ let rec pretty_ty_str (cx:ctxt) (fallback:(Ast.ty -> string)) (ty:Ast.ty) =
                 None -> Common.bug () "no ty in slot"
               | Some ty' -> prefix ^ (pretty_ty_str cx fallback ty')
           in
-          let effect = aux.Ast.fn_effect in
-          let qual = Fmt.sprintf_fmt Ast.fmt_effect_qual () effect in
           let keyword = if aux.Ast.fn_is_iter then "iter" else "fn" in
           let fn_args = Array.map format_slot fnsig.Ast.sig_input_slots in
           let fn_args_str = String.concat ", " (Array.to_list fn_args) in
           let fn_rv_str = format_slot fnsig.Ast.sig_output_slot in
-          Printf.sprintf "%s%s(%s) -> %s" qual keyword fn_args_str fn_rv_str
+          Printf.sprintf "%s(%s) -> %s" keyword fn_args_str fn_rv_str
       | Ast.TY_tag { Ast.tag_id = tag_id; Ast.tag_args = _ }
               when Hashtbl.mem cx.ctxt_user_tag_names tag_id ->
           let name = Hashtbl.find cx.ctxt_user_tag_names tag_id in
@@ -1156,8 +1154,7 @@ let generic_fn_ty =
                Ast.sig_output_slot =
                  { Ast.slot_mode = Ast.MODE_local;
                    Ast.slot_ty = Some Ast.TY_nil }; },
-             { Ast.fn_is_iter = false;
-               Ast.fn_effect = Ast.EFF_pure })
+             { Ast.fn_is_iter = false })
 ;;
 
 let rec get_genericized_ty ty =
@@ -1270,19 +1267,6 @@ let type_points_to_heap (cx:ctxt) (t:Ast.ty) : bool =
 
 
 (* Type qualifier analysis. *)
-
-let effect_le x y =
-  match (x,y) with
-      (Ast.EFF_unsafe, _) -> true
-    | (Ast.EFF_impure, Ast.EFF_pure) -> true
-    | (Ast.EFF_impure, Ast.EFF_impure) -> true
-    | (Ast.EFF_pure, Ast.EFF_pure) -> true
-    | _ -> false
-;;
-
-let lower_effect_of x y =
-  if effect_le x y then x else y
-;;
 
 let layer_le x y =
   match (x,y) with
@@ -1682,8 +1666,7 @@ let ty_of_mod_item (item:Ast.mod_item) : Ast.ty =
     | Ast.MOD_ITEM_mod _ -> bug () "Semant.ty_of_mod_item on mod"
     | Ast.MOD_ITEM_const (ty, _) -> ty
     | Ast.MOD_ITEM_obj ob ->
-        let taux = { Ast.fn_effect = Ast.EFF_pure;
-                     Ast.fn_is_iter = false }
+        let taux = { Ast.fn_is_iter = false }
         in
         let tobj = Ast.TY_obj (ty_obj_of_obj ob) in
         let tsig = { Ast.sig_input_slots = arg_slots ob.Ast.obj_state;
@@ -1705,8 +1688,7 @@ let ty_of_mod_item (item:Ast.mod_item) : Ast.ty =
           if Array.length hdr = 0
           then Ast.TY_tag ttag
           else
-            let taux = { Ast.fn_effect = Ast.EFF_pure;
-                         Ast.fn_is_iter = false }
+            let taux = { Ast.fn_is_iter = false }
             in
             let inputs = Array.map (fun (s, _) -> s.node) hdr in
             let tsig = { Ast.sig_input_slots = inputs;
@@ -2642,8 +2624,7 @@ let mk_ty_fn_or_iter
     (is_iter:bool)
     : Ast.ty =
   (* In some cases we don't care what aux or constrs are. *)
-  let taux = { Ast.fn_effect = Ast.EFF_pure;
-               Ast.fn_is_iter = is_iter; }
+  let taux = { Ast.fn_is_iter = is_iter; }
   in
   let tsig = { Ast.sig_input_slots = arg_slots;
                Ast.sig_input_constrs = [| |];
@@ -2816,6 +2797,6 @@ let glue_str (cx:ctxt) (g:glue) : string =
  * fill-column: 78;
  * indent-tabs-mode: nil
  * buffer-file-coding-system: utf-8-unix
- * compile-command: "make -C ../.. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+ * compile-command: "make -C  $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
  * End:
  *)

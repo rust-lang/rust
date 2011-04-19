@@ -1,7 +1,7 @@
 // xfail-stage0
 // -*- rust -*-
 
-impure fn f(chan[int] c)
+fn f(chan[int] c)
 {
   type t = tup(int,int,int);
 
@@ -24,7 +24,7 @@ impure fn f(chan[int] c)
 }
 
 
-impure fn main() {
+fn main() {
   let port[int] p = port();
   spawn f(chan(p));
   let int i;

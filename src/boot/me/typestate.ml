@@ -122,12 +122,7 @@ let determine_constr_key
           then
             begin
               match Hashtbl.find cx.ctxt_all_item_types cid with
-                  Ast.TY_fn (_, taux) ->
-                    begin
-                      if taux.Ast.fn_effect = Ast.EFF_pure
-                      then cid
-                      else err (Some cid) "impure function used in constraint"
-                    end
+                  Ast.TY_fn _ -> cid
                 | _ -> bug () "bad type of predicate"
             end
           else

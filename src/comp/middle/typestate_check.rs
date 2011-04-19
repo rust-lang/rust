@@ -277,7 +277,7 @@ fn mk_fn_info(_fn f) -> fn_info {
   ret res;
 }
 
-/* extends mk_fn_info to an item, side-effecting the map fi from 
+/* extends mk_fn_info to an item, side-effecting the map fi from
    function IDs to fn_info maps */
 fn mk_fn_info_item_fn(&_fn_info_map fi, &span sp, ident i, &ast._fn f,
                  vec[ast.ty_param] ty_params, def_id id, ann a) -> @item {
@@ -888,14 +888,14 @@ fn find_pre_post_expr(&_fn_info_map fm, &fn_info enclosing, &expr e) -> () {
     }
 }
 
-impure fn gen(&fn_info enclosing, &ann a, def_id id) -> bool {
+fn gen(&fn_info enclosing, &ann a, def_id id) -> bool {
   check(enclosing.contains_key(id));
   let uint i = (enclosing.get(id))._0;
 
   ret set_in_postcond(i, (ann_to_ts_ann_fail_more(a)).conditions);
 }
 
-impure fn gen_poststate(&fn_info enclosing, &ann a, def_id id) -> bool {
+fn gen_poststate(&fn_info enclosing, &ann a, def_id id) -> bool {
   check(enclosing.contains_key(id));
   let uint i = (enclosing.get(id))._0;
 
@@ -976,7 +976,7 @@ fn find_pre_post_state_item(_fn_info_map fm, @item i) -> bool {
   fail;
 }
 
-impure fn set_prestate_ann(ann a, prestate pre) -> bool {
+fn set_prestate_ann(ann a, prestate pre) -> bool {
   alt (a) {
     case (ann_type(_,_,?ts_a)) {
       check (! is_none[@ts_ann](ts_a));
@@ -990,7 +990,7 @@ impure fn set_prestate_ann(ann a, prestate pre) -> bool {
 }
 
 
-impure fn extend_prestate_ann(ann a, prestate pre) -> bool {
+fn extend_prestate_ann(ann a, prestate pre) -> bool {
   alt (a) {
     case (ann_type(_,_,?ts_a)) {
       check (! is_none[@ts_ann](ts_a));
@@ -1003,7 +1003,7 @@ impure fn extend_prestate_ann(ann a, prestate pre) -> bool {
   }
 }
 
-impure fn set_poststate_ann(ann a, poststate post) -> bool {
+fn set_poststate_ann(ann a, poststate post) -> bool {
   alt (a) {
     case (ann_type(_,_,?ts_a)) {
       check (! is_none[@ts_ann](ts_a));
@@ -1016,7 +1016,7 @@ impure fn set_poststate_ann(ann a, poststate post) -> bool {
   }
 }
 
-impure fn extend_poststate_ann(ann a, poststate post) -> bool {
+fn extend_poststate_ann(ann a, poststate post) -> bool {
   alt (a) {
     case (ann_type(_,_,?ts_a)) {
       check (! is_none[@ts_ann](ts_a));
@@ -1029,7 +1029,7 @@ impure fn extend_poststate_ann(ann a, poststate post) -> bool {
   }
 }
 
-impure fn set_pre_and_post(&ann a, pre_and_post pp) -> () {
+fn set_pre_and_post(&ann a, pre_and_post pp) -> () {
     alt (a) {
         case (ann_type(_,_,?ts_a)) {
             check (! is_none[@ts_ann](ts_a));
@@ -1068,7 +1068,7 @@ fn find_pre_post_state_exprs(&_fn_info_map fm,
   ret changed;
 }
 
-impure fn pure_exp(&ann a, &prestate p) -> bool {
+fn pure_exp(&ann a, &prestate p) -> bool {
   auto changed = false;
   changed = extend_prestate_ann(a, p) || changed;
   changed = extend_poststate_ann(a, p) || changed;
@@ -1363,7 +1363,7 @@ fn fixed_point_states(_fn_info_map fm, fn_info f_info,
   }
 }
 
-impure fn check_states_expr(fn_info enclosing, &expr e) -> () {
+fn check_states_expr(fn_info enclosing, &expr e) -> () {
   let precond prec    = expr_precond(e);
   let prestate pres   = expr_prestate(e);
 

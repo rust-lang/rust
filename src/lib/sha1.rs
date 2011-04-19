@@ -41,7 +41,7 @@ fn mk_sha1() -> sha1 {
                                mutable uint msg_block_idx,
                                mutable bool computed);
 
-    impure fn add_input(&sha1state st, &vec[u8] msg) {
+    fn add_input(&sha1state st, &vec[u8] msg) {
         // FIXME: Should be typestate precondition
         check (!st.computed);
 
@@ -64,7 +64,7 @@ fn mk_sha1() -> sha1 {
         }
     }
 
-    impure fn process_msg_block(&sha1state st) {
+    fn process_msg_block(&sha1state st) {
 
         // FIXME: Make precondition
         check (_vec.len[mutable u32](st.h) == digest_buf_len);
@@ -164,7 +164,7 @@ fn mk_sha1() -> sha1 {
         ret (word << bits_hack) | (word >> (32u32 - bits));
     }
 
-    impure fn mk_result(&sha1state st) -> vec[u8] {
+    fn mk_result(&sha1state st) -> vec[u8] {
         if (!st.computed) {
             pad_msg(st);
             st.computed = true;
@@ -190,7 +190,7 @@ fn mk_sha1() -> sha1 {
      * call process_msg_block() appropriately.  When it returns, it
      * can be assumed that the message digest has been computed.
      */
-    impure fn pad_msg(&sha1state st) {
+    fn pad_msg(&sha1state st) {
         // FIXME: Should be a precondition
         check (_vec.len[mutable u8](st.msg_block) == msg_block_len);
 

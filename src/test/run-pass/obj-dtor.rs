@@ -6,7 +6,7 @@ obj worker(chan[int] c) {
   }
 }
 
-impure fn do_work(chan[int] c) {
+fn do_work(chan[int] c) {
   log "in child task";
   {
     let worker w = worker(c);
@@ -21,7 +21,7 @@ impure fn do_work(chan[int] c) {
   }
 }
 
-impure fn main() {
+fn main() {
   let port[int] p = port();
   log "spawning worker";
   auto w = spawn do_work(chan(p));

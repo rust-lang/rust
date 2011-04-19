@@ -6,7 +6,7 @@ use std;
 import std._int;
 import std._vec;
 
-impure fn fannkuch(int n) -> int {
+fn fannkuch(int n) -> int {
 
   fn perm1init(uint i) -> mutable int {
     ret i as int;
@@ -94,7 +94,7 @@ impure fn fannkuch(int n) -> int {
   ret flips;
 }
 
-impure fn main(vec[str] args) {
+fn main(vec[str] args) {
   auto n = 7;
   log #fmt("Pfannkuchen(%d) = %d", n, fannkuch(n));
 }

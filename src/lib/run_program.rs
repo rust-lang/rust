@@ -14,7 +14,7 @@ fn argvec(str prog, vec[str] args) -> vec[sbuf] {
     ret argptrs;
 }
 
-impure fn run_program(str prog, vec[str] args) -> int {
+fn run_program(str prog, vec[str] args) -> int {
     auto pid = rustrt.rust_run_program(_vec.buf[sbuf](argvec(prog, args)),
                                        0, 0, 0);
     ret os.waitpid(pid);
@@ -25,11 +25,11 @@ type program =
         fn get_id() -> int;
         fn input() -> io.writer;
         fn output() -> io.reader;
-        impure fn close_input();
-        impure fn finish() -> int;
+        fn close_input();
+        fn finish() -> int;
     };
 
-impure fn start_program(str prog, vec[str] args) -> @program {
+fn start_program(str prog, vec[str] args) -> @program {
     auto pipe_input = os.pipe();
     auto pipe_output = os.pipe();
     auto pid = rustrt.rust_run_program
@@ -50,10 +50,10 @@ impure fn start_program(str prog, vec[str] args) -> @program {
         fn output() -> io.reader {
             ret io.new_reader(io.FILE_buf_reader(out_file, false));
         }
-        impure fn close_input() {
+        fn close_input() {
             os.libc.close(in_fd);
         }
-        impure fn finish() -> int {
+        fn finish() -> int {
             if (finished) {ret 0;}
             finished = true;
             os.libc.close(in_fd);
@@ -72,7 +72,7 @@ impure fn start_program(str prog, vec[str] args) -> @program {
                      false);
 }
 
-impure fn program_output(str prog, vec[str] args)
+fn program_output(str prog, vec[str] args)
     -> rec(int status, str out) {
     auto pr = start_program(prog, args);
     pr.close_input();

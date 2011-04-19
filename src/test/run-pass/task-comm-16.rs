@@ -2,7 +2,7 @@
 
 // Tests of ports and channels on various types
 
-impure fn test_rec() {
+fn test_rec() {
   type r = rec(int val0, u8 val1, char val2);
 
   let port[r] po = port();
@@ -19,7 +19,7 @@ impure fn test_rec() {
   check (r1.val2 == '2');
 }
 
-impure fn test_vec() {
+fn test_vec() {
   let port[vec[int]] po = port();
   let chan[vec[int]] ch = chan(po);
   let vec[int] v0 = vec(0, 1, 2);
@@ -34,7 +34,7 @@ impure fn test_vec() {
   check (v1.(2) == 2);
 }
 
-impure fn test_str() {
+fn test_str() {
   let port[str] po = port();
   let chan[str] ch = chan(po);
   let str s0 = "test";
@@ -50,7 +50,7 @@ impure fn test_str() {
   check (s1.(3) as u8 == 't' as u8);
 }
 
-impure fn test_tup() {
+fn test_tup() {
   type t = tup(int, u8, char);
 
   let port[t] po = port();
@@ -67,7 +67,7 @@ impure fn test_tup() {
   check (t0._2 == '2');
 }
 
-impure fn test_tag() {
+fn test_tag() {
   tag t {
     tag1;
     tag2(int);
@@ -91,7 +91,7 @@ impure fn test_tag() {
   check (t1 == tag3(10, 11u8, 'A'));
 }
 
-impure fn test_chan() {
+fn test_chan() {
   let port[chan[int]] po = port();
   let chan[chan[int]] ch = chan(po);
 
@@ -112,7 +112,7 @@ impure fn test_chan() {
   check (i == 10);
 }
 
-impure fn main() {
+fn main() {
   test_rec();
   test_vec();
   test_str();

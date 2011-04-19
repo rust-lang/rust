@@ -1,6 +1,6 @@
 // -*- rust -*-
 
-impure fn main() {
+fn main() {
   let port[int] po = port();
   let chan[int] ch = chan(po);
 

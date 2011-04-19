@@ -1,7 +1,7 @@
 // xfail-stage0
 // This checks that preemption works.
 
-impure fn starve_main(chan[int] alive) {
+fn starve_main(chan[int] alive) {
   log "signalling main";
   alive <| 1;
   log "starving main";
@@ -11,7 +11,7 @@ impure fn starve_main(chan[int] alive) {
   }
 }
 
-impure fn main() {
+fn main() {
   let port[int] alive = port();
   log "main started";
   let task s = spawn starve_main(chan(alive));

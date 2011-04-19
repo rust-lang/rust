@@ -521,8 +521,8 @@ fn create_index[T](vec[tup(T, uint)] index, fn(&T) -> uint hash_fn)
     ret buckets;
 }
 
-impure fn encode_index[T](&ebml.writer ebml_w, vec[vec[tup(T, uint)]] buckets,
-                          impure fn(io.writer, &T) write_fn) {
+fn encode_index[T](&ebml.writer ebml_w, vec[vec[tup(T, uint)]] buckets,
+                          fn(io.writer, &T) write_fn) {
     auto writer = io.new_writer_(ebml_w.writer);
 
     ebml.start_tag(ebml_w, tag_index);
@@ -553,16 +553,16 @@ impure fn encode_index[T](&ebml.writer ebml_w, vec[vec[tup(T, uint)]] buckets,
 }
 
 
-impure fn write_str(io.writer writer, &str s) {
+fn write_str(io.writer writer, &str s) {
     writer.write_str(s);
 }
 
-impure fn write_int(io.writer writer, &int n) {
+fn write_int(io.writer writer, &int n) {
     writer.write_be_uint(n as uint, 4u);
 }
 
 
-impure fn encode_metadata(@trans.crate_ctxt cx, @ast.crate crate)
+fn encode_metadata(@trans.crate_ctxt cx, @ast.crate crate)
         -> ValueRef {
     auto string_w = io.string_writer();
     auto buf_w = string_w.get_writer().get_buf_writer();

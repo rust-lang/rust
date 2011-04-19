@@ -55,7 +55,7 @@ fn peek(@pstate st) -> u8 {
     if (st.pos < st.len) {ret st.rep.(st.pos) as u8;}
     else {ret ' ' as u8;}
 }
-impure fn next(@pstate st) -> u8 { // ?? somehow not recognized as impure
+fn next(@pstate st) -> u8 { // ?? somehow not recognized as impure
     if (st.pos >= st.len) {fail;}
     auto ch = st.rep.(st.pos);
     st.pos = st.pos + 1u;
@@ -74,12 +74,12 @@ fn parse_ty_str(str rep, str_def sd) -> @ty.t {
     ret result;
 }
 
-impure fn parse_ty(@pstate st, str_def sd) -> @ty.t {
+fn parse_ty(@pstate st, str_def sd) -> @ty.t {
     ret @rec(struct=parse_sty(st, sd),
              cname=option.none[str]);
 }
 
-impure fn parse_mt(@pstate st, str_def sd) -> ty.mt {
+fn parse_mt(@pstate st, str_def sd) -> ty.mt {
     auto mut;
     alt (peek(st) as char) {
         case ('m') {next(st); mut = ast.mut;}
@@ -89,7 +89,7 @@ impure fn parse_mt(@pstate st, str_def sd) -> ty.mt {
     ret rec(ty=parse_ty(st, sd), mut=mut);
 }
 
-impure fn parse_def(@pstate st, str_def sd) -> ast.def_id {
+fn parse_def(@pstate st, str_def sd) -> ast.def_id {
     auto def = "";
     while (peek(st) as char != '|') {
         def += _str.unsafe_from_byte(next(st));
@@ -98,7 +98,7 @@ impure fn parse_def(@pstate st, str_def sd) -> ast.def_id {
     ret sd(def);
 }
 
-impure fn parse_sty(@pstate st, str_def sd) -> ty.sty {
+fn parse_sty(@pstate st, str_def sd) -> ty.sty {
     alt (next(st) as char) {
         case ('n') {ret ty.ty_nil;}
         case ('b') {ret ty.ty_bool;}
@@ -205,7 +205,7 @@ impure fn parse_sty(@pstate st, str_def sd) -> ty.sty {
     }
 }
 
-impure fn parse_int(@pstate st) -> int {
+fn parse_int(@pstate st) -> int {
     auto n = 0;
     while (true) {
         auto cur = peek(st) as char;
@@ -217,7 +217,7 @@ impure fn parse_int(@pstate st) -> int {
     ret n;
 }
 
-impure fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty.arg], @ty.t) {
+fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty.arg], @ty.t) {
     check(next(st) as char == '[');
     let vec[ty.arg] inputs = vec();
     while (peek(st) as char != ']') {
@@ -565,7 +565,7 @@ fn get_tag_variants(session.session sess, ast.def_id def)
     ret infos;
 }
 
-impure fn list_file_metadata(str path, io.writer out) {
+fn list_file_metadata(str path, io.writer out) {
     alt (get_metadata_section(path)) {
         case (option.some[vec[u8]](?bytes)) {
             list_crate_metadata(bytes, out);
@@ -584,7 +584,7 @@ fn read_path(&ebml.doc d) -> tup(str, uint) {
     ret tup(path, pos);
 }
 
-impure fn list_crate_metadata(vec[u8] bytes, io.writer out) {
+fn list_crate_metadata(vec[u8] bytes, io.writer out) {
     auto md = ebml.new_doc(bytes);
     auto paths = ebml.get_doc(md, metadata.tag_paths);
     auto items = ebml.get_doc(md, metadata.tag_items);

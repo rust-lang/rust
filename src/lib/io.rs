@@ -14,37 +14,37 @@ tag seek_style {seek_set; seek_end; seek_cur;}
 // The raw underlying reader class. All readers must implement this.
 type buf_reader =
     state obj {
-        impure fn read(uint len) -> vec[u8];
-        impure fn read_byte() -> int;
-        impure fn unread_byte(int byte);
-        impure fn eof() -> bool;
+        fn read(uint len) -> vec[u8];
+        fn read_byte() -> int;
+        fn unread_byte(int byte);
+        fn eof() -> bool;
 
         // FIXME: Seekable really should be orthogonal. We will need
         // inheritance.
-        impure fn seek(int offset, seek_style whence);
-        impure fn tell() -> uint;
+        fn seek(int offset, seek_style whence);
+        fn tell() -> uint;
     };
 
 // Convenience methods for reading.
 type reader =
     state obj {
           // FIXME: This should inherit from buf_reader.
-          impure fn get_buf_reader() -> buf_reader;
+          fn get_buf_reader() -> buf_reader;
 
-          impure fn read_byte() -> int;
-          impure fn unread_byte(int byte);
-          impure fn read_bytes(uint len) -> vec[u8];
-          impure fn read_char() -> char;
-          impure fn eof() -> bool;
-          impure fn read_line() -> str;
-          impure fn read_c_str() -> str;
-          impure fn read_le_uint(uint size) -> uint;
-          impure fn read_le_int(uint size) -> int;
-          impure fn read_be_uint(uint size) -> uint;
-          impure fn read_whole_stream() -> vec[u8];
+          fn read_byte() -> int;
+          fn unread_byte(int byte);
+          fn read_bytes(uint len) -> vec[u8];
+          fn read_char() -> char;
+          fn eof() -> bool;
+          fn read_line() -> str;
+          fn read_c_str() -> str;
+          fn read_le_uint(uint size) -> uint;
+          fn read_le_int(uint size) -> int;
+          fn read_be_uint(uint size) -> uint;
+          fn read_whole_stream() -> vec[u8];
 
-          impure fn seek(int offset, seek_style whence);
-          impure fn tell() -> uint; // FIXME: eventually u64
+          fn seek(int offset, seek_style whence);
+          fn tell() -> uint; // FIXME: eventually u64
     };
 
 fn convert_whence(seek_style whence) -> int {
@@ -56,25 +56,25 @@ fn convert_whence(seek_style whence) -> int {
 }
 
 state obj FILE_buf_reader(os.libc.FILE f, bool must_close) {
-    impure fn read(uint len) -> vec[u8] {
+    fn read(uint len) -> vec[u8] {
         auto buf = _vec.alloc[u8](len);
         auto read = os.libc.fread(_vec.buf[u8](buf), 1u, len, f);
         _vec.len_set[u8](buf, read);
         ret buf;
     }
-    impure fn read_byte() -> int {
+    fn read_byte() -> int {
         ret os.libc.fgetc(f);
     }
-    impure fn unread_byte(int byte) {
+    fn unread_byte(int byte) {
         os.libc.ungetc(byte, f);
     }
-    impure fn eof() -> bool {
+    fn eof() -> bool {
         ret os.libc.feof(f) != 0;
     }
-    impure fn seek(int offset, seek_style whence) {
+    fn seek(int offset, seek_style whence) {
         check (os.libc.fseek(f, offset, convert_whence(whence)) == 0);
     }
-    impure fn tell() -> uint {
+    fn tell() -> uint {
         ret os.libc.ftell(f) as uint;
     }
     drop {
@@ -84,19 +84,19 @@ state obj FILE_buf_reader(os.libc.FILE f, bool must_close) {
 
 // FIXME: Convert this into pseudomethods on buf_reader.
 state obj new_reader(buf_reader rdr) {
-    impure fn get_buf_reader() -> buf_reader {
+    fn get_buf_reader() -> buf_reader {
         ret rdr;
     }
-    impure fn read_byte() -> int {
+    fn read_byte() -> int {
         ret rdr.read_byte();
     }
-    impure fn unread_byte(int byte) {
+    fn unread_byte(int byte) {
         ret rdr.unread_byte(byte);
     }
-    impure fn read_bytes(uint len) -> vec[u8] {
+    fn read_bytes(uint len) -> vec[u8] {
         ret rdr.read(len);
     }
-    impure fn read_char() -> char {
+    fn read_char() -> char {
         auto c0 = rdr.read_byte();
         if (c0 == -1) {ret -1 as char;} // FIXME will this stay valid?
         auto b0 = c0 as u8;
@@ -116,10 +116,10 @@ state obj new_reader(buf_reader rdr) {
         val += ((b0 << ((w + 1u) as u8)) as uint) << ((w - 1u) * 6u - w - 1u);
         ret val as char;
     }
-    impure fn eof() -> bool {
+    fn eof() -> bool {
         ret rdr.eof();
     }
-    impure fn read_line() -> str {
+    fn read_line() -> str {
         let vec[u8] buf = vec();
         // No break yet in rustc
         auto go_on = true;
@@ -130,7 +130,7 @@ state obj new_reader(buf_reader rdr) {
         }
         ret _str.unsafe_from_bytes(buf);
     }
-    impure fn read_c_str() -> str {
+    fn read_c_str() -> str {
         let vec[u8] buf = vec();
         auto go_on = true;
         while (go_on) {
@@ -141,7 +141,7 @@ state obj new_reader(buf_reader rdr) {
         ret _str.unsafe_from_bytes(buf);
     }
     // FIXME deal with eof?
-    impure fn read_le_uint(uint size) -> uint {
+    fn read_le_uint(uint size) -> uint {
         auto val = 0u;
         auto pos = 0u;
         while (size > 0u) {
@@ -151,7 +151,7 @@ state obj new_reader(buf_reader rdr) {
         }
         ret val;
     }
-    impure fn read_le_int(uint size) -> int {
+    fn read_le_int(uint size) -> int {
         auto val = 0u;
         auto pos = 0u;
         while (size > 0u) {
@@ -162,7 +162,7 @@ state obj new_reader(buf_reader rdr) {
         ret val as int;
     }
     // FIXME deal with eof?
-    impure fn read_be_uint(uint size) -> uint {
+    fn read_be_uint(uint size) -> uint {
         auto val = 0u;
         auto sz = size; // FIXME: trans.ml bug workaround
         while (sz > 0u) {
@@ -171,17 +171,17 @@ state obj new_reader(buf_reader rdr) {
         }
         ret val;
     }
-    impure fn read_whole_stream() -> vec[u8] {
+    fn read_whole_stream() -> vec[u8] {
         let vec[u8] buf = vec();
         while (!rdr.eof()) {
             buf += rdr.read(2048u);
         }
         ret buf;
     }
-    impure fn seek(int offset, seek_style whence) {
+    fn seek(int offset, seek_style whence) {
         ret rdr.seek(offset, whence);
     }
-    impure fn tell() -> uint {
+    fn tell() -> uint {
         ret rdr.tell();
     }
 }
@@ -211,7 +211,7 @@ fn new_reader_(buf_reader bufr) -> reader {
 type byte_buf = @rec(vec[u8] buf, mutable uint pos);
 
 state obj byte_buf_reader(byte_buf bbuf) {
-    impure fn read(uint len) -> vec[u8] {
+    fn read(uint len) -> vec[u8] {
         auto rest = _vec.len[u8](bbuf.buf) - bbuf.pos;
         auto to_read = len;
         if (rest < to_read) {
@@ -221,29 +221,29 @@ state obj byte_buf_reader(byte_buf bbuf) {
         bbuf.pos += to_read;
         ret range;
     }
-    impure fn read_byte() -> int {
+    fn read_byte() -> int {
         if (bbuf.pos == _vec.len[u8](bbuf.buf)) {ret -1;}
         auto b = bbuf.buf.(bbuf.pos);
         bbuf.pos += 1u;
         ret b as int;
     }
 
-    impure fn unread_byte(int byte) {
+    fn unread_byte(int byte) {
         log_err "TODO: unread_byte";
         fail;
     }
 
-    impure fn eof() -> bool {
+    fn eof() -> bool {
         ret bbuf.pos == _vec.len[u8](bbuf.buf);
     }
 
-    impure fn seek(int offset, seek_style whence) {
+    fn seek(int offset, seek_style whence) {
         auto pos = bbuf.pos;
         auto len = _vec.len[u8](bbuf.buf);
         bbuf.pos = seek_in_buf(offset, pos, len, whence);
     }
 
-    impure fn tell() -> uint { ret bbuf.pos; }
+    fn tell() -> uint { ret bbuf.pos; }
 }
 
 fn new_byte_buf_reader(vec[u8] buf) -> byte_buf_reader {
@@ -355,14 +355,14 @@ type writer =
           fn get_buf_writer() -> buf_writer;
           // write_str will continue to do utf-8 output only. an alternative
           // function will be provided for general encoded string output
-          impure fn write_str(str s);
-          impure fn write_char(char ch);
-          impure fn write_int(int n);
-          impure fn write_uint(uint n);
-          impure fn write_bytes(vec[u8] bytes);
-          impure fn write_le_uint(uint n, uint size);
-          impure fn write_le_int(int n, uint size);
-          impure fn write_be_uint(uint n, uint size);
+          fn write_str(str s);
+          fn write_char(char ch);
+          fn write_int(int n);
+          fn write_uint(uint n);
+          fn write_bytes(vec[u8] bytes);
+          fn write_le_uint(uint n, uint size);
+          fn write_le_int(int n, uint size);
+          fn write_be_uint(uint n, uint size);
     };
 
 fn uint_to_le_bytes(uint n, uint size) -> vec[u8] {
@@ -389,29 +389,29 @@ state obj new_writer(buf_writer out) {
     fn get_buf_writer() -> buf_writer {
         ret out;
     }
-    impure fn write_str(str s) {
+    fn write_str(str s) {
         out.write(_str.bytes(s));
     }
-    impure fn write_char(char ch) {
+    fn write_char(char ch) {
         // FIXME needlessly consy
         out.write(_str.bytes(_str.from_char(ch)));
     }
-    impure fn write_int(int n) {
+    fn write_int(int n) {
         out.write(_str.bytes(_int.to_str(n, 10u)));
     }
-    impure fn write_uint(uint n) {
+    fn write_uint(uint n) {
         out.write(_str.bytes(_uint.to_str(n, 10u)));
     }
-    impure fn write_bytes(vec[u8] bytes) {
+    fn write_bytes(vec[u8] bytes) {
         out.write(bytes);
     }
-    impure fn write_le_uint(uint n, uint size) {
+    fn write_le_uint(uint n, uint size) {
         out.write(uint_to_le_bytes(n, size));
     }
-    impure fn write_le_int(int n, uint size) {
+    fn write_le_int(int n, uint size) {
         out.write(uint_to_le_bytes(n as uint, size));
     }
-    impure fn write_be_uint(uint n, uint size) {
+    fn write_be_uint(uint n, uint size) {
         out.write(uint_to_be_bytes(n, size));
     }
 }

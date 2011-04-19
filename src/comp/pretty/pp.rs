@@ -48,14 +48,14 @@ fn mkstate(io.writer out, uint width) -> ps {
            mutable potential_brk=false);
 }
 
-impure fn write_spaces(ps p, uint i) {
+fn write_spaces(ps p, uint i) {
   while (i > 0u) {
     i -= 1u;
     p.out.write_str(" ");
   }
 }
 
-impure fn push_context(ps p, contexttype tp, uint indent) {
+fn push_context(ps p, contexttype tp, uint indent) {
   before_print(p, false);
   _vec.push[context](p.context, rec(tp=tp, indent=indent));
   p.start_of_box = true;
@@ -65,13 +65,13 @@ fn pop_context(ps p) {
   _vec.pop[context](p.context);
 }
 
-impure fn add_token(ps p, token tok) {
+fn add_token(ps p, token tok) {
   if (p.width == 0u) {direct_token(p, tok);}
   else if (p.scanning == scan_none) {do_token(p, tok);}
   else {buffer_token(p, tok);}
 }
 
-impure fn direct_token(ps p, token tok) {
+fn direct_token(ps p, token tok) {
   alt (tok) {
     case (brk(?sz)) {write_spaces(p, sz);}
     case (word(?w)) {p.out.write_str(w);}
@@ -80,7 +80,7 @@ impure fn direct_token(ps p, token tok) {
   }
 }
 
-impure fn buffer_token(ps p, token tok) {
+fn buffer_token(ps p, token tok) {
   p.buffered += vec(tok);
   auto col = p.scancol;
   p.scancol = col + token_size(tok);
@@ -114,14 +114,14 @@ impure fn buffer_token(ps p, token tok) {
   }
 }
 
-impure fn check_potential_brk(ps p) {
+fn check_potential_brk(ps p) {
   for (boxtype tp in p.scandepth) {
     if (tp != box_h) {ret;}
   }
   p.potential_brk = true;
 }
 
-impure fn finish_scan(ps p, bool fits) {
+fn finish_scan(ps p, bool fits) {
   auto buf = p.buffered;
   auto front = _vec.shift[token](buf);
   auto chosen_tp = cx_h;
@@ -145,7 +145,7 @@ impure fn finish_scan(ps p, bool fits) {
   for (token t in buf) { add_token(p, t); }
 }
 
-impure fn start_scan(ps p, token tok, scantype tp) {
+fn start_scan(ps p, token tok, scantype tp) {
   p.buffered = vec();
   p.scancol = p.col;
   p.scanning = tp;
@@ -174,7 +174,7 @@ fn box_is(boxtype a, boxtype b) -> bool {
   else {ret false;}
 }
 
-impure fn do_token(ps p, token tok) {
+fn do_token(ps p, token tok) {
   auto start_of_box = p.start_of_box;
   p.start_of_box = false;
   alt (tok) {
@@ -223,14 +223,14 @@ impure fn do_token(ps p, token tok) {
   }
 }
 
-impure fn line_break(ps p) {
+fn line_break(ps p) {
   p.out.write_str("\n");
   p.col = 0u;
   p.spaces = cur_context(p).indent;
   p.start_of_line = true;
 }
 
-impure fn before_print(ps p, bool closing) {
+fn before_print(ps p, bool closing) {
   if (p.start_of_line) {
     p.start_of_line = false;
     if (closing) {p.spaces = base_indent(p);}
@@ -254,14 +254,14 @@ fn token_size(token tok) -> uint {
   }
 }
 
-impure fn box(ps p, uint indent) {add_token(p, open(box_hv, indent));}
-impure fn abox(ps p) {add_token(p, open(box_align, 0u));}
-impure fn vbox(ps p, uint indent) {add_token(p, open(box_v, indent));}
-impure fn hbox(ps p, uint indent) {add_token(p, open(box_h, indent));}
-impure fn end(ps p) {add_token(p, close);}
-impure fn wrd(ps p, str wrd) {add_token(p, word(wrd));}
-impure fn cwrd(ps p, str wrd) {add_token(p, cword(wrd));}
-impure fn space(ps p) {add_token(p, brk(1u));}
-impure fn spaces(ps p, uint n) {add_token(p, brk(n));}
-impure fn line(ps p) {add_token(p, brk(0u));}
-impure fn hardbreak(ps p) {add_token(p, hardbrk);}
+fn box(ps p, uint indent) {add_token(p, open(box_hv, indent));}
+fn abox(ps p) {add_token(p, open(box_align, 0u));}
+fn vbox(ps p, uint indent) {add_token(p, open(box_v, indent));}
+fn hbox(ps p, uint indent) {add_token(p, open(box_h, indent));}
+fn end(ps p) {add_token(p, close);}
+fn wrd(ps p, str wrd) {add_token(p, word(wrd));}
+fn cwrd(ps p, str wrd) {add_token(p, cword(wrd));}
+fn space(ps p) {add_token(p, brk(1u));}
+fn spaces(ps p, uint n) {add_token(p, brk(n));}
+fn line(ps p) {add_token(p, brk(0u));}
+fn hardbreak(ps p) {add_token(p, hardbrk);}

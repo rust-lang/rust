@@ -5,7 +5,7 @@ iter two() -> int {
     put 1;
 }
 
-impure fn main() {
+fn main() {
     let vec[mutable int] a = vec(mutable -1, -1, -1, -1);
     let int p = 0;
 

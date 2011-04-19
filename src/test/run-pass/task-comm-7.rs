@@ -1,9 +1,9 @@
 // xfail-stage0
-impure fn main() -> () {
+fn main() -> () {
    test00();
 }
 
-impure fn test00_start(chan[int] c, int start, int number_of_messages) {
+fn test00_start(chan[int] c, int start, int number_of_messages) {
     let int i = 0;
     while (i < number_of_messages) {
         c <| start + i;
@@ -11,7 +11,7 @@ impure fn test00_start(chan[int] c, int start, int number_of_messages) {
     }    
 }
 
-impure fn test00() {
+fn test00() {
     let int r = 0;    
     let int sum = 0;
     let port[int] p = port();

@@ -154,11 +154,11 @@ fn unsafe_from_byte(u8 u) -> str {
     ret rustrt.str_from_vec(vec(u));
 }
 
-unsafe fn str_from_cstr(sbuf cstr) -> str {
+fn str_from_cstr(sbuf cstr) -> str {
     ret rustrt.str_from_cstr(cstr);
 }
 
-unsafe fn str_from_buf(sbuf buf, uint len) -> str {
+fn str_from_buf(sbuf buf, uint len) -> str {
     ret rustrt.str_from_buf(buf, len);
 }
 

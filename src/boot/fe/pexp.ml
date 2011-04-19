@@ -151,11 +151,10 @@ and parse_layer (ps:pstate) : Ast.layer =
     | GC -> bump ps; Ast.LAYER_gc
     |  _ -> Ast.LAYER_value
 
-and parse_effect (ps:pstate) : Ast.effect =
+and parse_auth (ps:pstate) : Ast.auth =
   match peek ps with
-      IMPURE -> bump ps; Ast.EFF_impure
-    | UNSAFE -> bump ps; Ast.EFF_unsafe
-    | _ -> Ast.EFF_pure
+    | UNSAFE -> bump ps; Ast.AUTH_unsafe
+    | _ -> raise (unexpected ps)
 
 and parse_mutability (ps:pstate) : Ast.mutability =
   match peek ps with
@@ -170,7 +169,6 @@ and parse_mutability (ps:pstate) : Ast.mutability =
     | _ -> Ast.MUT_immutable
 
 and parse_ty_fn
-    (effect:Ast.effect)
     (ps:pstate)
     : (Ast.ty_fn * Ast.ident option) =
   match peek ps with
@@ -198,8 +196,7 @@ and parse_ty_fn
                        Ast.sig_input_constrs = constrs;
                        Ast.sig_output_slot = out_slot; }
           in
-          let taux = { Ast.fn_effect = effect;
-                       Ast.fn_is_iter = is_iter; }
+          let taux = { Ast.fn_is_iter = is_iter; }
           in
           let tfn = (tsig, taux) in
             (tfn, ident)
@@ -280,19 +277,15 @@ and parse_atomic_ty (ps:pstate) : Ast.ty =
         bump ps;
         Ast.TY_mach m
 
-    | STATE | GC | IMPURE | UNSAFE | OBJ | FN | ITER ->
+    | STATE | GC | UNSAFE | OBJ | FN | ITER ->
         let layer = parse_layer ps in
-        let effect = parse_effect ps in
           begin
             match peek ps with
                 OBJ ->
                   bump ps;
-                  if effect <> Ast.EFF_pure
-                  then raise (err "effect specified for obj" ps);
                   let methods = Hashtbl.create 0 in
                   let parse_method ps =
-                    let effect = parse_effect ps in
-                    let (tfn, ident) = parse_ty_fn effect ps in
+                    let (tfn, ident) = parse_ty_fn ps in
                       expect ps SEMI;
                       match ident with
                           None ->
@@ -307,7 +300,7 @@ and parse_atomic_ty (ps:pstate) : Ast.ty =
               | FN | ITER ->
                   if layer <> Ast.LAYER_value
                   then raise (err "layer specified for fn or iter" ps);
-                  Ast.TY_fn (fst (parse_ty_fn effect ps))
+                  Ast.TY_fn (fst (parse_ty_fn ps))
               | _ -> raise (unexpected ps)
           end
 

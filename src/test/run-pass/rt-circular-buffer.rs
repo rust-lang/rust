@@ -17,7 +17,7 @@ type record = rec(u32 val1, u32 val2, u32 val3);
 // then the minimum buffer size needs to be 96. That's not a
 // power of two so needs to be rounded up. Don't trigger any
 // assertions.
-impure fn test_init() {
+fn test_init() {
     let port[record] myport = port();
     auto mychan = chan(myport);
 
@@ -28,7 +28,7 @@ impure fn test_init() {
 
 // Dump lots of items into the channel so it has to grow.
 // Don't trigger any assertions.
-impure fn test_grow() {
+fn test_grow() {
     let port[record] myport = port();
     auto mychan = chan(myport);
 
@@ -40,7 +40,7 @@ impure fn test_grow() {
 }
 
 // Don't allow the buffer to shrink below it's original size
-impure fn test_shrink1() {
+fn test_shrink1() {
     let port[i8] myport = port();
     auto mychan = chan(myport);
 
@@ -48,7 +48,7 @@ impure fn test_shrink1() {
     auto x <- myport;
 }
 
-impure fn test_shrink2() {
+fn test_shrink2() {
     let port[record] myport = port();
     auto mychan = chan(myport);
 
@@ -64,7 +64,7 @@ impure fn test_shrink2() {
 }
 
 // Test rotating the buffer when the unit size is not a power of two
-impure fn test_rotate() {
+fn test_rotate() {
     let port[record] myport = port();
     auto mychan = chan(myport);
 
@@ -83,7 +83,7 @@ impure fn test_rotate() {
 
 // Test rotating and growing the buffer when
 // the unit size is not a power of two
-impure fn test_rotate_grow() {
+fn test_rotate_grow() {
     let port[record] myport = port();
     auto mychan = chan(myport);
 
@@ -104,7 +104,7 @@ impure fn test_rotate_grow() {
     }
 }
 
-impure fn main() {
+fn main() {
     test_init();
     test_grow();
     test_shrink1();

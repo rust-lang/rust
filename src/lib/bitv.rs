@@ -25,7 +25,7 @@ fn create(uint nbits, bool init) -> t {
     ret rec(storage = storage, nbits = nbits);
 }
 
-impure fn process(&fn(uint, uint) -> uint op, &t v0, &t v1) -> bool {
+fn process(&fn(uint, uint) -> uint op, &t v0, &t v1) -> bool {
     auto len = _vec.len[mutable uint](v1.storage);
 
     check (_vec.len[mutable uint](v0.storage) == len);
@@ -51,7 +51,7 @@ fn lor(uint w0, uint w1) -> uint {
     ret w0 | w1;
 }
 
-impure fn union(&t v0, &t v1) -> bool {
+fn union(&t v0, &t v1) -> bool {
     auto sub = lor;
     ret process(sub, v0, v1);
 }
@@ -60,7 +60,7 @@ fn land(uint w0, uint w1) -> uint {
     ret w0 & w1;
 }
 
-impure fn intersect(&t v0, &t v1) -> bool {
+fn intersect(&t v0, &t v1) -> bool {
     auto sub = land;
     ret process(sub, v0, v1);
 }
@@ -69,7 +69,7 @@ fn right(uint w0, uint w1) -> uint {
     ret w1;
 }
 
-impure fn copy(&t v0, t v1) -> bool {
+fn copy(&t v0, t v1) -> bool {
     auto sub = right;
     ret process(sub, v0, v1);
 }
@@ -108,27 +108,27 @@ fn equal(&t v0, &t v1) -> bool {
     ret true;
 }
 
-impure fn clear(&t v) {
+fn clear(&t v) {
     for each (uint i in _uint.range(0u, _vec.len[mutable uint](v.storage))) {
         v.storage.(i) = 0u;
     }
 }
 
-impure fn invert(&t v) {
+fn invert(&t v) {
     for each (uint i in _uint.range(0u, _vec.len[mutable uint](v.storage))) {
         v.storage.(i) = ~v.storage.(i);
     }
 }
 
 /* v0 = v0 - v1 */
-impure fn difference(&t v0, &t v1) -> bool {
+fn difference(&t v0, &t v1) -> bool {
     invert(v1);
     auto b = intersect(v0, v1);
     invert(v1);
     ret b;
 }
 
-impure fn set(&t v, uint i, bool x) {
+fn set(&t v, uint i, bool x) {
     check (i < v.nbits);
 
     auto bits = uint_bits();

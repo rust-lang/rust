@@ -610,7 +610,6 @@ and parse_stmts_including_none (ps:pstate) : Ast.stmt array =
 
 
        | STATE | GC
-       | IMPURE | UNSAFE
        | ABS | NATIVE
        | MOD | OBJ | TAG | TYPE | FN | USE ->
           let items = ctxt "stmt: decl" parse_mod_item ps in
@@ -794,7 +793,6 @@ and parse_in_and_out
 (* parse_fn starts at the first lparen of the sig. *)
 and parse_fn
     (is_iter:bool)
-    (effect:Ast.effect)
     (ps:pstate)
     : Ast.fn =
     let (inputs, constrs, output) =
@@ -804,8 +802,7 @@ and parse_fn
       { Ast.fn_input_slots = inputs;
         Ast.fn_input_constrs = constrs;
         Ast.fn_output_slot = output;
-        Ast.fn_aux = { Ast.fn_effect = effect;
-                       Ast.fn_is_iter = is_iter; };
+        Ast.fn_aux = { Ast.fn_is_iter = is_iter; };
         Ast.fn_body = body; }
 
 and parse_meta_input (ps:pstate) : (Ast.ident * string option) =
@@ -859,12 +856,11 @@ and parse_obj_item
       do
         let apos = lexpos ps in
           match peek ps with
-              IMPURE | UNSAFE | FN | ITER ->
-                let effect = Pexp.parse_effect ps in
+              FN | ITER ->
                 let is_iter = (peek ps) = ITER in
                   bump ps;
                   let ident = ctxt "obj fn: ident" Pexp.parse_ident ps in
-                  let fn = ctxt "obj fn: fn" (parse_fn is_iter effect) ps in
+                  let fn = ctxt "obj fn: fn" (parse_fn is_iter) ps in
                   let bpos = lexpos ps in
                     htab_put fns ident (span ps apos bpos fn)
             | DROP ->
@@ -994,24 +990,17 @@ and parse_mod_item (ps:pstate)
 
     match peek ps with
 
-        STATE | GC | IMPURE | UNSAFE | ABS
+        STATE | GC | ABS
       | TYPE | OBJ | TAG | FN | ITER ->
           let _ = Pexp.parse_opacity ps in
           let layer = Pexp.parse_layer ps in
-          let effect = Pexp.parse_effect ps in
             begin
               match peek ps with
                   OBJ ->
-                    if effect <> Ast.EFF_pure
-                    then raise (err "effect specified for obj" ps);
                     [| parse_obj_item ps apos layer |]
                 | TAG ->
-                    if effect <> Ast.EFF_pure
-                    then raise (err "effect specified for tag" ps);
                     parse_tag_item ps apos layer
                 | TYPE ->
-                    if effect <> Ast.EFF_pure
-                    then raise (err "effect specified for type" ps);
                     [| parse_type_item ps apos layer |]
                 | _ ->
                     if layer <> Ast.LAYER_value
@@ -1020,7 +1009,7 @@ and parse_mod_item (ps:pstate)
                       bump ps;
                       let (ident, params) = parse_ident_and_params ps "fn" in
                       let fn =
-                        ctxt "mod fn item: fn" (parse_fn is_iter effect) ps
+                        ctxt "mod fn item: fn" (parse_fn is_iter) ps
                       in
                       let bpos = lexpos ps in
                         [| (ident,
@@ -1119,8 +1108,7 @@ and parse_native_mod_item_from_signature (ps:pstate)
             [| (ident,
                 span ps apos bpos (decl params (Ast.MOD_ITEM_mod items))) |]
 
-      | IMPURE | UNSAFE | FN | ITER ->
-          let effect = Pexp.parse_effect ps in
+      | FN | ITER ->
           let is_iter = (peek ps) = ITER in
             bump ps;
             let (ident, params) = parse_ident_and_params ps "fn signature" in
@@ -1132,8 +1120,7 @@ and parse_native_mod_item_from_signature (ps:pstate)
                 { Ast.fn_input_slots = inputs;
                   Ast.fn_input_constrs = constrs;
                   Ast.fn_output_slot = output;
-                  Ast.fn_aux = { Ast.fn_effect = effect;
-                                 Ast.fn_is_iter = is_iter; };
+                  Ast.fn_aux = { Ast.fn_is_iter = is_iter; };
                   Ast.fn_body = body; }
             in
             let node = span ps apos bpos (decl params fn) in

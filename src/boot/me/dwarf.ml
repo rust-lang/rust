@@ -1205,8 +1205,6 @@ let (abbrev_subprogram:abbrev) =
      (DW_AT_high_pc, DW_FORM_addr);
      (DW_AT_frame_base, DW_FORM_block1);
      (DW_AT_return_addr, DW_FORM_block1);
-     (DW_AT_mutable, DW_FORM_flag);
-     (DW_AT_pure, DW_FORM_flag);
      (DW_AT_rust_iterator, DW_FORM_flag);
    |])
 ;;
@@ -1389,8 +1387,6 @@ let (abbrev_subroutine_type:abbrev) =
   (DW_TAG_subroutine_type, DW_CHILDREN_yes,
    [|
      (DW_AT_type, DW_FORM_ref_addr); (* NB: output type. *)
-       (DW_AT_mutable, DW_FORM_flag);
-       (DW_AT_pure, DW_FORM_flag);
        (DW_AT_rust_iterator, DW_FORM_flag);
      |])
 ;;
@@ -1408,8 +1404,6 @@ let (abbrev_obj_subroutine_type:abbrev) =
      [|
        (DW_AT_name, DW_FORM_string);
        (DW_AT_type, DW_FORM_ref_addr); (* NB: output type. *)
-       (DW_AT_mutable, DW_FORM_flag);
-       (DW_AT_pure, DW_FORM_flag);
        (DW_AT_rust_iterator, DW_FORM_flag);
      |])
 ;;
@@ -1523,26 +1517,10 @@ let dwarf_visitor
           SUB ((M_POS fix), M_POS cu_info_section_fixup))
   in
 
-  let encode_effect eff =
-    (* Note: weird encoding: mutable+pure = unsafe. *)
-    let mut_byte, pure_byte =
-      match eff with
-          Ast.EFF_unsafe -> (1,1)
-        | Ast.EFF_impure -> (0,0)
-        | Ast.EFF_pure -> (0,1)
-    in
-      SEQ [|
-        (* DW_AT_mutable: DW_FORM_flag *)
-        BYTE mut_byte;
-        (* DW_AT_pure: DW_FORM_flag *)
-        BYTE pure_byte;
-      |]
-  in
-
-  let encode_layer eff =
+  let encode_layer lyr =
     (* Note: weird encoding: mutable+pure = gc. *)
     let mut_byte, pure_byte =
-      match eff with
+      match lyr with
           Ast.LAYER_value -> (0,1)
         | Ast.LAYER_state -> (1,0)
         | Ast.LAYER_gc -> (1,1)
@@ -1855,7 +1833,6 @@ let dwarf_visitor
                  uleb (get_abbrev_code abbrev_subroutine_type);
                  (* DW_AT_type: DW_FORM_ref_addr *)
                  (ref_slot_die tsig.Ast.sig_output_slot);
-                 encode_effect taux.Ast.fn_effect;
                  (* DW_AT_rust_iterator: DW_FORM_flag *)
                  BYTE (if taux.Ast.fn_is_iter then 1 else 0)
                |])
@@ -1876,7 +1853,6 @@ let dwarf_visitor
             ZSTRING ident;
             (* DW_AT_type: DW_FORM_ref_addr *)
             (ref_slot_die tsig.Ast.sig_output_slot);
-            encode_effect taux.Ast.fn_effect;
             (* DW_AT_rust_iterator: DW_FORM_flag *)
             BYTE (if taux.Ast.fn_is_iter then 1 else 0)
           |]
@@ -2295,7 +2271,6 @@ let dwarf_visitor
   let emit_subprogram_die
       (id:Ast.ident)
       (ret_slot:Ast.slot)
-      (effect:Ast.effect)
       (iter:bool)
       (fix:fixup)
       : unit =
@@ -2315,7 +2290,6 @@ let dwarf_visitor
          dw_form_block1 [| DW_OP_reg abi.Abi.abi_dwarf_fp_reg |];
          (* DW_AT_return_addr *)
          dw_form_block1 [| DW_OP_fbreg (Asm.IMM retpc); |];
-         encode_effect effect;
          (* DW_AT_rust_iterator: DW_FORM_flag *)
          BYTE (if iter then 1 else 0)
        |])
@@ -2429,7 +2403,7 @@ let dwarf_visitor
                   (Array.length item.node.Ast.decl_params);
                 emit_subprogram_die
                   id tsig.Ast.sig_output_slot
-                  taux.Ast.fn_effect taux.Ast.fn_is_iter
+                  taux.Ast.fn_is_iter
                   (Hashtbl.find cx.ctxt_fn_fixups item.id);
                 emit_type_param_decl_dies item.node.Ast.decl_params;
             end
@@ -2900,15 +2874,6 @@ let rec extract_mod_items
       | _ -> bug () "unexpected non-flag form for %s" (dw_at_to_string attr)
   in
 
-  let get_effect die =
-    match (get_flag die DW_AT_mutable, get_flag die DW_AT_pure) with
-        (* Note: weird encoding: mutable+pure = unsafe. *)
-        (true, true) -> Ast.EFF_unsafe
-      | (false, false) -> Ast.EFF_impure
-      | (false, true) -> Ast.EFF_pure
-      | _ -> failwith "bad effect encoding"
-  in
-
   let get_layer die =
     match (get_flag die DW_AT_mutable, get_flag die DW_AT_pure) with
         (* Note: weird encoding: mutable+pure = gc. *)
@@ -3123,7 +3088,6 @@ let rec extract_mod_items
             else None
         end
     in
-    let effect = get_effect die in
     let iter = get_flag die DW_AT_rust_iterator in
     let tsig =
       { Ast.sig_input_slots = ins;
@@ -3131,8 +3095,7 @@ let rec extract_mod_items
         Ast.sig_output_slot = out; }
     in
     let taux =
-      { Ast.fn_is_iter = iter;
-        Ast.fn_effect = effect }
+      { Ast.fn_is_iter = iter; }
     in
       (tsig, taux)
   in
@@ -3223,11 +3186,9 @@ let rec extract_mod_items
           (* FIXME (issue #74): finish this. *)
           let ident = get_name die in
           let oslot = get_referenced_slot die in
-          let effect = get_effect die in
           let iter = get_flag die DW_AT_rust_iterator in
           let (params, islots) = get_formals die in
-          let taux = { Ast.fn_effect = effect;
-                       Ast.fn_is_iter = iter }
+          let taux = { Ast.fn_is_iter = iter }
           in
           let tfn = { Ast.fn_input_slots = form_header_slots islots;
                        Ast.fn_input_constrs = [| |];

@@ -2,11 +2,11 @@
 fn main() {
 
   obj foo() {
-      impure fn m1(mutable int i) {
+      fn m1(mutable int i) {
           i += 1;
           log "hi!";
       }
-      impure fn m2(mutable int i) {
+      fn m2(mutable int i) {
           i += 1;
           self.m1(i);
       }

@@ -44,7 +44,7 @@ fn default_environment(session.session sess,
             );
 }
 
-impure fn parse_input(session.session sess,
+fn parse_input(session.session sess,
                       parser.parser p,
                       str input) -> @front.ast.crate {
     if (_str.ends_with(input, ".rc")) {
@@ -56,7 +56,7 @@ impure fn parse_input(session.session sess,
     fail;
 }
 
-impure fn compile_input(session.session sess,
+fn compile_input(session.session sess,
                         eval.env env,
                         str input, str output,
                         bool shared,
@@ -79,7 +79,7 @@ impure fn compile_input(session.session sess,
                       ot);
 }
 
-impure fn pretty_print_input(session.session sess,
+fn pretty_print_input(session.session sess,
                              eval.env env,
                              str input) {
     auto def = tup(0, 0);
@@ -116,7 +116,7 @@ fn get_os() -> session.os {
     if (_str.eq(s, "linux")) { ret session.os_linux; }
 }
 
-impure fn main(vec[str] args) {
+fn main(vec[str] args) {
 
     // FIXME: don't hard-wire this.
     auto target_cfg = rec(os = get_os(),

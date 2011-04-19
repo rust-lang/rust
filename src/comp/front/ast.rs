@@ -83,7 +83,7 @@ tag crate_directive_ {
     cdir_view_item(@view_item);
     cdir_meta(vec[@meta_item]);
     cdir_syntax(path);
-    cdir_auth(path, effect);
+    cdir_auth(path, _auth);
 }
 type crate_directive = spanned[crate_directive_];
 
@@ -130,10 +130,8 @@ tag layer {
     layer_gc;
 }
 
-tag effect {
-    eff_pure;
-    eff_impure;
-    eff_unsafe;
+tag _auth {
+    auth_unsafe;
 }
 
 tag proto {
@@ -314,7 +312,7 @@ tag lit_ {
 type mt = rec(@ty ty, mutability mut);
 type ty_field = rec(ident ident, mt mt);
 type ty_arg = rec(mode mode, @ty ty);
-type ty_method = rec(effect effect, proto proto, ident ident,
+type ty_method = rec(proto proto, ident ident,
                      vec[ty_arg] inputs, @ty output);
 type ty = spanned[ty_];
 tag ty_ {
@@ -332,7 +330,7 @@ tag ty_ {
     ty_chan(@ty);
     ty_tup(vec[mt]);
     ty_rec(vec[ty_field]);
-    ty_fn(effect, proto, vec[ty_arg], @ty);
+    ty_fn(proto, vec[ty_arg], @ty);
     ty_obj(vec[ty_method]);
     ty_path(path, option.t[def]);
     ty_type;
@@ -348,8 +346,7 @@ type constr_ = rec(path path, vec[@constr_arg] args);
 type constr = spanned[constr_];
 
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
-type fn_decl = rec(effect effect,
-                   vec[arg] inputs,
+type fn_decl = rec(vec[arg] inputs,
                    @ty output);
 type _fn = rec(fn_decl decl,
                proto proto,

@@ -218,7 +218,7 @@ mod Body {
            );
    }
 
-   impure fn offsetMomentum(&Body.props props,
+   fn offsetMomentum(&Body.props props,
                             float px, 
                             float py, 
                             float pz) -> () {

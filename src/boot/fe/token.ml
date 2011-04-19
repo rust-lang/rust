@@ -87,8 +87,7 @@ type token =
   | STATE
   | GC
 
-  (* Effect keywords *)
-  | IMPURE
+  (* Unsafe-block keyword *)
   | UNSAFE
 
   (* Type qualifiers *)
@@ -251,8 +250,7 @@ let rec string_of_tok t =
     | STATE      -> "state"
     | GC         -> "gc"
 
-    (* Effect keywords *)
-    | IMPURE     -> "impure"
+    (* Unsafe-block keyword *)
     | UNSAFE     -> "unsafe"
 
     (* Type qualifiers *)

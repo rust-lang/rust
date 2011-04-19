@@ -1,8 +1,8 @@
-impure fn main() -> () {
+fn main() -> () {
    test00();
 }
 
-impure fn test00() {
+fn test00() {
     let int r = 0;    
     let int sum = 0;
     let port[int] p = port();

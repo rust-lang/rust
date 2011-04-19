@@ -1,7 +1,7 @@
 // xfail-stage0
 // -*- rust -*-
 
-impure fn main() {
+fn main() {
   let port[int] p = port();
   auto c = chan(p);
   let int y;
@@ -19,6 +19,6 @@ impure fn main() {
   check (y == 10);
 }
 
-impure fn child(chan[int] c) {
+fn child(chan[int] c) {
   c <| 10;
 }

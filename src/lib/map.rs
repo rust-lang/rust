@@ -64,7 +64,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
      * We attempt to never call this with a full table.  If we do, it
      * will fail.
      */
-    impure fn insert_common[K, V](&hashfn[K] hasher,
+    fn insert_common[K, V](&hashfn[K] hasher,
                                   &eqfn[K] eqer,
                                   vec[mutable bucket[K, V]] bkts,
                                   uint nbkts,
@@ -119,7 +119,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
         }
 
 
-   impure fn rehash[K, V](&hashfn[K] hasher,
+   fn rehash[K, V](&hashfn[K] hasher,
                           &eqfn[K] eqer,
                           vec[mutable bucket[K, V]] oldbkts, uint noldbkts,
                           vec[mutable bucket[K, V]] newbkts, uint nnewbkts)

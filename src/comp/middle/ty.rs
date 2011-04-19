@@ -54,8 +54,8 @@ tag sty {
     ty_task;
     ty_tup(vec[mt]);
     ty_rec(vec[field]);
-    ty_fn(ast.proto, vec[arg], @t);                 // TODO: effect
-    ty_native_fn(ast.native_abi, vec[arg], @t);     // TODO: effect
+    ty_fn(ast.proto, vec[arg], @t);
+    ty_native_fn(ast.native_abi, vec[arg], @t);
     ty_obj(vec[method]);
     ty_var(int);                                    // ephemeral type var
     ty_local(ast.def_id);                           // type of a local var

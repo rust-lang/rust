@@ -25,7 +25,6 @@ type sess =
   mutable sess_log_type: bool;
   mutable sess_log_simplify: bool;
   mutable sess_log_layer: bool;
-  mutable sess_log_effect: bool;
   mutable sess_log_typestate: bool;
   mutable sess_log_dead: bool;
   mutable sess_log_loop: bool;

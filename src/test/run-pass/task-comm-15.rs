@@ -1,6 +1,6 @@
 // xfail-boot
 // xfail-stage0
-impure fn start(chan[int] c, int n) {
+fn start(chan[int] c, int n) {
     let int i = n;
 
     while(i > 0) {
@@ -9,7 +9,7 @@ impure fn start(chan[int] c, int n) {
     }
 }
 
-impure fn main() {
+fn main() {
     let port[int] p = port();
     // Spawn a task that sends us back messages. The parent task
     // is likely to terminate before the child completes, so from

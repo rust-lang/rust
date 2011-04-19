@@ -2,7 +2,7 @@
 // xfail-stage0
 // -*- rust -*-
 
-impure fn sub(chan[int] parent, int id) {
+fn sub(chan[int] parent, int id) {
   if (id == 0) {
     parent <| 0;
   } else {
@@ -13,7 +13,7 @@ impure fn sub(chan[int] parent, int id) {
   }
 }
 
-impure fn main() {
+fn main() {
   let port[int] p = port();
   auto child = spawn sub(chan(p), 500);
   let int y <- p;

@@ -100,8 +100,7 @@ tag token {
     STATE;
     GC;
 
-    /* Effect keywords */
-    IMPURE;
+    /* Unsafe-block keyword */
     UNSAFE;
 
     /* Type qualifiers */
@@ -273,8 +272,7 @@ fn to_str(token t) -> str {
         case (STATE) { ret "state"; }
         case (GC) { ret "gc"; }
 
-        /* Effect keywords */
-        case (IMPURE) { ret "impure"; }
+        /* Unsafe-block keyword */
         case (UNSAFE) { ret "unsafe"; }
 
         /* Type qualifiers */
