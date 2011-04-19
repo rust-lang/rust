@@ -82,6 +82,8 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
 
     if (crate->abi_tag != ABI_X86_RUSTBOOT_CDECL)
         update_log_settings(crate_map, getenv("RUST_LOG"));
+    else
+        update_log_settings(NULL, getenv("RUST_LOG"));
     rust_srv *srv = new rust_srv();
     rust_kernel *kernel = new rust_kernel(srv);
     kernel->start();
@@ -89,14 +91,13 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
     rust_dom *dom = handle->referent();
     command_line_args *args = new (dom) command_line_args(dom, argc, argv);
 
-    DLOG(dom, rust_log::DOM, "startup: %d args in 0x%" PRIxPTR,
+    DLOG(dom, dom, "startup: %d args in 0x%" PRIxPTR,
              args->argc, (uintptr_t)args->args);
     for (int i = 0; i < args->argc; i++) {
-        DLOG(dom, rust_log::DOM,
-            "startup: arg[%d] = '%s'", i, args->argv[i]);
+        DLOG(dom, dom, "startup: arg[%d] = '%s'", i, args->argv[i]);
     }
 
-    if (dom->_log.is_tracing(rust_log::DWARF)) {
+    if (log_rt_dwarf) {
         rust_crate_reader create_reader(dom, crate);
     }
 

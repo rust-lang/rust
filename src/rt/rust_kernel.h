@@ -107,7 +107,7 @@ public:
     void join_all_domains();
 
     void log_all_domain_state();
-    void log(uint32_t type_bits, char const *fmt, ...);
+    void log(uint32_t level, char const *fmt, ...);
     virtual ~rust_kernel();
 
     void *malloc(size_t size);

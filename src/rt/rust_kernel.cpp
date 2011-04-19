@@ -1,11 +1,11 @@
 #include "rust_internal.h"
 
-#define KLOG(...)                                 \
-  do {                                            \
-    if (_log.is_tracing(rust_log::KERN)) {        \
-        log(rust_log::KERN, __VA_ARGS__);         \
-    }                                             \
-  } while(0)
+#define KLOG(...)                                          \
+  do {                                                     \
+      if (log_rt_kern >= log_note) {                       \
+          log(log_note, __VA_ARGS__);                      \
+      }                                                    \
+  } while (0)
 
 rust_kernel::rust_kernel(rust_srv *srv) :
     _region(&srv->local_region),
@@ -123,15 +123,13 @@ rust_kernel::is_deadlocked() {
 }
 
 void
-rust_kernel::log(uint32_t type_bits, char const *fmt, ...) {
+rust_kernel::log(uint32_t level, char const *fmt, ...) {
     char buf[BUF_BYTES];
-    if (_log.is_tracing(type_bits)) {
-        va_list args;
-        va_start(args, fmt);
-        vsnprintf(buf, sizeof(buf), fmt, args);
-        _log.trace_ln(NULL, type_bits, buf);
-        va_end(args);
-    }
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    _log.trace_ln(NULL, level, buf);
+    va_end(args);
 }
 
 void

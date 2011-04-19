@@ -30,7 +30,7 @@ timer_loop(void *ptr) {
     // We were handed the rust_timer that owns us.
     rust_timer *timer = (rust_timer *)ptr;
     rust_dom *dom = timer->dom;
-    DLOG(dom, rust_log::TIMER, "in timer 0x%" PRIxPTR, (uintptr_t)timer);
+    DLOG(dom, timer, "in timer 0x%" PRIxPTR, (uintptr_t)timer);
     size_t ms = TIME_SLICE_IN_MS;
 
     while (!timer->exit_flag) {
@@ -39,7 +39,7 @@ timer_loop(void *ptr) {
 #else
         usleep(ms * 1000);
 #endif
-        DLOG(dom, rust_log::TIMER, "timer 0x%" PRIxPTR
+        DLOG(dom, timer, "timer 0x%" PRIxPTR
         " interrupting domain 0x%" PRIxPTR, (uintptr_t) timer,
                  (uintptr_t) dom);
         dom->interrupt_flag = 1;
@@ -54,7 +54,7 @@ timer_loop(void *ptr) {
 
 rust_timer::rust_timer(rust_dom *dom) :
     dom(dom), exit_flag(0) {
-    DLOG(dom, rust_log::TIMER, "creating timer for domain 0x%" PRIxPTR, dom);
+    DLOG(dom, timer, "creating timer for domain 0x%" PRIxPTR, dom);
 #if defined(__WIN32__)
     thread = CreateThread(NULL, 0, timer_loop, this, 0, NULL);
     dom->win32_require("CreateThread", thread != NULL);

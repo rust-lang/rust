@@ -14,6 +14,7 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
     // glue.
     rust_crate const *root_crate;
     rust_log _log;
+    uint32_t log_lvl;
     rust_srv *srv;
     memory_region local_region;
     memory_region synchronized_region;
@@ -47,16 +48,12 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
     // Only a pointer to 'name' is kept, so it must live as long as this
     // domain.
     rust_dom(rust_kernel *kernel,
-        rust_message_queue *message_queue, rust_srv *srv,
-        rust_crate const *root_crate, const char *name);
+             rust_message_queue *message_queue, rust_srv *srv,
+             rust_crate const *root_crate, const char *name);
     ~rust_dom();
     void activate(rust_task *task);
-    void log(rust_task *task, uint32_t logbit, char const *fmt, ...);
-    void log(uint32_t logbit, char const *fmt, ...);
+    void log(rust_task *task, uint32_t level, char const *fmt, ...);
     rust_log & get_log();
-    void logptr(char const *msg, uintptr_t ptrval);
-    template<typename T>
-    void logptr(char const *msg, T* ptrval);
     void fail();
     void *malloc(size_t size);
     void *malloc(size_t size, memory_region::memory_region_type type);
@@ -83,7 +80,6 @@ struct rust_dom : public kernel_owned<rust_dom>, rc_base<rust_dom>
     int start_main_loop();
 
     void log_state();
-    static void log_all_state();
 
     rust_task *create_task(rust_task *spawner, const char *name);
 };

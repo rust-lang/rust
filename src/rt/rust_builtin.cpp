@@ -6,7 +6,7 @@
 extern "C" CDECL rust_str*
 last_os_error(rust_task *task) {
     rust_dom *dom = task->dom;
-    LOG(task, rust_log::TASK, "last_os_error()");
+    LOG(task, task, "last_os_error()");
 
 #if defined(__WIN32__)
     LPTSTR buf;
@@ -91,9 +91,8 @@ extern "C" CDECL rust_vec*
 vec_alloc(rust_task *task, type_desc *t, type_desc *elem_t, size_t n_elts)
 {
     rust_dom *dom = task->dom;
-    LOG(task, rust_log::MEM | rust_log::STDLIB,
-              "vec_alloc %" PRIdPTR " elements of size %" PRIdPTR,
-              n_elts, elem_t->size);
+    LOG(task, mem, "vec_alloc %" PRIdPTR " elements of size %" PRIdPTR,
+        n_elts, elem_t->size);
     size_t fill = n_elts * elem_t->size;
     size_t alloc = next_power_of_two(sizeof(rust_vec) + fill);
     void *mem = task->malloc(alloc, t->is_stateful ? t : NULL);
@@ -126,37 +125,34 @@ vec_len(rust_task *task, type_desc *ty, rust_vec *v)
 extern "C" CDECL void
 vec_len_set(rust_task *task, type_desc *ty, rust_vec *v, size_t len)
 {
-    LOG(task, rust_log::STDLIB,
-              "vec_len_set(0x%" PRIxPTR ", %" PRIdPTR ") on vec with "
-              "alloc = %" PRIdPTR
-              ", fill = %" PRIdPTR
-              ", len = %" PRIdPTR
-              ".  New fill is %" PRIdPTR,
-              v, len, v->alloc, v->fill, v->fill / ty->size, len * ty->size);
+    LOG(task, stdlib, "vec_len_set(0x%" PRIxPTR ", %" PRIdPTR ") on vec with "
+        "alloc = %" PRIdPTR
+        ", fill = %" PRIdPTR
+        ", len = %" PRIdPTR
+        ".  New fill is %" PRIdPTR,
+        v, len, v->alloc, v->fill, v->fill / ty->size, len * ty->size);
     v->fill = len * ty->size;
 }
 
 extern "C" CDECL void
 vec_print_debug_info(rust_task *task, type_desc *ty, rust_vec *v)
 {
-    LOG(task, rust_log::STDLIB,
-              "vec_print_debug_info(0x%" PRIxPTR ")"
-              " with tydesc 0x%" PRIxPTR
-              " (size = %" PRIdPTR ", align = %" PRIdPTR ")"
-              " alloc = %" PRIdPTR ", fill = %" PRIdPTR ", len = %" PRIdPTR
-              " , data = ...",
-              v,
-              ty,
-              ty->size,
-              ty->align,
-              v->alloc,
-              v->fill,
-              v->fill / ty->size);
+    LOG(task, stdlib,
+        "vec_print_debug_info(0x%" PRIxPTR ")"
+        " with tydesc 0x%" PRIxPTR
+        " (size = %" PRIdPTR ", align = %" PRIdPTR ")"
+        " alloc = %" PRIdPTR ", fill = %" PRIdPTR ", len = %" PRIdPTR
+        " , data = ...",
+        v,
+        ty,
+        ty->size,
+        ty->align,
+        v->alloc,
+        v->fill,
+        v->fill / ty->size);
 
     for (size_t i = 0; i < v->fill; ++i) {
-        LOG(task, rust_log::STDLIB,
-                  "  %" PRIdPTR ":    0x%" PRIxPTR,
-                  i, v->data[i]);
+        LOG(task, stdlib, "  %" PRIdPTR ":    0x%" PRIxPTR, i, v->data[i]);
     }
 }
 
@@ -306,29 +302,27 @@ task_sleep(rust_task *task, size_t time_in_us) {
 static void
 debug_tydesc_helper(rust_task *task, type_desc *t)
 {
-    LOG(task, rust_log::STDLIB,
-              "  size %" PRIdPTR ", align %" PRIdPTR
-              ", stateful %" PRIdPTR ", first_param 0x%" PRIxPTR,
-              t->size, t->align, t->is_stateful, t->first_param);
+    LOG(task, stdlib, "  size %" PRIdPTR ", align %" PRIdPTR
+        ", stateful %" PRIdPTR ", first_param 0x%" PRIxPTR,
+        t->size, t->align, t->is_stateful, t->first_param);
 }
 
 extern "C" CDECL void
 debug_tydesc(rust_task *task, type_desc *t)
 {
-    LOG(task, rust_log::STDLIB, "debug_tydesc");
+    LOG(task, stdlib, "debug_tydesc");
     debug_tydesc_helper(task, t);
 }
 
 extern "C" CDECL void
 debug_opaque(rust_task *task, type_desc *t, uint8_t *front)
 {
-    LOG(task, rust_log::STDLIB, "debug_opaque");
+    LOG(task, stdlib, "debug_opaque");
     debug_tydesc_helper(task, t);
     // FIXME may want to actually account for alignment.  `front` may not
     // indeed be the front byte of the passed-in argument.
     for (uintptr_t i = 0; i < t->size; ++front, ++i) {
-        LOG(task, rust_log::STDLIB,
-                  "  byte %" PRIdPTR ": 0x%" PRIx8, i, *front);
+        LOG(task, stdlib, "  byte %" PRIdPTR ": 0x%" PRIx8, i, *front);
     }
 }
 
@@ -340,15 +334,14 @@ struct rust_box : rc_base<rust_box> {
 extern "C" CDECL void
 debug_box(rust_task *task, type_desc *t, rust_box *box)
 {
-    LOG(task, rust_log::STDLIB, "debug_box(0x%" PRIxPTR ")", box);
+    LOG(task, stdlib, "debug_box(0x%" PRIxPTR ")", box);
     debug_tydesc_helper(task, t);
-    LOG(task, rust_log::STDLIB, "  refcount %" PRIdPTR,
-              box->ref_count == CONST_REFCOUNT
-              ? CONST_REFCOUNT
-              : box->ref_count - 1);  // -1 because we ref'ed for this call
+    LOG(task, stdlib, "  refcount %" PRIdPTR,
+        box->ref_count == CONST_REFCOUNT
+        ? CONST_REFCOUNT
+        : box->ref_count - 1);  // -1 because we ref'ed for this call
     for (uintptr_t i = 0; i < t->size; ++i) {
-        LOG(task, rust_log::STDLIB,
-                  "  byte %" PRIdPTR ": 0x%" PRIx8, i, box->data[i]);
+        LOG(task, stdlib, "  byte %" PRIdPTR ": 0x%" PRIx8, i, box->data[i]);
     }
 }
 
@@ -360,14 +353,13 @@ struct rust_tag {
 extern "C" CDECL void
 debug_tag(rust_task *task, type_desc *t, rust_tag *tag)
 {
-    LOG(task, rust_log::STDLIB, "debug_tag");
+    LOG(task, stdlib, "debug_tag");
     debug_tydesc_helper(task, t);
-    LOG(task, rust_log::STDLIB,
-              "  discriminant %" PRIdPTR, tag->discriminant);
+    LOG(task, stdlib, "  discriminant %" PRIdPTR, tag->discriminant);
 
     for (uintptr_t i = 0; i < t->size - sizeof(tag->discriminant); ++i)
-        LOG(task, rust_log::STDLIB,
-                  "  byte %" PRIdPTR ": 0x%" PRIx8, i, tag->variant[i]);
+        LOG(task, stdlib, "  byte %" PRIdPTR ": 0x%" PRIx8, i,
+            tag->variant[i]);
 }
 
 struct rust_obj {
@@ -379,19 +371,17 @@ extern "C" CDECL void
 debug_obj(rust_task *task, type_desc *t, rust_obj *obj,
           size_t nmethods, size_t nbytes)
 {
-    LOG(task, rust_log::STDLIB,
-              "debug_obj with %" PRIdPTR " methods", nmethods);
+    LOG(task, stdlib, "debug_obj with %" PRIdPTR " methods", nmethods);
     debug_tydesc_helper(task, t);
-    LOG(task, rust_log::STDLIB, "  vtbl at 0x%" PRIxPTR, obj->vtbl);
-    LOG(task, rust_log::STDLIB, "  body at 0x%" PRIxPTR, obj->body);
+    LOG(task, stdlib, "  vtbl at 0x%" PRIxPTR, obj->vtbl);
+    LOG(task, stdlib, "  body at 0x%" PRIxPTR, obj->body);
 
     for (uintptr_t *p = obj->vtbl; p < obj->vtbl + nmethods; ++p)
-        LOG(task, rust_log::STDLIB, "  vtbl word: 0x%" PRIxPTR, *p);
+        LOG(task, stdlib, "  vtbl word: 0x%" PRIxPTR, *p);
 
     for (uintptr_t i = 0; i < nbytes; ++i)
-        LOG(task, rust_log::STDLIB,
-                  "  body byte %" PRIdPTR ": 0x%" PRIxPTR,
-                  i, obj->body->data[i]);
+        LOG(task, stdlib, "  body byte %" PRIdPTR ": 0x%" PRIxPTR,
+            i, obj->body->data[i]);
 }
 
 struct rust_fn {
@@ -402,13 +392,12 @@ struct rust_fn {
 extern "C" CDECL void
 debug_fn(rust_task *task, type_desc *t, rust_fn *fn)
 {
-    LOG(task, rust_log::STDLIB, "debug_fn");
+    LOG(task, stdlib, "debug_fn");
     debug_tydesc_helper(task, t);
-    LOG(task, rust_log::STDLIB, "  thunk at 0x%" PRIxPTR, fn->thunk);
-    LOG(task, rust_log::STDLIB, "  closure at 0x%" PRIxPTR, fn->closure);
+    LOG(task, stdlib, "  thunk at 0x%" PRIxPTR, fn->thunk);
+    LOG(task, stdlib, "  closure at 0x%" PRIxPTR, fn->closure);
     if (fn->closure) {
-        LOG(task, rust_log::STDLIB, "    refcount %" PRIdPTR,
-                  fn->closure->ref_count);
+        LOG(task, stdlib, "    refcount %" PRIdPTR, fn->closure->ref_count);
     }
 }
 
@@ -418,9 +407,9 @@ debug_ptrcast(rust_task *task,
               type_desc *to_ty,
               void *ptr)
 {
-    LOG(task, rust_log::STDLIB, "debug_ptrcast from");
+    LOG(task, stdlib, "debug_ptrcast from");
     debug_tydesc_helper(task, from_ty);
-    LOG(task, rust_log::STDLIB, "to");
+    LOG(task, stdlib, "to");
     debug_tydesc_helper(task, to_ty);
     return ptr;
 }
@@ -428,7 +417,7 @@ debug_ptrcast(rust_task *task,
 extern "C" CDECL void
 debug_trap(rust_task *task, rust_str *s)
 {
-    LOG(task, rust_log::STDLIB, "trapping: %s", s->data);
+    LOG(task, stdlib, "trapping: %s", s->data);
     // FIXME: x86-ism.
     __asm__("int3");
 }

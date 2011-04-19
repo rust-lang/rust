@@ -48,8 +48,8 @@ extern "C" {
 #include "sync/lock_free_queue.h"
 
 class rust_dom;
-class rust_log;
 class rust_task;
+class rust_log;
 class rust_port;
 class rust_chan;
 struct rust_token;

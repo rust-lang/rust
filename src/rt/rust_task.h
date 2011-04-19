@@ -82,8 +82,6 @@ rust_task : public maybe_proxy<rust_task>,
     void check_active() { I(dom, dom->curr_task == this); }
     void check_suspended() { I(dom, dom->curr_task != this); }
 
-    void log(uint32_t type_bits, char const *fmt, ...);
-
     // Print a backtrace, if the "bt" logging option is on.
     void backtrace();
 

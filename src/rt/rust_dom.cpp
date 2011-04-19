@@ -8,6 +8,7 @@ rust_dom::rust_dom(rust_kernel *kernel,
     interrupt_flag(0),
     root_crate(root_crate),
     _log(srv, this),
+    log_lvl(log_note),
     srv(srv),
     local_region(&srv->local_region),
     synchronized_region(&srv->synchronized_region),
@@ -34,8 +35,7 @@ rust_dom::rust_dom(rust_kernel *kernel,
 }
 
 rust_dom::~rust_dom() {
-    DLOG(this, rust_log::MEM | rust_log::DOM,
-         "~rust_dom %s @0x%" PRIxPTR, name, (uintptr_t)this);
+    DLOG(this, dom, "~rust_dom %s @0x%" PRIxPTR, name, (uintptr_t)this);
     newborn_tasks.delete_all();
     running_tasks.delete_all();
     blocked_tasks.delete_all();
@@ -56,43 +56,18 @@ rust_dom::activate(rust_task *task) {
 }
 
 void
-rust_dom::log(rust_task *task, uint32_t type_bits, char const *fmt, ...) {
+rust_dom::log(rust_task* task, uint32_t level, char const *fmt, ...) {
     char buf[BUF_BYTES];
-    if (_log.is_tracing(type_bits)) {
-        va_list args;
-        va_start(args, fmt);
-        vsnprintf(buf, sizeof(buf), fmt, args);
-        _log.trace_ln(task, type_bits, buf);
-        va_end(args);
-    }
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buf, sizeof(buf), fmt, args);
+    _log.trace_ln(task, level, buf);
+    va_end(args);
 }
-
-void
-rust_dom::log(uint32_t type_bits, char const *fmt, ...) {
-    char buf[BUF_BYTES];
-    if (_log.is_tracing(type_bits)) {
-        va_list args;
-        va_start(args, fmt);
-        vsnprintf(buf, sizeof(buf), fmt, args);
-        _log.trace_ln(NULL, type_bits, buf);
-        va_end(args);
-    }
-}
-
-void
-rust_dom::logptr(char const *msg, uintptr_t ptrval) {
-    log(rust_log::MEM, "%s 0x%" PRIxPTR, msg, ptrval);
-}
-
-template<typename T> void
-rust_dom::logptr(char const *msg, T* ptrval) {
-    log(rust_log::MEM, "%s 0x%" PRIxPTR, msg, (uintptr_t)ptrval);
-}
-
 
 void
 rust_dom::fail() {
-    log(rust_log::DOM, "domain %s @0x%" PRIxPTR " root task failed",
+    log(NULL, log_err, "domain %s @0x%" PRIxPTR " root task failed",
         name, this);
     I(this, rval == 0);
     rval = 1;
@@ -151,7 +126,7 @@ rust_dom::free(void *mem) {
 
 void
 rust_dom::free(void *mem, memory_region::memory_region_type type) {
-    DLOG(this, rust_log::MEM, "rust_dom::free(0x%" PRIxPTR ")", mem);
+    DLOG(this, mem, "rust_dom::free(0x%" PRIxPTR ")", mem);
     if (type == memory_region::LOCAL) {
         local_region.free(mem);
     } else if (type == memory_region::SYNCHRONIZED) {
@@ -172,8 +147,7 @@ rust_dom::win32_require(LPCTSTR fn, BOOL ok) {
                       NULL, err,
                       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
                       (LPTSTR) &buf, 0, NULL );
-        DLOG(this, rust_log::ERR, "%s failed with error %ld: %s",
-             fn, err, buf);
+        DLOG_ERR(this, dom, "%s failed with error %ld: %s", fn, err, buf);
         LocalFree((HLOCAL)buf);
         I(this, ok);
     }
@@ -195,7 +169,7 @@ rust_dom::reap_dead_tasks() {
         if (task->ref_count == 0) {
             I(this, task->tasks_waiting_to_join.is_empty());
             dead_tasks.remove(task);
-            DLOG(this, rust_log::TASK,
+            DLOG(this, task,
                 "deleting unreferenced dead task %s @0x%" PRIxPTR,
                 task->name, task);
             delete task;
@@ -211,7 +185,7 @@ rust_dom::reap_dead_tasks() {
 void rust_dom::drain_incoming_message_queue(bool process) {
     rust_message *message;
     while (message_queue->dequeue(&message)) {
-        DLOG(this, rust_log::COMM, "<== receiving \"%s\" " PTR,
+        DLOG(this, comm, "<== receiving \"%s\" " PTR,
             message->label, message);
         if (process) {
             message->process();
@@ -244,12 +218,12 @@ rust_dom::schedule_task() {
 
 void
 rust_dom::log_state() {
+    if (log_rt_task < log_note) return;
+
     if (!running_tasks.is_empty()) {
-        log(rust_log::TASK, "running tasks:");
+        log(NULL, log_note, "running tasks:");
         for (size_t i = 0; i < running_tasks.length(); i++) {
-            log(rust_log::TASK,
-                "\t task: %s @0x%" PRIxPTR
-                " timeout: %d",
+            log(NULL, log_note, "\t task: %s @0x%" PRIxPTR " timeout: %d",
                 running_tasks[i]->name,
                 running_tasks[i],
                 running_tasks[i]->yield_timer.get_timeout());
@@ -257,20 +231,19 @@ rust_dom::log_state() {
     }
 
     if (!blocked_tasks.is_empty()) {
-        log(rust_log::TASK, "blocked tasks:");
+        log(NULL, log_note, "blocked tasks:");
         for (size_t i = 0; i < blocked_tasks.length(); i++) {
-            log(rust_log::TASK,
-                "\t task: %s @0x%" PRIxPTR ", blocked on: 0x%" PRIxPTR
-                " '%s'",
+            log(NULL, log_note, "\t task: %s @0x%" PRIxPTR ", blocked on: 0x%"
+                PRIxPTR " '%s'",
                 blocked_tasks[i]->name, blocked_tasks[i],
                 blocked_tasks[i]->cond, blocked_tasks[i]->cond_name);
         }
     }
 
     if (!dead_tasks.is_empty()) {
-        log(rust_log::TASK, "dead tasks:");
+        log(NULL, log_note, "dead tasks:");
         for (size_t i = 0; i < dead_tasks.length(); i++) {
-            log(rust_log::TASK, "\t task: %s 0x%" PRIxPTR ", ref_count: %d",
+            log(NULL, log_note, "\t task: %s 0x%" PRIxPTR ", ref_count: %d",
                 dead_tasks[i]->name, dead_tasks[i],
                 dead_tasks[i]->ref_count);
         }
@@ -288,9 +261,8 @@ rust_dom::start_main_loop() {
     // Make sure someone is watching, to pull us out of infinite loops.
     rust_timer timer(this);
 
-    DLOG(this, rust_log::DOM, "started domain loop");
-    DLOG(this, rust_log::DOM | rust_log::MEM,
-        "activate glue: " PTR ", exit glue: " PTR,
+    DLOG(this, dom, "started domain loop");
+    DLOG(this, dom, "activate glue: " PTR ", exit glue: " PTR,
         root_crate->get_activate_glue(), root_crate->get_exit_task_glue());
 
     while (number_of_live_tasks() > 0) {
@@ -305,20 +277,18 @@ rust_dom::start_main_loop() {
         // for a minimum amount of time.
 
         if (scheduled_task == NULL) {
-            if (_log.is_tracing(rust_log::TASK)) {
-                log_state();
-            }
-            DLOG(this, rust_log::TASK,
+            log_state();
+            DLOG(this, task,
                 "all tasks are blocked, scheduler yielding ...");
             sync::sleep(100);
-            DLOG(this, rust_log::TASK,
+            DLOG(this, task,
                 "scheduler resuming ...");
             continue;
         }
 
         I(this, scheduled_task->running());
 
-        DLOG(this, rust_log::TASK,
+        DLOG(this, task,
             "activating task %s 0x%" PRIxPTR
             ", sp=0x%" PRIxPTR
             ", ref_count=%d"
@@ -333,7 +303,7 @@ rust_dom::start_main_loop() {
 
         activate(scheduled_task);
 
-        DLOG(this, rust_log::TASK,
+        DLOG(this, task,
                  "returned from task %s @0x%" PRIxPTR
                  " in state '%s', sp=0x%" PRIxPTR,
                  scheduled_task->name,
@@ -348,18 +318,16 @@ rust_dom::start_main_loop() {
         reap_dead_tasks();
     }
 
-    DLOG(this, rust_log::DOM,
+    DLOG(this, dom,
          "terminated scheduler loop, reaping dead tasks ...");
 
     while (dead_tasks.length() > 0) {
         if (message_queue->is_empty()) {
-            DLOG(this, rust_log::DOM,
+            DLOG(this, dom,
                 "waiting for %d dead tasks to become dereferenced, "
                 "scheduler yielding ...",
                 dead_tasks.length());
-            if (_log.is_tracing(rust_log::TASK)) {
-                log_state();
-            }
+            log_state();
             sync::yield();
         } else {
             drain_incoming_message_queue(true);
@@ -367,15 +335,14 @@ rust_dom::start_main_loop() {
         reap_dead_tasks();
     }
 
-    DLOG(this, rust_log::DOM, "finished main-loop (dom.rval = %d)", rval);
+    DLOG(this, dom, "finished main-loop (dom.rval = %d)", rval);
     return rval;
 }
 
 
 rust_crate_cache *
 rust_dom::get_cache(rust_crate const *crate) {
-    DLOG(this, rust_log::CACHE,
-        "looking for crate-cache for crate 0x%" PRIxPTR, crate);
+    DLOG(this, cache, "looking for crate-cache for crate 0x%" PRIxPTR, crate);
     rust_crate_cache *cache = NULL;
     for (size_t i = 0; i < caches.length(); ++i) {
         rust_crate_cache *c = caches[i];
@@ -385,7 +352,7 @@ rust_dom::get_cache(rust_crate const *crate) {
         }
     }
     if (!cache) {
-        DLOG(this, rust_log::CACHE,
+        DLOG(this, cache,
             "making new crate-cache for crate 0x%" PRIxPTR, crate);
         cache = new (this) rust_crate_cache(this, crate);
         caches.push(cache);
@@ -398,7 +365,7 @@ rust_task *
 rust_dom::create_task(rust_task *spawner, const char *name) {
     rust_task *task =
         new (this) rust_task (this, &newborn_tasks, spawner, name);
-    DLOG(this, rust_log::TASK, "created task: " PTR ", spawner: %s, name: %s",
+    DLOG(this, task, "created task: " PTR ", spawner: %s, name: %s",
                         task, spawner ? spawner->name : "null", name);
     newborn_tasks.append(task);
     return task;

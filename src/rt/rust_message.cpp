@@ -51,9 +51,6 @@ send(notification_type type, const char* label,
     memory_region *region = &target->message_queue->region;
     notify_message *message =
         new (region) notify_message(region, type, label, source, target);
-//    target->referent()->log(rust_log::COMM,
-//                            "==> sending \"%s\" " PTR " in queue " PTR,
-//                            label, message, &target->message_queue);
     target->message_queue->enqueue(message);
 }
 
@@ -99,16 +96,13 @@ send(uint8_t *buffer, size_t buffer_sz, const char* label,
     data_message *message =
         new (region) data_message(region, buffer, buffer_sz, label, source,
                                   port);
-    source->referent()->log(rust_log::COMM,
-                            "==> sending \"%s\"" PTR " in queue " PTR,
-                            label, message, &port->message_queue);
+    LOG(source->referent(), comm, "==> sending \"%s\"" PTR " in queue " PTR,
+        label, message, &port->message_queue);
     port->message_queue->enqueue(message);
 }
 
 void data_message::process() {
     _port->referent()->remote_channel->send(_buffer);
-    // _target->referent()->log(rust_log::COMM,
-    //                         "<=== received data via message ===");
 }
 
 void data_message::kernel_process() {

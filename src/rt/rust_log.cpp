@@ -1,5 +1,5 @@
 /*
- * Logging infrastructure that aims to support multi-threading, indentation
+ * Logging infrastructure that aims to support multi-threading,
  * and ansi colors.
  */
 
@@ -8,58 +8,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-
-// FIXME somehow unify this with the parsing happening in rust_crate.cpp
-static uint32_t
-read_type_bit_mask() {
-    uint32_t bits = rust_log::ULOG | rust_log::ERR;
-    char *env_str = getenv("RUST_LOG");
-    if (env_str) {
-        char *str = new char[strlen(env_str) + 2];
-        str[0] = ',';
-        strcpy(str + 1, env_str);
-
-        bits = rust_log::ULOG;
-        bits |= strstr(str, ",err") ? rust_log::ERR : 0;
-        bits |= strstr(str, ",mem") ? rust_log::MEM : 0;
-        bits |= strstr(str, ",comm") ? rust_log::COMM : 0;
-        bits |= strstr(str, ",task") ? rust_log::TASK : 0;
-        bits |= strstr(str, ",up") ? rust_log::UPCALL : 0;
-        bits |= strstr(str, ",dom") ? rust_log::DOM : 0;
-        bits |= strstr(str, ",trace") ? rust_log::TRACE : 0;
-        bits |= strstr(str, ",dwarf") ? rust_log::DWARF : 0;
-        bits |= strstr(str, ",cache") ? rust_log::CACHE : 0;
-        bits |= strstr(str, ",timer") ? rust_log::TIMER : 0;
-        bits |= strstr(str, ",gc") ? rust_log::GC : 0;
-        bits |= strstr(str, ",stdlib") ? rust_log::STDLIB : 0;
-        bits |= strstr(str, ",special") ? rust_log::SPECIAL : 0;
-        bits |= strstr(str, ",kern") ? rust_log::KERN : 0;
-        bits |= strstr(str, ",bt") ? rust_log::BT : 0;
-        bits |= strstr(str, ",all") ? rust_log::ALL : 0;
-        bits = strstr(str, ",none") ? 0 : bits;
-
-        delete[] str;
-    }
-    return bits;
-}
-
-rust_log::ansi_color
-get_type_color(rust_log::log_type type) {
-    rust_log::ansi_color color = rust_log::WHITE;
-    if (type & rust_log::ERR)
-        color = rust_log::RED;
-    if (type & rust_log::MEM)
-        color = rust_log::YELLOW;
-    if (type & rust_log::UPCALL)
-        color = rust_log::GREEN;
-    if (type & rust_log::COMM)
-        color = rust_log::MAGENTA;
-    if (type & rust_log::DOM)
-        color = rust_log::LIGHTTEAL;
-    if (type & rust_log::TASK)
-        color = rust_log::LIGHTTEAL;
-    return color;
-}
 
 static const char * _foreground_colors[] = { "[37m",
                                              "[31m", "[1;31m",
@@ -78,9 +26,7 @@ static uint32_t _last_thread_id;
 rust_log::rust_log(rust_srv *srv, rust_dom *dom) :
     _srv(srv),
     _dom(dom),
-    _type_bit_mask(read_type_bit_mask()),
-    _use_colors(getenv("RUST_COLOR_LOG")),
-    _indent(0) {
+    _use_colors(getenv("RUST_COLOR_LOG")) {
 }
 
 rust_log::~rust_log() {
@@ -141,9 +87,6 @@ rust_log::trace_ln(uint32_t thread_id, char *prefix, char *message) {
     char buffer[BUF_BYTES] = "";
     _log_lock.lock();
     append_string(buffer, "%-34s", prefix);
-    for (uint32_t i = 0; i < _indent; i++) {
-        append_string(buffer, "    ");
-    }
     append_string(buffer, "%s", message);
     if (_last_thread_id != thread_id) {
         _last_thread_id = thread_id;
@@ -154,7 +97,7 @@ rust_log::trace_ln(uint32_t thread_id, char *prefix, char *message) {
 }
 
 void
-rust_log::trace_ln(rust_task *task, char *message) {
+rust_log::trace_ln(rust_task *task, uint32_t level, char *message) {
 #if defined(__WIN32__)
     uint32_t thread_id = 0;
 #else
@@ -178,55 +121,16 @@ rust_log::trace_ln(rust_task *task, char *message) {
     trace_ln(thread_id, prefix, message);
 }
 
-/**
- * Traces a log message if the specified logging type is not filtered.
- */
-void
-rust_log::trace_ln(rust_task *task, uint32_t type_bits, char *message) {
-    trace_ln(task, get_type_color((rust_log::log_type) type_bits),
-             type_bits, message);
-}
-
-/**
- * Traces a log message using the specified ANSI color code.
- */
-void
-rust_log::trace_ln(rust_task *task, ansi_color color,
-                   uint32_t type_bits, char *message) {
-    if (is_tracing(type_bits)) {
-        if (_use_colors) {
-            char buffer[BUF_BYTES] = "";
-            append_string(buffer, color, "%s", message);
-            trace_ln(task, buffer);
-        } else {
-            trace_ln(task, message);
-        }
-    }
-}
-
-void
-rust_log::indent() {
-    _indent++;
-}
-
-void
-rust_log::outdent() {
-    _indent--;
-}
-
-void
-rust_log::reset_indent(uint32_t indent) {
-    _indent = indent;
-}
+// Reading log directives and setting log level vars
 
 struct mod_entry {
     const char* name;
-    int* state;
+    size_t* state;
 };
 
 struct cratemap {
-    mod_entry* entries;
-    cratemap* children[1];
+    const mod_entry* entries;
+    const cratemap* children[1];
 };
 
 struct log_directive {
@@ -235,11 +139,12 @@ struct log_directive {
 };
 
 const size_t max_log_directives = 255;
+const size_t max_log_level = 1;
+const size_t default_log_level = 0;
 
 // This is a rather ugly parser for strings in the form
-// "crate1,crate2.mod3,crate3.x=2". Log levels range 0=err, 1=warn, 2=info,
-// 3=debug. Default is 1. Words without an '=X' part set the log level for
-// that module (and submodules) to 3.
+// "crate1,crate2.mod3,crate3.x=1". Log levels are 0-1 for now,
+// eventually we'll have 0-3.
 size_t parse_logging_spec(char* spec, log_directive* dirs) {
     size_t dir = 0;
     while (dir < max_log_directives && *spec) {
@@ -251,10 +156,10 @@ size_t parse_logging_spec(char* spec, log_directive* dirs) {
                 if (start == spec) {spec++; break;}
                 *spec = '\0';
                 spec++;
-                size_t level = 3;
+                size_t level = max_log_level;
                 if (cur == '=') {
                     level = *spec - '0';
-                    if (level > 3) level = 1;
+                    if (level > max_log_level) level = max_log_level;
                     if (*spec) ++spec;
                 }
                 dirs[dir].name = start;
@@ -267,10 +172,10 @@ size_t parse_logging_spec(char* spec, log_directive* dirs) {
     return dir;
 }
 
-void update_crate_map(cratemap* map, log_directive* dirs, size_t n_dirs) {
-    // First update log levels for this crate
-    for (mod_entry* cur = map->entries; cur->name; cur++) {
-        size_t level = 1, longest_match = 0;
+void update_module_map(const mod_entry* map, log_directive* dirs,
+                       size_t n_dirs) {
+    for (const mod_entry* cur = map; cur->name; cur++) {
+        size_t level = default_log_level, longest_match = 0;
         for (size_t d = 0; d < n_dirs; d++) {
             if (strstr(cur->name, dirs[d].name) == cur->name &&
                 strlen(dirs[d].name) > longest_match) {
@@ -280,24 +185,69 @@ void update_crate_map(cratemap* map, log_directive* dirs, size_t n_dirs) {
         }
         *cur->state = level;
     }
+}
 
+void update_crate_map(const cratemap* map, log_directive* dirs,
+                      size_t n_dirs) {
+    // First update log levels for this crate
+    update_module_map(map->entries, dirs, n_dirs);
     // Then recurse on linked crates
+    // FIXME this does double work in diamond-shaped deps. could keep
+    //   a set of visited addresses, if it turns out to be actually slow
     for (size_t i = 0; map->children[i]; i++) {
         update_crate_map(map->children[i], dirs, n_dirs);
     }
 }
 
+// These are pseudo-modules used to control logging in the runtime.
+
+size_t log_rt_mem;
+size_t log_rt_comm;
+size_t log_rt_task;
+size_t log_rt_dom;
+size_t log_rt_trace;
+size_t log_rt_dwarf;
+size_t log_rt_cache;
+size_t log_rt_upcall;
+size_t log_rt_timer;
+size_t log_rt_gc;
+size_t log_rt_stdlib;
+size_t log_rt_kern;
+size_t log_rt_backtrace;
+// Used to turn logging for rustboot-compiled code on and off
+size_t log_rustboot;
+
+static const mod_entry _rt_module_map[] =
+    {{"rt.mem", &log_rt_mem},
+     {"rt.comm", &log_rt_comm},
+     {"rt.task", &log_rt_task},
+     {"rt.dom", &log_rt_dom},
+     {"rt.trace", &log_rt_trace},
+     {"rt.dwarf", &log_rt_dwarf},
+     {"rt.cache", &log_rt_cache},
+     {"rt.upcall", &log_rt_upcall},
+     {"rt.timer", &log_rt_timer},
+     {"rt.gc", &log_rt_gc},
+     {"rt.stdlib", &log_rt_stdlib},
+     {"rt.kern", &log_rt_kern},
+     {"rt.backtrace", &log_rt_backtrace},
+     {"rustboot", &log_rustboot},
+     {NULL, NULL}};
+
 void update_log_settings(void* crate_map, char* settings) {
     char* buffer = NULL;
     log_directive dirs[256];
-    size_t dir = 0;
+    size_t n_dirs = 0;
     if (settings) {
         buffer = (char*)malloc(strlen(settings));
         strcpy(buffer, settings);
-        dir = parse_logging_spec(buffer, &dirs[0]);
+        n_dirs = parse_logging_spec(buffer, &dirs[0]);
     }
 
-    update_crate_map((cratemap*)crate_map, &dirs[0], dir);
+    update_module_map(_rt_module_map, &dirs[0], n_dirs);
+    // FIXME check can be dropped when rustboot is gone
+    if (crate_map)
+        update_crate_map((const cratemap*)crate_map, &dirs[0], n_dirs);
 
     free(buffer);
 }

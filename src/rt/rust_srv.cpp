@@ -11,11 +11,7 @@ rust_srv::rust_srv() :
     // Nop.
 }
 
-rust_srv::~rust_srv() {
-//    char msg[BUF_BYTES];
-//    snprintf(msg, sizeof(msg), "~rust_srv %" PRIxPTR, (uintptr_t) this);
-//    log(msg);
-}
+rust_srv::~rust_srv() {}
 
 void
 rust_srv::free(void *p) {

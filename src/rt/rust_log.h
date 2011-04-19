@@ -1,28 +1,26 @@
 #ifndef RUST_LOG_H
 #define RUST_LOG_H
 
-#define DLOG(dom, mask, ...)                         \
-  do {                                               \
-    rust_dom *_dom = dom;                            \
-    uint32_t _mask = mask;                           \
-    if ((_dom)->get_log().is_tracing(_mask)) {       \
-        (_dom)->log(_mask, __VA_ARGS__);             \
-    }                                                \
-  } while(0)
-#define LOG(task, mask, ...)                         \
-  DLOG((task)->dom, mask, __VA_ARGS__)
-#define LOG_I(task, mask, ...)                       \
-  do {                                               \
-    rust_task *_task = task;                         \
-    uint32_t _mask = mask;                           \
-    if ((_task)->dom->get_log().is_tracing(_mask)) { \
-      (_task)->dom->get_log().reset_indent(0);       \
-      (_task)->dom->log(_mask, __VA_ARGS__);         \
-      (_task)->dom->get_log().indent();              \
-    }                                                \
-  } while(0)
-#define LOGPTR(dom, msg, ptrval)                     \
-  DLOG(dom, rust_log::MEM, "%s 0x%" PRIxPTR, msg, ptrval)
+const uint32_t log_err = 0;
+const uint32_t log_note = 1;
+
+#define LOG(task, field, ...)                                   \
+    DLOG_LVL(log_note, task, task->dom, field, __VA_ARGS__)
+#define LOG_ERR(task, field, ...)                               \
+    DLOG_LVL(log_err, task, task->dom, field, __VA_ARGS__)
+#define DLOG(dom, field, ...)                                   \
+    DLOG_LVL(log_note, NULL, dom, field, __VA_ARGS__)
+#define DLOG_ERR(dom, field, ...)                               \
+    DLOG_LVL(log_err, NULL, dom, field, __VA_ARGS__)
+#define LOGPTR(dom, msg, ptrval)                                \
+    DLOG_LVL(log_note, NULL, dom, mem, "%s 0x%" PRIxPTR, msg, ptrval)
+#define DLOG_LVL(lvl, task, dom, field, ...)                    \
+    do {                                                        \
+        rust_dom* _d_ = dom;                                    \
+        if (log_rt_##field >= lvl && _d_->log_lvl >= lvl) {     \
+            _d_->log(task, lvl, __VA_ARGS__);                   \
+        }                                                       \
+    } while (0)
 
 class rust_dom;
 class rust_task;
@@ -49,50 +47,33 @@ public:
         LIGHTTEAL
     };
 
-    enum log_type {
-        ERR = 0x1,
-        MEM = 0x2,
-        COMM = 0x4,
-        TASK = 0x8,
-        DOM = 0x10,
-        ULOG = 0x20,
-        TRACE = 0x40,
-        DWARF = 0x80,
-        CACHE = 0x100,
-        UPCALL = 0x200,
-        TIMER = 0x400,
-        GC = 0x800,
-        STDLIB = 0x1000,
-        SPECIAL = 0x2000,
-        KERN = 0x4000,
-        BT = 0x8000,
-        ALL = 0xffffffff
-    };
-
-    void indent();
-    void outdent();
-    void reset_indent(uint32_t indent);
+    void trace_ln(rust_task *task, uint32_t level, char *message);
     void trace_ln(uint32_t thread_id, char *prefix, char *message);
-    void trace_ln(rust_task *task, uint32_t type_bits, char *message);
-    void trace_ln(rust_task *task, ansi_color color,
-                  uint32_t type_bits, char *message);
     bool is_tracing(uint32_t type_bits);
 
 private:
     rust_srv *_srv;
     rust_dom *_dom;
-    uint32_t _type_bit_mask;
     bool _use_labels;
     bool _use_colors;
-    uint32_t _indent;
     void trace_ln(rust_task *task, char *message);
 };
 
-inline bool
-rust_log::is_tracing(uint32_t type_bits) {
-    return type_bits & _type_bit_mask;
-}
-
 void update_log_settings(void* crate_map, char* settings);
+
+extern size_t log_rt_mem;
+extern size_t log_rt_comm;
+extern size_t log_rt_task;
+extern size_t log_rt_dom;
+extern size_t log_rt_trace;
+extern size_t log_rt_dwarf;
+extern size_t log_rt_cache;
+extern size_t log_rt_upcall;
+extern size_t log_rt_timer;
+extern size_t log_rt_gc;
+extern size_t log_rt_stdlib;
+extern size_t log_rt_kern;
+extern size_t log_rt_backtrace;
+extern size_t log_rustboot;
 
 #endif /* RUST_LOG_H */

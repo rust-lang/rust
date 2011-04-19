@@ -92,7 +92,7 @@ rust_crate_reader::mem_reader::adv(size_t amt)
     ok = false;
   if (!ok)
     return;
-  // mem.DLOG(dom, rust_log::MEM, "adv %d bytes", amt);
+  // mem.DLOG(dom, mem, "adv %d bytes", amt);
   pos += amt;
   ok &= !at_end();
   I(mem.dom, at_end() || (mem.base <= pos && pos < mem.lim));
@@ -120,7 +120,7 @@ rust_crate_reader::abbrev_reader::abbrev_reader
   rust_dom *dom = mem.dom;
   while (is_ok() && !at_end()) {
 
-    // DLOG(dom, rust_log::DWARF, "reading new abbrev at 0x%" PRIxPTR,
+    // DLOG(dom, dwarf, "reading new abbrev at 0x%" PRIxPTR,
     //          tell_off());
 
     uintptr_t idx, tag;
@@ -133,13 +133,13 @@ rust_crate_reader::abbrev_reader::abbrev_reader
     size_t body_off = tell_off();
     while (is_ok() && step_attr_form_pair(attr, form));
 
-    // DLOG(dom, rust_log::DWARF,
+    // DLOG(dom, dwarf,
     //         "finished scanning attr/form pairs, pos=0x%"
     //         PRIxPTR ", lim=0x%" PRIxPTR ", is_ok=%d, at_end=%d",
     //        pos, mem.lim, is_ok(), at_end());
 
     if (is_ok() || at_end()) {
-      DLOG(dom, rust_log::DWARF, "read abbrev: %" PRIdPTR, idx);
+      DLOG(dom, dwarf, "read abbrev: %" PRIdPTR, idx);
       I(dom, idx = abbrevs.length() + 1);
       abbrevs.push(new (dom) abbrev(dom, body_off,
                                     tell_off() - body_off,
@@ -162,11 +162,11 @@ rust_crate_reader::abbrev_reader::step_attr_form_pair(uintptr_t &attr,
 {
   attr = 0;
   form = 0;
-  // mem.DLOG(dom, rust_log::DWARF, "reading attr/form pair at 0x%" PRIxPTR,
+  // mem.DLOG(dom, dwarf, "reading attr/form pair at 0x%" PRIxPTR,
   //              tell_off());
   get_uleb(attr);
   get_uleb(form);
-  // mem.DLOG(dom, rust_log::DWARF, "attr 0x%" PRIxPTR ", form 0x%" PRIxPTR,
+  // mem.DLOG(dom, dwarf, "attr 0x%" PRIxPTR ", form 0x%" PRIxPTR,
   //              attr, form);
   return ! (attr == 0 && form == 0);
 }
@@ -254,19 +254,17 @@ rust_crate_reader::die::die(die_reader *rdr, uintptr_t off)
   rdr->get_uleb(ab_idx);
   if (!ab_idx) {
     ab = NULL;
-    DLOG(dom, rust_log::DWARF, "DIE <0x%" PRIxPTR "> (null)", off);
-    if (dom->get_log().is_tracing(rust_log::DWARF))
-        dom->get_log().outdent();
+    DLOG(dom, dwarf, "DIE <0x%" PRIxPTR "> (null)", off);
   } else {
     ab = rdr->abbrevs.get_abbrev(ab_idx);
     if (!ab) {
-        DLOG(dom, rust_log::DWARF, "  bad abbrev number: 0x%"
+        DLOG(dom, dwarf, "  bad abbrev number: 0x%"
                  PRIxPTR, ab_idx);
         rdr->fail();
     } else {
-        DLOG(dom, rust_log::DWARF, "DIE <0x%" PRIxPTR "> abbrev 0x%"
+        DLOG(dom, dwarf, "DIE <0x%" PRIxPTR "> abbrev 0x%"
                  PRIxPTR, off, ab_idx);
-        DLOG(dom, rust_log::DWARF, "  tag 0x%x, has children: %d",
+        DLOG(dom, dwarf, "  tag 0x%x, has children: %d",
                  ab->tag, ab->has_children);
     }
   }
@@ -354,7 +352,7 @@ rust_crate_reader::die::step_attr(attr &a) const
       break;
 
     default:
-      DLOG(rdr->mem.dom, rust_log::DWARF, "  unknown dwarf form: 0x%"
+      DLOG(rdr->mem.dom, dwarf, "  unknown dwarf form: 0x%"
                         PRIxPTR, a.form);
       rdr->fail();
       break;
@@ -474,17 +472,15 @@ rust_crate_reader::die::next() const
         while (step_attr(a)) {
             I(dom, !(a.is_numeric() && a.is_string()));
             if (a.is_numeric())
-                DLOG(dom, rust_log::DWARF, "  attr num: 0x%"
+                DLOG(dom, dwarf, "  attr num: 0x%"
                          PRIxPTR, a.get_num(dom));
             else if (a.is_string())
-                DLOG(dom, rust_log::DWARF, "  attr str: %s",
+                DLOG(dom, dwarf, "  attr str: %s",
                          a.get_str(dom));
             else
-                DLOG(dom, rust_log::DWARF, "  attr ??:");
+                DLOG(dom, dwarf, "  attr ??:");
         }
     }
-    if (has_children() && dom->get_log().is_tracing(rust_log::DWARF))
-        dom->get_log().indent();
   }
   return die(rdr, rdr->tell_off());
 }
@@ -494,12 +490,12 @@ rust_crate_reader::die::next_sibling() const
 {
   // FIXME: use DW_AT_sibling, when present.
   if (has_children()) {
-    // DLOG(rdr->mem.dom, rust_log::DWARF, "+++ children of die 0x%"
+    // DLOG(rdr->mem.dom, dwarf, "+++ children of die 0x%"
     //                   PRIxPTR, off);
     die child = next();
     while (!child.is_null())
       child = child.next_sibling();
-    // DLOG(rdr->mem.dom, rust_log::DWARF, "--- children of die 0x%"
+    // DLOG(rdr->mem.dom, dwarf, "--- children of die 0x%"
     //                   PRIxPTR, off);
     return child.next();
   } else {
@@ -554,16 +550,16 @@ rust_crate_reader::die_reader::die_reader(rust_crate::mem_area &die_mem,
   get(sizeof_addr);
 
   if (is_ok()) {
-    DLOG(dom, rust_log::DWARF, "new root CU at 0x%" PRIxPTR, die_mem.base);
-    DLOG(dom, rust_log::DWARF, "CU unit length: %" PRId32, cu_unit_length);
-    DLOG(dom, rust_log::DWARF, "dwarf version: %" PRId16, dwarf_vers);
-    DLOG(dom, rust_log::DWARF, "CU abbrev off: %" PRId32, cu_abbrev_off);
-    DLOG(dom, rust_log::DWARF, "size of address: %" PRId8, sizeof_addr);
+    DLOG(dom, dwarf, "new root CU at 0x%" PRIxPTR, die_mem.base);
+    DLOG(dom, dwarf, "CU unit length: %" PRId32, cu_unit_length);
+    DLOG(dom, dwarf, "dwarf version: %" PRId16, dwarf_vers);
+    DLOG(dom, dwarf, "CU abbrev off: %" PRId32, cu_abbrev_off);
+    DLOG(dom, dwarf, "size of address: %" PRId8, sizeof_addr);
     I(dom, sizeof_addr == sizeof(uintptr_t));
     I(dom, dwarf_vers >= 2);
     I(dom, cu_base + cu_unit_length == die_mem.lim - die_mem.base);
   } else {
-    DLOG(dom, rust_log::DWARF, "failed to read root CU header");
+    DLOG(dom, dwarf, "failed to read root CU header");
   }
 }
 
@@ -580,9 +576,9 @@ rust_crate_reader::rust_crate_reader(rust_dom *dom,
     die_mem(crate->get_debug_info(dom)),
     dies(die_mem, abbrevs)
 {
-  DLOG(dom, rust_log::MEM, "crate_reader on crate: 0x%" PRIxPTR, this);
-  DLOG(dom, rust_log::MEM, "debug_abbrev: 0x%" PRIxPTR, abbrev_mem.base);
-  DLOG(dom, rust_log::MEM, "debug_info: 0x%" PRIxPTR, die_mem.base);
+  DLOG(dom, mem, "crate_reader on crate: 0x%" PRIxPTR, this);
+  DLOG(dom, mem, "debug_abbrev: 0x%" PRIxPTR, abbrev_mem.base);
+  DLOG(dom, mem, "debug_info: 0x%" PRIxPTR, die_mem.base);
   // For now, perform diagnostics only.
   dies.dump();
 }
