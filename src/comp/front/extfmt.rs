@@ -49,7 +49,7 @@ fn expand_syntax_ext(vec[@ast.expr] args,
                      option.t[@ast.expr] body) -> @ast.expr {
 
     if (_vec.len[@ast.expr](args) == 0u) {
-        log "malformed #fmt call";
+        log_err "malformed #fmt call";
         fail;
     }
 
@@ -74,7 +74,7 @@ fn expr_to_str(@ast.expr expr) -> str {
             }
         }
     }
-    log "malformed #fmt call";
+    log_err "malformed #fmt call";
     fail;
 }
 
@@ -214,7 +214,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                     ret make_call(sp, count_is_path, count_is_args);
                 }
                 case (_) {
-                    log "not implemented";
+                    log_err "not implemented";
                     fail;
                 }
             }
@@ -302,7 +302,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
             case (option.none[int]) {
             }
             case (_) {
-                log unsupported;
+                log_err unsupported;
                 fail;
             }
         }
@@ -313,13 +313,13 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                 }
                 case (flag_sign_always) {
                     if (!is_signed_type(cnv)) {
-                        log "+ flag only valid in signed #fmt conversions";
+                        log_err "+ flag only valid in signed #fmt conversion";
                         fail;
                     }
                 }
                 case (flag_space_for_sign) {
                     if (!is_signed_type(cnv)) {
-                        log "space flag only valid in "
+                        log_err "space flag only valid in "
                             + "signed #fmt conversions";
                         fail;
                     }
@@ -327,7 +327,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                 case (flag_left_zero_pad) {
                 }
                 case (_) {
-                    log unsupported;
+                    log_err unsupported;
                     fail;
                 }
             }
@@ -339,7 +339,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
             case (count_is(_)) {
             }
             case (_) {
-                log unsupported;
+                log_err unsupported;
                 fail;
             }
         }
@@ -350,7 +350,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
             case (count_is(_)) {
             }
             case (_) {
-                log unsupported;
+                log_err unsupported;
                 fail;
             }
         }
@@ -382,7 +382,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                 ret make_conv_call(arg.span, "uint", cnv, arg);
             }
             case (_) {
-                log unsupported;
+                log_err unsupported;
                 fail;
             }
         }
@@ -492,7 +492,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
             }
             case (piece_conv(?conv)) {
                 if (n >= _vec.len[@ast.expr](args)) {
-                    log "too many conversions in #fmt string";
+                    log_err "too many conversions in #fmt string";
                     fail;
                 }
 

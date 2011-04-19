@@ -321,7 +321,7 @@ impure fn consume_block_comment(reader rdr) {
             }
         }
         if (rdr.is_eof()) {
-            log "unterminated block comment";
+            log_err "unterminated block comment";
             fail;
         }
     }
@@ -359,7 +359,7 @@ impure fn scan_exponent(reader rdr) -> option.t[str] {
             ret(some(res + exponent));
         }
         else {
-            log ("scan_exponent: bad fp literal");
+            log_err ("scan_exponent: bad fp literal");
             fail;
         }
     }
@@ -538,8 +538,7 @@ impure fn scan_numeric_escape(reader rdr) -> char {
         case ('u') { n_hex_digits = 4; }
         case ('U') { n_hex_digits = 8; }
         case (?c) {
-            log "unknown numeric character escape";
-            log c;
+            log_err #fmt("unknown numeric character escape: %d", c as int);
             fail;
         }
     }
@@ -551,8 +550,7 @@ impure fn scan_numeric_escape(reader rdr) -> char {
 
     while (n_hex_digits != 0) {
         if (!is_hex_digit(n)) {
-            log "illegal numeric character escape";
-            log n;
+            log_err #fmt("illegal numeric character escape: %d", n as int);
             fail;
         }
         accum_int *= 16;
@@ -593,7 +591,7 @@ impure fn next_token(reader rdr) -> token.token {
 
         auto rsvd = rdr.get_reserved();
         if (rsvd.contains_key(accum_str)) {
-            log "reserved keyword";
+            log_err #fmt("reserved keyword: %s", accum_str);
             fail;
         }
 
@@ -716,8 +714,8 @@ impure fn next_token(reader rdr) -> token.token {
                     case ('U') { c2 = scan_numeric_escape(rdr); }
 
                     case (?c2) {
-                        log "unknown character escape";
-                        log c2;
+                        log_err #fmt("unknown character escape: %d",
+                                     c2 as int);
                         fail;
                     }
                 }
@@ -725,7 +723,7 @@ impure fn next_token(reader rdr) -> token.token {
             }
 
             if (rdr.next() != '\'') {
-                log "unterminated character constant";
+                log_err "unterminated character constant";
                 fail;
             }
             rdr.bump(); // advance curr to closing '
@@ -776,8 +774,8 @@ impure fn next_token(reader rdr) -> token.token {
                             }
 
                             case (?c2) {
-                                log "unknown string escape";
-                                log c2;
+                                log_err #fmt("unknown string escape: %d",
+                                             c2 as int);
                                 fail;
                             }
                         }
@@ -843,8 +841,7 @@ impure fn next_token(reader rdr) -> token.token {
         }
 
         case (?c) {
-            log "unkown start of token";
-            log c;
+            log_err #fmt("unkown start of token: %d", c as int);
             fail;
         }
     }

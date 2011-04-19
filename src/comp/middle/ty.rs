@@ -663,7 +663,7 @@ fn eq_ty(&@t a, &@t b) -> bool {
 fn ann_to_type(&ast.ann ann) -> @t {
     alt (ann) {
         case (ast.ann_none) {
-            log "ann_to_type() called on node with no type";
+            log_err "ann_to_type() called on node with no type";
             fail;
         }
         case (ast.ann_type(?ty, _, _)) {
@@ -675,7 +675,7 @@ fn ann_to_type(&ast.ann ann) -> @t {
 fn ann_to_type_params(&ast.ann ann) -> vec[@t] {
     alt (ann) {
         case (ast.ann_none) {
-            log "ann_to_type_params() called on node with no type params";
+            log_err "ann_to_type_params() called on node with no type params";
             fail;
         }
         case (ast.ann_type(_, ?tps, _)) {
@@ -697,7 +697,7 @@ fn ann_to_monotype(ast.ann a) -> @ty.t {
     // confident that it works.
     alt (a) {
         case (ast.ann_none) {
-            log "ann_to_monotype() called on expression with no type!";
+            log_err "ann_to_monotype() called on expression with no type!";
             fail;
         }
         case (ast.ann_type(?typ, ?tps_opt, _)) {
@@ -995,7 +995,7 @@ fn replace_expr_type(@ast.expr expr, tup(vec[@t], @t) new_tyt) -> @ast.expr {
                                         ast.expr_path(p, dopt, ann));
         }
         case (_) {
-            log "unhandled expr type in replace_expr_type(): " +
+            log_err "unhandled expr type in replace_expr_type(): " +
                 pretty.pprust.expr_to_str(expr);
             fail;
         }
@@ -1356,7 +1356,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
             case (ty.ty_bound_param(?actual_id)) {
                 alt (expected.struct) {
                     case (ty.ty_local(_)) {
-                        log "TODO: bound param unifying with local";
+                        log_err "TODO: bound param unifying with local";
                         fail;
                     }
 
@@ -1782,7 +1782,8 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         let vec[@t] result = vec();
         for (vec[@t] types in set_types) {
             if (_vec.len[@t](types) > 1u) {
-                log "unification of > 1 types in a type set is unimplemented";
+                log_err "unification of > 1 types in a type set is " +
+                    "unimplemented";
                 fail;
             }
             result += vec(types.(0));
@@ -1878,7 +1879,7 @@ fn bind_params_in_type(@t typ) -> @t {
     fn binder(@t typ) -> @t {
         alt (typ.struct) {
             case (ty_bound_param(?index)) {
-                log "bind_params_in_type() called on type that already " +
+                log_err "bind_params_in_type() called on type that already " +
                     "has bound params in it";
                 fail;
             }

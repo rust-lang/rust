@@ -2664,10 +2664,12 @@ let trans_visitor
            nabi_rust (upcall_fixup name) args);
 
   and trans_log_int lev (a:Ast.atom) : unit =
-    trans_void_upcall "upcall_log_int" [| simm (Int64.of_int lev); (trans_atom a) |]
+    trans_void_upcall "upcall_log_int" [| simm (Int64.of_int lev);
+                                          trans_atom a |]
 
   and trans_log_str lev (a:Ast.atom) : unit =
-    trans_void_upcall "upcall_log_str" [| simm (Int64.of_int lev); (trans_atom a) |]
+    trans_void_upcall "upcall_log_str" [| simm (Int64.of_int lev);
+                                          trans_atom a |]
 
   and trans_spawn
       ((*initializing*)_:bool)

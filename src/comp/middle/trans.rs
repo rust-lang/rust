@@ -556,7 +556,7 @@ fn T_opaque_obj_ptr(type_names tn) -> TypeRef {
 // TODO: Enforce via a predicate.
 fn type_of(@crate_ctxt cx, @ty.t t) -> TypeRef {
     if (ty.type_has_dynamic_size(t)) {
-        log "type_of() called on a type with dynamic size: " +
+        log_err "type_of() called on a type with dynamic size: " +
             ty.ty_to_str(t);
         fail;
     }
@@ -764,14 +764,14 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
             llty = abs_pair;
         }
         case (ty.ty_var(_)) {
-            log "ty_var in trans.type_of";
+            log_err "ty_var in trans.type_of";
             fail;
         }
         case (ty.ty_param(_)) {
             llty = T_i8();
         }
         case (ty.ty_bound_param(_)) {
-            log "ty_bound_param in trans.type_of";
+            log_err "ty_bound_param in trans.type_of";
             fail;
         }
         case (ty.ty_type) { llty = T_ptr(T_tydesc(cx.tn)); }
@@ -1152,7 +1152,7 @@ fn simplify_type(@ty.t typ) -> @ty.t {
 // Computes the size of the data part of a non-dynamically-sized tag.
 fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
     if (ty.type_has_dynamic_size(t)) {
-        log "dynamically sized type passed to static_size_of_tag()";
+        log_err "dynamically sized type passed to static_size_of_tag()";
         fail;
     }
 
@@ -1168,7 +1168,7 @@ fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
             subtys = subtys_;
         }
         case (_) {
-            log "non-tag passed to static_size_of_tag()";
+            log_err "non-tag passed to static_size_of_tag()";
             fail;
         }
     }
@@ -2037,7 +2037,7 @@ fn tag_variant_with_id(@crate_ctxt cx,
         i += 1u;
     }
 
-    log "tag_variant_with_id(): no variant exists with that ID";
+    log_err "tag_variant_with_id(): no variant exists with that ID";
     fail;
 }
 
@@ -2584,13 +2584,13 @@ fn node_ann_type(@crate_ctxt cx, &ast.ann a) -> @ty.t {
 fn node_ann_ty_params(&ast.ann a) -> vec[@ty.t] {
     alt (a) {
         case (ast.ann_none) {
-            log "missing type annotation";
+            log_err "missing type annotation";
             fail;
         }
         case (ast.ann_type(_, ?tps_opt, _)) {
             alt (tps_opt) {
                 case (none[vec[@ty.t]]) {
-                    log "type annotation has no ty params";
+                    log_err "type annotation has no ty params";
                     fail;
                 }
                 case (some[vec[@ty.t]](?tps)) { ret tps; }
@@ -2656,7 +2656,7 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
             ret res(sub.bcx, box);
         }
         case (ast.deref) {
-            log "deref expressions should have been translated using " +
+            log_err "deref expressions should have been translated using " +
                 "trans_lval(), not trans_unary()";
             fail;
         }
@@ -5030,16 +5030,17 @@ fn trans_log(int lvl, @block_ctxt cx, @ast.expr e) -> result {
             }
         }
         if (is32bit) {
-            trans_upcall(sub.bcx,
-                         "upcall_log_float",
-                         vec(C_int(lvl), sub.val)).bcx.build.Br(after_cx.llbb);
+            auto uval = trans_upcall(sub.bcx,
+                                     "upcall_log_float",
+                                     vec(C_int(lvl), sub.val));
+            uval.bcx.build.Br(after_cx.llbb);
         } else {
             auto tmp = alloca(sub.bcx, tr);
             sub.bcx.build.Store(sub.val, tmp);
-            auto v = vp2i(sub.bcx, tmp);
-            trans_upcall(sub.bcx,
-                         "upcall_log_double",
-                         vec(C_int(lvl), v)).bcx.build.Br(after_cx.llbb);
+            auto uval = trans_upcall(sub.bcx,
+                                     "upcall_log_double",
+                                     vec(C_int(lvl), vp2i(sub.bcx, tmp)));
+            uval.bcx.build.Br(after_cx.llbb);
         }
     } else {
         alt (e_ty.struct) {

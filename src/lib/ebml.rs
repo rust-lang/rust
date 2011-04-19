@@ -33,7 +33,7 @@ fn vint_at(vec[u8] data, uint start) -> tup(uint, uint) {
                 ((data.(start + 2u) as uint) << 8u) |
                 (data.(start + 3u) as uint), start + 4u);
     } else {
-        log "vint too big"; fail;
+        log_err "vint too big"; fail;
     }
 }
 
@@ -65,7 +65,7 @@ fn get_doc(doc d, uint tg) -> doc {
     alt (maybe_get_doc(d, tg)) {
         case (some[doc](?d)) {ret d;}
         case (none[doc]) {
-            log "failed to find block with tag " + _uint.to_str(tg, 10u);
+            log_err "failed to find block with tag " + _uint.to_str(tg, 10u);
             fail;
         }
     }
@@ -140,7 +140,7 @@ fn write_sized_vint(&io.buf_writer w, uint n, uint size) {
                       (n & 0xffu) as u8);
         }
         case (_) {
-            log "vint to write too big";
+            log_err "vint to write too big";
             fail;
         }
     }
@@ -153,7 +153,7 @@ fn write_vint(&io.buf_writer w, uint n) {
     if (n < 0x4000u)        { write_sized_vint(w, n, 2u); ret; }
     if (n < 0x200000u)      { write_sized_vint(w, n, 3u); ret; }
     if (n < 0x10000000u)    { write_sized_vint(w, n, 4u); ret; }
-    log "vint to write too big";
+    log_err "vint to write too big";
     fail;
 }
 

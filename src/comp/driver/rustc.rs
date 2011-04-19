@@ -18,6 +18,7 @@ import std.option.some;
 import std.option.none;
 import std._str;
 import std._vec;
+import std.io;
 
 fn default_environment(session.session sess,
                        str argv0,
@@ -88,26 +89,24 @@ impure fn pretty_print_input(session.session sess,
 }
 
 fn warn_wrong_compiler() {
-    log "This is the rust 'self-hosted' compiler.";
-    log "The one written in rust.";
-    log "It is currently incomplete.";
-    log "You may want rustboot instead, the compiler next door.";
+    io.stdout().write_str("This is the rust 'self-hosted' compiler.
+The one written in rust.
+It is currently incomplete.
+You may want rustboot instead, the compiler next door.\n");
 }
 
 fn usage(session.session sess, str argv0) {
-    log #fmt("usage: %s [options] <input>", argv0);
-    log "options:";
-    log "";
-    log "    -o <filename>      write output to <filename>";
-    log "    -nowarn            suppress wrong-compiler warning";
-    log "    -glue              generate glue.bc file";
-    log "    -shared            compile a shared-library crate";
-    log "    -pp                pretty-print the input instead of compiling";
-    log "    -ls                list the symbols defined by a crate file";
-    log "    -L <path>          add a directory to the library search path";
-    log "    -h                 display this message";
-    log "";
-    log "";
+    io.stdout().write_str(#fmt("usage: %s [options] <input>\n", argv0) + "
+options:
+
+    -o <filename>      write output to <filename>
+    -nowarn            suppress wrong-compiler warning
+    -glue              generate glue.bc file
+    -shared            compile a shared-library crate
+    -pp                pretty-print the input instead of compiling
+    -ls                list the symbols defined by a crate file
+    -L <path>          add a directory to the library search path
+    -h                 display this message\n\n");
 }
 
 fn get_os() -> session.os {

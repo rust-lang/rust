@@ -193,7 +193,7 @@ fn stdin() -> reader {
 fn file_reader(str path) -> reader {
     auto f = os.libc.fopen(_str.buf(path), _str.buf("r"));
     if (f as uint == 0u) {
-        log "error opening " + path;
+        log_err "error opening " + path;
         fail;
     }
     ret new_reader(FILE_buf_reader(f, true));
@@ -229,7 +229,7 @@ state obj byte_buf_reader(byte_buf bbuf) {
     }
 
     impure fn unread_byte(int byte) {
-        log "TODO: unread_byte";
+        log_err "TODO: unread_byte";
         fail;
     }
 
@@ -274,7 +274,7 @@ state obj FILE_writer(os.libc.FILE f, bool must_close) {
         auto vbuf = _vec.buf[u8](v);
         auto nout = os.libc.fwrite(vbuf, len, 1u, f);
         if (nout < 1u) {
-            log "error dumping buffer";
+            log_err "error dumping buffer";
         }
     }
 
@@ -300,8 +300,8 @@ state obj fd_buf_writer(int fd, bool must_close) {
             vbuf = _vec.buf_off[u8](v, count);
             auto nout = os.libc.write(fd, vbuf, len);
             if (nout < 0) {
-                log "error dumping buffer";
-                log sys.rustrt.last_os_error();
+                log_err "error dumping buffer";
+                log_err sys.rustrt.last_os_error();
                 fail;
             }
             count += nout as uint;
@@ -309,12 +309,12 @@ state obj fd_buf_writer(int fd, bool must_close) {
     }
 
     fn seek(int offset, seek_style whence) {
-        log "need 64-bit native calls for seek, sorry";
+        log_err "need 64-bit native calls for seek, sorry";
         fail;
     }
 
     fn tell() -> uint {
-        log "need 64-bit native calls for tell, sorry";
+        log_err "need 64-bit native calls for tell, sorry";
         fail;
     }
 
@@ -343,8 +343,8 @@ fn file_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
                            os.libc_constants.S_IWUSR());
 
     if (fd < 0) {
-        log "error opening file for writing";
-        log sys.rustrt.last_os_error();
+        log_err "error opening file for writing";
+        log_err sys.rustrt.last_os_error();
         fail;
     }
     ret fd_buf_writer(fd, true);
@@ -429,7 +429,7 @@ fn file_writer(str path, vec[fileflag] flags) -> writer {
 fn buffered_file_buf_writer(str path) -> buf_writer {
     auto f = os.libc.fopen(_str.buf(path), _str.buf("w"));
     if (f as uint == 0u) {
-        log "error opening " + path;
+        log_err "error opening " + path;
         fail;
     }
     ret FILE_writer(f, true);

@@ -366,7 +366,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
                                 ret some[def_wrap](def_wrap_other(t));
                             }
                             case (_) {
-                                log "tag item not actually a tag";
+                                log_err "tag item not actually a tag";
                                 fail;
                             }
                         }
@@ -426,7 +426,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
                 ret def_wrap_other(t);
             }
             case (_) {
-                log "tag item not actually a tag";
+                log_err "tag item not actually a tag";
                 fail;
             }
         }

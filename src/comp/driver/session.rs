@@ -42,16 +42,16 @@ state obj session(ast.crate_num cnum, cfg targ,
     fn span_err(span sp, str msg) {
         auto lo = codemap.lookup_pos(cm, sp.lo);
         auto hi = codemap.lookup_pos(cm, sp.hi);
-        log #fmt("%s:%u:%u:%u:%u: error: %s",
-                 lo.filename,
-                 lo.line, lo.col,
-                 hi.line, hi.col,
-                 msg);
+        log_err #fmt("%s:%u:%u:%u:%u: error: %s",
+                     lo.filename,
+                     lo.line, lo.col,
+                     hi.line, hi.col,
+                     msg);
         fail;
     }
 
     fn err(str msg) {
-        log #fmt("error: %s", msg);
+        log_err #fmt("error: %s", msg);
         fail;
     }
 
@@ -65,31 +65,31 @@ state obj session(ast.crate_num cnum, cfg targ,
     fn span_warn(span sp, str msg) {
         auto lo = codemap.lookup_pos(cm, sp.lo);
         auto hi = codemap.lookup_pos(cm, sp.hi);
-        log #fmt("%s:%u:%u:%u:%u: warning: %s",
-                 lo.filename,
-                 lo.line, lo.col,
-                 hi.line, hi.col,
-                 msg);
+        log_err #fmt("%s:%u:%u:%u:%u: warning: %s",
+                     lo.filename,
+                     lo.line, lo.col,
+                     hi.line, hi.col,
+                     msg);
     }
 
     fn bug(str msg) {
-        log #fmt("error: internal compiler error %s", msg);
+        log_err #fmt("error: internal compiler error %s", msg);
         fail;
     }
 
     fn span_unimpl(span sp, str msg) {
         auto lo = codemap.lookup_pos(cm, sp.lo);
         auto hi = codemap.lookup_pos(cm, sp.hi);
-        log #fmt("%s:%u:%u:%u:%u: error: unimplemented %s",
-                 lo.filename,
-                 lo.line, lo.col,
-                 hi.line, hi.col,
-                 msg);
+        log_err #fmt("%s:%u:%u:%u:%u: error: unimplemented %s",
+                     lo.filename,
+                     lo.line, lo.col,
+                     hi.line, hi.col,
+                     msg);
         fail;
     }
 
     fn unimpl(str msg) {
-        log #fmt("error: unimplemented %s", msg);
+        log_err #fmt("error: unimplemented %s", msg);
         fail;
     }
 

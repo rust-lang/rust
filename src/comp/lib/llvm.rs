@@ -1400,7 +1400,7 @@ fn type_to_str_inner(type_names names,
         case (13) { ret "Vector"; }
         case (14) { ret "Metadata"; }
         case (_) {
-            log "unknown TypeKind" + util.common.istr(kind as int);
+            log_err #fmt("unknown TypeKind %d", kind as int);
             fail;
         }
     }

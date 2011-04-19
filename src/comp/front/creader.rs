@@ -67,7 +67,7 @@ fn parse_ty_str(str rep, str_def sd) -> @ty.t {
     auto st = @rec(rep=rep, mutable pos=0u, len=len);
     auto result = parse_ty(st, sd);
     if (st.pos != len) {
-        log "parse_ty_str: incomplete parse, stopped at byte "
+        log_err "parse_ty_str: incomplete parse, stopped at byte "
             + _uint.to_str(st.pos, 10u) + " of "
             + _uint.to_str(len, 10u) + " in str '" + rep + "'";
     }
@@ -242,7 +242,7 @@ fn parse_def_id(vec[u8] buf) -> ast.def_id {
         colon_idx += 1u;
     }
     if (colon_idx == len) {
-        log "didn't find ':' when parsing def id";
+        log_err "didn't find ':' when parsing def id";
         fail;
     }
 
@@ -407,8 +407,8 @@ fn load_crate(session.session sess,
         }
     }
 
-    log #fmt("can't open crate '%s' (looked for '%s' in lib search paths)",
-        ident, filename);
+    log_err #fmt("can't open crate '%s' (looked for '%s' in lib search path)",
+                 ident, filename);
     fail;
 }
 
@@ -459,8 +459,8 @@ fn kind_has_type_params(u8 kind_ch) -> bool {
     else if (kind_ch == ('n' as u8)) { ret false; }
     else if (kind_ch == ('v' as u8)) { ret true;  }
     else {
-        log #fmt("kind_has_type_params(): unknown kind char: %d",
-                 kind_ch as int);
+        log_err #fmt("kind_has_type_params(): unknown kind char: %d",
+                     kind_ch as int);
         fail;
     }
 }
@@ -503,7 +503,7 @@ fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
         tid = tup(cnum, tid._1);
         def = ast.def_variant(tid, did);
     } else {
-        log #fmt("lookup_def(): unknown kind char: %d", kind_ch as int);
+        log_err #fmt("lookup_def(): unknown kind char: %d", kind_ch as int);
         fail;
     }
 

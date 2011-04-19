@@ -96,7 +96,7 @@ mod CT {
             if (_str.eq(curr, "%")) {
                 i += 1u;
                 if (i >= lim) {
-                    log "unterminated conversion at end of string";
+                    log_err "unterminated conversion at end of string";
                     fail;
                 }
                 auto curr2 = _str.substr(s, i, 1u);
@@ -264,7 +264,7 @@ mod CT {
 
     fn parse_type(str s, uint i, uint lim) -> tup(ty, uint) {
         if (i >= lim) {
-            log "missing type in conversion";
+            log_err "missing type in conversion";
             fail;
         }
 
@@ -290,7 +290,7 @@ mod CT {
         } else if (_str.eq(tstr, "t")) {
             t = ty_bits;
         } else {
-            log "unknown type in conversion";
+            log_err "unknown type in conversion";
             fail;
         }
 

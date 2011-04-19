@@ -46,7 +46,7 @@ fn lookup_pos(codemap map, uint pos) -> loc {
             }
         }
     }
-    log #fmt("Failed to find a location for character %u", pos);
+    log_err #fmt("Failed to find a location for character %u", pos);
     fail;
 }
 

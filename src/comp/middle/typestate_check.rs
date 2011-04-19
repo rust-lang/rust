@@ -463,13 +463,13 @@ fn stmt_pp(&stmt s) -> pre_and_post {
 fn expr_states(&expr e) -> pre_and_post_state {
   alt (expr_ann(e)) {
     case (ann_none) {
-      log "expr_pp: the impossible happened (no annotation)";
+      log_err "expr_pp: the impossible happened (no annotation)";
       fail;
     }
     case (ann_type(_, _, ?maybe_pp)) {
       alt (maybe_pp) {
         case (none[@ts_ann]) {
-          log "expr_pp: the impossible happened (no pre/post)";
+          log_err "expr_pp: the impossible happened (no pre/post)";
           fail;
         }
         case (some[@ts_ann](?p)) {
@@ -484,13 +484,13 @@ fn expr_states(&expr e) -> pre_and_post_state {
 fn expr_pp(&expr e) -> pre_and_post {
   alt (expr_ann(e)) {
     case (ann_none) {
-      log "expr_pp: the impossible happened (no annotation)";
+      log_err "expr_pp: the impossible happened (no annotation)";
       fail;
     }
     case (ann_type(_, _, ?maybe_pp)) {
       alt (maybe_pp) {
         case (none[@ts_ann]) {
-          log "expr_pp: the impossible happened (no pre/post)";
+          log_err "expr_pp: the impossible happened (no pre/post)";
           fail;
         }
         case (some[@ts_ann](?p)) {
@@ -506,13 +506,13 @@ fn expr_pp(&expr e) -> pre_and_post {
 fn block_pp(&block b) -> pre_and_post {
     alt (b.node.a) {
        case (ann_none) {
-           log "block_pp: the impossible happened (no ann)";
+           log_err "block_pp: the impossible happened (no ann)";
            fail;
        }
        case (ann_type(_,_,?t)) {
            alt (t) {
                case (none[@ts_ann]) {
-                   log "block_pp: the impossible happened (no ty)";
+                   log_err "block_pp: the impossible happened (no ty)";
                    fail;
                }
                case (some[@ts_ann](?ts)) {
@@ -526,13 +526,13 @@ fn block_pp(&block b) -> pre_and_post {
 fn block_states(&block b) -> pre_and_post_state {
     alt (b.node.a) {
        case (ann_none) {
-           log "block_pp: the impossible happened (no ann)";
+           log_err "block_pp: the impossible happened (no ann)";
            fail;
        }
        case (ann_type(_,_,?t)) {
            alt (t) {
                case (none[@ts_ann]) {
-                   log "block_states: the impossible happened (no ty)";
+                   log_err "block_states: the impossible happened (no ty)";
                    fail;
                }
                case (some[@ts_ann](?ts)) {

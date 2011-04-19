@@ -1099,7 +1099,7 @@ mod Pushdown {
                 alt (expected.struct) {
                     case (ty.ty_tag(_, ?tps)) { tag_tps = tps; }
                     case (_) {
-                        log "tag pattern type not actually a tag?!";
+                        log_err "tag pattern type not actually a tag?!";
                         fail;
                     }
                 }
@@ -1153,7 +1153,7 @@ mod Pushdown {
                         }
                     }
                     case (_) {
-                        log "vec expr doesn't have a vec type!";
+                        log_err "vec expr doesn't have a vec type!";
                         fail;
                     }
                 }
@@ -1174,7 +1174,7 @@ mod Pushdown {
                         }
                     }
                     case (_) {
-                        log "tup expr doesn't have a tup type!";
+                        log_err "tup expr doesn't have a tup type!";
                         fail;
                     }
                 }
@@ -1231,7 +1231,7 @@ mod Pushdown {
                         }
                     }
                     case (_) {
-                        log "rec expr doesn't have a rec type!";
+                        log_err "rec expr doesn't have a rec type!";
                         fail;
                     }
                 }
@@ -1355,8 +1355,8 @@ mod Pushdown {
                 auto ty_params_opt;
                 alt (ann) {
                     case (ast.ann_none) {
-                        log "pushdown_expr(): no type annotation for path " +
-                            "expr; did you pass it to check_expr() first?";
+                        log_err "pushdown_expr(): no type annotation for " +
+                            "path expr; did you pass it to check_expr()?";
                         fail;
                     }
                     case (ast.ann_type(_, ?tps_opt, _)) {
@@ -1682,7 +1682,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 t_0 = plain_ty(ty.ty_native_fn(abi, arg_tys_0, rt_0));
             }
             case (_) {
-                log "check_call_or_bind(): fn expr doesn't have fn type";
+                log_err "check_call_or_bind(): fn expr doesn't have fn type";
                 fail;
             }
         }
@@ -1905,10 +1905,10 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                     boring_ann()));
         }
 
-        case (ast.expr_log(_,?e,_)) {
+        case (ast.expr_log(?l,?e,_)) {
             auto expr_t = check_expr(fcx, e);
             ret @fold.respan[ast.expr_]
-                (expr.span, ast.expr_log(_, expr_t, boring_ann()));
+                (expr.span, ast.expr_log(l, expr_t, boring_ann()));
         }
 
         case (ast.expr_check_expr(?e, _)) {
@@ -2153,7 +2153,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     }
                 }
                 case (_) {
-                    log "LHS of bind expr didn't have a function type?!";
+                    log_err "LHS of bind expr didn't have a function type?!";
                     fail;
                 }
             }
@@ -2176,7 +2176,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (ty.ty_fn(_,_,?rt))    { rt_1 = rt; }
                 case (ty.ty_native_fn(_, _, ?rt))    { rt_1 = rt; }
                 case (_) {
-                    log "LHS of call expr didn't have a function type?!";
+                    log_err "LHS of call expr didn't have a function type?!";
                     fail;
                 }
             }
