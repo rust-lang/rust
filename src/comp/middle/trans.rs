@@ -1694,53 +1694,48 @@ fn make_generic_glue(@local_ctxt cx,
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
 
-    if (!ty.type_is_scalar(t)) {
+    // Any nontrivial glue is with values passed *by alias*; this is a
+    // requirement since in many contexts glue is invoked indirectly and
+    // the caller has no idea if it's dealing with something that can be
+    // passed by value.
 
-        // Any nontrivial glue is with values passed *by alias*; this is a
-        // requirement since in many contexts glue is invoked indirectly and
-        // the caller has no idea if it's dealing with something that can be
-        // passed by value.
-
-        auto llty;
-        if (ty.type_has_dynamic_size(t)) {
-            llty = T_ptr(T_i8());
-        } else {
-            llty = T_ptr(type_of(cx.ccx, t));
-        }
-
-        auto ty_param_count = _vec.len[uint](ty_params);
-
-        auto lltyparams = llvm.LLVMGetParam(llfn, 3u);
-
-        auto lltydescs = _vec.empty_mut[ValueRef]();
-        auto p = 0u;
-        while (p < ty_param_count) {
-            auto llparam = bcx.build.GEP(lltyparams, vec(C_int(p as int)));
-            llparam = bcx.build.Load(llparam);
-            _vec.grow_set[ValueRef](lltydescs, ty_params.(p), 0 as ValueRef,
-                                    llparam);
-            p += 1u;
-        }
-        bcx.fcx.lltydescs = _vec.freeze[ValueRef](lltydescs);
-
-        auto llrawptr0 = llvm.LLVMGetParam(llfn, 4u);
-        auto llval0 = bcx.build.BitCast(llrawptr0, llty);
-
-        alt (helper) {
-            case (mgghf_single(?single_fn)) {
-                single_fn(bcx, llval0, t);
-            }
-            case (mgghf_cmp) {
-                auto llrawptr1 = llvm.LLVMGetParam(llfn, 5u);
-                auto llval1 = bcx.build.BitCast(llrawptr0, llty);
-
-                auto llcmpval = llvm.LLVMGetParam(llfn, 6u);
-
-                make_cmp_glue(bcx, llval0, llval1, t, llcmpval);
-            }
-        }
+    auto llty;
+    if (ty.type_has_dynamic_size(t)) {
+        llty = T_ptr(T_i8());
     } else {
-        bcx.build.RetVoid();
+        llty = T_ptr(type_of(cx.ccx, t));
+    }
+
+    auto ty_param_count = _vec.len[uint](ty_params);
+
+    auto lltyparams = llvm.LLVMGetParam(llfn, 3u);
+
+    auto lltydescs = _vec.empty_mut[ValueRef]();
+    auto p = 0u;
+    while (p < ty_param_count) {
+        auto llparam = bcx.build.GEP(lltyparams, vec(C_int(p as int)));
+        llparam = bcx.build.Load(llparam);
+        _vec.grow_set[ValueRef](lltydescs, ty_params.(p), 0 as ValueRef,
+                                llparam);
+        p += 1u;
+    }
+    bcx.fcx.lltydescs = _vec.freeze[ValueRef](lltydescs);
+
+    auto llrawptr0 = llvm.LLVMGetParam(llfn, 4u);
+    auto llval0 = bcx.build.BitCast(llrawptr0, llty);
+
+    alt (helper) {
+        case (mgghf_single(?single_fn)) {
+            single_fn(bcx, llval0, t);
+        }
+        case (mgghf_cmp) {
+            auto llrawptr1 = llvm.LLVMGetParam(llfn, 5u);
+            auto llval1 = bcx.build.BitCast(llrawptr0, llty);
+
+            auto llcmpval = llvm.LLVMGetParam(llfn, 6u);
+
+            make_cmp_glue(bcx, llval0, llval1, t, llcmpval);
+        }
     }
 
     // Tie up the llallocas -> lltop edge.
