@@ -458,64 +458,66 @@ mod RT {
     }
 
     fn pad(&conv cv, str s, pad_type pt) -> str {
+        auto uwidth;
         alt (cv.width) {
             case (count_implied) {
                 ret s;
             }
             case (count_is(?width)) {
                 // FIXME: Maybe width should be uint
-                auto uwidth = width as uint;
-                auto strlen = _str.char_len(s);
-                if (strlen < uwidth) {
-                    auto padchar = ' ';
-                    auto diff = uwidth - strlen;
-                    if (have_flag(cv.flags, flag_left_justify)) {
-                        auto padstr = str_init_elt(padchar, diff);
-                        ret s + padstr;
-                    } else {
-                        auto zero_padding = false;
-                        auto signed = false;
-                        alt (pt) {
-                            case (pad_nozero) {
-                                // fallthrough
-                            }
-                            case (pad_signed) {
-                                signed = true;
-                                if (have_flag(cv.flags, flag_left_zero_pad)) {
-                                    padchar = '0';
-                                    zero_padding = true;
-                                }
-                            }
-                            case (pad_unsigned) {
-                                if (have_flag(cv.flags, flag_left_zero_pad)) {
-                                    padchar = '0';
-                                    zero_padding = true;
-                                }
-                            }
-                        }
+                uwidth = width as uint;
+            }
+        }
 
-                        auto padstr = str_init_elt(padchar, diff);
+        auto strlen = _str.char_len(s);
+        if (uwidth <= strlen) {
+            ret s;
+        }
 
-                        // This is completely heinous. If we have a signed
-                        // value then potentially rip apart the intermediate
-                        // result and insert some zeros. It may make sense
-                        // to convert zero padding to a precision instead.
-                        if (signed
-                            && zero_padding
-                            && _str.byte_len(s) > 0u
-                            && s.(0) == '-' as u8) {
-
-                            auto bytelen = _str.byte_len(s);
-                            auto numpart = _str.substr(s, 1u, bytelen - 1u);
-                            ret "-" + padstr + numpart;
-                        }
-
-                        ret padstr + s;
+        auto padchar = ' ';
+        auto diff = uwidth - strlen;
+        if (have_flag(cv.flags, flag_left_justify)) {
+            auto padstr = str_init_elt(padchar, diff);
+            ret s + padstr;
+        } else {
+            auto zero_padding = false;
+            auto signed = false;
+            alt (pt) {
+                case (pad_nozero) {
+                    // fallthrough
+                }
+                case (pad_signed) {
+                    signed = true;
+                    if (have_flag(cv.flags, flag_left_zero_pad)) {
+                        padchar = '0';
+                        zero_padding = true;
                     }
-                } else {
-                    ret s;
+                }
+                case (pad_unsigned) {
+                    if (have_flag(cv.flags, flag_left_zero_pad)) {
+                        padchar = '0';
+                        zero_padding = true;
+                    }
                 }
             }
+
+            auto padstr = str_init_elt(padchar, diff);
+
+            // This is completely heinous. If we have a signed value then
+            // potentially rip apart the intermediate result and insert some
+            // zeros. It may make sense to convert zero padding to a precision
+            // instead.
+            if (signed
+                && zero_padding
+                && _str.byte_len(s) > 0u
+                && s.(0) == '-' as u8) {
+
+                auto bytelen = _str.byte_len(s);
+                auto numpart = _str.substr(s, 1u, bytelen - 1u);
+                ret "-" + padstr + numpart;
+            }
+
+            ret padstr + s;
         }
     }
 
