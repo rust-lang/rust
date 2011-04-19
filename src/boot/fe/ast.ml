@@ -229,6 +229,7 @@ and stmt' =
   | STMT_join of lval
   | STMT_send of (lval * lval)
   | STMT_log of atom
+  | STMT_log_err of atom
   | STMT_note of atom
   | STMT_prove of (constrs)
   | STMT_check of (constrs * check_calls)
@@ -1206,6 +1207,13 @@ and fmt_stmt_body (ff:Format.formatter) (s:stmt) : unit =
         STMT_log at ->
           begin
             fmt ff "log ";
+            fmt_atom ff at;
+            fmt ff ";"
+          end
+
+      | STMT_log_err at ->
+          begin
+            fmt ff "log_err ";
             fmt_atom ff at;
             fmt ff ";"
           end

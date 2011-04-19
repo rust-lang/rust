@@ -29,28 +29,28 @@ upcall_grow_task(rust_task *task, size_t n_frame_bytes) {
 }
 
 extern "C" CDECL
-void upcall_log_int(rust_task *task, int32_t i) {
+void upcall_log_int(rust_task *task, int32_t level, int32_t i) {
     LOG_UPCALL_ENTRY(task);
     LOG(task, rust_log::UPCALL | rust_log::ULOG,
         "rust: %" PRId32 " (0x%" PRIx32 ")", i, i);
 }
 
 extern "C" CDECL
-void upcall_log_float(rust_task *task, float f) {
+void upcall_log_float(rust_task *task, int32_t level, float f) {
     LOG_UPCALL_ENTRY(task);
     LOG(task, rust_log::UPCALL | rust_log::ULOG,
         "rust: %12.12f", f);
 }
 
 extern "C" CDECL
-void upcall_log_double(rust_task *task, double *f) {
+void upcall_log_double(rust_task *task, int32_t level, double *f) {
     LOG_UPCALL_ENTRY(task);
     LOG(task, rust_log::UPCALL | rust_log::ULOG,
               "rust: %12.12f", *f);
 }
 
 extern "C" CDECL void
-upcall_log_str(rust_task *task, rust_str *str) {
+upcall_log_str(rust_task *task, int32_t level, rust_str *str) {
     LOG_UPCALL_ENTRY(task);
     const char *c = str_buf(task, str);
     LOG(task, rust_log::UPCALL | rust_log::ULOG, "rust: %s", c);

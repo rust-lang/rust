@@ -186,6 +186,11 @@ and parse_stmts_including_none (ps:pstate) : Ast.stmt array =
           let (stmts, atom) = ctxt "stmts: log value" parse_expr_atom ps in
             expect ps SEMI;
             spans ps stmts apos (Ast.STMT_log atom)
+      | LOG_ERR ->
+          bump ps;
+          let (stmts, atom) = ctxt "stmts: log value" parse_expr_atom ps in
+            expect ps SEMI;
+            spans ps stmts apos (Ast.STMT_log_err atom)
       | BREAK ->
           bump ps;
           expect ps SEMI;

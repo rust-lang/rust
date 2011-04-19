@@ -2663,11 +2663,11 @@ let trans_visitor
          abi.Abi.abi_emit_native_void_call (emitter())
            nabi_rust (upcall_fixup name) args);
 
-  and trans_log_int (a:Ast.atom) : unit =
-    trans_void_upcall "upcall_log_int" [| (trans_atom a) |]
+  and trans_log_int lev (a:Ast.atom) : unit =
+    trans_void_upcall "upcall_log_int" [| simm (Int64.of_int lev); (trans_atom a) |]
 
-  and trans_log_str (a:Ast.atom) : unit =
-    trans_void_upcall "upcall_log_str" [| (trans_atom a) |]
+  and trans_log_str lev (a:Ast.atom) : unit =
+    trans_void_upcall "upcall_log_str" [| simm (Int64.of_int lev); (trans_atom a) |]
 
   and trans_spawn
       ((*initializing*)_:bool)
@@ -5236,17 +5236,17 @@ let trans_visitor
         | _ -> bug () "Calling unexpected lval."
 
 
-  and trans_log id a =
+  and trans_log lev id a =
     match simplified_ty (atom_type cx a) with
         (* NB: If you extend this, be sure to update the
          * typechecking code in type.ml as well. *)
-        Ast.TY_str -> trans_log_str a
+        Ast.TY_str -> trans_log_str lev a
       | Ast.TY_int | Ast.TY_uint | Ast.TY_bool
       | Ast.TY_char | Ast.TY_mach (TY_u8)
       | Ast.TY_mach (TY_u16) | Ast.TY_mach (TY_u32)
       | Ast.TY_mach (TY_i8) | Ast.TY_mach (TY_i16)
       | Ast.TY_mach (TY_i32) ->
-          trans_log_int a
+          trans_log_int lev a
       | _ -> unimpl (Some id) "logging type"
 
   and trans_while (id:node_id) (sw:Ast.stmt_while) : unit =
@@ -5284,7 +5284,10 @@ let trans_visitor
     match stmt.node with
 
         Ast.STMT_log a ->
-          trans_log stmt.id a
+          trans_log 1 stmt.id a
+
+      | Ast.STMT_log_err a ->
+          trans_log 0 stmt.id a
 
       | Ast.STMT_check_expr e ->
           trans_check_expr stmt.id e

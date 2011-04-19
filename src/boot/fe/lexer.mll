@@ -117,6 +117,7 @@
                 ("const", CONST);
 
                 ("log", LOG);
+                ("log_err", LOG_ERR);
                 ("break", BREAK);
                 ("cont", CONT);
                 ("spawn", SPAWN);

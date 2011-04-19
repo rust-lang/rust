@@ -106,6 +106,7 @@ type token =
 
   (* Magic runtime services *)
   | LOG
+  | LOG_ERR
   | SPAWN
   | BIND
   | THREAD
@@ -269,6 +270,7 @@ let rec string_of_tok t =
 
     (* Magic runtime services *)
     | LOG        -> "log"
+    | LOG_ERR    -> "log_err"
     | SPAWN      -> "spawn"
     | BIND       -> "bind"
     | THREAD     -> "thread"

@@ -1125,7 +1125,7 @@ let check_block (cx:Semant.ctxt) : (fn_ctx -> Ast.block -> unit) =
             let value_ty = demand_chan (check_lval chan) in
             infer_lval ~mut:Ast.MUT_immutable value_ty value
 
-        | Ast.STMT_log x | Ast.STMT_note x ->
+        | Ast.STMT_log x | Ast.STMT_note x | Ast.STMT_log_err x ->
             (* always well-typed, just record type in passing. *)
             ignore (check_atom x)
 

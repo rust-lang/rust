@@ -387,7 +387,7 @@ and walk_stmt
   in
   let children _ =
     match s.node with
-        Ast.STMT_log a ->
+        Ast.STMT_log a | Ast.STMT_log_err a ->
           walk_atom v a
 
       | Ast.STMT_new_rec (lv, atab, base) ->
