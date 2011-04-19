@@ -321,11 +321,9 @@ coupled to the loop that invoked it.
 @item Direct interface to C code
 
 Rust can load and call many C library functions simply by declaring
-them. Calling a C function statically marks a function as ``unsafe'', unless
-the task calling the unsafe function is further isolated within an external
-``heavyweight'' operating-system subprocess. Every ``unsafe'' function or
-module in a Rust compilation unit must be explicitly authorized in the crate
-file.
+them. Calling a C function is an ``unsafe'' action, and can only be taken
+within a block marked with the @code{unsafe} keyword. Every unsafe block
+in a Rust compilation unit must be explicitly authorized in the crate file.
 
 @sp 1
 @item Structural algebraic data types
@@ -684,7 +682,6 @@ The keywords are:
 @tab @code{const}
 @tab @code{thread}
 @item @code{auth}
-@tab @code{impure}
 @tab @code{unsafe}
 @tab @code{self}
 @item @code{bind}
@@ -1490,7 +1487,7 @@ operating-system processes.
 @cindex Send expression
 @cindex Receive expression
 
-With the exception of @emph{unsafe} constructs, Rust tasks are isolated from
+With the exception of @emph{unsafe} blocks, Rust tasks are isolated from
 interfering with one another's memory directly. Instead of manipulating shared
 storage, Rust tasks communicate with one another using a typed, asynchronous,
 simplex message-passing system.
@@ -1788,7 +1785,6 @@ fn main() @{
 @c * Ref.Item.Fn::            Items defining functions.
 @cindex Functions
 @cindex Slots, function input and output
-@cindex Effect of a function
 @cindex Predicate
 
 
@@ -1808,10 +1804,6 @@ Every control path in a function ends with either a @code{ret} or @code{be}
 expression. If a control path lacks a @code{ret} expression in source code, an
 implicit @code{ret} expression is appended to the end of the control path
 during compilation, returning the implicit @code{()} value.
-
-A function may have an @emph{effect}, which may be either @code{impure} or
-@code{unsafe}. If no effect is specified, the function is said to be
-@dfn{pure}.
 
 Any pure boolean function is also called a @emph{predicate}, and may be used
 as part of the static typestate system. @xref{Ref.Typestate.Constr}.
@@ -2307,8 +2299,8 @@ by named reference to a @emph{tag item} declaration. @xref{Ref.Item.Tag}.
 
 The function type-constructor @code{fn} forms new function types. A function
 type consists of a sequence of input slots, an optional set of input
-constraints (@pxref{Ref.Typestate.Constr}), an output slot, and an
-@emph{effect}. @xref{Ref.Item.Fn}.
+constraints (@pxref{Ref.Typestate.Constr}) and an output
+slot. @xref{Ref.Item.Fn}.
 
 An example of a @code{fn} type:
 @example
@@ -2329,7 +2321,7 @@ x = bo(5,7);
 
 The iterator type-constructor @code{iter} forms new iterator types. An
 iterator type consists a sequence of input slots, an optional set of input
-constraints, an output slot, and an @emph{effect}. @xref{Ref.Item.Iter}.
+constraints and an output slot. @xref{Ref.Item.Iter}.
 
 An example of an @code{iter} type:
 @example
@@ -2449,9 +2441,7 @@ that a variety of particular objects may conform to, by supporting a superset
 of the methods.
 
 An object type that can contain fields of a given layer must be declared as
-residing in that layer (or lower), like any other type. And similarly a method
-with a given effect must be declared as having that effect (or lower) in the
-object type, like any other function.
+residing in that layer (or lower), like any other type.
 
 An example of an object type with two separate object items supporting it, and
 a client function using both items via the object type:
@@ -2460,17 +2450,17 @@ a client function using both items via the object type:
 
 state type taker =
     state obj @{
-        impure fn take(int);
+        fn take(int);
     @};
 
 state obj adder(mutable int x) @{
-    impure fn take(int y) @{
+    fn take(int y) @{
         x += y;
     @}
 @}
 
 obj sender(chan[int] c) @{
-    impure fn take(int z) @{
+    fn take(int z) @{
         c <| z;
     @}
 @}
@@ -3190,10 +3180,6 @@ cause a value to be appended to an internal diagnostic logging buffer provided
 by the runtime or emitted to a system console. Log expressions are enabled or
 disabled dynamically at run-time on a per-task and per-item
 basis. @xref{Ref.Run.Log}.
-
-Executing a @code{log} expression is not considered an impure effect in the
-effect system. In other words, a pure function remains pure even if it
-contains a log expression.
 
 @example
 @end example
