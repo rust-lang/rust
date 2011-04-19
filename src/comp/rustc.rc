@@ -3,6 +3,22 @@
 
 use std;
 
+mod middle {
+    mod trans;
+    mod ty;
+    mod fold;
+    mod metadata;
+    mod resolve;
+    mod capture;
+    mod typeck;
+    mod typestate_check;
+}
+
+mod pretty {
+    mod pprust;
+    mod pp;
+}
+
 mod front {
     mod ast;
     mod creader;
@@ -14,17 +30,6 @@ mod front {
     mod eval;
 }
 
-mod middle {
-    mod fold;
-    mod metadata;
-    mod resolve;
-    mod capture;
-    mod trans;
-    mod ty;
-    mod typeck;
-    mod typestate_check;
-}
-
 mod back {
     mod abi;
     mod x86;
@@ -33,11 +38,6 @@ mod back {
 mod driver {
     mod rustc;
     mod session;
-}
-
-mod pretty {
-    mod pp;
-    mod pprust;
 }
 
 mod util {

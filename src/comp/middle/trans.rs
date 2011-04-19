@@ -110,6 +110,7 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[ast.def_id,()] obj_methods,
                             hashmap[@ty.t, @tydesc_info] tydescs,
                             hashmap[str, ValueRef] module_data,
+                            hashmap[@ty.t, TypeRef] lltypes,
                             @glue_fns glues,
                             namegen names,
                             vec[str] path,
@@ -676,6 +677,11 @@ fn type_of_native_fn(@crate_ctxt cx, ast.native_abi abi,
 }
 
 fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
+    // Check the cache.
+    if (cx.lltypes.contains_key(t)) {
+        ret cx.lltypes.get(t);
+    }
+
     let TypeRef llty = 0 as TypeRef;
 
     alt (t.struct) {
@@ -779,6 +785,7 @@ fn type_of_inner(@crate_ctxt cx, @ty.t t) -> TypeRef {
 
     check (llty as int != 0);
     llvm.LLVMAddTypeName(cx.llmod, _str.buf(ty.ty_to_str(t)), llty);
+    cx.lltypes.insert(t, llty);
     ret llty;
 }
 
@@ -7476,6 +7483,7 @@ fn trans_crate(session.session sess, @ast.crate crate,
     auto eqer = ty.eq_ty;
     auto tag_sizes = map.mk_hashmap[@ty.t,uint](hasher, eqer);
     auto tydescs = map.mk_hashmap[@ty.t,@tydesc_info](hasher, eqer);
+    auto lltypes = map.mk_hashmap[@ty.t,TypeRef](hasher, eqer);
     let vec[ast.ty_param] obj_typarams = vec();
     let vec[ast.obj_field] obj_fields = vec();
 
@@ -7500,6 +7508,7 @@ fn trans_crate(session.session sess, @ast.crate crate,
                     obj_methods = new_def_hash[()](),
                     tydescs = tydescs,
                     module_data = new_str_hash[ValueRef](),
+                    lltypes = lltypes,
                     glues = glues,
                     names = namegen(0),
                     path = pth,
