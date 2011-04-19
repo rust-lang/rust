@@ -1382,7 +1382,7 @@ mod Pushdown {
             }
             /* FIXME: should this check the type annotations? */
             case (ast.expr_fail(_))  { e_1 = e.node; } 
-            case (ast.expr_log(_,_)) { e_1 = e.node; } 
+            case (ast.expr_log(_,_,_)) { e_1 = e.node; } 
             case (ast.expr_break(_)) { e_1 = e.node; }
             case (ast.expr_cont(_))  { e_1 = e.node; }
             case (ast.expr_ret(_,_)) { e_1 = e.node; }
@@ -1905,10 +1905,10 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                     boring_ann()));
         }
 
-        case (ast.expr_log(?e,_)) {
+        case (ast.expr_log(_,?e,_)) {
             auto expr_t = check_expr(fcx, e);
             ret @fold.respan[ast.expr_]
-                (expr.span, ast.expr_log(expr_t, boring_ann()));
+                (expr.span, ast.expr_log(_, expr_t, boring_ann()));
         }
 
         case (ast.expr_check_expr(?e, _)) {

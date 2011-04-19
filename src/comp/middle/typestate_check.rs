@@ -384,7 +384,7 @@ fn expr_ann(&expr e) -> ann {
     case (ast.expr_be(_,?a)) {
       ret a;
     }
-    case (ast.expr_log(_,?a)) {
+    case (ast.expr_log(_,_,?a)) {
       ret a;
     }
     case (ast.expr_check_expr(_,?a)) {
@@ -784,7 +784,7 @@ fn find_pre_post_expr(&_fn_info_map fm, &fn_info enclosing, &expr e) -> () {
             // Otherwise, variable is global, so it must be initialized
             set_pre_and_post(a, res);
         }
-        case(expr_log(?arg, ?a)) {
+        case(expr_log(_, ?arg, ?a)) {
             find_pre_post_expr(fm, enclosing, *arg);
             set_pre_and_post(a, expr_pp(*arg));
         }
@@ -1099,7 +1099,7 @@ fn find_pre_post_state_expr(&_fn_info_map fm, &fn_info enclosing,
     case (expr_path(_,_,?a)) {
       ret pure_exp(a, pres);
     }
-    case (expr_log(?e,?a)) {
+    case (expr_log(_,?e,?a)) {
         changed = find_pre_post_state_expr(fm, enclosing, pres, e);
         changed = extend_prestate_ann(a, pres) || changed;
         changed = extend_poststate_ann(a, expr_poststate(*e)) || changed;

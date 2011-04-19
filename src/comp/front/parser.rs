@@ -810,7 +810,14 @@ impure fn parse_bottom_expr(parser p) -> @ast.expr {
             p.bump();
             auto e = parse_expr(p);
             auto hi = e.span.hi;
-            ex = ast.expr_log(e, ast.ann_none);
+            ex = ast.expr_log(1, e, ast.ann_none);
+        }
+
+        case (token.LOG_ERR) {
+            p.bump();
+            auto e = parse_expr(p);
+            auto hi = e.span.hi;
+            ex = ast.expr_log(0, e, ast.ann_none);
         }
 
         case (token.CHECK) {
@@ -1669,7 +1676,7 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_ret(_,_))        { ret true; }
                 case (ast.expr_put(_,_))        { ret true; }
                 case (ast.expr_be(_,_))         { ret true; }
-                case (ast.expr_log(_,_))        { ret true; }
+                case (ast.expr_log(_,_,_))        { ret true; }
                 case (ast.expr_check_expr(_,_)) { ret true; }
             }
         }

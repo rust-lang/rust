@@ -4901,8 +4901,8 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             ret trans_fail(cx, e.span, "explicit failure");
         }
 
-        case (ast.expr_log(?a, _)) {
-            ret trans_log(cx, a);
+        case (ast.expr_log(?lvl, ?a, _)) {
+            ret trans_log(lvl, cx, a);
         }
 
         case (ast.expr_check_expr(?a, _)) {
@@ -4989,7 +4989,7 @@ fn load_if_immediate(@block_ctxt cx, ValueRef v, @ty.t t) -> ValueRef {
     ret v;
 }
 
-fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
+fn trans_log(int lvl, @block_ctxt cx, @ast.expr e) -> result {
     auto lcx = cx.fcx.lcx;
     auto modname = _str.connect(lcx.module_path, ".");
     auto global;
@@ -5008,7 +5008,7 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
     auto log_cx = new_sub_block_ctxt(cx, "log");
     auto after_cx = new_sub_block_ctxt(cx, "after");
     auto load = cx.build.Load(global);
-    auto test = cx.build.ICmp(lib.llvm.LLVMIntSGE, load, C_int(1));
+    auto test = cx.build.ICmp(lib.llvm.LLVMIntSGE, load, C_int(lvl));
     cx.build.CondBr(test, log_cx.llbb, after_cx.llbb);
 
     auto sub = trans_expr(log_cx, e);
@@ -5032,14 +5032,14 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
         if (is32bit) {
             trans_upcall(sub.bcx,
                          "upcall_log_float",
-                         vec(sub.val)).bcx.build.Br(after_cx.llbb);
+                         vec(C_int(lvl), sub.val)).bcx.build.Br(after_cx.llbb);
         } else {
             auto tmp = alloca(sub.bcx, tr);
             sub.bcx.build.Store(sub.val, tmp);
             auto v = vp2i(sub.bcx, tmp);
             trans_upcall(sub.bcx,
                          "upcall_log_double",
-                         vec(v)).bcx.build.Br(after_cx.llbb);
+                         vec(C_int(lvl), v)).bcx.build.Br(after_cx.llbb);
         }
     } else {
         alt (e_ty.struct) {
@@ -5047,12 +5047,13 @@ fn trans_log(@block_ctxt cx, @ast.expr e) -> result {
                 auto v = vp2i(sub.bcx, sub.val);
                 trans_upcall(sub.bcx,
                              "upcall_log_str",
-                             vec(v)).bcx.build.Br(after_cx.llbb);
+                             vec(C_int(lvl), v)).bcx.build.Br(after_cx.llbb);
             }
             case (_) {
+                auto v = vec(C_int(lvl), sub.val);
                 trans_upcall(sub.bcx,
                              "upcall_log_int",
-                             vec(sub.val)).bcx.build.Br(after_cx.llbb);
+                             v).bcx.build.Br(after_cx.llbb);
             }
         }
     }

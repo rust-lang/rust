@@ -289,7 +289,7 @@ tag expr_ {
     expr_ret(option.t[@expr], ann);
     expr_put(option.t[@expr], ann);
     expr_be(@expr, ann);
-    expr_log(@expr, ann);
+    expr_log(int, @expr, ann);
     expr_check_expr(@expr, ann);
     expr_port(ann);
     expr_chan(@expr, ann);

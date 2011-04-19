@@ -119,6 +119,7 @@ tag token {
 
     /* Magic runtime services */
     LOG;
+    LOG_ERR;
     SPAWN;
     BIND;
     THREAD;
@@ -291,6 +292,7 @@ fn to_str(token t) -> str {
 
         /* Magic runtime services */
         case (LOG) { ret "log"; }
+        case (LOG_ERR) { ret "log_err"; }
         case (SPAWN) { ret "spawn"; }
         case (BIND) { ret "bind"; }
         case (THREAD) { ret "thread"; }

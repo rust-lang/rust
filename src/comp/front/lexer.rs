@@ -152,6 +152,7 @@ fn keyword_table() -> std.map.hashmap[str, token.token] {
     keywords.insert("const", token.CONST);
 
     keywords.insert("log", token.LOG);
+    keywords.insert("log_err", token.LOG_ERR);
     keywords.insert("spawn", token.SPAWN);
     keywords.insert("thread", token.THREAD);
     keywords.insert("yield", token.YIELD);

@@ -647,8 +647,11 @@ impure fn print_expr(ps s, &@ast.expr expr) {
             wrd1(s, "be");
             print_expr(s, result);
         }
-        case (ast.expr_log(?expr,_)) {
-            wrd1(s, "log");
+        case (ast.expr_log(?lvl,?expr,_)) {
+            alt (lvl) {
+                case (1) {wrd1(s, "log");}
+                case (0) {wrd1(s, "log_err");}
+            }
             print_expr(s, expr);
         }
         case (ast.expr_check_expr(?expr,_)) {

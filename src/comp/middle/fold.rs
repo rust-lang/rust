@@ -193,7 +193,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp,
          @expr e, ann a) -> @expr)                fold_expr_be,
 
-     (fn(&ENV e, &span sp,
+     (fn(&ENV e, &span sp, int lvl,
          @expr e, ann a) -> @expr)                fold_expr_log,
 
      (fn(&ENV e, &span sp,
@@ -793,10 +793,10 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
             ret fld.fold_expr_be(env_, e.span, ee, t2);
         }
 
-        case (ast.expr_log(?x, ?t)) {
+        case (ast.expr_log(?l, ?x, ?t)) {
             auto ee = fold_expr(env_, fld, x);
             auto t2 = fld.fold_ann(env_, t);
-            ret fld.fold_expr_log(env_, e.span, ee, t2);
+            ret fld.fold_expr_log(env_, e.span, l, ee, t2);
         }
 
         case (ast.expr_check_expr(?x, ?t)) {
@@ -1378,9 +1378,9 @@ fn identity_fold_expr_be[ENV](&ENV env, &span sp, @expr x, ann a) -> @expr {
     ret @respan(sp, ast.expr_be(x, a));
 }
 
-fn identity_fold_expr_log[ENV](&ENV e, &span sp, @expr x,
+fn identity_fold_expr_log[ENV](&ENV e, &span sp, int lvl, @expr x,
                                ann a) -> @expr {
-    ret @respan(sp, ast.expr_log(x, a));
+    ret @respan(sp, ast.expr_log(lvl, x, a));
 }
 
 fn identity_fold_expr_check_expr[ENV](&ENV e, &span sp, @expr x, ann a)
@@ -1679,7 +1679,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_ret    = bind identity_fold_expr_ret[ENV](_,_,_,_),
          fold_expr_put    = bind identity_fold_expr_put[ENV](_,_,_,_),
          fold_expr_be     = bind identity_fold_expr_be[ENV](_,_,_,_),
-         fold_expr_log    = bind identity_fold_expr_log[ENV](_,_,_,_),
+         fold_expr_log    = bind identity_fold_expr_log[ENV](_,_,_,_,_),
          fold_expr_check_expr
          = bind identity_fold_expr_check_expr[ENV](_,_,_,_),
          fold_expr_port   = bind identity_fold_expr_port[ENV](_,_,_),

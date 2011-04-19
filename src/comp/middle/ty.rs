@@ -913,7 +913,7 @@ fn expr_ann(@ast.expr expr) -> option.t[ast.ann] {
         case (ast.expr_fail(_))               { ret none[ast.ann]; }
         case (ast.expr_break(_))              { ret none[ast.ann]; }
         case (ast.expr_cont(_))               { ret none[ast.ann]; }
-        case (ast.expr_log(_,_))              { ret none[ast.ann]; }
+        case (ast.expr_log(_,_,_))            { ret none[ast.ann]; }
         case (ast.expr_check_expr(_,_))       { ret none[ast.ann]; }
         case (ast.expr_ret(_,_))              { ret none[ast.ann]; }
         case (ast.expr_put(_,_))              { ret none[ast.ann]; }
