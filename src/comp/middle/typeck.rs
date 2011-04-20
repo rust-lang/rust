@@ -48,12 +48,18 @@ tag any_item {
 
 type ty_item_table = hashmap[ast.def_id,any_item];
 
+type unify_cache_entry = tup(@ty.t,@ty.t,vec[mutable @ty.t]);
+type unify_cache = hashmap[unify_cache_entry,ty.unify_result];
+
 type crate_ctxt = rec(session.session sess,
                       ty.type_cache type_cache,
                       @ty_item_table item_items,
                       vec[ast.obj_field] obj_fields,
                       option.t[ast.def_id] this_obj,
-                      mutable int next_var_id);
+                      mutable int next_var_id,
+                      unify_cache unify_cache,
+                      mutable uint cache_hits,
+                      mutable uint cache_misses);
 
 type fn_ctxt = rec(@ty.t ret_ty,
                    @ty_table locals,
@@ -842,6 +848,14 @@ mod Unify {
 
     fn with_params(@fn_ctxt fcx, @ty.t expected, @ty.t actual,
                    vec[mutable @ty.t] param_substs) -> ty.unify_result {
+        auto cache_key = tup(expected, actual, param_substs);
+        if (fcx.ccx.unify_cache.contains_key(cache_key)) {
+            fcx.ccx.cache_hits += 1u;
+            ret fcx.ccx.unify_cache.get(cache_key);
+        }
+
+        fcx.ccx.cache_misses += 1u;
+
         obj unify_handler(@fn_ctxt fcx, vec[mutable @ty.t] param_substs) {
             fn resolve_local(ast.def_id id) -> option.t[@ty.t] {
                 alt (fcx.locals.find(id)) {
@@ -898,7 +912,9 @@ mod Unify {
 
 
         auto handler = unify_handler(fcx, param_substs);
-        ret ty.unify(expected, actual, handler);
+        auto result = ty.unify(expected, actual, handler);
+        fcx.ccx.unify_cache.insert(cache_key, result);
+        ret result;
     }
 }
 
@@ -2699,6 +2715,38 @@ fn update_obj_fields(&@crate_ctxt ccx, @ast.item i) -> @crate_ctxt {
 }
 
 
+// Utilities for the unification cache
+
+fn hash_unify_cache_entry(&unify_cache_entry uce) -> uint {
+    auto h = ty.hash_ty(uce._0);
+    h += h << 5u + ty.hash_ty(uce._1);
+
+    auto i = 0u;
+    auto tys_len = _vec.len[mutable @ty.t](uce._2);
+    while (i < tys_len) {
+        h += h << 5u + ty.hash_ty(uce._2.(i));
+        i += 1u;
+    }
+
+    ret h;
+}
+
+fn eq_unify_cache_entry(&unify_cache_entry a, &unify_cache_entry b) -> bool {
+    if (!ty.eq_ty(a._0, b._0) || !ty.eq_ty(a._1, b._1)) { ret false; }
+
+    auto i = 0u;
+    auto tys_len = _vec.len[mutable @ty.t](a._2);
+    if (_vec.len[mutable @ty.t](b._2) != tys_len) { ret false; }
+
+    while (i < tys_len) {
+        if (!ty.eq_ty(a._2.(i), b._2.(i))) { ret false; }
+        i += 1u;
+    }
+
+    ret true;
+}
+
+
 type typecheck_result = tup(@ast.crate, ty.type_cache);
 
 fn check_crate(session.session sess, @ast.crate crate) -> typecheck_result {
@@ -2706,12 +2754,20 @@ fn check_crate(session.session sess, @ast.crate crate) -> typecheck_result {
 
     let vec[ast.obj_field] fields = vec();
 
+    auto hasher = hash_unify_cache_entry;
+    auto eqer = eq_unify_cache_entry;
+    auto unify_cache =
+        map.mk_hashmap[unify_cache_entry,ty.unify_result](hasher, eqer);
+
     auto ccx = @rec(sess=sess,
                     type_cache=result._1,
                     item_items=result._2,
                     obj_fields=fields,
                     this_obj=none[ast.def_id],
-                    mutable next_var_id=0);
+                    mutable next_var_id=0,
+                    unify_cache=unify_cache,
+                    mutable cache_hits=0u,
+                    mutable cache_misses=0u);
 
     auto fld = fold.new_identity_fold[@crate_ctxt]();
 
@@ -2721,6 +2777,10 @@ fn check_crate(session.session sess, @ast.crate crate) -> typecheck_result {
                with *fld);
 
     auto crate_1 = fold.fold_crate[@crate_ctxt](ccx, fld, result._0);
+
+    log #fmt("cache hit rate: %u/%u", ccx.cache_hits,
+             ccx.cache_hits + ccx.cache_misses);
+
     ret tup(crate_1, ccx.type_cache);
 }
 
