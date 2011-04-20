@@ -40,7 +40,7 @@ fn method_ty_to_fn_ty(method m) -> @ty.t {
 //
 // TODO: It'd be really nice to be able to hide this definition from the
 // outside world, to enforce the above invariant.
-type t = rec(sty struct, option.t[str] cname);
+type t = rec(sty struct, option.t[str] cname, uint hash);
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast.rs as well.
@@ -107,28 +107,34 @@ type type_cache = hashmap[ast.def_id,ty_param_count_and_ty];
 
 // Type constructors
 
-fn mk_nil() -> @t                        { ret plain_ty(ty_nil); }
-fn mk_bool() -> @t                       { ret plain_ty(ty_bool); }
-fn mk_int() -> @t                        { ret plain_ty(ty_int); }
-fn mk_float() -> @t                      { ret plain_ty(ty_float); }
-fn mk_uint() -> @t                       { ret plain_ty(ty_uint); }
-fn mk_mach(util.common.ty_mach tm) -> @t { ret plain_ty(ty_machine(tm)); }
-fn mk_char() -> @t                       { ret plain_ty(ty_char); }
-fn mk_str() -> @t                        { ret plain_ty(ty_str); }
-
-fn mk_tag(ast.def_id did, vec[@t] tys) -> @t {
-    ret plain_ty(ty_tag(did, tys));
+// This is a private constructor to this module. External users should always
+// use the mk_foo() functions below.
+fn gen_ty(&sty st) -> @t {
+    ret @rec(struct=st, cname=none[str], hash=hash_type_structure(st));
 }
 
-fn mk_box(mt tm) -> @t     { ret plain_ty(ty_box(tm)); }
+fn mk_nil() -> @t                        { ret gen_ty(ty_nil); }
+fn mk_bool() -> @t                       { ret gen_ty(ty_bool); }
+fn mk_int() -> @t                        { ret gen_ty(ty_int); }
+fn mk_float() -> @t                      { ret gen_ty(ty_float); }
+fn mk_uint() -> @t                       { ret gen_ty(ty_uint); }
+fn mk_mach(util.common.ty_mach tm) -> @t { ret gen_ty(ty_machine(tm)); }
+fn mk_char() -> @t                       { ret gen_ty(ty_char); }
+fn mk_str() -> @t                        { ret gen_ty(ty_str); }
+
+fn mk_tag(ast.def_id did, vec[@t] tys) -> @t {
+    ret gen_ty(ty_tag(did, tys));
+}
+
+fn mk_box(mt tm) -> @t     { ret gen_ty(ty_box(tm)); }
 fn mk_imm_box(@t ty) -> @t { ret mk_box(rec(ty=ty, mut=ast.imm)); }
 
-fn mk_vec(mt tm) -> @t                   { ret plain_ty(ty_vec(tm)); }
-fn mk_port(@t ty) -> @t                  { ret plain_ty(ty_port(ty)); }
-fn mk_chan(@t ty) -> @t                  { ret plain_ty(ty_chan(ty)); }
-fn mk_task() -> @t                       { ret plain_ty(ty_task); }
+fn mk_vec(mt tm) -> @t                   { ret gen_ty(ty_vec(tm)); }
+fn mk_port(@t ty) -> @t                  { ret gen_ty(ty_port(ty)); }
+fn mk_chan(@t ty) -> @t                  { ret gen_ty(ty_chan(ty)); }
+fn mk_task() -> @t                       { ret gen_ty(ty_task); }
 
-fn mk_tup(vec[mt] tms) -> @t             { ret plain_ty(ty_tup(tms)); }
+fn mk_tup(vec[mt] tms) -> @t             { ret gen_ty(ty_tup(tms)); }
 fn mk_imm_tup(vec[@t] tys) -> @t {
     // TODO: map
     let vec[ty.mt] mts = vec();
@@ -138,23 +144,23 @@ fn mk_imm_tup(vec[@t] tys) -> @t {
     ret mk_tup(mts);
 }
 
-fn mk_rec(vec[field] fs) -> @t           { ret plain_ty(ty_rec(fs)); }
+fn mk_rec(vec[field] fs) -> @t           { ret gen_ty(ty_rec(fs)); }
 
 fn mk_fn(ast.proto proto, vec[arg] args, @t ty) -> @t {
-    ret plain_ty(ty_fn(proto, args, ty));
+    ret gen_ty(ty_fn(proto, args, ty));
 }
 
 fn mk_native_fn(ast.native_abi abi, vec[arg] args, @t ty) -> @t {
-    ret plain_ty(ty_native_fn(abi, args, ty));
+    ret gen_ty(ty_native_fn(abi, args, ty));
 }
 
-fn mk_obj(vec[method] meths) -> @t       { ret plain_ty(ty_obj(meths)); }
-fn mk_var(int v) -> @t                   { ret plain_ty(ty_var(v)); }
-fn mk_local(ast.def_id did) -> @t        { ret plain_ty(ty_local(did)); }
-fn mk_param(uint n) -> @t                { ret plain_ty(ty_param(n)); }
-fn mk_bound_param(uint n) -> @t          { ret plain_ty(ty_bound_param(n)); }
-fn mk_type() -> @t                       { ret plain_ty(ty_type); }
-fn mk_native() -> @t                     { ret plain_ty(ty_native); }
+fn mk_obj(vec[method] meths) -> @t       { ret gen_ty(ty_obj(meths)); }
+fn mk_var(int v) -> @t                   { ret gen_ty(ty_var(v)); }
+fn mk_local(ast.def_id did) -> @t        { ret gen_ty(ty_local(did)); }
+fn mk_param(uint n) -> @t                { ret gen_ty(ty_param(n)); }
+fn mk_bound_param(uint n) -> @t          { ret gen_ty(ty_bound_param(n)); }
+fn mk_type() -> @t                       { ret gen_ty(ty_type); }
+fn mk_native() -> @t                     { ret gen_ty(ty_native); }
 
 
 // Stringification
@@ -478,13 +484,15 @@ fn fold_ty(ty_fold fld, @t ty_0) -> @t {
 // Type utilities
 
 fn rename(@t typ, str new_cname) -> @t {
-    ret @rec(struct=typ.struct, cname=some[str](new_cname));
+    ret @rec(struct=typ.struct, cname=some[str](new_cname), hash=typ.hash);
 }
 
 // Returns a type with the structural part taken from `struct_ty` and the
 // canonical name from `cname_ty`.
 fn copy_cname(@t struct_ty, @t cname_ty) -> @t {
-    ret @rec(struct=struct_ty.struct, cname=cname_ty.cname);
+    ret @rec(struct=struct_ty.struct,
+             cname=cname_ty.cname,
+             hash=struct_ty.hash);
 }
 
 // FIXME: remove me when == works on these tags.
@@ -707,16 +715,12 @@ fn type_param(@t ty) -> option.t[uint] {
     ret none[uint];
 }
 
-fn plain_ty(&sty st) -> @t {
-    ret @rec(struct=st, cname=none[str]);
-}
-
 fn def_to_str(ast.def_id did) -> str {
     ret #fmt("%d:%d", did._0, did._1);
 }
 
-fn simple_ty_code(&@t ty) -> uint {
-    alt (ty.struct) {
+fn simple_ty_code(&sty st) -> uint {
+    alt (st) {
         case (ty_nil) { ret 0u; }
         case (ty_bool) { ret 1u; }
         case (ty_int) { ret 2u; }
@@ -749,20 +753,28 @@ fn simple_ty_code(&@t ty) -> uint {
     ret 0xffffu;
 }
 
-fn hash_ty(&@t ty) -> uint {
-    auto s = simple_ty_code(ty);
+// Type hashing. This function is private to this module (and slow); external
+// users should use `hash_ty()` instead.
+fn hash_type_structure(&sty st) -> uint {
+
+    auto s = simple_ty_code(st);
     if (s != 0xffffu) {
         ret s;
     }
     auto f = def_to_str;
-    ret _str.hash(metadata.ty_str(ty, f));
+
+    // FIXME: Gross. Use structural hashing when we have it.
+    auto fake_ty = @rec(struct=st, cname=none[str], hash=0u);
+    ret _str.hash(metadata.ty_str(fake_ty, f));
 }
+
+fn hash_ty(&@t typ) -> uint { ret typ.hash; }
 
 fn eq_ty(&@t a, &@t b) -> bool {
 
-    auto sa = simple_ty_code(a);
+    auto sa = simple_ty_code(a.struct);
     if (sa != 0xffffu) {
-        auto sb = simple_ty_code(b);
+        auto sb = simple_ty_code(b.struct);
         ret sa == sb;
     }
 

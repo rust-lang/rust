@@ -136,6 +136,11 @@ fn sty_str(ty.sty st, def_str ds) -> str {
         case (ty.ty_native) {ret "E";}
         case (ty.ty_param(?id)) {ret "p" + common.uistr(id);}
         case (ty.ty_type) {ret "Y";}
+
+        // These two don't appear in crate metadata, but are here because
+        // `hash_ty()` uses this function.
+        case (ty.ty_bound_param(?id)) {ret "o" + common.uistr(id);}
+        case (ty.ty_local(?def)) {ret "L" + ds(def);}
     }
 }
 
