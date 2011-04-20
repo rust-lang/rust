@@ -150,7 +150,7 @@ fn walk_ty(&ast_visitor v, @ast.ty t) {
                 walk_ty(v, f.mt.ty);
             }
         }
-        case (ast.ty_fn(_, _, ?args, ?out)) {
+        case (ast.ty_fn(_, ?args, ?out)) {
             for (ast.ty_arg a in args) {
                 walk_ty(v, a.ty);
             }

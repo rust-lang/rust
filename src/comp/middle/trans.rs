@@ -3368,38 +3368,44 @@ fn collect_upvars(@block_ctxt cx, &ast.block bloc, &ast.def_id initial_decl)
         hashmap[ast.def_id,()] decls
     );
 
-    fn fold_expr_path(&env e, &common.span sp, &ast.path p,
-                      &option.t[ast.def] d, ast.ann a) -> @ast.expr {
-        alt (option.get[ast.def](d)) {
-            case (ast.def_arg(?did))    { e.refs += vec(did);   }
-            case (ast.def_local(?did))  { e.refs += vec(did);   }
-            case (ast.def_upvar(?did))  { e.refs += vec(did);   }
-            case (_)                    { /* ignore */          }
+    fn walk_expr(env e, @ast.expr expr) {
+        alt (expr.node) {
+            case (ast.expr_path(?path, ?d, _)) {
+                alt (option.get[ast.def](d)) {
+                    case (ast.def_arg(?did)) {
+                        _vec.push[ast.def_id](e.refs, did);
+                    }
+                    case (ast.def_local(?did)) {
+                        _vec.push[ast.def_id](e.refs, did);
+                    }
+                    case (ast.def_upvar(?did)) {
+                        _vec.push[ast.def_id](e.refs, did);
+                    }
+                    case (_) {}
+                }
+            }
+            case (_) {}
         }
-
-        ret @fold.respan[ast.expr_](sp, ast.expr_path(p, d, a));
     }
 
-    fn fold_decl_local(&env e, &common.span sp, @ast.local local)
-            -> @ast.decl {
-        e.decls.insert(local.id, ());
-        ret @fold.respan[ast.decl_](sp, ast.decl_local(local));
+    fn walk_decl(env e, @ast.decl decl) {
+        alt (decl.node) {
+            case (ast.decl_local(?local)) {
+                e.decls.insert(local.id, ());
+            }
+            case (_) {}
+        }
     }
-
-    auto fep = fold_expr_path;
-    auto fdl = fold_decl_local;
-    auto fld = @rec(
-        fold_expr_path=fep,
-        fold_decl_local=fdl
-        with *fold.new_identity_fold[env]()
-    );
 
     let vec[ast.def_id] refs = vec();
     let hashmap[ast.def_id,()] decls = new_def_hash[()]();
     decls.insert(initial_decl, ());
     let env e = @rec(mutable refs=refs, decls=decls);
 
-    fold.fold_block[env](e, fld, bloc);
+    auto visitor = @rec(visit_decl_pre = bind walk_decl(e, _),
+                        visit_expr_pre = bind walk_expr(e, _)
+                        with walk.default_visitor());
+    walk.walk_block(*visitor, bloc);
 
     // Calculate (refs - decls). This is the set of captured upvars.
     let vec[ast.def_id] result = vec();
