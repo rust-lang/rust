@@ -113,7 +113,6 @@ state type crate_ctxt = rec(session.session sess,
                             hashmap[@ty.t, TypeRef] lltypes,
                             @glue_fns glues,
                             namegen names,
-                            vec[str] path,
                             std.sha1.sha1 sha);
 
 type local_ctxt = rec(vec[str] path,
@@ -182,19 +181,19 @@ fn path_name(vec[str] path) -> str {
 }
 
 
-fn mangle_name_by_type(@local_ctxt cx, @ty.t t) -> str {
-    cx.ccx.sha.reset();
+fn mangle_name_by_type(@crate_ctxt ccx, vec[str] path, @ty.t t) -> str {
+    ccx.sha.reset();
     auto f = metadata.def_to_str;
-    cx.ccx.sha.input_str(metadata.ty_str(t, f));
+    ccx.sha.input_str(metadata.ty_str(t, f));
     ret sep() + "rust" + sep()
-        + _str.substr(cx.ccx.sha.result_str(), 0u, 16u) + sep()
-        + path_name(cx.path);
+        + _str.substr(ccx.sha.result_str(), 0u, 16u) + sep()
+        + path_name(path);
 }
 
-fn mangle_name_by_seq(@local_ctxt cx, str flav) -> str {
+fn mangle_name_by_seq(@crate_ctxt ccx, vec[str] path, str flav) -> str {
     ret sep() + "rust" + sep()
-        + cx.ccx.names.next(flav) + sep()
-        + path_name(cx.path);
+        + ccx.names.next(flav) + sep()
+        + path_name(path);
 }
 
 fn res(@block_ctxt bcx, ValueRef val) -> result {
@@ -1690,9 +1689,9 @@ fn declare_generic_glue(@local_ctxt cx,
                         TypeRef llfnty,
                         str name) -> ValueRef {
     auto gcx = @rec(path=vec("glue", name) with *cx);
-    auto fn_name = mangle_name_by_type(gcx, t);
-    fn_name = sanitize(fn_name);
-    auto llfn = decl_internal_fastcall_fn(cx.ccx.llmod, fn_name, llfnty);
+    auto fn_nm = mangle_name_by_type(cx.ccx, cx.path + vec("glue", name), t);
+    fn_nm = sanitize(fn_nm);
+    auto llfn = decl_internal_fastcall_fn(cx.ccx.llmod, fn_nm, llfnty);
     ret llfn;
 }
 
@@ -3422,7 +3421,6 @@ fn trans_for_each(@block_ctxt cx,
                   @ast.decl decl,
                   @ast.expr seq,
                   &ast.block body) -> result {
-
     /*
      * The translation is a little .. complex here. Code like:
      *
@@ -3449,12 +3447,13 @@ fn trans_for_each(@block_ctxt cx,
     // escape. This could be determined upstream, and probably ought
     // to be so, eventualy. For first cut, skip this. Null env.
 
+    auto lcx = cx.fcx.lcx;
     // FIXME: possibly support alias-mode here?
     auto decl_ty = plain_ty(ty.ty_nil);
     auto decl_id;
     alt (decl.node) {
         case (ast.decl_local(?local)) {
-            decl_ty = node_ann_type(cx.fcx.lcx.ccx, local.ann);
+            decl_ty = node_ann_type(lcx.ccx, local.ann);
             decl_id = local.id;
         }
     }
@@ -3500,7 +3499,7 @@ fn trans_for_each(@block_ctxt cx,
 
     // Create an environment and populate it with the bindings.
     auto tydesc_count = _vec.len[ValueRef](cx.fcx.lltydescs);
-    auto llenvptrty = T_closure_ptr(cx.fcx.lcx.ccx.tn, T_ptr(T_nil()),
+    auto llenvptrty = T_closure_ptr(lcx.ccx.tn, T_ptr(T_nil()),
                                     val_ty(llbindingsptr), tydesc_count);
     auto llenvptr = alloca(cx, llvm.LLVMGetElementType(llenvptrty));
 
@@ -3526,7 +3525,7 @@ fn trans_for_each(@block_ctxt cx,
 
     // Step 2: Declare foreach body function.
 
-    let str s = mangle_name_by_seq(cx.fcx.lcx, "foreach");
+    let str s = mangle_name_by_seq(lcx.ccx, lcx.path, "foreach");
 
     // The 'env' arg entering the body function is a fake env member (as in
     // the env-part of the normal rust calling convention) that actually
@@ -3534,18 +3533,18 @@ fn trans_for_each(@block_ctxt cx,
     // pointer along with the foreach-body-fn pointer into a 'normal' fn pair
     // and pass it in as a first class fn-arg to the iterator.
 
-    auto iter_body_llty = type_of_fn_full(cx.fcx.lcx.ccx, ast.proto_fn,
+    auto iter_body_llty = type_of_fn_full(lcx.ccx, ast.proto_fn,
                                           none[TypeRef],
                                           vec(rec(mode=ast.val, ty=decl_ty)),
                                           plain_ty(ty.ty_nil), 0u);
 
-    let ValueRef lliterbody = decl_internal_fastcall_fn(cx.fcx.lcx.ccx.llmod,
+    let ValueRef lliterbody = decl_internal_fastcall_fn(lcx.ccx.llmod,
                                                        s, iter_body_llty);
 
     // FIXME: handle ty params properly.
     let vec[ast.ty_param] ty_params = vec();
 
-    auto fcx = new_fn_ctxt(cx.fcx.lcx, lliterbody);
+    auto fcx = new_fn_ctxt(lcx, lliterbody);
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
 
@@ -3603,7 +3602,7 @@ fn trans_for_each(@block_ctxt cx,
 
         case (ast.expr_call(?f, ?args, ?ann)) {
 
-            auto pair = alloca(cx, T_fn_pair(cx.fcx.lcx.ccx.tn,
+            auto pair = alloca(cx, T_fn_pair(lcx.ccx.tn,
                                              iter_body_llty));
             auto code_cell = cx.build.GEP(pair,
                                           vec(C_int(0),
@@ -3613,10 +3612,10 @@ fn trans_for_each(@block_ctxt cx,
             auto env_cell = cx.build.GEP(pair, vec(C_int(0),
                                                    C_int(abi.fn_field_box)));
             auto llenvblobptr = cx.build.PointerCast(llenvptr,
-                T_opaque_closure_ptr(cx.fcx.lcx.ccx.tn));
+                T_opaque_closure_ptr(lcx.ccx.tn));
             cx.build.Store(llenvblobptr, env_cell);
 
-            // log "lliterbody: " + val_str(cx.fcx.lcx.ccx.tn, lliterbody);
+            // log "lliterbody: " + val_str(lcx.ccx.tn, lliterbody);
             r = trans_call(cx, f,
                            some[ValueRef](cx.build.Load(pair)),
                            args,
@@ -4227,7 +4226,7 @@ fn trans_bind_thunk(@local_ctxt cx,
     // Construct a thunk-call with signature incoming_fty, and that copies
     // args forward into a call to outgoing_fty.
 
-    let str s = mangle_name_by_seq(cx, "thunk");
+    let str s = mangle_name_by_seq(cx.ccx, cx.path, "thunk");
     let TypeRef llthunk_ty = get_pair_fn_ty(type_of(cx.ccx, incoming_fty));
     let ValueRef llthunk = decl_internal_fastcall_fn(cx.ccx.llmod,
                                                      s, llthunk_ty);
@@ -5745,6 +5744,17 @@ fn trans_block(@block_ctxt cx, &ast.block b) -> result {
     ret res(bcx, r.val);
 }
 
+fn new_local_ctxt(@crate_ctxt ccx) -> @local_ctxt {
+    let vec[str] pth = vec();
+    let vec[ast.ty_param] obj_typarams = vec();
+    let vec[ast.obj_field] obj_fields = vec();
+    ret @rec(path=pth,
+             module_path=vec(crate_name(ccx, "main")),
+             obj_typarams = obj_typarams,
+             obj_fields = obj_fields,
+             ccx = ccx);
+}
+
 // NB: must keep 4 fns in sync:
 //
 //  - type_of_fn_full
@@ -6039,7 +6049,7 @@ fn trans_vtbl(@local_ctxt cx,
         }
 
         let @local_ctxt mcx = extend_path(cx, m.node.ident);
-        let str s = mangle_name_by_seq(mcx, "method");
+        let str s = mangle_name_by_seq(mcx.ccx, mcx.path, "method");
         let ValueRef llfn = decl_internal_fastcall_fn(cx.ccx.llmod, s,
                                                       llfnty);
         cx.ccx.item_ids.insert(m.node.id, llfn);
@@ -6051,7 +6061,7 @@ fn trans_vtbl(@local_ctxt cx,
         methods += vec(llfn);
     }
     auto vtbl = C_struct(methods);
-    auto vtbl_name = mangle_name_by_seq(cx, "vtbl");
+    auto vtbl_name = mangle_name_by_seq(cx.ccx, cx.path, "vtbl");
     auto gvar = llvm.LLVMAddGlobal(cx.ccx.llmod, val_ty(vtbl),
                                    _str.buf(vtbl_name));
     llvm.LLVMSetInitializer(gvar, vtbl);
@@ -6078,7 +6088,7 @@ fn trans_dtor(@local_ctxt cx,
     }
 
     let @local_ctxt dcx = extend_path(cx, "drop");
-    let str s = mangle_name_by_seq(dcx, "drop");
+    let str s = mangle_name_by_seq(dcx.ccx, dcx.path, "drop");
     let ValueRef llfn = decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
     cx.ccx.item_ids.insert(dtor.node.id, llfn);
     cx.ccx.item_symbols.insert(dtor.node.id, s);
@@ -6382,7 +6392,8 @@ fn get_pair_fn_ty(TypeRef llpairty) -> TypeRef {
     ret llvm.LLVMGetElementType(pair_tys.(0));
 }
 
-fn decl_fn_and_pair(@local_ctxt cx,
+fn decl_fn_and_pair(@crate_ctxt ccx,
+                    vec[str] path,
                     str flav,
                     vec[ast.ty_param] ty_params,
                     &ast.ann ann,
@@ -6390,7 +6401,6 @@ fn decl_fn_and_pair(@local_ctxt cx,
 
     auto llfty;
     auto llpairty;
-    auto ccx = cx.ccx;
     alt (node_ann_type(ccx, ann).struct) {
         case (ty.ty_fn(?proto, ?inputs, ?output)) {
             llfty = type_of_fn(ccx, proto, inputs, output,
@@ -6404,11 +6414,11 @@ fn decl_fn_and_pair(@local_ctxt cx,
     }
 
     // Declare the function itself.
-    let str s = mangle_name_by_seq(cx, flav);
+    let str s = mangle_name_by_seq(ccx, path, flav);
     let ValueRef llfn = decl_internal_fastcall_fn(ccx.llmod, s, llfty);
 
     // Declare the global constant pair that points to it.
-    let str ps = mangle_name_by_type(cx, node_ann_type(ccx, ann));
+    let str ps = mangle_name_by_type(ccx, path, node_ann_type(ccx, ann));
 
     register_fn_pair(ccx, ps, llpairty, llfn, id);
 }
@@ -6458,28 +6468,28 @@ fn native_fn_wrapper_type(@crate_ctxt cx, uint ty_param_count, @ty.t x)
     fail;
 }
 
-fn decl_native_fn_and_pair(@local_ctxt cx,
+fn decl_native_fn_and_pair(@crate_ctxt ccx,
+                           vec[str] path,
                            str name,
                            &ast.ann ann,
                            ast.def_id id) {
-    auto num_ty_param = native_fn_ty_param_count(cx.ccx, id);
-    auto ccx = cx.ccx;
+    auto num_ty_param = native_fn_ty_param_count(ccx, id);
 
     // Declare the wrapper.
     auto t = node_ann_type(ccx, ann);
     auto wrapper_type = native_fn_wrapper_type(ccx, num_ty_param, t);
-    let str s = mangle_name_by_seq(cx, "wrapper");
+    let str s = mangle_name_by_seq(ccx, path, "wrapper");
     let ValueRef wrapper_fn = decl_internal_fastcall_fn(ccx.llmod, s,
                                                         wrapper_type);
 
     // Declare the global constant pair that points to it.
     auto wrapper_pair_type = T_fn_pair(ccx.tn, wrapper_type);
-    let str ps = mangle_name_by_type(cx, node_ann_type(ccx, ann));
+    let str ps = mangle_name_by_type(ccx, path, node_ann_type(ccx, ann));
 
     register_fn_pair(ccx, ps, wrapper_pair_type, wrapper_fn, id);
 
     // Build the wrapper.
-    auto fcx = new_fn_ctxt(cx, wrapper_fn);
+    auto fcx = new_fn_ctxt(new_local_ctxt(ccx), wrapper_fn);
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
 
@@ -6575,49 +6585,55 @@ fn decl_native_fn_and_pair(@local_ctxt cx,
     new_builder(fcx.llallocas).Br(lltop);
 }
 
-fn collect_native_item(&@local_ctxt cx, @ast.native_item i) -> @local_ctxt {
+type walk_ctxt = rec(mutable vec[str] path);
+
+fn enter_item(@walk_ctxt cx, @ast.item item) {
+    alt (item.node) {
+        case (ast.item_fn(?name, _, _, _, _)) {
+            _vec.push[str](cx.path, name);
+        }
+        case (ast.item_obj(?name, _, _, _, _)) {
+            _vec.push[str](cx.path, name);
+        }
+        case (ast.item_mod(?name, _, _)) {
+            _vec.push[str](cx.path, name);
+        }
+        case (_) { }
+    }
+}
+
+fn leave_item(@walk_ctxt cx, @ast.item item) {
+    alt (item.node) {
+        case (ast.item_fn(_, _, _, _, _)) {
+            _vec.pop[str](cx.path);
+        }
+        case (ast.item_obj(_, _, _, _, _)) {
+            _vec.pop[str](cx.path);
+        }
+        case (ast.item_mod(_, _, _)) {
+            _vec.pop[str](cx.path);
+        }
+        case (_) { }
+    }
+}
+
+fn collect_native_item(@crate_ctxt ccx, @walk_ctxt wcx, @ast.native_item i) {
     alt (i.node) {
         case (ast.native_item_fn(?name, _, _, _, ?fid, ?ann)) {
-            cx.ccx.native_items.insert(fid, i);
-            if (!cx.ccx.obj_methods.contains_key(fid)) {
-                decl_native_fn_and_pair(cx, name, ann, fid);
+            ccx.native_items.insert(fid, i);
+            if (!ccx.obj_methods.contains_key(fid)) {
+                decl_native_fn_and_pair(ccx, wcx.path, name, ann, fid);
             }
         }
         case (ast.native_item_ty(_, ?tid)) {
-            cx.ccx.native_items.insert(tid, i);
-        }
-    }
-    ret cx;
-}
-
-fn item_name(@ast.item i) -> str {
-    alt (i.node) {
-        case (ast.item_mod(?name, _, _)) {
-            ret name;
-        }
-        case (ast.item_tag(?name, _, _, _, _)) {
-            ret name;
-        }
-        case (ast.item_const(?name, _, _, _, _)) {
-            ret name;
-        }
-        case (ast.item_fn(?name, _, _, _, _)) {
-            ret name;
-        }
-        case (ast.item_native_mod(?name, _, _)) {
-            ret name;
-        }
-        case (ast.item_ty(?name, _, _, _, _)) {
-            ret name;
-        }
-        case (ast.item_obj(?name, _, _, _, _)) {
-            ret name;
+            ccx.native_items.insert(tid, i);
         }
     }
 }
 
-fn collect_item(&@local_ctxt cx, @ast.item i) -> @local_ctxt {
-    auto ccx = cx.ccx;
+fn collect_item_1(@crate_ctxt ccx, @walk_ctxt wcx, @ast.item i) {
+    enter_item(wcx, i);
+
     alt (i.node) {
         case (ast.item_const(?name, _, _, ?cid, ?ann)) {
             auto typ = node_ann_type(ccx, ann);
@@ -6628,78 +6644,55 @@ fn collect_item(&@local_ctxt cx, @ast.item i) -> @local_ctxt {
             ccx.items.insert(cid, i);
             ccx.consts.insert(cid, g);
         }
-
-        case (ast.item_fn(_, _, _, ?did, _)) {
-            // handled below
-        }
-
         case (ast.item_mod(?name, ?m, ?mid)) {
             ccx.items.insert(mid, i);
         }
-
-        case (ast.item_native_mod(_, _, _)) {
-            // empty
-        }
-
         case (ast.item_ty(_, _, _, ?did, _)) {
             ccx.items.insert(did, i);
         }
-
         case (ast.item_tag(?name, ?variants, ?tps, ?tag_id, _)) {
             ccx.items.insert(tag_id, i);
         }
-
-        case (ast.item_obj(_, _, _, ?did, _)) {
-            // handled below
-        }
+        case (_) {}
     }
-    ret extend_path(cx, item_name(i));
 }
 
-fn collect_item_pass2(&@local_ctxt cx, @ast.item i) -> @local_ctxt {
+fn collect_item_2(@crate_ctxt ccx, @walk_ctxt wcx, @ast.item i) {
+    enter_item(wcx, i);
+
     alt (i.node) {
         case (ast.item_fn(?name, ?f, ?tps, ?fid, ?ann)) {
-            cx.ccx.items.insert(fid, i);
-            if (!cx.ccx.obj_methods.contains_key(fid)) {
-                decl_fn_and_pair(extend_path(cx, name), "fn",
-                                 tps, ann, fid);
+            ccx.items.insert(fid, i);
+            if (!ccx.obj_methods.contains_key(fid)) {
+                decl_fn_and_pair(ccx, wcx.path, "fn", tps, ann, fid);
             }
         }
-
         case (ast.item_obj(?name, ?ob, ?tps, ?oid, ?ann)) {
-            cx.ccx.items.insert(oid.ctor, i);
-            decl_fn_and_pair(extend_path(cx, name), "obj_ctor",
-                             tps, ann, oid.ctor);
+            ccx.items.insert(oid.ctor, i);
+            decl_fn_and_pair(ccx, wcx.path, "obj_ctor", tps, ann, oid.ctor);
             for (@ast.method m in ob.methods) {
-                cx.ccx.obj_methods.insert(m.node.id, ());
+                ccx.obj_methods.insert(m.node.id, ());
             }
         }
-
-        case (_) { /* fall through */ }
+        case (_) {}
     }
-    ret extend_path(cx, item_name(i));
 }
 
+fn collect_items(@crate_ctxt ccx, @ast.crate crate) {
+    let vec[str] path = vec();
+    auto wcx = @rec(mutable path=path);
 
-fn collect_items(@local_ctxt cx, @ast.crate crate) {
-
-    let fold.ast_fold[@local_ctxt] fld =
-        fold.new_identity_fold[@local_ctxt]();
-
-    // FIXME: It might be better to use a worklist for this. An item
-    // would be added to it if it depends on a not yet seen tag for example.
-
-    auto fld1 =
-        @rec( update_env_for_item = bind collect_item(_,_),
-              update_env_for_native_item = bind collect_native_item(_,_)
-              with *fld );
-
-    fold.fold_crate[@local_ctxt](cx, fld1, crate);
-
-    auto fld2 = @rec( update_env_for_item = bind collect_item_pass2(_,_)
-                      with *fld );
-
-    fold.fold_crate[@local_ctxt](cx, fld2, crate);
+    auto visitor0 = walk.default_visitor();
+    auto visitor1 = rec(visit_native_item_pre = 
+                          bind collect_native_item(ccx, wcx, _),
+                        visit_item_pre = bind collect_item_1(ccx, wcx, _),
+                        visit_item_post = bind leave_item(wcx, _)
+                        with visitor0);
+    auto visitor2 = rec(visit_item_pre = bind collect_item_2(ccx, wcx, _),
+                        visit_item_post = bind leave_item(wcx, _)
+                        with visitor0);
+    walk.walk_crate(visitor1, *crate);
+    walk.walk_crate(visitor2, *crate);
 }
 
 fn collect_tag_ctor(&@local_ctxt cx, @ast.item i) -> @local_ctxt {
@@ -6709,7 +6702,7 @@ fn collect_tag_ctor(&@local_ctxt cx, @ast.item i) -> @local_ctxt {
         case (ast.item_tag(_, ?variants, ?tps, _, _)) {
             for (ast.variant variant in variants) {
                 if (_vec.len[ast.variant_arg](variant.node.args) != 0u) {
-                    decl_fn_and_pair(extend_path(cx, variant.node.name),
+                    decl_fn_and_pair(cx.ccx, cx.path + vec(variant.node.name),
                                      "tag", tps, variant.node.ann,
                                      variant.node.id);
                 }
@@ -6744,7 +6737,7 @@ fn trans_constant(&@local_ctxt cx, @ast.item it) -> @local_ctxt {
 
                 auto discrim_val = C_int(i as int);
 
-                auto s = mangle_name_by_seq(cx,
+                auto s = mangle_name_by_seq(cx.ccx, cx.path,
                                             #fmt("_rust_tag_discrim_%s_%u",
                                                  ident, i));
                 auto discrim_gvar = llvm.LLVMAddGlobal(cx.ccx.llmod, T_int(),
@@ -6765,7 +6758,7 @@ fn trans_constant(&@local_ctxt cx, @ast.item it) -> @local_ctxt {
             // with consts.
             auto v = C_int(1);
             cx.ccx.item_ids.insert(cid, v);
-            auto s = mangle_name_by_type(extend_path(cx, name),
+            auto s = mangle_name_by_type(cx.ccx, cx.path + vec(name),
                                          node_ann_type(cx.ccx, ann));
             cx.ccx.item_symbols.insert(cid, s);
         }
@@ -7494,10 +7487,7 @@ fn trans_crate(session.session sess, @ast.crate crate,
     auto tag_sizes = map.mk_hashmap[@ty.t,uint](hasher, eqer);
     auto tydescs = map.mk_hashmap[@ty.t,@tydesc_info](hasher, eqer);
     auto lltypes = map.mk_hashmap[@ty.t,TypeRef](hasher, eqer);
-    let vec[ast.ty_param] obj_typarams = vec();
-    let vec[ast.obj_field] obj_fields = vec();
 
-    let vec[str] pth = vec();
     auto ccx = @rec(sess = sess,
                     llmod = llmod,
                     td = td,
@@ -7521,17 +7511,12 @@ fn trans_crate(session.session sess, @ast.crate crate,
                     lltypes = lltypes,
                     glues = glues,
                     names = namegen(0),
-                    path = pth,
                     sha = std.sha1.mk_sha1());
-    auto cx = @rec(path=pth,
-                   module_path=vec(crate_name(ccx, "main")),
-                   obj_typarams = obj_typarams,
-                   obj_fields = obj_fields,
-                   ccx = ccx);
+    auto cx = new_local_ctxt(ccx);
 
     create_typedefs(ccx);
 
-    collect_items(cx, crate);
+    collect_items(ccx, crate);
     collect_tag_ctors(cx, crate);
     trans_constants(cx, crate);
     trans_mod(cx, crate.node.module);
