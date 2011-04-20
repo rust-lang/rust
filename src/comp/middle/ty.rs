@@ -661,12 +661,57 @@ fn def_to_str(ast.def_id did) -> str {
     ret #fmt("%d:%d", did._0, did._1);
 }
 
+fn simple_ty_code(&@t ty) -> uint {
+    alt (ty.struct) {
+        case (ty_nil) { ret 0u; }
+        case (ty_bool) { ret 1u; }
+        case (ty_int) { ret 2u; }
+        case (ty_float) { ret 3u; }
+        case (ty_uint) { ret 4u; }
+        case (ty_machine(?tm)) {
+            alt (tm) {
+                case (common.ty_i8) { ret 5u; }
+                case (common.ty_i16) { ret 6u; }
+                case (common.ty_i32) { ret 7u; }
+                case (common.ty_i64) { ret 8u; }
+
+                case (common.ty_u8) { ret 9u; }
+                case (common.ty_u16) { ret 10u; }
+                case (common.ty_u32) { ret 11u; }
+                case (common.ty_u64) { ret 12u; }
+
+                case (common.ty_f32) { ret 13u; }
+                case (common.ty_f64) { ret 14u; }
+            }
+        }
+        case (ty_char) { ret 15u; }
+        case (ty_str) { ret 16u; }
+        case (ty_task) { ret 17u; }
+        case (ty_type) { ret 18u; }
+        case (ty_native) { ret 19u; }
+        case (_) {
+        }
+    }
+    ret 0xffffu;
+}
+
 fn hash_ty(&@t ty) -> uint {
+    auto s = simple_ty_code(ty);
+    if (s != 0xffffu) {
+        ret s;
+    }
     auto f = def_to_str;
     ret _str.hash(metadata.ty_str(ty, f));
 }
 
 fn eq_ty(&@t a, &@t b) -> bool {
+
+    auto sa = simple_ty_code(a);
+    if (sa != 0xffffu) {
+        auto sb = simple_ty_code(b);
+        ret sa == sb;
+    }
+
     // FIXME: this is gross, but I think it's safe, and I don't think writing
     // a giant function to handle all the cases is necessary when structural
     // equality will someday save the day.
