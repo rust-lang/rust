@@ -7,6 +7,7 @@ mod middle {
     mod trans;
     mod ty;
     mod fold;
+    mod walk;
     mod metadata;
     mod resolve;
     mod capture;
