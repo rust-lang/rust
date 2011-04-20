@@ -35,9 +35,15 @@ fn method_ty_to_fn_ty(method m) -> @ty.t {
     ret plain_ty(ty_fn(m.proto, m.inputs, m.output));
 }
 
+// Do not construct these manually. Soon we want to intern these, at which
+// point this will break.
+//
+// TODO: It'd be really nice to be able to hide this definition from the
+// outside world, to enforce the above invariant.
+type t = rec(sty struct, option.t[str] cname);
+
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast.rs as well.
-type t = rec(sty struct, option.t[str] cname);
 tag sty {
     ty_nil;
     ty_bool;
@@ -97,6 +103,46 @@ tag unify_result {
 
 type ty_param_count_and_ty = tup(uint, @t);
 type type_cache = hashmap[ast.def_id,ty_param_count_and_ty];
+
+
+// Type constructors
+
+fn mk_nil() -> @t                        { ret plain_ty(ty_nil); }
+fn mk_bool() -> @t                       { ret plain_ty(ty_bool); }
+fn mk_int() -> @t                        { ret plain_ty(ty_int); }
+fn mk_float() -> @t                      { ret plain_ty(ty_float); }
+fn mk_uint() -> @t                       { ret plain_ty(ty_uint); }
+fn mk_mach(util.common.ty_mach tm) -> @t { ret plain_ty(ty_machine(tm)); }
+fn mk_char() -> @t                       { ret plain_ty(ty_char); }
+fn mk_str() -> @t                        { ret plain_ty(ty_str); }
+
+fn mk_tag(ast.def_id did, vec[@t] tys) -> @t {
+    ret plain_ty(ty_tag(did, tys));
+}
+
+fn mk_box(mt tm) -> @t                   { ret plain_ty(ty_box(tm)); }
+fn mk_vec(mt tm) -> @t                   { ret plain_ty(ty_vec(tm)); }
+fn mk_port(@t ty) -> @t                  { ret plain_ty(ty_port(ty)); }
+fn mk_chan(@t ty) -> @t                  { ret plain_ty(ty_chan(ty)); }
+fn mk_task() -> @t                       { ret plain_ty(ty_task); }
+fn mk_tup(vec[mt] tms) -> @t             { ret plain_ty(ty_tup(tms)); }
+fn mk_rec(vec[field] fs) -> @t           { ret plain_ty(ty_rec(fs)); }
+
+fn mk_fn(ast.proto proto, vec[arg] args, @t ty) -> @t {
+    ret plain_ty(ty_fn(proto, args, ty));
+}
+
+fn mk_native_fn(ast.native_abi abi, vec[arg] args, @t ty) -> @t {
+    ret plain_ty(ty_native_fn(abi, args, ty));
+}
+
+fn mk_obj(vec[method] meths) -> @t       { ret plain_ty(ty_obj(meths)); }
+fn mk_var(int v) -> @t                   { ret plain_ty(ty_var(v)); }
+fn mk_local(ast.def_id did) -> @t        { ret plain_ty(ty_local(did)); }
+fn mk_param(uint n) -> @t                { ret plain_ty(ty_param(n)); }
+fn mk_bound_param(uint n) -> @t          { ret plain_ty(ty_bound_param(n)); }
+fn mk_type() -> @t                       { ret plain_ty(ty_type); }
+fn mk_native() -> @t                     { ret plain_ty(ty_native); }
 
 
 // Stringification
