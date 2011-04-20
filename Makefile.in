@@ -497,15 +497,13 @@ stage0/rustc$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(BREQ)
 	$(BOOT) -minimal -o $@ $<
 	$(Q)chmod 0755 $@
 
-stage1/rustc$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ0)
+stage1/rustc.s: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ0)
 	@$(call E, compile: $@)
-	$(STAGE0) -o $@ $<
-	$(Q)chmod 0755 $@
+	$(STAGE0) -S -o $@ $<
 
-stage2/rustc$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ1)
+stage2/rustc.s: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ1)
 	@$(call E, compile: $@)
-	$(STAGE1) -o $@ $<
-	$(Q)chmod 0755 $@
+	$(STAGE1) -S -o $@ $<
 
 
 
@@ -531,16 +529,34 @@ stage2/glue.s: stage2/rustc$(X) stage1/$(CFG_STDLIB) \
 # compiler that relies on a .o file.
 
 stage0/%.o: stage0/%.s
-	@$(call E, assemble [llvm]: $@)
+	@$(call E, assemble [gcc]: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
 
 stage1/%.o: stage1/%.s
-	@$(call E, assemble [llvm]: $@)
+	@$(call E, assemble [gcc]: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
 
 stage2/%.o: stage2/%.s
-	@$(call E, assemble [llvm]: $@)
+	@$(call E, assemble [gcc]: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
+
+stage1/%$(X): stage1/%.o  $(SREQ0)
+	@$(call E, link [gcc]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage0/glue.o -o $@ $< \
+      -Lstage0 -Lrt -lrustrt -lstd -lm
+	@# dsymutil sometimes fails or prints a warning, but the
+	@# program still runs.  Since it simplifies debugging other
+	@# programs, I\'ll live with the noise.
+	-$(Q)$(CFG_DSYMUTIL) $@
+
+stage2/%$(X): stage2/%.o  $(SREQ1)
+	@$(call E, link [gcc]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage1/glue.o -o $@ $< \
+      -Lstage1 -Lrt -lrustrt -lstd -lm
+	@# dsymutil sometimes fails or prints a warning, but the
+	@# program still runs.  Since it simplifies debugging other
+	@# programs, I\'ll live with the noise.
+	-$(Q)$(CFG_DSYMUTIL) $@
 
 
 
