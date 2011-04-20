@@ -5133,7 +5133,7 @@ fn trans_log(int lvl, @block_ctxt cx, @ast.expr e) -> result {
         lcx.ccx.module_data.insert(modname, global);
     }
 
-    auto log_cx = new_sub_block_ctxt(cx, "log");
+    auto log_cx = new_scope_block_ctxt(cx, "log");
     auto after_cx = new_sub_block_ctxt(cx, "after");
     auto load = cx.build.Load(global);
     auto test = cx.build.ICmp(lib.llvm.LLVMIntSGE, load, C_int(lvl));
