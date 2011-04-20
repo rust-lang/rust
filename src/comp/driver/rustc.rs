@@ -61,6 +61,7 @@ fn compile_input(session.session sess,
                         str input, str output,
                         bool shared,
                         bool optimize,
+                        bool verify,
                         trans.output_type ot,
                         vec[str] library_search_paths) {
     auto def = tup(0, 0);
@@ -76,7 +77,7 @@ fn compile_input(session.session sess,
     // FIXME: uncomment once typestate_check works
     // crate = typestate_check.check_crate(crate);
     trans.trans_crate(sess, crate, type_cache, output, shared, optimize,
-                      ot);
+                      verify, ot);
 }
 
 fn pretty_print_input(session.session sess,
@@ -106,6 +107,7 @@ options:
     -pp                pretty-print the input instead of compiling
     -ls                list the symbols defined by a crate file
     -L <path>          add a directory to the library search path
+    -noverify          suppress LLVM verification step (slight speedup)
     -h                 display this message\n\n");
 }
 
@@ -140,6 +142,7 @@ fn main(vec[str] args) {
     let bool ls = false;
     auto ot = trans.output_type_bitcode;
     let bool glue = false;
+    let bool verify = true;
 
     // FIXME: Maybe we should support -O0, -O1, -Os, etc
     let bool optimize = false;
@@ -185,6 +188,8 @@ fn main(vec[str] args) {
                     usage(sess, args.(0));
                     sess.err("-L requires an argument");
                 }
+            } else if (_str.eq(arg, "-noverify")) {
+                verify = false;
             } else if (_str.eq(arg, "-h")) {
                 usage(sess, args.(0));
             } else {
@@ -212,10 +217,11 @@ fn main(vec[str] args) {
     if (glue) {
         alt (output_file) {
             case (none[str]) {
-                middle.trans.make_common_glue("glue.bc", optimize, ot);
+                middle.trans.make_common_glue("glue.bc", optimize, verify,
+                                              ot);
             }
             case (some[str](?s)) {
-                middle.trans.make_common_glue(s, optimize, ot);
+                middle.trans.make_common_glue(s, optimize, verify, ot);
             }
         }
         ret;
@@ -241,12 +247,12 @@ fn main(vec[str] args) {
                         parts += vec(".bc");
                         auto ofile = _str.concat(parts);
                         compile_input(sess, env, ifile, ofile, shared,
-                                      optimize, ot,
+                                      optimize, verify, ot,
                                       library_search_paths);
                     }
                     case (some[str](?ofile)) {
                         compile_input(sess, env, ifile, ofile, shared,
-                                      optimize, ot,
+                                      optimize, verify, ot,
                                       library_search_paths);
                     }
                 }

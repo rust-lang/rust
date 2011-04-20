@@ -6965,7 +6965,7 @@ fn is_object_or_assembly(output_type ot) -> bool {
     ret false;
 }
 
-fn run_passes(ModuleRef llmod, bool opt, str output,
+fn run_passes(ModuleRef llmod, bool opt, bool verify, str output,
               output_type ot) {
     auto pm = mk_pass_manager();
 
@@ -7030,7 +7030,10 @@ fn run_passes(ModuleRef llmod, bool opt, str output,
         llvm.LLVMAddDeadTypeEliminationPass(pm.llpm);
         llvm.LLVMAddConstantMergePass(pm.llpm);
     }
-    llvm.LLVMAddVerifierPass(pm.llpm);
+
+    if (verify) {
+        llvm.LLVMAddVerifierPass(pm.llpm);
+    }
 
     if (is_object_or_assembly(ot)) {
         let int LLVMAssemblyFile = 0;
@@ -7385,7 +7388,7 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
              vec_append_glue = make_vec_append_glue(llmod, tn));
 }
 
-fn make_common_glue(str output, bool optimize,
+fn make_common_glue(str output, bool optimize, bool verify,
                     output_type ot) {
     // FIXME: part of this is repetitive and is probably a good idea
     // to autogen it, but things like the memcpy implementation are not
@@ -7412,7 +7415,7 @@ fn make_common_glue(str output, bool optimize,
 
     trans_exit_task_glue(glues, new_str_hash[ValueRef](), tn, llmod);
 
-    run_passes(llmod, optimize, output, ot);
+    run_passes(llmod, optimize, verify, output, ot);
 }
 
 fn create_module_map(@crate_ctxt ccx) -> ValueRef {
@@ -7465,7 +7468,7 @@ fn create_crate_map(@crate_ctxt ccx) -> ValueRef {
 
 fn trans_crate(session.session sess, @ast.crate crate,
                &ty.type_cache type_cache, str output, bool shared,
-               bool optimize, output_type ot) {
+               bool optimize, bool verify, output_type ot) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
@@ -7535,7 +7538,7 @@ fn trans_crate(session.session sess, @ast.crate crate,
     // Translate the metadata.
     middle.metadata.write_metadata(cx.ccx, crate);
 
-    run_passes(llmod, optimize, output, ot);
+    run_passes(llmod, optimize, verify, output, ot);
 }
 
 //
