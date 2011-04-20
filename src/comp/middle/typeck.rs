@@ -226,26 +226,26 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
     }
 
     auto mut = ast.imm;
-    auto sty;
+    auto typ;
     auto cname = none[str];
     alt (ast_ty.node) {
-        case (ast.ty_nil)          { sty = ty.ty_nil; }
-        case (ast.ty_bool)         { sty = ty.ty_bool; }
-        case (ast.ty_int)          { sty = ty.ty_int; }
-        case (ast.ty_uint)         { sty = ty.ty_uint; }
-        case (ast.ty_float)        { sty = ty.ty_float; }
-        case (ast.ty_machine(?tm)) { sty = ty.ty_machine(tm); }
-        case (ast.ty_char)         { sty = ty.ty_char; }
-        case (ast.ty_str)          { sty = ty.ty_str; }
-        case (ast.ty_box(?mt)) { sty = ty.ty_box(ast_mt_to_mt(getter, mt)); }
-        case (ast.ty_vec(?mt)) { sty = ty.ty_vec(ast_mt_to_mt(getter, mt)); }
+        case (ast.ty_nil)          { typ = ty.mk_nil(); }
+        case (ast.ty_bool)         { typ = ty.mk_bool(); }
+        case (ast.ty_int)          { typ = ty.mk_int(); }
+        case (ast.ty_uint)         { typ = ty.mk_uint(); }
+        case (ast.ty_float)        { typ = ty.mk_float(); }
+        case (ast.ty_machine(?tm)) { typ = ty.mk_mach(tm); }
+        case (ast.ty_char)         { typ = ty.mk_char(); }
+        case (ast.ty_str)          { typ = ty.mk_str(); }
+        case (ast.ty_box(?mt)) { typ = ty.mk_box(ast_mt_to_mt(getter, mt)); }
+        case (ast.ty_vec(?mt)) { typ = ty.mk_vec(ast_mt_to_mt(getter, mt)); }
 
         case (ast.ty_port(?t)) {
-            sty = ty.ty_port(ast_ty_to_ty(getter, t));
+            typ = ty.mk_port(ast_ty_to_ty(getter, t));
         }
 
         case (ast.ty_chan(?t)) {
-            sty = ty.ty_chan(ast_ty_to_ty(getter, t));
+            typ = ty.mk_chan(ast_ty_to_ty(getter, t));
         }
 
         case (ast.ty_tup(?fields)) {
@@ -253,7 +253,7 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
             for (ast.mt field in fields) {
                 _vec.push[ty.mt](flds, ast_mt_to_mt(getter, field));
             }
-            sty = ty.ty_tup(flds);
+            typ = ty.mk_tup(flds);
         }
         case (ast.ty_rec(?fields)) {
             let vec[field] flds = vec();
@@ -261,28 +261,28 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
                 _vec.push[field](flds, rec(ident=f.ident,
                                         mt=ast_mt_to_mt(getter, f.mt)));
             }
-            sty = ty.ty_rec(flds);
+            typ = ty.mk_rec(flds);
         }
 
         case (ast.ty_fn(?proto, ?inputs, ?output)) {
             auto f = bind ast_arg_to_arg(getter, _);
             auto i = _vec.map[ast.ty_arg, arg](f, inputs);
-            sty = ty.ty_fn(proto, i, ast_ty_to_ty(getter, output));
+            typ = ty.mk_fn(proto, i, ast_ty_to_ty(getter, output));
         }
 
         case (ast.ty_path(?path, ?def)) {
             check (def != none[ast.def]);
             alt (option.get[ast.def](def)) {
                 case (ast.def_ty(?id)) {
-                    sty = instantiate(getter, id, path.node.types).struct;
+                    typ = instantiate(getter, id, path.node.types);
                 }
                 case (ast.def_native_ty(?id)) {
-                    sty = getter(id)._1.struct;
+                    typ = getter(id)._1;
                 }
                 case (ast.def_obj(?id))     {
-                    sty = instantiate(getter, id, path.node.types).struct;
+                    typ = instantiate(getter, id, path.node.types);
                 }
-                case (ast.def_ty_arg(?id))  { sty = ty.ty_param(id); }
+                case (ast.def_ty_arg(?id))  { typ = ty.mk_param(id); }
                 case (_)                    { fail; }
             }
 
@@ -302,11 +302,14 @@ fn ast_ty_to_ty(ty_getter getter, &@ast.ty ast_ty) -> @ty.t {
                                       output=out));
             }
 
-            sty = ty.ty_obj(ty.sort_methods(tmeths));
+            typ = ty.mk_obj(ty.sort_methods(tmeths));
         }
     }
 
-    auto typ = @rec(struct=sty, cname=cname);
+    alt (cname) {
+        case (none[str]) { /* no-op */ }
+        case (some[str](?cname_str)) { typ = ty.rename(typ, cname_str); }
+    }
     ret typ;
 }
 
@@ -427,8 +430,8 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         auto methods =
             _vec.map[@ast.method,method](f, obj_info.methods);
 
-        auto t_obj = @rec(struct=ty.ty_obj(ty.sort_methods(methods)),
-                          cname=some[str](id));
+        auto t_obj = ty.mk_obj(ty.sort_methods(methods));
+        t_obj = ty.rename(t_obj, id);
         auto ty_param_count = _vec.len[ast.ty_param](ty_params);
         ret tup(ty_param_count, t_obj);
     }
@@ -547,7 +550,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
                     ret type_cache.get(def_id);
                 }
 
-                auto t = @rec(struct=ty.ty_native, cname=none[str]);
+                auto t = ty.mk_native();
                 auto tpt = tup(0u, t);
                 type_cache.insert(def_id, tpt);
                 ret tpt;
@@ -769,7 +772,7 @@ fn collect_item_types(session.session sess, @ast.crate crate)
         alt (ob.dtor) {
             case (some[@ast.method](?d)) {
                 let vec[arg] inputs = vec();
-                let @ty.t output = @rec(struct=ty.ty_nil, cname=none[str]);
+                let @ty.t output = ty.mk_nil();
                 auto dtor_tfn = ty.mk_fn(ast.proto_fn, inputs, output);
                 auto d_ = rec(ann=triv_ann(dtor_tfn) with d.node);
                 dtor = some[@ast.method](@rec(node=d_ with *d));

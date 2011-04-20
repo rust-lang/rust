@@ -386,10 +386,6 @@ fn walk_ty(ty_walk walker, @t ty) {
 type ty_fold = fn(@t) -> @t;
 
 fn fold_ty(ty_fold fld, @t ty_0) -> @t {
-    fn rewrap(@t orig, &sty new) -> @t {
-        ret @rec(struct=new, cname=orig.cname);
-    }
-
     auto ty = ty_0;
     alt (ty.struct) {
         case (ty_nil)           { /* no-op */ }
@@ -403,23 +399,25 @@ fn fold_ty(ty_fold fld, @t ty_0) -> @t {
         case (ty_type)          { /* no-op */ }
         case (ty_native)        { /* no-op */ }
         case (ty_box(?tm)) {
-            ty = rewrap(ty, ty_box(rec(ty=fold_ty(fld, tm.ty), mut=tm.mut)));
+            ty = copy_cname(mk_box(rec(ty=fold_ty(fld, tm.ty), mut=tm.mut)),
+                            ty);
         }
         case (ty_vec(?tm)) {
-            ty = rewrap(ty, ty_vec(rec(ty=fold_ty(fld, tm.ty), mut=tm.mut)));
+            ty = copy_cname(mk_vec(rec(ty=fold_ty(fld, tm.ty), mut=tm.mut)),
+                            ty);
         }
         case (ty_port(?subty)) {
-            ty = rewrap(ty, ty_port(fold_ty(fld, subty)));
+            ty = copy_cname(mk_port(fold_ty(fld, subty)), ty);
         }
         case (ty_chan(?subty)) {
-            ty = rewrap(ty, ty_chan(fold_ty(fld, subty)));
+            ty = copy_cname(mk_chan(fold_ty(fld, subty)), ty);
         }
         case (ty_tag(?tid, ?subtys)) {
             let vec[@t] new_subtys = vec();
             for (@t subty in subtys) {
                 new_subtys += vec(fold_ty(fld, subty));
             }
-            ty = rewrap(ty, ty_tag(tid, new_subtys));
+            ty = copy_cname(mk_tag(tid, new_subtys), ty);
         }
         case (ty_tup(?mts)) {
             let vec[mt] new_mts = vec();
@@ -427,7 +425,7 @@ fn fold_ty(ty_fold fld, @t ty_0) -> @t {
                 auto new_subty = fold_ty(fld, tm.ty);
                 new_mts += vec(rec(ty=new_subty, mut=tm.mut));
             }
-            ty = rewrap(ty, ty_tup(new_mts));
+            ty = copy_cname(mk_tup(new_mts), ty);
         }
         case (ty_rec(?fields)) {
             let vec[field] new_fields = vec();
@@ -436,7 +434,7 @@ fn fold_ty(ty_fold fld, @t ty_0) -> @t {
                 auto new_mt = rec(ty=new_ty, mut=fl.mt.mut);
                 new_fields += vec(rec(ident=fl.ident, mt=new_mt));
             }
-            ty = rewrap(ty, ty_rec(new_fields));
+            ty = copy_cname(mk_rec(new_fields), ty);
         }
         case (ty_fn(?proto, ?args, ?ret_ty)) {
             let vec[arg] new_args = vec();
@@ -444,7 +442,7 @@ fn fold_ty(ty_fold fld, @t ty_0) -> @t {
                 auto new_ty = fold_ty(fld, a.ty);
                 new_args += vec(rec(mode=a.mode, ty=new_ty));
             }
-            ty = rewrap(ty, ty_fn(proto, new_args, fold_ty(fld, ret_ty)));
+            ty = copy_cname(mk_fn(proto, new_args, fold_ty(fld, ret_ty)), ty);
         }
         case (ty_native_fn(?abi, ?args, ?ret_ty)) {
             let vec[arg] new_args = vec();
@@ -452,8 +450,8 @@ fn fold_ty(ty_fold fld, @t ty_0) -> @t {
                 auto new_ty = fold_ty(fld, a.ty);
                 new_args += vec(rec(mode=a.mode, ty=new_ty));
             }
-            ty = rewrap(ty, ty_native_fn(abi, new_args,
-                                         fold_ty(fld, ret_ty)));
+            ty = copy_cname(mk_native_fn(abi, new_args, fold_ty(fld, ret_ty)),
+                            ty);
         }
         case (ty_obj(?methods)) {
             let vec[method] new_methods = vec();
@@ -466,7 +464,7 @@ fn fold_ty(ty_fold fld, @t ty_0) -> @t {
                                        inputs=new_args,
                                        output=fold_ty(fld, m.output)));
             }
-            ty = rewrap(ty, ty_obj(new_methods));
+            ty = copy_cname(mk_obj(new_methods), ty);
         }
         case (ty_var(_))         { /* no-op */ }
         case (ty_local(_))       { /* no-op */ }
@@ -478,6 +476,16 @@ fn fold_ty(ty_fold fld, @t ty_0) -> @t {
 }
 
 // Type utilities
+
+fn rename(@t typ, str new_cname) -> @t {
+    ret @rec(struct=typ.struct, cname=some[str](new_cname));
+}
+
+// Returns a type with the structural part taken from `struct_ty` and the
+// canonical name from `cname_ty`.
+fn copy_cname(@t struct_ty, @t cname_ty) -> @t {
+    ret @rec(struct=struct_ty.struct, cname=cname_ty.cname);
+}
 
 // FIXME: remove me when == works on these tags.
 fn mode_is_alias(ast.mode m) -> bool {

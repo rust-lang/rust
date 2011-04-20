@@ -2843,12 +2843,12 @@ fn trans_lit(@crate_ctxt cx, &ast.lit lit, &ast.ann ann) -> ValueRef {
 fn target_type(@crate_ctxt cx, @ty.t t) -> @ty.t {
     alt (t.struct) {
         case (ty.ty_int) {
-            auto tm = ty.ty_machine(cx.sess.get_targ_cfg().int_type);
-            ret @rec(struct=tm with *t);
+            auto struct_ty = ty.mk_mach(cx.sess.get_targ_cfg().int_type);
+            ret ty.copy_cname(struct_ty, t);
         }
         case (ty.ty_uint) {
-            auto tm = ty.ty_machine(cx.sess.get_targ_cfg().uint_type);
-            ret @rec(struct=tm with *t);
+            auto struct_ty = ty.mk_mach(cx.sess.get_targ_cfg().uint_type);
+            ret ty.copy_cname(struct_ty, t);
         }
         case (_) { /* fall through */ }
     }

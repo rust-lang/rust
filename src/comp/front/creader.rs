@@ -75,52 +75,28 @@ fn parse_ty_str(str rep, str_def sd) -> @ty.t {
 }
 
 fn parse_ty(@pstate st, str_def sd) -> @ty.t {
-    ret @rec(struct=parse_sty(st, sd),
-             cname=option.none[str]);
-}
-
-fn parse_mt(@pstate st, str_def sd) -> ty.mt {
-    auto mut;
-    alt (peek(st) as char) {
-        case ('m') {next(st); mut = ast.mut;}
-        case ('?') {next(st); mut = ast.maybe_mut;}
-        case (_)   {mut=ast.imm;}
-    }
-    ret rec(ty=parse_ty(st, sd), mut=mut);
-}
-
-fn parse_def(@pstate st, str_def sd) -> ast.def_id {
-    auto def = "";
-    while (peek(st) as char != '|') {
-        def += _str.unsafe_from_byte(next(st));
-    }
-    st.pos = st.pos + 1u;
-    ret sd(def);
-}
-
-fn parse_sty(@pstate st, str_def sd) -> ty.sty {
     alt (next(st) as char) {
-        case ('n') {ret ty.ty_nil;}
-        case ('b') {ret ty.ty_bool;}
-        case ('i') {ret ty.ty_int;}
-        case ('u') {ret ty.ty_uint;}
-        case ('l') {ret ty.ty_float;}
+        case ('n') { ret ty.mk_nil(); }
+        case ('b') { ret ty.mk_bool(); }
+        case ('i') { ret ty.mk_int(); }
+        case ('u') { ret ty.mk_uint(); }
+        case ('l') { ret ty.mk_float(); }
         case ('M') {
             alt (next(st) as char) {
-                case ('b') {ret ty.ty_machine(common.ty_u8);}
-                case ('w') {ret ty.ty_machine(common.ty_u16);}
-                case ('l') {ret ty.ty_machine(common.ty_u32);}
-                case ('d') {ret ty.ty_machine(common.ty_u64);}
-                case ('B') {ret ty.ty_machine(common.ty_i8);}
-                case ('W') {ret ty.ty_machine(common.ty_i16);}
-                case ('L') {ret ty.ty_machine(common.ty_i32);}
-                case ('D') {ret ty.ty_machine(common.ty_i64);}
-                case ('f') {ret ty.ty_machine(common.ty_f32);}
-                case ('F') {ret ty.ty_machine(common.ty_f64);}
+                case ('b') { ret ty.mk_mach(common.ty_u8); }
+                case ('w') { ret ty.mk_mach(common.ty_u16); }
+                case ('l') { ret ty.mk_mach(common.ty_u32); }
+                case ('d') { ret ty.mk_mach(common.ty_u64); }
+                case ('B') { ret ty.mk_mach(common.ty_i8); }
+                case ('W') { ret ty.mk_mach(common.ty_i16); }
+                case ('L') { ret ty.mk_mach(common.ty_i32); }
+                case ('D') { ret ty.mk_mach(common.ty_i64); }
+                case ('f') { ret ty.mk_mach(common.ty_f32); }
+                case ('F') { ret ty.mk_mach(common.ty_f64); }
             }
         }
-        case ('c') {ret ty.ty_char;}
-        case ('s') {ret ty.ty_str;}
+        case ('c') { ret ty.mk_char(); }
+        case ('s') { ret ty.mk_str(); }
         case ('t') {
             check(next(st) as char == '[');
             auto def = parse_def(st, sd);
@@ -129,13 +105,13 @@ fn parse_sty(@pstate st, str_def sd) -> ty.sty {
                 params += vec(parse_ty(st, sd));
             }
             st.pos = st.pos + 1u;
-            ret ty.ty_tag(def, params);
+            ret ty.mk_tag(def, params);
         }
-        case ('p') {ret ty.ty_param(parse_int(st) as uint);}
-        case ('@') {ret ty.ty_box(parse_mt(st, sd));}
-        case ('V') {ret ty.ty_vec(parse_mt(st, sd));}
-        case ('P') {ret ty.ty_port(parse_ty(st, sd));}
-        case ('C') {ret ty.ty_chan(parse_ty(st, sd));}
+        case ('p') { ret ty.mk_param(parse_int(st) as uint); }
+        case ('@') { ret ty.mk_box(parse_mt(st, sd)); }
+        case ('V') { ret ty.mk_vec(parse_mt(st, sd)); }
+        case ('P') { ret ty.mk_port(parse_ty(st, sd)); }
+        case ('C') { ret ty.mk_chan(parse_ty(st, sd)); }
         case ('T') {
             check(next(st) as char == '[');
             let vec[ty.mt] params = vec();
@@ -143,7 +119,7 @@ fn parse_sty(@pstate st, str_def sd) -> ty.sty {
                 params += vec(parse_mt(st, sd));
             }
             st.pos = st.pos + 1u;
-            ret ty.ty_tup(params);
+            ret ty.mk_tup(params);
         }
         case ('R') {
             check(next(st) as char == '[');
@@ -157,15 +133,15 @@ fn parse_sty(@pstate st, str_def sd) -> ty.sty {
                 fields += vec(rec(ident=name, mt=parse_mt(st, sd)));
             }
             st.pos = st.pos + 1u;
-            ret ty.ty_rec(fields);
+            ret ty.mk_rec(fields);
         }
         case ('F') {
             auto func = parse_ty_fn(st, sd);
-            ret ty.ty_fn(ast.proto_fn, func._0, func._1);
+            ret ty.mk_fn(ast.proto_fn, func._0, func._1);
         }
         case ('W') {
             auto func = parse_ty_fn(st, sd);
-            ret ty.ty_fn(ast.proto_iter, func._0, func._1);
+            ret ty.mk_fn(ast.proto_iter, func._0, func._1);
         }
         case ('N') {
             auto abi;
@@ -175,7 +151,7 @@ fn parse_sty(@pstate st, str_def sd) -> ty.sty {
                 case ('l') {abi = ast.native_abi_llvm;}
             }
             auto func = parse_ty_fn(st, sd);
-            ret ty.ty_native_fn(abi,func._0,func._1);
+            ret ty.mk_native_fn(abi,func._0,func._1);
         }
         case ('O') {
             check(next(st) as char == '[');
@@ -197,12 +173,31 @@ fn parse_sty(@pstate st, str_def sd) -> ty.sty {
                                    output=func._1));
             }
             st.pos += 1u;
-            ret ty.ty_obj(methods);
+            ret ty.mk_obj(methods);
         }
-        case ('X') {ret ty.ty_var(parse_int(st));}
-        case ('E') {ret ty.ty_native;}
-        case ('Y') {ret ty.ty_type;}
+        case ('X') { ret ty.mk_var(parse_int(st)); }
+        case ('E') { ret ty.mk_native(); }
+        case ('Y') { ret ty.mk_type(); }
     }
+}
+
+fn parse_mt(@pstate st, str_def sd) -> ty.mt {
+    auto mut;
+    alt (peek(st) as char) {
+        case ('m') {next(st); mut = ast.mut;}
+        case ('?') {next(st); mut = ast.maybe_mut;}
+        case (_)   {mut=ast.imm;}
+    }
+    ret rec(ty=parse_ty(st, sd), mut=mut);
+}
+
+fn parse_def(@pstate st, str_def sd) -> ast.def_id {
+    auto def = "";
+    while (peek(st) as char != '|') {
+        def += _str.unsafe_from_byte(next(st));
+    }
+    st.pos = st.pos + 1u;
+    ret sd(def);
 }
 
 fn parse_int(@pstate st) -> int {
