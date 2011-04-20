@@ -44,6 +44,10 @@ fn empty_poststate(uint num_vars) -> poststate {
   be true_precond(num_vars);
 }
 
+fn false_postcond(uint num_vars) -> postcond {
+    be bitv.create(num_vars, true);
+}
+
 fn empty_pre_post(uint num_vars) -> pre_and_post {
   ret(rec(precondition=empty_prestate(num_vars),
           postcondition=empty_poststate(num_vars)));
@@ -119,7 +123,7 @@ fn set_postcondition(&ts_ann a, &postcond p) -> () {
 
 // Sets all the bits in a's prestate to equal the
 // corresponding bit in p's prestate.
-fn set_prestate(&ts_ann a, &prestate p) -> bool {
+fn set_prestate(@ts_ann a, &prestate p) -> bool {
   ret bitv.copy(a.states.prestate, p);
 }
 
@@ -139,6 +143,13 @@ fn extend_poststate(&poststate p, &poststate new) -> bool {
   ret bitv.union(p, new);
 }
 
+// Clears the given bit in p
+fn relax_prestate(uint i, &prestate p) -> bool {
+    auto was_set = bitv.get(p, i);
+    bitv.set(p, i, false);
+    ret was_set;
+}
+
 fn ann_precond(&ts_ann a) -> precond {
   ret a.conditions.precondition;
 }
@@ -148,8 +159,12 @@ fn ann_prestate(&ts_ann a) -> prestate {
 }
 
 fn pp_clone(&pre_and_post p) -> pre_and_post {
-  ret rec(precondition=bitv.clone(p.precondition),
-          postcondition=bitv.clone(p.postcondition));
+  ret rec(precondition=clone(p.precondition),
+          postcondition=clone(p.postcondition));
+}
+
+fn clone(prestate p) -> prestate {
+    ret bitv.clone(p);
 }
 
 // returns true if a implies b
