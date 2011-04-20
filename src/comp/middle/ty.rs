@@ -756,27 +756,112 @@ fn simple_ty_code(&sty st) -> uint {
 // Type hashing. This function is private to this module (and slow); external
 // users should use `hash_ty()` instead.
 fn hash_type_structure(&sty st) -> uint {
-
-    auto s = simple_ty_code(st);
-    if (s != 0xffffu) {
-        ret s;
+    fn hash_uint(uint id, uint n) -> uint {
+        auto h = id;
+        h += h << 5u + n;
+        ret h;
     }
-    auto f = def_to_str;
 
-    // FIXME: Gross. Use structural hashing when we have it.
-    auto fake_ty = @rec(struct=st, cname=none[str], hash=0u);
-    ret _str.hash(metadata.ty_str(fake_ty, f));
+    fn hash_def(uint id, ast.def_id did) -> uint {
+        auto h = id;
+        h += h << 5u + (did._0 as uint);
+        h += h << 5u + (did._1 as uint);
+        ret h;
+    }
+
+    fn hash_subty(uint id, @t subty) -> uint {
+        auto h = id;
+        h += h << 5u + hash_ty(subty);
+        ret h;
+    }
+
+    fn hash_fn(uint id, vec[arg] args, @t rty) -> uint {
+        auto h = id;
+        for (arg a in args) {
+            h += h << 5u + hash_ty(a.ty);
+        }
+        h += h << 5u + hash_ty(rty);
+        ret h;
+    }
+
+    alt (st) {
+        case (ty_nil) { ret 0u; }
+        case (ty_bool) { ret 1u; }
+        case (ty_int) { ret 2u; }
+        case (ty_float) { ret 3u; }
+        case (ty_uint) { ret 4u; }
+        case (ty_machine(?tm)) {
+            alt (tm) {
+                case (common.ty_i8) { ret 5u; }
+                case (common.ty_i16) { ret 6u; }
+                case (common.ty_i32) { ret 7u; }
+                case (common.ty_i64) { ret 8u; }
+
+                case (common.ty_u8) { ret 9u; }
+                case (common.ty_u16) { ret 10u; }
+                case (common.ty_u32) { ret 11u; }
+                case (common.ty_u64) { ret 12u; }
+
+                case (common.ty_f32) { ret 13u; }
+                case (common.ty_f64) { ret 14u; }
+            }
+        }
+        case (ty_char) { ret 15u; }
+        case (ty_str) { ret 16u; }
+        case (ty_tag(?did, ?tys)) {
+            auto h = hash_def(17u, did);
+            for (@ty.t typ in tys) {
+                h += h << 5u + hash_ty(typ);
+            }
+            ret h;
+        }
+        case (ty_box(?mt)) { ret hash_subty(18u, mt.ty); }
+        case (ty_vec(?mt)) { ret hash_subty(19u, mt.ty); }
+        case (ty_port(?typ)) { ret hash_subty(20u, typ); }
+        case (ty_chan(?typ)) { ret hash_subty(21u, typ); }
+        case (ty_task) { ret 22u; }
+        case (ty_tup(?mts)) {
+            auto h = 23u;
+            for (mt tm in mts) {
+                h += h << 5u + hash_ty(tm.ty);
+            }
+            ret h;
+        }
+        case (ty_rec(?fields)) {
+            auto h = 24u;
+            for (field f in fields) {
+                h += h << 5u + hash_ty(f.mt.ty);
+            }
+            ret h;
+        }
+        case (ty_fn(_, ?args, ?rty)) { ret hash_fn(25u, args, rty); }
+        case (ty_native_fn(_, ?args, ?rty)) { ret hash_fn(26u, args, rty); }
+        case (ty_obj(?methods)) {
+            auto h = 27u;
+            for (method m in methods) {
+                h += h << 5u + _str.hash(m.ident);
+            }
+            ret h;
+        }
+        case (ty_var(?v)) { ret hash_uint(28u, v as uint); }
+        case (ty_local(?did)) { ret hash_def(29u, did); }
+        case (ty_param(?pid)) { ret hash_uint(30u, pid); }
+        case (ty_bound_param(?pid)) { ret hash_uint(31u, pid); }
+        case (ty_type) { ret 32u; }
+        case (ty_native) { ret 33u; }
+    }
 }
 
 fn hash_ty(&@t typ) -> uint { ret typ.hash; }
 
 fn eq_ty(&@t a, &@t b) -> bool {
-
-    auto sa = simple_ty_code(a.struct);
-    if (sa != 0xffffu) {
-        auto sb = simple_ty_code(b.struct);
-        ret sa == sb;
+    auto sa = hash_type_structure(a.struct);
+    auto sb = hash_type_structure(b.struct);
+    if (sa != sb) {
+        ret false;
     }
+
+    // TODO: shortcut for simple types
 
     // FIXME: this is gross, but I think it's safe, and I don't think writing
     // a giant function to handle all the cases is necessary when structural
