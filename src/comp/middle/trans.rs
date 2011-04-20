@@ -21,7 +21,6 @@ import back.abi;
 import pretty.pprust;
 
 import middle.ty.pat_ty;
-import middle.ty.plain_ty;
 
 import util.common;
 import util.common.istr;
@@ -639,7 +638,7 @@ fn type_of_fn_full(@crate_ctxt cx,
             vec(T_fn_pair(cx.tn,
                           type_of_fn_full(cx, ast.proto_fn, none[TypeRef],
                                           vec(rec(mode=ast.val, ty=output)),
-                                          plain_ty(ty.ty_nil), 0u)));
+                                          ty.mk_nil(), 0u)));
     }
 
     // ... then explicit args.
@@ -1150,7 +1149,7 @@ fn simplify_type(@ty.t typ) -> @ty.t {
     fn simplifier(@ty.t typ) -> @ty.t {
         alt (typ.struct) {
             case (ty.ty_box(_)) {
-                ret ty.plain_box_ty(ty.plain_ty(ty.ty_nil), ast.imm);
+                ret ty.mk_imm_box(ty.mk_nil());
             }
             case (_) { ret typ; }
         }
@@ -1187,7 +1186,7 @@ fn static_size_of_tag(@crate_ctxt cx, @ty.t t) -> uint {
     auto max_size = 0u;
     auto variants = tag_variants(cx, tid);
     for (variant_info variant in variants) {
-        auto tup_ty = simplify_type(ty.plain_tup_ty(variant.args));
+        auto tup_ty = simplify_type(ty.mk_imm_tup(variant.args));
 
         // Perform any type parameter substitutions.
         tup_ty = ty.bind_params_in_type(tup_ty);
@@ -1403,7 +1402,7 @@ fn GEP_tup_like(@block_ctxt cx, @ty.t t,
     // flattened the incoming structure.
 
     auto s = split_type(t, ixs, 0u);
-    auto prefix_ty = ty.plain_tup_ty(s.prefix);
+    auto prefix_ty = ty.mk_imm_tup(s.prefix);
     auto bcx = cx;
     auto sz = size_of(bcx, prefix_ty);
     bcx = sz.bcx;
@@ -1434,7 +1433,7 @@ fn GEP_tag(@block_ctxt cx,
     // Synthesize a tuple type so that GEP_tup_like() can work its magic.
     // Separately, store the type of the element we're interested in.
     auto arg_tys = variant.args;
-    auto elem_ty = ty.plain_ty(ty.ty_nil);  // typestate infelicity
+    auto elem_ty = ty.mk_nil(); // typestate infelicity
     auto i = 0;
     let vec[@ty.t] true_arg_tys = vec();
     for (@ty.t aty in arg_tys) {
@@ -1448,7 +1447,7 @@ fn GEP_tag(@block_ctxt cx,
         i += 1;
     }
 
-    auto tup_ty = ty.plain_tup_ty(true_arg_tys);
+    auto tup_ty = ty.mk_imm_tup(true_arg_tys);
 
     // Cast the blob pointer to the appropriate type, if we need to (i.e. if
     // the blob pointer isn't dynamically sized).
@@ -1488,8 +1487,8 @@ fn trans_raw_malloc(@block_ctxt cx, TypeRef llptr_ty, ValueRef llsize)
 fn trans_malloc_boxed(@block_ctxt cx, @ty.t t) -> result {
     // Synthesize a fake box type structurally so we have something
     // to measure the size of.
-    auto boxed_body = ty.plain_tup_ty(vec(plain_ty(ty.ty_int), t));
-    auto box_ptr = ty.plain_box_ty(t, ast.imm);
+    auto boxed_body = ty.mk_imm_tup(vec(ty.mk_int(), t));
+    auto box_ptr = ty.mk_imm_box(t);
     auto sz = size_of(cx, boxed_body);
     auto llty = type_of(cx.fcx.lcx.ccx, box_ptr);
     ret trans_raw_malloc(sz.bcx, llty, sz.val);
@@ -2294,13 +2293,6 @@ fn tag_variant_with_id(@crate_ctxt cx,
     fail;
 }
 
-// Returns a new plain tag type of the given ID with no type parameters. Don't
-// use this function in new code; it's a hack to keep things working for now.
-fn mk_plain_tag(ast.def_id tid) -> @ty.t {
-    let vec[@ty.t] tps = vec();
-    ret ty.plain_ty(ty.ty_tag(tid, tps));
-}
-
 
 type val_pair_fn = fn(@block_ctxt cx, ValueRef dst, ValueRef src) -> result;
 
@@ -2341,8 +2333,8 @@ fn iter_structural_ty_full(@block_ctxt cx,
                   val_pair_and_ty_fn f) -> result {
         auto box_a_ptr = cx.build.Load(box_a_cell);
         auto box_b_ptr = cx.build.Load(box_b_cell);
-        auto tnil = plain_ty(ty.ty_nil);
-        auto tbox = ty.plain_box_ty(tnil, ast.imm);
+        auto tnil = ty.mk_nil();
+        auto tbox = ty.mk_imm_box(tnil);
 
         auto inner_cx = new_sub_block_ctxt(cx, "iter box");
         auto next_cx = new_sub_block_ctxt(cx, "next");
@@ -2407,8 +2399,7 @@ fn iter_structural_ty_full(@block_ctxt cx,
             // NB: we must hit the discriminant first so that structural
             // comparison know not to proceed when the discriminants differ.
             auto bcx = cx;
-            bcx = f(bcx, lldiscrim_a, lldiscrim_b,
-                    plain_ty(ty.ty_int)).bcx;
+            bcx = f(bcx, lldiscrim_a, lldiscrim_b, ty.mk_int()).bcx;
 
             auto unr_cx = new_sub_block_ctxt(bcx, "tag-iter-unr");
             unr_cx.build.Unreachable();
@@ -2628,7 +2619,7 @@ fn iter_sequence(@block_ctxt cx,
             ret iter_sequence_body(cx, v, elt.ty, f, false);
         }
         case (ty.ty_str) {
-            auto et = plain_ty(ty.ty_machine(common.ty_u8));
+            auto et = ty.mk_mach(common.ty_u8);
             ret iter_sequence_body(cx, v, et, f, true);
         }
         case (_) { fail; }
@@ -3449,7 +3440,7 @@ fn trans_for_each(@block_ctxt cx,
 
     auto lcx = cx.fcx.lcx;
     // FIXME: possibly support alias-mode here?
-    auto decl_ty = plain_ty(ty.ty_nil);
+    auto decl_ty = ty.mk_nil();
     auto decl_id;
     alt (decl.node) {
         case (ast.decl_local(?local)) {
@@ -3536,7 +3527,7 @@ fn trans_for_each(@block_ctxt cx,
     auto iter_body_llty = type_of_fn_full(lcx.ccx, ast.proto_fn,
                                           none[TypeRef],
                                           vec(rec(mode=ast.val, ty=decl_ty)),
-                                          plain_ty(ty.ty_nil), 0u);
+                                          ty.mk_nil(), 0u);
 
     let ValueRef lliterbody = decl_internal_fastcall_fn(lcx.ccx.llmod,
                                                        s, iter_body_llty);
@@ -4235,8 +4226,7 @@ fn trans_bind_thunk(@local_ctxt cx,
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
 
-    auto llclosure_ptr_ty = type_of(cx.ccx, ty.plain_box_ty(closure_ty,
-                                                            ast.imm));
+    auto llclosure_ptr_ty = type_of(cx.ccx, ty.mk_imm_box(closure_ty));
     auto llclosure = bcx.build.PointerCast(fcx.llenv, llclosure_ptr_ty);
 
     auto lltarget = GEP_tup_like(bcx, closure_ty, llclosure,
@@ -4411,12 +4401,12 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
             }
 
             // Synthesize a closure type.
-            let @ty.t bindings_ty = ty.plain_tup_ty(bound_tys);
+            let @ty.t bindings_ty = ty.mk_imm_tup(bound_tys);
 
             // NB: keep this in sync with T_closure_ptr; we're making
             // a ty.t structure that has the same "shape" as the LLVM type
             // it constructs.
-            let @ty.t tydesc_ty = plain_ty(ty.ty_type);
+            let @ty.t tydesc_ty = ty.mk_type();
 
             let vec[@ty.t] captured_tys =
                 _vec.init_elt[@ty.t](tydesc_ty, ty_param_count);
@@ -4425,9 +4415,9 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
                 vec(tydesc_ty,
                     outgoing_fty,
                     bindings_ty,
-                    ty.plain_tup_ty(captured_tys));
+                    ty.mk_imm_tup(captured_tys));
 
-            let @ty.t closure_ty = ty.plain_tup_ty(closure_tys);
+            let @ty.t closure_ty = ty.mk_imm_tup(closure_tys);
 
             auto r = trans_malloc_boxed(bcx, closure_ty);
             auto box = r.val;
@@ -4829,8 +4819,8 @@ fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
                                            C_int(abi.vec_elt_data)));
 
     auto pseudo_tup_ty =
-        ty.plain_tup_ty(_vec.init_elt[@ty.t](unit_ty,
-                                             _vec.len[@ast.expr](args)));
+        ty.mk_imm_tup(_vec.init_elt[@ty.t](unit_ty,
+                                           _vec.len[@ast.expr](args)));
     let int i = 0;
 
     for (@ast.expr e in args) {
@@ -5927,7 +5917,7 @@ fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, self_vt llself) {
 
     // Synthesize a tuple type for the fields so that GEP_tup_like() can work
     // its magic.
-    auto fields_tup_ty = ty.plain_tup_ty(field_tys);
+    auto fields_tup_ty = ty.mk_imm_tup(field_tys);
 
     auto n_typarams = _vec.len[ast.ty_param](bcx.fcx.lcx.obj_typarams);
     let TypeRef llobj_box_ty = T_obj_ptr(bcx.fcx.lcx.ccx.tn, n_typarams);
@@ -6152,18 +6142,18 @@ fn trans_obj(@local_ctxt cx, &ast._obj ob, ast.def_id oid,
         }
 
         // Synthesize an obj body type.
-        auto tydesc_ty = plain_ty(ty.ty_type);
+        auto tydesc_ty = ty.mk_type();
         let vec[@ty.t] tps = vec();
         for (ast.ty_param tp in ty_params) {
             _vec.push[@ty.t](tps, tydesc_ty);
         }
 
-        let @ty.t typarams_ty = ty.plain_tup_ty(tps);
-        let @ty.t fields_ty = ty.plain_tup_ty(obj_fields);
-        let @ty.t body_ty = ty.plain_tup_ty(vec(tydesc_ty,
-                                                typarams_ty,
-                                                fields_ty));
-        let @ty.t boxed_body_ty = ty.plain_box_ty(body_ty, ast.imm);
+        let @ty.t typarams_ty = ty.mk_imm_tup(tps);
+        let @ty.t fields_ty = ty.mk_imm_tup(obj_fields);
+        let @ty.t body_ty = ty.mk_imm_tup(vec(tydesc_ty,
+                                              typarams_ty,
+                                              fields_ty));
+        let @ty.t boxed_body_ty = ty.mk_imm_box(body_ty);
 
         // Malloc a box for the body.
         auto box = trans_malloc_boxed(bcx, body_ty);
@@ -6265,7 +6255,7 @@ fn trans_tag_variant(@local_ctxt cx, ast.def_id tag_id,
     let vec[@ty.t] ty_param_substs = vec();
     i = 0u;
     for (ast.ty_param tp in ty_params) {
-        ty_param_substs += vec(plain_ty(ty.ty_param(i)));
+        ty_param_substs += vec(ty.mk_param(i));
         i += 1u;
     }
 

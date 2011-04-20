@@ -111,7 +111,7 @@ fn field_exprs(vec[ast.field] fields) -> vec [@ast.expr] {
 }
 
 fn plain_ann() -> ast.ann {
-  ret ast.ann_type(middle.ty.plain_ty(middle.ty.ty_nil),
+  ret ast.ann_type(middle.ty.mk_nil(),
                    none[vec[@middle.ty.t]], none[@ts_ann]);
 }
 

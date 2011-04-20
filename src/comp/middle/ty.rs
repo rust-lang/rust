@@ -32,11 +32,11 @@ type mt = rec(@t ty, ast.mutability mut);
 // Convert from method type to function type.  Pretty easy; we just drop
 // 'ident'.
 fn method_ty_to_fn_ty(method m) -> @ty.t {
-    ret plain_ty(ty_fn(m.proto, m.inputs, m.output));
+    ret mk_fn(m.proto, m.inputs, m.output);
 }
 
 // Do not construct these manually. Soon we want to intern these, at which
-// point this will break.
+// point that will break.
 //
 // TODO: It'd be really nice to be able to hide this definition from the
 // outside world, to enforce the above invariant.
@@ -120,12 +120,24 @@ fn mk_tag(ast.def_id did, vec[@t] tys) -> @t {
     ret plain_ty(ty_tag(did, tys));
 }
 
-fn mk_box(mt tm) -> @t                   { ret plain_ty(ty_box(tm)); }
+fn mk_box(mt tm) -> @t     { ret plain_ty(ty_box(tm)); }
+fn mk_imm_box(@t ty) -> @t { ret mk_box(rec(ty=ty, mut=ast.imm)); }
+
 fn mk_vec(mt tm) -> @t                   { ret plain_ty(ty_vec(tm)); }
 fn mk_port(@t ty) -> @t                  { ret plain_ty(ty_port(ty)); }
 fn mk_chan(@t ty) -> @t                  { ret plain_ty(ty_chan(ty)); }
 fn mk_task() -> @t                       { ret plain_ty(ty_task); }
+
 fn mk_tup(vec[mt] tms) -> @t             { ret plain_ty(ty_tup(tms)); }
+fn mk_imm_tup(vec[@t] tys) -> @t {
+    // TODO: map
+    let vec[ty.mt] mts = vec();
+    for (@ty.t typ in tys) {
+        mts += vec(rec(ty=typ, mut=ast.imm));
+    }
+    ret mk_tup(mts);
+}
+
 fn mk_rec(vec[field] fs) -> @t           { ret plain_ty(ty_rec(fs)); }
 
 fn mk_fn(ast.proto proto, vec[arg] args, @t ty) -> @t {
@@ -515,7 +527,7 @@ fn type_is_sequence(@t ty) -> bool {
 
 fn sequence_element_type(@t ty) -> @t {
     alt (ty.struct) {
-        case (ty_str)      { ret plain_ty(ty_machine(common.ty_u8)); }
+        case (ty_str)      { ret mk_mach(common.ty_u8); }
         case (ty_vec(?mt)) { ret mt.ty; }
     }
     fail;
@@ -689,18 +701,6 @@ fn type_param(@t ty) -> option.t[uint] {
 
 fn plain_ty(&sty st) -> @t {
     ret @rec(struct=st, cname=none[str]);
-}
-
-fn plain_box_ty(@t subty, ast.mutability mut) -> @t {
-    ret plain_ty(ty_box(rec(ty=subty, mut=mut)));
-}
-
-fn plain_tup_ty(vec[@t] elem_tys) -> @t {
-    let vec[ty.mt] mts = vec();
-    for (@ty.t typ in elem_tys) {
-        mts += vec(rec(ty=typ, mut=ast.imm));
-    }
-    ret plain_ty(ty_tup(mts));
 }
 
 fn def_to_str(ast.def_id did) -> str {
@@ -957,7 +957,7 @@ fn stmt_ty(@ast.stmt s) -> @t {
             ret expr_ty(e);
         }
         case (_) {
-            ret plain_ty(ty_nil);
+            ret mk_nil();
         }
     }
 }
@@ -965,7 +965,7 @@ fn stmt_ty(@ast.stmt s) -> @t {
 fn block_ty(&ast.block b) -> @t {
     alt (b.node.expr) {
         case (some[@ast.expr](?e)) { ret expr_ty(e); }
-        case (none[@ast.expr])     { ret plain_ty(ty_nil); }
+        case (none[@ast.expr])     { ret mk_nil(); }
     }
 }
 
@@ -1035,7 +1035,7 @@ fn expr_ann(@ast.expr expr) -> option.t[ast.ann] {
 // expr_ty_params_and_ty() below.
 fn expr_ty(@ast.expr expr) -> @t {
     alt (expr_ann(expr)) {
-        case (none[ast.ann])     { ret plain_ty(ty_nil);   }
+        case (none[ast.ann])     { ret mk_nil(); }
         case (some[ast.ann](?a)) { ret ann_to_monotype(a); }
     }
 }
@@ -1044,7 +1044,7 @@ fn expr_ty_params_and_ty(@ast.expr expr) -> tup(vec[@t], @t) {
     alt (expr_ann(expr)) {
         case (none[ast.ann]) {
             let vec[@t] tps = vec();
-            ret tup(tps, plain_ty(ty_nil));
+            ret tup(tps, mk_nil());
         }
         case (some[ast.ann](?a)) {
             ret tup(ann_to_type_params(a), ann_to_type(a));
@@ -1313,7 +1313,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                 ret r;
             }
             case (fn_common_res_ok(?result_ins, ?result_out)) {
-                auto t2 = plain_ty(ty.ty_fn(e_proto, result_ins, result_out));
+                auto t2 = mk_fn(e_proto, result_ins, result_out);
                 ret ures_ok(t2);
             }
         }
@@ -1340,8 +1340,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                 ret r;
             }
             case (fn_common_res_ok(?result_ins, ?result_out)) {
-                auto t2 = plain_ty(ty.ty_native_fn(e_abi, result_ins,
-                                                   result_out));
+                auto t2 = mk_native_fn(e_abi, result_ins, result_out);
                 ret ures_ok(t2);
             }
         }
@@ -1390,7 +1389,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         }
         i += 1u;
       }
-      auto t = plain_ty(ty_obj(result_meths));
+      auto t = mk_obj(result_meths);
       ret ures_ok(t);
     }
 
@@ -1520,8 +1519,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                             i += 1u;
                         }
 
-                        ret ures_ok(plain_ty(ty.ty_tag(expected_id,
-                                                       result_tps)));
+                        ret ures_ok(mk_tag(expected_id, result_tps));
                     }
                     case (_) { /* fall through */ }
                 }
@@ -1548,7 +1546,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                         alt (result) {
                             case (ures_ok(?result_sub)) {
                                 auto mt = rec(ty=result_sub, mut=mut);
-                                ret ures_ok(plain_ty(ty.ty_box(mt)));
+                                ret ures_ok(mk_box(mt));
                             }
                             case (_) {
                                 ret result;
@@ -1581,7 +1579,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                         alt (result) {
                             case (ures_ok(?result_sub)) {
                                 auto mt = rec(ty=result_sub, mut=mut);
-                                ret ures_ok(plain_ty(ty.ty_vec(mt)));
+                                ret ures_ok(mk_vec(mt));
                             }
                             case (_) {
                                 ret result;
@@ -1604,7 +1602,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                                                  handler);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
-                                ret ures_ok(plain_ty(ty.ty_port(result_sub)));
+                                ret ures_ok(mk_port(result_sub));
                             }
                             case (_) {
                                 ret result;
@@ -1627,7 +1625,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                                                  handler);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
-                                ret ures_ok(plain_ty(ty.ty_chan(result_sub)));
+                                ret ures_ok(mk_chan(result_sub));
                             }
                             case (_) {
                                 ret result;
@@ -1687,7 +1685,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                             i += 1u;
                         }
 
-                        ret ures_ok(plain_ty(ty.ty_tup(result_elems)));
+                        ret ures_ok(mk_tup(result_elems));
                     }
 
                     case (_) {
@@ -1752,7 +1750,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                             i += 1u;
                         }
 
-                        ret ures_ok(plain_ty(ty.ty_rec(result_fields)));
+                        ret ures_ok(mk_rec(result_fields));
                     }
 
                     case (_) {
@@ -1988,7 +1986,7 @@ fn bind_params_in_type(@t typ) -> @t {
                     "has bound params in it";
                 fail;
             }
-            case (ty_param(?index)) { ret plain_ty(ty_bound_param(index)); }
+            case (ty_param(?index)) { ret mk_bound_param(index); }
             case (_) { ret typ; }
         }
     }
