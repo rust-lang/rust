@@ -280,6 +280,21 @@ fn plus_option[T](&vec[T] v, &option.t[T] o) -> () {
     }
 }
 
+fn cat_options[T](&vec[option.t[T]] v) -> vec[T] {
+    let vec[T] res = vec();
+
+    for (option.t[T] o in v) {
+        alt (o) {
+            case (none[T]) { }
+            case (some[T](?t)) {
+                res += vec(t);
+            }
+        }
+    }
+
+    ret res;
+}
+
 // TODO: Remove in favor of built-in "freeze" operation when it's implemented.
 fn freeze[T](vec[mutable T] v) -> vec[T] {
     let vec[T] result = vec();

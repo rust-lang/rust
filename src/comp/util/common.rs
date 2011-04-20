@@ -98,9 +98,9 @@ fn uistr(uint i) -> str {
 
 fn elt_expr(&ast.elt e) -> @ast.expr { ret e.expr; }
 
-fn elt_exprs(vec[ast.elt] elts) -> vec[@ast.expr] {
+fn elt_exprs(&vec[ast.elt] elts) -> vec[@ast.expr] {
     auto f = elt_expr;
-    be _vec.map[ast.elt, @ast.expr](f, elts);
+    ret _vec.map[ast.elt, @ast.expr](f, elts);
 }
 
 fn field_expr(&ast.field f) -> @ast.expr { ret f.expr; }
@@ -115,18 +115,25 @@ fn plain_ann(@middle.ty.type_store tystore) -> ast.ann {
                    none[vec[@middle.ty.t]], none[@ts_ann]);
 }
 
-fn log_expr(&ast.expr e) -> () {
+fn expr_to_str(&ast.expr e) -> str {
   let str_writer s = string_writer();
   auto out_ = mkstate(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front.lexer.cmnt]],
                   mutable cur_cmnt=0u);
-
   print_expr(out, @e);
-  log(s.get_str());
+  ret s.get_str();
 }
 
-fn log_block(&ast.block b) -> () {
+fn log_expr(&ast.expr e) -> () {
+    log(expr_to_str(e));
+}
+
+fn log_expr_err(&ast.expr e) -> () {
+    log_err(expr_to_str(e));
+}
+
+fn block_to_str(&ast.block b) -> str {
   let str_writer s = string_writer();
   auto out_ = mkstate(s.get_writer(), 80u);
   auto out = @rec(s=out_,
@@ -134,7 +141,15 @@ fn log_block(&ast.block b) -> () {
                   mutable cur_cmnt=0u);
 
   print_block(out, b);
-  log(s.get_str());
+  ret s.get_str();
+}
+
+fn log_block(&ast.block b) -> () {
+    log(block_to_str(b));
+}
+
+fn log_block_err(&ast.block b) -> () {
+    log_err(block_to_str(b));
 }
 
 fn log_ann(&ast.ann a) -> () {
@@ -148,7 +163,7 @@ fn log_ann(&ast.ann a) -> () {
     }
 }
 
-fn log_stmt(ast.stmt st) -> () {
+fn stmt_to_str(&ast.stmt st) -> str {
   let str_writer s = string_writer();
   auto out_ = mkstate(s.get_writer(), 80u);
   auto out = @rec(s=out_,
@@ -163,7 +178,48 @@ fn log_stmt(ast.stmt st) -> () {
     }
     case (_) { /* do nothing */ }
   }
-  log(s.get_str());
+  ret s.get_str();
+}
+
+fn log_stmt(&ast.stmt st) -> () {
+    log(stmt_to_str(st));
+}
+
+fn log_stmt_err(&ast.stmt st) -> () {
+    log_err(stmt_to_str(st));
+}
+
+fn decl_lhs(@ast.decl d) -> ast.def_id {
+    alt (d.node) {
+        case (ast.decl_local(?l)) {
+            ret l.id;
+        }
+        case (ast.decl_item(?an_item)) {
+            alt (an_item.node) {
+                case (ast.item_const(_,_,_,?d,_)) {
+                    ret d;
+                }
+                case (ast.item_fn(_,_,_,?d,_)) {
+                    ret d;
+                }
+                case (ast.item_mod(_,_,?d)) {
+                    ret d;
+                }
+                case (ast.item_native_mod(_,_,?d)) {
+                    ret d;
+                }
+                case (ast.item_ty(_,_,_,?d,_)) {
+                    ret d;
+                }
+                case (ast.item_tag(_,_,_,?d,_)) {
+                    ret d;
+                }
+                case (ast.item_obj(_,_,_,?d,_)) {
+                    ret d.ctor; /* This doesn't really make sense */
+                }
+            }
+        } 
+    }
 }
 
 //
