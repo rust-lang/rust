@@ -6586,6 +6586,10 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
 }
 
 type walk_ctxt = rec(mutable vec[str] path);
+fn new_walk_ctxt() -> @walk_ctxt {
+    let vec[str] path = vec();
+    ret @rec(mutable path=path);
+}
 
 fn enter_item(@walk_ctxt cx, @ast.item item) {
     alt (item.node) {
@@ -6679,9 +6683,7 @@ fn collect_item_2(@crate_ctxt ccx, @walk_ctxt wcx, @ast.item i) {
 }
 
 fn collect_items(@crate_ctxt ccx, @ast.crate crate) {
-    let vec[str] path = vec();
-    auto wcx = @rec(mutable path=path);
-
+    auto wcx = new_walk_ctxt();
     auto visitor0 = walk.default_visitor();
     auto visitor1 = rec(visit_native_item_pre = 
                           bind collect_native_item(ccx, wcx, _),
@@ -6695,14 +6697,14 @@ fn collect_items(@crate_ctxt ccx, @ast.crate crate) {
     walk.walk_crate(visitor2, *crate);
 }
 
-fn collect_tag_ctor(&@local_ctxt cx, @ast.item i) -> @local_ctxt {
+fn collect_tag_ctor(@crate_ctxt ccx, @walk_ctxt wcx, @ast.item i) {
+    enter_item(wcx, i);
 
     alt (i.node) {
-
         case (ast.item_tag(_, ?variants, ?tps, _, _)) {
             for (ast.variant variant in variants) {
                 if (_vec.len[ast.variant_arg](variant.node.args) != 0u) {
-                    decl_fn_and_pair(cx.ccx, cx.path + vec(variant.node.name),
+                    decl_fn_and_pair(ccx, wcx.path + vec(variant.node.name),
                                      "tag", tps, variant.node.ann,
                                      variant.node.id);
                 }
@@ -6711,23 +6713,21 @@ fn collect_tag_ctor(&@local_ctxt cx, @ast.item i) -> @local_ctxt {
 
         case (_) { /* fall through */ }
     }
-    ret cx;
 }
 
-fn collect_tag_ctors(@local_ctxt cx, @ast.crate crate) {
-
-    let fold.ast_fold[@local_ctxt] fld =
-        fold.new_identity_fold[@local_ctxt]();
-
-    fld = @rec( update_env_for_item = bind collect_tag_ctor(_,_)
-                with *fld );
-
-    fold.fold_crate[@local_ctxt](cx, fld, crate);
+fn collect_tag_ctors(@crate_ctxt ccx, @ast.crate crate) {
+    auto wcx = new_walk_ctxt();
+    auto visitor = rec(visit_item_pre = bind collect_tag_ctor(ccx, wcx, _),
+                       visit_item_post = bind leave_item(wcx, _)
+                       with walk.default_visitor());
+    walk.walk_crate(visitor, *crate);
 }
 
 // The constant translation pass.
 
-fn trans_constant(&@local_ctxt cx, @ast.item it) -> @local_ctxt {
+fn trans_constant(@crate_ctxt ccx, @walk_ctxt wcx, @ast.item it) {
+    enter_item(wcx, it);
+    
     alt (it.node) {
         case (ast.item_tag(?ident, ?variants, _, ?tag_id, _)) {
             auto i = 0u;
@@ -6737,17 +6737,17 @@ fn trans_constant(&@local_ctxt cx, @ast.item it) -> @local_ctxt {
 
                 auto discrim_val = C_int(i as int);
 
-                auto s = mangle_name_by_seq(cx.ccx, cx.path,
+                auto s = mangle_name_by_seq(ccx, wcx.path,
                                             #fmt("_rust_tag_discrim_%s_%u",
                                                  ident, i));
-                auto discrim_gvar = llvm.LLVMAddGlobal(cx.ccx.llmod, T_int(),
+                auto discrim_gvar = llvm.LLVMAddGlobal(ccx.llmod, T_int(),
                                                        _str.buf(s));
 
                 llvm.LLVMSetInitializer(discrim_gvar, discrim_val);
                 llvm.LLVMSetGlobalConstant(discrim_gvar, True);
 
-                cx.ccx.discrims.insert(variant.node.id, discrim_gvar);
-                cx.ccx.discrim_symbols.insert(variant.node.id, s);
+                ccx.discrims.insert(variant.node.id, discrim_gvar);
+                ccx.discrim_symbols.insert(variant.node.id, s);
 
                 i += 1u;
             }
@@ -6757,27 +6757,22 @@ fn trans_constant(&@local_ctxt cx, @ast.item it) -> @local_ctxt {
             // FIXME: The whole expr-translation system needs cloning to deal
             // with consts.
             auto v = C_int(1);
-            cx.ccx.item_ids.insert(cid, v);
-            auto s = mangle_name_by_type(cx.ccx, cx.path + vec(name),
-                                         node_ann_type(cx.ccx, ann));
-            cx.ccx.item_symbols.insert(cid, s);
+            ccx.item_ids.insert(cid, v);
+            auto s = mangle_name_by_type(ccx, wcx.path + vec(name),
+                                         node_ann_type(ccx, ann));
+            ccx.item_symbols.insert(cid, s);
         }
 
-        case (_) {
-            // empty
-        }
+        case (_) {}
     }
-
-    ret cx;
 }
 
-fn trans_constants(@local_ctxt cx, @ast.crate crate) {
-    let fold.ast_fold[@local_ctxt] fld =
-        fold.new_identity_fold[@local_ctxt]();
-
-    fld = @rec(update_env_for_item = bind trans_constant(_,_) with *fld);
-
-    fold.fold_crate[@local_ctxt](cx, fld, crate);
+fn trans_constants(@crate_ctxt ccx, @ast.crate crate) {
+    auto wcx = new_walk_ctxt();
+    auto visitor = rec(visit_item_pre = bind trans_constant(ccx, wcx, _),
+                       visit_item_post = bind leave_item(wcx, _)
+                       with walk.default_visitor());
+    walk.walk_crate(visitor, *crate);
 }
 
 
@@ -7517,8 +7512,8 @@ fn trans_crate(session.session sess, @ast.crate crate,
     create_typedefs(ccx);
 
     collect_items(ccx, crate);
-    collect_tag_ctors(cx, crate);
-    trans_constants(cx, crate);
+    collect_tag_ctors(ccx, crate);
+    trans_constants(ccx, crate);
     trans_mod(cx, crate.node.module);
     trans_vec_append_glue(cx);
     auto crate_map = create_crate_map(ccx);
