@@ -461,7 +461,7 @@ fn encode_info_for_native_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
         case (ast.native_item_ty(_, ?did)) {
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'T' as u8);
-            encode_type(ebml_w, ty.mk_native());
+            encode_type(ebml_w, ty.mk_native(cx.tystore));
         }
         case (ast.native_item_fn(_, _, _, ?tps, ?did, ?ann)) {
             encode_def_id(ebml_w, did);

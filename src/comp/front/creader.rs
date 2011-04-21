@@ -49,22 +49,23 @@ tag resolve_result {
 // Callback to translate defs to strs or back.
 type str_def = fn(str) -> ast.def_id;
 
-type pstate = rec(str rep, mutable uint pos, uint len);
+type pstate = rec(str rep, mutable uint pos, uint len,
+                  @ty.type_store tystore);
 
 fn peek(@pstate st) -> u8 {
     if (st.pos < st.len) {ret st.rep.(st.pos) as u8;}
     else {ret ' ' as u8;}
 }
-fn next(@pstate st) -> u8 { // ?? somehow not recognized as impure
+fn next(@pstate st) -> u8 {
     if (st.pos >= st.len) {fail;}
     auto ch = st.rep.(st.pos);
     st.pos = st.pos + 1u;
     ret ch as u8;
 }
 
-fn parse_ty_str(str rep, str_def sd) -> @ty.t {
+fn parse_ty_str(str rep, str_def sd, @ty.type_store tystore) -> @ty.t {
     auto len = _str.byte_len(rep);
-    auto st = @rec(rep=rep, mutable pos=0u, len=len);
+    auto st = @rec(rep=rep, mutable pos=0u, len=len, tystore=tystore);
     auto result = parse_ty(st, sd);
     if (st.pos != len) {
         log_err "parse_ty_str: incomplete parse, stopped at byte "
@@ -76,27 +77,27 @@ fn parse_ty_str(str rep, str_def sd) -> @ty.t {
 
 fn parse_ty(@pstate st, str_def sd) -> @ty.t {
     alt (next(st) as char) {
-        case ('n') { ret ty.mk_nil(); }
-        case ('b') { ret ty.mk_bool(); }
-        case ('i') { ret ty.mk_int(); }
-        case ('u') { ret ty.mk_uint(); }
-        case ('l') { ret ty.mk_float(); }
+        case ('n') { ret ty.mk_nil(st.tystore); }
+        case ('b') { ret ty.mk_bool(st.tystore); }
+        case ('i') { ret ty.mk_int(st.tystore); }
+        case ('u') { ret ty.mk_uint(st.tystore); }
+        case ('l') { ret ty.mk_float(st.tystore); }
         case ('M') {
             alt (next(st) as char) {
-                case ('b') { ret ty.mk_mach(common.ty_u8); }
-                case ('w') { ret ty.mk_mach(common.ty_u16); }
-                case ('l') { ret ty.mk_mach(common.ty_u32); }
-                case ('d') { ret ty.mk_mach(common.ty_u64); }
-                case ('B') { ret ty.mk_mach(common.ty_i8); }
-                case ('W') { ret ty.mk_mach(common.ty_i16); }
-                case ('L') { ret ty.mk_mach(common.ty_i32); }
-                case ('D') { ret ty.mk_mach(common.ty_i64); }
-                case ('f') { ret ty.mk_mach(common.ty_f32); }
-                case ('F') { ret ty.mk_mach(common.ty_f64); }
+                case ('b') { ret ty.mk_mach(st.tystore, common.ty_u8); }
+                case ('w') { ret ty.mk_mach(st.tystore, common.ty_u16); }
+                case ('l') { ret ty.mk_mach(st.tystore, common.ty_u32); }
+                case ('d') { ret ty.mk_mach(st.tystore, common.ty_u64); }
+                case ('B') { ret ty.mk_mach(st.tystore, common.ty_i8); }
+                case ('W') { ret ty.mk_mach(st.tystore, common.ty_i16); }
+                case ('L') { ret ty.mk_mach(st.tystore, common.ty_i32); }
+                case ('D') { ret ty.mk_mach(st.tystore, common.ty_i64); }
+                case ('f') { ret ty.mk_mach(st.tystore, common.ty_f32); }
+                case ('F') { ret ty.mk_mach(st.tystore, common.ty_f64); }
             }
         }
-        case ('c') { ret ty.mk_char(); }
-        case ('s') { ret ty.mk_str(); }
+        case ('c') { ret ty.mk_char(st.tystore); }
+        case ('s') { ret ty.mk_str(st.tystore); }
         case ('t') {
             check(next(st) as char == '[');
             auto def = parse_def(st, sd);
@@ -105,13 +106,13 @@ fn parse_ty(@pstate st, str_def sd) -> @ty.t {
                 params += vec(parse_ty(st, sd));
             }
             st.pos = st.pos + 1u;
-            ret ty.mk_tag(def, params);
+            ret ty.mk_tag(st.tystore, def, params);
         }
-        case ('p') { ret ty.mk_param(parse_int(st) as uint); }
-        case ('@') { ret ty.mk_box(parse_mt(st, sd)); }
-        case ('V') { ret ty.mk_vec(parse_mt(st, sd)); }
-        case ('P') { ret ty.mk_port(parse_ty(st, sd)); }
-        case ('C') { ret ty.mk_chan(parse_ty(st, sd)); }
+        case ('p') { ret ty.mk_param(st.tystore, parse_int(st) as uint); }
+        case ('@') { ret ty.mk_box(st.tystore, parse_mt(st, sd)); }
+        case ('V') { ret ty.mk_vec(st.tystore, parse_mt(st, sd)); }
+        case ('P') { ret ty.mk_port(st.tystore, parse_ty(st, sd)); }
+        case ('C') { ret ty.mk_chan(st.tystore, parse_ty(st, sd)); }
         case ('T') {
             check(next(st) as char == '[');
             let vec[ty.mt] params = vec();
@@ -119,7 +120,7 @@ fn parse_ty(@pstate st, str_def sd) -> @ty.t {
                 params += vec(parse_mt(st, sd));
             }
             st.pos = st.pos + 1u;
-            ret ty.mk_tup(params);
+            ret ty.mk_tup(st.tystore, params);
         }
         case ('R') {
             check(next(st) as char == '[');
@@ -133,15 +134,15 @@ fn parse_ty(@pstate st, str_def sd) -> @ty.t {
                 fields += vec(rec(ident=name, mt=parse_mt(st, sd)));
             }
             st.pos = st.pos + 1u;
-            ret ty.mk_rec(fields);
+            ret ty.mk_rec(st.tystore, fields);
         }
         case ('F') {
             auto func = parse_ty_fn(st, sd);
-            ret ty.mk_fn(ast.proto_fn, func._0, func._1);
+            ret ty.mk_fn(st.tystore, ast.proto_fn, func._0, func._1);
         }
         case ('W') {
             auto func = parse_ty_fn(st, sd);
-            ret ty.mk_fn(ast.proto_iter, func._0, func._1);
+            ret ty.mk_fn(st.tystore, ast.proto_iter, func._0, func._1);
         }
         case ('N') {
             auto abi;
@@ -151,7 +152,7 @@ fn parse_ty(@pstate st, str_def sd) -> @ty.t {
                 case ('l') {abi = ast.native_abi_llvm;}
             }
             auto func = parse_ty_fn(st, sd);
-            ret ty.mk_native_fn(abi,func._0,func._1);
+            ret ty.mk_native_fn(st.tystore,abi,func._0,func._1);
         }
         case ('O') {
             check(next(st) as char == '[');
@@ -173,11 +174,11 @@ fn parse_ty(@pstate st, str_def sd) -> @ty.t {
                                    output=func._1));
             }
             st.pos += 1u;
-            ret ty.mk_obj(methods);
+            ret ty.mk_obj(st.tystore, methods);
         }
-        case ('X') { ret ty.mk_var(parse_int(st)); }
-        case ('E') { ret ty.mk_native(); }
-        case ('Y') { ret ty.mk_type(); }
+        case ('X') { ret ty.mk_var(st.tystore, parse_int(st)); }
+        case ('E') { ret ty.mk_native(st.tystore); }
+        case ('Y') { ret ty.mk_type(st.tystore); }
     }
 }
 
@@ -330,7 +331,7 @@ fn variant_tag_id(&ebml.doc d) -> ast.def_id {
     ret parse_def_id(ebml.doc_data(tagdoc));
 }
 
-fn item_type(&ebml.doc item, int this_cnum) -> @ty.t {
+fn item_type(&ebml.doc item, int this_cnum, @ty.type_store tystore) -> @ty.t {
     fn parse_external_def_id(int this_cnum, str s) -> ast.def_id {
         // FIXME: This is completely wrong when linking against a crate
         // that, in turn, links against another crate. We need a mapping
@@ -343,7 +344,7 @@ fn item_type(&ebml.doc item, int this_cnum) -> @ty.t {
 
     auto tp = ebml.get_doc(item, metadata.tag_items_data_item_type);
     auto s = _str.unsafe_from_bytes(ebml.doc_data(tp));
-    ret parse_ty_str(s, bind parse_external_def_id(this_cnum, _));
+    ret parse_ty_str(s, bind parse_external_def_id(this_cnum, _), tystore);
 }
 
 fn item_ty_param_count(&ebml.doc item, int this_cnum) -> uint {
@@ -505,12 +506,12 @@ fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
     ret some[ast.def](def);
 }
 
-fn get_type(session.session sess, ast.def_id def)
+fn get_type(session.session sess, @ty.type_store tystore, ast.def_id def)
         -> ty.ty_param_count_and_ty {
     auto external_crate_id = def._0;
     auto data = sess.get_external_crate(external_crate_id).data;
     auto item = lookup_item(def._1, data);
-    auto t = item_type(item, external_crate_id);
+    auto t = item_type(item, external_crate_id, tystore);
 
     auto tp_count;
     auto kind_ch = item_kind(item);
@@ -531,8 +532,9 @@ fn get_symbol(session.session sess, ast.def_id def) -> str {
     ret item_symbol(item);
 }
 
-fn get_tag_variants(session.session sess, ast.def_id def)
-        -> vec[trans.variant_info] {
+fn get_tag_variants(session.session sess,
+                    @ty.type_store tystore,
+                    ast.def_id def) -> vec[trans.variant_info] {
     auto external_crate_id = def._0;
     auto data = sess.get_external_crate(external_crate_id).data;
     auto items = ebml.get_doc(ebml.new_doc(data), metadata.tag_items);
@@ -542,7 +544,7 @@ fn get_tag_variants(session.session sess, ast.def_id def)
     auto variant_ids = tag_variant_ids(item, external_crate_id);
     for (ast.def_id did in variant_ids) {
         auto item = find_item(did._1, items);
-        auto ctor_ty = item_type(item, external_crate_id);
+        auto ctor_ty = item_type(item, external_crate_id, tystore);
         let vec[@ty.t] arg_tys = vec();
         alt (ctor_ty.struct) {
             case (ty.ty_fn(_, ?args, _)) {

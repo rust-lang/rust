@@ -31,8 +31,8 @@ type mt = rec(@t ty, ast.mutability mut);
 
 // Convert from method type to function type.  Pretty easy; we just drop
 // 'ident'.
-fn method_ty_to_fn_ty(method m) -> @ty.t {
-    ret mk_fn(m.proto, m.inputs, m.output);
+fn method_ty_to_fn_ty(@type_store tystore, method m) -> @ty.t {
+    ret mk_fn(tystore, m.proto, m.inputs, m.output);
 }
 
 // Do not construct these manually. Soon we want to intern these, at which
@@ -100,62 +100,99 @@ type ty_param_count_and_ty = tup(uint, @t);
 type type_cache = hashmap[ast.def_id,ty_param_count_and_ty];
 
 
+type type_store = hashmap[@t,()];
+
+fn mk_type_store() -> @hashmap[@t,()] {
+    auto hasher = hash_ty;
+    auto eqer = eq_ty;
+    ret @map.mk_hashmap[@t,()](hasher, eqer);
+}
+
 // Type constructors
 
 // This is a private constructor to this module. External users should always
 // use the mk_foo() functions below.
-fn gen_ty(&sty st) -> @t {
+fn gen_ty(@type_store tystore, &sty st) -> @t {
+    // TODO: Intern the type.
     ret @rec(struct=st, cname=none[str], hash=hash_type_structure(st));
 }
 
-fn mk_nil() -> @t                        { ret gen_ty(ty_nil); }
-fn mk_bool() -> @t                       { ret gen_ty(ty_bool); }
-fn mk_int() -> @t                        { ret gen_ty(ty_int); }
-fn mk_float() -> @t                      { ret gen_ty(ty_float); }
-fn mk_uint() -> @t                       { ret gen_ty(ty_uint); }
-fn mk_mach(util.common.ty_mach tm) -> @t { ret gen_ty(ty_machine(tm)); }
-fn mk_char() -> @t                       { ret gen_ty(ty_char); }
-fn mk_str() -> @t                        { ret gen_ty(ty_str); }
+fn mk_nil(@type_store ts) -> @t          { ret gen_ty(ts, ty_nil); }
+fn mk_bool(@type_store ts) -> @t         { ret gen_ty(ts, ty_bool); }
+fn mk_int(@type_store ts) -> @t          { ret gen_ty(ts, ty_int); }
+fn mk_float(@type_store ts) -> @t        { ret gen_ty(ts, ty_float); }
+fn mk_uint(@type_store ts) -> @t         { ret gen_ty(ts, ty_uint); }
 
-fn mk_tag(ast.def_id did, vec[@t] tys) -> @t {
-    ret gen_ty(ty_tag(did, tys));
+fn mk_mach(@type_store ts, util.common.ty_mach tm) -> @t {
+    ret gen_ty(ts, ty_machine(tm));
 }
 
-fn mk_box(mt tm) -> @t     { ret gen_ty(ty_box(tm)); }
-fn mk_imm_box(@t ty) -> @t { ret mk_box(rec(ty=ty, mut=ast.imm)); }
+fn mk_char(@type_store ts) -> @t         { ret gen_ty(ts, ty_char); }
+fn mk_str(@type_store ts) -> @t          { ret gen_ty(ts, ty_str); }
 
-fn mk_vec(mt tm) -> @t                   { ret gen_ty(ty_vec(tm)); }
-fn mk_port(@t ty) -> @t                  { ret gen_ty(ty_port(ty)); }
-fn mk_chan(@t ty) -> @t                  { ret gen_ty(ty_chan(ty)); }
-fn mk_task() -> @t                       { ret gen_ty(ty_task); }
+fn mk_tag(@type_store ts, ast.def_id did, vec[@t] tys) -> @t {
+    ret gen_ty(ts, ty_tag(did, tys));
+}
 
-fn mk_tup(vec[mt] tms) -> @t             { ret gen_ty(ty_tup(tms)); }
-fn mk_imm_tup(vec[@t] tys) -> @t {
+fn mk_box(@type_store ts, mt tm) -> @t {
+    ret gen_ty(ts, ty_box(tm));
+}
+
+fn mk_imm_box(@type_store ts, @t ty) -> @t {
+    ret mk_box(ts, rec(ty=ty, mut=ast.imm));
+}
+
+fn mk_vec(@type_store ts, mt tm) -> @t   { ret gen_ty(ts, ty_vec(tm)); }
+fn mk_port(@type_store ts, @t ty) -> @t  { ret gen_ty(ts, ty_port(ty)); }
+fn mk_chan(@type_store ts, @t ty) -> @t  { ret gen_ty(ts, ty_chan(ty)); }
+fn mk_task(@type_store ts) -> @t         { ret gen_ty(ts, ty_task); }
+
+fn mk_tup(@type_store ts, vec[mt] tms) -> @t {
+    ret gen_ty(ts, ty_tup(tms));
+}
+
+fn mk_imm_tup(@type_store ts, vec[@t] tys) -> @t {
     // TODO: map
     let vec[ty.mt] mts = vec();
     for (@ty.t typ in tys) {
         mts += vec(rec(ty=typ, mut=ast.imm));
     }
-    ret mk_tup(mts);
+    ret mk_tup(ts, mts);
 }
 
-fn mk_rec(vec[field] fs) -> @t           { ret gen_ty(ty_rec(fs)); }
-
-fn mk_fn(ast.proto proto, vec[arg] args, @t ty) -> @t {
-    ret gen_ty(ty_fn(proto, args, ty));
+fn mk_rec(@type_store ts, vec[field] fs) -> @t {
+    ret gen_ty(ts, ty_rec(fs));
 }
 
-fn mk_native_fn(ast.native_abi abi, vec[arg] args, @t ty) -> @t {
-    ret gen_ty(ty_native_fn(abi, args, ty));
+fn mk_fn(@type_store ts, ast.proto proto, vec[arg] args, @t ty) -> @t {
+    ret gen_ty(ts, ty_fn(proto, args, ty));
 }
 
-fn mk_obj(vec[method] meths) -> @t       { ret gen_ty(ty_obj(meths)); }
-fn mk_var(int v) -> @t                   { ret gen_ty(ty_var(v)); }
-fn mk_local(ast.def_id did) -> @t        { ret gen_ty(ty_local(did)); }
-fn mk_param(uint n) -> @t                { ret gen_ty(ty_param(n)); }
-fn mk_bound_param(uint n) -> @t          { ret gen_ty(ty_bound_param(n)); }
-fn mk_type() -> @t                       { ret gen_ty(ty_type); }
-fn mk_native() -> @t                     { ret gen_ty(ty_native); }
+fn mk_native_fn(@type_store ts, ast.native_abi abi, vec[arg] args, @t ty)
+        -> @t {
+    ret gen_ty(ts, ty_native_fn(abi, args, ty));
+}
+
+fn mk_obj(@type_store ts, vec[method] meths) -> @t {
+    ret gen_ty(ts, ty_obj(meths));
+}
+
+fn mk_var(@type_store ts, int v) -> @t   { ret gen_ty(ts, ty_var(v)); }
+
+fn mk_local(@type_store ts, ast.def_id did) -> @t {
+    ret gen_ty(ts, ty_local(did));
+}
+
+fn mk_param(@type_store ts, uint n) -> @t {
+    ret gen_ty(ts, ty_param(n));
+}
+
+fn mk_bound_param(@type_store ts, uint n) -> @t {
+    ret gen_ty(ts, ty_bound_param(n));
+}
+
+fn mk_type(@type_store ts) -> @t         { ret gen_ty(ts, ty_type); }
+fn mk_native(@type_store ts) -> @t       { ret gen_ty(ts, ty_native); }
 
 
 // Stringification
@@ -386,7 +423,7 @@ fn walk_ty(ty_walk walker, @t ty) {
 
 type ty_fold = fn(@t) -> @t;
 
-fn fold_ty(ty_fold fld, @t ty_0) -> @t {
+fn fold_ty(@type_store tystore, ty_fold fld, @t ty_0) -> @t {
     auto ty = ty_0;
     alt (ty.struct) {
         case (ty_nil)           { /* no-op */ }
@@ -400,58 +437,65 @@ fn fold_ty(ty_fold fld, @t ty_0) -> @t {
         case (ty_type)          { /* no-op */ }
         case (ty_native)        { /* no-op */ }
         case (ty_box(?tm)) {
-            ty = copy_cname(mk_box(rec(ty=fold_ty(fld, tm.ty), mut=tm.mut)),
-                            ty);
+            ty = copy_cname(mk_box(tystore,
+                                   rec(ty=fold_ty(tystore, fld, tm.ty),
+                                       mut=tm.mut)), ty);
         }
         case (ty_vec(?tm)) {
-            ty = copy_cname(mk_vec(rec(ty=fold_ty(fld, tm.ty), mut=tm.mut)),
-                            ty);
+            ty = copy_cname(mk_vec(tystore,
+                                   rec(ty=fold_ty(tystore, fld, tm.ty),
+                                       mut=tm.mut)), ty);
         }
         case (ty_port(?subty)) {
-            ty = copy_cname(mk_port(fold_ty(fld, subty)), ty);
+            ty = copy_cname(mk_port(tystore, fold_ty(tystore, fld, subty)),
+                            ty);
         }
         case (ty_chan(?subty)) {
-            ty = copy_cname(mk_chan(fold_ty(fld, subty)), ty);
+            ty = copy_cname(mk_chan(tystore, fold_ty(tystore, fld, subty)),
+                            ty);
         }
         case (ty_tag(?tid, ?subtys)) {
             let vec[@t] new_subtys = vec();
             for (@t subty in subtys) {
-                new_subtys += vec(fold_ty(fld, subty));
+                new_subtys += vec(fold_ty(tystore, fld, subty));
             }
-            ty = copy_cname(mk_tag(tid, new_subtys), ty);
+            ty = copy_cname(mk_tag(tystore, tid, new_subtys), ty);
         }
         case (ty_tup(?mts)) {
             let vec[mt] new_mts = vec();
             for (mt tm in mts) {
-                auto new_subty = fold_ty(fld, tm.ty);
+                auto new_subty = fold_ty(tystore, fld, tm.ty);
                 new_mts += vec(rec(ty=new_subty, mut=tm.mut));
             }
-            ty = copy_cname(mk_tup(new_mts), ty);
+            ty = copy_cname(mk_tup(tystore, new_mts), ty);
         }
         case (ty_rec(?fields)) {
             let vec[field] new_fields = vec();
             for (field fl in fields) {
-                auto new_ty = fold_ty(fld, fl.mt.ty);
+                auto new_ty = fold_ty(tystore, fld, fl.mt.ty);
                 auto new_mt = rec(ty=new_ty, mut=fl.mt.mut);
                 new_fields += vec(rec(ident=fl.ident, mt=new_mt));
             }
-            ty = copy_cname(mk_rec(new_fields), ty);
+            ty = copy_cname(mk_rec(tystore, new_fields), ty);
         }
         case (ty_fn(?proto, ?args, ?ret_ty)) {
             let vec[arg] new_args = vec();
             for (arg a in args) {
-                auto new_ty = fold_ty(fld, a.ty);
+                auto new_ty = fold_ty(tystore, fld, a.ty);
                 new_args += vec(rec(mode=a.mode, ty=new_ty));
             }
-            ty = copy_cname(mk_fn(proto, new_args, fold_ty(fld, ret_ty)), ty);
+            ty = copy_cname(mk_fn(tystore, proto, new_args,
+                                  fold_ty(tystore, fld, ret_ty)),
+                            ty);
         }
         case (ty_native_fn(?abi, ?args, ?ret_ty)) {
             let vec[arg] new_args = vec();
             for (arg a in args) {
-                auto new_ty = fold_ty(fld, a.ty);
+                auto new_ty = fold_ty(tystore, fld, a.ty);
                 new_args += vec(rec(mode=a.mode, ty=new_ty));
             }
-            ty = copy_cname(mk_native_fn(abi, new_args, fold_ty(fld, ret_ty)),
+            ty = copy_cname(mk_native_fn(tystore, abi, new_args,
+                                         fold_ty(tystore, fld, ret_ty)),
                             ty);
         }
         case (ty_obj(?methods)) {
@@ -459,13 +503,15 @@ fn fold_ty(ty_fold fld, @t ty_0) -> @t {
             for (method m in methods) {
                 let vec[arg] new_args = vec();
                 for (arg a in m.inputs) {
-                    new_args += vec(rec(mode=a.mode, ty=fold_ty(fld, a.ty)));
+                    new_args += vec(rec(mode=a.mode,
+                                        ty=fold_ty(tystore, fld, a.ty)));
                 }
                 new_methods += vec(rec(proto=m.proto, ident=m.ident,
                                        inputs=new_args,
-                                       output=fold_ty(fld, m.output)));
+                                       output=fold_ty(tystore, fld,
+                                                      m.output)));
             }
-            ty = copy_cname(mk_obj(new_methods), ty);
+            ty = copy_cname(mk_obj(tystore, new_methods), ty);
         }
         case (ty_var(_))         { /* no-op */ }
         case (ty_local(_))       { /* no-op */ }
@@ -536,9 +582,9 @@ fn type_is_sequence(@t ty) -> bool {
     fail;
 }
 
-fn sequence_element_type(@t ty) -> @t {
+fn sequence_element_type(@type_store tystore, @t ty) -> @t {
     alt (ty.struct) {
-        case (ty_str)      { ret mk_mach(common.ty_u8); }
+        case (ty_str)      { ret mk_mach(tystore, common.ty_u8); }
         case (ty_vec(?mt)) { ret mt.ty; }
     }
     fail;
@@ -1158,7 +1204,7 @@ fn ann_to_type_params(&ast.ann ann) -> vec[@t] {
 
 // Returns the type of an annotation, with type parameter substitutions
 // performed if applicable.
-fn ann_to_monotype(ast.ann a) -> @ty.t {
+fn ann_to_monotype(@type_store tystore, ast.ann a) -> @ty.t {
     // TODO: Refactor to use recursive pattern matching when we're more
     // confident that it works.
     alt (a) {
@@ -1170,7 +1216,7 @@ fn ann_to_monotype(ast.ann a) -> @ty.t {
             alt (tps_opt) {
                 case (none[vec[@ty.t]]) { ret typ; }
                 case (some[vec[@ty.t]](?tps)) {
-                    ret substitute_type_params(tps, typ);
+                    ret substitute_type_params(tystore, tps, typ);
                 }
             }
         }
@@ -1312,32 +1358,32 @@ fn item_ty(@ast.item it) -> ty_param_count_and_ty {
     ret tup(ty_param_count, result_ty);
 }
 
-fn stmt_ty(@ast.stmt s) -> @t {
+fn stmt_ty(@type_store tystore, @ast.stmt s) -> @t {
     alt (s.node) {
         case (ast.stmt_expr(?e,_)) {
-            ret expr_ty(e);
+            ret expr_ty(tystore, e);
         }
         case (_) {
-            ret mk_nil();
+            ret mk_nil(tystore);
         }
     }
 }
 
-fn block_ty(&ast.block b) -> @t {
+fn block_ty(@type_store tystore, &ast.block b) -> @t {
     alt (b.node.expr) {
-        case (some[@ast.expr](?e)) { ret expr_ty(e); }
-        case (none[@ast.expr])     { ret mk_nil(); }
+        case (some[@ast.expr](?e)) { ret expr_ty(tystore, e); }
+        case (none[@ast.expr])     { ret mk_nil(tystore); }
     }
 }
 
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function
 // doesn't provide type parameter substitutions.
-fn pat_ty(@ast.pat pat) -> @t {
+fn pat_ty(@type_store ts, @ast.pat pat) -> @t {
     alt (pat.node) {
-        case (ast.pat_wild(?ann))           { ret ann_to_monotype(ann); }
-        case (ast.pat_lit(_, ?ann))         { ret ann_to_monotype(ann); }
-        case (ast.pat_bind(_, _, ?ann))     { ret ann_to_monotype(ann); }
-        case (ast.pat_tag(_, _, _, ?ann))   { ret ann_to_monotype(ann); }
+        case (ast.pat_wild(?ann))           { ret ann_to_monotype(ts, ann); }
+        case (ast.pat_lit(_, ?ann))         { ret ann_to_monotype(ts, ann); }
+        case (ast.pat_bind(_, _, ?ann))     { ret ann_to_monotype(ts, ann); }
+        case (ast.pat_tag(_, _, _, ?ann))   { ret ann_to_monotype(ts, ann); }
     }
     fail;   // not reached
 }
@@ -1394,18 +1440,19 @@ fn expr_ann(@ast.expr expr) -> option.t[ast.ann] {
 // ask for the type of "id" in "id(3)", it will return "fn(&int) -> int"
 // instead of "fn(&T) -> T with T = int". If this isn't what you want, see
 // expr_ty_params_and_ty() below.
-fn expr_ty(@ast.expr expr) -> @t {
+fn expr_ty(@type_store tystore, @ast.expr expr) -> @t {
     alt (expr_ann(expr)) {
-        case (none[ast.ann])     { ret mk_nil(); }
-        case (some[ast.ann](?a)) { ret ann_to_monotype(a); }
+        case (none[ast.ann])     { ret mk_nil(tystore); }
+        case (some[ast.ann](?a)) { ret ann_to_monotype(tystore, a); }
     }
 }
 
-fn expr_ty_params_and_ty(@ast.expr expr) -> tup(vec[@t], @t) {
+fn expr_ty_params_and_ty(@type_store tystore, @ast.expr expr)
+        -> tup(vec[@t], @t) {
     alt (expr_ann(expr)) {
         case (none[ast.ann]) {
             let vec[@t] tps = vec();
-            ret tup(tps, mk_nil());
+            ret tup(tps, mk_nil(tystore));
         }
         case (some[ast.ann](?a)) {
             ret tup(ann_to_type_params(a), ann_to_type(a));
@@ -1555,7 +1602,8 @@ mod Unify {
     type ctxt = rec(UFind.ufind sets,
                     hashmap[int,uint] var_ids,
                     mutable vec[mutable vec[@t]] types,
-                    unify_handler handler);
+                    unify_handler handler,
+                    @type_store tystore);
 
     // Wraps the given type in an appropriate cname.
     //
@@ -1670,7 +1718,7 @@ mod Unify {
                 ret r;
             }
             case (fn_common_res_ok(?result_ins, ?result_out)) {
-                auto t2 = mk_fn(e_proto, result_ins, result_out);
+                auto t2 = mk_fn(cx.tystore, e_proto, result_ins, result_out);
                 ret ures_ok(t2);
             }
         }
@@ -1696,7 +1744,8 @@ mod Unify {
                 ret r;
             }
             case (fn_common_res_ok(?result_ins, ?result_out)) {
-                auto t2 = mk_native_fn(e_abi, result_ins, result_out);
+                auto t2 = mk_native_fn(cx.tystore, e_abi, result_ins,
+                                       result_out);
                 ret ures_ok(t2);
             }
         }
@@ -1744,7 +1793,7 @@ mod Unify {
         }
         i += 1u;
       }
-      auto t = mk_obj(result_meths);
+      auto t = mk_obj(cx.tystore, result_meths);
       ret ures_ok(t);
     }
 
@@ -1868,7 +1917,8 @@ mod Unify {
                             i += 1u;
                         }
 
-                        ret ures_ok(mk_tag(expected_id, result_tps));
+                        ret ures_ok(mk_tag(cx.tystore, expected_id,
+                                           result_tps));
                     }
                     case (_) { /* fall through */ }
                 }
@@ -1894,7 +1944,7 @@ mod Unify {
                         alt (result) {
                             case (ures_ok(?result_sub)) {
                                 auto mt = rec(ty=result_sub, mut=mut);
-                                ret ures_ok(mk_box(mt));
+                                ret ures_ok(mk_box(cx.tystore, mt));
                             }
                             case (_) {
                                 ret result;
@@ -1926,7 +1976,7 @@ mod Unify {
                         alt (result) {
                             case (ures_ok(?result_sub)) {
                                 auto mt = rec(ty=result_sub, mut=mut);
-                                ret ures_ok(mk_vec(mt));
+                                ret ures_ok(mk_vec(cx.tystore, mt));
                             }
                             case (_) {
                                 ret result;
@@ -1948,7 +1998,7 @@ mod Unify {
                                                  actual_sub);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
-                                ret ures_ok(mk_port(result_sub));
+                                ret ures_ok(mk_port(cx.tystore, result_sub));
                             }
                             case (_) {
                                 ret result;
@@ -1970,7 +2020,7 @@ mod Unify {
                                                  actual_sub);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
-                                ret ures_ok(mk_chan(result_sub));
+                                ret ures_ok(mk_chan(cx.tystore, result_sub));
                             }
                             case (_) {
                                 ret result;
@@ -2029,7 +2079,7 @@ mod Unify {
                             i += 1u;
                         }
 
-                        ret ures_ok(mk_tup(result_elems));
+                        ret ures_ok(mk_tup(cx.tystore, result_elems));
                     }
 
                     case (_) {
@@ -2093,7 +2143,7 @@ mod Unify {
                             i += 1u;
                         }
 
-                        ret ures_ok(mk_rec(result_fields));
+                        ret ures_ok(mk_rec(cx.tystore, result_fields));
                     }
 
                     case (_) {
@@ -2202,7 +2252,7 @@ mod Unify {
         }
 
         auto f = bind substituter(cx, set_types, _);
-        ret fold_ty(f, typ);
+        ret fold_ty(cx.tystore, f, typ);
     }
 
     fn unify_sets(@ctxt cx) -> vec[@t] {
@@ -2235,8 +2285,10 @@ mod Unify {
         ret result;
     }
 
-    fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
-            -> result {
+    fn unify(@ty.t expected,
+             @ty.t actual,
+             &unify_handler handler,
+             @type_store tystore) -> result {
         let vec[@t] throwaway = vec();
         let vec[mutable vec[@t]] types = vec(mutable throwaway);
         _vec.pop[mutable vec[@t]](types);   // FIXME: botch
@@ -2244,7 +2296,8 @@ mod Unify {
         auto cx = @rec(sets=UFind.make(),
                        var_ids=common.new_int_hash[uint](),
                        mutable types=types,
-                       handler=handler);
+                       handler=handler,
+                       tystore=tystore);
 
         auto ures = unify_step(cx, expected, actual);
         alt (ures) {
@@ -2307,7 +2360,9 @@ fn type_err_to_str(&ty.type_err err) -> str {
 
 // Performs bound type parameter replacement using the supplied mapping from
 // parameter IDs to types.
-fn substitute_type_params(vec[@t] bindings, @t typ) -> @t {
+fn substitute_type_params(@type_store tystore,
+                          vec[@t] bindings,
+                          @t typ) -> @t {
     fn replacer(vec[@t] bindings, @t typ) -> @t {
         alt (typ.struct) {
             case (ty_bound_param(?param_index)) {
@@ -2318,25 +2373,25 @@ fn substitute_type_params(vec[@t] bindings, @t typ) -> @t {
     }
 
     auto f = bind replacer(bindings, _);
-    ret fold_ty(f, typ);
+    ret fold_ty(tystore, f, typ);
 }
 
 // Converts type parameters in a type to bound type parameters.
-fn bind_params_in_type(@t typ) -> @t {
-    fn binder(@t typ) -> @t {
+fn bind_params_in_type(@type_store tystore, @t typ) -> @t {
+    fn binder(@type_store tystore, @t typ) -> @t {
         alt (typ.struct) {
             case (ty_bound_param(?index)) {
                 log_err "bind_params_in_type() called on type that already " +
                     "has bound params in it";
                 fail;
             }
-            case (ty_param(?index)) { ret mk_bound_param(index); }
+            case (ty_param(?index)) { ret mk_bound_param(tystore, index); }
             case (_) { ret typ; }
         }
     }
 
-    auto f = binder;
-    ret fold_ty(f, typ);
+    auto f = bind binder(tystore, _);
+    ret fold_ty(tystore, f, typ);
 }
 
 
@@ -2361,7 +2416,9 @@ fn def_has_ty_params(&ast.def def) -> bool {
 
 // If the given item is in an external crate, looks up its type and adds it to
 // the type cache. Returns the type parameters and type.
-fn lookup_item_type(session.session sess, &type_cache cache,
+fn lookup_item_type(session.session sess,
+                    @type_store tystore,
+                    &type_cache cache,
                     ast.def_id did) -> ty_param_count_and_ty {
     if (did._0 == sess.get_targ_crate_num()) {
         // The item is in this crate. The caller should have added it to the
@@ -2374,7 +2431,7 @@ fn lookup_item_type(session.session sess, &type_cache cache,
         ret cache.get(did);
     }
 
-    auto tyt = creader.get_type(sess, did);
+    auto tyt = creader.get_type(sess, tystore, did);
     cache.insert(did, tyt);
     ret tyt;
 }

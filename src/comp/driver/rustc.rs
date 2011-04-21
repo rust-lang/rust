@@ -68,16 +68,19 @@ fn compile_input(session.session sess,
     auto p = parser.new_parser(sess, env, def, input, 0u);
     auto crate = parse_input(sess, p, input);
     if (ot == trans.output_type_none) {ret;}
+
     crate = creader.read_crates(sess, crate, library_search_paths);
     crate = resolve.resolve_crate(sess, crate);
     capture.check_for_captures(sess, crate);
-    auto typeck_result = typeck.check_crate(sess, crate);
+
+    auto tystore = ty.mk_type_store();
+    auto typeck_result = typeck.check_crate(sess, tystore, crate);
     crate = typeck_result._0;
     auto type_cache = typeck_result._1;
     // FIXME: uncomment once typestate_check works
     // crate = typestate_check.check_crate(crate);
-    trans.trans_crate(sess, crate, type_cache, output, shared, optimize,
-                      verify, ot);
+    trans.trans_crate(sess, crate, tystore, type_cache, output, shared,
+                      optimize, verify, ot);
 }
 
 fn pretty_print_input(session.session sess,
