@@ -719,40 +719,6 @@ fn def_to_str(ast.def_id did) -> str {
     ret #fmt("%d:%d", did._0, did._1);
 }
 
-fn simple_ty_code(&sty st) -> uint {
-    alt (st) {
-        case (ty_nil) { ret 0u; }
-        case (ty_bool) { ret 1u; }
-        case (ty_int) { ret 2u; }
-        case (ty_float) { ret 3u; }
-        case (ty_uint) { ret 4u; }
-        case (ty_machine(?tm)) {
-            alt (tm) {
-                case (common.ty_i8) { ret 5u; }
-                case (common.ty_i16) { ret 6u; }
-                case (common.ty_i32) { ret 7u; }
-                case (common.ty_i64) { ret 8u; }
-
-                case (common.ty_u8) { ret 9u; }
-                case (common.ty_u16) { ret 10u; }
-                case (common.ty_u32) { ret 11u; }
-                case (common.ty_u64) { ret 12u; }
-
-                case (common.ty_f32) { ret 13u; }
-                case (common.ty_f64) { ret 14u; }
-            }
-        }
-        case (ty_char) { ret 15u; }
-        case (ty_str) { ret 16u; }
-        case (ty_task) { ret 17u; }
-        case (ty_type) { ret 18u; }
-        case (ty_native) { ret 19u; }
-        case (_) {
-        }
-    }
-    ret 0xffffu;
-}
-
 // Type hashing. This function is private to this module (and slow); external
 // users should use `hash_ty()` instead.
 fn hash_type_structure(&sty st) -> uint {
@@ -854,20 +820,315 @@ fn hash_type_structure(&sty st) -> uint {
 
 fn hash_ty(&@t typ) -> uint { ret typ.hash; }
 
+
+
+fn ty_is_simple(&@t a) -> bool {
+    // a "simple" type is one in which the hash
+    // field uniquely identifies the type. In
+    // a world with sane compiler-generated
+    // structural comparison code, we'd not
+    // be producing this sort of thing.
+    alt (a.struct) {
+        case (ty_nil) { ret true; }
+        case (ty_bool) { ret true; }
+        case (ty_int) { ret true; }
+        case (ty_float) { ret true; }
+        case (ty_uint) { ret true; }
+        case (ty_machine(_)) { ret true; }
+        case (ty_char) { ret true; }
+        case (ty_str) { ret true; }
+        case (ty_task) { ret true; }
+        case (ty_type) { ret true; }
+        case (_) { ret false; }
+    }
+    ret false;
+}
+
+
+fn eq_args(vec[arg] az, vec[arg] bz) -> bool {
+    if (_vec.len[arg](az) !=
+        _vec.len[arg](bz)) { ret false; }
+    let uint i = 0u;
+    for (arg a in az) {
+        if (a.mode != bz.(i).mode) {
+            ret false;
+        }
+        if (!eq_ty(a.ty, bz.(i).ty)) {
+            ret false;
+        }
+        i += 1u;
+    }
+    ret true;
+}
+
+
+fn eq_tys(vec[@t] az, vec[@t] bz) -> bool {
+    if (_vec.len[@t](az) !=
+        _vec.len[@t](bz)) { ret false; }
+    let uint i = 0u;
+    for (@t a in az) {
+        if (!eq_ty(a, bz.(i))) {
+            ret false;
+        }
+        i += 1u;
+    }
+    ret true;
+}
+
+fn eq_mt(&mt a, &mt b) -> bool {
+    if (a.mut != b.mut) {
+        ret false;
+    }
+    ret eq_ty(a.ty, b.ty);
+}
+
+fn eq_mts(vec[mt] az, vec[mt] bz) -> bool {
+    if (_vec.len[mt](az) !=
+        _vec.len[mt](bz)) { ret false; }
+    let uint i = 0u;
+    for (mt a in az) {
+        if (!eq_mt(a, bz.(i))) {
+            ret false;
+        }
+        i += 1u;
+    }
+    ret true;
+}
+
+
+fn eq_fields(vec[field] az, vec[field] bz) -> bool {
+    if (_vec.len[field](az) !=
+        _vec.len[field](bz)) { ret false; }
+    let uint i = 0u;
+    for (field a in az) {
+        if (!_str.eq(a.ident, bz.(i).ident)) {
+            ret false;
+        }
+        if (a.mt.mut != bz.(i).mt.mut) {
+            ret false;
+        }
+        if (!eq_ty(a.mt.ty, bz.(i).mt.ty)) {
+            ret false;
+        }
+        i += 1u;
+    }
+    ret true;
+}
+
+fn eq_def_id(&ast.def_id a, &ast.def_id b) -> bool {
+    ret a._0 == b._0 && a._1 == b._1;
+}
+
 fn eq_ty(&@t a, &@t b) -> bool {
-    auto sa = hash_type_structure(a.struct);
-    auto sb = hash_type_structure(b.struct);
-    if (sa != sb) {
+
+    if (a.hash != b.hash) {
         ret false;
     }
 
-    // TODO: shortcut for simple types
 
-    // FIXME: this is gross, but I think it's safe, and I don't think writing
-    // a giant function to handle all the cases is necessary when structural
-    // equality will someday save the day.
-    auto f = def_to_str;
-    ret _str.eq(metadata.ty_str(a, f), metadata.ty_str(b, f));
+    if (ty_is_simple(a)) {
+        if (ty_is_simple(b)) {
+            ret a.hash == b.hash;
+        }
+        ret false;
+    }
+
+    alt (a.struct) {
+        case (ty_tag(?did_a, ?tys_a)) {
+            alt (b.struct) {
+                case (ty_tag(?did_b, ?tys_b)) {
+                    if (!eq_def_id(did_a, did_b)) {
+                        ret false;
+                    }
+                    ret eq_tys(tys_a, tys_b);
+                }
+                case (_) { ret false; }
+            }
+        }
+
+        case (ty_box(?mt_a)) {
+            alt (b.struct) {
+                case (ty_box(?mt_b)) {
+                    ret eq_mt(mt_a, mt_b);
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+
+        case (ty_vec(?mt_a)) {
+            alt (b.struct) {
+                case (ty_vec(?mt_b)) {
+                    ret eq_mt(mt_a, mt_b);
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+
+        case (ty_port(?t_a)) {
+            alt (b.struct) {
+                case (ty_port(?t_b)) {
+                    ret eq_ty(t_a, t_b);
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+
+        case (ty_chan(?t_a)) {
+            alt (b.struct) {
+                case (ty_chan(?t_b)) {
+                    ret eq_ty(t_a, t_b);
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+
+        case (ty_tup(?mts_a)) {
+            alt (b.struct) {
+                case (ty_tup(?mts_b)) {
+                    ret eq_mts(mts_a, mts_b);
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+
+        case (ty_rec(?fields_a)) {
+            alt (b.struct) {
+                case (ty_rec(?fields_b)) {
+                    ret eq_fields(fields_a, fields_b);
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+
+        case (ty_fn(?proto_a, ?args_a, ?rty_a)) {
+            alt (b.struct) {
+                case (ty_fn(?proto_b, ?args_b, ?rty_b)) {
+                    if (proto_a != proto_b) {
+                        ret false;
+                    }
+                    if (!eq_args(args_a, args_b)) {
+                        ret false;
+                    }
+                    ret eq_ty(rty_a, rty_b);
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+
+        case (ty_native_fn(?abi_a, ?args_a, ?rty_a)) {
+            alt (b.struct) {
+                case (ty_native_fn(?abi_b, ?args_b, ?rty_b)) {
+                    if (abi_a != abi_b) {
+                        ret false;
+                    }
+                    if (!eq_args(args_a, args_b)) {
+                        ret false;
+                    }
+                    ret eq_ty(rty_a, rty_b);
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+
+        case (ty_obj(?methods_a)) {
+            alt (b.struct) {
+                case (ty_obj(?methods_b)) {
+                    if (_vec.len[method](methods_a) !=
+                        _vec.len[method](methods_b)) {
+                        ret false;
+                    }
+                    let uint i = 0u;
+                    for (method m_a in methods_a) {
+                        if (!_str.eq(m_a.ident,
+                                     methods_b.(i).ident)) {
+                            ret false;
+                        }
+                        if (!eq_args(m_a.inputs,
+                                     methods_b.(i).inputs)) {
+                            ret false;
+                        }
+                        if (!eq_ty(m_a.output,
+                                   methods_b.(i).output)) {
+                            ret false;
+                        }
+                        i += 1u;
+                    }
+                    ret true;
+                }
+                case (_) {
+                    ret false;
+                }
+            }
+        }
+
+        case (ty_var(?v_a)) {
+            alt (b.struct) {
+                case (ty_var(?v_b)) {
+                    ret v_a == v_b;
+                }
+                case (_) { ret false; }
+            }
+        }
+
+        case (ty_local(?did_a)) {
+            alt (b.struct) {
+                case (ty_local(?did_b)) {
+                    ret eq_def_id(did_a, did_b);
+                }
+                case (_) { ret false; }
+            }
+        }
+
+        case (ty_param(?pid_a)) {
+            alt (b.struct) {
+                case (ty_param(?pid_b)) {
+                    ret pid_a == pid_b;
+                }
+                case (_) { ret false; }
+            }
+        }
+
+        case (ty_bound_param(?pid_a)) {
+            alt (b.struct) {
+                case (ty_bound_param(?pid_b)) {
+                    ret pid_a == pid_b;
+                }
+                case (_) { ret false; }
+            }
+        }
+
+        // FIXME: this should carry the native ID with it.
+        case (ty_native) {
+            alt (b.struct) {
+                case (ty_native) {
+                    ret true;
+                }
+                case (_) { ret false; }
+            }
+        }
+
+        case (_) {
+            // Should be impossible.
+            fail;
+        }
+    }
+    ret false;
 }
 
 fn ann_to_type(&ast.ann ann) -> @t {
