@@ -11,7 +11,6 @@ import util.common;
 import util.common.filename;
 import util.common.span;
 import util.common.new_str_hash;
-import util.common.plain_ann;
 
 tag restriction {
     UNRESTRICTED;
@@ -1568,13 +1567,13 @@ fn parse_source_stmt(parser p) -> @ast.stmt {
             auto decl = parse_let(p);
             auto hi = p.get_span();
             ret @spanned
-                (lo, decl.span.hi, ast.stmt_decl(decl, plain_ann()));
+                (lo, decl.span.hi, ast.stmt_decl(decl, ast.ann_none));
         }
 
         case (token.AUTO) {
             auto decl = parse_auto(p);
             auto hi = p.get_span();
-            ret @spanned(lo, decl.span.hi, ast.stmt_decl(decl, plain_ann()));
+            ret @spanned(lo, decl.span.hi, ast.stmt_decl(decl, ast.ann_none));
         }
 
         case (_) {
@@ -1583,13 +1582,13 @@ fn parse_source_stmt(parser p) -> @ast.stmt {
                 auto i = parse_item(p);
                 auto hi = i.span.hi;
                 auto decl = @spanned(lo, hi, ast.decl_item(i));
-                ret @spanned(lo, hi, ast.stmt_decl(decl, plain_ann()));
+                ret @spanned(lo, hi, ast.stmt_decl(decl, ast.ann_none));
 
             } else {
                 // Remainder are line-expr stmts.
                 auto e = parse_expr(p);
                 auto hi = p.get_span();
-                ret @spanned(lo, e.span.hi, ast.stmt_expr(e, plain_ann()));
+                ret @spanned(lo, e.span.hi, ast.stmt_expr(e, ast.ann_none));
             }
         }
     }
