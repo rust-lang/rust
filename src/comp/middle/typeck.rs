@@ -7,6 +7,7 @@ import middle.fold;
 import driver.session;
 import util.common;
 import util.common.span;
+import util.common.plain_ann;
 
 import middle.ty;
 import middle.ty.ann_to_type;
@@ -69,10 +70,6 @@ type fn_ctxt = rec(@ty.t ret_ty,
 
 // Used for ast_ty_to_ty() below.
 type ty_getter = fn(ast.def_id) -> ty.ty_param_count_and_ty;
-
-// Used to fill in the annotation for things that have uninteresting
-// types
-fn boring_ann() -> ann { ret triv_ann(ty.mk_nil()); }
 
 // Substitutes the user's explicit types for the parameters in a path
 // expression.
@@ -1443,13 +1440,13 @@ mod Pushdown {
                 auto block_ = rec(stmts=bloc.node.stmts,
                                   expr=some[@ast.expr](e_1),
                                   index=bloc.node.index,
-                                  a=boring_ann());
+                                  a=plain_ann());
                 ret fold.respan[ast.block_](bloc.span, block_);
             }
             case (none[@ast.expr]) {
                 Demand.simple(fcx, bloc.span, expected, ty.mk_nil());
                 ret fold.respan[ast.block_](bloc.span,
-                      rec(a = boring_ann() with bloc.node));
+                      rec(a = plain_ann() with bloc.node));
             }
         }
     }
@@ -1813,17 +1810,17 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_fail(_)) {
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_fail(boring_ann()));
+                                        ast.expr_fail(plain_ann()));
         }
 
         case (ast.expr_break(_)) {
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_break(boring_ann()));
+                                        ast.expr_break(plain_ann()));
         }
 
         case (ast.expr_cont(_)) {
             ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_cont(boring_ann()));
+                                        ast.expr_cont(plain_ann()));
         }
 
         case (ast.expr_ret(?expr_opt, _)) {
@@ -1837,7 +1834,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
                     ret @fold.respan[ast.expr_]
                         (expr.span,
-                         ast.expr_ret(none[@ast.expr], boring_ann()));
+                         ast.expr_ret(none[@ast.expr], plain_ann()));
                 }
 
                 case (some[@ast.expr](?e)) {
@@ -1845,7 +1842,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     auto expr_1 = Pushdown.pushdown_expr(fcx, fcx.ret_ty,
                                                          expr_0);
                     ret @fold.respan[ast.expr_]
-                        (expr.span, ast.expr_ret(some(expr_1), boring_ann()));
+                        (expr.span, ast.expr_ret(some(expr_1), plain_ann()));
                 }
             }
         }
@@ -1861,7 +1858,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
                     ret @fold.respan[ast.expr_]
                         (expr.span, ast.expr_put(none[@ast.expr],
-                                                 boring_ann()));
+                                                 plain_ann()));
                 }
 
                 case (some[@ast.expr](?e)) {
@@ -1869,7 +1866,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     auto expr_1 = Pushdown.pushdown_expr(fcx, fcx.ret_ty,
                                                          expr_0);
                     ret @fold.respan[ast.expr_]
-                        (expr.span, ast.expr_put(some(expr_1), boring_ann()));
+                        (expr.span, ast.expr_put(some(expr_1), plain_ann()));
                 }
             }
         }
@@ -1881,20 +1878,20 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto expr_1 = Pushdown.pushdown_expr(fcx, fcx.ret_ty, expr_0);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_be(expr_1,
-                                                    boring_ann()));
+                                                    plain_ann()));
         }
 
         case (ast.expr_log(?l,?e,_)) {
             auto expr_t = check_expr(fcx, e);
             ret @fold.respan[ast.expr_]
-                (expr.span, ast.expr_log(l, expr_t, boring_ann()));
+                (expr.span, ast.expr_log(l, expr_t, plain_ann()));
         }
 
         case (ast.expr_check_expr(?e, _)) {
             auto expr_t = check_expr(fcx, e);
             Demand.simple(fcx, expr.span, ty.mk_bool(), expr_ty(expr_t));
             ret @fold.respan[ast.expr_]
-                (expr.span, ast.expr_check_expr(expr_t, boring_ann()));
+                (expr.span, ast.expr_check_expr(expr_t, plain_ann()));
         }
 
         case (ast.expr_assign(?lhs, ?rhs, _)) {
@@ -2596,7 +2593,7 @@ fn check_block(&@fn_ctxt fcx, &ast.block block) -> ast.block {
     ret fold.respan[ast.block_](block.span,
                                 rec(stmts=stmts, expr=expr,
                                     index=block.node.index,
-                                    a=boring_ann()));
+                                    a=plain_ann()));
 }
 
 fn check_const(&@crate_ctxt ccx, &span sp, ast.ident ident, @ast.ty t,
