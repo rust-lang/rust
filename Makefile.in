@@ -543,7 +543,7 @@ stage2/%.o: stage2/%.s
 stage1/%$(X): stage1/%.o  $(SREQ0)
 	@$(call E, link [gcc]: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) stage0/glue.o -o $@ $< \
-      -Lstage0 -Lrt -lrustrt -lstd -lm
+      -Lstage0 -Lrustllvm -Lrt -lrustrt -lrustllvm -lstd -lm
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
@@ -552,7 +552,7 @@ stage1/%$(X): stage1/%.o  $(SREQ0)
 stage2/%$(X): stage2/%.o  $(SREQ1)
 	@$(call E, link [gcc]: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) stage1/glue.o -o $@ $< \
-      -Lstage1 -Lrt -lrustrt -lstd -lm
+      -Lstage1 -Lrustllvm -Lrt -lrustrt -lrustllvm -lstd -lm
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
