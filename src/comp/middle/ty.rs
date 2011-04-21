@@ -1552,9 +1552,10 @@ mod Unify {
         ures_err(type_err, @ty.t, @ty.t);
     }
 
-    type var_bindings = rec(UFind.ufind sets,
-                            hashmap[int,uint] var_ids,
-                            mutable vec[mutable vec[@t]] types);
+    type ctxt = rec(UFind.ufind sets,
+                    hashmap[int,uint] var_ids,
+                    mutable vec[mutable vec[@t]] types,
+                    unify_handler handler);
 
     // Wraps the given type in an appropriate cname.
     //
@@ -1592,10 +1593,9 @@ mod Unify {
         fn_common_res_ok(vec[arg], @t);
     }
 
-    fn unify_fn_common(&var_bindings bindings,
+    fn unify_fn_common(@ctxt cx,
                        @ty.t expected,
                        @ty.t actual,
-                       &unify_handler handler,
                        vec[arg] expected_inputs, @t expected_output,
                        vec[arg] actual_inputs, @t actual_output)
         -> fn_common_res {
@@ -1622,15 +1622,11 @@ mod Unify {
                 result_mode = ast.val;
             }
 
-            auto result = unify_step(bindings,
-                                     actual_input.ty,
-                                     expected_input.ty,
-                                     handler);
+            auto result = unify_step(cx, actual_input.ty, expected_input.ty);
 
             alt (result) {
                 case (ures_ok(?rty)) {
-                    result_ins += vec(rec(mode=result_mode,
-                                          ty=rty));
+                    result_ins += vec(rec(mode=result_mode, ty=rty));
                 }
 
                 case (_) {
@@ -1642,10 +1638,7 @@ mod Unify {
         }
 
         // Check the output.
-        auto result = unify_step(bindings,
-                                 expected_output,
-                                 actual_output,
-                                 handler);
+        auto result = unify_step(cx, expected_output, actual_output);
         alt (result) {
             case (ures_ok(?rty)) {
                 ret fn_common_res_ok(result_ins, rty);
@@ -1657,12 +1650,11 @@ mod Unify {
         }
     }
 
-    fn unify_fn(&var_bindings bindings,
+    fn unify_fn(@ctxt cx,
                 ast.proto e_proto,
                 ast.proto a_proto,
                 @ty.t expected,
                 @ty.t actual,
-                &unify_handler handler,
                 vec[arg] expected_inputs, @t expected_output,
                 vec[arg] actual_inputs, @t actual_output)
         -> result {
@@ -1670,8 +1662,8 @@ mod Unify {
         if (e_proto != a_proto) {
             ret ures_err(terr_mismatch, expected, actual);
         }
-        auto t = unify_fn_common(bindings, expected, actual,
-                                 handler, expected_inputs, expected_output,
+        auto t = unify_fn_common(cx, expected, actual,
+                                 expected_inputs, expected_output,
                                  actual_inputs, actual_output);
         alt (t) {
             case (fn_common_res_err(?r)) {
@@ -1684,12 +1676,11 @@ mod Unify {
         }
     }
 
-    fn unify_native_fn(&var_bindings bindings,
+    fn unify_native_fn(@ctxt cx,
                        ast.native_abi e_abi,
                        ast.native_abi a_abi,
                        @ty.t expected,
                        @ty.t actual,
-                       &unify_handler handler,
                        vec[arg] expected_inputs, @t expected_output,
                        vec[arg] actual_inputs, @t actual_output)
         -> result {
@@ -1697,8 +1688,8 @@ mod Unify {
             ret ures_err(terr_mismatch, expected, actual);
         }
 
-        auto t = unify_fn_common(bindings, expected, actual,
-                                 handler, expected_inputs, expected_output,
+        auto t = unify_fn_common(cx, expected, actual,
+                                 expected_inputs, expected_output,
                                  actual_inputs, actual_output);
         alt (t) {
             case (fn_common_res_err(?r)) {
@@ -1711,10 +1702,9 @@ mod Unify {
         }
     }
 
-    fn unify_obj(&var_bindings bindings,
+    fn unify_obj(@ctxt cx,
                  @ty.t expected,
                  @ty.t actual,
-                 &unify_handler handler,
                  vec[method] expected_meths,
                  vec[method] actual_meths) -> result {
       let vec[method] result_meths = vec();
@@ -1733,9 +1723,9 @@ mod Unify {
           ret ures_err(terr_obj_meths(e_meth.ident, a_meth.ident),
                        expected, actual);
         }
-        auto r = unify_fn(bindings,
+        auto r = unify_fn(cx,
                           e_meth.proto, a_meth.proto,
-                          expected, actual, handler,
+                          expected, actual,
                           e_meth.inputs, e_meth.output,
                           a_meth.inputs, a_meth.output);
         alt (r) {
@@ -1758,20 +1748,19 @@ mod Unify {
       ret ures_ok(t);
     }
 
-    fn get_or_create_set(&var_bindings bindings, int id) -> uint {
+    fn get_or_create_set(@ctxt cx, int id) -> uint {
         auto set_num;
-        alt (bindings.var_ids.find(id)) {
+        alt (cx.var_ids.find(id)) {
         case (none[uint]) {
-            set_num = UFind.make_set(bindings.sets);
-            bindings.var_ids.insert(id, set_num);
+            set_num = UFind.make_set(cx.sets);
+            cx.var_ids.insert(id, set_num);
         }
         case (some[uint](?n)) { set_num = n; }
         }
         ret set_num;
     }
 
-    fn unify_step(&var_bindings bindings, @ty.t expected, @ty.t actual,
-                  &unify_handler handler) -> result {
+    fn unify_step(@ctxt cx, @ty.t expected, @ty.t actual) -> result {
         // TODO: rewrite this using tuple pattern matching when available, to
         // avoid all this rightward drift and spikiness.
 
@@ -1782,22 +1771,21 @@ mod Unify {
             // If the RHS is a variable type, then just do the appropriate
             // binding.
             case (ty.ty_var(?actual_id)) {
-                auto actual_n = get_or_create_set(bindings, actual_id);
+                auto actual_n = get_or_create_set(cx, actual_id);
                 alt (expected.struct) {
                     case (ty.ty_var(?expected_id)) {
-                        auto expected_n = get_or_create_set(bindings,
-                                                            expected_id);
-                        UFind.union(bindings.sets, expected_n, actual_n);
+                        auto expected_n = get_or_create_set(cx, expected_id);
+                        UFind.union(cx.sets, expected_n, actual_n);
                     }
 
                     case (_) {
                         // Just bind the type variable to the expected type.
-                        auto vlen = _vec.len[mutable vec[@t]](bindings.types);
+                        auto vlen = _vec.len[mutable vec[@t]](cx.types);
                         if (actual_n < vlen) {
-                            bindings.types.(actual_n) += vec(expected);
+                            cx.types.(actual_n) += vec(expected);
                         } else {
                             check (actual_n == vlen);
-                            bindings.types += vec(mutable vec(expected));
+                            cx.types += vec(mutable vec(expected));
                         }
                     }
                 }
@@ -1805,13 +1793,10 @@ mod Unify {
             }
             case (ty.ty_local(?actual_id)) {
                 auto result_ty;
-                alt (handler.resolve_local(actual_id)) {
+                alt (cx.handler.resolve_local(actual_id)) {
                     case (none[@ty.t]) { result_ty = expected; }
                     case (some[@ty.t](?actual_ty)) {
-                        auto result = unify_step(bindings,
-                                                 expected,
-                                                 actual_ty,
-                                                 handler);
+                        auto result = unify_step(cx, expected, actual_ty);
                         alt (result) {
                             case (ures_ok(?rty)) { result_ty = rty; }
                             case (_) { ret result; }
@@ -1819,7 +1804,7 @@ mod Unify {
                     }
                 }
 
-                handler.record_local(actual_id, result_ty);
+                cx.handler.record_local(actual_id, result_ty);
                 ret ures_ok(result_ty);
             }
             case (ty.ty_bound_param(?actual_id)) {
@@ -1830,7 +1815,7 @@ mod Unify {
                     }
 
                     case (_) {
-                        ret handler.record_param(actual_id, expected);
+                        ret cx.handler.record_param(actual_id, expected);
                     }
                 }
             }
@@ -1867,10 +1852,9 @@ mod Unify {
                             auto expected_tp = expected_tps.(i);
                             auto actual_tp = actual_tps.(i);
 
-                            auto result = unify_step(bindings,
+                            auto result = unify_step(cx,
                                                      expected_tp,
-                                                     actual_tp,
-                                                     handler);
+                                                     actual_tp);
 
                             alt (result) {
                                 case (ures_ok(?rty)) {
@@ -1904,10 +1888,9 @@ mod Unify {
                             case (some[ast.mutability](?m)) { mut = m; }
                         }
 
-                        auto result = unify_step(bindings,
+                        auto result = unify_step(cx,
                                                  expected_mt.ty,
-                                                 actual_mt.ty,
-                                                 handler);
+                                                 actual_mt.ty);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
                                 auto mt = rec(ty=result_sub, mut=mut);
@@ -1937,10 +1920,9 @@ mod Unify {
                             case (some[ast.mutability](?m)) { mut = m; }
                         }
 
-                        auto result = unify_step(bindings,
+                        auto result = unify_step(cx,
                                                  expected_mt.ty,
-                                                 actual_mt.ty,
-                                                 handler);
+                                                 actual_mt.ty);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
                                 auto mt = rec(ty=result_sub, mut=mut);
@@ -1961,10 +1943,9 @@ mod Unify {
             case (ty.ty_port(?expected_sub)) {
                 alt (actual.struct) {
                     case (ty.ty_port(?actual_sub)) {
-                        auto result = unify_step(bindings,
+                        auto result = unify_step(cx,
                                                  expected_sub,
-                                                 actual_sub,
-                                                 handler);
+                                                 actual_sub);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
                                 ret ures_ok(mk_port(result_sub));
@@ -1984,10 +1965,9 @@ mod Unify {
             case (ty.ty_chan(?expected_sub)) {
                 alt (actual.struct) {
                     case (ty.ty_chan(?actual_sub)) {
-                        auto result = unify_step(bindings,
+                        auto result = unify_step(cx,
                                                  expected_sub,
-                                                 actual_sub,
-                                                 handler);
+                                                 actual_sub);
                         alt (result) {
                             case (ures_ok(?result_sub)) {
                                 ret ures_ok(mk_chan(result_sub));
@@ -2033,10 +2013,9 @@ mod Unify {
                                 case (some[ast.mutability](?m)) { mut = m; }
                             }
 
-                            auto result = unify_step(bindings,
+                            auto result = unify_step(cx,
                                                      expected_elem.ty,
-                                                     actual_elem.ty,
-                                                     handler);
+                                                     actual_elem.ty);
                             alt (result) {
                                 case (ures_ok(?rty)) {
                                     auto mt = rec(ty=rty, mut=mut);
@@ -2096,10 +2075,9 @@ mod Unify {
                                 ret ures_err(err, expected, actual);
                             }
 
-                            auto result = unify_step(bindings,
+                            auto result = unify_step(cx,
                                                      expected_field.mt.ty,
-                                                     actual_field.mt.ty,
-                                                     handler);
+                                                     actual_field.mt.ty);
                             alt (result) {
                                 case (ures_ok(?rty)) {
                                     auto mt = rec(ty=rty, mut=mut);
@@ -2127,8 +2105,8 @@ mod Unify {
             case (ty.ty_fn(?ep, ?expected_inputs, ?expected_output)) {
                 alt (actual.struct) {
                     case (ty.ty_fn(?ap, ?actual_inputs, ?actual_output)) {
-                        ret unify_fn(bindings, ep, ap,
-                                     expected, actual, handler,
+                        ret unify_fn(cx, ep, ap,
+                                     expected, actual,
                                      expected_inputs, expected_output,
                                      actual_inputs, actual_output);
                     }
@@ -2144,8 +2122,8 @@ mod Unify {
                 alt (actual.struct) {
                     case (ty.ty_native_fn(?a_abi, ?actual_inputs,
                                           ?actual_output)) {
-                        ret unify_native_fn(bindings, e_abi, a_abi,
-                                            expected, actual, handler,
+                        ret unify_native_fn(cx, e_abi, a_abi,
+                                            expected, actual,
                                             expected_inputs, expected_output,
                                             actual_inputs, actual_output);
                     }
@@ -2158,7 +2136,7 @@ mod Unify {
             case (ty.ty_obj(?expected_meths)) {
                 alt (actual.struct) {
                     case (ty.ty_obj(?actual_meths)) {
-                        ret unify_obj(bindings, expected, actual, handler,
+                        ret unify_obj(cx, expected, actual,
                                       expected_meths, actual_meths);
                     }
                     case (_) {
@@ -2169,26 +2147,23 @@ mod Unify {
 
             case (ty.ty_var(?expected_id)) {
                 // Add a binding.
-                auto expected_n = get_or_create_set(bindings, expected_id);
-                auto vlen = _vec.len[mutable vec[@t]](bindings.types);
+                auto expected_n = get_or_create_set(cx, expected_id);
+                auto vlen = _vec.len[mutable vec[@t]](cx.types);
                 if (expected_n < vlen) {
-                    bindings.types.(expected_n) += vec(actual);
+                    cx.types.(expected_n) += vec(actual);
                 } else {
                     check (expected_n == vlen);
-                    bindings.types += vec(mutable vec(actual));
+                    cx.types += vec(mutable vec(actual));
                 }
                 ret ures_ok(expected);
             }
 
             case (ty.ty_local(?expected_id)) {
                 auto result_ty;
-                alt (handler.resolve_local(expected_id)) {
+                alt (cx.handler.resolve_local(expected_id)) {
                     case (none[@ty.t]) { result_ty = actual; }
                     case (some[@ty.t](?expected_ty)) {
-                        auto result = unify_step(bindings,
-                                                 expected_ty,
-                                                 actual,
-                                                 handler);
+                        auto result = unify_step(cx, expected_ty, actual);
                         alt (result) {
                             case (ures_ok(?rty)) { result_ty = rty; }
                             case (_) { ret result; }
@@ -2196,12 +2171,12 @@ mod Unify {
                     }
                 }
 
-                handler.record_local(expected_id, result_ty);
+                cx.handler.record_local(expected_id, result_ty);
                 ret ures_ok(result_ty);
             }
 
             case (ty.ty_bound_param(?expected_id)) {
-                ret handler.record_param(expected_id, actual);
+                ret cx.handler.record_param(expected_id, actual);
             }
         }
 
@@ -2210,13 +2185,13 @@ mod Unify {
     }
 
     // Performs type binding substitution.
-    fn substitute(var_bindings bindings, vec[@t] set_types, @t typ) -> @t {
-        fn substituter(var_bindings bindings, vec[@t] types, @t typ) -> @t {
+    fn substitute(@ctxt cx, vec[@t] set_types, @t typ) -> @t {
+        fn substituter(@ctxt cx, vec[@t] types, @t typ) -> @t {
             alt (typ.struct) {
                 case (ty_var(?id)) {
-                    alt (bindings.var_ids.find(id)) {
+                    alt (cx.var_ids.find(id)) {
                         case (some[uint](?n)) {
-                            auto root = UFind.find(bindings.sets, n);
+                            auto root = UFind.find(cx.sets, n);
                             ret types.(root);
                         }
                         case (none[uint]) { ret typ; }
@@ -2226,24 +2201,24 @@ mod Unify {
             }
         }
 
-        auto f = bind substituter(bindings, set_types, _);
+        auto f = bind substituter(cx, set_types, _);
         ret fold_ty(f, typ);
     }
 
-    fn unify_sets(&var_bindings bindings) -> vec[@t] {
+    fn unify_sets(@ctxt cx) -> vec[@t] {
         let vec[@t] throwaway = vec();
         let vec[mutable vec[@t]] set_types = vec(mutable throwaway);
         _vec.pop[mutable vec[@t]](set_types);   // FIXME: botch
 
-        for (UFind.node node in bindings.sets.nodes) {
+        for (UFind.node node in cx.sets.nodes) {
             let vec[@t] v = vec();
             set_types += vec(mutable v);
         }
 
         auto i = 0u;
         while (i < _vec.len[mutable vec[@t]](set_types)) {
-            auto root = UFind.find(bindings.sets, i);
-            set_types.(root) += bindings.types.(i);
+            auto root = UFind.find(cx.sets, i);
+            set_types.(root) += cx.types.(i);
             i += 1u;
         }
 
@@ -2266,15 +2241,16 @@ mod Unify {
         let vec[mutable vec[@t]] types = vec(mutable throwaway);
         _vec.pop[mutable vec[@t]](types);   // FIXME: botch
 
-        auto bindings = rec(sets=UFind.make(),
-                            var_ids=common.new_int_hash[uint](),
-                            mutable types=types);
+        auto cx = @rec(sets=UFind.make(),
+                       var_ids=common.new_int_hash[uint](),
+                       mutable types=types,
+                       handler=handler);
 
-        auto ures = unify_step(bindings, expected, actual, handler);
+        auto ures = unify_step(cx, expected, actual);
         alt (ures) {
         case (ures_ok(?t)) {
-            auto set_types = unify_sets(bindings);
-            auto t2 = substitute(bindings, set_types, t);
+            auto set_types = unify_sets(cx);
+            auto t2 = substitute(cx, set_types, t);
             ret ures_ok(t2);
         }
         case (_) { ret ures; }
