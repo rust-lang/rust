@@ -25,6 +25,8 @@ import middle.ty.type_is_integral;
 import middle.ty.type_is_scalar;
 import middle.ty.ty_param_count_and_ty;
 import middle.ty.ty_nil;
+import middle.ty.Unify.ures_ok;
+import middle.ty.Unify.ures_err;
 
 import std._str;
 import std._uint;
@@ -49,7 +51,7 @@ tag any_item {
 type ty_item_table = hashmap[ast.def_id,any_item];
 
 type unify_cache_entry = tup(@ty.t,@ty.t,vec[mutable @ty.t]);
-type unify_cache = hashmap[unify_cache_entry,ty.unify_result];
+type unify_cache = hashmap[unify_cache_entry,ty.Unify.result];
 
 type crate_ctxt = rec(session.session sess,
                       ty.type_cache type_cache,
@@ -805,7 +807,7 @@ mod Collect {
 // Type unification
 
 mod Unify {
-    fn simple(@fn_ctxt fcx, @ty.t expected, @ty.t actual) -> ty.unify_result {
+    fn simple(@fn_ctxt fcx, @ty.t expected, @ty.t actual) -> ty.Unify.result {
         // FIXME: horrid botch
         let vec[mutable @ty.t] param_substs = vec(mutable ty.mk_nil());
         _vec.pop[mutable @ty.t](param_substs);
@@ -813,7 +815,7 @@ mod Unify {
     }
 
     fn with_params(@fn_ctxt fcx, @ty.t expected, @ty.t actual,
-                   vec[mutable @ty.t] param_substs) -> ty.unify_result {
+                   vec[mutable @ty.t] param_substs) -> ty.Unify.result {
         auto cache_key = tup(expected, actual, param_substs);
         if (fcx.ccx.unify_cache.contains_key(cache_key)) {
             fcx.ccx.cache_hits += 1u;
@@ -843,7 +845,7 @@ mod Unify {
                     case (some[@ty.t](?old_type)) {
                         alt (with_params(fcx, old_type, new_type,
                                          param_substs)) {
-                            case (ty.ures_ok(?ut)) { unified_type = ut; }
+                            case (ures_ok(?ut)) { unified_type = ut; }
                             case (_) { fail; /* FIXME */ }
                         }
                     }
@@ -859,7 +861,7 @@ mod Unify {
                     ty.substitute_type_params(param_substs_1, unified_type);
                 fcx.locals.insert(id, unified_type);
             }
-            fn record_param(uint index, @ty.t binding) -> ty.unify_result {
+            fn record_param(uint index, @ty.t binding) -> ty.Unify.result {
                 // Unify with the appropriate type in the parameter
                 // substitution list.
                 auto old_subst = param_substs.(index);
@@ -867,9 +869,9 @@ mod Unify {
                 auto result = with_params(fcx, old_subst, binding,
                                           param_substs);
                 alt (result) {
-                    case (ty.ures_ok(?new_subst)) {
+                    case (ures_ok(?new_subst)) {
                         param_substs.(index) = new_subst;
-                        ret ty.ures_ok(ty.mk_bound_param(index));
+                        ret ures_ok(ty.mk_bound_param(index));
                     }
                     case (_) { ret result; }
                 }
@@ -878,7 +880,7 @@ mod Unify {
 
 
         auto handler = unify_handler(fcx, param_substs);
-        auto result = ty.unify(expected, actual, handler);
+        auto result = ty.Unify.unify(expected, actual, handler);
         fcx.ccx.unify_cache.insert(cache_key, result);
         ret result;
     }
@@ -965,7 +967,7 @@ mod Demand {
         }
 
         alt (Unify.with_params(fcx, expected_1, actual_1, ty_param_substs)) {
-            case (ty.ures_ok(?t)) {
+            case (ures_ok(?t)) {
                 // TODO: Use "freeze", when we have it.
                 let vec[@ty.t] result_ty_param_substs = vec();
                 for (mutable @ty.t ty_param_subst in ty_param_substs) {
@@ -975,7 +977,7 @@ mod Demand {
                 ret tup(result_ty_param_substs, add_boxes(implicit_boxes, t));
             }
 
-            case (ty.ures_err(?err, ?expected, ?actual)) {
+            case (ures_err(?err, ?expected, ?actual)) {
                 fcx.ccx.sess.span_err(sp, "mismatched types: expected "
                                       + ty_to_str(expected) + " but found "
                                       + ty_to_str(actual) + " (" +
@@ -993,8 +995,8 @@ mod Demand {
 // Returns true if the two types unify and false if they don't.
 fn are_compatible(&@fn_ctxt fcx, @ty.t expected, @ty.t actual) -> bool {
     alt (Unify.simple(fcx, expected, actual)) {
-        case (ty.ures_ok(_))        { ret true;  }
-        case (ty.ures_err(_, _, _)) { ret false; }
+        case (ures_ok(_))        { ret true;  }
+        case (ures_err(_, _, _)) { ret false; }
     }
 }
 
@@ -2723,7 +2725,7 @@ fn check_crate(session.session sess, @ast.crate crate) -> typecheck_result {
     auto hasher = hash_unify_cache_entry;
     auto eqer = eq_unify_cache_entry;
     auto unify_cache =
-        map.mk_hashmap[unify_cache_entry,ty.unify_result](hasher, eqer);
+        map.mk_hashmap[unify_cache_entry,ty.Unify.result](hasher, eqer);
 
     auto ccx = @rec(sess=sess,
                     type_cache=result._1,

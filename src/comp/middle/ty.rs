@@ -77,8 +77,8 @@ tag sty {
 
 type unify_handler = obj {
     fn resolve_local(ast.def_id id) -> option.t[@t];
-    fn record_local(ast.def_id id, @t ty);  // TODO: -> unify_result
-    fn record_param(uint index, @t binding) -> unify_result;
+    fn record_local(ast.def_id id, @t ty);  // TODO: -> Unify.result
+    fn record_param(uint index, @t binding) -> Unify.result;
 };
 
 tag type_err {
@@ -93,11 +93,6 @@ tag type_err {
     terr_meth_count;
     terr_obj_meths(ast.ident,ast.ident);
     terr_arg_count;
-}
-
-tag unify_result {
-    ures_ok(@ty.t);
-    ures_err(type_err, @ty.t, @ty.t);
 }
 
 
@@ -1551,12 +1546,16 @@ fn is_lval(@ast.expr expr) -> bool {
 //
 //     http://www.cs.man.ac.uk/~hoderk/ubench/unification_full.pdf
 
-type var_bindings = rec(UFind.ufind sets,
-                        hashmap[int,uint] var_ids,
-                        mutable vec[mutable vec[@t]] types);
+mod Unify {
+    tag result {
+        ures_ok(@ty.t);
+        ures_err(type_err, @ty.t, @ty.t);
+    }
 
-fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
-        -> unify_result {
+    type var_bindings = rec(UFind.ufind sets,
+                            hashmap[int,uint] var_ids,
+                            mutable vec[mutable vec[@t]] types);
+
     // Wraps the given type in an appropriate cname.
     //
     // TODO: This doesn't do anything yet. We should carry the cname up from
@@ -1565,7 +1564,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
     // something we'll probably need to develop over time.
 
     // Simple structural type comparison.
-    fn struct_cmp(@ty.t expected, @ty.t actual) -> unify_result {
+    fn struct_cmp(@ty.t expected, @ty.t actual) -> result {
         if (expected.struct == actual.struct) {
             ret ures_ok(expected);
         }
@@ -1589,7 +1588,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
     }
 
     tag fn_common_res {
-        fn_common_res_err(unify_result);
+        fn_common_res_err(result);
         fn_common_res_ok(vec[arg], @t);
     }
 
@@ -1666,7 +1665,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                 &unify_handler handler,
                 vec[arg] expected_inputs, @t expected_output,
                 vec[arg] actual_inputs, @t actual_output)
-        -> unify_result {
+        -> result {
 
         if (e_proto != a_proto) {
             ret ures_err(terr_mismatch, expected, actual);
@@ -1693,7 +1692,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                        &unify_handler handler,
                        vec[arg] expected_inputs, @t expected_output,
                        vec[arg] actual_inputs, @t actual_output)
-        -> unify_result {
+        -> result {
         if (e_abi != a_abi) {
             ret ures_err(terr_mismatch, expected, actual);
         }
@@ -1717,7 +1716,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
                  @ty.t actual,
                  &unify_handler handler,
                  vec[method] expected_meths,
-                 vec[method] actual_meths) -> unify_result {
+                 vec[method] actual_meths) -> result {
       let vec[method] result_meths = vec();
       let uint i = 0u;
       let uint expected_len = _vec.len[method](expected_meths);
@@ -1772,7 +1771,7 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
     }
 
     fn unify_step(&var_bindings bindings, @ty.t expected, @ty.t actual,
-                  &unify_handler handler) -> unify_result {
+                  &unify_handler handler) -> result {
         // TODO: rewrite this using tuple pattern matching when available, to
         // avoid all this rightward drift and spikiness.
 
@@ -2261,24 +2260,27 @@ fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
         ret result;
     }
 
-    let vec[@t] throwaway = vec();
-    let vec[mutable vec[@t]] types = vec(mutable throwaway);
-    _vec.pop[mutable vec[@t]](types);   // FIXME: botch
+    fn unify(@ty.t expected, @ty.t actual, &unify_handler handler)
+            -> result {
+        let vec[@t] throwaway = vec();
+        let vec[mutable vec[@t]] types = vec(mutable throwaway);
+        _vec.pop[mutable vec[@t]](types);   // FIXME: botch
 
-    auto bindings = rec(sets=UFind.make(),
-                        var_ids=common.new_int_hash[uint](),
-                        mutable types=types);
+        auto bindings = rec(sets=UFind.make(),
+                            var_ids=common.new_int_hash[uint](),
+                            mutable types=types);
 
-    auto ures = unify_step(bindings, expected, actual, handler);
-    alt (ures) {
-    case (ures_ok(?t)) {
-        auto set_types = unify_sets(bindings);
-        auto t2 = substitute(bindings, set_types, t);
-        ret ures_ok(t2);
+        auto ures = unify_step(bindings, expected, actual, handler);
+        alt (ures) {
+        case (ures_ok(?t)) {
+            auto set_types = unify_sets(bindings);
+            auto t2 = substitute(bindings, set_types, t);
+            ret ures_ok(t2);
+        }
+        case (_) { ret ures; }
+        }
+        fail;   // not reached
     }
-    case (_) { ret ures; }
-    }
-    fail;   // not reached
 }
 
 fn type_err_to_str(&ty.type_err err) -> str {
