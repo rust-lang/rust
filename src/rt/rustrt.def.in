@@ -19,6 +19,7 @@ rust_get_stdin
 rust_get_stdout
 rust_list_files
 rust_process_wait
+rust_ptr_eq
 rust_run_program
 rust_start
 size_of

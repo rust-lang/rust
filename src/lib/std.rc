@@ -69,6 +69,7 @@ mod sha1;
 mod ebml;
 mod UFind;
 mod ExtFmt;
+mod Box;
 
 // Local Variables:
 // mode: rust;

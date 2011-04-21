@@ -468,6 +468,11 @@ rust_file_is_dir(rust_task *task, rust_str *path) {
 extern "C" CDECL FILE* rust_get_stdin() {return stdin;}
 extern "C" CDECL FILE* rust_get_stdout() {return stdout;}
 
+extern "C" CDECL int
+rust_ptr_eq(rust_task *task, type_desc *t, rust_box *a, rust_box *b) {
+    return a == b;
+}
+
 //
 // Local Variables:
 // mode: C++
