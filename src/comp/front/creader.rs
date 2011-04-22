@@ -546,7 +546,7 @@ fn get_tag_variants(session.session sess,
         auto item = find_item(did._1, items);
         auto ctor_ty = item_type(item, external_crate_id, tystore);
         let vec[@ty.t] arg_tys = vec();
-        alt (ctor_ty.struct) {
+        alt (ty.struct(ctor_ty)) {
             case (ty.ty_fn(_, ?args, _)) {
                 for (ty.arg a in args) {
                     arg_tys += vec(a.ty);

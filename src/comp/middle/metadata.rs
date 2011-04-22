@@ -53,7 +53,7 @@ const uint tag_index_table = 0x15u;
 type def_str = fn(ast.def_id) -> str;
 
 fn ty_str(@ty.t t, def_str ds) -> str {
-    ret sty_str(t.struct, ds);
+    ret sty_str(ty.struct(t), ds);
 }
 
 fn mt_str(&ty.mt mt, def_str ds) -> str {

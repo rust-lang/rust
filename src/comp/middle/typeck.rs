@@ -20,6 +20,7 @@ import middle.ty.method;
 import middle.ty.mode_is_alias;
 import middle.ty.pat_ty;
 import middle.ty.path_to_str;
+import middle.ty.struct;
 import middle.ty.triv_ann;
 import middle.ty.ty_to_str;
 import middle.ty.type_is_integral;
@@ -80,7 +81,7 @@ fn substitute_ty_params(&@crate_ctxt ccx,
                         vec[@ty.t] supplied,
                         &span sp) -> @ty.t {
     fn substituter(@crate_ctxt ccx, vec[@ty.t] supplied, @ty.t typ) -> @ty.t {
-        alt (typ.struct) {
+        alt (struct(typ)) {
             case (ty.ty_bound_param(?pid)) { ret supplied.(pid); }
             case (_) { ret typ; }
         }
@@ -686,9 +687,9 @@ mod Collect {
     }
 
     fn get_ctor_obj_methods(@ty.t t) -> vec[method] {
-        alt (t.struct) {
+        alt (struct(t)) {
             case (ty.ty_fn(_,_,?tobj)) {
-                alt (tobj.struct) {
+                alt (struct(tobj)) {
                     case (ty.ty_obj(?tm)) {
                         ret tm;
                     }
@@ -923,7 +924,7 @@ tag autoderef_kind {
 fn strip_boxes(@ty.t t) -> @ty.t {
     auto t1 = t;
     while (true) {
-        alt (t1.struct) {
+        alt (struct(t1)) {
             case (ty.ty_box(?inner)) { t1 = inner.ty; }
             case (_) { ret t1; }
         }
@@ -945,7 +946,7 @@ fn count_boxes(@ty.t t) -> uint {
     auto n = 0u;
     auto t1 = t;
     while (true) {
-        alt (t1.struct) {
+        alt (struct(t1)) {
             case (ty.ty_box(?inner)) { n += 1u; t1 = inner.ty; }
             case (_) { ret n; }
         }
@@ -1039,7 +1040,7 @@ fn variant_arg_types(@crate_ctxt ccx, &span sp, ast.def_id vid,
 
     auto tpt = ty.lookup_item_type(ccx.sess, ccx.tystore, ccx.type_cache,
                                    vid);
-    alt (tpt._1.struct) {
+    alt (struct(tpt._1)) {
         case (ty.ty_fn(_, ?ins, _)) {
             // N-ary variant.
             for (ty.arg arg in ins) {
@@ -1108,7 +1109,7 @@ mod Pushdown {
                 // Take the variant's type parameters out of the expected
                 // type.
                 auto tag_tps;
-                alt (expected.struct) {
+                alt (struct(expected)) {
                     case (ty.ty_tag(_, ?tps)) { tag_tps = tps; }
                     case (_) {
                         log_err "tag pattern type not actually a tag?!";
@@ -1158,7 +1159,7 @@ mod Pushdown {
                 auto t = Demand.simple(fcx, e.span, expected,
                                        ann_to_type(ann));
                 let vec[@ast.expr] es_1 = vec();
-                alt (t.struct) {
+                alt (struct(t)) {
                     case (ty.ty_vec(?mt)) {
                         for (@ast.expr e_0 in es_0) {
                             es_1 += vec(pushdown_expr(fcx, mt.ty, e_0));
@@ -1175,7 +1176,7 @@ mod Pushdown {
                 auto t = Demand.simple(fcx, e.span, expected,
                                        ann_to_type(ann));
                 let vec[ast.elt] elts_1 = vec();
-                alt (t.struct) {
+                alt (struct(t)) {
                     case (ty.ty_tup(?mts)) {
                         auto i = 0u;
                         for (ast.elt elt_0 in es_0) {
@@ -1199,7 +1200,7 @@ mod Pushdown {
                 auto t = Demand.simple(fcx, e.span, expected,
                                        ann_to_type(ann));
                 let vec[ast.field] fields_1 = vec();
-                alt (t.struct) {
+                alt (struct(t)) {
                     case (ty.ty_rec(?field_mts)) {
                         alt (base_0) {
                             case (none[@ast.expr]) {
@@ -1412,7 +1413,7 @@ mod Pushdown {
                 auto t = Demand.simple(fcx, e.span, expected,
                                        ann_to_type(ann));
                 let @ast.expr es_1;
-                alt (t.struct) {
+                alt (struct(t)) {
                     case (ty.ty_chan(?subty)) {
                         auto pt = ty.mk_port(fcx.ccx.tystore, subty);
                         es_1 = pushdown_expr(fcx, pt, es);
@@ -1514,7 +1515,7 @@ fn writeback_local(&option.t[@fn_ctxt] env, &span sp, @ast.local local)
 fn resolve_local_types_in_annotation(&option.t[@fn_ctxt] env, ast.ann ann)
         -> ast.ann {
     fn resolver(@fn_ctxt fcx, @ty.t typ) -> @ty.t {
-        alt (typ.struct) {
+        alt (struct(typ)) {
             case (ty.ty_local(?lid)) { ret fcx.locals.get(lid); }
             case (_)                 { ret typ; }
         }
@@ -1603,7 +1604,7 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
                                            fcx.ccx.type_cache, vdef._0);
             auto ann = instantiate_path(fcx, p, tpt, pat.span);
 
-            alt (t.struct) {
+            alt (struct(t)) {
                 // N-ary variants have function types.
                 case (ty.ty_fn(_, ?args, ?tag_ty)) {
                     auto arg_len = _vec.len[arg](args);
@@ -1691,7 +1692,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         auto rt_0 = next_ty_var(fcx.ccx);
         auto t_0;
-        alt (expr_ty(fcx.ccx.tystore, f_0).struct) {
+        alt (struct(expr_ty(fcx.ccx.tystore, f_0))) {
             case (ty.ty_fn(?proto, _, _))   {
                 t_0 = ty.mk_fn(fcx.ccx.tystore, proto, arg_tys_0, rt_0);
             }
@@ -1800,7 +1801,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                        rec(ty=oper_t, mut=mut));
                 }
                 case (ast.deref) {
-                    alt (oper_t.struct) {
+                    alt (struct(oper_t)) {
                         case (ty.ty_box(?inner)) {
                             oper_t = inner.ty;
                         }
@@ -1970,7 +1971,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto chan_t = ty.mk_chan(fcx.ccx.tystore, rhs_t);
             auto lhs_1 = Pushdown.pushdown_expr(fcx, chan_t, lhs_0);
             auto item_t;
-            alt (expr_ty(fcx.ccx.tystore, lhs_1).struct) {
+            alt (struct(expr_ty(fcx.ccx.tystore, lhs_1))) {
                 case (ty.ty_chan(?it)) {
                     item_t = it;
                 }
@@ -1993,7 +1994,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto port_t = ty.mk_port(fcx.ccx.tystore, lhs_t1);
             auto rhs_1 = Pushdown.pushdown_expr(fcx, port_t, rhs_0);
             auto item_t;
-            alt (expr_ty(fcx.ccx.tystore, rhs_0).struct) {
+            alt (struct(expr_ty(fcx.ccx.tystore, rhs_0))) {
                 case (ty.ty_port(?it)) {
                     item_t = it;
                 }
@@ -2163,7 +2164,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto proto_1;
             let vec[ty.arg] arg_tys_1 = vec();
             auto rt_1;
-            alt (expr_ty(fcx.ccx.tystore, result._0).struct) {
+            alt (struct(expr_ty(fcx.ccx.tystore, result._0))) {
                 case (ty.ty_fn(?proto, ?arg_tys, ?rt)) {
                     proto_1 = proto;
                     rt_1 = rt;
@@ -2201,7 +2202,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             // Pull the return type out of the type of the function.
             auto rt_1 = ty.mk_nil(fcx.ccx.tystore);  // FIXME: typestate botch
-            alt (expr_ty(fcx.ccx.tystore, f_1).struct) {
+            alt (struct(expr_ty(fcx.ccx.tystore, f_1))) {
                 case (ty.ty_fn(_,_,?rt))    { rt_1 = rt; }
                 case (ty.ty_native_fn(_, _, ?rt))    { rt_1 = rt; }
                 case (_) {
@@ -2233,7 +2234,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             // Grab this method's type out of the current object type
 
             // this_obj_ty is an @ty.t
-            alt (this_obj_ty.struct) {
+            alt (struct(this_obj_ty)) {
                 case (ty.ty_obj(?methods)) {
                     for (ty.method method in methods) {
                         if (method.ident == id) {
@@ -2257,9 +2258,9 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto args_1 = result._1;
 
             // Check the return type
-            alt (expr_ty(fcx.ccx.tystore, f_1).struct) {
+            alt (struct(expr_ty(fcx.ccx.tystore, f_1))) {
                 case (ty.ty_fn(_,_,?rt)) {
-                    alt (rt.struct) {
+                    alt (struct(rt)) {
                         case (ty.ty_nil) {
                             // This is acceptable
                         }
@@ -2373,7 +2374,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
                     let vec[field] base_fields = vec();
 
-                    alt (bexpr_t.struct) {
+                    alt (struct(bexpr_t)) {
                         case (ty.ty_rec(?flds)) {
                             base_fields = flds;
                         }
@@ -2412,7 +2413,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         case (ast.expr_field(?base, ?field, _)) {
             auto base_1 = check_expr(fcx, base);
             auto base_t = strip_boxes(expr_ty(fcx.ccx.tystore, base_1));
-            alt (base_t.struct) {
+            alt (struct(base_t)) {
                 case (ty.ty_tup(?args)) {
                     let uint ix = ty.field_num(fcx.ccx.sess,
                                                expr.span, field);
@@ -2473,7 +2474,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto idx_1 = check_expr(fcx, idx);
             auto idx_t = expr_ty(fcx.ccx.tystore, idx_1);
 
-            alt (base_t.struct) {
+            alt (struct(base_t)) {
                 case (ty.ty_vec(?mt)) {
                     if (! type_is_integral(idx_t)) {
                         fcx.ccx.sess.span_err
@@ -2520,7 +2521,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         case (ast.expr_chan(?x, _)) {
             auto expr_1 = check_expr(fcx, x);
             auto port_t = expr_ty(fcx.ccx.tystore, expr_1);
-            alt (port_t.struct) {
+            alt (struct(port_t)) {
                 case (ty.ty_port(?subtype)) {
                     auto ct = ty.mk_chan(fcx.ccx.tystore, subtype);
                     auto ann = triv_ann(ct);
