@@ -2484,17 +2484,17 @@ fn lookup_item_type(session.session sess,
     if (did._0 == sess.get_targ_crate_num()) {
         // The item is in this crate. The caller should have added it to the
         // type cache already; we simply return it.
-        check (cache.contains_key(did));
         ret cache.get(did);
     }
 
-    if (cache.contains_key(did)) {
-        ret cache.get(did);
+    alt (cache.find(did)) {
+        case (some[ty_param_count_and_ty](?tpt)) { ret tpt; }
+        case (none[ty_param_count_and_ty]) {
+            auto tyt = creader.get_type(sess, tystore, did);
+            cache.insert(did, tyt);
+            ret tyt;
+        }
     }
-
-    auto tyt = creader.get_type(sess, tystore, did);
-    cache.insert(did, tyt);
-    ret tyt;
 }
 
 
