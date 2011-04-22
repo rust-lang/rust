@@ -1,6 +1,7 @@
 import std._str;
 import std._uint;
 import std._vec;
+import std.Box;
 import std.UFind;
 import std.map;
 import std.map.hashmap;
@@ -861,6 +862,326 @@ fn hash_type_structure(&sty st) -> uint {
 
 fn hash_ty(&@t typ) -> uint { ret typ.hash; }
 
+
+// Type equality. This function is private to this module (and slow); external
+// users should use `eq_ty()` instead.
+fn equal_type_structures(&sty a, &sty b) -> bool {
+    fn equal_ty(@t a, @t b) -> bool { ret Box.ptr_eq[t](a, b); }
+
+    fn equal_proto(ast.proto a, ast.proto b) -> bool {
+        alt (a) {
+            case (ast.proto_iter) {
+                alt (b) {
+                    case (ast.proto_iter) { ret true; }
+                    case (_) { ret false; }
+                }
+            }
+            case (ast.proto_fn) {
+                alt (b) {
+                    case (ast.proto_fn) { ret true; }
+                    case (_) { ret false; }
+                }
+            }
+        }
+    }
+
+    fn equal_abi(ast.native_abi a, ast.native_abi b) -> bool {
+        alt (a) {
+            case (ast.native_abi_rust) {
+                alt (b) {
+                    case (ast.native_abi_rust) { ret true; }
+                    case (_) { ret false; }
+                }
+            }
+            case (ast.native_abi_cdecl) {
+                alt (b) {
+                    case (ast.native_abi_cdecl) { ret true; }
+                    case (_) { ret false; }
+                }
+            }
+            case (ast.native_abi_llvm) {
+                alt (b) {
+                    case (ast.native_abi_llvm) { ret true; }
+                    case (_) { ret false; }
+                }
+            }
+        }
+    }
+
+    fn equal_mut(ast.mutability a, ast.mutability b) -> bool {
+        alt (a) {
+            case (ast.mut) {
+                alt (b) {
+                    case (ast.mut) { ret true; }
+                    case (_) { ret false; }
+                }
+            }
+            case (ast.imm) {
+                alt (b) {
+                    case (ast.imm) { ret true; }
+                    case (_) { ret false; }
+                }
+            }
+            case (ast.maybe_mut) {
+                alt (b) {
+                    case (ast.maybe_mut) { ret true; }
+                    case (_) { ret false; }
+                }
+            }
+        }
+    }
+
+    fn equal_mode(ast.mode a, ast.mode b) -> bool {
+        alt (a) {
+            case (ast.val) {
+                alt (b) {
+                    case (ast.val) { ret true; }
+                    case (_) { ret false; }
+                }
+            }
+            case (ast.alias) {
+                alt (b) {
+                    case (ast.alias) { ret true; }
+                    case (_) { ret false; }
+                }
+            }
+        }
+    }
+
+    fn equal_mt(&mt a, &mt b) -> bool {
+        ret equal_mut(a.mut, b.mut) && equal_ty(a.ty, b.ty);
+    }
+
+    fn equal_fn(vec[arg] args_a, @t rty_a,
+                vec[arg] args_b, @t rty_b) -> bool {
+        if (!equal_ty(rty_a, rty_b)) { ret false; }
+
+        auto len = _vec.len[arg](args_a);
+        if (len != _vec.len[arg](args_b)) { ret false; }
+        auto i = 0u;
+        while (i < len) {
+            auto arg_a = args_a.(i); auto arg_b = args_b.(i);
+            if (!equal_mode(arg_a.mode, arg_b.mode) ||
+                    !equal_ty(arg_a.ty, arg_b.ty)) {
+                ret false;
+            }
+            i += 1u;
+        }
+        ret true;
+    }
+
+    fn equal_def(ast.def_id did_a, ast.def_id did_b) -> bool {
+        ret did_a._0 == did_b._0 && did_a._1 == did_b._1;
+    }
+
+    alt (a) {
+        case (ty_nil) {
+            alt (b) {
+                case (ty_nil) { ret true; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_bool) {
+            alt (b) {
+                case (ty_bool) { ret true; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_int) {
+            alt (b) {
+                case (ty_int) { ret true; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_float) {
+            alt (b) {
+                case (ty_float) { ret true; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_uint) {
+            alt (b) {
+                case (ty_uint) { ret true; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_machine(?tm_a)) {
+            alt (b) {
+                case (ty_machine(?tm_b)) {
+                    ret hash_type_structure(a) == hash_type_structure(b);
+                }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_char) {
+            alt (b) {
+                case (ty_char) { ret true; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_str) {
+            alt (b) {
+                case (ty_str) { ret true; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_tag(?id_a, ?tys_a)) {
+            alt (b) {
+                case (ty_tag(?id_b, ?tys_b)) {
+                    if (id_a != id_b) { ret false; }
+
+                    auto len = _vec.len[@ty.t](tys_a);
+                    if (len != _vec.len[@ty.t](tys_b)) { ret false; }
+                    auto i = 0u;
+                    while (i < len) {
+                        if (!equal_ty(tys_a.(i), tys_b.(i))) { ret false; }
+                        i += 1u;
+                    }
+                    ret true;
+                }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_box(?mt_a)) {
+            alt (b) {
+                case (ty_box(?mt_b)) { ret equal_mt(mt_a, mt_b); }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_vec(?mt_a)) {
+            alt (b) {
+                case (ty_vec(?mt_b)) { ret equal_mt(mt_a, mt_b); }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_port(?t_a)) {
+            alt (b) {
+                case (ty_port(?t_b)) { ret equal_ty(t_a, t_b); }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_chan(?t_a)) {
+            alt (b) {
+                case (ty_chan(?t_b)) { ret equal_ty(t_a, t_b); }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_task) {
+            alt (b) {
+                case (ty_task) { ret true; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_tup(?mts_a)) {
+            alt (b) {
+                case (ty_tup(?mts_b)) {
+                    auto len = _vec.len[mt](mts_a);
+                    if (len != _vec.len[mt](mts_b)) { ret false; }
+                    auto i = 0u;
+                    while (i < len) {
+                        if (!equal_mt(mts_a.(i), mts_b.(i))) { ret false; }
+                        i += 1u;
+                    }
+                    ret true;
+                }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_rec(?flds_a)) {
+            alt (b) {
+                case (ty_rec(?flds_b)) {
+                    auto len = _vec.len[field](flds_a);
+                    if (len != _vec.len[field](flds_b)) { ret false; }
+                    auto i = 0u;
+                    while (i < len) {
+                        auto fld_a = flds_a.(i); auto fld_b = flds_b.(i);
+                        if (!_str.eq(fld_a.ident, fld_b.ident) ||
+                                !equal_mt(fld_a.mt, fld_b.mt)) {
+                            ret false;
+                        }
+                        i += 1u;
+                    }
+                    ret true;
+                }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_fn(?p_a, ?args_a, ?rty_a)) {
+            alt (b) {
+                case (ty_fn(?p_b, ?args_b, ?rty_b)) {
+                    ret equal_proto(p_a, p_b) &&
+                        equal_fn(args_a, rty_a, args_b, rty_b);
+                }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_native_fn(?abi_a, ?args_a, ?rty_a)) {
+            alt (b) {
+                case (ty_native_fn(?abi_b, ?args_b, ?rty_b)) {
+                    ret equal_abi(abi_a, abi_b) &&
+                        equal_fn(args_a, rty_a, args_b, rty_b);
+                }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_obj(?methods_a)) {
+            alt (b) {
+                case (ty_obj(?methods_b)) {
+                    auto len = _vec.len[method](methods_a);
+                    if (len != _vec.len[method](methods_b)) { ret false; }
+                    auto i = 0u;
+                    while (i < len) {
+                        auto m_a = methods_a.(i); auto m_b = methods_b.(i);
+                        if (!equal_proto(m_a.proto, m_b.proto) ||
+                                !_str.eq(m_a.ident, m_b.ident) ||
+                                equal_fn(m_a.inputs, m_a.output,
+                                         m_b.inputs, m_b.output)) {
+                            ret false;
+                        }
+                    }
+                    ret true;
+                }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_var(?v_a)) {
+            alt (b) {
+                case (ty_var(?v_b)) { ret v_a == v_b; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_local(?did_a)) {
+            alt (b) {
+                case (ty_local(?did_b)) { ret equal_def(did_a, did_b); }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_param(?pid_a)) {
+            alt (b) {
+                case (ty_param(?pid_b)) { ret pid_a == pid_b; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_bound_param(?pid_a)) {
+            alt (b) {
+                case (ty_bound_param(?pid_b)) { ret pid_a == pid_b; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_type) {
+            alt (b) {
+                case (ty_type) { ret true; }
+                case (_) { ret false; }
+            }
+        }
+        case (ty_native) {
+            alt (b) {
+                case (ty_native) { ret true; }
+                case (_) { ret false; }
+            }
+        }
+    }
+}
 
 
 fn ty_is_simple(&@t a) -> bool {
