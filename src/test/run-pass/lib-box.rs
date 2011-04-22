@@ -1,3 +1,5 @@
+// xfail-stage0
+
 use std;
 import std.Box;
 
