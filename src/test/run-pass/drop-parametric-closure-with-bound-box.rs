@@ -1,5 +1,3 @@
-// xfail-stage0
-
 fn f[T](@int i, &T t) {}
 
 fn main() {
