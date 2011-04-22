@@ -1,9 +1,14 @@
+import std.map;
+import std.map.hashmap;
 import std._uint;
 import std._int;
 import std._vec;
 import std.option.none;
 import front.ast;
 import util.typestate_ann.ts_ann;
+
+import middle.fold;
+import middle.fold.respan;
 
 import std.io.stdout;
 import std.io.str_writer;
@@ -16,6 +21,7 @@ import pretty.pp.mkstate;
 type filename = str;
 type span = rec(uint lo, uint hi);
 type spanned[T] = rec(T node, span span);
+type flag = hashmap[str, ()];
 
 tag ty_mach {
     ty_i8;
@@ -222,6 +228,32 @@ fn decl_lhs(@ast.decl d) -> ast.def_id {
     }
 }
 
+fn has_nonlocal_exits(&ast.block b) -> bool {
+    /* overkill, but just passing around a mutable bool doesn't seem
+       to work in rustboot */
+    auto has_exits = new_str_hash[()]();
+ 
+   fn set_break(&flag f, &span sp, ast.ann a) -> @ast.expr {
+        f.insert("foo", ());
+        ret @respan(sp, ast.expr_break(a));
+    }
+    fn set_cont(&flag f, &span sp, ast.ann a) -> @ast.expr {
+        f.insert("foo", ());
+        ret @respan(sp, ast.expr_cont(a));
+    }
+    fn check_b(&flag f) -> bool {
+        ret (f.size() == 0u);
+    }
+
+    auto fld0 = fold.new_identity_fold[flag]();
+
+    fld0 = @rec(fold_expr_break = bind set_break(_,_,_),
+                fold_expr_cont  = bind set_cont(_,_,_),
+                keep_going      = bind check_b(_) with *fld0);
+    fold.fold_block[flag](has_exits, fld0, b);
+
+    ret (has_exits.size() > 0u);
+}
 //
 // Local Variables:
 // mode: rust
