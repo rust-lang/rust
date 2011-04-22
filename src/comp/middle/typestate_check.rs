@@ -214,7 +214,7 @@ fn log_bitv_err(fn_info enclosing, bitv.t v) {
     log_err(bitv_to_str(enclosing, v));
 }
 
-fn log_cond(vec[uint] v) -> () {
+fn tos (vec[uint] v) -> str {
   auto res = "";
   for (uint i in v) {
     if (i == 0u) {
@@ -224,8 +224,16 @@ fn log_cond(vec[uint] v) -> () {
       res += "1";
     }
   }
-  log(res);
+  ret res;
 }
+
+fn log_cond(vec[uint] v) -> () {
+    log(tos(v));
+}
+fn log_cond_err(vec[uint] v) -> () {
+    log_err(tos(v));
+}
+
 fn log_pp(&pre_and_post pp) -> () {
   auto p1 = bitv.to_vec(pp.precondition);
   auto p2 = bitv.to_vec(pp.postcondition);
@@ -235,6 +243,15 @@ fn log_pp(&pre_and_post pp) -> () {
   log_cond(p2);
 }
 
+fn log_pp_err(&pre_and_post pp) -> () {
+  auto p1 = bitv.to_vec(pp.precondition);
+  auto p2 = bitv.to_vec(pp.postcondition);
+  log_err("pre:");
+  log_cond_err(p1);
+  log_err("post:");
+  log_cond_err(p2);
+}
+
 fn log_states(&pre_and_post_state pp) -> () {
   auto p1 = bitv.to_vec(pp.prestate);
   auto p2 = bitv.to_vec(pp.poststate);
@@ -242,6 +259,15 @@ fn log_states(&pre_and_post_state pp) -> () {
   log_cond(p1);
   log("poststate:");
   log_cond(p2);
+}
+
+fn log_states_err(&pre_and_post_state pp) -> () {
+  auto p1 = bitv.to_vec(pp.prestate);
+  auto p2 = bitv.to_vec(pp.poststate);
+  log_err("prestate:");
+  log_cond_err(p1);
+  log_err("poststate:");
+  log_cond_err(p2);
 }
 
 fn print_ident(&ident i) -> () {
@@ -707,17 +733,27 @@ fn with_pp(ann a, pre_and_post p) -> ann {
 // return the precondition for evaluating each expr in order.
 // So, if e0's post is {x} and e1's pre is {x, y, z}, the entire
 // precondition shouldn't include x.
-fn seq_preconds(uint num_vars, vec[pre_and_post] pps) -> precond {
+fn seq_preconds(fn_info enclosing, vec[pre_and_post] pps) -> precond {
   let uint sz = len[pre_and_post](pps);
- 
+  let uint num_vars = num_locals(enclosing);
+
   if (sz >= 1u) {
     auto first   = pps.(0);
     check (pps_len(first) == num_vars);
-    let precond rest = seq_preconds(num_vars,
+    let precond rest = seq_preconds(enclosing,
                          slice[pre_and_post](pps, 1u, sz));
     difference(rest, first.postcondition);
     auto res = clone(first.precondition);
     union(res, rest);
+
+    log("seq_preconds:");
+    log("first.postcondition =");
+    log_bitv(enclosing, first.postcondition);
+    log("rest =");
+    log_bitv(enclosing, rest);
+    log("returning");
+    log_bitv(enclosing, res);
+
     ret res;
   }
   else {
@@ -863,7 +899,7 @@ fn find_pre_post_exprs(&fn_info_map fm, &fn_info enclosing,
     auto h = get_post;
 
     set_pre_and_post(a,
-       rec(precondition=seq_preconds(nv, pps),
+       rec(precondition=seq_preconds(enclosing, pps),
            postcondition=union_postconds
            (nv, (_vec.map[pre_and_post, postcond](h, pps)))));
 }
@@ -873,7 +909,7 @@ fn find_pre_post_loop(&fn_info_map fm, &fn_info enclosing, &@decl d,
     find_pre_post_expr(fm, enclosing, *index);
     find_pre_post_block(fm, enclosing, body);
     auto loop_precond = declare_var(enclosing, decl_lhs(d),
-           seq_preconds(num_locals(enclosing), vec(expr_pp(*index),
+           seq_preconds(enclosing, vec(expr_pp(*index),
                                                    block_pp(body))));
     auto loop_postcond = intersect_postconds
         (vec(expr_postcond(*index), block_postcond(body)));
@@ -1033,7 +1069,7 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, &expr e) -> () {
             find_pre_post_block(fm, enclosing, conseq);
             alt (maybe_alt) {
                 case (none[@expr]) {
-                    auto precond_res = seq_preconds(num_local_vars,
+                    auto precond_res = seq_preconds(enclosing,
                                                     vec(expr_pp(*antec),
                                                         block_pp(conseq)));
                     set_pre_and_post(a, rec(precondition=precond_res,
@@ -1043,13 +1079,13 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, &expr e) -> () {
                 case (some[@expr](?altern)) {
                     find_pre_post_expr(fm, enclosing, *altern);
                     auto precond_true_case =
-                        seq_preconds(num_local_vars,
+                        seq_preconds(enclosing,
                                      vec(expr_pp(*antec), block_pp(conseq)));
                     auto postcond_true_case = union_postconds
                         (num_local_vars,
                          vec(expr_postcond(*antec), block_postcond(conseq)));
                     auto precond_false_case = seq_preconds
-                        (num_local_vars,
+                        (enclosing,
                          vec(expr_pp(*antec), expr_pp(*altern)));
                     auto postcond_false_case = union_postconds
                         (num_local_vars,
@@ -1085,7 +1121,7 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, &expr e) -> () {
             find_pre_post_block(fm, enclosing, body);
             set_pre_and_post(a,
               rec(precondition=
-                    seq_preconds(num_local_vars,
+                  seq_preconds(enclosing,
                                  vec(expr_pp(*test), 
                                      block_pp(body))),
                   postcondition=
@@ -1105,7 +1141,7 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, &expr e) -> () {
             }
 
             set_pre_and_post(a, 
-               rec(precondition=seq_preconds(num_local_vars,
+                             rec(precondition=seq_preconds(enclosing,
                                              vec(block_pp(body),
                                                  expr_pp(*test))),
                    postcondition=loop_postcond));
@@ -1129,18 +1165,22 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, &expr e) -> () {
             auto f = bind do_an_alt(fm, enclosing, _);
             auto alt_pps = _vec.map[arm, pre_and_post](f, alts);
             fn combine_pp(pre_and_post antec, 
-                          uint num_local_vars, &pre_and_post pp,
+                          fn_info enclosing, &pre_and_post pp,
                           &pre_and_post next) -> pre_and_post {
-                union(pp.precondition, seq_preconds(num_local_vars,
+                union(pp.precondition, seq_preconds(enclosing,
                                          vec(antec, next)));
                 intersect(pp.postcondition, next.postcondition);
                 ret pp;
             }
-            auto e_pp1 = expr_pp(*e);
-            auto e_pp  = pp_clone(e_pp1);
-            auto g = bind combine_pp(e_pp, num_local_vars, _, _);
-            set_pre_and_post(a, _vec.foldl[pre_and_post, pre_and_post]
-                             (g, e_pp, alt_pps));
+            auto antec_pp = pp_clone(expr_pp(*e)); 
+            auto e_pp  = rec(precondition=empty_prestate(num_local_vars),
+                             postcondition=false_postcond(num_local_vars));
+            auto g = bind combine_pp(antec_pp, enclosing, _, _);
+
+            auto alts_overall_pp = _vec.foldl[pre_and_post, pre_and_post]
+                                    (g, e_pp, alt_pps);
+
+            set_pre_and_post(a, alts_overall_pp);
         }
         case (expr_field(?operator, _, ?a)) {
             find_pre_post_expr(fm, enclosing, *operator);
@@ -1271,6 +1311,10 @@ fn find_pre_post_block(&fn_info_map fm, &fn_info enclosing, block b)
 
     fn do_one_(fn_info_map fm, fn_info i, &@stmt s) -> () {
         find_pre_post_stmt(fm, i, *s);
+        log("pre_post for stmt:");
+        log_stmt(*s);
+        log("is:");
+        log_pp(stmt_pp(*s));
     }
     auto do_one = bind do_one_(fm, enclosing, _);
     
@@ -1294,7 +1338,8 @@ fn find_pre_post_block(&fn_info_map fm, &fn_info enclosing, block b)
     auto g = get_pp_expr;
     plus_option[pre_and_post](pps,
        option.map[@expr, pre_and_post](g, b.node.expr));
-    auto block_precond  = seq_preconds(nv, pps);
+
+    auto block_precond  = seq_preconds(enclosing, pps);
     auto h = get_post;
     auto postconds =  _vec.map[pre_and_post, postcond](h, pps);
     /* A block may be empty, so this next line ensures that the postconds
@@ -1305,6 +1350,7 @@ fn find_pre_post_block(&fn_info_map fm, &fn_info enclosing, block b)
     if (! has_nonlocal_exits(b)) {
         block_postcond = union_postconds(nv, postconds);
     }
+
     set_pre_and_post(b.node.a, rec(precondition=block_precond,
                                    postcondition=block_postcond));
 }
@@ -1661,6 +1707,13 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
                 changed = extend_poststate_ann(a, poststate_res) || changed;
             }
         }
+        log("if:");
+        log_expr(*e);
+        log("new prestate:");
+        log_bitv(enclosing, pres);
+        log("new poststate:");
+        log_bitv(enclosing, expr_poststate(*e));
+
         ret changed;
     }
     case (expr_binary(?bop, ?l, ?r, ?a)) {
@@ -1826,16 +1879,15 @@ fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
   auto stmt_ann_ = stmt_to_ann(*s);
   check (!is_none[@ts_ann](stmt_ann_));
   auto stmt_ann = *(get[@ts_ann](stmt_ann_));
-  /*
-              log_err("*At beginning: stmt = ");
+              log("*At beginning: stmt = ");
               log_stmt(*s);
-              log_err("*prestate = ");
-              log_err(bitv.to_str(stmt_ann.states.prestate));
-              log_err("*poststate =");
-              log_err(bitv.to_str(stmt_ann.states.poststate));
-              log_err("*changed =");
+              log("*prestate = ");
+              log(bitv.to_str(stmt_ann.states.prestate));
+              log("*poststate =");
+              log(bitv.to_str(stmt_ann.states.poststate));
+              log("*changed =");
               log(changed);
-  */
+  
   alt (s.node) {
     case (stmt_decl(?adecl, ?a)) {
       alt (adecl.node) {
@@ -1850,17 +1902,16 @@ fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
                                            expr_poststate(*an_init.expr))
                     || changed;
                 changed = gen_poststate(enclosing, a, alocal.id) || changed;
-                /*  
-              log_err("Summary: stmt = ");
+              log("Summary: stmt = ");
               log_stmt(*s);
-              log_err("prestate = ");
-              log_err(bitv.to_str(stmt_ann.states.prestate));
+              log("prestate = ");
+              log(bitv.to_str(stmt_ann.states.prestate));
               log_bitv(enclosing, stmt_ann.states.prestate);
-              log_err("poststate =");
+              log("poststate =");
               log_bitv(enclosing, stmt_ann.states.poststate);
-              log_err("changed =");
-              log_err(changed);
-                */
+              log("changed =");
+              log(changed);
+  
               ret changed;
             }
             case (none[ast.initializer]) {
@@ -1888,16 +1939,17 @@ fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
       changed = extend_poststate(stmt_ann.states.poststate,
                                  expr_poststate(*e)) || changed;
 
-      /*              log_err("Summary: stmt = ");
+                    log("Summary: stmt = ");
               log_stmt(*s);
-              log_err("prestate = ");
-              log_err(bitv.to_str(stmt_ann.states.prestate));
+              log("prestate = ");
+              log(bitv.to_str(stmt_ann.states.prestate));
               log_bitv(enclosing, stmt_ann.states.prestate);
-              log_err("poststate =");
+              log("poststate =");
+              log(bitv.to_str(stmt_ann.states.poststate));
               log_bitv(enclosing, stmt_ann.states.poststate);
-              log_err("changed =");
-              log_err(changed);
-      */
+              log("changed =");
+              log(changed);
+      
       ret changed;
     }
     case (_) { ret false; }
@@ -1909,9 +1961,7 @@ fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
 fn find_pre_post_state_block(&fn_info_map fm, &fn_info enclosing,
                              &prestate pres0, &block b)
   -> bool {
-
-    /* FIXME handle non-local exits */
-
+    
   auto changed = false;
   auto num_local_vars = num_locals(enclosing);
 
@@ -1952,16 +2002,16 @@ fn find_pre_post_state_block(&fn_info_map fm, &fn_info enclosing,
   set_prestate_ann(@b.node.a, pres0);
   set_poststate_ann(b.node.a, post);
 
-  /*
-  log_err("For block:");
+
+  log("For block:");
   log_block(b);
-  log_err("poststate = ");
+  log("poststate = ");
   log_states(block_states(b));
-  log_err("pres0:");
+  log("pres0:");
   log_bitv(enclosing, pres0);
-  log_err("post:");
+  log("post:");
   log_bitv(enclosing, post);
-  */
+
 
   ret changed;
 }
