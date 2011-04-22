@@ -28,26 +28,22 @@ fn next_line(filemap file, uint pos) {
 }
 
 fn lookup_pos(codemap map, uint pos) -> loc {
-    auto i = _vec.len[filemap](map.files);
-    while (i > 0u) {
-        i -= 1u;
-        auto f = map.files.(i);
-        if (f.start_pos <= pos) {
-            // FIXME this can be a binary search if we need to be faster
-            auto line = _vec.len[uint](f.lines);
-            while (line > 0u) {
-                line -= 1u;
-                auto line_start = f.lines.(line);
-                if (line_start <= pos) {
-                    ret rec(filename=f.name,
-                            line=line + 1u,
-                            col=pos-line_start);
-                }
-            }
-        }
+    auto a = 0u; auto b = _vec.len[filemap](map.files);
+    while (b - a > 1u) {
+        auto m = (a + b) / 2u;
+        if (map.files.(m).start_pos > pos) { b = m; }
+        else { a = m; }
     }
-    log_err #fmt("Failed to find a location for character %u", pos);
-    fail;
+    auto f = map.files.(a);
+    a = 0u; b = _vec.len[uint](f.lines);
+    while (b - a > 1u) {
+        auto m = (a + b) / 2u;
+        if (f.lines.(m) > pos) { b = m; }
+        else { a = m; }
+    }
+    ret rec(filename=f.name,
+            line=a + 1u,
+            col=pos - f.lines.(a));
 }
 
 //
