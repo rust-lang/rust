@@ -70,5 +70,6 @@ extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR, LLVMModuleRef M,
 
   bool foo = Target.addPassesToEmitFile(*PM, FOS, FileType2, OLvl, NoVerify);
   assert(!foo);
+  (void)foo;
   PM->run(*unwrap(M));
 }

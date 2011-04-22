@@ -7066,6 +7066,7 @@ fn run_passes(ModuleRef llmod, bool opt, bool verify, str output,
                                      _str.buf(x86.get_target_triple()),
                                      _str.buf(output),
                                      FileType);
+        llvm.LLVMDisposeModule(llmod);
         ret;
     }
 
