@@ -217,6 +217,9 @@ fn mk_native(@type_store ts) -> t        { ret gen_ty(ts, ty_native); }
 // Returns the one-level-deep type structure of the given type.
 fn struct(t typ) -> sty { ret typ.struct; }
 
+// Returns the canonical name of the given type.
+fn cname(t typ) -> option.t[str] { ret typ.cname; }
+
 
 // Stringification
 
@@ -346,7 +349,7 @@ fn ty_to_str(&t typ) -> str {
         }
 
         case (ty_obj(?meths)) {
-            alt (typ.cname) {
+            alt (cname(typ)) {
                 case (some[str](?cs)) {
                     s += cs;
                 }
@@ -1214,15 +1217,15 @@ fn eq_ty_full(&t a, &t b) -> bool {
     }
 
     // Check canonical names.
-    alt (a.cname) {
+    alt (cname(a)) {
         case (none[str]) {
-            alt (b.cname) {
+            alt (cname(b)) {
                 case (none[str]) { /* ok */ }
                 case (_) { ret false; }
             }
         }
         case (some[str](?s_a)) {
-            alt (b.cname) {
+            alt (cname(b)) {
                 case (some[str](?s_b)) {
                     if (!_str.eq(s_a, s_b)) { ret false; }
                 }
