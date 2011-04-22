@@ -183,8 +183,11 @@ fn path_name(vec[str] path) -> str {
 
 fn mangle_name_by_type(@crate_ctxt ccx, vec[str] path, ty.t t) -> str {
     ccx.sha.reset();
+
     auto f = metadata.def_to_str;
-    ccx.sha.input_str(metadata.ty_str(t, f));
+    auto cx = @rec(ds=f);
+    ccx.sha.input_str(metadata.Encode.ty_str(cx, t));
+
     ret sep() + "rust" + sep()
         + _str.substr(ccx.sha.result_str(), 0u, 16u) + sep()
         + path_name(path);
