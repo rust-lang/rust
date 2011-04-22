@@ -330,7 +330,9 @@ fn ast_ty_to_ty(@ty.type_store tystore,
 
     alt (cname) {
         case (none[str]) { /* no-op */ }
-        case (some[str](?cname_str)) { typ = ty.rename(typ, cname_str); }
+        case (some[str](?cname_str)) {
+            typ = ty.rename(tystore, typ, cname_str);
+        }
     }
     ret typ;
 }
@@ -440,7 +442,7 @@ mod Collect {
         auto methods = _vec.map[@ast.method,method](f, obj_info.methods);
 
         auto t_obj = ty.mk_obj(cx.tystore, ty.sort_methods(methods));
-        t_obj = ty.rename(t_obj, id);
+        t_obj = ty.rename(cx.tystore, t_obj, id);
         auto ty_param_count = _vec.len[ast.ty_param](ty_params);
         ret tup(ty_param_count, t_obj);
     }

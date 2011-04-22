@@ -36,8 +36,7 @@ fn method_ty_to_fn_ty(@type_store tystore, method m) -> @ty.t {
     ret mk_fn(tystore, m.proto, m.inputs, m.output);
 }
 
-// Do not construct these manually. Soon we want to intern these, at which
-// point that will break.
+// Never construct these manually. These are interned.
 //
 // TODO: It'd be really nice to be able to hide this definition from the
 // outside world, to enforce the above invariant.
@@ -101,21 +100,37 @@ type ty_param_count_and_ty = tup(uint, @t);
 type type_cache = hashmap[ast.def_id,ty_param_count_and_ty];
 
 
-type type_store = hashmap[@t,()];
+type type_store = hashmap[@t,@t];
 
-fn mk_type_store() -> @hashmap[@t,()] {
+fn mk_type_store() -> @type_store {
     auto hasher = hash_ty;
-    auto eqer = eq_ty;
-    ret @map.mk_hashmap[@t,()](hasher, eqer);
+    auto eqer = eq_ty_full;
+    ret @map.mk_hashmap[@t,@t](hasher, eqer);
 }
 
 // Type constructors
 
-// This is a private constructor to this module. External users should always
+// These are private constructors to this module. External users should always
 // use the mk_foo() functions below.
 fn gen_ty(@type_store tystore, &sty st) -> @t {
-    // TODO: Intern the type.
-    ret @rec(struct=st, cname=none[str], hash=hash_type_structure(st));
+    ret gen_ty_full(tystore, st, none[str]);
+}
+
+fn gen_ty_full(@type_store tystore, &sty st, option.t[str] cname) -> @t {
+    auto h = hash_type_structure(st);
+    auto new_type = @rec(struct=st, cname=cname, hash=h);
+
+    // Is it interned?
+    alt (tystore.find(new_type)) {
+        case (some[@t](?typ)) {
+            ret typ;
+        }
+        case (none[@t]) {
+            // Nope. Insert it and return.
+            tystore.insert(new_type, new_type);
+            ret new_type;
+        }
+    }
 }
 
 fn mk_nil(@type_store ts) -> @t          { ret gen_ty(ts, ty_nil); }
@@ -438,29 +453,30 @@ fn fold_ty(@type_store tystore, ty_fold fld, @t ty_0) -> @t {
         case (ty_type)          { /* no-op */ }
         case (ty_native)        { /* no-op */ }
         case (ty_box(?tm)) {
-            ty = copy_cname(mk_box(tystore,
+            ty = copy_cname(tystore,
+                            mk_box(tystore,
                                    rec(ty=fold_ty(tystore, fld, tm.ty),
                                        mut=tm.mut)), ty);
         }
         case (ty_vec(?tm)) {
-            ty = copy_cname(mk_vec(tystore,
-                                   rec(ty=fold_ty(tystore, fld, tm.ty),
-                                       mut=tm.mut)), ty);
+            ty = copy_cname(tystore,
+                mk_vec(tystore, rec(ty=fold_ty(tystore, fld, tm.ty),
+                                    mut=tm.mut)), ty);
         }
         case (ty_port(?subty)) {
-            ty = copy_cname(mk_port(tystore, fold_ty(tystore, fld, subty)),
-                            ty);
+            ty = copy_cname(tystore,
+                mk_port(tystore, fold_ty(tystore, fld, subty)), ty);
         }
         case (ty_chan(?subty)) {
-            ty = copy_cname(mk_chan(tystore, fold_ty(tystore, fld, subty)),
-                            ty);
+            ty = copy_cname(tystore,
+                mk_chan(tystore, fold_ty(tystore, fld, subty)), ty);
         }
         case (ty_tag(?tid, ?subtys)) {
             let vec[@t] new_subtys = vec();
             for (@t subty in subtys) {
                 new_subtys += vec(fold_ty(tystore, fld, subty));
             }
-            ty = copy_cname(mk_tag(tystore, tid, new_subtys), ty);
+            ty = copy_cname(tystore, mk_tag(tystore, tid, new_subtys), ty);
         }
         case (ty_tup(?mts)) {
             let vec[mt] new_mts = vec();
@@ -468,7 +484,7 @@ fn fold_ty(@type_store tystore, ty_fold fld, @t ty_0) -> @t {
                 auto new_subty = fold_ty(tystore, fld, tm.ty);
                 new_mts += vec(rec(ty=new_subty, mut=tm.mut));
             }
-            ty = copy_cname(mk_tup(tystore, new_mts), ty);
+            ty = copy_cname(tystore, mk_tup(tystore, new_mts), ty);
         }
         case (ty_rec(?fields)) {
             let vec[field] new_fields = vec();
@@ -477,7 +493,7 @@ fn fold_ty(@type_store tystore, ty_fold fld, @t ty_0) -> @t {
                 auto new_mt = rec(ty=new_ty, mut=fl.mt.mut);
                 new_fields += vec(rec(ident=fl.ident, mt=new_mt));
             }
-            ty = copy_cname(mk_rec(tystore, new_fields), ty);
+            ty = copy_cname(tystore, mk_rec(tystore, new_fields), ty);
         }
         case (ty_fn(?proto, ?args, ?ret_ty)) {
             let vec[arg] new_args = vec();
@@ -485,7 +501,7 @@ fn fold_ty(@type_store tystore, ty_fold fld, @t ty_0) -> @t {
                 auto new_ty = fold_ty(tystore, fld, a.ty);
                 new_args += vec(rec(mode=a.mode, ty=new_ty));
             }
-            ty = copy_cname(mk_fn(tystore, proto, new_args,
+            ty = copy_cname(tystore, mk_fn(tystore, proto, new_args,
                                   fold_ty(tystore, fld, ret_ty)),
                             ty);
         }
@@ -495,7 +511,7 @@ fn fold_ty(@type_store tystore, ty_fold fld, @t ty_0) -> @t {
                 auto new_ty = fold_ty(tystore, fld, a.ty);
                 new_args += vec(rec(mode=a.mode, ty=new_ty));
             }
-            ty = copy_cname(mk_native_fn(tystore, abi, new_args,
+            ty = copy_cname(tystore, mk_native_fn(tystore, abi, new_args,
                                          fold_ty(tystore, fld, ret_ty)),
                             ty);
         }
@@ -512,7 +528,7 @@ fn fold_ty(@type_store tystore, ty_fold fld, @t ty_0) -> @t {
                                        output=fold_ty(tystore, fld,
                                                       m.output)));
             }
-            ty = copy_cname(mk_obj(tystore, new_methods), ty);
+            ty = copy_cname(tystore, mk_obj(tystore, new_methods), ty);
         }
         case (ty_var(_))         { /* no-op */ }
         case (ty_local(_))       { /* no-op */ }
@@ -525,16 +541,14 @@ fn fold_ty(@type_store tystore, ty_fold fld, @t ty_0) -> @t {
 
 // Type utilities
 
-fn rename(@t typ, str new_cname) -> @t {
-    ret @rec(struct=typ.struct, cname=some[str](new_cname), hash=typ.hash);
+fn rename(@type_store tystore, @t typ, str new_cname) -> @t {
+    ret gen_ty_full(tystore, typ.struct, some[str](new_cname));
 }
 
 // Returns a type with the structural part taken from `struct_ty` and the
 // canonical name from `cname_ty`.
-fn copy_cname(@t struct_ty, @t cname_ty) -> @t {
-    ret @rec(struct=struct_ty.struct,
-             cname=cname_ty.cname,
-             hash=struct_ty.hash);
+fn copy_cname(@type_store tystore, @t struct_ty, @t cname_ty) -> @t {
+    ret gen_ty_full(tystore, struct_ty.struct, cname_ty.cname);
 }
 
 // FIXME: remove me when == works on these tags.
@@ -1028,7 +1042,7 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_tag(?id_a, ?tys_a)) {
             alt (b) {
                 case (ty_tag(?id_b, ?tys_b)) {
-                    if (id_a != id_b) { ret false; }
+                    if (!equal_def(id_a, id_b)) { ret false; }
 
                     auto len = _vec.len[@ty.t](tys_a);
                     if (len != _vec.len[@ty.t](tys_b)) { ret false; }
@@ -1134,10 +1148,11 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
                         auto m_a = methods_a.(i); auto m_b = methods_b.(i);
                         if (!equal_proto(m_a.proto, m_b.proto) ||
                                 !_str.eq(m_a.ident, m_b.ident) ||
-                                equal_fn(m_a.inputs, m_a.output,
-                                         m_b.inputs, m_b.output)) {
+                                !equal_fn(m_a.inputs, m_a.output,
+                                          m_b.inputs, m_b.output)) {
                             ret false;
                         }
+                        i += 1u;
                     }
                     ret true;
                 }
@@ -1183,315 +1198,40 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
     }
 }
 
-
-fn ty_is_simple(&@t a) -> bool {
-    // a "simple" type is one in which the hash
-    // field uniquely identifies the type. In
-    // a world with sane compiler-generated
-    // structural comparison code, we'd not
-    // be producing this sort of thing.
-    alt (a.struct) {
-        case (ty_nil) { ret true; }
-        case (ty_bool) { ret true; }
-        case (ty_int) { ret true; }
-        case (ty_float) { ret true; }
-        case (ty_uint) { ret true; }
-        case (ty_machine(_)) { ret true; }
-        case (ty_char) { ret true; }
-        case (ty_str) { ret true; }
-        case (ty_task) { ret true; }
-        case (ty_type) { ret true; }
-        case (_) { ret false; }
-    }
-    ret false;
-}
-
-
-fn eq_args(vec[arg] az, vec[arg] bz) -> bool {
-    if (_vec.len[arg](az) !=
-        _vec.len[arg](bz)) { ret false; }
-    let uint i = 0u;
-    for (arg a in az) {
-        if (a.mode != bz.(i).mode) {
-            ret false;
-        }
-        if (!eq_ty(a.ty, bz.(i).ty)) {
-            ret false;
-        }
-        i += 1u;
-    }
-    ret true;
-}
-
-
-fn eq_tys(vec[@t] az, vec[@t] bz) -> bool {
-    if (_vec.len[@t](az) !=
-        _vec.len[@t](bz)) { ret false; }
-    let uint i = 0u;
-    for (@t a in az) {
-        if (!eq_ty(a, bz.(i))) {
-            ret false;
-        }
-        i += 1u;
-    }
-    ret true;
-}
-
-fn eq_mt(&mt a, &mt b) -> bool {
-    if (a.mut != b.mut) {
-        ret false;
-    }
-    ret eq_ty(a.ty, b.ty);
-}
-
-fn eq_mts(vec[mt] az, vec[mt] bz) -> bool {
-    if (_vec.len[mt](az) !=
-        _vec.len[mt](bz)) { ret false; }
-    let uint i = 0u;
-    for (mt a in az) {
-        if (!eq_mt(a, bz.(i))) {
-            ret false;
-        }
-        i += 1u;
-    }
-    ret true;
-}
-
-
-fn eq_fields(vec[field] az, vec[field] bz) -> bool {
-    if (_vec.len[field](az) !=
-        _vec.len[field](bz)) { ret false; }
-    let uint i = 0u;
-    for (field a in az) {
-        if (!_str.eq(a.ident, bz.(i).ident)) {
-            ret false;
-        }
-        if (a.mt.mut != bz.(i).mt.mut) {
-            ret false;
-        }
-        if (!eq_ty(a.mt.ty, bz.(i).mt.ty)) {
-            ret false;
-        }
-        i += 1u;
-    }
-    ret true;
-}
-
-fn eq_def_id(&ast.def_id a, &ast.def_id b) -> bool {
-    ret a._0 == b._0 && a._1 == b._1;
-}
-
-fn eq_ty(&@t a, &@t b) -> bool {
-
+// An expensive type equality function. This function is private to this
+// module.
+fn eq_ty_full(&@t a, &@t b) -> bool {
+    // Check hashes (fast path).
     if (a.hash != b.hash) {
         ret false;
     }
 
-
-    if (ty_is_simple(a)) {
-        if (ty_is_simple(b)) {
-            ret a.hash == b.hash;
+    // Check canonical names.
+    alt (a.cname) {
+        case (none[str]) {
+            alt (b.cname) {
+                case (none[str]) { /* ok */ }
+                case (_) { ret false; }
+            }
         }
-        ret false;
+        case (some[str](?s_a)) {
+            alt (b.cname) {
+                case (some[str](?s_b)) {
+                    if (!_str.eq(s_a, s_b)) { ret false; }
+                }
+                case (_) { ret false; }
+            }
+        }
     }
 
-    alt (a.struct) {
-        case (ty_tag(?did_a, ?tys_a)) {
-            alt (b.struct) {
-                case (ty_tag(?did_b, ?tys_b)) {
-                    if (!eq_def_id(did_a, did_b)) {
-                        ret false;
-                    }
-                    ret eq_tys(tys_a, tys_b);
-                }
-                case (_) { ret false; }
-            }
-        }
-
-        case (ty_box(?mt_a)) {
-            alt (b.struct) {
-                case (ty_box(?mt_b)) {
-                    ret eq_mt(mt_a, mt_b);
-                }
-                case (_) {
-                    ret false;
-                }
-            }
-        }
-
-        case (ty_vec(?mt_a)) {
-            alt (b.struct) {
-                case (ty_vec(?mt_b)) {
-                    ret eq_mt(mt_a, mt_b);
-                }
-                case (_) {
-                    ret false;
-                }
-            }
-        }
-
-        case (ty_port(?t_a)) {
-            alt (b.struct) {
-                case (ty_port(?t_b)) {
-                    ret eq_ty(t_a, t_b);
-                }
-                case (_) {
-                    ret false;
-                }
-            }
-        }
-
-        case (ty_chan(?t_a)) {
-            alt (b.struct) {
-                case (ty_chan(?t_b)) {
-                    ret eq_ty(t_a, t_b);
-                }
-                case (_) {
-                    ret false;
-                }
-            }
-        }
-
-        case (ty_tup(?mts_a)) {
-            alt (b.struct) {
-                case (ty_tup(?mts_b)) {
-                    ret eq_mts(mts_a, mts_b);
-                }
-                case (_) {
-                    ret false;
-                }
-            }
-        }
-
-        case (ty_rec(?fields_a)) {
-            alt (b.struct) {
-                case (ty_rec(?fields_b)) {
-                    ret eq_fields(fields_a, fields_b);
-                }
-                case (_) {
-                    ret false;
-                }
-            }
-        }
-
-        case (ty_fn(?proto_a, ?args_a, ?rty_a)) {
-            alt (b.struct) {
-                case (ty_fn(?proto_b, ?args_b, ?rty_b)) {
-                    if (proto_a != proto_b) {
-                        ret false;
-                    }
-                    if (!eq_args(args_a, args_b)) {
-                        ret false;
-                    }
-                    ret eq_ty(rty_a, rty_b);
-                }
-                case (_) {
-                    ret false;
-                }
-            }
-        }
-
-        case (ty_native_fn(?abi_a, ?args_a, ?rty_a)) {
-            alt (b.struct) {
-                case (ty_native_fn(?abi_b, ?args_b, ?rty_b)) {
-                    if (abi_a != abi_b) {
-                        ret false;
-                    }
-                    if (!eq_args(args_a, args_b)) {
-                        ret false;
-                    }
-                    ret eq_ty(rty_a, rty_b);
-                }
-                case (_) {
-                    ret false;
-                }
-            }
-        }
-
-        case (ty_obj(?methods_a)) {
-            alt (b.struct) {
-                case (ty_obj(?methods_b)) {
-                    if (_vec.len[method](methods_a) !=
-                        _vec.len[method](methods_b)) {
-                        ret false;
-                    }
-                    let uint i = 0u;
-                    for (method m_a in methods_a) {
-                        if (!_str.eq(m_a.ident,
-                                     methods_b.(i).ident)) {
-                            ret false;
-                        }
-                        if (!eq_args(m_a.inputs,
-                                     methods_b.(i).inputs)) {
-                            ret false;
-                        }
-                        if (!eq_ty(m_a.output,
-                                   methods_b.(i).output)) {
-                            ret false;
-                        }
-                        i += 1u;
-                    }
-                    ret true;
-                }
-                case (_) {
-                    ret false;
-                }
-            }
-        }
-
-        case (ty_var(?v_a)) {
-            alt (b.struct) {
-                case (ty_var(?v_b)) {
-                    ret v_a == v_b;
-                }
-                case (_) { ret false; }
-            }
-        }
-
-        case (ty_local(?did_a)) {
-            alt (b.struct) {
-                case (ty_local(?did_b)) {
-                    ret eq_def_id(did_a, did_b);
-                }
-                case (_) { ret false; }
-            }
-        }
-
-        case (ty_param(?pid_a)) {
-            alt (b.struct) {
-                case (ty_param(?pid_b)) {
-                    ret pid_a == pid_b;
-                }
-                case (_) { ret false; }
-            }
-        }
-
-        case (ty_bound_param(?pid_a)) {
-            alt (b.struct) {
-                case (ty_bound_param(?pid_b)) {
-                    ret pid_a == pid_b;
-                }
-                case (_) { ret false; }
-            }
-        }
-
-        // FIXME: this should carry the native ID with it.
-        case (ty_native) {
-            alt (b.struct) {
-                case (ty_native) {
-                    ret true;
-                }
-                case (_) { ret false; }
-            }
-        }
-
-        case (_) {
-            // Should be impossible.
-            fail;
-        }
-    }
-    ret false;
+    // Check structures.
+    ret equal_type_structures(a.struct, b.struct);
 }
+
+// This is the equality function the public should use. It works as long as
+// the types are interned.
+fn eq_ty(&@t a, &@t b) -> bool { ret Box.ptr_eq[t](a, b); }
+
 
 fn ann_to_type(&ast.ann ann) -> @t {
     alt (ann) {

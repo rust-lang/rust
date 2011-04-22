@@ -2854,12 +2854,12 @@ fn target_type(@crate_ctxt cx, @ty.t t) -> @ty.t {
         case (ty.ty_int) {
             auto struct_ty = ty.mk_mach(cx.tystore,
                                         cx.sess.get_targ_cfg().int_type);
-            ret ty.copy_cname(struct_ty, t);
+            ret ty.copy_cname(cx.tystore, struct_ty, t);
         }
         case (ty.ty_uint) {
             auto struct_ty = ty.mk_mach(cx.tystore,
                                         cx.sess.get_targ_cfg().uint_type);
-            ret ty.copy_cname(struct_ty, t);
+            ret ty.copy_cname(cx.tystore, struct_ty, t);
         }
         case (_) { /* fall through */ }
     }
