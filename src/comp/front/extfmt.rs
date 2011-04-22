@@ -46,7 +46,7 @@ export expand_syntax_ext;
 
 // FIXME: Need to thread parser through here to handle errors correctly
 fn expand_syntax_ext(vec[@ast.expr] args,
-                     option.t[@ast.expr] body) -> @ast.expr {
+                     option.t[str] body) -> @ast.expr {
 
     if (_vec.len[@ast.expr](args) == 0u) {
         log_err "malformed #fmt call";

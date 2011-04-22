@@ -173,7 +173,7 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &span sp,
          &path p, vec[@expr] args,
-         option.t[@expr] body,
+         option.t[str] body,
          @expr expanded,
          ann a) -> @expr)                         fold_expr_ext,
 
@@ -1343,7 +1343,7 @@ fn identity_fold_expr_path[ENV](&ENV env, &span sp,
 
 fn identity_fold_expr_ext[ENV](&ENV env, &span sp,
                                &path p, vec[@expr] args,
-                               option.t[@expr] body,
+                               option.t[str] body,
                                @expr expanded,
                                ann a) -> @expr {
     ret @respan(sp, ast.expr_ext(p, args, body, expanded, a));

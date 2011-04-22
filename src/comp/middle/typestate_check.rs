@@ -1922,9 +1922,9 @@ fn annotate_expr(&fn_info_map fm, &@expr e) -> @expr {
         case (expr_path(_,_,_)) {
             /* no change */
         }
-        case (expr_ext(?p, ?es, ?e_opt, ?e, ?a)) {
+        case (expr_ext(?p, ?es, ?s_opt, ?e, ?a)) {
             e1 = expr_ext(p, annotate_exprs(fm, es),
-                          annotate_option_exp(fm, e_opt),
+                          s_opt,
                           annotate_expr(fm, e), a);
         }
         /* no change, next 3 cases */

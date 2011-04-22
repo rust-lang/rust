@@ -794,7 +794,7 @@ fn parse_bottom_expr(parser p) -> @ast.expr {
                                            pf, p);
             hi = es.span.hi;
             ex = expand_syntax_ext(p, es.span, pth, es.node,
-                                   none[@ast.expr]);
+                                   none[str]);
         }
 
         case (token.FAIL) {
@@ -935,7 +935,7 @@ fn parse_bottom_expr(parser p) -> @ast.expr {
 
 fn expand_syntax_ext(parser p, ast.span sp,
                      &ast.path path, vec[@ast.expr] args,
-                     option.t[@ast.expr] body) -> ast.expr_ {
+                     option.t[str] body) -> ast.expr_ {
 
     check (_vec.len[ast.ident](path.node.idents) > 0u);
     auto extname = path.node.idents.(0);

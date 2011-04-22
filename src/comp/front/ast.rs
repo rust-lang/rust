@@ -275,7 +275,7 @@ tag expr_ {
     expr_field(@expr, ident, ann);
     expr_index(@expr, @expr, ann);
     expr_path(path, option.t[def], ann);
-    expr_ext(path, vec[@expr], option.t[@expr], @expr, ann);
+    expr_ext(path, vec[@expr], option.t[str], @expr, ann);
     expr_fail(ann);
     expr_break(ann);
     expr_cont(ann);
