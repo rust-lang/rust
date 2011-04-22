@@ -16,6 +16,7 @@ import std.io.string_writer;
 import pretty.pprust.print_block;
 import pretty.pprust.print_expr;
 import pretty.pprust.print_decl;
+import pretty.pprust.print_fn;
 import pretty.pp.mkstate;
 
 type filename = str;
@@ -167,6 +168,25 @@ fn log_ann(&ast.ann a) -> () {
             log("ann_type");
         }
     }
+}
+
+fn fun_to_str(&ast._fn f, str name, vec[ast.ty_param] params) -> str {
+ let str_writer s = string_writer();
+  auto out_ = mkstate(s.get_writer(), 80u);
+  auto out = @rec(s=out_,
+                  comments=none[vec[front.lexer.cmnt]],
+                  mutable cur_cmnt=0u);
+
+  print_fn(out, f.decl, name, params);
+  ret s.get_str();
+}
+
+fn log_fn(&ast._fn f, str name, vec[ast.ty_param] params) -> () {
+    log(fun_to_str(f, name, params));
+}
+
+fn log_fn_err(&ast._fn f, str name, vec[ast.ty_param] params) -> () {
+    log_err(fun_to_str(f, name, params));
 }
 
 fn stmt_to_str(&ast.stmt st) -> str {
