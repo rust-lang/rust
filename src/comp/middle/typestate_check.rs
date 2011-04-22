@@ -106,6 +106,7 @@ import util.common.log_stmt;
 import util.common.log_block;
 import util.common.log_stmt_err;
 import util.common.log_block_err;
+import util.common.has_nonlocal_exits;
 import util.common.decl_lhs;
 import util.typestate_ann;
 import util.typestate_ann.ts_ann;
@@ -464,6 +465,9 @@ fn expr_ann(&expr e) -> ann {
         ret a;
     }
     case (expr_cont(?a)) {
+        ret a;
+    }
+    case (expr_self_method(_, ?a)) {
         ret a;
     }
   }
@@ -896,6 +900,11 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, &expr e) -> () {
             _vec.push[@expr](args, operator);
             find_pre_post_exprs(fm, enclosing, args, a);
         }
+        case (expr_spawn(_, _, ?operator, ?operands, ?a)) {
+            auto args = _vec.clone[@expr](operands);
+            _vec.push[@expr](args, operator);
+            find_pre_post_exprs(fm, enclosing, args, a);
+        }
         case (expr_vec(?args, _, ?a)) {
             find_pre_post_exprs(fm, enclosing, args, a);
         }
@@ -923,7 +932,16 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, &expr e) -> () {
             // Otherwise, variable is global, so it must be initialized
             set_pre_and_post(a, res);
         }
+        case (expr_self_method(?v, ?a)) {
+            /* v is a method of the enclosing obj, so it must be
+               initialized, right? */
+            set_pre_and_post(a, empty_pre_post(num_local_vars));
+        }
         case(expr_log(_, ?arg, ?a)) {
+            find_pre_post_expr(fm, enclosing, *arg);
+            set_pre_and_post(a, expr_pp(*arg));
+        }
+        case (expr_chan(?arg, ?a)) {
             find_pre_post_expr(fm, enclosing, *arg);
             set_pre_and_post(a, expr_pp(*arg));
         }
@@ -963,6 +981,22 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, &expr e) -> () {
                 }
             }
         }
+        case (expr_recv(?lhs, ?rhs, ?a)) {
+            alt (lhs.node) {
+                case (expr_path(?p, some[def](def_local(?d_id)), ?a_lhs)) {
+                    find_pre_post_expr(fm, enclosing, *rhs);
+                    set_pre_and_post(a, expr_pp(*rhs));
+                    log("gen:");
+                    log_expr(e);
+                    gen(enclosing, a, d_id);
+                }
+                case (_) {
+                    // doesn't check that lhs is an lval, but
+                    // that's probably ok
+                    find_pre_post_exprs(fm, enclosing, vec(lhs, rhs), a);
+                }
+            }
+        }
         case (expr_assign_op(_, ?lhs, ?rhs, ?a)) {
             /* Different from expr_assign in that the lhs *must*
                already be initialized */
@@ -986,6 +1020,11 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, &expr e) -> () {
                     set_pre_and_post(a, pp);
                 }
             }
+        }
+        case (expr_be(?e, ?a)) {
+            find_pre_post_expr(fm, enclosing, *e);
+            set_pre_and_post(a, rec(precondition=expr_prestate(*e),
+                          postcondition=false_postcond(num_local_vars)));
         }
         case (expr_if(?antec, ?conseq, ?maybe_alt, ?a)) {
             find_pre_post_expr(fm, enclosing, *antec);
@@ -1028,6 +1067,9 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, &expr e) -> () {
              FIXME */
             find_pre_post_exprs(fm, enclosing, vec(l, r), a);
         }
+        case (expr_send(?l, ?r, ?a)) {
+            find_pre_post_exprs(fm, enclosing, vec(l, r), a);
+        }
         case (expr_unary(_,?operand,?a)) {
             find_pre_post_expr(fm, enclosing, *operand);
             set_pre_and_post(a, expr_pp(*operand));
@@ -1047,6 +1089,24 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, &expr e) -> () {
                   postcondition=
                   intersect_postconds(vec(expr_postcond(*test),
                                           block_postcond(body)))));
+        }
+        case (expr_do_while(?body, ?test, ?a)) {
+            find_pre_post_block(fm, enclosing, body);
+            find_pre_post_expr(fm, enclosing, *test);
+   
+            auto loop_postcond = union_postconds(num_local_vars,
+                            vec(block_postcond(body), expr_postcond(*test)));
+            /* conservative approximination: if the body
+               could break or cont, the test may never be executed */
+            if (has_nonlocal_exits(body)) {
+                loop_postcond = empty_poststate(num_local_vars);
+            }
+
+            set_pre_and_post(a, 
+               rec(precondition=seq_preconds(num_local_vars,
+                                             vec(block_pp(body),
+                                                 expr_pp(*test))),
+                   postcondition=loop_postcond));
         }
         case (expr_for(?d, ?index, ?body, ?a)) {
             find_pre_post_loop(fm, enclosing, d, index, body, a);
@@ -1104,10 +1164,15 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, &expr e) -> () {
         case (expr_break(?a)) {
             set_pre_and_post(a, empty_pre_post(num_local_vars));
         }
-        case(_) {
-            log_err("this sort of expr isn't implemented!");
-            log_expr_err(e);
-            fail;
+        case (expr_cont(?a)) {
+            set_pre_and_post(a, empty_pre_post(num_local_vars));
+        }
+        case (expr_port(?a)) {
+            set_pre_and_post(a, empty_pre_post(num_local_vars));
+        }
+        case (expr_ext(_, _, _, ?expanded, ?a)) {
+            find_pre_post_expr(fm, enclosing, *expanded);
+            set_pre_and_post(a, expr_pp(*expanded));
         }
     }
 }
@@ -1181,6 +1246,22 @@ fn find_pre_post_stmt(fn_info_map fm, &fn_info enclosing, &ast.stmt s)
 
 fn find_pre_post_block(&fn_info_map fm, &fn_info enclosing, block b)
     -> () {
+    /* Want to say that if there is a break or cont in this
+     block, then that invalidates the poststate upheld by
+    any of the stmts after it. 
+    Given that the typechecker has run, we know any break will be in
+    a block that forms a loop body. So that's ok. There'll never be an
+    expr_break outside a loop body, therefore, no expr_break outside a block.
+    */
+
+    /* Conservative approximation for now: This says that if a block contains
+     *any* breaks or conts, then its postcondition doesn't promise anything.
+     This will mean that:
+     x = 0;
+     break;
+
+     won't have a postcondition that says x is initialized, but that's ok.
+     */
     auto nv = num_locals(enclosing);
 
     fn do_one_(fn_info_map fm, fn_info i, &@stmt s) -> () {
@@ -1214,7 +1295,11 @@ fn find_pre_post_block(&fn_info_map fm, &fn_info enclosing, block b)
     /* A block may be empty, so this next line ensures that the postconds
        vector is non-empty. */
     _vec.push[postcond](postconds, block_precond);
-    auto block_postcond = union_postconds(nv, postconds);
+    auto block_postcond = empty_poststate(nv);
+    /* conservative approximation */
+    if (! has_nonlocal_exits(b)) {
+        block_postcond = union_postconds(nv, postconds);
+    }
     set_pre_and_post(b.node.a, rec(precondition=block_precond,
                                    postcondition=block_postcond));
 }
@@ -1406,6 +1491,12 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
                                     expr_poststate(*operator), a, operands)
           || changed);
     }
+    case (expr_spawn(_, _, ?operator, ?operands, ?a)) {
+        changed = find_pre_post_state_expr(fm, enclosing, pres, operator);
+        ret(find_pre_post_state_exprs(fm, enclosing,
+                 expr_poststate(*operator), a, operands)
+          || changed);
+    }
     case (expr_bind(?operator, ?maybe_args, ?a)) {
         changed = find_pre_post_state_expr(fm, enclosing, pres, operator)
             || changed;
@@ -1421,6 +1512,19 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
         changed = find_pre_post_state_expr(fm, enclosing, pres, e);
         changed = extend_prestate_ann(a, pres) || changed;
         changed = extend_poststate_ann(a, expr_poststate(*e)) || changed;
+        ret changed;
+    }
+    case (expr_chan(?e, ?a)) {
+        changed = find_pre_post_state_expr(fm, enclosing, pres, e);
+        changed = extend_prestate_ann(a, pres) || changed;
+        changed = extend_poststate_ann(a, expr_poststate(*e)) || changed;
+        ret changed;
+    }
+    case (expr_ext(_, _, _, ?expanded, ?a)) {
+        changed = find_pre_post_state_expr(fm, enclosing, pres, expanded);
+        changed = extend_prestate_ann(a, pres) || changed;
+        changed = extend_poststate_ann(a, expr_poststate(*expanded))
+           || changed;
         ret changed;
     }
     case (expr_put(?maybe_e, ?a)) {
@@ -1486,6 +1590,32 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
         }
         ret changed;
     }
+    case (expr_recv(?lhs, ?rhs, ?a)) {
+        extend_prestate_ann(a, pres);
+
+        alt (lhs.node) {
+            case (expr_path(?p, some[def](def_local(?d_id)), ?a_lhs)) {
+                // receive to local var
+                changed = pure_exp(a_lhs, pres) || changed;
+                changed = find_pre_post_state_expr(fm, enclosing, pres, rhs)
+                    || changed;
+                changed = extend_poststate_ann(a, expr_poststate(*rhs))
+                    || changed;
+                changed = gen_poststate(enclosing, a, d_id) || changed;
+            }
+            case (_) {
+                // receive to something that must already have been init'd
+                changed = find_pre_post_state_expr(fm, enclosing, pres, lhs)
+                    || changed;
+                changed = find_pre_post_state_expr(fm, enclosing,
+                     expr_poststate(*lhs), rhs) || changed;
+                changed = extend_poststate_ann(a, expr_poststate(*rhs))
+                    || changed;
+            }
+        }
+        ret changed;
+    }
+
     case (expr_ret(?maybe_ret_val, ?a)) {
         changed = extend_prestate_ann(a, pres) || changed;
         set_poststate_ann(a, false_postcond(num_local_vars));
@@ -1496,6 +1626,12 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
                              pres, ret_val) || changed;
             }
         }
+        ret changed;
+    }
+    case (expr_be(?e, ?a)) {
+        changed = extend_prestate_ann(a, pres) || changed;
+        set_poststate_ann(a, false_postcond(num_local_vars));
+        changed = find_pre_post_state_expr(fm, enclosing, pres, e) || changed;
         ret changed;
     }
     case (expr_if(?antec, ?conseq, ?maybe_alt, ?a)) {
@@ -1521,6 +1657,15 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
     }
     case (expr_binary(?bop, ?l, ?r, ?a)) {
         /* FIXME: what if bop is lazy? */
+        changed = extend_prestate_ann(a, pres) || changed;
+        changed = find_pre_post_state_expr(fm, enclosing, pres, l)
+                    || changed;
+        changed = find_pre_post_state_expr(fm,
+                    enclosing, expr_poststate(*l), r) || changed;
+        changed = extend_poststate_ann(a, expr_poststate(*r)) || changed;
+        ret changed;
+    }
+    case (expr_send(?l, ?r, ?a)) {
         changed = extend_prestate_ann(a, pres) || changed;
         changed = find_pre_post_state_expr(fm, enclosing, pres, l)
                     || changed;
@@ -1556,6 +1701,27 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
         changed = extend_poststate_ann(a,
                     intersect_postconds(vec(expr_poststate(*test),
                                         block_poststate(body)))) || changed;
+        ret changed;
+    }
+    case (expr_do_while(?body, ?test, ?a)) {
+        changed = extend_prestate_ann(a, pres) || changed;
+        changed = find_pre_post_state_block(fm, enclosing, pres, body)
+            || changed;
+        changed = find_pre_post_state_expr(fm, enclosing,
+                     block_poststate(body), test) || changed;
+
+        /* conservative approximination: if the body of the loop
+           could break or cont, we revert to the prestate
+           (TODO: could treat cont differently from break, since
+           if there's a cont, the test will execute) */
+        if (has_nonlocal_exits(body)) {
+            changed = set_poststate_ann(a, pres) || changed;
+        }
+        else {
+            changed = extend_poststate_ann(a, expr_poststate(*test))
+              || changed;
+        }
+
         ret changed;
     }
     case (expr_for(?d, ?index, ?body, ?a)) {
@@ -1634,13 +1800,16 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
     case (expr_break(?a)) {
         ret pure_exp(a, pres);
     }
-    case (_) {
-      log_err("find_pre_post_state_expr: implement this case!");
-      log_expr_err(*e);
-      fail;
+    case (expr_cont(?a)) {
+        ret pure_exp(a, pres);
+    }
+    case (expr_port(?a)) {
+        ret pure_exp(a, pres);
+    }
+    case (expr_self_method(_, ?a)) {
+        ret pure_exp(a, pres);
     }
   }
-
 }
 
 fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
@@ -1733,6 +1902,8 @@ fn find_pre_post_state_block(&fn_info_map fm, &fn_info enclosing,
                              &prestate pres0, &block b)
   -> bool {
 
+    /* FIXME handle non-local exits */
+
   auto changed = false;
   auto num_local_vars = num_locals(enclosing);
 
@@ -1756,6 +1927,20 @@ fn find_pre_post_state_block(&fn_info_map fm, &fn_info enclosing,
       post = expr_poststate(*e);
     }
   }
+
+  /*
+  log_err("block:");
+  log_block_err(b);
+  log_err("has non-local exits?");
+  log_err(has_nonlocal_exits(b));
+  */
+
+  /* conservative approximation: if a block contains a break
+     or cont, we assume nothing about the poststate */
+  if (has_nonlocal_exits(b)) {
+      post = pres0;
+  }
+  
   set_prestate_ann(@b.node.a, pres0);
   set_poststate_ann(b.node.a, post);
 
@@ -1802,7 +1987,7 @@ fn check_states_expr(fn_info enclosing, &expr e) -> () {
   let prestate pres   = expr_prestate(e);
 
   if (!implies(pres, prec)) {
-      log_err("check_states_expr: unsatisfied precondition for ");
+      log_err("check_states_expr: Unsatisfied precondition constraint for ");
       log_expr_err(e);
       log_err("Precondition: ");
       log_bitv_err(enclosing, prec);
@@ -1831,7 +2016,8 @@ fn check_states_stmt(fn_info enclosing, &stmt s) -> () {
       */
 
       if (!implies(pres, prec)) {
-        log_err("check_states_stmt: unsatisfied precondition for ");
+        log_err("check_states_stmt: "
+              + "Unsatisfied precondition constraint for ");
         log_stmt_err(s);
         log_err("Precondition: ");
         log_bitv_err(enclosing, prec);
