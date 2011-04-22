@@ -46,18 +46,16 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     // is always a power of 2), so that all buckets are probed for a
     // fixed key.
 
-    fn hashl[K](&hashfn[K] hasher, uint nbkts, &K key) -> uint {
-        ret (hasher(key) >>> (sys.rustrt.size_of[uint]() * 8u / 2u));
+    fn hashl(uint n, uint nbkts) -> uint {
+        ret (n >>> 16u);
     }
 
-    fn hashr[K](&hashfn[K] hasher, uint nbkts, &K key) -> uint {
-        ret ((((~ 0u) >>> (sys.rustrt.size_of[uint]() * 8u / 2u))
-              & hasher(key)) * 2u + 1u);
+    fn hashr(uint n, uint nbkts) -> uint {
+        ret ((((~ 0u) >>> 16u) & n) * 2u + 1u);
     }
 
-    fn hash[K](&hashfn[K] hasher, uint nbkts, &K key, uint i) -> uint {
-        ret (hashl[K](hasher, nbkts, key)
-             + i * hashr[K](hasher, nbkts, key)) % nbkts;
+    fn hash(uint h, uint nbkts, uint i) -> uint {
+        ret (hashl(h, nbkts) + i * hashr(h, nbkts)) % nbkts;
     }
 
     /**
@@ -73,8 +71,9 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
         -> bool
         {
             let uint i = 0u;
+            let uint h = hasher(key);
             while (i < nbkts) {
-                let uint j = hash[K](hasher, nbkts, key, i);
+                let uint j = hash(h, nbkts, i);
                 alt (bkts.(j)) {
                     case (some[K, V](?k, _)) {
                         if (eqer(key, k)) {
@@ -100,8 +99,9 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
         -> option.t[V]
         {
             let uint i = 0u;
+            let uint h = hasher(key);
             while (i < nbkts) {
-                let uint j = (hash[K](hasher, nbkts, key, i));
+                let uint j = (hash(h, nbkts, i));
                 alt (bkts.(j)) {
                     case (some[K, V](?k, ?v)) {
                         if (eqer(key, k)) {
@@ -189,8 +189,9 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
 
             fn remove(&K key) -> option.t[V] {
                 let uint i = 0u;
+                let uint h = hasher(key);
                 while (i < nbkts) {
-                    let uint j = (hash[K](hasher, nbkts, key, i));
+                    let uint j = (hash(h, nbkts, i));
                     alt (bkts.(j)) {
                         case (some[K, V](?k, ?v)) {
                             if (eqer(key, k)) {
