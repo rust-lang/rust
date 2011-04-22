@@ -105,6 +105,8 @@ import util.common.log_expr_err;
 import util.common.log_stmt;
 import util.common.log_block;
 import util.common.log_stmt_err;
+import util.common.log_fn_err;
+import util.common.log_fn;
 import util.common.log_block_err;
 import util.common.has_nonlocal_exits;
 import util.common.decl_lhs;
@@ -889,11 +891,11 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, &expr e) -> () {
     fn pp_one(&@expr e) -> pre_and_post {
         ret expr_pp(*e);
     }
-    /*
+    
         log("find_pre_post_expr (num_locals =" +
              uistr(num_local_vars) + "):");
-          log_expr(e);
-    */
+        log_expr(e);
+    
     alt (e.node) {
         case (expr_call(?operator, ?operands, ?a)) {
             auto args = _vec.clone[@expr](operands);
@@ -1201,6 +1203,9 @@ fn gen_poststate(&fn_info enclosing, &ann a, def_id id) -> bool {
 
 fn find_pre_post_stmt(fn_info_map fm, &fn_info enclosing, &ast.stmt s)
     -> () {
+    log("stmt =");
+    log_stmt(s);
+
   auto num_local_vars = num_locals(enclosing);
   alt(s.node) {
     case(ast.stmt_decl(?adecl, ?a)) {
@@ -1311,6 +1316,9 @@ fn find_pre_post_fn(&fn_info_map fm, &fn_info fi, &_fn f) -> () {
 fn check_item_fn(&fn_info_map fm, &span sp, ident i, &ast._fn f,
                  vec[ast.ty_param] ty_params, def_id id, ann a) -> @item {
 
+    log("check_item_fn:");
+    log_fn(f, i, ty_params);
+
   check (fm.contains_key(id));
   find_pre_post_fn(fm, fm.get(id), f);  
 
@@ -1413,7 +1421,7 @@ fn set_pre_and_post(&ann a, pre_and_post pp) -> () {
             set_postcondition(t, pp.postcondition);
         }
         case (ann_none) {
-            log("set_pre_and_post: expected an ann_type here");
+            log_err("set_pre_and_post: expected an ann_type here");
             fail;
         }
     }
@@ -1749,7 +1757,7 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
                 changed = find_pre_post_state_block(fm, enclosing, e_post,
                                                     an_alt.block) || changed;
                 changed = intersect(a_post, block_poststate(an_alt.block))
-                    || changed;
+                    || changed; 
             }
         }
         else {
