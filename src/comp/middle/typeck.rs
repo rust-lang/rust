@@ -2613,15 +2613,17 @@ fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
                 case (ast.decl_local(_)) {
                     auto decl_1 = check_decl_local(fcx, decl);
                     ret @fold.respan[ast.stmt_](stmt.span,
-                                                ast.stmt_decl(decl_1, a));
+                           ast.stmt_decl(decl_1, plain_ann(fcx.ccx.tystore)));
                 }
 
                 case (ast.decl_item(_)) {
                     // Ignore for now. We'll return later.
+                    ret @fold.respan[ast.stmt_](stmt.span,
+                           ast.stmt_decl(decl, plain_ann(fcx.ccx.tystore)));
                 }
             }
 
-            ret stmt;
+            //         ret stmt;
         }
 
         case (ast.stmt_expr(?expr,?a)) {
@@ -2629,7 +2631,8 @@ fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
             expr_t = Pushdown.pushdown_expr(fcx,
                                             expr_ty(fcx.ccx.tystore, expr_t),
                                             expr_t);
-            ret @fold.respan[ast.stmt_](stmt.span, ast.stmt_expr(expr_t, a));
+            ret @fold.respan[ast.stmt_](stmt.span,
+                   ast.stmt_expr(expr_t, plain_ann(fcx.ccx.tystore)));
         }
     }
 
