@@ -106,7 +106,7 @@ fn substitute_ty_params(&@crate_ctxt ccx,
 
 
 // Returns the type parameter count and the type for the given definition.
-fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
+fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.span sp, &ast.def defn)
         -> ty_param_count_and_ty {
     alt (defn) {
         case (ast.def_arg(?id)) {
@@ -157,7 +157,7 @@ fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
         }
 
         case (ast.def_ty(_)) {
-            fcx.ccx.sess.err("expected value but found type");
+            fcx.ccx.sess.span_err(sp, "expected value but found type");
             fail;
         }
 
@@ -308,7 +308,10 @@ fn ast_ty_to_ty(ty.ctxt tcx, ty_getter getter, &@ast.ty ast_ty) -> ty.t {
                     typ = instantiate(tcx, getter, id, path.node.types);
                 }
                 case (ast.def_ty_arg(?id)) { typ = ty.mk_param(tcx, id); }
-                case (_)                   { fail; }
+                case (_)                   { 
+                    tcx.sess.span_err(ast_ty.span,
+                       "found type name used as a variable");
+                    fail; }
             }
 
             cname = some(path_to_str(path));
@@ -1839,7 +1842,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             check (defopt != none[ast.def]);
             auto defn = option.get[ast.def](defopt);
 
-            auto tpt = ty_param_count_and_ty_for_def(fcx, defn);
+            auto tpt = ty_param_count_and_ty_for_def(fcx, expr.span, defn);
 
             if (ty.def_has_ty_params(defn)) {
                 auto ann = instantiate_path(fcx, pth, tpt, expr.span);
@@ -2623,13 +2626,15 @@ fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
                 case (ast.decl_local(_)) {
                     auto decl_1 = check_decl_local(fcx, decl);
                     ret @fold.respan[ast.stmt_](stmt.span,
-                           ast.stmt_decl(decl_1, plain_ann(fcx.ccx.tystore)));
+                           ast.stmt_decl(decl_1,
+                             plain_ann(fcx.ccx.tcx)));
                 }
 
                 case (ast.decl_item(_)) {
                     // Ignore for now. We'll return later.
                     ret @fold.respan[ast.stmt_](stmt.span,
-                           ast.stmt_decl(decl, plain_ann(fcx.ccx.tystore)));
+                           ast.stmt_decl(decl,
+                             plain_ann(fcx.ccx.tcx)));
                 }
             }
 
@@ -2641,7 +2646,7 @@ fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
             expr_t = Pushdown.pushdown_expr(fcx, expr_ty(fcx.ccx.tcx, expr_t),
                                             expr_t);
             ret @fold.respan[ast.stmt_](stmt.span,
-                   ast.stmt_expr(expr_t, plain_ann(fcx.ccx.tystore)));
+                   ast.stmt_expr(expr_t, plain_ann(fcx.ccx.tcx)));
         }
     }
 
@@ -2790,8 +2795,9 @@ fn eq_unify_cache_entry(&unify_cache_entry a, &unify_cache_entry b) -> bool {
 
 type typecheck_result = tup(@ast.crate, ty.type_cache);
 
-fn check_crate(session.session sess, ty.ctxt tcx, @ast.crate crate)
+fn check_crate(ty.ctxt tcx, @ast.crate crate)
         -> typecheck_result {
+    auto sess = tcx.sess;
     auto result = Collect.collect_item_types(sess, tcx, crate);
 
     let vec[ast.obj_field] fields = vec();

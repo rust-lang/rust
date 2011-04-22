@@ -46,7 +46,7 @@ type mt = rec(t ty, ast.mutability mut);
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-type ctxt = rec(@type_store ts);
+type ctxt = rec(@type_store ts, session.session sess);
 type ty_ctxt = ctxt;    // Needed for disambiguation from Unify.ctxt.
 
 // Convert from method type to function type.  Pretty easy; we just drop
@@ -200,7 +200,7 @@ fn mk_type_store() -> @type_store {
              others=map.mk_hashmap[t,t](hasher, eqer));
 }
 
-fn mk_ctxt() -> ctxt { ret rec(ts=mk_type_store()); }
+fn mk_ctxt(session.session s) -> ctxt { ret rec(ts=mk_type_store(), sess=s); }
 
 // Type constructors
 
