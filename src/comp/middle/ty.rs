@@ -1877,6 +1877,9 @@ mod Unify {
         // TODO: occurs check, to make sure we don't loop forever when
         // unifying e.g. 'a and option['a]
 
+        // Fast path.
+        if (eq_ty(expected, actual)) { ret ures_ok(expected); }
+
         alt (actual.struct) {
             // If the RHS is a variable type, then just do the appropriate
             // binding.
