@@ -102,7 +102,7 @@ fn substitute_ty_params(&@crate_ctxt ccx,
 
 
 // Returns the type parameter count and the type for the given definition.
-fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
+fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.span sp, &ast.def defn)
         -> ty_param_count_and_ty {
     alt (defn) {
         case (ast.def_arg(?id)) {
@@ -153,7 +153,7 @@ fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
         }
 
         case (ast.def_ty(_)) {
-            fcx.ccx.sess.err("expected value but found type");
+            fcx.ccx.sess.span_err(sp, "expected value but found type");
             fail;
         }
 
@@ -1827,7 +1827,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             check (defopt != none[ast.def]);
             auto defn = option.get[ast.def](defopt);
 
-            auto tpt = ty_param_count_and_ty_for_def(fcx, defn);
+            auto tpt = ty_param_count_and_ty_for_def(fcx, expr.span, defn);
 
             if (ty.def_has_ty_params(defn)) {
                 auto ann = instantiate_path(fcx, pth, tpt, expr.span);
