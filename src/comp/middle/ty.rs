@@ -2362,9 +2362,15 @@ mod Unify {
 
         auto ures = unify_step(cx, expected, actual);
         alt (ures) {
-        case (ures_ok(?t)) {
+        case (ures_ok(?typ)) {
+            // Fast path: if there are no local variables, don't perform
+            // substitutions.
+            if (_vec.len[mutable UFind.node](cx.sets.nodes) == 0u) {
+                ret ures_ok(typ);
+            }
+
             auto set_types = unify_sets(cx);
-            auto t2 = substitute(cx, set_types, t);
+            auto t2 = substitute(cx, set_types, typ);
             ret ures_ok(t2);
         }
         case (_) { ret ures; }
