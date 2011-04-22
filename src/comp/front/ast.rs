@@ -22,8 +22,8 @@ type ty_param = ident;
 // Annotations added during successive passes.
 tag ann {
     ann_none;
-    ann_type(@middle.ty.t,
-             option.t[vec[@middle.ty.t]], /* ty param substs */
+    ann_type(middle.ty.t,
+             option.t[vec[middle.ty.t]], /* ty param substs */
              option.t[@ts_ann]); /* pre- and postcondition for typestate */
 }
 

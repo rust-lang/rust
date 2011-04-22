@@ -52,7 +52,7 @@ const uint tag_index_table = 0x15u;
 // Callback to translate defs to strs or back.
 type def_str = fn(ast.def_id) -> str;
 
-fn ty_str(@ty.t t, def_str ds) -> str {
+fn ty_str(ty.t t, def_str ds) -> str {
     ret sty_str(ty.struct(t), ds);
 }
 
@@ -91,7 +91,7 @@ fn sty_str(ty.sty st, def_str ds) -> str {
         case (ty.ty_str) {ret "s";}
         case (ty.ty_tag(?def,?tys)) { // TODO restore def_id
             auto acc = "t[" + ds(def) + "|";
-            for (@ty.t t in tys) {acc += ty_str(t, ds);}
+            for (ty.t t in tys) {acc += ty_str(t, ds);}
             ret acc + "]";
         }
         case (ty.ty_box(?mt)) {ret "@" + mt_str(mt, ds);}
@@ -151,7 +151,7 @@ fn proto_str(ast.proto proto) -> str {
     }
 }
 
-fn ty_fn_str(vec[ty.arg] args, @ty.t out, def_str ds) -> str {
+fn ty_fn_str(vec[ty.arg] args, ty.t out, def_str ds) -> str {
     auto acc = "[";
     for (ty.arg arg in args) {
         if (arg.mode == ast.alias) {acc += "&";}
@@ -327,7 +327,7 @@ fn encode_variant_id(&ebml.writer ebml_w, ast.def_id vid) {
     ebml.end_tag(ebml_w);
 }
 
-fn encode_type(&ebml.writer ebml_w, @ty.t typ) {
+fn encode_type(&ebml.writer ebml_w, ty.t typ) {
     ebml.start_tag(ebml_w, tag_items_data_item_type);
     auto f = def_to_str;
     ebml_w.writer.write(_str.bytes(ty_str(typ, f)));

@@ -63,7 +63,7 @@ fn next(@pstate st) -> u8 {
     ret ch as u8;
 }
 
-fn parse_ty_str(str rep, str_def sd, @ty.type_store tystore) -> @ty.t {
+fn parse_ty_str(str rep, str_def sd, @ty.type_store tystore) -> ty.t {
     auto len = _str.byte_len(rep);
     auto st = @rec(rep=rep, mutable pos=0u, len=len, tystore=tystore);
     auto result = parse_ty(st, sd);
@@ -75,7 +75,7 @@ fn parse_ty_str(str rep, str_def sd, @ty.type_store tystore) -> @ty.t {
     ret result;
 }
 
-fn parse_ty(@pstate st, str_def sd) -> @ty.t {
+fn parse_ty(@pstate st, str_def sd) -> ty.t {
     alt (next(st) as char) {
         case ('n') { ret ty.mk_nil(st.tystore); }
         case ('b') { ret ty.mk_bool(st.tystore); }
@@ -101,7 +101,7 @@ fn parse_ty(@pstate st, str_def sd) -> @ty.t {
         case ('t') {
             check(next(st) as char == '[');
             auto def = parse_def(st, sd);
-            let vec[@ty.t] params = vec();
+            let vec[ty.t] params = vec();
             while (peek(st) as char != ']') {
                 params += vec(parse_ty(st, sd));
             }
@@ -213,7 +213,7 @@ fn parse_int(@pstate st) -> int {
     ret n;
 }
 
-fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty.arg], @ty.t) {
+fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty.arg], ty.t) {
     check(next(st) as char == '[');
     let vec[ty.arg] inputs = vec();
     while (peek(st) as char != ']') {
@@ -331,7 +331,7 @@ fn variant_tag_id(&ebml.doc d) -> ast.def_id {
     ret parse_def_id(ebml.doc_data(tagdoc));
 }
 
-fn item_type(&ebml.doc item, int this_cnum, @ty.type_store tystore) -> @ty.t {
+fn item_type(&ebml.doc item, int this_cnum, @ty.type_store tystore) -> ty.t {
     fn parse_external_def_id(int this_cnum, str s) -> ast.def_id {
         // FIXME: This is completely wrong when linking against a crate
         // that, in turn, links against another crate. We need a mapping
@@ -545,7 +545,7 @@ fn get_tag_variants(session.session sess,
     for (ast.def_id did in variant_ids) {
         auto item = find_item(did._1, items);
         auto ctor_ty = item_type(item, external_crate_id, tystore);
-        let vec[@ty.t] arg_tys = vec();
+        let vec[ty.t] arg_tys = vec();
         alt (ty.struct(ctor_ty)) {
             case (ty.ty_fn(_, ?args, _)) {
                 for (ty.arg a in args) {

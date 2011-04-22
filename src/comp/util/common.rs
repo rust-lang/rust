@@ -112,7 +112,7 @@ fn field_exprs(vec[ast.field] fields) -> vec [@ast.expr] {
 
 fn plain_ann(@middle.ty.type_store tystore) -> ast.ann {
   ret ast.ann_type(middle.ty.mk_nil(tystore),
-                   none[vec[@middle.ty.t]], none[@ts_ann]);
+                   none[vec[middle.ty.t]], none[@ts_ann]);
 }
 
 fn log_expr(&ast.expr e) -> () {
