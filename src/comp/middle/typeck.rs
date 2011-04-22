@@ -205,23 +205,28 @@ fn instantiate_path(@fn_ctxt fcx, &ast.path pth, &ty_param_count_and_ty tpt,
 // Parses the programmer's textual representation of a type into our internal
 // notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID.
-fn ast_ty_to_ty(@ty.type_store tystore,
+fn ast_ty_to_ty(session.session sess,
+                @ty.type_store tystore,
                 ty_getter getter,
                 &@ast.ty ast_ty) -> ty.t {
-    fn ast_arg_to_arg(@ty.type_store tystore,
+    fn ast_arg_to_arg(session.session sess,
+                      @ty.type_store tystore,
                       ty_getter getter,
                       &rec(ast.mode mode, @ast.ty ty) arg)
             -> rec(ast.mode mode, ty.t ty) {
-        ret rec(mode=arg.mode, ty=ast_ty_to_ty(tystore, getter, arg.ty));
+        ret rec(mode=arg.mode, ty=ast_ty_to_ty(sess, tystore,
+                  getter, arg.ty));
     }
 
-    fn ast_mt_to_mt(@ty.type_store tystore,
+    fn ast_mt_to_mt(session.session sess,
+                    @ty.type_store tystore,
                     ty_getter getter,
                     &ast.mt mt) -> ty.mt {
-        ret rec(ty=ast_ty_to_ty(tystore, getter, mt.ty), mut=mt.mut);
+        ret rec(ty=ast_ty_to_ty(sess, tystore, getter, mt.ty), mut=mt.mut);
     }
 
-    fn instantiate(@ty.type_store tystore,
+    fn instantiate(session.session sess,
+                   @ty.type_store tystore,
                    ty_getter getter,
                    ast.def_id id,
                    vec[@ast.ty] args) -> ty.t {
@@ -240,7 +245,8 @@ fn ast_ty_to_ty(@ty.type_store tystore,
         auto bound_ty = bind_params_in_type(tystore, params_opt_and_ty._1);
         let vec[ty.t] param_bindings = vec();
         for (@ast.ty ast_ty in args) {
-            param_bindings += vec(ast_ty_to_ty(tystore, getter, ast_ty));
+            param_bindings += vec(ast_ty_to_ty(sess, tystore,
+                                    getter, ast_ty));
         }
         ret ty.substitute_type_params(tystore, param_bindings, bound_ty);
     }
@@ -258,40 +264,41 @@ fn ast_ty_to_ty(@ty.type_store tystore,
         case (ast.ty_char)         { typ = ty.mk_char(tystore); }
         case (ast.ty_str)          { typ = ty.mk_str(tystore); }
         case (ast.ty_box(?mt)) {
-            typ = ty.mk_box(tystore, ast_mt_to_mt(tystore, getter, mt));
+            typ = ty.mk_box(tystore, ast_mt_to_mt(sess, tystore, getter, mt));
         }
         case (ast.ty_vec(?mt)) {
-            typ = ty.mk_vec(tystore, ast_mt_to_mt(tystore, getter, mt));
+            typ = ty.mk_vec(tystore, ast_mt_to_mt(sess, tystore, getter, mt));
         }
 
         case (ast.ty_port(?t)) {
-            typ = ty.mk_port(tystore, ast_ty_to_ty(tystore, getter, t));
+            typ = ty.mk_port(tystore, ast_ty_to_ty(sess, tystore, getter, t));
         }
 
         case (ast.ty_chan(?t)) {
-            typ = ty.mk_chan(tystore, ast_ty_to_ty(tystore, getter, t));
+            typ = ty.mk_chan(tystore, ast_ty_to_ty(sess, tystore, getter, t));
         }
 
         case (ast.ty_tup(?fields)) {
             let vec[ty.mt] flds = vec();
             for (ast.mt field in fields) {
-                _vec.push[ty.mt](flds, ast_mt_to_mt(tystore, getter, field));
+                _vec.push[ty.mt](flds, ast_mt_to_mt(sess, tystore,
+                                          getter, field));
             }
             typ = ty.mk_tup(tystore, flds);
         }
         case (ast.ty_rec(?fields)) {
             let vec[field] flds = vec();
             for (ast.ty_field f in fields) {
-                auto tm = ast_mt_to_mt(tystore, getter, f.mt);
+                auto tm = ast_mt_to_mt(sess, tystore, getter, f.mt);
                 _vec.push[field](flds, rec(ident=f.ident, mt=tm));
             }
             typ = ty.mk_rec(tystore, flds);
         }
 
         case (ast.ty_fn(?proto, ?inputs, ?output)) {
-            auto f = bind ast_arg_to_arg(tystore, getter, _);
+            auto f = bind ast_arg_to_arg(sess, tystore, getter, _);
             auto i = _vec.map[ast.ty_arg, arg](f, inputs);
-            auto out_ty = ast_ty_to_ty(tystore, getter, output);
+            auto out_ty = ast_ty_to_ty(sess, tystore, getter, output);
             typ = ty.mk_fn(tystore, proto, i, out_ty);
         }
 
@@ -299,14 +306,20 @@ fn ast_ty_to_ty(@ty.type_store tystore,
             check (def != none[ast.def]);
             alt (option.get[ast.def](def)) {
                 case (ast.def_ty(?id)) {
-                    typ = instantiate(tystore, getter, id, path.node.types);
+                    typ = instantiate(sess, tystore, getter,
+                            id, path.node.types);
                 }
                 case (ast.def_native_ty(?id)) { typ = getter(id)._1; }
                 case (ast.def_obj(?id)) {
-                    typ = instantiate(tystore, getter, id, path.node.types);
+                    typ = instantiate(sess, tystore, getter,
+                            id, path.node.types);
                 }
                 case (ast.def_ty_arg(?id)) { typ = ty.mk_param(tystore, id); }
-                case (_)                   { fail; }
+                case (_)                   { 
+                    sess.span_err(ast_ty.span,
+                       "found type name used as a variable");
+                    fail;
+                }
             }
 
             cname = some(path_to_str(path));
@@ -314,10 +327,10 @@ fn ast_ty_to_ty(@ty.type_store tystore,
 
         case (ast.ty_obj(?meths)) {
             let vec[ty.method] tmeths = vec();
-            auto f = bind ast_arg_to_arg(tystore, getter, _);
+            auto f = bind ast_arg_to_arg(sess, tystore, getter, _);
             for (ast.ty_method m in meths) {
                 auto ins = _vec.map[ast.ty_arg, arg](f, m.inputs);
-                auto out = ast_ty_to_ty(tystore, getter, m.output);
+                auto out = ast_ty_to_ty(sess, tystore, getter, m.output);
                 _vec.push[ty.method](tmeths,
                                   rec(proto=m.proto,
                                       ident=m.ident,
@@ -345,7 +358,7 @@ fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast.ty ast_ty) -> ty.t {
         ret ty.lookup_item_type(ccx.sess, ccx.tystore, ccx.type_cache, id);
     }
     auto f = bind getter(ccx, _);
-    ret ast_ty_to_ty(ccx.tystore, f, ast_ty);
+    ret ast_ty_to_ty(ccx.sess, ccx.tystore, f, ast_ty);
 }
 
 
@@ -422,12 +435,12 @@ mod Collect {
 
     fn ty_of_arg(@ctxt cx, &ast.arg a) -> arg {
         auto f = bind getter(cx, _);
-        ret rec(mode=a.mode, ty=ast_ty_to_ty(cx.tystore, f, a.ty));
+        ret rec(mode=a.mode, ty=ast_ty_to_ty(cx.sess, cx.tystore, f, a.ty));
     }
 
     fn ty_of_method(@ctxt cx, &@ast.method m) -> method {
         auto get = bind getter(cx, _);
-        auto convert = bind ast_ty_to_ty(cx.tystore, get, _);
+        auto convert = bind ast_ty_to_ty(cx.sess, cx.tystore, get, _);
         auto f = bind ty_of_arg(cx, _);
         auto inputs = _vec.map[ast.arg,arg](f, m.node.meth.decl.inputs);
         auto output = convert(m.node.meth.decl.output);
@@ -458,7 +471,7 @@ mod Collect {
         let vec[arg] t_inputs = vec();
         for (ast.obj_field f in obj_info.fields) {
             auto g = bind getter(cx, _);
-            auto t_field = ast_ty_to_ty(cx.tystore, g, f.ty);
+            auto t_field = ast_ty_to_ty(cx.sess, cx.tystore, g, f.ty);
             _vec.push[arg](t_inputs, rec(mode=ast.alias, ty=t_field));
         }
 
@@ -471,7 +484,7 @@ mod Collect {
     fn ty_of_item(@ctxt cx, @ast.item it) -> ty.ty_param_count_and_ty {
 
         auto get = bind getter(cx, _);
-        auto convert = bind ast_ty_to_ty(cx.tystore, get, _);
+        auto convert = bind ast_ty_to_ty(cx.sess, cx.tystore, get, _);
 
         alt (it.node) {
 
@@ -537,7 +550,7 @@ mod Collect {
             case (ast.native_item_fn(?ident, ?lname, ?fn_decl,
                                      ?params, ?def_id, _)) {
                 auto get = bind getter(cx, _);
-                auto convert = bind ast_ty_to_ty(cx.tystore, get, _);
+                auto convert = bind ast_ty_to_ty(cx.sess, cx.tystore, get, _);
                 auto f = bind ty_of_arg(cx, _);
                 ret ty_of_native_fn_decl(cx, convert, f, fn_decl, abi, params,
                                          def_id);
@@ -585,7 +598,7 @@ mod Collect {
 
                 let vec[arg] args = vec();
                 for (ast.variant_arg va in variant.node.args) {
-                    auto arg_ty = ast_ty_to_ty(cx.tystore, f, va.ty);
+                    auto arg_ty = ast_ty_to_ty(cx.sess, cx.tystore, f, va.ty);
                     args += vec(rec(mode=ast.alias, ty=arg_ty));
                 }
                 auto tag_t = ty.mk_tag(cx.tystore, tag_id, ty_param_tys);
@@ -735,7 +748,7 @@ mod Collect {
         }
         auto g = bind getter(e.cx, _);
         for (ast.obj_field fld in ob.fields) {
-            let ty.t fty = ast_ty_to_ty(e.cx.tystore, g, fld.ty);
+            let ty.t fty = ast_ty_to_ty(e.cx.sess, e.cx.tystore, g, fld.ty);
             let ast.obj_field f = rec(ann=triv_ann(fty)
                 with fld
             );
