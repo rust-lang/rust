@@ -641,7 +641,7 @@ fn type_of_fn_full(@crate_ctxt cx,
         atys +=
             vec(T_fn_pair(cx.tn,
                           type_of_fn_full(cx, ast.proto_fn, none[TypeRef],
-                                          vec(rec(mode=ast.val, ty=output)),
+                                          vec(rec(mode=ast.alias, ty=output)),
                                           ty.mk_nil(cx.tystore), 0u)));
     }
 
@@ -3553,16 +3553,14 @@ fn trans_for_each(@block_ctxt cx,
     // pointer along with the foreach-body-fn pointer into a 'normal' fn pair
     // and pass it in as a first class fn-arg to the iterator.
 
-    auto iter_body_llty = type_of_fn_full(lcx.ccx, ast.proto_fn,
-                                          none[TypeRef],
-                                          vec(rec(mode=ast.val, ty=decl_ty)),
-                                          ty.mk_nil(lcx.ccx.tystore), 0u);
+    auto iter_body_llty =
+        type_of_fn_full(lcx.ccx, ast.proto_fn,
+                        none[TypeRef],
+                        vec(rec(mode=ast.alias, ty=decl_ty)),
+                        ty.mk_nil(lcx.ccx.tystore), 0u);
 
     let ValueRef lliterbody = decl_internal_fastcall_fn(lcx.ccx.llmod,
                                                        s, iter_body_llty);
-
-    // FIXME: handle ty params properly.
-    let vec[ast.ty_param] ty_params = vec();
 
     auto fcx = new_fn_ctxt(lcx, lliterbody);
     auto bcx = new_top_block_ctxt(fcx);
@@ -3601,12 +3599,8 @@ fn trans_for_each(@block_ctxt cx,
         i += 1u;
     }
 
-    // Treat the loop variable as an upvar as well. We copy it to an alloca
-    // as usual.
-    auto lllvar = llvm.LLVMGetParam(fcx.llfn, 3u);
-    auto lllvarptr = alloca(bcx, val_ty(lllvar));
-    bcx.build.Store(lllvar, lllvarptr);
-    fcx.llupvars.insert(decl_id, lllvarptr);
+    // Add an upvar for the loop variable alias.
+    fcx.llupvars.insert(decl_id, llvm.LLVMGetParam(fcx.llfn, 3u));
 
     auto r = trans_block(bcx, body);
 
@@ -4570,6 +4564,68 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
     }
 }
 
+fn trans_arg_expr(@block_ctxt cx,
+                  ty.arg arg,
+                  TypeRef lldestty0,
+                  @ast.expr e) -> result {
+
+    auto val;
+    auto bcx = cx;
+    auto e_ty = ty.expr_ty(cx.fcx.lcx.ccx.tystore, e);
+
+    if (ty.type_is_structural(cx.fcx.lcx.ccx.tystore, e_ty)) {
+        auto re = trans_expr(bcx, e);
+        val = re.val;
+        bcx = re.bcx;
+    } else if (arg.mode == ast.alias) {
+        let lval_result lv;
+        if (ty.is_lval(e)) {
+            lv = trans_lval(bcx, e);
+        } else {
+            auto r = trans_expr(bcx, e);
+            if (type_is_immediate(cx.fcx.lcx.ccx, e_ty)) {
+                lv = lval_val(r.bcx, r.val);
+            } else {
+                lv = lval_mem(r.bcx, r.val);
+            }
+        }
+        bcx = lv.res.bcx;
+
+        if (lv.is_mem) {
+            val = lv.res.val;
+        } else {
+            // Non-mem but we're trying to alias; synthesize an
+            // alloca, spill to it and pass its address.
+            val = do_spill(lv.res.bcx, lv.res.val);
+        }
+    } else {
+        auto re = trans_expr(bcx, e);
+        val = re.val;
+        bcx = re.bcx;
+    }
+
+    if (ty.count_ty_params(cx.fcx.lcx.ccx.tystore, arg.ty) > 0u) {
+        auto lldestty = lldestty0;
+        if (arg.mode == ast.val) {
+            // FIXME: we'd prefer to use &&, but rustboot doesn't like it
+            if (ty.type_is_structural(cx.fcx.lcx.ccx.tystore, e_ty)) {
+                lldestty = T_ptr(lldestty);
+            }
+        }
+        val = bcx.build.PointerCast(val, lldestty);
+    }
+
+    if (arg.mode == ast.val) {
+        // FIXME: we'd prefer to use &&, but rustboot doesn't like it
+        if (ty.type_is_structural(cx.fcx.lcx.ccx.tystore, e_ty)) {
+            // Until here we've been treating structures by pointer;
+            // we are now passing it as an arg, so need to load it.
+            val = bcx.build.Load(val);
+        }
+    }
+    ret res(bcx, val);
+}
+
 // NB: must keep 4 fns in sync:
 //
 //  - type_of_fn_full
@@ -4660,68 +4716,9 @@ fn trans_args(@block_ctxt cx,
 
     auto i = 0u;
     for (@ast.expr e in es) {
-        auto mode = args.(i).mode;
-
-        auto val;
-        if (ty.type_is_structural(cx.fcx.lcx.ccx.tystore,
-                                  ty.expr_ty(cx.fcx.lcx.ccx.tystore, e))) {
-            auto re = trans_expr(bcx, e);
-            val = re.val;
-            bcx = re.bcx;
-        } else if (mode == ast.alias) {
-            let lval_result lv;
-            if (ty.is_lval(e)) {
-                lv = trans_lval(bcx, e);
-            } else {
-                auto r = trans_expr(bcx, e);
-                if (type_is_immediate(cx.fcx.lcx.ccx,
-                                      ty.expr_ty(cx.fcx.lcx.ccx.tystore,
-                                                 e))) {
-                    lv = lval_val(r.bcx, r.val);
-                } else {
-                    lv = lval_mem(r.bcx, r.val);
-                }
-            }
-            bcx = lv.res.bcx;
-
-            if (lv.is_mem) {
-                val = lv.res.val;
-            } else {
-                // Non-mem but we're trying to alias; synthesize an
-                // alloca, spill to it and pass its address.
-                val = do_spill(lv.res.bcx, lv.res.val);
-            }
-
-        } else {
-            auto re = trans_expr(bcx, e);
-            val = re.val;
-            bcx = re.bcx;
-        }
-
-        if (ty.count_ty_params(cx.fcx.lcx.ccx.tystore, args.(i).ty) > 0u) {
-            auto lldestty = arg_tys.(i);
-            if (mode == ast.val) {
-                // FIXME: we'd prefer to use &&, but rustboot doesn't like it
-                if (ty.type_is_structural(cx.fcx.lcx.ccx.tystore,
-                        ty.expr_ty(cx.fcx.lcx.ccx.tystore, e))) {
-                    lldestty = T_ptr(lldestty);
-                }
-            }
-
-            val = bcx.build.PointerCast(val, lldestty);
-        }
-
-        if (mode == ast.val) {
-            // FIXME: we'd prefer to use &&, but rustboot doesn't like it
-            if (ty.type_is_structural(cx.fcx.lcx.ccx.tystore,
-                    ty.expr_ty(cx.fcx.lcx.ccx.tystore, e))) {
-                // Until here we've been treating structures by pointer;
-                // we are now passing it as an arg, so need to load it.
-                val = bcx.build.Load(val);
-            }
-        }
-
-        llargs += vec(val);
+        auto r = trans_arg_expr(bcx, args.(i), arg_tys.(i), e);
+        bcx = r.bcx;
+        llargs += vec(r.val);
         i += 1u;
     }
 
@@ -4797,15 +4794,23 @@ fn trans_call(@block_ctxt cx, @ast.expr f,
     bcx.build.FastCall(faddr, llargs);
     auto retval = C_nil();
 
-    if (!ty.type_is_nil(cx.fcx.lcx.ccx.tystore, ret_ty)) {
-        retval = load_if_immediate(bcx, llretslot, ret_ty);
-        // Retval doesn't correspond to anything really tangible in the frame,
-        // but it's a ref all the same, so we put a note here to drop it when
-        // we're done in this scope.
-        find_scope_cx(cx).cleanups +=
-            vec(clean(bind drop_ty(_, retval, ret_ty)));
+    alt (lliterbody) {
+        case (none[ValueRef]) {
+            if (!ty.type_is_nil(cx.fcx.lcx.ccx.tystore, ret_ty)) {
+                retval = load_if_immediate(bcx, llretslot, ret_ty);
+                // Retval doesn't correspond to anything really tangible in
+                // the frame, but it's a ref all the same, so we put a note
+                // here to drop it when we're done in this scope.
+                find_scope_cx(cx).cleanups +=
+                    vec(clean(bind drop_ty(_, retval, ret_ty)));
+            }
+        }
+        case (some[ValueRef](_)) {
+            // If there was an lliterbody, it means we were calling an
+            // iter, and we are *not* the party using its 'output' value,
+            // we should ignore llretslot.
+        }
     }
-
     ret res(bcx, retval);
 }
 
@@ -5296,18 +5301,12 @@ fn trans_put(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
     alt (e) {
         case (none[@ast.expr]) { }
         case (some[@ast.expr](?x)) {
-            auto r = trans_expr(bcx, x);
-
-            auto llarg = r.val;
+            auto e_ty = ty.expr_ty(cx.fcx.lcx.ccx.tystore, x);
+            auto arg = rec(mode=ast.alias, ty=e_ty);
+            auto arg_tys = type_of_explicit_args(cx.fcx.lcx.ccx, vec(arg));
+            auto r = trans_arg_expr(bcx, arg, arg_tys.(0), x);
             bcx = r.bcx;
-            if (ty.type_is_structural(cx.fcx.lcx.ccx.tystore,
-                    ty.expr_ty(cx.fcx.lcx.ccx.tystore, x))) {
-                // Until here we've been treating structures by pointer; we
-                // are now passing it as an arg, so need to load it.
-                llarg = bcx.build.Load(llarg);
-            }
-
-            llargs += vec(llarg);
+            llargs += vec(r.val);
         }
     }
 

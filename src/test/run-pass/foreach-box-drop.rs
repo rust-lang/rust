@@ -1,5 +1,3 @@
-// xfail-stage0
-
 obj ob[K](K k) {
   iter foo() -> @tup(K) {
     put @tup(k);
