@@ -120,7 +120,7 @@ fn gen_ty(@type_store tystore, &sty st) -> t {
 }
 
 fn gen_ty_full(@type_store tystore, &sty st, option.t[str] cname) -> t {
-    auto h = hash_type_structure(st);
+    auto h = hash_type_info(st, cname);
     auto new_type = @rec(struct=st, cname=cname, hash=h);
 
     // Is it interned?
@@ -886,6 +886,15 @@ fn hash_type_structure(&sty st) -> uint {
         case (ty_type) { ret 32u; }
         case (ty_native) { ret 33u; }
     }
+}
+
+fn hash_type_info(&sty st, option.t[str] cname_opt) -> uint {
+    auto h = hash_type_structure(st);
+    alt (cname_opt) {
+        case (none[str]) { /* no-op */ }
+        case (some[str](?s)) { h += h << 5u + _str.hash(s); }
+    }
+    ret h;
 }
 
 fn hash_ty(&t typ) -> uint { ret typ.hash; }
