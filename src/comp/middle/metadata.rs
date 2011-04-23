@@ -52,11 +52,12 @@ const uint tag_index_table = 0x15u;
 mod Encode {
 
     type ctxt = rec(
-        fn(ast.def_id) -> str ds    // Callback to translate defs to strs.
+        fn(ast.def_id) -> str ds,   // Callback to translate defs to strs.
+        @ty.type_store tystore      // The type store.
     );
 
     fn ty_str(@ctxt cx, ty.t t) -> str {
-        ret sty_str(cx, ty.struct(t));
+        ret sty_str(cx, ty.struct(cx.tystore, t));
     }
 
     fn mt_str(@ctxt cx, &ty.mt mt) -> str {
@@ -332,11 +333,11 @@ fn encode_variant_id(&ebml.writer ebml_w, ast.def_id vid) {
     ebml.end_tag(ebml_w);
 }
 
-fn encode_type(&ebml.writer ebml_w, ty.t typ) {
+fn encode_type(@trans.crate_ctxt cx, &ebml.writer ebml_w, ty.t typ) {
     ebml.start_tag(ebml_w, tag_items_data_item_type);
 
     auto f = def_to_str;
-    auto ty_str_ctxt = @rec(ds=f);
+    auto ty_str_ctxt = @rec(ds=f, tystore=cx.tystore);
     ebml_w.writer.write(_str.bytes(Encode.ty_str(ty_str_ctxt, typ)));
 
     ebml.end_tag(ebml_w);
@@ -379,7 +380,7 @@ fn encode_tag_variant_info(@trans.crate_ctxt cx, &ebml.writer ebml_w,
         encode_def_id(ebml_w, variant.node.id);
         encode_kind(ebml_w, 'v' as u8);
         encode_tag_id(ebml_w, did);
-        encode_type(ebml_w, trans.node_ann_type(cx, variant.node.ann));
+        encode_type(cx, ebml_w, trans.node_ann_type(cx, variant.node.ann));
         if (_vec.len[ast.variant_arg](variant.node.args) > 0u) {
             encode_symbol(cx, ebml_w, variant.node.id);
         }
@@ -396,7 +397,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             ebml.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'c' as u8);
-            encode_type(ebml_w, trans.node_ann_type(cx, ann));
+            encode_type(cx, ebml_w, trans.node_ann_type(cx, ann));
             encode_symbol(cx, ebml_w, did);
             ebml.end_tag(ebml_w);
         }
@@ -405,7 +406,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'f' as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(ebml_w, trans.node_ann_type(cx, ann));
+            encode_type(cx, ebml_w, trans.node_ann_type(cx, ann));
             encode_symbol(cx, ebml_w, did);
             ebml.end_tag(ebml_w);
         }
@@ -426,7 +427,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'y' as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(ebml_w, trans.node_ann_type(cx, ann));
+            encode_type(cx, ebml_w, trans.node_ann_type(cx, ann));
             ebml.end_tag(ebml_w);
         }
         case (ast.item_tag(?id, ?variants, ?tps, ?did, ?ann)) {
@@ -434,7 +435,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 't' as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(ebml_w, trans.node_ann_type(cx, ann));
+            encode_type(cx, ebml_w, trans.node_ann_type(cx, ann));
             for (ast.variant v in variants) {
                 encode_variant_id(ebml_w, v.node.id);
             }
@@ -448,7 +449,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_kind(ebml_w, 'o' as u8);
             encode_type_param_count(ebml_w, tps);
             auto fn_ty = trans.node_ann_type(cx, ann);
-            encode_type(ebml_w, fn_ty);
+            encode_type(cx, ebml_w, fn_ty);
             encode_symbol(cx, ebml_w, odid.ctor);
             ebml.end_tag(ebml_w);
 
@@ -456,7 +457,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_def_id(ebml_w, odid.ty);
             encode_kind(ebml_w, 'y' as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(ebml_w, ty.ty_fn_ret(fn_ty));
+            encode_type(cx, ebml_w, ty.ty_fn_ret(cx.tystore, fn_ty));
             ebml.end_tag(ebml_w);
         }
     }
@@ -469,13 +470,13 @@ fn encode_info_for_native_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
         case (ast.native_item_ty(_, ?did)) {
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'T' as u8);
-            encode_type(ebml_w, ty.mk_native(cx.tystore));
+            encode_type(cx, ebml_w, ty.mk_native(cx.tystore));
         }
         case (ast.native_item_fn(_, _, _, ?tps, ?did, ?ann)) {
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'F' as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(ebml_w, trans.node_ann_type(cx, ann));
+            encode_type(cx, ebml_w, trans.node_ann_type(cx, ann));
             encode_symbol(cx, ebml_w, did);
         }
     }
