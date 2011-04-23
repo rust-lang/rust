@@ -42,7 +42,7 @@ fn method_ty_to_fn_ty(@type_store tystore, method m) -> t {
 //
 // TODO: It'd be really nice to be able to hide this definition from the
 // outside world, to enforce the above invariants.
-type raw_t = rec(sty struct, option.t[str] cname, uint hash);
+type raw_t = rec(sty struct, option.t[str] cname, uint magic, uint hash);
 type t = @raw_t;
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -121,7 +121,8 @@ fn gen_ty(@type_store tystore, &sty st) -> t {
 
 fn gen_ty_full(@type_store tystore, &sty st, option.t[str] cname) -> t {
     auto h = hash_type_info(st, cname);
-    auto new_type = @rec(struct=st, cname=cname, hash=h);
+    auto magic = mk_magic(st);
+    auto new_type = @rec(struct=st, cname=cname, magic=magic, hash=h);
 
     // Is it interned?
     alt (tystore.find(new_type)) {
@@ -789,6 +790,41 @@ fn def_to_str(ast.def_id did) -> str {
     ret #fmt("%d:%d", did._0, did._1);
 }
 
+
+// Generation of "magic numbers", which are workarounds for the lack of
+// structural equality in rustboot.
+
+fn mk_magic(&sty st) -> uint {
+    alt (st) {
+        case (ty_nil) { ret 1u; }
+        case (ty_bool) { ret 2u; }
+        case (ty_int) { ret 3u; }
+        case (ty_float) { ret 4u; }
+        case (ty_uint) { ret 5u; }
+        case (ty_char) { ret 6u; }
+        case (ty_str) { ret 7u; }
+        case (ty_task) { ret 8u; }
+        case (ty_type) { ret 9u; }
+        case (ty_native) { ret 10u; }
+        case (ty_machine(?tm)) {
+            alt (tm) {
+                case (common.ty_i8) { ret 11u; }
+                case (common.ty_i16) { ret 12u; }
+                case (common.ty_i32) { ret 13u; }
+                case (common.ty_i64) { ret 14u; }
+                case (common.ty_u8) { ret 15u; }
+                case (common.ty_u16) { ret 16u; }
+                case (common.ty_u32) { ret 17u; }
+                case (common.ty_u64) { ret 18u; }
+                case (common.ty_f32) { ret 19u; }
+                case (common.ty_f64) { ret 20u; }
+            }
+        }
+        case (_) { ret 0u; }
+    }
+}
+
+
 // Type hashing. This function is private to this module (and slow); external
 // users should use `hash_ty()` instead.
 fn hash_type_structure(&sty st) -> uint {
@@ -1224,6 +1260,9 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
 // An expensive type equality function. This function is private to this
 // module.
 fn eq_ty_full(&t a, &t b) -> bool {
+    // Check magic numbers (fast path).
+    if (a.magic != 0u || b.magic != 0u) { ret a.magic == b.magic; }
+
     // Check hashes (fast path).
     if (a.hash != b.hash) {
         ret false;
