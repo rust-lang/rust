@@ -1953,6 +1953,13 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, ty.t t) {
                        ty.type_is_nil(cx.fcx.lcx.ccx.tystore, t)) {
                 rslt = res(cx, C_nil());
             }
+            else {
+                // task, native_fn, var, local, param, bound_param
+                cx.fcx.lcx.ccx.sess.bug
+                    ("unexpected type in trans.make_drop_glue: " +
+                     ty.ty_to_str(cx.fcx.lcx.ccx.tystore, t));
+                fail;
+            }
         }
     }
 
