@@ -1,5 +1,5 @@
-// xfail-stage0
-// error-pattern: unknown module item
+// xfail-boot
+// error-pattern: unresolved name
 mod foo {
   export x;
   fn x(int y) {
