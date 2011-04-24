@@ -90,7 +90,7 @@ ifdef CFG_WINDOWSY
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
   CFG_RUN_TEST=PATH="$(CFG_LDPATH):$(call CFG_EXE_TESTLIB,$(1))" $(1)
-  CFG_RUN_TARG=PATH="$(CFG_LDPATH)" $(1)
+  CFG_RUN_TARG=PATH="$(CFG_BUILD_DIR)/$(1):$(CFG_LDPATH)" $(2)
 
   CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
                            -e 's@\\(\S)@/\1@go;'       \
@@ -109,7 +109,7 @@ ifdef CFG_UNIXY
   CFG_PATH_MUNGE := true
   CFG_EXE_SUFFIX :=
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_LIBDIR)
-  CFG_RUN_TARG=$(CFG_LDENV)=$(CFG_LDPATH) $(1)
+  CFG_RUN_TARG=$(CFG_LDENV)=$(CFG_BUILD_DIR)/$(1):$(CFG_LDPATH) $(2)
   CFG_RUN_TEST=\
       $(CFG_LDENV)=$(call CFG_TESTLIB,$(1)):$(CFG_LDPATH) \
       $(CFG_VALGRIND) $(1)
@@ -121,7 +121,7 @@ ifdef CFG_UNIXY
     CFG_LIB_NAME=$(1).dll
     CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
     CFG_LDPATH :=$(CFG_LDPATH):$$PATH
-    CFG_RUN_TARG=PATH=$(CFG_LDPATH) $(1)
+    CFG_RUN_TARG=PATH=$(CFG_BUILD_DIR)/$(1):$(CFG_LDPATH) $(2)
     CFG_RUN_TEST=PATH=$(CFG_LDPATH):$(call CFG_EXE_TESTLIB,$(1)) $(1)
 
     CFG_INFO := $(info cfg: mingw-cross)
@@ -232,10 +232,12 @@ VPATH := $(S)doc $(S)src
 
 # Compilers we build, we now know how to run.
 BOOT := $(Q)OCAMLRUNPARAM="b1" boot/rustboot$(X) $(CFG_BOOT_FLAGS) -L boot
-STAGE0 := $(Q)$(call CFG_RUN_TARG,\
+STAGE0 := $(Q)$(call CFG_RUN_TARG,boot,\
                 stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage0)
-STAGE1 := $(Q)$(call CFG_RUN_TARG,\
+STAGE1 := $(Q)$(call CFG_RUN_TARG,stage0, \
                 stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1)
+STAGE2 := $(Q)$(call CFG_RUN_TARG,stage1, \
+                stage2/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage2)
 
 # "Source" files we generate in builddir along the way.
 GENERATED := boot/fe/lexer.ml boot/version.ml
