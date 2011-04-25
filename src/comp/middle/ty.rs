@@ -1391,6 +1391,34 @@ fn type_contains_vars(@type_store tystore, t typ) -> bool {
     ret *flag;
 }
 
+fn type_contains_params(@type_store tystore, t typ) -> bool {
+    fn checker(@type_store tystore, @mutable bool flag, t typ) {
+        alt (struct(tystore, typ)) {
+            case (ty_param(_)) { *flag = true; }
+            case (_) { /* fall through */ }
+        }
+    }
+
+    let @mutable bool flag = @mutable false;
+    auto f = bind checker(tystore, flag, _);
+    walk_ty(tystore, f, typ);
+    ret *flag;
+}
+
+fn type_contains_bound_params(@type_store tystore, t typ) -> bool {
+    fn checker(@type_store tystore, @mutable bool flag, t typ) {
+        alt (struct(tystore, typ)) {
+            case (ty_bound_param(_)) { *flag = true; }
+            case (_) { /* fall through */ }
+        }
+    }
+
+    let @mutable bool flag = @mutable false;
+    auto f = bind checker(tystore, flag, _);
+    walk_ty(tystore, f, typ);
+    ret *flag;
+}
+
 // Type accessors for substructures of types
 
 fn ty_fn_args(@type_store tystore, t fty) -> vec[arg] {
@@ -2495,6 +2523,9 @@ fn type_err_to_str(&ty.type_err err) -> str {
 fn substitute_type_params(@type_store tystore,
                           vec[t] bindings,
                           t typ) -> t {
+    if (!type_contains_bound_params(tystore, typ)) {
+        ret typ;
+    }
     fn replacer(@type_store tystore, vec[t] bindings, t typ) -> t {
         alt (struct(tystore, typ)) {
             case (ty_bound_param(?param_index)) {
@@ -2510,6 +2541,9 @@ fn substitute_type_params(@type_store tystore,
 
 // Converts type parameters in a type to bound type parameters.
 fn bind_params_in_type(@type_store tystore, t typ) -> t {
+    if (!type_contains_params(tystore, typ)) {
+        ret typ;
+    }
     fn binder(@type_store tystore, t typ) -> t {
         alt (struct(tystore, typ)) {
             case (ty_bound_param(?index)) {
