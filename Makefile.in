@@ -21,6 +21,10 @@ else
   CFG_RUSTC_FLAGS := -nowarn -O
 endif
 
+ifdef SAVE_TEMPS
+  CFG_RUSTC_FLAGS += -save-temps
+endif
+
 # On Darwin, we need to run dsymutil so the debugging information ends
 # up in the right place.  On other platforms, it automatically gets
 # embedded into the executable, so use a no-op command.
