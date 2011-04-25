@@ -62,6 +62,7 @@ fn compile_input(session.session sess,
                         bool shared,
                         bool optimize,
                         bool verify,
+                        bool save_temps,
                         trans.output_type ot,
                         vec[str] library_search_paths) {
     auto def = tup(0, 0);
@@ -80,7 +81,7 @@ fn compile_input(session.session sess,
     // FIXME: uncomment once typestate_check works
     // crate = typestate_check.check_crate(crate);
     trans.trans_crate(sess, crate, ty_cx, type_cache, output, shared,
-                      optimize, verify, ot);
+                      optimize, verify, save_temps, ot);
 }
 
 fn pretty_print_input(session.session sess,
@@ -111,6 +112,11 @@ options:
     -ls                list the symbols defined by a crate file
     -L <path>          add a directory to the library search path
     -noverify          suppress LLVM verification step (slight speedup)
+    -parse-only        parse only; do not compile, assemble, or link
+    -O                 optimize
+    -S                 compile only; do not assemble or link
+    -c                 compile and assemble, but do not link
+    -save-temps        write intermediate files in addition to normal output
     -h                 display this message\n\n");
 }
 
@@ -146,6 +152,7 @@ fn main(vec[str] args) {
     auto ot = trans.output_type_bitcode;
     let bool glue = false;
     let bool verify = true;
+    let bool save_temps = false;
 
     // FIXME: Maybe we should support -O0, -O1, -Os, etc
     let bool optimize = false;
@@ -183,6 +190,8 @@ fn main(vec[str] args) {
                     usage(sess, args.(0));
                     sess.err("-o requires an argument");
                 }
+            } else if (_str.eq(arg, "-save-temps")) {
+                save_temps = true;
             } else if (_str.eq(arg, "-L")) {
                 if (i+1u < len) {
                     library_search_paths += vec(args.(i+1u));
@@ -221,10 +230,11 @@ fn main(vec[str] args) {
         alt (output_file) {
             case (none[str]) {
                 middle.trans.make_common_glue("glue.bc", optimize, verify,
-                                              ot);
+                                              save_temps, ot);
             }
             case (some[str](?s)) {
-                middle.trans.make_common_glue(s, optimize, verify, ot);
+                middle.trans.make_common_glue(s, optimize, verify, save_temps,
+                                              ot);
             }
         }
         ret;
@@ -250,12 +260,12 @@ fn main(vec[str] args) {
                         parts += vec(".bc");
                         auto ofile = _str.concat(parts);
                         compile_input(sess, env, ifile, ofile, shared,
-                                      optimize, verify, ot,
+                                      optimize, verify, save_temps, ot,
                                       library_search_paths);
                     }
                     case (some[str](?ofile)) {
                         compile_input(sess, env, ifile, ofile, shared,
-                                      optimize, verify, ot,
+                                      optimize, verify, save_temps, ot,
                                       library_search_paths);
                     }
                 }

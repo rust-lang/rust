@@ -6980,6 +6980,19 @@ tag output_type {
     output_type_object;
 }
 
+// Decides what to call an intermediate file, given the name of the output and
+// the extension to use.
+fn mk_intermediate_name(str output_path, str extension) -> str {
+    auto dot_pos = _str.index(output_path, '.' as u8);
+    auto stem;
+    if (dot_pos < 0) {
+        stem = output_path;
+    } else {
+        stem = _str.substr(output_path, 0u, dot_pos as uint);
+    }
+    ret stem + "." + extension;
+}
+
 fn is_object_or_assembly(output_type ot) -> bool {
     if (ot == output_type_assembly) {
         ret true;
@@ -6990,11 +7003,28 @@ fn is_object_or_assembly(output_type ot) -> bool {
     ret false;
 }
 
-fn run_passes(ModuleRef llmod, bool opt, bool verify, str output,
-              output_type ot) {
+fn run_passes(ModuleRef llmod, bool opt, bool verify, bool save_temps,
+              str output, output_type ot) {
     auto pm = mk_pass_manager();
 
     // TODO: run the linter here also, once there are llvm-c bindings for it.
+
+    // Generate a pre-optimization intermediate file if -save-temps was
+    // specified.
+    if (save_temps) {
+        alt (ot) {
+            case (output_type_bitcode) {
+                if (opt) {
+                    auto filename = mk_intermediate_name(output, "no-opt.bc");
+                    llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(filename));
+                }
+            }
+            case (_) {
+                auto filename = mk_intermediate_name(output, "bc");
+                llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(filename));
+            }
+        }
+    }
 
     // FIXME: This is mostly a copy of the bits of opt's -O2 that are
     // available in the C api.
@@ -7054,12 +7084,25 @@ fn run_passes(ModuleRef llmod, bool opt, bool verify, str output,
         llvm.LLVMAddStripDeadPrototypesPass(pm.llpm);
         llvm.LLVMAddDeadTypeEliminationPass(pm.llpm);
         llvm.LLVMAddConstantMergePass(pm.llpm);
+
+        // Generate a post-optimization intermediate file if -save-temps was
+        // specified.
+        if (save_temps) {
+            alt (ot) {
+                case (output_type_bitcode) { /* nothing to do */ }
+                case (_) {
+                    auto filename = mk_intermediate_name(output, "opt.bc");
+                    llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(filename));
+                }
+            }
+        }
     }
 
     if (verify) {
         llvm.LLVMAddVerifierPass(pm.llpm);
     }
 
+    // TODO: Write .s if -c was specified and -save-temps was on.
     if (is_object_or_assembly(ot)) {
         let int LLVMAssemblyFile = 0;
         let int LLVMObjectFile = 1;
@@ -7414,7 +7457,7 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
              vec_append_glue = make_vec_append_glue(llmod, tn));
 }
 
-fn make_common_glue(str output, bool optimize, bool verify,
+fn make_common_glue(str output, bool optimize, bool verify, bool save_temps,
                     output_type ot) {
     // FIXME: part of this is repetitive and is probably a good idea
     // to autogen it, but things like the memcpy implementation are not
@@ -7441,7 +7484,7 @@ fn make_common_glue(str output, bool optimize, bool verify,
 
     trans_exit_task_glue(glues, new_str_hash[ValueRef](), tn, llmod);
 
-    run_passes(llmod, optimize, verify, output, ot);
+    run_passes(llmod, optimize, verify, save_temps, output, ot);
 }
 
 fn create_module_map(@crate_ctxt ccx) -> ValueRef {
@@ -7494,7 +7537,7 @@ fn create_crate_map(@crate_ctxt ccx) -> ValueRef {
 
 fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
                &ty.type_cache type_cache, str output, bool shared,
-               bool optimize, bool verify, output_type ot) {
+               bool optimize, bool verify, bool save_temps, output_type ot) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
@@ -7557,7 +7600,7 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
     // Translate the metadata.
     middle.metadata.write_metadata(cx.ccx, crate);
 
-    run_passes(llmod, optimize, verify, output, ot);
+    run_passes(llmod, optimize, verify, save_temps, output, ot);
 }
 
 //
