@@ -786,7 +786,8 @@ fn type_of_inner(@crate_ctxt cx, ty.t t) -> TypeRef {
     }
 
     check (llty as int != 0);
-    llvm.LLVMAddTypeName(cx.llmod, _str.buf(ty.ty_to_str(cx.tcx, t)), llty);
+    llvm.LLVMAddTypeName(cx.llmod, _str.buf(ty.ty_to_abbrev_str(cx.tcx, t)),
+                         llty);
     cx.lltypes.insert(t, llty);
     ret llty;
 }
@@ -1645,7 +1646,7 @@ fn declare_tydesc(@local_ctxt cx, ty.t t) {
     auto glue_fn_ty = T_ptr(T_glue_fn(ccx.tn));
 
     auto name = sanitize(ccx.names.next("tydesc_" +
-        ty.ty_to_str(cx.ccx.tcx, t)));
+        ty.ty_to_abbrev_str(cx.ccx.tcx, t)));
     auto gvar = llvm.LLVMAddGlobal(ccx.llmod, T_tydesc(ccx.tn),
                                    _str.buf(name));
     auto tydesc = C_struct(vec(C_null(T_ptr(T_ptr(T_tydesc(ccx.tn)))),

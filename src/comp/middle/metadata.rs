@@ -45,9 +45,8 @@ const uint tag_index_table = 0x15u;
 // Type encoding
 
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
-// (The second has to be authed pure.) Extra parameters are for converting
-// to/from def_ids in the string rep. Whatever format you choose should not
-// contain pipe characters.
+// Extra parameters are for converting to/from def_ids in the string rep.
+// Whatever format you choose should not contain pipe characters.
 
 mod Encode {
 

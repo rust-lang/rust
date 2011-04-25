@@ -627,6 +627,12 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
     ret s;
 }
 
+fn ty_to_abbrev_str(ctxt cx, t typ) -> str {
+    auto f = def_to_str;
+    auto ecx = @rec(ds=f, tcx=cx);
+    ret metadata.Encode.ty_str(ecx, typ);
+}
+
 // Type folds
 
 type ty_walk = fn(t);
