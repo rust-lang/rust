@@ -3752,24 +3752,27 @@ fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
     fail;
 }
 
-fn trans_pat_binding(@block_ctxt cx, @ast.pat pat, ValueRef llval)
+fn trans_pat_binding(@block_ctxt cx, @ast.pat pat,
+                     ValueRef llval, bool bind_alias)
     -> result {
     alt (pat.node) {
         case (ast.pat_wild(_)) { ret res(cx, llval); }
         case (ast.pat_lit(_, _)) { ret res(cx, llval); }
         case (ast.pat_bind(?id, ?def_id, ?ann)) {
-            auto ty = node_ann_type(cx.fcx.lcx.ccx, ann);
-
-            auto rslt = alloc_ty(cx, ty);
-            auto dst = rslt.val;
-            auto bcx = rslt.bcx;
-
-            llvm.LLVMSetValueName(dst, _str.buf(id));
-            bcx.fcx.lllocals.insert(def_id, dst);
-            bcx.cleanups +=
-                vec(clean(bind drop_slot(_, dst, ty)));
-
-            ret copy_ty(bcx, INIT, dst, llval, ty);
+            if (bind_alias) {
+                cx.fcx.lllocals.insert(def_id, llval);
+                ret res(cx, llval);
+            } else {
+                auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
+                auto rslt = alloc_ty(cx, t);
+                auto dst = rslt.val;
+                auto bcx = rslt.bcx;
+                llvm.LLVMSetValueName(dst, _str.buf(id));
+                bcx.fcx.lllocals.insert(def_id, dst);
+                bcx.cleanups +=
+                    vec(clean(bind drop_slot(_, dst, t)));
+                ret copy_ty(bcx, INIT, dst, llval, t);
+            }
         }
         case (ast.pat_tag(_, ?subpats, ?vdef_opt, ?ann)) {
             if (_vec.len[@ast.pat](subpats) == 0u) { ret res(cx, llval); }
@@ -3789,12 +3792,8 @@ fn trans_pat_binding(@block_ctxt cx, @ast.pat pat, ValueRef llval)
                 auto rslt = GEP_tag(this_cx, llblobptr, vdef._0, vdef._1,
                                     ty_param_substs, i);
                 this_cx = rslt.bcx;
-                auto llsubvalptr = rslt.val;
-
-                auto llsubval = load_if_immediate(this_cx, llsubvalptr,
-                    pat_ty(cx.fcx.lcx.ccx.tystore, subpat));
                 auto subpat_res = trans_pat_binding(this_cx, subpat,
-                                                    llsubval);
+                                                    rslt.val, true);
                 this_cx = subpat_res.bcx;
                 i += 1;
             }
@@ -3819,7 +3818,7 @@ fn trans_alt(@block_ctxt cx, @ast.expr expr,
         match_res.bcx.build.Br(binding_cx.llbb);
 
         auto binding_res = trans_pat_binding(binding_cx, arm.pat,
-                                             expr_res.val);
+                                             expr_res.val, false);
 
         auto block_res = trans_block(binding_res.bcx, arm.block);
         arm_results += vec(block_res);
