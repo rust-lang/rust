@@ -120,7 +120,7 @@ type local_ctxt = rec(vec[str] path,
                       vec[ast.ty_param] obj_typarams,
                       vec[ast.obj_field] obj_fields,
                       @crate_ctxt ccx);
-                
+
 
 type self_vt = rec(ValueRef v, ty.t t);
 
@@ -1565,7 +1565,7 @@ fn get_tydesc(&@block_ctxt cx, ty.t t) -> result {
     // Does it contain a type param? If so, generate a derived tydesc.
     let uint n_params = ty.count_ty_params(cx.fcx.lcx.ccx.tcx, t);
 
-    if (ty.count_ty_params(cx.fcx.lcx.ccx.tcx, t) > 0u) {
+    if (n_params > 0u) {
         auto tys = linearize_ty_params(cx, t);
 
         check (n_params == _vec.len[uint](tys._0));
@@ -4312,7 +4312,8 @@ fn trans_bind_thunk(@local_ctxt cx,
 
                 if (out_arg.mode == ast.val) {
                     val = bcx.build.Load(val);
-                } else if (ty.count_ty_params(cx.ccx.tcx, out_arg.ty) > 0u) {
+                } else if (ty.type_contains_params(cx.ccx.tcx,
+                                                   out_arg.ty)) {
                     check (out_arg.mode == ast.alias);
                     val = bcx.build.PointerCast(val, llout_arg_ty);
                 }
@@ -4325,7 +4326,7 @@ fn trans_bind_thunk(@local_ctxt cx,
             case (none[@ast.expr]) {
                 let ValueRef passed_arg = llvm.LLVMGetParam(llthunk, a);
 
-                if (ty.count_ty_params(cx.ccx.tcx, out_arg.ty) > 0u) {
+                if (ty.type_contains_params(cx.ccx.tcx, out_arg.ty)) {
                     check (out_arg.mode == ast.alias);
                     passed_arg = bcx.build.PointerCast(passed_arg,
                                                        llout_arg_ty);
@@ -4593,7 +4594,7 @@ fn trans_arg_expr(@block_ctxt cx,
         bcx = re.bcx;
     }
 
-    if (ty.count_ty_params(cx.fcx.lcx.ccx.tcx, arg.ty) > 0u) {
+    if (ty.type_contains_params(cx.fcx.lcx.ccx.tcx, arg.ty)) {
         auto lldestty = lldestty0;
         if (arg.mode == ast.val) {
             // FIXME: we'd prefer to use &&, but rustboot doesn't like it
@@ -4655,7 +4656,7 @@ fn trans_args(@block_ctxt cx,
     if (ty.type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, retty)) {
         llargs += vec(bcx.build.PointerCast
                       (llretslot, T_typaram_ptr(cx.fcx.lcx.ccx.tn)));
-    } else if (ty.count_ty_params(cx.fcx.lcx.ccx.tcx, retty) != 0u) {
+    } else if (ty.type_contains_params(cx.fcx.lcx.ccx.tcx, retty)) {
         // It's possible that the callee has some generic-ness somewhere in
         // its return value -- say a method signature within an obj or a fn
         // type deep in a structure -- which the caller has a concrete view

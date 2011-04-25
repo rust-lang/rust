@@ -61,7 +61,14 @@ fn method_ty_to_fn_ty(ctxt cx, method m) -> t {
 //
 // TODO: It'd be really nice to be able to hide this definition from the
 // outside world, to enforce the above invariants.
-type raw_t = rec(sty struct, option.t[str] cname, uint magic, uint hash);
+type raw_t = rec(sty struct,
+                 option.t[str] cname,
+                 uint magic,
+                 uint hash,
+                 bool has_params,
+                 bool has_bound_params,
+                 bool has_vars,
+                 bool has_locals);
 type t = @raw_t;
 
 // NB: If you change this, you'll probably want to change the corresponding
@@ -145,6 +152,7 @@ type type_store = rec(vec[ty.t] empty_vec_ty,
                       ty.t t_char,
                       ty.t t_str,
 
+                      ty.t t_task,
                       ty.t t_native,
                       ty.t t_type,
 
@@ -164,7 +172,7 @@ fn mk_type_store() -> @type_store {
              t_int = mk_ty_full(ty_int, none[str]),
              t_float = mk_ty_full(ty_float, none[str]),
              t_uint = mk_ty_full(ty_uint, none[str]),
-             
+
              t_i8 = mk_ty_full(ty_machine(ty_i8), none[str]),
              t_i16 = mk_ty_full(ty_machine(ty_i16), none[str]),
              t_i32 = mk_ty_full(ty_machine(ty_i32), none[str]),
@@ -181,6 +189,7 @@ fn mk_type_store() -> @type_store {
              t_char = mk_ty_full(ty_char, none[str]),
              t_str = mk_ty_full(ty_str, none[str]),
 
+             t_task = mk_ty_full(ty_task, none[str]),
              t_native = mk_ty_full(ty_native, none[str]),
              t_type = mk_ty_full(ty_type, none[str]),
 
@@ -195,20 +204,140 @@ fn mk_ctxt() -> ctxt { ret rec(ts=mk_type_store()); }
 
 // Type constructors
 
-// These are private constructors to this module. External users should always
-// use the mk_foo() functions below.
-fn gen_ty(ctxt cx, &sty st) -> t {
-    ret gen_ty_full(cx, st, none[str]);
-}
-
 fn mk_ty_full(&sty st, option.t[str] cname) -> t {
     auto h = hash_type_info(st, cname);
     auto magic = mk_magic(st);
-    ret @rec(struct=st, cname=cname, magic=magic, hash=h);
+
+    let bool has_params = false;
+    let bool has_bound_params = false;
+    let bool has_vars = false;
+    let bool has_locals = false;
+
+    fn derive_flags_t(&mutable bool has_params,
+                      &mutable bool has_bound_params,
+                      &mutable bool has_vars,
+                      &mutable bool has_locals,
+                      &t tt) {
+        has_params = has_params || tt.has_params;
+        has_bound_params = has_bound_params || tt.has_bound_params;
+        has_vars = has_vars || tt.has_vars;
+        has_locals = has_locals || tt.has_locals;
+    }
+
+    fn derive_flags_mt(&mutable bool has_params,
+                       &mutable bool has_bound_params,
+                       &mutable bool has_vars,
+                       &mutable bool has_locals,
+                       &mt m) {
+        derive_flags_t(has_params, has_bound_params,
+                       has_vars, has_locals, m.ty);
+    }
+
+
+    fn derive_flags_arg(&mutable bool has_params,
+                        &mutable bool has_bound_params,
+                        &mutable bool has_vars,
+                        &mutable bool has_locals,
+                        &arg a) {
+        derive_flags_t(has_params, has_bound_params,
+                       has_vars, has_locals, a.ty);
+    }
+
+    fn derive_flags_sig(&mutable bool has_params,
+                        &mutable bool has_bound_params,
+                        &mutable bool has_vars,
+                        &mutable bool has_locals,
+                        &vec[arg] args,
+                        &t tt) {
+        for (arg a in args) {
+            derive_flags_arg(has_params, has_bound_params,
+                             has_vars, has_locals, a);
+        }
+        derive_flags_t(has_params, has_bound_params,
+                       has_vars, has_locals, tt);
+    }
+
+    alt (st) {
+        case (ty_param(_)) { has_params = true; }
+        case (ty_bound_param(_)) { has_bound_params = true; }
+        case (ty_var(_)) { has_vars = true; }
+        case (ty_local(_)) { has_locals = true; }
+        case (ty_tag(_, ?tys)) {
+            for (t tt in tys) {
+                derive_flags_t(has_params, has_bound_params,
+                               has_vars, has_locals, tt);
+            }
+        }
+        case (ty_box(?m)) {
+            derive_flags_mt(has_params, has_bound_params,
+                            has_vars, has_locals, m);
+        }
+
+        case (ty_vec(?m)) {
+            derive_flags_mt(has_params, has_bound_params,
+                            has_vars, has_locals, m);
+        }
+
+        case (ty_port(?tt)) {
+            derive_flags_t(has_params, has_bound_params,
+                           has_vars, has_locals, tt);
+        }
+
+        case (ty_chan(?tt)) {
+            derive_flags_t(has_params, has_bound_params,
+                           has_vars, has_locals, tt);
+        }
+
+        case (ty_tup(?mts)) {
+            for (mt m in mts) {
+                derive_flags_mt(has_params, has_bound_params,
+                                has_vars, has_locals, m);
+            }
+        }
+
+        case (ty_rec(?flds)) {
+            for (field f in flds) {
+                derive_flags_mt(has_params, has_bound_params,
+                                has_vars, has_locals, f.mt);
+            }
+        }
+
+        case (ty_fn(_, ?args, ?tt)) {
+            derive_flags_sig(has_params, has_bound_params,
+                             has_vars, has_locals, args, tt);
+        }
+
+        case (ty_native_fn(_, ?args, ?tt)) {
+            derive_flags_sig(has_params, has_bound_params,
+                             has_vars, has_locals, args, tt);
+        }
+
+        case (ty_obj(?meths)) {
+            for (method m in meths) {
+                derive_flags_sig(has_params, has_bound_params,
+                                 has_vars, has_locals,
+                                 m.inputs, m.output);
+            }
+        }
+        case (_) { }
+    }
+
+    ret @rec(struct=st, cname=cname, magic=magic, hash=h,
+             has_params = has_params,
+             has_bound_params = has_bound_params,
+             has_vars = has_vars,
+             has_locals = has_locals);
 }
 
 fn gen_ty_full(ctxt cx, &sty st, option.t[str] cname) -> t {
     auto new_type = mk_ty_full(st, cname);
+
+    // Do not intern anything with locals or vars; it'll be nearly
+    // single-use anyways, easier to regenerate than fill up the table.
+    if (new_type.has_locals || new_type.has_vars) {
+        ret new_type;
+    }
+
     // Is it interned?
     alt (cx.ts.others.find(new_type)) {
         case (some[t](?typ)) {
@@ -217,16 +346,23 @@ fn gen_ty_full(ctxt cx, &sty st, option.t[str] cname) -> t {
         case (none[t]) {
             // Nope. Insert it and return.
             cx.ts.others.insert(new_type, new_type);
+            // log_err "added: " + ty_to_str(tystore, new_type);
             ret new_type;
         }
     }
 }
 
-fn mk_nil(ctxt cx) -> t     { ret cx.ts.t_nil; }
-fn mk_bool(ctxt cx) -> t    { ret cx.ts.t_bool; }
-fn mk_int(ctxt cx) -> t     { ret cx.ts.t_int; }
-fn mk_float(ctxt cx) -> t   { ret cx.ts.t_float; }
-fn mk_uint(ctxt cx) -> t    { ret cx.ts.t_uint; }
+// These are private constructors to this module. External users should always
+// use the mk_foo() functions below.
+fn gen_ty(ctxt cx, &sty st) -> t {
+    ret gen_ty_full(cx, st, none[str]);
+}
+
+fn mk_nil(ctxt cx) -> t          { ret cx.ts.t_nil; }
+fn mk_bool(ctxt cx) -> t         { ret cx.ts.t_bool; }
+fn mk_int(ctxt cx) -> t          { ret cx.ts.t_int; }
+fn mk_float(ctxt cx) -> t        { ret cx.ts.t_float; }
+fn mk_uint(ctxt cx) -> t         { ret cx.ts.t_uint; }
 
 fn mk_mach(ctxt cx, util.common.ty_mach tm) -> t {
     alt (tm) {
@@ -291,17 +427,12 @@ fn mk_obj(ctxt cx, vec[method] meths) -> t {
     ret gen_ty(cx, ty_obj(meths));
 }
 
-fn mk_var(ctxt cx, int v) -> t    {
-    let int i = _vec.len[t](cx.ts.t_vars) as int;
-    while (i <= v) {
-        cx.ts.t_vars += vec(mk_ty_full(ty_var(i), none[str]));
-        i += 1;
-    }
-    ret cx.ts.t_vars.(v);
+fn mk_var(ctxt cx, int v) -> t {
+    ret mk_ty_full(ty_var(v), none[str]);
 }
 
 fn mk_local(ctxt cx, ast.def_id did) -> t {
-    ret gen_ty(cx, ty_local(did));
+    ret mk_ty_full(ty_local(did), none[str]);
 }
 
 fn mk_param(ctxt cx, uint n) -> t {
@@ -414,6 +545,7 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
     }
 
     auto s = "";
+
     alt (struct(cx, typ)) {
         case (ty_native)       { s += "native";                         }
         case (ty_nil)          { s += "()";                             }
@@ -1041,7 +1173,6 @@ fn hash_ty(&t typ) -> uint { ret typ.hash; }
 // Type equality. This function is private to this module (and slow); external
 // users should use `eq_ty()` instead.
 fn equal_type_structures(&sty a, &sty b) -> bool {
-    fn equal_ty(t a, t b) -> bool { ret Box.ptr_eq[raw_t](a, b); }
 
     fn equal_proto(ast.proto a, ast.proto b) -> bool {
         alt (a) {
@@ -1124,22 +1255,21 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
     }
 
     fn equal_mt(&mt a, &mt b) -> bool {
-        ret equal_mut(a.mut, b.mut) && equal_ty(a.ty, b.ty);
+        ret equal_mut(a.mut, b.mut) && eq_ty(a.ty, b.ty);
     }
 
     fn equal_fn(vec[arg] args_a, t rty_a,
                 vec[arg] args_b, t rty_b) -> bool {
-        if (!equal_ty(rty_a, rty_b)) { ret false; }
+        if (!eq_ty(rty_a, rty_b)) { ret false; }
 
         auto len = _vec.len[arg](args_a);
         if (len != _vec.len[arg](args_b)) { ret false; }
+
         auto i = 0u;
         while (i < len) {
             auto arg_a = args_a.(i); auto arg_b = args_b.(i);
-            if (!equal_mode(arg_a.mode, arg_b.mode) ||
-                    !equal_ty(arg_a.ty, arg_b.ty)) {
-                ret false;
-            }
+            if (!equal_mode(arg_a.mode, arg_b.mode)) { ret false; }
+            if (!eq_ty(arg_a.ty, arg_b.ty)) { ret false; }
             i += 1u;
         }
         ret true;
@@ -1209,7 +1339,7 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
                     if (len != _vec.len[t](tys_b)) { ret false; }
                     auto i = 0u;
                     while (i < len) {
-                        if (!equal_ty(tys_a.(i), tys_b.(i))) { ret false; }
+                        if (!eq_ty(tys_a.(i), tys_b.(i))) { ret false; }
                         i += 1u;
                     }
                     ret true;
@@ -1231,13 +1361,13 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         }
         case (ty_port(?t_a)) {
             alt (b) {
-                case (ty_port(?t_b)) { ret equal_ty(t_a, t_b); }
+                case (ty_port(?t_b)) { ret eq_ty(t_a, t_b); }
                 case (_) { ret false; }
             }
         }
         case (ty_chan(?t_a)) {
             alt (b) {
-                case (ty_chan(?t_b)) { ret equal_ty(t_a, t_b); }
+                case (ty_chan(?t_b)) { ret eq_ty(t_a, t_b); }
                 case (_) { ret false; }
             }
         }
@@ -1394,7 +1524,17 @@ fn eq_ty_full(&t a, &t b) -> bool {
 
 // This is the equality function the public should use. It works as long as
 // the types are interned.
-fn eq_ty(&t a, &t b) -> bool { ret Box.ptr_eq[raw_t](a, b); }
+fn eq_ty(&t a, &t b) -> bool {
+    let bool full = false;
+    full = full || a.has_vars;
+    full = full || a.has_locals;
+    full = full || b.has_vars;
+    full = full || b.has_locals;
+    if (full) {
+        ret eq_ty_full(a, b);
+    }
+    ret Box.ptr_eq[raw_t](a, b);
+}
 
 
 fn ann_to_type(&ast.ann ann) -> t {
@@ -1480,45 +1620,15 @@ fn count_ty_params(ctxt cx, t ty) -> uint {
 }
 
 fn type_contains_vars(ctxt cx, t typ) -> bool {
-    fn checker(ctxt cx, @mutable bool flag, t typ) {
-        alt (struct(cx, typ)) {
-            case (ty_var(_)) { *flag = true; }
-            case (_) { /* fall through */ }
-        }
-    }
-
-    let @mutable bool flag = @mutable false;
-    auto f = bind checker(cx, flag, _);
-    walk_ty(cx, f, typ);
-    ret *flag;
+    ret typ.has_vars;
 }
 
 fn type_contains_params(ctxt cx, t typ) -> bool {
-    fn checker(ctxt cx, @mutable bool flag, t typ) {
-        alt (struct(cx, typ)) {
-            case (ty_param(_)) { *flag = true; }
-            case (_) { /* fall through */ }
-        }
-    }
-
-    let @mutable bool flag = @mutable false;
-    auto f = bind checker(cx, flag, _);
-    walk_ty(cx, f, typ);
-    ret *flag;
+    ret typ.has_params;
 }
 
 fn type_contains_bound_params(ctxt cx, t typ) -> bool {
-    fn checker(ctxt cx, @mutable bool flag, t typ) {
-        alt (struct(cx, typ)) {
-            case (ty_bound_param(_)) { *flag = true; }
-            case (_) { /* fall through */ }
-        }
-    }
-
-    let @mutable bool flag = @mutable false;
-    auto f = bind checker(cx, flag, _);
-    walk_ty(cx, f, typ);
-    ret *flag;
+    ret typ.has_bound_params;
 }
 
 // Type accessors for substructures of types
