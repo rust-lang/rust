@@ -64,7 +64,7 @@ type crate_ctxt = rec(session.session sess,
                       unify_cache unify_cache,
                       mutable uint cache_hits,
                       mutable uint cache_misses,
-                      @ty.type_store tystore);
+                      ty.ctxt tcx);
 
 type fn_ctxt = rec(ty.t ret_ty,
                    @ty_table locals,
@@ -81,7 +81,7 @@ fn substitute_ty_params(&@crate_ctxt ccx,
                         vec[ty.t] supplied,
                         &span sp) -> ty.t {
     fn substituter(@crate_ctxt ccx, vec[ty.t] supplied, ty.t typ) -> ty.t {
-        alt (struct(ccx.tystore, typ)) {
+        alt (struct(ccx.tcx, typ)) {
             case (ty.ty_bound_param(?pid)) { ret supplied.(pid); }
             case (_) { ret typ; }
         }
@@ -97,7 +97,7 @@ fn substitute_ty_params(&@crate_ctxt ccx,
     }
 
     auto f = bind substituter(ccx, supplied, _);
-    ret ty.fold_ty(ccx.tystore, f, typ);
+    ret ty.fold_ty(ccx.tcx, f, typ);
 }
 
 
@@ -113,7 +113,7 @@ fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
             auto t;
             alt (fcx.locals.find(id)) {
                 case (some[ty.t](?t1)) { t = t1; }
-                case (none[ty.t]) { t = ty.mk_local(fcx.ccx.tystore, id); }
+                case (none[ty.t]) { t = ty.mk_local(fcx.ccx.tcx, id); }
             }
             ret tup(0u, t);
         }
@@ -122,19 +122,19 @@ fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
             ret tup(0u, fcx.locals.get(id));
         }
         case (ast.def_fn(?id)) {
-            ret ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tystore,
+            ret ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
                                     fcx.ccx.type_cache, id);
         }
         case (ast.def_native_fn(?id)) {
-            ret ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tystore,
+            ret ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
                                     fcx.ccx.type_cache, id);
         }
         case (ast.def_const(?id)) {
-            ret ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tystore,
+            ret ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
                                     fcx.ccx.type_cache, id);
         }
         case (ast.def_variant(_, ?vid)) {
-            ret ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tystore,
+            ret ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
                                     fcx.ccx.type_cache, vid);
         }
         case (ast.def_binding(?id)) {
@@ -142,14 +142,14 @@ fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
             ret tup(0u, fcx.locals.get(id));
         }
         case (ast.def_obj(?id)) {
-            ret ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tystore,
+            ret ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
                                     fcx.ccx.type_cache, id);
         }
 
         case (ast.def_mod(_)) {
             // Hopefully part of a path.
             // TODO: return a type that's more poisonous, perhaps?
-            ret tup(0u, ty.mk_nil(fcx.ccx.tystore));
+            ret tup(0u, ty.mk_nil(fcx.ccx.tcx));
         }
 
         case (ast.def_ty(_)) {
@@ -170,7 +170,7 @@ fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
 fn instantiate_path(@fn_ctxt fcx, &ast.path pth, &ty_param_count_and_ty tpt,
         &span sp) -> ast.ann {
     auto ty_param_count = tpt._0;
-    auto t = bind_params_in_type(fcx.ccx.tystore, tpt._1);
+    auto t = bind_params_in_type(fcx.ccx.tcx, tpt._1);
 
     auto ty_substs_opt;
     auto ty_substs_len = _vec.len[@ast.ty](pth.node.types);
@@ -205,23 +205,21 @@ fn instantiate_path(@fn_ctxt fcx, &ast.path pth, &ty_param_count_and_ty tpt,
 // Parses the programmer's textual representation of a type into our internal
 // notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID.
-fn ast_ty_to_ty(@ty.type_store tystore,
-                ty_getter getter,
-                &@ast.ty ast_ty) -> ty.t {
-    fn ast_arg_to_arg(@ty.type_store tystore,
+fn ast_ty_to_ty(ty.ctxt tcx, ty_getter getter, &@ast.ty ast_ty) -> ty.t {
+    fn ast_arg_to_arg(ty.ctxt tcx,
                       ty_getter getter,
                       &rec(ast.mode mode, @ast.ty ty) arg)
             -> rec(ast.mode mode, ty.t ty) {
-        ret rec(mode=arg.mode, ty=ast_ty_to_ty(tystore, getter, arg.ty));
+        ret rec(mode=arg.mode, ty=ast_ty_to_ty(tcx, getter, arg.ty));
     }
 
-    fn ast_mt_to_mt(@ty.type_store tystore,
+    fn ast_mt_to_mt(ty.ctxt tcx,
                     ty_getter getter,
                     &ast.mt mt) -> ty.mt {
-        ret rec(ty=ast_ty_to_ty(tystore, getter, mt.ty), mut=mt.mut);
+        ret rec(ty=ast_ty_to_ty(tcx, getter, mt.ty), mut=mt.mut);
     }
 
-    fn instantiate(@ty.type_store tystore,
+    fn instantiate(ty.ctxt tcx,
                    ty_getter getter,
                    ast.def_id id,
                    vec[@ast.ty] args) -> ty.t {
@@ -237,75 +235,75 @@ fn ast_ty_to_ty(@ty.type_store tystore,
         //
         // TODO: Make sure the number of supplied bindings matches the number
         // of type parameters in the typedef. Emit a friendly error otherwise.
-        auto bound_ty = bind_params_in_type(tystore, params_opt_and_ty._1);
+        auto bound_ty = bind_params_in_type(tcx, params_opt_and_ty._1);
         let vec[ty.t] param_bindings = vec();
         for (@ast.ty ast_ty in args) {
-            param_bindings += vec(ast_ty_to_ty(tystore, getter, ast_ty));
+            param_bindings += vec(ast_ty_to_ty(tcx, getter, ast_ty));
         }
-        ret ty.substitute_type_params(tystore, param_bindings, bound_ty);
+        ret ty.substitute_type_params(tcx, param_bindings, bound_ty);
     }
 
     auto mut = ast.imm;
     auto typ;
     auto cname = none[str];
     alt (ast_ty.node) {
-        case (ast.ty_nil)          { typ = ty.mk_nil(tystore); }
-        case (ast.ty_bool)         { typ = ty.mk_bool(tystore); }
-        case (ast.ty_int)          { typ = ty.mk_int(tystore); }
-        case (ast.ty_uint)         { typ = ty.mk_uint(tystore); }
-        case (ast.ty_float)        { typ = ty.mk_float(tystore); }
-        case (ast.ty_machine(?tm)) { typ = ty.mk_mach(tystore, tm); }
-        case (ast.ty_char)         { typ = ty.mk_char(tystore); }
-        case (ast.ty_str)          { typ = ty.mk_str(tystore); }
+        case (ast.ty_nil)          { typ = ty.mk_nil(tcx); }
+        case (ast.ty_bool)         { typ = ty.mk_bool(tcx); }
+        case (ast.ty_int)          { typ = ty.mk_int(tcx); }
+        case (ast.ty_uint)         { typ = ty.mk_uint(tcx); }
+        case (ast.ty_float)        { typ = ty.mk_float(tcx); }
+        case (ast.ty_machine(?tm)) { typ = ty.mk_mach(tcx, tm); }
+        case (ast.ty_char)         { typ = ty.mk_char(tcx); }
+        case (ast.ty_str)          { typ = ty.mk_str(tcx); }
         case (ast.ty_box(?mt)) {
-            typ = ty.mk_box(tystore, ast_mt_to_mt(tystore, getter, mt));
+            typ = ty.mk_box(tcx, ast_mt_to_mt(tcx, getter, mt));
         }
         case (ast.ty_vec(?mt)) {
-            typ = ty.mk_vec(tystore, ast_mt_to_mt(tystore, getter, mt));
+            typ = ty.mk_vec(tcx, ast_mt_to_mt(tcx, getter, mt));
         }
 
         case (ast.ty_port(?t)) {
-            typ = ty.mk_port(tystore, ast_ty_to_ty(tystore, getter, t));
+            typ = ty.mk_port(tcx, ast_ty_to_ty(tcx, getter, t));
         }
 
         case (ast.ty_chan(?t)) {
-            typ = ty.mk_chan(tystore, ast_ty_to_ty(tystore, getter, t));
+            typ = ty.mk_chan(tcx, ast_ty_to_ty(tcx, getter, t));
         }
 
         case (ast.ty_tup(?fields)) {
             let vec[ty.mt] flds = vec();
             for (ast.mt field in fields) {
-                _vec.push[ty.mt](flds, ast_mt_to_mt(tystore, getter, field));
+                _vec.push[ty.mt](flds, ast_mt_to_mt(tcx, getter, field));
             }
-            typ = ty.mk_tup(tystore, flds);
+            typ = ty.mk_tup(tcx, flds);
         }
         case (ast.ty_rec(?fields)) {
             let vec[field] flds = vec();
             for (ast.ty_field f in fields) {
-                auto tm = ast_mt_to_mt(tystore, getter, f.mt);
+                auto tm = ast_mt_to_mt(tcx, getter, f.mt);
                 _vec.push[field](flds, rec(ident=f.ident, mt=tm));
             }
-            typ = ty.mk_rec(tystore, flds);
+            typ = ty.mk_rec(tcx, flds);
         }
 
         case (ast.ty_fn(?proto, ?inputs, ?output)) {
-            auto f = bind ast_arg_to_arg(tystore, getter, _);
+            auto f = bind ast_arg_to_arg(tcx, getter, _);
             auto i = _vec.map[ast.ty_arg, arg](f, inputs);
-            auto out_ty = ast_ty_to_ty(tystore, getter, output);
-            typ = ty.mk_fn(tystore, proto, i, out_ty);
+            auto out_ty = ast_ty_to_ty(tcx, getter, output);
+            typ = ty.mk_fn(tcx, proto, i, out_ty);
         }
 
         case (ast.ty_path(?path, ?def)) {
             check (def != none[ast.def]);
             alt (option.get[ast.def](def)) {
                 case (ast.def_ty(?id)) {
-                    typ = instantiate(tystore, getter, id, path.node.types);
+                    typ = instantiate(tcx, getter, id, path.node.types);
                 }
                 case (ast.def_native_ty(?id)) { typ = getter(id)._1; }
                 case (ast.def_obj(?id)) {
-                    typ = instantiate(tystore, getter, id, path.node.types);
+                    typ = instantiate(tcx, getter, id, path.node.types);
                 }
-                case (ast.def_ty_arg(?id)) { typ = ty.mk_param(tystore, id); }
+                case (ast.def_ty_arg(?id)) { typ = ty.mk_param(tcx, id); }
                 case (_)                   { fail; }
             }
 
@@ -314,10 +312,10 @@ fn ast_ty_to_ty(@ty.type_store tystore,
 
         case (ast.ty_obj(?meths)) {
             let vec[ty.method] tmeths = vec();
-            auto f = bind ast_arg_to_arg(tystore, getter, _);
+            auto f = bind ast_arg_to_arg(tcx, getter, _);
             for (ast.ty_method m in meths) {
                 auto ins = _vec.map[ast.ty_arg, arg](f, m.inputs);
-                auto out = ast_ty_to_ty(tystore, getter, m.output);
+                auto out = ast_ty_to_ty(tcx, getter, m.output);
                 _vec.push[ty.method](tmeths,
                                   rec(proto=m.proto,
                                       ident=m.ident,
@@ -325,14 +323,14 @@ fn ast_ty_to_ty(@ty.type_store tystore,
                                       output=out));
             }
 
-            typ = ty.mk_obj(tystore, ty.sort_methods(tmeths));
+            typ = ty.mk_obj(tcx, ty.sort_methods(tmeths));
         }
     }
 
     alt (cname) {
         case (none[str]) { /* no-op */ }
         case (some[str](?cname_str)) {
-            typ = ty.rename(tystore, typ, cname_str);
+            typ = ty.rename(tcx, typ, cname_str);
         }
     }
     ret typ;
@@ -342,10 +340,10 @@ fn ast_ty_to_ty(@ty.type_store tystore,
 // ast_ty_to_ty.
 fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast.ty ast_ty) -> ty.t {
     fn getter(@crate_ctxt ccx, ast.def_id id) -> ty.ty_param_count_and_ty {
-        ret ty.lookup_item_type(ccx.sess, ccx.tystore, ccx.type_cache, id);
+        ret ty.lookup_item_type(ccx.sess, ccx.tcx, ccx.type_cache, id);
     }
     auto f = bind getter(ccx, _);
-    ret ast_ty_to_ty(ccx.tystore, f, ast_ty);
+    ret ast_ty_to_ty(ccx.tcx, f, ast_ty);
 }
 
 
@@ -364,7 +362,7 @@ mod Collect {
     type ctxt = rec(session.session sess,
                     @ty_item_table id_to_ty_item,
                     ty.type_cache type_cache,
-                    @ty.type_store tystore);
+                    ty.ctxt tcx);
     type env = rec(@ctxt cx, ast.native_abi abi);
 
     fn ty_of_fn_decl(@ctxt cx,
@@ -376,7 +374,7 @@ mod Collect {
                      ast.def_id def_id) -> ty.ty_param_count_and_ty {
         auto input_tys = _vec.map[ast.arg,arg](ty_of_arg, decl.inputs);
         auto output_ty = convert(decl.output);
-        auto t_fn = ty.mk_fn(cx.tystore, proto, input_tys, output_ty);
+        auto t_fn = ty.mk_fn(cx.tcx, proto, input_tys, output_ty);
         auto ty_param_count = _vec.len[ast.ty_param](ty_params);
         auto tpt = tup(ty_param_count, t_fn);
         cx.type_cache.insert(def_id, tpt);
@@ -392,7 +390,7 @@ mod Collect {
                             ast.def_id def_id) -> ty.ty_param_count_and_ty {
         auto input_tys = _vec.map[ast.arg,arg](ty_of_arg, decl.inputs);
         auto output_ty = convert(decl.output);
-        auto t_fn = ty.mk_native_fn(cx.tystore, abi, input_tys, output_ty);
+        auto t_fn = ty.mk_native_fn(cx.tcx, abi, input_tys, output_ty);
         auto ty_param_count = _vec.len[ast.ty_param](ty_params);
         auto tpt = tup(ty_param_count, t_fn);
         cx.type_cache.insert(def_id, tpt);
@@ -403,7 +401,7 @@ mod Collect {
 
         if (id._0 != cx.sess.get_targ_crate_num()) {
             // This is a type we need to load in from the crate reader.
-            ret creader.get_type(cx.sess, cx.tystore, id);
+            ret creader.get_type(cx.sess, cx.tcx, id);
         }
 
         // check (cx.id_to_ty_item.contains_key(id));
@@ -422,12 +420,12 @@ mod Collect {
 
     fn ty_of_arg(@ctxt cx, &ast.arg a) -> arg {
         auto f = bind getter(cx, _);
-        ret rec(mode=a.mode, ty=ast_ty_to_ty(cx.tystore, f, a.ty));
+        ret rec(mode=a.mode, ty=ast_ty_to_ty(cx.tcx, f, a.ty));
     }
 
     fn ty_of_method(@ctxt cx, &@ast.method m) -> method {
         auto get = bind getter(cx, _);
-        auto convert = bind ast_ty_to_ty(cx.tystore, get, _);
+        auto convert = bind ast_ty_to_ty(cx.tcx, get, _);
         auto f = bind ty_of_arg(cx, _);
         auto inputs = _vec.map[ast.arg,arg](f, m.node.meth.decl.inputs);
         auto output = convert(m.node.meth.decl.output);
@@ -442,8 +440,8 @@ mod Collect {
         auto f = bind ty_of_method(cx, _);
         auto methods = _vec.map[@ast.method,method](f, obj_info.methods);
 
-        auto t_obj = ty.mk_obj(cx.tystore, ty.sort_methods(methods));
-        t_obj = ty.rename(cx.tystore, t_obj, id);
+        auto t_obj = ty.mk_obj(cx.tcx, ty.sort_methods(methods));
+        t_obj = ty.rename(cx.tcx, t_obj, id);
         auto ty_param_count = _vec.len[ast.ty_param](ty_params);
         ret tup(ty_param_count, t_obj);
     }
@@ -458,20 +456,20 @@ mod Collect {
         let vec[arg] t_inputs = vec();
         for (ast.obj_field f in obj_info.fields) {
             auto g = bind getter(cx, _);
-            auto t_field = ast_ty_to_ty(cx.tystore, g, f.ty);
+            auto t_field = ast_ty_to_ty(cx.tcx, g, f.ty);
             _vec.push[arg](t_inputs, rec(mode=ast.alias, ty=t_field));
         }
 
         cx.type_cache.insert(obj_ty_id, t_obj);
 
-        auto t_fn = ty.mk_fn(cx.tystore, ast.proto_fn, t_inputs, t_obj._1);
+        auto t_fn = ty.mk_fn(cx.tcx, ast.proto_fn, t_inputs, t_obj._1);
         ret tup(t_obj._0, t_fn);
     }
 
     fn ty_of_item(@ctxt cx, @ast.item it) -> ty.ty_param_count_and_ty {
 
         auto get = bind getter(cx, _);
-        auto convert = bind ast_ty_to_ty(cx.tystore, get, _);
+        auto convert = bind ast_ty_to_ty(cx.tcx, get, _);
 
         alt (it.node) {
 
@@ -516,11 +514,11 @@ mod Collect {
 
                 auto i = 0u;
                 for (ast.ty_param tp in tps) {
-                    subtys += vec(ty.mk_param(cx.tystore, i));
+                    subtys += vec(ty.mk_param(cx.tcx, i));
                     i += 1u;
                 }
 
-                auto t = ty.mk_tag(cx.tystore, def_id, subtys);
+                auto t = ty.mk_tag(cx.tcx, def_id, subtys);
 
                 auto ty_param_count = _vec.len[ast.ty_param](tps);
                 auto tpt = tup(ty_param_count, t);
@@ -539,7 +537,7 @@ mod Collect {
             case (ast.native_item_fn(?ident, ?lname, ?fn_decl,
                                      ?params, ?def_id, _)) {
                 auto get = bind getter(cx, _);
-                auto convert = bind ast_ty_to_ty(cx.tystore, get, _);
+                auto convert = bind ast_ty_to_ty(cx.tcx, get, _);
                 auto f = bind ty_of_arg(cx, _);
                 ret ty_of_native_fn_decl(cx, convert, f, fn_decl, abi, params,
                                          def_id);
@@ -552,7 +550,7 @@ mod Collect {
                     case (none[ty.ty_param_count_and_ty]) {}
                 }
 
-                auto t = ty.mk_native(cx.tystore);
+                auto t = ty.mk_native(cx.tcx);
                 auto tpt = tup(0u, t);
                 cx.type_cache.insert(def_id, tpt);
                 ret tpt;
@@ -570,7 +568,7 @@ mod Collect {
         let vec[ty.t] ty_param_tys = vec();
         auto i = 0u;
         for (ast.ty_param tp in ty_params) {
-            ty_param_tys += vec(ty.mk_param(cx.tystore, i));
+            ty_param_tys += vec(ty.mk_param(cx.tcx, i));
             i += 1u;
         }
 
@@ -581,7 +579,7 @@ mod Collect {
             // constructors get turned into functions.
             auto result_ty;
             if (_vec.len[ast.variant_arg](variant.node.args) == 0u) {
-                result_ty = ty.mk_tag(cx.tystore, tag_id, ty_param_tys);
+                result_ty = ty.mk_tag(cx.tcx, tag_id, ty_param_tys);
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
                 // should be called to resolve named types.
@@ -589,11 +587,11 @@ mod Collect {
 
                 let vec[arg] args = vec();
                 for (ast.variant_arg va in variant.node.args) {
-                    auto arg_ty = ast_ty_to_ty(cx.tystore, f, va.ty);
+                    auto arg_ty = ast_ty_to_ty(cx.tcx, f, va.ty);
                     args += vec(rec(mode=ast.alias, ty=arg_ty));
                 }
-                auto tag_t = ty.mk_tag(cx.tystore, tag_id, ty_param_tys);
-                result_ty = ty.mk_fn(cx.tystore, ast.proto_fn, args, tag_t);
+                auto tag_t = ty.mk_tag(cx.tcx, tag_id, ty_param_tys);
+                result_ty = ty.mk_fn(cx.tcx, ast.proto_fn, args, tag_t);
             }
 
             auto tpt = tup(ty_param_count, result_ty);
@@ -691,9 +689,9 @@ mod Collect {
     }
 
     fn get_ctor_obj_methods(&@env e, ty.t t) -> vec[method] {
-        alt (struct(e.cx.tystore, t)) {
+        alt (struct(e.cx.tcx, t)) {
             case (ty.ty_fn(_,_,?tobj)) {
-                alt (struct(e.cx.tystore, tobj)) {
+                alt (struct(e.cx.tcx, tobj)) {
                     case (ty.ty_obj(?tm)) {
                         ret tm;
                     }
@@ -727,7 +725,7 @@ mod Collect {
             let method meth_ty = meth_tys.(ix);
             let ast.method_ m_;
             let @ast.method m;
-            auto meth_tfn = ty.mk_fn(e.cx.tystore,
+            auto meth_tfn = ty.mk_fn(e.cx.tcx,
                                      meth_ty.proto,
                                      meth_ty.inputs,
                                      meth_ty.output);
@@ -739,7 +737,7 @@ mod Collect {
         }
         auto g = bind getter(e.cx, _);
         for (ast.obj_field fld in ob.fields) {
-            let ty.t fty = ast_ty_to_ty(e.cx.tystore, g, fld.ty);
+            let ty.t fty = ast_ty_to_ty(e.cx.tcx, g, fld.ty);
             let ast.obj_field f = rec(ann=triv_ann(fty)
                 with fld
             );
@@ -750,8 +748,8 @@ mod Collect {
         alt (ob.dtor) {
             case (some[@ast.method](?d)) {
                 let vec[arg] inputs = vec();
-                let ty.t output = ty.mk_nil(e.cx.tystore);
-                auto dtor_tfn = ty.mk_fn(e.cx.tystore, ast.proto_fn, inputs,
+                let ty.t output = ty.mk_nil(e.cx.tcx);
+                auto dtor_tfn = ty.mk_fn(e.cx.tcx, ast.proto_fn, inputs,
                                          output);
                 auto d_ = rec(ann=triv_ann(dtor_tfn) with d.node);
                 dtor = some[@ast.method](@rec(node=d_ with *d));
@@ -789,9 +787,7 @@ mod Collect {
         ret @fold.respan[ast.item_](sp, item);
     }
 
-    fn collect_item_types(session.session sess,
-                          @ty.type_store tystore,
-                          @ast.crate crate)
+    fn collect_item_types(session.session sess, ty.ctxt tcx, @ast.crate crate)
             -> tup(@ast.crate, ty.type_cache, @ty_item_table) {
         // First pass: collect all type item IDs.
         auto module = crate.node.module;
@@ -809,7 +805,7 @@ mod Collect {
         auto cx = @rec(sess=sess,
                        id_to_ty_item=id_to_ty_item,
                        type_cache=type_cache,
-                       tystore=tystore);
+                       tcx=tcx);
 
         let @env e = @rec(cx=cx, abi=ast.native_abi_cdecl);
 
@@ -837,7 +833,7 @@ mod Unify {
     fn simple(@fn_ctxt fcx, ty.t expected, ty.t actual) -> ty.Unify.result {
         // FIXME: horrid botch
         let vec[mutable ty.t] param_substs =
-            vec(mutable ty.mk_nil(fcx.ccx.tystore));
+            vec(mutable ty.mk_nil(fcx.ccx.tcx));
         _vec.pop[mutable ty.t](param_substs);
         ret with_params(fcx, expected, actual, param_substs);
     }
@@ -860,7 +856,7 @@ mod Unify {
                 alt (fcx.locals.find(id)) {
                     case (none[ty.t]) { ret none[ty.t]; }
                     case (some[ty.t](?existing_type)) {
-                        if (ty.type_contains_vars(fcx.ccx.tystore,
+                        if (ty.type_contains_vars(fcx.ccx.tcx,
                                                   existing_type)) {
                             // Not fully resolved yet. The writeback phase
                             // will mop up.
@@ -890,7 +886,7 @@ mod Unify {
                 }
 
                 unified_type =
-                    ty.substitute_type_params(fcx.ccx.tystore, param_substs_1,
+                    ty.substitute_type_params(fcx.ccx.tcx, param_substs_1,
                                               unified_type);
                 fcx.locals.insert(id, unified_type);
             }
@@ -904,8 +900,7 @@ mod Unify {
                 alt (result) {
                     case (ures_ok(?new_subst)) {
                         param_substs.(index) = new_subst;
-                        ret ures_ok(ty.mk_bound_param(fcx.ccx.tystore,
-                                                      index));
+                        ret ures_ok(ty.mk_bound_param(fcx.ccx.tcx, index));
                     }
                     case (_) { ret result; }
                 }
@@ -914,10 +909,7 @@ mod Unify {
 
 
         auto handler = unify_handler(fcx, param_substs);
-        auto result = ty.Unify.unify(expected,
-                                     actual,
-                                     handler,
-                                     fcx.ccx.tystore);
+        auto result = ty.Unify.unify(expected, actual, handler, fcx.ccx.tcx);
         fcx.ccx.unify_cache.insert(cache_key, result);
         ret result;
     }
@@ -929,10 +921,10 @@ tag autoderef_kind {
     NO_AUTODEREF;
 }
 
-fn strip_boxes(@ty.type_store tystore, ty.t t) -> ty.t {
+fn strip_boxes(ty.ctxt tcx, ty.t t) -> ty.t {
     auto t1 = t;
     while (true) {
-        alt (struct(tystore, t1)) {
+        alt (struct(tcx, t1)) {
             case (ty.ty_box(?inner)) { t1 = inner.ty; }
             case (_) { ret t1; }
         }
@@ -943,18 +935,18 @@ fn strip_boxes(@ty.type_store tystore, ty.t t) -> ty.t {
 fn add_boxes(@crate_ctxt ccx, uint n, ty.t t) -> ty.t {
     auto t1 = t;
     while (n != 0u) {
-        t1 = ty.mk_imm_box(ccx.tystore, t1);
+        t1 = ty.mk_imm_box(ccx.tcx, t1);
         n -= 1u;
     }
     ret t1;
 }
 
 
-fn count_boxes(@ty.type_store tystore, ty.t t) -> uint {
+fn count_boxes(ty.ctxt tcx, ty.t t) -> uint {
     auto n = 0u;
     auto t1 = t;
     while (true) {
-        alt (struct(tystore, t1)) {
+        alt (struct(tcx, t1)) {
             case (ty.ty_box(?inner)) { n += 1u; t1 = inner.ty; }
             case (_) { ret n; }
         }
@@ -992,13 +984,13 @@ mod Demand {
         auto implicit_boxes = 0u;
 
         if (adk == AUTODEREF_OK) {
-            expected_1 = strip_boxes(fcx.ccx.tystore, expected_1);
-            actual_1 = strip_boxes(fcx.ccx.tystore, actual_1);
-            implicit_boxes = count_boxes(fcx.ccx.tystore, actual);
+            expected_1 = strip_boxes(fcx.ccx.tcx, expected_1);
+            actual_1 = strip_boxes(fcx.ccx.tcx, actual_1);
+            implicit_boxes = count_boxes(fcx.ccx.tcx, actual);
         }
 
         let vec[mutable ty.t] ty_param_substs =
-            vec(mutable ty.mk_nil(fcx.ccx.tystore));
+            vec(mutable ty.mk_nil(fcx.ccx.tcx));
         _vec.pop[mutable ty.t](ty_param_substs);   // FIXME: horrid botch
         for (ty.t ty_param_subst in ty_param_substs_0) {
             ty_param_substs += vec(mutable ty_param_subst);
@@ -1018,8 +1010,8 @@ mod Demand {
 
             case (ures_err(?err, ?expected, ?actual)) {
                 fcx.ccx.sess.span_err(sp, "mismatched types: expected "
-                    + ty_to_str(fcx.ccx.tystore, expected) + " but found "
-                    + ty_to_str(fcx.ccx.tystore, actual) + " ("
+                    + ty_to_str(fcx.ccx.tcx, expected) + " but found "
+                    + ty_to_str(fcx.ccx.tcx, actual) + " ("
                     + ty.type_err_to_str(err) + ")");
 
                 // TODO: In the future, try returning "expected", reporting
@@ -1046,13 +1038,12 @@ fn variant_arg_types(@crate_ctxt ccx, &span sp, ast.def_id vid,
 
     let vec[ty.t] result = vec();
 
-    auto tpt = ty.lookup_item_type(ccx.sess, ccx.tystore, ccx.type_cache,
-                                   vid);
-    alt (struct(ccx.tystore, tpt._1)) {
+    auto tpt = ty.lookup_item_type(ccx.sess, ccx.tcx, ccx.type_cache, vid);
+    alt (struct(ccx.tcx, tpt._1)) {
         case (ty.ty_fn(_, ?ins, _)) {
             // N-ary variant.
             for (ty.arg arg in ins) {
-                auto arg_ty = bind_params_in_type(ccx.tystore, arg.ty);
+                auto arg_ty = bind_params_in_type(ccx.tcx, arg.ty);
                 arg_ty = substitute_ty_params(ccx, arg_ty, ty_param_count,
                                               tag_ty_params, sp);
                 result += vec(arg_ty);
@@ -1117,7 +1108,7 @@ mod Pushdown {
                 // Take the variant's type parameters out of the expected
                 // type.
                 auto tag_tps;
-                alt (struct(fcx.ccx.tystore, expected)) {
+                alt (struct(fcx.ccx.tcx, expected)) {
                     case (ty.ty_tag(_, ?tps)) { tag_tps = tps; }
                     case (_) {
                         log_err "tag pattern type not actually a tag?!";
@@ -1167,7 +1158,7 @@ mod Pushdown {
                 auto t = Demand.simple(fcx, e.span, expected,
                                        ann_to_type(ann));
                 let vec[@ast.expr] es_1 = vec();
-                alt (struct(fcx.ccx.tystore, t)) {
+                alt (struct(fcx.ccx.tcx, t)) {
                     case (ty.ty_vec(?mt)) {
                         for (@ast.expr e_0 in es_0) {
                             es_1 += vec(pushdown_expr(fcx, mt.ty, e_0));
@@ -1184,7 +1175,7 @@ mod Pushdown {
                 auto t = Demand.simple(fcx, e.span, expected,
                                        ann_to_type(ann));
                 let vec[ast.elt] elts_1 = vec();
-                alt (struct(fcx.ccx.tystore, t)) {
+                alt (struct(fcx.ccx.tcx, t)) {
                     case (ty.ty_tup(?mts)) {
                         auto i = 0u;
                         for (ast.elt elt_0 in es_0) {
@@ -1208,7 +1199,7 @@ mod Pushdown {
                 auto t = Demand.simple(fcx, e.span, expected,
                                        ann_to_type(ann));
                 let vec[ast.field] fields_1 = vec();
-                alt (struct(fcx.ccx.tystore, t)) {
+                alt (struct(fcx.ccx.tcx, t)) {
                     case (ty.ty_rec(?field_mts)) {
                         alt (base_0) {
                             case (none[@ast.expr]) {
@@ -1421,9 +1412,9 @@ mod Pushdown {
                 auto t = Demand.simple(fcx, e.span, expected,
                                        ann_to_type(ann));
                 let @ast.expr es_1;
-                alt (struct(fcx.ccx.tystore, t)) {
+                alt (struct(fcx.ccx.tcx, t)) {
                     case (ty.ty_chan(?subty)) {
-                        auto pt = ty.mk_port(fcx.ccx.tystore, subty);
+                        auto pt = ty.mk_port(fcx.ccx.tcx, subty);
                         es_1 = pushdown_expr(fcx, pt, es);
                     }
                     case (_) {
@@ -1440,7 +1431,7 @@ mod Pushdown {
                 for (ast.arm arm_0 in arms_0) {
                     auto block_1 = pushdown_block(fcx, expected, arm_0.block);
                     t = Demand.simple(fcx, e.span, t,
-                                      block_ty(fcx.ccx.tystore, block_1));
+                                      block_ty(fcx.ccx.tcx, block_1));
                     auto arm_1 = rec(pat=arm_0.pat, block=block_1,
                                      index=arm_0.index);
                     arms_1 += vec(arm_1);
@@ -1451,9 +1442,8 @@ mod Pushdown {
             case (ast.expr_recv(?lval_0, ?expr_0, ?ann)) {
                 auto lval_1 = pushdown_expr(fcx, next_ty_var(fcx.ccx),
                                             lval_0);
-                auto t = expr_ty(fcx.ccx.tystore, lval_1);
-                auto expr_1 = pushdown_expr(fcx,
-                                            ty.mk_port(fcx.ccx.tystore, t),
+                auto t = expr_ty(fcx.ccx.tcx, lval_1);
+                auto expr_1 = pushdown_expr(fcx, ty.mk_port(fcx.ccx.tcx, t),
                                             expr_0);
                 e_1 = ast.expr_recv(lval_1, expr_1, ann);
             }
@@ -1461,9 +1451,8 @@ mod Pushdown {
             case (ast.expr_send(?lval_0, ?expr_0, ?ann)) {
                 auto expr_1 = pushdown_expr(fcx, next_ty_var(fcx.ccx),
                                             expr_0);
-                auto t = expr_ty(fcx.ccx.tystore, expr_1);
-                auto lval_1 = pushdown_expr(fcx,
-                                            ty.mk_chan(fcx.ccx.tystore, t),
+                auto t = expr_ty(fcx.ccx.tcx, expr_1);
+                auto lval_1 = pushdown_expr(fcx, ty.mk_chan(fcx.ccx.tcx, t),
                                             lval_0);
                 e_1 = ast.expr_send(lval_1, expr_1, ann);
             }
@@ -1488,14 +1477,14 @@ mod Pushdown {
                 auto block_ = rec(stmts=bloc.node.stmts,
                                   expr=some[@ast.expr](e_1),
                                   index=bloc.node.index,
-                                  a=plain_ann(fcx.ccx.tystore));
+                                  a=plain_ann(fcx.ccx.tcx));
                 ret fold.respan[ast.block_](bloc.span, block_);
             }
             case (none[@ast.expr]) {
                 Demand.simple(fcx, bloc.span, expected,
-                              ty.mk_nil(fcx.ccx.tystore));
+                              ty.mk_nil(fcx.ccx.tcx));
                 ret fold.respan[ast.block_](bloc.span,
-                      rec(a = plain_ann(fcx.ccx.tystore) with bloc.node));
+                      rec(a = plain_ann(fcx.ccx.tcx) with bloc.node));
             }
         }
     }
@@ -1530,7 +1519,7 @@ fn writeback_local(&option.t[@fn_ctxt] env, &span sp, @ast.local local)
 fn resolve_local_types_in_annotation(&option.t[@fn_ctxt] env, ast.ann ann)
         -> ast.ann {
     fn resolver(@fn_ctxt fcx, ty.t typ) -> ty.t {
-        alt (struct(fcx.ccx.tystore, typ)) {
+        alt (struct(fcx.ccx.tcx, typ)) {
             case (ty.ty_local(?lid)) { ret fcx.locals.get(lid); }
             case (_)                 { ret typ; }
         }
@@ -1544,7 +1533,7 @@ fn resolve_local_types_in_annotation(&option.t[@fn_ctxt] env, ast.ann ann)
         }
         case (ast.ann_type(?typ, ?tps, ?ts_info)) {
             auto f = bind resolver(fcx, _);
-            auto new_type = ty.fold_ty(fcx.ccx.tystore, f, ann_to_type(ann));
+            auto new_type = ty.fold_ty(fcx.ccx.tcx, f, ann_to_type(ann));
             ret ast.ann_type(new_type, tps, ts_info);
         }
     }
@@ -1580,16 +1569,16 @@ fn resolve_local_types_in_block(&@fn_ctxt fcx, &ast.block block)
 
 fn check_lit(@crate_ctxt ccx, @ast.lit lit) -> ty.t {
     alt (lit.node) {
-        case (ast.lit_str(_))           { ret ty.mk_str(ccx.tystore); }
-        case (ast.lit_char(_))          { ret ty.mk_char(ccx.tystore); }
-        case (ast.lit_int(_))           { ret ty.mk_int(ccx.tystore);  }
-        case (ast.lit_float(_))         { ret ty.mk_float(ccx.tystore);  }
+        case (ast.lit_str(_))           { ret ty.mk_str(ccx.tcx); }
+        case (ast.lit_char(_))          { ret ty.mk_char(ccx.tcx); }
+        case (ast.lit_int(_))           { ret ty.mk_int(ccx.tcx);  }
+        case (ast.lit_float(_))         { ret ty.mk_float(ccx.tcx);  }
         case (ast.lit_mach_float(?tm, _))
-                                        { ret ty.mk_mach(ccx.tystore, tm); }
-        case (ast.lit_uint(_))          { ret ty.mk_uint(ccx.tystore); }
-        case (ast.lit_mach_int(?tm, _)) { ret ty.mk_mach(ccx.tystore, tm); }
-        case (ast.lit_nil)              { ret ty.mk_nil(ccx.tystore);  }
-        case (ast.lit_bool(_))          { ret ty.mk_bool(ccx.tystore); }
+                                        { ret ty.mk_mach(ccx.tcx, tm); }
+        case (ast.lit_uint(_))          { ret ty.mk_uint(ccx.tcx); }
+        case (ast.lit_mach_int(?tm, _)) { ret ty.mk_mach(ccx.tcx, tm); }
+        case (ast.lit_nil)              { ret ty.mk_nil(ccx.tcx);  }
+        case (ast.lit_bool(_))          { ret ty.mk_bool(ccx.tcx); }
     }
 
     fail; // not reached
@@ -1610,16 +1599,16 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
         }
         case (ast.pat_tag(?p, ?subpats, ?vdef_opt, _)) {
             auto vdef = option.get[ast.variant_def](vdef_opt);
-            auto t = ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tystore,
+            auto t = ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
                                          fcx.ccx.type_cache, vdef._1)._1;
             auto len = _vec.len[ast.ident](p.node.idents);
             auto last_id = p.node.idents.(len - 1u);
 
-            auto tpt = ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tystore,
+            auto tpt = ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
                                            fcx.ccx.type_cache, vdef._0);
             auto ann = instantiate_path(fcx, p, tpt, pat.span);
 
-            alt (struct(fcx.ccx.tystore, t)) {
+            alt (struct(fcx.ccx.tcx, t)) {
                 // N-ary variants have function types.
                 case (ty.ty_fn(_, ?args, ?tag_ty)) {
                     auto arg_len = _vec.len[arg](args);
@@ -1692,7 +1681,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
                     // FIXME: this breaks aliases. We need a ty_fn_arg.
                     auto arg_ty = rec(mode=ast.val,
-                                      ty=expr_ty(fcx.ccx.tystore, a_0));
+                                      ty=expr_ty(fcx.ccx.tcx, a_0));
                     _vec.push[arg](arg_tys_0, arg_ty);
                 }
                 case (none[@ast.expr]) {
@@ -1707,12 +1696,12 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         auto rt_0 = next_ty_var(fcx.ccx);
         auto t_0;
-        alt (struct(fcx.ccx.tystore, expr_ty(fcx.ccx.tystore, f_0))) {
+        alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, f_0))) {
             case (ty.ty_fn(?proto, _, _))   {
-                t_0 = ty.mk_fn(fcx.ccx.tystore, proto, arg_tys_0, rt_0);
+                t_0 = ty.mk_fn(fcx.ccx.tcx, proto, arg_tys_0, rt_0);
             }
             case (ty.ty_native_fn(?abi, _, _))   {
-                t_0 = ty.mk_native_fn(fcx.ccx.tystore, abi, arg_tys_0, rt_0);
+                t_0 = ty.mk_native_fn(fcx.ccx.tcx, abi, arg_tys_0, rt_0);
             }
             case (_) {
                 log_err "check_call_or_bind(): fn expr doesn't have fn type";
@@ -1721,7 +1710,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         // Unify the callee and arguments.
-        auto tpt_0 = ty.expr_ty_params_and_ty(fcx.ccx.tystore, f_0);
+        auto tpt_0 = ty.expr_ty_params_and_ty(fcx.ccx.tcx, f_0);
         auto tpt_1 = Demand.full(fcx, f.span, tpt_0._1, t_0, tpt_0._0,
                                  NO_AUTODEREF);
         auto f_1 = ty.replace_expr_type(f_0, tpt_1);
@@ -1734,15 +1723,14 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         -> tup(@ast.expr, @ast.expr, ast.ann) {
         auto lhs_0 = check_expr(fcx, lhs);
         auto rhs_0 = check_expr(fcx, rhs);
-        auto lhs_t0 = expr_ty(fcx.ccx.tystore, lhs_0);
-        auto rhs_t0 = expr_ty(fcx.ccx.tystore, rhs_0);
+        auto lhs_t0 = expr_ty(fcx.ccx.tcx, lhs_0);
+        auto rhs_t0 = expr_ty(fcx.ccx.tcx, rhs_0);
 
         auto lhs_1 = Pushdown.pushdown_expr(fcx, rhs_t0, lhs_0);
-        auto rhs_1 = Pushdown.pushdown_expr(fcx,
-                                            expr_ty(fcx.ccx.tystore, lhs_1),
+        auto rhs_1 = Pushdown.pushdown_expr(fcx, expr_ty(fcx.ccx.tcx, lhs_1),
                                             rhs_0);
 
-        auto ann = triv_ann(expr_ty(fcx.ccx.tystore, rhs_1));
+        auto ann = triv_ann(expr_ty(fcx.ccx.tcx, rhs_1));
         ret tup(lhs_1, rhs_1, ann);
     }
 
@@ -1778,25 +1766,25 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         case (ast.expr_binary(?binop, ?lhs, ?rhs, _)) {
             auto lhs_0 = check_expr(fcx, lhs);
             auto rhs_0 = check_expr(fcx, rhs);
-            auto lhs_t0 = expr_ty(fcx.ccx.tystore, lhs_0);
-            auto rhs_t0 = expr_ty(fcx.ccx.tystore, rhs_0);
+            auto lhs_t0 = expr_ty(fcx.ccx.tcx, lhs_0);
+            auto rhs_t0 = expr_ty(fcx.ccx.tcx, rhs_0);
 
             // FIXME: Binops have a bit more subtlety than this.
             auto lhs_1 = Pushdown.pushdown_expr_full(fcx, rhs_t0, lhs_0,
                                                      AUTODEREF_OK);
             auto rhs_1 =
                 Pushdown.pushdown_expr_full(fcx,
-                                            expr_ty(fcx.ccx.tystore, lhs_1),
+                                            expr_ty(fcx.ccx.tcx, lhs_1),
                                             rhs_0, AUTODEREF_OK);
 
-            auto t = strip_boxes(fcx.ccx.tystore, lhs_t0);
+            auto t = strip_boxes(fcx.ccx.tcx, lhs_t0);
             alt (binop) {
-                case (ast.eq) { t = ty.mk_bool(fcx.ccx.tystore); }
-                case (ast.lt) { t = ty.mk_bool(fcx.ccx.tystore); }
-                case (ast.le) { t = ty.mk_bool(fcx.ccx.tystore); }
-                case (ast.ne) { t = ty.mk_bool(fcx.ccx.tystore); }
-                case (ast.ge) { t = ty.mk_bool(fcx.ccx.tystore); }
-                case (ast.gt) { t = ty.mk_bool(fcx.ccx.tystore); }
+                case (ast.eq) { t = ty.mk_bool(fcx.ccx.tcx); }
+                case (ast.lt) { t = ty.mk_bool(fcx.ccx.tcx); }
+                case (ast.le) { t = ty.mk_bool(fcx.ccx.tcx); }
+                case (ast.ne) { t = ty.mk_bool(fcx.ccx.tcx); }
+                case (ast.ge) { t = ty.mk_bool(fcx.ccx.tcx); }
+                case (ast.gt) { t = ty.mk_bool(fcx.ccx.tcx); }
                 case (_) { /* fall through */ }
             }
 
@@ -1809,14 +1797,14 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_unary(?unop, ?oper, _)) {
             auto oper_1 = check_expr(fcx, oper);
-            auto oper_t = expr_ty(fcx.ccx.tystore, oper_1);
+            auto oper_t = expr_ty(fcx.ccx.tcx, oper_1);
             alt (unop) {
                 case (ast.box(?mut)) {
-                    oper_t = ty.mk_box(fcx.ccx.tystore,
+                    oper_t = ty.mk_box(fcx.ccx.tcx,
                                        rec(ty=oper_t, mut=mut));
                 }
                 case (ast.deref) {
-                    alt (struct(fcx.ccx.tystore, oper_t)) {
+                    alt (struct(fcx.ccx.tcx, oper_t)) {
                         case (ty.ty_box(?inner)) {
                             oper_t = inner.ty;
                         }
@@ -1824,11 +1812,11 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                             fcx.ccx.sess.span_err
                                 (expr.span,
                                  "dereferencing non-box type: "
-                                 + ty_to_str(fcx.ccx.tystore, oper_t));
+                                 + ty_to_str(fcx.ccx.tcx, oper_t));
                         }
                     }
                 }
-                case (_) { oper_t = strip_boxes(fcx.ccx.tystore, oper_t); }
+                case (_) { oper_t = strip_boxes(fcx.ccx.tcx, oper_t); }
             }
 
             auto ann = triv_ann(oper_t);
@@ -1837,7 +1825,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_path(?pth, ?defopt, _)) {
-            auto t = ty.mk_nil(fcx.ccx.tystore);
+            auto t = ty.mk_nil(fcx.ccx.tcx);
             check (defopt != none[ast.def]);
             auto defn = option.get[ast.def](defopt);
 
@@ -1863,7 +1851,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_ext(?p, ?args, ?body, ?expanded, _)) {
             auto exp_ = check_expr(fcx, expanded);
-            auto t = expr_ty(fcx.ccx.tystore, exp_);
+            auto t = expr_ty(fcx.ccx.tcx, exp_);
             auto ann = triv_ann(t);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_ext(p, args, body, exp_,
@@ -1872,23 +1860,23 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_fail(_)) {
             ret @fold.respan[ast.expr_](expr.span,
-                ast.expr_fail(plain_ann(fcx.ccx.tystore)));
+                ast.expr_fail(plain_ann(fcx.ccx.tcx)));
         }
 
         case (ast.expr_break(_)) {
             ret @fold.respan[ast.expr_](expr.span,
-                ast.expr_break(plain_ann(fcx.ccx.tystore)));
+                ast.expr_break(plain_ann(fcx.ccx.tcx)));
         }
 
         case (ast.expr_cont(_)) {
             ret @fold.respan[ast.expr_](expr.span,
-                ast.expr_cont(plain_ann(fcx.ccx.tystore)));
+                ast.expr_cont(plain_ann(fcx.ccx.tcx)));
         }
 
         case (ast.expr_ret(?expr_opt, _)) {
             alt (expr_opt) {
                 case (none[@ast.expr]) {
-                    auto nil = ty.mk_nil(fcx.ccx.tystore);
+                    auto nil = ty.mk_nil(fcx.ccx.tcx);
                     if (!are_compatible(fcx, fcx.ret_ty, nil)) {
                         fcx.ccx.sess.err("ret; in function "
                                          + "returning non-nil");
@@ -1897,7 +1885,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     ret @fold.respan[ast.expr_]
                         (expr.span,
                          ast.expr_ret(none[@ast.expr],
-                                      plain_ann(fcx.ccx.tystore)));
+                                      plain_ann(fcx.ccx.tcx)));
                 }
 
                 case (some[@ast.expr](?e)) {
@@ -1906,7 +1894,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                          expr_0);
                     ret @fold.respan[ast.expr_]
                         (expr.span, ast.expr_ret(some(expr_1),
-                                                 plain_ann(fcx.ccx.tystore)));
+                                                 plain_ann(fcx.ccx.tcx)));
                 }
             }
         }
@@ -1914,7 +1902,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         case (ast.expr_put(?expr_opt, _)) {
             alt (expr_opt) {
                 case (none[@ast.expr]) {
-                    auto nil = ty.mk_nil(fcx.ccx.tystore);
+                    auto nil = ty.mk_nil(fcx.ccx.tcx);
                     if (!are_compatible(fcx, fcx.ret_ty, nil)) {
                         fcx.ccx.sess.err("put; in function "
                                          + "putting non-nil");
@@ -1922,7 +1910,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
                     ret @fold.respan[ast.expr_]
                         (expr.span, ast.expr_put(none[@ast.expr],
-                         plain_ann(fcx.ccx.tystore)));
+                         plain_ann(fcx.ccx.tcx)));
                 }
 
                 case (some[@ast.expr](?e)) {
@@ -1931,7 +1919,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                          expr_0);
                     ret @fold.respan[ast.expr_]
                         (expr.span, ast.expr_put(some(expr_1),
-                                                 plain_ann(fcx.ccx.tystore)));
+                                                 plain_ann(fcx.ccx.tcx)));
                 }
             }
         }
@@ -1942,23 +1930,23 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto expr_0 = check_expr(fcx, e);
             auto expr_1 = Pushdown.pushdown_expr(fcx, fcx.ret_ty, expr_0);
             ret @fold.respan[ast.expr_](expr.span,
-                ast.expr_be(expr_1, plain_ann(fcx.ccx.tystore)));
+                ast.expr_be(expr_1, plain_ann(fcx.ccx.tcx)));
         }
 
         case (ast.expr_log(?l,?e,_)) {
             auto expr_t = check_expr(fcx, e);
             ret @fold.respan[ast.expr_]
                 (expr.span, ast.expr_log(l, expr_t,
-                                         plain_ann(fcx.ccx.tystore)));
+                                         plain_ann(fcx.ccx.tcx)));
         }
 
         case (ast.expr_check_expr(?e, _)) {
             auto expr_t = check_expr(fcx, e);
-            Demand.simple(fcx, expr.span, ty.mk_bool(fcx.ccx.tystore),
-                          expr_ty(fcx.ccx.tystore, expr_t));
+            Demand.simple(fcx, expr.span, ty.mk_bool(fcx.ccx.tcx),
+                          expr_ty(fcx.ccx.tcx, expr_t));
             ret @fold.respan[ast.expr_]
                 (expr.span, ast.expr_check_expr(expr_t,
-                                                plain_ann(fcx.ccx.tystore)));
+                                                plain_ann(fcx.ccx.tcx)));
         }
 
         case (ast.expr_assign(?lhs, ?rhs, _)) {
@@ -1981,12 +1969,12 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         case (ast.expr_send(?lhs, ?rhs, _)) {
             auto lhs_0 = check_expr(fcx, lhs);
             auto rhs_0 = check_expr(fcx, rhs);
-            auto rhs_t = expr_ty(fcx.ccx.tystore, rhs_0);
+            auto rhs_t = expr_ty(fcx.ccx.tcx, rhs_0);
 
-            auto chan_t = ty.mk_chan(fcx.ccx.tystore, rhs_t);
+            auto chan_t = ty.mk_chan(fcx.ccx.tcx, rhs_t);
             auto lhs_1 = Pushdown.pushdown_expr(fcx, chan_t, lhs_0);
             auto item_t;
-            alt (struct(fcx.ccx.tystore, expr_ty(fcx.ccx.tystore, lhs_1))) {
+            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, lhs_1))) {
                 case (ty.ty_chan(?it)) {
                     item_t = it;
                 }
@@ -2004,12 +1992,12 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         case (ast.expr_recv(?lhs, ?rhs, _)) {
             auto lhs_0 = check_expr(fcx, lhs);
             auto rhs_0 = check_expr(fcx, rhs);
-            auto lhs_t1 = expr_ty(fcx.ccx.tystore, lhs_0);
+            auto lhs_t1 = expr_ty(fcx.ccx.tcx, lhs_0);
 
-            auto port_t = ty.mk_port(fcx.ccx.tystore, lhs_t1);
+            auto port_t = ty.mk_port(fcx.ccx.tcx, lhs_t1);
             auto rhs_1 = Pushdown.pushdown_expr(fcx, port_t, rhs_0);
             auto item_t;
-            alt (struct(fcx.ccx.tystore, expr_ty(fcx.ccx.tystore, rhs_0))) {
+            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, rhs_0))) {
                 case (ty.ty_port(?it)) {
                     item_t = it;
                 }
@@ -2026,12 +2014,11 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_if(?cond, ?thn, ?elsopt, _)) {
             auto cond_0 = check_expr(fcx, cond);
-            auto cond_1 = Pushdown.pushdown_expr(fcx,
-                                                 ty.mk_bool(fcx.ccx.tystore),
+            auto cond_1 = Pushdown.pushdown_expr(fcx, ty.mk_bool(fcx.ccx.tcx),
                                                  cond_0);
 
             auto thn_0 = check_block(fcx, thn);
-            auto thn_t = block_ty(fcx.ccx.tystore, thn_0);
+            auto thn_t = block_ty(fcx.ccx.tcx, thn_0);
 
             auto elsopt_1;
             auto elsopt_t;
@@ -2040,11 +2027,11 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     auto els_0 = check_expr(fcx, els);
                     auto els_1 = Pushdown.pushdown_expr(fcx, thn_t, els_0);
                     elsopt_1 = some[@ast.expr](els_1);
-                    elsopt_t = expr_ty(fcx.ccx.tystore, els_1);
+                    elsopt_t = expr_ty(fcx.ccx.tcx, els_1);
                 }
                 case (none[@ast.expr]) {
                     elsopt_1 = none[@ast.expr];
-                    elsopt_t = ty.mk_nil(fcx.ccx.tystore);
+                    elsopt_t = ty.mk_nil(fcx.ccx.tcx);
                 }
             }
 
@@ -2064,7 +2051,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             // FIXME: enforce that the type of the decl is the element type
             // of the seq.
 
-            auto ann = triv_ann(ty.mk_nil(fcx.ccx.tystore));
+            auto ann = triv_ann(ty.mk_nil(fcx.ccx.tcx));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_for(decl_1, seq_1,
                                                      body_1, ann));
@@ -2075,7 +2062,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto seq_1 = check_expr(fcx, seq);
             auto body_1 = check_block(fcx, body);
 
-            auto ann = triv_ann(ty.mk_nil(fcx.ccx.tystore));
+            auto ann = triv_ann(ty.mk_nil(fcx.ccx.tcx));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_for_each(decl_1, seq_1,
                                                           body_1, ann));
@@ -2083,24 +2070,22 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_while(?cond, ?body, _)) {
             auto cond_0 = check_expr(fcx, cond);
-            auto cond_1 = Pushdown.pushdown_expr(fcx,
-                                                 ty.mk_bool(fcx.ccx.tystore),
+            auto cond_1 = Pushdown.pushdown_expr(fcx, ty.mk_bool(fcx.ccx.tcx),
                                                  cond_0);
             auto body_1 = check_block(fcx, body);
 
-            auto ann = triv_ann(ty.mk_nil(fcx.ccx.tystore));
+            auto ann = triv_ann(ty.mk_nil(fcx.ccx.tcx));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_while(cond_1, body_1, ann));
         }
 
         case (ast.expr_do_while(?body, ?cond, _)) {
             auto cond_0 = check_expr(fcx, cond);
-            auto cond_1 = Pushdown.pushdown_expr(fcx,
-                                                 ty.mk_bool(fcx.ccx.tystore),
+            auto cond_1 = Pushdown.pushdown_expr(fcx, ty.mk_bool(fcx.ccx.tcx),
                                                  cond_0);
             auto body_1 = check_block(fcx, body);
 
-            auto ann = triv_ann(block_ty(fcx.ccx.tystore, body_1));
+            auto ann = triv_ann(block_ty(fcx.ccx.tcx, body_1));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_do_while(body_1, cond_1,
                                                           ann));
@@ -2111,13 +2096,13 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             // Typecheck the patterns first, so that we get types for all the
             // bindings.
-            auto pattern_ty = expr_ty(fcx.ccx.tystore, expr_0);
+            auto pattern_ty = expr_ty(fcx.ccx.tcx, expr_0);
 
             let vec[@ast.pat] pats_0 = vec();
             for (ast.arm arm in arms) {
                 auto pat_0 = check_pat(fcx, arm.pat);
                 pattern_ty = Demand.simple(fcx, pat_0.span, pattern_ty,
-                                           pat_ty(fcx.ccx.tystore, pat_0));
+                                           pat_ty(fcx.ccx.tcx, pat_0));
                 pats_0 += vec(pat_0);
             }
 
@@ -2133,7 +2118,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             for (ast.arm arm in arms) {
                 auto block_0 = check_block(fcx, arm.block);
                 result_ty = Demand.simple(fcx, block_0.span, result_ty,
-                                          block_ty(fcx.ccx.tystore, block_0));
+                                          block_ty(fcx.ccx.tcx, block_0));
                 blocks_0 += vec(block_0);
             }
 
@@ -2161,14 +2146,13 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto ann;
             alt (b_0.node.expr) {
                 case (some[@ast.expr](?expr)) {
-                    ann = triv_ann(expr_ty(fcx.ccx.tystore, expr));
+                    ann = triv_ann(expr_ty(fcx.ccx.tcx, expr));
                 }
                 case (none[@ast.expr]) {
-                    ann = triv_ann(ty.mk_nil(fcx.ccx.tystore));
+                    ann = triv_ann(ty.mk_nil(fcx.ccx.tcx));
                 }
             }
-            ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_block(b_0, ann));
+            ret @fold.respan[ast.expr_](expr.span, ast.expr_block(b_0, ann));
         }
 
         case (ast.expr_bind(?f, ?args, _)) {
@@ -2179,8 +2163,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto proto_1;
             let vec[ty.arg] arg_tys_1 = vec();
             auto rt_1;
-            alt (struct(fcx.ccx.tystore,
-                        expr_ty(fcx.ccx.tystore, result._0))) {
+            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, result._0))) {
                 case (ty.ty_fn(?proto, ?arg_tys, ?rt)) {
                     proto_1 = proto;
                     rt_1 = rt;
@@ -2204,7 +2187,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 }
             }
 
-            auto t_1 = ty.mk_fn(fcx.ccx.tystore, proto_1, arg_tys_1, rt_1);
+            auto t_1 = ty.mk_fn(fcx.ccx.tcx, proto_1, arg_tys_1, rt_1);
             auto ann = triv_ann(t_1);
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_bind(result._0, result._1,
@@ -2217,8 +2200,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto args_1 = result._1;
 
             // Pull the return type out of the type of the function.
-            auto rt_1 = ty.mk_nil(fcx.ccx.tystore);  // FIXME: typestate botch
-            alt (struct(fcx.ccx.tystore, expr_ty(fcx.ccx.tystore, f_1))) {
+            auto rt_1 = ty.mk_nil(fcx.ccx.tcx);  // FIXME: typestate botch
+            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, f_1))) {
                 case (ty.ty_fn(_,_,?rt))    { rt_1 = rt; }
                 case (ty.ty_native_fn(_, _, ?rt))    { rt_1 = rt; }
                 case (_) {
@@ -2233,7 +2216,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_self_method(?id, _)) {
-            auto t = ty.mk_nil(fcx.ccx.tystore);
+            auto t = ty.mk_nil(fcx.ccx.tcx);
             let ty.t this_obj_ty;
 
             // Grab the type of the current object
@@ -2241,7 +2224,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             alt (this_obj_id) {
                 case (some[ast.def_id](?def_id)) {
                     this_obj_ty = ty.lookup_item_type(fcx.ccx.sess,
-                        fcx.ccx.tystore, fcx.ccx.type_cache, def_id)._1;
+                        fcx.ccx.tcx, fcx.ccx.type_cache, def_id)._1;
                 }
                 case (_) { fail; }
             }
@@ -2250,11 +2233,11 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             // Grab this method's type out of the current object type
 
             // this_obj_ty is an ty.t
-            alt (struct(fcx.ccx.tystore, this_obj_ty)) {
+            alt (struct(fcx.ccx.tcx, this_obj_ty)) {
                 case (ty.ty_obj(?methods)) {
                     for (ty.method method in methods) {
                         if (method.ident == id) {
-                            t = ty.method_ty_to_fn_ty(fcx.ccx.tystore,
+                            t = ty.method_ty_to_fn_ty(fcx.ccx.tcx,
                                                       method);
                         }
                     }
@@ -2274,9 +2257,9 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto args_1 = result._1;
 
             // Check the return type
-            alt (struct(fcx.ccx.tystore, expr_ty(fcx.ccx.tystore, f_1))) {
+            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, f_1))) {
                 case (ty.ty_fn(_,_,?rt)) {
-                    alt (struct(fcx.ccx.tystore, rt)) {
+                    alt (struct(fcx.ccx.tcx, rt)) {
                         case (ty.ty_nil) {
                             // This is acceptable
                         }
@@ -2292,7 +2275,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             // FIXME: Other typechecks needed
 
-            auto ann = triv_ann(ty.mk_task(fcx.ccx.tystore));
+            auto ann = triv_ann(ty.mk_task(fcx.ccx.tcx));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_spawn(dom, name,
                                                        f_1, args_1, ann));
@@ -2302,14 +2285,12 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             auto e_1 = check_expr(fcx, e);
             auto t_1 = ast_ty_to_ty_crate(fcx.ccx, t);
             // FIXME: there are more forms of cast to support, eventually.
-            if (! (type_is_scalar(fcx.ccx.tystore,
-                                  expr_ty(fcx.ccx.tystore, e_1)) &&
-                   type_is_scalar(fcx.ccx.tystore, t_1))) {
+            if (! (type_is_scalar(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, e_1)) &&
+                   type_is_scalar(fcx.ccx.tcx, t_1))) {
                 fcx.ccx.sess.span_err(expr.span,
                     "non-scalar cast: " +
-                    ty_to_str(fcx.ccx.tystore,
-                              expr_ty(fcx.ccx.tystore, e_1)) + " as " +
-                    ty_to_str(fcx.ccx.tystore, t_1));
+                    ty_to_str(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, e_1)) +
+                    " as " + ty_to_str(fcx.ccx.tcx, t_1));
             }
 
             auto ann = triv_ann(t_1);
@@ -2325,17 +2306,17 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 t = next_ty_var(fcx.ccx);
             } else {
                 auto expr_1 = check_expr(fcx, args.(0));
-                t = expr_ty(fcx.ccx.tystore, expr_1);
+                t = expr_ty(fcx.ccx.tcx, expr_1);
             }
 
             for (@ast.expr e in args) {
                 auto expr_1 = check_expr(fcx, e);
-                auto expr_t = expr_ty(fcx.ccx.tystore, expr_1);
+                auto expr_t = expr_ty(fcx.ccx.tcx, expr_1);
                 Demand.simple(fcx, expr.span, t, expr_t);
                 _vec.push[@ast.expr](args_1,expr_1);
             }
 
-            auto ann = triv_ann(ty.mk_vec(fcx.ccx.tystore,
+            auto ann = triv_ann(ty.mk_vec(fcx.ccx.tcx,
                                           rec(ty=t, mut=mut)));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_vec(args_1, mut, ann));
@@ -2347,12 +2328,12 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             for (ast.elt e in elts) {
                 auto expr_1 = check_expr(fcx, e.expr);
-                auto expr_t = expr_ty(fcx.ccx.tystore, expr_1);
+                auto expr_t = expr_ty(fcx.ccx.tcx, expr_1);
                 _vec.push[ast.elt](elts_1, rec(expr=expr_1 with e));
                 elts_mt += vec(rec(ty=expr_t, mut=e.mut));
             }
 
-            auto ann = triv_ann(ty.mk_tup(fcx.ccx.tystore, elts_mt));
+            auto ann = triv_ann(ty.mk_tup(fcx.ccx.tcx, elts_mt));
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_tup(elts_1, ann));
         }
@@ -2372,7 +2353,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             for (ast.field f in fields) {
                 auto expr_1 = check_expr(fcx, f.expr);
-                auto expr_t = expr_ty(fcx.ccx.tystore, expr_1);
+                auto expr_t = expr_ty(fcx.ccx.tcx, expr_1);
                 _vec.push[ast.field](fields_1, rec(expr=expr_1 with f));
 
                 auto expr_mt = rec(ty=expr_t, mut=f.mut);
@@ -2383,16 +2364,16 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             alt (base) {
                 case (none[@ast.expr]) {
-                    ann = triv_ann(ty.mk_rec(fcx.ccx.tystore, fields_t));
+                    ann = triv_ann(ty.mk_rec(fcx.ccx.tcx, fields_t));
                 }
 
                 case (some[@ast.expr](?bexpr)) {
                     auto bexpr_1 = check_expr(fcx, bexpr);
-                    auto bexpr_t = expr_ty(fcx.ccx.tystore, bexpr_1);
+                    auto bexpr_t = expr_ty(fcx.ccx.tcx, bexpr_1);
 
                     let vec[field] base_fields = vec();
 
-                    alt (struct(fcx.ccx.tystore, bexpr_t)) {
+                    alt (struct(fcx.ccx.tcx, bexpr_t)) {
                         case (ty.ty_rec(?flds)) {
                             base_fields = flds;
                         }
@@ -2430,9 +2411,9 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_field(?base, ?field, _)) {
             auto base_1 = check_expr(fcx, base);
-            auto base_t = strip_boxes(fcx.ccx.tystore,
-                                      expr_ty(fcx.ccx.tystore, base_1));
-            alt (struct(fcx.ccx.tystore, base_t)) {
+            auto base_t = strip_boxes(fcx.ccx.tcx,
+                                      expr_ty(fcx.ccx.tcx, base_1));
+            alt (struct(fcx.ccx.tcx, base_t)) {
                 case (ty.ty_tup(?args)) {
                     let uint ix = ty.field_num(fcx.ccx.sess,
                                                expr.span, field);
@@ -2469,7 +2450,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                               "bad index on obj");
                     }
                     auto meth = methods.(ix);
-                    auto t = ty.mk_fn(fcx.ccx.tystore, meth.proto,
+                    auto t = ty.mk_fn(fcx.ccx.tcx, meth.proto,
                                       meth.inputs, meth.output);
                     auto ann = triv_ann(t);
                     ret @fold.respan[ast.expr_](expr.span,
@@ -2481,26 +2462,25 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (_) {
                     fcx.ccx.sess.span_unimpl(expr.span,
                         "base type for expr_field in typeck.check_expr: " +
-                        ty_to_str(fcx.ccx.tystore, base_t));
+                        ty_to_str(fcx.ccx.tcx, base_t));
                 }
             }
         }
 
         case (ast.expr_index(?base, ?idx, _)) {
             auto base_1 = check_expr(fcx, base);
-            auto base_t = strip_boxes(fcx.ccx.tystore,
-                                      expr_ty(fcx.ccx.tystore, base_1));
+            auto base_t = strip_boxes(fcx.ccx.tcx,
+                                      expr_ty(fcx.ccx.tcx, base_1));
 
             auto idx_1 = check_expr(fcx, idx);
-            auto idx_t = expr_ty(fcx.ccx.tystore, idx_1);
-
-            alt (struct(fcx.ccx.tystore, base_t)) {
+            auto idx_t = expr_ty(fcx.ccx.tcx, idx_1); 
+            alt (struct(fcx.ccx.tcx, base_t)) {
                 case (ty.ty_vec(?mt)) {
-                    if (! type_is_integral(fcx.ccx.tystore, idx_t)) {
+                    if (! type_is_integral(fcx.ccx.tcx, idx_t)) {
                         fcx.ccx.sess.span_err
                             (idx.span,
                              "non-integral type of vec index: "
-                             + ty_to_str(fcx.ccx.tystore, idx_t));
+                             + ty_to_str(fcx.ccx.tcx, idx_t));
                     }
                     auto ann = triv_ann(mt.ty);
                     ret @fold.respan[ast.expr_](expr.span,
@@ -2509,13 +2489,13 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                                                ann));
                 }
                 case (ty.ty_str) {
-                    if (! type_is_integral(fcx.ccx.tystore, idx_t)) {
+                    if (! type_is_integral(fcx.ccx.tcx, idx_t)) {
                         fcx.ccx.sess.span_err
                             (idx.span,
                              "non-integral type of str index: "
-                             + ty_to_str(fcx.ccx.tystore, idx_t));
+                             + ty_to_str(fcx.ccx.tcx, idx_t));
                     }
-                    auto ann = triv_ann(ty.mk_mach(fcx.ccx.tystore,
+                    auto ann = triv_ann(ty.mk_mach(fcx.ccx.tcx,
                                                    common.ty_u8));
                     ret @fold.respan[ast.expr_](expr.span,
                                                 ast.expr_index(base_1,
@@ -2526,32 +2506,31 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     fcx.ccx.sess.span_err
                         (expr.span,
                          "vector-indexing bad type: "
-                         + ty_to_str(fcx.ccx.tystore, base_t));
+                         + ty_to_str(fcx.ccx.tcx, base_t));
                 }
             }
         }
 
         case (ast.expr_port(_)) {
             auto t = next_ty_var(fcx.ccx);
-            auto pt = ty.mk_port(fcx.ccx.tystore, t);
+            auto pt = ty.mk_port(fcx.ccx.tcx, t);
             auto ann = triv_ann(pt);
             ret @fold.respan[ast.expr_](expr.span, ast.expr_port(ann));
         }
 
         case (ast.expr_chan(?x, _)) {
             auto expr_1 = check_expr(fcx, x);
-            auto port_t = expr_ty(fcx.ccx.tystore, expr_1);
-            alt (struct(fcx.ccx.tystore, port_t)) {
+            auto port_t = expr_ty(fcx.ccx.tcx, expr_1);
+            alt (struct(fcx.ccx.tcx, port_t)) {
                 case (ty.ty_port(?subtype)) {
-                    auto ct = ty.mk_chan(fcx.ccx.tystore, subtype);
+                    auto ct = ty.mk_chan(fcx.ccx.tcx, subtype);
                     auto ann = triv_ann(ct);
                     ret @fold.respan[ast.expr_](expr.span,
                                                 ast.expr_chan(expr_1, ann));
                 }
                 case (_) {
                     fcx.ccx.sess.span_err(expr.span,
-                        "bad port type: " + ty_to_str(fcx.ccx.tystore,
-                                                      port_t));
+                        "bad port type: " + ty_to_str(fcx.ccx.tcx, port_t));
                 }
             }
         }
@@ -2565,7 +2544,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 }
 
 fn next_ty_var(@crate_ctxt ccx) -> ty.t {
-    auto t = ty.mk_var(ccx.tystore, ccx.next_var_id);
+    auto t = ty.mk_var(ccx.tcx, ccx.next_var_id);
     ccx.next_var_id += 1;
     ret t;
 }
@@ -2576,7 +2555,7 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast.decl decl) -> @ast.decl {
 
             auto t;
 
-            t = ty.mk_nil(fcx.ccx.tystore);
+            t = ty.mk_nil(fcx.ccx.tcx);
             
             alt (local.ty) {
                 case (none[@ast.ty]) {
@@ -2602,14 +2581,14 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast.decl decl) -> @ast.decl {
             alt (local.init) {
                 case (some[ast.initializer](?init)) {
                     auto expr_0 = check_expr(fcx, init.expr);
-                    auto lty = ty.mk_local(fcx.ccx.tystore, local.id);
+                    auto lty = ty.mk_local(fcx.ccx.tcx, local.id);
                     auto expr_1;
                     alt (init.op) {
                         case (ast.init_assign) {
                             expr_1 = Pushdown.pushdown_expr(fcx, lty, expr_0);
                         }
                         case (ast.init_recv) {
-                            auto port_ty = ty.mk_port(fcx.ccx.tystore, lty);
+                            auto port_ty = ty.mk_port(fcx.ccx.tcx, lty);
                             expr_1 = Pushdown.pushdown_expr(fcx, port_ty,
                                                             expr_0);
                         }
@@ -2647,8 +2626,7 @@ fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
 
         case (ast.stmt_expr(?expr,?a)) {
             auto expr_t = check_expr(fcx, expr);
-            expr_t = Pushdown.pushdown_expr(fcx,
-                                            expr_ty(fcx.ccx.tystore, expr_t),
+            expr_t = Pushdown.pushdown_expr(fcx, expr_ty(fcx.ccx.tcx, expr_t),
                                             expr_t);
             ret @fold.respan[ast.stmt_](stmt.span, ast.stmt_expr(expr_t, a));
         }
@@ -2669,7 +2647,7 @@ fn check_block(&@fn_ctxt fcx, &ast.block block) -> ast.block {
         case (some[@ast.expr](?e)) {
             auto expr_t = check_expr(fcx, e);
             expr_t = Pushdown.pushdown_expr(fcx,
-                                            expr_ty(fcx.ccx.tystore, expr_t),
+                                            expr_ty(fcx.ccx.tcx, expr_t),
                                             expr_t);
             expr = some[@ast.expr](expr_t);
         }
@@ -2678,7 +2656,7 @@ fn check_block(&@fn_ctxt fcx, &ast.block block) -> ast.block {
     ret fold.respan[ast.block_](block.span,
                                 rec(stmts=stmts, expr=expr,
                                     index=block.node.index,
-                                    a=plain_ann(fcx.ccx.tystore)));
+                                    a=plain_ann(fcx.ccx.tcx)));
 }
 
 fn check_const(&@crate_ctxt ccx, &span sp, ast.ident ident, @ast.ty t,
@@ -2745,7 +2723,7 @@ fn check_item_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
     }
 
     auto output_ty = ast_ty_to_ty_crate(ccx, f.decl.output);
-    auto fn_ann = triv_ann(ty.mk_fn(ccx.tystore, f.proto, inputs, output_ty));
+    auto fn_ann = triv_ann(ty.mk_fn(ccx.tcx, f.proto, inputs, output_ty));
 
     auto item = ast.item_fn(ident, f, ty_params, id, fn_ann);
     ret @fold.respan[ast.item_](sp, item);
@@ -2799,10 +2777,9 @@ fn eq_unify_cache_entry(&unify_cache_entry a, &unify_cache_entry b) -> bool {
 
 type typecheck_result = tup(@ast.crate, ty.type_cache);
 
-fn check_crate(session.session sess,
-               @ty.type_store tystore,
-               @ast.crate crate) -> typecheck_result {
-    auto result = Collect.collect_item_types(sess, tystore, crate);
+fn check_crate(session.session sess, ty.ctxt tcx, @ast.crate crate)
+        -> typecheck_result {
+    auto result = Collect.collect_item_types(sess, tcx, crate);
 
     let vec[ast.obj_field] fields = vec();
 
@@ -2820,7 +2797,7 @@ fn check_crate(session.session sess,
                     unify_cache=unify_cache,
                     mutable cache_hits=0u,
                     mutable cache_misses=0u,
-                    tystore=tystore);
+                    tcx=tcx);
 
     auto fld = fold.new_identity_fold[@crate_ctxt]();
 

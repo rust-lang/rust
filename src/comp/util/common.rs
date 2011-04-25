@@ -110,8 +110,8 @@ fn field_exprs(vec[ast.field] fields) -> vec [@ast.expr] {
     ret _vec.map[ast.field, @ast.expr](f, fields);
 }
 
-fn plain_ann(@middle.ty.type_store tystore) -> ast.ann {
-  ret ast.ann_type(middle.ty.mk_nil(tystore),
+fn plain_ann(middle.ty.ctxt tcx) -> ast.ann {
+  ret ast.ann_type(middle.ty.mk_nil(tcx),
                    none[vec[middle.ty.t]], none[@ts_ann]);
 }
 

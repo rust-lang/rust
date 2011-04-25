@@ -53,11 +53,11 @@ mod Encode {
 
     type ctxt = rec(
         fn(ast.def_id) -> str ds,   // Callback to translate defs to strs.
-        @ty.type_store tystore      // The type store.
+        ty.ctxt tcx                 // The type context.
     );
 
     fn ty_str(@ctxt cx, ty.t t) -> str {
-        ret sty_str(cx, ty.struct(cx.tystore, t));
+        ret sty_str(cx, ty.struct(cx.tcx, t));
     }
 
     fn mt_str(@ctxt cx, &ty.mt mt) -> str {
@@ -337,7 +337,7 @@ fn encode_type(@trans.crate_ctxt cx, &ebml.writer ebml_w, ty.t typ) {
     ebml.start_tag(ebml_w, tag_items_data_item_type);
 
     auto f = def_to_str;
-    auto ty_str_ctxt = @rec(ds=f, tystore=cx.tystore);
+    auto ty_str_ctxt = @rec(ds=f, tcx=cx.tcx);
     ebml_w.writer.write(_str.bytes(Encode.ty_str(ty_str_ctxt, typ)));
 
     ebml.end_tag(ebml_w);
@@ -457,7 +457,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
             encode_def_id(ebml_w, odid.ty);
             encode_kind(ebml_w, 'y' as u8);
             encode_type_param_count(ebml_w, tps);
-            encode_type(cx, ebml_w, ty.ty_fn_ret(cx.tystore, fn_ty));
+            encode_type(cx, ebml_w, ty.ty_fn_ret(cx.tcx, fn_ty));
             ebml.end_tag(ebml_w);
         }
     }
@@ -470,7 +470,7 @@ fn encode_info_for_native_item(@trans.crate_ctxt cx, &ebml.writer ebml_w,
         case (ast.native_item_ty(_, ?did)) {
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'T' as u8);
-            encode_type(cx, ebml_w, ty.mk_native(cx.tystore));
+            encode_type(cx, ebml_w, ty.mk_native(cx.tcx));
         }
         case (ast.native_item_fn(_, _, _, ?tps, ?did, ?ann)) {
             encode_def_id(ebml_w, did);

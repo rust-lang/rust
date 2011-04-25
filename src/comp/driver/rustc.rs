@@ -73,13 +73,13 @@ fn compile_input(session.session sess,
     crate = resolve.resolve_crate(sess, crate);
     capture.check_for_captures(sess, crate);
 
-    auto tystore = ty.mk_type_store();
-    auto typeck_result = typeck.check_crate(sess, tystore, crate);
+    auto ty_cx = ty.mk_ctxt();
+    auto typeck_result = typeck.check_crate(sess, ty_cx, crate);
     crate = typeck_result._0;
     auto type_cache = typeck_result._1;
     // FIXME: uncomment once typestate_check works
     // crate = typestate_check.check_crate(crate);
-    trans.trans_crate(sess, crate, tystore, type_cache, output, shared,
+    trans.trans_crate(sess, crate, ty_cx, type_cache, output, shared,
                       optimize, verify, ot);
 }
 
