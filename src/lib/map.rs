@@ -36,26 +36,26 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     // half and lower half of the uint bits.  Our bucket probing
     // sequence is then defined by
     //
-    //   hash(key, i) := hashl(key) + i * hashr(key)   for i = 0, 1, 2, ...
+    //   hash(key, i) := hashl(key) * i + hashr(key)   for i = 0, 1, 2, ...
     //
     // Tearing the hash function apart this way is kosher in practice
     // as, assuming 32-bit uints, the table would have to be at 2^32
     // buckets before the resulting pair of hash functions no longer
-    // probes all buckets for a fixed key.  Note that hashr is made to
+    // probes all buckets for a fixed key.  Note that hashl is made to
     // output odd numbers (hence coprime to the number of nbkts, which
     // is always a power of 2), so that all buckets are probed for a
     // fixed key.
 
     fn hashl(uint n, uint nbkts) -> uint {
-        ret (n >>> 16u);
+        ret ((n >>> 16u) * 2u + 1u);
     }
 
     fn hashr(uint n, uint nbkts) -> uint {
-        ret ((((~ 0u) >>> 16u) & n) * 2u + 1u);
+        ret (0x0000_ffff_u & n);
     }
 
     fn hash(uint h, uint nbkts, uint i) -> uint {
-        ret (hashl(h, nbkts) + i * hashr(h, nbkts)) % nbkts;
+        ret (hashl(h, nbkts) * i + hashr(h, nbkts)) % nbkts;
     }
 
     /**
