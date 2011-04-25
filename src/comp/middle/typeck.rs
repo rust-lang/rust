@@ -106,7 +106,7 @@ fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
         -> ty_param_count_and_ty {
     alt (defn) {
         case (ast.def_arg(?id)) {
-            check (fcx.locals.contains_key(id));
+            // check (fcx.locals.contains_key(id));
             ret tup(0u, fcx.locals.get(id));
         }
         case (ast.def_local(?id)) {
@@ -118,7 +118,7 @@ fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
             ret tup(0u, t);
         }
         case (ast.def_obj_field(?id)) {
-            check (fcx.locals.contains_key(id));
+            // check (fcx.locals.contains_key(id));
             ret tup(0u, fcx.locals.get(id));
         }
         case (ast.def_fn(?id)) {
@@ -138,7 +138,7 @@ fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.def defn)
                                     fcx.ccx.type_cache, vid);
         }
         case (ast.def_binding(?id)) {
-            check (fcx.locals.contains_key(id));
+            // check (fcx.locals.contains_key(id));
             ret tup(0u, fcx.locals.get(id));
         }
         case (ast.def_obj(?id)) {
@@ -406,7 +406,7 @@ mod Collect {
             ret creader.get_type(cx.sess, cx.tystore, id);
         }
 
-        check (cx.id_to_ty_item.contains_key(id));
+        // check (cx.id_to_ty_item.contains_key(id));
 
         auto it = cx.id_to_ty_item.get(id);
         auto tpt;
@@ -493,15 +493,17 @@ mod Collect {
                 ret cx.type_cache.get(odid.ty);
             }
 
-            case (ast.item_ty(?ident, ?ty, ?tps, ?def_id, _)) {
-                if (cx.type_cache.contains_key(def_id)) {
-                    // Avoid repeating work.
-                    ret cx.type_cache.get(def_id);
+            case (ast.item_ty(?ident, ?t, ?tps, ?def_id, _)) {
+                alt (cx.type_cache.find(def_id)) {
+                    case (some[ty.ty_param_count_and_ty](?tpt)) {
+                        ret tpt;
+                    }
+                    case (none[ty.ty_param_count_and_ty]) {}
                 }
 
                 // Tell ast_ty_to_ty() that we want to perform a recursive
                 // call to resolve any named types.
-                auto typ = convert(ty);
+                auto typ = convert(t);
                 auto ty_param_count = _vec.len[ast.ty_param](tps);
                 auto tpt = tup(ty_param_count, typ);
                 cx.type_cache.insert(def_id, tpt);
@@ -543,9 +545,11 @@ mod Collect {
                                          def_id);
             }
             case (ast.native_item_ty(_, ?def_id)) {
-                if (cx.type_cache.contains_key(def_id)) {
-                    // Avoid repeating work.
-                    ret cx.type_cache.get(def_id);
+                alt (cx.type_cache.find(def_id)) {
+                    case (some[ty.ty_param_count_and_ty](?tpt)) {
+                        ret tpt;
+                    }
+                    case (none[ty.ty_param_count_and_ty]) {}
                 }
 
                 auto t = ty.mk_native(cx.tystore);
@@ -661,7 +665,7 @@ mod Collect {
     fn fold_item_const(&@env e, &span sp, ast.ident i,
                        @ast.ty t, @ast.expr ex,
                        ast.def_id id, ast.ann a) -> @ast.item {
-        check (e.cx.type_cache.contains_key(id));
+        // check (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast.item_const(i, t, ex, id, triv_ann(typ));
         ret @fold.respan[ast.item_](sp, item);
@@ -670,7 +674,7 @@ mod Collect {
     fn fold_item_fn(&@env e, &span sp, ast.ident i,
                     &ast._fn f, vec[ast.ty_param] ty_params,
                     ast.def_id id, ast.ann a) -> @ast.item {
-        check (e.cx.type_cache.contains_key(id));
+        // check (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast.item_fn(i, f, ty_params, id, triv_ann(typ));
         ret @fold.respan[ast.item_](sp, item);
@@ -679,7 +683,7 @@ mod Collect {
     fn fold_native_item_fn(&@env e, &span sp, ast.ident i, option.t[str] ln,
                            &ast.fn_decl d, vec[ast.ty_param] ty_params,
                            ast.def_id id, ast.ann a) -> @ast.native_item {
-        check (e.cx.type_cache.contains_key(id));
+        // check (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast.native_item_fn(i, ln, d, ty_params, id,
                                        triv_ann(typ));
@@ -710,7 +714,7 @@ mod Collect {
     fn fold_item_obj(&@env e, &span sp, ast.ident i,
                     &ast._obj ob, vec[ast.ty_param] ty_params,
                     ast.obj_def_ids odid, ast.ann a) -> @ast.item {
-        check (e.cx.type_cache.contains_key(odid.ctor));
+        // check (e.cx.type_cache.contains_key(odid.ctor));
         auto t = e.cx.type_cache.get(odid.ctor)._1;
         let vec[method] meth_tys = get_ctor_obj_methods(e, t);
         let vec[@ast.method] methods = vec();
@@ -766,7 +770,7 @@ mod Collect {
     fn fold_item_ty(&@env e, &span sp, ast.ident i,
                     @ast.ty t, vec[ast.ty_param] ty_params,
                     ast.def_id id, ast.ann a) -> @ast.item {
-        check (e.cx.type_cache.contains_key(id));
+        // check (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast.item_ty(i, t, ty_params, id, triv_ann(typ));
         ret @fold.respan[ast.item_](sp, item);
@@ -841,12 +845,15 @@ mod Unify {
     fn with_params(@fn_ctxt fcx, ty.t expected, ty.t actual,
                    vec[mutable ty.t] param_substs) -> ty.Unify.result {
         auto cache_key = tup(expected, actual, param_substs);
-        if (fcx.ccx.unify_cache.contains_key(cache_key)) {
-            fcx.ccx.cache_hits += 1u;
-            ret fcx.ccx.unify_cache.get(cache_key);
+        alt (fcx.ccx.unify_cache.find(cache_key)) {
+            case (some[ty.Unify.result](?r)) {
+                fcx.ccx.cache_hits += 1u;
+                ret r;
+            }
+            case (none[ty.Unify.result]) {
+                fcx.ccx.cache_misses += 1u;
+            }
         }
-
-        fcx.ccx.cache_misses += 1u;
 
         obj unify_handler(@fn_ctxt fcx, vec[mutable ty.t] param_substs) {
             fn resolve_local(ast.def_id id) -> option.t[ty.t] {
@@ -1502,11 +1509,18 @@ fn writeback_local(&option.t[@fn_ctxt] env, &span sp, @ast.local local)
         -> @ast.decl {
     auto fcx = option.get[@fn_ctxt](env);
 
-    if (!fcx.locals.contains_key(local.id)) {
-        fcx.ccx.sess.span_err(sp, "unable to determine type of local: "
-                              + local.ident);
+    auto local_ty;
+    alt (fcx.locals.find(local.id)) {
+        case (none[ty.t]) {
+            fcx.ccx.sess.span_err(sp, "unable to determine type of local: "
+                                  + local.ident);
+            fail;
+        }
+        case (some[ty.t](?lt)) {
+            local_ty = lt;
+        }
     }
-    auto local_ty = fcx.locals.get(local.id);
+
     auto local_wb = @rec(ann=triv_ann(local_ty)
         with *local
     );

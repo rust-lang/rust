@@ -15,6 +15,20 @@ import front.ast.mutability;
 import front.creader;
 import middle.metadata;
 import util.common;
+
+import util.common.ty_u8;
+import util.common.ty_u16;
+import util.common.ty_u32;
+import util.common.ty_u64;
+
+import util.common.ty_i8;
+import util.common.ty_i16;
+import util.common.ty_i32;
+import util.common.ty_i64;
+
+import util.common.ty_f32;
+import util.common.ty_f64;
+
 import util.common.new_def_hash;
 import util.common.span;
 import util.typestate_ann.ts_ann;
@@ -102,13 +116,74 @@ tag type_err {
 type ty_param_count_and_ty = tup(uint, t);
 type type_cache = hashmap[ast.def_id,ty_param_count_and_ty];
 
+type type_store = rec(vec[ty.t] empty_vec_ty,
+                      vec[mutable ty.t] empty_vec_mutable_ty,
+                      ty.t t_nil,
+                      ty.t t_bool,
+                      ty.t t_int,
+                      ty.t t_float,
+                      ty.t t_uint,
 
-type type_store = hashmap[t,t];
+                      ty.t t_i8,
+                      ty.t t_i16,
+                      ty.t t_i32,
+                      ty.t t_i64,
+
+                      ty.t t_u8,
+                      ty.t t_u16,
+                      ty.t t_u32,
+                      ty.t t_u64,
+
+                      ty.t t_f32,
+                      ty.t t_f64,
+
+                      ty.t t_char,
+                      ty.t t_str,
+
+                      ty.t t_native,
+                      ty.t t_type,
+
+                      mutable vec[ty.t] t_params,
+                      mutable vec[ty.t] t_bound_params,
+                      mutable vec[ty.t] t_vars,
+                      hashmap[t,t] others);
 
 fn mk_type_store() -> @type_store {
     auto hasher = hash_ty;
     auto eqer = eq_ty_full;
-    ret @map.mk_hashmap[t,t](hasher, eqer);
+
+    ret @rec(empty_vec_ty = _vec.empty[ty.t](),
+             empty_vec_mutable_ty = _vec.empty_mut[ty.t](),
+             t_nil = mk_ty_full(ty_nil, none[str]),
+             t_bool = mk_ty_full(ty_bool, none[str]),
+             t_int = mk_ty_full(ty_int, none[str]),
+             t_float = mk_ty_full(ty_float, none[str]),
+             t_uint = mk_ty_full(ty_uint, none[str]),
+             
+             t_i8 = mk_ty_full(ty_machine(ty_i8), none[str]),
+             t_i16 = mk_ty_full(ty_machine(ty_i16), none[str]),
+             t_i32 = mk_ty_full(ty_machine(ty_i32), none[str]),
+             t_i64 = mk_ty_full(ty_machine(ty_i64), none[str]),
+
+             t_u8 = mk_ty_full(ty_machine(ty_u8), none[str]),
+             t_u16 = mk_ty_full(ty_machine(ty_u16), none[str]),
+             t_u32 = mk_ty_full(ty_machine(ty_u32), none[str]),
+             t_u64 = mk_ty_full(ty_machine(ty_u64), none[str]),
+
+             t_f32 = mk_ty_full(ty_machine(ty_f32), none[str]),
+             t_f64 = mk_ty_full(ty_machine(ty_f64), none[str]),
+
+             t_char = mk_ty_full(ty_char, none[str]),
+             t_str = mk_ty_full(ty_str, none[str]),
+
+             t_native = mk_ty_full(ty_native, none[str]),
+             t_type = mk_ty_full(ty_type, none[str]),
+
+             mutable t_params = _vec.empty[ty.t](),
+             mutable t_bound_params = _vec.empty[ty.t](),
+             mutable t_vars = _vec.empty[ty.t](),
+
+             others=map.mk_hashmap[t,t](hasher, eqer));
 }
 
 // Type constructors
@@ -119,36 +194,53 @@ fn gen_ty(@type_store tystore, &sty st) -> t {
     ret gen_ty_full(tystore, st, none[str]);
 }
 
-fn gen_ty_full(@type_store tystore, &sty st, option.t[str] cname) -> t {
+fn mk_ty_full(&sty st, option.t[str] cname) -> t {
     auto h = hash_type_info(st, cname);
     auto magic = mk_magic(st);
-    auto new_type = @rec(struct=st, cname=cname, magic=magic, hash=h);
+    ret @rec(struct=st, cname=cname, magic=magic, hash=h);
+}
 
+fn gen_ty_full(@type_store tystore, &sty st, option.t[str] cname) -> t {
+    auto new_type = mk_ty_full(st, cname);
     // Is it interned?
-    alt (tystore.find(new_type)) {
+    alt (tystore.others.find(new_type)) {
         case (some[t](?typ)) {
             ret typ;
         }
         case (none[t]) {
             // Nope. Insert it and return.
-            tystore.insert(new_type, new_type);
+            tystore.others.insert(new_type, new_type);
             ret new_type;
         }
     }
 }
 
-fn mk_nil(@type_store ts) -> t          { ret gen_ty(ts, ty_nil); }
-fn mk_bool(@type_store ts) -> t         { ret gen_ty(ts, ty_bool); }
-fn mk_int(@type_store ts) -> t          { ret gen_ty(ts, ty_int); }
-fn mk_float(@type_store ts) -> t        { ret gen_ty(ts, ty_float); }
-fn mk_uint(@type_store ts) -> t         { ret gen_ty(ts, ty_uint); }
+fn mk_nil(@type_store ts) -> t          { ret ts.t_nil; }
+fn mk_bool(@type_store ts) -> t         { ret ts.t_bool; }
+fn mk_int(@type_store ts) -> t          { ret ts.t_int; }
+fn mk_float(@type_store ts) -> t        { ret ts.t_float; }
+fn mk_uint(@type_store ts) -> t         { ret ts.t_uint; }
 
 fn mk_mach(@type_store ts, util.common.ty_mach tm) -> t {
-    ret gen_ty(ts, ty_machine(tm));
+    alt (tm) {
+        case (ty_u8) { ret ts.t_u8; }
+        case (ty_u16) { ret ts.t_u16; }
+        case (ty_u32) { ret ts.t_u32; }
+        case (ty_u64) { ret ts.t_u64; }
+
+        case (ty_i8) { ret ts.t_i8; }
+        case (ty_i16) { ret ts.t_i16; }
+        case (ty_i32) { ret ts.t_i32; }
+        case (ty_i64) { ret ts.t_i64; }
+
+        case (ty_f32) { ret ts.t_f32; }
+        case (ty_f64) { ret ts.t_f64; }
+    }
+    fail;
 }
 
-fn mk_char(@type_store ts) -> t         { ret gen_ty(ts, ty_char); }
-fn mk_str(@type_store ts) -> t          { ret gen_ty(ts, ty_str); }
+fn mk_char(@type_store ts) -> t         { ret ts.t_char; }
+fn mk_str(@type_store ts) -> t          { ret ts.t_str; }
 
 fn mk_tag(@type_store ts, ast.def_id did, vec[t] tys) -> t {
     ret gen_ty(ts, ty_tag(did, tys));
@@ -197,22 +289,39 @@ fn mk_obj(@type_store ts, vec[method] meths) -> t {
     ret gen_ty(ts, ty_obj(meths));
 }
 
-fn mk_var(@type_store ts, int v) -> t    { ret gen_ty(ts, ty_var(v)); }
+fn mk_var(@type_store ts, int v) -> t    {
+    let int i = _vec.len[t](ts.t_vars) as int;
+    while (i <= v) {
+        ts.t_vars += vec(mk_ty_full(ty_var(i), none[str]));
+        i += 1;
+    }
+    ret ts.t_vars.(v);
+}
 
 fn mk_local(@type_store ts, ast.def_id did) -> t {
     ret gen_ty(ts, ty_local(did));
 }
 
 fn mk_param(@type_store ts, uint n) -> t {
-    ret gen_ty(ts, ty_param(n));
+    let uint i = _vec.len[t](ts.t_params);
+    while (i <= n) {
+        ts.t_params += vec(mk_ty_full(ty_param(i), none[str]));
+        i += 1u;
+    }
+    ret ts.t_params.(n);
 }
 
 fn mk_bound_param(@type_store ts, uint n) -> t {
-    ret gen_ty(ts, ty_bound_param(n));
+    let uint i = _vec.len[t](ts.t_bound_params);
+    while (i <= n) {
+        ts.t_bound_params += vec(mk_ty_full(ty_bound_param(i), none[str]));
+        i += 1u;
+    }
+    ret ts.t_bound_params.(n);
 }
 
-fn mk_type(@type_store ts) -> t          { ret gen_ty(ts, ty_type); }
-fn mk_native(@type_store ts) -> t        { ret gen_ty(ts, ty_native); }
+fn mk_type(@type_store ts) -> t          { ret ts.t_type; }
+fn mk_native(@type_store ts) -> t        { ret ts.t_native; }
 
 
 // Returns the one-level-deep type structure of the given type.
