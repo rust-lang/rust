@@ -70,6 +70,7 @@ mod ebml;
 mod UFind;
 mod ExtFmt;
 mod Box;
+mod GetOpts;
 
 // Local Variables:
 // mode: rust;
