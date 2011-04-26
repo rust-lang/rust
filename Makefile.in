@@ -16,13 +16,13 @@ CFG_GCC_LINK_FLAGS :=
 CFG_BOOT_FLAGS := $(BOOT_FLAGS)
 ifdef CFG_DISABLE_OPTIMIZE
   $(info cfg: disabling rustc optimization (CFG_DISABLE_OPTIMIZE))
-  CFG_RUSTC_FLAGS := -nowarn
+  CFG_RUSTC_FLAGS := --nowarn
 else
-  CFG_RUSTC_FLAGS := -nowarn -O
+  CFG_RUSTC_FLAGS := --nowarn -O
 endif
 
 ifdef SAVE_TEMPS
-  CFG_RUSTC_FLAGS += -save-temps
+  CFG_RUSTC_FLAGS += --save-temps
 endif
 
 # On Darwin, we need to run dsymutil so the debugging information ends
@@ -471,7 +471,7 @@ boot/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
 
 stage0/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage0/rustc$(X) $(MKFILES)
 	@$(call E, compile: $@)
-	$(STAGE0) -c -shared -o $@ $<
+	$(STAGE0) -c --shared -o $@ $<
 
 stage0/$(CFG_STDLIB): stage0/std.o stage0/glue.o
 	@$(call E, link: $@)
@@ -480,7 +480,7 @@ stage0/$(CFG_STDLIB): stage0/std.o stage0/glue.o
 
 stage1/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage1/rustc$(X) $(MKFILES)
 	@$(call E, compile: $@)
-	$(STAGE1) -c -shared -o $@ $<
+	$(STAGE1) -c --shared -o $@ $<
 
 stage1/$(CFG_STDLIB): stage1/std.o stage1/glue.o
 	@$(call E, link: $@)
@@ -489,7 +489,7 @@ stage1/$(CFG_STDLIB): stage1/std.o stage1/glue.o
 
 stage2/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage2/rustc$(X) $(MKFILES)
 	@$(call E, compile: $@)
-	$(STAGE2) -c -shared -o $@ $<
+	$(STAGE2) -c --shared -o $@ $<
 
 stage2/$(CFG_STDLIB): stage2/std.o stage2/glue.o
 	@$(call E, link: $@)
@@ -516,17 +516,17 @@ stage2/rustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ1)
 stage0/glue.o: stage0/rustc$(X) boot/$(CFG_STDLIB) \
                 rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
-	$(STAGE0) -c -o $@ -glue
+	$(STAGE0) -c -o $@ --glue
 
 stage1/glue.o: stage1/rustc$(X) stage0/$(CFG_STDLIB) \
                 rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
-	$(STAGE1) -c -o $@ -glue
+	$(STAGE1) -c -o $@ --glue
 
 stage2/glue.o: stage2/rustc$(X) stage1/$(CFG_STDLIB) \
                 rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
-	$(STAGE2) -c -o $@ -glue
+	$(STAGE2) -c -o $@ --glue
 
 # Due to make not wanting to run the same implicit rules twice on the same
 # rule tree (implicit-rule recursion prevention, see "Chains of Implicit
