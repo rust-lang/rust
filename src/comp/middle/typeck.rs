@@ -479,7 +479,9 @@ mod Collect {
 
             case (ast.item_const(?ident, ?t, _, ?def_id, _)) {
                 auto typ = convert(t);
-                cx.type_cache.insert(def_id, tup(0u, typ));
+                auto tpt = tup(0u, typ);
+                cx.type_cache.insert(def_id, tpt);
+                ret tpt;
             }
 
             case (ast.item_fn(?ident, ?fn_info, ?tps, ?def_id, _)) {
