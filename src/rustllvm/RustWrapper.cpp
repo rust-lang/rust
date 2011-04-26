@@ -18,6 +18,7 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetSelect.h"
 #include "llvm/Target/TargetRegistry.h"
+#include "llvm/Target/TargetOptions.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/Object.h"
 #include <cstdlib>
@@ -51,6 +52,10 @@ enum LLVMCodeGenFileType {
 extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR, LLVMModuleRef M,
                                         const char *triple, const char *path,
                                         LLVMCodeGenFileType FileType) {
+
+  // Set compilation options.
+  llvm::NoFramePointerElim = true;
+
   InitializeAllTargets();
   InitializeAllAsmPrinters();
   InitializeAllAsmParsers();
