@@ -1629,6 +1629,10 @@ fn type_contains_vars(ctxt cx, t typ) -> bool {
     ret typ.has_vars;
 }
 
+fn type_contains_locals(ctxt cx, t typ) -> bool {
+    ret typ.has_locals;
+}
+
 fn type_contains_params(ctxt cx, t typ) -> bool {
     ret typ.has_params;
 }
@@ -2606,6 +2610,10 @@ mod Unify {
 
     // Performs type binding substitution.
     fn substitute(@ctxt cx, vec[t] set_types, t typ) -> t {
+        if (!type_contains_vars(cx.tcx, typ)) {
+            ret typ;
+        }
+
         fn substituter(@ctxt cx, vec[t] types, t typ) -> t {
             alt (struct(cx.tcx, typ)) {
                 case (ty_var(?id)) {
@@ -2755,8 +2763,9 @@ fn substitute_type_params(ctxt cx, vec[t] bindings, t typ) -> t {
 
 // Converts type parameters in a type to bound type parameters.
 fn bind_params_in_type(ctxt cx, t typ) -> t {
-    if (!type_contains_params(cx, typ)) { ret typ; }
-
+    if (!type_contains_params(cx, typ)) {
+        ret typ;
+    }
     fn binder(ctxt cx, t typ) -> t {
         alt (struct(cx, typ)) {
             case (ty_bound_param(?index)) {

@@ -96,6 +96,10 @@ fn substitute_ty_params(&@crate_ctxt ccx,
         fail;
     }
 
+    if (!ty.type_contains_bound_params(ccx.tcx, typ)) {
+        ret typ;
+    }
+
     auto f = bind substituter(ccx, supplied, _);
     ret ty.fold_ty(ccx.tcx, f, typ);
 }
@@ -1532,6 +1536,10 @@ fn resolve_local_types_in_annotation(&option.t[@fn_ctxt] env, ast.ann ann)
             ret ann;
         }
         case (ast.ann_type(?typ, ?tps, ?ts_info)) {
+            auto tt = ann_to_type(ann);
+            if (!ty.type_contains_locals(fcx.ccx.tcx, tt)) {
+                ret ann;
+            }
             auto f = bind resolver(fcx, _);
             auto new_type = ty.fold_ty(fcx.ccx.tcx, f, ann_to_type(ann));
             ret ast.ann_type(new_type, tps, ts_info);
