@@ -391,10 +391,14 @@ fn ends_with(str haystack, str needle) -> bool {
 }
 
 fn substr(str s, uint begin, uint len) -> str {
+    ret slice(s, begin, begin + len);
+}
+
+fn slice(str s, uint begin, uint end) -> str {
     let str accum = "";
     let uint i = begin;
-    while (i < begin+len) {
-        accum += unsafe_from_byte(s.(i));
+    while (i < end) {
+        push_byte(accum, s.(i));
         i += 1u;
     }
     ret accum;
