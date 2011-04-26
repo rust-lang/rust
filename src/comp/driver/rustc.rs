@@ -20,6 +20,12 @@ import std._str;
 import std._vec;
 import std.io;
 
+import std.GetOpts;
+import std.GetOpts.optopt;
+import std.GetOpts.optmulti;
+import std.GetOpts.optflag;
+import std.GetOpts.opt_present;
+
 fn default_environment(session.session sess,
                        str argv0,
                        str input) -> eval.env {
@@ -105,18 +111,18 @@ fn usage(session.session sess, str argv0) {
 options:
 
     -o <filename>      write output to <filename>
-    -nowarn            suppress wrong-compiler warning
-    -glue              generate glue.bc file
-    -shared            compile a shared-library crate
-    -pp                pretty-print the input instead of compiling
-    -ls                list the symbols defined by a crate file
+    --nowarn           suppress wrong-compiler warning
+    --glue             generate glue.bc file
+    --shared           compile a shared-library crate
+    --pretty           pretty-print the input instead of compiling
+    --ls               list the symbols defined by a crate file
     -L <path>          add a directory to the library search path
-    -noverify          suppress LLVM verification step (slight speedup)
-    -parse-only        parse only; do not compile, assemble, or link
+    --noverify         suppress LLVM verification step (slight speedup)
+    --parse-only       parse only; do not compile, assemble, or link
     -O                 optimize
     -S                 compile only; do not assemble or link
     -c                 compile and assemble, but do not link
-    -save-temps        write intermediate files in addition to normal output
+    --save-temps       write intermediate files in addition to normal output
     -h                 display this message\n\n");
 }
 
@@ -142,133 +148,81 @@ fn main(vec[str] args) {
     auto sess = session.session(target_crate_num, target_cfg, crate_cache,
                                 md, front.codemap.new_codemap());
 
-    let option.t[str] input_file = none[str];
-    let option.t[str] output_file = none[str];
-    let vec[str] library_search_paths = vec();
-    let bool do_warn = true;
-    let bool shared = false;
-    let bool pretty = false;
-    let bool ls = false;
-    auto ot = trans.output_type_bitcode;
-    let bool glue = false;
-    let bool verify = true;
-    let bool save_temps = false;
-
-    // FIXME: Maybe we should support -O0, -O1, -Os, etc
-    let bool optimize = false;
-
-    auto i = 1u;
-    auto len = _vec.len[str](args);
-
-    // FIXME: a getopt module would be nice.
-    while (i < len) {
-        auto arg = args.(i);
-        if (_str.byte_len(arg) > 0u && arg.(0) == '-' as u8) {
-            if (_str.eq(arg, "-nowarn")) {
-                do_warn = false;
-            } else if (_str.eq(arg, "-O")) {
-                optimize = true;
-            } else if (_str.eq(arg, "-glue")) {
-                glue = true;
-            } else if (_str.eq(arg, "-shared")) {
-                shared = true;
-            } else if (_str.eq(arg, "-pp")) {
-                pretty = true;
-            } else if (_str.eq(arg, "-ls")) {
-                ls = true;
-            } else if (_str.eq(arg, "-parse-only")) {
-                ot = trans.output_type_none;
-            } else if (_str.eq(arg, "-S")) {
-                ot = trans.output_type_assembly;
-            } else if (_str.eq(arg, "-c")) {
-                ot = trans.output_type_object;
-            } else if (_str.eq(arg, "-o")) {
-                if (i+1u < len) {
-                    output_file = some(args.(i+1u));
-                    i += 1u;
-                } else {
-                    usage(sess, args.(0));
-                    sess.err("-o requires an argument");
-                }
-            } else if (_str.eq(arg, "-save-temps")) {
-                save_temps = true;
-            } else if (_str.eq(arg, "-L")) {
-                if (i+1u < len) {
-                    library_search_paths += vec(args.(i+1u));
-                    i += 1u;
-                } else {
-                    usage(sess, args.(0));
-                    sess.err("-L requires an argument");
-                }
-            } else if (_str.eq(arg, "-noverify")) {
-                verify = false;
-            } else if (_str.eq(arg, "-h")) {
-                usage(sess, args.(0));
-            } else {
-                usage(sess, args.(0));
-                sess.err("unrecognized option: " + arg);
-            }
-        } else {
-            alt (input_file) {
-                case (some[str](_)) {
-                    usage(sess, args.(0));
-                    sess.err("multiple inputs provided");
-                }
-                case (none[str]) {
-                    input_file = some[str](arg);
-                }
-            }
-        }
-        i += 1u;
+    auto opts = vec(optflag("nowarn"), optflag("h"), optflag("glue"),
+                    optflag("pretty"), optflag("ls"), optflag("parse-only"),
+                    optflag("O"), optflag("shared"), optmulti("L"),
+                    optflag("S"), optflag("c"), optopt("o"),
+                    optflag("save-temps"), optflag("noverify"));
+    auto binary = _vec.shift[str](args);
+    auto match;
+    alt (GetOpts.getopts(args, opts)) {
+        case (GetOpts.failure(?f)) { sess.err(GetOpts.fail_str(f)); fail; }
+        case (GetOpts.success(?m)) { match = m; }
     }
-
-    if (do_warn) {
+    if (!opt_present(match, "nowarn")) {
         warn_wrong_compiler();
     }
-
-    if (glue) {
-        alt (output_file) {
-            case (none[str]) {
-                middle.trans.make_common_glue("glue.bc", optimize, verify,
-                                              save_temps, ot);
-            }
-            case (some[str](?s)) {
-                middle.trans.make_common_glue(s, optimize, verify, save_temps,
-                                              ot);
-            }
-        }
+    if (opt_present(match, "h")) {
+        usage(sess, binary);
         ret;
     }
 
-    alt (input_file) {
-        case (none[str]) {
-            usage(sess, args.(0));
-            sess.err("no input filename");
-        }
-        case (some[str](?ifile)) {
+    auto pretty = opt_present(match, "pretty");
+    auto ls = opt_present(match, "ls");
+    auto glue = opt_present(match, "glue");
+    auto shared = opt_present(match, "shared");
+    auto output_file = GetOpts.opt_maybe_str(match, "o");
+    auto library_search_paths = GetOpts.opt_strs(match, "L");
+    auto ot = trans.output_type_bitcode;
+    if (opt_present(match, "parse-only")) {
+        ot = trans.output_type_none;
+    } else if (opt_present(match, "S")) {
+        ot = trans.output_type_assembly;
+    } else if (opt_present(match, "c")) {
+        ot = trans.output_type_object;
+    }
+    auto verify = !opt_present(match, "noverify");
+    auto save_temps = opt_present(match, "save-temps");
+    // FIXME: Maybe we should support -O0, -O1, -Os, etc
+    auto optimize = opt_present(match, "O");
+    auto n_inputs = _vec.len[str](match.free);
 
-            auto env = default_environment(sess, args.(0), ifile);
-            if (pretty) {
-                pretty_print_input(sess, env, ifile);
-            } else if (ls) {
-                front.creader.list_file_metadata(ifile, std.io.stdout());
-            } else {
-                alt (output_file) {
-                    case (none[str]) {
-                        let vec[str] parts = _str.split(ifile, '.' as u8);
-                        _vec.pop[str](parts);
-                        parts += vec(".bc");
-                        auto ofile = _str.concat(parts);
-                        compile_input(sess, env, ifile, ofile, shared,
-                                      optimize, verify, save_temps, ot,
-                                      library_search_paths);
-                    }
-                    case (some[str](?ofile)) {
-                        compile_input(sess, env, ifile, ofile, shared,
-                                      optimize, verify, save_temps, ot,
-                                      library_search_paths);
-                    }
-                }
+    if (glue) {
+        if (n_inputs > 0u) {
+            sess.err("No input files allowed with --glue.");
+        }
+        auto out = option.from_maybe[str]("glue.bc", output_file);
+        middle.trans.make_common_glue(out, optimize, verify, save_temps, ot);
+        ret;
+    }
+
+    if (n_inputs == 0u) {
+        sess.err("No input filename given.");
+    } else if (n_inputs > 1u) {
+        sess.err("Multiple input filenames provided.");
+    }
+
+    auto ifile = match.free.(0);
+    auto env = default_environment(sess, args.(0), ifile);
+    if (pretty) {
+        pretty_print_input(sess, env, ifile);
+    } else if (ls) {
+        front.creader.list_file_metadata(ifile, std.io.stdout());
+    } else {
+        alt (output_file) {
+            case (none[str]) {
+                let vec[str] parts = _str.split(ifile, '.' as u8);
+                _vec.pop[str](parts);
+                parts += vec(".bc");
+                auto ofile = _str.concat(parts);
+                compile_input(sess, env, ifile, ofile, shared,
+                              optimize, verify, save_temps, ot,
+                              library_search_paths);
+            }
+            case (some[str](?ofile)) {
+                compile_input(sess, env, ifile, ofile, shared,
+                              optimize, verify, save_temps, ot,
+                              library_search_paths);
             }
         }
     }
