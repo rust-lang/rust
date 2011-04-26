@@ -71,6 +71,7 @@ mod UFind;
 mod ExtFmt;
 mod Box;
 mod GetOpts;
+mod Term;
 
 // Local Variables:
 // mode: rust;
