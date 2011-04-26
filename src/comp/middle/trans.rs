@@ -1228,7 +1228,7 @@ fn dynamic_size_of(@block_ctxt cx, ty.t t) -> result {
             auto elt_size = size_of(bcx, e);
             bcx = elt_size.bcx;
             auto aligned_off = align_to(bcx, off, elt_align.val);
-            off = cx.build.Add(aligned_off, elt_size.val);
+            off = bcx.build.Add(aligned_off, elt_size.val);
             max_align = umax(bcx, max_align, elt_align.val);
         }
         off = align_to(bcx, off, max_align);
@@ -1488,7 +1488,7 @@ fn trans_raw_malloc(@block_ctxt cx, TypeRef llptr_ty, ValueRef llsize)
     // FIXME: need a table to collect tydesc globals.
     auto tydesc = C_int(0);
     auto rslt = trans_upcall(cx, "upcall_malloc", vec(llsize, tydesc));
-    rslt = res(rslt.bcx, vi2p(cx, rslt.val, llptr_ty));
+    rslt = res(rslt.bcx, vi2p(rslt.bcx, rslt.val, llptr_ty));
     ret rslt;
 }
 
@@ -1949,6 +1949,8 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, ty.t t) {
                        ty.type_is_native(cx.fcx.lcx.ccx.tcx, t) ||
                        ty.type_is_nil(cx.fcx.lcx.ccx.tcx, t)) {
                 rslt = res(cx, C_nil());
+            } else {
+                rslt = res(cx, C_nil());
             }
         }
     }
@@ -2356,7 +2358,7 @@ fn iter_structural_ty_full(@block_ctxt cx,
 
         auto r = f(inner_cx, box_a_ptr, box_b_ptr, tbox);
         r.bcx.build.Br(next_cx.llbb);
-        ret res(next_cx, r.val);
+        ret res(next_cx, C_nil());
     }
 
     alt (ty.struct(cx.fcx.lcx.ccx.tcx, t)) {
@@ -2626,7 +2628,7 @@ fn iter_sequence(@block_ctxt cx,
         auto p1 = vi2p(bcx, bcx.build.Add(vp2i(bcx, p0), len),
                        T_ptr(llunit_ty));
 
-        ret iter_sequence_inner(cx, p0, p1, elt_ty, f);
+        ret iter_sequence_inner(bcx, p0, p1, elt_ty, f);
     }
 
     alt (ty.struct(cx.fcx.lcx.ccx.tcx, t)) {
@@ -2660,11 +2662,13 @@ fn call_tydesc_glue_full(@block_ctxt cx, ValueRef v,
                                 llrawptr));
 }
 
-fn call_tydesc_glue(@block_ctxt cx, ValueRef v, ty.t t, int field) {
+fn call_tydesc_glue(@block_ctxt cx, ValueRef v,
+                    ty.t t, int field) -> result {
     auto td = get_tydesc(cx, t);
     call_tydesc_glue_full(td.bcx,
                           spill_if_immediate(td.bcx, v, t),
                           td.val, field);
+    ret res(td.bcx, C_nil());
 }
 
 fn call_cmp_glue(@block_ctxt cx, ValueRef lhs, ValueRef rhs, ty.t t,
@@ -2705,7 +2709,7 @@ fn call_cmp_glue(@block_ctxt cx, ValueRef lhs, ValueRef rhs, ty.t t,
 
 fn take_ty(@block_ctxt cx, ValueRef v, ty.t t) -> result {
     if (!ty.type_is_scalar(cx.fcx.lcx.ccx.tcx, t)) {
-        call_tydesc_glue(cx, v, t, abi.tydesc_field_take_glue);
+        ret call_tydesc_glue(cx, v, t, abi.tydesc_field_take_glue);
     }
     ret res(cx, C_nil());
 }
@@ -2727,7 +2731,7 @@ fn drop_ty(@block_ctxt cx,
            ty.t t) -> result {
 
     if (!ty.type_is_scalar(cx.fcx.lcx.ccx.tcx, t)) {
-        call_tydesc_glue(cx, v, t, abi.tydesc_field_drop_glue);
+        ret call_tydesc_glue(cx, v, t, abi.tydesc_field_drop_glue);
     }
     ret res(cx, C_nil());
 }
@@ -3529,7 +3533,7 @@ fn trans_for_each(@block_ctxt cx,
     auto lltydescsptr = cx.build.GEP(llenvptr,
                                      vec(C_int(0),
                                          C_int(abi.box_rc_field_body),
-                                         C_int(3)));
+                                         C_int(abi.closure_elt_ty_params)));
     auto i = 0u;
     while (i < tydesc_count) {
         auto lltydescptr = cx.build.GEP(lltydescsptr,
@@ -3563,8 +3567,10 @@ fn trans_for_each(@block_ctxt cx,
 
     // Populate the upvars from the environment.
     auto llremoteenvptr = bcx.build.PointerCast(fcx.llenv, llenvptrty);
-    auto llremotebindingsptrptr = bcx.build.GEP(llremoteenvptr,
-        vec(C_int(0), C_int(abi.box_rc_field_body), C_int(2)));
+    auto llremotebindingsptrptr =
+        bcx.build.GEP(llremoteenvptr, vec(C_int(0),
+                                          C_int(abi.box_rc_field_body),
+                                          C_int(abi.closure_elt_bindings)));
     auto llremotebindingsptr = bcx.build.Load(llremotebindingsptrptr);
 
     i = 0u;
@@ -3579,10 +3585,11 @@ fn trans_for_each(@block_ctxt cx,
     }
 
     // Populate the type parameters from the environment.
-    auto llremotetydescsptr = bcx.build.GEP(llremoteenvptr,
-                                            vec(C_int(0),
-                                                C_int(abi.box_rc_field_body),
-                                                C_int(3)));
+    auto llremotetydescsptr =
+        bcx.build.GEP(llremoteenvptr,
+                      vec(C_int(0),
+                          C_int(abi.box_rc_field_body),
+                          C_int(abi.closure_elt_ty_params)));
 
     i = 0u;
     while (i < tydesc_count) {
@@ -3903,7 +3910,7 @@ fn lval_generic_fn(@block_ctxt cx,
     }
 
     if (_vec.len[ty.t](tys) != 0u) {
-        auto bcx = cx;
+        auto bcx = lv.res.bcx;
         let vec[ValueRef] tydescs = vec();
         for (ty.t t in tys) {
             auto td = get_tydesc(bcx, t);
@@ -4497,7 +4504,7 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
             for (ValueRef v in bound_vals) {
                 auto bound = bcx.build.GEP(bindings,
                                            vec(C_int(0), C_int(i as int)));
-                bcx = copy_ty(r.bcx, INIT, bound, v, bound_tys.(i)).bcx;
+                bcx = copy_ty(bcx, INIT, bound, v, bound_tys.(i)).bcx;
                 i += 1u;
             }
 
@@ -5324,7 +5331,7 @@ fn trans_break_cont(@block_ctxt cx, bool to_end) -> result {
                         }
                     }
                 }
-                ret res(new_sub_block_ctxt(cx, "unreachable"), C_nil());
+                ret res(bcx, C_nil());
             }
             case (_) {
                 alt (cleanup_cx.parent) {
@@ -5333,7 +5340,7 @@ fn trans_break_cont(@block_ctxt cx, bool to_end) -> result {
             }
         }
     }
-    ret res(cx, C_nil()); // Never reached. Won't compile otherwise.
+    fail;
 }
 
 fn trans_break(@block_ctxt cx) -> result {
@@ -5357,7 +5364,11 @@ fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
             val = r.val;
             bcx = copy_ty(bcx, INIT, cx.fcx.llretptr, val, t).bcx;
         }
-        case (_) { /* fall through */  }
+        case (_) {
+            auto t = llvm.LLVMGetElementType(val_ty(cx.fcx.llretptr));
+            auto null = lib.llvm.llvm.LLVMConstNull(t);
+            bcx.build.Store(null, cx.fcx.llretptr);
+        }
     }
 
     // Run all cleanups and back out.
@@ -6052,7 +6063,7 @@ fn trans_fn(@local_ctxt cx, &ast._fn f, ast.def_id fid,
     new_builder(fcx.llallocas).Br(lltop);
 }
 
-fn trans_vtbl(@local_ctxt cx, 
+fn trans_vtbl(@local_ctxt cx,
               TypeRef llself_ty,
               ty.t self_ty,
               &ast._obj ob,
@@ -6085,7 +6096,7 @@ fn trans_vtbl(@local_ctxt cx,
         cx.ccx.item_ids.insert(m.node.id, llfn);
         cx.ccx.item_symbols.insert(m.node.id, s);
 
-        trans_fn(mcx, m.node.meth, m.node.id, 
+        trans_fn(mcx, m.node.meth, m.node.id,
                  some[tup(TypeRef, ty.t)](tup(llself_ty, self_ty)),
                  ty_params, m.node.ann);
         methods += vec(llfn);
@@ -6146,7 +6157,7 @@ fn trans_obj(@local_ctxt cx, &ast._obj ob, ast.def_id oid,
 
     auto fcx = new_fn_ctxt(cx, llctor_decl);
     create_llargs_for_fn_args(fcx, ast.proto_fn,
-                              none[tup(TypeRef, ty.t)], 
+                              none[tup(TypeRef, ty.t)],
                               ret_ty_of_fn(cx.ccx, ann),
                               fn_args, ty_params);
 
@@ -6289,7 +6300,7 @@ fn trans_tag_variant(@local_ctxt cx, ast.def_id tag_id,
     auto fcx = new_fn_ctxt(cx, llfndecl);
 
     create_llargs_for_fn_args(fcx, ast.proto_fn,
-                              none[tup(TypeRef, ty.t)], 
+                              none[tup(TypeRef, ty.t)],
                               ret_ty_of_fn(cx.ccx, variant.node.ann),
                               fn_args, ty_params);
 
@@ -6718,7 +6729,7 @@ fn collect_item_2(@crate_ctxt ccx, @walk_ctxt wcx, @ast.item i) {
 fn collect_items(@crate_ctxt ccx, @ast.crate crate) {
     auto wcx = new_walk_ctxt();
     auto visitor0 = walk.default_visitor();
-    auto visitor1 = rec(visit_native_item_pre = 
+    auto visitor1 = rec(visit_native_item_pre =
                           bind collect_native_item(ccx, wcx, _),
                         visit_item_pre = bind collect_item_1(ccx, wcx, _),
                         visit_item_post = bind leave_item(wcx, _)
@@ -6760,7 +6771,7 @@ fn collect_tag_ctors(@crate_ctxt ccx, @ast.crate crate) {
 
 fn trans_constant(@crate_ctxt ccx, @walk_ctxt wcx, @ast.item it) {
     enter_item(wcx, it);
-    
+
     alt (it.node) {
         case (ast.item_tag(?ident, ?variants, _, ?tag_id, _)) {
             auto i = 0u;
