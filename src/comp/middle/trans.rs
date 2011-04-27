@@ -1617,14 +1617,24 @@ fn get_static_tydesc(&@block_ctxt cx,
             ret info;
         }
         case (none[@tydesc_info]) {
+
+            // FIXME: Use of a simplified tydesc (w/o names) removes a lot of
+            // generated glue, but the compile time goes way down due to
+            // greatly increasing the miss rate on the type_of cache elsewhere
+            // in this file. Experiment with other approaches to this.
+
+            /*
             fn simplifier(ty.t typ) -> ty.t {
                 ret @rec(cname=none[str] with *typ);
             }
             auto f = simplifier;
             auto t_simplified = ty.fold_ty(cx.fcx.lcx.ccx.tcx, f, t);
             auto info = declare_tydesc(cx.fcx.lcx, t_simplified);
-            cx.fcx.lcx.ccx.tydescs.insert(t, info);
             cx.fcx.lcx.ccx.tydescs.insert(t_simplified, info);
+            */
+
+            auto info = declare_tydesc(cx.fcx.lcx, t);
+            cx.fcx.lcx.ccx.tydescs.insert(t, info);
             define_tydesc(cx.fcx.lcx, t, ty_params);
             ret info;
         }
