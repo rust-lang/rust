@@ -3772,6 +3772,8 @@ fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
                     auto subpat_res = trans_pat_match(matched_cx, subpat,
                                                       llsubval, next_cx);
                     matched_cx = subpat_res.bcx;
+
+                    i += 1;
                 }
             }
 
