@@ -37,12 +37,11 @@ fn parse_buf(vec[u8] buf, uint radix) -> uint {
     auto i = _vec.len[u8](buf) - 1u;
     auto power = 1u;
     auto n = 0u;
-    while (i >= 0u) {
+    while (true) {
         n += (((buf.(i)) - ('0' as u8)) as uint) * power;
         power *= radix;
-        i -= 1u;
+        if (i == 0u) { ret n; }
     }
-    ret n;
 }
 
 fn to_str(uint num, uint radix) -> str
