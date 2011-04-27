@@ -7110,18 +7110,6 @@ fn run_passes(ModuleRef llmod, bool opt, bool verify, bool save_temps,
         llvm.LLVMAddStripDeadPrototypesPass(pm.llpm);
         llvm.LLVMAddDeadTypeEliminationPass(pm.llpm);
         llvm.LLVMAddConstantMergePass(pm.llpm);
-
-        // Generate a post-optimization intermediate file if -save-temps was
-        // specified.
-        if (save_temps) {
-            alt (ot) {
-                case (output_type_bitcode) { /* nothing to do */ }
-                case (_) {
-                    auto filename = mk_intermediate_name(output, "opt.bc");
-                    llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(filename));
-                }
-            }
-        }
     }
 
     if (verify) {
@@ -7138,6 +7126,19 @@ fn run_passes(ModuleRef llmod, bool opt, bool verify, bool save_temps,
             FileType = LLVMObjectFile;
         } else {
             FileType = LLVMAssemblyFile;
+        }
+
+        // Write optimized bitcode if --save-temps was on.
+        if (save_temps) {
+            alt (ot) {
+                case (output_type_bitcode) { /* nothing to do */ }
+                case (_) {
+                    auto filename = mk_intermediate_name(output, "opt.bc");
+                    llvm.LLVMRunPassManager(pm.llpm, llmod);
+                    llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(filename));
+                    pm = mk_pass_manager();
+                }
+            }
         }
 
         llvm.LLVMRustWriteOutputFile(pm.llpm, llmod,
