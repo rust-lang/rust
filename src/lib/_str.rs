@@ -5,6 +5,7 @@ import _vec.rustrt.vbuf;
 native "rust" mod rustrt {
     type sbuf;
     fn str_buf(str s) -> sbuf;
+    fn str_vec(str s) -> vec[u8];
     fn str_byte_len(str s) -> uint;
     fn str_alloc(uint n_bytes) -> str;
     fn str_from_vec(vec[mutable? u8] b) -> str;
@@ -126,10 +127,7 @@ fn buf(str s) -> sbuf {
 }
 
 fn bytes(str s) -> vec[u8] {
-    fn ith(str s, uint i) -> u8 {
-        ret s.(i);
-    }
-    ret _vec.init_fn[u8](bind ith(s, _), byte_len(s));
+    ret rustrt.str_vec(s);
 }
 
 fn from_bytes(vec[u8] v) : is_utf8(v) -> str {
