@@ -1564,20 +1564,16 @@ fn get_tydesc(&@block_ctxt cx, ty.t t) -> result {
     }
 
     // Does it contain a type param? If so, generate a derived tydesc.
-    let uint n_params = ty.count_ty_params(cx.fcx.lcx.ccx.tcx, t);
 
-    if (n_params > 0u) {
+    if (ty.type_contains_params(cx.fcx.lcx.ccx.tcx, t)) {
+
+        let uint n_params = ty.count_ty_params(cx.fcx.lcx.ccx.tcx, t);
         auto tys = linearize_ty_params(cx, t);
 
         check (n_params == _vec.len[uint](tys._0));
         check (n_params == _vec.len[ValueRef](tys._1));
 
-        if (!cx.fcx.lcx.ccx.tydescs.contains_key(t)) {
-            declare_tydesc(cx.fcx.lcx, t);
-            define_tydesc(cx.fcx.lcx, t, tys._0);
-        }
-
-        auto root = cx.fcx.lcx.ccx.tydescs.get(t).tydesc;
+        auto root = get_static_tydesc(cx, t, tys._0).tydesc;
 
         auto tydescs = alloca(cx, T_array(T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn)),
                                           1u /* for root*/ + n_params));
@@ -1610,18 +1606,35 @@ fn get_tydesc(&@block_ctxt cx, ty.t t) -> result {
     }
 
     // Otherwise, generate a tydesc if necessary, and return it.
-    if (!cx.fcx.lcx.ccx.tydescs.contains_key(t)) {
-        let vec[uint] tps = vec();
-        declare_tydesc(cx.fcx.lcx, t);
-        define_tydesc(cx.fcx.lcx, t, tps);
+    let vec[uint] tps = vec();
+    ret res(cx, get_static_tydesc(cx, t, tps).tydesc);
+}
+
+fn get_static_tydesc(&@block_ctxt cx,
+                     ty.t t, vec[uint] ty_params) -> @tydesc_info {
+    alt (cx.fcx.lcx.ccx.tydescs.find(t)) {
+        case (some[@tydesc_info](?info)) {
+            ret info;
+        }
+        case (none[@tydesc_info]) {
+            fn simplifier(ty.t typ) -> ty.t {
+                ret @rec(cname=none[str] with *typ);
+            }
+            auto f = simplifier;
+            auto t_simplified = ty.fold_ty(cx.fcx.lcx.ccx.tcx, f, t);
+            auto info = declare_tydesc(cx.fcx.lcx, t_simplified);
+            cx.fcx.lcx.ccx.tydescs.insert(t, info);
+            cx.fcx.lcx.ccx.tydescs.insert(t_simplified, info);
+            define_tydesc(cx.fcx.lcx, t, ty_params);
+            ret info;
+        }
     }
-    ret res(cx, cx.fcx.lcx.ccx.tydescs.get(t).tydesc);
 }
 
 // Generates the declaration for (but doesn't fill in) a type descriptor. This
 // needs to be separate from make_tydesc() below, because sometimes type glue
 // functions needs to refer to their own type descriptors.
-fn declare_tydesc(@local_ctxt cx, ty.t t) {
+fn declare_tydesc(@local_ctxt cx, ty.t t) -> @tydesc_info {
     auto take_glue = declare_generic_glue(cx, t, T_glue_fn(cx.ccx.tn),
                                           "take");
     auto drop_glue = declare_generic_glue(cx, t, T_glue_fn(cx.ccx.tn),
@@ -1666,14 +1679,14 @@ fn declare_tydesc(@local_ctxt cx, ty.t t) {
     llvm.LLVMSetLinkage(gvar, lib.llvm.LLVMInternalLinkage
                         as llvm.Linkage);
 
-    auto info = rec(
+    auto info = @rec(
         tydesc=gvar,
         take_glue=take_glue,
         drop_glue=drop_glue,
         cmp_glue=cmp_glue
     );
 
-    ccx.tydescs.insert(t, @info);
+    ret info;
 }
 
 tag make_generic_glue_helper_fn {
