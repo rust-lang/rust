@@ -4793,18 +4793,28 @@ let trans_visitor
     let trans_arm arm : quad_idx =
       let (pat, block) = arm.node in
 
-      (* Translates the pattern and returns the addresses of the branch
-       * instructions that are taken if the match fails.
+      (* Translates the pattern and returns a pair where the first
+          component is a list of the addresses of the branch
+          instructions that are taken if the match fails,
+          and the second component is a thunk that, when invoked,
+          emits initialization code for the variables bound in this pattern.
+
+          trans_pat can't just emit the initialization code itself, because
+          then, pattern-bound variables could be taken without ever being 
+          dropped if a nested pattern fails partway through (because the 
+          drop code is part of the action for the pattern).
        *)
       let rec trans_pat
           (pat:Ast.pat)
           (src_cell:Il.cell)
           (src_ty:Ast.ty)
-          : quad_idx list =
+          : (quad_idx list *
+             (unit -> unit)) =
 
         match pat with
             Ast.PAT_lit lit ->
-              trans_compare_simple Il.JNE (trans_lit lit) (Il.Cell src_cell)
+              (trans_compare_simple Il.JNE (trans_lit lit) (Il.Cell src_cell),
+               fun _ -> ())
 
           | Ast.PAT_tag (lval, pats) ->
               let tag_ident =
@@ -4815,7 +4825,7 @@ let trans_visitor
                   | Ast.LVAL_base { node = Ast.BASE_app (id, _); id = _ } ->
                       id
                   | _ -> bug cx "expected lval ending in ident"
-              in
+              in 
               let ttag =
                 match strip_mutable_or_constrained_ty src_ty with
                     Ast.TY_tag ttag -> ttag
@@ -4843,7 +4853,8 @@ let trans_visitor
 
               let tup_cell:Il.cell = get_variant_ptr union_cell i in
 
-              let trans_elem_pat i elem_pat : quad_idx list =
+              let trans_elem_pat i elem_pat :
+                    (quad_idx list * (unit -> unit)) =
                 let elem_cell =
                   get_element_ptr_dyn_in_current_frame tup_cell i
                 in
@@ -4852,24 +4863,31 @@ let trans_visitor
               in
 
               let elem_jumps =
-                List.concat (Array.to_list (Array.mapi trans_elem_pat pats))
+                (Array.to_list (Array.mapi trans_elem_pat pats)) in
+              let (elem_jump_addrs, ks) = List.split elem_jumps
               in
-                next_jumps @ elem_jumps
+                (next_jumps @ (List.concat elem_jump_addrs),
+                 (* Compose all the var-initialization thunks together
+                    to make one thunk that initializes all the vars *)
+                 List.fold_left (fun g f -> (fun x -> f (g x)))
+                   (fun _ -> ()) ks)
 
           | Ast.PAT_slot (dst, _) ->
               let dst_slot = get_slot cx dst.id in
               let dst_cell = cell_of_block_slot dst.id in
-                trans_init_slot_from_cell
-                  (get_ty_params_of_current_frame())
-                  CLONE_none dst_cell dst_slot
-                  src_cell src_ty;
-                []                 (* irrefutable *)
-
-          | Ast.PAT_wild -> []     (* irrefutable *)
+              (* irrefutable *)
+                ([], (fun () -> (* init the slot later, inside the block,
+                                   once we know we had a match *)
+                                  trans_init_slot_from_cell 
+                                  (get_ty_params_of_current_frame())
+                                  CLONE_none dst_cell dst_slot
+                                  src_cell src_ty))
+          | Ast.PAT_wild -> ([], fun _ -> ())     (* irrefutable *)
       in
 
       let (lval_cell, lval_ty) = trans_lval at.Ast.alt_tag_lval in
-      let next_jumps = trans_pat pat lval_cell lval_ty in
+      let (next_jumps, prologue) = trans_pat pat lval_cell lval_ty in
+        prologue (); (* binds any pattern-bound variables *)
         trans_block block;
         let last_jump = mark() in
           emit (Il.jmp Il.JMP Il.CodeNone);
