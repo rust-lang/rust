@@ -113,6 +113,7 @@ state type crate_ctxt = rec(session.session sess,
                             @glue_fns glues,
                             namegen names,
                             std.sha1.sha1 sha,
+                            hashmap[ty.t, str] type_sha1s,
                             ty.ctxt tcx);
 
 type local_ctxt = rec(vec[str] path,
@@ -182,15 +183,19 @@ fn path_name(vec[str] path) -> str {
 
 
 fn mangle_name_by_type(@crate_ctxt ccx, vec[str] path, ty.t t) -> str {
-    ccx.sha.reset();
-
-    auto f = metadata.def_to_str;
-    auto cx = @rec(ds=f, tcx=ccx.tcx);
-    ccx.sha.input_str(metadata.Encode.ty_str(cx, t));
-
-    ret sep() + "rust" + sep()
-        + _str.substr(ccx.sha.result_str(), 0u, 16u) + sep()
-        + path_name(path);
+    auto hash = "";
+    alt (ccx.type_sha1s.find(t)) {
+        case (some[str](?h)) { hash = h; }
+        case (none[str]) {
+            ccx.sha.reset();
+            auto f = metadata.def_to_str;
+            auto cx = @rec(ds=f, tcx=ccx.tcx);
+            ccx.sha.input_str(metadata.Encode.ty_str(cx, t));
+            hash = _str.substr(ccx.sha.result_str(), 0u, 16u);
+            ccx.type_sha1s.insert(t, hash);
+        }
+    }
+    ret sep() + "rust" + sep() + hash + sep() + path_name(path);
 }
 
 fn mangle_name_by_seq(@crate_ctxt ccx, vec[str] path, str flav) -> str {
@@ -1721,7 +1726,7 @@ fn declare_generic_glue(@local_ctxt cx,
                         TypeRef llfnty,
                         str name) -> ValueRef {
     auto gcx = @rec(path=vec("glue", name) with *cx);
-    auto fn_nm = mangle_name_by_type(cx.ccx, cx.path + vec("glue", name), t);
+    auto fn_nm = mangle_name_by_seq(cx.ccx, cx.path, "glue");
     fn_nm = sanitize(fn_nm);
     auto llfn = decl_internal_fastcall_fn(cx.ccx.llmod, fn_nm, llfnty);
     ret llfn;
@@ -7603,6 +7608,7 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
     auto tag_sizes = map.mk_hashmap[ty.t,uint](hasher, eqer);
     auto tydescs = map.mk_hashmap[ty.t,@tydesc_info](hasher, eqer);
     auto lltypes = map.mk_hashmap[ty.t,TypeRef](hasher, eqer);
+    auto sha1s = map.mk_hashmap[ty.t,str](hasher, eqer);
 
     auto ccx = @rec(sess = sess,
                     llmod = llmod,
@@ -7628,6 +7634,7 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
                     glues = glues,
                     names = namegen(0),
                     sha = std.sha1.mk_sha1(),
+                    type_sha1s = sha1s,
                     tcx = tcx);
     auto cx = new_local_ctxt(ccx);
 
