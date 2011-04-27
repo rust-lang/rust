@@ -544,6 +544,13 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
         ret mstr + ty_to_str(cx, m.ty);
     }
 
+    alt (cname(cx, typ)) {
+        case (some[str](?cs)) {
+            ret cs;
+        }
+        case (_) { }
+    }
+
     auto s = "";
 
     alt (struct(cx, typ)) {
@@ -594,16 +601,9 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
         }
 
         case (ty_obj(?meths)) {
-            alt (cname(cx, typ)) {
-                case (some[str](?cs)) {
-                    s += cs;
-                }
-                case (_) {
-                    auto f = bind method_to_str(cx, _);
-                    auto m = _vec.map[method,str](f, meths);
-                    s += "obj {\n\t" + _str.connect(m, "\n\t") + "\n}";
-                }
-            }
+            auto f = bind method_to_str(cx, _);
+            auto m = _vec.map[method,str](f, meths);
+            s += "obj {\n\t" + _str.connect(m, "\n\t") + "\n}";
         }
 
         case (ty_var(?v)) {
