@@ -49,7 +49,8 @@ rust_crate_cache::c_sym::c_sym(rust_dom *dom, lib *library, char const *name)
         DLOG(dom, cache, "resolved symbol '%s' to 0x%"  PRIxPTR,
                  name, val);
     } else {
-        DLOG_ERR(dom, cache, "unresolved symbol '%s', null lib handle", name);
+        DLOG_ERR(dom, cache, "unresolved symbol '%s', null lib handle\n"
+                             "(did you omit a -L flag?)", name);
     }
 }
 
