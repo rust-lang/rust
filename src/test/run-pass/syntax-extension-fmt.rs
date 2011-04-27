@@ -175,6 +175,21 @@ fn main() {
   test(#fmt("%06.5X", 127u), " 0007F");
   test(#fmt("%06.5o", 10u), " 00012");
 
-  // TODO: Padding and +
-  // TODO: Padding and ' '
+  // Signed combinations
+  test(#fmt("% 5d", 1), "    1");
+  test(#fmt("% 5d", -1), "   -1");
+  test(#fmt("%+5d", 1), "   +1");
+  test(#fmt("%+5d", -1), "   -1");
+  test(#fmt("% 05d", 1), " 0001");
+  test(#fmt("% 05d", -1), "-0001");
+  test(#fmt("%+05d", 1), "+0001");
+  test(#fmt("%+05d", -1), "-0001");
+  test(#fmt("%- 5d", 1), " 1   ");
+  test(#fmt("%- 5d", -1), "-1   ");
+  test(#fmt("%-+5d", 1), "+1   ");
+  test(#fmt("%-+5d", -1), "-1   ");
+  test(#fmt("%- 05d", 1), " 1   ");
+  test(#fmt("%- 05d", -1), "-1   ");
+  test(#fmt("%-+05d", 1), "+1   ");
+  test(#fmt("%-+05d", -1), "-1   ");
 }

@@ -532,15 +532,20 @@ mod RT {
         // instead.
         if (signed
             && zero_padding
-            && _str.byte_len(s) > 0u
-            && s.(0) == '-' as u8) {
+            && _str.byte_len(s) > 0u) {
 
-            auto bytelen = _str.byte_len(s);
-            auto numpart = _str.substr(s, 1u, bytelen - 1u);
-            ret "-" + padstr + numpart;
-        } else {
-            ret padstr + s;
+            auto head = s.(0);
+            if (head == '+' as u8
+                || head == '-' as u8
+                || head == ' ' as u8) {
+
+                auto headstr = _str.unsafe_from_bytes(vec(head));
+                auto bytelen = _str.byte_len(s);
+                auto numpart = _str.substr(s, 1u, bytelen - 1u);
+                ret headstr + padstr + numpart;
+            }
         }
+        ret padstr + s;
     }
 
     fn have_flag(vec[flag] flags, flag f) -> bool {
