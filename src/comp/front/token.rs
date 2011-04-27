@@ -215,7 +215,7 @@ fn to_str(token t) -> str {
         case (COMMA) { ret ","; }
         case (SEMI) { ret ";"; }
         case (COLON) { ret ":"; }
-        case (COLONCOLON) { ret ":"; }
+        case (COLONCOLON) { ret "::"; }
         case (QUES) { ret "?"; }
         case (RARROW) { ret "->"; }
         case (SEND) { ret "<|"; }
