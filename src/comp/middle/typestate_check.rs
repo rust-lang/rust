@@ -367,8 +367,6 @@ fn mk_fn_info_item_obj(&fn_info_map fi, &span sp, ident i, &ast._obj o,
     auto all_methods = _vec.clone[@method](o.methods);
     plus_option[@method](all_methods, o.dtor);
     for (@method m in all_methods) {
-        /* FIXME: also need to pass in fields so we can say
-           they're initialized? */
         fi.insert(m.node.id, mk_fn_info(m.node.meth));
         log(m.node.ident + " has " +
             uistr(num_locals(mk_fn_info(m.node.meth))) + " local vars");
@@ -1938,7 +1936,7 @@ fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
           || changed;
       changed = extend_poststate(stmt_ann.states.poststate,
                                  expr_poststate(*e)) || changed;
-
+      /*
                     log("Summary: stmt = ");
               log_stmt(*s);
               log("prestate = ");
@@ -1949,7 +1947,7 @@ fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
               log_bitv(enclosing, stmt_ann.states.poststate);
               log("changed =");
               log(changed);
-      
+      */
       ret changed;
     }
     case (_) { ret false; }
@@ -2105,12 +2103,12 @@ fn check_states_against_conditions(fn_info enclosing, &ast._fn f) -> () {
 fn check_fn_states(&fn_info_map f_info_map, &fn_info f_info, &ast._fn f)
     -> () {
   /* Compute the pre- and post-states for this function */
-  auto g = find_pre_post_state_fn;
-  fixed_point_states(f_info_map, f_info, g, f);
-
+    auto g = find_pre_post_state_fn;
+    fixed_point_states(f_info_map, f_info, g, f);
+    
   /* Now compare each expr's pre-state to its precondition
      and post-state to its postcondition */
-  check_states_against_conditions(f_info, f);
+    check_states_against_conditions(f_info, f);
 }
 
 fn check_item_fn_state(&fn_info_map f_info_map, &span sp, ident i,
@@ -2598,13 +2596,8 @@ fn check_crate(@ast.crate crate) -> @ast.crate {
   auto fm = mk_f_to_fn_info(crate);
   
   /* Add a blank ts_ann to every statement (and expression) */
-  /*
-  auto fld0 = fold.new_identity_fold[fn_info_map]();
-  fld0 = @rec(fold_item_fn = bind item_fn_anns(_,_,_,_,_,_,_)
-              with *fld0);
-  */
   auto with_anns = annotate_crate(fm, crate);
-  
+
   /* Compute the pre and postcondition for every subexpression */
   auto fld = fold.new_identity_fold[fn_info_map]();
   fld = @rec(fold_item_fn = bind check_item_fn(_,_,_,_,_,_,_) with *fld);
