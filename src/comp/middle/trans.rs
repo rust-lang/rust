@@ -6557,6 +6557,11 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
         ty.ty_fn_args(ccx.tcx, fn_type),
         ty.ty_fn_ret(ccx.tcx, fn_type), num_ty_param);
 
+    // FIXME: If the returned type is not nil, then we assume it's 32 bits
+    // wide. This is obviously wildly unsafe. We should have a better FFI
+    // that allows types of different sizes to be returned.
+    auto rty_is_nil = ty.type_is_nil(ccx.tcx, ty.ty_fn_ret(ccx.tcx, fn_type));
+
     let vec[ValueRef] call_args = vec();
     auto arg_n = 3u;
     auto pass_task;
@@ -6635,7 +6640,11 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
         rptr = bcx.build.BitCast(fcx.llretptr, T_ptr(T_i32()));
     }
 
-    bcx.build.Store(r, rptr);
+    // We don't store the return value if it's nil, to avoid stomping on a nil
+    // pointer. This is the only concession made to non-i32 return values. See
+    // the FIXME above.
+    if (!rty_is_nil) { bcx.build.Store(r, rptr); }
+
     bcx.build.RetVoid();
 
     // Tie up the llallocas -> lltop edge.
