@@ -1007,6 +1007,35 @@ fn parse_dot_or_call_expr(parser p) -> @ast.expr {
                 }
             }
 
+            case (token.COLONCOLON) {
+                // Pseudomethod calls: e::pm() is sugar for pm(e).
+                p.bump();
+                
+                auto pm = parse_bottom_expr(p);
+
+                // Throw out the parens.
+                expect(p, token.LPAREN);
+                expect(p, token.RPAREN);
+
+
+                // // The rest of the arguments.
+                // auto pf = parse_expr;
+                // auto lo = p.get_lo_pos();
+                // auto hi = p.get_hi_pos();
+                // expect(p, token.LPAREN);
+                // auto result = parse_seq_to_end[@ast.expr](token.RPAREN, 
+                //                                           some(token.COMMA), 
+                //                                           pf, hi, p);
+                // // Get all the arguments together.
+                // vec[@ast.expr] args = vec(e) + result;
+                // spanned(lo, hi, args);
+
+                auto e_ = ast.expr_call(pm, vec(@spanned(lo, hi, e.node)), 
+                                        ast.ann_none);
+
+                e = @spanned(lo, hi, e_);
+            }
+
             case (token.DOT) {
                 p.bump();
                 alt (p.peek()) {
