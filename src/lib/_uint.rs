@@ -34,6 +34,11 @@ fn next_power_of_two(uint n) -> uint {
 }
 
 fn parse_buf(vec[u8] buf, uint radix) -> uint {
+    if (_vec.len[u8](buf) == 0u) {
+        log_err "parse_buf(): buf is empty";
+        fail;
+    }
+
     auto i = _vec.len[u8](buf) - 1u;
     auto power = 1u;
     auto n = 0u;
@@ -41,7 +46,10 @@ fn parse_buf(vec[u8] buf, uint radix) -> uint {
         n += (((buf.(i)) - ('0' as u8)) as uint) * power;
         power *= radix;
         if (i == 0u) { ret n; }
+        i -= 1u;
     }
+
+    fail;
 }
 
 fn to_str(uint num, uint radix) -> str
