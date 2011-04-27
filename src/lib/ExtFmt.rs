@@ -46,6 +46,7 @@ mod CT {
         ty_int(signedness);
         ty_bits;
         ty_hex(caseness);
+        ty_octal;
         // FIXME: More types
     }
 
@@ -289,6 +290,8 @@ mod CT {
             t = ty_hex(case_upper);
         } else if (_str.eq(tstr, "t")) {
             t = ty_bits;
+        } else if (_str.eq(tstr, "o")) {
+            t = ty_octal;
         } else {
             log_err "unknown type in conversion";
             fail;
@@ -326,6 +329,7 @@ mod RT {
         ty_bits;
         ty_hex_upper;
         ty_hex_lower;
+        ty_octal;
     }
 
     // FIXME: May not want to use a vector here for flags;
@@ -364,6 +368,9 @@ mod RT {
             }
             case (ty_bits) {
                 res = uint_to_str_prec(u, 2u, prec);
+            }
+            case (ty_octal) {
+                res = uint_to_str_prec(u, 8u, prec);
             }
         }
         ret pad(cv, res, pad_unsigned);

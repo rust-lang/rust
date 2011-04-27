@@ -25,6 +25,7 @@ import std.ExtFmt.CT.ty_char;
 import std.ExtFmt.CT.ty_int;
 import std.ExtFmt.CT.ty_bits;
 import std.ExtFmt.CT.ty_hex;
+import std.ExtFmt.CT.ty_octal;
 import std.ExtFmt.CT.flag;
 import std.ExtFmt.CT.flag_left_justify;
 import std.ExtFmt.CT.flag_left_zero_pad;
@@ -236,6 +237,9 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                 case (ty_bits) {
                     rt_type = "ty_bits";
                 }
+                case (ty_octal) {
+                    rt_type = "ty_octal";
+                }
                 case (_) {
                     rt_type = "ty_default";
                 }
@@ -379,6 +383,9 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                 ret make_conv_call(arg.span, "uint", cnv, arg);
             }
             case (ty_bits) {
+                ret make_conv_call(arg.span, "uint", cnv, arg);
+            }
+            case (ty_octal) {
                 ret make_conv_call(arg.span, "uint", cnv, arg);
             }
             case (_) {

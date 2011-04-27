@@ -24,6 +24,7 @@ fn main() {
   test(#fmt("%c", 'A'), "A");
   test(#fmt("%x", 0xff_u), "ff");
   test(#fmt("%X", 0x12ab_u), "12AB");
+  test(#fmt("%o", 10u), "12");
   test(#fmt("%t", 0b11010101_u), "11010101");
 
   // 32-bit limits
@@ -31,6 +32,7 @@ fn main() {
   test(#fmt("%i", 2147483647), "2147483647");
   test(#fmt("%u", 4294967295u), "4294967295");
   test(#fmt("%x", 0xffffffff_u), "ffffffff");
+  test(#fmt("%o", 0xffffffff_u), "37777777777");
   test(#fmt("%t", 0xffffffff_u), "11111111111111111111111111111111");
 
   // Widths
@@ -42,6 +44,7 @@ fn main() {
   test(#fmt("%10b", true), "      true");
   test(#fmt("%10x", 0xff_u), "        ff");
   test(#fmt("%10X", 0xff_u), "        FF");
+  test(#fmt("%10o", 10u), "        12");
   test(#fmt("%10t", 0xff_u), "  11111111");
   test(#fmt("%10c", 'A'), "         A");
 
@@ -53,6 +56,7 @@ fn main() {
   test(#fmt("%-10b", true), "true      ");
   test(#fmt("%-10x", 0xff_u), "ff        ");
   test(#fmt("%-10X", 0xff_u), "FF        ");
+  test(#fmt("%-10o", 10u), "12        ");
   test(#fmt("%-10t", 0xff_u), "11111111  ");
   test(#fmt("%-10c", 'A'), "A         ");
 
@@ -66,6 +70,7 @@ fn main() {
   test(#fmt("%.u", 10u), "10");
   test(#fmt("%.s", "test"), "");
   test(#fmt("%.x", 127u), "7f");
+  test(#fmt("%.o", 10u), "12");
   test(#fmt("%.t", 3u), "11");
   test(#fmt("%.c", 'A'), "A");
 
@@ -78,6 +83,7 @@ fn main() {
   test(#fmt("%.0u", 10u), "10");
   test(#fmt("%.0s", "test"), "");
   test(#fmt("%.0x", 127u), "7f");
+  test(#fmt("%.0o", 10u), "12");
   test(#fmt("%.0t", 3u), "11");
   test(#fmt("%.0c", 'A'), "A");
 
@@ -90,6 +96,7 @@ fn main() {
   test(#fmt("%.1u", 10u), "10");
   test(#fmt("%.1s", "test"), "t");
   test(#fmt("%.1x", 127u), "7f");
+  test(#fmt("%.1o", 10u), "12");
   test(#fmt("%.1t", 3u), "11");
   test(#fmt("%.1c", 'A'), "A");
 
@@ -102,6 +109,7 @@ fn main() {
   test(#fmt("%.5u", 10u), "00010");
   test(#fmt("%.5s", "test"), "test");
   test(#fmt("%.5x", 127u), "0007f");
+  test(#fmt("%.5o", 10u), "00012");
   test(#fmt("%.5t", 3u), "00011");
   test(#fmt("%.5c", 'A'), "A");
 
@@ -134,6 +142,7 @@ fn main() {
   test(#fmt("%05u", 1u), "00001");
   test(#fmt("%05x", 127u), "0007f");
   test(#fmt("%05X", 127u), "0007F");
+  test(#fmt("%05o", 10u), "00012");
   test(#fmt("%05t", 3u), "00011");
   // 0-padding a string is undefined but glibc does this:
   test(#fmt("%05s", "test"), " test");
@@ -147,6 +156,7 @@ fn main() {
   test(#fmt("%-05u", 1u), "1    ");
   test(#fmt("%-05x", 127u), "7f   ");
   test(#fmt("%-05X", 127u), "7F   ");
+  test(#fmt("%-05o", 10u), "12   ");
   test(#fmt("%-05t", 3u), "11   ");
   test(#fmt("%-05s", "test"), "test ");
   test(#fmt("%-05c", 'A'), "A    ");
@@ -163,6 +173,7 @@ fn main() {
   test(#fmt("%06.5c", 'A'), "     A");
   test(#fmt("%06.5x", 127u), " 0007f");
   test(#fmt("%06.5X", 127u), " 0007F");
+  test(#fmt("%06.5o", 10u), " 00012");
 
   // TODO: Padding and +
   // TODO: Padding and ' '
