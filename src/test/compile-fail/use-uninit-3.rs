@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern:Unsatisfied precondition
 
 fn foo(int x) {
