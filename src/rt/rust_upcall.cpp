@@ -401,10 +401,10 @@ upcall_vec_grow(rust_task *task,
     LOG_UPCALL_ENTRY(task);
     rust_dom *dom = task->dom;
     LOG(task, mem,
-              "upcall vec_grow(0x%" PRIxPTR ", %" PRIdPTR
-              "), alloc=%" PRIdPTR ", fill=%" PRIdPTR
-              ", need_copy=0x%" PRIxPTR,
-              v, n_bytes, v->alloc, v->fill, need_copy);
+        "upcall vec_grow(0x%" PRIxPTR ", %" PRIdPTR
+        "), rc=%" PRIdPTR " alloc=%" PRIdPTR ", fill=%" PRIdPTR
+        ", need_copy=0x%" PRIxPTR,
+        v, n_bytes, v->ref_count, v->alloc, v->fill, need_copy);
 
     *need_copy = 0;
     size_t alloc = next_power_of_two(sizeof(rust_vec) + v->fill + n_bytes);
