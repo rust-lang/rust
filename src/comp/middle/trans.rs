@@ -4317,7 +4317,9 @@ fn trans_bind_thunk(@local_ctxt cx,
                              abi.closure_elt_ty_params,
                              (i as int)));
         bcx = lltyparam_ptr.bcx;
-        llargs += vec(bcx.build.Load(lltyparam_ptr.val));
+        auto td = bcx.build.Load(lltyparam_ptr.val);
+        llargs += vec(td);
+        fcx.lltydescs += vec(td);
         i += 1u;
     }
 
@@ -4335,7 +4337,8 @@ fn trans_bind_thunk(@local_ctxt cx,
         alt (arg) {
 
             // Arg provided at binding time; thunk copies it from closure.
-            case (some[@ast.expr](_)) {
+            case (some[@ast.expr](?e)) {
+                auto e_ty = ty.expr_ty(cx.ccx.tcx, e);
                 auto bound_arg =
                     GEP_tup_like(bcx, closure_ty, llclosure,
                                  vec(0,
@@ -4347,7 +4350,13 @@ fn trans_bind_thunk(@local_ctxt cx,
                 auto val = bound_arg.val;
 
                 if (out_arg.mode == ast.val) {
-                    val = bcx.build.Load(val);
+                    if (type_is_immediate(cx.ccx, e_ty)) {
+                        val = bcx.build.Load(val);
+                        bcx = take_ty(bcx, val, e_ty).bcx;
+                    } else {
+                        bcx = take_ty(bcx, val, e_ty).bcx;
+                        val = bcx.build.Load(val);
+                    }
                 } else if (ty.type_contains_params(cx.ccx.tcx,
                                                    out_arg.ty)) {
                     check (out_arg.mode == ast.alias);
@@ -4628,6 +4637,10 @@ fn trans_arg_expr(@block_ctxt cx,
         auto re = trans_expr(bcx, e);
         val = re.val;
         bcx = re.bcx;
+    }
+
+    if (arg.mode != ast.alias) {
+        bcx = take_ty(bcx, val, e_ty).bcx;
     }
 
     if (ty.type_contains_params(cx.fcx.lcx.ccx.tcx, arg.ty)) {
@@ -5957,6 +5970,21 @@ fn copy_args_to_allocas(@fn_ctxt fcx,
     fcx.llallocas = bcx.llbb;
 }
 
+fn add_cleanups_for_args(@block_ctxt bcx,
+                         vec[ast.arg] args,
+                         vec[ty.arg] arg_tys) {
+    let uint arg_n = 0u;
+    for (ast.arg aarg in args) {
+        if (aarg.mode != ast.alias) {
+            auto argval = bcx.fcx.llargs.get(aarg.id);
+            find_scope_cx(bcx).cleanups +=
+                vec(clean(bind drop_slot(_, argval, arg_tys.(arg_n).ty)));
+        }
+        arg_n += 1u;
+    }
+}
+
+
 fn is_terminated(@block_ctxt cx) -> bool {
     auto inst = llvm.LLVMGetLastInstruction(cx.llbb);
     ret llvm.LLVMIsATerminatorInst(inst) as int != 0;
@@ -6075,9 +6103,13 @@ fn trans_fn(@local_ctxt cx, &ast._fn f, ast.def_id fid,
         }
     }
 
-    copy_args_to_allocas(fcx, f.decl.inputs, arg_tys_of_fn(fcx.lcx.ccx, ann));
+    auto arg_tys = arg_tys_of_fn(fcx.lcx.ccx, ann);
+    copy_args_to_allocas(fcx, f.decl.inputs, arg_tys);
 
     auto bcx = new_top_block_ctxt(fcx);
+
+    add_cleanups_for_args(bcx, f.decl.inputs, arg_tys);
+
     auto lltop = bcx.llbb;
 
     auto res = trans_block(bcx, f.body);
