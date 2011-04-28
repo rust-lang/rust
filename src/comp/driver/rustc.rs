@@ -84,8 +84,7 @@ fn compile_input(session.session sess,
     auto typeck_result = typeck.check_crate(ty_cx, crate);
     crate = typeck_result._0;
     auto type_cache = typeck_result._1;
-    // FIXME: uncomment once typestate_check works
-    // crate = typestate_check.check_crate(crate);
+    crate = typestate_check.check_crate(crate);
     trans.trans_crate(sess, crate, ty_cx, type_cache, output, shared,
                       optimize, verify, save_temps, ot);
 }
