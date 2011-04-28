@@ -33,9 +33,17 @@ fn emit_diagnostic(span sp, str msg, str kind, u8 color, codemap.codemap cm) {
     auto hi = codemap.lookup_pos(cm, sp.hi);
     io.stdout().write_str(#fmt("%s:%u:%u:%u:%u: ", lo.filename, lo.line,
                                lo.col, hi.line, hi.col));
-    Term.fg(io.stdout().get_buf_writer(), color);
+
+    if (Term.color_supported()) {
+        Term.fg(io.stdout().get_buf_writer(), color);
+    }
+
     io.stdout().write_str(#fmt("%s:", kind));
-    Term.reset(io.stdout().get_buf_writer());
+
+    if (Term.color_supported()) {
+        Term.reset(io.stdout().get_buf_writer());
+    }
+
     io.stdout().write_str(#fmt(" %s\n", msg));
 }
 
