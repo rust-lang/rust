@@ -1958,6 +1958,7 @@ fn is_lval(@ast.expr expr) -> bool {
         case (ast.expr_field(_,_,_))    { ret true;  }
         case (ast.expr_index(_,_,_))    { ret true;  }
         case (ast.expr_path(_,_,_))     { ret true;  }
+        case (ast.expr_unary(ast.deref,_,_))  { ret true; }
         case (_)                        { ret false; }
     }
 }
