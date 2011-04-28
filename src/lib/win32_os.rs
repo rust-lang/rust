@@ -19,6 +19,8 @@ native mod libc = "msvcrt.dll" {
     fn fseek(FILE f, int offset, int whence) -> int;
     fn ftell(FILE f) -> int;
 
+    fn getenv(sbuf n) -> sbuf;
+
     fn _pipe(vbuf fds, uint size, int mode) -> int;
 }
 
