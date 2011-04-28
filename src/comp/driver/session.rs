@@ -3,6 +3,8 @@ import front.codemap;
 import util.common.span;
 import util.common.ty_mach;
 import std._uint;
+import std.Term;
+import std.io;
 import std.map;
 
 tag os {
@@ -26,6 +28,17 @@ type cfg = rec(os os,
 type crate_metadata = rec(str name,
                           vec[u8] data);
 
+fn emit_diagnostic(span sp, str msg, str kind, u8 color, codemap.codemap cm) {
+    auto lo = codemap.lookup_pos(cm, sp.lo);
+    auto hi = codemap.lookup_pos(cm, sp.hi);
+    io.stdout().write_str(#fmt("%s:%u:%u:%u:%u: ", lo.filename, lo.line,
+                               lo.col, hi.line, hi.col));
+    Term.fg(io.stdout().get_buf_writer(), color);
+    io.stdout().write_str(#fmt("%s:", kind));
+    Term.reset(io.stdout().get_buf_writer());
+    io.stdout().write_str(#fmt(" %s\n", msg));
+}
+
 state obj session(ast.crate_num cnum, cfg targ,
                   map.hashmap[int, crate_metadata] crates,
                   mutable vec[@ast.meta_item] metadata,
@@ -40,13 +53,8 @@ state obj session(ast.crate_num cnum, cfg targ,
     }
 
     fn span_err(span sp, str msg) {
-        auto lo = codemap.lookup_pos(cm, sp.lo);
-        auto hi = codemap.lookup_pos(cm, sp.hi);
-        log_err #fmt("%s:%u:%u:%u:%u: error: %s",
-                     lo.filename,
-                     lo.line, lo.col,
-                     hi.line, hi.col,
-                     msg);
+        // FIXME: Use constants, but rustboot doesn't know how to export them.
+        emit_diagnostic(sp, msg, "error", 9u8, cm);
         fail;
     }
 
@@ -63,13 +71,8 @@ state obj session(ast.crate_num cnum, cfg targ,
     }
 
     fn span_warn(span sp, str msg) {
-        auto lo = codemap.lookup_pos(cm, sp.lo);
-        auto hi = codemap.lookup_pos(cm, sp.hi);
-        log_err #fmt("%s:%u:%u:%u:%u: warning: %s",
-                     lo.filename,
-                     lo.line, lo.col,
-                     hi.line, hi.col,
-                     msg);
+        // FIXME: Use constants, but rustboot doesn't know how to export them.
+        emit_diagnostic(sp, msg, "warning", 11u8, cm);
     }
 
     fn bug(str msg) {
@@ -78,13 +81,9 @@ state obj session(ast.crate_num cnum, cfg targ,
     }
 
     fn span_unimpl(span sp, str msg) {
-        auto lo = codemap.lookup_pos(cm, sp.lo);
-        auto hi = codemap.lookup_pos(cm, sp.hi);
-        log_err #fmt("%s:%u:%u:%u:%u: error: unimplemented %s",
-                     lo.filename,
-                     lo.line, lo.col,
-                     hi.line, hi.col,
-                     msg);
+        // FIXME: Use constants, but rustboot doesn't know how to export them.
+        emit_diagnostic(sp, "internal compiler error: unimplemented " + msg,
+                        "error", 9u8, cm);
         fail;
     }
 
