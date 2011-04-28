@@ -11,11 +11,40 @@ fn wstr(int i) -> str {
     ret istr(i * wordsz);
 }
 
+fn start() -> vec[str] {
+    ret vec(".cfi_startproc");
+}
+
+fn end() -> vec[str] {
+    ret vec(".cfi_endproc");
+}
+
 fn save_callee_saves() -> vec[str] {
     ret vec("pushl %ebp",
             "pushl %edi",
             "pushl %esi",
             "pushl %ebx");
+}
+
+fn save_callee_saves_with_cfi() -> vec[str] {
+    auto offset = 8;
+    auto t;
+    t  = vec("pushl %ebp");
+    t += vec(".cfi_def_cfa_offset " + istr(offset));
+    t += vec(".cfi_offset 5, -" + istr(offset));
+
+    t += vec("pushl %edi");
+    offset += 4;
+    t += vec(".cfi_def_cfa_offset " + istr(offset));
+
+    t += vec("pushl %esi");
+    offset += 4;
+    t += vec(".cfi_def_cfa_offset " + istr(offset));
+
+    t += vec("pushl %ebx");
+    offset += 4;
+    t += vec(".cfi_def_cfa_offset " + istr(offset));
+    ret t;
 }
 
 fn restore_callee_saves() -> vec[str] {
@@ -211,9 +240,11 @@ fn native_glue(int n_args, bool pass_task) -> vec[str] {
     auto carg = bind copy_arg(pass_task, _);
 
     ret
-        save_callee_saves()
+        start()
+        + save_callee_saves_with_cfi()
 
         + vec("movl  %esp, %ebp     # ebp = rust_sp")
+        + vec(".cfi_def_cfa_register 5")
 
         + store_esp_to_rust_sp_second_arg()
         + load_esp_from_runtime_sp_second_arg()
@@ -229,7 +260,8 @@ fn native_glue(int n_args, bool pass_task) -> vec[str] {
 
         + load_esp_from_rust_sp_second_arg()
         + restore_callee_saves()
-        + vec("ret");
+        + vec("ret")
+        + end();
 
 }
 

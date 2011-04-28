@@ -54,7 +54,7 @@ extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR, LLVMModuleRef M,
                                         LLVMCodeGenFileType FileType) {
 
   // Set compilation options.
-  llvm::NoFramePointerElim = true;
+  llvm::UnwindTablesMandatory = true;
 
   InitializeAllTargets();
   InitializeAllAsmPrinters();
