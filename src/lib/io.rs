@@ -450,7 +450,17 @@ type mutable_byte_buf = @rec(mutable vec[mutable u8] buf, mutable uint pos);
 
 state obj byte_buf_writer(mutable_byte_buf buf) {
     fn write(vec[u8] v) {
-        // FIXME: optimize
+        // Fast path.
+        if (buf.pos == _vec.len[mutable u8](buf.buf)) {
+            // FIXME: Fix our type system. There's no reason you shouldn't be
+            // able to add a mutable vector to an immutable one.
+            auto mv = _vec.rustrt.unsafe_vec_to_mut[u8](v);
+            buf.buf += mv;
+            buf.pos += _vec.len[u8](v);
+            ret;
+        }
+
+        // FIXME: Optimize. These should be unique pointers.
         auto vlen = _vec.len[u8](v);
         auto vpos = 0u;
         while (vpos < vlen) {
