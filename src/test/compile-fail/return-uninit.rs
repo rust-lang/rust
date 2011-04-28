@@ -1,4 +1,3 @@
-// xfail-stage0
 // error-pattern: precondition constraint
 
 fn f() -> int {
