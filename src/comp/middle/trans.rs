@@ -6622,6 +6622,7 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
             call_args += vec(lltaskptr);
             for each (uint i in _uint.range(0u, num_ty_param)) {
                 auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
+                fcx.lltydescs += vec(llarg);
                 check (llarg as int != 0);
                 call_args += vec(vp2i(bcx, llarg));
                 arg_n += 1u;
@@ -6677,16 +6678,26 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
         r = bcx.build.Call(llnativefn, call_args);
         rptr = fcx.llretptr;
     } else {
+
+        let vec[tup(ValueRef, ty.t)] drop_args = vec();
+
         for (ty.arg arg in args) {
             auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
             check (llarg as int != 0);
             push_arg(bcx, call_args, llarg, arg.ty);
+            if (arg.mode == ast.val) {
+                drop_args += vec(tup(llarg, arg.ty));
+            }
             arg_n += 1u;
         }
 
         r = trans_native_call(bcx.build, ccx.glues, lltaskptr, ccx.externs,
                               ccx.tn, ccx.llmod, name, pass_task, call_args);
         rptr = bcx.build.BitCast(fcx.llretptr, T_ptr(T_i32()));
+
+        for (tup(ValueRef, ty.t) d in drop_args) {
+            bcx = drop_ty(bcx, d._0, d._1).bcx;
+        }
     }
 
     // We don't store the return value if it's nil, to avoid stomping on a nil
