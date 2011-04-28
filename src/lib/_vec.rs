@@ -31,6 +31,8 @@ native "rust" mod rustrt {
     fn vec_print_debug_info[T](vec[T] v);
 
     fn vec_from_vbuf[T](vbuf v, uint n_elts) -> vec[T];
+
+    fn unsafe_vec_to_mut[T](vec[T] v) -> vec[mutable T];
 }
 
 fn alloc[T](uint n_elts) -> vec[T] {

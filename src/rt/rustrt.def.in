@@ -33,6 +33,7 @@ str_from_vec
 str_push_byte
 str_vec
 task_sleep
+unsafe_vec_to_mut
 unsupervise
 upcall_clone_chan
 upcall_del_chan

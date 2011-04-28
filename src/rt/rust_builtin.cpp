@@ -178,6 +178,15 @@ vec_from_vbuf(rust_task *task, type_desc *ty, void *vbuf, size_t n_elts)
                                vbuf);
 }
 
+extern "C" CDECL rust_vec*
+unsafe_vec_to_mut(rust_task *task, type_desc *ty, rust_vec *v)
+{
+    if (v->ref_count != CONST_REFCOUNT) {
+        v->ref();
+    }
+    return v;
+}
+
 extern "C" CDECL rust_str*
 str_alloc(rust_task *task, size_t n_bytes)
 {
