@@ -42,6 +42,9 @@ auth rand.mk_rng = unsafe;
 
 // Target-OS module.
 
+// TODO: Have each OS module re-export everything from GenericOS.
+mod GenericOS;
+
 alt (target_os) {
     case ("win32") {
         mod os = "win32_os.rs";
@@ -54,6 +57,7 @@ alt (target_os) {
         mod os_fs = "posix_fs.rs";
     }
 }
+
 mod run = "run_program.rs";
 mod fs;
 

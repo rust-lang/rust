@@ -30,6 +30,10 @@ fn reset(io.buf_writer writer) {
     writer.write(vec('0' as u8, 'm' as u8));
 }
 
+fn color_supported() -> bool {
+    ret _str.eq(GenericOS.getenv("TERM"), "xterm-color");
+}
+
 fn set_color(io.buf_writer writer, u8 first_char, u8 color) {
     check (color < 16u8);
 
