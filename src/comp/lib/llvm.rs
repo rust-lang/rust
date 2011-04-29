@@ -65,6 +65,30 @@ const uint LLVMCommonLinkage = 13u;
 const uint LLVMLinkerPrivateLinkage = 14u;
 const uint LLVMLinkerPrivateWeakLinkage = 15u;
 
+const uint LLVMZExtAttribute = 1u;
+const uint LLVMSExtAttribute = 2u;
+const uint LLVMNoReturnAttribute = 4u;
+const uint LLVMInRegAttribute = 8u;
+const uint LLVMStructRetAttribute = 16u;
+const uint LLVMNoUnwindAttribute = 32u;
+const uint LLVMNoAliasAttribute = 64u;
+const uint LLVMByValAttribute = 128u;
+const uint LLVMNestAttribute = 256u;
+const uint LLVMReadNoneAttribute = 512u;
+const uint LLVMReadOnlyAttribute = 1024u;
+const uint LLVMNoInlineAttribute = 2048u;
+const uint LLVMAlwaysInlineAttribute = 4096u;
+const uint LLVMOptimizeForSizeAttribute = 8192u;
+const uint LLVMStackProtectAttribute = 16384u;
+const uint LLVMStackProtectReqAttribute = 32768u;
+const uint LLVMAlignmentAttribute = 2031616u;   // 31 << 16
+const uint LLVMNoCaptureAttribute = 2097152u;
+const uint LLVMNoRedZoneAttribute = 4194304u;
+const uint LLVMNoImplicitFloatAttribute = 8388608u;
+const uint LLVMNakedAttribute = 16777216u;
+const uint LLVMInlineHintAttribute = 33554432u;
+const uint LLVMStackAttribute = 469762048u;     // 7 << 26
+
 
 // Consts for the LLVM IntPredicate type, pre-cast to uint.
 // FIXME: as above.
