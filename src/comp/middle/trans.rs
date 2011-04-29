@@ -7454,7 +7454,7 @@ fn trans_vec_append_glue(@local_ctxt cx) {
     auto copy_src_cx = new_sub_block_ctxt(bcx, "copy new <- src");
 
     auto pp0 = alloca(bcx, T_ptr(T_i8()));
-    bcx.build.Store(vec_p1(bcx, llnew_vec), pp0);
+    bcx.build.Store(vec_p1_adjusted(bcx, llnew_vec, llskipnull), pp0);
     llvm.LLVMSetValueName(pp0, _str.buf("pp0"));
 
     bcx.build.CondBr(bcx.build.TruncOrBitCast
@@ -7506,8 +7506,10 @@ fn trans_vec_append_glue(@local_ctxt cx) {
                             vec_p0(copy_dst_cx, lldst_vec),
                             n_bytes).bcx;
 
-    put_vec_fill(copy_dst_cx, llnew_vec, n_bytes);
-    copy_dst_cx.build.Store(vec_p1(copy_dst_cx, llnew_vec), pp0);
+    put_vec_fill(copy_dst_cx, llnew_vec, vec_fill(copy_dst_cx, lldst_vec));
+
+    copy_dst_cx.build.Store(vec_p1_adjusted(copy_dst_cx, llnew_vec,
+                                            llskipnull), pp0);
     copy_dst_cx.build.Br(copy_src_cx.llbb);
 
 
@@ -7520,8 +7522,9 @@ fn trans_vec_append_glue(@local_ctxt cx) {
                             n_bytes).bcx;
 
     put_vec_fill(copy_src_cx, llnew_vec,
-                 copy_src_cx.build.Add(vec_fill(copy_src_cx,
-                                                llnew_vec),
+                 copy_src_cx.build.Add(vec_fill_adjusted(copy_src_cx,
+                                                         llnew_vec,
+                                                         llskipnull),
                                         n_bytes));
 
     // Write new_vec back through the alias we were given.
