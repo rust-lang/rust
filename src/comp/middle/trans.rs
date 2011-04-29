@@ -5075,9 +5075,19 @@ fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
             auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
             auto lhs_res = trans_lval(cx, dst);
             check (lhs_res.is_mem);
-            auto lhs_val = load_if_immediate(lhs_res.res.bcx,
-                                                lhs_res.res.val, t);
             auto rhs_res = trans_expr(lhs_res.res.bcx, src);
+            if (ty.type_is_sequence(cx.fcx.lcx.ccx.tcx, t)) {
+                alt (op) {
+                    case (ast.add) {
+                        ret trans_vec_append(rhs_res.bcx, t,
+                                             lhs_res.res.val,
+                                             rhs_res.val);
+                    }
+                    case (_) { }
+                }
+            }
+            auto lhs_val = load_if_immediate(rhs_res.bcx,
+                                             lhs_res.res.val, t);
             auto v = trans_eager_binop(rhs_res.bcx, op, t,
                                        lhs_val, rhs_res.val);
             // FIXME: calculate copy init-ness in typestate.
