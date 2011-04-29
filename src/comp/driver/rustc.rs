@@ -98,19 +98,11 @@ fn pretty_print_input(session.session sess,
     pretty.pprust.print_file(crate.node.module, input, std.io.stdout());
 }
 
-fn warn_wrong_compiler() {
-    io.stdout().write_str("This is the rust 'self-hosted' compiler.
-The one written in rust.
-It is currently incomplete.
-You may want rustboot instead, the compiler next door.\n");
-}
-
 fn usage(session.session sess, str argv0) {
     io.stdout().write_str(#fmt("usage: %s [options] <input>\n", argv0) + "
 options:
 
     -o <filename>      write output to <filename>
-    --nowarn           suppress wrong-compiler warning
     --glue             generate glue.bc file
     --shared           compile a shared-library crate
     --pretty           pretty-print the input instead of compiling
@@ -147,7 +139,7 @@ fn main(vec[str] args) {
     auto sess = session.session(target_crate_num, target_cfg, crate_cache,
                                 md, front.codemap.new_codemap());
 
-    auto opts = vec(optflag("nowarn"), optflag("h"), optflag("glue"),
+    auto opts = vec(optflag("h"), optflag("glue"),
                     optflag("pretty"), optflag("ls"), optflag("parse-only"),
                     optflag("O"), optflag("shared"), optmulti("L"),
                     optflag("S"), optflag("c"), optopt("o"),
@@ -157,9 +149,6 @@ fn main(vec[str] args) {
     alt (GetOpts.getopts(args, opts)) {
         case (GetOpts.failure(?f)) { sess.err(GetOpts.fail_str(f)); fail; }
         case (GetOpts.success(?m)) { match = m; }
-    }
-    if (!opt_present(match, "nowarn")) {
-        warn_wrong_compiler();
     }
     if (opt_present(match, "h")) {
         usage(sess, binary);
