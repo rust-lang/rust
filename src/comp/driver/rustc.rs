@@ -4,6 +4,7 @@ import front.creader;
 import front.parser;
 import front.token;
 import front.eval;
+import front.ast;
 import middle.trans;
 import middle.resolve;
 import middle.capture;
@@ -19,6 +20,7 @@ import std.option.none;
 import std._str;
 import std._vec;
 import std.io;
+import std.Time;
 
 import std.GetOpts;
 import std.GetOpts.optopt;
@@ -52,7 +54,7 @@ fn default_environment(session.session sess,
 
 fn parse_input(session.session sess,
                       parser.parser p,
-                      str input) -> @front.ast.crate {
+                      str input) -> @ast.crate {
     if (_str.ends_with(input, ".rc")) {
         ret parser.parse_crate_from_crate_file(p);
     } else if (_str.ends_with(input, ".rs")) {
@@ -60,6 +62,18 @@ fn parse_input(session.session sess,
     }
     sess.err("unknown input file type: " + input);
     fail;
+}
+
+fn time[T](bool do_it, str what, fn()->T thunk) -> T {
+    if (!do_it) { ret thunk(); }
+
+    auto start = Time.get_time();
+    auto rv = thunk();
+    auto end = Time.get_time();
+
+    // FIXME: Actually do timeval math.
+    log_err #fmt("time: %s took %u s", what, (end.sec - start.sec) as uint);
+    ret rv;
 }
 
 fn compile_input(session.session sess,
@@ -70,23 +84,34 @@ fn compile_input(session.session sess,
                         bool verify,
                         bool save_temps,
                         trans.output_type ot,
+                        bool time_passes,
                         vec[str] library_search_paths) {
     auto def = tup(0, 0);
     auto p = parser.new_parser(sess, env, def, input, 0u);
-    auto crate = parse_input(sess, p, input);
+    auto crate = time[@ast.crate](time_passes, "parsing",
+        bind parse_input(sess, p, input));
     if (ot == trans.output_type_none) {ret;}
 
-    crate = creader.read_crates(sess, crate, library_search_paths);
-    crate = resolve.resolve_crate(sess, crate);
-    capture.check_for_captures(sess, crate);
+    crate = time[@ast.crate](time_passes, "external crate reading",
+        bind creader.read_crates(sess, crate, library_search_paths));
+    crate = time[@ast.crate](time_passes, "resolution",
+        bind resolve.resolve_crate(sess, crate));
+    time[()](time_passes, "capture checking",
+        bind capture.check_for_captures(sess, crate));
 
     auto ty_cx = ty.mk_ctxt(sess);
-    auto typeck_result = typeck.check_crate(ty_cx, crate);
+    auto typeck_result =
+        time[typeck.typecheck_result](time_passes, "typechecking",
+        bind typeck.check_crate(ty_cx, crate));
     crate = typeck_result._0;
     auto type_cache = typeck_result._1;
-    crate = typestate_check.check_crate(crate);
-    trans.trans_crate(sess, crate, ty_cx, type_cache, output, shared,
-                      optimize, verify, save_temps, ot);
+
+    crate = time[@ast.crate](time_passes, "typestate checking",
+        bind typestate_check.check_crate(crate));
+
+    time[()](time_passes, "translation",
+        bind trans.trans_crate(sess, crate, ty_cx, type_cache, output, shared,
+                               optimize, verify, save_temps, ot));
 }
 
 fn pretty_print_input(session.session sess,
@@ -114,6 +139,7 @@ options:
     -S                 compile only; do not assemble or link
     -c                 compile and assemble, but do not link
     --save-temps       write intermediate files in addition to normal output
+    --time-passes      time the individual phases of the compiler
     -h                 display this message\n\n");
 }
 
@@ -135,7 +161,7 @@ fn main(vec[str] args) {
 
     auto crate_cache = common.new_int_hash[session.crate_metadata]();
     auto target_crate_num = 0;
-    let vec[@front.ast.meta_item] md = vec();
+    let vec[@ast.meta_item] md = vec();
     auto sess = session.session(target_crate_num, target_cfg, crate_cache,
                                 md, front.codemap.new_codemap());
 
@@ -143,7 +169,8 @@ fn main(vec[str] args) {
                     optflag("pretty"), optflag("ls"), optflag("parse-only"),
                     optflag("O"), optflag("shared"), optmulti("L"),
                     optflag("S"), optflag("c"), optopt("o"),
-                    optflag("save-temps"), optflag("noverify"));
+                    optflag("save-temps"), optflag("time-passes"),
+                    optflag("noverify"));
     auto binary = _vec.shift[str](args);
     auto match;
     alt (GetOpts.getopts(args, opts)) {
@@ -173,6 +200,7 @@ fn main(vec[str] args) {
     auto save_temps = opt_present(match, "save-temps");
     // FIXME: Maybe we should support -O0, -O1, -Os, etc
     auto optimize = opt_present(match, "O");
+    auto time_passes = opt_present(match, "time-passes");
     auto n_inputs = _vec.len[str](match.free);
 
     if (glue) {
@@ -205,12 +233,12 @@ fn main(vec[str] args) {
                 auto ofile = _str.concat(parts);
                 compile_input(sess, env, ifile, ofile, shared,
                               optimize, verify, save_temps, ot,
-                              library_search_paths);
+                              time_passes, library_search_paths);
             }
             case (some[str](?ofile)) {
                 compile_input(sess, env, ifile, ofile, shared,
                               optimize, verify, save_temps, ot,
-                              library_search_paths);
+                              time_passes, library_search_paths);
             }
         }
     }

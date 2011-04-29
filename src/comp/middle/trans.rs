@@ -7661,7 +7661,7 @@ fn create_crate_map(@crate_ctxt ccx) -> ValueRef {
 }
 
 fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
-               &ty.type_cache type_cache, str output, bool shared,
+               ty.type_cache type_cache, str output, bool shared,
                bool optimize, bool verify, bool save_temps, output_type ot) {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
