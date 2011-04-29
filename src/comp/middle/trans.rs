@@ -7448,12 +7448,14 @@ fn trans_vec_append_glue(@local_ctxt cx) {
     bcx = llnew_vec_res.bcx;
     auto llnew_vec = vi2p(bcx, llnew_vec_res.val,
                           T_opaque_vec_ptr());
+    llvm.LLVMSetValueName(llnew_vec, _str.buf("llnew_vec"));
 
     auto copy_dst_cx = new_sub_block_ctxt(bcx, "copy new <- dst");
     auto copy_src_cx = new_sub_block_ctxt(bcx, "copy new <- src");
 
     auto pp0 = alloca(bcx, T_ptr(T_i8()));
     bcx.build.Store(vec_p1(bcx, llnew_vec), pp0);
+    llvm.LLVMSetValueName(pp0, _str.buf("pp0"));
 
     bcx.build.CondBr(bcx.build.TruncOrBitCast
                      (bcx.build.Load(llcopy_dst_ptr),
@@ -7469,11 +7471,13 @@ fn trans_vec_append_glue(@local_ctxt cx) {
                  ValueRef n_bytes) -> result {
 
         auto src_lim = cx.build.GEP(src, vec(n_bytes));
+        llvm.LLVMSetValueName(src_lim, _str.buf("src_lim"));
 
         auto elt_llsz =
             cx.build.Load(cx.build.GEP(elt_tydesc,
                                        vec(C_int(0),
                                            C_int(abi.tydesc_field_size))));
+        llvm.LLVMSetValueName(elt_llsz, _str.buf("elt_llsz"));
 
         fn take_one(ValueRef elt_tydesc,
                     @block_ctxt cx,
@@ -7494,6 +7498,8 @@ fn trans_vec_append_glue(@local_ctxt cx) {
     // Copy any dst elements in, omitting null if doing str.
 
     auto n_bytes = vec_fill_adjusted(copy_dst_cx, lldst_vec, llskipnull);
+    llvm.LLVMSetValueName(n_bytes, _str.buf("n_bytes"));
+
     copy_dst_cx = copy_elts(copy_dst_cx,
                             llelt_tydesc,
                             vec_p0(copy_dst_cx, llnew_vec),

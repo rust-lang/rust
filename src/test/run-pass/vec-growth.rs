@@ -1,5 +1,3 @@
-// xfail-stage0
-
 fn main() {
     auto v = vec(1);
     v += vec(2);
