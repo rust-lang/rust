@@ -57,6 +57,7 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef yield_glue,
                     ValueRef exit_task_glue,
                     vec[ValueRef] native_glues_rust,
+                    vec[ValueRef] native_glues_pure_rust,
                     vec[ValueRef] native_glues_cdecl,
                     ValueRef no_op_type_glue,
                     ValueRef memcpy_glue,
@@ -997,17 +998,26 @@ fn decl_glue(ModuleRef llmod, type_names tn, str s) -> ValueRef {
 }
 
 fn decl_native_glue(ModuleRef llmod, type_names tn,
-                    bool pass_task, uint _n) -> ValueRef {
+                    abi.native_glue_type ngt, uint _n) -> ValueRef {
+    let bool pass_task;
+    alt (ngt) {
+        case (abi.ngt_rust)         { pass_task = true; }
+        case (abi.ngt_pure_rust)    { pass_task = true; }
+        case (abi.ngt_cdecl)        { pass_task = false; }
+    }
+
     // It doesn't actually matter what type we come up with here, at the
     // moment, as we cast the native function pointers to int before passing
     // them to the indirect native-invocation glue.  But eventually we'd like
     // to call them directly, once we have a calling convention worked out.
     let int n = _n as int;
-    let str s = abi.native_glue_name(n, pass_task);
+    let str s = abi.native_glue_name(n, ngt);
     let vec[TypeRef] args = vec(T_int()); // callee
+
     if (!pass_task) {
         args += vec(T_int()); // taskptr, will not be passed
     }
+
     args += _vec.init_elt[TypeRef](T_int(), n as uint);
 
     ret decl_fastcall_fn(llmod, s, T_fn(args, T_int()));
@@ -7610,13 +7620,14 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
                                                  T_void())),
 
              native_glues_rust =
-             _vec.init_fn[ValueRef](bind decl_native_glue(llmod, tn, true,
-                                                          _),
-                                    abi.n_native_glues + 1 as uint),
+                 _vec.init_fn[ValueRef](bind decl_native_glue(llmod, tn,
+                    abi.ngt_rust, _), abi.n_native_glues + 1 as uint),
+             native_glues_pure_rust =
+                 _vec.init_fn[ValueRef](bind decl_native_glue(llmod, tn,
+                    abi.ngt_pure_rust, _), abi.n_native_glues + 1 as uint),
              native_glues_cdecl =
-             _vec.init_fn[ValueRef](bind decl_native_glue(llmod, tn, false,
-                                                          _),
-                                    abi.n_native_glues + 1 as uint),
+                 _vec.init_fn[ValueRef](bind decl_native_glue(llmod, tn,
+                    abi.ngt_cdecl, _), abi.n_native_glues + 1 as uint),
              no_op_type_glue = decl_no_op_type_glue(llmod, tn),
              memcpy_glue = decl_memcpy_glue(llmod),
              bzero_glue = decl_bzero_glue(llmod),

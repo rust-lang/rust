@@ -72,6 +72,12 @@ const int n_native_glues = 7;
 const int abi_x86_rustboot_cdecl = 1;
 const int abi_x86_rustc_fastcall = 2;
 
+tag native_glue_type {
+    ngt_rust;
+    ngt_pure_rust;
+    ngt_cdecl;
+}
+
 fn memcpy_glue_name() -> str {
     ret "rust_memcpy_glue";
 }
@@ -84,11 +90,14 @@ fn vec_append_glue_name() -> str {
     ret "rust_vec_append_glue";
 }
 
-fn native_glue_name(int n, bool pass_task) -> str {
-    if (pass_task) {
-        ret "rust_native_rust_" + util.common.istr(n);
+fn native_glue_name(int n, native_glue_type ngt) -> str {
+    auto prefix;
+    alt (ngt) {
+        case (ngt_rust)         { prefix = "rust_native_rust_"; }
+        case (ngt_pure_rust)    { prefix = "rust_native_pure_rust_"; }
+        case (ngt_cdecl)        { prefix = "rust_native_cdecl_"; }
     }
-    ret "rust_native_cdecl_" + util.common.istr(n);
+    ret prefix + util.common.istr(n);
 }
 
 fn activate_glue_name() -> str {

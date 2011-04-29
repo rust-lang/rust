@@ -209,7 +209,14 @@ fn rust_yield_glue() -> vec[str] {
         + vec("ret");
 }
 
-fn native_glue(int n_args, bool pass_task) -> vec[str] {
+fn native_glue(int n_args, abi.native_glue_type ngt) -> vec[str] {
+
+    let bool pass_task;
+    alt (ngt) {
+        case (abi.ngt_rust)         { pass_task = true; }
+        case (abi.ngt_pure_rust)    { pass_task = true; }
+        case (abi.ngt_cdecl)        { pass_task = false; }
+    }
 
     /*
      * 0, 4, 8, 12 are callee-saves
@@ -275,11 +282,12 @@ fn decl_glue(int align, str prefix, str name, vec[str] insns) -> str {
 }
 
 
-fn decl_native_glue(int align, str prefix, bool pass_task, uint n) -> str {
+fn decl_native_glue(int align, str prefix, abi.native_glue_type ngt, uint n)
+        -> str {
     let int i = n as int;
     ret decl_glue(align, prefix,
-                  abi.native_glue_name(i, pass_task),
-                  native_glue(i, pass_task));
+                  abi.native_glue_name(i, ngt),
+                  native_glue(i, ngt));
 }
 
 fn get_symbol_prefix() -> str {
@@ -305,10 +313,12 @@ fn get_module_asm() -> str {
                       abi.yield_glue_name(),
                       rust_yield_glue()))
 
-        + _vec.init_fn[str](bind decl_native_glue(align, prefix, true, _),
-                            (abi.n_native_glues + 1) as uint)
-        + _vec.init_fn[str](bind decl_native_glue(align, prefix, false, _),
-                            (abi.n_native_glues + 1) as uint);
+        + _vec.init_fn[str](bind decl_native_glue(align, prefix,
+            abi.ngt_rust, _), (abi.n_native_glues + 1) as uint)
+        + _vec.init_fn[str](bind decl_native_glue(align, prefix,
+            abi.ngt_pure_rust, _), (abi.n_native_glues + 1) as uint)
+        + _vec.init_fn[str](bind decl_native_glue(align, prefix,
+            abi.ngt_cdecl, _), (abi.n_native_glues + 1) as uint);
 
 
     ret _str.connect(glues, "\n\n");
