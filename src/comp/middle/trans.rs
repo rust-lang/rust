@@ -1253,7 +1253,7 @@ fn dynamic_size_of(@block_ctxt cx, ty.t t) -> result {
 
     alt (ty.struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty.ty_param(?p)) {
-            auto szptr = field_of_tydesc(cx, t, abi.tydesc_field_size);
+            auto szptr = field_of_tydesc(cx, t, false, abi.tydesc_field_size);
             ret res(szptr.bcx, szptr.bcx.build.Load(szptr.val));
         }
         case (ty.ty_tup(?elts)) {
@@ -1307,7 +1307,7 @@ fn dynamic_size_of(@block_ctxt cx, ty.t t) -> result {
 fn dynamic_align_of(@block_ctxt cx, ty.t t) -> result {
     alt (ty.struct(cx.fcx.lcx.ccx.tcx, t)) {
         case (ty.ty_param(?p)) {
-            auto aptr = field_of_tydesc(cx, t, abi.tydesc_field_align);
+            auto aptr = field_of_tydesc(cx, t, false, abi.tydesc_field_align);
             ret res(aptr.bcx, aptr.bcx.build.Load(aptr.val));
         }
         case (ty.ty_tup(?elts)) {
@@ -1525,8 +1525,9 @@ fn trans_malloc_boxed(@block_ctxt cx, ty.t t) -> result {
 // Given a type and a field index into its corresponding type descriptor,
 // returns an LLVM ValueRef of that field from the tydesc, generating the
 // tydesc if necessary.
-fn field_of_tydesc(@block_ctxt cx, ty.t t, int field) -> result {
-    auto tydesc = get_tydesc(cx, t);
+fn field_of_tydesc(@block_ctxt cx, ty.t t, bool escapes, int field)
+        -> result {
+    auto tydesc = get_tydesc(cx, t, escapes);
     ret res(tydesc.bcx,
             tydesc.bcx.build.GEP(tydesc.val, vec(C_int(0), C_int(field))));
 }
@@ -1572,7 +1573,7 @@ fn linearize_ty_params(@block_ctxt cx, ty.t t) ->
     ret tup(x.defs, x.vals);
 }
 
-fn get_tydesc(&@block_ctxt cx, ty.t t) -> result {
+fn get_tydesc(&@block_ctxt cx, ty.t t, bool escapes) -> result {
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt (ty.type_param(cx.fcx.lcx.ccx.tcx, t)) {
         case (some[uint](?id)) { ret res(cx, cx.fcx.lltydescs.(id)); }
@@ -2703,8 +2704,8 @@ fn call_tydesc_glue_full(@block_ctxt cx, ValueRef v,
 }
 
 fn call_tydesc_glue(@block_ctxt cx, ValueRef v,
-                    ty.t t, int field) -> result {
-    auto td = get_tydesc(cx, t);
+                    ty.t t, bool escapes, int field) -> result {
+    auto td = get_tydesc(cx, t, escapes);
     call_tydesc_glue_full(td.bcx,
                           spill_if_immediate(td.bcx, v, t),
                           td.val, field);
@@ -2732,7 +2733,10 @@ fn maybe_call_dtor(@block_ctxt cx, ValueRef v) -> @block_ctxt {
     ret after_cx;
 }
 
-fn call_cmp_glue(@block_ctxt cx, ValueRef lhs, ValueRef rhs, ty.t t,
+fn call_cmp_glue(@block_ctxt cx,
+                 ValueRef lhs,
+                 ValueRef rhs,
+                 ty.t t,
                  ValueRef llop) -> result {
     // We can't use call_tydesc_glue_full() and friends here because compare
     // glue has a special signature.
@@ -2743,7 +2747,7 @@ fn call_cmp_glue(@block_ctxt cx, ValueRef lhs, ValueRef rhs, ty.t t,
     auto llrawlhsptr = cx.build.BitCast(lllhs, T_ptr(T_i8()));
     auto llrawrhsptr = cx.build.BitCast(llrhs, T_ptr(T_i8()));
 
-    auto r = get_tydesc(cx, t);
+    auto r = get_tydesc(cx, t, false);
     auto lltydescs =
         r.bcx.build.GEP(r.val, vec(C_int(0),
                                    C_int(abi.tydesc_field_first_param)));
@@ -2770,7 +2774,7 @@ fn call_cmp_glue(@block_ctxt cx, ValueRef lhs, ValueRef rhs, ty.t t,
 
 fn take_ty(@block_ctxt cx, ValueRef v, ty.t t) -> result {
     if (!ty.type_is_scalar(cx.fcx.lcx.ccx.tcx, t)) {
-        ret call_tydesc_glue(cx, v, t, abi.tydesc_field_take_glue);
+        ret call_tydesc_glue(cx, v, t, false, abi.tydesc_field_take_glue);
     }
     ret res(cx, C_nil());
 }
@@ -2792,7 +2796,7 @@ fn drop_ty(@block_ctxt cx,
            ty.t t) -> result {
 
     if (!ty.type_is_scalar(cx.fcx.lcx.ccx.tcx, t)) {
-        ret call_tydesc_glue(cx, v, t, abi.tydesc_field_drop_glue);
+        ret call_tydesc_glue(cx, v, t, false, abi.tydesc_field_drop_glue);
     }
     ret res(cx, C_nil());
 }
@@ -2822,7 +2826,7 @@ fn memcpy_ty(@block_ctxt cx,
              ValueRef src,
              ty.t t) -> result {
     if (ty.type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
-        auto llszptr = field_of_tydesc(cx, t, abi.tydesc_field_size);
+        auto llszptr = field_of_tydesc(cx, t, false, abi.tydesc_field_size);
         auto llsz = llszptr.bcx.build.Load(llszptr.val);
         ret call_memcpy(llszptr.bcx, dst, src, llsz);
 
@@ -3084,10 +3088,10 @@ fn trans_vec_append(@block_ctxt cx, ty.t t,
 
     auto bcx = cx;
 
-    auto llvec_tydesc = get_tydesc(bcx, t);
+    auto llvec_tydesc = get_tydesc(bcx, t, false);
     bcx = llvec_tydesc.bcx;
 
-    auto llelt_tydesc = get_tydesc(bcx, elt_ty);
+    auto llelt_tydesc = get_tydesc(bcx, elt_ty, false);
     bcx = llelt_tydesc.bcx;
 
     auto dst = bcx.build.PointerCast(lhs, T_ptr(T_opaque_vec_ptr()));
@@ -3976,7 +3980,8 @@ fn lval_generic_fn(@block_ctxt cx,
         auto bcx = lv.res.bcx;
         let vec[ValueRef] tydescs = vec();
         for (ty.t t in tys) {
-            auto td = get_tydesc(bcx, t);
+            // TODO: Doesn't always escape.
+            auto td = get_tydesc(bcx, t, true);
             bcx = td.bcx;
             _vec.push[ValueRef](tydescs, td.val);
         }
@@ -4542,7 +4547,7 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
                 bcx.build.GEP(closure,
                               vec(C_int(0),
                                   C_int(abi.closure_elt_tydesc)));
-            auto bindings_tydesc = get_tydesc(bcx, bindings_ty);
+            auto bindings_tydesc = get_tydesc(bcx, bindings_ty, true);
             bcx = bindings_tydesc.bcx;
             bcx.build.Store(bindings_tydesc.val, bound_tydesc);
 
@@ -6329,7 +6334,15 @@ fn trans_obj(@local_ctxt cx, &ast._obj ob, ast.def_id oid,
                          vec(0, abi.obj_body_elt_tydesc));
         bcx = body_tydesc.bcx;
 
-        auto body_td = get_tydesc(bcx, body_ty);
+        auto body_td = get_tydesc(bcx, body_ty, true);
+        auto dtor = C_null(T_ptr(T_glue_fn(ccx.tn)));
+        alt (ob.dtor) {
+            case (some[@ast.method](?d)) {
+                dtor = trans_dtor(cx, llself_ty, self_ty, ty_params, d);
+            }
+            case (none[@ast.method]) {}
+        }
+
         bcx = body_td.bcx;
         bcx.build.Store(body_td.val, body_tydesc.val);
 
