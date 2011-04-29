@@ -1042,7 +1042,8 @@ fn get_simple_extern_fn(&hashmap[str, ValueRef] externs,
     ret get_extern_fn(externs, llmod, name, lib.llvm.LLVMCCallConv, t);
 }
 
-fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args) -> result {
+fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args, bool pure)
+        -> result {
     auto cxx = cx.fcx.lcx.ccx;
     auto lltaskptr = cx.build.PtrToInt(cx.fcx.lltaskptr, T_int());
     auto args2 = vec(lltaskptr) + args;
@@ -1080,8 +1081,7 @@ fn trans_native_call(builder b, @glue_fns glues, ValueRef lltaskptr,
 }
 
 fn trans_non_gc_free(@block_ctxt cx, ValueRef v) -> result {
-    ret trans_upcall(cx, "upcall_free", vec(vp2i(cx, v),
-                                            C_int(0)));
+    ret trans_upcall(cx, "upcall_free", vec(vp2i(cx, v), C_int(0)), false);
 }
 
 fn find_scope_cx(@block_ctxt cx) -> @block_ctxt {
@@ -1503,7 +1503,7 @@ fn trans_raw_malloc(@block_ctxt cx, TypeRef llptr_ty, ValueRef llsize)
         -> result {
     // FIXME: need a table to collect tydesc globals.
     auto tydesc = C_int(0);
-    auto rslt = trans_upcall(cx, "upcall_malloc", vec(llsize, tydesc));
+    auto rslt = trans_upcall(cx, "upcall_malloc", vec(llsize, tydesc), false);
     rslt = res(rslt.bcx, vi2p(rslt.bcx, rslt.val, llptr_ty));
     ret rslt;
 }
@@ -1616,7 +1616,7 @@ fn get_tydesc(&@block_ctxt cx, ty.t t, bool escapes) -> result {
                                   sz.val,
                                   align.val,
                                   C_int((1u + n_params) as int),
-                                  vp2i(bcx, tydescs)));
+                                  vp2i(bcx, tydescs)), true);
 
         ret res(v.bcx, vi2p(v.bcx, v.val,
                             T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn))));
@@ -1886,7 +1886,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, ty.t t) {
         case (ty.ty_port(_)) {
             fn hit_zero(@block_ctxt cx, ValueRef v) -> result {
                 ret trans_upcall(cx, "upcall_del_port",
-                                 vec(vp2i(cx, v)));
+                                 vec(vp2i(cx, v)), true);
             }
             auto v = cx.build.Load(v0);
             rslt = decr_refcnt_and_if_zero(cx, v,
@@ -1898,7 +1898,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, ty.t t) {
         case (ty.ty_chan(_)) {
             fn hit_zero(@block_ctxt cx, ValueRef v) -> result {
                 ret trans_upcall(cx, "upcall_del_chan",
-                                 vec(vp2i(cx, v)));
+                                 vec(vp2i(cx, v)), true);
             }
             auto v = cx.build.Load(v0);
             rslt = decr_refcnt_and_if_zero(cx, v,
@@ -4940,7 +4940,8 @@ fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
                                  unit_sz.val);
 
     // FIXME: pass tydesc properly.
-    auto sub = trans_upcall(bcx, "upcall_new_vec", vec(data_sz, C_int(0)));
+    auto sub = trans_upcall(bcx, "upcall_new_vec", vec(data_sz, C_int(0)),
+                            false);
     bcx = sub.bcx;
 
     auto llty = type_of(bcx.fcx.lcx.ccx, t);
@@ -5301,14 +5302,16 @@ fn trans_log(int lvl, @block_ctxt cx, @ast.expr e) -> result {
         if (is32bit) {
             auto uval = trans_upcall(sub.bcx,
                                      "upcall_log_float",
-                                     vec(C_int(lvl), sub.val));
+                                     vec(C_int(lvl), sub.val),
+                                     false);
             uval.bcx.build.Br(after_cx.llbb);
         } else {
             auto tmp = alloca(sub.bcx, tr);
             sub.bcx.build.Store(sub.val, tmp);
             auto uval = trans_upcall(sub.bcx,
                                      "upcall_log_double",
-                                     vec(C_int(lvl), vp2i(sub.bcx, tmp)));
+                                     vec(C_int(lvl), vp2i(sub.bcx, tmp)),
+                                     false);
             uval.bcx.build.Br(after_cx.llbb);
         }
     } else {
@@ -5317,13 +5320,14 @@ fn trans_log(int lvl, @block_ctxt cx, @ast.expr e) -> result {
                 auto v = vp2i(sub.bcx, sub.val);
                 trans_upcall(sub.bcx,
                              "upcall_log_str",
-                             vec(C_int(lvl), v)).bcx.build.Br(after_cx.llbb);
+                             vec(C_int(lvl), v),
+                             false).bcx.build.Br(after_cx.llbb);
             }
             case (_) {
                 auto v = vec(C_int(lvl), sub.val);
                 trans_upcall(sub.bcx,
                              "upcall_log_int",
-                             v).bcx.build.Br(after_cx.llbb);
+                             v, false).bcx.build.Br(after_cx.llbb);
             }
         }
     }
@@ -5364,7 +5368,7 @@ fn trans_fail(@block_ctxt cx, option.t[common.span] sp_opt, str fail_str)
 
     auto args = vec(V_fail_str, V_filename, C_int(V_line));
 
-    auto sub = trans_upcall(cx, "upcall_fail", args);
+    auto sub = trans_upcall(cx, "upcall_fail", args, false);
     sub.bcx.build.Unreachable();
     ret res(sub.bcx, C_nil());
 }
@@ -5511,7 +5515,7 @@ fn trans_port(@block_ctxt cx, ast.ann ann) -> result {
     auto bcx = cx;
     auto unit_sz = size_of(bcx, unit_ty);
     bcx = unit_sz.bcx;
-    auto sub = trans_upcall(bcx, "upcall_new_port", vec(unit_sz.val));
+    auto sub = trans_upcall(bcx, "upcall_new_port", vec(unit_sz.val), false);
     bcx = sub.bcx;
     auto llty = type_of(cx.fcx.lcx.ccx, t);
     auto port_val = vi2p(bcx, sub.val, llty);
@@ -5528,7 +5532,7 @@ fn trans_chan(@block_ctxt cx, @ast.expr e, ast.ann ann) -> result {
     bcx = prt.bcx;
 
     auto prt_val = vp2i(bcx, prt.val);
-    auto sub = trans_upcall(bcx, "upcall_new_chan", vec(prt_val));
+    auto sub = trans_upcall(bcx, "upcall_new_chan", vec(prt_val), false);
     bcx = sub.bcx;
 
     auto chan_ty = node_ann_type(bcx.fcx.lcx.ccx, ann);
@@ -5571,7 +5575,7 @@ fn trans_send(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
 
     auto sub = trans_upcall(bcx, "upcall_send",
                             vec(vp2i(bcx, chn.val),
-                                vp2i(bcx, data_alloc.val)));
+                                vp2i(bcx, data_alloc.val)), false);
     bcx = sub.bcx;
 
     ret res(bcx, chn.val);
@@ -5599,7 +5603,7 @@ fn recv_val(@block_ctxt cx, ValueRef lhs, @ast.expr rhs,
 
     auto sub = trans_upcall(bcx, "upcall_recv",
                             vec(vp2i(bcx, lhs),
-                                vp2i(bcx, prt.val)));
+                                vp2i(bcx, prt.val)), false);
     bcx = sub.bcx;
 
     auto data_load = load_if_immediate(bcx, lhs, unit_ty);
@@ -7109,11 +7113,12 @@ fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
 
 
 fn trace_str(@block_ctxt cx, str s) {
-    trans_upcall(cx, "upcall_trace_str", vec(p2i(C_cstr(cx.fcx.lcx.ccx, s))));
+    trans_upcall(cx, "upcall_trace_str", vec(p2i(C_cstr(cx.fcx.lcx.ccx, s))),
+                 false);
 }
 
 fn trace_word(@block_ctxt cx, ValueRef v) {
-    trans_upcall(cx, "upcall_trace_word", vec(v));
+    trans_upcall(cx, "upcall_trace_word", vec(v), false);
 }
 
 fn trace_ptr(@block_ctxt cx, ValueRef v) {
@@ -7489,7 +7494,8 @@ fn trans_vec_append_glue(@local_ctxt cx) {
                      vec(vp2i(bcx, lldst_vec),
                          vec_fill_adjusted(bcx, llsrc_vec, llskipnull),
                          vp2i(bcx, llcopy_dst_ptr),
-                         vp2i(bcx, llvec_tydesc)));
+                         vp2i(bcx, llvec_tydesc)),
+                     false);
 
     bcx = llnew_vec_res.bcx;
     auto llnew_vec = vi2p(bcx, llnew_vec_res.val,
