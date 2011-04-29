@@ -1,6 +1,10 @@
 
 #include "rust_internal.h"
 
+#if !defined(__WIN32__)
+#include <sys/time.h>
+#endif
+
 /* Native builtins. */
 
 extern "C" CDECL rust_str*
@@ -507,6 +511,31 @@ extern "C" CDECL int
 rust_ptr_eq(rust_task *task, type_desc *t, rust_box *a, rust_box *b) {
     return a == b;
 }
+
+#if defined(__WIN32__)
+extern "C" CDECL void
+get_time(rust_task *task, uint32_t *sec, uint32_t *usec) {
+    SYSTEMTIME systemTime;
+    FILETIME fileTime;
+    GetSystemTime(&systemTime);
+    if (!SystemTimeToFileTime(&systemTime, &fileTime)) {
+        task->fail(1);
+        return;
+    }
+
+    // FIXME: This is probably completely wrong.
+    *sec = fileTime.dwHighDateTime;
+    *usec = fileTime.dwLowDateTime;
+}
+#else
+extern "C" CDECL void
+get_time(rust_task *task, uint32_t *sec, uint32_t *usec) {
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    *sec = tv.tv_sec;
+    *usec = tv.tv_usec;
+}
+#endif
 
 //
 // Local Variables:

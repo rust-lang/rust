@@ -8,6 +8,7 @@ debug_tag
 debug_trap
 debug_tydesc
 do_gc
+get_time
 last_os_error
 rand_free
 rand_new

@@ -76,6 +76,7 @@ mod ExtFmt;
 mod Box;
 mod GetOpts;
 mod Term;
+mod Time;
 
 // Local Variables:
 // mode: rust;
