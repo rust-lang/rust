@@ -235,9 +235,9 @@ mod Encode {
 }
 
 
-// Returns a Plain Old LLVM String, *without* the trailing zero byte.
+// Returns a Plain Old LLVM String.
 fn C_postr(str s) -> ValueRef {
-    ret llvm.LLVMConstString(_str.buf(s), _str.byte_len(s) - 1u, False);
+    ret llvm.LLVMConstString(_str.buf(s), _str.byte_len(s), False);
 }
 
 
@@ -674,8 +674,11 @@ fn encode_metadata(@trans.crate_ctxt cx, @ast.crate crate)
     ret C_postr(string_w.get_str());
 }
 
-fn write_metadata(@trans.crate_ctxt cx, @ast.crate crate) {
-    auto llmeta = encode_metadata(cx, crate);
+fn write_metadata(@trans.crate_ctxt cx, bool shared, @ast.crate crate) {
+    auto llmeta = C_postr("");
+    if (shared) {
+        llmeta = encode_metadata(cx, crate);
+    }
 
     auto llconst = trans.C_struct(vec(llmeta));
     auto llglobal = llvm.LLVMAddGlobal(cx.llmod, trans.val_ty(llconst),

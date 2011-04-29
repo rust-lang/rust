@@ -7747,7 +7747,7 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
     }
 
     // Translate the metadata.
-    middle.metadata.write_metadata(cx.ccx, crate);
+    middle.metadata.write_metadata(cx.ccx, shared, crate);
 
     run_passes(llmod, optimize, verify, save_temps, output, ot);
 }
