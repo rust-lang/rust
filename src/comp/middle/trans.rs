@@ -6655,21 +6655,27 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
     fn push_arg(@block_ctxt cx,
                 &mutable vec[ValueRef] args,
                 ValueRef v,
-                ty.t t) {
-        if (ty.type_is_integral(cx.fcx.lcx.ccx.tcx, t)) {
-            auto lldsttype = T_int();
-            auto llsrctype = type_of(cx.fcx.lcx.ccx, t);
-            if (llvm.LLVMGetIntTypeWidth(lldsttype) >
-                llvm.LLVMGetIntTypeWidth(llsrctype)) {
-                args += vec(cx.build.ZExtOrBitCast(v, T_int()));
-            } else {
-                args += vec(cx.build.TruncOrBitCast(v, T_int()));
+                ty.t t,
+                ast.mode mode) {
+        if (mode == ast.val) {
+            if (ty.type_is_integral(cx.fcx.lcx.ccx.tcx, t)) {
+                auto lldsttype = T_int();
+                auto llsrctype = type_of(cx.fcx.lcx.ccx, t);
+                if (llvm.LLVMGetIntTypeWidth(lldsttype) >
+                    llvm.LLVMGetIntTypeWidth(llsrctype)) {
+                    args += vec(cx.build.ZExtOrBitCast(v, T_int()));
+                } else {
+                    args += vec(cx.build.TruncOrBitCast(v, T_int()));
+                }
+                ret;
             }
-        } else if (ty.type_is_fp(cx.fcx.lcx.ccx.tcx, t)) {
-            args += vec(cx.build.FPToSI(v, T_int()));
-        } else {
-            args += vec(vp2i(cx, v));
+            if (ty.type_is_fp(cx.fcx.lcx.ccx.tcx, t)) {
+                args += vec(cx.build.FPToSI(v, T_int()));
+                ret;
+            }
         }
+
+        args += vec(vp2i(cx, v));
     }
 
     auto r;
@@ -6699,7 +6705,7 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
         for (ty.arg arg in args) {
             auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
             check (llarg as int != 0);
-            push_arg(bcx, call_args, llarg, arg.ty);
+            push_arg(bcx, call_args, llarg, arg.ty, arg.mode);
             if (arg.mode == ast.val) {
                 drop_args += vec(tup(llarg, arg.ty));
             }
