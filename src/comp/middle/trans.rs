@@ -7449,8 +7449,6 @@ fn trans_vec_append_glue(@local_ctxt cx) {
     auto llnew_vec = vi2p(bcx, llnew_vec_res.val,
                           T_opaque_vec_ptr());
 
-    put_vec_fill(bcx, llnew_vec, C_int(0));
-
     auto copy_dst_cx = new_sub_block_ctxt(bcx, "copy new <- dst");
     auto copy_src_cx = new_sub_block_ctxt(bcx, "copy new <- src");
 
@@ -7494,6 +7492,7 @@ fn trans_vec_append_glue(@local_ctxt cx) {
     }
 
     // Copy any dst elements in, omitting null if doing str.
+    put_vec_fill(copy_dst_cx, llnew_vec, C_int(0));
     auto n_bytes = vec_fill_adjusted(copy_dst_cx, lldst_vec, llskipnull);
     copy_dst_cx = copy_elts(copy_dst_cx,
                             llelt_tydesc,
