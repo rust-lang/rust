@@ -1919,7 +1919,9 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, ty.t t) {
                                      C_int(abi.obj_body_elt_tydesc)));
                 auto tydesc = cx.build.Load(tydescptr);
 
-                auto cx_ = maybe_call_dtor(cx, o);
+                // FIXME: disabled for now.
+                // auto cx_ = maybe_call_dtor(cx, o);
+                auto cx_ = cx;
 
                 // Call through the obj's own fields-drop glue first.
                 call_tydesc_glue_full(cx_, body, tydesc,
