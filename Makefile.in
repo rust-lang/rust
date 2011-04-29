@@ -24,6 +24,9 @@ endif
 ifdef SAVE_TEMPS
   CFG_RUSTC_FLAGS += --save-temps
 endif
+ifdef TIME_PASSES
+  CFG_RUSTC_FLAGS += --time-passes
+endif
 
 # On Darwin, we need to run dsymutil so the debugging information ends
 # up in the right place.  On other platforms, it automatically gets
