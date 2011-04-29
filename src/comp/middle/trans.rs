@@ -359,6 +359,11 @@ fn T_glue_fn(type_names tn) -> TypeRef {
     ret t;
 }
 
+fn T_dtor(@crate_ctxt ccx, TypeRef llself_ty) -> TypeRef {
+    ret type_of_fn_full(ccx, ast.proto_fn, some[TypeRef](llself_ty),
+                        _vec.empty[ty.arg](), ty.mk_nil(ccx.tcx), 0u);
+}
+
 fn T_cmp_glue_fn(type_names tn) -> TypeRef {
     auto s = "cmp_glue_fn";
     if (tn.name_has_type(s)) {
@@ -763,7 +768,7 @@ fn type_of_inner(@crate_ctxt cx, ty.t t) -> TypeRef {
             auto th = mk_type_handle();
             auto self_ty = llvm.LLVMResolveTypeHandle(th.llth);
 
-            let vec[TypeRef] mtys = vec();
+            let vec[TypeRef] mtys = vec(T_ptr(T_i8()));
             for (ty.method m in meths) {
                 let TypeRef mty =
                     type_of_fn_full(cx, m.proto,
@@ -1618,7 +1623,8 @@ fn get_tydesc(&@block_ctxt cx, ty.t t) -> result {
 
     // Otherwise, generate a tydesc if necessary, and return it.
     let vec[uint] tps = vec();
-    ret res(cx, get_static_tydesc(cx, t, tps).tydesc);
+    auto st = get_static_tydesc(cx, t, tps).tydesc;
+    ret res(cx, st);
 }
 
 fn get_static_tydesc(&@block_ctxt cx,
@@ -1901,25 +1907,26 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, ty.t t) {
         }
 
         case (ty.ty_obj(_)) {
-            fn hit_zero(@block_ctxt cx, ValueRef v) -> result {
-
-                // Call through the obj's own fields-drop glue first.
+            fn hit_zero(@block_ctxt cx, ValueRef b, ValueRef o) -> result {
                 auto body =
-                    cx.build.GEP(v,
+                    cx.build.GEP(b,
                                  vec(C_int(0),
                                      C_int(abi.box_rc_field_body)));
-
                 auto tydescptr =
                     cx.build.GEP(body,
                                  vec(C_int(0),
                                      C_int(abi.obj_body_elt_tydesc)));
+                auto tydesc = cx.build.Load(tydescptr);
 
-                call_tydesc_glue_full(cx, body, cx.build.Load(tydescptr),
+                auto cx_ = maybe_call_dtor(cx, o);
+
+                // Call through the obj's own fields-drop glue first.
+                call_tydesc_glue_full(cx_, body, tydesc,
                                       abi.tydesc_field_drop_glue);
 
                 // Then free the body.
                 // FIXME: switch gc/non-gc on layer of the type.
-                ret trans_non_gc_free(cx, v);
+                ret trans_non_gc_free(cx_, b);
             }
             auto box_cell =
                 cx.build.GEP(v0,
@@ -1929,7 +1936,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, ty.t t) {
             auto boxptr = cx.build.Load(box_cell);
 
             rslt = decr_refcnt_and_if_zero(cx, boxptr,
-                                           bind hit_zero(_, boxptr),
+                                           bind hit_zero(_, boxptr, v0),
                                            "free obj",
                                            T_int(), C_int(0));
         }
@@ -2702,6 +2709,27 @@ fn call_tydesc_glue(@block_ctxt cx, ValueRef v,
                           spill_if_immediate(td.bcx, v, t),
                           td.val, field);
     ret res(td.bcx, C_nil());
+}
+
+fn maybe_call_dtor(@block_ctxt cx, ValueRef v) -> @block_ctxt {
+    auto vtbl = cx.build.GEP(v, vec(C_int(0), C_int(abi.obj_field_vtbl)));
+    vtbl = cx.build.Load(vtbl);
+    auto dtor_ptr = cx.build.GEP(vtbl, vec(C_int(0), C_int(0)));
+    dtor_ptr = cx.build.Load(dtor_ptr);
+    dtor_ptr = cx.build.BitCast(dtor_ptr,
+                                T_ptr(T_dtor(cx.fcx.lcx.ccx, val_ty(v))));
+    
+    auto dtor_cx = new_sub_block_ctxt(cx, "dtor");
+    auto after_cx = new_sub_block_ctxt(cx, "after_dtor");
+    auto test = cx.build.ICmp(lib.llvm.LLVMIntNE, dtor_ptr,
+                              C_null(val_ty(dtor_ptr)));
+    cx.build.CondBr(test, dtor_cx.llbb, after_cx.llbb);
+
+    // FIXME need to pass type params (?)
+    dtor_cx.build.FastCall(dtor_ptr, vec(C_null(T_ptr(T_nil())),
+                                        cx.fcx.lltaskptr, v));
+    dtor_cx.build.Br(after_cx.llbb);
+    ret after_cx;
 }
 
 fn call_cmp_glue(@block_ctxt cx, ValueRef lhs, ValueRef rhs, ty.t t,
@@ -4110,12 +4138,13 @@ fn trans_field(@block_ctxt cx, &ast.span sp, ValueRef v, ty.t t0,
                                         vec(C_int(0),
                                             C_int(abi.obj_field_vtbl)));
             vtbl = r.bcx.build.Load(vtbl);
+            // +1 because slot #0 contains the destructor
             auto v =  r.bcx.build.GEP(vtbl, vec(C_int(0),
-                                                C_int(ix as int)));
+                                                C_int((ix + 1u) as int)));
 
             auto lvo = lval_mem(r.bcx, v);
             let ty.t fn_ty = ty.method_ty_to_fn_ty(cx.fcx.lcx.ccx.tcx,
-                                                    methods.(ix));
+                                                   methods.(ix));
             ret rec(llobj = some[ValueRef](r.val),
                     method_ty = some[ty.t](fn_ty)
                     with lvo);
@@ -6102,7 +6131,6 @@ fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, self_vt llself) {
 fn trans_fn(@local_ctxt cx, &ast._fn f, ast.def_id fid,
             option.t[tup(TypeRef, ty.t)] ty_self,
             &vec[ast.ty_param] ty_params, &ast.ann ann) {
-
     auto llfndecl = cx.ccx.item_ids.get(fid);
 
     auto fcx = new_fn_ctxt(cx, llfndecl);
@@ -6145,7 +6173,15 @@ fn trans_vtbl(@local_ctxt cx,
               ty.t self_ty,
               &ast._obj ob,
               &vec[ast.ty_param] ty_params) -> ValueRef {
-    let vec[ValueRef] methods = vec();
+    auto dtor = C_null(T_ptr(T_i8()));
+    alt (ob.dtor) {
+        case (some[@ast.method](?d)) {
+            auto dtor_1 = trans_dtor(cx, llself_ty, self_ty, ty_params, d);
+            dtor = llvm.LLVMConstBitCast(dtor_1, val_ty(dtor));
+        }
+        case (none[@ast.method]) {}
+    }
+    let vec[ValueRef] methods = vec(dtor);
 
     fn meth_lteq(&@ast.method a, &@ast.method b) -> bool {
         ret _str.lteq(a.node.ident, b.node.ident);
@@ -6195,16 +6231,7 @@ fn trans_dtor(@local_ctxt cx,
               &vec[ast.ty_param] ty_params,
               &@ast.method dtor) -> ValueRef {
 
-    auto llfnty = T_nil();
-    alt (ty.struct(cx.ccx.tcx, node_ann_type(cx.ccx, dtor.node.ann))) {
-        case (ty.ty_fn(?proto, ?inputs, ?output)) {
-            llfnty = type_of_fn_full(cx.ccx, proto,
-                                     some[TypeRef](llself_ty),
-                                     inputs, output,
-                                     _vec.len[ast.ty_param](ty_params));
-        }
-    }
-
+    auto llfnty = T_dtor(cx.ccx, llself_ty);
     let @local_ctxt dcx = extend_path(cx, "drop");
     let str s = mangle_name_by_seq(dcx.ccx, dcx.path, "drop");
     let ValueRef llfn = decl_internal_fastcall_fn(cx.ccx.llmod, s, llfnty);
@@ -6235,18 +6262,19 @@ fn trans_obj(@local_ctxt cx, &ast._obj ob, ast.def_id oid,
     auto fcx = new_fn_ctxt(cx, llctor_decl);
     create_llargs_for_fn_args(fcx, ast.proto_fn,
                               none[tup(TypeRef, ty.t)],
-                              ret_ty_of_fn(cx.ccx, ann),
+                              ret_ty_of_fn(ccx, ann),
                               fn_args, ty_params);
 
-    let vec[ty.arg] arg_tys = arg_tys_of_fn(cx.ccx, ann);
+    let vec[ty.arg] arg_tys = arg_tys_of_fn(ccx, ann);
     copy_args_to_allocas(fcx, fn_args, arg_tys);
 
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
 
-    auto self_ty = ret_ty_of_fn(cx.ccx, ann);
+    auto self_ty = ret_ty_of_fn(ccx, ann);
     auto llself_ty = type_of(ccx, self_ty);
     auto pair = bcx.fcx.llretptr;
+
     auto vtbl = trans_vtbl(cx, llself_ty, self_ty, ob, ty_params);
     auto pair_vtbl = bcx.build.GEP(pair,
                                    vec(C_int(0),
@@ -6270,19 +6298,19 @@ fn trans_obj(@local_ctxt cx, &ast._obj ob, ast.def_id oid,
         }
 
         // Synthesize an obj body type.
-        auto tydesc_ty = ty.mk_type(cx.ccx.tcx);
+        auto tydesc_ty = ty.mk_type(ccx.tcx);
         let vec[ty.t] tps = vec();
         for (ast.ty_param tp in ty_params) {
             _vec.push[ty.t](tps, tydesc_ty);
         }
 
-        let ty.t typarams_ty = ty.mk_imm_tup(cx.ccx.tcx, tps);
-        let ty.t fields_ty = ty.mk_imm_tup(cx.ccx.tcx, obj_fields);
-        let ty.t body_ty = ty.mk_imm_tup(cx.ccx.tcx,
+        let ty.t typarams_ty = ty.mk_imm_tup(ccx.tcx, tps);
+        let ty.t fields_ty = ty.mk_imm_tup(ccx.tcx, obj_fields);
+        let ty.t body_ty = ty.mk_imm_tup(ccx.tcx,
                                           vec(tydesc_ty,
                                               typarams_ty,
                                               fields_ty));
-        let ty.t boxed_body_ty = ty.mk_imm_box(cx.ccx.tcx, body_ty);
+        let ty.t boxed_body_ty = ty.mk_imm_box(ccx.tcx, body_ty);
 
         // Malloc a box for the body.
         auto box = trans_malloc_boxed(bcx, body_ty);
@@ -6300,14 +6328,6 @@ fn trans_obj(@local_ctxt cx, &ast._obj ob, ast.def_id oid,
             GEP_tup_like(bcx, body_ty, body.val,
                          vec(0, abi.obj_body_elt_tydesc));
         bcx = body_tydesc.bcx;
-
-        auto dtor = C_null(T_ptr(T_glue_fn(ccx.tn)));
-        alt (ob.dtor) {
-            case (some[@ast.method](?d)) {
-                dtor = trans_dtor(cx, llself_ty, self_ty, ty_params, d);
-            }
-            case (none[@ast.method]) {}
-        }
 
         auto body_td = get_tydesc(bcx, body_ty);
         bcx = body_td.bcx;

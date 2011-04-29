@@ -38,6 +38,7 @@ const int tydesc_field_drop_glue = 4;
 const int tydesc_field_free_glue = 5;
 const int tydesc_field_sever_glue = 6;
 const int tydesc_field_mark_glue = 7;
+// FIXME no longer used in rustc, drop when rustboot is gone
 const int tydesc_field_obj_drop_glue = 8;
 const int tydesc_field_is_stateful = 9;
 const int tydesc_field_cmp_glue = 10;
