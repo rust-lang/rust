@@ -114,6 +114,7 @@ state type crate_ctxt = rec(session.session sess,
                             namegen names,
                             std.sha1.sha1 sha,
                             hashmap[ty.t, str] type_sha1s,
+                            hashmap[ty.t, metadata.ty_abbrev] type_abbrevs,
                             ty.ctxt tcx);
 
 type local_ctxt = rec(vec[str] path,
@@ -189,7 +190,10 @@ fn mangle_name_by_type(@crate_ctxt ccx, vec[str] path, ty.t t) -> str {
         case (none[str]) {
             ccx.sha.reset();
             auto f = metadata.def_to_str;
-            auto cx = @rec(ds=f, tcx=ccx.tcx);
+            // NB: do *not* use abbrevs here as we want the symbol names
+            // to be independent of one another in the crate.
+            auto cx = @rec(ds=f, tcx=ccx.tcx,
+                           use_abbrevs=false, abbrevs=ccx.type_abbrevs);
             ccx.sha.input_str(metadata.Encode.ty_str(cx, t));
             hash = _str.substr(ccx.sha.result_str(), 0u, 16u);
             ccx.type_sha1s.insert(t, hash);
@@ -791,7 +795,9 @@ fn type_of_inner(@crate_ctxt cx, ty.t t) -> TypeRef {
     }
 
     check (llty as int != 0);
-    llvm.LLVMAddTypeName(cx.llmod, _str.buf(ty.ty_to_abbrev_str(cx.tcx, t)),
+    llvm.LLVMAddTypeName(cx.llmod,
+                         _str.buf(ty.ty_to_short_str(cx.tcx,
+                                                     cx.type_abbrevs, t)),
                          llty);
     cx.lltypes.insert(t, llty);
     ret llty;
@@ -1673,8 +1679,7 @@ fn declare_tydesc(@local_ctxt cx, ty.t t) -> @tydesc_info {
 
     auto glue_fn_ty = T_ptr(T_glue_fn(ccx.tn));
 
-    auto name = sanitize(ccx.names.next("tydesc_" +
-        ty.ty_to_abbrev_str(cx.ccx.tcx, t)));
+    auto name = mangle_name_by_seq(ccx, cx.path, "tydesc");
     auto gvar = llvm.LLVMAddGlobal(ccx.llmod, T_tydesc(ccx.tn),
                                    _str.buf(name));
     auto tydesc = C_struct(vec(C_null(T_ptr(T_ptr(T_tydesc(ccx.tn)))),
@@ -7672,6 +7677,7 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
     auto tydescs = map.mk_hashmap[ty.t,@tydesc_info](hasher, eqer);
     auto lltypes = map.mk_hashmap[ty.t,TypeRef](hasher, eqer);
     auto sha1s = map.mk_hashmap[ty.t,str](hasher, eqer);
+    auto abbrevs = map.mk_hashmap[ty.t,metadata.ty_abbrev](hasher, eqer);
 
     auto ccx = @rec(sess = sess,
                     llmod = llmod,
@@ -7698,6 +7704,7 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
                     names = namegen(0),
                     sha = std.sha1.mk_sha1(),
                     type_sha1s = sha1s,
+                    type_abbrevs = abbrevs,
                     tcx = tcx);
     auto cx = new_local_ctxt(ccx);
 

@@ -46,7 +46,10 @@ type mt = rec(t ty, ast.mutability mut);
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-type ctxt = rec(@type_store ts, session.session sess);
+type creader_cache = hashmap[tup(int,uint,uint),ty.t];
+type ctxt = rec(@type_store ts,
+                session.session sess,
+                creader_cache rcache);
 type ty_ctxt = ctxt;    // Needed for disambiguation from Unify.ctxt.
 
 // Convert from method type to function type.  Pretty easy; we just drop
@@ -200,8 +203,26 @@ fn mk_type_store() -> @type_store {
              others=map.mk_hashmap[t,t](hasher, eqer));
 }
 
-fn mk_ctxt(session.session s) -> ctxt { ret rec(ts=mk_type_store(), sess=s); }
+fn mk_rcache() -> creader_cache {
+    fn hash_cache_entry(&tup(int,uint,uint) k) -> uint {
+        ret (k._0 as uint) + k._1 + k._2;
+    }
+    fn eq_cache_entries(&tup(int,uint,uint) a,
+                        &tup(int,uint,uint) b) -> bool {
+        ret a._0 == b._0 &&
+            a._1 == b._1 &&
+            a._2 == b._2;
+    }
+    auto h = hash_cache_entry;
+    auto e = eq_cache_entries;
+    ret map.mk_hashmap[tup(int,uint,uint),t](h, e);
+}
 
+fn mk_ctxt(session.session s) -> ctxt {
+    ret rec(ts = mk_type_store(),
+            sess = s,
+            rcache = mk_rcache());
+}
 // Type constructors
 
 fn mk_ty_full(&sty st, option.t[str] cname) -> t {
@@ -627,9 +648,10 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
     ret s;
 }
 
-fn ty_to_abbrev_str(ctxt cx, t typ) -> str {
+fn ty_to_short_str(ctxt cx, hashmap[ty.t, metadata.ty_abbrev] abbrevs,
+                   t typ) -> str {
     auto f = def_to_str;
-    auto ecx = @rec(ds=f, tcx=cx);
+    auto ecx = @rec(ds=f, tcx=cx,  use_abbrevs=false, abbrevs=abbrevs);
     auto s = metadata.Encode.ty_str(ecx, typ);
     if (_str.byte_len(s) >= 64u) { s = _str.substr(s, 0u, 64u); }
     ret s;

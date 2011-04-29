@@ -43,34 +43,29 @@ tag resolve_result {
 
 // Compact string representation for ty.t values. API ty_str & parse_from_str.
 // (The second has to be authed pure.) Extra parameters are for converting
-// to/from def_ids in the string rep. Whatever format you choose should not
+// to/from def_ids in the data buffer. Whatever format you choose should not
 // contain pipe characters.
 
 // Callback to translate defs to strs or back.
 type str_def = fn(str) -> ast.def_id;
 
-type pstate = rec(str rep, mutable uint pos, uint len, ty.ctxt tcx);
+type pstate = rec(vec[u8] data, int crate,
+                  mutable uint pos, uint len, ty.ctxt tcx);
 
 fn peek(@pstate st) -> u8 {
-    if (st.pos < st.len) {ret st.rep.(st.pos) as u8;}
-    else {ret ' ' as u8;}
+    ret st.data.(st.pos);
 }
 fn next(@pstate st) -> u8 {
-    if (st.pos >= st.len) {fail;}
-    auto ch = st.rep.(st.pos);
+    auto ch = st.data.(st.pos);
     st.pos = st.pos + 1u;
-    ret ch as u8;
+    ret ch;
 }
 
-fn parse_ty_str(str rep, str_def sd, ty.ctxt tcx) -> ty.t {
-    auto len = _str.byte_len(rep);
-    auto st = @rec(rep=rep, mutable pos=0u, len=len, tcx=tcx);
+fn parse_ty_data(vec[u8] data, int crate_num, uint pos, uint len,
+                 str_def sd, ty.ctxt tcx) -> ty.t {
+    auto st = @rec(data=data, crate=crate_num,
+                   mutable pos=pos, len=len, tcx=tcx);
     auto result = parse_ty(st, sd);
-    if (st.pos != len) {
-        log_err "parse_ty_str: incomplete parse, stopped at byte "
-            + _uint.to_str(st.pos, 10u) + " of "
-            + _uint.to_str(len, 10u) + " in str '" + rep + "'";
-    }
     ret result;
 }
 
@@ -178,6 +173,26 @@ fn parse_ty(@pstate st, str_def sd) -> ty.t {
         case ('X') { ret ty.mk_var(st.tcx, parse_int(st)); }
         case ('E') { ret ty.mk_native(st.tcx); }
         case ('Y') { ret ty.mk_type(st.tcx); }
+        case ('#') {
+            auto pos = parse_hex(st);
+            check (next(st) as char == ':');
+            auto len = parse_hex(st);
+            check (next(st) as char == '#');
+            alt (st.tcx.rcache.find(tup(st.crate,pos,len))) {
+                case (some[ty.t](?tt)) { ret tt; }
+                case (none[ty.t]) {
+                    auto ps = @rec(pos=pos, len=len with *st);
+                    auto tt = parse_ty(ps, sd);
+                    st.tcx.rcache.insert(tup(st.crate,pos,len), tt);
+                    ret tt;
+                }
+            }
+        }
+        case (?c) {
+            log_err "unexpected char in type string: ";
+            log_err c;
+            fail;
+        }
     }
 }
 
@@ -208,6 +223,23 @@ fn parse_int(@pstate st) -> int {
         st.pos = st.pos + 1u;
         n *= 10;
         n += (cur as int) - ('0' as int);
+    }
+    ret n;
+}
+
+fn parse_hex(@pstate st) -> uint {
+    auto n = 0u;
+    while (true) {
+        auto cur = peek(st) as char;
+        if ((cur < '0' || cur > '9') &&
+            (cur < 'a' || cur > 'f')) {break;}
+        st.pos = st.pos + 1u;
+        n *= 16u;
+        if ('0' <= cur && cur <= '9') {
+            n += (cur as uint) - ('0' as uint);
+        } else {
+            n += (10u + (cur as uint) - ('a' as uint));
+        }
     }
     ret n;
 }
@@ -343,7 +375,8 @@ fn item_type(&ebml.doc item, int this_cnum, ty.ctxt tcx) -> ty.t {
 
     auto tp = ebml.get_doc(item, metadata.tag_items_data_item_type);
     auto s = _str.unsafe_from_bytes(ebml.doc_data(tp));
-    ret parse_ty_str(s, bind parse_external_def_id(this_cnum, _), tcx);
+    ret parse_ty_data(item.data, this_cnum, tp.start, tp.end - tp.start,
+                      bind parse_external_def_id(this_cnum, _), tcx);
 }
 
 fn item_ty_param_count(&ebml.doc item, int this_cnum) -> uint {

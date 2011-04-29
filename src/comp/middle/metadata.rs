@@ -1,9 +1,12 @@
 import std._str;
 import std._uint;
 import std._vec;
+import std.map.hashmap;
 import std.ebml;
 import std.io;
 import std.option;
+import std.option.some;
+import std.option.none;
 
 import front.ast;
 import middle.fold;
@@ -48,119 +51,185 @@ const uint tag_index_table = 0x15u;
 // Extra parameters are for converting to/from def_ids in the string rep.
 // Whatever format you choose should not contain pipe characters.
 
+type ty_abbrev = rec(uint pos, uint len, str s);
+
 mod Encode {
 
     type ctxt = rec(
-        fn(ast.def_id) -> str ds,   // Callback to translate defs to strs.
-        ty.ctxt tcx                 // The type context.
+        fn(ast.def_id) -> str ds,           // Def -> str Callback.
+        ty.ctxt tcx,                        // The type context.
+        bool use_abbrevs,
+        hashmap[ty.t, ty_abbrev] abbrevs    // Type abbrevs.
     );
 
     fn ty_str(@ctxt cx, ty.t t) -> str {
-        ret sty_str(cx, ty.struct(cx.tcx, t));
+        check (! cx.use_abbrevs);
+        auto sw = io.string_writer();
+        enc_ty(sw.get_writer(), cx, t);
+        ret sw.get_str();
     }
 
-    fn mt_str(@ctxt cx, &ty.mt mt) -> str {
-        auto mut_str;
-        alt (mt.mut) {
-            case (ast.imm)       { mut_str = "";  }
-            case (ast.mut)       { mut_str = "m"; }
-            case (ast.maybe_mut) { mut_str = "?"; }
+    fn enc_ty(io.writer w, @ctxt cx, ty.t t) {
+        if (cx.use_abbrevs) {
+            alt (cx.abbrevs.find(t)) {
+                case (some[ty_abbrev](?a)) {
+                    w.write_str(a.s);
+                    ret;
+                }
+                case (none[ty_abbrev]) {
+                    auto pos = w.get_buf_writer().tell();
+                    auto ss = enc_sty(w, cx, ty.struct(cx.tcx, t));
+                    auto end = w.get_buf_writer().tell();
+                    auto len = end-pos;
+                    fn estimate_sz(uint u) -> uint {
+                        auto n = u;
+                        auto len = 0u;
+                        while (n != 0u) {
+                            len += 1u;
+                            n = n >> 4u;
+                        }
+                        ret len;
+                    }
+                    auto abbrev_len =
+                        3u + estimate_sz(pos) + estimate_sz(len);
+
+                    if (abbrev_len < len) {
+                        // I.e. it's actually an abbreviation.
+                        auto s = ("#"
+                                  + _uint.to_str(pos, 16u) + ":"
+                                  + _uint.to_str(len, 16u) + "#");
+                        auto a = rec(pos=pos, len=len, s=s);
+                        cx.abbrevs.insert(t, a);
+                    }
+                    ret;
+                }
+            }
         }
-        ret mut_str + ty_str(cx, mt.ty);
+        enc_sty(w, cx, ty.struct(cx.tcx, t));
     }
 
-    fn sty_str(@ctxt cx, ty.sty st) -> str {
+    fn enc_mt(io.writer w, @ctxt cx, &ty.mt mt) {
+        alt (mt.mut) {
+            case (ast.imm)       { }
+            case (ast.mut)       { w.write_char('m'); }
+            case (ast.maybe_mut) { w.write_char('?'); }
+        }
+        enc_ty(w, cx, mt.ty);
+    }
+
+    fn enc_sty(io.writer w, @ctxt cx, ty.sty st) {
         alt (st) {
-            case (ty.ty_nil) {ret "n";}
-            case (ty.ty_bool) {ret "b";}
-            case (ty.ty_int) {ret "i";}
-            case (ty.ty_uint) {ret "u";}
-            case (ty.ty_float) {ret "l";}
+            case (ty.ty_nil) { w.write_char('n'); }
+            case (ty.ty_bool) { w.write_char('b'); }
+            case (ty.ty_int) { w.write_char('i'); }
+            case (ty.ty_uint) { w.write_char('u'); }
+            case (ty.ty_float) { w.write_char('l'); }
             case (ty.ty_machine(?mach)) {
                 alt (mach) {
-                    case (common.ty_u8) {ret "Mb";}
-                    case (common.ty_u16) {ret "Mw";}
-                    case (common.ty_u32) {ret "Ml";}
-                    case (common.ty_u64) {ret "Md";}
-                    case (common.ty_i8) {ret "MB";}
-                    case (common.ty_i16) {ret "MW";}
-                    case (common.ty_i32) {ret "ML";}
-                    case (common.ty_i64) {ret "MD";}
-                    case (common.ty_f32) {ret "Mf";}
-                    case (common.ty_f64) {ret "MF";}
+                    case (common.ty_u8) { w.write_str("Mb"); }
+                    case (common.ty_u16) { w.write_str("Mw"); }
+                    case (common.ty_u32) { w.write_str("Ml"); }
+                    case (common.ty_u64) { w.write_str("Md"); }
+                    case (common.ty_i8) { w.write_str("MB"); }
+                    case (common.ty_i16) { w.write_str("MW"); }
+                    case (common.ty_i32) { w.write_str("ML"); }
+                    case (common.ty_i64) { w.write_str("MD"); }
+                    case (common.ty_f32) { w.write_str("Mf"); }
+                    case (common.ty_f64) { w.write_str("MF"); }
                 }
             }
-            case (ty.ty_char) {ret "c";}
-            case (ty.ty_str) {ret "s";}
+            case (ty.ty_char) {w.write_char('c');}
+            case (ty.ty_str) {w.write_char('s');}
             case (ty.ty_tag(?def,?tys)) { // TODO restore def_id
-                auto acc = "t[" + cx.ds(def) + "|";
-                for (ty.t t in tys) {acc += ty_str(cx, t);}
-                ret acc + "]";
+                w.write_str("t[");
+                w.write_str(cx.ds(def));
+                w.write_char('|');
+                for (ty.t t in tys) {
+                    enc_ty(w, cx, t);
+                }
+                w.write_char(']');
             }
-            case (ty.ty_box(?mt)) {ret "@" + mt_str(cx, mt);}
-            case (ty.ty_vec(?mt)) {ret "V" + mt_str(cx, mt);}
-            case (ty.ty_port(?t)) {ret "P" + ty_str(cx, t);}
-            case (ty.ty_chan(?t)) {ret "C" + ty_str(cx, t);}
+            case (ty.ty_box(?mt)) {w.write_char('@'); enc_mt(w, cx, mt); }
+            case (ty.ty_vec(?mt)) {w.write_char('V'); enc_mt(w, cx, mt); }
+            case (ty.ty_port(?t)) {w.write_char('P'); enc_ty(w, cx, t); }
+            case (ty.ty_chan(?t)) {w.write_char('C'); enc_ty(w, cx, t); }
             case (ty.ty_tup(?mts)) {
-                auto acc = "T[";
-                for (ty.mt mt in mts) {acc += mt_str(cx, mt);}
-                ret acc + "]";
+                w.write_str("T[");
+                for (ty.mt mt in mts) {
+                    enc_mt(w, cx, mt);
+                }
+                w.write_char(']');
             }
             case (ty.ty_rec(?fields)) {
-                auto acc = "R[";
+                w.write_str("R[");
                 for (ty.field field in fields) {
-                    acc += field.ident + "=";
-                    acc += mt_str(cx, field.mt);
+                    w.write_str(field.ident);
+                    w.write_char('=');
+                    enc_mt(w, cx, field.mt);
                 }
-                ret acc + "]";
+                w.write_char(']');
             }
             case (ty.ty_fn(?proto,?args,?out)) {
-                ret proto_str(proto) + ty_fn_str(cx, args, out);
+                enc_proto(w, proto);
+                enc_ty_fn(w, cx, args, out);
             }
             case (ty.ty_native_fn(?abi,?args,?out)) {
-                auto abistr;
+                w.write_char('N');
                 alt (abi) {
-                    case (ast.native_abi_rust) {abistr = "r";}
-                    case (ast.native_abi_cdecl) {abistr = "c";}
-                    case (ast.native_abi_llvm) {abistr = "l";}
+                    case (ast.native_abi_rust) { w.write_char('r'); }
+                    case (ast.native_abi_cdecl) { w.write_char('c'); }
+                    case (ast.native_abi_llvm) { w.write_char('l'); }
                 }
-                ret "N" + abistr + ty_fn_str(cx, args, out);
+                enc_ty_fn(w, cx, args, out);
             }
             case (ty.ty_obj(?methods)) {
-                auto acc = "O[";
+                w.write_str("O[");
                 for (ty.method m in methods) {
-                    acc += proto_str(m.proto);
-                    acc += m.ident;
-                    acc += ty_fn_str(cx, m.inputs, m.output);
+                    enc_proto(w, m.proto);
+                    w.write_str(m.ident);
+                    enc_ty_fn(w, cx, m.inputs, m.output);
                 }
-                ret acc + "]";
+                w.write_char(']');
             }
-            case (ty.ty_var(?id)) {ret "X" + common.istr(id);}
-            case (ty.ty_native) {ret "E";}
-            case (ty.ty_param(?id)) {ret "p" + common.uistr(id);}
-            case (ty.ty_type) {ret "Y";}
+            case (ty.ty_var(?id)) {
+                w.write_char('X');
+                w.write_str(common.istr(id));
+            }
+            case (ty.ty_native) {w.write_char('E');}
+            case (ty.ty_param(?id)) {
+                w.write_char('p');
+                w.write_str(common.uistr(id));
+            }
+            case (ty.ty_type) {w.write_char('Y');}
 
             // These two don't appear in crate metadata, but are here because
             // `hash_ty()` uses this function.
-            case (ty.ty_bound_param(?id)) {ret "o" + common.uistr(id);}
-            case (ty.ty_local(?def)) {ret "L" + cx.ds(def);}
+            case (ty.ty_bound_param(?id)) {
+                w.write_char('o');
+                w.write_str(common.uistr(id));
+            }
+            case (ty.ty_local(?def)) {
+                w.write_char('L');
+                w.write_str(cx.ds(def));
+            }
         }
     }
 
-    fn proto_str(ast.proto proto) -> str {
+    fn enc_proto(io.writer w, ast.proto proto) {
         alt (proto) {
-            case (ast.proto_iter) {ret "W";}
-            case (ast.proto_fn) {ret "F";}
+            case (ast.proto_iter) { w.write_char('W'); }
+            case (ast.proto_fn) { w.write_char('F'); }
         }
     }
 
-    fn ty_fn_str(@ctxt cx, vec[ty.arg] args, ty.t out) -> str {
-        auto acc = "[";
+    fn enc_ty_fn(io.writer w, @ctxt cx, vec[ty.arg] args, ty.t out) {
+        w.write_char('[');
         for (ty.arg arg in args) {
-            if (arg.mode == ast.alias) {acc += "&";}
-            acc += ty_str(cx, arg.ty);
+            if (arg.mode == ast.alias) { w.write_char('&'); }
+            enc_ty(w, cx, arg.ty);
         }
-        ret acc + "]" + ty_str(cx, out);
+        w.write_char(']');
+        enc_ty(w, cx, out);
     }
 
 }
@@ -336,9 +405,9 @@ fn encode_type(@trans.crate_ctxt cx, &ebml.writer ebml_w, ty.t typ) {
     ebml.start_tag(ebml_w, tag_items_data_item_type);
 
     auto f = def_to_str;
-    auto ty_str_ctxt = @rec(ds=f, tcx=cx.tcx);
-    ebml_w.writer.write(_str.bytes(Encode.ty_str(ty_str_ctxt, typ)));
-
+    auto ty_str_ctxt = @rec(ds=f, tcx=cx.tcx,
+                            use_abbrevs=true, abbrevs=cx.type_abbrevs);
+    Encode.enc_ty(io.new_writer_(ebml_w.writer), ty_str_ctxt, typ);
     ebml.end_tag(ebml_w);
 }
 
@@ -564,7 +633,6 @@ fn encode_index[T](&ebml.writer ebml_w, vec[vec[tup(T, uint)]] buckets,
 
     ebml.end_tag(ebml_w);
 }
-
 
 fn write_str(io.writer writer, &str s) {
     writer.write_str(s);
