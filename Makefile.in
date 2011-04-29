@@ -27,6 +27,9 @@ endif
 ifdef TIME_PASSES
   CFG_RUSTC_FLAGS += --time-passes
 endif
+ifdef NO_TYPESTATE
+  CFG_RUSTC_FLAGS += --no-typestate
+endif
 
 # On Darwin, we need to run dsymutil so the debugging information ends
 # up in the right place.  On other platforms, it automatically gets

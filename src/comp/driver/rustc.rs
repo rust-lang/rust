@@ -85,6 +85,7 @@ fn compile_input(session.session sess,
                         bool save_temps,
                         trans.output_type ot,
                         bool time_passes,
+                        bool run_typestate,
                         vec[str] library_search_paths) {
     auto def = tup(0, 0);
     auto p = parser.new_parser(sess, env, def, input, 0u);
@@ -106,8 +107,10 @@ fn compile_input(session.session sess,
     crate = typeck_result._0;
     auto type_cache = typeck_result._1;
 
-    crate = time[@ast.crate](time_passes, "typestate checking",
-        bind typestate_check.check_crate(crate));
+    if (run_typestate) {
+        crate = time[@ast.crate](time_passes, "typestate checking",
+            bind typestate_check.check_crate(crate));
+    }
 
     time[()](time_passes, "translation",
         bind trans.trans_crate(sess, crate, ty_cx, type_cache, output, shared,
@@ -140,6 +143,7 @@ options:
     -c                 compile and assemble, but do not link
     --save-temps       write intermediate files in addition to normal output
     --time-passes      time the individual phases of the compiler
+    --no-typestate     don't run the typestate pass (unsafe!)
     -h                 display this message\n\n");
 }
 
@@ -170,7 +174,7 @@ fn main(vec[str] args) {
                     optflag("O"), optflag("shared"), optmulti("L"),
                     optflag("S"), optflag("c"), optopt("o"),
                     optflag("save-temps"), optflag("time-passes"),
-                    optflag("noverify"));
+                    optflag("no-typestate"), optflag("noverify"));
     auto binary = _vec.shift[str](args);
     auto match;
     alt (GetOpts.getopts(args, opts)) {
@@ -201,6 +205,7 @@ fn main(vec[str] args) {
     // FIXME: Maybe we should support -O0, -O1, -Os, etc
     auto optimize = opt_present(match, "O");
     auto time_passes = opt_present(match, "time-passes");
+    auto run_typestate = !opt_present(match, "no-typestate");
     auto n_inputs = _vec.len[str](match.free);
 
     if (glue) {
@@ -233,12 +238,14 @@ fn main(vec[str] args) {
                 auto ofile = _str.concat(parts);
                 compile_input(sess, env, ifile, ofile, shared,
                               optimize, verify, save_temps, ot,
-                              time_passes, library_search_paths);
+                              time_passes, run_typestate,
+                              library_search_paths);
             }
             case (some[str](?ofile)) {
                 compile_input(sess, env, ifile, ofile, shared,
                               optimize, verify, save_temps, ot,
-                              time_passes, library_search_paths);
+                              time_passes, run_typestate,
+                              library_search_paths);
             }
         }
     }
