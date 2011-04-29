@@ -7453,7 +7453,7 @@ fn trans_vec_append_glue(@local_ctxt cx) {
     auto copy_src_cx = new_sub_block_ctxt(bcx, "copy new <- src");
 
     auto pp0 = alloca(bcx, T_ptr(T_i8()));
-    bcx.build.Store(vec_p0(bcx, llnew_vec), pp0);
+    bcx.build.Store(vec_p1(bcx, llnew_vec), pp0);
 
     bcx.build.CondBr(bcx.build.TruncOrBitCast
                      (bcx.build.Load(llcopy_dst_ptr),
@@ -7492,11 +7492,11 @@ fn trans_vec_append_glue(@local_ctxt cx) {
     }
 
     // Copy any dst elements in, omitting null if doing str.
-    put_vec_fill(copy_dst_cx, llnew_vec, C_int(0));
+
     auto n_bytes = vec_fill_adjusted(copy_dst_cx, lldst_vec, llskipnull);
     copy_dst_cx = copy_elts(copy_dst_cx,
                             llelt_tydesc,
-                            copy_dst_cx.build.Load(pp0),
+                            vec_p0(copy_dst_cx, llnew_vec),
                             vec_p0(copy_dst_cx, lldst_vec),
                             n_bytes).bcx;
 
