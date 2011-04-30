@@ -168,7 +168,7 @@ for i in \
     boot/fe boot/me boot/be boot/driver boot/util \
     rt rt/isaac rt/bigint rt/sync rt/test \
     rustllvm \
-    stage0 stage1 stage2 \
+    dl stage0 stage1 stage2 stage3 \
     test/run-pass test/run-fail test/compile-fail \
     test/bench/99-bottles test/bench/shootout
 do

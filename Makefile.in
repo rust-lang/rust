@@ -89,8 +89,14 @@ endif
 
 CFG_LDPATH :=$(CFG_BUILD_DIR)/rt
 CFG_LDPATH :=$(CFG_LDPATH):$(CFG_BUILD_DIR)/rustllvm
-CFG_TESTLIB=$(dir $(firstword $(1))):$(patsubst .%,%,$(suffix $(1)))
-CFG_EXE_TESTLIB=$(call CFG_TESTLIB,$(patsubst %.exe,%,$(1)))
+CFG_TESTLIB=$(CFG_BUILD_DIR)/$(strip     \
+ $(if $(findstring stage0,$(1)),         \
+       stage1                            \
+      $(if $(findstring stage1,$(1)),    \
+           stage2                        \
+          $(if $(findstring stage2,$(1)),\
+               stage3                    \
+               ))))
 
 ifdef CFG_WINDOWSY
   CFG_INFO := $(info cfg: windows-y environment)
@@ -99,7 +105,7 @@ ifdef CFG_WINDOWSY
   CFG_LIB_NAME=$(1).dll
   CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
   CFG_LDPATH :=$(CFG_LDPATH):$$PATH
-  CFG_RUN_TEST=PATH="$(CFG_LDPATH):$(call CFG_EXE_TESTLIB,$(1))" $(1)
+  CFG_RUN_TEST=PATH="$(CFG_LDPATH):$(call CFG_TESTLIB,$(1))" $(1)
   CFG_RUN_TARG=PATH="$(CFG_BUILD_DIR)/$(1):$(CFG_LDPATH)" $(2)
 
   CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
@@ -132,7 +138,7 @@ ifdef CFG_UNIXY
     CFG_LDPATH :=$(CFG_LDPATH):$(CFG_LLVM_BINDIR)
     CFG_LDPATH :=$(CFG_LDPATH):$$PATH
     CFG_RUN_TARG=PATH=$(CFG_BUILD_DIR)/$(1):$(CFG_LDPATH) $(2)
-    CFG_RUN_TEST=PATH=$(CFG_LDPATH):$(call CFG_EXE_TESTLIB,$(1)) $(1)
+    CFG_RUN_TEST=PATH=$(CFG_LDPATH):$(call CFG_TESTLIB,$(1)) $(1)
 
     CFG_INFO := $(info cfg: mingw-cross)
     CFG_GCC_CROSS := i586-mingw32msvc-
@@ -241,13 +247,13 @@ X := $(CFG_EXE_SUFFIX)
 VPATH := $(S)doc $(S)src
 
 # Compilers we build, we now know how to run.
-BOOT := $(Q)OCAMLRUNPARAM="b1" boot/rustboot$(X) $(CFG_BOOT_FLAGS) -L boot
-STAGE0 := $(Q)$(call CFG_RUN_TARG,boot,\
-                stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage0)
-STAGE1 := $(Q)$(call CFG_RUN_TARG,stage0, \
-                stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1)
-STAGE2 := $(Q)$(call CFG_RUN_TARG,stage1, \
-                stage2/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage2)
+BOOT := $(Q)OCAMLRUNPARAM="b1" boot/rustboot$(X) $(CFG_BOOT_FLAGS) -L stage0
+STAGE0 := $(Q)$(call CFG_RUN_TARG,stage0,\
+                stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1)
+STAGE1 := $(Q)$(call CFG_RUN_TARG,stage1, \
+                stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage2)
+STAGE2 := $(Q)$(call CFG_RUN_TARG,stage2, \
+                stage2/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage3)
 
 # "Source" files we generate in builddir along the way.
 GENERATED := boot/fe/lexer.ml boot/version.ml
@@ -410,10 +416,10 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
 ######################################################################
 
 LREQ := rt/$(CFG_RUNTIME) rustllvm/$(CFG_RUSTLLVM)
-BREQ := boot/rustboot$(X) boot/$(CFG_STDLIB)
-SREQ0 := stage0/rustc$(X) $(LREQ) stage0/glue.o stage0/$(CFG_STDLIB)
-SREQ1 := stage1/rustc$(X) $(LREQ) stage1/glue.o stage1/$(CFG_STDLIB)
-SREQ2 := stage2/rustc$(X) $(LREQ) stage2/glue.o stage2/$(CFG_STDLIB)
+BREQ := boot/rustboot$(X) stage0/$(CFG_STDLIB)
+SREQ0 := stage0/rustc$(X) $(LREQ) stage1/glue.o stage1/$(CFG_STDLIB)
+SREQ1 := stage1/rustc$(X) $(LREQ) stage2/glue.o stage2/$(CFG_STDLIB)
+SREQ2 := stage2/rustc$(X) $(LREQ) stage3/glue.o stage3/$(CFG_STDLIB)
 
 
 ######################################################################
@@ -421,14 +427,21 @@ SREQ2 := stage2/rustc$(X) $(LREQ) stage2/glue.o stage2/$(CFG_STDLIB)
 ######################################################################
 
 all: boot/rustboot$(X)          \
-     boot/$(CFG_STDLIB)         \
      rt/$(CFG_RUNTIME)          \
      rustllvm/$(CFG_RUSTLLVM)   \
-     stage0/rustc$(X)           \
-     stage0/glue.o              \
      stage0/$(CFG_STDLIB)       \
+     stage0/rustc$(X)           \
      $(GENERATED)               \
-     $(DOCS)
+     $(DOCS)                    \
+     stage1/$(CFG_STDLIB)       \
+     stage1/glue.o
+#     stage1/rustc$(X)           \
+#     stage2/$(CFG_STDLIB)       \
+#     stage3/$(CFG_STDLIB)       \
+#     stage2/glue.o              \
+#     stage3/glue.o              \
+#     stage2/rustc$(X)           \
+#     stage3/rustc$(X)           \
 
 rt/$(CFG_RUNTIME): $(RUNTIME_OBJS) $(MKFILES) $(RUNTIME_HDR) $(RUNTIME_DEF)
 	@$(call E, link: $@)
@@ -470,37 +483,37 @@ boot/version.ml: $(MKFILES)
 
 
 
-boot/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
-                    boot/rustboot$(X) $(MKFILES)
+stage0/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
+                      boot/rustboot$(X) $(MKFILES)
 	@$(call E, compile: $@)
 	$(BOOT) -shared -o $@ $<
 
-stage0/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage0/rustc$(X) $(MKFILES)
+stage1/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage0/rustc$(X) $(MKFILES)
 	@$(call E, compile: $@)
 	$(STAGE0) -c --shared -o $@ $<
-
-stage0/$(CFG_STDLIB): stage0/std.o stage0/glue.o
-	@$(call E, link: $@)
-	$(Q)gcc $(CFG_GCC_CFLAGS) stage0/glue.o $(CFG_GCC_LINK_FLAGS) -o $@ $< \
-		-Lstage0 -Lrt -lrustrt
-
-stage1/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage1/rustc$(X) $(MKFILES)
-	@$(call E, compile: $@)
-	$(STAGE1) -c --shared -o $@ $<
 
 stage1/$(CFG_STDLIB): stage1/std.o stage1/glue.o
 	@$(call E, link: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) stage1/glue.o $(CFG_GCC_LINK_FLAGS) -o $@ $< \
 		-Lstage1 -Lrt -lrustrt
 
-stage2/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage2/rustc$(X) $(MKFILES)
+stage2/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage1/rustc$(X) $(MKFILES)
 	@$(call E, compile: $@)
-	$(STAGE2) -c --shared -o $@ $<
+	$(STAGE1) -c --shared -o $@ $<
 
 stage2/$(CFG_STDLIB): stage2/std.o stage2/glue.o
 	@$(call E, link: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) stage2/glue.o $(CFG_GCC_LINK_FLAGS) -o $@ $< \
 		-Lstage2 -Lrt -lrustrt
+
+stage3/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage2/rustc$(X) $(MKFILES)
+	@$(call E, compile: $@)
+	$(STAGE2) -c --shared -o $@ $<
+
+stage3/$(CFG_STDLIB): stage3/std.o stage3/glue.o
+	@$(call E, link: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage3/glue.o $(CFG_GCC_LINK_FLAGS) -o $@ $< \
+		-Lstage3 -Lrt -lrustrt
 
 
 
@@ -517,19 +530,23 @@ stage2/rustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ1)
 	@$(call E, compile: $@)
 	$(STAGE1) -c -o $@ $<
 
+stage3/rustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ2)
+	@$(call E, compile: $@)
+	$(STAGE2) -c -o $@ $<
 
 
-stage0/glue.o: stage0/rustc$(X) boot/$(CFG_STDLIB) \
+
+stage1/glue.o: stage0/rustc$(X) stage0/$(CFG_STDLIB) \
                 rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
 	$(STAGE0) -c -o $@ --glue
 
-stage1/glue.o: stage1/rustc$(X) stage0/$(CFG_STDLIB) \
+stage2/glue.o: stage1/rustc$(X) stage1/$(CFG_STDLIB) \
                 rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
 	$(STAGE1) -c -o $@ --glue
 
-stage2/glue.o: stage2/rustc$(X) stage1/$(CFG_STDLIB) \
+stage3/glue.o: stage2/rustc$(X) stage2/$(CFG_STDLIB) \
                 rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
 	$(STAGE2) -c -o $@ --glue
@@ -554,8 +571,8 @@ stage2/%.o: stage2/%.s
 
 stage1/%$(X): stage1/%.o  $(SREQ0)
 	@$(call E, link [gcc]: $@)
-	$(Q)gcc $(CFG_GCC_CFLAGS) stage0/glue.o -o $@ $< \
-      -Lstage0 -Lrustllvm -Lrt -lrustrt -lrustllvm -lstd -lm
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage1/glue.o -o $@ $< \
+      -Lstage1 -Lrustllvm -Lrt -lrustrt -lrustllvm -lstd -lm
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
@@ -563,8 +580,8 @@ stage1/%$(X): stage1/%.o  $(SREQ0)
 
 stage2/%$(X): stage2/%.o  $(SREQ1)
 	@$(call E, link [gcc]: $@)
-	$(Q)gcc $(CFG_GCC_CFLAGS) stage1/glue.o -o $@ $< \
-      -Lstage1 -Lrustllvm -Lrt -lrustrt -lrustllvm -lstd -lm
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage2/glue.o -o $@ $< \
+      -Lstage2 -Lrustllvm -Lrt -lrustrt -lrustllvm -lstd -lm
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
@@ -865,15 +882,6 @@ compile-check: tidy \
 
 %.stage0$(X): %.stage0.o  $(SREQ0)
 	@$(call E, link [gcc]: $@)
-	$(Q)gcc $(CFG_GCC_CFLAGS) stage0/glue.o -o $@ $< \
-      -Lstage0 -Lrt -lrustrt -lstd -lm
-	@# dsymutil sometimes fails or prints a warning, but the
-	@# program still runs.  Since it simplifies debugging other
-	@# programs, I\'ll live with the noise.
-	-$(Q)$(CFG_DSYMUTIL) $@
-
-%.stage1$(X): %.stage1.o $(SREQ1)
-	@$(call E, link [gcc]: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) stage1/glue.o -o $@ $< \
       -Lstage1 -Lrt -lrustrt -lstd -lm
 	@# dsymutil sometimes fails or prints a warning, but the
@@ -881,10 +889,19 @@ compile-check: tidy \
 	@# programs, I\'ll live with the noise.
 	-$(Q)$(CFG_DSYMUTIL) $@
 
-%.stage2$(X): %.stage2.o $(SREQ2)
+%.stage1$(X): %.stage1.o $(SREQ1)
 	@$(call E, link [gcc]: $@)
 	$(Q)gcc $(CFG_GCC_CFLAGS) stage2/glue.o -o $@ $< \
       -Lstage2 -Lrt -lrustrt -lstd -lm
+	@# dsymutil sometimes fails or prints a warning, but the
+	@# program still runs.  Since it simplifies debugging other
+	@# programs, I\'ll live with the noise.
+	-$(Q)$(CFG_DSYMUTIL) $@
+
+%.stage2$(X): %.stage2.o $(SREQ2)
+	@$(call E, link [gcc]: $@)
+	$(Q)gcc $(CFG_GCC_CFLAGS) stage3/glue.o -o $@ $< \
+      -Lstage3 -Lrt -lrustrt -lstd -lm
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
 	@# programs, I\'ll live with the noise.
@@ -1161,10 +1178,12 @@ clean:
 	$(Q)rm -f $(CRATE_DEPFILES:%.d=%.d.tmp)
 	$(Q)rm -f $(GENERATED)
 	$(Q)rm -f boot/rustboot$(X) boot/$(CFG_STDLIB)
-	$(Q)rm -f stage0/rustc$(X) stage0/$(CFG_STDLIB) stage0/glue*
+	$(Q)rm -f stage0/rustc$(X) stage0/$(CFG_STDLIB)
 	$(Q)rm -f stage1/rustc$(X) stage1/$(CFG_STDLIB) stage1/glue*
 	$(Q)rm -f stage2/rustc$(X) stage2/$(CFG_STDLIB) stage2/glue*
-	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
+	$(Q)rm -f stage3/rustc$(X) stage3/$(CFG_STDLIB) stage3/glue*
+	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rustllvm/rustllvmbits.a
+	$(Q)rm -f rt/$(CFG_RUNTIME)
 	$(Q)rm -Rf $(PKG_NAME)-*.tar.gz dist
 	$(Q)rm -f $(foreach ext,cmx cmi cmo cma bc o a d exe,\
                         $(wildcard boot/*/*.$(ext) boot/*/*/*.$(ext)))
