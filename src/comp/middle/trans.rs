@@ -5294,6 +5294,7 @@ fn trans_log(int lvl, @block_ctxt cx, @ast.expr e) -> result {
     auto sub = trans_expr(log_cx, e);
     auto e_ty = ty.expr_ty(cx.fcx.lcx.ccx.tcx, e);
 
+    auto log_bcx = sub.bcx;
     if (ty.type_is_fp(cx.fcx.lcx.ccx.tcx, e_ty)) {
         let TypeRef tr;
         let bool is32bit = false;
@@ -5310,37 +5311,40 @@ fn trans_log(int lvl, @block_ctxt cx, @ast.expr e) -> result {
             }
         }
         if (is32bit) {
-            auto uval = trans_upcall(sub.bcx,
+            auto uval = trans_upcall(log_bcx,
                                      "upcall_log_float",
                                      vec(C_int(lvl), sub.val),
                                      false);
-            uval.bcx.build.Br(after_cx.llbb);
+            log_bcx = uval.bcx;
         } else {
-            auto tmp = alloca(sub.bcx, tr);
+            auto tmp = alloca(log_bcx, tr);
             sub.bcx.build.Store(sub.val, tmp);
-            auto uval = trans_upcall(sub.bcx,
+            auto uval = trans_upcall(log_bcx,
                                      "upcall_log_double",
-                                     vec(C_int(lvl), vp2i(sub.bcx, tmp)),
+                                     vec(C_int(lvl), vp2i(log_bcx, tmp)),
                                      false);
-            uval.bcx.build.Br(after_cx.llbb);
+            log_bcx = uval.bcx;
         }
     } else {
         alt (ty.struct(cx.fcx.lcx.ccx.tcx, e_ty)) {
             case (ty.ty_str) {
-                auto v = vp2i(sub.bcx, sub.val);
-                trans_upcall(sub.bcx,
-                             "upcall_log_str",
-                             vec(C_int(lvl), v),
-                             false).bcx.build.Br(after_cx.llbb);
+                auto v = vp2i(log_bcx, sub.val);
+                log_bcx = trans_upcall(log_bcx,
+                                       "upcall_log_str",
+                                       vec(C_int(lvl), v),
+                                       false).bcx;
             }
             case (_) {
                 auto v = vec(C_int(lvl), sub.val);
-                trans_upcall(sub.bcx,
-                             "upcall_log_int",
-                             v, false).bcx.build.Br(after_cx.llbb);
+                log_bcx = trans_upcall(log_bcx,
+                                       "upcall_log_int",
+                                       v, false).bcx;
             }
         }
     }
+
+    log_bcx = trans_block_cleanups(log_bcx, log_cx);
+    log_bcx.build.Br(after_cx.llbb);
 
     ret res(after_cx, C_nil());
 }
