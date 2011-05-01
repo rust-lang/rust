@@ -27,21 +27,20 @@ tag scope {
     scope_arm(ast.arm);
 }
 
-// This indicates whether we're searching up the scope chain
-// or whether we've found a path component and started following
-// it back down, which has an effect on export visibility
-tag search_direction {
-    up;
-    down;
-}
-
 type env = rec(list[scope] scopes,
-               session.session sess,
-               search_direction direction);
+               session.session sess);
 
 tag namespace {
     ns_value;
     ns_type;
+}
+
+// This indicates whether we're searching up the scope chain or whether we've
+// found a path component and started following it back down, which has an
+// effect on export visibility
+tag direction {
+    up;
+    down;
 }
 
 type import_map = std.map.hashmap[ast.def_id,def_wrap];
@@ -157,11 +156,10 @@ fn find_final_def(&env e, import_map index,
             auto len = _vec.len[ident](idents);
             auto rest_idents = _vec.slice[ident](idents, 1u, len);
             auto empty_e = rec(scopes = nil[scope],
-                               sess = e.sess,
-                               direction = down);
+                               sess = e.sess);
             auto tmp_e = update_env_for_item(empty_e, i);
             auto next_i = rest_idents.(0);
-            auto next_ = lookup_name_wrapped(tmp_e, next_i, ns);
+            auto next_ = lookup_name_wrapped(tmp_e, next_i, ns, down);
             alt (next_) {
                 case (none[tup(@env, def_wrap)]) {
                     e.sess.span_err(sp, "unresolved name: " + next_i);
@@ -183,11 +181,10 @@ fn find_final_def(&env e, import_map index,
             auto len = _vec.len[ident](idents);
             auto rest_idents = _vec.slice[ident](idents, 1u, len);
             auto empty_e = rec(scopes = nil[scope],
-                               sess = e.sess,
-                               direction = down);
+                               sess = e.sess);
             auto tmp_e = update_env_for_external_mod(empty_e, mod_id, idents);
             auto next_i = rest_idents.(0);
-            auto next_ = lookup_name_wrapped(tmp_e, next_i, ns);
+            auto next_ = lookup_name_wrapped(tmp_e, next_i, ns, down);
             alt (next_) {
                 case (none[tup(@env, def_wrap)]) {
                     e.sess.span_err(sp, "unresolved name: " + next_i);
@@ -282,7 +279,7 @@ fn find_final_def(&env e, import_map index,
         index.insert(option.get[ast.def_id](import_id), def_wrap_resolving);
     }
     auto first = idents.(0);
-    auto d_ = lookup_name_wrapped(e, first, ns);
+    auto d_ = lookup_name_wrapped(e, first, ns, up);
     alt (d_) {
         case (none[tup(@env, def_wrap)]) {
             e.sess.span_err(sp, "unresolved name: " + first);
@@ -298,8 +295,8 @@ fn find_final_def(&env e, import_map index,
     }
 }
 
-fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
-        -> option.t[tup(@env, def_wrap)] {
+fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
+    -> option.t[tup(@env, def_wrap)] {
 
     // log "resolving name " + i;
 
@@ -359,12 +356,12 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
         fail;
     }
 
-    fn check_mod(&env e, ast.ident i, ast._mod m, namespace ns)
-            -> option.t[def_wrap] {
+    fn check_mod(ast.ident i, ast._mod m, namespace ns,
+                 direction dir) -> option.t[def_wrap] {
 
-        fn visible(&env e, ast.ident i, ast._mod m) -> bool {
+        fn visible(ast.ident i, ast._mod m, direction dir) -> bool {
 
-            alt (e.direction) {
+            alt (dir) {
                 case (up) {
                     ret true;
                 }
@@ -400,14 +397,14 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
                         ret some(found_def_view(view_item));
                     }
                     case (ast.mie_item(?item)) {
-                        if (visible(e, i, m)) {
+                        if (visible(i, m, dir)) {
                             ret some(found_def_item(item, ns));
                         }
                     }
                     case (ast.mie_tag_variant(?item, ?variant_idx)) {
                         alt (item.node) {
                             case (ast.item_tag(_, ?variants, _, ?tid, _)) {
-                                if (visible(e, i, m)) {
+                                if (visible(i, m, dir)) {
                                     auto vid = variants.(variant_idx).node.id;
                                     auto t = ast.def_variant(tid, vid);
                                     ret some[def_wrap](def_wrap_other(t));
@@ -501,12 +498,12 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
         }
     }
 
-    fn in_scope(&env e, ast.ident identifier, &scope s,
-            namespace ns) -> option.t[def_wrap] {
+    fn in_scope(&session.session sess, ast.ident identifier, &scope s,
+                namespace ns, direction dir) -> option.t[def_wrap] {
         alt (s) {
 
             case (scope_crate(?c)) {
-                ret check_mod(e, identifier, c.node.module, ns);
+                ret check_mod(identifier, c.node.module, ns, dir);
             }
 
             case (scope_item(?it)) {
@@ -542,7 +539,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
                         }
                     }
                     case (ast.item_mod(_, ?m, _)) {
-                        ret check_mod(e, identifier, m, ns);
+                        ret check_mod(identifier, m, ns, dir);
                     }
                     case (ast.item_native_mod(_, ?m, _)) {
                         ret check_native_mod(identifier, m);
@@ -570,7 +567,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
             }
 
             case (scope_external_mod(?mod_id, ?path)) {
-                ret lookup_external_def(e.sess, mod_id._0, path);
+                ret lookup_external_def(sess, mod_id._0, path);
             }
 
             case (scope_loop(?d)) {
@@ -606,14 +603,14 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
             ret none[tup(@env, def_wrap)];
         }
         case (cons[scope](?hd, ?tl)) {
-            auto x = in_scope(e, i, hd, ns);
+            auto x = in_scope(e.sess, i, hd, ns, dir);
             alt (x) {
                 case (some[def_wrap](?x)) {
                     ret some(tup(@e, x));
                 }
                 case (none[def_wrap]) {
                     auto outer_env = rec(scopes = *tl with e);
-                    ret lookup_name_wrapped(outer_env, i, ns);
+                    ret lookup_name_wrapped(outer_env, i, ns, up);
                 }
             }
         }
@@ -785,8 +782,7 @@ fn resolve_imports(session.session sess, @ast.crate crate) -> @ast.crate {
                 with *fld );
 
     auto e = rec(scopes = nil[scope],
-                 sess = sess,
-                 direction = up);
+                 sess = sess);
 
     ret fold.fold_crate[env](e, fld, crate);
 }
@@ -810,8 +806,7 @@ fn resolve_crate(session.session sess, @ast.crate crate) -> @ast.crate {
                 with *fld );
 
     auto e = rec(scopes = nil[scope],
-                 sess = sess,
-                 direction = up);
+                 sess = sess);
 
     ret fold.fold_crate[env](e, fld, new_crate);
 }
