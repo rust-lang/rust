@@ -1,4 +1,3 @@
-// xfail-stage0
 // -*- rust -*-
 
 // Regression tests for circular_buffer when using a unit
