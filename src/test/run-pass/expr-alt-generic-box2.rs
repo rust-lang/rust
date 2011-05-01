@@ -1,5 +1,4 @@
 // xfail-boot
-// xfail-stage0
 // -*- rust -*-
 
 type compare[T] = fn(&T t1, &T t2) -> bool;
@@ -14,7 +13,7 @@ fn test_generic[T](&T expected, &compare[T] eq) {
 }
 
 fn test_vec() {
-  fn compare_vec(vec[int] v1, vec[int] v2) -> bool {
+  fn compare_vec(&vec[int] v1, &vec[int] v2) -> bool {
     ret v1 == v2;
   }
   auto eq = bind compare_vec(_, _);
