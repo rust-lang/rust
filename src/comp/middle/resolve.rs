@@ -407,9 +407,11 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns)
                     case (ast.mie_tag_variant(?item, ?variant_idx)) {
                         alt (item.node) {
                             case (ast.item_tag(_, ?variants, _, ?tid, _)) {
-                                auto vid = variants.(variant_idx).node.id;
-                                auto t = ast.def_variant(tid, vid);
-                                ret some[def_wrap](def_wrap_other(t));
+                                if (visible(e, i, m)) {
+                                    auto vid = variants.(variant_idx).node.id;
+                                    auto t = ast.def_variant(tid, vid);
+                                    ret some[def_wrap](def_wrap_other(t));
+                                }
                             }
                             case (_) {
                                 log_err "tag item not actually a tag";
