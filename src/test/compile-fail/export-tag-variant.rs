@@ -1,15 +1,17 @@
 // xfail-boot
 // error-pattern: unresolved name
+
 mod foo {
   export x;
-  fn x(int y) {
-    log y;
+
+  fn x() {
   }
-  fn z(int y) {
-    log y;
+
+  tag y {
+    y1;
   }
 }
 
 fn main() {
-  foo.z(10);
+  auto z = foo.y1;
 }
