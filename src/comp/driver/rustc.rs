@@ -234,8 +234,8 @@ fn main(vec[str] args) {
             case (none[str]) {
                 let vec[str] parts = _str.split(ifile, '.' as u8);
                 _vec.pop[str](parts);
-                parts += vec(".bc");
-                auto ofile = _str.concat(parts);
+                parts += vec("bc");
+                auto ofile = _str.connect(parts, ".");
                 compile_input(sess, env, ifile, ofile, shared,
                               optimize, verify, save_temps, ot,
                               time_passes, run_typestate,
