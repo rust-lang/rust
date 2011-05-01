@@ -92,7 +92,7 @@ Comparison with rustboot
 
 Rustc is written in a more "functional" style than rustboot; each rustc pass
 tends to depend only on the AST it's given as input, which it does not mutate.
-Calculations flow from one pase to another by repeatedly rebuilding the AST
+Calculations flow from one phase to another by repeatedly rebuilding the AST
 with additional annotations.
 
 Rustboot normalizes to a statement-centric AST. Rustc uses an
