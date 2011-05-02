@@ -3,7 +3,7 @@
 type point = rec(int x, int y, int z);
 
 fn f(&point p) {
-  assert (p.z == 12);
+  check (p.z == 12);
 }
 
 fn main() {

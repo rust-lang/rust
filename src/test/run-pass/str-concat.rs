@@ -5,5 +5,5 @@ fn main() {
   let str b = "world";
   let str s = a + b;
   log s;
-  assert (s.(9) == ('d' as u8));
+  check(s.(9) == ('d' as u8));
 }

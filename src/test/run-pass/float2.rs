@@ -12,13 +12,13 @@ fn main() {
   auto j = 3.1e+9;
   auto k = 3.2e-10;
  
-  assert (a == b);
-  assert (c < b);
-  assert (c == d);
-  assert (e < g);
-  assert (f < h);
-  assert (g == 1000000.0f32);
-  assert (h == i);
-  assert (j > k);
-  assert (k < a);
+  check(a == b);
+  check(c < b);
+  check(c == d);
+  check(e < g);
+  check(f < h);
+  check(g == 1000000.0f32);
+  check(h == i);
+  check(j > k);
+  check(k < a);
 }

@@ -14,9 +14,9 @@ fn test_rec() {
   let r r1;
   r1 <- po;
 
-  assert (r1.val0 == 0);
-  assert (r1.val1 == 1u8);
-  assert (r1.val2 == '2');
+  check (r1.val0 == 0);
+  check (r1.val1 == 1u8);
+  check (r1.val2 == '2');
 }
 
 fn test_vec() {
@@ -29,9 +29,9 @@ fn test_vec() {
   let vec[int] v1;
   v1 <- po;
 
-  assert (v1.(0) == 0);
-  assert (v1.(1) == 1);
-  assert (v1.(2) == 2);
+  check (v1.(0) == 0);
+  check (v1.(1) == 1);
+  check (v1.(2) == 2);
 }
 
 fn test_str() {
@@ -44,10 +44,10 @@ fn test_str() {
   let str s1;
   s1 <- po;
 
-  assert (s1.(0) as u8 == 't' as u8);
-  assert (s1.(1) as u8 == 'e' as u8);
-  assert (s1.(2) as u8 == 's' as u8);
-  assert (s1.(3) as u8 == 't' as u8);
+  check (s1.(0) as u8 == 't' as u8);
+  check (s1.(1) as u8 == 'e' as u8);
+  check (s1.(2) as u8 == 's' as u8);
+  check (s1.(3) as u8 == 't' as u8);
 }
 
 fn test_tup() {
@@ -62,9 +62,9 @@ fn test_tup() {
   let t t1;
   t1 <- po;
 
-  assert (t0._0 == 0);
-  assert (t0._1 == 1u8);
-  assert (t0._2 == '2');
+  check (t0._0 == 0);
+  check (t0._1 == 1u8);
+  check (t0._2 == '2');
 }
 
 fn test_tag() {
@@ -84,11 +84,11 @@ fn test_tag() {
   let t t1;
 
   t1 <- po;
-  assert (t1 == tag1);
+  check (t1 == tag1);
   t1 <- po;
-  assert (t1 == tag2(10));
+  check (t1 == tag2(10));
   t1 <- po;
-  assert (t1 == tag3(10, 11u8, 'A'));
+  check (t1 == tag3(10, 11u8, 'A'));
 }
 
 fn test_chan() {
@@ -109,7 +109,7 @@ fn test_chan() {
   let int i;
   i <- po0;
 
-  assert (i == 10);
+  check (i == 10);
 }
 
 fn main() {

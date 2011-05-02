@@ -196,10 +196,7 @@ type ast_fold[ENV] =
          @expr e, ann a) -> @expr)                fold_expr_log,
 
      (fn(&ENV e, &span sp,
-         @expr e, ann a) -> @expr)                fold_expr_check,
-
-     (fn(&ENV e, &span sp,
-         @expr e, ann a) -> @expr)                fold_expr_assert,
+         @expr e, ann a) -> @expr)                fold_expr_check_expr,
 
      (fn(&ENV e, &span sp,
          ann a) -> @expr)                         fold_expr_port,
@@ -799,16 +796,10 @@ fn fold_expr[ENV](&ENV env, ast_fold[ENV] fld, &@expr e) -> @expr {
             ret fld.fold_expr_log(env_, e.span, l, ee, t2);
         }
 
-        case (ast.expr_check(?x, ?t)) {
+        case (ast.expr_check_expr(?x, ?t)) {
             auto ee = fold_expr(env_, fld, x);
             auto t2 = fld.fold_ann(env_, t);
-            ret fld.fold_expr_check(env_, e.span, ee, t2);
-        }
-
-        case (ast.expr_assert(?x, ?t)) {
-            auto ee = fold_expr(env_, fld, x);
-            auto t2 = fld.fold_ann(env_, t);
-            ret fld.fold_expr_assert(env_, e.span, ee, t2);
+            ret fld.fold_expr_check_expr(env_, e.span, ee, t2);
         }
 
         case (ast.expr_port(?t)) {
@@ -1389,14 +1380,9 @@ fn identity_fold_expr_log[ENV](&ENV e, &span sp, int lvl, @expr x,
     ret @respan(sp, ast.expr_log(lvl, x, a));
 }
 
-fn identity_fold_expr_check[ENV](&ENV e, &span sp, @expr x, ann a)
+fn identity_fold_expr_check_expr[ENV](&ENV e, &span sp, @expr x, ann a)
     -> @expr {
-    ret @respan(sp, ast.expr_check(x, a));
-}
-
-fn identity_fold_expr_assert[ENV](&ENV e, &span sp, @expr x, ann a)
-    -> @expr {
-    ret @respan(sp, ast.expr_check(x, a));
+    ret @respan(sp, ast.expr_check_expr(x, a));
 }
 
 fn identity_fold_expr_port[ENV](&ENV e, &span sp, ann a) -> @expr {
@@ -1690,11 +1676,8 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_put    = bind identity_fold_expr_put[ENV](_,_,_,_),
          fold_expr_be     = bind identity_fold_expr_be[ENV](_,_,_,_),
          fold_expr_log    = bind identity_fold_expr_log[ENV](_,_,_,_,_),
-         fold_expr_check
-         = bind identity_fold_expr_check[ENV](_,_,_,_),
-         fold_expr_assert
-         = bind identity_fold_expr_assert[ENV](_,_,_,_),
-              
+         fold_expr_check_expr
+         = bind identity_fold_expr_check_expr[ENV](_,_,_,_),
          fold_expr_port   = bind identity_fold_expr_port[ENV](_,_,_),
          fold_expr_chan   = bind identity_fold_expr_chan[ENV](_,_,_,_),
 

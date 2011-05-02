@@ -7,5 +7,5 @@ fn f() -> int {
 fn main() {
   let fn() -> int g = f;
   let int i = g();
-  assert (i == 42);
+  check(i == 42);
 }

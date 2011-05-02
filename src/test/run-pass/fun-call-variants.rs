@@ -13,7 +13,7 @@ fn main() {
   let int a = direct(3); // direct
   //let int b = ho(direct); // indirect unbound
   let int c = ho(bind direct(_)); // indirect bound
-  //assert (a == b);
-  //assert (b == c);
+  //check(a == b);
+  //check(b == c);
 }
 

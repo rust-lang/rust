@@ -9,7 +9,7 @@ fn test_box() {
       @100
     }
   };
-  assert (*res == 100);
+  check (*res == 100);
 }
 
 fn test_str() {
@@ -18,7 +18,7 @@ fn test_str() {
       "happy"
     }
   };
-  assert (res == "happy");
+  check (res == "happy");
 }
 
 fn main() {

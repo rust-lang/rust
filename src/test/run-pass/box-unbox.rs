@@ -6,5 +6,5 @@ fn main() {
   let int foo = 17;
   let box[int] bfoo = tup(@foo);
   log "see what's in our box";
-  assert (unbox[int](bfoo) == foo);
+  check (unbox[int](bfoo) == foo);
 }

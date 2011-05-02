@@ -8,6 +8,6 @@ fn main() {
   let int foo = 17;
   let tupbox[int] tbfoo = tuplift[int](foo);
   let recbox[int] rbfoo = reclift[int](foo);
-  assert (tbfoo._0 == foo);
-  assert (rbfoo.x == foo);
+  check (tbfoo._0 == foo);
+  check (rbfoo.x == foo);
 }

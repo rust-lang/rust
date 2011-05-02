@@ -17,16 +17,16 @@ fn main() {
 
    y = id[int](x);
    log y;
-   assert (x == y);
+   check (x == y);
 
    b = id[char](a);
    log b;
-   assert (a == b);
+   check (a == b);
 
    q = id[triple](p);
    x = p._2;
    y = q._2;
    log y;
-   assert (x == y);
+   check (x == y);
 
 }

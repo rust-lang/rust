@@ -32,8 +32,8 @@ fn main() {
   let color gray = rgb(127, 127, 127);
   let color clear = rgba(50, 150, 250, 0);
   let color red = hsl(0, 255, 255);
-  assert (process(gray) == 127);
-  assert (process(clear) == 0);
-  assert (process(red) == 255);
+  check (process(gray) == 127);
+  check (process(clear) == 0);
+  check (process(red) == 255);
 }
 

@@ -92,7 +92,6 @@
 
                 ("type", TYPE);
                 ("check", CHECK);
-                ("assert", ASSERT); 
                 ("claim", CLAIM);
                 ("prove", PROVE);
 

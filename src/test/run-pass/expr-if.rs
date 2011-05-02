@@ -5,12 +5,12 @@
 
 fn test_if() {
   let bool res = if (true) { true } else { false };
-  assert (res);
+  check (res);
 }
 
 fn test_else() {
   let bool res = if (false) { false } else { true };
-  assert (res);
+  check (res);
 }
 
 fn test_elseif1() {
@@ -21,7 +21,7 @@ fn test_elseif1() {
   } else {
     false
   };
-  assert (res);
+  check (res);
 }
 
 fn test_elseif2() {
@@ -32,7 +32,7 @@ fn test_elseif2() {
   } else {
     false
   };
-  assert (res);
+  check (res);
 }
 
 fn test_elseif3() {
@@ -43,12 +43,12 @@ fn test_elseif3() {
   } else {
     true
   };
-  assert (res);
+  check (res);
 }
 
 fn test_inferrence() {
   auto res = if (true) { true } else { false };
-  assert (res);
+  check (res);
 }
 
 fn test_if_as_if_condition() {
@@ -57,14 +57,14 @@ fn test_if_as_if_condition() {
   } else {
     false
   };
-  assert (res1);
+  check (res1);
 
   auto res2 = if (if (true) { false } else { true }) {
     false
   } else {
     true
   };
-  assert (res2);
+  check (res2);
 }
 
 fn test_if_as_block_result() {
@@ -77,7 +77,7 @@ fn test_if_as_block_result() {
   } else {
     false
   };
-  assert (res);
+  check (res);
 }
 
 fn main() {

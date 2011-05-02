@@ -63,7 +63,7 @@ mod Encode {
     );
 
     fn ty_str(@ctxt cx, ty.t t) -> str {
-        assert (! cx.use_abbrevs);
+        check (! cx.use_abbrevs);
         auto sw = io.string_writer();
         enc_ty(sw.get_writer(), cx, t);
         ret sw.get_str();

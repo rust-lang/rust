@@ -4,6 +4,6 @@ tag taggy {
 }
 
 fn main() {
-    assert (bar <= bar);
+    check (bar <= bar);
 }
 

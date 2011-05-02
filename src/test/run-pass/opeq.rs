@@ -5,18 +5,18 @@ fn main() {
 
   x *= 2;
   log x;
-  assert (x == 2);
+  check (x == 2);
 
   x += 3;
   log x;
-  assert (x == 5);
+  check (x == 5);
 
   x *= x;
   log x;
-  assert (x == 25);
+  check (x == 25);
 
   x /= 5;
   log x;
-  assert (x == 5);
+  check (x == 5);
 }
 

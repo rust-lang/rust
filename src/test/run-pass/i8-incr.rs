@@ -5,5 +5,5 @@ fn main() {
   let i8 y = -12i8;
   x = x + 1i8;
   x = x - 1i8;
-  assert (x == y);
+  check(x == y);
 }

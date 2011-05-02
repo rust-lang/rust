@@ -4,5 +4,5 @@ fn foo(@int a, @int b) -> int {
 
 fn main() {
   auto f1 = bind foo(@10, @12);
-  assert (f1() == 22);
+  check(f1() == 22);
 }

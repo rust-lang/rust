@@ -7,7 +7,7 @@ fn test1() {
   let str s = "hello";
   s += "world";
   log s;
-  assert (s.(9) == ('d' as u8));
+  check(s.(9) == ('d' as u8));
 }
 
 fn test2() {
@@ -20,8 +20,8 @@ fn test2() {
   log a;
   log b;
 
-  assert (_str.eq(a, "abcABCabc"));
-  assert (_str.eq(b, "ABCabcABC"));
+  check (_str.eq(a, "abcABCabc"));
+  check (_str.eq(b, "ABCabcABC"));
 }
 
 fn main() {

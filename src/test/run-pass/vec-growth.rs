@@ -4,10 +4,10 @@ fn main() {
     v += vec(3);
     v += vec(4);
     v += vec(5);
-    assert (v.(0) == 1);
-    assert (v.(1) == 2);
-    assert (v.(2) == 3);
-    assert (v.(3) == 4);
-    assert (v.(4) == 5);
+    check (v.(0) == 1);
+    check (v.(1) == 2);
+    check (v.(2) == 3);
+    check (v.(3) == 4);
+    check (v.(4) == 5);
 }
 

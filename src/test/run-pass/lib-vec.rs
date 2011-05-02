@@ -2,10 +2,10 @@ use std;
 
 fn test_init_elt() {
   let vec[uint] v = std._vec.init_elt[uint](5u, 3u);
-  assert (std._vec.len[uint](v) == 3u);
-  assert (v.(0) == 5u);
-  assert (v.(1) == 5u);
-  assert (v.(2) == 5u);
+  check (std._vec.len[uint](v) == 3u);
+  check (v.(0) == 5u);
+  check (v.(1) == 5u);
+  check (v.(2) == 5u);
 }
 
 fn id(uint x) -> uint {
@@ -14,20 +14,20 @@ fn id(uint x) -> uint {
 fn test_init_fn() {
   let fn(uint)->uint op = id;
   let vec[uint] v = std._vec.init_fn[uint](op, 5u);
-  assert (std._vec.len[uint](v) == 5u);
-  assert (v.(0) == 0u);
-  assert (v.(1) == 1u);
-  assert (v.(2) == 2u);
-  assert (v.(3) == 3u);
-  assert (v.(4) == 4u);
+  check (std._vec.len[uint](v) == 5u);
+  check (v.(0) == 0u);
+  check (v.(1) == 1u);
+  check (v.(2) == 2u);
+  check (v.(3) == 3u);
+  check (v.(4) == 4u);
 }
 
 fn test_slice() {
   let vec[int] v = vec(1,2,3,4,5);
   auto v2 = std._vec.slice[int](v, 2u, 4u);
-  assert (std._vec.len[int](v2) == 2u);
-  assert (v2.(0) == 3);
-  assert (v2.(1) == 4);
+  check (std._vec.len[int](v2) == 2u);
+  check (v2.(0) == 3);
+  check (v2.(1) == 4);
 }
 
 fn test_map() {
@@ -37,7 +37,7 @@ fn test_map() {
   let vec[int] s = std._vec.map[int, int](op, v);
   let int i = 0;
   while (i < 5) {
-    assert (v.(i) * v.(i) == s.(i));
+    check (v.(i) * v.(i) == s.(i));
     i += 1;
   }
 }
@@ -51,7 +51,7 @@ fn test_map2() {
 
   auto i = 0;
   while (i < 5) {
-    assert (v0.(i) * v1.(i) == u.(i));
+    check (v0.(i) * v1.(i) == u.(i));
     i += 1;
   }
 }

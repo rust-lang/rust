@@ -1,7 +1,7 @@
 // -*- rust -*-
 
 fn checktrue(bool res) -> bool {
-  assert (res);
+  check(res);
   ret true;
 }
 

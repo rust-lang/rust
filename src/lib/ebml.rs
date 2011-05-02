@@ -99,7 +99,7 @@ fn doc_data(doc d) -> vec[u8] {
 
 fn be_uint_from_bytes(vec[u8] data, uint start, uint size) -> uint {
     auto sz = size;
-    assert (sz <= 4u);
+    check (sz <= 4u);
     auto val = 0u;
     auto pos = start;
     while (sz > 0u) {

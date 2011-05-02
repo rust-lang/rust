@@ -15,7 +15,7 @@ fn f(int x) -> int {
   }
 }
 fn main () {
-  assert (f(5) == 120);
+  check (f(5) == 120);
   // log "all done";
 }
 

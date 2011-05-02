@@ -15,10 +15,10 @@ type small = obj {
 fn main() {
 
   let big b = big();
-  assert (b.one() == 1);
-  assert (b.two() == 2);
-  assert (b.three() == 3);
+  check (b.one() == 1);
+  check (b.two() == 2);
+  check (b.three() == 3);
 
   let small s = b as small;
-  assert (s.one() == 1);
+  check (s.one() == 1);
 }

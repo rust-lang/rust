@@ -6,7 +6,7 @@
 fn main() {
   let vec[int] v = vec(10);
   let int x = 0;
-  assert (v.(x) == 10);
+  check (v.(x) == 10);
   // Bounds-check failure.
-  assert (v.(x + 2) == 20);
+  check (v.(x + 2) == 20);
 }

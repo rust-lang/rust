@@ -16,8 +16,8 @@ fn main() {
         }
     }
 
-    assert (a.(0) == 0);
-    assert (a.(1) == 1);
-    assert (a.(2) == 10);
-    assert (a.(3) == 11);
+    check (a.(0) == 0);
+    check (a.(1) == 1);
+    check (a.(2) == 10);
+    check (a.(3) == 11);
 }

@@ -10,7 +10,7 @@ type path = str;
 
 fn dirname(path p) -> path {
     auto sep = path_sep();
-    assert (_str.byte_len(sep) == 1u);
+    check (_str.byte_len(sep) == 1u);
     let int i = _str.rindex(p, sep.(0));
     if (i == -1) {
         ret p;

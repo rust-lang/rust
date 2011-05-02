@@ -11,5 +11,5 @@ fn main() {
       break; 
     }
   }
-  assert (i == 95);
+  check(i == 95);
 }

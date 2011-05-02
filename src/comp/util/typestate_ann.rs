@@ -85,7 +85,7 @@ fn intersect(&precond p1, &precond p2) -> bool {
 
 fn pps_len(&pre_and_post p) -> uint {
   // gratuitous check
-  assert (p.precondition.nbits == p.postcondition.nbits);
+  check (p.precondition.nbits == p.postcondition.nbits);
   ret p.precondition.nbits;
 }
 
@@ -129,7 +129,7 @@ fn set_prestate(@ts_ann a, &prestate p) -> bool {
 
 // Sets all the bits in a's postcondition to equal the
 // corresponding bit in p's postcondition.
-fn set_poststate(@ts_ann a, &poststate p) -> bool {
+fn set_poststate(&ts_ann a, &poststate p) -> bool {
   ret bitv.copy(a.states.poststate, p);
 }
 

@@ -199,14 +199,6 @@ and parse_stmts_including_none (ps:pstate) : Ast.stmt array =
           bump ps;
           expect ps SEMI;
           [| span ps apos (lexpos ps) Ast.STMT_cont |]
-      | ASSERT ->
-          bump ps;
-          let (stmts, expr) =
-             ctxt "stmts: check value" parse_expr ps
-          in
-              expect ps SEMI;
-              spans ps stmts apos (Ast.STMT_check_expr expr)
-(* leaving check as it is; adding assert as a synonym for the "old" check *)
       | CHECK ->
           bump ps;
           begin

@@ -5,125 +5,125 @@ import std.deque;
 
 fn test_simple() {
   let deque.t[int] d = deque.create[int]();
-  assert (d.size() == 0u);
+  check (d.size() == 0u);
   d.add_front(17);
   d.add_front(42);
   d.add_back(137);
-  assert (d.size() == 3u);
+  check (d.size() == 3u);
   d.add_back(137);
-  assert (d.size() == 4u);
+  check (d.size() == 4u);
 
   log d.peek_front();
-  assert (d.peek_front() == 42);
+  check (d.peek_front() == 42);
 
   log d.peek_back();
-  assert (d.peek_back() == 137);
+  check (d.peek_back() == 137);
 
   let int i = d.pop_front();
   log i;
-  assert (i == 42);
+  check (i == 42);
 
   i = d.pop_back();
   log i;
-  assert (i == 137);
+  check (i == 137);
 
   i = d.pop_back();
   log i;
-  assert (i == 137);
+  check (i == 137);
 
   i = d.pop_back();
   log i;
-  assert (i == 17);
+  check (i == 17);
 
-  assert (d.size() == 0u);
+  check (d.size() == 0u);
   d.add_back(3);
-  assert (d.size() == 1u);
+  check (d.size() == 1u);
   d.add_front(2);
-  assert (d.size() == 2u);
+  check (d.size() == 2u);
   d.add_back(4);
-  assert (d.size() == 3u);
+  check (d.size() == 3u);
   d.add_front(1);
-  assert (d.size() == 4u);
+  check (d.size() == 4u);
 
   log d.get(0);
   log d.get(1);
   log d.get(2);
   log d.get(3);
 
-  assert (d.get(0) == 1);
-  assert (d.get(1) == 2);
-  assert (d.get(2) == 3);
-  assert (d.get(3) == 4);
+  check (d.get(0) == 1);
+  check (d.get(1) == 2);
+  check (d.get(2) == 3);
+  check (d.get(3) == 4);
 }
 
 fn test_boxes(@int a, @int b, @int c, @int d) {
   let deque.t[@int] deq = deque.create[@int]();
-  assert (deq.size() == 0u);
+  check (deq.size() == 0u);
   deq.add_front(a);
   deq.add_front(b);
   deq.add_back(c);
-  assert (deq.size() == 3u);
+  check (deq.size() == 3u);
   deq.add_back(d);
-  assert (deq.size() == 4u);
+  check (deq.size() == 4u);
 
-  assert (deq.peek_front() == b);
-  assert (deq.peek_back() == d);
+  check (deq.peek_front() == b);
+  check (deq.peek_back() == d);
 
-  assert (deq.pop_front() == b);
-  assert (deq.pop_back() == d);
-  assert (deq.pop_back() == c);
-  assert (deq.pop_back() == a);
+  check (deq.pop_front() == b);
+  check (deq.pop_back() == d);
+  check (deq.pop_back() == c);
+  check (deq.pop_back() == a);
 
-  assert (deq.size() == 0u);
+  check (deq.size() == 0u);
   deq.add_back(c);
-  assert (deq.size() == 1u);
+  check (deq.size() == 1u);
   deq.add_front(b);
-  assert (deq.size() == 2u);
+  check (deq.size() == 2u);
   deq.add_back(d);
-  assert (deq.size() == 3u);
+  check (deq.size() == 3u);
   deq.add_front(a);
-  assert (deq.size() == 4u);
+  check (deq.size() == 4u);
 
-  assert (deq.get(0) == a);
-  assert (deq.get(1) == b);
-  assert (deq.get(2) == c);
-  assert (deq.get(3) == d);
+  check (deq.get(0) == a);
+  check (deq.get(1) == b);
+  check (deq.get(2) == c);
+  check (deq.get(3) == d);
 }
 
 type eqfn[T] = fn(&T a, &T b) -> bool;
 
 fn test_parameterized[T](eqfn[T] e, &T a, &T b, &T c, &T d) {
   let deque.t[T] deq = deque.create[T]();
-  assert (deq.size() == 0u);
+  check (deq.size() == 0u);
   deq.add_front(a);
   deq.add_front(b);
   deq.add_back(c);
-  assert (deq.size() == 3u);
+  check (deq.size() == 3u);
   deq.add_back(d);
-  assert (deq.size() == 4u);
+  check (deq.size() == 4u);
 
-  assert (e(deq.peek_front(), b));
-  assert (e(deq.peek_back(), d));
+  check (e(deq.peek_front(), b));
+  check (e(deq.peek_back(), d));
 
-  assert (e(deq.pop_front(), b));
-  assert (e(deq.pop_back(), d));
-  assert (e(deq.pop_back(), c));
-  assert (e(deq.pop_back(), a));
+  check (e(deq.pop_front(), b));
+  check (e(deq.pop_back(), d));
+  check (e(deq.pop_back(), c));
+  check (e(deq.pop_back(), a));
 
-  assert (deq.size() == 0u);
+  check (deq.size() == 0u);
   deq.add_back(c);
-  assert (deq.size() == 1u);
+  check (deq.size() == 1u);
   deq.add_front(b);
-  assert (deq.size() == 2u);
+  check (deq.size() == 2u);
   deq.add_back(d);
-  assert (deq.size() == 3u);
+  check (deq.size() == 3u);
   deq.add_front(a);
-  assert (deq.size() == 4u);
+  check (deq.size() == 4u);
 
-  assert (e(deq.get(0), a));
-  assert (e(deq.get(1), b));
-  assert (e(deq.get(2), c));
-  assert (e(deq.get(3), d));
+  check (e(deq.get(0), a));
+  check (e(deq.get(1), b));
+  check (e(deq.get(2), c));
+  check (e(deq.get(3), d));
 }
 
 tag taggy {

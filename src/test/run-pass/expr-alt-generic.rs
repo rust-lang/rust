@@ -9,7 +9,7 @@ fn test_generic[T](&T expected, &compare[T] eq) {
       expected
     }
   };
-  assert (eq(expected, actual));
+  check (eq(expected, actual));
 }
 
 fn test_bool() {

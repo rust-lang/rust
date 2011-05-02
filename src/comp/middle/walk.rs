@@ -392,10 +392,7 @@ fn walk_expr(&ast_visitor v, @ast.expr e) {
         case (ast.expr_log(_,?x, _)) {
             walk_expr(v, x);
         }
-        case (ast.expr_check(?x, _)) {
-            walk_expr(v, x);
-        }
-        case (ast.expr_assert(?x, _)) {
+        case (ast.expr_check_expr(?x, _)) {
             walk_expr(v, x);
         }
         case (ast.expr_port(_)) { }

@@ -8,7 +8,7 @@ fn main() {
   y <- p;
   log "received";
   log y;
-  assert (y == 10);
+  check (y == 10);
 }
 
 fn child(chan[int] c) {

@@ -9,7 +9,7 @@ fn f() {
   auto x = red(1,2);
   auto y = green;
   // FIXME: needs structural equality test working.
-  // assert (x != y);
+  // check (x != y);
 }
 
 fn main() {

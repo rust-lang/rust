@@ -621,7 +621,7 @@ fn parse_path(parser p, greed g) -> ast.path {
                 if (p.peek() == token.DOT) {
                     if (g == GREEDY) {
                         p.bump();
-                        assert (is_ident(p.peek()));
+                        check (is_ident(p.peek()));
                     } else {
                         more = false;
                     }
@@ -816,22 +816,19 @@ fn parse_bottom_expr(parser p) -> @ast.expr {
             ex = ast.expr_log(0, e, ast.ann_none);
         }
 
-        case (token.ASSERT) {
-            p.bump();
-            auto e = parse_expr(p);
-            auto hi = e.span.hi;
-            ex = ast.expr_assert(e, ast.ann_none);
-        }
-
         case (token.CHECK) {
             p.bump();
-            /* Should be a predicate (pure boolean function) applied to 
-             arguments that are all either slot variables or literals.
-            but the typechecker enforces that. */
-            auto e = parse_expr(p);
-            auto hi = e.span.hi;
-            ex = ast.expr_check(e, ast.ann_none);
-        } 
+            alt (p.peek()) {
+                case (token.LPAREN) {
+                    auto e = parse_expr(p);
+                    auto hi = e.span.hi;
+                    ex = ast.expr_check_expr(e, ast.ann_none);
+                }
+                case (_) {
+                    p.get_session().unimpl("constraint-check stmt");
+                }
+            }
+        }
 
         case (token.RET) {
             p.bump();
@@ -940,7 +937,7 @@ fn expand_syntax_ext(parser p, ast.span sp,
                      &ast.path path, vec[@ast.expr] args,
                      option.t[str] body) -> ast.expr_ {
 
-    assert (_vec.len[ast.ident](path.node.idents) > 0u);
+    check (_vec.len[ast.ident](path.node.idents) > 0u);
     auto extname = path.node.idents.(0);
     if (_str.eq(extname, "fmt")) {
         auto expanded = extfmt.expand_syntax_ext(args, body);
@@ -1676,8 +1673,7 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_put(_,_))        { ret true; }
                 case (ast.expr_be(_,_))         { ret true; }
                 case (ast.expr_log(_,_,_))        { ret true; }
-                case (ast.expr_check(_,_)) { ret true; }
-                case (ast.expr_assert(_,_)) { ret true; }
+                case (ast.expr_check_expr(_,_)) { ret true; }
             }
         }
         // We should not be calling this on a cdir.
@@ -2161,24 +2157,24 @@ fn parse_item(parser p) -> @ast.item {
 
     alt (p.peek()) {
         case (token.CONST) {
-            assert (lyr == ast.layer_value);
+            check (lyr == ast.layer_value);
             ret parse_item_const(p);
         }
 
         case (token.FN) {
-            assert (lyr == ast.layer_value);
+            check (lyr == ast.layer_value);
             ret parse_item_fn_or_iter(p);
         }
         case (token.ITER) {
-            assert (lyr == ast.layer_value);
+            check (lyr == ast.layer_value);
             ret parse_item_fn_or_iter(p);
         }
         case (token.MOD) {
-            assert (lyr == ast.layer_value);
+            check (lyr == ast.layer_value);
             ret parse_item_mod(p);
         }
         case (token.NATIVE) {
-            assert (lyr == ast.layer_value);
+            check (lyr == ast.layer_value);
             ret parse_item_native_mod(p);
         }
         case (token.TYPE) {

@@ -6,9 +6,9 @@ fn main() {
 
   ch <| 10;
   let int i <- po;
-  assert (i == 10);
+  check (i == 10);
 
   ch <| 11;
   auto j <- po;
-  assert (j == 11);
+  check (j == 11);
 }

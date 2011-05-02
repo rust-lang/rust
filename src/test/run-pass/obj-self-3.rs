@@ -19,11 +19,11 @@ fn main() {
   let int i = 0;
 
   i = a.m1(i);
-  assert (i == 1);
+  check (i == 1);
   i = a.m2(i);
-  assert (i == 2);
+  check (i == 2);
   i = a.m3(i);
-  assert (i == 4);
+  check (i == 4);
 }
 
 

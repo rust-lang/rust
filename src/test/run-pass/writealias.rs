@@ -9,5 +9,5 @@ fn f(& mutable point p) {
 fn main() {
   let point x = rec(x=10, y=11, mutable z=12);
   f(x);
-  assert (x.z == 13);
+  check (x.z == 13);
 }

@@ -6,7 +6,7 @@ import std._str;
 fn test(str actual, str expected) {
   log actual;
   log expected;
-  assert (_str.eq(actual, expected));
+  check (_str.eq(actual, expected));
 }
 
 fn main() {

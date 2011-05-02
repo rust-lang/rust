@@ -662,7 +662,7 @@ fn fold_pat_tag(&env e, &span sp, ast.path p, vec[@ast.pat] args,
 fn fold_expr_path(&env e, &span sp, &ast.path p, &option.t[def] d,
                   ann a) -> @ast.expr {
     auto n_idents = _vec.len[ast.ident](p.node.idents);
-    assert (n_idents != 0u);
+    check (n_idents != 0u);
 
     auto index = new_def_hash[def_wrap]();
     auto d = find_final_def(e, index, sp, p.node.idents, ns_value,

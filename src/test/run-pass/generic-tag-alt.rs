@@ -10,7 +10,7 @@ fn altfoo[T](&foo[T] f) {
       hit = true;
     }
   }
-  assert (hit);
+  check (hit);
 }
 
 fn main() {

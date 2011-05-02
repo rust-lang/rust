@@ -29,6 +29,6 @@ fn main() {
   log "parent waiting for shutdown";
   i <- p;
   log "received int";
-  assert (i == 10);
+  check (i == 10);
   log "int is OK, child-dtor ran as expected";
 }

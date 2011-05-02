@@ -5,7 +5,7 @@ fn main() {
   let vec[int] b = vec(6,7,8,9,0);
   let vec[int] v = a + b;
   log v.(9);
-  assert (v.(0) == 1);
-  assert (v.(7) == 8);
-  assert (v.(9) == 0);
+  check(v.(0) == 1);
+  check(v.(7) == 8);
+  check(v.(9) == 0);
 }

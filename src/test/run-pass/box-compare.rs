@@ -1,6 +1,6 @@
 // xfail-boot
 fn main() {
-  assert (@1 < @3);
-  assert (@@"hello " > @@"hello");
-  assert (@@@"hello" != @@@"there");
+  check (@1 < @3);
+  check (@@"hello " > @@"hello");
+  check (@@@"hello" != @@@"there");
 }

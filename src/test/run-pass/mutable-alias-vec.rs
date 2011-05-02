@@ -13,5 +13,5 @@ fn main() {
   grow(v);
   auto len = std._vec.len[int](v);
   log len;
-  assert (len == (3 as uint));
+  check (len == (3 as uint));
 }

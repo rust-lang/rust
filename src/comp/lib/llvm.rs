@@ -861,19 +861,19 @@ obj builder(BuilderRef B, @mutable bool terminated) {
 
     /* Terminators */
     fn RetVoid()  -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         *terminated = true;
         ret llvm.LLVMBuildRetVoid(B);
     }
 
     fn Ret(ValueRef V) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         *terminated = true;
         ret llvm.LLVMBuildRet(B, V);
     }
 
     fn AggregateRet(vec[ValueRef] RetVals) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         *terminated = true;
         ret llvm.LLVMBuildAggregateRet(B,
                                        _vec.buf[ValueRef](RetVals),
@@ -881,26 +881,26 @@ obj builder(BuilderRef B, @mutable bool terminated) {
     }
 
     fn Br(BasicBlockRef Dest) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         *terminated = true;
         ret llvm.LLVMBuildBr(B, Dest);
     }
 
     fn CondBr(ValueRef If, BasicBlockRef Then,
               BasicBlockRef Else) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         *terminated = true;
         ret llvm.LLVMBuildCondBr(B, If, Then, Else);
     }
 
     fn Switch(ValueRef V, BasicBlockRef Else, uint NumCases) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         *terminated = true;
         ret llvm.LLVMBuildSwitch(B, V, Else, NumCases);
     }
 
     fn IndirectBr(ValueRef Addr, uint NumDests) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         *terminated = true;
         ret llvm.LLVMBuildIndirectBr(B, Addr, NumDests);
     }
@@ -909,7 +909,7 @@ obj builder(BuilderRef B, @mutable bool terminated) {
               vec[ValueRef] Args,
               BasicBlockRef Then,
               BasicBlockRef Catch) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         *terminated = true;
         ret llvm.LLVMBuildInvoke(B, Fn,
                                  _vec.buf[ValueRef](Args),
@@ -919,209 +919,209 @@ obj builder(BuilderRef B, @mutable bool terminated) {
     }
 
     fn Unwind() -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         *terminated = true;
         ret llvm.LLVMBuildUnwind(B);
     }
 
     fn Unreachable() -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         *terminated = true;
         ret llvm.LLVMBuildUnreachable(B);
     }
 
     /* Arithmetic */
     fn Add(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildAdd(B, LHS, RHS, _str.buf(""));
     }
 
     fn NSWAdd(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildNSWAdd(B, LHS, RHS, _str.buf(""));
     }
 
     fn NUWAdd(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildNUWAdd(B, LHS, RHS, _str.buf(""));
     }
 
     fn FAdd(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildFAdd(B, LHS, RHS, _str.buf(""));
     }
 
     fn Sub(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildSub(B, LHS, RHS, _str.buf(""));
     }
 
     fn NSWSub(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildNSWSub(B, LHS, RHS, _str.buf(""));
     }
 
     fn NUWSub(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildNUWSub(B, LHS, RHS, _str.buf(""));
     }
 
     fn FSub(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildFSub(B, LHS, RHS, _str.buf(""));
     }
 
     fn Mul(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildMul(B, LHS, RHS, _str.buf(""));
     }
 
     fn NSWMul(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildNSWMul(B, LHS, RHS, _str.buf(""));
     }
 
     fn NUWMul(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildNUWMul(B, LHS, RHS, _str.buf(""));
     }
 
     fn FMul(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildFMul(B, LHS, RHS, _str.buf(""));
     }
 
     fn UDiv(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildUDiv(B, LHS, RHS, _str.buf(""));
     }
 
     fn SDiv(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildSDiv(B, LHS, RHS, _str.buf(""));
     }
 
     fn ExactSDiv(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildExactSDiv(B, LHS, RHS, _str.buf(""));
     }
 
     fn FDiv(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildFDiv(B, LHS, RHS, _str.buf(""));
     }
 
     fn URem(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildURem(B, LHS, RHS, _str.buf(""));
     }
 
     fn SRem(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildSRem(B, LHS, RHS, _str.buf(""));
     }
 
     fn FRem(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildFRem(B, LHS, RHS, _str.buf(""));
     }
 
     fn Shl(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildShl(B, LHS, RHS, _str.buf(""));
     }
 
     fn LShr(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildLShr(B, LHS, RHS, _str.buf(""));
     }
 
     fn AShr(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildAShr(B, LHS, RHS, _str.buf(""));
     }
 
     fn And(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildAnd(B, LHS, RHS, _str.buf(""));
     }
 
     fn Or(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildOr(B, LHS, RHS, _str.buf(""));
     }
 
     fn Xor(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildXor(B, LHS, RHS, _str.buf(""));
     }
 
     fn BinOp(Opcode Op, ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildBinOp(B, Op, LHS, RHS, _str.buf(""));
     }
 
     fn Neg(ValueRef V) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildNeg(B, V, _str.buf(""));
     }
 
     fn NSWNeg(ValueRef V) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildNSWNeg(B, V, _str.buf(""));
     }
 
     fn NUWNeg(ValueRef V) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildNUWNeg(B, V, _str.buf(""));
     }
     fn FNeg(ValueRef V) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildFNeg(B, V, _str.buf(""));
     }
     fn Not(ValueRef V) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildNot(B, V, _str.buf(""));
     }
 
     /* Memory */
     fn Malloc(TypeRef Ty) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildMalloc(B, Ty, _str.buf(""));
     }
 
     fn ArrayMalloc(TypeRef Ty, ValueRef Val) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildArrayMalloc(B, Ty, Val, _str.buf(""));
     }
 
     fn Alloca(TypeRef Ty) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildAlloca(B, Ty, _str.buf(""));
     }
 
     fn ArrayAlloca(TypeRef Ty, ValueRef Val) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildArrayAlloca(B, Ty, Val, _str.buf(""));
     }
 
     fn Free(ValueRef PointerVal) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildFree(B, PointerVal);
     }
 
     fn Load(ValueRef PointerVal) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildLoad(B, PointerVal, _str.buf(""));
     }
 
     fn Store(ValueRef Val, ValueRef Ptr) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildStore(B, Val, Ptr);
     }
 
     fn GEP(ValueRef Pointer, vec[ValueRef] Indices) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildGEP(B, Pointer,
                               _vec.buf[ValueRef](Indices),
                               _vec.len[ValueRef](Indices),
@@ -1129,7 +1129,7 @@ obj builder(BuilderRef B, @mutable bool terminated) {
     }
 
     fn InBoundsGEP(ValueRef Pointer, vec[ValueRef] Indices) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildInBoundsGEP(B, Pointer,
                                       _vec.buf[ValueRef](Indices),
                                       _vec.len[ValueRef](Indices),
@@ -1137,125 +1137,125 @@ obj builder(BuilderRef B, @mutable bool terminated) {
     }
 
     fn StructGEP(ValueRef Pointer, uint Idx) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildStructGEP(B, Pointer, Idx, _str.buf(""));
     }
 
     fn GlobalString(sbuf Str) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildGlobalString(B, Str, _str.buf(""));
     }
 
     fn GlobalStringPtr(sbuf Str) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildGlobalStringPtr(B, Str, _str.buf(""));
     }
 
     /* Casts */
     fn Trunc(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildTrunc(B, Val, DestTy, _str.buf(""));
     }
 
     fn ZExt(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildZExt(B, Val, DestTy, _str.buf(""));
     }
 
     fn SExt(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildSExt(B, Val, DestTy, _str.buf(""));
     }
 
     fn FPToUI(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildFPToUI(B, Val, DestTy, _str.buf(""));
     }
 
     fn FPToSI(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildFPToSI(B, Val, DestTy, _str.buf(""));
     }
 
     fn UIToFP(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildUIToFP(B, Val, DestTy, _str.buf(""));
     }
 
     fn SIToFP(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildSIToFP(B, Val, DestTy, _str.buf(""));
     }
 
     fn FPTrunc(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildFPTrunc(B, Val, DestTy, _str.buf(""));
     }
 
     fn FPExt(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildFPExt(B, Val, DestTy, _str.buf(""));
     }
 
     fn PtrToInt(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildPtrToInt(B, Val, DestTy, _str.buf(""));
     }
 
     fn IntToPtr(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildIntToPtr(B, Val, DestTy, _str.buf(""));
     }
 
     fn BitCast(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildBitCast(B, Val, DestTy, _str.buf(""));
     }
 
     fn ZExtOrBitCast(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildZExtOrBitCast(B, Val, DestTy, _str.buf(""));
     }
 
     fn SExtOrBitCast(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildSExtOrBitCast(B, Val, DestTy, _str.buf(""));
     }
 
     fn TruncOrBitCast(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildTruncOrBitCast(B, Val, DestTy, _str.buf(""));
     }
 
     fn Cast(Opcode Op, ValueRef Val, TypeRef DestTy, sbuf Name) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildCast(B, Op, Val, DestTy, _str.buf(""));
     }
 
     fn PointerCast(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildPointerCast(B, Val, DestTy, _str.buf(""));
     }
 
     fn IntCast(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildIntCast(B, Val, DestTy, _str.buf(""));
     }
 
     fn FPCast(ValueRef Val, TypeRef DestTy) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildFPCast(B, Val, DestTy, _str.buf(""));
     }
 
 
     /* Comparisons */
     fn ICmp(uint Op, ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildICmp(B, Op, LHS, RHS, _str.buf(""));
     }
 
     fn FCmp(uint Op, ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildFCmp(B, Op, LHS, RHS, _str.buf(""));
     }
 
@@ -1263,9 +1263,9 @@ obj builder(BuilderRef B, @mutable bool terminated) {
     /* Miscellaneous instructions */
     fn Phi(TypeRef Ty, vec[ValueRef] vals,
            vec[BasicBlockRef] bbs) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         auto phi = llvm.LLVMBuildPhi(B, Ty, _str.buf(""));
-        assert (_vec.len[ValueRef](vals) == _vec.len[BasicBlockRef](bbs));
+        check (_vec.len[ValueRef](vals) == _vec.len[BasicBlockRef](bbs));
         llvm.LLVMAddIncoming(phi,
                              _vec.buf[ValueRef](vals),
                              _vec.buf[BasicBlockRef](bbs),
@@ -1276,7 +1276,7 @@ obj builder(BuilderRef B, @mutable bool terminated) {
     fn AddIncomingToPhi(ValueRef phi,
                         vec[ValueRef] vals,
                         vec[BasicBlockRef] bbs) {
-        assert (_vec.len[ValueRef](vals) == _vec.len[BasicBlockRef](bbs));
+        check (_vec.len[ValueRef](vals) == _vec.len[BasicBlockRef](bbs));
         llvm.LLVMAddIncoming(phi,
                              _vec.buf[ValueRef](vals),
                              _vec.buf[BasicBlockRef](bbs),
@@ -1284,7 +1284,7 @@ obj builder(BuilderRef B, @mutable bool terminated) {
     }
 
     fn Call(ValueRef Fn, vec[ValueRef] Args) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildCall(B, Fn,
                                _vec.buf[ValueRef](Args),
                                _vec.len[ValueRef](Args),
@@ -1292,7 +1292,7 @@ obj builder(BuilderRef B, @mutable bool terminated) {
     }
 
     fn FastCall(ValueRef Fn, vec[ValueRef] Args) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         auto v = llvm.LLVMBuildCall(B, Fn,
                                     _vec.buf[ValueRef](Args),
                                     _vec.len[ValueRef](Args),
@@ -1302,65 +1302,65 @@ obj builder(BuilderRef B, @mutable bool terminated) {
     }
 
     fn Select(ValueRef If, ValueRef Then, ValueRef Else) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildSelect(B, If, Then, Else, _str.buf(""));
     }
 
     fn VAArg(ValueRef List, TypeRef Ty) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildVAArg(B, List, Ty, _str.buf(""));
     }
 
     fn ExtractElement(ValueRef VecVal, ValueRef Index) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildExtractElement(B, VecVal, Index, _str.buf(""));
     }
 
     fn InsertElement(ValueRef VecVal, ValueRef EltVal,
                      ValueRef Index) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildInsertElement(B, VecVal, EltVal, Index,
                                         _str.buf(""));
     }
 
     fn ShuffleVector(ValueRef V1, ValueRef V2, ValueRef Mask) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildShuffleVector(B, V1, V2, Mask, _str.buf(""));
     }
 
     fn ExtractValue(ValueRef AggVal, uint Index) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildExtractValue(B, AggVal, Index, _str.buf(""));
     }
 
     fn InsertValue(ValueRef AggVal, ValueRef EltVal,
                    uint Index) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildInsertValue(B, AggVal, EltVal, Index, _str.buf(""));
     }
 
     fn IsNull(ValueRef Val) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildIsNull(B, Val, _str.buf(""));
     }
 
     fn IsNotNull(ValueRef Val) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildIsNotNull(B, Val, _str.buf(""));
     }
 
     fn PtrDiff(ValueRef LHS, ValueRef RHS) -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         ret llvm.LLVMBuildPtrDiff(B, LHS, RHS, _str.buf(""));
     }
 
     fn Trap() -> ValueRef {
-        assert (!*terminated);
+        check (!*terminated);
         let BasicBlockRef BB = llvm.LLVMGetInsertBlock(B);
         let ValueRef FN = llvm.LLVMGetBasicBlockParent(BB);
         let ModuleRef M = llvm.LLVMGetGlobalParent(FN);
         let ValueRef T = llvm.LLVMGetNamedFunction(M, _str.buf("llvm.trap"));
-        assert (T as int != 0);
+        check (T as int != 0);
         let vec[ValueRef] Args = vec();
         ret llvm.LLVMBuildCall(B, T,
                                _vec.buf[ValueRef](Args),
@@ -1391,8 +1391,8 @@ state obj type_names(std.map.hashmap[TypeRef, str] type_names,
                     std.map.hashmap[str, TypeRef] named_types) {
 
     fn associate(str s, TypeRef t) {
-        assert (!named_types.contains_key(s));
-        assert (!type_names.contains_key(t));
+        check (!named_types.contains_key(s));
+        check (!type_names.contains_key(t));
         type_names.insert(t, s);
         named_types.insert(s, t);
     }

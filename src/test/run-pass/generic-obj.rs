@@ -21,8 +21,8 @@ fn main() {
   log b.get(0);
   log b.get(1);
   log b.get(2);
-  assert (b.get(0) == 1);
-  assert (b.get(1) == 2);
-  assert (b.get(2) == 3);
+  check (b.get(0) == 1);
+  check (b.get(1) == 2);
+  check (b.get(2) == 3);
   b.take2(0);
 }

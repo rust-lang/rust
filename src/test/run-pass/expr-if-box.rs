@@ -5,12 +5,12 @@
 
 fn test_box() {
   auto res = if (true) { @100 } else { @101 };
-  assert (*res == 100);
+  check (*res == 100);
 }
 
 fn test_str() {
   auto res = if (true) { "happy" } else { "sad" };
-  assert (res == "happy");
+  check (res == "happy");
 }
 
 fn main() {

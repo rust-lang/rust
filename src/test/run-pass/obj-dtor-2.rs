@@ -14,5 +14,5 @@ fn main() {
   {
     auto x = foo(mbox);
   }
-  assert ((*mbox) == 11);
+  check ((*mbox) == 11);
 }

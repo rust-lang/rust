@@ -5,7 +5,7 @@ native "rust" mod rustrt {
 fn list_dir(str path) -> vec[str] {
   // TODO ensure this is always closed
   auto dir = os.libc.opendir(_str.buf(path));
-  assert (dir as uint != 0u);
+  check (dir as uint != 0u);
   let vec[str] result = vec();
   while (true) {
     auto ent = os.libc.readdir(dir);

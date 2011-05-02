@@ -9,7 +9,7 @@ fn main() {
   alt (nop) {
     case (some[int](?n)) {
       log n;
-      assert (n == 5);
+      check (n == 5);
     }
   }
 
@@ -18,8 +18,8 @@ fn main() {
     case (some[tup(int, int)](?t)) {
       log t._0;
       log t._1;
-      assert (t._0 == 17);
-      assert (t._1 == 42);
+      check (t._0 == 17);
+      check (t._1 == 42);
     }
   }
 }

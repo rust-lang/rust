@@ -12,6 +12,6 @@ fn main() {
   auto b = f[int](10);
   log b._0;
   log b._1;
-  assert (b._0 == 10);
-  assert (b._1 == 10);
+  check (b._0 == 10);
+  check (b._1 == 10);
 }

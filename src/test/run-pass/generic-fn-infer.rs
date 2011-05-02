@@ -9,5 +9,5 @@ fn id[T](&T x) -> T {
 fn main() {
   let int x = 42;
   let int y = id(x);
-  assert (x == y);
+  check (x == y);
 }

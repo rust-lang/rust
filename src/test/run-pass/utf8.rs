@@ -6,14 +6,14 @@ fn main() {
   let char y_diaeresis = 'ÿ'; // 0xff
   let char pi = 'Π';          // 0x3a0
 
-  assert ((yen as int) == 0xa5);
-  assert ((c_cedilla as int) == 0xe7);
-  assert ((thorn as int) == 0xfe);
-  assert ((y_diaeresis as int) == 0xff);
-  assert ((pi as int) == 0x3a0);
+  check ((yen as int) == 0xa5);
+  check ((c_cedilla as int) == 0xe7);
+  check ((thorn as int) == 0xfe);
+  check ((y_diaeresis as int) == 0xff);
+  check ((pi as int) == 0x3a0);
 
-  assert ((pi as int) == ('\u03a0' as int));
-  assert (('\x0a' as int) == ('\n' as int));
+  check ((pi as int) == ('\u03a0' as int));
+  check (('\x0a' as int) == ('\n' as int));
 
   let str bhutan = "འབྲུག་ཡུལ།";
   let str japan = "日本";
@@ -28,7 +28,7 @@ fn main() {
   let str austria_e = "\u00d6sterreich";
 
   let char oo = 'Ö';
-  assert ((oo as int) == 0xd6);
+  check ((oo as int) == 0xd6);
 
   fn check_str_eq(str a, str b) {
     let int i = 0;
@@ -37,7 +37,7 @@ fn main() {
       log ab;
       let u8 bb = b.(i);
       log bb;
-      assert (ab == bb);
+      check(ab == bb);
       i += 1;
     }
   }

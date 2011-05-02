@@ -58,7 +58,7 @@ fn test00(bool is_multithreaded) {
     }
     
     log "Completed: Final number is: ";
-    assert (sum == number_of_messages * 
+    check (sum == number_of_messages * 
            (number_of_tasks * number_of_tasks + number_of_tasks) / 2);
 }
 
