@@ -93,7 +93,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty.t {
         case ('c') { ret ty.mk_char(st.tcx); }
         case ('s') { ret ty.mk_str(st.tcx); }
         case ('t') {
-            check(next(st) as char == '[');
+            assert (next(st) as char == '[');
             auto def = parse_def(st, sd);
             let vec[ty.t] params = vec();
             while (peek(st) as char != ']') {
@@ -108,7 +108,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty.t {
         case ('P') { ret ty.mk_port(st.tcx, parse_ty(st, sd)); }
         case ('C') { ret ty.mk_chan(st.tcx, parse_ty(st, sd)); }
         case ('T') {
-            check(next(st) as char == '[');
+            assert (next(st) as char == '[');
             let vec[ty.mt] params = vec();
             while (peek(st) as char != ']') {
                 params += vec(parse_mt(st, sd));
@@ -117,7 +117,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty.t {
             ret ty.mk_tup(st.tcx, params);
         }
         case ('R') {
-            check(next(st) as char == '[');
+            assert (next(st) as char == '[');
             let vec[ty.field] fields = vec();
             while (peek(st) as char != ']') {
                 auto name = "";
@@ -149,7 +149,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty.t {
             ret ty.mk_native_fn(st.tcx,abi,func._0,func._1);
         }
         case ('O') {
-            check(next(st) as char == '[');
+            assert (next(st) as char == '[');
             let vec[ty.method] methods = vec();
             while (peek(st) as char != ']') {
                 auto proto;
@@ -175,9 +175,9 @@ fn parse_ty(@pstate st, str_def sd) -> ty.t {
         case ('Y') { ret ty.mk_type(st.tcx); }
         case ('#') {
             auto pos = parse_hex(st);
-            check (next(st) as char == ':');
+            assert (next(st) as char == ':');
             auto len = parse_hex(st);
-            check (next(st) as char == '#');
+            assert (next(st) as char == '#');
             alt (st.tcx.rcache.find(tup(st.crate,pos,len))) {
                 case (some[ty.t](?tt)) { ret tt; }
                 case (none[ty.t]) {
@@ -245,7 +245,7 @@ fn parse_hex(@pstate st) -> uint {
 }
 
 fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty.arg], ty.t) {
-    check(next(st) as char == '[');
+    assert (next(st) as char == '[');
     let vec[ty.arg] inputs = vec();
     while (peek(st) as char != ']') {
         auto mode = ast.val;

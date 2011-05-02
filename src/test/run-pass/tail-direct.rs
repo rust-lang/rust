@@ -1,8 +1,8 @@
 // -*- rust -*-
 
 fn main() {
-  check(even(42));
-  check(odd(45));
+  assert (even(42));
+  assert (odd(45));
 }
 
 fn even(int n) -> bool {

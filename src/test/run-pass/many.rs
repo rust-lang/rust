@@ -19,5 +19,5 @@ fn main() {
   let int y <- p;
   log "transmission complete";
   log y;
-  check (y == 500);
+  assert (y == 500);
 }

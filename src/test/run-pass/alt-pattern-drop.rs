@@ -21,12 +21,12 @@ fn foo(str s) {
   }
 
   log _str.refcount(s);
-  check (_str.refcount(s) == const_refcount);
+  assert (_str.refcount(s) == const_refcount);
 }
 
 fn main() {
   let str s = "hi";     // ref up
   foo(s);               // ref up then down
   log _str.refcount(s);
-  check (_str.refcount(s) == const_refcount);
+  assert (_str.refcount(s) == const_refcount);
 }

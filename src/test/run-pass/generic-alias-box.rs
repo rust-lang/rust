@@ -8,5 +8,5 @@ fn main() {
   auto expected = @100;
   auto actual = id[@int](expected);
   log *actual;
-  check (*expected == *actual);
+  assert (*expected == *actual);
 }

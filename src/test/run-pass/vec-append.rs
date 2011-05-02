@@ -15,9 +15,9 @@ fn fast_growth() {
   v += vec(6,7,8,9,0);
 
   log v.(9);
-  check(v.(0) == 1);
-  check(v.(7) == 8);
-  check(v.(9) == 0);
+  assert (v.(0) == 1);
+  assert (v.(7) == 8);
+  assert (v.(9) == 0);
 }
 
 fn slow_growth() {
@@ -26,7 +26,7 @@ fn slow_growth() {
   v += vec(17);
 
   log v.(0);
-  check (v.(0) == 17);
+  assert (v.(0) == 17);
 }
 
 fn slow_growth2_helper(str s) {   // ref up: s
@@ -52,7 +52,7 @@ fn slow_growth2_helper(str s) {   // ref up: s
     let acc a = acc(v);           // ref up: a, v
 
     log _vec.refcount[str](v);
-    check (_vec.refcount[str](v) == 2u);
+    assert (_vec.refcount[str](v) == 2u);
 
     a.add(s);                     // ref up: mumble, s.  ref down: v
 
@@ -60,21 +60,21 @@ fn slow_growth2_helper(str s) {   // ref up: s
     log _str.refcount(s);
     log _str.refcount(mumble);
 
-    check (_vec.refcount[str](v) == 1u);
-    check (_str.refcount(s) == const_refcount);
-    check (_str.refcount(mumble) == const_refcount);
+    assert (_vec.refcount[str](v) == 1u);
+    assert (_str.refcount(s) == const_refcount);
+    assert (_str.refcount(mumble) == const_refcount);
 
     log v.(0);
     log _vec.len[str](v);
-    check (_str.eq(v.(0), mumble));
-    check (_vec.len[str](v) == 1u);
+    assert (_str.eq(v.(0), mumble));
+    assert (_vec.len[str](v) == 1u);
   }                               // ref down: a, mumble, s, v
 
   log _str.refcount(s);
   log _str.refcount(mumble);
 
-  check (_str.refcount(s) == const_refcount);
-  check (_str.refcount(mumble) == const_refcount);
+  assert (_str.refcount(s) == const_refcount);
+  assert (_str.refcount(mumble) == const_refcount);
 
   log mumble;
   log ss;
@@ -84,7 +84,7 @@ fn slow_growth2() {
   let str s = "hi";               // ref up: s
   slow_growth2_helper(s);
   log _str.refcount(s);
-  check (_str.refcount(s) == const_refcount);
+  assert (_str.refcount(s) == const_refcount);
 }
 
 fn main() {

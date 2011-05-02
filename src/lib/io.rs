@@ -72,7 +72,7 @@ state obj FILE_buf_reader(os.libc.FILE f, bool must_close) {
         ret os.libc.feof(f) != 0;
     }
     fn seek(int offset, seek_style whence) {
-        check (os.libc.fseek(f, offset, convert_whence(whence)) == 0);
+        assert (os.libc.fseek(f, offset, convert_whence(whence)) == 0);
     }
     fn tell() -> uint {
         ret os.libc.ftell(f) as uint;
@@ -101,14 +101,14 @@ state obj new_reader(buf_reader rdr) {
         if (c0 == -1) {ret -1 as char;} // FIXME will this stay valid?
         auto b0 = c0 as u8;
         auto w = _str.utf8_char_width(b0);
-        check(w > 0u);
+        assert (w > 0u);
         if (w == 1u) {ret b0 as char;}
         auto val = 0u;
         while (w > 1u) {
             w -= 1u;
             auto next = rdr.read_byte();
-            check(next > -1);
-            check(next & 0xc0 == 0x80);
+            assert (next > -1);
+            assert (next & 0xc0 == 0x80);
             val <<= 6u;
             val += (next & 0x3f) as uint;
         }
@@ -279,7 +279,7 @@ state obj FILE_writer(os.libc.FILE f, bool must_close) {
     }
 
     fn seek(int offset, seek_style whence) {
-        check(os.libc.fseek(f, offset, convert_whence(whence)) == 0);
+        assert (os.libc.fseek(f, offset, convert_whence(whence)) == 0);
     }
 
     fn tell() -> uint {

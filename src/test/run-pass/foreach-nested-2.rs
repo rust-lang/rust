@@ -28,12 +28,12 @@ fn main() {
         }
     }
 
-    check (a.(0) == 0);
-    check (a.(1) == 1);
-    check (a.(2) == 10);
-    check (a.(3) == 11);
-    check (a.(4) == 100);
-    check (a.(5) == 101);
-    check (a.(6) == 110);
-    check (a.(7) == 111);
+    assert (a.(0) == 0);
+    assert (a.(1) == 1);
+    assert (a.(2) == 10);
+    assert (a.(3) == 11);
+    assert (a.(4) == 100);
+    assert (a.(5) == 101);
+    assert (a.(6) == 110);
+    assert (a.(7) == 111);
 }

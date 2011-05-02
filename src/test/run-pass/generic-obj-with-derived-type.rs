@@ -11,7 +11,7 @@ fn main() {
   log h.get()._0;
   log h.get()._1;
   log h.get()._2;
-  check (h.get()._0 == (1 as u8));
-  check (h.get()._1 == (2 as u8));
-  check (h.get()._2 == (3 as u8));
+  assert (h.get()._0 == (1 as u8));
+  assert (h.get()._1 == (2 as u8));
+  assert (h.get()._2 == (3 as u8));
 }

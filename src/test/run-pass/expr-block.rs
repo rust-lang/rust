@@ -5,12 +5,12 @@
 
 fn test_basic() {
   let bool res = { true };
-  check (res);
+  assert (res);
 }
 
 fn test_rec() {
   auto res = { rec(v1 = 10, v2 = 20) };
-  check (res.v2 == 20);
+  assert (res.v2 == 20);
 }
 
 fn test_filled_with_stuff() {
@@ -21,7 +21,7 @@ fn test_filled_with_stuff() {
     }
     a
   };
-  check (res == 10);
+  assert (res == 10);
 }
 
 fn main() {

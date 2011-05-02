@@ -14,9 +14,9 @@ fn main() {
   for each (tup(int,int) p in pairs()) {
       log p._0;
       log p._1;
-      check (p._0 + 10 == i);
+      assert (p._0 + 10 == i);
       i += 1;
       j = p._1;
     }
-  check(j == 45);
+  assert (j == 45);
 }

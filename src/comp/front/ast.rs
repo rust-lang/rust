@@ -283,7 +283,10 @@ tag expr_ {
     expr_put(option.t[@expr], ann);
     expr_be(@expr, ann);
     expr_log(int, @expr, ann);
-    expr_check_expr(@expr, ann);
+/* just an assert, no significance to typestate */
+    expr_assert(@expr, ann);
+/* preds that typestate is aware of */
+    expr_check(@expr, ann);
     expr_port(ann);
     expr_chan(@expr, ann);
 }

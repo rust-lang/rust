@@ -218,14 +218,14 @@ fn utf8_char_width(u8 b) -> uint {
 fn char_range_at(str s, uint i) -> tup(char, uint) {
     auto b0 = s.(i);
     auto w = utf8_char_width(b0);
-    check(w != 0u);
+    assert (w != 0u);
     if (w == 1u) {ret tup(b0 as char, i + 1u);}
     auto val = 0u;
     auto end = i + w;
     i += 1u;
     while (i < end) {
         auto byte = s.(i);
-        check(byte & 0xc0_u8 == tag_cont_u8);
+        assert (byte & 0xc0_u8 == tag_cont_u8);
         val <<= 6u;
         val += (byte & 0x3f_u8) as uint;
         i += 1u;
@@ -247,11 +247,11 @@ fn char_len(str s) -> uint {
     auto total = byte_len(s);
     while (i < total) {
         auto chsize = utf8_char_width(s.(i));
-        check(chsize > 0u);
+        assert (chsize > 0u);
         len += 1u;
         i += chsize;
     }
-    check(i == total);
+    assert (i == total);
     ret len;
 }
 
@@ -274,7 +274,7 @@ fn push_char(&mutable str s, char ch) {
 fn pop_char(&mutable str s) -> char {
     auto end = byte_len(s);
     while (end > 0u && s.(end - 1u) & 0xc0_u8 == tag_cont_u8) {end -= 1u;}
-    check(end > 0u);
+    assert (end > 0u);
     auto ch = char_at(s, end - 1u);
     s = substr(s, 0u, end - 1u);
     ret ch;
@@ -404,7 +404,7 @@ fn slice(str s, uint begin, uint end) -> str {
 
 fn shift_byte(&mutable str s) -> u8 {
     auto len = byte_len(s);
-    check(len > 0u);
+    assert (len > 0u);
     auto b = s.(0);
     s = substr(s, 1u, len - 1u);
     ret b;
@@ -412,7 +412,7 @@ fn shift_byte(&mutable str s) -> u8 {
 
 fn pop_byte(&mutable str s) -> u8 {
     auto len = byte_len(s);
-    check(len > 0u);
+    assert (len > 0u);
     auto b = s.(len - 1u);
     s = substr(s, 0u, len - 1u);
     ret b;

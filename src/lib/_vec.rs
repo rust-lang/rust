@@ -131,7 +131,7 @@ fn len_set[T](array[T] v, uint n) {
 }
 
 fn buf_off[T](array[T] v, uint offset) -> vbuf {
-    check (offset < len[T](v));
+     assert (offset < len[T](v));
     ret rustrt.vec_buf[T](v, offset);
 }
 
@@ -149,9 +149,10 @@ fn last[T](array[T] v) -> option.t[T] {
 }
 
 // Returns elements from [start..end) from v.
+
 fn slice[T](array[T] v, uint start, uint end) -> vec[T] {
-    check (start <= end);
-    check (end <= len[T](v));
+    assert (start <= end);
+    assert (end <= len[T](v));
     auto result = alloc[T](end - start);
     let uint i = start;
     while (i < end) {
@@ -163,7 +164,7 @@ fn slice[T](array[T] v, uint start, uint end) -> vec[T] {
 
 fn shift[T](&mutable array[T] v) -> T {
     auto ln = len[T](v);
-    check(ln > 0u);
+    assert (ln > 0u);
     auto e = v.(0);
     v = slice[T](v, 1u, ln);
     ret e;
@@ -171,7 +172,7 @@ fn shift[T](&mutable array[T] v) -> T {
 
 fn pop[T](&mutable array[T] v) -> T {
     auto ln = len[T](v);
-    check(ln > 0u);
+    assert (ln > 0u);
     ln -= 1u;
     auto e = v.(ln);
     v = slice[T](v, 0u, ln);
