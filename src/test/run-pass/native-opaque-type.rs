@@ -3,5 +3,5 @@ native mod libc {
 }
 
 fn main() {
-  check (true);
+  assert (true);
 }

@@ -20,7 +20,7 @@ fn test_simple(str tmpfilebase) {
   let io.reader inp = io.file_reader(tmpfile);
   let str frood2 = inp.read_c_str();
   log frood2;
-  check (_str.eq(frood, frood2));
+  assert (_str.eq(frood, frood2));
 }
 
 fn main(vec[str] argv) {

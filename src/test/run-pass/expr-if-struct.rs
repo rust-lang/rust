@@ -5,7 +5,7 @@
 
 fn test_rec() {
   auto res = if (true) { rec(i = 100) } else { rec(i = 101) };
-  check (res == rec(i = 100));
+  assert (res == rec(i = 100));
 }
 
 fn test_tag() {
@@ -15,7 +15,7 @@ fn test_tag() {
   }
 
   auto res = if (true) { happy } else { sad };
-  check (res == happy);
+  assert (res == happy);
 }
 
 fn main() {

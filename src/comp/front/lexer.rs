@@ -127,6 +127,7 @@ fn keyword_table() -> std.map.hashmap[str, token.token] {
 
     keywords.insert("type", token.TYPE);
     keywords.insert("check", token.CHECK);
+    keywords.insert("assert", token.ASSERT);
     keywords.insert("claim", token.CLAIM);
     keywords.insert("prove", token.PROVE);
 
@@ -528,7 +529,7 @@ fn scan_numeric_escape(reader rdr) -> char {
 
     auto n_hex_digits = 0;
 
-    check (rdr.curr() == '\\');
+    assert (rdr.curr() == '\\');
 
     alt (rdr.next()) {
         case ('x') { n_hex_digits = 2; }

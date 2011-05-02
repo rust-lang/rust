@@ -6,5 +6,5 @@ fn main() {
     @100
   };
 
-  check (*x == 100);
+  assert (*x == 100);
 }

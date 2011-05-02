@@ -1,42 +1,42 @@
 fn main() {
   if (1 == 2) {
-    check(false);
+    assert (false);
   } else if (2 == 3) {
-    check(false);
+    assert (false);
   } else if (3 == 4) {
-    check(false);
+    assert (false);
   } else {
-    check(true);
+    assert (true);
   }
 
 
   if (1 == 2) {
-    check(false);
+    assert (false);
   } else if (2 == 2) {
-    check(true);
+    assert (true);
   }
 
   if (1 == 2) {
-    check(false);
+    assert (false);
   } else if (2 == 2) {
     if (1 == 1) {
-      check(true);
+      assert (true);
     } else {
       if (2 == 1) {
-        check(false);
+        assert (false);
       } else {
-        check(false);
+        assert (false);
       }
     }
   }
 
   if (1 == 2) {
-    check(false);
+    assert (false);
   } else {
     if (1 == 2) {
-      check(false);
+      assert (false);
     } else {
-      check(true);
+      assert (true);
     }
   }
 }

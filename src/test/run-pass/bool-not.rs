@@ -2,14 +2,14 @@
 
 fn main() {
   if (!false) {
-    check (true);
+    assert (true);
   } else {
-    check (false);
+    assert (false);
   }
 
   if (!true) {
-    check (false);
+    assert (false);
   } else {
-    check (true);
+    assert (true);
   }
 }

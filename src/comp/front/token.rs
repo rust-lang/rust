@@ -89,6 +89,7 @@ tag token {
 
     /* Type and type-state keywords */
     TYPE;
+    ASSERT;
     CHECK;
     CLAIM;
     PROVE;
@@ -258,6 +259,7 @@ fn to_str(token t) -> str {
 
         /* Type and type-state keywords */
         case (TYPE) { ret "type"; }
+        case (ASSERT) { ret "assert"; }
         case (CHECK) { ret "check"; }
         case (CLAIM) { ret "claim"; }
         case (PROVE) { ret "prove"; }

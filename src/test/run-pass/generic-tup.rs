@@ -6,6 +6,6 @@ fn get_third[T](&tup(T,T,T) t) -> T {
 
 fn main() {
   log get_third(tup(1,2,3));
-  check (get_third(tup(1,2,3)) == 3);
-  check (get_third(tup(5u8,6u8,7u8)) == 7u8);
+  assert (get_third(tup(1,2,3)) == 3);
+  assert (get_third(tup(5u8,6u8,7u8)) == 7u8);
 }

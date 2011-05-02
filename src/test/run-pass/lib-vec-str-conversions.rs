@@ -21,14 +21,14 @@ fn test_simple() {
   let uint n1 = _str.byte_len(s1);
   let uint n2 = _vec.len[u8](v);
 
-  check (n1 == n2);
+  assert (n1 == n2);
 
   while (i < n1) {
     let u8 a = s1.(i);
     let u8 b = s2.(i);
     log a;
     log b;
-    check (a == b);
+    assert (a == b);
     i += 1u;
   }
 

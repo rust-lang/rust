@@ -7,5 +7,5 @@ fn f(int n) -> int {
 fn main() {
   let fn() -> int g = bind f(10);
   let int i = g();
-  check(i == 10);
+  assert (i == 10);
 }

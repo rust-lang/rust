@@ -16,5 +16,5 @@ fn test05() {
     let int value <- po;
     value <- po;
     value <- po;
-    check(value == 30);
+    assert (value == 30);
 }

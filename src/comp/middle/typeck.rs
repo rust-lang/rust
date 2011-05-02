@@ -110,7 +110,7 @@ fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.span sp, &ast.def defn)
         -> ty_param_count_and_ty {
     alt (defn) {
         case (ast.def_arg(?id)) {
-            // check (fcx.locals.contains_key(id));
+            // assert (fcx.locals.contains_key(id));
             ret tup(0u, fcx.locals.get(id));
         }
         case (ast.def_local(?id)) {
@@ -122,7 +122,7 @@ fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.span sp, &ast.def defn)
             ret tup(0u, t);
         }
         case (ast.def_obj_field(?id)) {
-            // check (fcx.locals.contains_key(id));
+            // assert (fcx.locals.contains_key(id));
             ret tup(0u, fcx.locals.get(id));
         }
         case (ast.def_fn(?id)) {
@@ -142,7 +142,7 @@ fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.span sp, &ast.def defn)
                                     fcx.ccx.type_cache, vid);
         }
         case (ast.def_binding(?id)) {
-            // check (fcx.locals.contains_key(id));
+            // assert (fcx.locals.contains_key(id));
             ret tup(0u, fcx.locals.get(id));
         }
         case (ast.def_obj(?id)) {
@@ -298,7 +298,7 @@ fn ast_ty_to_ty(ty.ctxt tcx, ty_getter getter, &@ast.ty ast_ty) -> ty.t {
         }
 
         case (ast.ty_path(?path, ?def)) {
-            check (def != none[ast.def]);
+            assert (def != none[ast.def]);
             alt (option.get[ast.def](def)) {
                 case (ast.def_ty(?id)) {
                     typ = instantiate(tcx, getter, id, path.node.types);
@@ -411,7 +411,7 @@ mod Collect {
             ret creader.get_type(cx.sess, cx.tcx, id);
         }
 
-        // check (cx.id_to_ty_item.contains_key(id));
+        // assert (cx.id_to_ty_item.contains_key(id));
 
         auto it = cx.id_to_ty_item.get(id);
         auto tpt;
@@ -672,7 +672,7 @@ mod Collect {
     fn fold_item_const(&@env e, &span sp, ast.ident i,
                        @ast.ty t, @ast.expr ex,
                        ast.def_id id, ast.ann a) -> @ast.item {
-        // check (e.cx.type_cache.contains_key(id));
+        // assert (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast.item_const(i, t, ex, id, triv_ann(typ));
         ret @fold.respan[ast.item_](sp, item);
@@ -681,7 +681,7 @@ mod Collect {
     fn fold_item_fn(&@env e, &span sp, ast.ident i,
                     &ast._fn f, vec[ast.ty_param] ty_params,
                     ast.def_id id, ast.ann a) -> @ast.item {
-        // check (e.cx.type_cache.contains_key(id));
+        // assert (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast.item_fn(i, f, ty_params, id, triv_ann(typ));
         ret @fold.respan[ast.item_](sp, item);
@@ -690,7 +690,7 @@ mod Collect {
     fn fold_native_item_fn(&@env e, &span sp, ast.ident i, option.t[str] ln,
                            &ast.fn_decl d, vec[ast.ty_param] ty_params,
                            ast.def_id id, ast.ann a) -> @ast.native_item {
-        // check (e.cx.type_cache.contains_key(id));
+        // assert (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast.native_item_fn(i, ln, d, ty_params, id,
                                        triv_ann(typ));
@@ -721,7 +721,7 @@ mod Collect {
     fn fold_item_obj(&@env e, &span sp, ast.ident i,
                     &ast._obj ob, vec[ast.ty_param] ty_params,
                     ast.obj_def_ids odid, ast.ann a) -> @ast.item {
-        // check (e.cx.type_cache.contains_key(odid.ctor));
+        // assert (e.cx.type_cache.contains_key(odid.ctor));
         auto t = e.cx.type_cache.get(odid.ctor)._1;
         let vec[method] meth_tys = get_ctor_obj_methods(e, t);
         let vec[@ast.method] methods = vec();
@@ -777,7 +777,7 @@ mod Collect {
     fn fold_item_ty(&@env e, &span sp, ast.ident i,
                     @ast.ty t, vec[ast.ty_param] ty_params,
                     ast.def_id id, ast.ann a) -> @ast.item {
-        // check (e.cx.type_cache.contains_key(id));
+        // assert (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast.item_ty(i, t, ty_params, id, triv_ann(typ));
         ret @fold.respan[ast.item_](sp, item);
@@ -1214,7 +1214,7 @@ mod Pushdown {
                             case (none[@ast.expr]) {
                                 auto i = 0u;
                                 for (ast.field field_0 in fields_0) {
-                                    check (_str.eq(field_0.ident,
+                                    assert (_str.eq(field_0.ident,
                                                    field_mts.(i).ident));
                                     auto e_1 =
                                         pushdown_expr(fcx,
@@ -1409,7 +1409,8 @@ mod Pushdown {
             case (ast.expr_ret(_,_)) { e_1 = e.node; }
             case (ast.expr_put(_,_)) { e_1 = e.node; }
             case (ast.expr_be(_,_))  { e_1 = e.node; }
-            case (ast.expr_check_expr(_,_)) { e_1 = e.node; }
+            case (ast.expr_check(_,_)) { e_1 = e.node; }
+            case (ast.expr_assert(_,_)) { e_1 = e.node; }
 
             case (ast.expr_port(?ann)) {
                 auto t = Demand.simple(fcx, e.span, expected,
@@ -1839,7 +1840,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_path(?pth, ?defopt, _)) {
             auto t = ty.mk_nil(fcx.ccx.tcx);
-            check (defopt != none[ast.def]);
+            assert (defopt != none[ast.def]);
             auto defn = option.get[ast.def](defopt);
 
             auto tpt = ty_param_count_and_ty_for_def(fcx, expr.span, defn);
@@ -1939,7 +1940,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         case (ast.expr_be(?e, _)) {
             /* FIXME: prove instead of check */
-            check (ast.is_call_expr(e));
+            assert (ast.is_call_expr(e));
             auto expr_0 = check_expr(fcx, e);
             auto expr_1 = Pushdown.pushdown_expr(fcx, fcx.ret_ty, expr_0);
             ret @fold.respan[ast.expr_](expr.span,
@@ -1953,12 +1954,25 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                          plain_ann(fcx.ccx.tcx)));
         }
 
-        case (ast.expr_check_expr(?e, _)) {
+        case (ast.expr_check(?e, _)) {
+            /* FIXME */
+        /* presumably, here is where we should check that e is
+         actually a call to a predicate, where all the arguments
+        are literals or slot variables? */
             auto expr_t = check_expr(fcx, e);
             Demand.simple(fcx, expr.span, ty.mk_bool(fcx.ccx.tcx),
                           expr_ty(fcx.ccx.tcx, expr_t));
             ret @fold.respan[ast.expr_]
-                (expr.span, ast.expr_check_expr(expr_t,
+                (expr.span, ast.expr_check(expr_t,
+                                                plain_ann(fcx.ccx.tcx)));
+        }
+
+        case (ast.expr_assert(?e, _)) {
+            auto expr_t = check_expr(fcx, e);
+            Demand.simple(fcx, expr.span, ty.mk_bool(fcx.ccx.tcx),
+                          expr_ty(fcx.ccx.tcx, expr_t));
+            ret @fold.respan[ast.expr_]
+                (expr.span, ast.expr_assert(expr_t,
                                                 plain_ann(fcx.ccx.tcx)));
         }
 

@@ -56,7 +56,7 @@ fn to_str(uint num, uint radix) -> str
 {
     auto n = num;
 
-    check (0u < radix && radix <= 16u);
+    assert (0u < radix && radix <= 16u);
     fn digit(uint n) -> char {
         alt (n) {
             case (0u) { ret '0'; }
