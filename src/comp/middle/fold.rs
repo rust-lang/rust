@@ -1396,7 +1396,7 @@ fn identity_fold_expr_check[ENV](&ENV e, &span sp, @expr x, ann a)
 
 fn identity_fold_expr_assert[ENV](&ENV e, &span sp, @expr x, ann a)
     -> @expr {
-    ret @respan(sp, ast.expr_check(x, a));
+    ret @respan(sp, ast.expr_assert(x, a));
 }
 
 fn identity_fold_expr_port[ENV](&ENV e, &span sp, ann a) -> @expr {
