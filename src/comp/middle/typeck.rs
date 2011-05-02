@@ -1964,12 +1964,29 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
              literals or slots */
             alt (e.node) {
                 case (ast.expr_call(?operator, ?operands, _)) {
-                    /* operator must be a pure function */
-                    /* FIXME: need more checking */
-                    ret @fold.respan[ast.expr_]
-                        (expr.span, ast.expr_check(expr_t,
-                               plain_ann(fcx.ccx.tcx)));
-                    
+                    alt (operator.node) {
+                        case (ast.expr_path(?oper_name, ?d_id, _)) {
+
+                            for (@ast.expr operand in operands) {
+                                if (! ast.is_constraint_arg(operand)) {
+                                    fcx.ccx.sess.span_err(expr.span,
+                                       "Constraint args must be "
+                                     + "slot variables or literals");
+                                }
+                            }
+                            
+                         /* operator must be a pure function */
+                         /* FIXME: need more checking */
+                            ret @fold.respan[ast.expr_]
+                                (expr.span, ast.expr_check(expr_t,
+                                   plain_ann(fcx.ccx.tcx)));
+                        }
+                        case (_) {
+                           fcx.ccx.sess.span_err(expr.span,
+                             "In a constraint, expected the constraint name "
+                           + "to be an explicit name");
+                        }
+                    }
                 }
                 case (_) {
                     fcx.ccx.sess.span_err(expr.span,
