@@ -6,7 +6,7 @@ fn test_fn() {
     ret 10;
   }
   let t res = { ten };
-  check (res() == 10);
+  assert (res() == 10);
 }
 
 fn main() {

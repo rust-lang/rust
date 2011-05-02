@@ -28,5 +28,5 @@ fn test00() {
     r <- p; sum += r; log (r);
     r <- p; sum += r; log (r);
     
-    check (sum == 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8);
+    assert (sum == 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8);
 }

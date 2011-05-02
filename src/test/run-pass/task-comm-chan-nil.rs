@@ -14,5 +14,5 @@ fn main() {
   let () n;
   n <- po;
 
-  check (n == ());
+  assert (n == ());
 }

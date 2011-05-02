@@ -895,7 +895,7 @@ fn type_is_tup_like(ctxt cx, t ty) -> bool {
 }
 
 fn get_element_type(ctxt cx, t ty, uint i) -> t {
-    check (type_is_tup_like(cx, ty));
+    assert (type_is_tup_like(cx, ty));
     alt (struct(cx, ty)) {
         case (ty_tup(?mts)) {
             ret mts.(i).ty;
@@ -1785,50 +1785,117 @@ fn pat_ty(ctxt cx, @ast.pat pat) -> t {
     fail;   // not reached
 }
 
-fn expr_ann(@ast.expr expr) -> option.t[ast.ann] {
-    alt (expr.node) {
-        case (ast.expr_vec(_, _, ?ann))       { ret some[ast.ann](ann); }
-        case (ast.expr_tup(_, ?ann))          { ret some[ast.ann](ann); }
-        case (ast.expr_rec(_, _, ?ann))       { ret some[ast.ann](ann); }
-        case (ast.expr_bind(_, _, ?ann))      { ret some[ast.ann](ann); }
-        case (ast.expr_call(_, _, ?ann))      { ret some[ast.ann](ann); }
-        case (ast.expr_self_method(_, ?ann))  { ret some[ast.ann](ann); }
-        case (ast.expr_spawn(_, _, _, _, ?ann))
-                                              { ret some[ast.ann](ann); }
-        case (ast.expr_binary(_, _, _, ?ann)) { ret some[ast.ann](ann); }
-        case (ast.expr_unary(_, _, ?ann))     { ret some[ast.ann](ann); }
-        case (ast.expr_lit(_, ?ann))          { ret some[ast.ann](ann); }
-        case (ast.expr_cast(_, _, ?ann))      { ret some[ast.ann](ann); }
-        case (ast.expr_if(_, _, _, ?ann))     { ret some[ast.ann](ann); }
-        case (ast.expr_for(_, _, _, ?ann))    { ret some[ast.ann](ann); }
-        case (ast.expr_for_each(_, _, _, ?ann))
-                                              { ret some[ast.ann](ann); }
-        case (ast.expr_while(_, _, ?ann))     { ret some[ast.ann](ann); }
-        case (ast.expr_do_while(_, _, ?ann))  { ret some[ast.ann](ann); }
-        case (ast.expr_alt(_, _, ?ann))       { ret some[ast.ann](ann); }
-        case (ast.expr_block(_, ?ann))        { ret some[ast.ann](ann); }
-        case (ast.expr_assign(_, _, ?ann))    { ret some[ast.ann](ann); }
-        case (ast.expr_assign_op(_, _, _, ?ann))
-                                              { ret some[ast.ann](ann); }
-        case (ast.expr_field(_, _, ?ann))     { ret some[ast.ann](ann); }
-        case (ast.expr_index(_, _, ?ann))     { ret some[ast.ann](ann); }
-        case (ast.expr_path(_, _, ?ann))      { ret some[ast.ann](ann); }
-        case (ast.expr_ext(_, _, _, _, ?ann)) { ret some[ast.ann](ann); }
-        case (ast.expr_port(?ann))            { ret some[ast.ann](ann); }
-        case (ast.expr_chan(_, ?ann))         { ret some[ast.ann](ann); }
-        case (ast.expr_send(_, _, ?ann))      { ret some[ast.ann](ann); }
-        case (ast.expr_recv(_, _, ?ann))      { ret some[ast.ann](ann); }
-
-        case (ast.expr_fail(_))               { ret none[ast.ann]; }
-        case (ast.expr_break(_))              { ret none[ast.ann]; }
-        case (ast.expr_cont(_))               { ret none[ast.ann]; }
-        case (ast.expr_log(_,_,_))            { ret none[ast.ann]; }
-        case (ast.expr_check_expr(_,_))       { ret none[ast.ann]; }
-        case (ast.expr_ret(_,_))              { ret none[ast.ann]; }
-        case (ast.expr_put(_,_))              { ret none[ast.ann]; }
-        case (ast.expr_be(_,_))               { ret none[ast.ann]; }
+fn expr_ann(&@ast.expr e) -> ast.ann {
+    alt(e.node) {
+        case (ast.expr_vec(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_tup(_,?a)) {
+            ret a;
+        }
+        case (ast.expr_rec(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_call(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_bind(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_binary(_,_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_unary(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_lit(_,?a)) {
+            ret a;
+        }
+        case (ast.expr_cast(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_if(_,_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_while(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_for(_,_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_for_each(_,_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_do_while(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_alt(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_block(_,?a)) {
+            ret a;
+        }
+        case (ast.expr_assign(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_assign_op(_,_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_send(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_recv(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_field(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_index(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_path(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_ext(_,_,_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_fail(?a)) {
+            ret a;
+        }
+        case (ast.expr_ret(_,?a)) {
+            ret a; 
+        }
+        case (ast.expr_put(_,?a)) {
+            ret a;
+        }
+        case (ast.expr_be(_,?a)) {
+            ret a;
+        }
+        case (ast.expr_log(_,_,?a)) {
+            ret a;
+        }
+        case (ast.expr_assert(_,?a)) {
+            ret a;
+        }
+        case (ast.expr_check(_,?a)) {
+            ret a;
+        }
+        case (ast.expr_port(?a)) {
+            ret a;
+        }
+        case (ast.expr_chan(_,?a)) {
+            ret a;
+        }
+        case (ast.expr_break(?a)) {
+            ret a;
+        }
+        case (ast.expr_cont(?a)) {
+            ret a;
+        }
+        case (ast.expr_self_method(_, ?a)) {
+            ret a;
+        }
     }
-    fail;
 }
 
 // Returns the type of an expression as a monotype.
@@ -1838,35 +1905,21 @@ fn expr_ann(@ast.expr expr) -> option.t[ast.ann] {
 // instead of "fn(&T) -> T with T = int". If this isn't what you want, see
 // expr_ty_params_and_ty() below.
 fn expr_ty(ctxt cx, @ast.expr expr) -> t {
-    alt (expr_ann(expr)) {
-        case (none[ast.ann])     { ret mk_nil(cx); }
-        case (some[ast.ann](?a)) { ret ann_to_monotype(cx, a); }
-    }
+    { ret ann_to_monotype(cx, expr_ann(expr)); }
 }
 
 fn expr_ty_params_and_ty(ctxt cx, @ast.expr expr) -> tup(vec[t], t) {
-    alt (expr_ann(expr)) {
-        case (none[ast.ann]) {
-            let vec[t] tps = vec();
-            ret tup(tps, mk_nil(cx));
-        }
-        case (some[ast.ann](?a)) {
-            ret tup(ann_to_type_params(a), ann_to_type(a));
-        }
-    }
+    auto a = expr_ann(expr);
+
+    ret tup(ann_to_type_params(a), ann_to_type(a));
 }
 
 fn expr_has_ty_params(@ast.expr expr) -> bool {
     // FIXME: Rewrite using complex patterns when they're trustworthy.
     alt (expr_ann(expr)) {
-        case (none[ast.ann]) { fail; }
-        case (some[ast.ann](?a)) {
-            alt (a) {
-                case (ast.ann_none) { fail; }
-                case (ast.ann_type(_, ?tps_opt, _)) {
-                    ret !option.is_none[vec[t]](tps_opt);
-                }
-            }
+        case (ast.ann_none) { fail; }
+        case (ast.ann_type(_, ?tps_opt, _)) {
+            ret !option.is_none[vec[t]](tps_opt);
         }
     }
 }
@@ -2233,7 +2286,7 @@ mod Unify {
                         if (actual_n < vlen) {
                             cx.types.(actual_n) += vec(expected);
                         } else {
-                            check (actual_n == vlen);
+                            assert (actual_n == vlen);
                             cx.types += vec(mutable vec(expected));
                         }
                     }
@@ -2601,7 +2654,7 @@ mod Unify {
                 if (expected_n < vlen) {
                     cx.types.(expected_n) += vec(actual);
                 } else {
-                    check (expected_n == vlen);
+                    assert (expected_n == vlen);
                     cx.types += vec(mutable vec(actual));
                 }
                 ret ures_ok(expected);

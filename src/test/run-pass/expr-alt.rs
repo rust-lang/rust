@@ -12,7 +12,7 @@ fn test_basic() {
       false
     }
   };
-  check (res);
+  assert (res);
 
   res = alt(false) {
     case (true) {
@@ -22,7 +22,7 @@ fn test_basic() {
       true
     }
   };
-  check (res);
+  assert (res);
 }
 
 fn test_inferrence() {
@@ -34,7 +34,7 @@ fn test_inferrence() {
       false
     }
   };
-  check (res);
+  assert (res);
 }
 
 fn test_alt_as_alt_head() {
@@ -47,7 +47,7 @@ fn test_alt_as_alt_head() {
       true
     }
   };
-  check (res);
+  assert (res);
 }
 
 fn test_alt_as_block_result() {
@@ -66,7 +66,7 @@ fn test_alt_as_block_result() {
       }
     }
   };
-  check (res);
+  assert (res);
 }
 
 fn main() {

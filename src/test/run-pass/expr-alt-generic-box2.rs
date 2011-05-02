@@ -9,7 +9,7 @@ fn test_generic[T](&T expected, &compare[T] eq) {
       expected
     }
   };
-  check (eq(expected, actual));
+  assert (eq(expected, actual));
 }
 
 fn test_vec() {

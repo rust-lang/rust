@@ -6,7 +6,7 @@ fn main() {
     log_err _vec.refcount[int](v);
     log_err _vec.refcount[int](v);
     log_err _vec.refcount[int](v);
-    check (_vec.refcount[int](v) == 1u || _vec.refcount[int](v) == 2u);
-    check (_vec.refcount[int](v) == 1u || _vec.refcount[int](v) == 2u);
+    assert (_vec.refcount[int](v) == 1u || _vec.refcount[int](v) == 2u);
+    assert (_vec.refcount[int](v) == 1u || _vec.refcount[int](v) == 2u);
 }
 

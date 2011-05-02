@@ -2,22 +2,22 @@ use std;
 import std._str;
 
 fn test_bytes_len() {
-  check (_str.byte_len("") == 0u);
-  check (_str.byte_len("hello world") == 11u);
-  check (_str.byte_len("\x63") == 1u);
-  check (_str.byte_len("\xa2") == 2u);
-  check (_str.byte_len("\u03c0") == 2u);
-  check (_str.byte_len("\u2620") == 3u);
-  check (_str.byte_len("\U0001d11e") == 4u);
+  assert (_str.byte_len("") == 0u);
+  assert (_str.byte_len("hello world") == 11u);
+  assert (_str.byte_len("\x63") == 1u);
+  assert (_str.byte_len("\xa2") == 2u);
+  assert (_str.byte_len("\u03c0") == 2u);
+  assert (_str.byte_len("\u2620") == 3u);
+  assert (_str.byte_len("\U0001d11e") == 4u);
 }
 
 fn test_index_and_rindex() {
-  check(_str.index("hello", 'e' as u8) == 1);
-  check(_str.index("hello", 'o' as u8) == 4);
-  check(_str.index("hello", 'z' as u8) == -1);
-  check(_str.rindex("hello", 'l' as u8) == 3);
-  check(_str.rindex("hello", 'h' as u8) == 0);
-  check(_str.rindex("hello", 'z' as u8) == -1);
+  assert (_str.index("hello", 'e' as u8) == 1);
+  assert (_str.index("hello", 'o' as u8) == 4);
+  assert (_str.index("hello", 'z' as u8) == -1);
+  assert (_str.rindex("hello", 'l' as u8) == 3);
+  assert (_str.rindex("hello", 'h' as u8) == 0);
+  assert (_str.rindex("hello", 'z' as u8) == -1);
 }
 
 fn test_split() {
@@ -30,7 +30,7 @@ fn test_split() {
       log z;
     }
     log "comparing: " + v.(i) + " vs. " + k;
-    check(_str.eq(v.(i), k));
+    assert (_str.eq(v.(i), k));
   }
   t("abc.hello.there", '.', 0, "abc");
   t("abc.hello.there", '.', 1, "hello");
@@ -46,7 +46,7 @@ fn test_find() {
     let int j = _str.find(haystack,needle);
     log "searched for " + needle;
     log j;
-    check (i == j);
+    assert (i == j);
   }
   t("this is a simple", "is a", 5);
   t("this is a simple", "is z", -1);
@@ -57,7 +57,7 @@ fn test_find() {
 
 fn test_substr() {
   fn t(&str a, &str b, int start) {
-    check(_str.eq(_str.substr(a, start as uint,
+    assert (_str.eq(_str.substr(a, start as uint,
                               _str.byte_len(b)), b));
   }
 
@@ -68,7 +68,7 @@ fn test_substr() {
 
 fn test_concat() {
   fn t(&vec[str] v, &str s) {
-    check(_str.eq(_str.concat(v), s));
+    assert (_str.eq(_str.concat(v), s));
   }
 
   t(vec("you", "know", "I'm", "no", "good"), "youknowI'mnogood");
@@ -79,7 +79,7 @@ fn test_concat() {
 
 fn test_connect() {
   fn t(&vec[str] v, &str sep, &str s) {
-    check(_str.eq(_str.connect(v, sep), s));
+    assert (_str.eq(_str.connect(v, sep), s));
   }
 
   t(vec("you", "know", "I'm", "no", "good"), " ", "you know I'm no good");
@@ -95,7 +95,7 @@ fn test_to_upper() {
   auto input = "abcDEF" + unicode + "xyz:.;";
   auto expected = "ABCDEF" + unicode + "XYZ:.;";
   auto actual = _str.to_upper(input);
-  check (_str.eq(expected, actual));
+  assert (_str.eq(expected, actual));
 }
 
 

@@ -9,7 +9,7 @@ fn test_rec() {
       rec(i = 100)
     }
   };
-  check (res == rec(i = 100));
+  assert (res == rec(i = 100));
 }
 
 fn test_tag() {
@@ -26,7 +26,7 @@ fn test_tag() {
       sad
     }
   };
-  check (res == happy);
+  assert (res == happy);
 }
 
 fn main() {

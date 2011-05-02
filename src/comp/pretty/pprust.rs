@@ -661,8 +661,14 @@ fn print_expr(ps s, &@ast.expr expr) {
             }
             print_expr(s, expr);
         }
-        case (ast.expr_check_expr(?expr,_)) {
+        case (ast.expr_check(?expr,_)) {
             wrd1(s, "check");
+            popen_h(s);
+            print_expr(s, expr);
+            pclose(s);
+        }
+        case (ast.expr_assert(?expr,_)) {
+            wrd1(s, "assert");
             popen_h(s);
             print_expr(s, expr);
             pclose(s);

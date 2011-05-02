@@ -5,7 +5,7 @@ type compare[T] = fn(&T t1, &T t2) -> bool;
 
 fn test_generic[T](&T expected, &T not_expected, &compare[T] eq) {
   let T actual = if (true) { expected } else { not_expected };
-  check (eq(expected, actual));
+  assert (eq(expected, actual));
 }
 
 fn test_vec() {

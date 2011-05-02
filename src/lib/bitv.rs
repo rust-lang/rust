@@ -28,8 +28,8 @@ fn create(uint nbits, bool init) -> t {
 fn process(&fn(uint, uint) -> uint op, &t v0, &t v1) -> bool {
     auto len = _vec.len[mutable uint](v1.storage);
 
-    check (_vec.len[mutable uint](v0.storage) == len);
-    check (v0.nbits == v1.nbits);
+    assert (_vec.len[mutable uint](v0.storage) == len);
+    assert (v0.nbits == v1.nbits);
 
     auto changed = false;
 
@@ -84,7 +84,7 @@ fn clone(t v) -> t {
 }
 
 fn get(&t v, uint i) -> bool {
-    check (i < v.nbits);
+    assert (i < v.nbits);
 
     auto bits = uint_bits();
 
@@ -129,7 +129,7 @@ fn difference(&t v0, &t v1) -> bool {
 }
 
 fn set(&t v, uint i, bool x) {
-    check (i < v.nbits);
+    assert (i < v.nbits);
 
     auto bits = uint_bits();
 
@@ -196,7 +196,7 @@ fn to_str(&t v) -> str {
 
 // FIXME: can we just use structural equality on to_vec?
 fn eq_vec(&t v0, &vec[uint] v1) -> bool {
-    check (v0.nbits == _vec.len[uint](v1));
+    assert (v0.nbits == _vec.len[uint](v1));
     auto len = v0.nbits;
     auto i = 0u;
     while (i < len) {

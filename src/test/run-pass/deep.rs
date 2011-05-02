@@ -10,5 +10,5 @@ fn f(int x) -> int {
 }
 
 fn main() {
-  check (f(5000) == 5000);
+  assert (f(5000) == 5000);
 }

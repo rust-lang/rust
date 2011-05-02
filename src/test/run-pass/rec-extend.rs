@@ -8,12 +8,12 @@ fn main() {
   let point right = rec(x=origin.x + 10 with origin);
   let point up = rec(y=origin.y + 10 with origin);
 
-  check(origin.x == 0);
-  check(origin.y == 0);
+  assert (origin.x == 0);
+  assert (origin.y == 0);
 
-  check(right.x == 10);
-  check(right.y == 0);
+  assert (right.x == 10);
+  assert (right.y == 0);
 
-  check(up.x == 0);
-  check(up.y == 10);
+  assert (up.x == 0);
+  assert (up.y == 10);
 }

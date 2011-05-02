@@ -10,7 +10,7 @@ fn check_sort(vec[int] v1, vec[int] v2) {
   auto i = 0u;
   while (i < len) {
     log v3.(i);
-    check (v3.(i) == v2.(i));
+    assert (v3.(i) == v2.(i));
     i += 1u;
   }
 }

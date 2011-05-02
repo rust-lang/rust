@@ -4,7 +4,7 @@
 // error-pattern:1 == 2
 
 fn child() {
-  check (1 == 2);
+  assert (1 == 2);
 }
 
 fn main() {

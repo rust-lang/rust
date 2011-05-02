@@ -28,7 +28,7 @@ fn create[T]() -> t[T] {
      * elsewhere.
      */
     fn grow[T](uint nelts, uint lo, vec[cell[T]] elts) -> vec[cell[T]] {
-        check (nelts == _vec.len[cell[T]](elts));
+        assert (nelts == _vec.len[cell[T]](elts));
 
         fn fill[T](uint i, uint nelts, uint lo,
                    vec[cell[T]] old) -> cell[T] {

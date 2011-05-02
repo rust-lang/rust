@@ -5,7 +5,7 @@ fn mk() -> int {
 
 fn chk(&int a) {
   log a;
-  check (a == 1);
+  assert (a == 1);
 }
 
 fn apply[T](fn() -> T produce, fn(&T) consume) {

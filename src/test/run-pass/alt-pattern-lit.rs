@@ -12,6 +12,6 @@ fn altlit(int f) -> int {
 }
 
 fn main() {
-  check (altlit(10) == 20);
-  check (altlit(11) == 22);
+  assert (altlit(10) == 20);
+  assert (altlit(11) == 22);
 }

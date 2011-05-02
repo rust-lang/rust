@@ -7,7 +7,7 @@ type compare[T] = fn(&T t1, &T t2) -> bool;
 
 fn test_generic[T](&T expected, &compare[T] eq) {
   let T actual = { expected };
-  check (eq(expected, actual));
+  assert (eq(expected, actual));
 }
 
 fn test_bool() {

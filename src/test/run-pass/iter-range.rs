@@ -1,5 +1,5 @@
 iter range(int a, int b) -> int {
-  check (a < b);
+  assert (a < b);
 
   let int i = a;
   while (i < b) {

@@ -1,8 +1,8 @@
 // xfail-boot
 // xfail-stage0
 fn f(@rec(int a, int b) x) {
-  check (x.a == 10);
-  check (x.b == 12);
+  assert (x.a == 10);
+  assert (x.b == 12);
 }
 
 fn main() {

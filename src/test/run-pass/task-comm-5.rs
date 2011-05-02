@@ -21,5 +21,5 @@ fn test00() {
         i += 1;
     }
     
-    check (sum == ((number_of_messages * (number_of_messages - 1)) / 2));
+    assert (sum == ((number_of_messages * (number_of_messages - 1)) / 2));
 }
