@@ -417,6 +417,12 @@ fn T_tydesc(type_names tn) -> TypeRef {
     ret t;
 }
 
+// A "fat tydesc" is a type descriptor plus an array of extra type descriptors
+// following it.
+fn T_fat_tydesc(type_names tn, uint n_subdescs) -> TypeRef {
+    ret T_struct(vec(T_tydesc(tn), T_array(T_tydesc(tn), n_subdescs)));
+}
+
 fn T_array(TypeRef t, uint n) -> TypeRef {
     ret llvm.LLVMArrayType(t, n);
 }
