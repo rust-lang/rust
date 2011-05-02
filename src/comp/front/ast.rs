@@ -563,6 +563,20 @@ fn is_call_expr(@expr e) -> bool {
     }
 }
 
+fn is_constraint_arg(@expr e) -> bool {
+    alt (e.node) {
+        case (expr_lit(_,_)) {
+            ret true;
+        }
+        case (expr_path(_, option.some[def](def_local(_)), _)) {
+            ret true;
+        }
+        case (_) {
+            ret false;
+        }
+    }
+}
+
 //
 // Local Variables:
 // mode: rust
