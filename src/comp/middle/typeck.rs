@@ -9,6 +9,8 @@ import util.common;
 import util.common.span;
 import util.common.plain_ann;
 
+import util.common.log_expr_err;
+
 import middle.ty;
 import middle.ty.ann_to_type;
 import middle.ty.arg;
@@ -1955,16 +1957,25 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_check(?e, _)) {
-            /* FIXME */
-        /* presumably, here is where we should check that e is
-         actually a call to a predicate, where all the arguments
-        are literals or slot variables? */
             auto expr_t = check_expr(fcx, e);
             Demand.simple(fcx, expr.span, ty.mk_bool(fcx.ccx.tcx),
                           expr_ty(fcx.ccx.tcx, expr_t));
-            ret @fold.respan[ast.expr_]
-                (expr.span, ast.expr_check(expr_t,
-                                                plain_ann(fcx.ccx.tcx)));
+            /* e must be a call expr where all arguments are either
+             literals or slots */
+            alt (e.node) {
+                case (ast.expr_call(?operator, ?operands, _)) {
+                    /* operator must be a pure function */
+                    /* FIXME: need more checking */
+                    ret @fold.respan[ast.expr_]
+                        (expr.span, ast.expr_check(expr_t,
+                               plain_ann(fcx.ccx.tcx)));
+                    
+                }
+                case (_) {
+                    fcx.ccx.sess.span_err(expr.span,
+                        "Check on non-predicate");
+                }
+            }
         }
 
         case (ast.expr_assert(?e, _)) {
