@@ -417,12 +417,6 @@ fn T_tydesc(type_names tn) -> TypeRef {
     ret t;
 }
 
-// A "fat tydesc" is a type descriptor plus an array of extra type descriptors
-// following it.
-fn T_fat_tydesc(type_names tn, uint n_subdescs) -> TypeRef {
-    ret T_struct(vec(T_tydesc(tn), T_array(T_tydesc(tn), n_subdescs)));
-}
-
 fn T_array(TypeRef t, uint n) -> TypeRef {
     ret llvm.LLVMArrayType(t, n);
 }
@@ -1589,6 +1583,27 @@ fn linearize_ty_params(@block_ctxt cx, ty.t t) ->
     ret tup(x.defs, x.vals);
 }
 
+fn trans_stack_local_derived_tydesc(@block_ctxt cx, ValueRef llsz,
+        ValueRef llalign, ValueRef lltydescs) -> result {
+    auto lltydesc = alloca(cx, T_tydesc(cx.fcx.lcx.ccx.tn));
+
+    // By convention, desc 0 is the root descriptor.
+    auto llroottydesc = cx.build.Load(cx.build.GEP(lltydescs,
+                                                   vec(C_int(0), C_int(0))));
+    llroottydesc = cx.build.Load(llroottydesc);
+    cx.build.Store(llroottydesc, lltydesc);
+
+    // Store a pointer to the rest of the descriptors.
+    auto llfirstparam = cx.build.GEP(lltydescs, vec(C_int(0), C_int(1)));
+    cx.build.Store(llfirstparam,
+                   cx.build.GEP(lltydesc, vec(C_int(0), C_int(0))));
+
+    cx.build.Store(llsz, cx.build.GEP(lltydesc, vec(C_int(0), C_int(1))));
+    cx.build.Store(llalign, cx.build.GEP(lltydesc, vec(C_int(0), C_int(2))));
+
+    ret res(cx, lltydesc);
+}
+
 fn get_tydesc(&@block_ctxt cx, ty.t t, bool escapes) -> result {
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt (ty.type_param(cx.fcx.lcx.ccx.tcx, t)) {
@@ -1627,12 +1642,18 @@ fn get_tydesc(&@block_ctxt cx, ty.t t, bool escapes) -> result {
         auto align = align_of(bcx, t);
         bcx = align.bcx;
 
-        auto v = trans_upcall(bcx, "upcall_get_type_desc",
-                              vec(p2i(bcx.fcx.lcx.ccx.crate_ptr),
-                                  sz.val,
-                                  align.val,
-                                  C_int((1u + n_params) as int),
-                                  vp2i(bcx, tydescs)), true);
+        auto v;
+        if (escapes) {
+            v = trans_upcall(bcx, "upcall_get_type_desc",
+                             vec(p2i(bcx.fcx.lcx.ccx.crate_ptr),
+                                 sz.val,
+                                 align.val,
+                                 C_int((1u + n_params) as int),
+                                 vp2i(bcx, tydescs)), true);
+        } else {
+            v = trans_stack_local_derived_tydesc(bcx, sz.val, align.val,
+                                                 tydescs);
+        }
 
         ret res(v.bcx, vi2p(v.bcx, v.val,
                             T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn))));
