@@ -21,4 +21,4 @@ file1 = full_snapshot_name(date, rev, kernel, cpu, h)
 
 shutil.move(file0, file1)
 
-print file1
+print(file1)

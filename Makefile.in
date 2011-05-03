@@ -108,7 +108,6 @@ GENERATED :=
 %:: s.%
 %:: SCCS/s.%
 
-
 ######################################################################
 # Standard library variables
 ######################################################################
@@ -133,6 +132,13 @@ BREQ := boot/rustboot$(X) stage0/$(CFG_STDLIB)
 SREQ0 := stage0/rustc$(X) $(LREQ) stage1/glue.o stage1/$(CFG_STDLIB)
 SREQ1 := stage1/rustc$(X) $(LREQ) stage2/glue.o stage2/$(CFG_STDLIB)
 SREQ2 := stage2/rustc$(X) $(LREQ) stage3/glue.o stage3/$(CFG_STDLIB)
+
+
+######################################################################
+# Exports for sub-utilities
+######################################################################
+
+export CFG_SRC_DIR
 
 
 ######################################################################
@@ -179,5 +185,6 @@ include $(CFG_SRC_DIR)/mk/rustllvm.mk
 include $(CFG_SRC_DIR)/mk/docs.mk
 include $(CFG_SRC_DIR)/mk/tests.mk
 include $(CFG_SRC_DIR)/mk/dist.mk
+include $(CFG_SRC_DIR)/mk/snap.mk
 include $(CFG_SRC_DIR)/mk/clean.mk
 include $(CFG_SRC_DIR)/mk/autodep.mk

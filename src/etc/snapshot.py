@@ -1,6 +1,10 @@
-import re, os, sys, hashlib, tarfile, shutil, subprocess, urllib2, tempfile
+import re, os, sys, hashlib, tarfile, shutil, subprocess, tempfile
 
-snapshotfile = "snapshots.txt"
+src_dir = os.getenv("CFG_SRC_DIR")
+if not src_dir:
+  raise Exception("missing env var CFG_SRC_DIR")
+
+snapshotfile = os.path.join(src_dir, "snapshots.txt")
 download_url_base = "http://dl.rust-lang.org/stage0-snapshots"
 download_dir_base = "dl"
 download_unpack_base = os.path.join(download_dir_base, "unpack")
@@ -59,11 +63,16 @@ def get_cpu():
 def get_platform():
   return "%s-%s" % (get_kernel(), get_cpu())
 
+def scrub(b):
+  if sys.version_info >= (3,) and type(b) == bytes:
+    return b.decode('ascii')
+  else:
+    return b
 
 def cmd_out(cmdline):
     p = subprocess.Popen(cmdline,
                          stdout=subprocess.PIPE)
-    return p.communicate()[0].strip()
+    return scrub(p.communicate()[0].strip())
 
 
 def local_rev_info(field):
@@ -82,8 +91,10 @@ def local_rev_short_sha():
 def local_rev_committer_date():
     return local_rev_info("ci")
 
+def get_url_to_file(u,f):
+  subprocess.check_call(["curl", "-o", f, u])
 
 def hash_file(x):
     h = hashlib.sha1()
-    h.update(open(x).read())
-    return h.hexdigest()
+    h.update(open(x, "rb").read())
+    return scrub(h.hexdigest())

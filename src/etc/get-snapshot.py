@@ -9,34 +9,15 @@ def snap_filename_hash_part(snap):
     raise Exception("unable to find hash in filename: " + snap)
   return match.group(1)
 
-def get_snapshot_and_check_hash(snap):
-
-  hsh = snap_filename_hash_part(snap)
-
-  h = hashlib.sha1()
-  url = download_url_base + "/" + snap
-  print "downloading " + url
-  u = urllib2.urlopen(url)
-  print "checking hash on download"
-  data = u.read()
-  h.update(data)
-  if h.hexdigest() != hsh:
-    raise Exception("hash check failed on " + snap)
-
-  print "hash ok"
-  with open(os.path.join(download_dir_base, snap), "w+b") as f:
-    f.write(data)
-  return True
-
 def unpack_snapshot(snap):
   dl_path = os.path.join(download_dir_base, snap)
-  print "opening snapshot " + dl_path
+  print("opening snapshot " + dl_path)
   tar = tarfile.open(dl_path)
   kernel = get_kernel()
   for name in snapshot_files[kernel]:
     p = os.path.join("rust-stage0", name)
     fp = os.path.join("stage0", name)
-    print "extracting " + fp
+    print("extracting " + fp)
     tar.extract(p, download_unpack_base)
     tp = os.path.join(download_unpack_base, p)
     shutil.move(tp, fp)
@@ -80,16 +61,16 @@ def determine_last_snapshot_for_platform():
 # Main
 
 snap = determine_last_snapshot_for_platform()
-print "determined most recent snapshot: " + snap
 dl = os.path.join(download_dir_base, snap)
-if (os.path.exists(dl)):
-  if (snap_filename_hash_part(snap) == hash_file(dl)):
-    print "found existing download with ok hash"
-  else:
-    print "bad hash on existing download, re-fetching"
-    get_snapshot_and_check_hash(snap)
+url = download_url_base + "/" + snap
+print("determined most recent snapshot: " + snap)
+
+if (not os.path.exists(dl)):
+  get_url_to_file(url, dl)
+
+if (snap_filename_hash_part(snap) == hash_file(dl)):
+  print("got download with ok hash")
 else:
-  print "no cached download, fetching"
-  get_snapshot_and_check_hash(snap)
+  raise Exception("bad hash on download")
 
 unpack_snapshot(snap)
