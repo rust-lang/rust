@@ -15,7 +15,7 @@ mod foo {
   }
 
   fn g(t v) {
-    check (v == t1);
+    assert v == t1;
   }
 }
 
