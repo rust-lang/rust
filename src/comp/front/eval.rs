@@ -24,8 +24,15 @@ tag val {
     val_str(str);
 }
 
+tag eval_mode {
+    mode_depend;
+    mode_parse;
+}
+
 type env = vec[tup(ident, val)];
 type ctx = @rec(parser p,
+                eval_mode mode,
+                mutable vec[str] deps,
                 session.session sess,
                 mutable uint chpos);
 
@@ -382,6 +389,11 @@ fn eval_crate_directive(ctx cx,
             }
 
             auto full_path = prefix + std.fs.path_sep() + file_path;
+
+            if (cx.mode == mode_depend) {
+                cx.deps += vec(full_path);
+                ret;
+            }
 
             auto start_id = cx.p.next_def_id();
             auto p0 = new_parser(cx.sess, e, start_id, full_path, cx.chpos);

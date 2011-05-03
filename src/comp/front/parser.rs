@@ -2497,7 +2497,12 @@ fn parse_crate_from_crate_file(parser p) -> @ast.crate {
     auto lo = p.get_lo_pos();
     auto prefix = std.fs.dirname(p.get_filemap().name);
     auto cdirs = parse_crate_directives(p, token.EOF);
-    auto cx = @rec(p=p, sess=p.get_session(), mutable chpos=p.get_chpos());
+    let vec[str] deps = vec();
+    auto cx = @rec(p=p,
+                   mode=eval.mode_parse,
+                   mutable deps = deps,
+                   sess=p.get_session(),
+                   mutable chpos=p.get_chpos());
     auto m = eval.eval_crate_directives_to_mod(cx, p.get_env(),
                                                cdirs, prefix);
     auto hi = p.get_hi_pos();
