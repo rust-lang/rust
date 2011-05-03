@@ -290,8 +290,6 @@ rust_task::start_rustc(uintptr_t exit_task_glue,
     *spp-- = (uintptr_t) 0x0;        // output
     *spp-- = (uintptr_t) 0x0;        // retpc
 
-    uintptr_t exit_task_frame_base = 0;
-
     I(dom, args);
     make_aligned_room_for_bytes(spp, callsz - 3 * sizeof(uintptr_t));
 
@@ -325,11 +323,7 @@ rust_task::start_rustc(uintptr_t exit_task_glue,
     // The context the activate_glue needs to switch stack.
     *spp-- = (uintptr_t) spawnee_fn;      // instruction to start at
     for (size_t j = 0; j < n_callee_saves; ++j) {
-        // callee-saves to carry in when we activate
-        if (j == callee_save_fp)
-            *spp-- = exit_task_frame_base;
-        else
-            *spp-- = (uintptr_t)NULL;
+        *spp-- = (uintptr_t)NULL;
     }
 
     // Back up one, we overshot where sp should be.
