@@ -66,17 +66,11 @@ boot/$(CFG_STDLIB).d: $(STDLIB_CRATE) $(STDLIB_INPUTS) \
 stage0/rustc$(X).d: $(COMPILER_CRATE) $(COMPILER_INPUTS) \
                     $(STDLIB_CRATE) $(MKFILES) boot/rustboot$(X)
 	@$(call E, dep: $@)
-	$(BOOT) -o $(patsubst %.d,%$(X),$@) -shared -rdeps $< >$@.tmp
-	$(Q)$(CFG_PATH_MUNGE) $@.tmp
-	$(Q)rm -f $@.tmp.bak
-	$(Q)mv $@.tmp $@
+	$(Q)touch $@
 
-%.d: %.rc $(MKFILES) boot/rustboot$(X)
+%.d: %.rc $(MKFILES)
 	@$(call E, dep: $@)
-	$(BOOT)  -o $(patsubst %.d,%$(X),$@) -rdeps $< >$@.tmp
-	$(Q)$(CFG_PATH_MUNGE) $@.tmp
-	$(Q)rm -f $@.tmp.bak
-	$(Q)mv $@.tmp $@
+	$(Q)touch $@
 
 ifneq ($(MAKECMDGOALS),clean)
 -include $(CRATE_DEPFILES)
