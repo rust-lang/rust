@@ -648,10 +648,9 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
     ret s;
 }
 
-fn ty_to_short_str(ctxt cx, hashmap[ty.t, metadata.ty_abbrev] abbrevs,
-                   t typ) -> str {
+fn ty_to_short_str(ctxt cx, t typ) -> str {
     auto f = def_to_str;
-    auto ecx = @rec(ds=f, tcx=cx,  use_abbrevs=false, abbrevs=abbrevs);
+    auto ecx = @rec(ds=f, tcx=cx, abbrevs=metadata.ac_no_abbrevs);
     auto s = metadata.Encode.ty_str(ecx, typ);
     if (_str.byte_len(s) >= 64u) { s = _str.substr(s, 0u, 64u); }
     ret s;

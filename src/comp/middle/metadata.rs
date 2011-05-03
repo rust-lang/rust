@@ -53,59 +53,72 @@ const uint tag_index_table = 0x15u;
 
 type ty_abbrev = rec(uint pos, uint len, str s);
 
+tag abbrev_ctxt {
+    ac_no_abbrevs;
+    ac_use_abbrevs(hashmap[ty.t, ty_abbrev]);
+}
+
 mod Encode {
 
     type ctxt = rec(
         fn(ast.def_id) -> str ds,           // Def -> str Callback.
         ty.ctxt tcx,                        // The type context.
-        bool use_abbrevs,
-        hashmap[ty.t, ty_abbrev] abbrevs    // Type abbrevs.
+        abbrev_ctxt abbrevs
     );
 
+    fn cx_uses_abbrevs(@ctxt cx) -> bool {
+        alt (cx.abbrevs) {
+            case (ac_no_abbrevs)     { ret false; }
+            case (ac_use_abbrevs(_)) { ret true; }
+        }
+    }
+
     fn ty_str(@ctxt cx, ty.t t) -> str {
-        assert (! cx.use_abbrevs);
+        assert (!cx_uses_abbrevs(cx));
         auto sw = io.string_writer();
         enc_ty(sw.get_writer(), cx, t);
         ret sw.get_str();
     }
 
     fn enc_ty(io.writer w, @ctxt cx, ty.t t) {
-        if (cx.use_abbrevs) {
-            alt (cx.abbrevs.find(t)) {
-                case (some[ty_abbrev](?a)) {
-                    w.write_str(a.s);
-                    ret;
-                }
-                case (none[ty_abbrev]) {
-                    auto pos = w.get_buf_writer().tell();
-                    auto ss = enc_sty(w, cx, ty.struct(cx.tcx, t));
-                    auto end = w.get_buf_writer().tell();
-                    auto len = end-pos;
-                    fn estimate_sz(uint u) -> uint {
-                        auto n = u;
-                        auto len = 0u;
-                        while (n != 0u) {
-                            len += 1u;
-                            n = n >> 4u;
+        alt (cx.abbrevs) {
+            case (ac_no_abbrevs) { enc_sty(w, cx, ty.struct(cx.tcx, t)); }
+            case (ac_use_abbrevs(?abbrevs)) {
+                alt (abbrevs.find(t)) {
+                    case (some[ty_abbrev](?a)) {
+                        w.write_str(a.s);
+                        ret;
+                    }
+                    case (none[ty_abbrev]) {
+                        auto pos = w.get_buf_writer().tell();
+                        auto ss = enc_sty(w, cx, ty.struct(cx.tcx, t));
+                        auto end = w.get_buf_writer().tell();
+                        auto len = end-pos;
+                        fn estimate_sz(uint u) -> uint {
+                            auto n = u;
+                            auto len = 0u;
+                            while (n != 0u) {
+                                len += 1u;
+                                n = n >> 4u;
+                            }
+                            ret len;
                         }
-                        ret len;
-                    }
-                    auto abbrev_len =
-                        3u + estimate_sz(pos) + estimate_sz(len);
+                        auto abbrev_len =
+                            3u + estimate_sz(pos) + estimate_sz(len);
 
-                    if (abbrev_len < len) {
-                        // I.e. it's actually an abbreviation.
-                        auto s = ("#"
-                                  + _uint.to_str(pos, 16u) + ":"
-                                  + _uint.to_str(len, 16u) + "#");
-                        auto a = rec(pos=pos, len=len, s=s);
-                        cx.abbrevs.insert(t, a);
+                        if (abbrev_len < len) {
+                            // I.e. it's actually an abbreviation.
+                            auto s = ("#"
+                                      + _uint.to_str(pos, 16u) + ":"
+                                      + _uint.to_str(len, 16u) + "#");
+                            auto a = rec(pos=pos, len=len, s=s);
+                            abbrevs.insert(t, a);
+                        }
+                        ret;
                     }
-                    ret;
                 }
             }
         }
-        enc_sty(w, cx, ty.struct(cx.tcx, t));
     }
 
     fn enc_mt(io.writer w, @ctxt cx, &ty.mt mt) {
@@ -406,7 +419,7 @@ fn encode_type(@trans.crate_ctxt cx, &ebml.writer ebml_w, ty.t typ) {
 
     auto f = def_to_str;
     auto ty_str_ctxt = @rec(ds=f, tcx=cx.tcx,
-                            use_abbrevs=true, abbrevs=cx.type_abbrevs);
+                            abbrevs=ac_use_abbrevs(cx.type_abbrevs));
     Encode.enc_ty(io.new_writer_(ebml_w.writer), ty_str_ctxt, typ);
     ebml.end_tag(ebml_w);
 }

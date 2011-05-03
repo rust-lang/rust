@@ -193,8 +193,7 @@ fn get_type_sha1(@crate_ctxt ccx, ty.t t) -> str {
             auto f = metadata.def_to_str;
             // NB: do *not* use abbrevs here as we want the symbol names
             // to be independent of one another in the crate.
-            auto cx = @rec(ds=f, tcx=ccx.tcx,
-                           use_abbrevs=false, abbrevs=ccx.type_abbrevs);
+            auto cx = @rec(ds=f, tcx=ccx.tcx, abbrevs=metadata.ac_no_abbrevs);
             ccx.sha.input_str(metadata.Encode.ty_str(cx, t));
             hash = _str.substr(ccx.sha.result_str(), 0u, 16u);
             ccx.type_sha1s.insert(t, hash);
@@ -210,8 +209,7 @@ fn mangle_name_by_type(@crate_ctxt ccx, vec[str] path, ty.t t) -> str {
 
 fn mangle_name_by_type_only(@crate_ctxt ccx, ty.t t, str name) -> str {
     auto f = metadata.def_to_str;
-    auto cx = @rec(ds=f, tcx=ccx.tcx,
-                   use_abbrevs=false, abbrevs=ccx.type_abbrevs);
+    auto cx = @rec(ds=f, tcx=ccx.tcx, abbrevs=metadata.ac_no_abbrevs);
     auto s = metadata.Encode.ty_str(cx, t);
 
     auto hash = get_type_sha1(ccx, t);
@@ -816,9 +814,7 @@ fn type_of_inner(@crate_ctxt cx, ty.t t) -> TypeRef {
     }
 
     assert (llty as int != 0);
-    llvm.LLVMAddTypeName(cx.llmod,
-                         _str.buf(ty.ty_to_short_str(cx.tcx,
-                                                     cx.type_abbrevs, t)),
+    llvm.LLVMAddTypeName(cx.llmod, _str.buf(ty.ty_to_short_str(cx.tcx, t)),
                          llty);
     cx.lltypes.insert(t, llty);
     ret llty;
