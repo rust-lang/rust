@@ -184,7 +184,7 @@ fn path_name(vec[str] path) -> str {
 }
 
 
-fn mangle_name_by_type(@crate_ctxt ccx, vec[str] path, ty.t t) -> str {
+fn get_type_sha1(@crate_ctxt ccx, ty.t t) -> str {
     auto hash = "";
     alt (ccx.type_sha1s.find(t)) {
         case (some[str](?h)) { hash = h; }
@@ -200,7 +200,22 @@ fn mangle_name_by_type(@crate_ctxt ccx, vec[str] path, ty.t t) -> str {
             ccx.type_sha1s.insert(t, hash);
         }
     }
+    ret hash;
+}
+
+fn mangle_name_by_type(@crate_ctxt ccx, vec[str] path, ty.t t) -> str {
+    auto hash = get_type_sha1(ccx, t);
     ret sep() + "rust" + sep() + hash + sep() + path_name(path);
+}
+
+fn mangle_name_by_type_only(@crate_ctxt ccx, ty.t t, str name) -> str {
+    auto f = metadata.def_to_str;
+    auto cx = @rec(ds=f, tcx=ccx.tcx,
+                   use_abbrevs=false, abbrevs=ccx.type_abbrevs);
+    auto s = metadata.Encode.ty_str(cx, t);
+
+    auto hash = get_type_sha1(ccx, t);
+    ret sep() + "rust" + sep() + hash + sep() + name + "_" + s;
 }
 
 fn mangle_name_by_seq(@crate_ctxt ccx, vec[str] path, str flav) -> str {
@@ -1774,8 +1789,7 @@ fn declare_generic_glue(@local_ctxt cx,
                         ty.t t,
                         TypeRef llfnty,
                         str name) -> ValueRef {
-    auto gcx = @rec(path=vec("glue", name) with *cx);
-    auto fn_nm = mangle_name_by_seq(cx.ccx, cx.path, "glue");
+    auto fn_nm = mangle_name_by_type_only(cx.ccx, t, "glue_" + name);
     fn_nm = sanitize(fn_nm);
     auto llfn = decl_internal_fastcall_fn(cx.ccx.llmod, fn_nm, llfnty);
     ret llfn;
