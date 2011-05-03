@@ -1,6 +1,7 @@
 
 import std.map.hashmap;
 import std.option;
+import std._str;
 import std._vec;
 import util.common.span;
 import util.common.spanned;
@@ -526,6 +527,27 @@ fn index_stmt(block_index index, @stmt s) {
             }
         }
         case (_) { /* fall through */ }
+    }
+}
+
+fn is_exported(ident i, _mod m) -> bool {
+    auto count = 0;
+    for (@ast.view_item vi in m.view_items) {
+        alt (vi.node) {
+            case (ast.view_item_export(?id)) {
+                if (_str.eq(i, id)) {
+                    ret true;
+                }
+                count += 1;
+            }
+            case (_) { /* fall through */ }
+        }
+    }
+    // If there are no declared exports then everything is exported
+    if (count == 0) {
+        ret true;
+    } else {
+        ret false;
     }
 }
 

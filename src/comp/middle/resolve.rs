@@ -370,24 +370,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
                 }
             }
 
-            auto count = 0;
-            for (@ast.view_item vi in m.view_items) {
-                alt (vi.node) {
-                    case (ast.view_item_export(?id)) {
-                        if (_str.eq(i, id)) {
-                            ret true;
-                        }
-                        count += 1;
-                    }
-                    case (_) { /* fall through */ }
-                }
-            }
-            // If there are no declared exports then everything is exported
-            if (count == 0) {
-                ret true;
-            } else {
-                ret false;
-            }
+            ret ast.is_exported(i, m);
         }
 
         alt (m.index.find(i)) {
