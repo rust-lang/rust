@@ -18,14 +18,12 @@ PKG_FILES = \
     $(S)LICENSE.txt $(S)README                 \
     $(S)configure $(S)Makefile.in              \
     $(addprefix $(S)src/,                      \
-      README boot/README comp/README           \
-      $(filter-out $(GENERATED), $(BOOT_MLS))  \
+      README comp/README                       \
       $(RUNTIME_CS) $(RUNTIME_HDR)             \
       $(RUSTLLVM_LIB_CS) $(RUSTLLVM_OBJS_CS)   \
       $(RUSTLLVM_HDR)                          \
       $(PKG_3RDPARTY))                         \
     $(GENERATED)                               \
-    $(S)src/boot/fe/lexer.ml                   \
     $(COMPILER_INPUTS)                         \
     $(STDLIB_INPUTS)                           \
     $(ALL_TEST_INPUTS)                         \

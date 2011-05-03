@@ -23,7 +23,6 @@ clean:
 	$(Q)rm -f $(C_DEPFILES:%.d=%.d.tmp)
 	$(Q)rm -f $(CRATE_DEPFILES:%.d=%.d.tmp)
 	$(Q)rm -f $(GENERATED)
-	$(Q)rm -f boot/rustboot$(X) boot/$(CFG_STDLIB)
 	$(Q)rm -f stage0/rustc$(X) stage0/$(CFG_STDLIB)
 	$(Q)rm -f stage1/rustc$(X) stage1/$(CFG_STDLIB) stage1/glue*
 	$(Q)rm -f stage2/rustc$(X) stage2/$(CFG_STDLIB) stage2/glue*
@@ -31,12 +30,10 @@ clean:
 	$(Q)rm -f rustllvm/$(CFG_RUSTLLVM) rustllvm/rustllvmbits.a
 	$(Q)rm -f rt/$(CFG_RUNTIME)
 	$(Q)rm -Rf $(PKG_NAME)-*.tar.gz dist
-	$(Q)rm -f $(foreach ext,cmx cmi cmo cma bc o a d exe,\
-                        $(wildcard boot/*/*.$(ext) boot/*/*/*.$(ext)))
 	$(Q)rm -f $(foreach ext,o a d bc s exe,$(wildcard stage*/*.$(ext)))
-	$(Q)rm -Rf $(foreach ext,out out.tmp                               \
-                             boot$(X) stage0$(X) stage1$(X) stage2$(X) \
-                             bc o s exe dSYM,                          \
+	$(Q)rm -Rf $(foreach ext,out out.tmp                      \
+                             stage0$(X) stage1$(X) stage2$(X) \
+                             bc o s exe dSYM,                 \
                         $(wildcard test/*/*.$(ext) test/bench/*/*.$(ext)))
 	$(Q)rm -Rf $(foreach ext, \
                  aux cp fn ky log pdf html pg toc tp vr cps, \

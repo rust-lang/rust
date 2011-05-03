@@ -11,8 +11,6 @@ endif
 
 CFG_INFO := $(info cfg: building on $(CFG_OSTYPE) $(CFG_CPUTYPE))
 
-CFG_BOOT_FLAGS := $(BOOT_FLAGS)
-
 ifdef CFG_DISABLE_OPTIMIZE
   $(info cfg: disabling rustc optimization (CFG_DISABLE_OPTIMIZE))
   CFG_RUSTC_FLAGS :=
@@ -128,7 +126,6 @@ COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
 ######################################################################
 
 LREQ := rt/$(CFG_RUNTIME) rustllvm/$(CFG_RUSTLLVM)
-BREQ := boot/rustboot$(X) stage0/$(CFG_STDLIB)
 SREQ0 := stage0/rustc$(X) $(LREQ) stage1/glue.o stage1/$(CFG_STDLIB)
 SREQ1 := stage1/rustc$(X) $(LREQ) stage2/glue.o stage2/$(CFG_STDLIB)
 SREQ2 := stage2/rustc$(X) $(LREQ) stage3/glue.o stage3/$(CFG_STDLIB)
@@ -145,8 +142,7 @@ export CFG_SRC_DIR
 # Single-target rules
 ######################################################################
 
-all: boot/rustboot$(X)          \
-     rt/$(CFG_RUNTIME)          \
+all: rt/$(CFG_RUNTIME)          \
      rustllvm/$(CFG_RUSTLLVM)   \
      stage0/$(CFG_STDLIB)       \
      stage0/rustc$(X)           \
@@ -157,10 +153,10 @@ all: boot/rustboot$(X)          \
      stage1/rustc$(X)           \
      stage2/$(CFG_STDLIB)       \
      stage2/glue.o              \
-     stage2/rustc$(X)
-#     stage3/$(CFG_STDLIB)       \
-#     stage3/glue.o              \
-#     stage3/rustc$(X)           \
+     stage2/rustc$(X)           \
+     stage3/$(CFG_STDLIB)       \
+     stage3/glue.o              \
+     stage3/rustc$(X)
 
 
 ######################################################################
@@ -176,10 +172,10 @@ config.mk: $(S)configure $(S)Makefile.in
 # Additional makefiles
 ######################################################################
 
-include $(CFG_SRC_DIR)/mk/boot.mk
 include $(CFG_SRC_DIR)/mk/stage0.mk
 include $(CFG_SRC_DIR)/mk/stage1.mk
 include $(CFG_SRC_DIR)/mk/stage2.mk
+include $(CFG_SRC_DIR)/mk/stage3.mk
 include $(CFG_SRC_DIR)/mk/rt.mk
 include $(CFG_SRC_DIR)/mk/rustllvm.mk
 include $(CFG_SRC_DIR)/mk/docs.mk
