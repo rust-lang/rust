@@ -1,4 +1,5 @@
-stage1/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage0/rustc$(X) $(MKFILES)
+stage1/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) \
+              stage0/rustc$(X) stage0/$(CFG_STDLIB) $(LREQ) $(MKFILES)
 	@$(call E, compile: $@)
 	$(STAGE0) -c --shared -o $@ $<
 
@@ -11,8 +12,7 @@ stage1/rustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ0)
 	@$(call E, compile: $@)
 	$(STAGE0) -c -o $@ $<
 
-stage1/glue.o: stage0/rustc$(X) stage0/$(CFG_STDLIB) \
-                rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
+stage1/glue.o: stage0/rustc$(X) stage0/$(CFG_STDLIB) $(LREQ) $(MKFILES)
 	@$(call E, generate: $@)
 	$(STAGE0) -c -o $@ --glue
 

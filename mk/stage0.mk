@@ -1,9 +1,9 @@
-stage0/$(CFG_STDLIB): $(STDLIB_CRATE) $(STDLIB_INPUTS) \
-                      boot/rustboot$(X) $(MKFILES)
-	@$(call E, compile: $@)
-	$(BOOT) -shared -o $@ $<
+stage0/rustc$(X): $(S)src/snapshots.txt $(S)src/etc/get-snapshot.py $(MKFILES)
+	@$(call E, fetch: $@)
+	$(S)src/etc/get-snapshot.py
 
-stage0/rustc$(X): $(COMPILER_CRATE) $(COMPILER_INPUTS) $(BREQ)
-	@$(call E, compile: $@)
-	$(BOOT) -minimal -o $@ $<
-	$(Q)chmod 0755 $@
+# These two will be made in the process of making rustc above.
+
+stage0/glue.o: stage0/rustc$(X)
+
+stage0/$(CFG_STDLIB): stage0/rustc$(X)

@@ -188,6 +188,7 @@ probe_need CFG_GIT          git
 probe_need CFG_OCAMLC       ocamlc
 probe_need CFG_PERL         perl
 probe_need CFG_PYTHON       python
+probe_need CFG_CURL         curl
 
 probe CFG_LLVM_CONFIG      llvm-config
 probe CFG_VALGRIND         valgrind
