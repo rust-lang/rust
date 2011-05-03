@@ -229,6 +229,7 @@ fn print_item(ps s, @ast.item item) {
             wrd1(s, "native");
             alt (nmod.abi) {
                 case (ast.native_abi_rust) {wrd1(s, "\"rust\"");}
+                case (ast.native_abi_llvm) {wrd1(s, "\"llvm-intrinsic\"");}
                 case (ast.native_abi_cdecl) {wrd1(s, "\"cdecl\"");}
             }
             wrd1(s, "mod");
