@@ -1905,7 +1905,7 @@ fn expr_ann(&@ast.expr e) -> ast.ann {
 // instead of "fn(&T) -> T with T = int". If this isn't what you want, see
 // expr_ty_params_and_ty() below.
 fn expr_ty(ctxt cx, @ast.expr expr) -> t {
-    { ret ann_to_monotype(cx, expr_ann(expr)); }
+    ret ann_to_monotype(cx, expr_ann(expr));
 }
 
 fn expr_ty_params_and_ty(ctxt cx, @ast.expr expr) -> tup(vec[t], t) {
