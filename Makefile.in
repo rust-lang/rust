@@ -147,13 +147,13 @@ all: boot/rustboot$(X)          \
      $(GENERATED)               \
      $(DOCS)                    \
      stage1/$(CFG_STDLIB)       \
-     stage1/glue.o
-#     stage1/rustc$(X)           \
-#     stage2/$(CFG_STDLIB)       \
+     stage1/glue.o              \
+     stage1/rustc$(X)           \
+     stage2/$(CFG_STDLIB)       \
+     stage2/glue.o              \
+     stage2/rustc$(X)
 #     stage3/$(CFG_STDLIB)       \
-#     stage2/glue.o              \
 #     stage3/glue.o              \
-#     stage2/rustc$(X)           \
 #     stage3/rustc$(X)           \
 
 
