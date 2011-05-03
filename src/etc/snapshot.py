@@ -1,6 +1,12 @@
 import re, os, sys, hashlib, tarfile, shutil, subprocess, tempfile
 
-src_dir = os.getenv("CFG_SRC_DIR")
+def scrub(b):
+  if sys.version_info >= (3,) and type(b) == bytes:
+    return b.decode('ascii')
+  else:
+    return b
+
+src_dir = scrub(os.getenv("CFG_SRC_DIR"))
 if not src_dir:
   raise Exception("missing env var CFG_SRC_DIR")
 
@@ -63,11 +69,6 @@ def get_cpu():
 def get_platform():
   return "%s-%s" % (get_kernel(), get_cpu())
 
-def scrub(b):
-  if sys.version_info >= (3,) and type(b) == bytes:
-    return b.decode('ascii')
-  else:
-    return b
 
 def cmd_out(cmdline):
     p = subprocess.Popen(cmdline,
@@ -76,7 +77,8 @@ def cmd_out(cmdline):
 
 
 def local_rev_info(field):
-    return cmd_out(["git", "log", "-n", "1",
+    return cmd_out(["git", "--git-dir=" + os.path.join(src_dir, ".git"),
+                    "log", "-n", "1",
                     "--format=%%%s" % field, "HEAD"])
 
 
@@ -110,8 +112,8 @@ def make_snapshot():
 
     tar = tarfile.open(file0, "w:bz2")
     for name in snapshot_files[kernel]:
-    tar.add(os.path.join("stage2", name),
-    os.path.join("rust-stage0", name))
+      tar.add(os.path.join("stage2", name),
+              os.path.join("rust-stage0", name))
     tar.close()
 
     h = hash_file(file0)
