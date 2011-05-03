@@ -11,6 +11,7 @@ import middle.capture;
 import middle.ty;
 import middle.typeck;
 import middle.typestate_check;
+import lib.llvm;
 import util.common;
 
 import std.map.mk_hashmap;
@@ -112,9 +113,13 @@ fn compile_input(session.session sess,
             bind typestate_check.check_crate(crate));
     }
 
-    time[()](time_passes, "translation",
-        bind trans.trans_crate(sess, crate, ty_cx, type_cache, output, shared,
-                               optimize, verify, save_temps, ot));
+    auto llmod = time[llvm.ModuleRef](time_passes, "translation",
+        bind trans.trans_crate(sess, crate, ty_cx, type_cache, output,
+                               shared));
+
+    time[()](time_passes, "LLVM passes",
+        bind trans.run_passes(llmod, optimize, verify, save_temps, output,
+                              ot));
 }
 
 fn pretty_print_input(session.session sess,

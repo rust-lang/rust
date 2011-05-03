@@ -7748,8 +7748,8 @@ fn create_crate_map(@crate_ctxt ccx) -> ValueRef {
 }
 
 fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
-               ty.type_cache type_cache, str output, bool shared,
-               bool optimize, bool verify, bool save_temps, output_type ot) {
+               ty.type_cache type_cache, str output, bool shared)
+        -> ModuleRef {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
@@ -7816,7 +7816,7 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
     // Translate the metadata.
     middle.metadata.write_metadata(cx.ccx, shared, crate);
 
-    run_passes(llmod, optimize, verify, save_temps, output, ot);
+    ret llmod;
 }
 
 //
