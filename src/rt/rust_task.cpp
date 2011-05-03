@@ -142,6 +142,18 @@ rust_task::start(uintptr_t exit_task_glue,
                  uintptr_t args,
                  size_t callsz)
 {
+    if (spawnee_abi == ABI_X86_RUSTBOOT_CDECL)
+        start_rustboot(exit_task_glue, spawnee_fn, args, callsz);
+    else
+        start_rustc(exit_task_glue, spawnee_fn, args, callsz);
+}
+
+void
+rust_task::start_rustboot(uintptr_t exit_task_glue,
+                          uintptr_t spawnee_fn,
+                          uintptr_t args,
+                          size_t callsz)
+{
     LOGPTR(dom, "exit-task glue", exit_task_glue);
     LOGPTR(dom, "from spawnee", spawnee_fn);
 
@@ -176,30 +188,25 @@ rust_task::start(uintptr_t exit_task_glue,
 
     uintptr_t exit_task_frame_base = 0;
 
-    if (spawnee_abi == ABI_X86_RUSTBOOT_CDECL) {
-        for (size_t j = 0; j < n_callee_saves; ++j) {
+    for (size_t j = 0; j < n_callee_saves; ++j) {
 
-            // We want 'frame_base' to point to the old fp in this (exit-task)
-            // frame, because we're going to inject this frame-pointer into
-            // the callee-save frame pointer value in the *next* (spawnee)
-            // frame. A cheap trick, but this means the spawnee frame will
-            // restore the proper frame pointer of the glue frame as it runs
-            // its epilogue.
-            if (j == callee_save_fp)
-                exit_task_frame_base = (uintptr_t)spp;
+        // We want 'frame_base' to point to the old fp in this (exit-task)
+        // frame, because we're going to inject this frame-pointer into
+        // the callee-save frame pointer value in the *next* (spawnee)
+        // frame. A cheap trick, but this means the spawnee frame will
+        // restore the proper frame pointer of the glue frame as it runs
+        // its epilogue.
+        if (j == callee_save_fp)
+            exit_task_frame_base = (uintptr_t)spp;
 
-            *spp-- = 0;
-        }
-
-        *spp-- = (uintptr_t) dom->root_crate;  // crate ptr
-        *spp-- = (uintptr_t) 0;                // frame_glue_fns
+        *spp-- = 0;
     }
 
+    *spp-- = (uintptr_t) dom->root_crate;  // crate ptr
+    *spp-- = (uintptr_t) 0;                // frame_glue_fns
+
     I(dom, args);
-    if (spawnee_abi == ABI_X86_RUSTBOOT_CDECL)
-        make_aligned_room_for_bytes(spp, callsz - sizeof(uintptr_t));
-    else
-        make_aligned_room_for_bytes(spp, callsz - 3 * sizeof(uintptr_t));
+    make_aligned_room_for_bytes(spp, callsz - sizeof(uintptr_t));
 
     // Copy args from spawner to spawnee.
     uintptr_t *src = (uintptr_t *)args;
@@ -222,15 +229,95 @@ rust_task::start(uintptr_t exit_task_glue,
     // activating:
     *spp-- = (uintptr_t) 0x0;               // closure-or-obj
 
-    if (spawnee_abi == ABI_X86_RUSTBOOT_CDECL) {
-        // in CDECL mode we write the task + outptr to the spawnee stack.
-        *spp-- = (uintptr_t) this;            // task
-        *spp-- = (uintptr_t) 0;               // output addr
-    } else {
-        // in FASTCALL mode we don't, the outptr will be in ecx and the task
-        // in edx, and the activate_glue will make sure to set that up.
-        I(dom, spawnee_abi == ABI_X86_RUSTC_FASTCALL);
+    // in CDECL mode we write the task + outptr to the spawnee stack.
+    *spp-- = (uintptr_t) this;            // task
+    *spp-- = (uintptr_t) 0;               // output addr
+
+    I(dom, spp+1 == align_down(spp+1));
+    *spp-- = (uintptr_t) exit_task_glue;  // retpc
+
+    // The context the activate_glue needs to switch stack.
+    *spp-- = (uintptr_t) spawnee_fn;      // instruction to start at
+    for (size_t j = 0; j < n_callee_saves; ++j) {
+        // callee-saves to carry in when we activate
+        if (j == callee_save_fp)
+            *spp-- = exit_task_frame_base;
+        else
+            *spp-- = (uintptr_t)NULL;
     }
+
+    // Back up one, we overshot where sp should be.
+    rust_sp = (uintptr_t) (spp+1);
+
+    transition(&dom->newborn_tasks, &dom->running_tasks);
+}
+
+void
+rust_task::start_rustc(uintptr_t exit_task_glue,
+                          uintptr_t spawnee_fn,
+                          uintptr_t args,
+                          size_t callsz)
+{
+    LOGPTR(dom, "exit-task glue", exit_task_glue);
+    LOGPTR(dom, "from spawnee", spawnee_fn);
+
+    // Set sp to last uintptr_t-sized cell of segment
+    rust_sp -= sizeof(uintptr_t);
+
+    // NB: Darwin needs "16-byte aligned" stacks *at the point of the call
+    // instruction in the caller*. This means that the address at which the
+    // word before retpc is pushed must always be 16-byte aligned.
+    //
+    // see: "Mac OS X ABI Function Call Guide"
+
+
+    // Begin synthesizing frames. There are two: a "fully formed"
+    // exit-task frame at the top of the stack -- that pretends to be
+    // mid-execution -- and a just-starting frame beneath it that
+    // starts executing the first instruction of the spawnee. The
+    // spawnee *thinks* it was called by the exit-task frame above
+    // it. It wasn't; we put that fake frame in place here, but the
+    // illusion is enough for the spawnee to return to the exit-task
+    // frame when it's done, and exit.
+    uintptr_t *spp = (uintptr_t *)rust_sp;
+
+
+    // The exit_task_glue frame we synthesize above the frame we activate:
+    make_aligned_room_for_bytes(spp, 2 * sizeof(uintptr_t));
+    *spp-- = (uintptr_t) 0;          // closure-or-obj
+    *spp-- = (uintptr_t) this;       // task
+    I(dom, spp == align_down(spp));
+    *spp-- = (uintptr_t) 0x0;        // output
+    *spp-- = (uintptr_t) 0x0;        // retpc
+
+    uintptr_t exit_task_frame_base = 0;
+
+    I(dom, args);
+    make_aligned_room_for_bytes(spp, callsz - 3 * sizeof(uintptr_t));
+
+    // Copy args from spawner to spawnee.
+    uintptr_t *src = (uintptr_t *)args;
+    src += 1;                  // spawn-call output slot
+    src += 1;                  // spawn-call task slot
+    src += 1;                  // spawn-call closure-or-obj slot
+
+    // Undo previous sp-- so we're pointing at the last word pushed.
+    ++spp;
+
+    // Memcpy all but the task, output and env pointers
+    callsz -= (3 * sizeof(uintptr_t));
+    spp = (uintptr_t*) (((uintptr_t)spp) - callsz);
+    memcpy(spp, src, callsz);
+
+    // Move sp down to point to last implicit-arg cell (env).
+    spp--;
+
+    // The *implicit* incoming args to the spawnee frame we're
+    // activating:
+    *spp-- = (uintptr_t) 0x0;               // closure-or-obj
+
+    // in FASTCALL mode we don't, the outptr will be in ecx and the task
+    // in edx, and the activate_glue will make sure to set that up.
 
     I(dom, spp+1 == align_down(spp+1));
     *spp-- = (uintptr_t) exit_task_glue;  // retpc
