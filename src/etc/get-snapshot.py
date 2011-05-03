@@ -24,43 +24,48 @@ def unpack_snapshot(snap):
   tar.close()
   shutil.rmtree(download_unpack_base)
 
-def determine_last_snapshot_for_platform():
-  lines = open(snapshotfile).readlines();
+def determine_curr_snapshot_for_platform():
 
+  i = 0
   platform = get_platform()
 
-  found = False
+  found_file = False
+  found_snap = False
   hsh = None
   date = None
   rev = None
 
-  for ln in range(len(lines) - 1, -1, -1):
-    parsed = parse_line(ln, lines[ln])
-    if (not parsed): continue
+  with open(snapshotfile) as f:
+    for line in f.xreadlines():
+      i += 1
+      parsed = parse_line(i, line)
+      if (not parsed): continue
 
-    if parsed["type"] == "file":
-      if parsed["platform"] == platform:
-        hsh = parsed["hash"]
-    elif parsed["type"] == "snapshot":
-      date = parsed["date"]
-      rev = parsed["rev"]
-      found = True
-      break
-    elif parsed["type"] == "transition" and not foundSnapshot:
-      raise Exception("working on a transition, not updating stage0")
+      if parsed["type"] == "transition":
+        raise Exception("working on a transition, not updating stage0")
 
-  if not found:
+      if found_snap and parsed["type"] == "file":
+        if parsed["platform"] == platform:
+          hsh = parsed["hash"]
+          found_file = True
+          break;
+      elif parsed["type"] == "snapshot":
+        date = parsed["date"]
+        rev = parsed["rev"]
+        found_snap = True
+
+  if not found_snap:
     raise Exception("no snapshot entries in file")
 
-  if not hsh:
+  if not found_file:
     raise Exception("no snapshot file found for platform %s, rev %s" %
                     (platform, rev))
 
-  return full_snapshot_name(date, rev, get_kernel(), get_cpu(), hsh)
+  return full_snapshot_name(date, rev, get_platform(), hsh)
 
 # Main
 
-snap = determine_last_snapshot_for_platform()
+snap = determine_curr_snapshot_for_platform()
 dl = os.path.join(download_dir_base, snap)
 url = download_url_base + "/" + snap
 print("determined most recent snapshot: " + snap)

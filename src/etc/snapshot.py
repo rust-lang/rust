@@ -37,13 +37,13 @@ def parse_line(n, line):
           "rev": match.group(3)}
 
 
-def partial_snapshot_name(date, rev, kernel, cpu):
-  return ("rust-stage0-%s-%s-%s-%s.tar.bz2"
-          % (date, rev, kernel, cpu))
+def partial_snapshot_name(date, rev, platform):
+  return ("rust-stage0-%s-%s-%s.tar.bz2"
+          % (date, rev, platform))
 
-def full_snapshot_name(date, rev, kernel, cpu, hsh):
-  return ("rust-stage0-%s-%s-%s-%s-%s.tar.bz2"
-          % (date, rev, kernel, cpu, hsh))
+def full_snapshot_name(date, rev, platform, hsh):
+  return ("rust-stage0-%s-%s-%s-%s.tar.bz2"
+          % (date, rev, platform, hsh))
 
 
 def get_kernel():
@@ -98,3 +98,24 @@ def hash_file(x):
     h = hashlib.sha1()
     h.update(open(x, "rb").read())
     return scrub(h.hexdigest())
+
+
+def make_snapshot():
+    kernel = get_kernel()
+    platform = get_platform()
+    rev = local_rev_short_sha()
+    date = local_rev_committer_date().split()[0]
+
+    file0 = partial_snapshot_name(date, rev, platform)
+
+    tar = tarfile.open(file0, "w:bz2")
+    for name in snapshot_files[kernel]:
+    tar.add(os.path.join("stage2", name),
+    os.path.join("rust-stage0", name))
+    tar.close()
+
+    h = hash_file(file0)
+    file1 = full_snapshot_name(date, rev, platform, h)
+
+    shutil.move(file0, file1)
+    return file1
