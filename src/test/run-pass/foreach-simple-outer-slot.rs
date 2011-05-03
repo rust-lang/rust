@@ -9,7 +9,7 @@ fn main() {
   }
   log "sum";
   log sum;
-  check (sum == 45);
+  assert (sum == 45);
 }
 
 iter first_ten() -> int {

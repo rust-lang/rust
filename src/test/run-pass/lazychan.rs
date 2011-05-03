@@ -10,13 +10,13 @@ fn main() {
   y <- p;
   log "received 1";
   log y;
-  check (y == 10);
+  assert (y == 10);
 
   spawn child(c);
   y <- p;
   log "received 2";
   log y;
-  check (y == 10);
+  assert (y == 10);
 }
 
 fn child(chan[int] c) {

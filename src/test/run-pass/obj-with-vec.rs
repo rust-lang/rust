@@ -7,5 +7,5 @@ fn main() {
   }
   auto b = buf(vec(1 as u8, 2 as u8, 3 as u8));
   log b.get(1);
-  check (b.get(1) == (2 as u8));
+  assert (b.get(1) == (2 as u8));
 }

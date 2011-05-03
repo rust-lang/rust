@@ -69,13 +69,13 @@ fn main() {
     auto tests = fips_180_1_tests + wikipedia_tests;
 
     fn check_vec_eq(vec[u8] v0, vec[u8] v1) {
-        check (_vec.len[u8](v0) == _vec.len[u8](v1));
+        assert (_vec.len[u8](v0) == _vec.len[u8](v1));
         auto len = _vec.len[u8](v0);
         auto i = 0u;
         while (i < len) {
             auto a = v0.(i);
             auto b = v1.(i);
-            check (a == b);
+            assert (a == b);
             i += 1u;
         }
     }

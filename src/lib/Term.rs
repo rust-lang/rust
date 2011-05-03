@@ -35,7 +35,7 @@ fn color_supported() -> bool {
 }
 
 fn set_color(io.buf_writer writer, u8 first_char, u8 color) {
-    check (color < 16u8);
+    assert (color < 16u8);
 
     esc(writer);
     if (color >= 8u8) {

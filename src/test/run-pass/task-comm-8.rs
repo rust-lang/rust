@@ -41,6 +41,6 @@ fn test00() {
     join t2;
     join t3;
     
-    check (sum == (((number_of_messages * 4) * 
+    assert (sum == (((number_of_messages * 4) * 
                    ((number_of_messages * 4) - 1)) / 2));
 }

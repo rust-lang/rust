@@ -74,9 +74,9 @@ fn test_rotate() {
         mychan <| val;
 
         auto x <- myport;
-        check (x.val1 == i as u32);
-        check (x.val2 == i as u32);
-        check (x.val3 == i as u32);
+        assert (x.val1 == i as u32);
+        assert (x.val2 == i as u32);
+        assert (x.val3 == i as u32);
     }
 }
 
@@ -96,9 +96,9 @@ fn test_rotate_grow() {
 
         for each (uint i in _uint.range(0u, 10u)) {
             auto x <- myport;
-            check (x.val1 == i as u32);
-            check (x.val2 == i as u32);
-            check (x.val3 == i as u32);
+            assert (x.val1 == i as u32);
+            assert (x.val2 == i as u32);
+            assert (x.val3 == i as u32);
         }
     }
 }
