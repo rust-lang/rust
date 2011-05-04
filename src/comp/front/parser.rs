@@ -2013,7 +2013,7 @@ fn parse_item_native_mod(parser p) -> @ast.item {
         if (_str.eq(t, "cdecl")) {
         } else if (_str.eq(t, "rust")) {
             abi = ast.native_abi_rust;
-        } else if (_str.eq(t, "llvm-intrinsic")) {
+        } else if (_str.eq(t, "llvm")) {
             abi = ast.native_abi_llvm;
         } else {
             p.err("unsupported abi: " + t);

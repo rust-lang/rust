@@ -2,7 +2,7 @@
 // based on:
 // http://shootout.alioth.debian.org/u32/benchmark.php?test=nbody&lang=java
 
-native "llvm-intrinsic" mod llvm {
+native "llvm" mod llvm {
     fn sqrt(float n) -> float = "sqrt.f64";
 }
 
