@@ -1,7 +1,5 @@
 // xfail-boot
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
 // error-pattern: unresolved name
 
 // Tag variants are not exported with their tags. This allows for a

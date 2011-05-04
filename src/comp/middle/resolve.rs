@@ -382,6 +382,8 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
                     case (ast.mie_item(?item)) {
                         if (visible(i, m, dir)) {
                             ret some(found_def_item(item, ns));
+                        } else {
+                            ret none[def_wrap];
                         }
                     }
                     case (ast.mie_tag_variant(?item, ?variant_idx)) {
@@ -391,6 +393,8 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
                                     auto vid = variants.(variant_idx).node.id;
                                     auto t = ast.def_variant(tid, vid);
                                     ret some[def_wrap](def_wrap_other(t));
+                                } else {
+                                    ret none[def_wrap];
                                 }
                             }
                             case (_) {

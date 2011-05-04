@@ -1,7 +1,5 @@
 // xfail-boot
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
 // error-pattern: unresolved name
 
 // In this test baz isn't resolved when called as foo.baz even though
