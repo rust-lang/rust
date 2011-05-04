@@ -82,6 +82,7 @@ fn compile_input(session.session sess,
                         str input, str output,
                         bool shared,
                         bool optimize,
+                        bool debuginfo,
                         bool verify,
                         bool save_temps,
                         trans.output_type ot,
@@ -115,11 +116,12 @@ fn compile_input(session.session sess,
 
     auto llmod = time[llvm.ModuleRef](time_passes, "translation",
         bind trans.trans_crate(sess, crate, ty_cx, type_cache, output,
-                               shared));
+                               debuginfo, shared));
 
     time[()](time_passes, "LLVM passes",
-        bind trans.run_passes(llmod, optimize, verify, save_temps, output,
-                              ot));
+             bind trans.run_passes(llmod, optimize, debuginfo,
+                                   verify, save_temps, output,
+                                   ot));
 }
 
 fn pretty_print_input(session.session sess,
@@ -144,6 +146,7 @@ options:
     --noverify         suppress LLVM verification step (slight speedup)
     --depend           print dependencies, in makefile-rule form
     --parse-only       parse only; do not compile, assemble, or link
+    -g                 produce debug info
     -O                 optimize
     -S                 compile only; do not assemble or link
     -c                 compile and assemble, but do not link
@@ -178,7 +181,7 @@ fn main(vec[str] args) {
     auto opts = vec(optflag("h"), optflag("glue"),
                     optflag("pretty"), optflag("ls"), optflag("parse-only"),
                     optflag("O"), optflag("shared"), optmulti("L"),
-                    optflag("S"), optflag("c"), optopt("o"),
+                    optflag("S"), optflag("c"), optopt("o"), optopt("g"),
                     optflag("save-temps"), optflag("time-passes"),
                     optflag("no-typestate"), optflag("noverify"));
     auto binary = _vec.shift[str](args);
@@ -210,6 +213,7 @@ fn main(vec[str] args) {
     auto save_temps = opt_present(match, "save-temps");
     // FIXME: Maybe we should support -O0, -O1, -Os, etc
     auto optimize = opt_present(match, "O");
+    auto debuginfo = opt_present(match, "g");
     auto time_passes = opt_present(match, "time-passes");
     auto run_typestate = !opt_present(match, "no-typestate");
     auto n_inputs = _vec.len[str](match.free);
@@ -243,15 +247,15 @@ fn main(vec[str] args) {
                 parts += vec("bc");
                 auto ofile = _str.connect(parts, ".");
                 compile_input(sess, env, ifile, ofile, shared,
-                              optimize, verify, save_temps, ot,
-                              time_passes, run_typestate,
-                              library_search_paths);
+                              optimize, debuginfo, verify,
+                              save_temps, ot, time_passes,
+                              run_typestate, library_search_paths);
             }
             case (some[str](?ofile)) {
                 compile_input(sess, env, ifile, ofile, shared,
-                              optimize, verify, save_temps, ot,
-                              time_passes, run_typestate,
-                              library_search_paths);
+                              optimize, debuginfo, verify,
+                              save_temps, ot, time_passes,
+                              run_typestate, library_search_paths);
             }
         }
     }

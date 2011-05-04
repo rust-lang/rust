@@ -116,7 +116,8 @@ state type crate_ctxt = rec(session.session sess,
                             std.sha1.sha1 sha,
                             hashmap[ty.t, str] type_sha1s,
                             hashmap[ty.t, metadata.ty_abbrev] type_abbrevs,
-                            ty.ctxt tcx);
+                            ty.ctxt tcx,
+                            bool debuginfo);
 
 type local_ctxt = rec(vec[str] path,
                       vec[str] module_path,
@@ -1785,8 +1786,13 @@ fn declare_generic_glue(@local_ctxt cx,
                         ty.t t,
                         TypeRef llfnty,
                         str name) -> ValueRef {
-    auto fn_nm = mangle_name_by_type_only(cx.ccx, t, "glue_" + name);
-    fn_nm = sanitize(fn_nm);
+    auto fn_nm;
+    if (cx.ccx.debuginfo) {
+        fn_nm = mangle_name_by_type_only(cx.ccx, t, "glue_" + name);
+        fn_nm = sanitize(fn_nm);
+    } else {
+        fn_nm = mangle_name_by_seq(cx.ccx, cx.path,  "glue_" + name);
+    }
     auto llfn = decl_internal_fastcall_fn(cx.ccx.llmod, fn_nm, llfnty);
     ret llfn;
 }
@@ -7241,8 +7247,8 @@ fn is_object_or_assembly(output_type ot) -> bool {
     ret false;
 }
 
-fn run_passes(ModuleRef llmod, bool opt, bool verify, bool save_temps,
-              str output, output_type ot) {
+fn run_passes(ModuleRef llmod, bool opt, bool dbg, bool verify,
+              bool save_temps, str output, output_type ot) {
     auto pm = mk_pass_manager();
 
     // TODO: run the linter here also, once there are llvm-c bindings for it.
@@ -7733,7 +7739,7 @@ fn make_common_glue(str output, bool optimize, bool verify, bool save_temps,
 
     trans_exit_task_glue(glues, new_str_hash[ValueRef](), tn, llmod);
 
-    run_passes(llmod, optimize, verify, save_temps, output, ot);
+    run_passes(llmod, optimize, false, verify, save_temps, output, ot);
 }
 
 fn create_module_map(@crate_ctxt ccx) -> ValueRef {
@@ -7785,7 +7791,8 @@ fn create_crate_map(@crate_ctxt ccx) -> ValueRef {
 }
 
 fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
-               ty.type_cache type_cache, str output, bool shared)
+               ty.type_cache type_cache, str output,
+               bool debuginfo, bool shared)
         -> ModuleRef {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
@@ -7835,7 +7842,8 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
                     sha = std.sha1.mk_sha1(),
                     type_sha1s = sha1s,
                     type_abbrevs = abbrevs,
-                    tcx = tcx);
+                    tcx = tcx,
+                    debuginfo = debuginfo);
     auto cx = new_local_ctxt(ccx);
 
     create_typedefs(ccx);
