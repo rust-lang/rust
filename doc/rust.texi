@@ -683,6 +683,7 @@ The keywords are:
 @item @code{auth}
 @tab @code{unsafe}
 @tab @code{self}
+@tab @code{log}
 @item @code{bind}
 @tab @code{type}
 @tab @code{true}
@@ -727,12 +728,12 @@ The keywords are:
 @tab @code{while}
 @tab @code{break}
 @tab @code{cont}
-@tab @code{fail}
-@item @code{log}
 @tab @code{note}
+@item @code{assert}
 @tab @code{claim}
 @tab @code{check}
 @tab @code{prove}
+@tab @code{fail}
 @item @code{for}
 @tab @code{each}
 @tab @code{ret}
@@ -1395,7 +1396,7 @@ An example of an implicit-dereference operation performed on box values:
 @example
 let @@int x = @@10;
 let @@int y = @@12;
-check (x + y == 22);
+assert (x + y == 22);
 @end example
 
 Other operations act on box values as single-word-sized address values,
@@ -1887,7 +1888,7 @@ let counter c = counter(1);
 
 c.incr();
 c.incr();
-check (c.get() == 3);
+assert (c.get() == 3);
 @end example
 
 There is no @emph{this} or @emph{self} available inside an object's
@@ -2232,9 +2233,9 @@ An example of a tuple type and its use:
 @example
 type pair = tup(int,str);
 let pair p = tup(10,"hello");
-check (p._0 == 10);
+assert (p._0 == 10);
 p._1 = "world";
-check (p._1 == "world");
+assert (p._1 == "world");
 @end example
 
 
@@ -2898,6 +2899,8 @@ effects of the expression's evaluation.
 * Ref.Expr.Alt::                Expression for complex conditional branching.
 * Ref.Expr.Prove::              Expression for static assertion of typestate.
 * Ref.Expr.Check::              Expression for dynamic assertion of typestate.
+* Ref.Expr.Assert::              Expression for halting the program if a
+                                           boolean condition fails to hold.
 * Ref.Expr.IfCheck::            Expression for dynamic testing of typestate.
 @end menu
 
@@ -3068,8 +3071,8 @@ let single_param_fn add4 = bind add(4, _);
 
 let single_param_fn add5 = bind add(_, 5);
 
-check (add(4,5) == add4(5));
-check (add(4,5) == add5(4));
+assert (add(4,5) == add4(5));
+assert (add(4,5) == add5(4));
 
 @end example
 
@@ -3591,6 +3594,16 @@ if check even(x) @{
     fail;
 @}
 @end example
+
+@node       Ref.Expr.Assert
+@subsection Ref.Expr.Assert
+@c * Ref.Expr.Assert::            Expression that halts the program if a boolean condition fails to hold.
+@cindex Assertions
+
+An @code{assert} expression is similar to a @code{check} expression, except
+the condition may be any boolean-typed expression, and the compiler makes no
+use of the knowledge that the condition holds if the program continues to
+execute after the @code{assert}.
 
 @page
 @node    Ref.Run
