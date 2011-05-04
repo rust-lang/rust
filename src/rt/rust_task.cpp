@@ -505,6 +505,8 @@ rust_task::fail(size_t nargs) {
              name, this, supervisor->name, supervisor);
         supervisor->kill();
     }
+    // FIXME: implement unwinding again.
+    exit(1);
 }
 
 void
