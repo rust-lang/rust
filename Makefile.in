@@ -38,7 +38,7 @@ CFG_STDLIB :=$(call CFG_LIB_NAME,std)
 ifdef CFG_OCAMLC_OPT
   $(info cfg: have ocaml native compiler)
   OPT=.opt
-else
+else ifdef CFG_OCAMLC
   $(info cfg: have only ocaml bytecode compiler)
 endif
 
