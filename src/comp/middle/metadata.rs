@@ -687,9 +687,9 @@ fn encode_metadata(@trans.crate_ctxt cx, @ast.crate crate)
     ret C_postr(string_w.get_str());
 }
 
-fn write_metadata(@trans.crate_ctxt cx, bool shared, @ast.crate crate) {
+fn write_metadata(@trans.crate_ctxt cx, @ast.crate crate) {
     auto llmeta = C_postr("");
-    if (shared) {
+    if (cx.sess.get_opts().shared) {
         llmeta = encode_metadata(cx, crate);
     }
 

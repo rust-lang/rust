@@ -459,12 +459,11 @@ fn fold_view_item_use(&env e, &span sp, ast.ident ident,
 
 // Reads external crates referenced by "use" directives.
 fn read_crates(session.session sess,
-               @ast.crate crate,
-               vec[str] library_search_paths) -> @ast.crate {
+               @ast.crate crate) -> @ast.crate {
     auto e = @rec(
         sess=sess,
         crate_cache=@common.new_str_hash[int](),
-        library_search_paths=library_search_paths,
+        library_search_paths=sess.get_opts().library_search_paths,
         mutable next_crate_num=1
     );
 

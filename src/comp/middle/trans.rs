@@ -116,8 +116,7 @@ state type crate_ctxt = rec(session.session sess,
                             std.sha1.sha1 sha,
                             hashmap[ty.t, str] type_sha1s,
                             hashmap[ty.t, metadata.ty_abbrev] type_abbrevs,
-                            ty.ctxt tcx,
-                            bool debuginfo);
+                            ty.ctxt tcx);
 
 type local_ctxt = rec(vec[str] path,
                       vec[str] module_path,
@@ -1787,7 +1786,7 @@ fn declare_generic_glue(@local_ctxt cx,
                         TypeRef llfnty,
                         str name) -> ValueRef {
     auto fn_nm;
-    if (cx.ccx.debuginfo) {
+    if (cx.ccx.sess.get_opts().debuginfo) {
         fn_nm = mangle_name_by_type_only(cx.ccx, t, "glue_" + name);
         fn_nm = sanitize(fn_nm);
     } else {
@@ -7247,18 +7246,18 @@ fn is_object_or_assembly(output_type ot) -> bool {
     ret false;
 }
 
-fn run_passes(ModuleRef llmod, bool opt, bool dbg, bool verify,
-              bool save_temps, str output, output_type ot) {
+fn run_passes(session.session sess, ModuleRef llmod, str output) {
     auto pm = mk_pass_manager();
+    auto opts = sess.get_opts();
 
     // TODO: run the linter here also, once there are llvm-c bindings for it.
 
     // Generate a pre-optimization intermediate file if -save-temps was
     // specified.
-    if (save_temps) {
-        alt (ot) {
+    if (opts.save_temps) {
+        alt (opts.output_type) {
             case (output_type_bitcode) {
-                if (opt) {
+                if (opts.optimize) {
                     auto filename = mk_intermediate_name(output, "no-opt.bc");
                     llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(filename));
                 }
@@ -7274,7 +7273,7 @@ fn run_passes(ModuleRef llmod, bool opt, bool dbg, bool verify,
     // available in the C api.
     // FIXME2: We might want to add optmization levels like -O1, -O2, -Os, etc
     // FIXME3: Should we expose and use the pass lists used by the opt tool?
-    if (opt) {
+    if (opts.optimize) {
         auto fpm = mk_pass_manager();
 
         // createStandardFunctionPasses
@@ -7330,25 +7329,25 @@ fn run_passes(ModuleRef llmod, bool opt, bool dbg, bool verify,
         llvm.LLVMAddConstantMergePass(pm.llpm);
     }
 
-    if (verify) {
+    if (opts.verify) {
         llvm.LLVMAddVerifierPass(pm.llpm);
     }
 
     // TODO: Write .s if -c was specified and -save-temps was on.
-    if (is_object_or_assembly(ot)) {
+    if (is_object_or_assembly(opts.output_type)) {
         let int LLVMAssemblyFile = 0;
         let int LLVMObjectFile = 1;
         let int LLVMNullFile = 2;
         auto FileType;
-        if (ot == output_type_object) {
+        if (opts.output_type == output_type_object) {
             FileType = LLVMObjectFile;
         } else {
             FileType = LLVMAssemblyFile;
         }
 
         // Write optimized bitcode if --save-temps was on.
-        if (save_temps) {
-            alt (ot) {
+        if (opts.save_temps) {
+            alt (opts.output_type) {
                 case (output_type_bitcode) { /* nothing to do */ }
                 case (_) {
                     auto filename = mk_intermediate_name(output, "opt.bc");
@@ -7712,8 +7711,7 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
              vec_append_glue = make_vec_append_glue(llmod, tn));
 }
 
-fn make_common_glue(str output, bool optimize, bool verify, bool save_temps,
-                    output_type ot) {
+fn make_common_glue(session.session sess, str output) {
     // FIXME: part of this is repetitive and is probably a good idea
     // to autogen it, but things like the memcpy implementation are not
     // and it might be better to just check in a .ll file.
@@ -7739,7 +7737,7 @@ fn make_common_glue(str output, bool optimize, bool verify, bool save_temps,
 
     trans_exit_task_glue(glues, new_str_hash[ValueRef](), tn, llmod);
 
-    run_passes(llmod, optimize, false, verify, save_temps, output, ot);
+    run_passes(sess, llmod, output);
 }
 
 fn create_module_map(@crate_ctxt ccx) -> ValueRef {
@@ -7791,8 +7789,7 @@ fn create_crate_map(@crate_ctxt ccx) -> ValueRef {
 }
 
 fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
-               ty.type_cache type_cache, str output,
-               bool debuginfo, bool shared)
+               ty.type_cache type_cache, str output)
         -> ModuleRef {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
@@ -7842,8 +7839,7 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
                     sha = std.sha1.mk_sha1(),
                     type_sha1s = sha1s,
                     type_abbrevs = abbrevs,
-                    tcx = tcx,
-                    debuginfo = debuginfo);
+                    tcx = tcx);
     auto cx = new_local_ctxt(ccx);
 
     create_typedefs(ccx);
@@ -7854,12 +7850,12 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
     trans_mod(cx, crate.node.module);
     trans_vec_append_glue(cx);
     auto crate_map = create_crate_map(ccx);
-    if (!shared) {
+    if (!sess.get_opts().shared) {
         trans_main_fn(cx, crate_ptr, crate_map);
     }
 
     // Translate the metadata.
-    middle.metadata.write_metadata(cx.ccx, shared, crate);
+    middle.metadata.write_metadata(cx.ccx, crate);
 
     ret llmod;
 }
