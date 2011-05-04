@@ -1,5 +1,7 @@
 // xfail-boot
 // xfail-stage0
+// xfail-stage1
+// xfail-stage2
 fn f(@rec(int a, int b) x) {
   assert (x.a == 10);
   assert (x.b == 12);

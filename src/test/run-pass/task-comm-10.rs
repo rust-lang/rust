@@ -1,5 +1,7 @@
 // xfail-boot
 // xfail-stage0
+// xfail-stage1
+// xfail-stage2
 fn start(chan[chan[str]] c) {
     let port[str] p = port();
     c <| chan(p);

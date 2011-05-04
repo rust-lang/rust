@@ -1,5 +1,7 @@
 // xfail-boot
 // xfail-stage0
+// xfail-stage1
+// xfail-stage2
 io fn main() {
     let port[int] po = port();
 

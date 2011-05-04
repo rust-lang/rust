@@ -1,4 +1,6 @@
 // xfail-stage0
+// xfail-stage1
+// xfail-stage2
 // -*- rust -*-
 
 fn f(int a, int b) : lt(a,b) {

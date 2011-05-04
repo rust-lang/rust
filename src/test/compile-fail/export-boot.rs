@@ -1,4 +1,6 @@
 // xfail-stage0
+// xfail-stage1
+// xfail-stage2
 // error-pattern: unknown module item
 
 // rustboot has a different error message than rustc

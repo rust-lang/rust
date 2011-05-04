@@ -1,4 +1,6 @@
 // xfail-stage0
+// xfail-stage1
+// xfail-stage2
 
 import size_of = std.sys.rustrt.size_of;
 
