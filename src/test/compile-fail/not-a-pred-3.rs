@@ -1,5 +1,6 @@
 // -*- rust -*-
 // xfail-boot
+// xfail-stage0
 
 // error-pattern: expected the constraint name
 
