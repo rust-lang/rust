@@ -230,6 +230,9 @@ fn print_item(ps s, @ast.item item) {
             alt (nmod.abi) {
                 case (ast.native_abi_rust) {wrd1(s, "\"rust\"");}
                 case (ast.native_abi_cdecl) {wrd1(s, "\"cdecl\"");}
+                case (ast.native_abi_rust_intrinsic) {
+                    wrd1(s, "\"rust-intrinstic\"");
+                }
             }
             wrd1(s, "mod");
             wrd1(s, id);

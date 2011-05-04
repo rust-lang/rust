@@ -2015,6 +2015,8 @@ fn parse_item_native_mod(parser p) -> @ast.item {
             abi = ast.native_abi_rust;
         } else if (_str.eq(t, "llvm")) {
             abi = ast.native_abi_llvm;
+        } else if (_str.eq(t, "rust-intrinsic")) {
+            abi = ast.native_abi_rust_intrinsic;
         } else {
             p.err("unsupported abi: " + t);
             fail;

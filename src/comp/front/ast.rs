@@ -380,6 +380,7 @@ tag native_abi {
     native_abi_rust;
     native_abi_cdecl;
     native_abi_llvm;
+    native_abi_rust_intrinsic;
 }
 
 type native_mod = rec(str native_name,

@@ -6737,6 +6737,10 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
                 arg_n += 1u;
             }
         }
+        case (ast.native_abi_rust_intrinsic) {
+            pass_task = true;
+            call_args += vec(lltaskptr);
+        }
         case (ast.native_abi_cdecl) {
             pass_task = false;
         }
@@ -6772,46 +6776,69 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
         args += vec(vp2i(cx, v));
     }
 
-    auto r;
-    auto rptr;
-    auto args = ty.ty_fn_args(ccx.tcx, fn_type);
-    if (abi == ast.native_abi_llvm) {
-        let vec[ValueRef] call_args = vec();
+    fn trans_simple_native_abi(@block_ctxt bcx,
+                               str name,
+                               vec[ty.arg] args,
+                               &mutable vec[ValueRef] call_args,
+                               ty.t fn_type) -> tup(ValueRef, ValueRef) {
         let vec[TypeRef] call_arg_tys = vec();
         auto i = 0u;
         while (i < _vec.len[ty.arg](args)) {
-            auto call_arg = llvm.LLVMGetParam(fcx.llfn, i + 3u);
+            auto call_arg = llvm.LLVMGetParam(bcx.fcx.llfn, i + 3u);
             call_args += vec(call_arg);
             call_arg_tys += vec(val_ty(call_arg));
             i += 1u;
         }
-        auto llnativefnty = T_fn(call_arg_tys,
-                                 type_of(ccx,
-                                         ty.ty_fn_ret(ccx.tcx, fn_type)));
-        auto llnativefn = get_extern_fn(ccx.externs, ccx.llmod, name,
-                                        lib.llvm.LLVMCCallConv, llnativefnty);
-        r = bcx.build.Call(llnativefn, call_args);
-        rptr = fcx.llretptr;
-    } else {
+        auto llnativefnty =
+            T_fn(call_arg_tys,
+                 type_of(bcx.fcx.lcx.ccx,
+                         ty.ty_fn_ret(bcx.fcx.lcx.ccx.tcx, fn_type)));
+        auto llnativefn = get_extern_fn(bcx.fcx.lcx.ccx.externs,
+                                        bcx.fcx.lcx.ccx.llmod,
+                                        name,
+                                        lib.llvm.LLVMCCallConv,
+                                        llnativefnty);
 
-        let vec[tup(ValueRef, ty.t)] drop_args = vec();
+        auto r = bcx.build.Call(llnativefn, call_args);
+        auto rptr = bcx.fcx.llretptr;
+        ret tup(r, rptr);
+    }
 
-        for (ty.arg arg in args) {
-            auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
-            assert (llarg as int != 0);
-            push_arg(bcx, call_args, llarg, arg.ty, arg.mode);
-            if (arg.mode == ast.val) {
-                drop_args += vec(tup(llarg, arg.ty));
-            }
-            arg_n += 1u;
+    auto r;
+    auto rptr;
+    auto args = ty.ty_fn_args(ccx.tcx, fn_type);
+    alt (abi) {
+        case (ast.native_abi_llvm) {
+            auto result = trans_simple_native_abi(bcx, name, args, call_args,
+                                                  fn_type);
+            r = result._0; rptr = result._1;
         }
+        case (ast.native_abi_rust_intrinsic) {
+            auto result = trans_simple_native_abi(bcx, name, args, call_args,
+                                                  fn_type);
+            r = result._0; rptr = result._1;
+        }
+        case (_) {
+            let vec[tup(ValueRef, ty.t)] drop_args = vec();
 
-        r = trans_native_call(bcx.build, ccx.glues, lltaskptr, ccx.externs,
-                              ccx.tn, ccx.llmod, name, pass_task, call_args);
-        rptr = bcx.build.BitCast(fcx.llretptr, T_ptr(T_i32()));
+            for (ty.arg arg in args) {
+                auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
+                assert (llarg as int != 0);
+                push_arg(bcx, call_args, llarg, arg.ty, arg.mode);
+                if (arg.mode == ast.val) {
+                    drop_args += vec(tup(llarg, arg.ty));
+                }
+                arg_n += 1u;
+            }
 
-        for (tup(ValueRef, ty.t) d in drop_args) {
-            bcx = drop_ty(bcx, d._0, d._1).bcx;
+            r = trans_native_call(bcx.build, ccx.glues, lltaskptr,
+                                  ccx.externs, ccx.tn, ccx.llmod, name,
+                                  pass_task, call_args);
+            rptr = bcx.build.BitCast(fcx.llretptr, T_ptr(T_i32()));
+
+            for (tup(ValueRef, ty.t) d in drop_args) {
+                bcx = drop_ty(bcx, d._0, d._1).bcx;
+            }
         }
     }
 
