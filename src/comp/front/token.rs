@@ -156,6 +156,7 @@ tag token {
 
     /* Callable type constructors */
     FN;
+    PRED;
     ITER;
 
     /* Object type and related keywords */
@@ -340,6 +341,7 @@ fn to_str(token t) -> str {
 
         /* Callable type constructors */
         case (FN) { ret "fn"; }
+        case (PRED) { ret "pred"; }
         case (ITER) { ret "iter"; }
 
         /* Object type */

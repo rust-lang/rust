@@ -8,7 +8,7 @@ import driver.session;
 import util.common;
 import util.common.span;
 import util.common.plain_ann;
-
+import util.common.new_def_hash;
 import util.common.log_expr_err;
 
 import middle.ty;
@@ -40,6 +40,7 @@ import std.map.hashmap;
 import std.option;
 import std.option.none;
 import std.option.some;
+import std.option.from_maybe;
 
 import pretty.pprust;
 
@@ -53,6 +54,7 @@ tag any_item {
 }
 
 type ty_item_table = hashmap[ast.def_id,any_item];
+type fn_purity_table = hashmap[ast.def_id, ast.purity];
 
 type unify_cache_entry = tup(ty.t,ty.t,vec[mutable ty.t]);
 type unify_cache = hashmap[unify_cache_entry,ty.Unify.result];
@@ -62,6 +64,7 @@ type crate_ctxt = rec(session.session sess,
                       @ty_item_table item_items,
                       vec[ast.obj_field] obj_fields,
                       option.t[ast.def_id] this_obj,
+                      @fn_purity_table fn_purity_table,
                       mutable int next_var_id,
                       unify_cache unify_cache,
                       mutable uint cache_hits,
@@ -69,6 +72,7 @@ type crate_ctxt = rec(session.session sess,
                       ty.ctxt tcx);
 
 type fn_ctxt = rec(ty.t ret_ty,
+                   ast.purity purity,
                    @ty_table locals,
                    @crate_ctxt ccx);
 
@@ -1673,6 +1677,62 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
     ret @fold.respan[ast.pat_](pat.span, new_pat);
 }
 
+fn require_impure(&session.session sess,
+      &ast.purity f_purity, &span sp) -> () {
+    alt (f_purity) {
+        case (ast.impure_fn) {
+            ret;
+        }
+        case (ast.pure_fn) {
+            sess.span_err(sp,
+               "Found impure expression in pure function decl");
+        }
+    }
+}
+
+fn get_function_purity(@crate_ctxt ccx, &ast.def_id d_id) -> ast.purity {
+    let option.t[ast.purity] o = ccx.fn_purity_table.find(d_id);
+    ret from_maybe[ast.purity](ast.impure_fn, o);
+}
+
+fn require_pure_call(@crate_ctxt ccx,
+    &ast.purity caller_purity, @ast.expr callee, &span sp) -> () {
+    alt (caller_purity) {
+        case (ast.impure_fn) {
+            ret;
+        }
+        case (ast.pure_fn) {
+            alt (callee.node) {
+                case (ast.expr_path(_, some[ast.def](ast.def_fn(?d_id)), _)) {
+                    alt (get_function_purity(ccx, d_id)) {
+                            case (ast.pure_fn) {
+                                ret;
+                            }
+                            case (_) {
+                                ccx.sess.span_err(sp,
+                                  "Pure function calls impure function");
+
+                            }
+                        }
+                }
+                case (_) {
+                    ccx.sess.span_err(sp,
+                      "Pure function calls unknown function");
+                }
+            }
+        }
+    }
+}
+
+fn require_pure_function(@crate_ctxt ccx, &ast.def_id d_id, &span sp) -> () {
+    alt (get_function_purity(ccx, d_id)) {
+        case (ast.impure_fn) {
+            ccx.sess.span_err(sp, "Found non-predicate in check expression");
+        }
+        case (_) { ret; }
+    }
+}
+
 fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
     //fcx.ccx.sess.span_warn(expr.span, "typechecking expr " +
     //                       pretty.pprust.expr_to_str(expr));
@@ -1916,6 +1976,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_put(?expr_opt, _)) {
+            require_impure(fcx.ccx.sess, fcx.purity, expr.span);
+
             alt (expr_opt) {
                 case (none[@ast.expr]) {
                     auto nil = ty.mk_nil(fcx.ccx.tcx);
@@ -1965,7 +2027,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             alt (e.node) {
                 case (ast.expr_call(?operator, ?operands, _)) {
                     alt (operator.node) {
-                        case (ast.expr_path(?oper_name, ?d_id, _)) {
+                        case (ast.expr_path(?oper_name,
+                                some[ast.def](ast.def_fn(?d_id)), _)) {
 
                             for (@ast.expr operand in operands) {
                                 if (! ast.is_constraint_arg(operand)) {
@@ -1975,8 +2038,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                                 }
                             }
                             
-                         /* operator must be a pure function */
-                         /* FIXME: need more checking */
+                            require_pure_function(fcx.ccx, d_id, expr.span);
+
                             ret @fold.respan[ast.expr_]
                                 (expr.span, ast.expr_check(expr_t,
                                    plain_ann(fcx.ccx.tcx)));
@@ -2005,6 +2068,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_assign(?lhs, ?rhs, _)) {
+            require_impure(fcx.ccx.sess, fcx.purity, expr.span);
+
             auto checked = check_assignment(fcx, lhs, rhs);
             auto newexpr = ast.expr_assign(checked._0,
                                            checked._1,
@@ -2013,6 +2078,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_assign_op(?op, ?lhs, ?rhs, _)) {
+            require_impure(fcx.ccx.sess, fcx.purity, expr.span);
+
             auto checked = check_assignment(fcx, lhs, rhs);
             auto newexpr = ast.expr_assign_op(op,
                                               checked._0,
@@ -2022,6 +2089,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_send(?lhs, ?rhs, _)) {
+            require_impure(fcx.ccx.sess, fcx.purity, expr.span);
+
             auto lhs_0 = check_expr(fcx, lhs);
             auto rhs_0 = check_expr(fcx, rhs);
             auto rhs_t = expr_ty(fcx.ccx.tcx, rhs_0);
@@ -2045,6 +2114,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_recv(?lhs, ?rhs, _)) {
+            require_impure(fcx.ccx.sess, fcx.purity, expr.span);
+
             auto lhs_0 = check_expr(fcx, lhs);
             auto rhs_0 = check_expr(fcx, rhs);
             auto lhs_t1 = expr_ty(fcx.ccx.tcx, lhs_0);
@@ -2250,6 +2321,12 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         }
 
         case (ast.expr_call(?f, ?args, _)) {
+            /* here we're kind of hosed, as f can be any expr
+             need to restrict it to being an explicit expr_path if we're
+            inside a pure function, and need an environment mapping from 
+            function name onto purity-designation */
+            require_pure_call(fcx.ccx, fcx.purity, f, expr.span);
+
             auto result = check_call(fcx, f, args);
             auto f_1 = result._0;
             auto args_1 = result._1;
@@ -2301,6 +2378,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             }
 
             auto ann = triv_ann(t);
+
+            require_impure(fcx.ccx.sess, fcx.purity, expr.span);
 
             ret @fold.respan[ast.expr_](expr.span,
                                         ast.expr_self_method(id, ann));
@@ -2725,6 +2804,7 @@ fn check_const(&@crate_ctxt ccx, &span sp, ast.ident ident, @ast.ty t,
     // for checking the initializer expression.
     auto rty = ann_to_type(ann);
     let @fn_ctxt fcx = @rec(ret_ty = rty,
+                            purity = ast.pure_fn,
                             locals = @common.new_def_hash[ty.t](),
                             ccx = ccx);
     auto e_ = check_expr(fcx, e);
@@ -2755,6 +2835,7 @@ fn check_fn(&@crate_ctxt ccx, &ast.fn_decl decl, ast.proto proto,
     }
 
     let @fn_ctxt fcx = @rec(ret_ty = ast_ty_to_ty_crate(ccx, decl.output),
+                            purity = decl.purity,
                             locals = local_ty_table,
                             ccx = ccx);
 
@@ -2834,6 +2915,26 @@ fn eq_unify_cache_entry(&unify_cache_entry a, &unify_cache_entry b) -> bool {
     ret true;
 }
 
+fn mk_fn_purity_table(@ast.crate crate) -> @fn_purity_table {
+    auto res = @new_def_hash[ast.purity]();
+
+    fn do_one(@fn_purity_table t, @ast.item i) -> () {
+        alt (i.node) {
+            case (ast.item_fn(_, ?f, _, ?d_id, _)) {
+                t.insert(d_id, f.decl.purity);
+            }
+            case (_) {}
+        }
+    }
+
+    auto do_one_fn = bind do_one(res,_);
+    auto v = walk.default_visitor();
+
+    auto add_fn_entry_visitor = rec(visit_item_post=do_one_fn with v);
+
+    walk.walk_crate(add_fn_entry_visitor, *crate);
+    ret res;
+}
 
 type typecheck_result = tup(@ast.crate, ty.type_cache);
 
@@ -2848,12 +2949,15 @@ fn check_crate(ty.ctxt tcx, @ast.crate crate)
     auto eqer = eq_unify_cache_entry;
     auto unify_cache =
         map.mk_hashmap[unify_cache_entry,ty.Unify.result](hasher, eqer);
+    auto fpt =
+        mk_fn_purity_table(crate); // use a variation on Collect
 
     auto ccx = @rec(sess=sess,
                     type_cache=result._1,
                     item_items=result._2,
                     obj_fields=fields,
                     this_obj=none[ast.def_id],
+                    fn_purity_table = fpt,
                     mutable next_var_id=0,
                     unify_cache=unify_cache,
                     mutable cache_hits=0u,
