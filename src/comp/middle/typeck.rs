@@ -2841,6 +2841,17 @@ fn check_fn(&@crate_ctxt ccx, &ast.fn_decl decl, ast.proto proto,
 
     // TODO: Make sure the type of the block agrees with the function type.
     auto block_t = check_block(fcx, body);
+    alt (decl.purity) {
+        case (ast.pure_fn) {
+            // per the previous comment, this just checks that the declared
+            // type is bool, and trusts that that's the actual return type.
+            if (!ty.type_is_bool(ccx.tcx, fcx.ret_ty)) {
+              ccx.sess.span_err(body.span, "Non-boolean return type in pred");
+            }
+        }
+        case (_) {} 
+    }
+
     auto block_wb = resolve_local_types_in_block(fcx, block_t);
 
     auto fn_t = rec(decl=decl,
