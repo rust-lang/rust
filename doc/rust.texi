@@ -682,6 +682,7 @@ The keywords are:
 @tab @code{thread}
 @item @code{auth}
 @tab @code{unsafe}
+@tab @code{as}
 @tab @code{self}
 @tab @code{log}
 @item @code{bind}
@@ -711,8 +712,8 @@ The keywords are:
 @tab @code{str}
 @item @code{fn}
 @tab @code{iter}
+@tab @code{pred}
 @tab @code{obj}
-@tab @code{as}
 @tab @code{drop}
 @item @code{task}
 @tab @code{port}
@@ -1785,8 +1786,6 @@ fn main() @{
 @c * Ref.Item.Fn::            Items defining functions.
 @cindex Functions
 @cindex Slots, function input and output
-@cindex Predicate
-
 
 A @dfn{function item} defines a sequence of statements associated with a name
 and a set of parameters. Functions are declared with the keyword
@@ -1805,13 +1804,34 @@ expression. If a control path lacks a @code{ret} expression in source code, an
 implicit @code{ret} expression is appended to the end of the control path
 during compilation, returning the implicit @code{()} value.
 
-Any pure boolean function is also called a @emph{predicate}, and may be used
-as part of the static typestate system. @xref{Ref.Typestate.Constr}.
-
 An example of a function:
 @example
 fn add(int x, int y) -> int @{
     ret x + y;
+@}
+@end example
+
+@node       Ref.Item.Pred
+@subsection Ref.Item.Pred
+@c * Ref.Item.Pred::            Items defining predicates.
+@cindex Predicate
+
+Any pure boolean function is called a @emph{predicate}, and may be used
+as part of the static typestate system. @xref{Ref.Typestate.Constr}. A
+predicate declaration is identical to a function declaration, except that it
+is declared with the keyword @code{pred} instead of @code{fn}. In addition,
+the typechecker checks the body of a predicate with a restricted set of
+typechecking rules. A predicate
+@itemize
+@item may not contain a @code{put}, @code{send}, @code{recv}, assignment, or
+self-call expression; and
+@item may only call other predicates, not general functions.
+@end itemize
+
+An example of a predicate:
+@example
+pred lt_42(int x) -> bool @{
+    ret (x < 42);
 @}
 @end example
 
@@ -2631,14 +2651,14 @@ This implicit graph is called the @dfn{control-flow graph}, or @dfn{CFG}.
 @cindex Predicate
 @cindex Constraint
 
-A @dfn{predicate} is any pure boolean function. @xref{Ref.Item.Fn}.
+A @dfn{predicate} is a pure boolean function declared with the keyword @code{pred}. @xref{Ref.Item.Pred}.
 
 A @dfn{constraint} is a predicate applied to specific slots.
 
 For example, consider the following code:
 
 @example
-fn is_less_than(int a, int b) -> bool @{
+pred is_less_than(int a, int b) -> bool @{
      ret a < b;
 @}
 
@@ -3543,7 +3563,7 @@ and statically comparing implied states and their
 specifications. @xref{Ref.Typestate}.
 
 @example
-fn even(&int x) -> bool @{
+pred even(&int x) -> bool @{
     ret x & 1 == 0;
 @}
 
