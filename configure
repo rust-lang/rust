@@ -185,13 +185,13 @@ putvar CFG_CONFIGURE_ARGS
 step_msg "looking for build programs"
 probe_need CFG_GCC          gcc
 probe_need CFG_GIT          git
-probe_need CFG_OCAMLC       ocamlc
 probe_need CFG_PERL         perl
 probe_need CFG_PYTHON       python
 probe_need CFG_CURL         curl
 
 probe CFG_LLVM_CONFIG      llvm-config
 probe CFG_VALGRIND         valgrind
+probe CFG_OCAMLC           ocamlc
 probe CFG_OCAMLOPT         ocamlopt
 probe CFG_OCAMLC_OPT       ocamlc.opt
 probe CFG_OCAMLOPT_OPT     ocamlopt.opt
