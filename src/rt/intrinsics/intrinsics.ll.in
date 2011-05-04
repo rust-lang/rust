@@ -1,0 +1,66 @@
+; ModuleID = 'intrinsics.cpp'
+target datalayout = "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:128:128-n8:16:32"
+target triple = "$(LLVM_TRIPLE)"
+
+%0 = type { i32, i8**, i32 }
+%1 = type { %"struct.hash_map<rust_task *, rust_handle<rust_task> *>::map_entry"* }
+%2 = type { %"struct.hash_map<rust_port *, rust_handle<rust_port> *>::map_entry"* }
+%3 = type { %"struct.hash_map<rust_dom *, rust_handle<rust_dom> *>::map_entry"* }
+%4 = type { i32, %struct.rust_dom**, i32 }
+%5 = type { i32 (...)**, %6 }
+%6 = type { i32, %class.rust_message_queue**, i32 }
+%7 = type opaque
+%8 = type { %"struct.hash_map<rust_port *, rust_proxy<rust_port> *>::map_entry"* }
+%class.array_list = type { i32, %struct.maybe_proxy**, i32 }
+%class.hash_map = type { %"struct.hash_map<rust_task *, rust_proxy<rust_task> *>::map_entry"* }
+%class.indexed_list = type { i32 (...)**, %4 }
+%class.lock_and_signal = type { i32 (...)**, %struct._opaque_pthread_cond_t, %struct._opaque_pthread_mutex_t }
+%class.memory_region = type { i32 (...)**, %class.rust_srv*, %class.memory_region*, i32, %0, i8, i8, %class.lock_and_signal }
+%class.ptr_vec = type { %struct.rust_dom*, i32, i32, %class.rust_crate_cache** }
+%class.rust_crate = type { i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32 }
+%class.rust_crate_cache = type { [4 x i8], %"class.rust_crate_cache::rust_sym"**, %"class.rust_crate_cache::c_sym"**, %"class.rust_crate_cache::lib"**, %struct.type_desc*, %class.rust_crate*, %struct.rust_dom*, i32 }
+%"class.rust_crate_cache::c_sym" = type { [4 x i8], i32, %"class.rust_crate_cache::lib"*, %struct.rust_dom* }
+%"class.rust_crate_cache::lib" = type { [4 x i8], i32, %struct.rust_dom* }
+%"class.rust_crate_cache::rust_sym" = type { [4 x i8], i32, %"class.rust_crate_cache::c_sym"*, %struct.rust_dom* }
+%class.rust_handle = type opaque
+%class.rust_kernel = type { [12 x i8], %class.memory_region*, %class.rust_log, %class.rust_srv*, %1, %2, %3, i8, %class.lock_and_signal, %class.indexed_list, %5 }
+%class.rust_log = type { i32 (...)**, %class.rust_srv*, %struct.rust_dom*, i8, i8 }
+%class.rust_message_queue = type { [20 x i8], %class.memory_region, %class.rust_kernel*, %7*, i32 }
+%class.rust_srv = type { i32 (...)**, %class.memory_region, %class.memory_region }
+%class.rust_task_list = type { [16 x i8], %struct.rust_dom*, i8* }
+%class.timer = type { i32 (...)**, i64, i64 }
+%struct.UT_hash_bucket = type { %struct.UT_hash_handle*, i32, i32 }
+%struct.UT_hash_handle = type { %struct.UT_hash_table*, i8*, i8*, %struct.UT_hash_handle*, %struct.UT_hash_handle*, i8*, i32, i32 }
+%struct.UT_hash_table = type { %struct.UT_hash_bucket*, i32, i32, i32, %struct.UT_hash_handle*, i32, i32, i32, i32, i32 }
+%struct._opaque_pthread_attr_t = type { i32, [36 x i8] }
+%struct._opaque_pthread_cond_t = type { i32, [24 x i8] }
+%struct._opaque_pthread_mutex_t = type { i32, [40 x i8] }
+%struct.gc_alloc = type { %struct.gc_alloc*, %struct.gc_alloc*, i32, [0 x i8] }
+%"struct.hash_map<rust_dom *, rust_handle<rust_dom> *>::map_entry" = type opaque
+%"struct.hash_map<rust_port *, rust_handle<rust_port> *>::map_entry" = type opaque
+%"struct.hash_map<rust_port *, rust_proxy<rust_port> *>::map_entry" = type opaque
+%"struct.hash_map<rust_task *, rust_handle<rust_task> *>::map_entry" = type opaque
+%"struct.hash_map<rust_task *, rust_proxy<rust_task> *>::map_entry" = type opaque
+%struct.maybe_proxy = type { [4 x i8], %struct.rust_task* }
+%struct.randctx = type { i32, [256 x i32], [256 x i32], i32, i32, i32 }
+%struct.rust_alarm = type { %struct.rust_task*, i32 }
+%struct.rust_cond = type { i8 }
+%struct.rust_dom = type { [4 x i8], i32, %class.rust_crate*, %class.rust_log, i32, %class.rust_srv*, %class.memory_region, %class.memory_region, i8*, %class.rust_task_list, %class.rust_task_list, %class.rust_task_list, %class.rust_task_list, %class.ptr_vec, %struct.randctx, %struct.rust_task*, %struct.rust_task*, i32, %class.rust_kernel*, i32, %class.hash_map, %8, %class.rust_message_queue*, %struct._opaque_pthread_attr_t }
+%struct.rust_task = type { [8 x i8], %struct.stk_seg*, i32, i32, %struct.gc_alloc*, %struct.rust_dom*, %class.rust_crate_cache*, i8*, %class.rust_task_list*, %struct.rust_cond*, i8*, %struct.rust_task*, i32, i32, i32, %class.timer, i32*, %class.array_list, %struct.rust_alarm, %class.rust_handle* }
+%struct.rust_vec = type { [4 x i8], i32, i32, i32, [0 x i8] }
+%struct.stk_seg = type { i32, i32, [0 x i8] }
+%struct.type_desc = type { %struct.type_desc**, i32, i32, i32, i32, i32, i32, i32, i32, i32, %struct.UT_hash_handle, i32, [0 x %struct.type_desc*] }
+
+define i32 @rust_intrinsic_vec_len(%struct.rust_task* nocapture %task, %struct.type_desc* nocapture %ty, %struct.rust_vec* nocapture %v) nounwind readonly ssp {
+entry:
+  %fill = getelementptr inbounds %struct.rust_vec* %v, i32 0, i32 2
+  %tmp1 = load i32* %fill, align 4, !tbaa !0
+  %size = getelementptr inbounds %struct.type_desc* %ty, i32 0, i32 1
+  %tmp3 = load i32* %size, align 4, !tbaa !0
+  %div = udiv i32 %tmp1, %tmp3
+  ret i32 %div
+}
+
+!0 = metadata !{metadata !"long", metadata !1}
+!1 = metadata !{metadata !"omnipotent char", metadata !2}
+!2 = metadata !{metadata !"Simple C/C++ TBAA", null}
