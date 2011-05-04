@@ -1,3 +1,4 @@
+
 CFG_GCC_CFLAGS := -fno-strict-aliasing
 CFG_GCC_LINK_FLAGS :=
 
@@ -61,11 +62,11 @@ CFG_LDPATH :=$(CFG_BUILD_DIR)/rt
 CFG_LDPATH :=$(CFG_LDPATH):$(CFG_BUILD_DIR)/rustllvm
 CFG_TESTLIB=$(CFG_BUILD_DIR)/$(strip     \
  $(if $(findstring stage0,$(1)),         \
-       stage1                            \
+       stage1,                           \
       $(if $(findstring stage1,$(1)),    \
-           stage2                        \
+           stage2,                       \
           $(if $(findstring stage2,$(1)),\
-               stage3                    \
+               stage3,                   \
                ))))
 
 ifdef CFG_WINDOWSY
