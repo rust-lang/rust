@@ -275,10 +275,8 @@ upcall_fail(rust_task *task,
     LOG_UPCALL_ENTRY(task);
     LOG_ERR(task, upcall, "upcall fail '%s', %s:%" PRIdPTR, expr, file, line);
     task->fail(4);
-    if (getenv("RUST_TRAP_FAILURE")) {
-        // FIXME: x86-ism.
-        __asm__("int3");
-    }
+    // FIXME: re-implement unwinding.
+    abort();
 }
 
 /**
