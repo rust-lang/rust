@@ -34,6 +34,7 @@
 *.vr
 *.swp
 *.tmp
+*.pyc
 .hg/
 .hgignore
 .cproject
@@ -53,4 +54,4 @@ config.mk
 /build/
 src/.DS_Store
 /stage0/
-*.pyc
+/dl/
