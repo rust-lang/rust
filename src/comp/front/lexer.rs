@@ -141,6 +141,7 @@ fn keyword_table() -> std.map.hashmap[str, token.token] {
     keywords.insert("auto", token.AUTO);
 
     keywords.insert("fn", token.FN);
+    keywords.insert("pred", token.PRED);
     keywords.insert("iter", token.ITER);
 
     keywords.insert("import", token.IMPORT);

@@ -790,7 +790,14 @@ fn print_pat(ps s, &@ast.pat pat) {
 
 fn print_fn(ps s, ast.fn_decl decl, str name,
                    vec[ast.ty_param] typarams) {
-    wrd1(s, "fn");
+    alt (decl.purity) {
+        case (ast.impure_fn) {
+            wrd1(s, "fn");
+        }
+        case (_) {
+            wrd1(s, "pred");
+        }
+    }
     wrd(s.s, name);
     print_type_params(s, typarams);
     popen(s);

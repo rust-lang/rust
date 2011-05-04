@@ -346,7 +346,13 @@ type constr = spanned[constr_];
 
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
 type fn_decl = rec(vec[arg] inputs,
-                   @ty output);
+                   @ty output,
+                   purity purity);
+tag purity {
+    pure_fn;   // declared with "pred"
+    impure_fn; // declared with "fn"
+}
+
 type _fn = rec(fn_decl decl,
                proto proto,
                block body);

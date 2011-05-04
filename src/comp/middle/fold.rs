@@ -30,6 +30,7 @@ import front.ast.def;
 import front.ast.def_id;
 import front.ast.ann;
 import front.ast.mt;
+import front.ast.purity;
 
 import std._uint;
 import std._vec;
@@ -301,7 +302,8 @@ type ast_fold[ENV] =
 
      (fn(&ENV e,
          vec[arg] inputs,
-         @ty output) -> ast.fn_decl)              fold_fn_decl,
+         @ty output,
+         purity p) -> ast.fn_decl)                fold_fn_decl,
 
      (fn(&ENV e, &ast._mod m) -> ast._mod)        fold_mod,
 
@@ -900,7 +902,7 @@ fn fold_fn_decl[ENV](&ENV env, ast_fold[ENV] fld,
         inputs += vec(fold_arg(env, fld, a));
     }
     auto output = fold_ty[ENV](env, fld, decl.output);
-    ret fld.fold_fn_decl(env, inputs, output);
+    ret fld.fold_fn_decl(env, inputs, output, decl.purity);
 }
 
 fn fold_fn[ENV](&ENV env, ast_fold[ENV] fld, &ast._fn f) -> ast._fn {
@@ -1542,8 +1544,9 @@ fn identity_fold_block[ENV](&ENV e, &span sp, &ast.block_ blk) -> block {
 
 fn identity_fold_fn_decl[ENV](&ENV e,
                               vec[arg] inputs,
-                              @ty output) -> ast.fn_decl {
-    ret rec(inputs=inputs, output=output);
+                              @ty output,
+                              purity p) -> ast.fn_decl {
+    ret rec(inputs=inputs, output=output, purity=p);
 }
 
 fn identity_fold_fn[ENV](&ENV e,
@@ -1732,7 +1735,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_ann = bind identity_fold_ann[ENV](_,_),
 
          fold_fn = bind identity_fold_fn[ENV](_,_,_,_),
-         fold_fn_decl = bind identity_fold_fn_decl[ENV](_,_,_),
+         fold_fn_decl = bind identity_fold_fn_decl[ENV](_,_,_,_),
          fold_mod = bind identity_fold_mod[ENV](_,_),
          fold_native_mod = bind identity_fold_native_mod[ENV](_,_),
          fold_crate = bind identity_fold_crate[ENV](_,_,_,_),
