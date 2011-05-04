@@ -346,7 +346,13 @@ type constr = spanned[constr_];
 
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
 type fn_decl = rec(vec[arg] inputs,
-                   @ty output);
+                   @ty output,
+                   purity purity);
+tag purity {
+    pure_fn;   // declared with "pred"
+    impure_fn; // declared with "fn"
+}
+
 type _fn = rec(fn_decl decl,
                proto proto,
                block body);
@@ -555,6 +561,20 @@ fn is_exported(ident i, _mod m) -> bool {
 fn is_call_expr(@expr e) -> bool {
     alt (e.node) {
         case (expr_call(_, _, _)) {
+            ret true;
+        }
+        case (_) {
+            ret false;
+        }
+    }
+}
+
+fn is_constraint_arg(@expr e) -> bool {
+    alt (e.node) {
+        case (expr_lit(_,_)) {
+            ret true;
+        }
+        case (expr_path(_, option.some[def](def_local(_)), _)) {
             ret true;
         }
         case (_) {

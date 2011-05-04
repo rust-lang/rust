@@ -13,13 +13,13 @@ fn ack(int m, int n) -> int {
 }
 
 fn main() {
-  check (ack(0,0) == 1);
-  check (ack(3,2) == 29);
-  check (ack(3,4) == 125);
+  assert (ack(0,0) == 1);
+  assert (ack(3,2) == 29);
+  assert (ack(3,4) == 125);
 
   // This takes a while; but a comparison may amuse: on win32 at least, the
   // posted C version of the 'benchmark' running ack(4,1) overruns its stack
   // segment and crashes. We just grow our stack (to 4mb) as we go.
 
-  // check (ack(4,1) == 65533);
+  // assert (ack(4,1) == 65533);
 }

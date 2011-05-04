@@ -682,7 +682,9 @@ The keywords are:
 @tab @code{thread}
 @item @code{auth}
 @tab @code{unsafe}
+@tab @code{as}
 @tab @code{self}
+@tab @code{log}
 @item @code{bind}
 @tab @code{type}
 @tab @code{true}
@@ -710,8 +712,8 @@ The keywords are:
 @tab @code{str}
 @item @code{fn}
 @tab @code{iter}
+@tab @code{pred}
 @tab @code{obj}
-@tab @code{as}
 @tab @code{drop}
 @item @code{task}
 @tab @code{port}
@@ -727,12 +729,12 @@ The keywords are:
 @tab @code{while}
 @tab @code{break}
 @tab @code{cont}
-@tab @code{fail}
-@item @code{log}
 @tab @code{note}
+@item @code{assert}
 @tab @code{claim}
 @tab @code{check}
 @tab @code{prove}
+@tab @code{fail}
 @item @code{for}
 @tab @code{each}
 @tab @code{ret}
@@ -1395,7 +1397,7 @@ An example of an implicit-dereference operation performed on box values:
 @example
 let @@int x = @@10;
 let @@int y = @@12;
-check (x + y == 22);
+assert (x + y == 22);
 @end example
 
 Other operations act on box values as single-word-sized address values,
@@ -1784,8 +1786,6 @@ fn main() @{
 @c * Ref.Item.Fn::            Items defining functions.
 @cindex Functions
 @cindex Slots, function input and output
-@cindex Predicate
-
 
 A @dfn{function item} defines a sequence of statements associated with a name
 and a set of parameters. Functions are declared with the keyword
@@ -1804,13 +1804,34 @@ expression. If a control path lacks a @code{ret} expression in source code, an
 implicit @code{ret} expression is appended to the end of the control path
 during compilation, returning the implicit @code{()} value.
 
-Any pure boolean function is also called a @emph{predicate}, and may be used
-as part of the static typestate system. @xref{Ref.Typestate.Constr}.
-
 An example of a function:
 @example
 fn add(int x, int y) -> int @{
     ret x + y;
+@}
+@end example
+
+@node       Ref.Item.Pred
+@subsection Ref.Item.Pred
+@c * Ref.Item.Pred::            Items defining predicates.
+@cindex Predicate
+
+Any pure boolean function is called a @emph{predicate}, and may be used
+as part of the static typestate system. @xref{Ref.Typestate.Constr}. A
+predicate declaration is identical to a function declaration, except that it
+is declared with the keyword @code{pred} instead of @code{fn}. In addition,
+the typechecker checks the body of a predicate with a restricted set of
+typechecking rules. A predicate
+@itemize
+@item may not contain a @code{put}, @code{send}, @code{recv}, assignment, or
+self-call expression; and
+@item may only call other predicates, not general functions.
+@end itemize
+
+An example of a predicate:
+@example
+pred lt_42(int x) -> bool @{
+    ret (x < 42);
 @}
 @end example
 
@@ -1887,7 +1908,7 @@ let counter c = counter(1);
 
 c.incr();
 c.incr();
-check (c.get() == 3);
+assert (c.get() == 3);
 @end example
 
 There is no @emph{this} or @emph{self} available inside an object's
@@ -2232,9 +2253,9 @@ An example of a tuple type and its use:
 @example
 type pair = tup(int,str);
 let pair p = tup(10,"hello");
-check (p._0 == 10);
+assert (p._0 == 10);
 p._1 = "world";
-check (p._1 == "world");
+assert (p._1 == "world");
 @end example
 
 
@@ -2630,14 +2651,14 @@ This implicit graph is called the @dfn{control-flow graph}, or @dfn{CFG}.
 @cindex Predicate
 @cindex Constraint
 
-A @dfn{predicate} is any pure boolean function. @xref{Ref.Item.Fn}.
+A @dfn{predicate} is a pure boolean function declared with the keyword @code{pred}. @xref{Ref.Item.Pred}.
 
 A @dfn{constraint} is a predicate applied to specific slots.
 
 For example, consider the following code:
 
 @example
-fn is_less_than(int a, int b) -> bool @{
+pred is_less_than(int a, int b) -> bool @{
      ret a < b;
 @}
 
@@ -2898,6 +2919,8 @@ effects of the expression's evaluation.
 * Ref.Expr.Alt::                Expression for complex conditional branching.
 * Ref.Expr.Prove::              Expression for static assertion of typestate.
 * Ref.Expr.Check::              Expression for dynamic assertion of typestate.
+* Ref.Expr.Assert::              Expression for halting the program if a
+                                           boolean condition fails to hold.
 * Ref.Expr.IfCheck::            Expression for dynamic testing of typestate.
 @end menu
 
@@ -3068,8 +3091,8 @@ let single_param_fn add4 = bind add(4, _);
 
 let single_param_fn add5 = bind add(_, 5);
 
-check (add(4,5) == add4(5));
-check (add(4,5) == add5(4));
+assert (add(4,5) == add4(5));
+assert (add(4,5) == add5(4));
 
 @end example
 
@@ -3540,7 +3563,7 @@ and statically comparing implied states and their
 specifications. @xref{Ref.Typestate}.
 
 @example
-fn even(&int x) -> bool @{
+pred even(&int x) -> bool @{
     ret x & 1 == 0;
 @}
 
@@ -3591,6 +3614,16 @@ if check even(x) @{
     fail;
 @}
 @end example
+
+@node       Ref.Expr.Assert
+@subsection Ref.Expr.Assert
+@c * Ref.Expr.Assert::            Expression that halts the program if a boolean condition fails to hold.
+@cindex Assertions
+
+An @code{assert} expression is similar to a @code{check} expression, except
+the condition may be any boolean-typed expression, and the compiler makes no
+use of the knowledge that the condition holds if the program continues to
+execute after the @code{assert}.
 
 @page
 @node    Ref.Run
