@@ -190,6 +190,9 @@ mod Encode {
                 w.write_char('N');
                 alt (abi) {
                     case (ast.native_abi_rust) { w.write_char('r'); }
+                    case (ast.native_abi_rust_intrinsic) {
+                        w.write_char('i');
+                    }
                     case (ast.native_abi_cdecl) { w.write_char('c'); }
                     case (ast.native_abi_llvm) { w.write_char('l'); }
                 }
