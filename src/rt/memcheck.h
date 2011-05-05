@@ -184,7 +184,7 @@ typedef
 
 /* Do a full memory leak check (like --leak-check=full) mid-execution. */
 #define VALGRIND_DO_LEAK_CHECK                                   \
-   {unsigned long _qzz_res;                                      \
+   {unsigned long _qzz_res __attribute((unused));                \
     VALGRIND_DO_CLIENT_REQUEST(_qzz_res, 0,                      \
                             VG_USERREQ__DO_LEAK_CHECK,           \
                             0, 0, 0, 0, 0);                      \
@@ -192,7 +192,7 @@ typedef
 
 /* Do a summary memory leak check (like --leak-check=summary) mid-execution. */
 #define VALGRIND_DO_QUICK_LEAK_CHECK				 \
-   {unsigned long _qzz_res;                                      \
+   {unsigned long _qzz_res __attribute((unused));                \
     VALGRIND_DO_CLIENT_REQUEST(_qzz_res, 0,                      \
                             VG_USERREQ__DO_LEAK_CHECK,           \
                             1, 0, 0, 0, 0);                      \
@@ -207,7 +207,7 @@ typedef
       are.  We also initialise '_qzz_leaked', etc because
       VG_USERREQ__COUNT_LEAKS doesn't mark the values returned as
       defined. */                                                        \
-   {unsigned long _qzz_res;                                              \
+   {unsigned long _qzz_res __attribute((unused));                        \
     unsigned long _qzz_leaked    = 0, _qzz_dubious    = 0;               \
     unsigned long _qzz_reachable = 0, _qzz_suppressed = 0;               \
     VALGRIND_DO_CLIENT_REQUEST(_qzz_res, 0,                              \
@@ -229,7 +229,7 @@ typedef
       are.  We also initialise '_qzz_leaked', etc because
       VG_USERREQ__COUNT_LEAKS doesn't mark the values returned as
       defined. */                                                        \
-   {unsigned long _qzz_res;                                              \
+   {unsigned long _qzz_res __attribute((unused));                        \
     unsigned long _qzz_leaked    = 0, _qzz_dubious    = 0;               \
     unsigned long _qzz_reachable = 0, _qzz_suppressed = 0;               \
     VALGRIND_DO_CLIENT_REQUEST(_qzz_res, 0,                              \
