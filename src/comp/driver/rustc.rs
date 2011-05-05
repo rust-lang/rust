@@ -14,6 +14,7 @@ import middle.typestate_check;
 import lib.llvm;
 import util.common;
 
+import std.fs;
 import std.map.mk_hashmap;
 import std.option;
 import std.option.some;
@@ -78,48 +79,39 @@ fn time[T](bool do_it, str what, fn()->T thunk) -> T {
 }
 
 fn compile_input(session.session sess,
-                        eval.env env,
-                        str input, str output,
-                        bool shared,
-                        bool optimize,
-                        bool verify,
-                        bool save_temps,
-                        trans.output_type ot,
-                        bool time_passes,
-                        bool run_typestate,
-                        vec[str] library_search_paths) {
+                 eval.env env,
+                 str input, str output) {
+    auto time_passes = sess.get_opts().time_passes;
     auto def = tup(0, 0);
     auto p = parser.new_parser(sess, env, def, input, 0u);
     auto crate = time[@ast.crate](time_passes, "parsing",
-        bind parse_input(sess, p, input));
-    if (ot == trans.output_type_none) {ret;}
+                                  bind parse_input(sess, p, input));
+    if (sess.get_opts().output_type == trans.output_type_none) {ret;}
 
     crate = time[@ast.crate](time_passes, "external crate reading",
-        bind creader.read_crates(sess, crate, library_search_paths));
+                             bind creader.read_crates(sess, crate));
     crate = time[@ast.crate](time_passes, "resolution",
-        bind resolve.resolve_crate(sess, crate));
+                             bind resolve.resolve_crate(sess, crate));
     time[()](time_passes, "capture checking",
-        bind capture.check_for_captures(sess, crate));
+             bind capture.check_for_captures(sess, crate));
 
     auto ty_cx = ty.mk_ctxt(sess);
     auto typeck_result =
         time[typeck.typecheck_result](time_passes, "typechecking",
-        bind typeck.check_crate(ty_cx, crate));
+                                      bind typeck.check_crate(ty_cx, crate));
     crate = typeck_result._0;
     auto type_cache = typeck_result._1;
 
-    if (run_typestate) {
+    if (sess.get_opts().run_typestate) {
         crate = time[@ast.crate](time_passes, "typestate checking",
             bind typestate_check.check_crate(crate));
     }
 
     auto llmod = time[llvm.ModuleRef](time_passes, "translation",
-        bind trans.trans_crate(sess, crate, ty_cx, type_cache, output,
-                               shared));
+        bind trans.trans_crate(sess, crate, ty_cx, type_cache, output));
 
     time[()](time_passes, "LLVM passes",
-        bind trans.run_passes(llmod, optimize, verify, save_temps, output,
-                              ot));
+             bind trans.run_passes(sess, llmod, output));
 }
 
 fn pretty_print_input(session.session sess,
@@ -131,7 +123,7 @@ fn pretty_print_input(session.session sess,
     pretty.pprust.print_file(crate.node.module, input, std.io.stdout());
 }
 
-fn usage(session.session sess, str argv0) {
+fn usage(str argv0) {
     io.stdout().write_str(#fmt("usage: %s [options] <input>\n", argv0) + "
 options:
 
@@ -144,11 +136,13 @@ options:
     --noverify         suppress LLVM verification step (slight speedup)
     --depend           print dependencies, in makefile-rule form
     --parse-only       parse only; do not compile, assemble, or link
+    -g                 produce debug info
     -O                 optimize
     -S                 compile only; do not assemble or link
     -c                 compile and assemble, but do not link
     --save-temps       write intermediate files in addition to normal output
     --time-passes      time the individual phases of the compiler
+    --sysroot <path>   override the system root (default: rustc's directory)
     --no-typestate     don't run the typestate pass (unsafe!)
     -h                 display this message\n\n");
 }
@@ -160,35 +154,40 @@ fn get_os() -> session.os {
     if (_str.eq(s, "linux")) { ret session.os_linux; }
 }
 
+fn get_default_sysroot(str binary) -> str {
+    auto dirname = fs.dirname(binary);
+    if (_str.eq(dirname, binary)) { ret "."; }
+    ret dirname;
+}
+
 fn main(vec[str] args) {
 
     // FIXME: don't hard-wire this.
-    auto target_cfg = rec(os = get_os(),
-                          arch = session.arch_x86,
-                          int_type = common.ty_i32,
-                          uint_type = common.ty_u32,
-                          float_type = common.ty_f64 );
-
-    auto crate_cache = common.new_int_hash[session.crate_metadata]();
-    auto target_crate_num = 0;
-    let vec[@ast.meta_item] md = vec();
-    auto sess = session.session(target_crate_num, target_cfg, crate_cache,
-                                md, front.codemap.new_codemap());
+    let @session.config target_cfg =
+        @rec(os = get_os(),
+             arch = session.arch_x86,
+             int_type = common.ty_i32,
+             uint_type = common.ty_u32,
+             float_type = common.ty_f64);
 
     auto opts = vec(optflag("h"), optflag("glue"),
                     optflag("pretty"), optflag("ls"), optflag("parse-only"),
                     optflag("O"), optflag("shared"), optmulti("L"),
-                    optflag("S"), optflag("c"), optopt("o"),
-                    optflag("save-temps"), optflag("time-passes"),
-                    optflag("no-typestate"), optflag("noverify"));
+                    optflag("S"), optflag("c"), optopt("o"), optopt("g"),
+                    optflag("save-temps"), optopt("sysroot"),
+                    optflag("time-passes"), optflag("no-typestate"),
+                    optflag("noverify"));
     auto binary = _vec.shift[str](args);
     auto match;
     alt (GetOpts.getopts(args, opts)) {
-        case (GetOpts.failure(?f)) { sess.err(GetOpts.fail_str(f)); fail; }
+        case (GetOpts.failure(?f)) {
+            log_err #fmt("error: %s", GetOpts.fail_str(f));
+            fail;
+        }
         case (GetOpts.success(?m)) { match = m; }
     }
     if (opt_present(match, "h")) {
-        usage(sess, binary);
+        usage(binary);
         ret;
     }
 
@@ -198,20 +197,48 @@ fn main(vec[str] args) {
     auto shared = opt_present(match, "shared");
     auto output_file = GetOpts.opt_maybe_str(match, "o");
     auto library_search_paths = GetOpts.opt_strs(match, "L");
-    auto ot = trans.output_type_bitcode;
+    auto output_type = trans.output_type_bitcode;
     if (opt_present(match, "parse-only")) {
-        ot = trans.output_type_none;
+        output_type = trans.output_type_none;
     } else if (opt_present(match, "S")) {
-        ot = trans.output_type_assembly;
+        output_type = trans.output_type_assembly;
     } else if (opt_present(match, "c")) {
-        ot = trans.output_type_object;
+        output_type = trans.output_type_object;
     }
     auto verify = !opt_present(match, "noverify");
     auto save_temps = opt_present(match, "save-temps");
     // FIXME: Maybe we should support -O0, -O1, -Os, etc
     auto optimize = opt_present(match, "O");
+    auto debuginfo = opt_present(match, "g");
     auto time_passes = opt_present(match, "time-passes");
     auto run_typestate = !opt_present(match, "no-typestate");
+    auto sysroot_opt = GetOpts.opt_maybe_str(match, "sysroot");
+
+    auto sysroot;
+    alt (sysroot_opt) {
+        case (none[str]) { sysroot = get_default_sysroot(binary); }
+        case (some[str](?s)) { sysroot = s; }
+    }
+
+    let @session.options sopts =
+        @rec(shared = shared,
+             optimize = optimize,
+             debuginfo = debuginfo,
+             verify = verify,
+             run_typestate = run_typestate,
+             save_temps = save_temps,
+             time_passes = time_passes,
+             output_type = output_type,
+             library_search_paths = library_search_paths,
+             sysroot = sysroot);
+
+    auto crate_cache = common.new_int_hash[session.crate_metadata]();
+    auto target_crate_num = 0;
+    let vec[@ast.meta_item] md = vec();
+    auto sess =
+        session.session(target_crate_num, target_cfg, sopts,
+                        crate_cache, md, front.codemap.new_codemap());
+
     auto n_inputs = _vec.len[str](match.free);
 
     if (glue) {
@@ -219,7 +246,7 @@ fn main(vec[str] args) {
             sess.err("No input files allowed with --glue.");
         }
         auto out = option.from_maybe[str]("glue.bc", output_file);
-        middle.trans.make_common_glue(out, optimize, verify, save_temps, ot);
+        middle.trans.make_common_glue(sess, out);
         ret;
     }
 
@@ -240,18 +267,21 @@ fn main(vec[str] args) {
             case (none[str]) {
                 let vec[str] parts = _str.split(ifile, '.' as u8);
                 _vec.pop[str](parts);
-                parts += vec("bc");
+                alt (output_type) {
+                    case (trans.output_type_none)
+                        { parts += vec("pp"); }
+                    case (trans.output_type_bitcode)
+                        { parts += vec("bc"); }
+                    case (trans.output_type_assembly)
+                        { parts += vec("s"); }
+                    case (trans.output_type_object)
+                        { parts += vec("o"); }
+                }
                 auto ofile = _str.connect(parts, ".");
-                compile_input(sess, env, ifile, ofile, shared,
-                              optimize, verify, save_temps, ot,
-                              time_passes, run_typestate,
-                              library_search_paths);
+                compile_input(sess, env, ifile, ofile);
             }
             case (some[str](?ofile)) {
-                compile_input(sess, env, ifile, ofile, shared,
-                              optimize, verify, save_temps, ot,
-                              time_passes, run_typestate,
-                              library_search_paths);
+                compile_input(sess, env, ifile, ofile);
             }
         }
     }

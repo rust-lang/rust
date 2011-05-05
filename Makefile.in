@@ -137,6 +137,12 @@ SREQ2 := stage2/rustc$(X) $(LREQ) stage3/glue.o stage3/$(CFG_STDLIB)
 
 export CFG_SRC_DIR
 
+######################################################################
+# Subprograms
+######################################################################
+
+LLVM_AS := $(CFG_LLVM_BINDIR)/llvm-as
+
 
 ######################################################################
 # Single-target rules
@@ -145,17 +151,21 @@ export CFG_SRC_DIR
 all: rt/$(CFG_RUNTIME)          \
      rustllvm/$(CFG_RUSTLLVM)   \
      stage0/$(CFG_STDLIB)       \
+     stage0/intrinsics.bc       \
      stage0/rustc$(X)           \
      $(GENERATED)               \
      $(DOCS)                    \
      stage1/$(CFG_STDLIB)       \
+     stage1/intrinsics.bc       \
      stage1/glue.o              \
      stage1/rustc$(X)           \
      stage2/$(CFG_STDLIB)       \
+     stage2/intrinsics.bc       \
      stage2/glue.o              \
      stage2/rustc$(X)           \
      stage3/$(CFG_STDLIB)       \
      stage3/glue.o              \
+     stage3/intrinsics.bc       \
      stage3/rustc$(X)
 
 
@@ -172,6 +182,7 @@ config.mk: $(S)configure $(S)Makefile.in
 # Additional makefiles
 ######################################################################
 
+include $(CFG_SRC_DIR)/mk/intrinsics.mk
 include $(CFG_SRC_DIR)/mk/stage0.mk
 include $(CFG_SRC_DIR)/mk/stage1.mk
 include $(CFG_SRC_DIR)/mk/stage2.mk

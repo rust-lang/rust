@@ -949,6 +949,13 @@ fn expand_syntax_ext(parser p, ast.span sp,
                                     ast.ann_none);
 
         ret newexpr;
+    } else if (_str.eq(extname, "env")) {
+        auto expanded = extenv.expand_syntax_ext(p, sp, args, body);
+        auto newexpr = ast.expr_ext(path, args, body,
+                                    expanded,
+                                    ast.ann_none);
+
+        ret newexpr;
     } else {
         p.err("unknown syntax extension");
         fail;

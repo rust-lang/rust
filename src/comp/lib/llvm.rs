@@ -848,7 +848,9 @@ native mod llvm = llvm_lib {
         call. */
     fn LLVMRustGetLastError() -> sbuf;
 
-
+    /** Links LLVM modules together. `Src` is destroyed by this call and
+        must never be referenced again. */
+    fn LLVMLinkModules(ModuleRef Dest, ModuleRef Src) -> Bool;
 }
 
 native mod rustllvm = llvm_lib {

@@ -19,11 +19,22 @@ tag arch {
     arch_arm;
 }
 
-type cfg = rec(os os,
-               arch arch,
-               ty_mach int_type,
-               ty_mach uint_type,
-               ty_mach float_type);
+type config = rec(os os,
+                  arch arch,
+                  ty_mach int_type,
+                  ty_mach uint_type,
+                  ty_mach float_type);
+
+type options = rec(bool shared,
+                   bool optimize,
+                   bool debuginfo,
+                   bool verify,
+                   bool run_typestate,
+                   bool save_temps,
+                   bool time_passes,
+                   middle.trans.output_type output_type,
+                   vec[str] library_search_paths,
+                   str sysroot);
 
 type crate_metadata = rec(str name,
                           vec[u8] data);
@@ -47,13 +58,18 @@ fn emit_diagnostic(span sp, str msg, str kind, u8 color, codemap.codemap cm) {
     io.stdout().write_str(#fmt(" %s\n", msg));
 }
 
-state obj session(ast.crate_num cnum, cfg targ,
+state obj session(ast.crate_num cnum,
+                  @config targ_cfg, @options opts,
                   map.hashmap[int, crate_metadata] crates,
                   mutable vec[@ast.meta_item] metadata,
                   codemap.codemap cm) {
 
-    fn get_targ_cfg() -> cfg {
-        ret targ;
+    fn get_targ_cfg() -> @config {
+        ret targ_cfg;
+    }
+
+    fn get_opts() -> @options {
+        ret opts;
     }
 
     fn get_targ_crate_num() -> ast.crate_num {

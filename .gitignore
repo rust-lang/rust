@@ -53,3 +53,4 @@ config.mk
 /build/
 src/.DS_Store
 /stage0/
+*.pyc

@@ -2,7 +2,7 @@
 // xfail-stage1
 // xfail-stage2
 
-// error-pattern: malformed name
+// error-pattern: expecting
 
 fn main() {
   let x.y[int].z foo;

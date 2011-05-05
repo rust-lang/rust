@@ -1,3 +1,13 @@
+S 2011-05-04 add7d34
+  linux-i386 a85df9efb67bf83c5d71218a90d2a4935de2bec3
+  macos-i386 68e40fddb4aa9ac86a0fa93e7c36d461698e204e
+  winnt-i386 fbc7bf335af774cc7f904ceba725f18acbb5fcd9
+
+S 2011-05-04 4642d7a
+  linux-i386 631d4c375a8cc74de77c2f9aa79d3c404f8c353b
+  macos-i386 61b5a0eebb4eea8242d5cbc4a9967882b6a99cb4
+  winnt-i386 c82b74eacaaa8b77db08ceeb3caa33ab40fafb85
+
 S 2011-05-03 54bfe8e
   linux-i386 1e831f0904acf20c24e5ee944be61b8665a45c31
   macos-i386 eb20970d6ca784a9a7768a7eb1ce7d8f4af96fc9

@@ -1,6 +1,7 @@
 LLVMRustCreateMemoryBufferWithContentsOfFile
 LLVMRustWriteOutputFile
 LLVMRustGetLastError
+LLVMLinkModules
 LLVMCreateObjectFile
 LLVMDisposeObjectFile
 LLVMGetSections

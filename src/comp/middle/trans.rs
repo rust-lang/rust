@@ -1785,8 +1785,13 @@ fn declare_generic_glue(@local_ctxt cx,
                         ty.t t,
                         TypeRef llfnty,
                         str name) -> ValueRef {
-    auto fn_nm = mangle_name_by_type_only(cx.ccx, t, "glue_" + name);
-    fn_nm = sanitize(fn_nm);
+    auto fn_nm;
+    if (cx.ccx.sess.get_opts().debuginfo) {
+        fn_nm = mangle_name_by_type_only(cx.ccx, t, "glue_" + name);
+        fn_nm = sanitize(fn_nm);
+    } else {
+        fn_nm = mangle_name_by_seq(cx.ccx, cx.path,  "glue_" + name);
+    }
     auto llfn = decl_internal_fastcall_fn(cx.ccx.llmod, fn_nm, llfnty);
     ret llfn;
 }
@@ -1966,9 +1971,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, ty.t t) {
                                      C_int(abi.obj_body_elt_tydesc)));
                 auto tydesc = cx.build.Load(tydescptr);
 
-                // FIXME: disabled for now.
-                // auto cx_ = maybe_call_dtor(cx, o);
-                auto cx_ = cx;
+                auto cx_ = maybe_call_dtor(cx, o);
 
                 // Call through the obj's own fields-drop glue first.
                 call_tydesc_glue_full(cx_, body, tydesc,
@@ -2766,8 +2769,9 @@ fn maybe_call_dtor(@block_ctxt cx, ValueRef v) -> @block_ctxt {
     vtbl = cx.build.Load(vtbl);
     auto dtor_ptr = cx.build.GEP(vtbl, vec(C_int(0), C_int(0)));
     dtor_ptr = cx.build.Load(dtor_ptr);
+    auto self_t = llvm.LLVMGetElementType(val_ty(v));
     dtor_ptr = cx.build.BitCast(dtor_ptr,
-                                T_ptr(T_dtor(cx.fcx.lcx.ccx, val_ty(v))));
+                                T_ptr(T_dtor(cx.fcx.lcx.ccx, self_t)));
     
     auto dtor_cx = new_sub_block_ctxt(cx, "dtor");
     auto after_cx = new_sub_block_ctxt(cx, "after_dtor");
@@ -2775,9 +2779,9 @@ fn maybe_call_dtor(@block_ctxt cx, ValueRef v) -> @block_ctxt {
                               C_null(val_ty(dtor_ptr)));
     cx.build.CondBr(test, dtor_cx.llbb, after_cx.llbb);
 
-    // FIXME need to pass type params (?)
+    auto me = dtor_cx.build.Load(v);
     dtor_cx.build.FastCall(dtor_ptr, vec(C_null(T_ptr(T_nil())),
-                                        cx.fcx.lltaskptr, v));
+                                         cx.fcx.lltaskptr, me));
     dtor_cx.build.Br(after_cx.llbb);
     ret after_cx;
 }
@@ -6352,6 +6356,8 @@ fn trans_obj(@local_ctxt cx, &ast._obj ob, ast.def_id oid,
 
     let TypeRef llbox_ty = T_opaque_obj_ptr(ccx.tn);
 
+    // FIXME we should probably also allocate a box for empty objs that have a
+    // dtor, since otherwise they are never dropped, and the dtor never runs
     if (_vec.len[ast.ty_param](ty_params) == 0u &&
         _vec.len[ty.arg](arg_tys) == 0u) {
         // Store null into pair, if no args or typarams.
@@ -7252,18 +7258,18 @@ fn is_object_or_assembly(output_type ot) -> bool {
     ret false;
 }
 
-fn run_passes(ModuleRef llmod, bool opt, bool verify, bool save_temps,
-              str output, output_type ot) {
+fn run_passes(session.session sess, ModuleRef llmod, str output) {
     auto pm = mk_pass_manager();
+    auto opts = sess.get_opts();
 
     // TODO: run the linter here also, once there are llvm-c bindings for it.
 
     // Generate a pre-optimization intermediate file if -save-temps was
     // specified.
-    if (save_temps) {
-        alt (ot) {
+    if (opts.save_temps) {
+        alt (opts.output_type) {
             case (output_type_bitcode) {
-                if (opt) {
+                if (opts.optimize) {
                     auto filename = mk_intermediate_name(output, "no-opt.bc");
                     llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(filename));
                 }
@@ -7279,7 +7285,7 @@ fn run_passes(ModuleRef llmod, bool opt, bool verify, bool save_temps,
     // available in the C api.
     // FIXME2: We might want to add optmization levels like -O1, -O2, -Os, etc
     // FIXME3: Should we expose and use the pass lists used by the opt tool?
-    if (opt) {
+    if (opts.optimize) {
         auto fpm = mk_pass_manager();
 
         // createStandardFunctionPasses
@@ -7335,25 +7341,25 @@ fn run_passes(ModuleRef llmod, bool opt, bool verify, bool save_temps,
         llvm.LLVMAddConstantMergePass(pm.llpm);
     }
 
-    if (verify) {
+    if (opts.verify) {
         llvm.LLVMAddVerifierPass(pm.llpm);
     }
 
     // TODO: Write .s if -c was specified and -save-temps was on.
-    if (is_object_or_assembly(ot)) {
+    if (is_object_or_assembly(opts.output_type)) {
         let int LLVMAssemblyFile = 0;
         let int LLVMObjectFile = 1;
         let int LLVMNullFile = 2;
         auto FileType;
-        if (ot == output_type_object) {
+        if (opts.output_type == output_type_object) {
             FileType = LLVMObjectFile;
         } else {
             FileType = LLVMAssemblyFile;
         }
 
         // Write optimized bitcode if --save-temps was on.
-        if (save_temps) {
-            alt (ot) {
+        if (opts.save_temps) {
+            alt (opts.output_type) {
                 case (output_type_bitcode) { /* nothing to do */ }
                 case (_) {
                     auto filename = mk_intermediate_name(output, "opt.bc");
@@ -7707,8 +7713,7 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
              vec_append_glue = make_vec_append_glue(llmod, tn));
 }
 
-fn make_common_glue(str output, bool optimize, bool verify, bool save_temps,
-                    output_type ot) {
+fn make_common_glue(session.session sess, str output) {
     // FIXME: part of this is repetitive and is probably a good idea
     // to autogen it, but things like the memcpy implementation are not
     // and it might be better to just check in a .ll file.
@@ -7734,7 +7739,7 @@ fn make_common_glue(str output, bool optimize, bool verify, bool save_temps,
 
     trans_exit_task_glue(glues, new_str_hash[ValueRef](), tn, llmod);
 
-    run_passes(llmod, optimize, verify, save_temps, output, ot);
+    run_passes(sess, llmod, output);
 }
 
 fn create_module_map(@crate_ctxt ccx) -> ValueRef {
@@ -7786,7 +7791,7 @@ fn create_crate_map(@crate_ctxt ccx) -> ValueRef {
 }
 
 fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
-               ty.type_cache type_cache, str output, bool shared)
+               ty.type_cache type_cache, str output)
         -> ModuleRef {
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(_str.buf("rust_out"),
@@ -7847,12 +7852,12 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
     trans_mod(cx, crate.node.module);
     trans_vec_append_glue(cx);
     auto crate_map = create_crate_map(ccx);
-    if (!shared) {
+    if (!sess.get_opts().shared) {
         trans_main_fn(cx, crate_ptr, crate_map);
     }
 
     // Translate the metadata.
-    middle.metadata.write_metadata(cx.ccx, shared, crate);
+    middle.metadata.write_metadata(cx.ccx, crate);
 
     ret llmod;
 }
