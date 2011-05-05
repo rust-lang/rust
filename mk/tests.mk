@@ -139,9 +139,26 @@ ALL_TEST_SOURCES =  $(TEST_CFAIL_SOURCES_STAGE0) \
 unexport RUST_LOG
 
 
-check_nocompile: $(TEST_CFAIL_OUTS_STAGE0) \
+check-nocompile: $(TEST_CFAIL_OUTS_STAGE0) \
                  $(TEST_CFAIL_OUTS_STAGE1) \
                  $(TEST_CFAIL_OUTS_STAGE2)
+
+check-stage0: tidy \
+       $(TEST_RPASS_EXES_STAGE0) $(TEST_RFAIL_EXES_STAGE0) \
+       $(TEST_RPASS_OUTS_STAGE0) $(TEST_RFAIL_OUTS_STAGE0) \
+       $(TEST_CFAIL_OUTS_STAGE0) \
+
+
+check-stage1: tidy \
+       $(TEST_RPASS_EXES_STAGE1) $(TEST_RFAIL_EXES_STAGE1) \
+       $(TEST_RPASS_OUTS_STAGE1) $(TEST_RFAIL_OUTS_STAGE1) \
+       $(TEST_CFAIL_OUTS_STAGE1) \
+
+
+check-stage2: tidy \
+       $(TEST_RPASS_EXES_STAGE2) $(TEST_RFAIL_EXES_STAGE2) \
+       $(TEST_RPASS_OUTS_STAGE2) $(TEST_RFAIL_OUTS_STAGE2) \
+       $(TEST_CFAIL_OUTS_STAGE2) \
 
 
 check: tidy \
