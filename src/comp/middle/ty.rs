@@ -1228,6 +1228,12 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
                     case (_) { ret false; }
                 }
             }
+            case (ast.native_abi_rust_intrinsic) {
+                alt (b) {
+                    case (ast.native_abi_rust_intrinsic) { ret true; }
+                    case (_) { ret false; }
+                }
+            }
             case (ast.native_abi_cdecl) {
                 alt (b) {
                     case (ast.native_abi_cdecl) { ret true; }
