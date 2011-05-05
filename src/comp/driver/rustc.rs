@@ -11,6 +11,7 @@ import middle.capture;
 import middle.ty;
 import middle.typeck;
 import middle.typestate_check;
+import back.Link;
 import lib.llvm;
 import util.common;
 
@@ -29,6 +30,8 @@ import std.GetOpts.optopt;
 import std.GetOpts.optmulti;
 import std.GetOpts.optflag;
 import std.GetOpts.opt_present;
+
+import back.Link.output_type;
 
 fn default_environment(session.session sess,
                        str argv0,
@@ -86,7 +89,7 @@ fn compile_input(session.session sess,
     auto p = parser.new_parser(sess, env, def, input, 0u);
     auto crate = time[@ast.crate](time_passes, "parsing",
                                   bind parse_input(sess, p, input));
-    if (sess.get_opts().output_type == trans.output_type_none) {ret;}
+    if (sess.get_opts().output_type == Link.output_type_none) {ret;}
 
     crate = time[@ast.crate](time_passes, "external crate reading",
                              bind creader.read_crates(sess, crate));
@@ -111,7 +114,7 @@ fn compile_input(session.session sess,
         bind trans.trans_crate(sess, crate, ty_cx, type_cache, output));
 
     time[()](time_passes, "LLVM passes",
-             bind trans.run_passes(sess, llmod, output));
+             bind Link.Write.run_passes(sess, llmod, output));
 }
 
 fn pretty_print_input(session.session sess,
@@ -197,14 +200,16 @@ fn main(vec[str] args) {
     auto shared = opt_present(match, "shared");
     auto output_file = GetOpts.opt_maybe_str(match, "o");
     auto library_search_paths = GetOpts.opt_strs(match, "L");
-    auto output_type = trans.output_type_bitcode;
+
+    auto output_type = Link.output_type_bitcode;
     if (opt_present(match, "parse-only")) {
-        output_type = trans.output_type_none;
+        output_type = Link.output_type_none;
     } else if (opt_present(match, "S")) {
-        output_type = trans.output_type_assembly;
+        output_type = Link.output_type_assembly;
     } else if (opt_present(match, "c")) {
-        output_type = trans.output_type_object;
+        output_type = Link.output_type_object;
     }
+
     auto verify = !opt_present(match, "noverify");
     auto save_temps = opt_present(match, "save-temps");
     // FIXME: Maybe we should support -O0, -O1, -Os, etc
@@ -268,14 +273,10 @@ fn main(vec[str] args) {
                 let vec[str] parts = _str.split(ifile, '.' as u8);
                 _vec.pop[str](parts);
                 alt (output_type) {
-                    case (trans.output_type_none)
-                        { parts += vec("pp"); }
-                    case (trans.output_type_bitcode)
-                        { parts += vec("bc"); }
-                    case (trans.output_type_assembly)
-                        { parts += vec("s"); }
-                    case (trans.output_type_object)
-                        { parts += vec("o"); }
+                    case (Link.output_type_none) { parts += vec("pp"); }
+                    case (Link.output_type_bitcode) { parts += vec("bc"); }
+                    case (Link.output_type_assembly) { parts += vec("s"); }
+                    case (Link.output_type_object) { parts += vec("o"); }
                 }
                 auto ofile = _str.connect(parts, ".");
                 compile_input(sess, env, ifile, ofile);
