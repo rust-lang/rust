@@ -1,5 +1,6 @@
-stage3/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage2/rustc$(X) \
-              stage2/intrinsics.bc $(MKFILES)
+stage3/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) \
+              stage2/rustc$(X) stage2/$(CFG_STDLIB) stage2/intrinsics.bc \
+              $(LREQ) $(MKFILES)
 	@$(call E, compile: $@)
 	$(STAGE2) -c --shared -o $@ $<
 
