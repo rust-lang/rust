@@ -7074,14 +7074,25 @@ fn trans_exit_task_glue(@glue_fns glues,
     let vec[ValueRef] V_args = vec();
 
     auto llfn = glues.exit_task_glue;
-    let ValueRef lltaskptr = llvm.LLVMGetParam(llfn, 4u);
 
     auto entrybb = llvm.LLVMAppendBasicBlock(llfn, _str.buf("entry"));
     auto build = new_builder(entrybb);
-    auto tptr = build.PtrToInt(lltaskptr, T_int());
-    auto V_args2 = vec(tptr) + V_args;
-    trans_native_call(build, glues, lltaskptr,
-                      externs, tn, llmod, "upcall_exit", true, V_args2);
+
+    let ValueRef arg1 = llvm.LLVMGetParam(llfn, 0u);
+    let ValueRef arg2 = llvm.LLVMGetParam(llfn, 1u);
+    let ValueRef arg3 = llvm.LLVMGetParam(llfn, 2u);
+    let ValueRef arg4 = llvm.LLVMGetParam(llfn, 3u);
+    let ValueRef arg5 = llvm.LLVMGetParam(llfn, 4u);
+
+    auto main_type = T_fn(vec(T_int(), T_int(), T_int(), T_int()), T_void());
+
+    auto fun = build.IntToPtr(arg1, T_ptr(main_type));
+    auto call_args = vec(arg2, arg3, arg4, arg5);
+    build.FastCall(fun, call_args);
+
+    trans_native_call(build, glues, arg3,
+                      externs, tn, llmod, "upcall_exit", true, vec(arg3));
+
     build.RetVoid();
 }
 
@@ -7524,22 +7535,12 @@ fn trans_vec_append_glue(@local_ctxt cx) {
 fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
     ret @rec(activate_glue = decl_glue(llmod, tn, abi.activate_glue_name()),
              yield_glue = decl_glue(llmod, tn, abi.yield_glue_name()),
-             /*
-              * Note: the signature passed to decl_cdecl_fn here looks unusual
-              * because it is. It corresponds neither to a native signature
-              * nor a normal rust-ABI signature. In fact it is a fake
-              * signature, that exists solely to acquire the task pointer as
-              * an argument to the upcall. It so happens that the runtime sets
-              * up the task pointer as the sole incoming argument to the frame
-              * that we return into when returning to the exit task glue. So
-              * this is the signature required to retrieve it.
-              */
              exit_task_glue = decl_cdecl_fn(llmod, abi.exit_task_glue_name(),
                                             T_fn(vec(T_int(),
                                                      T_int(),
                                                      T_int(),
                                                      T_int(),
-                                                     T_taskptr(tn)),
+                                                     T_int()),
                                                  T_void())),
 
              native_glues_rust =
