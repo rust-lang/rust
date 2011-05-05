@@ -49,8 +49,10 @@ enum LLVMCodeGenFileType {
   LLVMNullFile         // Do not emit any output.
 };
 
-extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR, LLVMModuleRef M,
-                                        const char *triple, const char *path,
+extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
+                                        LLVMModuleRef M,
+                                        const char *triple,
+                                        const char *path,
                                         LLVMCodeGenFileType FileType) {
 
   // Set compilation options.
