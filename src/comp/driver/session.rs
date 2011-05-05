@@ -33,7 +33,8 @@ type options = rec(bool shared,
                    bool save_temps,
                    bool time_passes,
                    middle.trans.output_type output_type,
-                   vec[str] library_search_paths);
+                   vec[str] library_search_paths,
+                   str sysroot);
 
 type crate_metadata = rec(str name,
                           vec[u8] data);

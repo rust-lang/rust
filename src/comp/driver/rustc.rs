@@ -14,6 +14,7 @@ import middle.typestate_check;
 import lib.llvm;
 import util.common;
 
+import std.fs;
 import std.map.mk_hashmap;
 import std.option;
 import std.option.some;
@@ -141,6 +142,7 @@ options:
     -c                 compile and assemble, but do not link
     --save-temps       write intermediate files in addition to normal output
     --time-passes      time the individual phases of the compiler
+    --sysroot <path>   override the system root (default: rustc's directory)
     --no-typestate     don't run the typestate pass (unsafe!)
     -h                 display this message\n\n");
 }
@@ -150,6 +152,12 @@ fn get_os() -> session.os {
     if (_str.eq(s, "win32")) { ret session.os_win32; }
     if (_str.eq(s, "macos")) { ret session.os_macos; }
     if (_str.eq(s, "linux")) { ret session.os_linux; }
+}
+
+fn get_default_sysroot(str binary) -> str {
+    auto dirname = fs.dirname(binary);
+    if (_str.eq(dirname, binary)) { ret "."; }
+    ret dirname;
 }
 
 fn main(vec[str] args) {
@@ -166,8 +174,9 @@ fn main(vec[str] args) {
                     optflag("pretty"), optflag("ls"), optflag("parse-only"),
                     optflag("O"), optflag("shared"), optmulti("L"),
                     optflag("S"), optflag("c"), optopt("o"), optopt("g"),
-                    optflag("save-temps"), optflag("time-passes"),
-                    optflag("no-typestate"), optflag("noverify"));
+                    optflag("save-temps"), optopt("sysroot"),
+                    optflag("time-passes"), optflag("no-typestate"),
+                    optflag("noverify"));
     auto binary = _vec.shift[str](args);
     auto match;
     alt (GetOpts.getopts(args, opts)) {
@@ -203,6 +212,13 @@ fn main(vec[str] args) {
     auto debuginfo = opt_present(match, "g");
     auto time_passes = opt_present(match, "time-passes");
     auto run_typestate = !opt_present(match, "no-typestate");
+    auto sysroot_opt = GetOpts.opt_maybe_str(match, "sysroot");
+
+    auto sysroot;
+    alt (sysroot_opt) {
+        case (none[str]) { sysroot = get_default_sysroot(binary); }
+        case (some[str](?s)) { sysroot = s; }
+    }
 
     let @session.options sopts =
         @rec(shared = shared,
@@ -213,7 +229,8 @@ fn main(vec[str] args) {
              save_temps = save_temps,
              time_passes = time_passes,
              output_type = output_type,
-             library_search_paths = library_search_paths);
+             library_search_paths = library_search_paths,
+             sysroot = sysroot);
 
     auto crate_cache = common.new_int_hash[session.crate_metadata]();
     auto target_crate_num = 0;
