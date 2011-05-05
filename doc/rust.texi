@@ -1673,6 +1673,7 @@ are no general parametric types.
 @menu
 * Ref.Item.Mod::                Items defining modules.
 * Ref.Item.Fn::                 Items defining functions.
+* Ref.Item.Pred::               Items defining predicates for typestates.
 * Ref.Item.Iter::               Items defining iterators.
 * Ref.Item.Obj::                Items defining objects.
 * Ref.Item.Type::               Items defining the types of values and slots.
@@ -2651,7 +2652,8 @@ This implicit graph is called the @dfn{control-flow graph}, or @dfn{CFG}.
 @cindex Predicate
 @cindex Constraint
 
-A @dfn{predicate} is a pure boolean function declared with the keyword @code{pred}. @xref{Ref.Item.Pred}.
+A @dfn{predicate} is a pure boolean function declared with the keyword
+@code{pred}. @xref{Ref.Item.Pred}.
 
 A @dfn{constraint} is a predicate applied to specific slots.
 
