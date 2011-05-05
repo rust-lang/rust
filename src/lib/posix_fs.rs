@@ -20,6 +20,7 @@ fn list_dir(str path) -> vec[str] {
 }
 
 const char path_sep = '/';
+const char alt_path_sep = '/';
 
 // Local Variables:
 // mode: rust;

@@ -9,14 +9,9 @@ fn path_sep() -> str {
 type path = str;
 
 fn dirname(path p) -> path {
-    auto sep = path_sep();
-    assert (_str.byte_len(sep) == 1u);
-    let int i = _str.rindex(p, sep.(0));
+    let int i = _str.rindex(p, os_fs.path_sep as u8);
     if (i == -1) {
-        // FIXME: the '/' character is a path separator on all 3 platforms we
-        // support. This should probably be generalized a bit more in the
-        // future, but for now this should work.
-        i = _str.rindex(p, '/' as u8);
+        i = _str.rindex(p, os_fs.alt_path_sep as u8);
         if (i == -1) {
             ret p;
         }
