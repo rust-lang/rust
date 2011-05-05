@@ -2,12 +2,14 @@ import driver.session;
 import lib.llvm.llvm;
 import middle.trans;
 import std._str;
+import std.fs;
 
 import lib.llvm.llvm.ModuleRef;
 import lib.llvm.llvm.ValueRef;
 import lib.llvm.mk_pass_manager;
 import lib.llvm.mk_target_data;
 import lib.llvm.mk_type_names;
+import lib.llvm.False;
 
 tag output_type {
     output_type_none;
@@ -16,8 +18,30 @@ tag output_type {
     output_type_object;
 }
 
+fn llvm_err(session.session sess, str msg) {
+    sess.err(msg + ": " + _str.str_from_cstr(llvm.LLVMRustGetLastError()));
+    fail;
+}
+
 fn link_intrinsics(session.session sess, ModuleRef llmod) {
-    // TODO
+    auto path = fs.connect(sess.get_opts().sysroot, "intrinsics.bc");
+    auto membuf =
+        llvm.LLVMRustCreateMemoryBufferWithContentsOfFile(_str.buf(path));
+    if ((membuf as uint) == 0u) {
+        llvm_err(sess, "installation problem: couldn't open intrinstics.bc");
+        fail;
+    }
+
+    auto llintrinsicsmod = llvm.LLVMRustParseBitcode(membuf);
+    if ((llintrinsicsmod as uint) == 0u) {
+        llvm_err(sess, "installation problem: couldn't parse intrinstics.bc");
+        fail;
+    }
+
+    if (llvm.LLVMLinkModules(llmod, llintrinsicsmod) == False) {
+        llvm_err(sess, "couldn't link the module with the intrinsics");
+        fail;
+    }
 }
 
 mod Write {

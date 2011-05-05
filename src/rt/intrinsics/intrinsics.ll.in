@@ -51,7 +51,7 @@ target triple = "@CFG_LLVM_TRIPLE@"
 %struct.stk_seg = type { i32, i32, [0 x i8] }
 %struct.type_desc = type { %struct.type_desc**, i32, i32, i32, i32, i32, i32, i32, i32, i32, %struct.UT_hash_handle, i32, [0 x %struct.type_desc*] }
 
-define i32 @rust_intrinsic_vec_len(%struct.rust_task* nocapture %task, %struct.type_desc* nocapture %ty, %struct.rust_vec* nocapture %v) nounwind readonly ssp {
+define linkonce_odr i32 @rust_intrinsic_vec_len(%struct.rust_task* nocapture %task, %struct.type_desc* nocapture %ty, %struct.rust_vec* nocapture %v) nounwind readonly ssp {
 entry:
   %fill = getelementptr inbounds %struct.rust_vec* %v, i32 0, i32 2
   %tmp1 = load i32* %fill, align 4, !tbaa !0
