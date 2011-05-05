@@ -1971,9 +1971,7 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, ty.t t) {
                                      C_int(abi.obj_body_elt_tydesc)));
                 auto tydesc = cx.build.Load(tydescptr);
 
-                // FIXME: disabled for now.
-                // auto cx_ = maybe_call_dtor(cx, o);
-                auto cx_ = cx;
+                auto cx_ = maybe_call_dtor(cx, o);
 
                 // Call through the obj's own fields-drop glue first.
                 call_tydesc_glue_full(cx_, body, tydesc,
@@ -2771,8 +2769,9 @@ fn maybe_call_dtor(@block_ctxt cx, ValueRef v) -> @block_ctxt {
     vtbl = cx.build.Load(vtbl);
     auto dtor_ptr = cx.build.GEP(vtbl, vec(C_int(0), C_int(0)));
     dtor_ptr = cx.build.Load(dtor_ptr);
+    auto self_t = llvm.LLVMGetElementType(val_ty(v));
     dtor_ptr = cx.build.BitCast(dtor_ptr,
-                                T_ptr(T_dtor(cx.fcx.lcx.ccx, val_ty(v))));
+                                T_ptr(T_dtor(cx.fcx.lcx.ccx, self_t)));
     
     auto dtor_cx = new_sub_block_ctxt(cx, "dtor");
     auto after_cx = new_sub_block_ctxt(cx, "after_dtor");
@@ -2780,9 +2779,9 @@ fn maybe_call_dtor(@block_ctxt cx, ValueRef v) -> @block_ctxt {
                               C_null(val_ty(dtor_ptr)));
     cx.build.CondBr(test, dtor_cx.llbb, after_cx.llbb);
 
-    // FIXME need to pass type params (?)
+    auto me = dtor_cx.build.Load(v);
     dtor_cx.build.FastCall(dtor_ptr, vec(C_null(T_ptr(T_nil())),
-                                        cx.fcx.lltaskptr, v));
+                                         cx.fcx.lltaskptr, me));
     dtor_cx.build.Br(after_cx.llbb);
     ret after_cx;
 }
@@ -6357,6 +6356,8 @@ fn trans_obj(@local_ctxt cx, &ast._obj ob, ast.def_id oid,
 
     let TypeRef llbox_ty = T_opaque_obj_ptr(ccx.tn);
 
+    // FIXME we should probably also allocate a box for empty objs that have a
+    // dtor, since otherwise they are never dropped, and the dtor never runs
     if (_vec.len[ast.ty_param](ty_params) == 0u &&
         _vec.len[ty.arg](arg_tys) == 0u) {
         // Store null into pair, if no args or typarams.
