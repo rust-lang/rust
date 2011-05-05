@@ -217,9 +217,9 @@ then
                        | grep version \
                        | cut -d ' ' -f 5-)
     CFG_LLVM_TRIPLE=$("$CFG_LLVM_BINDIR/llc" \
-	                  --version \
-					  | grep Host: \
-					  | cut -d ' ' -f 4-)
+                      --version \
+                      | grep Host: \
+                      | cut -d ' ' -f 4-)
 elif [ ! -z "$CFG_LLVM_CONFIG" ]
 then
     CFG_LLVM_VERSION=$(llvm-config --version)
