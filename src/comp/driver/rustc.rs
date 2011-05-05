@@ -126,9 +126,20 @@ fn pretty_print_input(session.session sess,
     pretty.pprust.print_file(crate.node.module, input, std.io.stdout());
 }
 
+fn version(str argv0) {
+    auto git_rev = ""; // when snapshotted to extenv: #env("GIT_REV");
+    if (_str.byte_len(git_rev) != 0u) {
+        git_rev = #fmt(" (git: %s)", git_rev);
+    }
+    io.stdout().write_str(#fmt("%s prerelease%s\n", argv0, git_rev));
+}
+
 fn usage(str argv0) {
     io.stdout().write_str(#fmt("usage: %s [options] <input>\n", argv0) + "
 options:
+
+    -h --help          display this message
+    -v --version       print version info and exit
 
     -o <filename>      write output to <filename>
     --glue             generate glue.bc file
@@ -146,8 +157,7 @@ options:
     --save-temps       write intermediate files in addition to normal output
     --time-passes      time the individual phases of the compiler
     --sysroot <path>   override the system root (default: rustc's directory)
-    --no-typestate     don't run the typestate pass (unsafe!)
-    -h                 display this message\n\n");
+    --no-typestate     don't run the typestate pass (unsafe!)\n\n");
 }
 
 fn get_os() -> session.os {
@@ -173,7 +183,9 @@ fn main(vec[str] args) {
              uint_type = common.ty_u32,
              float_type = common.ty_f64);
 
-    auto opts = vec(optflag("h"), optflag("glue"),
+    auto opts = vec(optflag("h"), optflag("help"),
+                    optflag("v"), optflag("version"),
+                    optflag("glue"),
                     optflag("pretty"), optflag("ls"), optflag("parse-only"),
                     optflag("O"), optflag("shared"), optmulti("L"),
                     optflag("S"), optflag("c"), optopt("o"), optopt("g"),
@@ -189,8 +201,15 @@ fn main(vec[str] args) {
         }
         case (GetOpts.success(?m)) { match = m; }
     }
-    if (opt_present(match, "h")) {
+    if (opt_present(match, "h") ||
+        opt_present(match, "help")) {
         usage(binary);
+        ret;
+    }
+
+    if (opt_present(match, "v") ||
+        opt_present(match, "version")) {
+        version(binary);
         ret;
     }
 
