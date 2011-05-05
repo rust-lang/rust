@@ -1963,7 +1963,7 @@ fn replace_expr_type(@ast.expr expr, tup(vec[t], t) new_tyt) -> @ast.expr {
         }
         case (_) {
             log_err "unhandled expr type in replace_expr_type(): " +
-                pretty.pprust.expr_to_str(expr);
+                util.common.expr_to_str(expr);
             fail;
         }
     }

@@ -41,15 +41,6 @@ fn block_to_str(&ast.block blk) -> str {
     ret writer.get_str();
 }
 
-fn expr_to_str(&@ast.expr e) -> str {
-    auto writer = io.string_writer();
-    auto s = @rec(s=pp.mkstate(writer.get_writer(), 78u),
-                  comments=option.none[vec[lexer.cmnt]],
-                  mutable cur_cmnt=0u);
-    print_expr(s, e);
-    ret writer.get_str();
-}
-
 fn pat_to_str(&@ast.pat p) -> str {
     auto writer = io.string_writer();
     auto s = @rec(s=pp.mkstate(writer.get_writer(), 78u),

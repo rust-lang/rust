@@ -12,14 +12,11 @@ import std.option.none;
 
 import front.ast;
 import front.creader;
-import pretty.pprust;
 import driver.session;
 import middle.ty;
 import back.Link;
 import back.x86;
 import back.abi;
-
-import pretty.pprust;
 
 import middle.ty.pat_ty;
 
@@ -5397,7 +5394,7 @@ fn trans_log(int lvl, @block_ctxt cx, @ast.expr e) -> result {
 fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
     auto cond_res = trans_expr(cx, e);
 
-    auto expr_str = pretty.pprust.expr_to_str(e);
+    auto expr_str = util.common.expr_to_str(e);
     auto fail_cx = new_sub_block_ctxt(cx, "fail");
     auto fail_res = trans_fail(fail_cx, some[common.span](e.span), expr_str);
 
