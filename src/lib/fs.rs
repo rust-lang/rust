@@ -16,7 +16,7 @@ fn dirname(path p) -> path {
         // FIXME: the '/' character is a path separator on all 3 platforms we
         // support. This should probably be generalized a bit more in the
         // future, but for now this should work.
-        i = _str.rindex(p, '/');
+        i = _str.rindex(p, '/' as u8);
         if (i == -1) {
             ret p;
         }
@@ -57,5 +57,5 @@ fn list_dir(path p) -> vec[str] {
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
