@@ -39,6 +39,58 @@ fn merge_sort[T](lteq[T] le, vec[T] v) -> vec[T] {
                  merge_sort[T](le, b));
 }
 
+fn swap[T](vec[mutable T] arr, uint x, uint y) {
+    auto a = arr.(x);
+    arr.(x) = arr.(y);
+    arr.(y) = a;
+}
+
+fn part[T](lteq[mutable T] compare_func, vec[mutable T] arr, uint left,
+        uint right, uint pivot) -> uint {
+
+    fn compare[T](lteq[mutable T] compare_func, vec[mutable T]arr,
+           uint arr_idx, &T arr_value) -> bool {
+
+        ret compare_func(arr.(arr_idx),arr_value);
+    }
+
+    auto pivot_value = arr.(pivot);
+    swap[T](arr, pivot, right);
+    let uint storage_index = left;
+    let uint i = left;
+    while (i<right) {
+        if (compare[T](compare_func, arr, i, pivot_value)) {
+           swap[T](arr, i, storage_index);
+           storage_index += 1u;
+        }
+        i += 1u;
+    }
+    swap[T](arr, storage_index, right);
+    ret storage_index;
+}
+
+fn qsort[T](lteq[mutable T] compare_func, vec[mutable T] arr, uint left,
+        uint right) {
+
+    if (right > left) {
+        auto pivot = (left+right)/2u;
+        auto new_pivot = part[T](compare_func, arr, left, right, pivot);
+        if (new_pivot == 0u) {
+             ret;
+        }
+        qsort[T](compare_func, arr, left, new_pivot - 1u);
+        qsort[T](compare_func, arr, new_pivot + 1u, right);
+    }
+}
+
+fn quick_sort[T](lteq[mutable T] compare_func, vec[mutable T] arr) {
+
+    if (len[mutable T](arr) == 0u) {
+        ret;
+    }
+    qsort[T](compare_func, arr, 0u, (len[mutable T](arr)) - 1u);
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
