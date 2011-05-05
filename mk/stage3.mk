@@ -1,4 +1,5 @@
-stage3/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage2/rustc$(X) $(MKFILES)
+stage3/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) stage2/rustc$(X) \
+              stage2/intrinsics.bc $(MKFILES)
 	@$(call E, compile: $@)
 	$(STAGE2) -c --shared -o $@ $<
 
@@ -11,10 +12,14 @@ stage3/rustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ2)
 	@$(call E, compile: $@)
 	$(STAGE2) -c -o $@ $<
 
-stage3/glue.o: stage2/rustc$(X) stage2/$(CFG_STDLIB) \
+stage3/glue.o: stage2/rustc$(X) stage2/$(CFG_STDLIB) stage2/intrinsics.bc \
                 rustllvm/$(CFG_RUSTLLVM) rt/$(CFG_RUNTIME)
 	@$(call E, generate: $@)
 	$(STAGE2) -c -o $@ --glue
+
+stage3/intrinsics.bc:	$(INTRINSICS_BC)
+	@$(call E, cp: $@)
+	$(Q)cp $< $@
 
 # Due to make not wanting to run the same implicit rules twice on the same
 # rule tree (implicit-rule recursion prevention, see "Chains of Implicit

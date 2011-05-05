@@ -122,6 +122,7 @@ need_cmd find
 need_cmd uname
 need_cmd date
 need_cmd tr
+need_cmd sed
 
 msg "inspecting environment"
 
@@ -215,6 +216,10 @@ then
                        --version \
                        | grep version \
                        | cut -d ' ' -f 5-)
+    CFG_LLVM_TRIPLE=$("$CFG_LLVM_BINDIR/llc" \
+	                  --version \
+					  | grep Host: \
+					  | cut -d ' ' -f 4-)
 elif [ ! -z "$CFG_LLVM_CONFIG" ]
 then
     CFG_LLVM_VERSION=$(llvm-config --version)
@@ -224,6 +229,7 @@ then
     CFG_LLVM_CXXFLAGS=$(llvm-config --cxxflags)
     CFG_LLVM_LDFLAGS=$(llvm-config --ldflags)
     CFG_LLVM_LIBS=$(llvm-config --libs)
+    CFG_LLVM_TRIPLE=$(llvm-config --host-target)
 else
     err "either the \"CFG_LLVM_ROOT\" environment variable must be set, or a \
 \"llvm-config\" script must be present"
@@ -244,6 +250,7 @@ putvar CFG_LLVM_LIBDIR
 putvar CFG_LLVM_CXXFLAGS
 putvar CFG_LLVM_LDFLAGS
 putvar CFG_LLVM_LIBS
+putvar CFG_LLVM_TRIPLE
 
 # Munge any paths that appear in config.mk back to posix-y
 perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' \
