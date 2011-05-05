@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/Linker.h"
 #include "llvm/PassManager.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Support/FormattedStream.h"
@@ -25,12 +26,13 @@
 
 using namespace llvm;
 
-static char *LLVMRustError;
+static const char *LLVMRustError;
 
 extern "C" LLVMMemoryBufferRef
 LLVMRustCreateMemoryBufferWithContentsOfFile(const char *Path) {
   LLVMMemoryBufferRef MemBuf = NULL;
-  LLVMCreateMemoryBufferWithContentsOfFile(Path, &MemBuf, &LLVMRustError);
+  LLVMCreateMemoryBufferWithContentsOfFile(Path, &MemBuf,
+    const_cast<char **>(&LLVMRustError));
   return MemBuf;
 }
 
@@ -48,6 +50,20 @@ enum LLVMCodeGenFileType {
   LLVMObjectFile,
   LLVMNullFile         // Do not emit any output.
 };
+
+extern "C" bool LLVMLinkModules(LLVMModuleRef Dest, LLVMModuleRef Src) {
+  static std::string err;
+
+  // For some strange reason, unwrap() doesn't work here. "No matching
+  // function" error.
+  Module *DM = reinterpret_cast<Module *>(Dest);
+  Module *SM = reinterpret_cast<Module *>(Src);
+  if (Linker::LinkModules(DM, SM, &err)) {
+    LLVMRustError = err.c_str();
+    return false;
+  }
+  return true;
+}
 
 extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
                                         LLVMModuleRef M,
