@@ -24,6 +24,7 @@ mod front {
     mod ast;
     mod creader;
     mod extfmt;
+    mod extenv;
     mod codemap;
     mod lexer;
     mod parser;
