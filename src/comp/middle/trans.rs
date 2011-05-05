@@ -5488,7 +5488,7 @@ fn trans_break_cont(@block_ctxt cx, bool to_end) -> result {
                         }
                     }
                 }
-                ret res(bcx, C_nil());
+                ret res(new_sub_block_ctxt(bcx, "unreachable"), C_nil());
             }
             case (_) {
                 alt (cleanup_cx.parent) {
@@ -5544,7 +5544,7 @@ fn trans_ret(@block_ctxt cx, &option.t[@ast.expr] e) -> result {
     }
 
     bcx.build.RetVoid();
-    ret res(bcx, C_nil());
+    ret res(new_sub_block_ctxt(bcx, "unreachable"), C_nil());
 }
 
 fn trans_be(@block_ctxt cx, @ast.expr e) -> result {
