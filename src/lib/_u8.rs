@@ -11,7 +11,7 @@ fn ne(u8 x, u8 y) -> bool { ret x != y; }
 fn ge(u8 x, u8 y) -> bool { ret x >= y; }
 fn gt(u8 x, u8 y) -> bool { ret x > y; }
 
-iter range(mutable u8 lo, u8 hi) -> u8 {
+iter range(u8 lo, u8 hi) -> u8 {
     while (lo < hi) {
         put lo;
         lo += 1u8;

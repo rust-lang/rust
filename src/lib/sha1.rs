@@ -67,7 +67,7 @@ fn mk_sha1() -> sha1 {
     fn process_msg_block(&sha1state st) {
 
         // FIXME: Make precondition
-        assert (_vec.len[mutable u32](st.h) == digest_buf_len);
+        assert (_vec.len(st.h) == digest_buf_len);
 
         // Constants
         auto k = vec(0x5A827999u32,
@@ -192,7 +192,7 @@ fn mk_sha1() -> sha1 {
      */
     fn pad_msg(&sha1state st) {
         // FIXME: Should be a precondition
-        assert (_vec.len[mutable u8](st.msg_block) == msg_block_len);
+        assert (_vec.len(st.msg_block) == msg_block_len);
 
         /*
          * Check to see if the current message block is too small to hold
@@ -236,7 +236,7 @@ fn mk_sha1() -> sha1 {
 
         fn reset() {
             // FIXME: Should be typestate precondition
-            assert (_vec.len[mutable u32](st.h) == digest_buf_len);
+            assert (_vec.len(st.h) == digest_buf_len);
 
             st.len_low = 0u32;
             st.len_high = 0u32;

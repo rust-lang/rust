@@ -2,11 +2,11 @@
 fn main() {
 
   obj foo() {
-      fn m1(mutable int i) {
+      fn m1(int i) {
           i += 1;
           log "hi!";
       }
-      fn m2(mutable int i) {
+      fn m2(int i) {
           i += 1;
           self.m1(i);
       }

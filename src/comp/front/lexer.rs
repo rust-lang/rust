@@ -382,7 +382,7 @@ fn scan_dec_digits(reader rdr) -> str {
     ret res;
 }
 
-fn scan_number(mutable char c, reader rdr) -> token.token {
+fn scan_number(char c, reader rdr) -> token.token {
     auto accum_int = 0;
     let str dec_str = "";
     let bool is_dec_integer = false;

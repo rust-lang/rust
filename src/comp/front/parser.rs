@@ -497,7 +497,7 @@ fn parse_arg(parser p) -> ast.arg {
 fn parse_seq_to_end[T](token.token ket,
                               option.t[token.token] sep,
                               (fn(parser) -> T) f,
-                              mutable uint hi,
+                              uint hi,
                               parser p) -> vec[T] {
     let bool first = true;
     let vec[T] v = vec();

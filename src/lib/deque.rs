@@ -19,7 +19,7 @@ type t[T] = obj {
 
 fn create[T]() -> t[T] {
 
-    type cell[T] = mutable option.t[T];
+    type cell[T] = option.t[T];
 
     let uint initial_capacity = 32u; // 2^5
 

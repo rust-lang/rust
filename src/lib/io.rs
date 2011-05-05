@@ -451,7 +451,7 @@ type mutable_byte_buf = @rec(mutable vec[mutable u8] buf, mutable uint pos);
 state obj byte_buf_writer(mutable_byte_buf buf) {
     fn write(vec[u8] v) {
         // Fast path.
-        if (buf.pos == _vec.len[mutable u8](buf.buf)) {
+        if (buf.pos == _vec.len(buf.buf)) {
             // FIXME: Fix our type system. There's no reason you shouldn't be
             // able to add a mutable vector to an immutable one.
             auto mv = _vec.rustrt.unsafe_vec_to_mut[u8](v);
@@ -465,7 +465,7 @@ state obj byte_buf_writer(mutable_byte_buf buf) {
         auto vpos = 0u;
         while (vpos < vlen) {
             auto b = v.(vpos);
-            if (buf.pos == _vec.len[mutable u8](buf.buf)) {
+            if (buf.pos == _vec.len(buf.buf)) {
                 buf.buf += vec(mutable b);
             } else {
                 buf.buf.(buf.pos) = b;
@@ -477,7 +477,7 @@ state obj byte_buf_writer(mutable_byte_buf buf) {
 
     fn seek(int offset, seek_style whence) {
         auto pos = buf.pos;
-        auto len = _vec.len[mutable u8](buf.buf);
+        auto len = _vec.len(buf.buf);
         buf.pos = seek_in_buf(offset, pos, len, whence);
     }
 
@@ -487,7 +487,7 @@ state obj byte_buf_writer(mutable_byte_buf buf) {
 fn string_writer() -> str_writer {
     // FIXME: yikes, this is bad. Needs fixing of mutable syntax.
     let vec[mutable u8] b = vec(mutable 0u8);
-    _vec.pop[mutable u8](b);
+    _vec.pop(b);
 
     let mutable_byte_buf buf = @rec(mutable buf = b, mutable pos = 0u);
     state obj str_writer_wrap(writer wr, mutable_byte_buf buf) {

@@ -142,7 +142,7 @@ fn unsafe_from_bytes(vec[mutable? u8] v) -> str {
 // FIXME even temp-er thing; rustc can use "unsafe_from_bytes" above
 fn unsafe_from_mutable_bytes(vec[mutable u8] mv) -> str {
     let vec[u8] v = vec();
-    for (mutable u8 b in mv) {
+    for (u8 b in mv) {
         v += vec(b);
     }
     ret rustrt.str_from_vec(v);

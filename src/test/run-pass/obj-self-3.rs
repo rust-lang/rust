@@ -2,14 +2,14 @@
 fn main() {
 
   obj foo() {
-      fn m1(mutable int i) -> int {
+      fn m1(int i) -> int {
           i += 1;
           ret i;
       }
-      fn m2(mutable int i) -> int {
+      fn m2(int i) -> int {
           ret self.m1(i);
       }
-      fn m3(mutable int i) -> int {
+      fn m3(int i) -> int {
           i += 1;
           ret self.m1(i);
       }

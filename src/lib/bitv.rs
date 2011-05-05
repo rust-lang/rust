@@ -26,9 +26,9 @@ fn create(uint nbits, bool init) -> t {
 }
 
 fn process(&fn(uint, uint) -> uint op, &t v0, &t v1) -> bool {
-    auto len = _vec.len[mutable uint](v1.storage);
+    auto len = _vec.len(v1.storage);
 
-    assert (_vec.len[mutable uint](v0.storage) == len);
+    assert (_vec.len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
 
     auto changed = false;
@@ -76,7 +76,7 @@ fn copy(&t v0, t v1) -> bool {
 
 fn clone(t v) -> t {
     auto storage = _vec.init_elt_mut[uint](0u, v.nbits / uint_bits() + 1u);
-    auto len = _vec.len[mutable uint](v.storage);
+    auto len = _vec.len(v.storage);
     for each (uint i in _uint.range(0u, len)) {
         storage.(i) = v.storage.(i);
     }
@@ -97,7 +97,7 @@ fn get(&t v, uint i) -> bool {
 fn equal(&t v0, &t v1) -> bool {
     // FIXME: when we can break or return from inside an iterator loop,
     //        we can eliminate this painful while-loop
-    auto len = _vec.len[mutable uint](v1.storage);
+    auto len = _vec.len(v1.storage);
     auto i = 0u;
     while (i < len) {
         if (v0.storage.(i) != v1.storage.(i)) {
@@ -109,13 +109,13 @@ fn equal(&t v0, &t v1) -> bool {
 }
 
 fn clear(&t v) {
-    for each (uint i in _uint.range(0u, _vec.len[mutable uint](v.storage))) {
+    for each (uint i in _uint.range(0u, _vec.len(v.storage))) {
         v.storage.(i) = 0u;
     }
 }
 
 fn invert(&t v) {
-    for each (uint i in _uint.range(0u, _vec.len[mutable uint](v.storage))) {
+    for each (uint i in _uint.range(0u, _vec.len(v.storage))) {
         v.storage.(i) = ~v.storage.(i);
     }
 }

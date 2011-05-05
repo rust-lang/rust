@@ -843,7 +843,7 @@ mod Unify {
         // FIXME: horrid botch
         let vec[mutable ty.t] param_substs =
             vec(mutable ty.mk_nil(fcx.ccx.tcx));
-        _vec.pop[mutable ty.t](param_substs);
+        _vec.pop(param_substs);
         ret with_params(fcx, expected, actual, param_substs);
     }
 
@@ -1000,7 +1000,7 @@ mod Demand {
 
         let vec[mutable ty.t] ty_param_substs =
             vec(mutable ty.mk_nil(fcx.ccx.tcx));
-        _vec.pop[mutable ty.t](ty_param_substs);   // FIXME: horrid botch
+        _vec.pop(ty_param_substs);   // FIXME: horrid botch
         for (ty.t ty_param_subst in ty_param_substs_0) {
             ty_param_substs += vec(mutable ty_param_subst);
         }
@@ -1009,7 +1009,7 @@ mod Demand {
             case (ures_ok(?t)) {
                 // TODO: Use "freeze", when we have it.
                 let vec[ty.t] result_ty_param_substs = vec();
-                for (mutable ty.t ty_param_subst in ty_param_substs) {
+                for (ty.t ty_param_subst in ty_param_substs) {
                     result_ty_param_substs += vec(ty_param_subst);
                 }
 
@@ -2782,7 +2782,7 @@ fn hash_unify_cache_entry(&unify_cache_entry uce) -> uint {
     h += h << 5u + ty.hash_ty(uce._1);
 
     auto i = 0u;
-    auto tys_len = _vec.len[mutable ty.t](uce._2);
+    auto tys_len = _vec.len(uce._2);
     while (i < tys_len) {
         h += h << 5u + ty.hash_ty(uce._2.(i));
         i += 1u;
@@ -2795,8 +2795,8 @@ fn eq_unify_cache_entry(&unify_cache_entry a, &unify_cache_entry b) -> bool {
     if (!ty.eq_ty(a._0, b._0) || !ty.eq_ty(a._1, b._1)) { ret false; }
 
     auto i = 0u;
-    auto tys_len = _vec.len[mutable ty.t](a._2);
-    if (_vec.len[mutable ty.t](b._2) != tys_len) { ret false; }
+    auto tys_len = _vec.len(a._2);
+    if (_vec.len(b._2) != tys_len) { ret false; }
 
     while (i < tys_len) {
         if (!ty.eq_ty(a._2.(i), b._2.(i))) { ret false; }

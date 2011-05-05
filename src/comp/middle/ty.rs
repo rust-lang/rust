@@ -2281,7 +2281,7 @@ mod Unify {
 
                     case (_) {
                         // Just bind the type variable to the expected type.
-                        auto vlen = _vec.len[mutable vec[t]](cx.types);
+                        auto vlen = _vec.len[vec[t]](cx.types);
                         if (actual_n < vlen) {
                             cx.types.(actual_n) += vec(expected);
                         } else {
@@ -2649,7 +2649,7 @@ mod Unify {
             case (ty.ty_var(?expected_id)) {
                 // Add a binding.
                 auto expected_n = get_or_create_set(cx, expected_id);
-                auto vlen = _vec.len[mutable vec[t]](cx.types);
+                auto vlen = _vec.len[vec[t]](cx.types);
                 if (expected_n < vlen) {
                     cx.types.(expected_n) += vec(actual);
                 } else {
@@ -2713,7 +2713,7 @@ mod Unify {
     fn unify_sets(@ctxt cx) -> vec[t] {
         let vec[t] throwaway = vec();
         let vec[mutable vec[t]] set_types = vec(mutable throwaway);
-        _vec.pop[mutable vec[t]](set_types);   // FIXME: botch
+        _vec.pop[vec[t]](set_types);   // FIXME: botch
 
         for (UFind.node node in cx.sets.nodes) {
             let vec[t] v = vec();
@@ -2721,7 +2721,7 @@ mod Unify {
         }
 
         auto i = 0u;
-        while (i < _vec.len[mutable vec[t]](set_types)) {
+        while (i < _vec.len[vec[t]](set_types)) {
             auto root = UFind.find(cx.sets, i);
             set_types.(root) += cx.types.(i);
             i += 1u;
@@ -2746,7 +2746,7 @@ mod Unify {
              ty_ctxt tcx) -> result {
         let vec[t] throwaway = vec();
         let vec[mutable vec[t]] types = vec(mutable throwaway);
-        _vec.pop[mutable vec[t]](types);   // FIXME: botch
+        _vec.pop[vec[t]](types);   // FIXME: botch
 
         auto cx = @rec(sets=UFind.make(),
                        var_ids=common.new_int_hash[uint](),
@@ -2759,7 +2759,7 @@ mod Unify {
         case (ures_ok(?typ)) {
             // Fast path: if there are no local variables, don't perform
             // substitutions.
-            if (_vec.len[mutable UFind.node](cx.sets.nodes) == 0u) {
+            if (_vec.len(cx.sets.nodes) == 0u) {
                 ret ures_ok(typ);
             }
 

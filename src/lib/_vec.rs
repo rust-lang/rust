@@ -190,7 +190,7 @@ fn unshift[T](&mutable array[T] v, &T t) {
     v = res;
 }
 
-fn grow[T](&mutable array[T] v, uint n, &T initval) {
+fn grow[T](&array[T] v, uint n, &T initval) {
     let uint i = n;
     while (i > 0u) {
         i -= 1u;
@@ -198,10 +198,10 @@ fn grow[T](&mutable array[T] v, uint n, &T initval) {
     }
 }
 
-fn grow_set[T](&mutable vec[mutable T] v, uint index, &T initval, &T val) {
-    auto length = _vec.len[mutable T](v);
+fn grow_set[T](&vec[mutable T] v, uint index, &T initval, &T val) {
+    auto length = _vec.len(v);
     if (index >= length) {
-        grow[mutable T](v, index - length + 1u, initval);
+        grow(v, index - length + 1u, initval);
     }
     v.(index) = val;
 }
