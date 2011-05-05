@@ -21,6 +21,7 @@
 #include "llvm/Target/TargetRegistry.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm-c/Core.h"
+#include "llvm-c/BitReader.h"
 #include "llvm-c/Object.h"
 #include <cstdlib>
 
@@ -98,3 +99,10 @@ extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   (void)foo;
   PM->run(*unwrap(M));
 }
+
+extern "C" LLVMModuleRef LLVMRustParseBitcode(LLVMMemoryBufferRef MemBuf) {
+  LLVMModuleRef M;
+  return LLVMParseBitcode(MemBuf, &M, const_cast<char **>(&LLVMRustError))
+         ? NULL : M;
+}
+

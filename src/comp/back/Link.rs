@@ -16,6 +16,10 @@ tag output_type {
     output_type_object;
 }
 
+fn link_intrinsics(session.session sess, ModuleRef llmod) {
+    // TODO
+}
+
 mod Write {
     fn is_object_or_assembly(output_type ot) -> bool {
         if (ot == output_type_assembly) {
@@ -41,6 +45,8 @@ mod Write {
     }
 
     fn run_passes(session.session sess, ModuleRef llmod, str output) {
+        link_intrinsics(sess, llmod);
+
         auto pm = mk_pass_manager();
         auto opts = sess.get_opts();
 

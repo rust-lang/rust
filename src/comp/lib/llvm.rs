@@ -848,6 +848,9 @@ native mod llvm = llvm_lib {
         call. */
     fn LLVMRustGetLastError() -> sbuf;
 
+    /** Parses the bitcode in the given memory buffer. */
+    fn LLVMRustParseBitcode(MemoryBufferRef MemBuf) -> ModuleRef;
+
     /** Links LLVM modules together. `Src` is destroyed by this call and
         must never be referenced again. */
     fn LLVMLinkModules(ModuleRef Dest, ModuleRef Src) -> Bool;
