@@ -42,8 +42,6 @@ import std.option.none;
 import std.option.some;
 import std.option.from_maybe;
 
-import pretty.pprust;
-
 import util.typestate_ann.ts_ann;
 
 type ty_table = hashmap[ast.def_id, ty.t];
@@ -1476,7 +1474,7 @@ mod Pushdown {
             case (_) {
                 fcx.ccx.sess.span_unimpl(e.span,
                     #fmt("type unification for expression variant: %s",
-                         pretty.pprust.expr_to_str(e)));
+                         util.common.expr_to_str(e)));
                 fail;
             }
         }
@@ -1735,7 +1733,7 @@ fn require_pure_function(@crate_ctxt ccx, &ast.def_id d_id, &span sp) -> () {
 
 fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
     //fcx.ccx.sess.span_warn(expr.span, "typechecking expr " +
-    //                       pretty.pprust.expr_to_str(expr));
+    //                       util.common.expr_to_str(expr));
 
     // A generic function to factor out common logic from call and bind
     // expressions.
