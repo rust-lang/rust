@@ -31,7 +31,7 @@ fn save_callee_saves_with_cfi() -> vec[str] {
     auto t;
     t  = vec("pushl %ebp");
     t += vec(".cfi_def_cfa_offset " + istr(offset));
-    t += vec(".cfi_offset 5, -" + istr(offset));
+    t += vec(".cfi_offset %ebp, -" + istr(offset));
 
     t += vec("pushl %edi");
     offset += 4;
@@ -251,7 +251,7 @@ fn native_glue(int n_args, abi.native_glue_type ngt) -> vec[str] {
         + save_callee_saves_with_cfi()
 
         + vec("movl  %esp, %ebp     # ebp = rust_sp")
-        + vec(".cfi_def_cfa_register 5")
+        + vec(".cfi_def_cfa_register %ebp")
 
         + store_esp_to_rust_sp_second_arg()
         + load_esp_from_runtime_sp_second_arg()
