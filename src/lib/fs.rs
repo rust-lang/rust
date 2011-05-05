@@ -13,7 +13,13 @@ fn dirname(path p) -> path {
     assert (_str.byte_len(sep) == 1u);
     let int i = _str.rindex(p, sep.(0));
     if (i == -1) {
-        ret p;
+        // FIXME: the '/' character is a path separator on all 3 platforms we
+        // support. This should probably be generalized a bit more in the
+        // future, but for now this should work.
+        i = _str.rindex(p, '/');
+        if (i == -1) {
+            ret p;
+        }
     }
     ret _str.substr(p, 0u, i as uint);
 }
