@@ -122,22 +122,22 @@ fn plain_ann(middle.ty.ctxt tcx) -> ast.ann {
                    none[vec[middle.ty.t]], none[@ts_ann]);
 }
 
-fn expr_to_str(&ast.expr e) -> str {
+fn expr_to_str(&@ast.expr e) -> str {
   let str_writer s = string_writer();
   auto out_ = mkstate(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front.lexer.cmnt]],
                   mutable cur_cmnt=0u);
-  print_expr(out, @e);
+  print_expr(out, e);
   ret s.get_str();
 }
 
 fn log_expr(&ast.expr e) -> () {
-    log(expr_to_str(e));
+    log(expr_to_str(@e));
 }
 
 fn log_expr_err(&ast.expr e) -> () {
-    log_err(expr_to_str(e));
+    log_err(expr_to_str(@e));
 }
 
 fn block_to_str(&ast.block b) -> str {
