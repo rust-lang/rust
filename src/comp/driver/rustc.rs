@@ -127,11 +127,12 @@ fn pretty_print_input(session.session sess,
 }
 
 fn version(str argv0) {
-    auto git_rev = ""; // when snapshotted to extenv: #env("GIT_REV");
-    if (_str.byte_len(git_rev) != 0u) {
-        git_rev = #fmt(" (git: %s)", git_rev);
+    auto vers = "unknown version";
+    auto env_vers = #env("CFG_VERSION");
+    if (_str.byte_len(env_vers) != 0u) {
+        vers = env_vers;
     }
-    io.stdout().write_str(#fmt("%s prerelease%s\n", argv0, git_rev));
+    io.stdout().write_str(#fmt("%s %s\n", argv0, vers));
 }
 
 fn usage(str argv0) {
