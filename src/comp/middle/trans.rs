@@ -6723,125 +6723,149 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
     // that allows types of different sizes to be returned.
     auto rty_is_nil = ty.type_is_nil(ccx.tcx, ty.ty_fn_ret(ccx.tcx, fn_type));
 
-    let vec[ValueRef] call_args = vec();
-    auto arg_n = 3u;
     auto pass_task;
-
-    auto lltaskptr = vp2i(bcx, fcx.lltaskptr);
+    auto cast_to_i32;
     alt (abi) {
         case (ast.native_abi_rust) {
             pass_task = true;
-            call_args += vec(lltaskptr);
-            for each (uint i in _uint.range(0u, num_ty_param)) {
-                auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
-                fcx.lltydescs += vec(llarg);
-                assert (llarg as int != 0);
-                call_args += vec(vp2i(bcx, llarg));
-                arg_n += 1u;
-            }
+            cast_to_i32 = true;
         }
         case (ast.native_abi_rust_intrinsic) {
             pass_task = true;
-            call_args += vec(lltaskptr);
+            cast_to_i32 = false;
         }
         case (ast.native_abi_cdecl) {
             pass_task = false;
+            cast_to_i32 = true;
         }
         case (ast.native_abi_llvm) {
             pass_task = false;
-            // We handle this case below.
+            cast_to_i32 = false;
         }
     }
 
-    fn push_arg(@block_ctxt cx,
-                &mutable vec[ValueRef] args,
-                ValueRef v,
-                ty.t t,
-                ast.mode mode) {
+    auto lltaskptr;
+    if (cast_to_i32) {
+        lltaskptr = vp2i(bcx, fcx.lltaskptr);
+    } else {
+        lltaskptr = fcx.lltaskptr;
+    }
+
+    let vec[ValueRef] call_args = vec();
+    if (pass_task) { call_args += vec(lltaskptr); }
+
+    auto arg_n = 3u;
+    for each (uint i in _uint.range(0u, num_ty_param)) {
+        auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
+        fcx.lltydescs += vec(llarg);
+        assert (llarg as int != 0);
+
+        if (cast_to_i32) {
+            call_args += vec(vp2i(bcx, llarg));
+        } else {
+            call_args += vec(llarg);
+        }
+
+        arg_n += 1u;
+    }
+
+    fn convert_arg_to_i32(@block_ctxt cx,
+                          ValueRef v,
+                          ty.t t,
+                          ast.mode mode) -> ValueRef {
         if (mode == ast.val) {
             if (ty.type_is_integral(cx.fcx.lcx.ccx.tcx, t)) {
                 auto lldsttype = T_int();
                 auto llsrctype = type_of(cx.fcx.lcx.ccx, t);
                 if (llvm.LLVMGetIntTypeWidth(lldsttype) >
                     llvm.LLVMGetIntTypeWidth(llsrctype)) {
-                    args += vec(cx.build.ZExtOrBitCast(v, T_int()));
-                } else {
-                    args += vec(cx.build.TruncOrBitCast(v, T_int()));
+                    ret cx.build.ZExtOrBitCast(v, T_int());
                 }
-                ret;
+                ret cx.build.TruncOrBitCast(v, T_int());
             }
             if (ty.type_is_fp(cx.fcx.lcx.ccx.tcx, t)) {
-                args += vec(cx.build.FPToSI(v, T_int()));
-                ret;
+                ret cx.build.FPToSI(v, T_int());
             }
         }
 
-        args += vec(vp2i(cx, v));
+        ret vp2i(cx, v);
     }
 
     fn trans_simple_native_abi(@block_ctxt bcx,
                                str name,
-                               vec[ty.arg] args,
                                &mutable vec[ValueRef] call_args,
-                               ty.t fn_type) -> tup(ValueRef, ValueRef) {
+                               ty.t fn_type,
+                               uint first_arg_n) -> tup(ValueRef, ValueRef) {
         let vec[TypeRef] call_arg_tys = vec();
-        auto i = 0u;
-        while (i < _vec.len[ty.arg](args)) {
-            auto call_arg = llvm.LLVMGetParam(bcx.fcx.llfn, i + 3u);
-            call_args += vec(call_arg);
-            call_arg_tys += vec(val_ty(call_arg));
-            i += 1u;
+        for (ValueRef arg in call_args) {
+            call_arg_tys += vec(val_ty(arg));
         }
+
         auto llnativefnty =
             T_fn(call_arg_tys,
                  type_of(bcx.fcx.lcx.ccx,
                          ty.ty_fn_ret(bcx.fcx.lcx.ccx.tcx, fn_type)));
+
         auto llnativefn = get_extern_fn(bcx.fcx.lcx.ccx.externs,
                                         bcx.fcx.lcx.ccx.llmod,
                                         name,
                                         lib.llvm.LLVMCCallConv,
                                         llnativefnty);
 
+        log_err "calling: " + val_str(bcx.fcx.lcx.ccx.tn, llnativefn);
+
+        for (ValueRef arg in call_args) {
+            log_err "arg: " + val_str(bcx.fcx.lcx.ccx.tn, arg);
+        }
+
         auto r = bcx.build.Call(llnativefn, call_args);
         auto rptr = bcx.fcx.llretptr;
         ret tup(r, rptr);
     }
 
+    auto args = ty.ty_fn_args(ccx.tcx, fn_type);
+
+    // Build up the list of arguments.
+    let vec[tup(ValueRef, ty.t)] drop_args = vec();
+    auto i = arg_n;
+    for (ty.arg arg in args) {
+        auto llarg = llvm.LLVMGetParam(fcx.llfn, i);
+        assert (llarg as int != 0);
+
+        if (cast_to_i32) {
+            auto llarg_i32 = convert_arg_to_i32(bcx, llarg, arg.ty, arg.mode);
+            call_args += vec(llarg_i32);
+        } else {
+            call_args += vec(llarg);
+        }
+
+        if (arg.mode == ast.val) {
+            drop_args += vec(tup(llarg, arg.ty));
+        }
+
+        i += 1u;
+    }
+
     auto r;
     auto rptr;
-    auto args = ty.ty_fn_args(ccx.tcx, fn_type);
     alt (abi) {
         case (ast.native_abi_llvm) {
-            auto result = trans_simple_native_abi(bcx, name, args, call_args,
-                                                  fn_type);
+            auto result = trans_simple_native_abi(bcx, name, call_args,
+                                                  fn_type, arg_n);
             r = result._0; rptr = result._1;
         }
         case (ast.native_abi_rust_intrinsic) {
-            auto result = trans_simple_native_abi(bcx, name, args, call_args,
-                                                  fn_type);
+            auto external_name = "rust_intrinsic_" + name;
+            auto result = trans_simple_native_abi(bcx, external_name,
+                                                  call_args, fn_type, arg_n);
             r = result._0; rptr = result._1;
         }
         case (_) {
-            let vec[tup(ValueRef, ty.t)] drop_args = vec();
-
-            for (ty.arg arg in args) {
-                auto llarg = llvm.LLVMGetParam(fcx.llfn, arg_n);
-                assert (llarg as int != 0);
-                push_arg(bcx, call_args, llarg, arg.ty, arg.mode);
-                if (arg.mode == ast.val) {
-                    drop_args += vec(tup(llarg, arg.ty));
-                }
-                arg_n += 1u;
-            }
-
             r = trans_native_call(bcx.build, ccx.glues, lltaskptr,
                                   ccx.externs, ccx.tn, ccx.llmod, name,
                                   pass_task, call_args);
             rptr = bcx.build.BitCast(fcx.llretptr, T_ptr(T_i32()));
 
-            for (tup(ValueRef, ty.t) d in drop_args) {
-                bcx = drop_ty(bcx, d._0, d._1).bcx;
-            }
         }
     }
 
@@ -6849,6 +6873,10 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
     // pointer. This is the only concession made to non-i32 return values. See
     // the FIXME above.
     if (!rty_is_nil) { bcx.build.Store(r, rptr); }
+
+    for (tup(ValueRef, ty.t) d in drop_args) {
+        bcx = drop_ty(bcx, d._0, d._1).bcx;
+    }
 
     bcx.build.RetVoid();
 
