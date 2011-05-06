@@ -1731,7 +1731,7 @@ fn declare_tydesc(@local_ctxt cx, ty.t t) -> @tydesc_info {
 
     auto glue_fn_ty = T_ptr(T_glue_fn(ccx.tn));
 
-    auto name = mangle_name_by_seq(ccx, cx.path, "tydesc");
+    auto name = mangle_name_by_type_only(ccx, t, "tydesc");
     auto gvar = llvm.LLVMAddGlobal(ccx.llmod, T_tydesc(ccx.tn),
                                    _str.buf(name));
     auto tydesc = C_struct(vec(C_null(T_ptr(T_ptr(T_tydesc(ccx.tn)))),
