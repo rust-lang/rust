@@ -37,6 +37,7 @@ include $(CFG_SRC_DIR)/mk/platform.mk
 CFG_RUNTIME :=$(call CFG_LIB_NAME,rustrt)
 CFG_RUSTLLVM :=$(call CFG_LIB_NAME,rustllvm)
 CFG_STDLIB :=$(call CFG_LIB_NAME,std)
+CFG_RUSTCLIB :=$(call CFG_LIB_NAME,rustc)
 
 # version-string calculation
 CFG_GIT_DIR := $(CFG_SRC_DIR).git
