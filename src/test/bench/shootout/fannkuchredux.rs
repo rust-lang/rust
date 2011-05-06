@@ -7,14 +7,14 @@ import std.Vec;
 
 fn fannkuch(int n) -> int {
 
-  fn perm1init(uint i) -> mutable int {
+  fn perm1init(uint i) -> int {
     ret i as int;
   }
   auto perm1init_ = perm1init; // Rustboot workaround
 
-  auto perm = Vec.init_elt[mutable int](0, n as uint);
-  auto perm1 = Vec.init_fn[mutable int](perm1init_, n as uint);
-  auto count = Vec.init_elt[mutable int](0, n as uint);
+  auto perm = Vec.init_elt(0, n as uint);
+  auto perm1 = Vec.init_fn(perm1init_, n as uint);
+  auto count = Vec.init_elt(0, n as uint);
 
   auto f = 0;
   auto i = 0;
