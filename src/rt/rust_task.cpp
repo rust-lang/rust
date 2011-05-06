@@ -264,13 +264,6 @@ rust_task::start_rustc(uintptr_t exit_task_glue,
     // Set sp to last uintptr_t-sized cell of segment
     rust_sp -= sizeof(uintptr_t);
 
-    // NB: Darwin needs "16-byte aligned" stacks *at the point of the call
-    // instruction in the caller*. This means that the address at which the
-    // word before retpc is pushed must always be 16-byte aligned.
-    //
-    // see: "Mac OS X ABI Function Call Guide"
-
-
     // Begin synthesizing the exit_task_glue frame. We will return to
     // exit_task_glue and it is responsible for calling the user code
     // and passing the value returned by the user to the system
@@ -282,7 +275,14 @@ rust_task::start_rustc(uintptr_t exit_task_glue,
     uintptr_t args_size = callsz - 3*sizeof(uintptr_t);
     uintptr_t frame_size = args_size + 4*sizeof(uintptr_t);
 
-    make_aligned_room_for_bytes(spp, frame_size);
+
+    // NB: Darwin needs "16-byte aligned" stacks *at the point of the call
+    // instruction in the caller*. This means that the address at which the
+    // word before retpc is pushed must always be 16-byte aligned.
+    //
+    // see: "Mac OS X ABI Function Call Guide"
+
+    make_aligned_room_for_bytes(spp, frame_size - sizeof(uintptr_t));
 
     // Copy args from spawner to spawnee.
     uintptr_t *src = (uintptr_t *)args;
@@ -295,9 +295,9 @@ rust_task::start_rustc(uintptr_t exit_task_glue,
     *spp-- = (uintptr_t) this;       // task
     *spp-- = (uintptr_t) dummy_ret;  // output address
 
+    I(dom, spp == align_down(spp));
     *spp-- = (uintptr_t) (uintptr_t) spawnee_fn;
 
-    I(dom, spp == align_down(spp));
 
     *spp-- = (uintptr_t) 0x0;        // retp
 
