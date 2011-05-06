@@ -848,6 +848,9 @@ native mod llvm = llvm_lib {
         call. */
     fn LLVMRustGetLastError() -> sbuf;
 
+    /** Returns a string describing the hosts triple */
+    fn LLVMRustGetHostTriple() -> sbuf;
+
     /** Parses the bitcode in the given memory buffer. */
     fn LLVMRustParseBitcode(MemoryBufferRef MemBuf) -> ModuleRef;
 

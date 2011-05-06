@@ -45,10 +45,10 @@ fn swap[T](vec[mutable T] arr, uint x, uint y) {
     arr.(y) = a;
 }
 
-fn part[T](lteq[mutable T] compare_func, vec[mutable T] arr, uint left,
+fn part[T](lteq[T] compare_func, vec[mutable T] arr, uint left,
         uint right, uint pivot) -> uint {
 
-    fn compare[T](lteq[mutable T] compare_func, vec[mutable T]arr,
+    fn compare[T](lteq[T] compare_func, vec[mutable T]arr,
            uint arr_idx, &T arr_value) -> bool {
 
         ret compare_func(arr.(arr_idx),arr_value);
@@ -69,7 +69,7 @@ fn part[T](lteq[mutable T] compare_func, vec[mutable T] arr, uint left,
     ret storage_index;
 }
 
-fn qsort[T](lteq[mutable T] compare_func, vec[mutable T] arr, uint left,
+fn qsort[T](lteq[T] compare_func, vec[mutable T] arr, uint left,
         uint right) {
 
     if (right > left) {
@@ -83,12 +83,12 @@ fn qsort[T](lteq[mutable T] compare_func, vec[mutable T] arr, uint left,
     }
 }
 
-fn quick_sort[T](lteq[mutable T] compare_func, vec[mutable T] arr) {
+fn quick_sort[T](lteq[T] compare_func, vec[mutable T] arr) {
 
-    if (len[mutable T](arr) == 0u) {
+    if (len[T](arr) == 0u) {
         ret;
     }
-    qsort[T](compare_func, arr, 0u, (len[mutable T](arr)) - 1u);
+    qsort[T](compare_func, arr, 0u, (len[T](arr)) - 1u);
 }
 
 // Local Variables:
