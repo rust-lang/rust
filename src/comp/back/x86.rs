@@ -353,7 +353,7 @@ fn get_target_triple() -> str {
     if (_str.eq(target_os(), "win32")) {
         ret "i686-pc-mingw32";
     }
-    ret "i686-pc-linux-gnu";
+    ret "i686-unknown-linux-gnu";
 }
 
 
