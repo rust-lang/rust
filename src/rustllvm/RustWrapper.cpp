@@ -20,6 +20,7 @@
 #include "llvm/Target/TargetSelect.h"
 #include "llvm/Target/TargetRegistry.h"
 #include "llvm/Target/TargetOptions.h"
+#include "llvm/Support/Host.h"
 #include "llvm-c/Core.h"
 #include "llvm-c/BitReader.h"
 #include "llvm-c/Object.h"
@@ -106,3 +107,8 @@ extern "C" LLVMModuleRef LLVMRustParseBitcode(LLVMMemoryBufferRef MemBuf) {
          ? NULL : M;
 }
 
+extern "C" const char *LLVMRustGetHostTriple(void)
+{
+  static std::string str = llvm::sys::getHostTriple();
+  return str.c_str();
+}
