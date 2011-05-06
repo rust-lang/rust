@@ -43,9 +43,13 @@ extern "C" const char *LLVMRustGetLastError(void) {
 }
 
 extern "C" void LLVMAddBasicAliasAnalysisPass(LLVMPassManagerRef PM);
+extern "C" void LLVMAddStandardModulePasses(LLVMPassManagerRef PM,
+    unsigned int OptimizationLevel, bool OptimizeSize, bool UnitAtATime,
+    bool UnrollLoops, bool SimplifyLibCalls, bool HaveExceptions,
+    unsigned int InliningThreshold);
 
-void (*RustHackToFetchPassesO)(LLVMPassManagerRef PM) =
-  LLVMAddBasicAliasAnalysisPass;
+int *RustHackToFetchPassesO = (int*)LLVMAddBasicAliasAnalysisPass;
+int *RustHackToFetchPasses2O = (int*)LLVMAddStandardModulePasses;
 
 enum LLVMCodeGenFileType {
   LLVMAssemblyFile,
