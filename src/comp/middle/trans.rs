@@ -6812,12 +6812,6 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
                                         lib.llvm.LLVMCCallConv,
                                         llnativefnty);
 
-        log_err "calling: " + val_str(bcx.fcx.lcx.ccx.tn, llnativefn);
-
-        for (ValueRef arg in call_args) {
-            log_err "arg: " + val_str(bcx.fcx.lcx.ccx.tn, arg);
-        }
-
         auto r = bcx.build.Call(llnativefn, call_args);
         auto rptr = bcx.fcx.llretptr;
         ret tup(r, rptr);
