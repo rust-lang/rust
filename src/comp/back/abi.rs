@@ -67,7 +67,7 @@ const int closure_elt_ty_params = 3;
 
 const int worst_case_glue_call_args = 7;
 
-const int n_native_glues = 7;
+const int n_native_glues = 8;
 
 const int abi_x86_rustboot_cdecl = 1;
 const int abi_x86_rustc_fastcall = 2;
