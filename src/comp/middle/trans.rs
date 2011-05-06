@@ -1612,6 +1612,49 @@ fn trans_stack_local_derived_tydesc(@block_ctxt cx, ValueRef llsz,
     ret res(cx, lltydesc);
 }
 
+fn mk_derived_tydesc(@block_ctxt cx, ty.t t, bool escapes) -> result {
+    let uint n_params = ty.count_ty_params(cx.fcx.lcx.ccx.tcx, t);
+    auto tys = linearize_ty_params(cx, t);
+
+    assert (n_params == _vec.len[uint](tys._0));
+    assert (n_params == _vec.len[ValueRef](tys._1));
+
+    auto root = get_static_tydesc(cx, t, tys._0).tydesc;
+
+    auto tydescs = alloca(cx, T_array(T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn)),
+                                      1u /* for root*/ + n_params));
+
+    auto i = 0;
+    auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
+    cx.build.Store(root, tdp);
+    i += 1;
+    for (ValueRef td in tys._1) {
+        auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
+        cx.build.Store(td, tdp);
+        i += 1;
+    }
+
+    auto bcx = cx;
+    auto sz = size_of(bcx, t);
+    bcx = sz.bcx;
+    auto align = align_of(bcx, t);
+    bcx = align.bcx;
+
+    auto v;
+    if (escapes) {
+        v = trans_upcall(bcx, "upcall_get_type_desc",
+                         vec(p2i(bcx.fcx.lcx.ccx.crate_ptr),
+                             sz.val,
+                             align.val,
+                             C_int((1u + n_params) as int),
+                             vp2i(bcx, tydescs)), true);
+    } else {
+        v = trans_stack_local_derived_tydesc(bcx, sz.val, align.val, tydescs);
+    }
+
+    ret res(v.bcx, vi2p(v.bcx, v.val, T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn))));
+}
+
 fn get_tydesc(&@block_ctxt cx, ty.t t, bool escapes) -> result {
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt (ty.type_param(cx.fcx.lcx.ccx.tcx, t)) {
@@ -1622,49 +1665,7 @@ fn get_tydesc(&@block_ctxt cx, ty.t t, bool escapes) -> result {
     // Does it contain a type param? If so, generate a derived tydesc.
 
     if (ty.type_contains_params(cx.fcx.lcx.ccx.tcx, t)) {
-
-        let uint n_params = ty.count_ty_params(cx.fcx.lcx.ccx.tcx, t);
-        auto tys = linearize_ty_params(cx, t);
-
-        assert (n_params == _vec.len[uint](tys._0));
-        assert (n_params == _vec.len[ValueRef](tys._1));
-
-        auto root = get_static_tydesc(cx, t, tys._0).tydesc;
-
-        auto tydescs = alloca(cx, T_array(T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn)),
-                                          1u /* for root*/ + n_params));
-
-        auto i = 0;
-        auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
-        cx.build.Store(root, tdp);
-        i += 1;
-        for (ValueRef td in tys._1) {
-            auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
-            cx.build.Store(td, tdp);
-            i += 1;
-        }
-
-        auto bcx = cx;
-        auto sz = size_of(bcx, t);
-        bcx = sz.bcx;
-        auto align = align_of(bcx, t);
-        bcx = align.bcx;
-
-        auto v;
-        if (escapes) {
-            v = trans_upcall(bcx, "upcall_get_type_desc",
-                             vec(p2i(bcx.fcx.lcx.ccx.crate_ptr),
-                                 sz.val,
-                                 align.val,
-                                 C_int((1u + n_params) as int),
-                                 vp2i(bcx, tydescs)), true);
-        } else {
-            v = trans_stack_local_derived_tydesc(bcx, sz.val, align.val,
-                                                 tydescs);
-        }
-
-        ret res(v.bcx, vi2p(v.bcx, v.val,
-                            T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn))));
+        ret mk_derived_tydesc(cx, t, escapes);
     }
 
     // Otherwise, generate a tydesc if necessary, and return it.
