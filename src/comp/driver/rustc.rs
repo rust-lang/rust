@@ -161,11 +161,27 @@ options:
     --no-typestate     don't run the typestate pass (unsafe!)\n\n");
 }
 
-fn get_os() -> session.os {
-    auto s = std.os.target_os();
-    if (_str.eq(s, "win32")) { ret session.os_win32; }
-    if (_str.eq(s, "macos")) { ret session.os_macos; }
-    if (_str.eq(s, "linux")) { ret session.os_linux; }
+fn get_os(str triple) -> session.os {
+    if (_str.find(triple, "win32") > 0 ||
+        _str.find(triple, "mingw32") > 0 ) {
+        ret session.os_win32;
+    } else if (_str.find(triple, "darwin") > 0) { ret session.os_macos; }
+    else if (_str.find(triple, "linux") > 0) { ret session.os_linux; }
+}
+
+fn get_arch(str triple) -> session.arch {
+    if (_str.find(triple, "i386") > 0 ||
+        _str.find(triple, "i486") > 0 ||
+        _str.find(triple, "i586") > 0 ||
+        _str.find(triple, "i686") > 0 ||
+        _str.find(triple, "i786") > 0 ) {
+        ret session.arch_x86;
+    } else if (_str.find(triple, "x86_64") > 0) {
+        ret session.arch_x64;
+    } else if (_str.find(triple, "arm") > 0 ||
+        _str.find(triple, "xscale") > 0 ) {
+        ret session.arch_arm;
+    }
 }
 
 fn get_default_sysroot(str binary) -> str {
@@ -176,10 +192,12 @@ fn get_default_sysroot(str binary) -> str {
 
 fn main(vec[str] args) {
 
-    // FIXME: don't hard-wire this.
+    let str triple =
+        std._str.rustrt.str_from_cstr(llvm.llvm.LLVMRustGetHostTriple());
+
     let @session.config target_cfg =
-        @rec(os = get_os(),
-             arch = session.arch_x86,
+        @rec(os = get_os(triple),
+             arch = get_arch(triple),
              int_type = common.ty_i32,
              uint_type = common.ty_u32,
              float_type = common.ty_f64);
