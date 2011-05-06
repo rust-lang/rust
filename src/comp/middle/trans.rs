@@ -1592,24 +1592,25 @@ fn linearize_ty_params(@block_ctxt cx, ty.t t) ->
 }
 
 fn trans_stack_local_derived_tydesc(@block_ctxt cx, ValueRef llsz,
-        ValueRef llalign, ValueRef lltydescs) -> result {
-    auto lltydesc = alloca(cx, T_tydesc(cx.fcx.lcx.ccx.tn));
+        ValueRef llalign, ValueRef llroottydesc, ValueRef llparamtydescs)
+        -> result {
+    auto llmyroottydesc = alloca(cx, T_tydesc(cx.fcx.lcx.ccx.tn));
 
     // By convention, desc 0 is the root descriptor.
-    auto llroottydesc = cx.build.Load(cx.build.GEP(lltydescs,
-                                                   vec(C_int(0), C_int(0))));
     llroottydesc = cx.build.Load(llroottydesc);
-    cx.build.Store(llroottydesc, lltydesc);
+    cx.build.Store(llroottydesc, llmyroottydesc);
 
     // Store a pointer to the rest of the descriptors.
-    auto llfirstparam = cx.build.GEP(lltydescs, vec(C_int(0), C_int(1)));
+    auto llfirstparam = cx.build.GEP(llparamtydescs, vec(C_int(0), C_int(0)));
     cx.build.Store(llfirstparam,
-                   cx.build.GEP(lltydesc, vec(C_int(0), C_int(0))));
+                   cx.build.GEP(llmyroottydesc, vec(C_int(0), C_int(0))));
 
-    cx.build.Store(llsz, cx.build.GEP(lltydesc, vec(C_int(0), C_int(1))));
-    cx.build.Store(llalign, cx.build.GEP(lltydesc, vec(C_int(0), C_int(2))));
+    cx.build.Store(llsz,
+                   cx.build.GEP(llmyroottydesc, vec(C_int(0), C_int(1))));
+    cx.build.Store(llalign,
+                   cx.build.GEP(llmyroottydesc, vec(C_int(0), C_int(2))));
 
-    ret res(cx, lltydesc);
+    ret res(cx, llmyroottydesc);
 }
 
 fn mk_derived_tydesc(@block_ctxt cx, ty.t t, bool escapes) -> result {
@@ -1621,19 +1622,6 @@ fn mk_derived_tydesc(@block_ctxt cx, ty.t t, bool escapes) -> result {
 
     auto root = get_static_tydesc(cx, t, tys._0).tydesc;
 
-    auto tydescs = alloca(cx, T_array(T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn)),
-                                      1u /* for root*/ + n_params));
-
-    auto i = 0;
-    auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
-    cx.build.Store(root, tdp);
-    i += 1;
-    for (ValueRef td in tys._1) {
-        auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
-        cx.build.Store(td, tdp);
-        i += 1;
-    }
-
     auto bcx = cx;
     auto sz = size_of(bcx, t);
     bcx = sz.bcx;
@@ -1642,6 +1630,19 @@ fn mk_derived_tydesc(@block_ctxt cx, ty.t t, bool escapes) -> result {
 
     auto v;
     if (escapes) {
+        auto tydescs = alloca(cx, T_array(T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn)),
+                                          1u /* for root*/ + n_params));
+
+        auto i = 0;
+        auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
+        cx.build.Store(root, tdp);
+        i += 1;
+        for (ValueRef td in tys._1) {
+            auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
+            cx.build.Store(td, tdp);
+            i += 1;
+        }
+
         v = trans_upcall(bcx, "upcall_get_type_desc",
                          vec(p2i(bcx.fcx.lcx.ccx.crate_ptr),
                              sz.val,
@@ -1649,7 +1650,18 @@ fn mk_derived_tydesc(@block_ctxt cx, ty.t t, bool escapes) -> result {
                              C_int((1u + n_params) as int),
                              vp2i(bcx, tydescs)), true);
     } else {
-        v = trans_stack_local_derived_tydesc(bcx, sz.val, align.val, tydescs);
+        auto llparamtydescs = alloca(cx,
+            T_array(T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn)), n_params));
+
+        auto i = 0;
+        for (ValueRef td in tys._1) {
+            auto tdp = cx.build.GEP(llparamtydescs, vec(C_int(0), C_int(i)));
+            cx.build.Store(td, tdp);
+            i += 1;
+        }
+
+        v = trans_stack_local_derived_tydesc(bcx, sz.val, align.val, root,
+                                             llparamtydescs);
     }
 
     ret res(v.bcx, vi2p(v.bcx, v.val, T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn))));
