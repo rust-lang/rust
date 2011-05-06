@@ -23,9 +23,18 @@ fn expand_syntax_ext(parser.parser p,
         p.err("malformed #env call");
     }
 
+    // FIXME: if this was more thorough it would manufacture an
+    // Option.t[str] rather than just an maybe-empty string.
+
     auto var = expr_to_str(p, args.(0));
-    auto val = GenericOS.getenv(var);
-    ret make_new_str(sp, val);
+    alt (GenericOS.getenv(var)) {
+        case (Option.none[str]) {
+            ret make_new_str(sp, "");
+        }
+        case (Option.some[str](?s)) {
+            ret make_new_str(sp, s);
+        }
+    }
 }
 
 // FIXME: duplicate code copied from extfmt.

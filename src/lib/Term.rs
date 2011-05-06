@@ -31,7 +31,7 @@ fn reset(IO.buf_writer writer) {
 }
 
 fn color_supported() -> bool {
-    ret Str.eq(GenericOS.getenv("TERM"), "xterm-color");
+    ret GenericOS.getenv("TERM") == Option.some[str]("xterm-color");
 }
 
 fn set_color(IO.buf_writer writer, u8 first_char, u8 color) {
