@@ -201,6 +201,15 @@ probe CFG_MAKEINFO         makeinfo
 probe CFG_TEXI2PDF         texi2pdf
 probe CFG_TEX              tex
 
+# Valgrind is only reliable on Linux. On Windows it doesn't work at all, and
+# on the Mac the dynamic linker causes Valgrind to emit a huge stream of
+# errors.
+if [ $CFG_OSTYPE != Linux ]
+then
+    CFG_BAD_VALGRIND=1
+    putvar CFG_BAD_VALGRIND
+fi
+
 if [ ! -z "$CFG_LLVM_ROOT" ]
 then
     CFG_LLVM_INCDIR="$CFG_LLVM_ROOT/include"

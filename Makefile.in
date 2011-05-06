@@ -46,6 +46,10 @@ ifdef CFG_DISABLE_VALGRIND
   $(info cfg: disabling valgrind (CFG_DISABLE_VALGRIND))
   CFG_VALGRIND :=
 endif
+ifdef CFG_BAD_VALGRIND
+  $(info cfg: disabling valgrind due to its unreliability on this platform)
+  CFG_VALGRIND :=
+endif
 
 DOCS :=
 ifeq ($(CFG_MAKEINFO),)
