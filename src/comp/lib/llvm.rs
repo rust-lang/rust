@@ -802,6 +802,16 @@ native mod llvm = llvm_lib {
     fn LLVMAddTypeBasedAliasAnalysisPass(PassManagerRef PM);
     fn LLVMAddBasicAliasAnalysisPass(PassManagerRef PM);
 
+    // FIXME: Native stubs don't allow this many arguments yet.
+    /*fn LLVMAddStandardModulePasses(PassManagerRef PM,
+                                   uint OptimizationLevel,
+                                   Bool OptimizeSize,
+                                   Bool UnitAtATime,
+                                   Bool UnrollLoops,
+                                   Bool SimplifyLibCalls,
+                                   Bool HaveExceptions,
+                                   uint InliningThreshold);*/
+
     /** Destroys a memory buffer. */
     fn LLVMDisposeMemoryBuffer(MemoryBufferRef MemBuf);
 
