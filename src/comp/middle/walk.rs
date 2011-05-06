@@ -1,8 +1,8 @@
 import front.ast;
 
-import std.option;
-import std.option.some;
-import std.option.none;
+import std.Option;
+import std.Option.some;
+import std.Option.none;
 
 type ast_visitor =
     rec(fn () -> bool                 keep_going,
@@ -257,7 +257,7 @@ fn walk_decl(&ast_visitor v, @ast.decl d) {
     v.visit_decl_post(d);
 }
 
-fn walk_expr_opt(&ast_visitor v, option.t[@ast.expr] eo) {
+fn walk_expr_opt(&ast_visitor v, Option.t[@ast.expr] eo) {
     alt (eo) {
         case (none[@ast.expr]) {}
         case (some[@ast.expr](?e)) {
@@ -297,7 +297,7 @@ fn walk_expr(&ast_visitor v, @ast.expr e) {
         case (ast.expr_self_method(_, _)) { }
         case (ast.expr_bind(?callee, ?args, _)) {
             walk_expr(v, callee);
-            for (option.t[@ast.expr] eo in args) {
+            for (Option.t[@ast.expr] eo in args) {
                 walk_expr_opt(v, eo);
             }
         }

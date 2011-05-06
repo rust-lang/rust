@@ -1,8 +1,8 @@
 import driver.session;
 import lib.llvm.llvm;
 import middle.trans;
-import std._str;
-import std.fs;
+import std.Str;
+import std.FS;
 
 import lib.llvm.llvm.ModuleRef;
 import lib.llvm.llvm.ValueRef;
@@ -19,14 +19,14 @@ tag output_type {
 }
 
 fn llvm_err(session.session sess, str msg) {
-    sess.err(msg + ": " + _str.str_from_cstr(llvm.LLVMRustGetLastError()));
+    sess.err(msg + ": " + Str.str_from_cstr(llvm.LLVMRustGetLastError()));
     fail;
 }
 
 fn link_intrinsics(session.session sess, ModuleRef llmod) {
-    auto path = fs.connect(sess.get_opts().sysroot, "intrinsics.bc");
+    auto path = FS.connect(sess.get_opts().sysroot, "intrinsics.bc");
     auto membuf =
-        llvm.LLVMRustCreateMemoryBufferWithContentsOfFile(_str.buf(path));
+        llvm.LLVMRustCreateMemoryBufferWithContentsOfFile(Str.buf(path));
     if ((membuf as uint) == 0u) {
         llvm_err(sess, "installation problem: couldn't open intrinstics.bc");
         fail;
@@ -58,12 +58,12 @@ mod Write {
     // Decides what to call an intermediate file, given the name of the output
     // and the extension to use.
     fn mk_intermediate_name(str output_path, str extension) -> str {
-        auto dot_pos = _str.index(output_path, '.' as u8);
+        auto dot_pos = Str.index(output_path, '.' as u8);
         auto stem;
         if (dot_pos < 0) {
             stem = output_path;
         } else {
-            stem = _str.substr(output_path, 0u, dot_pos as uint);
+            stem = Str.substr(output_path, 0u, dot_pos as uint);
         }
         ret stem + "." + extension;
     }
@@ -86,12 +86,12 @@ mod Write {
                         auto filename = mk_intermediate_name(output,
                                                              "no-opt.bc");
                         llvm.LLVMWriteBitcodeToFile(llmod,
-                                                    _str.buf(filename));
+                                                    Str.buf(filename));
                     }
                 }
                 case (_) {
                     auto filename = mk_intermediate_name(output, "bc");
-                    llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(filename));
+                    llvm.LLVMWriteBitcodeToFile(llmod, Str.buf(filename));
                 }
             }
         }
@@ -183,15 +183,15 @@ mod Write {
                                                              "opt.bc");
                         llvm.LLVMRunPassManager(pm.llpm, llmod);
                         llvm.LLVMWriteBitcodeToFile(llmod,
-                                                    _str.buf(filename));
+                                                    Str.buf(filename));
                         pm = mk_pass_manager();
                     }
                 }
             }
 
             llvm.LLVMRustWriteOutputFile(pm.llpm, llmod,
-                                         _str.buf(x86.get_target_triple()),
-                                         _str.buf(output),
+                                         Str.buf(x86.get_target_triple()),
+                                         Str.buf(output),
                                          FileType);
             llvm.LLVMDisposeModule(llmod);
             ret;
@@ -199,7 +199,7 @@ mod Write {
 
         llvm.LLVMRunPassManager(pm.llpm, llmod);
 
-        llvm.LLVMWriteBitcodeToFile(llmod, _str.buf(output));
+        llvm.LLVMWriteBitcodeToFile(llmod, Str.buf(output));
         llvm.LLVMDisposeModule(llmod);
     }
 }

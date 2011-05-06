@@ -2,9 +2,9 @@
 
 use std;
 
-import std.sha1;
-import std._vec;
-import std._str;
+import std.SHA1;
+import std.Vec;
+import std.Str;
 
 fn main() {
 
@@ -69,8 +69,8 @@ fn main() {
     auto tests = fips_180_1_tests + wikipedia_tests;
 
     fn check_vec_eq(vec[u8] v0, vec[u8] v1) {
-        assert (_vec.len[u8](v0) == _vec.len[u8](v1));
-        auto len = _vec.len[u8](v0);
+        assert (Vec.len[u8](v0) == Vec.len[u8](v1));
+        auto len = Vec.len[u8](v0);
         auto i = 0u;
         while (i < len) {
             auto a = v0.(i);
@@ -81,7 +81,7 @@ fn main() {
     }
 
     // Test that it works when accepting the message all at once
-    auto sh = sha1.mk_sha1();
+    auto sh = SHA1.mk_sha1();
     for (test t in tests) {
         sh.input_str(t.input);
         auto out = sh.result();
@@ -91,11 +91,11 @@ fn main() {
 
     // Test that it works when accepting the message in pieces
     for (test t in tests) {
-        auto len = _str.byte_len(t.input);
+        auto len = Str.byte_len(t.input);
         auto left = len;
         while (left > 0u) {
             auto take = (left + 1u) / 2u;
-            sh.input_str(_str.substr(t.input, len - left, take));
+            sh.input_str(Str.substr(t.input, len - left, take));
             left = left - take;
         }
         auto out = sh.result();

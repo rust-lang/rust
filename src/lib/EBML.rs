@@ -2,8 +2,8 @@
 // cursor model. See the specification here:
 //     http://www.matroska.org/technical/specs/rfc/index.html
 
-import option.none;
-import option.some;
+import Option.none;
+import Option.some;
 
 type ebml_tag = rec(uint id, uint size);
 type ebml_state = rec(ebml_tag ebml_tag, uint tag_pos, uint data_pos);
@@ -38,7 +38,7 @@ fn vint_at(vec[u8] data, uint start) -> tup(uint, uint) {
 }
 
 fn new_doc(vec[u8] data) -> doc {
-    ret rec(data=data, start=0u, end=_vec.len[u8](data));
+    ret rec(data=data, start=0u, end=Vec.len[u8](data));
 }
 
 fn doc_at(vec[u8] data, uint start) -> doc {
@@ -48,7 +48,7 @@ fn doc_at(vec[u8] data, uint start) -> doc {
     ret rec(data=data, start=elt_size._1, end=end);
 }
 
-fn maybe_get_doc(doc d, uint tg) -> option.t[doc] {
+fn maybe_get_doc(doc d, uint tg) -> Option.t[doc] {
     auto pos = d.start;
     while (pos < d.end) {
         auto elt_tag = vint_at(d.data, pos);
@@ -65,7 +65,7 @@ fn get_doc(doc d, uint tg) -> doc {
     alt (maybe_get_doc(d, tg)) {
         case (some[doc](?d)) {ret d;}
         case (none[doc]) {
-            log_err "failed to find block with tag " + _uint.to_str(tg, 10u);
+            log_err "failed to find block with tag " + UInt.to_str(tg, 10u);
             fail;
         }
     }
@@ -94,7 +94,7 @@ iter tagged_docs(doc d, uint tg) -> doc {
 }
 
 fn doc_data(doc d) -> vec[u8] {
-    ret _vec.slice[u8](d.data, d.start, d.end);
+    ret Vec.slice[u8](d.data, d.start, d.end);
 }
 
 fn be_uint_from_bytes(vec[u8] data, uint start, uint size) -> uint {
@@ -116,9 +116,9 @@ fn doc_as_uint(doc d) -> uint {
 
 // EBML writing
 
-type writer = rec(io.buf_writer writer, mutable vec[uint] size_positions);
+type writer = rec(IO.buf_writer writer, mutable vec[uint] size_positions);
 
-fn write_sized_vint(&io.buf_writer w, uint n, uint size) {
+fn write_sized_vint(&IO.buf_writer w, uint n, uint size) {
     let vec[u8] buf;
     alt (size) {
         case (1u) {
@@ -148,7 +148,7 @@ fn write_sized_vint(&io.buf_writer w, uint n, uint size) {
     w.write(buf);
 }
 
-fn write_vint(&io.buf_writer w, uint n) {
+fn write_vint(&IO.buf_writer w, uint n) {
     if (n < 0x7fu)          { write_sized_vint(w, n, 1u); ret; }
     if (n < 0x4000u)        { write_sized_vint(w, n, 2u); ret; }
     if (n < 0x200000u)      { write_sized_vint(w, n, 3u); ret; }
@@ -157,7 +157,7 @@ fn write_vint(&io.buf_writer w, uint n) {
     fail;
 }
 
-fn create_writer(&io.buf_writer w) -> writer {
+fn create_writer(&IO.buf_writer w) -> writer {
     let vec[uint] size_positions = vec();
     ret rec(writer=w, mutable size_positions=size_positions);
 }
@@ -175,11 +175,11 @@ fn start_tag(&writer w, uint tag_id) {
 }
 
 fn end_tag(&writer w) {
-    auto last_size_pos = _vec.pop[uint](w.size_positions);
+    auto last_size_pos = Vec.pop[uint](w.size_positions);
     auto cur_pos = w.writer.tell();
-    w.writer.seek(last_size_pos as int, io.seek_set);
+    w.writer.seek(last_size_pos as int, IO.seek_set);
     write_sized_vint(w.writer, cur_pos - last_size_pos - 4u, 4u);
-    w.writer.seek(cur_pos as int, io.seek_set);
+    w.writer.seek(cur_pos as int, IO.seek_set);
 }
 
 // TODO: optionally perform "relaxations" on end_tag to more efficiently

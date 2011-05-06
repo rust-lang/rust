@@ -14,17 +14,17 @@ import back.x86;
 import util.common;
 import util.common.span;
 
-import std._str;
-import std._uint;
-import std._vec;
-import std.ebml;
-import std.fs;
-import std.io;
-import std.option;
-import std.option.none;
-import std.option.some;
-import std.os;
-import std.map.hashmap;
+import std.Str;
+import std.UInt;
+import std.Vec;
+import std.EBML;
+import std.FS;
+import std.IO;
+import std.Option;
+import std.Option.none;
+import std.Option.some;
+import std.OS;
+import std.Map.hashmap;
 
 // TODO: map to a real type here.
 type env = @rec(
@@ -122,7 +122,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty.t {
             while (peek(st) as char != ']') {
                 auto name = "";
                 while (peek(st) as char != '=') {
-                    name += _str.unsafe_from_byte(next(st));
+                    name += Str.unsafe_from_byte(next(st));
                 }
                 st.pos = st.pos + 1u;
                 fields += vec(rec(ident=name, mt=parse_mt(st, sd)));
@@ -160,7 +160,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty.t {
                 }
                 auto name = "";
                 while (peek(st) as char != '[') {
-                    name += _str.unsafe_from_byte(next(st));
+                    name += Str.unsafe_from_byte(next(st));
                 }
                 auto func = parse_ty_fn(st, sd);
                 methods += vec(rec(proto=proto,
@@ -210,7 +210,7 @@ fn parse_mt(@pstate st, str_def sd) -> ty.mt {
 fn parse_def(@pstate st, str_def sd) -> ast.def_id {
     auto def = "";
     while (peek(st) as char != '|') {
-        def += _str.unsafe_from_byte(next(st));
+        def += Str.unsafe_from_byte(next(st));
     }
     st.pos = st.pos + 1u;
     ret sd(def);
@@ -265,7 +265,7 @@ fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty.arg], ty.t) {
 
 fn parse_def_id(vec[u8] buf) -> ast.def_id {
     auto colon_idx = 0u;
-    auto len = _vec.len[u8](buf);
+    auto len = Vec.len[u8](buf);
     while (colon_idx < len && buf.(colon_idx) != (':' as u8)) {
         colon_idx += 1u;
     }
@@ -274,30 +274,30 @@ fn parse_def_id(vec[u8] buf) -> ast.def_id {
         fail;
     }
 
-    auto crate_part = _vec.slice[u8](buf, 0u, colon_idx);
-    auto def_part = _vec.slice[u8](buf, colon_idx + 1u, len);
-    auto crate_num = _uint.parse_buf(crate_part, 10u) as int;
-    auto def_num = _uint.parse_buf(def_part, 10u) as int;
+    auto crate_part = Vec.slice[u8](buf, 0u, colon_idx);
+    auto def_part = Vec.slice[u8](buf, colon_idx + 1u, len);
+    auto crate_num = UInt.parse_buf(crate_part, 10u) as int;
+    auto def_num = UInt.parse_buf(def_part, 10u) as int;
     ret tup(crate_num, def_num);
 }
 
-fn lookup_hash(&ebml.doc d, fn(vec[u8]) -> bool eq_fn, uint hash)
-    -> option.t[ebml.doc] {
-    auto index = ebml.get_doc(d, metadata.tag_index);
-    auto table = ebml.get_doc(index, metadata.tag_index_table);
+fn lookup_hash(&EBML.doc d, fn(vec[u8]) -> bool eq_fn, uint hash)
+    -> Option.t[EBML.doc] {
+    auto index = EBML.get_doc(d, metadata.tag_index);
+    auto table = EBML.get_doc(index, metadata.tag_index_table);
 
     auto hash_pos = table.start + (hash % 256u) * 4u;
-    auto pos = ebml.be_uint_from_bytes(d.data, hash_pos, 4u);
-    auto bucket = ebml.doc_at(d.data, pos);
+    auto pos = EBML.be_uint_from_bytes(d.data, hash_pos, 4u);
+    auto bucket = EBML.doc_at(d.data, pos);
     // Awkward logic because we can't ret from foreach yet
-    auto result = option.none[ebml.doc];
+    auto result = Option.none[EBML.doc];
     auto belt = metadata.tag_index_buckets_bucket_elt;
-    for each (ebml.doc elt in ebml.tagged_docs(bucket, belt)) {
+    for each (EBML.doc elt in EBML.tagged_docs(bucket, belt)) {
         alt (result) {
-            case (option.none[ebml.doc]) {
-                auto pos = ebml.be_uint_from_bytes(elt.data, elt.start, 4u);
-                if (eq_fn(_vec.slice[u8](elt.data, elt.start+4u, elt.end))) {
-                    result = option.some[ebml.doc](ebml.doc_at(d.data, pos));
+            case (Option.none[EBML.doc]) {
+                auto pos = EBML.be_uint_from_bytes(elt.data, elt.start, 4u);
+                if (eq_fn(Vec.slice[u8](elt.data, elt.start+4u, elt.end))) {
+                    result = Option.some[EBML.doc](EBML.doc_at(d.data, pos));
                 }
             }
             case (_) {}
@@ -310,113 +310,113 @@ fn lookup_hash(&ebml.doc d, fn(vec[u8]) -> bool eq_fn, uint hash)
 // definition the path refers to.
 fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
     fn eq_item(vec[u8] data, str s) -> bool {
-        ret _str.eq(_str.unsafe_from_bytes(data), s);
+        ret Str.eq(Str.unsafe_from_bytes(data), s);
     }
-    auto s = _str.connect(path, ".");
-    auto md = ebml.new_doc(data);
-    auto paths = ebml.get_doc(md, metadata.tag_paths);
+    auto s = Str.connect(path, ".");
+    auto md = EBML.new_doc(data);
+    auto paths = EBML.get_doc(md, metadata.tag_paths);
     auto eqer = bind eq_item(_, s);
     alt (lookup_hash(paths, eqer, metadata.hash_path(s))) {
-        case (option.some[ebml.doc](?d)) {
-            auto did_doc = ebml.get_doc(d, metadata.tag_def_id);
-            ret rr_ok(parse_def_id(ebml.doc_data(did_doc)));
+        case (Option.some[EBML.doc](?d)) {
+            auto did_doc = EBML.get_doc(d, metadata.tag_def_id);
+            ret rr_ok(parse_def_id(EBML.doc_data(did_doc)));
         }
-        case (option.none[ebml.doc]) {
+        case (Option.none[EBML.doc]) {
             ret rr_not_found(s);
         }
     }
 }
 
-fn maybe_find_item(int item_id, &ebml.doc items) -> option.t[ebml.doc] {
+fn maybe_find_item(int item_id, &EBML.doc items) -> Option.t[EBML.doc] {
     fn eq_item(vec[u8] bytes, int item_id) -> bool {
-        ret ebml.be_uint_from_bytes(bytes, 0u, 4u) as int == item_id;
+        ret EBML.be_uint_from_bytes(bytes, 0u, 4u) as int == item_id;
     }
     auto eqer = bind eq_item(_, item_id);
     ret lookup_hash(items, eqer, metadata.hash_def_num(item_id));
 }
 
-fn find_item(int item_id, &ebml.doc items) -> ebml.doc {
+fn find_item(int item_id, &EBML.doc items) -> EBML.doc {
     alt (maybe_find_item(item_id, items)) {
-        case (option.some[ebml.doc](?d)) {ret d;}
+        case (Option.some[EBML.doc](?d)) {ret d;}
     }
 }
 
 // Looks up an item in the given metadata and returns an EBML doc pointing
 // to the item data.
-fn lookup_item(int item_id, vec[u8] data) -> ebml.doc {
-    auto items = ebml.get_doc(ebml.new_doc(data), metadata.tag_items);
+fn lookup_item(int item_id, vec[u8] data) -> EBML.doc {
+    auto items = EBML.get_doc(EBML.new_doc(data), metadata.tag_items);
     ret find_item(item_id, items);
 }
 
-fn item_kind(&ebml.doc item) -> u8 {
-    auto kind = ebml.get_doc(item, metadata.tag_items_data_item_kind);
-    ret ebml.doc_as_uint(kind) as u8;
+fn item_kind(&EBML.doc item) -> u8 {
+    auto kind = EBML.get_doc(item, metadata.tag_items_data_item_kind);
+    ret EBML.doc_as_uint(kind) as u8;
 }
 
-fn item_symbol(&ebml.doc item) -> str {
-    auto sym = ebml.get_doc(item, metadata.tag_items_data_item_symbol);
-    ret _str.unsafe_from_bytes(ebml.doc_data(sym));
+fn item_symbol(&EBML.doc item) -> str {
+    auto sym = EBML.get_doc(item, metadata.tag_items_data_item_symbol);
+    ret Str.unsafe_from_bytes(EBML.doc_data(sym));
 }
 
-fn variant_tag_id(&ebml.doc d) -> ast.def_id {
-    auto tagdoc = ebml.get_doc(d, metadata.tag_items_data_item_tag_id);
-    ret parse_def_id(ebml.doc_data(tagdoc));
+fn variant_tag_id(&EBML.doc d) -> ast.def_id {
+    auto tagdoc = EBML.get_doc(d, metadata.tag_items_data_item_tag_id);
+    ret parse_def_id(EBML.doc_data(tagdoc));
 }
 
-fn item_type(&ebml.doc item, int this_cnum, ty.ctxt tcx) -> ty.t {
+fn item_type(&EBML.doc item, int this_cnum, ty.ctxt tcx) -> ty.t {
     fn parse_external_def_id(int this_cnum, str s) -> ast.def_id {
         // FIXME: This is completely wrong when linking against a crate
         // that, in turn, links against another crate. We need a mapping
         // from crate ID to crate "meta" attributes as part of the crate
         // metadata.
-        auto buf = _str.bytes(s);
+        auto buf = Str.bytes(s);
         auto external_def_id = parse_def_id(buf);
         ret tup(this_cnum, external_def_id._1);
     }
 
-    auto tp = ebml.get_doc(item, metadata.tag_items_data_item_type);
-    auto s = _str.unsafe_from_bytes(ebml.doc_data(tp));
+    auto tp = EBML.get_doc(item, metadata.tag_items_data_item_type);
+    auto s = Str.unsafe_from_bytes(EBML.doc_data(tp));
     ret parse_ty_data(item.data, this_cnum, tp.start, tp.end - tp.start,
                       bind parse_external_def_id(this_cnum, _), tcx);
 }
 
-fn item_ty_param_count(&ebml.doc item, int this_cnum) -> uint {
+fn item_ty_param_count(&EBML.doc item, int this_cnum) -> uint {
     let uint ty_param_count = 0u;
     auto tp = metadata.tag_items_data_item_ty_param_count;
-    for each (ebml.doc p in ebml.tagged_docs(item, tp)) {
-        ty_param_count = ebml.vint_at(ebml.doc_data(p), 0u)._0;
+    for each (EBML.doc p in EBML.tagged_docs(item, tp)) {
+        ty_param_count = EBML.vint_at(EBML.doc_data(p), 0u)._0;
     }
     ret ty_param_count;
 }
 
-fn tag_variant_ids(&ebml.doc item, int this_cnum) -> vec[ast.def_id] {
+fn tag_variant_ids(&EBML.doc item, int this_cnum) -> vec[ast.def_id] {
     let vec[ast.def_id] ids = vec();
     auto v = metadata.tag_items_data_item_variant;
-    for each (ebml.doc p in ebml.tagged_docs(item, v)) {
-        auto ext = parse_def_id(ebml.doc_data(p));
-        _vec.push[ast.def_id](ids, tup(this_cnum, ext._1));
+    for each (EBML.doc p in EBML.tagged_docs(item, v)) {
+        auto ext = parse_def_id(EBML.doc_data(p));
+        Vec.push[ast.def_id](ids, tup(this_cnum, ext._1));
     }
     ret ids;
 }
 
-fn get_metadata_section(str filename) -> option.t[vec[u8]] {
+fn get_metadata_section(str filename) -> Option.t[vec[u8]] {
     auto mb = llvm.LLVMRustCreateMemoryBufferWithContentsOfFile
-        (_str.buf(filename));
-    if (mb as int == 0) {ret option.none[vec[u8]];}
+        (Str.buf(filename));
+    if (mb as int == 0) {ret Option.none[vec[u8]];}
     auto of = mk_object_file(mb);
     auto si = mk_section_iter(of.llof);
     while (llvm.LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False) {
         auto name_buf = llvm.LLVMGetSectionName(si.llsi);
-        auto name = _str.str_from_cstr(name_buf);
-        if (_str.eq(name, x86.get_meta_sect_name())) {
+        auto name = Str.str_from_cstr(name_buf);
+        if (Str.eq(name, x86.get_meta_sect_name())) {
             auto cbuf = llvm.LLVMGetSectionContents(si.llsi);
             auto csz = llvm.LLVMGetSectionSize(si.llsi);
-            auto cvbuf = cbuf as _vec.vbuf;
-            ret option.some[vec[u8]](_vec.vec_from_vbuf[u8](cvbuf, csz));
+            auto cvbuf = cbuf as Vec.vbuf;
+            ret Option.some[vec[u8]](Vec.vec_from_vbuf[u8](cvbuf, csz));
         }
         llvm.LLVMMoveToNextSection(si.llsi);
     }
-    ret option.none[vec[u8]];
+    ret Option.none[vec[u8]];
 }
 
 
@@ -426,9 +426,9 @@ fn load_crate(session.session sess,
               vec[str] library_search_paths) {
     auto filename = parser.default_native_name(sess, ident);
     for (str library_search_path in library_search_paths) {
-        auto path = fs.connect(library_search_path, filename);
+        auto path = FS.connect(library_search_path, filename);
         alt (get_metadata_section(path)) {
-            case (option.some[vec[u8]](?cvec)) {
+            case (Option.some[vec[u8]](?cvec)) {
                 sess.set_external_crate(cnum, rec(name=ident, data=cvec));
                 ret;
             }
@@ -442,7 +442,7 @@ fn load_crate(session.session sess,
 }
 
 fn fold_view_item_use(&env e, &span sp, ast.ident ident,
-        vec[@ast.meta_item] meta_items, ast.def_id id, option.t[int] cnum_opt)
+        vec[@ast.meta_item] meta_items, ast.def_id id, Option.t[int] cnum_opt)
         -> @ast.view_item {
     auto cnum;
     if (!e.crate_cache.contains_key(ident)) {
@@ -497,7 +497,7 @@ fn kind_has_type_params(u8 kind_ch) -> bool {
 // Crate metadata queries
 
 fn lookup_def(session.session sess, int cnum, vec[ast.ident] path)
-        -> option.t[ast.def] {
+        -> Option.t[ast.def] {
     auto data = sess.get_external_crate(cnum).data;
 
     auto did;
@@ -568,7 +568,7 @@ fn get_tag_variants(session.session sess, ty.ctxt tcx, ast.def_id def)
         -> vec[trans.variant_info] {
     auto external_crate_id = def._0;
     auto data = sess.get_external_crate(external_crate_id).data;
-    auto items = ebml.get_doc(ebml.new_doc(data), metadata.tag_items);
+    auto items = EBML.get_doc(EBML.new_doc(data), metadata.tag_items);
     auto item = find_item(def._1, items);
 
     let vec[trans.variant_info] infos = vec();
@@ -593,52 +593,52 @@ fn get_tag_variants(session.session sess, ty.ctxt tcx, ast.def_id def)
     ret infos;
 }
 
-fn list_file_metadata(str path, io.writer out) {
+fn list_file_metadata(str path, IO.writer out) {
     alt (get_metadata_section(path)) {
-        case (option.some[vec[u8]](?bytes)) {
+        case (Option.some[vec[u8]](?bytes)) {
             list_crate_metadata(bytes, out);
         }
-        case (option.none[vec[u8]]) {
+        case (Option.none[vec[u8]]) {
             out.write_str("Could not find metadata in " + path + ".\n");
         }
     }
 }
 
-fn read_path(&ebml.doc d) -> tup(str, uint) {
-    auto desc = ebml.doc_data(d);
-    auto pos = ebml.be_uint_from_bytes(desc, 0u, 4u);
-    auto pathbytes = _vec.slice[u8](desc, 4u, _vec.len[u8](desc));
-    auto path = _str.unsafe_from_bytes(pathbytes);
+fn read_path(&EBML.doc d) -> tup(str, uint) {
+    auto desc = EBML.doc_data(d);
+    auto pos = EBML.be_uint_from_bytes(desc, 0u, 4u);
+    auto pathbytes = Vec.slice[u8](desc, 4u, Vec.len[u8](desc));
+    auto path = Str.unsafe_from_bytes(pathbytes);
     ret tup(path, pos);
 }
 
-fn list_crate_metadata(vec[u8] bytes, io.writer out) {
-    auto md = ebml.new_doc(bytes);
-    auto paths = ebml.get_doc(md, metadata.tag_paths);
-    auto items = ebml.get_doc(md, metadata.tag_items);
-    auto index = ebml.get_doc(paths, metadata.tag_index);
-    auto bs = ebml.get_doc(index, metadata.tag_index_buckets);
-    for each (ebml.doc bucket in
-              ebml.tagged_docs(bs, metadata.tag_index_buckets_bucket)) {
+fn list_crate_metadata(vec[u8] bytes, IO.writer out) {
+    auto md = EBML.new_doc(bytes);
+    auto paths = EBML.get_doc(md, metadata.tag_paths);
+    auto items = EBML.get_doc(md, metadata.tag_items);
+    auto index = EBML.get_doc(paths, metadata.tag_index);
+    auto bs = EBML.get_doc(index, metadata.tag_index_buckets);
+    for each (EBML.doc bucket in
+              EBML.tagged_docs(bs, metadata.tag_index_buckets_bucket)) {
         auto et = metadata.tag_index_buckets_bucket_elt;
-        for each (ebml.doc elt in ebml.tagged_docs(bucket, et)) {
+        for each (EBML.doc elt in EBML.tagged_docs(bucket, et)) {
             auto data = read_path(elt);
-            auto def = ebml.doc_at(bytes, data._1);
-            auto did_doc = ebml.get_doc(def, metadata.tag_def_id);
-            auto did = parse_def_id(ebml.doc_data(did_doc));
+            auto def = EBML.doc_at(bytes, data._1);
+            auto did_doc = EBML.get_doc(def, metadata.tag_def_id);
+            auto did = parse_def_id(EBML.doc_data(did_doc));
             out.write_str(#fmt("%s (%s)\n", data._0,
                                describe_def(items, did)));
         }
     }
 }
 
-fn describe_def(&ebml.doc items, ast.def_id id) -> str {
+fn describe_def(&EBML.doc items, ast.def_id id) -> str {
     if (id._0 != 0) {ret "external";}
     alt (maybe_find_item(id._1 as int, items)) {
-        case (option.some[ebml.doc](?item)) {
+        case (Option.some[EBML.doc](?item)) {
             ret item_kind_to_str(item_kind(item));
         }
-        case (option.none[ebml.doc]) {
+        case (Option.none[EBML.doc]) {
             ret "??"; // Native modules don't seem to get item entries.
         }
     }

@@ -7,15 +7,15 @@ import driver.session;
 import util.common.new_def_hash;
 import util.common.span;
 import util.typestate_ann.ts_ann;
-import std.map.hashmap;
-import std.list.list;
-import std.list.nil;
-import std.list.cons;
-import std.option;
-import std.option.some;
-import std.option.none;
-import std._str;
-import std._vec;
+import std.Map.hashmap;
+import std.List.list;
+import std.List.nil;
+import std.List.cons;
+import std.Option;
+import std.Option.some;
+import std.Option.none;
+import std.Str;
+import std.Vec;
 
 tag scope {
     scope_crate(@ast.crate);
@@ -43,7 +43,7 @@ tag direction {
     down;
 }
 
-type import_map = std.map.hashmap[ast.def_id,def_wrap];
+type import_map = std.Map.hashmap[ast.def_id,def_wrap];
 
 // A simple wrapper over defs that stores a bit more information about modules
 // and uses so that we can use the regular lookup_name when resolving imports.
@@ -112,7 +112,7 @@ fn unwrap_def(def_wrap d) -> def {
 }
 
 fn lookup_external_def(session.session sess, int cnum, vec[ident] idents)
-        -> option.t[def_wrap] {
+        -> Option.t[def_wrap] {
     alt (creader.lookup_def(sess, cnum, idents)) {
         case (none[ast.def]) {
             ret none[def_wrap];
@@ -141,7 +141,7 @@ fn lookup_external_def(session.session sess, int cnum, vec[ident] idents)
 
 fn find_final_def(&env e, import_map index,
                   &span sp, vec[ident] idents, namespace ns,
-                  option.t[ast.def_id] import_id) -> def_wrap {
+                  Option.t[ast.def_id] import_id) -> def_wrap {
 
     // We are given a series of identifiers (p.q.r) and we know that
     // in the environment 'e' the identifier 'p' was resolved to 'd'. We
@@ -153,8 +153,8 @@ fn find_final_def(&env e, import_map index,
         fn found_mod(&env e, &import_map index, &span sp,
                      vec[ident] idents, namespace ns,
                      @ast.item i) -> def_wrap {
-            auto len = _vec.len[ident](idents);
-            auto rest_idents = _vec.slice[ident](idents, 1u, len);
+            auto len = Vec.len[ident](idents);
+            auto rest_idents = Vec.slice[ident](idents, 1u, len);
             auto empty_e = rec(scopes = nil[scope],
                                sess = e.sess);
             auto tmp_e = update_env_for_item(empty_e, i);
@@ -178,8 +178,8 @@ fn find_final_def(&env e, import_map index,
                               vec[ident] idents, namespace ns,
                               ast.def_id mod_id)
                 -> def_wrap {
-            auto len = _vec.len[ident](idents);
-            auto rest_idents = _vec.slice[ident](idents, 1u, len);
+            auto len = Vec.len[ident](idents);
+            auto rest_idents = Vec.slice[ident](idents, 1u, len);
             auto empty_e = rec(scopes = nil[scope],
                                sess = e.sess);
             auto tmp_e = update_env_for_external_mod(empty_e, mod_id, idents);
@@ -202,12 +202,12 @@ fn find_final_def(&env e, import_map index,
 
         fn found_crate(&env e, &import_map index, &span sp,
                        vec[ident] idents, int cnum) -> def_wrap {
-            auto len = _vec.len[ident](idents);
-            auto rest_idents = _vec.slice[ident](idents, 1u, len);
+            auto len = Vec.len[ident](idents);
+            auto rest_idents = Vec.slice[ident](idents, 1u, len);
             alt (lookup_external_def(e.sess, cnum, rest_idents)) {
                 case (none[def_wrap]) {
                     e.sess.span_err(sp, #fmt("unbound name '%s'",
-                                             _str.connect(idents, ".")));
+                                             Str.connect(idents, ".")));
                     fail;
                 }
                 case (some[def_wrap](?dw)) { ret dw; }
@@ -227,7 +227,7 @@ fn find_final_def(&env e, import_map index,
             case (_) {
             }
         }
-        auto len = _vec.len[ident](idents);
+        auto len = Vec.len[ident](idents);
         if (len == 1u) {
             ret d;
         }
@@ -247,13 +247,13 @@ fn find_final_def(&env e, import_map index,
             case (def_wrap_use(?vi)) {
                 alt (vi.node) {
                     case (ast.view_item_use(_, _, _, ?cnum_opt)) {
-                        auto cnum = option.get[int](cnum_opt);
+                        auto cnum = Option.get[int](cnum_opt);
                         ret found_crate(e, index, sp, idents, cnum);
                     }
                 }
             }
             case (def_wrap_other(?d)) {
-                let uint l = _vec.len[ident](idents);
+                let uint l = Vec.len[ident](idents);
                 ret def_wrap_expr_field(l, d);
             }
         }
@@ -261,7 +261,7 @@ fn find_final_def(&env e, import_map index,
     }
 
     if (import_id != none[ast.def_id]) {
-        alt (index.find(option.get[ast.def_id](import_id))) {
+        alt (index.find(Option.get[ast.def_id](import_id))) {
             case (some[def_wrap](?x)) {
                 alt (x) {
                     case (def_wrap_resolving) {
@@ -276,7 +276,7 @@ fn find_final_def(&env e, import_map index,
             case (none[def_wrap]) {
             }
         }
-        index.insert(option.get[ast.def_id](import_id), def_wrap_resolving);
+        index.insert(Option.get[ast.def_id](import_id), def_wrap_resolving);
     }
     auto first = idents.(0);
     auto d_ = lookup_name_wrapped(e, first, ns, up);
@@ -288,7 +288,7 @@ fn find_final_def(&env e, import_map index,
         case (some[tup(@env, def_wrap)](?d)) {
             auto x = found_something(*d._0, index, sp, idents, ns, d._1);
             if (import_id != none[ast.def_id]) {
-                index.insert(option.get[ast.def_id](import_id), x);
+                index.insert(Option.get[ast.def_id](import_id), x);
             }
             ret x;
         }
@@ -296,7 +296,7 @@ fn find_final_def(&env e, import_map index,
 }
 
 fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
-    -> option.t[tup(@env, def_wrap)] {
+    -> Option.t[tup(@env, def_wrap)] {
 
     // log "resolving name " + i;
 
@@ -357,7 +357,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
     }
 
     fn check_mod(ast.ident i, ast._mod m, namespace ns,
-                 direction dir) -> option.t[def_wrap] {
+                 direction dir) -> Option.t[def_wrap] {
 
         fn visible(ast.ident i, ast._mod m, direction dir) -> bool {
 
@@ -411,7 +411,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
         }
     }
 
-    fn check_native_mod(ast.ident i, ast.native_mod m) -> option.t[def_wrap] {
+    fn check_native_mod(ast.ident i, ast.native_mod m) -> Option.t[def_wrap] {
 
         alt (m.index.find(i)) {
             case (some[ast.native_mod_index_entry](?ent)) {
@@ -431,9 +431,9 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
     }
 
     fn handle_fn_decl(ast.ident identifier, &ast.fn_decl decl,
-                      &vec[ast.ty_param] ty_params) -> option.t[def_wrap] {
+                      &vec[ast.ty_param] ty_params) -> Option.t[def_wrap] {
         for (ast.arg a in decl.inputs) {
-            if (_str.eq(a.ident, identifier)) {
+            if (Str.eq(a.ident, identifier)) {
                 auto t = ast.def_arg(a.id);
                 ret some(def_wrap_other(t));
             }
@@ -441,7 +441,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
 
         auto i = 0u;
         for (ast.ty_param tp in ty_params) {
-            if (_str.eq(tp, identifier)) {
+            if (Str.eq(tp, identifier)) {
                 auto t = ast.def_ty_arg(i);
                 ret some(def_wrap_other(t));
             }
@@ -465,7 +465,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
     }
 
     fn check_block(ast.ident i, &ast.block_ b, namespace ns)
-            -> option.t[def_wrap] {
+            -> Option.t[def_wrap] {
         alt (b.index.find(i)) {
             case (some[ast.block_index_entry](?ix)) {
                 alt(ix) {
@@ -486,7 +486,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
     }
 
     fn in_scope(&session.session sess, ast.ident identifier, &scope s,
-                namespace ns, direction dir) -> option.t[def_wrap] {
+                namespace ns, direction dir) -> Option.t[def_wrap] {
         alt (s) {
 
             case (scope_crate(?c)) {
@@ -500,7 +500,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
                     }
                     case (ast.item_obj(_, ?ob, ?ty_params, _, _)) {
                         for (ast.obj_field f in ob.fields) {
-                            if (_str.eq(f.ident, identifier)) {
+                            if (Str.eq(f.ident, identifier)) {
                                 auto t = ast.def_obj_field(f.id);
                                 ret some(def_wrap_other(t));
                             }
@@ -508,7 +508,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
 
                         auto i = 0u;
                         for (ast.ty_param tp in ty_params) {
-                            if (_str.eq(tp, identifier)) {
+                            if (Str.eq(tp, identifier)) {
                                 auto t = ast.def_ty_arg(i);
                                 ret some(def_wrap_other(t));
                             }
@@ -518,7 +518,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
                     case (ast.item_tag(_,?variants,?ty_params,?tag_id,_)) {
                         auto i = 0u;
                         for (ast.ty_param tp in ty_params) {
-                            if (_str.eq(tp, identifier)) {
+                            if (Str.eq(tp, identifier)) {
                                 auto t = ast.def_ty_arg(i);
                                 ret some(def_wrap_other(t));
                             }
@@ -534,7 +534,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
                     case (ast.item_ty(_, _, ?ty_params, _, _)) {
                         auto i = 0u;
                         for (ast.ty_param tp in ty_params) {
-                            if (_str.eq(tp, identifier)) {
+                            if (Str.eq(tp, identifier)) {
                                 auto t = ast.def_ty_arg(i);
                                 ret some(def_wrap_other(t));
                             }
@@ -560,7 +560,7 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
             case (scope_loop(?d)) {
                 alt (d.node) {
                     case (ast.decl_local(?local)) {
-                        if (_str.eq(local.ident, identifier)) {
+                        if (Str.eq(local.ident, identifier)) {
                             auto lc = ast.def_local(local.id);
                             ret some(def_wrap_other(lc));
                         }
@@ -605,9 +605,9 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
 }
 
 fn fold_pat_tag(&env e, &span sp, ast.path p, vec[@ast.pat] args,
-                option.t[ast.variant_def] old_def,
+                Option.t[ast.variant_def] old_def,
                 ann a) -> @ast.pat {
-    auto len = _vec.len[ast.ident](p.node.idents);
+    auto len = Vec.len[ast.ident](p.node.idents);
     auto last_id = p.node.idents.(len - 1u);
     auto new_def;
     auto index = new_def_hash[def_wrap]();
@@ -646,9 +646,9 @@ fn fold_pat_tag(&env e, &span sp, ast.path p, vec[@ast.pat] args,
 // and split that off as the 'primary' expr_path, with secondary expr_field
 // expressions tacked on the end.
 
-fn fold_expr_path(&env e, &span sp, &ast.path p, &option.t[def] d,
+fn fold_expr_path(&env e, &span sp, &ast.path p, &Option.t[def] d,
                   ann a) -> @ast.expr {
-    auto n_idents = _vec.len[ast.ident](p.node.idents);
+    auto n_idents = Vec.len[ast.ident](p.node.idents);
     assert (n_idents != 0u);
 
     auto index = new_def_hash[def_wrap]();
@@ -669,7 +669,7 @@ fn fold_expr_path(&env e, &span sp, &ast.path p, &option.t[def] d,
         }
     }
     auto path_elems =
-        _vec.slice[ident](p.node.idents, 0u, path_len);
+        Vec.slice[ident](p.node.idents, 0u, path_len);
     auto p_ = rec(node=rec(idents = path_elems with p.node) with p);
     auto d_ = some(unwrap_def(d));
     auto ex = @fold.respan[ast.expr_](sp, ast.expr_path(p_, d_, a));
@@ -685,9 +685,9 @@ fn fold_expr_path(&env e, &span sp, &ast.path p, &option.t[def] d,
 fn fold_view_item_import(&env e, &span sp,
                          import_map index, ident i,
                          vec[ident] is, ast.def_id id,
-                         option.t[def] target_id) -> @ast.view_item {
+                         Option.t[def] target_id) -> @ast.view_item {
     // Produce errors for invalid imports
-    auto len = _vec.len[ast.ident](is);
+    auto len = Vec.len[ast.ident](is);
     auto last_id = is.(len - 1u);
     auto d = find_final_def(e, index, sp, is, ns_value, some(id));
     alt (d) {
@@ -698,12 +698,12 @@ fn fold_view_item_import(&env e, &span sp,
         case (_) {
         }
     }
-    let option.t[def] target_def = some(unwrap_def(d));
+    let Option.t[def] target_def = some(unwrap_def(d));
     ret @fold.respan[ast.view_item_](sp, ast.view_item_import(i, is, id,
                                                               target_def));
 }
 
-fn fold_ty_path(&env e, &span sp, ast.path p, &option.t[def] d) -> @ast.ty {
+fn fold_ty_path(&env e, &span sp, ast.path p, &Option.t[def] d) -> @ast.ty {
     auto index = new_def_hash[def_wrap]();
     auto d = find_final_def(e, index, sp, p.node.idents, ns_type,
                             none[ast.def_id]);

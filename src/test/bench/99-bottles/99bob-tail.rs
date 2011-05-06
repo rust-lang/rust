@@ -3,13 +3,13 @@
  * http://99-bottles-of-beer.net/
  */
 use std;
-import std._int;
-import std._str;
+import std.Int;
+import std.Str;
 
 fn main() {
   fn multiple(int n) {
-    let str nb =  _int.to_str(n, 10u);
-    let str mb =  _int.to_str(n - 1, 10u);
+    let str nb =  Int.to_str(n, 10u);
+    let str mb =  Int.to_str(n - 1, 10u);
     log nb + " bottles of beer on the wall, " + nb + " bottles of beer,";
     log "Take one down and pass it around, " 
       + mb + " bottles of beer on the wall.";

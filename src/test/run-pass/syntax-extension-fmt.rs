@@ -3,12 +3,12 @@
 // xfail-stage1
 // xfail-stage2
 use std;
-import std._str;
+import std.Str;
 
 fn test(str actual, str expected) {
   log actual;
   log expected;
-  assert (_str.eq(actual, expected));
+  assert (Str.eq(actual, expected));
 }
 
 fn main() {

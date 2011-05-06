@@ -1,4 +1,4 @@
 fn getenv(str n) -> str {
-    ret _str.str_from_cstr(os.libc.getenv(_str.buf(n)));
+    ret Str.str_from_cstr(OS.libc.getenv(Str.buf(n)));
 }
 

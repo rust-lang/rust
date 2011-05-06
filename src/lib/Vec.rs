@@ -1,6 +1,6 @@
-import option.none;
-import option.some;
-import util.orb;
+import Option.none;
+import Option.some;
+import Util.orb;
 
 type vbuf = rustrt.vbuf;
 
@@ -47,7 +47,7 @@ fn alloc_mut[T](uint n_elts) -> vec[mutable T] {
 
 fn refcount[T](array[T] v) -> uint {
     auto r = rustrt.refcount[T](v);
-    if (r == dbg.const_refcount) {
+    if (r == Dbg.const_refcount) {
         ret r;
     } else {
         // -1 because calling this function incremented the refcount.
@@ -140,7 +140,7 @@ fn print_debug_info[T](array[T] v) {
 }
 
 // Returns the last element of v.
-fn last[T](array[T] v) -> option.t[T] {
+fn last[T](array[T] v) -> Option.t[T] {
     auto l = len[T](v);
     if (l == 0u) {
         ret none[T];
@@ -199,14 +199,14 @@ fn grow[T](&array[T] v, uint n, &T initval) {
 }
 
 fn grow_set[T](&vec[mutable T] v, uint index, &T initval, &T val) {
-    auto length = _vec.len(v);
+    auto length = Vec.len(v);
     if (index >= length) {
         grow(v, index - length + 1u, initval);
     }
     v.(index) = val;
 }
 
-fn map[T, U](&option.operator[T,U] f, &array[T] v) -> vec[U] {
+fn map[T, U](&Option.operator[T,U] f, &array[T] v) -> vec[U] {
     let vec[U] u = alloc[U](len[T](v));
     for (T ve in v) {
         u += vec(f(ve));
@@ -230,7 +230,7 @@ fn map2[T,U,V](&operator2[T,U,V] f, &array[T] v0, &array[U] v1) -> vec[V] {
     ret u;
 }
 
-fn find[T](fn (&T) -> bool f, &array[T] v) -> option.t[T] {
+fn find[T](fn (&T) -> bool f, &array[T] v) -> Option.t[T] {
     for (T elt in v) {
         if (f(elt)) {
             ret some[T](elt);
@@ -270,24 +270,24 @@ fn unzip[T, U](&vec[tup(T, U)] v) -> tup(vec[T], vec[U]) {
 
 fn or(&vec[bool] v) -> bool {
     auto f = orb;
-    ret _vec.foldl[bool, bool](f, false, v);
+    ret Vec.foldl[bool, bool](f, false, v);
 }
 
 fn clone[T](&vec[T] v) -> vec[T] {
     ret slice[T](v, 0u, len[T](v));
 }
 
-fn plus_option[T](&vec[T] v, &option.t[T] o) -> () {
+fn plus_option[T](&vec[T] v, &Option.t[T] o) -> () {
     alt (o) {
         case (none[T]) {}
         case (some[T](?x)) { v += vec(x); }
     }
 }
 
-fn cat_options[T](&vec[option.t[T]] v) -> vec[T] {
+fn cat_options[T](&vec[Option.t[T]] v) -> vec[T] {
     let vec[T] res = vec();
 
-    for (option.t[T] o in v) {
+    for (Option.t[T] o in v) {
         alt (o) {
             case (none[T]) { }
             case (some[T](?t)) {

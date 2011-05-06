@@ -15,14 +15,14 @@ import back.Link;
 import lib.llvm;
 import util.common;
 
-import std.fs;
-import std.map.mk_hashmap;
-import std.option;
-import std.option.some;
-import std.option.none;
-import std._str;
-import std._vec;
-import std.io;
+import std.FS;
+import std.Map.mk_hashmap;
+import std.Option;
+import std.Option.some;
+import std.Option.none;
+import std.Str;
+import std.Vec;
+import std.IO;
 import std.Time;
 
 import std.GetOpts;
@@ -47,7 +47,7 @@ fn default_environment(session.session sess,
     ret
         vec(
             // Target bindings.
-            tup("target_os", eval.val_str(std.os.target_os())),
+            tup("target_os", eval.val_str(std.OS.target_os())),
             tup("target_arch", eval.val_str("x86")),
             tup("target_libc", eval.val_str(libc)),
 
@@ -60,9 +60,9 @@ fn default_environment(session.session sess,
 fn parse_input(session.session sess,
                       parser.parser p,
                       str input) -> @ast.crate {
-    if (_str.ends_with(input, ".rc")) {
+    if (Str.ends_with(input, ".rc")) {
         ret parser.parse_crate_from_crate_file(p);
-    } else if (_str.ends_with(input, ".rs")) {
+    } else if (Str.ends_with(input, ".rs")) {
         ret parser.parse_crate_from_source_file(p);
     }
     sess.err("unknown input file type: " + input);
@@ -123,20 +123,20 @@ fn pretty_print_input(session.session sess,
     auto def = tup(0, 0);
     auto p = front.parser.new_parser(sess, env, def, input, 0u);
     auto crate = front.parser.parse_crate_from_source_file(p);
-    pretty.pprust.print_file(crate.node.module, input, std.io.stdout());
+    pretty.pprust.print_file(crate.node.module, input, std.IO.stdout());
 }
 
 fn version(str argv0) {
     auto vers = "unknown version";
     auto env_vers = #env("CFG_VERSION");
-    if (_str.byte_len(env_vers) != 0u) {
+    if (Str.byte_len(env_vers) != 0u) {
         vers = env_vers;
     }
-    io.stdout().write_str(#fmt("%s %s\n", argv0, vers));
+    IO.stdout().write_str(#fmt("%s %s\n", argv0, vers));
 }
 
 fn usage(str argv0) {
-    io.stdout().write_str(#fmt("usage: %s [options] <input>\n", argv0) + "
+    IO.stdout().write_str(#fmt("usage: %s [options] <input>\n", argv0) + "
 options:
 
     -h --help          display this message
@@ -162,38 +162,38 @@ options:
 }
 
 fn get_os(str triple) -> session.os {
-    if (_str.find(triple, "win32") > 0 ||
-        _str.find(triple, "mingw32") > 0 ) {
+    if (Str.find(triple, "win32") > 0 ||
+        Str.find(triple, "mingw32") > 0 ) {
         ret session.os_win32;
-    } else if (_str.find(triple, "darwin") > 0) { ret session.os_macos; }
-    else if (_str.find(triple, "linux") > 0) { ret session.os_linux; }
+    } else if (Str.find(triple, "darwin") > 0) { ret session.os_macos; }
+    else if (Str.find(triple, "linux") > 0) { ret session.os_linux; }
 }
 
 fn get_arch(str triple) -> session.arch {
-    if (_str.find(triple, "i386") > 0 ||
-        _str.find(triple, "i486") > 0 ||
-        _str.find(triple, "i586") > 0 ||
-        _str.find(triple, "i686") > 0 ||
-        _str.find(triple, "i786") > 0 ) {
+    if (Str.find(triple, "i386") > 0 ||
+        Str.find(triple, "i486") > 0 ||
+        Str.find(triple, "i586") > 0 ||
+        Str.find(triple, "i686") > 0 ||
+        Str.find(triple, "i786") > 0 ) {
         ret session.arch_x86;
-    } else if (_str.find(triple, "x86_64") > 0) {
+    } else if (Str.find(triple, "x86_64") > 0) {
         ret session.arch_x64;
-    } else if (_str.find(triple, "arm") > 0 ||
-        _str.find(triple, "xscale") > 0 ) {
+    } else if (Str.find(triple, "arm") > 0 ||
+        Str.find(triple, "xscale") > 0 ) {
         ret session.arch_arm;
     }
 }
 
 fn get_default_sysroot(str binary) -> str {
-    auto dirname = fs.dirname(binary);
-    if (_str.eq(dirname, binary)) { ret "."; }
+    auto dirname = FS.dirname(binary);
+    if (Str.eq(dirname, binary)) { ret "."; }
     ret dirname;
 }
 
 fn main(vec[str] args) {
 
     let str triple =
-        std._str.rustrt.str_from_cstr(llvm.llvm.LLVMRustGetHostTriple());
+        std.Str.rustrt.str_from_cstr(llvm.llvm.LLVMRustGetHostTriple());
 
     let @session.config target_cfg =
         @rec(os = get_os(triple),
@@ -211,7 +211,7 @@ fn main(vec[str] args) {
                     optflag("save-temps"), optopt("sysroot"),
                     optflag("time-passes"), optflag("no-typestate"),
                     optflag("noverify"));
-    auto binary = _vec.shift[str](args);
+    auto binary = Vec.shift[str](args);
     auto match;
     alt (GetOpts.getopts(args, opts)) {
         case (GetOpts.failure(?f)) {
@@ -282,13 +282,13 @@ fn main(vec[str] args) {
         session.session(target_crate_num, target_cfg, sopts,
                         crate_cache, md, front.codemap.new_codemap());
 
-    auto n_inputs = _vec.len[str](match.free);
+    auto n_inputs = Vec.len[str](match.free);
 
     if (glue) {
         if (n_inputs > 0u) {
             sess.err("No input files allowed with --glue.");
         }
-        auto out = option.from_maybe[str]("glue.bc", output_file);
+        auto out = Option.from_maybe[str]("glue.bc", output_file);
         middle.trans.make_common_glue(sess, out);
         ret;
     }
@@ -304,19 +304,19 @@ fn main(vec[str] args) {
     if (pretty) {
         pretty_print_input(sess, env, ifile);
     } else if (ls) {
-        front.creader.list_file_metadata(ifile, std.io.stdout());
+        front.creader.list_file_metadata(ifile, std.IO.stdout());
     } else {
         alt (output_file) {
             case (none[str]) {
-                let vec[str] parts = _str.split(ifile, '.' as u8);
-                _vec.pop[str](parts);
+                let vec[str] parts = Str.split(ifile, '.' as u8);
+                Vec.pop[str](parts);
                 alt (output_type) {
                     case (Link.output_type_none) { parts += vec("pp"); }
                     case (Link.output_type_bitcode) { parts += vec("bc"); }
                     case (Link.output_type_assembly) { parts += vec("s"); }
                     case (Link.output_type_object) { parts += vec("o"); }
                 }
-                auto ofile = _str.connect(parts, ".");
+                auto ofile = Str.connect(parts, ".");
                 compile_input(sess, env, ifile, ofile);
             }
             case (some[str](?ofile)) {

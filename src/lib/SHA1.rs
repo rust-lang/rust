@@ -67,7 +67,7 @@ fn mk_sha1() -> sha1 {
     fn process_msg_block(&sha1state st) {
 
         // FIXME: Make precondition
-        assert (_vec.len(st.h) == digest_buf_len);
+        assert (Vec.len(st.h) == digest_buf_len);
 
         // Constants
         auto k = vec(0x5A827999u32,
@@ -76,7 +76,7 @@ fn mk_sha1() -> sha1 {
                      0xCA62C1D6u32);
 
         let int t; // Loop counter
-        let vec[mutable u32] w = _vec.init_elt_mut[u32](0u32, 80u);
+        let vec[mutable u32] w = Vec.init_elt_mut[u32](0u32, 80u);
 
         // Initialize the first 16 words of the vector w
         t = 0;
@@ -192,7 +192,7 @@ fn mk_sha1() -> sha1 {
      */
     fn pad_msg(&sha1state st) {
         // FIXME: Should be a precondition
-        assert (_vec.len(st.msg_block) == msg_block_len);
+        assert (Vec.len(st.msg_block) == msg_block_len);
 
         /*
          * Check to see if the current message block is too small to hold
@@ -236,7 +236,7 @@ fn mk_sha1() -> sha1 {
 
         fn reset() {
             // FIXME: Should be typestate precondition
-            assert (_vec.len(st.h) == digest_buf_len);
+            assert (Vec.len(st.h) == digest_buf_len);
 
             st.len_low = 0u32;
             st.len_high = 0u32;
@@ -256,7 +256,7 @@ fn mk_sha1() -> sha1 {
         }
 
         fn input_str(&str msg) {
-            add_input(st, _str.bytes(msg));
+            add_input(st, Str.bytes(msg));
         }
 
         fn result() -> vec[u8] {
@@ -267,16 +267,16 @@ fn mk_sha1() -> sha1 {
             auto r = mk_result(st);
             auto s = "";
             for (u8 b in r) {
-                s += _uint.to_str(b as uint, 16u);
+                s += UInt.to_str(b as uint, 16u);
             }
             ret s;
         }
     }
 
-    auto st = rec(h = _vec.init_elt_mut[u32](0u32, digest_buf_len),
+    auto st = rec(h = Vec.init_elt_mut[u32](0u32, digest_buf_len),
                   mutable len_low = 0u32,
                   mutable len_high = 0u32,
-                  msg_block = _vec.init_elt_mut[u8](0u8, msg_block_len),
+                  msg_block = Vec.init_elt_mut[u8](0u8, msg_block_len),
                   mutable msg_block_idx = 0u,
                   mutable computed = false);
     auto sh = sha1(st);

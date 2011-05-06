@@ -1,12 +1,12 @@
-import std.io;
-import std._str;
-import std._vec;
-import std._int;
-import std.map;
-import std.map.hashmap;
-import std.option;
-import std.option.some;
-import std.option.none;
+import std.IO;
+import std.Str;
+import std.Vec;
+import std.Int;
+import std.Map;
+import std.Map.hashmap;
+import std.Option;
+import std.Option.some;
+import std.Option.none;
 import util.common;
 import util.common.new_str_hash;
 
@@ -24,7 +24,7 @@ state type reader = state obj {
     fn get_filemap() -> codemap.filemap;
 };
 
-fn new_reader(io.reader rdr, str filename, codemap.filemap filemap)
+fn new_reader(IO.reader rdr, str filename, codemap.filemap filemap)
     -> reader {
     state obj reader(str file,
                      uint len,
@@ -49,13 +49,13 @@ fn new_reader(io.reader rdr, str filename, codemap.filemap filemap)
         }
 
         fn next() -> char {
-            if (pos < len) {ret _str.char_at(file, pos);}
+            if (pos < len) {ret Str.char_at(file, pos);}
             else {ret -1 as char;}
         }
 
         fn init() {
             if (pos < len) {
-                auto next = _str.char_range_at(file, pos);
+                auto next = Str.char_range_at(file, pos);
                 pos = next._1;
                 ch = next._0;
             }
@@ -67,7 +67,7 @@ fn new_reader(io.reader rdr, str filename, codemap.filemap filemap)
                 if (ch == '\n') {
                     codemap.next_line(fm, chpos);
                 }
-                auto next = _str.char_range_at(file, pos);
+                auto next = Str.char_range_at(file, pos);
                 pos = next._1;
                 ch = next._0;
             } else {
@@ -87,8 +87,8 @@ fn new_reader(io.reader rdr, str filename, codemap.filemap filemap)
             ret fm;
         }
     }
-    auto file = _str.unsafe_from_bytes(rdr.read_whole_stream());
-    auto rd = reader(file, _str.byte_len(file), 0u, -1 as char,
+    auto file = Str.unsafe_from_bytes(rdr.read_whole_stream());
+    auto rd = reader(file, Str.byte_len(file), 0u, -1 as char,
                      filemap.start_pos, filemap.start_pos,
                      keyword_table(),
                      reserved_word_table(),
@@ -97,7 +97,7 @@ fn new_reader(io.reader rdr, str filename, codemap.filemap filemap)
     ret rd;
 }
 
-fn keyword_table() -> std.map.hashmap[str, token.token] {
+fn keyword_table() -> std.Map.hashmap[str, token.token] {
     auto keywords = new_str_hash[token.token]();
 
     keywords.insert("mod", token.MOD);
@@ -205,7 +205,7 @@ fn keyword_table() -> std.map.hashmap[str, token.token] {
     ret keywords;
 }
 
-fn reserved_word_table() -> std.map.hashmap[str, ()] {
+fn reserved_word_table() -> std.Map.hashmap[str, ()] {
     auto reserved = new_str_hash[()]();
     reserved.insert("f16", ());  // IEEE 754-2008 'binary16' interchange fmt
     reserved.insert("f80", ());  // IEEE 754-1985 'extended'
@@ -341,20 +341,20 @@ fn digits_to_string(str s) -> int {
     ret accum_int;
 }
 
-fn scan_exponent(reader rdr) -> option.t[str] {
+fn scan_exponent(reader rdr) -> Option.t[str] {
     auto c = rdr.curr();
     auto res = "";
 
     if (c == 'e' || c == 'E') {
-        res += _str.from_bytes(vec(c as u8));
+        res += Str.from_bytes(vec(c as u8));
         rdr.bump();
         c = rdr.curr();
         if (c == '-' || c == '+') {
-            res += _str.from_bytes(vec(c as u8));
+            res += Str.from_bytes(vec(c as u8));
             rdr.bump();
         }
         auto exponent = scan_dec_digits(rdr);
-        if (_str.byte_len(exponent) > 0u) {
+        if (Str.byte_len(exponent) > 0u) {
             ret(some(res + exponent));
         }
         else {
@@ -374,7 +374,7 @@ fn scan_dec_digits(reader rdr) -> str {
 
     while (is_dec_digit (c) || c == '_') {
         if (c != '_') {
-            res += _str.from_bytes(vec(c as u8));
+            res += Str.from_bytes(vec(c as u8));
         }
         rdr.bump();
         c = rdr.curr();
@@ -574,12 +574,12 @@ fn next_token(reader rdr) -> token.token {
 
     if (is_alpha(c) || c == '_') {
         while (is_alnum(c) || c == '_') {
-            _str.push_char(accum_str, c);
+            Str.push_char(accum_str, c);
             rdr.bump();
             c = rdr.curr();
         }
 
-        if (_str.eq(accum_str, "_")) {
+        if (Str.eq(accum_str, "_")) {
             ret token.UNDERSCORE;
         }
 
@@ -738,37 +738,37 @@ fn next_token(reader rdr) -> token.token {
                         alt (rdr.next()) {
                             case ('n') {
                                 rdr.bump();
-                                _str.push_byte(accum_str, '\n' as u8);
+                                Str.push_byte(accum_str, '\n' as u8);
                             }
                             case ('r') {
                                 rdr.bump();
-                                _str.push_byte(accum_str, '\r' as u8);
+                                Str.push_byte(accum_str, '\r' as u8);
                             }
                             case ('t') {
                                 rdr.bump();
-                                _str.push_byte(accum_str, '\t' as u8);
+                                Str.push_byte(accum_str, '\t' as u8);
                             }
                             case ('\\') {
                                 rdr.bump();
-                                _str.push_byte(accum_str, '\\' as u8);
+                                Str.push_byte(accum_str, '\\' as u8);
                             }
                             case ('"') {
                                 rdr.bump();
-                                _str.push_byte(accum_str, '"' as u8);
+                                Str.push_byte(accum_str, '"' as u8);
                             }
 
                             case ('x') {
-                                _str.push_char(accum_str,
+                                Str.push_char(accum_str,
                                                scan_numeric_escape(rdr));
                             }
 
                             case ('u') {
-                                _str.push_char(accum_str,
+                                Str.push_char(accum_str,
                                                scan_numeric_escape(rdr));
                             }
 
                             case ('U') {
-                                _str.push_char(accum_str,
+                                Str.push_char(accum_str,
                                                scan_numeric_escape(rdr));
                             }
 
@@ -780,7 +780,7 @@ fn next_token(reader rdr) -> token.token {
                         }
                     }
                     case (_) {
-                        _str.push_char(accum_str, rdr.curr());
+                        Str.push_char(accum_str, rdr.curr());
                     }
                 }
                 rdr.bump();
@@ -870,7 +870,7 @@ fn read_line_comment(reader rdr) -> cmnt {
     while (rdr.curr() == ' ') {rdr.bump();}
     auto val = "";
     while (rdr.curr() != '\n' && !rdr.is_eof()) {
-        _str.push_char(val, rdr.curr());
+        Str.push_char(val, rdr.curr());
         rdr.bump();
     }
     ret rec(val=cmnt_line(val),
@@ -887,7 +887,7 @@ fn read_block_comment(reader rdr) -> cmnt {
     auto level = 1;
     while (true) {
         if (rdr.curr() == '\n') {
-            _vec.push[str](lines, val);
+            Vec.push[str](lines, val);
             val = "";
             consume_whitespace(rdr);
         } else {
@@ -895,13 +895,13 @@ fn read_block_comment(reader rdr) -> cmnt {
                 level -= 1;
                 if (level == 0) {
                     rdr.bump(); rdr.bump();
-                    _vec.push[str](lines, val);
+                    Vec.push[str](lines, val);
                     break;
                 }
             } else if (rdr.curr() == '/' && rdr.next() == '*') {
                 level += 1;
             }
-            _str.push_char(val, rdr.curr());
+            Str.push_char(val, rdr.curr());
             rdr.bump();
         }
         if (rdr.is_eof()) {fail;}
@@ -912,16 +912,16 @@ fn read_block_comment(reader rdr) -> cmnt {
 }
 
 fn gather_comments(str path) -> vec[cmnt] {
-    auto srdr = io.file_reader(path);
+    auto srdr = IO.file_reader(path);
     auto rdr = new_reader(srdr, path, codemap.new_filemap(path, 0u));
     let vec[cmnt] comments = vec();
     while (!rdr.is_eof()) {
         while (true) {
             consume_whitespace(rdr);
             if (rdr.curr() == '/' && rdr.next() == '/') {
-                _vec.push[cmnt](comments, read_line_comment(rdr));
+                Vec.push[cmnt](comments, read_line_comment(rdr));
             } else if (rdr.curr() == '/' && rdr.next() == '*') {
-                _vec.push[cmnt](comments, read_block_comment(rdr));
+                Vec.push[cmnt](comments, read_block_comment(rdr));
             } else { break; }
         }
         next_token(rdr);

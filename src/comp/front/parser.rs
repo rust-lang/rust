@@ -1,10 +1,10 @@
-import std.io;
-import std._vec;
-import std._str;
-import std.option;
-import std.option.some;
-import std.option.none;
-import std.map.hashmap;
+import std.IO;
+import std.Vec;
+import std.Str;
+import std.Option;
+import std.Option.some;
+import std.Option.none;
+import std.Map.hashmap;
 
 import driver.session;
 import util.common;
@@ -118,12 +118,12 @@ fn new_parser(session.session sess,
             fn get_chpos() -> uint {ret rdr.get_chpos();}
         }
     auto ftype = SOURCE_FILE;
-    if (_str.ends_with(path, ".rc")) {
+    if (Str.ends_with(path, ".rc")) {
         ftype = CRATE_FILE;
     }
-    auto srdr = io.file_reader(path);
+    auto srdr = IO.file_reader(path);
     auto filemap = codemap.new_filemap(path, pos);
-    _vec.push[codemap.filemap](sess.get_codemap().files, filemap);
+    Vec.push[codemap.filemap](sess.get_codemap().files, filemap);
     auto rdr = lexer.new_reader(srdr, path, filemap);
     // Make sure npos points at first actual token.
     lexer.consume_any_whitespace(rdr);
@@ -320,7 +320,7 @@ fn parse_constrs(parser p) -> common.spanned[vec[@ast.constr]] {
                 case (token.IDENT(_)) {
                     auto constr = parse_ty_constr(p);
                     hi = constr.span.hi;
-                    _vec.push[@ast.constr](constrs, constr);
+                    Vec.push[@ast.constr](constrs, constr);
                     if (p.peek() == token.COMMA) {
                         p.bump();
                         more = false;
@@ -496,7 +496,7 @@ fn parse_arg(parser p) -> ast.arg {
 }
 
 fn parse_seq_to_end[T](token.token ket,
-                              option.t[token.token] sep,
+                              Option.t[token.token] sep,
                               (fn(parser) -> T) f,
                               uint hi,
                               parser p) -> vec[T] {
@@ -525,7 +525,7 @@ fn parse_seq_to_end[T](token.token ket,
 
 fn parse_seq[T](token.token bra,
                        token.token ket,
-                       option.t[token.token] sep,
+                       Option.t[token.token] sep,
                        (fn(parser) -> T) f,
                        parser p) -> util.common.spanned[vec[T]] {
     auto lo = p.get_lo_pos();
@@ -764,7 +764,7 @@ fn parse_bottom_expr(parser p) -> @ast.expr {
         case (token.BIND) {
             p.bump();
             auto e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);
-            fn parse_expr_opt(parser p) -> option.t[@ast.expr] {
+            fn parse_expr_opt(parser p) -> Option.t[@ast.expr] {
                 alt (p.peek()) {
                     case (token.UNDERSCORE) {
                         p.bump();
@@ -777,7 +777,7 @@ fn parse_bottom_expr(parser p) -> @ast.expr {
             }
 
             auto pf = parse_expr_opt;
-            auto es = parse_seq[option.t[@ast.expr]](token.LPAREN,
+            auto es = parse_seq[Option.t[@ast.expr]](token.LPAREN,
                                                      token.RPAREN,
                                                      some(token.COMMA),
                                                      pf, p);
@@ -939,18 +939,18 @@ fn parse_bottom_expr(parser p) -> @ast.expr {
 
 fn expand_syntax_ext(parser p, ast.span sp,
                      &ast.path path, vec[@ast.expr] args,
-                     option.t[str] body) -> ast.expr_ {
+                     Option.t[str] body) -> ast.expr_ {
 
-    assert (_vec.len[ast.ident](path.node.idents) > 0u);
+    assert (Vec.len[ast.ident](path.node.idents) > 0u);
     auto extname = path.node.idents.(0);
-    if (_str.eq(extname, "fmt")) {
+    if (Str.eq(extname, "fmt")) {
         auto expanded = extfmt.expand_syntax_ext(args, body);
         auto newexpr = ast.expr_ext(path, args, body,
                                     expanded,
                                     ast.ann_none);
 
         ret newexpr;
-    } else if (_str.eq(extname, "env")) {
+    } else if (Str.eq(extname, "env")) {
         auto expanded = extenv.expand_syntax_ext(p, sp, args, body);
         auto newexpr = ast.expr_ext(path, args, body,
                                     expanded,
@@ -968,7 +968,7 @@ fn extend_expr_by_ident(parser p, uint lo, uint hi,
     auto e_ = e.node;
     alt (e.node) {
         case (ast.expr_path(?pth, ?def, ?ann)) {
-            if (_vec.len[@ast.ty](pth.node.types) == 0u) {
+            if (Vec.len[@ast.ty](pth.node.types) == 0u) {
                 auto idents_ = pth.node.idents;
                 idents_ += vec(i);
                 auto tys = parse_ty_args(p, hi);
@@ -1238,7 +1238,7 @@ fn parse_if_expr(parser p) -> @ast.expr {
     auto cond = parse_expr(p);
     expect(p, token.RPAREN);
     auto thn = parse_block(p);
-    let option.t[@ast.expr] els = none[@ast.expr];
+    let Option.t[@ast.expr] els = none[@ast.expr];
     auto hi = thn.span.hi;
     alt (p.peek()) {
         case (token.ELSE) {
@@ -1398,7 +1398,7 @@ fn parse_spawn_expr(parser p) -> @ast.expr {
                                    pf, p);
     auto hi = es.span.hi;
     auto spawn_expr = ast.expr_spawn(ast.dom_implicit,
-                                     option.none[str],
+                                     Option.none[str],
                                      fn_expr,
                                      es.node,
                                      ast.ann_none);
@@ -1449,7 +1449,7 @@ fn parse_expr_inner(parser p) -> @ast.expr {
     }
 }
 
-fn parse_initializer(parser p) -> option.t[ast.initializer] {
+fn parse_initializer(parser p) -> Option.t[ast.initializer] {
     alt (p.peek()) {
         case (token.EQ) {
             p.bump();
@@ -1521,7 +1521,7 @@ fn parse_pat(parser p) -> @ast.pat {
     ret @spanned(lo, hi, pat);
 }
 
-fn parse_local_full(&option.t[@ast.ty] tyopt,
+fn parse_local_full(&Option.t[@ast.ty] tyopt,
                            parser p) -> @ast.local {
     auto ident = parse_ident(p);
     auto init = parse_initializer(p);
@@ -1607,7 +1607,7 @@ fn parse_source_stmt(parser p) -> @ast.stmt {
     fail;
 }
 
-fn index_block(vec[@ast.stmt] stmts, option.t[@ast.expr] expr) -> ast.block_ {
+fn index_block(vec[@ast.stmt] stmts, Option.t[@ast.expr] expr) -> ast.block_ {
     auto index = new_str_hash[ast.block_index_entry]();
     for (@ast.stmt s in stmts) {
         ast.index_stmt(index, s);
@@ -1634,7 +1634,7 @@ fn index_arm(@ast.pat pat) -> hashmap[ast.ident,ast.def_id] {
     ret index;
 }
 
-fn stmt_to_expr(@ast.stmt stmt) -> option.t[@ast.expr] {
+fn stmt_to_expr(@ast.stmt stmt) -> Option.t[@ast.expr] {
     alt (stmt.node) {
         case (ast.stmt_expr(?e,_)) { ret some[@ast.expr](e); }
         case (_) { /* fall through */ }
@@ -1697,7 +1697,7 @@ fn parse_block(parser p) -> ast.block {
     auto lo = p.get_lo_pos();
 
     let vec[@ast.stmt] stmts = vec();
-    let option.t[@ast.expr] expr = none[@ast.expr];
+    let Option.t[@ast.expr] expr = none[@ast.expr];
 
     expect(p, token.LBRACE);
     while (p.peek() != token.RBRACE) {
@@ -1871,7 +1871,7 @@ fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
          pf, p);
 
     let vec[@ast.method] meths = vec();
-    let option.t[@ast.method] dtor = none[@ast.method];
+    let Option.t[@ast.method] dtor = none[@ast.method];
 
     expect(p, token.LBRACE);
     while (p.peek() != token.RBRACE) {
@@ -1880,7 +1880,7 @@ fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
                 dtor = some[@ast.method](parse_dtor(p));
             }
             case (_) {
-                _vec.push[@ast.method](meths,
+                Vec.push[@ast.method](meths,
                                        parse_method(p));
             }
         }
@@ -2020,12 +2020,12 @@ fn parse_item_native_mod(parser p) -> @ast.item {
     auto abi = ast.native_abi_cdecl;
     if (p.peek() != token.MOD) {
         auto t = parse_str_lit_or_env_ident(p);
-        if (_str.eq(t, "cdecl")) {
-        } else if (_str.eq(t, "rust")) {
+        if (Str.eq(t, "cdecl")) {
+        } else if (Str.eq(t, "rust")) {
             abi = ast.native_abi_rust;
-        } else if (_str.eq(t, "llvm")) {
+        } else if (Str.eq(t, "llvm")) {
             abi = ast.native_abi_llvm;
-        } else if (_str.eq(t, "rust-intrinsic")) {
+        } else if (Str.eq(t, "rust-intrinsic")) {
             abi = ast.native_abi_rust_intrinsic;
         } else {
             p.err("unsupported abi: " + t);
@@ -2264,7 +2264,7 @@ fn parse_use(parser p) -> @ast.view_item {
 }
 
 fn parse_rest_import_name(parser p, ast.ident first,
-                                 option.t[ast.ident] def_ident)
+                                 Option.t[ast.ident] def_ident)
         -> @ast.view_item {
     auto lo = p.get_lo_pos();
     let vec[ast.ident] identifiers = vec(first);
@@ -2281,7 +2281,7 @@ fn parse_rest_import_name(parser p, ast.ident first,
             defined_id = i;
         }
         case (_) {
-            auto len = _vec.len[ast.ident](identifiers);
+            auto len = Vec.len[ast.ident](identifiers);
             defined_id = identifiers.(len - 1u);
         }
     }
@@ -2506,7 +2506,7 @@ fn parse_crate_directives(parser p, token.token term)
 
     while (p.peek() != term) {
         auto cdir = @parse_crate_directive(p);
-        _vec.push[@ast.crate_directive](cdirs, cdir);
+        Vec.push[@ast.crate_directive](cdirs, cdir);
     }
 
     ret cdirs;
@@ -2514,7 +2514,7 @@ fn parse_crate_directives(parser p, token.token term)
 
 fn parse_crate_from_crate_file(parser p) -> @ast.crate {
     auto lo = p.get_lo_pos();
-    auto prefix = std.fs.dirname(p.get_filemap().name);
+    auto prefix = std.FS.dirname(p.get_filemap().name);
     auto cdirs = parse_crate_directives(p, token.EOF);
     let vec[str] deps = vec();
     auto cx = @rec(p=p,

@@ -2,10 +2,10 @@ import front.ast;
 import front.codemap;
 import util.common.span;
 import util.common.ty_mach;
-import std._uint;
+import std.UInt;
 import std.Term;
-import std.io;
-import std.map;
+import std.IO;
+import std.Map;
 
 tag os {
     os_win32;
@@ -42,25 +42,25 @@ type crate_metadata = rec(str name,
 fn emit_diagnostic(span sp, str msg, str kind, u8 color, codemap.codemap cm) {
     auto lo = codemap.lookup_pos(cm, sp.lo);
     auto hi = codemap.lookup_pos(cm, sp.hi);
-    io.stdout().write_str(#fmt("%s:%u:%u:%u:%u: ", lo.filename, lo.line,
+    IO.stdout().write_str(#fmt("%s:%u:%u:%u:%u: ", lo.filename, lo.line,
                                lo.col, hi.line, hi.col));
 
     if (Term.color_supported()) {
-        Term.fg(io.stdout().get_buf_writer(), color);
+        Term.fg(IO.stdout().get_buf_writer(), color);
     }
 
-    io.stdout().write_str(#fmt("%s:", kind));
+    IO.stdout().write_str(#fmt("%s:", kind));
 
     if (Term.color_supported()) {
-        Term.reset(io.stdout().get_buf_writer());
+        Term.reset(IO.stdout().get_buf_writer());
     }
 
-    io.stdout().write_str(#fmt(" %s\n", msg));
+    IO.stdout().write_str(#fmt(" %s\n", msg));
 }
 
 state obj session(ast.crate_num cnum,
                   @config targ_cfg, @options opts,
-                  map.hashmap[int, crate_metadata] crates,
+                  Map.hashmap[int, crate_metadata] crates,
                   mutable vec[@ast.meta_item] metadata,
                   codemap.codemap cm) {
 

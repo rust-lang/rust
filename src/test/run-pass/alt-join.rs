@@ -1,10 +1,10 @@
 use std;
-import std.option;
-import std.option.t;
-import std.option.none;
-import std.option.some;
+import std.Option;
+import std.Option.t;
+import std.Option.none;
+import std.Option.some;
 
-fn foo[T](&option.t[T] y) {
+fn foo[T](&Option.t[T] y) {
   let int x;
   
   let vec[int] res = vec();

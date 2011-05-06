@@ -155,37 +155,37 @@ import pretty.pprust.print_block;
 import pretty.pprust.print_expr;
 import pretty.pprust.print_decl;
 import pretty.pp.mkstate;
-import std.io.stdout;
-import std.io.str_writer;
-import std.io.string_writer;
-import std._vec.map;
-import std._vec;
-import std._vec.len;
-import std._vec.pop;
-import std._vec.push;
-import std._vec.slice;
-import std._vec.unzip;
-import std._vec.plus_option;
-import std._vec.cat_options;
-import std.option;
-import std.option.t;
-import std.option.some;
-import std.option.none;
-import std.option.from_maybe;
-import std.option.maybe;
-import std.option.is_none;
-import std.option.get;
-import std.map.hashmap;
-import std.list;
-import std.list.list;
-import std.list.cons;
-import std.list.nil;
-import std.list.foldl;
-import std.list.find;
-import std._uint;
-import std.bitv;
-import std.util.fst;
-import std.util.snd;
+import std.IO.stdout;
+import std.IO.str_writer;
+import std.IO.string_writer;
+import std.Vec.map;
+import std.Vec;
+import std.Vec.len;
+import std.Vec.pop;
+import std.Vec.push;
+import std.Vec.slice;
+import std.Vec.unzip;
+import std.Vec.plus_option;
+import std.Vec.cat_options;
+import std.Option;
+import std.Option.t;
+import std.Option.some;
+import std.Option.none;
+import std.Option.from_maybe;
+import std.Option.maybe;
+import std.Option.is_none;
+import std.Option.get;
+import std.Map.hashmap;
+import std.List;
+import std.List.list;
+import std.List.cons;
+import std.List.nil;
+import std.List.foldl;
+import std.List.find;
+import std.UInt;
+import std.BitV;
+import std.Util.fst;
+import std.Util.snd;
 
 import util.typestate_ann;
 import util.typestate_ann.difference;
@@ -195,22 +195,22 @@ import util.typestate_ann.require_and_preserve;
 
 /**** debugging junk  ****/
 
-fn bitv_to_str(fn_info enclosing, bitv.t v) -> str {
+fn bitv_to_str(fn_info enclosing, BitV.t v) -> str {
   auto s = "";
 
   for each (@tup(def_id, tup(uint, ident)) p in enclosing.items()) {
-    if (bitv.get(v, p._1._0)) {
+    if (BitV.get(v, p._1._0)) {
       s += " " + p._1._1 + " ";
     }
   }
   ret s;
 }
 
-fn log_bitv(fn_info enclosing, bitv.t v) {
+fn log_bitv(fn_info enclosing, BitV.t v) {
     log(bitv_to_str(enclosing, v));
 }
 
-fn log_bitv_err(fn_info enclosing, bitv.t v) {
+fn log_bitv_err(fn_info enclosing, BitV.t v) {
     log_err(bitv_to_str(enclosing, v));
 }
 
@@ -235,8 +235,8 @@ fn log_cond_err(vec[uint] v) -> () {
 }
 
 fn log_pp(&pre_and_post pp) -> () {
-  auto p1 = bitv.to_vec(pp.precondition);
-  auto p2 = bitv.to_vec(pp.postcondition);
+  auto p1 = BitV.to_vec(pp.precondition);
+  auto p2 = BitV.to_vec(pp.postcondition);
   log("pre:");
   log_cond(p1);
   log("post:");
@@ -244,8 +244,8 @@ fn log_pp(&pre_and_post pp) -> () {
 }
 
 fn log_pp_err(&pre_and_post pp) -> () {
-  auto p1 = bitv.to_vec(pp.precondition);
-  auto p2 = bitv.to_vec(pp.postcondition);
+  auto p1 = BitV.to_vec(pp.precondition);
+  auto p2 = BitV.to_vec(pp.postcondition);
   log_err("pre:");
   log_cond_err(p1);
   log_err("post:");
@@ -253,8 +253,8 @@ fn log_pp_err(&pre_and_post pp) -> () {
 }
 
 fn log_states(&pre_and_post_state pp) -> () {
-  auto p1 = bitv.to_vec(pp.prestate);
-  auto p2 = bitv.to_vec(pp.poststate);
+  auto p1 = BitV.to_vec(pp.prestate);
+  auto p2 = BitV.to_vec(pp.poststate);
   log("prestate:");
   log_cond(p1);
   log("poststate:");
@@ -262,8 +262,8 @@ fn log_states(&pre_and_post_state pp) -> () {
 }
 
 fn log_states_err(&pre_and_post_state pp) -> () {
-  auto p1 = bitv.to_vec(pp.prestate);
-  auto p2 = bitv.to_vec(pp.poststate);
+  auto p1 = BitV.to_vec(pp.prestate);
+  auto p2 = BitV.to_vec(pp.poststate);
   log_err("prestate:");
   log_cond_err(p1);
   log_err("poststate:");
@@ -288,9 +288,9 @@ fn print_idents(vec[ident] idents) -> () {
    variable in a given function) to bit number 
    (also remembers the ident for error-logging purposes) */
 type var_info     = tup(uint, ident);
-type fn_info      = std.map.hashmap[def_id, var_info];
+type fn_info      = std.Map.hashmap[def_id, var_info];
 /* mapping from function name to fn_info map */
-type fn_info_map = std.map.hashmap[def_id, fn_info];
+type fn_info_map = std.Map.hashmap[def_id, fn_info];
  
 fn bit_num(def_id v, fn_info m) -> uint {
   assert (m.contains_key(v));
@@ -312,12 +312,12 @@ fn num_locals(fn_info m) -> uint {
 fn collect_local(&@vec[tup(ident, def_id)] vars, &span sp, @ast.local loc) 
     -> @decl {
     log("collect_local: pushing " + loc.ident);
-    _vec.push[tup(ident, def_id)](*vars, tup(loc.ident, loc.id));
+    Vec.push[tup(ident, def_id)](*vars, tup(loc.ident, loc.id));
     ret @respan(sp, decl_local(loc));
 }
 
 fn find_locals(_fn f) -> @vec[tup(ident,def_id)] {
-  auto res = @_vec.alloc[tup(ident,def_id)](0u);
+  auto res = @Vec.alloc[tup(ident,def_id)](0u);
 
   auto fld = fold.new_identity_fold[@vec[tup(ident, def_id)]]();
   fld = @rec(fold_decl_local = bind collect_local(_,_,_) with *fld);
@@ -343,7 +343,7 @@ fn mk_fn_info(_fn f) -> fn_info {
      just collect locally declared vars */
 
   let @vec[tup(ident,def_id)] locals = find_locals(f);
-  log(uistr(_vec.len[tup(ident, def_id)](*locals)) + " locals");
+  log(uistr(Vec.len[tup(ident, def_id)](*locals)) + " locals");
   for (tup(ident,def_id) p in *locals) {
     next = add_var(p._1, p._0, next, res);
   }
@@ -364,7 +364,7 @@ fn mk_fn_info_item_fn(&fn_info_map fi, &span sp, ident i, &ast._fn f,
    function IDs to fn_info maps */
 fn mk_fn_info_item_obj(&fn_info_map fi, &span sp, ident i, &ast._obj o,
      vec[ast.ty_param] ty_params, ast.obj_def_ids odid, ann a) -> @item {
-    auto all_methods = _vec.clone[@method](o.methods);
+    auto all_methods = Vec.clone[@method](o.methods);
     plus_option[@method](all_methods, o.dtor);
     for (@method m in all_methods) {
         fi.insert(m.node.id, mk_fn_info(m.node.meth));
@@ -403,7 +403,7 @@ fn ann_to_ts_ann(ann a, uint nv) -> ts_ann {
   }
 }
 
-fn ann_to_ts_ann_fail(ann a) -> option.t[@ts_ann] {
+fn ann_to_ts_ann_fail(ann a) -> Option.t[@ts_ann] {
   alt (a) {
       case (ann_none) { 
           log("ann_to_ts_ann_fail: didn't expect ann_none here");
@@ -432,7 +432,7 @@ fn ann_to_poststate(ann a) -> poststate {
     ret (ann_to_ts_ann_fail_more(a)).states.poststate;
 }
 
-fn stmt_to_ann(&stmt s) -> option.t[@ts_ann] {
+fn stmt_to_ann(&stmt s) -> Option.t[@ts_ann] {
   alt (s.node) {
     case (stmt_decl(_,?a)) {
         ret ann_to_ts_ann_fail(a);
@@ -652,7 +652,7 @@ fn seq_preconds(fn_info enclosing, vec[pre_and_post] pps) -> precond {
 /* works on either postconds or preconds
  should probably rethink the whole type synonym situation */
 fn union_postconds_go(&postcond first, &vec[postcond] rest) -> postcond {
-  auto sz = _vec.len[postcond](rest);
+  auto sz = Vec.len[postcond](rest);
 
   if (sz > 0u) {
     auto other = rest.(0);
@@ -665,7 +665,7 @@ fn union_postconds_go(&postcond first, &vec[postcond] rest) -> postcond {
 
 fn union_postconds(uint nv, &vec[postcond] pcs) -> postcond {
   if (len[postcond](pcs) > 0u) {
-      ret union_postconds_go(bitv.clone(pcs.(0)), pcs);
+      ret union_postconds_go(BitV.clone(pcs.(0)), pcs);
   }
   else {
       ret empty_prestate(nv);
@@ -674,7 +674,7 @@ fn union_postconds(uint nv, &vec[postcond] pcs) -> postcond {
 
 /* Gee, maybe we could use foldl or something */
 fn intersect_postconds_go(&postcond first, &vec[postcond] rest) -> postcond {
-  auto sz = _vec.len[postcond](rest);
+  auto sz = Vec.len[postcond](rest);
 
   if (sz > 0u) {
     auto other = rest.(0);
@@ -689,7 +689,7 @@ fn intersect_postconds_go(&postcond first, &vec[postcond] rest) -> postcond {
 fn intersect_postconds(&vec[postcond] pcs) -> postcond {
   assert (len[postcond](pcs) > 0u);
 
-  ret intersect_postconds_go(bitv.clone(pcs.(0)), pcs);
+  ret intersect_postconds_go(BitV.clone(pcs.(0)), pcs);
 }
 
 /******* AST-traversing code ********/
@@ -720,8 +720,8 @@ fn find_pre_post_obj(&fn_info_map fm, _obj o) -> () {
         find_pre_post_fn(fm, fm.get(m.node.id), m.node.meth);
     }
     auto f = bind do_a_method(fm,_);
-    _vec.map[@method, ()](f, o.methods);
-    option.map[@method, ()](f, o.dtor);
+    Vec.map[@method, ()](f, o.methods);
+    Option.map[@method, ()](f, o.dtor);
 }
 
 fn find_pre_post_state_obj(fn_info_map fm, _obj o) -> bool {
@@ -730,8 +730,8 @@ fn find_pre_post_state_obj(fn_info_map fm, _obj o) -> bool {
         ret find_pre_post_state_fn(fm, fm.get(m.node.id), m.node.meth);
     }
     auto f = bind do_a_method(fm,_);
-    auto flags = _vec.map[@method, bool](f, o.methods);
-    auto changed = _vec.or(flags);
+    auto flags = Vec.map[@method, bool](f, o.methods);
+    auto changed = Vec.or(flags);
     changed = changed || maybe[@method, bool](false, f, o.dtor);
     ret changed;
 }
@@ -777,19 +777,19 @@ fn find_pre_post_exprs(&fn_info_map fm, &fn_info enclosing,
     }
     auto f = bind do_one(fm, enclosing, _);
 
-    _vec.map[@expr, ()](f, args);
+    Vec.map[@expr, ()](f, args);
 
     fn get_pp(&@expr e) -> pre_and_post {
         ret expr_pp(e);
     }
     auto g = get_pp;
-    auto pps = _vec.map[@expr, pre_and_post](g, args);
+    auto pps = Vec.map[@expr, pre_and_post](g, args);
     auto h = get_post;
 
     set_pre_and_post(a,
        rec(precondition=seq_preconds(enclosing, pps),
            postcondition=union_postconds
-           (nv, (_vec.map[pre_and_post, postcond](h, pps)))));
+           (nv, (Vec.map[pre_and_post, postcond](h, pps)))));
 }
 
 fn find_pre_post_loop(&fn_info_map fm, &fn_info enclosing, &@decl d,
@@ -822,13 +822,13 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
     
     alt (e.node) {
         case (expr_call(?operator, ?operands, ?a)) {
-            auto args = _vec.clone[@expr](operands);
-            _vec.push[@expr](args, operator);
+            auto args = Vec.clone[@expr](operands);
+            Vec.push[@expr](args, operator);
             find_pre_post_exprs(fm, enclosing, args, a);
         }
         case (expr_spawn(_, _, ?operator, ?operands, ?a)) {
-            auto args = _vec.clone[@expr](operands);
-            _vec.push[@expr](args, operator);
+            auto args = Vec.clone[@expr](operands);
+            Vec.push[@expr](args, operator);
             find_pre_post_exprs(fm, enclosing, args, a);
         }
         case (expr_vec(?args, _, ?a)) {
@@ -888,7 +888,7 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
         }
         case (expr_rec(?fields,?maybe_base,?a)) {
             auto es = field_exprs(fields);
-            _vec.plus_option[@expr](es, maybe_base);
+            Vec.plus_option[@expr](es, maybe_base);
             find_pre_post_exprs(fm, enclosing, es, a);
         }
         case (expr_assign(?lhs, ?rhs, ?a)) {
@@ -1051,7 +1051,7 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
                 ret block_pp(an_alt.block);
             }
             auto f = bind do_an_alt(fm, enclosing, _);
-            auto alt_pps = _vec.map[arm, pre_and_post](f, alts);
+            auto alt_pps = Vec.map[arm, pre_and_post](f, alts);
             fn combine_pp(pre_and_post antec, 
                           fn_info enclosing, &pre_and_post pp,
                           &pre_and_post next) -> pre_and_post {
@@ -1065,7 +1065,7 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
                              postcondition=false_postcond(num_local_vars));
             auto g = bind combine_pp(antec_pp, enclosing, _, _);
 
-            auto alts_overall_pp = _vec.foldl[pre_and_post, pre_and_post]
+            auto alts_overall_pp = Vec.foldl[pre_and_post, pre_and_post]
                                     (g, e_pp, alt_pps);
 
             set_pre_and_post(a, alts_overall_pp);
@@ -1091,8 +1091,8 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
             set_pre_and_post(a, expr_pp(p));
         }
         case(expr_bind(?operator, ?maybe_args, ?a)) {
-            auto args = _vec.cat_options[@expr](maybe_args);
-            _vec.push[@expr](args, operator); /* ??? order of eval? */
+            auto args = Vec.cat_options[@expr](maybe_args);
+            Vec.push[@expr](args, operator); /* ??? order of eval? */
             find_pre_post_exprs(fm, enclosing, args, a);
         }
         case (expr_break(?a)) {
@@ -1210,12 +1210,12 @@ fn find_pre_post_block(&fn_info_map fm, &fn_info enclosing, block b)
     }
     auto do_one = bind do_one_(fm, enclosing, _);
     
-    _vec.map[@stmt, ()](do_one, b.node.stmts);
+    Vec.map[@stmt, ()](do_one, b.node.stmts);
     fn do_inner_(fn_info_map fm, fn_info i, &@expr e) -> () {
         find_pre_post_expr(fm, i, e);
     }
     auto do_inner = bind do_inner_(fm, enclosing, _);
-    option.map[@expr, ()](do_inner, b.node.expr);
+    Option.map[@expr, ()](do_inner, b.node.expr);
 
     let vec[pre_and_post] pps = vec();
 
@@ -1223,20 +1223,20 @@ fn find_pre_post_block(&fn_info_map fm, &fn_info enclosing, block b)
         ret stmt_pp(*s);
     }
     auto f = get_pp_stmt;
-    pps += _vec.map[@stmt, pre_and_post](f, b.node.stmts);
+    pps += Vec.map[@stmt, pre_and_post](f, b.node.stmts);
     fn get_pp_expr(&@expr e) -> pre_and_post {
         ret expr_pp(e);
     }
     auto g = get_pp_expr;
     plus_option[pre_and_post](pps,
-       option.map[@expr, pre_and_post](g, b.node.expr));
+       Option.map[@expr, pre_and_post](g, b.node.expr));
 
     auto block_precond  = seq_preconds(enclosing, pps);
     auto h = get_post;
-    auto postconds =  _vec.map[pre_and_post, postcond](h, pps);
+    auto postconds =  Vec.map[pre_and_post, postcond](h, pps);
     /* A block may be empty, so this next line ensures that the postconds
        vector is non-empty. */
-    _vec.push[postcond](postconds, block_precond);
+    Vec.push[postcond](postconds, block_precond);
     auto block_postcond = empty_poststate(nv);
     /* conservative approximation */
     if (! has_nonlocal_exits(b)) {
@@ -1696,7 +1696,7 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
         changed = find_pre_post_state_expr(fm, enclosing, pres, e) || changed;
         auto e_post = expr_poststate(e);
         auto a_post;
-        if (_vec.len[arm](alts) > 0u) {
+        if (Vec.len[arm](alts) > 0u) {
             a_post = false_postcond(num_local_vars);
             for (arm an_alt in alts) {
                 changed = find_pre_post_state_block(fm, enclosing, e_post,
@@ -1775,9 +1775,9 @@ fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
               log("*At beginning: stmt = ");
               log_stmt(*s);
               log("*prestate = ");
-              log(bitv.to_str(stmt_ann.states.prestate));
+              log(BitV.to_str(stmt_ann.states.prestate));
               log("*poststate =");
-              log(bitv.to_str(stmt_ann.states.poststate));
+              log(BitV.to_str(stmt_ann.states.poststate));
               log("*changed =");
               log(changed);
   
@@ -1798,7 +1798,7 @@ fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
               log("Summary: stmt = ");
               log_stmt(*s);
               log("prestate = ");
-              log(bitv.to_str(stmt_ann.states.prestate));
+              log(BitV.to_str(stmt_ann.states.prestate));
               log_bitv(enclosing, stmt_ann.states.prestate);
               log("poststate =");
               log_bitv(enclosing, stmt_ann.states.poststate);
@@ -1835,10 +1835,10 @@ fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
                     log("Summary: stmt = ");
               log_stmt(*s);
               log("prestate = ");
-              log(bitv.to_str(stmt_ann.states.prestate));
+              log(BitV.to_str(stmt_ann.states.prestate));
               log_bitv(enclosing, stmt_ann.states.prestate);
               log("poststate =");
-              log(bitv.to_str(stmt_ann.states.poststate));
+              log(BitV.to_str(stmt_ann.states.poststate));
               log_bitv(enclosing, stmt_ann.states.poststate);
               log("changed =");
               log(changed);
@@ -1986,12 +1986,12 @@ fn check_states_against_conditions(fn_info enclosing, &ast._fn f) -> () {
   }
   auto do_one = bind do_one_(enclosing, _);
  
-  _vec.map[@stmt, ()](do_one, f.body.node.stmts);
+  Vec.map[@stmt, ()](do_one, f.body.node.stmts);
   fn do_inner_(fn_info i, &@expr e) -> () {
     check_states_expr(i, e);
   }
   auto do_inner = bind do_inner_(enclosing, _);
-  option.map[@expr, ()](do_inner, f.body.node.expr);
+  Option.map[@expr, ()](do_inner, f.body.node.expr);
   
 }
 
@@ -2027,13 +2027,13 @@ fn check_method_states(&fn_info_map f_info_map, @method m) -> () {
 }
 
 fn check_obj_state(&fn_info_map f_info_map, vec[obj_field] fields,
-                  vec[@method] methods, option.t[@method] dtor) -> ast._obj {
+                  vec[@method] methods, Option.t[@method] dtor) -> ast._obj {
     fn one(fn_info_map fm, &@method m) -> () {
         ret check_method_states(fm, m);
     }
     auto f = bind one(f_info_map,_);
-    _vec.map[@method, ()](f, methods);
-    option.map[@method, ()](f, dtor);
+    Vec.map[@method, ()](f, methods);
+    Option.map[@method, ()](f, dtor);
     ret rec(fields=fields, methods=methods, dtor=dtor);
 }
 
@@ -2122,7 +2122,7 @@ fn annotate_exprs(&fn_info_map fm, &vec[@expr] es) -> vec[@expr] {
         ret annotate_expr(fm, e);
     }
     auto f = bind one(fm,_);
-    ret _vec.map[@expr, @expr](f, es);
+    ret Vec.map[@expr, @expr](f, es);
 }
 fn annotate_elts(&fn_info_map fm, &vec[elt] es) -> vec[elt] {
     fn one(fn_info_map fm, &elt e) -> elt {
@@ -2130,7 +2130,7 @@ fn annotate_elts(&fn_info_map fm, &vec[elt] es) -> vec[elt] {
                 expr=annotate_expr(fm, e.expr));
     }
     auto f = bind one(fm,_);
-    ret _vec.map[elt, elt](f, es);
+    ret Vec.map[elt, elt](f, es);
 }
 fn annotate_fields(&fn_info_map fm, &vec[field] fs) -> vec[field] {
     fn one(fn_info_map fm, &field f) -> field {
@@ -2139,23 +2139,23 @@ fn annotate_fields(&fn_info_map fm, &vec[field] fs) -> vec[field] {
                  expr=annotate_expr(fm, f.expr));
     }
     auto f = bind one(fm,_);
-    ret _vec.map[field, field](f, fs);
+    ret Vec.map[field, field](f, fs);
 }
-fn annotate_option_exp(&fn_info_map fm, &option.t[@expr] o)
-  -> option.t[@expr] {
+fn annotate_option_exp(&fn_info_map fm, &Option.t[@expr] o)
+  -> Option.t[@expr] {
     fn one(fn_info_map fm, &@expr e) -> @expr {
         ret annotate_expr(fm, e);
     }
     auto f = bind one(fm,_);
-    ret option.map[@expr, @expr](f, o);
+    ret Option.map[@expr, @expr](f, o);
 }
-fn annotate_option_exprs(&fn_info_map fm, &vec[option.t[@expr]] es)
-  -> vec[option.t[@expr]] {
-    fn one(fn_info_map fm, &option.t[@expr] o) -> option.t[@expr] {
+fn annotate_option_exprs(&fn_info_map fm, &vec[Option.t[@expr]] es)
+  -> vec[Option.t[@expr]] {
+    fn one(fn_info_map fm, &Option.t[@expr] o) -> Option.t[@expr] {
         ret annotate_option_exp(fm, o);
     }
     auto f = bind one(fm,_);
-    ret _vec.map[option.t[@expr], option.t[@expr]](f, es);
+    ret Vec.map[Option.t[@expr], Option.t[@expr]](f, es);
 }
 fn annotate_decl(&fn_info_map fm, &@decl d) -> @decl {
     auto d1 = d.node;
@@ -2163,7 +2163,7 @@ fn annotate_decl(&fn_info_map fm, &@decl d) -> @decl {
         case (decl_local(?l)) {
             alt(l.init) {
                 case (some[initializer](?init)) {
-                    let option.t[initializer] an_i =
+                    let Option.t[initializer] an_i =
                         some[initializer]
                           (rec(expr=annotate_expr(fm, init.expr)
                                  with init));
@@ -2186,7 +2186,7 @@ fn annotate_alts(&fn_info_map fm, &vec[arm] alts) -> vec[arm] {
                  index=a.index);
     }
     auto f = bind one(fm,_);
-    ret _vec.map[arm, arm](f, alts);
+    ret Vec.map[arm, arm](f, alts);
 
 }
 fn annotate_expr(&fn_info_map fm, &@expr e) -> @expr {
@@ -2338,7 +2338,7 @@ fn annotate_block(&fn_info_map fm, &block b) -> block {
 
     for (@stmt s in b.node.stmts) {
         auto new_s = annotate_stmt(fm, s);
-        _vec.push[@stmt](new_stmts, new_s);
+        Vec.push[@stmt](new_stmts, new_s);
         ast.index_stmt(new_index, new_s);
     }
     fn ann_e(fn_info_map fm, &@expr e) -> @expr {
@@ -2346,7 +2346,7 @@ fn annotate_block(&fn_info_map fm, &block b) -> block {
     }
     auto f = bind ann_e(fm,_);
 
-    auto new_e = option.map[@expr, @expr](f, b.node.expr);
+    auto new_e = Option.map[@expr, @expr](f, b.node.expr);
 
     ret respan(b.span,
           rec(stmts=new_stmts, expr=new_e, index=new_index with b.node));
@@ -2362,7 +2362,7 @@ fn annotate_mod(&fn_info_map fm, &ast._mod m) -> ast._mod {
 
     for (@item i in m.items) {
         auto new_i = annotate_item(fm, i);
-        _vec.push[@item](new_items, new_i);
+        Vec.push[@item](new_items, new_i);
         ast.index_item(new_index, new_i);
     }
     ret rec(items=new_items, index=new_index with m);
@@ -2383,8 +2383,8 @@ fn annotate_obj(&fn_info_map fm, &ast._obj o) -> ast._obj {
         ret annotate_method(fm, m);
     }
     auto f = bind one(fm,_);
-    auto new_methods = _vec.map[@method, @method](f, o.methods);
-    auto new_dtor    = option.map[@method, @method](f, o.dtor);
+    auto new_methods = Vec.map[@method, @method](f, o.methods);
+    auto new_dtor    = Option.map[@method, @method](f, o.dtor);
     ret rec(methods=new_methods, dtor=new_dtor with o);
 }
 
@@ -2476,7 +2476,7 @@ fn annotate_module(&fn_info_map fm, &ast._mod module) -> ast._mod {
 
     for (@item i in module.items) {
         auto new_item = annotate_item(fm, i);
-        _vec.push[@item](new_items, new_item);
+        Vec.push[@item](new_items, new_item);
         ast.index_item(new_index, new_item);
     }
 

@@ -1,6 +1,6 @@
 import rustrt.sbuf;
 
-import _vec.rustrt.vbuf;
+import Vec.rustrt.vbuf;
 
 native "rust" mod rustrt {
     type sbuf;
@@ -83,7 +83,7 @@ const uint tag_six_b = 0xfc_u;
 
 fn is_utf8(vec[u8] v) -> bool {
     auto i = 0u;
-    auto total = _vec.len[u8](v);
+    auto total = Vec.len[u8](v);
     while (i < total) {
         auto chsize = utf8_char_width(v.(i));
         if (chsize == 0u) {ret false;}
@@ -261,7 +261,7 @@ fn to_chars(str s) -> vec[char] {
     auto len = byte_len(s);
     while (i < len) {
         auto cur = char_range_at(s, i);
-        _vec.push[char](buf, cur._0);
+        Vec.push[char](buf, cur._0);
         i = cur._1;
     }
     ret buf;
@@ -296,7 +296,7 @@ fn unshift_char(&mutable str s, char ch) {
 
 fn refcount(str s) -> uint {
     auto r = rustrt.refcount[u8](s);
-    if (r == dbg.const_refcount) {
+    if (r == Dbg.const_refcount) {
         ret r;
     } else {
         // -1 because calling this function incremented the refcount.
@@ -319,7 +319,7 @@ fn index(str s, u8 c) -> int {
 }
 
 fn rindex(str s, u8 c) -> int {
-    let int n = _str.byte_len(s) as int;
+    let int n = Str.byte_len(s) as int;
     while (n >= 0) {
         if (s.(n) == c) {
             ret n;
@@ -443,7 +443,7 @@ fn split(str s, u8 sep) -> vec[str] {
             ends_with_sep = false;
         }
     }
-    if (_str.byte_len(accum) != 0u ||
+    if (Str.byte_len(accum) != 0u ||
         ends_with_sep) {
         v += vec(accum);
     }

@@ -1,6 +1,6 @@
 use std;
 
-import std._int;
+import std.Int;
 
 tag tree {
   nil;
@@ -49,7 +49,7 @@ fn main() {
 
   auto depth = min_depth;
   while (depth <= max_depth) {
-    auto iterations = _int.pow(2, (max_depth - depth + min_depth) as uint);
+    auto iterations = Int.pow(2, (max_depth - depth + min_depth) as uint);
     auto chk = 0;
 
     auto i = 1;

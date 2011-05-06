@@ -1,8 +1,8 @@
 
-import std.map.hashmap;
-import std.option;
-import std._str;
-import std._vec;
+import std.Map.hashmap;
+import std.Option;
+import std.Str;
+import std.Vec;
 import util.common.span;
 import util.common.spanned;
 import util.common.ty_mach;
@@ -24,8 +24,8 @@ type ty_param = ident;
 tag ann {
     ann_none;
     ann_type(middle.ty.t,
-             option.t[vec[middle.ty.t]], /* ty param substs */
-             option.t[@ts_ann]); /* pre- and postcondition for typestate */
+             Option.t[vec[middle.ty.t]], /* ty param substs */
+             Option.t[@ts_ann]); /* pre- and postcondition for typestate */
 }
 
 tag def {
@@ -79,8 +79,8 @@ tag crate_directive_ {
     // and redirected to the use of const stmt_decls inside
     // crate directive blocks.
     cdir_let(ident, @expr, vec[@crate_directive]);
-    cdir_src_mod(ident, option.t[filename]);
-    cdir_dir_mod(ident, option.t[filename], vec[@crate_directive]);
+    cdir_src_mod(ident, Option.t[filename]);
+    cdir_dir_mod(ident, Option.t[filename], vec[@crate_directive]);
     cdir_view_item(@view_item);
     cdir_meta(vec[@meta_item]);
     cdir_syntax(path);
@@ -100,7 +100,7 @@ tag block_index_entry {
     bie_tag_variant(@item /* tag item */, uint /* variant index */);
 }
 type block_ = rec(vec[@stmt] stmts,
-                  option.t[@expr] expr,
+                  Option.t[@expr] expr,
                   hashmap[ident,block_index_entry] index,
                   ann a); /* ann is only meaningful for the ts_ann field */
 
@@ -111,7 +111,7 @@ tag pat_ {
     pat_wild(ann);
     pat_bind(ident, def_id, ann);
     pat_lit(@lit, ann);
-    pat_tag(path, vec[@pat], option.t[variant_def], ann);
+    pat_tag(path, vec[@pat], Option.t[variant_def], ann);
 }
 
 tag mutability {
@@ -226,10 +226,10 @@ tag init_op {
 type initializer = rec(init_op op,
                        @expr expr);
 
-type local = rec(option.t[@ty] ty,
+type local = rec(Option.t[@ty] ty,
                  bool infer,
                  ident ident,
-                 option.t[initializer] init,
+                 Option.t[initializer] init,
                  def_id id,
                  ann ann);
 
@@ -253,16 +253,16 @@ type expr = spanned[expr_];
 tag expr_ {
     expr_vec(vec[@expr], mutability, ann);
     expr_tup(vec[elt], ann);
-    expr_rec(vec[field], option.t[@expr], ann);
+    expr_rec(vec[field], Option.t[@expr], ann);
     expr_call(@expr, vec[@expr], ann);
     expr_self_method(ident, ann);
-    expr_bind(@expr, vec[option.t[@expr]], ann);
-    expr_spawn(spawn_dom, option.t[str], @expr, vec[@expr], ann);
+    expr_bind(@expr, vec[Option.t[@expr]], ann);
+    expr_spawn(spawn_dom, Option.t[str], @expr, vec[@expr], ann);
     expr_binary(binop, @expr, @expr, ann);
     expr_unary(unop, @expr, ann);
     expr_lit(@lit, ann);
     expr_cast(@expr, @ty, ann);
-    expr_if(@expr, block, option.t[@expr], ann);
+    expr_if(@expr, block, Option.t[@expr], ann);
     expr_while(@expr, block, ann);
     expr_for(@decl, @expr, block, ann);
     expr_for_each(@decl, @expr, block, ann);
@@ -275,13 +275,13 @@ tag expr_ {
     expr_recv(@expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_field(@expr, ident, ann);
     expr_index(@expr, @expr, ann);
-    expr_path(path, option.t[def], ann);
-    expr_ext(path, vec[@expr], option.t[str], @expr, ann);
+    expr_path(path, Option.t[def], ann);
+    expr_ext(path, vec[@expr], Option.t[str], @expr, ann);
     expr_fail(ann);
     expr_break(ann);
     expr_cont(ann);
-    expr_ret(option.t[@expr], ann);
-    expr_put(option.t[@expr], ann);
+    expr_ret(Option.t[@expr], ann);
+    expr_put(Option.t[@expr], ann);
     expr_be(@expr, ann);
     expr_log(int, @expr, ann);
 /* just an assert, no significance to typestate */
@@ -331,7 +331,7 @@ tag ty_ {
     ty_rec(vec[ty_field]);
     ty_fn(proto, vec[ty_arg], @ty);
     ty_obj(vec[ty_method]);
-    ty_path(path, option.t[def]);
+    ty_path(path, Option.t[def]);
     ty_type;
     ty_constr(@ty, vec[@constr]);
 }
@@ -364,7 +364,7 @@ type method = spanned[method_];
 type obj_field = rec(@ty ty, ident ident, def_id id, ann ann);
 type _obj = rec(vec[obj_field] fields,
                 vec[@method] methods,
-                option.t[@method] dtor);
+                Option.t[@method] dtor);
 
 tag mod_index_entry {
     mie_view_item(@view_item);
@@ -402,8 +402,8 @@ type variant = spanned[variant_];
 
 type view_item = spanned[view_item_];
 tag view_item_ {
-    view_item_use(ident, vec[@meta_item], def_id, option.t[int]);
-    view_item_import(ident, vec[ident], def_id, option.t[def]);
+    view_item_use(ident, vec[@meta_item], def_id, Option.t[int]);
+    view_item_import(ident, vec[ident], def_id, Option.t[def]);
     view_item_export(ident);
 }
 
@@ -423,7 +423,7 @@ tag item_ {
 type native_item = spanned[native_item_];
 tag native_item_ {
     native_item_ty(ident, def_id);
-    native_item_fn(ident, option.t[str],
+    native_item_fn(ident, Option.t[str],
                    fn_decl, vec[ty_param], def_id, ann);
 }
 
@@ -542,7 +542,7 @@ fn is_exported(ident i, _mod m) -> bool {
     for (@ast.view_item vi in m.view_items) {
         alt (vi.node) {
             case (ast.view_item_export(?id)) {
-                if (_str.eq(i, id)) {
+                if (Str.eq(i, id)) {
                     ret true;
                 }
                 count += 1;
@@ -574,7 +574,7 @@ fn is_constraint_arg(@expr e) -> bool {
         case (expr_lit(_,_)) {
             ret true;
         }
-        case (expr_path(_, option.some[def](def_local(_)), _)) {
+        case (expr_path(_, Option.some[def](def_local(_)), _)) {
             ret true;
         }
         case (_) {

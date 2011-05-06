@@ -1,13 +1,13 @@
 // a bug was causing this to complain about leaked memory on exit
 
 use std;
-import std.option;
-import std.option.some;
-import std.option.none;
+import std.Option;
+import std.Option.some;
+import std.Option.none;
 
 tag t {
   foo(int, uint);
-  bar(int, option.t[int]);
+  bar(int, Option.t[int]);
 }
 
 fn nested(t o) {

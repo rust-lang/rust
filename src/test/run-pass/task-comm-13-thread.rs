@@ -2,7 +2,7 @@
 // xfail-stage1
 // xfail-stage2
 use std;
-import std._task;
+import std.Task;
 
 fn start(chan[int] c, int start, int number_of_messages) {
     let int i = 0;

@@ -3,7 +3,7 @@
 // xfail-stage1
 // xfail-stage2
 use std;
-import std._task;
+import std.Task;
 
 fn main() -> () {
     test00();
@@ -18,7 +18,7 @@ fn test00() {
     let task t = spawn thread "child" start(i);
     
     // Sleep long enough for the task to finish.
-    _task.sleep(10000u);
+    Task.sleep(10000u);
     
     // Try joining tasks that have already finished.
     join t;

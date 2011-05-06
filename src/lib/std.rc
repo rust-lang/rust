@@ -6,39 +6,38 @@ meta (name = "std",
 
 // Built-in types support modules.
 
-mod _int;
-mod _uint;
-mod _u8;
-mod _vec;
-mod _str;
+mod Int;
+mod UInt;
+mod U8;
+mod Vec;
+mod Str;
 
 // General IO and system-services modules.
 
-mod io;
-mod sys;
-mod _task;
+mod IO;
+mod Sys;
+mod Task;
 
 // Utility modules.
 
-mod option;
-mod util;
+mod Option;
+mod Util;
 
 // Authorize various rule-bendings.
 
-auth io = unsafe;
-auth fs = unsafe;
-auth os = unsafe;
-auth os_fs = unsafe;
-auth run = unsafe;
-auth _str = unsafe;
-auth _vec = unsafe;
-auth _task = unsafe;
+auth IO = unsafe;
+auth FS = unsafe;
+auth OS_FS = unsafe;
+auth Run = unsafe;
+auth Str = unsafe;
+auth Vec = unsafe;
+auth Task = unsafe;
 
-auth dbg = unsafe;
+auth Dbg = unsafe;
 
-auth _uint.next_power_of_two = unsafe;
-auth map.mk_hashmap = unsafe;
-auth rand.mk_rng = unsafe;
+auth UInt.next_power_of_two = unsafe;
+auth Map.mk_hashmap = unsafe;
+auth Rand.mk_rng = unsafe;
 
 // Target-OS module.
 
@@ -47,30 +46,30 @@ mod GenericOS;
 
 alt (target_os) {
     case ("win32") {
-        mod os = "win32_os.rs";
-        mod os_fs = "win32_fs.rs";
+        mod OS = "win32_OS.rs";
+        mod OS_FS = "win32_FS.rs";
     } case ("macos") {
-        mod os = "macos_os.rs";
-        mod os_fs = "posix_fs.rs";
+        mod OS = "macos_OS.rs";
+        mod OS_FS = "posix_FS.rs";
     } else {
-        mod os = "linux_os.rs";
-        mod os_fs = "posix_fs.rs";
+        mod OS = "linux_OS.rs";
+        mod OS_FS = "posix_FS.rs";
     }
 }
 
-mod run = "run_program.rs";
-mod fs;
+mod Run = "Run_Program.rs";
+mod FS;
 
 // FIXME: parametric
-mod map;
-mod deque;
-mod list;
-mod rand;
-mod dbg;
-mod bitv;
-mod sort;
-mod sha1;
-mod ebml;
+mod Map;
+mod Deque;
+mod List;
+mod Rand;
+mod Dbg;
+mod BitV;
+mod Sort;
+mod SHA1;
+mod EBML;
 mod UFind;
 mod ExtFmt;
 mod Box;

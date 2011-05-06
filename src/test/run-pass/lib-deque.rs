@@ -1,10 +1,10 @@
 // -*- rust -*-
 
 use std;
-import std.deque;
+import std.Deque;
 
 fn test_simple() {
-  let deque.t[int] d = deque.create[int]();
+  let Deque.t[int] d = Deque.create[int]();
   assert (d.size() == 0u);
   d.add_front(17);
   d.add_front(42);
@@ -57,7 +57,7 @@ fn test_simple() {
 }
 
 fn test_boxes(@int a, @int b, @int c, @int d) {
-  let deque.t[@int] deq = deque.create[@int]();
+  let Deque.t[@int] deq = Deque.create[@int]();
   assert (deq.size() == 0u);
   deq.add_front(a);
   deq.add_front(b);
@@ -93,7 +93,7 @@ fn test_boxes(@int a, @int b, @int c, @int d) {
 type eqfn[T] = fn(&T a, &T b) -> bool;
 
 fn test_parameterized[T](eqfn[T] e, &T a, &T b, &T c, &T d) {
-  let deque.t[T] deq = deque.create[T]();
+  let Deque.t[T] deq = Deque.create[T]();
   assert (deq.size() == 0u);
   deq.add_front(a);
   deq.add_front(b);

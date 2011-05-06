@@ -32,15 +32,15 @@ import middle.ty.ty_nil;
 import middle.ty.Unify.ures_ok;
 import middle.ty.Unify.ures_err;
 
-import std._str;
-import std._uint;
-import std._vec;
-import std.map;
-import std.map.hashmap;
-import std.option;
-import std.option.none;
-import std.option.some;
-import std.option.from_maybe;
+import std.Str;
+import std.UInt;
+import std.Vec;
+import std.Map;
+import std.Map.hashmap;
+import std.Option;
+import std.Option.none;
+import std.Option.some;
+import std.Option.from_maybe;
 
 import util.typestate_ann.ts_ann;
 
@@ -61,7 +61,7 @@ type crate_ctxt = rec(session.session sess,
                       ty.type_cache type_cache,
                       @ty_item_table item_items,
                       vec[ast.obj_field] obj_fields,
-                      option.t[ast.def_id] this_obj,
+                      Option.t[ast.def_id] this_obj,
                       @fn_purity_table fn_purity_table,
                       mutable int next_var_id,
                       unify_cache unify_cache,
@@ -91,12 +91,12 @@ fn substitute_ty_params(&@crate_ctxt ccx,
         }
     }
 
-    auto supplied_len = _vec.len[ty.t](supplied);
+    auto supplied_len = Vec.len[ty.t](supplied);
     if (ty_param_count != supplied_len) {
         ccx.sess.span_err(sp, "expected " +
-                          _uint.to_str(ty_param_count, 10u) +
+                          UInt.to_str(ty_param_count, 10u) +
                           " type parameter(s) but found " +
-                          _uint.to_str(supplied_len, 10u) + " parameter(s)");
+                          UInt.to_str(supplied_len, 10u) + " parameter(s)");
         fail;
     }
 
@@ -181,7 +181,7 @@ fn instantiate_path(@fn_ctxt fcx, &ast.path pth, &ty_param_count_and_ty tpt,
     auto t = bind_params_in_type(fcx.ccx.tcx, tpt._1);
 
     auto ty_substs_opt;
-    auto ty_substs_len = _vec.len[@ast.ty](pth.node.types);
+    auto ty_substs_len = Vec.len[@ast.ty](pth.node.types);
     if (ty_substs_len > 0u) {
         let vec[ty.t] ty_substs = vec();
         auto i = 0u;
@@ -281,7 +281,7 @@ fn ast_ty_to_ty(ty.ctxt tcx, ty_getter getter, &@ast.ty ast_ty) -> ty.t {
         case (ast.ty_tup(?fields)) {
             let vec[ty.mt] flds = vec();
             for (ast.mt field in fields) {
-                _vec.push[ty.mt](flds, ast_mt_to_mt(tcx, getter, field));
+                Vec.push[ty.mt](flds, ast_mt_to_mt(tcx, getter, field));
             }
             typ = ty.mk_tup(tcx, flds);
         }
@@ -289,21 +289,21 @@ fn ast_ty_to_ty(ty.ctxt tcx, ty_getter getter, &@ast.ty ast_ty) -> ty.t {
             let vec[field] flds = vec();
             for (ast.ty_field f in fields) {
                 auto tm = ast_mt_to_mt(tcx, getter, f.mt);
-                _vec.push[field](flds, rec(ident=f.ident, mt=tm));
+                Vec.push[field](flds, rec(ident=f.ident, mt=tm));
             }
             typ = ty.mk_rec(tcx, flds);
         }
 
         case (ast.ty_fn(?proto, ?inputs, ?output)) {
             auto f = bind ast_arg_to_arg(tcx, getter, _);
-            auto i = _vec.map[ast.ty_arg, arg](f, inputs);
+            auto i = Vec.map[ast.ty_arg, arg](f, inputs);
             auto out_ty = ast_ty_to_ty(tcx, getter, output);
             typ = ty.mk_fn(tcx, proto, i, out_ty);
         }
 
         case (ast.ty_path(?path, ?def)) {
             assert (def != none[ast.def]);
-            alt (option.get[ast.def](def)) {
+            alt (Option.get[ast.def](def)) {
                 case (ast.def_ty(?id)) {
                     typ = instantiate(tcx, getter, id, path.node.types);
                 }
@@ -325,9 +325,9 @@ fn ast_ty_to_ty(ty.ctxt tcx, ty_getter getter, &@ast.ty ast_ty) -> ty.t {
             let vec[ty.method] tmeths = vec();
             auto f = bind ast_arg_to_arg(tcx, getter, _);
             for (ast.ty_method m in meths) {
-                auto ins = _vec.map[ast.ty_arg, arg](f, m.inputs);
+                auto ins = Vec.map[ast.ty_arg, arg](f, m.inputs);
                 auto out = ast_ty_to_ty(tcx, getter, m.output);
-                _vec.push[ty.method](tmeths,
+                Vec.push[ty.method](tmeths,
                                   rec(proto=m.proto,
                                       ident=m.ident,
                                       inputs=ins,
@@ -383,10 +383,10 @@ mod Collect {
                      ast.proto proto,
                      vec[ast.ty_param] ty_params,
                      ast.def_id def_id) -> ty.ty_param_count_and_ty {
-        auto input_tys = _vec.map[ast.arg,arg](ty_of_arg, decl.inputs);
+        auto input_tys = Vec.map[ast.arg,arg](ty_of_arg, decl.inputs);
         auto output_ty = convert(decl.output);
         auto t_fn = ty.mk_fn(cx.tcx, proto, input_tys, output_ty);
-        auto ty_param_count = _vec.len[ast.ty_param](ty_params);
+        auto ty_param_count = Vec.len[ast.ty_param](ty_params);
         auto tpt = tup(ty_param_count, t_fn);
         cx.type_cache.insert(def_id, tpt);
         ret tpt;
@@ -399,10 +399,10 @@ mod Collect {
                             ast.native_abi abi,
                             vec[ast.ty_param] ty_params,
                             ast.def_id def_id) -> ty.ty_param_count_and_ty {
-        auto input_tys = _vec.map[ast.arg,arg](ty_of_arg, decl.inputs);
+        auto input_tys = Vec.map[ast.arg,arg](ty_of_arg, decl.inputs);
         auto output_ty = convert(decl.output);
         auto t_fn = ty.mk_native_fn(cx.tcx, abi, input_tys, output_ty);
-        auto ty_param_count = _vec.len[ast.ty_param](ty_params);
+        auto ty_param_count = Vec.len[ast.ty_param](ty_params);
         auto tpt = tup(ty_param_count, t_fn);
         cx.type_cache.insert(def_id, tpt);
         ret tpt;
@@ -438,7 +438,7 @@ mod Collect {
         auto get = bind getter(cx, _);
         auto convert = bind ast_ty_to_ty(cx.tcx, get, _);
         auto f = bind ty_of_arg(cx, _);
-        auto inputs = _vec.map[ast.arg,arg](f, m.node.meth.decl.inputs);
+        auto inputs = Vec.map[ast.arg,arg](f, m.node.meth.decl.inputs);
         auto output = convert(m.node.meth.decl.output);
         ret rec(proto=m.node.meth.proto, ident=m.node.ident,
                 inputs=inputs, output=output);
@@ -449,11 +449,11 @@ mod Collect {
                  &ast._obj obj_info,
                  vec[ast.ty_param] ty_params) -> ty.ty_param_count_and_ty {
         auto f = bind ty_of_method(cx, _);
-        auto methods = _vec.map[@ast.method,method](f, obj_info.methods);
+        auto methods = Vec.map[@ast.method,method](f, obj_info.methods);
 
         auto t_obj = ty.mk_obj(cx.tcx, ty.sort_methods(methods));
         t_obj = ty.rename(cx.tcx, t_obj, id);
-        auto ty_param_count = _vec.len[ast.ty_param](ty_params);
+        auto ty_param_count = Vec.len[ast.ty_param](ty_params);
         ret tup(ty_param_count, t_obj);
     }
 
@@ -468,7 +468,7 @@ mod Collect {
         for (ast.obj_field f in obj_info.fields) {
             auto g = bind getter(cx, _);
             auto t_field = ast_ty_to_ty(cx.tcx, g, f.ty);
-            _vec.push[arg](t_inputs, rec(mode=ast.alias, ty=t_field));
+            Vec.push[arg](t_inputs, rec(mode=ast.alias, ty=t_field));
         }
 
         cx.type_cache.insert(obj_ty_id, t_obj);
@@ -515,7 +515,7 @@ mod Collect {
                 // Tell ast_ty_to_ty() that we want to perform a recursive
                 // call to resolve any named types.
                 auto typ = convert(t);
-                auto ty_param_count = _vec.len[ast.ty_param](tps);
+                auto ty_param_count = Vec.len[ast.ty_param](tps);
                 auto tpt = tup(ty_param_count, typ);
                 cx.type_cache.insert(def_id, tpt);
                 ret tpt;
@@ -533,7 +533,7 @@ mod Collect {
 
                 auto t = ty.mk_tag(cx.tcx, def_id, subtys);
 
-                auto ty_param_count = _vec.len[ast.ty_param](tps);
+                auto ty_param_count = Vec.len[ast.ty_param](tps);
                 auto tpt = tup(ty_param_count, t);
                 cx.type_cache.insert(def_id, tpt);
                 ret tpt;
@@ -585,13 +585,13 @@ mod Collect {
             i += 1u;
         }
 
-        auto ty_param_count = _vec.len[ast.ty_param](ty_params);
+        auto ty_param_count = Vec.len[ast.ty_param](ty_params);
 
         for (ast.variant variant in variants) {
             // Nullary tag constructors get turned into constants; n-ary tag
             // constructors get turned into functions.
             auto result_ty;
-            if (_vec.len[ast.variant_arg](variant.node.args) == 0u) {
+            if (Vec.len[ast.variant_arg](variant.node.args) == 0u) {
                 result_ty = ty.mk_tag(cx.tcx, tag_id, ty_param_tys);
             } else {
                 // As above, tell ast_ty_to_ty() that trans_ty_item_to_ty()
@@ -691,7 +691,7 @@ mod Collect {
         ret @fold.respan[ast.item_](sp, item);
     }
 
-    fn fold_native_item_fn(&@env e, &span sp, ast.ident i, option.t[str] ln,
+    fn fold_native_item_fn(&@env e, &span sp, ast.ident i, Option.t[str] ln,
                            &ast.fn_decl d, vec[ast.ty_param] ty_params,
                            ast.def_id id, ast.ann a) -> @ast.native_item {
         // assert (e.cx.type_cache.contains_key(id));
@@ -746,7 +746,7 @@ mod Collect {
                 with meth.node
             );
             m = @rec(node=m_ with *meth);
-            _vec.push[@ast.method](methods, m);
+            Vec.push[@ast.method](methods, m);
         }
         auto g = bind getter(e.cx, _);
         for (ast.obj_field fld in ob.fields) {
@@ -754,7 +754,7 @@ mod Collect {
             let ast.obj_field f = rec(ann=triv_ann(fty)
                 with fld
             );
-            _vec.push[ast.obj_field](fields, f);
+            Vec.push[ast.obj_field](fields, f);
         }
 
         auto dtor = none[@ast.method];
@@ -847,7 +847,7 @@ mod Unify {
         // FIXME: horrid botch
         let vec[mutable ty.t] param_substs =
             vec(mutable ty.mk_nil(fcx.ccx.tcx));
-        _vec.pop(param_substs);
+        Vec.pop(param_substs);
         ret with_params(fcx, expected, actual, param_substs);
     }
 
@@ -865,7 +865,7 @@ mod Unify {
         }
 
         obj unify_handler(@fn_ctxt fcx, vec[mutable ty.t] param_substs) {
-            fn resolve_local(ast.def_id id) -> option.t[ty.t] {
+            fn resolve_local(ast.def_id id) -> Option.t[ty.t] {
                 alt (fcx.locals.find(id)) {
                     case (none[ty.t]) { ret none[ty.t]; }
                     case (some[ty.t](?existing_type)) {
@@ -905,7 +905,7 @@ mod Unify {
             }
             fn record_param(uint index, ty.t binding) -> ty.Unify.result {
                 // Unify with the appropriate type in the parameter
-                // substitution list.
+                // substitution List.
                 auto old_subst = param_substs.(index);
 
                 auto result = with_params(fcx, old_subst, binding,
@@ -1004,7 +1004,7 @@ mod Demand {
 
         let vec[mutable ty.t] ty_param_substs =
             vec(mutable ty.mk_nil(fcx.ccx.tcx));
-        _vec.pop(ty_param_substs);   // FIXME: horrid botch
+        Vec.pop(ty_param_substs);   // FIXME: horrid botch
         for (ty.t ty_param_subst in ty_param_substs_0) {
             ty_param_substs += vec(mutable ty_param_subst);
         }
@@ -1047,7 +1047,7 @@ fn are_compatible(&@fn_ctxt fcx, ty.t expected, ty.t actual) -> bool {
 // Returns the types of the arguments to a tag variant.
 fn variant_arg_types(@crate_ctxt ccx, &span sp, ast.def_id vid,
                      vec[ty.t] tag_ty_params) -> vec[ty.t] {
-    auto ty_param_count = _vec.len[ty.t](tag_ty_params);
+    auto ty_param_count = Vec.len[ty.t](tag_ty_params);
 
     let vec[ty.t] result = vec();
 
@@ -1130,7 +1130,7 @@ mod Pushdown {
                 }
 
                 // Get the types of the arguments of the variant.
-                auto vdef = option.get[ast.variant_def](vdef_opt);
+                auto vdef = Option.get[ast.variant_def](vdef_opt);
                 auto arg_tys = variant_arg_types(fcx.ccx, pat.span, vdef._1,
                                                  tag_tps);
 
@@ -1218,7 +1218,7 @@ mod Pushdown {
                             case (none[@ast.expr]) {
                                 auto i = 0u;
                                 for (ast.field field_0 in fields_0) {
-                                    assert (_str.eq(field_0.ident,
+                                    assert (Str.eq(field_0.ident,
                                                    field_mts.(i).ident));
                                     auto e_1 =
                                         pushdown_expr(fcx,
@@ -1240,7 +1240,7 @@ mod Pushdown {
                                 for (ast.field field_0 in fields_0) {
 
                                     for (ty.field ft in field_mts) {
-                                        if (_str.eq(field_0.ident,
+                                        if (Str.eq(field_0.ident,
                                                     ft.ident)) {
                                             auto e_1 =
                                                 pushdown_expr(fcx, ft.mt.ty,
@@ -1508,9 +1508,9 @@ mod Pushdown {
 // Local variable resolution: the phase that finds all the types in the AST
 // and replaces opaque "ty_local" types with the resolved local types.
 
-fn writeback_local(&option.t[@fn_ctxt] env, &span sp, @ast.local local)
+fn writeback_local(&Option.t[@fn_ctxt] env, &span sp, @ast.local local)
         -> @ast.decl {
-    auto fcx = option.get[@fn_ctxt](env);
+    auto fcx = Option.get[@fn_ctxt](env);
 
     auto local_ty;
     alt (fcx.locals.find(local.id)) {
@@ -1530,7 +1530,7 @@ fn writeback_local(&option.t[@fn_ctxt] env, &span sp, @ast.local local)
     ret @fold.respan[ast.decl_](sp, ast.decl_local(local_wb));
 }
 
-fn resolve_local_types_in_annotation(&option.t[@fn_ctxt] env, ast.ann ann)
+fn resolve_local_types_in_annotation(&Option.t[@fn_ctxt] env, ast.ann ann)
         -> ast.ann {
     fn resolver(@fn_ctxt fcx, ty.t typ) -> ty.t {
         alt (struct(fcx.ccx.tcx, typ)) {
@@ -1539,7 +1539,7 @@ fn resolve_local_types_in_annotation(&option.t[@fn_ctxt] env, ast.ann ann)
         }
     }
 
-    auto fcx = option.get[@fn_ctxt](env);
+    auto fcx = Option.get[@fn_ctxt](env);
     alt (ann) {
         case (ast.ann_none) {
             log "warning: no type for expression";
@@ -1559,16 +1559,16 @@ fn resolve_local_types_in_annotation(&option.t[@fn_ctxt] env, ast.ann ann)
 
 fn resolve_local_types_in_block(&@fn_ctxt fcx, &ast.block block)
         -> ast.block {
-    fn update_env_for_item(&option.t[@fn_ctxt] env, @ast.item i)
-            -> option.t[@fn_ctxt] {
+    fn update_env_for_item(&Option.t[@fn_ctxt] env, @ast.item i)
+            -> Option.t[@fn_ctxt] {
         ret none[@fn_ctxt];
     }
-    fn keep_going(&option.t[@fn_ctxt] env) -> bool {
-        ret !option.is_none[@fn_ctxt](env);
+    fn keep_going(&Option.t[@fn_ctxt] env) -> bool {
+        ret !Option.is_none[@fn_ctxt](env);
     }
 
     // FIXME: rustboot bug prevents us from using these functions directly
-    auto fld = fold.new_identity_fold[option.t[@fn_ctxt]]();
+    auto fld = fold.new_identity_fold[Option.t[@fn_ctxt]]();
     auto wbl = writeback_local;
     auto rltia = bind resolve_local_types_in_annotation(_,_);
     auto uefi = update_env_for_item;
@@ -1580,7 +1580,7 @@ fn resolve_local_types_in_block(&@fn_ctxt fcx, &ast.block block)
         keep_going = kg
         with *fld
     );
-    ret fold.fold_block[option.t[@fn_ctxt]](some[@fn_ctxt](fcx), fld, block);
+    ret fold.fold_block[Option.t[@fn_ctxt]](some[@fn_ctxt](fcx), fld, block);
 }
 
 // AST fragment checking
@@ -1616,10 +1616,10 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
             new_pat = ast.pat_bind(id, def_id, ann);
         }
         case (ast.pat_tag(?p, ?subpats, ?vdef_opt, _)) {
-            auto vdef = option.get[ast.variant_def](vdef_opt);
+            auto vdef = Option.get[ast.variant_def](vdef_opt);
             auto t = ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
                                          fcx.ccx.type_cache, vdef._1)._1;
-            auto len = _vec.len[ast.ident](p.node.idents);
+            auto len = Vec.len[ast.ident](p.node.idents);
             auto last_id = p.node.idents.(len - 1u);
 
             auto tpt = ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
@@ -1629,14 +1629,14 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
             alt (struct(fcx.ccx.tcx, t)) {
                 // N-ary variants have function types.
                 case (ty.ty_fn(_, ?args, ?tag_ty)) {
-                    auto arg_len = _vec.len[arg](args);
-                    auto subpats_len = _vec.len[@ast.pat](subpats);
+                    auto arg_len = Vec.len[arg](args);
+                    auto subpats_len = Vec.len[@ast.pat](subpats);
                     if (arg_len != subpats_len) {
                         // TODO: pluralize properly
                         auto err_msg = "tag type " + last_id + " has " +
-                                       _uint.to_str(subpats_len, 10u) +
+                                       UInt.to_str(subpats_len, 10u) +
                                        " field(s), but this pattern has " +
-                                       _uint.to_str(arg_len, 10u) +
+                                       UInt.to_str(arg_len, 10u) +
                                        " field(s)";
 
                         fcx.ccx.sess.span_err(pat.span, err_msg);
@@ -1653,13 +1653,13 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
 
                 // Nullary variants have tag types.
                 case (ty.ty_tag(?tid, _)) {
-                    auto subpats_len = _vec.len[@ast.pat](subpats);
+                    auto subpats_len = Vec.len[@ast.pat](subpats);
                     if (subpats_len > 0u) {
                         // TODO: pluralize properly
                         auto err_msg = "tag type " + last_id +
                                        " has no field(s)," +
                                        " but this pattern has " +
-                                       _uint.to_str(subpats_len, 10u) +
+                                       UInt.to_str(subpats_len, 10u) +
                                        " field(s)";
 
                         fcx.ccx.sess.span_err(pat.span, err_msg);
@@ -1689,7 +1689,7 @@ fn require_impure(&session.session sess,
 }
 
 fn get_function_purity(@crate_ctxt ccx, &ast.def_id d_id) -> ast.purity {
-    let option.t[ast.purity] o = ccx.fn_purity_table.find(d_id);
+    let Option.t[ast.purity] o = ccx.fn_purity_table.find(d_id);
     ret from_maybe[ast.purity](ast.impure_fn, o);
 }
 
@@ -1738,16 +1738,16 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
     // A generic function to factor out common logic from call and bind
     // expressions.
     fn check_call_or_bind(&@fn_ctxt fcx, &@ast.expr f,
-                          &vec[option.t[@ast.expr]] args)
-            -> tup(@ast.expr, vec[option.t[@ast.expr]]) {
+                          &vec[Option.t[@ast.expr]] args)
+            -> tup(@ast.expr, vec[Option.t[@ast.expr]]) {
 
         // Check the function.
         auto f_0 = check_expr(fcx, f);
 
         // Check the arguments and generate the argument signature.
-        let vec[option.t[@ast.expr]] args_0 = vec();
+        let vec[Option.t[@ast.expr]] args_0 = vec();
         let vec[arg] arg_tys_0 = vec();
-        for (option.t[@ast.expr] a_opt in args) {
+        for (Option.t[@ast.expr] a_opt in args) {
             alt (a_opt) {
                 case (some[@ast.expr](?a)) {
                     auto a_0 = check_expr(fcx, a);
@@ -1756,14 +1756,14 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     // FIXME: this breaks aliases. We need a ty_fn_arg.
                     auto arg_ty = rec(mode=ast.val,
                                       ty=expr_ty(fcx.ccx.tcx, a_0));
-                    _vec.push[arg](arg_tys_0, arg_ty);
+                    Vec.push[arg](arg_tys_0, arg_ty);
                 }
                 case (none[@ast.expr]) {
                     args_0 += vec(none[@ast.expr]);
 
                     // FIXME: breaks aliases too?
                     auto typ = next_ty_var(fcx.ccx);
-                    _vec.push[arg](arg_tys_0, rec(mode=ast.val, ty=typ));
+                    Vec.push[arg](arg_tys_0, rec(mode=ast.val, ty=typ));
                 }
             }
         }
@@ -1812,7 +1812,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
     fn check_call(&@fn_ctxt fcx, @ast.expr f, vec[@ast.expr] args)
         -> tup(@ast.expr, vec[@ast.expr]) {
 
-        let vec[option.t[@ast.expr]] args_opt_0 = vec();
+        let vec[Option.t[@ast.expr]] args_opt_0 = vec();
         for (@ast.expr arg in args) {
             args_opt_0 += vec(some[@ast.expr](arg));
         }
@@ -1822,8 +1822,8 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
         // Pull out the arguments.
         let vec[@ast.expr] args_1 = vec();
-        for (option.t[@ast.expr] arg in result._1) {
-            args_1 += vec(option.get[@ast.expr](arg));
+        for (Option.t[@ast.expr] arg in result._1) {
+            args_1 += vec(Option.get[@ast.expr](arg));
         }
 
         ret tup(result._0, args_1);
@@ -1901,7 +1901,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
         case (ast.expr_path(?pth, ?defopt, _)) {
             auto t = ty.mk_nil(fcx.ccx.tcx);
             assert (defopt != none[ast.def]);
-            auto defn = option.get[ast.def](defopt);
+            auto defn = Option.get[ast.def](defopt);
 
             auto tpt = ty_param_count_and_ty_for_def(fcx, expr.span, defn);
 
@@ -1913,7 +1913,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
             // The definition doesn't take type parameters. If the programmer
             // supplied some, that's an error.
-            if (_vec.len[@ast.ty](pth.node.types) > 0u) {
+            if (Vec.len[@ast.ty](pth.node.types) > 0u) {
                 fcx.ccx.sess.span_err(expr.span, "this kind of value does " +
                                       "not take type parameters");
                 fail;
@@ -2295,7 +2295,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     // For each blank argument, add the type of that argument
                     // to the resulting function type.
                     auto i = 0u;
-                    while (i < _vec.len[option.t[@ast.expr]](args)) {
+                    while (i < Vec.len[Option.t[@ast.expr]](args)) {
                         alt (args.(i)) {
                             case (some[@ast.expr](_)) { /* no-op */ }
                             case (none[@ast.expr]) {
@@ -2434,7 +2434,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             let vec[@ast.expr] args_1 = vec();
 
             let ty.t t;
-            if (_vec.len[@ast.expr](args) == 0u) {
+            if (Vec.len[@ast.expr](args) == 0u) {
                 t = next_ty_var(fcx.ccx);
             } else {
                 auto expr_1 = check_expr(fcx, args.(0));
@@ -2445,7 +2445,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 auto expr_1 = check_expr(fcx, e);
                 auto expr_t = expr_ty(fcx.ccx.tcx, expr_1);
                 Demand.simple(fcx, expr.span, t, expr_t);
-                _vec.push[@ast.expr](args_1,expr_1);
+                Vec.push[@ast.expr](args_1,expr_1);
             }
 
             auto ann = triv_ann(ty.mk_vec(fcx.ccx.tcx,
@@ -2461,7 +2461,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             for (ast.elt e in elts) {
                 auto expr_1 = check_expr(fcx, e.expr);
                 auto expr_t = expr_ty(fcx.ccx.tcx, expr_1);
-                _vec.push[ast.elt](elts_1, rec(expr=expr_1 with e));
+                Vec.push[ast.elt](elts_1, rec(expr=expr_1 with e));
                 elts_mt += vec(rec(ty=expr_t, mut=e.mut));
             }
 
@@ -2486,10 +2486,10 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
             for (ast.field f in fields) {
                 auto expr_1 = check_expr(fcx, f.expr);
                 auto expr_t = expr_ty(fcx.ccx.tcx, expr_1);
-                _vec.push[ast.field](fields_1, rec(expr=expr_1 with f));
+                Vec.push[ast.field](fields_1, rec(expr=expr_1 with f));
 
                 auto expr_mt = rec(ty=expr_t, mut=f.mut);
-                _vec.push[field](fields_t, rec(ident=f.ident, mt=expr_mt));
+                Vec.push[field](fields_t, rec(ident=f.ident, mt=expr_mt));
             }
 
             auto ann = ast.ann_none;
@@ -2521,7 +2521,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     for (ty.field f in fields_t) {
                         auto found = false;
                         for (ty.field bf in base_fields) {
-                            if (_str.eq(f.ident, bf.ident)) {
+                            if (Str.eq(f.ident, bf.ident)) {
                                 Demand.simple(fcx, expr.span, f.mt.ty,
                                               bf.mt.ty);
                                 found = true;
@@ -2549,7 +2549,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (ty.ty_tup(?args)) {
                     let uint ix = ty.field_num(fcx.ccx.sess,
                                                expr.span, field);
-                    if (ix >= _vec.len[ty.mt](args)) {
+                    if (ix >= Vec.len[ty.mt](args)) {
                         fcx.ccx.sess.span_err(expr.span,
                                               "bad index on tuple");
                     }
@@ -2563,7 +2563,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (ty.ty_rec(?fields)) {
                     let uint ix = ty.field_idx(fcx.ccx.sess,
                                                expr.span, field, fields);
-                    if (ix >= _vec.len[typeck.field](fields)) {
+                    if (ix >= Vec.len[typeck.field](fields)) {
                         fcx.ccx.sess.span_err(expr.span,
                                               "bad index on record");
                     }
@@ -2577,7 +2577,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                 case (ty.ty_obj(?methods)) {
                     let uint ix = ty.method_idx(fcx.ccx.sess,
                                                 expr.span, field, methods);
-                    if (ix >= _vec.len[typeck.method](methods)) {
+                    if (ix >= Vec.len[typeck.method](methods)) {
                         fcx.ccx.sess.span_err(expr.span,
                                               "bad index on obj");
                     }
@@ -2775,7 +2775,7 @@ fn check_stmt(&@fn_ctxt fcx, &@ast.stmt stmt) -> @ast.stmt {
 fn check_block(&@fn_ctxt fcx, &ast.block block) -> ast.block {
     let vec[@ast.stmt] stmts = vec();
     for (@ast.stmt s in block.node.stmts) {
-        _vec.push[@ast.stmt](stmts, check_stmt(fcx, s));
+        Vec.push[@ast.stmt](stmts, check_stmt(fcx, s));
     }
 
     auto expr = none[@ast.expr];
@@ -2900,7 +2900,7 @@ fn hash_unify_cache_entry(&unify_cache_entry uce) -> uint {
     h += h << 5u + ty.hash_ty(uce._1);
 
     auto i = 0u;
-    auto tys_len = _vec.len(uce._2);
+    auto tys_len = Vec.len(uce._2);
     while (i < tys_len) {
         h += h << 5u + ty.hash_ty(uce._2.(i));
         i += 1u;
@@ -2913,8 +2913,8 @@ fn eq_unify_cache_entry(&unify_cache_entry a, &unify_cache_entry b) -> bool {
     if (!ty.eq_ty(a._0, b._0) || !ty.eq_ty(a._1, b._1)) { ret false; }
 
     auto i = 0u;
-    auto tys_len = _vec.len(a._2);
-    if (_vec.len(b._2) != tys_len) { ret false; }
+    auto tys_len = Vec.len(a._2);
+    if (Vec.len(b._2) != tys_len) { ret false; }
 
     while (i < tys_len) {
         if (!ty.eq_ty(a._2.(i), b._2.(i))) { ret false; }
@@ -2957,7 +2957,7 @@ fn check_crate(ty.ctxt tcx, @ast.crate crate)
     auto hasher = hash_unify_cache_entry;
     auto eqer = eq_unify_cache_entry;
     auto unify_cache =
-        map.mk_hashmap[unify_cache_entry,ty.Unify.result](hasher, eqer);
+        Map.mk_hashmap[unify_cache_entry,ty.Unify.result](hasher, eqer);
     auto fpt =
         mk_fn_purity_table(crate); // use a variation on Collect
 

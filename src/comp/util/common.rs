@@ -1,18 +1,18 @@
-import std.map;
-import std.map.hashmap;
-import std._uint;
-import std._int;
-import std._vec;
-import std.option.none;
+import std.Map;
+import std.Map.hashmap;
+import std.UInt;
+import std.Int;
+import std.Vec;
+import std.Option.none;
 import front.ast;
 import util.typestate_ann.ts_ann;
 
 import middle.fold;
 import middle.fold.respan;
 
-import std.io.stdout;
-import std.io.str_writer;
-import std.io.string_writer;
+import std.IO.stdout;
+import std.IO.str_writer;
+import std.IO.string_writer;
 import pretty.pprust.print_block;
 import pretty.pprust.print_expr;
 import pretty.pprust.print_decl;
@@ -56,10 +56,10 @@ fn ty_mach_to_str(ty_mach tm) -> str {
     }
 }
 
-fn new_str_hash[V]() -> std.map.hashmap[str,V] {
-    let std.map.hashfn[str] hasher = std._str.hash;
-    let std.map.eqfn[str] eqer = std._str.eq;
-    ret std.map.mk_hashmap[str,V](hasher, eqer);
+fn new_str_hash[V]() -> std.Map.hashmap[str,V] {
+    let std.Map.hashfn[str] hasher = std.Str.hash;
+    let std.Map.eqfn[str] eqer = std.Str.eq;
+    ret std.Map.mk_hashmap[str,V](hasher, eqer);
 }
 
 fn def_eq(&ast.def_id a, &ast.def_id b) -> bool {
@@ -73,48 +73,48 @@ fn hash_def(&ast.def_id d) -> uint {
     ret h;
 }
 
-fn new_def_hash[V]() -> std.map.hashmap[ast.def_id,V] {
-    let std.map.hashfn[ast.def_id] hasher = hash_def;
-    let std.map.eqfn[ast.def_id] eqer = def_eq;
-    ret std.map.mk_hashmap[ast.def_id,V](hasher, eqer);
+fn new_def_hash[V]() -> std.Map.hashmap[ast.def_id,V] {
+    let std.Map.hashfn[ast.def_id] hasher = hash_def;
+    let std.Map.eqfn[ast.def_id] eqer = def_eq;
+    ret std.Map.mk_hashmap[ast.def_id,V](hasher, eqer);
 }
 
-fn new_int_hash[V]() -> std.map.hashmap[int,V] {
+fn new_int_hash[V]() -> std.Map.hashmap[int,V] {
     fn hash_int(&int x) -> uint { ret x as uint; }
     fn eq_int(&int a, &int b) -> bool { ret a == b; }
     auto hasher = hash_int;
     auto eqer = eq_int;
-    ret std.map.mk_hashmap[int,V](hasher, eqer);
+    ret std.Map.mk_hashmap[int,V](hasher, eqer);
 }
 
-fn new_uint_hash[V]() -> std.map.hashmap[uint,V] {
+fn new_uint_hash[V]() -> std.Map.hashmap[uint,V] {
     fn hash_uint(&uint x) -> uint { ret x; }
     fn eq_uint(&uint a, &uint b) -> bool { ret a == b; }
     auto hasher = hash_uint;
     auto eqer = eq_uint;
-    ret std.map.mk_hashmap[uint,V](hasher, eqer);
+    ret std.Map.mk_hashmap[uint,V](hasher, eqer);
 }
 
 fn istr(int i) -> str {
-    ret _int.to_str(i, 10u);
+    ret Int.to_str(i, 10u);
 }
 
 fn uistr(uint i) -> str {
-    ret _uint.to_str(i, 10u);
+    ret UInt.to_str(i, 10u);
 }
 
 fn elt_expr(&ast.elt e) -> @ast.expr { ret e.expr; }
 
 fn elt_exprs(&vec[ast.elt] elts) -> vec[@ast.expr] {
     auto f = elt_expr;
-    ret _vec.map[ast.elt, @ast.expr](f, elts);
+    ret Vec.map[ast.elt, @ast.expr](f, elts);
 }
 
 fn field_expr(&ast.field f) -> @ast.expr { ret f.expr; }
 
 fn field_exprs(vec[ast.field] fields) -> vec [@ast.expr] {
     auto f = field_expr;
-    ret _vec.map[ast.field, @ast.expr](f, fields);
+    ret Vec.map[ast.field, @ast.expr](f, fields);
 }
 
 fn plain_ann(middle.ty.ctxt tcx) -> ast.ann {

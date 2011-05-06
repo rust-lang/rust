@@ -1,4 +1,4 @@
-// lib/option.rs
+// lib/Option.rs
 
 tag t[T] {
     none;
@@ -39,7 +39,7 @@ fn is_none[T](&t[T] opt) -> bool {
 }
 
 fn from_maybe[T](&T def, &t[T] opt) -> T {
-    auto f = bind util.id[T](_);
+    auto f = bind Util.id[T](_);
     ret maybe[T, T](def, f, opt);
 }
 

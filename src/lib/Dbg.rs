@@ -20,7 +20,7 @@ native "rust" mod rustrt {
 }
 
 fn debug_vec[T](vec[T] v) {
-    _vec.print_debug_info[T](v);
+    Vec.print_debug_info[T](v);
 }
 
 fn debug_tydesc[T]() {

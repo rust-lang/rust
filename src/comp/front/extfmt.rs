@@ -6,11 +6,11 @@
 
 import util.common;
 
-import std._str;
-import std._vec;
-import std.option;
-import std.option.none;
-import std.option.some;
+import std.Str;
+import std.Vec;
+import std.Option;
+import std.Option.none;
+import std.Option.some;
 
 import std.ExtFmt.CT.signedness;
 import std.ExtFmt.CT.signed;
@@ -47,9 +47,9 @@ export expand_syntax_ext;
 
 // FIXME: Need to thread parser through here to handle errors correctly
 fn expand_syntax_ext(vec[@ast.expr] args,
-                     option.t[str] body) -> @ast.expr {
+                     Option.t[str] body) -> @ast.expr {
 
-    if (_vec.len[@ast.expr](args) == 0u) {
+    if (Vec.len[@ast.expr](args) == 0u) {
         log_err "malformed #fmt call";
         fail;
     }
@@ -60,8 +60,8 @@ fn expand_syntax_ext(vec[@ast.expr] args,
     // log fmt;
 
     auto pieces = parse_fmt_string(fmt);
-    auto args_len = _vec.len[@ast.expr](args);
-    auto fmt_args = _vec.slice[@ast.expr](args, 1u, args_len - 1u);
+    auto args_len = Vec.len[@ast.expr](args);
+    auto fmt_args = Vec.slice[@ast.expr](args, 1u, args_len - 1u);
     ret pieces_to_expr(pieces, args);
 }
 
@@ -148,7 +148,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         }
 
         auto recexpr = ast.expr_rec(astfields,
-                                    option.none[@ast.expr],
+                                    Option.none[@ast.expr],
                                     ast.ann_none);
         auto sp_recexpr = @rec(node=recexpr, span=sp);
         ret sp_recexpr;
@@ -196,7 +196,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
             // FIXME: 0-length vectors can't have their type inferred
             // through the rec that these flags are a member of, so
             // this is a hack placeholder flag
-            if (_vec.len[@ast.expr](flagexprs) == 0u) {
+            if (Vec.len[@ast.expr](flagexprs) == 0u) {
                 flagexprs += vec(make_rt_path_expr(sp, "flag_none"));
             }
 
@@ -303,7 +303,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         auto unsupported = "conversion not supported in #fmt string";
 
         alt (cnv.param) {
-            case (option.none[int]) {
+            case (Option.none[int]) {
             }
             case (_) {
                 log_err unsupported;
@@ -398,7 +398,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
     fn log_conv(conv c) {
         alt (c.param) {
             case (some[int](?p)) {
-                log "param: " + std._int.to_str(p, 10u);
+                log "param: " + std.Int.to_str(p, 10u);
             }
             case (_) {
                 log "param: none";
@@ -425,10 +425,10 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         }
         alt (c.width) {
             case (count_is(?i)) {
-                log "width: count is " + std._int.to_str(i, 10u);
+                log "width: count is " + std.Int.to_str(i, 10u);
             }
             case (count_is_param(?i)) {
-                log "width: count is param " + std._int.to_str(i, 10u);
+                log "width: count is param " + std.Int.to_str(i, 10u);
             }
             case (count_is_next_param) {
                 log "width: count is next param";
@@ -439,10 +439,10 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
         }
         alt (c.precision) {
             case (count_is(?i)) {
-                log "prec: count is " + std._int.to_str(i, 10u);
+                log "prec: count is " + std.Int.to_str(i, 10u);
             }
             case (count_is_param(?i)) {
-                log "prec: count is param " + std._int.to_str(i, 10u);
+                log "prec: count is param " + std.Int.to_str(i, 10u);
             }
             case (count_is_next_param) {
                 log "prec: count is next param";
@@ -498,7 +498,7 @@ fn pieces_to_expr(vec[piece] pieces, vec[@ast.expr] args) -> @ast.expr {
                 tmp_expr = make_add_expr(sp, tmp_expr, s_expr);
             }
             case (piece_conv(?conv)) {
-                if (n >= _vec.len[@ast.expr](args)) {
+                if (n >= Vec.len[@ast.expr](args)) {
                     log_err "too many conversions in #fmt string";
                     fail;
                 }
