@@ -6,10 +6,15 @@
 
 using namespace llvm;
 
+extern "C" void LLVMAddStandardFunctionPasses(LLVMPassManagerRef PM,
+    unsigned int OptimizationLevel) {
+  createStandardFunctionPasses(unwrap(PM), OptimizationLevel);
+}
+
 extern "C" void LLVMAddStandardModulePasses(LLVMPassManagerRef PM,
-    unsigned int OptimizationLevel, bool OptimizeSize, bool UnitAtATime,
-    bool UnrollLoops, bool SimplifyLibCalls, bool HaveExceptions,
-    unsigned int InliningThreshold) {
+    unsigned int OptimizationLevel, LLVMBool OptimizeSize,
+    LLVMBool UnitAtATime, LLVMBool UnrollLoops, LLVMBool SimplifyLibCalls,
+    LLVMBool HaveExceptions, unsigned int InliningThreshold) {
   Pass *InliningPass;
   if (InliningThreshold)
     InliningPass = createFunctionInliningPass(InliningThreshold);
