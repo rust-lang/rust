@@ -42,6 +42,7 @@ import lib.llvm.llvm.BasicBlockRef;
 
 import lib.llvm.False;
 import lib.llvm.True;
+import lib.llvm.Bool;
 
 state obj namegen(mutable int i) {
     fn next(str prefix) -> str {
@@ -887,14 +888,13 @@ fn C_null(TypeRef t) -> ValueRef {
     ret llvm.LLVMConstNull(t);
 }
 
-fn C_integral(int i, TypeRef t) -> ValueRef {
+fn C_integral(TypeRef t, uint u, Bool sign_extend) -> ValueRef {
     // FIXME. We can't use LLVM.ULongLong with our existing minimal native
-    // API, which only knows word-sized args.  Lucky for us LLVM has a "take a
-    // string encoding" version.  Hilarious. Please fix to handle:
+    // API, which only knows word-sized args.
     //
     // ret llvm.LLVMConstInt(T_int(), t as LLVM.ULongLong, False);
     //
-    ret llvm.LLVMConstIntOfString(t, Str.buf(istr(i)), 10);
+    ret llvm.LLVMRustConstSmallInt(t, u, sign_extend);
 }
 
 fn C_float(str s) -> ValueRef {
@@ -907,23 +907,23 @@ fn C_floating(str s, TypeRef t) -> ValueRef {
 
 fn C_nil() -> ValueRef {
     // NB: See comment above in T_void().
-    ret C_integral(0, T_i1());
+    ret C_integral(T_i1(), 0u, False);
 }
 
 fn C_bool(bool b) -> ValueRef {
     if (b) {
-        ret C_integral(1, T_bool());
+        ret C_integral(T_bool(), 1u, False);
     } else {
-        ret C_integral(0, T_bool());
+        ret C_integral(T_bool(), 0u, False);
     }
 }
 
 fn C_int(int i) -> ValueRef {
-    ret C_integral(i, T_int());
+    ret C_integral(T_int(), i as uint, True);
 }
 
-fn C_i8(uint i) -> ValueRef {
-    ret C_integral(i as int, T_i8());
+fn C_u8(uint i) -> ValueRef {
+    ret C_integral(T_i8(), i, False);
 }
 
 // This is a 'c-like' raw string, which differs from
@@ -961,7 +961,7 @@ fn C_zero_byte_arr(uint size) -> ValueRef {
     auto i = 0u;
     let vec[ValueRef] elts = vec();
     while (i < size) {
-        elts += vec(C_integral(0, T_i8()));
+        elts += vec(C_u8(0u));
         i += 1u;
     }
     ret llvm.LLVMConstArray(T_i8(), Vec.buf[ValueRef](elts),
@@ -2175,7 +2175,7 @@ fn make_cmp_glue(@block_ctxt cx,
             // == and <= default to true if they find == all the way. <
             // defaults to false if it finds == all the way.
             auto result_if_equal = scx.build.ICmp(lib.llvm.LLVMIntNE, llop,
-                                                  C_i8(abi.cmp_glue_op_lt));
+                                                  C_u8(abi.cmp_glue_op_lt));
             scx.build.Store(result_if_equal, flag);
             r = res(scx, C_nil());
         }
@@ -2211,7 +2211,7 @@ fn make_cmp_glue(@block_ctxt cx,
 
             // First 'eq' comparison: if so, continue to next elts.
             auto eq_r = call_cmp_glue(cx, av, bv, t,
-                                      C_i8(abi.cmp_glue_op_eq));
+                                      C_u8(abi.cmp_glue_op_eq));
             eq_r.bcx.build.CondBr(eq_r.val, cnt_cx.llbb, stop_cx.llbb);
 
             // Second 'op' comparison: find out how this elt-pair decides.
@@ -2299,9 +2299,9 @@ fn make_fp_cmp_glue(@block_ctxt cx, ValueRef lhs, ValueRef rhs, ty.t fptype,
     unreach_cx.build.Unreachable();
 
     auto llswitch = cx.build.Switch(llop, unreach_cx.llbb, 3u);
-    llvm.LLVMAddCase(llswitch, C_i8(abi.cmp_glue_op_eq), eq_cx.llbb);
-    llvm.LLVMAddCase(llswitch, C_i8(abi.cmp_glue_op_lt), lt_cx.llbb);
-    llvm.LLVMAddCase(llswitch, C_i8(abi.cmp_glue_op_le), le_cx.llbb);
+    llvm.LLVMAddCase(llswitch, C_u8(abi.cmp_glue_op_eq), eq_cx.llbb);
+    llvm.LLVMAddCase(llswitch, C_u8(abi.cmp_glue_op_lt), lt_cx.llbb);
+    llvm.LLVMAddCase(llswitch, C_u8(abi.cmp_glue_op_le), le_cx.llbb);
 
     auto last_result =
         last_cx.build.Phi(T_i1(), vec(eq_result, lt_result, le_result),
@@ -2341,9 +2341,9 @@ fn compare_integral_values(@block_ctxt cx, ValueRef lhs, ValueRef rhs,
     unreach_cx.build.Unreachable();
 
     auto llswitch = cx.build.Switch(llop, unreach_cx.llbb, 3u);
-    llvm.LLVMAddCase(llswitch, C_i8(abi.cmp_glue_op_eq), eq_cx.llbb);
-    llvm.LLVMAddCase(llswitch, C_i8(abi.cmp_glue_op_lt), lt_cx.llbb);
-    llvm.LLVMAddCase(llswitch, C_i8(abi.cmp_glue_op_le), le_cx.llbb);
+    llvm.LLVMAddCase(llswitch, C_u8(abi.cmp_glue_op_eq), eq_cx.llbb);
+    llvm.LLVMAddCase(llswitch, C_u8(abi.cmp_glue_op_lt), lt_cx.llbb);
+    llvm.LLVMAddCase(llswitch, C_u8(abi.cmp_glue_op_le), le_cx.llbb);
 
     auto last_result =
         last_cx.build.Phi(T_i1(), vec(eq_result, lt_result, le_result),
@@ -2949,18 +2949,19 @@ fn trans_lit(@crate_ctxt cx, &ast.lit lit, &ast.ann ann) -> ValueRef {
             // if target int width is larger than host, at the moment;
             // re-do the mach-int types using 'big' when that works.
             auto t = T_int();
+            auto s = True;
             alt (tm) {
-                case (common.ty_u8) { t = T_i8(); }
-                case (common.ty_u16) { t = T_i16(); }
-                case (common.ty_u32) { t = T_i32(); }
-                case (common.ty_u64) { t = T_i64(); }
+                case (common.ty_u8) { t = T_i8(); s = False; }
+                case (common.ty_u16) { t = T_i16(); s = False; }
+                case (common.ty_u32) { t = T_i32(); s = False; }
+                case (common.ty_u64) { t = T_i64(); s = False; }
 
                 case (common.ty_i8) { t = T_i8(); }
                 case (common.ty_i16) { t = T_i16(); }
                 case (common.ty_i32) { t = T_i32(); }
                 case (common.ty_i64) { t = T_i64(); }
             }
-            ret C_integral(i, t);
+            ret C_integral(t, i as uint, s);
         }
         case(ast.lit_float(?fs)) {
             ret C_float(fs);
@@ -2974,7 +2975,7 @@ fn trans_lit(@crate_ctxt cx, &ast.lit lit, &ast.ann ann) -> ValueRef {
             ret C_floating(s, t);
         }
         case (ast.lit_char(?c)) {
-            ret C_integral(c as int, T_char());
+            ret C_integral(T_char(), c as uint, False);
         }
         case (ast.lit_bool(?b)) {
             ret C_bool(b);
@@ -3116,12 +3117,12 @@ fn trans_compare(@block_ctxt cx0, ast.binop op, ty.t t0,
     // FIXME: Use or-patterns when we have them.
     auto llop;
     alt (op) {
-        case (ast.eq) { llop = C_i8(abi.cmp_glue_op_eq); }
-        case (ast.lt) { llop = C_i8(abi.cmp_glue_op_lt); }
-        case (ast.le) { llop = C_i8(abi.cmp_glue_op_le); }
-        case (ast.ne) { llop = C_i8(abi.cmp_glue_op_eq); }
-        case (ast.ge) { llop = C_i8(abi.cmp_glue_op_lt); }
-        case (ast.gt) { llop = C_i8(abi.cmp_glue_op_le); }
+        case (ast.eq) { llop = C_u8(abi.cmp_glue_op_eq); }
+        case (ast.lt) { llop = C_u8(abi.cmp_glue_op_lt); }
+        case (ast.le) { llop = C_u8(abi.cmp_glue_op_le); }
+        case (ast.ne) { llop = C_u8(abi.cmp_glue_op_eq); }
+        case (ast.ge) { llop = C_u8(abi.cmp_glue_op_lt); }
+        case (ast.gt) { llop = C_u8(abi.cmp_glue_op_le); }
     }
 
     auto rslt = call_cmp_glue(cx, lhs, rhs, t, llop);
@@ -7347,7 +7348,7 @@ fn make_bzero_glue(ValueRef fun) -> ValueRef {
     // Loop-body block
     auto lb = new_builder(loopbb);
     i = lb.Load(ip);
-    lb.Store(C_integral(0, T_i8()), lb.GEP(dst, vec(i)));
+    lb.Store(C_u8(0u), lb.GEP(dst, vec(i)));
     lb.Store(lb.Add(i, C_int(1)), ip);
     lb.Br(hdrbb);
 

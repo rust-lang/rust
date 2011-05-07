@@ -116,3 +116,8 @@ extern "C" const char *LLVMRustGetHostTriple(void)
   static std::string str = llvm::sys::getHostTriple();
   return str.c_str();
 }
+
+extern "C" LLVMValueRef LLVMRustConstSmallInt(LLVMTypeRef IntTy, unsigned N,
+                                              LLVMBool SignExtend) {
+  return LLVMConstInt(IntTy, (unsigned long long)N, SignExtend);
+}

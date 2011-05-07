@@ -2,6 +2,7 @@ LLVMRustCreateMemoryBufferWithContentsOfFile
 LLVMRustWriteOutputFile
 LLVMRustGetLastError
 LLVMRustGetHostTriple
+LLVMRustConstSmallInt
 LLVMRustParseBitcode
 LLVMLinkModules
 LLVMCreateObjectFile
