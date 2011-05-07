@@ -296,6 +296,7 @@ tag expr_ {
     expr_check(@expr, ann);
     expr_port(ann);
     expr_chan(@expr, ann);
+    expr_anon_obj(anon_obj, vec[ty_param], obj_def_ids, ann);
 }
 
 type lit = spanned[lit_];
@@ -371,6 +372,25 @@ type _obj = rec(vec[obj_field] fields,
                 vec[@method] methods,
                 option::t[@method] dtor);
 
+
+// Hmm.  An anon_obj might extend an existing object, in which case it'll
+// probably add fields and methods.
+type anon_obj = rec(option.t[vec[obj_field]] fields,
+                    vec[@method] methods,
+                    option.t[ident] with_obj);
+
+tag mod_index_entry {
+    mie_view_item(@view_item);
+    mie_item(@item);
+    mie_tag_variant(@item /* tag item */, uint /* variant index */);
+}
+
+tag native_mod_index_entry {
+    nmie_view_item(@view_item);
+    nmie_item(@native_item);
+}
+
+type mod_index = hashmap[ident,mod_index_entry];
 type _mod = rec(vec[@view_item] view_items,
                 vec[@item] items);
 
