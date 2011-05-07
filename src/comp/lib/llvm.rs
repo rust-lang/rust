@@ -748,6 +748,9 @@ native mod llvm = llvm_lib {
 
     /** Creates target data from a target layout string. */
     fn LLVMCreateTargetData(sbuf StringRep) -> TargetDataRef;
+    /** Adds the target data to the given pass manager. The pass manager
+        references the target data only weakly. */
+    fn LLVMAddTargetData(TargetDataRef TD, PassManagerRef PM);
     /** Returns the size of a type. FIXME: rv is actually a ULongLong! */
     fn LLVMStoreSizeOfType(TargetDataRef TD, TypeRef Ty) -> uint;
     /** Returns the alignment of a type. */
@@ -802,7 +805,8 @@ native mod llvm = llvm_lib {
     fn LLVMAddTypeBasedAliasAnalysisPass(PassManagerRef PM);
     fn LLVMAddBasicAliasAnalysisPass(PassManagerRef PM);
 
-    // FIXME: Native stubs don't allow this many arguments yet.
+    fn LLVMAddStandardFunctionPasses(PassManagerRef PM,
+                                     uint OptimizationLevel);
     fn LLVMAddStandardModulePasses(PassManagerRef PM,
                                    uint OptimizationLevel,
                                    Bool OptimizeSize,

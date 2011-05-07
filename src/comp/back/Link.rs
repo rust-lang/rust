@@ -10,6 +10,7 @@ import lib.llvm.mk_pass_manager;
 import lib.llvm.mk_target_data;
 import lib.llvm.mk_type_names;
 import lib.llvm.False;
+import lib.llvm.True;
 
 tag output_type {
     output_type_none;
@@ -79,6 +80,9 @@ mod Write {
         auto pm = mk_pass_manager();
         auto opts = sess.get_opts();
 
+        auto td = mk_target_data(x86.get_data_layout());
+        llvm.LLVMAddTargetData(td.lltd, pm.llpm);
+
         // TODO: run the linter here also, once there are llvm-c bindings for
         // it.
 
@@ -109,58 +113,20 @@ mod Write {
         // tool?
         if (opts.optimize) {
             auto fpm = mk_pass_manager();
-
-            // createStandardFunctionPasses
-            llvm.LLVMAddTypeBasedAliasAnalysisPass(fpm.llpm);
-            llvm.LLVMAddBasicAliasAnalysisPass(fpm.llpm);
-            llvm.LLVMAddCFGSimplificationPass(fpm.llpm);
-            llvm.LLVMAddScalarReplAggregatesPass(fpm.llpm);
-            llvm.LLVMAddEarlyCSEPass(fpm.llpm);
-
+            llvm.LLVMAddTargetData(td.lltd, fpm.llpm);
+            llvm.LLVMAddStandardFunctionPasses(fpm.llpm, 2u);
             llvm.LLVMRunPassManager(fpm.llpm, llmod);
 
-            // createStandardModulePasses
-            llvm.LLVMAddTypeBasedAliasAnalysisPass(pm.llpm);
-            llvm.LLVMAddBasicAliasAnalysisPass(pm.llpm);
-            llvm.LLVMAddGlobalOptimizerPass(pm.llpm);
-            llvm.LLVMAddIPSCCPPass(pm.llpm);
-            llvm.LLVMAddDeadArgEliminationPass(pm.llpm);
-            llvm.LLVMAddInstructionCombiningPass(pm.llpm);
-            llvm.LLVMAddCFGSimplificationPass(pm.llpm);
-            llvm.LLVMAddPruneEHPass(pm.llpm);
-            llvm.LLVMAddFunctionInliningPass(pm.llpm);
-            llvm.LLVMAddFunctionAttrsPass(pm.llpm);
-            llvm.LLVMAddScalarReplAggregatesPassSSA(pm.llpm);
-            llvm.LLVMAddEarlyCSEPass(pm.llpm);
-            llvm.LLVMAddSimplifyLibCallsPass(pm.llpm);
-            llvm.LLVMAddJumpThreadingPass(pm.llpm);
-            llvm.LLVMAddCorrelatedValuePropagationPass(pm.llpm);
-            llvm.LLVMAddCFGSimplificationPass(pm.llpm);
-            llvm.LLVMAddInstructionCombiningPass(pm.llpm);
-            llvm.LLVMAddTailCallEliminationPass(pm.llpm);
-            llvm.LLVMAddCFGSimplificationPass(pm.llpm);
-            llvm.LLVMAddReassociatePass(pm.llpm);
-            llvm.LLVMAddLoopRotatePass(pm.llpm);
-            llvm.LLVMAddLICMPass(pm.llpm);
-            llvm.LLVMAddLoopUnswitchPass(pm.llpm);
-            llvm.LLVMAddInstructionCombiningPass(pm.llpm);
-            llvm.LLVMAddIndVarSimplifyPass(pm.llpm);
-            llvm.LLVMAddLoopIdiomPass(pm.llpm);
-            llvm.LLVMAddLoopDeletionPass(pm.llpm);
-            llvm.LLVMAddLoopUnrollPass(pm.llpm);
-            llvm.LLVMAddInstructionCombiningPass(pm.llpm);
-            llvm.LLVMAddGVNPass(pm.llpm);
-            llvm.LLVMAddMemCpyOptPass(pm.llpm);
-            llvm.LLVMAddSCCPPass(pm.llpm);
-            llvm.LLVMAddInstructionCombiningPass(pm.llpm);
-            llvm.LLVMAddJumpThreadingPass(pm.llpm);
-            llvm.LLVMAddCorrelatedValuePropagationPass(pm.llpm);
-            llvm.LLVMAddDeadStoreEliminationPass(pm.llpm);
-            llvm.LLVMAddAggressiveDCEPass(pm.llpm);
-            llvm.LLVMAddCFGSimplificationPass(pm.llpm);
-            llvm.LLVMAddStripDeadPrototypesPass(pm.llpm);
-            llvm.LLVMAddDeadTypeEliminationPass(pm.llpm);
-            llvm.LLVMAddConstantMergePass(pm.llpm);
+            // TODO: On -O3, use 275 instead of 225 for the inlining
+            // threshold.
+            llvm.LLVMAddStandardModulePasses(pm.llpm,
+                                             2u,    // optimization level
+                                             False, // optimize for size
+                                             True,  // unit-at-a-time
+                                             True,  // unroll loops
+                                             True,  // simplify lib calls
+                                             True,  // have exceptions
+                                             225u); // inlining threshold
         }
 
         if (opts.verify) {
