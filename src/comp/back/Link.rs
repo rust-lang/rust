@@ -19,7 +19,12 @@ tag output_type {
 }
 
 fn llvm_err(session.session sess, str msg) {
-    sess.err(msg + ": " + Str.str_from_cstr(llvm.LLVMRustGetLastError()));
+    auto buf = llvm.LLVMRustGetLastError();
+    if ((buf as uint) == 0u) {
+        sess.err(msg);
+    } else {
+        sess.err(msg + ": " + Str.str_from_cstr(buf));
+    }
     fail;
 }
 
