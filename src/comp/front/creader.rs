@@ -635,14 +635,8 @@ fn list_crate_metadata(vec[u8] bytes, IO.writer out) {
 
 fn describe_def(&EBML.doc items, ast.def_id id) -> str {
     if (id._0 != 0) {ret "external";}
-    alt (maybe_find_item(id._1 as int, items)) {
-        case (Option.some[EBML.doc](?item)) {
-            ret item_kind_to_str(item_kind(item));
-        }
-        case (Option.none[EBML.doc]) {
-            ret "??"; // Native modules don't seem to get item entries.
-        }
-    }
+    auto item = find_item(id._1, items);
+    ret item_kind_to_str(item_kind(item));
 }
 
 fn item_kind_to_str(u8 kind) -> str {

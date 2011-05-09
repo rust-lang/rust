@@ -513,7 +513,7 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &EBML.writer ebml_w,
             encode_kind(ebml_w, 'm' as u8);
             EBML.end_tag(ebml_w);
         }
-        case (ast.item_native_mod(_, _, ?did)) {
+        case (ast.item_native_mod(?id, _, ?did)) {
             EBML.start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, did);
             encode_kind(ebml_w, 'n' as u8);

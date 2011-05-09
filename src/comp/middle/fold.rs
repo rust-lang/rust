@@ -291,8 +291,7 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &span sp, &ident i,
          &vec[ident] idents,
-         &def_id id,
-         &Option.t[def]) -> @view_item)           fold_view_item_import,
+         &def_id id) -> @view_item)               fold_view_item_import,
 
      (fn(&ENV e, &span sp,
          &ident i) -> @view_item)                 fold_view_item_export,
@@ -981,10 +980,9 @@ fn fold_view_item[ENV](&ENV env, &ast_fold[ENV] fld, &@view_item vi)
             ret fld.fold_view_item_use(env_, vi.span, ident, meta_items,
                                        def_id, cnum);
         }
-        case (ast.view_item_import(?def_ident, ?idents, ?def_id,
-                                   ?target_def)) {
+        case (ast.view_item_import(?def_ident, ?idents, ?def_id)) {
             ret fld.fold_view_item_import(env_, vi.span, def_ident, idents,
-                                          def_id, target_def);
+                                          def_id);
         }
 
         case (ast.view_item_export(?def_ident)) {
@@ -1538,10 +1536,9 @@ fn identity_fold_view_item_use[ENV](&ENV e, &span sp, &ident i,
 }
 
 fn identity_fold_view_item_import[ENV](&ENV e, &span sp, &ident i,
-                                       &vec[ident] is, &def_id id,
-                                       &Option.t[def] target_def)
+                                       &vec[ident] is, &def_id id)
     -> @view_item {
-    ret @respan(sp, ast.view_item_import(i, is, id, target_def));
+    ret @respan(sp, ast.view_item_import(i, is, id));
 }
 
 fn identity_fold_view_item_export[ENV](&ENV e, &span sp, &ident i)
@@ -1747,7 +1744,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_view_item_use =
              bind identity_fold_view_item_use[ENV](_,_,_,_,_,_),
          fold_view_item_import =
-             bind identity_fold_view_item_import[ENV](_,_,_,_,_,_),
+             bind identity_fold_view_item_import[ENV](_,_,_,_,_),
          fold_view_item_export =
              bind identity_fold_view_item_export[ENV](_,_,_),
 

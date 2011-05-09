@@ -2309,8 +2309,7 @@ fn parse_rest_import_name(parser p, ast.ident first,
         }
     }
     auto import_decl = ast.view_item_import(defined_id, identifiers,
-                                            p.next_def_id(),
-                                            none[ast.def]);
+                                            p.next_def_id());
     ret @spanned(lo, hi, import_decl);
 }
 

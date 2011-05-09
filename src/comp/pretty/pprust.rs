@@ -846,7 +846,7 @@ fn print_view_item(ps s, @ast.view_item item) {
                 pclose(s);
             }
         }
-        case (ast.view_item_import(?id,?ids,_,_)) {
+        case (ast.view_item_import(?id,?ids,_)) {
             wrd1(s, "import");
             if (!Str.eq(id, ids.(Vec.len[str](ids)-1u))) {
                 wrd1(s, id);

@@ -1,5 +1,6 @@
 // xfail-boot
-// error-pattern: unresolved name
+// xfail-stage0
+// error-pattern: unresolved import
 
 import m.unexported;
 

@@ -7044,6 +7044,9 @@ fn collect_item_1(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast.item i) {
         case (ast.item_mod(?name, ?m, ?mid)) {
             ccx.items.insert(mid, i);
         }
+        case (ast.item_native_mod(_, _, ?mid)) {
+            ccx.items.insert(mid, i);
+        }
         case (ast.item_ty(_, _, _, ?did, _)) {
             ccx.items.insert(did, i);
         }

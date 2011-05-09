@@ -56,6 +56,17 @@ fn length[T](&list[T] ls) -> uint {
   ret foldl[T,uint](ls, 0u, bind count[T](_, _));
 }
 
+fn cdr[T](&list[T] ls) -> list[T] {
+    alt (ls) {
+        case (cons[T](_, ?tl)) {ret *tl;}
+    }
+}
+fn car[T](&list[T] ls) -> T {
+    alt (ls) {
+        case (cons[T](?hd, _)) {ret hd;}
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
