@@ -1046,7 +1046,7 @@ fn type_param(&ctxt cx, &t ty) -> Option.t[uint] {
     ret none[uint];
 }
 
-fn def_to_str(ast.def_id did) -> str {
+fn def_to_str(&ast.def_id did) -> str {
     ret #fmt("%d:%d", did._0, did._1);
 }
 

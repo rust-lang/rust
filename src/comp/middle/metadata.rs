@@ -61,26 +61,26 @@ tag abbrev_ctxt {
 mod Encode {
 
     type ctxt = rec(
-        fn(ast.def_id) -> str ds,           // Def -> str Callback.
+        fn(&ast.def_id) -> str ds,          // Def -> str Callback.
         ty.ctxt tcx,                        // The type context.
         abbrev_ctxt abbrevs
     );
 
-    fn cx_uses_abbrevs(@ctxt cx) -> bool {
+    fn cx_uses_abbrevs(&@ctxt cx) -> bool {
         alt (cx.abbrevs) {
             case (ac_no_abbrevs)     { ret false; }
             case (ac_use_abbrevs(_)) { ret true; }
         }
     }
 
-    fn ty_str(@ctxt cx, ty.t t) -> str {
+    fn ty_str(&@ctxt cx, &ty.t t) -> str {
         assert (!cx_uses_abbrevs(cx));
         auto sw = IO.string_writer();
         enc_ty(sw.get_writer(), cx, t);
         ret sw.get_str();
     }
 
-    fn enc_ty(IO.writer w, @ctxt cx, ty.t t) {
+    fn enc_ty(&IO.writer w, &@ctxt cx, &ty.t t) {
         alt (cx.abbrevs) {
             case (ac_no_abbrevs) { enc_sty(w, cx, ty.struct(cx.tcx, t)); }
             case (ac_use_abbrevs(?abbrevs)) {
@@ -121,7 +121,7 @@ mod Encode {
         }
     }
 
-    fn enc_mt(IO.writer w, @ctxt cx, &ty.mt mt) {
+    fn enc_mt(&IO.writer w, &@ctxt cx, &ty.mt mt) {
         alt (mt.mut) {
             case (ast.imm)       { }
             case (ast.mut)       { w.write_char('m'); }
@@ -130,7 +130,7 @@ mod Encode {
         enc_ty(w, cx, mt.ty);
     }
 
-    fn enc_sty(IO.writer w, @ctxt cx, ty.sty st) {
+    fn enc_sty(&IO.writer w, &@ctxt cx, &ty.sty st) {
         alt (st) {
             case (ty.ty_nil) { w.write_char('n'); }
             case (ty.ty_bool) { w.write_char('b'); }
@@ -231,14 +231,14 @@ mod Encode {
         }
     }
 
-    fn enc_proto(IO.writer w, ast.proto proto) {
+    fn enc_proto(&IO.writer w, ast.proto proto) {
         alt (proto) {
             case (ast.proto_iter) { w.write_char('W'); }
             case (ast.proto_fn) { w.write_char('F'); }
         }
     }
 
-    fn enc_ty_fn(IO.writer w, @ctxt cx, vec[ty.arg] args, ty.t out) {
+    fn enc_ty_fn(&IO.writer w, &@ctxt cx, &vec[ty.arg] args, &ty.t out) {
         w.write_char('[');
         for (ty.arg arg in args) {
             if (arg.mode == ty.mo_alias) { w.write_char('&'); }
@@ -252,14 +252,14 @@ mod Encode {
 
 
 // Returns a Plain Old LLVM String.
-fn C_postr(str s) -> ValueRef {
+fn C_postr(&str s) -> ValueRef {
     ret llvm.LLVMConstString(Str.buf(s), Str.byte_len(s), False);
 }
 
 
 // Path table encoding
 
-fn encode_name(&EBML.writer ebml_w, str name) {
+fn encode_name(&EBML.writer ebml_w, &str name) {
     EBML.start_tag(ebml_w, tag_paths_data_name);
     ebml_w.writer.write(Str.bytes(name));
     EBML.end_tag(ebml_w);
@@ -272,8 +272,8 @@ fn encode_def_id(&EBML.writer ebml_w, &ast.def_id id) {
 }
 
 fn encode_tag_variant_paths(&EBML.writer ebml_w,
-                            vec[ast.variant] variants,
-                            vec[str] path,
+                            &vec[ast.variant] variants,
+                            &vec[str] path,
                             &mutable vec[tup(str, uint)] index) {
     for (ast.variant variant in variants) {
         add_to_index(ebml_w, path, index, variant.node.name);
@@ -285,16 +285,16 @@ fn encode_tag_variant_paths(&EBML.writer ebml_w,
 }
 
 fn add_to_index(&EBML.writer ebml_w,
-                vec[str] path,
+                &vec[str] path,
                 &mutable vec[tup(str, uint)] index,
-                str name) {
+                &str name) {
     auto full_path = path + vec(name);
     index += vec(tup(Str.connect(full_path, "."), ebml_w.writer.tell()));
 }
 
 fn encode_native_module_item_paths(&EBML.writer ebml_w,
                                    &ast.native_mod nmod,
-                                   vec[str] path,
+                                   &vec[str] path,
                                    &mutable vec[tup(str, uint)] index) {
     for (@ast.native_item nitem in nmod.items) {
         alt (nitem.node) {
@@ -318,7 +318,7 @@ fn encode_native_module_item_paths(&EBML.writer ebml_w,
 
 fn encode_module_item_paths(&EBML.writer ebml_w,
                             &ast._mod module,
-                            vec[str] path,
+                            &vec[str] path,
                             &mutable vec[tup(str, uint)] index) {
     // TODO: only encode exported items
     for (@ast.item it in module.items) {
@@ -382,7 +382,7 @@ fn encode_module_item_paths(&EBML.writer ebml_w,
     }
 }
 
-fn encode_item_paths(&EBML.writer ebml_w, @ast.crate crate)
+fn encode_item_paths(&EBML.writer ebml_w, &@ast.crate crate)
         -> vec[tup(str, uint)] {
     let vec[tup(str, uint)] index = vec();
     let vec[str] path = vec();
@@ -401,23 +401,23 @@ fn encode_kind(&EBML.writer ebml_w, u8 c) {
     EBML.end_tag(ebml_w);
 }
 
-fn def_to_str(ast.def_id did) -> str {
+fn def_to_str(&ast.def_id did) -> str {
     ret #fmt("%d:%d", did._0, did._1);
 }
 
-fn encode_type_param_count(&EBML.writer ebml_w, vec[ast.ty_param] tps) {
+fn encode_type_param_count(&EBML.writer ebml_w, &vec[ast.ty_param] tps) {
     EBML.start_tag(ebml_w, tag_items_data_item_ty_param_count);
     EBML.write_vint(ebml_w.writer, Vec.len[ast.ty_param](tps));
     EBML.end_tag(ebml_w);
 }
 
-fn encode_variant_id(&EBML.writer ebml_w, ast.def_id vid) {
+fn encode_variant_id(&EBML.writer ebml_w, &ast.def_id vid) {
     EBML.start_tag(ebml_w, tag_items_data_item_variant);
     ebml_w.writer.write(Str.bytes(def_to_str(vid)));
     EBML.end_tag(ebml_w);
 }
 
-fn encode_type(@trans.crate_ctxt cx, &EBML.writer ebml_w, ty.t typ) {
+fn encode_type(&@trans.crate_ctxt cx, &EBML.writer ebml_w, &ty.t typ) {
     EBML.start_tag(ebml_w, tag_items_data_item_type);
 
     auto f = def_to_str;
@@ -427,14 +427,15 @@ fn encode_type(@trans.crate_ctxt cx, &EBML.writer ebml_w, ty.t typ) {
     EBML.end_tag(ebml_w);
 }
 
-fn encode_symbol(@trans.crate_ctxt cx, &EBML.writer ebml_w, ast.def_id did) {
+fn encode_symbol(&@trans.crate_ctxt cx, &EBML.writer ebml_w,
+                 &ast.def_id did) {
     EBML.start_tag(ebml_w, tag_items_data_item_symbol);
     ebml_w.writer.write(Str.bytes(cx.item_symbols.get(did)));
     EBML.end_tag(ebml_w);
 }
 
-fn encode_discriminant(@trans.crate_ctxt cx, &EBML.writer ebml_w,
-                       ast.def_id did) {
+fn encode_discriminant(&@trans.crate_ctxt cx, &EBML.writer ebml_w,
+                       &ast.def_id did) {
     EBML.start_tag(ebml_w, tag_items_data_item_symbol);
     ebml_w.writer.write(Str.bytes(cx.discrim_symbols.get(did)));
     EBML.end_tag(ebml_w);
@@ -453,10 +454,10 @@ fn encode_obj_type_id(&EBML.writer ebml_w, &ast.def_id id) {
 }
 
 
-fn encode_tag_variant_info(@trans.crate_ctxt cx, &EBML.writer ebml_w,
-                           ast.def_id did, vec[ast.variant] variants,
+fn encode_tag_variant_info(&@trans.crate_ctxt cx, &EBML.writer ebml_w,
+                           &ast.def_id did, &vec[ast.variant] variants,
                            &mutable vec[tup(int, uint)] index,
-                           vec[ast.ty_param] ty_params) {
+                           &vec[ast.ty_param] ty_params) {
     for (ast.variant variant in variants) {
         index += vec(tup(variant.node.id._1, ebml_w.writer.tell()));
 
@@ -547,8 +548,8 @@ fn encode_info_for_item(@trans.crate_ctxt cx, &EBML.writer ebml_w,
     }
 }
 
-fn encode_info_for_native_item(@trans.crate_ctxt cx, &EBML.writer ebml_w,
-                               @ast.native_item nitem) {
+fn encode_info_for_native_item(&@trans.crate_ctxt cx, &EBML.writer ebml_w,
+                               &@ast.native_item nitem) {
     EBML.start_tag(ebml_w, tag_items_data_item);
     alt (nitem.node) {
         case (ast.native_item_ty(_, ?did)) {
@@ -567,7 +568,7 @@ fn encode_info_for_native_item(@trans.crate_ctxt cx, &EBML.writer ebml_w,
     EBML.end_tag(ebml_w);
 }
 
-fn encode_info_for_items(@trans.crate_ctxt cx, &EBML.writer ebml_w)
+fn encode_info_for_items(&@trans.crate_ctxt cx, &EBML.writer ebml_w)
         -> vec[tup(int, uint)] {
     let vec[tup(int, uint)] index = vec();
 
@@ -603,7 +604,7 @@ fn hash_path(&str s) -> uint {
     ret h;
 }
 
-fn create_index[T](vec[tup(T, uint)] index, fn(&T) -> uint hash_fn)
+fn create_index[T](&vec[tup(T, uint)] index, fn(&T) -> uint hash_fn)
         -> vec[vec[tup(T, uint)]] {
     let vec[vec[tup(T, uint)]] buckets = vec();
     for each (uint i in UInt.range(0u, 256u)) {
@@ -619,8 +620,8 @@ fn create_index[T](vec[tup(T, uint)] index, fn(&T) -> uint hash_fn)
     ret buckets;
 }
 
-fn encode_index[T](&EBML.writer ebml_w, vec[vec[tup(T, uint)]] buckets,
-                          fn(IO.writer, &T) write_fn) {
+fn encode_index[T](&EBML.writer ebml_w, &vec[vec[tup(T, uint)]] buckets,
+                   fn(&IO.writer, &T) write_fn) {
     auto writer = IO.new_writer_(ebml_w.writer);
 
     EBML.start_tag(ebml_w, tag_index);
@@ -650,16 +651,16 @@ fn encode_index[T](&EBML.writer ebml_w, vec[vec[tup(T, uint)]] buckets,
     EBML.end_tag(ebml_w);
 }
 
-fn write_str(IO.writer writer, &str s) {
+fn write_str(&IO.writer writer, &str s) {
     writer.write_str(s);
 }
 
-fn write_int(IO.writer writer, &int n) {
+fn write_int(&IO.writer writer, &int n) {
     writer.write_be_uint(n as uint, 4u);
 }
 
 
-fn encode_metadata(@trans.crate_ctxt cx, @ast.crate crate)
+fn encode_metadata(&@trans.crate_ctxt cx, &@ast.crate crate)
         -> ValueRef {
     auto string_w = IO.string_writer();
     auto buf_w = string_w.get_writer().get_buf_writer();
@@ -690,7 +691,7 @@ fn encode_metadata(@trans.crate_ctxt cx, @ast.crate crate)
     ret C_postr(string_w.get_str());
 }
 
-fn write_metadata(@trans.crate_ctxt cx, @ast.crate crate) {
+fn write_metadata(&@trans.crate_ctxt cx, &@ast.crate crate) {
     auto llmeta = C_postr("");
     if (cx.sess.get_opts().shared) {
         llmeta = encode_metadata(cx, crate);

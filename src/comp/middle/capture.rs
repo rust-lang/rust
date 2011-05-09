@@ -17,7 +17,7 @@ fn current_context(&env e) -> ast.def_id {
     ret e.current_context.(Vec.len(e.current_context) - 1u);
 }
 
-fn enter_item(@env e, @ast.item i) {
+fn enter_item(@env e, &@ast.item i) {
     alt (i.node) {
         case (ast.item_fn(?name, _, _, ?id, _)) {
             Vec.push(e.current_context, id);
@@ -29,7 +29,7 @@ fn enter_item(@env e, @ast.item i) {
     }
 }
 
-fn leave_item(@env e, @ast.item i) {
+fn leave_item(@env e, &@ast.item i) {
     alt (i.node) {
         case (ast.item_fn(?name, _, _, ?id, _)) {
             Vec.pop(e.current_context);
@@ -41,7 +41,7 @@ fn leave_item(@env e, @ast.item i) {
     }
 }
 
-fn walk_expr(@env e, @ast.expr x) {
+fn walk_expr(@env e, &@ast.expr x) {
     alt (x.node) {
         case (ast.expr_for(?d, _, _, _)) {
             alt (d.node) {

@@ -5,28 +5,28 @@ import std.Option.some;
 import std.Option.none;
 
 type ast_visitor =
-    rec(fn () -> bool                 keep_going,
-        fn () -> bool                 want_crate_directives,
-        fn (&ast.crate c)             visit_crate_pre,
-        fn (&ast.crate c)             visit_crate_post,
-        fn (@ast.crate_directive cd)  visit_crate_directive_pre,
-        fn (@ast.crate_directive cd)  visit_crate_directive_post,
-        fn (@ast.view_item i)         visit_view_item_pre,
-        fn (@ast.view_item i)         visit_view_item_post,
-        fn (@ast.native_item i)       visit_native_item_pre,
-        fn (@ast.native_item i)       visit_native_item_post,
-        fn (@ast.item i)              visit_item_pre,
-        fn (@ast.item i)              visit_item_post,
-        fn (&ast.block b)             visit_block_pre,
-        fn (&ast.block b)             visit_block_post,
-        fn (@ast.stmt s)              visit_stmt_pre,
-        fn (@ast.stmt s)              visit_stmt_post,
-        fn (@ast.decl d)              visit_decl_pre,
-        fn (@ast.decl d)              visit_decl_post,
-        fn (@ast.expr e)              visit_expr_pre,
-        fn (@ast.expr e)              visit_expr_post,
-        fn (@ast.ty t)                visit_ty_pre,
-        fn (@ast.ty t)                visit_ty_post);
+    rec(fn () -> bool                  keep_going,
+        fn () -> bool                  want_crate_directives,
+        fn (&ast.crate c)              visit_crate_pre,
+        fn (&ast.crate c)              visit_crate_post,
+        fn (&@ast.crate_directive cd)  visit_crate_directive_pre,
+        fn (&@ast.crate_directive cd)  visit_crate_directive_post,
+        fn (&@ast.view_item i)         visit_view_item_pre,
+        fn (&@ast.view_item i)         visit_view_item_post,
+        fn (&@ast.native_item i)       visit_native_item_pre,
+        fn (&@ast.native_item i)       visit_native_item_post,
+        fn (&@ast.item i)              visit_item_pre,
+        fn (&@ast.item i)              visit_item_post,
+        fn (&ast.block b)              visit_block_pre,
+        fn (&ast.block b)              visit_block_post,
+        fn (&@ast.stmt s)              visit_stmt_pre,
+        fn (&@ast.stmt s)              visit_stmt_post,
+        fn (&@ast.decl d)              visit_decl_pre,
+        fn (&@ast.decl d)              visit_decl_post,
+        fn (&@ast.expr e)              visit_expr_pre,
+        fn (&@ast.expr e)              visit_expr_post,
+        fn (&@ast.ty t)                visit_ty_pre,
+        fn (&@ast.ty t)                visit_ty_post);
 
 fn walk_crate(&ast_visitor v, &ast.crate c) {
     if (!v.keep_going()) { ret; }
@@ -409,15 +409,15 @@ fn walk_expr(&ast_visitor v, @ast.expr e) {
 fn def_keep_going() -> bool { ret true; }
 fn def_want_crate_directives() -> bool { ret false; }
 fn def_visit_crate(&ast.crate c) { }
-fn def_visit_crate_directive(@ast.crate_directive c) { }
-fn def_visit_view_item(@ast.view_item vi) { }
-fn def_visit_native_item(@ast.native_item ni) { }
-fn def_visit_item(@ast.item i) { }
+fn def_visit_crate_directive(&@ast.crate_directive c) { }
+fn def_visit_view_item(&@ast.view_item vi) { }
+fn def_visit_native_item(&@ast.native_item ni) { }
+fn def_visit_item(&@ast.item i) { }
 fn def_visit_block(&ast.block b) { }
-fn def_visit_stmt(@ast.stmt s) { }
-fn def_visit_decl(@ast.decl d) { }
-fn def_visit_expr(@ast.expr e) { }
-fn def_visit_ty(@ast.ty t) { }
+fn def_visit_stmt(&@ast.stmt s) { }
+fn def_visit_decl(&@ast.decl d) { }
+fn def_visit_expr(&@ast.expr e) { }
+fn def_visit_ty(&@ast.ty t) { }
 
 fn default_visitor() -> ast_visitor {
 

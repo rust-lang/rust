@@ -3569,7 +3569,7 @@ fn collect_upvars(@block_ctxt cx, &ast.block bloc, &ast.def_id initial_decl)
         hashmap[ast.def_id,()] decls
     );
 
-    fn walk_expr(env e, @ast.expr expr) {
+    fn walk_expr(env e, &@ast.expr expr) {
         alt (expr.node) {
             case (ast.expr_path(?path, ?d, _)) {
                 alt (Option.get[ast.def](d)) {
@@ -3589,7 +3589,7 @@ fn collect_upvars(@block_ctxt cx, &ast.block bloc, &ast.def_id initial_decl)
         }
     }
 
-    fn walk_decl(env e, @ast.decl decl) {
+    fn walk_decl(env e, &@ast.decl decl) {
         alt (decl.node) {
             case (ast.decl_local(?local)) {
                 e.decls.insert(local.id, ());
@@ -6949,7 +6949,7 @@ fn new_walk_ctxt() -> @walk_ctxt {
     ret @rec(mutable path=path);
 }
 
-fn enter_item(@walk_ctxt cx, @ast.item item) {
+fn enter_item(@walk_ctxt cx, &@ast.item item) {
     alt (item.node) {
         case (ast.item_fn(?name, _, _, _, _)) {
             Vec.push[str](cx.path, name);
@@ -6964,7 +6964,7 @@ fn enter_item(@walk_ctxt cx, @ast.item item) {
     }
 }
 
-fn leave_item(@walk_ctxt cx, @ast.item item) {
+fn leave_item(@walk_ctxt cx, &@ast.item item) {
     alt (item.node) {
         case (ast.item_fn(_, _, _, _, _)) {
             Vec.pop[str](cx.path);
@@ -6979,7 +6979,7 @@ fn leave_item(@walk_ctxt cx, @ast.item item) {
     }
 }
 
-fn collect_native_item(@crate_ctxt ccx, @walk_ctxt wcx, @ast.native_item i) {
+fn collect_native_item(@crate_ctxt ccx, @walk_ctxt wcx, &@ast.native_item i) {
     alt (i.node) {
         case (ast.native_item_fn(?name, _, _, _, ?fid, ?ann)) {
             ccx.native_items.insert(fid, i);
@@ -6993,7 +6993,7 @@ fn collect_native_item(@crate_ctxt ccx, @walk_ctxt wcx, @ast.native_item i) {
     }
 }
 
-fn collect_item_1(@crate_ctxt ccx, @walk_ctxt wcx, @ast.item i) {
+fn collect_item_1(@crate_ctxt ccx, @walk_ctxt wcx, &@ast.item i) {
     enter_item(wcx, i);
 
     alt (i.node) {
@@ -7019,7 +7019,7 @@ fn collect_item_1(@crate_ctxt ccx, @walk_ctxt wcx, @ast.item i) {
     }
 }
 
-fn collect_item_2(@crate_ctxt ccx, @walk_ctxt wcx, @ast.item i) {
+fn collect_item_2(@crate_ctxt ccx, @walk_ctxt wcx, &@ast.item i) {
     enter_item(wcx, i);
 
     alt (i.node) {
@@ -7055,7 +7055,7 @@ fn collect_items(@crate_ctxt ccx, @ast.crate crate) {
     walk.walk_crate(visitor2, *crate);
 }
 
-fn collect_tag_ctor(@crate_ctxt ccx, @walk_ctxt wcx, @ast.item i) {
+fn collect_tag_ctor(@crate_ctxt ccx, @walk_ctxt wcx, &@ast.item i) {
     enter_item(wcx, i);
 
     alt (i.node) {
@@ -7083,7 +7083,7 @@ fn collect_tag_ctors(@crate_ctxt ccx, @ast.crate crate) {
 
 // The constant translation pass.
 
-fn trans_constant(@crate_ctxt ccx, @walk_ctxt wcx, @ast.item it) {
+fn trans_constant(@crate_ctxt ccx, @walk_ctxt wcx, &@ast.item it) {
     enter_item(wcx, it);
 
     alt (it.node) {

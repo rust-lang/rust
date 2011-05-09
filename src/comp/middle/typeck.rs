@@ -77,14 +77,14 @@ type fn_ctxt = rec(ty.t ret_ty,
                    @crate_ctxt ccx);
 
 // Used for ast_ty_to_ty() below.
-type ty_getter = fn(ast.def_id) -> ty.ty_param_count_and_ty;
+type ty_getter = fn(&ast.def_id) -> ty.ty_param_count_and_ty;
 
 // Substitutes the user's explicit types for the parameters in a path
 // expression.
 fn substitute_ty_params(&@crate_ctxt ccx,
-                        ty.t typ,
+                        &ty.t typ,
                         uint ty_param_count,
-                        vec[ty.t] supplied,
+                        &vec[ty.t] supplied,
                         &span sp) -> ty.t {
     fn substituter(@crate_ctxt ccx, vec[ty.t] supplied, ty.t typ) -> ty.t {
         alt (struct(ccx.tcx, typ)) {
@@ -112,7 +112,7 @@ fn substitute_ty_params(&@crate_ctxt ccx,
 
 
 // Returns the type parameter count and the type for the given definition.
-fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.span sp, &ast.def defn)
+fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &ast.span sp, &ast.def defn)
         -> ty_param_count_and_ty {
     alt (defn) {
         case (ast.def_arg(?id)) {
@@ -177,8 +177,8 @@ fn ty_param_count_and_ty_for_def(@fn_ctxt fcx, &ast.span sp, &ast.def defn)
 
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
-fn instantiate_path(@fn_ctxt fcx, &ast.path pth, &ty_param_count_and_ty tpt,
-        &span sp) -> ast.ann {
+fn instantiate_path(&@fn_ctxt fcx, &ast.path pth, &ty_param_count_and_ty tpt,
+                    &span sp) -> ast.ann {
     auto ty_param_count = tpt._0;
     auto t = bind_params_in_type(fcx.ccx.tcx, tpt._1);
 
@@ -224,25 +224,25 @@ fn ast_mode_to_mode(ast.mode mode) -> ty.mode {
 // Parses the programmer's textual representation of a type into our internal
 // notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID.
-fn ast_ty_to_ty(ty.ctxt tcx, ty_getter getter, &@ast.ty ast_ty) -> ty.t {
-    fn ast_arg_to_arg(ty.ctxt tcx,
-                      ty_getter getter,
+fn ast_ty_to_ty(&ty.ctxt tcx, &ty_getter getter, &@ast.ty ast_ty) -> ty.t {
+    fn ast_arg_to_arg(&ty.ctxt tcx,
+                      &ty_getter getter,
                       &rec(ast.mode mode, @ast.ty ty) arg)
             -> rec(ty.mode mode, ty.t ty) {
         auto ty_mode = ast_mode_to_mode(arg.mode);
         ret rec(mode=ty_mode, ty=ast_ty_to_ty(tcx, getter, arg.ty));
     }
 
-    fn ast_mt_to_mt(ty.ctxt tcx,
-                    ty_getter getter,
+    fn ast_mt_to_mt(&ty.ctxt tcx,
+                    &ty_getter getter,
                     &ast.mt mt) -> ty.mt {
         ret rec(ty=ast_ty_to_ty(tcx, getter, mt.ty), mut=mt.mut);
     }
 
-    fn instantiate(ty.ctxt tcx,
-                   ty_getter getter,
-                   ast.def_id id,
-                   vec[@ast.ty] args) -> ty.t {
+    fn instantiate(&ty.ctxt tcx,
+                   &ty_getter getter,
+                   &ast.def_id id,
+                   &vec[@ast.ty] args) -> ty.t {
         // TODO: maybe record cname chains so we can do
         // "foo = int" like OCaml?
         auto params_opt_and_ty = getter(id);
@@ -324,7 +324,7 @@ fn ast_ty_to_ty(ty.ctxt tcx, ty_getter getter, &@ast.ty ast_ty) -> ty.t {
                     typ = instantiate(tcx, getter, id, path.node.types);
                 }
                 case (ast.def_ty_arg(?id)) { typ = ty.mk_param(tcx, id); }
-                case (_)                   { 
+                case (_)                   {
                     tcx.sess.span_err(ast_ty.span,
                        "found type name used as a variable");
                     fail; }
@@ -362,7 +362,7 @@ fn ast_ty_to_ty(ty.ctxt tcx, ty_getter getter, &@ast.ty ast_ty) -> ty.t {
 // A convenience function to use a crate_ctxt to resolve names for
 // ast_ty_to_ty.
 fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast.ty ast_ty) -> ty.t {
-    fn getter(@crate_ctxt ccx, ast.def_id id) -> ty.ty_param_count_and_ty {
+    fn getter(@crate_ctxt ccx, &ast.def_id id) -> ty.ty_param_count_and_ty {
         ret ty.lookup_item_type(ccx.sess, ccx.tcx, ccx.type_cache, id);
     }
     auto f = bind getter(ccx, _);
@@ -388,13 +388,13 @@ mod Collect {
                     ty.ctxt tcx);
     type env = rec(@ctxt cx, ast.native_abi abi);
 
-    fn ty_of_fn_decl(@ctxt cx,
-                     fn(&@ast.ty ast_ty) -> ty.t convert,
-                     fn(&ast.arg a) -> arg ty_of_arg,
+    fn ty_of_fn_decl(&@ctxt cx,
+                     &fn(&@ast.ty ast_ty) -> ty.t convert,
+                     &fn(&ast.arg a) -> arg ty_of_arg,
                      &ast.fn_decl decl,
                      ast.proto proto,
-                     vec[ast.ty_param] ty_params,
-                     ast.def_id def_id) -> ty.ty_param_count_and_ty {
+                     &vec[ast.ty_param] ty_params,
+                     &ast.def_id def_id) -> ty.ty_param_count_and_ty {
         auto input_tys = Vec.map[ast.arg,arg](ty_of_arg, decl.inputs);
         auto output_ty = convert(decl.output);
         auto t_fn = ty.mk_fn(cx.tcx, proto, input_tys, output_ty);
@@ -404,13 +404,13 @@ mod Collect {
         ret tpt;
     }
 
-    fn ty_of_native_fn_decl(@ctxt cx,
-                            fn(&@ast.ty ast_ty) -> ty.t convert,
-                            fn(&ast.arg a) -> arg ty_of_arg,
+    fn ty_of_native_fn_decl(&@ctxt cx,
+                            &fn(&@ast.ty ast_ty) -> ty.t convert,
+                            &fn(&ast.arg a) -> arg ty_of_arg,
                             &ast.fn_decl decl,
                             ast.native_abi abi,
-                            vec[ast.ty_param] ty_params,
-                            ast.def_id def_id) -> ty.ty_param_count_and_ty {
+                            &vec[ast.ty_param] ty_params,
+                            &ast.def_id def_id) -> ty.ty_param_count_and_ty {
         auto input_tys = Vec.map[ast.arg,arg](ty_of_arg, decl.inputs);
         auto output_ty = convert(decl.output);
         auto t_fn = ty.mk_native_fn(cx.tcx, abi, input_tys, output_ty);
@@ -420,7 +420,7 @@ mod Collect {
         ret tpt;
     }
 
-    fn getter(@ctxt cx, ast.def_id id) -> ty.ty_param_count_and_ty {
+    fn getter(@ctxt cx, &ast.def_id id) -> ty.ty_param_count_and_ty {
 
         if (id._0 != cx.sess.get_targ_crate_num()) {
             // This is a type we need to load in from the crate reader.
@@ -458,9 +458,9 @@ mod Collect {
     }
 
     fn ty_of_obj(@ctxt cx,
-                 ast.ident id,
+                 &ast.ident id,
                  &ast._obj obj_info,
-                 vec[ast.ty_param] ty_params) -> ty.ty_param_count_and_ty {
+                 &vec[ast.ty_param] ty_params) -> ty.ty_param_count_and_ty {
         auto f = bind ty_of_method(cx, _);
         auto methods = Vec.map[@ast.method,method](f, obj_info.methods);
 
@@ -473,8 +473,8 @@ mod Collect {
     fn ty_of_obj_ctor(@ctxt cx,
                       &ast.ident id,
                       &ast._obj obj_info,
-                      ast.def_id obj_ty_id,
-                      vec[ast.ty_param] ty_params)
+                      &ast.def_id obj_ty_id,
+                      &vec[ast.ty_param] ty_params)
             -> ty.ty_param_count_and_ty {
         auto t_obj = ty_of_obj(cx, id, obj_info, ty_params);
         let vec[arg] t_inputs = vec();
@@ -490,7 +490,7 @@ mod Collect {
         ret tup(t_obj._0, t_fn);
     }
 
-    fn ty_of_item(@ctxt cx, @ast.item it) -> ty.ty_param_count_and_ty {
+    fn ty_of_item(&@ctxt cx, &@ast.item it) -> ty.ty_param_count_and_ty {
 
         auto get = bind getter(cx, _);
         auto convert = bind ast_ty_to_ty(cx.tcx, get, _);
@@ -557,7 +557,7 @@ mod Collect {
         }
     }
 
-    fn ty_of_native_item(@ctxt cx, @ast.native_item it, ast.native_abi abi)
+    fn ty_of_native_item(&@ctxt cx, &@ast.native_item it, ast.native_abi abi)
             -> ty.ty_param_count_and_ty {
         alt (it.node) {
             case (ast.native_item_fn(?ident, ?lname, ?fn_decl,
@@ -584,7 +584,7 @@ mod Collect {
         }
     }
 
-    fn get_tag_variant_types(@ctxt cx, &ast.def_id tag_id,
+    fn get_tag_variant_types(&@ctxt cx, &ast.def_id tag_id,
                              &vec[ast.variant] variants,
                              &vec[ast.ty_param] ty_params)
             -> vec[ast.variant] {
@@ -856,7 +856,8 @@ mod Collect {
 // Type unification
 
 mod Unify {
-    fn simple(@fn_ctxt fcx, ty.t expected, ty.t actual) -> ty.Unify.result {
+    fn simple(&@fn_ctxt fcx, &ty.t expected,
+              &ty.t actual) -> ty.Unify.result {
         // FIXME: horrid botch
         let vec[mutable ty.t] param_substs =
             vec(mutable ty.mk_nil(fcx.ccx.tcx));
@@ -864,8 +865,8 @@ mod Unify {
         ret with_params(fcx, expected, actual, param_substs);
     }
 
-    fn with_params(@fn_ctxt fcx, ty.t expected, ty.t actual,
-                   vec[mutable ty.t] param_substs) -> ty.Unify.result {
+    fn with_params(&@fn_ctxt fcx, &ty.t expected, &ty.t actual,
+                   &vec[mutable ty.t] param_substs) -> ty.Unify.result {
         auto cache_key = tup(expected, actual, param_substs);
         alt (fcx.ccx.unify_cache.find(cache_key)) {
             case (some[ty.Unify.result](?r)) {
@@ -947,7 +948,7 @@ tag autoderef_kind {
     NO_AUTODEREF;
 }
 
-fn strip_boxes(ty.ctxt tcx, ty.t t) -> ty.t {
+fn strip_boxes(&ty.ctxt tcx, &ty.t t) -> ty.t {
     auto t1 = t;
     while (true) {
         alt (struct(tcx, t1)) {
@@ -958,7 +959,7 @@ fn strip_boxes(ty.ctxt tcx, ty.t t) -> ty.t {
     fail;
 }
 
-fn add_boxes(@crate_ctxt ccx, uint n, ty.t t) -> ty.t {
+fn add_boxes(&@crate_ctxt ccx, uint n, &ty.t t) -> ty.t {
     auto t1 = t;
     while (n != 0u) {
         t1 = ty.mk_imm_box(ccx.tcx, t1);
@@ -968,7 +969,7 @@ fn add_boxes(@crate_ctxt ccx, uint n, ty.t t) -> ty.t {
 }
 
 
-fn count_boxes(ty.ctxt tcx, ty.t t) -> uint {
+fn count_boxes(&ty.ctxt tcx, &ty.t t) -> uint {
     auto n = 0u;
     auto t1 = t;
     while (true) {
@@ -987,12 +988,12 @@ fn count_boxes(ty.ctxt tcx, ty.t t) -> uint {
 type ty_param_substs_and_ty = tup(vec[ty.t], ty.t);
 
 mod Demand {
-    fn simple(@fn_ctxt fcx, &span sp, ty.t expected, ty.t actual) -> ty.t {
+    fn simple(&@fn_ctxt fcx, &span sp, &ty.t expected, &ty.t actual) -> ty.t {
         let vec[ty.t] tps = vec();
         ret full(fcx, sp, expected, actual, tps, NO_AUTODEREF)._1;
     }
 
-    fn autoderef(@fn_ctxt fcx, &span sp, ty.t expected, ty.t actual,
+    fn autoderef(&@fn_ctxt fcx, &span sp, &ty.t expected, &ty.t actual,
                  autoderef_kind adk) -> ty.t {
         let vec[ty.t] tps = vec();
         ret full(fcx, sp, expected, actual, tps, adk)._1;
@@ -1001,8 +1002,8 @@ mod Demand {
     // Requires that the two types unify, and prints an error message if they
     // don't. Returns the unified type and the type parameter substitutions.
 
-    fn full(@fn_ctxt fcx, &span sp, ty.t expected, ty.t actual,
-            vec[ty.t] ty_param_substs_0, autoderef_kind adk)
+    fn full(&@fn_ctxt fcx, &span sp, &ty.t expected, &ty.t actual,
+            &vec[ty.t] ty_param_substs_0, autoderef_kind adk)
             -> ty_param_substs_and_ty {
 
         auto expected_1 = expected;
@@ -1050,7 +1051,7 @@ mod Demand {
 
 
 // Returns true if the two types unify and false if they don't.
-fn are_compatible(&@fn_ctxt fcx, ty.t expected, ty.t actual) -> bool {
+fn are_compatible(&@fn_ctxt fcx, &ty.t expected, &ty.t actual) -> bool {
     alt (Unify.simple(fcx, expected, actual)) {
         case (ures_ok(_))        { ret true;  }
         case (ures_err(_, _, _)) { ret false; }
@@ -1058,8 +1059,8 @@ fn are_compatible(&@fn_ctxt fcx, ty.t expected, ty.t actual) -> bool {
 }
 
 // Returns the types of the arguments to a tag variant.
-fn variant_arg_types(@crate_ctxt ccx, &span sp, ast.def_id vid,
-                     vec[ty.t] tag_ty_params) -> vec[ty.t] {
+fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast.def_id vid,
+                     &vec[ty.t] tag_ty_params) -> vec[ty.t] {
     auto ty_param_count = Vec.len[ty.t](tag_ty_params);
 
     let vec[ty.t] result = vec();
@@ -1106,7 +1107,8 @@ mod Pushdown {
     //
     // TODO: enforce this via a predicate.
 
-    fn pushdown_pat(&@fn_ctxt fcx, ty.t expected, @ast.pat pat) -> @ast.pat {
+    fn pushdown_pat(&@fn_ctxt fcx, &ty.t expected,
+                    &@ast.pat pat) -> @ast.pat {
         auto p_1;
 
         alt (pat.node) {
@@ -1168,12 +1170,12 @@ mod Pushdown {
     // TODO: enforce this via a predicate.
     // TODO: This function is incomplete.
 
-    fn pushdown_expr(&@fn_ctxt fcx, ty.t expected, @ast.expr e)
+    fn pushdown_expr(&@fn_ctxt fcx, &ty.t expected, &@ast.expr e)
             -> @ast.expr {
         be pushdown_expr_full(fcx, expected, e, NO_AUTODEREF);
     }
 
-    fn pushdown_expr_full(&@fn_ctxt fcx, ty.t expected, @ast.expr e,
+    fn pushdown_expr_full(&@fn_ctxt fcx, &ty.t expected, &@ast.expr e,
                           autoderef_kind adk) -> @ast.expr {
         auto e_1;
 
@@ -1496,7 +1498,7 @@ mod Pushdown {
     }
 
     // Push-down over typed blocks.
-    fn pushdown_block(&@fn_ctxt fcx, ty.t expected, &ast.block bloc)
+    fn pushdown_block(&@fn_ctxt fcx, &ty.t expected, &ast.block bloc)
             -> ast.block {
         alt (bloc.node.expr) {
             case (some[@ast.expr](?e_0)) {
@@ -1598,7 +1600,7 @@ fn resolve_local_types_in_block(&@fn_ctxt fcx, &ast.block block)
 
 // AST fragment checking
 
-fn check_lit(@crate_ctxt ccx, @ast.lit lit) -> ty.t {
+fn check_lit(@crate_ctxt ccx, &@ast.lit lit) -> ty.t {
     alt (lit.node) {
         case (ast.lit_str(_))           { ret ty.mk_str(ccx.tcx); }
         case (ast.lit_char(_))          { ret ty.mk_char(ccx.tcx); }
@@ -1615,7 +1617,7 @@ fn check_lit(@crate_ctxt ccx, @ast.lit lit) -> ty.t {
     fail; // not reached
 }
 
-fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
+fn check_pat(&@fn_ctxt fcx, &@ast.pat pat) -> @ast.pat {
     auto new_pat;
     alt (pat.node) {
         case (ast.pat_wild(_)) {
@@ -1689,7 +1691,7 @@ fn check_pat(&@fn_ctxt fcx, @ast.pat pat) -> @ast.pat {
 }
 
 fn require_impure(&session.session sess,
-      &ast.purity f_purity, &span sp) -> () {
+                  &ast.purity f_purity, &span sp) -> () {
     alt (f_purity) {
         case (ast.impure_fn) {
             ret;
@@ -1707,7 +1709,8 @@ fn get_function_purity(@crate_ctxt ccx, &ast.def_id d_id) -> ast.purity {
 }
 
 fn require_pure_call(@crate_ctxt ccx,
-    &ast.purity caller_purity, @ast.expr callee, &span sp) -> () {
+                     &ast.purity caller_purity,
+                     &@ast.expr callee, &span sp) -> () {
     alt (caller_purity) {
         case (ast.impure_fn) {
             ret;
@@ -1744,7 +1747,7 @@ fn require_pure_function(@crate_ctxt ccx, &ast.def_id d_id, &span sp) -> () {
     }
 }
 
-fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
+fn check_expr(&@fn_ctxt fcx, &@ast.expr expr) -> @ast.expr {
     //fcx.ccx.sess.span_warn(expr.span, "typechecking expr " +
     //                       util.common.expr_to_str(expr));
 
@@ -1804,7 +1807,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
     }
 
     // A generic function for checking assignment expressions
-    fn check_assignment(&@fn_ctxt fcx, @ast.expr lhs, @ast.expr rhs)
+    fn check_assignment(&@fn_ctxt fcx, &@ast.expr lhs, &@ast.expr rhs)
         -> tup(@ast.expr, @ast.expr, ast.ann) {
         auto lhs_0 = check_expr(fcx, lhs);
         auto rhs_0 = check_expr(fcx, rhs);
@@ -1820,7 +1823,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
     }
 
     // A generic function for checking call expressions
-    fn check_call(&@fn_ctxt fcx, @ast.expr f, vec[@ast.expr] args)
+    fn check_call(&@fn_ctxt fcx, &@ast.expr f, &vec[@ast.expr] args)
         -> tup(@ast.expr, vec[@ast.expr]) {
 
         let vec[Option.t[@ast.expr]] args_opt_0 = vec();
@@ -2686,7 +2689,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
     }
 }
 
-fn next_ty_var(@crate_ctxt ccx) -> ty.t {
+fn next_ty_var(&@crate_ctxt ccx) -> ty.t {
     auto t = ty.mk_var(ccx.tcx, ccx.next_var_id);
     ccx.next_var_id += 1;
     ret t;
@@ -2699,7 +2702,7 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast.decl decl) -> @ast.decl {
             auto t;
 
             t = ty.mk_nil(fcx.ccx.tcx);
-            
+
             alt (local.ty) {
                 case (none[@ast.ty]) {
                     // Auto slot. Do nothing for now.
@@ -2712,7 +2715,7 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast.decl decl) -> @ast.decl {
                 }
             }
 
-            auto a_res = local.ann; 
+            auto a_res = local.ann;
             alt (a_res) {
                 case (ann_none) {
                     a_res = triv_ann(t);
@@ -2807,8 +2810,8 @@ fn check_block(&@fn_ctxt fcx, &ast.block block) -> ast.block {
                                     a=plain_ann(fcx.ccx.tcx)));
 }
 
-fn check_const(&@crate_ctxt ccx, &span sp, ast.ident ident, @ast.ty t,
-               @ast.expr e, ast.def_id id, ast.ann ann) -> @ast.item {
+fn check_const(&@crate_ctxt ccx, &span sp, &ast.ident ident, &@ast.ty t,
+               &@ast.expr e, &ast.def_id id, &ast.ann ann) -> @ast.item {
     // FIXME: this is kinda a kludge; we manufacture a fake "function context"
     // for checking the initializer expression.
     auto rty = ann_to_type(ann);
@@ -2858,7 +2861,7 @@ fn check_fn(&@crate_ctxt ccx, &ast.fn_decl decl, ast.proto proto,
               ccx.sess.span_err(body.span, "Non-boolean return type in pred");
             }
         }
-        case (_) {} 
+        case (_) {}
     }
 
     auto block_wb = resolve_local_types_in_block(fcx, block_t);
@@ -2894,7 +2897,7 @@ fn update_obj_fields(&@crate_ctxt ccx, @ast.item i) -> @crate_ctxt {
     alt (i.node) {
         case (ast.item_obj(_, ?ob, _, ?obj_def_ids, _)) {
             let ast.def_id di = obj_def_ids.ty;
-            ret @rec(obj_fields = ob.fields, 
+            ret @rec(obj_fields = ob.fields,
                      this_obj = some[ast.def_id](di) with *ccx);
         }
         case (_) {
@@ -2935,10 +2938,10 @@ fn eq_unify_cache_entry(&unify_cache_entry a, &unify_cache_entry b) -> bool {
     ret true;
 }
 
-fn mk_fn_purity_table(@ast.crate crate) -> @fn_purity_table {
+fn mk_fn_purity_table(&@ast.crate crate) -> @fn_purity_table {
     auto res = @new_def_hash[ast.purity]();
 
-    fn do_one(@fn_purity_table t, @ast.item i) -> () {
+    fn do_one(@fn_purity_table t, &@ast.item i) -> () {
         alt (i.node) {
             case (ast.item_fn(_, ?f, _, ?d_id, _)) {
                 t.insert(d_id, f.decl.purity);
@@ -2958,8 +2961,7 @@ fn mk_fn_purity_table(@ast.crate crate) -> @fn_purity_table {
 
 type typecheck_result = tup(@ast.crate, ty.type_cache);
 
-fn check_crate(ty.ctxt tcx, @ast.crate crate)
-        -> typecheck_result {
+fn check_crate(&ty.ctxt tcx, &@ast.crate crate) -> typecheck_result {
     auto sess = tcx.sess;
     auto result = Collect.collect_item_types(sess, tcx, crate);
 
