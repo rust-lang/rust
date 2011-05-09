@@ -60,66 +60,76 @@ type upcalls = rec(
     ValueRef start_thread
 );
 
-fn declare_upcalls(type_names tn, ModuleRef llmod) -> upcalls {
-    fn decl(type_names tn, ModuleRef llmod, str name, vec[TypeRef] tys)
-            -> ValueRef {
+fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
+    fn decl(type_names tn, ModuleRef llmod, str name, vec[TypeRef] tys,
+            TypeRef rv) -> ValueRef {
         let vec[TypeRef] arg_tys = vec(T_taskptr(tn));
         for (TypeRef t in tys) { arg_tys += vec(t); }
-        auto fn_ty = T_fn(arg_tys, T_void());
+        auto fn_ty = T_fn(arg_tys, rv);
         ret trans.decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
     }
 
-    auto d = bind decl(tn, llmod, _, _);
+    auto dv = bind decl(tn, llmod, _, _, T_void());
+    auto d = bind decl(tn, llmod, _, _, _);
 
     // FIXME: Sigh... remove this when I fix the typechecker pushdown.
     // --pcwalton
     let vec[TypeRef] empty_vec = vec();
 
-    ret rec(
-        grow_task=d("grow_task", vec(T_size_t())),
-        log_int=d("log_int", vec(T_i32(), T_i32())),
-        log_float=d("log_float", vec(T_i32(), T_f32())),
-        log_double=d("log_double", vec(T_i32(), T_ptr(T_f64()))),
-        log_str=d("log_str", vec(T_i32(), T_ptr(T_str()))),
-        trace_word=d("trace_word", vec(T_int())),
-        trace_str=d("trace_str", vec(T_ptr(T_i8()))),
-        new_port=d("new_port", vec(T_size_t())),
-        del_port=d("del_port", vec(T_opaque_port_ptr(tn))),
-        new_chan=d("new_chan", vec(T_opaque_port_ptr(tn))),
-        flush_chan=d("flush_chan", vec(T_opaque_chan_ptr(tn))),
-        del_chan=d("del_chan", vec(T_opaque_chan_ptr(tn))),
-        clone_chan=d("clone_chan", vec(T_taskptr(tn), T_opaque_chan_ptr(tn))),
-        _yield=d("yield", empty_vec),
-        sleep=d("sleep", vec(T_size_t())),
-        _join=d("join", vec(T_taskptr(tn))),
-        send=d("send", vec(T_opaque_chan_ptr(tn), T_ptr(T_i8()))),
-        recv=d("recv", vec(T_ptr(T_int()), T_opaque_port_ptr(tn))),
-        _fail=d("fail", vec(T_ptr(T_i8()), T_ptr(T_i8()), T_size_t())),
-        kill=d("kill", vec(T_taskptr(tn))),
-        exit=d("exit", empty_vec),
-        malloc=d("malloc", vec(T_size_t(), T_ptr(T_tydesc(tn)))),
-        free=d("free", vec(T_ptr(T_i8()), T_int())),
-        mark=d("mark", vec(T_ptr(T_i8()))),
-        new_str=d("new_str", vec(T_ptr(T_i8()), T_size_t())),
-        new_vec=d("new_vec", vec(T_size_t(), T_ptr(T_tydesc(tn)))),
+    ret @rec(
+        grow_task=dv("grow_task", vec(T_size_t())),
+        log_int=dv("log_int", vec(T_i32(), T_i32())),
+        log_float=dv("log_float", vec(T_i32(), T_f32())),
+        log_double=dv("log_double", vec(T_i32(), T_ptr(T_f64()))),
+        log_str=dv("log_str", vec(T_i32(), T_ptr(T_str()))),
+        trace_word=dv("trace_word", vec(T_int())),
+        trace_str=dv("trace_str", vec(T_ptr(T_i8()))),
+        new_port=d("new_port", vec(T_size_t()), T_opaque_port_ptr(tn)),
+        del_port=dv("del_port", vec(T_opaque_port_ptr(tn))),
+        new_chan=dv("new_chan", vec(T_opaque_port_ptr(tn))),
+        flush_chan=dv("flush_chan", vec(T_opaque_chan_ptr(tn))),
+        del_chan=dv("del_chan", vec(T_opaque_chan_ptr(tn))),
+        clone_chan=d("clone_chan", vec(T_taskptr(tn), T_opaque_chan_ptr(tn)),
+                     T_opaque_chan_ptr(tn)),
+        _yield=dv("yield", empty_vec),
+        sleep=dv("sleep", vec(T_size_t())),
+        _join=dv("join", vec(T_taskptr(tn))),
+        send=dv("send", vec(T_opaque_chan_ptr(tn), T_ptr(T_i8()))),
+        recv=dv("recv", vec(T_ptr(T_int()), T_opaque_port_ptr(tn))),
+        _fail=dv("fail", vec(T_ptr(T_i8()), T_ptr(T_i8()), T_size_t())),
+        kill=dv("kill", vec(T_taskptr(tn))),
+        exit=dv("exit", empty_vec),
+        malloc=d("malloc", vec(T_size_t(), T_ptr(T_tydesc(tn))),
+                               T_ptr(T_i8())),
+        free=dv("free", vec(T_ptr(T_i8()), T_int())),
+        mark=d("mark", vec(T_ptr(T_i8())), T_int()),
+        new_str=d("new_str", vec(T_ptr(T_i8()), T_size_t()), T_ptr(T_str())),
+        new_vec=d("new_vec", vec(T_size_t(), T_ptr(T_tydesc(tn))),
+                                 T_opaque_vec_ptr()),
         vec_grow=d("vec_grow", vec(T_opaque_vec_ptr(), T_size_t(),
-                                   T_ptr(T_int()), T_ptr(T_tydesc(tn)))),
+                                   T_ptr(T_int()), T_ptr(T_tydesc(tn))),
+                   T_opaque_vec_ptr()),
         require_rust_sym=d("require_rust_sym",
                            vec(T_ptr(T_crate(tn)), T_size_t(), T_size_t(),
                                T_size_t(), T_ptr(T_i8()),
-                               T_ptr(T_ptr(T_i8())))),
+                               T_ptr(T_ptr(T_i8()))),
+                           T_int()),
         require_c_sym=d("require_c_sym",
                         vec(T_ptr(T_crate(tn)), T_size_t(), T_size_t(),
-                            T_ptr(T_i8()), T_ptr(T_i8()))),
+                            T_ptr(T_i8()), T_ptr(T_i8())),
+                        T_int()),
         get_type_desc=d("get_type_desc",
                         vec(T_ptr(T_crate(tn)), T_size_t(), T_size_t(),
-                            T_size_t(), T_ptr(T_ptr(T_tydesc(tn))))),
-        new_task=d("new_task", vec(T_ptr(T_i8()))),
+                            T_size_t(), T_ptr(T_ptr(T_tydesc(tn)))),
+                        T_ptr(T_tydesc(tn))),
+        new_task=d("new_task", vec(T_ptr(T_i8())), T_taskptr(tn)),
         start_task=d("start_task", vec(T_taskptr(tn), T_int(), T_int(),
-                                       T_int(), T_size_t())),
-        new_thread=d("new_thread", vec(T_ptr(T_i8()))),
+                                       T_int(), T_size_t()),
+                     T_taskptr(tn)),
+        new_thread=d("new_thread", vec(T_ptr(T_i8())), T_taskptr(tn)),
         start_thread=d("start_thread", vec(T_taskptr(tn), T_int(), T_int(),
-                                           T_int(), T_size_t()))
+                                           T_int(), T_size_t()),
+                       T_taskptr(tn))
     );
 }
 
