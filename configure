@@ -199,7 +199,7 @@ probe_need CFG_PERL         perl
 probe_need CFG_PYTHON       python
 probe_need CFG_CURL         curl
 
-probe CFG_CLANG            clang
+probe CFG_CLANG            clang++
 probe CFG_GCC              gcc
 probe CFG_LLVM_CONFIG      llvm-config
 probe CFG_VALGRIND         valgrind
