@@ -2098,14 +2098,17 @@ mod Unify {
             auto expected_input = expected_inputs.(i);
             auto actual_input = actual_inputs.(i);
 
-            // This should be safe, I think?
-            // FIXME: It's not. At all.
+            // Unify the result modes. "mo_either" unifies with both modes.
             auto result_mode;
-            if (expected_input.mode == mo_alias ||
-                    actual_input.mode == mo_alias) {
-                result_mode = mo_alias;
+            if (expected_input.mode == mo_either) {
+                result_mode = actual_input.mode;
+            } else if (actual_input.mode == mo_either) {
+                result_mode = expected_input.mode;
+            } else if (expected_input.mode != actual_input.mode) {
+                ret fn_common_res_err(ures_err(terr_arg_count,
+                                               expected, actual));
             } else {
-                result_mode = mo_val;
+                result_mode = expected_input.mode;
             }
 
             auto result = unify_step(cx, actual_input.ty, expected_input.ty);

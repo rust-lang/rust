@@ -1766,17 +1766,15 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     auto a_0 = check_expr(fcx, a);
                     args_0 += vec(some[@ast.expr](a_0));
 
-                    // FIXME: this breaks aliases. We need a ty_fn_arg.
-                    auto arg_ty = rec(mode=mo_val,
+                    auto arg_ty = rec(mode=mo_either,
                                       ty=expr_ty(fcx.ccx.tcx, a_0));
                     Vec.push[arg](arg_tys_0, arg_ty);
                 }
                 case (none[@ast.expr]) {
                     args_0 += vec(none[@ast.expr]);
 
-                    // FIXME: breaks aliases too?
                     auto typ = next_ty_var(fcx.ccx);
-                    Vec.push[arg](arg_tys_0, rec(mode=mo_val, ty=typ));
+                    Vec.push[arg](arg_tys_0, rec(mode=mo_either, ty=typ));
                 }
             }
         }
