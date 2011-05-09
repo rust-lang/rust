@@ -305,6 +305,11 @@ fn T_char() -> TypeRef {
     ret T_i32();
 }
 
+fn T_size_t() -> TypeRef {
+    // FIXME: switch on target type.
+    ret T_i32();
+}
+
 fn T_fn(vec[TypeRef] inputs, TypeRef output) -> TypeRef {
     ret llvm.LLVMFunctionType(output,
                               Vec.buf[TypeRef](inputs),
@@ -584,6 +589,26 @@ fn T_obj_ptr(type_names tn, uint n_captured_tydescs) -> TypeRef {
 
 fn T_opaque_obj_ptr(type_names tn) -> TypeRef {
     ret T_obj_ptr(tn, 0u);
+}
+
+fn T_opaque_port_ptr(type_names tn) -> TypeRef {
+    auto s = "*port";
+    if (tn.name_has_type(s)) { ret tn.get_type(s); }
+
+    auto t = T_ptr(T_i8());
+
+    tn.associate(s, t);
+    ret t;
+}
+
+fn T_opaque_chan_ptr(type_names tn) -> TypeRef {
+    auto s = "*chan";
+    if (tn.name_has_type(s)) { ret tn.get_type(s); }
+
+    auto t = T_ptr(T_i8());
+
+    tn.associate(s, t);
+    ret t;
 }
 
 

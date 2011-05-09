@@ -35,6 +35,7 @@ mod front {
 mod back {
     mod Link;
     mod abi;
+    mod upcall;
     mod x86;
 }
 
