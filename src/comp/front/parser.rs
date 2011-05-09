@@ -38,6 +38,8 @@ state type parser =
           fn next_def_id() -> ast.def_id;
           fn set_def(ast.def_num);
           fn get_prec_table() -> vec[op_spec];
+          fn get_str(token.str_num) -> str;
+          fn get_reader() -> lexer.reader;
           fn get_filemap() -> codemap.filemap;
           fn get_chpos() -> uint;
     };
@@ -111,6 +113,14 @@ fn new_parser(session.session sess,
                 ret precs;
             }
 
+            fn get_str(token.str_num i) -> str {
+                ret rdr.get_str(i);
+            }
+
+            fn get_reader() -> lexer.reader {
+                ret rdr;
+            }
+
             fn get_filemap() -> codemap.filemap {
                 ret rdr.get_filemap();
             }
@@ -135,7 +145,7 @@ fn new_parser(session.session sess,
 
 fn unexpected(parser p, token.token t) {
     let str s = "unexpected token: ";
-    s += token.to_str(t);
+    s += token.to_str(p.get_reader(), t);
     p.err(s);
 }
 
@@ -144,9 +154,9 @@ fn expect(parser p, token.token t) {
         p.bump();
     } else {
         let str s = "expecting ";
-        s += token.to_str(t);
+        s += token.to_str(p.get_reader(), t);
         s += ", found ";
-        s += token.to_str(p.peek());
+        s += token.to_str(p.get_reader(), p.peek());
         p.err(s);
     }
 }
@@ -157,7 +167,7 @@ fn spanned[T](uint lo, uint hi, &T node) -> ast.spanned[T] {
 
 fn parse_ident(parser p) -> ast.ident {
     alt (p.peek()) {
-        case (token.IDENT(?i)) { p.bump(); ret i; }
+        case (token.IDENT(?i)) { p.bump(); ret p.get_str(i); }
         case (_) {
             p.err("expecting ident");
             fail;
@@ -173,10 +183,10 @@ fn parse_ident(parser p) -> ast.ident {
  */
 fn parse_str_lit_or_env_ident(parser p) -> ast.ident {
     alt (p.peek()) {
-        case (token.LIT_STR(?s)) { p.bump(); ret s; }
+        case (token.LIT_STR(?s)) { p.bump(); ret p.get_str(s); }
         case (token.IDENT(?i)) {
             auto v = eval.lookup(p.get_session(), p.get_env(),
-                                 p.get_span(), i);
+                                 p.get_span(), p.get_str(i));
             if (!eval.val_is_str(v)) {
                 p.err("expecting string-valued variable");
             }
@@ -549,7 +559,7 @@ fn parse_lit(parser p) -> ast.lit {
         }
         case (token.LIT_FLOAT(?s)) {
             p.bump();
-            lit = ast.lit_float(s);
+            lit = ast.lit_float(p.get_str(s));
         }
         case (token.LIT_MACH_INT(?tm, ?i)) {
             p.bump();
@@ -557,7 +567,7 @@ fn parse_lit(parser p) -> ast.lit {
         }
         case (token.LIT_MACH_FLOAT(?tm, ?s)) {
             p.bump();
-            lit = ast.lit_mach_float(tm, s);
+            lit = ast.lit_mach_float(tm, p.get_str(s));
         }
         case (token.LIT_CHAR(?c)) {
             p.bump();
@@ -569,7 +579,7 @@ fn parse_lit(parser p) -> ast.lit {
         }
         case (token.LIT_STR(?s)) {
             p.bump();
-            lit = ast.lit_str(s);
+            lit = ast.lit_str(p.get_str(s));
         }
         case (?t) {
             unexpected(p, t);
@@ -617,7 +627,7 @@ fn parse_path(parser p, greed g) -> ast.path {
         alt (p.peek()) {
             case (token.IDENT(?i)) {
                 hi = p.get_hi_pos();
-                ids += vec(i);
+                ids += vec(p.get_str(i));
                 p.bump();
                 if (p.peek() == token.DOT) {
                     if (g == GREEDY) {
@@ -1025,7 +1035,7 @@ fn parse_dot_or_call_expr(parser p) -> @ast.expr {
                     case (token.IDENT(?i)) {
                         hi = p.get_hi_pos();
                         p.bump();
-                        e = extend_expr_by_ident(p, lo, hi, e, i);
+                        e = extend_expr_by_ident(p, lo, hi, e, p.get_str(i));
                     }
 
                     case (token.LPAREN) {
@@ -1373,7 +1383,7 @@ fn parse_alt_expr(parser p) -> @ast.expr {
             case (token.RBRACE) { /* empty */ }
             case (?tok) {
                 p.err("expected 'case' or '}' when parsing 'alt' statement " +
-                      "but found " + token.to_str(tok));
+                      "but found " + token.to_str(p.get_reader(), tok));
             }
         }
     }
@@ -1483,16 +1493,17 @@ fn parse_pat(parser p) -> @ast.pat {
                 case (token.IDENT(?id)) {
                     hi = p.get_hi_pos();
                     p.bump();
-                    pat = ast.pat_bind(id, p.next_def_id(), ast.ann_none);
+                    pat = ast.pat_bind(p.get_str(id), p.next_def_id(),
+                                       ast.ann_none);
                 }
                 case (?tok) {
                     p.err("expected identifier after '?' in pattern but " +
-                          "found " + token.to_str(tok));
+                          "found " + token.to_str(p.get_reader(), tok));
                     fail;
                 }
             }
         }
-        case (token.IDENT(?id)) {
+        case (token.IDENT(_)) {
             auto tag_path = parse_path(p, GREEDY);
             hi = tag_path.span.hi;
 
@@ -1723,7 +1734,7 @@ fn parse_block(parser p) -> ast.block {
                                 if (stmt_ends_with_semi(stmt)) {
                                     p.err("expected ';' or '}' after " +
                                           "expression but found " +
-                                          token.to_str(t));
+                                          token.to_str(p.get_reader(), t));
                                     fail;
                                 }
                                 stmts += vec(stmt);
@@ -2102,13 +2113,14 @@ fn parse_item_tag(parser p) -> @ast.item {
                 expect(p, token.SEMI);
 
                 auto id = p.next_def_id();
-                auto vr = rec(name=name, args=args, id=id, ann=ast.ann_none);
+                auto vr = rec(name=p.get_str(name), args=args,
+                              id=id, ann=ast.ann_none);
                 variants += vec(spanned[ast.variant_](vlo, vhi, vr));
             }
             case (token.RBRACE) { /* empty */ }
             case (_) {
                 p.err("expected name of variant or '}' but found " +
-                      token.to_str(tok));
+                      token.to_str(p.get_reader(), tok));
             }
         }
     }
@@ -2210,7 +2222,8 @@ fn parse_item(parser p) -> @ast.item {
             ret parse_item_obj(p, lyr);
         }
         case (?t) {
-            p.err("expected item but found " + token.to_str(t));
+            p.err("expected item but found " +
+                  token.to_str(p.get_reader(), t));
         }
     }
     fail;
@@ -2224,7 +2237,8 @@ fn parse_meta_item(parser p) -> @ast.meta_item {
         case (token.LIT_STR(?s)) {
             auto hi = p.get_hi_pos();
             p.bump();
-            ret @spanned(lo, hi, rec(name = ident, value = s));
+            ret @spanned(lo, hi, rec(name = ident,
+                                     value = p.get_str(s)));
         }
         case (_) {
             p.err("Metadata items must be string literals");
@@ -2294,9 +2308,9 @@ fn parse_rest_import_name(parser p, ast.ident first,
 fn parse_full_import_name(parser p, ast.ident def_ident)
        -> @ast.view_item {
     alt (p.peek()) {
-        case (token.IDENT(?ident)) {
+        case (token.IDENT(?i)) {
             p.bump();
-            ret parse_rest_import_name(p, ident, some(def_ident));
+            ret parse_rest_import_name(p, p.get_str(i), some(def_ident));
         }
         case (_) {
             p.err("expecting an identifier");
@@ -2308,15 +2322,16 @@ fn parse_full_import_name(parser p, ast.ident def_ident)
 fn parse_import(parser p) -> @ast.view_item {
     expect(p, token.IMPORT);
     alt (p.peek()) {
-        case (token.IDENT(?ident)) {
+        case (token.IDENT(?i)) {
             p.bump();
             alt (p.peek()) {
                 case (token.EQ) {
                     p.bump();
-                    ret parse_full_import_name(p, ident);
+                    ret parse_full_import_name(p, p.get_str(i));
                 }
                 case (_) {
-                    ret parse_rest_import_name(p, ident, none[ast.ident]);
+                    ret parse_rest_import_name(p, p.get_str(i),
+                                               none[ast.ident]);
                 }
             }
         }

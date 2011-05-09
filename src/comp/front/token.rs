@@ -5,6 +5,8 @@ import std.Int;
 import std.UInt;
 import std.Str;
 
+type str_num = uint;
+
 tag binop {
     PLUS;
     MINUS;
@@ -127,14 +129,14 @@ tag token {
     LIT_INT(int);
     LIT_UINT(uint);
     LIT_MACH_INT(ty_mach, int);
-    LIT_FLOAT(str);
-    LIT_MACH_FLOAT(ty_mach, str);
-    LIT_STR(str);
+    LIT_FLOAT(str_num);
+    LIT_MACH_FLOAT(ty_mach, str_num);
+    LIT_STR(str_num);
     LIT_CHAR(char);
     LIT_BOOL(bool);
 
     /* Name components */
-    IDENT(str);
+    IDENT(str_num);
     IDX(int);
     UNDERSCORE;
 
@@ -168,7 +170,7 @@ tag token {
     PORT;
     TASK;
 
-    BRACEQUOTE(str);
+    BRACEQUOTE(str_num);
     EOF;
 }
 
@@ -188,7 +190,7 @@ fn binop_to_str(binop o) -> str {
     }
 }
 
-fn to_str(token t) -> str {
+fn to_str(lexer.reader r, token t) -> str {
     alt (t) {
 
         case (EQ) { ret "="; }
@@ -301,10 +303,14 @@ fn to_str(token t) -> str {
             ret  Int.to_str(i, 10u)
                 + "_" + ty_mach_to_str(tm);
         }
-        case (LIT_FLOAT(?s)) { ret s; }
+        case (LIT_MACH_FLOAT(?tm, ?s)) {
+            ret r.get_str(s) + "_" + ty_mach_to_str(tm);
+        }
+
+        case (LIT_FLOAT(?s)) { ret r.get_str(s); }
         case (LIT_STR(?s)) {
             // FIXME: escape.
-            ret "\"" + s + "\"";
+            ret "\"" + r.get_str(s) + "\"";
         }
         case (LIT_CHAR(?c)) {
             // FIXME: escape.
@@ -319,7 +325,11 @@ fn to_str(token t) -> str {
         }
 
         /* Name components */
-        case (IDENT(?s)) { auto si = "ident:"; si += s; ret si; }
+        case (IDENT(?s)) {
+            auto si = "ident:";
+            si += r.get_str(s);
+            ret si;
+        }
         case (IDX(?i)) { ret "_" + Int.to_str(i, 10u); }
         case (UNDERSCORE) { ret "_"; }
 
@@ -358,7 +368,6 @@ fn to_str(token t) -> str {
         case (EOF) { ret "<eof>"; }
     }
 }
-
 
 
 // Local Variables:

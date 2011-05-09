@@ -18,6 +18,8 @@ state type reader = state obj {
     fn bump();
     fn mark();
     fn get_mark_chpos() -> uint;
+    fn add_str(str) -> token.str_num;
+    fn get_str(token.str_num) -> str;
     fn get_chpos() -> uint;
     fn get_keywords() -> hashmap[str,token.token];
     fn get_reserved() -> hashmap[str,()];
@@ -32,6 +34,7 @@ fn new_reader(IO.reader rdr, str filename, codemap.filemap filemap)
                      mutable char ch,
                      mutable uint mark_chpos,
                      mutable uint chpos,
+                     mutable vec[str] strs,
                      hashmap[str,token.token] keywords,
                      hashmap[str,()] reserved,
                      codemap.filemap fm) {
@@ -79,6 +82,15 @@ fn new_reader(IO.reader rdr, str filename, codemap.filemap filemap)
             ret keywords;
         }
 
+        fn add_str(str s) -> token.str_num {
+            strs += vec(s);
+            ret Vec.len[str](strs) - 1u;
+        }
+
+        fn get_str(token.str_num i) -> str {
+            ret strs.(i);
+        }
+
         fn get_reserved() -> hashmap[str,()] {
             ret reserved;
         }
@@ -88,9 +100,10 @@ fn new_reader(IO.reader rdr, str filename, codemap.filemap filemap)
         }
     }
     auto file = Str.unsafe_from_bytes(rdr.read_whole_stream());
+    let vec[str] strs = vec();
     auto rd = reader(file, Str.byte_len(file), 0u, -1 as char,
                      filemap.start_pos, filemap.start_pos,
-                     keyword_table(),
+                     strs, keyword_table(),
                      reserved_word_table(),
                      filemap);
     rd.init();
@@ -500,25 +513,25 @@ fn scan_number(char c, reader rdr) -> token.token {
             if (c == '3' && n == '2') {
                 rdr.bump(); rdr.bump();
                 ret token.LIT_MACH_FLOAT(util.common.ty_f32,
-                                         float_str);
+                                         rdr.add_str(float_str));
             }
             else if (c == '6' && n == '4') {
                 rdr.bump(); rdr.bump();
                 ret token.LIT_MACH_FLOAT(util.common.ty_f64,
-                                         float_str);
+                                         rdr.add_str(float_str));
                 /* FIXME: if this is out of range for either a 32-bit or
                    64-bit float, it won't be noticed till the back-end */
             }
         }
         else {
-            ret token.LIT_FLOAT(float_str);
+            ret token.LIT_FLOAT(rdr.add_str(float_str));
         }
     }
 
     auto maybe_exponent = scan_exponent(rdr);
     alt(maybe_exponent) {
         case(some[str](?s)) {
-            ret token.LIT_FLOAT(dec_str + s);
+            ret token.LIT_FLOAT(rdr.add_str(dec_str + s));
         }
         case(none[str]) {
                 ret token.LIT_INT(accum_int);
@@ -594,7 +607,7 @@ fn next_token(reader rdr) -> token.token {
             fail;
         }
 
-        ret token.IDENT(accum_str);
+        ret token.IDENT(rdr.add_str(accum_str));
     }
 
     if (is_dec_digit(c)) {
@@ -786,7 +799,7 @@ fn next_token(reader rdr) -> token.token {
                 rdr.bump();
             }
             rdr.bump();
-            ret token.LIT_STR(accum_str);
+            ret token.LIT_STR(rdr.add_str(accum_str));
         }
 
         case ('-') {
