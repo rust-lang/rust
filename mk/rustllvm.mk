@@ -29,8 +29,8 @@ rustllvm/$(CFG_RUSTLLVM): rustllvm/rustllvmbits.a $(RUSTLLVM_OBJS_OBJS) \
                           $(MKFILES) $(RUSTLLVM_HDR) $(RUSTLLVM_DEF)
 	@$(call E, link: $@)
 	$(Q)$(call CFG_LINK_C,$@,$(RUSTLLVM_OBJS_OBJS) \
-	  $(CFG_GCC_PRE_LIB_FLAGS) $(CFG_LLVM_LIBS) \
-          $(CFG_GCC_POST_LIB_FLAGS) rustllvm/rustllvmbits.a \
+	  $(CFG_GCCISH_PRE_LIB_FLAGS) $(CFG_LLVM_LIBS) \
+          $(CFG_GCCISH_POST_LIB_FLAGS) rustllvm/rustllvmbits.a \
 	  $(CFG_LLVM_LIBS) \
           $(CFG_LLVM_LDFLAGS),$(RUSTLLVM_DEF))
 

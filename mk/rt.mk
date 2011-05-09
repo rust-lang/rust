@@ -64,7 +64,7 @@ RUNTIME_HDR := rt/globals.h \
 RUNTIME_DEF := rt/rustrt$(CFG_DEF_SUFFIX)
 RUNTIME_INCS := -I $(S)src/rt/isaac -I $(S)src/rt/uthash
 RUNTIME_OBJS := $(RUNTIME_CS:.cpp=.o)
-RUNTIME_LIBS := $(CFG_GCC_POST_LIB_FLAGS)
+RUNTIME_LIBS := $(CFG_GCCISH_POST_LIB_FLAGS)
 
 
 rt/%.o: rt/%.cpp $(MKFILES)

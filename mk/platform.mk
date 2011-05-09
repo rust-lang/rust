@@ -1,6 +1,6 @@
 
-CFG_GCC_CFLAGS := -fno-strict-aliasing
-CFG_GCC_LINK_FLAGS :=
+CFG_GCCISH_CFLAGS := -fno-strict-aliasing
+CFG_GCCISH_LINK_FLAGS :=
 
 # On Darwin, we need to run dsymutil so the debugging information ends
 # up in the right place.  On other platforms, it automatically gets
@@ -9,11 +9,11 @@ CFG_DSYMUTIL := true
 
 ifeq ($(CFG_OSTYPE), FreeBSD)
   CFG_LIB_NAME=lib$(1).so
-  CFG_GCC_CFLAGS += -fPIC -march=i686 -I/usr/local/include -O2
-  CFG_GCC_LINK_FLAGS += -shared -fPIC -lpthread -lrt
+  CFG_GCCISH_CFLAGS += -fPIC -march=i686 -I/usr/local/include -O2
+  CFG_GCCISH_LINK_FLAGS += -shared -fPIC -lpthread -lrt
   ifeq ($(CFG_CPUTYPE), x86_64)
-    CFG_GCC_CFLAGS += -m32
-    CFG_GCC_LINK_FLAGS += -m32
+    CFG_GCCISH_CFLAGS += -m32
+    CFG_GCCISH_LINK_FLAGS += -m32
   endif
   CFG_UNIXY := 1
   CFG_LDENV := LD_LIBRARY_PATH
@@ -22,14 +22,14 @@ endif
 
 ifeq ($(CFG_OSTYPE), Linux)
   CFG_LIB_NAME=lib$(1).so
-  CFG_GCC_CFLAGS += -fPIC -march=i686 -O2
-  CFG_GCC_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
-  CFG_GCC_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
-  CFG_GCC_PRE_LIB_FLAGS := -Wl,-whole-archive
-  CFG_GCC_POST_LIB_FLAGS := -Wl,-no-whole-archive
+  CFG_GCCISH_CFLAGS += -fPIC -march=i686 -O2
+  CFG_GCCISH_LINK_FLAGS += -shared -fPIC -ldl -lpthread -lrt
+  CFG_GCCISH_DEF_FLAG := -Wl,--export-dynamic,--dynamic-list=
+  CFG_GCCISH_PRE_LIB_FLAGS := -Wl,-whole-archive
+  CFG_GCCISH_POST_LIB_FLAGS := -Wl,-no-whole-archive
   ifeq ($(CFG_CPUTYPE), x86_64)
-    CFG_GCC_CFLAGS += -m32
-    CFG_GCC_LINK_FLAGS += -m32
+    CFG_GCCISH_CFLAGS += -m32
+    CFG_GCCISH_LINK_FLAGS += -m32
   endif
   CFG_UNIXY := 1
   CFG_LDENV := LD_LIBRARY_PATH
@@ -40,8 +40,8 @@ ifeq ($(CFG_OSTYPE), Darwin)
   CFG_LIB_NAME=lib$(1).dylib
   CFG_UNIXY := 1
   CFG_LDENV := DYLD_LIBRARY_PATH
-  CFG_GCC_LINK_FLAGS += -dynamiclib -lpthread
-  CFG_GCC_DEF_FLAG := -Wl,-exported_symbols_list,
+  CFG_GCCISH_LINK_FLAGS += -dynamiclib -lpthread
+  CFG_GCCISH_DEF_FLAG := -Wl,-exported_symbols_list,
   # Darwin has a very blurry notion of "64 bit", and claims it's running
   # "on an i386" when the whole userspace is 64-bit and the compiler
   # emits 64-bit binaries by default. So we just force -m32 here. Smarter
@@ -49,7 +49,12 @@ ifeq ($(CFG_OSTYPE), Darwin)
   #
   # NB: Currently GCC's optimizer breaks rustrt (task-comm-1 hangs) on Darwin.
   CFG_GCC_CFLAGS += -m32 -O0
-  CFG_GCC_LINK_FLAGS += -m32
+  CFG_CLANG_CFLAGS += -m32 -O2
+  ifeq ($(CFG_CPUTYPE), x86_64)
+    CFG_GCCISH_CFLAGS += -arch i386
+    CFG_GCCISH_LINK_FLAGS += -arch i386
+  endif
+  CFG_GCCISH_LINK_FLAGS += -m32
   CFG_DSYMUTIL := dsymutil
   CFG_DEF_SUFFIX := .darwin.def
 endif
@@ -85,8 +90,8 @@ ifdef CFG_WINDOWSY
   ifdef CFG_FLEXLINK
     CFG_BOOT_NATIVE := 1
   endif
-  CFG_GCC_CFLAGS += -march=i686 -O2
-  CFG_GCC_LINK_FLAGS += -shared -fPIC
+  CFG_GCCISH_CFLAGS += -march=i686 -O2
+  CFG_GCCISH_LINK_FLAGS += -shared -fPIC
   CFG_DEF_SUFFIX := .def
 endif
 
@@ -112,16 +117,16 @@ ifdef CFG_UNIXY
     CFG_RUN_TEST=PATH=$(CFG_LDPATH):$(call CFG_TESTLIB,$(1)) $(1)
 
     CFG_INFO := $(info cfg: mingw-cross)
-    CFG_GCC_CROSS := i586-mingw32msvc-
+    CFG_GCCISH_CROSS := i586-mingw32msvc-
     CFG_BOOT_FLAGS += -t win32-x86-pe
     ifdef CFG_VALGRIND
       CFG_VALGRIND += wine
     endif
-    CFG_GCC_CFLAGS := -march=i686
-    CFG_GCC_LINK_FLAGS := -shared
+    CFG_GCCISH_CFLAGS := -march=i686
+    CFG_GCCISH_LINK_FLAGS := -shared
     ifeq ($(CFG_CPUTYPE), x86_64)
-      CFG_GCC_CFLAGS += -m32
-      CFG_GCC_LINK_FLAGS += -m32
+      CFG_GCCISH_CFLAGS += -m32
+      CFG_GCCISH_LINK_FLAGS += -m32
     endif
   endif
   ifdef CFG_VALGRIND
@@ -132,14 +137,28 @@ ifdef CFG_UNIXY
   endif
 endif
 
+ifdef CFG_CLANG
+  CFG_INFO := $(info cfg: using clang)
+  CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -fno-exceptions -g
+  CFG_GCCISH_LINK_FLAGS += -g
+  CFG_COMPILE_C = $(CFG_GCCISH_CROSS)clang++ $(CFG_GCCISH_CFLAGS) \
+    $(CFG_CLANG_CFLAGS) -c -o $(1) $(2)
+  CFG_DEPEND_C = $(CFG_GCCISH_CROSS)clang++ $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
+    -MM $(2)
+  CFG_LINK_C = $(CFG_GCCISH_CROSS)clang++ $(CFG_GCCISH_LINK_FLAGS) -o $(1) \
+    $(CFG_GCCISH_DEF_FLAG)$(3) $(2)
+else
 ifdef CFG_GCC
   CFG_INFO := $(info cfg: using gcc)
-  CFG_GCC_CFLAGS += -Wall -Werror -fno-rtti -fno-exceptions -g
-  CFG_GCC_LINK_FLAGS += -g
-  CFG_COMPILE_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_CFLAGS) -c -o $(1) $(2)
-  CFG_DEPEND_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_CFLAGS) -MT "$(1)" -MM $(2)
-  CFG_LINK_C = $(CFG_GCC_CROSS)g++ $(CFG_GCC_LINK_FLAGS) -o $(1) \
-               $(CFG_GCC_DEF_FLAG)$(3) $(2)
+  CFG_GCCISH_CFLAGS += -Wall -Werror -fno-rtti -fno-exceptions -g
+  CFG_GCCISH_LINK_FLAGS += -g
+  CFG_COMPILE_C = $(CFG_GCCISH_CROSS)g++ $(CFG_GCCISH_CFLAGS) \
+    $(CFG_GCC_CFLAGS) -c -o $(1) $(2)
+  CFG_DEPEND_C = $(CFG_GCCISH_CROSS)g++ $(CFG_GCCISH_CFLAGS) -MT "$(1)" \
+    -MM $(2)
+  CFG_LINK_C = $(CFG_GCCISH_CROSS)g++ $(CFG_GCCISH_LINK_FLAGS) -o $(1) \
+               $(CFG_GCCISH_DEF_FLAG)$(3) $(2)
 else
-  CFG_ERR := $(error please try on a system with gcc)
+  CFG_ERR := $(error please try on a system with gcc or clang)
+endif
 endif

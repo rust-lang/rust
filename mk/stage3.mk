@@ -6,8 +6,8 @@ stage3/std.o: $(STDLIB_CRATE) $(STDLIB_INPUTS) \
 
 stage3/$(CFG_STDLIB): stage3/std.o stage3/glue.o
 	@$(call E, link: $@)
-	$(Q)gcc $(CFG_GCC_CFLAGS) stage3/glue.o $(CFG_GCC_LINK_FLAGS) -o $@ $< \
-		-Lstage3 -Lrt -lrustrt
+	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage3/glue.o $(CFG_GCCISH_LINK_FLAGS) -o \
+        $@ $< -Lstage3 -Lrt -lrustrt
 
 stage3/rustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ2)
 	@$(call E, compile: $@)
@@ -30,11 +30,11 @@ stage3/intrinsics.bc:	$(INTRINSICS_BC)
 
 stage3/%.o: stage3/%.s
 	@$(call E, assemble [gcc]: $@)
-	$(Q)gcc $(CFG_GCC_CFLAGS) -o $@ -c $<
+	$(Q)gcc $(CFG_GCCISH_CFLAGS) -o $@ -c $<
 
 stage3/%$(X): stage3/%.o  $(SREQ2)
 	@$(call E, link [gcc]: $@)
-	$(Q)gcc $(CFG_GCC_CFLAGS) stage3/glue.o -o $@ $< \
+	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage3/glue.o -o $@ $< \
       -Lstage3 -Lrustllvm -Lrt -lrustrt -lrustllvm -lstd -lm
 	@# dsymutil sometimes fails or prints a warning, but the
 	@# program still runs.  Since it simplifies debugging other
