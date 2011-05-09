@@ -19,7 +19,9 @@ import middle.ty.block_ty;
 import middle.ty.expr_ty;
 import middle.ty.field;
 import middle.ty.method;
-import middle.ty.mode_is_alias;
+import middle.ty.mo_val;
+import middle.ty.mo_alias;
+import middle.ty.mo_either;
 import middle.ty.pat_ty;
 import middle.ty.path_to_str;
 import middle.ty.struct;
@@ -210,6 +212,15 @@ fn instantiate_path(@fn_ctxt fcx, &ast.path pth, &ty_param_count_and_ty tpt,
     ret ast.ann_type(t, ty_substs_opt, none[@ts_ann]);
 }
 
+fn ast_mode_to_mode(ast.mode mode) -> ty.mode {
+    auto ty_mode;
+    alt (mode) {
+        case (ast.val) { ty_mode = mo_val; }
+        case (ast.alias) { ty_mode = mo_alias; }
+    }
+    ret ty_mode;
+}
+
 // Parses the programmer's textual representation of a type into our internal
 // notion of a type. `getter` is a function that returns the type
 // corresponding to a definition ID.
@@ -217,8 +228,9 @@ fn ast_ty_to_ty(ty.ctxt tcx, ty_getter getter, &@ast.ty ast_ty) -> ty.t {
     fn ast_arg_to_arg(ty.ctxt tcx,
                       ty_getter getter,
                       &rec(ast.mode mode, @ast.ty ty) arg)
-            -> rec(ast.mode mode, ty.t ty) {
-        ret rec(mode=arg.mode, ty=ast_ty_to_ty(tcx, getter, arg.ty));
+            -> rec(ty.mode mode, ty.t ty) {
+        auto ty_mode = ast_mode_to_mode(arg.mode);
+        ret rec(mode=ty_mode, ty=ast_ty_to_ty(tcx, getter, arg.ty));
     }
 
     fn ast_mt_to_mt(ty.ctxt tcx,
@@ -430,8 +442,9 @@ mod Collect {
     }
 
     fn ty_of_arg(@ctxt cx, &ast.arg a) -> arg {
+        auto ty_mode = ast_mode_to_mode(a.mode);
         auto f = bind getter(cx, _);
-        ret rec(mode=a.mode, ty=ast_ty_to_ty(cx.tcx, f, a.ty));
+        ret rec(mode=ty_mode, ty=ast_ty_to_ty(cx.tcx, f, a.ty));
     }
 
     fn ty_of_method(@ctxt cx, &@ast.method m) -> method {
@@ -468,7 +481,7 @@ mod Collect {
         for (ast.obj_field f in obj_info.fields) {
             auto g = bind getter(cx, _);
             auto t_field = ast_ty_to_ty(cx.tcx, g, f.ty);
-            Vec.push[arg](t_inputs, rec(mode=ast.alias, ty=t_field));
+            Vec.push[arg](t_inputs, rec(mode=ty.mo_alias, ty=t_field));
         }
 
         cx.type_cache.insert(obj_ty_id, t_obj);
@@ -601,7 +614,7 @@ mod Collect {
                 let vec[arg] args = vec();
                 for (ast.variant_arg va in variant.node.args) {
                     auto arg_ty = ast_ty_to_ty(cx.tcx, f, va.ty);
-                    args += vec(rec(mode=ast.alias, ty=arg_ty));
+                    args += vec(rec(mode=ty.mo_alias, ty=arg_ty));
                 }
                 auto tag_t = ty.mk_tag(cx.tcx, tag_id, ty_param_tys);
                 result_ty = ty.mk_fn(cx.tcx, ast.proto_fn, args, tag_t);
@@ -1754,7 +1767,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
                     args_0 += vec(some[@ast.expr](a_0));
 
                     // FIXME: this breaks aliases. We need a ty_fn_arg.
-                    auto arg_ty = rec(mode=ast.val,
+                    auto arg_ty = rec(mode=mo_val,
                                       ty=expr_ty(fcx.ccx.tcx, a_0));
                     Vec.push[arg](arg_tys_0, arg_ty);
                 }
@@ -1763,7 +1776,7 @@ fn check_expr(&@fn_ctxt fcx, @ast.expr expr) -> @ast.expr {
 
                     // FIXME: breaks aliases too?
                     auto typ = next_ty_var(fcx.ccx);
-                    Vec.push[arg](arg_tys_0, rec(mode=ast.val, ty=typ));
+                    Vec.push[arg](arg_tys_0, rec(mode=mo_val, ty=typ));
                 }
             }
         }
@@ -2869,7 +2882,7 @@ fn check_item_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
     let vec[arg] inputs = vec();
     for (ast.arg arg in f.decl.inputs) {
         auto input_ty = ast_ty_to_ty_crate(ccx, arg.ty);
-        inputs += vec(rec(mode=arg.mode, ty=input_ty));
+        inputs += vec(rec(mode=ast_mode_to_mode(arg.mode), ty=input_ty));
     }
 
     auto output_ty = ast_ty_to_ty_crate(ccx, f.decl.output);

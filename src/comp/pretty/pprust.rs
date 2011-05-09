@@ -939,7 +939,7 @@ fn print_ty_fn(ps s, ast.proto proto, Option.t[str] id,
     }
     popen_h(s);
     fn print_arg(ps s, &ast.ty_arg input) {
-        if (middle.ty.mode_is_alias(input.mode)) {wrd(s.s, "&");}
+        if (input.mode == ast.alias) {wrd(s.s, "&");}
         print_type(s, input.ty);
     }
     auto f = print_arg;

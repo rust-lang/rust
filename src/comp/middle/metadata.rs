@@ -241,7 +241,7 @@ mod Encode {
     fn enc_ty_fn(IO.writer w, @ctxt cx, vec[ty.arg] args, ty.t out) {
         w.write_char('[');
         for (ty.arg arg in args) {
-            if (arg.mode == ast.alias) { w.write_char('&'); }
+            if (arg.mode == ty.mo_alias) { w.write_char('&'); }
             enc_ty(w, cx, arg.ty);
         }
         w.write_char(']');

@@ -35,7 +35,13 @@ import util.typestate_ann.ts_ann;
 
 // Data types
 
-type arg = rec(ast.mode mode, t ty);
+tag mode {
+    mo_val;
+    mo_alias;
+    mo_either;
+}
+
+type arg = rec(mode mode, t ty);
 type field = rec(ast.ident ident, mt mt);
 type method = rec(ast.proto proto,
                   ast.ident ident,
@@ -500,12 +506,12 @@ fn path_to_str(&ast.path pth) -> str {
 
 fn ty_to_str(ctxt cx, &t typ) -> str {
 
-    fn fn_input_to_str(ctxt cx, &rec(ast.mode mode, t ty) input) -> str {
+    fn fn_input_to_str(ctxt cx, &rec(mode mode, t ty) input) -> str {
         auto s;
-        if (mode_is_alias(input.mode)) {
-            s = "&";
-        } else {
-            s = "";
+        alt (input.mode) {
+            case (mo_val) { s = ""; }
+            case (mo_alias) { s = "&"; }
+            case (mo_either) { s = "?"; }
         }
 
         ret s + ty_to_str(cx, input.ty);
@@ -825,15 +831,6 @@ fn rename(ctxt cx, t typ, str new_cname) -> t {
 // canonical name from `cname_ty`.
 fn copy_cname(ctxt cx, t struct_ty, t cname_ty) -> t {
     ret gen_ty_full(cx, struct(cx, struct_ty), cname_ty.cname);
-}
-
-// FIXME: remove me when == works on these tags.
-fn mode_is_alias(ast.mode m) -> bool {
-    alt (m) {
-        case (ast.val) { ret false; }
-        case (ast.alias) { ret true; }
-    }
-    fail;
 }
 
 fn type_is_nil(ctxt cx, t ty) -> bool {
@@ -1272,23 +1269,6 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         }
     }
 
-    fn equal_mode(ast.mode a, ast.mode b) -> bool {
-        alt (a) {
-            case (ast.val) {
-                alt (b) {
-                    case (ast.val) { ret true; }
-                    case (_) { ret false; }
-                }
-            }
-            case (ast.alias) {
-                alt (b) {
-                    case (ast.alias) { ret true; }
-                    case (_) { ret false; }
-                }
-            }
-        }
-    }
-
     fn equal_mt(&mt a, &mt b) -> bool {
         ret equal_mut(a.mut, b.mut) && eq_ty(a.ty, b.ty);
     }
@@ -1303,7 +1283,7 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         auto i = 0u;
         while (i < len) {
             auto arg_a = args_a.(i); auto arg_b = args_b.(i);
-            if (!equal_mode(arg_a.mode, arg_b.mode)) { ret false; }
+            if (arg_a.mode != arg_b.mode) { ret false; }
             if (!eq_ty(arg_a.ty, arg_b.ty)) { ret false; }
             i += 1u;
         }
@@ -2117,12 +2097,13 @@ mod Unify {
             auto actual_input = actual_inputs.(i);
 
             // This should be safe, I think?
+            // FIXME: It's not. At all.
             auto result_mode;
-            if (mode_is_alias(expected_input.mode) ||
-                mode_is_alias(actual_input.mode)) {
-                result_mode = ast.alias;
+            if (expected_input.mode == mo_alias ||
+                    actual_input.mode == mo_alias) {
+                result_mode = mo_alias;
             } else {
-                result_mode = ast.val;
+                result_mode = mo_val;
             }
 
             auto result = unify_step(cx, actual_input.ty, expected_input.ty);

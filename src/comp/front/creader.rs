@@ -249,9 +249,9 @@ fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty.arg], ty.t) {
     assert (next(st) as char == '[');
     let vec[ty.arg] inputs = vec();
     while (peek(st) as char != ']') {
-        auto mode = ast.val;
+        auto mode = ty.mo_val;
         if (peek(st) as char == '&') {
-            mode = ast.alias;
+            mode = ty.mo_alias;
             st.pos = st.pos + 1u;
         }
         inputs += vec(rec(mode=mode, ty=parse_ty(st, sd)));

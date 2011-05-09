@@ -605,12 +605,12 @@ fn type_of_explicit_args(@crate_ctxt cx, vec[ty.arg] inputs) -> vec[TypeRef] {
     let vec[TypeRef] atys = vec();
     for (ty.arg arg in inputs) {
         if (ty.type_has_dynamic_size(cx.tcx, arg.ty)) {
-            assert (arg.mode == ast.alias);
+            assert (arg.mode == ty.mo_alias);
             atys += vec(T_typaram_ptr(cx.tn));
         } else {
             let TypeRef t;
             alt (arg.mode) {
-                case (ast.alias) {
+                case (ty.mo_alias) {
                     t = T_ptr(type_of_inner(cx, arg.ty));
                 }
                 case (_) {
@@ -675,7 +675,8 @@ fn type_of_fn_full(@crate_ctxt cx,
         atys +=
             vec(T_fn_pair(cx.tn,
                           type_of_fn_full(cx, ast.proto_fn, none[TypeRef],
-                                          vec(rec(mode=ast.alias, ty=output)),
+                                          vec(rec(mode=ty.mo_alias,
+                                                  ty=output)),
                                           ty.mk_nil(cx.tcx), 0u)));
     }
 
@@ -829,7 +830,7 @@ fn type_of_inner(@crate_ctxt cx, ty.t t) -> TypeRef {
 fn type_of_arg(@local_ctxt cx, &ty.arg arg) -> TypeRef {
     alt (ty.struct(cx.ccx.tcx, arg.ty)) {
         case (ty.ty_param(_)) {
-            if (arg.mode == ast.alias) {
+            if (arg.mode == ty.mo_alias) {
                 ret T_typaram_ptr(cx.ccx.tn);
             }
         }
@@ -839,7 +840,7 @@ fn type_of_arg(@local_ctxt cx, &ty.arg arg) -> TypeRef {
     }
 
     auto typ;
-    if (arg.mode == ast.alias) {
+    if (arg.mode == ty.mo_alias) {
         typ = T_ptr(type_of_inner(cx.ccx, arg.ty));
     } else {
         typ = type_of_inner(cx.ccx, arg.ty);
@@ -3712,7 +3713,7 @@ fn trans_for_each(@block_ctxt cx,
     auto iter_body_llty =
         type_of_fn_full(lcx.ccx, ast.proto_fn,
                         none[TypeRef],
-                        vec(rec(mode=ast.alias, ty=decl_ty)),
+                        vec(rec(mode=ty.mo_alias, ty=decl_ty)),
                         ty.mk_nil(lcx.ccx.tcx), 0u);
 
     let ValueRef lliterbody = decl_internal_fastcall_fn(lcx.ccx.llmod,
@@ -4482,7 +4483,7 @@ fn trans_bind_thunk(@local_ctxt cx,
                 bcx = bound_arg.bcx;
                 auto val = bound_arg.val;
 
-                if (out_arg.mode == ast.val) {
+                if (out_arg.mode == ty.mo_val) {
                     if (type_is_immediate(cx.ccx, e_ty)) {
                         val = bcx.build.Load(val);
                         bcx = take_ty(bcx, val, e_ty).bcx;
@@ -4492,7 +4493,7 @@ fn trans_bind_thunk(@local_ctxt cx,
                     }
                 } else if (ty.type_contains_params(cx.ccx.tcx,
                                                    out_arg.ty)) {
-                    assert (out_arg.mode == ast.alias);
+                    assert (out_arg.mode == ty.mo_alias);
                     val = bcx.build.PointerCast(val, llout_arg_ty);
                 }
 
@@ -4505,7 +4506,7 @@ fn trans_bind_thunk(@local_ctxt cx,
                 let ValueRef passed_arg = llvm.LLVMGetParam(llthunk, a);
 
                 if (ty.type_contains_params(cx.ccx.tcx, out_arg.ty)) {
-                    assert (out_arg.mode == ast.alias);
+                    assert (out_arg.mode == ty.mo_alias);
                     passed_arg = bcx.build.PointerCast(passed_arg,
                                                        llout_arg_ty);
                 }
@@ -4745,7 +4746,7 @@ fn trans_arg_expr(@block_ctxt cx,
         auto re = trans_expr(bcx, e);
         val = re.val;
         bcx = re.bcx;
-    } else if (arg.mode == ast.alias) {
+    } else if (arg.mode == ty.mo_alias) {
         let lval_result lv;
         if (ty.is_lval(e)) {
             lv = trans_lval(bcx, e);
@@ -4772,13 +4773,13 @@ fn trans_arg_expr(@block_ctxt cx,
         bcx = re.bcx;
     }
 
-    if (arg.mode != ast.alias) {
+    if (arg.mode != ty.mo_alias) {
         bcx = take_ty(bcx, val, e_ty).bcx;
     }
 
     if (ty.type_contains_params(cx.fcx.lcx.ccx.tcx, arg.ty)) {
         auto lldestty = lldestty0;
-        if (arg.mode == ast.val) {
+        if (arg.mode == ty.mo_val) {
             // FIXME: we'd prefer to use &&, but rustboot doesn't like it
             if (ty.type_is_structural(cx.fcx.lcx.ccx.tcx, e_ty)) {
                 lldestty = T_ptr(lldestty);
@@ -4787,7 +4788,7 @@ fn trans_arg_expr(@block_ctxt cx,
         val = bcx.build.PointerCast(val, lldestty);
     }
 
-    if (arg.mode == ast.val) {
+    if (arg.mode == ty.mo_val) {
         // FIXME: we'd prefer to use &&, but rustboot doesn't like it
         if (ty.type_is_structural(cx.fcx.lcx.ccx.tcx, e_ty)) {
             // Until here we've been treating structures by pointer;
@@ -5496,7 +5497,7 @@ fn trans_put(@block_ctxt cx, &Option.t[@ast.expr] e) -> result {
         case (none[@ast.expr]) { }
         case (some[@ast.expr](?x)) {
             auto e_ty = ty.expr_ty(cx.fcx.lcx.ccx.tcx, x);
-            auto arg = rec(mode=ast.alias, ty=e_ty);
+            auto arg = rec(mode=ty.mo_alias, ty=e_ty);
             auto arg_tys = type_of_explicit_args(cx.fcx.lcx.ccx, vec(arg));
             auto r = trans_arg_expr(bcx, arg, arg_tys.(0), x);
             bcx = r.bcx;
@@ -6362,10 +6363,7 @@ fn trans_obj(@local_ctxt cx, &ast._obj ob, ast.def_id oid,
     // Translate obj ctor args to function arguments.
     let vec[ast.arg] fn_args = vec();
     for (ast.obj_field f in ob.fields) {
-        fn_args += vec(rec(mode=ast.alias,
-                           ty=f.ty,
-                           ident=f.ident,
-                           id=f.id));
+        fn_args += vec(rec(mode=ast.alias, ty=f.ty, ident=f.ident, id=f.id));
     }
 
     auto fcx = new_fn_ctxt(cx, llctor_decl);
@@ -6814,8 +6812,8 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
     fn convert_arg_to_i32(@block_ctxt cx,
                           ValueRef v,
                           ty.t t,
-                          ast.mode mode) -> ValueRef {
-        if (mode == ast.val) {
+                          ty.mode mode) -> ValueRef {
+        if (mode == ty.mo_val) {
             if (ty.type_is_integral(cx.fcx.lcx.ccx.tcx, t)) {
                 auto lldsttype = T_int();
                 auto llsrctype = type_of(cx.fcx.lcx.ccx, t);
@@ -6875,7 +6873,7 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
             call_args += vec(llarg);
         }
 
-        if (arg.mode == ast.val) {
+        if (arg.mode == ty.mo_val) {
             drop_args += vec(tup(llarg, arg.ty));
         }
 
