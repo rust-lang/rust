@@ -64,7 +64,7 @@ public:
 };
 
 class rust_message_queue;
-class rust_task;
+struct rust_task;
 
 //
 // Local Variables:

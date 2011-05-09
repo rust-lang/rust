@@ -22,8 +22,8 @@ const uint32_t log_note = 1;
         }                                                       \
     } while (0)
 
-class rust_dom;
-class rust_task;
+struct rust_dom;
+struct rust_task;
 
 class rust_log {
 

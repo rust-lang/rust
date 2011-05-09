@@ -47,8 +47,8 @@ extern "C" {
 #include "sync/lock_and_signal.h"
 #include "sync/lock_free_queue.h"
 
-class rust_dom;
-class rust_task;
+struct rust_dom;
+struct rust_task;
 class rust_log;
 class rust_port;
 class rust_chan;
