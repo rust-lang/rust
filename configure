@@ -127,7 +127,17 @@ need_cmd sed
 msg "inspecting environment"
 
 CFG_OSTYPE=$(uname -s)
+
 CFG_CPUTYPE=$(uname -m)
+if [ $CFG_OSTYPE = Darwin -a $CFG_CPUTYPE = i386 ]
+then
+    # Darwin's `uname -s` lies and always returns i386. We have to use sysctl
+    # instead.
+    if sysctl hw.optional.x86_64 | grep ': 1'
+    then
+        CFG_CPUTYPE=x86_64
+    fi
+fi
 
 CFG_SELF=$(echo $0 | tr '\\' '/')
 CFG_SRC_DIR=${CFG_SELF%${CFG_SELF##*/}}
