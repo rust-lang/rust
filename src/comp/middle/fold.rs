@@ -1499,7 +1499,8 @@ fn identity_fold_item_mod[ENV](&ENV e, &span sp, &ident i,
 }
 
 fn identity_fold_item_native_mod[ENV](&ENV e, &span sp, &ident i,
-                                      &ast.native_mod m, &def_id id) -> @item {
+                                      &ast.native_mod m,
+                                      &def_id id) -> @item {
     ret @respan(sp, ast.item_native_mod(i, m, id));
 }
 

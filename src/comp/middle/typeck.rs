@@ -631,7 +631,8 @@ mod Collect {
         ret result;
     }
 
-    fn collect(&@ty_item_table id_to_ty_item, &@ast.item i) -> @ty_item_table {
+    fn collect(&@ty_item_table id_to_ty_item, &@ast.item i)
+        -> @ty_item_table {
         alt (i.node) {
             case (ast.item_ty(_, _, _, ?def_id, _)) {
                 id_to_ty_item.insert(def_id, any_item_rust(i));
