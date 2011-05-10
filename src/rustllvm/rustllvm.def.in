@@ -1,9 +1,11 @@
 LLVMRustCreateMemoryBufferWithContentsOfFile
+LLVMRustEnableTimePasses
 LLVMRustWriteOutputFile
 LLVMRustGetLastError
 LLVMRustGetHostTriple
 LLVMRustConstSmallInt
 LLVMRustParseBitcode
+LLVMRustPrintPassTimings
 LLVMLinkModules
 LLVMCreateObjectFile
 LLVMDisposeObjectFile

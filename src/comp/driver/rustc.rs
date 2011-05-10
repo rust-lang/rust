@@ -157,6 +157,7 @@ options:
     -c                 compile and assemble, but do not link
     --save-temps       write intermediate files in addition to normal output
     --time-passes      time the individual phases of the compiler
+    --time-llvm-passes time the individual phases of the LLVM backend
     --sysroot <path>   override the system root (default: rustc's directory)
     --no-typestate     don't run the typestate pass (unsafe!)\n\n");
 }
@@ -209,8 +210,8 @@ fn main(vec[str] args) {
                     optflag("O"), optflag("shared"), optmulti("L"),
                     optflag("S"), optflag("c"), optopt("o"), optopt("g"),
                     optflag("save-temps"), optopt("sysroot"),
-                    optflag("time-passes"), optflag("no-typestate"),
-                    optflag("noverify"));
+                    optflag("time-passes"), optflag("time-llvm-passes"),
+                    optflag("no-typestate"), optflag("noverify"));
     auto binary = Vec.shift[str](args);
     auto match;
     alt (GetOpts.getopts(args, opts)) {
@@ -254,6 +255,7 @@ fn main(vec[str] args) {
     auto optimize = opt_present(match, "O");
     auto debuginfo = opt_present(match, "g");
     auto time_passes = opt_present(match, "time-passes");
+    auto time_llvm_passes = opt_present(match, "time-llvm-passes");
     auto run_typestate = !opt_present(match, "no-typestate");
     auto sysroot_opt = GetOpts.opt_maybe_str(match, "sysroot");
 
@@ -271,6 +273,7 @@ fn main(vec[str] args) {
              run_typestate = run_typestate,
              save_temps = save_temps,
              time_passes = time_passes,
+             time_llvm_passes = time_llvm_passes,
              output_type = output_type,
              library_search_paths = library_search_paths,
              sysroot = sysroot);

@@ -16,6 +16,8 @@
 #include "llvm/PassManager.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Support/FormattedStream.h"
+#include "llvm/Support/Timer.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetSelect.h"
 #include "llvm/Target/TargetRegistry.h"
@@ -120,4 +122,14 @@ extern "C" const char *LLVMRustGetHostTriple(void)
 extern "C" LLVMValueRef LLVMRustConstSmallInt(LLVMTypeRef IntTy, unsigned N,
                                               LLVMBool SignExtend) {
   return LLVMConstInt(IntTy, (unsigned long long)N, SignExtend);
+}
+
+extern bool llvm::TimePassesIsEnabled;
+extern "C" void LLVMRustEnableTimePasses() {
+  TimePassesIsEnabled = true;
+}
+
+extern "C" void LLVMRustPrintPassTimings() {
+  raw_fd_ostream OS (2, false); // stderr.
+  TimerGroup::printAll(OS);
 }

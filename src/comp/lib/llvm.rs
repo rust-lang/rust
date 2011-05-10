@@ -872,6 +872,12 @@ native mod llvm = llvm_lib {
     fn LLVMRustConstSmallInt(TypeRef IntTy, uint N,
                              Bool SignExtend) -> ValueRef;
 
+    /** Turn on LLVM pass-timing. */
+    fn LLVMRustEnableTimePasses();
+
+    /** Print the pass timings since static dtors aren't picking them up. */
+    fn LLVMRustPrintPassTimings();
+
     /** Links LLVM modules together. `Src` is destroyed by this call and
         must never be referenced again. */
     fn LLVMLinkModules(ModuleRef Dest, ModuleRef Src) -> Bool;

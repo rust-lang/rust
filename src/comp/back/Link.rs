@@ -75,11 +75,16 @@ mod Write {
     }
 
     fn run_passes(session.session sess, ModuleRef llmod, str output) {
+
+        auto opts = sess.get_opts();
+
+        if (opts.time_llvm_passes) {
+          llvm.LLVMRustEnableTimePasses();
+        }
+
         link_intrinsics(sess, llmod);
 
         auto pm = mk_pass_manager();
-        auto opts = sess.get_opts();
-
         auto td = mk_target_data(x86.get_data_layout());
         llvm.LLVMAddTargetData(td.lltd, pm.llpm);
 
@@ -165,6 +170,9 @@ mod Write {
                                          Str.buf(output),
                                          FileType);
             llvm.LLVMDisposeModule(llmod);
+            if (opts.time_llvm_passes) {
+              llvm.LLVMRustPrintPassTimings();
+            }
             ret;
         }
 
@@ -172,6 +180,10 @@ mod Write {
 
         llvm.LLVMWriteBitcodeToFile(llmod, Str.buf(output));
         llvm.LLVMDisposeModule(llmod);
+
+        if (opts.time_llvm_passes) {
+          llvm.LLVMRustPrintPassTimings();
+        }
     }
 }
 

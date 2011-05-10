@@ -32,6 +32,7 @@ type options = rec(bool shared,
                    bool run_typestate,
                    bool save_temps,
                    bool time_passes,
+                   bool time_llvm_passes,
                    back.Link.output_type output_type,
                    vec[str] library_search_paths,
                    str sysroot);
