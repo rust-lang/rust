@@ -492,7 +492,7 @@ fn string_writer() -> str_writer {
     let mutable_byte_buf buf = @rec(mutable buf = b, mutable pos = 0u);
     state obj str_writer_wrap(writer wr, mutable_byte_buf buf) {
         fn get_writer() -> writer {ret wr;}
-        fn get_str() -> str {ret Str.unsafe_from_mutable_bytes(buf.buf);}
+        fn get_str() -> str {ret Str.unsafe_from_bytes(buf.buf);}
     }
     ret str_writer_wrap(new_writer(byte_buf_writer(buf)), buf);
 }
