@@ -2902,15 +2902,15 @@ fn drop_ty(@block_ctxt cx,
     ret res(cx, C_nil());
 }
 
-fn call_memcpy(@block_ctxt cx,
+fn call_memmove(@block_ctxt cx,
                ValueRef dst,
                ValueRef src,
                ValueRef n_bytes,
                ValueRef align_bytes) -> result {
     // FIXME: switch to the 64-bit variant when on such a platform.
     auto i = cx.fcx.lcx.ccx.intrinsics;
-    assert (i.contains_key("llvm.memcpy.p0i8.p0i8.i32"));
-    auto memcpy = i.get("llvm.memcpy.p0i8.p0i8.i32");
+    assert (i.contains_key("llvm.memmove.p0i8.p0i8.i32"));
+    auto memmove = i.get("llvm.memmove.p0i8.p0i8.i32");
     auto src_ptr = cx.build.PointerCast(src, T_ptr(T_i8()));
     auto dst_ptr = cx.build.PointerCast(dst, T_ptr(T_i8()));
     auto size = cx.build.IntCast(n_bytes, T_i32());
@@ -2921,7 +2921,7 @@ fn call_memcpy(@block_ctxt cx,
             { cx.build.IntCast(C_int(0), T_i32()) };
 
     auto volatile = C_bool(false);
-    ret res(cx, cx.build.Call(memcpy,
+    ret res(cx, cx.build.Call(memmove,
                               vec(dst_ptr, src_ptr,
                                   size, align, volatile)));
 }
@@ -2949,14 +2949,14 @@ fn call_bzero(@block_ctxt cx,
                                   size, align, volatile)));
 }
 
-fn memcpy_ty(@block_ctxt cx,
+fn memmove_ty(@block_ctxt cx,
              ValueRef dst,
              ValueRef src,
              ty.t t) -> result {
     if (ty.type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
         auto llsz = size_of(cx, t);
         auto llalign = align_of(llsz.bcx, t);
-        ret call_memcpy(llalign.bcx, dst, src, llsz.val, llalign.val);
+        ret call_memmove(llalign.bcx, dst, src, llsz.val, llalign.val);
 
     } else {
         ret res(cx, cx.build.Store(cx.build.Load(src), dst));
@@ -2993,7 +2993,7 @@ fn copy_ty(@block_ctxt cx,
         if (action == DROP_EXISTING) {
             r = drop_ty(r.bcx, dst, t);
         }
-        ret memcpy_ty(r.bcx, dst, src, t);
+        ret memmove_ty(r.bcx, dst, src, t);
     }
 
     cx.fcx.lcx.ccx.sess.bug("unexpected type in trans.copy_ty: " +
@@ -7299,9 +7299,9 @@ fn trans_main_fn(@local_ctxt cx, ValueRef llcrate, ValueRef crate_map) {
 
 fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
 
-    let vec[TypeRef] T_memcpy32_args = vec(T_ptr(T_i8()), T_ptr(T_i8()),
+    let vec[TypeRef] T_memmove32_args = vec(T_ptr(T_i8()), T_ptr(T_i8()),
                                            T_i32(), T_i32(), T_i1());
-    let vec[TypeRef] T_memcpy64_args = vec(T_ptr(T_i8()), T_ptr(T_i8()),
+    let vec[TypeRef] T_memmove64_args = vec(T_ptr(T_i8()), T_ptr(T_i8()),
                                            T_i64(), T_i32(), T_i1());
 
     let vec[TypeRef] T_memset32_args = vec(T_ptr(T_i8()), T_i8(),
@@ -7311,10 +7311,10 @@ fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
 
     let vec[TypeRef] T_trap_args = vec();
 
-    auto memcpy32 = decl_cdecl_fn(llmod, "llvm.memcpy.p0i8.p0i8.i32",
-                                  T_fn(T_memcpy32_args, T_void()));
-    auto memcpy64 = decl_cdecl_fn(llmod, "llvm.memcpy.p0i8.p0i8.i64",
-                                  T_fn(T_memcpy64_args, T_void()));
+    auto memmove32 = decl_cdecl_fn(llmod, "llvm.memmove.p0i8.p0i8.i32",
+                                  T_fn(T_memmove32_args, T_void()));
+    auto memmove64 = decl_cdecl_fn(llmod, "llvm.memmove.p0i8.p0i8.i64",
+                                  T_fn(T_memmove64_args, T_void()));
 
     auto memset32 = decl_cdecl_fn(llmod, "llvm.memset.p0i8.i32",
                                   T_fn(T_memset32_args, T_void()));
@@ -7325,8 +7325,8 @@ fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
                               T_fn(T_trap_args, T_void()));
 
     auto intrinsics = new_str_hash[ValueRef]();
-    intrinsics.insert("llvm.memcpy.p0i8.p0i8.i32", memcpy32);
-    intrinsics.insert("llvm.memcpy.p0i8.p0i8.i64", memcpy64);
+    intrinsics.insert("llvm.memmove.p0i8.p0i8.i32", memmove32);
+    intrinsics.insert("llvm.memmove.p0i8.p0i8.i64", memmove64);
     intrinsics.insert("llvm.memset.p0i8.i32", memset32);
     intrinsics.insert("llvm.memset.p0i8.i64", memset64);
     intrinsics.insert("llvm.trap", trap);
@@ -7527,7 +7527,7 @@ fn trans_vec_append_glue(@local_ctxt cx) {
                                      elt_llsz, bind take_one(elt_tydesc,
                                                              _, _, _)).bcx;
 
-        ret call_memcpy(bcx, dst, src, n_bytes, elt_llalign);
+        ret call_memmove(bcx, dst, src, n_bytes, elt_llalign);
     }
 
     // Copy any dst elements in, omitting null if doing str.
@@ -7597,8 +7597,7 @@ fn make_glues(ModuleRef llmod, type_names tn) -> @glue_fns {
 
 fn make_common_glue(session.session sess, str output) {
     // FIXME: part of this is repetitive and is probably a good idea
-    // to autogen it, but things like the memcpy implementation are not
-    // and it might be better to just check in a .ll file.
+    // to autogen it.
     auto llmod =
         llvm.LLVMModuleCreateWithNameInContext(Str.buf("rust_out"),
                                                llvm.LLVMGetGlobalContext());
