@@ -91,7 +91,7 @@ mod Write {
         if (opts.save_temps) {
             alt (opts.output_type) {
                 case (output_type_bitcode) {
-                    if (opts.optimize) {
+                    if (opts.optimize != 0u) {
                         auto filename = mk_intermediate_name(output,
                                                              "no-opt.bc");
                         llvm.LLVMWriteBitcodeToFile(llmod,
@@ -105,28 +105,25 @@ mod Write {
             }
         }
 
-        // FIXME: This is mostly a copy of the bits of opt's -O2 that are
-        // available in the C api.
-        // FIXME2: We might want to add optimization levels like -O1, -O2,
-        // -Os, etc
-        // FIXME3: Should we expose and use the pass lists used by the opt
-        // tool?
-        if (opts.optimize) {
+        // FIXME: LTO?
+        if (opts.optimize != 0u) {
+            let uint threshold = 225u;
             auto fpm = mk_pass_manager();
             llvm.LLVMAddTargetData(td.lltd, fpm.llpm);
-            llvm.LLVMAddStandardFunctionPasses(fpm.llpm, 2u);
+            llvm.LLVMAddStandardFunctionPasses(fpm.llpm, opts.optimize);
             llvm.LLVMRunPassManager(fpm.llpm, llmod);
 
-            // TODO: On -O3, use 275 instead of 225 for the inlining
-            // threshold.
+            if (opts.optimize == 3u) {
+                threshold = 275u;
+            }
             llvm.LLVMAddStandardModulePasses(pm.llpm,
-                                             2u,    // optimization level
-                                             False, // optimize for size
-                                             True,  // unit-at-a-time
-                                             True,  // unroll loops
-                                             True,  // simplify lib calls
-                                             True,  // have exceptions
-                                             225u); // inlining threshold
+                                             opts.optimize,// opt level
+                                             False,        // opt for size
+                                             True,         // unit-at-a-time
+                                             True,         // unroll loops
+                                             True,         // simplifyLibCalls
+                                             True,         // have exceptions
+                                             threshold);   // inline threshold
         }
 
         if (opts.verify) {
