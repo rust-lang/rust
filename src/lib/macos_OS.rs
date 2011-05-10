@@ -62,7 +62,7 @@ fn dylib_filename(str base) -> str {
 }
 
 fn pipe() -> tup(int, int) {
-    let vec[mutable int] fds = vec(mutable 0, 0);
+    let vec[mutable int] fds = vec(0, 0);
     assert (OS.libc.pipe(Vec.buf[mutable int](fds)) == 0);
     ret tup(fds.(0), fds.(1));
 }
@@ -72,7 +72,7 @@ fn fd_FILE(int fd) -> libc.FILE {
 }
 
 fn waitpid(int pid) -> int {
-    let vec[mutable int] status = vec(mutable 0);
+    let vec[mutable int] status = vec(0);
     assert (OS.libc.waitpid(pid, Vec.buf[mutable int](status), 0) != -1);
     ret status.(0);
 }
