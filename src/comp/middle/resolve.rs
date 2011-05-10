@@ -604,9 +604,9 @@ fn lookup_name_wrapped(&env e, ast.ident i, namespace ns, direction dir)
     }
 }
 
-fn fold_pat_tag(&env e, &span sp, ast.path p, vec[@ast.pat] args,
-                Option.t[ast.variant_def] old_def,
-                ann a) -> @ast.pat {
+fn fold_pat_tag(&env e, &span sp, &ast.path p, &vec[@ast.pat] args,
+                &Option.t[ast.variant_def] old_def,
+                &ann a) -> @ast.pat {
     auto len = Vec.len[ast.ident](p.node.idents);
     auto last_id = p.node.idents.(len - 1u);
     auto new_def;
@@ -647,7 +647,7 @@ fn fold_pat_tag(&env e, &span sp, ast.path p, vec[@ast.pat] args,
 // expressions tacked on the end.
 
 fn fold_expr_path(&env e, &span sp, &ast.path p, &Option.t[def] d,
-                  ann a) -> @ast.expr {
+                  &ann a) -> @ast.expr {
     auto n_idents = Vec.len[ast.ident](p.node.idents);
     assert (n_idents != 0u);
 
@@ -683,9 +683,9 @@ fn fold_expr_path(&env e, &span sp, &ast.path p, &Option.t[def] d,
 }
 
 fn fold_view_item_import(&env e, &span sp,
-                         import_map index, ident i,
-                         vec[ident] is, ast.def_id id,
-                         Option.t[def] target_id) -> @ast.view_item {
+                         &import_map index, &ident i,
+                         &vec[ident] is, &ast.def_id id,
+                         &Option.t[def] target_id) -> @ast.view_item {
     // Produce errors for invalid imports
     auto len = Vec.len[ast.ident](is);
     auto last_id = is.(len - 1u);
@@ -703,7 +703,7 @@ fn fold_view_item_import(&env e, &span sp,
                                                               target_def));
 }
 
-fn fold_ty_path(&env e, &span sp, ast.path p, &Option.t[def] d) -> @ast.ty {
+fn fold_ty_path(&env e, &span sp, &ast.path p, &Option.t[def] d) -> @ast.ty {
     auto index = new_def_hash[def_wrap]();
     auto d = find_final_def(e, index, sp, p.node.idents, ns_type,
                             none[ast.def_id]);
@@ -711,22 +711,22 @@ fn fold_ty_path(&env e, &span sp, ast.path p, &Option.t[def] d) -> @ast.ty {
     ret @fold.respan[ast.ty_](sp, ast.ty_path(p, some(unwrap_def(d))));
 }
 
-fn update_env_for_crate(&env e, @ast.crate c) -> env {
+fn update_env_for_crate(&env e, &@ast.crate c) -> env {
     ret rec(scopes = cons[scope](scope_crate(c), @e.scopes) with e);
 }
 
-fn update_env_for_item(&env e, @ast.item i) -> env {
+fn update_env_for_item(&env e, &@ast.item i) -> env {
     ret rec(scopes = cons[scope](scope_item(i), @e.scopes) with e);
 }
 
-fn update_env_for_native_item(&env e, @ast.native_item i) -> env {
+fn update_env_for_native_item(&env e, &@ast.native_item i) -> env {
     ret rec(scopes = cons[scope](scope_native_item(i), @e.scopes) with e);
 }
 
 // Not actually called by fold, but here since this is analogous to
 // update_env_for_item() above and is called by find_final_def().
-fn update_env_for_external_mod(&env e, ast.def_id mod_id,
-                               vec[ast.ident] idents) -> env {
+fn update_env_for_external_mod(&env e, &ast.def_id mod_id,
+                               &vec[ast.ident] idents) -> env {
     ret rec(scopes = cons[scope](scope_external_mod(mod_id, idents),
                                  @e.scopes)
             with e);
@@ -736,7 +736,7 @@ fn update_env_for_block(&env e, &ast.block b) -> env {
     ret rec(scopes = cons[scope](scope_block(b), @e.scopes) with e);
 }
 
-fn update_env_for_expr(&env e, @ast.expr x) -> env {
+fn update_env_for_expr(&env e, &@ast.expr x) -> env {
     alt (x.node) {
         case (ast.expr_for(?d, _, _, _)) {
             ret rec(scopes = cons[scope](scope_loop(d), @e.scopes) with e);
@@ -753,7 +753,7 @@ fn update_env_for_arm(&env e, &ast.arm p) -> env {
     ret rec(scopes = cons[scope](scope_arm(p), @e.scopes) with e);
 }
 
-fn resolve_imports(session.session sess, @ast.crate crate) -> @ast.crate {
+fn resolve_imports(session.session sess, &@ast.crate crate) -> @ast.crate {
     let fold.ast_fold[env] fld = fold.new_identity_fold[env]();
 
     auto import_index = new_def_hash[def_wrap]();

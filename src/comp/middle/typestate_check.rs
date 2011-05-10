@@ -309,7 +309,7 @@ fn num_locals(fn_info m) -> uint {
   ret m.size();
 }
 
-fn collect_local(&@vec[tup(ident, def_id)] vars, &span sp, @ast.local loc) 
+fn collect_local(&@vec[tup(ident, def_id)] vars, &span sp, &@ast.local loc)
     -> @decl {
     log("collect_local: pushing " + loc.ident);
     Vec.push[tup(ident, def_id)](*vars, tup(loc.ident, loc.id));
@@ -351,19 +351,20 @@ fn mk_fn_info(_fn f) -> fn_info {
   ret res;
 }
 
-/* extends mk_fn_info to a function item, side-effecting the map fi from 
+/* extends mk_fn_info to a function item, side-effecting the map fi from
    function IDs to fn_info maps */
-fn mk_fn_info_item_fn(&fn_info_map fi, &span sp, ident i, &ast._fn f,
-                 vec[ast.ty_param] ty_params, def_id id, ann a) -> @item {
+fn mk_fn_info_item_fn(&fn_info_map fi, &span sp, &ident i, &ast._fn f,
+                 &vec[ast.ty_param] ty_params, &def_id id, &ann a) -> @item {
   fi.insert(id, mk_fn_info(f));
   log(i + " has " + uistr(num_locals(mk_fn_info(f))) + " local vars");
   ret @respan(sp, item_fn(i, f, ty_params, id, a));
 }
 
-/* extends mk_fn_info to an obj item, side-effecting the map fi from 
+/* extends mk_fn_info to an obj item, side-effecting the map fi from
    function IDs to fn_info maps */
-fn mk_fn_info_item_obj(&fn_info_map fi, &span sp, ident i, &ast._obj o,
-     vec[ast.ty_param] ty_params, ast.obj_def_ids odid, ann a) -> @item {
+fn mk_fn_info_item_obj(&fn_info_map fi, &span sp, &ident i, &ast._obj o,
+                       &vec[ast.ty_param] ty_params,
+                       &ast.obj_def_ids odid, &ann a) -> @item {
     auto all_methods = Vec.clone[@method](o.methods);
     plus_option[@method](all_methods, o.dtor);
     for (@method m in all_methods) {
@@ -1251,14 +1252,15 @@ fn find_pre_post_fn(&fn_info_map fm, &fn_info fi, &_fn f) -> () {
     find_pre_post_block(fm, fi, f.body);
 }
 
-fn check_item_fn(&fn_info_map fm, &span sp, ident i, &ast._fn f,
-                 vec[ast.ty_param] ty_params, def_id id, ann a) -> @item {
+fn check_item_fn(&fn_info_map fm, &span sp, &ident i, &ast._fn f,
+                 &vec[ast.ty_param] ty_params,
+                 &def_id id, &ann a) -> @item {
 
     log("check_item_fn:");
     log_fn(f, i, ty_params);
 
   assert (fm.contains_key(id));
-  find_pre_post_fn(fm, fm.get(id), f);  
+  find_pre_post_fn(fm, fm.get(id), f);
 
   ret @respan(sp, ast.item_fn(i, f, ty_params, id, a));
 }
@@ -2006,9 +2008,9 @@ fn check_fn_states(&fn_info_map f_info_map, &fn_info f_info, &ast._fn f)
     check_states_against_conditions(f_info, f);
 }
 
-fn check_item_fn_state(&fn_info_map f_info_map, &span sp, ident i,
-                       &ast._fn f, vec[ast.ty_param] ty_params, def_id id,
-                       ann a) -> @item {
+fn check_item_fn_state(&fn_info_map f_info_map, &span sp, &ident i,
+                       &ast._fn f, &vec[ast.ty_param] ty_params,
+                       &def_id id, &ann a) -> @item {
 
   /* Look up the var-to-bit-num map for this function */
   assert (f_info_map.contains_key(id));
@@ -2026,8 +2028,9 @@ fn check_method_states(&fn_info_map f_info_map, @method m) -> () {
     check_fn_states(f_info_map, f_info, m.node.meth);
 }
 
-fn check_obj_state(&fn_info_map f_info_map, vec[obj_field] fields,
-                  vec[@method] methods, Option.t[@method] dtor) -> ast._obj {
+fn check_obj_state(&fn_info_map f_info_map, &vec[obj_field] fields,
+                   &vec[@method] methods,
+                   &Option.t[@method] dtor) -> ast._obj {
     fn one(fn_info_map fm, &@method m) -> () {
         ret check_method_states(fm, m);
     }
@@ -2037,7 +2040,7 @@ fn check_obj_state(&fn_info_map f_info_map, vec[obj_field] fields,
     ret rec(fields=fields, methods=methods, dtor=dtor);
 }
 
-fn init_ann(&fn_info fi, ann a) -> ann {
+fn init_ann(&fn_info fi, &ann a) -> ann {
     alt (a) {
         case (ann_none) {
             //            log("init_ann: shouldn't see ann_none");
@@ -2053,7 +2056,7 @@ fn init_ann(&fn_info fi, ann a) -> ann {
     }
 }
 
-fn init_blank_ann(&() ignore, ann a) -> ann {
+fn init_blank_ann(&() ignore, &ann a) -> ann {
     alt (a) {
         case (ann_none) {
             //            log("init_blank_ann: shouldn't see ann_none");
@@ -2492,7 +2495,7 @@ fn annotate_crate(&fn_info_map fm, &@ast.crate crate) -> @ast.crate {
 fn check_crate(@ast.crate crate) -> @ast.crate {
   /* Build the global map from function id to var-to-bit-num-map */
   auto fm = mk_f_to_fn_info(crate);
-  
+
   /* Add a blank ts_ann to every statement (and expression) */
   auto with_anns = annotate_crate(fm, crate);
 

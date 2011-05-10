@@ -441,9 +441,10 @@ fn load_crate(session.session sess,
     fail;
 }
 
-fn fold_view_item_use(&env e, &span sp, ast.ident ident,
-        vec[@ast.meta_item] meta_items, ast.def_id id, Option.t[int] cnum_opt)
-        -> @ast.view_item {
+fn fold_view_item_use(&env e, &span sp, &ast.ident ident,
+                      &vec[@ast.meta_item] meta_items,
+                      &ast.def_id id, &Option.t[int] cnum_opt)
+    -> @ast.view_item {
     auto cnum;
     if (!e.crate_cache.contains_key(ident)) {
         cnum = e.next_crate_num;

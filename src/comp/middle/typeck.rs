@@ -631,7 +631,7 @@ mod Collect {
         ret result;
     }
 
-    fn collect(&@ty_item_table id_to_ty_item, @ast.item i) -> @ty_item_table {
+    fn collect(&@ty_item_table id_to_ty_item, &@ast.item i) -> @ty_item_table {
         alt (i.node) {
             case (ast.item_ty(_, _, _, ?def_id, _)) {
                 id_to_ty_item.insert(def_id, any_item_rust(i));
@@ -647,7 +647,7 @@ mod Collect {
         ret id_to_ty_item;
     }
 
-    fn collect_native(&@ty_item_table id_to_ty_item, @ast.native_item i)
+    fn collect_native(&@ty_item_table id_to_ty_item, &@ast.native_item i)
         -> @ty_item_table {
         alt (i.node) {
             case (ast.native_item_ty(_, ?def_id)) {
@@ -662,7 +662,7 @@ mod Collect {
         ret id_to_ty_item;
     }
 
-    fn convert(&@env e, @ast.item i) -> @env {
+    fn convert(&@env e, &@ast.item i) -> @env {
         auto abi = e.abi;
         alt (i.node) {
             case (ast.item_mod(_, _, _)) {
@@ -681,32 +681,32 @@ mod Collect {
         ret @rec(abi=abi with *e);
     }
 
-    fn convert_native(&@env e, @ast.native_item i) -> @env {
+    fn convert_native(&@env e, &@ast.native_item i) -> @env {
         ty_of_native_item(e.cx, i, e.abi);
         ret e;
     }
 
-    fn fold_item_const(&@env e, &span sp, ast.ident i,
-                       @ast.ty t, @ast.expr ex,
-                       ast.def_id id, ast.ann a) -> @ast.item {
+    fn fold_item_const(&@env e, &span sp, &ast.ident i,
+                       &@ast.ty t, &@ast.expr ex,
+                       &ast.def_id id, &ast.ann a) -> @ast.item {
         // assert (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast.item_const(i, t, ex, id, triv_ann(typ));
         ret @fold.respan[ast.item_](sp, item);
     }
 
-    fn fold_item_fn(&@env e, &span sp, ast.ident i,
-                    &ast._fn f, vec[ast.ty_param] ty_params,
-                    ast.def_id id, ast.ann a) -> @ast.item {
+    fn fold_item_fn(&@env e, &span sp, &ast.ident i,
+                    &ast._fn f, &vec[ast.ty_param] ty_params,
+                    &ast.def_id id, &ast.ann a) -> @ast.item {
         // assert (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast.item_fn(i, f, ty_params, id, triv_ann(typ));
         ret @fold.respan[ast.item_](sp, item);
     }
 
-    fn fold_native_item_fn(&@env e, &span sp, ast.ident i, Option.t[str] ln,
-                           &ast.fn_decl d, vec[ast.ty_param] ty_params,
-                           ast.def_id id, ast.ann a) -> @ast.native_item {
+    fn fold_native_item_fn(&@env e, &span sp, &ast.ident i, &Option.t[str] ln,
+                           &ast.fn_decl d, &vec[ast.ty_param] ty_params,
+                           &ast.def_id id, &ast.ann a) -> @ast.native_item {
         // assert (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast.native_item_fn(i, ln, d, ty_params, id,
@@ -714,7 +714,7 @@ mod Collect {
         ret @fold.respan[ast.native_item_](sp, item);
     }
 
-    fn get_ctor_obj_methods(&@env e, ty.t t) -> vec[method] {
+    fn get_ctor_obj_methods(&@env e, &ty.t t) -> vec[method] {
         alt (struct(e.cx.tcx, t)) {
             case (ty.ty_fn(_,_,?tobj)) {
                 alt (struct(e.cx.tcx, tobj)) {
@@ -735,9 +735,9 @@ mod Collect {
     }
 
 
-    fn fold_item_obj(&@env e, &span sp, ast.ident i,
-                    &ast._obj ob, vec[ast.ty_param] ty_params,
-                    ast.obj_def_ids odid, ast.ann a) -> @ast.item {
+    fn fold_item_obj(&@env e, &span sp, &ast.ident i,
+                    &ast._obj ob, &vec[ast.ty_param] ty_params,
+                    &ast.obj_def_ids odid, &ast.ann a) -> @ast.item {
         // assert (e.cx.type_cache.contains_key(odid.ctor));
         auto t = e.cx.type_cache.get(odid.ctor)._1;
         let vec[method] meth_tys = get_ctor_obj_methods(e, t);
@@ -791,19 +791,19 @@ mod Collect {
         ret @fold.respan[ast.item_](sp, item);
     }
 
-    fn fold_item_ty(&@env e, &span sp, ast.ident i,
-                    @ast.ty t, vec[ast.ty_param] ty_params,
-                    ast.def_id id, ast.ann a) -> @ast.item {
+    fn fold_item_ty(&@env e, &span sp, &ast.ident i,
+                    &@ast.ty t, &vec[ast.ty_param] ty_params,
+                    &ast.def_id id, &ast.ann a) -> @ast.item {
         // assert (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast.item_ty(i, t, ty_params, id, triv_ann(typ));
         ret @fold.respan[ast.item_](sp, item);
     }
 
-    fn fold_item_tag(&@env e, &span sp, ast.ident i,
-                     vec[ast.variant] variants,
-                     vec[ast.ty_param] ty_params,
-                     ast.def_id id, ast.ann a) -> @ast.item {
+    fn fold_item_tag(&@env e, &span sp, &ast.ident i,
+                     &vec[ast.variant] variants,
+                     &vec[ast.ty_param] ty_params,
+                     &ast.def_id id, &ast.ann a) -> @ast.item {
         auto variants_t = get_tag_variant_types(e.cx, id, variants,
                                                 ty_params);
         auto typ = e.cx.type_cache.get(id)._1;
@@ -813,7 +813,8 @@ mod Collect {
         ret @fold.respan[ast.item_](sp, item);
     }
 
-    fn collect_item_types(session.session sess, ty.ctxt tcx, @ast.crate crate)
+    fn collect_item_types(&session.session sess, &ty.ctxt tcx,
+                          &@ast.crate crate)
             -> tup(@ast.crate, ty.type_cache, @ty_item_table) {
         // First pass: collect all type item IDs.
         auto module = crate.node.module;
@@ -1523,7 +1524,7 @@ mod Pushdown {
 // Local variable resolution: the phase that finds all the types in the AST
 // and replaces opaque "ty_local" types with the resolved local types.
 
-fn writeback_local(&Option.t[@fn_ctxt] env, &span sp, @ast.local local)
+fn writeback_local(&Option.t[@fn_ctxt] env, &span sp, &@ast.local local)
         -> @ast.decl {
     auto fcx = Option.get[@fn_ctxt](env);
 
@@ -1545,7 +1546,7 @@ fn writeback_local(&Option.t[@fn_ctxt] env, &span sp, @ast.local local)
     ret @fold.respan[ast.decl_](sp, ast.decl_local(local_wb));
 }
 
-fn resolve_local_types_in_annotation(&Option.t[@fn_ctxt] env, ast.ann ann)
+fn resolve_local_types_in_annotation(&Option.t[@fn_ctxt] env, &ast.ann ann)
         -> ast.ann {
     fn resolver(@fn_ctxt fcx, ty.t typ) -> ty.t {
         alt (struct(fcx.ccx.tcx, typ)) {
@@ -1574,7 +1575,7 @@ fn resolve_local_types_in_annotation(&Option.t[@fn_ctxt] env, ast.ann ann)
 
 fn resolve_local_types_in_block(&@fn_ctxt fcx, &ast.block block)
         -> ast.block {
-    fn update_env_for_item(&Option.t[@fn_ctxt] env, @ast.item i)
+    fn update_env_for_item(&Option.t[@fn_ctxt] env, &@ast.item i)
             -> Option.t[@fn_ctxt] {
         ret none[@fn_ctxt];
     }
@@ -1588,13 +1589,11 @@ fn resolve_local_types_in_block(&@fn_ctxt fcx, &ast.block block)
     auto rltia = bind resolve_local_types_in_annotation(_,_);
     auto uefi = update_env_for_item;
     auto kg = keep_going;
-    fld = @rec(
-        fold_decl_local = wbl,
-        fold_ann = rltia,
-        update_env_for_item = uefi,
-        keep_going = kg
-        with *fld
-    );
+    fld = @rec(fold_decl_local = wbl,
+               fold_ann = rltia,
+               update_env_for_item = uefi,
+               keep_going = kg
+               with *fld);
     ret fold.fold_block[Option.t[@fn_ctxt]](some[@fn_ctxt](fcx), fld, block);
 }
 
@@ -2872,9 +2871,9 @@ fn check_fn(&@crate_ctxt ccx, &ast.fn_decl decl, ast.proto proto,
     ret fn_t;
 }
 
-fn check_item_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
-                 vec[ast.ty_param] ty_params, ast.def_id id,
-                 ast.ann ann) -> @ast.item {
+fn check_item_fn(&@crate_ctxt ccx, &span sp, &ast.ident ident, &ast._fn f,
+                 &vec[ast.ty_param] ty_params, &ast.def_id id,
+                 &ast.ann ann) -> @ast.item {
 
     // FIXME: duplicate work: the item annotation already has the arg types
     // and return type translated to typeck.ty values. We don't need do to it
@@ -2893,7 +2892,7 @@ fn check_item_fn(&@crate_ctxt ccx, &span sp, ast.ident ident, &ast._fn f,
     ret @fold.respan[ast.item_](sp, item);
 }
 
-fn update_obj_fields(&@crate_ctxt ccx, @ast.item i) -> @crate_ctxt {
+fn update_obj_fields(&@crate_ctxt ccx, &@ast.item i) -> @crate_ctxt {
     alt (i.node) {
         case (ast.item_obj(_, ?ob, _, ?obj_def_ids, _)) {
             let ast.def_id di = obj_def_ids.ty;

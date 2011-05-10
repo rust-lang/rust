@@ -252,12 +252,12 @@ fn has_nonlocal_exits(&ast.block b) -> bool {
     /* overkill, but just passing around a mutable bool doesn't seem
        to work in rustboot */
     auto has_exits = new_str_hash[()]();
- 
-   fn set_break(&flag f, &span sp, ast.ann a) -> @ast.expr {
+
+   fn set_break(&flag f, &span sp, &ast.ann a) -> @ast.expr {
         f.insert("foo", ());
         ret @respan(sp, ast.expr_break(a));
     }
-    fn set_cont(&flag f, &span sp, ast.ann a) -> @ast.expr {
+    fn set_cont(&flag f, &span sp, &ast.ann a) -> @ast.expr {
         f.insert("foo", ());
         ret @respan(sp, ast.expr_cont(a));
     }
