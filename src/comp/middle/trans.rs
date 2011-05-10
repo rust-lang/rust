@@ -832,8 +832,11 @@ fn type_of_inner(@crate_ctxt cx, ty.t t) -> TypeRef {
     }
 
     assert (llty as int != 0);
-    llvm.LLVMAddTypeName(cx.llmod, Str.buf(ty.ty_to_short_str(cx.tcx, t)),
-                         llty);
+    if (cx.sess.get_opts().save_temps) {
+        llvm.LLVMAddTypeName(cx.llmod,
+                             Str.buf(ty.ty_to_short_str(cx.tcx, t)),
+                             llty);
+    }
     cx.lltypes.insert(t, llty);
     ret llty;
 }
@@ -2146,6 +2149,12 @@ fn decr_refcnt_and_if_zero(@block_ctxt cx,
 
 // Structural comparison: a rather involved form of glue.
 
+fn maybe_name_value(&@crate_ctxt cx, ValueRef v, str s) {
+    if (cx.sess.get_opts().save_temps) {
+        llvm.LLVMSetValueName(v, Str.buf(s));
+    }
+}
+
 fn make_cmp_glue(@block_ctxt cx,
                  ValueRef lhs0,
                  ValueRef rhs0,
@@ -2197,7 +2206,7 @@ fn make_cmp_glue(@block_ctxt cx,
          */
 
         auto flag = alloca(scx, T_i1());
-        llvm.LLVMSetValueName(flag, Str.buf("flag"));
+        maybe_name_value(cx.fcx.lcx.ccx, flag, "flag");
 
         auto r;
         if (ty.type_is_sequence(cx.fcx.lcx.ccx.tcx, t)) {
@@ -2822,7 +2831,7 @@ fn maybe_call_dtor(@block_ctxt cx, ValueRef v) -> @block_ctxt {
     auto self_t = llvm.LLVMGetElementType(val_ty(v));
     dtor_ptr = cx.build.BitCast(dtor_ptr,
                                 T_ptr(T_dtor(cx.fcx.lcx.ccx, self_t)));
-    
+
     auto dtor_cx = new_sub_block_ctxt(cx, "dtor");
     auto after_cx = new_sub_block_ctxt(cx, "after_dtor");
     auto test = cx.build.ICmp(lib.llvm.LLVMIntNE, dtor_ptr,
@@ -3967,7 +3976,7 @@ fn trans_pat_binding(@block_ctxt cx, @ast.pat pat,
                 auto rslt = alloc_ty(cx, t);
                 auto dst = rslt.val;
                 auto bcx = rslt.bcx;
-                llvm.LLVMSetValueName(dst, Str.buf(id));
+                maybe_name_value(cx.fcx.lcx.ccx, dst, id);
                 bcx.fcx.lllocals.insert(def_id, dst);
                 bcx.cleanups +=
                     vec(clean(bind drop_slot(_, dst, t)));
@@ -4314,10 +4323,10 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
     auto unit_ty = node_ann_type(cx.fcx.lcx.ccx, ann);
     auto unit_sz = size_of(bcx, unit_ty);
     bcx = unit_sz.bcx;
-    llvm.LLVMSetValueName(unit_sz.val, Str.buf("unit_sz"));
+    maybe_name_value(cx.fcx.lcx.ccx, unit_sz.val, "unit_sz");
 
     auto scaled_ix = bcx.build.Mul(ix_val, unit_sz.val);
-    llvm.LLVMSetValueName(scaled_ix, Str.buf("scaled_ix"));
+    maybe_name_value(cx.fcx.lcx.ccx, scaled_ix, "scaled_ix");
 
     auto lim = bcx.build.GEP(v, vec(C_int(0), C_int(abi.vec_elt_fill)));
     lim = bcx.build.Load(lim);
@@ -5834,10 +5843,11 @@ fn new_block_ctxt(@fn_ctxt cx, block_parent parent,
                   block_kind kind,
                   str name) -> @block_ctxt {
     let vec[cleanup] cleanups = vec();
-    let BasicBlockRef llbb =
-        llvm.LLVMAppendBasicBlock(cx.llfn,
-                                  Str.buf(cx.lcx.ccx.names.next(name)));
-
+    auto s = Str.buf("");
+    if (cx.lcx.ccx.sess.get_opts().save_temps) {
+        s = Str.buf(cx.lcx.ccx.names.next(name));
+    }
+    let BasicBlockRef llbb = llvm.LLVMAppendBasicBlock(cx.llfn, s);
     ret @rec(llbb=llbb,
              build=new_builder(llbb),
              parent=parent,
@@ -7478,14 +7488,14 @@ fn trans_vec_append_glue(@local_ctxt cx) {
         vec(bcx.fcx.lltaskptr, lldst_vec,
             vec_fill_adjusted(bcx, llsrc_vec, llskipnull),
             llcopy_dst_ptr, llvec_tydesc));
-    llvm.LLVMSetValueName(llnew_vec, Str.buf("llnew_vec"));
+    maybe_name_value(bcx.fcx.lcx.ccx, llnew_vec, "llnew_vec");
 
     auto copy_dst_cx = new_sub_block_ctxt(bcx, "copy new <- dst");
     auto copy_src_cx = new_sub_block_ctxt(bcx, "copy new <- src");
 
     auto pp0 = alloca(bcx, T_ptr(T_i8()));
     bcx.build.Store(vec_p1_adjusted(bcx, llnew_vec, llskipnull), pp0);
-    llvm.LLVMSetValueName(pp0, Str.buf("pp0"));
+    maybe_name_value(bcx.fcx.lcx.ccx, pp0, "pp0");
 
     bcx.build.CondBr(bcx.build.TruncOrBitCast
                      (bcx.build.Load(llcopy_dst_ptr),
@@ -7501,19 +7511,19 @@ fn trans_vec_append_glue(@local_ctxt cx) {
                  ValueRef n_bytes) -> result {
 
         auto src_lim = cx.build.GEP(src, vec(n_bytes));
-        llvm.LLVMSetValueName(src_lim, Str.buf("src_lim"));
+        maybe_name_value(cx.fcx.lcx.ccx, src_lim, "src_lim");
 
         auto elt_llsz =
             cx.build.Load(cx.build.GEP(elt_tydesc,
                                        vec(C_int(0),
                                            C_int(abi.tydesc_field_size))));
-        llvm.LLVMSetValueName(elt_llsz, Str.buf("elt_llsz"));
+        maybe_name_value(cx.fcx.lcx.ccx, elt_llsz, "elt_llsz");
 
         auto elt_llalign =
             cx.build.Load(cx.build.GEP(elt_tydesc,
                                        vec(C_int(0),
                                            C_int(abi.tydesc_field_align))));
-        llvm.LLVMSetValueName(elt_llsz, Str.buf("elt_llalign"));
+        maybe_name_value(cx.fcx.lcx.ccx, elt_llsz, "elt_llalign");
 
 
         fn take_one(ValueRef elt_tydesc,
@@ -7535,7 +7545,7 @@ fn trans_vec_append_glue(@local_ctxt cx) {
     // Copy any dst elements in, omitting null if doing str.
 
     auto n_bytes = vec_fill_adjusted(copy_dst_cx, lldst_vec, llskipnull);
-    llvm.LLVMSetValueName(n_bytes, Str.buf("n_bytes"));
+    maybe_name_value(copy_dst_cx.fcx.lcx.ccx, n_bytes, "n_bytes");
 
     copy_dst_cx = copy_elts(copy_dst_cx,
                             llelt_tydesc,
