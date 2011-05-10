@@ -82,7 +82,19 @@ mod Encode {
 
     fn enc_ty(&IO.writer w, &@ctxt cx, &ty.t t) {
         alt (cx.abbrevs) {
-            case (ac_no_abbrevs) { enc_sty(w, cx, ty.struct(cx.tcx, t)); }
+            case (ac_no_abbrevs) {
+                auto result_str;
+                alt (cx.tcx.short_names_cache.find(t)) {
+                    case (some[str](?s)) { result_str = s; }
+                    case (none[str]) {
+                        auto sw = IO.string_writer();
+                        enc_sty(sw.get_writer(), cx, ty.struct(cx.tcx, t));
+                        result_str = sw.get_str();
+                        cx.tcx.short_names_cache.insert(t, result_str);
+                    }
+                }
+                w.write_str(result_str);
+            }
             case (ac_use_abbrevs(?abbrevs)) {
                 alt (abbrevs.find(t)) {
                     case (some[ty_abbrev](?a)) {

@@ -113,6 +113,7 @@ state type crate_ctxt = rec(session.session sess,
                             std.SHA1.sha1 sha,
                             hashmap[ty.t, str] type_sha1s,
                             hashmap[ty.t, metadata.ty_abbrev] type_abbrevs,
+                            hashmap[ty.t, str] type_short_names,
                             ty.ctxt tcx,
                             @upcall.upcalls upcalls);
 
@@ -192,6 +193,7 @@ fn get_type_sha1(@crate_ctxt ccx, ty.t t) -> str {
             // NB: do *not* use abbrevs here as we want the symbol names
             // to be independent of one another in the crate.
             auto cx = @rec(ds=f, tcx=ccx.tcx, abbrevs=metadata.ac_no_abbrevs);
+
             ccx.sha.input_str(metadata.Encode.ty_str(cx, t));
             hash = Str.substr(ccx.sha.result_str(), 0u, 16u);
             ccx.type_sha1s.insert(t, hash);
@@ -7694,6 +7696,7 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
     auto lltypes = Map.mk_hashmap[ty.t,TypeRef](hasher, eqer);
     auto sha1s = Map.mk_hashmap[ty.t,str](hasher, eqer);
     auto abbrevs = Map.mk_hashmap[ty.t,metadata.ty_abbrev](hasher, eqer);
+    auto short_names = Map.mk_hashmap[ty.t,str](hasher, eqer);
 
     auto ccx = @rec(sess = sess,
                     llmod = llmod,
@@ -7721,6 +7724,7 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
                     sha = std.SHA1.mk_sha1(),
                     type_sha1s = sha1s,
                     type_abbrevs = abbrevs,
+                    type_short_names = short_names,
                     tcx = tcx,
                     upcalls = upcall.declare_upcalls(tn, llmod));
     auto cx = new_local_ctxt(ccx);

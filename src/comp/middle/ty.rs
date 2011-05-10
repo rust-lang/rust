@@ -55,7 +55,8 @@ type mt = rec(t ty, ast.mutability mut);
 type creader_cache = hashmap[tup(int,uint,uint),ty.t];
 type ctxt = rec(@type_store ts,
                 session.session sess,
-                creader_cache rcache);
+                creader_cache rcache,
+                hashmap[t,str] short_names_cache);
 type ty_ctxt = ctxt;    // Needed for disambiguation from Unify.ctxt.
 
 // Convert from method type to function type.  Pretty easy; we just drop
@@ -227,7 +228,9 @@ fn mk_rcache() -> creader_cache {
 fn mk_ctxt(session.session s) -> ctxt {
     ret rec(ts = mk_type_store(),
             sess = s,
-            rcache = mk_rcache());
+            rcache = mk_rcache(),
+            short_names_cache =
+                Map.mk_hashmap[ty.t,str](ty.hash_ty, ty.eq_ty));
 }
 // Type constructors
 
