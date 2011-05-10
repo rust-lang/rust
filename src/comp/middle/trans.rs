@@ -17,6 +17,7 @@ import middle.ty;
 import back.Link;
 import back.x86;
 import back.abi;
+import back.upcall;
 
 import middle.ty.pat_ty;
 
@@ -112,7 +113,8 @@ state type crate_ctxt = rec(session.session sess,
                             std.SHA1.sha1 sha,
                             hashmap[ty.t, str] type_sha1s,
                             hashmap[ty.t, metadata.ty_abbrev] type_abbrevs,
-                            ty.ctxt tcx);
+                            ty.ctxt tcx,
+                            @upcall.upcalls upcalls);
 
 type local_ctxt = rec(vec[str] path,
                       vec[str] module_path,
@@ -589,25 +591,9 @@ fn T_opaque_obj_ptr(type_names tn) -> TypeRef {
     ret T_obj_ptr(tn, 0u);
 }
 
-fn T_opaque_port_ptr(type_names tn) -> TypeRef {
-    auto s = "*port";
-    if (tn.name_has_type(s)) { ret tn.get_type(s); }
+fn T_opaque_port_ptr() -> TypeRef { ret T_ptr(T_i8()); }
 
-    auto t = T_ptr(T_i8());
-
-    tn.associate(s, t);
-    ret t;
-}
-
-fn T_opaque_chan_ptr(type_names tn) -> TypeRef {
-    auto s = "*chan";
-    if (tn.name_has_type(s)) { ret tn.get_type(s); }
-
-    auto t = T_ptr(T_i8());
-
-    tn.associate(s, t);
-    ret t;
-}
+fn T_opaque_chan_ptr() -> TypeRef { ret T_ptr(T_i8()); }
 
 
 // This function now fails if called on a type with dynamic size (as its
@@ -1092,17 +1078,6 @@ fn get_simple_extern_fn(&hashmap[str, ValueRef] externs,
     ret get_extern_fn(externs, llmod, name, lib.llvm.LLVMCCallConv, t);
 }
 
-fn trans_upcall(@block_ctxt cx, str name, vec[ValueRef] args, bool pure)
-        -> result {
-    auto cxx = cx.fcx.lcx.ccx;
-    auto lltaskptr = cx.build.PtrToInt(cx.fcx.lltaskptr, T_int());
-    auto args2 = vec(lltaskptr) + args;
-    auto t = trans_native_call(cx.build, cxx.glues, lltaskptr,
-                               cxx.externs, cxx.tn, cxx.llmod, name,
-                               true, args2);
-    ret res(cx, t);
-}
-
 fn trans_native_call(builder b, @glue_fns glues, ValueRef lltaskptr,
                      &hashmap[str, ValueRef] externs,
                      type_names tn, ModuleRef llmod, str name,
@@ -1131,7 +1106,10 @@ fn trans_native_call(builder b, @glue_fns glues, ValueRef lltaskptr,
 }
 
 fn trans_non_gc_free(@block_ctxt cx, ValueRef v) -> result {
-    ret trans_upcall(cx, "upcall_free", vec(vp2i(cx, v), C_int(0)), false);
+    cx.build.Call(cx.fcx.lcx.ccx.upcalls.free,
+                  vec(cx.fcx.lltaskptr,
+                      cx.build.PointerCast(v, T_ptr(T_i8())), C_int(0)));
+    ret res(cx, C_int(0));
 }
 
 fn find_scope_cx(@block_ctxt cx) -> @block_ctxt {
@@ -1552,10 +1530,10 @@ fn GEP_tag(@block_ctxt cx,
 fn trans_raw_malloc(@block_ctxt cx, TypeRef llptr_ty, ValueRef llsize)
         -> result {
     // FIXME: need a table to collect tydesc globals.
-    auto tydesc = C_int(0);
-    auto rslt = trans_upcall(cx, "upcall_malloc", vec(llsize, tydesc), false);
-    rslt = res(rslt.bcx, vi2p(rslt.bcx, rslt.val, llptr_ty));
-    ret rslt;
+    auto tydesc = C_null(T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn)));
+    auto rval = cx.build.Call(cx.fcx.lcx.ccx.upcalls.malloc,
+                              vec(cx.fcx.lltaskptr, llsize, tydesc));
+    ret res(cx, cx.build.PointerCast(rval, llptr_ty));
 }
 
 fn trans_malloc_boxed(@block_ctxt cx, ty.t t) -> result {
@@ -1687,12 +1665,16 @@ fn mk_derived_tydesc(@block_ctxt cx, ty.t t, bool escapes) -> result {
             i += 1;
         }
 
-        v = trans_upcall(bcx, "upcall_get_type_desc",
-                         vec(p2i(bcx.fcx.lcx.ccx.crate_ptr),
-                             sz.val,
-                             align.val,
-                             C_int((1u + n_params) as int),
-                             vp2i(bcx, tydescs)), true);
+        auto lltydescsptr = bcx.build.PointerCast(tydescs,
+            T_ptr(T_ptr(T_tydesc(bcx.fcx.lcx.ccx.tn))));
+        auto td_val = bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.get_type_desc,
+            vec(bcx.fcx.lltaskptr,
+                bcx.fcx.lcx.ccx.crate_ptr,
+                sz.val,
+                align.val,
+                C_int((1u + n_params) as int),
+                lltydescsptr));
+        v = res(bcx, td_val);
     } else {
         auto llparamtydescs_opt;
         if (n_params == 0u) {
@@ -1716,7 +1698,7 @@ fn mk_derived_tydesc(@block_ctxt cx, ty.t t, bool escapes) -> result {
                                              llparamtydescs_opt);
     }
 
-    ret res(v.bcx, vi2p(v.bcx, v.val, T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn))));
+    ret v;
 }
 
 fn get_tydesc(&@block_ctxt cx, ty.t t, bool escapes) -> result {
@@ -1999,8 +1981,10 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, ty.t t) {
 
         case (ty.ty_port(_)) {
             fn hit_zero(@block_ctxt cx, ValueRef v) -> result {
-                ret trans_upcall(cx, "upcall_del_port",
-                                 vec(vp2i(cx, v)), true);
+                cx.build.Call(cx.fcx.lcx.ccx.upcalls.del_port,
+                    vec(cx.fcx.lltaskptr,
+                        cx.build.PointerCast(v, T_opaque_port_ptr())));
+                ret res(cx, C_int(0));
             }
             auto v = cx.build.Load(v0);
             rslt = decr_refcnt_and_if_zero(cx, v,
@@ -2011,8 +1995,10 @@ fn make_drop_glue(@block_ctxt cx, ValueRef v0, ty.t t) {
 
         case (ty.ty_chan(_)) {
             fn hit_zero(@block_ctxt cx, ValueRef v) -> result {
-                ret trans_upcall(cx, "upcall_del_chan",
-                                 vec(vp2i(cx, v)), true);
+                cx.build.Call(cx.fcx.lcx.ccx.upcalls.del_chan,
+                    vec(cx.fcx.lltaskptr,
+                        cx.build.PointerCast(v, T_opaque_chan_ptr())));
+                ret res(cx, C_int(0));
             }
             auto v = cx.build.Load(v0);
             rslt = decr_refcnt_and_if_zero(cx, v,
@@ -4409,6 +4395,22 @@ fn trans_lval(@block_ctxt cx, @ast.expr e) -> lval_result {
     fail;
 }
 
+fn int_cast(@block_ctxt bcx, TypeRef lldsttype, TypeRef llsrctype,
+            ValueRef llsrc, bool signed) -> ValueRef {
+    if (llvm.LLVMGetIntTypeWidth(lldsttype) >
+            llvm.LLVMGetIntTypeWidth(llsrctype)) {
+        if (signed) {
+            // Widening signed cast.
+            ret bcx.build.SExtOrBitCast(llsrc, lldsttype);
+        }
+
+        // Widening unsigned cast.
+        ret bcx.build.ZExtOrBitCast(llsrc, lldsttype);
+    }
+
+    ret bcx.build.TruncOrBitCast(llsrc, lldsttype);
+}
+
 fn trans_cast(@block_ctxt cx, @ast.expr e, &ast.ann ann) -> result {
     auto e_res = trans_expr(cx, e);
     auto llsrctype = val_ty(e_res.val);
@@ -4421,24 +4423,9 @@ fn trans_cast(@block_ctxt cx, @ast.expr e, &ast.ann ann) -> result {
             e_res.val = e_res.bcx.build.PtrToInt(e_res.val, lldsttype);
         } else if (ty.type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
             e_res.val = e_res.bcx.build.IntToPtr(e_res.val, lldsttype);
-        } else if (llvm.LLVMGetIntTypeWidth(lldsttype) >
-            llvm.LLVMGetIntTypeWidth(llsrctype)) {
-            if (ty.type_is_signed(cx.fcx.lcx.ccx.tcx, t)) {
-                // Widening signed cast.
-                e_res.val =
-                    e_res.bcx.build.SExtOrBitCast(e_res.val,
-                                                  lldsttype);
-            } else {
-                // Widening unsigned cast.
-                e_res.val =
-                    e_res.bcx.build.ZExtOrBitCast(e_res.val,
-                                                  lldsttype);
-            }
         } else {
-            // Narrowing cast.
-            e_res.val =
-                e_res.bcx.build.TruncOrBitCast(e_res.val,
-                                               lldsttype);
+            e_res.val = int_cast(e_res.bcx, lldsttype, llsrctype, e_res.val,
+                ty.type_is_signed(cx.fcx.lcx.ccx.tcx, t));
         }
     } else {
         cx.fcx.lcx.ccx.sess.unimpl("fp cast");
@@ -5081,12 +5068,12 @@ fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
                                  unit_sz.val);
 
     // FIXME: pass tydesc properly.
-    auto sub = trans_upcall(bcx, "upcall_new_vec", vec(data_sz, C_int(0)),
-                            false);
-    bcx = sub.bcx;
-
+    auto vec_val = bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.new_vec,
+        vec(bcx.fcx.lltaskptr, data_sz,
+            C_null(T_ptr(T_tydesc(bcx.fcx.lcx.ccx.tn)))));
     auto llty = type_of(bcx.fcx.lcx.ccx, t);
-    auto vec_val = vi2p(bcx, sub.val, llty);
+    vec_val = bcx.build.PointerCast(vec_val, llty);
+
     find_scope_cx(bcx).cleanups +=
         vec(clean(bind drop_ty(_, vec_val, t)));
 
@@ -5446,34 +5433,30 @@ fn trans_log(int lvl, @block_ctxt cx, @ast.expr e) -> result {
             }
         }
         if (is32bit) {
-            auto uval = trans_upcall(log_bcx,
-                                     "upcall_log_float",
-                                     vec(C_int(lvl), sub.val),
-                                     false);
-            log_bcx = uval.bcx;
+            log_bcx.build.Call(log_bcx.fcx.lcx.ccx.upcalls.log_float,
+                               vec(log_bcx.fcx.lltaskptr, C_int(lvl),
+                                   sub.val));
         } else {
+            // FIXME: Eliminate this level of indirection.
             auto tmp = alloca(log_bcx, tr);
             sub.bcx.build.Store(sub.val, tmp);
-            auto uval = trans_upcall(log_bcx,
-                                     "upcall_log_double",
-                                     vec(C_int(lvl), vp2i(log_bcx, tmp)),
-                                     false);
-            log_bcx = uval.bcx;
+            log_bcx.build.Call(log_bcx.fcx.lcx.ccx.upcalls.log_double,
+                               vec(log_bcx.fcx.lltaskptr, C_int(lvl), tmp));
         }
     } else {
         alt (ty.struct(cx.fcx.lcx.ccx.tcx, e_ty)) {
             case (ty.ty_str) {
-                auto v = vp2i(log_bcx, sub.val);
-                log_bcx = trans_upcall(log_bcx,
-                                       "upcall_log_str",
-                                       vec(C_int(lvl), v),
-                                       false).bcx;
+                log_bcx.build.Call(log_bcx.fcx.lcx.ccx.upcalls.log_str,
+                                   vec(log_bcx.fcx.lltaskptr, C_int(lvl),
+                                       sub.val));
             }
             case (_) {
-                auto v = vec(C_int(lvl), sub.val);
-                log_bcx = trans_upcall(log_bcx,
-                                       "upcall_log_int",
-                                       v, false).bcx;
+                // FIXME: Handle signedness properly.
+                auto llintval = int_cast(log_bcx, T_int(), val_ty(sub.val),
+                                         sub.val, false);
+                log_bcx.build.Call(log_bcx.fcx.lcx.ccx.upcalls.log_int,
+                                   vec(log_bcx.fcx.lltaskptr, C_int(lvl),
+                                       llintval));
             }
         }
     }
@@ -5500,26 +5483,29 @@ fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
 
 fn trans_fail(@block_ctxt cx, Option.t[common.span] sp_opt, str fail_str)
         -> result {
-    auto V_fail_str = p2i(C_cstr(cx.fcx.lcx.ccx, fail_str));
+    auto V_fail_str = C_cstr(cx.fcx.lcx.ccx, fail_str);
 
     auto V_filename; auto V_line;
     alt (sp_opt) {
         case (some[common.span](?sp)) {
             auto loc = cx.fcx.lcx.ccx.sess.lookup_pos(sp.lo);
-            V_filename = p2i(C_cstr(cx.fcx.lcx.ccx, loc.filename));
+            V_filename = C_cstr(cx.fcx.lcx.ccx, loc.filename);
             V_line = loc.line as int;
         }
         case (none[common.span]) {
-            V_filename = p2i(C_str(cx.fcx.lcx.ccx, "<runtime>"));
+            V_filename = C_cstr(cx.fcx.lcx.ccx, "<runtime>");
             V_line = 0;
         }
     }
 
-    auto args = vec(V_fail_str, V_filename, C_int(V_line));
+    V_fail_str = cx.build.PointerCast(V_fail_str, T_ptr(T_i8()));
+    V_filename = cx.build.PointerCast(V_filename, T_ptr(T_i8()));
 
-    auto sub = trans_upcall(cx, "upcall_fail", args, false);
-    sub.bcx.build.Unreachable();
-    ret res(sub.bcx, C_nil());
+    auto args = vec(cx.fcx.lltaskptr, V_fail_str, V_filename, C_int(V_line));
+
+    cx.build.Call(cx.fcx.lcx.ccx.upcalls._fail, args);
+    cx.build.Unreachable();
+    ret res(cx, C_nil());
 }
 
 fn trans_put(@block_ctxt cx, &Option.t[@ast.expr] e) -> result {
@@ -5665,10 +5651,10 @@ fn trans_port(@block_ctxt cx, ast.ann ann) -> result {
     auto bcx = cx;
     auto unit_sz = size_of(bcx, unit_ty);
     bcx = unit_sz.bcx;
-    auto sub = trans_upcall(bcx, "upcall_new_port", vec(unit_sz.val), false);
-    bcx = sub.bcx;
+    auto port_raw_val = bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.new_port,
+                                       vec(bcx.fcx.lltaskptr, unit_sz.val));
     auto llty = type_of(cx.fcx.lcx.ccx, t);
-    auto port_val = vi2p(bcx, sub.val, llty);
+    auto port_val = bcx.build.PointerCast(port_raw_val, llty);
     auto dropref = clean(bind drop_ty(_, port_val, t));
     find_scope_cx(bcx).cleanups += vec(dropref);
 
@@ -5681,13 +5667,13 @@ fn trans_chan(@block_ctxt cx, @ast.expr e, ast.ann ann) -> result {
     auto prt = trans_expr(bcx, e);
     bcx = prt.bcx;
 
-    auto prt_val = vp2i(bcx, prt.val);
-    auto sub = trans_upcall(bcx, "upcall_new_chan", vec(prt_val), false);
-    bcx = sub.bcx;
+    auto prt_val = bcx.build.PointerCast(prt.val, T_opaque_port_ptr());
+    auto chan_raw_val = bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.new_chan,
+                                       vec(bcx.fcx.lltaskptr, prt_val));
 
     auto chan_ty = node_ann_type(bcx.fcx.lcx.ccx, ann);
     auto chan_llty = type_of(bcx.fcx.lcx.ccx, chan_ty);
-    auto chan_val = vi2p(bcx, sub.val, chan_llty);
+    auto chan_val = bcx.build.PointerCast(chan_raw_val, chan_llty);
     auto dropref = clean(bind drop_ty(_, chan_val, chan_ty));
     find_scope_cx(bcx).cleanups += vec(dropref);
 
@@ -5723,10 +5709,10 @@ fn trans_send(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
     find_scope_cx(bcx).cleanups +=
         vec(clean(bind drop_ty(_, data_alloc.val, unit_ty)));
 
-    auto sub = trans_upcall(bcx, "upcall_send",
-                            vec(vp2i(bcx, chn.val),
-                                vp2i(bcx, data_alloc.val)), false);
-    bcx = sub.bcx;
+    auto llchanval = bcx.build.PointerCast(chn.val, T_opaque_chan_ptr());
+    auto lldataptr = bcx.build.PointerCast(data_alloc.val, T_ptr(T_i8()));
+    bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.send,
+                   vec(bcx.fcx.lltaskptr, llchanval, lldataptr));
 
     ret res(bcx, chn.val);
 }
@@ -5751,10 +5737,10 @@ fn recv_val(@block_ctxt cx, ValueRef lhs, @ast.expr rhs,
     auto prt = trans_expr(bcx, rhs);
     bcx = prt.bcx;
 
-    auto sub = trans_upcall(bcx, "upcall_recv",
-                            vec(vp2i(bcx, lhs),
-                                vp2i(bcx, prt.val)), false);
-    bcx = sub.bcx;
+    auto lldataptr = bcx.build.PointerCast(lhs, T_ptr(T_ptr(T_i8())));
+    auto llportptr = bcx.build.PointerCast(prt.val, T_opaque_port_ptr());
+    bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.recv,
+                   vec(bcx.fcx.lltaskptr, lldataptr, llportptr));
 
     auto data_load = load_if_immediate(bcx, lhs, unit_ty);
     auto cp = copy_ty(bcx, action, lhs, data_load, unit_ty);
@@ -7349,12 +7335,13 @@ fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
 
 
 fn trace_str(@block_ctxt cx, str s) {
-    trans_upcall(cx, "upcall_trace_str", vec(p2i(C_cstr(cx.fcx.lcx.ccx, s))),
-                 false);
+    cx.build.Call(cx.fcx.lcx.ccx.upcalls.trace_str,
+                  vec(cx.fcx.lltaskptr, C_cstr(cx.fcx.lcx.ccx, s)));
 }
 
 fn trace_word(@block_ctxt cx, ValueRef v) {
-    trans_upcall(cx, "upcall_trace_word", vec(v), false);
+    cx.build.Call(cx.fcx.lcx.ccx.upcalls.trace_word,
+                  vec(cx.fcx.lltaskptr, v));
 }
 
 fn trace_ptr(@block_ctxt cx, ValueRef v) {
@@ -7485,17 +7472,10 @@ fn trans_vec_append_glue(@local_ctxt cx) {
     // To do this we have to figure out how many bytes to add.
 
     auto llcopy_dst_ptr = alloca(bcx, T_int());
-    auto llnew_vec_res =
-        trans_upcall(bcx, "upcall_vec_grow",
-                     vec(vp2i(bcx, lldst_vec),
-                         vec_fill_adjusted(bcx, llsrc_vec, llskipnull),
-                         vp2i(bcx, llcopy_dst_ptr),
-                         vp2i(bcx, llvec_tydesc)),
-                     false);
-
-    bcx = llnew_vec_res.bcx;
-    auto llnew_vec = vi2p(bcx, llnew_vec_res.val,
-                          T_opaque_vec_ptr());
+    auto llnew_vec = bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.vec_grow,
+        vec(bcx.fcx.lltaskptr, lldst_vec,
+            vec_fill_adjusted(bcx, llsrc_vec, llskipnull),
+            llcopy_dst_ptr, llvec_tydesc));
     llvm.LLVMSetValueName(llnew_vec, Str.buf("llnew_vec"));
 
     auto copy_dst_cx = new_sub_block_ctxt(bcx, "copy new <- dst");
@@ -7742,7 +7722,8 @@ fn trans_crate(session.session sess, @ast.crate crate, ty.ctxt tcx,
                     sha = std.SHA1.mk_sha1(),
                     type_sha1s = sha1s,
                     type_abbrevs = abbrevs,
-                    tcx = tcx);
+                    tcx = tcx,
+                    upcalls = upcall.declare_upcalls(tn, llmod));
     auto cx = new_local_ctxt(ccx);
 
     create_typedefs(ccx);
