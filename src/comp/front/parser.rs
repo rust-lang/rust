@@ -795,7 +795,6 @@ fn parse_bottom_expr(parser p) -> @ast::expr {
             } else {
                 unexpected(p, p.peek());
             }
-
         }
 
         ex = ast::expr_rec(fields, base, p.get_ann());
@@ -836,9 +835,9 @@ fn parse_bottom_expr(parser p) -> @ast::expr {
         hi = p.get_hi_pos();
         expect(p, token.RBRACE);
 
-        // fields and methods may be *additional* or *overriding* fields
-        // and methods if there's a with_obj, or they may be the *only*
-        // fields and methods if there's no with_obj.
+        // fields and methods may be *additional* or *overriding* fields and
+        // methods if there's a with_obj, or they may be the *only* fields and
+        // methods if there's no with_obj.
 
         // We don't need to pull ".node" out of fields because it's not a
         // "spanned".
