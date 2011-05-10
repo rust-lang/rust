@@ -372,12 +372,12 @@ type _obj = rec(vec[obj_field] fields,
                 vec[@method] methods,
                 option::t[@method] dtor);
 
-
-// Hmm.  An anon_obj might extend an existing object, in which case it'll
-// probably add fields and methods.
-type anon_obj = rec(option.t[vec[obj_field]] fields,
-                    vec[@method] methods,
-                    option.t[ident] with_obj);
+type anon_obj = rec(
+    // New fields and methods, if they exist.
+    Option.t[vec[obj_field]] fields,
+    vec[@method] methods,
+    // with_obj: the original object being extended, if it exists.
+    Option.t[ident] with_obj);
 
 tag mod_index_entry {
     mie_view_item(@view_item);
