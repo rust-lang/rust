@@ -152,7 +152,7 @@ options:
     --depend           print dependencies, in makefile-rule form
     --parse-only       parse only; do not compile, assemble, or link
     -g                 produce debug info
-    -O                 optimize
+    --OptLevel=        optimize with possible levels 0-3
     -S                 compile only; do not assemble or link
     -c                 compile and assemble, but do not link
     --save-temps       write intermediate files in addition to normal output
@@ -206,7 +206,7 @@ fn main(vec[str] args) {
                     optflag("v"), optflag("version"),
                     optflag("glue"),
                     optflag("pretty"), optflag("ls"), optflag("parse-only"),
-                    optflag("O"), optflag("shared"), optmulti("L"),
+                    optopt("OptLevel"), optflag("shared"), optmulti("L"),
                     optflag("S"), optflag("c"), optopt("o"), optopt("g"),
                     optflag("save-temps"), optopt("sysroot"),
                     optflag("time-passes"), optflag("no-typestate"),
@@ -250,12 +250,34 @@ fn main(vec[str] args) {
 
     auto verify = !opt_present(match, "noverify");
     auto save_temps = opt_present(match, "save-temps");
-    // FIXME: Maybe we should support -O0, -O1, -Os, etc
-    auto optimize = opt_present(match, "O");
     auto debuginfo = opt_present(match, "g");
     auto time_passes = opt_present(match, "time-passes");
     auto run_typestate = !opt_present(match, "no-typestate");
     auto sysroot_opt = GetOpts.opt_maybe_str(match, "sysroot");
+
+    let uint optLevel = 0u;
+    if (opt_present(match, "OptLevel")) {
+        auto opt = GetOpts.opt_maybe_str(match, "OptLevel");
+        alt (opt) {
+            case (some[str](?s)) { 
+                alt (s) {
+                    case ("0") { optLevel = 0u; }
+                    case ("1") { optLevel = 1u; }
+                    case ("2") { optLevel = 2u; }
+                    case ("3") { optLevel = 3u; }
+                    case (_) {
+                        log
+                        ("error: optimization level needs to be between 0-3");
+                        fail;
+                    }
+                }
+            }
+            case (none[str]) {
+                log("error: expected optimization level after --OptLevel=");
+                fail;
+            }
+        }
+    }
 
     auto sysroot;
     alt (sysroot_opt) {
@@ -265,7 +287,7 @@ fn main(vec[str] args) {
 
     let @session.options sopts =
         @rec(shared = shared,
-             optimize = optimize,
+             optimize = optLevel,
              debuginfo = debuginfo,
              verify = verify,
              run_typestate = run_typestate,

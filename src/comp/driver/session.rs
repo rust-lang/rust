@@ -26,7 +26,7 @@ type config = rec(os os,
                   ty_mach float_type);
 
 type options = rec(bool shared,
-                   bool optimize,
+                   uint optimize,
                    bool debuginfo,
                    bool verify,
                    bool run_typestate,
