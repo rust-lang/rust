@@ -12,6 +12,7 @@ native "rust" mod rustrt {
     fn str_from_cstr(sbuf cstr) -> str;
     fn str_from_buf(sbuf buf, uint len) -> str;
     fn str_push_byte(str s, uint byte) -> str;
+    fn str_slice(str s, uint begin, uint end) -> str;
     fn refcount[T](str s) -> uint;
 }
 
@@ -384,13 +385,10 @@ fn substr(str s, uint begin, uint len) -> str {
 }
 
 fn slice(str s, uint begin, uint end) -> str {
-    let str accum = "";
-    let uint i = begin;
-    while (i < end) {
-        push_byte(accum, s.(i));
-        i += 1u;
-    }
-    ret accum;
+    // FIXME: Typestate precondition
+    assert (begin <= end);
+    assert (end <= Str.byte_len(s));
+    ret rustrt.str_slice(s, begin, end);
 }
 
 fn shift_byte(&mutable str s) -> u8 {

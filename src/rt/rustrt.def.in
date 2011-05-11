@@ -32,6 +32,7 @@ str_from_buf
 str_from_cstr
 str_from_vec
 str_push_byte
+str_slice
 str_vec
 task_sleep
 unsafe_vec_to_mut

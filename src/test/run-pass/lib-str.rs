@@ -1,3 +1,6 @@
+// xfail-boot
+// xfail-stage0
+
 use std;
 import std.Str;
 
@@ -98,6 +101,36 @@ fn test_to_upper() {
   assert (Str.eq(expected, actual));
 }
 
+fn test_slice() {
+  assert (Str.eq("ab", Str.slice("abc", 0u, 2u)));
+  assert (Str.eq("bc", Str.slice("abc", 1u, 3u)));
+  assert (Str.eq("", Str.slice("abc", 1u, 1u)));
+
+  fn a_million_letter_a() -> str {
+    auto i = 0;
+    auto res = "";
+    while (i < 100000) {
+      res += "aaaaaaaaaa";
+      i += 1;
+    }
+    ret res;
+  }
+
+  fn half_a_million_letter_a() -> str {
+    auto i = 0;
+    auto res = "";
+    while (i < 100000) {
+      res += "aaaaa";
+      i += 1;
+    }
+    ret res;
+  }
+
+  assert (Str.eq(half_a_million_letter_a(),
+                 Str.slice(a_million_letter_a(),
+                           0u,
+                           500000u)));
+}
 
 fn main() {
   test_bytes_len();
@@ -108,4 +141,5 @@ fn main() {
   test_concat();
   test_connect();
   test_to_upper();
+  test_slice();
 }

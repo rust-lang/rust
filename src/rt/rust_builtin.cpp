@@ -226,6 +226,24 @@ str_push_byte(rust_task* task, rust_str* v, size_t byte)
     return v;
 }
 
+extern "C" CDECL rust_str*
+str_slice(rust_task* task, rust_str* v, size_t begin, size_t end)
+{
+    size_t len = end - begin;
+    rust_str *st =
+        vec_alloc_with_data(task,
+                            len + 1, // +1 to fit at least '\0'
+                            len,
+                            1,
+                            len ? v->data + begin : NULL);
+    if (!st) {
+        task->fail(2);
+        return NULL;
+    }
+    st->data[st->fill++] = '\0';
+    return st;
+}
+
 extern "C" CDECL char const *
 str_buf(rust_task *task, rust_str *s)
 {
