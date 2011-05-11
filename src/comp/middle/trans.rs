@@ -6160,28 +6160,24 @@ fn copy_any_self_to_alloca(@fn_ctxt fcx,
 }
 
 
-fn copy_args_to_allocas(@fn_ctxt fcx,
+fn copy_args_to_allocas(@block_ctxt bcx,
                         vec[ast.arg] args,
                         vec[ty.arg] arg_tys) {
-
-    auto bcx = llallocas_block_ctxt(fcx);
 
     let uint arg_n = 0u;
 
     for (ast.arg aarg in args) {
         if (aarg.mode != ast.alias) {
-            auto arg_t = type_of_arg(fcx.lcx, arg_tys.(arg_n));
+            auto arg_t = type_of_arg(bcx.fcx.lcx, arg_tys.(arg_n));
             auto a = alloca(bcx, arg_t);
-            auto argval = fcx.llargs.get(aarg.id);
+            auto argval = bcx.fcx.llargs.get(aarg.id);
             bcx.build.Store(argval, a);
             // Overwrite the llargs entry for this arg with its alloca.
-            fcx.llargs.insert(aarg.id, a);
+            bcx.fcx.llargs.insert(aarg.id, a);
         }
 
         arg_n += 1u;
     }
-
-    fcx.llallocas = bcx.llbb;
 }
 
 fn add_cleanups_for_args(&@block_ctxt bcx,
@@ -6317,9 +6313,9 @@ fn trans_fn(@local_ctxt cx, &ast._fn f, ast.def_id fid,
     }
 
     auto arg_tys = arg_tys_of_fn(fcx.lcx.ccx, ann);
-    copy_args_to_allocas(fcx, f.decl.inputs, arg_tys);
 
     auto bcx = new_top_block_ctxt(fcx);
+    copy_args_to_allocas(bcx, f.decl.inputs, arg_tys);
 
     add_cleanups_for_args(bcx, f.decl.inputs, arg_tys);
 
@@ -6431,9 +6427,9 @@ fn trans_obj(@local_ctxt cx, &ast._obj ob, ast.def_id oid,
                               fn_args, ty_params);
 
     let vec[ty.arg] arg_tys = arg_tys_of_fn(ccx, ann);
-    copy_args_to_allocas(fcx, fn_args, arg_tys);
 
     auto bcx = new_top_block_ctxt(fcx);
+    copy_args_to_allocas(bcx, fn_args, arg_tys);
     auto lltop = bcx.llbb;
 
     auto self_ty = ret_ty_of_fn(ccx, ann);
@@ -6584,9 +6580,9 @@ fn trans_tag_variant(@local_ctxt cx, ast.def_id tag_id,
     }
 
     auto arg_tys = arg_tys_of_fn(cx.ccx, variant.node.ann);
-    copy_args_to_allocas(fcx, fn_args, arg_tys);
 
     auto bcx = new_top_block_ctxt(fcx);
+    copy_args_to_allocas(bcx, fn_args, arg_tys);
     auto lltop = bcx.llbb;
 
     // Cast the tag to a type we can GEP into.
