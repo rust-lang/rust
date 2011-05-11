@@ -15,6 +15,7 @@ type path_ = rec(vec[ident] idents, vec[@ty] types);
 type path = spanned[path_];
 
 type crate_num = int;
+const crate_num local_crate = 0;
 type def_num = int;
 type def_id = tup(crate_num, def_num);
 

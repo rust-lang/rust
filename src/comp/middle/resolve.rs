@@ -591,8 +591,7 @@ fn lookup_in_mod_strict(&env e, def m, &span sp, ident id,
 fn lookup_in_mod(&env e, def m, ident id, namespace ns, dir dr)
     -> Option.t[def] {
     auto defid = ast.def_id_of_def(m);
-    // FIXME this causes way more metadata lookups than needed. Cache?
-    if (defid._0 != 0) { // Not in this crate (FIXME use a const, not 0)
+    if (defid._0 != ast.local_crate) { // Not in this crate
         auto cached = e.ext_cache.find(tup(defid,id));
         if (cached != none[def] && check_def_by_ns(Option.get(cached), ns)) {
             ret cached;

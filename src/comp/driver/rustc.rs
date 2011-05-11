@@ -85,7 +85,7 @@ fn compile_input(session.session sess,
                  eval.env env,
                  str input, str output) {
     auto time_passes = sess.get_opts().time_passes;
-    auto def = tup(0, 0);
+    auto def = tup(ast.local_crate, 0);
     auto p = parser.new_parser(sess, env, def, input, 0u);
     auto crate = time[@ast.crate](time_passes, "parsing",
                                   bind parse_input(sess, p, input));
@@ -120,7 +120,7 @@ fn compile_input(session.session sess,
 fn pretty_print_input(session.session sess,
                              eval.env env,
                              str input) {
-    auto def = tup(0, 0);
+    auto def = tup(ast.local_crate, 0);
     auto p = front.parser.new_parser(sess, env, def, input, 0u);
     auto crate = front.parser.parse_crate_from_source_file(p);
     pretty.pprust.print_file(crate.node.module, input, std.IO.stdout());
