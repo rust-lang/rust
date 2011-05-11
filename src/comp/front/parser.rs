@@ -1626,15 +1626,6 @@ fn parse_source_stmt(parser p) -> @ast.stmt {
     fail;
 }
 
-fn index_block(parser p, vec[@ast.stmt] stmts, Option.t[@ast.expr] expr)
-        -> ast.block_ {
-    auto index = new_str_hash[ast.block_index_entry]();
-    for (@ast.stmt s in stmts) {
-        ast.index_stmt(index, s);
-    }
-    ret rec(stmts=stmts, expr=expr, index=index, a=p.get_ann());
-}
-
 fn index_arm(@ast.pat pat) -> hashmap[ast.ident,ast.def_id] {
     fn do_index_arm(&hashmap[ast.ident,ast.def_id] index, @ast.pat pat) {
         alt (pat.node) {
@@ -1770,7 +1761,7 @@ fn parse_block(parser p) -> ast.block {
     auto hi = p.get_hi_pos();
     p.bump();
 
-    auto bloc = index_block(p, stmts, expr);
+    auto bloc = rec(stmts=stmts, expr=expr, a=p.get_ann());
     ret spanned[ast.block_](lo, hi, bloc);
 }
 

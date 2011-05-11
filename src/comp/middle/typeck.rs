@@ -1507,7 +1507,6 @@ mod Pushdown {
                 auto e_1 = pushdown_expr(fcx, expected, e_0);
                 auto block_ = rec(stmts=bloc.node.stmts,
                                   expr=some[@ast.expr](e_1),
-                                  index=bloc.node.index,
                                   a=plain_ann(fcx.ccx.tcx));
                 ret fold.respan[ast.block_](bloc.span, block_);
             }
@@ -2806,7 +2805,6 @@ fn check_block(&@fn_ctxt fcx, &ast.block block) -> ast.block {
 
     ret fold.respan[ast.block_](block.span,
                                 rec(stmts=stmts, expr=expr,
-                                    index=block.node.index,
                                     a=plain_ann(fcx.ccx.tcx)));
 }
 

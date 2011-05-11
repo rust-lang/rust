@@ -500,80 +500,75 @@ fn lookup_in_obj(ident id, &ast._obj ob, &vec[ast.ty_param] ty_params,
 
 fn lookup_in_block(ident id, &ast.block_ b, namespace ns)
     -> Option.t[def] {
-    alt (b.index.find(id)) {
-        case (some[ast.block_index_entry](?ix)) {
-            alt (ix) {
-                case (ast.bie_item(?it)) {
-                    ret found_def_item(it, ns);
-                }
-                case (ast.bie_local(?l)) {
-                    if (ns == ns_value) {
-                        ret some(ast.def_local(l.id));
+    for (@ast.stmt st in b.stmts) {
+        alt (st.node) {
+            case (ast.stmt_decl(?d,_)) {
+                alt (d.node) {
+                    case (ast.decl_local(?loc)) {
+                        if (ns == ns_value && Str.eq(id, loc.ident)) {
+                            ret some(ast.def_local(loc.id));
+                        }
                     }
-                }
-                case (ast.bie_tag_variant(?item, ?variant_idx)) {
-                    if (ns == ns_value) {
-                        ret some(found_def_tag(item, variant_idx));
+                    case (ast.decl_item(?it)) {
+                        alt (it.node) {
+                            case (ast.item_tag(?name, ?variants, _,
+                                               ?defid, _)) {
+                                if (ns == ns_type) {
+                                    if (Str.eq(name, id)) {
+                                        ret some(ast.def_ty(defid));
+                                    }
+                                } else {
+                                    for (ast.variant v in variants) {
+                                        if (Str.eq(v.node.name, id)) {
+                                            ret some(ast.def_variant(
+                                                      defid, v.node.id));
+                                        }
+                                    }
+                                }
+                            }
+                            case (_) {
+                                if (Str.eq(ast.item_ident(it), id)) {
+                                    auto found = found_def_item(it, ns);
+                                    if (found != none[def]) { ret found; }
+                                }
+                            }
+                        }
                     }
                 }
             }
+            case (_) {}
         }
-        case (_) { }
     }
     ret none[def];
 }
 
 fn found_def_item(@ast.item i, namespace ns) -> Option.t[def] {
     alt (i.node) {
-        case (ast.item_const(_, _, _, ?id, _)) {
-            if (ns == ns_value) {
-                ret some(ast.def_const(id));
-            }
+        case (ast.item_const(_, _, _, ?defid, _)) {
+            if (ns == ns_value) { ret some(ast.def_const(defid)); }
         }
-        case (ast.item_fn(_, _, _, ?id, _)) {
-            if (ns == ns_value) {
-                ret some(ast.def_fn(id));
-            }
+        case (ast.item_fn(_, _, _, ?defid, _)) {
+            if (ns == ns_value) { ret some(ast.def_fn(defid)); }
         }
-        case (ast.item_mod(_, _, ?id)) {
-            ret some(ast.def_mod(id));
+        case (ast.item_mod(_, _, ?defid)) {
+            ret some(ast.def_mod(defid));
         }
-        case (ast.item_native_mod(_, _, ?id)) {
-            ret some(ast.def_native_mod(id));
+        case (ast.item_native_mod(_, _, ?defid)) {
+            ret some(ast.def_native_mod(defid));
         }
-        case (ast.item_ty(_, _, _, ?id, _)) {
-            if (ns == ns_type) {
-                ret some(ast.def_ty(id));
-            }
+        case (ast.item_ty(_, _, _, ?defid, _)) {
+            if (ns == ns_type) { ret some(ast.def_ty(defid)); }
         }
-        case (ast.item_tag(_, _, _, ?id, _)) {
-            if (ns == ns_type) {
-                ret some(ast.def_ty(id));
-            }
+        case (ast.item_tag(_, _, _, ?defid, _)) {
+            if (ns == ns_type) { ret some(ast.def_ty(defid)); }
         }
         case (ast.item_obj(_, _, _, ?odid, _)) {
-            if (ns == ns_value) {
-                ret some(ast.def_obj(odid.ctor));
-            } else {
-                ret some(ast.def_obj(odid.ty));
-            }
+            if (ns == ns_value) { ret some(ast.def_obj(odid.ctor)); }
+            else { ret some(ast.def_obj(odid.ty)); }
         }
         case (_) { }
     }
     ret none[def];
-}
-
-fn found_def_tag(@ast.item item, uint variant_idx) -> def {
-    alt (item.node) {
-        case (ast.item_tag(_, ?variants, _, ?tid, _)) {
-            auto vid = variants.(variant_idx).node.id;
-            ret ast.def_variant(tid, vid);
-        }
-        case (_) {
-            log_err "tag item not actually a tag";
-            fail;
-        }
-    }
 }
 
 fn lookup_in_mod_strict(&env e, def m, &span sp, ident id,

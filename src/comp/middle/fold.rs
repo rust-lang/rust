@@ -862,7 +862,6 @@ fn fold_stmt[ENV](&ENV env, &ast_fold[ENV] fld, &@stmt s) -> @stmt {
 
 fn fold_block[ENV](&ENV env, &ast_fold[ENV] fld, &block blk) -> block {
 
-    auto index = new_str_hash[ast.block_index_entry]();
     let ENV env_ = fld.update_env_for_block(env, blk);
 
     if (!fld.keep_going(env_)) {
@@ -873,7 +872,6 @@ fn fold_block[ENV](&ENV env, &ast_fold[ENV] fld, &block blk) -> block {
     for (@ast.stmt s in blk.node.stmts) {
         auto new_stmt = fold_stmt[ENV](env_, fld, s);
         Vec.push[@ast.stmt](stmts, new_stmt);
-        ast.index_stmt(index, new_stmt);
     }
 
     auto expr = none[@ast.expr];
@@ -887,7 +885,7 @@ fn fold_block[ENV](&ENV env, &ast_fold[ENV] fld, &block blk) -> block {
     }
 
     auto aa = fld.fold_ann(env, blk.node.a);
-    ret respan(blk.span, rec(stmts=stmts, expr=expr, index=index, a=aa));
+    ret respan(blk.span, rec(stmts=stmts, expr=expr, a=aa));
 }
 
 fn fold_arm[ENV](&ENV env, &ast_fold[ENV] fld, &arm a) -> arm {

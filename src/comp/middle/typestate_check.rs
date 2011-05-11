@@ -6,7 +6,6 @@ import front.ast.mutability;
 import front.ast.item;
 import front.ast.block;
 import front.ast.block_;
-import front.ast.block_index_entry;
 import front.ast.mod_index_entry;
 import front.ast.obj_field;
 import front.ast.decl;
@@ -2337,12 +2336,10 @@ fn annotate_stmt(&fn_info_map fm, &@stmt s) -> @stmt {
 }
 fn annotate_block(&fn_info_map fm, &block b) -> block {
     let vec[@stmt] new_stmts = vec();
-    auto new_index = new_str_hash[block_index_entry]();
 
     for (@stmt s in b.node.stmts) {
         auto new_s = annotate_stmt(fm, s);
         Vec.push[@stmt](new_stmts, new_s);
-        ast.index_stmt(new_index, new_s);
     }
     fn ann_e(fn_info_map fm, &@expr e) -> @expr {
         ret annotate_expr(fm, e);
@@ -2352,7 +2349,7 @@ fn annotate_block(&fn_info_map fm, &block b) -> block {
     auto new_e = Option.map[@expr, @expr](f, b.node.expr);
 
     ret respan(b.span,
-          rec(stmts=new_stmts, expr=new_e, index=new_index with b.node));
+          rec(stmts=new_stmts, expr=new_e with b.node));
 }
 fn annotate_fn(&fn_info_map fm, &ast._fn f) -> ast._fn {
     // subexps have *already* been annotated based on
