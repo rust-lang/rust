@@ -30,6 +30,7 @@ state type sha1 = state obj {
 // Some unexported constants
 const uint digest_buf_len = 5;
 const uint msg_block_len = 64;
+const uint work_buf_len = 80;
 
 const u32 k0 = 0x5A827999u32;
 const u32 k1 = 0x6ED9EBA1u32;
@@ -44,7 +45,8 @@ fn mk_sha1() -> sha1 {
                                mutable u32 len_high,
                                vec[mutable u8] msg_block,
                                mutable uint msg_block_idx,
-                               mutable bool computed);
+                               mutable bool computed,
+                               vec[mutable u32] work_buf);
 
     fn add_input(&sha1state st, &vec[u8] msg) {
         // FIXME: Should be typestate precondition
@@ -73,9 +75,10 @@ fn mk_sha1() -> sha1 {
 
         // FIXME: Make precondition
         assert (Vec.len(st.h) == digest_buf_len);
+        assert (Vec.len(st.work_buf) == work_buf_len);
 
         let int t; // Loop counter
-        let vec[mutable u32] w = Vec.init_elt_mut[u32](0u32, 80u);
+        auto w = st.work_buf;
 
         // Initialize the first 16 words of the vector w
         t = 0;
@@ -279,7 +282,8 @@ fn mk_sha1() -> sha1 {
                   mutable len_high = 0u32,
                   msg_block = Vec.init_elt_mut[u8](0u8, msg_block_len),
                   mutable msg_block_idx = 0u,
-                  mutable computed = false);
+                  mutable computed = false,
+                  work_buf = Vec.init_elt_mut[u32](0u32, work_buf_len));
     auto sh = sha1(st);
     sh.reset();
     ret sh;

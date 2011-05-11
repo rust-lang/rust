@@ -1,5 +1,8 @@
 // -*- rust -*-
 
+// xfail-boot
+// xfail-stage0
+
 use std;
 
 import std.SHA1;
@@ -35,18 +38,13 @@ fn main() {
                              0x3Bu8, 0xD2u8, 0x6Eu8, 0xBAu8, 0xAEu8,
                              0x4Au8, 0xA1u8, 0xF9u8, 0x51u8, 0x29u8,
                              0xE5u8, 0xE5u8, 0x46u8, 0x70u8, 0xF1u8)
-                )
-            // FIXME: This test is disabled because it takes some
-            // minutes to run under rustboot+valgrind. It may be
-            // possible to reenable once things are more optimized.
-            /*,
+                ),
             rec(input = a_million_letter_a(),
                 output = vec(0x34u8, 0xAAu8, 0x97u8, 0x3Cu8, 0xD4u8,
                              0xC4u8, 0xDAu8, 0xA4u8, 0xF6u8, 0x1Eu8,
                              0xEBu8, 0x2Bu8, 0xDBu8, 0xADu8, 0x27u8,
                              0x31u8, 0x65u8, 0x34u8, 0x01u8, 0x6Fu8)
                 )
-            */
             );
 
     // Examples from wikipedia
