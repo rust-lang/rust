@@ -79,11 +79,15 @@ fn walk_expr(@env e, &@ast.expr x) {
 }
 
 fn walk_block(@env e, &ast.block b) {
-    for each (@tup(ast.ident, ast.block_index_entry) it in
-              b.node.index.items()) {
-        alt (it._1) {
-            case (ast.bie_local(?local)) {
-                e.idmap.insert(local.id, current_context(*e));
+    for (@ast.stmt st in b.node.stmts) {
+        alt (st.node) {
+            case (ast.stmt_decl(?d,_)) {
+                alt (d.node) {
+                    case (ast.decl_local(?loc)) {
+                        e.idmap.insert(loc.id, current_context(*e));
+                    }
+                    case (_) { }
+                }
             }
             case (_) { }
         }
