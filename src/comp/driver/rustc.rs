@@ -208,7 +208,7 @@ fn main(vec[str] args) {
                     optflag("glue"),
                     optflag("pretty"), optflag("ls"), optflag("parse-only"),
                     optflag("O"), optflag("shared"), optmulti("L"),
-                    optflag("S"), optflag("c"), optopt("o"), optopt("g"),
+                    optflag("S"), optflag("c"), optopt("o"), optflag("g"),
                     optflag("save-temps"), optopt("sysroot"),
                     optflag("time-passes"), optflag("time-llvm-passes"),
                     optflag("no-typestate"), optflag("noverify"));
