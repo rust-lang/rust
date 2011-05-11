@@ -162,6 +162,11 @@ check-stage2: tidy \
 
 
 check: tidy \
+       $(TEST_RPASS_EXES_STAGE2) $(TEST_RFAIL_EXES_STAGE2) \
+       $(TEST_RPASS_OUTS_STAGE2) $(TEST_RFAIL_OUTS_STAGE2) \
+       $(TEST_CFAIL_OUTS_STAGE2)
+
+full-check: tidy \
        $(TEST_RPASS_EXES_STAGE0) $(TEST_RFAIL_EXES_STAGE0) \
        $(TEST_RPASS_OUTS_STAGE0) $(TEST_RFAIL_OUTS_STAGE0) \
        $(TEST_CFAIL_OUTS_STAGE0) \
@@ -171,7 +176,6 @@ check: tidy \
        $(TEST_RPASS_EXES_STAGE2) $(TEST_RFAIL_EXES_STAGE2) \
        $(TEST_RPASS_OUTS_STAGE2) $(TEST_RFAIL_OUTS_STAGE2) \
        $(TEST_CFAIL_OUTS_STAGE2)
-
 
 compile-check: tidy \
        $(TEST_RPASS_EXES_STAGE0) $(TEST_RFAIL_EXES_STAGE0) \
