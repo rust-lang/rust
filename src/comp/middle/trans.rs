@@ -52,6 +52,8 @@ state obj namegen(mutable int i) {
     }
 }
 
+type derived_tydesc_info = rec(ValueRef lltydesc, bool escapes);
+
 type glue_fns = rec(ValueRef activate_glue,
                     ValueRef yield_glue,
                     ValueRef exit_task_glue,
@@ -131,6 +133,8 @@ state type fn_ctxt = rec(ValueRef llfn,
                          ValueRef llenv,
                          ValueRef llretptr,
                          mutable BasicBlockRef llallocas,
+                         mutable BasicBlockRef llcopyargs,
+                         mutable BasicBlockRef llderivedtydescs,
                          mutable Option.t[self_vt] llself,
                          mutable Option.t[ValueRef] lliterbody,
                          hashmap[ast.def_id, ValueRef] llargs,
@@ -138,6 +142,7 @@ state type fn_ctxt = rec(ValueRef llfn,
                          hashmap[ast.def_id, ValueRef] lllocals,
                          hashmap[ast.def_id, ValueRef] llupvars,
                          mutable vec[ValueRef] lltydescs,
+                         hashmap[ty.t, derived_tydesc_info] derived_tydescs,
                          @local_ctxt lcx);
 
 tag cleanup {
@@ -1613,7 +1618,7 @@ fn trans_stack_local_derived_tydesc(&@block_ctxt cx, ValueRef llsz,
                                     ValueRef llalign,
                                     ValueRef llroottydesc,
                                     &Option.t[ValueRef] llparamtydescs)
-    -> result {
+        -> ValueRef {
     auto llmyroottydesc = alloca(cx, T_tydesc(cx.fcx.lcx.ccx.tn));
 
     // By convention, desc 0 is the root descriptor.
@@ -1642,19 +1647,29 @@ fn trans_stack_local_derived_tydesc(&@block_ctxt cx, ValueRef llsz,
     cx.build.Store(llalign,
                    cx.build.GEP(llmyroottydesc, vec(C_int(0), C_int(2))));
 
-    ret res(cx, llmyroottydesc);
+    ret llmyroottydesc;
 }
 
 fn mk_derived_tydesc(&@block_ctxt cx, &ty.t t, bool escapes) -> result {
-    let uint n_params = ty.count_ty_params(cx.fcx.lcx.ccx.tcx, t);
-    auto tys = linearize_ty_params(cx, t);
+    alt (cx.fcx.derived_tydescs.find(t)) {
+        case (some[derived_tydesc_info](?info)) {
+            // If the tydesc escapes in this context, the cached derived
+            // tydesc also has to be one that was marked as escaping.
+            if (!(escapes && !info.escapes)) { ret res(cx, info.lltydesc); }
+        }
+        case (none[derived_tydesc_info]) { /* fall through */ }
+    }
+
+    auto bcx = new_raw_block_ctxt(cx.fcx, cx.fcx.llderivedtydescs);
+
+    let uint n_params = ty.count_ty_params(bcx.fcx.lcx.ccx.tcx, t);
+    auto tys = linearize_ty_params(bcx, t);
 
     assert (n_params == Vec.len[uint](tys._0));
     assert (n_params == Vec.len[ValueRef](tys._1));
 
-    auto root = get_static_tydesc(cx, t, tys._0).tydesc;
+    auto root = get_static_tydesc(bcx, t, tys._0).tydesc;
 
-    auto bcx = cx;
     auto sz = size_of(bcx, t);
     bcx = sz.bcx;
     auto align = align_of(bcx, t);
@@ -1662,16 +1677,17 @@ fn mk_derived_tydesc(&@block_ctxt cx, &ty.t t, bool escapes) -> result {
 
     auto v;
     if (escapes) {
-        auto tydescs = alloca(cx, T_array(T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn)),
-                                          1u /* for root*/ + n_params));
+        auto tydescs = alloca(bcx,
+                              T_array(T_ptr(T_tydesc(bcx.fcx.lcx.ccx.tn)),
+                                      1u /* for root*/ + n_params));
 
         auto i = 0;
-        auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
-        cx.build.Store(root, tdp);
+        auto tdp = bcx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
+        bcx.build.Store(root, tdp);
         i += 1;
         for (ValueRef td in tys._1) {
-            auto tdp = cx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
-            cx.build.Store(td, tdp);
+            auto tdp = bcx.build.GEP(tydescs, vec(C_int(0), C_int(i)));
+            bcx.build.Store(td, tdp);
             i += 1;
         }
 
@@ -1684,20 +1700,20 @@ fn mk_derived_tydesc(&@block_ctxt cx, &ty.t t, bool escapes) -> result {
                 align.val,
                 C_int((1u + n_params) as int),
                 lltydescsptr));
-        v = res(bcx, td_val);
+        v = td_val;
     } else {
         auto llparamtydescs_opt;
         if (n_params == 0u) {
             llparamtydescs_opt = none[ValueRef];
         } else {
-            auto llparamtydescs = alloca(cx,
-                T_array(T_ptr(T_tydesc(cx.fcx.lcx.ccx.tn)), n_params));
+            auto llparamtydescs = alloca(bcx,
+                T_array(T_ptr(T_tydesc(bcx.fcx.lcx.ccx.tn)), n_params));
 
             auto i = 0;
             for (ValueRef td in tys._1) {
-                auto tdp = cx.build.GEP(llparamtydescs,
+                auto tdp = bcx.build.GEP(llparamtydescs,
                                         vec(C_int(0), C_int(i)));
-                cx.build.Store(td, tdp);
+                bcx.build.Store(td, tdp);
                 i += 1;
             }
 
@@ -1708,7 +1724,9 @@ fn mk_derived_tydesc(&@block_ctxt cx, &ty.t t, bool escapes) -> result {
                                              llparamtydescs_opt);
     }
 
-    ret v;
+    bcx.fcx.derived_tydescs.insert(t, rec(lltydesc=v, escapes=escapes));
+
+    ret res(cx, v);
 }
 
 fn get_tydesc(&@block_ctxt cx, &ty.t t, bool escapes) -> result {
@@ -1863,8 +1881,6 @@ fn make_generic_glue(&@local_ctxt cx,
                      &make_generic_glue_helper_fn helper,
                      &vec[uint] ty_params) -> ValueRef {
     auto fcx = new_fn_ctxt(cx, llfn);
-    auto bcx = new_top_block_ctxt(fcx);
-    auto lltop = bcx.llbb;
 
     // Any nontrivial glue is with values passed *by alias*; this is a
     // requirement since in many contexts glue is invoked indirectly and
@@ -1882,16 +1898,22 @@ fn make_generic_glue(&@local_ctxt cx,
 
     auto lltyparams = llvm.LLVMGetParam(llfn, 3u);
 
+    auto copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
+
     auto lltydescs = Vec.empty_mut[ValueRef]();
     auto p = 0u;
     while (p < ty_param_count) {
-        auto llparam = bcx.build.GEP(lltyparams, vec(C_int(p as int)));
-        llparam = bcx.build.Load(llparam);
+        auto llparam = copy_args_bcx.build.GEP(lltyparams,
+                                               vec(C_int(p as int)));
+        llparam = copy_args_bcx.build.Load(llparam);
         Vec.grow_set[ValueRef](lltydescs, ty_params.(p), 0 as ValueRef,
                                 llparam);
         p += 1u;
     }
-    bcx.fcx.lltydescs = Vec.freeze[ValueRef](lltydescs);
+    fcx.lltydescs = Vec.freeze[ValueRef](lltydescs);
+
+    auto bcx = new_top_block_ctxt(fcx);
+    auto lltop = bcx.llbb;
 
     auto llrawptr0 = llvm.LLVMGetParam(llfn, 4u);
     auto llval0 = bcx.build.BitCast(llrawptr0, llty);
@@ -1910,8 +1932,7 @@ fn make_generic_glue(&@local_ctxt cx,
         }
     }
 
-    // Tie up the llallocas -> lltop edge.
-    new_builder(fcx.llallocas).Br(lltop);
+    finish_fn(fcx, lltop);
 
     ret llfn;
 }
@@ -3779,23 +3800,27 @@ fn trans_for_each(&@block_ctxt cx,
                                                        s, iter_body_llty);
 
     auto fcx = new_fn_ctxt(lcx, lliterbody);
-    auto bcx = new_top_block_ctxt(fcx);
-    auto lltop = bcx.llbb;
+
+    auto copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
 
     // Populate the upvars from the environment.
-    auto llremoteenvptr = bcx.build.PointerCast(fcx.llenv, llenvptrty);
+    auto llremoteenvptr = copy_args_bcx.build.PointerCast(fcx.llenv,
+                                                          llenvptrty);
     auto llremotebindingsptrptr =
-        bcx.build.GEP(llremoteenvptr, vec(C_int(0),
-                                          C_int(abi.box_rc_field_body),
-                                          C_int(abi.closure_elt_bindings)));
-    auto llremotebindingsptr = bcx.build.Load(llremotebindingsptrptr);
+        copy_args_bcx.build.GEP(llremoteenvptr,
+                                vec(C_int(0),
+                                    C_int(abi.box_rc_field_body),
+                                    C_int(abi.closure_elt_bindings)));
+    auto llremotebindingsptr =
+        copy_args_bcx.build.Load(llremotebindingsptrptr);
 
     i = 0u;
     while (i < upvar_count) {
         auto upvar_id = upvars.(i);
-        auto llupvarptrptr = bcx.build.GEP(llremotebindingsptr,
-                                           vec(C_int(0), C_int(i as int)));
-        auto llupvarptr = bcx.build.Load(llupvarptrptr);
+        auto llupvarptrptr =
+            copy_args_bcx.build.GEP(llremotebindingsptr,
+                                    vec(C_int(0), C_int(i as int)));
+        auto llupvarptr = copy_args_bcx.build.Load(llupvarptrptr);
         fcx.llupvars.insert(upvar_id, llupvarptr);
 
         i += 1u;
@@ -3803,17 +3828,17 @@ fn trans_for_each(&@block_ctxt cx,
 
     // Populate the type parameters from the environment.
     auto llremotetydescsptr =
-        bcx.build.GEP(llremoteenvptr,
-                      vec(C_int(0),
-                          C_int(abi.box_rc_field_body),
-                          C_int(abi.closure_elt_ty_params)));
+        copy_args_bcx.build.GEP(llremoteenvptr,
+                                vec(C_int(0),
+                                    C_int(abi.box_rc_field_body),
+                                    C_int(abi.closure_elt_ty_params)));
 
     i = 0u;
     while (i < tydesc_count) {
-        auto llremotetydescptr = bcx.build.GEP(llremotetydescsptr,
-                                               vec(C_int(0),
-                                                   C_int(i as int)));
-        auto llremotetydesc = bcx.build.Load(llremotetydescptr);
+        auto llremotetydescptr =
+            copy_args_bcx.build.GEP(llremotetydescsptr, vec(C_int(0),
+                                                            C_int(i as int)));
+        auto llremotetydesc = copy_args_bcx.build.Load(llremotetydescptr);
         fcx.lltydescs += vec(llremotetydesc);
         i += 1u;
     }
@@ -3821,10 +3846,11 @@ fn trans_for_each(&@block_ctxt cx,
     // Add an upvar for the loop variable alias.
     fcx.llupvars.insert(decl_id, llvm.LLVMGetParam(fcx.llfn, 3u));
 
+    auto bcx = new_top_block_ctxt(fcx);
+    auto lltop = bcx.llbb;
     auto r = trans_block(bcx, body);
 
-    // Tie up the llallocas -> lltop edge.
-    new_builder(fcx.llallocas).Br(lltop);
+    finish_fn(fcx, lltop);
 
     r.bcx.build.RetVoid();
 
@@ -4599,8 +4625,7 @@ fn trans_bind_thunk(&@local_ctxt cx,
     auto r = bcx.build.FastCall(lltargetfn, llargs);
     bcx.build.RetVoid();
 
-    // Tie up the llallocas -> lltop edge.
-    new_builder(fcx.llallocas).Br(lltop);
+    finish_fn(fcx, lltop);
 
     ret llthunk;
 }
@@ -5890,6 +5915,12 @@ fn new_sub_block_ctxt(&@block_ctxt bcx, &str n) -> @block_ctxt {
     ret new_block_ctxt(bcx.fcx, parent_some(bcx), NON_SCOPE_BLOCK, n);
 }
 
+fn new_raw_block_ctxt(&@fn_ctxt fcx, BasicBlockRef llbb) -> @block_ctxt {
+    let vec[cleanup] cleanups = vec();
+    ret @rec(llbb=llbb, build=new_builder(llbb), parent=parent_none,
+             kind=NON_SCOPE_BLOCK, mutable cleanups=cleanups, fcx=fcx);
+}
+
 
 fn trans_block_cleanups(&@block_ctxt cx,
                         &@block_ctxt cleanup_cx) -> @block_ctxt {
@@ -6056,6 +6087,15 @@ fn new_local_ctxt(&@crate_ctxt ccx) -> @local_ctxt {
              ccx = ccx);
 }
 
+// Creates the standard trio of basic blocks: allocas, copy-args, and derived
+// tydescs.
+fn mk_standard_basic_blocks(ValueRef llfn) ->
+        tup(BasicBlockRef, BasicBlockRef, BasicBlockRef) {
+    ret tup(llvm.LLVMAppendBasicBlock(llfn, Str.buf("allocas")),
+            llvm.LLVMAppendBasicBlock(llfn, Str.buf("copy_args")),
+            llvm.LLVMAppendBasicBlock(llfn, Str.buf("derived_tydescs")));
+}
+
 // NB: must keep 4 fns in sync:
 //
 //  - type_of_fn_full
@@ -6075,14 +6115,18 @@ fn new_fn_ctxt(@local_ctxt cx,
     let hashmap[ast.def_id, ValueRef] lllocals = new_def_hash[ValueRef]();
     let hashmap[ast.def_id, ValueRef] llupvars = new_def_hash[ValueRef]();
 
-    let BasicBlockRef llallocas =
-        llvm.LLVMAppendBasicBlock(llfndecl, Str.buf("allocas"));
+    auto derived_tydescs =
+        Map.mk_hashmap[ty.t, derived_tydesc_info](ty.hash_ty, ty.eq_ty);
+
+    auto llbbs = mk_standard_basic_blocks(llfndecl);
 
     ret @rec(llfn=llfndecl,
              lltaskptr=lltaskptr,
              llenv=llenv,
              llretptr=llretptr,
-             mutable llallocas = llallocas,
+             mutable llallocas=llbbs._0,
+             mutable llcopyargs=llbbs._1,
+             mutable llderivedtydescs=llbbs._2,
              mutable llself=none[self_vt],
              mutable lliterbody=none[ValueRef],
              llargs=llargs,
@@ -6090,6 +6134,7 @@ fn new_fn_ctxt(@local_ctxt cx,
              lllocals=lllocals,
              llupvars=llupvars,
              mutable lltydescs=Vec.empty[ValueRef](),
+             derived_tydescs=derived_tydescs,
              lcx=cx);
 }
 
@@ -6165,12 +6210,13 @@ fn copy_any_self_to_alloca(@fn_ctxt fcx,
 }
 
 
-fn copy_args_to_allocas(@block_ctxt bcx,
+fn copy_args_to_allocas(@fn_ctxt fcx,
                         vec[ast.arg] args,
                         vec[ty.arg] arg_tys) {
 
-    let uint arg_n = 0u;
+    auto bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
 
+    let uint arg_n = 0u;
     for (ast.arg aarg in args) {
         if (aarg.mode != ast.alias) {
             auto arg_t = type_of_arg(bcx.fcx.lcx, arg_tys.(arg_n));
@@ -6297,6 +6343,13 @@ fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, self_vt llself) {
     fcx.llallocas = bcx.llbb;
 }
 
+// Ties up the llallocas -> llcopyargs -> llderivedtydescs -> lltop edges.
+fn finish_fn(&@fn_ctxt fcx, BasicBlockRef lltop) {
+    new_builder(fcx.llallocas).Br(fcx.llcopyargs);
+    new_builder(fcx.llcopyargs).Br(fcx.llderivedtydescs);
+    new_builder(fcx.llderivedtydescs).Br(lltop);
+}
+
 fn trans_fn(@local_ctxt cx, &ast._fn f, ast.def_id fid,
             Option.t[tup(TypeRef, ty.t)] ty_self,
             &vec[ast.ty_param] ty_params, &ast.ann ann) {
@@ -6318,10 +6371,9 @@ fn trans_fn(@local_ctxt cx, &ast._fn f, ast.def_id fid,
     }
 
     auto arg_tys = arg_tys_of_fn(fcx.lcx.ccx, ann);
+    copy_args_to_allocas(fcx, f.decl.inputs, arg_tys);
 
     auto bcx = new_top_block_ctxt(fcx);
-    copy_args_to_allocas(bcx, f.decl.inputs, arg_tys);
-
     add_cleanups_for_args(bcx, f.decl.inputs, arg_tys);
 
     auto lltop = bcx.llbb;
@@ -6333,8 +6385,7 @@ fn trans_fn(@local_ctxt cx, &ast._fn f, ast.def_id fid,
         res.bcx.build.RetVoid();
     }
 
-    // Tie up the llallocas -> lltop edge.
-    new_builder(fcx.llallocas).Br(lltop);
+    finish_fn(fcx, lltop);
 }
 
 fn trans_vtbl(@local_ctxt cx,
@@ -6432,9 +6483,9 @@ fn trans_obj(@local_ctxt cx, &ast._obj ob, ast.def_id oid,
                               fn_args, ty_params);
 
     let vec[ty.arg] arg_tys = arg_tys_of_fn(ccx, ann);
+    copy_args_to_allocas(fcx, fn_args, arg_tys);
 
     auto bcx = new_top_block_ctxt(fcx);
-    copy_args_to_allocas(bcx, fn_args, arg_tys);
     auto lltop = bcx.llbb;
 
     auto self_ty = ret_ty_of_fn(ccx, ann);
@@ -6546,8 +6597,7 @@ fn trans_obj(@local_ctxt cx, &ast._obj ob, ast.def_id oid,
     }
     bcx.build.RetVoid();
 
-    // Tie up the llallocas -> lltop edge.
-    new_builder(fcx.llallocas).Br(lltop);
+    finish_fn(fcx, lltop);
 }
 
 fn trans_tag_variant(@local_ctxt cx, ast.def_id tag_id,
@@ -6585,9 +6635,9 @@ fn trans_tag_variant(@local_ctxt cx, ast.def_id tag_id,
     }
 
     auto arg_tys = arg_tys_of_fn(cx.ccx, variant.node.ann);
+    copy_args_to_allocas(fcx, fn_args, arg_tys);
 
     auto bcx = new_top_block_ctxt(fcx);
-    copy_args_to_allocas(bcx, fn_args, arg_tys);
     auto lltop = bcx.llbb;
 
     // Cast the tag to a type we can GEP into.
@@ -6632,8 +6682,7 @@ fn trans_tag_variant(@local_ctxt cx, ast.def_id tag_id,
     bcx = trans_block_cleanups(bcx, find_scope_cx(bcx));
     bcx.build.RetVoid();
 
-    // Tie up the llallocas -> lltop edge.
-    new_builder(fcx.llallocas).Br(lltop);
+    finish_fn(fcx, lltop);
 }
 
 // FIXME: this should do some structural hash-consing to avoid
@@ -6973,8 +7022,7 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx,
 
     bcx.build.RetVoid();
 
-    // Tie up the llallocas -> lltop edge.
-    new_builder(fcx.llallocas).Br(lltop);
+    finish_fn(fcx, lltop);
 }
 
 type walk_ctxt = rec(mutable vec[str] path);
@@ -7469,15 +7517,18 @@ fn trans_vec_append_glue(@local_ctxt cx) {
     let ValueRef lldst_vec_ptr = llvm.LLVMGetParam(llfn, 3u);
     let ValueRef llsrc_vec = llvm.LLVMGetParam(llfn, 4u);
     let ValueRef llskipnull = llvm.LLVMGetParam(llfn, 5u);
+    auto derived_tydescs =
+        Map.mk_hashmap[ty.t, derived_tydesc_info](ty.hash_ty, ty.eq_ty);
 
-    let BasicBlockRef llallocas =
-        llvm.LLVMAppendBasicBlock(llfn, Str.buf("allocas"));
+    auto llbbs = mk_standard_basic_blocks(llfn);
 
     auto fcx = @rec(llfn=llfn,
                     lltaskptr=lltaskptr,
                     llenv=C_null(T_ptr(T_nil())),
                     llretptr=C_null(T_ptr(T_nil())),
-                    mutable llallocas = llallocas,
+                    mutable llallocas = llbbs._0,
+                    mutable llcopyargs = llbbs._1,
+                    mutable llderivedtydescs = llbbs._2,
                     mutable llself=none[self_vt],
                     mutable lliterbody=none[ValueRef],
                     llargs=new_def_hash[ValueRef](),
@@ -7485,6 +7536,7 @@ fn trans_vec_append_glue(@local_ctxt cx) {
                     lllocals=new_def_hash[ValueRef](),
                     llupvars=new_def_hash[ValueRef](),
                     mutable lltydescs=Vec.empty[ValueRef](),
+                    derived_tydescs=derived_tydescs,
                     lcx=cx);
 
     auto bcx = new_top_block_ctxt(fcx);
@@ -7590,8 +7642,7 @@ fn trans_vec_append_glue(@local_ctxt cx) {
     copy_src_cx.build.Store(llnew_vec, lldst_vec_ptr);
     copy_src_cx.build.RetVoid();
 
-    // Tie up the llallocas -> lltop edge.
-    new_builder(fcx.llallocas).Br(lltop);
+    finish_fn(fcx, lltop);
 }
 
 
