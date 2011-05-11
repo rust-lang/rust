@@ -1889,17 +1889,12 @@ fn parse_item_obj(parser p, ast.layer lyr) -> @ast.item {
 }
 
 fn parse_mod_items(parser p, token.token term) -> ast._mod {
-    auto index = new_str_hash[ast.mod_index_entry]();
-    auto view_items = parse_view(p, index);
+    auto view_items = parse_view(p);
     let vec[@ast.item] items = vec();
     while (p.peek() != term) {
-        auto item = parse_item(p);
-        items += vec(item);
-
-        // Index the item.
-        ast.index_item(index, item);
+        items += vec(parse_item(p));
     }
-    ret rec(view_items=view_items, items=items, index=index);
+    ret rec(view_items=view_items, items=items);
 }
 
 fn parse_item_const(parser p) -> @ast.item {
@@ -1972,22 +1967,16 @@ fn parse_native_item(parser p) -> @ast.native_item {
 fn parse_native_mod_items(parser p,
                                  str native_name,
                                  ast.native_abi abi) -> ast.native_mod {
-    auto index = new_str_hash[ast.native_mod_index_entry]();
     let vec[@ast.native_item] items = vec();
 
-    auto view_items = parse_native_view(p, index);
+    auto view_items = parse_native_view(p);
 
     while (p.peek() != token.RBRACE) {
-        auto item = parse_native_item(p);
-        items += vec(item);
-
-        // Index the item.
-        ast.index_native_item(index, item);
+        items += vec(parse_native_item(p));
     }
     ret rec(native_name=native_name, abi=abi,
             view_items=view_items,
-            items=items,
-            index=index);
+            items=items);
 }
 
 fn default_native_name(session.session sess, str id) -> str {
@@ -2353,25 +2342,18 @@ fn is_view_item(token.token t) -> bool {
     ret false;
 }
 
-fn parse_view(parser p, ast.mod_index index) -> vec[@ast.view_item] {
+fn parse_view(parser p) -> vec[@ast.view_item] {
     let vec[@ast.view_item] items = vec();
     while (is_view_item(p.peek())) {
-        auto item = parse_view_item(p);
-        items += vec(item);
-
-        ast.index_view_item(index, item);
+        items += vec(parse_view_item(p));
     }
     ret items;
 }
 
-fn parse_native_view(parser p, ast.native_mod_index index)
-    -> vec[@ast.view_item] {
+fn parse_native_view(parser p) -> vec[@ast.view_item] {
     let vec[@ast.view_item] items = vec();
     while (is_view_item(p.peek())) {
-        auto item = parse_view_item(p);
-        items += vec(item);
-
-        ast.index_native_view_item(index, item);
+        items += vec(parse_view_item(p));
     }
     ret items;
 }

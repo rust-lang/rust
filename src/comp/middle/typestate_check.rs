@@ -6,7 +6,6 @@ import front.ast.mutability;
 import front.ast.item;
 import front.ast.block;
 import front.ast.block_;
-import front.ast.mod_index_entry;
 import front.ast.obj_field;
 import front.ast.decl;
 import front.ast.arm;
@@ -83,8 +82,6 @@ import front.ast.ann_type;
 import front.ast._obj;
 import front.ast._mod;
 import front.ast.crate;
-import front.ast.mod_index_entry;
-import front.ast.mie_item;
 import front.ast.item_fn;
 import front.ast.item_obj;
 import front.ast.def_local;
@@ -2357,14 +2354,12 @@ fn annotate_fn(&fn_info_map fm, &ast._fn f) -> ast._fn {
 }
 fn annotate_mod(&fn_info_map fm, &ast._mod m) -> ast._mod {
     let vec[@item] new_items = vec();
-    auto new_index = new_str_hash[mod_index_entry]();
 
     for (@item i in m.items) {
         auto new_i = annotate_item(fm, i);
         Vec.push[@item](new_items, new_i);
-        ast.index_item(new_index, new_i);
     }
-    ret rec(items=new_items, index=new_index with m);
+    ret rec(items=new_items with m);
 }
 fn annotate_method(&fn_info_map fm, &@method m) -> @method {
     auto f_info = get_fn_info(fm, m.node.id);
@@ -2471,15 +2466,13 @@ fn annotate_item(&fn_info_map fm, &@ast.item item) -> @ast.item {
 
 fn annotate_module(&fn_info_map fm, &ast._mod module) -> ast._mod {
     let vec[@item] new_items = vec();
-    auto new_index = new_str_hash[ast.mod_index_entry]();
 
     for (@item i in module.items) {
         auto new_item = annotate_item(fm, i);
         Vec.push[@item](new_items, new_item);
-        ast.index_item(new_index, new_item);
     }
 
-    ret rec(items = new_items, index = new_index with module);
+    ret rec(items = new_items with module);
 }
 
 fn annotate_crate(&fn_info_map fm, &@ast.crate crate) -> @ast.crate {

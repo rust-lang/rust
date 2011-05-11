@@ -360,21 +360,8 @@ type _obj = rec(vec[obj_field] fields,
                 vec[@method] methods,
                 Option.t[@method] dtor);
 
-tag mod_index_entry {
-    mie_view_item(@view_item);
-    mie_item(@item);
-    mie_tag_variant(@item /* tag item */, uint /* variant index */);
-}
-
-tag native_mod_index_entry {
-    nmie_view_item(@view_item);
-    nmie_item(@native_item);
-}
-
-type mod_index = hashmap[ident,mod_index_entry];
 type _mod = rec(vec[@view_item] view_items,
-                vec[@item] items,
-                mod_index index);
+                vec[@item] items);
 
 tag native_abi {
     native_abi_rust;
@@ -386,9 +373,7 @@ tag native_abi {
 type native_mod = rec(str native_name,
                       native_abi abi,
                       vec[@view_item] view_items,
-                      vec[@native_item] items,
-                      native_mod_index index);
-type native_mod_index = hashmap[ident,native_mod_index_entry];
+                      vec[@native_item] items);
 
 type variant_arg = rec(@ty ty, def_id id);
 type variant_ = rec(str name, vec[variant_arg] args, def_id id, ann ann);
@@ -431,78 +416,6 @@ tag native_item_ {
     native_item_ty(ident, def_id);
     native_item_fn(ident, Option.t[str],
                    fn_decl, vec[ty_param], def_id, ann);
-}
-
-fn index_view_item(mod_index index, @view_item it) {
-    alt (it.node) {
-        case(ast.view_item_use(?id, _, _, _)) {
-            index.insert(id, ast.mie_view_item(it));
-        }
-        case(ast.view_item_import(?def_ident,_,_)) {
-            index.insert(def_ident, ast.mie_view_item(it));
-        }
-        case(ast.view_item_export(_)) {
-            // NB: don't index these, they might collide with
-            // the import or use that they're exporting. Have
-            // to do linear search for exports.
-        }
-    }
-}
-
-fn index_item(mod_index index, @item it) {
-    alt (it.node) {
-        case (ast.item_const(?id, _, _, _, _)) {
-            index.insert(id, ast.mie_item(it));
-        }
-        case (ast.item_fn(?id, _, _, _, _)) {
-            index.insert(id, ast.mie_item(it));
-        }
-        case (ast.item_mod(?id, _, _)) {
-            index.insert(id, ast.mie_item(it));
-        }
-        case (ast.item_native_mod(?id, _, _)) {
-            index.insert(id, ast.mie_item(it));
-        }
-        case (ast.item_ty(?id, _, _, _, _)) {
-            index.insert(id, ast.mie_item(it));
-        }
-        case (ast.item_tag(?id, ?variants, _, _, _)) {
-            index.insert(id, ast.mie_item(it));
-            let uint variant_idx = 0u;
-            for (ast.variant v in variants) {
-                index.insert(v.node.name,
-                             ast.mie_tag_variant(it, variant_idx));
-                variant_idx += 1u;
-            }
-        }
-        case (ast.item_obj(?id, _, _, _, _)) {
-            index.insert(id, ast.mie_item(it));
-        }
-    }
-}
-
-fn index_native_item(native_mod_index index, @native_item it) {
-    alt (it.node) {
-        case (ast.native_item_ty(?id, _)) {
-            index.insert(id, ast.nmie_item(it));
-        }
-        case (ast.native_item_fn(?id, _, _, _, _, _)) {
-            index.insert(id, ast.nmie_item(it));
-        }
-    }
-}
-
-fn index_native_view_item(native_mod_index index, @view_item it) {
-    alt (it.node) {
-        case(ast.view_item_import(?def_ident,_,_)) {
-            index.insert(def_ident, ast.nmie_view_item(it));
-        }
-        case(ast.view_item_export(_)) {
-            // NB: don't index these, they might collide with
-            // the import or use that they're exporting. Have
-            // to do linear search for exports.
-        }
-    }
 }
 
 fn is_exported(ident i, _mod m) -> bool {

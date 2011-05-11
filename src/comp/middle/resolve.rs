@@ -7,6 +7,7 @@ import front.creader;
 import driver.session.session;
 import util.common.new_def_hash;
 import util.common.new_int_hash;
+import util.common.new_str_hash;
 import util.common.span;
 import util.typestate_ann.ts_ann;
 import std.Map.hashmap;
@@ -26,6 +27,11 @@ import std.Vec;
 // locates all names (in expressions, types, and alt patterns) and resolves
 // them, storing the resulting def in the AST nodes.
 
+// This module internally uses -1 as a def_id for the top_level module in a
+// crate. The parser doesn't assign a def_id to this module.
+// (FIXME See https://github.com/graydon/rust/issues/358 for the reason this
+//  isn't a const.)
+
 tag scope {
     scope_crate(@ast.crate);
     scope_item(@ast.item);
@@ -35,10 +41,6 @@ tag scope {
     scope_arm(ast.arm);
 }
 
-tag wrap_mod {
-    wmod(ast._mod);
-    wnmod(ast.native_mod);
-}
 tag import_state {
     todo(@ast.view_item, list[scope]);
     resolving(span);
@@ -57,8 +59,24 @@ fn new_ext_hash() -> ext_hash {
     ret std.Map.mk_hashmap[tup(def_id,str),def](hash, eq);
 }
 
+tag mod_index_entry {
+    mie_view_item(@ast.view_item);
+    mie_item(@ast.item);
+    mie_tag_variant(@ast.item /* tag item */, uint /* variant index */);
+}
+type mod_index = hashmap[ident,mod_index_entry];
+type indexed_mod = rec(ast._mod m, mod_index index);
+
+tag native_mod_index_entry {
+    nmie_view_item(@ast.view_item);
+    nmie_item(@ast.native_item);
+}
+type nmod_index = hashmap[ident,native_mod_index_entry];
+type indexed_nmod = rec(ast.native_mod m, nmod_index index);
+
 type env = rec(hashmap[ast.def_num,import_state] imports,
-               hashmap[ast.def_num,@wrap_mod] mod_map,
+               hashmap[ast.def_num,@indexed_mod] mod_map,
+               hashmap[ast.def_num,@indexed_nmod] nmod_map,
                hashmap[def_id,vec[ident]] ext_map,
                ext_hash ext_cache,
                session sess);
@@ -74,7 +92,8 @@ tag namespace {
 
 fn resolve_crate(session sess, @ast.crate crate) -> @ast.crate {
     auto e = @rec(imports = new_int_hash[import_state](),
-                  mod_map = new_int_hash[@wrap_mod](),
+                  mod_map = new_int_hash[@indexed_mod](),
+                  nmod_map = new_int_hash[@indexed_nmod](),
                   ext_map = new_def_hash[vec[ident]](),
                   ext_cache = new_ext_hash(),
                   sess = sess);
@@ -94,6 +113,9 @@ fn map_crate(&@env e, &ast.crate c) {
                  visit_item_pre = bind push_env_for_item_map_mod(e, cell, _),
                  visit_item_post = bind pop_env_for_item(cell, _)
                  with walk.default_visitor());
+    // Register the top-level mod
+    e.mod_map.insert(-1, @rec(m=c.node.module,
+                              index=index_mod(c.node.module)));
     walk.walk_crate(v, c);
 
     // Helpers for this pass.
@@ -108,10 +130,12 @@ fn map_crate(&@env e, &ast.crate c) {
         *sc = cons[scope](scope_item(i), @*sc);
         alt (i.node) {
             case (ast.item_mod(_, ?md, ?defid)) {
-                e.mod_map.insert(defid._1, @wmod(md));
+                auto index = index_mod(md);
+                e.mod_map.insert(defid._1, @rec(m=md, index=index));
             }
             case (ast.item_native_mod(_, ?nmd, ?defid)) {
-                e.mod_map.insert(defid._1, @wnmod(nmd));
+                auto index = index_nmod(nmd);
+                e.nmod_map.insert(defid._1, @rec(m=nmd, index=index));
             }
             case (_) {}
         }
@@ -375,7 +399,8 @@ fn lookup_in_scope(&env e, list[scope] sc, ident id, namespace ns)
         -> Option.t[def] {
         alt (s) {
             case (scope_crate(?c)) {
-                ret lookup_in_regular_mod(e, c.node.module, id, ns, inside);
+                auto defid = tup(ast.local_crate, -1);
+                ret lookup_in_regular_mod(e, defid, id, ns, inside);
             }
             case (scope_item(?it)) {
                 alt (it.node) {
@@ -390,11 +415,11 @@ fn lookup_in_scope(&env e, list[scope] sc, ident id, namespace ns)
                             ret lookup_in_ty_params(id, ty_params);
                         }
                     }
-                    case (ast.item_mod(_, ?m, _)) {
-                        ret lookup_in_regular_mod(e, m, id, ns, inside);
+                    case (ast.item_mod(_, _, ?defid)) {
+                        ret lookup_in_regular_mod(e, defid, id, ns, inside);
                     }
-                    case (ast.item_native_mod(_, ?m, _)) {
-                        ret lookup_in_native_mod(e, m, id, ns);
+                    case (ast.item_native_mod(_, ?m, ?defid)) {
+                        ret lookup_in_native_mod(e, defid, id, ns);
                     }
                     case (ast.item_ty(_, _, ?ty_params, _, _)) {
                         if (ns == ns_type) {
@@ -606,8 +631,6 @@ fn lookup_in_mod(&env e, def m, ident id, namespace ns, dir dr)
             ret cached;
         }
         auto path = vec(id);
-        // def_num=-1 is a kludge to overload def_mod for external crates,
-        // since those don't get a def num
         if (defid._1 != -1) {
             path = e.ext_map.get(defid) + path;
         }
@@ -619,18 +642,10 @@ fn lookup_in_mod(&env e, def m, ident id, namespace ns, dir dr)
     }
     alt (m) {
         case (ast.def_mod(?defid)) {
-            alt (*e.mod_map.get(defid._1)) {
-                case (wmod(?m)) {
-                    ret lookup_in_regular_mod(e, m, id, ns, dr);
-                }
-            }
+            ret lookup_in_regular_mod(e, defid, id, ns, dr);
         }
         case (ast.def_native_mod(?defid)) {
-            alt (*e.mod_map.get(defid._1)) {
-                case (wnmod(?m)) {
-                    ret lookup_in_native_mod(e, m, id, ns);
-                }
-            }
+            ret lookup_in_native_mod(e, defid, id, ns);
         }
     }
 }
@@ -646,21 +661,22 @@ fn found_view_item(&env e, @ast.view_item vi, namespace ns) -> Option.t[def] {
     }
 }
 
-fn lookup_in_regular_mod(&env e, &ast._mod md, ident id, namespace ns, dir dr)
+fn lookup_in_regular_mod(&env e, def_id defid, ident id, namespace ns, dir dr)
     -> Option.t[def] {
-    auto found = md.index.find(id);
-    if (found == none[ast.mod_index_entry] || 
-        (dr == outside && !ast.is_exported(id, md))) {
+    auto info = e.mod_map.get(defid._1);
+    auto found = info.index.find(id);
+    if (found == none[mod_index_entry] || 
+        (dr == outside && !ast.is_exported(id, info.m))) {
         ret none[def];
     }
     alt (Option.get(found)) {
-        case (ast.mie_view_item(?view_item)) {
+        case (mie_view_item(?view_item)) {
             ret found_view_item(e, view_item, ns);
         }
-        case (ast.mie_item(?item)) {
+        case (mie_item(?item)) {
             ret found_def_item(item, ns);
         }
-        case (ast.mie_tag_variant(?item, ?variant_idx)) {
+        case (mie_tag_variant(?item, ?variant_idx)) {
             alt (item.node) {
                 case (ast.item_tag(_, ?variants, _, ?tid, _)) {
                     if (ns == ns_value) {
@@ -675,17 +691,18 @@ fn lookup_in_regular_mod(&env e, &ast._mod md, ident id, namespace ns, dir dr)
     }
 }
 
-fn lookup_in_native_mod(&env e, &ast.native_mod md, ident id, namespace ns)
+fn lookup_in_native_mod(&env e, def_id defid, ident id, namespace ns)
     -> Option.t[def] {
-    auto found = md.index.find(id);
-    if (found == none[ast.native_mod_index_entry]) {
+    auto info = e.nmod_map.get(defid._1);
+    auto found = info.index.find(id);
+    if (found == none[native_mod_index_entry]) {
         ret none[def];
     }
     alt (Option.get(found)) {
-        case (ast.nmie_view_item(?view_item)) {
+        case (nmie_view_item(?view_item)) {
             ret found_view_item(e, view_item, ns);
         }
-        case (ast.nmie_item(?item)) {
+        case (nmie_item(?item)) {
             alt (item.node) {
                 case (ast.native_item_ty(_, ?id)) {
                     if (ns == ns_type) {
@@ -703,6 +720,86 @@ fn lookup_in_native_mod(&env e, &ast.native_mod md, ident id, namespace ns)
     }
     ret none[def];
 }
+
+// Module indexing
+
+fn index_mod(&ast._mod md) -> mod_index {
+    auto index = new_str_hash[mod_index_entry]();
+
+    for (@ast.view_item it in md.view_items) {
+        alt (it.node) {
+            case(ast.view_item_use(?id, _, _, _)) {
+                index.insert(id, mie_view_item(it));
+            }
+            case(ast.view_item_import(?def_ident,_,_)) {
+                index.insert(def_ident, mie_view_item(it));
+            }
+            case(ast.view_item_export(_)) {}
+        }
+    }
+
+    for (@ast.item it in md.items) {
+        alt (it.node) {
+            case (ast.item_const(?id, _, _, _, _)) {
+                index.insert(id, mie_item(it));
+            }
+            case (ast.item_fn(?id, _, _, _, _)) {
+                index.insert(id, mie_item(it));
+            }
+            case (ast.item_mod(?id, _, _)) {
+                index.insert(id, mie_item(it));
+            }
+            case (ast.item_native_mod(?id, _, _)) {
+                index.insert(id, mie_item(it));
+            }
+            case (ast.item_ty(?id, _, _, _, _)) {
+                index.insert(id, mie_item(it));
+            }
+            case (ast.item_tag(?id, ?variants, _, _, _)) {
+                index.insert(id, mie_item(it));
+                let uint variant_idx = 0u;
+                for (ast.variant v in variants) {
+                    index.insert(v.node.name,
+                                 mie_tag_variant(it, variant_idx));
+                    variant_idx += 1u;
+                }
+            }
+            case (ast.item_obj(?id, _, _, _, _)) {
+                index.insert(id, mie_item(it));
+            }
+        }
+    }
+
+    ret index;
+}
+
+fn index_nmod(&ast.native_mod md) -> nmod_index {
+    auto index = new_str_hash[native_mod_index_entry]();
+
+    for (@ast.view_item it in md.view_items) {
+        alt (it.node) {
+            case(ast.view_item_import(?def_ident,_,_)) {
+                index.insert(def_ident, nmie_view_item(it));
+            }
+            case(ast.view_item_export(_)) {}
+        }
+    }
+
+    for (@ast.native_item it in md.items) {
+        alt (it.node) {
+            case (ast.native_item_ty(?id, _)) {
+                index.insert(id, nmie_item(it));
+            }
+            case (ast.native_item_fn(?id, _, _, _, _, _)) {
+                index.insert(id, nmie_item(it));
+            }
+        }
+    }
+
+    ret index;
+}
+
+// External lookups
 
 // FIXME creader should handle multiple namespaces
 fn check_def_by_ns(def d, namespace ns) -> bool {

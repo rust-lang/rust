@@ -236,13 +236,11 @@ fn eval_crate_directives(ctx cx,
                                 vec[@ast.crate_directive] cdirs,
                                 str prefix,
                                 &mutable vec[@ast.view_item] view_items,
-                                &mutable vec[@ast.item] items,
-                                hashmap[ast.ident,
-                                        ast.mod_index_entry] index) {
+                                &mutable vec[@ast.item] items) {
 
     for (@ast.crate_directive sub_cdir in cdirs) {
         eval_crate_directive(cx, e, sub_cdir, prefix,
-                             view_items, items, index);
+                             view_items, items);
     }
 }
 
@@ -252,12 +250,11 @@ fn eval_crate_directives_to_mod(ctx cx, env e,
                                        str prefix) -> ast._mod {
     let vec[@ast.view_item] view_items = vec();
     let vec[@ast.item] items = vec();
-    auto index = new_str_hash[ast.mod_index_entry]();
 
     eval_crate_directives(cx, e, cdirs, prefix,
-                          view_items, items, index);
+                          view_items, items);
 
-    ret rec(view_items=view_items, items=items, index=index);
+    ret rec(view_items=view_items, items=items);
 }
 
 
@@ -266,15 +263,13 @@ fn eval_crate_directive_block(ctx cx,
                                      &ast.block blk,
                                      str prefix,
                                      &mutable vec[@ast.view_item] view_items,
-                                     &mutable vec[@ast.item] items,
-                                     hashmap[ast.ident,
-                                             ast.mod_index_entry] index) {
+                                     &mutable vec[@ast.item] items) {
 
     for (@ast.stmt s in blk.node.stmts) {
         alt (s.node) {
             case (ast.stmt_crate_directive(?cdir)) {
                 eval_crate_directive(cx, e, cdir, prefix,
-                                     view_items, items, index);
+                                     view_items, items);
             }
             case (_) {
                 cx.sess.span_err(s.span,
@@ -289,9 +284,7 @@ fn eval_crate_directive_expr(ctx cx,
                                     @ast.expr x,
                                     str prefix,
                                     &mutable vec[@ast.view_item] view_items,
-                                    &mutable vec[@ast.item] items,
-                                    hashmap[ast.ident,
-                                            ast.mod_index_entry] index) {
+                                    &mutable vec[@ast.item] items) {
     alt (x.node) {
 
         case (ast.expr_if(?cond, ?thn, ?elopt, _)) {
@@ -302,15 +295,13 @@ fn eval_crate_directive_expr(ctx cx,
 
             if (val_as_bool(cv)) {
                 ret eval_crate_directive_block(cx, e, thn, prefix,
-                                               view_items, items,
-                                               index);
+                                               view_items, items);
             }
 
             alt (elopt) {
                 case (some[@ast.expr](?els)) {
                     ret eval_crate_directive_expr(cx, e, els, prefix,
-                                                  view_items, items,
-                                                  index);
+                                                  view_items, items);
                 }
                 case (_) {
                     // Absent-else is ok.
@@ -326,14 +317,13 @@ fn eval_crate_directive_expr(ctx cx,
                         auto pv = eval_lit(cx, arm.pat.span, lit);
                         if (val_eq(cx.sess, arm.pat.span, vv, pv)) {
                             ret eval_crate_directive_block
-                                (cx, e, arm.block, prefix,
-                                 view_items, items, index);
+                                (cx, e, arm.block, prefix, view_items, items);
                         }
                     }
                     case (ast.pat_wild(_)) {
                         ret eval_crate_directive_block
                             (cx, e, arm.block, prefix,
-                             view_items, items, index);
+                             view_items, items);
                     }
                     case (_) {
                         cx.sess.span_err(arm.pat.span,
@@ -346,8 +336,7 @@ fn eval_crate_directive_expr(ctx cx,
 
         case (ast.expr_block(?block, _)) {
             ret eval_crate_directive_block(cx, e, block, prefix,
-                                           view_items, items,
-                                           index);
+                                           view_items, items);
         }
 
         case (_) {
@@ -361,21 +350,19 @@ fn eval_crate_directive(ctx cx,
                                @ast.crate_directive cdir,
                                str prefix,
                                &mutable vec[@ast.view_item] view_items,
-                               &mutable vec[@ast.item] items,
-                               hashmap[ast.ident,
-                                       ast.mod_index_entry] index) {
+                               &mutable vec[@ast.item] items) {
     alt (cdir.node) {
 
         case (ast.cdir_let(?id, ?x, ?cdirs)) {
             auto v = eval_expr(cx, e, x);
             auto e0 = vec(tup(id, v)) + e;
             eval_crate_directives(cx, e0, cdirs, prefix,
-                                  view_items, items, index);
+                                  view_items, items);
         }
 
         case (ast.cdir_expr(?x)) {
             eval_crate_directive_expr(cx, e, x, prefix,
-                                      view_items, items, index);
+                                      view_items, items);
         }
 
         case (ast.cdir_src_mod(?id, ?file_opt)) {
@@ -404,7 +391,6 @@ fn eval_crate_directive(ctx cx,
             cx.chpos = p0.get_chpos();
             auto im = ast.item_mod(id, m0, next_id);
             auto i = @spanned(cdir.span.lo, cdir.span.hi, im);
-            ast.index_item(index, i);
             Vec.push[@ast.item](items, i);
         }
 
@@ -422,13 +408,11 @@ fn eval_crate_directive(ctx cx,
             auto m0 = eval_crate_directives_to_mod(cx, e, cdirs, full_path);
             auto im = ast.item_mod(id, m0, cx.p.next_def_id());
             auto i = @spanned(cdir.span.lo, cdir.span.hi, im);
-            ast.index_item(index, i);
             Vec.push[@ast.item](items, i);
         }
 
         case (ast.cdir_view_item(?vi)) {
             Vec.push[@ast.view_item](view_items, vi);
-            ast.index_view_item(index, vi);
         }
 
         case (ast.cdir_meta(?mi)) {

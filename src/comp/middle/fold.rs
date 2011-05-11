@@ -1057,21 +1057,18 @@ fn fold_mod[ENV](&ENV e, &ast_fold[ENV] fld, &ast._mod m) -> ast._mod {
 
     let vec[@view_item] view_items = vec();
     let vec[@item] items = vec();
-    auto index = new_str_hash[ast.mod_index_entry]();
 
     for (@view_item vi in m.view_items) {
         auto new_vi = fold_view_item[ENV](e, fld, vi);
         Vec.push[@view_item](view_items, new_vi);
-        ast.index_view_item(index, new_vi);
     }
 
     for (@item i in m.items) {
         auto new_item = fold_item[ENV](e, fld, i);
         Vec.push[@item](items, new_item);
-        ast.index_item(index, new_item);
     }
 
-    ret fld.fold_mod(e, rec(view_items=view_items, items=items, index=index));
+    ret fld.fold_mod(e, rec(view_items=view_items, items=items));
 }
 
 fn fold_native_item[ENV](&ENV env, &ast_fold[ENV] fld,
@@ -1098,7 +1095,6 @@ fn fold_native_mod[ENV](&ENV e, &ast_fold[ENV] fld,
                         &ast.native_mod m) -> ast.native_mod {
     let vec[@view_item] view_items = vec();
     let vec[@native_item] items = vec();
-    auto index = new_str_hash[ast.native_mod_index_entry]();
 
     for (@view_item vi in m.view_items) {
         auto new_vi = fold_view_item[ENV](e, fld, vi);
@@ -1108,14 +1104,12 @@ fn fold_native_mod[ENV](&ENV e, &ast_fold[ENV] fld,
     for (@native_item i in m.items) {
         auto new_item = fold_native_item[ENV](e, fld, i);
         Vec.push[@native_item](items, new_item);
-        ast.index_native_item(index, new_item);
     }
 
     ret fld.fold_native_mod(e, rec(native_name=m.native_name,
                                    abi=m.abi,
                                    view_items=view_items,
-                                   items=items,
-                                   index=index));
+                                   items=items));
 }
 
 fn fold_crate[ENV](&ENV env, &ast_fold[ENV] fld,
