@@ -15,8 +15,8 @@ stage1/librustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ0)
 
 stage1/$(CFG_RUSTCLIB): stage1/librustc.o stage1/glue.o
 	@$(call E, link: $@)
-	$(Q)gcc $(CFG_GCC_CFLAGS) stage1/glue.o $(CFG_GCC_LINK_FLAGS) -o $@ $< \
-		-Lstage1 -Lrt -lrustrt
+	$(Q)gcc $(CFG_GCCISH_CFLAGS) stage1/glue.o $(CFG_GCCISH_LINK_FLAGS) \
+	-o $@ $< -Lstage1 -Lrt -lrustrt
 
 stage1/rustc.o: $(COMPILER_CRATE) $(COMPILER_INPUTS) $(SREQ0)
 	@$(call E, compile: $@)
