@@ -43,10 +43,23 @@ tag import_state {
     resolving(span);
     resolved(Option.t[def] /* value */, Option.t[def] /* type */);
 }
-        
-type env = rec(std.Map.hashmap[def_id,import_state] imports,
-               std.Map.hashmap[def_id,@wrap_mod] mod_map,
-               std.Map.hashmap[def_id,vec[ident]] ext_map,
+
+type ext_hash = hashmap[tup(def_id,str),def];
+fn new_ext_hash() -> ext_hash {
+    fn hash(&tup(def_id,str) v) -> uint {
+        ret Str.hash(v._1) + util.common.hash_def(v._0);
+    }
+    fn eq(&tup(def_id,str) v1, &tup(def_id,str) v2) -> bool {
+        ret util.common.def_eq(v1._0, v2._0) &&
+            Str.eq(v1._1, v2._1);
+    }
+    ret std.Map.mk_hashmap[tup(def_id,str),def](hash, eq);
+}
+
+type env = rec(hashmap[def_id,import_state] imports,
+               hashmap[def_id,@wrap_mod] mod_map,
+               hashmap[def_id,vec[ident]] ext_map,
+               ext_hash ext_cache,
                session sess);
 
 // Used to distinguish between lookups from outside and from inside modules,
@@ -62,6 +75,7 @@ fn resolve_crate(session sess, @ast.crate crate) -> @ast.crate {
     auto e = @rec(imports = new_def_hash[import_state](),
                   mod_map = new_def_hash[@wrap_mod](),
                   ext_map = new_def_hash[vec[ident]](),
+                  ext_cache = new_ext_hash(),
                   sess = sess);
     map_crate(e, *crate);
     resolve_imports(*e);
@@ -579,13 +593,21 @@ fn lookup_in_mod(&env e, def m, ident id, namespace ns, dir dr)
     auto defid = ast.def_id_of_def(m);
     // FIXME this causes way more metadata lookups than needed. Cache?
     if (defid._0 != 0) { // Not in this crate (FIXME use a const, not 0)
+        auto cached = e.ext_cache.find(tup(defid,id));
+        if (cached != none[def] && check_def_by_ns(Option.get(cached), ns)) {
+            ret cached;
+        }
         auto path = vec(id);
         // def_num=-1 is a kludge to overload def_mod for external crates,
         // since those don't get a def num
         if (defid._1 != -1) {
             path = e.ext_map.get(defid) + path;
         }
-        ret lookup_external(e, defid._0, path, ns);
+        auto fnd = lookup_external(e, defid._0, path, ns);
+        if (fnd != none[def]) {
+            e.ext_cache.insert(tup(defid,id), Option.get(fnd));
+        }
+        ret fnd;
     }
     alt (m) {
         case (ast.def_mod(?defid)) {
@@ -704,7 +726,7 @@ fn lookup_external(&env e, int cnum, vec[ident] ids, namespace ns)
         e.ext_map.insert(ast.def_id_of_def(d), ids);
     }
     ret found;
- }
+}
 
 // Local Variables:
 // mode: rust
