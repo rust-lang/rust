@@ -1,7 +1,7 @@
 // xfail-boot
 // xfail-stage0
 use std;
-import std._vec.len;
+
 fn main() {
 
     obj a() {
@@ -15,12 +15,18 @@ fn main() {
 
     auto my_a = a();
 
-    // Step 1 is to add support for this "with" syntax
+    // Extending an object with a new method
     auto my_b = obj { 
         fn baz() -> int { 
             ret self.foo(); 
         } 
         with my_a 
     };
+
+    // Extending an object with a new field
+    auto my_c = obj(quux) { with my_a } ;
+
+    // Should this be legal?
+    auto my_d = obj() { with my_a } ;
     
 }

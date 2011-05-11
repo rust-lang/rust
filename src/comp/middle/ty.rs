@@ -1675,6 +1675,7 @@ fn pat_ty(&ctxt cx, &node_type_table ntt, &@ast::pat pat) -> t {
     fail;   // not reached
 }
 
+<<<<<<< HEAD
 fn expr_ann(&@ast::expr e) -> ast::ann {
     alt (e.node) {
         case (ast::expr_vec(_,_,?a)) { ret a; }
@@ -1710,6 +1711,7 @@ fn expr_ann(&@ast::expr e) -> ast::ann {
         case (ast::expr_check(_,?a)) { ret a; }
         case (ast::expr_port(?a)) { ret a; }
         case (ast::expr_chan(_,?a)) { ret a; }
+        case (ast::expr_anon_obj(_,_,_,?a)) { ret a; }
         case (ast::expr_break(?a)) { ret a; }
         case (ast::expr_cont(?a)) { ret a; }
         case (ast::expr_self_method(_, ?a)) { ret a; }

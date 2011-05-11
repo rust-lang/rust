@@ -807,24 +807,24 @@ fn parse_bottom_expr(parser p) -> @ast::expr {
 
         // Only make people type () if they're actually adding new fields
         let option.t[vec[ast.obj_field]] fields = none[vec[ast.obj_field]];
-        if (p.peek() == token.LPAREN) {
+        if (p.peek() == token::LPAREN) {
             auto pf = parse_obj_field;
             hi = p.get_hi_pos();
-            expect(p, token.LPAREN);
+            expect(p, token::LPAREN);
             fields = some[vec[ast.obj_field]]
                 (parse_seq_to_end[ast.obj_field] 
-                 (token.RPAREN,
-                  some(token.COMMA),
+                 (token::RPAREN,
+                  some(token::COMMA),
                   pf, hi, p));
         }
 
         let vec[@ast.method] meths = vec();
         let option.t[ast.ident] with_obj = none[ast.ident];
 
-        expect(p, token.LBRACE);
-        while (p.peek() != token.RBRACE) {
+        expect(p, token::LBRACE);
+        while (p.peek() != token::RBRACE) {
             alt (p.peek()) {
-                case (token.WITH) { 
+                case (token::WITH) { 
                     with_obj = some[ast.ident](parse_ident(p));
                 }
                 case (_) {
@@ -833,7 +833,7 @@ fn parse_bottom_expr(parser p) -> @ast::expr {
             }
         }
         hi = p.get_hi_pos();
-        expect(p, token.RBRACE);
+        expect(p, token::RBRACE);
 
         // fields and methods may be *additional* or *overriding* fields and
         // methods if there's a with_obj, or they may be the *only* fields and
@@ -848,6 +848,7 @@ fn parse_bottom_expr(parser p) -> @ast::expr {
         auto odid = rec(ty=p.next_def_id(), ctor=p.next_def_id());
 
         ex = ast.expr_anon_obj(ob, ty_params, odid, ast.ann_none);
+
     } else if (eat_word(p, "bind")) {
         auto e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);
         fn parse_expr_opt(parser p) -> option::t[@ast::expr] {

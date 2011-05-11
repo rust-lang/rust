@@ -209,6 +209,10 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp,
          &@expr e, &ann a) -> @expr)              fold_expr_chan,
 
+     (fn(&ENV e, &span sp,
+         &ast.anon_obj ob, // TODO: Is the ob arg supposed to be & or not?
+         vec[ast.ty_param] tps,
+         ast.obj_def_ids odid, ann a) -> @expr)   fold_expr_anon_obj,
 
      // Decl folds.
      (fn(&ENV e, &span sp,
@@ -321,6 +325,11 @@ type ast_fold[ENV] =
          &vec[@ast::method] methods,
          &option::t[@ast::method] dtor)
       -> ast::_obj)                                fold_obj,
+
+     (fn(&ENV e,
+         Option.t[vec[ast.obj_field]] fields,
+         vec[@ast.method] methods,
+         Option.t[ident] with_obj) -> ast.anon_obj) fold_anon_obj,
 
      // Env updates.
      (fn(&ENV e, &@ast::crate c) -> ENV) update_env_for_crate,
@@ -828,6 +837,12 @@ fn fold_expr[ENV](&ENV env, &ast_fold[ENV] fld, &@expr e) -> @expr {
             auto t2 = fld.fold_ann(env_, t);
             ret fld.fold_expr_chan(env_, e.span, ee, t2);
         }
+
+        case (ast.expr_anon_obj(?ob, ?tps, ?odid, ?t)) {
+            auto ee = fold_anon_obj(env_, fld, ob);
+            auto t2 = fld.fold_ann(env_, t);
+            ret fld.fold_expr_anon_obj(env_, e.span, ee, tps, odid, t2);
+        }
     }
 
     fail;
@@ -930,7 +945,6 @@ fn fold_method[ENV](&ENV env, &ast_fold[ENV] fld,
     ret @rec(node=rec(meth=meth with m.node) with *m);
 }
 
-
 fn fold_obj[ENV](&ENV env, &ast_fold[ENV] fld, &ast::_obj ob) -> ast::_obj {
 
     let vec[ast::obj_field] fields = vec();
@@ -960,6 +974,49 @@ fn fold_obj[ENV](&ENV env, &ast_fold[ENV] fld, &ast::_obj ob) -> ast::_obj {
         _vec::push[@ast::method](meths, fold_method(_env, fld, m));
     }
     ret fld.fold_obj(env, fields, meths, dtor);
+}
+
+fn fold_anon_obj[ENV](&ENV env, ast_fold[ENV] fld, &ast.anon_obj ob) 
+    -> ast.anon_obj {
+
+    // Fields
+    let Option.t[vec[ast.obj_field]] fields = none[vec[ast.obj_field]];
+    alt (ob.fields) {
+        case (none[vec[ast.obj_field]]) { }
+        case (some[vec[ast.obj_field]](?v)) {
+            let vec[ast.obj_field] fields = vec();
+            for (ast.obj_field f in v) {
+                fields += vec(fold_obj_field(env, fld, f));
+            }
+        }
+    }
+
+    // with_obj
+    let Option.t[ast.ident] with_obj = none[ast.ident];
+    alt (ob.with_obj) {
+        case (none[ast.ident]) { }
+        case (some[ast.ident](?i)) {
+            with_obj = some[ast.ident](i);
+        }
+    }
+
+    // Methods
+    let vec[@ast.method] meths = vec();
+    let vec[ast.ty_param] tp = vec();
+    for (@ast.method m in ob.methods) {
+        // Fake-up an ast.item for this method.
+        // FIXME: this is kinda awful. Maybe we should reformulate
+        // the way we store methods in the AST?
+        let @ast.item i = @rec(node=ast.item_fn(m.node.ident,
+                                                m.node.meth,
+                                                tp,
+                                                m.node.id,
+                                                m.node.ann),
+                               span=m.span);
+        let ENV _env = fld.update_env_for_item(env, i);
+        Vec.push[@ast.method](meths, fold_method(_env, fld, m));
+    }
+    ret fld.fold_anon_obj(env, fields, meths, with_obj);
 }
 
 fn fold_view_item[ENV](&ENV env, &ast_fold[ENV] fld, &@view_item vi)
@@ -1410,6 +1467,12 @@ fn identity_fold_expr_chan[ENV](&ENV e, &span sp, &@expr x,
     ret @respan(sp, ast::expr_chan(x, a));
 }
 
+fn identity_fold_expr_anon_obj[ENV](&ENV e, &span sp,
+                                    &ast.anon_obj ob, vec[ast.ty_param] tps,
+                                    ast.obj_def_ids odid, ann a) -> @expr {
+    ret @respan(sp, ast.expr_anon_obj(ob, tps, odid, a));
+}
+
 // Decl identities.
 
 fn identity_fold_decl_local[ENV](&ENV e, &span sp,
@@ -1584,6 +1647,12 @@ fn identity_fold_obj[ENV](&ENV e,
     ret rec(fields=fields, methods=methods, dtor=dtor);
 }
 
+fn identity_fold_anon_obj[ENV](&ENV e,
+                               Option.t[vec[ast.obj_field]] fields,
+                               vec[@ast.method] methods,
+                               Option.t[ident] with_obj) -> ast.anon_obj {
+    ret rec(fields=fields, methods=methods, with_obj=with_obj);
+}
 
 // Env update identities.
 
@@ -1707,6 +1776,9 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_port   = bind identity_fold_expr_port[ENV](_,_,_),
          fold_expr_chan   = bind identity_fold_expr_chan[ENV](_,_,_,_),
 
+         fold_expr_anon_obj   
+                        = bind identity_fold_expr_anon_obj[ENV](_,_,_,_,_,_),
+
          fold_decl_local  = bind identity_fold_decl_local[ENV](_,_,_),
          fold_decl_item   = bind identity_fold_decl_item[ENV](_,_,_),
 
@@ -1746,6 +1818,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_native_mod = bind identity_fold_native_mod[ENV](_,_),
          fold_crate = bind identity_fold_crate[ENV](_,_,_,_),
          fold_obj = bind identity_fold_obj[ENV](_,_,_,_),
+         fold_anon_obj = bind identity_fold_anon_obj[ENV](_,_,_,_),
 
          update_env_for_crate = bind identity_update_env_for_crate[ENV](_,_),
          update_env_for_item = bind identity_update_env_for_item[ENV](_,_),
