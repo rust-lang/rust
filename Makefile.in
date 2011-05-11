@@ -27,6 +27,9 @@ endif
 ifdef NO_TYPESTATE
   CFG_RUSTC_FLAGS += --no-typestate
 endif
+ifdef DEBUG
+  CFG_RUSTC_FLAGS += -g
+endif
 
 # platform-specific auto-configuration
 include $(CFG_SRC_DIR)/mk/platform.mk
