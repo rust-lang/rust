@@ -3117,7 +3117,7 @@ fn node_type(@crate_ctxt cx, &ast.ann a) -> TypeRef {
     ret type_of(cx, node_ann_type(cx, a));
 }
 
-fn trans_unary(@block_ctxt cx, ast.unop op,
+fn trans_unary(&@block_ctxt cx, ast.unop op,
                @ast.expr e, &ast.ann a) -> result {
 
     auto sub = trans_expr(cx, e);
@@ -3181,7 +3181,7 @@ fn trans_unary(@block_ctxt cx, ast.unop op,
     fail;
 }
 
-fn trans_compare(@block_ctxt cx0, ast.binop op, ty.t t0,
+fn trans_compare(&@block_ctxt cx0, ast.binop op, ty.t t0,
                  ValueRef lhs0, ValueRef rhs0) -> result {
     // Autoderef both sides.
     auto cx = cx0;
@@ -3222,7 +3222,7 @@ fn trans_compare(@block_ctxt cx0, ast.binop op, ty.t t0,
     }
 }
 
-fn trans_vec_append(@block_ctxt cx, ty.t t,
+fn trans_vec_append(&@block_ctxt cx, ty.t t,
                     ValueRef lhs, ValueRef rhs) -> result {
 
     auto elt_ty = ty.sequence_element_type(cx.fcx.lcx.ccx.tcx, t);
@@ -3251,7 +3251,7 @@ fn trans_vec_append(@block_ctxt cx, ty.t t,
                                         dst, src, skip_null)));
 }
 
-fn trans_vec_add(@block_ctxt cx, ty.t t,
+fn trans_vec_add(&@block_ctxt cx, ty.t t,
                  ValueRef lhs, ValueRef rhs) -> result {
     auto r = alloc_ty(cx, t);
     auto tmp = r.val;
@@ -3264,7 +3264,7 @@ fn trans_vec_add(@block_ctxt cx, ty.t t,
 }
 
 
-fn trans_eager_binop(@block_ctxt cx, ast.binop op, ty.t intype,
+fn trans_eager_binop(&@block_ctxt cx, ast.binop op, ty.t intype,
                      ValueRef lhs, ValueRef rhs) -> result {
 
     auto is_float = false;
@@ -3341,7 +3341,7 @@ fn trans_eager_binop(@block_ctxt cx, ast.binop op, ty.t intype,
     fail;
 }
 
-fn autoderef(@block_ctxt cx, ValueRef v, ty.t t) -> result {
+fn autoderef(&@block_ctxt cx, ValueRef v, ty.t t) -> result {
     let ValueRef v1 = v;
     let ty.t t1 = t;
 
@@ -3388,7 +3388,7 @@ fn autoderefed_ty(@crate_ctxt ccx, ty.t t) -> ty.t {
     }
 }
 
-fn trans_binary(@block_ctxt cx, ast.binop op,
+fn trans_binary(&@block_ctxt cx, ast.binop op,
                 @ast.expr a, @ast.expr b) -> result {
 
     // First couple cases are lazy:
@@ -3453,7 +3453,7 @@ fn trans_binary(@block_ctxt cx, ast.binop op,
     fail;
 }
 
-fn join_results(@block_ctxt parent_cx,
+fn join_results(&@block_ctxt parent_cx,
                 TypeRef t,
                 vec[result] ins)
     -> result {
@@ -3491,7 +3491,7 @@ fn join_results(@block_ctxt parent_cx,
     ret res(join_cx, phi);
 }
 
-fn trans_if(@block_ctxt cx, @ast.expr cond,
+fn trans_if(&@block_ctxt cx, @ast.expr cond,
             &ast.block thn, &Option.t[@ast.expr] els) -> result {
 
     auto cond_res = trans_expr(cx, cond);
@@ -3545,7 +3545,7 @@ fn trans_if(@block_ctxt cx, @ast.expr cond,
                      vec(then_res, else_res));
 }
 
-fn trans_for(@block_ctxt cx,
+fn trans_for(&@block_ctxt cx,
              @ast.decl decl,
              @ast.expr seq,
              &ast.block body) -> result {
@@ -3591,7 +3591,7 @@ fn trans_for(@block_ctxt cx,
 
 // Searches through a block for all references to locals or upvars in this
 // frame and returns the list of definition IDs thus found.
-fn collect_upvars(@block_ctxt cx, &ast.block bloc, &ast.def_id initial_decl)
+fn collect_upvars(&@block_ctxt cx, &ast.block bloc, &ast.def_id initial_decl)
         -> vec[ast.def_id] {
     type env = @rec(
         mutable vec[ast.def_id] refs,
@@ -3648,7 +3648,7 @@ fn collect_upvars(@block_ctxt cx, &ast.block bloc, &ast.def_id initial_decl)
     ret result;
 }
 
-fn trans_for_each(@block_ctxt cx,
+fn trans_for_each(&@block_ctxt cx,
                   @ast.decl decl,
                   @ast.expr seq,
                   &ast.block body) -> result {
@@ -3855,7 +3855,7 @@ fn trans_for_each(@block_ctxt cx,
 }
 
 
-fn trans_while(@block_ctxt cx, @ast.expr cond,
+fn trans_while(&@block_ctxt cx, @ast.expr cond,
                &ast.block body) -> result {
 
     auto cond_cx = new_scope_block_ctxt(cx, "while cond");
@@ -3875,7 +3875,7 @@ fn trans_while(@block_ctxt cx, @ast.expr cond,
     ret res(next_cx, C_nil());
 }
 
-fn trans_do_while(@block_ctxt cx, &ast.block body,
+fn trans_do_while(&@block_ctxt cx, &ast.block body,
                   @ast.expr cond) -> result {
 
     auto next_cx = new_sub_block_ctxt(cx, "next");
@@ -3894,8 +3894,8 @@ fn trans_do_while(@block_ctxt cx, &ast.block body,
 
 // Pattern matching translation
 
-fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
-                   @block_ctxt next_cx) -> result {
+fn trans_pat_match(&@block_ctxt cx, @ast.pat pat, ValueRef llval,
+                   &@block_ctxt next_cx) -> result {
     alt (pat.node) {
         case (ast.pat_wild(_)) { ret res(cx, llval); }
         case (ast.pat_bind(_, _, _)) { ret res(cx, llval); }
@@ -3968,7 +3968,7 @@ fn trans_pat_match(@block_ctxt cx, @ast.pat pat, ValueRef llval,
     fail;
 }
 
-fn trans_pat_binding(@block_ctxt cx, @ast.pat pat,
+fn trans_pat_binding(&@block_ctxt cx, @ast.pat pat,
                      ValueRef llval, bool bind_alias)
     -> result {
     alt (pat.node) {
@@ -4019,7 +4019,7 @@ fn trans_pat_binding(@block_ctxt cx, @ast.pat pat,
     }
 }
 
-fn trans_alt(@block_ctxt cx, @ast.expr expr,
+fn trans_alt(&@block_ctxt cx, @ast.expr expr,
              vec[ast.arm] arms, ast.ann ann) -> result {
     auto expr_res = trans_expr(cx, expr);
 
@@ -4070,7 +4070,7 @@ type lval_result = rec(result res,
                        Option.t[ValueRef] llobj,
                        Option.t[ty.t] method_ty);
 
-fn lval_mem(@block_ctxt cx, ValueRef val) -> lval_result {
+fn lval_mem(&@block_ctxt cx, ValueRef val) -> lval_result {
     ret rec(res=res(cx, val),
             is_mem=true,
             generic=none[generic_info],
@@ -4078,7 +4078,7 @@ fn lval_mem(@block_ctxt cx, ValueRef val) -> lval_result {
             method_ty=none[ty.t]);
 }
 
-fn lval_val(@block_ctxt cx, ValueRef val) -> lval_result {
+fn lval_val(&@block_ctxt cx, ValueRef val) -> lval_result {
     ret rec(res=res(cx, val),
             is_mem=false,
             generic=none[generic_info],
@@ -4086,7 +4086,7 @@ fn lval_val(@block_ctxt cx, ValueRef val) -> lval_result {
             method_ty=none[ty.t]);
 }
 
-fn trans_external_path(@block_ctxt cx, ast.def_id did,
+fn trans_external_path(&@block_ctxt cx, ast.def_id did,
                        ty.ty_param_count_and_ty tpt) -> lval_result {
     auto lcx = cx.fcx.lcx;
     auto name = creader.get_symbol(lcx.ccx.sess, did);
@@ -4095,7 +4095,7 @@ fn trans_external_path(@block_ctxt cx, ast.def_id did,
     ret lval_val(cx, v);
 }
 
-fn lval_generic_fn(@block_ctxt cx,
+fn lval_generic_fn(&@block_ctxt cx,
                    ty.ty_param_count_and_ty tpt,
                    ast.def_id fn_id,
                    &ast.ann ann)
@@ -4160,7 +4160,7 @@ fn lookup_discriminant(@local_ctxt lcx, ast.def_id tid, ast.def_id vid)
     }
 }
 
-fn trans_path(@block_ctxt cx, &ast.path p, &Option.t[ast.def] dopt,
+fn trans_path(&@block_ctxt cx, &ast.path p, &Option.t[ast.def] dopt,
               &ast.ann ann) -> lval_result {
     alt (dopt) {
         case (some[ast.def](?def)) {
@@ -4265,7 +4265,7 @@ fn trans_path(@block_ctxt cx, &ast.path p, &Option.t[ast.def] dopt,
     fail;
 }
 
-fn trans_field(@block_ctxt cx, &ast.span sp, ValueRef v, ty.t t0,
+fn trans_field(&@block_ctxt cx, &ast.span sp, ValueRef v, ty.t t0,
                &ast.ident field, &ast.ann ann) -> lval_result {
 
     auto r = autoderef(cx, v, t0);
@@ -4306,7 +4306,7 @@ fn trans_field(@block_ctxt cx, &ast.span sp, ValueRef v, ty.t t0,
     fail;
 }
 
-fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
+fn trans_index(&@block_ctxt cx, &ast.span sp, @ast.expr base,
                @ast.expr idx, &ast.ann ann) -> lval_result {
 
     auto lv = trans_expr(cx, base);
@@ -4369,7 +4369,7 @@ fn trans_index(@block_ctxt cx, &ast.span sp, @ast.expr base,
 // represented as an alloca or heap, hence needs a 'load' to be used as an
 // immediate).
 
-fn trans_lval(@block_ctxt cx, @ast.expr e) -> lval_result {
+fn trans_lval(&@block_ctxt cx, @ast.expr e) -> lval_result {
     alt (e.node) {
         case (ast.expr_path(?p, ?dopt, ?ann)) {
             ret trans_path(cx, p, dopt, ann);
@@ -4413,7 +4413,7 @@ fn trans_lval(@block_ctxt cx, @ast.expr e) -> lval_result {
     fail;
 }
 
-fn int_cast(@block_ctxt bcx, TypeRef lldsttype, TypeRef llsrctype,
+fn int_cast(&@block_ctxt bcx, TypeRef lldsttype, TypeRef llsrctype,
             ValueRef llsrc, bool signed) -> ValueRef {
     if (llvm.LLVMGetIntTypeWidth(lldsttype) >
             llvm.LLVMGetIntTypeWidth(llsrctype)) {
@@ -4429,7 +4429,7 @@ fn int_cast(@block_ctxt bcx, TypeRef lldsttype, TypeRef llsrctype,
     ret bcx.build.TruncOrBitCast(llsrc, lldsttype);
 }
 
-fn trans_cast(@block_ctxt cx, @ast.expr e, &ast.ann ann) -> result {
+fn trans_cast(&@block_ctxt cx, @ast.expr e, &ast.ann ann) -> result {
     auto e_res = trans_expr(cx, e);
     auto llsrctype = val_ty(e_res.val);
     auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
@@ -4600,7 +4600,7 @@ fn trans_bind_thunk(@local_ctxt cx,
     ret llthunk;
 }
 
-fn trans_bind(@block_ctxt cx, @ast.expr f,
+fn trans_bind(&@block_ctxt cx, @ast.expr f,
               vec[Option.t[@ast.expr]] args,
               &ast.ann ann) -> result {
     auto f_res = trans_lval(cx, f);
@@ -4788,7 +4788,7 @@ fn trans_bind(@block_ctxt cx, @ast.expr f,
     }
 }
 
-fn trans_arg_expr(@block_ctxt cx,
+fn trans_arg_expr(&@block_ctxt cx,
                   ty.arg arg,
                   TypeRef lldestty0,
                   @ast.expr e) -> result {
@@ -4861,7 +4861,7 @@ fn trans_arg_expr(@block_ctxt cx,
 //  - new_fn_ctxt
 //  - trans_args
 
-fn trans_args(@block_ctxt cx,
+fn trans_args(&@block_ctxt cx,
               ValueRef llenv,
               Option.t[ValueRef] llobj,
               Option.t[generic_info] gen,
@@ -4953,7 +4953,7 @@ fn trans_args(@block_ctxt cx,
     ret tup(bcx, llargs, llretslot);
 }
 
-fn trans_call(@block_ctxt cx, @ast.expr f,
+fn trans_call(&@block_ctxt cx, @ast.expr f,
               Option.t[ValueRef] lliterbody,
               vec[@ast.expr] args,
               &ast.ann ann) -> result {
@@ -5042,7 +5042,7 @@ fn trans_call(@block_ctxt cx, @ast.expr f,
     ret res(bcx, retval);
 }
 
-fn trans_tup(@block_ctxt cx, vec[ast.elt] elts,
+fn trans_tup(&@block_ctxt cx, vec[ast.elt] elts,
              &ast.ann ann) -> result {
     auto bcx = cx;
     auto t = node_ann_type(bcx.fcx.lcx.ccx, ann);
@@ -5066,7 +5066,7 @@ fn trans_tup(@block_ctxt cx, vec[ast.elt] elts,
     ret res(bcx, tup_val);
 }
 
-fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
+fn trans_vec(&@block_ctxt cx, vec[@ast.expr] args,
              &ast.ann ann) -> result {
     auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
     auto unit_ty = t;
@@ -5140,7 +5140,7 @@ fn trans_vec(@block_ctxt cx, vec[@ast.expr] args,
     ret res(bcx, vec_val);
 }
 
-fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
+fn trans_rec(&@block_ctxt cx, vec[ast.field] fields,
              Option.t[@ast.expr] base, &ast.ann ann) -> result {
 
     auto bcx = cx;
@@ -5198,7 +5198,7 @@ fn trans_rec(@block_ctxt cx, vec[ast.field] fields,
 
 
 
-fn trans_expr(@block_ctxt cx, @ast.expr e) -> result {
+fn trans_expr(&@block_ctxt cx, @ast.expr e) -> result {
     alt (e.node) {
         case (ast.expr_lit(?lit, ?ann)) {
             ret res(cx, trans_lit(cx.fcx.lcx.ccx, *lit, ann));
@@ -5388,28 +5388,28 @@ fn type_is_immediate(@crate_ctxt ccx, ty.t t) -> bool {
         ty.type_is_native(ccx.tcx, t);
 }
 
-fn do_spill(@block_ctxt cx, ValueRef v) -> ValueRef {
+fn do_spill(&@block_ctxt cx, ValueRef v) -> ValueRef {
     // We have a value but we have to spill it to pass by alias.
     auto llptr = alloca(cx, val_ty(v));
     cx.build.Store(v, llptr);
     ret llptr;
 }
 
-fn spill_if_immediate(@block_ctxt cx, ValueRef v, ty.t t) -> ValueRef {
+fn spill_if_immediate(&@block_ctxt cx, ValueRef v, ty.t t) -> ValueRef {
     if (type_is_immediate(cx.fcx.lcx.ccx, t)) {
         ret do_spill(cx, v);
     }
     ret v;
 }
 
-fn load_if_immediate(@block_ctxt cx, ValueRef v, ty.t t) -> ValueRef {
+fn load_if_immediate(&@block_ctxt cx, ValueRef v, ty.t t) -> ValueRef {
     if (type_is_immediate(cx.fcx.lcx.ccx, t)) {
         ret cx.build.Load(v);
     }
     ret v;
 }
 
-fn trans_log(int lvl, @block_ctxt cx, @ast.expr e) -> result {
+fn trans_log(int lvl, &@block_ctxt cx, @ast.expr e) -> result {
     auto lcx = cx.fcx.lcx;
     auto modname = Str.connect(lcx.module_path, ".");
     auto global;
@@ -5485,7 +5485,7 @@ fn trans_log(int lvl, @block_ctxt cx, @ast.expr e) -> result {
     ret res(after_cx, C_nil());
 }
 
-fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
+fn trans_check_expr(&@block_ctxt cx, @ast.expr e) -> result {
     auto cond_res = trans_expr(cx, e);
 
     auto expr_str = util.common.expr_to_str(e);
@@ -5499,7 +5499,7 @@ fn trans_check_expr(@block_ctxt cx, @ast.expr e) -> result {
     ret res(next_cx, C_nil());
 }
 
-fn trans_fail(@block_ctxt cx, Option.t[common.span] sp_opt, str fail_str)
+fn trans_fail(&@block_ctxt cx, Option.t[common.span] sp_opt, str fail_str)
         -> result {
     auto V_fail_str = C_cstr(cx.fcx.lcx.ccx, fail_str);
 
@@ -5526,7 +5526,7 @@ fn trans_fail(@block_ctxt cx, Option.t[common.span] sp_opt, str fail_str)
     ret res(cx, C_nil());
 }
 
-fn trans_put(@block_ctxt cx, &Option.t[@ast.expr] e) -> result {
+fn trans_put(&@block_ctxt cx, &Option.t[@ast.expr] e) -> result {
     auto llcallee = C_nil();
     auto llenv = C_nil();
 
@@ -5562,7 +5562,7 @@ fn trans_put(@block_ctxt cx, &Option.t[@ast.expr] e) -> result {
     ret res(bcx, bcx.build.FastCall(llcallee, llargs));
 }
 
-fn trans_break_cont(@block_ctxt cx, bool to_end) -> result {
+fn trans_break_cont(&@block_ctxt cx, bool to_end) -> result {
     auto bcx = cx;
     // Locate closest loop block, outputting cleanup as we go.
     auto cleanup_cx = cx;
@@ -5595,16 +5595,16 @@ fn trans_break_cont(@block_ctxt cx, bool to_end) -> result {
     fail;
 }
 
-fn trans_break(@block_ctxt cx) -> result {
+fn trans_break(&@block_ctxt cx) -> result {
     ret trans_break_cont(cx, true);
 }
 
-fn trans_cont(@block_ctxt cx) -> result {
+fn trans_cont(&@block_ctxt cx) -> result {
     ret trans_break_cont(cx, false);
 }
 
 
-fn trans_ret(@block_ctxt cx, &Option.t[@ast.expr] e) -> result {
+fn trans_ret(&@block_ctxt cx, &Option.t[@ast.expr] e) -> result {
     auto bcx = cx;
     auto val = C_nil();
 
@@ -5642,7 +5642,7 @@ fn trans_ret(@block_ctxt cx, &Option.t[@ast.expr] e) -> result {
     ret res(new_sub_block_ctxt(bcx, "ret.unreachable"), C_nil());
 }
 
-fn trans_be(@block_ctxt cx, @ast.expr e) -> result {
+fn trans_be(&@block_ctxt cx, @ast.expr e) -> result {
     // FIXME: This should be a typestate precondition
     assert (ast.is_call_expr(e));
     // FIXME: Turn this into a real tail call once
@@ -5650,7 +5650,7 @@ fn trans_be(@block_ctxt cx, @ast.expr e) -> result {
     ret trans_ret(cx, some(e));
 }
 
-fn trans_port(@block_ctxt cx, ast.ann ann) -> result {
+fn trans_port(&@block_ctxt cx, ast.ann ann) -> result {
 
     auto t = node_ann_type(cx.fcx.lcx.ccx, ann);
     auto unit_ty;
@@ -5679,7 +5679,7 @@ fn trans_port(@block_ctxt cx, ast.ann ann) -> result {
     ret res(bcx, port_val);
 }
 
-fn trans_chan(@block_ctxt cx, @ast.expr e, ast.ann ann) -> result {
+fn trans_chan(&@block_ctxt cx, @ast.expr e, ast.ann ann) -> result {
 
     auto bcx = cx;
     auto prt = trans_expr(bcx, e);
@@ -5698,7 +5698,7 @@ fn trans_chan(@block_ctxt cx, @ast.expr e, ast.ann ann) -> result {
     ret res(bcx, chan_val);
 }
 
-fn trans_send(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
+fn trans_send(&@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
               ast.ann ann) -> result {
 
     auto bcx = cx;
@@ -5735,7 +5735,7 @@ fn trans_send(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
     ret res(bcx, chn.val);
 }
 
-fn trans_recv(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
+fn trans_recv(&@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
               ast.ann ann) -> result {
 
     auto bcx = cx;
@@ -5748,7 +5748,7 @@ fn trans_recv(@block_ctxt cx, @ast.expr lhs, @ast.expr rhs,
     ret recv_val(bcx, data.res.val, rhs, unit_ty, DROP_EXISTING);
  }
 
-fn recv_val(@block_ctxt cx, ValueRef lhs, @ast.expr rhs,
+fn recv_val(&@block_ctxt cx, ValueRef lhs, @ast.expr rhs,
             ty.t unit_ty, copy_action action) -> result {
 
     auto bcx = cx;
@@ -5769,7 +5769,7 @@ fn recv_val(@block_ctxt cx, ValueRef lhs, @ast.expr rhs,
     ret res(bcx, lhs);
 }
 
-fn init_local(@block_ctxt cx, @ast.local local) -> result {
+fn init_local(&@block_ctxt cx, @ast.local local) -> result {
 
     // Make a note to drop this slot on the way out.
     assert (cx.fcx.lllocals.contains_key(local.id));
@@ -5799,7 +5799,7 @@ fn init_local(@block_ctxt cx, @ast.local local) -> result {
     ret res(bcx, llptr);
 }
 
-fn zero_alloca(@block_ctxt cx, ValueRef llptr, ty.t t) -> result {
+fn zero_alloca(&@block_ctxt cx, ValueRef llptr, ty.t t) -> result {
     auto bcx = cx;
     if (ty.type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
         auto llsz = size_of(bcx, t);
@@ -5814,7 +5814,7 @@ fn zero_alloca(@block_ctxt cx, ValueRef llptr, ty.t t) -> result {
     ret res(bcx, llptr);
  }
 
-fn trans_stmt(@block_ctxt cx, &ast.stmt s) -> result {
+fn trans_stmt(&@block_ctxt cx, &ast.stmt s) -> result {
     auto bcx = cx;
     alt (s.node) {
         case (ast.stmt_expr(?e,_)) {
@@ -5870,24 +5870,24 @@ fn new_top_block_ctxt(@fn_ctxt fcx) -> @block_ctxt {
 }
 
 // Use this when you're at a curly-brace or similar lexical scope.
-fn new_scope_block_ctxt(@block_ctxt bcx, str n) -> @block_ctxt {
+fn new_scope_block_ctxt(&@block_ctxt bcx, str n) -> @block_ctxt {
     ret new_block_ctxt(bcx.fcx, parent_some(bcx), SCOPE_BLOCK, n);
 }
 
-fn new_loop_scope_block_ctxt(@block_ctxt bcx, Option.t[@block_ctxt] _cont,
-                             @block_ctxt _break, str n) -> @block_ctxt {
+fn new_loop_scope_block_ctxt(&@block_ctxt bcx, Option.t[@block_ctxt] _cont,
+                             &@block_ctxt _break, str n) -> @block_ctxt {
     ret new_block_ctxt(bcx.fcx, parent_some(bcx),
                        LOOP_SCOPE_BLOCK(_cont, _break), n);
 }
 
 // Use this when you're making a general CFG BB within a scope.
-fn new_sub_block_ctxt(@block_ctxt bcx, str n) -> @block_ctxt {
+fn new_sub_block_ctxt(&@block_ctxt bcx, str n) -> @block_ctxt {
     ret new_block_ctxt(bcx.fcx, parent_some(bcx), NON_SCOPE_BLOCK, n);
 }
 
 
-fn trans_block_cleanups(@block_ctxt cx,
-                        @block_ctxt cleanup_cx) -> @block_ctxt {
+fn trans_block_cleanups(&@block_ctxt cx,
+                        &@block_ctxt cleanup_cx) -> @block_ctxt {
     auto bcx = cx;
 
     if (cleanup_cx.kind == NON_SCOPE_BLOCK) {
@@ -5935,7 +5935,7 @@ fn llallocas_block_ctxt(@fn_ctxt fcx) -> @block_ctxt {
              fcx=fcx);
 }
 
-fn alloc_ty(@block_ctxt cx, ty.t t) -> result {
+fn alloc_ty(&@block_ctxt cx, ty.t t) -> result {
     auto val = C_int(0);
     if (ty.type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, t)) {
 
@@ -5959,14 +5959,14 @@ fn alloc_ty(@block_ctxt cx, ty.t t) -> result {
     ret res(cx, val);
 }
 
-fn alloc_local(@block_ctxt cx, @ast.local local) -> result {
+fn alloc_local(&@block_ctxt cx, @ast.local local) -> result {
     auto t = node_ann_type(cx.fcx.lcx.ccx, local.ann);
     auto r = alloc_ty(cx, t);
     r.bcx.fcx.lllocals.insert(local.id, r.val);
     ret r;
 }
 
-fn trans_block(@block_ctxt cx, &ast.block b) -> result {
+fn trans_block(&@block_ctxt cx, &ast.block b) -> result {
     auto bcx = cx;
 
     for each (@ast.local local in block_locals(b)) {
@@ -6184,7 +6184,7 @@ fn copy_args_to_allocas(@fn_ctxt fcx,
     fcx.llallocas = bcx.llbb;
 }
 
-fn add_cleanups_for_args(@block_ctxt bcx,
+fn add_cleanups_for_args(&@block_ctxt bcx,
                          vec[ast.arg] args,
                          vec[ty.arg] arg_tys) {
     let uint arg_n = 0u;
@@ -6199,7 +6199,7 @@ fn add_cleanups_for_args(@block_ctxt bcx,
 }
 
 
-fn is_terminated(@block_ctxt cx) -> bool {
+fn is_terminated(&@block_ctxt cx) -> bool {
     auto inst = llvm.LLVMGetLastInstruction(cx.llbb);
     ret llvm.LLVMIsATerminatorInst(inst) as int != 0;
 }
@@ -6867,7 +6867,7 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
         arg_n += 1u;
     }
 
-    fn convert_arg_to_i32(@block_ctxt cx,
+    fn convert_arg_to_i32(&@block_ctxt cx,
                           ValueRef v,
                           ty.t t,
                           ty.mode mode) -> ValueRef {
@@ -6889,7 +6889,7 @@ fn decl_native_fn_and_pair(@crate_ctxt ccx,
         ret vp2i(cx, v);
     }
 
-    fn trans_simple_native_abi(@block_ctxt bcx,
+    fn trans_simple_native_abi(&@block_ctxt bcx,
                                str name,
                                &mutable vec[ValueRef] call_args,
                                ty.t fn_type,
@@ -7167,12 +7167,12 @@ fn trans_constants(@crate_ctxt ccx, @ast.crate crate) {
 }
 
 
-fn vp2i(@block_ctxt cx, ValueRef v) -> ValueRef {
+fn vp2i(&@block_ctxt cx, ValueRef v) -> ValueRef {
     ret cx.build.PtrToInt(v, T_int());
 }
 
 
-fn vi2p(@block_ctxt cx, ValueRef v, TypeRef t) -> ValueRef {
+fn vi2p(&@block_ctxt cx, ValueRef v, TypeRef t) -> ValueRef {
     ret cx.build.IntToPtr(v, t);
 }
 
@@ -7353,21 +7353,21 @@ fn declare_intrinsics(ModuleRef llmod) -> hashmap[str,ValueRef] {
 }
 
 
-fn trace_str(@block_ctxt cx, str s) {
+fn trace_str(&@block_ctxt cx, str s) {
     cx.build.Call(cx.fcx.lcx.ccx.upcalls.trace_str,
                   vec(cx.fcx.lltaskptr, C_cstr(cx.fcx.lcx.ccx, s)));
 }
 
-fn trace_word(@block_ctxt cx, ValueRef v) {
+fn trace_word(&@block_ctxt cx, ValueRef v) {
     cx.build.Call(cx.fcx.lcx.ccx.upcalls.trace_word,
                   vec(cx.fcx.lltaskptr, v));
 }
 
-fn trace_ptr(@block_ctxt cx, ValueRef v) {
+fn trace_ptr(&@block_ctxt cx, ValueRef v) {
     trace_word(cx, cx.build.PtrToInt(v, T_int()));
 }
 
-fn trap(@block_ctxt bcx) {
+fn trap(&@block_ctxt bcx) {
     let vec[ValueRef] v = vec();
     bcx.build.Call(bcx.fcx.lcx.ccx.intrinsics.get("llvm.trap"), v);
 }
@@ -7416,19 +7416,19 @@ fn make_vec_append_glue(ModuleRef llmod, type_names tn) -> ValueRef {
 }
 
 
-fn vec_fill(@block_ctxt bcx, ValueRef v) -> ValueRef {
+fn vec_fill(&@block_ctxt bcx, ValueRef v) -> ValueRef {
     ret bcx.build.Load(bcx.build.GEP(v, vec(C_int(0),
                                             C_int(abi.vec_elt_fill))));
 }
 
-fn put_vec_fill(@block_ctxt bcx, ValueRef v, ValueRef fill) -> ValueRef {
+fn put_vec_fill(&@block_ctxt bcx, ValueRef v, ValueRef fill) -> ValueRef {
     ret bcx.build.Store(fill,
                         bcx.build.GEP(v,
                                       vec(C_int(0),
                                           C_int(abi.vec_elt_fill))));
 }
 
-fn vec_fill_adjusted(@block_ctxt bcx, ValueRef v,
+fn vec_fill_adjusted(&@block_ctxt bcx, ValueRef v,
                      ValueRef skipnull) -> ValueRef {
     auto f = bcx.build.Load(bcx.build.GEP(v,
                                           vec(C_int(0),
@@ -7436,19 +7436,19 @@ fn vec_fill_adjusted(@block_ctxt bcx, ValueRef v,
     ret bcx.build.Select(skipnull, bcx.build.Sub(f, C_int(1)), f);
 }
 
-fn vec_p0(@block_ctxt bcx, ValueRef v) -> ValueRef {
+fn vec_p0(&@block_ctxt bcx, ValueRef v) -> ValueRef {
     auto p = bcx.build.GEP(v, vec(C_int(0),
                                   C_int(abi.vec_elt_data)));
     ret bcx.build.PointerCast(p, T_ptr(T_i8()));
 }
 
 
-fn vec_p1(@block_ctxt bcx, ValueRef v) -> ValueRef {
+fn vec_p1(&@block_ctxt bcx, ValueRef v) -> ValueRef {
     auto len = vec_fill(bcx, v);
     ret bcx.build.GEP(vec_p0(bcx, v), vec(len));
 }
 
-fn vec_p1_adjusted(@block_ctxt bcx, ValueRef v,
+fn vec_p1_adjusted(&@block_ctxt bcx, ValueRef v,
                    ValueRef skipnull) -> ValueRef {
     auto len = vec_fill_adjusted(bcx, v, skipnull);
     ret bcx.build.GEP(vec_p0(bcx, v), vec(len));
@@ -7511,7 +7511,7 @@ fn trans_vec_append_glue(@local_ctxt cx) {
                      copy_src_cx.llbb);
 
 
-    fn copy_elts(@block_ctxt cx,
+    fn copy_elts(&@block_ctxt cx,
                  ValueRef elt_tydesc,
                  ValueRef dst,
                  ValueRef src,
