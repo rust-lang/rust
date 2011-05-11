@@ -2885,10 +2885,14 @@ fn iter_sequence(@block_ctxt cx,
             auto et = ty::mk_mach(cx.fcx.lcx.ccx.tcx, common::ty_u8);
             ret iter_sequence_body(cx, v, et, f, true);
         }
-        case (_) { fail; }
+        case (_) {
+
+            cx.fcx.lcx.ccx.sess.bug("unexpected type in " +
+                                    "trans::iter_sequence: " +
+                                    ty.ty_to_str(cx.fcx.lcx.ccx.tcx, t));
+            fail; 
+        }
     }
-    cx.fcx.lcx.ccx.sess.bug("bad type in trans::iter_sequence");
-    fail;
 }
 
 fn lazily_emit_all_tydesc_glue(&@block_ctxt cx,
