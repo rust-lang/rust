@@ -6,6 +6,7 @@ import front.ast.ann;
 import front.creader;
 import driver.session.session;
 import util.common.new_def_hash;
+import util.common.new_int_hash;
 import util.common.span;
 import util.typestate_ann.ts_ann;
 import std.Map.hashmap;
@@ -56,8 +57,8 @@ fn new_ext_hash() -> ext_hash {
     ret std.Map.mk_hashmap[tup(def_id,str),def](hash, eq);
 }
 
-type env = rec(hashmap[def_id,import_state] imports,
-               hashmap[def_id,@wrap_mod] mod_map,
+type env = rec(hashmap[ast.def_num,import_state] imports,
+               hashmap[ast.def_num,@wrap_mod] mod_map,
                hashmap[def_id,vec[ident]] ext_map,
                ext_hash ext_cache,
                session sess);
@@ -72,8 +73,8 @@ tag namespace {
 }
 
 fn resolve_crate(session sess, @ast.crate crate) -> @ast.crate {
-    auto e = @rec(imports = new_def_hash[import_state](),
-                  mod_map = new_def_hash[@wrap_mod](),
+    auto e = @rec(imports = new_int_hash[import_state](),
+                  mod_map = new_int_hash[@wrap_mod](),
                   ext_map = new_def_hash[vec[ident]](),
                   ext_cache = new_ext_hash(),
                   sess = sess);
@@ -107,10 +108,10 @@ fn map_crate(&@env e, &ast.crate c) {
         *sc = cons[scope](scope_item(i), @*sc);
         alt (i.node) {
             case (ast.item_mod(_, ?md, ?defid)) {
-                e.mod_map.insert(defid, @wmod(md));
+                e.mod_map.insert(defid._1, @wmod(md));
             }
             case (ast.item_native_mod(_, ?nmd, ?defid)) {
-                e.mod_map.insert(defid, @wnmod(nmd));
+                e.mod_map.insert(defid._1, @wnmod(nmd));
             }
             case (_) {}
         }
@@ -121,7 +122,7 @@ fn map_crate(&@env e, &ast.crate c) {
     fn visit_view_item(@env e, @mutable list[scope] sc, &@ast.view_item i) {
         alt (i.node) {
             case (ast.view_item_import(_, ?ids, ?defid)) {
-                e.imports.insert(defid, todo(i, *sc));
+                e.imports.insert(defid._1, todo(i, *sc));
             }
             case (_) {}
         }
@@ -129,7 +130,7 @@ fn map_crate(&@env e, &ast.crate c) {
 }
 
 fn resolve_imports(&env e) {
-    for each (@tup(def_id, import_state) it in e.imports.items()) {
+    for each (@tup(ast.def_num, import_state) it in e.imports.items()) {
         alt (it._1) {
             case (todo(?item, ?sc)) {
                 resolve_import(e, item, sc);
@@ -185,7 +186,7 @@ fn resolve_names(&@env e, &ast.crate c) -> @ast.crate {
 }
 
 fn lookup_import(&env e, def_id defid, namespace ns) -> Option.t[def] {
-    alt (e.imports.get(defid)) {
+    alt (e.imports.get(defid._1)) {
         case (todo(?item, ?sc)) {
             resolve_import(e, item, sc);
             ret lookup_import(e, defid, ns);
@@ -207,7 +208,7 @@ fn resolve_import(&env e, &@ast.view_item it, &list[scope] sc) {
             defid = _defid; ids = _ids;
         }
     }
-    e.imports.insert(defid, resolving(it.span));
+    e.imports.insert(defid._1, resolving(it.span));
     
     auto n_idents = Vec.len(ids);
     auto end_id = ids.(n_idents - 1u);
@@ -242,7 +243,7 @@ fn resolve_import(&env e, &@ast.view_item it, &list[scope] sc) {
         if (val == none[def] && typ == none[def]) {
             unresolved(e, sp, id, "import");
         }
-        e.imports.insert(defid, resolved(val, typ));
+        e.imports.insert(defid._1, resolved(val, typ));
     }
 }
 
@@ -610,14 +611,14 @@ fn lookup_in_mod(&env e, def m, ident id, namespace ns, dir dr)
     }
     alt (m) {
         case (ast.def_mod(?defid)) {
-            alt (*e.mod_map.get(defid)) {
+            alt (*e.mod_map.get(defid._1)) {
                 case (wmod(?m)) {
                     ret lookup_in_regular_mod(e, m, id, ns, dr);
                 }
             }
         }
         case (ast.def_native_mod(?defid)) {
-            alt (*e.mod_map.get(defid)) {
+            alt (*e.mod_map.get(defid._1)) {
                 case (wnmod(?m)) {
                     ret lookup_in_native_mod(e, m, id, ns);
                 }
