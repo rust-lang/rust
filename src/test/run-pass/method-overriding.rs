@@ -24,7 +24,7 @@ fn main() {
     };
 
     // Extending an object with a new field
-    auto my_c = obj(quux) { with my_a } ;
+    auto my_c = obj(int quux) { with my_a } ;
 
     // Should this be legal?
     auto my_d = obj() { with my_a } ;
