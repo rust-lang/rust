@@ -379,18 +379,6 @@ type anon_obj = rec(
     // with_obj: the original object being extended, if it exists.
     Option.t[ident] with_obj);
 
-tag mod_index_entry {
-    mie_view_item(@view_item);
-    mie_item(@item);
-    mie_tag_variant(@item /* tag item */, uint /* variant index */);
-}
-
-tag native_mod_index_entry {
-    nmie_view_item(@view_item);
-    nmie_item(@native_item);
-}
-
-type mod_index = hashmap[ident,mod_index_entry];
 type _mod = rec(vec[@view_item] view_items,
                 vec[@item] items);
 

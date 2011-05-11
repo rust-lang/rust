@@ -806,26 +806,40 @@ fn parse_bottom_expr(parser p) -> @ast::expr {
         auto ty_params = parse_ty_params(p);
 
         // Only make people type () if they're actually adding new fields
-        let option.t[vec[ast.obj_field]] fields = none[vec[ast.obj_field]];
+        let option.t[vec[ast::obj_field]] fields = none[vec[ast::obj_field]];
         if (p.peek() == token::LPAREN) {
             auto pf = parse_obj_field;
+            expect(p, token::LBRACE);
+            while (p.peek() != token::RBRACE) {
+                alt (p.peek()) {
+                    case (token.WITH) { 
+                        p.bump();
+                        with_obj = some[ast::ident](parse_ident(p));
+                    }
+                    case (_) {
+                        Vec.push[@ast::method](meths,
+                                              parse_method(p));
+                    }
+                }
+            }
+
             hi = p.get_hi_pos();
             expect(p, token::LPAREN);
-            fields = some[vec[ast.obj_field]]
-                (parse_seq_to_end[ast.obj_field] 
+            fields = some[vec[ast::obj_field]]
+                (parse_seq_to_end[ast::obj_field] 
                  (token::RPAREN,
                   some(token::COMMA),
                   pf, hi, p));
         }
 
-        let vec[@ast.method] meths = vec();
-        let option.t[ast.ident] with_obj = none[ast.ident];
+        let vec[@ast::method] meths = vec();
+        let option.t[ast::ident] with_obj = none[ast::ident];
 
         expect(p, token::LBRACE);
         while (p.peek() != token::RBRACE) {
             alt (p.peek()) {
                 case (token::WITH) { 
-                    with_obj = some[ast.ident](parse_ident(p));
+                    with_obj = some[ast::ident](parse_ident(p));
                 }
                 case (_) {
                     // fall through
@@ -841,13 +855,13 @@ fn parse_bottom_expr(parser p) -> @ast::expr {
 
         // We don't need to pull ".node" out of fields because it's not a
         // "spanned".
-        let ast.anon_obj ob = rec(fields=fields,
+        let ast::anon_obj ob = rec(fields=fields,
                                   methods=meths,
                                   with_obj=with_obj);
 
         auto odid = rec(ty=p.next_def_id(), ctor=p.next_def_id());
 
-        ex = ast.expr_anon_obj(ob, ty_params, odid, ast.ann_none);
+        ex = ast::expr_anon_obj(ob, ty_params, odid, ast::ann_none);
 
     } else if (eat_word(p, "bind")) {
         auto e = parse_expr_res(p, RESTRICT_NO_CALL_EXPRS);
