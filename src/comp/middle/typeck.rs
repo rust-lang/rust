@@ -1396,7 +1396,7 @@ mod Pushdown {
                 // provided by the programmer.
                 auto ty_params_opt;
                 alt (ann) {
-                    case (ast.ann_none) {
+                    case (ast.ann_none(_)) {
                         log_err "pushdown_expr(): no type annotation for " +
                             "path expr; did you pass it to check_expr()?";
                         fail;
@@ -1558,7 +1558,7 @@ fn resolve_local_types_in_annotation(&Option.t[@fn_ctxt] env, &ast.ann ann)
 
     auto fcx = Option.get[@fn_ctxt](env);
     alt (ann) {
-        case (ast.ann_none) {
+        case (ast.ann_none(_)) {
             log "warning: no type for expression";
             ret ann;
         }
@@ -2506,7 +2506,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast.expr expr) -> @ast.expr {
                 Vec.push[field](fields_t, rec(ident=f.ident, mt=expr_mt));
             }
 
-            auto ann = ast.ann_none;
+            auto ann;
 
             alt (base) {
                 case (none[@ast.expr]) {
@@ -2717,7 +2717,7 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast.decl decl) -> @ast.decl {
 
             auto a_res = local.ann;
             alt (a_res) {
-                case (ann_none) {
+                case (ann_none(_)) {
                     a_res = triv_ann(t);
                 }
                 case (_) {}

@@ -1557,7 +1557,7 @@ fn eq_ty(&t a, &t b) -> bool {
 
 fn ann_to_type(&ast.ann ann) -> t {
     alt (ann) {
-        case (ast.ann_none) {
+        case (ast.ann_none(_)) {
             log_err "ann_to_type() called on node with no type";
             fail;
         }
@@ -1569,7 +1569,7 @@ fn ann_to_type(&ast.ann ann) -> t {
 
 fn ann_to_type_params(&ast.ann ann) -> vec[t] {
     alt (ann) {
-        case (ast.ann_none) {
+        case (ast.ann_none(_)) {
             log_err "ann_to_type_params() called on node with no type params";
             fail;
         }
@@ -1591,7 +1591,7 @@ fn ann_to_monotype(ctxt cx, ast.ann a) -> t {
     // TODO: Refactor to use recursive pattern matching when we're more
     // confident that it works.
     alt (a) {
-        case (ast.ann_none) {
+        case (ast.ann_none(_)) {
             log_err "ann_to_monotype() called on expression with no type!";
             fail;
         }
@@ -1905,7 +1905,7 @@ fn expr_ty_params_and_ty(&ctxt cx, &@ast.expr expr) -> tup(vec[t], t) {
 fn expr_has_ty_params(&@ast.expr expr) -> bool {
     // FIXME: Rewrite using complex patterns when they're trustworthy.
     alt (expr_ann(expr)) {
-        case (ast.ann_none) { fail; }
+        case (ast.ann_none(_)) { fail; }
         case (ast.ann_type(_, ?tps_opt, _)) {
             ret !Option.is_none[vec[t]](tps_opt);
         }

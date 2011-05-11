@@ -3090,7 +3090,7 @@ fn node_ann_type(@crate_ctxt cx, &ast.ann a) -> ty.t {
 
 fn node_ann_ty_params(&ast.ann a) -> vec[ty.t] {
     alt (a) {
-        case (ast.ann_none) {
+        case (ast.ann_none(_)) {
             log_err "missing type annotation";
             fail;
         }
@@ -4106,7 +4106,7 @@ fn lval_generic_fn(@block_ctxt cx,
     auto monoty;
     let vec[ty.t] tys;
     alt (ann) {
-        case (ast.ann_none) {
+        case (ast.ann_none(_)) {
             cx.fcx.lcx.ccx.sess.bug("no type annotation for path!");
             fail;
         }

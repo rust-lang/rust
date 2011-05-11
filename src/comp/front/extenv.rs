@@ -29,10 +29,10 @@ fn expand_syntax_ext(parser.parser p,
     auto var = expr_to_str(p, args.(0));
     alt (GenericOS.getenv(var)) {
         case (Option.none[str]) {
-            ret make_new_str(sp, "");
+            ret make_new_str(p, sp, "");
         }
         case (Option.some[str](?s)) {
-            ret make_new_str(sp, s);
+            ret make_new_str(p, sp, s);
         }
     }
 }
@@ -54,15 +54,15 @@ fn expr_to_str(parser.parser p,
     fail;
 }
 
-fn make_new_lit(common.span sp, ast.lit_ lit) -> @ast.expr {
+fn make_new_lit(parser.parser p, common.span sp, ast.lit_ lit) -> @ast.expr {
     auto sp_lit = @rec(node=lit, span=sp);
-    auto expr = ast.expr_lit(sp_lit, ast.ann_none);
+    auto expr = ast.expr_lit(sp_lit, p.get_ann());
     ret @rec(node=expr, span=sp);
 }
 
-fn make_new_str(common.span sp, str s) -> @ast.expr {
+fn make_new_str(parser.parser p, common.span sp, str s) -> @ast.expr {
     auto lit = ast.lit_str(s);
-    ret make_new_lit(sp, lit);
+    ret make_new_lit(p, sp, lit);
 }
 
 //

@@ -161,7 +161,7 @@ fn log_block_err(&ast.block b) -> () {
 
 fn log_ann(&ast.ann a) -> () {
     alt (a) {
-        case (ast.ann_none) {
+        case (ast.ann_none(_)) {
             log("ann_none");
         }
         case (ast.ann_type(_,_,_)) {
