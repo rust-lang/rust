@@ -233,7 +233,7 @@ tag decl_ {
     decl_item(@item);
 }
 
-type arm = rec(@pat pat, block block, hashmap[ident,def_id] index);
+type arm = rec(@pat pat, block block);
 
 type elt = rec(mutability mut, @expr expr);
 type field = rec(mutability mut, ident ident, @expr expr);

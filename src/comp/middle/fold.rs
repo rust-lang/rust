@@ -892,7 +892,7 @@ fn fold_arm[ENV](&ENV env, &ast_fold[ENV] fld, &arm a) -> arm {
     let ENV env_ = fld.update_env_for_arm(env, a);
     auto ppat = fold_pat(env_, fld, a.pat);
     auto bblock = fold_block(env_, fld, a.block);
-    ret rec(pat=ppat, block=bblock, index=a.index);
+    ret rec(pat=ppat, block=bblock);
 }
 
 fn fold_arg[ENV](&ENV env, &ast_fold[ENV] fld, &arg a) -> arg {

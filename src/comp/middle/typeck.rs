@@ -1463,8 +1463,7 @@ mod Pushdown {
                     auto block_1 = pushdown_block(fcx, expected, arm_0.block);
                     t = Demand.simple(fcx, e.span, t,
                                       block_ty(fcx.ccx.tcx, block_1));
-                    auto arm_1 = rec(pat=arm_0.pat, block=block_1,
-                                     index=arm_0.index);
+                    auto arm_1 = rec(pat=arm_0.pat, block=block_1);
                     arms_1 += vec(arm_1);
                 }
                 e_1 = ast.expr_alt(discrim, arms_1, triv_ann(t));
@@ -2266,7 +2265,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast.expr expr) -> @ast.expr {
                                                        block_0);
                 auto pat_1 = pats_1.(i);
                 auto arm = arms.(i);
-                auto arm_1 = rec(pat=pat_1, block=block_1, index=arm.index);
+                auto arm_1 = rec(pat=pat_1, block=block_1);
                 arms_1 += vec(arm_1);
                 i += 1u;
             }

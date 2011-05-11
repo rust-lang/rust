@@ -431,12 +431,7 @@ fn lookup_in_scope(&env e, list[scope] sc, ident id, namespace ns)
 
             case (scope_arm(?a)) {
                 if (ns == ns_value) {
-                    alt (a.index.find(id)) {
-                        case (some[def_id](?did)) {
-                            ret some(ast.def_binding(did));
-                        }
-                        case (_) {}
-                    }
+                    ret lookup_in_pat(id, *a.pat);
                 }
             }
         }
@@ -469,6 +464,24 @@ fn lookup_in_ty_params(ident id, &vec[ast.ty_param] ty_params)
     }
     ret none[def];
 }
+
+fn lookup_in_pat(ident id, &ast.pat pat) -> Option.t[def] {
+    alt (pat.node) {
+        case (ast.pat_bind(?name, ?defid, _)) {
+            if (Str.eq(name, id)) { ret some(ast.def_binding(defid)); }
+        }
+        case (ast.pat_wild(_)) {}
+        case (ast.pat_lit(_, _)) {}
+        case (ast.pat_tag(_, ?pats, _, _)) {
+            for (@ast.pat p in pats) {
+                auto found = lookup_in_pat(id, *p);
+                if (found != none[def]) { ret found; }
+            }
+        }
+    }
+    ret none[def];
+}
+
 
 fn lookup_in_fn(ident id, &ast.fn_decl decl,
                 &vec[ast.ty_param] ty_params, namespace ns) -> Option.t[def] {

@@ -2184,8 +2184,7 @@ fn annotate_decl(&fn_info_map fm, &@decl d) -> @decl {
 fn annotate_alts(&fn_info_map fm, &vec[arm] alts) -> vec[arm] {
     fn one(fn_info_map fm, &arm a) -> arm {
         ret rec(pat=a.pat,
-                 block=annotate_block(fm, a.block),
-                 index=a.index);
+                 block=annotate_block(fm, a.block));
     }
     auto f = bind one(fm,_);
     ret Vec.map[arm, arm](f, alts);

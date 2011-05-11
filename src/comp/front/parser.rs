@@ -1367,9 +1367,8 @@ fn parse_alt_expr(parser p) -> @ast.expr {
                 expect(p, token.LPAREN);
                 auto pat = parse_pat(p);
                 expect(p, token.RPAREN);
-                auto index = index_arm(pat);
                 auto block = parse_block(p);
-                arms += vec(rec(pat=pat, block=block, index=index));
+                arms += vec(rec(pat=pat, block=block));
             }
 
             // FIXME: this is a vestigial form left over from
@@ -1384,9 +1383,8 @@ fn parse_alt_expr(parser p) -> @ast.expr {
                 p.bump();
                 auto hi = p.get_hi_pos();
                 auto pat = @spanned(lo, hi, ast.pat_wild(p.get_ann()));
-                auto index = index_arm(pat);
                 auto block = parse_block(p);
-                arms += vec(rec(pat=pat, block=block, index=index));
+                arms += vec(rec(pat=pat, block=block));
             }
             case (token.RBRACE) { /* empty */ }
             case (?tok) {
@@ -1624,25 +1622,6 @@ fn parse_source_stmt(parser p) -> @ast.stmt {
     }
     p.err("expected statement");
     fail;
-}
-
-fn index_arm(@ast.pat pat) -> hashmap[ast.ident,ast.def_id] {
-    fn do_index_arm(&hashmap[ast.ident,ast.def_id] index, @ast.pat pat) {
-        alt (pat.node) {
-            case (ast.pat_bind(?i, ?def_id, _)) { index.insert(i, def_id); }
-            case (ast.pat_wild(_)) { /* empty */ }
-            case (ast.pat_lit(_, _)) { /* empty */ }
-            case (ast.pat_tag(_, ?pats, _, _)) {
-                for (@ast.pat p in pats) {
-                    do_index_arm(index, p);
-                }
-            }
-        }
-    }
-
-    auto index = new_str_hash[ast.def_id]();
-    do_index_arm(index, pat);
-    ret index;
 }
 
 fn stmt_to_expr(@ast.stmt stmt) -> Option.t[@ast.expr] {
