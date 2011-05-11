@@ -626,7 +626,6 @@ fn next_token(reader rdr) -> token.token {
 
     alt (c) {
         // One-byte tokens.
-        case (':') { rdr.bump(); ret token.COLON; }
         case ('?') { rdr.bump(); ret token.QUES; }
         case (';') { rdr.bump(); ret token.SEMI; }
         case (',') { rdr.bump(); ret token.COMMA; }
@@ -643,6 +642,16 @@ fn next_token(reader rdr) -> token.token {
 
 
         // Multi-byte tokens.
+        case (':') {
+            rdr.bump();
+            if (rdr.curr() == ':') {
+                rdr.bump();
+                ret token.COLONCOLON;
+            } else {
+                ret token.COLON;
+            }
+        }
+
         case ('=') {
             rdr.bump();
             if (rdr.curr() == '=') {
