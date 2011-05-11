@@ -53,7 +53,7 @@ fn dylib_filename(str base) -> str {
 
 fn pipe() -> tup(int, int) {
     let vec[mutable int] fds = vec(mutable 0, 0);
-    assert (OS.libc._pipe(Vec.buf[mutable int](fds), 1024u,
+    assert (OS.libc._pipe(Vec.buf(fds), 1024u,
                         libc_constants.O_BINARY()) == 0);
     ret tup(fds.(0), fds.(1));
 }
