@@ -1160,78 +1160,8 @@ fn hash_ty(&t typ) -> uint { ret typ.hash; }
 // Type equality. This function is private to this module (and slow); external
 // users should use `eq_ty()` instead.
 fn equal_type_structures(&sty a, &sty b) -> bool {
-
-    fn equal_proto(ast.proto a, ast.proto b) -> bool {
-        alt (a) {
-            case (ast.proto_iter) {
-                alt (b) {
-                    case (ast.proto_iter) { ret true; }
-                    case (_) { ret false; }
-                }
-            }
-            case (ast.proto_fn) {
-                alt (b) {
-                    case (ast.proto_fn) { ret true; }
-                    case (_) { ret false; }
-                }
-            }
-        }
-    }
-
-    fn equal_abi(ast.native_abi a, ast.native_abi b) -> bool {
-        alt (a) {
-            case (ast.native_abi_rust) {
-                alt (b) {
-                    case (ast.native_abi_rust) { ret true; }
-                    case (_) { ret false; }
-                }
-            }
-            case (ast.native_abi_rust_intrinsic) {
-                alt (b) {
-                    case (ast.native_abi_rust_intrinsic) { ret true; }
-                    case (_) { ret false; }
-                }
-            }
-            case (ast.native_abi_cdecl) {
-                alt (b) {
-                    case (ast.native_abi_cdecl) { ret true; }
-                    case (_) { ret false; }
-                }
-            }
-            case (ast.native_abi_llvm) {
-                alt (b) {
-                    case (ast.native_abi_llvm) { ret true; }
-                    case (_) { ret false; }
-                }
-            }
-        }
-    }
-
-    fn equal_mut(ast.mutability a, ast.mutability b) -> bool {
-        alt (a) {
-            case (ast.mut) {
-                alt (b) {
-                    case (ast.mut) { ret true; }
-                    case (_) { ret false; }
-                }
-            }
-            case (ast.imm) {
-                alt (b) {
-                    case (ast.imm) { ret true; }
-                    case (_) { ret false; }
-                }
-            }
-            case (ast.maybe_mut) {
-                alt (b) {
-                    case (ast.maybe_mut) { ret true; }
-                    case (_) { ret false; }
-                }
-            }
-        }
-    }
-
     fn equal_mt(&mt a, &mt b) -> bool {
-        ret equal_mut(a.mut, b.mut) && eq_ty(a.ty, b.ty);
+        ret a.mut == b.mut && eq_ty(a.ty, b.ty);
     }
 
     fn equal_fn(&vec[arg] args_a, &t rty_a,
@@ -1390,7 +1320,7 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_fn(?p_a, ?args_a, ?rty_a)) {
             alt (b) {
                 case (ty_fn(?p_b, ?args_b, ?rty_b)) {
-                    ret equal_proto(p_a, p_b) &&
+                    ret p_a == p_b &&
                         equal_fn(args_a, rty_a, args_b, rty_b);
                 }
                 case (_) { ret false; }
@@ -1399,7 +1329,7 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_native_fn(?abi_a, ?args_a, ?rty_a)) {
             alt (b) {
                 case (ty_native_fn(?abi_b, ?args_b, ?rty_b)) {
-                    ret equal_abi(abi_a, abi_b) &&
+                    ret abi_a == abi_b &&
                         equal_fn(args_a, rty_a, args_b, rty_b);
                 }
                 case (_) { ret false; }
@@ -1413,7 +1343,7 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
                     auto i = 0u;
                     while (i < len) {
                         auto m_a = methods_a.(i); auto m_b = methods_b.(i);
-                        if (!equal_proto(m_a.proto, m_b.proto) ||
+                        if (m_a.proto != m_b.proto ||
                                 !Str.eq(m_a.ident, m_b.ident) ||
                                 !equal_fn(m_a.inputs, m_a.output,
                                           m_b.inputs, m_b.output)) {
