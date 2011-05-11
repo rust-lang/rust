@@ -210,7 +210,7 @@ fn mangle_name_by_type(@crate_ctxt ccx, vec[str] path, ty.t t) -> str {
 fn mangle_name_by_type_only(@crate_ctxt ccx, ty.t t, str name) -> str {
     auto f = metadata.def_to_str;
     auto cx = @rec(ds=f, tcx=ccx.tcx, abbrevs=metadata.ac_no_abbrevs);
-    auto s = metadata.Encode.ty_str(cx, t);
+    auto s = ty.ty_to_short_str(ccx.tcx, t);
 
     auto hash = get_type_sha1(ccx, t);
     ret sep() + "rust" + sep() + hash + sep() + name + "_" + s;

@@ -661,7 +661,7 @@ fn ty_to_short_str(ctxt cx, t typ) -> str {
     auto f = def_to_str;
     auto ecx = @rec(ds=f, tcx=cx, abbrevs=metadata.ac_no_abbrevs);
     auto s = metadata.Encode.ty_str(ecx, typ);
-    if (Str.byte_len(s) >= 64u) { s = Str.substr(s, 0u, 64u); }
+    if (Str.byte_len(s) >= 32u) { s = Str.substr(s, 0u, 32u); }
     ret s;
 }
 
