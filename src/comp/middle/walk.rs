@@ -434,7 +434,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             walk_expr(v, x);
         }
 
-        case (ast.expr_anon_obj(_,_,_,_)) { }
+        case (ast::expr_anon_obj(_,_,_,_)) { }
     }
     v.visit_expr_post(e);
 }

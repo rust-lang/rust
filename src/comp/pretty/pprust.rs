@@ -690,6 +690,11 @@ fn print_expr(ps s, &@ast::expr expr) {
             print_expr(s, expr);
             pclose(s);
         }
+
+        case (ast::expr_anon_obj(_,_,_,_)) {
+            wrd(s.s, "obj");
+            // TODO
+        }
     }
     end(s.s);
 }
