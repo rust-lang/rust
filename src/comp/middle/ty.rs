@@ -362,12 +362,6 @@ fn mk_ty_full(&sty st, &Option.t[str] cname) -> t {
 fn gen_ty_full(&ctxt cx, &sty st, &Option.t[str] cname) -> t {
     auto new_type = mk_ty_full(st, cname);
 
-    // Do not intern anything with locals or vars; it'll be nearly
-    // single-use anyways, easier to regenerate than fill up the table.
-    if (new_type.has_locals || new_type.has_vars) {
-        ret new_type;
-    }
-
     // Is it interned?
     alt (cx.ts.others.find(new_type)) {
         case (some[t](?typ)) {
@@ -1542,17 +1536,7 @@ fn eq_ty_full(&t a, &t b) -> bool {
 
 // This is the equality function the public should use. It works as long as
 // the types are interned.
-fn eq_ty(&t a, &t b) -> bool {
-    let bool full = false;
-    full = full || a.has_vars;
-    full = full || a.has_locals;
-    full = full || b.has_vars;
-    full = full || b.has_locals;
-    if (full) {
-        ret eq_ty_full(a, b);
-    }
-    ret Box.ptr_eq[raw_t](a, b);
-}
+fn eq_ty(&t a, &t b) -> bool { ret Box.ptr_eq[raw_t](a, b); }
 
 
 fn ann_to_type(&ast.ann ann) -> t {
