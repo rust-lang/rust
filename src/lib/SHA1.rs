@@ -31,6 +31,11 @@ state type sha1 = state obj {
 const uint digest_buf_len = 5;
 const uint msg_block_len = 64;
 
+const u32 k0 = 0x5A827999u32;
+const u32 k1 = 0x6ED9EBA1u32;
+const u32 k2 = 0x8F1BBCDCu32;
+const u32 k3 = 0xCA62C1D6u32;
+
 // Builds a sha1 object
 fn mk_sha1() -> sha1 {
 
@@ -69,22 +74,18 @@ fn mk_sha1() -> sha1 {
         // FIXME: Make precondition
         assert (Vec.len(st.h) == digest_buf_len);
 
-        // Constants
-        auto k = vec(0x5A827999u32,
-                     0x6ED9EBA1u32,
-                     0x8F1BBCDCu32,
-                     0xCA62C1D6u32);
-
         let int t; // Loop counter
         let vec[mutable u32] w = Vec.init_elt_mut[u32](0u32, 80u);
 
         // Initialize the first 16 words of the vector w
         t = 0;
         while (t < 16) {
-            w.(t) = (st.msg_block.(t * 4) as u32) << 24u32;
-            w.(t) = w.(t) | ((st.msg_block.(t * 4 + 1) as u32) << 16u32);
-            w.(t) = w.(t) | ((st.msg_block.(t * 4 + 2) as u32) << 8u32);
-            w.(t) = w.(t) | (st.msg_block.(t * 4 + 3) as u32);
+            auto tmp;
+            tmp = (st.msg_block.(t * 4) as u32) << 24u32;
+            tmp = tmp | ((st.msg_block.(t * 4 + 1) as u32) << 16u32);
+            tmp = tmp | ((st.msg_block.(t * 4 + 2) as u32) << 8u32);
+            tmp = tmp | (st.msg_block.(t * 4 + 3) as u32);
+            w.(t) = tmp;
             t += 1;
         }
 
@@ -106,7 +107,7 @@ fn mk_sha1() -> sha1 {
         t = 0;
         while (t < 20) {
             temp = circular_shift(5u32, a)
-                + ((b & c) | ((~b) & d)) + e + w.(t) + k.(0);
+                + ((b & c) | ((~b) & d)) + e + w.(t) + k0;
             e = d;
             d = c;
             c = circular_shift(30u32, b);
@@ -117,7 +118,7 @@ fn mk_sha1() -> sha1 {
 
         while (t < 40) {
             temp = circular_shift(5u32, a)
-                + (b ^ c ^ d) + e + w.(t) + k.(1);
+                + (b ^ c ^ d) + e + w.(t) + k1;
             e = d;
             d = c;
             c = circular_shift(30u32, b);
@@ -128,7 +129,7 @@ fn mk_sha1() -> sha1 {
 
         while (t < 60) {
             temp = circular_shift(5u32, a)
-                + ((b & c) | (b & d) | (c & d)) + e + w.(t) + k.(2);
+                + ((b & c) | (b & d) | (c & d)) + e + w.(t) + k2;
             e = d;
             d = c;
             c = circular_shift(30u32, b);
@@ -139,7 +140,7 @@ fn mk_sha1() -> sha1 {
 
         while (t < 80) {
             temp = circular_shift(5u32, a)
-                + (b ^ c ^ d) + e + w.(t) + k.(3);
+                + (b ^ c ^ d) + e + w.(t) + k3;
             e = d;
             d = c;
             c = circular_shift(30u32, b);
