@@ -2592,20 +2592,23 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             auto t = ty::mk_nil(fcx.ccx.tcx);
             let ty::t this_obj_ty;
 
-            // Grab the type of the current object
             auto this_obj_id = fcx.ccx.this_obj;
             alt (this_obj_id) {
+                // If we're inside a current object, grab its type.
                 case (some[ast::def_id](?def_id)) {
                     this_obj_ty = ty::lookup_item_type(fcx.ccx.sess,
                         fcx.ccx.tcx, fcx.ccx.type_cache, def_id)._1;
                 }
-                case (_) { fail; }
+                // Otherwise, we should be able to look up the object we're
+                // "with".
+                case (_) { 
+                    // TODO.
+                    
+                    fail; 
+                }
             }
 
-
-            // Grab this method's type out of the current object type
-
-            // this_obj_ty is an ty::t
+            // Grab this method's type out of the current object type.
             alt (struct(fcx.ccx.tcx, this_obj_ty)) {
                 case (ty::ty_obj(?methods)) {
                     for (ty::method method in methods) {
