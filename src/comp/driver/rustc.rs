@@ -158,6 +158,7 @@ options:
     -S                 compile only; do not assemble or link
     -c                 compile and assemble, but do not link
     --save-temps       write intermediate files in addition to normal output
+    --stats            gather and report various compilation statistics
     --time-passes      time the individual phases of the compiler
     --time-llvm-passes time the individual phases of the LLVM backend
     --sysroot <path>   override the system root (default: rustc's directory)
@@ -212,6 +213,7 @@ fn main(vec[str] args) {
                     optflag("O"), optflag("shared"), optmulti("L"),
                     optflag("S"), optflag("c"), optopt("o"), optflag("g"),
                     optflag("save-temps"), optopt("sysroot"),
+                    optflag("stats"),
                     optflag("time-passes"), optflag("time-llvm-passes"),
                     optflag("no-typestate"), optflag("noverify"));
     auto binary = _vec::shift[str](args);
@@ -256,6 +258,7 @@ fn main(vec[str] args) {
     // FIXME: Maybe we should support -O0, -O1, -Os, etc
     auto optimize = opt_present(match, "O");
     auto debuginfo = opt_present(match, "g");
+    auto stats = opt_present(match, "stats");
     auto time_passes = opt_present(match, "time-passes");
     auto time_llvm_passes = opt_present(match, "time-llvm-passes");
     auto run_typestate = !opt_present(match, "no-typestate");
@@ -274,6 +277,7 @@ fn main(vec[str] args) {
              verify = verify,
              run_typestate = run_typestate,
              save_temps = save_temps,
+             stats = stats,
              time_passes = time_passes,
              time_llvm_passes = time_llvm_passes,
              output_type = output_type,

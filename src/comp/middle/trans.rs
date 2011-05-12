@@ -63,10 +63,14 @@ type glue_fns = rec(ValueRef activate_glue,
                     ValueRef no_op_type_glue,
                     ValueRef vec_append_glue);
 
-type tydesc_info = rec(ValueRef tydesc,
-                       ValueRef take_glue,
-                       ValueRef drop_glue,
-                       ValueRef cmp_glue);
+type tydesc_info = rec(ty::t ty,
+                       ValueRef tydesc,
+                       ValueRef size,
+                       ValueRef align,
+                       mutable option::t[ValueRef] take_glue,
+                       mutable option::t[ValueRef] drop_glue,
+                       mutable option::t[ValueRef] cmp_glue,
+                       vec[uint] ty_params);
 
 /*
  * A note on nomenclature of linking: "upcall", "extern" and "native".
@@ -86,6 +90,12 @@ type tydesc_info = rec(ValueRef tydesc,
  * task such as bringing a task to life, allocating memory, etc.
  *
  */
+
+type stats = rec(mutable uint n_static_tydescs,
+                 mutable uint n_derived_tydescs,
+                 mutable uint n_glues_created,
+                 mutable uint n_null_glues,
+                 mutable uint n_real_glues);
 
 state type crate_ctxt = rec(session::session sess,
                             ModuleRef llmod,
@@ -117,6 +127,7 @@ state type crate_ctxt = rec(session::session sess,
                             hashmap[ty::t, metadata::ty_abbrev] type_abbrevs,
                             hashmap[ty::t, str] type_short_names,
                             ty::ctxt tcx,
+                            stats stats,
                             @upcall::upcalls upcalls);
 
 type local_ctxt = rec(vec[str] path,
@@ -1576,7 +1587,8 @@ fn trans_malloc_boxed(&@block_ctxt cx, ty::t t) -> result {
 // tydesc if necessary.
 fn field_of_tydesc(&@block_ctxt cx, &ty::t t, bool escapes, int field)
         -> result {
-    auto tydesc = get_tydesc(cx, t, escapes);
+    auto ti = none[@tydesc_info];
+    auto tydesc = get_tydesc(cx, t, escapes, ti);
     ret res(tydesc.bcx,
             tydesc.bcx.build.GEP(tydesc.val, vec(C_int(0), C_int(field))));
 }
@@ -1658,7 +1670,8 @@ fn trans_stack_local_derived_tydesc(&@block_ctxt cx, ValueRef llsz,
     ret llmyroottydesc;
 }
 
-fn mk_derived_tydesc(&@block_ctxt cx, &ty::t t, bool escapes) -> result {
+fn get_derived_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
+                      &mutable option::t[@tydesc_info] static_ti) -> result {
     alt (cx.fcx.derived_tydescs.find(t)) {
         case (some[derived_tydesc_info](?info)) {
             // If the tydesc escapes in this context, the cached derived
@@ -1668,6 +1681,8 @@ fn mk_derived_tydesc(&@block_ctxt cx, &ty::t t, bool escapes) -> result {
         case (none[derived_tydesc_info]) { /* fall through */ }
     }
 
+    cx.fcx.lcx.ccx.stats.n_derived_tydescs += 1u;
+
     auto bcx = new_raw_block_ctxt(cx.fcx, cx.fcx.llderivedtydescs);
 
     let uint n_params = ty::count_ty_params(bcx.fcx.lcx.ccx.tcx, t);
@@ -1676,7 +1691,10 @@ fn mk_derived_tydesc(&@block_ctxt cx, &ty::t t, bool escapes) -> result {
     assert (n_params == _vec::len[uint](tys._0));
     assert (n_params == _vec::len[ValueRef](tys._1));
 
-    auto root = get_static_tydesc(bcx, t, tys._0).tydesc;
+    auto root_ti = get_static_tydesc(bcx, t, tys._0);
+    static_ti = some[@tydesc_info](root_ti);
+    lazily_emit_all_tydesc_glue(cx, static_ti);
+    auto root = root_ti.tydesc;
 
     auto sz = size_of(bcx, t);
     bcx = sz.bcx;
@@ -1737,7 +1755,8 @@ fn mk_derived_tydesc(&@block_ctxt cx, &ty::t t, bool escapes) -> result {
     ret res(cx, v);
 }
 
-fn get_tydesc(&@block_ctxt cx, &ty::t t, bool escapes) -> result {
+fn get_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
+              &mutable option::t[@tydesc_info] static_ti) -> result {
     // Is the supplied type a type param? If so, return the passed-in tydesc.
     alt (ty::type_param(cx.fcx.lcx.ccx.tcx, t)) {
         case (some[uint](?id)) { ret res(cx, cx.fcx.lltydescs.(id)); }
@@ -1747,13 +1766,14 @@ fn get_tydesc(&@block_ctxt cx, &ty::t t, bool escapes) -> result {
     // Does it contain a type param? If so, generate a derived tydesc.
 
     if (ty::type_contains_params(cx.fcx.lcx.ccx.tcx, t)) {
-        ret mk_derived_tydesc(cx, t, escapes);
+        ret get_derived_tydesc(cx, t, escapes, static_ti);
     }
 
     // Otherwise, generate a tydesc if necessary, and return it.
     let vec[uint] tps = vec();
-    auto st = get_static_tydesc(cx, t, tps).tydesc;
-    ret res(cx, st);
+    auto info = get_static_tydesc(cx, t, tps);
+    static_ti = some[@tydesc_info](info);
+    ret res(cx, info.tydesc);
 }
 
 fn get_static_tydesc(&@block_ctxt cx,
@@ -1763,34 +1783,18 @@ fn get_static_tydesc(&@block_ctxt cx,
             ret info;
         }
         case (none[@tydesc_info]) {
-
-            // FIXME: Use of a simplified tydesc (w/o names) removes a lot of
-            // generated glue, but the compile time goes way down due to
-            // greatly increasing the miss rate on the type_of cache elsewhere
-            // in this file. Experiment with other approaches to this.
-
-            /*
-            fn simplifier(ty::t typ) -> ty::t {
-                ret @rec(cname=none[str] with *typ);
-            }
-            auto f = simplifier;
-            auto t_simplified = ty::fold_ty(cx.fcx.lcx.ccx.tcx, f, t);
-            auto info = declare_tydesc(cx.fcx.lcx, t_simplified);
-            cx.fcx.lcx.ccx.tydescs.insert(t_simplified, info);
-            */
-
-            auto info = declare_tydesc(cx.fcx.lcx, t);
+            cx.fcx.lcx.ccx.stats.n_static_tydescs += 1u;
+            auto info = declare_tydesc(cx.fcx.lcx, t, ty_params);
             cx.fcx.lcx.ccx.tydescs.insert(t, info);
-            define_tydesc(cx.fcx.lcx, t, ty_params);
             ret info;
         }
     }
 }
 
-// Generates the declaration for (but doesn't fill in) a type descriptor. This
-// needs to be separate from make_tydesc() below, because sometimes type glue
-// functions needs to refer to their own type descriptors.
-fn declare_tydesc(&@local_ctxt cx, &ty::t t) -> @tydesc_info {
+// Generates the declaration for (but doesn't emit) a type descriptor.
+fn declare_tydesc(&@local_ctxt cx, &ty::t t,
+                  vec[uint] ty_params) -> @tydesc_info {
+    log "+++ declare_tydesc " + ty::ty_to_str(cx.ccx.tcx, t);
     auto take_glue = declare_generic_glue(cx, t, T_glue_fn(cx.ccx.tn),
                                           "take");
     auto drop_glue = declare_generic_glue(cx, t, T_glue_fn(cx.ccx.tn),
@@ -1812,8 +1816,6 @@ fn declare_tydesc(&@local_ctxt cx, &ty::t t) -> @tydesc_info {
         llalign = C_int(0);
     }
 
-    auto glue_fn_ty = T_ptr(T_glue_fn(ccx.tn));
-
     auto name;
     if (cx.ccx.sess.get_opts().debuginfo) {
         name = mangle_name_by_type_only(cx.ccx, t, "tydesc");
@@ -1823,49 +1825,24 @@ fn declare_tydesc(&@local_ctxt cx, &ty::t t) -> @tydesc_info {
     }
 
     auto gvar = llvm::LLVMAddGlobal(ccx.llmod, T_tydesc(ccx.tn),
-                                   _str::buf(name));
-    auto tydesc = C_struct(vec(C_null(T_ptr(T_ptr(T_tydesc(ccx.tn)))),
-                               llsize,
-                               llalign,
-                               take_glue,             // take_glue
-                               drop_glue,             // drop_glue
-                               C_null(glue_fn_ty),    // free_glue
-                               C_null(glue_fn_ty),    // sever_glue
-                               C_null(glue_fn_ty),    // mark_glue
-                               C_null(glue_fn_ty),    // obj_drop_glue
-                               C_null(glue_fn_ty),    // is_stateful
-                               cmp_glue));            // cmp_glue
+                                    _str::buf(name));
 
-    llvm::LLVMSetInitializer(gvar, tydesc);
-    llvm::LLVMSetGlobalConstant(gvar, True);
-    llvm::LLVMSetLinkage(gvar, lib::llvm::LLVMInternalLinkage
-                        as llvm::Linkage);
+    auto info = @rec(ty = t,
+                     tydesc = gvar,
+                     size = llsize,
+                     align = llalign,
+                     mutable take_glue = none[ValueRef],
+                     mutable drop_glue = none[ValueRef],
+                     mutable cmp_glue = none[ValueRef],
+                     ty_params = ty_params);
 
-    auto info = @rec(
-        tydesc=gvar,
-        take_glue=take_glue,
-        drop_glue=drop_glue,
-        cmp_glue=cmp_glue
-    );
-
+    log "--- declare_tydesc " + ty::ty_to_str(cx.ccx.tcx, t);
     ret info;
 }
 
 tag make_generic_glue_helper_fn {
     mgghf_single(fn(&@block_ctxt cx, ValueRef v, &ty::t t));
     mgghf_cmp;
-}
-
-// declare_tydesc() above must have been called first.
-fn define_tydesc(&@local_ctxt cx, &ty::t t, &vec[uint] ty_params) {
-    auto info = cx.ccx.tydescs.get(t);
-    auto gvar = info.tydesc;
-
-    auto tg = make_take_glue;
-    make_generic_glue(cx, t, info.take_glue, mgghf_single(tg), ty_params);
-    auto dg = make_drop_glue;
-    make_generic_glue(cx, t, info.drop_glue, mgghf_single(dg), ty_params);
-    make_generic_glue(cx, t, info.cmp_glue, mgghf_cmp, ty_params);
 }
 
 fn declare_generic_glue(&@local_ctxt cx,
@@ -1889,6 +1866,8 @@ fn make_generic_glue(&@local_ctxt cx,
                      &make_generic_glue_helper_fn helper,
                      &vec[uint] ty_params) -> ValueRef {
     auto fcx = new_fn_ctxt(cx, llfn);
+
+    cx.ccx.stats.n_glues_created += 1u;
 
     // Any nontrivial glue is with values passed *by alias*; this is a
     // requirement since in many contexts glue is invoked indirectly and
@@ -1944,6 +1923,70 @@ fn make_generic_glue(&@local_ctxt cx,
 
     ret llfn;
 }
+
+fn emit_tydescs(&@crate_ctxt ccx) {
+    for each (@tup(ty::t, @tydesc_info) pair in ccx.tydescs.items()) {
+
+        auto glue_fn_ty = T_ptr(T_glue_fn(ccx.tn));
+        auto cmp_fn_ty = T_ptr(T_cmp_glue_fn(ccx.tn));
+
+        auto ti = pair._1;
+
+        auto take_glue = alt (ti.take_glue) {
+            case (none[ValueRef]) {
+                ccx.stats.n_null_glues += 1u;
+                C_null(glue_fn_ty)
+            }
+            case (some[ValueRef](?v)) {
+                ccx.stats.n_real_glues += 1u;
+                v
+            }
+        };
+
+        auto drop_glue = alt (ti.drop_glue) {
+            case (none[ValueRef]) {
+                ccx.stats.n_null_glues += 1u;
+                C_null(glue_fn_ty)
+            }
+            case (some[ValueRef](?v)) {
+                ccx.stats.n_real_glues += 1u;
+                v
+            }
+        };
+
+
+        auto cmp_glue = alt (ti.cmp_glue) {
+            case (none[ValueRef]) {
+                ccx.stats.n_null_glues += 1u;
+                C_null(cmp_fn_ty)
+            }
+            case (some[ValueRef](?v)) {
+                ccx.stats.n_real_glues += 1u;
+                v
+            }
+        };
+
+
+        auto tydesc = C_struct(vec(C_null(T_ptr(T_ptr(T_tydesc(ccx.tn)))),
+                                   ti.size,
+                                   ti.align,
+                                   take_glue,             // take_glue
+                                   drop_glue,             // drop_glue
+                                   C_null(glue_fn_ty),    // free_glue
+                                   C_null(glue_fn_ty),    // sever_glue
+                                   C_null(glue_fn_ty),    // mark_glue
+                                   C_null(glue_fn_ty),    // obj_drop_glue
+                                   C_null(glue_fn_ty),    // is_stateful
+                                   cmp_glue));            // cmp_glue
+
+        auto gvar = ti.tydesc;
+        llvm::LLVMSetInitializer(gvar, tydesc);
+        llvm::LLVMSetGlobalConstant(gvar, True);
+        llvm::LLVMSetLinkage(gvar, lib::llvm::LLVMInternalLinkage
+                             as llvm::Linkage);
+    }
+}
+
 
 fn make_take_glue(&@block_ctxt cx, ValueRef v, &ty::t t) {
     // NB: v is an *alias* of type t here, not a direct value.
@@ -2068,8 +2111,9 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
                 auto cx_ = maybe_call_dtor(cx, o);
 
                 // Call through the obj's own fields-drop glue first.
+                auto ti = none[@tydesc_info];
                 call_tydesc_glue_full(cx_, body, tydesc,
-                                      abi::tydesc_field_drop_glue);
+                                      abi::tydesc_field_drop_glue, ti);
 
                 // Then free the body.
                 // FIXME: switch gc/non-gc on layer of the type.
@@ -2106,8 +2150,9 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
                                  vec(C_int(0),
                                      C_int(abi::closure_elt_tydesc)));
 
+                auto ti = none[@tydesc_info];
                 call_tydesc_glue_full(cx, bindings, cx.build.Load(tydescptr),
-                                      abi::tydesc_field_drop_glue);
+                                      abi::tydesc_field_drop_glue, ti);
 
 
                 // Then free the body.
@@ -2210,7 +2255,10 @@ fn make_cmp_glue(&@block_ctxt cx,
     } else if (ty::type_is_box(cx.fcx.lcx.ccx.tcx, t)) {
         lhs = cx.build.GEP(lhs, vec(C_int(0), C_int(abi::box_rc_field_body)));
         rhs = cx.build.GEP(rhs, vec(C_int(0), C_int(abi::box_rc_field_body)));
-        auto rslt = call_cmp_glue(cx, lhs, rhs, t, llop);
+        auto t_inner = alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
+            case (ty::ty_box(?ti)) { ti.ty }
+        };
+        auto rslt = call_cmp_glue(cx, lhs, rhs, t_inner, llop);
 
         rslt.bcx.build.Store(rslt.val, cx.fcx.llretptr);
         rslt.bcx.build.RetVoid();
@@ -2838,8 +2886,97 @@ fn iter_sequence(@block_ctxt cx,
     fail;
 }
 
+fn lazily_emit_all_tydesc_glue(&@block_ctxt cx,
+                               &option::t[@tydesc_info] static_ti) {
+    lazily_emit_tydesc_glue(cx, abi::tydesc_field_take_glue, static_ti);
+    lazily_emit_tydesc_glue(cx, abi::tydesc_field_drop_glue, static_ti);
+    lazily_emit_tydesc_glue(cx, abi::tydesc_field_cmp_glue, static_ti);
+}
+
+fn lazily_emit_all_generic_info_tydesc_glues(&@block_ctxt cx,
+                                             &generic_info gi) {
+    for (option::t[@tydesc_info] ti in gi. static_tis) {
+        lazily_emit_all_tydesc_glue(cx, ti);
+    }
+}
+
+fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
+                           &option::t[@tydesc_info] static_ti) {
+    alt (static_ti) {
+        case (none[@tydesc_info]) { }
+        case (some[@tydesc_info](?ti)) {
+
+            if(field == abi::tydesc_field_take_glue) {
+                alt (ti.take_glue) {
+                    case (some[ValueRef](_)) {}
+                    case (none[ValueRef]) {
+                        log #fmt("+++ lazily_emit_tydesc_glue TAKE %s",
+                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+
+                        auto lcx = cx.fcx.lcx;
+                        auto glue_fn =
+                            declare_generic_glue(lcx, ti.ty,
+                                                 T_glue_fn(lcx.ccx.tn),
+                                                 "take");
+                        ti.take_glue = some[ValueRef](glue_fn);
+                        auto tg = make_take_glue;
+                        make_generic_glue(lcx, ti.ty, glue_fn,
+                                          mgghf_single(tg), ti.ty_params);
+
+                        log #fmt("--- lazily_emit_tydesc_glue TAKE %s",
+                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                    }
+                }
+            } else if (field == abi::tydesc_field_drop_glue)  {
+                alt (ti.drop_glue) {
+                    case (some[ValueRef](_)) { }
+                    case (none[ValueRef]) {
+                        log #fmt("+++ lazily_emit_tydesc_glue DROP %s",
+                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                        auto lcx = cx.fcx.lcx;
+                        auto glue_fn =
+                            declare_generic_glue(lcx, ti.ty,
+                                                 T_glue_fn(lcx.ccx.tn),
+                                                 "drop");
+                        ti.drop_glue = some[ValueRef](glue_fn);
+                        auto dg = make_drop_glue;
+                        make_generic_glue(lcx, ti.ty, glue_fn,
+                                          mgghf_single(dg), ti.ty_params);
+                        log #fmt("--- lazily_emit_tydesc_glue DROP %s",
+                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                    }
+                }
+
+            } else if (field == abi::tydesc_field_cmp_glue) {
+                alt (ti.cmp_glue) {
+                    case (some[ValueRef](_)) { }
+                    case (none[ValueRef]) {
+                        log #fmt("+++ lazily_emit_tydesc_glue CMP %s",
+                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                        auto lcx = cx.fcx.lcx;
+                        auto glue_fn =
+                            declare_generic_glue(lcx, ti.ty,
+                                                 T_cmp_glue_fn(lcx.ccx.tn),
+                                                 "cmp");
+                        ti.cmp_glue = some[ValueRef](glue_fn);
+                        make_generic_glue(lcx, ti.ty, glue_fn,
+                                          mgghf_cmp, ti.ty_params);
+                        log #fmt("--- lazily_emit_tydesc_glue CMP %s",
+                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 fn call_tydesc_glue_full(&@block_ctxt cx, ValueRef v,
-                         ValueRef tydesc, int field) {
+                         ValueRef tydesc, int field,
+                         &option::t[@tydesc_info] static_ti) {
+
+    lazily_emit_tydesc_glue(cx, field, static_ti);
+
     auto llrawptr = cx.build.BitCast(v, T_ptr(T_i8()));
     auto lltydescs = cx.build.GEP(tydesc,
                                   vec(C_int(0),
@@ -2857,10 +2994,13 @@ fn call_tydesc_glue_full(&@block_ctxt cx, ValueRef v,
 
 fn call_tydesc_glue(&@block_ctxt cx, ValueRef v,
                     &ty::t t, bool escapes, int field) -> result {
-    auto td = get_tydesc(cx, t, escapes);
+
+    let option::t[@tydesc_info] ti = none[@tydesc_info];
+    auto td = get_tydesc(cx, t, escapes, ti);
+
     call_tydesc_glue_full(td.bcx,
                           spill_if_immediate(td.bcx, v, t),
-                          td.val, field);
+                          td.val, field, ti);
     ret res(td.bcx, C_nil());
 }
 
@@ -2900,7 +3040,11 @@ fn call_cmp_glue(&@block_ctxt cx,
     auto llrawlhsptr = cx.build.BitCast(lllhs, T_ptr(T_i8()));
     auto llrawrhsptr = cx.build.BitCast(llrhs, T_ptr(T_i8()));
 
-    auto r = get_tydesc(cx, t, false);
+    auto ti = none[@tydesc_info];
+    auto r = get_tydesc(cx, t, false, ti);
+
+    lazily_emit_tydesc_glue(cx, abi::tydesc_field_cmp_glue, ti);
+
     auto lltydescs =
         r.bcx.build.GEP(r.val, vec(C_int(0),
                                    C_int(abi::tydesc_field_first_param)));
@@ -3268,11 +3412,14 @@ fn trans_vec_append(&@block_ctxt cx, &ty::t t,
     }
 
     auto bcx = cx;
-
-    auto llvec_tydesc = get_tydesc(bcx, t, false);
+    auto ti = none[@tydesc_info];
+    auto llvec_tydesc = get_tydesc(bcx, t, false, ti);
     bcx = llvec_tydesc.bcx;
 
-    auto llelt_tydesc = get_tydesc(bcx, elt_ty, false);
+    ti = none[@tydesc_info];
+    auto llelt_tydesc = get_tydesc(bcx, elt_ty, false, ti);
+    lazily_emit_tydesc_glue(cx, abi::tydesc_field_take_glue, ti);
+    lazily_emit_tydesc_glue(cx, abi::tydesc_field_drop_glue, ti);
     bcx = llelt_tydesc.bcx;
 
     auto dst = bcx.build.PointerCast(lhs, T_ptr(T_opaque_vec_ptr()));
@@ -4105,6 +4252,7 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr,
 }
 
 type generic_info = rec(ty::t item_type,
+                        vec[option::t[@tydesc_info]] static_tis,
                         vec[ValueRef] tydescs);
 
 type lval_result = rec(result res,
@@ -4169,13 +4317,17 @@ fn lval_generic_fn(&@block_ctxt cx,
     if (_vec::len[ty::t](tys) != 0u) {
         auto bcx = lv.res.bcx;
         let vec[ValueRef] tydescs = vec();
+        let vec[option::t[@tydesc_info]] tis = vec();
         for (ty::t t in tys) {
             // TODO: Doesn't always escape.
-            auto td = get_tydesc(bcx, t, true);
+            auto ti = none[@tydesc_info];
+            auto td = get_tydesc(bcx, t, true, ti);
+            tis += vec(ti);
             bcx = td.bcx;
             _vec::push[ValueRef](tydescs, td.val);
         }
         auto gen = rec( item_type = tpt._1,
+                        static_tis = tis,
                         tydescs = tydescs );
         lv = rec(res = res(bcx, lv.res.val),
                  generic = some[generic_info](gen)
@@ -4664,6 +4816,7 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
                 lltydescs = vec();
             }
             case (some[generic_info](?ginfo)) {
+                lazily_emit_all_generic_info_tydesc_glues(cx, ginfo);
                 outgoing_fty = ginfo.item_type;
                 lltydescs = ginfo.tydescs;
             }
@@ -4731,7 +4884,9 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
                 bcx.build.GEP(closure,
                               vec(C_int(0),
                                   C_int(abi::closure_elt_tydesc)));
-            auto bindings_tydesc = get_tydesc(bcx, bindings_ty, true);
+            auto ti = none[@tydesc_info];
+            auto bindings_tydesc = get_tydesc(bcx, bindings_ty, true, ti);
+            lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
             bcx = bindings_tydesc.bcx;
             bcx.build.Store(bindings_tydesc.val, bound_tydesc);
 
@@ -4772,9 +4927,11 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
 
             // If necessary, copy tydescs describing type parameters into the
             // appropriate slot in the closure.
+
             alt (f_res.generic) {
                 case (none[generic_info]) { /* nothing to do */ }
                 case (some[generic_info](?ginfo)) {
+                    lazily_emit_all_generic_info_tydesc_glues(cx, ginfo);
                     auto ty_params_slot =
                         bcx.build.GEP(closure,
                                       vec(C_int(0),
@@ -4920,6 +5077,7 @@ fn trans_args(&@block_ctxt cx,
 
     alt (gen) {
         case (some[generic_info](?g)) {
+            lazily_emit_all_generic_info_tydesc_glues(cx, g);
             lltydescs = g.tydescs;
             args = ty::ty_fn_args(cx.fcx.lcx.ccx.tcx, g.item_type);
             retty = ty::ty_fn_ret(cx.fcx.lcx.ccx.tcx, g.item_type);
@@ -6554,7 +6712,10 @@ fn trans_obj(@local_ctxt cx, &ast::_obj ob, ast::def_id oid,
                          vec(0, abi::obj_body_elt_tydesc));
         bcx = body_tydesc.bcx;
 
-        auto body_td = get_tydesc(bcx, body_ty, true);
+        auto ti = none[@tydesc_info];
+        auto body_td = get_tydesc(bcx, body_ty, true, ti);
+        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
+
         auto dtor = C_null(T_ptr(T_glue_fn(ccx.tn)));
         alt (ob.dtor) {
             case (some[@ast::method](?d)) {
@@ -7603,9 +7764,10 @@ fn trans_vec_append_glue(@local_ctxt cx) {
         fn take_one(ValueRef elt_tydesc,
                     &@block_ctxt cx,
                     ValueRef dst, ValueRef src) -> result {
+            auto ti = none[@tydesc_info];
             call_tydesc_glue_full(cx, src,
                                   elt_tydesc,
-                                  abi::tydesc_field_take_glue);
+                                  abi::tydesc_field_take_glue, ti);
             ret res(cx, src);
         }
 
@@ -7811,6 +7973,11 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
                     type_abbrevs = abbrevs,
                     type_short_names = short_names,
                     tcx = tcx,
+                    stats = rec(mutable n_static_tydescs = 0u,
+                                mutable n_derived_tydescs = 0u,
+                                mutable n_glues_created = 0u,
+                                mutable n_null_glues = 0u,
+                                mutable n_real_glues = 0u),
                     upcalls = upcall::declare_upcalls(tn, llmod));
     auto cx = new_local_ctxt(ccx);
 
@@ -7826,8 +7993,19 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
         trans_main_fn(cx, crate_ptr, crate_map);
     }
 
+    emit_tydescs(ccx);
+
     // Translate the metadata:
     middle::metadata::write_metadata(cx.ccx, crate);
+
+    if (ccx.sess.get_opts().stats) {
+        log_err "--- trans stats ---";
+        log_err #fmt("n_static_tydescs: %u", ccx.stats.n_static_tydescs);
+        log_err #fmt("n_derived_tydescs: %u", ccx.stats.n_derived_tydescs);
+        log_err #fmt("n_glues_created: %u", ccx.stats.n_glues_created);
+        log_err #fmt("n_null_glues: %u", ccx.stats.n_null_glues);
+        log_err #fmt("n_real_glues: %u", ccx.stats.n_real_glues);
+    }
 
     ret llmod;
 }
