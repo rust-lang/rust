@@ -123,7 +123,7 @@ fn pretty_print_input(session.session sess,
     auto def = tup(ast.local_crate, 0);
     auto p = front.parser.new_parser(sess, env, def, input, 0u);
     auto crate = front.parser.parse_crate_from_source_file(p);
-    pretty.pprust.print_file(crate.node.module, input, std.IO.stdout());
+    pretty.pprust.print_file(sess, crate.node.module, input, std.IO.stdout());
 }
 
 fn version(str argv0) {

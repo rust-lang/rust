@@ -142,7 +142,7 @@ fn new_parser(session.session sess,
     auto srdr = IO.file_reader(path);
     auto filemap = codemap.new_filemap(path, pos);
     Vec.push[codemap.filemap](sess.get_codemap().files, filemap);
-    auto rdr = lexer.new_reader(srdr, path, filemap);
+    auto rdr = lexer.new_reader(sess, srdr, path, filemap);
     // Make sure npos points at first actual token.
     lexer.consume_any_whitespace(rdr);
     auto npos = rdr.get_chpos();

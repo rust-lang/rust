@@ -7,6 +7,7 @@ import std.Map.hashmap;
 import std.Option;
 import std.Option.some;
 import std.Option.none;
+import driver.session.session;
 import util.common;
 import util.common.new_str_hash;
 
@@ -24,11 +25,14 @@ state type reader = state obj {
     fn get_keywords() -> hashmap[str,token.token];
     fn get_reserved() -> hashmap[str,()];
     fn get_filemap() -> codemap.filemap;
+    fn err(str m);
 };
 
-fn new_reader(IO.reader rdr, str filename, codemap.filemap filemap)
-    -> reader {
-    state obj reader(str file,
+fn new_reader(session sess, IO.reader rdr, str filename,
+              codemap.filemap filemap) -> reader {
+
+    state obj reader(session sess,
+                     str file,
                      uint len,
                      mutable uint pos,
                      mutable char ch,
@@ -98,10 +102,14 @@ fn new_reader(IO.reader rdr, str filename, codemap.filemap filemap)
         fn get_filemap() -> codemap.filemap {
             ret fm;
         }
+
+        fn err(str m) {
+            sess.span_err(rec(lo=chpos, hi=chpos), m);
+        }
     }
     auto file = Str.unsafe_from_bytes(rdr.read_whole_stream());
     let vec[str] strs = vec();
-    auto rd = reader(file, Str.byte_len(file), 0u, -1 as char,
+    auto rd = reader(sess, file, Str.byte_len(file), 0u, -1 as char,
                      filemap.start_pos, filemap.start_pos,
                      strs, keyword_table(),
                      reserved_word_table(),
@@ -333,7 +341,7 @@ fn consume_block_comment(reader rdr) {
             }
         }
         if (rdr.is_eof()) {
-            log_err "unterminated block comment";
+            rdr.err("unterminated block comment");
             fail;
         }
     }
@@ -371,7 +379,7 @@ fn scan_exponent(reader rdr) -> Option.t[str] {
             ret(some(res + exponent));
         }
         else {
-            log_err ("scan_exponent: bad fp literal");
+            rdr.err("scan_exponent: bad fp literal");
             fail;
         }
     }
@@ -550,7 +558,7 @@ fn scan_numeric_escape(reader rdr) -> char {
         case ('u') { n_hex_digits = 4; }
         case ('U') { n_hex_digits = 8; }
         case (?c) {
-            log_err #fmt("unknown numeric character escape: %d", c as int);
+            rdr.err(#fmt("unknown numeric character escape: %d", c as int));
             fail;
         }
     }
@@ -562,7 +570,7 @@ fn scan_numeric_escape(reader rdr) -> char {
 
     while (n_hex_digits != 0) {
         if (!is_hex_digit(n)) {
-            log_err #fmt("illegal numeric character escape: %d", n as int);
+            rdr.err(#fmt("illegal numeric character escape: %d", n as int));
             fail;
         }
         accum_int *= 16;
@@ -603,7 +611,7 @@ fn next_token(reader rdr) -> token.token {
 
         auto rsvd = rdr.get_reserved();
         if (rsvd.contains_key(accum_str)) {
-            log_err #fmt("reserved keyword: %s", accum_str);
+            rdr.err(#fmt("reserved keyword: %s", accum_str));
             fail;
         }
 
@@ -726,8 +734,8 @@ fn next_token(reader rdr) -> token.token {
                     case ('U') { c2 = scan_numeric_escape(rdr); }
 
                     case (?c2) {
-                        log_err #fmt("unknown character escape: %d",
-                                     c2 as int);
+                        rdr.err(#fmt("unknown character escape: %d",
+                                     c2 as int));
                         fail;
                     }
                 }
@@ -735,7 +743,7 @@ fn next_token(reader rdr) -> token.token {
             }
 
             if (rdr.next() != '\'') {
-                log_err "unterminated character constant";
+                rdr.err("unterminated character constant");
                 fail;
             }
             rdr.bump(); // advance curr to closing '
@@ -786,8 +794,8 @@ fn next_token(reader rdr) -> token.token {
                             }
 
                             case (?c2) {
-                                log_err #fmt("unknown string escape: %d",
-                                             c2 as int);
+                                rdr.err(#fmt("unknown string escape: %d",
+                                             c2 as int));
                                 fail;
                             }
                         }
@@ -853,7 +861,7 @@ fn next_token(reader rdr) -> token.token {
         }
 
         case (?c) {
-            log_err #fmt("unkown start of token: %d", c as int);
+            rdr.err(#fmt("unkown start of token: %d", c as int));
             fail;
         }
     }
@@ -917,16 +925,19 @@ fn read_block_comment(reader rdr) -> cmnt {
             Str.push_char(val, rdr.curr());
             rdr.bump();
         }
-        if (rdr.is_eof()) {fail;}
+        if (rdr.is_eof()) {
+            rdr.err("Unexpected end of file in block comment");
+            fail;
+        }
     }
     ret rec(val=cmnt_block(lines),
             pos=p,
             space_after=consume_whitespace(rdr) > 1u);
 }
 
-fn gather_comments(str path) -> vec[cmnt] {
+fn gather_comments(session sess, str path) -> vec[cmnt] {
     auto srdr = IO.file_reader(path);
-    auto rdr = new_reader(srdr, path, codemap.new_filemap(path, 0u));
+    auto rdr = new_reader(sess, srdr, path, codemap.new_filemap(path, 0u));
     let vec[cmnt] comments = vec();
     while (!rdr.is_eof()) {
         while (true) {

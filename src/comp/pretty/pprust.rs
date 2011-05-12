@@ -2,6 +2,7 @@ import std.Vec;
 import std.Str;
 import std.IO;
 import std.Option;
+import driver.session.session;
 import front.ast;
 import front.lexer;
 import util.common;
@@ -15,8 +16,8 @@ type ps = @rec(pp.ps s,
                Option.t[vec[lexer.cmnt]] comments,
                mutable uint cur_cmnt);
 
-fn print_file(ast._mod _mod, str filename, IO.writer out) {
-    auto cmnts = lexer.gather_comments(filename);
+fn print_file(session sess, ast._mod _mod, str filename, IO.writer out) {
+    auto cmnts = lexer.gather_comments(sess, filename);
     auto s = @rec(s=pp.mkstate(out, default_columns),
                   comments=Option.some[vec[lexer.cmnt]](cmnts),
                   mutable cur_cmnt=0u);
