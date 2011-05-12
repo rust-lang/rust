@@ -102,7 +102,7 @@ def hash_file(x):
     return scrub(h.hexdigest())
 
 
-def make_snapshot():
+def make_snapshot(stage):
     kernel = get_kernel()
     platform = get_platform()
     rev = local_rev_short_sha()
@@ -112,7 +112,7 @@ def make_snapshot():
 
     tar = tarfile.open(file0, "w:bz2")
     for name in snapshot_files[kernel]:
-      tar.add(os.path.join("stage2", name),
+      tar.add(os.path.join(stage, name),
               "rust-stage0/" + name)
     tar.close()
 

@@ -1,4 +1,4 @@
 #!/usr/bin/env python
 
-import snapshot
-print(snapshot.make_snapshot())
+import snapshot, sys
+print(snapshot.make_snapshot(sys.argv[1]))
