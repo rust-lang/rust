@@ -372,7 +372,7 @@ fn walk_expr(&ast_visitor v, @ast.expr e) {
             walk_expr(v, a);
             walk_expr(v, b);
         }
-        case (ast.expr_path(_, _, _)) { }
+        case (ast.expr_path(_, _)) { }
         case (ast.expr_ext(_, ?args, ?body, ?expansion, _)) {
             // Only walk expansion, not args/body.
             walk_expr(v, expansion);

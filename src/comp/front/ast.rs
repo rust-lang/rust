@@ -56,6 +56,14 @@ tag def {
     def_native_fn(def_id);
 }
 
+fn variant_def_ids(&def d) -> tup(def_id, def_id) {
+    alt (d) {
+        case (def_variant(?tag_id, ?var_id)) {
+            ret tup(tag_id, var_id);
+        }
+    }
+}
+
 fn def_id_of_def(def d) -> def_id {
     alt (d) {
         case (def_fn(?id)) { ret id; }
@@ -106,14 +114,12 @@ type block_ = rec(vec[@stmt] stmts,
                   Option.t[@expr] expr,
                   ann a); /* ann is only meaningful for the ts_ann field */
 
-type variant_def = tup(def_id /* tag */, def_id /* variant */);
-
 type pat = spanned[pat_];
 tag pat_ {
     pat_wild(ann);
     pat_bind(ident, def_id, ann);
     pat_lit(@lit, ann);
-    pat_tag(path, vec[@pat], Option.t[variant_def], ann);
+    pat_tag(path, vec[@pat], ann);
 }
 
 tag mutability {
@@ -277,7 +283,7 @@ tag expr_ {
     expr_recv(@expr /* TODO: @expr|is_lval */, @expr, ann);
     expr_field(@expr, ident, ann);
     expr_index(@expr, @expr, ann);
-    expr_path(path, Option.t[def], ann);
+    expr_path(path, ann);
     expr_ext(path, vec[@expr], Option.t[str], @expr, ann);
     expr_fail(ann);
     expr_break(ann);
@@ -333,7 +339,7 @@ tag ty_ {
     ty_rec(vec[ty_field]);
     ty_fn(proto, vec[ty_arg], @ty);
     ty_obj(vec[ty_method]);
-    ty_path(path, Option.t[def]);
+    ty_path(path, ann);
     ty_type;
     ty_constr(@ty, vec[@constr]);
 }
@@ -463,7 +469,7 @@ fn is_constraint_arg(@expr e) -> bool {
         case (expr_lit(_,_)) {
             ret true;
         }
-        case (expr_path(_, Option.some[def](def_local(_)), _)) {
+        case (expr_path(_, _)) {
             ret true;
         }
         case (_) {

@@ -121,7 +121,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast.expr] args)
         let vec[@ast.ty] types = vec();
         auto path = rec(idents=idents, types=types);
         auto sp_path = rec(node=path, span=sp);
-        auto pathexpr = ast.expr_path(sp_path, none[ast.def], p.get_ann());
+        auto pathexpr = ast.expr_path(sp_path, p.get_ann());
         auto sp_pathexpr = @rec(node=pathexpr, span=sp);
         ret sp_pathexpr;
     }

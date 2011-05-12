@@ -43,12 +43,13 @@ state type parser =
           fn get_filemap() -> codemap.filemap;
           fn get_chpos() -> uint;
           fn get_ann() -> ast.ann;
+          fn next_ann_num() -> uint;
     };
 
 fn new_parser(session.session sess,
                      eval.env env,
                      ast.def_id initial_def,
-                     str path, uint pos) -> parser {
+                     str path, uint pos, uint next_ann) -> parser {
     state obj stdio_parser(session.session sess,
                            eval.env env,
                            file_type ftype,
@@ -134,6 +135,9 @@ fn new_parser(session.session sess,
                 next_ann_var += 1u;
                 ret rv;
             }
+            fn next_ann_num() -> uint {
+                ret next_ann_var;
+            }
         }
     auto ftype = SOURCE_FILE;
     if (Str.ends_with(path, ".rc")) {
@@ -148,7 +152,7 @@ fn new_parser(session.session sess,
     auto npos = rdr.get_chpos();
     ret stdio_parser(sess, env, ftype, lexer.next_token(rdr),
                      npos, npos, initial_def._1, UNRESTRICTED, initial_def._0,
-                     rdr, prec_table(), 0u);
+                     rdr, prec_table(), next_ann);
 }
 
 fn unexpected(parser p, token.token t) {
@@ -474,7 +478,7 @@ fn parse_ty(parser p) -> @ast.ty {
 
         case (token.IDENT(_)) {
             auto path = parse_path(p, GREEDY);
-            t = ast.ty_path(path, none[ast.def]);
+            t = ast.ty_path(path, p.get_ann());
             hi = path.span.hi;
         }
 
@@ -693,7 +697,7 @@ fn parse_bottom_expr(parser p) -> @ast.expr {
         case (token.IDENT(_)) {
             auto pth = parse_path(p, MINIMAL);
             hi = pth.span.hi;
-            ex = ast.expr_path(pth, none[ast.def], p.get_ann());
+            ex = ast.expr_path(pth, p.get_ann());
         }
 
         case (token.LPAREN) {
@@ -985,7 +989,7 @@ fn extend_expr_by_ident(parser p, uint lo, uint hi,
                                @ast.expr e, ast.ident i) -> @ast.expr {
     auto e_ = e.node;
     alt (e.node) {
-        case (ast.expr_path(?pth, ?def, ?ann)) {
+        case (ast.expr_path(?pth, ?ann)) {
             if (Vec.len[@ast.ty](pth.node.types) == 0u) {
                 auto idents_ = pth.node.idents;
                 idents_ += vec(i);
@@ -993,7 +997,7 @@ fn extend_expr_by_ident(parser p, uint lo, uint hi,
                 auto pth_ = spanned(pth.span.lo, tys.span.hi,
                                     rec(idents=idents_,
                                         types=tys.node));
-                e_ = ast.expr_path(pth_, def, ann);
+                e_ = ast.expr_path(pth_, ann);
                 ret @spanned(pth_.span.lo, pth_.span.hi, e_);
             } else {
                 e_ = ast.expr_field(e, i, ann);
@@ -1525,8 +1529,7 @@ fn parse_pat(parser p) -> @ast.pat {
                 case (_) { args = vec(); }
             }
 
-            pat = ast.pat_tag(tag_path, args, none[ast.variant_def],
-                              p.get_ann());
+            pat = ast.pat_tag(tag_path, args, p.get_ann());
         }
         case (_) {
             auto lit = parse_lit(p);
@@ -1666,7 +1669,7 @@ fn stmt_ends_with_semi(@ast.stmt stmt) -> bool {
                 case (ast.expr_recv(_,_,_))     { ret true; }
                 case (ast.expr_field(_,_,_))    { ret true; }
                 case (ast.expr_index(_,_,_))    { ret true; }
-                case (ast.expr_path(_,_,_))     { ret true; }
+                case (ast.expr_path(_,_))       { ret true; }
                 case (ast.expr_fail(_))         { ret true; }
                 case (ast.expr_break(_))        { ret true; }
                 case (ast.expr_cont(_))         { ret true; }
@@ -2496,7 +2499,8 @@ fn parse_crate_from_crate_file(parser p) -> @ast.crate {
                    mode=eval.mode_parse,
                    mutable deps = deps,
                    sess=p.get_session(),
-                   mutable chpos=p.get_chpos());
+                   mutable chpos=p.get_chpos(),
+                   mutable next_ann=p.next_ann_num());
     auto m = eval.eval_crate_directives_to_mod(cx, p.get_env(),
                                                cdirs, prefix);
     auto hi = p.get_hi_pos();

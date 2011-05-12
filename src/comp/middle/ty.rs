@@ -55,6 +55,7 @@ type mt = rec(t ty, ast.mutability mut);
 type creader_cache = hashmap[tup(int,uint,uint),ty.t];
 type ctxt = rec(@type_store ts,
                 session.session sess,
+                resolve.def_map def_map,
                 creader_cache rcache,
                 hashmap[t,str] short_names_cache);
 type ty_ctxt = ctxt;    // Needed for disambiguation from Unify.ctxt.
@@ -209,9 +210,10 @@ fn mk_rcache() -> creader_cache {
     ret Map.mk_hashmap[tup(int,uint,uint),t](h, e);
 }
 
-fn mk_ctxt(session.session s) -> ctxt {
+fn mk_ctxt(session.session s, resolve.def_map dm) -> ctxt {
     ret rec(ts = mk_type_store(),
             sess = s,
+            def_map = dm,
             rcache = mk_rcache(),
             short_names_cache =
                 Map.mk_hashmap[ty.t,str](ty.hash_ty, ty.eq_ty));
@@ -1640,7 +1642,7 @@ fn pat_ty(&ctxt cx, &@ast.pat pat) -> t {
         case (ast.pat_wild(?ann))           { ret ann_to_monotype(cx, ann); }
         case (ast.pat_lit(_, ?ann))         { ret ann_to_monotype(cx, ann); }
         case (ast.pat_bind(_, _, ?ann))     { ret ann_to_monotype(cx, ann); }
-        case (ast.pat_tag(_, _, _, ?ann))   { ret ann_to_monotype(cx, ann); }
+        case (ast.pat_tag(_, _, ?ann))      { ret ann_to_monotype(cx, ann); }
     }
     fail;   // not reached
 }
@@ -1713,7 +1715,7 @@ fn expr_ann(&@ast.expr e) -> ast.ann {
         case (ast.expr_index(_,_,?a)) {
             ret a;
         }
-        case (ast.expr_path(_,_,?a)) {
+        case (ast.expr_path(_,?a)) {
             ret a;
         }
         case (ast.expr_ext(_,_,_,_,?a)) {
@@ -1816,9 +1818,9 @@ fn replace_expr_type(&@ast.expr expr,
             ret @fold.respan(expr.span,
                              ast.expr_field(e, i, mkann(a)));
         }
-        case (ast.expr_path(?p, ?dopt, ?a)) {
+        case (ast.expr_path(?p, ?a)) {
             ret @fold.respan(expr.span,
-                             ast.expr_path(p, dopt, mkann(a)));
+                             ast.expr_path(p, mkann(a)));
         }
         case (_) {
             log_err "unhandled expr type in replace_expr_type(): " +
@@ -1897,7 +1899,7 @@ fn is_lval(&@ast.expr expr) -> bool {
     alt (expr.node) {
         case (ast.expr_field(_,_,_))    { ret true;  }
         case (ast.expr_index(_,_,_))    { ret true;  }
-        case (ast.expr_path(_,_,_))     { ret true;  }
+        case (ast.expr_path(_,_))       { ret true;  }
         case (ast.expr_unary(ast.deref,_,_))  { ret true; }
         case (_)                        { ret false; }
     }

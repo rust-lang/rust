@@ -613,7 +613,7 @@ fn print_expr(ps s, &@ast.expr expr) {
             print_expr(s, index);
             pclose(s);
         }
-        case (ast.expr_path(?path,_,_)) {
+        case (ast.expr_path(?path,_)) {
             print_path(s, path);
         }
         case (ast.expr_fail(_)) {
@@ -768,7 +768,7 @@ fn print_pat(ps s, &@ast.pat pat) {
         case (ast.pat_wild(_)) {wrd(s.s, "_");}
         case (ast.pat_bind(?id,_,_)) {wrd(s.s, "?" + id);}
         case (ast.pat_lit(?lit,_)) {print_literal(s, lit);}
-        case (ast.pat_tag(?path,?args,_,_)) {
+        case (ast.pat_tag(?path,?args,_)) {
             print_path(s, path);
             if (Vec.len[@ast.pat](args) > 0u) {
                 popen_h(s);

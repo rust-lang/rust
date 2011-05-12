@@ -313,9 +313,8 @@ fn ast_ty_to_ty(&ty.ctxt tcx, &ty_getter getter, &@ast.ty ast_ty) -> ty.t {
             typ = ty.mk_fn(tcx, proto, i, out_ty);
         }
 
-        case (ast.ty_path(?path, ?def)) {
-            assert (def != none[ast.def]);
-            alt (Option.get[ast.def](def)) {
+        case (ast.ty_path(?path, ?ann)) {
+            alt (tcx.def_map.get(ast.ann_tag(ann))) {
                 case (ast.def_ty(?id)) {
                     typ = instantiate(tcx, getter, id, path.node.types);
                 }
@@ -1137,7 +1136,7 @@ mod Pushdown {
                                                          none[vec[ty.t]],
                                                          none[@ts_ann]));
             }
-            case (ast.pat_tag(?id, ?subpats, ?vdef_opt, ?ann)) {
+            case (ast.pat_tag(?id, ?subpats, ?ann)) {
                 // Take the variant's type parameters out of the expected
                 // type.
                 auto tag_tps;
@@ -1150,9 +1149,13 @@ mod Pushdown {
                 }
 
                 // Get the types of the arguments of the variant.
-                auto vdef = Option.get[ast.variant_def](vdef_opt);
-                auto arg_tys = variant_arg_types(fcx.ccx, pat.span, vdef._1,
-                                                 tag_tps);
+                auto arg_tys;
+                alt (fcx.ccx.tcx.def_map.get(ast.ann_tag(ann))) {
+                    case (ast.def_variant(_, ?vdefid)) {
+                        arg_tys = variant_arg_types(fcx.ccx, pat.span, vdefid,
+                                                    tag_tps);
+                    }
+                }
 
                 let vec[@ast.pat] subpats_1 = vec();
                 auto i = 0u;
@@ -1162,7 +1165,7 @@ mod Pushdown {
                 }
 
                 // TODO: push down type from "expected".
-                p_1 = ast.pat_tag(id, subpats_1, vdef_opt, ann);
+                p_1 = ast.pat_tag(id, subpats_1, ann);
             }
         }
 
@@ -1387,7 +1390,7 @@ mod Pushdown {
                                           ann_to_type(ann), adk);
                 e_1 = ast.expr_index(base, index, triv_ann(ann, t));
             }
-            case (ast.expr_path(?pth, ?d, ?ann)) {
+            case (ast.expr_path(?pth, ?ann)) {
                 auto tp_substs_0 = ty.ann_to_type_params(ann);
                 auto t_0 = ann_to_type(ann);
 
@@ -1416,7 +1419,7 @@ mod Pushdown {
                     }
                 }
 
-                e_1 = ast.expr_path(pth, d,
+                e_1 = ast.expr_path(pth,
                                     ast.ann_type(ast.ann_tag(ann), t,
                                                  ty_params_opt,
                                                  none[@ts_ann]));
@@ -1634,8 +1637,9 @@ fn check_pat(&@fn_ctxt fcx, &@ast.pat pat) -> @ast.pat {
             auto ann = triv_ann(a, next_ty_var(fcx.ccx));
             new_pat = ast.pat_bind(id, def_id, ann);
         }
-        case (ast.pat_tag(?p, ?subpats, ?vdef_opt, ?old_ann)) {
-            auto vdef = Option.get[ast.variant_def](vdef_opt);
+        case (ast.pat_tag(?p, ?subpats, ?old_ann)) {
+            auto vdef = ast.variant_def_ids
+                (fcx.ccx.tcx.def_map.get(ast.ann_tag(old_ann)));
             auto t = ty.lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
                                          fcx.ccx.type_cache, vdef._1)._1;
             auto len = Vec.len[ast.ident](p.node.idents);
@@ -1668,7 +1672,7 @@ fn check_pat(&@fn_ctxt fcx, &@ast.pat pat) -> @ast.pat {
                         new_subpats += vec(check_pat(fcx, subpat));
                     }
 
-                    new_pat = ast.pat_tag(p, new_subpats, vdef_opt, ann);
+                    new_pat = ast.pat_tag(p, new_subpats, ann);
                 }
 
                 // Nullary variants have tag types.
@@ -1686,7 +1690,7 @@ fn check_pat(&@fn_ctxt fcx, &@ast.pat pat) -> @ast.pat {
                         fail;   // TODO: recover
                     }
 
-                    new_pat = ast.pat_tag(p, subpats, vdef_opt, ann);
+                    new_pat = ast.pat_tag(p, subpats, ann);
                 }
             }
         }
@@ -1722,7 +1726,11 @@ fn require_pure_call(@crate_ctxt ccx,
         }
         case (ast.pure_fn) {
             alt (callee.node) {
-                case (ast.expr_path(_, some[ast.def](ast.def_fn(?d_id)), _)) {
+                case (ast.expr_path(_, ?ann)) {
+                    auto d_id;
+                    alt (ccx.tcx.def_map.get(ast.ann_tag(ann))) {
+                        case (ast.def_fn(?_d_id)) { d_id = _d_id; }
+                    }
                     alt (get_function_purity(ccx, d_id)) {
                             case (ast.pure_fn) {
                                 ret;
@@ -1918,10 +1926,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast.expr expr) -> @ast.expr {
                                         ast.expr_unary(unop, oper_1, ann));
         }
 
-        case (ast.expr_path(?pth, ?defopt, ?old_ann)) {
+        case (ast.expr_path(?pth, ?old_ann)) {
             auto t = ty.mk_nil(fcx.ccx.tcx);
-            assert (defopt != none[ast.def]);
-            auto defn = Option.get[ast.def](defopt);
+            auto defn = fcx.ccx.tcx.def_map.get(ast.ann_tag(old_ann));
 
             auto tpt = ty_param_count_and_ty_for_def(fcx, expr.span, defn);
 
@@ -1929,7 +1936,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast.expr expr) -> @ast.expr {
                 auto ann = instantiate_path(fcx, pth, tpt, expr.span,
                                             ast.ann_tag(old_ann));
                 ret @fold.respan[ast.expr_](expr.span,
-                                            ast.expr_path(pth, defopt, ann));
+                                            ast.expr_path(pth, ann));
             }
 
             // The definition doesn't take type parameters. If the programmer
@@ -1940,7 +1947,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast.expr expr) -> @ast.expr {
                 fail;
             }
 
-            auto e = ast.expr_path(pth, defopt, triv_ann(old_ann, tpt._1));
+            auto e = ast.expr_path(pth, triv_ann(old_ann, tpt._1));
             ret @fold.respan[ast.expr_](expr.span, e);
         }
 
@@ -2046,9 +2053,11 @@ fn check_expr(&@fn_ctxt fcx, &@ast.expr expr) -> @ast.expr {
             alt (e.node) {
                 case (ast.expr_call(?operator, ?operands, _)) {
                     alt (operator.node) {
-                        case (ast.expr_path(?oper_name,
-                                some[ast.def](ast.def_fn(?d_id)), _)) {
-
+                        case (ast.expr_path(?oper_name, ?ann)) {
+                            auto d_id;
+                            alt (fcx.ccx.tcx.def_map.get(ast.ann_tag(ann))) {
+                                case (ast.def_fn(?_d_id)) { d_id = _d_id; }
+                            }
                             for (@ast.expr operand in operands) {
                                 if (! ast.is_constraint_arg(operand)) {
                                     fcx.ccx.sess.span_err(expr.span,

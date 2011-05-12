@@ -7,6 +7,7 @@ import front.creader;
 import driver.session.session;
 import util.common.new_def_hash;
 import util.common.new_int_hash;
+import util.common.new_uint_hash;
 import util.common.new_str_hash;
 import util.common.span;
 import util.typestate_ann.ts_ann;
@@ -74,7 +75,10 @@ tag native_mod_index_entry {
 type nmod_index = hashmap[ident,native_mod_index_entry];
 type indexed_nmod = rec(ast.native_mod m, nmod_index index);
 
-type env = rec(hashmap[ast.def_num,import_state] imports,
+type def_map = hashmap[uint,def];
+
+type env = rec(def_map def_map,
+               hashmap[ast.def_num,import_state] imports,
                hashmap[ast.def_num,@indexed_mod] mod_map,
                hashmap[ast.def_num,@indexed_nmod] nmod_map,
                hashmap[def_id,vec[ident]] ext_map,
@@ -90,8 +94,10 @@ tag namespace {
     ns_type;
 }
 
-fn resolve_crate(session sess, @ast.crate crate) -> @ast.crate {
-    auto e = @rec(imports = new_int_hash[import_state](),
+fn resolve_crate(session sess, @ast.crate crate)
+    -> tup(@ast.crate, def_map) {
+    auto e = @rec(def_map = new_uint_hash[def](),
+                  imports = new_int_hash[import_state](),
                   mod_map = new_int_hash[@indexed_mod](),
                   nmod_map = new_int_hash[@indexed_nmod](),
                   ext_map = new_def_hash[vec[ident]](),
@@ -99,7 +105,7 @@ fn resolve_crate(session sess, @ast.crate crate) -> @ast.crate {
                   sess = sess);
     map_crate(e, *crate);
     resolve_imports(*e);
-    ret resolve_names(e, *crate);
+    ret tup(resolve_names(e, *crate), e.def_map);
 }
 
 // Locate all modules and imports and index them, so that the next passes can
@@ -165,8 +171,8 @@ fn resolve_imports(&env e) {
 }
 
 fn resolve_names(&@env e, &ast.crate c) -> @ast.crate {
-    auto fld = @rec(fold_pat_tag = bind fold_pat_tag(e,_,_,_,_,_,_),
-                    fold_expr_path = bind fold_expr_path(e,_,_,_,_,_),
+    auto fld = @rec(fold_pat_tag = bind fold_pat_tag(e,_,_,_,_,_),
+                    fold_expr_path = bind fold_expr_path(e,_,_,_,_),
                     fold_ty_path = bind fold_ty_path(e,_,_,_,_),
                     update_env_for_crate = bind update_env_for_crate(_,_),
                     update_env_for_item = bind update_env_for_item(_,_),
@@ -291,8 +297,8 @@ fn resolve_import(&env e, &@ast.view_item it, &list[scope] sc) {
 // and split that off as the 'primary' expr_path, with secondary expr_field
 // expressions tacked on the end.
 
-fn fold_expr_path(@env e, &list[scope] sc, &span sp, &ast.path p,
-                  &Option.t[def] d, &ann a) -> @ast.expr {
+fn fold_expr_path(@env e, &list[scope] sc, &span sp, &ast.path p, &ann a)
+    -> @ast.expr {
     auto idents = p.node.idents;
     auto n_idents = Vec.len(idents);
     assert (n_idents != 0u);
@@ -310,7 +316,10 @@ fn fold_expr_path(@env e, &list[scope] sc, &span sp, &ast.path p,
     }
 
     p = rec(node=rec(idents=Vec.slice(idents, 0u, i) with p.node) with p);
-    auto ex = @fold.respan(sp, ast.expr_path(p, some(dcur), a));
+    auto ex = @fold.respan(sp, ast.expr_path(p, a));
+    e.def_map.insert(ast.ann_tag(a), dcur);
+    // FIXME this duplicates the ann. Is that a problem? How will we deal with
+    // splitting this into path and field exprs when we don't fold?
     while (i < n_idents) {
         ex = @fold.respan(sp, ast.expr_field(ex, idents.(i), a));
         i += 1u;
@@ -319,33 +328,12 @@ fn fold_expr_path(@env e, &list[scope] sc, &span sp, &ast.path p,
 }
 
 
-fn lookup_path_strict(&env e, &list[scope] sc, &span sp, vec[ident] idents,
-                      namespace ns) -> def {
-    auto n_idents = Vec.len(idents);
-    auto dcur = lookup_in_scope_strict(e, sc, sp, idents.(0), ns);
-    auto i = 1u;
-    while (i < n_idents) {
-        if (!is_module(dcur)) {
-            e.sess.span_err(sp, idents.(i-1u) +
-                            " can't be dereferenced as a module");
-        }
-        dcur = lookup_in_mod_strict(e, dcur, sp, idents.(i), ns, outside);
-        i += 1u;
-    }
-    if (is_module(dcur)) {
-        e.sess.span_err(sp, Str.connect(idents, ".") +
-                        " is a module, not a " + ns_name(ns));
-    }
-    ret dcur;
-}
-                      
 fn fold_pat_tag(@env e, &list[scope] sc, &span sp, &ast.path p,
-                &vec[@ast.pat] args, &Option.t[ast.variant_def] old_def,
-                &ann a) -> @ast.pat {
+                &vec[@ast.pat] args, &ann a) -> @ast.pat {
     alt (lookup_path_strict(*e, sc, sp, p.node.idents, ns_value)) {
         case (ast.def_variant(?did, ?vid)) {
-            auto new_def = some[ast.variant_def](tup(did, vid));
-            ret @fold.respan[ast.pat_](sp, ast.pat_tag(p, args, new_def, a));
+            e.def_map.insert(ast.ann_tag(a), ast.def_variant(did, vid));
+            ret @fold.respan[ast.pat_](sp, ast.pat_tag(p, args, a));
         }
         case (_) {
             e.sess.span_err(sp, "not a tag variant: " +
@@ -356,9 +344,10 @@ fn fold_pat_tag(@env e, &list[scope] sc, &span sp, &ast.path p,
 }
 
 fn fold_ty_path(@env e, &list[scope] sc, &span sp, &ast.path p,
-                &Option.t[def] d) -> @ast.ty {
+                &ast.ann a) -> @ast.ty {
     auto new_def = lookup_path_strict(*e, sc, sp, p.node.idents, ns_type);
-    ret @fold.respan[ast.ty_](sp, ast.ty_path(p, some(new_def)));
+    e.def_map.insert(ast.ann_tag(a), new_def);
+    ret @fold.respan[ast.ty_](sp, ast.ty_path(p, a));
 }
 
 fn is_module(def d) -> bool {
@@ -380,6 +369,26 @@ fn unresolved(&env e, &span sp, ident id, str kind) {
     e.sess.span_err(sp, "unresolved " + kind + ": " + id);
 }
 
+fn lookup_path_strict(&env e, &list[scope] sc, &span sp, vec[ident] idents,
+                      namespace ns) -> def {
+    auto n_idents = Vec.len(idents);
+    auto dcur = lookup_in_scope_strict(e, sc, sp, idents.(0), ns);
+    auto i = 1u;
+    while (i < n_idents) {
+        if (!is_module(dcur)) {
+            e.sess.span_err(sp, idents.(i-1u) +
+                            " can't be dereferenced as a module");
+        }
+        dcur = lookup_in_mod_strict(e, dcur, sp, idents.(i), ns, outside);
+        i += 1u;
+    }
+    if (is_module(dcur)) {
+        e.sess.span_err(sp, Str.connect(idents, ".") +
+                        " is a module, not a " + ns_name(ns));
+    }
+    ret dcur;
+}
+                      
 fn lookup_in_scope_strict(&env e, list[scope] sc, &span sp, ident id,
                         namespace ns) -> def {
     alt (lookup_in_scope(e, sc, id, ns)) {
@@ -497,7 +506,7 @@ fn lookup_in_pat(ident id, &ast.pat pat) -> Option.t[def] {
         }
         case (ast.pat_wild(_)) {}
         case (ast.pat_lit(_, _)) {}
-        case (ast.pat_tag(_, ?pats, _, _)) {
+        case (ast.pat_tag(_, ?pats, _)) {
             for (@ast.pat p in pats) {
                 auto found = lookup_in_pat(id, *p);
                 if (found != none[def]) { ret found; }

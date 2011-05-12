@@ -67,7 +67,7 @@ type ast_fold[ENV] =
          &@ty output) -> @ty)                     fold_ty_fn,
 
      (fn(&ENV e, &span sp, &ast.path p,
-         &Option.t[def] d) -> @ty)                fold_ty_path,
+         &ann a) -> @ty)                          fold_ty_path,
 
      (fn(&ENV e, &span sp, &@ty t) -> @ty)        fold_ty_chan,
      (fn(&ENV e, &span sp, &@ty t) -> @ty)        fold_ty_port,
@@ -171,7 +171,6 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &span sp,
          &path p,
-         &Option.t[def] d,
          &ann a) -> @expr)                        fold_expr_path,
 
      (fn(&ENV e, &span sp,
@@ -231,7 +230,6 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &span sp,
          &path p, &vec[@pat] args,
-         &Option.t[ast.variant_def] d,
          &ann a) -> @pat)                         fold_pat_tag,
 
 
@@ -419,9 +417,9 @@ fn fold_ty[ENV](&ENV env, &ast_fold[ENV] fld, &@ty t) -> @ty {
             ret fld.fold_ty_obj(env_, t.span, meths_);
         }
 
-        case (ast.ty_path(?pth, ?ref_opt)) {
+        case (ast.ty_path(?pth, ?ann)) {
             auto pth_ = fold_path(env, fld, pth);
-            ret fld.fold_ty_path(env_, t.span, pth_, ref_opt);
+            ret fld.fold_ty_path(env_, t.span, pth_, ann);
         }
 
         case (ast.ty_fn(?proto, ?inputs, ?output)) {
@@ -508,7 +506,7 @@ fn fold_pat[ENV](&ENV env, &ast_fold[ENV] fld, &@ast.pat p) -> @ast.pat {
         case (ast.pat_bind(?id, ?did, ?t)) {
             ret fld.fold_pat_bind(env_, p.span, id, did, t);
         }
-        case (ast.pat_tag(?path, ?pats, ?d, ?t)) {
+        case (ast.pat_tag(?path, ?pats, ?t)) {
             auto ppath = fold_path(env, fld, path);
 
             let vec[@ast.pat] ppats = vec();
@@ -516,7 +514,7 @@ fn fold_pat[ENV](&ENV env, &ast_fold[ENV] fld, &@ast.pat p) -> @ast.pat {
                 ppats += vec(fold_pat(env_, fld, pat));
             }
 
-            ret fld.fold_pat_tag(env_, p.span, ppath, ppats, d, t);
+            ret fld.fold_pat_tag(env_, p.span, ppath, ppats, t);
         }
     }
 }
@@ -742,10 +740,10 @@ fn fold_expr[ENV](&ENV env, &ast_fold[ENV] fld, &@expr e) -> @expr {
             ret fld.fold_expr_index(env_, e.span, ee, iix, t2);
         }
 
-        case (ast.expr_path(?p, ?r, ?t)) {
+        case (ast.expr_path(?p, ?t)) {
             auto p_ = fold_path(env_, fld, p);
             auto t2 = fld.fold_ann(env_, t);
-            ret fld.fold_expr_path(env_, e.span, p_, r, t2);
+            ret fld.fold_expr_path(env_, e.span, p_, t2);
         }
 
         case (ast.expr_ext(?p, ?args, ?body, ?expanded, ?t)) {
@@ -1201,8 +1199,8 @@ fn identity_fold_ty_fn[ENV](&ENV env, &span sp,
 }
 
 fn identity_fold_ty_path[ENV](&ENV env, &span sp, &ast.path p,
-                              &Option.t[def] d) -> @ty {
-    ret @respan(sp, ast.ty_path(p, d));
+                              &ann a) -> @ty {
+    ret @respan(sp, ast.ty_path(p, a));
 }
 
 fn identity_fold_ty_chan[ENV](&ENV env, &span sp, &@ty t) -> @ty {
@@ -1349,9 +1347,8 @@ fn identity_fold_expr_index[ENV](&ENV env, &span sp,
 }
 
 fn identity_fold_expr_path[ENV](&ENV env, &span sp,
-                                &path p, &Option.t[def] d,
-                                &ann a) -> @expr {
-    ret @respan(sp, ast.expr_path(p, d, a));
+                                &path p, &ann a) -> @expr {
+    ret @respan(sp, ast.expr_path(p, a));
 }
 
 fn identity_fold_expr_ext[ENV](&ENV env, &span sp,
@@ -1443,8 +1440,8 @@ fn identity_fold_pat_bind[ENV](&ENV e, &span sp, &ident i,
 }
 
 fn identity_fold_pat_tag[ENV](&ENV e, &span sp, &path p, &vec[@pat] args,
-                              &Option.t[ast.variant_def] d, &ann a) -> @pat {
-    ret @respan(sp, ast.pat_tag(p, args, d, a));
+                              &ann a) -> @pat {
+    ret @respan(sp, ast.pat_tag(p, args, a));
 }
 
 
@@ -1692,7 +1689,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_expr_recv   = bind identity_fold_expr_recv[ENV](_,_,_,_,_),
          fold_expr_field  = bind identity_fold_expr_field[ENV](_,_,_,_,_),
          fold_expr_index  = bind identity_fold_expr_index[ENV](_,_,_,_,_),
-         fold_expr_path   = bind identity_fold_expr_path[ENV](_,_,_,_,_),
+         fold_expr_path   = bind identity_fold_expr_path[ENV](_,_,_,_),
          fold_expr_ext    = bind identity_fold_expr_ext[ENV](_,_,_,_,_,_,_),
          fold_expr_fail   = bind identity_fold_expr_fail[ENV](_,_,_),
          fold_expr_break  = bind identity_fold_expr_break[ENV](_,_,_),
@@ -1715,7 +1712,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_pat_wild    = bind identity_fold_pat_wild[ENV](_,_,_),
          fold_pat_lit     = bind identity_fold_pat_lit[ENV](_,_,_,_),
          fold_pat_bind    = bind identity_fold_pat_bind[ENV](_,_,_,_,_),
-         fold_pat_tag     = bind identity_fold_pat_tag[ENV](_,_,_,_,_,_),
+         fold_pat_tag     = bind identity_fold_pat_tag[ENV](_,_,_,_,_),
 
          fold_stmt_decl   = bind identity_fold_stmt_decl[ENV](_,_,_,_),
          fold_stmt_expr   = bind identity_fold_stmt_expr[ENV](_,_,_,_),

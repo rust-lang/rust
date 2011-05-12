@@ -7,9 +7,11 @@ import std.Option.none;
 import std.Int;
 import std.Vec;
 import util.common;
+import resolve.def_map;
 
 type fn_id_of_local = std.Map.hashmap[ast.def_id, ast.def_id];
 type env = rec(mutable vec[ast.def_id] current_context, // fn or obj
+               def_map def_map,
                fn_id_of_local idmap,
                session.session sess);
 
@@ -22,7 +24,7 @@ fn enter_item(@env e, &@ast.item i) {
         case (ast.item_fn(?name, _, _, ?id, _)) {
             Vec.push(e.current_context, id);
         }
-        case (ast.item_obj(_, _, _, ?ids, _)) {
+        case (ast.item_obj(?name, _, _, ?ids, _)) {
             Vec.push(e.current_context, ids.ty);
         }
         case (_) {}
@@ -59,15 +61,14 @@ fn walk_expr(@env e, &@ast.expr x) {
                 case (_) { }
             }
         }
-        case (ast.expr_path(_, ?def, _)) {
+        case (ast.expr_path(?pt, ?ann)) {
             auto local_id;
-            alt (Option.get(def)) {
+            alt (e.def_map.get(ast.ann_tag(ann))) {
                 case (ast.def_local(?id)) { local_id = id; }
                 case (_) { ret; }
             }
-
-            auto df = ast.def_id_of_def(Option.get(def));
-            auto def_context = Option.get(e.idmap.find(df));
+            auto df = ast.def_id_of_def(e.def_map.get(ast.ann_tag(ann)));
+            auto def_context = e.idmap.get(df);
 
             if (current_context(*e) != def_context) {
                 e.sess.span_err(x.span,
@@ -94,9 +95,10 @@ fn walk_block(@env e, &ast.block b) {
     }
 }
 
-fn check_for_captures(session.session sess, @ast.crate crate) {
+fn check_for_captures(session.session sess, @ast.crate crate, def_map dm) {
     let vec[ast.def_id] curctx = vec();
     auto env = @rec(mutable current_context = curctx,
+                    def_map = dm,
                     idmap = common.new_def_hash[ast.def_id](),
                     sess = sess);
     auto visitor = rec(visit_item_pre = bind enter_item(env, _),

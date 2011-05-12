@@ -34,7 +34,8 @@ type ctx = @rec(parser p,
                 eval_mode mode,
                 mutable vec[str] deps,
                 session.session sess,
-                mutable uint chpos);
+                mutable uint chpos,
+                mutable uint next_ann);
 
 fn mk_env() -> env {
     let env e = vec();
@@ -113,7 +114,7 @@ fn eval_lit(ctx cx, span sp, @ast.lit lit) -> val {
 
 fn eval_expr(ctx cx, env e, @ast.expr x) -> val {
     alt (x.node) {
-        case (ast.expr_path(?pth, _, _)) {
+        case (ast.expr_path(?pth, _)) {
             if (Vec.len[ident](pth.node.idents) == 1u &&
                 Vec.len[@ast.ty](pth.node.types) == 0u) {
                 ret lookup(cx.sess, e, x.span, pth.node.idents.(0));
@@ -383,12 +384,14 @@ fn eval_crate_directive(ctx cx,
             }
 
             auto start_id = cx.p.next_def_id();
-            auto p0 = new_parser(cx.sess, e, start_id, full_path, cx.chpos);
+            auto p0 = new_parser(cx.sess, e, start_id, full_path, cx.chpos,
+                                 cx.next_ann);
             auto m0 = parse_mod_items(p0, token.EOF);
             auto next_id = p0.next_def_id();
             // Thread defids and chpos through the parsers
             cx.p.set_def(next_id._1);
             cx.chpos = p0.get_chpos();
+            cx.next_ann = p0.next_ann_num();
             auto im = ast.item_mod(id, m0, next_id);
             auto i = @spanned(cdir.span.lo, cdir.span.hi, im);
             Vec.push[@ast.item](items, i);

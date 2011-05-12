@@ -189,6 +189,8 @@ import util.typestate_ann.union;
 import util.typestate_ann.pps_len;
 import util.typestate_ann.require_and_preserve;
 
+import resolve.def_map;
+
 /**** debugging junk  ****/
 
 fn bitv_to_str(fn_info enclosing, BitV.t v) -> str {
@@ -711,36 +713,37 @@ fn find_pre_post_state_native_mod(&native_mod m) -> bool {
     fail;
 }
  
-fn find_pre_post_obj(&fn_info_map fm, _obj o) -> () {
-    fn do_a_method(fn_info_map fm, &@method m) -> () {
+fn find_pre_post_obj(&def_map dm, &fn_info_map fm, _obj o) -> () {
+    fn do_a_method(def_map dm, fn_info_map fm, &@method m) -> () {
         assert (fm.contains_key(m.node.id));
-        find_pre_post_fn(fm, fm.get(m.node.id), m.node.meth);
+        find_pre_post_fn(dm, fm, fm.get(m.node.id), m.node.meth);
     }
-    auto f = bind do_a_method(fm,_);
+    auto f = bind do_a_method(dm, fm, _);
     Vec.map[@method, ()](f, o.methods);
     Option.map[@method, ()](f, o.dtor);
 }
 
-fn find_pre_post_state_obj(fn_info_map fm, _obj o) -> bool {
-    fn do_a_method(fn_info_map fm, &@method m) -> bool {
+fn find_pre_post_state_obj(&def_map dm, &fn_info_map fm, _obj o) -> bool {
+    fn do_a_method(def_map dm, fn_info_map fm, &@method m) -> bool {
         assert (fm.contains_key(m.node.id));
-        ret find_pre_post_state_fn(fm, fm.get(m.node.id), m.node.meth);
+        ret find_pre_post_state_fn(dm, fm, fm.get(m.node.id), m.node.meth);
     }
-    auto f = bind do_a_method(fm,_);
+    auto f = bind do_a_method(dm, fm, _);
     auto flags = Vec.map[@method, bool](f, o.methods);
     auto changed = Vec.or(flags);
     changed = changed || maybe[@method, bool](false, f, o.dtor);
     ret changed;
 }
 
-fn find_pre_post_item(fn_info_map fm, fn_info enclosing, &item i) -> () {
+fn find_pre_post_item(&def_map dm, &fn_info_map fm, &fn_info enclosing,
+                      &item i) -> () {
   alt (i.node) {
     case (ast.item_const(?id, ?t, ?e, ?di, ?a)) {
-        find_pre_post_expr(fm, enclosing, e);
+        find_pre_post_expr(dm, fm, enclosing, e);
     }
     case (ast.item_fn(?id, ?f, ?ps, ?di, ?a)) {
       assert (fm.contains_key(di));
-      find_pre_post_fn(fm, fm.get(di), f);
+      find_pre_post_fn(dm, fm, fm.get(di), f);
     }
     case (ast.item_mod(?id, ?m, ?di)) {
       find_pre_post_mod(m);
@@ -755,7 +758,7 @@ fn find_pre_post_item(fn_info_map fm, fn_info enclosing, &item i) -> () {
       ret;
     }
     case (ast.item_obj(?id, ?o, ?ps, ?di, ?a)) {
-        find_pre_post_obj(fm, o);
+        find_pre_post_obj(dm, fm, o);
     }
   }
 }
@@ -764,15 +767,15 @@ fn find_pre_post_item(fn_info_map fm, fn_info enclosing, &item i) -> () {
    sets the precondition in a to be the result of combining
    the preconditions for <args>, and the postcondition in a to 
    be the union of all postconditions for <args> */
-fn find_pre_post_exprs(&fn_info_map fm, &fn_info enclosing,
+fn find_pre_post_exprs(&def_map dm, &fn_info_map fm, &fn_info enclosing,
                        &vec[@expr] args, ann a) {
     auto nv = num_locals(enclosing);
 
-    fn do_one(fn_info_map fm, fn_info enclosing,
+    fn do_one(def_map dm, fn_info_map fm, fn_info enclosing,
               &@expr e) -> () {
-        find_pre_post_expr(fm, enclosing, e);
+        find_pre_post_expr(dm, fm, enclosing, e);
     }
-    auto f = bind do_one(fm, enclosing, _);
+    auto f = bind do_one(dm, fm, enclosing, _);
 
     Vec.map[@expr, ()](f, args);
 
@@ -789,10 +792,10 @@ fn find_pre_post_exprs(&fn_info_map fm, &fn_info enclosing,
            (nv, (Vec.map[pre_and_post, postcond](h, pps)))));
 }
 
-fn find_pre_post_loop(&fn_info_map fm, &fn_info enclosing, &@decl d,
-     &@expr index, &block body, &ann a) -> () {
-    find_pre_post_expr(fm, enclosing, index);
-    find_pre_post_block(fm, enclosing, body);
+fn find_pre_post_loop(&def_map dm, &fn_info_map fm, &fn_info enclosing,
+                      &@decl d, &@expr index, &block body, &ann a) -> () {
+    find_pre_post_expr(dm, fm, enclosing, index);
+    find_pre_post_block(dm, fm, enclosing, body);
     auto loop_precond = declare_var(enclosing, decl_lhs(d),
            seq_preconds(enclosing, vec(expr_pp(index),
                                        block_pp(body))));
@@ -803,48 +806,35 @@ fn find_pre_post_loop(&fn_info_map fm, &fn_info enclosing, &@decl d,
 }
 
 /* Fills in annotations as a side effect. Does not rebuild the expr */
-fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
+fn find_pre_post_expr(&def_map dm, &fn_info_map fm, &fn_info enclosing,
+                      @expr e) -> () {
     auto num_local_vars = num_locals(enclosing);
 
-    fn do_rand_(fn_info_map fm, fn_info enclosing, &@expr e) -> () {
-        find_pre_post_expr(fm, enclosing, e);
-    }
-    fn pp_one(&@expr e) -> pre_and_post {
-        ret expr_pp(e);
-    }
-    
-        log("find_pre_post_expr (num_locals =" +
-             uistr(num_local_vars) + "):");
-        log_expr(*e);
+    log("find_pre_post_expr (num_locals =" +
+        uistr(num_local_vars) + "):");
+    log_expr(*e);
     
     alt (e.node) {
         case (expr_call(?operator, ?operands, ?a)) {
             auto args = Vec.clone[@expr](operands);
             Vec.push[@expr](args, operator);
-            find_pre_post_exprs(fm, enclosing, args, a);
+            find_pre_post_exprs(dm, fm, enclosing, args, a);
         }
         case (expr_spawn(_, _, ?operator, ?operands, ?a)) {
             auto args = Vec.clone[@expr](operands);
             Vec.push[@expr](args, operator);
-            find_pre_post_exprs(fm, enclosing, args, a);
+            find_pre_post_exprs(dm, fm, enclosing, args, a);
         }
         case (expr_vec(?args, _, ?a)) {
-            find_pre_post_exprs(fm, enclosing, args, a);
+            find_pre_post_exprs(dm, fm, enclosing, args, a);
         }
         case (expr_tup(?elts, ?a)) {
-            find_pre_post_exprs(fm, enclosing, elt_exprs(elts), a);
+            find_pre_post_exprs(dm, fm, enclosing, elt_exprs(elts), a);
         }
-        case (expr_path(?p, ?maybe_def, ?a)) {
-            auto df;
-            alt (maybe_def) {
-                case (none[def])
-                    { log("expr_path should have a def"); fail; }
-                case (some[def](?d)) { df = d; }
-            }
-
+        case (expr_path(?p, ?a)) {
             auto res = empty_pre_post(num_local_vars);
 
-            alt (df) {
+            alt (dm.get(ast.ann_tag(a))) {
                 case (def_local(?d_id)) {
                     auto i = bit_num(d_id, enclosing);
                     require_and_preserve(i, res);
@@ -861,17 +851,17 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
             set_pre_and_post(a, empty_pre_post(num_local_vars));
         }
         case(expr_log(_, ?arg, ?a)) {
-            find_pre_post_expr(fm, enclosing, arg);
+            find_pre_post_expr(dm, fm, enclosing, arg);
             set_pre_and_post(a, expr_pp(arg));
         }
         case (expr_chan(?arg, ?a)) {
-            find_pre_post_expr(fm, enclosing, arg);
+            find_pre_post_expr(dm, fm, enclosing, arg);
             set_pre_and_post(a, expr_pp(arg));
         }
         case(expr_put(?opt, ?a)) {
             alt (opt) {
                 case (some[@expr](?arg)) {
-                    find_pre_post_expr(fm, enclosing, arg);
+                    find_pre_post_expr(dm, fm, enclosing, arg);
                     set_pre_and_post(a, expr_pp(arg));
                 }
                 case (none[@expr]) {
@@ -880,50 +870,60 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
             }
         }
         case (expr_block(?b, ?a)) {
-            find_pre_post_block(fm, enclosing, b);
+            find_pre_post_block(dm, fm, enclosing, b);
             set_pre_and_post(a, block_pp(b));
         }
         case (expr_rec(?fields,?maybe_base,?a)) {
             auto es = field_exprs(fields);
             Vec.plus_option[@expr](es, maybe_base);
-            find_pre_post_exprs(fm, enclosing, es, a);
+            find_pre_post_exprs(dm, fm, enclosing, es, a);
         }
         case (expr_assign(?lhs, ?rhs, ?a)) {
             alt (lhs.node) {
-                case (expr_path(?p, some[def](def_local(?d_id)), ?a_lhs)) {
-                    find_pre_post_expr(fm, enclosing, rhs);
-                    set_pre_and_post(a, expr_pp(rhs));
-                    log("gen:");
-                    log_expr(*e);
-                    gen(enclosing, a, d_id);
+                case (expr_path(?p, ?a_lhs)) {
+                    alt (dm.get(ast.ann_tag(a_lhs))) {
+                        case (def_local(?d_id)) {
+                            find_pre_post_expr(dm, fm, enclosing, rhs);
+                            set_pre_and_post(a, expr_pp(rhs));
+                            log("gen:");
+                            log_expr(*e);
+                            gen(enclosing, a, d_id);
+                            ret;
+                        }
+                        case (_) {}
+                    }
                 }
-                case (_) {
-                    // doesn't check that lhs is an lval, but
-                    // that's probably ok
-                    find_pre_post_exprs(fm, enclosing, vec(lhs, rhs), a);
-                }
+                case (_) {}
             }
+            // doesn't check that lhs is an lval, but
+            // that's probably ok
+            find_pre_post_exprs(dm, fm, enclosing, vec(lhs, rhs), a);
         }
         case (expr_recv(?lhs, ?rhs, ?a)) {
             alt (lhs.node) {
-                case (expr_path(?p, some[def](def_local(?d_id)), ?a_lhs)) {
-                    find_pre_post_expr(fm, enclosing, rhs);
-                    set_pre_and_post(a, expr_pp(rhs));
-                    log("gen:");
-                    log_expr(*e);
-                    gen(enclosing, a, d_id);
+                case (expr_path(?p, ?a_lhs)) {
+                    alt (dm.get(ast.ann_tag(a_lhs))) {
+                        case (def_local(?d_id)) {
+                            find_pre_post_expr(dm, fm, enclosing, rhs);
+                            set_pre_and_post(a, expr_pp(rhs));
+                            log("gen:");
+                            log_expr(*e);
+                            gen(enclosing, a, d_id);
+                            ret;
+                        }
+                        case (_) {}
+                    }
                 }
-                case (_) {
-                    // doesn't check that lhs is an lval, but
-                    // that's probably ok
-                    find_pre_post_exprs(fm, enclosing, vec(lhs, rhs), a);
-                }
+                case (_) {}
             }
+            // doesn't check that lhs is an lval, but
+            // that's probably ok
+            find_pre_post_exprs(dm, fm, enclosing, vec(lhs, rhs), a);
         }
         case (expr_assign_op(_, ?lhs, ?rhs, ?a)) {
             /* Different from expr_assign in that the lhs *must*
                already be initialized */
-            find_pre_post_exprs(fm, enclosing, vec(lhs, rhs), a);
+            find_pre_post_exprs(dm, fm, enclosing, vec(lhs, rhs), a);
         }
         case (expr_lit(_,?a)) {
             set_pre_and_post(a, empty_pre_post(num_local_vars));
@@ -936,7 +936,7 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
                           postcondition=false_postcond(num_local_vars)));
                 }
                 case (some[@expr](?ret_val)) {
-                    find_pre_post_expr(fm, enclosing, ret_val);
+                    find_pre_post_expr(dm, fm, enclosing, ret_val);
                     let pre_and_post pp =
                         rec(precondition=expr_precond(ret_val),
                             postcondition=false_postcond(num_local_vars));
@@ -945,13 +945,13 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
             }
         }
         case (expr_be(?e, ?a)) {
-            find_pre_post_expr(fm, enclosing, e);
+            find_pre_post_expr(dm, fm, enclosing, e);
             set_pre_and_post(a, rec(precondition=expr_prestate(e),
                           postcondition=false_postcond(num_local_vars)));
         }
         case (expr_if(?antec, ?conseq, ?maybe_alt, ?a)) {
-            find_pre_post_expr(fm, enclosing, antec);
-            find_pre_post_block(fm, enclosing, conseq);
+            find_pre_post_expr(dm, fm, enclosing, antec);
+            find_pre_post_block(dm, fm, enclosing, conseq);
             alt (maybe_alt) {
                 case (none[@expr]) {
                     auto precond_res = seq_preconds(enclosing,
@@ -962,7 +962,7 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
                                             expr_poststate(antec)));
                 }
                 case (some[@expr](?altern)) {
-                    find_pre_post_expr(fm, enclosing, altern);
+                    find_pre_post_expr(dm, fm, enclosing, altern);
                     auto precond_true_case =
                         seq_preconds(enclosing,
                                      vec(expr_pp(antec), block_pp(conseq)));
@@ -988,22 +988,22 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
         case (expr_binary(?bop,?l,?r,?a)) {
             /* *unless* bop is lazy (e.g. and, or)? 
              FIXME */
-            find_pre_post_exprs(fm, enclosing, vec(l, r), a);
+            find_pre_post_exprs(dm, fm, enclosing, vec(l, r), a);
         }
         case (expr_send(?l, ?r, ?a)) {
-            find_pre_post_exprs(fm, enclosing, vec(l, r), a);
+            find_pre_post_exprs(dm, fm, enclosing, vec(l, r), a);
         }
         case (expr_unary(_,?operand,?a)) {
-            find_pre_post_expr(fm, enclosing, operand);
+            find_pre_post_expr(dm, fm, enclosing, operand);
             set_pre_and_post(a, expr_pp(operand));
         }
         case (expr_cast(?operand, _, ?a)) {
-            find_pre_post_expr(fm, enclosing, operand);
+            find_pre_post_expr(dm, fm, enclosing, operand);
             set_pre_and_post(a, expr_pp(operand));
         }
         case (expr_while(?test, ?body, ?a)) {
-            find_pre_post_expr(fm, enclosing, test);
-            find_pre_post_block(fm, enclosing, body);
+            find_pre_post_expr(dm, fm, enclosing, test);
+            find_pre_post_block(dm, fm, enclosing, body);
             set_pre_and_post(a,
               rec(precondition=
                   seq_preconds(enclosing,
@@ -1014,8 +1014,8 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
                                           block_postcond(body)))));
         }
         case (expr_do_while(?body, ?test, ?a)) {
-            find_pre_post_block(fm, enclosing, body);
-            find_pre_post_expr(fm, enclosing, test);
+            find_pre_post_block(dm, fm, enclosing, body);
+            find_pre_post_expr(dm, fm, enclosing, test);
    
             auto loop_postcond = union_postconds(num_local_vars,
                             vec(block_postcond(body), expr_postcond(test)));
@@ -1032,22 +1032,22 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
                    postcondition=loop_postcond));
         }
         case (expr_for(?d, ?index, ?body, ?a)) {
-            find_pre_post_loop(fm, enclosing, d, index, body, a);
+            find_pre_post_loop(dm, fm, enclosing, d, index, body, a);
         }
         case (expr_for_each(?d, ?index, ?body, ?a)) {
-            find_pre_post_loop(fm, enclosing, d, index, body, a);
+            find_pre_post_loop(dm, fm, enclosing, d, index, body, a);
         }
         case (expr_index(?e, ?sub, ?a)) {
-            find_pre_post_exprs(fm, enclosing, vec(e, sub), a);
+            find_pre_post_exprs(dm, fm, enclosing, vec(e, sub), a);
         }
         case (expr_alt(?e, ?alts, ?a)) {
-            find_pre_post_expr(fm, enclosing, e);
-            fn do_an_alt(fn_info_map fm, fn_info enc, &arm an_alt)
+            find_pre_post_expr(dm, fm, enclosing, e);
+            fn do_an_alt(def_map dm, fn_info_map fm, fn_info enc, &arm an_alt)
                 -> pre_and_post {
-                find_pre_post_block(fm, enc, an_alt.block);
+                find_pre_post_block(dm, fm, enc, an_alt.block);
                 ret block_pp(an_alt.block);
             }
-            auto f = bind do_an_alt(fm, enclosing, _);
+            auto f = bind do_an_alt(dm, fm, enclosing, _);
             auto alt_pps = Vec.map[arm, pre_and_post](f, alts);
             fn combine_pp(pre_and_post antec, 
                           fn_info enclosing, &pre_and_post pp,
@@ -1068,7 +1068,7 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
             set_pre_and_post(a, alts_overall_pp);
         }
         case (expr_field(?operator, _, ?a)) {
-            find_pre_post_expr(fm, enclosing, operator);
+            find_pre_post_expr(dm, fm, enclosing, operator);
             set_pre_and_post(a, expr_pp(operator));
         }
         case (expr_fail(?a)) {
@@ -1079,18 +1079,18 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
                    postcondition=false_postcond(num_local_vars)));
         }
         case (expr_assert(?p, ?a)) {
-            find_pre_post_expr(fm, enclosing, p);
+            find_pre_post_expr(dm, fm, enclosing, p);
             set_pre_and_post(a, expr_pp(p));
         }
         case (expr_check(?p, ?a)) {
             /* will need to change when we support arbitrary predicates... */
-            find_pre_post_expr(fm, enclosing, p);
+            find_pre_post_expr(dm, fm, enclosing, p);
             set_pre_and_post(a, expr_pp(p));
         }
         case(expr_bind(?operator, ?maybe_args, ?a)) {
             auto args = Vec.cat_options[@expr](maybe_args);
             Vec.push[@expr](args, operator); /* ??? order of eval? */
-            find_pre_post_exprs(fm, enclosing, args, a);
+            find_pre_post_exprs(dm, fm, enclosing, args, a);
         }
         case (expr_break(?a)) {
             set_pre_and_post(a, empty_pre_post(num_local_vars));
@@ -1102,7 +1102,7 @@ fn find_pre_post_expr(&fn_info_map fm, &fn_info enclosing, @expr e) -> () {
             set_pre_and_post(a, empty_pre_post(num_local_vars));
         }
         case (expr_ext(_, _, _, ?expanded, ?a)) {
-            find_pre_post_expr(fm, enclosing, expanded);
+            find_pre_post_expr(dm, fm, enclosing, expanded);
             set_pre_and_post(a, expr_pp(expanded));
         }
     }
@@ -1130,8 +1130,8 @@ fn gen_poststate(&fn_info enclosing, &ann a, def_id id) -> bool {
   ret set_in_poststate(i, (ann_to_ts_ann_fail_more(a)).states);
 }
 
-fn find_pre_post_stmt(fn_info_map fm, &fn_info enclosing, &ast.stmt s)
-    -> () {
+fn find_pre_post_stmt(&def_map dm, fn_info_map fm, &fn_info enclosing,
+                      &ast.stmt s) -> () {
     log("stmt =");
     log_stmt(s);
 
@@ -1142,7 +1142,7 @@ fn find_pre_post_stmt(fn_info_map fm, &fn_info enclosing, &ast.stmt s)
             case(ast.decl_local(?alocal)) {
                 alt(alocal.init) {
                     case(some[ast.initializer](?an_init)) {
-                        find_pre_post_expr(fm, enclosing, an_init.expr);
+                        find_pre_post_expr(dm, fm, enclosing, an_init.expr);
                         auto rhs_pp = expr_pp(an_init.expr);
                         set_pre_and_post(alocal.ann, rhs_pp);
 
@@ -1167,19 +1167,19 @@ fn find_pre_post_stmt(fn_info_map fm, &fn_info enclosing, &ast.stmt s)
             case(decl_item(?anitem)) {
                 auto pp = empty_pre_post(num_local_vars);
                 set_pre_and_post(a, pp);
-                find_pre_post_item(fm, enclosing, *anitem);
+                find_pre_post_item(dm, fm, enclosing, *anitem);
             }
         }
     }
     case(stmt_expr(?e,?a)) {
-        find_pre_post_expr(fm, enclosing, e);
+        find_pre_post_expr(dm, fm, enclosing, e);
         set_pre_and_post(a, expr_pp(e));
     }    
   }
 }
 
-fn find_pre_post_block(&fn_info_map fm, &fn_info enclosing, block b)
-    -> () {
+fn find_pre_post_block(&def_map dm, &fn_info_map fm, &fn_info enclosing,
+                       block b) -> () {
     /* Want to say that if there is a break or cont in this
      block, then that invalidates the poststate upheld by
     any of the stmts after it. 
@@ -1198,20 +1198,20 @@ fn find_pre_post_block(&fn_info_map fm, &fn_info enclosing, block b)
      */
     auto nv = num_locals(enclosing);
 
-    fn do_one_(fn_info_map fm, fn_info i, &@stmt s) -> () {
-        find_pre_post_stmt(fm, i, *s);
+    fn do_one_(def_map dm, fn_info_map fm, fn_info i, &@stmt s) -> () {
+        find_pre_post_stmt(dm, fm, i, *s);
         log("pre_post for stmt:");
         log_stmt(*s);
         log("is:");
         log_pp(stmt_pp(*s));
     }
-    auto do_one = bind do_one_(fm, enclosing, _);
+    auto do_one = bind do_one_(dm, fm, enclosing, _);
     
     Vec.map[@stmt, ()](do_one, b.node.stmts);
-    fn do_inner_(fn_info_map fm, fn_info i, &@expr e) -> () {
-        find_pre_post_expr(fm, i, e);
+    fn do_inner_(def_map dm, fn_info_map fm, fn_info i, &@expr e) -> () {
+        find_pre_post_expr(dm, fm, i, e);
     }
-    auto do_inner = bind do_inner_(fm, enclosing, _);
+    auto do_inner = bind do_inner_(dm, fm, enclosing, _);
     Option.map[@expr, ()](do_inner, b.node.expr);
 
     let vec[pre_and_post] pps = vec();
@@ -1244,11 +1244,11 @@ fn find_pre_post_block(&fn_info_map fm, &fn_info enclosing, block b)
                                    postcondition=block_postcond));
 }
 
-fn find_pre_post_fn(&fn_info_map fm, &fn_info fi, &_fn f) -> () {
-    find_pre_post_block(fm, fi, f.body);
+fn find_pre_post_fn(&def_map dm, &fn_info_map fm, &fn_info fi, &_fn f) -> () {
+    find_pre_post_block(dm, fm, fi, f.body);
 }
 
-fn check_item_fn(&fn_info_map fm, &span sp, &ident i, &ast._fn f,
+fn check_item_fn(&def_map dm, &fn_info_map fm, &span sp, &ident i, &ast._fn f,
                  &vec[ast.ty_param] ty_params,
                  &def_id id, &ann a) -> @item {
 
@@ -1256,21 +1256,21 @@ fn check_item_fn(&fn_info_map fm, &span sp, &ident i, &ast._fn f,
     log_fn(f, i, ty_params);
 
   assert (fm.contains_key(id));
-  find_pre_post_fn(fm, fm.get(id), f);
+  find_pre_post_fn(dm, fm, fm.get(id), f);
 
   ret @respan(sp, ast.item_fn(i, f, ty_params, id, a));
 }
 
-fn find_pre_post_state_item(fn_info_map fm, fn_info enclosing, @item i)
-   -> bool {
+fn find_pre_post_state_item(&def_map dm, &fn_info_map fm, &fn_info enclosing,
+                            @item i) -> bool {
  alt (i.node) {
     case (ast.item_const(?id, ?t, ?e, ?di, ?a)) {
-        ret find_pre_post_state_expr(fm, enclosing,
+        ret find_pre_post_state_expr(dm, fm, enclosing,
               empty_prestate(num_locals(enclosing)), e);
     }
     case (ast.item_fn(?id, ?f, ?ps, ?di, ?a)) {
       assert (fm.contains_key(di));
-      ret find_pre_post_state_fn(fm, fm.get(di), f);
+      ret find_pre_post_state_fn(dm, fm, fm.get(di), f);
     }
     case (ast.item_mod(?id, ?m, ?di)) {
       ret find_pre_post_state_mod(m);
@@ -1285,7 +1285,7 @@ fn find_pre_post_state_item(fn_info_map fm, fn_info enclosing, @item i)
       ret false;
     }
     case (ast.item_obj(?id, ?o, ?ps, ?di, ?a)) {
-        ret find_pre_post_state_obj(fm, o);
+        ret find_pre_post_state_obj(dm, fm, o);
     }
   }
 }
@@ -1363,24 +1363,26 @@ fn set_pre_and_post(&ann a, pre_and_post pp) -> () {
     }
 }
 
-fn seq_states(&fn_info_map fm, &fn_info enclosing,
+fn seq_states(&def_map dm, &fn_info_map fm, &fn_info enclosing,
     prestate pres, vec[@expr] exprs) -> tup(bool, poststate) {
   auto changed = false;
   auto post = pres;
 
   for (@expr e in exprs) {
-    changed = find_pre_post_state_expr(fm, enclosing, post, e) || changed;
+      changed = find_pre_post_state_expr(dm, fm, enclosing, post, e)
+                || changed;
     post = expr_poststate(e);
   }
 
   ret tup(changed, post);
 }
 
-fn find_pre_post_state_exprs(&fn_info_map fm,
+fn find_pre_post_state_exprs(&def_map dm,
+                             &fn_info_map fm,
                              &fn_info enclosing,
                              &prestate pres,
                              &ann a, &vec[@expr] es) -> bool {
-  auto res = seq_states(fm, enclosing, pres, es);
+  auto res = seq_states(dm, fm, enclosing, pres, es);
   auto changed = res._0;
   changed = extend_prestate_ann(a, pres) || changed;
   changed = extend_poststate_ann(a, res._1) || changed;
@@ -1394,17 +1396,17 @@ fn pure_exp(&ann a, &prestate p) -> bool {
   ret changed;
 }
 
-fn find_pre_post_state_loop(fn_info_map fm, fn_info enclosing,
-   prestate pres, &@decl d, &@expr index, &block body, &ann a) -> bool {
+fn find_pre_post_state_loop(&def_map dm, &fn_info_map fm, &fn_info enclosing,
+   &prestate pres, &@decl d, &@expr index, &block body, &ann a) -> bool {
     auto changed = false;
 
     /* same issues as while */
     changed = extend_prestate_ann(a, pres) || changed;
-    changed = find_pre_post_state_expr(fm, enclosing, pres, index)
+    changed = find_pre_post_state_expr(dm, fm, enclosing, pres, index)
         || changed;
     /* in general, would need the intersection of
        (poststate of index, poststate of body) */
-    changed = find_pre_post_state_block(fm, enclosing,
+    changed = find_pre_post_state_block(dm, fm, enclosing,
                 expr_poststate(index), body) || changed;
     auto res_p = intersect_postconds(vec(expr_poststate(index),
                                          block_poststate(body)));
@@ -1413,7 +1415,7 @@ fn find_pre_post_state_loop(fn_info_map fm, fn_info enclosing,
     ret changed;
 }
 
-fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
+fn find_pre_post_state_expr(&def_map dm, &fn_info_map fm, &fn_info enclosing,
                             &prestate pres, @expr e) -> bool {
   auto changed = false;
   auto num_local_vars = num_locals(enclosing);
@@ -1421,51 +1423,52 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
   /* FIXME could get rid of some of the copy/paste */
   alt (e.node) {
     case (expr_vec(?elts, _, ?a)) {
-      ret find_pre_post_state_exprs(fm, enclosing, pres, a, elts); 
+      ret find_pre_post_state_exprs(dm, fm, enclosing, pres, a, elts); 
     }
     case (expr_tup(?elts, ?a)) {
-      ret find_pre_post_state_exprs(fm, enclosing, pres, a, elt_exprs(elts));
+      ret find_pre_post_state_exprs(dm, fm, enclosing, pres, a,
+                                    elt_exprs(elts));
     }
     case (expr_call(?operator, ?operands, ?a)) {
       /* do the prestate for the rator */
-      changed = find_pre_post_state_expr(fm, enclosing, pres, operator)
+      changed = find_pre_post_state_expr(dm, fm, enclosing, pres, operator)
         || changed;
       /* rands go left-to-right */
-      ret(find_pre_post_state_exprs(fm, enclosing,
+      ret(find_pre_post_state_exprs(dm, fm, enclosing,
                                     expr_poststate(operator), a, operands)
           || changed);
     }
     case (expr_spawn(_, _, ?operator, ?operands, ?a)) {
-        changed = find_pre_post_state_expr(fm, enclosing, pres, operator);
-        ret(find_pre_post_state_exprs(fm, enclosing,
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, operator);
+        ret(find_pre_post_state_exprs(dm, fm, enclosing,
                  expr_poststate(operator), a, operands)
           || changed);
     }
     case (expr_bind(?operator, ?maybe_args, ?a)) {
-        changed = find_pre_post_state_expr(fm, enclosing, pres, operator)
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, operator)
             || changed;
-        ret (find_pre_post_state_exprs(fm, enclosing,
+        ret (find_pre_post_state_exprs(dm, fm, enclosing,
           expr_poststate(operator), a, cat_options[@expr](maybe_args))
             || changed);
     }
-    case (expr_path(_,_,?a)) {
+    case (expr_path(_,?a)) {
       ret pure_exp(a, pres);
     }
     case (expr_log(_,?e,?a)) {
         /* factor out the "one exp" pattern */
-        changed = find_pre_post_state_expr(fm, enclosing, pres, e);
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, e);
         changed = extend_prestate_ann(a, pres) || changed;
         changed = extend_poststate_ann(a, expr_poststate(e)) || changed;
         ret changed;
     }
     case (expr_chan(?e, ?a)) {
-        changed = find_pre_post_state_expr(fm, enclosing, pres, e);
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, e);
         changed = extend_prestate_ann(a, pres) || changed;
         changed = extend_poststate_ann(a, expr_poststate(e)) || changed;
         ret changed;
     }
     case (expr_ext(_, _, _, ?expanded, ?a)) {
-        changed = find_pre_post_state_expr(fm, enclosing, pres, expanded);
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, expanded);
         changed = extend_prestate_ann(a, pres) || changed;
         changed = extend_poststate_ann(a, expr_poststate(expanded))
            || changed;
@@ -1474,7 +1477,8 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
     case (expr_put(?maybe_e, ?a)) {
         alt (maybe_e) {
             case (some[@expr](?arg)) {
-                changed = find_pre_post_state_expr(fm, enclosing, pres, arg);
+                changed = find_pre_post_state_expr(dm, fm, enclosing,
+                                                   pres, arg);
                 changed = extend_prestate_ann(a, pres) || changed;
                 changed = extend_poststate_ann(a, expr_poststate(arg))
                     || changed;
@@ -1489,20 +1493,20 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
         ret pure_exp(a, pres);
     }
     case (expr_block(?b,?a)) {
-        changed = find_pre_post_state_block(fm, enclosing, pres, b)
+        changed = find_pre_post_state_block(dm, fm, enclosing, pres, b)
            || changed;
         changed = extend_prestate_ann(a, pres) || changed;
         changed = extend_poststate_ann(a, block_poststate(b)) || changed;
         ret changed;
     }
     case (expr_rec(?fields,?maybe_base,?a)) {
-        changed = find_pre_post_state_exprs(fm, enclosing, pres, a,
+        changed = find_pre_post_state_exprs(dm, fm, enclosing, pres, a,
                                             field_exprs(fields)) || changed;
         alt (maybe_base) {
             case (none[@expr]) { /* do nothing */ }
             case (some[@expr](?base)) {
-                changed = find_pre_post_state_expr(fm, enclosing, pres, base)
-                    || changed;
+                changed = find_pre_post_state_expr
+                    (dm, fm, enclosing, pres, base) || changed;
                 changed = extend_poststate_ann(a, expr_poststate(base))
                     || changed;
             }
@@ -1513,51 +1517,56 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
         extend_prestate_ann(a, pres);
 
         alt (lhs.node) {
-            case (expr_path(?p, some[def](def_local(?d_id)), ?a_lhs)) {
-                // assignment to local var
-                changed = pure_exp(a_lhs, pres) || changed;
-                changed = find_pre_post_state_expr(fm, enclosing, pres, rhs)
-                    || changed;
-                changed = extend_poststate_ann(a, expr_poststate(rhs))
-                    || changed;
-                changed = gen_poststate(enclosing, a, d_id) || changed;
+            case (expr_path(_, ?a_lhs)) {
+                alt (dm.get(ast.ann_tag(a_lhs))) {
+                    case (def_local(?d_id)) {
+                        // assignment to local var
+                        changed = pure_exp(a_lhs, pres) || changed;
+                        changed = find_pre_post_state_expr
+                            (dm, fm, enclosing, pres, rhs) || changed;
+                        changed = extend_poststate_ann
+                            (a, expr_poststate(rhs)) || changed;
+                        ret gen_poststate(enclosing, a, d_id)
+                            || changed;
+                    }
+                    case (_) {}
+                }
             }
-            case (_) {
-                // assignment to something that must already have been init'd
-                changed = find_pre_post_state_expr(fm, enclosing, pres, lhs)
-                    || changed;
-                changed = find_pre_post_state_expr(fm, enclosing,
-                     expr_poststate(lhs), rhs) || changed;
-                changed = extend_poststate_ann(a, expr_poststate(rhs))
-                    || changed;
-            }
+            case (_) {}
         }
-        ret changed;
+        // assignment to something that must already have been init'd
+        changed = find_pre_post_state_expr
+            (dm, fm, enclosing, pres, lhs) || changed;
+        changed = find_pre_post_state_expr
+            (dm, fm, enclosing, expr_poststate(lhs), rhs) || changed;
+        ret extend_poststate_ann(a, expr_poststate(rhs)) || changed;
     }
     case (expr_recv(?lhs, ?rhs, ?a)) {
         extend_prestate_ann(a, pres);
 
         alt (lhs.node) {
-            case (expr_path(?p, some[def](def_local(?d_id)), ?a_lhs)) {
-                // receive to local var
-                changed = pure_exp(a_lhs, pres) || changed;
-                changed = find_pre_post_state_expr(fm, enclosing, pres, rhs)
-                    || changed;
-                changed = extend_poststate_ann(a, expr_poststate(rhs))
-                    || changed;
-                changed = gen_poststate(enclosing, a, d_id) || changed;
+            case (expr_path(?p, ?a_lhs)) {
+                alt (dm.get(ast.ann_tag(a_lhs))) {
+                    case (def_local(?d_id)) {
+                        // receive to local var
+                        changed = pure_exp(a_lhs, pres) || changed;
+                        changed = find_pre_post_state_expr
+                            (dm, fm, enclosing, pres, rhs) || changed;
+                        changed = extend_poststate_ann(a, expr_poststate(rhs))
+                            || changed;
+                        ret gen_poststate(enclosing, a, d_id) || changed;
+                    }
+                    case (_) {}
+                }
             }
-            case (_) {
-                // receive to something that must already have been init'd
-                changed = find_pre_post_state_expr(fm, enclosing, pres, lhs)
-                    || changed;
-                changed = find_pre_post_state_expr(fm, enclosing,
-                     expr_poststate(lhs), rhs) || changed;
-                changed = extend_poststate_ann(a, expr_poststate(rhs))
-                    || changed;
-            }
+            case (_) {}
         }
-        ret changed;
+        // receive to something that must already have been init'd
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, lhs)
+            || changed;
+        changed = find_pre_post_state_expr
+            (dm, fm, enclosing, expr_poststate(lhs), rhs) || changed;
+        ret extend_poststate_ann(a, expr_poststate(rhs)) || changed;
     }
 
     case (expr_ret(?maybe_ret_val, ?a)) {
@@ -1566,7 +1575,7 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
         alt(maybe_ret_val) {
             case (none[@expr]) { /* do nothing */ }
             case (some[@expr](?ret_val)) {
-                changed = find_pre_post_state_expr(fm, enclosing,
+                changed = find_pre_post_state_expr(dm, fm, enclosing,
                              pres, ret_val) || changed;
             }
         }
@@ -1575,14 +1584,15 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
     case (expr_be(?e, ?a)) {
         changed = extend_prestate_ann(a, pres) || changed;
         set_poststate_ann(a, false_postcond(num_local_vars));
-        changed = find_pre_post_state_expr(fm, enclosing, pres, e) || changed;
+        changed = find_pre_post_state_expr
+            (dm, fm, enclosing, pres, e) || changed;
         ret changed;
     }
     case (expr_if(?antec, ?conseq, ?maybe_alt, ?a)) {
         changed = extend_prestate_ann(a, pres) || changed;
-        changed = find_pre_post_state_expr(fm, enclosing, pres, antec)
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, antec)
             || changed;
-        changed = find_pre_post_state_block(fm, enclosing,
+        changed = find_pre_post_state_block(dm, fm, enclosing,
           expr_poststate(antec), conseq) || changed;
         alt (maybe_alt) {
             case (none[@expr]) {
@@ -1590,7 +1600,7 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
                     || changed;
             }
             case (some[@expr](?altern)) {
-                changed = find_pre_post_state_expr(fm, enclosing,
+                changed = find_pre_post_state_expr(dm, fm, enclosing,
                    expr_poststate(antec), altern) || changed;
                 auto poststate_res = intersect_postconds
                     (vec(block_poststate(conseq), expr_poststate(altern)));
@@ -1609,18 +1619,18 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
     case (expr_binary(?bop, ?l, ?r, ?a)) {
         /* FIXME: what if bop is lazy? */
         changed = extend_prestate_ann(a, pres) || changed;
-        changed = find_pre_post_state_expr(fm, enclosing, pres, l)
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, l)
                     || changed;
-        changed = find_pre_post_state_expr(fm,
+        changed = find_pre_post_state_expr(dm, fm,
                     enclosing, expr_poststate(l), r) || changed;
         changed = extend_poststate_ann(a, expr_poststate(r)) || changed;
         ret changed;
     }
     case (expr_send(?l, ?r, ?a)) {
         changed = extend_prestate_ann(a, pres) || changed;
-        changed = find_pre_post_state_expr(fm, enclosing, pres, l)
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, l)
                     || changed;
-        changed = find_pre_post_state_expr(fm,
+        changed = find_pre_post_state_expr(dm, fm,
                     enclosing, expr_poststate(l), r) || changed;
         changed = extend_poststate_ann(a, expr_poststate(r)) || changed;
         ret changed;
@@ -1628,9 +1638,9 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
     case (expr_assign_op(?op, ?lhs, ?rhs, ?a)) {
         /* quite similar to binary -- should abstract this */
         changed = extend_prestate_ann(a, pres) || changed;
-        changed = find_pre_post_state_expr(fm, enclosing, pres, lhs)
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, lhs)
                     || changed;
-        changed = find_pre_post_state_expr(fm,
+        changed = find_pre_post_state_expr(dm, fm,
                     enclosing, expr_poststate(lhs), rhs) || changed;
         changed = extend_poststate_ann(a, expr_poststate(rhs)) || changed;
         ret changed;
@@ -1645,9 +1655,9 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
            FIXME
            maybe need a "don't know" state in addition to 0 or 1?
         */
-        changed = find_pre_post_state_expr(fm, enclosing, pres, test)
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, test)
             || changed;
-        changed = find_pre_post_state_block(fm, 
+        changed = find_pre_post_state_block(dm, fm, 
                    enclosing, expr_poststate(test), body) || changed; 
         changed = extend_poststate_ann(a,
                     intersect_postconds(vec(expr_poststate(test),
@@ -1656,9 +1666,9 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
     }
     case (expr_do_while(?body, ?test, ?a)) {
         changed = extend_prestate_ann(a, pres) || changed;
-        changed = find_pre_post_state_block(fm, enclosing, pres, body)
+        changed = find_pre_post_state_block(dm, fm, enclosing, pres, body)
             || changed;
-        changed = find_pre_post_state_expr(fm, enclosing,
+        changed = find_pre_post_state_expr(dm, fm, enclosing,
                      block_poststate(body), test) || changed;
 
         /* conservative approximination: if the body of the loop
@@ -1676,28 +1686,32 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
         ret changed;
     }
     case (expr_for(?d, ?index, ?body, ?a)) {
-        ret find_pre_post_state_loop(fm, enclosing, pres, d, index, body, a);
+        ret find_pre_post_state_loop(dm, fm, enclosing, pres, d, index,
+                                     body, a);
     }
     case (expr_for_each(?d, ?index, ?body, ?a)) {
-        ret find_pre_post_state_loop(fm, enclosing, pres, d, index, body, a);
+        ret find_pre_post_state_loop(dm, fm, enclosing, pres, d, index,
+                                     body, a);
     }
     case (expr_index(?e, ?sub, ?a)) {
         changed = extend_prestate_ann(a, pres) || changed; 
-        changed = find_pre_post_state_expr(fm, enclosing, pres, e) || changed;
-        changed = find_pre_post_state_expr(fm, enclosing,
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, e)
+                  || changed;
+        changed = find_pre_post_state_expr(dm, fm, enclosing,
                      expr_poststate(e), sub) || changed;
         changed = extend_poststate_ann(a, expr_poststate(sub));
         ret changed;
     }
     case (expr_alt(?e, ?alts, ?a)) {
         changed = extend_prestate_ann(a, pres) || changed; 
-        changed = find_pre_post_state_expr(fm, enclosing, pres, e) || changed;
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, e)
+                  || changed;
         auto e_post = expr_poststate(e);
         auto a_post;
         if (Vec.len[arm](alts) > 0u) {
             a_post = false_postcond(num_local_vars);
             for (arm an_alt in alts) {
-                changed = find_pre_post_state_block(fm, enclosing, e_post,
+                changed = find_pre_post_state_block(dm, fm, enclosing, e_post,
                                                     an_alt.block) || changed;
                 changed = intersect(a_post, block_poststate(an_alt.block))
                     || changed; 
@@ -1711,13 +1725,13 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
         ret changed;
     }
     case (expr_field(?e,_,?a)) {
-        changed = find_pre_post_state_expr(fm, enclosing, pres, e);
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, e);
         changed = extend_prestate_ann(a, pres) || changed;
         changed = extend_poststate_ann(a, expr_poststate(e)) || changed;
         ret changed;
     }
     case (expr_unary(_,?operand,?a)) {
-        changed = find_pre_post_state_expr(fm, enclosing, pres, operand)
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, operand)
           || changed;
         changed = extend_prestate_ann(a, pres) || changed;
         changed = extend_poststate_ann(a, expr_poststate(operand))
@@ -1725,7 +1739,7 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
         ret changed;
     }
     case (expr_cast(?operand, _, ?a)) {
-           changed = find_pre_post_state_expr(fm, enclosing, pres, operand)
+          changed = find_pre_post_state_expr(dm, fm, enclosing, pres, operand)
           || changed;
         changed = extend_prestate_ann(a, pres) || changed;
         changed = extend_poststate_ann(a, expr_poststate(operand))
@@ -1744,7 +1758,8 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
     }
     case (expr_check(?p, ?a)) {
         changed = extend_prestate_ann(a, pres) || changed;
-        changed = find_pre_post_state_expr(fm, enclosing, pres, p) || changed;
+        changed = find_pre_post_state_expr(dm, fm, enclosing, pres, p)
+                  || changed;
         /* FIXME: update the postcondition to reflect that p holds */
         changed = extend_poststate_ann(a, pres) || changed;
         ret changed;
@@ -1764,7 +1779,7 @@ fn find_pre_post_state_expr(&fn_info_map fm, &fn_info enclosing,
   }
 }
 
-fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
+fn find_pre_post_state_stmt(&def_map dm, &fn_info_map fm, &fn_info enclosing,
                             &prestate pres, @stmt s) -> bool {
   auto changed = false;
   auto stmt_ann_ = stmt_to_ann(*s);
@@ -1788,7 +1803,7 @@ fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
                 changed = extend_prestate(stmt_ann.states.prestate, pres)
                     || changed;
                 changed = find_pre_post_state_expr
-                    (fm, enclosing, pres, an_init.expr) || changed;
+                    (dm, fm, enclosing, pres, an_init.expr) || changed;
                 changed = extend_poststate(stmt_ann.states.poststate,
                                            expr_poststate(an_init.expr))
                     || changed;
@@ -1819,12 +1834,14 @@ fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
                || changed;
             changed = extend_poststate(stmt_ann.states.poststate, pres)
                || changed;
-            ret (find_pre_post_state_item(fm, enclosing, an_item) || changed);
+            ret find_pre_post_state_item(dm, fm, enclosing, an_item)
+                || changed;
         }
       }
     }
     case (stmt_expr(?e, _)) {
-      changed = find_pre_post_state_expr(fm, enclosing, pres, e) || changed;
+      changed = find_pre_post_state_expr(dm, fm, enclosing, pres, e)
+                || changed;
       changed = extend_prestate(stmt_ann.states.prestate, expr_prestate(e))
           || changed;
       changed = extend_poststate(stmt_ann.states.poststate,
@@ -1849,7 +1866,7 @@ fn find_pre_post_state_stmt(&fn_info_map fm, &fn_info enclosing,
 
 /* Updates the pre- and post-states of statements in the block,
    returns a boolean flag saying whether any pre- or poststates changed */
-fn find_pre_post_state_block(&fn_info_map fm, &fn_info enclosing,
+fn find_pre_post_state_block(&def_map dm, &fn_info_map fm, &fn_info enclosing,
                              &prestate pres0, &block b)
   -> bool {
     
@@ -1863,7 +1880,7 @@ fn find_pre_post_state_block(&fn_info_map fm, &fn_info enclosing,
    consist of improving <pres> with whatever variables this stmt initializes.
   Then <pres> becomes the new poststate. */ 
   for (@stmt s in b.node.stmts) {
-    changed = find_pre_post_state_stmt(fm, enclosing, pres, s) || changed;
+    changed = find_pre_post_state_stmt(dm, fm, enclosing, pres, s) || changed;
     pres = stmt_poststate(*s, num_local_vars);
   }
 
@@ -1872,7 +1889,8 @@ fn find_pre_post_state_block(&fn_info_map fm, &fn_info enclosing,
   alt (b.node.expr) {
     case (none[@expr]) {}
     case (some[@expr](?e)) {
-      changed = find_pre_post_state_expr(fm, enclosing, pres, e) || changed;
+      changed = find_pre_post_state_expr(dm,fm, enclosing, pres, e)
+                || changed;
       post = expr_poststate(e);
     }
   }
@@ -1907,28 +1925,13 @@ fn find_pre_post_state_block(&fn_info_map fm, &fn_info enclosing,
   ret changed;
 }
 
-fn find_pre_post_state_fn(&fn_info_map f_info, &fn_info fi, &ast._fn f)
-  -> bool {
+fn find_pre_post_state_fn(&def_map dm, &fn_info_map f_info, &fn_info fi,
+                          &ast._fn f) -> bool {
     /* FIXME: where do we set args as being initialized?
        What about for methods? */
     auto num_local_vars = num_locals(fi);
-    ret find_pre_post_state_block(f_info, fi,
+    ret find_pre_post_state_block(dm, f_info, fi,
                                   empty_prestate(num_local_vars), f.body);
-}
-
-fn fixed_point_states(fn_info_map fm, fn_info f_info,
-                      fn (&fn_info_map, &fn_info, &ast._fn) -> bool f,
-                      &ast._fn start) -> () {
-
-  auto changed = f(fm, f_info, start);
-
-  if (changed) {
-    ret fixed_point_states(fm, f_info, f, start);
-  }
-  else {
-    // we're done!
-    ret;
-  }
 }
 
 fn check_states_expr(fn_info enclosing, @expr e) -> () {
@@ -1993,44 +1996,44 @@ fn check_states_against_conditions(fn_info enclosing, &ast._fn f) -> () {
   
 }
 
-fn check_fn_states(&fn_info_map f_info_map, &fn_info f_info, &ast._fn f)
-    -> () {
-  /* Compute the pre- and post-states for this function */
-    auto g = find_pre_post_state_fn;
-    fixed_point_states(f_info_map, f_info, g, f);
+fn check_fn_states(&def_map dm, &fn_info_map f_info_map, &fn_info f_info,
+                   &ast._fn f) -> () {
+    /* Compute the pre- and post-states for this function */
+    // (Fixpoint iteration)
+    while (find_pre_post_state_fn(dm, f_info_map, f_info, f)) {}
     
   /* Now compare each expr's pre-state to its precondition
      and post-state to its postcondition */
     check_states_against_conditions(f_info, f);
 }
 
-fn check_item_fn_state(&fn_info_map f_info_map, &span sp, &ident i,
-                       &ast._fn f, &vec[ast.ty_param] ty_params,
+fn check_item_fn_state(def_map dm, &fn_info_map f_info_map, &span sp,
+                       &ident i, &ast._fn f, &vec[ast.ty_param] ty_params,
                        &def_id id, &ann a) -> @item {
 
   /* Look up the var-to-bit-num map for this function */
   assert (f_info_map.contains_key(id));
   auto f_info = f_info_map.get(id);
 
-  check_fn_states(f_info_map, f_info, f);
+  check_fn_states(dm, f_info_map, f_info, f);
 
   /* Rebuild the same function */
   ret @respan(sp, ast.item_fn(i, f, ty_params, id, a));
 }
 
-fn check_method_states(&fn_info_map f_info_map, @method m) -> () {
+fn check_method_states(&def_map dm, &fn_info_map f_info_map, @method m) {
     assert (f_info_map.contains_key(m.node.id));
     auto f_info = f_info_map.get(m.node.id);
-    check_fn_states(f_info_map, f_info, m.node.meth);
+    check_fn_states(dm, f_info_map, f_info, m.node.meth);
 }
 
-fn check_obj_state(&fn_info_map f_info_map, &vec[obj_field] fields,
-                   &vec[@method] methods,
+fn check_obj_state(def_map dm, &fn_info_map f_info_map,
+                   &vec[obj_field] fields, &vec[@method] methods,
                    &Option.t[@method] dtor) -> ast._obj {
-    fn one(fn_info_map fm, &@method m) -> () {
-        ret check_method_states(fm, m);
+    fn one(def_map dm, fn_info_map fm, &@method m) -> () {
+        ret check_method_states(dm, fm, m);
     }
-    auto f = bind one(f_info_map,_);
+    auto f = bind one(dm, f_info_map,_);
     Vec.map[@method, ()](f, methods);
     Option.map[@method, ()](f, dtor);
     ret rec(fields=fields, methods=methods, dtor=dtor);
@@ -2283,7 +2286,7 @@ fn annotate_expr(&fn_info_map fm, &@expr e) -> @expr {
             e1 = expr_index(annotate_expr(fm, e),
                             annotate_expr(fm, sub), a);
         }
-        case (expr_path(_,_,_)) {
+        case (expr_path(_,_)) {
             /* no change */
         }
         case (expr_ext(?p, ?es, ?s_opt, ?e, ?a)) {
@@ -2482,7 +2485,7 @@ fn annotate_crate(&fn_info_map fm, &@ast.crate crate) -> @ast.crate {
                    with crate.node));
 }
 
-fn check_crate(@ast.crate crate) -> @ast.crate {
+fn check_crate(@ast.crate crate, def_map dm) -> @ast.crate {
   /* Build the global map from function id to var-to-bit-num-map */
   auto fm = mk_f_to_fn_info(crate);
 
@@ -2491,14 +2494,14 @@ fn check_crate(@ast.crate crate) -> @ast.crate {
 
   /* Compute the pre and postcondition for every subexpression */
   auto fld = fold.new_identity_fold[fn_info_map]();
-  fld = @rec(fold_item_fn = bind check_item_fn(_,_,_,_,_,_,_) with *fld);
+  fld = @rec(fold_item_fn = bind check_item_fn(dm,_,_,_,_,_,_,_) with *fld);
   auto with_pre_postconditions = fold.fold_crate[fn_info_map]
     (fm, fld, with_anns);
 
   auto fld1 = fold.new_identity_fold[fn_info_map]();
 
-  fld1 = @rec(fold_item_fn = bind check_item_fn_state(_,_,_,_,_,_,_),
-              fold_obj     = bind check_obj_state(_,_,_,_)
+  fld1 = @rec(fold_item_fn = bind check_item_fn_state(dm,_,_,_,_,_,_,_),
+              fold_obj     = bind check_obj_state(dm,_,_,_,_)
               with *fld1);
 
   ret fold.fold_crate[fn_info_map](fm, fld1,

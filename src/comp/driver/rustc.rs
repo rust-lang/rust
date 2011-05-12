@@ -86,19 +86,21 @@ fn compile_input(session.session sess,
                  str input, str output) {
     auto time_passes = sess.get_opts().time_passes;
     auto def = tup(ast.local_crate, 0);
-    auto p = parser.new_parser(sess, env, def, input, 0u);
-    auto crate = time[@ast.crate](time_passes, "parsing",
-                                  bind parse_input(sess, p, input));
+    auto p = parser.new_parser(sess, env, def, input, 0u, 0u);
+    auto crate = time(time_passes, "parsing",
+                      bind parse_input(sess, p, input));
     if (sess.get_opts().output_type == Link.output_type_none) {ret;}
 
-    crate = time[@ast.crate](time_passes, "external crate reading",
-                             bind creader.read_crates(sess, crate));
-    crate = time[@ast.crate](time_passes, "resolution",
-                             bind resolve.resolve_crate(sess, crate));
+    crate = time(time_passes, "external crate reading",
+                 bind creader.read_crates(sess, crate));
+    auto res = time(time_passes, "resolution",
+                    bind resolve.resolve_crate(sess, crate));
+    crate = res._0;
+    auto def_map = res._1;
     time[()](time_passes, "capture checking",
-             bind capture.check_for_captures(sess, crate));
+             bind capture.check_for_captures(sess, crate, def_map));
 
-    auto ty_cx = ty.mk_ctxt(sess);
+    auto ty_cx = ty.mk_ctxt(sess, def_map);
     auto typeck_result =
         time[typeck.typecheck_result](time_passes, "typechecking",
                                       bind typeck.check_crate(ty_cx, crate));
@@ -106,8 +108,8 @@ fn compile_input(session.session sess,
     auto type_cache = typeck_result._1;
 
     if (sess.get_opts().run_typestate) {
-        crate = time[@ast.crate](time_passes, "typestate checking",
-            bind typestate_check.check_crate(crate));
+        crate = time(time_passes, "typestate checking",
+                     bind typestate_check.check_crate(crate, def_map));
     }
 
     auto llmod = time[llvm.ModuleRef](time_passes, "translation",
@@ -121,7 +123,7 @@ fn pretty_print_input(session.session sess,
                              eval.env env,
                              str input) {
     auto def = tup(ast.local_crate, 0);
-    auto p = front.parser.new_parser(sess, env, def, input, 0u);
+    auto p = front.parser.new_parser(sess, env, def, input, 0u, 0u);
     auto crate = front.parser.parse_crate_from_source_file(p);
     pretty.pprust.print_file(sess, crate.node.module, input, std.IO.stdout());
 }

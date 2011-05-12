@@ -3621,13 +3621,14 @@ fn collect_upvars(&@block_ctxt cx, &ast.block bloc, &ast.def_id initial_decl)
         -> vec[ast.def_id] {
     type env = @rec(
         mutable vec[ast.def_id] refs,
-        hashmap[ast.def_id,()] decls
+        hashmap[ast.def_id,()] decls,
+        resolve.def_map def_map
     );
 
     fn walk_expr(env e, &@ast.expr expr) {
         alt (expr.node) {
-            case (ast.expr_path(?path, ?d, _)) {
-                alt (Option.get[ast.def](d)) {
+            case (ast.expr_path(?path, ?ann)) {
+                alt (e.def_map.get(ast.ann_tag(ann))) {
                     case (ast.def_arg(?did)) {
                         Vec.push[ast.def_id](e.refs, did);
                     }
@@ -3656,7 +3657,9 @@ fn collect_upvars(&@block_ctxt cx, &ast.block bloc, &ast.def_id initial_decl)
     let vec[ast.def_id] refs = vec();
     let hashmap[ast.def_id,()] decls = new_def_hash[()]();
     decls.insert(initial_decl, ());
-    let env e = @rec(mutable refs=refs, decls=decls);
+    let env e = @rec(mutable refs=refs,
+                     decls=decls,
+                     def_map=cx.fcx.lcx.ccx.tcx.def_map);
 
     auto visitor = @rec(visit_decl_pre = bind walk_decl(e, _),
                         visit_expr_pre = bind walk_expr(e, _)
@@ -3941,7 +3944,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast.pat pat, ValueRef llval,
             ret res(matched_cx, llval);
         }
 
-        case (ast.pat_tag(?id, ?subpats, ?vdef_opt, ?ann)) {
+        case (ast.pat_tag(?id, ?subpats, ?ann)) {
             auto lltagptr = cx.build.PointerCast(llval,
                 T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn));
 
@@ -3949,16 +3952,16 @@ fn trans_pat_match(&@block_ctxt cx, &@ast.pat pat, ValueRef llval,
                                              vec(C_int(0), C_int(0)));
             auto lldiscrim = cx.build.Load(lldiscrimptr);
 
-            auto vdef = Option.get[ast.variant_def](vdef_opt);
-            auto variant_id = vdef._1;
+            auto vdef = ast.variant_def_ids
+                (cx.fcx.lcx.ccx.tcx.def_map.get(ast.ann_tag(ann)));
             auto variant_tag = 0;
 
             auto variants = tag_variants(cx.fcx.lcx.ccx, vdef._0);
             auto i = 0;
             for (variant_info v in variants) {
                 auto this_variant_id = v.id;
-                if (variant_id._0 == this_variant_id._0 &&
-                    variant_id._1 == this_variant_id._1) {
+                if (vdef._1._0 == this_variant_id._0 &&
+                    vdef._1._1 == this_variant_id._1) {
                     variant_tag = i;
                 }
                 i += 1;
@@ -4021,11 +4024,12 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast.pat pat,
                 ret copy_ty(bcx, INIT, dst, llval, t);
             }
         }
-        case (ast.pat_tag(_, ?subpats, ?vdef_opt, ?ann)) {
+        case (ast.pat_tag(_, ?subpats, ?ann)) {
             if (Vec.len[@ast.pat](subpats) == 0u) { ret res(cx, llval); }
 
             // Get the appropriate variant for this tag.
-            auto vdef = Option.get[ast.variant_def](vdef_opt);
+            auto vdef = ast.variant_def_ids
+                (cx.fcx.lcx.ccx.tcx.def_map.get(ast.ann_tag(ann)));
 
             auto lltagptr = cx.build.PointerCast(llval,
                 T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn));
@@ -4191,109 +4195,103 @@ fn lookup_discriminant(&@local_ctxt lcx, &ast.def_id tid, &ast.def_id vid)
     }
 }
 
-fn trans_path(&@block_ctxt cx, &ast.path p, &Option.t[ast.def] dopt,
-              &ast.ann ann) -> lval_result {
-    alt (dopt) {
-        case (some[ast.def](?def)) {
-            alt (def) {
-                case (ast.def_arg(?did)) {
-                    alt (cx.fcx.llargs.find(did)) {
-                        case (none[ValueRef]) {
-                            assert (cx.fcx.llupvars.contains_key(did));
-                            ret lval_mem(cx, cx.fcx.llupvars.get(did));
-                        }
-                        case (some[ValueRef](?llval)) {
-                            ret lval_mem(cx, llval);
-                        }
-                    }
+fn trans_path(&@block_ctxt cx, &ast.path p, &ast.ann ann) -> lval_result {
+    alt (cx.fcx.lcx.ccx.tcx.def_map.get(ast.ann_tag(ann))) {
+        case (ast.def_arg(?did)) {
+            alt (cx.fcx.llargs.find(did)) {
+                case (none[ValueRef]) {
+                    assert (cx.fcx.llupvars.contains_key(did));
+                    ret lval_mem(cx, cx.fcx.llupvars.get(did));
                 }
-                case (ast.def_local(?did)) {
-                    alt (cx.fcx.lllocals.find(did)) {
-                        case (none[ValueRef]) {
-                            assert (cx.fcx.llupvars.contains_key(did));
-                            ret lval_mem(cx, cx.fcx.llupvars.get(did));
-                        }
-                        case (some[ValueRef](?llval)) {
-                            ret lval_mem(cx, llval);
-                        }
-                    }
-                }
-                case (ast.def_binding(?did)) {
-                    assert (cx.fcx.lllocals.contains_key(did));
-                    ret lval_mem(cx, cx.fcx.lllocals.get(did));
-                }
-                case (ast.def_obj_field(?did)) {
-                    assert (cx.fcx.llobjfields.contains_key(did));
-                    ret lval_mem(cx, cx.fcx.llobjfields.get(did));
-                }
-                case (ast.def_fn(?did)) {
-                    auto tyt = ty.lookup_item_type(cx.fcx.lcx.ccx.sess,
-                        cx.fcx.lcx.ccx.tcx, cx.fcx.lcx.ccx.type_cache, did);
-                    ret lval_generic_fn(cx, tyt, did, ann);
-                }
-                case (ast.def_obj(?did)) {
-                    auto tyt = ty.lookup_item_type(cx.fcx.lcx.ccx.sess,
-                        cx.fcx.lcx.ccx.tcx, cx.fcx.lcx.ccx.type_cache, did);
-                    ret lval_generic_fn(cx, tyt, did, ann);
-                }
-                case (ast.def_variant(?tid, ?vid)) {
-                    auto v_tyt = ty.lookup_item_type(cx.fcx.lcx.ccx.sess,
-                        cx.fcx.lcx.ccx.tcx, cx.fcx.lcx.ccx.type_cache, vid);
-                    alt (ty.struct(cx.fcx.lcx.ccx.tcx, v_tyt._1)) {
-                        case (ty.ty_fn(_, _, _)) {
-                            // N-ary variant.
-                            ret lval_generic_fn(cx, v_tyt, vid, ann);
-                        }
-                        case (_) {
-                            // Nullary variant.
-                            auto tag_ty = node_ann_type(cx.fcx.lcx.ccx, ann);
-                            auto lldiscrim_gv =
-                                lookup_discriminant(cx.fcx.lcx, tid, vid);
-                            auto lldiscrim = cx.build.Load(lldiscrim_gv);
-
-                            auto alloc_result = alloc_ty(cx, tag_ty);
-                            auto lltagblob = alloc_result.val;
-
-                            auto lltagty;
-                            if (ty.type_has_dynamic_size(cx.fcx.lcx.ccx.tcx,
-                                                         tag_ty)) {
-                                lltagty = T_opaque_tag(cx.fcx.lcx.ccx.tn);
-                            } else {
-                                lltagty = type_of(cx.fcx.lcx.ccx, tag_ty);
-                            }
-                            auto lltagptr = alloc_result.bcx.build.
-                                PointerCast(lltagblob, T_ptr(lltagty));
-
-                            auto lldiscrimptr = alloc_result.bcx.build.GEP(
-                                lltagptr, vec(C_int(0), C_int(0)));
-                            alloc_result.bcx.build.Store(lldiscrim,
-                                                         lldiscrimptr);
-
-                            ret lval_val(alloc_result.bcx, lltagptr);
-                        }
-                    }
-                }
-                case (ast.def_const(?did)) {
-                    // TODO: externals
-                    assert (cx.fcx.lcx.ccx.consts.contains_key(did));
-                    ret lval_mem(cx, cx.fcx.lcx.ccx.consts.get(did));
-                }
-                case (ast.def_native_fn(?did)) {
-                    auto tyt = ty.lookup_item_type(cx.fcx.lcx.ccx.sess,
-                        cx.fcx.lcx.ccx.tcx,
-                        cx.fcx.lcx.ccx.type_cache, did);
-                    ret lval_generic_fn(cx, tyt, did, ann);
-                }
-                case (_) {
-                    cx.fcx.lcx.ccx.sess.unimpl("def variant in trans");
+                case (some[ValueRef](?llval)) {
+                    ret lval_mem(cx, llval);
                 }
             }
         }
-        case (none[ast.def]) {
-            cx.fcx.lcx.ccx.sess.err("unresolved expr_path in trans");
+        case (ast.def_local(?did)) {
+            alt (cx.fcx.lllocals.find(did)) {
+                case (none[ValueRef]) {
+                    assert (cx.fcx.llupvars.contains_key(did));
+                    ret lval_mem(cx, cx.fcx.llupvars.get(did));
+                }
+                case (some[ValueRef](?llval)) {
+                    ret lval_mem(cx, llval);
+                }
+            }
+        }
+        case (ast.def_binding(?did)) {
+            assert (cx.fcx.lllocals.contains_key(did));
+            ret lval_mem(cx, cx.fcx.lllocals.get(did));
+        }
+        case (ast.def_obj_field(?did)) {
+            assert (cx.fcx.llobjfields.contains_key(did));
+            ret lval_mem(cx, cx.fcx.llobjfields.get(did));
+        }
+        case (ast.def_fn(?did)) {
+            auto tyt = ty.lookup_item_type(cx.fcx.lcx.ccx.sess,
+                                           cx.fcx.lcx.ccx.tcx,
+                                           cx.fcx.lcx.ccx.type_cache, did);
+            ret lval_generic_fn(cx, tyt, did, ann);
+        }
+        case (ast.def_obj(?did)) {
+            auto tyt = ty.lookup_item_type(cx.fcx.lcx.ccx.sess,
+                                           cx.fcx.lcx.ccx.tcx,
+                                           cx.fcx.lcx.ccx.type_cache, did);
+            ret lval_generic_fn(cx, tyt, did, ann);
+        }
+        case (ast.def_variant(?tid, ?vid)) {
+            auto v_tyt = ty.lookup_item_type(cx.fcx.lcx.ccx.sess,
+                                             cx.fcx.lcx.ccx.tcx,
+                                             cx.fcx.lcx.ccx.type_cache, vid);
+            alt (ty.struct(cx.fcx.lcx.ccx.tcx, v_tyt._1)) {
+                case (ty.ty_fn(_, _, _)) {
+                    // N-ary variant.
+                    ret lval_generic_fn(cx, v_tyt, vid, ann);
+                }
+                case (_) {
+                    // Nullary variant.
+                    auto tag_ty = node_ann_type(cx.fcx.lcx.ccx, ann);
+                    auto lldiscrim_gv =
+                        lookup_discriminant(cx.fcx.lcx, tid, vid);
+                    auto lldiscrim = cx.build.Load(lldiscrim_gv);
+
+                    auto alloc_result = alloc_ty(cx, tag_ty);
+                    auto lltagblob = alloc_result.val;
+
+                    auto lltagty;
+                    if (ty.type_has_dynamic_size(cx.fcx.lcx.ccx.tcx,
+                                                 tag_ty)) {
+                        lltagty = T_opaque_tag(cx.fcx.lcx.ccx.tn);
+                    } else {
+                        lltagty = type_of(cx.fcx.lcx.ccx, tag_ty);
+                    }
+                    auto lltagptr = alloc_result.bcx.build.
+                        PointerCast(lltagblob, T_ptr(lltagty));
+
+                    auto lldiscrimptr = alloc_result.bcx.build.GEP
+                        (lltagptr, vec(C_int(0), C_int(0)));
+                    alloc_result.bcx.build.Store(lldiscrim,
+                                                 lldiscrimptr);
+
+                    ret lval_val(alloc_result.bcx, lltagptr);
+                }
+            }
+        }
+        case (ast.def_const(?did)) {
+            // TODO: externals
+            assert (cx.fcx.lcx.ccx.consts.contains_key(did));
+            ret lval_mem(cx, cx.fcx.lcx.ccx.consts.get(did));
+        }
+        case (ast.def_native_fn(?did)) {
+            auto tyt = ty.lookup_item_type(cx.fcx.lcx.ccx.sess,
+                                           cx.fcx.lcx.ccx.tcx,
+                                           cx.fcx.lcx.ccx.type_cache, did);
+            ret lval_generic_fn(cx, tyt, did, ann);
+        }
+        case (_) {
+            cx.fcx.lcx.ccx.sess.unimpl("def variant in trans");
         }
     }
-    fail;
 }
 
 fn trans_field(&@block_ctxt cx, &ast.span sp, ValueRef v, &ty.t t0,
@@ -4402,8 +4400,8 @@ fn trans_index(&@block_ctxt cx, &ast.span sp, &@ast.expr base,
 
 fn trans_lval(&@block_ctxt cx, &@ast.expr e) -> lval_result {
     alt (e.node) {
-        case (ast.expr_path(?p, ?dopt, ?ann)) {
-            ret trans_path(cx, p, dopt, ann);
+        case (ast.expr_path(?p, ?ann)) {
+            ret trans_path(cx, p, ann);
         }
         case (ast.expr_field(?base, ?ident, ?ann)) {
             auto r = trans_expr(cx, base);
