@@ -2,7 +2,7 @@
 
 const int rc_base_field_refcnt = 0;
 
-// FIXME: import from std.dbg when imported consts work.
+// FIXME: import from std::dbg when imported consts work.
 const uint const_refcount = 0x7bad_face_u;
 
 const int task_field_refcnt = 0;
@@ -97,7 +97,7 @@ fn native_glue_name(int n, native_glue_type ngt) -> str {
         case (ngt_pure_rust)    { prefix = "rust_native_pure_rust_"; }
         case (ngt_cdecl)        { prefix = "rust_native_cdecl_"; }
     }
-    ret prefix + util.common.istr(n);
+    ret prefix + util::common::istr(n);
 }
 
 fn activate_glue_name() -> str {

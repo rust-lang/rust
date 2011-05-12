@@ -1,5 +1,5 @@
 // xfail-boot
-// error-pattern:Unsatisfied precondition
+// error-pattern::Unsatisfied precondition
 
 fn foo() -> int {
   let int x;

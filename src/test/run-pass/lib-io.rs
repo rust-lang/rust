@@ -5,8 +5,8 @@
 // -*- rust -*-
 
 use std;
-import std.IO;
-import std.Str;
+import std::io;
+import std::_str;
 
 fn test_simple(str tmpfilebase) {
   let str tmpfile = tmpfilebase + ".tmp";
@@ -15,14 +15,14 @@ fn test_simple(str tmpfilebase) {
   log frood;
 
   {
-    let IO.writer out = IO.file_writer(tmpfile, vec(IO.create));
+    let io::writer out = io::file_writer(tmpfile, vec(io::create));
     out.write_str(frood);
   }
 
-  let IO.reader inp = IO.file_reader(tmpfile);
+  let io::reader inp = io::file_reader(tmpfile);
   let str frood2 = inp.read_c_str();
   log frood2;
-  assert (Str.eq(frood, frood2));
+  assert (_str::eq(frood, frood2));
 }
 
 fn main(vec[str] argv) {

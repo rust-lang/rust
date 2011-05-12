@@ -1,6 +1,6 @@
 // xfail-boot
 // error-pattern: unresolved name
-import baz.zed.bar;
+import baz::zed::bar;
 mod baz {
 }
 mod zed {

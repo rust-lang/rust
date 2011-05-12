@@ -19,7 +19,7 @@ type t[T] = obj {
 
 fn create[T]() -> t[T] {
 
-    type cell[T] = Option.t[T];
+    type cell[T] = option::t[T];
 
     let uint initial_capacity = 32u; // 2^5
 
@@ -28,25 +28,25 @@ fn create[T]() -> t[T] {
      * elsewhere.
      */
     fn grow[T](uint nelts, uint lo, vec[cell[T]] elts) -> vec[cell[T]] {
-        assert (nelts == Vec.len[cell[T]](elts));
+        assert (nelts == _vec::len[cell[T]](elts));
 
         fn fill[T](uint i, uint nelts, uint lo,
                    vec[cell[T]] old) -> cell[T] {
             if (i < nelts) {
                 ret old.((lo + i) % nelts);
             } else {
-                ret Option.none[T];
+                ret option::none[T];
             }
         }
 
-        let uint nalloc = UInt.next_power_of_two(nelts + 1u);
-        let Vec.init_op[cell[T]] copy_op = bind fill[T](_, nelts, lo, elts);
-        ret Vec.init_fn[cell[T]](copy_op, nalloc);
+        let uint nalloc = _uint::next_power_of_two(nelts + 1u);
+        let _vec::init_op[cell[T]] copy_op = bind fill[T](_, nelts, lo, elts);
+        ret _vec::init_fn[cell[T]](copy_op, nalloc);
     }
 
     fn get[T](vec[cell[T]] elts, uint i) -> T {
         alt (elts.(i)) {
-            case (Option.some[T](?t)) { ret t; }
+            case (option::some[T](?t)) { ret t; }
             case (_) { fail; }
         }
         fail;   // FIXME: remove me when exhaustiveness checking works
@@ -63,18 +63,18 @@ fn create[T]() -> t[T] {
                 let uint oldlo = lo;
 
                 if (lo == 0u) {
-                    lo = Vec.len[cell[T]](elts) - 1u;
+                    lo = _vec::len[cell[T]](elts) - 1u;
                 } else {
                     lo -= 1u;
                 }
 
                 if (lo == hi) {
                     elts = grow[T](nelts, oldlo, elts);
-                    lo = Vec.len[cell[T]](elts) - 1u;
+                    lo = _vec::len[cell[T]](elts) - 1u;
                     hi = nelts;
                 }
 
-                elts.(lo) = Option.some[T](t);
+                elts.(lo) = option::some[T](t);
                 nelts += 1u;
             }
 
@@ -85,8 +85,8 @@ fn create[T]() -> t[T] {
                     hi = nelts;
                 }
 
-                elts.(hi) = Option.some[T](t);
-                hi = (hi + 1u) % Vec.len[cell[T]](elts);
+                elts.(hi) = option::some[T](t);
+                hi = (hi + 1u) % _vec::len[cell[T]](elts);
                 nelts += 1u;
             }
 
@@ -96,21 +96,21 @@ fn create[T]() -> t[T] {
              */
             fn pop_front() -> T {
                 let T t = get[T](elts, lo);
-                elts.(lo) = Option.none[T];
-                lo = (lo + 1u) % Vec.len[cell[T]](elts);
+                elts.(lo) = option::none[T];
+                lo = (lo + 1u) % _vec::len[cell[T]](elts);
                 nelts -= 1u;
                 ret t;
             }
 
             fn pop_back() -> T {
                 if (hi == 0u) {
-                    hi = Vec.len[cell[T]](elts) - 1u;
+                    hi = _vec::len[cell[T]](elts) - 1u;
                 } else {
                     hi -= 1u;
                 }
 
                 let T t = get[T](elts, hi);
-                elts.(hi) = Option.none[T];
+                elts.(hi) = option::none[T];
                 nelts -= 1u;
                 ret t;
             }
@@ -124,12 +124,12 @@ fn create[T]() -> t[T] {
             }
 
             fn get(int i) -> T {
-                let uint idx = (lo + (i as uint)) % Vec.len[cell[T]](elts);
+                let uint idx = (lo + (i as uint)) % _vec::len[cell[T]](elts);
                 ret get[T](elts, idx);
             }
 
         }
-    let vec[cell[T]] v = Vec.init_elt[cell[T]](Option.none[T],
+    let vec[cell[T]] v = _vec::init_elt[cell[T]](option::none[T],
                                                 initial_capacity);
 
     ret deque[T](0u, 0u, 0u, v);

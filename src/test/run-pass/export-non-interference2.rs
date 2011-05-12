@@ -14,5 +14,5 @@ mod foo {
 }
 
 fn main() {
-  foo.bar.y();
+  foo::bar::y();
 }

@@ -1,5 +1,5 @@
-import bar.baz;
-import foo.zed;
+import bar::baz;
+import foo::zed;
 mod foo {
   mod zed {
     fn baz() {
@@ -8,7 +8,7 @@ mod foo {
   }
 }
 mod bar {
-  import zed.baz;
+  import zed::baz;
   mod foo {
     mod zed {
     }

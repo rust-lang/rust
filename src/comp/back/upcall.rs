@@ -1,27 +1,27 @@
-import middle.trans;
+import middle::trans;
 
-import trans.decl_cdecl_fn;
-import trans.type_names;
-import trans.ModuleRef;
-import trans.TypeRef;
-import trans.ValueRef;
+import trans::decl_cdecl_fn;
+import trans::type_names;
+import trans::ModuleRef;
+import trans::TypeRef;
+import trans::ValueRef;
 
-import trans.T_crate;
-import trans.T_f32;
-import trans.T_f64;
-import trans.T_fn;
-import trans.T_i8;
-import trans.T_i32;
-import trans.T_int;
-import trans.T_opaque_chan_ptr;
-import trans.T_opaque_port_ptr;
-import trans.T_opaque_vec_ptr;
-import trans.T_ptr;
-import trans.T_size_t;
-import trans.T_str;
-import trans.T_taskptr;
-import trans.T_tydesc;
-import trans.T_void;
+import trans::T_crate;
+import trans::T_f32;
+import trans::T_f64;
+import trans::T_fn;
+import trans::T_i8;
+import trans::T_i32;
+import trans::T_int;
+import trans::T_opaque_chan_ptr;
+import trans::T_opaque_port_ptr;
+import trans::T_opaque_vec_ptr;
+import trans::T_ptr;
+import trans::T_size_t;
+import trans::T_str;
+import trans::T_taskptr;
+import trans::T_tydesc;
+import trans::T_void;
 
 type upcalls = rec(
     ValueRef grow_task,
@@ -66,13 +66,13 @@ fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
         let vec[TypeRef] arg_tys = vec(T_taskptr(tn));
         for (TypeRef t in tys) { arg_tys += vec(t); }
         auto fn_ty = T_fn(arg_tys, rv);
-        ret trans.decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
+        ret trans::decl_cdecl_fn(llmod, "upcall_" + name, fn_ty);
     }
 
     auto dv = bind decl(tn, llmod, _, _, T_void());
     auto d = bind decl(tn, llmod, _, _, _);
 
-    // FIXME: Sigh... remove this when I fix the typechecker pushdown.
+    // FIXME: Sigh:.. remove this when I fix the typechecker pushdown.
     // --pcwalton
     let vec[TypeRef] empty_vec = vec();
 

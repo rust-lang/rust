@@ -8,5 +8,5 @@ mod foo {
 }
 
 fn main() {
-  auto v = foo.t1;
+  auto v = foo::t1;
 }

@@ -2,7 +2,7 @@ mod foo {
   export x;
 
   fn x() {
-    bar.x();
+    bar::x();
   }
 }
 
@@ -15,5 +15,5 @@ mod bar {
 }
 
 fn main() {
-  foo.x();
+  foo::x();
 }

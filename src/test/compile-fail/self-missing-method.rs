@@ -1,5 +1,5 @@
 // xfail-boot
-// error-pattern:expecting ., found (
+// error-pattern::expecting ., found (
 fn main() {
 
   obj foo() {

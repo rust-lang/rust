@@ -21,20 +21,20 @@ const u8 color_bright_magenta = 13u8;
 const u8 color_bright_cyan = 14u8;
 const u8 color_bright_white = 15u8;
 
-fn esc(IO.buf_writer writer) {
+fn esc(io::buf_writer writer) {
     writer.write(vec(0x1bu8, '[' as u8));
 }
 
-fn reset(IO.buf_writer writer) {
+fn reset(io::buf_writer writer) {
     esc(writer);
     writer.write(vec('0' as u8, 'm' as u8));
 }
 
 fn color_supported() -> bool {
-    ret GenericOS.getenv("TERM") == Option.some[str]("xterm-color");
+    ret generic_os::getenv("TERM") == option::some[str]("xterm-color");
 }
 
-fn set_color(IO.buf_writer writer, u8 first_char, u8 color) {
+fn set_color(io::buf_writer writer, u8 first_char, u8 color) {
     assert (color < 16u8);
 
     esc(writer);
@@ -45,11 +45,11 @@ fn set_color(IO.buf_writer writer, u8 first_char, u8 color) {
     writer.write(vec(first_char, ('0' as u8) + color, 'm' as u8));
 }
 
-fn fg(IO.buf_writer writer, u8 color) {
+fn fg(io::buf_writer writer, u8 color) {
     ret set_color(writer, '3' as u8, color);
 }
 
-fn bg(IO.buf_writer writer, u8 color) {
+fn bg(io::buf_writer writer, u8 color) {
     ret set_color(writer, '4' as u8, color);
 }
 

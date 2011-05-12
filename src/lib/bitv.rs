@@ -21,19 +21,19 @@ fn create(uint nbits, bool init) -> t {
         elt = 0u;
     }
 
-    auto storage = Vec.init_elt_mut[uint](elt, nbits / uint_bits() + 1u);
+    auto storage = _vec::init_elt_mut[uint](elt, nbits / uint_bits() + 1u);
     ret rec(storage = storage, nbits = nbits);
 }
 
 fn process(&fn(uint, uint) -> uint op, &t v0, &t v1) -> bool {
-    auto len = Vec.len(v1.storage);
+    auto len = _vec::len(v1.storage);
 
-    assert (Vec.len(v0.storage) == len);
+    assert (_vec::len(v0.storage) == len);
     assert (v0.nbits == v1.nbits);
 
     auto changed = false;
 
-    for each (uint i in UInt.range(0u, len)) {
+    for each (uint i in _uint::range(0u, len)) {
         auto w0 = v0.storage.(i);
         auto w1 = v1.storage.(i);
 
@@ -75,9 +75,9 @@ fn copy(&t v0, t v1) -> bool {
 }
 
 fn clone(t v) -> t {
-    auto storage = Vec.init_elt_mut[uint](0u, v.nbits / uint_bits() + 1u);
-    auto len = Vec.len(v.storage);
-    for each (uint i in UInt.range(0u, len)) {
+    auto storage = _vec::init_elt_mut[uint](0u, v.nbits / uint_bits() + 1u);
+    auto len = _vec::len(v.storage);
+    for each (uint i in _uint::range(0u, len)) {
         storage.(i) = v.storage.(i);
     }
     ret rec(storage = storage, nbits = v.nbits);
@@ -97,7 +97,7 @@ fn get(&t v, uint i) -> bool {
 fn equal(&t v0, &t v1) -> bool {
     // FIXME: when we can break or return from inside an iterator loop,
     //        we can eliminate this painful while-loop
-    auto len = Vec.len(v1.storage);
+    auto len = _vec::len(v1.storage);
     auto i = 0u;
     while (i < len) {
         if (v0.storage.(i) != v1.storage.(i)) {
@@ -109,13 +109,13 @@ fn equal(&t v0, &t v1) -> bool {
 }
 
 fn clear(&t v) {
-    for each (uint i in UInt.range(0u, Vec.len(v.storage))) {
+    for each (uint i in _uint::range(0u, _vec::len(v.storage))) {
         v.storage.(i) = 0u;
     }
 }
 
 fn invert(&t v) {
-    for each (uint i in UInt.range(0u, Vec.len(v.storage))) {
+    for each (uint i in _uint::range(0u, _vec::len(v.storage))) {
         v.storage.(i) = ~v.storage.(i);
     }
 }
@@ -176,13 +176,13 @@ fn init_to_vec(t v, uint i) -> uint {
 
 fn to_vec(&t v) -> vec[uint] {
     auto sub = bind init_to_vec(v, _);
-    ret Vec.init_fn[uint](sub, v.nbits);
+    ret _vec::init_fn[uint](sub, v.nbits);
 }
 
 fn to_str(&t v) -> str {
     auto res = "";
 
-    for (uint i in BitV.to_vec(v)) {
+    for (uint i in bitv::to_vec(v)) {
         if (i == 1u) {
             res += "1";
         }
@@ -196,7 +196,7 @@ fn to_str(&t v) -> str {
 
 // FIXME: can we just use structural equality on to_vec?
 fn eq_vec(&t v0, &vec[uint] v1) -> bool {
-    assert (v0.nbits == Vec.len[uint](v1));
+    assert (v0.nbits == _vec::len[uint](v1));
     auto len = v0.nbits;
     auto i = 0u;
     while (i < len) {

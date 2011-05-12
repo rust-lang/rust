@@ -1,19 +1,19 @@
-import Option.none;
-import Option.some;
+import option::none;
+import option::some;
 
 // A very naive implementation of union-find with unsigned integer nodes.
 
-type node = Option.t[uint];
+type node = option::t[uint];
 type ufind = rec(mutable vec[mutable node] nodes);
 
 fn make() -> ufind {
     let vec[mutable node] v = vec(mutable none[uint]);
-    Vec.pop(v);  // FIXME: botch
+    _vec::pop(v);  // FIXME: botch
     ret rec(mutable nodes=v);
 }
 
 fn make_set(&ufind ufnd) -> uint {
-    auto idx = Vec.len(ufnd.nodes);
+    auto idx = _vec::len(ufnd.nodes);
     ufnd.nodes += vec(mutable none[uint]);
     ret idx;
 }

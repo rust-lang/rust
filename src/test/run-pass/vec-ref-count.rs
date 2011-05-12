@@ -1,12 +1,12 @@
 use std;
-import std.Vec;
+import std::_vec;
 
 fn main() {
     auto v = vec(1, 2, 3);
-    log_err Vec.refcount[int](v);
-    log_err Vec.refcount[int](v);
-    log_err Vec.refcount[int](v);
-    assert (Vec.refcount[int](v) == 1u || Vec.refcount[int](v) == 2u);
-    assert (Vec.refcount[int](v) == 1u || Vec.refcount[int](v) == 2u);
+    log_err _vec::refcount[int](v);
+    log_err _vec::refcount[int](v);
+    log_err _vec::refcount[int](v);
+    assert (_vec::refcount[int](v) == 1u || _vec::refcount[int](v) == 2u);
+    assert (_vec::refcount[int](v) == 1u || _vec::refcount[int](v) == 2u);
 }
 

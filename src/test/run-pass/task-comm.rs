@@ -97,12 +97,12 @@ fn test03() {
 }
 
 fn test04_start() {
-    log "Started Task";
+    log "Started task";
     let int i = 1024 * 1024 * 64;
     while (i > 0) {
         i = i - 1;
     }
-    log "Finished Task";
+    log "Finished task";
 }
 
 fn test04() {

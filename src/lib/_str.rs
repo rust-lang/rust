@@ -1,6 +1,6 @@
-import rustrt.sbuf;
+import rustrt::sbuf;
 
-import Vec.rustrt.vbuf;
+import _vec::rustrt::vbuf;
 
 native "rust" mod rustrt {
     type sbuf;
@@ -84,7 +84,7 @@ const uint tag_six_b = 0xfc_u;
 
 fn is_utf8(vec[u8] v) -> bool {
     auto i = 0u;
-    auto total = Vec.len[u8](v);
+    auto total = _vec::len[u8](v);
     while (i < total) {
         auto chsize = utf8_char_width(v.(i));
         if (chsize == 0u) {ret false;}
@@ -111,7 +111,7 @@ fn is_ascii(str s) -> bool {
 }
 
 fn alloc(uint n_bytes) -> str {
-    ret rustrt.str_alloc(n_bytes);
+    ret rustrt::str_alloc(n_bytes);
 }
 
 // Returns the number of bytes (a.k.a. UTF-8 code units) in s.
@@ -120,67 +120,67 @@ fn alloc(uint n_bytes) -> str {
 // http://icu-project.org/apiref/icu4c/classBreakIterator.html for a
 // way to implement those.
 fn byte_len(str s) -> uint {
-    ret rustrt.str_byte_len(s);
+    ret rustrt::str_byte_len(s);
 }
 
 fn buf(str s) -> sbuf {
-    ret rustrt.str_buf(s);
+    ret rustrt::str_buf(s);
 }
 
 fn bytes(str s) -> vec[u8] {
-    ret rustrt.str_vec(s);
+    ret rustrt::str_vec(s);
 }
 
 fn from_bytes(vec[u8] v) : is_utf8(v) -> str {
-    ret rustrt.str_from_vec(v);
+    ret rustrt::str_from_vec(v);
 }
 
 // FIXME temp thing
 fn unsafe_from_bytes(vec[mutable? u8] v) -> str {
-    ret rustrt.str_from_vec(v);
+    ret rustrt::str_from_vec(v);
 }
 
 fn unsafe_from_byte(u8 u) -> str {
-    ret rustrt.str_from_vec(vec(u));
+    ret rustrt::str_from_vec(vec(u));
 }
 
 fn str_from_cstr(sbuf cstr) -> str {
-    ret rustrt.str_from_cstr(cstr);
+    ret rustrt::str_from_cstr(cstr);
 }
 
 fn str_from_buf(sbuf buf, uint len) -> str {
-    ret rustrt.str_from_buf(buf, len);
+    ret rustrt::str_from_buf(buf, len);
 }
 
 fn push_utf8_bytes(&mutable str s, char ch) {
     auto code = ch as uint;
     if (code < max_one_b) {
-        s = rustrt.str_push_byte(s, code);
+        s = rustrt::str_push_byte(s, code);
     } else if (code < max_two_b) {
-        s = rustrt.str_push_byte(s, ((code >> 6u) & 0x1f_u) | tag_two_b);
-        s = rustrt.str_push_byte(s, (code & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, ((code >> 6u) & 0x1f_u) | tag_two_b);
+        s = rustrt::str_push_byte(s, (code & 0x3f_u) | tag_cont);
     } else if (code < max_three_b) {
-        s = rustrt.str_push_byte(s, ((code >> 12u) & 0x0f_u) | tag_three_b);
-        s = rustrt.str_push_byte(s, ((code >> 6u) & 0x3f_u) | tag_cont);
-        s = rustrt.str_push_byte(s, (code & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, ((code >> 12u) & 0x0f_u) | tag_three_b);
+        s = rustrt::str_push_byte(s, ((code >> 6u) & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, (code & 0x3f_u) | tag_cont);
     } else if (code < max_four_b) {
-        s = rustrt.str_push_byte(s, ((code >> 18u) & 0x07_u) | tag_four_b);
-        s = rustrt.str_push_byte(s, ((code >> 12u) & 0x3f_u) | tag_cont);
-        s = rustrt.str_push_byte(s, ((code >> 6u) & 0x3f_u) | tag_cont);
-        s = rustrt.str_push_byte(s, (code & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, ((code >> 18u) & 0x07_u) | tag_four_b);
+        s = rustrt::str_push_byte(s, ((code >> 12u) & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, ((code >> 6u) & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, (code & 0x3f_u) | tag_cont);
     } else if (code < max_five_b) {
-        s = rustrt.str_push_byte(s, ((code >> 24u) & 0x03_u) | tag_five_b);
-        s = rustrt.str_push_byte(s, ((code >> 18u) & 0x3f_u) | tag_cont);
-        s = rustrt.str_push_byte(s, ((code >> 12u) & 0x3f_u) | tag_cont);
-        s = rustrt.str_push_byte(s, ((code >> 6u) & 0x3f_u) | tag_cont);
-        s = rustrt.str_push_byte(s, (code & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, ((code >> 24u) & 0x03_u) | tag_five_b);
+        s = rustrt::str_push_byte(s, ((code >> 18u) & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, ((code >> 12u) & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, ((code >> 6u) & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, (code & 0x3f_u) | tag_cont);
     } else {
-        s = rustrt.str_push_byte(s, ((code >> 30u) & 0x01_u) | tag_six_b);
-        s = rustrt.str_push_byte(s, ((code >> 24u) & 0x3f_u) | tag_cont);
-        s = rustrt.str_push_byte(s, ((code >> 18u) & 0x3f_u) | tag_cont);
-        s = rustrt.str_push_byte(s, ((code >> 12u) & 0x3f_u) | tag_cont);
-        s = rustrt.str_push_byte(s, ((code >> 6u) & 0x3f_u) | tag_cont);
-        s = rustrt.str_push_byte(s, (code & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, ((code >> 30u) & 0x01_u) | tag_six_b);
+        s = rustrt::str_push_byte(s, ((code >> 24u) & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, ((code >> 18u) & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, ((code >> 12u) & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, ((code >> 6u) & 0x3f_u) | tag_cont);
+        s = rustrt::str_push_byte(s, (code & 0x3f_u) | tag_cont);
     }
 }
 
@@ -253,7 +253,7 @@ fn to_chars(str s) -> vec[char] {
     auto len = byte_len(s);
     while (i < len) {
         auto cur = char_range_at(s, i);
-        Vec.push[char](buf, cur._0);
+        _vec::push[char](buf, cur._0);
         i = cur._1;
     }
     ret buf;
@@ -287,8 +287,8 @@ fn unshift_char(&mutable str s, char ch) {
 }
 
 fn refcount(str s) -> uint {
-    auto r = rustrt.refcount[u8](s);
-    if (r == Dbg.const_refcount) {
+    auto r = rustrt::refcount[u8](s);
+    if (r == dbg::const_refcount) {
         ret r;
     } else {
         // -1 because calling this function incremented the refcount.
@@ -311,7 +311,7 @@ fn index(str s, u8 c) -> int {
 }
 
 fn rindex(str s, u8 c) -> int {
-    let int n = Str.byte_len(s) as int;
+    let int n = _str::byte_len(s) as int;
     while (n >= 0) {
         if (s.(n) == c) {
             ret n;
@@ -387,8 +387,8 @@ fn substr(str s, uint begin, uint len) -> str {
 fn slice(str s, uint begin, uint end) -> str {
     // FIXME: Typestate precondition
     assert (begin <= end);
-    assert (end <= Str.byte_len(s));
-    ret rustrt.str_slice(s, begin, end);
+    assert (end <= _str::byte_len(s));
+    ret rustrt::str_slice(s, begin, end);
 }
 
 fn shift_byte(&mutable str s) -> u8 {
@@ -408,7 +408,7 @@ fn pop_byte(&mutable str s) -> u8 {
 }
 
 fn push_byte(&mutable str s, u8 b) {
-    s = rustrt.str_push_byte(s, b as uint);
+    s = rustrt::str_push_byte(s, b as uint);
 }
 
 fn unshift_byte(&mutable str s, u8 b) {
@@ -432,7 +432,7 @@ fn split(str s, u8 sep) -> vec[str] {
             ends_with_sep = false;
         }
     }
-    if (Str.byte_len(accum) != 0u ||
+    if (_str::byte_len(accum) != 0u ||
         ends_with_sep) {
         v += vec(accum);
     }

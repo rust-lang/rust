@@ -1,12 +1,12 @@
 use std;
 
 fn check_sort(vec[int] v1, vec[int] v2) {
-  auto len = std.Vec.len[int](v1);
+  auto len = std::_vec::len[int](v1);
   fn lteq(&int a, &int b) -> bool {
     ret a <= b;
   }
   auto f = lteq;
-  auto v3 = std.Sort.merge_sort[int](f, v1);
+  auto v3 = std::sort::merge_sort[int](f, v1);
   auto i = 0u;
   while (i < len) {
     log v3.(i);

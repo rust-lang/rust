@@ -1,21 +1,21 @@
-import front.ast.ident;
-import std.Vec;
-import std.BitV;
+import front::ast::ident;
+import std::_vec;
+import std::bitv;
 
 /* 
    This says: this expression requires the idents in <pre> to be initialized,
    and given the precondition, it guarantees that the idents in <post> are
    initialized.
  */
-type precond  = BitV.t; /* 1 means "this variable must be initialized"
+type precond  = bitv::t; /* 1 means "this variable must be initialized"
                            0 means "don't care about this variable" */
-type postcond = BitV.t; /* 1 means "this variable is initialized"
+type postcond = bitv::t; /* 1 means "this variable is initialized"
                            0 means "don't know about this variable */
 
-type prestate = BitV.t; /* 1 means "this variable is definitely initialized"
+type prestate = bitv::t; /* 1 means "this variable is definitely initialized"
                            0 means "don't know whether this variable is
                            initialized" */
-type poststate = BitV.t; /* 1 means "this variable is definitely initialized"
+type poststate = bitv::t; /* 1 means "this variable is definitely initialized"
                             0 means "don't know whether this variable is
                             initialized" */
 
@@ -29,7 +29,7 @@ type pre_and_post_state = rec(prestate prestate, poststate poststate);
 type ts_ann = rec(pre_and_post conditions, pre_and_post_state states);
 
 fn true_precond(uint num_vars) -> precond {
-  be BitV.create(num_vars, false);
+  be bitv::create(num_vars, false);
 }
 
 fn true_postcond(uint num_vars) -> postcond {
@@ -45,7 +45,7 @@ fn empty_poststate(uint num_vars) -> poststate {
 }
 
 fn false_postcond(uint num_vars) -> postcond {
-    be BitV.create(num_vars, true);
+    be bitv::create(num_vars, true);
 }
 
 fn empty_pre_post(uint num_vars) -> pre_and_post {
@@ -72,15 +72,15 @@ fn get_post(&pre_and_post p) -> postcond {
 }
 
 fn difference(&precond p1, &precond p2) -> bool {
-  be BitV.difference(p1, p2);
+  be bitv::difference(p1, p2);
 }
 
 fn union(&precond p1, &precond p2) -> bool {
-  be BitV.union(p1, p2);
+  be bitv::union(p1, p2);
 }
 
 fn intersect(&precond p1, &precond p2) -> bool {
-  be BitV.intersect(p1, p2);
+  be bitv::intersect(p1, p2);
 }
 
 fn pps_len(&pre_and_post p) -> uint {
@@ -91,62 +91,62 @@ fn pps_len(&pre_and_post p) -> uint {
 
 fn require_and_preserve(uint i, &pre_and_post p) -> () {
   // sets the ith bit in p's pre and post
-  BitV.set(p.precondition, i, true);
-  BitV.set(p.postcondition, i, true);
+  bitv::set(p.precondition, i, true);
+  bitv::set(p.postcondition, i, true);
 }
 
 fn set_in_postcond(uint i, &pre_and_post p) -> bool {
   // sets the ith bit in p's post
-  auto was_set = BitV.get(p.postcondition, i);
-  BitV.set(p.postcondition, i, true);
+  auto was_set = bitv::get(p.postcondition, i);
+  bitv::set(p.postcondition, i, true);
   ret !was_set;
 }
 
 fn set_in_poststate(uint i, &pre_and_post_state s) -> bool {
   // sets the ith bit in p's post
-  auto was_set = BitV.get(s.poststate, i);
-  BitV.set(s.poststate, i, true);
+  auto was_set = bitv::get(s.poststate, i);
+  bitv::set(s.poststate, i, true);
   ret !was_set;
 }
 
 // Sets all the bits in a's precondition to equal the
 // corresponding bit in p's precondition.
 fn set_precondition(&ts_ann a, &precond p) -> () {
-  BitV.copy(a.conditions.precondition, p);
+  bitv::copy(a.conditions.precondition, p);
 }
 
 // Sets all the bits in a's postcondition to equal the
 // corresponding bit in p's postcondition.
 fn set_postcondition(&ts_ann a, &postcond p) -> () {
-  BitV.copy(a.conditions.postcondition, p);
+  bitv::copy(a.conditions.postcondition, p);
 }
 
 // Sets all the bits in a's prestate to equal the
 // corresponding bit in p's prestate.
 fn set_prestate(@ts_ann a, &prestate p) -> bool {
-  ret BitV.copy(a.states.prestate, p);
+  ret bitv::copy(a.states.prestate, p);
 }
 
 // Sets all the bits in a's postcondition to equal the
 // corresponding bit in p's postcondition.
 fn set_poststate(@ts_ann a, &poststate p) -> bool {
-  ret BitV.copy(a.states.poststate, p);
+  ret bitv::copy(a.states.poststate, p);
 }
 
 // Set all the bits in p that are set in new
 fn extend_prestate(&prestate p, &poststate new) -> bool {
-  ret BitV.union(p, new);
+  ret bitv::union(p, new);
 }
 
 // Set all the bits in p that are set in new
 fn extend_poststate(&poststate p, &poststate new) -> bool {
-  ret BitV.union(p, new);
+  ret bitv::union(p, new);
 }
 
 // Clears the given bit in p
 fn relax_prestate(uint i, &prestate p) -> bool {
-    auto was_set = BitV.get(p, i);
-    BitV.set(p, i, false);
+    auto was_set = bitv::get(p, i);
+    bitv::set(p, i, false);
     ret was_set;
 }
 
@@ -164,16 +164,16 @@ fn pp_clone(&pre_and_post p) -> pre_and_post {
 }
 
 fn clone(prestate p) -> prestate {
-    ret BitV.clone(p);
+    ret bitv::clone(p);
 }
 
 // returns true if a implies b
 // that is, returns true except if for some bits c and d,
 // c = 1 and d = 0
-fn implies(BitV.t a, BitV.t b) -> bool {
-  auto tmp = BitV.clone(b);
-  BitV.difference(tmp, a);
-  ret BitV.is_false(tmp);
+fn implies(bitv::t a, bitv::t b) -> bool {
+  auto tmp = bitv::clone(b);
+  bitv::difference(tmp, a);
+  ret bitv::is_false(tmp);
 }
 
 //

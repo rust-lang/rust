@@ -13,8 +13,8 @@
  * combinations at the moment.
  */
 
-import Option.none;
-import Option.some;
+import option::none;
+import option::some;
 
 /*
  * We have a CT (compile-time) module that parses format strings into a
@@ -66,7 +66,7 @@ mod CT {
     }
 
     // A formatted conversion from an expression to a string
-    type conv = rec(Option.t[int] param,
+    type conv = rec(option::t[int] param,
                     vec[flag] flags,
                     count width,
                     count precision,
@@ -80,11 +80,11 @@ mod CT {
 
     fn parse_fmt_string(str s) -> vec[piece] {
         let vec[piece] pieces = vec();
-        auto lim = Str.byte_len(s);
+        auto lim = _str::byte_len(s);
         auto buf = "";
 
         fn flush_buf(str buf, &vec[piece] pieces) -> str {
-            if (Str.byte_len(buf) > 0u) {
+            if (_str::byte_len(buf) > 0u) {
                 auto piece = piece_string(buf);
                 pieces += vec(piece);
             }
@@ -93,15 +93,15 @@ mod CT {
 
         auto i = 0u;
         while (i < lim) {
-            auto curr = Str.substr(s, i, 1u);
-            if (Str.eq(curr, "%")) {
+            auto curr = _str::substr(s, i, 1u);
+            if (_str::eq(curr, "%")) {
                 i += 1u;
                 if (i >= lim) {
                     log_err "unterminated conversion at end of string";
                     fail;
                 }
-                auto curr2 = Str.substr(s, i, 1u);
-                if (Str.eq(curr2, "%")) {
+                auto curr2 = _str::substr(s, i, 1u);
+                if (_str::eq(curr2, "%")) {
                     i += 1u;
                 } else {
                     buf = flush_buf(buf, pieces);
@@ -118,14 +118,14 @@ mod CT {
         ret pieces;
     }
 
-    fn peek_num(str s, uint i, uint lim) -> Option.t[tup(uint, uint)] {
+    fn peek_num(str s, uint i, uint lim) -> option::t[tup(uint, uint)] {
         if (i >= lim) {
             ret none[tup(uint, uint)];
         }
 
         auto c = s.(i);
         if (!('0' as u8 <= c && c <= '9' as u8)) {
-            ret Option.none[tup(uint, uint)];
+            ret option::none[tup(uint, uint)];
         }
 
         auto n = (c - ('0' as u8)) as uint;
@@ -156,7 +156,7 @@ mod CT {
                 ty._1);
     }
 
-    fn parse_parameter(str s, uint i, uint lim) -> tup(Option.t[int], uint) {
+    fn parse_parameter(str s, uint i, uint lim) -> tup(option::t[int], uint) {
         if (i >= lim) {
             ret tup(none[int], i);
         }
@@ -270,27 +270,27 @@ mod CT {
         }
 
         auto t;
-        auto tstr = Str.substr(s, i, 1u);
-        if (Str.eq(tstr, "b")) {
+        auto tstr = _str::substr(s, i, 1u);
+        if (_str::eq(tstr, "b")) {
             t = ty_bool;
-        } else if (Str.eq(tstr, "s")) {
+        } else if (_str::eq(tstr, "s")) {
             t = ty_str;
-        } else if (Str.eq(tstr, "c")) {
+        } else if (_str::eq(tstr, "c")) {
             t = ty_char;
-        } else if (Str.eq(tstr, "d")
-                   || Str.eq(tstr, "i")) {
+        } else if (_str::eq(tstr, "d")
+                   || _str::eq(tstr, "i")) {
             // TODO: Do we really want two signed types here?
             // How important is it to be printf compatible?
             t = ty_int(signed);
-        } else if (Str.eq(tstr, "u")) {
+        } else if (_str::eq(tstr, "u")) {
             t = ty_int(unsigned);
-        } else if (Str.eq(tstr, "x")) {
+        } else if (_str::eq(tstr, "x")) {
             t = ty_hex(case_lower);
-        } else if (Str.eq(tstr, "X")) {
+        } else if (_str::eq(tstr, "X")) {
             t = ty_hex(case_upper);
-        } else if (Str.eq(tstr, "t")) {
+        } else if (_str::eq(tstr, "t")) {
             t = ty_bits;
-        } else if (Str.eq(tstr, "o")) {
+        } else if (_str::eq(tstr, "o")) {
             t = ty_octal;
         } else {
             log_err "unknown type in conversion";
@@ -315,7 +315,7 @@ mod RT {
         flag_alternate;
         // FIXME: This is a hack to avoid creating 0-length vec exprs,
         // which have some difficulty typechecking currently. See
-        // comments in front.extfmt.make_flags
+        // comments in front::extfmt::make_flags
         flag_none;
     }
 
@@ -364,7 +364,7 @@ mod RT {
                 res = uint_to_str_prec(u, 16u, prec);
             }
             case (ty_hex_upper) {
-                res = Str.to_upper(uint_to_str_prec(u, 16u, prec));
+                res = _str::to_upper(uint_to_str_prec(u, 16u, prec));
             }
             case (ty_bits) {
                 res = uint_to_str_prec(u, 2u, prec);
@@ -383,13 +383,13 @@ mod RT {
         } else {
             s = "false";
         }
-        // Run the boolean conversion through the string conversion logic,
+        // run the boolean conversion through the string conversion logic,
         // giving it the same rules for precision, etc.
         ret conv_str(cv, s);
     }
 
     fn conv_char(&conv cv, char c) -> str {
-        ret pad(cv, Str.from_char(c), pad_nozero);
+        ret pad(cv, _str::from_char(c), pad_nozero);
     }
 
     fn conv_str(&conv cv, str s) -> str {
@@ -399,9 +399,9 @@ mod RT {
             }
             case (count_is(?max)) {
                 // For strings, precision is the maximum characters displayed
-                if (max as uint < Str.char_len(s)) {
+                if (max as uint < _str::char_len(s)) {
                     // FIXME: substr works on bytes, not chars!
-                    unpadded = Str.substr(s, 0u, max as uint);
+                    unpadded = _str::substr(s, 0u, max as uint);
                 }
             }
         }
@@ -420,15 +420,15 @@ mod RT {
 
     // Convert a uint to string with a minimum number of digits.  If precision
     // is 0 and num is 0 then the result is the empty string. Could move this
-    // to UInt. but it doesn't seem all that useful.
+    // to _uint: but it doesn't seem all that useful.
     fn uint_to_str_prec(uint num, uint radix, uint prec) -> str {
         auto s;
 
         if (prec == 0u && num == 0u) {
             s = "";
         } else {
-            s = UInt.to_str(num, radix);
-            auto len = Str.char_len(s);
+            s = _uint::to_str(num, radix);
+            auto len = _str::char_len(s);
             if (len < prec) {
                 auto diff = prec - len;
                 auto pad = str_init_elt('0', diff);
@@ -450,12 +450,12 @@ mod RT {
         }
     }
 
-    // FIXME: This might be useful in Str. but needs to be utf8 safe first
+    // FIXME: This might be useful in _str: but needs to be utf8 safe first
     fn str_init_elt(char c, uint n_elts) -> str {
-        auto svec = Vec.init_elt[u8](c as u8, n_elts);
+        auto svec = _vec::init_elt[u8](c as u8, n_elts);
         // FIXME: Using unsafe_from_bytes because rustboot
         // can't figure out the is_utf8 predicate on from_bytes?
-        ret Str.unsafe_from_bytes(svec);
+        ret _str::unsafe_from_bytes(svec);
     }
 
     tag pad_mode {
@@ -476,7 +476,7 @@ mod RT {
             }
         }
 
-        auto strlen = Str.char_len(s);
+        auto strlen = _str::char_len(s);
         if (uwidth <= strlen) {
             ret s;
         }
@@ -532,16 +532,16 @@ mod RT {
         // instead.
         if (signed
             && zero_padding
-            && Str.byte_len(s) > 0u) {
+            && _str::byte_len(s) > 0u) {
 
             auto head = s.(0);
             if (head == '+' as u8
                 || head == '-' as u8
                 || head == ' ' as u8) {
 
-                auto headstr = Str.unsafe_from_bytes(vec(head));
-                auto bytelen = Str.byte_len(s);
-                auto numpart = Str.substr(s, 1u, bytelen - 1u);
+                auto headstr = _str::unsafe_from_bytes(vec(head));
+                auto bytelen = _str::byte_len(s);
+                auto numpart = _str::substr(s, 1u, bytelen - 1u);
                 ret headstr + padstr + numpart;
             }
         }

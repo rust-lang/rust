@@ -8,10 +8,10 @@ use std (name = "std",
          uuid = _, ver = _);
 
 fn main() {
-  auto s = std.Str.alloc(10 as uint);
+  auto s = std::str.alloc(10 as uint);
   s += "hello ";
   log s;
   s += "there";
   log s;
-  auto z = std.Vec.alloc[int](10 as uint);
+  auto z = std::vec.alloc[int](10 as uint);
 }

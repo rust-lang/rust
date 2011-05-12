@@ -7,10 +7,10 @@
  * http://shootout.alioth.debian.org/
  */
 use std;
-import std.Vec;
-import std.Str;
-import std.UInt;
-import std.Int;
+import std::_vec;
+import std::_str;
+import std::_uint;
+import std::_int;
 
 fn LINE_LENGTH() -> uint {
   ret 60u;
@@ -54,21 +54,21 @@ fn select_random(u32 r, vec[aminoacids] genelist) -> char {
       ret v.(hi)._0;
     }
   }
-  ret bisect(genelist, 0u, Vec.len[aminoacids](genelist) - 1u, r);
+  ret bisect(genelist, 0u, _vec::len[aminoacids](genelist) - 1u, r);
 }
 
 fn make_random_fasta(str id, str desc, vec[aminoacids] genelist, int n) {
   log(">" + id + " " + desc);
-  auto rng = myrandom(std.Rand.mk_rng().next());
+  auto rng = myrandom(std::rand::mk_rng().next());
   let str op = "";
-  for each (uint i in UInt.range(0u, n as uint)) {
-    Str.push_byte(op, select_random(rng.next(100u32), genelist) as u8);
-    if (Str.byte_len(op) >= LINE_LENGTH()) {
+  for each (uint i in _uint::range(0u, n as uint)) {
+    _str::push_byte(op, select_random(rng.next(100u32), genelist) as u8);
+    if (_str::byte_len(op) >= LINE_LENGTH()) {
       log(op);
       op = "";
     }
   }
-  if (Str.byte_len(op) > 0u) {
+  if (_str::byte_len(op) > 0u) {
     log(op);
   }
 }
@@ -76,16 +76,16 @@ fn make_random_fasta(str id, str desc, vec[aminoacids] genelist, int n) {
 fn make_repeat_fasta(str id, str desc, str s, int n) {
   log(">" + id + " " + desc);
   let str op = "";
-  let uint sl = Str.byte_len(s);
-  for each (uint i in UInt.range(0u, n as uint)) {
+  let uint sl = _str::byte_len(s);
+  for each (uint i in _uint::range(0u, n as uint)) {
 
-    Str.push_byte(op, s.(i % sl));
-    if (Str.byte_len(op) >= LINE_LENGTH()) {
+    _str::push_byte(op, s.(i % sl));
+    if (_str::byte_len(op) >= LINE_LENGTH()) {
       log(op);
       op = "";
     }
   }
-  if (Str.byte_len(op) > 0u) {
+  if (_str::byte_len(op) > 0u) {
     log(op);
   }
 }

@@ -15,5 +15,5 @@ mod foo {
 }
 
 fn main() {
-  let foo.t v = foo.f();
+  let foo::t v = foo::f();
 }

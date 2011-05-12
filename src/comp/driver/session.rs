@@ -1,11 +1,11 @@
-import front.ast;
-import front.codemap;
-import util.common.span;
-import util.common.ty_mach;
-import std.UInt;
-import std.Term;
-import std.IO;
-import std.Map;
+import front::ast;
+import front::codemap;
+import util::common::span;
+import util::common::ty_mach;
+import std::_uint;
+import std::term;
+import std::io;
+import std::map;
 
 tag os {
     os_win32;
@@ -33,37 +33,38 @@ type options = rec(bool shared,
                    bool save_temps,
                    bool time_passes,
                    bool time_llvm_passes,
-                   back.Link.output_type output_type,
+                   back::Link::output_type output_type,
                    vec[str] library_search_paths,
                    str sysroot);
 
 type crate_metadata = rec(str name,
                           vec[u8] data);
 
-fn emit_diagnostic(span sp, str msg, str kind, u8 color, codemap.codemap cm) {
-    auto lo = codemap.lookup_pos(cm, sp.lo);
-    auto hi = codemap.lookup_pos(cm, sp.hi);
-    IO.stdout().write_str(#fmt("%s:%u:%u:%u:%u: ", lo.filename, lo.line,
+fn emit_diagnostic(span sp, str msg, str kind, u8 color,
+                   codemap::codemap cm) {
+    auto lo = codemap::lookup_pos(cm, sp.lo);
+    auto hi = codemap::lookup_pos(cm, sp.hi);
+    io::stdout().write_str(#fmt("%s:%u:%u:%u:%u: ", lo.filename, lo.line,
                                lo.col, hi.line, hi.col));
 
-    if (Term.color_supported()) {
-        Term.fg(IO.stdout().get_buf_writer(), color);
+    if (term::color_supported()) {
+        term::fg(io::stdout().get_buf_writer(), color);
     }
 
-    IO.stdout().write_str(#fmt("%s:", kind));
+    io::stdout().write_str(#fmt("%s:", kind));
 
-    if (Term.color_supported()) {
-        Term.reset(IO.stdout().get_buf_writer());
+    if (term::color_supported()) {
+        term::reset(io::stdout().get_buf_writer());
     }
 
-    IO.stdout().write_str(#fmt(" %s\n", msg));
+    io::stdout().write_str(#fmt(" %s\n", msg));
 }
 
-state obj session(ast.crate_num cnum,
+state obj session(ast::crate_num cnum,
                   @config targ_cfg, @options opts,
-                  Map.hashmap[int, crate_metadata] crates,
-                  mutable vec[@ast.meta_item] metadata,
-                  codemap.codemap cm) {
+                  map::hashmap[int, crate_metadata] crates,
+                  mutable vec[@ast::meta_item] metadata,
+                  codemap::codemap cm) {
 
     fn get_targ_cfg() -> @config {
         ret targ_cfg;
@@ -73,7 +74,7 @@ state obj session(ast.crate_num cnum,
         ret opts;
     }
 
-    fn get_targ_crate_num() -> ast.crate_num {
+    fn get_targ_crate_num() -> ast::crate_num {
         ret cnum;
     }
 
@@ -88,10 +89,10 @@ state obj session(ast.crate_num cnum,
         fail;
     }
 
-    fn add_metadata(vec[@ast.meta_item] data) {
+    fn add_metadata(vec[@ast::meta_item] data) {
         metadata = metadata + data;
     }
-    fn get_metadata() -> vec[@ast.meta_item] {
+    fn get_metadata() -> vec[@ast::meta_item] {
         ret metadata;
     }
 
@@ -129,12 +130,12 @@ state obj session(ast.crate_num cnum,
         ret crates.contains_key(num);
     }
 
-    fn get_codemap() -> codemap.codemap {
+    fn get_codemap() -> codemap::codemap {
         ret cm;
     }
 
-    fn lookup_pos(uint pos) -> codemap.loc {
-        ret codemap.lookup_pos(cm, pos);
+    fn lookup_pos(uint pos) -> codemap::loc {
+        ret codemap::lookup_pos(cm, pos);
     }
 }
 

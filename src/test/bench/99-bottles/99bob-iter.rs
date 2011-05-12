@@ -1,10 +1,10 @@
-/* -*- mode:rust;indent-tabs-mode:nil -*- 
+/* -*- mode::rust;indent-tabs-mode::nil -*- 
  * Implementation of 99 Bottles of Beer
  * http://99-bottles-of-beer.net/
  */
 use std;
-import std.Int;
-import std.Str;
+import std::_int;
+import std::_str;
 
 fn b1() -> str {
   ret "# of beer on the wall, # of beer.";
@@ -32,15 +32,15 @@ case (1) {
     ns = "1 bottle";
   }
  case (_) {
-    ns = Int.to_str(n, 10u) + " bottles";
+    ns = _int::to_str(n, 10u) + " bottles";
   }
   }
-  while (i < Str.byte_len(t)) {
+  while (i < _str::byte_len(t)) {
     if (t.(i) == ('#' as u8)) {
       b += ns;
     }
     else {
-      Str.push_byte(b, t.(i));
+      _str::push_byte(b, t.(i));
     }
     i += 1u;
   }

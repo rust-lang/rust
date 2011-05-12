@@ -8,7 +8,7 @@ native "rust" mod rustrt {
  * arg: time_in_us maximum number of microseconds to yield control for
  */
 fn sleep(uint time_in_us) {
-    ret rustrt.task_sleep(time_in_us);
+    ret rustrt::task_sleep(time_in_us);
 }
 
 // Local Variables:

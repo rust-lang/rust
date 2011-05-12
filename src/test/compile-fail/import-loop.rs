@@ -1,4 +1,4 @@
-// error-pattern:cyclic import
+// error-pattern::cyclic import
 
 import x;
 

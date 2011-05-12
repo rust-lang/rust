@@ -1,6 +1,6 @@
-import std.IO;
-import std.Vec;
-import std.Str;
+import std::io;
+import std::_vec;
+import std::_str;
 
 tag boxtype {box_h; box_v; box_hv; box_align;}
 tag contexttype {cx_h; cx_v;}
@@ -19,7 +19,7 @@ type context = rec(contexttype tp, uint indent);
 
 type ps = @rec(mutable vec[context] context,
                uint width,
-               IO.writer out,
+               io::writer out,
                mutable uint col,
                mutable uint spaces,
                mutable vec[token] buffered,
@@ -30,7 +30,7 @@ type ps = @rec(mutable vec[context] context,
                mutable bool start_of_box,
                mutable bool potential_brk);
 
-fn mkstate(IO.writer out, uint width) -> ps {
+fn mkstate(io::writer out, uint width) -> ps {
   let vec[context] stack = vec(rec(tp=cx_v, indent=0u));
   let vec[token] buff = vec();
   let vec[boxtype] sd = vec();
@@ -57,12 +57,12 @@ fn write_spaces(ps p, uint i) {
 
 fn push_context(ps p, contexttype tp, uint indent) {
   before_print(p, false);
-  Vec.push[context](p.context, rec(tp=tp, indent=indent));
+  _vec::push[context](p.context, rec(tp=tp, indent=indent));
   p.start_of_box = true;
 }
 
 fn pop_context(ps p) {
-  Vec.pop[context](p.context);
+  _vec::pop[context](p.context);
 }
 
 fn add_token(ps p, token tok) {
@@ -89,7 +89,7 @@ fn buffer_token(ps p, token tok) {
   } else {
     alt (tok) {
       case (open(?tp,_)) {
-        Vec.push[boxtype](p.scandepth, tp);
+        _vec::push[boxtype](p.scandepth, tp);
         if (p.scanning == scan_h) {
           if (tp == box_h) {
             check_potential_brk(p);
@@ -97,14 +97,14 @@ fn buffer_token(ps p, token tok) {
         }
       }
       case (close) {
-        Vec.pop[boxtype](p.scandepth);
-        if (Vec.len[boxtype](p.scandepth) == 0u) {
+        _vec::pop[boxtype](p.scandepth);
+        if (_vec::len[boxtype](p.scandepth) == 0u) {
           finish_scan(p, true);
         }
       }
       case (brk(_)) {
         if (p.scanning == scan_h) {
-          if (p.scandepth.(Vec.len[boxtype](p.scandepth)-1u) == box_v) {
+          if (p.scandepth.(_vec::len[boxtype](p.scandepth)-1u) == box_v) {
             finish_scan(p, true);
           }
         }
@@ -123,7 +123,7 @@ fn check_potential_brk(ps p) {
 
 fn finish_scan(ps p, bool fits) {
   auto buf = p.buffered;
-  auto front = Vec.shift[token](buf);
+  auto front = _vec::shift[token](buf);
   auto chosen_tp = cx_h;
   if (!fits) {chosen_tp = cx_v;}
   alt (front) {
@@ -154,10 +154,10 @@ fn start_scan(ps p, token tok, scantype tp) {
 }
 
 fn cur_context(ps p) -> context {
-  ret p.context.(Vec.len[context](p.context)-1u);
+  ret p.context.(_vec::len[context](p.context)-1u);
 }
 fn base_indent(ps p) -> uint {
-  auto i = Vec.len[context](p.context);
+  auto i = _vec::len[context](p.context);
   while (i > 0u) {
     i -= 1u;
     auto cx = p.context.(i);
@@ -190,7 +190,7 @@ fn do_token(ps p, token tok) {
       line_break(p);
     }
     case (word(?w)) {
-      auto len = Str.char_len(w);
+      auto len = _str::char_len(w);
       if (len + p.col + p.spaces > p.width && !start_of_box &&
           !p.start_of_line) {
         line_break(p);
@@ -202,7 +202,7 @@ fn do_token(ps p, token tok) {
     case (cword(?w)) {
       before_print(p, true);
       p.out.write_str(w);
-      p.col += Str.char_len(w);
+      p.col += _str::char_len(w);
     }
     case (open(?tp, ?indent)) {
       if (tp == box_v) {
@@ -247,8 +247,8 @@ fn token_size(token tok) -> uint {
   alt (tok) {
     case (brk(?sz)) {ret sz;}
     case (hardbrk) {ret 0xFFFFFFu;}
-    case (word(?w)) {ret Str.char_len(w);}
-    case (cword(?w)) {ret Str.char_len(w);}
+    case (word(?w)) {ret _str::char_len(w);}
+    case (cword(?w)) {ret _str::char_len(w);}
     case (open(_, _)) {ret 0u;}
     case (close) {ret 0u;}
   }

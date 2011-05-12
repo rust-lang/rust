@@ -1,4 +1,4 @@
-// error-pattern: can't refer to a module as a first-class value
+// error-pattern: is a module, not a
 
 mod m1 {
   mod a {
@@ -6,5 +6,5 @@ mod m1 {
 }
 
 fn main(vec[str] args) {
-  log m1.a;
+  log m1::a;
 }

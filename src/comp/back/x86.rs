@@ -1,9 +1,9 @@
-import lib.llvm.llvm;
-import lib.llvm.llvm.ModuleRef;
-import std.Str;
-import std.Vec;
-import std.OS.target_os;
-import util.common.istr;
+import lib::llvm::llvm;
+import lib::llvm::llvm::ModuleRef;
+import std::_str;
+import std::_vec;
+import std::os::target_os;
+import util::common::istr;
 
 const int wordsz = 4;
 
@@ -55,35 +55,35 @@ fn restore_callee_saves() -> vec[str] {
 }
 
 fn load_esp_from_rust_sp_first_arg() -> vec[str] {
-    ret vec("movl  " + wstr(abi.task_field_rust_sp) + "(%ecx), %esp");
+    ret vec("movl  " + wstr(abi::task_field_rust_sp) + "(%ecx), %esp");
 }
 
 fn load_esp_from_runtime_sp_first_arg() -> vec[str] {
-    ret vec("movl  " + wstr(abi.task_field_runtime_sp) + "(%ecx), %esp");
+    ret vec("movl  " + wstr(abi::task_field_runtime_sp) + "(%ecx), %esp");
 }
 
 fn store_esp_to_rust_sp_first_arg() -> vec[str] {
-    ret vec("movl  %esp, " + wstr(abi.task_field_rust_sp) + "(%ecx)");
+    ret vec("movl  %esp, " + wstr(abi::task_field_rust_sp) + "(%ecx)");
 }
 
 fn store_esp_to_runtime_sp_first_arg() -> vec[str] {
-    ret vec("movl  %esp, " + wstr(abi.task_field_runtime_sp) + "(%ecx)");
+    ret vec("movl  %esp, " + wstr(abi::task_field_runtime_sp) + "(%ecx)");
 }
 
 fn load_esp_from_rust_sp_second_arg() -> vec[str] {
-    ret vec("movl  " + wstr(abi.task_field_rust_sp) + "(%edx), %esp");
+    ret vec("movl  " + wstr(abi::task_field_rust_sp) + "(%edx), %esp");
 }
 
 fn load_esp_from_runtime_sp_second_arg() -> vec[str] {
-    ret vec("movl  " + wstr(abi.task_field_runtime_sp) + "(%edx), %esp");
+    ret vec("movl  " + wstr(abi::task_field_runtime_sp) + "(%edx), %esp");
 }
 
 fn store_esp_to_rust_sp_second_arg() -> vec[str] {
-    ret vec("movl  %esp, " + wstr(abi.task_field_rust_sp) + "(%edx)");
+    ret vec("movl  %esp, " + wstr(abi::task_field_rust_sp) + "(%edx)");
 }
 
 fn store_esp_to_runtime_sp_second_arg() -> vec[str] {
-    ret vec("movl  %esp, " + wstr(abi.task_field_runtime_sp) + "(%edx)");
+    ret vec("movl  %esp, " + wstr(abi::task_field_runtime_sp) + "(%edx)");
 }
 
 
@@ -157,7 +157,7 @@ fn rust_activate_glue() -> vec[str] {
          *      will be a no-op. Esp won't move, and the task's stack won't
          *      grow.
          */
-        + vec("addl  $20, " + wstr(abi.task_field_rust_sp) + "(%ecx)")
+        + vec("addl  $20, " + wstr(abi::task_field_rust_sp) + "(%ecx)")
 
 
         /*
@@ -209,13 +209,13 @@ fn rust_yield_glue() -> vec[str] {
         + vec("ret");
 }
 
-fn native_glue(int n_args, abi.native_glue_type ngt) -> vec[str] {
+fn native_glue(int n_args, abi::native_glue_type ngt) -> vec[str] {
 
     let bool pass_task;
     alt (ngt) {
-        case (abi.ngt_rust)         { pass_task = true; }
-        case (abi.ngt_pure_rust)    { pass_task = true; }
-        case (abi.ngt_cdecl)        { pass_task = false; }
+        case (abi::ngt_rust)         { pass_task = true; }
+        case (abi::ngt_pure_rust)    { pass_task = true; }
+        case (abi::ngt_cdecl)        { pass_task = false; }
     }
 
     /*
@@ -241,7 +241,7 @@ fn native_glue(int n_args, abi.native_glue_type ngt) -> vec[str] {
         }
         auto m = vec("movl  " + src_off + "(%ebp),%eax",
                      "movl  %eax," + dst_off + "(%esp)");
-        ret Str.connect(m, "\n\t");
+        ret _str::connect(m, "\n\t");
     }
 
     auto carg = bind copy_arg(pass_task, _);
@@ -259,7 +259,7 @@ fn native_glue(int n_args, abi.native_glue_type ngt) -> vec[str] {
         + vec("subl  $" + wstr(n_args) + ", %esp   # esp -= args",
               "andl  $~0xf, %esp    # align esp down")
 
-        + Vec.init_fn[str](carg, (n_args) as uint)
+        + _vec::init_fn[str](carg, (n_args) as uint)
 
         +  vec("movl  %edx, %edi     # save task from edx to edi",
                "call  *%ecx          # call *%ecx",
@@ -278,21 +278,21 @@ fn decl_glue(int align, str prefix, str name, vec[str] insns) -> str {
     ret "\t.globl " + sym + "\n" +
         "\t.balign " + istr(align) + "\n" +
         sym + ":\n" +
-        "\t" + Str.connect(insns, "\n\t");
+        "\t" + _str::connect(insns, "\n\t");
 }
 
 
-fn decl_native_glue(int align, str prefix, abi.native_glue_type ngt, uint n)
+fn decl_native_glue(int align, str prefix, abi::native_glue_type ngt, uint n)
         -> str {
     let int i = n as int;
     ret decl_glue(align, prefix,
-                  abi.native_glue_name(i, ngt),
+                  abi::native_glue_name(i, ngt),
                   native_glue(i, ngt));
 }
 
 fn get_symbol_prefix() -> str {
-    if (Str.eq(target_os(), "macos") ||
-        Str.eq(target_os(), "win32")) {
+    if (_str::eq(target_os(), "macos") ||
+        _str::eq(target_os(), "win32")) {
         ret "_";
     } else {
         ret "";
@@ -306,51 +306,51 @@ fn get_module_asm() -> str {
 
     auto glues =
         vec(decl_glue(align, prefix,
-                      abi.activate_glue_name(),
+                      abi::activate_glue_name(),
                       rust_activate_glue()),
 
             decl_glue(align, prefix,
-                      abi.yield_glue_name(),
+                      abi::yield_glue_name(),
                       rust_yield_glue()))
 
-        + Vec.init_fn[str](bind decl_native_glue(align, prefix,
-            abi.ngt_rust, _), (abi.n_native_glues + 1) as uint)
-        + Vec.init_fn[str](bind decl_native_glue(align, prefix,
-            abi.ngt_pure_rust, _), (abi.n_native_glues + 1) as uint)
-        + Vec.init_fn[str](bind decl_native_glue(align, prefix,
-            abi.ngt_cdecl, _), (abi.n_native_glues + 1) as uint);
+        + _vec::init_fn[str](bind decl_native_glue(align, prefix,
+            abi::ngt_rust, _), (abi::n_native_glues + 1) as uint)
+        + _vec::init_fn[str](bind decl_native_glue(align, prefix,
+            abi::ngt_pure_rust, _), (abi::n_native_glues + 1) as uint)
+        + _vec::init_fn[str](bind decl_native_glue(align, prefix,
+            abi::ngt_cdecl, _), (abi::n_native_glues + 1) as uint);
 
 
-    ret Str.connect(glues, "\n\n");
+    ret _str::connect(glues, "\n\n");
 }
 
 fn get_meta_sect_name() -> str {
-    if (Str.eq(target_os(), "macos")) {
+    if (_str::eq(target_os(), "macos")) {
         ret "__DATA,__note.rustc";
     }
-    if (Str.eq(target_os(), "win32")) {
+    if (_str::eq(target_os(), "win32")) {
         ret ".note.rustc";
     }
     ret ".note.rustc";
 }
 
 fn get_data_layout() -> str {
-    if (Str.eq(target_os(), "macos")) {
+    if (_str::eq(target_os(), "macos")) {
       ret "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64" +
         "-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:128:128" +
         "-n8:16:32";
     }
-    if (Str.eq(target_os(), "win32")) {
+    if (_str::eq(target_os(), "win32")) {
       ret "e-p:32:32-f64:64:64-i64:64:64-f80:32:32-n8:16:32";
     }
     ret "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32";
 }
 
 fn get_target_triple() -> str {
-    if (Str.eq(target_os(), "macos")) {
+    if (_str::eq(target_os(), "macos")) {
         ret "i686-apple-darwin";
     }
-    if (Str.eq(target_os(), "win32")) {
+    if (_str::eq(target_os(), "win32")) {
         ret "i686-pc-mingw32";
     }
     ret "i686-unknown-linux-gnu";

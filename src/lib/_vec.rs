@@ -1,8 +1,8 @@
-import Option.none;
-import Option.some;
-import Util.orb;
+import option::none;
+import option::some;
+import util::orb;
 
-type vbuf = rustrt.vbuf;
+type vbuf = rustrt::vbuf;
 
 type operator2[T,U,V] = fn(&T, &U) -> V;
 
@@ -38,16 +38,16 @@ native "rust" mod rustrt {
 }
 
 fn alloc[T](uint n_elts) -> vec[T] {
-    ret rustrt.vec_alloc[vec[T], T](n_elts);
+    ret rustrt::vec_alloc[vec[T], T](n_elts);
 }
 
 fn alloc_mut[T](uint n_elts) -> vec[mutable T] {
-    ret rustrt.vec_alloc_mut[vec[mutable T], T](n_elts);
+    ret rustrt::vec_alloc_mut[vec[mutable T], T](n_elts);
 }
 
 fn refcount[T](array[T] v) -> uint {
-    auto r = rustrt.refcount[T](v);
-    if (r == Dbg.const_refcount) {
+    auto r = rustrt::refcount[T](v);
+    if (r == dbg::const_refcount) {
         ret r;
     } else {
         // -1 because calling this function incremented the refcount.
@@ -56,7 +56,7 @@ fn refcount[T](array[T] v) -> uint {
 }
 
 fn vec_from_vbuf[T](vbuf v, uint n_elts) -> vec[T] {
-    ret rustrt.vec_from_vbuf[T](v, n_elts);
+    ret rustrt::vec_from_vbuf[T](v, n_elts);
 }
 
 // FIXME: Remove me; this is a botch to get around rustboot's bad typechecker.
@@ -119,28 +119,28 @@ fn init_elt_mut[T](&T t, uint n_elts) -> vec[mutable T] {
 }
 
 fn buf[T](array[T] v) -> vbuf {
-    ret rustrt.vec_buf[T](v, 0u);
+    ret rustrt::vec_buf[T](v, 0u);
 }
 
 fn len[T](array[T] v) -> uint {
-    ret rustrt.vec_len[T](v);
+    ret rustrt::vec_len[T](v);
 }
 
 fn len_set[T](array[T] v, uint n) {
-    rustrt.vec_len_set[T](v, n);
+    rustrt::vec_len_set[T](v, n);
 }
 
 fn buf_off[T](array[T] v, uint offset) -> vbuf {
      assert (offset < len[T](v));
-    ret rustrt.vec_buf[T](v, offset);
+    ret rustrt::vec_buf[T](v, offset);
 }
 
 fn print_debug_info[T](array[T] v) {
-    rustrt.vec_print_debug_info[T](v);
+    rustrt::vec_print_debug_info[T](v);
 }
 
 // Returns the last element of v.
-fn last[T](array[T] v) -> Option.t[T] {
+fn last[T](array[T] v) -> option::t[T] {
     auto l = len[T](v);
     if (l == 0u) {
         ret none[T];
@@ -199,14 +199,14 @@ fn grow[T](&array[T] v, uint n, &T initval) {
 }
 
 fn grow_set[T](&vec[mutable T] v, uint index, &T initval, &T val) {
-    auto length = Vec.len(v);
+    auto length = _vec::len(v);
     if (index >= length) {
         grow(v, index - length + 1u, initval);
     }
     v.(index) = val;
 }
 
-fn map[T, U](&Option.operator[T,U] f, &array[T] v) -> vec[U] {
+fn map[T, U](&option::operator[T,U] f, &array[T] v) -> vec[U] {
     let vec[U] u = alloc[U](len[T](v));
     for (T ve in v) {
         u += vec(f(ve));
@@ -230,7 +230,7 @@ fn map2[T,U,V](&operator2[T,U,V] f, &array[T] v0, &array[U] v1) -> vec[V] {
     ret u;
 }
 
-fn find[T](fn (&T) -> bool f, &array[T] v) -> Option.t[T] {
+fn find[T](fn (&T) -> bool f, &array[T] v) -> option::t[T] {
     for (T elt in v) {
         if (f(elt)) {
             ret some[T](elt);
@@ -270,24 +270,24 @@ fn unzip[T, U](&vec[tup(T, U)] v) -> tup(vec[T], vec[U]) {
 
 fn or(&vec[bool] v) -> bool {
     auto f = orb;
-    ret Vec.foldl[bool, bool](f, false, v);
+    ret _vec::foldl[bool, bool](f, false, v);
 }
 
 fn clone[T](&vec[T] v) -> vec[T] {
     ret slice[T](v, 0u, len[T](v));
 }
 
-fn plus_option[T](&vec[T] v, &Option.t[T] o) -> () {
+fn plus_option[T](&vec[T] v, &option::t[T] o) -> () {
     alt (o) {
         case (none[T]) {}
         case (some[T](?x)) { v += vec(x); }
     }
 }
 
-fn cat_options[T](&vec[Option.t[T]] v) -> vec[T] {
+fn cat_options[T](&vec[option::t[T]] v) -> vec[T] {
     let vec[T] res = vec();
 
-    for (Option.t[T] o in v) {
+    for (option::t[T] o in v) {
         alt (o) {
             case (none[T]) { }
             case (some[T](?t)) {

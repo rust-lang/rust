@@ -7,11 +7,11 @@ mod inner {
     }
   }
   fn hello() {
-    inner2.hello();
+    inner2::hello();
   }
 }
 
 fn main() {
-  inner.hello();
-  inner.inner2.hello();
+  inner::hello();
+  inner::inner2::hello();
 }

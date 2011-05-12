@@ -1,7 +1,7 @@
 // -*- rust -*-
 
 use std;
-import std.Str;
+import std::_str;
 
 fn test1() {
   let str s = "hello";
@@ -20,8 +20,8 @@ fn test2() {
   log a;
   log b;
 
-  assert (Str.eq(a, "abcABCabc"));
-  assert (Str.eq(b, "ABCabcABC"));
+  assert (_str::eq(a, "abcABCabc"));
+  assert (_str::eq(b, "ABCabcABC"));
 }
 
 fn main() {

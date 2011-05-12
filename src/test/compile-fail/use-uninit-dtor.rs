@@ -1,4 +1,4 @@
-// error-pattern:Unsatisfied precondition
+// error-pattern::Unsatisfied precondition
 
 fn main() {
  state obj foo(int x) {

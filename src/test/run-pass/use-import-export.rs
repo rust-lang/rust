@@ -15,7 +15,7 @@ mod bar {
 }
 
 fn main() {
-  foo.x();
-  bar.y();
+  foo::x();
+  bar::y();
 }
 

@@ -1,10 +1,7 @@
-import Str.sbuf;
-import Vec.vbuf;
+import _str::sbuf;
+import _vec::vbuf;
 
-// FIXME Somehow merge stuff duplicated here and macosx_os.rs. Made difficult
-// by https://github.com/graydon/rust/issues#issue/268
-
-native mod libc = "libc.so.6" {
+native mod libc = "libc::dylib" {
 
     fn open(sbuf s, int flags, uint mode) -> int;
     fn read(int fd, vbuf buf, uint count) -> int;
@@ -41,15 +38,15 @@ mod libc_constants {
     fn O_RDONLY() -> int { ret 0x0000; }
     fn O_WRONLY() -> int { ret 0x0001; }
     fn O_RDWR()   -> int { ret 0x0002; }
-    fn O_APPEND() -> int { ret 0x0400; }
-    fn O_CREAT()  -> int { ret 0x0040; }
-    fn O_EXCL()   -> int { ret 0x0080; }
-    fn O_TRUNC()  -> int { ret 0x0200; }
-    fn O_TEXT()   -> int { ret 0x0000; } // nonexistent in linux libc
-    fn O_BINARY() -> int { ret 0x0000; } // nonexistent in linux libc
+    fn O_APPEND() -> int { ret 0x0008; }
+    fn O_CREAT()  -> int { ret 0x0200; }
+    fn O_EXCL()   -> int { ret 0x0800; }
+    fn O_TRUNC()  -> int { ret 0x0400; }
+    fn O_TEXT()   -> int { ret 0x0000; } // nonexistent in darwin libc
+    fn O_BINARY() -> int { ret 0x0000; } // nonexistent in darwin libc
 
-    fn S_IRUSR() -> uint { ret 0x0100u; }
-    fn S_IWUSR() -> uint { ret 0x0080u; }
+    fn S_IRUSR() -> uint { ret 0x0400u; }
+    fn S_IWUSR() -> uint { ret 0x0200u; }
 }
 
 fn exec_suffix() -> str {
@@ -57,26 +54,26 @@ fn exec_suffix() -> str {
 }
 
 fn target_os() -> str {
-    ret "linux";
+    ret "macos";
 }
 
 fn dylib_filename(str base) -> str {
-    ret "lib" + base + ".so";
+    ret "lib" + base + ".dylib";
 }
 
 fn pipe() -> tup(int, int) {
     let vec[mutable int] fds = vec(mutable 0, 0);
-    assert (OS.libc.pipe(Vec.buf(fds)) == 0);
+    assert (os::libc::pipe(_vec::buf(fds)) == 0);
     ret tup(fds.(0), fds.(1));
 }
 
-fn fd_FILE(int fd) -> libc.FILE {
-    ret libc.fdopen(fd, Str.buf("r"));
+fn fd_FILE(int fd) -> libc::FILE {
+    ret libc::fdopen(fd, _str::buf("r"));
 }
 
 fn waitpid(int pid) -> int {
     let vec[mutable int] status = vec(mutable 0);
-    assert (OS.libc.waitpid(pid, Vec.buf(status), 0) != -1);
+    assert (os::libc::waitpid(pid, _vec::buf(status), 0) != -1);
     ret status.(0);
 }
 

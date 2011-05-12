@@ -1,13 +1,13 @@
 use std;
 
 fn check_sort(vec[mutable int] v1, vec[mutable int] v2) {
-  auto len = std.Vec.len[int](v1);
+  auto len = std::_vec::len[int](v1);
 
   fn ltequal(&int a, &int b) -> bool {
     ret a <= b;
   }
   auto f = ltequal;
-  std.Sort.quick_sort[int](f, v1);
+  std::sort::quick_sort[int](f, v1);
   auto i = 0u;
   while (i < len) {
     log v2.(i);

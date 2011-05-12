@@ -1,6 +1,6 @@
-import foo.bar;
+import foo::bar;
 mod foo {
-  import zed.bar;
+  import zed::bar;
   mod zed {
     fn bar() {
       log "foo";

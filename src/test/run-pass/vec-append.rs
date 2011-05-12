@@ -4,11 +4,11 @@
 // -*- rust -*-
 
 use std;
-import std.Str;
-import std.Vec;
+import std::_str;
+import std::_vec;
 
 
-// FIXME: import std.Dbg.const_refcount. Currently
+// FIXME: import std::dbg::const_refcount. Currently
 // cross-crate const references don't work.
 const uint const_refcount = 0x7bad_face_u;
 
@@ -53,30 +53,30 @@ fn slow_growth2_helper(str s) {   // ref up: s
     let vec[str] v = vec(mumble); // ref up: v, mumble
     let acc a = acc(v);           // ref up: a, v
 
-    log Vec.refcount[str](v);
-    assert (Vec.refcount[str](v) == 2u);
+    log _vec::refcount[str](v);
+    assert (_vec::refcount[str](v) == 2u);
 
     a.add(s);                     // ref up: mumble, s.  ref down: v
 
-    log Vec.refcount[str](v);
-    log Str.refcount(s);
-    log Str.refcount(mumble);
+    log _vec::refcount[str](v);
+    log _str::refcount(s);
+    log _str::refcount(mumble);
 
-    assert (Vec.refcount[str](v) == 1u);
-    assert (Str.refcount(s) == const_refcount);
-    assert (Str.refcount(mumble) == const_refcount);
+    assert (_vec::refcount[str](v) == 1u);
+    assert (_str::refcount(s) == const_refcount);
+    assert (_str::refcount(mumble) == const_refcount);
 
     log v.(0);
-    log Vec.len[str](v);
-    assert (Str.eq(v.(0), mumble));
-    assert (Vec.len[str](v) == 1u);
+    log _vec::len[str](v);
+    assert (_str::eq(v.(0), mumble));
+    assert (_vec::len[str](v) == 1u);
   }                               // ref down: a, mumble, s, v
 
-  log Str.refcount(s);
-  log Str.refcount(mumble);
+  log _str::refcount(s);
+  log _str::refcount(mumble);
 
-  assert (Str.refcount(s) == const_refcount);
-  assert (Str.refcount(mumble) == const_refcount);
+  assert (_str::refcount(s) == const_refcount);
+  assert (_str::refcount(mumble) == const_refcount);
 
   log mumble;
   log ss;
@@ -85,8 +85,8 @@ fn slow_growth2_helper(str s) {   // ref up: s
 fn slow_growth2() {
   let str s = "hi";               // ref up: s
   slow_growth2_helper(s);
-  log Str.refcount(s);
-  assert (Str.refcount(s) == const_refcount);
+  log _str::refcount(s);
+  assert (_str::refcount(s) == const_refcount);
 }
 
 fn main() {

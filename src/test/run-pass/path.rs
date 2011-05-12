@@ -4,5 +4,5 @@ mod foo {
 }
 
 fn main(vec[str] args) {
-  foo.bar(0u);
+  foo::bar(0u);
 }

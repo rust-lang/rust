@@ -3,7 +3,7 @@
 // xfail-stage2
 // -*- rust -*-
 
-// error-pattern:non-exhaustive match failure
+// error-pattern::non-exhaustive match failure
 
 tag t {
   a;

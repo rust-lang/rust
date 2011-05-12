@@ -4,7 +4,7 @@ native "rust" mod rustrt {
 }
 
 fn list_dir(str path) -> vec[str] {
-  ret rustrt.rust_list_files(path+"*");
+  ret rustrt::rust_list_files(path+"*");
 }
 
 /* FIXME: win32 path handling actually accepts '/' or '\' and has subtly
