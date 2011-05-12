@@ -312,7 +312,7 @@ fn resolve_path(vec[ast.ident] path, vec[u8] data) -> resolve_result {
     fn eq_item(vec[u8] data, str s) -> bool {
         ret Str.eq(Str.unsafe_from_bytes(data), s);
     }
-    auto s = Str.connect(path, ".");
+    auto s = Str.connect(path, ":");
     auto md = EBML.new_doc(data);
     auto paths = EBML.get_doc(md, metadata.tag_paths);
     auto eqer = bind eq_item(_, s);

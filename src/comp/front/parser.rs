@@ -322,7 +322,7 @@ fn parse_constr_arg(parser p) -> @ast.constr_arg {
 
 fn parse_ty_constr(parser p) -> @ast.constr {
     auto lo = p.get_lo_pos();
-    auto path = parse_path(p, GREEDY);
+    auto path = parse_path(p);
     auto pf = parse_constr_arg;
     auto args = parse_seq[@ast.constr_arg](token.LPAREN,
                                          token.RPAREN,
@@ -472,7 +472,7 @@ fn parse_ty(parser p) -> @ast.ty {
         }
 
         case (token.IDENT(_)) {
-            auto path = parse_path(p, GREEDY);
+            auto path = parse_path(p);
             t = ast.ty_path(path, p.get_ann());
             hi = path.span.hi;
         }
@@ -603,11 +603,6 @@ fn is_ident(token.token t) -> bool {
     ret false;
 }
 
-tag greed {
-    GREEDY;
-    MINIMAL;
-}
-
 fn parse_ty_args(parser p, uint hi) ->
     util.common.spanned[vec[@ast.ty]] {
 
@@ -623,33 +618,23 @@ fn parse_ty_args(parser p, uint hi) ->
     ret spanned(hi, hi, v);
 }
 
-fn parse_path(parser p, greed g) -> ast.path {
+fn parse_path(parser p) -> ast.path {
 
     auto lo = p.get_lo_pos();
     auto hi = lo;
 
     let vec[ast.ident] ids = vec();
-    let bool more = true;
-    while (more) {
+    while (true) {
         alt (p.peek()) {
             case (token.IDENT(?i)) {
                 hi = p.get_hi_pos();
                 ids += vec(p.get_str(i));
                 p.bump();
-                if (p.peek() == token.DOT) {
-                    if (g == GREEDY) {
-                        p.bump();
-                        assert (is_ident(p.peek()));
-                    } else {
-                        more = false;
-                    }
-                } else {
-                    more = false;
-                }
+                if (p.peek() == token.MOD_SEP) {
+                    p.bump();
+                } else { break; }
             }
-            case (_) {
-                more = false;
-            }
+            case (_) { break; }
         }
     }
 
@@ -690,7 +675,7 @@ fn parse_bottom_expr(parser p) -> @ast.expr {
     alt (p.peek()) {
 
         case (token.IDENT(_)) {
-            auto pth = parse_path(p, MINIMAL);
+            auto pth = parse_path(p);
             hi = pth.span.hi;
             ex = ast.expr_path(pth, p.get_ann());
         }
@@ -804,7 +789,7 @@ fn parse_bottom_expr(parser p) -> @ast.expr {
 
         case (token.POUND) {
             p.bump();
-            auto pth = parse_path(p, GREEDY);
+            auto pth = parse_path(p);
             auto pf = parse_expr;
             auto es = parse_seq[@ast.expr](token.LPAREN,
                                            token.RPAREN,
@@ -980,31 +965,6 @@ fn expand_syntax_ext(parser p, ast.span sp,
     }
 }
 
-fn extend_expr_by_ident(parser p, uint lo, uint hi,
-                               @ast.expr e, ast.ident i) -> @ast.expr {
-    auto e_ = e.node;
-    alt (e.node) {
-        case (ast.expr_path(?pth, ?ann)) {
-            if (Vec.len[@ast.ty](pth.node.types) == 0u) {
-                auto idents_ = pth.node.idents;
-                idents_ += vec(i);
-                auto tys = parse_ty_args(p, hi);
-                auto pth_ = spanned(pth.span.lo, tys.span.hi,
-                                    rec(idents=idents_,
-                                        types=tys.node));
-                e_ = ast.expr_path(pth_, ann);
-                ret @spanned(pth_.span.lo, pth_.span.hi, e_);
-            } else {
-                e_ = ast.expr_field(e, i, ann);
-            }
-        }
-        case (_) {
-            e_ = ast.expr_field(e, i, p.get_ann());
-        }
-    }
-    ret @spanned(lo, hi, e_);
-}
-
 fn parse_self_method(parser p) -> @ast.expr {
     auto sp = p.get_span();
     let ast.ident f_name = parse_ident(p);
@@ -1042,7 +1002,9 @@ fn parse_dot_or_call_expr(parser p) -> @ast.expr {
                     case (token.IDENT(?i)) {
                         hi = p.get_hi_pos();
                         p.bump();
-                        e = extend_expr_by_ident(p, lo, hi, e, p.get_str(i));
+                        auto e_ = ast.expr_field(e, p.get_str(i),
+                                                 p.get_ann());
+                        e = @spanned(lo, hi, e_);
                     }
 
                     case (token.LPAREN) {
@@ -1404,7 +1366,7 @@ fn parse_spawn_expr(parser p) -> @ast.expr {
     expect(p, token.SPAWN);
 
     // FIXME: Parse domain and name
-
+    // FIXME: why no full expr?
     auto fn_expr = parse_bottom_expr(p);
     auto pf = parse_expr;
     auto es = parse_seq[@ast.expr](token.LPAREN,
@@ -1509,7 +1471,7 @@ fn parse_pat(parser p) -> @ast.pat {
             }
         }
         case (token.IDENT(_)) {
-            auto tag_path = parse_path(p, GREEDY);
+            auto tag_path = parse_path(p);
             hi = tag_path.span.hi;
 
             let vec[@ast.pat] args;
@@ -2249,7 +2211,7 @@ fn parse_rest_import_name(parser p, ast.ident first,
     auto lo = p.get_lo_pos();
     let vec[ast.ident] identifiers = vec(first);
     while (p.peek() != token.SEMI) {
-        expect(p, token.DOT);
+        expect(p, token.MOD_SEP);
         auto i = parse_ident(p);
         identifiers += vec(i);
     }
@@ -2377,7 +2339,7 @@ fn parse_crate_directive(parser p) -> ast.crate_directive
     alt (p.peek()) {
         case (token.AUTH) {
             p.bump();
-            auto n = parse_path(p, GREEDY);
+            auto n = parse_path(p);
             expect(p, token.EQ);
             auto a = parse_auth(p);
             auto hi = p.get_hi_pos();

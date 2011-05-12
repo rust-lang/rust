@@ -634,7 +634,6 @@ fn next_token(reader rdr) -> token.token {
 
     alt (c) {
         // One-byte tokens.
-        case (':') { rdr.bump(); ret token.COLON; }
         case ('?') { rdr.bump(); ret token.QUES; }
         case (';') { rdr.bump(); ret token.SEMI; }
         case (',') { rdr.bump(); ret token.COMMA; }
@@ -648,7 +647,15 @@ fn next_token(reader rdr) -> token.token {
         case ('@') { rdr.bump(); ret token.AT; }
         case ('#') { rdr.bump(); ret token.POUND; }
         case ('~') { rdr.bump(); ret token.TILDE; }
-
+        case (':') {
+            rdr.bump();
+            if (is_alpha(rdr.curr()) || rdr.curr() == '_') {
+                ret token.MOD_SEP;
+            }
+            else {
+                ret token.COLON;
+            };
+        }
 
         // Multi-byte tokens.
         case ('=') {

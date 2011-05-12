@@ -301,7 +301,7 @@ fn add_to_index(&EBML.writer ebml_w,
                 &mutable vec[tup(str, uint)] index,
                 &str name) {
     auto full_path = path + vec(name);
-    index += vec(tup(Str.connect(full_path, "."), ebml_w.writer.tell()));
+    index += vec(tup(Str.connect(full_path, ":"), ebml_w.writer.tell()));
 }
 
 fn encode_native_module_item_paths(&EBML.writer ebml_w,

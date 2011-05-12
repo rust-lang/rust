@@ -751,7 +751,7 @@ fn print_path(ps s, ast.path path) {
     auto first = true;
     for (str id in path.node.idents) {
         if (first) {first = false;}
-        else {wrd(s.s, ".");}
+        else {wrd(s.s, ":");}
         wrd(s.s, id);
     }
     if (Vec.len[@ast.ty](path.node.types) > 0u) {
@@ -856,7 +856,7 @@ fn print_view_item(ps s, @ast.view_item item) {
             auto first = true;
             for (str elt in ids) {
                 if (first) {first = false;}
-                else {wrd(s.s, ".");}
+                else {wrd(s.s, ":");}
                 wrd(s.s, elt);
             }
         }

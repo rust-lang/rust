@@ -170,6 +170,7 @@ fn resolve_imports(&env e) {
     }
 }
 
+// FIXME this should use walk (will need to add walk_arm)
 fn resolve_names(&@env e, &ast.crate c) -> @ast.crate {
     auto fld = @rec(fold_pat_tag = bind fold_pat_tag(e,_,_,_,_,_),
                     fold_expr_path = bind fold_expr_path(e,_,_,_,_),
@@ -277,54 +278,11 @@ fn resolve_import(&env e, &@ast.view_item it, &list[scope] sc) {
     }
 }
 
-// We received a path expression of the following form:
-//
-//     a.b.c.d
-//
-// Somewhere along this path there might be a split from a path-expr
-// to a runtime field-expr. For example:
-//
-//     'a' could be the name of a variable in the local scope
-//     and 'b.c.d' could be a field-sequence inside it.
-//
-// Or:
-//
-//     'a.b' could be a module path to a constant record, and 'c.d'
-//     could be a field within it.
-//
-// Our job here is to figure out what the prefix of 'a.b.c.d' is that
-// corresponds to a static binding-name (a module or slot, with no type info)
-// and split that off as the 'primary' expr_path, with secondary expr_field
-// expressions tacked on the end.
-
 fn fold_expr_path(@env e, &list[scope] sc, &span sp, &ast.path p, &ann a)
     -> @ast.expr {
-    auto idents = p.node.idents;
-    auto n_idents = Vec.len(idents);
-    assert (n_idents != 0u);
-
-    auto dcur = lookup_in_scope_strict(*e, sc, sp, idents.(0), ns_value);
-    auto i = 1u;
-    while (i < n_idents) {
-        if (!is_module(dcur)) { break; }
-        dcur = lookup_in_mod_strict(*e, dcur, sp, idents.(i), ns_value,
-                                    outside);
-        i += 1u;
-    }
-    if (is_module(dcur)) {
-        e.sess.span_err(sp, "can't refer to a module as a first-class value");
-    }
-
-    p = rec(node=rec(idents=Vec.slice(idents, 0u, i) with p.node) with p);
-    auto ex = @fold.respan(sp, ast.expr_path(p, a));
-    e.def_map.insert(ast.ann_tag(a), dcur);
-    // FIXME this duplicates the ann. Is that a problem? How will we deal with
-    // splitting this into path and field exprs when we don't fold?
-    while (i < n_idents) {
-        ex = @fold.respan(sp, ast.expr_field(ex, idents.(i), a));
-        i += 1u;
-    }
-    ret ex;
+    auto df = lookup_path_strict(*e, sc, sp, p.node.idents, ns_value);
+    e.def_map.insert(ast.ann_tag(a), df);
+    ret @fold.respan(sp, ast.expr_path(p, a));
 }
 
 
@@ -337,7 +295,7 @@ fn fold_pat_tag(@env e, &list[scope] sc, &span sp, &ast.path p,
         }
         case (_) {
             e.sess.span_err(sp, "not a tag variant: " +
-                            Str.connect(p.node.idents, "."));
+                            Str.connect(p.node.idents, ":"));
             fail;
         }
     }
@@ -383,7 +341,7 @@ fn lookup_path_strict(&env e, &list[scope] sc, &span sp, vec[ident] idents,
         i += 1u;
     }
     if (is_module(dcur)) {
-        e.sess.span_err(sp, Str.connect(idents, ".") +
+        e.sess.span_err(sp, Str.connect(idents, ":") +
                         " is a module, not a " + ns_name(ns));
     }
     ret dcur;
