@@ -3,7 +3,7 @@
 // xfail-stage2
 // -*- rust -*-
 
-// error-pattern::predicate check
+// error-pattern:predicate check
 
 fn f(int a, int b) : lt(a,b) {
 }

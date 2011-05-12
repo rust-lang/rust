@@ -3,7 +3,7 @@
 // xfail-stage2
 // -*- rust -*-
 
-// error-pattern::bounds check
+// error-pattern:bounds check
 
 fn main() {
   let str s = "hello";

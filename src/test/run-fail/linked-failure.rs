@@ -3,7 +3,7 @@
 // xfail-stage2
 // -*- rust -*-
 
-// error-pattern::1 == 2
+// error-pattern:1 == 2
 
 fn child() {
   assert (1 == 2);

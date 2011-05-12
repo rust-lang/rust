@@ -1,4 +1,4 @@
-// error-pattern::Unsatisfied precondition
+// error-pattern:Unsatisfied precondition
 
 fn foo(int x) {
   log x;
