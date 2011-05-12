@@ -2,7 +2,7 @@
 // xfail-stage1
 // xfail-stage2
 use std;
-import std.Task;
+import std:_task;
 
 fn start(chan[int] c, int start, int number_of_messages) {
     let int i = 0;
@@ -17,5 +17,5 @@ fn main() -> () {
     let port[int] p = port();
     let task a = spawn thread "start" start(chan(p), 0, 10);
     join a;
-    log "Joined Task";
+    log "Joined task";
 }

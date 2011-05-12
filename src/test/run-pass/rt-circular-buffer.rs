@@ -5,9 +5,9 @@
 
 use std;
 
-import std.Option;
-import std.UInt;
-import std.Vec;
+import std:option;
+import std:_uint;
+import std:_vec;
 
 // A 12-byte unit to send over the channel
 type record = rec(u32 val1, u32 val2, u32 val3);
@@ -33,7 +33,7 @@ fn test_grow() {
 
     let record val = rec(val1=0u32, val2=0u32, val3=0u32);
 
-    for each (uint i in UInt.range(0u, 100u)) {
+    for each (uint i in _uint:range(0u, 100u)) {
         mychan <| val;
     }
 }
@@ -53,11 +53,11 @@ fn test_shrink2() {
 
     let record val = rec(val1=0u32, val2=0u32, val3=0u32);
 
-    for each (uint i in UInt.range(0u, 100u)) {
+    for each (uint i in _uint:range(0u, 100u)) {
         mychan <| val;
     }
 
-    for each (uint i in UInt.range(0u, 100u)) {
+    for each (uint i in _uint:range(0u, 100u)) {
         auto x <- myport;
     }
 }
@@ -67,7 +67,7 @@ fn test_rotate() {
     let port[record] myport = port();
     auto mychan = chan(myport);
 
-    for each (uint i in UInt.range(0u, 100u)) {
+    for each (uint i in _uint:range(0u, 100u)) {
         auto val = rec(val1=i as u32,
                        val2=i as u32,
                        val3=i as u32);
@@ -86,15 +86,15 @@ fn test_rotate_grow() {
     let port[record] myport = port();
     auto mychan = chan(myport);
 
-    for each (uint j in UInt.range(0u, 10u)) {
-        for each (uint i in UInt.range(0u, 10u)) {
+    for each (uint j in _uint:range(0u, 10u)) {
+        for each (uint i in _uint:range(0u, 10u)) {
             let record val = rec(val1=i as u32,
                                  val2=i as u32,
                                  val3=i as u32);
             mychan <| val;
         }
 
-        for each (uint i in UInt.range(0u, 10u)) {
+        for each (uint i in _uint:range(0u, 10u)) {
             auto x <- myport;
             assert (x.val1 == i as u32);
             assert (x.val2 == i as u32);

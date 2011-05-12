@@ -1,6 +1,6 @@
 use std;
-import std.Task;
+import std:_task;
 
 fn main() {
-  Task.sleep(1000000u);
+  _task:sleep(1000000u);
 }

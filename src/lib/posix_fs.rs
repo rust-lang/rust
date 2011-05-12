@@ -1,21 +1,21 @@
 native "rust" mod rustrt {
-  fn rust_dirent_filename(OS.libc.dirent ent) -> str;
+  fn rust_dirent_filename(os:libc:dirent ent) -> str;
 }
 
 fn list_dir(str path) -> vec[str] {
   // TODO ensure this is always closed
-  auto dir = OS.libc.opendir(Str.buf(path));
+  auto dir = os:libc:opendir(_str:buf(path));
   assert (dir as uint != 0u);
   let vec[str] result = vec();
   while (true) {
-    auto ent = OS.libc.readdir(dir);
+    auto ent = os:libc:readdir(dir);
     if (ent as int == 0) {
-        OS.libc.closedir(dir);
+        os:libc:closedir(dir);
         ret result;
     }
-    Vec.push[str](result, rustrt.rust_dirent_filename(ent));
+    _vec:push[str](result, rustrt:rust_dirent_filename(ent));
   }
-  OS.libc.closedir(dir);
+  os:libc:closedir(dir);
   ret result;
 }
 

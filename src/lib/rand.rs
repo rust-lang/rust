@@ -12,16 +12,16 @@ native "rust" mod rustrt {
 type rng = obj { fn next() -> u32; };
 
 fn mk_rng() -> rng {
-    obj rt_rng(rustrt.rctx c) {
+    obj rt_rng(rustrt:rctx c) {
         fn next() -> u32 {
-            ret rustrt.rand_next(c);
+            ret rustrt:rand_next(c);
         }
         drop {
-            rustrt.rand_free(c);
+            rustrt:rand_free(c);
         }
     }
 
-    ret rt_rng(rustrt.rand_new());
+    ret rt_rng(rustrt:rand_new());
 }
 
 // Local Variables:

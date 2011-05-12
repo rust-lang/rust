@@ -23,7 +23,7 @@ iter range(uint lo, uint hi) -> uint {
 fn next_power_of_two(uint n) -> uint {
     // FIXME change |* uint(4)| below to |* uint(8) / uint(2)| and watch the
     // world explode.
-    let uint halfbits = Sys.rustrt.size_of[uint]() * 4u;
+    let uint halfbits = sys:rustrt:size_of[uint]() * 4u;
     let uint tmp = n - 1u;
     let uint shift = 1u;
     while (shift <= halfbits) {
@@ -34,12 +34,12 @@ fn next_power_of_two(uint n) -> uint {
 }
 
 fn parse_buf(vec[u8] buf, uint radix) -> uint {
-    if (Vec.len[u8](buf) == 0u) {
+    if (_vec:len[u8](buf) == 0u) {
         log_err "parse_buf(): buf is empty";
         fail;
     }
 
-    auto i = Vec.len[u8](buf) - 1u;
+    auto i = _vec:len[u8](buf) - 1u;
     auto power = 1u;
     auto n = 0u;
     while (true) {
@@ -83,15 +83,15 @@ fn to_str(uint num, uint radix) -> str
 
     let str s = "";
     while (n != 0u) {
-        s += Str.unsafe_from_byte(digit(n % radix) as u8);
+        s += _str:unsafe_from_byte(digit(n % radix) as u8);
         n /= radix;
     }
 
     let str s1 = "";
-    let uint len = Str.byte_len(s);
+    let uint len = _str:byte_len(s);
     while (len != 0u) {
         len -= 1u;
-        s1 += Str.unsafe_from_byte(s.(len));
+        s1 += _str:unsafe_from_byte(s.(len));
     }
     ret s1;
 

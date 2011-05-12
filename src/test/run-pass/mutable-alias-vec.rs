@@ -11,7 +11,7 @@ fn main() {
   grow(v);
   grow(v);
   grow(v);
-  auto len = std.Vec.len[int](v);
+  auto len = std:_vec:len[int](v);
   log len;
   assert (len == (3 as uint));
 }

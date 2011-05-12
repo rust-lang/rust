@@ -13,5 +13,5 @@ mod foo {
 }
 
 fn main() {
-  auto z = foo.y1;
+  auto z = foo:y1;
 }

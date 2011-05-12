@@ -1,11 +1,11 @@
 // xfail-boot
 use std;
-import std.Str;
+import std:_str;
 
 fn test(str actual, str expected) {
   log actual;
   log expected;
-  assert (Str.eq(actual, expected));
+  assert (_str:eq(actual, expected));
 }
 
 fn main() {

@@ -1,5 +1,5 @@
-import foo.x;
-import z = foo.x;
+import foo:x;
+import z = foo:x;
 
 mod foo {
   fn x(int y) {

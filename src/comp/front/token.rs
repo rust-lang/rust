@@ -1,9 +1,9 @@
-import util.common.ty_mach;
-import util.common.ty_mach_to_str;
-import util.common.new_str_hash;
-import std.Int;
-import std.UInt;
-import std.Str;
+import util:common:ty_mach;
+import util:common:ty_mach_to_str;
+import util:common:new_str_hash;
+import std:_int;
+import std:_uint;
+import std:_str;
 
 type str_num = uint;
 
@@ -191,7 +191,7 @@ fn binop_to_str(binop o) -> str {
     }
 }
 
-fn to_str(lexer.reader r, token t) -> str {
+fn to_str(lexer:reader r, token t) -> str {
     alt (t) {
 
         case (EQ) { ret "="; }
@@ -299,10 +299,10 @@ fn to_str(lexer.reader r, token t) -> str {
         case (JOIN) { ret "join"; }
 
         /* Literals */
-        case (LIT_INT(?i)) { ret Int.to_str(i, 10u); }
-        case (LIT_UINT(?u)) { ret UInt.to_str(u, 10u); }
+        case (LIT_INT(?i)) { ret _int:to_str(i, 10u); }
+        case (LIT_UINT(?u)) { ret _uint:to_str(u, 10u); }
         case (LIT_MACH_INT(?tm, ?i)) {
-            ret  Int.to_str(i, 10u)
+            ret  _int:to_str(i, 10u)
                 + "_" + ty_mach_to_str(tm);
         }
         case (LIT_MACH_FLOAT(?tm, ?s)) {
@@ -317,8 +317,8 @@ fn to_str(lexer.reader r, token t) -> str {
         case (LIT_CHAR(?c)) {
             // FIXME: escape.
             auto tmp = "'";
-            Str.push_char(tmp, c);
-            Str.push_byte(tmp, '\'' as u8);
+            _str:push_char(tmp, c);
+            _str:push_byte(tmp, '\'' as u8);
             ret tmp;
         }
 
@@ -332,7 +332,7 @@ fn to_str(lexer.reader r, token t) -> str {
             si += r.get_str(s);
             ret si;
         }
-        case (IDX(?i)) { ret "_" + Int.to_str(i, 10u); }
+        case (IDX(?i)) { ret "_" + _int:to_str(i, 10u); }
         case (UNDERSCORE) { ret "_"; }
 
         /* Reserved type names */

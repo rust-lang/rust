@@ -5,6 +5,6 @@ mod foomod {
 }
 
 fn main() {
-  foomod.foo[int]();
-  foomod.foo[int]();
+  foomod:foo[int]();
+  foomod:foo[int]();
 }

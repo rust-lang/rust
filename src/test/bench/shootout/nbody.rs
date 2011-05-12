@@ -19,33 +19,33 @@ fn main() {
                               // 50000000
         );
 
-    let vec[Body.props] bodies = NBodySystem.MakeNBodySystem();
+    let vec[Body:props] bodies = NBodySystem:MakeNBodySystem();
 
     for (int n in inputs) {
-        log NBodySystem.energy(bodies);
+        log NBodySystem:energy(bodies);
 
         let int i = 0;
         while (i < n) {
-            NBodySystem.advance(bodies, 0.01);
+            NBodySystem:advance(bodies, 0.01);
             i += 1;
         }
-        log NBodySystem.energy(bodies);
+        log NBodySystem:energy(bodies);
     }
 }
 
-// Body.props is a record of floats, so
-// vec[Body.props] is a vector of records of floats
+// Body:props is a record of floats, so
+// vec[Body:props] is a vector of records of floats
 
 mod NBodySystem {
 
-    fn MakeNBodySystem() -> vec[Body.props] {
-        let vec[Body.props] bodies = vec(
-            // these each return a Body.props
-            Body.sun(), 
-            Body.jupiter(), 
-            Body.saturn(), 
-            Body.uranus(), 
-            Body.neptune());
+    fn MakeNBodySystem() -> vec[Body:props] {
+        let vec[Body:props] bodies = vec(
+            // these each return a Body:props
+            Body:sun(), 
+            Body:jupiter(), 
+            Body:saturn(), 
+            Body:uranus(), 
+            Body:neptune());
 
         let float px = 0.0;
         let float py = 0.0;
@@ -61,12 +61,12 @@ mod NBodySystem {
         }
 
         // side-effecting
-        Body.offsetMomentum(bodies.(0), px, py, pz);
+        Body:offsetMomentum(bodies.(0), px, py, pz);
 
         ret bodies;
     }
 
-    fn advance(vec[Body.props] bodies, float dt) -> () {
+    fn advance(vec[Body:props] bodies, float dt) -> () {
 
         let int i = 0;
         while (i < 5) {
@@ -86,14 +86,14 @@ mod NBodySystem {
         }
     }
 
-    fn advance_one(&Body.props bi, &Body.props bj, float dt) {
+    fn advance_one(&Body:props bi, &Body:props bj, float dt) {
         let float dx = bi.x - bj.x;
         let float dy = bi.y - bj.y;
         let float dz = bi.z - bj.z;
 
         let float dSquared = dx * dx + dy * dy + dz * dz;
 
-        let float distance = llvm.sqrt(dSquared);
+        let float distance = llvm:sqrt(dSquared);
         let float mag = dt / (dSquared * distance);
 
         bi.vx -= dx * bj.mass * mag;
@@ -105,13 +105,13 @@ mod NBodySystem {
         bj.vz += dz * bi.mass * mag;
     }
 
-    fn move(&Body.props b, float dt) {
+    fn move(&Body:props b, float dt) {
         b.x += dt * b.vx;
         b.y += dt * b.vy;
         b.z += dt * b.vz;
     }
 
-    fn energy(vec[Body.props] bodies) -> float {
+    fn energy(vec[Body:props] bodies) -> float {
         let float dx;
         let float dy;
         let float dz;
@@ -131,7 +131,7 @@ mod NBodySystem {
                 dy = bodies.(i).y - bodies.(j).y;
                 dz = bodies.(i).z - bodies.(j).z;
 
-                distance = llvm.sqrt(dx*dx + dy*dy + dz*dz);
+                distance = llvm:sqrt(dx*dx + dy*dy + dz*dz);
                 e -= (bodies.(i).mass * bodies.(j).mass) / distance;
                 
                 j += 1;
@@ -158,7 +158,7 @@ mod Body {
                      mutable float vz, 
                      float mass);
 
-    fn jupiter() -> Body.props {
+    fn jupiter() -> Body:props {
         ret rec(
             mutable x  =  4.84143144246472090e+00,
             mutable y  = -1.16032004402742839e+00,
@@ -170,7 +170,7 @@ mod Body {
             );
     }
 
-    fn saturn() -> Body.props {
+    fn saturn() -> Body:props {
         ret rec(
             mutable x  =  8.34336671824457987e+00,
             mutable y  =  4.12479856412430479e+00,
@@ -182,7 +182,7 @@ mod Body {
             );
    }
 
-    fn uranus() -> Body.props {
+    fn uranus() -> Body:props {
         ret rec(
             mutable x  =  1.28943695621391310e+01,
             mutable y  = -1.51111514016986312e+01,
@@ -194,7 +194,7 @@ mod Body {
             );
     }
 
-    fn neptune() -> Body.props {
+    fn neptune() -> Body:props {
         ret rec(
             mutable x  =  1.53796971148509165e+01,
             mutable y  = -2.59193146099879641e+01,
@@ -206,7 +206,7 @@ mod Body {
             );
    }
 
-   fn sun() -> Body.props {
+   fn sun() -> Body:props {
        ret rec(
            mutable x  =  0.0,
            mutable y  =  0.0,
@@ -218,7 +218,7 @@ mod Body {
            );
    }
 
-   fn offsetMomentum(&Body.props props,
+   fn offsetMomentum(&Body:props props,
                             float px, 
                             float py, 
                             float pz) -> () {

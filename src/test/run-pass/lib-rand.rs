@@ -4,14 +4,14 @@
 // -*- rust -*-
 
 use std;
-import std.Rand;
+import std:rand;
 
 fn main() {
-  let Rand.rng r1 = Rand.mk_rng();
+  let rand:rng r1 = rand:mk_rng();
   log r1.next();
   log r1.next();
   {
-    auto r2 = Rand.mk_rng();
+    auto r2 = rand:mk_rng();
     log r1.next();
     log r2.next();
     log r1.next();

@@ -5,8 +5,8 @@ mod foo {
 }
 
 mod bar {
-  import foo.x;
-  import z = foo.x;
+  import foo:x;
+  import z = foo:x;
   fn main() {
     x(10);
     z(10);
