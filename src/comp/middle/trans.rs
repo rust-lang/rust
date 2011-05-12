@@ -5439,7 +5439,7 @@ fn load_if_immediate(&@block_ctxt cx, ValueRef v, &ty.t t) -> ValueRef {
 
 fn trans_log(int lvl, &@block_ctxt cx, &@ast.expr e) -> result {
     auto lcx = cx.fcx.lcx;
-    auto modname = Str.connect(lcx.module_path, ".");
+    auto modname = Str.connect(lcx.module_path, "::");
     auto global;
     if (lcx.ccx.module_data.contains_key(modname)) {
         global = lcx.ccx.module_data.get(modname);

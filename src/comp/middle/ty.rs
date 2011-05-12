@@ -484,7 +484,7 @@ fn cname(&ctxt cx, &t typ) -> Option.t[str] { ret cx.ts.others.(typ).cname; }
 // Stringification
 
 fn path_to_str(&ast.path pth) -> str {
-    auto result = Str.connect(pth.node.idents,  ".");
+    auto result = Str.connect(pth.node.idents,  "::");
     if (Vec.len[@ast.ty](pth.node.types) > 0u) {
         auto f = pretty.pprust.ty_to_str;
         result += "[";

@@ -47,6 +47,7 @@ tag token {
     COMMA;
     SEMI;
     COLON;
+    MOD_SEP;
     QUES;
     RARROW;
     SEND;
@@ -218,6 +219,7 @@ fn to_str(lexer.reader r, token t) -> str {
         case (COMMA) { ret ","; }
         case (SEMI) { ret ";"; }
         case (COLON) { ret ":"; }
+        case (MOD_SEP) { ret "::"; }
         case (QUES) { ret "?"; }
         case (RARROW) { ret "->"; }
         case (SEND) { ret "<|"; }
