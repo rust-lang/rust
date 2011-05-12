@@ -117,8 +117,8 @@ fn field_exprs(vec[ast.field] fields) -> vec [@ast.expr] {
     ret Vec.map[ast.field, @ast.expr](f, fields);
 }
 
-fn plain_ann(middle.ty.ctxt tcx) -> ast.ann {
-  ret ast.ann_type(middle.ty.mk_nil(tcx),
+fn plain_ann(&ast.ann old, middle.ty.ctxt tcx) -> ast.ann {
+    ret ast.ann_type(ast.ann_tag(old), middle.ty.mk_nil(tcx),
                    none[vec[middle.ty.t]], none[@ts_ann]);
 }
 
@@ -164,7 +164,7 @@ fn log_ann(&ast.ann a) -> () {
         case (ast.ann_none(_)) {
             log("ann_none");
         }
-        case (ast.ann_type(_,_,_)) {
+        case (ast.ann_type(_,_,_,_)) {
             log("ann_type");
         }
     }

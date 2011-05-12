@@ -389,7 +389,7 @@ fn mk_f_to_fn_info(@ast.crate c) -> fn_info_map {
 fn ann_to_ts_ann(ann a, uint nv) -> ts_ann {
   alt (a) {
     case (ann_none(_))      { ret empty_ann(nv); }
-    case (ann_type(_,_,?t)) {
+    case (ann_type(_,_,_,?t)) {
       alt (t) {
         /* Kind of inconsistent. empty_ann()s everywhere
          or an option of a ts_ann? */
@@ -406,7 +406,7 @@ fn ann_to_ts_ann_fail(ann a) -> Option.t[@ts_ann] {
           log("ann_to_ts_ann_fail: didn't expect ann_none here");
           fail;
       }
-      case (ann_type(_,_,?t)) {
+      case (ann_type(_,_,_,?t)) {
           ret t;
       }
   }
@@ -418,7 +418,7 @@ fn ann_to_ts_ann_fail_more(ann a) -> @ts_ann {
           log("ann_to_ts_ann_fail: didn't expect ann_none here");
           fail;
       }
-      case (ann_type(_,_,?t)) {
+      case (ann_type(_,_,_,?t)) {
           assert (! is_none[@ts_ann](t));
           ret get[@ts_ann](t);
       }
@@ -450,7 +450,7 @@ fn expr_states(@expr e) -> pre_and_post_state {
       log_err "expr_pp: the impossible happened (no annotation)";
       fail;
     }
-    case (ann_type(_, _, ?maybe_pp)) {
+    case (ann_type(_, _, _, ?maybe_pp)) {
       alt (maybe_pp) {
         case (none[@ts_ann]) {
           log_err "expr_pp: the impossible happened (no pre/post)";
@@ -471,7 +471,7 @@ fn expr_pp(@expr e) -> pre_and_post {
       log_err "expr_pp: the impossible happened (no annotation)";
       fail;
     }
-    case (ann_type(_, _, ?maybe_pp)) {
+    case (ann_type(_, _, _, ?maybe_pp)) {
       alt (maybe_pp) {
         case (none[@ts_ann]) {
           log_err "expr_pp: the impossible happened (no pre/post)";
@@ -505,7 +505,7 @@ fn block_pp(&block b) -> pre_and_post {
            log_err "block_pp: the impossible happened (no ann)";
            fail;
        }
-       case (ann_type(_,_,?t)) {
+       case (ann_type(_, _,_,?t)) {
            alt (t) {
                case (none[@ts_ann]) {
                    log_err "block_pp: the impossible happened (no ty)";
@@ -525,7 +525,7 @@ fn block_states(&block b) -> pre_and_post_state {
            log_err "block_pp: the impossible happened (no ann)";
            fail;
        }
-       case (ann_type(_,_,?t)) {
+       case (ann_type(_, _,_,?t)) {
            alt (t) {
                case (none[@ts_ann]) {
                    log_err "block_states: the impossible happened (no ty)";
@@ -605,8 +605,8 @@ fn with_pp(ann a, pre_and_post p) -> ann {
       log("with_pp: the impossible happened");
       fail; /* shouldn't happen b/c code is typechecked */
     }
-    case (ann_type(?t, ?ps, _)) {
-      ret (ann_type(t, ps,
+    case (ann_type(?tg, ?t, ?ps, _)) {
+      ret (ann_type(tg, t, ps,
                     some[@ts_ann]
                     (@rec(conditions=p,
                           states=empty_states(pps_len(p))))));
@@ -1292,7 +1292,7 @@ fn find_pre_post_state_item(fn_info_map fm, fn_info enclosing, @item i)
 
 fn set_prestate_ann(@ann a, prestate pre) -> bool {
   alt (*a) {
-    case (ann_type(_,_,?ts_a)) {
+    case (ann_type(_, _,_,?ts_a)) {
       assert (! is_none[@ts_ann](ts_a));
       ret set_prestate(get[@ts_ann](ts_a), pre);
     }
@@ -1306,7 +1306,7 @@ fn set_prestate_ann(@ann a, prestate pre) -> bool {
 
 fn extend_prestate_ann(ann a, prestate pre) -> bool {
   alt (a) {
-    case (ann_type(_,_,?ts_a)) {
+    case (ann_type(_,_,_,?ts_a)) {
       assert (! is_none[@ts_ann](ts_a));
       ret extend_prestate((get[@ts_ann](ts_a)).states.prestate, pre);
     }
@@ -1319,7 +1319,7 @@ fn extend_prestate_ann(ann a, prestate pre) -> bool {
 
 fn set_poststate_ann(ann a, poststate post) -> bool {
   alt (a) {
-    case (ann_type(_,_,?ts_a)) {
+    case (ann_type(_, _,_,?ts_a)) {
       assert (! is_none[@ts_ann](ts_a));
       ret set_poststate(get[@ts_ann](ts_a), post);
     }
@@ -1332,7 +1332,7 @@ fn set_poststate_ann(ann a, poststate post) -> bool {
 
 fn extend_poststate_ann(ann a, poststate post) -> bool {
   alt (a) {
-    case (ann_type(_,_,?ts_a)) {
+    case (ann_type(_, _,_,?ts_a)) {
       assert (! is_none[@ts_ann](ts_a));
       ret extend_poststate((*get[@ts_ann](ts_a)).states.poststate, post);
     }
@@ -1345,7 +1345,7 @@ fn extend_poststate_ann(ann a, poststate post) -> bool {
 
 fn set_pre_and_post(&ann a, pre_and_post pp) -> () {
     alt (a) {
-        case (ann_type(_,_,?ts_a)) {
+        case (ann_type(_, _,_,?ts_a)) {
             assert (! is_none[@ts_ann](ts_a));
             auto t = *get[@ts_ann](ts_a);
             /*  log("set_pre_and_post, old =");
@@ -2046,8 +2046,9 @@ fn init_ann(&fn_info fi, &ann a) -> ann {
             // result in an uninitialized ann -- but don't want to have to
             // write code to handle native_mods properly
         }
-        case (ann_type(?t,?ps,_)) {
-            ret ann_type(t, ps, some[@ts_ann](@empty_ann(num_locals(fi))));
+        case (ann_type(?tg, ?t,?ps,_)) {
+            ret ann_type(tg, t, ps,
+                         some[@ts_ann](@empty_ann(num_locals(fi))));
         }
     }
 }
@@ -2060,8 +2061,8 @@ fn init_blank_ann(&() ignore, &ann a) -> ann {
             log("warning: init_blank_ann: saw ann_none");
             ret a;
         }
-        case (ann_type(?t,?ps,_)) {
-            ret ann_type(t, ps, some[@ts_ann](@empty_ann(0u)));
+        case (ann_type(?tg, ?t,?ps,_)) {
+            ret ann_type(tg, t, ps, some[@ts_ann](@empty_ann(0u)));
         }
     }
 }
@@ -2074,7 +2075,7 @@ fn init_block(&fn_info fi, &span sp, &block_ b) -> block {
             log("init_block: shouldn't see ann_none");
             fail;
         }
-        case (ann_type(?t,?ps,_)) {
+        case (ann_type(_, ?t,?ps,_)) {
             auto fld0 = fold.new_identity_fold[fn_info]();
 
             fld0 = @rec(fold_ann = bind init_ann(_,_) with *fld0);

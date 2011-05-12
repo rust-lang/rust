@@ -1433,7 +1433,7 @@ fn ann_to_type(&ast.ann ann) -> t {
             log_err "ann_to_type() called on node with no type";
             fail;
         }
-        case (ast.ann_type(?ty, _, _)) {
+        case (ast.ann_type(_, ?ty, _, _)) {
             ret ty;
         }
     }
@@ -1445,7 +1445,7 @@ fn ann_to_type_params(&ast.ann ann) -> vec[t] {
             log_err "ann_to_type_params() called on node with no type params";
             fail;
         }
-        case (ast.ann_type(_, ?tps, _)) {
+        case (ast.ann_type(_, _, ?tps, _)) {
             alt (tps) {
                 case (none[vec[t]]) {
                     let vec[t] result = vec();
@@ -1467,7 +1467,7 @@ fn ann_to_monotype(ctxt cx, ast.ann a) -> t {
             log_err "ann_to_monotype() called on expression with no type!";
             fail;
         }
-        case (ast.ann_type(?typ, ?tps_opt, _)) {
+        case (ast.ann_type(_, ?typ, ?tps_opt, _)) {
             alt (tps_opt) {
                 case (none[vec[t]]) { ret typ; }
                 case (some[vec[t]](?tps)) {
@@ -1479,8 +1479,8 @@ fn ann_to_monotype(ctxt cx, ast.ann a) -> t {
 }
 
 // Turns a type into an ann_type, using defaults for other fields.
-fn triv_ann(t typ) -> ast.ann {
-    ret ast.ann_type(typ, none[vec[t]], none[@ts_ann]);
+fn triv_ann(&ast.ann old, t typ) -> ast.ann {
+    ret ast.ann_type(ast.ann_tag(old), typ, none[vec[t]], none[@ts_ann]);
 }
 
 // Returns the number of distinct type parameters in the given type.
@@ -1778,7 +1778,7 @@ fn expr_has_ty_params(&@ast.expr expr) -> bool {
     // FIXME: Rewrite using complex patterns when they're trustworthy.
     alt (expr_ann(expr)) {
         case (ast.ann_none(_)) { fail; }
-        case (ast.ann_type(_, ?tps_opt, _)) {
+        case (ast.ann_type(_, _, ?tps_opt, _)) {
             ret !Option.is_none[vec[t]](tps_opt);
         }
     }
@@ -1794,28 +1794,31 @@ fn replace_expr_type(&@ast.expr expr,
         new_tps = none[vec[t]];
     }
 
-    auto ann = ast.ann_type(new_tyt._1, new_tps, none[@ts_ann]);
+    fn mkann_fn(t tyt, Option.t[vec[t]] tps, &ast.ann old_ann) -> ast.ann {
+        ret ast.ann_type(ast.ann_tag(old_ann), tyt, tps, none[@ts_ann]);
+    }
+    auto mkann = bind mkann_fn(new_tyt._1, new_tps, _);
 
     alt (expr.node) {
-        case (ast.expr_call(?callee, ?args, _)) {
-            ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_call(callee, args, ann));
+        case (ast.expr_call(?callee, ?args, ?a)) {
+            ret @fold.respan(expr.span,
+                             ast.expr_call(callee, args, mkann(a)));
         }
-        case (ast.expr_self_method(?ident, _)) {
-            ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_self_method(ident, ann));
+        case (ast.expr_self_method(?ident, ?a)) {
+            ret @fold.respan(expr.span,
+                             ast.expr_self_method(ident, mkann(a)));
         }
-        case (ast.expr_bind(?callee, ?args, _)) {
-            ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_bind(callee, args, ann));
+        case (ast.expr_bind(?callee, ?args, ?a)) {
+            ret @fold.respan(expr.span,
+                             ast.expr_bind(callee, args, mkann(a)));
         }
-        case (ast.expr_field(?e, ?i, _)) {
-            ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_field(e, i, ann));
+        case (ast.expr_field(?e, ?i, ?a)) {
+            ret @fold.respan(expr.span,
+                             ast.expr_field(e, i, mkann(a)));
         }
-        case (ast.expr_path(?p, ?dopt, _)) {
-            ret @fold.respan[ast.expr_](expr.span,
-                                        ast.expr_path(p, dopt, ann));
+        case (ast.expr_path(?p, ?dopt, ?a)) {
+            ret @fold.respan(expr.span,
+                             ast.expr_path(p, dopt, mkann(a)));
         }
         case (_) {
             log_err "unhandled expr type in replace_expr_type(): " +

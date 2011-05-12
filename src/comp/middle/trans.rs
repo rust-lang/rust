@@ -3127,7 +3127,7 @@ fn node_ann_ty_params(&ast.ann a) -> vec[ty.t] {
             log_err "missing type annotation";
             fail;
         }
-        case (ast.ann_type(_, ?tps_opt, _)) {
+        case (ast.ann_type(_, _, ?tps_opt, _)) {
             alt (tps_opt) {
                 case (none[vec[ty.t]]) {
                     log_err "type annotation has no ty params";
@@ -4148,7 +4148,7 @@ fn lval_generic_fn(&@block_ctxt cx,
             cx.fcx.lcx.ccx.sess.bug("no type annotation for path!");
             fail;
         }
-        case (ast.ann_type(?monoty_, ?tps, _)) {
+        case (ast.ann_type(_, ?monoty_, ?tps, _)) {
             monoty = monoty_;
             tys = Option.get[vec[ty.t]](tps);
         }
