@@ -28,7 +28,7 @@ state type reader = state obj {
     fn err(str m);
 };
 
-fn new_reader(session sess, IO.reader rdr, str filename,
+fn new_reader(session sess, IO.reader rdr,
               codemap.filemap filemap) -> reader {
 
     state obj reader(session sess,
@@ -937,7 +937,7 @@ fn read_block_comment(reader rdr) -> cmnt {
 
 fn gather_comments(session sess, str path) -> vec[cmnt] {
     auto srdr = IO.file_reader(path);
-    auto rdr = new_reader(sess, srdr, path, codemap.new_filemap(path, 0u));
+    auto rdr = new_reader(sess, srdr, codemap.new_filemap(path, 0u));
     let vec[cmnt] comments = vec();
     while (!rdr.is_eof()) {
         while (true) {
