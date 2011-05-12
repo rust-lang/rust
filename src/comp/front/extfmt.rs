@@ -13,36 +13,36 @@ import std::option;
 import std::option::none;
 import std::option::some;
 
-import std::extfmt::CT::signedness;
-import std::extfmt::CT::signed;
-import std::extfmt::CT::unsigned;
-import std::extfmt::CT::caseness;
-import std::extfmt::CT::case_upper;
-import std::extfmt::CT::case_lower;
-import std::extfmt::CT::ty;
-import std::extfmt::CT::ty_bool;
-import std::extfmt::CT::ty_str;
-import std::extfmt::CT::ty_char;
-import std::extfmt::CT::ty_int;
-import std::extfmt::CT::ty_bits;
-import std::extfmt::CT::ty_hex;
-import std::extfmt::CT::ty_octal;
-import std::extfmt::CT::flag;
-import std::extfmt::CT::flag_left_justify;
-import std::extfmt::CT::flag_left_zero_pad;
-import std::extfmt::CT::flag_space_for_sign;
-import std::extfmt::CT::flag_sign_always;
-import std::extfmt::CT::flag_alternate;
-import std::extfmt::CT::count;
-import std::extfmt::CT::count_is;
-import std::extfmt::CT::count_is_param;
-import std::extfmt::CT::count_is_next_param;
-import std::extfmt::CT::count_implied;
-import std::extfmt::CT::conv;
-import std::extfmt::CT::piece;
-import std::extfmt::CT::piece_string;
-import std::extfmt::CT::piece_conv;
-import std::extfmt::CT::parse_fmt_string;
+import std::extfmt::ct::signedness;
+import std::extfmt::ct::signed;
+import std::extfmt::ct::unsigned;
+import std::extfmt::ct::caseness;
+import std::extfmt::ct::case_upper;
+import std::extfmt::ct::case_lower;
+import std::extfmt::ct::ty;
+import std::extfmt::ct::ty_bool;
+import std::extfmt::ct::ty_str;
+import std::extfmt::ct::ty_char;
+import std::extfmt::ct::ty_int;
+import std::extfmt::ct::ty_bits;
+import std::extfmt::ct::ty_hex;
+import std::extfmt::ct::ty_octal;
+import std::extfmt::ct::flag;
+import std::extfmt::ct::flag_left_justify;
+import std::extfmt::ct::flag_left_zero_pad;
+import std::extfmt::ct::flag_space_for_sign;
+import std::extfmt::ct::flag_sign_always;
+import std::extfmt::ct::flag_alternate;
+import std::extfmt::ct::count;
+import std::extfmt::ct::count_is;
+import std::extfmt::ct::count_is_param;
+import std::extfmt::ct::count_is_next_param;
+import std::extfmt::ct::count_implied;
+import std::extfmt::ct::conv;
+import std::extfmt::ct::piece;
+import std::extfmt::ct::piece_string;
+import std::extfmt::ct::piece_conv;
+import std::extfmt::ct::parse_fmt_string;
 
 export expand_syntax_ext;
 
@@ -163,7 +163,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
     fn make_path_vec(str ident) -> vec[str] {
         // FIXME: #fmt can't currently be used from within std
         // because we're explicitly referencing the 'std' crate here
-        ret vec("std", "extfmt", "RT", ident);
+        ret vec("std", "extfmt", "rt", ident);
     }
 
     fn make_rt_path_expr(parser p, common::span sp, str ident) -> @ast::expr {
@@ -290,7 +290,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
 
     fn make_new_conv(parser p, conv cnv, @ast::expr arg) -> @ast::expr {
 
-        // FIXME: Extract all this validation into extfmt::CT
+        // FIXME: Extract all this validation into extfmt::ct
         fn is_signed_type(conv cnv) -> bool {
             alt (cnv.ty) {
                 case (ty_int(?s)) {
