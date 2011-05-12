@@ -1786,50 +1786,6 @@ fn expr_has_ty_params(&@ast.expr expr) -> bool {
     }
 }
 
-// FIXME: At the moment this works only for call, bind, and path expressions.
-fn replace_expr_type(&@ast.expr expr,
-                     &tup(vec[t], t) new_tyt) -> @ast.expr {
-    auto new_tps;
-    if (expr_has_ty_params(expr)) {
-        new_tps = some[vec[t]](new_tyt._0);
-    } else {
-        new_tps = none[vec[t]];
-    }
-
-    fn mkann_fn(t tyt, Option.t[vec[t]] tps, &ast.ann old_ann) -> ast.ann {
-        ret ast.ann_type(ast.ann_tag(old_ann), tyt, tps, none[@ts_ann]);
-    }
-    auto mkann = bind mkann_fn(new_tyt._1, new_tps, _);
-
-    alt (expr.node) {
-        case (ast.expr_call(?callee, ?args, ?a)) {
-            ret @fold.respan(expr.span,
-                             ast.expr_call(callee, args, mkann(a)));
-        }
-        case (ast.expr_self_method(?ident, ?a)) {
-            ret @fold.respan(expr.span,
-                             ast.expr_self_method(ident, mkann(a)));
-        }
-        case (ast.expr_bind(?callee, ?args, ?a)) {
-            ret @fold.respan(expr.span,
-                             ast.expr_bind(callee, args, mkann(a)));
-        }
-        case (ast.expr_field(?e, ?i, ?a)) {
-            ret @fold.respan(expr.span,
-                             ast.expr_field(e, i, mkann(a)));
-        }
-        case (ast.expr_path(?p, ?a)) {
-            ret @fold.respan(expr.span,
-                             ast.expr_path(p, mkann(a)));
-        }
-        case (_) {
-            log_err "unhandled expr type in replace_expr_type(): " +
-                util.common.expr_to_str(expr);
-            fail;
-        }
-    }
-}
-
 // Expression utilities
 
 fn field_num(&session.session sess, &span sp,
