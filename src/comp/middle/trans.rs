@@ -6694,6 +6694,9 @@ fn trans_const_expr(&@crate_ctxt cx, @ast.expr e) -> ValueRef {
         case (ast.expr_lit(?lit, ?ann)) {
             ret trans_lit(cx, *lit, ann);
         }
+        case (_) {
+            cx.sess.span_unimpl(e.span, "consts that's not a plain literal");
+        }
     }
 }
 
