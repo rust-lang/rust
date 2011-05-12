@@ -2,38 +2,38 @@
 // xfail-stage0
 
 use std;
-import std.Str;
+import std:_str;
 
 fn test_bytes_len() {
-  assert (Str.byte_len("") == 0u);
-  assert (Str.byte_len("hello world") == 11u);
-  assert (Str.byte_len("\x63") == 1u);
-  assert (Str.byte_len("\xa2") == 2u);
-  assert (Str.byte_len("\u03c0") == 2u);
-  assert (Str.byte_len("\u2620") == 3u);
-  assert (Str.byte_len("\U0001d11e") == 4u);
+  assert (_str:byte_len("") == 0u);
+  assert (_str:byte_len("hello world") == 11u);
+  assert (_str:byte_len("\x63") == 1u);
+  assert (_str:byte_len("\xa2") == 2u);
+  assert (_str:byte_len("\u03c0") == 2u);
+  assert (_str:byte_len("\u2620") == 3u);
+  assert (_str:byte_len("\U0001d11e") == 4u);
 }
 
 fn test_index_and_rindex() {
-  assert (Str.index("hello", 'e' as u8) == 1);
-  assert (Str.index("hello", 'o' as u8) == 4);
-  assert (Str.index("hello", 'z' as u8) == -1);
-  assert (Str.rindex("hello", 'l' as u8) == 3);
-  assert (Str.rindex("hello", 'h' as u8) == 0);
-  assert (Str.rindex("hello", 'z' as u8) == -1);
+  assert (_str:index("hello", 'e' as u8) == 1);
+  assert (_str:index("hello", 'o' as u8) == 4);
+  assert (_str:index("hello", 'z' as u8) == -1);
+  assert (_str:rindex("hello", 'l' as u8) == 3);
+  assert (_str:rindex("hello", 'h' as u8) == 0);
+  assert (_str:rindex("hello", 'z' as u8) == -1);
 }
 
 fn test_split() {
   fn t(&str s, char c, int i, &str k) {
     log "splitting: " + s;
     log i;
-    auto v = Str.split(s, c as u8);
+    auto v = _str:split(s, c as u8);
     log "split to: ";
     for (str z in v) {
       log z;
     }
     log "comparing: " + v.(i) + " vs. " + k;
-    assert (Str.eq(v.(i), k));
+    assert (_str:eq(v.(i), k));
   }
   t("abc.hello.there", '.', 0, "abc");
   t("abc.hello.there", '.', 1, "hello");
@@ -46,7 +46,7 @@ fn test_split() {
 
 fn test_find() {
   fn t(&str haystack, &str needle, int i) {
-    let int j = Str.find(haystack,needle);
+    let int j = _str:find(haystack,needle);
     log "searched for " + needle;
     log j;
     assert (i == j);
@@ -60,8 +60,8 @@ fn test_find() {
 
 fn test_substr() {
   fn t(&str a, &str b, int start) {
-    assert (Str.eq(Str.substr(a, start as uint,
-                              Str.byte_len(b)), b));
+    assert (_str:eq(_str:substr(a, start as uint,
+                              _str:byte_len(b)), b));
   }
 
   t("hello", "llo", 2);
@@ -71,7 +71,7 @@ fn test_substr() {
 
 fn test_concat() {
   fn t(&vec[str] v, &str s) {
-    assert (Str.eq(Str.concat(v), s));
+    assert (_str:eq(_str:concat(v), s));
   }
 
   t(vec("you", "know", "I'm", "no", "good"), "youknowI'mnogood");
@@ -82,7 +82,7 @@ fn test_concat() {
 
 fn test_connect() {
   fn t(&vec[str] v, &str sep, &str s) {
-    assert (Str.eq(Str.connect(v, sep), s));
+    assert (_str:eq(_str:connect(v, sep), s));
   }
 
   t(vec("you", "know", "I'm", "no", "good"), " ", "you know I'm no good");
@@ -97,14 +97,14 @@ fn test_to_upper() {
   auto unicode = "\u65e5\u672c";
   auto input = "abcDEF" + unicode + "xyz:.;";
   auto expected = "ABCDEF" + unicode + "XYZ:.;";
-  auto actual = Str.to_upper(input);
-  assert (Str.eq(expected, actual));
+  auto actual = _str:to_upper(input);
+  assert (_str:eq(expected, actual));
 }
 
 fn test_slice() {
-  assert (Str.eq("ab", Str.slice("abc", 0u, 2u)));
-  assert (Str.eq("bc", Str.slice("abc", 1u, 3u)));
-  assert (Str.eq("", Str.slice("abc", 1u, 1u)));
+  assert (_str:eq("ab", _str:slice("abc", 0u, 2u)));
+  assert (_str:eq("bc", _str:slice("abc", 1u, 3u)));
+  assert (_str:eq("", _str:slice("abc", 1u, 1u)));
 
   fn a_million_letter_a() -> str {
     auto i = 0;
@@ -126,8 +126,8 @@ fn test_slice() {
     ret res;
   }
 
-  assert (Str.eq(half_a_million_letter_a(),
-                 Str.slice(a_million_letter_a(),
+  assert (_str:eq(half_a_million_letter_a(),
+                 _str:slice(a_million_letter_a(),
                            0u,
                            500000u)));
 }

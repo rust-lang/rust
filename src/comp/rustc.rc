@@ -55,11 +55,11 @@ mod util {
     mod typestate_ann;
 }
 
-auth front.creader.load_crate = unsafe;
-auth front.creader.get_metadata_section = unsafe;
-auth middle.metadata = unsafe;
-auth middle.trans = unsafe;
-auth lib.llvm = unsafe;
+auth front:creader:load_crate = unsafe;
+auth front:creader:get_metadata_section = unsafe;
+auth middle:metadata = unsafe;
+auth middle:trans = unsafe;
+auth lib:llvm = unsafe;
 
 mod lib {
     alt (target_os) {

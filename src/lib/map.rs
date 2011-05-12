@@ -11,8 +11,8 @@ state type hashmap[K, V] = state obj {
                                  fn insert(&K key, &V val) -> bool;
                                  fn contains_key(&K key) -> bool;
                                  fn get(&K key) -> V;
-                                 fn find(&K key) -> Option.t[V];
-                                 fn remove(&K key) -> Option.t[V];
+                                 fn find(&K key) -> option:t[V];
+                                 fn remove(&K key) -> option:t[V];
                                  fn rehash();
                                  iter items() -> @tup(K,V);
 };
@@ -20,7 +20,7 @@ state type hashmap[K, V] = state obj {
 fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
 
     let uint initial_capacity = 32u; // 2^5
-    let Util.rational load_factor = rec(num=3, den=4);
+    let util:rational load_factor = rec(num=3, den=4);
 
     tag bucket[K, V] {
         nil;
@@ -29,7 +29,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     }
 
     fn make_buckets[K, V](uint nbkts) -> vec[mutable bucket[K, V]] {
-        ret Vec.init_elt_mut[bucket[K, V]](nil[K, V], nbkts);
+        ret _vec:init_elt_mut[bucket[K, V]](nil[K, V], nbkts);
     }
 
     // Derive two hash functions from the one given by taking the upper
@@ -96,7 +96,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                          vec[mutable bucket[K, V]] bkts,
                          uint nbkts,
                          &K key)
-        -> Option.t[V]
+        -> option:t[V]
         {
             let uint i = 0u;
             let uint h = hasher(key);
@@ -105,17 +105,17 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                 alt (bkts.(j)) {
                     case (some[K, V](?k, ?v)) {
                         if (eqer(key, k)) {
-                            ret Option.some[V](v);
+                            ret option:some[V](v);
                         }
                     }
                     case (nil[K, V]) {
-                        ret Option.none[V];
+                        ret option:none[V];
                     }
                     case (deleted[K, V]) { }
                 }
                 i += 1u;
             }
-            ret Option.none[V];
+            ret option:none[V];
         }
 
 
@@ -140,15 +140,15 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                             mutable vec[mutable bucket[K, V]] bkts,
                             mutable uint nbkts,
                             mutable uint nelts,
-                            Util.rational lf)
+                            util:rational lf)
         {
             fn size() -> uint { ret nelts; }
 
             fn insert(&K key, &V val) -> bool {
-                let Util.rational load = rec(num=(nelts + 1u) as int,
+                let util:rational load = rec(num=(nelts + 1u) as int,
                                              den=nbkts as int);
-                if (!Util.rational_leq(load, lf)) {
-                    let uint nnewbkts = UInt.next_power_of_two(nbkts + 1u);
+                if (!util:rational_leq(load, lf)) {
+                    let uint nnewbkts = _uint:next_power_of_two(nbkts + 1u);
                     let vec[mutable bucket[K, V]] newbkts =
                         make_buckets[K, V](nnewbkts);
                     rehash[K, V](hasher, eqer, bkts, nbkts,
@@ -167,7 +167,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
 
             fn contains_key(&K key) -> bool {
                 alt (find_common[K, V](hasher, eqer, bkts, nbkts, key)) {
-                    case (Option.some[V](_)) { ret true; }
+                    case (option:some[V](_)) { ret true; }
                     case (_) { ret false; }
                 }
                 fail;   // FIXME: remove me when exhaustiveness checking works
@@ -175,19 +175,19 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
 
             fn get(&K key) -> V {
                 alt (find_common[K, V](hasher, eqer, bkts, nbkts, key)) {
-                    case (Option.some[V](?val)) { ret val; }
+                    case (option:some[V](?val)) { ret val; }
                     case (_) { fail; }
                 }
                 fail;   // FIXME: remove me when exhaustiveness checking works
             }
 
-            fn find(&K key) -> Option.t[V] {
+            fn find(&K key) -> option:t[V] {
                 // FIXME: should be 'be' but parametric tail-calls don't
                 // work at the moment.
                 ret find_common[K, V](hasher, eqer, bkts, nbkts, key);
             }
 
-            fn remove(&K key) -> Option.t[V] {
+            fn remove(&K key) -> option:t[V] {
                 let uint i = 0u;
                 let uint h = hasher(key);
                 while (i < nbkts) {
@@ -197,17 +197,17 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                             if (eqer(key, k)) {
                                 bkts.(j) = deleted[K, V];
                                 nelts -= 1u;
-                                ret Option.some[V](v);
+                                ret option:some[V](v);
                             }
                         }
                         case (deleted[K, V]) { }
                         case (nil[K, V]) {
-                            ret Option.none[V];
+                            ret option:none[V];
                         }
                     }
                     i += 1u;
                 }
-                ret Option.none[V];
+                ret option:none[V];
             }
 
             fn rehash() {

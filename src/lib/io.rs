@@ -1,8 +1,8 @@
-import OS.libc;
+import os:libc;
 
 native "rust" mod rustrt {
-  fn rust_get_stdin() -> OS.libc.FILE;
-  fn rust_get_stdout() -> OS.libc.FILE;
+  fn rust_get_stdin() -> os:libc:FILE;
+  fn rust_get_stdout() -> os:libc:FILE;
 }
 
 // Reading
@@ -55,30 +55,30 @@ fn convert_whence(seek_style whence) -> int {
     }
 }
 
-state obj FILE_buf_reader(OS.libc.FILE f, bool must_close) {
+state obj FILE_buf_reader(os:libc:FILE f, bool must_close) {
     fn read(uint len) -> vec[u8] {
-        auto buf = Vec.alloc[u8](len);
-        auto read = OS.libc.fread(Vec.buf[u8](buf), 1u, len, f);
-        Vec.len_set[u8](buf, read);
+        auto buf = _vec:alloc[u8](len);
+        auto read = os:libc:fread(_vec:buf[u8](buf), 1u, len, f);
+        _vec:len_set[u8](buf, read);
         ret buf;
     }
     fn read_byte() -> int {
-        ret OS.libc.fgetc(f);
+        ret os:libc:fgetc(f);
     }
     fn unread_byte(int byte) {
-        OS.libc.ungetc(byte, f);
+        os:libc:ungetc(byte, f);
     }
     fn eof() -> bool {
-        ret OS.libc.feof(f) != 0;
+        ret os:libc:feof(f) != 0;
     }
     fn seek(int offset, seek_style whence) {
-        assert (OS.libc.fseek(f, offset, convert_whence(whence)) == 0);
+        assert (os:libc:fseek(f, offset, convert_whence(whence)) == 0);
     }
     fn tell() -> uint {
-        ret OS.libc.ftell(f) as uint;
+        ret os:libc:ftell(f) as uint;
     }
     drop {
-        if (must_close) { OS.libc.fclose(f); }
+        if (must_close) { os:libc:fclose(f); }
     }
 }
 
@@ -100,7 +100,7 @@ state obj new_reader(buf_reader rdr) {
         auto c0 = rdr.read_byte();
         if (c0 == -1) {ret -1 as char;} // FIXME will this stay valid?
         auto b0 = c0 as u8;
-        auto w = Str.utf8_char_width(b0);
+        auto w = _str:utf8_char_width(b0);
         assert (w > 0u);
         if (w == 1u) {ret b0 as char;}
         auto val = 0u;
@@ -112,7 +112,7 @@ state obj new_reader(buf_reader rdr) {
             val <<= 6u;
             val += (next & 0x3f) as uint;
         }
-        // See Str.char_at
+        // See _str:char_at
         val += ((b0 << ((w + 1u) as u8)) as uint) << ((w - 1u) * 6u - w - 1u);
         ret val as char;
     }
@@ -126,9 +126,9 @@ state obj new_reader(buf_reader rdr) {
         while (go_on) {
             auto ch = rdr.read_byte();
             if (ch == -1 || ch == 10) {go_on = false;}
-            else {Vec.push[u8](buf, ch as u8);}
+            else {_vec:push[u8](buf, ch as u8);}
         }
-        ret Str.unsafe_from_bytes(buf);
+        ret _str:unsafe_from_bytes(buf);
     }
     fn read_c_str() -> str {
         let vec[u8] buf = vec();
@@ -136,9 +136,9 @@ state obj new_reader(buf_reader rdr) {
         while (go_on) {
             auto ch = rdr.read_byte();
             if (ch < 1) {go_on = false;}
-            else {Vec.push[u8](buf, ch as u8);}
+            else {_vec:push[u8](buf, ch as u8);}
         }
-        ret Str.unsafe_from_bytes(buf);
+        ret _str:unsafe_from_bytes(buf);
     }
     // FIXME deal with eof?
     fn read_le_uint(uint size) -> uint {
@@ -164,7 +164,7 @@ state obj new_reader(buf_reader rdr) {
     // FIXME deal with eof?
     fn read_be_uint(uint size) -> uint {
         auto val = 0u;
-        auto sz = size; // FIXME: trans.ml bug workaround
+        auto sz = size; // FIXME: trans:ml bug workaround
         while (sz > 0u) {
             sz -= 1u;
             val += (rdr.read_byte() as uint) << (sz * 8u);
@@ -187,11 +187,11 @@ state obj new_reader(buf_reader rdr) {
 }
 
 fn stdin() -> reader {
-    ret new_reader(FILE_buf_reader(rustrt.rust_get_stdin(), false));
+    ret new_reader(FILE_buf_reader(rustrt:rust_get_stdin(), false));
 }
 
 fn file_reader(str path) -> reader {
-    auto f = OS.libc.fopen(Str.buf(path), Str.buf("r"));
+    auto f = os:libc:fopen(_str:buf(path), _str:buf("r"));
     if (f as uint == 0u) {
         log_err "error opening " + path;
         fail;
@@ -212,17 +212,17 @@ type byte_buf = @rec(vec[u8] buf, mutable uint pos);
 
 state obj byte_buf_reader(byte_buf bbuf) {
     fn read(uint len) -> vec[u8] {
-        auto rest = Vec.len[u8](bbuf.buf) - bbuf.pos;
+        auto rest = _vec:len[u8](bbuf.buf) - bbuf.pos;
         auto to_read = len;
         if (rest < to_read) {
             to_read = rest;
         }
-        auto range = Vec.slice[u8](bbuf.buf, bbuf.pos, bbuf.pos + to_read);
+        auto range = _vec:slice[u8](bbuf.buf, bbuf.pos, bbuf.pos + to_read);
         bbuf.pos += to_read;
         ret range;
     }
     fn read_byte() -> int {
-        if (bbuf.pos == Vec.len[u8](bbuf.buf)) {ret -1;}
+        if (bbuf.pos == _vec:len[u8](bbuf.buf)) {ret -1;}
         auto b = bbuf.buf.(bbuf.pos);
         bbuf.pos += 1u;
         ret b as int;
@@ -234,12 +234,12 @@ state obj byte_buf_reader(byte_buf bbuf) {
     }
 
     fn eof() -> bool {
-        ret bbuf.pos == Vec.len[u8](bbuf.buf);
+        ret bbuf.pos == _vec:len[u8](bbuf.buf);
     }
 
     fn seek(int offset, seek_style whence) {
         auto pos = bbuf.pos;
-        auto len = Vec.len[u8](bbuf.buf);
+        auto len = _vec:len[u8](bbuf.buf);
         bbuf.pos = seek_in_buf(offset, pos, len, whence);
     }
 
@@ -268,40 +268,40 @@ type buf_writer = state obj {
   fn tell() -> uint; // FIXME: eventually u64
 };
 
-state obj FILE_writer(OS.libc.FILE f, bool must_close) {
+state obj FILE_writer(os:libc:FILE f, bool must_close) {
     fn write(vec[u8] v) {
-        auto len = Vec.len[u8](v);
-        auto vbuf = Vec.buf[u8](v);
-        auto nout = OS.libc.fwrite(vbuf, len, 1u, f);
+        auto len = _vec:len[u8](v);
+        auto vbuf = _vec:buf[u8](v);
+        auto nout = os:libc:fwrite(vbuf, len, 1u, f);
         if (nout < 1u) {
             log_err "error dumping buffer";
         }
     }
 
     fn seek(int offset, seek_style whence) {
-        assert (OS.libc.fseek(f, offset, convert_whence(whence)) == 0);
+        assert (os:libc:fseek(f, offset, convert_whence(whence)) == 0);
     }
 
     fn tell() -> uint {
-        ret OS.libc.ftell(f) as uint;
+        ret os:libc:ftell(f) as uint;
     }
 
     drop {
-        if (must_close) {OS.libc.fclose(f);}
+        if (must_close) {os:libc:fclose(f);}
     }
 }
 
 state obj fd_buf_writer(int fd, bool must_close) {
     fn write(vec[u8] v) {
-        auto len = Vec.len[u8](v);
+        auto len = _vec:len[u8](v);
         auto count = 0u;
         auto vbuf;
         while (count < len) {
-            vbuf = Vec.buf_off[u8](v, count);
-            auto nout = OS.libc.write(fd, vbuf, len);
+            vbuf = _vec:buf_off[u8](v, count);
+            auto nout = os:libc:write(fd, vbuf, len);
             if (nout < 0) {
                 log_err "error dumping buffer";
-                log_err Sys.rustrt.last_os_error();
+                log_err sys:rustrt:last_os_error();
                 fail;
             }
             count += nout as uint;
@@ -319,32 +319,32 @@ state obj fd_buf_writer(int fd, bool must_close) {
     }
 
     drop {
-        if (must_close) {OS.libc.close(fd);}
+        if (must_close) {os:libc:close(fd);}
     }
 }
 
 fn file_buf_writer(str path, vec[fileflag] flags) -> buf_writer {
     let int fflags =
-        OS.libc_constants.O_WRONLY() |
-        OS.libc_constants.O_BINARY();
+        os:libc_constants:O_WRONLY() |
+        os:libc_constants:O_BINARY();
 
     for (fileflag f in flags) {
         alt (f) {
-            case (append)   { fflags |= OS.libc_constants.O_APPEND(); }
-            case (create)   { fflags |= OS.libc_constants.O_CREAT(); }
-            case (truncate) { fflags |= OS.libc_constants.O_TRUNC(); }
+            case (append)   { fflags |= os:libc_constants:O_APPEND(); }
+            case (create)   { fflags |= os:libc_constants:O_CREAT(); }
+            case (truncate) { fflags |= os:libc_constants:O_TRUNC(); }
             case (none) {}
         }
     }
 
-    auto fd = OS.libc.open(Str.buf(path),
+    auto fd = os:libc:open(_str:buf(path),
                            fflags,
-                           OS.libc_constants.S_IRUSR() |
-                           OS.libc_constants.S_IWUSR());
+                           os:libc_constants:S_IRUSR() |
+                           os:libc_constants:S_IWUSR());
 
     if (fd < 0) {
         log_err "error opening file for writing";
-        log_err Sys.rustrt.last_os_error();
+        log_err sys:rustrt:last_os_error();
         fail;
     }
     ret fd_buf_writer(fd, true);
@@ -390,17 +390,17 @@ state obj new_writer(buf_writer out) {
         ret out;
     }
     fn write_str(str s) {
-        out.write(Str.bytes(s));
+        out.write(_str:bytes(s));
     }
     fn write_char(char ch) {
         // FIXME needlessly consy
-        out.write(Str.bytes(Str.from_char(ch)));
+        out.write(_str:bytes(_str:from_char(ch)));
     }
     fn write_int(int n) {
-        out.write(Str.bytes(Int.to_str(n, 10u)));
+        out.write(_str:bytes(_int:to_str(n, 10u)));
     }
     fn write_uint(uint n) {
-        out.write(Str.bytes(UInt.to_str(n, 10u)));
+        out.write(_str:bytes(_uint:to_str(n, 10u)));
     }
     fn write_bytes(vec[u8] bytes) {
         out.write(bytes);
@@ -427,7 +427,7 @@ fn file_writer(str path, vec[fileflag] flags) -> writer {
 
 // FIXME: fileflags
 fn buffered_file_buf_writer(str path) -> buf_writer {
-    auto f = OS.libc.fopen(Str.buf(path), Str.buf("w"));
+    auto f = os:libc:fopen(_str:buf(path), _str:buf("w"));
     if (f as uint == 0u) {
         log_err "error opening " + path;
         fail;
@@ -451,21 +451,21 @@ type mutable_byte_buf = @rec(mutable vec[mutable u8] buf, mutable uint pos);
 state obj byte_buf_writer(mutable_byte_buf buf) {
     fn write(vec[u8] v) {
         // Fast path.
-        if (buf.pos == Vec.len(buf.buf)) {
+        if (buf.pos == _vec:len(buf.buf)) {
             // FIXME: Fix our type system. There's no reason you shouldn't be
             // able to add a mutable vector to an immutable one.
-            auto mv = Vec.rustrt.unsafe_vec_to_mut[u8](v);
+            auto mv = _vec:rustrt:unsafe_vec_to_mut[u8](v);
             buf.buf += mv;
-            buf.pos += Vec.len[u8](v);
+            buf.pos += _vec:len[u8](v);
             ret;
         }
 
-        // FIXME: Optimize. These should be unique pointers.
-        auto vlen = Vec.len[u8](v);
+        // FIXME: Optimize: These should be unique pointers.
+        auto vlen = _vec:len[u8](v);
         auto vpos = 0u;
         while (vpos < vlen) {
             auto b = v.(vpos);
-            if (buf.pos == Vec.len(buf.buf)) {
+            if (buf.pos == _vec:len(buf.buf)) {
                 buf.buf += vec(mutable b);
             } else {
                 buf.buf.(buf.pos) = b;
@@ -477,7 +477,7 @@ state obj byte_buf_writer(mutable_byte_buf buf) {
 
     fn seek(int offset, seek_style whence) {
         auto pos = buf.pos;
-        auto len = Vec.len(buf.buf);
+        auto len = _vec:len(buf.buf);
         buf.pos = seek_in_buf(offset, pos, len, whence);
     }
 
@@ -487,12 +487,12 @@ state obj byte_buf_writer(mutable_byte_buf buf) {
 fn string_writer() -> str_writer {
     // FIXME: yikes, this is bad. Needs fixing of mutable syntax.
     let vec[mutable u8] b = vec(mutable 0u8);
-    Vec.pop(b);
+    _vec:pop(b);
 
     let mutable_byte_buf buf = @rec(mutable buf = b, mutable pos = 0u);
     state obj str_writer_wrap(writer wr, mutable_byte_buf buf) {
         fn get_writer() -> writer {ret wr;}
-        fn get_str() -> str {ret Str.unsafe_from_bytes(buf.buf);}
+        fn get_str() -> str {ret _str:unsafe_from_bytes(buf.buf);}
     }
     ret str_writer_wrap(new_writer(byte_buf_writer(buf)), buf);
 }

@@ -10,7 +10,7 @@ native mod zed {
 }
 
 native mod libc = "libc.dylib" {
-    fn write(int fd, rustrt.vbuf buf, uint count) -> int;
+    fn write(int fd, rustrt:vbuf buf, uint count) -> int;
 }
 
 native "cdecl" mod baz {

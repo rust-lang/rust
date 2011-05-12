@@ -13,5 +13,5 @@ mod foo {
 }
 
 fn main() {
-  auto x = foo.t1;
+  auto x = foo:t1;
 }

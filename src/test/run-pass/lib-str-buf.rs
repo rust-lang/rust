@@ -4,14 +4,14 @@
 // -*- rust -*-
 
 use std;
-import std.Str;
+import std:_str;
 
 fn main() {
     auto s = "hello";
-    auto sb = Str.rustrt.str_buf(s);
-    auto s_cstr = Str.rustrt.str_from_cstr(sb);
-    assert (Str.eq(s_cstr, s));
-    auto s_buf = Str.rustrt.str_from_buf(sb, 5u);
-    assert (Str.eq(s_buf, s));
+    auto sb = str.rustrt.str_buf(s);
+    auto s_cstr = str.rustrt.str_from_cstr(sb);
+    assert (str.eq(s_cstr, s));
+    auto s_buf = str.rustrt.str_from_buf(sb, 5u);
+    assert (str.eq(s_buf, s));
 }
 

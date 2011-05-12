@@ -2,7 +2,7 @@
 // xfail-stage1
 // xfail-stage2
 fn main() {
-  auto x = spawn m.child(10);
+  auto x = spawn m:child(10);
   join x;
 }
 mod m {

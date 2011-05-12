@@ -1,5 +1,5 @@
-import zed.bar;
-import baz.zed;
+import zed:bar;
+import baz:zed;
 mod baz {
   mod zed {
     fn bar() {

@@ -6,7 +6,7 @@ fn main() -> () {
 }
 
 fn start() {
-    log "Started / Finished Task.";
+    log "Started / Finished task.";
 }
 
 fn test00() {

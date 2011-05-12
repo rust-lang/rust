@@ -29,9 +29,9 @@ fn to_str(int n, uint radix) -> str
 {
     assert (0u < radix && radix <= 16u);
     if (n < 0) {
-        ret "-" + UInt.to_str((-n) as uint, radix);
+        ret "-" + _uint:to_str((-n) as uint, radix);
     } else {
-        ret UInt.to_str(n as uint, radix);
+        ret _uint:to_str(n as uint, radix);
     }
 }
 

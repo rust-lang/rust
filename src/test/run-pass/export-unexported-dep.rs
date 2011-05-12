@@ -20,5 +20,5 @@ mod foo {
 }
 
 fn main() {
-  foo.g(foo.f());
+  foo:g(foo:f());
 }

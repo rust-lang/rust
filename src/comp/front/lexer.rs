@@ -1,15 +1,15 @@
-import std.IO;
-import std.Str;
-import std.Vec;
-import std.Int;
-import std.Map;
-import std.Map.hashmap;
-import std.Option;
-import std.Option.some;
-import std.Option.none;
-import driver.session.session;
-import util.common;
-import util.common.new_str_hash;
+import std:io;
+import std:_str;
+import std:_vec;
+import std:_int;
+import std:map;
+import std:map:hashmap;
+import std:option;
+import std:option:some;
+import std:option:none;
+import driver:session:session;
+import util:common;
+import util:common:new_str_hash;
 
 state type reader = state obj {
     fn is_eof() -> bool;
@@ -19,17 +19,17 @@ state type reader = state obj {
     fn bump();
     fn mark();
     fn get_mark_chpos() -> uint;
-    fn add_str(str) -> token.str_num;
-    fn get_str(token.str_num) -> str;
+    fn add_str(str) -> token:str_num;
+    fn get_str(token:str_num) -> str;
     fn get_chpos() -> uint;
-    fn get_keywords() -> hashmap[str,token.token];
+    fn get_keywords() -> hashmap[str,token:token];
     fn get_reserved() -> hashmap[str,()];
-    fn get_filemap() -> codemap.filemap;
+    fn get_filemap() -> codemap:filemap;
     fn err(str m);
 };
 
-fn new_reader(session sess, IO.reader rdr,
-              codemap.filemap filemap) -> reader {
+fn new_reader(session sess, io:reader rdr,
+              codemap:filemap filemap) -> reader {
 
     state obj reader(session sess,
                      str file,
@@ -39,9 +39,9 @@ fn new_reader(session sess, IO.reader rdr,
                      mutable uint mark_chpos,
                      mutable uint chpos,
                      mutable vec[str] strs,
-                     hashmap[str,token.token] keywords,
+                     hashmap[str,token:token] keywords,
                      hashmap[str,()] reserved,
-                     codemap.filemap fm) {
+                     codemap:filemap fm) {
 
         fn is_eof() -> bool {
             ret ch == -1 as char;
@@ -56,13 +56,13 @@ fn new_reader(session sess, IO.reader rdr,
         }
 
         fn next() -> char {
-            if (pos < len) {ret Str.char_at(file, pos);}
+            if (pos < len) {ret _str:char_at(file, pos);}
             else {ret -1 as char;}
         }
 
         fn init() {
             if (pos < len) {
-                auto next = Str.char_range_at(file, pos);
+                auto next = _str:char_range_at(file, pos);
                 pos = next._1;
                 ch = next._0;
             }
@@ -72,9 +72,9 @@ fn new_reader(session sess, IO.reader rdr,
             if (pos < len) {
                 chpos += 1u;
                 if (ch == '\n') {
-                    codemap.next_line(fm, chpos);
+                    codemap:next_line(fm, chpos);
                 }
-                auto next = Str.char_range_at(file, pos);
+                auto next = _str:char_range_at(file, pos);
                 pos = next._1;
                 ch = next._0;
             } else {
@@ -82,16 +82,16 @@ fn new_reader(session sess, IO.reader rdr,
             }
         }
 
-        fn get_keywords() -> hashmap[str,token.token] {
+        fn get_keywords() -> hashmap[str,token:token] {
             ret keywords;
         }
 
-        fn add_str(str s) -> token.str_num {
+        fn add_str(str s) -> token:str_num {
             strs += vec(s);
-            ret Vec.len[str](strs) - 1u;
+            ret _vec:len[str](strs) - 1u;
         }
 
-        fn get_str(token.str_num i) -> str {
+        fn get_str(token:str_num i) -> str {
             ret strs.(i);
         }
 
@@ -99,7 +99,7 @@ fn new_reader(session sess, IO.reader rdr,
             ret reserved;
         }
 
-        fn get_filemap() -> codemap.filemap {
+        fn get_filemap() -> codemap:filemap {
             ret fm;
         }
 
@@ -107,9 +107,9 @@ fn new_reader(session sess, IO.reader rdr,
             sess.span_err(rec(lo=chpos, hi=chpos), m);
         }
     }
-    auto file = Str.unsafe_from_bytes(rdr.read_whole_stream());
+    auto file = _str:unsafe_from_bytes(rdr.read_whole_stream());
     let vec[str] strs = vec();
-    auto rd = reader(sess, file, Str.byte_len(file), 0u, -1 as char,
+    auto rd = reader(sess, file, _str:byte_len(file), 0u, -1 as char,
                      filemap.start_pos, filemap.start_pos,
                      strs, keyword_table(),
                      reserved_word_table(),
@@ -118,115 +118,115 @@ fn new_reader(session sess, IO.reader rdr,
     ret rd;
 }
 
-fn keyword_table() -> std.Map.hashmap[str, token.token] {
-    auto keywords = new_str_hash[token.token]();
+fn keyword_table() -> std:map:hashmap[str, token:token] {
+    auto keywords = new_str_hash[token:token]();
 
-    keywords.insert("mod", token.MOD);
-    keywords.insert("use", token.USE);
-    keywords.insert("meta", token.META);
-    keywords.insert("auth", token.AUTH);
+    keywords.insert("mod", token:MOD);
+    keywords.insert("use", token:USE);
+    keywords.insert("meta", token:META);
+    keywords.insert("auth", token:AUTH);
 
-    keywords.insert("syntax", token.SYNTAX);
+    keywords.insert("syntax", token:SYNTAX);
 
-    keywords.insert("if", token.IF);
-    keywords.insert("else", token.ELSE);
-    keywords.insert("while", token.WHILE);
-    keywords.insert("do", token.DO);
-    keywords.insert("alt", token.ALT);
-    keywords.insert("case", token.CASE);
+    keywords.insert("if", token:IF);
+    keywords.insert("else", token:ELSE);
+    keywords.insert("while", token:WHILE);
+    keywords.insert("do", token:DO);
+    keywords.insert("alt", token:ALT);
+    keywords.insert("case", token:CASE);
 
-    keywords.insert("for", token.FOR);
-    keywords.insert("each", token.EACH);
-    keywords.insert("break", token.BREAK);
-    keywords.insert("cont", token.CONT);
-    keywords.insert("put", token.PUT);
-    keywords.insert("ret", token.RET);
-    keywords.insert("be", token.BE);
+    keywords.insert("for", token:FOR);
+    keywords.insert("each", token:EACH);
+    keywords.insert("break", token:BREAK);
+    keywords.insert("cont", token:CONT);
+    keywords.insert("put", token:PUT);
+    keywords.insert("ret", token:RET);
+    keywords.insert("be", token:BE);
 
-    keywords.insert("fail", token.FAIL);
-    keywords.insert("drop", token.DROP);
+    keywords.insert("fail", token:FAIL);
+    keywords.insert("drop", token:DROP);
 
-    keywords.insert("type", token.TYPE);
-    keywords.insert("check", token.CHECK);
-    keywords.insert("assert", token.ASSERT);
-    keywords.insert("claim", token.CLAIM);
-    keywords.insert("prove", token.PROVE);
+    keywords.insert("type", token:TYPE);
+    keywords.insert("check", token:CHECK);
+    keywords.insert("assert", token:ASSERT);
+    keywords.insert("claim", token:CLAIM);
+    keywords.insert("prove", token:PROVE);
 
-    keywords.insert("state", token.STATE);
-    keywords.insert("gc", token.GC);
+    keywords.insert("state", token:STATE);
+    keywords.insert("gc", token:GC);
 
-    keywords.insert("unsafe", token.UNSAFE);
+    keywords.insert("unsafe", token:UNSAFE);
 
-    keywords.insert("native", token.NATIVE);
-    keywords.insert("mutable", token.MUTABLE);
-    keywords.insert("auto", token.AUTO);
+    keywords.insert("native", token:NATIVE);
+    keywords.insert("mutable", token:MUTABLE);
+    keywords.insert("auto", token:AUTO);
 
-    keywords.insert("fn", token.FN);
-    keywords.insert("pred", token.PRED);
-    keywords.insert("iter", token.ITER);
+    keywords.insert("fn", token:FN);
+    keywords.insert("pred", token:PRED);
+    keywords.insert("iter", token:ITER);
 
-    keywords.insert("import", token.IMPORT);
-    keywords.insert("export", token.EXPORT);
+    keywords.insert("import", token:IMPORT);
+    keywords.insert("export", token:EXPORT);
 
-    keywords.insert("let", token.LET);
-    keywords.insert("const", token.CONST);
+    keywords.insert("let", token:LET);
+    keywords.insert("const", token:CONST);
 
-    keywords.insert("log", token.LOG);
-    keywords.insert("log_err", token.LOG_ERR);
-    keywords.insert("spawn", token.SPAWN);
-    keywords.insert("thread", token.THREAD);
-    keywords.insert("yield", token.YIELD);
-    keywords.insert("join", token.JOIN);
+    keywords.insert("log", token:LOG);
+    keywords.insert("log_err", token:LOG_ERR);
+    keywords.insert("spawn", token:SPAWN);
+    keywords.insert("thread", token:THREAD);
+    keywords.insert("yield", token:YIELD);
+    keywords.insert("join", token:JOIN);
 
-    keywords.insert("bool", token.BOOL);
+    keywords.insert("bool", token:BOOL);
 
-    keywords.insert("int", token.INT);
-    keywords.insert("uint", token.UINT);
-    keywords.insert("float", token.FLOAT);
+    keywords.insert("int", token:INT);
+    keywords.insert("uint", token:UINT);
+    keywords.insert("float", token:FLOAT);
 
-    keywords.insert("char", token.CHAR);
-    keywords.insert("str", token.STR);
+    keywords.insert("char", token:CHAR);
+    keywords.insert("str", token:STR);
 
 
-    keywords.insert("rec", token.REC);
-    keywords.insert("tup", token.TUP);
-    keywords.insert("tag", token.TAG);
-    keywords.insert("vec", token.VEC);
-    keywords.insert("any", token.ANY);
+    keywords.insert("rec", token:REC);
+    keywords.insert("tup", token:TUP);
+    keywords.insert("tag", token:TAG);
+    keywords.insert("vec", token:VEC);
+    keywords.insert("any", token:ANY);
 
-    keywords.insert("obj", token.OBJ);
-    keywords.insert("self", token.SELF);
+    keywords.insert("obj", token:OBJ);
+    keywords.insert("self", token:SELF);
 
-    keywords.insert("port", token.PORT);
-    keywords.insert("chan", token.CHAN);
+    keywords.insert("port", token:PORT);
+    keywords.insert("chan", token:CHAN);
 
-    keywords.insert("task", token.TASK);
+    keywords.insert("task", token:TASK);
 
-    keywords.insert("true", token.LIT_BOOL(true));
-    keywords.insert("false", token.LIT_BOOL(false));
+    keywords.insert("true", token:LIT_BOOL(true));
+    keywords.insert("false", token:LIT_BOOL(false));
 
-    keywords.insert("in", token.IN);
+    keywords.insert("in", token:IN);
 
-    keywords.insert("as", token.AS);
-    keywords.insert("with", token.WITH);
+    keywords.insert("as", token:AS);
+    keywords.insert("with", token:WITH);
 
-    keywords.insert("bind", token.BIND);
+    keywords.insert("bind", token:BIND);
 
-    keywords.insert("u8", token.MACH(common.ty_u8));
-    keywords.insert("u16", token.MACH(common.ty_u16));
-    keywords.insert("u32", token.MACH(common.ty_u32));
-    keywords.insert("u64", token.MACH(common.ty_u64));
-    keywords.insert("i8", token.MACH(common.ty_i8));
-    keywords.insert("i16", token.MACH(common.ty_i16));
-    keywords.insert("i32", token.MACH(common.ty_i32));
-    keywords.insert("i64", token.MACH(common.ty_i64));
-    keywords.insert("f32", token.MACH(common.ty_f32));
-    keywords.insert("f64", token.MACH(common.ty_f64));
+    keywords.insert("u8", token:MACH(common:ty_u8));
+    keywords.insert("u16", token:MACH(common:ty_u16));
+    keywords.insert("u32", token:MACH(common:ty_u32));
+    keywords.insert("u64", token:MACH(common:ty_u64));
+    keywords.insert("i8", token:MACH(common:ty_i8));
+    keywords.insert("i16", token:MACH(common:ty_i16));
+    keywords.insert("i32", token:MACH(common:ty_i32));
+    keywords.insert("i64", token:MACH(common:ty_i64));
+    keywords.insert("f32", token:MACH(common:ty_f32));
+    keywords.insert("f64", token:MACH(common:ty_f64));
 
     ret keywords;
 }
 
-fn reserved_word_table() -> std.Map.hashmap[str, ()] {
+fn reserved_word_table() -> std:map:hashmap[str, ()] {
     auto reserved = new_str_hash[()]();
     reserved.insert("f16", ());  // IEEE 754-2008 'binary16' interchange fmt
     reserved.insert("f80", ());  // IEEE 754-1985 'extended'
@@ -362,20 +362,20 @@ fn digits_to_string(str s) -> int {
     ret accum_int;
 }
 
-fn scan_exponent(reader rdr) -> Option.t[str] {
+fn scan_exponent(reader rdr) -> option:t[str] {
     auto c = rdr.curr();
     auto res = "";
 
     if (c == 'e' || c == 'E') {
-        res += Str.from_bytes(vec(c as u8));
+        res += _str:from_bytes(vec(c as u8));
         rdr.bump();
         c = rdr.curr();
         if (c == '-' || c == '+') {
-            res += Str.from_bytes(vec(c as u8));
+            res += _str:from_bytes(vec(c as u8));
             rdr.bump();
         }
         auto exponent = scan_dec_digits(rdr);
-        if (Str.byte_len(exponent) > 0u) {
+        if (_str:byte_len(exponent) > 0u) {
             ret(some(res + exponent));
         }
         else {
@@ -395,7 +395,7 @@ fn scan_dec_digits(reader rdr) -> str {
 
     while (is_dec_digit (c) || c == '_') {
         if (c != '_') {
-            res += Str.from_bytes(vec(c as u8));
+            res += _str:from_bytes(vec(c as u8));
         }
         rdr.bump();
         c = rdr.curr();
@@ -404,7 +404,7 @@ fn scan_dec_digits(reader rdr) -> str {
     ret res;
 }
 
-fn scan_number(char c, reader rdr) -> token.token {
+fn scan_number(char c, reader rdr) -> token:token {
     auto accum_int = 0;
     let str dec_str = "";
     let bool is_dec_integer = false;
@@ -453,9 +453,9 @@ fn scan_number(char c, reader rdr) -> token.token {
         if (c == '8') {
             rdr.bump();
             if (signed) {
-                ret token.LIT_MACH_INT(common.ty_i8, accum_int);
+                ret token:LIT_MACH_INT(common:ty_i8, accum_int);
             } else {
-                ret token.LIT_MACH_INT(common.ty_u8, accum_int);
+                ret token:LIT_MACH_INT(common:ty_u8, accum_int);
             }
         }
 
@@ -464,18 +464,18 @@ fn scan_number(char c, reader rdr) -> token.token {
             rdr.bump();
             rdr.bump();
             if (signed) {
-                ret token.LIT_MACH_INT(common.ty_i16, accum_int);
+                ret token:LIT_MACH_INT(common:ty_i16, accum_int);
             } else {
-                ret token.LIT_MACH_INT(common.ty_u16, accum_int);
+                ret token:LIT_MACH_INT(common:ty_u16, accum_int);
             }
         }
         if (c == '3' && n == '2') {
             rdr.bump();
             rdr.bump();
             if (signed) {
-                ret token.LIT_MACH_INT(common.ty_i32, accum_int);
+                ret token:LIT_MACH_INT(common:ty_i32, accum_int);
             } else {
-                ret token.LIT_MACH_INT(common.ty_u32, accum_int);
+                ret token:LIT_MACH_INT(common:ty_u32, accum_int);
             }
         }
 
@@ -483,17 +483,17 @@ fn scan_number(char c, reader rdr) -> token.token {
             rdr.bump();
             rdr.bump();
             if (signed) {
-                ret token.LIT_MACH_INT(common.ty_i64, accum_int);
+                ret token:LIT_MACH_INT(common:ty_i64, accum_int);
             } else {
-                ret token.LIT_MACH_INT(common.ty_u64, accum_int);
+                ret token:LIT_MACH_INT(common:ty_u64, accum_int);
             }
         }
 
         if (signed) {
-            ret token.LIT_INT(accum_int);
+            ret token:LIT_INT(accum_int);
         } else {
             // FIXME: should cast in the target bit-width.
-            ret token.LIT_UINT(accum_int as uint);
+            ret token:LIT_UINT(accum_int as uint);
         }
     }
     c = rdr.curr();
@@ -520,29 +520,29 @@ fn scan_number(char c, reader rdr) -> token.token {
             n = rdr.next();
             if (c == '3' && n == '2') {
                 rdr.bump(); rdr.bump();
-                ret token.LIT_MACH_FLOAT(util.common.ty_f32,
+                ret token:LIT_MACH_FLOAT(util:common:ty_f32,
                                          rdr.add_str(float_str));
             }
             else if (c == '6' && n == '4') {
                 rdr.bump(); rdr.bump();
-                ret token.LIT_MACH_FLOAT(util.common.ty_f64,
+                ret token:LIT_MACH_FLOAT(util:common:ty_f64,
                                          rdr.add_str(float_str));
                 /* FIXME: if this is out of range for either a 32-bit or
                    64-bit float, it won't be noticed till the back-end */
             }
         }
         else {
-            ret token.LIT_FLOAT(rdr.add_str(float_str));
+            ret token:LIT_FLOAT(rdr.add_str(float_str));
         }
     }
 
     auto maybe_exponent = scan_exponent(rdr);
     alt(maybe_exponent) {
         case(some[str](?s)) {
-            ret token.LIT_FLOAT(rdr.add_str(dec_str + s));
+            ret token:LIT_FLOAT(rdr.add_str(dec_str + s));
         }
         case(none[str]) {
-                ret token.LIT_INT(accum_int);
+                ret token:LIT_INT(accum_int);
         }
     }
 }
@@ -583,25 +583,25 @@ fn scan_numeric_escape(reader rdr) -> char {
 }
 
 
-fn next_token(reader rdr) -> token.token {
+fn next_token(reader rdr) -> token:token {
     auto accum_str = "";
 
     consume_any_whitespace(rdr);
 
-    if (rdr.is_eof()) { ret token.EOF; }
+    if (rdr.is_eof()) { ret token:EOF; }
 
     rdr.mark();
     auto c = rdr.curr();
 
     if (is_alpha(c) || c == '_') {
         while (is_alnum(c) || c == '_') {
-            Str.push_char(accum_str, c);
+            _str:push_char(accum_str, c);
             rdr.bump();
             c = rdr.curr();
         }
 
-        if (Str.eq(accum_str, "_")) {
-            ret token.UNDERSCORE;
+        if (_str:eq(accum_str, "_")) {
+            ret token:UNDERSCORE;
         }
 
         auto kwds = rdr.get_keywords();
@@ -615,49 +615,56 @@ fn next_token(reader rdr) -> token.token {
             fail;
         }
 
-        ret token.IDENT(rdr.add_str(accum_str));
+        ret token:IDENT(rdr.add_str(accum_str));
     }
 
     if (is_dec_digit(c)) {
         ret scan_number(c, rdr);
     }
 
-    fn binop(reader rdr, token.binop op) -> token.token {
+    fn binop(reader rdr, token:binop op) -> token:token {
         rdr.bump();
         if (rdr.curr() == '=') {
             rdr.bump();
-            ret token.BINOPEQ(op);
+            ret token:BINOPEQ(op);
         } else {
-            ret token.BINOP(op);
+            ret token:BINOP(op);
         }
     }
 
     alt (c) {
         // One-byte tokens.
-        case (':') { rdr.bump(); ret token.COLON; }
-        case ('?') { rdr.bump(); ret token.QUES; }
-        case (';') { rdr.bump(); ret token.SEMI; }
-        case (',') { rdr.bump(); ret token.COMMA; }
-        case ('.') { rdr.bump(); ret token.DOT; }
-        case ('(') { rdr.bump(); ret token.LPAREN; }
-        case (')') { rdr.bump(); ret token.RPAREN; }
-        case ('{') { rdr.bump(); ret token.LBRACE; }
-        case ('}') { rdr.bump(); ret token.RBRACE; }
-        case ('[') { rdr.bump(); ret token.LBRACKET; }
-        case (']') { rdr.bump(); ret token.RBRACKET; }
-        case ('@') { rdr.bump(); ret token.AT; }
-        case ('#') { rdr.bump(); ret token.POUND; }
-        case ('~') { rdr.bump(); ret token.TILDE; }
-
+        case ('?') { rdr.bump(); ret token:QUES; }
+        case (';') { rdr.bump(); ret token:SEMI; }
+        case (',') { rdr.bump(); ret token:COMMA; }
+        case ('.') { rdr.bump(); ret token:DOT; }
+        case ('(') { rdr.bump(); ret token:LPAREN; }
+        case (')') { rdr.bump(); ret token:RPAREN; }
+        case ('{') { rdr.bump(); ret token:LBRACE; }
+        case ('}') { rdr.bump(); ret token:RBRACE; }
+        case ('[') { rdr.bump(); ret token:LBRACKET; }
+        case (']') { rdr.bump(); ret token:RBRACKET; }
+        case ('@') { rdr.bump(); ret token:AT; }
+        case ('#') { rdr.bump(); ret token:POUND; }
+        case ('~') { rdr.bump(); ret token:TILDE; }
+        case (':') {
+            rdr.bump();
+            if (is_alpha(rdr.curr()) || rdr.curr() == '_') {
+                ret token:MOD_SEP;
+            }
+            else {
+                ret token:COLON;
+            };
+        }
 
         // Multi-byte tokens.
         case ('=') {
             rdr.bump();
             if (rdr.curr() == '=') {
                 rdr.bump();
-                ret token.EQEQ;
+                ret token:EQEQ;
             } else {
-                ret token.EQ;
+                ret token:EQ;
             }
         }
 
@@ -665,9 +672,9 @@ fn next_token(reader rdr) -> token.token {
             rdr.bump();
             if (rdr.curr() == '=') {
                 rdr.bump();
-                ret token.NE;
+                ret token:NE;
             } else {
-                ret token.NOT;
+                ret token:NOT;
             }
         }
 
@@ -676,21 +683,21 @@ fn next_token(reader rdr) -> token.token {
             alt (rdr.curr()) {
                 case ('=') {
                     rdr.bump();
-                    ret token.LE;
+                    ret token:LE;
                 }
                 case ('<') {
-                    ret binop(rdr, token.LSL);
+                    ret binop(rdr, token:LSL);
                 }
                 case ('-') {
                     rdr.bump();
-                    ret token.LARROW;
+                    ret token:LARROW;
                 }
                 case ('|') {
                     rdr.bump();
-                    ret token.SEND;
+                    ret token:SEND;
                 }
                 case (_) {
-                    ret token.LT;
+                    ret token:LT;
                 }
             }
         }
@@ -700,20 +707,20 @@ fn next_token(reader rdr) -> token.token {
             alt (rdr.curr()) {
                 case ('=') {
                     rdr.bump();
-                    ret token.GE;
+                    ret token:GE;
                 }
 
                 case ('>') {
                     if (rdr.next() == '>') {
                         rdr.bump();
-                        ret binop(rdr, token.ASR);
+                        ret binop(rdr, token:ASR);
                     } else {
-                        ret binop(rdr, token.LSR);
+                        ret binop(rdr, token:LSR);
                     }
                 }
 
                 case (_) {
-                    ret token.GT;
+                    ret token:GT;
                 }
             }
         }
@@ -748,7 +755,7 @@ fn next_token(reader rdr) -> token.token {
             }
             rdr.bump(); // advance curr to closing '
             rdr.bump(); // advance curr past token
-            ret token.LIT_CHAR(c2);
+            ret token:LIT_CHAR(c2);
         }
 
         case ('"') {
@@ -759,37 +766,37 @@ fn next_token(reader rdr) -> token.token {
                         alt (rdr.next()) {
                             case ('n') {
                                 rdr.bump();
-                                Str.push_byte(accum_str, '\n' as u8);
+                                _str:push_byte(accum_str, '\n' as u8);
                             }
                             case ('r') {
                                 rdr.bump();
-                                Str.push_byte(accum_str, '\r' as u8);
+                                _str:push_byte(accum_str, '\r' as u8);
                             }
                             case ('t') {
                                 rdr.bump();
-                                Str.push_byte(accum_str, '\t' as u8);
+                                _str:push_byte(accum_str, '\t' as u8);
                             }
                             case ('\\') {
                                 rdr.bump();
-                                Str.push_byte(accum_str, '\\' as u8);
+                                _str:push_byte(accum_str, '\\' as u8);
                             }
                             case ('"') {
                                 rdr.bump();
-                                Str.push_byte(accum_str, '"' as u8);
+                                _str:push_byte(accum_str, '"' as u8);
                             }
 
                             case ('x') {
-                                Str.push_char(accum_str,
+                                _str:push_char(accum_str,
                                                scan_numeric_escape(rdr));
                             }
 
                             case ('u') {
-                                Str.push_char(accum_str,
+                                _str:push_char(accum_str,
                                                scan_numeric_escape(rdr));
                             }
 
                             case ('U') {
-                                Str.push_char(accum_str,
+                                _str:push_char(accum_str,
                                                scan_numeric_escape(rdr));
                             }
 
@@ -801,22 +808,22 @@ fn next_token(reader rdr) -> token.token {
                         }
                     }
                     case (_) {
-                        Str.push_char(accum_str, rdr.curr());
+                        _str:push_char(accum_str, rdr.curr());
                     }
                 }
                 rdr.bump();
             }
             rdr.bump();
-            ret token.LIT_STR(rdr.add_str(accum_str));
+            ret token:LIT_STR(rdr.add_str(accum_str));
         }
 
         case ('-') {
             if (rdr.next() == '>') {
                 rdr.bump();
                 rdr.bump();
-                ret token.RARROW;
+                ret token:RARROW;
             } else {
-                ret binop(rdr, token.MINUS);
+                ret binop(rdr, token:MINUS);
             }
         }
 
@@ -824,9 +831,9 @@ fn next_token(reader rdr) -> token.token {
             if (rdr.next() == '&') {
                 rdr.bump();
                 rdr.bump();
-                ret token.ANDAND;
+                ret token:ANDAND;
             } else {
-                ret binop(rdr, token.AND);
+                ret binop(rdr, token:AND);
             }
         }
 
@@ -834,30 +841,30 @@ fn next_token(reader rdr) -> token.token {
             if (rdr.next() == '|') {
                 rdr.bump();
                 rdr.bump();
-                ret token.OROR;
+                ret token:OROR;
             } else {
-                ret binop(rdr, token.OR);
+                ret binop(rdr, token:OR);
             }
         }
 
         case ('+') {
-            ret binop(rdr, token.PLUS);
+            ret binop(rdr, token:PLUS);
         }
 
         case ('*') {
-            ret binop(rdr, token.STAR);
+            ret binop(rdr, token:STAR);
         }
 
         case ('/') {
-            ret binop(rdr, token.SLASH);
+            ret binop(rdr, token:SLASH);
         }
 
         case ('^') {
-            ret binop(rdr, token.CARET);
+            ret binop(rdr, token:CARET);
         }
 
         case ('%') {
-            ret binop(rdr, token.PERCENT);
+            ret binop(rdr, token:PERCENT);
         }
 
         case (?c) {
@@ -891,7 +898,7 @@ fn read_line_comment(reader rdr) -> cmnt {
     while (rdr.curr() == ' ') {rdr.bump();}
     auto val = "";
     while (rdr.curr() != '\n' && !rdr.is_eof()) {
-        Str.push_char(val, rdr.curr());
+        _str:push_char(val, rdr.curr());
         rdr.bump();
     }
     ret rec(val=cmnt_line(val),
@@ -908,7 +915,7 @@ fn read_block_comment(reader rdr) -> cmnt {
     auto level = 1;
     while (true) {
         if (rdr.curr() == '\n') {
-            Vec.push[str](lines, val);
+            _vec:push[str](lines, val);
             val = "";
             consume_whitespace(rdr);
         } else {
@@ -916,13 +923,13 @@ fn read_block_comment(reader rdr) -> cmnt {
                 level -= 1;
                 if (level == 0) {
                     rdr.bump(); rdr.bump();
-                    Vec.push[str](lines, val);
+                    _vec:push[str](lines, val);
                     break;
                 }
             } else if (rdr.curr() == '/' && rdr.next() == '*') {
                 level += 1;
             }
-            Str.push_char(val, rdr.curr());
+            _str:push_char(val, rdr.curr());
             rdr.bump();
         }
         if (rdr.is_eof()) {
@@ -936,16 +943,16 @@ fn read_block_comment(reader rdr) -> cmnt {
 }
 
 fn gather_comments(session sess, str path) -> vec[cmnt] {
-    auto srdr = IO.file_reader(path);
-    auto rdr = new_reader(sess, srdr, codemap.new_filemap(path, 0u));
+    auto srdr = io:file_reader(path);
+    auto rdr = new_reader(sess, srdr, codemap:new_filemap(path, 0u));
     let vec[cmnt] comments = vec();
     while (!rdr.is_eof()) {
         while (true) {
             consume_whitespace(rdr);
             if (rdr.curr() == '/' && rdr.next() == '/') {
-                Vec.push[cmnt](comments, read_line_comment(rdr));
+                _vec:push[cmnt](comments, read_line_comment(rdr));
             } else if (rdr.curr() == '/' && rdr.next() == '*') {
-                Vec.push[cmnt](comments, read_block_comment(rdr));
+                _vec:push[cmnt](comments, read_block_comment(rdr));
             } else { break; }
         }
         next_token(rdr);

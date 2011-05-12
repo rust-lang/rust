@@ -17,5 +17,5 @@ mod foo {
 }
 
 fn main() {
-  foo.z(10);
+  foo:z(10);
 }

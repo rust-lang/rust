@@ -10,7 +10,7 @@ mod foo {
   export bar;
 
   fn bar() {
-    foo.baz();
+    foo:baz();
   }
 
   fn baz() {

@@ -1,7 +1,7 @@
-import Str.sbuf;
-import Vec.vbuf;
+import _str:sbuf;
+import _vec:vbuf;
 
-native mod libc = "libc.dylib" {
+native mod libc = "libc:dylib" {
 
     fn open(sbuf s, int flags, uint mode) -> int;
     fn read(int fd, vbuf buf, uint count) -> int;
@@ -63,17 +63,17 @@ fn dylib_filename(str base) -> str {
 
 fn pipe() -> tup(int, int) {
     let vec[mutable int] fds = vec(mutable 0, 0);
-    assert (OS.libc.pipe(Vec.buf(fds)) == 0);
+    assert (os:libc:pipe(_vec:buf(fds)) == 0);
     ret tup(fds.(0), fds.(1));
 }
 
-fn fd_FILE(int fd) -> libc.FILE {
-    ret libc.fdopen(fd, Str.buf("r"));
+fn fd_FILE(int fd) -> libc:FILE {
+    ret libc:fdopen(fd, _str:buf("r"));
 }
 
 fn waitpid(int pid) -> int {
     let vec[mutable int] status = vec(mutable 0);
-    assert (OS.libc.waitpid(pid, Vec.buf(status), 0) != -1);
+    assert (os:libc:waitpid(pid, _vec:buf(status), 0) != -1);
     ret status.(0);
 }
 
