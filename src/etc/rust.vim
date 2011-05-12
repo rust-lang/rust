@@ -15,21 +15,49 @@ if !exists("main_syntax")
 endif
 
 syn keyword   rustKeyword     use meta syntax mutable native mod import export
-syn keyword   rustKeyword     let auto io state unsafe auth with bind type true
-syn keyword   rustKeyword     false any int uint float char bool u8 u16 u32 u64
-syn keyword   rustKeyword     f32 i8 i16 i32 i64 f64 rec tup tag vec str fn
-syn keyword   rustKeyword     iter obj as drop task port chan flush spawn if
-syn keyword   rustKeyword     else alt case in do while break cont fail log
-syn keyword   rustKeyword     note claim check prove for each ret put be
+syn keyword   rustKeyword     let auto io state unsafe auth with bind type rec
+syn keyword   rustKeyword     tup tag vec fn iter obj as drop task chan flush
+syn keyword   rustKeyword     spawn if else alt case in do while break cont
+syn keyword   rustKeyword     fail log log_err note claim check prove assert
+syn keyword   rustKeyword     for each ret put be
 
-syn region	  rustString		  start=+L\="+ skip=+\\\\\|\\"+ end=+"+
+syn keyword   rustType        any int uint float char bool u8 u16 u32 u64 f32
+syn keyword   rustType        f64 i8 i16 i32 i64 str task
 
+syn keyword   rustBoolean     true false
+
+syn match     rustItemPath    "\(\w\|::\)\+"
+
+syn region	  rustString      start=+L\="+ skip=+\\\\\|\\"+ end=+"+
+
+"integer number, or floating point number without a dot and with "f".
+syn case ignore
+syn match	  rustNumber		display contained "\d\+\(u\=l\{0,2}\|ll\=u\)\>"
+"hex number
+syn match	  rustNumber		display contained "0x\x\+\(u\=l\{0,2}\|ll\=u\)\>"
+syn match	rustFloat		display contained "\d\+f"
+"floating point number, with dot, optional exponent
+syn match	rustFloat		display contained "\d\+\.\d*\(e[-+]\=\d\+\)\=[fl]\="
+"floating point number, starting with a dot, optional exponent
+syn match	rustFloat		display contained "\.\d\+\(e[-+]\=\d\+\)\=[fl]\=\>"
+"floating point number, without dot, with exponent
+syn match	rustFloat		display contained "\d\+e[-+]\=\d\+[fl]\=\>"
+
+syn match   rustCharacter   "'[^']*'"
+
+syn case match
 syn region    rustComment     start="/\*" end="\*/"
 syn region    rustComment     start="//" skip="\\$" end="$" keepend
 
 hi def link rustString        String
+hi def link rustCharacter     Character
+hi def link rustNumber        Number
+hi def link rustBoolean       Boolean
+hi def link rustFloat         Float
 hi def link rustKeyword       Keyword
 hi def link rustComment       Comment
+hi def link rustMacro         Macro
+hi def link rustType          Type
 
 let b:current_syntax = "rust"
 
