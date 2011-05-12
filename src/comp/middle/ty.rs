@@ -162,6 +162,8 @@ const uint idx_first_others = 20u;
 type type_store = rec(mutable vec[raw_t] others,
                       hashmap[raw_t,uint] other_structural);
 
+type node_type_table = vec[ty::ty_param_count_and_ty];
+
 fn mk_type_store() -> @type_store {
     let vec[raw_t] others = vec();
     let hashmap[raw_t,uint] ost =
@@ -1431,7 +1433,7 @@ fn eq_raw_ty(&raw_t a, &raw_t b) -> bool {
 fn eq_ty(&t a, &t b) -> bool { ret a == b; }
 
 
-fn ann_to_type(&ast::ann ann) -> t {
+fn ann_to_type(&node_type_table ntt, &ast::ann ann) -> t {
     alt (ann) {
         case (ast::ann_none(_)) {
             log_err "ann_to_type() called on node with no type";
@@ -1443,7 +1445,7 @@ fn ann_to_type(&ast::ann ann) -> t {
     }
 }
 
-fn ann_to_type_params(&ast::ann ann) -> vec[t] {
+fn ann_to_type_params(&node_type_table ntt, &ast::ann ann) -> vec[t] {
     alt (ann) {
         case (ast::ann_none(_)) {
             log_err "ann_to_type_params() called on node with no type params";
@@ -1463,7 +1465,7 @@ fn ann_to_type_params(&ast::ann ann) -> vec[t] {
 
 // Returns the type of an annotation, with type parameter substitutions
 // performed if applicable.
-fn ann_to_monotype(ctxt cx, ast::ann a) -> t {
+fn ann_to_monotype(ctxt cx,  &node_type_table ntt, ast::ann a) -> t {
     // TODO: Refactor to use recursive pattern matching when we're more
     // confident that it works.
     alt (a) {
@@ -1575,54 +1577,55 @@ fn is_fn_ty(&ctxt cx, &t fty) -> bool {
 
 // Given an item, returns the associated type as well as the number of type
 // parameters it has.
-fn native_item_ty(&@ast::native_item it) -> ty_param_count_and_ty {
+fn native_item_ty(&node_type_table ntt, &@ast::native_item it)
+        -> ty_param_count_and_ty {
     auto ty_param_count;
     auto result_ty;
     alt (it.node) {
         case (ast::native_item_fn(_, _, _, ?tps, _, ?ann)) {
             ty_param_count = _vec::len[ast::ty_param](tps);
-            result_ty = ann_to_type(ann);
+            result_ty = ann_to_type(ntt, ann);
         }
     }
     ret tup(ty_param_count, result_ty);
 }
 
-fn item_ty(&@ast::item it) -> ty_param_count_and_ty {
+fn item_ty(&node_type_table ntt, &@ast::item it) -> ty_param_count_and_ty {
     auto ty_param_count;
     auto result_ty;
     alt (it.node) {
         case (ast::item_const(_, _, _, _, ?ann)) {
             ty_param_count = 0u;
-            result_ty = ann_to_type(ann);
+            result_ty = ann_to_type(ntt, ann);
         }
         case (ast::item_fn(_, _, ?tps, _, ?ann)) {
             ty_param_count = _vec::len[ast::ty_param](tps);
-            result_ty = ann_to_type(ann);
+            result_ty = ann_to_type(ntt, ann);
         }
         case (ast::item_mod(_, _, _)) {
             fail;   // modules are typeless
         }
         case (ast::item_ty(_, _, ?tps, _, ?ann)) {
             ty_param_count = _vec::len[ast::ty_param](tps);
-            result_ty = ann_to_type(ann);
+            result_ty = ann_to_type(ntt, ann);
         }
         case (ast::item_tag(_, _, ?tps, ?did, ?ann)) {
             ty_param_count = _vec::len[ast::ty_param](tps);
-            result_ty = ann_to_type(ann);
+            result_ty = ann_to_type(ntt, ann);
         }
         case (ast::item_obj(_, _, ?tps, _, ?ann)) {
             ty_param_count = _vec::len[ast::ty_param](tps);
-            result_ty = ann_to_type(ann);
+            result_ty = ann_to_type(ntt, ann);
         }
     }
 
     ret tup(ty_param_count, result_ty);
 }
 
-fn stmt_ty(&ctxt cx, &@ast::stmt s) -> t {
+fn stmt_ty(&ctxt cx, &node_type_table ntt, &@ast::stmt s) -> t {
     alt (s.node) {
         case (ast::stmt_expr(?e,_)) {
-            ret expr_ty(cx, e);
+            ret expr_ty(cx, ntt, e);
         }
         case (_) {
             ret mk_nil(cx);
@@ -1630,21 +1633,25 @@ fn stmt_ty(&ctxt cx, &@ast::stmt s) -> t {
     }
 }
 
-fn block_ty(&ctxt cx, &ast::block b) -> t {
+fn block_ty(&ctxt cx, &node_type_table ntt, &ast::block b) -> t {
     alt (b.node.expr) {
-        case (some[@ast::expr](?e)) { ret expr_ty(cx, e); }
+        case (some[@ast::expr](?e)) { ret expr_ty(cx, ntt, e); }
         case (none[@ast::expr])     { ret mk_nil(cx); }
     }
 }
 
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function
 // doesn't provide type parameter substitutions.
-fn pat_ty(&ctxt cx, &@ast::pat pat) -> t {
+fn pat_ty(&ctxt cx, &node_type_table ntt, &@ast::pat pat) -> t {
     alt (pat.node) {
-        case (ast::pat_wild(?ann))           { ret ann_to_monotype(cx, ann); }
-        case (ast::pat_lit(_, ?ann))         { ret ann_to_monotype(cx, ann); }
-        case (ast::pat_bind(_, _, ?ann))     { ret ann_to_monotype(cx, ann); }
-        case (ast::pat_tag(_, _, ?ann))      { ret ann_to_monotype(cx, ann); }
+        case (ast::pat_wild(?ann))      { ret ann_to_monotype(cx, ntt, ann); }
+        case (ast::pat_lit(_, ?ann))    { ret ann_to_monotype(cx, ntt, ann); }
+        case (ast::pat_bind(_, _, ?ann)) {
+            ret ann_to_monotype(cx, ntt, ann);
+        }
+        case (ast::pat_tag(_, _, ?ann)) {
+            ret ann_to_monotype(cx, ntt, ann);
+        }
     }
     fail;   // not reached
 }
@@ -1768,17 +1775,18 @@ fn expr_ann(&@ast::expr e) -> ast::ann {
 // ask for the type of "id" in "id(3)", it will return "fn(&int) -> int"
 // instead of "fn(&T) -> T with T = int". If this isn't what you want, see
 // expr_ty_params_and_ty() below.
-fn expr_ty(&ctxt cx, &@ast::expr expr) -> t {
-    ret ann_to_monotype(cx, expr_ann(expr));
+fn expr_ty(&ctxt cx, &node_type_table ntt, &@ast::expr expr) -> t {
+    ret ann_to_monotype(cx, ntt, expr_ann(expr));
 }
 
-fn expr_ty_params_and_ty(&ctxt cx, &@ast::expr expr) -> tup(vec[t], t) {
+fn expr_ty_params_and_ty(&ctxt cx, &node_type_table ntt, &@ast::expr expr)
+        -> tup(vec[t], t) {
     auto a = expr_ann(expr);
 
-    ret tup(ann_to_type_params(a), ann_to_type(a));
+    ret tup(ann_to_type_params(ntt, a), ann_to_type(ntt, a));
 }
 
-fn expr_has_ty_params(&@ast::expr expr) -> bool {
+fn expr_has_ty_params(&node_type_table ntt, &@ast::expr expr) -> bool {
     // FIXME: Rewrite using complex patterns when they're trustworthy.
     alt (expr_ann(expr)) {
         case (ast::ann_none(_)) { fail; }
@@ -1789,10 +1797,11 @@ fn expr_has_ty_params(&@ast::expr expr) -> bool {
 }
 
 // FIXME: At the moment this works only for call, bind, and path expressions.
-fn replace_expr_type(&@ast::expr expr,
+fn replace_expr_type(&node_type_table ntt,
+                     &@ast::expr expr,
                      &tup(vec[t], t) new_tyt) -> @ast::expr {
     auto new_tps;
-    if (expr_has_ty_params(expr)) {
+    if (expr_has_ty_params(ntt, expr)) {
         new_tps = some[vec[t]](new_tyt._0);
     } else {
         new_tps = none[vec[t]];

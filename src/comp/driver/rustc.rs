@@ -103,8 +103,9 @@ fn compile_input(session::session sess,
     auto typeck_result =
         time[typeck::typecheck_result](time_passes, "typechecking",
                                       bind typeck::check_crate(ty_cx, crate));
-    crate = typeck_result._0;
+    auto node_type_table = typeck_result._0;
     auto type_cache = typeck_result._1;
+    crate = typeck_result._2;
 
     if (sess.get_opts().run_typestate) {
         crate = time(time_passes, "typestate checking",
@@ -112,7 +113,8 @@ fn compile_input(session::session sess,
     }
 
     auto llmod = time[llvm::ModuleRef](time_passes, "translation",
-        bind trans::trans_crate(sess, crate, ty_cx, type_cache, output));
+        bind trans::trans_crate(sess, crate, ty_cx, node_type_table,
+                                type_cache, output));
 
     time[()](time_passes, "LLVM passes",
              bind Link::Write::run_passes(sess, llmod, output));

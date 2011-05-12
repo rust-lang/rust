@@ -22,6 +22,7 @@ import middle::ty::method;
 import middle::ty::mo_val;
 import middle::ty::mo_alias;
 import middle::ty::mo_either;
+import middle::ty::node_type_table;
 import middle::ty::pat_ty;
 import middle::ty::path_to_str;
 import middle::ty::struct;
@@ -69,7 +70,8 @@ type crate_ctxt = rec(session::session sess,
                       unify_cache unify_cache,
                       mutable uint cache_hits,
                       mutable uint cache_misses,
-                      ty::ctxt tcx);
+                      ty::ctxt tcx,
+                      mutable node_type_table node_types);
 
 type fn_ctxt = rec(ty::t ret_ty,
                    ast::purity purity,
@@ -1119,21 +1121,21 @@ mod Pushdown {
         alt (pat.node) {
             case (ast::pat_wild(?ann)) {
                 auto t = Demand::simple(fcx, pat.span, expected,
-                                       ann_to_type(ann));
+                                        ann_to_type(fcx.ccx.node_types, ann));
                 p_1 = ast::pat_wild(ast::ann_type(ast::ann_tag(ann), t,
                                                 none[vec[ty::t]],
                                                 none[@ts_ann]));
             }
             case (ast::pat_lit(?lit, ?ann)) {
                 auto t = Demand::simple(fcx, pat.span, expected,
-                                       ann_to_type(ann));
+                                        ann_to_type(fcx.ccx.node_types, ann));
                 p_1 = ast::pat_lit(lit, ast::ann_type(ast::ann_tag(ann), t,
                                                     none[vec[ty::t]],
                                                     none[@ts_ann]));
             }
             case (ast::pat_bind(?id, ?did, ?ann)) {
                 auto t = Demand::simple(fcx, pat.span, expected,
-                                       ann_to_type(ann));
+                                        ann_to_type(fcx.ccx.node_types, ann));
                 fcx.locals.insert(did, t);
                 p_1 = ast::pat_bind(id, did, ast::ann_type(ast::ann_tag(ann),
                                                            t,
@@ -1196,7 +1198,7 @@ mod Pushdown {
                 // TODO: enforce mutability
 
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                       ann_to_type(fcx.ccx.node_types, ann));
                 let vec[@ast::expr] es_1 = vec();
                 alt (struct(fcx.ccx.tcx, t)) {
                     case (ty::ty_vec(?mt)) {
@@ -1213,7 +1215,7 @@ mod Pushdown {
             }
             case (ast::expr_tup(?es_0, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                       ann_to_type(fcx.ccx.node_types, ann));
                 let vec[ast::elt] elts_1 = vec();
                 alt (struct(fcx.ccx.tcx, t)) {
                     case (ty::ty_tup(?mts)) {
@@ -1237,7 +1239,7 @@ mod Pushdown {
                 auto base_1 = base_0;
 
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                       ann_to_type(fcx.ccx.node_types, ann));
                 let vec[ast::field] fields_1 = vec();
                 alt (struct(fcx.ccx.tcx, t)) {
                     case (ty::ty_rec(?field_mts)) {
@@ -1291,7 +1293,7 @@ mod Pushdown {
             }
             case (ast::expr_bind(?sube, ?es, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                        ann_to_type(fcx.ccx.node_types, ann));
                 e_1 = ast::expr_bind(sube, es, triv_ann(ann, t));
             }
             case (ast::expr_call(?sube, ?es, ?ann)) {
@@ -1300,39 +1302,39 @@ mod Pushdown {
                 // produce a box; things like expr_binary or expr_bind can't,
                 // so there's no need.
                 auto t = Demand::autoderef(fcx, e.span, expected,
-                                          ann_to_type(ann), adk);
+                    ann_to_type(fcx.ccx.node_types, ann), adk);
                 e_1 = ast::expr_call(sube, es, triv_ann(ann, t));
             }
             case (ast::expr_self_method(?id, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                       ann_to_type(fcx.ccx.node_types, ann));
                 e_1 = ast::expr_self_method(id, triv_ann(ann, t));
             }
             case (ast::expr_binary(?bop, ?lhs, ?rhs, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                       ann_to_type(fcx.ccx.node_types, ann));
                 e_1 = ast::expr_binary(bop, lhs, rhs, triv_ann(ann, t));
             }
             case (ast::expr_unary(?uop, ?sube, ?ann)) {
                 // See note in expr_unary for why we're calling
                 // Demand::autoderef.
                 auto t = Demand::autoderef(fcx, e.span, expected,
-                                          ann_to_type(ann), adk);
+                    ann_to_type(fcx.ccx.node_types, ann), adk);
                 e_1 = ast::expr_unary(uop, sube, triv_ann(ann, t));
             }
             case (ast::expr_lit(?lit, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                        ann_to_type(fcx.ccx.node_types, ann));
                 e_1 = ast::expr_lit(lit, triv_ann(ann, t));
             }
             case (ast::expr_cast(?sube, ?ast_ty, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                        ann_to_type(fcx.ccx.node_types, ann));
                 e_1 = ast::expr_cast(sube, ast_ty, triv_ann(ann, t));
             }
             case (ast::expr_if(?cond, ?then_0, ?else_0, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
-                                          ann_to_type(ann), adk);
+                    ann_to_type(fcx.ccx.node_types, ann), adk);
                 auto then_1 = pushdown_block(fcx, expected, then_0);
 
                 auto else_1;
@@ -1347,56 +1349,57 @@ mod Pushdown {
             }
             case (ast::expr_for(?decl, ?seq, ?bloc, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                       ann_to_type(fcx.ccx.node_types, ann));
                 e_1 = ast::expr_for(decl, seq, bloc, triv_ann(ann, t));
             }
             case (ast::expr_for_each(?decl, ?seq, ?bloc, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                       ann_to_type(fcx.ccx.node_types, ann));
                 e_1 = ast::expr_for_each(decl, seq, bloc, triv_ann(ann, t));
             }
             case (ast::expr_while(?cond, ?bloc, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                       ann_to_type(fcx.ccx.node_types, ann));
                 e_1 = ast::expr_while(cond, bloc, triv_ann(ann, t));
             }
             case (ast::expr_do_while(?bloc, ?cond, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                       ann_to_type(fcx.ccx.node_types, ann));
                 e_1 = ast::expr_do_while(bloc, cond, triv_ann(ann, t));
             }
             case (ast::expr_block(?bloc, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
-                                          ann_to_type(ann), adk);
+                    ann_to_type(fcx.ccx.node_types, ann), adk);
                 e_1 = ast::expr_block(bloc, triv_ann(ann, t));
             }
             case (ast::expr_assign(?lhs_0, ?rhs_0, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
-                                          ann_to_type(ann), adk);
+                    ann_to_type(fcx.ccx.node_types, ann), adk);
                 auto lhs_1 = pushdown_expr(fcx, expected, lhs_0);
                 auto rhs_1 = pushdown_expr(fcx, expected, rhs_0);
                 e_1 = ast::expr_assign(lhs_1, rhs_1, triv_ann(ann, t));
             }
             case (ast::expr_assign_op(?op, ?lhs_0, ?rhs_0, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
-                                          ann_to_type(ann), adk);
+                    ann_to_type(fcx.ccx.node_types, ann), adk);
                 auto lhs_1 = pushdown_expr(fcx, expected, lhs_0);
                 auto rhs_1 = pushdown_expr(fcx, expected, rhs_0);
                 e_1 = ast::expr_assign_op(op, lhs_1, rhs_1, triv_ann(ann, t));
             }
             case (ast::expr_field(?lhs, ?rhs, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
-                                          ann_to_type(ann), adk);
+                    ann_to_type(fcx.ccx.node_types, ann), adk);
                 e_1 = ast::expr_field(lhs, rhs, triv_ann(ann, t));
             }
             case (ast::expr_index(?base, ?index, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
-                                          ann_to_type(ann), adk);
+                    ann_to_type(fcx.ccx.node_types, ann), adk);
                 e_1 = ast::expr_index(base, index, triv_ann(ann, t));
             }
             case (ast::expr_path(?pth, ?ann)) {
-                auto tp_substs_0 = ty::ann_to_type_params(ann);
-                auto t_0 = ann_to_type(ann);
+                auto tp_substs_0 = ty::ann_to_type_params(fcx.ccx.node_types,
+                                                          ann);
+                auto t_0 = ann_to_type(fcx.ccx.node_types, ann);
 
                 auto result_0 = Demand::full(fcx, e.span, expected, t_0,
                                             tp_substs_0, adk);
@@ -1430,7 +1433,7 @@ mod Pushdown {
             }
             case (ast::expr_ext(?p, ?args, ?body, ?expanded, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
-                                          ann_to_type(ann), adk);
+                    ann_to_type(fcx.ccx.node_types, ann), adk);
                 e_1 = ast::expr_ext(p, args, body, expanded,
                                     triv_ann(ann, t));
             }
@@ -1447,13 +1450,13 @@ mod Pushdown {
 
             case (ast::expr_port(?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                        ann_to_type(fcx.ccx.node_types, ann));
                 e_1 = ast::expr_port(triv_ann(ann, t));
             }
 
             case (ast::expr_chan(?es, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
-                                       ann_to_type(ann));
+                                       ann_to_type(fcx.ccx.node_types, ann));
                 let @ast::expr es_1;
                 alt (struct(fcx.ccx.tcx, t)) {
                     case (ty::ty_chan(?subty)) {
@@ -1474,7 +1477,7 @@ mod Pushdown {
                 for (ast::arm arm_0 in arms_0) {
                     auto block_1 = pushdown_block(fcx, expected, arm_0.block);
                     t = Demand::simple(fcx, e.span, t,
-                                      block_ty(fcx.ccx.tcx, block_1));
+                        block_ty(fcx.ccx.tcx, fcx.ccx.node_types, block_1));
                     auto arm_1 = rec(pat=arm_0.pat, block=block_1);
                     arms_1 += vec(arm_1);
                 }
@@ -1484,7 +1487,7 @@ mod Pushdown {
             case (ast::expr_recv(?lval_0, ?expr_0, ?ann)) {
                 auto lval_1 = pushdown_expr(fcx, next_ty_var(fcx.ccx),
                                             lval_0);
-                auto t = expr_ty(fcx.ccx.tcx, lval_1);
+                auto t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, lval_1);
                 auto expr_1 = pushdown_expr(fcx, ty::mk_port(fcx.ccx.tcx, t),
                                             expr_0);
                 e_1 = ast::expr_recv(lval_1, expr_1, ann);
@@ -1493,7 +1496,7 @@ mod Pushdown {
             case (ast::expr_send(?lval_0, ?expr_0, ?ann)) {
                 auto expr_1 = pushdown_expr(fcx, next_ty_var(fcx.ccx),
                                             expr_0);
-                auto t = expr_ty(fcx.ccx.tcx, expr_1);
+                auto t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, expr_1);
                 auto lval_1 = pushdown_expr(fcx, ty::mk_chan(fcx.ccx.tcx, t),
                                             lval_0);
                 e_1 = ast::expr_send(lval_1, expr_1, ann);
@@ -1575,12 +1578,13 @@ fn resolve_local_types_in_annotation(&option::t[@fn_ctxt] env, &ast::ann ann)
             ret ann;
         }
         case (ast::ann_type(?tg, ?typ, ?tps, ?ts_info)) {
-            auto tt = ann_to_type(ann);
+            auto tt = ann_to_type(fcx.ccx.node_types, ann);
             if (!ty::type_contains_locals(fcx.ccx.tcx, tt)) {
                 ret ann;
             }
             auto f = bind resolver(fcx, _);
-            auto new_type = ty::fold_ty(fcx.ccx.tcx, f, ann_to_type(ann));
+            auto new_type = ty::fold_ty(fcx.ccx.tcx, f,
+                                        ann_to_type(fcx.ccx.node_types, ann));
             ret ast::ann_type(tg, new_type, tps, ts_info);
         }
     }
@@ -1788,7 +1792,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                     args_0 += vec(some[@ast::expr](a_0));
 
                     auto arg_ty = rec(mode=mo_either,
-                                      ty=expr_ty(fcx.ccx.tcx, a_0));
+                                      ty=expr_ty(fcx.ccx.tcx,
+                                                 fcx.ccx.node_types, a_0));
                     _vec::push[arg](arg_tys_0, arg_ty);
                 }
                 case (none[@ast::expr]) {
@@ -1802,7 +1807,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
         auto rt_0 = next_ty_var(fcx.ccx);
         auto t_0;
-        alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, f_0))) {
+        alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                         f_0))) {
             case (ty::ty_fn(?proto, _, _))   {
                 t_0 = ty::mk_fn(fcx.ccx.tcx, proto, arg_tys_0, rt_0);
             }
@@ -1816,10 +1822,11 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         }
 
         // Unify the callee and arguments.
-        auto tpt_0 = ty::expr_ty_params_and_ty(fcx.ccx.tcx, f_0);
+        auto tpt_0 = ty::expr_ty_params_and_ty(fcx.ccx.tcx,
+                                               fcx.ccx.node_types, f_0);
         auto tpt_1 = Demand::full(fcx, f.span, tpt_0._1, t_0, tpt_0._0,
                                  NO_AUTODEREF);
-        auto f_1 = ty::replace_expr_type(f_0, tpt_1);
+        auto f_1 = ty::replace_expr_type(fcx.ccx.node_types, f_0, tpt_1);
 
         ret tup(f_1, args_0);
     }
@@ -1830,14 +1837,15 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         -> tup(@ast::expr, @ast::expr, ast::ann) {
         auto lhs_0 = check_expr(fcx, lhs);
         auto rhs_0 = check_expr(fcx, rhs);
-        auto lhs_t0 = expr_ty(fcx.ccx.tcx, lhs_0);
-        auto rhs_t0 = expr_ty(fcx.ccx.tcx, rhs_0);
+        auto lhs_t0 = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, lhs_0);
+        auto rhs_t0 = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, rhs_0);
 
         auto lhs_1 = Pushdown::pushdown_expr(fcx, rhs_t0, lhs_0);
-        auto rhs_1 = Pushdown::pushdown_expr(fcx, expr_ty(fcx.ccx.tcx, lhs_1),
-                                            rhs_0);
+        auto rhs_1 = Pushdown::pushdown_expr(fcx,
+            expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, lhs_1), rhs_0);
 
-        auto ann = triv_ann(a, expr_ty(fcx.ccx.tcx, rhs_1));
+        auto ann = triv_ann(a, expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                       rhs_1));
         ret tup(lhs_1, rhs_1, ann);
     }
 
@@ -1873,16 +1881,16 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         case (ast::expr_binary(?binop, ?lhs, ?rhs, ?a)) {
             auto lhs_0 = check_expr(fcx, lhs);
             auto rhs_0 = check_expr(fcx, rhs);
-            auto lhs_t0 = expr_ty(fcx.ccx.tcx, lhs_0);
-            auto rhs_t0 = expr_ty(fcx.ccx.tcx, rhs_0);
+            auto lhs_t0 = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, lhs_0);
+            auto rhs_t0 = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, rhs_0);
 
             // FIXME: Binops have a bit more subtlety than this.
             auto lhs_1 = Pushdown::pushdown_expr_full(fcx, rhs_t0, lhs_0,
                                                      AUTODEREF_OK);
             auto rhs_1 =
                 Pushdown::pushdown_expr_full(fcx,
-                                            expr_ty(fcx.ccx.tcx, lhs_1),
-                                            rhs_0, AUTODEREF_OK);
+                    expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, lhs_1), rhs_0,
+                    AUTODEREF_OK);
 
             auto t = strip_boxes(fcx.ccx.tcx, lhs_t0);
             alt (binop) {
@@ -1904,7 +1912,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
         case (ast::expr_unary(?unop, ?oper, ?a)) {
             auto oper_1 = check_expr(fcx, oper);
-            auto oper_t = expr_ty(fcx.ccx.tcx, oper_1);
+            auto oper_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, oper_1);
             alt (unop) {
                 case (ast::box(?mut)) {
                     oper_t = ty::mk_box(fcx.ccx.tcx,
@@ -1958,7 +1966,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
         case (ast::expr_ext(?p, ?args, ?body, ?expanded, ?a)) {
             auto exp_ = check_expr(fcx, expanded);
-            auto t = expr_ty(fcx.ccx.tcx, exp_);
+            auto t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, exp_);
             auto ann = triv_ann(a, t);
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_ext(p, args, body, exp_,
@@ -2052,7 +2060,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         case (ast::expr_check(?e, ?a)) {
             auto expr_t = check_expr(fcx, e);
             Demand::simple(fcx, expr.span, ty::mk_bool(fcx.ccx.tcx),
-                          expr_ty(fcx.ccx.tcx, expr_t));
+                          expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, expr_t));
             /* e must be a call expr where all arguments are either
              literals or slots */
             alt (e.node) {
@@ -2094,10 +2102,10 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         case (ast::expr_assert(?e, ?a)) {
             auto expr_t = check_expr(fcx, e);
             Demand::simple(fcx, expr.span, ty::mk_bool(fcx.ccx.tcx),
-                          expr_ty(fcx.ccx.tcx, expr_t));
+                          expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, expr_t));
             ret @fold::respan[ast::expr_]
                 (expr.span, ast::expr_assert(expr_t,
-                                            plain_ann(a, fcx.ccx.tcx)));
+                                             plain_ann(a, fcx.ccx.tcx)));
         }
 
         case (ast::expr_assign(?lhs, ?rhs, ?a)) {
@@ -2126,12 +2134,13 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             auto lhs_0 = check_expr(fcx, lhs);
             auto rhs_0 = check_expr(fcx, rhs);
-            auto rhs_t = expr_ty(fcx.ccx.tcx, rhs_0);
+            auto rhs_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, rhs_0);
 
             auto chan_t = ty::mk_chan(fcx.ccx.tcx, rhs_t);
             auto lhs_1 = Pushdown::pushdown_expr(fcx, chan_t, lhs_0);
             auto item_t;
-            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, lhs_1))) {
+            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                             lhs_1))) {
                 case (ty::ty_chan(?it)) {
                     item_t = it;
                 }
@@ -2151,12 +2160,13 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             auto lhs_0 = check_expr(fcx, lhs);
             auto rhs_0 = check_expr(fcx, rhs);
-            auto lhs_t1 = expr_ty(fcx.ccx.tcx, lhs_0);
+            auto lhs_t1 = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, lhs_0);
 
             auto port_t = ty::mk_port(fcx.ccx.tcx, lhs_t1);
             auto rhs_1 = Pushdown::pushdown_expr(fcx, port_t, rhs_0);
             auto item_t;
-            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, rhs_0))) {
+            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                             rhs_0))) {
                 case (ty::ty_port(?it)) {
                     item_t = it;
                 }
@@ -2178,7 +2188,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                                                   cond_0);
 
             auto thn_0 = check_block(fcx, thn);
-            auto thn_t = block_ty(fcx.ccx.tcx, thn_0);
+            auto thn_t = block_ty(fcx.ccx.tcx, fcx.ccx.node_types, thn_0);
 
             auto elsopt_1;
             auto elsopt_t;
@@ -2187,7 +2197,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                     auto els_0 = check_expr(fcx, els);
                     auto els_1 = Pushdown::pushdown_expr(fcx, thn_t, els_0);
                     elsopt_1 = some[@ast::expr](els_1);
-                    elsopt_t = expr_ty(fcx.ccx.tcx, els_1);
+                    elsopt_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                       els_1);
                 }
                 case (none[@ast::expr]) {
                     elsopt_1 = none[@ast::expr];
@@ -2247,7 +2258,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                                                   cond_0);
             auto body_1 = check_block(fcx, body);
 
-            auto ann = triv_ann(a, block_ty(fcx.ccx.tcx, body_1));
+            auto ann = triv_ann(a, block_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                            body_1));
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_do_while(body_1, cond_1,
                                                           ann));
@@ -2258,13 +2270,14 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             // Typecheck the patterns first, so that we get types for all the
             // bindings.
-            auto pattern_ty = expr_ty(fcx.ccx.tcx, expr_0);
+            auto pattern_ty = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                      expr_0);
 
             let vec[@ast::pat] pats_0 = vec();
             for (ast::arm arm in arms) {
                 auto pat_0 = check_pat(fcx, arm.pat);
                 pattern_ty = Demand::simple(fcx, pat_0.span, pattern_ty,
-                                           pat_ty(fcx.ccx.tcx, pat_0));
+                    pat_ty(fcx.ccx.tcx, fcx.ccx.node_types, pat_0));
                 pats_0 += vec(pat_0);
             }
 
@@ -2280,7 +2293,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             for (ast::arm arm in arms) {
                 auto block_0 = check_block(fcx, arm.block);
                 result_ty = Demand::simple(fcx, block_0.span, result_ty,
-                                          block_ty(fcx.ccx.tcx, block_0));
+                    block_ty(fcx.ccx.tcx, fcx.ccx.node_types, block_0));
                 blocks_0 += vec(block_0);
             }
 
@@ -2308,7 +2321,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             auto ann;
             alt (b_0.node.expr) {
                 case (some[@ast::expr](?expr)) {
-                    ann = triv_ann(a, expr_ty(fcx.ccx.tcx, expr));
+                    ann = triv_ann(a, expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                              expr));
                 }
                 case (none[@ast::expr]) {
                     ann = triv_ann(a, ty::mk_nil(fcx.ccx.tcx));
@@ -2325,7 +2339,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             auto proto_1;
             let vec[ty::arg] arg_tys_1 = vec();
             auto rt_1;
-            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, result._0))) {
+            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                             result._0))) {
                 case (ty::ty_fn(?proto, ?arg_tys, ?rt)) {
                     proto_1 = proto;
                     rt_1 = rt;
@@ -2369,7 +2384,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             // Pull the return type out of the type of the function.
             auto rt_1 = ty::mk_nil(fcx.ccx.tcx);  // FIXME: typestate botch
-            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, f_1))) {
+            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                             f_1))) {
                 case (ty::ty_fn(_,_,?rt))    { rt_1 = rt; }
                 case (ty::ty_native_fn(_, _, ?rt))    { rt_1 = rt; }
                 case (_) {
@@ -2427,7 +2443,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             auto args_1 = result._1;
 
             // Check the return type
-            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, f_1))) {
+            alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                             f_1))) {
                 case (ty::ty_fn(_,_,?rt)) {
                     alt (struct(fcx.ccx.tcx, rt)) {
                         case (ty::ty_nil) {
@@ -2455,11 +2472,13 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             auto e_1 = check_expr(fcx, e);
             auto t_1 = ast_ty_to_ty_crate(fcx.ccx, t);
             // FIXME: there are more forms of cast to support, eventually.
-            if (! (type_is_scalar(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, e_1)) &&
-                   type_is_scalar(fcx.ccx.tcx, t_1))) {
+            if (! (type_is_scalar(fcx.ccx.tcx,
+                    expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, e_1)) &&
+                    type_is_scalar(fcx.ccx.tcx, t_1))) {
                 fcx.ccx.sess.span_err(expr.span,
                     "non-scalar cast: " +
-                    ty_to_str(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, e_1)) +
+                    ty_to_str(fcx.ccx.tcx,
+                              expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, e_1)) +
                     " as " + ty_to_str(fcx.ccx.tcx, t_1));
             }
 
@@ -2476,12 +2495,13 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                 t = next_ty_var(fcx.ccx);
             } else {
                 auto expr_1 = check_expr(fcx, args.(0));
-                t = expr_ty(fcx.ccx.tcx, expr_1);
+                t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, expr_1);
             }
 
             for (@ast::expr e in args) {
                 auto expr_1 = check_expr(fcx, e);
-                auto expr_t = expr_ty(fcx.ccx.tcx, expr_1);
+                auto expr_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                      expr_1);
                 Demand::simple(fcx, expr.span, t, expr_t);
                 _vec::push[@ast::expr](args_1,expr_1);
             }
@@ -2498,7 +2518,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             for (ast::elt e in elts) {
                 auto expr_1 = check_expr(fcx, e.expr);
-                auto expr_t = expr_ty(fcx.ccx.tcx, expr_1);
+                auto expr_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                      expr_1);
                 _vec::push[ast::elt](elts_1, rec(expr=expr_1 with e));
                 elts_mt += vec(rec(ty=expr_t, mut=e.mut));
             }
@@ -2523,7 +2544,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             for (ast::field f in fields) {
                 auto expr_1 = check_expr(fcx, f.expr);
-                auto expr_t = expr_ty(fcx.ccx.tcx, expr_1);
+                auto expr_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                      expr_1);
                 _vec::push[ast::field](fields_1, rec(expr=expr_1 with f));
 
                 auto expr_mt = rec(ty=expr_t, mut=f.mut);
@@ -2539,7 +2561,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
                 case (some[@ast::expr](?bexpr)) {
                     auto bexpr_1 = check_expr(fcx, bexpr);
-                    auto bexpr_t = expr_ty(fcx.ccx.tcx, bexpr_1);
+                    auto bexpr_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                           bexpr_1);
 
                     let vec[field] base_fields = vec();
 
@@ -2582,7 +2605,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         case (ast::expr_field(?base, ?field, ?a)) {
             auto base_1 = check_expr(fcx, base);
             auto base_t = strip_boxes(fcx.ccx.tcx,
-                                      expr_ty(fcx.ccx.tcx, base_1));
+                expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, base_1));
             alt (struct(fcx.ccx.tcx, base_t)) {
                 case (ty::ty_tup(?args)) {
                     let uint ix = ty::field_num(fcx.ccx.sess,
@@ -2640,10 +2663,10 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         case (ast::expr_index(?base, ?idx, ?a)) {
             auto base_1 = check_expr(fcx, base);
             auto base_t = strip_boxes(fcx.ccx.tcx,
-                                      expr_ty(fcx.ccx.tcx, base_1));
+                expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, base_1));
 
             auto idx_1 = check_expr(fcx, idx);
-            auto idx_t = expr_ty(fcx.ccx.tcx, idx_1); 
+            auto idx_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, idx_1); 
             alt (struct(fcx.ccx.tcx, base_t)) {
                 case (ty::ty_vec(?mt)) {
                     if (! type_is_integral(fcx.ccx.tcx, idx_t)) {
@@ -2690,7 +2713,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
         case (ast::expr_chan(?x, ?a)) {
             auto expr_1 = check_expr(fcx, x);
-            auto port_t = expr_ty(fcx.ccx.tcx, expr_1);
+            auto port_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, expr_1);
             alt (struct(fcx.ccx.tcx, port_t)) {
                 case (ty::ty_port(?subtype)) {
                     auto ct = ty::mk_chan(fcx.ccx.tcx, subtype);
@@ -2802,8 +2825,7 @@ fn check_stmt(&@fn_ctxt fcx, &@ast::stmt stmt) -> @ast::stmt {
         case (ast::stmt_expr(?expr,?a)) {
             auto expr_t = check_expr(fcx, expr);
             expr_t = Pushdown::pushdown_expr(fcx,
-                                             expr_ty(fcx.ccx.tcx, expr_t),
-                                             expr_t);
+                expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, expr_t), expr_t);
             ret @fold::respan(stmt.span,
                               ast::stmt_expr(expr_t,
                                              plain_ann(a, fcx.ccx.tcx)));
@@ -2825,8 +2847,7 @@ fn check_block(&@fn_ctxt fcx, &ast::block block) -> ast::block {
         case (some[@ast::expr](?e)) {
             auto expr_t = check_expr(fcx, e);
             expr_t = Pushdown::pushdown_expr(fcx,
-                                            expr_ty(fcx.ccx.tcx, expr_t),
-                                            expr_t);
+                expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, expr_t), expr_t);
             expr = some[@ast::expr](expr_t);
         }
     }
@@ -2840,7 +2861,7 @@ fn check_const(&@crate_ctxt ccx, &span sp, &ast::ident ident, &@ast::ty t,
                &@ast::expr e, &ast::def_id id, &ast::ann ann) -> @ast::item {
     // FIXME: this is kinda a kludge; we manufacture a fake "function context"
     // for checking the initializer expression.
-    auto rty = ann_to_type(ann);
+    auto rty = ann_to_type(ccx.node_types, ann);
     let @fn_ctxt fcx = @rec(ret_ty = rty,
                             purity = ast::pure_fn,
                             locals = @common::new_def_hash[ty::t](),
@@ -2862,7 +2883,7 @@ fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
 
 
     for (ast::obj_field f in ccx.obj_fields) {
-        auto field_ty = ty::ann_to_type(f.ann);
+        auto field_ty = ty::ann_to_type(ccx.node_types, f.ann);
         local_ty_table.insert(f.id, field_ty);
     }
 
@@ -2986,7 +3007,9 @@ fn mk_fn_purity_table(&@ast::crate crate) -> @fn_purity_table {
     ret res;
 }
 
-type typecheck_result = tup(@ast::crate, ty::type_cache);
+// TODO: Remove the third element of this tuple; rely solely on the node type
+// table.
+type typecheck_result = tup(node_type_table, ty::type_cache, @ast::crate);
 
 fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
     auto sess = tcx.sess;
@@ -3000,6 +3023,7 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
         map::mk_hashmap[unify_cache_entry,ty::Unify::result](hasher, eqer);
     auto fpt =
         mk_fn_purity_table(crate); // use a variation on Collect
+    let node_type_table node_types = vec();
 
     auto ccx = @rec(sess=sess,
                     type_cache=result._1,
@@ -3011,7 +3035,8 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
                     unify_cache=unify_cache,
                     mutable cache_hits=0u,
                     mutable cache_misses=0u,
-                    tcx=tcx);
+                    tcx=tcx,
+                    mutable node_types=node_types);
 
     auto fld = fold::new_identity_fold[@crate_ctxt]();
 
@@ -3025,7 +3050,7 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
     log #fmt("cache hit rate: %u/%u", ccx.cache_hits,
              ccx.cache_hits + ccx.cache_misses);
 
-    ret tup(crate_1, ccx.type_cache);
+    ret tup(node_types, ccx.type_cache, crate_1);
 }
 
 //
