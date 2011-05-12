@@ -336,19 +336,14 @@ fn parse_constrs(parser p) -> common.spanned[vec[@ast.constr]] {
     let vec[@ast.constr] constrs = vec();
     if (p.peek() == token.COLON) {
         p.bump();
-        let bool more = true;
-        while (more) {
-            alt (p.peek()) {
-                case (token.IDENT(_)) {
-                    auto constr = parse_ty_constr(p);
-                    hi = constr.span.hi;
-                    Vec.push[@ast.constr](constrs, constr);
-                    if (p.peek() == token.COMMA) {
-                        p.bump();
-                        more = false;
-                    }
-                }
-                case (_) { more = false; }
+        while (true) {
+            auto constr = parse_ty_constr(p);
+            hi = constr.span.hi;
+            Vec.push[@ast.constr](constrs, constr);
+            if (p.peek() == token.COMMA) {
+                p.bump();
+            } else {
+                break;
             }
         }
     }
