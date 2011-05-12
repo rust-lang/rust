@@ -1657,115 +1657,43 @@ fn pat_ty(&ctxt cx, &node_type_table ntt, &@ast::pat pat) -> t {
 }
 
 fn expr_ann(&@ast::expr e) -> ast::ann {
-    alt(e.node) {
-        case (ast::expr_vec(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_tup(_,?a)) {
-            ret a;
-        }
-        case (ast::expr_rec(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_call(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_bind(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_binary(_,_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_unary(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_lit(_,?a)) {
-            ret a;
-        }
-        case (ast::expr_cast(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_if(_,_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_while(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_for(_,_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_for_each(_,_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_do_while(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_alt(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_block(_,?a)) {
-            ret a;
-        }
-        case (ast::expr_assign(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_assign_op(_,_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_send(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_recv(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_field(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_index(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_path(_,?a)) {
-            ret a;
-        }
-        case (ast::expr_ext(_,_,_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_fail(?a)) {
-            ret a;
-        }
-        case (ast::expr_ret(_,?a)) {
-            ret a; 
-        }
-        case (ast::expr_put(_,?a)) {
-            ret a;
-        }
-        case (ast::expr_be(_,?a)) {
-            ret a;
-        }
-        case (ast::expr_log(_,_,?a)) {
-            ret a;
-        }
-        case (ast::expr_assert(_,?a)) {
-            ret a;
-        }
-        case (ast::expr_check(_,?a)) {
-            ret a;
-        }
-        case (ast::expr_port(?a)) {
-            ret a;
-        }
-        case (ast::expr_chan(_,?a)) {
-            ret a;
-        }
-        case (ast::expr_break(?a)) {
-            ret a;
-        }
-        case (ast::expr_cont(?a)) {
-            ret a;
-        }
-        case (ast::expr_self_method(_, ?a)) {
-            ret a;
-        }
+    alt (e.node) {
+        case (ast::expr_vec(_,_,?a)) { ret a; }
+        case (ast::expr_tup(_,?a)) { ret a; }
+        case (ast::expr_rec(_,_,?a)) { ret a; }
+        case (ast::expr_call(_,_,?a)) { ret a; }
+        case (ast::expr_bind(_,_,?a)) { ret a; }
+        case (ast::expr_binary(_,_,_,?a)) { ret a; }
+        case (ast::expr_unary(_,_,?a)) { ret a; }
+        case (ast::expr_lit(_,?a)) { ret a; }
+        case (ast::expr_cast(_,_,?a)) { ret a; }
+        case (ast::expr_if(_,_,_,?a)) { ret a; }
+        case (ast::expr_while(_,_,?a)) { ret a; }
+        case (ast::expr_for(_,_,_,?a)) { ret a; }
+        case (ast::expr_for_each(_,_,_,?a)) { ret a; }
+        case (ast::expr_do_while(_,_,?a)) { ret a; }
+        case (ast::expr_alt(_,_,?a)) { ret a; }
+        case (ast::expr_block(_,?a)) { ret a; }
+        case (ast::expr_assign(_,_,?a)) { ret a; }
+        case (ast::expr_assign_op(_,_,_,?a)) { ret a; }
+        case (ast::expr_send(_,_,?a)) { ret a; }
+        case (ast::expr_recv(_,_,?a)) { ret a; }
+        case (ast::expr_field(_,_,?a)) { ret a; }
+        case (ast::expr_index(_,_,?a)) { ret a; }
+        case (ast::expr_path(_,?a)) { ret a; }
+        case (ast::expr_ext(_,_,_,_,?a)) { ret a; }
+        case (ast::expr_fail(?a)) { ret a; }
+        case (ast::expr_ret(_,?a)) { ret a; }
+        case (ast::expr_put(_,?a)) { ret a; }
+        case (ast::expr_be(_,?a)) { ret a; }
+        case (ast::expr_log(_,_,?a)) { ret a; }
+        case (ast::expr_assert(_,?a)) { ret a; }
+        case (ast::expr_check(_,?a)) { ret a; }
+        case (ast::expr_port(?a)) { ret a; }
+        case (ast::expr_chan(_,?a)) { ret a; }
+        case (ast::expr_break(?a)) { ret a; }
+        case (ast::expr_cont(?a)) { ret a; }
+        case (ast::expr_self_method(_, ?a)) { ret a; }
     }
 }
 
