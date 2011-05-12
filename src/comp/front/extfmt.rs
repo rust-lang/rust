@@ -163,7 +163,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast.expr] args)
     fn make_path_vec(str ident) -> vec[str] {
         // FIXME: #fmt can't currently be used from within std
         // because we're explicitly referencing the 'std' crate here
-        ret vec("std", "ExtFmt", "RT", ident);
+        ret vec("std", "extfmt", "RT", ident);
     }
 
     fn make_rt_path_expr(parser p, common.span sp, str ident) -> @ast.expr {
