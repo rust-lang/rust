@@ -65,9 +65,7 @@ fn method_ty_to_fn_ty(ctxt cx, method m) -> t {
     ret mk_fn(cx, m.proto, m.inputs, m.output);
 }
 
-// Never construct these manually. These are interned. Also don't assume that
-// you can access the fields of this type directly; soon these will just be
-// uints, and that won't work anymore.
+// Never construct these manually. These are interned.
 //
 // TODO: It'd be really nice to be able to hide this definition from the
 // outside world, to enforce the above invariants.
@@ -78,7 +76,8 @@ type raw_t = rec(sty struct,
                  bool has_bound_params,
                  bool has_vars,
                  bool has_locals);
-type t = @raw_t;
+
+type t = uint;
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in front/ast.rs as well.
@@ -137,76 +136,62 @@ tag type_err {
 type ty_param_count_and_ty = tup(uint, t);
 type type_cache = hashmap[ast.def_id,ty_param_count_and_ty];
 
-type type_store = rec(vec[ty.t] empty_vec_ty,
-                      vec[mutable ty.t] empty_vec_mutable_ty,
-                      ty.t t_nil,
-                      ty.t t_bool,
-                      ty.t t_int,
-                      ty.t t_float,
-                      ty.t t_uint,
+const uint idx_nil      = 0u;
+const uint idx_bool     = 1u;
+const uint idx_int      = 2u;
+const uint idx_float    = 3u;
+const uint idx_uint     = 4u;
+const uint idx_i8       = 5u;
+const uint idx_i16      = 6u;
+const uint idx_i32      = 7u;
+const uint idx_i64      = 8u;
+const uint idx_u8       = 9u;
+const uint idx_u16      = 10u;
+const uint idx_u32      = 11u;
+const uint idx_u64      = 12u;
+const uint idx_f32      = 13u;
+const uint idx_f64      = 14u;
+const uint idx_char     = 15u;
+const uint idx_str      = 16u;
+const uint idx_task     = 17u;
+const uint idx_native   = 18u;
+const uint idx_type     = 19u;
+const uint idx_first_others = 20u;
 
-                      ty.t t_i8,
-                      ty.t t_i16,
-                      ty.t t_i32,
-                      ty.t t_i64,
-
-                      ty.t t_u8,
-                      ty.t t_u16,
-                      ty.t t_u32,
-                      ty.t t_u64,
-
-                      ty.t t_f32,
-                      ty.t t_f64,
-
-                      ty.t t_char,
-                      ty.t t_str,
-
-                      ty.t t_task,
-                      ty.t t_native,
-                      ty.t t_type,
-
-                      mutable vec[ty.t] t_params,
-                      mutable vec[ty.t] t_bound_params,
-                      mutable vec[ty.t] t_vars,
-                      hashmap[t,t] others);
+type type_store = rec(mutable vec[raw_t] others,
+                      hashmap[raw_t,uint] other_structural);
 
 fn mk_type_store() -> @type_store {
-    auto hasher = hash_ty;
-    auto eqer = eq_ty_full;
+    let vec[raw_t] others = vec();
+    let hashmap[raw_t,uint] ost =
+        Map.mk_hashmap[raw_t,uint](hash_raw_ty, eq_raw_ty);
 
-    ret @rec(empty_vec_ty = Vec.empty[ty.t](),
-             empty_vec_mutable_ty = Vec.empty_mut[ty.t](),
-             t_nil = mk_ty_full(ty_nil, none[str]),
-             t_bool = mk_ty_full(ty_bool, none[str]),
-             t_int = mk_ty_full(ty_int, none[str]),
-             t_float = mk_ty_full(ty_float, none[str]),
-             t_uint = mk_ty_full(ty_uint, none[str]),
+    auto ts = @rec(mutable others=others, other_structural=ost);
 
-             t_i8 = mk_ty_full(ty_machine(ty_i8), none[str]),
-             t_i16 = mk_ty_full(ty_machine(ty_i16), none[str]),
-             t_i32 = mk_ty_full(ty_machine(ty_i32), none[str]),
-             t_i64 = mk_ty_full(ty_machine(ty_i64), none[str]),
+    intern(ts, ty_nil, none[str]);
+    intern(ts, ty_bool, none[str]);
+    intern(ts, ty_int, none[str]);
+    intern(ts, ty_float, none[str]);
+    intern(ts, ty_uint, none[str]);
+    intern(ts, ty_machine(ty_i8), none[str]);
+    intern(ts, ty_machine(ty_i16), none[str]);
+    intern(ts, ty_machine(ty_i32), none[str]);
+    intern(ts, ty_machine(ty_i64), none[str]);
+    intern(ts, ty_machine(ty_u8), none[str]);
+    intern(ts, ty_machine(ty_u16), none[str]);
+    intern(ts, ty_machine(ty_u32), none[str]);
+    intern(ts, ty_machine(ty_u64), none[str]);
+    intern(ts, ty_machine(ty_f32), none[str]);
+    intern(ts, ty_machine(ty_f64), none[str]);
+    intern(ts, ty_char, none[str]);
+    intern(ts, ty_str, none[str]);
+    intern(ts, ty_task, none[str]);
+    intern(ts, ty_native, none[str]);
+    intern(ts, ty_type, none[str]);
 
-             t_u8 = mk_ty_full(ty_machine(ty_u8), none[str]),
-             t_u16 = mk_ty_full(ty_machine(ty_u16), none[str]),
-             t_u32 = mk_ty_full(ty_machine(ty_u32), none[str]),
-             t_u64 = mk_ty_full(ty_machine(ty_u64), none[str]),
+    assert Vec.len(ts.others) == idx_first_others;
 
-             t_f32 = mk_ty_full(ty_machine(ty_f32), none[str]),
-             t_f64 = mk_ty_full(ty_machine(ty_f64), none[str]),
-
-             t_char = mk_ty_full(ty_char, none[str]),
-             t_str = mk_ty_full(ty_str, none[str]),
-
-             t_task = mk_ty_full(ty_task, none[str]),
-             t_native = mk_ty_full(ty_native, none[str]),
-             t_type = mk_ty_full(ty_type, none[str]),
-
-             mutable t_params = Vec.empty[ty.t](),
-             mutable t_bound_params = Vec.empty[ty.t](),
-             mutable t_vars = Vec.empty[ty.t](),
-
-             others=Map.mk_hashmap[t,t](hasher, eqer));
+    ret ts;
 }
 
 fn mk_rcache() -> creader_cache {
@@ -231,9 +216,11 @@ fn mk_ctxt(session.session s) -> ctxt {
             short_names_cache =
                 Map.mk_hashmap[ty.t,str](ty.hash_ty, ty.eq_ty));
 }
+
+
 // Type constructors
 
-fn mk_ty_full(&sty st, &Option.t[str] cname) -> t {
+fn mk_raw_ty(&@type_store ts, &sty st, &Option.t[str] cname) -> raw_t {
     auto h = hash_type_info(st, cname);
 
     let bool has_params = false;
@@ -241,47 +228,52 @@ fn mk_ty_full(&sty st, &Option.t[str] cname) -> t {
     let bool has_vars = false;
     let bool has_locals = false;
 
-    fn derive_flags_t(&mutable bool has_params,
+    fn derive_flags_t(@type_store ts,
+                      &mutable bool has_params,
                       &mutable bool has_bound_params,
                       &mutable bool has_vars,
                       &mutable bool has_locals,
                       &t tt) {
-        has_params = has_params || tt.has_params;
-        has_bound_params = has_bound_params || tt.has_bound_params;
-        has_vars = has_vars || tt.has_vars;
-        has_locals = has_locals || tt.has_locals;
+        auto rt = ts.others.(tt);
+        has_params = has_params || rt.has_params;
+        has_bound_params = has_bound_params || rt.has_bound_params;
+        has_vars = has_vars || rt.has_vars;
+        has_locals = has_locals || rt.has_locals;
     }
 
-    fn derive_flags_mt(&mutable bool has_params,
+    fn derive_flags_mt(@type_store ts,
+                       &mutable bool has_params,
                        &mutable bool has_bound_params,
                        &mutable bool has_vars,
                        &mutable bool has_locals,
                        &mt m) {
-        derive_flags_t(has_params, has_bound_params,
+        derive_flags_t(ts, has_params, has_bound_params,
                        has_vars, has_locals, m.ty);
     }
 
 
-    fn derive_flags_arg(&mutable bool has_params,
+    fn derive_flags_arg(@type_store ts,
+                        &mutable bool has_params,
                         &mutable bool has_bound_params,
                         &mutable bool has_vars,
                         &mutable bool has_locals,
                         &arg a) {
-        derive_flags_t(has_params, has_bound_params,
+        derive_flags_t(ts, has_params, has_bound_params,
                        has_vars, has_locals, a.ty);
     }
 
-    fn derive_flags_sig(&mutable bool has_params,
+    fn derive_flags_sig(@type_store ts,
+                        &mutable bool has_params,
                         &mutable bool has_bound_params,
                         &mutable bool has_vars,
                         &mutable bool has_locals,
                         &vec[arg] args,
                         &t tt) {
         for (arg a in args) {
-            derive_flags_arg(has_params, has_bound_params,
+            derive_flags_arg(ts, has_params, has_bound_params,
                              has_vars, has_locals, a);
         }
-        derive_flags_t(has_params, has_bound_params,
+        derive_flags_t(ts, has_params, has_bound_params,
                        has_vars, has_locals, tt);
     }
 
@@ -292,57 +284,57 @@ fn mk_ty_full(&sty st, &Option.t[str] cname) -> t {
         case (ty_local(_)) { has_locals = true; }
         case (ty_tag(_, ?tys)) {
             for (t tt in tys) {
-                derive_flags_t(has_params, has_bound_params,
+                derive_flags_t(ts, has_params, has_bound_params,
                                has_vars, has_locals, tt);
             }
         }
         case (ty_box(?m)) {
-            derive_flags_mt(has_params, has_bound_params,
+            derive_flags_mt(ts, has_params, has_bound_params,
                             has_vars, has_locals, m);
         }
 
         case (ty_vec(?m)) {
-            derive_flags_mt(has_params, has_bound_params,
+            derive_flags_mt(ts, has_params, has_bound_params,
                             has_vars, has_locals, m);
         }
 
         case (ty_port(?tt)) {
-            derive_flags_t(has_params, has_bound_params,
+            derive_flags_t(ts, has_params, has_bound_params,
                            has_vars, has_locals, tt);
         }
 
         case (ty_chan(?tt)) {
-            derive_flags_t(has_params, has_bound_params,
+            derive_flags_t(ts, has_params, has_bound_params,
                            has_vars, has_locals, tt);
         }
 
         case (ty_tup(?mts)) {
             for (mt m in mts) {
-                derive_flags_mt(has_params, has_bound_params,
+                derive_flags_mt(ts, has_params, has_bound_params,
                                 has_vars, has_locals, m);
             }
         }
 
         case (ty_rec(?flds)) {
             for (field f in flds) {
-                derive_flags_mt(has_params, has_bound_params,
+                derive_flags_mt(ts, has_params, has_bound_params,
                                 has_vars, has_locals, f.mt);
             }
         }
 
         case (ty_fn(_, ?args, ?tt)) {
-            derive_flags_sig(has_params, has_bound_params,
+            derive_flags_sig(ts, has_params, has_bound_params,
                              has_vars, has_locals, args, tt);
         }
 
         case (ty_native_fn(_, ?args, ?tt)) {
-            derive_flags_sig(has_params, has_bound_params,
+            derive_flags_sig(ts, has_params, has_bound_params,
                              has_vars, has_locals, args, tt);
         }
 
         case (ty_obj(?meths)) {
             for (method m in meths) {
-                derive_flags_sig(has_params, has_bound_params,
+                derive_flags_sig(ts, has_params, has_bound_params,
                                  has_vars, has_locals,
                                  m.inputs, m.output);
             }
@@ -350,26 +342,37 @@ fn mk_ty_full(&sty st, &Option.t[str] cname) -> t {
         case (_) { }
     }
 
-    ret @rec(struct=st, cname=cname, hash=h,
-             has_params = has_params,
-             has_bound_params = has_bound_params,
-             has_vars = has_vars,
-             has_locals = has_locals);
+    ret rec(struct=st, cname=cname, hash=h,
+            has_params = has_params,
+            has_bound_params = has_bound_params,
+            has_vars = has_vars,
+            has_locals = has_locals);
+}
+
+fn intern_raw_ty(&@type_store ts, &raw_t rt) {
+    auto type_num = Vec.len[raw_t](ts.others);
+    ts.others += vec(rt);
+    ts.other_structural.insert(rt, type_num);
+}
+
+fn intern(&@type_store ts, &sty st, &Option.t[str] cname) {
+    intern_raw_ty(ts, mk_raw_ty(ts, st, cname));
 }
 
 fn gen_ty_full(&ctxt cx, &sty st, &Option.t[str] cname) -> t {
-    auto new_type = mk_ty_full(st, cname);
+    auto raw_type = mk_raw_ty(cx.ts, st, cname);
 
     // Is it interned?
-    alt (cx.ts.others.find(new_type)) {
+    alt (cx.ts.other_structural.find(raw_type)) {
         case (some[t](?typ)) {
             ret typ;
         }
         case (none[t]) {
             // Nope. Insert it and return.
-            cx.ts.others.insert(new_type, new_type);
-            // log_err "added: " + ty_to_str(tystore, new_type);
-            ret new_type;
+            auto type_num = Vec.len[raw_t](cx.ts.others);
+            intern_raw_ty(cx.ts, raw_type);
+            // log_err "added: " + ty_to_str(tystore, raw_type);
+            ret type_num;
         }
     }
 }
@@ -380,32 +383,32 @@ fn gen_ty(&ctxt cx, &sty st) -> t {
     ret gen_ty_full(cx, st, none[str]);
 }
 
-fn mk_nil(&ctxt cx) -> t          { ret cx.ts.t_nil; }
-fn mk_bool(&ctxt cx) -> t         { ret cx.ts.t_bool; }
-fn mk_int(&ctxt cx) -> t          { ret cx.ts.t_int; }
-fn mk_float(&ctxt cx) -> t        { ret cx.ts.t_float; }
-fn mk_uint(&ctxt cx) -> t         { ret cx.ts.t_uint; }
+fn mk_nil(&ctxt cx) -> t          { ret idx_nil; }
+fn mk_bool(&ctxt cx) -> t         { ret idx_bool; }
+fn mk_int(&ctxt cx) -> t          { ret idx_int; }
+fn mk_float(&ctxt cx) -> t        { ret idx_float; }
+fn mk_uint(&ctxt cx) -> t         { ret idx_uint; }
 
 fn mk_mach(&ctxt cx, &util.common.ty_mach tm) -> t {
     alt (tm) {
-        case (ty_u8)  { ret cx.ts.t_u8; }
-        case (ty_u16) { ret cx.ts.t_u16; }
-        case (ty_u32) { ret cx.ts.t_u32; }
-        case (ty_u64) { ret cx.ts.t_u64; }
+        case (ty_u8)  { ret idx_u8; }
+        case (ty_u16) { ret idx_u16; }
+        case (ty_u32) { ret idx_u32; }
+        case (ty_u64) { ret idx_u64; }
 
-        case (ty_i8)  { ret cx.ts.t_i8; }
-        case (ty_i16) { ret cx.ts.t_i16; }
-        case (ty_i32) { ret cx.ts.t_i32; }
-        case (ty_i64) { ret cx.ts.t_i64; }
+        case (ty_i8)  { ret idx_i8; }
+        case (ty_i16) { ret idx_i16; }
+        case (ty_i32) { ret idx_i32; }
+        case (ty_i64) { ret idx_i64; }
 
-        case (ty_f32) { ret cx.ts.t_f32; }
-        case (ty_f64) { ret cx.ts.t_f64; }
+        case (ty_f32) { ret idx_f32; }
+        case (ty_f64) { ret idx_f64; }
     }
     fail;
 }
 
-fn mk_char(&ctxt cx) -> t    { ret cx.ts.t_char; }
-fn mk_str(&ctxt cx) -> t     { ret cx.ts.t_str; }
+fn mk_char(&ctxt cx) -> t    { ret idx_char; }
+fn mk_str(&ctxt cx) -> t     { ret idx_str; }
 
 fn mk_tag(&ctxt cx, &ast.def_id did, &vec[t] tys) -> t {
     ret gen_ty(cx, ty_tag(did, tys));
@@ -450,40 +453,30 @@ fn mk_obj(&ctxt cx, &vec[method] meths) -> t {
 }
 
 fn mk_var(&ctxt cx, int v) -> t {
-    ret mk_ty_full(ty_var(v), none[str]);
+    ret gen_ty(cx, ty_var(v));
 }
 
 fn mk_local(&ctxt cx, ast.def_id did) -> t {
-    ret mk_ty_full(ty_local(did), none[str]);
+    ret gen_ty(cx, ty_local(did));
 }
 
 fn mk_param(&ctxt cx, uint n) -> t {
-    let uint i = Vec.len[t](cx.ts.t_params);
-    while (i <= n) {
-        cx.ts.t_params += vec(mk_ty_full(ty_param(i), none[str]));
-        i += 1u;
-    }
-    ret cx.ts.t_params.(n);
+    ret gen_ty(cx, ty_param(n));
 }
 
 fn mk_bound_param(&ctxt cx, uint n) -> t {
-    let uint i = Vec.len[t](cx.ts.t_bound_params);
-    while (i <= n) {
-        cx.ts.t_bound_params += vec(mk_ty_full(ty_bound_param(i), none[str]));
-        i += 1u;
-    }
-    ret cx.ts.t_bound_params.(n);
+    ret gen_ty(cx, ty_bound_param(n));
 }
 
-fn mk_type(&ctxt cx) -> t    { ret cx.ts.t_type; }
-fn mk_native(&ctxt cx) -> t  { ret cx.ts.t_native; }
+fn mk_type(&ctxt cx) -> t    { ret idx_type; }
+fn mk_native(&ctxt cx) -> t  { ret idx_native; }
 
 
 // Returns the one-level-deep type structure of the given type.
-fn struct(&ctxt cx, &t typ) -> sty { ret typ.struct; }
+fn struct(&ctxt cx, &t typ) -> sty { ret cx.ts.others.(typ).struct; }
 
 // Returns the canonical name of the given type.
-fn cname(&ctxt cx, &t typ) -> Option.t[str] { ret typ.cname; }
+fn cname(&ctxt cx, &t typ) -> Option.t[str] { ret cx.ts.others.(typ).cname; }
 
 
 // Stringification
@@ -825,7 +818,7 @@ fn rename(ctxt cx, t typ, str new_cname) -> t {
 // Returns a type with the structural part taken from `struct_ty` and the
 // canonical name from `cname_ty`.
 fn copy_cname(ctxt cx, t struct_ty, t cname_ty) -> t {
-    ret gen_ty_full(cx, struct(cx, struct_ty), cname_ty.cname);
+    ret gen_ty_full(cx, struct(cx, struct_ty), cname(cx, cname_ty));
 }
 
 fn type_is_nil(&ctxt cx, &t ty) -> bool {
@@ -1154,7 +1147,9 @@ fn hash_type_info(&sty st, &Option.t[str] cname_opt) -> uint {
     ret h;
 }
 
-fn hash_ty(&t typ) -> uint { ret typ.hash; }
+fn hash_raw_ty(&raw_t rt) -> uint { ret rt.hash; }
+
+fn hash_ty(&t typ) -> uint { ret typ; }
 
 
 // Type equality. This function is private to this module (and slow); external
@@ -1399,7 +1394,7 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
 // module.
 //
 // FIXME: Use structural comparison, but this loops forever and segfaults.
-fn eq_ty_full(&t a, &t b) -> bool {
+fn eq_raw_ty(&raw_t a, &raw_t b) -> bool {
     // Check hashes (fast path).
     if (a.hash != b.hash) {
         ret false;
@@ -1429,7 +1424,7 @@ fn eq_ty_full(&t a, &t b) -> bool {
 
 // This is the equality function the public should use. It works as long as
 // the types are interned.
-fn eq_ty(&t a, &t b) -> bool { ret Box.ptr_eq[raw_t](a, b); }
+fn eq_ty(&t a, &t b) -> bool { ret a == b; }
 
 
 fn ann_to_type(&ast.ann ann) -> t {
@@ -1515,19 +1510,19 @@ fn count_ty_params(ctxt cx, t ty) -> uint {
 }
 
 fn type_contains_vars(&ctxt cx, &t typ) -> bool {
-    ret typ.has_vars;
+    ret cx.ts.others.(typ).has_vars;
 }
 
 fn type_contains_locals(&ctxt cx, &t typ) -> bool {
-    ret typ.has_locals;
+    ret cx.ts.others.(typ).has_locals;
 }
 
 fn type_contains_params(&ctxt cx, &t typ) -> bool {
-    ret typ.has_params;
+    ret cx.ts.others.(typ).has_params;
 }
 
 fn type_contains_bound_params(&ctxt cx, &t typ) -> bool {
-    ret typ.has_bound_params;
+    ret cx.ts.others.(typ).has_bound_params;
 }
 
 // Type accessors for substructures of types
