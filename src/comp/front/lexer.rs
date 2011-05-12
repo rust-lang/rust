@@ -327,6 +327,10 @@ fn consume_any_line_comment(reader rdr) {
 fn consume_block_comment(reader rdr) {
     let int level = 1;
     while (level > 0) {
+        if (rdr.is_eof()) {
+            rdr.err("unterminated block comment");
+            fail;
+        }
         if (rdr.curr() == '/' && rdr.next() == '*') {
             rdr.bump();
             rdr.bump();
@@ -339,10 +343,6 @@ fn consume_block_comment(reader rdr) {
             } else {
                 rdr.bump();
             }
-        }
-        if (rdr.is_eof()) {
-            rdr.err("unterminated block comment");
-            fail;
         }
     }
     // restart whitespace munch.
