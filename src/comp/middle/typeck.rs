@@ -762,7 +762,18 @@ mod Collect {
             }
         }
     }
+    
+    // Anonymous objects are expressions, not items, but they're enough like
+    // items that we're going to include them in this fold.
+    fn fold_expr_anon_obj(&@env e, &span sp,
+                          &ast::anon_obj ob, &vec[ast::ty_param] tps,
+                          &ast::obj_def_ids odid, &ast::ann a) -> @ast::expr {
 
+        // TODO: Somewhere in here we need to push some stuff onto a vector.
+
+        auto expr_anon_obj = ast::expr_anon_obj(ob, tps, odid, a);
+        ret @fold::respan[ast::expr_](sp, expr_anon_obj);
+    }
 
     fn fold_item_obj(&@env e, &span sp, &ast::ident i,
                     &ast::_obj ob, &vec[ast::ty_param] ty_params,
@@ -895,7 +906,8 @@ mod Collect {
                     bind fold_native_item_fn(_,_,_,_,_,_,_,_),
                  fold_item_obj   = bind fold_item_obj(_,_,_,_,_,_,_),
                  fold_item_ty    = bind fold_item_ty(_,_,_,_,_,_,_),
-                 fold_item_tag   = bind fold_item_tag(_,_,_,_,_,_,_)
+                 fold_item_tag   = bind fold_item_tag(_,_,_,_,_,_,_),
+                 fold_expr_anon_obj = bind fold_expr_anon_obj(_,_,_,_,_,_)
                  with *fld_2);
         auto crate_ = fold::fold_crate[@env](e, fld_2, crate);
         ret tup(crate_, type_cache, id_to_ty_item, ntt);

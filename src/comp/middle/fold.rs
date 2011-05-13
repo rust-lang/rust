@@ -39,7 +39,8 @@ type ast_fold[ENV] =
     @rec
     (
      // Path fold:
-     (fn(&ENV e, &span sp, &ast::path_ p) -> path) fold_path,
+     (fn(&ENV e, &span sp, &ast::path_ p) 
+      -> path)                                    fold_path,
 
      // Type folds.
      (fn(&ENV e, &span sp) -> @ty)                fold_ty_nil,
@@ -56,10 +57,10 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp, &vec[mt] elts) -> @ty) fold_ty_tup,
 
      (fn(&ENV e, &span sp,
-         &vec[ast::ty_field] elts) -> @ty)         fold_ty_rec,
+         &vec[ast::ty_field] elts) -> @ty)        fold_ty_rec,
 
      (fn(&ENV e, &span sp,
-         &vec[ast::ty_method] meths) -> @ty)       fold_ty_obj,
+         &vec[ast::ty_method] meths) -> @ty)      fold_ty_obj,
 
      (fn(&ENV e, &span sp,
          ast::proto proto,
@@ -78,7 +79,7 @@ type ast_fold[ENV] =
          &ann a) -> @expr)                        fold_expr_vec,
 
      (fn(&ENV e, &span sp,
-         &vec[ast::elt] es, &ann a) -> @expr)      fold_expr_tup,
+         &vec[ast::elt] es, &ann a) -> @expr)     fold_expr_tup,
 
      (fn(&ENV e, &span sp,
          &vec[ast::field] fields,
@@ -110,7 +111,7 @@ type ast_fold[ENV] =
          &ann a) -> @expr)                        fold_expr_unary,
 
      (fn(&ENV e, &span sp,
-         &@ast::lit, &ann a) -> @expr)             fold_expr_lit,
+         &@ast::lit, &ann a) -> @expr)            fold_expr_lit,
 
      (fn(&ENV e, &span sp,
          &@ast::expr e, &@ast::ty ty,
@@ -186,10 +187,10 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp, &ann a) -> @expr)      fold_expr_cont,
 
      (fn(&ENV e, &span sp,
-         &option::t[@expr] rv, &ann a) -> @expr)   fold_expr_ret,
+         &option::t[@expr] rv, &ann a) -> @expr)  fold_expr_ret,
 
      (fn(&ENV e, &span sp,
-         &option::t[@expr] rv, &ann a) -> @expr)   fold_expr_put,
+         &option::t[@expr] rv, &ann a) -> @expr)  fold_expr_put,
 
      (fn(&ENV e, &span sp,
          &@expr e, &ann a) -> @expr)              fold_expr_be,
@@ -210,13 +211,14 @@ type ast_fold[ENV] =
          &@expr e, &ann a) -> @expr)              fold_expr_chan,
 
      (fn(&ENV e, &span sp,
-         &ast::anon_obj ob, // TODO: Is the ob arg supposed to be & or not?
-         vec[ast::ty_param] tps,
-         ast::obj_def_ids odid, ann a) -> @expr)   fold_expr_anon_obj,
+         &ast::anon_obj ob,
+         &vec[ast::ty_param] tps,
+         &ast::obj_def_ids odid, 
+         &ann a) -> @expr)                        fold_expr_anon_obj,
 
      // Decl folds.
      (fn(&ENV e, &span sp,
-         &@ast::local local) -> @decl)             fold_decl_local,
+         &@ast::local local) -> @decl)            fold_decl_local,
 
      (fn(&ENV e, &span sp,
          &@item item) -> @decl)                   fold_decl_item,
@@ -227,7 +229,7 @@ type ast_fold[ENV] =
          &ann a) -> @pat)                         fold_pat_wild,
 
      (fn(&ENV e, &span sp,
-         &@ast::lit lit, &ann a) -> @pat)          fold_pat_lit,
+         &@ast::lit lit, &ann a) -> @pat)         fold_pat_lit,
 
      (fn(&ENV e, &span sp,
          &ident i, &def_id did, &ann a) -> @pat)  fold_pat_bind,
@@ -263,10 +265,11 @@ type ast_fold[ENV] =
          &def_id id, &ann a) -> @native_item)     fold_native_item_fn,
 
      (fn(&ENV e, &span sp, &ident ident,
-         &ast::_mod m, &def_id id) -> @item)       fold_item_mod,
+         &ast::_mod m, &def_id id) -> @item)      fold_item_mod,
 
      (fn(&ENV e, &span sp, &ident ident,
-         &ast::native_mod m, &def_id id) -> @item) fold_item_native_mod,
+         &ast::native_mod m, &def_id id) 
+      -> @item)                                   fold_item_native_mod,
 
      (fn(&ENV e, &span sp, &ident ident,
          &@ty t, &vec[ast::ty_param] ty_params,
@@ -283,13 +286,14 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp, &ident ident,
          &ast::_obj ob,
          &vec[ast::ty_param] ty_params,
-         &ast::obj_def_ids odid, &ann a) -> @item) fold_item_obj,
+         &ast::obj_def_ids odid, &ann a) 
+      -> @item)                                   fold_item_obj,
 
      // View Item folds.
      (fn(&ENV e, &span sp, &ident ident,
          &vec[@meta_item] meta_items,
          &def_id id,
-         &option::t[int]) -> @view_item)           fold_view_item_use,
+         &option::t[int]) -> @view_item)          fold_view_item_use,
 
      (fn(&ENV e, &span sp, &ident i,
          &vec[ident] idents,
@@ -305,31 +309,33 @@ type ast_fold[ENV] =
 
      (fn(&ENV e, &fn_decl decl,
          ast::proto proto,
-         &block body) -> ast::_fn)                 fold_fn,
+         &block body) -> ast::_fn)                fold_fn,
 
      (fn(&ENV e,
          &vec[arg] inputs,
          &@ty output,
-         &purity p) -> ast::fn_decl)               fold_fn_decl,
+         &purity p) -> ast::fn_decl)              fold_fn_decl,
 
-     (fn(&ENV e, &ast::_mod m) -> ast::_mod)        fold_mod,
+     (fn(&ENV e, &ast::_mod m) -> ast::_mod)      fold_mod,
 
-     (fn(&ENV e, &ast::native_mod m) -> ast::native_mod) fold_native_mod,
+     (fn(&ENV e, &ast::native_mod m) 
+      -> ast::native_mod)                         fold_native_mod,
 
      (fn(&ENV e, &span sp,
          &vec[@ast::crate_directive] cdirs,
-         &ast::_mod m) -> @ast::crate)              fold_crate,
+         &ast::_mod m) -> @ast::crate)            fold_crate,
 
      (fn(&ENV e,
          &vec[ast::obj_field] fields,
          &vec[@ast::method] methods,
          &option::t[@ast::method] dtor)
-      -> ast::_obj)                                fold_obj,
+      -> ast::_obj)                               fold_obj,
 
      (fn(&ENV e,
-         option::t[vec[ast::obj_field]] fields,
-         vec[@ast::method] methods,
-         option::t[ident] with_obj) -> ast::anon_obj) fold_anon_obj,
+         &option::t[vec[ast::obj_field]] fields,
+         &vec[@ast::method] methods,
+         &option::t[ident] with_obj) 
+      -> ast::anon_obj)                           fold_anon_obj,
 
      // Env updates.
      (fn(&ENV e, &@ast::crate c) -> ENV) update_env_for_crate,
@@ -976,7 +982,7 @@ fn fold_obj[ENV](&ENV env, &ast_fold[ENV] fld, &ast::_obj ob) -> ast::_obj {
     ret fld.fold_obj(env, fields, meths, dtor);
 }
 
-fn fold_anon_obj[ENV](&ENV env, ast_fold[ENV] fld, &ast::anon_obj ob) 
+fn fold_anon_obj[ENV](&ENV env, &ast_fold[ENV] fld, &ast::anon_obj ob) 
     -> ast::anon_obj {
 
     // Fields
@@ -1468,8 +1474,10 @@ fn identity_fold_expr_chan[ENV](&ENV e, &span sp, &@expr x,
 }
 
 fn identity_fold_expr_anon_obj[ENV](&ENV e, &span sp,
-                                    &ast::anon_obj ob, vec[ast::ty_param] tps,
-                                    ast::obj_def_ids odid, ann a) -> @expr {
+                                    &ast::anon_obj ob, 
+                                    &vec[ast::ty_param] tps,
+                                    &ast::obj_def_ids odid, 
+                                    &ann a) -> @expr {
     ret @respan(sp, ast::expr_anon_obj(ob, tps, odid, a));
 }
 
@@ -1648,9 +1656,9 @@ fn identity_fold_obj[ENV](&ENV e,
 }
 
 fn identity_fold_anon_obj[ENV](&ENV e,
-                               option::t[vec[ast::obj_field]] fields,
-                               vec[@ast::method] methods,
-                               option::t[ident] with_obj) -> ast::anon_obj {
+                               &option::t[vec[ast::obj_field]] fields,
+                               &vec[@ast::method] methods,
+                               &option::t[ident] with_obj) -> ast::anon_obj {
     ret rec(fields=fields, methods=methods, with_obj=with_obj);
 }
 
