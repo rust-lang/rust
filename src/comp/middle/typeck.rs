@@ -177,10 +177,12 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &ast::span sp, &ast::def defn)
     }
 }
 
+type ty_param_substs_opt_and_ty = tup(option::t[vec[ty::t]], ty::t);
+
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
 fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
-                    &span sp, uint ann_tag) -> ast::ann {
+                    &span sp) -> ty_param_substs_opt_and_ty {
     auto ty_param_count = tpt._0;
     auto t = bind_params_in_type(fcx.ccx.tcx, tpt._1);
 
@@ -211,7 +213,7 @@ fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
         ty_substs_opt = some[vec[ty::t]](ty_substs);
     }
 
-    ret ast::ann_type(ann_tag, t, ty_substs_opt, none[@ts_ann]);
+    ret tup(ty_substs_opt, t);
 }
 
 fn ast_mode_to_mode(ast::mode mode) -> ty::mode {
@@ -1656,8 +1658,8 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat) -> @ast::pat {
 
             auto tpt = ty::lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
                                            fcx.ccx.type_cache, vdef._0);
-            auto ann = instantiate_path(fcx, p, tpt, pat.span,
-                                        ast::ann_tag(old_ann));
+
+            auto path_tpot = instantiate_path(fcx, p, tpt, pat.span);
 
             alt (struct(fcx.ccx.tcx, t)) {
                 // N-ary variants have function types.
@@ -1681,7 +1683,9 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat) -> @ast::pat {
                         new_subpats += vec(check_pat(fcx, subpat));
                     }
 
-                    new_pat = ast::pat_tag(p, new_subpats, ann);
+                    new_pat = ast::pat_tag(p, new_subpats,
+                        ast::ann_type(ast::ann_tag(old_ann), path_tpot._1,
+                                      path_tpot._0, none[@ts_ann]));
                 }
 
                 // Nullary variants have tag types.
@@ -1699,7 +1703,9 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat) -> @ast::pat {
                         fail;   // TODO: recover
                     }
 
-                    new_pat = ast::pat_tag(p, subpats, ann);
+                    new_pat = ast::pat_tag(p, subpats,
+                        ast::ann_type(ast::ann_tag(old_ann), path_tpot._1,
+                                      path_tpot._0, none[@ts_ann]));
                 }
             }
         }
@@ -1946,10 +1952,11 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             auto tpt = ty_param_count_and_ty_for_def(fcx, expr.span, defn);
 
             if (ty::def_has_ty_params(defn)) {
-                auto ann = instantiate_path(fcx, pth, tpt, expr.span,
-                                            ast::ann_tag(old_ann));
+                auto path_tpot = instantiate_path(fcx, pth, tpt, expr.span);
                 ret @fold::respan[ast::expr_](expr.span,
-                                            ast::expr_path(pth, ann));
+                    ast::expr_path(pth,
+                        ast::ann_type(ast::ann_tag(old_ann), path_tpot._1,
+                                      path_tpot._0, none[@ts_ann])));
             }
 
             // The definition doesn't take type parameters. If the programmer
