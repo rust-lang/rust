@@ -27,6 +27,7 @@ import middle::ty::pat_ty;
 import middle::ty::path_to_str;
 import middle::ty::struct;
 import middle::ty::triv_ann;
+import middle::ty::ty_param_substs_opt_and_ty;
 import middle::ty::ty_to_str;
 import middle::ty::type_is_integral;
 import middle::ty::type_is_scalar;
@@ -176,8 +177,6 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &ast::span sp, &ast::def defn)
         }
     }
 }
-
-type ty_param_substs_opt_and_ty = tup(option::t[vec[ty::t]], ty::t);
 
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
@@ -370,6 +369,15 @@ fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast::ty ast_ty) -> ty::t {
     }
     auto f = bind getter(ccx, _);
     ret ast_ty_to_ty(ccx.tcx, f, ast_ty);
+}
+
+// Writes a type parameter count and type pair into the node type table.
+fn write_type(&@crate_ctxt cx, uint node_id,
+              &ty_param_substs_opt_and_ty tpot) {
+    _vec::grow_set[option::t[ty::ty_param_substs_opt_and_ty]](cx.node_types,
+        0u,
+        none[ty_param_substs_opt_and_ty],
+        some[ty_param_substs_opt_and_ty](tpot));
 }
 
 
@@ -813,9 +821,9 @@ mod Collect {
                                                 ty_params);
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast::item_tag(i, variants_t, ty_params, id,
-                                 ast::ann_type(ast::ann_tag(a), typ,
-                                              none[vec[ty::t]],
-                                              none[@ts_ann]));
+                                  ast::ann_type(ast::ann_tag(a), typ,
+                                                none[vec[ty::t]],
+                                                none[@ts_ann]));
         ret @fold::respan[ast::item_](sp, item);
     }
 
@@ -3025,7 +3033,7 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
         map::mk_hashmap[unify_cache_entry,ty::Unify::result](hasher, eqer);
     auto fpt =
         mk_fn_purity_table(crate); // use a variation on Collect
-    let node_type_table node_types = vec();
+    let node_type_table node_types = vec(mutable);
 
     auto ccx = @rec(sess=sess,
                     type_cache=result._1,

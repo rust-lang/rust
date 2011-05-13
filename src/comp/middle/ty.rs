@@ -162,7 +162,8 @@ const uint idx_first_others = 20u;
 type type_store = rec(mutable vec[raw_t] others,
                       hashmap[raw_t,uint] other_structural);
 
-type node_type_table = vec[ty::ty_param_count_and_ty];
+type ty_param_substs_opt_and_ty = tup(option::t[vec[ty::t]], ty::t);
+type node_type_table = vec[mutable option::t[ty::ty_param_substs_opt_and_ty]];
 
 fn mk_type_store() -> @type_store {
     let vec[raw_t] others = vec();
