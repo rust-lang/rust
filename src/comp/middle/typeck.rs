@@ -1457,7 +1457,10 @@ mod Pushdown {
                 for (ast::arm arm_0 in arms_0) {
                     pushdown_block(scx, expected, arm_0.block);
                     auto bty = block_ty(scx.fcx.ccx.tcx, arm_0.block);
-                    t = Demand::simple(scx, e.span, t, bty);
+                    // Failing alt arms don't need to have a matching type
+                    if (!ty::type_is_bot(scx.fcx.ccx.tcx, bty)) {
+                        t = Demand::simple(scx, e.span, t, bty);
+                    }
                 }
                 write::ty_only_fixup(scx, ann.id, t);
             }
@@ -2209,8 +2212,11 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                 check_block(scx, arm.block);
 
                 auto bty = block_ty(scx.fcx.ccx.tcx, arm.block);
-                result_ty = Demand::simple(scx, arm.block.span, result_ty,
-                                           bty);
+                // Failing alt arms don't need to have a matching type
+                if (!ty::type_is_bot(scx.fcx.ccx.tcx, bty)) {
+                    result_ty = Demand::simple(scx, arm.block.span,
+                                               result_ty, bty);
+                }
             }
 
             auto i = 0u;
