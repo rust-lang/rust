@@ -44,7 +44,9 @@ tag scope {
 tag import_state {
     todo(@ast::view_item, list[scope]);
     resolving(span);
-    resolved(option::t[def] /* value */, option::t[def] /* type */);
+    resolved(option::t[def] /* value */,
+             option::t[def] /* type */,
+             option::t[def] /* module */);
 }
 
 type ext_hash = hashmap[tup(def_id,str,namespace),def];
@@ -97,6 +99,7 @@ tag dir { inside; outside; }
 tag namespace {
     ns_value;
     ns_type;
+    ns_module;
 }
 
 fn resolve_crate(session sess, @ast::crate crate) -> def_map {
@@ -159,7 +162,7 @@ fn resolve_imports(&env e) {
             case (todo(?item, ?sc)) {
                 resolve_import(e, item, sc);
             }
-            case (resolved(_, _)) {}
+            case (resolved(_, _, _)) {}
         }
     }
 }
@@ -324,51 +327,45 @@ fn resolve_import(&env e, &@ast::view_item it, &list[scope] sc) {
     if (n_idents == 1u) {
         register(e, defid, it.span, end_id,
                  lookup_in_scope(e, sc, it.span, end_id, ns_value),
-                 lookup_in_scope(e, sc, it.span, end_id, ns_type));
+                 lookup_in_scope(e, sc, it.span, end_id, ns_type),
+                 lookup_in_scope(e, sc, it.span, end_id, ns_module));
     } else {
-        auto dcur = lookup_in_scope_strict(e, sc, it.span, ids.(0), ns_value);
+        auto dcur = lookup_in_scope_strict(e, sc, it.span, ids.(0),
+                                           ns_module);
         auto i = 1u;
         while (true) {
-            if (!is_module(dcur)) {
-                e.sess.span_err(it.span, ids.(i-1u) +
-                                " is not a module or crate");
-            }
             if (i == n_idents - 1u) {
                 register(e, defid, it.span, end_id,
                          lookup_in_mod(e, dcur, end_id, ns_value, outside),
-                         lookup_in_mod(e, dcur, end_id, ns_type, outside));
+                         lookup_in_mod(e, dcur, end_id, ns_type, outside),
+                         lookup_in_mod(e, dcur, end_id, ns_module, outside));
                 break;
             } else {
                 dcur = lookup_in_mod_strict(e, dcur, it.span, ids.(i),
-                                            ns_value, outside);
+                                            ns_module, outside);
                 i += 1u;
             }
         }
     }
 
     fn register(&env e, def_id defid, &span sp, &ident id,
-                &option::t[def] val, &option::t[def] typ) {
-        if (option::is_none(val) && option::is_none(typ)) {
+                &option::t[def] val, &option::t[def] typ,
+                &option::t[def] md) {
+        if (option::is_none(val) && option::is_none(typ) &&
+            option::is_none(md)) {
             unresolved(e, sp, id, "import");
         }
-        e.imports.insert(defid._1, resolved(val, typ));
+        e.imports.insert(defid._1, resolved(val, typ, md));
     }
 }
 
 // Utilities
 
-fn is_module(def d) -> bool {
-    alt (d) {
-        case (ast::def_mod(_)) { ret true; }
-        case (ast::def_native_mod(_)) { ret true; }
-        case (_) { ret false; }
-    }
-}
-
 fn ns_name(namespace ns) -> str {
     alt (ns) {
         case (ns_type) { ret "typename"; }
         case (ns_value) { ret "name"; }
+        case (ns_module) { ret "modulename"; }
     }
 }
 
@@ -381,19 +378,13 @@ fn unresolved(&env e, &span sp, &ident id, &str kind) {
 fn lookup_path_strict(&env e, &list[scope] sc, &span sp, vec[ident] idents,
                       namespace ns) -> def {
     auto n_idents = _vec::len(idents);
-    auto dcur = lookup_in_scope_strict(e, sc, sp, idents.(0), ns);
+    auto headns = if (n_idents == 1u) { ns } else { ns_module };
+    auto dcur = lookup_in_scope_strict(e, sc, sp, idents.(0), headns);
     auto i = 1u;
     while (i < n_idents) {
-        if (!is_module(dcur)) {
-            e.sess.span_err(sp, idents.(i-1u) +
-                            " can't be dereferenced as a module");
-        }
-        dcur = lookup_in_mod_strict(e, dcur, sp, idents.(i), ns, outside);
+        auto curns = if (n_idents == i + 1u) { ns } else { ns_module };
+        dcur = lookup_in_mod_strict(e, dcur, sp, idents.(i), curns, outside);
         i += 1u;
-    }
-    if (is_module(dcur)) {
-        e.sess.span_err(sp, _str::connect(idents, "::") +
-                        " is a module, not a " + ns_name(ns));
     }
     ret dcur;
 }
@@ -566,29 +557,37 @@ fn lookup_in_pat(&ident id, &ast::pat pat) -> option::t[def] {
 
 fn lookup_in_fn(&ident id, &ast::fn_decl decl, &vec[ast::ty_param] ty_params,
                 namespace ns) -> option::t[def] {
-    if (ns == ns_value) {
-        for (ast::arg a in decl.inputs) {
-            if (_str::eq(a.ident, id)) {
-                ret some(ast::def_arg(a.id));
+    alt (ns) {
+        case (ns_value) {
+            for (ast::arg a in decl.inputs) {
+                if (_str::eq(a.ident, id)) {
+                    ret some(ast::def_arg(a.id));
+                }
             }
+            ret none[def];
         }
-        ret none[def];
-    } else {
-        ret lookup_in_ty_params(id, ty_params);
+        case (ns_type) {
+            ret lookup_in_ty_params(id, ty_params);
+        }
+        case (_) { ret none[def]; }
     }
 }
 
 fn lookup_in_obj(&ident id, &ast::_obj ob, &vec[ast::ty_param] ty_params,
                  namespace ns) -> option::t[def] {
-    if (ns == ns_value) {
-        for (ast::obj_field f in ob.fields) {
-            if (_str::eq(f.ident, id)) {
-                ret some(ast::def_obj_field(f.id));
+    alt (ns) {
+        case (ns_value) {
+            for (ast::obj_field f in ob.fields) {
+                if (_str::eq(f.ident, id)) {
+                    ret some(ast::def_obj_field(f.id));
+                }
             }
+            ret none[def];
         }
-        ret none[def];
-    } else {
-        ret lookup_in_ty_params(id, ty_params);
+        case (ns_type) {
+            ret lookup_in_ty_params(id, ty_params);
+        }
+        case (_) { ret none[def]; }
     }
 }
 
@@ -611,7 +610,7 @@ fn lookup_in_block(&ident id, &ast::block_ b, namespace ns)
                                     if (_str::eq(name, id)) {
                                         ret some(ast::def_ty(defid));
                                     }
-                                } else {
+                                } else if (ns == ns_value) {
                                     for (ast::variant v in variants) {
                                         if (_str::eq(v.node.name, id)) {
                                             ret some(ast::def_variant(
@@ -623,7 +622,7 @@ fn lookup_in_block(&ident id, &ast::block_ b, namespace ns)
                             case (_) {
                                 if (_str::eq(ast::item_ident(it), id)) {
                                     auto found = found_def_item(it, ns);
-                                    if (!option::is_none(found)) { ret found; }
+                                    if (!option::is_none(found)) {ret found;}
                                 }
                             }
                         }
@@ -645,10 +644,10 @@ fn found_def_item(@ast::item i, namespace ns) -> option::t[def] {
             if (ns == ns_value) { ret some(ast::def_fn(defid)); }
         }
         case (ast::item_mod(_, _, ?defid)) {
-            ret some(ast::def_mod(defid));
+            if (ns == ns_module) { ret some(ast::def_mod(defid)); }
         }
         case (ast::item_native_mod(_, _, ?defid)) {
-            ret some(ast::def_native_mod(defid));
+            if (ns == ns_module) { ret some(ast::def_native_mod(defid)); }
         }
         case (ast::item_ty(_, _, _, ?defid, _)) {
             if (ns == ns_type) { ret some(ast::def_ty(defid)); }
@@ -657,8 +656,11 @@ fn found_def_item(@ast::item i, namespace ns) -> option::t[def] {
             if (ns == ns_type) { ret some(ast::def_ty(defid)); }
         }
         case (ast::item_obj(_, _, _, ?odid, _)) {
-            if (ns == ns_value) { ret some(ast::def_obj(odid.ctor)); }
-            else { ret some(ast::def_obj(odid.ty)); }
+            alt (ns) {
+                case (ns_value) { ret some(ast::def_obj(odid.ctor)); }
+                case (ns_type) { ret some(ast::def_obj(odid.ty)); }
+                case (_) { }
+            }
         }
         case (_) { }
     }
@@ -725,9 +727,10 @@ fn lookup_import(&env e, def_id defid, namespace ns) -> option::t[def] {
         case (resolving(?sp)) {
             e.sess.span_err(sp, "cyclic import");
         }
-        case (resolved(?val, ?typ)) {
+        case (resolved(?val, ?typ, ?md)) {
             ret alt (ns) { case (ns_value) { val }
-                           case (ns_type) { typ } };
+                           case (ns_type) { typ }
+                           case (ns_module) { md } };
         }
     }
 }
@@ -917,23 +920,22 @@ fn index_nmod(&ast::native_mod md) -> nmod_index {
 
 // External lookups
 
-// FIXME creader should handle multiple namespaces
-fn check_def_by_ns(def d, namespace ns) -> bool {
+fn ns_for_def(def d) -> namespace {
     ret alt (d) {
-        case (ast::def_fn(?id)) { ns == ns_value }
-        case (ast::def_obj(?id)) { ns == ns_value }
-        case (ast::def_obj_field(?id)) { ns == ns_value }
-        case (ast::def_mod(?id)) { true }
-        case (ast::def_native_mod(?id)) { true }
-        case (ast::def_const(?id)) { ns == ns_value }
-        case (ast::def_arg(?id)) { ns == ns_value }
-        case (ast::def_local(?id)) { ns == ns_value }
-        case (ast::def_variant(_, ?id)) { ns == ns_value }
-        case (ast::def_ty(?id)) { ns == ns_type }
-        case (ast::def_binding(?id)) { ns == ns_type }
-        case (ast::def_use(?id)) { true }
-        case (ast::def_native_ty(?id)) { ns == ns_type }
-        case (ast::def_native_fn(?id)) { ns == ns_value }
+        case (ast::def_fn(?id)) { ns_value }
+        case (ast::def_obj(?id)) { ns_value }
+        case (ast::def_obj_field(?id)) { ns_value }
+        case (ast::def_mod(?id)) { ns_module }
+        case (ast::def_native_mod(?id)) { ns_module }
+        case (ast::def_const(?id)) { ns_value }
+        case (ast::def_arg(?id)) { ns_value }
+        case (ast::def_local(?id)) { ns_value }
+        case (ast::def_variant(_, ?id)) { ns_value }
+        case (ast::def_ty(?id)) { ns_type }
+        case (ast::def_binding(?id)) { ns_type }
+        case (ast::def_use(?id)) { ns_module }
+        case (ast::def_native_ty(?id)) { ns_type }
+        case (ast::def_native_fn(?id)) { ns_value }
     };
 }
 
@@ -941,7 +943,7 @@ fn lookup_external(&env e, int cnum, vec[ident] ids, namespace ns)
     -> option::t[def] {
     for (def d in creader::lookup_defs(e.sess, cnum, ids)) {
         e.ext_map.insert(ast::def_id_of_def(d), ids);
-        if (check_def_by_ns(d, ns)) { ret some(d); }
+        if (ns == ns_for_def(d)) { ret some(d); }
     }
     ret none[def];
 }

@@ -1,4 +1,6 @@
-// error-pattern: is a module, not a
+// xfail-boot
+// xfail-stage0
+// error-pattern: unresolved name: a
 
 mod m1 {
   mod a {

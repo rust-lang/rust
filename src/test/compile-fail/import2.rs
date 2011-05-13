@@ -1,5 +1,5 @@
 // xfail-boot
-// error-pattern: unresolved name
+// error-pattern: unresolved modulename
 import baz::zed::bar;
 mod baz {
 }

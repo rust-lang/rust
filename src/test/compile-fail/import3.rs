@@ -1,5 +1,6 @@
 // xfail-boot
-// error-pattern: main is not a module or crate
+// xfail-stage0
+// error-pattern: unresolved modulename
 import main::bar;
 
 fn main(vec[str] args) {
