@@ -356,6 +356,7 @@ type writer =
           // write_str will continue to do utf-8 output only. an alternative
           // function will be provided for general encoded string output
           fn write_str(str s);
+          fn write_line(str s);
           fn write_char(char ch);
           fn write_int(int n);
           fn write_uint(uint n);
@@ -391,6 +392,10 @@ state obj new_writer(buf_writer out) {
     }
     fn write_str(str s) {
         out.write(str::bytes(s));
+    }
+    fn write_line(str s) {
+        out.write(str::bytes(s));
+        out.write(str::bytes("\n"));
     }
     fn write_char(char ch) {
         // FIXME needlessly consy
