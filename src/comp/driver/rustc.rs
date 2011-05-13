@@ -7,7 +7,6 @@ import front::eval;
 import front::ast;
 import middle::trans;
 import middle::resolve;
-import middle::capture;
 import middle::ty;
 import middle::typeck;
 import middle::typestate_check;
@@ -94,8 +93,6 @@ fn compile_input(session::session sess,
                  bind creader::read_crates(sess, crate));
     auto def_map = time(time_passes, "resolution",
                         bind resolve::resolve_crate(sess, crate));
-    time[()](time_passes, "capture checking",
-             bind capture::check_for_captures(sess, crate, def_map));
 
     auto ty_cx = ty::mk_ctxt(sess, def_map);
     auto typeck_result =

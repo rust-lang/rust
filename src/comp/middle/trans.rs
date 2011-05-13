@@ -3807,9 +3807,6 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
                     case (ast::def_local(?did)) {
                         _vec::push[ast::def_id](e.refs, did);
                     }
-                    case (ast::def_upvar(?did)) {
-                        _vec::push[ast::def_id](e.refs, did);
-                    }
                     case (_) {}
                 }
             }

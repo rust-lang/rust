@@ -46,7 +46,6 @@ tag def {
     def_const(def_id);
     def_arg(def_id);
     def_local(def_id);
-    def_upvar(def_id);
     def_variant(def_id /* tag */, def_id /* variant */);
     def_ty(def_id);
     def_ty_arg(uint);
@@ -74,7 +73,6 @@ fn def_id_of_def(def d) -> def_id {
         case (def_const(?id)) { ret id; }
         case (def_arg(?id)) { ret id; }
         case (def_local(?id)) { ret id; }
-        case (def_upvar(?id)) { ret id; }
         case (def_variant(_, ?id)) { ret id; }
         case (def_ty(?id)) { ret id; }
         case (def_ty_arg(_)) { fail; }

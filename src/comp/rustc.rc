@@ -17,7 +17,6 @@ mod middle {
     mod walk;
     mod metadata;
     mod resolve;
-    mod capture;
     mod typeck;
     mod typestate_check;
 }

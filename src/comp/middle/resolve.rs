@@ -317,8 +317,8 @@ fn resolve_import(&env e, &@ast::view_item it, &list[scope] sc) {
 
     if (n_idents == 1u) {
         register(e, defid, it.span, end_id,
-                 lookup_in_scope(e, sc, end_id, ns_value),
-                 lookup_in_scope(e, sc, end_id, ns_type));
+                 lookup_in_scope(e, sc, it.span, end_id, ns_value),
+                 lookup_in_scope(e, sc, it.span, end_id, ns_type));
     } else {
         auto dcur = lookup_in_scope_strict(e, sc, it.span, ids.(0), ns_value);
         auto i = 1u;
@@ -394,7 +394,7 @@ fn lookup_path_strict(&env e, &list[scope] sc, &span sp, vec[ident] idents,
                       
 fn lookup_in_scope_strict(&env e, list[scope] sc, &span sp, ident id,
                         namespace ns) -> def {
-    alt (lookup_in_scope(e, sc, id, ns)) {
+    alt (lookup_in_scope(e, sc, sp, id, ns)) {
         case (none[def]) {
             unresolved(e, sp, id, ns_name(ns));
             fail;
@@ -405,7 +405,35 @@ fn lookup_in_scope_strict(&env e, list[scope] sc, &span sp, ident id,
     }
 }
 
-fn lookup_in_scope(&env e, list[scope] sc, ident id, namespace ns)
+fn scope_is_fn(&scope sc) -> bool {
+    ret alt (sc) {
+        case (scope_item(?it)) {
+            alt (it.node) {
+                case (ast::item_fn(_, _, _, _, _)) { true }
+                case (_) { false }
+            }
+        }
+        case (scope_native_item(_)) { true }
+        case (_) { false }
+    };
+}
+
+fn def_is_local(&def d) -> bool {
+    ret alt (d) {
+        case (ast::def_arg(_)) { true }
+        case (ast::def_local(_)) { true }
+        case (ast::def_binding(_)) { true }
+        case (_) { false }
+    };
+}
+fn def_is_obj_field(&def d) -> bool {
+    ret alt (d) {
+        case (ast::def_obj_field(_)) { true }
+        case (_) { false }
+    };
+}
+
+fn lookup_in_scope(&env e, list[scope] sc, &span sp, ident id, namespace ns)
     -> option::t[def] {
     fn in_scope(&env e, ident id, &scope s, namespace ns)
         -> option::t[def] {
@@ -441,7 +469,6 @@ fn lookup_in_scope(&env e, list[scope] sc, ident id, namespace ns)
                     case (_) {}
                 }
             }
-
             case (scope_native_item(?it)) {
                 alt (it.node) {
                     case (ast::native_item_fn(_, _, ?decl, ?ty_params, _, _)){
@@ -449,7 +476,6 @@ fn lookup_in_scope(&env e, list[scope] sc, ident id, namespace ns)
                     }
                 }
             }
-
             case (scope_loop(?d)) {
                 if (ns == ns_value) {
                     alt (d.node) {
@@ -461,11 +487,9 @@ fn lookup_in_scope(&env e, list[scope] sc, ident id, namespace ns)
                     }
                 }
             }
-
             case (scope_block(?b)) {
                 ret lookup_in_block(id, b.node, ns);
             }
-
             case (scope_arm(?a)) {
                 if (ns == ns_value) {
                     ret lookup_in_pat(id, *a.pat);
@@ -475,16 +499,30 @@ fn lookup_in_scope(&env e, list[scope] sc, ident id, namespace ns)
         ret none[def];
     }
 
+    auto left_fn = false;
+    // Used to determine whether obj fields are in scope
+    auto left_fn_level2 = false;
     while (true) {
         alt (sc) {
             case (nil[scope]) {
                 ret none[def];
             }
             case (cons[scope](?hd, ?tl)) {
-                alt (in_scope(e, id, hd, ns)) {
-                    case (some[def](?x)) { ret some(x); }
-                    case (_) { sc = *tl; }
+                auto fnd = in_scope(e, id, hd, ns);
+                if (fnd != none[def]) {
+                    auto df = option::get(fnd);
+                    if ((left_fn && def_is_local(df)) ||
+                        (left_fn_level2 && def_is_obj_field(df))) {
+                        e.sess.span_err(sp, "attempted dynamic " + 
+                                        "environment-capture");
+                    }
+                    ret fnd;
                 }
+                if (left_fn) { left_fn_level2 = true; }
+                if (ns == ns_value && !left_fn) {
+                    left_fn = scope_is_fn(hd);
+                }
+                sc = *tl;
             }
         }
     }
@@ -841,7 +879,6 @@ fn check_def_by_ns(def d, namespace ns) -> bool {
         case (ast::def_const(?id)) { ns == ns_value }
         case (ast::def_arg(?id)) { ns == ns_value }
         case (ast::def_local(?id)) { ns == ns_value }
-        case (ast::def_upvar(?id)) { ns == ns_value }
         case (ast::def_variant(_, ?id)) { ns == ns_value }
         case (ast::def_ty(?id)) { ns == ns_type }
         case (ast::def_binding(?id)) { ns == ns_type }
