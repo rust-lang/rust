@@ -2889,7 +2889,7 @@ fn iter_sequence(@block_ctxt cx,
 
             cx.fcx.lcx.ccx.sess.bug("unexpected type in " +
                                     "trans::iter_sequence: " +
-                                    ty.ty_to_str(cx.fcx.lcx.ccx.tcx, t));
+                                    ty::ty_to_str(cx.fcx.lcx.ccx.tcx, t));
             fail; 
         }
     }
