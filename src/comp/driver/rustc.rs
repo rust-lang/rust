@@ -92,10 +92,8 @@ fn compile_input(session::session sess,
 
     crate = time(time_passes, "external crate reading",
                  bind creader::read_crates(sess, crate));
-    auto res = time(time_passes, "resolution",
-                    bind resolve::resolve_crate(sess, crate));
-    crate = res._0;
-    auto def_map = res._1;
+    auto def_map = time(time_passes, "resolution",
+                        bind resolve::resolve_crate(sess, crate));
     time[()](time_passes, "capture checking",
              bind capture::check_for_captures(sess, crate, def_map));
 

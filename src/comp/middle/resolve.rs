@@ -93,8 +93,7 @@ tag namespace {
     ns_type;
 }
 
-fn resolve_crate(session sess, @ast::crate crate)
-    -> tup(@ast::crate, def_map) {
+fn resolve_crate(session sess, @ast::crate crate) -> def_map {
     auto e = @rec(def_map = new_uint_hash[def](),
                   imports = new_int_hash[import_state](),
                   mod_map = new_int_hash[@indexed_mod](),
@@ -104,7 +103,8 @@ fn resolve_crate(session sess, @ast::crate crate)
                   sess = sess);
     map_crate(e, *crate);
     resolve_imports(*e);
-    ret tup(resolve_names(e, *crate), e.def_map);
+    resolve_names(e, *crate);
+    ret e.def_map;
 }
 
 // Locate all modules and imports and index them, so that the next passes can
@@ -115,7 +115,7 @@ fn map_crate(&@env e, &ast::crate c) {
     auto v = rec(visit_crate_pre = bind push_env_for_crate(cell, _),
                  visit_crate_post = bind pop_env_for_crate(cell, _),
                  visit_view_item_pre = bind visit_view_item(e, cell, _),
-                 visit_item_pre = bind push_env_for_item_map_mod(e, cell, _),
+                 visit_item_pre = bind visit_item(e, cell, _),
                  visit_item_post = bind pop_env_for_item(cell, _)
                  with walk::default_visitor());
     // Register the top-level mod
@@ -123,16 +123,16 @@ fn map_crate(&@env e, &ast::crate c) {
                               index=index_mod(c.node.module)));
     walk::walk_crate(v, c);
 
-    // Helpers for this pass.
-    fn push_env_for_crate(@mutable list[scope] sc, &ast::crate c) {
-        *sc = cons[scope](scope_crate(@c), @*sc);
+    fn visit_view_item(@env e, @mutable list[scope] sc, &@ast::view_item i) {
+        alt (i.node) {
+            case (ast::view_item_import(_, ?ids, ?defid)) {
+                e.imports.insert(defid._1, todo(i, *sc));
+            }
+            case (_) {}
+        }
     }
-    fn pop_env_for_crate(@mutable list[scope] sc, &ast::crate c) {
-        *sc = std::list::cdr(*sc);
-    }
-    fn push_env_for_item_map_mod(@env e, @mutable list[scope] sc,
-                                 &@ast::item i) {
-        *sc = cons[scope](scope_item(i), @*sc);
+    fn visit_item(@env e, @mutable list[scope] sc, &@ast::item i) {
+        push_env_for_item(sc, i);
         alt (i.node) {
             case (ast::item_mod(_, ?md, ?defid)) {
                 auto index = index_mod(md);
@@ -141,17 +141,6 @@ fn map_crate(&@env e, &ast::crate c) {
             case (ast::item_native_mod(_, ?nmd, ?defid)) {
                 auto index = index_nmod(nmd);
                 e.nmod_map.insert(defid._1, @rec(m=nmd, index=index));
-            }
-            case (_) {}
-        }
-    }
-    fn pop_env_for_item(@mutable list[scope] sc, &@ast::item i) {
-        *sc = std::list::cdr(*sc);
-    }
-    fn visit_view_item(@env e, @mutable list[scope] sc, &@ast::view_item i) {
-        alt (i.node) {
-            case (ast::view_item_import(_, ?ids, ?defid)) {
-                e.imports.insert(defid._1, todo(i, *sc));
             }
             case (_) {}
         }
@@ -169,67 +158,150 @@ fn resolve_imports(&env e) {
     }
 }
 
-// FIXME this should use walk (will need to add walk_arm)
-fn resolve_names(&@env e, &ast::crate c) -> @ast::crate {
-    auto fld = @rec(fold_pat_tag = bind fold_pat_tag(e,_,_,_,_,_),
-                    fold_expr_path = bind fold_expr_path(e,_,_,_,_),
-                    fold_ty_path = bind fold_ty_path(e,_,_,_,_),
-                    update_env_for_crate = bind update_env_for_crate(_,_),
-                    update_env_for_item = bind update_env_for_item(_,_),
-                    update_env_for_native_item =
-                       bind update_env_for_native_item(_,_),
-                    update_env_for_block = bind update_env_for_block(_,_),
-                    update_env_for_arm = bind update_env_for_arm(_,_),
-                    update_env_for_expr = bind update_env_for_expr(_,_)
-                    with *fold::new_identity_fold[list[scope]]());
-    ret fold::fold_crate(nil[scope], fld, @c);
+fn resolve_names(&@env e, &ast::crate c) {
+    auto cell = @mutable nil[scope];
+    auto v = rec(visit_crate_pre = bind push_env_for_crate(cell, _),
+                 visit_crate_post = bind pop_env_for_crate(cell, _),
+                 visit_item_pre = bind push_env_for_item(cell, _),
+                 visit_item_post = bind pop_env_for_item(cell, _),
+                 visit_method_pre = bind push_env_for_method(cell, _),
+                 visit_method_post = bind pop_env_for_method(cell, _),
+                 visit_native_item_pre = bind push_env_for_n_item(cell, _),
+                 visit_native_item_post = bind pop_env_for_n_item(cell, _),
+                 visit_block_pre = bind push_env_for_block(cell, _),
+                 visit_block_post = bind pop_env_for_block(cell, _),
+                 visit_arm_pre = bind walk_arm(e, cell, _),
+                 visit_arm_post = bind pop_env_for_arm(cell, _),
+                 visit_expr_pre = bind walk_expr(e, cell, _),
+                 visit_expr_post = bind pop_env_for_expr(cell, _),
+                 visit_ty_pre = bind walk_ty(e, cell, _)
+                 with walk::default_visitor());
+    walk::walk_crate(v, c);
 
-    // Helpers for this pass
-
-    fn update_env_for_crate(&list[scope] sc, &@ast::crate c) -> list[scope] {
-        ret cons[scope](scope_crate(c), @sc);
-    }
-    fn update_env_for_item(&list[scope] sc, &@ast::item i) -> list[scope] {
-        ret cons[scope](scope_item(i), @sc);
-    }
-    fn update_env_for_native_item(&list[scope] sc, &@ast::native_item i)
-        -> list[scope] {
-        ret cons[scope](scope_native_item(i), @sc);
-    }
-    fn update_env_for_block(&list[scope] sc, &ast::block b) -> list[scope] {
-        ret cons[scope](scope_block(b), @sc);
-    }
-    fn update_env_for_expr(&list[scope] sc, &@ast::expr x) -> list[scope] {
-        alt (x.node) {
-            case (ast::expr_for(?d, _, _, _)) {
-                ret cons[scope](scope_loop(d), @sc);
+    fn walk_expr(@env e, @mutable list[scope] sc, &@ast::expr exp) {
+        push_env_for_expr(sc, exp);
+        alt (exp.node) {
+            case (ast::expr_path(?p, ?a)) {
+                auto df = lookup_path_strict(*e, *sc, exp.span, p.node.idents,
+                                             ns_value);
+                e.def_map.insert(ast::ann_tag(a), df);
             }
-            case (ast::expr_for_each(?d, _, _, _)) {
-                ret cons[scope](scope_loop(d), @sc);
-            }
-            case (_) { ret sc; }
+            case (_) {}
         }
     }
-    fn update_env_for_arm(&list[scope] sc, &ast::arm p) -> list[scope] {
-        ret cons[scope](scope_arm(p), @sc);
+    fn walk_ty(@env e, @mutable list[scope] sc, &@ast::ty t) {
+        alt (t.node) {
+            case (ast::ty_path(?p, ?a)) {
+                auto new_def = lookup_path_strict(*e, *sc, t.span,
+                                                  p.node.idents, ns_type);
+                e.def_map.insert(ast::ann_tag(a), new_def);
+            }
+            case (_) {}
+        }
+    }
+    fn walk_arm(@env e, @mutable list[scope] sc, &ast::arm a) {
+        walk_pat(*e, *sc, a.pat);
+        push_env_for_arm(sc, a);
+    }
+    fn walk_pat(&env e, &list[scope] sc, &@ast::pat pat) {
+        alt (pat.node) {
+            case (ast::pat_tag(?p, ?children, ?a)) {
+                auto fnd = lookup_path_strict(e, sc, p.span, p.node.idents,
+                                              ns_value);
+                alt (fnd) {
+                    case (ast::def_variant(?did, ?vid)) {
+                        e.def_map.insert(ast::ann_tag(a), fnd);
+                    }
+                    case (_) {
+                        e.sess.span_err(p.span, "not a tag variant: " +
+                                        _str::connect(p.node.idents, "::"));
+                        fail;
+                    }
+                }
+                for (@ast::pat child in children) {
+                    walk_pat(e, sc, child);
+                }
+            }
+            case (_) {}
+        }
     }
 }
 
-fn lookup_import(&env e, def_id defid, namespace ns) -> option::t[def] {
-    alt (e.imports.get(defid._1)) {
-        case (todo(?item, ?sc)) {
-            resolve_import(e, item, sc);
-            ret lookup_import(e, defid, ns);
+// Helpers for tracking scope during a walk
+
+fn push_env_for_crate(@mutable list[scope] sc, &ast::crate c) {
+    *sc = cons[scope](scope_crate(@c), @*sc);
+}
+fn pop_env_for_crate(@mutable list[scope] sc, &ast::crate c) {
+    *sc = std::list::cdr(*sc);
+}
+
+fn push_env_for_item(@mutable list[scope] sc, &@ast::item i) {
+    *sc = cons[scope](scope_item(i), @*sc);
+}
+fn pop_env_for_item(@mutable list[scope] sc, &@ast::item i) {
+    *sc = std::list::cdr(*sc);
+}
+
+fn push_env_for_method(@mutable list[scope] sc, &@ast::method m) {
+    let vec[ast::ty_param] tp = vec();
+    let @ast::item i = @rec(node=ast::item_fn(m.node.ident,
+                                              m.node.meth,
+                                              tp,
+                                              m.node.id,
+                                              m.node.ann),
+                            span=m.span);
+    *sc = cons[scope](scope_item(i), @*sc);
+}
+fn pop_env_for_method(@mutable list[scope] sc, &@ast::method m) {
+    *sc = std::list::cdr(*sc);
+}
+
+fn push_env_for_n_item(@mutable list[scope] sc, &@ast::native_item i) {
+    *sc = cons[scope](scope_native_item(i), @*sc);
+}
+fn pop_env_for_n_item(@mutable list[scope] sc, &@ast::native_item i) {
+    *sc = std::list::cdr(*sc);
+}
+
+fn push_env_for_block(@mutable list[scope] sc, &ast::block b) {
+    *sc = cons[scope](scope_block(b), @*sc);
+}
+fn pop_env_for_block(@mutable list[scope] sc, &ast::block b) {
+    *sc = std::list::cdr(*sc);
+}
+
+fn push_env_for_expr(@mutable list[scope] sc, &@ast::expr x) {
+    alt (x.node) {
+        case (ast::expr_for(?d, _, _, _)) {
+            *sc = cons[scope](scope_loop(d), @*sc);
         }
-        case (resolving(?sp)) {
-            e.sess.span_err(sp, "cyclic import");
+        case (ast::expr_for_each(?d, _, _, _)) {
+            *sc = cons[scope](scope_loop(d), @*sc);
         }
-        case (resolved(?val, ?typ)) {
-            ret alt (ns) { case (ns_value) { val }
-                           case (ns_type) { typ } };
-        }
+        case (_) {}
     }
 }
+fn pop_env_for_expr(@mutable list[scope] sc, &@ast::expr x) {
+    alt (x.node) {
+        case (ast::expr_for(?d, _, _, _)) {
+            *sc = std::list::cdr(*sc);
+        }
+        case (ast::expr_for_each(?d, _, _, _)) {
+            *sc = std::list::cdr(*sc);
+        }
+        case (_) {}
+    }
+}
+
+fn push_env_for_arm(@mutable list[scope] sc, &ast::arm p) {
+    *sc = cons[scope](scope_arm(p), @*sc);
+}
+fn pop_env_for_arm(@mutable list[scope] sc, &ast::arm p) {
+    *sc = std::list::cdr(*sc);
+}
+
+// Import resolution
 
 fn resolve_import(&env e, &@ast::view_item it, &list[scope] sc) {
     auto defid; auto ids;
@@ -277,35 +349,7 @@ fn resolve_import(&env e, &@ast::view_item it, &list[scope] sc) {
     }
 }
 
-fn fold_expr_path(@env e, &list[scope] sc, &span sp, &ast::path p, &ann a)
-    -> @ast::expr {
-    auto df = lookup_path_strict(*e, sc, sp, p.node.idents, ns_value);
-    e.def_map.insert(ast::ann_tag(a), df);
-    ret @fold::respan(sp, ast::expr_path(p, a));
-}
-
-
-fn fold_pat_tag(@env e, &list[scope] sc, &span sp, &ast::path p,
-                &vec[@ast::pat] args, &ann a) -> @ast::pat {
-    alt (lookup_path_strict(*e, sc, sp, p.node.idents, ns_value)) {
-        case (ast::def_variant(?did, ?vid)) {
-            e.def_map.insert(ast::ann_tag(a), ast::def_variant(did, vid));
-            ret @fold::respan[ast::pat_](sp, ast::pat_tag(p, args, a));
-        }
-        case (_) {
-            e.sess.span_err(sp, "not a tag variant: " +
-                            _str::connect(p.node.idents, "::"));
-            fail;
-        }
-    }
-}
-
-fn fold_ty_path(@env e, &list[scope] sc, &span sp, &ast::path p,
-                &ast::ann a) -> @ast::ty {
-    auto new_def = lookup_path_strict(*e, sc, sp, p.node.idents, ns_type);
-    e.def_map.insert(ast::ann_tag(a), new_def);
-    ret @fold::respan[ast::ty_](sp, ast::ty_path(p, a));
-}
+// Utilities
 
 fn is_module(def d) -> bool {
     alt (d) {
@@ -325,6 +369,8 @@ fn ns_name(namespace ns) -> str {
 fn unresolved(&env e, &span sp, ident id, str kind) {
     e.sess.span_err(sp, "unresolved " + kind + ": " + id);
 }
+
+// Lookup helpers
 
 fn lookup_path_strict(&env e, &list[scope] sc, &span sp, vec[ident] idents,
                       namespace ns) -> def {
@@ -624,6 +670,22 @@ fn found_view_item(&env e, @ast::view_item vi, namespace ns)
         }
         case (ast::view_item_import(_, _, ?defid)) {
             ret lookup_import(e, defid, ns);
+        }
+    }
+}
+
+fn lookup_import(&env e, def_id defid, namespace ns) -> option::t[def] {
+    alt (e.imports.get(defid._1)) {
+        case (todo(?item, ?sc)) {
+            resolve_import(e, item, sc);
+            ret lookup_import(e, defid, ns);
+        }
+        case (resolving(?sp)) {
+            e.sess.span_err(sp, "cyclic import");
+        }
+        case (resolved(?val, ?typ)) {
+            ret alt (ns) { case (ns_value) { val }
+                           case (ns_type) { typ } };
         }
     }
 }
