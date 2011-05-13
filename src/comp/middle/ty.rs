@@ -163,7 +163,8 @@ type type_store = rec(mutable vec[raw_t] others,
                       hashmap[raw_t,uint] other_structural);
 
 type ty_param_substs_opt_and_ty = tup(option::t[vec[ty::t]], ty::t);
-type node_type_table = vec[mutable option::t[ty::ty_param_substs_opt_and_ty]];
+type node_type_table =
+    @mutable vec[mutable option::t[ty::ty_param_substs_opt_and_ty]];
 
 fn mk_type_store() -> @type_store {
     let vec[raw_t] others = vec();
@@ -1466,6 +1467,18 @@ fn ann_to_type_params(&node_type_table ntt, &ast::ann ann) -> vec[t] {
                 case (some[vec[t]](?tps)) { ret tps; }
             }
         }
+    }
+}
+
+fn ann_to_ty_param_substs_opt_and_ty(&node_type_table ntt, &ast::ann ann)
+        -> ty_param_substs_opt_and_ty {
+    alt (ann) {
+        case (ast::ann_none(_)) {
+            log_err "ann_to_ty_param_substs_opt_and_ty() called on a node " +
+                "with no type params";
+            fail;
+        }
+        case (ast::ann_type(_, ?t, ?tps, _)) { ret tup(tps, t); }
     }
 }
 

@@ -72,7 +72,7 @@ type crate_ctxt = rec(session::session sess,
                       mutable uint cache_hits,
                       mutable uint cache_misses,
                       ty::ctxt tcx,
-                      mutable node_type_table node_types);
+                      node_type_table node_types);
 
 type fn_ctxt = rec(ty::t ret_ty,
                    ast::purity purity,
@@ -372,12 +372,13 @@ fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast::ty ast_ty) -> ty::t {
 }
 
 // Writes a type parameter count and type pair into the node type table.
-fn write_type(&@crate_ctxt cx, uint node_id,
+fn write_type(&node_type_table ntt, uint node_id,
               &ty_param_substs_opt_and_ty tpot) {
-    _vec::grow_set[option::t[ty::ty_param_substs_opt_and_ty]](cx.node_types,
-        0u,
-        none[ty_param_substs_opt_and_ty],
-        some[ty_param_substs_opt_and_ty](tpot));
+    _vec::grow_set[option::t[ty::ty_param_substs_opt_and_ty]]
+        (*ntt,
+         0u,
+         none[ty_param_substs_opt_and_ty],
+         some[ty_param_substs_opt_and_ty](tpot));
 }
 
 
@@ -396,7 +397,8 @@ mod Collect {
     type ctxt = rec(session::session sess,
                     @ty_item_table id_to_ty_item,
                     ty::type_cache type_cache,
-                    ty::ctxt tcx);
+                    ty::ctxt tcx,
+                    node_type_table node_types);
     type env = rec(@ctxt cx, ast::native_abi abi);
 
     fn ty_of_fn_decl(&@ctxt cx,
@@ -824,15 +826,22 @@ mod Collect {
                                   ast::ann_type(ast::ann_tag(a), typ,
                                                 none[vec[ty::t]],
                                                 none[@ts_ann]));
+        write_type(e.cx.node_types, ast::ann_tag(a),
+                   tup(none[vec[ty::t]], typ));
         ret @fold::respan[ast::item_](sp, item);
     }
 
     fn collect_item_types(&session::session sess, &ty::ctxt tcx,
                           &@ast::crate crate)
-            -> tup(@ast::crate, ty::type_cache, @ty_item_table) {
+            -> tup(@ast::crate, ty::type_cache, @ty_item_table,
+                   node_type_table) {
         // First pass: collect all type item IDs:
         auto module = crate.node.module;
         auto id_to_ty_item = @common::new_def_hash[any_item]();
+
+        let vec[mutable option::t[ty::ty_param_substs_opt_and_ty]] ntt_sub =
+            vec(mutable);
+        let node_type_table ntt = @mutable ntt_sub;
 
         auto fld_1 = fold::new_identity_fold[@ty_item_table]();
         fld_1 = @rec(update_env_for_item = bind collect(_, _),
@@ -846,7 +855,8 @@ mod Collect {
         auto cx = @rec(sess=sess,
                        id_to_ty_item=id_to_ty_item,
                        type_cache=type_cache,
-                       tcx=tcx);
+                       tcx=tcx,
+                       node_types=ntt);
 
         let @env e = @rec(cx=cx, abi=ast::native_abi_cdecl);
 
@@ -863,7 +873,7 @@ mod Collect {
                  fold_item_tag   = bind fold_item_tag(_,_,_,_,_,_,_)
                  with *fld_2);
         auto crate_ = fold::fold_crate[@env](e, fld_2, crate);
-        ret tup(crate_, type_cache, id_to_ty_item);
+        ret tup(crate_, type_cache, id_to_ty_item, ntt);
     }
 }
 
@@ -1135,6 +1145,8 @@ mod Pushdown {
                 p_1 = ast::pat_wild(ast::ann_type(ast::ann_tag(ann), t,
                                                 none[vec[ty::t]],
                                                 none[@ts_ann]));
+                write_type(fcx.ccx.node_types, ast::ann_tag(ann),
+                           tup(none[vec[ty::t]], t));
             }
             case (ast::pat_lit(?lit, ?ann)) {
                 auto t = Demand::simple(fcx, pat.span, expected,
@@ -1142,6 +1154,8 @@ mod Pushdown {
                 p_1 = ast::pat_lit(lit, ast::ann_type(ast::ann_tag(ann), t,
                                                     none[vec[ty::t]],
                                                     none[@ts_ann]));
+                write_type(fcx.ccx.node_types, ast::ann_tag(ann),
+                           tup(none[vec[ty::t]], t));
             }
             case (ast::pat_bind(?id, ?did, ?ann)) {
                 auto t = Demand::simple(fcx, pat.span, expected,
@@ -1151,6 +1165,8 @@ mod Pushdown {
                                                            t,
                                                            none[vec[ty::t]],
                                                            none[@ts_ann]));
+                write_type(fcx.ccx.node_types, ast::ann_tag(ann),
+                           tup(none[vec[ty::t]], t));
             }
             case (ast::pat_tag(?id, ?subpats, ?ann)) {
                 // Take the variant's type parameters out of the expected
@@ -1182,6 +1198,9 @@ mod Pushdown {
 
                 // TODO: push down type from "expected".
                 p_1 = ast::pat_tag(id, subpats_1, ann);
+                write_type(fcx.ccx.node_types, ast::ann_tag(ann),
+                    ty::ann_to_ty_param_substs_opt_and_ty(fcx.ccx.node_types,
+                                                          ann));
             }
         }
 
@@ -1438,8 +1457,10 @@ mod Pushdown {
 
                 e_1 = ast::expr_path(pth,
                                     ast::ann_type(ast::ann_tag(ann), t,
-                                                 ty_params_opt,
-                                                 none[@ts_ann]));
+                                                  ty_params_opt,
+                                                  none[@ts_ann]));
+                write_type(fcx.ccx.node_types, ast::ann_tag(ann),
+                           tup(ty_params_opt, t));
             }
             case (ast::expr_ext(?p, ?args, ?body, ?expanded, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
@@ -1595,6 +1616,7 @@ fn resolve_local_types_in_annotation(&option::t[@fn_ctxt] env, &ast::ann ann)
             auto f = bind resolver(fcx, _);
             auto new_type = ty::fold_ty(fcx.ccx.tcx, f,
                                         ann_to_type(fcx.ccx.node_types, ann));
+            write_type(fcx.ccx.node_types, tg, tup(tps, new_type));
             ret ast::ann_type(tg, new_type, tps, ts_info);
         }
     }
@@ -1689,6 +1711,8 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat) -> @ast::pat {
                     new_pat = ast::pat_tag(p, new_subpats,
                         ast::ann_type(ast::ann_tag(old_ann), path_tpot._1,
                                       path_tpot._0, none[@ts_ann]));
+                    write_type(fcx.ccx.node_types, ast::ann_tag(old_ann),
+                               path_tpot);
                 }
 
                 // Nullary variants have tag types.
@@ -1709,6 +1733,8 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat) -> @ast::pat {
                     new_pat = ast::pat_tag(p, subpats,
                         ast::ann_type(ast::ann_tag(old_ann), path_tpot._1,
                                       path_tpot._0, none[@ts_ann]));
+                    write_type(fcx.ccx.node_types, ast::ann_tag(old_ann),
+                               path_tpot);
                 }
             }
         }
@@ -1960,6 +1986,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                     ast::expr_path(pth,
                         ast::ann_type(ast::ann_tag(old_ann), path_tpot._1,
                                       path_tpot._0, none[@ts_ann])));
+                    write_type(fcx.ccx.node_types, ast::ann_tag(old_ann),
+                               path_tpot);
             }
 
             // The definition doesn't take type parameters. If the programmer
@@ -3033,7 +3061,7 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
         map::mk_hashmap[unify_cache_entry,ty::Unify::result](hasher, eqer);
     auto fpt =
         mk_fn_purity_table(crate); // use a variation on Collect
-    let node_type_table node_types = vec(mutable);
+    let node_type_table node_types = result._3;
 
     auto ccx = @rec(sess=sess,
                     type_cache=result._1,
@@ -3046,7 +3074,7 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
                     mutable cache_hits=0u,
                     mutable cache_misses=0u,
                     tcx=tcx,
-                    mutable node_types=node_types);
+                    node_types=node_types);
 
     auto fld = fold::new_identity_fold[@crate_ctxt]();
 
