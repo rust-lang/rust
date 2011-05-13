@@ -73,7 +73,7 @@ mod lib {
                 mod llvm;
             }
         }
-        else {
+        case (_) {
             let (llvm_lib = "librustllvm.so") {
                 mod llvm;
             }

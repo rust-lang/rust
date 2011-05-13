@@ -51,7 +51,7 @@ alt (target_os) {
     } case ("macos") {
         mod os = "macos_os.rs";
         mod os_fs = "posix_fs.rs";
-    } else {
+    } case (_) {
         mod os = "linux_os.rs";
         mod os_fs = "posix_fs.rs";
     }

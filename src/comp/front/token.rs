@@ -38,9 +38,6 @@ tag token {
     BINOP(binop);
     BINOPEQ(binop);
 
-    AS;
-    WITH;
-
     /* Structural symbols */
     AT;
     DOT;
@@ -59,72 +56,7 @@ tag token {
     LBRACE;
     RBRACE;
 
-    /* Module and crate keywords */
-    MOD;
-    USE;
-    AUTH;
-    META;
-
-    /* Metaprogramming keywords */
-    SYNTAX;
     POUND;
-
-    /* Statement keywords */
-    IF;
-    ELSE;
-    DO;
-    WHILE;
-    ALT;
-    CASE;
-
-    BREAK;
-    CONT;
-
-    FAIL;
-    DROP;
-
-    IN;
-    FOR;
-    EACH;
-    PUT;
-    RET;
-    BE;
-
-    /* Type and type-state keywords */
-    TYPE;
-    ASSERT;
-    CHECK;
-    CLAIM;
-    PROVE;
-
-    /* Layer keywords */
-    STATE;
-    GC;
-
-    /* Unsafe-block keyword */
-    UNSAFE;
-
-    /* Type qualifiers */
-    NATIVE;
-    AUTO;
-    MUTABLE;
-
-    /* Name management */
-    IMPORT;
-    EXPORT;
-
-    /* Value / stmt declarators */
-    LET;
-    CONST;
-
-    /* Magic runtime services */
-    LOG;
-    LOG_ERR;
-    SPAWN;
-    BIND;
-    THREAD;
-    YIELD;
-    JOIN;
 
     /* Literals */
     LIT_INT(int);
@@ -140,36 +72,6 @@ tag token {
     IDENT(str_num);
     IDX(int);
     UNDERSCORE;
-
-    /* Reserved type names */
-    BOOL;
-    INT;
-    UINT;
-    FLOAT;
-    CHAR;
-    STR;
-    MACH(ty_mach);
-
-    /* Algebraic type constructors */
-    REC;
-    TUP;
-    TAG;
-    VEC;
-    ANY;
-
-    /* Callable type constructors */
-    FN;
-    PRED;
-    ITER;
-
-    /* Object type and related keywords */
-    OBJ;
-    SELF;
-
-    /* Comm and task types */
-    CHAN;
-    PORT;
-    TASK;
 
     BRACEQUOTE(str_num);
     EOF;
@@ -209,10 +111,6 @@ fn to_str(lexer::reader r, token t) -> str {
         case (BINOP(?op)) { ret binop_to_str(op); }
         case (BINOPEQ(?op)) { ret binop_to_str(op) + "="; }
 
-        case (AS) { ret "as"; }
-        case (WITH) { ret "with"; }
-
-
         /* Structural symbols */
         case (AT) { ret "@"; }
         case (DOT) { ret "."; }
@@ -231,72 +129,7 @@ fn to_str(lexer::reader r, token t) -> str {
         case (LBRACE) { ret "{"; }
         case (RBRACE) { ret "}"; }
 
-        /* Module and crate keywords */
-        case (MOD) { ret "mod"; }
-        case (USE) { ret "use"; }
-        case (AUTH) { ret "auth"; }
-        case (META) { ret "meta"; }
-
-        /* Metaprogramming keywords */
-        case (SYNTAX) { ret "syntax"; }
         case (POUND) { ret "#"; }
-
-        /* Statement keywords */
-        case (IF) { ret "if"; }
-        case (ELSE) { ret "else"; }
-        case (DO) { ret "do"; }
-        case (WHILE) { ret "while"; }
-        case (ALT) { ret "alt"; }
-        case (CASE) { ret "case"; }
-
-        case (BREAK) { ret "break"; }
-        case (CONT) { ret "cont"; }
-
-        case (FAIL) { ret "fail"; }
-        case (DROP) { ret "drop"; }
-
-        case (IN) { ret "in"; }
-        case (FOR) { ret "for"; }
-        case (EACH) { ret "each"; }
-        case (PUT) { ret "put"; }
-        case (RET) { ret "ret"; }
-        case (BE) { ret "be"; }
-
-        /* Type and type-state keywords */
-        case (TYPE) { ret "type"; }
-        case (ASSERT) { ret "assert"; }
-        case (CHECK) { ret "check"; }
-        case (CLAIM) { ret "claim"; }
-        case (PROVE) { ret "prove"; }
-
-        /* Layer keywords */
-        case (STATE) { ret "state"; }
-        case (GC) { ret "gc"; }
-
-        /* Unsafe-block keyword */
-        case (UNSAFE) { ret "unsafe"; }
-
-        /* Type qualifiers */
-        case (NATIVE) { ret "native"; }
-        case (AUTO) { ret "auto"; }
-        case (MUTABLE) { ret "mutable"; }
-
-        /* Name management */
-        case (IMPORT) { ret "import"; }
-        case (EXPORT) { ret "export"; }
-
-        /* Value / stmt declarators */
-        case (LET) { ret "let"; }
-        case (CONST) { ret "const"; }
-
-        /* Magic runtime services */
-        case (LOG) { ret "log"; }
-        case (LOG_ERR) { ret "log_err"; }
-        case (SPAWN) { ret "spawn"; }
-        case (BIND) { ret "bind"; }
-        case (THREAD) { ret "thread"; }
-        case (YIELD) { ret "yield"; }
-        case (JOIN) { ret "join"; }
 
         /* Literals */
         case (LIT_INT(?i)) { ret _int::to_str(i, 10u); }
@@ -328,43 +161,10 @@ fn to_str(lexer::reader r, token t) -> str {
 
         /* Name components */
         case (IDENT(?s)) {
-            auto si = "ident:";
-            si += r.get_str(s);
-            ret si;
+            ret r.get_str(s);
         }
         case (IDX(?i)) { ret "_" + _int::to_str(i, 10u); }
         case (UNDERSCORE) { ret "_"; }
-
-        /* Reserved type names */
-        case (BOOL) { ret "bool"; }
-        case (INT) { ret "int"; }
-        case (UINT) { ret "uint"; }
-        case (FLOAT) { ret "float"; }
-        case (CHAR) { ret "char"; }
-        case (STR) { ret "str"; }
-        case (MACH(?tm)) { ret ty_mach_to_str(tm); }
-
-        /* Algebraic type constructors */
-        case (REC) { ret "rec"; }
-        case (TUP) { ret "tup"; }
-        case (TAG) { ret "tag"; }
-        case (VEC) { ret "vec"; }
-        case (ANY) { ret "any"; }
-
-        /* Callable type constructors */
-        case (FN) { ret "fn"; }
-        case (PRED) { ret "pred"; }
-        case (ITER) { ret "iter"; }
-
-        /* Object type */
-        case (OBJ) { ret "obj"; }
-        case (SELF) { ret "self"; }
-
-
-        /* Comm and task types */
-        case (CHAN) { ret "chan"; }
-        case (PORT) { ret "port"; }
-        case (TASK) { ret "task"; }
 
         case (BRACEQUOTE(_)) { ret "<bracequote>"; }
         case (EOF) { ret "<eof>"; }

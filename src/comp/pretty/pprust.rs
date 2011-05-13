@@ -9,7 +9,6 @@ import util::common;
 import pp::end; import pp::wrd; import pp::space; import pp::line;
 
 const uint indent_unit = 4u;
-const int as_prec = 5;
 const uint default_columns = 78u;
 
 type ps = @rec(pp::ps s,
@@ -494,7 +493,7 @@ fn print_expr(ps s, &@ast::expr expr) {
             print_literal(s, lit);
         }
         case (ast::expr_cast(?expr,?ty,_)) {
-            print_maybe_parens(s, expr, as_prec);
+            print_maybe_parens(s, expr, front::parser::as_prec);
             space(s.s);
             wrd1(s, "as");
             print_type(s, ty);
@@ -888,7 +887,7 @@ fn print_maybe_parens(ps s, @ast::expr expr, int outer_prec) {
             add_them = operator_prec(op) < outer_prec;
         }
         case (ast::expr_cast(_,_,_)) {
-            add_them = as_prec < outer_prec;
+            add_them = front::parser::as_prec < outer_prec;
         }
         case (_) {
             add_them = false;

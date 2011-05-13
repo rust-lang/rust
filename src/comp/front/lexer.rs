@@ -22,8 +22,6 @@ state type reader = state obj {
     fn add_str(str) -> token::str_num;
     fn get_str(token::str_num) -> str;
     fn get_chpos() -> uint;
-    fn get_keywords() -> hashmap[str,token::token];
-    fn get_reserved() -> hashmap[str,()];
     fn get_filemap() -> codemap::filemap;
     fn err(str m);
 };
@@ -39,8 +37,6 @@ fn new_reader(session sess, io::reader rdr,
                      mutable uint mark_chpos,
                      mutable uint chpos,
                      mutable vec[str] strs,
-                     hashmap[str,token::token] keywords,
-                     hashmap[str,()] reserved,
                      codemap::filemap fm) {
 
         fn is_eof() -> bool {
@@ -82,10 +78,6 @@ fn new_reader(session sess, io::reader rdr,
             }
         }
 
-        fn get_keywords() -> hashmap[str,token::token] {
-            ret keywords;
-        }
-
         fn add_str(str s) -> token::str_num {
             strs += vec(s);
             ret _vec::len[str](strs) - 1u;
@@ -93,10 +85,6 @@ fn new_reader(session sess, io::reader rdr,
 
         fn get_str(token::str_num i) -> str {
             ret strs.(i);
-        }
-
-        fn get_reserved() -> hashmap[str,()] {
-            ret reserved;
         }
 
         fn get_filemap() -> codemap::filemap {
@@ -111,131 +99,9 @@ fn new_reader(session sess, io::reader rdr,
     let vec[str] strs = vec();
     auto rd = reader(sess, file, _str::byte_len(file), 0u, -1 as char,
                      filemap.start_pos, filemap.start_pos,
-                     strs, keyword_table(),
-                     reserved_word_table(),
-                     filemap);
+                     strs, filemap);
     rd.init();
     ret rd;
-}
-
-fn keyword_table() -> std::map::hashmap[str, token::token] {
-    auto keywords = new_str_hash[token::token]();
-
-    keywords.insert("mod", token::MOD);
-    keywords.insert("use", token::USE);
-    keywords.insert("meta", token::META);
-    keywords.insert("auth", token::AUTH);
-
-    keywords.insert("syntax", token::SYNTAX);
-
-    keywords.insert("if", token::IF);
-    keywords.insert("else", token::ELSE);
-    keywords.insert("while", token::WHILE);
-    keywords.insert("do", token::DO);
-    keywords.insert("alt", token::ALT);
-    keywords.insert("case", token::CASE);
-
-    keywords.insert("for", token::FOR);
-    keywords.insert("each", token::EACH);
-    keywords.insert("break", token::BREAK);
-    keywords.insert("cont", token::CONT);
-    keywords.insert("put", token::PUT);
-    keywords.insert("ret", token::RET);
-    keywords.insert("be", token::BE);
-
-    keywords.insert("fail", token::FAIL);
-    keywords.insert("drop", token::DROP);
-
-    keywords.insert("type", token::TYPE);
-    keywords.insert("check", token::CHECK);
-    keywords.insert("assert", token::ASSERT);
-    keywords.insert("claim", token::CLAIM);
-    keywords.insert("prove", token::PROVE);
-
-    keywords.insert("state", token::STATE);
-    keywords.insert("gc", token::GC);
-
-    keywords.insert("unsafe", token::UNSAFE);
-
-    keywords.insert("native", token::NATIVE);
-    keywords.insert("mutable", token::MUTABLE);
-    keywords.insert("auto", token::AUTO);
-
-    keywords.insert("fn", token::FN);
-    keywords.insert("pred", token::PRED);
-    keywords.insert("iter", token::ITER);
-
-    keywords.insert("import", token::IMPORT);
-    keywords.insert("export", token::EXPORT);
-
-    keywords.insert("let", token::LET);
-    keywords.insert("const", token::CONST);
-
-    keywords.insert("log", token::LOG);
-    keywords.insert("log_err", token::LOG_ERR);
-    keywords.insert("spawn", token::SPAWN);
-    keywords.insert("thread", token::THREAD);
-    keywords.insert("yield", token::YIELD);
-    keywords.insert("join", token::JOIN);
-
-    keywords.insert("bool", token::BOOL);
-
-    keywords.insert("int", token::INT);
-    keywords.insert("uint", token::UINT);
-    keywords.insert("float", token::FLOAT);
-
-    keywords.insert("char", token::CHAR);
-    keywords.insert("str", token::STR);
-
-
-    keywords.insert("rec", token::REC);
-    keywords.insert("tup", token::TUP);
-    keywords.insert("tag", token::TAG);
-    keywords.insert("vec", token::VEC);
-    keywords.insert("any", token::ANY);
-
-    keywords.insert("obj", token::OBJ);
-    keywords.insert("self", token::SELF);
-
-    keywords.insert("port", token::PORT);
-    keywords.insert("chan", token::CHAN);
-
-    keywords.insert("task", token::TASK);
-
-    keywords.insert("true", token::LIT_BOOL(true));
-    keywords.insert("false", token::LIT_BOOL(false));
-
-    keywords.insert("in", token::IN);
-
-    keywords.insert("as", token::AS);
-    keywords.insert("with", token::WITH);
-
-    keywords.insert("bind", token::BIND);
-
-    keywords.insert("u8", token::MACH(common::ty_u8));
-    keywords.insert("u16", token::MACH(common::ty_u16));
-    keywords.insert("u32", token::MACH(common::ty_u32));
-    keywords.insert("u64", token::MACH(common::ty_u64));
-    keywords.insert("i8", token::MACH(common::ty_i8));
-    keywords.insert("i16", token::MACH(common::ty_i16));
-    keywords.insert("i32", token::MACH(common::ty_i32));
-    keywords.insert("i64", token::MACH(common::ty_i64));
-    keywords.insert("f32", token::MACH(common::ty_f32));
-    keywords.insert("f64", token::MACH(common::ty_f64));
-
-    ret keywords;
-}
-
-fn reserved_word_table() -> std::map::hashmap[str, ()] {
-    auto reserved = new_str_hash[()]();
-    reserved.insert("f16", ());  // IEEE 754-2008 'binary16' interchange fmt
-    reserved.insert("f80", ());  // IEEE 754-1985 'extended'
-    reserved.insert("f128", ()); // IEEE 754-2008 'binary128'
-    reserved.insert("m32", ());  // IEEE 754-2008 'decimal32'
-    reserved.insert("m64", ());  // IEEE 754-2008 'decimal64'
-    reserved.insert("m128", ()); // IEEE 754-2008 'decimal128'
-    reserved.insert("dec", ());  // One of m32, m64, m128
-    ret reserved;
 }
 
 fn in_range(char c, char lo, char hi) -> bool {
@@ -602,17 +468,6 @@ fn next_token(reader rdr) -> token::token {
 
         if (_str::eq(accum_str, "_")) {
             ret token::UNDERSCORE;
-        }
-
-        auto kwds = rdr.get_keywords();
-        if (kwds.contains_key(accum_str)) {
-            ret kwds.get(accum_str);
-        }
-
-        auto rsvd = rdr.get_reserved();
-        if (rsvd.contains_key(accum_str)) {
-            rdr.err(#fmt("reserved keyword: %s", accum_str));
-            fail;
         }
 
         ret token::IDENT(rdr.add_str(accum_str));
