@@ -1,7 +1,7 @@
 import _str::sbuf;
 import _vec::vbuf;
 
-native mod libc = "libc::dylib" {
+native mod libc = "libc.dylib" {
 
     fn open(sbuf s, int flags, uint mode) -> int;
     fn read(int fd, vbuf buf, uint count) -> int;

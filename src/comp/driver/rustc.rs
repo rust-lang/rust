@@ -35,11 +35,11 @@ fn default_environment(session::session sess,
                        str argv0,
                        str input) -> eval::env {
 
-    auto libc = "libc::so";
+    auto libc = "libc.so";
     alt (sess.get_targ_cfg().os) {
         case (session::os_win32) { libc = "msvcrt.dll"; }
-        case (session::os_macos) { libc = "libc::dylib"; }
-        case (session::os_linux) { libc = "libc::so.6"; }
+        case (session::os_macos) { libc = "libc.dylib"; }
+        case (session::os_linux) { libc = "libc.so.6"; }
     }
 
     ret

@@ -4,7 +4,7 @@ import _vec::vbuf;
 // FIXME Somehow merge stuff duplicated here and macosx_os.rs. Made difficult
 // by https://github.com/graydon/rust/issues#issue/268
 
-native mod libc = "libc::so.6" {
+native mod libc = "libc.so.6" {
 
     fn open(sbuf s, int flags, uint mode) -> int;
     fn read(int fd, vbuf buf, uint count) -> int;
