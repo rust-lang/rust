@@ -635,8 +635,9 @@ mod Collect {
 
             auto tpt = tup(ty_param_count, result_ty);
             cx.type_cache.insert(variant.node.id, tpt);
-            auto variant_t = rec(ann=triv_ann(variant.node.ann, result_ty)
-                                 with variant.node
+            auto variant_t = rec(
+                ann=triv_ann(ast::ann_tag(variant.node.ann), result_ty)
+                with variant.node
             );
             result += vec(fold::respan(variant.span, variant_t));
         }
@@ -705,7 +706,8 @@ mod Collect {
                        &ast::def_id id, &ast::ann a) -> @ast::item {
         // assert (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
-        auto item = ast::item_const(i, t, ex, id, triv_ann(a, typ));
+        auto item = ast::item_const(i, t, ex, id,
+                                    triv_ann(ast::ann_tag(a), typ));
         ret @fold::respan[ast::item_](sp, item);
     }
 
@@ -714,7 +716,8 @@ mod Collect {
                     &ast::def_id id, &ast::ann a) -> @ast::item {
         // assert (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
-        auto item = ast::item_fn(i, f, ty_params, id, triv_ann(a, typ));
+        auto item = ast::item_fn(i, f, ty_params, id,
+                                 triv_ann(ast::ann_tag(a), typ));
         ret @fold::respan[ast::item_](sp, item);
     }
 
@@ -725,7 +728,7 @@ mod Collect {
         // assert (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
         auto item = ast::native_item_fn(i, ln, d, ty_params, id,
-                                       triv_ann(a, typ));
+                                       triv_ann(ast::ann_tag(a), typ));
         ret @fold::respan[ast::native_item_](sp, item);
     }
 
@@ -770,7 +773,7 @@ mod Collect {
                                      meth_ty.proto,
                                      meth_ty.inputs,
                                      meth_ty.output);
-            m_ = rec(ann=triv_ann(meth.node.ann, meth_tfn)
+            m_ = rec(ann=triv_ann(ast::ann_tag(meth.node.ann), meth_tfn)
                      with meth.node
             );
             m = @rec(node=m_ with *meth);
@@ -779,9 +782,8 @@ mod Collect {
         auto g = bind getter(e.cx, _);
         for (ast::obj_field fld in ob.fields) {
             let ty::t fty = ast_ty_to_ty(e.cx.tcx, g, fld.ty);
-            let ast::obj_field f = rec(ann=triv_ann(fld.ann, fty)
-                                      with fld
-            );
+            let ast::obj_field f =
+                rec(ann=triv_ann(ast::ann_tag(fld.ann), fty) with fld);
             _vec::push[ast::obj_field](fields, f);
         }
 
@@ -792,7 +794,10 @@ mod Collect {
                 let ty::t output = ty::mk_nil(e.cx.tcx);
                 auto dtor_tfn = ty::mk_fn(e.cx.tcx, ast::proto_fn, inputs,
                                          output);
-                auto d_ = rec(ann=triv_ann(d.node.ann, dtor_tfn) with d.node);
+                auto d_ = rec(
+                    ann=triv_ann(ast::ann_tag(d.node.ann), dtor_tfn)
+                    with d.node
+                );
                 dtor = some[@ast::method](@rec(node=d_ with *d));
             }
             case (none[@ast::method]) { }
@@ -802,7 +807,8 @@ mod Collect {
                        fields = fields,
                        dtor = dtor
                        with ob);
-        auto item = ast::item_obj(i, ob_, ty_params, odid, triv_ann(a, t));
+        auto item = ast::item_obj(i, ob_, ty_params, odid,
+                                  triv_ann(ast::ann_tag(a), t));
         ret @fold::respan[ast::item_](sp, item);
     }
 
@@ -811,7 +817,8 @@ mod Collect {
                     &ast::def_id id, &ast::ann a) -> @ast::item {
         // assert (e.cx.type_cache.contains_key(id));
         auto typ = e.cx.type_cache.get(id)._1;
-        auto item = ast::item_ty(i, t, ty_params, id, triv_ann(a, typ));
+        auto item = ast::item_ty(i, t, ty_params, id,
+                                 triv_ann(ast::ann_tag(a), typ));
         ret @fold::respan[ast::item_](sp, item);
     }
 
@@ -1240,7 +1247,8 @@ mod Pushdown {
                         fail;
                     }
                 }
-                e_1 = ast::expr_vec(es_1, mut, triv_ann(ann, t));
+                e_1 = ast::expr_vec(es_1, mut,
+                                    triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_tup(?es_0, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
@@ -1261,7 +1269,7 @@ mod Pushdown {
                         fail;
                     }
                 }
-                e_1 = ast::expr_tup(elts_1, triv_ann(ann, t));
+                e_1 = ast::expr_tup(elts_1, triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_rec(?fields_0, ?base_0, ?ann)) {
 
@@ -1318,12 +1326,14 @@ mod Pushdown {
                         fail;
                     }
                 }
-                e_1 = ast::expr_rec(fields_1, base_1, triv_ann(ann, t));
+                e_1 = ast::expr_rec(fields_1, base_1,
+                                    triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_bind(?sube, ?es, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
                                         ann_to_type(fcx.ccx.node_types, ann));
-                e_1 = ast::expr_bind(sube, es, triv_ann(ann, t));
+                e_1 = ast::expr_bind(sube, es,
+                                     triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_call(?sube, ?es, ?ann)) {
                 // NB: we call 'Demand::autoderef' and pass in adk only in
@@ -1332,34 +1342,39 @@ mod Pushdown {
                 // so there's no need.
                 auto t = Demand::autoderef(fcx, e.span, expected,
                     ann_to_type(fcx.ccx.node_types, ann), adk);
-                e_1 = ast::expr_call(sube, es, triv_ann(ann, t));
+                e_1 = ast::expr_call(sube, es,
+                                     triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_self_method(?id, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
                                        ann_to_type(fcx.ccx.node_types, ann));
-                e_1 = ast::expr_self_method(id, triv_ann(ann, t));
+                e_1 = ast::expr_self_method(id,
+                                            triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_binary(?bop, ?lhs, ?rhs, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
                                        ann_to_type(fcx.ccx.node_types, ann));
-                e_1 = ast::expr_binary(bop, lhs, rhs, triv_ann(ann, t));
+                e_1 = ast::expr_binary(bop, lhs, rhs,
+                                       triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_unary(?uop, ?sube, ?ann)) {
                 // See note in expr_unary for why we're calling
                 // Demand::autoderef.
                 auto t = Demand::autoderef(fcx, e.span, expected,
                     ann_to_type(fcx.ccx.node_types, ann), adk);
-                e_1 = ast::expr_unary(uop, sube, triv_ann(ann, t));
+                e_1 = ast::expr_unary(uop, sube,
+                                      triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_lit(?lit, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
                                         ann_to_type(fcx.ccx.node_types, ann));
-                e_1 = ast::expr_lit(lit, triv_ann(ann, t));
+                e_1 = ast::expr_lit(lit, triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_cast(?sube, ?ast_ty, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
                                         ann_to_type(fcx.ccx.node_types, ann));
-                e_1 = ast::expr_cast(sube, ast_ty, triv_ann(ann, t));
+                e_1 = ast::expr_cast(sube, ast_ty,
+                                     triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_if(?cond, ?then_0, ?else_0, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
@@ -1374,56 +1389,65 @@ mod Pushdown {
                         else_1 = some[@ast::expr](e_1);
                     }
                 }
-                e_1 = ast::expr_if(cond, then_1, else_1, triv_ann(ann, t));
+                e_1 = ast::expr_if(cond, then_1, else_1,
+                                   triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_for(?decl, ?seq, ?bloc, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
                                        ann_to_type(fcx.ccx.node_types, ann));
-                e_1 = ast::expr_for(decl, seq, bloc, triv_ann(ann, t));
+                e_1 = ast::expr_for(decl, seq, bloc,
+                                    triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_for_each(?decl, ?seq, ?bloc, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
                                        ann_to_type(fcx.ccx.node_types, ann));
-                e_1 = ast::expr_for_each(decl, seq, bloc, triv_ann(ann, t));
+                e_1 = ast::expr_for_each(decl, seq, bloc,
+                                         triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_while(?cond, ?bloc, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
                                        ann_to_type(fcx.ccx.node_types, ann));
-                e_1 = ast::expr_while(cond, bloc, triv_ann(ann, t));
+                e_1 = ast::expr_while(cond, bloc,
+                                      triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_do_while(?bloc, ?cond, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
                                        ann_to_type(fcx.ccx.node_types, ann));
-                e_1 = ast::expr_do_while(bloc, cond, triv_ann(ann, t));
+                e_1 = ast::expr_do_while(bloc, cond,
+                                         triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_block(?bloc, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
                     ann_to_type(fcx.ccx.node_types, ann), adk);
-                e_1 = ast::expr_block(bloc, triv_ann(ann, t));
+                e_1 = ast::expr_block(bloc, triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_assign(?lhs_0, ?rhs_0, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
                     ann_to_type(fcx.ccx.node_types, ann), adk);
                 auto lhs_1 = pushdown_expr(fcx, expected, lhs_0);
                 auto rhs_1 = pushdown_expr(fcx, expected, rhs_0);
-                e_1 = ast::expr_assign(lhs_1, rhs_1, triv_ann(ann, t));
+                e_1 = ast::expr_assign(lhs_1, rhs_1,
+                                       triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_assign_op(?op, ?lhs_0, ?rhs_0, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
                     ann_to_type(fcx.ccx.node_types, ann), adk);
                 auto lhs_1 = pushdown_expr(fcx, expected, lhs_0);
                 auto rhs_1 = pushdown_expr(fcx, expected, rhs_0);
-                e_1 = ast::expr_assign_op(op, lhs_1, rhs_1, triv_ann(ann, t));
+                e_1 = ast::expr_assign_op(op, lhs_1, rhs_1,
+                                          triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_field(?lhs, ?rhs, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
                     ann_to_type(fcx.ccx.node_types, ann), adk);
-                e_1 = ast::expr_field(lhs, rhs, triv_ann(ann, t));
+                e_1 = ast::expr_field(lhs, rhs,
+                                      triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_index(?base, ?index, ?ann)) {
                 auto t = Demand::autoderef(fcx, e.span, expected,
                     ann_to_type(fcx.ccx.node_types, ann), adk);
-                e_1 = ast::expr_index(base, index, triv_ann(ann, t));
+                e_1 = ast::expr_index(base, index,
+                                      triv_ann(ast::ann_tag(ann), t));
             }
             case (ast::expr_path(?pth, ?ann)) {
                 auto tp_substs_0 = ty::ann_to_type_params(fcx.ccx.node_types,
@@ -1456,9 +1480,9 @@ mod Pushdown {
                 }
 
                 e_1 = ast::expr_path(pth,
-                                    ast::ann_type(ast::ann_tag(ann), t,
-                                                  ty_params_opt,
-                                                  none[@ts_ann]));
+                                     ast::ann_type(ast::ann_tag(ann), t,
+                                                   ty_params_opt,
+                                                   none[@ts_ann]));
                 write_type(fcx.ccx.node_types, ast::ann_tag(ann),
                            tup(ty_params_opt, t));
             }
@@ -1466,7 +1490,7 @@ mod Pushdown {
                 auto t = Demand::autoderef(fcx, e.span, expected,
                     ann_to_type(fcx.ccx.node_types, ann), adk);
                 e_1 = ast::expr_ext(p, args, body, expanded,
-                                    triv_ann(ann, t));
+                                    triv_ann(ast::ann_tag(ann), t));
             }
             /* FIXME: should this check the type annotations? */
             case (ast::expr_fail(_))  { e_1 = e.node; } 
@@ -1482,7 +1506,7 @@ mod Pushdown {
             case (ast::expr_port(?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
                                         ann_to_type(fcx.ccx.node_types, ann));
-                e_1 = ast::expr_port(triv_ann(ann, t));
+                e_1 = ast::expr_port(triv_ann(ast::ann_tag(ann), t));
             }
 
             case (ast::expr_chan(?es, ?ann)) {
@@ -1499,7 +1523,7 @@ mod Pushdown {
                         fail;
                     }
                 }
-                e_1 = ast::expr_chan(es_1, triv_ann(ann, t));
+                e_1 = ast::expr_chan(es_1, triv_ann(ast::ann_tag(ann), t));
             }
 
             case (ast::expr_alt(?discrim, ?arms_0, ?ann)) {
@@ -1512,7 +1536,8 @@ mod Pushdown {
                     auto arm_1 = rec(pat=arm_0.pat, block=block_1);
                     arms_1 += vec(arm_1);
                 }
-                e_1 = ast::expr_alt(discrim, arms_1, triv_ann(ann, t));
+                e_1 = ast::expr_alt(discrim, arms_1,
+                                    triv_ann(ast::ann_tag(ann), t));
             }
 
             case (ast::expr_recv(?lval_0, ?expr_0, ?ann)) {
@@ -1587,7 +1612,7 @@ fn writeback_local(&option::t[@fn_ctxt] env, &span sp, &@ast::local local)
         }
     }
 
-    auto local_wb = @rec(ann=triv_ann(local.ann, local_ty)
+    auto local_wb = @rec(ann=triv_ann(ast::ann_tag(local.ann), local_ty)
                          with *local
     );
     ret @fold::respan[ast::decl_](sp, ast::decl_local(local_wb));
@@ -1664,13 +1689,15 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat) -> @ast::pat {
     auto new_pat;
     alt (pat.node) {
         case (ast::pat_wild(?ann)) {
-            new_pat = ast::pat_wild(triv_ann(ann, next_ty_var(fcx.ccx)));
+            new_pat = ast::pat_wild(triv_ann(ast::ann_tag(ann),
+                                             next_ty_var(fcx.ccx)));
         }
         case (ast::pat_lit(?lt, ?ann)) {
-            new_pat = ast::pat_lit(lt, triv_ann(ann, check_lit(fcx.ccx, lt)));
+            new_pat = ast::pat_lit(lt, triv_ann(ast::ann_tag(ann),
+                                                check_lit(fcx.ccx, lt)));
         }
         case (ast::pat_bind(?id, ?def_id, ?a)) {
-            auto ann = triv_ann(a, next_ty_var(fcx.ccx));
+            auto ann = triv_ann(ast::ann_tag(a), next_ty_var(fcx.ccx));
             new_pat = ast::pat_bind(id, def_id, ann);
         }
         case (ast::pat_tag(?p, ?subpats, ?old_ann)) {
@@ -1879,8 +1906,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         auto rhs_1 = Pushdown::pushdown_expr(fcx,
             expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, lhs_1), rhs_0);
 
-        auto ann = triv_ann(a, expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
-                                       rhs_1));
+        auto ann = triv_ann(ast::ann_tag(a),
+                            expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, rhs_1));
         ret tup(lhs_1, rhs_1, ann);
     }
 
@@ -1908,7 +1935,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
     alt (expr.node) {
         case (ast::expr_lit(?lit, ?a)) {
             auto typ = check_lit(fcx.ccx, lit);
-            auto ann = triv_ann(a, typ);
+            auto ann = triv_ann(ast::ann_tag(a), typ);
             ret @fold::respan[ast::expr_](expr.span, ast::expr_lit(lit, ann));
         }
 
@@ -1938,7 +1965,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                 case (_) { /* fall through */ }
             }
 
-            auto ann = triv_ann(a, t);
+            auto ann = triv_ann(ast::ann_tag(a), t);
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_binary(binop, lhs_1, rhs_1,
                                                         ann));
@@ -1969,7 +1996,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                 case (_) { oper_t = strip_boxes(fcx.ccx.tcx, oper_t); }
             }
 
-            auto ann = triv_ann(a, oper_t);
+            auto ann = triv_ann(ast::ann_tag(a), oper_t);
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_unary(unop, oper_1, ann));
         }
@@ -1998,14 +2025,15 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                 fail;
             }
 
-            auto e = ast::expr_path(pth, triv_ann(old_ann, tpt._1));
+            auto e = ast::expr_path(pth, triv_ann(ast::ann_tag(old_ann),
+                                    tpt._1));
             ret @fold::respan[ast::expr_](expr.span, e);
         }
 
         case (ast::expr_ext(?p, ?args, ?body, ?expanded, ?a)) {
             auto exp_ = check_expr(fcx, expanded);
             auto t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, exp_);
-            auto ann = triv_ann(a, t);
+            auto ann = triv_ann(ast::ann_tag(a), t);
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_ext(p, args, body, exp_,
                                                      ann));
@@ -2188,7 +2216,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             }
             auto rhs_1 = Pushdown::pushdown_expr(fcx, item_t, rhs_0);
 
-            auto ann = triv_ann(a, chan_t);
+            auto ann = triv_ann(ast::ann_tag(a), chan_t);
             auto newexpr = ast::expr_send(lhs_1, rhs_1, ann);
             ret @fold::respan[ast::expr_](expr.span, newexpr);
         }
@@ -2214,7 +2242,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             }
             auto lhs_1 = Pushdown::pushdown_expr(fcx, item_t, lhs_0);
 
-            auto ann = triv_ann(a, item_t);
+            auto ann = triv_ann(ast::ann_tag(a), item_t);
             auto newexpr = ast::expr_recv(lhs_1, rhs_1, ann);
             ret @fold::respan[ast::expr_](expr.span, newexpr);
         }
@@ -2246,7 +2274,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             auto thn_1 = Pushdown::pushdown_block(fcx, elsopt_t, thn_0);
 
-            auto ann = triv_ann(a, elsopt_t);
+            auto ann = triv_ann(ast::ann_tag(a), elsopt_t);
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_if(cond_1, thn_1,
                                                     elsopt_1, ann));
@@ -2260,7 +2288,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             // FIXME: enforce that the type of the decl is the element type
             // of the seq.
 
-            auto ann = triv_ann(a, ty::mk_nil(fcx.ccx.tcx));
+            auto ann = triv_ann(ast::ann_tag(a), ty::mk_nil(fcx.ccx.tcx));
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_for(decl_1, seq_1,
                                                      body_1, ann));
@@ -2271,7 +2299,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             auto seq_1 = check_expr(fcx, seq);
             auto body_1 = check_block(fcx, body);
 
-            auto ann = triv_ann(a, ty::mk_nil(fcx.ccx.tcx));
+            auto ann = triv_ann(ast::ann_tag(a), ty::mk_nil(fcx.ccx.tcx));
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_for_each(decl_1, seq_1,
                                                           body_1, ann));
@@ -2284,7 +2312,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                                                   cond_0);
             auto body_1 = check_block(fcx, body);
 
-            auto ann = triv_ann(a, ty::mk_nil(fcx.ccx.tcx));
+            auto ann = triv_ann(ast::ann_tag(a), ty::mk_nil(fcx.ccx.tcx));
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_while(cond_1, body_1, ann));
         }
@@ -2296,8 +2324,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                                                   cond_0);
             auto body_1 = check_block(fcx, body);
 
-            auto ann = triv_ann(a, block_ty(fcx.ccx.tcx, fcx.ccx.node_types,
-                                            body_1));
+            auto ann = triv_ann(ast::ann_tag(a),
+                                block_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                         body_1));
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_do_while(body_1, cond_1,
                                                           ann));
@@ -2349,7 +2378,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             auto expr_1 = Pushdown::pushdown_expr(fcx, pattern_ty, expr_0);
 
-            auto ann = triv_ann(a, result_ty);
+            auto ann = triv_ann(ast::ann_tag(a), result_ty);
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_alt(expr_1, arms_1, ann));
         }
@@ -2359,11 +2388,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             auto ann;
             alt (b_0.node.expr) {
                 case (some[@ast::expr](?expr)) {
-                    ann = triv_ann(a, expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
-                                              expr));
+                    ann = triv_ann(ast::ann_tag(a),
+                                   expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
+                                           expr));
                 }
                 case (none[@ast::expr]) {
-                    ann = triv_ann(a, ty::mk_nil(fcx.ccx.tcx));
+                    ann = triv_ann(ast::ann_tag(a), ty::mk_nil(fcx.ccx.tcx));
                 }
             }
             ret @fold::respan(expr.span, ast::expr_block(b_0, ann));
@@ -2403,7 +2433,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             }
 
             auto t_1 = ty::mk_fn(fcx.ccx.tcx, proto_1, arg_tys_1, rt_1);
-            auto ann = triv_ann(a, t_1);
+            auto ann = triv_ann(ast::ann_tag(a), t_1);
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_bind(result._0, result._1,
                                                       ann));
@@ -2432,7 +2462,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                 }
             }
 
-            auto ann = triv_ann(a, rt_1);
+            auto ann = triv_ann(ast::ann_tag(a), rt_1);
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_call(f_1, args_1, ann));
         }
@@ -2467,7 +2497,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                 case (_) { fail; }
             }
 
-            auto ann = triv_ann(a, t);
+            auto ann = triv_ann(ast::ann_tag(a), t);
 
             require_impure(fcx.ccx.sess, fcx.purity, expr.span);
 
@@ -2500,7 +2530,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             // FIXME: Other typechecks needed
 
-            auto ann = triv_ann(a, ty::mk_task(fcx.ccx.tcx));
+            auto ann = triv_ann(ast::ann_tag(a), ty::mk_task(fcx.ccx.tcx));
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_spawn(dom, name,
                                                        f_1, args_1, ann));
@@ -2520,7 +2550,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                     " as " + ty_to_str(fcx.ccx.tcx, t_1));
             }
 
-            auto ann = triv_ann(a, t_1);
+            auto ann = triv_ann(ast::ann_tag(a), t_1);
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_cast(e_1, t, ann));
         }
@@ -2544,8 +2574,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                 _vec::push[@ast::expr](args_1,expr_1);
             }
 
-            auto ann = triv_ann(a, ty::mk_vec(fcx.ccx.tcx,
-                                             rec(ty=t, mut=mut)));
+            auto ann = triv_ann(ast::ann_tag(a),
+                                ty::mk_vec(fcx.ccx.tcx, rec(ty=t, mut=mut)));
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_vec(args_1, mut, ann));
         }
@@ -2562,7 +2592,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                 elts_mt += vec(rec(ty=expr_t, mut=e.mut));
             }
 
-            auto ann = triv_ann(a, ty::mk_tup(fcx.ccx.tcx, elts_mt));
+            auto ann = triv_ann(ast::ann_tag(a),
+                                ty::mk_tup(fcx.ccx.tcx, elts_mt));
             ret @fold::respan[ast::expr_](expr.span,
                                         ast::expr_tup(elts_1, ann));
         }
@@ -2594,7 +2625,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             alt (base) {
                 case (none[@ast::expr]) {
-                    ann = triv_ann(a, ty::mk_rec(fcx.ccx.tcx, fields_t));
+                    ann = triv_ann(ast::ann_tag(a),
+                                   ty::mk_rec(fcx.ccx.tcx, fields_t));
                 }
 
                 case (some[@ast::expr](?bexpr)) {
@@ -2615,7 +2647,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                         }
                     }
 
-                    ann = triv_ann(a, bexpr_t);
+                    ann = triv_ann(ast::ann_tag(a), bexpr_t);
 
                     for (ty::field f in fields_t) {
                         auto found = false;
@@ -2652,7 +2684,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                         fcx.ccx.sess.span_err(expr.span,
                                               "bad index on tuple");
                     }
-                    auto ann = triv_ann(a, args.(ix).ty);
+                    auto ann = triv_ann(ast::ann_tag(a), args.(ix).ty);
                     ret @fold::respan[ast::expr_](expr.span,
                                                 ast::expr_field(base_1,
                                                                field,
@@ -2666,7 +2698,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                         fcx.ccx.sess.span_err(expr.span,
                                               "bad index on record");
                     }
-                    auto ann = triv_ann(a, fields.(ix).mt.ty);
+                    auto ann = triv_ann(ast::ann_tag(a), fields.(ix).mt.ty);
                     ret @fold::respan[ast::expr_](expr.span,
                                                 ast::expr_field(base_1,
                                                                field,
@@ -2683,7 +2715,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                     auto meth = methods.(ix);
                     auto t = ty::mk_fn(fcx.ccx.tcx, meth.proto,
                                       meth.inputs, meth.output);
-                    auto ann = triv_ann(a, t);
+                    auto ann = triv_ann(ast::ann_tag(a), t);
                     ret @fold::respan[ast::expr_](expr.span,
                                                 ast::expr_field(base_1,
                                                                field,
@@ -2713,7 +2745,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                              "non-integral type of vec index: "
                              + ty_to_str(fcx.ccx.tcx, idx_t));
                     }
-                    auto ann = triv_ann(a, mt.ty);
+                    auto ann = triv_ann(ast::ann_tag(a), mt.ty);
                     ret @fold::respan[ast::expr_](expr.span,
                                                 ast::expr_index(base_1,
                                                                idx_1,
@@ -2726,8 +2758,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                              "non-integral type of str index: "
                              + ty_to_str(fcx.ccx.tcx, idx_t));
                     }
-                    auto ann = triv_ann(a, ty::mk_mach(fcx.ccx.tcx,
-                                                      common::ty_u8));
+                    auto ann = triv_ann(ast::ann_tag(a),
+                                        ty::mk_mach(fcx.ccx.tcx,
+                                                    common::ty_u8));
                     ret @fold::respan[ast::expr_](expr.span,
                                                 ast::expr_index(base_1,
                                                                idx_1,
@@ -2745,7 +2778,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         case (ast::expr_port(?a)) {
             auto t = next_ty_var(fcx.ccx);
             auto pt = ty::mk_port(fcx.ccx.tcx, t);
-            auto ann = triv_ann(a, pt);
+            auto ann = triv_ann(ast::ann_tag(a), pt);
             ret @fold::respan[ast::expr_](expr.span, ast::expr_port(ann));
         }
 
@@ -2755,7 +2788,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             alt (struct(fcx.ccx.tcx, port_t)) {
                 case (ty::ty_port(?subtype)) {
                     auto ct = ty::mk_chan(fcx.ccx.tcx, subtype);
-                    auto ann = triv_ann(a, ct);
+                    auto ann = triv_ann(ast::ann_tag(a), ct);
                     ret @fold::respan[ast::expr_](expr.span,
                                                 ast::expr_chan(expr_1, ann));
                 }
@@ -2803,7 +2836,7 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast::decl decl) -> @ast::decl {
             auto a_res = local.ann;
             alt (a_res) {
                 case (ann_none(_)) {
-                    a_res = triv_ann(a_res, t);
+                    a_res = triv_ann(ast::ann_tag(a_res), t);
                 }
                 case (_) {}
             }
@@ -2972,8 +3005,8 @@ fn check_item_fn(&@crate_ctxt ccx, &span sp, &ast::ident ident, &ast::_fn f,
     }
 
     auto output_ty = ast_ty_to_ty_crate(ccx, f.decl.output);
-    auto fn_ann = triv_ann(ann, ty::mk_fn(ccx.tcx, f.proto, inputs,
-                                         output_ty));
+    auto fn_ann = triv_ann(ast::ann_tag(ann),
+                           ty::mk_fn(ccx.tcx, f.proto, inputs, output_ty));
 
     auto item = ast::item_fn(ident, f, ty_params, id, fn_ann);
     ret @fold::respan[ast::item_](sp, item);

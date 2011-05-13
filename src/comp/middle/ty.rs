@@ -1504,8 +1504,8 @@ fn ann_to_monotype(ctxt cx,  &node_type_table ntt, ast::ann a) -> t {
 }
 
 // Turns a type into an ann_type, using defaults for other fields.
-fn triv_ann(&ast::ann old, t typ) -> ast::ann {
-    ret ast::ann_type(ast::ann_tag(old), typ, none[vec[t]], none[@ts_ann]);
+fn triv_ann(uint node_id, t typ) -> ast::ann {
+    ret ast::ann_type(node_id, typ, none[vec[t]], none[@ts_ann]);
 }
 
 // Returns the number of distinct type parameters in the given type.
