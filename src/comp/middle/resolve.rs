@@ -47,16 +47,22 @@ tag import_state {
     resolved(option::t[def] /* value */, option::t[def] /* type */);
 }
 
-type ext_hash = hashmap[tup(def_id,str),def];
+type ext_hash = hashmap[tup(def_id,str,namespace),def];
 fn new_ext_hash() -> ext_hash {
-    fn hash(&tup(def_id,str) v) -> uint {
-        ret _str::hash(v._1) + util::common::hash_def(v._0);
+    fn hash(&tup(def_id,str,namespace) v) -> uint {
+        ret _str::hash(v._1) + util::common::hash_def(v._0) + (alt (v._2) {
+            case (ns_value) { 1u }
+            case (ns_type) { 2u }
+            case (ns_module) { 3u }
+        });
     }
-    fn eq(&tup(def_id,str) v1, &tup(def_id,str) v2) -> bool {
+    fn eq(&tup(def_id,str,namespace) v1,
+          &tup(def_id,str,namespace) v2) -> bool {
         ret util::common::def_eq(v1._0, v2._0) &&
-            _str::eq(v1._1, v2._1);
+            _str::eq(v1._1, v2._1) &&
+            v1._2 == v2._2;
     }
-    ret std::map::mk_hashmap[tup(def_id,str),def](hash, eq);
+    ret std::map::mk_hashmap[tup(def_id,str,namespace),def](hash, eq);
 }
 
 tag mod_index_entry {
@@ -509,7 +515,7 @@ fn lookup_in_scope(&env e, list[scope] sc, &span sp, &ident id, namespace ns)
             }
             case (cons[scope](?hd, ?tl)) {
                 auto fnd = in_scope(e, id, hd, ns);
-                if (fnd != none[def]) {
+                if (!option::is_none(fnd)) {
                     auto df = option::get(fnd);
                     if ((left_fn && def_is_local(df)) ||
                         (left_fn_level2 && def_is_obj_field(df))) {
@@ -550,7 +556,7 @@ fn lookup_in_pat(&ident id, &ast::pat pat) -> option::t[def] {
         case (ast::pat_tag(_, ?pats, _)) {
             for (@ast::pat p in pats) {
                 auto found = lookup_in_pat(id, *p);
-                if (found != none[def]) { ret found; }
+                if (!option::is_none(found)) { ret found; }
             }
         }
     }
@@ -617,7 +623,7 @@ fn lookup_in_block(&ident id, &ast::block_ b, namespace ns)
                             case (_) {
                                 if (_str::eq(ast::item_ident(it), id)) {
                                     auto found = found_def_item(it, ns);
-                                    if (found != none[def]) { ret found; }
+                                    if (!option::is_none(found)) { ret found; }
                                 }
                             }
                         }
@@ -676,17 +682,15 @@ fn lookup_in_mod(&env e, def m, &ident id, namespace ns, dir dr)
     -> option::t[def] {
     auto defid = ast::def_id_of_def(m);
     if (defid._0 != ast::local_crate) { // Not in this crate
-        auto cached = e.ext_cache.find(tup(defid,id));
-        if (cached != none[def] && check_def_by_ns(option::get(cached), ns)) {
-            ret cached;
-        }
+        auto cached = e.ext_cache.find(tup(defid,id,ns));
+        if (!option::is_none(cached)) { ret cached; }
         auto path = vec(id);
         if (defid._1 != -1) {
             path = e.ext_map.get(defid) + path;
         }
         auto fnd = lookup_external(e, defid._0, path, ns);
-        if (fnd != none[def]) {
-            e.ext_cache.insert(tup(defid,id), option::get(fnd));
+        if (!option::is_none(fnd)) {
+            e.ext_cache.insert(tup(defid,id,ns), option::get(fnd));
         }
         ret fnd;
     }
@@ -728,8 +732,8 @@ fn lookup_import(&env e, def_id defid, namespace ns) -> option::t[def] {
     }
 }
 
-fn lookup_in_regular_mod(&env e, def_id defid, &ident id, namespace ns, dir dr)
-    -> option::t[def] {
+fn lookup_in_regular_mod(&env e, def_id defid, &ident id, namespace ns,
+                         dir dr) -> option::t[def] {
     auto info = e.mod_map.get(defid._1);
     auto found = info.index.find(id);
     if (option::is_none(found) || 
@@ -935,13 +939,11 @@ fn check_def_by_ns(def d, namespace ns) -> bool {
 
 fn lookup_external(&env e, int cnum, vec[ident] ids, namespace ns)
     -> option::t[def] {
-    auto found = creader::lookup_def(e.sess, cnum, ids);
-    if (found != none[def]) {
-        auto d = option::get(found);
-        if (!check_def_by_ns(d, ns)) { ret none[def]; }
+    for (def d in creader::lookup_defs(e.sess, cnum, ids)) {
         e.ext_map.insert(ast::def_id_of_def(d), ids);
+        if (check_def_by_ns(d, ns)) { ret some(d); }
     }
-    ret found;
+    ret none[def];
 }
 
 // Local Variables:

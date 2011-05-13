@@ -34,11 +34,6 @@ type env = @rec(
     mutable int next_crate_num
 );
 
-tag resolve_result {
-    rr_ok(ast::def_id);
-    rr_not_found(ast::ident);
-}
-
 // Type decoding
 
 // Compact string representation for ty::t values. API ty_str & parse_from_str
@@ -282,7 +277,7 @@ fn parse_def_id(vec[u8] buf) -> ast::def_id {
 }
 
 fn lookup_hash(&ebml::doc d, fn(vec[u8]) -> bool eq_fn, uint hash)
-    -> option::t[ebml::doc] {
+    -> vec[ebml::doc] {
     auto index = ebml::get_doc(d, metadata::tag_index);
     auto table = ebml::get_doc(index, metadata::tag_index_table);
 
@@ -290,18 +285,12 @@ fn lookup_hash(&ebml::doc d, fn(vec[u8]) -> bool eq_fn, uint hash)
     auto pos = ebml::be_uint_from_bytes(d.data, hash_pos, 4u);
     auto bucket = ebml::doc_at(d.data, pos);
     // Awkward logic because we can't ret from foreach yet
-    auto result = option::none[ebml::doc];
+    let vec[ebml::doc] result = vec();
     auto belt = metadata::tag_index_buckets_bucket_elt;
     for each (ebml::doc elt in ebml::tagged_docs(bucket, belt)) {
-        alt (result) {
-            case (option::none[ebml::doc]) {
-                auto pos = ebml::be_uint_from_bytes(elt.data, elt.start, 4u);
-                if (eq_fn(_vec::slice[u8](elt.data, elt.start+4u, elt.end))) {
-                    result = option::some[ebml::doc]
-                        (ebml::doc_at(d.data, pos));
-                }
-            }
-            case (_) {}
+        auto pos = ebml::be_uint_from_bytes(elt.data, elt.start, 4u);
+        if (eq_fn(_vec::slice[u8](elt.data, elt.start+4u, elt.end))) {
+            _vec::push(result, ebml::doc_at(d.data, pos));
         }
     }
     ret result;
@@ -309,7 +298,7 @@ fn lookup_hash(&ebml::doc d, fn(vec[u8]) -> bool eq_fn, uint hash)
 
 // Given a path and serialized crate metadata, returns the ID of the
 // definition the path refers to.
-fn resolve_path(vec[ast::ident] path, vec[u8] data) -> resolve_result {
+fn resolve_path(vec[ast::ident] path, vec[u8] data) -> vec[ast::def_id] {
     fn eq_item(vec[u8] data, str s) -> bool {
         ret _str::eq(_str::unsafe_from_bytes(data), s);
     }
@@ -317,15 +306,12 @@ fn resolve_path(vec[ast::ident] path, vec[u8] data) -> resolve_result {
     auto md = ebml::new_doc(data);
     auto paths = ebml::get_doc(md, metadata::tag_paths);
     auto eqer = bind eq_item(_, s);
-    alt (lookup_hash(paths, eqer, metadata::hash_path(s))) {
-        case (option::some[ebml::doc](?d)) {
-            auto did_doc = ebml::get_doc(d, metadata::tag_def_id);
-            ret rr_ok(parse_def_id(ebml::doc_data(did_doc)));
-        }
-        case (option::none[ebml::doc]) {
-            ret rr_not_found(s);
-        }
+    let vec[ast::def_id] result = vec();
+    for (ebml::doc doc in lookup_hash(paths, eqer, metadata::hash_path(s))) {
+        auto did_doc = ebml::get_doc(doc, metadata::tag_def_id);
+        _vec::push(result, parse_def_id(ebml::doc_data(did_doc)));
     }
+    ret result;
 }
 
 fn maybe_find_item(int item_id, &ebml::doc items) -> option::t[ebml::doc] {
@@ -333,13 +319,16 @@ fn maybe_find_item(int item_id, &ebml::doc items) -> option::t[ebml::doc] {
         ret ebml::be_uint_from_bytes(bytes, 0u, 4u) as int == item_id;
     }
     auto eqer = bind eq_item(_, item_id);
-    ret lookup_hash(items, eqer, metadata::hash_def_num(item_id));
+    auto found = lookup_hash(items, eqer, metadata::hash_def_num(item_id));
+    if (_vec::len(found) == 0u) {
+        ret option::none[ebml::doc];
+    } else {
+        ret option::some[ebml::doc](found.(0));
+    }
 }
 
 fn find_item(int item_id, &ebml::doc items) -> ebml::doc {
-    alt (maybe_find_item(item_id, items)) {
-        case (option::some[ebml::doc](?d)) {ret d;}
-    }
+    ret option::get(maybe_find_item(item_id, items));
 }
 
 // Looks up an item in the given metadata and returns an ebml doc pointing
@@ -478,67 +467,49 @@ fn read_crates(session::session sess,
 
 
 fn kind_has_type_params(u8 kind_ch) -> bool {
-    // FIXME: It'd be great if we had u8 char literals.
-    if (kind_ch == ('c' as u8))      { ret false; }
-    else if (kind_ch == ('f' as u8)) { ret true;  }
-    else if (kind_ch == ('F' as u8)) { ret true;  }
-    else if (kind_ch == ('y' as u8)) { ret true;  }
-    else if (kind_ch == ('o' as u8)) { ret true;  }
-    else if (kind_ch == ('t' as u8)) { ret true;  }
-    else if (kind_ch == ('T' as u8)) { ret false;  }
-    else if (kind_ch == ('m' as u8)) { ret false; }
-    else if (kind_ch == ('n' as u8)) { ret false; }
-    else if (kind_ch == ('v' as u8)) { ret true;  }
-    else {
-        log_err #fmt("kind_has_type_params(): unknown kind char: %d",
-                     kind_ch as int);
-        fail;
-    }
+    ret alt (kind_ch as char) {
+        case ('c') { false } case ('f') { true  } case ('F') { true  }
+        case ('y') { true  } case ('o') { true  } case ('t') { true  }
+        case ('T') { false } case ('m') { false } case ('n') { false }
+        case ('v') { true  }
+    };
 }
-
 
 // Crate metadata queries
 
-fn lookup_def(session::session sess, int cnum, vec[ast::ident] path)
-        -> option::t[ast::def] {
+fn lookup_defs(session::session sess, int cnum, vec[ast::ident] path)
+    -> vec[ast::def] {
     auto data = sess.get_external_crate(cnum).data;
 
-    auto did;
-    alt (resolve_path(path, data)) {
-        case (rr_ok(?di)) { did = di; }
-        case (rr_not_found(?name)) {
-            ret none[ast::def];
-        }
-    }
+    ret _vec::map(bind lookup_def(cnum, data, _),
+                  resolve_path(path, data));
+}
 
+// FIXME doesn't yet handle re-exported externals
+fn lookup_def(int cnum, vec[u8] data, &ast::def_id did) -> ast::def {
     auto item = lookup_item(did._1, data);
     auto kind_ch = item_kind(item);
 
     did = tup(cnum, did._1);
 
-    // FIXME: It'd be great if we had u8 char literals.
-    auto def;
-    if (kind_ch == ('c' as u8))         { def = ast::def_const(did);      }
-    else if (kind_ch == ('f' as u8))    { def = ast::def_fn(did);         }
-    else if (kind_ch == ('F' as u8))    { def = ast::def_native_fn(did);  }
-    else if (kind_ch == ('y' as u8))    { def = ast::def_ty(did);         }
-    else if (kind_ch == ('o' as u8))    { def = ast::def_obj(did);        }
-    else if (kind_ch == ('T' as u8))    { def = ast::def_native_ty(did);  }
-    else if (kind_ch == ('t' as u8)) {
+    auto def = alt (kind_ch as char) {
+        case ('c') { ast::def_const(did) }
+        case ('f') { ast::def_fn(did) }
+        case ('F') { ast::def_native_fn(did) }
+        case ('y') { ast::def_ty(did) }
+        case ('o') { ast::def_obj(did) }
+        case ('T') { ast::def_native_ty(did) }
         // We treat references to tags as references to types.
-        def = ast::def_ty(did);
-    } else if (kind_ch == ('m' as u8))  { def = ast::def_mod(did);        }
-    else if (kind_ch == ('n' as u8))    { def = ast::def_native_mod(did); }
-    else if (kind_ch == ('v' as u8)) {
-        auto tid = variant_tag_id(item);
-        tid = tup(cnum, tid._1);
-        def = ast::def_variant(tid, did);
-    } else {
-        log_err #fmt("lookup_def(): unknown kind char: %d", kind_ch as int);
-        fail;
-    }
-
-    ret some[ast::def](def);
+        case ('t') { ast::def_ty(did) }
+        case ('m') { ast::def_mod(did) }
+        case ('n') { ast::def_native_mod(did) }
+        case ('v') {
+            auto tid = variant_tag_id(item);
+            tid = tup(cnum, tid._1);
+            ast::def_variant(tid, did)
+        }
+    };
+    ret def;
 }
 
 fn get_type(session::session sess, ty::ctxt tcx, ast::def_id def)
@@ -563,8 +534,7 @@ fn get_type(session::session sess, ty::ctxt tcx, ast::def_id def)
 fn get_symbol(session::session sess, ast::def_id def) -> str {
     auto external_crate_id = def._0;
     auto data = sess.get_external_crate(external_crate_id).data;
-    auto item = lookup_item(def._1, data);
-    ret item_symbol(item);
+    ret item_symbol(lookup_item(def._1, data));
 }
 
 fn get_tag_variants(session::session sess, ty::ctxt tcx, ast::def_id def)
@@ -636,9 +606,8 @@ fn list_crate_metadata(vec[u8] bytes, io::writer out) {
 }
 
 fn describe_def(&ebml::doc items, ast::def_id id) -> str {
-    if (id._0 != 0) {ret "external";}
-    auto item = find_item(id._1, items);
-    ret item_kind_to_str(item_kind(item));
+    if (id._0 != 0) { ret "external"; }
+    ret item_kind_to_str(item_kind(find_item(id._1, items)));
 }
 
 fn item_kind_to_str(u8 kind) -> str {

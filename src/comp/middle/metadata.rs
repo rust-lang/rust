@@ -37,7 +37,6 @@ const uint tag_items_data_item_type = 0x0cu;
 const uint tag_items_data_item_symbol = 0x0du;
 const uint tag_items_data_item_variant = 0x0eu;
 const uint tag_items_data_item_tag_id = 0x0fu;
-const uint tag_items_data_item_obj_type_id = 0x10u;
 
 const uint tag_index = 0x11u;
 const uint tag_index_buckets = 0x12u;
@@ -165,7 +164,7 @@ mod Encode {
             }
             case (ty::ty_char) {w.write_char('c');}
             case (ty::ty_str) {w.write_char('s');}
-            case (ty::ty_tag(?def,?tys)) { // TODO restore def_id
+            case (ty::ty_tag(?def,?tys)) {
                 w.write_str("t[");
                 w.write_str(cx.ds(def));
                 w.write_char('|');
@@ -387,7 +386,12 @@ fn encode_module_item_paths(&ebml::writer ebml_w,
                 ebml::start_tag(ebml_w, tag_paths_data_item);
                 encode_name(ebml_w, id);
                 encode_def_id(ebml_w, odid.ctor);
-                encode_obj_type_id(ebml_w, odid.ty);
+                ebml::end_tag(ebml_w);
+
+                add_to_index(ebml_w, path, index, id);
+                ebml::start_tag(ebml_w, tag_paths_data_item);
+                encode_name(ebml_w, id);
+                encode_def_id(ebml_w, odid.ty);
                 ebml::end_tag(ebml_w);
             }
         }
@@ -459,11 +463,6 @@ fn encode_tag_id(&ebml::writer ebml_w, &ast::def_id id) {
     ebml::end_tag(ebml_w);
 }
 
-fn encode_obj_type_id(&ebml::writer ebml_w, &ast::def_id id) {
-    ebml::start_tag(ebml_w, tag_items_data_item_obj_type_id);
-    ebml_w.writer.write(_str::bytes(def_to_str(id)));
-    ebml::end_tag(ebml_w);
-}
 
 
 fn encode_tag_variant_info(&@trans::crate_ctxt cx, &ebml::writer ebml_w,
@@ -550,6 +549,7 @@ fn encode_info_for_item(@trans::crate_ctxt cx, &ebml::writer ebml_w,
             encode_symbol(cx, ebml_w, odid.ctor);
             ebml::end_tag(ebml_w);
 
+            index += vec(tup(odid.ty._1, ebml_w.writer.tell()));
             ebml::start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, odid.ty);
             encode_kind(ebml_w, 'y' as u8);

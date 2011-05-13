@@ -1929,6 +1929,7 @@ mod Unify {
             } else if (actual_input.mode == mo_either) {
                 result_mode = expected_input.mode;
             } else if (expected_input.mode != actual_input.mode) {
+                // FIXME this is the wrong error
                 ret fn_common_res_err(ures_err(terr_arg_count,
                                                expected, actual));
             } else {
