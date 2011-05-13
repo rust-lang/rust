@@ -1468,6 +1468,12 @@ fn ann_to_type_params(&node_type_table ntt, &ast::ann ann) -> vec[t] {
     }
 }
 
+fn ann_has_type_params(&node_type_table ntt, &ast::ann ann) -> bool {
+    auto tpt = ann_to_ty_param_substs_opt_and_ty(ntt, ann);
+    ret !option::is_none[vec[t]](tpt._0);
+}
+
+
 // Returns the type of an annotation, with type parameter substitutions
 // performed if applicable.
 fn ann_to_monotype(ctxt cx, &node_type_table ntt, ast::ann a) -> t {
@@ -1712,13 +1718,7 @@ fn expr_ty_params_and_ty(&ctxt cx, &node_type_table ntt, &@ast::expr expr)
 }
 
 fn expr_has_ty_params(&node_type_table ntt, &@ast::expr expr) -> bool {
-    // FIXME: Rewrite using complex patterns when they're trustworthy.
-    alt (expr_ann(expr)) {
-        case (ast::ann_none(_)) { fail; }
-        case (ast::ann_type(_, _, ?tps_opt, _)) {
-            ret !option::is_none[vec[t]](tps_opt);
-        }
-    }
+    ret ann_has_type_params(ntt, expr_ann(expr));
 }
 
 // FIXME: At the moment this works only for call, bind, and path expressions.
