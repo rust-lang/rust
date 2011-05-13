@@ -42,6 +42,7 @@ state type parser =
           fn get_str(token::str_num) -> str;
           fn get_reader() -> lexer::reader;
           fn get_filemap() -> codemap::filemap;
+          fn get_bad_expr_words() -> std::map::hashmap[str, ()];
           fn get_chpos() -> uint;
           fn get_ann() -> ast::ann;
           fn next_ann_num() -> uint;
@@ -63,7 +64,8 @@ fn new_parser(session::session sess,
                            ast::crate_num crate,
                            lexer::reader rdr,
                            vec[op_spec] precs,
-                           mutable uint next_ann_var)
+                           mutable uint next_ann_var,
+                           std::map::hashmap[str, ()] bad_words)
         {
             fn peek() -> token::token {
                 ret tok;
@@ -132,6 +134,10 @@ fn new_parser(session::session sess,
                 ret rdr.get_filemap();
             }
 
+            fn get_bad_expr_words() -> std::map::hashmap[str, ()] {
+                ret bad_words;
+            }
+
             fn get_chpos() -> uint {ret rdr.get_chpos();}
 
             fn get_ann() -> ast::ann {
@@ -156,7 +162,50 @@ fn new_parser(session::session sess,
     auto npos = rdr.get_chpos();
     ret stdio_parser(sess, env, ftype, lexer::next_token(rdr),
                      npos, npos, npos, initial_def._1, UNRESTRICTED,
-                     initial_def._0, rdr, prec_table(), next_ann);
+                     initial_def._0, rdr, prec_table(), next_ann,
+                     bad_expr_word_table());
+}
+
+// These are the words that shouldn't be allowed as value identifiers,
+// because, if used at the start of a line, they will cause the line to be
+// interpreted as a specific kind of statement, which would be confusing.
+fn bad_expr_word_table() -> std::map::hashmap[str, ()] {
+    auto words = new_str_hash[()]();
+    words.insert("mod", ());
+    words.insert("if", ());
+    words.insert("else", ());
+    words.insert("while", ());
+    words.insert("do", ());
+    words.insert("alt", ());
+    words.insert("for", ());
+    words.insert("break", ());
+    words.insert("cont", ());
+    words.insert("put", ());
+    words.insert("ret", ());
+    words.insert("be", ());
+    words.insert("fail", ());
+    words.insert("type", ());
+    words.insert("check", ());
+    words.insert("assert", ());
+    words.insert("claim", ());
+    words.insert("prove", ());
+    words.insert("state", ());
+    words.insert("gc", ());
+    words.insert("native", ());
+    words.insert("auto", ());
+    words.insert("fn", ());
+    words.insert("pred", ());
+    words.insert("iter", ());
+    words.insert("import", ());
+    words.insert("export", ());
+    words.insert("let", ());
+    words.insert("const", ());
+    words.insert("log", ());
+    words.insert("log_err", ());
+    words.insert("yield", ());
+    words.insert("tag", ());
+    words.insert("obj", ());
+    ret words;
 }
 
 fn unexpected(parser p, token::token t) {
@@ -189,6 +238,10 @@ fn parse_ident(parser p) -> ast::ident {
             fail;
         }
     }
+}
+fn parse_value_ident(parser p) -> ast::ident {
+    check_bad_word(p);
+    ret parse_ident(p);
 }
 
 
@@ -238,6 +291,17 @@ fn expect_word(&parser p, &str word) {
     if (!eat_word(p, word)) {
         p.err("expecting " + word + ", found " +
               token::to_str(p.get_reader(), p.peek()));
+    }
+}
+fn check_bad_word(&parser p) {
+    alt (p.peek()) {
+        case (token::IDENT(?sid)) {
+            auto w = p.get_str(sid);
+            if (p.get_bad_expr_words().contains_key(w)) {
+                p.err("found " + w + " in expression position");
+            }
+        }
+        case (_) {}
     }
 }
 
@@ -299,7 +363,7 @@ fn parse_ty_obj(parser p, &mutable uint hi) -> ast::ty_ {
         auto flo = p.get_lo_pos();
 
         let ast::proto proto = parse_proto(p);
-        auto ident = parse_ident(p);
+        auto ident = parse_value_ident(p);
         auto f = parse_ty_fn(proto, p, flo);
         expect(p, token::SEMI);
         alt (f) {
@@ -338,7 +402,7 @@ fn parse_constr_arg(parser p) -> @ast::constr_arg {
     if (p.peek() == token::BINOP(token::STAR)) {
         p.bump();
     } else {
-        carg = ast::carg_ident(parse_ident(p));
+        carg = ast::carg_ident(parse_value_ident(p));
     }
     ret @rec(node=carg, span=sp);
 }
@@ -504,7 +568,7 @@ fn parse_arg(parser p) -> ast::arg {
         eat_word(p, "mutable");
     }
     let @ast::ty t = parse_ty(p);
-    let ast::ident i = parse_ident(p);
+    let ast::ident i = parse_value_ident(p);
     ret rec(mode=m, ty=t, ident=i, id=p.next_def_id());
 }
 
@@ -851,6 +915,7 @@ fn parse_bottom_expr(parser p) -> @ast::expr {
         ex = ast::expr_call(f, es.node, p.get_ann());
     } else if (is_ident(p.peek()) && !is_word(p, "true") &&
                !is_word(p, "false")) {
+        check_bad_word(p);
         auto pth = parse_path(p);
         hi = pth.span.hi;
         ex = ast::expr_path(pth, p.get_ann());
@@ -1376,7 +1441,7 @@ fn parse_pat(parser p) -> @ast::pat {
 
 fn parse_local_full(&option::t[@ast::ty] tyopt,
                            parser p) -> @ast::local {
-    auto ident = parse_ident(p);
+    auto ident = parse_value_ident(p);
     auto init = parse_initializer(p);
     ret @rec(ty = tyopt,
              infer = false,
@@ -1622,7 +1687,7 @@ fn parse_fn(parser p, ast::proto proto, ast::purity purity) -> ast::_fn {
 
 fn parse_fn_header(parser p)
     -> tup(ast::ident, vec[ast::ty_param]) {
-    auto id = parse_ident(p);
+    auto id = parse_value_ident(p);
     auto ty_params = parse_ty_params(p);
     ret tup(id, ty_params);
 }
@@ -1641,14 +1706,14 @@ fn parse_item_fn_or_iter(parser p, ast::purity purity, ast::proto proto)
 fn parse_obj_field(parser p) -> ast::obj_field {
     auto mut = parse_mutability(p); // TODO: store this, use it in typeck
     auto ty = parse_ty(p);
-    auto ident = parse_ident(p);
+    auto ident = parse_value_ident(p);
     ret rec(ty=ty, ident=ident, id=p.next_def_id(), ann=p.get_ann());
 }
 
 fn parse_method(parser p) -> @ast::method {
     auto lo = p.get_lo_pos();
     auto proto = parse_proto(p);
-    auto ident = parse_ident(p);
+    auto ident = parse_value_ident(p);
     auto f = parse_fn(p, proto, ast::impure_fn);
     auto meth = rec(ident=ident, meth=f,
                     id=p.next_def_id(), ann=p.get_ann());
@@ -1675,7 +1740,7 @@ fn parse_dtor(parser p) -> @ast::method {
 
 fn parse_item_obj(parser p, ast::layer lyr) -> @ast::item {
     auto lo = p.get_last_lo_pos();
-    auto ident = parse_ident(p);
+    auto ident = parse_value_ident(p);
     auto ty_params = parse_ty_params(p);
     auto pf = parse_obj_field;
     let util::common::spanned[vec[ast::obj_field]] fields =
@@ -1722,7 +1787,7 @@ fn parse_mod_items(parser p, token::token term) -> ast::_mod {
 fn parse_item_const(parser p) -> @ast::item {
     auto lo = p.get_last_lo_pos();
     auto ty = parse_ty(p);
-    auto id = parse_ident(p);
+    auto id = parse_value_ident(p);
     expect(p, token::EQ);
     auto e = parse_expr(p);
     auto hi = p.get_hi_pos();
@@ -1871,6 +1936,7 @@ fn parse_item_tag(parser p) -> @ast::item {
         auto tok = p.peek();
         alt (tok) {
             case (token::IDENT(?name)) {
+                check_bad_word(p);
                 auto vlo = p.get_lo_pos();
                 p.bump();
 
@@ -2215,7 +2281,7 @@ fn parse_crate_directive(parser p) -> ast::crate_directive
         }
     } else if (eat_word(p, "let")) {
         expect(p, token::LPAREN);
-        auto id = parse_ident(p);
+        auto id = parse_value_ident(p);
         expect(p, token::EQ);
         auto x = parse_expr(p);
         expect(p, token::RPAREN);
