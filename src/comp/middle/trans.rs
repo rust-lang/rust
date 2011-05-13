@@ -14,7 +14,7 @@ import front::ast;
 import front::creader;
 import driver::session;
 import middle::ty;
-import back::Link;
+import back::link;
 import back::x86;
 import back::abi;
 import back::upcall;
@@ -7892,7 +7892,7 @@ fn make_common_glue(&session::session sess, &str output) {
     trans::trans_exit_task_glue(glues, new_str_hash[ValueRef](), tn,
                                llmod);
 
-    Link::Write::run_passes(sess, llmod, output);
+    link::write::run_passes(sess, llmod, output);
 }
 
 fn create_module_map(&@crate_ctxt ccx) -> ValueRef {

@@ -34,7 +34,7 @@ type options = rec(bool shared,
                    bool stats,
                    bool time_passes,
                    bool time_llvm_passes,
-                   back::Link::output_type output_type,
+                   back::link::output_type output_type,
                    vec[str] library_search_paths,
                    str sysroot);
 

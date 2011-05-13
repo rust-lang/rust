@@ -50,7 +50,7 @@ fn link_intrinsics(session::session sess, ModuleRef llmod) {
     }
 }
 
-mod Write {
+mod write {
     fn is_object_or_assembly(output_type ot) -> bool {
         if (ot == output_type_assembly) {
             ret true;

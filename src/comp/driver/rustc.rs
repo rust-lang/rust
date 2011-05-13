@@ -10,7 +10,7 @@ import middle::resolve;
 import middle::ty;
 import middle::typeck;
 import middle::typestate_check;
-import back::Link;
+import back::link;
 import lib::llvm;
 import util::common;
 
@@ -29,7 +29,7 @@ import std::getopts::optmulti;
 import std::getopts::optflag;
 import std::getopts::opt_present;
 
-import back::Link::output_type;
+import back::link::output_type;
 
 fn default_environment(session::session sess,
                        str argv0,
@@ -87,7 +87,7 @@ fn compile_input(session::session sess,
     auto p = parser::new_parser(sess, env, def, input, 0u, 0u);
     auto crate = time(time_passes, "parsing",
                       bind parse_input(sess, p, input));
-    if (sess.get_opts().output_type == Link::output_type_none) {ret;}
+    if (sess.get_opts().output_type == link::output_type_none) {ret;}
 
     crate = time(time_passes, "external crate reading",
                  bind creader::read_crates(sess, crate));
@@ -112,7 +112,7 @@ fn compile_input(session::session sess,
                                 type_cache, output));
 
     time[()](time_passes, "LLVM passes",
-             bind Link::Write::run_passes(sess, llmod, output));
+             bind link::write::run_passes(sess, llmod, output));
 }
 
 fn pretty_print_input(session::session sess,
@@ -241,13 +241,13 @@ fn main(vec[str] args) {
     auto output_file = getopts::opt_maybe_str(match, "o");
     auto library_search_paths = getopts::opt_strs(match, "L");
 
-    auto output_type = Link::output_type_bitcode;
+    auto output_type = link::output_type_bitcode;
     if (opt_present(match, "parse-only")) {
-        output_type = Link::output_type_none;
+        output_type = link::output_type_none;
     } else if (opt_present(match, "S")) {
-        output_type = Link::output_type_assembly;
+        output_type = link::output_type_assembly;
     } else if (opt_present(match, "c")) {
-        output_type = Link::output_type_object;
+        output_type = link::output_type_object;
     }
 
     auto verify = !opt_present(match, "noverify");
@@ -317,10 +317,10 @@ fn main(vec[str] args) {
                 let vec[str] parts = _str::split(ifile, '.' as u8);
                 _vec::pop[str](parts);
                 alt (output_type) {
-                    case (Link::output_type_none) { parts += vec("pp"); }
-                    case (Link::output_type_bitcode) { parts += vec("bc"); }
-                    case (Link::output_type_assembly) { parts += vec("s"); }
-                    case (Link::output_type_object) { parts += vec("o"); }
+                    case (link::output_type_none) { parts += vec("pp"); }
+                    case (link::output_type_bitcode) { parts += vec("bc"); }
+                    case (link::output_type_assembly) { parts += vec("s"); }
+                    case (link::output_type_object) { parts += vec("o"); }
                 }
                 auto ofile = _str::connect(parts, ".");
                 compile_input(sess, env, ifile, ofile);
