@@ -170,11 +170,29 @@ fn walk_ty(&ast_visitor v, @ast::ty t) {
                 walk_ty(v, m.output);
             }
         }
-        case (ast::ty_path(_, _)) {}
+        case (ast::ty_path(?p, _)) {
+            for (@ast::ty tp in p.node.types) {
+                walk_ty(v, tp);
+            }
+        }
         case (ast::ty_type) {}
         case (ast::ty_constr(?t, _)) { walk_ty(v, t); }
     }
     v.visit_ty_post(t);
+}
+
+fn walk_pat(&ast_visitor v, &@ast::pat p) {
+    alt (p.node) {
+        case (ast::pat_tag(?path, ?children, _)) {
+            for (@ast::ty tp in path.node.types) {
+                walk_ty(v, tp);
+            }
+            for (@ast::pat child in children) {
+                walk_pat(v, child);
+            }
+        }
+        case (_) {}
+    }
 }
 
 fn walk_native_mod(&ast_visitor v, &ast::native_mod nm) {
@@ -349,6 +367,7 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
         case (ast::expr_alt(?x, ?arms, _)) {
             walk_expr(v, x);
             for (ast::arm a in arms) {
+                walk_pat(v, a.pat);
                 v.visit_arm_pre(a);
                 walk_block(v, a.block);
                 v.visit_arm_post(a);
@@ -380,7 +399,11 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
             walk_expr(v, a);
             walk_expr(v, b);
         }
-        case (ast::expr_path(_, _)) { }
+        case (ast::expr_path(?p, _)) {
+            for (@ast::ty tp in p.node.types) {
+                walk_ty(v, tp);
+            }
+        }
         case (ast::expr_ext(_, ?args, ?body, ?expansion, _)) {
             // Only walk expansion, not args/body.
             walk_expr(v, expansion);
