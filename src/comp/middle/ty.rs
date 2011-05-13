@@ -427,6 +427,11 @@ fn mk_imm_box(&ctxt cx, &t ty) -> t {
 }
 
 fn mk_vec(&ctxt cx, &mt tm) -> t  { ret gen_ty(cx, ty_vec(tm)); }
+
+fn mk_imm_vec(&ctxt cx, &t typ) -> t {
+    ret gen_ty(cx, ty_vec(rec(ty=typ, mut=ast::imm)));
+}
+
 fn mk_port(&ctxt cx, &t ty) -> t  { ret gen_ty(cx, ty_port(ty)); }
 fn mk_chan(&ctxt cx, &t ty) -> t  { ret gen_ty(cx, ty_chan(ty)); }
 fn mk_task(&ctxt cx) -> t        { ret gen_ty(cx, ty_task); }
