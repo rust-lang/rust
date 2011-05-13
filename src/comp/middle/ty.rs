@@ -1440,35 +1440,7 @@ fn eq_raw_ty(&raw_t a, &raw_t b) -> bool {
 fn eq_ty(&t a, &t b) -> bool { ret a == b; }
 
 
-fn ann_to_type(&node_type_table ntt, &ast::ann ann) -> t {
-    alt (ann) {
-        case (ast::ann_none(_)) {
-            log_err "ann_to_type() called on node with no type";
-            fail;
-        }
-        case (ast::ann_type(_, ?ty, _, _)) {
-            ret ty;
-        }
-    }
-}
-
-fn ann_to_type_params(&node_type_table ntt, &ast::ann ann) -> vec[t] {
-    alt (ann) {
-        case (ast::ann_none(_)) {
-            log_err "ann_to_type_params() called on node with no type params";
-            fail;
-        }
-        case (ast::ann_type(_, _, ?tps, _)) {
-            alt (tps) {
-                case (none[vec[t]]) {
-                    let vec[t] result = vec();
-                    ret result;
-                }
-                case (some[vec[t]](?tps)) { ret tps; }
-            }
-        }
-    }
-}
+// Type lookups
 
 fn ann_to_ty_param_substs_opt_and_ty(&node_type_table ntt, &ast::ann ann)
         -> ty_param_substs_opt_and_ty {
@@ -1482,26 +1454,32 @@ fn ann_to_ty_param_substs_opt_and_ty(&node_type_table ntt, &ast::ann ann)
     }
 }
 
+fn ann_to_type(&node_type_table ntt, &ast::ann ann) -> t {
+    ret ann_to_ty_param_substs_opt_and_ty(ntt, ann)._1;
+}
+
+fn ann_to_type_params(&node_type_table ntt, &ast::ann ann) -> vec[t] {
+    alt (ann_to_ty_param_substs_opt_and_ty(ntt, ann)._0) {
+        case (none[vec[t]]) {
+            let vec[t] result = vec();
+            ret result;
+        }
+        case (some[vec[t]](?tps)) { ret tps; }
+    }
+}
+
 // Returns the type of an annotation, with type parameter substitutions
 // performed if applicable.
-fn ann_to_monotype(ctxt cx,  &node_type_table ntt, ast::ann a) -> t {
-    // TODO: Refactor to use recursive pattern matching when we're more
-    // confident that it works.
-    alt (a) {
-        case (ast::ann_none(_)) {
-            log_err "ann_to_monotype() called on expression with no type!";
-            fail;
-        }
-        case (ast::ann_type(_, ?typ, ?tps_opt, _)) {
-            alt (tps_opt) {
-                case (none[vec[t]]) { ret typ; }
-                case (some[vec[t]](?tps)) {
-                    ret substitute_type_params(cx, tps, typ);
-                }
-            }
+fn ann_to_monotype(ctxt cx, &node_type_table ntt, ast::ann a) -> t {
+    auto tpot = ann_to_ty_param_substs_opt_and_ty(ntt, a);
+    alt (tpot._0) {
+        case (none[vec[t]]) { ret tpot._1; }
+        case (some[vec[t]](?tps)) {
+            ret substitute_type_params(cx, tps, tpot._1);
         }
     }
 }
+
 
 // Turns a type into an ann_type, using defaults for other fields.
 fn triv_ann(uint node_id, t typ) -> ast::ann {
