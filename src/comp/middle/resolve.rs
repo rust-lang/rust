@@ -64,14 +64,14 @@ tag mod_index_entry {
     mie_item(@ast::item);
     mie_tag_variant(@ast::item /* tag item */, uint /* variant index */);
 }
-type mod_index = hashmap[ident,mod_index_entry];
+type mod_index = hashmap[ident,list[mod_index_entry]];
 type indexed_mod = rec(ast::_mod m, mod_index index);
 
-tag native_mod_index_entry {
+tag nmod_index_entry {
     nmie_view_item(@ast::view_item);
     nmie_item(@ast::native_item);
 }
-type nmod_index = hashmap[ident,native_mod_index_entry];
+type nmod_index = hashmap[ident,list[nmod_index_entry]];
 type indexed_nmod = rec(ast::native_mod m, nmod_index index);
 
 type def_map = hashmap[uint,def];
@@ -340,9 +340,9 @@ fn resolve_import(&env e, &@ast::view_item it, &list[scope] sc) {
         }
     }
 
-    fn register(&env e, def_id defid, &span sp, ident id,
-                option::t[def] val, option::t[def] typ) {
-        if (val == none[def] && typ == none[def]) {
+    fn register(&env e, def_id defid, &span sp, &ident id,
+                &option::t[def] val, &option::t[def] typ) {
+        if (option::is_none(val) && option::is_none(typ)) {
             unresolved(e, sp, id, "import");
         }
         e.imports.insert(defid._1, resolved(val, typ));
@@ -366,7 +366,7 @@ fn ns_name(namespace ns) -> str {
     }
 }
 
-fn unresolved(&env e, &span sp, ident id, str kind) {
+fn unresolved(&env e, &span sp, &ident id, &str kind) {
     e.sess.span_err(sp, "unresolved " + kind + ": " + id);
 }
 
@@ -392,7 +392,7 @@ fn lookup_path_strict(&env e, &list[scope] sc, &span sp, vec[ident] idents,
     ret dcur;
 }
                       
-fn lookup_in_scope_strict(&env e, list[scope] sc, &span sp, ident id,
+fn lookup_in_scope_strict(&env e, list[scope] sc, &span sp, &ident id,
                         namespace ns) -> def {
     alt (lookup_in_scope(e, sc, sp, id, ns)) {
         case (none[def]) {
@@ -433,9 +433,9 @@ fn def_is_obj_field(&def d) -> bool {
     };
 }
 
-fn lookup_in_scope(&env e, list[scope] sc, &span sp, ident id, namespace ns)
+fn lookup_in_scope(&env e, list[scope] sc, &span sp, &ident id, namespace ns)
     -> option::t[def] {
-    fn in_scope(&env e, ident id, &scope s, namespace ns)
+    fn in_scope(&env e, &ident id, &scope s, namespace ns)
         -> option::t[def] {
         alt (s) {
             case (scope_crate(?c)) {
@@ -513,8 +513,8 @@ fn lookup_in_scope(&env e, list[scope] sc, &span sp, ident id, namespace ns)
                     auto df = option::get(fnd);
                     if ((left_fn && def_is_local(df)) ||
                         (left_fn_level2 && def_is_obj_field(df))) {
-                        e.sess.span_err(sp, "attempted dynamic " + 
-                                        "environment-capture");
+                        e.sess.span_err
+                            (sp, "attempted dynamic environment-capture");
                     }
                     ret fnd;
                 }
@@ -528,7 +528,7 @@ fn lookup_in_scope(&env e, list[scope] sc, &span sp, ident id, namespace ns)
     }
 }
 
-fn lookup_in_ty_params(ident id, &vec[ast::ty_param] ty_params)
+fn lookup_in_ty_params(&ident id, &vec[ast::ty_param] ty_params)
     -> option::t[def] {
     auto i = 0u;
     for (ast::ty_param tp in ty_params) {
@@ -540,7 +540,7 @@ fn lookup_in_ty_params(ident id, &vec[ast::ty_param] ty_params)
     ret none[def];
 }
 
-fn lookup_in_pat(ident id, &ast::pat pat) -> option::t[def] {
+fn lookup_in_pat(&ident id, &ast::pat pat) -> option::t[def] {
     alt (pat.node) {
         case (ast::pat_bind(?name, ?defid, _)) {
             if (_str::eq(name, id)) { ret some(ast::def_binding(defid)); }
@@ -558,7 +558,7 @@ fn lookup_in_pat(ident id, &ast::pat pat) -> option::t[def] {
 }
 
 
-fn lookup_in_fn(ident id, &ast::fn_decl decl, &vec[ast::ty_param] ty_params,
+fn lookup_in_fn(&ident id, &ast::fn_decl decl, &vec[ast::ty_param] ty_params,
                 namespace ns) -> option::t[def] {
     if (ns == ns_value) {
         for (ast::arg a in decl.inputs) {
@@ -572,7 +572,7 @@ fn lookup_in_fn(ident id, &ast::fn_decl decl, &vec[ast::ty_param] ty_params,
     }
 }
 
-fn lookup_in_obj(ident id, &ast::_obj ob, &vec[ast::ty_param] ty_params,
+fn lookup_in_obj(&ident id, &ast::_obj ob, &vec[ast::ty_param] ty_params,
                  namespace ns) -> option::t[def] {
     if (ns == ns_value) {
         for (ast::obj_field f in ob.fields) {
@@ -586,7 +586,7 @@ fn lookup_in_obj(ident id, &ast::_obj ob, &vec[ast::ty_param] ty_params,
     }
 }
 
-fn lookup_in_block(ident id, &ast::block_ b, namespace ns)
+fn lookup_in_block(&ident id, &ast::block_ b, namespace ns)
     -> option::t[def] {
     for (@ast::stmt st in b.stmts) {
         alt (st.node) {
@@ -659,7 +659,7 @@ fn found_def_item(@ast::item i, namespace ns) -> option::t[def] {
     ret none[def];
 }
 
-fn lookup_in_mod_strict(&env e, def m, &span sp, ident id,
+fn lookup_in_mod_strict(&env e, def m, &span sp, &ident id,
                         namespace ns, dir dr) -> def {
     alt (lookup_in_mod(e, m, id, ns, dr)) {
         case (none[def]) {
@@ -672,7 +672,7 @@ fn lookup_in_mod_strict(&env e, def m, &span sp, ident id,
     }
 }
 
-fn lookup_in_mod(&env e, def m, ident id, namespace ns, dir dr)
+fn lookup_in_mod(&env e, def m, &ident id, namespace ns, dir dr)
     -> option::t[def] {
     auto defid = ast::def_id_of_def(m);
     if (defid._0 != ast::local_crate) { // Not in this crate
@@ -728,15 +728,32 @@ fn lookup_import(&env e, def_id defid, namespace ns) -> option::t[def] {
     }
 }
 
-fn lookup_in_regular_mod(&env e, def_id defid, ident id, namespace ns, dir dr)
+fn lookup_in_regular_mod(&env e, def_id defid, &ident id, namespace ns, dir dr)
     -> option::t[def] {
     auto info = e.mod_map.get(defid._1);
     auto found = info.index.find(id);
-    if (found == none[mod_index_entry] || 
+    if (option::is_none(found) || 
         (dr == outside && !ast::is_exported(id, info.m))) {
         ret none[def];
     }
-    alt (option::get(found)) {
+    auto lst = option::get(found);
+    while (true) {
+        alt (lst) {
+            case (nil[mod_index_entry]) {
+                ret none[def];
+            }
+            case (cons[mod_index_entry](?hd, ?tl)) {
+                auto found = lookup_in_mie(e, hd, ns);
+                if (!option::is_none(found)) { ret found; }
+                lst = *tl;
+            }
+        }
+    }
+}
+
+fn lookup_in_mie(&env e, &mod_index_entry mie, namespace ns)
+    -> option::t[def] {
+    alt (mie) {
         case (mie_view_item(?view_item)) {
             ret found_view_item(e, view_item, ns);
         }
@@ -754,18 +771,35 @@ fn lookup_in_regular_mod(&env e, def_id defid, ident id, namespace ns, dir dr)
                     }
                 }
             }
-        }            
+        }
     }
 }
 
-fn lookup_in_native_mod(&env e, def_id defid, ident id, namespace ns)
+fn lookup_in_native_mod(&env e, def_id defid, &ident id, namespace ns)
     -> option::t[def] {
     auto info = e.nmod_map.get(defid._1);
     auto found = info.index.find(id);
-    if (found == none[native_mod_index_entry]) {
+    if (option::is_none(found)) {
         ret none[def];
     }
-    alt (option::get(found)) {
+    auto lst = option::get(found);
+    while (true) {
+        alt (lst) {
+            case (nil[nmod_index_entry]) {
+                ret none[def];
+            }
+            case (cons[nmod_index_entry](?hd, ?tl)) {
+                auto found = lookup_in_nmie(e, hd, ns);
+                if (!option::is_none(found)) { ret found; }
+                lst = *tl;
+            }
+        }
+    }
+}
+    
+fn lookup_in_nmie(&env e, &nmod_index_entry nmie, namespace ns)
+    -> option::t[def] {
+    alt (nmie) {
         case (nmie_view_item(?view_item)) {
             ret found_view_item(e, view_item, ns);
         }
@@ -790,16 +824,27 @@ fn lookup_in_native_mod(&env e, def_id defid, ident id, namespace ns)
 
 // Module indexing
 
+fn add_to_index[T](&hashmap[ident,list[T]] index, &ident id, &T ent) {
+    alt (index.find(id)) {
+        case (none[list[T]]) {
+            index.insert(id, cons(ent, @nil[T]));
+        }
+        case (some[list[T]](?prev)) {
+            index.insert(id, cons(ent, @prev));
+        }
+    }
+}
+
 fn index_mod(&ast::_mod md) -> mod_index {
-    auto index = new_str_hash[mod_index_entry]();
+    auto index = new_str_hash[list[mod_index_entry]]();
 
     for (@ast::view_item it in md.view_items) {
         alt (it.node) {
             case(ast::view_item_use(?id, _, _, _)) {
-                index.insert(id, mie_view_item(it));
+                add_to_index(index, id, mie_view_item(it));
             }
             case(ast::view_item_import(?def_ident,_,_)) {
-                index.insert(def_ident, mie_view_item(it));
+                add_to_index(index, def_ident, mie_view_item(it));
             }
             case(ast::view_item_export(_)) {}
         }
@@ -808,31 +853,31 @@ fn index_mod(&ast::_mod md) -> mod_index {
     for (@ast::item it in md.items) {
         alt (it.node) {
             case (ast::item_const(?id, _, _, _, _)) {
-                index.insert(id, mie_item(it));
+                add_to_index(index, id, mie_item(it));
             }
             case (ast::item_fn(?id, _, _, _, _)) {
-                index.insert(id, mie_item(it));
+                add_to_index(index, id, mie_item(it));
             }
             case (ast::item_mod(?id, _, _)) {
-                index.insert(id, mie_item(it));
+                add_to_index(index, id, mie_item(it));
             }
             case (ast::item_native_mod(?id, _, _)) {
-                index.insert(id, mie_item(it));
+                add_to_index(index, id, mie_item(it));
             }
             case (ast::item_ty(?id, _, _, _, _)) {
-                index.insert(id, mie_item(it));
+                add_to_index(index, id, mie_item(it));
             }
             case (ast::item_tag(?id, ?variants, _, _, _)) {
-                index.insert(id, mie_item(it));
+                add_to_index(index, id, mie_item(it));
                 let uint variant_idx = 0u;
                 for (ast::variant v in variants) {
-                    index.insert(v.node.name,
-                                 mie_tag_variant(it, variant_idx));
+                    add_to_index(index, v.node.name,
+                                     mie_tag_variant(it, variant_idx));
                     variant_idx += 1u;
                 }
             }
             case (ast::item_obj(?id, _, _, _, _)) {
-                index.insert(id, mie_item(it));
+                add_to_index(index, id, mie_item(it));
             }
         }
     }
@@ -841,12 +886,12 @@ fn index_mod(&ast::_mod md) -> mod_index {
 }
 
 fn index_nmod(&ast::native_mod md) -> nmod_index {
-    auto index = new_str_hash[native_mod_index_entry]();
+    auto index = new_str_hash[list[nmod_index_entry]]();
 
     for (@ast::view_item it in md.view_items) {
         alt (it.node) {
             case(ast::view_item_import(?def_ident,_,_)) {
-                index.insert(def_ident, nmie_view_item(it));
+                add_to_index(index, def_ident, nmie_view_item(it));
             }
             case(ast::view_item_export(_)) {}
         }
@@ -855,10 +900,10 @@ fn index_nmod(&ast::native_mod md) -> nmod_index {
     for (@ast::native_item it in md.items) {
         alt (it.node) {
             case (ast::native_item_ty(?id, _)) {
-                index.insert(id, nmie_item(it));
+                add_to_index(index, id, nmie_item(it));
             }
             case (ast::native_item_fn(?id, _, _, _, _, _)) {
-                index.insert(id, nmie_item(it));
+                add_to_index(index, id, nmie_item(it));
             }
         }
     }
