@@ -1602,16 +1602,11 @@ fn resolve_local_types_in_block(&@fn_ctxt fcx, &ast::block block)
         ret !option::is_none[@fn_ctxt](env);
     }
 
-    // FIXME: rustboot bug prevents us from using these functions directly
     auto fld = fold::new_identity_fold[option::t[@fn_ctxt]]();
-    auto wbl = writeback_local;
-    auto rltia = bind resolve_local_types_in_annotation(_,_);
-    auto uefi = update_env_for_item;
-    auto kg = keep_going;
-    fld = @rec(fold_decl_local = wbl,
-               fold_ann = rltia,
-               update_env_for_item = uefi,
-               keep_going = kg
+    fld = @rec(fold_decl_local = writeback_local,
+               fold_ann = resolve_local_types_in_annotation,
+               update_env_for_item = update_env_for_item,
+               keep_going = keep_going
                with *fld);
     ret fold::fold_block[option::t[@fn_ctxt]](some(fcx), fld, block);
 }
