@@ -10,6 +10,7 @@ meta (name = "rustc",
 use std;
 
 mod middle {
+    mod shape;
     mod trans;
     mod ty;
     mod fold;
