@@ -17,10 +17,14 @@ type ast_visitor =
         fn (&@ast::native_item i)       visit_native_item_post,
         fn (&@ast::item i)              visit_item_pre,
         fn (&@ast::item i)              visit_item_post,
+        fn (&@ast::method m)            visit_method_pre,
+        fn (&@ast::method m)            visit_method_post,
         fn (&ast::block b)              visit_block_pre,
         fn (&ast::block b)              visit_block_post,
         fn (&@ast::stmt s)              visit_stmt_pre,
         fn (&@ast::stmt s)              visit_stmt_post,
+        fn (&ast::arm a)                visit_arm_pre,
+        fn (&ast::arm a)                visit_arm_post,
         fn (&@ast::decl d)              visit_decl_pre,
         fn (&@ast::decl d)              visit_decl_post,
         fn (&@ast::expr e)              visit_expr_pre,
@@ -110,7 +114,9 @@ fn walk_item(&ast_visitor v, @ast::item i) {
                 walk_ty(v, f.ty);
             }
             for (@ast::method m in ob.methods) {
+                v.visit_method_pre(m);
                 walk_fn(v, m.node.meth);
+                v.visit_method_post(m);
             }
             alt (ob.dtor) {
                 case (none[@ast::method]) {}
@@ -343,7 +349,9 @@ fn walk_expr(&ast_visitor v, @ast::expr e) {
         case (ast::expr_alt(?x, ?arms, _)) {
             walk_expr(v, x);
             for (ast::arm a in arms) {
+                v.visit_arm_pre(a);
                 walk_block(v, a.block);
+                v.visit_arm_post(a);
             }
         }
         case (ast::expr_block(?b, _)) {
@@ -413,8 +421,10 @@ fn def_visit_crate_directive(&@ast::crate_directive c) { }
 fn def_visit_view_item(&@ast::view_item vi) { }
 fn def_visit_native_item(&@ast::native_item ni) { }
 fn def_visit_item(&@ast::item i) { }
+fn def_visit_method(&@ast::method m) { }
 fn def_visit_block(&ast::block b) { }
 fn def_visit_stmt(&@ast::stmt s) { }
+fn def_visit_arm(&ast::arm a) { }
 fn def_visit_decl(&@ast::decl d) { }
 fn def_visit_expr(&@ast::expr e) { }
 fn def_visit_ty(&@ast::ty t) { }
@@ -428,8 +438,10 @@ fn default_visitor() -> ast_visitor {
     auto d_visit_view_item = def_visit_view_item;
     auto d_visit_native_item = def_visit_native_item;
     auto d_visit_item = def_visit_item;
+    auto d_visit_method = def_visit_method;
     auto d_visit_block = def_visit_block;
     auto d_visit_stmt = def_visit_stmt;
+    auto d_visit_arm = def_visit_arm;
     auto d_visit_decl = def_visit_decl;
     auto d_visit_expr = def_visit_expr;
     auto d_visit_ty = def_visit_ty;
@@ -446,10 +458,14 @@ fn default_visitor() -> ast_visitor {
             visit_native_item_post = d_visit_native_item,
             visit_item_pre = d_visit_item,
             visit_item_post = d_visit_item,
+            visit_method_pre = d_visit_method,
+            visit_method_post = d_visit_method,
             visit_block_pre = d_visit_block,
             visit_block_post = d_visit_block,
             visit_stmt_pre = d_visit_stmt,
             visit_stmt_post = d_visit_stmt,
+            visit_arm_pre = d_visit_arm,
+            visit_arm_post = d_visit_arm,
             visit_decl_pre = d_visit_decl,
             visit_decl_post = d_visit_decl,
             visit_expr_pre = d_visit_expr,
@@ -468,6 +484,3 @@ fn default_visitor() -> ast_visitor {
 // compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:
 //
-
-
-
