@@ -457,7 +457,6 @@ fn T_tydesc(&type_names tn) -> TypeRef {
 }
 
 fn T_array(TypeRef t, uint n) -> TypeRef {
-    assert (n != 0u);
     ret llvm::LLVMArrayType(t, n);
 }
 
@@ -466,7 +465,7 @@ fn T_vec(TypeRef t) -> TypeRef {
                      T_int(),       // Alloc
                      T_int(),       // Fill
                      T_int(),       // Pad
-                     T_array(t, 1u) // Body elements
+                     T_array(t, 0u) // Body elements
                      ]);
 }
 
@@ -568,13 +567,7 @@ fn T_tag(&type_names tn, uint size) -> TypeRef {
     if (tn.name_has_type(s)) {
         ret tn.get_type(s);
     }
-
-    auto t;
-    if (size == 0u) {
-        t = T_struct([T_int()]);
-    } else {
-        t = T_struct([T_int(), T_array(T_i8(), size)]);
-    }
+    auto t = T_struct([T_int(), T_array(T_i8(), size)]);
 
     tn.associate(s, t);
     ret t;
@@ -1648,7 +1641,7 @@ fn linearize_ty_params(&@block_ctxt cx, &ty::t t) ->
 fn trans_stack_local_derived_tydesc(&@block_ctxt cx, ValueRef llsz,
                                     ValueRef llalign,
                                     ValueRef llroottydesc,
-                                    &option::t[ValueRef] llparamtydescs)
+                                    ValueRef llparamtydescs)
         -> ValueRef {
     auto llmyroottydesc = alloca(cx, T_tydesc(cx.fcx.lcx.ccx.tn));
 
@@ -1657,19 +1650,8 @@ fn trans_stack_local_derived_tydesc(&@block_ctxt cx, ValueRef llsz,
     cx.build.Store(llroottydesc, llmyroottydesc);
 
     // Store a pointer to the rest of the descriptors.
-    auto llrootfirstparam = cx.build.GEP(llmyroottydesc,
-                                         [C_int(0), C_int(0)]);
+    auto llfirstparam = cx.build.GEP(llparamtydescs, [C_int(0), C_int(0)]);
 
-    auto llfirstparam;
-    alt (llparamtydescs) {
-        case (none[ValueRef]) {
-            llfirstparam = C_null(val_ty(llrootfirstparam));
-        }
-        case (some[ValueRef](?llparamtydescs)) {
-            llfirstparam = cx.build.GEP(llparamtydescs,
-                                        [C_int(0), C_int(0)]);
-        }
-    }
     cx.build.Store(llfirstparam,
                    cx.build.GEP(llmyroottydesc, [C_int(0), C_int(0)]));
 
@@ -1739,26 +1721,19 @@ fn get_derived_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
                 lltydescsptr]);
         v = td_val;
     } else {
-        auto llparamtydescs_opt;
-        if (n_params == 0u) {
-            llparamtydescs_opt = none[ValueRef];
-        } else {
-            auto llparamtydescs = alloca(bcx,
-                T_array(T_ptr(T_tydesc(bcx.fcx.lcx.ccx.tn)), n_params));
+        auto llparamtydescs = alloca(bcx,
+              T_array(T_ptr(T_tydesc(bcx.fcx.lcx.ccx.tn)), n_params));
 
-            auto i = 0;
-            for (ValueRef td in tys._1) {
-                auto tdp = bcx.build.GEP(llparamtydescs,
-                                        [C_int(0), C_int(i)]);
-                bcx.build.Store(td, tdp);
-                i += 1;
-            }
-
-            llparamtydescs_opt = some[ValueRef](llparamtydescs);
+        auto i = 0;
+        for (ValueRef td in tys._1) {
+            auto tdp = bcx.build.GEP(llparamtydescs,
+                                     [C_int(0), C_int(i)]);
+            bcx.build.Store(td, tdp);
+            i += 1;
         }
 
         v = trans_stack_local_derived_tydesc(bcx, sz.val, align.val, root,
-                                             llparamtydescs_opt);
+                                             llparamtydescs);
     }
 
     bcx.fcx.derived_tydescs.insert(t, rec(lltydesc=v, escapes=escapes));
@@ -4539,7 +4514,7 @@ fn trans_index(&@block_ctxt cx, &ast::span sp, &@ast::expr base,
     auto body = next_cx.build.GEP(v, [C_int(0), C_int(abi::vec_elt_data)]);
     auto elt;
     if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, unit_ty)) {
-        body = next_cx.build.PointerCast(body, T_ptr(T_array(T_i8(), 1u)));
+        body = next_cx.build.PointerCast(body, T_ptr(T_array(T_i8(), 0u)));
         elt = next_cx.build.GEP(body, [C_int(0), scaled_ix]);
     } else {
         elt = next_cx.build.GEP(body, [C_int(0), ix_val]);
