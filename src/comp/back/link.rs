@@ -39,6 +39,8 @@ fn link_intrinsics(session::session sess, ModuleRef llmod) {
     }
 
     auto llintrinsicsmod = llvm::LLVMRustParseBitcode(membuf);
+    llvm::LLVMDisposeMemoryBuffer(membuf);
+
     if ((llintrinsicsmod as uint) == 0u) {
         llvm_err(sess, "installation problem: couldn't parse intrinstics.bc");
         fail;
