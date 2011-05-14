@@ -154,10 +154,12 @@ size_t parse_logging_spec(char* spec, log_directive* dirs) {
             cur = *spec;
             if (cur == ',' || cur == '=' || cur == '\0') {
                 if (start == spec) {spec++; break;}
-                *spec = '\0';
-                spec++;
+                if (*spec != '\0') {
+                    *spec = '\0';
+                    spec++;
+                }
                 size_t level = max_log_level;
-                if (cur == '=') {
+                if (cur == '=' && *spec != '\0') {
                     level = *spec - '0';
                     if (level > max_log_level) level = max_log_level;
                     if (*spec) ++spec;
@@ -165,8 +167,9 @@ size_t parse_logging_spec(char* spec, log_directive* dirs) {
                 dirs[dir].name = start;
                 dirs[dir++].level = level;
                 break;
+            } else {
+                spec++;
             }
-            spec++;
         }
     }
     return dir;
