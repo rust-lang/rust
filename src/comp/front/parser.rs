@@ -323,7 +323,7 @@ fn parse_ty_fn(ast::proto proto, parser p, uint lo)
         auto t = parse_ty(p);
 
         alt (p.peek()) {
-            case (token::IDENT(_, _)) { p.bump(); /* ignore the param name */ }
+            case (token::IDENT(_, _)) { p.bump(); /* ignore param name */ }
             case (_) { /* no param name present */ }
         }
 
