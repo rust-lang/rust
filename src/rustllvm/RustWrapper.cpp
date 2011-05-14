@@ -90,7 +90,7 @@ extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   std::string Err;
   const Target *TheTarget = TargetRegistry::lookupTarget(triple, Err);
   std::string FeaturesStr;
-  TargetMachine &Target = *TheTarget->createTargetMachine(triple, FeaturesStr);
+  TargetMachine *Target = TheTarget->createTargetMachine(triple, FeaturesStr);
   bool NoVerify = false;
   CodeGenOpt::Level OLvl = CodeGenOpt::Default;
   PassManager *PM = unwrap<PassManager>(PMR);
@@ -101,10 +101,11 @@ extern "C" void LLVMRustWriteOutputFile(LLVMPassManagerRef PMR,
   TargetMachine::CodeGenFileType FileType2 =
     static_cast<TargetMachine::CodeGenFileType>(FileType);
 
-  bool foo = Target.addPassesToEmitFile(*PM, FOS, FileType2, OLvl, NoVerify);
+  bool foo = Target->addPassesToEmitFile(*PM, FOS, FileType2, OLvl, NoVerify);
   assert(!foo);
   (void)foo;
   PM->run(*unwrap(M));
+  delete Target;
 }
 
 extern "C" LLVMModuleRef LLVMRustParseBitcode(LLVMMemoryBufferRef MemBuf) {
