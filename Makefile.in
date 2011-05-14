@@ -34,6 +34,13 @@ endif
 # platform-specific auto-configuration
 include $(CFG_SRC_DIR)/mk/platform.mk
 
+# Run the stage1/2 compilers under valgrind
+ifdef VALGRIND_COMPILE
+  CFG_VALGRIND_COMPILE :=$(CFG_VALGRIND)
+else
+  CFG_VALGRIND_COMPILE :=
+endif
+
 CFG_RUNTIME :=$(call CFG_LIB_NAME,rustrt)
 CFG_RUSTLLVM :=$(call CFG_LIB_NAME,rustllvm)
 CFG_STDLIB :=$(call CFG_LIB_NAME,std)
@@ -107,9 +114,11 @@ VPATH := $(S)doc $(S)src
 STAGE0 := $(Q)$(call CFG_RUN_TARG,stage0,\
                 stage0/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage1)
 STAGE1 := $(Q)$(call CFG_RUN_TARG,stage1, \
-                stage1/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage2)
+                $(CFG_VALGRIND_COMPILE) stage1/rustc$(X) \
+                $(CFG_RUSTC_FLAGS) -L stage2)
 STAGE2 := $(Q)$(call CFG_RUN_TARG,stage2, \
-                stage2/rustc$(X) $(CFG_RUSTC_FLAGS) -L stage3)
+                $(CFG_VALGRIND_COMPILE) stage2/rustc$(X) \
+                $(CFG_RUSTC_FLAGS) -L stage3)
 
 # "Source" files we generate in builddir along the way.
 GENERATED :=
