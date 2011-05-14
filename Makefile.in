@@ -165,6 +165,25 @@ LLVM_AS := $(CFG_LLVM_BINDIR)/llvm-as
 # Single-target rules
 ######################################################################
 
+ifneq ($(CFG_IN_TRANSITION),)
+
+CFG_INFO := $(info cfg: *** compiler is in snapshot transition ***)
+CFG_INFO := $(info cfg: *** stage2 and later will not be built ***)
+
+all: rt/$(CFG_RUNTIME)          \
+     rustllvm/$(CFG_RUSTLLVM)   \
+     stage0/$(CFG_STDLIB)       \
+     stage0/intrinsics.bc       \
+     stage0/rustc$(X)           \
+     $(GENERATED)               \
+     $(DOCS)                    \
+     stage1/$(CFG_STDLIB)       \
+     stage1/intrinsics.bc       \
+     stage1/glue.o              \
+     stage1/rustc$(X)           \
+
+else
+
 all: rt/$(CFG_RUNTIME)          \
      rustllvm/$(CFG_RUSTLLVM)   \
      stage0/$(CFG_STDLIB)       \
@@ -185,12 +204,14 @@ all: rt/$(CFG_RUNTIME)          \
      stage3/intrinsics.bc       \
      stage3/rustc$(X)
 
+endif
+
 
 ######################################################################
 # Re-configuration
 ######################################################################
 
-config.mk: $(S)configure $(S)Makefile.in
+config.mk: $(S)configure $(S)Makefile.in $(S)src/snapshots.txt
 	@$(call E, cfg: reconfiguring)
 	$(S)configure $(CFG_CONFIGURE_ARGS)
 

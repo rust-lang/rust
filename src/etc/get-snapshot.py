@@ -41,9 +41,6 @@ def determine_curr_snapshot_for_platform():
     parsed = parse_line(i, line)
     if (not parsed): continue
 
-    if parsed["type"] == "transition":
-      raise Exception("working on a transition, not updating stage0")
-
     if found_snap and parsed["type"] == "file":
       if parsed["platform"] == platform:
         hsh = parsed["hash"]
