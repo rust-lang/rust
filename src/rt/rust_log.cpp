@@ -239,8 +239,9 @@ void update_log_settings(void* crate_map, char* settings) {
     log_directive dirs[256];
     size_t n_dirs = 0;
     if (settings) {
-        buffer = (char*)malloc(strlen(settings));
-        strcpy(buffer, settings);
+        size_t buflen = strlen(settings) + 1;
+        buffer = (char*)malloc(buflen);
+        strncpy(buffer, settings, buflen);
         n_dirs = parse_logging_spec(buffer, &dirs[0]);
     }
 
