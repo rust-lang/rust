@@ -1444,13 +1444,13 @@ fn eq_ty(&t a, &t b) -> bool { ret a == b; }
 
 fn ann_to_ty_param_substs_opt_and_ty(&node_type_table ntt, &ast::ann ann)
         -> ty_param_substs_opt_and_ty {
-    alt (ann) {
-        case (ast::ann_none(_)) {
-            log_err "ann_to_ty_param_substs_opt_and_ty() called on a node " +
-                "with no type params";
+    alt (ntt.(ast::ann_tag(ann))) {
+        case (none[ty::ty_param_substs_opt_and_ty]) {
+            log_err "ann_to_ty_param_substs_opt_and_ty() called on an " +
+                "untyped node";
             fail;
         }
-        case (ast::ann_type(_, ?t, ?tps, _)) { ret tup(tps, t); }
+        case (some[ty::ty_param_substs_opt_and_ty](?tpot)) { ret tpot; }
     }
 }
 

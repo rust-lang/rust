@@ -377,7 +377,7 @@ fn write_type(&node_type_table ntt, uint node_id,
               &ty_param_substs_opt_and_ty tpot) {
     _vec::grow_set[option::t[ty::ty_param_substs_opt_and_ty]]
         (*ntt,
-         0u,
+         node_id,
          none[ty_param_substs_opt_and_ty],
          some[ty_param_substs_opt_and_ty](tpot));
 }
@@ -1745,6 +1745,9 @@ fn replace_expr_type(&node_type_table ntt,
         new_tps = none[vec[ty::t]];
     }
 
+    write_type(ntt, ast::ann_tag(ty::expr_ann(expr)),
+               tup(new_tps, new_tyt._1));
+
     fn mkann_fn(ty::t tyt, option::t[vec[ty::t]] tps, &ast::ann old_ann)
             -> ast::ann {
         ret ast::ann_type(ast::ann_tag(old_ann), tyt, tps, none[@ts_ann]);
@@ -2134,12 +2137,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             if (ty::def_has_ty_params(defn)) {
                 auto path_tpot = instantiate_path(fcx, pth, tpt, expr.span);
+                write_type(fcx.ccx.node_types, ast::ann_tag(old_ann),
+                           path_tpot);
                 ret @fold::respan[ast::expr_](expr.span,
                     ast::expr_path(pth,
                         ast::ann_type(ast::ann_tag(old_ann), path_tpot._1,
                                       path_tpot._0, none[@ts_ann])));
-                    write_type(fcx.ccx.node_types, ast::ann_tag(old_ann),
-                               path_tpot);
             }
 
             // The definition doesn't take type parameters. If the programmer
