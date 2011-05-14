@@ -2079,7 +2079,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             auto e = ast::expr_path(pth, triv_ann(ast::ann_tag(old_ann),
                                                   tpt._1));
-            write_type_only(fcx.ccx.node_types, ast::ann_tag(old_ann), tpt._1);
+            write_type_only(fcx.ccx.node_types,
+                            ast::ann_tag(old_ann), tpt._1);
             ret @fold::respan[ast::expr_](expr.span, e);
         }
 
