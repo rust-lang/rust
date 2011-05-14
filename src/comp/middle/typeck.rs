@@ -7,7 +7,6 @@ import middle::fold;
 import driver::session;
 import util::common;
 import util::common::span;
-import util::common::plain_ann;
 import util::common::new_def_hash;
 import util::common::log_expr_err;
 
@@ -25,6 +24,7 @@ import middle::ty::mo_either;
 import middle::ty::node_type_table;
 import middle::ty::pat_ty;
 import middle::ty::path_to_str;
+import middle::ty::plain_ann;
 import middle::ty::struct;
 import middle::ty::triv_ann;
 import middle::ty::ty_param_substs_opt_and_ty;
@@ -385,6 +385,11 @@ fn write_type(&node_type_table ntt, uint node_id,
 // Writes a type with no type parameters into the node type table.
 fn write_type_only(&node_type_table ntt, uint node_id, ty::t ty) {
     be write_type(ntt, node_id, tup(none[vec[ty::t]], ty));
+}
+
+// Writes a nil type into the node type table.
+fn write_nil_type(ty::ctxt tcx, &node_type_table ntt, uint node_id) {
+    be write_type_only(ntt, node_id, ty::mk_nil(tcx));
 }
 
 
@@ -1631,15 +1636,20 @@ mod Pushdown {
                 auto e_1 = pushdown_expr(fcx, expected, e_0);
                 auto block_ = rec(stmts=bloc.node.stmts,
                                   expr=some[@ast::expr](e_1),
-                                  a=plain_ann(bloc.node.a, fcx.ccx.tcx));
+                                  a=plain_ann(ast::ann_tag(bloc.node.a),
+                                              fcx.ccx.tcx));
+                write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types,
+                               ast::ann_tag(bloc.node.a));
                 ret fold::respan[ast::block_](bloc.span, block_);
             }
             case (none[@ast::expr]) {
                 Demand::simple(fcx, bloc.span, expected,
                               ty::mk_nil(fcx.ccx.tcx));
-                ret fold::respan(bloc.span,
-                                rec(a = plain_ann(bloc.node.a, fcx.ccx.tcx)
-                                    with bloc.node));
+                auto new_ann = plain_ann(ast::ann_tag(bloc.node.a),
+                                         fcx.ccx.tcx);
+                write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types,
+                               ast::ann_tag(bloc.node.a));
+                ret fold::respan(bloc.span, rec(a=new_ann with bloc.node));
                                             
             }
         }
@@ -2158,21 +2168,29 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         }
 
         case (ast::expr_fail(?a)) {
-            ret @fold::respan[ast::expr_](expr.span,
-                ast::expr_fail(plain_ann(a, fcx.ccx.tcx)));
+            // TODO: should be something like 'a or noret
+            auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+            write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, ast::ann_tag(a));
+            ret @fold::respan[ast::expr_](expr.span, ast::expr_fail(new_ann));
         }
 
         case (ast::expr_break(?a)) {
+            // TODO: should be something like 'a or noret
+            auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+            write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, ast::ann_tag(a));
             ret @fold::respan[ast::expr_](expr.span,
-                ast::expr_break(plain_ann(a, fcx.ccx.tcx)));
+                                          ast::expr_break(new_ann));
         }
 
         case (ast::expr_cont(?a)) {
-            ret @fold::respan[ast::expr_](expr.span,
-                ast::expr_cont(plain_ann(a, fcx.ccx.tcx)));
+            // TODO: should be something like 'a or noret
+            auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+            write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, ast::ann_tag(a));
+            ret @fold::respan[ast::expr_](expr.span, ast::expr_cont(new_ann));
         }
 
         case (ast::expr_ret(?expr_opt, ?a)) {
+            // TODO: should be something like 'a or noret
             alt (expr_opt) {
                 case (none[@ast::expr]) {
                     auto nil = ty::mk_nil(fcx.ccx.tcx);
@@ -2181,19 +2199,26 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                                          + "returning non-nil");
                     }
 
+                    auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+                    write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types,
+                                   ast::ann_tag(a));
+
                     ret @fold::respan[ast::expr_]
                         (expr.span,
-                         ast::expr_ret(none[@ast::expr],
-                                      plain_ann(a, fcx.ccx.tcx)));
+                         ast::expr_ret(none[@ast::expr], new_ann));
                 }
 
                 case (some[@ast::expr](?e)) {
                     auto expr_0 = check_expr(fcx, e);
                     auto expr_1 = Pushdown::pushdown_expr(fcx, fcx.ret_ty,
                                                          expr_0);
+
+                    auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+                    write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types,
+                                   ast::ann_tag(a));
+
                     ret @fold::respan[ast::expr_]
-                        (expr.span, ast::expr_ret(some(expr_1),
-                                                 plain_ann(a, fcx.ccx.tcx)));
+                        (expr.span, ast::expr_ret(some(expr_1), new_ann));
                 }
             }
         }
@@ -2209,18 +2234,25 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                                          + "putting non-nil");
                     }
 
+                    auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+                    write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types,
+                                   ast::ann_tag(a));
+
                     ret @fold::respan[ast::expr_]
-                        (expr.span, ast::expr_put(none[@ast::expr],
-                                    plain_ann(a, fcx.ccx.tcx)));
+                        (expr.span, ast::expr_put(none[@ast::expr], new_ann));
                 }
 
                 case (some[@ast::expr](?e)) {
                     auto expr_0 = check_expr(fcx, e);
                     auto expr_1 = Pushdown::pushdown_expr(fcx, fcx.ret_ty,
                                                          expr_0);
+
+                    auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+                    write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types,
+                                   ast::ann_tag(a));
+
                     ret @fold::respan[ast::expr_]
-                        (expr.span, ast::expr_put(some(expr_1),
-                                                 plain_ann(a, fcx.ccx.tcx)));
+                        (expr.span, ast::expr_put(some(expr_1), new_ann));
                 }
             }
         }
@@ -2230,15 +2262,21 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             assert (ast::is_call_expr(e));
             auto expr_0 = check_expr(fcx, e);
             auto expr_1 = Pushdown::pushdown_expr(fcx, fcx.ret_ty, expr_0);
-            ret @fold::respan(expr.span,
-                             ast::expr_be(expr_1, plain_ann(a, fcx.ccx.tcx)));
+
+            auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+            write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, ast::ann_tag(a));
+
+            ret @fold::respan(expr.span, ast::expr_be(expr_1, new_ann));
         }
 
         case (ast::expr_log(?l, ?e, ?a)) {
             auto expr_t = check_expr(fcx, e);
-            ret @fold::respan[ast::expr_]
-                (expr.span, ast::expr_log(l, expr_t,
-                                         plain_ann(a, fcx.ccx.tcx)));
+
+            auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+            write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, ast::ann_tag(a));
+
+            ret @fold::respan[ast::expr_](expr.span,
+                                          ast::expr_log(l, expr_t, new_ann));
         }
 
         case (ast::expr_check(?e, ?a)) {
@@ -2265,9 +2303,13 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
                             require_pure_function(fcx.ccx, d_id, expr.span);
 
+                            auto new_ann = plain_ann(ast::ann_tag(a),
+                                                     fcx.ccx.tcx);
+                            write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types,
+                                           ast::ann_tag(a));
+
                             ret @fold::respan[ast::expr_]
-                                (expr.span, ast::expr_check(expr_t,
-                                     plain_ann(a, fcx.ccx.tcx)));
+                                (expr.span, ast::expr_check(expr_t, new_ann));
                         }
                         case (_) {
                            fcx.ccx.sess.span_err(expr.span,
@@ -2287,9 +2329,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             auto expr_t = check_expr(fcx, e);
             Demand::simple(fcx, expr.span, ty::mk_bool(fcx.ccx.tcx),
                           expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, expr_t));
-            ret @fold::respan[ast::expr_]
-                (expr.span, ast::expr_assert(expr_t,
-                                             plain_ann(a, fcx.ccx.tcx)));
+
+            auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+            write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, ast::ann_tag(a));
+
+            ret @fold::respan[ast::expr_](expr.span,
+                                          ast::expr_assert(expr_t, new_ann));
         }
 
         case (ast::expr_assign(?lhs, ?rhs, ?a)) {
@@ -3033,16 +3078,23 @@ fn check_stmt(&@fn_ctxt fcx, &@ast::stmt stmt) -> @ast::stmt {
             alt (decl.node) {
                 case (ast::decl_local(_)) {
                     auto decl_1 = check_decl_local(fcx, decl);
+
+                    auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+                    write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types,
+                                   ast::ann_tag(a));
+
                     ret @fold::respan[ast::stmt_](stmt.span,
-                           ast::stmt_decl(decl_1,
-                                         plain_ann(a, fcx.ccx.tcx)));
+                           ast::stmt_decl(decl_1, new_ann));
                 }
 
                 case (ast::decl_item(_)) {
                     // Ignore for now. We'll return later.
+                    auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+                    write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types,
+                                   ast::ann_tag(a));
+
                     ret @fold::respan[ast::stmt_](stmt.span,
-                           ast::stmt_decl(decl,
-                                         plain_ann(a, fcx.ccx.tcx)));
+                           ast::stmt_decl(decl, new_ann));
                 }
             }
 
@@ -3053,9 +3105,11 @@ fn check_stmt(&@fn_ctxt fcx, &@ast::stmt stmt) -> @ast::stmt {
             auto expr_t = check_expr(fcx, expr);
             expr_t = Pushdown::pushdown_expr(fcx,
                 expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, expr_t), expr_t);
-            ret @fold::respan(stmt.span,
-                              ast::stmt_expr(expr_t,
-                                             plain_ann(a, fcx.ccx.tcx)));
+
+            auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+            write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, ast::ann_tag(a));
+
+            ret @fold::respan(stmt.span, ast::stmt_expr(expr_t, new_ann));
         }
     }
 
@@ -3079,9 +3133,11 @@ fn check_block(&@fn_ctxt fcx, &ast::block block) -> ast::block {
         }
     }
 
-    ret fold::respan(block.span,
-                    rec(stmts=stmts, expr=expr,
-                        a=plain_ann(block.node.a, fcx.ccx.tcx)));
+    auto new_ann = plain_ann(ast::ann_tag(block.node.a), fcx.ccx.tcx);
+    write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types,
+                   ast::ann_tag(block.node.a));
+
+    ret fold::respan(block.span, rec(stmts=stmts, expr=expr, a=new_ann));
 }
 
 fn check_const(&@crate_ctxt ccx, &span sp, &ast::ident ident, &@ast::ty t,

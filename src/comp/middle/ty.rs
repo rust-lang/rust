@@ -1492,6 +1492,12 @@ fn triv_ann(uint node_id, t typ) -> ast::ann {
     ret ast::ann_type(node_id, typ, none[vec[t]], none[@ts_ann]);
 }
 
+// Creates a nil type annotation.
+fn plain_ann(uint node_id, ctxt tcx) -> ast::ann {
+    ret ast::ann_type(node_id, mk_nil(tcx), none[vec[ty::t]], none[@ts_ann]);
+}
+
+
 // Returns the number of distinct type parameters in the given type.
 fn count_ty_params(ctxt cx, t ty) -> uint {
     fn counter(ctxt cx, @mutable vec[uint] param_indices, t ty) {

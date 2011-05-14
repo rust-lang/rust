@@ -117,11 +117,6 @@ fn field_exprs(vec[ast::field] fields) -> vec [@ast::expr] {
     ret _vec::map[ast::field, @ast::expr](f, fields);
 }
 
-fn plain_ann(&ast::ann old, middle::ty::ctxt tcx) -> ast::ann {
-    ret ast::ann_type(ast::ann_tag(old), middle::ty::mk_nil(tcx),
-                   none[vec[middle::ty::t]], none[@ts_ann]);
-}
-
 fn expr_to_str(&@ast::expr e) -> str {
   let str_writer s = string_writer();
   auto out_ = mkstate(s.get_writer(), 80u);

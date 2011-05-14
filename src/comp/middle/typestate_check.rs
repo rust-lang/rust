@@ -2078,7 +2078,7 @@ fn init_block(&fn_info fi, &span sp, &block_ b) -> block {
             log("init_block: shouldn't see ann_none");
             fail;
         }
-        case (ann_type(_, ?t,?ps,_)) {
+        case (ann_type(_, _, ?ps, _)) {
             auto fld0 = fold::new_identity_fold[fn_info]();
 
             fld0 = @rec(fold_ann = bind init_ann(_,_) with *fld0);
