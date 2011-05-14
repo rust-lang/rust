@@ -762,7 +762,7 @@ mod Collect {
             }
         }
     }
-    
+
     // Anonymous objects are expressions, not items, but they're enough like
     // items that we're going to include them in this fold.
     fn fold_expr_anon_obj(&@env e, &span sp,
@@ -1544,8 +1544,8 @@ mod Pushdown {
                 write_type_only(fcx.ccx.node_types, ast::ann_tag(ann), t);
             }
             /* FIXME: should this check the type annotations? */
-            case (ast::expr_fail(_))  { e_1 = e.node; } 
-            case (ast::expr_log(_,_,_)) { e_1 = e.node; } 
+            case (ast::expr_fail(_))  { e_1 = e.node; }
+            case (ast::expr_log(_,_,_)) { e_1 = e.node; }
             case (ast::expr_break(_)) { e_1 = e.node; }
             case (ast::expr_cont(_))  { e_1 = e.node; }
             case (ast::expr_ret(_,_)) { e_1 = e.node; }
@@ -2262,7 +2262,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                                      + "slot variables or literals");
                                 }
                             }
-                            
+
                             require_pure_function(fcx.ccx, d_id, expr.span);
 
                             ret @fold::respan[ast::expr_]
@@ -2574,7 +2574,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         case (ast::expr_call(?f, ?args, ?a)) {
             /* here we're kind of hosed, as f can be any expr
              need to restrict it to being an explicit expr_path if we're
-            inside a pure function, and need an environment mapping from 
+            inside a pure function, and need an environment mapping from
             function name onto purity-designation */
             require_pure_call(fcx.ccx, fcx.purity, f, expr.span);
 
@@ -2613,10 +2613,10 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                 }
                 // Otherwise, we should be able to look up the object we're
                 // "with".
-                case (_) { 
+                case (_) {
                     // TODO.
-                    
-                    fail; 
+
+                    fail;
                 }
             }
 
@@ -2886,7 +2886,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                 expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, base_1));
 
             auto idx_1 = check_expr(fcx, idx);
-            auto idx_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, idx_1); 
+            auto idx_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, idx_1);
             alt (struct(fcx.ccx.tcx, base_t)) {
                 case (ty::ty_vec(?mt)) {
                     if (! type_is_integral(fcx.ccx.tcx, idx_t)) {

@@ -801,15 +801,11 @@ fn parse_bottom_expr(parser p) -> @ast::expr {
         expect(p, token::LBRACE);
 
         while (p.peek() != token::RBRACE) {
-            alt (p.peek()) {
-                case (token::WITH) { 
-                    p.bump();
-                    with_obj = some[ast::ident](parse_ident(p));
-                }
-                case (_) {
-                    _vec::push[@ast::method](meths,
-                                             parse_method(p));
-                }
+            if (eat_word(p, "with")) {
+                with_obj = some[ast::ident](parse_ident(p));
+            } else {
+                _vec::push[@ast::method](meths,
+                                         parse_method(p));
             }
         }
 
