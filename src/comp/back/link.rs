@@ -44,7 +44,10 @@ fn link_intrinsics(session::session sess, ModuleRef llmod) {
         fail;
     }
 
-    if (llvm::LLVMLinkModules(llmod, llintrinsicsmod) == False) {
+    auto linkres = llvm::LLVMLinkModules(llmod, llintrinsicsmod);
+    llvm::LLVMDisposeModule(llintrinsicsmod);
+    
+    if (linkres == False) {
         llvm_err(sess, "couldn't link the module with the intrinsics");
         fail;
     }
