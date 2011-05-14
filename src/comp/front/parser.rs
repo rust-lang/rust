@@ -232,7 +232,7 @@ fn spanned[T](uint lo, uint hi, &T node) -> ast::spanned[T] {
 
 fn parse_ident(parser p) -> ast::ident {
     alt (p.peek()) {
-        case (token::IDENT(?i)) { p.bump(); ret p.get_str(i); }
+        case (token::IDENT(?i, _)) { p.bump(); ret p.get_str(i); }
         case (_) {
             p.err("expecting ident");
             fail;
@@ -253,7 +253,7 @@ fn parse_value_ident(parser p) -> ast::ident {
 fn parse_str_lit_or_env_ident(parser p) -> ast::ident {
     alt (p.peek()) {
         case (token::LIT_STR(?s)) { p.bump(); ret p.get_str(s); }
-        case (token::IDENT(?i)) {
+        case (token::IDENT(?i, _)) {
             auto v = eval::lookup(p.get_session(), p.get_env(),
                                  p.get_span(), p.get_str(i));
             if (!eval::val_is_str(v)) {
@@ -271,13 +271,13 @@ fn parse_str_lit_or_env_ident(parser p) -> ast::ident {
 
 fn is_word(&parser p, &str word) -> bool {
     ret alt (p.peek()) {
-        case (token::IDENT(?sid)) { _str::eq(word, p.get_str(sid)) }
+        case (token::IDENT(?sid, false)) { _str::eq(word, p.get_str(sid)) }
         case (_) { false }
     };
 }
 fn eat_word(&parser p, &str word) -> bool {
     alt (p.peek()) {
-        case (token::IDENT(?sid)) {
+        case (token::IDENT(?sid, false)) {
             if (_str::eq(word, p.get_str(sid))) {
                 p.bump();
                 ret true;
@@ -295,7 +295,7 @@ fn expect_word(&parser p, &str word) {
 }
 fn check_bad_word(&parser p) {
     alt (p.peek()) {
-        case (token::IDENT(?sid)) {
+        case (token::IDENT(?sid, false)) {
             auto w = p.get_str(sid);
             if (p.get_bad_expr_words().contains_key(w)) {
                 p.err("found " + w + " in expression position");
@@ -323,7 +323,7 @@ fn parse_ty_fn(ast::proto proto, parser p, uint lo)
         auto t = parse_ty(p);
 
         alt (p.peek()) {
-            case (token::IDENT(_)) { p.bump(); /* ignore the param name */ }
+            case (token::IDENT(_, _)) { p.bump(); /* ignore the param name */ }
             case (_) { /* no param name present */ }
         }
 
@@ -659,7 +659,7 @@ fn parse_lit(parser p) -> ast::lit {
 
 fn is_ident(token::token t) -> bool {
     alt (t) {
-        case (token::IDENT(_)) { ret true; }
+        case (token::IDENT(_, _)) { ret true; }
         case (_) {}
     }
     ret false;
@@ -688,7 +688,7 @@ fn parse_path(parser p) -> ast::path {
     let vec[ast::ident] ids = vec();
     while (true) {
         alt (p.peek()) {
-            case (token::IDENT(?i)) {
+            case (token::IDENT(?i, _)) {
                 hi = p.get_hi_pos();
                 ids += vec(p.get_str(i));
                 p.bump();
@@ -1047,7 +1047,7 @@ fn parse_dot_or_call_expr(parser p) -> @ast::expr {
                 p.bump();
                 alt (p.peek()) {
 
-                    case (token::IDENT(?i)) {
+                    case (token::IDENT(?i, _)) {
                         hi = p.get_hi_pos();
                         p.bump();
                         auto e_ = ast::expr_field(e, p.get_str(i),
@@ -1446,7 +1446,7 @@ fn parse_pat(parser p) -> @ast::pat {
         case (token::QUES) {
             p.bump();
             alt (p.peek()) {
-                case (token::IDENT(?id)) {
+                case (token::IDENT(?id, _)) {
                     hi = p.get_hi_pos();
                     p.bump();
                     pat = ast::pat_bind(p.get_str(id), p.next_def_id(),
@@ -1985,7 +1985,7 @@ fn parse_item_tag(parser p) -> @ast::item {
     while (p.peek() != token::RBRACE) {
         auto tok = p.peek();
         alt (tok) {
-            case (token::IDENT(?name)) {
+            case (token::IDENT(?name, _)) {
                 check_bad_word(p);
                 auto vlo = p.get_lo_pos();
                 p.bump();
@@ -2052,7 +2052,7 @@ fn parse_auth(parser p) -> ast::_auth {
 
 fn peeking_at_item(parser p) -> bool {
     alt (p.peek()) {
-        case (token::IDENT(?sid)) {
+        case (token::IDENT(?sid, false)) {
             auto st = p.get_str(sid);
             ret _str::eq(st, "state") ||
                 _str::eq(st, "gc") ||
@@ -2180,7 +2180,7 @@ fn parse_rest_import_name(parser p, ast::ident first,
 fn parse_full_import_name(parser p, ast::ident def_ident)
        -> @ast::view_item {
     alt (p.peek()) {
-        case (token::IDENT(?i)) {
+        case (token::IDENT(?i, _)) {
             p.bump();
             ret parse_rest_import_name(p, p.get_str(i), some(def_ident));
         }
@@ -2193,7 +2193,7 @@ fn parse_full_import_name(parser p, ast::ident def_ident)
 
 fn parse_import(parser p) -> @ast::view_item {
     alt (p.peek()) {
-        case (token::IDENT(?i)) {
+        case (token::IDENT(?i, _)) {
             p.bump();
             alt (p.peek()) {
                 case (token::EQ) {
@@ -2235,7 +2235,7 @@ fn parse_view_item(parser p) -> @ast::view_item {
 
 fn is_view_item(&parser p) -> bool {
     alt (p.peek()) {
-        case (token::IDENT(?sid)) {
+        case (token::IDENT(?sid, false)) {
             auto st = p.get_str(sid);
             ret _str::eq(st, "use") || _str::eq(st, "import") ||
                 _str::eq(st, "export");

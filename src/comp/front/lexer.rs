@@ -470,7 +470,8 @@ fn next_token(reader rdr) -> token::token {
             ret token::UNDERSCORE;
         }
 
-        ret token::IDENT(rdr.add_str(accum_str));
+        auto is_mod_name = c == ':' && rdr.next() == ':';
+        ret token::IDENT(rdr.add_str(accum_str), is_mod_name);
     }
 
     if (is_dec_digit(c)) {

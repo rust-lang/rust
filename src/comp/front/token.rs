@@ -69,7 +69,7 @@ tag token {
     LIT_BOOL(bool);
 
     /* Name components */
-    IDENT(str_num);
+    IDENT(str_num, bool);
     IDX(int);
     UNDERSCORE;
 
@@ -160,7 +160,7 @@ fn to_str(lexer::reader r, token t) -> str {
         }
 
         /* Name components */
-        case (IDENT(?s)) {
+        case (IDENT(?s, _)) {
             ret r.get_str(s);
         }
         case (IDX(?i)) { ret "_" + _int::to_str(i, 10u); }
