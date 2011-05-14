@@ -658,8 +658,7 @@ mod collect {
         ret result;
     }
 
-    fn collect(&@ty_item_table id_to_ty_item, &@ast::item i)
-        -> @ty_item_table {
+    fn collect(&@ty_item_table id_to_ty_item, &@ast::item i) {
         alt (i.node) {
             case (ast::item_ty(_, _, _, ?def_id, _)) {
                 id_to_ty_item.insert(def_id, any_item_rust(i));
@@ -672,22 +671,17 @@ mod collect {
             }
             case (_) { /* empty */ }
         }
-        ret id_to_ty_item;
     }
 
-    fn collect_native(&@ty_item_table id_to_ty_item, &@ast::native_item i)
-        -> @ty_item_table {
+    fn collect_native(&@ty_item_table id_to_ty_item, &@ast::native_item i) {
         alt (i.node) {
             case (ast::native_item_ty(_, ?def_id)) {
                 // The abi of types is not used.
                 id_to_ty_item.insert(def_id,
-                                     any_item_native(i,
-                                                     ast::native_abi_cdecl));
+                    any_item_native(i, ast::native_abi_cdecl));
             }
-            case (_) {
-            }
+            case (_) { /* no-op */ }
         }
-        ret id_to_ty_item;
     }
 
     fn convert(&@env e, &@ast::item i) -> @env {
@@ -884,11 +878,12 @@ mod collect {
             vec(mutable);
         let node_type_table ntt = @mutable ntt_sub;
 
-        auto fld_1 = fold::new_identity_fold[@ty_item_table]();
-        fld_1 = @rec(update_env_for_item = bind collect(_, _),
-                     update_env_for_native_item = bind collect_native(_, _)
-                     with *fld_1);
-        fold::fold_crate[@ty_item_table](id_to_ty_item, fld_1, crate);
+        auto visit = rec(
+            visit_item_pre = bind collect(id_to_ty_item, _),
+            visit_native_item_pre = bind collect_native(id_to_ty_item, _)
+            with walk::default_visitor()
+        );
+        walk::walk_crate(visit, *crate);
 
         // Second pass: translate the types of all items.
         auto type_cache = common::new_def_hash[ty::ty_param_count_and_ty]();
