@@ -404,7 +404,7 @@ fn write_nil_type(ty::ctxt tcx, &node_type_table ntt, uint node_id) {
 // We then annotate the AST with the resulting types and return the annotated
 // AST, along with a table mapping item IDs to their types.
 
-mod Collect {
+mod collect {
     type ctxt = rec(session::session sess,
                     @ty_item_table id_to_ty_item,
                     ty::type_cache type_cache,
@@ -3300,7 +3300,7 @@ type typecheck_result = tup(node_type_table, ty::type_cache, @ast::crate);
 
 fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
     auto sess = tcx.sess;
-    auto result = Collect::collect_item_types(sess, tcx, crate);
+    auto result = collect::collect_item_types(sess, tcx, crate);
 
     let vec[ast::obj_field] fields = vec();
 
@@ -3308,8 +3308,7 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
     auto eqer = eq_unify_cache_entry;
     auto unify_cache =
         map::mk_hashmap[unify_cache_entry,ty::Unify::result](hasher, eqer);
-    auto fpt =
-        mk_fn_purity_table(crate); // use a variation on Collect
+    auto fpt = mk_fn_purity_table(crate); // use a variation on collect
     let node_type_table node_types = result._3;
 
     auto ccx = @rec(sess=sess,
