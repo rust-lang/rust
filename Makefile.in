@@ -54,13 +54,6 @@ ifneq ($(wildcard $(CFG_GIT_DIR)),)
                      --pretty=format:'(%h %ci)')
 endif
 
-ifdef CFG_OCAMLC_OPT
-  $(info cfg: have ocaml native compiler)
-  OPT=.opt
-else ifdef CFG_OCAMLC
-  $(info cfg: have only ocaml bytecode compiler)
-endif
-
 ifdef CFG_DISABLE_VALGRIND
   $(info cfg: disabling valgrind (CFG_DISABLE_VALGRIND))
   CFG_VALGRIND :=
