@@ -17,7 +17,6 @@ clean:
 	@$(call E, cleaning)
 	$(Q)rm -f $(RUNTIME_OBJS) $(RUNTIME_DEF)
 	$(Q)rm -f $(RUSTLLVM_LIB_OBJS) $(RUSTLLVM_OBJS_OBJS) $(RUSTLLVM_DEF)
-	$(Q)rm -f $(BOOT_CMOS) $(BOOT_CMIS) $(BOOT_CMXS) $(BOOT_OBJS)
 	$(Q)rm -f $(ML_DEPFILES) $(C_DEPFILES) $(CRATE_DEPFILES)
 	$(Q)rm -f $(ML_DEPFILES:%.d=%.d.tmp)
 	$(Q)rm -f $(C_DEPFILES:%.d=%.d.tmp)

@@ -87,9 +87,6 @@ ifdef CFG_WINDOWSY
   CFG_PATH_MUNGE := $(strip perl -i.bak -p             \
                            -e 's@\\(\S)@/\1@go;'       \
                            -e 's@^/([a-zA-Z])/@\1:/@o;')
-  ifdef CFG_FLEXLINK
-    CFG_BOOT_NATIVE := 1
-  endif
   CFG_GCCISH_CFLAGS += -march=i686 -O2
   CFG_GCCISH_LINK_FLAGS += -shared -fPIC
   CFG_DEF_SUFFIX := .def
@@ -106,8 +103,6 @@ ifdef CFG_UNIXY
       $(CFG_LDENV)=$(call CFG_TESTLIB,$(1)):$(CFG_LDPATH) \
       $(CFG_VALGRIND) $(1)
 
-  CFG_BOOT_NATIVE := 1
-
   ifdef MINGW_CROSS
     CFG_EXE_SUFFIX := .exe
     CFG_LIB_NAME=$(1).dll
@@ -118,7 +113,6 @@ ifdef CFG_UNIXY
 
     CFG_INFO := $(info cfg: mingw-cross)
     CFG_GCCISH_CROSS := i586-mingw32msvc-
-    CFG_BOOT_FLAGS += -t win32-x86-pe
     ifdef CFG_VALGRIND
       CFG_VALGRIND += wine
     endif

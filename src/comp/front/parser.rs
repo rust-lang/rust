@@ -984,9 +984,7 @@ fn parse_bottom_expr(parser p) -> @ast::expr {
  * FIXME: This is a crude approximation of the syntax-extension system,
  * for purposes of prototyping and/or hard-wiring any extensions we
  * wish to use while bootstrapping. The eventual aim is to permit
- * loading rust crates to process extensions, but this will likely
- * require a rust-based frontend, or an ocaml-FFI-based connection to
- * rust crates. At the moment we have neither.
+ * loading rust crates to process extensions.
  */
 
 fn expand_syntax_ext(parser p, ast::span sp,

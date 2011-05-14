@@ -2,16 +2,7 @@ This is preliminary version of the Rust compiler(s).
 
 Source layout:
 
-boot/              The bootstrap compiler
-boot/README        - More-detailed guide to it.
-boot/fe            - Front end (lexer, parser, AST)
-boot/me            - Middle end (resolve, check, layout, trans)
-boot/be            - Back end (IL, RA, insns, asm, objfiles)
-boot/util          - Ubiquitous helpers
-boot/driver        - Compiler driver
-
-comp/              The self-hosted compiler ("rustc": incomplete)
-comp/*             - Similar structure as in boot/
+comp/              The self-hosted compiler
 
 rt/                The runtime system
 rt/rust_*.cpp      - The majority of the runtime services

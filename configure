@@ -176,7 +176,6 @@ fi
 step_msg "making directories"
 for i in \
     doc \
-    boot/fe boot/me boot/be boot/driver boot/util \
     rt rt/isaac rt/bigint rt/sync rt/test \
     rustllvm \
     dl stage0 stage1 stage2 stage3 \
@@ -203,11 +202,6 @@ probe CFG_CLANG            clang++
 probe CFG_GCC              gcc
 probe CFG_LLVM_CONFIG      llvm-config
 probe CFG_VALGRIND         valgrind
-probe CFG_OCAMLC           ocamlc
-probe CFG_OCAMLOPT         ocamlopt
-probe CFG_OCAMLC_OPT       ocamlc.opt
-probe CFG_OCAMLOPT_OPT     ocamlopt.opt
-probe CFG_FLEXLINK         flexlink
 probe CFG_MAKEINFO         makeinfo
 probe CFG_TEXI2PDF         texi2pdf
 probe CFG_TEX              tex
