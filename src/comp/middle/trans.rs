@@ -1039,6 +1039,8 @@ fn decl_fastcall_fn(ModuleRef llmod, &str name, TypeRef llty) -> ValueRef {
     ret decl_fn(llmod, name, lib::llvm::LLVMFastCallConv, llty);
 }
 
+// Only use this if you are going to actually define the function. It's
+// not valid to simply declare a function as internal.
 fn decl_internal_fastcall_fn(ModuleRef llmod,
                             &str name, TypeRef llty) -> ValueRef {
     auto llfn = decl_fn(llmod, name, lib::llvm::LLVMFastCallConv, llty);
@@ -1861,7 +1863,7 @@ fn declare_generic_glue(&@local_ctxt cx,
     } else {
         fn_nm = mangle_name_by_seq(cx.ccx, cx.path,  "glue_" + name);
     }
-    auto llfn = decl_internal_fastcall_fn(cx.ccx.llmod, fn_nm, llfnty);
+    auto llfn = decl_fastcall_fn(cx.ccx.llmod, fn_nm, llfnty);
     ret llfn;
 }
 
@@ -1871,6 +1873,9 @@ fn make_generic_glue(&@local_ctxt cx,
                      &make_generic_glue_helper_fn helper,
                      &vec[uint] ty_params) -> ValueRef {
     auto fcx = new_fn_ctxt(cx, llfn);
+
+    llvm::LLVMSetLinkage(llfn, lib::llvm::LLVMInternalLinkage
+                         as llvm::Linkage);
 
     cx.ccx.stats.n_glues_created += 1u;
 
