@@ -6252,6 +6252,9 @@ fn trans_block(&@block_ctxt cx, &ast::block b) -> result {
                     auto cleanup = bind drop_hoisted_ty(_, res_alloca.val,
                                                         r_ty);
                     find_outer_scope_cx(bcx).cleanups += [clean(cleanup)];
+
+                    r = res(bcx, load_if_immediate(bcx,
+                                                   res_alloca.val, r_ty));
                 }
             }
         }
