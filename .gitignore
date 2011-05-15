@@ -1,4 +1,4 @@
->*~
+*~
 \#*\#
 \#*
 .#*
@@ -55,3 +55,5 @@ config.mk
 src/.DS_Store
 /stage0/
 /dl/
+/stage1/
+*.bz2
