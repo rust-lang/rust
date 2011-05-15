@@ -33,8 +33,8 @@ import middle::ty::type_is_integral;
 import middle::ty::type_is_scalar;
 import middle::ty::ty_param_count_and_ty;
 import middle::ty::ty_nil;
-import middle::ty::Unify::ures_ok;
-import middle::ty::Unify::ures_err;
+import middle::ty::unify::ures_ok;
+import middle::ty::unify::ures_err;
 
 import std::_str;
 import std::_uint;
@@ -59,7 +59,7 @@ type ty_item_table = hashmap[ast::def_id,any_item];
 type fn_purity_table = hashmap[ast::def_id, ast::purity];
 
 type unify_cache_entry = tup(ty::t,ty::t,vec[mutable ty::t]);
-type unify_cache = hashmap[unify_cache_entry,ty::Unify::result];
+type unify_cache = hashmap[unify_cache_entry,ty::unify::result];
 
 type crate_ctxt = rec(session::session sess,
                       ty::type_cache type_cache,
@@ -917,9 +917,9 @@ mod collect {
 
 // Type unification
 
-mod Unify {
+mod unify {
     fn simple(&@fn_ctxt fcx, &ty::t expected,
-              &ty::t actual) -> ty::Unify::result {
+              &ty::t actual) -> ty::unify::result {
         // FIXME: horrid botch
         let vec[mutable ty::t] param_substs =
             vec(mutable ty::mk_nil(fcx.ccx.tcx));
@@ -928,14 +928,14 @@ mod Unify {
     }
 
     fn with_params(&@fn_ctxt fcx, &ty::t expected, &ty::t actual,
-                   &vec[mutable ty::t] param_substs) -> ty::Unify::result {
+                   &vec[mutable ty::t] param_substs) -> ty::unify::result {
         auto cache_key = tup(expected, actual, param_substs);
         alt (fcx.ccx.unify_cache.find(cache_key)) {
-            case (some[ty::Unify::result](?r)) {
+            case (some[ty::unify::result](?r)) {
                 fcx.ccx.cache_hits += 1u;
                 ret r;
             }
-            case (none[ty::Unify::result]) {
+            case (none[ty::unify::result]) {
                 fcx.ccx.cache_misses += 1u;
             }
         }
@@ -979,7 +979,7 @@ mod Unify {
                                               unified_type);
                 fcx.locals.insert(id, unified_type);
             }
-            fn record_param(uint index, ty::t binding) -> ty::Unify::result {
+            fn record_param(uint index, ty::t binding) -> ty::unify::result {
                 // Unify with the appropriate type in the parameter
                 // substitution list:
                 auto old_subst = param_substs.(index);
@@ -998,7 +998,7 @@ mod Unify {
 
 
         auto handler = unify_handler(fcx, param_substs);
-        auto result = ty::Unify::unify(expected, actual, handler,
+        auto result = ty::unify::unify(expected, actual, handler,
                                        fcx.ccx.tcx);
         fcx.ccx.unify_cache.insert(cache_key, result);
         ret result;
@@ -1087,7 +1087,7 @@ mod Demand {
             ty_param_substs += vec(mutable ty_param_subst);
         }
 
-        alt (Unify::with_params(fcx, expected_1, actual_1, ty_param_substs)) {
+        alt (unify::with_params(fcx, expected_1, actual_1, ty_param_substs)) {
             case (ures_ok(?t)) {
                 // TODO: Use "freeze", when we have it.
                 let vec[ty::t] result_ty_param_substs = vec();
@@ -1116,7 +1116,7 @@ mod Demand {
 
 // Returns true if the two types unify and false if they don't.
 fn are_compatible(&@fn_ctxt fcx, &ty::t expected, &ty::t actual) -> bool {
-    alt (Unify::simple(fcx, expected, actual)) {
+    alt (unify::simple(fcx, expected, actual)) {
         case (ures_ok(_))        { ret true;  }
         case (ures_err(_, _, _)) { ret false; }
     }
@@ -3302,7 +3302,7 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
     auto hasher = hash_unify_cache_entry;
     auto eqer = eq_unify_cache_entry;
     auto unify_cache =
-        map::mk_hashmap[unify_cache_entry,ty::Unify::result](hasher, eqer);
+        map::mk_hashmap[unify_cache_entry,ty::unify::result](hasher, eqer);
     auto fpt = mk_fn_purity_table(crate); // use a variation on collect
     let node_type_table node_types = result._3;
 

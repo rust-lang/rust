@@ -58,7 +58,7 @@ type ctxt = rec(@type_store ts,
                 resolve::def_map def_map,
                 creader_cache rcache,
                 hashmap[t,str] short_names_cache);
-type ty_ctxt = ctxt;    // Needed for disambiguation from Unify::ctxt.
+type ty_ctxt = ctxt;    // Needed for disambiguation from unify::ctxt.
 
 // Convert from method type to function type.  Pretty easy; we just drop
 // 'ident'.
@@ -115,8 +115,8 @@ tag sty {
 
 type unify_handler = obj {
     fn resolve_local(ast::def_id id) -> option::t[t];
-    fn record_local(ast::def_id id, t ty);  // TODO: -> Unify::result
-    fn record_param(uint index, t binding) -> Unify::result;
+    fn record_local(ast::def_id id, t ty);  // TODO: -> unify::result
+    fn record_param(uint index, t binding) -> unify::result;
 };
 
 tag type_err {
@@ -1809,7 +1809,7 @@ fn is_lval(&@ast::expr expr) -> bool {
 //
 //     http://www.cs.man.ac.uk/~hoderk/ubench/unification_full.pdf
 
-mod Unify {
+mod unify {
     tag result {
         ures_ok(t);
         ures_err(type_err, t, t);
