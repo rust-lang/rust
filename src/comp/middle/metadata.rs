@@ -228,6 +228,7 @@ mod Encode {
                 w.write_str(common::uistr(id));
             }
             case (ty::ty_type) {w.write_char('Y');}
+            case (ty::ty_task) {w.write_char('a');}
 
             // These two don't appear in crate metadata, but are here because
             // `hash_ty()` uses this function.
