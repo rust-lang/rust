@@ -1,4 +1,3 @@
-// xfail-boot
 // -*- rust -*-
 
 fn main() {

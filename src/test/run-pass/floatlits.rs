@@ -1,4 +1,3 @@
-// xfail-boot
 fn main() {
   auto f = 4.999999999999;
   assert (f > 4.90);

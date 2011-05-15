@@ -1,4 +1,3 @@
-// xfail-boot
 use std;
 import std::_str;
 

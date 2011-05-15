@@ -1,4 +1,3 @@
-// xfail-boot
 // error-pattern:expecting ., found (
 fn main() {
 

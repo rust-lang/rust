@@ -1,4 +1,3 @@
-// xfail-boot
 // -*- rust -*-
 
 type compare[T] = fn(&T t1, &T t2) -> bool;

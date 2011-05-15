@@ -1,4 +1,3 @@
-// xfail-boot
 
 fn main() {
   auto i = 0;

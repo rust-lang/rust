@@ -1,4 +1,3 @@
-// xfail-boot
 // xfail-stage0
 
 use std;

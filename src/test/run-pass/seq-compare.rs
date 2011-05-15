@@ -1,4 +1,3 @@
-// xfail-boot
 fn main() {
   assert ("hello" < "hellr");
   assert ("hello " > "hello");

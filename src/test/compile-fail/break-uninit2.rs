@@ -1,4 +1,3 @@
-// xfail-boot
 // error-pattern:Unsatisfied precondition
 
 fn foo() -> int {

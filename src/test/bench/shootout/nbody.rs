@@ -1,4 +1,3 @@
-// xfail-boot
 // based on:
 // http://shootout.alioth.debian.org/u32/benchmark.php?test=nbody&lang=java
 

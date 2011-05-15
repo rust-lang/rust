@@ -1,4 +1,3 @@
-// xfail-boot
 
 fn test_fn() {
   type t = fn() -> int;

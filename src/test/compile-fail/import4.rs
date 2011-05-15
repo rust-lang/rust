@@ -1,4 +1,3 @@
-// xfail-boot
 // error-pattern: cyclic import
 
 import zed::bar;

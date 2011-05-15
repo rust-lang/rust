@@ -1,4 +1,3 @@
-// xfail-boot
 // -*- rust -*-
 
 // Tests for alt as expressions resulting in boxed types

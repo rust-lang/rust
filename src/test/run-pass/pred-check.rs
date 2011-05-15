@@ -1,5 +1,4 @@
 // -*- rust -*-
-// xfail-boot
 // xfail-stage0
 
 pred f(int q) -> bool { ret true; }

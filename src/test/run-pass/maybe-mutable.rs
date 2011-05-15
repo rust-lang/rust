@@ -1,4 +1,3 @@
-// xfail-boot
 // -*- rust -*-
 
 fn len(vec[mutable? int] v) -> uint {

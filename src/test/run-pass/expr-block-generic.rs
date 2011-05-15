@@ -1,4 +1,3 @@
-// xfail-boot
 // -*- rust -*-
 
 // Tests for standalone blocks as expressions with dynamic type sizes

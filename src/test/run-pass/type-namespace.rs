@@ -1,4 +1,3 @@
-// xfail-boot
 // xfail-stage0
 
 type a = rec(int a);

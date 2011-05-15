@@ -1,4 +1,3 @@
-// xfail-boot
 fn id[T](&T t) -> T {
   ret t;
 }

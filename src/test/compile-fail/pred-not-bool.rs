@@ -1,5 +1,4 @@
 // -*- rust -*-
-// xfail-boot
 // xfail-stage0
 
 // error-pattern: Non-boolean return type

@@ -1,4 +1,3 @@
-// xfail-boot
 // -*- rust -*-
 
 // Tests for if as expressions with dynamic type sizes

@@ -1,4 +1,3 @@
-// xfail-boot
 // error-pattern: Non-call expression in tail call
 
 fn f() -> int {

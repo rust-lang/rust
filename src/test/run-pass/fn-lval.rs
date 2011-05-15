@@ -1,4 +1,3 @@
-// xfail-boot
 // -*- rust -*-
 
 fn foo((fn(int) -> int) f) {}

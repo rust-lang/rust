@@ -1,4 +1,3 @@
-// xfail-boot
 // -*- rust -*-
 
 // rustboot can't transmit nils across channels because they don't have

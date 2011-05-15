@@ -1,4 +1,3 @@
-// xfail-boot
 // error-pattern: unresolved name: a
 
 mod m1 {

@@ -1,4 +1,3 @@
-// xfail-boot
 // -*- rust -*-
 
 // Tests for if as expressions returning structural types
