@@ -18,8 +18,20 @@ mod middle {
     mod metadata;
     mod resolve;
     mod typeck;
-    mod typestate_check;
+    
+    mod tstate {
+        mod ck;
+        mod annotate;
+        mod aux;
+        mod bitvectors;
+        mod collect_locals;
+        mod pre_post_conditions;
+        mod states;
+        mod ann;
+    }
+    
 }
+
 
 mod pretty {
     mod pprust;
@@ -53,7 +65,6 @@ mod driver {
 mod util {
     mod common;
     mod interner;
-    mod typestate_ann;
 }
 
 auth front::creader::load_crate = unsafe;

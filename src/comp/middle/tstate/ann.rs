@@ -111,13 +111,13 @@ fn set_in_poststate(uint i, &pre_and_post_state s) -> bool {
 
 // Sets all the bits in a's precondition to equal the
 // corresponding bit in p's precondition.
-fn set_precondition(&ts_ann a, &precond p) -> () {
+fn set_precondition(@ts_ann a, &precond p) -> () {
   bitv::copy(a.conditions.precondition, p);
 }
 
 // Sets all the bits in a's postcondition to equal the
 // corresponding bit in p's postcondition.
-fn set_postcondition(&ts_ann a, &postcond p) -> () {
+fn set_postcondition(@ts_ann a, &postcond p) -> () {
   bitv::copy(a.conditions.postcondition, p);
 }
 
@@ -156,6 +156,10 @@ fn ann_precond(&ts_ann a) -> precond {
 
 fn ann_prestate(&ts_ann a) -> prestate {
   ret a.states.prestate;
+}
+
+fn ann_poststate(&ts_ann a) -> poststate {
+  ret a.states.poststate;
 }
 
 fn pp_clone(&pre_and_post p) -> pre_and_post {

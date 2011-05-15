@@ -9,7 +9,7 @@ import middle::trans;
 import middle::resolve;
 import middle::ty;
 import middle::typeck;
-import middle::typestate_check;
+import middle::tstate::ck;
 import back::link;
 import lib::llvm;
 import util::common;
@@ -105,7 +105,8 @@ fn compile_input(session::session sess,
 
     if (sess.get_opts().run_typestate) {
         crate = time(time_passes, "typestate checking",
-                     bind typestate_check::check_crate(crate, def_map));
+                     bind middle::tstate::ck::check_crate(node_type_table,
+                                                          ty_cx, crate));
     }
 
     auto llmod = time[llvm::ModuleRef](time_passes, "translation",

@@ -23,6 +23,11 @@ tag file_type {
     SOURCE_FILE;
 }
 
+tag ty_or_bang {
+    a_ty(@ast::ty);
+    a_bang;
+}
+
 state type parser =
     state obj {
           fn peek() -> token::token;
@@ -446,6 +451,13 @@ fn parse_ty_constrs(@ast::ty t, parser p) -> @ast::ty {
                     ast::ty_constr(t, constrs.node));
    }
    ret t;
+}
+
+fn parse_ty_or_bang(parser p) -> ty_or_bang {
+    alt (p.peek()) {
+        case (token::NOT) { p.bump(); ret a_bang; }
+        case (_)         { ret a_ty(parse_ty(p)); }
+    }
 }
 
 fn parse_ty(parser p) -> @ast::ty {
@@ -1713,7 +1725,7 @@ fn parse_fn_decl(parser p, ast::purity purity) -> ast::fn_decl {
          some(token::COMMA),
          pf, p);
 
-    let @ast::ty output;
+    let ty_or_bang res;
 
     // FIXME: dropping constrs on the floor at the moment.
     // pick them up when they're used by typestate pass.
@@ -1721,12 +1733,23 @@ fn parse_fn_decl(parser p, ast::purity purity) -> ast::fn_decl {
 
     if (p.peek() == token::RARROW) {
         p.bump();
-        output = parse_ty(p);
+        res = parse_ty_or_bang(p);
     } else {
-        output = @spanned(inputs.span.lo, inputs.span.hi, ast::ty_nil);
+        res = a_ty(@spanned(inputs.span.lo, inputs.span.hi, ast::ty_nil));
     }
-    // FIXME
-    ret rec(inputs=inputs.node, output=output, purity=purity);
+
+    alt (res) {
+        case (a_ty(?t)) {
+            ret rec(inputs=inputs.node, output=t,
+              purity=purity, cf=ast::return);
+        }
+        case (a_bang) {
+            ret rec(inputs=inputs.node,
+                    output=@spanned(p.get_lo_pos(),
+                                    p.get_hi_pos(), ast::ty_bot),
+                    purity=purity, cf=ast::noreturn);
+        }
+    }
 }
 
 fn parse_fn(parser p, ast::proto proto, ast::purity purity) -> ast::_fn {
@@ -1778,11 +1801,12 @@ fn parse_dtor(parser p) -> @ast::method {
     let vec[ast::arg] inputs = vec();
     let @ast::ty output = @spanned(lo, lo, ast::ty_nil);
     let ast::fn_decl d = rec(inputs=inputs,
-                            output=output,
-                            purity=ast::impure_fn);
+                             output=output,
+                             purity=ast::impure_fn,
+                             cf=ast::return); 
     let ast::_fn f = rec(decl = d,
-                        proto = ast::proto_fn,
-                        body = b);
+                         proto = ast::proto_fn,
+                         body = b);
     let ast::method_ m = rec(ident="drop",
                             meth=f,
                             id=p.next_def_id(),

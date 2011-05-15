@@ -31,7 +31,7 @@ import util::common::ty_f64;
 
 import util::common::new_def_hash;
 import util::common::span;
-import util::typestate_ann::ts_ann;
+import middle::tstate::ann::ts_ann;
 
 import util::interner;
 
@@ -86,6 +86,7 @@ type t = uint;
 // AST structure in front/ast::rs as well.
 tag sty {
     ty_nil;
+    ty_bot;
     ty_bool;
     ty_int;
     ty_float;
@@ -159,7 +160,8 @@ const uint idx_str      = 16u;
 const uint idx_task     = 17u;
 const uint idx_native   = 18u;
 const uint idx_type     = 19u;
-const uint idx_first_others = 20u;
+const uint idx_bot      = 20u;
+const uint idx_first_others = 21u;
 
 type type_store = interner::interner[raw_t];
 
@@ -190,6 +192,7 @@ fn mk_type_store() -> @type_store {
     intern(ts, ty_task, none[str]);
     intern(ts, ty_native, none[str]);
     intern(ts, ty_type, none[str]);
+    intern(ts, ty_bot, none[str]);
 
     assert _vec::len(ts.vect) == idx_first_others;
 
@@ -368,6 +371,7 @@ fn gen_ty(&ctxt cx, &sty st) -> t {
 }
 
 fn mk_nil(&ctxt cx) -> t          { ret idx_nil; }
+fn mk_bot(&ctxt cx) -> t          { ret idx_bot; }
 fn mk_bool(&ctxt cx) -> t         { ret idx_bool; }
 fn mk_int(&ctxt cx) -> t          { ret idx_int; }
 fn mk_float(&ctxt cx) -> t        { ret idx_float; }
@@ -564,6 +568,7 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
     alt (struct(cx, typ)) {
         case (ty_native)       { s += "native";                         }
         case (ty_nil)          { s += "()";                             }
+        case (ty_bot)          { s += "_|_";                            }
         case (ty_bool)         { s += "bool";                           }
         case (ty_int)          { s += "int";                            }
         case (ty_float)        { s += "float";                          }
@@ -576,6 +581,7 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
         case (ty_port(?t))     { s += "port[" + ty_to_str(cx, t) + "]"; }
         case (ty_chan(?t))     { s += "chan[" + ty_to_str(cx, t) + "]"; }
         case (ty_type)         { s += "type";                           }
+        case (ty_task)         { s += "task";                           }
 
         case (ty_tup(?elems)) {
             auto f = bind mt_to_str(cx, _);
@@ -632,6 +638,11 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
             s += "''" + _str::unsafe_from_bytes(vec(('a' as u8) +
                                                     (id as u8)));
         }
+
+        case (_) {
+            s += ty_to_short_str(cx, typ);
+        }
+
     }
 
     ret s;
@@ -652,6 +663,7 @@ type ty_walk = fn(t);
 fn walk_ty(ctxt cx, ty_walk walker, t ty) {
     alt (struct(cx, ty)) {
         case (ty_nil)           { /* no-op */ }
+        case (ty_bot)           { /* no-op */ }
         case (ty_bool)          { /* no-op */ }
         case (ty_int)           { /* no-op */ }
         case (ty_uint)          { /* no-op */ }
@@ -716,6 +728,7 @@ fn fold_ty(ctxt cx, ty_fold fld, t ty_0) -> t {
     auto ty = ty_0;
     alt (struct(cx, ty)) {
         case (ty_nil)           { /* no-op */ }
+        case (ty_bot)           { /* no-op */ }
         case (ty_bool)          { /* no-op */ }
         case (ty_int)           { /* no-op */ }
         case (ty_uint)          { /* no-op */ }
@@ -821,7 +834,13 @@ fn type_is_nil(&ctxt cx, &t ty) -> bool {
         case (ty_nil) { ret true; }
         case (_) { ret false; }
     }
-    fail;
+}
+
+fn type_is_bot(&ctxt cx, &t ty) -> bool {
+    alt (struct(cx, ty)) {
+        case (ty_bot) { ret true; }
+        case (_) { ret false; }
+    }
 }
 
 fn type_is_bool(&ctxt cx, &t ty) -> bool {
@@ -1130,6 +1149,7 @@ fn hash_type_structure(&sty st) -> uint {
         case (ty_bound_param(?pid)) { ret hash_uint(31u, pid); }
         case (ty_type) { ret 32u; }
         case (ty_native) { ret 33u; }
+        case (ty_bot) { ret 34u; }
     }
 }
 
@@ -1180,6 +1200,12 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
             alt (b) {
                 case (ty_nil) { ret true; }
                 case (_) { ret false; }
+            }
+        }
+        case (ty_bot) {
+            alt(b) {
+                case (ty_bot) { ret true; }
+                case (_)      { ret false; }
             }
         }
         case (ty_bool) {
@@ -1476,7 +1502,12 @@ fn triv_ann(uint node_id, t typ) -> ast::ann {
 
 // Creates a nil type annotation.
 fn plain_ann(uint node_id, ctxt tcx) -> ast::ann {
-    ret ast::ann_type(node_id, mk_nil(tcx), none[vec[ty::t]], none[@ts_ann]);
+    ret ast::ann_type(node_id, mk_nil(tcx), none[vec[t]], none[@ts_ann]);
+}
+
+// Creates a _|_ type annotation.
+fn bot_ann(uint node_id, ctxt tcx) -> ast::ann {
+    ret ast::ann_type(node_id, mk_bot(tcx), none[vec[t]], none[@ts_ann]);
 }
 
 
@@ -2099,6 +2130,7 @@ mod unify {
 
         alt (struct(cx.tcx, expected)) {
             case (ty::ty_nil)        { ret struct_cmp(cx, expected, actual); }
+            case (ty::ty_bot)        { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_bool)       { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_int)        { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_uint)       { ret struct_cmp(cx, expected, actual); }
@@ -2675,6 +2707,20 @@ fn lookup_item_type(session::session sess,
     }
 }
 
+fn ret_ty_of_fn_ty(ty_ctxt tcx, t a_ty) -> t {
+    alt (ty::struct(tcx, a_ty)) {
+        case (ty::ty_fn(_, _, ?ret_ty)) {
+            ret ret_ty;
+        }
+        case (_) { 
+            fail;
+        }
+    }
+}
+
+fn ret_ty_of_fn(node_type_table ntt, ty_ctxt tcx, ast::ann ann) -> t {
+    ret ret_ty_of_fn_ty(tcx, ann_to_type(ntt, ann));
+}
 
 // Local Variables:
 // mode: rust
