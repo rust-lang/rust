@@ -765,13 +765,13 @@ fn parse_bottom_expr(parser p) -> @ast::expr {
                                 pf, p);
         hi = es.span.hi;
         ex = ast::expr_tup(es.node, p.get_ann());
-    } else if (eat_word(p, "vec")) {
+    } else if (p.peek() == token::LBRACKET) {
+        p.bump();
         auto pf = parse_expr;
 
-        expect(p, token::LPAREN);
         auto mut = parse_mutability(p);
 
-        auto es = parse_seq_to_end[@ast::expr](token::RPAREN,
+        auto es = parse_seq_to_end[@ast::expr](token::RBRACKET,
                                                some(token::COMMA),
                                                pf, hi, p);
         ex = ast::expr_vec(es, mut, p.get_ann());
