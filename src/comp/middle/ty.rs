@@ -33,6 +33,8 @@ import util::common::new_def_hash;
 import util::common::span;
 import util::typestate_ann::ts_ann;
 
+import util::interner;
+
 // Data types
 
 tag mode {
@@ -159,19 +161,14 @@ const uint idx_native   = 18u;
 const uint idx_type     = 19u;
 const uint idx_first_others = 20u;
 
-type type_store = rec(mutable vec[raw_t] others,
-                      hashmap[raw_t,uint] other_structural);
+type type_store = interner::interner[raw_t];
 
 type ty_param_substs_opt_and_ty = tup(option::t[vec[ty::t]], ty::t);
 type node_type_table =
     @mutable vec[mutable option::t[ty::ty_param_substs_opt_and_ty]];
 
 fn mk_type_store() -> @type_store {
-    let vec[raw_t] others = vec();
-    let hashmap[raw_t,uint] ost =
-        map::mk_hashmap[raw_t,uint](hash_raw_ty, eq_raw_ty);
-
-    auto ts = @rec(mutable others=others, other_structural=ost);
+    auto ts = @interner::mk_interner[raw_t](hash_raw_ty, eq_raw_ty);
 
     intern(ts, ty_nil, none[str]);
     intern(ts, ty_bool, none[str]);
@@ -194,7 +191,7 @@ fn mk_type_store() -> @type_store {
     intern(ts, ty_native, none[str]);
     intern(ts, ty_type, none[str]);
 
-    assert _vec::len(ts.others) == idx_first_others;
+    assert _vec::len(ts.vect) == idx_first_others;
 
     ret ts;
 }
@@ -240,7 +237,7 @@ fn mk_raw_ty(&@type_store ts, &sty st, &option::t[str] cname) -> raw_t {
                       &mutable bool has_vars,
                       &mutable bool has_locals,
                       &t tt) {
-        auto rt = ts.others.(tt);
+        auto rt = interner::get[raw_t](*ts, tt);
         has_params = has_params || rt.has_params;
         has_bound_params = has_bound_params || rt.has_bound_params;
         has_vars = has_vars || rt.has_vars;
@@ -355,32 +352,13 @@ fn mk_raw_ty(&@type_store ts, &sty st, &option::t[str] cname) -> raw_t {
             has_locals = has_locals);
 }
 
-fn intern_raw_ty(&@type_store ts, &raw_t rt) {
-    auto type_num = _vec::len[raw_t](ts.others);
-    ts.others += vec(rt);
-    ts.other_structural.insert(rt, type_num);
-}
-
 fn intern(&@type_store ts, &sty st, &option::t[str] cname) {
-    intern_raw_ty(ts, mk_raw_ty(ts, st, cname));
+    interner::intern[raw_t](*ts, mk_raw_ty(ts, st, cname));
 }
 
 fn gen_ty_full(&ctxt cx, &sty st, &option::t[str] cname) -> t {
     auto raw_type = mk_raw_ty(cx.ts, st, cname);
-
-    // Is it interned?
-    alt (cx.ts.other_structural.find(raw_type)) {
-        case (some[t](?typ)) {
-            ret typ;
-        }
-        case (none[t]) {
-            // Nope: Insert it and return.
-            auto type_num = _vec::len[raw_t](cx.ts.others);
-            intern_raw_ty(cx.ts, raw_type);
-            // log_err "added: " + ty_to_str(tystore, raw_type);
-            ret type_num;
-        }
-    }
+    ret interner::intern[raw_t](*cx.ts, raw_type);
 }
 
 // These are private constructors to this module. External users should always
@@ -484,10 +462,14 @@ fn mk_native(&ctxt cx) -> t  { ret idx_native; }
 
 
 // Returns the one-level-deep type structure of the given type.
-fn struct(&ctxt cx, &t typ) -> sty { ret cx.ts.others.(typ).struct; }
+fn struct(&ctxt cx, &t typ) -> sty {
+    ret interner::get[raw_t](*cx.ts, typ).struct;
+}
 
 // Returns the canonical name of the given type.
-fn cname(&ctxt cx, &t typ) -> option::t[str] { ret cx.ts.others.(typ).cname; }
+fn cname(&ctxt cx, &t typ) -> option::t[str] {
+    ret interner::get[raw_t](*cx.ts, typ).cname;
+}
 
 
 // Stringification
@@ -1525,19 +1507,19 @@ fn count_ty_params(ctxt cx, t ty) -> uint {
 }
 
 fn type_contains_vars(&ctxt cx, &t typ) -> bool {
-    ret cx.ts.others.(typ).has_vars;
+    ret interner::get[raw_t](*cx.ts, typ).has_vars;
 }
 
 fn type_contains_locals(&ctxt cx, &t typ) -> bool {
-    ret cx.ts.others.(typ).has_locals;
+    ret interner::get[raw_t](*cx.ts, typ).has_locals;
 }
 
 fn type_contains_params(&ctxt cx, &t typ) -> bool {
-    ret cx.ts.others.(typ).has_params;
+    ret interner::get[raw_t](*cx.ts, typ).has_params;
 }
 
 fn type_contains_bound_params(&ctxt cx, &t typ) -> bool {
-    ret cx.ts.others.(typ).has_bound_params;
+    ret interner::get[raw_t](*cx.ts, typ).has_bound_params;
 }
 
 // Type accessors for substructures of types
