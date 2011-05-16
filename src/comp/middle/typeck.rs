@@ -1086,26 +1086,17 @@ mod Pushdown {
     //
     // TODO: enforce this via a predicate.
 
-    fn pushdown_pat(&@fn_ctxt fcx, &ty::t expected,
-                    &@ast::pat pat) -> @ast::pat {
-        auto p_1;
-
+    fn pushdown_pat(&@fn_ctxt fcx, &ty::t expected, &@ast::pat pat) {
         alt (pat.node) {
             case (ast::pat_wild(?ann)) {
                 auto t = Demand::simple(fcx, pat.span, expected,
                                         ann_to_type(fcx.ccx.node_types, ann));
-                p_1 = ast::pat_wild(ast::ann_type(ast::ann_tag(ann), t,
-                                                none[vec[ty::t]],
-                                                none[@ts_ann]));
                 write_type(fcx.ccx.node_types, ast::ann_tag(ann),
                            tup(none[vec[ty::t]], t));
             }
             case (ast::pat_lit(?lit, ?ann)) {
                 auto t = Demand::simple(fcx, pat.span, expected,
                                         ann_to_type(fcx.ccx.node_types, ann));
-                p_1 = ast::pat_lit(lit, ast::ann_type(ast::ann_tag(ann), t,
-                                                    none[vec[ty::t]],
-                                                    none[@ts_ann]));
                 write_type(fcx.ccx.node_types, ast::ann_tag(ann),
                            tup(none[vec[ty::t]], t));
             }
@@ -1113,10 +1104,6 @@ mod Pushdown {
                 auto t = Demand::simple(fcx, pat.span, expected,
                                         ann_to_type(fcx.ccx.node_types, ann));
                 fcx.locals.insert(did, t);
-                p_1 = ast::pat_bind(id, did, ast::ann_type(ast::ann_tag(ann),
-                                                           t,
-                                                           none[vec[ty::t]],
-                                                           none[@ts_ann]));
                 write_type(fcx.ccx.node_types, ast::ann_tag(ann),
                            tup(none[vec[ty::t]], t));
             }
@@ -1141,22 +1128,18 @@ mod Pushdown {
                     }
                 }
 
-                let vec[@ast::pat] subpats_1 = vec();
                 auto i = 0u;
                 for (@ast::pat subpat in subpats) {
-                    subpats_1 += vec(pushdown_pat(fcx, arg_tys.(i), subpat));
+                    pushdown_pat(fcx, arg_tys.(i), subpat);
                     i += 1u;
                 }
 
                 // TODO: push down type from "expected".
-                p_1 = ast::pat_tag(id, subpats_1, ann);
                 write_type(fcx.ccx.node_types, ast::ann_tag(ann),
                     ty::ann_to_ty_param_substs_opt_and_ty(fcx.ccx.node_types,
                                                           ann));
             }
         }
-
-        ret @fold::respan[ast::pat_](pat.span, p_1);
     }
 
     // Push-down over typed expressions. Note that the expression that you
@@ -1714,24 +1697,20 @@ fn check_lit(@crate_ctxt ccx, &@ast::lit lit) -> ty::t {
     fail; // not reached
 }
 
-fn check_pat(&@fn_ctxt fcx, &@ast::pat pat) -> @ast::pat {
-    auto new_pat;
+fn check_pat(&@fn_ctxt fcx, &@ast::pat pat) {
     alt (pat.node) {
         case (ast::pat_wild(?ann)) {
             auto typ = next_ty_var(fcx.ccx);
             write_type_only(fcx.ccx.node_types, ast::ann_tag(ann), typ);
-            new_pat = ast::pat_wild(triv_ann(ast::ann_tag(ann), typ));
         }
         case (ast::pat_lit(?lt, ?ann)) {
             auto typ = check_lit(fcx.ccx, lt);
             write_type_only(fcx.ccx.node_types, ast::ann_tag(ann), typ);
-            new_pat = ast::pat_lit(lt, triv_ann(ast::ann_tag(ann), typ));
         }
         case (ast::pat_bind(?id, ?def_id, ?a)) {
             auto typ = next_ty_var(fcx.ccx);
             auto ann = triv_ann(ast::ann_tag(a), typ);
             write_type_only(fcx.ccx.node_types, ast::ann_tag(ann), typ);
-            new_pat = ast::pat_bind(id, def_id, ann);
         }
         case (ast::pat_tag(?p, ?subpats, ?old_ann)) {
             auto vdef = ast::variant_def_ids
@@ -1763,14 +1742,10 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat) -> @ast::pat {
                         fail;   // TODO: recover
                     }
 
-                    let vec[@ast::pat] new_subpats = vec();
                     for (@ast::pat subpat in subpats) {
-                        new_subpats += vec(check_pat(fcx, subpat));
+                        check_pat(fcx, subpat);
                     }
 
-                    new_pat = ast::pat_tag(p, new_subpats,
-                        ast::ann_type(ast::ann_tag(old_ann), path_tpot._1,
-                                      path_tpot._0, none[@ts_ann]));
                     write_type(fcx.ccx.node_types, ast::ann_tag(old_ann),
                                path_tpot);
                 }
@@ -1790,17 +1765,12 @@ fn check_pat(&@fn_ctxt fcx, &@ast::pat pat) -> @ast::pat {
                         fail;   // TODO: recover
                     }
 
-                    new_pat = ast::pat_tag(p, subpats,
-                        ast::ann_type(ast::ann_tag(old_ann), path_tpot._1,
-                                      path_tpot._0, none[@ts_ann]));
                     write_type(fcx.ccx.node_types, ast::ann_tag(old_ann),
                                path_tpot);
                 }
             }
         }
     }
-
-    ret @fold::respan[ast::pat_](pat.span, new_pat);
 }
 
 fn require_impure(&session::session sess,
@@ -2427,17 +2397,16 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             auto pattern_ty = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
                                       expr_0);
 
-            let vec[@ast::pat] pats_0 = vec();
+            let vec[@ast::pat] pats = vec();
             for (ast::arm arm in arms) {
-                auto pat_0 = check_pat(fcx, arm.pat);
-                pattern_ty = Demand::simple(fcx, pat_0.span, pattern_ty,
-                    pat_ty(fcx.ccx.tcx, fcx.ccx.node_types, pat_0));
-                pats_0 += vec(pat_0);
+                check_pat(fcx, arm.pat);
+                pattern_ty = Demand::simple(fcx, arm.pat.span, pattern_ty,
+                    pat_ty(fcx.ccx.tcx, fcx.ccx.node_types, arm.pat));
+                pats += vec(arm.pat);
             }
 
-            let vec[@ast::pat] pats_1 = vec();
-            for (@ast::pat pat_0 in pats_0) {
-                pats_1 += vec(Pushdown::pushdown_pat(fcx, pattern_ty, pat_0));
+            for (@ast::pat pat in pats) {
+                Pushdown::pushdown_pat(fcx, pattern_ty, pat);
             }
 
             // Now typecheck the blocks.
@@ -2456,9 +2425,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             for (ast::block block_0 in blocks_0) {
                 auto block_1 = Pushdown::pushdown_block(fcx, result_ty,
                                                        block_0);
-                auto pat_1 = pats_1.(i);
+                auto pat = pats.(i);
                 auto arm = arms.(i);
-                auto arm_1 = rec(pat=pat_1, block=block_1);
+                auto arm_1 = rec(pat=pat, block=block_1);
                 arms_1 += vec(arm_1);
                 i += 1u;
             }
