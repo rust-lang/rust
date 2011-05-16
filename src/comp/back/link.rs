@@ -17,6 +17,7 @@ tag output_type {
     output_type_bitcode;
     output_type_assembly;
     output_type_object;
+    output_type_exe;
 }
 
 fn llvm_err(session::session sess, str msg) {
@@ -56,11 +57,10 @@ fn link_intrinsics(session::session sess, ModuleRef llmod) {
 }
 
 mod write {
-    fn is_object_or_assembly(output_type ot) -> bool {
-        if (ot == output_type_assembly) {
-            ret true;
-        }
-        if (ot == output_type_object) {
+    fn is_object_or_assembly_or_exe(output_type ot) -> bool {
+        if ( (ot == output_type_assembly) || 
+             (ot == output_type_object) ||
+             (ot == output_type_exe) ) {
             ret true;
         }
         ret false;
@@ -143,13 +143,13 @@ mod write {
             llvm::LLVMAddVerifierPass(pm.llpm);
         }
 
-        // TODO: Write .s if -c was specified and -save-temps was on.
-        if (is_object_or_assembly(opts.output_type)) {
+        if (is_object_or_assembly_or_exe(opts.output_type)) {
             let int LLVMAssemblyFile = 0;
             let int LLVMObjectFile = 1;
             let int LLVMNullFile = 2;
             auto FileType;
-            if (opts.output_type == output_type_object) {
+            if ((opts.output_type == output_type_object) ||
+                (opts.output_type == output_type_exe)) {
                 FileType = LLVMObjectFile;
             } else {
                 FileType = LLVMAssemblyFile;
@@ -157,23 +157,39 @@ mod write {
 
             // Write optimized bitcode if --save-temps was on.
             if (opts.save_temps) {
-                alt (opts.output_type) {
-                    case (output_type_bitcode) { /* nothing to do */ }
-                    case (_) {
-                        auto filename = mk_intermediate_name(output,
-                                                             "opt.bc");
-                        llvm::LLVMRunPassManager(pm.llpm, llmod);
-                        llvm::LLVMWriteBitcodeToFile(llmod,
-                                                    _str::buf(filename));
-                        pm = mk_pass_manager();
-                    }
+
+                // Always output the bitcode file with --save-temps
+                auto filename = mk_intermediate_name(output, "opt.bc");
+                llvm::LLVMRunPassManager(pm.llpm, llmod);
+                llvm::LLVMWriteBitcodeToFile(llmod, _str::buf(output));
+                pm = mk_pass_manager();
+
+                // Save the assembly file if -S is used
+                if (opts.output_type == output_type_assembly) {
+                        llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
+                               _str::buf(x86::get_target_triple()),
+                               _str::buf(output), LLVMAssemblyFile);
                 }
+
+                // Save the object file for -c or only --save-temps
+                // is used and an exe is built
+                if ((opts.output_type == output_type_object) ||
+                    (opts.output_type == output_type_exe)) {
+                        llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
+                               _str::buf(x86::get_target_triple()),
+                               _str::buf(output), LLVMObjectFile);
+               }
+            } else {
+
+                // If we aren't saving temps then just output the file
+                // type corresponding to the '-c' or '-S' flag used
+                llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
+                                     _str::buf(x86::get_target_triple()),
+                                     _str::buf(output),
+                                     FileType);
             }
 
-            llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
-                                         _str::buf(x86::get_target_triple()),
-                                         _str::buf(output),
-                                         FileType);
+            // Clean up and return
             llvm::LLVMDisposeModule(llmod);
             if (opts.time_llvm_passes) {
               llvm::LLVMRustPrintPassTimings();
@@ -181,6 +197,8 @@ mod write {
             ret;
         }
 
+        // If only a bitcode file is asked for by using the '--bitcode'
+        // flag, then output it here
         llvm::LLVMRunPassManager(pm.llpm, llmod);
 
         llvm::LLVMWriteBitcodeToFile(llmod, _str::buf(output));
