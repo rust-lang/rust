@@ -395,14 +395,18 @@ fn write_nil_type(ty::ctxt tcx, &node_type_table ntt, uint node_id) {
 
 // Item collection - a pair of bootstrap passes:
 //
-// 1. Collect the IDs of all type items (typedefs) and store them in a table.
+// (1) Collect the IDs of all type items (typedefs) and store them in a table.
 //
-// 2. Translate the AST fragments that describe types to determine a type for
-//    each item. When we encounter a named type, we consult the table built in
-//    pass 1 to find its item, and recursively translate it.
+// (2) Translate the AST fragments that describe types to determine a type for
+//     each item. When we encounter a named type, we consult the table built
+//     in pass 1 to find its item, and recursively translate it.
 //
 // We then annotate the AST with the resulting types and return the annotated
 // AST, along with a table mapping item IDs to their types.
+//
+// TODO: This logic is quite convoluted; it's a relic of the time when we
+// actually wrote types directly into the AST and didn't have a type cache.
+// Could use some cleanup. Consider topologically sorting in phase (1) above.
 
 mod collect {
     type ctxt = rec(session::session sess,
@@ -451,8 +455,6 @@ mod collect {
             ret creader::get_type(cx.sess, cx.tcx, id);
         }
 
-        // assert (cx.id_to_ty_item.contains_key(id));
-
         auto it = cx.id_to_ty_item.get(id);
         auto tpt;
         alt (it) {
@@ -485,9 +487,7 @@ mod collect {
                  &ast::ident id,
                  &ast::_obj obj_info,
                  &vec[ast::ty_param] ty_params) -> ty::ty_param_count_and_ty {
-        auto f = bind ty_of_method(cx, _);
-        auto methods = _vec::map[@ast::method,method](f, obj_info.methods);
-
+        auto methods = get_obj_method_types(cx, obj_info);
         auto t_obj = ty::mk_obj(cx.tcx, ty::sort_methods(methods));
         t_obj = ty::rename(cx.tcx, t_obj, id);
         auto ty_param_count = _vec::len[ast::ty_param](ty_params);
@@ -497,10 +497,11 @@ mod collect {
     fn ty_of_obj_ctor(@ctxt cx,
                       &ast::ident id,
                       &ast::_obj obj_info,
-                      &ast::def_id obj_ty_id,
+                      &ast::def_id ctor_id,
                       &vec[ast::ty_param] ty_params)
             -> ty::ty_param_count_and_ty {
         auto t_obj = ty_of_obj(cx, id, obj_info, ty_params);
+
         let vec[arg] t_inputs = vec();
         for (ast::obj_field f in obj_info.fields) {
             auto g = bind getter(cx, _);
@@ -508,10 +509,11 @@ mod collect {
             _vec::push[arg](t_inputs, rec(mode=ty::mo_alias, ty=t_field));
         }
 
-        cx.type_cache.insert(obj_ty_id, t_obj);
-
         auto t_fn = ty::mk_fn(cx.tcx, ast::proto_fn, t_inputs, t_obj._1);
-        ret tup(t_obj._0, t_fn);
+
+        auto tpt = tup(t_obj._0, t_fn);
+        cx.type_cache.insert(ctor_id, tpt);
+        ret tpt;
     }
 
     fn ty_of_item(&@ctxt cx, &@ast::item it) -> ty::ty_param_count_and_ty {
@@ -535,10 +537,9 @@ mod collect {
             }
 
             case (ast::item_obj(?ident, ?obj_info, ?tps, ?odid, _)) {
-                auto t_ctor = ty_of_obj_ctor(cx, ident, obj_info, odid.ty,
-                                             tps);
-                cx.type_cache.insert(odid.ctor, t_ctor);
-                ret cx.type_cache.get(odid.ty);
+                auto t_obj = ty_of_obj(cx, ident, obj_info, tps);
+                cx.type_cache.insert(odid.ty, t_obj);
+                ret t_obj;
             }
 
             case (ast::item_ty(?ident, ?t, ?tps, ?def_id, _)) {
@@ -658,6 +659,11 @@ mod collect {
         ret result;
     }
 
+    fn get_obj_method_types(&@ctxt cx, &ast::_obj object) -> vec[method] {
+        ret _vec::map[@ast::method,method](bind ty_of_method(cx, _),
+                                           object.methods);
+    }
+
     fn collect(&@ty_item_table id_to_ty_item, &@ast::item i) {
         alt (i.node) {
             case (ast::item_ty(_, _, _, ?def_id, _)) {
@@ -684,193 +690,107 @@ mod collect {
         }
     }
 
-    fn convert(&@env e, &@ast::item i) -> @env {
-        auto abi = e.abi;
-        alt (i.node) {
+    fn convert(@ctxt cx, @mutable option::t[ast::native_abi] abi,
+               &@ast::item it) {
+        alt (it.node) {
             case (ast::item_mod(_, _, _)) {
                 // ignore item_mod, it has no type.
             }
             case (ast::item_native_mod(_, ?native_mod, _)) {
-                // ignore item_native_mod, it has no type.
-                abi = native_mod.abi;
+                // Propagate the native ABI down to convert_native() below,
+                // but otherwise do nothing, as native modules have no types.
+                *abi = some[ast::native_abi](native_mod.abi);
             }
-            case (_) {
-                // This call populates the ty_table with the converted type of
-                // the item in passing; we don't need to do anything else.
-                ty_of_item(e.cx, i);
+            case (ast::item_tag(_, ?variants, ?ty_params, ?tag_id, ?ann)) {
+                auto tpt = ty_of_item(cx, it);
+                write_type_only(cx.node_types, ast::ann_tag(ann), tpt._1);
+
+                get_tag_variant_types(cx, tag_id, variants, ty_params);
             }
-        }
-        ret @rec(abi=abi with *e);
-    }
+            case (ast::item_obj(?ident, ?object, ?ty_params, ?odid, ?ann)) {
+                // This calls ty_of_obj().
+                auto t_obj = ty_of_item(cx, it);
 
-    fn convert_native(&@env e, &@ast::native_item i) -> @env {
-        ty_of_native_item(e.cx, i, e.abi);
-        ret e;
-    }
+                // Now we need to call ty_of_obj_ctor(); this is the type that
+                // we write into the table for this item.
+                auto tpt = ty_of_obj_ctor(cx, ident, object, odid.ctor,
+                                          ty_params);
+                write_type_only(cx.node_types, ast::ann_tag(ann), tpt._1);
 
-    fn fold_item_const(&@env e, &span sp, &ast::ident i,
-                       &@ast::ty t, &@ast::expr ex,
-                       &ast::def_id id, &ast::ann a) -> @ast::item {
-        // assert (e.cx.type_cache.contains_key(id));
-        auto typ = e.cx.type_cache.get(id)._1;
-        auto item = ast::item_const(i, t, ex, id,
-                                    triv_ann(ast::ann_tag(a), typ));
-        write_type_only(e.cx.node_types, ast::ann_tag(a), typ);
-        ret @fold::respan[ast::item_](sp, item);
-    }
+                // Write the methods into the type table.
+                //
+                // FIXME: Inefficient; this ends up calling
+                // get_obj_method_types() twice. (The first time was above in
+                // ty_of_obj().)
+                auto method_types = get_obj_method_types(cx, object);
+                auto i = 0u;
+                while (i < _vec::len[@ast::method](object.methods)) {
+                    write_type_only(cx.node_types,
+                                    ast::ann_tag(object.methods.(i).node.ann),
+                                    ty::method_ty_to_fn_ty(cx.tcx,
+                                        method_types.(i)));
+                    i += 1u;
+                }
 
-    fn fold_item_fn(&@env e, &span sp, &ast::ident i,
-                    &ast::_fn f, &vec[ast::ty_param] ty_params,
-                    &ast::def_id id, &ast::ann a) -> @ast::item {
-        // assert (e.cx.type_cache.contains_key(id));
-        auto typ = e.cx.type_cache.get(id)._1;
-        auto item = ast::item_fn(i, f, ty_params, id,
-                                 triv_ann(ast::ann_tag(a), typ));
-        write_type_only(e.cx.node_types, ast::ann_tag(a), typ);
-        ret @fold::respan[ast::item_](sp, item);
-    }
+                // Write in the types of the object fields.
+                //
+                // FIXME: We want to use _uint::range() here, but that causes
+                // an assertion in trans.
+                auto args = ty::ty_fn_args(cx.tcx, tpt._1);
+                i = 0u;
+                while (i < _vec::len[ty::arg](args)) {
+                    auto fld = object.fields.(i);
+                    write_type_only(cx.node_types, ast::ann_tag(fld.ann),
+                                    args.(i).ty);
+                    i += 1u;
+                }
 
-    fn fold_native_item_fn(&@env e, &span sp, &ast::ident i,
-                           &option::t[str] ln,
-                           &ast::fn_decl d, &vec[ast::ty_param] ty_params,
-                           &ast::def_id id, &ast::ann a) -> @ast::native_item{
-        // assert (e.cx.type_cache.contains_key(id));
-        auto typ = e.cx.type_cache.get(id)._1;
-        auto item = ast::native_item_fn(i, ln, d, ty_params, id,
-                                        triv_ann(ast::ann_tag(a), typ));
-        write_type_only(e.cx.node_types, ast::ann_tag(a), typ);
-        ret @fold::respan[ast::native_item_](sp, item);
-    }
-
-    fn get_ctor_obj_methods(&@env e, &ty::t t) -> vec[method] {
-        alt (struct(e.cx.tcx, t)) {
-            case (ty::ty_fn(_,_,?tobj)) {
-                alt (struct(e.cx.tcx, tobj)) {
-                    case (ty::ty_obj(?tm)) {
-                        ret tm;
-                    }
-                    case (_) {
-                        let vec[method] tm = vec();
-                        ret tm;
+                // Finally, write in the type of the destructor.
+                alt (object.dtor) {
+                    case (none[@ast::method]) { /* nothing to do */ }
+                    case (some[@ast::method](?m)) {
+                        // TODO: typechecker botch
+                        let vec[arg] no_args = vec();
+                        auto t = ty::mk_fn(cx.tcx, ast::proto_fn, no_args,
+                                           ty::mk_nil(cx.tcx));
+                        write_type_only(cx.node_types,
+                                        ast::ann_tag(m.node.ann), t);
                     }
                 }
             }
             case (_) {
-                let vec[method] tm = vec();
-                ret tm;
+                // This call populates the type cache with the converted type
+                // of the item in passing. All we have to do here is to write
+                // it into the node type table.
+                auto tpt = ty_of_item(cx, it);
+                write_type_only(cx.node_types, ast::ann_tag(ty::item_ann(it)),
+                                tpt._1);
             }
         }
     }
 
-    // Anonymous objects are expressions, not items, but they're enough like
-    // items that we're going to include them in this fold.
-    fn fold_expr_anon_obj(&@env e, &span sp,
-                          &ast::anon_obj ob, &vec[ast::ty_param] tps,
-                          &ast::obj_def_ids odid, &ast::ann a) -> @ast::expr {
+    fn convert_native(@ctxt cx, @mutable option::t[ast::native_abi] abi,
+                      &@ast::native_item i) {
+        // As above, this call populates the type table with the converted
+        // type of the native item. We simply write it into the node type
+        // table.
+        auto tpt = ty_of_native_item(cx, i,
+                                     option::get[ast::native_abi](*abi));
 
-        // TODO: Somewhere in here we need to push some stuff onto a vector.
-
-        auto expr_anon_obj = ast::expr_anon_obj(ob, tps, odid, a);
-        ret @fold::respan[ast::expr_](sp, expr_anon_obj);
-    }
-
-    fn fold_item_obj(&@env e, &span sp, &ast::ident i,
-                    &ast::_obj ob, &vec[ast::ty_param] ty_params,
-                    &ast::obj_def_ids odid, &ast::ann a) -> @ast::item {
-        // assert (e.cx.type_cache.contains_key(odid.ctor));
-        auto t = e.cx.type_cache.get(odid.ctor)._1;
-        let vec[method] meth_tys = get_ctor_obj_methods(e, t);
-        let vec[@ast::method] methods = vec();
-        let vec[ast::obj_field] fields = vec();
-
-        for (@ast::method meth in ob.methods) {
-            let uint ix = ty::method_idx(e.cx.sess,
-                                        sp, meth.node.ident,
-                                        meth_tys);
-            let method meth_ty = meth_tys.(ix);
-            let ast::method_ m_;
-            let @ast::method m;
-            auto meth_tfn = ty::mk_fn(e.cx.tcx,
-                                      meth_ty.proto,
-                                      meth_ty.inputs,
-                                      meth_ty.output);
-            m_ = rec(ann=triv_ann(ast::ann_tag(meth.node.ann), meth_tfn)
-                     with meth.node
-            );
-            m = @rec(node=m_ with *meth);
-            write_type_only(e.cx.node_types, ast::ann_tag(meth.node.ann),
-                            meth_tfn);
-            _vec::push[@ast::method](methods, m);
-        }
-        auto g = bind getter(e.cx, _);
-        for (ast::obj_field fld in ob.fields) {
-            let ty::t fty = ast_ty_to_ty(e.cx.tcx, g, fld.ty);
-            let ast::obj_field f =
-                rec(ann=triv_ann(ast::ann_tag(fld.ann), fty) with fld);
-            write_type_only(e.cx.node_types, ast::ann_tag(fld.ann), fty);
-            _vec::push[ast::obj_field](fields, f);
-        }
-
-        auto dtor = none[@ast::method];
-        alt (ob.dtor) {
-            case (some[@ast::method](?d)) {
-                let vec[arg] inputs = vec();
-                let ty::t output = ty::mk_nil(e.cx.tcx);
-                auto dtor_tfn = ty::mk_fn(e.cx.tcx, ast::proto_fn, inputs,
-                                         output);
-                auto d_ = rec(
-                    ann=triv_ann(ast::ann_tag(d.node.ann), dtor_tfn)
-                    with d.node
-                );
-                write_type_only(e.cx.node_types, ast::ann_tag(d.node.ann),
-                                dtor_tfn);
-                dtor = some[@ast::method](@rec(node=d_ with *d));
+        alt (i.node) {
+            case (ast::native_item_ty(_,_)) {
+                // FIXME: Native types have no annotation. Should they? --pcw
             }
-            case (none[@ast::method]) { }
+            case (ast::native_item_fn(_,_,_,_,_,?a)) {
+                write_type_only(cx.node_types, ast::ann_tag(a), tpt._1);
+            }
         }
-
-        auto ob_ = rec(methods = methods,
-                       fields = fields,
-                       dtor = dtor
-                       with ob);
-        auto item = ast::item_obj(i, ob_, ty_params, odid,
-                                  triv_ann(ast::ann_tag(a), t));
-        write_type_only(e.cx.node_types, ast::ann_tag(a), t);
-        ret @fold::respan[ast::item_](sp, item);
-    }
-
-    fn fold_item_ty(&@env e, &span sp, &ast::ident i,
-                    &@ast::ty t, &vec[ast::ty_param] ty_params,
-                    &ast::def_id id, &ast::ann a) -> @ast::item {
-        // assert (e.cx.type_cache.contains_key(id));
-        auto typ = e.cx.type_cache.get(id)._1;
-        auto item = ast::item_ty(i, t, ty_params, id,
-                                 triv_ann(ast::ann_tag(a), typ));
-        write_type_only(e.cx.node_types, ast::ann_tag(a), typ);
-        ret @fold::respan[ast::item_](sp, item);
-    }
-
-    fn fold_item_tag(&@env e, &span sp, &ast::ident i,
-                     &vec[ast::variant] variants,
-                     &vec[ast::ty_param] ty_params,
-                     &ast::def_id id, &ast::ann a) -> @ast::item {
-        auto variants_t = get_tag_variant_types(e.cx, id, variants,
-                                                ty_params);
-        auto typ = e.cx.type_cache.get(id)._1;
-        auto item = ast::item_tag(i, variants_t, ty_params, id,
-                                  ast::ann_type(ast::ann_tag(a), typ,
-                                                none[vec[ty::t]],
-                                                none[@ts_ann]));
-        write_type(e.cx.node_types, ast::ann_tag(a),
-                   tup(none[vec[ty::t]], typ));
-        ret @fold::respan[ast::item_](sp, item);
     }
 
     fn collect_item_types(&session::session sess, &ty::ctxt tcx,
                           &@ast::crate crate)
-            -> tup(@ast::crate, ty::type_cache, @ty_item_table,
-                   node_type_table) {
-        // First pass: collect all type item IDs:
+            -> tup(ty::type_cache, @ty_item_table, node_type_table) {
+        // First pass: collect all type item IDs.
         auto module = crate.node.module;
         auto id_to_ty_item = @common::new_def_hash[any_item]();
 
@@ -888,29 +808,24 @@ mod collect {
         // Second pass: translate the types of all items.
         auto type_cache = common::new_def_hash[ty::ty_param_count_and_ty]();
 
+        // We have to propagate the surrounding ABI to the native items
+        // contained within the native module.
+        auto abi = @mutable none[ast::native_abi];
+
         auto cx = @rec(sess=sess,
                        id_to_ty_item=id_to_ty_item,
                        type_cache=type_cache,
                        tcx=tcx,
                        node_types=ntt);
 
-        let @env e = @rec(cx=cx, abi=ast::native_abi_cdecl);
+        visit = rec(
+            visit_item_pre = bind convert(cx,abi,_),
+            visit_native_item_pre = bind convert_native(cx,abi,_)
+            with walk::default_visitor()
+        );
+        walk::walk_crate(visit, *crate);
 
-        auto fld_2 = fold::new_identity_fold[@env]();
-        fld_2 =
-            @rec(update_env_for_item = bind convert(_,_),
-                 update_env_for_native_item = bind convert_native(_,_),
-                 fold_item_const = bind fold_item_const(_,_,_,_,_,_,_),
-                 fold_item_fn    = bind fold_item_fn(_,_,_,_,_,_,_),
-                 fold_native_item_fn =
-                    bind fold_native_item_fn(_,_,_,_,_,_,_,_),
-                 fold_item_obj   = bind fold_item_obj(_,_,_,_,_,_,_),
-                 fold_item_ty    = bind fold_item_ty(_,_,_,_,_,_,_),
-                 fold_item_tag   = bind fold_item_tag(_,_,_,_,_,_,_),
-                 fold_expr_anon_obj = bind fold_expr_anon_obj(_,_,_,_,_,_)
-                 with *fld_2);
-        auto crate_ = fold::fold_crate[@env](e, fld_2, crate);
-        ret tup(crate_, type_cache, id_to_ty_item, ntt);
+        ret tup(type_cache, id_to_ty_item, ntt);
     }
 }
 
@@ -2132,6 +2047,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             if (ty::def_has_ty_params(defn)) {
                 auto path_tpot = instantiate_path(fcx, pth, tpt, expr.span);
+                auto did = ast::def_id_of_def(defn);
                 write_type(fcx.ccx.node_types, ast::ann_tag(old_ann),
                            path_tpot);
                 ret @fold::respan[ast::expr_](expr.span,
@@ -3304,11 +3220,11 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
     auto unify_cache =
         map::mk_hashmap[unify_cache_entry,ty::unify::result](hasher, eqer);
     auto fpt = mk_fn_purity_table(crate); // use a variation on collect
-    let node_type_table node_types = result._3;
+    let node_type_table node_types = result._2;
 
     auto ccx = @rec(sess=sess,
-                    type_cache=result._1,
-                    item_items=result._2,
+                    type_cache=result._0,
+                    item_items=result._1,
                     obj_fields=fields,
                     this_obj=none[ast::def_id],
                     fn_purity_table = fpt,
@@ -3326,7 +3242,7 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
                fold_item_fn = bind check_item_fn(_,_,_,_,_,_,_)
                with *fld);
 
-    auto crate_1 = fold::fold_crate[@crate_ctxt](ccx, fld, result._0);
+    auto crate_1 = fold::fold_crate[@crate_ctxt](ccx, fld, crate);
 
     log #fmt("cache hit rate: %u/%u", ccx.cache_hits,
              ccx.cache_hits + ccx.cache_misses);
