@@ -1,6 +1,7 @@
 import util::common::ty_mach;
 import util::common::ty_mach_to_str;
 import util::common::new_str_hash;
+import util::interner;
 import std::_int;
 import std::_uint;
 import std::_str;
@@ -139,13 +140,14 @@ fn to_str(lexer::reader r, token t) -> str {
                 + "_" + ty_mach_to_str(tm);
         }
         case (LIT_MACH_FLOAT(?tm, ?s)) {
-            ret r.get_str(s) + "_" + ty_mach_to_str(tm);
+            ret interner::get[str](*r.get_interner(), s) + "_" +
+                ty_mach_to_str(tm);
         }
 
-        case (LIT_FLOAT(?s)) { ret r.get_str(s); }
+        case (LIT_FLOAT(?s)) { ret interner::get[str](*r.get_interner(), s); }
         case (LIT_STR(?s)) {
             // FIXME: escape.
-            ret "\"" + r.get_str(s) + "\"";
+            ret "\"" + interner::get[str](*r.get_interner(), s) + "\"";
         }
         case (LIT_CHAR(?c)) {
             // FIXME: escape.
@@ -160,9 +162,7 @@ fn to_str(lexer::reader r, token t) -> str {
         }
 
         /* Name components */
-        case (IDENT(?s, _)) {
-            ret r.get_str(s);
-        }
+        case (IDENT(?s, _)) { ret interner::get[str](*r.get_interner(), s); }
         case (IDX(?i)) { ret "_" + _int::to_str(i, 10u); }
         case (UNDERSCORE) { ret "_"; }
 

@@ -11,6 +11,7 @@ import util::common;
 import util::common::filename;
 import util::common::span;
 import util::common::new_str_hash;
+import util::interner;
 
 tag restriction {
     UNRESTRICTED;
@@ -123,7 +124,7 @@ fn new_parser(session::session sess,
             }
 
             fn get_str(token::str_num i) -> str {
-                ret rdr.get_str(i);
+                ret interner::get[str](*rdr.get_interner(), i);
             }
 
             fn get_reader() -> lexer::reader {
@@ -156,7 +157,8 @@ fn new_parser(session::session sess,
     auto srdr = io::file_reader(path);
     auto filemap = codemap::new_filemap(path, pos);
     _vec::push[codemap::filemap](sess.get_codemap().files, filemap);
-    auto rdr = lexer::new_reader(sess, srdr, filemap);
+    auto itr = @interner::mk_interner[str](_str::hash, _str::eq);
+    auto rdr = lexer::new_reader(sess, srdr, filemap, itr);
     // Make sure npos points at first actual token:
     lexer::consume_any_whitespace(rdr);
     auto npos = rdr.get_chpos();
