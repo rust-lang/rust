@@ -1789,11 +1789,10 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
     // A generic function to factor out common logic from call and bind
     // expressions.
     fn check_call_or_bind(&@fn_ctxt fcx, &@ast::expr f,
-                          &vec[option::t[@ast::expr]] args)
-            -> tup(@ast::expr, vec[option::t[@ast::expr]]) {
+                          &vec[option::t[@ast::expr]] args) {
 
         // Check the function.
-        auto f_0 = check_expr(fcx, f);
+        check_expr(fcx, f);
 
         // Check the arguments and generate the argument signature.
         let vec[option::t[@ast::expr]] args_0 = [];
@@ -1801,17 +1800,11 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         for (option::t[@ast::expr] a_opt in args) {
             alt (a_opt) {
                 case (some[@ast::expr](?a)) {
-                    auto a_0 = check_expr(fcx, a);
-                    args_0 += [some[@ast::expr](a_0)];
-
-                    auto arg_ty = rec(mode=mo_either,
-                                      ty=expr_ty(fcx.ccx.tcx,
-                                                 fcx.ccx.node_types, a_0));
-                    vec::push[arg](arg_tys_0, arg_ty);
+                    check_expr(fcx, a);
+                    auto typ = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, a);
+                    vec::push[arg](arg_tys_0, rec(mode=mo_either, ty=typ));
                 }
                 case (none[@ast::expr]) {
-                    args_0 += [none[@ast::expr]];
-
                     auto typ = next_ty_var(fcx.ccx);
                     vec::push[arg](arg_tys_0, rec(mode=mo_either, ty=typ));
                 }
@@ -1821,7 +1814,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         auto rt_0 = next_ty_var(fcx.ccx);
         auto t_0;
         alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
-                                         f_0))) {
+                                         f))) {
             case (ty::ty_fn(?proto, _, _))   {
                 t_0 = ty::mk_fn(fcx.ccx.tcx, proto, arg_tys_0, rt_0);
             }
@@ -1833,19 +1826,17 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                 "check_call_or_bind(): fn expr doesn't have fn type,"
                 + " instead having: " +
                 ty_to_str(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx,
-                                              fcx.ccx.node_types, f_0)));
+                                               fcx.ccx.node_types, f)));
                 fail;
             }
         }
 
         // Unify the callee and arguments.
         auto tpt_0 = ty::expr_ty_params_and_ty(fcx.ccx.tcx,
-                                               fcx.ccx.node_types, f_0);
+                                               fcx.ccx.node_types, f);
         auto tpt_1 = Demand::full(fcx, f.span, tpt_0._1, t_0, tpt_0._0,
                                  NO_AUTODEREF);
-        replace_expr_type(fcx.ccx.node_types, f_0, tpt_1);
-
-        ret tup(f_0, args_0);
+        replace_expr_type(fcx.ccx.node_types, f, tpt_1);
     }
 
     // A generic function for checking assignment expressions
@@ -1878,15 +1869,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         }
 
         // Call the generic checker.
-        auto result = check_call_or_bind(fcx, f, args_opt_0);
+        check_call_or_bind(fcx, f, args_opt_0);
 
-        // Pull out the arguments.
-        let vec[@ast::expr] args_1 = [];
-        for (option::t[@ast::expr] arg in result._1) {
-            args_1 += [option::get[@ast::expr](arg)];
-        }
-
-        ret tup(result._0, args_1);
+        ret tup(f, args);
     }
 
     alt (expr.node) {
@@ -2400,14 +2385,14 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
         case (ast::expr_bind(?f, ?args, ?a)) {
             // Call the generic checker.
-            auto result = check_call_or_bind(fcx, f, args);
+            check_call_or_bind(fcx, f, args);
 
             // Pull the argument and return types out.
             auto proto_1;
             let vec[ty::arg] arg_tys_1 = [];
             auto rt_1;
             alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
-                                             result._0))) {
+                                             f))) {
                 case (ty::ty_fn(?proto, ?arg_tys, ?rt)) {
                     proto_1 = proto;
                     rt_1 = rt;
@@ -2435,8 +2420,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             auto ann = triv_ann(a.id, t_1);
             write_type_only(fcx.ccx.node_types, a.id, t_1);
             ret @fold::respan[ast::expr_](expr.span,
-                                          ast::expr_bind(result._0, result._1,
-                                                         ann));
+                                          ast::expr_bind(f, args, ann));
         }
 
         case (ast::expr_call(?f, ?args, ?a)) {
