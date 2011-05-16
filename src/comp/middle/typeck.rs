@@ -1627,10 +1627,9 @@ fn resolve_local_types_in_block(&@fn_ctxt fcx, &ast::block block)
 
 // AST fragment utilities
 
-// FIXME: At the moment this works only for call, bind, and path expressions.
 fn replace_expr_type(&node_type_table ntt,
                      &@ast::expr expr,
-                     &tup(vec[ty::t], ty::t) new_tyt) -> @ast::expr {
+                     &tup(vec[ty::t], ty::t) new_tyt) {
     auto new_tps;
     if (ty::expr_has_ty_params(ntt, expr)) {
         new_tps = some[vec[ty::t]](new_tyt._0);
@@ -1640,41 +1639,6 @@ fn replace_expr_type(&node_type_table ntt,
 
     write_type(ntt, ast::ann_tag(ty::expr_ann(expr)),
                tup(new_tps, new_tyt._1));
-
-    fn mkann_fn(ty::t tyt, option::t[vec[ty::t]] tps, &ast::ann old_ann)
-            -> ast::ann {
-        ret ast::ann_type(ast::ann_tag(old_ann), tyt, tps, none[@ts_ann]);
-    }
-
-    auto mkann = bind mkann_fn(new_tyt._1, new_tps, _);
-
-    alt (expr.node) {
-        case (ast::expr_call(?callee, ?args, ?a)) {
-            ret @fold::respan(expr.span,
-                             ast::expr_call(callee, args, mkann(a)));
-        }
-        case (ast::expr_self_method(?ident, ?a)) {
-            ret @fold::respan(expr.span,
-                             ast::expr_self_method(ident, mkann(a)));
-        }
-        case (ast::expr_bind(?callee, ?args, ?a)) {
-            ret @fold::respan(expr.span,
-                             ast::expr_bind(callee, args, mkann(a)));
-        }
-        case (ast::expr_field(?e, ?i, ?a)) {
-            ret @fold::respan(expr.span,
-                             ast::expr_field(e, i, mkann(a)));
-        }
-        case (ast::expr_path(?p, ?a)) {
-            ret @fold::respan(expr.span,
-                             ast::expr_path(p, mkann(a)));
-        }
-        case (_) {
-            log_err "unhandled expr type in replace_expr_type(): " +
-                util::common::expr_to_str(expr);
-            fail;
-        }
-    }
 }
 
 
@@ -1891,9 +1855,9 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                                                fcx.ccx.node_types, f_0);
         auto tpt_1 = Demand::full(fcx, f.span, tpt_0._1, t_0, tpt_0._0,
                                  NO_AUTODEREF);
-        auto f_1 = replace_expr_type(fcx.ccx.node_types, f_0, tpt_1);
+        replace_expr_type(fcx.ccx.node_types, f_0, tpt_1);
 
-        ret tup(f_1, args_0);
+        ret tup(f_0, args_0);
     }
 
     // A generic function for checking assignment expressions
