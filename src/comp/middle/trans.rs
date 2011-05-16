@@ -3287,24 +3287,6 @@ fn node_ann_type(&@crate_ctxt cx, &ast::ann a) -> ty::t {
     ret target_type(cx, ty::ann_to_monotype(cx.tcx, cx.node_types, a));
 }
 
-fn node_ann_ty_params(&ast::ann a) -> vec[ty::t] {
-    alt (a) {
-        case (ast::ann_none(_)) {
-            log_err "missing type annotation";
-            fail;
-        }
-        case (ast::ann_type(_, _, ?tps_opt, _)) {
-            alt (tps_opt) {
-                case (none[vec[ty::t]]) {
-                    log_err "type annotation has no ty params";
-                    fail;
-                }
-                case (some[vec[ty::t]](?tps)) { ret tps; }
-            }
-        }
-    }
-}
-
 fn node_type(&@crate_ctxt cx, &ast::ann a) -> TypeRef {
     ret type_of(cx, node_ann_type(cx, a));
 }
@@ -4151,7 +4133,8 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                                       C_int(variant_tag));
             cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
 
-            auto ty_params = node_ann_ty_params(ann);
+            auto ty_params = ty::ann_to_type_params(cx.fcx.lcx.ccx.node_types,
+                                                    ann);
 
             if (_vec::len[@ast::pat](subpats) > 0u) {
                 auto llblobptr = matched_cx.build.GEP(lltagptr,
@@ -4215,7 +4198,8 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat,
                 T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn));
             auto llblobptr = cx.build.GEP(lltagptr, vec(C_int(0), C_int(1)));
 
-            auto ty_param_substs = node_ann_ty_params(ann);
+            auto ty_param_substs =
+                ty::ann_to_type_params(cx.fcx.lcx.ccx.node_types, ann);
 
             auto this_cx = cx;
             auto i = 0;
