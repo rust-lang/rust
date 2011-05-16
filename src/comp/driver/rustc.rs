@@ -155,7 +155,7 @@ options:
     -O                 optimize
     -S                 compile only; do not assemble or link
     -c                 compile and assemble, but do not link
-    --bitcode          produce an LLVM bitcode file
+    --emit-llvm        produce an LLVM bitcode file
     --save-temps       write intermediate files in addition to normal output
     --stats            gather and report various compilation statistics
     --time-passes      time the individual phases of the compiler
@@ -207,7 +207,7 @@ fn main(vec[str] args) {
 
     auto opts = vec(optflag("h"), optflag("help"),
                     optflag("v"), optflag("version"),
-                    optflag("glue"), optflag("bitcode"),
+                    optflag("glue"), optflag("emit-llvm"),
                     optflag("pretty"), optflag("ls"), optflag("parse-only"),
                     optflag("O"), optflag("shared"), optmulti("L"),
                     optflag("S"), optflag("c"), optopt("o"), optflag("g"),
@@ -250,7 +250,7 @@ fn main(vec[str] args) {
         output_type = link::output_type_assembly;
     } else if (opt_present(match, "c")) {
         output_type = link::output_type_object;
-    } else if (opt_present(match, "bitcode")) {
+    } else if (opt_present(match, "emit-llvm")) {
         output_type = link::output_type_bitcode;
     }
 

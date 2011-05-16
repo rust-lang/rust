@@ -171,8 +171,8 @@ mod write {
                                _str::buf(output), LLVMAssemblyFile);
                 }
 
-                // Save the object file for -c or only --save-temps
-                // is used and an exe is built
+                // Save the object file for -c or --save-temps alone
+                // This .o is needed when an exe is built
                 if ((opts.output_type == output_type_object) ||
                     (opts.output_type == output_type_exe)) {
                         llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
@@ -197,7 +197,7 @@ mod write {
             ret;
         }
 
-        // If only a bitcode file is asked for by using the '--bitcode'
+        // If only a bitcode file is asked for by using the '--emit-llvm'
         // flag, then output it here
         llvm::LLVMRunPassManager(pm.llpm, llmod);
 
