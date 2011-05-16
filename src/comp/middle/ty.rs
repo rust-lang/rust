@@ -1665,6 +1665,26 @@ fn pat_ty(&ctxt cx, &node_type_table ntt, &@ast::pat pat) -> t {
     fail;   // not reached
 }
 
+fn item_ann(&@ast::item it) -> ast::ann {
+    alt (it.node) {
+        case (ast::item_const(_,_,_,_,?a)) { ret a; }
+        case (ast::item_fn(_,_,_,_,?a)) { ret a; }
+        case (ast::item_mod(_,_,_)) {
+            log_err "a module was passed to item_ann(), " +
+                "but modules haven't annotations";
+            fail;
+        }
+        case (ast::item_native_mod(_,_,_)) {
+            log_err "a native module was passed to item_ann(), " +
+                "but native modules haven't annotations";
+            fail;
+        }
+        case (ast::item_ty(_,_,_,_,?a)) { ret a; }
+        case (ast::item_tag(_,_,_,_,?a)) { ret a; }
+        case (ast::item_obj(_,_,_,_,?a)) { ret a; }
+    }
+}
+
 fn expr_ann(&@ast::expr e) -> ast::ann {
     alt (e.node) {
         case (ast::expr_vec(_,_,?a)) { ret a; }
