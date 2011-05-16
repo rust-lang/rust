@@ -169,8 +169,10 @@ LLVM_AS := $(CFG_LLVM_BINDIR)/llvm-as
 
 ifneq ($(CFG_IN_TRANSITION),)
 
+CFG_INFO := $(info cfg:)
 CFG_INFO := $(info cfg: *** compiler is in snapshot transition ***)
 CFG_INFO := $(info cfg: *** stage2 and later will not be built ***)
+CFG_INFO := $(info cfg:)
 
 all: rt/$(CFG_RUNTIME)          \
      rustllvm/$(CFG_RUSTLLVM)   \
