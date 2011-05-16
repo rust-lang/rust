@@ -136,19 +136,19 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &ast::span sp, &ast::def defn)
         }
         case (ast::def_fn(?id)) {
             ret ty::lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
-                                    fcx.ccx.type_cache, id);
+                                     fcx.ccx.type_cache, id);
         }
         case (ast::def_native_fn(?id)) {
             ret ty::lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
-                                    fcx.ccx.type_cache, id);
+                                     fcx.ccx.type_cache, id);
         }
         case (ast::def_const(?id)) {
             ret ty::lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
-                                    fcx.ccx.type_cache, id);
+                                     fcx.ccx.type_cache, id);
         }
         case (ast::def_variant(_, ?vid)) {
             ret ty::lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
-                                    fcx.ccx.type_cache, vid);
+                                     fcx.ccx.type_cache, vid);
         }
         case (ast::def_binding(?id)) {
             // assert (fcx.locals.contains_key(id));
@@ -156,7 +156,7 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &ast::span sp, &ast::def defn)
         }
         case (ast::def_obj(?id)) {
             ret ty::lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx,
-                                    fcx.ccx.type_cache, id);
+                                     fcx.ccx.type_cache, id);
         }
 
         case (ast::def_mod(_)) {
