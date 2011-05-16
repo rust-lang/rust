@@ -26,6 +26,8 @@ def parse_line(n, line):
 
   if re.match(r"\s*$", line): return None
 
+  if re.match(r"^T\s*$", line): return None
+
   match = re.match(r"\s+([\w_-]+) ([a-fA-F\d]{40})\s*$", line)
   if match:
     return { "type": "file",
