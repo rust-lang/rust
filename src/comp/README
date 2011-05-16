@@ -73,5 +73,5 @@ Control and information flow within the compiler:
 
 - Finally middle/trans.rs is applied to the AST, which performs a
   type-directed translation to LLVM-ese. When it's finished synthesizing LLVM
-  values, rustc asks LLVM to write them out as a bitcode file, on which you
-  can run the normal LLVM pipeline (opt, llc, as) to get an executable.
+  values, rustc asks LLVM to write them out as an executable, on which the
+  normal LLVM pipeline (opt, llc, as) was run.
