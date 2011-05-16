@@ -1646,16 +1646,15 @@ fn replace_expr_type(&node_type_table ntt,
 
 fn check_lit(@crate_ctxt ccx, &@ast::lit lit) -> ty::t {
     alt (lit.node) {
-        case (ast::lit_str(_))           { ret ty::mk_str(ccx.tcx); }
-        case (ast::lit_char(_))          { ret ty::mk_char(ccx.tcx); }
-        case (ast::lit_int(_))           { ret ty::mk_int(ccx.tcx);  }
-        case (ast::lit_float(_))         { ret ty::mk_float(ccx.tcx);  }
-        case (ast::lit_mach_float(?tm, _))
-                                        { ret ty::mk_mach(ccx.tcx, tm); }
-        case (ast::lit_uint(_))          { ret ty::mk_uint(ccx.tcx); }
-        case (ast::lit_mach_int(?tm, _)) { ret ty::mk_mach(ccx.tcx, tm); }
-        case (ast::lit_nil)              { ret ty::mk_nil(ccx.tcx);  }
-        case (ast::lit_bool(_))          { ret ty::mk_bool(ccx.tcx); }
+        case (ast::lit_str(_))              { ret ty::mk_str(ccx.tcx); }
+        case (ast::lit_char(_))             { ret ty::mk_char(ccx.tcx); }
+        case (ast::lit_int(_))              { ret ty::mk_int(ccx.tcx);  }
+        case (ast::lit_float(_))            { ret ty::mk_float(ccx.tcx);  }
+        case (ast::lit_mach_float(?tm, _))  { ret ty::mk_mach(ccx.tcx, tm); }
+        case (ast::lit_uint(_))             { ret ty::mk_uint(ccx.tcx); }
+        case (ast::lit_mach_int(?tm, _))    { ret ty::mk_mach(ccx.tcx, tm); }
+        case (ast::lit_nil)                 { ret ty::mk_nil(ccx.tcx);  }
+        case (ast::lit_bool(_))             { ret ty::mk_bool(ccx.tcx); }
     }
 
     fail; // not reached
