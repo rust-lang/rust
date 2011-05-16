@@ -22,6 +22,7 @@ import std::option::none;
 import std::_str;
 import std::_vec;
 import std::io;
+import std::run;
 
 import std::getopts;
 import std::getopts::optopt;
@@ -154,6 +155,7 @@ options:
     -O                 optimize
     -S                 compile only; do not assemble or link
     -c                 compile and assemble, but do not link
+    --bitcode          produce an LLVM bitcode file
     --save-temps       write intermediate files in addition to normal output
     --stats            gather and report various compilation statistics
     --time-passes      time the individual phases of the compiler
@@ -205,7 +207,7 @@ fn main(vec[str] args) {
 
     auto opts = vec(optflag("h"), optflag("help"),
                     optflag("v"), optflag("version"),
-                    optflag("glue"),
+                    optflag("glue"), optflag("bitcode"),
                     optflag("pretty"), optflag("ls"), optflag("parse-only"),
                     optflag("O"), optflag("shared"), optmulti("L"),
                     optflag("S"), optflag("c"), optopt("o"), optflag("g"),
@@ -241,13 +243,15 @@ fn main(vec[str] args) {
     auto output_file = getopts::opt_maybe_str(match, "o");
     auto library_search_paths = getopts::opt_strs(match, "L");
 
-    auto output_type = link::output_type_bitcode;
+    auto output_type = link::output_type_exe;
     if (opt_present(match, "parse-only")) {
         output_type = link::output_type_none;
     } else if (opt_present(match, "S")) {
         output_type = link::output_type_assembly;
     } else if (opt_present(match, "c")) {
         output_type = link::output_type_object;
+    } else if (opt_present(match, "bitcode")) {
+        output_type = link::output_type_bitcode;
     }
 
     auto verify = !opt_present(match, "noverify");
@@ -306,6 +310,7 @@ fn main(vec[str] args) {
     }
 
     auto ifile = match.free.(0);
+    let str saved_out_filename = "";
     auto env = default_environment(sess, args.(0), ifile);
     if (pretty) {
         pretty_print_input(sess, env, ifile);
@@ -316,18 +321,79 @@ fn main(vec[str] args) {
             case (none[str]) {
                 let vec[str] parts = _str::split(ifile, '.' as u8);
                 _vec::pop[str](parts);
+                saved_out_filename = parts.(0);
                 alt (output_type) {
                     case (link::output_type_none) { parts += vec("pp"); }
                     case (link::output_type_bitcode) { parts += vec("bc"); }
                     case (link::output_type_assembly) { parts += vec("s"); }
+
+                    // Object and exe output both use the '.o' extension here
                     case (link::output_type_object) { parts += vec("o"); }
+                    case (link::output_type_exe) { parts += vec("o"); }
                 }
                 auto ofile = _str::connect(parts, ".");
                 compile_input(sess, env, ifile, ofile);
             }
             case (some[str](?ofile)) {
+                saved_out_filename = ofile;
                 compile_input(sess, env, ifile, ofile);
             }
+        }
+    }
+
+    // If the user wants an exe generated we need to invoke
+    // gcc to link the object file with some libs
+    if (output_type == link::output_type_exe) {
+
+        //FIXME: Should we make the 'stage3's variable here?
+        let str glu = "stage3/glue.o";
+        let str stage = "-Lstage3";
+        let vec[str] gcc_args;
+        let str prog = "gcc";
+        let str exe_suffix = "";
+
+        // The invocations of gcc share some flags across platforms
+        let vec[str] common_cflags = vec("-fno-strict-aliasing", "-fPIC",
+                           "-Wall", "-fno-rtti", "-fno-exceptions", "-g");
+        let vec[str] common_libs = vec(stage, "-Lrustllvm", "-Lrt",
+                           "-lrustrt", "-lrustllvm", "-lstd", "-lm");
+
+        alt (sess.get_targ_cfg().os) {
+            case (session::os_win32) {
+                exe_suffix = ".exe";
+                gcc_args = common_cflags + vec(
+                            "-march=i686", "-O2",
+                            glu, "-o",
+                            saved_out_filename + exe_suffix,
+                            saved_out_filename + ".o") + common_libs;
+            }
+            case (session::os_macos) {
+                gcc_args = common_cflags + vec(
+                           "-arch i386", "-O0", "-m32",
+                           glu, "-o",
+                           saved_out_filename + exe_suffix,
+                           saved_out_filename + ".o") + common_libs;
+            }
+            case (session::os_linux) {
+                gcc_args = common_cflags + vec(
+                           "-march=i686", "-O2", "-m32",
+                           glu, "-o",
+                           saved_out_filename + exe_suffix,
+                           saved_out_filename + ".o") + common_libs;
+            }
+        }
+
+        // We run 'gcc' here
+        run::run_program(prog, gcc_args);
+
+        // Clean up on Darwin
+        if (sess.get_targ_cfg().os == session::os_macos) {
+            run::run_program("dsymutil", vec(saved_out_filename));
+        }
+
+        // Remove the temporary object file if we aren't saving temps
+        if (!save_temps) {
+            run::run_program("rm", vec(saved_out_filename + ".o"));
         }
     }
 }
