@@ -4310,18 +4310,8 @@ fn lval_generic_fn(&@block_ctxt cx,
         lv = trans_external_path(cx, fn_id, tpt);
     }
 
-    auto monoty;
-    let vec[ty::t] tys;
-    alt (ann) {
-        case (ast::ann_none(_)) {
-            cx.fcx.lcx.ccx.sess.bug("no type annotation for path!");
-            fail;
-        }
-        case (ast::ann_type(_, ?monoty_, ?tps, _)) {
-            monoty = monoty_;
-            tys = option::get[vec[ty::t]](tps);
-        }
-    }
+    auto tys = ty::ann_to_type_params(cx.fcx.lcx.ccx.node_types, ann);
+    auto monoty = ty::ann_to_type(cx.fcx.lcx.ccx.node_types, ann);
 
     if (_vec::len[ty::t](tys) != 0u) {
         auto bcx = lv.res.bcx;
