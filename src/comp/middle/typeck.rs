@@ -1517,8 +1517,8 @@ mod Pushdown {
                 auto t = Demand::autoderef(fcx, e.span, expected,
                     ann_to_type(fcx.ccx.node_types, ann), adk);
                 e_1 = ast::expr_spawn(dom, name, func, args,
-                                     triv_ann(ast::ann_tag(ann), t));
-                write_type_only(fcx.ccx.node_types, ast::ann_tag(ann), t);
+                                     triv_ann(ann.id, t));
+                write_type_only(fcx.ccx.node_types, ann.id, t);
             }
 
             case (_) {
