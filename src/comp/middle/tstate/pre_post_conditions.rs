@@ -80,8 +80,6 @@ import front::ast::controlflow;
 import front::ast::return;
 import front::ast::noreturn;
 import front::ast::_fn;
-import front::ast::ann_none;
-import front::ast::ann_type;
 import front::ast::_obj;
 import front::ast::_mod;
 import front::ast::crate;

@@ -92,8 +92,6 @@ import front::ast::init_op;
 import front::ast::controlflow;
 import front::ast::return;
 import front::ast::noreturn;
-import front::ast::ann_none;
-import front::ast::ann_type;
 import front::ast::_obj;
 import front::ast::_mod;
 import front::ast::crate;
@@ -243,7 +241,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
   /*
   log_err("states:");
   log_expr_err(*e);
-  log_err(ast.ann_tag(middle.ty.expr_ann(e)));
+  log_err(middle::ty::expr_ann(e).id);
   */
 
   /* FIXME could get rid of some of the copy/paste */

@@ -7,7 +7,6 @@ import std::option::some;
 import std::option::maybe;
 
 import front::ast;
-import front::ast::ann_tag;
 import front::ast::def;
 import front::ast::def_fn;
 import front::ast::_fn;
@@ -17,8 +16,6 @@ import front::ast::expr_path;
 import front::ast::ident;
 import front::ast::controlflow;
 import front::ast::ann;
-import front::ast::ann_none;
-import front::ast::ann_type;
 import front::ast::ts_ann;
 import front::ast::stmt;
 import front::ast::expr;
@@ -188,27 +185,15 @@ fn ann_to_ts_ann(ann a, uint nv) -> @ts_ann {
 }
 
 
-fn ann_to_ts_ann_fail(ann a) -> option::t[@ts_ann] {
-  alt (a) {
-    case (ann_none(_)) { 
-          log("ann_to_ts_ann_fail: didn't expect ann_none here");
-          fail;
-      }
-    case (ann_type(_,_,_,?ty)) {
-          ret ty;
-      }
-  }
-}
+fn ann_to_ts_ann_fail(ann a) -> option::t[@ts_ann] { ret a.ts; }
 
 fn ann_to_ts_ann_strict(ann a) -> @ts_ann {
     alt (ann_to_ts_ann_fail(a)) {
-        case (none[@ts_ann])         {    
-            log("ann_to_ts_ann_fail: didn't expect ann_none here");
+        case (none[@ts_ann]) {
+            log("ann_to_ts_ann_strict: didn't expect none here");
             fail;
         }
-        case (some[@ts_ann](?t))        {     
-            ret t;
-        }
+        case (some[@ts_ann](?t)) { ret t; }
     }
 }
 
@@ -320,18 +305,9 @@ fn block_poststate(&block b) -> poststate {
 
 /* returns a new annotation where the pre_and_post is p */
 fn with_pp(ann a, pre_and_post p) -> ann {
-  alt (a) {
-    case (ann_none(_)) {
-      log("with_pp: the impossible happened");
-      fail; /* shouldn't happen b/c code is typechecked */
-    }
-    case (ann_type(?i, ?t, ?ps, _)) {
-        ret (ann_type(i, t, ps,
-                    some[@ts_ann]
-                    (@rec(conditions=p,
-                          states=empty_states(pps_len(p))))));
-    }
-  }
+    ret rec(id=a.id, ty=a.ty, tps=a.tps,
+            ts=some[@ts_ann](@rec(conditions=p,
+                                  states=empty_states(pps_len(p)))));
 }
 
 fn set_prestate_ann(&ann a, &prestate pre) -> bool {
@@ -379,50 +355,22 @@ fn fixed_point_states(&fn_ctxt fcx,
 }
 
 fn init_ann(&fn_info fi, &ann a) -> ann {
-    alt (a) {
-        case (ann_none(_)) {
-            //            log("init_ann: shouldn't see ann_none");
-            // fail;
-            log("warning: init_ann: saw ann_none");
-            ret a; // Would be better to fail so we can catch bugs that
-            // result in an uninitialized ann -- but don't want to have to
-            // write code to handle native_mods properly
-        }
-        case (ann_type(?i, ?t, ?ps, _)) {
-            ret ann_type(i, t, ps, some[@ts_ann](@empty_ann(num_locals(fi))));
-        }
-    }
+    ret rec(id=a.id, ty=a.ty, tps=a.tps,
+            ts=some[@ts_ann](@empty_ann(num_locals(fi))));
 }
 
 fn init_blank_ann(&() ignore, &ann a) -> ann {
-    alt (a) {
-        case (ann_none(_)) {
-            //            log("init_blank_ann: shouldn't see ann_none");
-            //fail;
-            log("warning: init_blank_ann: saw ann_none");
-            ret a;
-        }
-        case (ann_type(?i, ?t, ?ps,_)) {
-            ret ann_type(i, t, ps, some[@ts_ann](@empty_ann(0u)));
-        }
-    }
+    ret rec(id=a.id, ty=a.ty, tps=a.tps, ts=some[@ts_ann](@empty_ann(0u)));
 }
 
 fn init_block(&fn_info fi, &span sp, &block_ b) -> block {
     log("init_block:");
     log_block(respan(sp, b));
-    alt(b.a) {
-        case (ann_none(_)) {
-            log("init_block: shouldn't see ann_none");
-            fail;
-        }
-        case (ann_type(_, _, _, _)) {
-            auto fld0 = new_identity_fold[fn_info]();
 
-            fld0 = @rec(fold_ann = bind init_ann(_,_) with *fld0);
-            ret fold_block[fn_info](fi, fld0, respan(sp, b)); 
-        }
-    }
+    auto fld0 = new_identity_fold[fn_info]();
+
+    fld0 = @rec(fold_ann = bind init_ann(_,_) with *fld0);
+    ret fold_block[fn_info](fi, fld0, respan(sp, b)); 
 }
 
 fn num_locals(fn_info m) -> uint {
@@ -445,7 +393,7 @@ fn controlflow_def_id(&crate_ctxt ccx, &def_id d) -> controlflow {
    There's no case for fail b/c we assume e is the callee and it
    seems unlikely that one would apply "fail" to arguments. */
 fn controlflow_expr(&crate_ctxt ccx, @expr e) -> controlflow {
-    auto f = ann_tag(expr_ann(e));
+    auto f = expr_ann(e).id;
     alt (ccx.tcx.def_map.find(f)) {
         case (some[def](def_fn(?d)))        { ret controlflow_def_id(ccx, d); }
         case (some[def](def_obj_field(?d))) { ret controlflow_def_id(ccx, d); }
@@ -454,11 +402,9 @@ fn controlflow_expr(&crate_ctxt ccx, @expr e) -> controlflow {
 }
 
 fn ann_to_def_strict(&crate_ctxt ccx, &ann a) -> def {
-    alt (ccx.tcx.def_map.find(ann_tag(a))) {
+    alt (ccx.tcx.def_map.find(a.id)) {
         case (none[def]) { 
-            log_err("ann_to_def: node_id " +
-                    uistr(ann_tag(a)) +
-                    " has no def");
+            log_err("ann_to_def: node_id " + uistr(a.id) + " has no def");
             fail;
         }
         case (some[def](?d)) { ret d; }
@@ -466,7 +412,7 @@ fn ann_to_def_strict(&crate_ctxt ccx, &ann a) -> def {
 }
 
 fn ann_to_def(&crate_ctxt ccx, &ann a) -> option::t[def] {
-    ret ccx.tcx.def_map.find(ann_tag(a));
+    ret ccx.tcx.def_map.find(a.id);
 }
 
 //

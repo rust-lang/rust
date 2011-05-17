@@ -77,8 +77,6 @@ import front::ast::init_op;
 import front::ast::initializer;
 import front::ast::local;
 import front::ast::_fn;
-import front::ast::ann_none;
-import front::ast::ann_type;
 import front::ast::_obj;
 import front::ast::_mod;
 import front::ast::crate;
@@ -389,42 +387,19 @@ fn mk_f_to_fn_info(@ast::crate c) -> fn_info_map {
 }
 /**** Helpers ****/
 fn ann_to_ts_ann(ann a, uint nv) -> ts_ann {
-  alt (a) {
-    case (ann_none(_))      { ret empty_ann(nv); }
-    case (ann_type(_,_,_,?t)) {
-      alt (t) {
+    alt (a.ts) {
         /* Kind of inconsistent. empty_ann()s everywhere
-         or an option of a ts_ann? */
+           or an option of a ts_ann? */
         case (none[@ts_ann])     { ret empty_ann(nv); }
         case (some[@ts_ann](?t)) { ret *t; }
-      }
     }
-  }
 }
 
-fn ann_to_ts_ann_fail(ann a) -> option::t[@ts_ann] {
-  alt (a) {
-      case (ann_none(_)) { 
-          log("ann_to_ts_ann_fail: didn't expect ann_none here");
-          fail;
-      }
-      case (ann_type(_,_,_,?t)) {
-          ret t;
-      }
-  }
-}
+fn ann_to_ts_ann_fail(ann a) -> option::t[@ts_ann] { ret a.ts; }
 
 fn ann_to_ts_ann_fail_more(ann a) -> @ts_ann {
-  alt (a) {
-      case (ann_none(_)) { 
-          log("ann_to_ts_ann_fail: didn't expect ann_none here");
-          fail;
-      }
-      case (ann_type(_,_,_,?t)) {
-          assert (! is_none[@ts_ann](t));
-          ret get[@ts_ann](t);
-      }
-  }
+    assert (! is_none[@ts_ann](a.ts));
+    ret get[@ts_ann](a.ts);
 }
 
 fn ann_to_poststate(ann a) -> poststate {
@@ -447,44 +422,24 @@ fn stmt_to_ann(&stmt s) -> option::t[@ts_ann] {
 
 /* fails if e has no annotation */
 fn expr_states(@expr e) -> pre_and_post_state {
-  alt (expr_ann(e)) {
-    case (ann_none(_)) {
-      log_err "expr_pp: the impossible happened (no annotation)";
-      fail;
-    }
-    case (ann_type(_, _, _, ?maybe_pp)) {
-      alt (maybe_pp) {
+    alt (a.ts) {
         case (none[@ts_ann]) {
-          log_err "expr_pp: the impossible happened (no pre/post)";
-          fail;
+            log_err "expr_pp: the impossible happened (no pre/post)";
+            fail;
         }
-        case (some[@ts_ann](?p)) {
-          ret p.states;
-        }
-      }
+        case (some[@ts_ann](?p)) { ret p.states; }
     }
-  }
 }
 
 /* fails if e has no annotation */
 fn expr_pp(@expr e) -> pre_and_post {
-  alt (expr_ann(e)) {
-    case (ann_none(_)) {
-      log_err "expr_pp: the impossible happened (no annotation)";
-      fail;
-    }
-    case (ann_type(_, _, _, ?maybe_pp)) {
-      alt (maybe_pp) {
+    alt (expr_ann(e).ts) {
         case (none[@ts_ann]) {
-          log_err "expr_pp: the impossible happened (no pre/post)";
-          fail;
+            log_err "expr_pp: the impossible happened (no pre/post)";
+            fail;
         }
-        case (some[@ts_ann](?p)) {
-          ret p.conditions;
-        }
-      }
+        case (some[@ts_ann](?p)) { ret p.conditions; }
     }
-  }
 }
 
 fn stmt_pp(&stmt s) -> pre_and_post {
@@ -502,42 +457,22 @@ fn stmt_pp(&stmt s) -> pre_and_post {
 /* fails if b has no annotation */
 /* FIXME: factor out code in the following two functions (block_ts_ann) */
 fn block_pp(&block b) -> pre_and_post {
-    alt (b.node.a) {
-       case (ann_none(_)) {
-           log_err "block_pp: the impossible happened (no ann)";
-           fail;
-       }
-       case (ann_type(_, _,_,?t)) {
-           alt (t) {
-               case (none[@ts_ann]) {
-                   log_err "block_pp: the impossible happened (no ty)";
-                   fail;
-               }
-               case (some[@ts_ann](?ts)) {
-                   ret ts.conditions;
-               }
-           }
-       }
+    alt (b.node.a.ts) {
+        case (none[@ts_ann]) {
+            log_err "block_pp: the impossible happened (no ty)";
+            fail;
+        }
+        case (some[@ts_ann](?ts)) { ret ts.conditions; }
     }
 }
 
 fn block_states(&block b) -> pre_and_post_state {
-    alt (b.node.a) {
-       case (ann_none(_)) {
-           log_err "block_pp: the impossible happened (no ann)";
+    alt (b.node.a.ts) {
+       case (none[@ts_ann]) {
+           log_err "block_states: the impossible happened (no ty)";
            fail;
        }
-       case (ann_type(_, _,_,?t)) {
-           alt (t) {
-               case (none[@ts_ann]) {
-                   log_err "block_states: the impossible happened (no ty)";
-                   fail;
-               }
-               case (some[@ts_ann](?ts)) {
-                   ret ts.states;
-               }
-           }
-       }
+       case (some[@ts_ann](?ts)) { ret ts.states; }
     }
 }
 
@@ -602,18 +537,9 @@ fn block_poststate(&block b) -> poststate {
 
 /* returns a new annotation where the pre_and_post is p */
 fn with_pp(ann a, pre_and_post p) -> ann {
-  alt (a) {
-    case (ann_none(_)) {
-      log("with_pp: the impossible happened");
-      fail; /* shouldn't happen b/c code is typechecked */
-    }
-    case (ann_type(?tg, ?t, ?ps, _)) {
-      ret (ann_type(tg, t, ps,
-                    some[@ts_ann]
-                    (@rec(conditions=p,
-                          states=empty_states(pps_len(p))))));
-    }
-  }
+    ret rec(id=ann.id, ty=ann.ty, tps=ann.tps,
+            ts=some[@ts_ann](@rec(conditions=p,
+                                  states=empty_states(pps_len(p)))));
 }
 
 // Given a list of pres and posts for exprs e0 ... en,
@@ -834,7 +760,7 @@ fn find_pre_post_expr(&def_map dm, &fn_info_map fm, &fn_info enclosing,
         case (expr_path(?p, ?a)) {
             auto res = empty_pre_post(num_local_vars);
 
-            alt (dm.get(ast::ann_tag(a))) {
+            alt (dm.get(a.id)) {
                 case (def_local(?d_id)) {
                     auto i = bit_num(d_id, enclosing);
                     require_and_preserve(i, res);
@@ -881,7 +807,7 @@ fn find_pre_post_expr(&def_map dm, &fn_info_map fm, &fn_info enclosing,
         case (expr_assign(?lhs, ?rhs, ?a)) {
             alt (lhs.node) {
                 case (expr_path(?p, ?a_lhs)) {
-                    alt (dm.get(ast::ann_tag(a_lhs))) {
+                    alt (dm.get(a_lhs.id))) {
                         case (def_local(?d_id)) {
                             find_pre_post_expr(dm, fm, enclosing, rhs);
                             set_pre_and_post(a, expr_pp(rhs));
@@ -902,7 +828,7 @@ fn find_pre_post_expr(&def_map dm, &fn_info_map fm, &fn_info enclosing,
         case (expr_recv(?lhs, ?rhs, ?a)) {
             alt (lhs.node) {
                 case (expr_path(?p, ?a_lhs)) {
-                    alt (dm.get(ast::ann_tag(a_lhs))) {
+                    alt (dm.get(a_lhs.id)) {
                         case (def_local(?d_id)) {
                             find_pre_post_expr(dm, fm, enclosing, rhs);
                             set_pre_and_post(a, expr_pp(rhs));
@@ -1291,76 +1217,36 @@ fn find_pre_post_state_item(&def_map dm, &fn_info_map fm, &fn_info enclosing,
 }
 
 fn set_prestate_ann(@ann a, prestate pre) -> bool {
-  alt (*a) {
-    case (ann_type(_, _,_,?ts_a)) {
-      assert (! is_none[@ts_ann](ts_a));
-      ret set_prestate(get[@ts_ann](ts_a), pre);
-    }
-    case (ann_none(_)) {
-      log("set_prestate_ann: expected an ann_type here");
-      fail;
-    }
-  }
+    assert (! is_none[@ts_ann](a.ts));
+    ret set_prestate(get[@ts_ann](a.ts), pre);
 }
 
 
 fn extend_prestate_ann(ann a, prestate pre) -> bool {
-  alt (a) {
-    case (ann_type(_,_,_,?ts_a)) {
-      assert (! is_none[@ts_ann](ts_a));
-      ret extend_prestate((get[@ts_ann](ts_a)).states.prestate, pre);
-    }
-    case (ann_none(_)) {
-      log("set_prestate_ann: expected an ann_type here");
-      fail;
-    }
-  }
+    assert (! is_none[@ts_ann](a.ts));
+    ret extend_prestate((get[@ts_ann](a.ts)).states.prestate, pre);
 }
 
 fn set_poststate_ann(ann a, poststate post) -> bool {
-  alt (a) {
-    case (ann_type(_, _,_,?ts_a)) {
-      assert (! is_none[@ts_ann](ts_a));
-      ret set_poststate(get[@ts_ann](ts_a), post);
-    }
-    case (ann_none(_)) {
-      log("set_poststate_ann: expected an ann_type here");
-      fail;
-    }
-  }
+    assert (! is_none[@ts_ann](a.ts));
+    ret set_poststate(get[@ts_ann](a.ts), post);
 }
 
 fn extend_poststate_ann(ann a, poststate post) -> bool {
-  alt (a) {
-    case (ann_type(_, _,_,?ts_a)) {
-      assert (! is_none[@ts_ann](ts_a));
-      ret extend_poststate((*get[@ts_ann](ts_a)).states.poststate, post);
-    }
-    case (ann_none(_)) {
-      log("set_poststate_ann: expected an ann_type here");
-      fail;
-    }
-  }
+    assert (! is_none[@ts_ann](a.ts));
+    ret extend_poststate((*get[@ts_ann](a.ts)).states.poststate, post);
 }
 
 fn set_pre_and_post(&ann a, pre_and_post pp) -> () {
-    alt (a) {
-        case (ann_type(_, _,_,?ts_a)) {
-            assert (! is_none[@ts_ann](ts_a));
-            auto t = *get[@ts_ann](ts_a);
-            /*  log("set_pre_and_post, old =");
-            log_pp(t.conditions);
-            log("new =");
-            log_pp(pp);
-            */
-            set_precondition(t, pp.precondition);
-            set_postcondition(t, pp.postcondition);
-        }
-        case (ann_none(_)) {
-            log_err("set_pre_and_post: expected an ann_type here");
-            fail;
-        }
-    }
+    assert (! is_none[@ts_ann](a.ts));
+    auto t = *get[@ts_ann](a.ts);
+    /*  log("set_pre_and_post, old =");
+    log_pp(t.conditions);
+    log("new =");
+    log_pp(pp);
+    */
+    set_precondition(t, pp.precondition);
+    set_postcondition(t, pp.postcondition);
 }
 
 fn seq_states(&def_map dm, &fn_info_map fm, &fn_info enclosing,
@@ -1518,7 +1404,7 @@ fn find_pre_post_state_expr(&def_map dm, &fn_info_map fm, &fn_info enclosing,
 
         alt (lhs.node) {
             case (expr_path(_, ?a_lhs)) {
-                alt (dm.get(ast::ann_tag(a_lhs))) {
+                alt (dm.get(a_lhs.id)) {
                     case (def_local(?d_id)) {
                         // assignment to local var
                         changed = pure_exp(a_lhs, pres) || changed;
@@ -1546,7 +1432,7 @@ fn find_pre_post_state_expr(&def_map dm, &fn_info_map fm, &fn_info enclosing,
 
         alt (lhs.node) {
             case (expr_path(?p, ?a_lhs)) {
-                alt (dm.get(ast::ann_tag(a_lhs))) {
+                alt (dm.get(a_lhs.id)) {
                     case (def_local(?d_id)) {
                         // receive to local var
                         changed = pure_exp(a_lhs, pres) || changed;
@@ -2040,52 +1926,22 @@ fn check_obj_state(def_map dm, &fn_info_map f_info_map,
 }
 
 fn init_ann(&fn_info fi, &ann a) -> ann {
-    alt (a) {
-        case (ann_none(_)) {
-            //            log("init_ann: shouldn't see ann_none");
-            // fail;
-            log("warning: init_ann: saw ann_none");
-            ret a; // Would be better to fail so we can catch bugs that
-            // result in an uninitialized ann -- but don't want to have to
-            // write code to handle native_mods properly
-        }
-        case (ann_type(?tg, ?t,?ps,_)) {
-            ret ann_type(tg, t, ps,
-                         some[@ts_ann](@empty_ann(num_locals(fi))));
-        }
-    }
+    ret rec(id=a.id, ty=a.ty, tps=a.tps,
+            ts=some[@ts_ann](@empty_ann(num_locals(fi))));
 }
 
 fn init_blank_ann(&() ignore, &ann a) -> ann {
-    alt (a) {
-        case (ann_none(_)) {
-            //            log("init_blank_ann: shouldn't see ann_none");
-            //fail;
-            log("warning: init_blank_ann: saw ann_none");
-            ret a;
-        }
-        case (ann_type(?tg, ?t,?ps,_)) {
-            ret ann_type(tg, t, ps, some[@ts_ann](@empty_ann(0u)));
-        }
-    }
+    ret rec(id=a.id, ty=a.ty, tps=a.tps, ts=some[@ts_ann](@empty_ann(0u)));
 }
 
 fn init_block(&fn_info fi, &span sp, &block_ b) -> block {
     log("init_block:");
     log_block(respan(sp, b));
-    alt(b.a) {
-        case (ann_none(_)) {
-            log("init_block: shouldn't see ann_none");
-            fail;
-        }
-        case (ann_type(_, _, ?ps, _)) {
-            auto fld0 = fold::new_identity_fold[fn_info]();
 
-            fld0 = @rec(fold_ann = bind init_ann(_,_) with *fld0);
-            ret fold::fold_block[fn_info](fi, fld0, respan(sp, b)); 
-        }
-    }
-    
+    auto fld0 = fold::new_identity_fold[fn_info]();
+
+    fld0 = @rec(fold_ann = bind init_ann(_,_) with *fld0);
+    ret fold::fold_block[fn_info](fi, fld0, respan(sp, b)); 
 }
 
 fn item_fn_anns(&fn_info_map fm, &span sp, ident i, &ast::_fn f,

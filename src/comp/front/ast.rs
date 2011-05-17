@@ -21,20 +21,10 @@ type def_id = tup(crate_num, def_num);
 type ty_param = ident;
 
 // Annotations added during successive passes.
-tag ann {
-    ann_none(uint);
-    ann_type(uint,
-             middle::ty::t,
-             option::t[vec[middle::ty::t]], /* ty param substs */
-             option::t[@ts_ann]); /* pre- and postcondition for typestate */
-}
-
-fn ann_tag(&ann a) -> uint {
-    ret alt (a) {
-        case (ann_none(?t)) { t }
-        case (ann_type(?t, _, _, _)) { t }
-    };
-}
+type ann = rec(uint id,
+               middle::ty::t ty,
+               option::t[vec[middle::ty::t]] tps,
+               option::t[@ts_ann] ts);
 
 tag def {
     def_fn(def_id);

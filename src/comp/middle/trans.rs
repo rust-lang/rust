@@ -3804,7 +3804,7 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
     fn walk_expr(env e, &@ast::expr expr) {
         alt (expr.node) {
             case (ast::expr_path(?path, ?ann)) {
-                alt (e.def_map.get(ast::ann_tag(ann))) {
+                alt (e.def_map.get(ann.id)) {
                     case (ast::def_arg(?did)) {
                         vec::push[ast::def_id](e.refs, did);
                     }
@@ -4126,7 +4126,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
             auto lldiscrim = cx.build.Load(lldiscrimptr);
 
             auto vdef = ast::variant_def_ids
-                (cx.fcx.lcx.ccx.tcx.def_map.get(ast::ann_tag(ann)));
+                (cx.fcx.lcx.ccx.tcx.def_map.get(ann.id));
             auto variant_tag = 0;
 
             auto variants = tag_variants(cx.fcx.lcx.ccx, vdef._0);
@@ -4205,7 +4205,7 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat,
 
             // Get the appropriate variant for this tag.
             auto vdef = ast::variant_def_ids
-                (cx.fcx.lcx.ccx.tcx.def_map.get(ast::ann_tag(ann)));
+                (cx.fcx.lcx.ccx.tcx.def_map.get(ann.id));
 
             auto lltagptr = cx.build.PointerCast(llval,
                 T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn));
@@ -4368,7 +4368,7 @@ fn lookup_discriminant(&@local_ctxt lcx, &ast::def_id tid, &ast::def_id vid)
 }
 
 fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
-    alt (cx.fcx.lcx.ccx.tcx.def_map.get(ast::ann_tag(ann))) {
+    alt (cx.fcx.lcx.ccx.tcx.def_map.get(ann.id)) {
         case (ast::def_arg(?did)) {
             alt (cx.fcx.llargs.find(did)) {
                 case (none[ValueRef]) {

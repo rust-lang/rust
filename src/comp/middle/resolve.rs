@@ -193,7 +193,7 @@ fn resolve_names(&@env e, &ast::crate c) {
             case (ast::expr_path(?p, ?a)) {
                 auto df = lookup_path_strict(*e, *sc, exp.span, p.node.idents,
                                              ns_value);
-                e.def_map.insert(ast::ann_tag(a), df);
+                e.def_map.insert(a.id, df);
             }
             case (_) {}
         }
@@ -203,7 +203,7 @@ fn resolve_names(&@env e, &ast::crate c) {
             case (ast::ty_path(?p, ?a)) {
                 auto new_def = lookup_path_strict(*e, *sc, t.span,
                                                   p.node.idents, ns_type);
-                e.def_map.insert(ast::ann_tag(a), new_def);
+                e.def_map.insert(a.id, new_def);
             }
             case (_) {}
         }
@@ -219,7 +219,7 @@ fn resolve_names(&@env e, &ast::crate c) {
                                               ns_value);
                 alt (fnd) {
                     case (ast::def_variant(?did, ?vid)) {
-                        e.def_map.insert(ast::ann_tag(a), fnd);
+                        e.def_map.insert(a.id, fnd);
                     }
                     case (_) {
                         e.sess.span_err(p.span, "not a tag variant: " +

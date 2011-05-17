@@ -175,17 +175,6 @@ fn log_block_err(&ast::block b) -> () {
     log_err(block_to_str(b));
 }
 
-fn log_ann(&ast::ann a) -> () {
-    alt (a) {
-        case (ast::ann_none(_)) {
-            log("ann_none");
-        }
-        case (ast::ann_type(_,_,_,_)) {
-            log("ann_type");
-        }
-    }
-}
-
 fn fun_to_str(&ast::_fn f, str name, vec[ast::ty_param] params) -> str {
  let str_writer s = string_writer();
   auto out_ = mkstate(s.get_writer(), 80u);

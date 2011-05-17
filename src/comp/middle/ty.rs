@@ -1452,7 +1452,7 @@ fn eq_ty(&t a, &t b) -> bool { ret a == b; }
 
 fn ann_to_ty_param_substs_opt_and_ty(&node_type_table ntt, &ast::ann ann)
         -> ty_param_substs_opt_and_ty {
-    alt (ntt.(ast::ann_tag(ann))) {
+    alt (ntt.(ann.id)) {
         case (none[ty::ty_param_substs_opt_and_ty]) {
             log_err "ann_to_ty_param_substs_opt_and_ty() called on an " +
                 "untyped node";
@@ -1495,19 +1495,25 @@ fn ann_to_monotype(ctxt cx, &node_type_table ntt, ast::ann a) -> t {
 }
 
 
-// Turns a type into an ann_type, using defaults for other fields.
+// Turns a type and optional type parameters into an annotation, using
+// defaults for other fields.
+fn mk_ann_type(uint node_id, t typ, option::t[vec[t]] tps) -> ast::ann {
+    ret rec(id=node_id, ty=typ, tps=tps, ts=none[@ts_ann]);
+}
+
+// Turns a type into an annotation, using defaults for other fields.
 fn triv_ann(uint node_id, t typ) -> ast::ann {
-    ret ast::ann_type(node_id, typ, none[vec[t]], none[@ts_ann]);
+    ret mk_ann_type(node_id, typ, none[vec[t]]);
 }
 
 // Creates a nil type annotation.
 fn plain_ann(uint node_id, ctxt tcx) -> ast::ann {
-    ret ast::ann_type(node_id, mk_nil(tcx), none[vec[t]], none[@ts_ann]);
+    ret triv_ann(node_id, mk_nil(tcx));
 }
 
 // Creates a _|_ type annotation.
 fn bot_ann(uint node_id, ctxt tcx) -> ast::ann {
-    ret ast::ann_type(node_id, mk_bot(tcx), none[vec[t]], none[@ts_ann]);
+    ret triv_ann(node_id, mk_bot(tcx));
 }
 
 
