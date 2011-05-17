@@ -1,6 +1,6 @@
 import rustrt::sbuf;
 
-import _vec::rustrt::vbuf;
+import vec::rustrt::vbuf;
 
 native "rust" mod rustrt {
     type sbuf;
@@ -84,7 +84,7 @@ const uint tag_six_b = 0xfc_u;
 
 fn is_utf8(vec[u8] v) -> bool {
     auto i = 0u;
-    auto total = _vec::len[u8](v);
+    auto total = vec::len[u8](v);
     while (i < total) {
         auto chsize = utf8_char_width(v.(i));
         if (chsize == 0u) {ret false;}
@@ -253,7 +253,7 @@ fn to_chars(str s) -> vec[char] {
     auto len = byte_len(s);
     while (i < len) {
         auto cur = char_range_at(s, i);
-        _vec::push[char](buf, cur._0);
+        vec::push[char](buf, cur._0);
         i = cur._1;
     }
     ret buf;
@@ -311,7 +311,7 @@ fn index(str s, u8 c) -> int {
 }
 
 fn rindex(str s, u8 c) -> int {
-    let int n = _str::byte_len(s) as int;
+    let int n = str::byte_len(s) as int;
     while (n >= 0) {
         if (s.(n) == c) {
             ret n;
@@ -387,7 +387,7 @@ fn substr(str s, uint begin, uint len) -> str {
 fn slice(str s, uint begin, uint end) -> str {
     // FIXME: Typestate precondition
     assert (begin <= end);
-    assert (end <= _str::byte_len(s));
+    assert (end <= str::byte_len(s));
     ret rustrt::str_slice(s, begin, end);
 }
 
@@ -432,7 +432,7 @@ fn split(str s, u8 sep) -> vec[str] {
             ends_with_sep = false;
         }
     }
-    if (_str::byte_len(accum) != 0u ||
+    if (str::byte_len(accum) != 0u ||
         ends_with_sep) {
         v += [accum];
     }

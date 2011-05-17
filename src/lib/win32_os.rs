@@ -1,5 +1,5 @@
-import _str::sbuf;
-import _vec::vbuf;
+import str::sbuf;
+import vec::vbuf;
 
 native mod libc = "msvcrt.dll" {
     fn open(sbuf s, int flags, uint mode) -> int = "_open";
@@ -53,13 +53,13 @@ fn dylib_filename(str base) -> str {
 
 fn pipe() -> tup(int, int) {
     let vec[mutable int] fds = [mutable 0, 0];
-    assert (os::libc::_pipe(_vec::buf(fds), 1024u,
+    assert (os::libc::_pipe(vec::buf(fds), 1024u,
                         libc_constants::O_BINARY()) == 0);
     ret tup(fds.(0), fds.(1));
 }
 
 fn fd_FILE(int fd) -> libc::FILE {
-    ret libc::_fdopen(fd, _str::buf("r"));
+    ret libc::_fdopen(fd, str::buf("r"));
 }
 
 native "rust" mod rustrt {

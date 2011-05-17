@@ -2,8 +2,8 @@
 
 use std;
 
-import std::_int;
-import std::_vec;
+import std::int;
+import std::vec;
 
 fn fannkuch(int n) -> int {
 
@@ -12,9 +12,9 @@ fn fannkuch(int n) -> int {
   }
   auto perm1init_ = perm1init; // Rustboot workaround
 
-  auto perm = _vec::init_elt(0, n as uint);
-  auto perm1 = _vec::init_fn(perm1init_, n as uint);
-  auto count = _vec::init_elt(0, n as uint);
+  auto perm = vec::init_elt(0, n as uint);
+  auto perm1 = vec::init_fn(perm1init_, n as uint);
+  auto count = vec::init_elt(0, n as uint);
 
   auto f = 0;
   auto i = 0;

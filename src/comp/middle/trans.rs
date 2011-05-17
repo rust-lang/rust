@@ -1,9 +1,9 @@
-import std::_int;
-import std::_str;
-import std::_uint;
-import std::_vec;
-import std::_str::rustrt::sbuf;
-import std::_vec::rustrt::vbuf;
+import std::int;
+import std::str;
+import std::uint;
+import std::vec;
+import std::str::rustrt::sbuf;
+import std::vec::rustrt::vbuf;
 import std::map;
 import std::map::hashmap;
 import std::option;
@@ -197,7 +197,7 @@ fn extend_path(@local_ctxt cx, &str name) -> @local_ctxt {
 }
 
 fn path_name(&vec[str] path) -> str {
-    ret _str::connect(path, sep());
+    ret str::connect(path, sep());
 }
 
 
@@ -215,7 +215,7 @@ fn get_type_sha1(&@crate_ctxt ccx, &ty::t t) -> str {
                            abbrevs=metadata::ac_no_abbrevs);
 
             ccx.sha.input_str(metadata::Encode::ty_str(cx, t));
-            hash = _str::substr(ccx.sha.result_str(), 0u, 16u);
+            hash = str::substr(ccx.sha.result_str(), 0u, 16u);
             ccx.type_sha1s.insert(t, hash);
         }
     }
@@ -335,8 +335,8 @@ fn T_size_t() -> TypeRef {
 
 fn T_fn(vec[TypeRef] inputs, TypeRef output) -> TypeRef {
     ret llvm::LLVMFunctionType(output,
-                              _vec::buf[TypeRef](inputs),
-                              _vec::len[TypeRef](inputs),
+                              vec::buf[TypeRef](inputs),
+                              vec::len[TypeRef](inputs),
                               False);
 }
 
@@ -350,8 +350,8 @@ fn T_ptr(TypeRef t) -> TypeRef {
 }
 
 fn T_struct(&vec[TypeRef] elts) -> TypeRef {
-    ret llvm::LLVMStructType(_vec::buf[TypeRef](elts),
-                            _vec::len[TypeRef](elts),
+    ret llvm::LLVMStructType(vec::buf[TypeRef](elts),
+                            vec::len[TypeRef](elts),
                             False);
 }
 
@@ -381,9 +381,9 @@ fn T_task(&type_names tn) -> TypeRef {
 fn T_tydesc_field(&type_names tn, int field) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the tydesc..
     let vec[TypeRef] tydesc_elts =
-        _vec::init_elt[TypeRef](T_nil(), abi::n_tydesc_fields as uint);
+        vec::init_elt[TypeRef](T_nil(), abi::n_tydesc_fields as uint);
     llvm::LLVMGetStructElementTypes(T_tydesc(tn),
-                                   _vec::buf[TypeRef](tydesc_elts));
+                                   vec::buf[TypeRef](tydesc_elts));
     auto t = llvm::LLVMGetElementType(tydesc_elts.(field));
     ret t;
 }
@@ -401,7 +401,7 @@ fn T_glue_fn(&type_names tn) -> TypeRef {
 
 fn T_dtor(&@crate_ctxt ccx, TypeRef llself_ty) -> TypeRef {
     ret type_of_fn_full(ccx, ast::proto_fn, some[TypeRef](llself_ty),
-                        _vec::empty[ty::arg](), ty::mk_nil(ccx.tcx), 0u);
+                        vec::empty[ty::arg](), ty::mk_nil(ccx.tcx), 0u);
 }
 
 fn T_cmp_glue_fn(&type_names tn) -> TypeRef {
@@ -565,7 +565,7 @@ fn T_opaque_closure_ptr(&type_names tn) -> TypeRef {
 }
 
 fn T_tag(&type_names tn, uint size) -> TypeRef {
-    auto s = "tag_" + _uint::to_str(size, 10u);
+    auto s = "tag_" + uint::to_str(size, 10u);
     if (tn.name_has_type(s)) {
         ret tn.get_type(s);
     }
@@ -596,7 +596,7 @@ fn T_opaque_tag_ptr(&type_names tn) -> TypeRef {
 }
 
 fn T_captured_tydescs(&type_names tn, uint n) -> TypeRef {
-    ret T_struct(_vec::init_elt[TypeRef](T_ptr(T_tydesc(tn)), n));
+    ret T_struct(vec::init_elt[TypeRef](T_ptr(T_tydesc(tn)), n));
 }
 
 fn T_obj_ptr(&type_names tn, uint n_captured_tydescs) -> TypeRef {
@@ -857,7 +857,7 @@ fn type_of_inner(&@crate_ctxt cx, &ty::t t) -> TypeRef {
     assert (llty as int != 0);
     if (cx.sess.get_opts().save_temps) {
         llvm::LLVMAddTypeName(cx.llmod,
-                             _str::buf(ty::ty_to_short_str(cx.tcx, t)),
+                             str::buf(ty::ty_to_short_str(cx.tcx, t)),
                              llty);
     }
     cx.lltypes.insert(t, llty);
@@ -919,7 +919,7 @@ fn sanitize(&str s) -> str {
                         c != (' ' as u8) && c != ('\t' as u8) &&
                         c != (';' as u8)) {
                         auto v = [c];
-                        result += _str::from_bytes(v);
+                        result += str::from_bytes(v);
                     }
                 }
             }
@@ -944,11 +944,11 @@ fn C_integral(TypeRef t, uint u, Bool sign_extend) -> ValueRef {
 }
 
 fn C_float(&str s) -> ValueRef {
-    ret llvm::LLVMConstRealOfString(T_float(), _str::buf(s));
+    ret llvm::LLVMConstRealOfString(T_float(), str::buf(s));
 }
 
 fn C_floating(&str s, TypeRef t) -> ValueRef {
-    ret llvm::LLVMConstRealOfString(t, _str::buf(s));
+    ret llvm::LLVMConstRealOfString(t, str::buf(s));
 }
 
 fn C_nil() -> ValueRef {
@@ -975,9 +975,9 @@ fn C_u8(uint i) -> ValueRef {
 // This is a 'c-like' raw string, which differs from
 // our boxed-and-length-annotated strings.
 fn C_cstr(&@crate_ctxt cx, &str s) -> ValueRef {
-    auto sc = llvm::LLVMConstString(_str::buf(s), _str::byte_len(s), False);
+    auto sc = llvm::LLVMConstString(str::buf(s), str::byte_len(s), False);
     auto g = llvm::LLVMAddGlobal(cx.llmod, val_ty(sc),
-                                _str::buf(cx.names.next("str")));
+                                str::buf(cx.names.next("str")));
     llvm::LLVMSetInitializer(g, sc);
     llvm::LLVMSetGlobalConstant(g, True);
     llvm::LLVMSetLinkage(g, lib::llvm::LLVMInternalLinkage
@@ -987,15 +987,15 @@ fn C_cstr(&@crate_ctxt cx, &str s) -> ValueRef {
 
 // A rust boxed-and-length-annotated string.
 fn C_str(&@crate_ctxt cx, &str s) -> ValueRef {
-    auto len = _str::byte_len(s);
+    auto len = str::byte_len(s);
     auto box = C_struct([C_int(abi::const_refcount as int),
                             C_int(len + 1u as int), // 'alloc'
                             C_int(len + 1u as int), // 'fill'
                             C_int(0),               // 'pad'
-                            llvm::LLVMConstString(_str::buf(s),
+                            llvm::LLVMConstString(str::buf(s),
                                                  len, False)]);
     auto g = llvm::LLVMAddGlobal(cx.llmod, val_ty(box),
-                                _str::buf(cx.names.next("str")));
+                                str::buf(cx.names.next("str")));
     llvm::LLVMSetInitializer(g, box);
     llvm::LLVMSetGlobalConstant(g, True);
     llvm::LLVMSetLinkage(g, lib::llvm::LLVMInternalLinkage
@@ -1010,24 +1010,24 @@ fn C_zero_byte_arr(uint size) -> ValueRef {
         elts += [C_u8(0u)];
         i += 1u;
     }
-    ret llvm::LLVMConstArray(T_i8(), _vec::buf[ValueRef](elts),
-                            _vec::len[ValueRef](elts));
+    ret llvm::LLVMConstArray(T_i8(), vec::buf[ValueRef](elts),
+                            vec::len[ValueRef](elts));
 }
 
 fn C_struct(&vec[ValueRef] elts) -> ValueRef {
-    ret llvm::LLVMConstStruct(_vec::buf[ValueRef](elts),
-                             _vec::len[ValueRef](elts),
+    ret llvm::LLVMConstStruct(vec::buf[ValueRef](elts),
+                             vec::len[ValueRef](elts),
                              False);
 }
 
 fn C_array(TypeRef ty, &vec[ValueRef] elts) -> ValueRef {
-    ret llvm::LLVMConstArray(ty, _vec::buf[ValueRef](elts),
-                            _vec::len[ValueRef](elts));
+    ret llvm::LLVMConstArray(ty, vec::buf[ValueRef](elts),
+                            vec::len[ValueRef](elts));
 }
 
 fn decl_fn(ModuleRef llmod, &str name, uint cc, TypeRef llty) -> ValueRef {
     let ValueRef llfn =
-        llvm::LLVMAddFunction(llmod, _str::buf(name), llty);
+        llvm::LLVMAddFunction(llmod, str::buf(name), llty);
     llvm::LLVMSetFunctionCallConv(llfn, cc);
     ret llfn;
 }
@@ -1075,7 +1075,7 @@ fn decl_native_glue(ModuleRef llmod, &type_names tn,
         args += [T_int()]; // taskptr, will not be passed
     }
 
-    args += _vec::init_elt[TypeRef](T_int(), n as uint);
+    args += vec::init_elt[TypeRef](T_int(), n as uint);
 
     ret decl_fastcall_fn(llmod, s, T_fn(args, T_int()));
 }
@@ -1096,7 +1096,7 @@ fn get_extern_const(&hashmap[str, ValueRef] externs,
     if (externs.contains_key(name)) {
         ret externs.get(name);
     }
-    auto c = llvm::LLVMAddGlobal(llmod, ty, _str::buf(name));
+    auto c = llvm::LLVMAddGlobal(llmod, ty, str::buf(name));
     externs.insert(name, c);
     ret c;
 }
@@ -1104,7 +1104,7 @@ fn get_extern_const(&hashmap[str, ValueRef] externs,
 fn get_simple_extern_fn(&hashmap[str, ValueRef] externs,
                         ModuleRef llmod, &str name,
                         int n_args) -> ValueRef {
-    auto inputs = _vec::init_elt[TypeRef](T_int(), n_args as uint);
+    auto inputs = vec::init_elt[TypeRef](T_int(), n_args as uint);
     auto output = T_int();
     auto t = T_fn(inputs, output);
     ret get_extern_fn(externs, llmod, name, lib::llvm::LLVMCCallConv, t);
@@ -1114,7 +1114,7 @@ fn trans_native_call(&builder b, @glue_fns glues, ValueRef lltaskptr,
                      &hashmap[str, ValueRef] externs,
                      &type_names tn, ModuleRef llmod, &str name,
                      bool pass_task, &vec[ValueRef] args) -> ValueRef {
-    let int n = (_vec::len[ValueRef](args) as int);
+    let int n = (vec::len[ValueRef](args) as int);
     let ValueRef llnative = get_simple_extern_fn(externs, llmod, name, n);
     llnative = llvm::LLVMConstPointerCast(llnative, T_int());
 
@@ -1445,7 +1445,7 @@ fn GEP_tup_like(&@block_ctxt cx, &ty::t t,
     fn split_type(&@crate_ctxt ccx, &ty::t t, &vec[int] ixs, uint n)
         -> rec(vec[ty::t] prefix, ty::t target) {
 
-        let uint len = _vec::len[int](ixs);
+        let uint len = vec::len[int](ixs);
 
         // We don't support 0-index or 1-index GEPs: The former is nonsense
         // and the latter would only be meaningful if we supported non-0
@@ -1467,7 +1467,7 @@ fn GEP_tup_like(&@block_ctxt cx, &ty::t t,
         let vec[ty::t] prefix = [];
         let int i = 0;
         while (i < ix) {
-            _vec::push[ty::t](prefix,
+            vec::push[ty::t](prefix,
                             ty::get_element_type(ccx.tcx, t, i as uint));
             i += 1 ;
         }
@@ -1696,8 +1696,8 @@ fn get_derived_tydesc(&@block_ctxt cx, &ty::t t, bool escapes,
     let uint n_params = ty::count_ty_params(bcx.fcx.lcx.ccx.tcx, t);
     auto tys = linearize_ty_params(bcx, t);
 
-    assert (n_params == _vec::len[uint](tys._0));
-    assert (n_params == _vec::len[ValueRef](tys._1));
+    assert (n_params == vec::len[uint](tys._0));
+    assert (n_params == vec::len[ValueRef](tys._1));
 
     auto root_ti = get_static_tydesc(bcx, t, tys._0);
     static_ti = some[@tydesc_info](root_ti);
@@ -1833,7 +1833,7 @@ fn declare_tydesc(&@local_ctxt cx, &ty::t t,
     }
 
     auto gvar = llvm::LLVMAddGlobal(ccx.llmod, T_tydesc(ccx.tn),
-                                    _str::buf(name));
+                                    str::buf(name));
 
     auto info = @rec(ty = t,
                      tydesc = gvar,
@@ -1892,23 +1892,23 @@ fn make_generic_glue(&@local_ctxt cx,
         llty = T_ptr(type_of(cx.ccx, t));
     }
 
-    auto ty_param_count = _vec::len[uint](ty_params);
+    auto ty_param_count = vec::len[uint](ty_params);
 
     auto lltyparams = llvm::LLVMGetParam(llfn, 3u);
 
     auto copy_args_bcx = new_raw_block_ctxt(fcx, fcx.llcopyargs);
 
-    auto lltydescs = _vec::empty_mut[ValueRef]();
+    auto lltydescs = vec::empty_mut[ValueRef]();
     auto p = 0u;
     while (p < ty_param_count) {
         auto llparam = copy_args_bcx.build.GEP(lltyparams,
                                                [C_int(p as int)]);
         llparam = copy_args_bcx.build.Load(llparam);
-        _vec::grow_set[ValueRef](lltydescs, ty_params.(p), 0 as ValueRef,
+        vec::grow_set[ValueRef](lltydescs, ty_params.(p), 0 as ValueRef,
                                 llparam);
         p += 1u;
     }
-    fcx.lltydescs = _vec::freeze[ValueRef](lltydescs);
+    fcx.lltydescs = vec::freeze[ValueRef](lltydescs);
 
     auto bcx = new_top_block_ctxt(fcx);
     auto lltop = bcx.llbb;
@@ -2248,7 +2248,7 @@ fn decr_refcnt_and_if_zero(&@block_ctxt cx,
 
 fn maybe_name_value(&@crate_ctxt cx, ValueRef v, &str s) {
     if (cx.sess.get_opts().save_temps) {
-        llvm::LLVMSetValueName(v, _str::buf(s));
+        llvm::LLVMSetValueName(v, str::buf(s));
     }
 }
 
@@ -2527,7 +2527,7 @@ fn tag_variants(&@crate_ctxt cx, &ast::def_id id) -> vec[variant_info] {
             for (ast::variant variant in variants) {
                 auto ctor_ty = node_ann_type(cx, variant.node.ann);
                 let vec[ty::t] arg_tys = [];
-                if (_vec::len[ast::variant_arg](variant.node.args) > 0u) {
+                if (vec::len[ast::variant_arg](variant.node.args) > 0u) {
                     for (ty::arg a in ty::ty_fn_args(cx.tcx, ctor_ty)) {
                         arg_tys += [a.ty];
                     }
@@ -2548,7 +2548,7 @@ fn tag_variant_with_id(&@crate_ctxt cx,
     auto variants = tag_variants(cx, tag_id);
 
     auto i = 0u;
-    while (i < _vec::len[variant_info](variants)) {
+    while (i < vec::len[variant_info](variants)) {
         auto variant = variants.(i);
         if (common::def_eq(variant.id, variant_id)) {
             ret variant;
@@ -2644,7 +2644,7 @@ fn iter_structural_ty_full(&@block_ctxt cx,
         }
         case (ty::ty_tag(?tid, ?tps)) {
             auto variants = tag_variants(cx.fcx.lcx.ccx, tid);
-            auto n_variants = _vec::len[variant_info](variants);
+            auto n_variants = vec::len[variant_info](variants);
 
             // Cast the tags to types we can GEP into.
             auto lltagty = T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn);
@@ -2681,10 +2681,10 @@ fn iter_structural_ty_full(&@block_ctxt cx,
             for (variant_info variant in variants) {
                 auto variant_cx = new_sub_block_ctxt(bcx,
                                                      "tag-iter-variant-" +
-                                                     _uint::to_str(i, 10u));
+                                                     uint::to_str(i, 10u));
                 llvm::LLVMAddCase(llswitch, C_int(i as int), variant_cx.llbb);
 
-                if (_vec::len[ty::t](variant.args) > 0u) {
+                if (vec::len[ty::t](variant.args) > 0u) {
                     // N-ary variant.
                     auto fn_ty = variant.ctor_ty;
                     alt (ty::struct(bcx.fcx.lcx.ccx.tcx, fn_ty)) {
@@ -3670,12 +3670,12 @@ fn join_results(&@block_ctxt parent_cx,
         }
     }
 
-    alt (_vec::len[result](live)) {
+    alt (vec::len[result](live)) {
         case (0u) {
             // No incoming edges are live, so we're in dead-code-land.
             // Arbitrarily pick the first dead edge, since the caller
             // is just going to propagate it outward.
-            assert (_vec::len[result](ins) >= 1u);
+            assert (vec::len[result](ins) >= 1u);
             ret ins.(0);
         }
 
@@ -3806,10 +3806,10 @@ fn collect_upvars(&@block_ctxt cx, &ast::block bloc,
             case (ast::expr_path(?path, ?ann)) {
                 alt (e.def_map.get(ast::ann_tag(ann))) {
                     case (ast::def_arg(?did)) {
-                        _vec::push[ast::def_id](e.refs, did);
+                        vec::push[ast::def_id](e.refs, did);
                     }
                     case (ast::def_local(?did)) {
-                        _vec::push[ast::def_id](e.refs, did);
+                        vec::push[ast::def_id](e.refs, did);
                     }
                     case (_) {}
                 }
@@ -3892,7 +3892,7 @@ fn trans_for_each(&@block_ctxt cx,
     }
 
     auto upvars = collect_upvars(cx, body, decl_id);
-    auto upvar_count = _vec::len[ast::def_id](upvars);
+    auto upvar_count = vec::len[ast::def_id](upvars);
 
     auto llbindingsptr;
     if (upvar_count > 0u) {
@@ -3931,7 +3931,7 @@ fn trans_for_each(&@block_ctxt cx,
     }
 
     // Create an environment and populate it with the bindings.
-    auto tydesc_count = _vec::len[ValueRef](cx.fcx.lltydescs);
+    auto tydesc_count = vec::len[ValueRef](cx.fcx.lltydescs);
     auto llenvptrty = T_closure_ptr(lcx.ccx.tn, T_ptr(T_nil()),
                                     val_ty(llbindingsptr), tydesc_count);
     auto llenvptr = alloca(cx, llvm::LLVMGetElementType(llenvptrty));
@@ -4149,7 +4149,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
             auto ty_params = ty::ann_to_type_params(cx.fcx.lcx.ccx.node_types,
                                                     ann);
 
-            if (_vec::len[@ast::pat](subpats) > 0u) {
+            if (vec::len[@ast::pat](subpats) > 0u) {
                 auto llblobptr = matched_cx.build.GEP(lltagptr,
                     [C_int(0), C_int(1)]);
                 auto i = 0;
@@ -4201,7 +4201,7 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat,
             }
         }
         case (ast::pat_tag(_, ?subpats, ?ann)) {
-            if (_vec::len[@ast::pat](subpats) == 0u) { ret res(cx, llval); }
+            if (vec::len[@ast::pat](subpats) == 0u) { ret res(cx, llval); }
 
             // Get the appropriate variant for this tag.
             auto vdef = ast::variant_def_ids
@@ -4326,7 +4326,7 @@ fn lval_generic_fn(&@block_ctxt cx,
     auto tys = ty::ann_to_type_params(cx.fcx.lcx.ccx.node_types, ann);
     auto monoty = ty::ann_to_type(cx.fcx.lcx.ccx.node_types, ann);
 
-    if (_vec::len[ty::t](tys) != 0u) {
+    if (vec::len[ty::t](tys) != 0u) {
         auto bcx = lv.res.bcx;
         let vec[ValueRef] tydescs = [];
         let vec[option::t[@tydesc_info]] tis = [];
@@ -4336,7 +4336,7 @@ fn lval_generic_fn(&@block_ctxt cx,
             auto td = get_tydesc(bcx, t, true, ti);
             tis += [ti];
             bcx = td.bcx;
-            _vec::push[ValueRef](tydescs, td.val);
+            vec::push[ValueRef](tydescs, td.val);
         }
         auto gen = rec( item_type = tpt._1,
                         static_tis = tis,
@@ -4356,7 +4356,7 @@ fn lookup_discriminant(&@local_ctxt lcx, &ast::def_id tid, &ast::def_id vid)
             assert (lcx.ccx.sess.get_targ_crate_num() != vid._0);
             auto sym = creader::get_symbol(lcx.ccx.sess, vid);
             auto gvar = llvm::LLVMAddGlobal(lcx.ccx.llmod, T_int(),
-                                           _str::buf(sym));
+                                           str::buf(sym));
             llvm::LLVMSetLinkage(gvar, lib::llvm::LLVMExternalLinkage
                                  as llvm::Linkage);
             llvm::LLVMSetGlobalConstant(gvar, True);
@@ -4818,7 +4818,7 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
                 case (none[@ast::expr]) {
                 }
                 case (some[@ast::expr](?e)) {
-                    _vec::push[@ast::expr](bound, e);
+                    vec::push[@ast::expr](bound, e);
                 }
             }
         }
@@ -4838,9 +4838,9 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
                 lltydescs = ginfo.tydescs;
             }
         }
-        auto ty_param_count = _vec::len[ValueRef](lltydescs);
+        auto ty_param_count = vec::len[ValueRef](lltydescs);
 
-        if (_vec::len[@ast::expr](bound) == 0u && ty_param_count == 0u) {
+        if (vec::len[@ast::expr](bound) == 0u && ty_param_count == 0u) {
             // Trivial 'binding': just return the static pair-ptr.
             ret f_res.res;
         } else {
@@ -4856,8 +4856,8 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
                 auto arg = trans_expr(bcx, e);
                 bcx = arg.bcx;
 
-                _vec::push[ValueRef](bound_vals, arg.val);
-                _vec::push[ty::t](bound_tys,
+                vec::push[ValueRef](bound_vals, arg.val);
+                vec::push[ty::t](bound_tys,
                                  ty::expr_ty(cx.fcx.lcx.ccx.tcx,
                                              cx.fcx.lcx.ccx.node_types, e));
 
@@ -4874,7 +4874,7 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
             let ty::t tydesc_ty = ty::mk_type(cx.fcx.lcx.ccx.tcx);
 
             let vec[ty::t] captured_tys =
-                _vec::init_elt[ty::t](tydesc_ty, ty_param_count);
+                vec::init_elt[ty::t](tydesc_ty, ty_param_count);
 
             let vec[ty::t] closure_tys =
                 [tydesc_ty,
@@ -5297,7 +5297,7 @@ fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args,
     auto bcx = cx;
     auto unit_sz = size_of(bcx, unit_ty);
     bcx = unit_sz.bcx;
-    auto data_sz = bcx.build.Mul(C_int(_vec::len[@ast::expr](args) as int),
+    auto data_sz = bcx.build.Mul(C_int(vec::len[@ast::expr](args) as int),
                                  unit_sz.val);
 
     // FIXME: pass tydesc properly.
@@ -5315,8 +5315,8 @@ fn trans_vec(&@block_ctxt cx, &vec[@ast::expr] args,
 
     auto pseudo_tup_ty =
         ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx,
-                      _vec::init_elt[ty::t](unit_ty,
-                                           _vec::len[@ast::expr](args)));
+                      vec::init_elt[ty::t](unit_ty,
+                                           vec::len[@ast::expr](args)));
     let int i = 0;
 
     for (@ast::expr e in args) {
@@ -5393,7 +5393,7 @@ fn trans_rec(&@block_ctxt cx, &vec[ast::field] fields,
         auto src_res = res(bcx, C_nil());
 
         for (ast::field f in fields) {
-            if (_str::eq(f.ident, tf.ident)) {
+            if (str::eq(f.ident, tf.ident)) {
                 expr_provided = true;
                 src_res = trans_expr(bcx, f.expr);
             }
@@ -5626,13 +5626,13 @@ fn load_if_immediate(&@block_ctxt cx, ValueRef v, &ty::t t) -> ValueRef {
 
 fn trans_log(int lvl, &@block_ctxt cx, &@ast::expr e) -> result {
     auto lcx = cx.fcx.lcx;
-    auto modname = _str::connect(lcx.module_path, "::");
+    auto modname = str::connect(lcx.module_path, "::");
     auto global;
     if (lcx.ccx.module_data.contains_key(modname)) {
         global = lcx.ccx.module_data.get(modname);
     } else {
         global = llvm::LLVMAddGlobal(lcx.ccx.llmod, T_int(),
-                                    _str::buf("_rust_mod_log_" + modname));
+                                    str::buf("_rust_mod_log_" + modname));
         llvm::LLVMSetGlobalConstant(global, False);
         llvm::LLVMSetInitializer(global, C_null(T_int()));
         llvm::LLVMSetLinkage(global, lib::llvm::LLVMInternalLinkage
@@ -6067,9 +6067,9 @@ fn new_block_ctxt(&@fn_ctxt cx, &block_parent parent,
                   block_kind kind,
                   &str name) -> @block_ctxt {
     let vec[cleanup] cleanups = [];
-    auto s = _str::buf("");
+    auto s = str::buf("");
     if (cx.lcx.ccx.sess.get_opts().save_temps) {
-        s = _str::buf(cx.lcx.ccx.names.next(name));
+        s = str::buf(cx.lcx.ccx.names.next(name));
     }
     let BasicBlockRef llbb = llvm::LLVMAppendBasicBlock(cx.llfn, s);
     ret @rec(llbb=llbb,
@@ -6114,10 +6114,10 @@ fn trans_block_cleanups(&@block_ctxt cx,
     auto bcx = cx;
 
     if (cleanup_cx.kind == NON_SCOPE_BLOCK) {
-        assert (_vec::len[cleanup](cleanup_cx.cleanups) == 0u);
+        assert (vec::len[cleanup](cleanup_cx.cleanups) == 0u);
     }
 
-    auto i = _vec::len[cleanup](cleanup_cx.cleanups);
+    auto i = vec::len[cleanup](cleanup_cx.cleanups);
     while (i > 0u) {
         i -= 1u;
         auto c = cleanup_cx.cleanups.(i);
@@ -6282,9 +6282,9 @@ fn new_local_ctxt(&@crate_ctxt ccx) -> @local_ctxt {
 // tydescs.
 fn mk_standard_basic_blocks(ValueRef llfn) ->
         tup(BasicBlockRef, BasicBlockRef, BasicBlockRef) {
-    ret tup(llvm::LLVMAppendBasicBlock(llfn, _str::buf("allocas")),
-            llvm::LLVMAppendBasicBlock(llfn, _str::buf("copy_args")),
-            llvm::LLVMAppendBasicBlock(llfn, _str::buf("derived_tydescs")));
+    ret tup(llvm::LLVMAppendBasicBlock(llfn, str::buf("allocas")),
+            llvm::LLVMAppendBasicBlock(llfn, str::buf("copy_args")),
+            llvm::LLVMAppendBasicBlock(llfn, str::buf("derived_tydescs")));
 }
 
 // NB: must keep 4 fns in sync:
@@ -6324,7 +6324,7 @@ fn new_fn_ctxt(@local_ctxt cx,
              llobjfields=llobjfields,
              lllocals=lllocals,
              llupvars=llupvars,
-             mutable lltydescs=_vec::empty[ValueRef](),
+             mutable lltydescs=vec::empty[ValueRef](),
              derived_tydescs=derived_tydescs,
              lcx=cx);
 }
@@ -6478,7 +6478,7 @@ fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, self_vt llself) {
     // its magic.
     auto fields_tup_ty = ty::mk_imm_tup(fcx.lcx.ccx.tcx, field_tys);
 
-    auto n_typarams = _vec::len[ast::ty_param](bcx.fcx.lcx.obj_typarams);
+    auto n_typarams = vec::len[ast::ty_param](bcx.fcx.lcx.obj_typarams);
     let TypeRef llobj_box_ty = T_obj_ptr(bcx.fcx.lcx.ccx.tn, n_typarams);
 
     auto box_cell =
@@ -6595,7 +6595,7 @@ fn trans_vtbl(@local_ctxt cx,
     let vec[ValueRef] methods = [dtor];
 
     fn meth_lteq(&@ast::method a, &@ast::method b) -> bool {
-        ret _str::lteq(a.node.ident, b.node.ident);
+        ret str::lteq(a.node.ident, b.node.ident);
     }
 
     auto meths = std::sort::merge_sort[@ast::method](bind meth_lteq(_,_),
@@ -6609,7 +6609,7 @@ fn trans_vtbl(@local_ctxt cx,
                 llfnty = type_of_fn_full(cx.ccx, proto,
                                          some[TypeRef](llself_ty),
                                          inputs, output,
-                                         _vec::len[ast::ty_param](ty_params));
+                                         vec::len[ast::ty_param](ty_params));
             }
         }
 
@@ -6628,7 +6628,7 @@ fn trans_vtbl(@local_ctxt cx,
     auto vtbl = C_struct(methods);
     auto vtbl_name = mangle_name_by_seq(cx.ccx, cx.path, "vtbl");
     auto gvar = llvm::LLVMAddGlobal(cx.ccx.llmod, val_ty(vtbl),
-                                   _str::buf(vtbl_name));
+                                   str::buf(vtbl_name));
     llvm::LLVMSetInitializer(gvar, vtbl);
     llvm::LLVMSetGlobalConstant(gvar, True);
     llvm::LLVMSetLinkage(gvar, lib::llvm::LLVMInternalLinkage
@@ -6696,22 +6696,22 @@ fn trans_obj(@local_ctxt cx, &ast::_obj ob, ast::def_id oid,
 
     // FIXME we should probably also allocate a box for empty objs that have a
     // dtor, since otherwise they are never dropped, and the dtor never runs
-    if (_vec::len[ast::ty_param](ty_params) == 0u &&
-        _vec::len[ty::arg](arg_tys) == 0u) {
+    if (vec::len[ast::ty_param](ty_params) == 0u &&
+        vec::len[ty::arg](arg_tys) == 0u) {
         // Store null into pair, if no args or typarams.
         bcx.build.Store(C_null(llbox_ty), pair_box);
     } else {
         // Malloc a box for the body and copy args in.
         let vec[ty::t] obj_fields = [];
         for (ty::arg a in arg_tys) {
-            _vec::push[ty::t](obj_fields, a.ty);
+            vec::push[ty::t](obj_fields, a.ty);
         }
 
         // Synthesize an obj body type.
         auto tydesc_ty = ty::mk_type(ccx.tcx);
         let vec[ty::t] tps = [];
         for (ast::ty_param tp in ty_params) {
-            _vec::push[ty::t](tps, tydesc_ty);
+            vec::push[ty::t](tps, tydesc_ty);
         }
 
         let ty::t typarams_ty = ty::mk_imm_tup(ccx.tcx, tps);
@@ -6797,7 +6797,7 @@ fn trans_obj(@local_ctxt cx, &ast::_obj ob, ast::def_id oid,
 fn trans_tag_variant(@local_ctxt cx, ast::def_id tag_id,
                      &ast::variant variant, int index,
                      &vec[ast::ty_param] ty_params) {
-    if (_vec::len[ast::variant_arg](variant.node.args) == 0u) {
+    if (vec::len[ast::variant_arg](variant.node.args) == 0u) {
         ret;    // nullary constructors are just constants
     }
 
@@ -6807,7 +6807,7 @@ fn trans_tag_variant(@local_ctxt cx, ast::def_id tag_id,
     for (ast::variant_arg varg in variant.node.args) {
         fn_args += [rec(mode=ast::alias,
                            ty=varg.ty,
-                           ident="arg" + _uint::to_str(i, 10u),
+                           ident="arg" + uint::to_str(i, 10u),
                            id=varg.id)];
     }
 
@@ -6949,7 +6949,7 @@ fn get_pair_fn_ty(TypeRef llpairty) -> TypeRef {
     // Bit of a kludge: pick the fn typeref out of the pair.
     let vec[TypeRef] pair_tys = [T_nil(), T_nil()];
     llvm::LLVMGetStructElementTypes(llpairty,
-                                   _vec::buf[TypeRef](pair_tys));
+                                   vec::buf[TypeRef](pair_tys));
     ret llvm::LLVMGetElementType(pair_tys.(0));
 }
 
@@ -6965,7 +6965,7 @@ fn decl_fn_and_pair(&@crate_ctxt ccx,
     alt (ty::struct(ccx.tcx, node_ann_type(ccx, ann))) {
         case (ty::ty_fn(?proto, ?inputs, ?output)) {
             llfty = type_of_fn(ccx, proto, inputs, output,
-                               _vec::len[ast::ty_param](ty_params));
+                               vec::len[ast::ty_param](ty_params));
             llpairty = T_fn_pair(ccx.tn, llfty);
         }
         case (_) {
@@ -6987,7 +6987,7 @@ fn decl_fn_and_pair(&@crate_ctxt ccx,
 fn register_fn_pair(&@crate_ctxt cx, str ps, TypeRef llpairty, ValueRef llfn,
                     ast::def_id id) {
     let ValueRef gvar = llvm::LLVMAddGlobal(cx.llmod, llpairty,
-                                           _str::buf(ps));
+                                           str::buf(ps));
     auto pair = C_struct([llfn,
                              C_null(T_opaque_closure_ptr(cx.tn))]);
 
@@ -7013,7 +7013,7 @@ fn native_fn_ty_param_count(&@crate_ctxt cx, &ast::def_id id) -> uint {
             fail;
         }
         case (ast::native_item_fn(_, _, _, ?tps, _, _)) {
-            count = _vec::len[ast::ty_param](tps);
+            count = vec::len[ast::ty_param](tps);
         }
     }
     ret count;
@@ -7101,7 +7101,7 @@ fn decl_native_fn_and_pair(&@crate_ctxt ccx,
     if (pass_task) { call_args += [lltaskptr]; }
 
     auto arg_n = 3u;
-    for each (uint i in _uint::range(0u, num_ty_param)) {
+    for each (uint i in uint::range(0u, num_ty_param)) {
         auto llarg = llvm::LLVMGetParam(fcx.llfn, arg_n);
         fcx.lltydescs += [llarg];
         assert (llarg as int != 0);
@@ -7232,13 +7232,13 @@ fn new_walk_ctxt() -> @walk_ctxt {
 fn enter_item(@walk_ctxt cx, &@ast::item item) {
     alt (item.node) {
         case (ast::item_fn(?name, _, _, _, _)) {
-            _vec::push[str](cx.path, name);
+            vec::push[str](cx.path, name);
         }
         case (ast::item_obj(?name, _, _, _, _)) {
-            _vec::push[str](cx.path, name);
+            vec::push[str](cx.path, name);
         }
         case (ast::item_mod(?name, _, _)) {
-            _vec::push[str](cx.path, name);
+            vec::push[str](cx.path, name);
         }
         case (_) { }
     }
@@ -7247,13 +7247,13 @@ fn enter_item(@walk_ctxt cx, &@ast::item item) {
 fn leave_item(@walk_ctxt cx, &@ast::item item) {
     alt (item.node) {
         case (ast::item_fn(_, _, _, _, _)) {
-            _vec::pop[str](cx.path);
+            vec::pop[str](cx.path);
         }
         case (ast::item_obj(_, _, _, _, _)) {
-            _vec::pop[str](cx.path);
+            vec::pop[str](cx.path);
         }
         case (ast::item_mod(_, _, _)) {
-            _vec::pop[str](cx.path);
+            vec::pop[str](cx.path);
         }
         case (_) { }
     }
@@ -7281,7 +7281,7 @@ fn collect_item_1(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item i) {
         case (ast::item_const(?name, _, _, ?cid, ?ann)) {
             auto typ = node_ann_type(ccx, ann);
             auto g = llvm::LLVMAddGlobal(ccx.llmod, type_of(ccx, typ),
-                                        _str::buf(ccx.names.next(name)));
+                                        str::buf(ccx.names.next(name)));
             llvm::LLVMSetLinkage(g, lib::llvm::LLVMInternalLinkage
                                 as llvm::Linkage);
             ccx.items.insert(cid, i);
@@ -7345,7 +7345,7 @@ fn collect_tag_ctor(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item i) {
     alt (i.node) {
         case (ast::item_tag(_, ?variants, ?tps, _, _)) {
             for (ast::variant variant in variants) {
-                if (_vec::len[ast::variant_arg](variant.node.args) != 0u) {
+                if (vec::len[ast::variant_arg](variant.node.args) != 0u) {
                     decl_fn_and_pair(ccx, wcx.path + [variant.node.name],
                                      "tag", tps, variant.node.ann,
                                      variant.node.id);
@@ -7373,7 +7373,7 @@ fn trans_constant(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item it) {
     alt (it.node) {
         case (ast::item_tag(?ident, ?variants, _, ?tag_id, _)) {
             auto i = 0u;
-            auto n_variants = _vec::len[ast::variant](variants);
+            auto n_variants = vec::len[ast::variant](variants);
             while (i < n_variants) {
                 auto variant = variants.(i);
 
@@ -7383,7 +7383,7 @@ fn trans_constant(&@crate_ctxt ccx, @walk_ctxt wcx, &@ast::item it) {
                                             #fmt("_rust_tag_discrim_%s_%u",
                                                  ident, i));
                 auto discrim_gvar = llvm::LLVMAddGlobal(ccx.llmod, T_int(),
-                                                       _str::buf(s));
+                                                       str::buf(s));
 
                 llvm::LLVMSetInitializer(discrim_gvar, discrim_val);
                 llvm::LLVMSetGlobalConstant(discrim_gvar, True);
@@ -7443,7 +7443,7 @@ fn trans_exit_task_glue(@glue_fns glues,
 
     auto llfn = glues.exit_task_glue;
 
-    auto entrybb = llvm::LLVMAppendBasicBlock(llfn, _str::buf("entry"));
+    auto entrybb = llvm::LLVMAppendBasicBlock(llfn, str::buf("entry"));
     auto build = new_builder(entrybb);
 
     let ValueRef arg1 = llvm::LLVMGetParam(llfn, 0u);
@@ -7465,9 +7465,9 @@ fn trans_exit_task_glue(@glue_fns glues,
 }
 
 fn create_typedefs(&@crate_ctxt cx) {
-    llvm::LLVMAddTypeName(cx.llmod, _str::buf("crate"), T_crate(cx.tn));
-    llvm::LLVMAddTypeName(cx.llmod, _str::buf("task"), T_task(cx.tn));
-    llvm::LLVMAddTypeName(cx.llmod, _str::buf("tydesc"), T_tydesc(cx.tn));
+    llvm::LLVMAddTypeName(cx.llmod, str::buf("crate"), T_crate(cx.tn));
+    llvm::LLVMAddTypeName(cx.llmod, str::buf("task"), T_task(cx.tn));
+    llvm::LLVMAddTypeName(cx.llmod, str::buf("tydesc"), T_tydesc(cx.tn));
 }
 
 fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
@@ -7509,7 +7509,7 @@ fn find_main_fn(&@crate_ctxt cx) -> ValueRef {
     let ValueRef v = C_nil();
     let uint n = 0u;
     for each (@tup(ast::def_id, str) i in cx.item_symbols.items()) {
-        if (_str::ends_with(i._1, e)) {
+        if (str::ends_with(i._1, e)) {
             n += 1u;
             v = cx.item_ids.get(i._0);
         }
@@ -7533,7 +7533,7 @@ fn trans_main_fn(@local_ctxt cx, ValueRef llcrate, ValueRef crate_map) {
     auto T_rust_start_args = [T_int(), T_int(), T_int(), T_int(), T_int()];
 
     auto main_name;
-    if (_str::eq(std::os::target_os(), "win32")) {
+    if (str::eq(std::os::target_os(), "win32")) {
         main_name = "WinMain@16";
     } else {
         main_name = "main";
@@ -7558,7 +7558,7 @@ fn trans_main_fn(@local_ctxt cx, ValueRef llcrate, ValueRef crate_map) {
     //
 
     let BasicBlockRef llbb =
-        llvm::LLVMAppendBasicBlock(llmain, _str::buf(""));
+        llvm::LLVMAppendBasicBlock(llmain, str::buf(""));
     auto b = new_builder(llbb);
 
     auto start_args = [p2i(llrust_main), p2i(llcrate), llargc, llargv,
@@ -7629,7 +7629,7 @@ fn decl_no_op_type_glue(ModuleRef llmod, type_names tn) -> ValueRef {
 }
 
 fn make_no_op_type_glue(ValueRef fun) {
-    auto bb_name = _str::buf("_rust_no_op_type_glue_bb");
+    auto bb_name = str::buf("_rust_no_op_type_glue_bb");
     auto llbb = llvm::LLVMAppendBasicBlock(fun, bb_name);
     new_builder(llbb).RetVoid();
 }
@@ -7733,7 +7733,7 @@ fn trans_vec_append_glue(@local_ctxt cx) {
                     llobjfields=new_def_hash[ValueRef](),
                     lllocals=new_def_hash[ValueRef](),
                     llupvars=new_def_hash[ValueRef](),
-                    mutable lltydescs=_vec::empty[ValueRef](),
+                    mutable lltydescs=vec::empty[ValueRef](),
                     derived_tydescs=derived_tydescs,
                     lcx=cx);
 
@@ -7857,13 +7857,13 @@ fn make_glues(ModuleRef llmod, &type_names tn) -> @glue_fns {
                                                  T_void())),
 
              native_glues_rust =
-                 _vec::init_fn[ValueRef](bind decl_native_glue(llmod, tn,
+                 vec::init_fn[ValueRef](bind decl_native_glue(llmod, tn,
                     abi::ngt_rust, _), abi::n_native_glues + 1 as uint),
              native_glues_pure_rust =
-                 _vec::init_fn[ValueRef](bind decl_native_glue(llmod, tn,
+                 vec::init_fn[ValueRef](bind decl_native_glue(llmod, tn,
                     abi::ngt_pure_rust, _), abi::n_native_glues + 1 as uint),
              native_glues_cdecl =
-                 _vec::init_fn[ValueRef](bind decl_native_glue(llmod, tn,
+                 vec::init_fn[ValueRef](bind decl_native_glue(llmod, tn,
                     abi::ngt_cdecl, _), abi::n_native_glues + 1 as uint),
              no_op_type_glue = decl_no_op_type_glue(llmod, tn),
              vec_append_glue = make_vec_append_glue(llmod, tn));
@@ -7873,19 +7873,19 @@ fn make_common_glue(&session::session sess, &str output) {
     // FIXME: part of this is repetitive and is probably a good idea
     // to autogen it.
     auto llmod =
-        llvm::LLVMModuleCreateWithNameInContext(_str::buf("rust_out"),
+        llvm::LLVMModuleCreateWithNameInContext(str::buf("rust_out"),
                                                llvm::LLVMGetGlobalContext());
 
-    llvm::LLVMSetDataLayout(llmod, _str::buf(x86::get_data_layout()));
-    llvm::LLVMSetTarget(llmod, _str::buf(x86::get_target_triple()));
+    llvm::LLVMSetDataLayout(llmod, str::buf(x86::get_data_layout()));
+    llvm::LLVMSetTarget(llmod, str::buf(x86::get_target_triple()));
     auto td = mk_target_data(x86::get_data_layout());
     auto tn = mk_type_names();
     let ValueRef crate_ptr =
-        llvm::LLVMAddGlobal(llmod, T_crate(tn), _str::buf("rust_crate"));
+        llvm::LLVMAddGlobal(llmod, T_crate(tn), str::buf("rust_crate"));
 
     auto intrinsics = declare_intrinsics(llmod);
 
-    llvm::LLVMSetModuleInlineAsm(llmod, _str::buf(x86::get_module_asm()));
+    llvm::LLVMSetModuleInlineAsm(llmod, str::buf(x86::get_module_asm()));
 
     auto glues = make_glues(llmod, tn);
     create_crate_constant(crate_ptr, glues);
@@ -7900,23 +7900,23 @@ fn create_module_map(&@crate_ctxt ccx) -> ValueRef {
     auto elttype = T_struct([T_int(), T_int()]);
     auto maptype = T_array(elttype, ccx.module_data.size() + 1u);
     auto map = llvm::LLVMAddGlobal(ccx.llmod, maptype,
-                                  _str::buf("_rust_mod_map"));
+                                  str::buf("_rust_mod_map"));
     llvm::LLVMSetLinkage(map, lib::llvm::LLVMInternalLinkage
                          as llvm::Linkage);
     let vec[ValueRef] elts = [];
     for each (@tup(str, ValueRef) item in ccx.module_data.items()) {
         auto elt = C_struct([p2i(C_cstr(ccx, item._0)), p2i(item._1)]);
-        _vec::push[ValueRef](elts, elt);
+        vec::push[ValueRef](elts, elt);
     }
     auto term = C_struct([C_int(0), C_int(0)]);
-    _vec::push[ValueRef](elts, term);
+    vec::push[ValueRef](elts, term);
     llvm::LLVMSetInitializer(map, C_array(elttype, elts));
     ret map;
 }
 
 fn crate_name(&@crate_ctxt ccx, &str deflt) -> str {
     for (@ast::meta_item item in ccx.sess.get_metadata()) {
-        if (_str::eq(item.node.name, "name")) {
+        if (str::eq(item.node.name, "name")) {
             ret item.node.value;
         }
     }
@@ -7930,15 +7930,15 @@ fn create_crate_map(&@crate_ctxt ccx) -> ValueRef {
     while (ccx.sess.has_external_crate(i)) {
         auto name = ccx.sess.get_external_crate(i).name;
         auto cr = llvm::LLVMAddGlobal(ccx.llmod, T_int(),
-                                     _str::buf("_rust_crate_map_" + name));
-        _vec::push[ValueRef](subcrates, p2i(cr));
+                                     str::buf("_rust_crate_map_" + name));
+        vec::push[ValueRef](subcrates, p2i(cr));
         i += 1;
     }
-    _vec::push[ValueRef](subcrates, C_int(0));
+    vec::push[ValueRef](subcrates, C_int(0));
     auto sym_name = "_rust_crate_map_" + crate_name(ccx, "__none__");
-    auto arrtype = T_array(T_int(), _vec::len[ValueRef](subcrates));
+    auto arrtype = T_array(T_int(), vec::len[ValueRef](subcrates));
     auto maptype = T_struct([T_int(), arrtype]);
-    auto map = llvm::LLVMAddGlobal(ccx.llmod, maptype, _str::buf(sym_name));
+    auto map = llvm::LLVMAddGlobal(ccx.llmod, maptype, str::buf(sym_name));
     llvm::LLVMSetLinkage(map, lib::llvm::LLVMExternalLinkage
                          as llvm::Linkage);
     llvm::LLVMSetInitializer(map, C_struct([p2i(create_module_map(ccx)),
@@ -7951,15 +7951,15 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
                &str output)
         -> ModuleRef {
     auto llmod =
-        llvm::LLVMModuleCreateWithNameInContext(_str::buf("rust_out"),
+        llvm::LLVMModuleCreateWithNameInContext(str::buf("rust_out"),
                                                llvm::LLVMGetGlobalContext());
 
-    llvm::LLVMSetDataLayout(llmod, _str::buf(x86::get_data_layout()));
-    llvm::LLVMSetTarget(llmod, _str::buf(x86::get_target_triple()));
+    llvm::LLVMSetDataLayout(llmod, str::buf(x86::get_data_layout()));
+    llvm::LLVMSetTarget(llmod, str::buf(x86::get_target_triple()));
     auto td = mk_target_data(x86::get_data_layout());
     auto tn = mk_type_names();
     let ValueRef crate_ptr =
-        llvm::LLVMAddGlobal(llmod, T_crate(tn), _str::buf("rust_crate"));
+        llvm::LLVMAddGlobal(llmod, T_crate(tn), str::buf("rust_crate"));
 
     auto intrinsics = declare_intrinsics(llmod);
 

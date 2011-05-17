@@ -1,21 +1,21 @@
-import _str::sbuf;
-import _vec::vbuf;
+import str::sbuf;
+import vec::vbuf;
 
 native "rust" mod rustrt {
     fn rust_run_program(vbuf argv, int in_fd, int out_fd, int err_fd) -> int;
 }
 
 fn arg_vec(str prog, vec[str] args) -> vec[sbuf] {
-    auto argptrs = [_str::buf(prog)];
+    auto argptrs = [str::buf(prog)];
     for (str arg in args) {
-        _vec::push[sbuf](argptrs, _str::buf(arg));
+        vec::push[sbuf](argptrs, str::buf(arg));
     }
-    _vec::push[sbuf](argptrs, 0 as sbuf);
+    vec::push[sbuf](argptrs, 0 as sbuf);
     ret argptrs;
 }
 
 fn run_program(str prog, vec[str] args) -> int {
-    auto pid = rustrt::rust_run_program(_vec::buf[sbuf](arg_vec(prog, args)),
+    auto pid = rustrt::rust_run_program(vec::buf[sbuf](arg_vec(prog, args)),
                                        0, 0, 0);
     ret os::waitpid(pid);
 }
@@ -33,7 +33,7 @@ fn start_program(str prog, vec[str] args) -> @program {
     auto pipe_input = os::pipe();
     auto pipe_output = os::pipe();
     auto pid = rustrt::rust_run_program
-        (_vec::buf[sbuf](arg_vec(prog, args)),
+        (vec::buf[sbuf](arg_vec(prog, args)),
          pipe_input._0, pipe_output._1, 0);
     if (pid == -1) {fail;}
     os::libc::close(pipe_input._0);
@@ -80,7 +80,7 @@ fn program_output(str prog, vec[str] args)
     auto buf = "";
     while (!out.eof()) {
         auto bytes = out.read_bytes(4096u);
-        buf += _str::unsafe_from_bytes(bytes);
+        buf += str::unsafe_from_bytes(bytes);
     }
     ret rec(status=pr.finish(), out=buf);
 }

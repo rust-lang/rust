@@ -1,7 +1,7 @@
 use std;
 
 fn check_sort(vec[int] v1, vec[int] v2) {
-  auto len = std::_vec::len[int](v1);
+  auto len = std::vec::len[int](v1);
   fn lteq(&int a, &int b) -> bool {
     ret a <= b;
   }

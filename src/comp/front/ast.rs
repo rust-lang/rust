@@ -1,7 +1,7 @@
 import std::map::hashmap;
 import std::option;
-import std::_str;
-import std::_vec;
+import std::str;
+import std::vec;
 import util::common::span;
 import util::common::spanned;
 import util::common::ty_mach;
@@ -454,7 +454,7 @@ fn is_exported(ident i, _mod m) -> bool {
     for (@ast::view_item vi in m.view_items) {
         alt (vi.node) {
             case (ast::view_item_export(?id)) {
-                if (_str::eq(i, id)) {
+                if (str::eq(i, id)) {
                     ret true;
                 }
                 count += 1;

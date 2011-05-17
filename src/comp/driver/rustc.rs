@@ -19,8 +19,8 @@ import std::map::mk_hashmap;
 import std::option;
 import std::option::some;
 import std::option::none;
-import std::_str;
-import std::_vec;
+import std::str;
+import std::vec;
 import std::io;
 import std::run;
 
@@ -59,9 +59,9 @@ fn default_environment(session::session sess,
 fn parse_input(session::session sess,
                       parser::parser p,
                       str input) -> @ast::crate {
-    if (_str::ends_with(input, ".rc")) {
+    if (str::ends_with(input, ".rc")) {
         ret parser::parse_crate_from_crate_file(p);
-    } else if (_str::ends_with(input, ".rs")) {
+    } else if (str::ends_with(input, ".rs")) {
         ret parser::parse_crate_from_source_file(p);
     }
     sess.err("unknown input file type: " + input);
@@ -130,7 +130,7 @@ fn pretty_print_input(session::session sess,
 fn version(str argv0) {
     auto vers = "unknown version";
     auto env_vers = #env("CFG_VERSION");
-    if (_str::byte_len(env_vers) != 0u) {
+    if (str::byte_len(env_vers) != 0u) {
         vers = env_vers;
     }
     io::stdout().write_str(#fmt("%s %s\n", argv0, vers));
@@ -166,25 +166,25 @@ options:
 }
 
 fn get_os(str triple) -> session::os {
-    if (_str::find(triple, "win32") >= 0 ||
-        _str::find(triple, "mingw32") >= 0 ) {
+    if (str::find(triple, "win32") >= 0 ||
+        str::find(triple, "mingw32") >= 0 ) {
         ret session::os_win32;
-    } else if (_str::find(triple, "darwin") >= 0) { ret session::os_macos; }
-    else if (_str::find(triple, "linux") >= 0) { ret session::os_linux; }
+    } else if (str::find(triple, "darwin") >= 0) { ret session::os_macos; }
+    else if (str::find(triple, "linux") >= 0) { ret session::os_linux; }
     else { log_err "Unknown operating system!"; fail; }
 }
 
 fn get_arch(str triple) -> session::arch {
-    if (_str::find(triple, "i386") >= 0 ||
-        _str::find(triple, "i486") >= 0 ||
-        _str::find(triple, "i586") >= 0 ||
-        _str::find(triple, "i686") >= 0 ||
-        _str::find(triple, "i786") >= 0 ) {
+    if (str::find(triple, "i386") >= 0 ||
+        str::find(triple, "i486") >= 0 ||
+        str::find(triple, "i586") >= 0 ||
+        str::find(triple, "i686") >= 0 ||
+        str::find(triple, "i786") >= 0 ) {
         ret session::arch_x86;
-    } else if (_str::find(triple, "x86_64") >= 0) {
+    } else if (str::find(triple, "x86_64") >= 0) {
         ret session::arch_x64;
-    } else if (_str::find(triple, "arm") >= 0 ||
-        _str::find(triple, "xscale") >= 0 ) {
+    } else if (str::find(triple, "arm") >= 0 ||
+        str::find(triple, "xscale") >= 0 ) {
         ret session::arch_arm;
     }
     else {
@@ -195,14 +195,14 @@ fn get_arch(str triple) -> session::arch {
 
 fn get_default_sysroot(str binary) -> str {
     auto dirname = fs::dirname(binary);
-    if (_str::eq(dirname, binary)) { ret "."; }
+    if (str::eq(dirname, binary)) { ret "."; }
     ret dirname;
 }
 
 fn main(vec[str] args) {
 
     let str triple =
-        std::_str::rustrt::str_from_cstr(llvm::llvm::LLVMRustGetHostTriple());
+        std::str::rustrt::str_from_cstr(llvm::llvm::LLVMRustGetHostTriple());
 
     let @session::config target_cfg =
         @rec(os = get_os(triple),
@@ -221,7 +221,7 @@ fn main(vec[str] args) {
                     optflag("stats"),
                     optflag("time-passes"), optflag("time-llvm-passes"),
                     optflag("no-typestate"), optflag("noverify")];
-    auto binary = _vec::shift[str](args);
+    auto binary = vec::shift[str](args);
     auto match;
     alt (getopts::getopts(args, opts)) {
         case (getopts::failure(?f)) {
@@ -298,7 +298,7 @@ fn main(vec[str] args) {
         session::session(target_crate_num, target_cfg, sopts,
                         crate_cache, md, front::codemap::new_codemap());
 
-    auto n_inputs = _vec::len[str](match.free);
+    auto n_inputs = vec::len[str](match.free);
 
     if (glue) {
         if (n_inputs > 0u) {
@@ -325,8 +325,8 @@ fn main(vec[str] args) {
     } else {
         alt (output_file) {
             case (none[str]) {
-                let vec[str] parts = _str::split(ifile, '.' as u8);
-                _vec::pop[str](parts);
+                let vec[str] parts = str::split(ifile, '.' as u8);
+                vec::pop[str](parts);
                 saved_out_filename = parts.(0);
                 alt (output_type) {
                     case (link::output_type_none) { parts += ["pp"]; }
@@ -337,7 +337,7 @@ fn main(vec[str] args) {
                     case (link::output_type_object) { parts += ["o"]; }
                     case (link::output_type_exe) { parts += ["o"]; }
                 }
-                auto ofile = _str::connect(parts, ".");
+                auto ofile = str::connect(parts, ".");
                 compile_input(sess, env, ifile, ofile);
             }
             case (some[str](?ofile)) {

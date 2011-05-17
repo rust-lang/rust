@@ -7,8 +7,8 @@
 import front::parser::parser;
 import util::common;
 
-import std::_str;
-import std::_vec;
+import std::str;
+import std::vec;
 import std::option;
 import std::option::none;
 import std::option::some;
@@ -50,7 +50,7 @@ fn expand_syntax_ext(parser p,
                      vec[@ast::expr] args,
                      option::t[str] body) -> @ast::expr {
 
-    if (_vec::len[@ast::expr](args) == 0u) {
+    if (vec::len[@ast::expr](args) == 0u) {
         // FIXME: Handle error correctly.
         log_err "malformed #fmt call";
         fail;
@@ -62,8 +62,8 @@ fn expand_syntax_ext(parser p,
     // log fmt;
 
     auto pieces = parse_fmt_string(fmt);
-    auto args_len = _vec::len[@ast::expr](args);
-    auto fmt_args = _vec::slice[@ast::expr](args, 1u, args_len - 1u);
+    auto args_len = vec::len[@ast::expr](args);
+    auto fmt_args = vec::slice[@ast::expr](args, 1u, args_len - 1u);
     ret pieces_to_expr(p, pieces, args);
 }
 
@@ -203,7 +203,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
             // FIXME: 0-length vectors can't have their type inferred
             // through the rec that these flags are a member of, so
             // this is a hack placeholder flag
-            if (_vec::len[@ast::expr](flagexprs) == 0u) {
+            if (vec::len[@ast::expr](flagexprs) == 0u) {
                 flagexprs += [make_rt_path_expr(p, sp, "flag_none")];
             }
 
@@ -407,7 +407,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
     fn log_conv(conv c) {
         alt (c.param) {
             case (some[int](?p)) {
-                log "param: " + std::_int::to_str(p, 10u);
+                log "param: " + std::int::to_str(p, 10u);
             }
             case (_) {
                 log "param: none";
@@ -434,10 +434,10 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
         }
         alt (c.width) {
             case (count_is(?i)) {
-                log "width: count is " + std::_int::to_str(i, 10u);
+                log "width: count is " + std::int::to_str(i, 10u);
             }
             case (count_is_param(?i)) {
-                log "width: count is param " + std::_int::to_str(i, 10u);
+                log "width: count is param " + std::int::to_str(i, 10u);
             }
             case (count_is_next_param) {
                 log "width: count is next param";
@@ -448,10 +448,10 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
         }
         alt (c.precision) {
             case (count_is(?i)) {
-                log "prec: count is " + std::_int::to_str(i, 10u);
+                log "prec: count is " + std::int::to_str(i, 10u);
             }
             case (count_is_param(?i)) {
-                log "prec: count is param " + std::_int::to_str(i, 10u);
+                log "prec: count is param " + std::int::to_str(i, 10u);
             }
             case (count_is_next_param) {
                 log "prec: count is next param";
@@ -507,7 +507,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
                 tmp_expr = make_add_expr(p, sp, tmp_expr, s_expr);
             }
             case (piece_conv(?conv)) {
-                if (n >= _vec::len[@ast::expr](args)) {
+                if (n >= vec::len[@ast::expr](args)) {
                     log_err "too many conversions in #fmt string";
                     fail;
                 }

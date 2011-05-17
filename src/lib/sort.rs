@@ -1,5 +1,5 @@
-import _vec::len;
-import _vec::slice;
+import vec::len;
+import vec::slice;
 
 type lteq[T] = fn(&T a, &T b) -> bool;
 

@@ -1,5 +1,5 @@
-import std::_vec;
-import std::_str;
+import std::vec;
+import std::str;
 import std::io;
 import std::option;
 import driver::session::session;
@@ -92,7 +92,7 @@ fn commasep[IN](ps s, vec[IN] elts, fn(ps, &IN) op) {
 }
 fn commasep_cmnt[IN](ps s, vec[IN] elts, fn(ps, &IN) op,
                             fn(&IN) -> common::span get_span) {
-    auto len = _vec::len[IN](elts);
+    auto len = vec::len[IN](elts);
     auto i = 0u;
     for (IN elt in elts) {
         op(s, elt);
@@ -162,7 +162,7 @@ fn print_type(ps s, &@ast::ty ty) {
             fn get_span(&ast::ty_field f) -> common::span {
               // Try to reconstruct the span for this field
               auto sp = f.mt.ty.span;
-              auto hi = sp.hi + _str::char_len(f.ident) + 1u;
+              auto hi = sp.hi + str::char_len(f.ident) + 1u;
               ret rec(hi=hi with sp);
             }
             auto f = print_field;
@@ -272,7 +272,7 @@ fn print_item(ps s, @ast::item item) {
             for (ast::variant v in variants) {
                 maybe_print_comment(s, v.span.lo);
                 wrd(s.s, v.node.name);
-                if (_vec::len[ast::variant_arg](v.node.args) > 0u) {
+                if (vec::len[ast::variant_arg](v.node.args) > 0u) {
                     popen(s);
                     fn print_variant_arg(ps s, &ast::variant_arg arg) {
                         print_type(s, arg.ty);
@@ -360,7 +360,7 @@ fn print_literal(ps s, @ast::lit lit) {
     alt (lit.node) {
         case (ast::lit_str(?st)) {print_string(s, st);}
         case (ast::lit_char(?ch)) {
-            wrd(s.s, "'" + escape_str(_str::from_bytes([ch as u8]), '\'')
+            wrd(s.s, "'" + escape_str(str::from_bytes([ch as u8]), '\'')
                 + "'");
         }
         case (ast::lit_int(?val)) {
@@ -436,7 +436,7 @@ fn print_expr(ps s, &@ast::expr expr) {
             commasep_cmnt[ast::field](s, fields, f, gs);
             alt (wth) {
                 case (option::some[@ast::expr](?expr)) {
-                    if (_vec::len[ast::field](fields) > 0u) {space(s.s);}
+                    if (vec::len[ast::field](fields) > 0u) {space(s.s);}
                     hbox(s);
                     wrd1(s, "with");
                     print_expr(s, expr);
@@ -673,7 +673,7 @@ fn print_expr(ps s, &@ast::expr expr) {
         case (ast::expr_ext(?path, ?args, ?body, _, _)) {
             wrd(s.s, "#");
             print_path(s, path);
-            if (_vec::len[@ast::expr](args) > 0u) {
+            if (vec::len[@ast::expr](args) > 0u) {
                 popen(s);
                 commasep_exprs(s, args);
                 pclose(s);
@@ -761,7 +761,7 @@ fn print_path(ps s, ast::path path) {
         else {wrd(s.s, "::");}
         wrd(s.s, id);
     }
-    if (_vec::len[@ast::ty](path.node.types) > 0u) {
+    if (vec::len[@ast::ty](path.node.types) > 0u) {
         wrd(s.s, "[");
         auto f = print_type;
         commasep[@ast::ty](s, path.node.types, f);
@@ -777,7 +777,7 @@ fn print_pat(ps s, &@ast::pat pat) {
         case (ast::pat_lit(?lit,_)) {print_literal(s, lit);}
         case (ast::pat_tag(?path,?args,_)) {
             print_path(s, path);
-            if (_vec::len[@ast::pat](args) > 0u) {
+            if (vec::len[@ast::pat](args) > 0u) {
                 popen_h(s);
                 auto f = print_pat;
                 commasep[@ast::pat](s, args, f);
@@ -822,7 +822,7 @@ fn print_fn(ps s, ast::fn_decl decl, str name,
 }
 
 fn print_type_params(ps s, vec[ast::ty_param] params) {
-    if (_vec::len[ast::ty_param](params) > 0u) {
+    if (vec::len[ast::ty_param](params) > 0u) {
         wrd(s.s, "[");
         fn printParam(ps s, &ast::ty_param param) {
             wrd(s.s, param);
@@ -840,7 +840,7 @@ fn print_view_item(ps s, @ast::view_item item) {
         case (ast::view_item_use(?id,?mta,_,_)) {
             wrd1(s, "use");
             wrd(s.s, id);
-            if (_vec::len[@ast::meta_item](mta) > 0u) {
+            if (vec::len[@ast::meta_item](mta) > 0u) {
                 popen(s);
                 fn print_meta(ps s, &@ast::meta_item item) {
                     hbox(s);
@@ -856,7 +856,7 @@ fn print_view_item(ps s, @ast::view_item item) {
         }
         case (ast::view_item_import(?id,?ids,_)) {
             wrd1(s, "import");
-            if (!_str::eq(id, ids.(_vec::len[str](ids)-1u))) {
+            if (!str::eq(id, ids.(vec::len[str](ids)-1u))) {
                 wrd1(s, id);
                 wrd1(s, "=");
             }
@@ -906,7 +906,7 @@ fn print_maybe_parens(ps s, @ast::expr expr, int outer_prec) {
 
 fn escape_str(str st, char to_escape) -> str {
     let str out = "";
-    auto len = _str::byte_len(st);
+    auto len = str::byte_len(st);
     auto i = 0u;
     while (i < len) {
         alt (st.(i) as char) {
@@ -916,7 +916,7 @@ fn escape_str(str st, char to_escape) -> str {
             case ('\\') {out += "\\\\";}
             case (?cur) {
                 if (cur == to_escape) {out += "\\";}
-                _str::push_byte(out, cur as u8);
+                str::push_byte(out, cur as u8);
             }
         }
         i += 1u;
@@ -966,7 +966,7 @@ fn print_ty_fn(ps s, ast::proto proto, option::t[str] id,
 fn next_comment(ps s) -> option::t[lexer::cmnt] {
     alt (s.comments) {
         case (option::some[vec[lexer::cmnt]](?cmnts)) {
-            if (s.cur_cmnt < _vec::len[lexer::cmnt](cmnts)) {
+            if (s.cur_cmnt < vec::len[lexer::cmnt](cmnts)) {
                 ret option::some[lexer::cmnt](cmnts.(s.cur_cmnt));
             } else {ret option::none[lexer::cmnt];}
         }

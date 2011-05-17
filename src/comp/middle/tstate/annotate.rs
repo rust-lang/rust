@@ -1,4 +1,4 @@
-import std::_vec;
+import std::vec;
 import std::option;
 import std::option::some;
 import std::option::none;
@@ -131,7 +131,7 @@ fn annotate_exprs(&fn_info_map fm, &vec[@expr] es) -> vec[@expr] {
         ret annotate_expr(fm, e);
     }
     auto f = bind one(fm,_);
-    ret _vec::map[@expr, @expr](f, es);
+    ret vec::map[@expr, @expr](f, es);
 }
 fn annotate_elts(&fn_info_map fm, &vec[elt] es) -> vec[elt] {
     fn one(fn_info_map fm, &elt e) -> elt {
@@ -139,7 +139,7 @@ fn annotate_elts(&fn_info_map fm, &vec[elt] es) -> vec[elt] {
                 expr=annotate_expr(fm, e.expr));
     }
     auto f = bind one(fm,_);
-    ret _vec::map[elt, elt](f, es);
+    ret vec::map[elt, elt](f, es);
 }
 fn annotate_fields(&fn_info_map fm, &vec[field] fs) -> vec[field] {
     fn one(fn_info_map fm, &field f) -> field {
@@ -148,7 +148,7 @@ fn annotate_fields(&fn_info_map fm, &vec[field] fs) -> vec[field] {
                  expr=annotate_expr(fm, f.expr));
     }
     auto f = bind one(fm,_);
-    ret _vec::map[field, field](f, fs);
+    ret vec::map[field, field](f, fs);
 }
 fn annotate_option_exp(&fn_info_map fm, &option::t[@expr] o)
   -> option::t[@expr] {
@@ -164,7 +164,7 @@ fn annotate_option_exprs(&fn_info_map fm, &vec[option::t[@expr]] es)
         ret annotate_option_exp(fm, o);
     }
     auto f = bind one(fm,_);
-    ret _vec::map[option::t[@expr], option::t[@expr]](f, es);
+    ret vec::map[option::t[@expr], option::t[@expr]](f, es);
 }
 fn annotate_decl(&fn_info_map fm, &@decl d) -> @decl {
     auto d1 = d.node;
@@ -194,7 +194,7 @@ fn annotate_alts(&fn_info_map fm, &vec[arm] alts) -> vec[arm] {
                  block=annotate_block(fm, a.block));
     }
     auto f = bind one(fm,_);
-    ret _vec::map[arm, arm](f, alts);
+    ret vec::map[arm, arm](f, alts);
 
 }
 fn annotate_expr(&fn_info_map fm, &@expr e) -> @expr {
@@ -345,7 +345,7 @@ fn annotate_block(&fn_info_map fm, &block b) -> block {
    
     for (@stmt s in b.node.stmts) {
         auto new_s = annotate_stmt(fm, s);
-        _vec::push[@stmt](new_stmts, new_s);
+        vec::push[@stmt](new_stmts, new_s);
     }
     fn ann_e(fn_info_map fm, &@expr e) -> @expr {
         ret annotate_expr(fm, e);
@@ -367,7 +367,7 @@ fn annotate_mod(&fn_info_map fm, &_mod m) -> _mod {
    
     for (@item i in m.items) {
         auto new_i = annotate_item(fm, i);
-        _vec::push[@item](new_items, new_i);
+        vec::push[@item](new_items, new_i);
     }
     ret rec(items=new_items with m);
 }
@@ -387,7 +387,7 @@ fn annotate_obj(&fn_info_map fm, &_obj o) -> _obj {
         ret annotate_method(fm, m);
     }
     auto f = bind one(fm,_);
-    auto new_methods = _vec::map[@method, @method](f, o.methods);
+    auto new_methods = vec::map[@method, @method](f, o.methods);
     auto new_dtor    = option::map[@method, @method](f, o.dtor);
     ret rec(methods=new_methods, dtor=new_dtor with o);
 }
@@ -479,7 +479,7 @@ fn annotate_module(&fn_info_map fm, &_mod module) -> _mod {
    
     for (@item i in module.items) {
         auto new_item = annotate_item(fm, i);
-        _vec::push[@item](new_items, new_item);
+        vec::push[@item](new_items, new_item);
     }
 
     ret rec(items = new_items with module);

@@ -1,10 +1,10 @@
 use std;
-import std::_str;
+import std::str;
 
 fn test(str actual, str expected) {
   log actual;
   log expected;
-  assert (_str::eq(actual, expected));
+  assert (str::eq(actual, expected));
 }
 
 fn main() {

@@ -1,5 +1,5 @@
-import std::_vec;
-import std::_str;
+import std::vec;
+import std::str;
 import std::option;
 import std::option::some;
 import std::option::none;
@@ -92,7 +92,7 @@ fn val_as_str(val v) -> str {
 
 fn lookup(session::session sess, env e, span sp, ident i) -> val {
     for (tup(ident, val) pair in e) {
-        if (_str::eq(i, pair._0)) {
+        if (str::eq(i, pair._0)) {
             ret pair._1;
         }
     }
@@ -115,8 +115,8 @@ fn eval_lit(ctx cx, span sp, @ast::lit lit) -> val {
 fn eval_expr(ctx cx, env e, @ast::expr x) -> val {
     alt (x.node) {
         case (ast::expr_path(?pth, _)) {
-            if (_vec::len[ident](pth.node.idents) == 1u &&
-                _vec::len[@ast::ty](pth.node.types) == 0u) {
+            if (vec::len[ident](pth.node.idents) == 1u &&
+                vec::len[@ast::ty](pth.node.types) == 0u) {
                 ret lookup(cx.sess, e, x.span, pth.node.idents.(0));
             }
             cx.sess.span_err(x.span, "evaluating structured path-name");
@@ -225,7 +225,7 @@ fn val_eq(session::session sess, span sp, val av, val bv) -> bool {
         ret val_as_int(av) == val_as_int(bv);
     }
     if (val_is_str(av) && val_is_str(bv)) {
-        ret _str::eq(val_as_str(av),
+        ret str::eq(val_as_str(av),
                     val_as_str(bv));
     }
     sess.span_err(sp, "bad types in comparison");
@@ -394,7 +394,7 @@ fn eval_crate_directive(ctx cx,
             cx.next_ann = p0.next_ann_num();
             auto im = ast::item_mod(id, m0, next_id);
             auto i = @spanned(cdir.span.lo, cdir.span.hi, im);
-            _vec::push[@ast::item](items, i);
+            vec::push[@ast::item](items, i);
         }
 
         case (ast::cdir_dir_mod(?id, ?dir_opt, ?cdirs)) {
@@ -411,11 +411,11 @@ fn eval_crate_directive(ctx cx,
             auto m0 = eval_crate_directives_to_mod(cx, e, cdirs, full_path);
             auto im = ast::item_mod(id, m0, cx.p.next_def_id());
             auto i = @spanned(cdir.span.lo, cdir.span.hi, im);
-            _vec::push[@ast::item](items, i);
+            vec::push[@ast::item](items, i);
         }
 
         case (ast::cdir_view_item(?vi)) {
-            _vec::push[@ast::view_item](view_items, vi);
+            vec::push[@ast::view_item](view_items, vi);
         }
 
         case (ast::cdir_meta(?mi)) {

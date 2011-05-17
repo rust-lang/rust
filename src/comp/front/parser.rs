@@ -1,6 +1,6 @@
 import std::io;
-import std::_vec;
-import std::_str;
+import std::vec;
+import std::str;
 import std::option;
 import std::option::some;
 import std::option::none;
@@ -156,13 +156,13 @@ fn new_parser(session::session sess,
             }
         }
     auto ftype = SOURCE_FILE;
-    if (_str::ends_with(path, ".rc")) {
+    if (str::ends_with(path, ".rc")) {
         ftype = CRATE_FILE;
     }
     auto srdr = io::file_reader(path);
     auto filemap = codemap::new_filemap(path, pos);
-    _vec::push[codemap::filemap](sess.get_codemap().files, filemap);
-    auto itr = @interner::mk_interner[str](_str::hash, _str::eq);
+    vec::push[codemap::filemap](sess.get_codemap().files, filemap);
+    auto itr = @interner::mk_interner[str](str::hash, str::eq);
     auto rdr = lexer::new_reader(sess, srdr, filemap, itr);
     // Make sure npos points at first actual token:
     lexer::consume_any_whitespace(rdr);
@@ -278,14 +278,14 @@ fn parse_str_lit_or_env_ident(parser p) -> ast::ident {
 
 fn is_word(&parser p, &str word) -> bool {
     ret alt (p.peek()) {
-        case (token::IDENT(?sid, false)) { _str::eq(word, p.get_str(sid)) }
+        case (token::IDENT(?sid, false)) { str::eq(word, p.get_str(sid)) }
         case (_) { false }
     };
 }
 fn eat_word(&parser p, &str word) -> bool {
     alt (p.peek()) {
         case (token::IDENT(?sid, false)) {
-            if (_str::eq(word, p.get_str(sid))) {
+            if (str::eq(word, p.get_str(sid))) {
                 p.bump();
                 ret true;
             } else { ret false; }
@@ -433,7 +433,7 @@ fn parse_constrs(parser p) -> common::spanned[vec[@ast::constr]] {
         while (true) {
             auto constr = parse_ty_constr(p);
             hi = constr.span.hi;
-            _vec::push[@ast::constr](constrs, constr);
+            vec::push[@ast::constr](constrs, constr);
             if (p.peek() == token::COMMA) {
                 p.bump();
             } else {
@@ -818,7 +818,7 @@ fn parse_bottom_expr(parser p) -> @ast::expr {
             if (eat_word(p, "with")) {
                 with_obj = some[ast::ident](parse_ident(p));
             } else {
-                _vec::push[@ast::method](meths,
+                vec::push[@ast::method](meths,
                                          parse_method(p));
             }
         }
@@ -1004,16 +1004,16 @@ fn expand_syntax_ext(parser p, ast::span sp,
                      &ast::path path, vec[@ast::expr] args,
                      option::t[str] body) -> ast::expr_ {
 
-    assert (_vec::len[ast::ident](path.node.idents) > 0u);
+    assert (vec::len[ast::ident](path.node.idents) > 0u);
     auto extname = path.node.idents.(0);
-    if (_str::eq(extname, "fmt")) {
+    if (str::eq(extname, "fmt")) {
         auto expanded = extfmt::expand_syntax_ext(p, args, body);
         auto newexpr = ast::expr_ext(path, args, body,
                                     expanded,
                                     p.get_ann());
 
         ret newexpr;
-    } else if (_str::eq(extname, "env")) {
+    } else if (str::eq(extname, "env")) {
         auto expanded = extenv::expand_syntax_ext(p, sp, args, body);
         auto newexpr = ast::expr_ext(path, args, body,
                                     expanded,
@@ -1833,7 +1833,7 @@ fn parse_item_obj(parser p, ast::layer lyr) -> @ast::item {
         if (eat_word(p, "drop")) {
             dtor = some[@ast::method](parse_dtor(p));
         } else {
-            _vec::push[@ast::method](meths,
+            vec::push[@ast::method](meths,
                                      parse_method(p));
         }
     }
@@ -1953,12 +1953,12 @@ fn parse_item_native_mod(parser p) -> @ast::item {
     auto abi = ast::native_abi_cdecl;
     if (!is_word(p, "mod")) {
         auto t = parse_str_lit_or_env_ident(p);
-        if (_str::eq(t, "cdecl")) {
-        } else if (_str::eq(t, "rust")) {
+        if (str::eq(t, "cdecl")) {
+        } else if (str::eq(t, "rust")) {
             abi = ast::native_abi_rust;
-        } else if (_str::eq(t, "llvm")) {
+        } else if (str::eq(t, "llvm")) {
             abi = ast::native_abi_llvm;
-        } else if (_str::eq(t, "rust-intrinsic")) {
+        } else if (str::eq(t, "rust-intrinsic")) {
             abi = ast::native_abi_rust_intrinsic;
         } else {
             p.err("unsupported abi: " + t);
@@ -2079,16 +2079,16 @@ fn peeking_at_item(parser p) -> bool {
     alt (p.peek()) {
         case (token::IDENT(?sid, false)) {
             auto st = p.get_str(sid);
-            ret _str::eq(st, "state") ||
-                _str::eq(st, "gc") ||
-                _str::eq(st, "const") ||
-                _str::eq(st, "fn") ||
-                _str::eq(st, "pred") ||
-                _str::eq(st, "iter") ||
-                _str::eq(st, "mod") ||
-                _str::eq(st, "type") ||
-                _str::eq(st, "tag") ||
-                _str::eq(st, "obj");
+            ret str::eq(st, "state") ||
+                str::eq(st, "gc") ||
+                str::eq(st, "const") ||
+                str::eq(st, "fn") ||
+                str::eq(st, "pred") ||
+                str::eq(st, "iter") ||
+                str::eq(st, "mod") ||
+                str::eq(st, "type") ||
+                str::eq(st, "tag") ||
+                str::eq(st, "obj");
         }
         case (_) { ret false; }
     }
@@ -2193,7 +2193,7 @@ fn parse_rest_import_name(parser p, ast::ident first,
             defined_id = i;
         }
         case (_) {
-            auto len = _vec::len[ast::ident](identifiers);
+            auto len = vec::len[ast::ident](identifiers);
             defined_id = identifiers.(len - 1u);
         }
     }
@@ -2262,8 +2262,8 @@ fn is_view_item(&parser p) -> bool {
     alt (p.peek()) {
         case (token::IDENT(?sid, false)) {
             auto st = p.get_str(sid);
-            ret _str::eq(st, "use") || _str::eq(st, "import") ||
-                _str::eq(st, "export");
+            ret str::eq(st, "use") || str::eq(st, "import") ||
+                str::eq(st, "export");
         }
         case (_) { ret false; }
     }
@@ -2389,7 +2389,7 @@ fn parse_crate_directives(parser p, token::token term)
 
     while (p.peek() != term) {
         auto cdir = @parse_crate_directive(p);
-        _vec::push[@ast::crate_directive](cdirs, cdir);
+        vec::push[@ast::crate_directive](cdirs, cdir);
     }
 
     ret cdirs;

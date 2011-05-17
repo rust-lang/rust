@@ -8,12 +8,12 @@ type ufind = rec(mutable vec[mutable node] nodes);
 
 fn make() -> ufind {
     let vec[mutable node] v = [mutable none[uint]];
-    _vec::pop(v);  // FIXME: botch
+    vec::pop(v);  // FIXME: botch
     ret rec(mutable nodes=v);
 }
 
 fn make_set(&ufind ufnd) -> uint {
-    auto idx = _vec::len(ufnd.nodes);
+    auto idx = vec::len(ufnd.nodes);
     ufnd.nodes += [mutable none[uint]];
     ret idx;
 }

@@ -80,11 +80,11 @@ mod ct {
 
     fn parse_fmt_string(str s) -> vec[piece] {
         let vec[piece] pieces = [];
-        auto lim = _str::byte_len(s);
+        auto lim = str::byte_len(s);
         auto buf = "";
 
         fn flush_buf(str buf, &vec[piece] pieces) -> str {
-            if (_str::byte_len(buf) > 0u) {
+            if (str::byte_len(buf) > 0u) {
                 auto piece = piece_string(buf);
                 pieces += [piece];
             }
@@ -93,15 +93,15 @@ mod ct {
 
         auto i = 0u;
         while (i < lim) {
-            auto curr = _str::substr(s, i, 1u);
-            if (_str::eq(curr, "%")) {
+            auto curr = str::substr(s, i, 1u);
+            if (str::eq(curr, "%")) {
                 i += 1u;
                 if (i >= lim) {
                     log_err "unterminated conversion at end of string";
                     fail;
                 }
-                auto curr2 = _str::substr(s, i, 1u);
-                if (_str::eq(curr2, "%")) {
+                auto curr2 = str::substr(s, i, 1u);
+                if (str::eq(curr2, "%")) {
                     i += 1u;
                 } else {
                     buf = flush_buf(buf, pieces);
@@ -270,27 +270,27 @@ mod ct {
         }
 
         auto t;
-        auto tstr = _str::substr(s, i, 1u);
-        if (_str::eq(tstr, "b")) {
+        auto tstr = str::substr(s, i, 1u);
+        if (str::eq(tstr, "b")) {
             t = ty_bool;
-        } else if (_str::eq(tstr, "s")) {
+        } else if (str::eq(tstr, "s")) {
             t = ty_str;
-        } else if (_str::eq(tstr, "c")) {
+        } else if (str::eq(tstr, "c")) {
             t = ty_char;
-        } else if (_str::eq(tstr, "d")
-                   || _str::eq(tstr, "i")) {
+        } else if (str::eq(tstr, "d")
+                   || str::eq(tstr, "i")) {
             // TODO: Do we really want two signed types here?
             // How important is it to be printf compatible?
             t = ty_int(signed);
-        } else if (_str::eq(tstr, "u")) {
+        } else if (str::eq(tstr, "u")) {
             t = ty_int(unsigned);
-        } else if (_str::eq(tstr, "x")) {
+        } else if (str::eq(tstr, "x")) {
             t = ty_hex(case_lower);
-        } else if (_str::eq(tstr, "X")) {
+        } else if (str::eq(tstr, "X")) {
             t = ty_hex(case_upper);
-        } else if (_str::eq(tstr, "t")) {
+        } else if (str::eq(tstr, "t")) {
             t = ty_bits;
-        } else if (_str::eq(tstr, "o")) {
+        } else if (str::eq(tstr, "o")) {
             t = ty_octal;
         } else {
             log_err "unknown type in conversion";
@@ -364,7 +364,7 @@ mod rt {
                 res = uint_to_str_prec(u, 16u, prec);
             }
             case (ty_hex_upper) {
-                res = _str::to_upper(uint_to_str_prec(u, 16u, prec));
+                res = str::to_upper(uint_to_str_prec(u, 16u, prec));
             }
             case (ty_bits) {
                 res = uint_to_str_prec(u, 2u, prec);
@@ -389,7 +389,7 @@ mod rt {
     }
 
     fn conv_char(&conv cv, char c) -> str {
-        ret pad(cv, _str::from_char(c), pad_nozero);
+        ret pad(cv, str::from_char(c), pad_nozero);
     }
 
     fn conv_str(&conv cv, str s) -> str {
@@ -399,9 +399,9 @@ mod rt {
             }
             case (count_is(?max)) {
                 // For strings, precision is the maximum characters displayed
-                if (max as uint < _str::char_len(s)) {
+                if (max as uint < str::char_len(s)) {
                     // FIXME: substr works on bytes, not chars!
-                    unpadded = _str::substr(s, 0u, max as uint);
+                    unpadded = str::substr(s, 0u, max as uint);
                 }
             }
         }
@@ -420,15 +420,15 @@ mod rt {
 
     // Convert a uint to string with a minimum number of digits.  If precision
     // is 0 and num is 0 then the result is the empty string. Could move this
-    // to _uint: but it doesn't seem all that useful.
+    // to uint: but it doesn't seem all that useful.
     fn uint_to_str_prec(uint num, uint radix, uint prec) -> str {
         auto s;
 
         if (prec == 0u && num == 0u) {
             s = "";
         } else {
-            s = _uint::to_str(num, radix);
-            auto len = _str::char_len(s);
+            s = uint::to_str(num, radix);
+            auto len = str::char_len(s);
             if (len < prec) {
                 auto diff = prec - len;
                 auto pad = str_init_elt('0', diff);
@@ -450,12 +450,12 @@ mod rt {
         }
     }
 
-    // FIXME: This might be useful in _str: but needs to be utf8 safe first
+    // FIXME: This might be useful in str: but needs to be utf8 safe first
     fn str_init_elt(char c, uint n_elts) -> str {
-        auto svec = _vec::init_elt[u8](c as u8, n_elts);
+        auto svec = vec::init_elt[u8](c as u8, n_elts);
         // FIXME: Using unsafe_from_bytes because rustboot
         // can't figure out the is_utf8 predicate on from_bytes?
-        ret _str::unsafe_from_bytes(svec);
+        ret str::unsafe_from_bytes(svec);
     }
 
     tag pad_mode {
@@ -476,7 +476,7 @@ mod rt {
             }
         }
 
-        auto strlen = _str::char_len(s);
+        auto strlen = str::char_len(s);
         if (uwidth <= strlen) {
             ret s;
         }
@@ -532,16 +532,16 @@ mod rt {
         // instead.
         if (signed
             && zero_padding
-            && _str::byte_len(s) > 0u) {
+            && str::byte_len(s) > 0u) {
 
             auto head = s.(0);
             if (head == '+' as u8
                 || head == '-' as u8
                 || head == ' ' as u8) {
 
-                auto headstr = _str::unsafe_from_bytes([head]);
-                auto bytelen = _str::byte_len(s);
-                auto numpart = _str::substr(s, 1u, bytelen - 1u);
+                auto headstr = str::unsafe_from_bytes([head]);
+                auto bytelen = str::byte_len(s);
+                auto numpart = str::substr(s, 1u, bytelen - 1u);
                 ret headstr + padstr + numpart;
             }
         }

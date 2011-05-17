@@ -4,7 +4,7 @@
 // -*- rust -*-
 
 use std;
-import std::_str;
+import std::str;
 
 fn main() {
     auto s = "hello";

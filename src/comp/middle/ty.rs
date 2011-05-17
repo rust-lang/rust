@@ -1,6 +1,6 @@
-import std::_str;
-import std::_uint;
-import std::_vec;
+import std::str;
+import std::uint;
+import std::vec;
 import std::box;
 import std::ufind;
 import std::map;
@@ -194,7 +194,7 @@ fn mk_type_store() -> @type_store {
     intern(ts, ty_type, none[str]);
     intern(ts, ty_bot, none[str]);
 
-    assert _vec::len(ts.vect) == idx_first_others;
+    assert vec::len(ts.vect) == idx_first_others;
 
     ret ts;
 }
@@ -479,11 +479,11 @@ fn cname(&ctxt cx, &t typ) -> option::t[str] {
 // Stringification
 
 fn path_to_str(&ast::path pth) -> str {
-    auto result = _str::connect(pth.node.idents,  "::");
-    if (_vec::len[@ast::ty](pth.node.types) > 0u) {
+    auto result = str::connect(pth.node.idents,  "::");
+    if (vec::len[@ast::ty](pth.node.types) > 0u) {
         auto f = pretty::pprust::ty_to_str;
         result += "[";
-        result += _str::connect(_vec::map(f, pth.node.types), ",");
+        result += str::connect(vec::map(f, pth.node.types), ",");
         result += "]";
     }
     ret result;
@@ -527,7 +527,7 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
             }
 
             s += "(";
-            s += _str::connect(_vec::map[arg,str](f, inputs), ", ");
+            s += str::connect(vec::map[arg,str](f, inputs), ", ");
             s += ")";
 
             if (struct(cx, output) != ty_nil) {
@@ -585,24 +585,24 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
 
         case (ty_tup(?elems)) {
             auto f = bind mt_to_str(cx, _);
-            auto strs = _vec::map[mt,str](f, elems);
-            s += "tup(" + _str::connect(strs, ",") + ")";
+            auto strs = vec::map[mt,str](f, elems);
+            s += "tup(" + str::connect(strs, ",") + ")";
         }
 
         case (ty_rec(?elems)) {
             auto f = bind field_to_str(cx, _);
-            auto strs = _vec::map[field,str](f, elems);
-            s += "rec(" + _str::connect(strs, ",") + ")";
+            auto strs = vec::map[field,str](f, elems);
+            s += "rec(" + str::connect(strs, ",") + ")";
         }
 
         case (ty_tag(?id, ?tps)) {
             // The user should never see this if the cname is set properly!
             s += "<tag#" + util::common::istr(id._0) + ":" +
                 util::common::istr(id._1) + ">";
-            if (_vec::len[t](tps) > 0u) {
+            if (vec::len[t](tps) > 0u) {
                 auto f = bind ty_to_str(cx, _);
-                auto strs = _vec::map[t,str](f, tps);
-                s += "[" + _str::connect(strs, ",") + "]";
+                auto strs = vec::map[t,str](f, tps);
+                s += "[" + str::connect(strs, ",") + "]";
             }
         }
 
@@ -617,8 +617,8 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
 
         case (ty_obj(?meths)) {
             auto f = bind method_to_str(cx, _);
-            auto m = _vec::map[method,str](f, meths);
-            s += "obj {\n\t" + _str::connect(m, "\n\t") + "\n}";
+            auto m = vec::map[method,str](f, meths);
+            s += "obj {\n\t" + str::connect(m, "\n\t") + "\n}";
         }
 
         case (ty_var(?v)) {
@@ -631,11 +631,11 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
         }
 
         case (ty_param(?id)) {
-            s += "'" + _str::unsafe_from_bytes([('a' as u8) + (id as u8)]);
+            s += "'" + str::unsafe_from_bytes([('a' as u8) + (id as u8)]);
         }
 
         case (ty_bound_param(?id)) {
-            s += "''" + _str::unsafe_from_bytes([('a' as u8) +
+            s += "''" + str::unsafe_from_bytes([('a' as u8) +
                                                     (id as u8)]);
         }
 
@@ -652,7 +652,7 @@ fn ty_to_short_str(ctxt cx, t typ) -> str {
     auto f = def_to_str;
     auto ecx = @rec(ds=f, tcx=cx, abbrevs=metadata::ac_no_abbrevs);
     auto s = metadata::Encode::ty_str(ecx, typ);
-    if (_str::byte_len(s) >= 32u) { s = _str::substr(s, 0u, 32u); }
+    if (str::byte_len(s) >= 32u) { s = str::substr(s, 0u, 32u); }
     ret s;
 }
 
@@ -955,14 +955,14 @@ fn type_has_dynamic_size(&ctxt cx, &t ty) -> bool {
     alt (struct(cx, ty)) {
         case (ty_tup(?mts)) {
             auto i = 0u;
-            while (i < _vec::len[mt](mts)) {
+            while (i < vec::len[mt](mts)) {
                 if (type_has_dynamic_size(cx, mts.(i).ty)) { ret true; }
                 i += 1u;
             }
         }
         case (ty_rec(?fields)) {
             auto i = 0u;
-            while (i < _vec::len[field](fields)) {
+            while (i < vec::len[field](fields)) {
                 if (type_has_dynamic_size(cx, fields.(i).mt.ty)) {
                     ret true;
                 }
@@ -971,7 +971,7 @@ fn type_has_dynamic_size(&ctxt cx, &t ty) -> bool {
         }
         case (ty_tag(_, ?subtys)) {
             auto i = 0u;
-            while (i < _vec::len[t](subtys)) {
+            while (i < vec::len[t](subtys)) {
                 if (type_has_dynamic_size(cx, subtys.(i))) { ret true; }
                 i += 1u;
             }
@@ -1139,7 +1139,7 @@ fn hash_type_structure(&sty st) -> uint {
         case (ty_obj(?methods)) {
             auto h = 27u;
             for (method m in methods) {
-                h += h << 5u + _str::hash(m.ident);
+                h += h << 5u + str::hash(m.ident);
             }
             ret h;
         }
@@ -1157,7 +1157,7 @@ fn hash_type_info(&sty st, &option::t[str] cname_opt) -> uint {
     auto h = hash_type_structure(st);
     alt (cname_opt) {
         case (none[str]) { /* no-op */ }
-        case (some[str](?s)) { h += h << 5u + _str::hash(s); }
+        case (some[str](?s)) { h += h << 5u + str::hash(s); }
     }
     ret h;
 }
@@ -1178,8 +1178,8 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
                 &vec[arg] args_b, &t rty_b) -> bool {
         if (!eq_ty(rty_a, rty_b)) { ret false; }
 
-        auto len = _vec::len[arg](args_a);
-        if (len != _vec::len[arg](args_b)) { ret false; }
+        auto len = vec::len[arg](args_a);
+        if (len != vec::len[arg](args_b)) { ret false; }
 
         auto i = 0u;
         while (i < len) {
@@ -1257,8 +1257,8 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
                 case (ty_tag(?id_b, ?tys_b)) {
                     if (!equal_def(id_a, id_b)) { ret false; }
 
-                    auto len = _vec::len[t](tys_a);
-                    if (len != _vec::len[t](tys_b)) { ret false; }
+                    auto len = vec::len[t](tys_a);
+                    if (len != vec::len[t](tys_b)) { ret false; }
                     auto i = 0u;
                     while (i < len) {
                         if (!eq_ty(tys_a.(i), tys_b.(i))) { ret false; }
@@ -1302,8 +1302,8 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_tup(?mts_a)) {
             alt (b) {
                 case (ty_tup(?mts_b)) {
-                    auto len = _vec::len[mt](mts_a);
-                    if (len != _vec::len[mt](mts_b)) { ret false; }
+                    auto len = vec::len[mt](mts_a);
+                    if (len != vec::len[mt](mts_b)) { ret false; }
                     auto i = 0u;
                     while (i < len) {
                         if (!equal_mt(mts_a.(i), mts_b.(i))) { ret false; }
@@ -1317,12 +1317,12 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_rec(?flds_a)) {
             alt (b) {
                 case (ty_rec(?flds_b)) {
-                    auto len = _vec::len[field](flds_a);
-                    if (len != _vec::len[field](flds_b)) { ret false; }
+                    auto len = vec::len[field](flds_a);
+                    if (len != vec::len[field](flds_b)) { ret false; }
                     auto i = 0u;
                     while (i < len) {
                         auto fld_a = flds_a.(i); auto fld_b = flds_b.(i);
-                        if (!_str::eq(fld_a.ident, fld_b.ident) ||
+                        if (!str::eq(fld_a.ident, fld_b.ident) ||
                                 !equal_mt(fld_a.mt, fld_b.mt)) {
                             ret false;
                         }
@@ -1354,13 +1354,13 @@ fn equal_type_structures(&sty a, &sty b) -> bool {
         case (ty_obj(?methods_a)) {
             alt (b) {
                 case (ty_obj(?methods_b)) {
-                    auto len = _vec::len[method](methods_a);
-                    if (len != _vec::len[method](methods_b)) { ret false; }
+                    auto len = vec::len[method](methods_a);
+                    if (len != vec::len[method](methods_b)) { ret false; }
                     auto i = 0u;
                     while (i < len) {
                         auto m_a = methods_a.(i); auto m_b = methods_b.(i);
                         if (m_a.proto != m_b.proto ||
-                                !_str::eq(m_a.ident, m_b.ident) ||
+                                !str::eq(m_a.ident, m_b.ident) ||
                                 !equal_fn(m_a.inputs, m_a.output,
                                           m_b.inputs, m_b.output)) {
                             ret false;
@@ -1432,7 +1432,7 @@ fn eq_raw_ty(&raw_t a, &raw_t b) -> bool {
         case (some[str](?s_a)) {
             alt (b.cname) {
                 case (some[str](?s_b)) {
-                    if (!_str::eq(s_a, s_b)) { ret false; }
+                    if (!str::eq(s_a, s_b)) { ret false; }
                 }
                 case (_) { ret false; }
             }
@@ -1534,7 +1534,7 @@ fn count_ty_params(ctxt cx, t ty) -> uint {
     let @mutable vec[uint] param_indices = @mutable v;
     auto f = bind counter(cx, param_indices, _);
     walk_ty(cx, f, ty);
-    ret _vec::len[uint](*param_indices);
+    ret vec::len[uint](*param_indices);
 }
 
 fn type_contains_vars(&ctxt cx, &t typ) -> bool {
@@ -1605,7 +1605,7 @@ fn native_item_ty(&node_type_table ntt, &@ast::native_item it)
     auto result_ty;
     alt (it.node) {
         case (ast::native_item_fn(_, _, _, ?tps, _, ?ann)) {
-            ty_param_count = _vec::len[ast::ty_param](tps);
+            ty_param_count = vec::len[ast::ty_param](tps);
             result_ty = ann_to_type(ntt, ann);
         }
     }
@@ -1621,22 +1621,22 @@ fn item_ty(&node_type_table ntt, &@ast::item it) -> ty_param_count_and_ty {
             result_ty = ann_to_type(ntt, ann);
         }
         case (ast::item_fn(_, _, ?tps, _, ?ann)) {
-            ty_param_count = _vec::len[ast::ty_param](tps);
+            ty_param_count = vec::len[ast::ty_param](tps);
             result_ty = ann_to_type(ntt, ann);
         }
         case (ast::item_mod(_, _, _)) {
             fail;   // modules are typeless
         }
         case (ast::item_ty(_, _, ?tps, _, ?ann)) {
-            ty_param_count = _vec::len[ast::ty_param](tps);
+            ty_param_count = vec::len[ast::ty_param](tps);
             result_ty = ann_to_type(ntt, ann);
         }
         case (ast::item_tag(_, _, ?tps, ?did, ?ann)) {
-            ty_param_count = _vec::len[ast::ty_param](tps);
+            ty_param_count = vec::len[ast::ty_param](tps);
             result_ty = ann_to_type(ntt, ann);
         }
         case (ast::item_obj(_, _, ?tps, _, ?ann)) {
-            ty_param_count = _vec::len[ast::ty_param](tps);
+            ty_param_count = vec::len[ast::ty_param](tps);
             result_ty = ann_to_type(ntt, ann);
         }
     }
@@ -1781,7 +1781,7 @@ fn field_num(&session::session sess, &span sp,
                 accum += (c as uint) - ('0' as uint);
             } else {
                 auto s = "";
-                s += _str::unsafe_from_byte(c);
+                s += str::unsafe_from_byte(c);
                 sess.span_err(sp,
                               "bad numeric field on tuple: "
                               + " non-digit character: "
@@ -1797,7 +1797,7 @@ fn field_idx(&session::session sess, &span sp,
              &ast::ident id, &vec[field] fields) -> uint {
     let uint i = 0u;
     for (field f in fields) {
-        if (_str::eq(f.ident, id)) {
+        if (str::eq(f.ident, id)) {
             ret i;
         }
         i += 1u;
@@ -1810,7 +1810,7 @@ fn method_idx(&session::session sess, &span sp,
               &ast::ident id, &vec[method] meths) -> uint {
     let uint i = 0u;
     for (method m in meths) {
-        if (_str::eq(m.ident, id)) {
+        if (str::eq(m.ident, id)) {
             ret i;
         }
         i += 1u;
@@ -1821,7 +1821,7 @@ fn method_idx(&session::session sess, &span sp,
 
 fn sort_methods(&vec[method] meths) -> vec[method] {
     fn method_lteq(&method a, &method b) -> bool {
-        ret _str::lteq(a.ident, b.ident);
+        ret str::lteq(a.ident, b.ident);
     }
 
     ret std::sort::merge_sort[method](bind method_lteq(_,_), meths);
@@ -1896,8 +1896,8 @@ mod unify {
                        &vec[arg] expected_inputs, &t expected_output,
                        &vec[arg] actual_inputs, &t actual_output)
         -> fn_common_res {
-        auto expected_len = _vec::len[arg](expected_inputs);
-        auto actual_len = _vec::len[arg](actual_inputs);
+        auto expected_len = vec::len[arg](expected_inputs);
+        auto actual_len = vec::len[arg](actual_inputs);
         if (expected_len != actual_len) {
             ret fn_common_res_err(ures_err(terr_arg_count,
                                            expected, actual));
@@ -2012,8 +2012,8 @@ mod unify {
                  &vec[method] actual_meths) -> result {
       let vec[method] result_meths = [];
       let uint i = 0u;
-      let uint expected_len = _vec::len[method](expected_meths);
-      let uint actual_len = _vec::len[method](actual_meths);
+      let uint expected_len = vec::len[method](expected_meths);
+      let uint actual_len = vec::len[method](actual_meths);
 
       if (expected_len != actual_len) {
         ret ures_err(terr_meth_count, expected, actual);
@@ -2022,7 +2022,7 @@ mod unify {
       while (i < expected_len) {
         auto e_meth = expected_meths.(i);
         auto a_meth = actual_meths.(i);
-        if (! _str::eq(e_meth.ident, a_meth.ident)) {
+        if (! str::eq(e_meth.ident, a_meth.ident)) {
           ret ures_err(terr_obj_meths(e_meth.ident, a_meth.ident),
                        expected, actual);
         }
@@ -2086,7 +2086,7 @@ mod unify {
 
                     case (_) {
                         // Just bind the type variable to the expected type.
-                        auto vlen = _vec::len[vec[t]](cx.types);
+                        auto vlen = vec::len[vec[t]](cx.types);
                         if (actual_n < vlen) {
                             cx.types.(actual_n) += [expected];
                         } else {
@@ -2154,7 +2154,7 @@ mod unify {
                         // ty::ty_tup case
                         let vec[t] result_tps = [];
                         auto i = 0u;
-                        auto expected_len = _vec::len[t](expected_tps);
+                        auto expected_len = vec::len[t](expected_tps);
                         while (i < expected_len) {
                             auto expected_tp = expected_tps.(i);
                             auto actual_tp = actual_tps.(i);
@@ -2165,7 +2165,7 @@ mod unify {
 
                             alt (result) {
                                 case (ures_ok(?rty)) {
-                                    _vec::push[t](result_tps, rty);
+                                    vec::push[t](result_tps, rty);
                                 }
                                 case (_) {
                                     ret result;
@@ -2294,8 +2294,8 @@ mod unify {
             case (ty::ty_tup(?expected_elems)) {
                 alt (struct(cx.tcx, actual)) {
                     case (ty::ty_tup(?actual_elems)) {
-                        auto expected_len = _vec::len[ty::mt](expected_elems);
-                        auto actual_len = _vec::len[ty::mt](actual_elems);
+                        auto expected_len = vec::len[ty::mt](expected_elems);
+                        auto actual_len = vec::len[ty::mt](actual_elems);
                         if (expected_len != actual_len) {
                             auto err = terr_tuple_size(expected_len,
                                                        actual_len);
@@ -2348,8 +2348,8 @@ mod unify {
             case (ty::ty_rec(?expected_fields)) {
                 alt (struct(cx.tcx, actual)) {
                     case (ty::ty_rec(?actual_fields)) {
-                        auto expected_len = _vec::len[field](expected_fields);
-                        auto actual_len = _vec::len[field](actual_fields);
+                        auto expected_len = vec::len[field](expected_fields);
+                        auto actual_len = vec::len[field](actual_fields);
                         if (expected_len != actual_len) {
                             auto err = terr_record_size(expected_len,
                                                         actual_len);
@@ -2374,7 +2374,7 @@ mod unify {
                                 case (some[ast::mutability](?m)) { mut = m; }
                             }
 
-                            if (!_str::eq(expected_field.ident,
+                            if (!str::eq(expected_field.ident,
                                          actual_field.ident)) {
                                 auto err =
                                     terr_record_fields(expected_field.ident,
@@ -2388,7 +2388,7 @@ mod unify {
                             alt (result) {
                                 case (ures_ok(?rty)) {
                                     auto mt = rec(ty=rty, mut=mut);
-                                    _vec::push[field]
+                                    vec::push[field]
                                         (result_fields,
                                          rec(mt=mt with expected_field));
                                 }
@@ -2455,7 +2455,7 @@ mod unify {
             case (ty::ty_var(?expected_id)) {
                 // Add a binding.
                 auto expected_n = get_or_create_set(cx, expected_id);
-                auto vlen = _vec::len[vec[t]](cx.types);
+                auto vlen = vec::len[vec[t]](cx.types);
                 if (expected_n < vlen) {
                     cx.types.(expected_n) += [actual];
                 } else {
@@ -2519,7 +2519,7 @@ mod unify {
     fn unify_sets(&@ctxt cx) -> vec[t] {
         let vec[t] throwaway = [];
         let vec[mutable vec[t]] set_types = [mutable throwaway];
-        _vec::pop[vec[t]](set_types);   // FIXME: botch
+        vec::pop[vec[t]](set_types);   // FIXME: botch
 
         for (ufind::node node in cx.sets.nodes) {
             let vec[t] v = [];
@@ -2527,7 +2527,7 @@ mod unify {
         }
 
         auto i = 0u;
-        while (i < _vec::len[vec[t]](set_types)) {
+        while (i < vec::len[vec[t]](set_types)) {
             auto root = ufind::find(cx.sets, i);
             set_types.(root) += cx.types.(i);
             i += 1u;
@@ -2535,7 +2535,7 @@ mod unify {
 
         let vec[t] result = [];
         for (vec[t] types in set_types) {
-            if (_vec::len[t](types) > 1u) {
+            if (vec::len[t](types) > 1u) {
                 log_err "unification of > 1 types in a type set is " +
                     "unimplemented";
                 fail;
@@ -2552,7 +2552,7 @@ mod unify {
              &ty_ctxt tcx) -> result {
         let vec[t] throwaway = [];
         let vec[mutable vec[t]] types = [mutable throwaway];
-        _vec::pop[vec[t]](types);   // FIXME: botch
+        vec::pop[vec[t]](types);   // FIXME: botch
 
         auto cx = @rec(sets=ufind::make(),
                        var_ids=common::new_int_hash[uint](),
@@ -2565,7 +2565,7 @@ mod unify {
         case (ures_ok(?typ)) {
             // Fast path: if there are no local variables, don't perform
             // substitutions.
-            if (_vec::len(cx.sets.nodes) == 0u) {
+            if (vec::len(cx.sets.nodes) == 0u) {
                 ret ures_ok(typ);
             }
 
@@ -2591,16 +2591,16 @@ fn type_err_to_str(&ty::type_err err) -> str {
             ret "vectors differ in mutability";
         }
         case (terr_tuple_size(?e_sz, ?a_sz)) {
-            ret "expected a tuple with " + _uint::to_str(e_sz, 10u) +
-                " elements but found one with " + _uint::to_str(a_sz, 10u) +
+            ret "expected a tuple with " + uint::to_str(e_sz, 10u) +
+                " elements but found one with " + uint::to_str(a_sz, 10u) +
                 " elements";
         }
         case (terr_tuple_mutability) {
             ret "tuple elements differ in mutability";
         }
         case (terr_record_size(?e_sz, ?a_sz)) {
-            ret "expected a record with " + _uint::to_str(e_sz, 10u) +
-                " fields but found one with " + _uint::to_str(a_sz, 10u) +
+            ret "expected a record with " + uint::to_str(e_sz, 10u) +
+                " fields but found one with " + uint::to_str(a_sz, 10u) +
                 " fields";
         }
         case (terr_record_mutability) {

@@ -1,7 +1,7 @@
 // -*- rust -*-
 // xfail-stage0
 use std;
-import std::_vec;
+import std::vec;
 
 fn some_vec(int x) -> vec[int] {
   ret [];

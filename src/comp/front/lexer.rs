@@ -1,7 +1,7 @@
 import std::io;
-import std::_str;
-import std::_vec;
-import std::_int;
+import std::str;
+import std::vec;
+import std::int;
 import std::map;
 import std::map::hashmap;
 import std::option;
@@ -54,13 +54,13 @@ fn new_reader(session sess, io::reader rdr,
         }
 
         fn next() -> char {
-            if (pos < len) {ret _str::char_at(file, pos);}
+            if (pos < len) {ret str::char_at(file, pos);}
             else {ret -1 as char;}
         }
 
         fn init() {
             if (pos < len) {
-                auto next = _str::char_range_at(file, pos);
+                auto next = str::char_range_at(file, pos);
                 pos = next._1;
                 ch = next._0;
             }
@@ -72,7 +72,7 @@ fn new_reader(session sess, io::reader rdr,
                 if (ch == '\n') {
                     codemap::next_line(fm, chpos);
                 }
-                auto next = _str::char_range_at(file, pos);
+                auto next = str::char_range_at(file, pos);
                 pos = next._1;
                 ch = next._0;
             } else {
@@ -90,9 +90,9 @@ fn new_reader(session sess, io::reader rdr,
             sess.span_err(rec(lo=chpos, hi=chpos), m);
         }
     }
-    auto file = _str::unsafe_from_bytes(rdr.read_whole_stream());
+    auto file = str::unsafe_from_bytes(rdr.read_whole_stream());
     let vec[str] strs = [];
-    auto rd = reader(sess, file, _str::byte_len(file), 0u, -1 as char,
+    auto rd = reader(sess, file, str::byte_len(file), 0u, -1 as char,
                      filemap.start_pos, filemap.start_pos,
                      strs, filemap, itr);
     rd.init();
@@ -228,15 +228,15 @@ fn scan_exponent(reader rdr) -> option::t[str] {
     auto res = "";
 
     if (c == 'e' || c == 'E') {
-        res += _str::from_bytes([c as u8]);
+        res += str::from_bytes([c as u8]);
         rdr.bump();
         c = rdr.curr();
         if (c == '-' || c == '+') {
-            res += _str::from_bytes([c as u8]);
+            res += str::from_bytes([c as u8]);
             rdr.bump();
         }
         auto exponent = scan_dec_digits(rdr);
-        if (_str::byte_len(exponent) > 0u) {
+        if (str::byte_len(exponent) > 0u) {
             ret(some(res + exponent));
         }
         else {
@@ -256,7 +256,7 @@ fn scan_dec_digits(reader rdr) -> str {
 
     while (is_dec_digit (c) || c == '_') {
         if (c != '_') {
-            res += _str::from_bytes([c as u8]);
+            res += str::from_bytes([c as u8]);
         }
         rdr.bump();
         c = rdr.curr();
@@ -458,12 +458,12 @@ fn next_token(reader rdr) -> token::token {
 
     if (is_alpha(c) || c == '_') {
         while (is_alnum(c) || c == '_') {
-            _str::push_char(accum_str, c);
+            str::push_char(accum_str, c);
             rdr.bump();
             c = rdr.curr();
         }
 
-        if (_str::eq(accum_str, "_")) {
+        if (str::eq(accum_str, "_")) {
             ret token::UNDERSCORE;
         }
 
@@ -621,37 +621,37 @@ fn next_token(reader rdr) -> token::token {
                         alt (rdr.next()) {
                             case ('n') {
                                 rdr.bump();
-                                _str::push_byte(accum_str, '\n' as u8);
+                                str::push_byte(accum_str, '\n' as u8);
                             }
                             case ('r') {
                                 rdr.bump();
-                                _str::push_byte(accum_str, '\r' as u8);
+                                str::push_byte(accum_str, '\r' as u8);
                             }
                             case ('t') {
                                 rdr.bump();
-                                _str::push_byte(accum_str, '\t' as u8);
+                                str::push_byte(accum_str, '\t' as u8);
                             }
                             case ('\\') {
                                 rdr.bump();
-                                _str::push_byte(accum_str, '\\' as u8);
+                                str::push_byte(accum_str, '\\' as u8);
                             }
                             case ('"') {
                                 rdr.bump();
-                                _str::push_byte(accum_str, '"' as u8);
+                                str::push_byte(accum_str, '"' as u8);
                             }
 
                             case ('x') {
-                                _str::push_char(accum_str,
+                                str::push_char(accum_str,
                                                scan_numeric_escape(rdr));
                             }
 
                             case ('u') {
-                                _str::push_char(accum_str,
+                                str::push_char(accum_str,
                                                scan_numeric_escape(rdr));
                             }
 
                             case ('U') {
-                                _str::push_char(accum_str,
+                                str::push_char(accum_str,
                                                scan_numeric_escape(rdr));
                             }
 
@@ -663,7 +663,7 @@ fn next_token(reader rdr) -> token::token {
                         }
                     }
                     case (_) {
-                        _str::push_char(accum_str, rdr.curr());
+                        str::push_char(accum_str, rdr.curr());
                     }
                 }
                 rdr.bump();
@@ -754,7 +754,7 @@ fn read_line_comment(reader rdr) -> cmnt {
     while (rdr.curr() == ' ') {rdr.bump();}
     auto val = "";
     while (rdr.curr() != '\n' && !rdr.is_eof()) {
-        _str::push_char(val, rdr.curr());
+        str::push_char(val, rdr.curr());
         rdr.bump();
     }
     ret rec(val=cmnt_line(val),
@@ -771,7 +771,7 @@ fn read_block_comment(reader rdr) -> cmnt {
     auto level = 1;
     while (true) {
         if (rdr.curr() == '\n') {
-            _vec::push[str](lines, val);
+            vec::push[str](lines, val);
             val = "";
             consume_whitespace(rdr);
         } else {
@@ -779,13 +779,13 @@ fn read_block_comment(reader rdr) -> cmnt {
                 level -= 1;
                 if (level == 0) {
                     rdr.bump(); rdr.bump();
-                    _vec::push[str](lines, val);
+                    vec::push[str](lines, val);
                     break;
                 }
             } else if (rdr.curr() == '/' && rdr.next() == '*') {
                 level += 1;
             }
-            _str::push_char(val, rdr.curr());
+            str::push_char(val, rdr.curr());
             rdr.bump();
         }
         if (rdr.is_eof()) {
@@ -800,16 +800,16 @@ fn read_block_comment(reader rdr) -> cmnt {
 
 fn gather_comments(session sess, str path) -> vec[cmnt] {
     auto srdr = io::file_reader(path);
-    auto itr = @interner::mk_interner[str](_str::hash, _str::eq);
+    auto itr = @interner::mk_interner[str](str::hash, str::eq);
     auto rdr = new_reader(sess, srdr, codemap::new_filemap(path, 0u), itr);
     let vec[cmnt] comments = [];
     while (!rdr.is_eof()) {
         while (true) {
             consume_whitespace(rdr);
             if (rdr.curr() == '/' && rdr.next() == '/') {
-                _vec::push[cmnt](comments, read_line_comment(rdr));
+                vec::push[cmnt](comments, read_line_comment(rdr));
             } else if (rdr.curr() == '/' && rdr.next() == '*') {
-                _vec::push[cmnt](comments, read_block_comment(rdr));
+                vec::push[cmnt](comments, read_block_comment(rdr));
             } else { break; }
         }
         next_token(rdr);

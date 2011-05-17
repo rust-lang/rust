@@ -18,8 +18,8 @@ import std::list::cons;
 import std::option;
 import std::option::some;
 import std::option::none;
-import std::_str;
-import std::_vec;
+import std::str;
+import std::vec;
 
 // Resolving happens in two passes. The first pass collects defids of all
 // (internal) imports and modules, so that they can be looked up when needed,
@@ -52,7 +52,7 @@ tag import_state {
 type ext_hash = hashmap[tup(def_id,str,namespace),def];
 fn new_ext_hash() -> ext_hash {
     fn hash(&tup(def_id,str,namespace) v) -> uint {
-        ret _str::hash(v._1) + util::common::hash_def(v._0) + (alt (v._2) {
+        ret str::hash(v._1) + util::common::hash_def(v._0) + (alt (v._2) {
             case (ns_value) { 1u }
             case (ns_type) { 2u }
             case (ns_module) { 3u }
@@ -61,7 +61,7 @@ fn new_ext_hash() -> ext_hash {
     fn eq(&tup(def_id,str,namespace) v1,
           &tup(def_id,str,namespace) v2) -> bool {
         ret util::common::def_eq(v1._0, v2._0) &&
-            _str::eq(v1._1, v2._1) &&
+            str::eq(v1._1, v2._1) &&
             v1._2 == v2._2;
     }
     ret std::map::mk_hashmap[tup(def_id,str,namespace),def](hash, eq);
@@ -223,7 +223,7 @@ fn resolve_names(&@env e, &ast::crate c) {
                     }
                     case (_) {
                         e.sess.span_err(p.span, "not a tag variant: " +
-                                        _str::connect(p.node.idents, "::"));
+                                        str::connect(p.node.idents, "::"));
                         fail;
                     }
                 }
@@ -321,7 +321,7 @@ fn resolve_import(&env e, &@ast::view_item it, &list[scope] sc) {
     }
     e.imports.insert(defid._1, resolving(it.span));
     
-    auto n_idents = _vec::len(ids);
+    auto n_idents = vec::len(ids);
     auto end_id = ids.(n_idents - 1u);
 
     if (n_idents == 1u) {
@@ -377,7 +377,7 @@ fn unresolved(&env e, &span sp, &ident id, &str kind) {
 
 fn lookup_path_strict(&env e, &list[scope] sc, &span sp, vec[ident] idents,
                       namespace ns) -> def {
-    auto n_idents = _vec::len(idents);
+    auto n_idents = vec::len(idents);
     auto headns = if (n_idents == 1u) { ns } else { ns_module };
     auto dcur = lookup_in_scope_strict(e, sc, sp, idents.(0), headns);
     auto i = 1u;
@@ -477,7 +477,7 @@ fn lookup_in_scope(&env e, list[scope] sc, &span sp, &ident id, namespace ns)
                 if (ns == ns_value) {
                     alt (d.node) {
                         case (ast::decl_local(?local)) {
-                            if (_str::eq(local.ident, id)) {
+                            if (str::eq(local.ident, id)) {
                                 ret some(ast::def_local(local.id));
                             }
                         }
@@ -529,7 +529,7 @@ fn lookup_in_ty_params(&ident id, &vec[ast::ty_param] ty_params)
     -> option::t[def] {
     auto i = 0u;
     for (ast::ty_param tp in ty_params) {
-        if (_str::eq(tp, id)) {
+        if (str::eq(tp, id)) {
             ret some(ast::def_ty_arg(i));
         }
         i += 1u;
@@ -540,7 +540,7 @@ fn lookup_in_ty_params(&ident id, &vec[ast::ty_param] ty_params)
 fn lookup_in_pat(&ident id, &ast::pat pat) -> option::t[def] {
     alt (pat.node) {
         case (ast::pat_bind(?name, ?defid, _)) {
-            if (_str::eq(name, id)) { ret some(ast::def_binding(defid)); }
+            if (str::eq(name, id)) { ret some(ast::def_binding(defid)); }
         }
         case (ast::pat_wild(_)) {}
         case (ast::pat_lit(_, _)) {}
@@ -560,7 +560,7 @@ fn lookup_in_fn(&ident id, &ast::fn_decl decl, &vec[ast::ty_param] ty_params,
     alt (ns) {
         case (ns_value) {
             for (ast::arg a in decl.inputs) {
-                if (_str::eq(a.ident, id)) {
+                if (str::eq(a.ident, id)) {
                     ret some(ast::def_arg(a.id));
                 }
             }
@@ -578,7 +578,7 @@ fn lookup_in_obj(&ident id, &ast::_obj ob, &vec[ast::ty_param] ty_params,
     alt (ns) {
         case (ns_value) {
             for (ast::obj_field f in ob.fields) {
-                if (_str::eq(f.ident, id)) {
+                if (str::eq(f.ident, id)) {
                     ret some(ast::def_obj_field(f.id));
                 }
             }
@@ -598,7 +598,7 @@ fn lookup_in_block(&ident id, &ast::block_ b, namespace ns)
             case (ast::stmt_decl(?d,_)) {
                 alt (d.node) {
                     case (ast::decl_local(?loc)) {
-                        if (ns == ns_value && _str::eq(id, loc.ident)) {
+                        if (ns == ns_value && str::eq(id, loc.ident)) {
                             ret some(ast::def_local(loc.id));
                         }
                     }
@@ -607,12 +607,12 @@ fn lookup_in_block(&ident id, &ast::block_ b, namespace ns)
                             case (ast::item_tag(?name, ?variants, _,
                                                ?defid, _)) {
                                 if (ns == ns_type) {
-                                    if (_str::eq(name, id)) {
+                                    if (str::eq(name, id)) {
                                         ret some(ast::def_ty(defid));
                                     }
                                 } else if (ns == ns_value) {
                                     for (ast::variant v in variants) {
-                                        if (_str::eq(v.node.name, id)) {
+                                        if (str::eq(v.node.name, id)) {
                                             ret some(ast::def_variant(
                                                       defid, v.node.id));
                                         }
@@ -620,7 +620,7 @@ fn lookup_in_block(&ident id, &ast::block_ b, namespace ns)
                                 }
                             }
                             case (_) {
-                                if (_str::eq(ast::item_ident(it), id)) {
+                                if (str::eq(ast::item_ident(it), id)) {
                                     auto found = found_def_item(it, ns);
                                     if (!option::is_none(found)) {ret found;}
                                 }

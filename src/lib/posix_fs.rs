@@ -4,7 +4,7 @@ native "rust" mod rustrt {
 
 fn list_dir(str path) -> vec[str] {
   // TODO ensure this is always closed
-  auto dir = os::libc::opendir(_str::buf(path));
+  auto dir = os::libc::opendir(str::buf(path));
   assert (dir as uint != 0u);
   let vec[str] result = [];
   while (true) {
@@ -13,7 +13,7 @@ fn list_dir(str path) -> vec[str] {
         os::libc::closedir(dir);
         ret result;
     }
-    _vec::push[str](result, rustrt::rust_dirent_filename(ent));
+    vec::push[str](result, rustrt::rust_dirent_filename(ent));
   }
   os::libc::closedir(dir);
   ret result;

@@ -31,12 +31,12 @@ import tstate::ann::prestate;
 import tstate::ann::implies;
 import tstate::ann::ann_precond;
 import tstate::ann::ann_prestate;
-import std::_vec::map;
-import std::_vec;
-import std::_vec::slice;
-import std::_vec::unzip;
-import std::_vec::plus_option;
-import std::_vec::cat_options;
+import std::vec::map;
+import std::vec;
+import std::vec::slice;
+import std::vec::unzip;
+import std::vec::plus_option;
+import std::vec::cat_options;
 
 import std::option;
 import std::option::t;
@@ -123,7 +123,7 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
 
     auto do_one = bind do_one_(fcx, _, post, nv);
  
-  _vec::map[@stmt, ()](do_one, f.body.node.stmts);
+  vec::map[@stmt, ()](do_one, f.body.node.stmts);
   fn do_inner_(fn_ctxt fcx, &@expr e, @poststate post) -> () {
     check_states_expr(fcx, e);
     *post = expr_poststate(e);
@@ -187,7 +187,7 @@ fn check_obj_state(&crate_ctxt ccx, &vec[obj_field] fields,
         ret check_method_states(ccx, m);
     }
     auto f = bind one(ccx,_);
-    _vec::map[@method, ()](f, methods);
+    vec::map[@method, ()](f, methods);
     option::map[@method, ()](f, dtor);
     ret rec(fields=fields, methods=methods, dtor=dtor);
 }

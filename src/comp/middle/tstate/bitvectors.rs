@@ -1,7 +1,7 @@
 import std::bitv;
-import std::_vec;
-import std::_vec::len;
-import std::_vec::slice;
+import std::vec;
+import std::vec::len;
+import std::vec::slice;
 
 import front::ast;
 import front::ast::def_id;
@@ -74,7 +74,7 @@ fn seq_preconds(fn_info enclosing, vec[pre_and_post] pps) -> precond {
 /* works on either postconds or preconds
  should probably rethink the whole type synonym situation */
 fn union_postconds_go(&postcond first, &vec[postcond] rest) -> postcond {
-  auto sz = _vec::len[postcond](rest);
+  auto sz = vec::len[postcond](rest);
 
   if (sz > 0u) {
     auto other = rest.(0);
@@ -96,7 +96,7 @@ fn union_postconds(uint nv, &vec[postcond] pcs) -> postcond {
 
 /* Gee, maybe we could use foldl or something */
 fn intersect_postconds_go(&postcond first, &vec[postcond] rest) -> postcond {
-  auto sz = _vec::len[postcond](rest);
+  auto sz = vec::len[postcond](rest);
 
   if (sz > 0u) {
     auto other = rest.(0);

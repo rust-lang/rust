@@ -38,7 +38,7 @@ fn vint_at(vec[u8] data, uint start) -> tup(uint, uint) {
 }
 
 fn new_doc(vec[u8] data) -> doc {
-    ret rec(data=data, start=0u, end=_vec::len[u8](data));
+    ret rec(data=data, start=0u, end=vec::len[u8](data));
 }
 
 fn doc_at(vec[u8] data, uint start) -> doc {
@@ -65,7 +65,7 @@ fn get_doc(doc d, uint tg) -> doc {
     alt (maybe_get_doc(d, tg)) {
         case (some[doc](?d)) {ret d;}
         case (none[doc]) {
-            log_err "failed to find block with tag " + _uint::to_str(tg, 10u);
+            log_err "failed to find block with tag " + uint::to_str(tg, 10u);
             fail;
         }
     }
@@ -94,7 +94,7 @@ iter tagged_docs(doc d, uint tg) -> doc {
 }
 
 fn doc_data(doc d) -> vec[u8] {
-    ret _vec::slice[u8](d.data, d.start, d.end);
+    ret vec::slice[u8](d.data, d.start, d.end);
 }
 
 fn be_uint_from_bytes(vec[u8] data, uint start, uint size) -> uint {
@@ -175,7 +175,7 @@ fn start_tag(&writer w, uint tag_id) {
 }
 
 fn end_tag(&writer w) {
-    auto last_size_pos = _vec::pop[uint](w.size_positions);
+    auto last_size_pos = vec::pop[uint](w.size_positions);
     auto cur_pos = w.writer.tell();
     w.writer.seek(last_size_pos as int, io::seek_set);
     write_sized_vint(w.writer, cur_pos - last_size_pos - 4u, 4u);

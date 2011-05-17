@@ -1,7 +1,7 @@
 // -*- rust -*-
 
 use std;
-import std::_str;
+import std::str;
 
 // FIXME: import std::dbg.const_refcount. Currently
 // cross-crate const references don't work.
@@ -20,13 +20,13 @@ fn foo(str s) {
     case (_) { log "?"; fail; }
   }
 
-  log _str::refcount(s);
-  assert (_str::refcount(s) == const_refcount);
+  log str::refcount(s);
+  assert (str::refcount(s) == const_refcount);
 }
 
 fn main() {
   let str s = "hi";     // ref up
   foo(s);               // ref up then down
-  log _str::refcount(s);
-  assert (_str::refcount(s) == const_refcount);
+  log str::refcount(s);
+  assert (str::refcount(s) == const_refcount);
 }

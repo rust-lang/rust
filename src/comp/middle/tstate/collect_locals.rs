@@ -1,5 +1,5 @@
-import std::_vec;
-import std::_vec::plus_option;
+import std::vec;
+import std::vec::plus_option;
 
 import front::ast;
 import front::ast::crate;
@@ -39,12 +39,12 @@ fn var_is_local(def_id v, fn_info m) -> bool {
 fn collect_local(&@vec[tup(ident, def_id)] vars, &span sp, &@local loc)
     -> @decl {
     log("collect_local: pushing " + loc.ident);
-    _vec::push[tup(ident, def_id)](*vars, tup(loc.ident, loc.id));
+    vec::push[tup(ident, def_id)](*vars, tup(loc.ident, loc.id));
     ret @respan(sp, decl_local(loc));
 }
 
 fn find_locals(_fn f) -> @vec[tup(ident,def_id)] {
-  auto res = @_vec::alloc[tup(ident,def_id)](0u);
+  auto res = @vec::alloc[tup(ident,def_id)](0u);
 
   auto fld = new_identity_fold[@vec[tup(ident, def_id)]]();
   fld = @rec(fold_decl_local = bind collect_local(_,_,_) with *fld);
@@ -72,7 +72,7 @@ fn mk_fn_info(_fn f, def_id f_id, ident f_name) -> fn_info {
        just collect locally declared vars */
 
     let @vec[tup(ident,def_id)] locals = find_locals(f);
-    // log (uistr(_vec::len[tup(ident, def_id)](locals)) + " locals");
+    // log (uistr(vec::len[tup(ident, def_id)](locals)) + " locals");
     for (tup(ident,def_id) p in *locals) {
         next = add_var(p._1, p._0, next, res);
     }
@@ -98,7 +98,7 @@ fn mk_fn_info_item_fn(&crate_ctxt ccx, &span sp, &ident i, &_fn f,
 fn mk_fn_info_item_obj(&crate_ctxt ccx, &span sp, &ident i, &_obj o,
                        &vec[ty_param] ty_params,
                        &obj_def_ids odid, &ann a) -> @item {
-    auto all_methods = _vec::clone[@method](o.methods);
+    auto all_methods = vec::clone[@method](o.methods);
     plus_option[@method](all_methods, o.dtor);
     auto f_inf;
     for (@method m in all_methods) {

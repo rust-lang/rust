@@ -1,7 +1,7 @@
 import lib::llvm::llvm;
 import lib::llvm::llvm::ModuleRef;
-import std::_str;
-import std::_vec;
+import std::str;
+import std::vec;
 import std::os::target_os;
 import util::common::istr;
 
@@ -241,7 +241,7 @@ fn native_glue(int n_args, abi::native_glue_type ngt) -> vec[str] {
         }
         auto m = ["movl  " + src_off + "(%ebp),%eax",
                      "movl  %eax," + dst_off + "(%esp)"];
-        ret _str::connect(m, "\n\t");
+        ret str::connect(m, "\n\t");
     }
 
     auto carg = bind copy_arg(pass_task, _);
@@ -259,7 +259,7 @@ fn native_glue(int n_args, abi::native_glue_type ngt) -> vec[str] {
         + ["subl  $" + wstr(n_args) + ", %esp   # esp -= args",
               "andl  $~0xf, %esp    # align esp down"]
 
-        + _vec::init_fn[str](carg, (n_args) as uint)
+        + vec::init_fn[str](carg, (n_args) as uint)
 
         +  ["movl  %edx, %edi     # save task from edx to edi",
                "call  *%ecx          # call *%ecx",
@@ -278,7 +278,7 @@ fn decl_glue(int align, str prefix, str name, vec[str] insns) -> str {
     ret "\t.globl " + sym + "\n" +
         "\t.balign " + istr(align) + "\n" +
         sym + ":\n" +
-        "\t" + _str::connect(insns, "\n\t");
+        "\t" + str::connect(insns, "\n\t");
 }
 
 
@@ -291,8 +291,8 @@ fn decl_native_glue(int align, str prefix, abi::native_glue_type ngt, uint n)
 }
 
 fn get_symbol_prefix() -> str {
-    if (_str::eq(target_os(), "macos") ||
-        _str::eq(target_os(), "win32")) {
+    if (str::eq(target_os(), "macos") ||
+        str::eq(target_os(), "win32")) {
         ret "_";
     } else {
         ret "";
@@ -313,44 +313,44 @@ fn get_module_asm() -> str {
                       abi::yield_glue_name(),
                       rust_yield_glue())]
 
-        + _vec::init_fn[str](bind decl_native_glue(align, prefix,
+        + vec::init_fn[str](bind decl_native_glue(align, prefix,
             abi::ngt_rust, _), (abi::n_native_glues + 1) as uint)
-        + _vec::init_fn[str](bind decl_native_glue(align, prefix,
+        + vec::init_fn[str](bind decl_native_glue(align, prefix,
             abi::ngt_pure_rust, _), (abi::n_native_glues + 1) as uint)
-        + _vec::init_fn[str](bind decl_native_glue(align, prefix,
+        + vec::init_fn[str](bind decl_native_glue(align, prefix,
             abi::ngt_cdecl, _), (abi::n_native_glues + 1) as uint);
 
 
-    ret _str::connect(glues, "\n\n");
+    ret str::connect(glues, "\n\n");
 }
 
 fn get_meta_sect_name() -> str {
-    if (_str::eq(target_os(), "macos")) {
+    if (str::eq(target_os(), "macos")) {
         ret "__DATA,__note.rustc";
     }
-    if (_str::eq(target_os(), "win32")) {
+    if (str::eq(target_os(), "win32")) {
         ret ".note.rustc";
     }
     ret ".note.rustc";
 }
 
 fn get_data_layout() -> str {
-    if (_str::eq(target_os(), "macos")) {
+    if (str::eq(target_os(), "macos")) {
       ret "e-p:32:32:32-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:32:64" +
         "-f32:32:32-f64:32:64-v64:64:64-v128:128:128-a0:0:64-f80:128:128" +
         "-n8:16:32";
     }
-    if (_str::eq(target_os(), "win32")) {
+    if (str::eq(target_os(), "win32")) {
       ret "e-p:32:32-f64:64:64-i64:64:64-f80:32:32-n8:16:32";
     }
     ret "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32";
 }
 
 fn get_target_triple() -> str {
-    if (_str::eq(target_os(), "macos")) {
+    if (str::eq(target_os(), "macos")) {
         ret "i686-apple-darwin";
     }
-    if (_str::eq(target_os(), "win32")) {
+    if (str::eq(target_os(), "win32")) {
         ret "i686-pc-mingw32";
     }
     ret "i686-unknown-linux-gnu";

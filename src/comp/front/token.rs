@@ -2,9 +2,9 @@ import util::common::ty_mach;
 import util::common::ty_mach_to_str;
 import util::common::new_str_hash;
 import util::interner;
-import std::_int;
-import std::_uint;
-import std::_str;
+import std::int;
+import std::uint;
+import std::str;
 
 type str_num = uint;
 
@@ -133,10 +133,10 @@ fn to_str(lexer::reader r, token t) -> str {
         case (POUND) { ret "#"; }
 
         /* Literals */
-        case (LIT_INT(?i)) { ret _int::to_str(i, 10u); }
-        case (LIT_UINT(?u)) { ret _uint::to_str(u, 10u); }
+        case (LIT_INT(?i)) { ret int::to_str(i, 10u); }
+        case (LIT_UINT(?u)) { ret uint::to_str(u, 10u); }
         case (LIT_MACH_INT(?tm, ?i)) {
-            ret  _int::to_str(i, 10u)
+            ret  int::to_str(i, 10u)
                 + "_" + ty_mach_to_str(tm);
         }
         case (LIT_MACH_FLOAT(?tm, ?s)) {
@@ -152,8 +152,8 @@ fn to_str(lexer::reader r, token t) -> str {
         case (LIT_CHAR(?c)) {
             // FIXME: escape.
             auto tmp = "'";
-            _str::push_char(tmp, c);
-            _str::push_byte(tmp, '\'' as u8);
+            str::push_char(tmp, c);
+            str::push_byte(tmp, '\'' as u8);
             ret tmp;
         }
 
@@ -163,7 +163,7 @@ fn to_str(lexer::reader r, token t) -> str {
 
         /* Name components */
         case (IDENT(?s, _)) { ret interner::get[str](*r.get_interner(), s); }
-        case (IDX(?i)) { ret "_" + _int::to_str(i, 10u); }
+        case (IDX(?i)) { ret "_" + int::to_str(i, 10u); }
         case (UNDERSCORE) { ret "_"; }
 
         case (BRACEQUOTE(_)) { ret "<bracequote>"; }

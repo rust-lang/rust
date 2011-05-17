@@ -199,7 +199,7 @@ fn grow[T](&array[T] v, uint n, &T initval) {
 }
 
 fn grow_set[T](&vec[mutable T] v, uint index, &T initval, &T val) {
-    auto length = _vec::len(v);
+    auto length = vec::len(v);
     if (index >= length) {
         grow(v, index - length + 1u, initval);
     }
@@ -270,7 +270,7 @@ fn unzip[T, U](&vec[tup(T, U)] v) -> tup(vec[T], vec[U]) {
 
 fn or(&vec[bool] v) -> bool {
     auto f = orb;
-    ret _vec::foldl[bool, bool](f, false, v);
+    ret vec::foldl[bool, bool](f, false, v);
 }
 
 fn clone[T](&vec[T] v) -> vec[T] {

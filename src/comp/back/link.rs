@@ -1,7 +1,7 @@
 import driver::session;
 import lib::llvm::llvm;
 import middle::trans;
-import std::_str;
+import std::str;
 import std::fs;
 
 import lib::llvm::llvm::ModuleRef;
@@ -25,7 +25,7 @@ fn llvm_err(session::session sess, str msg) {
     if ((buf as uint) == 0u) {
         sess.err(msg);
     } else {
-        sess.err(msg + ": " + _str::str_from_cstr(buf));
+        sess.err(msg + ": " + str::str_from_cstr(buf));
     }
     fail;
 }
@@ -33,7 +33,7 @@ fn llvm_err(session::session sess, str msg) {
 fn link_intrinsics(session::session sess, ModuleRef llmod) {
     auto path = fs::connect(sess.get_opts().sysroot, "intrinsics.bc");
     auto membuf =
-        llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(_str::buf(path));
+        llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(str::buf(path));
     if ((membuf as uint) == 0u) {
         llvm_err(sess, "installation problem: couldn't open intrinstics.bc");
         fail;
@@ -69,12 +69,12 @@ mod write {
     // Decides what to call an intermediate file, given the name of the output
     // and the extension to use.
     fn mk_intermediate_name(str output_path, str extension) -> str {
-        auto dot_pos = _str::index(output_path, '.' as u8);
+        auto dot_pos = str::index(output_path, '.' as u8);
         auto stem;
         if (dot_pos < 0) {
             stem = output_path;
         } else {
-            stem = _str::substr(output_path, 0u, dot_pos as uint);
+            stem = str::substr(output_path, 0u, dot_pos as uint);
         }
         ret stem + "." + extension;
     }
@@ -105,12 +105,12 @@ mod write {
                         auto filename = mk_intermediate_name(output,
                                                              "no-opt.bc");
                         llvm::LLVMWriteBitcodeToFile(llmod,
-                                                    _str::buf(filename));
+                                                    str::buf(filename));
                     }
                 }
                 case (_) {
                     auto filename = mk_intermediate_name(output, "bc");
-                    llvm::LLVMWriteBitcodeToFile(llmod, _str::buf(filename));
+                    llvm::LLVMWriteBitcodeToFile(llmod, str::buf(filename));
                 }
             }
         }
@@ -161,14 +161,14 @@ mod write {
                 // Always output the bitcode file with --save-temps
                 auto filename = mk_intermediate_name(output, "opt.bc");
                 llvm::LLVMRunPassManager(pm.llpm, llmod);
-                llvm::LLVMWriteBitcodeToFile(llmod, _str::buf(output));
+                llvm::LLVMWriteBitcodeToFile(llmod, str::buf(output));
                 pm = mk_pass_manager();
 
                 // Save the assembly file if -S is used
                 if (opts.output_type == output_type_assembly) {
                         llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
-                               _str::buf(x86::get_target_triple()),
-                               _str::buf(output), LLVMAssemblyFile);
+                               str::buf(x86::get_target_triple()),
+                               str::buf(output), LLVMAssemblyFile);
                 }
 
                 // Save the object file for -c or --save-temps alone
@@ -176,16 +176,16 @@ mod write {
                 if ((opts.output_type == output_type_object) ||
                     (opts.output_type == output_type_exe)) {
                         llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
-                               _str::buf(x86::get_target_triple()),
-                               _str::buf(output), LLVMObjectFile);
+                               str::buf(x86::get_target_triple()),
+                               str::buf(output), LLVMObjectFile);
                }
             } else {
 
                 // If we aren't saving temps then just output the file
                 // type corresponding to the '-c' or '-S' flag used
                 llvm::LLVMRustWriteOutputFile(pm.llpm, llmod,
-                                     _str::buf(x86::get_target_triple()),
-                                     _str::buf(output),
+                                     str::buf(x86::get_target_triple()),
+                                     str::buf(output),
                                      FileType);
             }
 
@@ -201,7 +201,7 @@ mod write {
         // flag, then output it here
         llvm::LLVMRunPassManager(pm.llpm, llmod);
 
-        llvm::LLVMWriteBitcodeToFile(llmod, _str::buf(output));
+        llvm::LLVMWriteBitcodeToFile(llmod, str::buf(output));
         llvm::LLVMDisposeModule(llmod);
 
         if (opts.time_llvm_passes) {

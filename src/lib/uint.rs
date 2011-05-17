@@ -34,12 +34,12 @@ fn next_power_of_two(uint n) -> uint {
 }
 
 fn parse_buf(vec[u8] buf, uint radix) -> uint {
-    if (_vec::len[u8](buf) == 0u) {
+    if (vec::len[u8](buf) == 0u) {
         log_err "parse_buf(): buf is empty";
         fail;
     }
 
-    auto i = _vec::len[u8](buf) - 1u;
+    auto i = vec::len[u8](buf) - 1u;
     auto power = 1u;
     auto n = 0u;
     while (true) {
@@ -83,15 +83,15 @@ fn to_str(uint num, uint radix) -> str
 
     let str s = "";
     while (n != 0u) {
-        s += _str::unsafe_from_byte(digit(n % radix) as u8);
+        s += str::unsafe_from_byte(digit(n % radix) as u8);
         n /= radix;
     }
 
     let str s1 = "";
-    let uint len = _str::byte_len(s);
+    let uint len = str::byte_len(s);
     while (len != 0u) {
         len -= 1u;
-        s1 += _str::unsafe_from_byte(s.(len));
+        s1 += str::unsafe_from_byte(s.(len));
     }
     ret s1;
 

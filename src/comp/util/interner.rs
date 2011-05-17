@@ -2,7 +2,7 @@
 // allows bidirectional lookup; i.e. given a value, one can easily find the
 // type, and vice versa.
 
-import std::_vec;
+import std::vec;
 import std::map;
 import std::map::hashmap;
 import std::map::hashfn;
@@ -28,7 +28,7 @@ fn intern[T](&interner[T] itr, &T val) -> uint {
     alt (itr.map.find(val)) {
         case (some[uint](?idx)) { ret idx; }
         case (none[uint]) {
-            auto new_idx = _vec::len[T](itr.vect);
+            auto new_idx = vec::len[T](itr.vect);
             itr.map.insert(val, new_idx);
             itr.vect += [val];
             ret new_idx;

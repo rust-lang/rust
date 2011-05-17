@@ -3,8 +3,8 @@
  * http://99-bottles-of-beer.net/
  */
 use std;
-import std::_int;
-import std::_str;
+import std::int;
+import std::str;
 
 fn b1() -> str {
   ret "# of beer on the wall, # of beer.";
@@ -31,15 +31,15 @@ case (1) {
     ns = "1 bottle";
   }
  case (_) {
-    ns = _int::to_str(n, 10u) + " bottles";
+    ns = int::to_str(n, 10u) + " bottles";
   }
   }
-  while (i < _str::byte_len(t)) {
+  while (i < str::byte_len(t)) {
     if (t.(i) == ('#' as u8)) {
       b += ns;
     }
     else {
-      _str::push_byte(b, t.(i));
+      str::push_byte(b, t.(i));
     }
     i += 1u;
   }

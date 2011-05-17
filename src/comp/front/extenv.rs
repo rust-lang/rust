@@ -6,8 +6,8 @@
 
 import util::common;
 
-import std::_str;
-import std::_vec;
+import std::str;
+import std::vec;
 import std::option;
 import std::generic_os;
 
@@ -19,7 +19,7 @@ fn expand_syntax_ext(parser::parser p,
                      vec[@ast::expr] args,
                      option::t[str] body) -> @ast::expr {
 
-    if (_vec::len[@ast::expr](args) != 1u) {
+    if (vec::len[@ast::expr](args) != 1u) {
         p.err("malformed #env call");
     }
 

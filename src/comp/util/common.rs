@@ -1,8 +1,8 @@
 import std::map;
 import std::map::hashmap;
-import std::_uint;
-import std::_int;
-import std::_vec;
+import std::uint;
+import std::int;
+import std::vec;
 import std::option::none;
 import front::ast;
 import front::ast::ty;
@@ -60,8 +60,8 @@ fn ty_mach_to_str(ty_mach tm) -> str {
 }
 
 fn new_str_hash[V]() -> std::map::hashmap[str,V] {
-    let std::map::hashfn[str] hasher = std::_str::hash;
-    let std::map::eqfn[str] eqer = std::_str::eq;
+    let std::map::hashfn[str] hasher = std::str::hash;
+    let std::map::eqfn[str] eqer = std::str::eq;
     ret std::map::mk_hashmap[str,V](hasher, eqer);
 }
 
@@ -99,25 +99,25 @@ fn new_uint_hash[V]() -> std::map::hashmap[uint,V] {
 }
 
 fn istr(int i) -> str {
-    ret _int::to_str(i, 10u);
+    ret int::to_str(i, 10u);
 }
 
 fn uistr(uint i) -> str {
-    ret _uint::to_str(i, 10u);
+    ret uint::to_str(i, 10u);
 }
 
 fn elt_expr(&ast::elt e) -> @ast::expr { ret e.expr; }
 
 fn elt_exprs(&vec[ast::elt] elts) -> vec[@ast::expr] {
     auto f = elt_expr;
-    ret _vec::map[ast::elt, @ast::expr](f, elts);
+    ret vec::map[ast::elt, @ast::expr](f, elts);
 }
 
 fn field_expr(&ast::field f) -> @ast::expr { ret f.expr; }
 
 fn field_exprs(vec[ast::field] fields) -> vec [@ast::expr] {
     auto f = field_expr;
-    ret _vec::map[ast::field, @ast::expr](f, fields);
+    ret vec::map[ast::field, @ast::expr](f, fields);
 }
 
 fn expr_to_str(&@ast::expr e) -> str {

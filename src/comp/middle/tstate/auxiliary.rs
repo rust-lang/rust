@@ -1,6 +1,6 @@
 import std::bitv;
-import std::_vec::len;
-import std::_vec::pop;
+import std::vec::len;
+import std::vec::pop;
 import std::option;
 import std::option::none;
 import std::option::some;

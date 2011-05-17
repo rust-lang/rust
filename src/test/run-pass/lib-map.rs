@@ -2,8 +2,8 @@
 
 use std;
 import std::map;
-import std::_str;
-import std::_uint;
+import std::str;
+import std::uint;
 import std::util;
 
 fn test_simple() {
@@ -19,8 +19,8 @@ fn test_simple() {
   let map::hashfn[uint] hasher_uint = hash_uint;
   let map::eqfn[uint] eqer_uint = eq_uint;
 
-  let map::hashfn[str] hasher_str = _str::hash;
-  let map::eqfn[str] eqer_str = _str::eq;
+  let map::hashfn[str] hasher_str = str::hash;
+  let map::eqfn[str] eqer_str = str::eq;
 
 
   log "uint -> uint";
@@ -77,15 +77,15 @@ fn test_simple() {
   assert (hm_us.insert(11u, "thirteen"));
   assert (hm_us.insert(12u, "fourteen"));
 
-  assert (_str::eq(hm_us.get(11u), "thirteen"));
-  assert (_str::eq(hm_us.get(12u), "fourteen"));
-  assert (_str::eq(hm_us.get(10u), "twelve"));
+  assert (str::eq(hm_us.get(11u), "thirteen"));
+  assert (str::eq(hm_us.get(12u), "fourteen"));
+  assert (str::eq(hm_us.get(10u), "twelve"));
 
   assert (!hm_us.insert(12u, "fourteen"));
-  assert (_str::eq(hm_us.get(12u), "fourteen"));
+  assert (str::eq(hm_us.get(12u), "fourteen"));
 
   assert (!hm_us.insert(12u, "twelve"));
-  assert (_str::eq(hm_us.get(12u), "twelve"));
+  assert (str::eq(hm_us.get(12u), "twelve"));
 
 
   log "str -> str";
@@ -97,15 +97,15 @@ fn test_simple() {
   assert (hm_ss.insert(eleven, "thirteen"));
   assert (hm_ss.insert(twelve, "fourteen"));
 
-  assert (_str::eq(hm_ss.get("eleven"), "thirteen"));
-  assert (_str::eq(hm_ss.get("twelve"), "fourteen"));
-  assert (_str::eq(hm_ss.get("ten"), "twelve"));
+  assert (str::eq(hm_ss.get("eleven"), "thirteen"));
+  assert (str::eq(hm_ss.get("twelve"), "fourteen"));
+  assert (str::eq(hm_ss.get("ten"), "twelve"));
 
   assert (!hm_ss.insert("twelve", "fourteen"));
-  assert (_str::eq(hm_ss.get("twelve"), "fourteen"));
+  assert (str::eq(hm_ss.get("twelve"), "fourteen"));
 
   assert (!hm_ss.insert("twelve", "twelve"));
-  assert (_str::eq(hm_ss.get("twelve"), "twelve"));
+  assert (str::eq(hm_ss.get("twelve"), "twelve"));
 
   log "*** finished test_simple";
 }
@@ -136,8 +136,8 @@ fn test_growth() {
   let uint i = 0u;
   while (i < num_to_insert) {
     assert (hm_uu.insert(i, i * i));
-    log "inserting " + _uint::to_str(i, 10u)
-      + " -> " + _uint::to_str(i * i, 10u);
+    log "inserting " + uint::to_str(i, 10u)
+      + " -> " + uint::to_str(i * i, 10u);
     i += 1u;
   }
 
@@ -145,8 +145,8 @@ fn test_growth() {
 
   i = 0u;
   while (i < num_to_insert) {
-    log "get(" + _uint::to_str(i, 10u) + ") = "
-      + _uint::to_str(hm_uu.get(i), 10u);
+    log "get(" + uint::to_str(i, 10u) + ") = "
+      + uint::to_str(hm_uu.get(i), 10u);
     assert (hm_uu.get(i) == i * i);
     i += 1u;
   }
@@ -160,8 +160,8 @@ fn test_growth() {
 
   i = 0u;
   while (i < num_to_insert) {
-    log "get(" + _uint::to_str(i, 10u) + ") = "
-      + _uint::to_str(hm_uu.get(i), 10u);
+    log "get(" + uint::to_str(i, 10u) + ") = "
+      + uint::to_str(hm_uu.get(i), 10u);
     assert (hm_uu.get(i) == i * i);
     i += 1u;
   }
@@ -169,16 +169,16 @@ fn test_growth() {
 
   log "str -> str";
 
-  let map::hashfn[str] hasher_str = _str::hash;
-  let map::eqfn[str] eqer_str = _str::eq;
+  let map::hashfn[str] hasher_str = str::hash;
+  let map::eqfn[str] eqer_str = str::eq;
   let map::hashmap[str, str] hm_ss = map::mk_hashmap[str, str](hasher_str,
                                                              eqer_str);
 
   i = 0u;
   while (i < num_to_insert) {
-    assert (hm_ss.insert(_uint::to_str(i, 2u), _uint::to_str(i * i, 2u)));
-    log "inserting \"" + _uint::to_str(i, 2u)
-      + "\" -> \"" + _uint::to_str(i * i, 2u) + "\"";
+    assert (hm_ss.insert(uint::to_str(i, 2u), uint::to_str(i * i, 2u)));
+    log "inserting \"" + uint::to_str(i, 2u)
+      + "\" -> \"" + uint::to_str(i * i, 2u) + "\"";
     i += 1u;
   }
 
@@ -187,20 +187,20 @@ fn test_growth() {
   i = 0u;
   while (i < num_to_insert) {
     log "get(\""
-      + _uint::to_str(i, 2u)
+      + uint::to_str(i, 2u)
       + "\") = \""
-      + hm_ss.get(_uint::to_str(i, 2u)) + "\"";
+      + hm_ss.get(uint::to_str(i, 2u)) + "\"";
 
-    assert (_str::eq(hm_ss.get(_uint::to_str(i, 2u)),
-                   _uint::to_str(i * i, 2u)));
+    assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
+                   uint::to_str(i * i, 2u)));
     i += 1u;
   }
 
-  assert (hm_ss.insert(_uint::to_str(num_to_insert, 2u),
-                      _uint::to_str(17u, 2u)));
+  assert (hm_ss.insert(uint::to_str(num_to_insert, 2u),
+                      uint::to_str(17u, 2u)));
 
-  assert (_str::eq(hm_ss.get(_uint::to_str(num_to_insert, 2u)),
-                 _uint::to_str(17u, 2u)));
+  assert (str::eq(hm_ss.get(uint::to_str(num_to_insert, 2u)),
+                 uint::to_str(17u, 2u)));
 
   log "-----";
 
@@ -208,10 +208,10 @@ fn test_growth() {
 
   i = 0u;
   while (i < num_to_insert) {
-    log "get(\"" + _uint::to_str(i, 2u) + "\") = \""
-      + hm_ss.get(_uint::to_str(i, 2u)) + "\"";
-    assert (_str::eq(hm_ss.get(_uint::to_str(i, 2u)),
-                   _uint::to_str(i * i, 2u)));
+    log "get(\"" + uint::to_str(i, 2u) + "\") = \""
+      + hm_ss.get(uint::to_str(i, 2u)) + "\"";
+    assert (str::eq(hm_ss.get(uint::to_str(i, 2u)),
+                   uint::to_str(i * i, 2u)));
     i += 1u;
   }
 
@@ -241,8 +241,8 @@ fn test_removal() {
   let uint i = 0u;
   while (i < num_to_insert) {
     assert (hm.insert(i, i * i));
-    log "inserting " + _uint::to_str(i, 10u)
-      + " -> " + _uint::to_str(i * i, 10u);
+    log "inserting " + uint::to_str(i, 10u)
+      + " -> " + uint::to_str(i * i, 10u);
     i += 1u;
   }
 
@@ -279,8 +279,8 @@ fn test_removal() {
 
   i = 1u;
   while (i < num_to_insert) {
-    log "get(" + _uint::to_str(i, 10u) + ") = "
-      + _uint::to_str(hm.get(i), 10u);
+    log "get(" + uint::to_str(i, 10u) + ") = "
+      + uint::to_str(hm.get(i), 10u);
     assert (hm.get(i) == i * i);
     i += 2u;
   }
@@ -294,8 +294,8 @@ fn test_removal() {
 
   i = 1u;
   while (i < num_to_insert) {
-    log "get(" + _uint::to_str(i, 10u) + ") = "
-      + _uint::to_str(hm.get(i), 10u);
+    log "get(" + uint::to_str(i, 10u) + ") = "
+      + uint::to_str(hm.get(i), 10u);
     assert (hm.get(i) == i * i);
     i += 2u;
   }
@@ -305,8 +305,8 @@ fn test_removal() {
   i = 0u;
   while (i < num_to_insert) {
     assert (hm.insert(i, i * i));
-    log "inserting " + _uint::to_str(i, 10u)
-      + " -> " + _uint::to_str(i * i, 10u);
+    log "inserting " + uint::to_str(i, 10u)
+      + " -> " + uint::to_str(i * i, 10u);
     i += 2u;
   }
 
@@ -316,8 +316,8 @@ fn test_removal() {
 
   i = 0u;
   while (i < num_to_insert) {
-    log "get(" + _uint::to_str(i, 10u) + ") = "
-      + _uint::to_str(hm.get(i), 10u);
+    log "get(" + uint::to_str(i, 10u) + ") = "
+      + uint::to_str(hm.get(i), 10u);
     assert (hm.get(i) == i * i);
     i += 1u;
   }
@@ -333,8 +333,8 @@ fn test_removal() {
 
   i = 0u;
   while (i < num_to_insert) {
-    log "get(" + _uint::to_str(i, 10u) + ") = "
-      + _uint::to_str(hm.get(i), 10u);
+    log "get(" + uint::to_str(i, 10u) + ") = "
+      + uint::to_str(hm.get(i), 10u);
     assert (hm.get(i) == i * i);
     i += 1u;
   }

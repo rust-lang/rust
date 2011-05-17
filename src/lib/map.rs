@@ -29,7 +29,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
     }
 
     fn make_buckets[K, V](uint nbkts) -> vec[mutable bucket[K, V]] {
-        ret _vec::init_elt_mut[bucket[K, V]](nil[K, V], nbkts);
+        ret vec::init_elt_mut[bucket[K, V]](nil[K, V], nbkts);
     }
 
     // Derive two hash functions from the one given by taking the upper
@@ -148,7 +148,7 @@ fn mk_hashmap[K, V](&hashfn[K] hasher, &eqfn[K] eqer) -> hashmap[K, V] {
                 let util::rational load = rec(num=(nelts + 1u) as int,
                                              den=nbkts as int);
                 if (!util::rational_leq(load, lf)) {
-                    let uint nnewbkts = _uint::next_power_of_two(nbkts + 1u);
+                    let uint nnewbkts = uint::next_power_of_two(nbkts + 1u);
                     let vec[mutable bucket[K, V]] newbkts =
                         make_buckets[K, V](nnewbkts);
                     rehash[K, V](hasher, eqer, bkts, nbkts,

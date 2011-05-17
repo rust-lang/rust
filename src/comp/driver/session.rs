@@ -2,7 +2,7 @@ import front::ast;
 import front::codemap;
 import util::common::span;
 import util::common::ty_mach;
-import std::_uint;
+import std::uint;
 import std::term;
 import std::io;
 import std::map;

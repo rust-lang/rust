@@ -4,8 +4,8 @@
 // -*- rust -*-
 
 use std;
-import std::_str;
-import std::_vec;
+import std::str;
+import std::vec;
 
 
 // FIXME: import std::dbg::const_refcount. Currently
@@ -53,30 +53,30 @@ fn slow_growth2_helper(str s) {   // ref up: s
     let vec[str] v = [mumble]; // ref up: v, mumble
     let acc a = acc(v);           // ref up: a, v
 
-    log _vec::refcount[str](v);
-    assert (_vec::refcount[str](v) == 2u);
+    log vec::refcount[str](v);
+    assert (vec::refcount[str](v) == 2u);
 
     a.add(s);                     // ref up: mumble, s.  ref down: v
 
-    log _vec::refcount[str](v);
-    log _str::refcount(s);
-    log _str::refcount(mumble);
+    log vec::refcount[str](v);
+    log str::refcount(s);
+    log str::refcount(mumble);
 
-    assert (_vec::refcount[str](v) == 1u);
-    assert (_str::refcount(s) == const_refcount);
-    assert (_str::refcount(mumble) == const_refcount);
+    assert (vec::refcount[str](v) == 1u);
+    assert (str::refcount(s) == const_refcount);
+    assert (str::refcount(mumble) == const_refcount);
 
     log v.(0);
-    log _vec::len[str](v);
-    assert (_str::eq(v.(0), mumble));
-    assert (_vec::len[str](v) == 1u);
+    log vec::len[str](v);
+    assert (str::eq(v.(0), mumble));
+    assert (vec::len[str](v) == 1u);
   }                               // ref down: a, mumble, s, v
 
-  log _str::refcount(s);
-  log _str::refcount(mumble);
+  log str::refcount(s);
+  log str::refcount(mumble);
 
-  assert (_str::refcount(s) == const_refcount);
-  assert (_str::refcount(mumble) == const_refcount);
+  assert (str::refcount(s) == const_refcount);
+  assert (str::refcount(mumble) == const_refcount);
 
   log mumble;
   log ss;
@@ -85,8 +85,8 @@ fn slow_growth2_helper(str s) {   // ref up: s
 fn slow_growth2() {
   let str s = "hi";               // ref up: s
   slow_growth2_helper(s);
-  log _str::refcount(s);
-  assert (_str::refcount(s) == const_refcount);
+  log str::refcount(s);
+  assert (str::refcount(s) == const_refcount);
 }
 
 fn main() {

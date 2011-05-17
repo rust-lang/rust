@@ -1,5 +1,5 @@
 use std;
-import std::_vec;
+import std::vec;
 import std::bitv;
 
 fn test_0_elements() {
@@ -7,7 +7,7 @@ fn test_0_elements() {
   auto exp;
 
   act = bitv::create(0u, false);
-  exp = _vec::init_elt[uint](0u, 0u);
+  exp = vec::init_elt[uint](0u, 0u);
   // FIXME: why can't I write vec[uint]()?
   assert (bitv::eq_vec(act, exp));
 }

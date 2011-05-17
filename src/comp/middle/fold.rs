@@ -33,8 +33,8 @@ import front::ast::ann;
 import front::ast::mt;
 import front::ast::purity;
 
-import std::_uint;
-import std::_vec;
+import std::uint;
+import std::vec;
 
 type ast_fold[ENV] =
     @rec
@@ -362,7 +362,7 @@ type ast_fold[ENV] =
 fn fold_path[ENV](&ENV env, &ast_fold[ENV] fld, &path p) -> path {
     let vec[@ast::ty] tys_ = [];
     for (@ast::ty t in p.node.types) {
-        _vec::push[@ast::ty](tys_, fold_ty(env, fld, t));
+        vec::push[@ast::ty](tys_, fold_ty(env, fld, t));
     }
     let ast::path_ p_ = rec(idents=p.node.idents, types=tys_);
     ret fld.fold_path(env, p.span, p_);
@@ -404,7 +404,7 @@ fn fold_ty[ENV](&ENV env, &ast_fold[ENV] fld, &@ty t) -> @ty {
             let vec[mt] elts_ = [];
             for (mt elt in elts) {
                 auto ty_ = fold_ty(env, fld, elt.ty);
-                _vec::push[mt](elts_, rec(ty=ty_, mut=elt.mut));
+                vec::push[mt](elts_, rec(ty=ty_, mut=elt.mut));
             }
             ret fld.fold_ty_tup(env_, t.span, elts_);
         }
@@ -413,7 +413,7 @@ fn fold_ty[ENV](&ENV env, &ast_fold[ENV] fld, &@ty t) -> @ty {
             let vec[ast::ty_field] flds_ = [];
             for (ast::ty_field f in flds) {
                 auto ty_ = fold_ty(env, fld, f.mt.ty);
-                _vec::push[ast::ty_field]
+                vec::push[ast::ty_field]
                     (flds_, rec(mt=rec(ty=ty_, mut=f.mt.mut) with f));
             }
             ret fld.fold_ty_rec(env_, t.span, flds_);
@@ -426,7 +426,7 @@ fn fold_ty[ENV](&ENV env, &ast_fold[ENV] fld, &@ty t) -> @ty {
                                       m.inputs, m.output);
                 alt (tfn.node) {
                     case (ast::ty_fn(?p, ?ins, ?out)) {
-                        _vec::push[ast::ty_method]
+                        vec::push[ast::ty_method]
                             (meths_, rec(proto=p, inputs=ins,
                                          output=out with m));
                     }
@@ -541,7 +541,7 @@ fn fold_exprs[ENV](&ENV env, &ast_fold[ENV] fld,
                    &vec[@expr] es) -> vec[@expr] {
     let vec[@expr] exprs = [];
     for (@expr e in es) {
-        _vec::push[@expr](exprs, fold_expr(env, fld, e));
+        vec::push[@expr](exprs, fold_expr(env, fld, e));
     }
     ret exprs;
 }
@@ -893,7 +893,7 @@ fn fold_block[ENV](&ENV env, &ast_fold[ENV] fld, &block blk) -> block {
     let vec[@ast::stmt] stmts = [];
     for (@ast::stmt s in blk.node.stmts) {
         auto new_stmt = fold_stmt[ENV](env_, fld, s);
-        _vec::push[@ast::stmt](stmts, new_stmt);
+        vec::push[@ast::stmt](stmts, new_stmt);
     }
 
     auto expr = none[@ast::expr];
@@ -980,7 +980,7 @@ fn fold_obj[ENV](&ENV env, &ast_fold[ENV] fld, &ast::_obj ob) -> ast::_obj {
                                                 m.node.ann),
                                span=m.span);
         let ENV _env = fld.update_env_for_item(env, i);
-        _vec::push[@ast::method](meths, fold_method(_env, fld, m));
+        vec::push[@ast::method](meths, fold_method(_env, fld, m));
     }
     ret fld.fold_obj(env, fields, meths, dtor);
 }
@@ -1023,7 +1023,7 @@ fn fold_anon_obj[ENV](&ENV env, &ast_fold[ENV] fld, &ast::anon_obj ob)
                                                 m.node.ann),
                                span=m.span);
         let ENV _env = fld.update_env_for_item(env, i);
-        _vec::push[@ast::method](meths, fold_method(_env, fld, m));
+        vec::push[@ast::method](meths, fold_method(_env, fld, m));
     }
     ret fld.fold_anon_obj(env, fields, meths, with_obj);
 }
@@ -1124,12 +1124,12 @@ fn fold_mod[ENV](&ENV e, &ast_fold[ENV] fld, &ast::_mod m) -> ast::_mod {
 
     for (@view_item vi in m.view_items) {
         auto new_vi = fold_view_item[ENV](e, fld, vi);
-        _vec::push[@view_item](view_items, new_vi);
+        vec::push[@view_item](view_items, new_vi);
     }
 
     for (@item i in m.items) {
         auto new_item = fold_item[ENV](e, fld, i);
-        _vec::push[@item](items, new_item);
+        vec::push[@item](items, new_item);
     }
 
     ret fld.fold_mod(e, rec(view_items=view_items, items=items));
@@ -1162,12 +1162,12 @@ fn fold_native_mod[ENV](&ENV e, &ast_fold[ENV] fld,
 
     for (@view_item vi in m.view_items) {
         auto new_vi = fold_view_item[ENV](e, fld, vi);
-        _vec::push[@view_item](view_items, new_vi);
+        vec::push[@view_item](view_items, new_vi);
     }
 
     for (@native_item i in m.items) {
         auto new_item = fold_native_item[ENV](e, fld, i);
-        _vec::push[@native_item](items, new_item);
+        vec::push[@native_item](items, new_item);
     }
 
     ret fld.fold_native_mod(e, rec(native_name=m.native_name,

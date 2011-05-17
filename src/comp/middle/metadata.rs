@@ -1,6 +1,6 @@
-import std::_str;
-import std::_uint;
-import std::_vec;
+import std::str;
+import std::uint;
+import std::vec;
 import std::map::hashmap;
 import std::ebml;
 import std::io;
@@ -120,8 +120,8 @@ mod Encode {
                         if (abbrev_len < len) {
                             // I.e. it's actually an abbreviation.
                             auto s = ("#"
-                                      + _uint::to_str(pos, 16u) + ":"
-                                      + _uint::to_str(len, 16u) + "#");
+                                      + uint::to_str(pos, 16u) + ":"
+                                      + uint::to_str(len, 16u) + "#");
                             auto a = rec(pos=pos, len=len, s=s);
                             abbrevs.insert(t, a);
                         }
@@ -265,7 +265,7 @@ mod Encode {
 
 // Returns a Plain Old LLVM String:
 fn C_postr(&str s) -> ValueRef {
-    ret llvm::LLVMConstString(_str::buf(s), _str::byte_len(s), False);
+    ret llvm::LLVMConstString(str::buf(s), str::byte_len(s), False);
 }
 
 
@@ -273,13 +273,13 @@ fn C_postr(&str s) -> ValueRef {
 
 fn encode_name(&ebml::writer ebml_w, &str name) {
     ebml::start_tag(ebml_w, tag_paths_data_name);
-    ebml_w.writer.write(_str::bytes(name));
+    ebml_w.writer.write(str::bytes(name));
     ebml::end_tag(ebml_w);
 }
 
 fn encode_def_id(&ebml::writer ebml_w, &ast::def_id id) {
     ebml::start_tag(ebml_w, tag_def_id);
-    ebml_w.writer.write(_str::bytes(def_to_str(id)));
+    ebml_w.writer.write(str::bytes(def_to_str(id)));
     ebml::end_tag(ebml_w);
 }
 
@@ -301,7 +301,7 @@ fn add_to_index(&ebml::writer ebml_w,
                 &mutable vec[tup(str, uint)] index,
                 &str name) {
     auto full_path = path + [name];
-    index += [tup(_str::connect(full_path, "::"), ebml_w.writer.tell())];
+    index += [tup(str::connect(full_path, "::"), ebml_w.writer.tell())];
 }
 
 fn encode_native_module_item_paths(&ebml::writer ebml_w,
@@ -424,13 +424,13 @@ fn def_to_str(&ast::def_id did) -> str {
 
 fn encode_type_param_count(&ebml::writer ebml_w, &vec[ast::ty_param] tps) {
     ebml::start_tag(ebml_w, tag_items_data_item_ty_param_count);
-    ebml::write_vint(ebml_w.writer, _vec::len[ast::ty_param](tps));
+    ebml::write_vint(ebml_w.writer, vec::len[ast::ty_param](tps));
     ebml::end_tag(ebml_w);
 }
 
 fn encode_variant_id(&ebml::writer ebml_w, &ast::def_id vid) {
     ebml::start_tag(ebml_w, tag_items_data_item_variant);
-    ebml_w.writer.write(_str::bytes(def_to_str(vid)));
+    ebml_w.writer.write(str::bytes(def_to_str(vid)));
     ebml::end_tag(ebml_w);
 }
 
@@ -447,20 +447,20 @@ fn encode_type(&@trans::crate_ctxt cx, &ebml::writer ebml_w, &ty::t typ) {
 fn encode_symbol(&@trans::crate_ctxt cx, &ebml::writer ebml_w,
                  &ast::def_id did) {
     ebml::start_tag(ebml_w, tag_items_data_item_symbol);
-    ebml_w.writer.write(_str::bytes(cx.item_symbols.get(did)));
+    ebml_w.writer.write(str::bytes(cx.item_symbols.get(did)));
     ebml::end_tag(ebml_w);
 }
 
 fn encode_discriminant(&@trans::crate_ctxt cx, &ebml::writer ebml_w,
                        &ast::def_id did) {
     ebml::start_tag(ebml_w, tag_items_data_item_symbol);
-    ebml_w.writer.write(_str::bytes(cx.discrim_symbols.get(did)));
+    ebml_w.writer.write(str::bytes(cx.discrim_symbols.get(did)));
     ebml::end_tag(ebml_w);
 }
 
 fn encode_tag_id(&ebml::writer ebml_w, &ast::def_id id) {
     ebml::start_tag(ebml_w, tag_items_data_item_tag_id);
-    ebml_w.writer.write(_str::bytes(def_to_str(id)));
+    ebml_w.writer.write(str::bytes(def_to_str(id)));
     ebml::end_tag(ebml_w);
 }
 
@@ -478,7 +478,7 @@ fn encode_tag_variant_info(&@trans::crate_ctxt cx, &ebml::writer ebml_w,
         encode_kind(ebml_w, 'v' as u8);
         encode_tag_id(ebml_w, did);
         encode_type(cx, ebml_w, trans::node_ann_type(cx, variant.node.ann));
-        if (_vec::len[ast::variant_arg](variant.node.args) > 0u) {
+        if (vec::len[ast::variant_arg](variant.node.args) > 0u) {
             encode_symbol(cx, ebml_w, variant.node.id);
         }
         encode_discriminant(cx, ebml_w, variant.node.id);
@@ -611,7 +611,7 @@ fn hash_def_num(&int def_num) -> uint {
 
 fn hash_path(&str s) -> uint {
     auto h = 5381u;
-    for (u8 ch in _str::bytes(s)) {
+    for (u8 ch in str::bytes(s)) {
         h = ((h << 5u) + h) ^ (ch as uint);
     }
     ret h;
@@ -620,7 +620,7 @@ fn hash_path(&str s) -> uint {
 fn create_index[T](&vec[tup(T, uint)] index, fn(&T) -> uint hash_fn)
         -> vec[vec[tup(T, uint)]] {
     let vec[vec[tup(T, uint)]] buckets = [];
-    for each (uint i in _uint::range(0u, 256u)) {
+    for each (uint i in uint::range(0u, 256u)) {
         let vec[tup(T, uint)] bucket = [];
         buckets += [bucket];
     }
@@ -712,9 +712,9 @@ fn write_metadata(&@trans::crate_ctxt cx, &@ast::crate crate) {
 
     auto llconst = trans::C_struct([llmeta]);
     auto llglobal = llvm::LLVMAddGlobal(cx.llmod, trans::val_ty(llconst),
-                                       _str::buf("rust_metadata"));
+                                       str::buf("rust_metadata"));
     llvm::LLVMSetInitializer(llglobal, llconst);
-    llvm::LLVMSetSection(llglobal, _str::buf(x86::get_meta_sect_name()));
+    llvm::LLVMSetSection(llglobal, str::buf(x86::get_meta_sect_name()));
 }
 
 //

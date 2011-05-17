@@ -1,4 +1,4 @@
-import std::_vec;
+import std::vec;
 
 /* A codemap is a thing that maps uints to file/line/column positions
  * in a crate. This to make it possible to represent the positions
@@ -24,18 +24,18 @@ fn new_filemap(str filename, uint start_pos) -> filemap {
 }
 
 fn next_line(filemap file, uint pos) {
-    _vec::push[uint](file.lines, pos);
+    vec::push[uint](file.lines, pos);
 }
 
 fn lookup_pos(codemap map, uint pos) -> loc {
-    auto a = 0u; auto b = _vec::len[filemap](map.files);
+    auto a = 0u; auto b = vec::len[filemap](map.files);
     while (b - a > 1u) {
         auto m = (a + b) / 2u;
         if (map.files.(m).start_pos > pos) { b = m; }
         else { a = m; }
     }
     auto f = map.files.(a);
-    a = 0u; b = _vec::len[uint](f.lines);
+    a = 0u; b = vec::len[uint](f.lines);
     while (b - a > 1u) {
         auto m = (a + b) / 2u;
         if (f.lines.(m) > pos) { b = m; }

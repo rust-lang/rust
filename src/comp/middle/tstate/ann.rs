@@ -1,5 +1,5 @@
 import front::ast::ident;
-import std::_vec;
+import std::vec;
 import std::bitv;
 
 /* 

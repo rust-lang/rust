@@ -14,9 +14,9 @@ import back::x86;
 import util::common;
 import util::common::span;
 
-import std::_str;
-import std::_uint;
-import std::_vec;
+import std::str;
+import std::uint;
+import std::vec;
 import std::ebml;
 import std::fs;
 import std::io;
@@ -117,7 +117,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
             while (peek(st) as char != ']') {
                 auto name = "";
                 while (peek(st) as char != '=') {
-                    name += _str::unsafe_from_byte(next(st));
+                    name += str::unsafe_from_byte(next(st));
                 }
                 st.pos = st.pos + 1u;
                 fields += [rec(ident=name, mt=parse_mt(st, sd))];
@@ -155,7 +155,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
                 }
                 auto name = "";
                 while (peek(st) as char != '[') {
-                    name += _str::unsafe_from_byte(next(st));
+                    name += str::unsafe_from_byte(next(st));
                 }
                 auto func = parse_ty_fn(st, sd);
                 methods += [rec(proto=proto,
@@ -205,7 +205,7 @@ fn parse_mt(@pstate st, str_def sd) -> ty::mt {
 fn parse_def(@pstate st, str_def sd) -> ast::def_id {
     auto def = "";
     while (peek(st) as char != '|') {
-        def += _str::unsafe_from_byte(next(st));
+        def += str::unsafe_from_byte(next(st));
     }
     st.pos = st.pos + 1u;
     ret sd(def);
@@ -260,7 +260,7 @@ fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty::arg], ty::t) {
 
 fn parse_def_id(vec[u8] buf) -> ast::def_id {
     auto colon_idx = 0u;
-    auto len = _vec::len[u8](buf);
+    auto len = vec::len[u8](buf);
     while (colon_idx < len && buf.(colon_idx) != (':' as u8)) {
         colon_idx += 1u;
     }
@@ -269,10 +269,10 @@ fn parse_def_id(vec[u8] buf) -> ast::def_id {
         fail;
     }
 
-    auto crate_part = _vec::slice[u8](buf, 0u, colon_idx);
-    auto def_part = _vec::slice[u8](buf, colon_idx + 1u, len);
-    auto crate_num = _uint::parse_buf(crate_part, 10u) as int;
-    auto def_num = _uint::parse_buf(def_part, 10u) as int;
+    auto crate_part = vec::slice[u8](buf, 0u, colon_idx);
+    auto def_part = vec::slice[u8](buf, colon_idx + 1u, len);
+    auto crate_num = uint::parse_buf(crate_part, 10u) as int;
+    auto def_num = uint::parse_buf(def_part, 10u) as int;
     ret tup(crate_num, def_num);
 }
 
@@ -289,8 +289,8 @@ fn lookup_hash(&ebml::doc d, fn(vec[u8]) -> bool eq_fn, uint hash)
     auto belt = metadata::tag_index_buckets_bucket_elt;
     for each (ebml::doc elt in ebml::tagged_docs(bucket, belt)) {
         auto pos = ebml::be_uint_from_bytes(elt.data, elt.start, 4u);
-        if (eq_fn(_vec::slice[u8](elt.data, elt.start+4u, elt.end))) {
-            _vec::push(result, ebml::doc_at(d.data, pos));
+        if (eq_fn(vec::slice[u8](elt.data, elt.start+4u, elt.end))) {
+            vec::push(result, ebml::doc_at(d.data, pos));
         }
     }
     ret result;
@@ -300,16 +300,16 @@ fn lookup_hash(&ebml::doc d, fn(vec[u8]) -> bool eq_fn, uint hash)
 // definition the path refers to.
 fn resolve_path(vec[ast::ident] path, vec[u8] data) -> vec[ast::def_id] {
     fn eq_item(vec[u8] data, str s) -> bool {
-        ret _str::eq(_str::unsafe_from_bytes(data), s);
+        ret str::eq(str::unsafe_from_bytes(data), s);
     }
-    auto s = _str::connect(path, "::");
+    auto s = str::connect(path, "::");
     auto md = ebml::new_doc(data);
     auto paths = ebml::get_doc(md, metadata::tag_paths);
     auto eqer = bind eq_item(_, s);
     let vec[ast::def_id] result = [];
     for (ebml::doc doc in lookup_hash(paths, eqer, metadata::hash_path(s))) {
         auto did_doc = ebml::get_doc(doc, metadata::tag_def_id);
-        _vec::push(result, parse_def_id(ebml::doc_data(did_doc)));
+        vec::push(result, parse_def_id(ebml::doc_data(did_doc)));
     }
     ret result;
 }
@@ -320,7 +320,7 @@ fn maybe_find_item(int item_id, &ebml::doc items) -> option::t[ebml::doc] {
     }
     auto eqer = bind eq_item(_, item_id);
     auto found = lookup_hash(items, eqer, metadata::hash_def_num(item_id));
-    if (_vec::len(found) == 0u) {
+    if (vec::len(found) == 0u) {
         ret option::none[ebml::doc];
     } else {
         ret option::some[ebml::doc](found.(0));
@@ -345,7 +345,7 @@ fn item_kind(&ebml::doc item) -> u8 {
 
 fn item_symbol(&ebml::doc item) -> str {
     auto sym = ebml::get_doc(item, metadata::tag_items_data_item_symbol);
-    ret _str::unsafe_from_bytes(ebml::doc_data(sym));
+    ret str::unsafe_from_bytes(ebml::doc_data(sym));
 }
 
 fn variant_tag_id(&ebml::doc d) -> ast::def_id {
@@ -359,13 +359,13 @@ fn item_type(&ebml::doc item, int this_cnum, ty::ctxt tcx) -> ty::t {
         // that, in turn, links against another crate. We need a mapping
         // from crate ID to crate "meta" attributes as part of the crate
         // metadata:
-        auto buf = _str::bytes(s);
+        auto buf = str::bytes(s);
         auto external_def_id = parse_def_id(buf);
         ret tup(this_cnum, external_def_id._1);
     }
 
     auto tp = ebml::get_doc(item, metadata::tag_items_data_item_type);
-    auto s = _str::unsafe_from_bytes(ebml::doc_data(tp));
+    auto s = str::unsafe_from_bytes(ebml::doc_data(tp));
     ret parse_ty_data(item.data, this_cnum, tp.start, tp.end - tp.start,
                       bind parse_external_def_id(this_cnum, _), tcx);
 }
@@ -384,25 +384,25 @@ fn tag_variant_ids(&ebml::doc item, int this_cnum) -> vec[ast::def_id] {
     auto v = metadata::tag_items_data_item_variant;
     for each (ebml::doc p in ebml::tagged_docs(item, v)) {
         auto ext = parse_def_id(ebml::doc_data(p));
-        _vec::push[ast::def_id](ids, tup(this_cnum, ext._1));
+        vec::push[ast::def_id](ids, tup(this_cnum, ext._1));
     }
     ret ids;
 }
 
 fn get_metadata_section(str filename) -> option::t[vec[u8]] {
     auto mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile
-        (_str::buf(filename));
+        (str::buf(filename));
     if (mb as int == 0) {ret option::none[vec[u8]];}
     auto of = mk_object_file(mb);
     auto si = mk_section_iter(of.llof);
     while (llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False) {
         auto name_buf = llvm::LLVMGetSectionName(si.llsi);
-        auto name = _str::str_from_cstr(name_buf);
-        if (_str::eq(name, x86::get_meta_sect_name())) {
+        auto name = str::str_from_cstr(name_buf);
+        if (str::eq(name, x86::get_meta_sect_name())) {
             auto cbuf = llvm::LLVMGetSectionContents(si.llsi);
             auto csz = llvm::LLVMGetSectionSize(si.llsi);
-            auto cvbuf = cbuf as _vec::vbuf;
-            ret option::some[vec[u8]](_vec::vec_from_vbuf[u8](cvbuf, csz));
+            auto cvbuf = cbuf as vec::vbuf;
+            ret option::some[vec[u8]](vec::vec_from_vbuf[u8](cvbuf, csz));
         }
         llvm::LLVMMoveToNextSection(si.llsi);
     }
@@ -481,7 +481,7 @@ fn lookup_defs(session::session sess, int cnum, vec[ast::ident] path)
     -> vec[ast::def] {
     auto data = sess.get_external_crate(cnum).data;
 
-    ret _vec::map(bind lookup_def(cnum, data, _),
+    ret vec::map(bind lookup_def(cnum, data, _),
                   resolve_path(path, data));
 }
 
@@ -580,8 +580,8 @@ fn list_file_metadata(str path, io::writer out) {
 fn read_path(&ebml::doc d) -> tup(str, uint) {
     auto desc = ebml::doc_data(d);
     auto pos = ebml::be_uint_from_bytes(desc, 0u, 4u);
-    auto pathbytes = _vec::slice[u8](desc, 4u, _vec::len[u8](desc));
-    auto path = _str::unsafe_from_bytes(pathbytes);
+    auto pathbytes = vec::slice[u8](desc, 4u, vec::len[u8](desc));
+    auto path = str::unsafe_from_bytes(pathbytes);
     ret tup(path, pos);
 }
 

@@ -1,7 +1,7 @@
 import std::bitv;
-import std::_vec;
-import std::_vec::plus_option;
-import std::_vec::cat_options;
+import std::vec;
+import std::vec::plus_option;
+import std::vec::cat_options;
 import std::option;
 import std::option::get;
 import std::option::is_none;
@@ -538,7 +538,7 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
         changed = find_pre_post_state_expr(fcx, pres, e) || changed;
         auto e_post = expr_poststate(e);
         auto a_post;
-        if (_vec::len[arm](alts) > 0u) {
+        if (vec::len[arm](alts) > 0u) {
             a_post = false_postcond(num_local_vars);
             for (arm an_alt in alts) {
                 changed = find_pre_post_state_block(fcx, e_post,
@@ -766,8 +766,8 @@ fn find_pre_post_state_obj(crate_ctxt ccx, _obj o) -> bool {
                                    m.node.meth);
     }
     auto f = bind do_a_method(ccx,_);
-    auto flags = _vec::map[@method, bool](f, o.methods);
-    auto changed = _vec::or(flags);
+    auto flags = vec::map[@method, bool](f, o.methods);
+    auto changed = vec::or(flags);
     changed = changed || maybe[@method, bool](false, f, o.dtor);
     ret changed;
 }
