@@ -886,7 +886,6 @@ fn parse_bottom_expr(parser p) -> @ast::expr {
         ex = expand_syntax_ext(p, es.span, pth, es.node,
                                none[str]);
     } else if (eat_word(p, "fail")) {
-        p.bump();
         ex = ast::expr_fail(p.get_ann());
     } else if (eat_word(p, "log")) {
         auto e = parse_expr(p);
