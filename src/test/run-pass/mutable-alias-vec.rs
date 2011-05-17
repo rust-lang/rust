@@ -3,11 +3,11 @@
 use std;
 
 fn grow(&mutable vec[int] v) {
-  v += vec(1);
+  v += [1];
 }
 
 fn main() {
-  let vec[int] v = vec();
+  let vec[int] v = [];
   grow(v);
   grow(v);
   grow(v);

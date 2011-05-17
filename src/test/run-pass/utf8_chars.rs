@@ -8,7 +8,7 @@ import std::io;
 
 fn main() {
   // Chars of 1, 2, 3, and 4 bytes
-  let vec[char] chs = vec('e', 'é', '€', 0x10000 as char);
+  let vec[char] chs = ['e', 'é', '€', 0x10000 as char];
   let str s = _str::from_chars(chs);
 
   assert (_str::byte_len(s) == 10u);
@@ -19,9 +19,9 @@ fn main() {
   assert (_str::char_at(s, 1u) == 'é');
 
   assert (_str::is_utf8(_str::bytes(s)));
-  assert (!_str::is_utf8(vec(0x80_u8)));
-  assert (!_str::is_utf8(vec(0xc0_u8)));
-  assert (!_str::is_utf8(vec(0xc0_u8, 0x10_u8)));
+  assert (!_str::is_utf8([0x80_u8]));
+  assert (!_str::is_utf8([0xc0_u8]));
+  assert (!_str::is_utf8([0xc0_u8, 0x10_u8]));
 
   auto stack = "a×c€";
   assert (_str::pop_char(stack) == '€');

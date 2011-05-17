@@ -13,14 +13,14 @@ type codemap = @rec(mutable vec[filemap] files);
 type loc = rec(str filename, uint line, uint col);
 
 fn new_codemap() -> codemap {
-    let vec[filemap] files = vec();
+    let vec[filemap] files = [];
     ret @rec(mutable files=files);
 }
 
 fn new_filemap(str filename, uint start_pos) -> filemap {
     ret @rec(name=filename,
              start_pos=start_pos,
-             mutable lines=vec(0u));
+             mutable lines=[0u]);
 }
 
 fn next_line(filemap file, uint pos) {

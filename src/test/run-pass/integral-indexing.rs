@@ -2,7 +2,7 @@
 
 fn main() {
 
-  let vec[int] v = vec(0, 1, 2, 3, 4, 5);
+  let vec[int] v = [0, 1, 2, 3, 4, 5];
   let str s = "abcdef";
   assert (v.(3u) == 3);
   assert (v.(3u8) == 3);

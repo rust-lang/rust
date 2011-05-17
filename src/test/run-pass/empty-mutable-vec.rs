@@ -1,4 +1,4 @@
 fn main() {
-    let vec[mutable int] v = vec(mutable);
+    let vec[mutable int] v = [mutable];
 }
 

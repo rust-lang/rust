@@ -13,5 +13,5 @@ fn slice[T](vec[T] e) {
 }
 
 fn main() {
-  slice[str](vec("a"));
+  slice[str](["a"]);
 }

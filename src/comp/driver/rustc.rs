@@ -44,7 +44,7 @@ fn default_environment(session::session sess,
     }
 
     ret
-        vec(
+        [
             // Target bindings.
             tup("target_os", eval::val_str(std::os::target_os())),
             tup("target_arch", eval::val_str("x86")),
@@ -53,7 +53,7 @@ fn default_environment(session::session sess,
             // Build bindings.
             tup("build_compiler", eval::val_str(argv0)),
             tup("build_input", eval::val_str(input))
-            );
+            ];
 }
 
 fn parse_input(session::session sess,
@@ -205,7 +205,7 @@ fn main(vec[str] args) {
              uint_type = common::ty_u32,
              float_type = common::ty_f64);
 
-    auto opts = vec(optflag("h"), optflag("help"),
+    auto opts = [optflag("h"), optflag("help"),
                     optflag("v"), optflag("version"),
                     optflag("glue"), optflag("emit-llvm"),
                     optflag("pretty"), optflag("ls"), optflag("parse-only"),
@@ -214,7 +214,7 @@ fn main(vec[str] args) {
                     optflag("save-temps"), optopt("sysroot"),
                     optflag("stats"),
                     optflag("time-passes"), optflag("time-llvm-passes"),
-                    optflag("no-typestate"), optflag("noverify"));
+                    optflag("no-typestate"), optflag("noverify")];
     auto binary = _vec::shift[str](args);
     auto match;
     alt (getopts::getopts(args, opts)) {
@@ -287,7 +287,7 @@ fn main(vec[str] args) {
 
     auto crate_cache = common::new_int_hash[session::crate_metadata]();
     auto target_crate_num = 0;
-    let vec[@ast::meta_item] md = vec();
+    let vec[@ast::meta_item] md = [];
     auto sess =
         session::session(target_crate_num, target_cfg, sopts,
                         crate_cache, md, front::codemap::new_codemap());
@@ -323,13 +323,13 @@ fn main(vec[str] args) {
                 _vec::pop[str](parts);
                 saved_out_filename = parts.(0);
                 alt (output_type) {
-                    case (link::output_type_none) { parts += vec("pp"); }
-                    case (link::output_type_bitcode) { parts += vec("bc"); }
-                    case (link::output_type_assembly) { parts += vec("s"); }
+                    case (link::output_type_none) { parts += ["pp"]; }
+                    case (link::output_type_bitcode) { parts += ["bc"]; }
+                    case (link::output_type_assembly) { parts += ["s"]; }
 
                     // Object and exe output both use the '.o' extension here
-                    case (link::output_type_object) { parts += vec("o"); }
-                    case (link::output_type_exe) { parts += vec("o"); }
+                    case (link::output_type_object) { parts += ["o"]; }
+                    case (link::output_type_exe) { parts += ["o"]; }
                 }
                 auto ofile = _str::connect(parts, ".");
                 compile_input(sess, env, ifile, ofile);
@@ -353,33 +353,33 @@ fn main(vec[str] args) {
         let str exe_suffix = "";
 
         // The invocations of gcc share some flags across platforms
-        let vec[str] common_cflags = vec("-fno-strict-aliasing", "-fPIC",
-                           "-Wall", "-fno-rtti", "-fno-exceptions", "-g");
-        let vec[str] common_libs = vec(stage, "-Lrustllvm", "-Lrt",
-                           "-lrustrt", "-lrustllvm", "-lstd", "-lm");
+        let vec[str] common_cflags = ["-fno-strict-aliasing", "-fPIC",
+                           "-Wall", "-fno-rtti", "-fno-exceptions", "-g"];
+        let vec[str] common_libs = [stage, "-Lrustllvm", "-Lrt",
+                           "-lrustrt", "-lrustllvm", "-lstd", "-lm"];
 
         alt (sess.get_targ_cfg().os) {
             case (session::os_win32) {
                 exe_suffix = ".exe";
-                gcc_args = common_cflags + vec(
+                gcc_args = common_cflags + [
                             "-march=i686", "-O2",
                             glu, "-o",
                             saved_out_filename + exe_suffix,
-                            saved_out_filename + ".o") + common_libs;
+                            saved_out_filename + ".o"] + common_libs;
             }
             case (session::os_macos) {
-                gcc_args = common_cflags + vec(
+                gcc_args = common_cflags + [
                            "-arch i386", "-O0", "-m32",
                            glu, "-o",
                            saved_out_filename + exe_suffix,
-                           saved_out_filename + ".o") + common_libs;
+                           saved_out_filename + ".o"] + common_libs;
             }
             case (session::os_linux) {
-                gcc_args = common_cflags + vec(
+                gcc_args = common_cflags + [
                            "-march=i686", "-O2", "-m32",
                            glu, "-o",
                            saved_out_filename + exe_suffix,
-                           saved_out_filename + ".o") + common_libs;
+                           saved_out_filename + ".o"] + common_libs;
             }
         }
 
@@ -388,12 +388,12 @@ fn main(vec[str] args) {
 
         // Clean up on Darwin
         if (sess.get_targ_cfg().os == session::os_macos) {
-            run::run_program("dsymutil", vec(saved_out_filename));
+            run::run_program("dsymutil", [saved_out_filename]);
         }
 
         // Remove the temporary object file if we aren't saving temps
         if (!save_temps) {
-            run::run_program("rm", vec(saved_out_filename + ".o"));
+            run::run_program("rm", [saved_out_filename + ".o"]);
         }
     }
 }

@@ -5,8 +5,8 @@ native "rust" mod rustrt {
     fn rust_run_program(vbuf argv, int in_fd, int out_fd, int err_fd) -> int;
 }
 
-fn argvec(str prog, vec[str] args) -> vec[sbuf] {
-    auto argptrs = vec(_str::buf(prog));
+fn arg_vec(str prog, vec[str] args) -> vec[sbuf] {
+    auto argptrs = [_str::buf(prog)];
     for (str arg in args) {
         _vec::push[sbuf](argptrs, _str::buf(arg));
     }
@@ -15,7 +15,7 @@ fn argvec(str prog, vec[str] args) -> vec[sbuf] {
 }
 
 fn run_program(str prog, vec[str] args) -> int {
-    auto pid = rustrt::rust_run_program(_vec::buf[sbuf](argvec(prog, args)),
+    auto pid = rustrt::rust_run_program(_vec::buf[sbuf](arg_vec(prog, args)),
                                        0, 0, 0);
     ret os::waitpid(pid);
 }
@@ -33,7 +33,7 @@ fn start_program(str prog, vec[str] args) -> @program {
     auto pipe_input = os::pipe();
     auto pipe_output = os::pipe();
     auto pid = rustrt::rust_run_program
-        (_vec::buf[sbuf](argvec(prog, args)),
+        (_vec::buf[sbuf](arg_vec(prog, args)),
          pipe_input._0, pipe_output._1, 0);
     if (pid == -1) {fail;}
     os::libc::close(pipe_input._0);
@@ -92,5 +92,5 @@ fn program_output(str prog, vec[str] args)
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:

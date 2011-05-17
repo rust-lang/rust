@@ -118,7 +118,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
 
     fn make_path_expr(parser p, common::span sp, vec[ast::ident] idents)
             -> @ast::expr {
-        let vec[@ast::ty] types = vec();
+        let vec[@ast::ty] types = [];
         auto path = rec(idents=idents, types=types);
         auto sp_path = rec(node=path, span=sp);
         auto pathexpr = ast::expr_path(sp_path, p.get_ann());
@@ -143,14 +143,14 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
 
     fn make_rec_expr(parser p, common::span sp,
                      vec[tup(ast::ident, @ast::expr)] fields) -> @ast::expr {
-        let vec[ast::field] astfields = vec();
+        let vec[ast::field] astfields = [];
         for (tup(ast::ident, @ast::expr) field in fields) {
             auto ident = field._0;
             auto val = field._1;
             auto astfield = rec(mut = ast::imm,
                                 ident = ident,
                                 expr = val);
-            astfields += vec(astfield);
+            astfields += [astfield];
         }
 
         auto recexpr = ast::expr_rec(astfields,
@@ -163,7 +163,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
     fn make_path_vec(str ident) -> vec[str] {
         // FIXME: #fmt can't currently be used from within std
         // because we're explicitly referencing the 'std' crate here
-        ret vec("std", "extfmt", "rt", ident);
+        ret ["std", "extfmt", "rt", ident];
     }
 
     fn make_rt_path_expr(parser p, common::span sp, str ident) -> @ast::expr {
@@ -177,7 +177,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
 
         fn make_flags(parser p, common::span sp, vec[flag] flags)
                 -> @ast::expr {
-            let vec[@ast::expr] flagexprs = vec();
+            let vec[@ast::expr] flagexprs = [];
             for (flag f in flags) {
                 auto fstr;
                 alt (f) {
@@ -197,14 +197,14 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
                         fstr = "flag_alternate";
                     }
                 }
-                flagexprs += vec(make_rt_path_expr(p, sp, fstr));
+                flagexprs += [make_rt_path_expr(p, sp, fstr)];
             }
 
             // FIXME: 0-length vectors can't have their type inferred
             // through the rec that these flags are a member of, so
             // this is a hack placeholder flag
             if (_vec::len[@ast::expr](flagexprs) == 0u) {
-                flagexprs += vec(make_rt_path_expr(p, sp, "flag_none"));
+                flagexprs += [make_rt_path_expr(p, sp, "flag_none")];
             }
 
             ret make_vec_expr(p, sp, flagexprs);
@@ -218,7 +218,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
                 case (count_is(?c)) {
                     auto count_lit = make_new_int(p, sp, c);
                     auto count_is_path = make_path_vec("count_is");
-                    auto count_is_args = vec(count_lit);
+                    auto count_is_args = [count_lit];
                     ret make_call(p, sp, count_is_path, count_is_args);
                 }
                 case (_) {
@@ -261,10 +261,10 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
                          @ast::expr width_expr,
                          @ast::expr precision_expr,
                          @ast::expr ty_expr) -> @ast::expr {
-            ret make_rec_expr(p, sp, vec(tup("flags", flags_expr),
+            ret make_rec_expr(p, sp, [tup("flags", flags_expr),
                                          tup("width", width_expr),
                                          tup("precision", precision_expr),
-                                         tup("ty", ty_expr)));
+                                         tup("ty", ty_expr)]);
         }
 
         auto rt_conv_flags = make_flags(p, sp, cnv.flags);
@@ -284,7 +284,7 @@ fn pieces_to_expr(parser p, vec[piece] pieces, vec[@ast::expr] args)
         auto fname = "conv_" + conv_type;
         auto path = make_path_vec(fname);
         auto cnv_expr = make_rt_conv_expr(p, sp, cnv);
-        auto args = vec(cnv_expr, arg);
+        auto args = [cnv_expr, arg];
         ret make_call(p, arg.span, path, args);
     }
 

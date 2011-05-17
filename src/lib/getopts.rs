@@ -106,7 +106,7 @@ fn getopts(vec[str] args, vec[opt] opts) -> result {
     fn empty_(uint x) -> vec[optval]{ret _vec::empty[optval]();}
     auto f = empty_;
     auto vals = _vec::init_fn_mut[vec[optval]](f, n_opts);
-    let vec[str] free = vec();
+    let vec[str] free = [];
 
     auto l = _vec::len[str](args);
     auto i = 0u;
@@ -125,15 +125,15 @@ fn getopts(vec[str] args, vec[opt] opts) -> result {
                 auto tail = _str::slice(cur, 2u, curlen);
                 auto eq = _str::index(tail, '=' as u8);
                 if (eq == -1) {
-                    names = vec(long(tail));
+                    names = [long(tail)];
                 } else {
-                    names = vec(long(_str::slice(tail, 0u, eq as uint)));
+                    names = [long(_str::slice(tail, 0u, eq as uint))];
                     i_arg = option::some[str]
                         (_str::slice(tail, (eq as uint) + 1u, curlen - 2u));
                 }
             } else {
                 auto j = 1u;
-                names = vec();
+                names = [];
                 while (j < curlen) {
                     auto range = _str::char_range_at(cur, j);
                     _vec::push[name](names, short(range._0));
@@ -221,7 +221,7 @@ fn opt_str(match m, str nm) -> str {
     }
 }
 fn opt_strs(match m, str nm) -> vec[str] {
-    let vec[str] acc = vec();
+    let vec[str] acc = [];
     for (optval v in opt_vals(m, nm)) {
         alt (v) {
             case (val(?s)) { _vec::push[str](acc, s); }

@@ -75,7 +75,7 @@ fn init_fn[T](&init_op[T] op, uint n_elts) -> vec[T] {
     let vec[T] v = alloc[T](n_elts);
     let uint i = 0u;
     while (i < n_elts) {
-        v += vec(op(i));
+        v += [op(i)];
         i += 1u;
     }
     ret v;
@@ -85,7 +85,7 @@ fn init_fn_mut[T](&init_op[T] op, uint n_elts) -> vec[mutable T] {
     let vec[mutable T] v = alloc_mut[T](n_elts);
     let uint i = 0u;
     while (i < n_elts) {
-        v += vec(mutable op(i));
+        v += [mutable op(i)];
         i += 1u;
     }
     ret v;
@@ -103,7 +103,7 @@ fn init_elt[T](&T t, uint n_elts) -> vec[T] {
     let uint i = n_elts;
     while (i > 0u) {
         i -= 1u;
-        v += vec(t);
+        v += [t];
     }
     ret v;
 }
@@ -113,7 +113,7 @@ fn init_elt_mut[T](&T t, uint n_elts) -> vec[mutable T] {
     let uint i = n_elts;
     while (i > 0u) {
         i -= 1u;
-        v += vec(mutable t);
+        v += [mutable t];
     }
     ret v;
 }
@@ -156,7 +156,7 @@ fn slice[T](array[T] v, uint start, uint end) -> vec[T] {
     auto result = alloc[T](end - start);
     let uint i = start;
     while (i < end) {
-        result += vec(v.(i));
+        result += [v.(i)];
         i += 1u;
     }
     ret result;
@@ -180,12 +180,12 @@ fn pop[T](&mutable array[T] v) -> T {
 }
 
 fn push[T](&mutable array[T] v, &T t) {
-    v += vec(t);
+    v += [t];
 }
 
 fn unshift[T](&mutable array[T] v, &T t) {
     auto res = alloc[T](len[T](v) + 1u);
-    res += vec(t);
+    res += [t];
     res += v;
     v = res;
 }
@@ -194,7 +194,7 @@ fn grow[T](&array[T] v, uint n, &T initval) {
     let uint i = n;
     while (i > 0u) {
         i -= 1u;
-        v += vec(initval);
+        v += [initval];
     }
 }
 
@@ -209,7 +209,7 @@ fn grow_set[T](&vec[mutable T] v, uint index, &T initval, &T val) {
 fn map[T, U](&option::operator[T,U] f, &array[T] v) -> vec[U] {
     let vec[U] u = alloc[U](len[T](v));
     for (T ve in v) {
-        u += vec(f(ve));
+        u += [f(ve)];
     }
     ret u;
 }
@@ -223,7 +223,7 @@ fn map2[T,U,V](&operator2[T,U,V] f, &array[T] v0, &array[U] v1) -> vec[V] {
     let vec[V] u = alloc[V](v0_len);
     auto i = 0u;
     while (i < v0_len) {
-        u += vec(f(v0.(i), v1.(i)));
+        u += [f(v0.(i), v1.(i))];
         i += 1u;
     }
 
@@ -262,8 +262,8 @@ fn unzip[T, U](&vec[tup(T, U)] v) -> tup(vec[T], vec[U]) {
     else {
         auto rest = slice[tup(T, U)](v, 1u, sz);
         auto tl   = unzip[T, U](rest);
-        auto a    = vec(v.(0)._0);
-        auto b    = vec(v.(0)._1);
+        auto a    = [v.(0)._0];
+        auto b    = [v.(0)._1];
         ret tup(a + tl._0, b + tl._1);
     }
 }
@@ -280,18 +280,18 @@ fn clone[T](&vec[T] v) -> vec[T] {
 fn plus_option[T](&vec[T] v, &option::t[T] o) -> () {
     alt (o) {
         case (none[T]) {}
-        case (some[T](?x)) { v += vec(x); }
+        case (some[T](?x)) { v += [x]; }
     }
 }
 
 fn cat_options[T](&vec[option::t[T]] v) -> vec[T] {
-    let vec[T] res = vec();
+    let vec[T] res = [];
 
     for (option::t[T] o in v) {
         alt (o) {
             case (none[T]) { }
             case (some[T](?t)) {
-                res += vec(t);
+                res += [t];
             }
         }
     }
@@ -301,9 +301,9 @@ fn cat_options[T](&vec[option::t[T]] v) -> vec[T] {
 
 // TODO: Remove in favor of built-in "freeze" operation when it's implemented.
 fn freeze[T](vec[mutable T] v) -> vec[T] {
-    let vec[T] result = vec();
+    let vec[T] result = [];
     for (T elem in v) {
-        result += vec(elem);
+        result += [elem];
     }
     ret result;
 }

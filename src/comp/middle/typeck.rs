@@ -188,10 +188,10 @@ fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
     auto ty_substs_opt;
     auto ty_substs_len = _vec::len[@ast::ty](pth.node.types);
     if (ty_substs_len > 0u) {
-        let vec[ty::t] ty_substs = vec();
+        let vec[ty::t] ty_substs = [];
         auto i = 0u;
         while (i < ty_substs_len) {
-            ty_substs += vec(ast_ty_to_ty_crate(fcx.ccx, pth.node.types.(i)));
+            ty_substs += [ast_ty_to_ty_crate(fcx.ccx, pth.node.types.(i))];
             i += 1u;
         }
         ty_substs_opt = some[vec[ty::t]](ty_substs);
@@ -203,10 +203,10 @@ fn instantiate_path(&@fn_ctxt fcx, &ast::path pth, &ty_param_count_and_ty tpt,
         }
     } else {
         // We will acquire the type parameters through unification.
-        let vec[ty::t] ty_substs = vec();
+        let vec[ty::t] ty_substs = [];
         auto i = 0u;
         while (i < ty_param_count) {
-            ty_substs += vec(next_ty_var(fcx.ccx));
+            ty_substs += [next_ty_var(fcx.ccx)];
             i += 1u;
         }
         ty_substs_opt = some[vec[ty::t]](ty_substs);
@@ -259,9 +259,9 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         // TODO: Make sure the number of supplied bindings matches the number
         // of type parameters in the typedef. Emit a friendly error otherwise.
         auto bound_ty = bind_params_in_type(tcx, params_opt_and_ty._1);
-        let vec[ty::t] param_bindings = vec();
+        let vec[ty::t] param_bindings = [];
         for (@ast::ty ast_ty in args) {
-            param_bindings += vec(ast_ty_to_ty(tcx, getter, ast_ty));
+            param_bindings += [ast_ty_to_ty(tcx, getter, ast_ty)];
         }
         ret ty::substitute_type_params(tcx, param_bindings, bound_ty);
     }
@@ -294,14 +294,14 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         }
 
         case (ast::ty_tup(?fields)) {
-            let vec[ty::mt] flds = vec();
+            let vec[ty::mt] flds = [];
             for (ast::mt field in fields) {
                 _vec::push[ty::mt](flds, ast_mt_to_mt(tcx, getter, field));
             }
             typ = ty::mk_tup(tcx, flds);
         }
         case (ast::ty_rec(?fields)) {
-            let vec[field] flds = vec();
+            let vec[field] flds = [];
             for (ast::ty_field f in fields) {
                 auto tm = ast_mt_to_mt(tcx, getter, f.mt);
                 _vec::push[field](flds, rec(ident=f.ident, mt=tm));
@@ -336,7 +336,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
         }
 
         case (ast::ty_obj(?meths)) {
-            let vec[ty::method] tmeths = vec();
+            let vec[ty::method] tmeths = [];
             auto f = bind ast_arg_to_arg(tcx, getter, _);
             for (ast::ty_method m in meths) {
                 auto ins = _vec::map[ast::ty_arg, arg](f, m.inputs);
@@ -502,7 +502,7 @@ mod collect {
             -> ty::ty_param_count_and_ty {
         auto t_obj = ty_of_obj(cx, id, obj_info, ty_params);
 
-        let vec[arg] t_inputs = vec();
+        let vec[arg] t_inputs = [];
         for (ast::obj_field f in obj_info.fields) {
             auto g = bind getter(cx, _);
             auto t_field = ast_ty_to_ty(cx.tcx, g, f.ty);
@@ -561,11 +561,11 @@ mod collect {
 
             case (ast::item_tag(_, _, ?tps, ?def_id, _)) {
                 // Create a new generic polytype.
-                let vec[ty::t] subtys = vec();
+                let vec[ty::t] subtys = [];
 
                 auto i = 0u;
                 for (ast::ty_param tp in tps) {
-                    subtys += vec(ty::mk_param(cx.tcx, i));
+                    subtys += [ty::mk_param(cx.tcx, i)];
                     i += 1u;
                 }
 
@@ -613,13 +613,13 @@ mod collect {
                              &vec[ast::variant] variants,
                              &vec[ast::ty_param] ty_params)
             -> vec[ast::variant] {
-        let vec[ast::variant] result = vec();
+        let vec[ast::variant] result = [];
 
         // Create a set of parameter types shared among all the variants.
-        let vec[ty::t] ty_param_tys = vec();
+        let vec[ty::t] ty_param_tys = [];
         auto i = 0u;
         for (ast::ty_param tp in ty_params) {
-            ty_param_tys += vec(ty::mk_param(cx.tcx, i));
+            ty_param_tys += [ty::mk_param(cx.tcx, i)];
             i += 1u;
         }
 
@@ -636,10 +636,10 @@ mod collect {
                 // should be called to resolve named types.
                 auto f = bind getter(cx, _);
 
-                let vec[arg] args = vec();
+                let vec[arg] args = [];
                 for (ast::variant_arg va in variant.node.args) {
                     auto arg_ty = ast_ty_to_ty(cx.tcx, f, va.ty);
-                    args += vec(rec(mode=ty::mo_alias, ty=arg_ty));
+                    args += [rec(mode=ty::mo_alias, ty=arg_ty)];
                 }
                 auto tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
                 result_ty = ty::mk_fn(cx.tcx, ast::proto_fn, args, tag_t);
@@ -653,7 +653,7 @@ mod collect {
             );
             write_type_only(cx.node_types, ast::ann_tag(variant.node.ann),
                             result_ty);
-            result += vec(fold::respan(variant.span, variant_t));
+            result += [fold::respan(variant.span, variant_t)];
         }
 
         ret result;
@@ -750,7 +750,7 @@ mod collect {
                     case (none[@ast::method]) { /* nothing to do */ }
                     case (some[@ast::method](?m)) {
                         // TODO: typechecker botch
-                        let vec[arg] no_args = vec();
+                        let vec[arg] no_args = [];
                         auto t = ty::mk_fn(cx.tcx, ast::proto_fn, no_args,
                                            ty::mk_nil(cx.tcx));
                         write_type_only(cx.node_types,
@@ -795,7 +795,7 @@ mod collect {
         auto id_to_ty_item = @common::new_def_hash[any_item]();
 
         let vec[mutable option::t[ty::ty_param_substs_opt_and_ty]] ntt_sub =
-            vec(mutable);
+            [mutable];
         let node_type_table ntt = @mutable ntt_sub;
 
         auto visit = rec(
@@ -837,7 +837,7 @@ mod unify {
               &ty::t actual) -> ty::unify::result {
         // FIXME: horrid botch
         let vec[mutable ty::t] param_substs =
-            vec(mutable ty::mk_nil(fcx.ccx.tcx));
+            [mutable ty::mk_nil(fcx.ccx.tcx)];
         _vec::pop(param_substs);
         ret with_params(fcx, expected, actual, param_substs);
     }
@@ -884,9 +884,9 @@ mod unify {
                 }
 
                 // TODO: "freeze"
-                let vec[ty::t] param_substs_1 = vec();
+                let vec[ty::t] param_substs_1 = [];
                 for (ty::t subst in param_substs) {
-                    param_substs_1 += vec(subst);
+                    param_substs_1 += [subst];
                 }
 
                 unified_type =
@@ -968,13 +968,13 @@ type ty_param_substs_and_ty = tup(vec[ty::t], ty::t);
 mod Demand {
     fn simple(&@fn_ctxt fcx, &span sp, &ty::t expected, &ty::t actual)
         -> ty::t {
-        let vec[ty::t] tps = vec();
+        let vec[ty::t] tps = [];
         ret full(fcx, sp, expected, actual, tps, NO_AUTODEREF)._1;
     }
 
     fn autoderef(&@fn_ctxt fcx, &span sp, &ty::t expected, &ty::t actual,
                  autoderef_kind adk) -> ty::t {
-        let vec[ty::t] tps = vec();
+        let vec[ty::t] tps = [];
         ret full(fcx, sp, expected, actual, tps, adk)._1;
     }
 
@@ -996,18 +996,18 @@ mod Demand {
         }
 
         let vec[mutable ty::t] ty_param_substs =
-            vec(mutable ty::mk_nil(fcx.ccx.tcx));
+            [mutable ty::mk_nil(fcx.ccx.tcx)];
         _vec::pop(ty_param_substs);   // FIXME: horrid botch
         for (ty::t ty_param_subst in ty_param_substs_0) {
-            ty_param_substs += vec(mutable ty_param_subst);
+            ty_param_substs += [mutable ty_param_subst];
         }
 
         alt (unify::with_params(fcx, expected_1, actual_1, ty_param_substs)) {
             case (ures_ok(?t)) {
                 // TODO: Use "freeze", when we have it.
-                let vec[ty::t] result_ty_param_substs = vec();
+                let vec[ty::t] result_ty_param_substs = [];
                 for (ty::t ty_param_subst in ty_param_substs) {
-                    result_ty_param_substs += vec(ty_param_subst);
+                    result_ty_param_substs += [ty_param_subst];
                 }
 
                 ret tup(result_ty_param_substs,
@@ -1042,7 +1042,7 @@ fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast::def_id vid,
                      &vec[ty::t] tag_ty_params) -> vec[ty::t] {
     auto ty_param_count = _vec::len[ty::t](tag_ty_params);
 
-    let vec[ty::t] result = vec();
+    let vec[ty::t] result = [];
 
     auto tpt = ty::lookup_item_type(ccx.sess, ccx.tcx, ccx.type_cache, vid);
     alt (struct(ccx.tcx, tpt._1)) {
@@ -1052,7 +1052,7 @@ fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast::def_id vid,
                 auto arg_ty = bind_params_in_type(ccx.tcx, arg.ty);
                 arg_ty = substitute_ty_params(ccx, arg_ty, ty_param_count,
                                               tag_ty_params, sp);
-                result += vec(arg_ty);
+                result += [arg_ty];
             }
         }
         case (_) {
@@ -1163,11 +1163,11 @@ mod Pushdown {
 
                 auto t = Demand::simple(fcx, e.span, expected,
                                        ann_to_type(fcx.ccx.node_types, ann));
-                let vec[@ast::expr] es_1 = vec();
+                let vec[@ast::expr] es_1 = [];
                 alt (struct(fcx.ccx.tcx, t)) {
                     case (ty::ty_vec(?mt)) {
                         for (@ast::expr e_0 in es_0) {
-                            es_1 += vec(pushdown_expr(fcx, mt.ty, e_0));
+                            es_1 += [pushdown_expr(fcx, mt.ty, e_0)];
                         }
                     }
                     case (_) {
@@ -1182,14 +1182,14 @@ mod Pushdown {
             case (ast::expr_tup(?es_0, ?ann)) {
                 auto t = Demand::simple(fcx, e.span, expected,
                                        ann_to_type(fcx.ccx.node_types, ann));
-                let vec[ast::elt] elts_1 = vec();
+                let vec[ast::elt] elts_1 = [];
                 alt (struct(fcx.ccx.tcx, t)) {
                     case (ty::ty_tup(?mts)) {
                         auto i = 0u;
                         for (ast::elt elt_0 in es_0) {
                             auto e_1 = pushdown_expr(fcx, mts.(i).ty,
                                                      elt_0.expr);
-                            elts_1 += vec(rec(mut=elt_0.mut, expr=e_1));
+                            elts_1 += [rec(mut=elt_0.mut, expr=e_1)];
                             i += 1u;
                         }
                     }
@@ -1207,7 +1207,7 @@ mod Pushdown {
 
                 auto t = Demand::simple(fcx, e.span, expected,
                                        ann_to_type(fcx.ccx.node_types, ann));
-                let vec[ast::field] fields_1 = vec();
+                let vec[ast::field] fields_1 = [];
                 alt (struct(fcx.ccx.tcx, t)) {
                     case (ty::ty_rec(?field_mts)) {
                         alt (base_0) {
@@ -1220,9 +1220,9 @@ mod Pushdown {
                                         pushdown_expr(fcx,
                                                       field_mts.(i).mt.ty,
                                                       field_0.expr);
-                                    fields_1 += vec(rec(mut=field_0.mut,
+                                    fields_1 += [rec(mut=field_0.mut,
                                                         ident=field_0.ident,
-                                                        expr=e_1));
+                                                        expr=e_1)];
                                     i += 1u;
                                 }
                             }
@@ -1231,7 +1231,7 @@ mod Pushdown {
                                 base_1 = some[@ast::expr]
                                     (pushdown_expr(fcx, t, bx));
 
-                                let vec[field] base_fields = vec();
+                                let vec[field] base_fields = [];
 
                                 for (ast::field field_0 in fields_0) {
 
@@ -1242,9 +1242,9 @@ mod Pushdown {
                                                 pushdown_expr(fcx, ft.mt.ty,
                                                               field_0.expr);
                                             fields_1 +=
-                                                vec(rec(mut=field_0.mut,
+                                                [rec(mut=field_0.mut,
                                                         ident=field_0.ident,
-                                                        expr=e_1));
+                                                        expr=e_1)];
                                         }
                                     }
                                 }
@@ -1479,13 +1479,13 @@ mod Pushdown {
 
             case (ast::expr_alt(?discrim, ?arms_0, ?ann)) {
                 auto t = expected;
-                let vec[ast::arm] arms_1 = vec();
+                let vec[ast::arm] arms_1 = [];
                 for (ast::arm arm_0 in arms_0) {
                     auto block_1 = pushdown_block(fcx, expected, arm_0.block);
                     t = Demand::simple(fcx, e.span, t,
                         block_ty(fcx.ccx.tcx, fcx.ccx.node_types, block_1));
                     auto arm_1 = rec(pat=arm_0.pat, block=block_1);
-                    arms_1 += vec(arm_1);
+                    arms_1 += [arm_1];
                 }
                 e_1 = ast::expr_alt(discrim, arms_1,
                                     triv_ann(ast::ann_tag(ann), t));
@@ -1848,13 +1848,13 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         auto f_0 = check_expr(fcx, f);
 
         // Check the arguments and generate the argument signature.
-        let vec[option::t[@ast::expr]] args_0 = vec();
-        let vec[arg] arg_tys_0 = vec();
+        let vec[option::t[@ast::expr]] args_0 = [];
+        let vec[arg] arg_tys_0 = [];
         for (option::t[@ast::expr] a_opt in args) {
             alt (a_opt) {
                 case (some[@ast::expr](?a)) {
                     auto a_0 = check_expr(fcx, a);
-                    args_0 += vec(some[@ast::expr](a_0));
+                    args_0 += [some[@ast::expr](a_0)];
 
                     auto arg_ty = rec(mode=mo_either,
                                       ty=expr_ty(fcx.ccx.tcx,
@@ -1862,7 +1862,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                     _vec::push[arg](arg_tys_0, arg_ty);
                 }
                 case (none[@ast::expr]) {
-                    args_0 += vec(none[@ast::expr]);
+                    args_0 += [none[@ast::expr]];
 
                     auto typ = next_ty_var(fcx.ccx);
                     _vec::push[arg](arg_tys_0, rec(mode=mo_either, ty=typ));
@@ -1920,18 +1920,18 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
     fn check_call(&@fn_ctxt fcx, &@ast::expr f, &vec[@ast::expr] args)
         -> tup(@ast::expr, vec[@ast::expr]) {
 
-        let vec[option::t[@ast::expr]] args_opt_0 = vec();
+        let vec[option::t[@ast::expr]] args_opt_0 = [];
         for (@ast::expr arg in args) {
-            args_opt_0 += vec(some[@ast::expr](arg));
+            args_opt_0 += [some[@ast::expr](arg)];
         }
 
         // Call the generic checker.
         auto result = check_call_or_bind(fcx, f, args_opt_0);
 
         // Pull out the arguments.
-        let vec[@ast::expr] args_1 = vec();
+        let vec[@ast::expr] args_1 = [];
         for (option::t[@ast::expr] arg in result._1) {
-            args_1 += vec(option::get[@ast::expr](arg));
+            args_1 += [option::get[@ast::expr](arg)];
         }
 
         ret tup(result._0, args_1);
@@ -2397,12 +2397,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             auto pattern_ty = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
                                       expr_0);
 
-            let vec[@ast::pat] pats = vec();
+            let vec[@ast::pat] pats = [];
             for (ast::arm arm in arms) {
                 check_pat(fcx, arm.pat);
                 pattern_ty = Demand::simple(fcx, arm.pat.span, pattern_ty,
                     pat_ty(fcx.ccx.tcx, fcx.ccx.node_types, arm.pat));
-                pats += vec(arm.pat);
+                pats += [arm.pat];
             }
 
             for (@ast::pat pat in pats) {
@@ -2412,15 +2412,15 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             // Now typecheck the blocks.
             auto result_ty = next_ty_var(fcx.ccx);
 
-            let vec[ast::block] blocks_0 = vec();
+            let vec[ast::block] blocks_0 = [];
             for (ast::arm arm in arms) {
                 auto block_0 = check_block(fcx, arm.block);
                 result_ty = Demand::simple(fcx, block_0.span, result_ty,
                     block_ty(fcx.ccx.tcx, fcx.ccx.node_types, block_0));
-                blocks_0 += vec(block_0);
+                blocks_0 += [block_0];
             }
 
-            let vec[ast::arm] arms_1 = vec();
+            let vec[ast::arm] arms_1 = [];
             auto i = 0u;
             for (ast::block block_0 in blocks_0) {
                 auto block_1 = Pushdown::pushdown_block(fcx, result_ty,
@@ -2428,7 +2428,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                 auto pat = pats.(i);
                 auto arm = arms.(i);
                 auto arm_1 = rec(pat=pat, block=block_1);
-                arms_1 += vec(arm_1);
+                arms_1 += [arm_1];
                 i += 1u;
             }
 
@@ -2464,7 +2464,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
             // Pull the argument and return types out.
             auto proto_1;
-            let vec[ty::arg] arg_tys_1 = vec();
+            let vec[ty::arg] arg_tys_1 = [];
             auto rt_1;
             alt (struct(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
                                              result._0))) {
@@ -2479,7 +2479,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                         alt (args.(i)) {
                             case (some[@ast::expr](_)) { /* no-op */ }
                             case (none[@ast::expr]) {
-                                arg_tys_1 += vec(arg_tys.(i));
+                                arg_tys_1 += [arg_tys.(i)];
                             }
                         }
                         i += 1u;
@@ -2624,7 +2624,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         }
 
         case (ast::expr_vec(?args, ?mut, ?a)) {
-            let vec[@ast::expr] args_1 = vec();
+            let vec[@ast::expr] args_1 = [];
 
             let ty::t t;
             if (_vec::len[@ast::expr](args) == 0u) {
@@ -2650,15 +2650,15 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         }
 
         case (ast::expr_tup(?elts, ?a)) {
-            let vec[ast::elt] elts_1 = vec();
-            let vec[ty::mt] elts_mt = vec();
+            let vec[ast::elt] elts_1 = [];
+            let vec[ty::mt] elts_mt = [];
 
             for (ast::elt e in elts) {
                 auto expr_1 = check_expr(fcx, e.expr);
                 auto expr_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
                                       expr_1);
                 _vec::push[ast::elt](elts_1, rec(expr=expr_1 with e));
-                elts_mt += vec(rec(ty=expr_t, mut=e.mut));
+                elts_mt += [rec(ty=expr_t, mut=e.mut)];
             }
 
             auto typ = ty::mk_tup(fcx.ccx.tcx, elts_mt);
@@ -2678,8 +2678,8 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                 }
             }
 
-            let vec[ast::field] fields_1 = vec();
-            let vec[field] fields_t = vec();
+            let vec[ast::field] fields_1 = [];
+            let vec[field] fields_t = [];
 
             for (ast::field f in fields) {
                 auto expr_1 = check_expr(fcx, f.expr);
@@ -2705,7 +2705,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                     auto bexpr_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types,
                                            bexpr_1);
 
-                    let vec[field] base_fields = vec();
+                    let vec[field] base_fields = [];
 
                     alt (struct(fcx.ccx.tcx, bexpr_t)) {
                         case (ty::ty_rec(?flds)) {
@@ -3000,7 +3000,7 @@ fn check_stmt(&@fn_ctxt fcx, &@ast::stmt stmt) -> @ast::stmt {
 }
 
 fn check_block(&@fn_ctxt fcx, &ast::block block) -> ast::block {
-    let vec[@ast::stmt] stmts = vec();
+    let vec[@ast::stmt] stmts = [];
     for (@ast::stmt s in block.node.stmts) {
         _vec::push[@ast::stmt](stmts, check_stmt(fcx, s));
     }
@@ -3093,10 +3093,10 @@ fn check_item_fn(&@crate_ctxt ccx, &span sp, &ast::ident ident, &ast::_fn f,
     // and return type translated to typeck::ty values. We don't need do to it
     // again here, we can extract them.
 
-    let vec[arg] inputs = vec();
+    let vec[arg] inputs = [];
     for (ast::arg arg in f.decl.inputs) {
         auto input_ty = ast_ty_to_ty_crate(ccx, arg.ty);
-        inputs += vec(rec(mode=ast_mode_to_mode(arg.mode), ty=input_ty));
+        inputs += [rec(mode=ast_mode_to_mode(arg.mode), ty=input_ty)];
     }
 
     auto output_ty = ast_ty_to_ty_crate(ccx, f.decl.output);
@@ -3182,7 +3182,7 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
     auto sess = tcx.sess;
     auto result = collect::collect_item_types(sess, tcx, crate);
 
-    let vec[ast::obj_field] fields = vec();
+    let vec[ast::obj_field] fields = [];
 
     auto hasher = hash_unify_cache_entry;
     auto eqer = eq_unify_cache_entry;

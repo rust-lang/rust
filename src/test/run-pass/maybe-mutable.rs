@@ -9,9 +9,9 @@ fn len(vec[mutable? int] v) -> uint {
 }
 
 fn main() {
-    auto v0 = vec(1, 2, 3, 4, 5);
+    auto v0 = [1, 2, 3, 4, 5];
     log len(v0);
-    auto v1 = vec(mutable 1, 2, 3, 4, 5);
+    auto v1 = [mutable 1, 2, 3, 4, 5];
     log len(v1);
 }
 

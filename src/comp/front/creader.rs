@@ -90,9 +90,9 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         case ('t') {
             assert (next(st) as char == '[');
             auto def = parse_def(st, sd);
-            let vec[ty::t] params = vec();
+            let vec[ty::t] params = [];
             while (peek(st) as char != ']') {
-                params += vec(parse_ty(st, sd));
+                params += [parse_ty(st, sd)];
             }
             st.pos = st.pos + 1u;
             ret ty::mk_tag(st.tcx, def, params);
@@ -104,23 +104,23 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         case ('C') { ret ty::mk_chan(st.tcx, parse_ty(st, sd)); }
         case ('T') {
             assert (next(st) as char == '[');
-            let vec[ty::mt] params = vec();
+            let vec[ty::mt] params = [];
             while (peek(st) as char != ']') {
-                params += vec(parse_mt(st, sd));
+                params += [parse_mt(st, sd)];
             }
             st.pos = st.pos + 1u;
             ret ty::mk_tup(st.tcx, params);
         }
         case ('R') {
             assert (next(st) as char == '[');
-            let vec[ty::field] fields = vec();
+            let vec[ty::field] fields = [];
             while (peek(st) as char != ']') {
                 auto name = "";
                 while (peek(st) as char != '=') {
                     name += _str::unsafe_from_byte(next(st));
                 }
                 st.pos = st.pos + 1u;
-                fields += vec(rec(ident=name, mt=parse_mt(st, sd)));
+                fields += [rec(ident=name, mt=parse_mt(st, sd))];
             }
             st.pos = st.pos + 1u;
             ret ty::mk_rec(st.tcx, fields);
@@ -146,7 +146,7 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         }
         case ('O') {
             assert (next(st) as char == '[');
-            let vec[ty::method] methods = vec();
+            let vec[ty::method] methods = [];
             while (peek(st) as char != ']') {
                 auto proto;
                 alt (next(st) as char) {
@@ -158,10 +158,10 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
                     name += _str::unsafe_from_byte(next(st));
                 }
                 auto func = parse_ty_fn(st, sd);
-                methods += vec(rec(proto=proto,
+                methods += [rec(proto=proto,
                                    ident=name,
                                    inputs=func._0,
-                                   output=func._1));
+                                   output=func._1)];
             }
             st.pos += 1u;
             ret ty::mk_obj(st.tcx, methods);
@@ -242,14 +242,14 @@ fn parse_hex(@pstate st) -> uint {
 
 fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty::arg], ty::t) {
     assert (next(st) as char == '[');
-    let vec[ty::arg] inputs = vec();
+    let vec[ty::arg] inputs = [];
     while (peek(st) as char != ']') {
         auto mode = ty::mo_val;
         if (peek(st) as char == '&') {
             mode = ty::mo_alias;
             st.pos = st.pos + 1u;
         }
-        inputs += vec(rec(mode=mode, ty=parse_ty(st, sd)));
+        inputs += [rec(mode=mode, ty=parse_ty(st, sd))];
     }
     st.pos = st.pos + 1u;
     ret tup(inputs, parse_ty(st, sd));
@@ -285,7 +285,7 @@ fn lookup_hash(&ebml::doc d, fn(vec[u8]) -> bool eq_fn, uint hash)
     auto pos = ebml::be_uint_from_bytes(d.data, hash_pos, 4u);
     auto bucket = ebml::doc_at(d.data, pos);
     // Awkward logic because we can't ret from foreach yet
-    let vec[ebml::doc] result = vec();
+    let vec[ebml::doc] result = [];
     auto belt = metadata::tag_index_buckets_bucket_elt;
     for each (ebml::doc elt in ebml::tagged_docs(bucket, belt)) {
         auto pos = ebml::be_uint_from_bytes(elt.data, elt.start, 4u);
@@ -306,7 +306,7 @@ fn resolve_path(vec[ast::ident] path, vec[u8] data) -> vec[ast::def_id] {
     auto md = ebml::new_doc(data);
     auto paths = ebml::get_doc(md, metadata::tag_paths);
     auto eqer = bind eq_item(_, s);
-    let vec[ast::def_id] result = vec();
+    let vec[ast::def_id] result = [];
     for (ebml::doc doc in lookup_hash(paths, eqer, metadata::hash_path(s))) {
         auto did_doc = ebml::get_doc(doc, metadata::tag_def_id);
         _vec::push(result, parse_def_id(ebml::doc_data(did_doc)));
@@ -380,7 +380,7 @@ fn item_ty_param_count(&ebml::doc item, int this_cnum) -> uint {
 }
 
 fn tag_variant_ids(&ebml::doc item, int this_cnum) -> vec[ast::def_id] {
-    let vec[ast::def_id] ids = vec();
+    let vec[ast::def_id] ids = [];
     auto v = metadata::tag_items_data_item_variant;
     for each (ebml::doc p in ebml::tagged_docs(item, v)) {
         auto ext = parse_def_id(ebml::doc_data(p));
@@ -544,23 +544,23 @@ fn get_tag_variants(session::session sess, ty::ctxt tcx, ast::def_id def)
     auto items = ebml::get_doc(ebml::new_doc(data), metadata::tag_items);
     auto item = find_item(def._1, items);
 
-    let vec[trans::variant_info] infos = vec();
+    let vec[trans::variant_info] infos = [];
     auto variant_ids = tag_variant_ids(item, external_crate_id);
     for (ast::def_id did in variant_ids) {
         auto item = find_item(did._1, items);
         auto ctor_ty = item_type(item, external_crate_id, tcx);
-        let vec[ty::t] arg_tys = vec();
+        let vec[ty::t] arg_tys = [];
         alt (ty::struct(tcx, ctor_ty)) {
             case (ty::ty_fn(_, ?args, _)) {
                 for (ty::arg a in args) {
-                    arg_tys += vec(a.ty);
+                    arg_tys += [a.ty];
                 }
             }
             case (_) {
                 // Nullary tag variant.
             }
         }
-        infos += vec(rec(args=arg_tys, ctor_ty=ctor_ty, id=did));
+        infos += [rec(args=arg_tys, ctor_ty=ctor_ty, id=did)];
     }
 
     ret infos;

@@ -1395,7 +1395,7 @@ obj builder(BuilderRef B, @mutable bool terminated) {
         let ValueRef T = llvm::LLVMGetNamedFunction(M,
                                                     _str::buf("llvm.trap"));
         assert (T as int != 0);
-        let vec[ValueRef] Args = vec();
+        let vec[ValueRef] Args = [];
         ret llvm::LLVMBuildCall(B, T,
                                _vec::buf[ValueRef](Args),
                                _vec::len[ValueRef](Args),
@@ -1467,7 +1467,7 @@ fn mk_type_names() -> type_names {
 }
 
 fn type_to_str(type_names names, TypeRef ty) -> str {
-    let vec[TypeRef] v = vec();
+    let vec[TypeRef] v = [];
     ret type_to_str_inner(names, v, ty);
 }
 
@@ -1478,7 +1478,7 @@ fn type_to_str_inner(type_names names,
         ret names.get_name(ty);
     }
 
-    auto outer = outer0 + vec(ty);
+    auto outer = outer0 + [ty];
 
     let int kind = llvm::LLVMGetTypeKind(ty);
 

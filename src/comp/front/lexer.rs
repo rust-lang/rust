@@ -91,7 +91,7 @@ fn new_reader(session sess, io::reader rdr,
         }
     }
     auto file = _str::unsafe_from_bytes(rdr.read_whole_stream());
-    let vec[str] strs = vec();
+    let vec[str] strs = [];
     auto rd = reader(sess, file, _str::byte_len(file), 0u, -1 as char,
                      filemap.start_pos, filemap.start_pos,
                      strs, filemap, itr);
@@ -228,11 +228,11 @@ fn scan_exponent(reader rdr) -> option::t[str] {
     auto res = "";
 
     if (c == 'e' || c == 'E') {
-        res += _str::from_bytes(vec(c as u8));
+        res += _str::from_bytes([c as u8]);
         rdr.bump();
         c = rdr.curr();
         if (c == '-' || c == '+') {
-            res += _str::from_bytes(vec(c as u8));
+            res += _str::from_bytes([c as u8]);
             rdr.bump();
         }
         auto exponent = scan_dec_digits(rdr);
@@ -256,7 +256,7 @@ fn scan_dec_digits(reader rdr) -> str {
 
     while (is_dec_digit (c) || c == '_') {
         if (c != '_') {
-            res += _str::from_bytes(vec(c as u8));
+            res += _str::from_bytes([c as u8]);
         }
         rdr.bump();
         c = rdr.curr();
@@ -766,7 +766,7 @@ fn read_block_comment(reader rdr) -> cmnt {
     auto p = rdr.get_chpos();
     rdr.bump(); rdr.bump();
     while (rdr.curr() == ' ') {rdr.bump();}
-    let vec[str] lines = vec();
+    let vec[str] lines = [];
     auto val = "";
     auto level = 1;
     while (true) {
@@ -802,7 +802,7 @@ fn gather_comments(session sess, str path) -> vec[cmnt] {
     auto srdr = io::file_reader(path);
     auto itr = @interner::mk_interner[str](_str::hash, _str::eq);
     auto rdr = new_reader(sess, srdr, codemap::new_filemap(path, 0u), itr);
-    let vec[cmnt] comments = vec();
+    let vec[cmnt] comments = [];
     while (!rdr.is_eof()) {
         while (true) {
             consume_whitespace(rdr);

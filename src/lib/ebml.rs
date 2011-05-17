@@ -122,22 +122,22 @@ fn write_sized_vint(&io::buf_writer w, uint n, uint size) {
     let vec[u8] buf;
     alt (size) {
         case (1u) {
-            buf = vec(0x80u8 | (n as u8));
+            buf = [0x80u8 | (n as u8)];
         }
         case (2u) {
-            buf = vec(0x40u8 | ((n >> 8u) as u8),
-                      (n & 0xffu) as u8);
+            buf = [0x40u8 | ((n >> 8u) as u8),
+                      (n & 0xffu) as u8];
         }
         case (3u) {
-            buf = vec(0x20u8 | ((n >> 16u) as u8),
+            buf = [0x20u8 | ((n >> 16u) as u8),
                       ((n >> 8u) & 0xffu) as u8,
-                      (n & 0xffu) as u8);
+                      (n & 0xffu) as u8];
         }
         case (4u) {
-            buf = vec(0x10u8 | ((n >> 24u) as u8),
+            buf = [0x10u8 | ((n >> 24u) as u8),
                       ((n >> 16u) & 0xffu) as u8,
                       ((n >> 8u) & 0xffu) as u8,
-                      (n & 0xffu) as u8);
+                      (n & 0xffu) as u8];
         }
         case (_) {
             log_err "vint to write too big";
@@ -158,7 +158,7 @@ fn write_vint(&io::buf_writer w, uint n) {
 }
 
 fn create_writer(&io::buf_writer w) -> writer {
-    let vec[uint] size_positions = vec();
+    let vec[uint] size_positions = [];
     ret rec(writer=w, mutable size_positions=size_positions);
 }
 
@@ -169,8 +169,8 @@ fn start_tag(&writer w, uint tag_id) {
     write_vint(w.writer, tag_id);
 
     // Write a placeholder four-byte size.
-    w.size_positions += vec(w.writer.tell());
-    let vec[u8] zeroes = vec(0u8, 0u8, 0u8, 0u8);
+    w.size_positions += [w.writer.tell()];
+    let vec[u8] zeroes = [0u8, 0u8, 0u8, 0u8];
     w.writer.write(zeroes);
 }
 

@@ -31,9 +31,9 @@ type ps = @rec(mutable vec[context] context,
                mutable bool potential_brk);
 
 fn mkstate(io::writer out, uint width) -> ps {
-  let vec[context] stack = vec(rec(tp=cx_v, indent=0u));
-  let vec[token] buff = vec();
-  let vec[boxtype] sd = vec();
+  let vec[context] stack = [rec(tp=cx_v, indent=0u)];
+  let vec[token] buff = [];
+  let vec[boxtype] sd = [];
   ret @rec(mutable context=stack,
            width=width,
            out=out,
@@ -81,7 +81,7 @@ fn direct_token(ps p, token tok) {
 }
 
 fn buffer_token(ps p, token tok) {
-  p.buffered += vec(tok);
+  p.buffered += [tok];
   auto col = p.scancol;
   p.scancol = col + token_size(tok);
   if (p.scancol > p.width) {
@@ -140,13 +140,13 @@ fn finish_scan(ps p, bool fits) {
       push_context(p, cx_h, base_indent(p) + ind);
     }
   }
-  p.scandepth = vec();
+  p.scandepth = [];
   p.scanning = scan_none;
   for (token t in buf) { add_token(p, t); }
 }
 
 fn start_scan(ps p, token tok, scantype tp) {
-  p.buffered = vec();
+  p.buffered = [];
   p.scancol = p.col;
   p.scanning = tp;
   buffer_token(p, tok);

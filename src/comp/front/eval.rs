@@ -38,7 +38,7 @@ type ctx = @rec(parser p,
                 mutable uint next_ann);
 
 fn mk_env() -> env {
-    let env e = vec();
+    let env e = [];
     ret e;
 }
 
@@ -249,8 +249,8 @@ fn eval_crate_directives(ctx cx,
 fn eval_crate_directives_to_mod(ctx cx, env e,
                                        vec[@ast::crate_directive] cdirs,
                                        str prefix) -> ast::_mod {
-    let vec[@ast::view_item] view_items = vec();
-    let vec[@ast::item] items = vec();
+    let vec[@ast::view_item] view_items = [];
+    let vec[@ast::item] items = [];
 
     eval_crate_directives(cx, e, cdirs, prefix,
                           view_items, items);
@@ -356,7 +356,7 @@ fn eval_crate_directive(ctx cx,
 
         case (ast::cdir_let(?id, ?x, ?cdirs)) {
             auto v = eval_expr(cx, e, x);
-            auto e0 = vec(tup(id, v)) + e;
+            auto e0 = [tup(id, v)] + e;
             eval_crate_directives(cx, e0, cdirs, prefix,
                                   view_items, items);
         }
@@ -379,7 +379,7 @@ fn eval_crate_directive(ctx cx,
             auto full_path = prefix + std::fs::path_sep() + file_path;
 
             if (cx.mode == mode_depend) {
-                cx.deps += vec(full_path);
+                cx.deps += [full_path];
                 ret;
             }
 

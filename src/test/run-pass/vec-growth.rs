@@ -1,9 +1,9 @@
 fn main() {
-    auto v = vec(1);
-    v += vec(2);
-    v += vec(3);
-    v += vec(4);
-    v += vec(5);
+    auto v = [1];
+    v += [2];
+    v += [3];
+    v += [4];
+    v += [5];
     assert (v.(0) == 1);
     assert (v.(1) == 2);
     assert (v.(2) == 3);

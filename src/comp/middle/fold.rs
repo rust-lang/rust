@@ -358,7 +358,7 @@ type ast_fold[ENV] =
 //// Fold drivers.
 
 fn fold_path[ENV](&ENV env, &ast_fold[ENV] fld, &path p) -> path {
-    let vec[@ast::ty] tys_ = vec();
+    let vec[@ast::ty] tys_ = [];
     for (@ast::ty t in p.node.types) {
         _vec::push[@ast::ty](tys_, fold_ty(env, fld, t));
     }
@@ -398,7 +398,7 @@ fn fold_ty[ENV](&ENV env, &ast_fold[ENV] fld, &@ty t) -> @ty {
         }
 
         case (ast::ty_tup(?elts)) {
-            let vec[mt] elts_ = vec();
+            let vec[mt] elts_ = [];
             for (mt elt in elts) {
                 auto ty_ = fold_ty(env, fld, elt.ty);
                 _vec::push[mt](elts_, rec(ty=ty_, mut=elt.mut));
@@ -407,7 +407,7 @@ fn fold_ty[ENV](&ENV env, &ast_fold[ENV] fld, &@ty t) -> @ty {
         }
 
         case (ast::ty_rec(?flds)) {
-            let vec[ast::ty_field] flds_ = vec();
+            let vec[ast::ty_field] flds_ = [];
             for (ast::ty_field f in flds) {
                 auto ty_ = fold_ty(env, fld, f.mt.ty);
                 _vec::push[ast::ty_field]
@@ -417,7 +417,7 @@ fn fold_ty[ENV](&ENV env, &ast_fold[ENV] fld, &@ty t) -> @ty {
         }
 
         case (ast::ty_obj(?meths)) {
-            let vec[ast::ty_method] meths_ = vec();
+            let vec[ast::ty_method] meths_ = [];
             for (ast::ty_method m in meths) {
                 auto tfn = fold_ty_fn(env_, fld, t.span, m.proto,
                                       m.inputs, m.output);
@@ -458,11 +458,11 @@ fn fold_ty_fn[ENV](&ENV env, &ast_fold[ENV] fld, &span sp,
                    &vec[rec(ast::mode mode, @ty ty)] inputs,
                    &@ty output) -> @ty {
     auto output_ = fold_ty(env, fld, output);
-    let vec[rec(ast::mode mode, @ty ty)] inputs_ = vec();
+    let vec[rec(ast::mode mode, @ty ty)] inputs_ = [];
     for (rec(ast::mode mode, @ty ty) input in inputs) {
         auto ty_ = fold_ty(env, fld, input.ty);
         auto input_ = rec(ty=ty_ with input);
-        inputs_ += vec(input_);
+        inputs_ += [input_];
     }
     ret fld.fold_ty_fn(env, sp, proto, inputs_, output_);
 }
@@ -524,9 +524,9 @@ fn fold_pat[ENV](&ENV env, &ast_fold[ENV] fld, &@ast::pat p) -> @ast::pat {
         case (ast::pat_tag(?path, ?pats, ?t)) {
             auto ppath = fold_path(env, fld, path);
 
-            let vec[@ast::pat] ppats = vec();
+            let vec[@ast::pat] ppats = [];
             for (@ast::pat pat in pats) {
-                ppats += vec(fold_pat(env_, fld, pat));
+                ppats += [fold_pat(env_, fld, pat)];
             }
 
             ret fld.fold_pat_tag(env_, p.span, ppath, ppats, t);
@@ -536,7 +536,7 @@ fn fold_pat[ENV](&ENV env, &ast_fold[ENV] fld, &@ast::pat p) -> @ast::pat {
 
 fn fold_exprs[ENV](&ENV env, &ast_fold[ENV] fld,
                    &vec[@expr] es) -> vec[@expr] {
-    let vec[@expr] exprs = vec();
+    let vec[@expr] exprs = [];
     for (@expr e in es) {
         _vec::push[@expr](exprs, fold_expr(env, fld, e));
     }
@@ -568,19 +568,19 @@ fn fold_expr[ENV](&ENV env, &ast_fold[ENV] fld, &@expr e) -> @expr {
         }
 
         case (ast::expr_tup(?es, ?t)) {
-            let vec[ast::elt] elts = vec();
+            let vec[ast::elt] elts = [];
             for (ast::elt e in es) {
-                elts += vec(fold_tup_elt[ENV](env, fld, e));
+                elts += [fold_tup_elt[ENV](env, fld, e)];
             }
             auto t2 = fld.fold_ann(env_, t);
             ret fld.fold_expr_tup(env_, e.span, elts, t2);
         }
 
         case (ast::expr_rec(?fs, ?base, ?t)) {
-            let vec[ast::field] fields = vec();
+            let vec[ast::field] fields = [];
             let option::t[@expr] b = none[@expr];
             for (ast::field f in fs) {
-                fields += vec(fold_rec_field(env, fld, f));
+                fields += [fold_rec_field(env, fld, f)];
             }
             alt (base) {
                 case (none[@ast::expr]) { }
@@ -606,14 +606,14 @@ fn fold_expr[ENV](&ENV env, &ast_fold[ENV] fld, &@expr e) -> @expr {
 
         case (ast::expr_bind(?f, ?args_opt, ?t)) {
             auto ff = fold_expr(env_, fld, f);
-            let vec[option::t[@ast::expr]] aargs_opt = vec();
+            let vec[option::t[@ast::expr]] aargs_opt = [];
             for (option::t[@ast::expr] t_opt in args_opt) {
                 alt (t_opt) {
                     case (none[@ast::expr]) {
-                        aargs_opt += vec(none[@ast::expr]);
+                        aargs_opt += [none[@ast::expr]];
                     }
                     case (some[@ast::expr](?e)) {
-                        aargs_opt += vec(some(fold_expr(env_, fld, e)));
+                        aargs_opt += [some(fold_expr(env_, fld, e))];
                     }
                     case (none[@ast::expr]) { /* empty */ }
                 }
@@ -700,9 +700,9 @@ fn fold_expr[ENV](&ENV env, &ast_fold[ENV] fld, &@expr e) -> @expr {
 
         case (ast::expr_alt(?expr, ?arms, ?t)) {
             auto eexpr = fold_expr(env_, fld, expr);
-            let vec[ast::arm] aarms = vec();
+            let vec[ast::arm] aarms = [];
             for (ast::arm a in arms) {
-                aarms += vec(fold_arm(env_, fld, a));
+                aarms += [fold_arm(env_, fld, a)];
             }
             auto t2 = fld.fold_ann(env_, t);
             ret fld.fold_expr_alt(env_, e.span, eexpr, aarms, t2);
@@ -887,7 +887,7 @@ fn fold_block[ENV](&ENV env, &ast_fold[ENV] fld, &block blk) -> block {
         ret blk;
     }
 
-    let vec[@ast::stmt] stmts = vec();
+    let vec[@ast::stmt] stmts = [];
     for (@ast::stmt s in blk.node.stmts) {
         auto new_stmt = fold_stmt[ENV](env_, fld, s);
         _vec::push[@ast::stmt](stmts, new_stmt);
@@ -921,9 +921,9 @@ fn fold_arg[ENV](&ENV env, &ast_fold[ENV] fld, &arg a) -> arg {
 
 fn fold_fn_decl[ENV](&ENV env, &ast_fold[ENV] fld,
                      &ast::fn_decl decl) -> ast::fn_decl {
-    let vec[ast::arg] inputs = vec();
+    let vec[ast::arg] inputs = [];
     for (ast::arg a in decl.inputs) {
-        inputs += vec(fold_arg(env, fld, a));
+        inputs += [fold_arg(env, fld, a)];
     }
     auto output = fold_ty[ENV](env, fld, decl.output);
     ret fld.fold_fn_decl(env, inputs, output, decl.purity);
@@ -953,10 +953,10 @@ fn fold_method[ENV](&ENV env, &ast_fold[ENV] fld,
 
 fn fold_obj[ENV](&ENV env, &ast_fold[ENV] fld, &ast::_obj ob) -> ast::_obj {
 
-    let vec[ast::obj_field] fields = vec();
-    let vec[@ast::method] meths = vec();
+    let vec[ast::obj_field] fields = [];
+    let vec[@ast::method] meths = [];
     for (ast::obj_field f in ob.fields) {
-        fields += vec(fold_obj_field(env, fld, f));
+        fields += [fold_obj_field(env, fld, f)];
     }
     let option::t[@ast::method] dtor = none[@ast::method];
     alt (ob.dtor) {
@@ -965,7 +965,7 @@ fn fold_obj[ENV](&ENV env, &ast_fold[ENV] fld, &ast::_obj ob) -> ast::_obj {
             dtor = some[@ast::method](fold_method[ENV](env, fld, m));
         }
     }
-    let vec[ast::ty_param] tp = vec();
+    let vec[ast::ty_param] tp = [];
     for (@ast::method m in ob.methods) {
         // Fake-up an ast::item for this method.
         // FIXME: this is kinda awful. Maybe we should reformulate
@@ -990,9 +990,9 @@ fn fold_anon_obj[ENV](&ENV env, &ast_fold[ENV] fld, &ast::anon_obj ob)
     alt (ob.fields) {
         case (none[vec[ast::obj_field]]) { }
         case (some[vec[ast::obj_field]](?v)) {
-            let vec[ast::obj_field] fields = vec();
+            let vec[ast::obj_field] fields = [];
             for (ast::obj_field f in v) {
-                fields += vec(fold_obj_field(env, fld, f));
+                fields += [fold_obj_field(env, fld, f)];
             }
         }
     }
@@ -1007,8 +1007,8 @@ fn fold_anon_obj[ENV](&ENV env, &ast_fold[ENV] fld, &ast::anon_obj ob)
     }
 
     // Methods
-    let vec[@ast::method] meths = vec();
-    let vec[ast::ty_param] tp = vec();
+    let vec[@ast::method] meths = [];
+    let vec[ast::ty_param] tp = [];
     for (@ast::method m in ob.methods) {
         // Fake-up an ast::item for this method.
         // FIXME: this is kinda awful. Maybe we should reformulate
@@ -1089,16 +1089,16 @@ fn fold_item[ENV](&ENV env, &ast_fold[ENV] fld, &@item i) -> @item {
         }
 
         case (ast::item_tag(?ident, ?variants, ?ty_params, ?id, ?ann)) {
-            let vec[ast::variant] new_variants = vec();
+            let vec[ast::variant] new_variants = [];
             for (ast::variant v in variants) {
-                let vec[ast::variant_arg] new_args = vec();
+                let vec[ast::variant_arg] new_args = [];
                 for (ast::variant_arg va in v.node.args) {
                     auto new_ty = fold_ty[ENV](env_, fld, va.ty);
-                    new_args += vec(rec(ty=new_ty, id=va.id));
+                    new_args += [rec(ty=new_ty, id=va.id)];
                 }
                 auto new_v = rec(name=v.node.name, args=new_args,
                                  id=v.node.id, ann=v.node.ann);
-                new_variants += vec(respan[ast::variant_](v.span, new_v));
+                new_variants += [respan[ast::variant_](v.span, new_v)];
             }
             ret fld.fold_item_tag(env_, i.span, ident, new_variants,
                                   ty_params, id, ann);
@@ -1116,8 +1116,8 @@ fn fold_item[ENV](&ENV env, &ast_fold[ENV] fld, &@item i) -> @item {
 
 fn fold_mod[ENV](&ENV e, &ast_fold[ENV] fld, &ast::_mod m) -> ast::_mod {
 
-    let vec[@view_item] view_items = vec();
-    let vec[@item] items = vec();
+    let vec[@view_item] view_items = [];
+    let vec[@item] items = [];
 
     for (@view_item vi in m.view_items) {
         auto new_vi = fold_view_item[ENV](e, fld, vi);
@@ -1154,8 +1154,8 @@ fn fold_native_item[ENV](&ENV env, &ast_fold[ENV] fld,
 
 fn fold_native_mod[ENV](&ENV e, &ast_fold[ENV] fld,
                         &ast::native_mod m) -> ast::native_mod {
-    let vec[@view_item] view_items = vec();
-    let vec[@native_item] items = vec();
+    let vec[@view_item] view_items = [];
+    let vec[@native_item] items = [];
 
     for (@view_item vi in m.view_items) {
         auto new_vi = fold_view_item[ENV](e, fld, vi);

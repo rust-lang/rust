@@ -299,8 +299,8 @@ fn add_to_index(&ebml::writer ebml_w,
                 &vec[str] path,
                 &mutable vec[tup(str, uint)] index,
                 &str name) {
-    auto full_path = path + vec(name);
-    index += vec(tup(_str::connect(full_path, "::"), ebml_w.writer.tell()));
+    auto full_path = path + [name];
+    index += [tup(_str::connect(full_path, "::"), ebml_w.writer.tell())];
 }
 
 fn encode_native_module_item_paths(&ebml::writer ebml_w,
@@ -353,7 +353,7 @@ fn encode_module_item_paths(&ebml::writer ebml_w,
                 ebml::start_tag(ebml_w, tag_paths_data_mod);
                 encode_name(ebml_w, id);
                 encode_def_id(ebml_w, did);
-                encode_module_item_paths(ebml_w, _mod, path + vec(id), index);
+                encode_module_item_paths(ebml_w, _mod, path + [id], index);
                 ebml::end_tag(ebml_w);
             }
             case (ast::item_native_mod(?id, ?nmod, ?did)) {
@@ -361,7 +361,7 @@ fn encode_module_item_paths(&ebml::writer ebml_w,
                 ebml::start_tag(ebml_w, tag_paths_data_mod);
                 encode_name(ebml_w, id);
                 encode_def_id(ebml_w, did);
-                encode_native_module_item_paths(ebml_w, nmod, path + vec(id),
+                encode_native_module_item_paths(ebml_w, nmod, path + [id],
                                                 index);
                 ebml::end_tag(ebml_w);
             }
@@ -400,8 +400,8 @@ fn encode_module_item_paths(&ebml::writer ebml_w,
 
 fn encode_item_paths(&ebml::writer ebml_w, &@ast::crate crate)
         -> vec[tup(str, uint)] {
-    let vec[tup(str, uint)] index = vec();
-    let vec[str] path = vec();
+    let vec[tup(str, uint)] index = [];
+    let vec[str] path = [];
     ebml::start_tag(ebml_w, tag_paths);
     encode_module_item_paths(ebml_w, crate.node.module, path, index);
     ebml::end_tag(ebml_w);
@@ -413,7 +413,7 @@ fn encode_item_paths(&ebml::writer ebml_w, &@ast::crate crate)
 
 fn encode_kind(&ebml::writer ebml_w, u8 c) {
     ebml::start_tag(ebml_w, tag_items_data_item_kind);
-    ebml_w.writer.write(vec(c));
+    ebml_w.writer.write([c]);
     ebml::end_tag(ebml_w);
 }
 
@@ -470,7 +470,7 @@ fn encode_tag_variant_info(&@trans::crate_ctxt cx, &ebml::writer ebml_w,
                            &mutable vec[tup(int, uint)] index,
                            &vec[ast::ty_param] ty_params) {
     for (ast::variant variant in variants) {
-        index += vec(tup(variant.node.id._1, ebml_w.writer.tell()));
+        index += [tup(variant.node.id._1, ebml_w.writer.tell())];
 
         ebml::start_tag(ebml_w, tag_items_data_item);
         encode_def_id(ebml_w, variant.node.id);
@@ -549,7 +549,7 @@ fn encode_info_for_item(@trans::crate_ctxt cx, &ebml::writer ebml_w,
             encode_symbol(cx, ebml_w, odid.ctor);
             ebml::end_tag(ebml_w);
 
-            index += vec(tup(odid.ty._1, ebml_w.writer.tell()));
+            index += [tup(odid.ty._1, ebml_w.writer.tell())];
             ebml::start_tag(ebml_w, tag_items_data_item);
             encode_def_id(ebml_w, odid.ty);
             encode_kind(ebml_w, 'y' as u8);
@@ -582,16 +582,16 @@ fn encode_info_for_native_item(&@trans::crate_ctxt cx, &ebml::writer ebml_w,
 
 fn encode_info_for_items(&@trans::crate_ctxt cx, &ebml::writer ebml_w)
         -> vec[tup(int, uint)] {
-    let vec[tup(int, uint)] index = vec();
+    let vec[tup(int, uint)] index = [];
 
     ebml::start_tag(ebml_w, tag_items_data);
     for each (@tup(ast::def_id, @ast::item) kvp in cx.items.items()) {
-        index += vec(tup(kvp._0._1, ebml_w.writer.tell()));
+        index += [tup(kvp._0._1, ebml_w.writer.tell())];
         encode_info_for_item(cx, ebml_w, kvp._1, index);
     }
     for each (@tup(ast::def_id, @ast::native_item) kvp in
             cx.native_items.items()) {
-        index += vec(tup(kvp._0._1, ebml_w.writer.tell()));
+        index += [tup(kvp._0._1, ebml_w.writer.tell())];
         encode_info_for_native_item(cx, ebml_w, kvp._1);
     }
     ebml::end_tag(ebml_w);
@@ -618,15 +618,15 @@ fn hash_path(&str s) -> uint {
 
 fn create_index[T](&vec[tup(T, uint)] index, fn(&T) -> uint hash_fn)
         -> vec[vec[tup(T, uint)]] {
-    let vec[vec[tup(T, uint)]] buckets = vec();
+    let vec[vec[tup(T, uint)]] buckets = [];
     for each (uint i in _uint::range(0u, 256u)) {
-        let vec[tup(T, uint)] bucket = vec();
-        buckets += vec(bucket);
+        let vec[tup(T, uint)] bucket = [];
+        buckets += [bucket];
     }
 
     for (tup(T, uint) elt in index) {
         auto h = hash_fn(elt._0);
-        buckets.(h % 256u) += vec(elt);
+        buckets.(h % 256u) += [elt];
     }
 
     ret buckets;
@@ -638,10 +638,10 @@ fn encode_index[T](&ebml::writer ebml_w, &vec[vec[tup(T, uint)]] buckets,
 
     ebml::start_tag(ebml_w, tag_index);
 
-    let vec[uint] bucket_locs = vec();
+    let vec[uint] bucket_locs = [];
     ebml::start_tag(ebml_w, tag_index_buckets);
     for (vec[tup(T, uint)] bucket in buckets) {
-        bucket_locs += vec(ebml_w.writer.tell());
+        bucket_locs += [ebml_w.writer.tell()];
 
         ebml::start_tag(ebml_w, tag_index_buckets_bucket);
         for (tup(T, uint) elt in bucket) {
@@ -698,7 +698,7 @@ fn encode_metadata(&@trans::crate_ctxt cx, &@ast::crate crate)
 
     // Pad this, since something (LLVM, presumably) is cutting off the
     // remaining % 4 bytes.
-    buf_w.write(vec(0u8, 0u8, 0u8, 0u8));
+    buf_w.write([0u8, 0u8, 0u8, 0u8]);
 
     ret C_postr(string_w.get_str());
 }
@@ -709,7 +709,7 @@ fn write_metadata(&@trans::crate_ctxt cx, &@ast::crate crate) {
         llmeta = encode_metadata(cx, crate);
     }
 
-    auto llconst = trans::C_struct(vec(llmeta));
+    auto llconst = trans::C_struct([llmeta]);
     auto llglobal = llvm::LLVMAddGlobal(cx.llmod, trans::val_ty(llconst),
                                        _str::buf("rust_metadata"));
     llvm::LLVMSetInitializer(llglobal, llconst);

@@ -28,10 +28,10 @@ type aminoacids = tup(char, u32);
 
 fn make_cumulative(vec[aminoacids] aa) -> vec[aminoacids] {
   let u32 cp = 0u32;
-  let vec[aminoacids] ans = vec();
+  let vec[aminoacids] ans = [];
   for (aminoacids a in aa) {
     cp += a._1;
-    ans += vec(tup(a._0, cp));
+    ans += [tup(a._0, cp)];
   }
   ret ans;
 }
@@ -91,7 +91,7 @@ fn make_repeat_fasta(str id, str desc, str s, int n) {
 }
 
 fn main(vec[str] args) {
-  let vec[aminoacids] iub = make_cumulative(vec(tup( 'a', 27u32 ),
+  let vec[aminoacids] iub = make_cumulative([tup( 'a', 27u32 ),
                                                 tup( 'c', 12u32 ),
                                                 tup( 'g', 12u32 ),
                                                 tup( 't', 27u32 ),
@@ -106,12 +106,12 @@ fn main(vec[str] args) {
                                                 tup( 'S', 2u32 ),
                                                 tup( 'V', 2u32 ),
                                                 tup( 'W', 2u32 ),
-                                                tup( 'Y', 2u32 )));
+                                                tup( 'Y', 2u32 )]);
 
-  let vec[aminoacids] homosapiens = make_cumulative(vec(tup( 'a', 30u32 ),
+  let vec[aminoacids] homosapiens = make_cumulative([tup( 'a', 30u32 ),
                                                         tup( 'c', 20u32 ),
                                                         tup( 'g', 20u32 ),
-                                                        tup( 't', 30u32 )));
+                                                        tup( 't', 30u32 )]);
 
   let str alu =
     "GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGG" +

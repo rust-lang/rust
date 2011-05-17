@@ -7,7 +7,7 @@ native "llvm" mod llvm {
 
 fn main() {
 
-    let vec[int] inputs = vec(
+    let vec[int] inputs = [
                               50000,
                               500000
                               //
@@ -16,7 +16,7 @@ fn main() {
                               // during 'make check' under valgrind
                               // 5000000
                               // 50000000
-        );
+        ];
 
     let vec[Body::props] bodies = NBodySystem::MakeNBodySystem();
 
@@ -38,13 +38,13 @@ fn main() {
 mod NBodySystem {
 
     fn MakeNBodySystem() -> vec[Body::props] {
-        let vec[Body::props] bodies = vec(
+        let vec[Body::props] bodies = [
             // these each return a Body::props
             Body::sun(), 
             Body::jupiter(), 
             Body::saturn(), 
             Body::uranus(), 
-            Body::neptune());
+            Body::neptune()];
 
         let float px = 0.0;
         let float py = 0.0;

@@ -33,14 +33,14 @@ fn test00(bool is_multithreaded) {
     
     let int i = 0;
     
-    let vec[task] tasks = vec();
+    let vec[task] tasks = [];
     while (i < number_of_tasks) {
         i = i + 1;
         if (is_multithreaded) {
-            tasks += vec(
-                spawn thread test00_start(ch, i, number_of_messages));
+            tasks += [
+                spawn thread test00_start(ch, i, number_of_messages)];
         } else {
-            tasks += vec(spawn test00_start(ch, i, number_of_messages));
+            tasks += [spawn test00_start(ch, i, number_of_messages)];
         }
     }
     
@@ -147,11 +147,11 @@ fn test06() {
     
     let int i = 0;
     
-    let vec[task] tasks = vec();
+    let vec[task] tasks = [];
     while (i < number_of_tasks) {
         i = i + 1;
-        tasks += vec(spawn thread test06_start(i));
-        // tasks += vec(spawn test06_start(i));
+        tasks += [spawn thread test06_start(i)];
+        // tasks += [spawn test06_start(i)];
     }
     
     for (task t in tasks) {

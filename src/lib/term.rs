@@ -22,12 +22,12 @@ const u8 color_bright_cyan = 14u8;
 const u8 color_bright_white = 15u8;
 
 fn esc(io::buf_writer writer) {
-    writer.write(vec(0x1bu8, '[' as u8));
+    writer.write([0x1bu8, '[' as u8]);
 }
 
 fn reset(io::buf_writer writer) {
     esc(writer);
-    writer.write(vec('0' as u8, 'm' as u8));
+    writer.write(['0' as u8, 'm' as u8]);
 }
 
 fn color_supported() -> bool {
@@ -39,10 +39,10 @@ fn set_color(io::buf_writer writer, u8 first_char, u8 color) {
 
     esc(writer);
     if (color >= 8u8) {
-        writer.write(vec('1' as u8, ';' as u8));
+        writer.write(['1' as u8, ';' as u8]);
         color -= 8u8;
     }
-    writer.write(vec(first_char, ('0' as u8) + color, 'm' as u8));
+    writer.write([first_char, ('0' as u8) + color, 'm' as u8]);
 }
 
 fn fg(io::buf_writer writer, u8 color) {

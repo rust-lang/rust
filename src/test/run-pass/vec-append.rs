@@ -13,8 +13,8 @@ import std::_vec;
 const uint const_refcount = 0x7bad_face_u;
 
 fn fast_growth() {
-  let vec[int] v = vec(1,2,3,4,5);
-  v += vec(6,7,8,9,0);
+  let vec[int] v = [1,2,3,4,5];
+  v += [6,7,8,9,0];
 
   log v.(9);
   assert (v.(0) == 1);
@@ -23,9 +23,9 @@ fn fast_growth() {
 }
 
 fn slow_growth() {
-  let vec[int] v = vec();
+  let vec[int] v = [];
   let vec[int] u = v;
-  v += vec(17);
+  v += [17];
 
   log v.(0);
   assert (v.(0) == 17);
@@ -34,7 +34,7 @@ fn slow_growth() {
 fn slow_growth2_helper(str s) {   // ref up: s
 
   obj acc(vec[str] v) {
-    fn add(&str s) { v += vec(s); }
+    fn add(&str s) { v += [s]; }
   }
 
   let str ss = s;                 // ref up: s
@@ -50,7 +50,7 @@ fn slow_growth2_helper(str s) {   // ref up: s
      * copy of existing elements should increment the ref count of
      * mumble, the existing str in the originally- shared vec.
      */
-    let vec[str] v = vec(mumble); // ref up: v, mumble
+    let vec[str] v = [mumble]; // ref up: v, mumble
     let acc a = acc(v);           // ref up: a, v
 
     log _vec::refcount[str](v);

@@ -14,7 +14,7 @@ fn test_simple(str tmpfilebase) {
   log frood;
 
   {
-    let io::writer out = io::file_writer(tmpfile, vec(io::create));
+    let io::writer out = io::file_writer(tmpfile, [io::create]);
     out.write_str(frood);
   }
 

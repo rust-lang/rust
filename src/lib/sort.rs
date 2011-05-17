@@ -6,17 +6,17 @@ type lteq[T] = fn(&T a, &T b) -> bool;
 fn merge_sort[T](lteq[T] le, vec[T] v) -> vec[T] {
 
     fn merge[T](lteq[T] le, vec[T] a, vec[T] b) -> vec[T] {
-        let vec[T] res = vec();
+        let vec[T] res = [];
         let uint a_len = len[T](a);
         let uint a_ix = 0u;
         let uint b_len = len[T](b);
         let uint b_ix = 0u;
         while (a_ix < a_len && b_ix < b_len) {
             if (le(a.(a_ix), b.(b_ix))) {
-                res += vec(a.(a_ix));
+                res += [a.(a_ix)];
                 a_ix += 1u;
             } else {
-                res += vec(b.(b_ix));
+                res += [b.(b_ix)];
                 b_ix += 1u;
             }
         }

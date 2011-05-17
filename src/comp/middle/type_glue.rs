@@ -37,17 +37,17 @@ fn rc_shape_of(&ty::ctxt tcx, variant_getter getter, ty::t t) -> rc_shape {
         case (ty::ty_char) { ret rs_none; }
         case (ty::ty_str) { ret rs_none; }
         case (ty::ty_tag(?did, ?params)) {
-            let vec[vec[@rc_shape]] result = vec();
+            let vec[vec[@rc_shape]] result = [];
 
             auto vinfos = getter(did);
             for (variant_info vinfo in vinfos) {
-                let vec[@rc_shape] variant_rcs = vec();
+                let vec[@rc_shape] variant_rcs = [];
                 for (ty::t typ in vinfo.args) {
                     auto ty_1 = ty::bind_params_in_type(tcx, typ);
                     ty_1 = ty::substitute_type_params(tcx, params, ty_1);
-                    variant_rcs += vec(@rc_shape_of(tcx, getter, ty_1));
+                    variant_rcs += [@rc_shape_of(tcx, getter, ty_1)];
                 }
-                result += vec(variant_rcs);
+                result += [variant_rcs];
             }
 
             ret rs_tag(result);
@@ -58,16 +58,16 @@ fn rc_shape_of(&ty::ctxt tcx, variant_getter getter, ty::t t) -> rc_shape {
         case (ty::ty_chan(_)) { ret rs_ref; }
         case (ty::ty_task) { ret rs_ref; }
         case (ty::ty_tup(?mts)) {
-            let vec[@rc_shape] result = vec();
+            let vec[@rc_shape] result = [];
             for (ty::mt tm in mts) {
-                result += vec(@rc_shape_of(tcx, getter, tm.ty));
+                result += [@rc_shape_of(tcx, getter, tm.ty)];
             }
             ret rs_tup(result);
         }
         case (ty::ty_rec(?fields)) {
-            let vec[@rc_shape] result = vec();
+            let vec[@rc_shape] result = [];
             for (ty::field fld in fields) {
-                result += vec(@rc_shape_of(tcx, getter, fld.mt.ty));
+                result += [@rc_shape_of(tcx, getter, fld.mt.ty)];
             }
             ret rs_tup(result);
         }

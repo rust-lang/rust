@@ -3,13 +3,13 @@ fn main() {
   assert ("hello " > "hello");
   assert ("hello" != "there");
 
-  assert (vec(1,2,3,4) > vec(1,2,3));
-  assert (vec(1,2,3) < vec(1,2,3,4));
-  assert (vec(1,2,4,4) > vec(1,2,3,4));
-  assert (vec(1,2,3,4) < vec(1,2,4,4));
-  assert (vec(1,2,3) <= vec(1,2,3));
-  assert (vec(1,2,3) <= vec(1,2,3,3));
-  assert (vec(1,2,3,4) > vec(1,2,3));
-  assert (vec(1,2,3) == vec(1,2,3));
-  assert (vec(1,2,3) != vec(1,1,3));
+  assert ([1,2,3,4] > [1,2,3]);
+  assert ([1,2,3] < [1,2,3,4]);
+  assert ([1,2,4,4] > [1,2,3,4]);
+  assert ([1,2,3,4] < [1,2,4,4]);
+  assert ([1,2,3] <= [1,2,3]);
+  assert ([1,2,3] <= [1,2,3,3]);
+  assert ([1,2,3,4] > [1,2,3]);
+  assert ([1,2,3] == [1,2,3]);
+  assert ([1,2,3] != [1,1,3]);
 }

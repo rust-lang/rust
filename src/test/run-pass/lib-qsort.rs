@@ -19,32 +19,32 @@ fn check_sort(vec[mutable int] v1, vec[mutable int] v2) {
 
 fn main() {
   {
-    auto v1 = vec(mutable 3,7,4,5,2,9,5,8);
-    auto v2 = vec(mutable 2,3,4,5,5,7,8,9);
+    auto v1 = [mutable 3,7,4,5,2,9,5,8];
+    auto v2 = [mutable 2,3,4,5,5,7,8,9];
     check_sort(v1, v2);
   }
 
   {
-    auto v1 = vec(mutable 1,1,1);
-    auto v2 = vec(mutable 1,1,1);
+    auto v1 = [mutable 1,1,1];
+    auto v2 = [mutable 1,1,1];
     check_sort(v1, v2);
   }
 
   {
-    let vec[mutable int] v1 = vec(mutable);
-    let vec[mutable int] v2 = vec(mutable);
+    let vec[mutable int] v1 = [mutable];
+    let vec[mutable int] v2 = [mutable];
     check_sort(v1, v2);
   }
 
   {
-    auto v1 = vec(mutable 9);
-    auto v2 = vec(mutable 9);
+    auto v1 = [mutable 9];
+    auto v2 = [mutable 9];
     check_sort(v1, v2);
   }
 
   {
-    auto v1 = vec(mutable 9,3,3,3,9);
-    auto v2 = vec(mutable 3,3,3,9,9);
+    auto v1 = [mutable 9,3,3,3,9];
+    auto v2 = [mutable 3,3,3,9,9];
     check_sort(v1, v2);
   }
 

@@ -12,78 +12,78 @@ fn wstr(int i) -> str {
 }
 
 fn start() -> vec[str] {
-    ret vec(".cfi_startproc");
+    ret [".cfi_startproc"];
 }
 
 fn end() -> vec[str] {
-    ret vec(".cfi_endproc");
+    ret [".cfi_endproc"];
 }
 
 fn save_callee_saves() -> vec[str] {
-    ret vec("pushl %ebp",
+    ret ["pushl %ebp",
             "pushl %edi",
             "pushl %esi",
-            "pushl %ebx");
+            "pushl %ebx"];
 }
 
 fn save_callee_saves_with_cfi() -> vec[str] {
     auto offset = 8;
     auto t;
-    t  = vec("pushl %ebp");
-    t += vec(".cfi_def_cfa_offset " + istr(offset));
-    t += vec(".cfi_offset %ebp, -" + istr(offset));
+    t  = ["pushl %ebp"];
+    t += [".cfi_def_cfa_offset " + istr(offset)];
+    t += [".cfi_offset %ebp, -" + istr(offset)];
 
-    t += vec("pushl %edi");
+    t += ["pushl %edi"];
     offset += 4;
-    t += vec(".cfi_def_cfa_offset " + istr(offset));
+    t += [".cfi_def_cfa_offset " + istr(offset)];
 
-    t += vec("pushl %esi");
+    t += ["pushl %esi"];
     offset += 4;
-    t += vec(".cfi_def_cfa_offset " + istr(offset));
+    t += [".cfi_def_cfa_offset " + istr(offset)];
 
-    t += vec("pushl %ebx");
+    t += ["pushl %ebx"];
     offset += 4;
-    t += vec(".cfi_def_cfa_offset " + istr(offset));
+    t += [".cfi_def_cfa_offset " + istr(offset)];
     ret t;
 }
 
 fn restore_callee_saves() -> vec[str] {
-    ret vec("popl  %ebx",
+    ret ["popl  %ebx",
             "popl  %esi",
             "popl  %edi",
-            "popl  %ebp");
+            "popl  %ebp"];
 }
 
 fn load_esp_from_rust_sp_first_arg() -> vec[str] {
-    ret vec("movl  " + wstr(abi::task_field_rust_sp) + "(%ecx), %esp");
+    ret ["movl  " + wstr(abi::task_field_rust_sp) + "(%ecx), %esp"];
 }
 
 fn load_esp_from_runtime_sp_first_arg() -> vec[str] {
-    ret vec("movl  " + wstr(abi::task_field_runtime_sp) + "(%ecx), %esp");
+    ret ["movl  " + wstr(abi::task_field_runtime_sp) + "(%ecx), %esp"];
 }
 
 fn store_esp_to_rust_sp_first_arg() -> vec[str] {
-    ret vec("movl  %esp, " + wstr(abi::task_field_rust_sp) + "(%ecx)");
+    ret ["movl  %esp, " + wstr(abi::task_field_rust_sp) + "(%ecx)"];
 }
 
 fn store_esp_to_runtime_sp_first_arg() -> vec[str] {
-    ret vec("movl  %esp, " + wstr(abi::task_field_runtime_sp) + "(%ecx)");
+    ret ["movl  %esp, " + wstr(abi::task_field_runtime_sp) + "(%ecx)"];
 }
 
 fn load_esp_from_rust_sp_second_arg() -> vec[str] {
-    ret vec("movl  " + wstr(abi::task_field_rust_sp) + "(%edx), %esp");
+    ret ["movl  " + wstr(abi::task_field_rust_sp) + "(%edx), %esp"];
 }
 
 fn load_esp_from_runtime_sp_second_arg() -> vec[str] {
-    ret vec("movl  " + wstr(abi::task_field_runtime_sp) + "(%edx), %esp");
+    ret ["movl  " + wstr(abi::task_field_runtime_sp) + "(%edx), %esp"];
 }
 
 fn store_esp_to_rust_sp_second_arg() -> vec[str] {
-    ret vec("movl  %esp, " + wstr(abi::task_field_rust_sp) + "(%edx)");
+    ret ["movl  %esp, " + wstr(abi::task_field_rust_sp) + "(%edx)"];
 }
 
 fn store_esp_to_runtime_sp_second_arg() -> vec[str] {
-    ret vec("movl  %esp, " + wstr(abi::task_field_runtime_sp) + "(%edx)");
+    ret ["movl  %esp, " + wstr(abi::task_field_runtime_sp) + "(%edx)"];
 }
 
 
@@ -105,7 +105,7 @@ fn store_esp_to_runtime_sp_second_arg() -> vec[str] {
  */
 
 fn rust_activate_glue() -> vec[str] {
-    ret vec("movl  4(%esp), %ecx    # ecx = rust_task")
+    ret ["movl  4(%esp), %ecx    # ecx = rust_task"]
         + save_callee_saves()
         + store_esp_to_runtime_sp_first_arg()
         + load_esp_from_rust_sp_first_arg()
@@ -157,7 +157,7 @@ fn rust_activate_glue() -> vec[str] {
          *      will be a no-op. Esp won't move, and the task's stack won't
          *      grow.
          */
-        + vec("addl  $20, " + wstr(abi::task_field_rust_sp) + "(%ecx)")
+        + ["addl  $20, " + wstr(abi::task_field_rust_sp) + "(%ecx)"]
 
 
         /*
@@ -167,10 +167,10 @@ fn rust_activate_glue() -> vec[str] {
          * activating, the task needs to be in the fastcall 2nd parameter
          * expected by the rust main function. That's edx.
          */
-        + vec("mov  %ecx, %edx")
+        + ["mov  %ecx, %edx"]
 
         + restore_callee_saves()
-        + vec("ret");
+        + ["ret"];
 }
 
 /* More glue code, this time the 'bottom half' of yielding.
@@ -200,13 +200,13 @@ fn rust_activate_glue() -> vec[str] {
  */
 
 fn rust_yield_glue() -> vec[str] {
-    ret vec("movl  0(%esp), %ecx    # ecx = rust_task")
+    ret ["movl  0(%esp), %ecx    # ecx = rust_task"]
         + load_esp_from_rust_sp_first_arg()
         + save_callee_saves()
         + store_esp_to_rust_sp_first_arg()
         + load_esp_from_runtime_sp_first_arg()
         + restore_callee_saves()
-        + vec("ret");
+        + ["ret"];
 }
 
 fn native_glue(int n_args, abi::native_glue_type ngt) -> vec[str] {
@@ -239,8 +239,8 @@ fn native_glue(int n_args, abi::native_glue_type ngt) -> vec[str] {
         } else {
             src_off = wstr(5 + (i as int));
         }
-        auto m = vec("movl  " + src_off + "(%ebp),%eax",
-                     "movl  %eax," + dst_off + "(%esp)");
+        auto m = ["movl  " + src_off + "(%ebp),%eax",
+                     "movl  %eax," + dst_off + "(%esp)"];
         ret _str::connect(m, "\n\t");
     }
 
@@ -250,24 +250,24 @@ fn native_glue(int n_args, abi::native_glue_type ngt) -> vec[str] {
         start()
         + save_callee_saves_with_cfi()
 
-        + vec("movl  %esp, %ebp     # ebp = rust_sp")
-        + vec(".cfi_def_cfa_register %ebp")
+        + ["movl  %esp, %ebp     # ebp = rust_sp"]
+        + [".cfi_def_cfa_register %ebp"]
 
         + store_esp_to_rust_sp_second_arg()
         + load_esp_from_runtime_sp_second_arg()
 
-        + vec("subl  $" + wstr(n_args) + ", %esp   # esp -= args",
-              "andl  $~0xf, %esp    # align esp down")
+        + ["subl  $" + wstr(n_args) + ", %esp   # esp -= args",
+              "andl  $~0xf, %esp    # align esp down"]
 
         + _vec::init_fn[str](carg, (n_args) as uint)
 
-        +  vec("movl  %edx, %edi     # save task from edx to edi",
+        +  ["movl  %edx, %edi     # save task from edx to edi",
                "call  *%ecx          # call *%ecx",
-               "movl  %edi, %edx     # restore edi-saved task to edx")
+               "movl  %edi, %edx     # restore edi-saved task to edx"]
 
         + load_esp_from_rust_sp_second_arg()
         + restore_callee_saves()
-        + vec("ret")
+        + ["ret"]
         + end();
 
 }
@@ -305,13 +305,13 @@ fn get_module_asm() -> str {
     auto prefix = get_symbol_prefix();
 
     auto glues =
-        vec(decl_glue(align, prefix,
+        [decl_glue(align, prefix,
                       abi::activate_glue_name(),
                       rust_activate_glue()),
 
             decl_glue(align, prefix,
                       abi::yield_glue_name(),
-                      rust_yield_glue()))
+                      rust_yield_glue())]
 
         + _vec::init_fn[str](bind decl_native_glue(align, prefix,
             abi::ngt_rust, _), (abi::n_native_glues + 1) as uint)

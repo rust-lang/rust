@@ -31,13 +31,13 @@ fn test00(bool is_multithreaded) {
     let int i = 0;
     
     // Create and spawn tasks...
-    let vec[task] tasks = vec();
+    let vec[task] tasks = [];
     while (i < number_of_tasks) {
         if (is_multithreaded) {
-            tasks += vec(
-                spawn thread test00_start(ch, i, number_of_messages));
+            tasks += [
+                spawn thread test00_start(ch, i, number_of_messages)];
         } else {
-            tasks += vec(spawn test00_start(ch, i, number_of_messages));
+            tasks += [spawn test00_start(ch, i, number_of_messages)];
         }
         i = i + 1;
     }

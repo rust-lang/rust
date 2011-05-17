@@ -9,7 +9,7 @@ iter range(uint lo, uint hi) -> uint {
 
 fn create_index[T](vec[tup(T, uint)] index, fn(&T) -> uint hash_fn) {
     for each (uint i in range(0u, 256u)) {
-        let vec[T] bucket = vec();
+        let vec[T] bucket = [];
     }
 }
 

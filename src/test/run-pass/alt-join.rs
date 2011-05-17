@@ -7,7 +7,7 @@ import std::option::some;
 fn foo[T](&option::t[T] y) {
   let int x;
   
-  let vec[int] res = vec();
+  let vec[int] res = [];
   
   /* tests that x doesn't get put in the precondition for the 
      entire if expression */
@@ -22,7 +22,7 @@ fn foo[T](&option::t[T] y) {
         x = 42;
       }
     }
-    res += vec(x);
+    res += [x];
   }
 
   ret;

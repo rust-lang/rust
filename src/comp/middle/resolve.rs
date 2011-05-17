@@ -253,7 +253,7 @@ fn pop_env_for_item(@mutable list[scope] sc, &@ast::item i) {
 }
 
 fn push_env_for_method(@mutable list[scope] sc, &@ast::method m) {
-    let vec[ast::ty_param] tp = vec();
+    let vec[ast::ty_param] tp = [];
     let @ast::item i = @rec(node=ast::item_fn(m.node.ident,
                                               m.node.meth,
                                               tp,
@@ -686,7 +686,7 @@ fn lookup_in_mod(&env e, def m, &ident id, namespace ns, dir dr)
     if (defid._0 != ast::local_crate) { // Not in this crate
         auto cached = e.ext_cache.find(tup(defid,id,ns));
         if (!option::is_none(cached)) { ret cached; }
-        auto path = vec(id);
+        auto path = [id];
         if (defid._1 != -1) {
             path = e.ext_map.get(defid) + path;
         }

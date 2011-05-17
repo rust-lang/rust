@@ -20,7 +20,7 @@ type interner[T] = rec(
 
 fn mk_interner[T](hashfn[T] hasher, eqfn[T] eqer) -> interner[T] {
     auto m = map::mk_hashmap[T,uint](hasher, eqer);
-    let vec[T] vect = vec();
+    let vec[T] vect = [];
     ret rec(map=m, mutable vect=vect, hasher=hasher, eqer=eqer);
 }
 
@@ -30,7 +30,7 @@ fn intern[T](&interner[T] itr, &T val) -> uint {
         case (none[uint]) {
             auto new_idx = _vec::len[T](itr.vect);
             itr.map.insert(val, new_idx);
-            itr.vect += vec(val);
+            itr.vect += [val];
             ret new_idx;
         }
     }

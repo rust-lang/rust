@@ -79,14 +79,14 @@ mod ct {
     }
 
     fn parse_fmt_string(str s) -> vec[piece] {
-        let vec[piece] pieces = vec();
+        let vec[piece] pieces = [];
         auto lim = _str::byte_len(s);
         auto buf = "";
 
         fn flush_buf(str buf, &vec[piece] pieces) -> str {
             if (_str::byte_len(buf) > 0u) {
                 auto piece = piece_string(buf);
-                pieces += vec(piece);
+                pieces += [piece];
             }
             ret "";
         }
@@ -106,7 +106,7 @@ mod ct {
                 } else {
                     buf = flush_buf(buf, pieces);
                     auto res = parse_conversion(s, i, lim);
-                    pieces += vec(res._0);
+                    pieces += [res._0];
                     i = res._1;
                 }
             } else {
@@ -180,7 +180,7 @@ mod ct {
     }
 
     fn parse_flags(str s, uint i, uint lim) -> tup(vec[flag], uint) {
-        let vec[flag] noflags = vec();
+        let vec[flag] noflags = [];
 
         if (i >= lim) {
             ret tup(noflags, i);
@@ -190,7 +190,7 @@ mod ct {
             auto next = parse_flags(s, i + 1u, lim);
             auto rest = next._0;
             auto j = next._1;
-            let vec[flag] curr = vec(f);
+            let vec[flag] curr = [f];
             ret tup(curr + rest, j);
         }
 
@@ -539,7 +539,7 @@ mod rt {
                 || head == '-' as u8
                 || head == ' ' as u8) {
 
-                auto headstr = _str::unsafe_from_bytes(vec(head));
+                auto headstr = _str::unsafe_from_bytes([head]);
                 auto bytelen = _str::byte_len(s);
                 auto numpart = _str::substr(s, 1u, bytelen - 1u);
                 ret headstr + padstr + numpart;
@@ -793,7 +793,7 @@ mod RT {
                 || head == '-' as u8
                 || head == ' ' as u8) {
 
-                auto headstr = _str::unsafe_from_bytes(vec(head));
+                auto headstr = _str::unsafe_from_bytes([head]);
                 auto bytelen = _str::byte_len(s);
                 auto numpart = _str::substr(s, 1u, bytelen - 1u);
                 ret headstr + padstr + numpart;

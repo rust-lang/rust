@@ -12,7 +12,7 @@ fn test_vec() {
     ret v1 == v2;
   }
   auto eq = bind compare_vec(_, _);
-  test_generic[vec[int]](vec(1, 2), eq);
+  test_generic[vec[int]]([1, 2], eq);
 }
 
 fn main() {

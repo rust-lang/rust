@@ -141,7 +141,7 @@ fn unsafe_from_bytes(vec[mutable? u8] v) -> str {
 }
 
 fn unsafe_from_byte(u8 u) -> str {
-    ret rustrt::str_from_vec(vec(u));
+    ret rustrt::str_from_vec([u]);
 }
 
 fn str_from_cstr(sbuf cstr) -> str {
@@ -248,7 +248,7 @@ fn char_len(str s) -> uint {
 }
 
 fn to_chars(str s) -> vec[char] {
-    let vec[char] buf = vec();
+    let vec[char] buf = [];
     auto i = 0u;
     auto len = byte_len(s);
     while (i < len) {
@@ -419,12 +419,12 @@ fn unshift_byte(&mutable str s, u8 b) {
 }
 
 fn split(str s, u8 sep) -> vec[str] {
-    let vec[str] v = vec();
+    let vec[str] v = [];
     let str accum = "";
     let bool ends_with_sep = false;
     for (u8 c in s) {
         if (c == sep) {
-            v += vec(accum);
+            v += [accum];
             accum = "";
             ends_with_sep = true;
         } else {
@@ -434,7 +434,7 @@ fn split(str s, u8 sep) -> vec[str] {
     }
     if (_str::byte_len(accum) != 0u ||
         ends_with_sep) {
-        v += vec(accum);
+        v += [accum];
     }
     ret v;
 }
@@ -486,5 +486,5 @@ fn to_upper(str s) -> str {
 // indent-tabs-mode: nil
 // c-basic-offset: 4
 // buffer-file-coding-system: utf-8-unix
-// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
 // End:

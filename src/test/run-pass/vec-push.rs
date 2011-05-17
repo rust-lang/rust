@@ -1,9 +1,9 @@
 fn push[T](&mutable vec[mutable? T] v, &T t) {
-    v += vec(t);
+    v += [t];
 }
 
 fn main() {
-    auto v = @vec(1, 2, 3);
+    auto v = @[1, 2, 3];
     push[int](*v, 1);
 }
 

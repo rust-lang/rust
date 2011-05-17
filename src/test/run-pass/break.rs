@@ -13,7 +13,7 @@ fn main() {
   } while (i < 30);
   assert (i == 20);
 
-  for (int x in vec(1, 2, 3, 4, 5, 6)) {
+  for (int x in [1, 2, 3, 4, 5, 6]) {
     if (x == 3) { break; }
     assert (x <= 3);
   }
@@ -32,7 +32,7 @@ fn main() {
     assert (i % 2 != 0);
   } while (i < 10);
 
-  for (int x in vec(1, 2, 3, 4, 5, 6)) {
+  for (int x in [1, 2, 3, 4, 5, 6]) {
     if (x % 2 == 0) { cont; }
     assert (x % 2 != 0);
   }

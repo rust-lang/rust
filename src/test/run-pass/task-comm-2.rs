@@ -21,13 +21,13 @@ fn test00(bool create_threads) {
     let int number_of_tasks = 8;
     
     let int i = 0;
-    let vec[task] tasks = vec();
+    let vec[task] tasks = [];
     while (i < number_of_tasks) {
         i = i + 1;
         if (create_threads) {
-            tasks += vec(spawn thread start(i));
+            tasks += [spawn thread start(i)];
         } else {
-            tasks += vec(spawn start(i));
+            tasks += [spawn start(i)];
         }
     }
     

@@ -73,10 +73,10 @@ fn test_concat() {
     assert (_str::eq(_str::concat(v), s));
   }
 
-  t(vec("you", "know", "I'm", "no", "good"), "youknowI'mnogood");
-  let vec[str] v = vec();
+  t(["you", "know", "I'm", "no", "good"], "youknowI'mnogood");
+  let vec[str] v = [];
   t(v, "");
-  t(vec("hi"), "hi");
+  t(["hi"], "hi");
 }
 
 fn test_connect() {
@@ -84,10 +84,10 @@ fn test_connect() {
     assert (_str::eq(_str::connect(v, sep), s));
   }
 
-  t(vec("you", "know", "I'm", "no", "good"), " ", "you know I'm no good");
-  let vec[str] v = vec();
+  t(["you", "know", "I'm", "no", "good"], " ", "you know I'm no good");
+  let vec[str] v = [];
   t(v, " ", "");
-  t(vec("hi"), " ", "hi");
+  t(["hi"], " ", "hi");
 }
 
 fn test_to_upper() {

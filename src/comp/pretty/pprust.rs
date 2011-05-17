@@ -307,7 +307,7 @@ fn print_item(ps s, @ast::item item) {
             bopen(s);
             for (@ast::method meth in _obj.methods) {
                 hbox(s);
-                let vec[ast::ty_param] typarams = vec();
+                let vec[ast::ty_param] typarams = [];
                 maybe_print_comment(s, meth.span.lo);
                 print_fn(s, meth.node.meth.decl, meth.node.ident, typarams);
                 space(s.s);
@@ -360,7 +360,7 @@ fn print_literal(ps s, @ast::lit lit) {
     alt (lit.node) {
         case (ast::lit_str(?st)) {print_string(s, st);}
         case (ast::lit_char(?ch)) {
-            wrd(s.s, "'" + escape_str(_str::from_bytes(vec(ch as u8)), '\'')
+            wrd(s.s, "'" + escape_str(_str::from_bytes([ch as u8]), '\'')
                 + "'");
         }
         case (ast::lit_int(?val)) {

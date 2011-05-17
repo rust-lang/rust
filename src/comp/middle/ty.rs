@@ -420,9 +420,9 @@ fn mk_tup(&ctxt cx, &vec[mt] tms) -> t { ret gen_ty(cx, ty_tup(tms)); }
 
 fn mk_imm_tup(&ctxt cx, &vec[t] tys) -> t {
     // TODO: map
-    let vec[ty::mt] mts = vec();
+    let vec[ty::mt] mts = [];
     for (t typ in tys) {
-        mts += vec(rec(ty=typ, mut=ast::imm));
+        mts += [rec(ty=typ, mut=ast::imm)];
     }
     ret mk_tup(cx, mts);
 }
@@ -625,12 +625,12 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
         }
 
         case (ty_param(?id)) {
-            s += "'" + _str::unsafe_from_bytes(vec(('a' as u8) + (id as u8)));
+            s += "'" + _str::unsafe_from_bytes([('a' as u8) + (id as u8)]);
         }
 
         case (ty_bound_param(?id)) {
-            s += "''" + _str::unsafe_from_bytes(vec(('a' as u8) +
-                                                    (id as u8)));
+            s += "''" + _str::unsafe_from_bytes([('a' as u8) +
+                                                    (id as u8)]);
         }
     }
 
@@ -693,7 +693,7 @@ fn walk_ty(ctxt cx, ty_walk walker, t ty) {
             walk_ty(cx, walker, ret_ty);
         }
         case (ty_obj(?methods)) {
-            let vec[method] new_methods = vec();
+            let vec[method] new_methods = [];
             for (method m in methods) {
                 for (arg a in m.inputs) {
                     walk_ty(cx, walker, a.ty);
@@ -740,58 +740,58 @@ fn fold_ty(ctxt cx, ty_fold fld, t ty_0) -> t {
             ty = copy_cname(cx, mk_chan(cx, fold_ty(cx, fld, subty)), ty);
         }
         case (ty_tag(?tid, ?subtys)) {
-            let vec[t] new_subtys = vec();
+            let vec[t] new_subtys = [];
             for (t subty in subtys) {
-                new_subtys += vec(fold_ty(cx, fld, subty));
+                new_subtys += [fold_ty(cx, fld, subty)];
             }
             ty = copy_cname(cx, mk_tag(cx, tid, new_subtys), ty);
         }
         case (ty_tup(?mts)) {
-            let vec[mt] new_mts = vec();
+            let vec[mt] new_mts = [];
             for (mt tm in mts) {
                 auto new_subty = fold_ty(cx, fld, tm.ty);
-                new_mts += vec(rec(ty=new_subty, mut=tm.mut));
+                new_mts += [rec(ty=new_subty, mut=tm.mut)];
             }
             ty = copy_cname(cx, mk_tup(cx, new_mts), ty);
         }
         case (ty_rec(?fields)) {
-            let vec[field] new_fields = vec();
+            let vec[field] new_fields = [];
             for (field fl in fields) {
                 auto new_ty = fold_ty(cx, fld, fl.mt.ty);
                 auto new_mt = rec(ty=new_ty, mut=fl.mt.mut);
-                new_fields += vec(rec(ident=fl.ident, mt=new_mt));
+                new_fields += [rec(ident=fl.ident, mt=new_mt)];
             }
             ty = copy_cname(cx, mk_rec(cx, new_fields), ty);
         }
         case (ty_fn(?proto, ?args, ?ret_ty)) {
-            let vec[arg] new_args = vec();
+            let vec[arg] new_args = [];
             for (arg a in args) {
                 auto new_ty = fold_ty(cx, fld, a.ty);
-                new_args += vec(rec(mode=a.mode, ty=new_ty));
+                new_args += [rec(mode=a.mode, ty=new_ty)];
             }
             ty = copy_cname(cx, mk_fn(cx, proto, new_args,
                                       fold_ty(cx, fld, ret_ty)), ty);
         }
         case (ty_native_fn(?abi, ?args, ?ret_ty)) {
-            let vec[arg] new_args = vec();
+            let vec[arg] new_args = [];
             for (arg a in args) {
                 auto new_ty = fold_ty(cx, fld, a.ty);
-                new_args += vec(rec(mode=a.mode, ty=new_ty));
+                new_args += [rec(mode=a.mode, ty=new_ty)];
             }
             ty = copy_cname(cx, mk_native_fn(cx, abi, new_args,
                                              fold_ty(cx, fld, ret_ty)), ty);
         }
         case (ty_obj(?methods)) {
-            let vec[method] new_methods = vec();
+            let vec[method] new_methods = [];
             for (method m in methods) {
-                let vec[arg] new_args = vec();
+                let vec[arg] new_args = [];
                 for (arg a in m.inputs) {
-                    new_args += vec(rec(mode=a.mode,
-                                        ty=fold_ty(cx, fld, a.ty)));
+                    new_args += [rec(mode=a.mode,
+                                        ty=fold_ty(cx, fld, a.ty))];
                 }
-                new_methods += vec(rec(proto=m.proto, ident=m.ident,
+                new_methods += [rec(proto=m.proto, ident=m.ident,
                                        inputs=new_args,
-                                       output=fold_ty(cx, fld, m.output)));
+                                       output=fold_ty(cx, fld, m.output))];
             }
             ty = copy_cname(cx, mk_obj(cx, new_methods), ty);
         }
@@ -1443,7 +1443,7 @@ fn ann_to_type(&node_type_table ntt, &ast::ann ann) -> t {
 fn ann_to_type_params(&node_type_table ntt, &ast::ann ann) -> vec[t] {
     alt (ann_to_ty_param_substs_opt_and_ty(ntt, ann)._0) {
         case (none[vec[t]]) {
-            let vec[t] result = vec();
+            let vec[t] result = [];
             ret result;
         }
         case (some[vec[t]](?tps)) { ret tps; }
@@ -1492,14 +1492,14 @@ fn count_ty_params(ctxt cx, t ty) -> uint {
                     }
                 }
                 if (!seen) {
-                    *param_indices += vec(param_idx);
+                    *param_indices += [param_idx];
                 }
             }
             case (_) { /* fall through */ }
         }
     }
 
-    let vec[uint] v = vec();    // FIXME: typechecker botch
+    let vec[uint] v = [];    // FIXME: typechecker botch
     let @mutable vec[uint] param_indices = @mutable v;
     auto f = bind counter(cx, param_indices, _);
     walk_ty(cx, f, ty);
@@ -1873,7 +1873,7 @@ mod unify {
         }
 
         // TODO: as above, we should have an iter2 iterator.
-        let vec[arg] result_ins = vec();
+        let vec[arg] result_ins = [];
         auto i = 0u;
         while (i < expected_len) {
             auto expected_input = expected_inputs.(i);
@@ -1897,7 +1897,7 @@ mod unify {
 
             alt (result) {
                 case (ures_ok(?rty)) {
-                    result_ins += vec(rec(mode=result_mode, ty=rty));
+                    result_ins += [rec(mode=result_mode, ty=rty)];
                 }
 
                 case (_) {
@@ -1979,7 +1979,7 @@ mod unify {
                  &t actual,
                  &vec[method] expected_meths,
                  &vec[method] actual_meths) -> result {
-      let vec[method] result_meths = vec();
+      let vec[method] result_meths = [];
       let uint i = 0u;
       let uint expected_len = _vec::len[method](expected_meths);
       let uint actual_len = _vec::len[method](actual_meths);
@@ -2004,9 +2004,9 @@ mod unify {
             case (ures_ok(?tfn)) {
                 alt (struct(cx.tcx, tfn)) {
                     case (ty_fn(?proto, ?ins, ?out)) {
-                        result_meths += vec(rec(inputs = ins,
+                        result_meths += [rec(inputs = ins,
                                                 output = out
-                                                with e_meth));
+                                                with e_meth)];
                     }
                 }
             }
@@ -2057,10 +2057,10 @@ mod unify {
                         // Just bind the type variable to the expected type.
                         auto vlen = _vec::len[vec[t]](cx.types);
                         if (actual_n < vlen) {
-                            cx.types.(actual_n) += vec(expected);
+                            cx.types.(actual_n) += [expected];
                         } else {
                             assert (actual_n == vlen);
-                            cx.types += vec(mutable vec(expected));
+                            cx.types += [mutable [expected]];
                         }
                     }
                 }
@@ -2120,7 +2120,7 @@ mod unify {
 
                         // TODO: factor this cruft out, see the TODO in the
                         // ty::ty_tup case
-                        let vec[t] result_tps = vec();
+                        let vec[t] result_tps = [];
                         auto i = 0u;
                         auto expected_len = _vec::len[t](expected_tps);
                         while (i < expected_len) {
@@ -2272,7 +2272,7 @@ mod unify {
 
                         // TODO: implement an iterator that can iterate over
                         // two arrays simultaneously.
-                        let vec[ty::mt] result_elems = vec();
+                        let vec[ty::mt] result_elems = [];
                         auto i = 0u;
                         while (i < expected_len) {
                             auto expected_elem = expected_elems.(i);
@@ -2294,7 +2294,7 @@ mod unify {
                             alt (result) {
                                 case (ures_ok(?rty)) {
                                     auto mt = rec(ty=rty, mut=mut);
-                                    result_elems += vec(mt);
+                                    result_elems += [mt];
                                 }
                                 case (_) {
                                     ret result;
@@ -2326,7 +2326,7 @@ mod unify {
 
                         // TODO: implement an iterator that can iterate over
                         // two arrays simultaneously.
-                        let vec[field] result_fields = vec();
+                        let vec[field] result_fields = [];
                         auto i = 0u;
                         while (i < expected_len) {
                             auto expected_field = expected_fields.(i);
@@ -2425,10 +2425,10 @@ mod unify {
                 auto expected_n = get_or_create_set(cx, expected_id);
                 auto vlen = _vec::len[vec[t]](cx.types);
                 if (expected_n < vlen) {
-                    cx.types.(expected_n) += vec(actual);
+                    cx.types.(expected_n) += [actual];
                 } else {
                     assert (expected_n == vlen);
-                    cx.types += vec(mutable vec(actual));
+                    cx.types += [mutable [actual]];
                 }
                 ret ures_ok(expected);
             }
@@ -2485,13 +2485,13 @@ mod unify {
     }
 
     fn unify_sets(&@ctxt cx) -> vec[t] {
-        let vec[t] throwaway = vec();
-        let vec[mutable vec[t]] set_types = vec(mutable throwaway);
+        let vec[t] throwaway = [];
+        let vec[mutable vec[t]] set_types = [mutable throwaway];
         _vec::pop[vec[t]](set_types);   // FIXME: botch
 
         for (ufind::node node in cx.sets.nodes) {
-            let vec[t] v = vec();
-            set_types += vec(mutable v);
+            let vec[t] v = [];
+            set_types += [mutable v];
         }
 
         auto i = 0u;
@@ -2501,14 +2501,14 @@ mod unify {
             i += 1u;
         }
 
-        let vec[t] result = vec();
+        let vec[t] result = [];
         for (vec[t] types in set_types) {
             if (_vec::len[t](types) > 1u) {
                 log_err "unification of > 1 types in a type set is " +
                     "unimplemented";
                 fail;
             }
-            result += vec(types.(0));
+            result += [types.(0)];
         }
 
         ret result;
@@ -2518,8 +2518,8 @@ mod unify {
              &t actual,
              &unify_handler handler,
              &ty_ctxt tcx) -> result {
-        let vec[t] throwaway = vec();
-        let vec[mutable vec[t]] types = vec(mutable throwaway);
+        let vec[t] throwaway = [];
+        let vec[mutable vec[t]] types = [mutable throwaway];
         _vec::pop[vec[t]](types);   // FIXME: botch
 
         auto cx = @rec(sets=ufind::make(),

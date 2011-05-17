@@ -36,7 +36,7 @@ fn list_dir(path p) -> vec[str] {
   if (pl == 0u || p.(pl - 1u) as char != os_fs::path_sep) {
     p += path_sep();
   }
-  let vec[str] full_paths = vec();
+  let vec[str] full_paths = [];
   for (str filename in os_fs::list_dir(p)) {
     if (!_str::eq(filename, ".")) {if (!_str::eq(filename, "..")) {
       _vec::push[str](full_paths, p + filename);

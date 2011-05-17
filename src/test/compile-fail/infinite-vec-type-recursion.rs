@@ -8,5 +8,5 @@
 type x = vec[x];
 
 fn main() {
-  let x b = vec();
+  let x b = [];
 }

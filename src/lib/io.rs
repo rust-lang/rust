@@ -120,7 +120,7 @@ state obj new_reader(buf_reader rdr) {
         ret rdr.eof();
     }
     fn read_line() -> str {
-        let vec[u8] buf = vec();
+        let vec[u8] buf = [];
         // No break yet in rustc
         auto go_on = true;
         while (go_on) {
@@ -131,7 +131,7 @@ state obj new_reader(buf_reader rdr) {
         ret _str::unsafe_from_bytes(buf);
     }
     fn read_c_str() -> str {
-        let vec[u8] buf = vec();
+        let vec[u8] buf = [];
         auto go_on = true;
         while (go_on) {
             auto ch = rdr.read_byte();
@@ -172,7 +172,7 @@ state obj new_reader(buf_reader rdr) {
         ret val;
     }
     fn read_whole_stream() -> vec[u8] {
-        let vec[u8] buf = vec();
+        let vec[u8] buf = [];
         while (!rdr.eof()) {
             buf += rdr.read(2048u);
         }
@@ -366,9 +366,9 @@ type writer =
     };
 
 fn uint_to_le_bytes(uint n, uint size) -> vec[u8] {
-    let vec[u8] bytes = vec();
+    let vec[u8] bytes = [];
     while (size > 0u) {
-        bytes += vec((n & 255u) as u8);
+        bytes += [(n & 255u) as u8];
         n >>= 8u;
         size -= 1u;
     }
@@ -376,10 +376,10 @@ fn uint_to_le_bytes(uint n, uint size) -> vec[u8] {
 }
 
 fn uint_to_be_bytes(uint n, uint size) -> vec[u8] {
-    let vec[u8] bytes = vec();
+    let vec[u8] bytes = [];
     auto i = (size - 1u) as int;
     while (i >= 0) {
-        bytes += vec(((n >> ((i * 8) as uint)) & 255u) as u8);
+        bytes += [((n >> ((i * 8) as uint)) & 255u) as u8];
         i -= 1;
     }
     ret bytes;
@@ -466,7 +466,7 @@ state obj byte_buf_writer(mutable_byte_buf buf) {
         while (vpos < vlen) {
             auto b = v.(vpos);
             if (buf.pos == _vec::len(buf.buf)) {
-                buf.buf += vec(mutable b);
+                buf.buf += [mutable b];
             } else {
                 buf.buf.(buf.pos) = b;
             }
@@ -486,7 +486,7 @@ state obj byte_buf_writer(mutable_byte_buf buf) {
 
 fn string_writer() -> str_writer {
     // FIXME: yikes, this is bad. Needs fixing of mutable syntax.
-    let vec[mutable u8] b = vec(mutable 0u8);
+    let vec[mutable u8] b = [mutable 0u8];
     _vec::pop(b);
 
     let mutable_byte_buf buf = @rec(mutable buf = b, mutable pos = 0u);
