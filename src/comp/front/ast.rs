@@ -1,4 +1,3 @@
-
 import std::map::hashmap;
 import std::option;
 import std::_str;
@@ -7,7 +6,7 @@ import util::common::span;
 import util::common::spanned;
 import util::common::ty_mach;
 import util::common::filename;
-import util::typestate_ann::ts_ann;
+import middle::tstate::ann::ts_ann;
 
 type ident = str;
 
@@ -323,6 +322,12 @@ type ty_method = rec(proto proto, ident ident,
 type ty = spanned[ty_];
 tag ty_ {
     ty_nil;
+    ty_bot; /* return type of ! functions and type of
+             ret/fail/break/cont. there is no syntax
+             for this type. */
+    /* bot represents the value of functions that don't return a value
+       locally to their context. in contrast, things like log that do
+       return, but don't return a meaningful value, have result type nil. */
     ty_bool;
     ty_int;
     ty_uint;
@@ -354,10 +359,17 @@ type constr = spanned[constr_];
 type arg = rec(mode mode, @ty ty, ident ident, def_id id);
 type fn_decl = rec(vec[arg] inputs,
                    @ty output,
-                   purity purity);
+                   purity purity,
+                   controlflow cf);
 tag purity {
     pure_fn;   // declared with "pred"
     impure_fn; // declared with "fn"
+}
+
+tag controlflow {
+    noreturn; // functions with return type _|_ that always
+              // raise an error or exit (i.e. never return to the caller)
+    return;  // everything else
 }
 
 type _fn = rec(fn_decl decl,

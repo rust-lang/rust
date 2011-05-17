@@ -5,7 +5,9 @@ import std::_int;
 import std::_vec;
 import std::option::none;
 import front::ast;
-import util::typestate_ann::ts_ann;
+import front::ast::ty;
+import front::ast::pat;
+import middle::tstate::ann::ts_ann;
 
 import middle::fold;
 import middle::fold::respan;
@@ -17,6 +19,7 @@ import pretty::pprust::print_block;
 import pretty::pprust::print_expr;
 import pretty::pprust::print_decl;
 import pretty::pprust::print_fn;
+import pretty::pprust::print_type;
 import pretty::pp::mkstate;
 
 type filename = str;
@@ -127,12 +130,30 @@ fn expr_to_str(&@ast::expr e) -> str {
   ret s.get_str();
 }
 
+fn ty_to_str(&ty t) -> str {
+  let str_writer s = string_writer();
+  auto out_ = mkstate(s.get_writer(), 80u);
+  auto out = @rec(s=out_,
+                  comments=none[vec[front::lexer::cmnt]],
+                  mutable cur_cmnt=0u);
+  print_type(out, @t);
+  ret s.get_str();
+}
+
 fn log_expr(&ast::expr e) -> () {
     log(expr_to_str(@e));
 }
 
 fn log_expr_err(&ast::expr e) -> () {
     log_err(expr_to_str(@e));
+}
+
+fn log_ty_err(&ty t) -> () {
+    log_err(ty_to_str(t));
+}
+
+fn log_pat_err(&@pat p) -> () {
+    log_err(pretty::pprust::pat_to_str(p));
 }
 
 fn block_to_str(&ast::block b) -> str {
@@ -269,6 +290,7 @@ fn has_nonlocal_exits(&ast::block b) -> bool {
 
     ret (has_exits.size() > 0u);
 }
+
 //
 // Local Variables:
 // mode: rust

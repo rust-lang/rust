@@ -135,6 +135,7 @@ fn walk_ty(&ast_visitor v, @ast::ty t) {
     v.visit_ty_pre(t);
     alt (t.node) {
         case (ast::ty_nil) {}
+        case (ast::ty_bot) {}
         case (ast::ty_bool) {}
         case (ast::ty_int) {}
         case (ast::ty_uint) {}

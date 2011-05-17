@@ -25,6 +25,7 @@ import middle::ty::node_type_table;
 import middle::ty::pat_ty;
 import middle::ty::path_to_str;
 import middle::ty::plain_ann;
+import middle::ty::bot_ann;
 import middle::ty::struct;
 import middle::ty::triv_ann;
 import middle::ty::ty_param_substs_opt_and_ty;
@@ -46,7 +47,7 @@ import std::option::none;
 import std::option::some;
 import std::option::from_maybe;
 
-import util::typestate_ann::ts_ann;
+import middle::tstate::ann::ts_ann;
 
 type ty_table = hashmap[ast::def_id, ty::t];
 
@@ -271,6 +272,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
     auto cname = none[str];
     alt (ast_ty.node) {
         case (ast::ty_nil)          { typ = ty::mk_nil(tcx); }
+        case (ast::ty_bot)          { typ = ty::mk_bot(tcx); }
         case (ast::ty_bool)         { typ = ty::mk_bool(tcx); }
         case (ast::ty_int)          { typ = ty::mk_int(tcx); }
         case (ast::ty_uint)         { typ = ty::mk_uint(tcx); }
@@ -1060,6 +1062,7 @@ fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast::def_id vid,
         }
     }
 
+    /* result is a vector of the *expected* types of all the fields */
     ret result;
 }
 
@@ -1120,11 +1123,29 @@ mod Pushdown {
                 }
 
                 // Get the types of the arguments of the variant.
+              
+                let vec[ty::t] tparams = vec();
+                auto j = 0u;
+                auto actual_ty_params =
+                  ty::ann_to_type_params(fcx.ccx.node_types, ann);
+
+                for (ty::t some_ty in tag_tps) {
+                    let ty::t t1 = some_ty;
+                    let ty::t t2 = actual_ty_params.(j);
+                    
+                    let ty::t res = Demand::simple(fcx, 
+                                                   pat.span,
+                                                   t1, t2);
+                    
+                    _vec::push(tparams, res);
+                    j += 1u;
+                }
+
                 auto arg_tys;
                 alt (fcx.ccx.tcx.def_map.get(ast::ann_tag(ann))) {
                     case (ast::def_variant(_, ?vdefid)) {
                         arg_tys = variant_arg_types(fcx.ccx, pat.span, vdefid,
-                                                    tag_tps);
+                                                    tparams);
                     }
                 }
 
@@ -1134,10 +1155,22 @@ mod Pushdown {
                     i += 1u;
                 }
 
+                auto tps = ty::ann_to_type_params(fcx.ccx.node_types, ann);
+                auto tt  = ann_to_type(fcx.ccx.node_types, ann);
+                
+                let ty_param_substs_and_ty res_t = Demand::full(fcx, pat.span,
+                      expected, tt, tps, NO_AUTODEREF);
+
+                auto a_1 = ast::ann_type(ast::ann_tag(ann),
+                                               res_t._1,
+                                               some[vec[ty::t]](res_t._0),
+                                         none[@ts_ann]);
+
                 // TODO: push down type from "expected".
-                write_type(fcx.ccx.node_types, ast::ann_tag(ann),
+                write_type(fcx.ccx.node_types, ast::ann_tag(a_1),
                     ty::ann_to_ty_param_substs_opt_and_ty(fcx.ccx.node_types,
-                                                          ann));
+                                                          a_1));
+                    
             }
         }
     }
@@ -1843,8 +1876,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             case (ty::ty_native_fn(?abi, _, _))   {
                 t_0 = ty::mk_native_fn(fcx.ccx.tcx, abi, arg_tys_0, rt_0);
             }
-            case (_) {
-                log_err "check_call_or_bind(): fn expr doesn't have fn type";
+            case (?u) {
+                fcx.ccx.sess.span_err(f.span,
+                "check_call_or_bind(): fn expr doesn't have fn type,"
+                + " instead having: " +
+                ty_to_str(fcx.ccx.tcx, expr_ty(fcx.ccx.tcx,
+                                              fcx.ccx.node_types, f_0)));
                 fail;
             }
         }
@@ -2015,15 +2052,13 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
         }
 
         case (ast::expr_fail(?a)) {
-            // TODO: should be something like 'a or noret
-            auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+            auto new_ann = bot_ann(ast::ann_tag(a), fcx.ccx.tcx);
             write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, ast::ann_tag(a));
             ret @fold::respan[ast::expr_](expr.span, ast::expr_fail(new_ann));
         }
 
         case (ast::expr_break(?a)) {
-            // TODO: should be something like 'a or noret
-            auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+            auto new_ann = bot_ann(ast::ann_tag(a), fcx.ccx.tcx);
             write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, ast::ann_tag(a));
             ret @fold::respan[ast::expr_](expr.span,
                                           ast::expr_break(new_ann));
@@ -2031,13 +2066,12 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
 
         case (ast::expr_cont(?a)) {
             // TODO: should be something like 'a or noret
-            auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+            auto new_ann = bot_ann(ast::ann_tag(a), fcx.ccx.tcx);
             write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, ast::ann_tag(a));
             ret @fold::respan[ast::expr_](expr.span, ast::expr_cont(new_ann));
         }
 
         case (ast::expr_ret(?expr_opt, ?a)) {
-            // TODO: should be something like 'a or noret
             alt (expr_opt) {
                 case (none[@ast::expr]) {
                     auto nil = ty::mk_nil(fcx.ccx.tcx);
@@ -2046,7 +2080,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                                          + "returning non-nil");
                     }
 
-                    auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+                    auto new_ann = bot_ann(ast::ann_tag(a), fcx.ccx.tcx);
                     write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types,
                                    ast::ann_tag(a));
 
@@ -2060,7 +2094,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
                     auto expr_1 = Pushdown::pushdown_expr(fcx, fcx.ret_ty,
                                                          expr_0);
 
-                    auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+                    auto new_ann = bot_ann(ast::ann_tag(a), fcx.ccx.tcx);
                     write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types,
                                    ast::ann_tag(a));
 
@@ -2109,8 +2143,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) -> @ast::expr {
             assert (ast::is_call_expr(e));
             auto expr_0 = check_expr(fcx, e);
             auto expr_1 = Pushdown::pushdown_expr(fcx, fcx.ret_ty, expr_0);
-
-            auto new_ann = plain_ann(ast::ann_tag(a), fcx.ccx.tcx);
+            auto new_ann = bot_ann(ast::ann_tag(a), fcx.ccx.tcx);
             write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, ast::ann_tag(a));
 
             ret @fold::respan(expr.span, ast::expr_be(expr_1, new_ann));

@@ -163,6 +163,7 @@ fn base_indent(ps p) -> uint {
     auto cx = p.context.(i);
     if (cx.tp == cx_v) {ret cx.indent;}
   }
+  ret 0u;
 }
 
 fn cx_is(contexttype a, contexttype b) -> bool {
