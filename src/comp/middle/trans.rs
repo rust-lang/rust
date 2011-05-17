@@ -757,6 +757,7 @@ fn type_of_inner(&@crate_ctxt cx, &ty::t t) -> TypeRef {
     alt (ty::struct(cx.tcx, t)) {
         case (ty::ty_native) { llty = T_ptr(T_i8()); }
         case (ty::ty_nil) { llty = T_nil(); }
+        case (ty::ty_bot) { llty = T_nil(); } /* ...I guess? */
         case (ty::ty_bool) { llty = T_bool(); }
         case (ty::ty_int) { llty = T_int(); }
         case (ty::ty_float) { llty = T_float(); }
@@ -3186,8 +3187,8 @@ fn copy_ty(&@block_ctxt cx,
     if (ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t) ||
             ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
         ret res(cx, cx.build.Store(src, dst));
-
-    } else if (ty::type_is_nil(cx.fcx.lcx.ccx.tcx, t)) {
+    } else if (ty::type_is_nil(cx.fcx.lcx.ccx.tcx, t) ||
+               ty::type_is_bot(cx.fcx.lcx.ccx.tcx, t)) {
         ret res(cx, C_nil());
 
     } else if (ty::type_is_boxed(cx.fcx.lcx.ccx.tcx, t)) {
@@ -3552,6 +3553,8 @@ fn autoderef(&@block_ctxt cx, ValueRef v, &ty::t t) -> result {
             }
         }
     }
+
+    fail; // fools the return-checker
 }
 
 fn autoderefed_ty(&@crate_ctxt ccx, &ty::t t) -> ty::t {
@@ -3567,6 +3570,8 @@ fn autoderefed_ty(&@crate_ctxt ccx, &ty::t t) -> ty::t {
             }
         }
     }
+
+    fail; // fools the return-checker
 }
 
 fn trans_binary(&@block_ctxt cx, ast::binop op,
@@ -3591,12 +3596,17 @@ fn trans_binary(&@block_ctxt cx, ast::binop op,
             auto lhs_false_cx = new_scope_block_ctxt(cx, "lhs false");
             auto lhs_false_res = res(lhs_false_cx, C_bool(false));
 
+            // The following line ensures that any cleanups for rhs
+            // are done within the block for rhs. This is necessary
+            // because and/or are lazy. So the rhs may never execute,
+            // and the cleanups can't be pushed into later code.
+            auto rhs_bcx = trans_block_cleanups(rhs_res.bcx, rhs_cx);
+
             lhs_res.bcx.build.CondBr(lhs_res.val,
                                      rhs_cx.llbb,
                                      lhs_false_cx.llbb);
-
             ret join_results(cx, T_bool(),
-                             [lhs_false_res, rhs_res]);
+                             [lhs_false_res, rec(bcx=rhs_bcx with rhs_res)]);
         }
 
         case (ast::or) {
@@ -3615,12 +3625,15 @@ fn trans_binary(&@block_ctxt cx, ast::binop op,
             auto lhs_true_cx = new_scope_block_ctxt(cx, "lhs true");
             auto lhs_true_res = res(lhs_true_cx, C_bool(true));
 
+            // see the and case for an explanation
+            auto rhs_bcx = trans_block_cleanups(rhs_res.bcx, rhs_cx);
+
             lhs_res.bcx.build.CondBr(lhs_res.val,
                                      lhs_true_cx.llbb,
                                      rhs_cx.llbb);
 
             ret join_results(cx, T_bool(),
-                             [lhs_true_res, rhs_res]);
+                             [lhs_true_res, rec(bcx=rhs_bcx with rhs_res)]);
         }
 
         case (_) {
@@ -4310,18 +4323,8 @@ fn lval_generic_fn(&@block_ctxt cx,
         lv = trans_external_path(cx, fn_id, tpt);
     }
 
-    auto monoty;
-    let vec[ty::t] tys;
-    alt (ann) {
-        case (ast::ann_none(_)) {
-            cx.fcx.lcx.ccx.sess.bug("no type annotation for path!");
-            fail;
-        }
-        case (ast::ann_type(_, ?monoty_, ?tps, _)) {
-            monoty = monoty_;
-            tys = option::get[vec[ty::t]](tps);
-        }
-    }
+    auto tys = ty::ann_to_type_params(cx.fcx.lcx.ccx.node_types, ann);
+    auto monoty = ty::ann_to_type(cx.fcx.lcx.ccx.node_types, ann);
 
     if (_vec::len[ty::t](tys) != 0u) {
         auto bcx = lv.res.bcx;
@@ -4994,6 +4997,8 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
             ret res(bcx, pair_v);
         }
     }
+
+    fail; // sadly needed b/c the compiler doesn't know yet that unimpl fails
 }
 
 fn trans_arg_expr(&@block_ctxt cx,

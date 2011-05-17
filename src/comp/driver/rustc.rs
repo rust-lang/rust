@@ -9,7 +9,7 @@ import middle::trans;
 import middle::resolve;
 import middle::ty;
 import middle::typeck;
-import middle::typestate_check;
+import middle::tstate::ck;
 import back::link;
 import lib::llvm;
 import util::common;
@@ -105,7 +105,8 @@ fn compile_input(session::session sess,
 
     if (sess.get_opts().run_typestate) {
         crate = time(time_passes, "typestate checking",
-                     bind typestate_check::check_crate(crate, def_map));
+                     bind middle::tstate::ck::check_crate(node_type_table,
+                                                          ty_cx, crate));
     }
 
     auto llmod = time[llvm::ModuleRef](time_passes, "translation",
@@ -165,25 +166,30 @@ options:
 }
 
 fn get_os(str triple) -> session::os {
-    if (_str::find(triple, "win32") > 0 ||
-        _str::find(triple, "mingw32") > 0 ) {
+    if (_str::find(triple, "win32") >= 0 ||
+        _str::find(triple, "mingw32") >= 0 ) {
         ret session::os_win32;
-    } else if (_str::find(triple, "darwin") > 0) { ret session::os_macos; }
-    else if (_str::find(triple, "linux") > 0) { ret session::os_linux; }
+    } else if (_str::find(triple, "darwin") >= 0) { ret session::os_macos; }
+    else if (_str::find(triple, "linux") >= 0) { ret session::os_linux; }
+    else { log_err "Unknown operating system!"; fail; }
 }
 
 fn get_arch(str triple) -> session::arch {
-    if (_str::find(triple, "i386") > 0 ||
-        _str::find(triple, "i486") > 0 ||
-        _str::find(triple, "i586") > 0 ||
-        _str::find(triple, "i686") > 0 ||
-        _str::find(triple, "i786") > 0 ) {
+    if (_str::find(triple, "i386") >= 0 ||
+        _str::find(triple, "i486") >= 0 ||
+        _str::find(triple, "i586") >= 0 ||
+        _str::find(triple, "i686") >= 0 ||
+        _str::find(triple, "i786") >= 0 ) {
         ret session::arch_x86;
-    } else if (_str::find(triple, "x86_64") > 0) {
+    } else if (_str::find(triple, "x86_64") >= 0) {
         ret session::arch_x64;
-    } else if (_str::find(triple, "arm") > 0 ||
-        _str::find(triple, "xscale") > 0 ) {
+    } else if (_str::find(triple, "arm") >= 0 ||
+        _str::find(triple, "xscale") >= 0 ) {
         ret session::arch_arm;
+    }
+    else {
+        log_err ("Unknown architecture! " + triple);
+        fail;
     }
 }
 

@@ -10,7 +10,7 @@ import util::common::new_int_hash;
 import util::common::new_uint_hash;
 import util::common::new_str_hash;
 import util::common::span;
-import util::typestate_ann::ts_ann;
+import middle::tstate::ann::ts_ann;
 import std::map::hashmap;
 import std::list::list;
 import std::list::nil;
