@@ -1510,10 +1510,6 @@ mod Pushdown {
             }
 
             case (ast::expr_spawn(?dom, ?name, ?func, ?args, ?ann)) {
-                // TODO: This is copied from call, since spawn is sort of like
-                // a call expression. However, it's not doing anything with
-                // the domain or name parameters.
-
                 // NB: we call 'Demand::autoderef' and pass in adk only in
                 // cases where e is an expression that could *possibly*
                 // produce a box; things like expr_binary or expr_bind can't,
