@@ -396,10 +396,11 @@ fn print_expr(ps s, &@ast::expr expr) {
             if (mut == ast::mut) {
                 wrd1(s, "mutable");
             }
-            wrd(s.s, "vec");
-            popen(s);
+            wrd(s.s, "[");
+            pp::abox(s.s);
             commasep_exprs(s, exprs);
-            pclose(s);
+            end(s.s);
+            wrd(s.s, "]");
         }
         case (ast::expr_tup(?exprs,_)) {
             fn printElt(ps s, &ast::elt elt) {
