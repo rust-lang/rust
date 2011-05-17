@@ -102,6 +102,11 @@ state obj session(ast::crate_num cnum,
         emit_diagnostic(sp, msg, "warning", 11u8, cm);
     }
 
+    fn span_note(span sp, str msg) {
+        // FIXME: Use constants, but rustboot doesn't know how to export them.
+        emit_diagnostic(sp, msg, "note", 10u8, cm);
+    }
+
     fn bug(str msg) {
         log_err #fmt("error: internal compiler error %s", msg);
         fail;

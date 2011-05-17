@@ -141,9 +141,11 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
         /* fcx.ccx.tcx.sess.span_err(f.body.span, "Function " +
            fcx.name + " may not return. Its declared return type is "
            + util.common.ty_to_str(*f.decl.output)); */
-        log_err("WARNING: Function " +
-           fcx.name + " may not return. Its declared return type is "
-                + ty_to_str(*f.decl.output));
+        fcx.ccx.tcx.sess.span_warn(f.body.span, "not all control paths " +
+            "return a value");
+        fcx.ccx.tcx.sess.span_note(f.decl.output.span,
+            "see declared return type of '" + ty_to_str(*f.decl.output) +
+            "'");
     }
 
 }
