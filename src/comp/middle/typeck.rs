@@ -1509,6 +1509,18 @@ mod Pushdown {
                 e_1 = ast::expr_send(lval_1, expr_1, ann);
             }
 
+            case (ast::expr_spawn(?dom, ?name, ?func, ?args, ?ann)) {
+                // NB: we call 'Demand::autoderef' and pass in adk only in
+                // cases where e is an expression that could *possibly*
+                // produce a box; things like expr_binary or expr_bind can't,
+                // so there's no need.
+                auto t = Demand::autoderef(fcx, e.span, expected,
+                    ann_to_type(fcx.ccx.node_types, ann), adk);
+                e_1 = ast::expr_spawn(dom, name, func, args,
+                                     triv_ann(ann.id, t));
+                write_type_only(fcx.ccx.node_types, ann.id, t);
+            }
+
             case (_) {
                 fcx.ccx.sess.span_unimpl(e.span,
                     #fmt("type unification for expression variant: %s",
