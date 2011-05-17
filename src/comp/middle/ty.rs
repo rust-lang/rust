@@ -1743,6 +1743,7 @@ fn expr_ann(&@ast::expr e) -> ast::ann {
         case (ast::expr_break(?a)) { ret a; }
         case (ast::expr_cont(?a)) { ret a; }
         case (ast::expr_self_method(_, ?a)) { ret a; }
+        case (ast::expr_spawn(_, _, _, _, ?a)) { ret a; }
     }
 }
 
