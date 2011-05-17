@@ -1715,9 +1715,9 @@ fn check_pat(&@stmt_ctxt scx, &@ast::pat pat) {
                     if (arg_len != subpats_len) {
                         // TODO: pluralize properly
                         auto err_msg = "tag type " + last_id + " has " +
-                                       uint::to_str(subpats_len, 10u) +
-                                       " field(s), but this pattern has " +
                                        uint::to_str(arg_len, 10u) +
+                                       " field(s), but this pattern has " +
+                                       uint::to_str(subpats_len, 10u) +
                                        " field(s)";
 
                         scx.fcx.ccx.sess.span_err(pat.span, err_msg);
