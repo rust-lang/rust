@@ -95,6 +95,12 @@ def local_rev_committer_date():
 def get_url_to_file(u,f):
   subprocess.check_call(["curl", "-o", f, u])
 
+def snap_filename_hash_part(snap):
+  match = re.match(r".*([a-fA-F\d]{40}).tar.bz2$", snap)
+  if not match:
+    raise Exception("unable to find hash in filename: " + snap)
+  return match.group(1)
+
 def hash_file(x):
     h = hashlib.sha1()
     h.update(open(x, "rb").read())

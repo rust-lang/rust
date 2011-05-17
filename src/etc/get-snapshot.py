@@ -3,11 +3,6 @@
 import os, tarfile, hashlib, re, shutil
 from snapshot import *
 
-def snap_filename_hash_part(snap):
-  match = re.match(r".*([a-fA-F\d]{40}).tar.bz2$", snap)
-  if not match:
-    raise Exception("unable to find hash in filename: " + snap)
-  return match.group(1)
 
 def unpack_snapshot(snap):
   dl_path = os.path.join(download_dir_base, snap)
