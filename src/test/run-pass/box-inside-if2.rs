@@ -4,7 +4,7 @@ use std;
 import std::_vec;
 
 fn some_vec(int x) -> vec[int] {
-  ret vec();
+  ret [];
 }
 
 fn is_odd(int n) -> bool { ret true; }
