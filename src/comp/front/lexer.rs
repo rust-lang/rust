@@ -155,14 +155,14 @@ fn is_whitespace(char c) -> bool {
     ret c == ' ' || c == '\t' || c == '\r' || c == '\n';
 }
 
-fn consume_any_whitespace(reader rdr) {
+fn consume_any_whitespace(&reader rdr) {
     while (is_whitespace(rdr.curr())) {
         rdr.bump();
     }
     be consume_any_line_comment(rdr);
 }
 
-fn consume_any_line_comment(reader rdr) {
+fn consume_any_line_comment(&reader rdr) {
     if (rdr.curr() == '/') {
         alt (rdr.next()) {
             case ('/') {
@@ -185,7 +185,7 @@ fn consume_any_line_comment(reader rdr) {
 }
 
 
-fn consume_block_comment(reader rdr) {
+fn consume_block_comment(&reader rdr) {
     let int level = 1;
     while (level > 0) {
         if (rdr.is_eof()) {
@@ -223,7 +223,7 @@ fn digits_to_string(str s) -> int {
     ret accum_int;
 }
 
-fn scan_exponent(reader rdr) -> option::t[str] {
+fn scan_exponent(&reader rdr) -> option::t[str] {
     auto c = rdr.curr();
     auto res = "";
 
@@ -249,7 +249,7 @@ fn scan_exponent(reader rdr) -> option::t[str] {
     }
 }
 
-fn scan_dec_digits(reader rdr) -> str {
+fn scan_dec_digits(&reader rdr) -> str {
 
     auto c = rdr.curr();
     let str res = "";
@@ -265,7 +265,7 @@ fn scan_dec_digits(reader rdr) -> str {
     ret res;
 }
 
-fn scan_number(char c, reader rdr) -> token::token {
+fn scan_number(char c, &reader rdr) -> token::token {
     auto accum_int = 0;
     let str dec_str = "";
     let bool is_dec_integer = false;
@@ -410,7 +410,7 @@ fn scan_number(char c, reader rdr) -> token::token {
     }
 }
 
-fn scan_numeric_escape(reader rdr) -> char {
+fn scan_numeric_escape(&reader rdr) -> char {
 
     auto n_hex_digits = 0;
 
@@ -446,7 +446,7 @@ fn scan_numeric_escape(reader rdr) -> char {
 }
 
 
-fn next_token(reader rdr) -> token::token {
+fn next_token(&reader rdr) -> token::token {
     auto accum_str = "";
 
     consume_any_whitespace(rdr);
@@ -476,7 +476,7 @@ fn next_token(reader rdr) -> token::token {
         ret scan_number(c, rdr);
     }
 
-    fn binop(reader rdr, token::binop op) -> token::token {
+    fn binop(&reader rdr, token::binop op) -> token::token {
         rdr.bump();
         if (rdr.curr() == '=') {
             rdr.bump();
@@ -739,7 +739,7 @@ tag cmnt_ {
 
 type cmnt = rec(cmnt_ val, uint pos, bool space_after);
 
-fn consume_whitespace(reader rdr) -> uint {
+fn consume_whitespace(&reader rdr) -> uint {
     auto lines = 0u;
     while (is_whitespace(rdr.curr())) {
         if (rdr.curr() == '\n') {lines += 1u;}
@@ -748,7 +748,7 @@ fn consume_whitespace(reader rdr) -> uint {
     ret lines;
 }
 
-fn read_line_comment(reader rdr) -> cmnt {
+fn read_line_comment(&reader rdr) -> cmnt {
     auto p = rdr.get_chpos();
     rdr.bump(); rdr.bump();
     while (rdr.curr() == ' ') {rdr.bump();}
@@ -762,7 +762,7 @@ fn read_line_comment(reader rdr) -> cmnt {
             space_after=consume_whitespace(rdr) > 1u);
 }
 
-fn read_block_comment(reader rdr) -> cmnt {
+fn read_block_comment(&reader rdr) -> cmnt {
     auto p = rdr.get_chpos();
     rdr.bump(); rdr.bump();
     while (rdr.curr() == ' ') {rdr.bump();}
