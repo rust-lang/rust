@@ -56,6 +56,8 @@ import aux::fixed_point_states;
 import aux::bitv_to_str;
 
 import util::common::ty_to_str;
+import util::common::log_stmt_err;
+import aux::log_bitv_err;
 import bitvectors::promises;
 
 import annotate::annotate_crate;
@@ -64,51 +66,45 @@ import pre_post_conditions::check_item_fn;
 import states::find_pre_post_state_fn;
 
 fn check_states_expr(&fn_ctxt fcx, @expr e) -> () {
-  let precond prec    = expr_precond(e);
-  let prestate pres   = expr_prestate(e);
+    let precond prec  = expr_precond(fcx.ccx, e);
+    let prestate pres = expr_prestate(fcx.ccx, e);
 
-  if (!implies(pres, prec)) {
-      auto s = "";
-      s += ("Unsatisfied precondition constraint for expression:\n");
-      s += util::common::expr_to_str(e);
-      s += ("Precondition: ");
-      s += bitv_to_str(fcx.enclosing, prec);
-      s += ("Prestate: ");
-      s += bitv_to_str(fcx.enclosing, pres);
-      fcx.ccx.tcx.sess.span_err(e.span, s);
-  }
+    if (!implies(pres, prec)) {
+        auto s = "";
+        s += ("Unsatisfied precondition constraint for expression:\n");
+        s += util::common::expr_to_str(e);
+        s += ("Precondition: ");
+        s += bitv_to_str(fcx.enclosing, prec);
+        s += ("Prestate: ");
+        s += bitv_to_str(fcx.enclosing, pres);
+        fcx.ccx.tcx.sess.span_err(e.span, s);
+    }
 }
 
 fn check_states_stmt(&fn_ctxt fcx, &stmt s) -> () {
-  alt (stmt_to_ann(s)) {
-    case (none[@ts_ann]) {
-      ret;
-    }
-    case (some[@ts_ann](?a)) {
-      let precond prec    = ann_precond(*a);
-      let prestate pres   = ann_prestate(*a);
+    auto a = stmt_to_ann(fcx.ccx, s);
+    let precond prec    = ann_precond(a);
+    let prestate pres   = ann_prestate(a);
 
-      /*
-      log("check_states_stmt:");
-      log_stmt(s);
-      log("prec = ");
-      log_bitv(enclosing, prec);
-      log("pres = ");
-      log_bitv(enclosing, pres);
-      */
+    /*    
+      log_err("check_states_stmt:");
+      log_stmt_err(s);
+      log_err("prec = ");
+      log_bitv_err(fcx.enclosing, prec);
+      log_err("pres = ");
+      log_bitv_err(fcx.enclosing, pres);
+    */
 
-      if (!implies(pres, prec)) {
-          auto ss = "";
-          ss += ("Unsatisfied precondition constraint for statement:\n");
-          ss += util::common::stmt_to_str(s);
-          ss += ("Precondition: ");
-          ss += bitv_to_str(fcx.enclosing, prec);
-          ss += ("Prestate: ");
-          ss += bitv_to_str(fcx.enclosing, pres);
-          fcx.ccx.tcx.sess.span_err(s.span, ss);
-      }
+    if (!implies(pres, prec)) {
+        auto ss = "";
+        ss += ("Unsatisfied precondition constraint for statement:\n");
+        ss += util::common::stmt_to_str(s);
+        ss += ("Precondition: ");
+        ss += bitv_to_str(fcx.enclosing, prec);
+        ss += ("Prestate: ");
+        ss += bitv_to_str(fcx.enclosing, pres);
+        fcx.ccx.tcx.sess.span_err(s.span, ss);
     }
-  }
 }
 
 fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
@@ -116,33 +112,30 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
     auto nv   = num_locals(enclosing);
     auto post = @empty_poststate(nv);
 
-    fn do_one_(fn_ctxt fcx, &@stmt s, @poststate post, uint nv) -> () {
+    fn do_one_(fn_ctxt fcx, &@stmt s, @poststate post) -> () {
         check_states_stmt(fcx, *s);
-        *post = stmt_poststate(*s, nv);
+        *post = stmt_poststate(fcx.ccx, *s);
     }
 
-    auto do_one = bind do_one_(fcx, _, post, nv);
+    auto do_one = bind do_one_(fcx, _, post);
  
-  vec::map[@stmt, ()](do_one, f.body.node.stmts);
-  fn do_inner_(fn_ctxt fcx, &@expr e, @poststate post) -> () {
-    check_states_expr(fcx, e);
-    *post = expr_poststate(e);
-  }
-  auto do_inner = bind do_inner_(fcx, _, post);
-  option::map[@expr, ()](do_inner, f.body.node.expr);
+    vec::map[@stmt, ()](do_one, f.body.node.stmts);
+    fn do_inner_(fn_ctxt fcx, &@expr e, @poststate post) -> () {
+        check_states_expr(fcx, e);
+        *post = expr_poststate(fcx.ccx, e);
+    }
+    auto do_inner = bind do_inner_(fcx, _, post);
+    option::map[@expr, ()](do_inner, f.body.node.expr);
   
-  /* Finally, check that the return value is initialized */
-  if (f.proto == ast::proto_fn
-      && ! promises(*post, fcx.id, enclosing)
-      && ! type_is_nil(fcx.ccx.tcx,
-                       ret_ty_of_fn(fcx.ccx.node_types, fcx.ccx.tcx, a)) ) {
-      /* FIXME: make this an error, not warning, once I finish implementing
-         ! annotations */
-        /* fcx.ccx.tcx.sess.span_err(f.body.span, "Function " +
-           fcx.name + " may not return. Its declared return type is "
-           + util.common.ty_to_str(*f.decl.output)); */
-        fcx.ccx.tcx.sess.span_warn(f.body.span, "not all control paths " +
-            "return a value");
+    /* Finally, check that the return value is initialized */
+    if (f.proto == ast::proto_fn
+        && ! promises(*post, fcx.id, enclosing)
+        && ! type_is_nil(fcx.ccx.tcx,
+                         ret_ty_of_fn(fcx.ccx.node_types, fcx.ccx.tcx, a)) ) {
+        /* FIXME: call span_err, not span_warn, once I finish implementing
+           ! annotations */
+        fcx.ccx.tcx.sess.span_warn(f.body.span, "In function " + fcx.name +
+          ", not all control paths return a value");
         fcx.ccx.tcx.sess.span_note(f.decl.output.span,
             "see declared return type of '" + ty_to_str(*f.decl.output) +
             "'");
@@ -202,15 +195,15 @@ fn check_crate(ty::node_type_table nt, ty::ctxt cx, @crate crate) -> @crate {
     /* Build the global map from function id to var-to-bit-num-map */
     mk_f_to_fn_info(ccx, crate);
   
-    /* Add a blank ts_ann to every statement (and expression) */
-    auto with_anns = annotate_crate(ccx.fm, crate);
+    /* Add a blank ts_ann for every statement (and expression) */
+    annotate_crate(ccx, *crate);
 
     /* Compute the pre and postcondition for every subexpression */
     
     auto fld = new_identity_fold[crate_ctxt]();
     fld = @rec(fold_item_fn = bind check_item_fn(_,_,_,_,_,_,_) with *fld);
     auto with_pre_postconditions =
-           fold_crate[crate_ctxt](ccx, fld, with_anns);
+           fold_crate[crate_ctxt](ccx, fld, crate);
     
     auto fld1 = new_identity_fold[crate_ctxt]();
 

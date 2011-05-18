@@ -4,7 +4,6 @@ import std::option::some;
 import std::option::none;
 
 import front::ast;
-
 import front::ast::ident;
 import front::ast::def_id;
 import front::ast::ann;
@@ -76,417 +75,104 @@ import front::ast::method;
 
 import middle::fold;
 import middle::fold::respan;
-import middle::fold::new_identity_fold;
-import middle::fold::fold_crate;
-import middle::fold::fold_item;
-import middle::fold::fold_method;
+import middle::ty::expr_ann;
 
 import util::common::uistr;
 import util::common::span;
 import util::common::new_str_hash;
+import util::common::log_expr_err;
+import util::common::log_block_err;
+import util::common::log_item_err;
+import util::common::log_stmt_err;
+import util::common::log_expr;
+import util::common::log_block;
+import util::common::log_stmt;
 
 import middle::tstate::aux::fn_info;
 import middle::tstate::aux::fn_info_map;
 import middle::tstate::aux::num_locals;
-import middle::tstate::aux::init_ann;
-import middle::tstate::aux::init_blank_ann;
 import middle::tstate::aux::get_fn_info;
+import middle::tstate::aux::crate_ctxt;
+import middle::tstate::ann::empty_ann;
 
-fn item_fn_anns(&fn_info_map fm, &span sp, ident i, &_fn f,
-                vec[ty_param] ty_params, def_id id, ann a) -> @item {
-
-    assert (fm.contains_key(id));
-    auto f_info = fm.get(id);
-
-    log(i + " has " + uistr(num_locals(f_info)) + " local vars");
-
-    auto fld0 = new_identity_fold[fn_info]();
-
-    fld0 = @rec(fold_ann = bind init_ann(_,_) 
-                    with *fld0);
-
-    ret fold_item[fn_info]
-           (f_info, fld0, @respan(sp, item_fn(i, f, ty_params, id, a))); 
+fn collect_ids_expr(&@expr e, @vec[uint] res) -> () {
+    vec::push(*res, (expr_ann(e)).id);
+}
+fn collect_ids_block(&block b, @vec[uint] res) -> () {
+    vec::push(*res, b.node.a.id);
 }
 
-/* FIXME: rewrite this with walk instead of fold */
-
-/* This is painstakingly written as an explicit recursion b/c the
-   standard ast.fold doesn't traverse in the correct order:
-   consider
-   fn foo() {
-      fn bar() {
-        auto x = 5;
-        log(x);
-      }
-   }
-   With fold, first bar() would be processed and its subexps would
-   correctly be annotated with length-1 bit vectors.
-   But then, the process would be repeated with (fn bar()...) as
-   a subexp of foo, which has 0 local variables -- so then
-   the body of bar() would be incorrectly annotated with length-0 bit
-   vectors. */
-fn annotate_exprs(&fn_info_map fm, &vec[@expr] es) -> vec[@expr] {
-    fn one(fn_info_map fm, &@expr e) -> @expr {
-        ret annotate_expr(fm, e);
+fn collect_ids_stmt(&@stmt s, @vec[uint] res) -> () {
+    alt (s.node) {
+        case (stmt_decl(_,?a)) {
+            log("node_id " + uistr(a.id));
+            log_stmt(*s);
+  
+            vec::push(*res, a.id);
+        }
+        case (stmt_expr(_,?a)) {
+            log("node_id " + uistr(a.id));
+            log_stmt(*s);
+    
+            vec::push(*res, a.id);
+        }
+        case (_) {}
     }
-    auto f = bind one(fm,_);
-    ret vec::map[@expr, @expr](f, es);
 }
-fn annotate_elts(&fn_info_map fm, &vec[elt] es) -> vec[elt] {
-    fn one(fn_info_map fm, &elt e) -> elt {
-        ret rec(mut=e.mut,
-                expr=annotate_expr(fm, e.expr));
-    }
-    auto f = bind one(fm,_);
-    ret vec::map[elt, elt](f, es);
-}
-fn annotate_fields(&fn_info_map fm, &vec[field] fs) -> vec[field] {
-    fn one(fn_info_map fm, &field f) -> field {
-        ret rec(mut=f.mut,
-                 ident=f.ident,
-                 expr=annotate_expr(fm, f.expr));
-    }
-    auto f = bind one(fm,_);
-    ret vec::map[field, field](f, fs);
-}
-fn annotate_option_exp(&fn_info_map fm, &option::t[@expr] o)
-  -> option::t[@expr] {
-    fn one(fn_info_map fm, &@expr e) -> @expr {
-        ret annotate_expr(fm, e);
-    }
-    auto f = bind one(fm,_);
-    ret option::map[@expr, @expr](f, o);
-}
-fn annotate_option_exprs(&fn_info_map fm, &vec[option::t[@expr]] es)
-  -> vec[option::t[@expr]] {
-    fn one(fn_info_map fm, &option::t[@expr] o) -> option::t[@expr] {
-        ret annotate_option_exp(fm, o);
-    }
-    auto f = bind one(fm,_);
-    ret vec::map[option::t[@expr], option::t[@expr]](f, es);
-}
-fn annotate_decl(&fn_info_map fm, &@decl d) -> @decl {
-    auto d1 = d.node;
+
+fn collect_ids_decl(&@decl d, @vec[uint] res) -> () {
     alt (d.node) {
         case (decl_local(?l)) {
-            alt(l.init) {
-                case (some[initializer](?init)) {
-                    let option::t[initializer] an_i =
-                        some[initializer]
-                          (rec(expr=annotate_expr(fm, init.expr)
-                                 with init));
-                    let @local new_l = @rec(init=an_i with *l);
-                    d1 = decl_local(new_l);
-                }
-                case (_) { /* do nothing */ }
-            }
+            vec::push(*res, l.ann.id);
         }
-        case (decl_item(?item)) {
-            d1 = decl_item(annotate_item(fm, item));
-        }
-    }
-    ret @respan(d.span, d1);
-}
-fn annotate_alts(&fn_info_map fm, &vec[arm] alts) -> vec[arm] {
-    fn one(fn_info_map fm, &arm a) -> arm {
-        ret rec(pat=a.pat,
-                 block=annotate_block(fm, a.block));
-    }
-    auto f = bind one(fm,_);
-    ret vec::map[arm, arm](f, alts);
-
-}
-fn annotate_expr(&fn_info_map fm, &@expr e) -> @expr {
-    auto e1 = e.node;
-    alt (e.node) {
-        case (expr_vec(?es, ?m, ?a)) {
-            e1 = expr_vec(annotate_exprs(fm, es), m, a);
-        }
-        case (expr_tup(?es, ?a)) {
-            e1 = expr_tup(annotate_elts(fm, es), a);
-        }
-        case (expr_rec(?fs, ?maybe_e, ?a)) {
-            e1 = expr_rec(annotate_fields(fm, fs),
-                          annotate_option_exp(fm, maybe_e), a);
-        }
-        case (expr_call(?e, ?es, ?a)) {
-            e1 = expr_call(annotate_expr(fm, e),
-                          annotate_exprs(fm, es), a);
-        }
-        case (expr_self_method(_,_)) {
-            // no change
-        }
-        case (expr_bind(?e, ?maybe_es, ?a)) {
-            e1 = expr_bind(annotate_expr(fm, e),
-                           annotate_option_exprs(fm, maybe_es),
-                           a);
-        }
-        case (expr_spawn(?s, ?maybe_s, ?e, ?es, ?a)) {
-            e1 = expr_spawn(s, maybe_s, annotate_expr(fm, e),
-                            annotate_exprs(fm, es), a);
-        }
-        case (expr_binary(?bop, ?w, ?x, ?a)) {
-            e1 = expr_binary(bop, annotate_expr(fm, w),
-                             annotate_expr(fm, x), a);
-        }
-        case (expr_unary(?uop, ?w, ?a)) {
-            e1 = expr_unary(uop, annotate_expr(fm, w), a);
-        }
-        case (expr_lit(_,_)) {
-            /* no change */
-        }
-        case (expr_cast(?e,?t,?a)) {
-            e1 = expr_cast(annotate_expr(fm, e), t, a);
-        }
-        case (expr_if(?e, ?b, ?maybe_e, ?a)) {
-            e1 = expr_if(annotate_expr(fm, e),
-                         annotate_block(fm, b),
-                         annotate_option_exp(fm, maybe_e), a);
-        }
-        case (expr_while(?e, ?b, ?a)) {
-            e1 = expr_while(annotate_expr(fm, e),
-                            annotate_block(fm, b), a);
-        }
-        case (expr_for(?d, ?e, ?b, ?a)) {
-            e1 = expr_for(annotate_decl(fm, d),
-                          annotate_expr(fm, e),
-                          annotate_block(fm, b), a);
-        }
-        case (expr_for_each(?d, ?e, ?b, ?a)) {
-            e1 = expr_for_each(annotate_decl(fm, d),
-                          annotate_expr(fm, e),
-                          annotate_block(fm, b), a);
-        }
-        case (expr_do_while(?b, ?e, ?a)) {
-            e1 = expr_do_while(annotate_block(fm, b),
-                               annotate_expr(fm, e), a);
-        }
-        case (expr_alt(?e, ?alts, ?a)) {
-            e1 = expr_alt(annotate_expr(fm, e),
-                          annotate_alts(fm, alts), a);
-        }
-        case (expr_block(?b, ?a)) {
-            e1 = expr_block(annotate_block(fm, b), a);
-        }
-        case (expr_assign(?l, ?r, ?a)) {
-            e1 = expr_assign(annotate_expr(fm, l), annotate_expr(fm, r), a);
-        }
-        case (expr_assign_op(?bop, ?l, ?r, ?a)) {
-            e1 = expr_assign_op(bop,
-               annotate_expr(fm, l), annotate_expr(fm, r), a);
-        }
-        case (expr_send(?l, ?r, ?a)) {
-            e1 = expr_send(annotate_expr(fm, l),
-                           annotate_expr(fm, r), a);
-        }
-        case (expr_recv(?l, ?r, ?a)) {
-           e1 = expr_recv(annotate_expr(fm, l),
-                           annotate_expr(fm, r), a);
-        }
-        case (expr_field(?e, ?i, ?a)) {
-            e1 = expr_field(annotate_expr(fm, e),
-                            i, a);
-        }
-        case (expr_index(?e, ?sub, ?a)) {
-            e1 = expr_index(annotate_expr(fm, e),
-                            annotate_expr(fm, sub), a);
-        }
-        case (expr_path(_,_)) {
-            /* no change */
-        }
-        case (expr_ext(?p, ?es, ?s_opt, ?e, ?a)) {
-            e1 = expr_ext(p, annotate_exprs(fm, es),
-                          s_opt,
-                          annotate_expr(fm, e), a);
-        }
-        /* no change, next 3 cases */
-        case (expr_fail(_)) { }
-        case (expr_break(_)) { }
-        case (expr_cont(_)) { }
-        case (expr_ret(?maybe_e, ?a)) {
-            e1 = expr_ret(annotate_option_exp(fm, maybe_e), a);
-        }
-        case (expr_put(?maybe_e, ?a)) {
-            e1 = expr_put(annotate_option_exp(fm, maybe_e), a);
-        }
-        case (expr_be(?e, ?a)) {
-            e1 = expr_be(annotate_expr(fm, e), a);
-        }
-        case (expr_log(?n, ?e, ?a)) {
-            e1 = expr_log(n, annotate_expr(fm, e), a);
-        }
-        case (expr_assert(?e, ?a)) {
-            e1 = expr_assert(annotate_expr(fm, e), a);
-        }
-        case (expr_check(?e, ?a)) {
-            e1 = expr_check(annotate_expr(fm, e), a);
-        }
-        case (expr_port(_)) { /* no change */ }
-        case (expr_chan(?e, ?a)) {
-            e1 = expr_chan(annotate_expr(fm, e), a);
-        }
-    }
-    ret @respan(e.span, e1);
-}
-
-fn annotate_stmt(&fn_info_map fm, &@stmt s) -> @stmt {
-    alt (s.node) {
-        case (stmt_decl(?d, ?a)) {
-            ret @respan(s.span, stmt_decl(annotate_decl(fm, d), a));
-        }
-        case (stmt_expr(?e, ?a)) {
-            ret @respan(s.span, stmt_expr(annotate_expr(fm, e), a));
-        }
-    }
-}
-fn annotate_block(&fn_info_map fm, &block b) -> block {
-    let vec[@stmt] new_stmts = [];
-   
-    for (@stmt s in b.node.stmts) {
-        auto new_s = annotate_stmt(fm, s);
-        vec::push[@stmt](new_stmts, new_s);
-    }
-    fn ann_e(fn_info_map fm, &@expr e) -> @expr {
-        ret annotate_expr(fm, e);
-    }
-    auto f = bind ann_e(fm,_);
-
-    auto new_e = option::map[@expr, @expr](f, b.node.expr);
-
-    ret respan(b.span,
-          rec(stmts=new_stmts, expr=new_e with b.node));
-}
-fn annotate_fn(&fn_info_map fm, &_fn f) -> _fn {
-    // subexps have *already* been annotated based on
-    // f's number-of-locals
-    ret rec(body=annotate_block(fm, f.body) with f);
-}
-fn annotate_mod(&fn_info_map fm, &_mod m) -> _mod {
-    let vec[@item] new_items = [];
-   
-    for (@item i in m.items) {
-        auto new_i = annotate_item(fm, i);
-        vec::push[@item](new_items, new_i);
-    }
-    ret rec(items=new_items with m);
-}
-fn annotate_method(&fn_info_map fm, &@method m) -> @method {
-    auto f_info = get_fn_info(fm, m.node.id);
-    auto fld0 = new_identity_fold[fn_info]();
-    fld0 = @rec(fold_ann = bind init_ann(_,_) 
-                with *fld0);
-    auto outer = fold_method[fn_info](f_info, fld0, m);
-    auto new_fn = annotate_fn(fm, outer.node.meth);
-    ret @respan(m.span,
-                rec(meth=new_fn with m.node));
-}
-
-fn annotate_obj(&fn_info_map fm, &_obj o) -> _obj {
-    fn one(fn_info_map fm, &@method m) -> @method {
-        ret annotate_method(fm, m);
-    }
-    auto f = bind one(fm,_);
-    auto new_methods = vec::map[@method, @method](f, o.methods);
-    auto new_dtor    = option::map[@method, @method](f, o.dtor);
-    ret rec(methods=new_methods, dtor=new_dtor with o);
-}
-
- 
-// Only annotates the components of the item recursively.
-fn annotate_item_inner(&fn_info_map fm, &@item item) -> @item {
-    alt (item.node) {
-        /* FIXME can't skip this case -- exprs contain blocks contain stmts,
-         which contain decls */
-        case (item_const(_,_,_,_,_)) {
-            // this has already been annotated by annotate_item
-            ret item;
-        }
-        case (item_fn(?ident, ?ff, ?tps, ?id, ?ann)) {
-            ret @respan(item.span,
-                       item_fn(ident, annotate_fn(fm, ff), tps, id, ann));
-        }
-        case (item_mod(?ident, ?mm, ?id)) {
-            ret @respan(item.span,
-                       item_mod(ident, annotate_mod(fm, mm), id));
-        }
-        case (item_native_mod(?ident, ?mm, ?id)) {
-            ret item;
-        }
-        case (item_ty(_,_,_,_,_)) {
-            ret item;
-        }
-        case (item_tag(_,_,_,_,_)) {
-            ret item;
-        }
-        case (item_obj(?ident, ?ob, ?tps, ?odid, ?ann)) {
-            ret @respan(item.span,
-              item_obj(ident, annotate_obj(fm, ob), tps, odid, ann));
-        }
-    } 
-}
-
-fn annotate_item(&fn_info_map fm, &@item item) -> @item {
-    // Using a fold, recursively set all anns in this item
-    // to be blank.
-    // *Then*, call annotate_item recursively to do the right
-    // thing for any nested items inside this one.
-    
-    alt (item.node) {
-        case (item_const(_,_,_,_,_)) {
-            auto fld0 = new_identity_fold[()]();
-            fld0 = @rec(fold_ann = bind init_blank_ann(_,_) 
-                        with *fld0);
-            ret fold_item[()]((), fld0, item);
-        }
-        case (item_fn(?i,?ff,?tps,?id,?ann)) {
-            auto f_info = get_fn_info(fm, id);
-            auto fld0 = new_identity_fold[fn_info]();
-            fld0 = @rec(fold_ann = bind init_ann(_,_) 
-                        with *fld0);
-            auto outer = fold_item[fn_info](f_info, fld0, item);
-            // now recurse into any nested items
-            ret annotate_item_inner(fm, outer);
-         }
-        case (item_mod(?i, ?mm, ?id)) {
-            auto fld0 = new_identity_fold[()]();
-            fld0 = @rec(fold_ann = bind init_blank_ann(_,_) 
-                        with *fld0);
-            auto outer = fold_item[()]((), fld0, item);
-            ret annotate_item_inner(fm, outer);
-        }
-        case (item_native_mod(?i, ?nm, ?id)) {
-            ret item;
-        }
-        case (item_ty(_,_,_,_,_)) {
-            ret item;
-        }
-        case (item_tag(_,_,_,_,_)) {
-            ret item;
-        }
-        case (item_obj(?i,?ob,?tps,?odid,?ann)) {
-            auto fld0 = new_identity_fold[()]();
-            fld0 = @rec(fold_ann = bind init_blank_ann(_,_) 
-                        with *fld0);
-            auto outer = fold_item[()]((), fld0, item);
-            ret annotate_item_inner(fm, outer);
-        }
+        case (_) {}
     }
 }
 
-fn annotate_module(&fn_info_map fm, &_mod module) -> _mod {
-    let vec[@item] new_items = [];
-   
-    for (@item i in module.items) {
-        auto new_item = annotate_item(fm, i);
-        vec::push[@item](new_items, new_item);
+fn node_ids_in_fn(&_fn f, &def_id d, @vec[uint] res) -> () {
+    auto collect_ids = walk::default_visitor();
+    collect_ids = rec(visit_expr_pre  = bind collect_ids_expr(_,res),
+                      visit_block_pre = bind collect_ids_block(_,res),
+                      visit_stmt_pre  = bind collect_ids_stmt(_,res),
+                      visit_decl_pre  = bind collect_ids_decl(_,res)
+                      with collect_ids);
+    walk::walk_fn(collect_ids, f, d);
+}
+
+fn init_vecs(&crate_ctxt ccx, @vec[uint] node_ids, uint len) -> () {
+    for (uint i in *node_ids) {
+        log(uistr(i) + " |-> " + uistr(len));
+        ccx.node_anns.insert(i, empty_ann(len));
     }
-
-    ret rec(items = new_items with module);
 }
 
-fn annotate_crate(&fn_info_map fm, &@crate crate) -> @crate {
-    ret @respan(crate.span,
-               rec(module = annotate_module(fm, crate.node.module)
-                   with crate.node));
+fn visit_fn(&crate_ctxt ccx, uint num_locals, &_fn f, &def_id d) -> () {
+     
+    let vec[uint] node_ids_ = [];
+    let @vec[uint] node_ids = @node_ids_;
+    node_ids_in_fn(f, d, node_ids);
+    init_vecs(ccx, node_ids, num_locals);
 }
+
+fn annotate_in_fn(&crate_ctxt ccx, &_fn f, &def_id f_id) -> () {
+    auto f_info = get_fn_info(ccx, f_id);
+    visit_fn(ccx, num_locals(f_info), f, f_id);
+}
+
+fn annotate_crate(&crate_ctxt ccx, &crate crate) -> () {
+    auto do_ann = walk::default_visitor();
+    do_ann = rec(visit_fn_pre = bind annotate_in_fn(ccx, _, _)
+                 with do_ann);
+    walk::walk_crate(do_ann, crate);
+}
+
+//
+// Local Variables:
+// mode: rust
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C $RBUILD 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//

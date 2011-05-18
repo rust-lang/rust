@@ -114,7 +114,7 @@ fn clear(&t v) {
 }
 
 fn set_all(&t v) {
-    for each (uint i in _uint::range(0u, v.nbits)) {
+    for each (uint i in uint::range(0u, v.nbits)) {
         set(v, i, true);
     }
 }
