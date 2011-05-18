@@ -1865,9 +1865,18 @@ mod unify {
         ures_err(type_err, t, t);
     }
 
-    type ctxt = rec(ufind::ufind sets,
-                    hashmap[int,uint] var_ids,
-                    mutable vec[mutable vec[t]] types,
+    type var_bindings = rec(ufind::ufind sets,
+                            hashmap[int,uint] var_ids,
+                            mutable vec[mutable vec[t]] types);
+
+    fn mk_var_bindings() -> var_bindings {
+        let vec[mutable vec[t]] types = [mutable];
+        ret rec(sets=ufind::make(),
+                var_ids=common::new_int_hash[uint](),
+                mutable types=types);
+    }
+
+    type ctxt = rec(var_bindings var_bindings,
                     unify_handler handler,
                     ty_ctxt tcx);
 
@@ -2070,12 +2079,12 @@ mod unify {
 
     fn get_or_create_set(&@ctxt cx, int id) -> uint {
         auto set_num;
-        alt (cx.var_ids.find(id)) {
-        case (none[uint]) {
-            set_num = ufind::make_set(cx.sets);
-            cx.var_ids.insert(id, set_num);
-        }
-        case (some[uint](?n)) { set_num = n; }
+        alt (cx.var_bindings.var_ids.find(id)) {
+            case (none[uint]) {
+                set_num = ufind::make_set(cx.var_bindings.sets);
+                cx.var_bindings.var_ids.insert(id, set_num);
+            }
+            case (some[uint](?n)) { set_num = n; }
         }
         ret set_num;
     }
@@ -2098,17 +2107,18 @@ mod unify {
                 alt (struct(cx.tcx, expected)) {
                     case (ty::ty_var(?expected_id)) {
                         auto expected_n = get_or_create_set(cx, expected_id);
-                        ufind::union(cx.sets, expected_n, actual_n);
+                        ufind::union(cx.var_bindings.sets, expected_n,
+                                     actual_n);
                     }
 
                     case (_) {
                         // Just bind the type variable to the expected type.
-                        auto vlen = vec::len[vec[t]](cx.types);
+                        auto vlen = vec::len[vec[t]](cx.var_bindings.types);
                         if (actual_n < vlen) {
-                            cx.types.(actual_n) += [expected];
+                            cx.var_bindings.types.(actual_n) += [expected];
                         } else {
                             assert (actual_n == vlen);
-                            cx.types += [mutable [expected]];
+                            cx.var_bindings.types += [mutable [expected]];
                         }
                     }
                 }
@@ -2472,12 +2482,12 @@ mod unify {
             case (ty::ty_var(?expected_id)) {
                 // Add a binding.
                 auto expected_n = get_or_create_set(cx, expected_id);
-                auto vlen = vec::len[vec[t]](cx.types);
+                auto vlen = vec::len[vec[t]](cx.var_bindings.types);
                 if (expected_n < vlen) {
-                    cx.types.(expected_n) += [actual];
+                    cx.var_bindings.types.(expected_n) += [actual];
                 } else {
                     assert (expected_n == vlen);
-                    cx.types += [mutable [actual]];
+                    cx.var_bindings.types += [mutable [actual]];
                 }
                 ret ures_ok(expected);
             }
@@ -2517,9 +2527,9 @@ mod unify {
         fn substituter(@ctxt cx, vec[t] types, t typ) -> t {
             alt (struct(cx.tcx, typ)) {
                 case (ty_var(?id)) {
-                    alt (cx.var_ids.find(id)) {
+                    alt (cx.var_bindings.var_ids.find(id)) {
                         case (some[uint](?n)) {
-                            auto root = ufind::find(cx.sets, n);
+                            auto root = ufind::find(cx.var_bindings.sets, n);
                             ret types.(root);
                         }
                         case (none[uint]) { ret typ; }
@@ -2538,15 +2548,15 @@ mod unify {
         let vec[mutable vec[t]] set_types = [mutable throwaway];
         vec::pop[vec[t]](set_types);   // FIXME: botch
 
-        for (ufind::node node in cx.sets.nodes) {
+        for (ufind::node node in cx.var_bindings.sets.nodes) {
             let vec[t] v = [];
             set_types += [mutable v];
         }
 
         auto i = 0u;
         while (i < vec::len[vec[t]](set_types)) {
-            auto root = ufind::find(cx.sets, i);
-            set_types.(root) += cx.types.(i);
+            auto root = ufind::find(cx.var_bindings.sets, i);
+            set_types.(root) += cx.var_bindings.types.(i);
             i += 1u;
         }
 
@@ -2567,13 +2577,7 @@ mod unify {
              &t actual,
              &unify_handler handler,
              &ty_ctxt tcx) -> result {
-        let vec[t] throwaway = [];
-        let vec[mutable vec[t]] types = [mutable throwaway];
-        vec::pop[vec[t]](types);   // FIXME: botch
-
-        auto cx = @rec(sets=ufind::make(),
-                       var_ids=common::new_int_hash[uint](),
-                       mutable types=types,
+        auto cx = @rec(var_bindings=mk_var_bindings(),
                        handler=handler,
                        tcx=tcx);
 
@@ -2582,7 +2586,7 @@ mod unify {
         case (ures_ok(?typ)) {
             // Fast path: if there are no local variables, don't perform
             // substitutions.
-            if (vec::len(cx.sets.nodes) == 0u) {
+            if (vec::len(cx.var_bindings.sets.nodes) == 0u) {
                 ret ures_ok(typ);
             }
 
