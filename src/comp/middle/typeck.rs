@@ -2515,7 +2515,7 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
 
         case (ast::expr_chan(?x, ?a)) {
             check_expr(fcx, x);
-            auto port_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, expr);
+            auto port_t = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, x);
             alt (struct(fcx.ccx.tcx, port_t)) {
                 case (ty::ty_port(?subtype)) {
                     auto ct = ty::mk_chan(fcx.ccx.tcx, subtype);
