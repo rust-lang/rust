@@ -49,6 +49,15 @@ fn maybe[T, U](&U def, fn(&T) -> U f, &t[T] opt) -> U {
         case (some[T](?t)) { ret f(t); }
     }
 }
+
+// Can be defined in terms of the above when/if we have const bind.
+fn may[T](fn(&T) f, &t[T] opt) {
+    alt (opt) {
+        case (none[T]) { /* nothing */ }
+        case (some[T](?t)) { f(t); }
+    }
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;

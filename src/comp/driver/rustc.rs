@@ -99,10 +99,9 @@ fn compile_input(session::session sess,
     auto ty_cx = ty::mk_ctxt(sess, def_map);
     auto typeck_result =
         time[typeck::typecheck_result](time_passes, "typechecking",
-                                      bind typeck::check_crate(ty_cx, crate));
+            bind typeck::check_crate(ty_cx, crate));
     auto node_type_table = typeck_result._0;
     auto type_cache = typeck_result._1;
-    crate = typeck_result._2;
 
     if (sess.get_opts().run_typestate) {
         crate = time(time_passes, "typestate checking",
@@ -130,7 +129,6 @@ fn pretty_print_input(session::session sess, eval::env env, str input,
         auto def_map = resolve::resolve_crate(sess, crate);
         auto ty_cx = ty::mk_ctxt(sess, def_map);
         auto typeck_result = typeck::check_crate(ty_cx, crate);
-        crate = typeck_result._2;
         mode = pprust::mo_typed(ty_cx, typeck_result._0, typeck_result._1);
     } else {
         mode = pprust::mo_untyped;

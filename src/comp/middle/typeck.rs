@@ -62,11 +62,12 @@ type fn_purity_table = hashmap[ast::def_id, ast::purity];
 type unify_cache_entry = tup(ty::t,ty::t,vec[mutable ty::t]);
 type unify_cache = hashmap[unify_cache_entry,ty::unify::result];
 
+type obj_info = rec(vec[ast::obj_field] obj_fields, ast::def_id this_obj);
+
 type crate_ctxt = rec(session::session sess,
                       ty::type_cache type_cache,
                       @ty_item_table item_items,
-                      vec[ast::obj_field] obj_fields,
-                      option::t[ast::def_id] this_obj,
+                      mutable vec[obj_info] obj_infos,
                       @fn_purity_table fn_purity_table,
                       mutable int next_var_id,
                       unify_cache unify_cache,
@@ -2275,21 +2276,10 @@ fn check_expr(&@fn_ctxt fcx, &@ast::expr expr) {
             auto t = ty::mk_nil(fcx.ccx.tcx);
             let ty::t this_obj_ty;
 
-            auto this_obj_id = fcx.ccx.this_obj;
-            alt (this_obj_id) {
-                // If we're inside a current object, grab its type.
-                case (some[ast::def_id](?def_id)) {
-                    this_obj_ty = ty::lookup_item_type(fcx.ccx.sess,
-                        fcx.ccx.tcx, fcx.ccx.type_cache, def_id)._1;
-                }
-                // Otherwise, we should be able to look up the object we're
-                // "with".
-                case (_) {
-                    // TODO.
-
-                    fail;
-                }
-            }
+            auto oinfo_opt = get_obj_info(fcx.ccx);
+            auto this_obj_id = option::get[obj_info](oinfo_opt).this_obj;
+            this_obj_ty = ty::lookup_item_type(fcx.ccx.sess,
+                fcx.ccx.tcx, fcx.ccx.type_cache, this_obj_id)._1;
 
             // Grab this method's type out of the current object type.
             alt (struct(fcx.ccx.tcx, this_obj_ty)) {
@@ -2561,6 +2551,10 @@ fn next_ty_var(&@crate_ctxt ccx) -> ty::t {
     ret t;
 }
 
+fn get_obj_info(&@crate_ctxt ccx) -> option::t[obj_info] {
+    ret vec::last[obj_info](ccx.obj_infos);
+}
+
 fn check_decl_local(&@fn_ctxt fcx, &@ast::decl decl) -> @ast::decl {
     alt (decl.node) {
         case (ast::decl_local(?local)) {
@@ -2661,8 +2655,7 @@ fn check_block(&@fn_ctxt fcx, &ast::block block) {
     write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, block.node.a.id);
 }
 
-fn check_const(&@crate_ctxt ccx, &span sp, &ast::ident ident, &@ast::ty t,
-               &@ast::expr e, &ast::def_id id, &ast::ann ann) {
+fn check_const(&@crate_ctxt ccx, &span sp, &@ast::expr e, &ast::ann ann) {
     // FIXME: this is kinda a kludge; we manufacture a fake "function context"
     // for checking the initializer expression.
     auto rty = ann_to_type(ccx.node_types, ann);
@@ -2675,17 +2668,21 @@ fn check_const(&@crate_ctxt ccx, &span sp, &ast::ident ident, &@ast::ty t,
 }
 
 fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
-            &ast::block body) -> ast::_fn {
+            &ast::block body) {
     auto local_ty_table = @common::new_def_hash[ty::t]();
 
     // FIXME: duplicate work: the item annotation already has the arg types
     // and return type translated to typeck::ty values. We don't need do to it
     // again here, we can extract them.
 
-
-    for (ast::obj_field f in ccx.obj_fields) {
-        auto field_ty = ty::ann_to_type(ccx.node_types, f.ann);
-        local_ty_table.insert(f.id, field_ty);
+    alt (get_obj_info(ccx)) {
+        case (option::some[obj_info](?oinfo)) {
+            for (ast::obj_field f in oinfo.obj_fields) {
+                auto field_ty = ty::ann_to_type(ccx.node_types, f.ann);
+                local_ty_table.insert(f.id, field_ty);
+            }
+        }
+        case (option::none[obj_info]) { /* no fields */ }
     }
 
     // Store the type of each argument in the table.
@@ -2713,21 +2710,38 @@ fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
     }
 
     writeback::resolve_local_types_in_block(fcx, body);
-
-    ret rec(decl=decl, proto=proto, body=body);
 }
 
-fn update_obj_fields(&@crate_ctxt ccx, &@ast::item i) -> @crate_ctxt {
-    alt (i.node) {
+fn check_method(&@crate_ctxt ccx, &@ast::method method) {
+    check_fn(ccx, method.node.meth.decl, method.node.meth.proto,
+             method.node.meth.body);
+}
+
+fn check_item(@crate_ctxt ccx, &@ast::item it) {
+    alt (it.node) {
+        case (ast::item_const(_, _, ?e, _, ?a)) {
+            check_const(ccx, it.span, e, a);
+        }
+        case (ast::item_fn(_, ?f, _, _, _)) {
+            check_fn(ccx, f.decl, f.proto, f.body);
+        }
         case (ast::item_obj(_, ?ob, _, ?obj_def_ids, _)) {
+            // We're entering an object, so gather up the info we need.
             let ast::def_id di = obj_def_ids.ty;
-            ret @rec(obj_fields = ob.fields,
-                     this_obj = some[ast::def_id](di) with *ccx);
+            vec::push[obj_info](ccx.obj_infos,
+                                rec(obj_fields=ob.fields, this_obj=di));
+
+            // Typecheck the methods.
+            for (@ast::method method in ob.methods) {
+                check_method(ccx, method);
+            }
+            option::may[@ast::method](bind check_method(ccx, _), ob.dtor);
+
+            // Now remove the info from the stack.
+            vec::pop[obj_info](ccx.obj_infos);
         }
-        case (_) {
-        }
+        case (_) { /* nothing to do */ }
     }
-    ret ccx;
 }
 
 
@@ -2783,15 +2797,13 @@ fn mk_fn_purity_table(&@ast::crate crate) -> @fn_purity_table {
     ret res;
 }
 
-// TODO: Remove the third element of this tuple; rely solely on the node type
-// table.
-type typecheck_result = tup(node_type_table, ty::type_cache, @ast::crate);
+type typecheck_result = tup(node_type_table, ty::type_cache);
 
 fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
     auto sess = tcx.sess;
     auto result = collect::collect_item_types(sess, tcx, crate);
 
-    let vec[ast::obj_field] fields = [];
+    let vec[obj_info] obj_infos = [];
 
     auto hasher = hash_unify_cache_entry;
     auto eqer = eq_unify_cache_entry;
@@ -2803,9 +2815,8 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
     auto ccx = @rec(sess=sess,
                     type_cache=result._0,
                     item_items=result._1,
-                    obj_fields=fields,
-                    this_obj=none[ast::def_id],
-                    fn_purity_table = fpt,
+                    mutable obj_infos=obj_infos,
+                    fn_purity_table=fpt,
                     mutable next_var_id=0,
                     unify_cache=unify_cache,
                     mutable cache_hits=0u,
@@ -2813,18 +2824,15 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
                     tcx=tcx,
                     node_types=node_types);
 
-    auto fld = fold::new_identity_fold[@crate_ctxt]();
+    auto visit = rec(visit_item_pre = bind check_item(ccx, _)
+                     with walk::default_visitor());
 
-    fld = @rec(update_env_for_item = bind update_obj_fields(_, _),
-               fold_fn      = bind check_fn(_,_,_,_)
-               with *fld);
-
-    auto crate_1 = fold::fold_crate[@crate_ctxt](ccx, fld, crate);
+    walk::walk_crate(visit, *crate);
 
     log #fmt("cache hit rate: %u/%u", ccx.cache_hits,
              ccx.cache_hits + ccx.cache_misses);
 
-    ret tup(node_types, ccx.type_cache, crate_1);
+    ret tup(node_types, ccx.type_cache);
 }
 
 //
