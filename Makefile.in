@@ -155,6 +155,7 @@ SREQ2 := stage2/rustc$(X) $(LREQ) stage3/glue.o stage3/$(CFG_STDLIB)
 
 export CFG_SRC_DIR
 export CFG_VERSION
+export CFG_LLVM_ROOT
 
 ######################################################################
 # Subprograms

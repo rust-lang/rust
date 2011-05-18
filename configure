@@ -269,6 +269,7 @@ case $CFG_LLVM_VERSION in
     ;;
 esac
 
+putvar CFG_LLVM_ROOT
 putvar CFG_LLVM_INCDIR
 putvar CFG_LLVM_BINDIR
 putvar CFG_LLVM_LIBDIR
