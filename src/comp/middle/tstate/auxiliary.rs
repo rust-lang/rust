@@ -37,6 +37,7 @@ import util::common;
 import util::common::span;
 import util::common::log_block;
 import util::common::new_def_hash;
+import util::common::new_uint_hash;
 import util::common::log_expr_err;
 import util::common::uistr;
 
@@ -157,6 +158,10 @@ fn print_idents(vec[ident] idents) -> () {
 type var_info     = tup(uint, ident);
 type fn_info      = rec(@std::map::hashmap[def_id, var_info] vars,
                         controlflow cf);
+
+/* mapping from node ID to typestate annotation */
+type node_ann_table = @std::map::hashmap[uint, ts_ann];
+
 /* mapping from function name to fn_info map */
 type fn_info_map = @std::map::hashmap[def_id, fn_info];
 
@@ -167,176 +172,187 @@ type fn_ctxt    = rec(fn_info enclosing,
 
 type crate_ctxt = rec(ty::ctxt tcx,
                       ty::node_type_table node_types,
+                      node_ann_table node_anns,
                       fn_info_map fm);
 
-fn get_fn_info(fn_info_map fm, def_id did) -> fn_info {
-    assert (fm.contains_key(did));
-    ret fm.get(did);
+fn get_fn_info(&crate_ctxt ccx, def_id did) -> fn_info {
+    assert (ccx.fm.contains_key(did));
+    ret ccx.fm.get(did);
 }
 
 /********* utils ********/
 
-
-fn ann_to_ts_ann(ann a, uint nv) -> @ts_ann {
-    alt (ann_to_ts_ann_fail(a)) {
-        case (none[@ts_ann])         { ret @empty_ann(nv); }
-        case (some[@ts_ann](?t))     { ret t; }
-    }
-}
-
-
-fn ann_to_ts_ann_fail(ann a) -> option::t[@ts_ann] { ret a.ts; }
-
-fn ann_to_ts_ann_strict(ann a) -> @ts_ann {
-    alt (ann_to_ts_ann_fail(a)) {
-        case (none[@ts_ann]) {
-            log("ann_to_ts_ann_strict: didn't expect none here");
+fn ann_to_ts_ann(&crate_ctxt ccx, &ann a) -> ts_ann {
+    alt (ccx.node_anns.find(a.id)) {
+        case (none[ts_ann])         { 
+            log_err ("ann_to_ts_ann: no ts_ann for node_id "
+                     + uistr(a.id));
             fail;
         }
-        case (some[@ts_ann](?t)) { ret t; }
+        case (some[ts_ann](?t))     { ret t; }
     }
 }
 
-fn ann_to_poststate(ann a) -> poststate {
-    ret (ann_to_ts_ann_strict(a)).states.poststate;
+fn ann_to_poststate(&crate_ctxt ccx, ann a) -> poststate {
+    log "ann_to_poststate";
+    ret (ann_to_ts_ann(ccx, a)).states.poststate;
 }
 
-fn stmt_to_ann(&stmt s) -> option::t[@ts_ann] {
+fn stmt_to_ann(&crate_ctxt ccx, &stmt s) -> ts_ann {
+    log "stmt_to_ann";
   alt (s.node) {
     case (stmt_decl(_,?a)) {
-        ret ann_to_ts_ann_fail(a);
+        ret ann_to_ts_ann(ccx, a);
     }
     case (stmt_expr(_,?a)) {
-        ret ann_to_ts_ann_fail(a);
+        ret ann_to_ts_ann(ccx, a);
     }
     case (stmt_crate_directive(_)) {
-      ret none[@ts_ann];
+        log_err "expecting an annotated statement here";
+        fail;
     }
   }
 }
 
-fn stmt_to_ann_strict(&stmt s) -> @ts_ann {
-    alt (stmt_to_ann(s)) {
-        case (none[@ts_ann]) {
-            log_err("stmt_to_ann_strict: didn't expect none here");
-            fail;
-        }
-        case (some[@ts_ann](?a)) { ret a; }
-    }
+/* fails if e has no annotation */
+fn expr_states(&crate_ctxt ccx, @expr e) -> pre_and_post_state {
+    log "expr_states";
+    ret (ann_to_ts_ann(ccx, expr_ann(e)).states);
 }
 
 /* fails if e has no annotation */
-fn expr_states(@expr e) -> pre_and_post_state {
-    ret (ann_to_ts_ann_strict(expr_ann(e)).states);
+fn expr_pp(&crate_ctxt ccx, @expr e) -> pre_and_post {
+    log "expr_pp";
+    ret (ann_to_ts_ann(ccx, expr_ann(e)).conditions);
 }
 
-/* fails if e has no annotation */
-fn expr_pp(@expr e) -> pre_and_post {
-    ret (ann_to_ts_ann_strict(expr_ann(e)).conditions);
-}
-
-fn stmt_pp(&stmt s) -> pre_and_post {
-    ret (stmt_to_ann_strict(s).conditions);
+fn stmt_pp(&crate_ctxt ccx, &stmt s) -> pre_and_post {
+    ret (stmt_to_ann(ccx, s).conditions);
 }
 
 /* fails if b has no annotation */
-fn block_pp(&block b) -> pre_and_post {
-    ret (ann_to_ts_ann_strict(b.node.a).conditions);
+fn block_pp(&crate_ctxt ccx, &block b) -> pre_and_post {
+    log "block_pp";
+    ret (ann_to_ts_ann(ccx, b.node.a).conditions);
 }
 
-fn block_states(&block b) -> pre_and_post_state {
-    ret (ann_to_ts_ann_strict(b.node.a).states);
+fn clear_pp(pre_and_post pp) {
+    ann::clear(pp.precondition);
+    ann::clear(pp.postcondition);
 }
 
-fn stmt_states(&stmt s, uint nv) -> pre_and_post_state {
-  alt (stmt_to_ann(s)) {
-    case (none[@ts_ann]) {
-      ret empty_states(nv);
-    }
-    case (some[@ts_ann](?a)) {
-      ret a.states;
-    }
-  }
+fn clear_precond(&crate_ctxt ccx, &ann a) {
+    auto pp = ann_to_ts_ann(ccx, a);
+    ann::clear(pp.conditions.precondition);
 }
 
-fn expr_precond(@expr e) -> precond {
-  ret (expr_pp(e)).precondition;
+fn block_states(&crate_ctxt ccx, &block b) -> pre_and_post_state {
+    log "block_states";
+    ret (ann_to_ts_ann(ccx, b.node.a).states);
 }
 
-fn expr_postcond(@expr e) -> postcond {
-  ret (expr_pp(e)).postcondition;
+fn stmt_states(&crate_ctxt ccx, &stmt s) -> pre_and_post_state {
+    ret (stmt_to_ann(ccx, s)).states;
 }
 
-fn expr_prestate(@expr e) -> prestate {
-  ret (expr_states(e)).prestate;
+fn expr_precond(&crate_ctxt ccx, @expr e) -> precond {
+    ret (expr_pp(ccx, e)).precondition;
 }
 
-fn expr_poststate(@expr e) -> poststate {
-  ret (expr_states(e)).poststate;
+fn expr_postcond(&crate_ctxt ccx, @expr e) -> postcond {
+    ret (expr_pp(ccx, e)).postcondition;
 }
 
-fn stmt_precond(&stmt s) -> precond {
-  ret (stmt_pp(s)).precondition;
+fn expr_prestate(&crate_ctxt ccx, @expr e) -> prestate {
+    ret (expr_states(ccx, e)).prestate;
 }
 
-fn stmt_postcond(&stmt s) -> postcond {
-  ret (stmt_pp(s)).postcondition;
+fn expr_poststate(&crate_ctxt ccx, @expr e) -> poststate {
+    ret (expr_states(ccx, e)).poststate;
+}
+
+fn stmt_precond(&crate_ctxt ccx, &stmt s) -> precond {
+    ret (stmt_pp(ccx, s)).precondition;
+}
+
+fn stmt_postcond(&crate_ctxt ccx, &stmt s) -> postcond {
+    ret (stmt_pp(ccx, s)).postcondition;
 }
 
 fn states_to_poststate(&pre_and_post_state ss) -> poststate {
   ret ss.poststate;
 }
 
-fn stmt_prestate(&stmt s, uint nv) -> prestate {
-  ret (stmt_states(s, nv)).prestate;
+fn stmt_prestate(&crate_ctxt ccx, &stmt s) -> prestate {
+    ret (stmt_states(ccx, s)).prestate;
 }
 
-fn stmt_poststate(&stmt s, uint nv) -> poststate {
-  ret (stmt_states(s, nv)).poststate;
+fn stmt_poststate(&crate_ctxt ccx, &stmt s) -> poststate {
+    ret (stmt_states(ccx, s)).poststate;
 }
 
-fn block_postcond(&block b) -> postcond {
-    ret (block_pp(b)).postcondition;
+fn block_postcond(&crate_ctxt ccx, &block b) -> postcond {
+    ret (block_pp(ccx, b)).postcondition;
 }
 
-fn block_poststate(&block b) -> poststate {
-    ret (block_states(b)).poststate;
+fn block_poststate(&crate_ctxt ccx, &block b) -> poststate {
+    ret (block_states(ccx, b)).poststate;
 }
 
-/* returns a new annotation where the pre_and_post is p */
-fn with_pp(ann a, pre_and_post p) -> ann {
-    ret rec(id=a.id, ty=a.ty, tps=a.tps,
-            ts=some[@ts_ann](@rec(conditions=p,
-                                  states=empty_states(pps_len(p)))));
+/* sets the pre_and_post for an ann */
+fn with_pp(&crate_ctxt ccx, &ann a, pre_and_post p) {
+    ccx.node_anns.insert(a.id, @rec(conditions=p,
+                                    states=empty_states(pps_len(p))));
 }
 
-fn set_prestate_ann(&ann a, &prestate pre) -> bool {
-    ret set_prestate(ann_to_ts_ann_strict(a), pre);
+fn set_prestate_ann(&crate_ctxt ccx, &ann a, &prestate pre) -> bool {
+    log "set_prestate_ann";
+    ret set_prestate(ann_to_ts_ann(ccx, a), pre);
 }
 
 
-fn extend_prestate_ann(&ann a, &prestate pre) -> bool {
-    ret extend_prestate(ann_to_ts_ann_strict(a).states.prestate, pre);
+fn extend_prestate_ann(&crate_ctxt ccx, &ann a, &prestate pre) -> bool {
+    log "extend_prestate_ann";
+    ret extend_prestate(ann_to_ts_ann(ccx, a).states.prestate, pre);
 }
 
-fn set_poststate_ann(&ann a, &poststate post) -> bool {
-    ret set_poststate(ann_to_ts_ann_strict(a), post);
+fn set_poststate_ann(&crate_ctxt ccx, &ann a, &poststate post) -> bool {
+    log "set_poststate_ann";
+    ret set_poststate(ann_to_ts_ann(ccx, a), post);
 }
 
-fn extend_poststate_ann(&ann a, &poststate post) -> bool {
-    ret extend_poststate(ann_to_ts_ann_strict(a).states.poststate, post);
+fn extend_poststate_ann(&crate_ctxt ccx, &ann a, &poststate post) -> bool {
+    log "extend_poststate_ann";
+    ret extend_poststate(ann_to_ts_ann(ccx, a).states.poststate, post);
 }
 
-fn set_pre_and_post(&ann a, &pre_and_post pp) -> () {
-    auto t = ann_to_ts_ann_strict(a);
-    set_precondition(t, pp.precondition);
-    set_postcondition(t, pp.postcondition);
+fn set_pre_and_post(&crate_ctxt ccx, &ann a,
+                    &precond pre, &postcond post) -> () {
+    log "set_pre_and_post";
+    auto t = ann_to_ts_ann(ccx, a);
+    set_precondition(t, pre);
+    set_postcondition(t, post);
 }
 
-fn pure_exp(&ann a, &prestate p) -> bool {
+fn copy_pre_post(&crate_ctxt ccx, &ann a, &@expr sub) -> () {
+    log "set_pre_and_post";
+    auto p = expr_pp(ccx, sub);
+    auto t = ann_to_ts_ann(ccx, a);
+    set_precondition(t, p.precondition);
+    set_postcondition(t, p.postcondition);
+}
+
+
+/* sets all bits to *1* */
+fn set_postcond_false(&crate_ctxt ccx, &ann a) {
+    auto p = ann_to_ts_ann(ccx, a);
+    ann::set(p.conditions.postcondition);
+}
+
+fn pure_exp(&crate_ctxt ccx, &ann a, &prestate p) -> bool {
   auto changed = false;
-  changed = extend_prestate_ann(a, p) || changed;
-  changed = extend_poststate_ann(a, p) || changed;
+  changed = extend_prestate_ann(ccx, a, p) || changed;
+  changed = extend_poststate_ann(ccx, a, p) || changed;
   ret changed;
 }
 
@@ -354,31 +370,14 @@ fn fixed_point_states(&fn_ctxt fcx,
   }
 }
 
-fn init_ann(&fn_info fi, &ann a) -> ann {
-    ret rec(id=a.id, ty=a.ty, tps=a.tps,
-            ts=some[@ts_ann](@empty_ann(num_locals(fi))));
-}
-
-fn init_blank_ann(&() ignore, &ann a) -> ann {
-    ret rec(id=a.id, ty=a.ty, tps=a.tps, ts=some[@ts_ann](@empty_ann(0u)));
-}
-
-fn init_block(&fn_info fi, &span sp, &block_ b) -> block {
-    log("init_block:");
-    log_block(respan(sp, b));
-
-    auto fld0 = new_identity_fold[fn_info]();
-
-    fld0 = @rec(fold_ann = bind init_ann(_,_) with *fld0);
-    ret fold_block[fn_info](fi, fld0, respan(sp, b)); 
-}
-
 fn num_locals(fn_info m) -> uint {
   ret m.vars.size();
 }
 
 fn new_crate_ctxt(ty::node_type_table nt, ty::ctxt cx) -> crate_ctxt {
-    ret rec(tcx=cx, node_types=nt, fm=@new_def_hash[fn_info]());
+    ret rec(tcx=cx, node_types=nt, 
+            node_anns=@new_uint_hash[ts_ann](),
+            fm=@new_def_hash[fn_info]());
 }
 
 fn controlflow_def_id(&crate_ctxt ccx, &def_id d) -> controlflow {
@@ -395,9 +394,15 @@ fn controlflow_def_id(&crate_ctxt ccx, &def_id d) -> controlflow {
 fn controlflow_expr(&crate_ctxt ccx, @expr e) -> controlflow {
     auto f = expr_ann(e).id;
     alt (ccx.tcx.def_map.find(f)) {
-        case (some[def](def_fn(?d)))        { ret controlflow_def_id(ccx, d); }
-        case (some[def](def_obj_field(?d))) { ret controlflow_def_id(ccx, d); }
-        case (_)                            { ret return; }
+        case (some[def](def_fn(?d))) { 
+            ret controlflow_def_id(ccx, d); 
+        }
+        case (some[def](def_obj_field(?d))) { 
+            ret controlflow_def_id(ccx, d);
+        }
+        case (_)                            {
+            ret return;
+        }
     }
 }
 
