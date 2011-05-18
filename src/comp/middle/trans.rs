@@ -5543,6 +5543,10 @@ fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
             ret trans_recv(cx, lhs, rhs, ann);
         }
 
+        case (ast::expr_spawn(?dom, ?name, ?func, ?args, ?ann)) {
+            ret trans_spawn(dom, name, func, args, ann);
+        }
+
         case (_) {
             // The expression is an lvalue. Fall through.
         }
@@ -5879,9 +5883,45 @@ fn trans_chan(&@block_ctxt cx, &@ast::expr e, &ast::ann ann) -> result {
     ret res(bcx, chan_val);
 }
 
+fn trans_spawn(&ast::spawn_dom dom, &option::t[str] name,
+               &@ast::expr func, &vec[@ast::expr] args, 
+               &ast::ann ann) -> result {
+    // Make the task name
+    auto tname = alt(name) {
+        case(none) {
+            auto argss = vec::map(common::expr_to_str, args);
+            #fmt("%s(%s)",
+                 common::expr_to_str(func),
+                 str::connect(argss, ", "))
+        }
+        case(some[str](?n)) {
+            n
+        }
+    };
+
+    // dump a bunch of information
+    log_err "Spawn";
+    //log_err dom; 
+    log_err #fmt("task name: %s", tname);
+
+    // Generate code
+    alt(dom) {
+        case(ast::dom_implicit) {
+            // TODO
+            log_err "Spawning implicit domain tasks is not implemented.";
+            fail;
+        }
+
+        case(ast::dom_thread) {
+            // TODO
+            log_err "Spawining new thread tasks is not implemented.";
+            fail;
+        }
+    }
+}
+
 fn trans_send(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
               &ast::ann ann) -> result {
-
     auto bcx = cx;
     auto chn = trans_expr(bcx, lhs);
     bcx = chn.bcx;
