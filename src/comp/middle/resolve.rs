@@ -112,6 +112,7 @@ fn resolve_crate(session sess, @ast::crate crate) -> def_map {
                   sess = sess);
     map_crate(e, *crate);
     resolve_imports(*e);
+    check_for_collisions(e, *crate);
     resolve_names(e, *crate);
     ret e.def_map;
 }
@@ -946,6 +947,80 @@ fn lookup_external(&env e, int cnum, vec[ident] ids, namespace ns)
         if (ns == ns_for_def(d)) { ret some(d); }
     }
     ret none[def];
+}
+
+// Collision detection
+
+fn check_for_collisions(&@env e, &ast::crate c) {
+    auto lim = lookup_in_mie;
+    auto msp = mie_span;
+    for each (@tup(ast::def_num, @indexed_mod) m in e.mod_map.items()) {
+        for each (@tup(ident, list[mod_index_entry]) name in
+                  m._1.index.items()) {
+            check_mod_name(*e, name._0, name._1, lim, msp);
+        }
+    }
+    auto linm = lookup_in_nmie;
+    auto nmsp = nmie_span;
+    for each (@tup(ast::def_num, @indexed_nmod) m in e.nmod_map.items()) {
+        for each (@tup(ident, list[nmod_index_entry]) name in
+                  m._1.index.items()) {
+            check_mod_name(*e, name._0, name._1, linm, nmsp);
+        }
+    }
+    /*
+    auto v = rec(visit_item_pre = bind visit_item(e, _),
+                 with walk::default_visitor());
+    walk::walk_crate(v, c);
+    fn visit_item(@env e, &@ast::item i) {
+        
+    }*/
+}
+
+fn check_mod_name[T](&env e, &ident name, &list[T] entries,
+                     fn(&env, &T, namespace) -> option::t[def] test,
+                     fn(&T) -> span get_span) {
+    auto saw_mod = false; auto saw_type = false; auto saw_value = false;
+
+    fn dup(&env e, &span sp, &str word, &ident name) {
+        e.sess.span_err(sp, "duplicate definition of " + word + name);
+    }
+
+    while (true) {
+        alt (entries) {
+            case (cons[T](?entry, ?rest)) {
+                if (!option::is_none(test(e, entry, ns_value))) {
+                    if (saw_value) { dup(e, get_span(entry), "", name); }
+                    else { saw_value = true; }
+                }
+                if (!option::is_none(test(e, entry, ns_type))) {
+                    if (saw_type) { dup(e, get_span(entry), "type ", name); }
+                    else { saw_type = true; }
+                }
+                if (!option::is_none(test(e, entry, ns_module))) {
+                    if (saw_mod) { dup(e, get_span(entry), "module ", name); }
+                    else { saw_mod = true; }
+                }
+                entries = *rest;
+            }
+            case (nil[T]) { break; }
+        }
+    }
+}
+
+fn mie_span(&mod_index_entry mie) -> span {
+    alt (mie) {
+        case (mie_view_item(?item)) { ret item.span; }
+        case (mie_item(?item)) { ret item.span; }
+        case (mie_tag_variant(?item, _)) { ret item.span; }
+    }
+}
+
+fn nmie_span(&nmod_index_entry nmie) -> span {
+    alt (nmie) {
+        case (nmie_view_item(?item)) { ret item.span; }
+        case (nmie_item(?item)) { ret item.span; }
+    }
 }
 
 // Local Variables:
