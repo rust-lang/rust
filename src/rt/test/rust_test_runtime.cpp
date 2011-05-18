@@ -54,7 +54,6 @@ rust_task_test::worker::run() {
         kernel->create_domain(crate, "test");
     rust_dom *domain = handle->referent();
     domain->root_task->start(crate->get_exit_task_glue(),
-                             ABI_X86_RUSTBOOT_CDECL,
                              (uintptr_t)&task_entry, (uintptr_t)NULL, 0);
     domain->start_main_loop();
     kernel->destroy_domain(domain);

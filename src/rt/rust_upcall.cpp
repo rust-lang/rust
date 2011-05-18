@@ -578,7 +578,7 @@ upcall_start_task(rust_task *spawner,
              ", spawnee 0x%" PRIxPTR
              ", callsz %" PRIdPTR ")", task->name, task, exit_task_glue,
              spawnee_fn, callsz);
-    task->start(exit_task_glue, spawnee_abi, spawnee_fn,
+    task->start(exit_task_glue, spawnee_fn,
                 spawner->rust_sp, callsz);
     return task;
 }
@@ -642,7 +642,7 @@ upcall_start_thread(rust_task *task,
               ", callsz %" PRIdPTR ")",
               exit_task_glue, spawnee_fn, callsz);
     rust_task *child_task = child_task_handle->referent();
-    child_task->start(exit_task_glue, spawnee_abi, spawnee_fn,
+    child_task->start(exit_task_glue, spawnee_fn,
                       task->rust_sp, callsz);
 #if defined(__WIN32__)
     HANDLE thread;
