@@ -148,9 +148,6 @@ import front::ast::stmt_expr;
 import front::ast::block;
 import front::ast::block_;
 
-import middle::fold::span;
-import middle::fold::respan;
-
 import util::common::new_def_hash;
 import util::common::decl_lhs;
 import util::common::uistr;
