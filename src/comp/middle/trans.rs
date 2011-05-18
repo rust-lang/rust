@@ -6171,6 +6171,9 @@ fn trans_block(&@block_ctxt cx, &ast::block b) -> result {
 
     alt (b.node.expr) {
         case (some[@ast::expr](?e)) {
+            // Hold onto the context for this scope since we'll need it to
+            // find the outer scope
+            auto scope_bcx = bcx;
             r = trans_expr(bcx, e);
             bcx = r.bcx;
 
@@ -6212,7 +6215,8 @@ fn trans_block(&@block_ctxt cx, &ast::block b) -> result {
 
                     auto cleanup = bind drop_hoisted_ty(_, res_alloca.val,
                                                         r_ty);
-                    find_outer_scope_cx(bcx).cleanups += [clean(cleanup)];
+                    auto outer_scope_cx = find_outer_scope_cx(scope_bcx);
+                    outer_scope_cx.cleanups += [clean(cleanup)];
 
                     r = res(bcx, load_if_immediate(bcx,
                                                    res_alloca.val, r_ty));
