@@ -178,8 +178,8 @@ fn item_to_str(&@ast::item i) -> str {
   auto out_ = mkstate(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front::lexer::cmnt]],
-                  mutable cur_cmnt=0u);
-
+                  mutable cur_cmnt=0u,
+                  mode=mo_untyped);
   print_item(out, i);
   ret s.get_str();
 }
@@ -194,17 +194,6 @@ fn log_block_err(&ast::block b) -> () {
 
 fn log_item_err(&@ast::item i) -> () {
     log_err(item_to_str(i));
-}
-
-fn log_ann(&ast::ann a) -> () {
-    alt (a) {
-        case (ast::ann_none(_)) {
-            log("ann_none");
-        }
-        case (ast::ann_type(_,_,_,_)) {
-            log("ann_type");
-        }
-    }
 }
 
 fn fun_to_str(&ast::_fn f, str name, vec[ast::ty_param] params) -> str {
