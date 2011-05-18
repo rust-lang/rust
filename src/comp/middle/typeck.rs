@@ -2646,11 +2646,8 @@ fn check_stmt(&@fn_ctxt fcx, &@ast::stmt stmt) -> @ast::stmt {
     fail;
 }
 
-fn check_block(&@fn_ctxt fcx, &ast::block block) -> ast::block {
-    let vec[@ast::stmt] stmts = [];
-    for (@ast::stmt s in block.node.stmts) {
-        vec::push[@ast::stmt](stmts, check_stmt(fcx, s));
-    }
+fn check_block(&@fn_ctxt fcx, &ast::block block) {
+    for (@ast::stmt s in block.node.stmts) { check_stmt(fcx, s); }
 
     alt (block.node.expr) {
         case (none[@ast::expr]) { /* empty */ }
@@ -2661,11 +2658,7 @@ fn check_block(&@fn_ctxt fcx, &ast::block block) -> ast::block {
         }
     }
 
-    auto new_ann = plain_ann(block.node.a.id, fcx.ccx.tcx);
     write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, block.node.a.id);
-
-    ret fold::respan(block.span,
-                     rec(stmts=stmts, expr=block.node.expr, a=new_ann));
 }
 
 fn check_const(&@crate_ctxt ccx, &span sp, &ast::ident ident, &@ast::ty t,
@@ -2710,7 +2703,7 @@ fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
                             ccx = ccx);
 
     // TODO: Make sure the type of the block agrees with the function type.
-    auto block_t = check_block(fcx, body);
+    check_block(fcx, body);
     alt (decl.purity) {
         case (ast::pure_fn) {
             // per the previous comment, this just checks that the declared
@@ -2722,10 +2715,9 @@ fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
         case (_) {}
     }
 
-    writeback::resolve_local_types_in_block(fcx, block_t);
+    writeback::resolve_local_types_in_block(fcx, body);
 
-    auto fn_t = rec(decl=decl, proto=proto, body=block_t);
-    ret fn_t;
+    ret rec(decl=decl, proto=proto, body=body);
 }
 
 fn check_item_fn(&@crate_ctxt ccx, &span sp, &ast::ident ident, &ast::_fn f,
