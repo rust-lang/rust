@@ -137,7 +137,7 @@ STDLIB_INPUTS := $(wildcard $(addprefix $(S)src/lib/,*.rc *.rs */*.rs))
 
 COMPILER_CRATE := $(S)src/comp/rustc.rc
 COMPILER_INPUTS := $(wildcard $(addprefix $(S)src/comp/, \
-                                rustc.rc *.rs */*.rs))
+                                rustc.rc *.rs */*.rs */*/*.rs))
 
 ######################################################################
 # Main target dependency variables
