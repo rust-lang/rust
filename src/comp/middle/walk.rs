@@ -32,8 +32,8 @@ type ast_visitor =
         fn (&@ast::expr e)              visit_expr_post,
         fn (&@ast::ty t)                visit_ty_pre,
         fn (&@ast::ty t)                visit_ty_post,
-        fn (&ast::_fn f, &ast::def_id d_id) visit_fn_pre,
-        fn (&ast::_fn f, &ast::def_id d_id)  visit_fn_post);
+        fn (&ast::_fn f, &ast::ident name, &ast::def_id d_id) visit_fn_pre,
+        fn (&ast::_fn f, &ast::ident name, &ast::def_id d_id)  visit_fn_post);
 
 fn walk_crate(&ast_visitor v, &ast::crate c) {
     if (!v.keep_going()) { ret; }
@@ -93,8 +93,8 @@ fn walk_item(&ast_visitor v, @ast::item i) {
             walk_ty(v, t);
             walk_expr(v, e);
         }
-        case (ast::item_fn(_, ?f, _, ?d, _)) {
-            walk_fn(v, f, d);
+        case (ast::item_fn(?i, ?f, _, ?d, _)) {
+            walk_fn(v, f, i, d);
         }
         case (ast::item_mod(_, ?m, _)) {
             walk_mod(v, m);
@@ -118,13 +118,13 @@ fn walk_item(&ast_visitor v, @ast::item i) {
             }
             for (@ast::method m in ob.methods) {
                 v.visit_method_pre(m);
-                walk_fn(v, m.node.meth, m.node.id);
+                walk_fn(v, m.node.meth, m.node.ident, m.node.id);
                 v.visit_method_post(m);
             }
             alt (ob.dtor) {
                 case (none[@ast::method]) {}
                 case (some[@ast::method](?m)) {
-                    walk_fn(v, m.node.meth, m.node.id);
+                    walk_fn(v, m.node.meth, m.node.ident, m.node.id);
                 }
             }
         }
@@ -229,12 +229,12 @@ fn walk_fn_decl(&ast_visitor v, &ast::fn_decl fd) {
     walk_ty(v, fd.output);
 }
 
-fn walk_fn(&ast_visitor v, &ast::_fn f, &ast::def_id d) {
+fn walk_fn(&ast_visitor v, &ast::_fn f, &ast::ident i, &ast::def_id d) {
     if (!v.keep_going()) { ret; }
-    v.visit_fn_pre(f, d);
+    v.visit_fn_pre(f, i, d);
     walk_fn_decl(v, f.decl);
     walk_block(v, f.body);
-    v.visit_fn_post(f, d);
+    v.visit_fn_post(f, i, d);
 }
 
 fn walk_block(&ast_visitor v, &ast::block b) {
@@ -459,7 +459,7 @@ fn def_visit_arm(&ast::arm a) { }
 fn def_visit_decl(&@ast::decl d) { }
 fn def_visit_expr(&@ast::expr e) { }
 fn def_visit_ty(&@ast::ty t) { }
-fn def_visit_fn(&ast::_fn f, &ast::def_id d) { }
+fn def_visit_fn(&ast::_fn f, &ast::ident i, &ast::def_id d) { }
 
 fn default_visitor() -> ast_visitor {
 

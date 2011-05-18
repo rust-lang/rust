@@ -20,8 +20,6 @@ import front::ast::decl_local;
 import front::ast::def_id;
 import front::ast::ident;
 
-import middle::fold::span;
-import middle::fold::respan;
 import middle::walk::walk_crate;
 import middle::walk::walk_fn;
 import middle::walk::ast_visitor;
@@ -47,13 +45,11 @@ fn collect_local(&@vec[tup(ident, def_id)] vars, &@decl d) -> () {
     }
 }
 
-fn find_locals(_fn f, def_id d) -> @vec[tup(ident,def_id)] {
+fn find_locals(&_fn f, &ident i, &def_id d) -> @vec[tup(ident,def_id)] {
   auto res = @vec::alloc[tup(ident,def_id)](0u);
-
   auto visitor = walk::default_visitor();
   visitor = rec(visit_decl_pre=bind collect_local(res,_) with visitor);
-  walk_fn(visitor, f, d);
-
+  walk_fn(visitor, f, i, d);
   ret res;
 }
 
@@ -66,7 +62,7 @@ fn add_var(def_id v, ident nm, uint next, fn_info tbl) -> uint {
 
 /* builds a table mapping each local var defined in f
    to a bit number in the precondition/postcondition vectors */
-fn mk_fn_info(_fn f, def_id f_id, ident f_name) -> fn_info {
+fn mk_fn_info(&_fn f, &def_id f_id, &ident f_name) -> fn_info {
     auto res = rec(vars=@new_def_hash[var_info](),
                    cf=f.decl.cf);
     let uint next = 0u;
@@ -75,7 +71,7 @@ fn mk_fn_info(_fn f, def_id f_id, ident f_name) -> fn_info {
     /* ignore args, which we know are initialized;
        just collect locally declared vars */
 
-    let @vec[tup(ident,def_id)] locals = find_locals(f, f_id);
+    let @vec[tup(ident,def_id)] locals = find_locals(f, f_name, f_id);
     // log (uistr(vec::len[tup(ident, def_id)](locals)) + " locals");
     for (tup(ident,def_id) p in *locals) {
         next = add_var(p._1, p._0, next, res);
@@ -89,6 +85,8 @@ fn mk_fn_info(_fn f, def_id f_id, ident f_name) -> fn_info {
    
     ret res;
 }
+
+/* FIXME: can do this with just one case -- for fn -- now */
 
 /* extends mk_fn_info to an item, side-effecting the map fi from
    function IDs to fn_info maps
