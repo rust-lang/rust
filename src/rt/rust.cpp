@@ -99,7 +99,7 @@ rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
     }
 
     uintptr_t main_args[4] = {0, 0, 0, (uintptr_t)args->args};
-    dom->root_task->start(crate->get_exit_task_glue(),
+    dom->root_task->start((uintptr_t)rust_new_exit_task_glue,
                           main_fn,
                           (uintptr_t)&main_args, sizeof(main_args));
 

@@ -263,7 +263,7 @@ rust_dom::start_main_loop() {
 
     DLOG(this, dom, "started domain loop");
     DLOG(this, dom, "activate glue: " PTR ", exit glue: " PTR,
-        root_crate->get_activate_glue(), root_crate->get_exit_task_glue());
+        root_crate->get_activate_glue(), rust_new_exit_task_glue);
 
     while (number_of_live_tasks() > 0) {
         A(this, kernel->is_deadlocked() == false, "deadlock");

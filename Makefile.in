@@ -163,6 +163,7 @@ export CFG_LLVM_ROOT
 
 LLVM_AS := $(CFG_LLVM_BINDIR)/llvm-as
 
+LLC := $(CFG_LLVM_BINDIR)/llc
 
 ######################################################################
 # Single-target rules

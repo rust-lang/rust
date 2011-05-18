@@ -251,7 +251,6 @@ public:
     uintptr_t get_yield_glue() const;
     uintptr_t get_unwind_glue() const;
     uintptr_t get_gc_glue() const;
-    uintptr_t get_exit_task_glue() const;
 
     struct mem_area
     {
@@ -357,6 +356,8 @@ public:
     ~rust_crate_cache();
     void flush();
 };
+
+extern "C" void rust_new_exit_task_glue();
 
 #include "rust_dwarf.h"
 
