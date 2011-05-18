@@ -566,7 +566,6 @@ extern "C" CDECL rust_task *
 upcall_start_task(rust_task *spawner,
                   rust_task *task,
                   uintptr_t exit_task_glue,
-                  uintptr_t spawnee_abi,
                   uintptr_t spawnee_fn,
                   size_t callsz) {
     LOG_UPCALL_ENTRY(spawner);
@@ -631,7 +630,6 @@ extern "C" CDECL maybe_proxy<rust_task> *
 upcall_start_thread(rust_task *task,
                     rust_proxy<rust_task> *child_task_proxy,
                     uintptr_t exit_task_glue,
-                    uintptr_t spawnee_abi,
                     uintptr_t spawnee_fn,
                     size_t callsz) {
     LOG_UPCALL_ENTRY(task);

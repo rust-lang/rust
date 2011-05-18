@@ -80,10 +80,7 @@ extern "C" CDECL int
 rust_start(uintptr_t main_fn, rust_crate const *crate, int argc,
            char **argv, void* crate_map) {
 
-    if (crate->abi_tag != ABI_X86_RUSTBOOT_CDECL)
-        update_log_settings(crate_map, getenv("RUST_LOG"));
-    else
-        update_log_settings(NULL, getenv("RUST_LOG"));
+    update_log_settings(crate_map, getenv("RUST_LOG"));
     rust_srv *srv = new rust_srv();
     rust_kernel *kernel = new rust_kernel(srv);
     kernel->start();

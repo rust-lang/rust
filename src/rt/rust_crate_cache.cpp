@@ -215,14 +215,6 @@ rust_crate_cache::get_type_desc(size_t size,
         // FIXME (issue #136):  Below is a miscalculation.
         td->is_stateful |= descs[i]->is_stateful;
     }
-    if (crate->abi_tag == ABI_X86_RUSTBOOT_CDECL) {
-        adjust_disp(td->copy_glue_off, descs[0], td);
-        adjust_disp(td->drop_glue_off, descs[0], td);
-        adjust_disp(td->free_glue_off, descs[0], td);
-        adjust_disp(td->mark_glue_off, descs[0], td);
-        adjust_disp(td->sever_glue_off, descs[0], td);
-        adjust_disp(td->obj_drop_glue_off, descs[0], td);
-    }
     HASH_ADD(hh, this->type_descs, descs, keysz, td);
     return td;
 }
