@@ -1869,14 +1869,14 @@ mod unify {
                             hashmap[int,uint] var_ids,
                             mutable vec[mutable vec[t]] types);
 
-    fn mk_var_bindings() -> var_bindings {
+    fn mk_var_bindings() -> @var_bindings {
         let vec[mutable vec[t]] types = [mutable];
-        ret rec(sets=ufind::make(),
-                var_ids=common::new_int_hash[uint](),
-                mutable types=types);
+        ret @rec(sets=ufind::make(),
+                 var_ids=common::new_int_hash[uint](),
+                 mutable types=types);
     }
 
-    type ctxt = rec(var_bindings var_bindings,
+    type ctxt = rec(@var_bindings var_bindings,
                     unify_handler handler,
                     ty_ctxt tcx);
 
@@ -2519,17 +2519,19 @@ mod unify {
     }
 
     // Performs type binding substitution.
-    fn substitute(&@ctxt cx, &vec[t] set_types, &t typ) -> t {
-        if (!type_contains_vars(cx.tcx, typ)) {
+    fn substitute(&ty_ctxt tcx, &@var_bindings var_bindings,
+                  &vec[t] set_types, &t typ) -> t {
+        if (!type_contains_vars(tcx, typ)) {
             ret typ;
         }
 
-        fn substituter(@ctxt cx, vec[t] types, t typ) -> t {
-            alt (struct(cx.tcx, typ)) {
+        fn substituter(ty_ctxt tcx, @var_bindings var_bindings, vec[t] types,
+                       t typ) -> t {
+            alt (struct(tcx, typ)) {
                 case (ty_var(?id)) {
-                    alt (cx.var_bindings.var_ids.find(id)) {
+                    alt (var_bindings.var_ids.find(id)) {
                         case (some[uint](?n)) {
-                            auto root = ufind::find(cx.var_bindings.sets, n);
+                            auto root = ufind::find(var_bindings.sets, n);
                             ret types.(root);
                         }
                         case (none[uint]) { ret typ; }
@@ -2539,24 +2541,24 @@ mod unify {
             }
         }
 
-        auto f = bind substituter(cx, set_types, _);
-        ret fold_ty(cx.tcx, f, typ);
+        auto f = bind substituter(tcx, var_bindings, set_types, _);
+        ret fold_ty(tcx, f, typ);
     }
 
-    fn unify_sets(&@ctxt cx) -> vec[t] {
+    fn unify_sets(&@var_bindings var_bindings) -> vec[t] {
         let vec[t] throwaway = [];
         let vec[mutable vec[t]] set_types = [mutable throwaway];
         vec::pop[vec[t]](set_types);   // FIXME: botch
 
-        for (ufind::node node in cx.var_bindings.sets.nodes) {
+        for (ufind::node node in var_bindings.sets.nodes) {
             let vec[t] v = [];
             set_types += [mutable v];
         }
 
         auto i = 0u;
         while (i < vec::len[vec[t]](set_types)) {
-            auto root = ufind::find(cx.var_bindings.sets, i);
-            set_types.(root) += cx.var_bindings.types.(i);
+            auto root = ufind::find(var_bindings.sets, i);
+            set_types.(root) += var_bindings.types.(i);
             i += 1u;
         }
 
@@ -2576,27 +2578,15 @@ mod unify {
     fn unify(&t expected,
              &t actual,
              &unify_handler handler,
+             &@var_bindings var_bindings,
              &ty_ctxt tcx) -> result {
-        auto cx = @rec(var_bindings=mk_var_bindings(),
-                       handler=handler,
-                       tcx=tcx);
+        auto cx = @rec(var_bindings=var_bindings, handler=handler, tcx=tcx);
+        ret unify_step(cx, expected, actual);
+    }
 
-        auto ures = unify_step(cx, expected, actual);
-        alt (ures) {
-        case (ures_ok(?typ)) {
-            // Fast path: if there are no local variables, don't perform
-            // substitutions.
-            if (vec::len(cx.var_bindings.sets.nodes) == 0u) {
-                ret ures_ok(typ);
-            }
-
-            auto set_types = unify_sets(cx);
-            auto t2 = substitute(cx, set_types, typ);
-            ret ures_ok(t2);
-        }
-        case (_) { ret ures; }
-        }
-        fail;   // not reached
+    fn fixup(&ty_ctxt tcx, &@var_bindings var_bindings, t typ) -> t {
+        auto set_types = unify_sets(var_bindings);
+        ret substitute(tcx, var_bindings, set_types, typ);
     }
 }
 

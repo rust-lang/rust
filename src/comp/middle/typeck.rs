@@ -934,8 +934,21 @@ mod unify {
 
 
         auto handler = unify_handler(fcx, param_substs);
+
+        auto var_bindings = ty::unify::mk_var_bindings();
         auto result = ty::unify::unify(expected, actual, handler,
-                                       fcx.ccx.tcx);
+                                       var_bindings, fcx.ccx.tcx);
+
+        alt (result) {
+            case (ures_ok(?rty)) {
+                if (ty::type_contains_vars(fcx.ccx.tcx, rty)) {
+                    result = ures_ok(ty::unify::fixup(fcx.ccx.tcx,
+                                                      var_bindings, rty));
+                }
+            }
+            case (_) { /* nothing */ }
+        }
+
         fcx.ccx.unify_cache.insert(cache_key, result);
         ret result;
     }
