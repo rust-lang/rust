@@ -20,6 +20,7 @@ import pretty::pprust::print_expr;
 import pretty::pprust::print_decl;
 import pretty::pprust::print_fn;
 import pretty::pprust::print_type;
+import pretty::pprust::mo_untyped;
 import pretty::pp::mkstate;
 
 type filename = str;
@@ -125,7 +126,8 @@ fn expr_to_str(&@ast::expr e) -> str {
   auto out_ = mkstate(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front::lexer::cmnt]],
-                  mutable cur_cmnt=0u);
+                  mutable cur_cmnt=0u,
+                  mode=mo_untyped);
   print_expr(out, e);
   ret s.get_str();
 }
@@ -135,7 +137,8 @@ fn ty_to_str(&ty t) -> str {
   auto out_ = mkstate(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front::lexer::cmnt]],
-                  mutable cur_cmnt=0u);
+                  mutable cur_cmnt=0u,
+                  mode=mo_untyped);
   print_type(out, @t);
   ret s.get_str();
 }
@@ -161,7 +164,8 @@ fn block_to_str(&ast::block b) -> str {
   auto out_ = mkstate(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front::lexer::cmnt]],
-                  mutable cur_cmnt=0u);
+                  mutable cur_cmnt=0u,
+                  mode=mo_untyped);
 
   print_block(out, b);
   ret s.get_str();
@@ -180,7 +184,8 @@ fn fun_to_str(&ast::_fn f, str name, vec[ast::ty_param] params) -> str {
   auto out_ = mkstate(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front::lexer::cmnt]],
-                  mutable cur_cmnt=0u);
+                  mutable cur_cmnt=0u,
+                  mode=mo_untyped);
 
   print_fn(out, f.decl, name, params);
   ret s.get_str();
@@ -199,7 +204,8 @@ fn stmt_to_str(&ast::stmt st) -> str {
   auto out_ = mkstate(s.get_writer(), 80u);
   auto out = @rec(s=out_,
                   comments=none[vec[front::lexer::cmnt]],
-                  mutable cur_cmnt=0u);
+                  mutable cur_cmnt=0u,
+                  mode=mo_untyped);
   alt (st.node) {
     case (ast::stmt_decl(?decl,_)) {
       print_decl(out, decl);
