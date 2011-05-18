@@ -2598,46 +2598,26 @@ fn check_decl_local(&@fn_ctxt fcx, &@ast::decl decl) -> @ast::decl {
     }
 }
 
-fn check_stmt(&@fn_ctxt fcx, &@ast::stmt stmt) -> @ast::stmt {
+fn check_stmt(&@fn_ctxt fcx, &@ast::stmt stmt) {
+    auto node_id;
     alt (stmt.node) {
         case (ast::stmt_decl(?decl,?a)) {
+            node_id = a.id;
             alt (decl.node) {
-                case (ast::decl_local(_)) {
-                    auto decl_1 = check_decl_local(fcx, decl);
-
-                    auto new_ann = plain_ann(a.id, fcx.ccx.tcx);
-                    write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, a.id);
-
-                    ret @fold::respan[ast::stmt_](stmt.span,
-                           ast::stmt_decl(decl_1, new_ann));
-                }
-
-                case (ast::decl_item(_)) {
-                    // Ignore for now. We'll return later.
-                    auto new_ann = plain_ann(a.id, fcx.ccx.tcx);
-                    write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, a.id);
-
-                    ret @fold::respan[ast::stmt_](stmt.span,
-                           ast::stmt_decl(decl, new_ann));
-                }
+                case (ast::decl_local(_)) { check_decl_local(fcx, decl); }
+                case (ast::decl_item(_)) { /* ignore for now */ }
             }
-
-            //         ret stmt;
         }
-
         case (ast::stmt_expr(?expr,?a)) {
+            node_id = a.id;
+
             check_expr(fcx, expr);
             auto ety = expr_ty(fcx.ccx.tcx, fcx.ccx.node_types, expr);
             Pushdown::pushdown_expr(fcx, ety, expr);
-
-            auto new_ann = plain_ann(a.id, fcx.ccx.tcx);
-            write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, a.id);
-
-            ret @fold::respan(stmt.span, ast::stmt_expr(expr, new_ann));
         }
     }
 
-    fail;
+    write_nil_type(fcx.ccx.tcx, fcx.ccx.node_types, node_id);
 }
 
 fn check_block(&@fn_ctxt fcx, &ast::block block) {
