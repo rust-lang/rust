@@ -2662,7 +2662,7 @@ fn check_block(&@fn_ctxt fcx, &ast::block block) {
 }
 
 fn check_const(&@crate_ctxt ccx, &span sp, &ast::ident ident, &@ast::ty t,
-               &@ast::expr e, &ast::def_id id, &ast::ann ann) -> @ast::item {
+               &@ast::expr e, &ast::def_id id, &ast::ann ann) {
     // FIXME: this is kinda a kludge; we manufacture a fake "function context"
     // for checking the initializer expression.
     auto rty = ann_to_type(ccx.node_types, ann);
@@ -2671,10 +2671,7 @@ fn check_const(&@crate_ctxt ccx, &span sp, &ast::ident ident, &@ast::ty t,
                             locals = @common::new_def_hash[ty::t](),
                             ccx = ccx);
     check_expr(fcx, e);
-    // FIXME: necessary? Correct sequence?
     Pushdown::pushdown_expr(fcx, rty, e);
-    auto item = ast::item_const(ident, t, e, id, ann);
-    ret @fold::respan[ast::item_](sp, item);
 }
 
 fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
