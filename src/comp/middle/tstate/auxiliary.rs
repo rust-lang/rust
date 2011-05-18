@@ -28,10 +28,6 @@ import front::ast::return;
 import front::ast::expr_field;
 
 import middle::ty::expr_ann;
-import middle::fold;
-import middle::fold::respan;
-import middle::fold::new_identity_fold;
-import middle::fold::fold_block;
 
 import util::common;
 import util::common::span;
