@@ -854,35 +854,37 @@ mod collect {
 // Type unification
 
 mod unify {
-    fn simple(&@fn_ctxt fcx, &ty::t expected,
-              &ty::t actual) -> ty::unify::result {
+    fn simple(&@stmt_ctxt scx, &ty::t expected, &ty::t actual)
+            -> ty::unify::result {
         // FIXME: horrid botch
         let vec[mutable ty::t] param_substs =
-            [mutable ty::mk_nil(fcx.ccx.tcx)];
+            [mutable ty::mk_nil(scx.fcx.ccx.tcx)];
         vec::pop(param_substs);
-        ret with_params(fcx, expected, actual, param_substs);
+        ret with_params(scx, expected, actual, param_substs);
     }
 
-    fn with_params(&@fn_ctxt fcx, &ty::t expected, &ty::t actual,
+    fn with_params(&@stmt_ctxt scx,
+                   &ty::t expected,
+                   &ty::t actual,
                    &vec[mutable ty::t] param_substs) -> ty::unify::result {
         auto cache_key = tup(expected, actual, param_substs);
-        alt (fcx.ccx.unify_cache.find(cache_key)) {
+        alt (scx.fcx.ccx.unify_cache.find(cache_key)) {
             case (some[ty::unify::result](?r)) {
-                fcx.ccx.cache_hits += 1u;
+                scx.fcx.ccx.cache_hits += 1u;
                 ret r;
             }
             case (none[ty::unify::result]) {
-                fcx.ccx.cache_misses += 1u;
+                scx.fcx.ccx.cache_misses += 1u;
             }
         }
 
-        obj unify_handler(@fn_ctxt fcx, vec[mutable ty::t] param_substs) {
+        obj unify_handler(@stmt_ctxt scx, vec[mutable ty::t] param_substs) {
             fn resolve_local(ast::def_id id) -> option::t[ty::t] {
-                alt (fcx.locals.find(id)) {
+                alt (scx.fcx.locals.find(id)) {
                     case (none[ty::t]) { ret none[ty::t]; }
                     case (some[ty::t](?existing_type)) {
-                        if (ty::type_contains_vars(fcx.ccx.tcx,
-                                                  existing_type)) {
+                        if (ty::type_contains_vars(scx.fcx.ccx.tcx,
+                                                   existing_type)) {
                             // Not fully resolved yet. The writeback phase
                             // will mop up.
                             ret none[ty::t];
@@ -893,10 +895,10 @@ mod unify {
             }
             fn record_local(ast::def_id id, ty::t new_type) {
                 auto unified_type;
-                alt (fcx.locals.find(id)) {
+                alt (scx.fcx.locals.find(id)) {
                     case (none[ty::t]) { unified_type = new_type; }
                     case (some[ty::t](?old_type)) {
-                        alt (with_params(fcx, old_type, new_type,
+                        alt (with_params(scx, old_type, new_type,
                                          param_substs)) {
                             case (ures_ok(?ut)) { unified_type = ut; }
                             case (_) { fail; /* FIXME */ }
@@ -910,22 +912,23 @@ mod unify {
                     param_substs_1 += [subst];
                 }
 
-                unified_type =
-                    ty::substitute_type_params(fcx.ccx.tcx, param_substs_1,
-                                              unified_type);
-                fcx.locals.insert(id, unified_type);
+                unified_type = ty::substitute_type_params(scx.fcx.ccx.tcx,
+                                                          param_substs_1,
+                                                          unified_type);
+                scx.fcx.locals.insert(id, unified_type);
             }
             fn record_param(uint index, ty::t binding) -> ty::unify::result {
                 // Unify with the appropriate type in the parameter
                 // substitution list:
                 auto old_subst = param_substs.(index);
 
-                auto result = with_params(fcx, old_subst, binding,
+                auto result = with_params(scx, old_subst, binding,
                                           param_substs);
                 alt (result) {
                     case (ures_ok(?new_subst)) {
                         param_substs.(index) = new_subst;
-                        ret ures_ok(ty::mk_bound_param(fcx.ccx.tcx, index));
+                        ret ures_ok(ty::mk_bound_param(scx.fcx.ccx.tcx,
+                                                       index));
                     }
                     case (_) { ret result; }
                 }
@@ -933,23 +936,23 @@ mod unify {
         }
 
 
-        auto handler = unify_handler(fcx, param_substs);
+        auto handler = unify_handler(scx, param_substs);
 
         auto var_bindings = ty::unify::mk_var_bindings();
         auto result = ty::unify::unify(expected, actual, handler,
-                                       var_bindings, fcx.ccx.tcx);
+                                       var_bindings, scx.fcx.ccx.tcx);
 
         alt (result) {
             case (ures_ok(?rty)) {
-                if (ty::type_contains_vars(fcx.ccx.tcx, rty)) {
-                    result = ures_ok(ty::unify::fixup(fcx.ccx.tcx,
+                if (ty::type_contains_vars(scx.fcx.ccx.tcx, rty)) {
+                    result = ures_ok(ty::unify::fixup(scx.fcx.ccx.tcx,
                                                       var_bindings, rty));
                 }
             }
             case (_) { /* nothing */ }
         }
 
-        fcx.ccx.unify_cache.insert(cache_key, result);
+        scx.fcx.ccx.unify_cache.insert(cache_key, result);
         ret result;
     }
 }
@@ -1000,22 +1003,22 @@ fn count_boxes(&ty::ctxt tcx, &ty::t t) -> uint {
 type ty_param_substs_and_ty = tup(vec[ty::t], ty::t);
 
 mod Demand {
-    fn simple(&@fn_ctxt fcx, &span sp, &ty::t expected, &ty::t actual)
-        -> ty::t {
+    fn simple(&@stmt_ctxt scx, &span sp, &ty::t expected, &ty::t actual)
+            -> ty::t {
         let vec[ty::t] tps = [];
-        ret full(fcx, sp, expected, actual, tps, NO_AUTODEREF)._1;
+        ret full(scx, sp, expected, actual, tps, NO_AUTODEREF)._1;
     }
 
-    fn autoderef(&@fn_ctxt fcx, &span sp, &ty::t expected, &ty::t actual,
+    fn autoderef(&@stmt_ctxt scx, &span sp, &ty::t expected, &ty::t actual,
                  autoderef_kind adk) -> ty::t {
         let vec[ty::t] tps = [];
-        ret full(fcx, sp, expected, actual, tps, adk)._1;
+        ret full(scx, sp, expected, actual, tps, adk)._1;
     }
 
     // Requires that the two types unify, and prints an error message if they
     // don't. Returns the unified type and the type parameter substitutions.
 
-    fn full(&@fn_ctxt fcx, &span sp, &ty::t expected, &ty::t actual,
+    fn full(&@stmt_ctxt scx, &span sp, &ty::t expected, &ty::t actual,
             &vec[ty::t] ty_param_substs_0, autoderef_kind adk)
             -> ty_param_substs_and_ty {
 
@@ -1024,19 +1027,19 @@ mod Demand {
         auto implicit_boxes = 0u;
 
         if (adk == AUTODEREF_OK) {
-            expected_1 = strip_boxes(fcx.ccx.tcx, expected_1);
-            actual_1 = strip_boxes(fcx.ccx.tcx, actual_1);
-            implicit_boxes = count_boxes(fcx.ccx.tcx, actual);
+            expected_1 = strip_boxes(scx.fcx.ccx.tcx, expected_1);
+            actual_1 = strip_boxes(scx.fcx.ccx.tcx, actual_1);
+            implicit_boxes = count_boxes(scx.fcx.ccx.tcx, actual);
         }
 
         let vec[mutable ty::t] ty_param_substs =
-            [mutable ty::mk_nil(fcx.ccx.tcx)];
+            [mutable ty::mk_nil(scx.fcx.ccx.tcx)];
         vec::pop(ty_param_substs);   // FIXME: horrid botch
         for (ty::t ty_param_subst in ty_param_substs_0) {
             ty_param_substs += [mutable ty_param_subst];
         }
 
-        alt (unify::with_params(fcx, expected_1, actual_1, ty_param_substs)) {
+        alt (unify::with_params(scx, expected_1, actual_1, ty_param_substs)) {
             case (ures_ok(?t)) {
                 // TODO: Use "freeze", when we have it.
                 let vec[ty::t] result_ty_param_substs = [];
@@ -1045,13 +1048,13 @@ mod Demand {
                 }
 
                 ret tup(result_ty_param_substs,
-                        add_boxes(fcx.ccx, implicit_boxes, t));
+                        add_boxes(scx.fcx.ccx, implicit_boxes, t));
             }
 
             case (ures_err(?err, ?expected, ?actual)) {
-                fcx.ccx.sess.span_err(sp, "mismatched types: expected "
-                    + ty_to_str(fcx.ccx.tcx, expected) + " but found "
-                    + ty_to_str(fcx.ccx.tcx, actual) + " ("
+                scx.fcx.ccx.sess.span_err(sp, "mismatched types: expected "
+                    + ty_to_str(scx.fcx.ccx.tcx, expected) + " but found "
+                    + ty_to_str(scx.fcx.ccx.tcx, actual) + " ("
                     + ty::type_err_to_str(err) + ")");
 
                 // TODO: In the future, try returning "expected", reporting
@@ -1064,8 +1067,8 @@ mod Demand {
 
 
 // Returns true if the two types unify and false if they don't.
-fn are_compatible(&@fn_ctxt fcx, &ty::t expected, &ty::t actual) -> bool {
-    alt (unify::simple(fcx, expected, actual)) {
+fn are_compatible(&@stmt_ctxt scx, &ty::t expected, &ty::t actual) -> bool {
+    alt (unify::simple(scx, expected, actual)) {
         case (ures_ok(_))        { ret true;  }
         case (ures_err(_, _, _)) { ret false; }
     }
@@ -1121,32 +1124,32 @@ mod Pushdown {
     //
     // TODO: enforce this via a predicate.
 
-    fn pushdown_pat(&@fn_ctxt fcx, &ty::t expected, &@ast::pat pat) {
+    fn pushdown_pat(&@stmt_ctxt scx, &ty::t expected, &@ast::pat pat) {
         alt (pat.node) {
             case (ast::pat_wild(?ann)) {
-                auto t = Demand::simple(fcx, pat.span, expected,
-                                        ann_to_type(fcx.ccx.node_types, ann));
-                write_type(fcx.ccx.node_types, ann.id,
+                auto t = Demand::simple(scx, pat.span, expected,
+                    ann_to_type(scx.fcx.ccx.node_types, ann));
+                write_type(scx.fcx.ccx.node_types, ann.id,
                            tup(none[vec[ty::t]], t));
             }
             case (ast::pat_lit(?lit, ?ann)) {
-                auto t = Demand::simple(fcx, pat.span, expected,
-                                        ann_to_type(fcx.ccx.node_types, ann));
-                write_type(fcx.ccx.node_types, ann.id,
+                auto t = Demand::simple(scx, pat.span, expected,
+                    ann_to_type(scx.fcx.ccx.node_types, ann));
+                write_type(scx.fcx.ccx.node_types, ann.id,
                            tup(none[vec[ty::t]], t));
             }
             case (ast::pat_bind(?id, ?did, ?ann)) {
-                auto t = Demand::simple(fcx, pat.span, expected,
-                                        ann_to_type(fcx.ccx.node_types, ann));
-                fcx.locals.insert(did, t);
-                write_type(fcx.ccx.node_types, ann.id,
+                auto t = Demand::simple(scx, pat.span, expected,
+                    ann_to_type(scx.fcx.ccx.node_types, ann));
+                scx.fcx.locals.insert(did, t);
+                write_type(scx.fcx.ccx.node_types, ann.id,
                            tup(none[vec[ty::t]], t));
             }
             case (ast::pat_tag(?id, ?subpats, ?ann)) {
                 // Take the variant's type parameters out of the expected
                 // type.
                 auto tag_tps;
-                alt (struct(fcx.ccx.tcx, expected)) {
+                alt (struct(scx.fcx.ccx.tcx, expected)) {
                     case (ty::ty_tag(_, ?tps)) { tag_tps = tps; }
                     case (_) {
                         log_err "tag pattern type not actually a tag?!";
@@ -1159,48 +1162,46 @@ mod Pushdown {
                 let vec[ty::t] tparams = [];
                 auto j = 0u;
                 auto actual_ty_params =
-                  ty::ann_to_type_params(fcx.ccx.node_types, ann);
+                  ty::ann_to_type_params(scx.fcx.ccx.node_types, ann);
 
                 for (ty::t some_ty in tag_tps) {
                     let ty::t t1 = some_ty;
                     let ty::t t2 = actual_ty_params.(j);
                     
-                    let ty::t res = Demand::simple(fcx, 
-                                                   pat.span,
-                                                   t1, t2);
+                    let ty::t res = Demand::simple(scx, pat.span, t1, t2);
                     
                     vec::push(tparams, res);
                     j += 1u;
                 }
 
                 auto arg_tys;
-                alt (fcx.ccx.tcx.def_map.get(ann.id)) {
+                alt (scx.fcx.ccx.tcx.def_map.get(ann.id)) {
                     case (ast::def_variant(_, ?vdefid)) {
-                        arg_tys = variant_arg_types(fcx.ccx, pat.span, vdefid,
-                                                    tparams);
+                        arg_tys = variant_arg_types(scx.fcx.ccx, pat.span,
+                                                    vdefid, tparams);
                     }
                 }
 
                 auto i = 0u;
                 for (@ast::pat subpat in subpats) {
-                    pushdown_pat(fcx, arg_tys.(i), subpat);
+                    pushdown_pat(scx, arg_tys.(i), subpat);
                     i += 1u;
                 }
 
-                auto tps = ty::ann_to_type_params(fcx.ccx.node_types, ann);
-                auto tt  = ann_to_type(fcx.ccx.node_types, ann);
+                auto tps =
+                    ty::ann_to_type_params(scx.fcx.ccx.node_types, ann);
+                auto tt = ann_to_type(scx.fcx.ccx.node_types, ann);
                 
-                let ty_param_substs_and_ty res_t = Demand::full(fcx, pat.span,
+                let ty_param_substs_and_ty res_t = Demand::full(scx, pat.span,
                       expected, tt, tps, NO_AUTODEREF);
 
                 auto a_1 = mk_ann_type(ann.id, res_t._1,
                                        some[vec[ty::t]](res_t._0));
 
                 // TODO: push down type from "expected".
-                write_type(fcx.ccx.node_types, ann.id,
-                    ty::ann_to_ty_param_substs_opt_and_ty(fcx.ccx.node_types,
-                                                          a_1));
-                    
+                write_type(scx.fcx.ccx.node_types, ann.id,
+                    ty::ann_to_ty_param_substs_opt_and_ty
+                        (scx.fcx.ccx.node_types, a_1));
             }
         }
     }
@@ -1221,7 +1222,7 @@ mod Pushdown {
             case (ast::expr_vec(?es_0, ?mut, ?ann)) {
                 // TODO: enforce mutability
 
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 alt (struct(scx.fcx.ccx.tcx, t)) {
                     case (ty::ty_vec(?mt)) {
@@ -1237,7 +1238,7 @@ mod Pushdown {
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_tup(?es_0, ?ann)) {
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 alt (struct(scx.fcx.ccx.tcx, t)) {
                     case (ty::ty_tup(?mts)) {
@@ -1256,7 +1257,7 @@ mod Pushdown {
             }
             case (ast::expr_rec(?fields_0, ?base_0, ?ann)) {
 
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 alt (struct(scx.fcx.ccx.tcx, t)) {
                     case (ty::ty_rec(?field_mts)) {
@@ -1297,7 +1298,7 @@ mod Pushdown {
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_bind(?sube, ?es, ?ann)) {
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
@@ -1306,39 +1307,39 @@ mod Pushdown {
                 // cases where e is an expression that could *possibly*
                 // produce a box; things like expr_binary or expr_bind can't,
                 // so there's no need.
-                auto t = Demand::autoderef(scx.fcx, e.span, expected,
+                auto t = Demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann), adk);
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_self_method(?id, ?ann)) {
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_binary(?bop, ?lhs, ?rhs, ?ann)) {
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_unary(?uop, ?sube, ?ann)) {
                 // See note in expr_unary for why we're calling
                 // Demand::autoderef.
-                auto t = Demand::autoderef(scx.fcx, e.span, expected,
+                auto t = Demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann), adk);
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_lit(?lit, ?ann)) {
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_cast(?sube, ?ast_ty, ?ann)) {
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_if(?cond, ?then_0, ?else_0, ?ann)) {
-                auto t = Demand::autoderef(scx.fcx, e.span, expected,
+                auto t = Demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann), adk);
                 pushdown_block(scx, expected, then_0);
 
@@ -1351,51 +1352,51 @@ mod Pushdown {
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_for(?decl, ?seq, ?bloc, ?ann)) {
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_for_each(?decl, ?seq, ?bloc, ?ann)) {
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_while(?cond, ?bloc, ?ann)) {
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_do_while(?bloc, ?cond, ?ann)) {
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_block(?bloc, ?ann)) {
-                auto t = Demand::autoderef(scx.fcx, e.span, expected,
+                auto t = Demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann), adk);
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_assign(?lhs_0, ?rhs_0, ?ann)) {
-                auto t = Demand::autoderef(scx.fcx, e.span, expected,
+                auto t = Demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann), adk);
                 pushdown_expr(scx, expected, lhs_0);
                 pushdown_expr(scx, expected, rhs_0);
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_assign_op(?op, ?lhs_0, ?rhs_0, ?ann)) {
-                auto t = Demand::autoderef(scx.fcx, e.span, expected,
+                auto t = Demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann), adk);
                 pushdown_expr(scx, expected, lhs_0);
                 pushdown_expr(scx, expected, rhs_0);
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_field(?lhs, ?rhs, ?ann)) {
-                auto t = Demand::autoderef(scx.fcx, e.span, expected,
+                auto t = Demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann), adk);
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
             case (ast::expr_index(?base, ?index, ?ann)) {
-                auto t = Demand::autoderef(scx.fcx, e.span, expected,
+                auto t = Demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann), adk);
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
@@ -1404,7 +1405,7 @@ mod Pushdown {
                     ty::ann_to_type_params(scx.fcx.ccx.node_types, ann);
                 auto t_0 = ann_to_type(scx.fcx.ccx.node_types, ann);
 
-                auto result_0 = Demand::full(scx.fcx, e.span, expected, t_0,
+                auto result_0 = Demand::full(scx, e.span, expected, t_0,
                                              tp_substs_0, adk);
                 auto t = result_0._1;
 
@@ -1425,7 +1426,7 @@ mod Pushdown {
                            tup(ty_params_opt, t));
             }
             case (ast::expr_ext(?p, ?args, ?body, ?expanded, ?ann)) {
-                auto t = Demand::autoderef(scx.fcx, e.span, expected,
+                auto t = Demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann), adk);
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
@@ -1441,13 +1442,13 @@ mod Pushdown {
             case (ast::expr_assert(_,_)) { /* no-op */ }
 
             case (ast::expr_port(?ann)) {
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
 
             case (ast::expr_chan(?es, ?ann)) {
-                auto t = Demand::simple(scx.fcx, e.span, expected,
+                auto t = Demand::simple(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann));
                 alt (struct(scx.fcx.ccx.tcx, t)) {
                     case (ty::ty_chan(?subty)) {
@@ -1469,7 +1470,7 @@ mod Pushdown {
                     auto bty = block_ty(scx.fcx.ccx.tcx,
                                         scx.fcx.ccx.node_types,
                                         arm_0.block);
-                    t = Demand::simple(scx.fcx, e.span, t, bty);
+                    t = Demand::simple(scx, e.span, t, bty);
                 }
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
@@ -1493,7 +1494,7 @@ mod Pushdown {
                 // cases where e is an expression that could *possibly*
                 // produce a box; things like expr_binary or expr_bind can't,
                 // so there's no need.
-                auto t = Demand::autoderef(scx.fcx, e.span, expected,
+                auto t = Demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.node_types, ann), adk);
                 write_type_only(scx.fcx.ccx.node_types, ann.id, t);
             }
@@ -1516,7 +1517,7 @@ mod Pushdown {
                                bloc.node.a.id);
             }
             case (none[@ast::expr]) {
-                Demand::simple(scx.fcx, bloc.span, expected,
+                Demand::simple(scx, bloc.span, expected,
                                ty::mk_nil(scx.fcx.ccx.tcx));
                 write_nil_type(scx.fcx.ccx.tcx, scx.fcx.ccx.node_types,
                                bloc.node.a.id);
@@ -1837,7 +1838,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         // Unify the callee and arguments.
         auto tpt_0 = ty::expr_ty_params_and_ty(scx.fcx.ccx.tcx,
                                                scx.fcx.ccx.node_types, f);
-        auto tpt_1 = Demand::full(scx.fcx, f.span, tpt_0._1, t_0, tpt_0._0,
+        auto tpt_1 = Demand::full(scx, f.span, tpt_0._1, t_0, tpt_0._0,
                                   NO_AUTODEREF);
         replace_expr_type(scx.fcx.ccx.node_types, f, tpt_1);
     }
@@ -1978,7 +1979,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             alt (expr_opt) {
                 case (none[@ast::expr]) {
                     auto nil = ty::mk_nil(scx.fcx.ccx.tcx);
-                    if (!are_compatible(scx.fcx, scx.fcx.ret_ty, nil)) {
+                    if (!are_compatible(scx, scx.fcx.ret_ty, nil)) {
                         // TODO: span_err
                         scx.fcx.ccx.sess.err("ret; in function " +
                             "returning non-nil");
@@ -2004,7 +2005,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             alt (expr_opt) {
                 case (none[@ast::expr]) {
                     auto nil = ty::mk_nil(scx.fcx.ccx.tcx);
-                    if (!are_compatible(scx.fcx, scx.fcx.ret_ty, nil)) {
+                    if (!are_compatible(scx, scx.fcx.ret_ty, nil)) {
                         // TODO: span_err
                         scx.fcx.ccx.sess.span_err(expr.span,
                             "put; in iterator yielding non-nil");
@@ -2041,7 +2042,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
 
         case (ast::expr_check(?e, ?a)) {
             check_expr(scx, e);
-            Demand::simple(scx.fcx, expr.span, ty::mk_bool(scx.fcx.ccx.tcx),
+            Demand::simple(scx, expr.span, ty::mk_bool(scx.fcx.ccx.tcx),
                 expr_ty(scx.fcx.ccx.tcx, scx.fcx.ccx.node_types, e));
             /* e must be a call expr where all arguments are either
              literals or slots */
@@ -2085,8 +2086,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         case (ast::expr_assert(?e, ?a)) {
             check_expr(scx, e);
             auto ety = expr_ty(scx.fcx.ccx.tcx, scx.fcx.ccx.node_types, e);
-            Demand::simple(scx.fcx, expr.span, ty::mk_bool(scx.fcx.ccx.tcx),
-                           ety);
+            Demand::simple(scx, expr.span, ty::mk_bool(scx.fcx.ccx.tcx), ety);
 
             write_nil_type(scx.fcx.ccx.tcx, scx.fcx.ccx.node_types, a.id);
         }
@@ -2223,13 +2223,13 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             let vec[@ast::pat] pats = [];
             for (ast::arm arm in arms) {
                 check_pat(scx, arm.pat);
-                pattern_ty = Demand::simple(scx.fcx, arm.pat.span, pattern_ty,
+                pattern_ty = Demand::simple(scx, arm.pat.span, pattern_ty,
                     pat_ty(scx.fcx.ccx.tcx, scx.fcx.ccx.node_types, arm.pat));
                 pats += [arm.pat];
             }
 
             for (@ast::pat pat in pats) {
-                Pushdown::pushdown_pat(scx.fcx, pattern_ty, pat);
+                Pushdown::pushdown_pat(scx, pattern_ty, pat);
             }
 
             // Now typecheck the blocks.
@@ -2241,7 +2241,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
 
                 auto bty = block_ty(scx.fcx.ccx.tcx, scx.fcx.ccx.node_types,
                                     arm.block);
-                result_ty = Demand::simple(scx.fcx, arm.block.span, result_ty,
+                result_ty = Demand::simple(scx, arm.block.span, result_ty,
                                            bty);
             }
 
@@ -2416,7 +2416,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                 check_expr(scx, e);
                 auto expr_t = expr_ty(scx.fcx.ccx.tcx, scx.fcx.ccx.node_types,
                                       e);
-                Demand::simple(scx.fcx, expr.span, t, expr_t);
+                Demand::simple(scx, expr.span, t, expr_t);
             }
 
             auto typ = ty::mk_vec(scx.fcx.ccx.tcx, rec(ty=t, mut=mut));
@@ -2483,7 +2483,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                         auto found = false;
                         for (ty::field bf in base_fields) {
                             if (str::eq(f.ident, bf.ident)) {
-                                Demand::simple(scx.fcx, expr.span, f.mt.ty,
+                                Demand::simple(scx, expr.span, f.mt.ty,
                                                bf.mt.ty);
                                 found = true;
                             }
