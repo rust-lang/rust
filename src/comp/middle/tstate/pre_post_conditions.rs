@@ -679,18 +679,11 @@ fn find_pre_post_fn(&fn_ctxt fcx, &_fn f) -> () {
     find_pre_post_block(fcx, f.body);
 }
 
-fn check_item_fn(&crate_ctxt ccx, &span sp, &ident i, &_fn f,
-                 &vec[ty_param] ty_params,
-                 &def_id id, &ann a) -> @item {
-    log("check_item_fn:");
-    log_fn(f, i, ty_params);
-
+fn fn_pre_post(crate_ctxt ccx, &_fn f, &ident i, &def_id id) -> () {
     assert (ccx.fm.contains_key(id));
     auto fcx = rec(enclosing=ccx.fm.get(id),
                    id=id, name=i, ccx=ccx);
     find_pre_post_fn(fcx, f);  
-
-    ret @respan(sp, item_fn(i, f, ty_params, id, a));
 }
 
 //
