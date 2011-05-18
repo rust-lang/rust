@@ -28,9 +28,9 @@ state type sha1 = state obj {
 };
 
 // Some unexported constants
-const uint digest_buf_len = 5;
-const uint msg_block_len = 64;
-const uint work_buf_len = 80;
+const uint digest_buf_len = 5u;
+const uint msg_block_len = 64u;
+const uint work_buf_len = 80u;
 
 const u32 k0 = 0x5A827999u32;
 const u32 k1 = 0x6ED9EBA1u32;
