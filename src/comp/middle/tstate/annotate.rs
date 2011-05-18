@@ -73,8 +73,6 @@ import front::ast::block;
 import front::ast::block_;
 import front::ast::method;
 
-import middle::fold;
-import middle::fold::respan;
 import middle::ty::expr_ann;
 
 import util::common::uistr;
@@ -129,14 +127,14 @@ fn collect_ids_decl(&@decl d, @vec[uint] res) -> () {
     }
 }
 
-fn node_ids_in_fn(&_fn f, &def_id d, @vec[uint] res) -> () {
+fn node_ids_in_fn(&_fn f, &ident i, &def_id d, @vec[uint] res) -> () {
     auto collect_ids = walk::default_visitor();
     collect_ids = rec(visit_expr_pre  = bind collect_ids_expr(_,res),
                       visit_block_pre = bind collect_ids_block(_,res),
                       visit_stmt_pre  = bind collect_ids_stmt(_,res),
                       visit_decl_pre  = bind collect_ids_decl(_,res)
                       with collect_ids);
-    walk::walk_fn(collect_ids, f, d);
+    walk::walk_fn(collect_ids, f, i, d);
 }
 
 fn init_vecs(&crate_ctxt ccx, @vec[uint] node_ids, uint len) -> () {
@@ -146,22 +144,22 @@ fn init_vecs(&crate_ctxt ccx, @vec[uint] node_ids, uint len) -> () {
     }
 }
 
-fn visit_fn(&crate_ctxt ccx, uint num_locals, &_fn f, &def_id d) -> () {
-     
+fn visit_fn(&crate_ctxt ccx, uint num_locals, &_fn f, &ident i,
+            &def_id d) -> () {
     let vec[uint] node_ids_ = [];
     let @vec[uint] node_ids = @node_ids_;
-    node_ids_in_fn(f, d, node_ids);
+    node_ids_in_fn(f, i, d, node_ids);
     init_vecs(ccx, node_ids, num_locals);
 }
 
-fn annotate_in_fn(&crate_ctxt ccx, &_fn f, &def_id f_id) -> () {
+fn annotate_in_fn(&crate_ctxt ccx, &_fn f, &ident i, &def_id f_id) -> () {
     auto f_info = get_fn_info(ccx, f_id);
-    visit_fn(ccx, num_locals(f_info), f, f_id);
+    visit_fn(ccx, num_locals(f_info), f, i, f_id);
 }
 
 fn annotate_crate(&crate_ctxt ccx, &crate crate) -> () {
     auto do_ann = walk::default_visitor();
-    do_ann = rec(visit_fn_pre = bind annotate_in_fn(ccx, _, _)
+    do_ann = rec(visit_fn_pre = bind annotate_in_fn(ccx, _, _, _)
                  with do_ann);
     walk::walk_crate(do_ann, crate);
 }
