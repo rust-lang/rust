@@ -2717,29 +2717,6 @@ fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
     ret rec(decl=decl, proto=proto, body=body);
 }
 
-fn check_item_fn(&@crate_ctxt ccx, &span sp, &ast::ident ident, &ast::_fn f,
-                 &vec[ast::ty_param] ty_params, &ast::def_id id,
-                 &ast::ann ann) -> @ast::item {
-
-    // FIXME: duplicate work: the item annotation already has the arg types
-    // and return type translated to typeck::ty values. We don't need do to it
-    // again here, we can extract them.
-
-    let vec[arg] inputs = [];
-    for (ast::arg arg in f.decl.inputs) {
-        auto input_ty = ast_ty_to_ty_crate(ccx, arg.ty);
-        inputs += [rec(mode=ast_mode_to_mode(arg.mode), ty=input_ty)];
-    }
-
-    auto output_ty = ast_ty_to_ty_crate(ccx, f.decl.output);
-    auto typ = ty::mk_fn(ccx.tcx, f.proto, inputs, output_ty);
-    auto fn_ann = triv_ann(ann.id, typ);
-    write_type_only(ccx.node_types, ann.id, typ);
-
-    auto item = ast::item_fn(ident, f, ty_params, id, fn_ann);
-    ret @fold::respan[ast::item_](sp, item);
-}
-
 fn update_obj_fields(&@crate_ctxt ccx, &@ast::item i) -> @crate_ctxt {
     alt (i.node) {
         case (ast::item_obj(_, ?ob, _, ?obj_def_ids, _)) {
@@ -2839,8 +2816,7 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) -> typecheck_result {
     auto fld = fold::new_identity_fold[@crate_ctxt]();
 
     fld = @rec(update_env_for_item = bind update_obj_fields(_, _),
-               fold_fn      = bind check_fn(_,_,_,_),
-               fold_item_fn = bind check_item_fn(_,_,_,_,_,_,_)
+               fold_fn      = bind check_fn(_,_,_,_)
                with *fld);
 
     auto crate_1 = fold::fold_crate[@crate_ctxt](ccx, fld, crate);
