@@ -509,8 +509,7 @@ fn T_crate(&type_names tn) -> TypeRef {
                           T_int(),      // size_t main_exit_task_glue
                           T_int(),      // int n_rust_syms
                           T_int(),      // int n_c_syms
-                          T_int(),      // int n_libs
-                          T_int()       // uintptr_t abi_tag
+                          T_int()       // int n_libs
                           ]);
     tn.associate(s, t);
     ret t;
@@ -7504,8 +7503,7 @@ fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
                      exit_task_glue_off,  // size_t main_exit_task_glue_off
                      C_null(T_int()),     // int n_rust_syms
                      C_null(T_int()),     // int n_c_syms
-                     C_null(T_int()),     // int n_libs
-                     C_int(abi::abi_x86_rustc_fastcall) // uintptr_t abi_tag
+                     C_null(T_int())      // int n_libs
                      ]);
 
     llvm::LLVMSetInitializer(crate_ptr, crate_val);

@@ -243,8 +243,6 @@ public:
     size_t n_c_syms;
     size_t n_libs;
 
-    uintptr_t abi_tag;
-
     // Crates are immutable, constructed by the compiler.
 
     uintptr_t get_image_base() const;
