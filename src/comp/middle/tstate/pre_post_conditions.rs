@@ -9,13 +9,14 @@ import tstate::ann::get_post;
 import tstate::ann::postcond;
 import tstate::ann::true_precond;
 import tstate::ann::false_postcond;
-import tstate::ann::empty_pre_post;
 import tstate::ann::empty_poststate;
 import tstate::ann::require_and_preserve;
 import tstate::ann::union;
 import tstate::ann::intersect;
 import tstate::ann::pp_clone;
 import tstate::ann::empty_prestate;
+import tstate::ann::set_precondition;
+import tstate::ann::set_postcondition;
 import aux::var_info;
 import aux::crate_ctxt;
 import aux::fn_ctxt;
@@ -23,7 +24,10 @@ import aux::num_locals;
 import aux::expr_pp;
 import aux::stmt_pp;
 import aux::block_pp;
+import aux::clear_pp;
+import aux::clear_precond;
 import aux::set_pre_and_post;
+import aux::copy_pre_post;
 import aux::expr_precond;
 import aux::expr_postcond;
 import aux::expr_prestate;
@@ -33,6 +37,8 @@ import aux::fn_info;
 import aux::log_pp;
 import aux::ann_to_def;
 import aux::ann_to_def_strict;
+import aux::ann_to_ts_ann;
+import aux::set_postcond_false;
 
 import bitvectors::seq_preconds;
 import bitvectors::union_postconds;
@@ -145,6 +151,8 @@ import util::common::field_exprs;
 import util::common::has_nonlocal_exits;
 import util::common::log_stmt;
 import util::common::log_expr_err;
+import util::common::log_block_err;
+import util::common::log_block;
 
 fn find_pre_post_mod(&_mod m) -> _mod {
     log("implement find_pre_post_mod!");
@@ -209,6 +217,11 @@ fn find_pre_post_item(&crate_ctxt ccx, &item i) -> () {
    the preconditions for <args>, and the postcondition in a to 
    be the union of all postconditions for <args> */
 fn find_pre_post_exprs(&fn_ctxt fcx, &vec[@expr] args, ann a) {
+    if (vec::len[@expr](args) > 0u) {
+        log ("find_pre_post_exprs: oper =");
+        log_expr(*(args.(0)));
+    }
+
     auto enclosing = fcx.enclosing;
     auto fm        = fcx.ccx.fm;
     auto nv        = num_locals(enclosing);
@@ -220,37 +233,40 @@ fn find_pre_post_exprs(&fn_ctxt fcx, &vec[@expr] args, ann a) {
 
     vec::map[@expr, ()](f, args);
 
-    fn get_pp(&@expr e) -> pre_and_post {
-        ret expr_pp(e);
+    fn get_pp(crate_ctxt ccx, &@expr e) -> pre_and_post {
+        ret expr_pp(ccx, e);
     }
-    auto g = get_pp;
+
+    auto g = bind get_pp(fcx.ccx, _);
     auto pps = vec::map[@expr, pre_and_post](g, args);
     auto h = get_post;
 
-    set_pre_and_post(a,
-       rec(precondition=seq_preconds(enclosing, pps),
-           postcondition=union_postconds
-           (nv, (vec::map[pre_and_post, postcond](h, pps)))));
+    set_pre_and_post(fcx.ccx, a, seq_preconds(enclosing, pps),
+        union_postconds
+          (nv, (vec::map[pre_and_post, postcond](h, pps))));
 }
 
 fn find_pre_post_loop(&fn_ctxt fcx, &@decl d, &@expr index,
       &block body, &ann a) -> () {
     find_pre_post_expr(fcx, index);
     find_pre_post_block(fcx, body);
+    log("222");
     auto loop_precond = declare_var(fcx.enclosing, decl_lhs(d),
-           seq_preconds(fcx.enclosing, [expr_pp(index),
-                                       block_pp(body)]));
+      seq_preconds(fcx.enclosing, [expr_pp(fcx.ccx, index),
+                                   block_pp(fcx.ccx, body)]));
     auto loop_postcond = intersect_postconds
-        ([expr_postcond(index), block_postcond(body)]);
-    set_pre_and_post(a, rec(precondition=loop_precond,
-                            postcondition=loop_postcond));
+        ([expr_postcond(fcx.ccx, index), block_postcond(fcx.ccx, body)]);
+    set_pre_and_post(fcx.ccx, a, loop_precond, loop_postcond);
 }
 
-fn gen_if_local(&fn_ctxt fcx, @expr lhs, @expr rhs, &ann larger_ann, &ann new_var) -> () {
+fn gen_if_local(&fn_ctxt fcx, @expr lhs, @expr rhs,
+                &ann larger_ann, &ann new_var) -> () {
   alt (ann_to_def(fcx.ccx, new_var)) {
     case (some[def](def_local(?d_id))) {
       find_pre_post_expr(fcx, rhs);
-      set_pre_and_post(larger_ann, expr_pp(rhs));
+      auto p = expr_pp(fcx.ccx, rhs);
+      set_pre_and_post(fcx.ccx, larger_ann,
+                       p.precondition, p.postcondition);
       gen(fcx, larger_ann, d_id);
     }
     case (_) { find_pre_post_exprs(fcx, [lhs, rhs], larger_ann); }
@@ -265,15 +281,10 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
     fn do_rand_(fn_ctxt fcx, &@expr e) -> () {
         find_pre_post_expr(fcx, e);
     }
-    fn pp_one(&@expr e) -> pre_and_post {
-        ret expr_pp(e);
-    }
     
-    /*
-    log_err("find_pre_post_expr (num_locals =" +
+    log("find_pre_post_expr (num_locals =" +
         uistr(num_local_vars) + "):");
-    log_expr_err(*e);
-    */
+    log_expr(*e);
 
     alt (e.node) {
         case (expr_call(?operator, ?operands, ?a)) {
@@ -293,9 +304,10 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             find_pre_post_exprs(fcx, elt_exprs(elts), a);
         }
         case (expr_path(?p, ?a)) {
-            auto res = empty_pre_post(num_local_vars);
-	    
-	    auto df = ann_to_def_strict(fcx.ccx, a);
+            auto res = expr_pp(fcx.ccx, e);
+            clear_pp(res);
+
+            auto df = ann_to_def_strict(fcx.ccx, a);
             alt (df) {
                 case (def_local(?d_id)) {
                     auto i = bit_num(d_id, enclosing);
@@ -303,37 +315,33 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
                 }
                 case (_) { /* nothing to check */ }
             }
-
-            // Otherwise, variable is global, so it must be initialized
-            set_pre_and_post(a, res);
         }
         case (expr_self_method(?v, ?a)) {
-            /* v is a method of the enclosing obj, so it must be
-               initialized, right? */
-            set_pre_and_post(a, empty_pre_post(num_local_vars));
+            clear_pp(expr_pp(fcx.ccx, e));
         }
         case(expr_log(_, ?arg, ?a)) {
             find_pre_post_expr(fcx, arg);
-            set_pre_and_post(a, expr_pp(arg));
+            copy_pre_post(fcx.ccx, a, arg);
         }
         case (expr_chan(?arg, ?a)) {
             find_pre_post_expr(fcx, arg);
-            set_pre_and_post(a, expr_pp(arg));
+            copy_pre_post(fcx.ccx, a, arg);
         }
         case(expr_put(?opt, ?a)) {
             alt (opt) {
                 case (some[@expr](?arg)) {
                     find_pre_post_expr(fcx, arg);
-                    set_pre_and_post(a, expr_pp(arg));
+                    copy_pre_post(fcx.ccx, a, arg);
                 }
                 case (none[@expr]) {
-                    set_pre_and_post(a, empty_pre_post(num_local_vars));
+                    clear_pp(expr_pp(fcx.ccx, e));
                 }
             }
         }
         case (expr_block(?b, ?a)) {
             find_pre_post_block(fcx, b);
-            set_pre_and_post(a, block_pp(b));
+            auto p = block_pp(fcx.ccx, b);
+            set_pre_and_post(fcx.ccx, a, p.precondition, p.postcondition);
         }
         case (expr_rec(?fields,?maybe_base,?a)) {
             auto es = field_exprs(fields);
@@ -343,7 +351,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
         case (expr_assign(?lhs, ?rhs, ?a)) {
             alt (lhs.node) {
                 case (expr_path(?p, ?a_lhs)) {
-		  gen_if_local(fcx, lhs, rhs, a, a_lhs);
+                  gen_if_local(fcx, lhs, rhs, a, a_lhs);
                 }
                 case (_) {
                     find_pre_post_exprs(fcx, [lhs, rhs], a);
@@ -353,7 +361,7 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
         case (expr_recv(?lhs, ?rhs, ?a)) {
             alt (lhs.node) {
                 case (expr_path(?p, ?a_lhs)) {
-		  gen_if_local(fcx, lhs, rhs, a, a_lhs);
+                  gen_if_local(fcx, lhs, rhs, a, a_lhs);
                 }
                 case (_) {
                     // doesn't check that lhs is an lval, but
@@ -368,63 +376,65 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             find_pre_post_exprs(fcx, [lhs, rhs], a);
         }
         case (expr_lit(_,?a)) {
-            set_pre_and_post(a, empty_pre_post(num_local_vars));
+            clear_pp(expr_pp(fcx.ccx, e));
         }
         case (expr_ret(?maybe_val, ?a)) {
             alt (maybe_val) {
                 case (none[@expr]) {
-                    set_pre_and_post(a,
-                      rec(precondition=true_precond(num_local_vars),
-                          postcondition=false_postcond(num_local_vars)));
+                    clear_precond(fcx.ccx, a);
+                    set_postcond_false(fcx.ccx, a);
                 }
                 case (some[@expr](?ret_val)) {
                     find_pre_post_expr(fcx, ret_val);
-                    let pre_and_post pp =
-                        rec(precondition=expr_precond(ret_val),
-                            postcondition=false_postcond(num_local_vars));
-                    set_pre_and_post(a, pp);
+                    set_precondition(ann_to_ts_ann(fcx.ccx, a),
+                                     expr_precond(fcx.ccx, ret_val));
+                    set_postcond_false(fcx.ccx, a);
                 }
             }
         }
         case (expr_be(?e, ?a)) {
             find_pre_post_expr(fcx, e);
-            set_pre_and_post(a,
-               rec(precondition=expr_prestate(e),
-                   postcondition=false_postcond(num_local_vars)));
+            set_pre_and_post(fcx.ccx, a,
+               expr_prestate(fcx.ccx, e),
+               false_postcond(num_local_vars));
         }
         case (expr_if(?antec, ?conseq, ?maybe_alt, ?a)) {
             find_pre_post_expr(fcx, antec);
             find_pre_post_block(fcx, conseq);
             alt (maybe_alt) {
                 case (none[@expr]) {
+                    log "333";
                     auto precond_res = seq_preconds(enclosing,
-                                                    [expr_pp(antec),
-                                                        block_pp(conseq)]);
-                    set_pre_and_post(a, rec(precondition=precond_res,
-                                            postcondition=
-                                            expr_poststate(antec)));
+                                         [expr_pp(fcx.ccx, antec),
+                                          block_pp(fcx.ccx, conseq)]);
+                    set_pre_and_post(fcx.ccx, a, precond_res,
+                                     expr_poststate(fcx.ccx, antec));
                 }
                 case (some[@expr](?altern)) {
                     find_pre_post_expr(fcx, altern);
+                    log "444";
                     auto precond_true_case =
                         seq_preconds(enclosing,
-                                     [expr_pp(antec), block_pp(conseq)]);
+                                     [expr_pp(fcx.ccx, antec),
+                                      block_pp(fcx.ccx, conseq)]);
                     auto postcond_true_case = union_postconds
                         (num_local_vars,
-                         [expr_postcond(antec), block_postcond(conseq)]);
+                         [expr_postcond(fcx.ccx, antec),
+                          block_postcond(fcx.ccx, conseq)]);
+                    log "555";
                     auto precond_false_case = seq_preconds
                         (enclosing,
-                         [expr_pp(antec), expr_pp(altern)]);
+                         [expr_pp(fcx.ccx, antec), expr_pp(fcx.ccx, altern)]);
                     auto postcond_false_case = union_postconds
                         (num_local_vars,
-                         [expr_postcond(antec), expr_postcond(altern)]);
+                         [expr_postcond(fcx.ccx, antec),
+                          expr_postcond(fcx.ccx, altern)]);
                     auto precond_res = union_postconds
                         (num_local_vars,
                          [precond_true_case, precond_false_case]);
                     auto postcond_res = intersect_postconds
                         ([postcond_true_case, postcond_false_case]);
-                    set_pre_and_post(a, rec(precondition=precond_res,
-                                            postcondition=postcond_res));
+                    set_pre_and_post(fcx.ccx, a, precond_res, postcond_res);
                 }
             }
         }
@@ -438,41 +448,42 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
         }
         case (expr_unary(_,?operand,?a)) {
             find_pre_post_expr(fcx, operand);
-            set_pre_and_post(a, expr_pp(operand));
+            copy_pre_post(fcx.ccx, a, operand);
         }
         case (expr_cast(?operand, _, ?a)) {
             find_pre_post_expr(fcx, operand);
-            set_pre_and_post(a, expr_pp(operand));
+            copy_pre_post(fcx.ccx, a, operand);
         }
         case (expr_while(?test, ?body, ?a)) {
             find_pre_post_expr(fcx, test);
             find_pre_post_block(fcx, body);
-            set_pre_and_post(a,
-              rec(precondition=
+            log "666";
+            set_pre_and_post(fcx.ccx, a,
                     seq_preconds(enclosing,
-                               [expr_pp(test), 
-                                   block_pp(body)]),
-                  postcondition=
-                    intersect_postconds([expr_postcond(test),
-                                            block_postcond(body)])));
+                               [expr_pp(fcx.ccx, test), 
+                                   block_pp(fcx.ccx, body)]),
+                    intersect_postconds([expr_postcond(fcx.ccx, test),
+                                         block_postcond(fcx.ccx, body)]));
         }
         case (expr_do_while(?body, ?test, ?a)) {
             find_pre_post_block(fcx, body);
             find_pre_post_expr(fcx, test);
    
             auto loop_postcond = union_postconds(num_local_vars,
-                   [block_postcond(body), expr_postcond(test)]);
+                   [block_postcond(fcx.ccx, body),
+                    expr_postcond(fcx.ccx, test)]);
             /* conservative approximination: if the body
                could break or cont, the test may never be executed */
             if (has_nonlocal_exits(body)) {
                 loop_postcond = empty_poststate(num_local_vars);
             }
 
-            set_pre_and_post(a, 
-              rec(precondition=seq_preconds(enclosing,
-                                            [block_pp(body),
-                                                expr_pp(test)]),
-                  postcondition=loop_postcond));
+            log "777";
+            set_pre_and_post(fcx.ccx, a, 
+              seq_preconds(enclosing,
+                           [block_pp(fcx.ccx, body),
+                            expr_pp(fcx.ccx, test)]),
+              loop_postcond);
         }
         case (expr_for(?d, ?index, ?body, ?a)) {
             find_pre_post_loop(fcx, d, index, body, a);
@@ -487,47 +498,49 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             find_pre_post_expr(fcx, e);
             fn do_an_alt(&fn_ctxt fcx, &arm an_alt) -> pre_and_post {
                 find_pre_post_block(fcx, an_alt.block);
-                ret block_pp(an_alt.block);
+                ret block_pp(fcx.ccx, an_alt.block);
             }
             auto f = bind do_an_alt(fcx, _);
             auto alt_pps = vec::map[arm, pre_and_post](f, alts);
             fn combine_pp(pre_and_post antec, 
                           fn_info enclosing, &pre_and_post pp,
                           &pre_and_post next) -> pre_and_post {
+                log "777";
                 union(pp.precondition, seq_preconds(enclosing,
                                                     [antec, next]));
                 intersect(pp.postcondition, next.postcondition);
                 ret pp;
             }
-            auto antec_pp = pp_clone(expr_pp(e)); 
-            auto e_pp  = rec(precondition=empty_prestate(num_local_vars),
+            auto antec_pp = pp_clone(expr_pp(fcx.ccx, e)); 
+            auto e_pp  = @rec(precondition=empty_prestate(num_local_vars),
                              postcondition=false_postcond(num_local_vars));
             auto g = bind combine_pp(antec_pp, fcx.enclosing, _, _);
 
             auto alts_overall_pp = vec::foldl[pre_and_post, pre_and_post]
                                     (g, e_pp, alt_pps);
 
-            set_pre_and_post(a, alts_overall_pp);
+            set_pre_and_post(fcx.ccx, a, alts_overall_pp.precondition,
+                             alts_overall_pp.postcondition);
         }
         case (expr_field(?operator, _, ?a)) {
             find_pre_post_expr(fcx, operator);
-            set_pre_and_post(a, expr_pp(operator));
+            copy_pre_post(fcx.ccx, a, operator);
         }
         case (expr_fail(?a)) {
-            set_pre_and_post(a,
+            set_pre_and_post(fcx.ccx, a,
                              /* if execution continues after fail,
                                 then everything is true! */
-               rec(precondition=empty_prestate(num_local_vars),
-                   postcondition=false_postcond(num_local_vars)));
+               empty_prestate(num_local_vars),
+               false_postcond(num_local_vars));
         }
         case (expr_assert(?p, ?a)) {
             find_pre_post_expr(fcx, p);
-            set_pre_and_post(a, expr_pp(p));
+            copy_pre_post(fcx.ccx, a, p);
         }
         case (expr_check(?p, ?a)) {
             /* will need to change when we support arbitrary predicates... */
             find_pre_post_expr(fcx, p);
-            set_pre_and_post(a, expr_pp(p));
+            copy_pre_post(fcx.ccx, a, p);
         }
         case(expr_bind(?operator, ?maybe_args, ?a)) {
             auto args = vec::cat_options[@expr](maybe_args);
@@ -535,17 +548,17 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
             find_pre_post_exprs(fcx, args, a);
         }
         case (expr_break(?a)) {
-            set_pre_and_post(a, empty_pre_post(num_local_vars));
+            clear_pp(expr_pp(fcx.ccx, e));
         }
         case (expr_cont(?a)) {
-            set_pre_and_post(a, empty_pre_post(num_local_vars));
+            clear_pp(expr_pp(fcx.ccx, e));
         }
         case (expr_port(?a)) {
-            set_pre_and_post(a, empty_pre_post(num_local_vars));
+            clear_pp(expr_pp(fcx.ccx, e));
         }
         case (expr_ext(_, _, _, ?expanded, ?a)) {
             find_pre_post_expr(fcx, expanded);
-            set_pre_and_post(a, expr_pp(expanded));
+            copy_pre_post(fcx.ccx, a, expanded);
         }
     }
 }
@@ -565,12 +578,11 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s)
                     alt(alocal.init) {
                         case(some[initializer](?an_init)) {
                             find_pre_post_expr(fcx, an_init.expr);
-                            auto rhs_pp = expr_pp(an_init.expr);
-                            set_pre_and_post(alocal.ann, rhs_pp);
+                            copy_pre_post(fcx.ccx, alocal.ann, an_init.expr);
 
                             /* Inherit ann from initializer, and add var being
                                initialized to the postcondition */
-                            set_pre_and_post(a, rhs_pp);
+                            copy_pre_post(fcx.ccx, a, an_init.expr);
                             /*  log("gen (decl):");
                                 log_stmt(s); */
                             gen(fcx, a, alocal.id); 
@@ -580,22 +592,21 @@ fn find_pre_post_stmt(&fn_ctxt fcx, &stmt s)
                                                    log_pp(stmt_pp(s)); */
                         }
                         case(none[initializer]) {
-                            auto pp = empty_pre_post(num_local_vars);
-                            set_pre_and_post(alocal.ann, pp);
-                            set_pre_and_post(a, pp);
+                            clear_pp(ann_to_ts_ann(fcx.ccx,
+                                                   alocal.ann).conditions);
+                            clear_pp(ann_to_ts_ann(fcx.ccx, a).conditions);
                         }
                     }
                 }
                 case(decl_item(?anitem)) {
-                    auto pp = empty_pre_post(num_local_vars);
-                    set_pre_and_post(a, pp);
+                    clear_pp(ann_to_ts_ann(fcx.ccx, a).conditions);
                     find_pre_post_item(fcx.ccx, *anitem);
                 }
             }
         }
         case(stmt_expr(?e,?a)) {
             find_pre_post_expr(fcx, e);
-            set_pre_and_post(a, expr_pp(e));
+            copy_pre_post(fcx.ccx, a, e);
         }    
     }
 }
@@ -624,7 +635,7 @@ fn find_pre_post_block(&fn_ctxt fcx, block b) -> () {
         log("pre_post for stmt:");
         log_stmt(*s);
         log("is:");
-        log_pp(stmt_pp(*s));
+        log_pp(stmt_pp(fcx.ccx, *s));
     }
     auto do_one = bind do_one_(fcx, _);
     
@@ -637,15 +648,15 @@ fn find_pre_post_block(&fn_ctxt fcx, block b) -> () {
 
     let vec[pre_and_post] pps = [];
 
-    fn get_pp_stmt(&@stmt s) -> pre_and_post {
-        ret stmt_pp(*s);
+    fn get_pp_stmt(crate_ctxt ccx, &@stmt s) -> pre_and_post {
+        ret stmt_pp(ccx, *s);
     }
-    auto f = get_pp_stmt;
+    auto f = bind get_pp_stmt(fcx.ccx,_);
     pps += vec::map[@stmt, pre_and_post](f, b.node.stmts);
-    fn get_pp_expr(&@expr e) -> pre_and_post {
-        ret expr_pp(e);
+    fn get_pp_expr(crate_ctxt ccx, &@expr e) -> pre_and_post {
+        ret expr_pp(ccx, e);
     }
-    auto g = get_pp_expr;
+    auto g = bind get_pp_expr(fcx.ccx, _);
     plus_option[pre_and_post](pps,
        option::map[@expr, pre_and_post](g, b.node.expr));
 
@@ -661,8 +672,7 @@ fn find_pre_post_block(&fn_ctxt fcx, block b) -> () {
         block_postcond = union_postconds(nv, postconds);
     }
 
-    set_pre_and_post(b.node.a, rec(precondition=block_precond,
-                                   postcondition=block_postcond));
+    set_pre_and_post(fcx.ccx, b.node.a, block_precond, block_postcond);
 }
 
 fn find_pre_post_fn(&fn_ctxt fcx, &_fn f) -> () {
