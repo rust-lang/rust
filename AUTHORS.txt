@@ -15,7 +15,7 @@ Eric Holk <eholk@mozilla.com>
 Erick Tryzelaar <erick.tryzelaar@gmail.com>
 Jason Orendorff <jorendorff@mozilla.com>
 Jeff Balogh <jbalogh@mozilla.com>
-Jeff Mulzelaar <jmuizelaar@mozilla.com>
+Jeff Muizelaar <jmuizelaar@mozilla.com>
 Jeffrey Yasskin <jyasskin@gmail.com>
 Kelly Wilson <wilsonk@cpsc.ucalgary.ca>
 Lindsey Kuper <lkuper@mozilla.com>
