@@ -743,6 +743,15 @@ fn print_decl(ps s, @ast::decl decl) {
                 }
                 case (_) {
                     wrd1(s, "auto");
+
+                    // Print the type if necessary.
+                    alt (s.mode) {
+                        case (mo_untyped) { /* no-op */ }
+                        case (mo_typed(?tcx, ?ntt, ?tc)) {
+                            auto lty = ty::ann_to_type(ntt, loc.ann);
+                            wrd1(s, ty::ty_to_str(tcx, lty));
+                        }
+                    }
                 }
             }
             wrd(s.s, loc.ident);
