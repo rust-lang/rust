@@ -5,21 +5,30 @@ import std::option;
 import driver::session::session;
 import front::ast;
 import front::lexer;
+import middle::ty;
 import util::common;
 import pp::end; import pp::wrd; import pp::space; import pp::line;
 
 const uint indent_unit = 4u;
 const uint default_columns = 78u;
 
+tag mode {
+    mo_untyped;
+    mo_typed(ty::ctxt, ty::node_type_table, ty::type_cache);
+}
+
 type ps = @rec(pp::ps s,
                option::t[vec[lexer::cmnt]] comments,
-               mutable uint cur_cmnt);
+               mutable uint cur_cmnt,
+               mode mode);
 
-fn print_file(session sess, ast::_mod _mod, str filename, io::writer out) {
+fn print_file(session sess, ast::_mod _mod, str filename, io::writer out,
+              mode mode) {
     auto cmnts = lexer::gather_comments(sess, filename);
     auto s = @rec(s=pp::mkstate(out, default_columns),
                   comments=option::some[vec[lexer::cmnt]](cmnts),
-                  mutable cur_cmnt=0u);
+                  mutable cur_cmnt=0u,
+                  mode=mode);
     print_mod(s, _mod);
 }
 
@@ -27,7 +36,8 @@ fn ty_to_str(&@ast::ty ty) -> str {
     auto writer = io::string_writer();
     auto s = @rec(s=pp::mkstate(writer.get_writer(), 0u),
                   comments=option::none[vec[lexer::cmnt]],
-                  mutable cur_cmnt=0u);
+                  mutable cur_cmnt=0u,
+                  mode=mo_untyped);
     print_type(s, ty);
     ret writer.get_str();
 }
@@ -36,7 +46,8 @@ fn block_to_str(&ast::block blk) -> str {
     auto writer = io::string_writer();
     auto s = @rec(s=pp::mkstate(writer.get_writer(), 78u),
                   comments=option::none[vec[lexer::cmnt]],
-                  mutable cur_cmnt=0u);
+                  mutable cur_cmnt=0u,
+                  mode=mo_untyped);
     print_block(s, blk);
     ret writer.get_str();
 }
@@ -45,7 +56,8 @@ fn pat_to_str(&@ast::pat p) -> str {
     auto writer = io::string_writer();
     auto s = @rec(s=pp::mkstate(writer.get_writer(), 78u),
                   comments=option::none[vec[lexer::cmnt]],
-                  mutable cur_cmnt=0u);
+                  mutable cur_cmnt=0u,
+                  mode=mo_untyped);
     print_pat(s, p);
     ret writer.get_str();
 }
@@ -391,6 +403,12 @@ fn print_literal(ps s, @ast::lit lit) {
 fn print_expr(ps s, &@ast::expr expr) {
     maybe_print_comment(s, expr.span.lo);
     hbox(s);
+
+    alt (s.mode) {
+        case (mo_untyped) { /* no-op */ }
+        case (mo_typed(_, _, _)) { popen(s); }
+    }
+
     alt (expr.node) {
         case (ast::expr_vec(?exprs,?mut,_)) {
             if (mut == ast::mut) {
@@ -697,6 +715,18 @@ fn print_expr(ps s, &@ast::expr expr) {
             // TODO
         }
     }
+
+    // Print the type if necessary.
+    alt (s.mode) {
+        case (mo_untyped) { /* no-op */ }
+        case (mo_typed(?tcx, ?ntt, ?tc)) {
+            space(s.s);
+            wrd1(s, "as");
+            wrd(s.s, ty::ty_to_str(tcx, ty::expr_ty(tcx, ntt, expr)));
+            pclose(s);
+        }
+    }
+
     end(s.s);
 }
 

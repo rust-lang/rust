@@ -10,6 +10,7 @@ import middle::resolve;
 import middle::ty;
 import middle::typeck;
 import middle::tstate::ck;
+import pretty::pprust;
 import back::link;
 import lib::llvm;
 import util::common;
@@ -117,14 +118,26 @@ fn compile_input(session::session sess,
              bind link::write::run_passes(sess, llmod, output));
 }
 
-fn pretty_print_input(session::session sess,
-                             eval::env env,
-                             str input) {
+fn pretty_print_input(session::session sess, eval::env env, str input,
+                      bool typed) {
     auto def = tup(ast::local_crate, 0);
     auto p = front::parser::new_parser(sess, env, def, input, 0u, 0u);
     auto crate = front::parser::parse_crate_from_source_file(p);
-    pretty::pprust::print_file(sess, crate.node.module, input,
-                               std::io::stdout());
+
+    auto mode;
+    if (typed) {
+        crate = creader::read_crates(sess, crate);
+        auto def_map = resolve::resolve_crate(sess, crate);
+        auto ty_cx = ty::mk_ctxt(sess, def_map);
+        auto typeck_result = typeck::check_crate(ty_cx, crate);
+        crate = typeck_result._2;
+        mode = pprust::mo_typed(ty_cx, typeck_result._0, typeck_result._1);
+    } else {
+        mode = pprust::mo_untyped;
+    }
+
+    pprust::print_file(sess, crate.node.module, input, std::io::stdout(),
+                       mode);
 }
 
 fn version(str argv0) {
@@ -147,6 +160,7 @@ options:
     --glue             generate glue.bc file
     --shared           compile a shared-library crate
     --pretty           pretty-print the input instead of compiling
+    --typed-pretty     pretty-print the input with types instead of compiling
     --ls               list the symbols defined by a crate file
     -L <path>          add a directory to the library search path
     --noverify         suppress LLVM verification step (slight speedup)
@@ -214,7 +228,8 @@ fn main(vec[str] args) {
     auto opts = [optflag("h"), optflag("help"),
                     optflag("v"), optflag("version"),
                     optflag("glue"), optflag("emit-llvm"),
-                    optflag("pretty"), optflag("ls"), optflag("parse-only"),
+                    optflag("pretty"), optflag("typed-pretty"),
+                    optflag("ls"), optflag("parse-only"),
                     optflag("O"), optflag("shared"), optmulti("L"),
                     optflag("S"), optflag("c"), optopt("o"), optflag("g"),
                     optflag("save-temps"), optopt("sysroot"),
@@ -243,6 +258,7 @@ fn main(vec[str] args) {
     }
 
     auto pretty = opt_present(match, "pretty");
+    auto typed_pretty = opt_present(match, "typed-pretty");
     auto ls = opt_present(match, "ls");
     auto glue = opt_present(match, "glue");
     auto shared = opt_present(match, "shared");
@@ -318,8 +334,8 @@ fn main(vec[str] args) {
     auto ifile = match.free.(0);
     let str saved_out_filename = "";
     auto env = default_environment(sess, args.(0), ifile);
-    if (pretty) {
-        pretty_print_input(sess, env, ifile);
+    if (pretty || typed_pretty) {
+        pretty_print_input(sess, env, ifile, typed_pretty);
     } else if (ls) {
         front::creader::list_file_metadata(ifile, std::io::stdout());
     } else {
