@@ -23,8 +23,7 @@ type ty_param = ident;
 // Annotations added during successive passes.
 type ann = rec(uint id,
                middle::ty::t ty,
-               option::t[vec[middle::ty::t]] tps,
-               option::t[@ts_ann] ts);
+               option::t[vec[middle::ty::t]] tps);
 
 tag def {
     def_fn(def_id);
