@@ -3706,8 +3706,15 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond,
     alt (els) {
         case (some[@ast::expr](?elexpr)) {
             alt (elexpr.node) {
-                case (ast::expr_if(_, _, _, _)) {
-                    else_res = trans_expr(else_cx, elexpr);
+                case (ast::expr_if(?cond, ?thn, ?els, _)) {
+                    else_res = trans_if(else_cx, cond, thn, els);
+                    // The if expression may need to use the else context to
+                    // drop the refcount of its result so we need to run the
+                    // cleanups
+                    auto bcx = else_res.bcx;
+                    bcx = trans_block_cleanups(bcx,
+                                               find_scope_cx(bcx));
+                    else_res = res(bcx, else_res.val);
                 }
                 case (ast::expr_block(?blk, _)) {
                     // Calling trans_block directly instead of trans_expr
