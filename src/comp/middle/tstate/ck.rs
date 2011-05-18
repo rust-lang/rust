@@ -62,7 +62,7 @@ import bitvectors::promises;
 
 import annotate::annotate_crate;
 import collect_locals::mk_f_to_fn_info;
-import pre_post_conditions::check_item_fn;
+import pre_post_conditions::fn_pre_post;
 import states::find_pre_post_state_fn;
 
 fn check_states_expr(&fn_ctxt fcx, @expr e) -> () {
@@ -199,11 +199,10 @@ fn check_crate(ty::node_type_table nt, ty::ctxt cx, @crate crate) -> @crate {
     annotate_crate(ccx, *crate);
 
     /* Compute the pre and postcondition for every subexpression */
-    
-    auto fld = new_identity_fold[crate_ctxt]();
-    fld = @rec(fold_item_fn = bind check_item_fn(_,_,_,_,_,_,_) with *fld);
-    auto with_pre_postconditions =
-           fold_crate[crate_ctxt](ccx, fld, crate);
+    auto do_pre_post = walk::default_visitor();
+    do_pre_post = rec(visit_fn_pre = bind fn_pre_post(ccx, _, _, _)
+                      with do_pre_post);
+    walk::walk_crate(do_pre_post, *crate);
     
     auto fld1 = new_identity_fold[crate_ctxt]();
 
@@ -211,7 +210,7 @@ fn check_crate(ty::node_type_table nt, ty::ctxt cx, @crate crate) -> @crate {
                 fold_obj     = bind check_obj_state(_,_,_,_)
                 with *fld1);
     
-    ret fold_crate[crate_ctxt](ccx, fld1, with_pre_postconditions);
+    ret fold_crate[crate_ctxt](ccx, fld1, crate);
 }
 
 //
