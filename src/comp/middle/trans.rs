@@ -57,7 +57,6 @@ type derived_tydesc_info = rec(ValueRef lltydesc, bool escapes);
 
 type glue_fns = rec(ValueRef activate_glue,
                     ValueRef yield_glue,
-                    ValueRef exit_task_glue,
                     vec[ValueRef] native_glues_rust,
                     vec[ValueRef] native_glues_pure_rust,
                     vec[ValueRef] native_glues_cdecl,
@@ -506,7 +505,7 @@ fn T_crate(&type_names tn) -> TypeRef {
                           T_int(),      // size_t yield_glue
                           T_int(),      // size_t unwind_glue
                           T_int(),      // size_t gc_glue
-                          T_int(),      // size_t main_exit_task_glue
+                          T_int(),      // size_t pad
                           T_int(),      // int n_rust_syms
                           T_int(),      // int n_c_syms
                           T_int()       // int n_libs
@@ -7441,35 +7440,6 @@ fn i2p(ValueRef v, TypeRef t) -> ValueRef {
     ret llvm::LLVMConstIntToPtr(v, t);
 }
 
-fn trans_exit_task_glue(@glue_fns glues,
-                        &hashmap[str, ValueRef] externs,
-                        type_names tn, ModuleRef llmod) {
-    let vec[TypeRef] T_args = [];
-    let vec[ValueRef] V_args = [];
-
-    auto llfn = glues.exit_task_glue;
-
-    auto entrybb = llvm::LLVMAppendBasicBlock(llfn, str::buf("entry"));
-    auto build = new_builder(entrybb);
-
-    let ValueRef arg1 = llvm::LLVMGetParam(llfn, 0u);
-    let ValueRef arg2 = llvm::LLVMGetParam(llfn, 1u);
-    let ValueRef arg3 = llvm::LLVMGetParam(llfn, 2u);
-    let ValueRef arg4 = llvm::LLVMGetParam(llfn, 3u);
-    let ValueRef arg5 = llvm::LLVMGetParam(llfn, 4u);
-
-    auto main_type = T_fn([T_int(), T_int(), T_int(), T_int()], T_void());
-
-    auto fun = build.IntToPtr(arg1, T_ptr(main_type));
-    auto call_args = [arg2, arg3, arg4, arg5];
-    build.FastCall(fun, call_args);
-
-    trans_native_call(build, glues, arg3,
-                      externs, tn, llmod, "upcall_exit", true, [arg3]);
-
-    build.RetVoid();
-}
-
 fn create_typedefs(&@crate_ctxt cx) {
     llvm::LLVMAddTypeName(cx.llmod, str::buf("crate"), T_crate(cx.tn));
     llvm::LLVMAddTypeName(cx.llmod, str::buf("task"), T_task(cx.tn));
@@ -7486,9 +7456,6 @@ fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
     let ValueRef yield_glue_off =
         llvm::LLVMConstSub(p2i(glues.yield_glue), crate_addr);
 
-    let ValueRef exit_task_glue_off =
-        llvm::LLVMConstSub(p2i(glues.exit_task_glue), crate_addr);
-
     let ValueRef crate_val =
         C_struct([C_null(T_int()),     // ptrdiff_t image_base_off
                      p2i(crate_ptr),      // uintptr_t self_addr
@@ -7500,7 +7467,7 @@ fn create_crate_constant(ValueRef crate_ptr, @glue_fns glues) {
                      yield_glue_off,      // size_t yield_glue_off
                      C_null(T_int()),     // size_t unwind_glue_off
                      C_null(T_int()),     // size_t gc_glue_off
-                     exit_task_glue_off,  // size_t main_exit_task_glue_off
+                     C_null(T_int()),     // size_t pad
                      C_null(T_int()),     // int n_rust_syms
                      C_null(T_int()),     // int n_c_syms
                      C_null(T_int())      // int n_libs
@@ -7853,13 +7820,6 @@ fn trans_vec_append_glue(@local_ctxt cx) {
 fn make_glues(ModuleRef llmod, &type_names tn) -> @glue_fns {
     ret @rec(activate_glue = decl_glue(llmod, tn, abi::activate_glue_name()),
              yield_glue = decl_glue(llmod, tn, abi::yield_glue_name()),
-             exit_task_glue = decl_cdecl_fn(llmod, abi::exit_task_glue_name(),
-                                            T_fn([T_int(),
-                                                     T_int(),
-                                                     T_int(),
-                                                     T_int(),
-                                                     T_int()],
-                                                 T_void())),
 
              native_glues_rust =
                  vec::init_fn[ValueRef](bind decl_native_glue(llmod, tn,
@@ -7894,9 +7854,6 @@ fn make_common_glue(&session::session sess, &str output) {
 
     auto glues = make_glues(llmod, tn);
     create_crate_constant(crate_ptr, glues);
-
-    trans::trans_exit_task_glue(glues, new_str_hash[ValueRef](), tn,
-                               llmod);
 
     link::write::run_passes(sess, llmod, output);
 }

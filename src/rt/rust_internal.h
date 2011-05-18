@@ -235,7 +235,7 @@ class rust_crate {
     ptrdiff_t yield_glue_off;
     ptrdiff_t unwind_glue_off;
     ptrdiff_t gc_glue_off;
-    ptrdiff_t exit_task_glue_off;
+    ptrdiff_t pad;
 
 public:
 

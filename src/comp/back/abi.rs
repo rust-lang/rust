@@ -105,10 +105,6 @@ fn yield_glue_name() -> str {
     ret "rust_yield_glue";
 }
 
-fn exit_task_glue_name() -> str {
-    ret "rust_exit_task_glue";
-}
-
 fn no_op_type_glue_name() -> str {
     ret "rust_no_op_type_glue";
 }
