@@ -4,6 +4,7 @@ import std::uint;
 import std::int;
 import std::vec;
 import std::option::none;
+import std::option::some;
 import front::ast;
 import front::ast::ty;
 import front::ast::pat;
@@ -16,6 +17,7 @@ import std::io::stdout;
 import std::io::str_writer;
 import std::io::string_writer;
 import pretty::pprust::print_block;
+import pretty::pprust::print_item;
 import pretty::pprust::print_expr;
 import pretty::pprust::print_decl;
 import pretty::pprust::print_fn;
@@ -171,12 +173,38 @@ fn block_to_str(&ast::block b) -> str {
   ret s.get_str();
 }
 
+fn item_to_str(&@ast::item i) -> str {
+  let str_writer s = string_writer();
+  auto out_ = mkstate(s.get_writer(), 80u);
+  auto out = @rec(s=out_,
+                  comments=none[vec[front::lexer::cmnt]],
+                  mutable cur_cmnt=0u);
+
+  print_item(out, i);
+  ret s.get_str();
+}
+
 fn log_block(&ast::block b) -> () {
     log(block_to_str(b));
 }
 
 fn log_block_err(&ast::block b) -> () {
     log_err(block_to_str(b));
+}
+
+fn log_item_err(&@ast::item i) -> () {
+    log_err(item_to_str(i));
+}
+
+fn log_ann(&ast::ann a) -> () {
+    alt (a) {
+        case (ast::ann_none(_)) {
+            log("ann_none");
+        }
+        case (ast::ann_type(_,_,_,_)) {
+            log("ann_type");
+        }
+    }
 }
 
 fn fun_to_str(&ast::_fn f, str name, vec[ast::ty_param] params) -> str {
@@ -284,6 +312,13 @@ fn has_nonlocal_exits(&ast::block b) -> bool {
     fold::fold_block[flag](has_exits, fld0, b);
 
     ret (has_exits.size() > 0u);
+}
+
+fn local_rhs_span(&@ast::local l, &ast::span def) -> ast::span {
+    alt (l.init) {
+        case (some[ast::initializer](?i)) { ret i.expr.span; }
+        case (_) { ret def; }
+    }
 }
 
 //
