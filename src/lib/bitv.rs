@@ -5,7 +5,6 @@
 
 // FIXME: Almost all the functions in this module should be state fns, but the
 //        effect system isn't currently working correctly.
-
 state type t = rec(vec[mutable uint] storage, uint nbits);
 
 // FIXME: this should be a constant once they work
@@ -111,6 +110,12 @@ fn equal(&t v0, &t v1) -> bool {
 fn clear(&t v) {
     for each (uint i in uint::range(0u, vec::len(v.storage))) {
         v.storage.(i) = 0u;
+    }
+}
+
+fn set_all(&t v) {
+    for each (uint i in _uint::range(0u, v.nbits)) {
+        set(v, i, true);
     }
 }
 
