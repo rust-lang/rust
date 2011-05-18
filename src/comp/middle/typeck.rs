@@ -1461,8 +1461,6 @@ mod Pushdown {
                 // so there's no need.
                 auto t = Demand::autoderef(fcx, e.span, expected,
                     ann_to_type(fcx.ccx.node_types, ann), adk);
-                e_1 = ast::expr_spawn(dom, name, func, args,
-                                     triv_ann(ann.id, t));
                 write_type_only(fcx.ccx.node_types, ann.id, t);
             }
 
