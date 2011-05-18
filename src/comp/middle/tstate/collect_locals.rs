@@ -31,22 +31,28 @@ import aux::var_info;
 import aux::crate_ctxt;
 
 import util::common::new_def_hash;
+import util::common::uistr;
 
 fn var_is_local(def_id v, fn_info m) -> bool {
   ret (m.vars.contains_key(v));
 }
 
-fn collect_local(&@vec[tup(ident, def_id)] vars, &@local loc) -> () {
-    log("collect_local: pushing " + loc.ident);
-    _vec::push[tup(ident, def_id)](*vars, tup(loc.ident, loc.id));
+fn collect_local(&@vec[tup(ident, def_id)] vars, &@decl d) -> () {
+    alt (d.node) {
+      case (decl_local(?loc)) {
+        log("collect_local: pushing " + loc.ident);
+        vec::push[tup(ident, def_id)](*vars, tup(loc.ident, loc.id));
+      }
+      case (_) { ret; }
+    }
 }
 
-fn find_locals(_fn f) -> @vec[tup(ident,def_id)] {
+fn find_locals(_fn f, def_id d) -> @vec[tup(ident,def_id)] {
   auto res = @vec::alloc[tup(ident,def_id)](0u);
 
   auto visitor = walk::default_visitor();
   visitor = rec(visit_decl_pre=bind collect_local(res,_) with visitor);
-  walk_fn(visitor, f);
+  walk_fn(visitor, f, d);
 
   ret res;
 }
@@ -69,7 +75,7 @@ fn mk_fn_info(_fn f, def_id f_id, ident f_name) -> fn_info {
     /* ignore args, which we know are initialized;
        just collect locally declared vars */
 
-    let @vec[tup(ident,def_id)] locals = find_locals(f);
+    let @vec[tup(ident,def_id)] locals = find_locals(f, f_id);
     // log (uistr(vec::len[tup(ident, def_id)](locals)) + " locals");
     for (tup(ident,def_id) p in *locals) {
         next = add_var(p._1, p._0, next, res);
@@ -78,6 +84,9 @@ fn mk_fn_info(_fn f, def_id f_id, ident f_name) -> fn_info {
        we can safely use the function's name itself for this purpose */
     add_var(f_id, f_name, next, res);
 
+    log(f_name + " has " + uistr(vec::len[tup(ident, def_id)](*locals))
+            + " locals");
+   
     ret res;
 }
 
@@ -91,7 +100,7 @@ fn mk_fn_info_item (&crate_ctxt ccx, &@item i) -> () {
       ccx.fm.insert(id, f_inf);
     }
     case (item_obj(?i,?o,?ty_params,?odid,?a)) {
-      auto all_methods = _vec::clone[@method](o.methods);
+      auto all_methods = vec::clone[@method](o.methods);
       plus_option[@method](all_methods, o.dtor);
       auto f_inf;
       for (@method m in all_methods) {
@@ -109,7 +118,7 @@ fn mk_fn_info_item (&crate_ctxt ccx, &@item i) -> () {
 fn mk_f_to_fn_info(&crate_ctxt ccx, @crate c) -> () {
   let ast_visitor vars_visitor = walk::default_visitor();
   vars_visitor = rec(visit_item_post=bind mk_fn_info_item(ccx,_)
-		     with vars_visitor);
+                     with vars_visitor);
 
   walk_crate(vars_visitor, *c);
 }

@@ -12,8 +12,8 @@ import aux::fn_ctxt;
 import aux::fn_info;
 import aux::log_bitv;
 import aux::num_locals;
-import aux::ann_to_ts_ann_strict;
 
+import tstate::aux::ann_to_ts_ann;
 import tstate::ann::pre_and_post;
 import tstate::ann::precond;
 import tstate::ann::postcond;
@@ -48,7 +48,7 @@ fn seq_preconds(fn_info enclosing, vec[pre_and_post] pps) -> precond {
   let uint num_vars = num_locals(enclosing);
 
   if (sz >= 1u) {
-    auto first   = pps.(0);
+    auto first = pps.(0);
     assert (pps_len(first) == num_vars);
     let precond rest = seq_preconds(enclosing,
                          slice[pre_and_post](pps, 1u, sz));
@@ -115,9 +115,10 @@ fn intersect_postconds(&vec[postcond] pcs) -> postcond {
 }
 
 fn gen(&fn_ctxt fcx, &ann a, def_id id) -> bool {
+  log "gen";
   assert (fcx.enclosing.vars.contains_key(id));
   let uint i = (fcx.enclosing.vars.get(id))._0;
-  ret set_in_postcond(i, (ann_to_ts_ann_strict(a)).conditions);
+  ret set_in_postcond(i, (ann_to_ts_ann(fcx.ccx, a)).conditions);
 }
 
 fn declare_var(&fn_info enclosing, def_id id, prestate pre)
@@ -130,8 +131,9 @@ fn declare_var(&fn_info enclosing, def_id id, prestate pre)
 }
 
 fn gen_poststate(&fn_ctxt fcx, &ann a, def_id id) -> bool {
+  log "gen_poststate";
   assert (fcx.enclosing.vars.contains_key(id));
   let uint i = (fcx.enclosing.vars.get(id))._0;
-  ret set_in_poststate(i, (ann_to_ts_ann_strict(a)).states);
+  ret set_in_poststate(i, (ann_to_ts_ann(fcx.ccx, a)).states);
 }
 
