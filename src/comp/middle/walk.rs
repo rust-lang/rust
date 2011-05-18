@@ -31,7 +31,9 @@ type ast_visitor =
         fn (&@ast::expr e)              visit_expr_pre,
         fn (&@ast::expr e)              visit_expr_post,
         fn (&@ast::ty t)                visit_ty_pre,
-        fn (&@ast::ty t)                visit_ty_post);
+        fn (&@ast::ty t)                visit_ty_post,
+        fn (&ast::_fn f, &ast::def_id d_id) visit_fn_pre,
+        fn (&ast::_fn f, &ast::def_id d_id)  visit_fn_post);
 
 fn walk_crate(&ast_visitor v, &ast::crate c) {
     if (!v.keep_going()) { ret; }
@@ -91,8 +93,8 @@ fn walk_item(&ast_visitor v, @ast::item i) {
             walk_ty(v, t);
             walk_expr(v, e);
         }
-        case (ast::item_fn(_, ?f, _, _, _)) {
-            walk_fn(v, f);
+        case (ast::item_fn(_, ?f, _, ?d, _)) {
+            walk_fn(v, f, d);
         }
         case (ast::item_mod(_, ?m, _)) {
             walk_mod(v, m);
@@ -116,13 +118,13 @@ fn walk_item(&ast_visitor v, @ast::item i) {
             }
             for (@ast::method m in ob.methods) {
                 v.visit_method_pre(m);
-                walk_fn(v, m.node.meth);
+                walk_fn(v, m.node.meth, m.node.id);
                 v.visit_method_post(m);
             }
             alt (ob.dtor) {
                 case (none[@ast::method]) {}
                 case (some[@ast::method](?m)) {
-                    walk_fn(v, m.node.meth);
+                    walk_fn(v, m.node.meth, m.node.id);
                 }
             }
         }
@@ -227,10 +229,12 @@ fn walk_fn_decl(&ast_visitor v, &ast::fn_decl fd) {
     walk_ty(v, fd.output);
 }
 
-fn walk_fn(&ast_visitor v, &ast::_fn f) {
+fn walk_fn(&ast_visitor v, &ast::_fn f, &ast::def_id d) {
     if (!v.keep_going()) { ret; }
+    v.visit_fn_pre(f, d);
     walk_fn_decl(v, f.decl);
     walk_block(v, f.body);
+    v.visit_fn_post(f, d);
 }
 
 fn walk_block(&ast_visitor v, &ast::block b) {
@@ -455,6 +459,7 @@ fn def_visit_arm(&ast::arm a) { }
 fn def_visit_decl(&@ast::decl d) { }
 fn def_visit_expr(&@ast::expr e) { }
 fn def_visit_ty(&@ast::ty t) { }
+fn def_visit_fn(&ast::_fn f, &ast::def_id d) { }
 
 fn default_visitor() -> ast_visitor {
 
@@ -472,6 +477,7 @@ fn default_visitor() -> ast_visitor {
     auto d_visit_decl = def_visit_decl;
     auto d_visit_expr = def_visit_expr;
     auto d_visit_ty = def_visit_ty;
+    auto d_visit_fn = def_visit_fn;
 
     ret rec(keep_going = d_keep_going,
             want_crate_directives = d_want_crate_directives,
@@ -498,7 +504,9 @@ fn default_visitor() -> ast_visitor {
             visit_expr_pre = d_visit_expr,
             visit_expr_post = d_visit_expr,
             visit_ty_pre = d_visit_ty,
-            visit_ty_post = d_visit_ty);
+            visit_ty_post = d_visit_ty,
+            visit_fn_pre = d_visit_fn,
+            visit_fn_post = d_visit_fn);
 }
 
 //
