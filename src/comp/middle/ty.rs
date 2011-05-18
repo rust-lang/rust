@@ -1671,17 +1671,7 @@ fn block_ty(&ctxt cx, &node_type_table ntt, &ast::block b) -> t {
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function
 // doesn't provide type parameter substitutions.
 fn pat_ty(&ctxt cx, &node_type_table ntt, &@ast::pat pat) -> t {
-    alt (pat.node) {
-        case (ast::pat_wild(?ann))      { ret ann_to_monotype(cx, ntt, ann); }
-        case (ast::pat_lit(_, ?ann))    { ret ann_to_monotype(cx, ntt, ann); }
-        case (ast::pat_bind(_, _, ?ann)) {
-            ret ann_to_monotype(cx, ntt, ann);
-        }
-        case (ast::pat_tag(_, _, ?ann)) {
-            ret ann_to_monotype(cx, ntt, ann);
-        }
-    }
-    fail;   // not reached
+    ret ann_to_monotype(cx, ntt, pat_ann(pat));
 }
 
 fn item_ann(&@ast::item it) -> ast::ann {
@@ -1766,6 +1756,26 @@ fn expr_ty_params_and_ty(&ctxt cx, &node_type_table ntt, &@ast::expr expr)
 
 fn expr_has_ty_params(&node_type_table ntt, &@ast::expr expr) -> bool {
     ret ann_has_type_params(ntt, expr_ann(expr));
+}
+
+fn stmt_ann(&@ast::stmt s) -> ast::ann {
+    alt (s.node) {
+        case (ast::stmt_decl(_, ?a)) { ret a; }
+        case (ast::stmt_expr(_, ?a)) { ret a; }
+        case (ast::stmt_crate_directive(_)) {
+            log_err "ty::stmt_ann(): crate directive found";
+            fail;
+        }
+    }
+}
+
+fn pat_ann(&@ast::pat p) -> ast::ann {
+    alt (p.node) {
+        case (ast::pat_wild(?a))        { ret a; }
+        case (ast::pat_bind(_, _, ?a))  { ret a; }
+        case (ast::pat_lit(_, ?a))      { ret a; }
+        case (ast::pat_tag(_, _, ?a))   { ret a; }
+    }
 }
 
 

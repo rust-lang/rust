@@ -4,6 +4,7 @@ import std::option;
 import std::option::some;
 import std::option::none;
 
+// FIXME: Should visit patterns as well.
 type ast_visitor =
     rec(fn () -> bool                  keep_going,
         fn () -> bool                  want_crate_directives,

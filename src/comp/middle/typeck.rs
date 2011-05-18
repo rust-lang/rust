@@ -1495,65 +1495,88 @@ mod Pushdown {
 // Local variable resolution: the phase that finds all the types in the AST
 // and replaces opaque "ty_local" types with the resolved local types.
 
-fn writeback_local(&option::t[@fn_ctxt] env, &span sp, &@ast::local local)
-        -> @ast::decl {
-    auto fcx = option::get[@fn_ctxt](env);
-
-    auto local_ty;
-    alt (fcx.locals.find(local.id)) {
-        case (none[ty::t]) {
-            fcx.ccx.sess.span_err(sp, "unable to determine type of local: "
-                                  + local.ident);
-            fail;
+mod writeback {
+    fn wb_local(&@fn_ctxt fcx, &span sp, &@ast::local local) {
+        auto local_ty;
+        alt (fcx.locals.find(local.id)) {
+            case (none[ty::t]) {
+                fcx.ccx.sess.span_err(sp,
+                    "unable to determine type of local: " + local.ident);
+                fail;
+            }
+            case (some[ty::t](?lt)) {
+                local_ty = lt;
+            }
         }
-        case (some[ty::t](?lt)) {
-            local_ty = lt;
+
+        write_type_only(fcx.ccx.node_types, local.ann.id, local_ty);
+    }
+
+    fn resolve_local_types(&@fn_ctxt fcx, &ast::ann ann) {
+        fn resolver(@fn_ctxt fcx, ty::t typ) -> ty::t {
+            alt (struct(fcx.ccx.tcx, typ)) {
+                case (ty::ty_local(?lid))   { ret fcx.locals.get(lid); }
+                case (_)                    { ret typ; }
+            }
+        }
+
+        auto tpot = ty::ann_to_ty_param_substs_opt_and_ty(fcx.ccx.node_types,
+                                                          ann);
+        auto tt = tpot._1;
+        if (!ty::type_contains_locals(fcx.ccx.tcx, tt)) { ret; }
+
+        auto f = bind resolver(fcx, _);
+        auto new_type = ty::fold_ty(fcx.ccx.tcx, f, tt);
+        write_type(fcx.ccx.node_types, ann.id, tup(tpot._0, new_type));
+    }
+
+    fn visit_stmt_pre(@fn_ctxt fcx, &@ast::stmt s) {
+        resolve_local_types(fcx, ty::stmt_ann(s));
+    }
+
+    fn visit_expr_pre(@fn_ctxt fcx, &@ast::expr e) {
+        resolve_local_types(fcx, ty::expr_ann(e));
+    }
+
+    fn visit_block_pre(@fn_ctxt fcx, &ast::block b) {
+        resolve_local_types(fcx, b.node.a);
+    }
+
+    fn visit_arm_pre(@fn_ctxt fcx, &ast::arm a) {
+        // FIXME: Need a visit_pat_pre
+        resolve_local_types(fcx, ty::pat_ann(a.pat));
+    }
+
+    fn visit_decl_pre(@fn_ctxt fcx, &@ast::decl d) {
+        alt (d.node) {
+            case (ast::decl_local(?l)) { wb_local(fcx, d.span, l); }
+            case (ast::decl_item(_)) { /* no annotation */ }
         }
     }
 
-    auto local_wb = @rec(ann=triv_ann(local.ann.id, local_ty) with *local);
-    write_type_only(fcx.ccx.node_types, local.ann.id, local_ty);
-    ret @fold::respan[ast::decl_](sp, ast::decl_local(local_wb));
-}
-
-fn resolve_local_types_in_annotation(&option::t[@fn_ctxt] env, &ast::ann ann)
-        -> ast::ann {
-    fn resolver(@fn_ctxt fcx, ty::t typ) -> ty::t {
-        alt (struct(fcx.ccx.tcx, typ)) {
-            case (ty::ty_local(?lid)) { ret fcx.locals.get(lid); }
-            case (_)                 { ret typ; }
+    fn resolve_local_types_in_block(&@fn_ctxt fcx, &ast::block block) {
+        // A trick to ignore any contained items.
+        auto ignore = @mutable false;
+        fn visit_item_pre(@mutable bool ignore, &@ast::item item) {
+            *ignore = true;
         }
+        fn visit_item_post(@mutable bool ignore, &@ast::item item) {
+            *ignore = false;
+        }
+        fn keep_going(@mutable bool ignore) -> bool { ret !*ignore; }
+
+        auto fld = fold::new_identity_fold[option::t[@fn_ctxt]]();
+        auto visit = rec(keep_going=bind keep_going(ignore),
+                         visit_item_pre=bind visit_item_pre(ignore, _),
+                         visit_item_post=bind visit_item_post(ignore, _),
+                         visit_stmt_pre=bind visit_stmt_pre(fcx, _),
+                         visit_expr_pre=bind visit_expr_pre(fcx, _),
+                         visit_block_pre=bind visit_block_pre(fcx, _),
+                         visit_arm_pre=bind visit_arm_pre(fcx, _),
+                         visit_decl_pre=bind visit_decl_pre(fcx, _)
+                         with walk::default_visitor());
+        walk::walk_block(visit, block);
     }
-
-    auto fcx = option::get[@fn_ctxt](env);
-
-    auto tt = ann_to_type(fcx.ccx.node_types, ann);
-    if (!ty::type_contains_locals(fcx.ccx.tcx, tt)) { ret ann; }
-
-    auto f = bind resolver(fcx, _);
-    auto new_type = ty::fold_ty(fcx.ccx.tcx, f,
-                                ann_to_type(fcx.ccx.node_types, ann));
-    write_type(fcx.ccx.node_types, ann.id, tup(ann.tps, new_type));
-    ret mk_ann_type(ann.id, new_type, ann.tps);
-}
-
-fn resolve_local_types_in_block(&@fn_ctxt fcx, &ast::block block)
-        -> ast::block {
-    fn update_env_for_item(&option::t[@fn_ctxt] env, &@ast::item i)
-            -> option::t[@fn_ctxt] {
-        ret none[@fn_ctxt];
-    }
-    fn keep_going(&option::t[@fn_ctxt] env) -> bool {
-        ret !option::is_none[@fn_ctxt](env);
-    }
-
-    auto fld = fold::new_identity_fold[option::t[@fn_ctxt]]();
-    fld = @rec(fold_decl_local = writeback_local,
-               fold_ann = resolve_local_types_in_annotation,
-               update_env_for_item = update_env_for_item,
-               keep_going = keep_going
-               with *fld);
-    ret fold::fold_block[option::t[@fn_ctxt]](some(fcx), fld, block);
 }
 
 
@@ -2699,11 +2722,9 @@ fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
         case (_) {}
     }
 
-    auto block_wb = resolve_local_types_in_block(fcx, block_t);
+    writeback::resolve_local_types_in_block(fcx, block_t);
 
-    auto fn_t = rec(decl=decl,
-                    proto=proto,
-                    body=block_wb);
+    auto fn_t = rec(decl=decl, proto=proto, body=block_t);
     ret fn_t;
 }
 
