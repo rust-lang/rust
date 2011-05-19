@@ -45,11 +45,12 @@ fn collect_local(&@vec[tup(ident, def_id)] vars, &@decl d) -> () {
     }
 }
 
-fn find_locals(&_fn f, &ident i, &def_id d) -> @vec[tup(ident,def_id)] {
+fn find_locals(&_fn f, &ident i, &def_id d, &ann a)
+    -> @vec[tup(ident,def_id)] {
   auto res = @vec::alloc[tup(ident,def_id)](0u);
   auto visitor = walk::default_visitor();
   visitor = rec(visit_decl_pre=bind collect_local(res,_) with visitor);
-  walk_fn(visitor, f, i, d);
+  walk_fn(visitor, f, i, d, a);
   ret res;
 }
 
@@ -62,7 +63,8 @@ fn add_var(def_id v, ident nm, uint next, fn_info tbl) -> uint {
 
 /* builds a table mapping each local var defined in f
    to a bit number in the precondition/postcondition vectors */
-fn mk_fn_info(&crate_ctxt ccx, &_fn f, &ident f_name, &def_id f_id) -> () {
+fn mk_fn_info(&crate_ctxt ccx, &_fn f, &ident f_name, &def_id f_id, &ann a)
+    -> () {
     auto res = rec(vars=@new_def_hash[var_info](),
                    cf=f.decl.cf);
     let uint next = 0u;
@@ -71,7 +73,7 @@ fn mk_fn_info(&crate_ctxt ccx, &_fn f, &ident f_name, &def_id f_id) -> () {
     /* ignore args, which we know are initialized;
        just collect locally declared vars */
 
-    let @vec[tup(ident,def_id)] locals = find_locals(f, f_name, f_id);
+    let @vec[tup(ident,def_id)] locals = find_locals(f, f_name, f_id, a);
     for (tup(ident,def_id) p in *locals) {
         next = add_var(p._1, p._0, next, res);
     }
@@ -90,7 +92,7 @@ fn mk_fn_info(&crate_ctxt ccx, &_fn f, &ident f_name, &def_id f_id) -> () {
    to bit number) */
 fn mk_f_to_fn_info(&crate_ctxt ccx, @crate c) -> () {
   let ast_visitor vars_visitor = walk::default_visitor();
-  vars_visitor = rec(visit_fn_pre=bind mk_fn_info(ccx,_,_,_)
+  vars_visitor = rec(visit_fn_pre=bind mk_fn_info(ccx,_,_,_,_)
                      with vars_visitor);
 
   walk_crate(vars_visitor, *c);

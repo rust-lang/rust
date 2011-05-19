@@ -138,9 +138,6 @@ import front::ast::stmt_expr;
 import front::ast::block;
 import front::ast::block_;
 
-import middle::fold::span;
-import middle::fold::respan;
-
 import util::common::new_def_hash;
 import util::common::decl_lhs;
 import util::common::uistr;
@@ -679,7 +676,7 @@ fn find_pre_post_fn(&fn_ctxt fcx, &_fn f) -> () {
     find_pre_post_block(fcx, f.body);
 }
 
-fn fn_pre_post(crate_ctxt ccx, &_fn f, &ident i, &def_id id) -> () {
+fn fn_pre_post(crate_ctxt ccx, &_fn f, &ident i, &def_id id, &ann a) -> () {
     assert (ccx.fm.contains_key(id));
     auto fcx = rec(enclosing=ccx.fm.get(id),
                    id=id, name=i, ccx=ccx);
