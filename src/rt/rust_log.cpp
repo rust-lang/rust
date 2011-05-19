@@ -217,8 +217,6 @@ size_t log_rt_gc;
 size_t log_rt_stdlib;
 size_t log_rt_kern;
 size_t log_rt_backtrace;
-// Used to turn logging for rustboot-compiled code on and off
-size_t log_rustboot;
 
 static const mod_entry _rt_module_map[] =
     {{"rt.mem", &log_rt_mem},
@@ -234,7 +232,6 @@ static const mod_entry _rt_module_map[] =
      {"rt.stdlib", &log_rt_stdlib},
      {"rt.kern", &log_rt_kern},
      {"rt.backtrace", &log_rt_backtrace},
-     {"rustboot", &log_rustboot},
      {NULL, NULL}};
 
 void update_log_settings(void* crate_map, char* settings) {
@@ -249,9 +246,7 @@ void update_log_settings(void* crate_map, char* settings) {
     }
 
     update_module_map(_rt_module_map, &dirs[0], n_dirs);
-    // FIXME check can be dropped when rustboot is gone
-    if (crate_map)
-        update_crate_map((const cratemap*)crate_map, &dirs[0], n_dirs);
+    update_crate_map((const cratemap*)crate_map, &dirs[0], n_dirs);
 
     free(buffer);
 }

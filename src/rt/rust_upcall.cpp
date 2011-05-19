@@ -36,14 +36,6 @@ void upcall_log_int(rust_task *task, uint32_t level, int32_t i) {
 }
 
 extern "C" CDECL
-void upcall_log_int_rustboot(rust_task *task, uint32_t level, int32_t i) {
-    LOG_UPCALL_ENTRY(task);
-    if (task->dom->log_lvl >= level && log_rustboot >= level)
-        task->dom->log(task, level, "rust: %" PRId32 " (0x%" PRIx32 ")",
-                       i, i);
-}
-
-extern "C" CDECL
 void upcall_log_float(rust_task *task, uint32_t level, float f) {
     LOG_UPCALL_ENTRY(task);
     if (task->dom->log_lvl >= level)
@@ -55,15 +47,6 @@ void upcall_log_double(rust_task *task, uint32_t level, double *f) {
     LOG_UPCALL_ENTRY(task);
     if (task->dom->log_lvl >= level)
         task->dom->log(task, level, "rust: %12.12f", *f);
-}
-
-extern "C" CDECL void
-upcall_log_str_rustboot(rust_task *task, uint32_t level, rust_str *str) {
-    LOG_UPCALL_ENTRY(task);
-    if (task->dom->log_lvl >= level && log_rustboot >= level) {
-        const char *c = str_buf(task, str);
-        task->dom->log(task, level, "rust: %s", c);
-    }
 }
 
 extern "C" CDECL void
