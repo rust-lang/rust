@@ -1812,6 +1812,10 @@ fn declare_tydesc(&@local_ctxt cx, &ty::t t,
                                          "cmp");
     auto ccx = cx.ccx;
 
+    // Don't inline free glue; it's cold.
+    llvm::LLVMAddFunctionAttr(free_glue, lib::llvm::LLVMNoInlineAttribute as
+                              lib::llvm::llvm::Attribute);
+
     auto llsize;
     auto llalign;
     if (!ty::type_has_dynamic_size(ccx.tcx, t)) {
@@ -3000,6 +3004,11 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                             declare_generic_glue(lcx, ti.ty,
                                                  T_glue_fn(lcx.ccx.tn),
                                                  "free");
+                        // Don't inline free glue; it's cold.
+                        llvm::LLVMAddFunctionAttr(glue_fn,
+                            lib::llvm::LLVMNoInlineAttribute as
+                            lib::llvm::llvm::Attribute);
+
                         ti.free_glue = some[ValueRef](glue_fn);
                         auto dg = make_free_glue;
                         make_generic_glue(lcx, ti.ty, glue_fn,
