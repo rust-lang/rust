@@ -274,6 +274,23 @@ case $CFG_LLVM_VERSION in
     ;;
 esac
 
+if [ ! -z "$CFG_CLANG" ]
+then
+    CFG_CLANG_VERSION=$("$CFG_CLANG" \
+                      --version \
+                      | grep version \
+                      | cut -d ' ' -f 3)
+
+    case $CFG_CLANG_VERSION in
+        (3.0svn | 3.0)
+        step_msg "found ok version of CLANG: $CFG_CLANG_VERSION"
+        ;;
+        (*)
+        err "bad CLANG version: $CFG_CLANG_VERSION, need >=3.0svn"
+        ;;
+    esac
+fi
+
 putvar CFG_LLVM_ROOT
 putvar CFG_LLVM_INCDIR
 putvar CFG_LLVM_BINDIR
