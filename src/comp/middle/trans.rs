@@ -69,6 +69,7 @@ type tydesc_info = rec(ty::t ty,
                        ValueRef align,
                        mutable option::t[ValueRef] take_glue,
                        mutable option::t[ValueRef] drop_glue,
+                       mutable option::t[ValueRef] free_glue,
                        mutable option::t[ValueRef] cmp_glue,
                        vec[uint] ty_params);
 
@@ -1805,6 +1806,8 @@ fn declare_tydesc(&@local_ctxt cx, &ty::t t,
                                           "take");
     auto drop_glue = declare_generic_glue(cx, t, T_glue_fn(cx.ccx.tn),
                                           "drop");
+    auto free_glue = declare_generic_glue(cx, t, T_glue_fn(cx.ccx.tn),
+                                          "free");
     auto cmp_glue = declare_generic_glue(cx, t, T_cmp_glue_fn(cx.ccx.tn),
                                          "cmp");
     auto ccx = cx.ccx;
@@ -1839,6 +1842,7 @@ fn declare_tydesc(&@local_ctxt cx, &ty::t t,
                      align = llalign,
                      mutable take_glue = none[ValueRef],
                      mutable drop_glue = none[ValueRef],
+                     mutable free_glue = none[ValueRef],
                      mutable cmp_glue = none[ValueRef],
                      ty_params = ty_params);
 
@@ -1963,6 +1967,16 @@ fn emit_tydescs(&@crate_ctxt ccx) {
             }
         };
 
+        auto free_glue = alt (ti.free_glue) {
+            case (none[ValueRef]) {
+                ccx.stats.n_null_glues += 1u;
+                C_null(glue_fn_ty)
+            }
+            case (some[ValueRef](?v)) {
+                ccx.stats.n_real_glues += 1u;
+                v
+            }
+        };
 
         auto cmp_glue = alt (ti.cmp_glue) {
             case (none[ValueRef]) {
@@ -1981,7 +1995,7 @@ fn emit_tydescs(&@crate_ctxt ccx) {
                                    ti.align,
                                    take_glue,             // take_glue
                                    drop_glue,             // drop_glue
-                                   C_null(glue_fn_ty),    // free_glue
+                                   free_glue,             // free_glue
                                    C_null(glue_fn_ty),    // sever_glue
                                    C_null(glue_fn_ty),    // mark_glue
                                    C_null(glue_fn_ty),    // obj_drop_glue
@@ -2031,154 +2045,164 @@ fn incr_refcnt_of_boxed(&@block_ctxt cx, ValueRef box_ptr) -> result {
     ret res(next_cx, C_nil());
 }
 
-fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
-    // NB: v0 is an *alias* of type t here, not a direct value.
+fn make_free_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
+    // NB: v is an *alias* of type t here, not a direct value.
     auto rslt;
     alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
+
         case (ty::ty_str) {
             auto v = cx.build.Load(v0);
-            rslt = decr_refcnt_and_if_zero
-                (cx, v, bind trans_non_gc_free(_, v),
-                 "free string",
-                 T_int(), C_int(0));
+            rslt = trans_non_gc_free(cx, v);
         }
 
         case (ty::ty_vec(_)) {
-            fn hit_zero(&@block_ctxt cx, ValueRef v,
-                        ty::t t) -> result {
-                auto res = iter_sequence(cx, v, t,
-                                         bind drop_ty(_,_,_));
-                // FIXME: switch gc/non-gc on layer of the type.
-                ret trans_non_gc_free(res.bcx, v);
-            }
             auto v = cx.build.Load(v0);
-            rslt = decr_refcnt_and_if_zero(cx, v,
-                                          bind hit_zero(_, v, t),
-                                          "free vector",
-                                          T_int(), C_int(0));
+            auto res = iter_sequence(cx, v, t,
+                                     bind drop_ty(_,_,_));
+            // FIXME: switch gc/non-gc on layer of the type.
+            rslt = trans_non_gc_free(res.bcx, v);
         }
 
         case (ty::ty_box(?body_mt)) {
-            fn hit_zero(&@block_ctxt cx, ValueRef v,
-                        ty::t body_ty) -> result {
-                auto body = cx.build.GEP(v,
-                                         [C_int(0),
-                                             C_int(abi::box_rc_field_body)]);
-
-                auto body_val = load_if_immediate(cx, body, body_ty);
-                auto res = drop_ty(cx, body_val, body_ty);
-                // FIXME: switch gc/non-gc on layer of the type.
-                ret trans_non_gc_free(res.bcx, v);
-            }
             auto v = cx.build.Load(v0);
-            rslt = decr_refcnt_and_if_zero(cx, v,
-                                           bind hit_zero(_, v, body_mt.ty),
-                                           "free box",
-                                           T_int(), C_int(0));
+            auto body = cx.build.GEP(v,
+                                     [C_int(0),
+                                      C_int(abi::box_rc_field_body)]);
+            auto body_ty = body_mt.ty;
+            auto body_val = load_if_immediate(cx, body, body_ty);
+            auto res = drop_ty(cx, body_val, body_ty);
+            // FIXME: switch gc/non-gc on layer of the type.
+            rslt = trans_non_gc_free(res.bcx, v);
         }
 
         case (ty::ty_port(_)) {
-            fn hit_zero(&@block_ctxt cx, ValueRef v) -> result {
-                cx.build.Call(cx.fcx.lcx.ccx.upcalls.del_port,
-                    [cx.fcx.lltaskptr,
-                        cx.build.PointerCast(v, T_opaque_port_ptr())]);
-                ret res(cx, C_int(0));
-            }
             auto v = cx.build.Load(v0);
-            rslt = decr_refcnt_and_if_zero(cx, v,
-                                           bind hit_zero(_, v),
-                                           "free port",
-                                           T_int(), C_int(0));
+            cx.build.Call(cx.fcx.lcx.ccx.upcalls.del_port,
+                          [cx.fcx.lltaskptr,
+                           cx.build.PointerCast(v,
+                                                T_opaque_port_ptr())]);
+            rslt = res(cx, C_int(0));
         }
 
         case (ty::ty_chan(_)) {
-            fn hit_zero(&@block_ctxt cx, ValueRef v) -> result {
-                cx.build.Call(cx.fcx.lcx.ccx.upcalls.del_chan,
-                    [cx.fcx.lltaskptr,
-                        cx.build.PointerCast(v, T_opaque_chan_ptr())]);
-                ret res(cx, C_int(0));
-            }
             auto v = cx.build.Load(v0);
-            rslt = decr_refcnt_and_if_zero(cx, v,
-                                           bind hit_zero(_, v),
-                                           "free chan",
-                                           T_int(), C_int(0));
+            cx.build.Call(cx.fcx.lcx.ccx.upcalls.del_chan,
+                          [cx.fcx.lltaskptr,
+                           cx.build.PointerCast(v,
+                                                T_opaque_chan_ptr())]);
+            rslt = res(cx, C_int(0));
         }
 
         case (ty::ty_obj(_)) {
-            fn hit_zero(&@block_ctxt cx, ValueRef b, ValueRef o) -> result {
-                auto body =
-                    cx.build.GEP(b,
-                                 [C_int(0),
-                                     C_int(abi::box_rc_field_body)]);
-                auto tydescptr =
-                    cx.build.GEP(body,
-                                 [C_int(0),
-                                     C_int(abi::obj_body_elt_tydesc)]);
-                auto tydesc = cx.build.Load(tydescptr);
 
-                auto cx_ = maybe_call_dtor(cx, o);
-
-                // Call through the obj's own fields-drop glue first.
-                auto ti = none[@tydesc_info];
-                call_tydesc_glue_full(cx_, body, tydesc,
-                                      abi::tydesc_field_drop_glue, ti);
-
-                // Then free the body.
-                // FIXME: switch gc/non-gc on layer of the type.
-                ret trans_non_gc_free(cx_, b);
-            }
             auto box_cell =
                 cx.build.GEP(v0,
                              [C_int(0),
                                  C_int(abi::obj_field_box)]);
 
-            auto boxptr = cx.build.Load(box_cell);
+            auto b = cx.build.Load(box_cell);
+            auto body =
+                cx.build.GEP(b,
+                             [C_int(0),
+                              C_int(abi::box_rc_field_body)]);
+            auto tydescptr =
+                cx.build.GEP(body,
+                             [C_int(0),
+                              C_int(abi::obj_body_elt_tydesc)]);
+            auto tydesc = cx.build.Load(tydescptr);
 
-            rslt = decr_refcnt_and_if_zero(cx, boxptr,
-                                           bind hit_zero(_, boxptr, v0),
-                                           "free obj",
-                                           T_int(), C_int(0));
+            auto cx_ = maybe_call_dtor(cx, v0);
+
+            // Call through the obj's own fields-drop glue first.
+            auto ti = none[@tydesc_info];
+            call_tydesc_glue_full(cx_, body, tydesc,
+                                  abi::tydesc_field_drop_glue, ti);
+
+            // Then free the body.
+            // FIXME: switch gc/non-gc on layer of the type.
+            rslt = trans_non_gc_free(cx_, b);
         }
 
         case (ty::ty_fn(_,_,_)) {
-            fn hit_zero(&@block_ctxt cx, ValueRef v) -> result {
 
-                // Call through the closure's own fields-drop glue first.
-                auto body =
-                    cx.build.GEP(v,
-                                 [C_int(0),
-                                     C_int(abi::box_rc_field_body)]);
-                auto bindings =
-                    cx.build.GEP(body,
-                                 [C_int(0),
-                                     C_int(abi::closure_elt_bindings)]);
-
-                auto tydescptr =
-                    cx.build.GEP(body,
-                                 [C_int(0),
-                                     C_int(abi::closure_elt_tydesc)]);
-
-                auto ti = none[@tydesc_info];
-                call_tydesc_glue_full(cx, bindings, cx.build.Load(tydescptr),
-                                      abi::tydesc_field_drop_glue, ti);
-
-
-                // Then free the body.
-                // FIXME: switch gc/non-gc on layer of the type.
-                ret trans_non_gc_free(cx, v);
-            }
             auto box_cell =
                 cx.build.GEP(v0,
                              [C_int(0),
                                  C_int(abi::fn_field_box)]);
 
-            auto boxptr = cx.build.Load(box_cell);
+            auto v = cx.build.Load(box_cell);
 
-            rslt = decr_refcnt_and_if_zero(cx, boxptr,
-                                           bind hit_zero(_, boxptr),
-                                           "free fn",
-                                           T_int(), C_int(0));
+            // Call through the closure's own fields-drop glue first.
+            auto body =
+                cx.build.GEP(v,
+                             [C_int(0),
+                              C_int(abi::box_rc_field_body)]);
+            auto bindings =
+                cx.build.GEP(body,
+                             [C_int(0),
+                              C_int(abi::closure_elt_bindings)]);
+
+            auto tydescptr =
+                cx.build.GEP(body,
+                             [C_int(0),
+                              C_int(abi::closure_elt_tydesc)]);
+
+            auto ti = none[@tydesc_info];
+            call_tydesc_glue_full(cx, bindings, cx.build.Load(tydescptr),
+                                  abi::tydesc_field_drop_glue, ti);
+
+
+            // Then free the body.
+            // FIXME: switch gc/non-gc on layer of the type.
+            rslt = trans_non_gc_free(cx, v);
+        }
+
+        case (_) { rslt = res(cx, C_nil()); }
+    }
+    rslt.bcx.build.RetVoid();
+}
+
+fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
+    // NB: v0 is an *alias* of type t here, not a direct value.
+    auto rslt;
+    alt (ty::struct(cx.fcx.lcx.ccx.tcx, t)) {
+        case (ty::ty_str) {
+            rslt = decr_refcnt_maybe_free(cx, v0, v0, t);
+        }
+
+        case (ty::ty_vec(_)) {
+            rslt = decr_refcnt_maybe_free(cx, v0, v0, t);
+        }
+
+        case (ty::ty_box(_)) {
+            rslt = decr_refcnt_maybe_free(cx, v0, v0, t);
+        }
+
+        case (ty::ty_port(_)) {
+            rslt = decr_refcnt_maybe_free(cx, v0, v0, t);
+        }
+
+        case (ty::ty_chan(_)) {
+            rslt = decr_refcnt_maybe_free(cx, v0, v0, t);
+        }
+
+        case (ty::ty_obj(_)) {
+            auto box_cell =
+                cx.build.GEP(v0,
+                             [C_int(0),
+                                 C_int(abi::obj_field_box)]);
+
+            rslt = decr_refcnt_maybe_free(cx, box_cell, v0, t);
+        }
+
+        case (ty::ty_fn(_,_,_)) {
+
+            auto box_cell =
+                cx.build.GEP(v0,
+                             [C_int(0),
+                                 C_int(abi::fn_field_box)]);
+
+            rslt = decr_refcnt_maybe_free(cx, box_cell, v0, t);
         }
 
         case (_) {
@@ -2199,16 +2223,17 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
     rslt.bcx.build.RetVoid();
 }
 
-fn decr_refcnt_and_if_zero(&@block_ctxt cx,
-                           ValueRef box_ptr,
-                           &fn(&@block_ctxt cx) -> result inner,
-                           &str inner_name,
-                           TypeRef t_else, ValueRef v_else) -> result {
+fn decr_refcnt_maybe_free(&@block_ctxt cx,
+                          ValueRef box_ptr_alias,
+                          ValueRef full_alias,
+                          &ty::t t) -> result {
 
     auto load_rc_cx = new_sub_block_ctxt(cx, "load rc");
     auto rc_adj_cx = new_sub_block_ctxt(cx, "rc--");
-    auto inner_cx = new_sub_block_ctxt(cx, inner_name);
+    auto free_cx = new_sub_block_ctxt(cx, "free");
     auto next_cx = new_sub_block_ctxt(cx, "next");
+
+    auto box_ptr = cx.build.Load(box_ptr_alias);
 
     auto null_test = cx.build.IsNull(box_ptr);
     cx.build.CondBr(null_test, next_cx.llbb, load_rc_cx.llbb);
@@ -2227,17 +2252,20 @@ fn decr_refcnt_and_if_zero(&@block_ctxt cx,
     rc = rc_adj_cx.build.Sub(rc, C_int(1));
     rc_adj_cx.build.Store(rc, rc_ptr);
     auto zero_test = rc_adj_cx.build.ICmp(lib::llvm::LLVMIntEQ, C_int(0), rc);
-    rc_adj_cx.build.CondBr(zero_test, inner_cx.llbb, next_cx.llbb);
+    rc_adj_cx.build.CondBr(zero_test, free_cx.llbb, next_cx.llbb);
 
-    auto inner_res = inner(inner_cx);
-    inner_res.bcx.build.Br(next_cx.llbb);
+    auto free_res = free_ty(free_cx,
+                            load_if_immediate(free_cx, full_alias, t), t);
+    free_res.bcx.build.Br(next_cx.llbb);
 
+    auto t_else = T_nil();
+    auto v_else = C_nil();
     auto phi = next_cx.build.Phi(t_else,
-                                 [v_else, v_else, v_else, inner_res.val],
+                                 [v_else, v_else, v_else, free_res.val],
                                  [cx.llbb,
                                      load_rc_cx.llbb,
                                      rc_adj_cx.llbb,
-                                     inner_res.bcx.llbb]);
+                                     free_res.bcx.llbb]);
 
     ret res(next_cx, phi);
 }
@@ -2903,6 +2931,7 @@ fn lazily_emit_all_tydesc_glue(&@block_ctxt cx,
                                &option::t[@tydesc_info] static_ti) {
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_take_glue, static_ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_drop_glue, static_ti);
+    lazily_emit_tydesc_glue(cx, abi::tydesc_field_free_glue, static_ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_cmp_glue, static_ti);
 }
 
@@ -2956,6 +2985,26 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                         make_generic_glue(lcx, ti.ty, glue_fn,
                                           mgghf_single(dg), ti.ty_params);
                         log #fmt("--- lazily_emit_tydesc_glue DROP %s",
+                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                    }
+                }
+
+            } else if (field == abi::tydesc_field_free_glue)  {
+                alt (ti.free_glue) {
+                    case (some[ValueRef](_)) { }
+                    case (none[ValueRef]) {
+                        log #fmt("+++ lazily_emit_tydesc_glue FREE %s",
+                                 ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
+                        auto lcx = cx.fcx.lcx;
+                        auto glue_fn =
+                            declare_generic_glue(lcx, ti.ty,
+                                                 T_glue_fn(lcx.ccx.tn),
+                                                 "free");
+                        ti.free_glue = some[ValueRef](glue_fn);
+                        auto dg = make_free_glue;
+                        make_generic_glue(lcx, ti.ty, glue_fn,
+                                          mgghf_single(dg), ti.ty_params);
+                        log #fmt("--- lazily_emit_tydesc_glue FREE %s",
                                  ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
                     }
                 }
@@ -3107,6 +3156,16 @@ fn drop_ty(&@block_ctxt cx,
 
     if (!ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t)) {
         ret call_tydesc_glue(cx, v, t, false, abi::tydesc_field_drop_glue);
+    }
+    ret res(cx, C_nil());
+}
+
+fn free_ty(&@block_ctxt cx,
+           ValueRef v,
+           ty::t t) -> result {
+
+    if (!ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t)) {
+        ret call_tydesc_glue(cx, v, t, false, abi::tydesc_field_free_glue);
     }
     ret res(cx, C_nil());
 }
@@ -3419,6 +3478,7 @@ fn trans_vec_append(&@block_ctxt cx, &ty::t t,
     auto llelt_tydesc = get_tydesc(bcx, elt_ty, false, ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_take_glue, ti);
     lazily_emit_tydesc_glue(cx, abi::tydesc_field_drop_glue, ti);
+    lazily_emit_tydesc_glue(cx, abi::tydesc_field_free_glue, ti);
     bcx = llelt_tydesc.bcx;
 
     auto dst = bcx.build.PointerCast(lhs, T_ptr(T_opaque_vec_ptr()));
@@ -4910,6 +4970,7 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
             auto ti = none[@tydesc_info];
             auto bindings_tydesc = get_tydesc(bcx, bindings_ty, true, ti);
             lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
+            lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
             bcx = bindings_tydesc.bcx;
             bcx.build.Store(bindings_tydesc.val, bound_tydesc);
 
@@ -6747,6 +6808,7 @@ fn trans_obj(@local_ctxt cx, &ast::_obj ob, ast::def_id oid,
         auto ti = none[@tydesc_info];
         auto body_td = get_tydesc(bcx, body_ty, true, ti);
         lazily_emit_tydesc_glue(bcx, abi::tydesc_field_drop_glue, ti);
+        lazily_emit_tydesc_glue(bcx, abi::tydesc_field_free_glue, ti);
 
         auto dtor = C_null(T_ptr(T_glue_fn(ccx.tn)));
         alt (ob.dtor) {
