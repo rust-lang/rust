@@ -1498,7 +1498,7 @@ fn ann_to_monotype(ctxt cx, &node_type_table ntt, ast::ann a) -> t {
 // Turns a type and optional type parameters into an annotation, using
 // defaults for other fields.
 fn mk_ann_type(uint node_id, t typ, option::t[vec[t]] tps) -> ast::ann {
-    ret rec(id=node_id, ty=typ, tps=tps, ts=none[@ts_ann]);
+    ret rec(id=node_id, ty=typ, tps=tps);
 }
 
 // Turns a type into an annotation, using defaults for other fields.
