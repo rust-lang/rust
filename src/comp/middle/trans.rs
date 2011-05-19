@@ -3018,7 +3018,7 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
 
                         ti.free_glue = some[ValueRef](glue_fn);
                         auto dg = make_free_glue;
-                        make_generic_glue(lcx, ti.ty, glue_fn,
+                        make_generic_glue(lcx, cx.sp, ti.ty, glue_fn,
                                           mgghf_single(dg), ti.ty_params);
                         log #fmt("--- lazily_emit_tydesc_glue FREE %s",
                                  ty::ty_to_str(cx.fcx.lcx.ccx.tcx, ti.ty));
