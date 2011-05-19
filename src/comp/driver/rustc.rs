@@ -104,9 +104,9 @@ fn compile_input(session::session sess,
     auto type_cache = typeck_result._1;
 
     if (sess.get_opts().run_typestate) {
-        crate = time(time_passes, "typestate checking",
-                     bind middle::tstate::ck::check_crate(node_type_table,
-                                                          ty_cx, crate));
+        time(time_passes, "typestate checking",
+             bind middle::tstate::ck::check_crate(node_type_table,
+                                                  ty_cx, crate));
     }
 
     auto llmod = time[llvm::ModuleRef](time_passes, "translation",

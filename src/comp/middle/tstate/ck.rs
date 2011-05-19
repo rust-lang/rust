@@ -13,9 +13,6 @@ import front::ast::ty_param;
 import front::ast::crate;
 
 import front::ast::expr;
-import middle::fold::respan;
-import middle::fold::new_identity_fold;
-import middle::fold::fold_crate;
 import middle::ty::type_is_nil;
 import middle::ty::ret_ty_of_fn;
 import util::common::span;
@@ -153,43 +150,16 @@ fn check_fn_states(&fn_ctxt fcx, &_fn f, &ann a) -> () {
     check_states_against_conditions(fcx, f, a);
 }
 
-fn check_item_fn_state(&crate_ctxt ccx, &span sp, &ident i,
-                       &_fn f, &vec[ty_param] ty_params,
-                       &def_id id, &ann a) -> @item {
-
+fn fn_states(&crate_ctxt ccx, &_fn f, &ident i, &def_id id, &ann a) -> () {
     /* Look up the var-to-bit-num map for this function */
     assert (ccx.fm.contains_key(id));
     auto f_info = ccx.fm.get(id);
 
     auto fcx = rec(enclosing=f_info, id=id, name=i, ccx=ccx);
     check_fn_states(fcx, f, a);
-
-    /* Rebuild the same function */
-    ret @respan(sp, item_fn(i, f, ty_params, id, a));
 }
 
-fn check_method_states(&crate_ctxt ccx, @method m) -> () {
-    assert (ccx.fm.contains_key(m.node.id));
-    auto fcx = rec(enclosing=ccx.fm.get(m.node.id),
-                   id=m.node.id, name=m.node.ident, ccx=ccx);
-    check_fn_states(fcx, m.node.meth, m.node.ann);
-}
-
-fn check_obj_state(&crate_ctxt ccx, &vec[obj_field] fields,
-                   &vec[@method] methods,
-                   &option::t[@method] dtor) -> _obj {
-    fn one(crate_ctxt ccx, &@method m) -> () {
-        ret check_method_states(ccx, m);
-    }
-    auto f = bind one(ccx,_);
-    vec::map[@method, ()](f, methods);
-    option::map[@method, ()](f, dtor);
-    ret rec(fields=fields, methods=methods, dtor=dtor);
-}
-
-/* FIXME use walk instead of fold where possible */
-
-fn check_crate(ty::node_type_table nt, ty::ctxt cx, @crate crate) -> @crate {
+fn check_crate(ty::node_type_table nt, ty::ctxt cx, @crate crate) -> () {
     let crate_ctxt ccx = new_crate_ctxt(nt, cx);
 
     /* Build the global map from function id to var-to-bit-num-map */
@@ -200,17 +170,16 @@ fn check_crate(ty::node_type_table nt, ty::ctxt cx, @crate crate) -> @crate {
 
     /* Compute the pre and postcondition for every subexpression */
     auto do_pre_post = walk::default_visitor();
-    do_pre_post = rec(visit_fn_pre = bind fn_pre_post(ccx, _, _, _)
+    do_pre_post = rec(visit_fn_pre = bind fn_pre_post(ccx,_,_,_,_)
                       with do_pre_post);
     walk::walk_crate(do_pre_post, *crate);
     
-    auto fld1 = new_identity_fold[crate_ctxt]();
-
-    fld1 = @rec(fold_item_fn = bind check_item_fn_state(_,_,_,_,_,_,_),
-                fold_obj     = bind check_obj_state(_,_,_,_)
-                with *fld1);
-    
-    ret fold_crate[crate_ctxt](ccx, fld1, crate);
+    /* Check the pre- and postcondition against the pre- and poststate
+       for every expression */
+    auto do_states = walk::default_visitor();
+    do_states = rec(visit_fn_pre = bind fn_states(ccx,_,_,_,_)
+                    with do_states);
+    walk::walk_crate(do_states, *crate);
 }
 
 //
