@@ -470,7 +470,6 @@ fn parse_ty(&parser p) -> @ast::ty {
     // FIXME: do something with this
     let ast::layer lyr = parse_layer(p);
 
-    let ast::ty t;
     if      (eat_word(p, "bool")) { t = ast::ty_bool; }
     else if (eat_word(p, "int")) { t = ast::ty_int; }
     else if (eat_word(p, "uint")) { t = ast::ty_uint; }

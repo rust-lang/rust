@@ -634,7 +634,7 @@ fn lookup_in_block(&ident id, &ast::block_ b, namespace ns)
     ret none[def];
 }
 
-fn found_def_item(@ast::item i, namespace ns) -> option::t[def] {
+fn found_def_item(&@ast::item i, namespace ns) -> option::t[def] {
     alt (i.node) {
         case (ast::item_const(_, _, _, ?defid, _)) {
             if (ns == ns_value) { ret some(ast::def_const(defid)); }
@@ -928,20 +928,21 @@ fn lookup_external(&env e, int cnum, vec[ident] ids, namespace ns)
 // Collision detection
 
 fn check_for_collisions(&@env e, &ast::crate c) {
-    auto msp = mie_span;
+    // Module indices make checking those relatively simple -- just check each
+    // name for multiple entities in the same namespace.
     for each (@tup(ast::def_num, @indexed_mod) m in e.mod_map.items()) {
         for each (@tup(ident, list[mod_index_entry]) name in
                   m._1.index.items()) {
             check_mod_name(*e, name._0, name._1);
         }
     }
-    /*
-    auto v = rec(visit_item_pre = bind visit_item(e, _),
+
+    // Other scopes have to be checked the hard way.
+    auto v = rec(visit_item_pre = bind check_item(e, _),
+                 visit_block_pre = bind check_block(e, _),
+                 visit_arm_pre = bind check_arm(e, _)
                  with walk::default_visitor());
     walk::walk_crate(v, c);
-    fn visit_item(@env e, &@ast::item i) {
-        
-    }*/
 }
 
 fn check_mod_name(&env e, &ident name, &list[mod_index_entry] entries) {
@@ -982,6 +983,129 @@ fn mie_span(&mod_index_entry mie) -> span {
     }
 }
 
+
+fn check_item(@env e, &@ast::item i) {
+    alt (i.node) {
+        case (ast::item_fn(_, ?f, ?ty_params, _, _)) {
+            check_fn(*e, i.span, f);
+            ensure_unique(*e, i.span, ty_params, ident_id, "type parameter");
+        }
+        case (ast::item_obj(_, ?ob, ?ty_params, _, _)) {
+            fn field_name(&ast::obj_field field) -> ident {
+                ret field.ident;
+            }
+            ensure_unique(*e, i.span, ob.fields, field_name, "object field");
+            for (@ast::method m in ob.methods) {
+                check_fn(*e, m.span, m.node.meth);
+            }
+            ensure_unique(*e, i.span, ty_params, ident_id, "type parameter");
+        }
+        case (ast::item_tag(_, _, ?ty_params, _, _)) {
+            ensure_unique(*e, i.span, ty_params, ident_id, "type parameter");
+        }
+        case (_) {}
+    }
+}
+
+fn check_arm(@env e, &ast::arm a) {
+    fn walk_pat(checker ch, &@ast::pat p) {
+        alt (p.node) {
+            case (ast::pat_bind(?name, _, _)) {
+                add_name(ch, p.span, name);
+            }
+            case (ast::pat_tag(_, ?children, _)) {
+                for (@ast::pat child in children) {
+                    walk_pat(ch, child);
+                }
+            }
+            case (_) {}
+        }
+    }
+    walk_pat(checker(*e, "binding"), a.pat);
+}
+
+fn check_block(@env e, &ast::block b) {
+    auto values = checker(*e, "value");
+    auto types = checker(*e, "type");
+    auto mods = checker(*e, "module");
+    
+    for (@ast::stmt st in b.node.stmts) {
+        alt (st.node) {
+            case (ast::stmt_decl(?d,_)) {
+                alt (d.node) {
+                    case (ast::decl_local(?loc)) {
+                        add_name(values, d.span, loc.ident);
+                    }
+                    case (ast::decl_item(?it)) {
+                        alt (it.node) {
+                            case (ast::item_tag(?name, ?variants, _, _, _)) {
+                                add_name(types, it.span, name);
+                                for (ast::variant v in variants) {
+                                    add_name(values, v.span, v.node.name);
+                                }
+                            }
+                            case (ast::item_const(?name, _, _, _, _)) {
+                                add_name(values, it.span, name);
+                            }
+                            case (ast::item_fn(?name, _, _, _, _)) {
+                                add_name(values, it.span, name);
+                            }
+                            case (ast::item_mod(?name, _, _)) {
+                                add_name(mods, it.span, name);
+                            }
+                            case (ast::item_native_mod(?name, _, _)) {
+                                add_name(mods, it.span, name);
+                            }
+                            case (ast::item_ty(?name, _, _, _, _)) {
+                                add_name(types, it.span, name);
+                            }
+                            case (ast::item_obj(?name, _, _, _, _)) {
+                                add_name(types, it.span, name);
+                                add_name(values, it.span, name);
+                            }
+                            case (_) { }
+                        }
+                    }
+                }
+            }
+            case (_) {}
+        }
+    }
+}
+
+fn check_fn(&env e, &span sp, &ast::_fn f) {
+    fn arg_name(&ast::arg a) -> ident {
+        ret a.ident;
+    }
+    ensure_unique(e, sp, f.decl.inputs, arg_name, "argument");
+}
+
+type checker = @rec(mutable vec[ident] seen,
+                    str kind,
+                    session sess);
+fn checker(&env e, str kind) -> checker {
+    let vec[ident] seen = [];
+    ret @rec(mutable seen=seen, kind=kind, sess=e.sess);
+}
+
+fn add_name(&checker ch, &span sp, &ident id) {
+    for (ident s in ch.seen) {
+        if (str::eq(s, id)) {
+            ch.sess.span_err(sp, "duplicate " + ch.kind + " name: " + id);
+        }
+    }
+    vec::push(ch.seen, id);
+}
+
+fn ident_id(&ident i) -> ident { ret i; }
+
+fn ensure_unique[T](&env e, &span sp, &vec[T] elts, fn (&T) -> ident id,
+                    &str kind) {
+    auto ch = checker(e, kind);
+    for (T elt in elts) {
+        add_name(ch, sp, id(elt));
+    }
+}
 
 // Local Variables:
 // mode: rust
