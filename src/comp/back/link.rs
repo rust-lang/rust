@@ -101,7 +101,7 @@ mod write {
         if (opts.save_temps) {
             alt (opts.output_type) {
                 case (output_type_bitcode) {
-                    if (opts.optimize) {
+                    if (opts.optimize != 0u) {
                         auto filename = mk_intermediate_name(output,
                                                              "no-opt.bc");
                         llvm::LLVMWriteBitcodeToFile(llmod,
@@ -121,22 +121,26 @@ mod write {
         // -Os, etc
         // FIXME3: Should we expose and use the pass lists used by the opt
         // tool?
-        if (opts.optimize) {
+        if (opts.optimize != 0u) {
             auto fpm = mk_pass_manager();
             llvm::LLVMAddTargetData(td.lltd, fpm.llpm);
             llvm::LLVMAddStandardFunctionPasses(fpm.llpm, 2u);
             llvm::LLVMRunPassManager(fpm.llpm, llmod);
 
-            // TODO: On -O3, use 275 instead of 225 for the inlining
-            // threshold.
+            let uint threshold = 225u;
+            if (opts.optimize == 3u) {
+                threshold = 275u;
+            }
+
             llvm::LLVMAddStandardModulePasses(pm.llpm,
-                                             2u,    // optimization level
-                                             False, // optimize for size
-                                             True,  // unit-at-a-time
-                                             True,  // unroll loops
-                                             True,  // simplify lib calls
-                                             True,  // have exceptions
-                                             225u); // inlining threshold
+                                              // optimization level
+                                              opts.optimize,
+                                              False, // optimize for size
+                                              True,  // unit-at-a-time
+                                              True,  // unroll loops
+                                              True,  // simplify lib calls
+                                              True,  // have exceptions
+                                              threshold); // inline threshold
         }
 
         if (opts.verify) {
