@@ -206,6 +206,20 @@ fn grow_set[T](&vec[mutable T] v, uint index, &T initval, &T val) {
     v.(index) = val;
 }
 
+fn grow_init_fn[T](&array[T] v, uint n, fn()->T init_fn) {
+    let uint i = n;
+    while (i > 0u) {
+        i -= 1u;
+        v += [init_fn()];
+    }
+}
+
+fn grow_init_fn_set[T](&array[T] v, uint index, fn()->T init_fn, &T val) {
+    auto length = vec::len(v);
+    if (index >= length) { grow_init_fn(v, index - length + 1u, init_fn); }
+    v.(index) = val;
+}
+
 fn map[T, U](&option::operator[T,U] f, &array[T] v) -> vec[U] {
     let vec[U] u = alloc[U](len[T](v));
     for (T ve in v) {
