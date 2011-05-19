@@ -953,8 +953,7 @@ mod unify {
         alt (result) {
             case (ures_ok(?rty)) {
                 if (ty::type_contains_vars(scx.fcx.ccx.tcx, rty)) {
-                    result = ures_ok(ty::unify::fixup(scx.fcx.ccx.tcx,
-                                                      bindings, rty));
+                    result = ty::unify::fixup(scx.fcx.ccx.tcx, bindings, rty);
                 }
             }
             case (_) { /* nothing */ }
