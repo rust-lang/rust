@@ -226,7 +226,12 @@ then
     putvar CFG_BAD_VALGRIND
 fi
 
-if [ ! -z "$CFG_LLVM_ROOT" ]
+if [ ! -z "$CFG_LLVM_ROOT" -a -e "$CFG_LLVM_ROOT/bin/llvm-config" ]
+then
+    CFG_LLVM_CONFIG="$CFG_LLVM_ROOT/bin/llvm-config"
+fi
+
+if [ ! -z "$CFG_LLVM_ROOT" -a -z "$CFG_LLVM_CONFIG" ]
 then
     CFG_LLVM_INCDIR="$CFG_LLVM_ROOT/include"
     CFG_LLVM_BINDIR="$CFG_LLVM_ROOT/bin"
@@ -247,14 +252,14 @@ then
                       | cut -d ' ' -f 4-)
 elif [ ! -z "$CFG_LLVM_CONFIG" ]
 then
-    CFG_LLVM_VERSION=$(llvm-config --version)
-    CFG_LLVM_INCDIR=$(llvm-config --includedir)
-    CFG_LLVM_BINDIR=$(llvm-config --bindir)
-    CFG_LLVM_LIBDIR=$(llvm-config --libdir)
-    CFG_LLVM_CXXFLAGS=$(llvm-config --cxxflags)
-    CFG_LLVM_LDFLAGS=$(llvm-config --ldflags)
-    CFG_LLVM_LIBS=$(llvm-config --libs)
-    CFG_LLVM_TRIPLE=$(llvm-config --host-target)
+    CFG_LLVM_VERSION=$($CFG_LLVM_CONFIG --version)
+    CFG_LLVM_INCDIR=$($CFG_LLVM_CONFIG --includedir)
+    CFG_LLVM_BINDIR=$($CFG_LLVM_CONFIG --bindir)
+    CFG_LLVM_LIBDIR=$($CFG_LLVM_CONFIG --libdir)
+    CFG_LLVM_CXXFLAGS=$($CFG_LLVM_CONFIG --cxxflags)
+    CFG_LLVM_LDFLAGS=$($CFG_LLVM_CONFIG --ldflags)
+    CFG_LLVM_LIBS=$($CFG_LLVM_CONFIG --libs)
+    CFG_LLVM_TRIPLE=$($CFG_LLVM_CONFIG --host-target)
 else
     err "either the \"CFG_LLVM_ROOT\" environment variable must be set, or a \
 \"llvm-config\" script must be present"
