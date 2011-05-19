@@ -14,7 +14,7 @@ const uint default_columns = 78u;
 
 tag mode {
     mo_untyped;
-    mo_typed(ty::ctxt, ty::node_type_table, ty::type_cache);
+    mo_typed(ty::ctxt);
 }
 
 type ps = @rec(pp::ps s,
@@ -406,7 +406,7 @@ fn print_expr(ps s, &@ast::expr expr) {
 
     alt (s.mode) {
         case (mo_untyped) { /* no-op */ }
-        case (mo_typed(_, _, _)) { popen(s); }
+        case (mo_typed(_)) { popen(s); }
     }
 
     alt (expr.node) {
@@ -719,10 +719,10 @@ fn print_expr(ps s, &@ast::expr expr) {
     // Print the type if necessary.
     alt (s.mode) {
         case (mo_untyped) { /* no-op */ }
-        case (mo_typed(?tcx, ?ntt, ?tc)) {
+        case (mo_typed(?tcx)) {
             space(s.s);
             wrd1(s, "as");
-            wrd(s.s, ty::ty_to_str(tcx, ty::expr_ty(tcx, ntt, expr)));
+            wrd(s.s, ty::ty_to_str(tcx, ty::expr_ty(tcx, expr)));
             pclose(s);
         }
     }
@@ -747,8 +747,9 @@ fn print_decl(ps s, @ast::decl decl) {
                     // Print the type if necessary.
                     alt (s.mode) {
                         case (mo_untyped) { /* no-op */ }
-                        case (mo_typed(?tcx, ?ntt, ?tc)) {
-                            auto lty = ty::ann_to_type(ntt, loc.ann);
+                        case (mo_typed(?tcx)) {
+                            auto lty =
+                                ty::ann_to_type(tcx.node_types, loc.ann);
                             wrd1(s, ty::ty_to_str(tcx, lty));
                         }
                     }

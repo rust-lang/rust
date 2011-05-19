@@ -167,7 +167,6 @@ type fn_ctxt    = rec(fn_info enclosing,
                       crate_ctxt ccx);
 
 type crate_ctxt = rec(ty::ctxt tcx,
-                      ty::node_type_table node_types,
                       node_ann_table node_anns,
                       fn_info_map fm);
 
@@ -370,9 +369,8 @@ fn num_locals(fn_info m) -> uint {
   ret m.vars.size();
 }
 
-fn new_crate_ctxt(ty::node_type_table nt, ty::ctxt cx) -> crate_ctxt {
-    ret rec(tcx=cx, node_types=nt, 
-            node_anns=@new_uint_hash[ts_ann](),
+fn new_crate_ctxt(ty::ctxt cx) -> crate_ctxt {
+    ret rec(tcx=cx, node_anns=@new_uint_hash[ts_ann](),
             fm=@new_def_hash[fn_info]());
 }
 

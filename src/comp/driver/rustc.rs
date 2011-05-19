@@ -97,21 +97,18 @@ fn compile_input(session::session sess,
                         bind resolve::resolve_crate(sess, crate));
 
     auto ty_cx = ty::mk_ctxt(sess, def_map);
-    auto typeck_result =
-        time[typeck::typecheck_result](time_passes, "typechecking",
-            bind typeck::check_crate(ty_cx, crate));
-    auto node_type_table = typeck_result._0;
-    auto type_cache = typeck_result._1;
+    time[()](time_passes, "typechecking",
+             bind typeck::check_crate(ty_cx, crate));
 
     if (sess.get_opts().run_typestate) {
         time(time_passes, "typestate checking",
-             bind middle::tstate::ck::check_crate(node_type_table,
-                                                  ty_cx, crate));
+             bind middle::tstate::ck::check_crate(ty_cx, crate));
     }
 
-    auto llmod = time[llvm::ModuleRef](time_passes, "translation",
-        bind trans::trans_crate(sess, crate, ty_cx, node_type_table,
-                                type_cache, output));
+    auto llmod =
+        time[llvm::ModuleRef](time_passes, "translation",
+                              bind trans::trans_crate(sess, crate,
+                                                      ty_cx, output));
 
     time[()](time_passes, "LLVM passes",
              bind link::write::run_passes(sess, llmod, output));
@@ -128,8 +125,8 @@ fn pretty_print_input(session::session sess, eval::env env, str input,
         crate = creader::read_crates(sess, crate);
         auto def_map = resolve::resolve_crate(sess, crate);
         auto ty_cx = ty::mk_ctxt(sess, def_map);
-        auto typeck_result = typeck::check_crate(ty_cx, crate);
-        mode = pprust::mo_typed(ty_cx, typeck_result._0, typeck_result._1);
+        typeck::check_crate(ty_cx, crate);
+        mode = pprust::mo_typed(ty_cx);
     } else {
         mode = pprust::mo_untyped;
     }

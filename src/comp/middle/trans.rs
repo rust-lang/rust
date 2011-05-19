@@ -19,7 +19,6 @@ import back::x86;
 import back::abi;
 import back::upcall;
 
-import middle::ty::node_type_table;
 import middle::ty::pat_ty;
 
 import util::common;
@@ -110,7 +109,6 @@ state type crate_ctxt = rec(session::session sess,
                             hashmap[ast::def_id, @ast::item] items,
                             hashmap[ast::def_id,
                                     @ast::native_item] native_items,
-                            ty::type_cache type_cache,
                             hashmap[ast::def_id, str] item_symbols,
                             // TODO: hashmap[tup(tag_id,subtys), @tag_info]
                             hashmap[ty::t, uint] tag_sizes,
@@ -130,8 +128,7 @@ state type crate_ctxt = rec(session::session sess,
                             hashmap[ty::t, str] type_short_names,
                             ty::ctxt tcx,
                             stats stats,
-                            @upcall::upcalls upcalls,
-                            node_type_table node_types);
+                            @upcall::upcalls upcalls);
 
 type local_ctxt = rec(vec[str] path,
                       vec[str] module_path,
@@ -3358,7 +3355,7 @@ fn target_type(&@crate_ctxt cx, &ty::t t) -> ty::t {
 
 // Converts an annotation to a type
 fn node_ann_type(&@crate_ctxt cx, &ast::ann a) -> ty::t {
-    ret target_type(cx, ty::ann_to_monotype(cx.tcx, cx.node_types, a));
+    ret target_type(cx, ty::ann_to_monotype(cx.tcx, a));
 }
 
 fn node_type(&@crate_ctxt cx, &ast::span sp, &ast::ann a) -> TypeRef {
@@ -3369,25 +3366,22 @@ fn trans_unary(&@block_ctxt cx, ast::unop op,
                &@ast::expr e, &ast::ann a) -> result {
 
     auto sub = trans_expr(cx, e);
-    auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, cx.fcx.lcx.ccx.node_types, e);
+    auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
 
     alt (op) {
         case (ast::bitnot) {
             sub = autoderef(sub.bcx, sub.val,
-                            ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                        cx.fcx.lcx.ccx.node_types, e));
+                            ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
             ret res(sub.bcx, sub.bcx.build.Not(sub.val));
         }
         case (ast::not) {
             sub = autoderef(sub.bcx, sub.val,
-                            ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                        cx.fcx.lcx.ccx.node_types, e));
+                            ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
             ret res(sub.bcx, sub.bcx.build.Not(sub.val));
         }
         case (ast::neg) {
             sub = autoderef(sub.bcx, sub.val,
-                            ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                        cx.fcx.lcx.ccx.node_types, e));
+                            ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
             if(ty::struct(cx.fcx.lcx.ccx.tcx, e_ty) == ty::ty_float) {
                 ret res(sub.bcx, sub.bcx.build.FNeg(sub.val));
             }
@@ -3396,8 +3390,7 @@ fn trans_unary(&@block_ctxt cx, ast::unop op,
             }
         }
         case (ast::box(_)) {
-            auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                    cx.fcx.lcx.ccx.node_types, e);
+            auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
             auto e_val = sub.val;
             auto box_ty = node_ann_type(sub.bcx.fcx.lcx.ccx, a);
             sub = trans_malloc_boxed(sub.bcx, e_ty);
@@ -3659,14 +3652,12 @@ fn trans_binary(&@block_ctxt cx, ast::binop op,
             // Lazy-eval and
             auto lhs_res = trans_expr(cx, a);
             lhs_res = autoderef(lhs_res.bcx, lhs_res.val,
-                                ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                            cx.fcx.lcx.ccx.node_types, a));
+                                ty::expr_ty(cx.fcx.lcx.ccx.tcx, a));
 
             auto rhs_cx = new_scope_block_ctxt(cx, "rhs");
             auto rhs_res = trans_expr(rhs_cx, b);
             rhs_res = autoderef(rhs_res.bcx, rhs_res.val,
-                                ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                            cx.fcx.lcx.ccx.node_types, b));
+                                ty::expr_ty(cx.fcx.lcx.ccx.tcx, b));
 
             auto lhs_false_cx = new_scope_block_ctxt(cx, "lhs false");
             auto lhs_false_res = res(lhs_false_cx, C_bool(false));
@@ -3688,14 +3679,12 @@ fn trans_binary(&@block_ctxt cx, ast::binop op,
             // Lazy-eval or
             auto lhs_res = trans_expr(cx, a);
             lhs_res = autoderef(lhs_res.bcx, lhs_res.val,
-                                ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                            cx.fcx.lcx.ccx.node_types, a));
+                                ty::expr_ty(cx.fcx.lcx.ccx.tcx, a));
 
             auto rhs_cx = new_scope_block_ctxt(cx, "rhs");
             auto rhs_res = trans_expr(rhs_cx, b);
             rhs_res = autoderef(rhs_res.bcx, rhs_res.val,
-                                ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                            cx.fcx.lcx.ccx.node_types, b));
+                                ty::expr_ty(cx.fcx.lcx.ccx.tcx, b));
 
             auto lhs_true_cx = new_scope_block_ctxt(cx, "lhs true");
             auto lhs_true_res = res(lhs_true_cx, C_bool(true));
@@ -3714,12 +3703,10 @@ fn trans_binary(&@block_ctxt cx, ast::binop op,
         case (_) {
             // Remaining cases are eager:
             auto lhs = trans_expr(cx, a);
-            auto lhty = ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                    cx.fcx.lcx.ccx.node_types, a);
+            auto lhty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, a);
             lhs = autoderef(lhs.bcx, lhs.val, lhty);
             auto rhs = trans_expr(lhs.bcx, b);
-            auto rhty = ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                    cx.fcx.lcx.ccx.node_types, b);
+            auto rhty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, b);
             rhs = autoderef(rhs.bcx, rhs.val, rhty);
             ret trans_eager_binop(rhs.bcx, op,
                 autoderefed_ty(cx.fcx.lcx.ccx, lhty), lhs.val, rhs.val);
@@ -3803,8 +3790,7 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond,
             // If we have an else expression, then the entire
             // if expression can have a non-nil type.
             // FIXME: This isn't quite right, particularly re: dynamic types
-            auto expr_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                       cx.fcx.lcx.ccx.node_types, elexpr);
+            auto expr_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, elexpr);
             if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, expr_ty)) {
                 expr_llty = T_typaram_ptr(cx.fcx.lcx.ccx.tn);
             } else {
@@ -3862,8 +3848,7 @@ fn trans_for(&@block_ctxt cx,
     }
 
     auto next_cx = new_sub_block_ctxt(cx, "next");
-    auto seq_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, cx.fcx.lcx.ccx.node_types,
-                              seq);
+    auto seq_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, seq);
     auto seq_res = trans_expr(cx, seq);
     auto it = iter_sequence(seq_res.bcx, seq_res.val, seq_ty,
                             bind inner(_, local, _, _, body, next_cx));
@@ -4192,7 +4177,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
 
         case (ast::pat_lit(?lt, ?ann)) {
             auto lllit = trans_lit(cx.fcx.lcx.ccx, *lt, ann);
-            auto lltype = ty::ann_to_type(cx.fcx.lcx.ccx.node_types, ann);
+            auto lltype = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types, ann);
             auto lleq = trans_compare(cx, ast::eq, lltype, llval, lllit);
 
             auto matched_cx = new_sub_block_ctxt(lleq.bcx, "matched_cx");
@@ -4229,8 +4214,8 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                                       C_int(variant_tag));
             cx.build.CondBr(lleq, matched_cx.llbb, next_cx.llbb);
 
-            auto ty_params = ty::ann_to_type_params(cx.fcx.lcx.ccx.node_types,
-                                                    ann);
+            auto ty_params =
+                ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx.node_types, ann);
 
             if (vec::len[@ast::pat](subpats) > 0u) {
                 auto llblobptr = matched_cx.build.GEP(lltagptr,
@@ -4243,9 +4228,7 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                     matched_cx = rslt.bcx;
 
                     auto llsubval = load_if_immediate(matched_cx,
-                        llsubvalptr, pat_ty(cx.fcx.lcx.ccx.tcx,
-                                            cx.fcx.lcx.ccx.node_types,
-                                            subpat));
+                        llsubvalptr, pat_ty(cx.fcx.lcx.ccx.tcx, subpat));
                     auto subpat_res = trans_pat_match(matched_cx, subpat,
                                                       llsubval, next_cx);
                     matched_cx = subpat_res.bcx;
@@ -4295,7 +4278,7 @@ fn trans_pat_binding(&@block_ctxt cx, &@ast::pat pat,
             auto llblobptr = cx.build.GEP(lltagptr, [C_int(0), C_int(1)]);
 
             auto ty_param_substs =
-                ty::ann_to_type_params(cx.fcx.lcx.ccx.node_types, ann);
+                ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx.node_types, ann);
 
             auto this_cx = cx;
             auto i = 0;
@@ -4342,7 +4325,7 @@ fn trans_alt(&@block_ctxt cx, &@ast::expr expr,
                                   "non-exhaustive match failure");
 
     // FIXME: This isn't quite right, particularly re: dynamic types
-    auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.node_types, ann);
+    auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types, ann);
     auto expr_llty;
     if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, expr_ty)) {
         expr_llty = T_typaram_ptr(cx.fcx.lcx.ccx.tn);
@@ -4407,8 +4390,8 @@ fn lval_generic_fn(&@block_ctxt cx,
         lv = trans_external_path(cx, fn_id, tpt);
     }
 
-    auto tys = ty::ann_to_type_params(cx.fcx.lcx.ccx.node_types, ann);
-    auto monoty = ty::ann_to_type(cx.fcx.lcx.ccx.node_types, ann);
+    auto tys = ty::ann_to_type_params(cx.fcx.lcx.ccx.tcx.node_types, ann);
+    auto monoty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types, ann);
 
     if (vec::len[ty::t](tys) != 0u) {
         auto bcx = lv.res.bcx;
@@ -4485,20 +4468,17 @@ fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
         }
         case (ast::def_fn(?did)) {
             auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.sess,
-                                           cx.fcx.lcx.ccx.tcx,
-                                           cx.fcx.lcx.ccx.type_cache, did);
+                                            cx.fcx.lcx.ccx.tcx, did);
             ret lval_generic_fn(cx, tyt, did, ann);
         }
         case (ast::def_obj(?did)) {
             auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.sess,
-                                           cx.fcx.lcx.ccx.tcx,
-                                           cx.fcx.lcx.ccx.type_cache, did);
+                                           cx.fcx.lcx.ccx.tcx, did);
             ret lval_generic_fn(cx, tyt, did, ann);
         }
         case (ast::def_variant(?tid, ?vid)) {
             auto v_tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.sess,
-                                             cx.fcx.lcx.ccx.tcx,
-                                             cx.fcx.lcx.ccx.type_cache, vid);
+                                             cx.fcx.lcx.ccx.tcx, vid);
             alt (ty::struct(cx.fcx.lcx.ccx.tcx, v_tyt._1)) {
                 case (ty::ty_fn(_, _, _)) {
                     // N-ary variant.
@@ -4540,8 +4520,7 @@ fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
         }
         case (ast::def_native_fn(?did)) {
             auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.sess,
-                                           cx.fcx.lcx.ccx.tcx,
-                                           cx.fcx.lcx.ccx.type_cache, did);
+                                           cx.fcx.lcx.ccx.tcx, did);
             ret lval_generic_fn(cx, tyt, did, ann);
         }
         case (_) {
@@ -4595,9 +4574,7 @@ fn trans_index(&@block_ctxt cx, &ast::span sp, &@ast::expr base,
                &@ast::expr idx, &ast::ann ann) -> lval_result {
 
     auto lv = trans_expr(cx, base);
-    lv = autoderef(lv.bcx, lv.val, ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                               cx.fcx.lcx.ccx.node_types,
-                                               base));
+    lv = autoderef(lv.bcx, lv.val, ty::expr_ty(cx.fcx.lcx.ccx.tcx, base));
     auto ix = trans_expr(lv.bcx, idx);
     auto v = lv.val;
     auto bcx = ix.bcx;
@@ -4663,8 +4640,7 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
         }
         case (ast::expr_field(?base, ?ident, ?ann)) {
             auto r = trans_expr(cx, base);
-            auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                 cx.fcx.lcx.ccx.node_types, base);
+            auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, base);
             ret trans_field(r.bcx, e.span, r.val, t, ident, ann);
         }
         case (ast::expr_index(?base, ?idx, ?ann)) {
@@ -4725,8 +4701,7 @@ fn trans_cast(&@block_ctxt cx, &@ast::expr e, &ast::ann ann) -> result {
     if (!ty::type_is_fp(cx.fcx.lcx.ccx.tcx, t)) {
         // TODO: native-to-native casts
         if (ty::type_is_native(cx.fcx.lcx.ccx.tcx,
-                              ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                          cx.fcx.lcx.ccx.node_types, e))) {
+                              ty::expr_ty(cx.fcx.lcx.ccx.tcx, e))) {
             e_res.val = e_res.bcx.build.PtrToInt(e_res.val, lldsttype);
         } else if (ty::type_is_native(cx.fcx.lcx.ccx.tcx, t)) {
             e_res.val = e_res.bcx.build.IntToPtr(e_res.val, lldsttype);
@@ -4818,7 +4793,7 @@ fn trans_bind_thunk(&@local_ctxt cx,
 
             // Arg provided at binding time; thunk copies it from closure.
             case (some[@ast::expr](?e)) {
-                auto e_ty = ty::expr_ty(cx.ccx.tcx, cx.ccx.node_types, e);
+                auto e_ty = ty::expr_ty(cx.ccx.tcx, e);
                 auto bound_arg =
                     GEP_tup_like(bcx, closure_ty, llclosure,
                                  [0,
@@ -4914,8 +4889,7 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
         let vec[ValueRef] lltydescs;
         alt (f_res.generic) {
             case (none[generic_info]) {
-                outgoing_fty = ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                           cx.fcx.lcx.ccx.node_types, f);
+                outgoing_fty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, f);
                 lltydescs = [];
             }
             case (some[generic_info](?ginfo)) {
@@ -4944,8 +4918,7 @@ fn trans_bind(&@block_ctxt cx, &@ast::expr f,
 
                 vec::push[ValueRef](bound_vals, arg.val);
                 vec::push[ty::t](bound_tys,
-                                 ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                             cx.fcx.lcx.ccx.node_types, e));
+                                 ty::expr_ty(cx.fcx.lcx.ccx.tcx, e));
 
                 i += 1u;
             }
@@ -5095,7 +5068,7 @@ fn trans_arg_expr(&@block_ctxt cx,
 
     auto val;
     auto bcx = cx;
-    auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, cx.fcx.lcx.ccx.node_types, e);
+    auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
 
     if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, e_ty)) {
         auto re = trans_expr(bcx, e);
@@ -5295,13 +5268,12 @@ fn trans_call(&@block_ctxt cx, &@ast::expr f,
         }
 
         case (_) {
-            fn_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, cx.fcx.lcx.ccx.node_types,
-                                f);
+            fn_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, f);
         }
 
     }
 
-    auto ret_ty = ty::ann_to_type(cx.fcx.lcx.ccx.node_types, ann);
+    auto ret_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types, ann);
     auto args_res = trans_args(f_res.res.bcx,
                                llenv, f_res.llobj,
                                f_res.generic,
@@ -5356,8 +5328,7 @@ fn trans_tup(&@block_ctxt cx, &vec[ast::elt] elts,
     let int i = 0;
 
     for (ast::elt e in elts) {
-        auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, cx.fcx.lcx.ccx.node_types,
-                                e.expr);
+        auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e.expr);
         auto src_res = trans_expr(bcx, e.expr);
         bcx = src_res.bcx;
         auto dst_res = GEP_tup_like(bcx, t, tup_val, [0, i]);
@@ -5675,7 +5646,7 @@ fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
     // lval cases fall through to trans_lval and then
     // possibly load the result (if it's non-structural).
 
-    auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, cx.fcx.lcx.ccx.node_types, e);
+    auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
     auto sub = trans_lval(cx, e);
     ret res(sub.res.bcx, load_if_immediate(sub.res.bcx, sub.res.val, t));
 }
@@ -5736,7 +5707,7 @@ fn trans_log(int lvl, &@block_ctxt cx, &@ast::expr e) -> result {
     cx.build.CondBr(test, log_cx.llbb, after_cx.llbb);
 
     auto sub = trans_expr(log_cx, e);
-    auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, cx.fcx.lcx.ccx.node_types, e);
+    auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
 
     auto log_bcx = sub.bcx;
     if (ty::type_is_fp(cx.fcx.lcx.ccx.tcx, e_ty)) {
@@ -5854,8 +5825,7 @@ fn trans_put(&@block_ctxt cx, &option::t[@ast::expr] e) -> result {
     alt (e) {
         case (none[@ast::expr]) { }
         case (some[@ast::expr](?x)) {
-            auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                    cx.fcx.lcx.ccx.node_types, x);
+            auto e_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, x);
             auto arg = rec(mode=ty::mo_alias, ty=e_ty);
             auto arg_tys = type_of_explicit_args(cx.fcx.lcx.ccx,
                                                  x.span, [arg]);
@@ -5916,8 +5886,7 @@ fn trans_ret(&@block_ctxt cx, &option::t[@ast::expr] e) -> result {
 
     alt (e) {
         case (some[@ast::expr](?x)) {
-            auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                 cx.fcx.lcx.ccx.node_types, x);
+            auto t = ty::expr_ty(cx.fcx.lcx.ccx.tcx, x);
             auto r = trans_expr(cx, x);
             bcx = r.bcx;
             val = r.val;
@@ -6310,8 +6279,7 @@ fn trans_block(&@block_ctxt cx, &ast::block b) -> result {
             if (is_terminated(bcx)) {
                 ret r;
             } else {
-                auto r_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx,
-                                        cx.fcx.lcx.ccx.node_types, e);
+                auto r_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
                 if (!ty::type_is_nil(cx.fcx.lcx.ccx.tcx, r_ty)) {
                     // The value resulting from the block gets copied into an
                     // alloca created in an outer scope and its refcount
@@ -6539,7 +6507,7 @@ fn is_terminated(&@block_ctxt cx) -> bool {
 }
 
 fn arg_tys_of_fn(&@crate_ctxt ccx, ast::ann ann) -> vec[ty::arg] {
-    alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.node_types, ann))) {
+    alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.tcx.node_types, ann))) {
         case (ty::ty_fn(_, ?arg_tys, _)) {
             ret arg_tys;
         }
@@ -6558,7 +6526,7 @@ fn ret_ty_of_fn_ty(&@crate_ctxt ccx, ty::t t) -> ty::t {
 
 
 fn ret_ty_of_fn(&@crate_ctxt ccx, ast::ann ann) -> ty::t {
-    ret ret_ty_of_fn_ty(ccx, ty::ann_to_type(ccx.node_types, ann));
+    ret ret_ty_of_fn_ty(ccx, ty::ann_to_type(ccx.tcx.node_types, ann));
 }
 
 fn populate_fn_ctxt_from_llself(@fn_ctxt fcx, self_vt llself) {
@@ -8006,9 +7974,8 @@ fn create_crate_map(&@crate_ctxt ccx) -> ValueRef {
     ret map;
 }
 
-fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
-               &ty::node_type_table node_types, &ty::type_cache type_cache,
-               &str output)
+fn trans_crate(&session::session sess, &@ast::crate crate,
+               &ty::ctxt tcx, &str output)
         -> ModuleRef {
     auto llmod =
         llvm::LLVMModuleCreateWithNameInContext(str::buf("rust_out"),
@@ -8043,7 +8010,6 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
                     item_ids = new_def_hash[ValueRef](),
                     items = new_def_hash[@ast::item](),
                     native_items = new_def_hash[@ast::native_item](),
-                    type_cache = type_cache,
                     item_symbols = new_def_hash[str](),
                     tag_sizes = tag_sizes,
                     discrims = new_def_hash[ValueRef](),
@@ -8066,8 +8032,7 @@ fn trans_crate(&session::session sess, &@ast::crate crate, &ty::ctxt tcx,
                                 mutable n_glues_created = 0u,
                                 mutable n_null_glues = 0u,
                                 mutable n_real_glues = 0u),
-                    upcalls = upcall::declare_upcalls(tn, llmod),
-                    node_types = node_types);
+                    upcalls = upcall::declare_upcalls(tn, llmod));
     auto cx = new_local_ctxt(ccx);
 
     create_typedefs(ccx);

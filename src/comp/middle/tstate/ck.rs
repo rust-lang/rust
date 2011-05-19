@@ -128,7 +128,7 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
     if (f.proto == ast::proto_fn
         && ! promises(*post, fcx.id, enclosing)
         && ! type_is_nil(fcx.ccx.tcx,
-                         ret_ty_of_fn(fcx.ccx.node_types, fcx.ccx.tcx, a)) ) {
+                         ret_ty_of_fn(fcx.ccx.tcx, a)) ) {
         /* FIXME: call span_err, not span_warn, once I finish implementing
            ! annotations */
         fcx.ccx.tcx.sess.span_warn(f.body.span, "In function " + fcx.name +
@@ -159,8 +159,8 @@ fn fn_states(&crate_ctxt ccx, &_fn f, &ident i, &def_id id, &ann a) -> () {
     check_fn_states(fcx, f, a);
 }
 
-fn check_crate(ty::node_type_table nt, ty::ctxt cx, @crate crate) -> () {
-    let crate_ctxt ccx = new_crate_ctxt(nt, cx);
+fn check_crate(ty::ctxt cx, @crate crate) -> () {
+    let crate_ctxt ccx = new_crate_ctxt(cx);
 
     /* Build the global map from function id to var-to-bit-num-map */
     mk_f_to_fn_info(ccx, crate);

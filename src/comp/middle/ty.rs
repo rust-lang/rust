@@ -58,13 +58,15 @@ type creader_cache = hashmap[tup(int,uint,uint),ty::t];
 type ctxt = rec(@type_store ts,
                 session::session sess,
                 resolve::def_map def_map,
+                node_type_table node_types,
+                type_cache tcache,
                 creader_cache rcache,
                 hashmap[t,str] short_names_cache);
 type ty_ctxt = ctxt;    // Needed for disambiguation from unify::ctxt.
 
 // Convert from method type to function type.  Pretty easy; we just drop
 // 'ident'.
-fn method_ty_to_fn_ty(ctxt cx, method m) -> t {
+fn method_ty_to_fn_ty(&ctxt cx, method m) -> t {
     ret mk_fn(cx, m.proto, m.inputs, m.output);
 }
 
@@ -215,9 +217,19 @@ fn mk_rcache() -> creader_cache {
 }
 
 fn mk_ctxt(session::session s, resolve::def_map dm) -> ctxt {
+
+    let vec[mutable option::t[ty::ty_param_substs_opt_and_ty]] ntt_sub =
+        [mutable];
+    let node_type_table ntt = @mutable ntt_sub;
+
+    auto tcache =
+        common::new_def_hash[ty::ty_param_count_and_ty]();
+
     ret rec(ts = mk_type_store(),
             sess = s,
             def_map = dm,
+            node_types = ntt,
+            tcache = tcache,
             rcache = mk_rcache(),
             short_names_cache =
                 map::mk_hashmap[ty::t,str](ty::hash_ty, ty::eq_ty));
@@ -489,9 +501,9 @@ fn path_to_str(&ast::path pth) -> str {
     ret result;
 }
 
-fn ty_to_str(ctxt cx, &t typ) -> str {
+fn ty_to_str(&ctxt cx, &t typ) -> str {
 
-    fn fn_input_to_str(ctxt cx, &rec(mode mode, t ty) input) -> str {
+    fn fn_input_to_str(&ctxt cx, &rec(mode mode, t ty) input) -> str {
         auto s;
         alt (input.mode) {
             case (mo_val) { s = ""; }
@@ -502,7 +514,7 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
         ret s + ty_to_str(cx, input.ty);
     }
 
-    fn fn_to_str(ctxt cx,
+    fn fn_to_str(&ctxt cx,
                  ast::proto proto,
                  option::t[ast::ident] ident,
                  vec[arg] inputs, t output) -> str {
@@ -536,16 +548,16 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
             ret s;
     }
 
-    fn method_to_str(ctxt cx, &method m) -> str {
+    fn method_to_str(&ctxt cx, &method m) -> str {
         ret fn_to_str(cx, m.proto, some[ast::ident](m.ident),
                       m.inputs, m.output) + ";";
     }
 
-    fn field_to_str(ctxt cx, &field f) -> str {
+    fn field_to_str(&ctxt cx, &field f) -> str {
         ret mt_to_str(cx, f.mt) + " " + f.ident;
     }
 
-    fn mt_to_str(ctxt cx, &mt m) -> str {
+    fn mt_to_str(&ctxt cx, &mt m) -> str {
         auto mstr;
         alt (m.mut) {
             case (ast::mut)       { mstr = "mutable "; }
@@ -648,7 +660,7 @@ fn ty_to_str(ctxt cx, &t typ) -> str {
     ret s;
 }
 
-fn ty_to_short_str(ctxt cx, t typ) -> str {
+fn ty_to_short_str(&ctxt cx, t typ) -> str {
     auto f = def_to_str;
     auto ecx = @rec(ds=f, tcx=cx, abbrevs=metadata::ac_no_abbrevs);
     auto s = metadata::Encode::ty_str(ecx, typ);
@@ -660,7 +672,7 @@ fn ty_to_short_str(ctxt cx, t typ) -> str {
 
 type ty_walk = fn(t);
 
-fn walk_ty(ctxt cx, ty_walk walker, t ty) {
+fn walk_ty(&ctxt cx, ty_walk walker, t ty) {
     alt (struct(cx, ty)) {
         case (ty_nil)           { /* no-op */ }
         case (ty_bot)           { /* no-op */ }
@@ -724,7 +736,7 @@ fn walk_ty(ctxt cx, ty_walk walker, t ty) {
 
 type ty_fold = fn(t) -> t;
 
-fn fold_ty(ctxt cx, ty_fold fld, t ty_0) -> t {
+fn fold_ty(&ctxt cx, ty_fold fld, t ty_0) -> t {
     auto ty = ty_0;
     alt (struct(cx, ty)) {
         case (ty_nil)           { /* no-op */ }
@@ -819,13 +831,13 @@ fn fold_ty(ctxt cx, ty_fold fld, t ty_0) -> t {
 
 // Type utilities
 
-fn rename(ctxt cx, t typ, str new_cname) -> t {
+fn rename(&ctxt cx, t typ, str new_cname) -> t {
     ret gen_ty_full(cx, struct(cx, typ), some[str](new_cname));
 }
 
 // Returns a type with the structural part taken from `struct_ty` and the
 // canonical name from `cname_ty`.
-fn copy_cname(ctxt cx, t struct_ty, t cname_ty) -> t {
+fn copy_cname(&ctxt cx, t struct_ty, t cname_ty) -> t {
     ret gen_ty_full(cx, struct(cx, struct_ty), cname(cx, cname_ty));
 }
 
@@ -1484,8 +1496,8 @@ fn ann_has_type_params(&node_type_table ntt, &ast::ann ann) -> bool {
 
 // Returns the type of an annotation, with type parameter substitutions
 // performed if applicable.
-fn ann_to_monotype(ctxt cx, &node_type_table ntt, ast::ann a) -> t {
-    auto tpot = ann_to_ty_param_substs_opt_and_ty(ntt, a);
+fn ann_to_monotype(&ctxt cx, ast::ann a) -> t {
+    auto tpot = ann_to_ty_param_substs_opt_and_ty(cx.node_types, a);
     alt (tpot._0) {
         case (none[vec[t]]) { ret tpot._1; }
         case (some[vec[t]](?tps)) {
@@ -1518,8 +1530,8 @@ fn bot_ann(uint node_id, ctxt tcx) -> ast::ann {
 
 
 // Returns the number of distinct type parameters in the given type.
-fn count_ty_params(ctxt cx, t ty) -> uint {
-    fn counter(ctxt cx, @mutable vec[uint] param_indices, t ty) {
+fn count_ty_params(&ctxt cx, t ty) -> uint {
+    fn counter(&ctxt cx, @mutable vec[uint] param_indices, t ty) {
         alt (struct(cx, ty)) {
             case (ty_param(?param_idx)) {
                 auto seen = false;
@@ -1650,10 +1662,10 @@ fn item_ty(&node_type_table ntt, &@ast::item it) -> ty_param_count_and_ty {
     ret tup(ty_param_count, result_ty);
 }
 
-fn stmt_ty(&ctxt cx, &node_type_table ntt, &@ast::stmt s) -> t {
+fn stmt_ty(&ctxt cx, &@ast::stmt s) -> t {
     alt (s.node) {
         case (ast::stmt_expr(?e,_)) {
-            ret expr_ty(cx, ntt, e);
+            ret expr_ty(cx, e);
         }
         case (_) {
             ret mk_nil(cx);
@@ -1661,17 +1673,17 @@ fn stmt_ty(&ctxt cx, &node_type_table ntt, &@ast::stmt s) -> t {
     }
 }
 
-fn block_ty(&ctxt cx, &node_type_table ntt, &ast::block b) -> t {
+fn block_ty(&ctxt cx, &ast::block b) -> t {
     alt (b.node.expr) {
-        case (some[@ast::expr](?e)) { ret expr_ty(cx, ntt, e); }
+        case (some[@ast::expr](?e)) { ret expr_ty(cx, e); }
         case (none[@ast::expr])     { ret mk_nil(cx); }
     }
 }
 
 // Returns the type of a pattern as a monotype. Like @expr_ty, this function
 // doesn't provide type parameter substitutions.
-fn pat_ty(&ctxt cx, &node_type_table ntt, &@ast::pat pat) -> t {
-    ret ann_to_monotype(cx, ntt, pat_ann(pat));
+fn pat_ty(&ctxt cx, &@ast::pat pat) -> t {
+    ret ann_to_monotype(cx, pat_ann(pat));
 }
 
 fn item_ann(&@ast::item it) -> ast::ann {
@@ -1743,15 +1755,16 @@ fn expr_ann(&@ast::expr e) -> ast::ann {
 // ask for the type of "id" in "id(3)", it will return "fn(&int) -> int"
 // instead of "fn(&T) -> T with T = int". If this isn't what you want, see
 // expr_ty_params_and_ty() below.
-fn expr_ty(&ctxt cx, &node_type_table ntt, &@ast::expr expr) -> t {
-    ret ann_to_monotype(cx, ntt, expr_ann(expr));
+fn expr_ty(&ctxt cx, &@ast::expr expr) -> t {
+    ret ann_to_monotype(cx, expr_ann(expr));
 }
 
-fn expr_ty_params_and_ty(&ctxt cx, &node_type_table ntt, &@ast::expr expr)
+fn expr_ty_params_and_ty(&ctxt cx, &@ast::expr expr)
         -> tup(vec[t], t) {
     auto a = expr_ann(expr);
 
-    ret tup(ann_to_type_params(ntt, a), ann_to_type(ntt, a));
+    ret tup(ann_to_type_params(cx.node_types, a),
+            ann_to_type(cx.node_types, a));
 }
 
 fn expr_has_ty_params(&node_type_table ntt, &@ast::expr expr) -> bool {
@@ -2644,7 +2657,7 @@ fn substitute_type_params(&ctxt cx, &vec[t] bindings, &t typ) -> t {
     if (!type_contains_bound_params(cx, typ)) {
         ret typ;
     }
-    fn replacer(ctxt cx, vec[t] bindings, t typ) -> t {
+    fn replacer(&ctxt cx, vec[t] bindings, t typ) -> t {
         alt (struct(cx, typ)) {
             case (ty_bound_param(?param_index)) {
                 ret bindings.(param_index);
@@ -2662,7 +2675,7 @@ fn bind_params_in_type(&ctxt cx, &t typ) -> t {
     if (!type_contains_params(cx, typ)) {
         ret typ;
     }
-    fn binder(ctxt cx, t typ) -> t {
+    fn binder(&ctxt cx, t typ) -> t {
         alt (struct(cx, typ)) {
             case (ty_bound_param(?index)) {
                 log_err "bind_params_in_type() called on type that already " +
@@ -2701,20 +2714,18 @@ fn def_has_ty_params(&ast::def def) -> bool {
 // If the given item is in an external crate, looks up its type and adds it to
 // the type cache. Returns the type parameters and type.
 fn lookup_item_type(session::session sess,
-                    ctxt cx,
-                    &type_cache cache,
-                    ast::def_id did) -> ty_param_count_and_ty {
+                    ctxt cx, ast::def_id did) -> ty_param_count_and_ty {
     if (did._0 == sess.get_targ_crate_num()) {
         // The item is in this crate. The caller should have added it to the
         // type cache already; we simply return it.
-        ret cache.get(did);
+        ret cx.tcache.get(did);
     }
 
-    alt (cache.find(did)) {
+    alt (cx.tcache.find(did)) {
         case (some[ty_param_count_and_ty](?tpt)) { ret tpt; }
         case (none[ty_param_count_and_ty]) {
             auto tyt = creader::get_type(sess, cx, did);
-            cache.insert(did, tyt);
+            cx.tcache.insert(did, tyt);
             ret tyt;
         }
     }
@@ -2731,8 +2742,8 @@ fn ret_ty_of_fn_ty(ty_ctxt tcx, t a_ty) -> t {
     }
 }
 
-fn ret_ty_of_fn(node_type_table ntt, ty_ctxt tcx, ast::ann ann) -> t {
-    ret ret_ty_of_fn_ty(tcx, ann_to_type(ntt, ann));
+fn ret_ty_of_fn(ty_ctxt tcx, ast::ann ann) -> t {
+    ret ret_ty_of_fn_ty(tcx, ann_to_type(tcx.node_types, ann));
 }
 
 // Local Variables:
