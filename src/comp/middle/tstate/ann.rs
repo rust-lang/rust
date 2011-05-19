@@ -20,13 +20,13 @@ type poststate = bitv::t; /* 1 means "this variable is definitely initialized"
                             initialized" */
 
 /* named thus so as not to confuse with prestate and poststate */
-type pre_and_post = rec(precond precondition, postcond postcondition);
+type pre_and_post = @rec(precond precondition, postcond postcondition);
 /* FIXME: once it's implemented: */
 //  : ((*.precondition).nbits == (*.postcondition).nbits);
 
 type pre_and_post_state = rec(prestate prestate, poststate poststate);
 
-type ts_ann = rec(pre_and_post conditions, pre_and_post_state states);
+type ts_ann = @rec(pre_and_post conditions, pre_and_post_state states);
 
 fn true_precond(uint num_vars) -> precond {
   be bitv::create(num_vars, false);
@@ -49,18 +49,18 @@ fn false_postcond(uint num_vars) -> postcond {
 }
 
 fn empty_pre_post(uint num_vars) -> pre_and_post {
-  ret(rec(precondition=empty_prestate(num_vars),
-          postcondition=empty_poststate(num_vars)));
+  ret(@rec(precondition=empty_prestate(num_vars),
+           postcondition=empty_poststate(num_vars)));
 }
 
 fn empty_states(uint num_vars) -> pre_and_post_state {
   ret(rec(prestate=true_precond(num_vars),
-           poststate=true_postcond(num_vars)));
+          poststate=true_postcond(num_vars)));
 }
 
 fn empty_ann(uint num_vars) -> ts_ann {
-  ret(rec(conditions=empty_pre_post(num_vars),
-          states=empty_states(num_vars)));
+  ret(@rec(conditions=empty_pre_post(num_vars),
+           states=empty_states(num_vars)));
 }
 
 fn get_pre(&pre_and_post p) -> precond {
@@ -111,25 +111,25 @@ fn set_in_poststate(uint i, &pre_and_post_state s) -> bool {
 
 // Sets all the bits in a's precondition to equal the
 // corresponding bit in p's precondition.
-fn set_precondition(@ts_ann a, &precond p) -> () {
+fn set_precondition(ts_ann a, &precond p) -> () {
   bitv::copy(a.conditions.precondition, p);
 }
 
 // Sets all the bits in a's postcondition to equal the
 // corresponding bit in p's postcondition.
-fn set_postcondition(@ts_ann a, &postcond p) -> () {
+fn set_postcondition(ts_ann a, &postcond p) -> () {
   bitv::copy(a.conditions.postcondition, p);
 }
 
 // Sets all the bits in a's prestate to equal the
 // corresponding bit in p's prestate.
-fn set_prestate(@ts_ann a, &prestate p) -> bool {
+fn set_prestate(ts_ann a, &prestate p) -> bool {
   ret bitv::copy(a.states.prestate, p);
 }
 
 // Sets all the bits in a's postcondition to equal the
 // corresponding bit in p's postcondition.
-fn set_poststate(@ts_ann a, &poststate p) -> bool {
+fn set_poststate(ts_ann a, &poststate p) -> bool {
   ret bitv::copy(a.states.poststate, p);
 }
 
@@ -150,6 +150,16 @@ fn relax_prestate(uint i, &prestate p) -> bool {
     ret was_set;
 }
 
+// Clears all the bits in p
+fn clear(&precond p) -> () {
+    bitv::clear(p);
+}
+
+// Sets all the bits in p
+fn set(&precond p) -> () {
+    bitv::set_all(p);
+}
+
 fn ann_precond(&ts_ann a) -> precond {
   ret a.conditions.precondition;
 }
@@ -163,8 +173,8 @@ fn ann_poststate(&ts_ann a) -> poststate {
 }
 
 fn pp_clone(&pre_and_post p) -> pre_and_post {
-  ret rec(precondition=clone(p.precondition),
-          postcondition=clone(p.postcondition));
+  ret @rec(precondition=clone(p.precondition),
+           postcondition=clone(p.postcondition));
 }
 
 fn clone(prestate p) -> prestate {
