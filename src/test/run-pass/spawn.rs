@@ -4,7 +4,7 @@
 // -*- rust -*-
 
 fn main() {
-  spawn child(10);
+  auto child_task = spawn child(10);
 }
 
 fn child(int i) {

@@ -9,8 +9,8 @@ fn a(chan[int] c) {
 
 fn main() {
     let port[int] p = port();
-    spawn a(chan(p));
-    spawn b(chan(p));
+    auto task_a = spawn a(chan(p));
+    auto task_b = spawn b(chan(p));
     let int n = 0;
     n <- p;
     n <- p;

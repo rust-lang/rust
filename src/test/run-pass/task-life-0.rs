@@ -2,7 +2,7 @@
 // xfail-stage1
 // xfail-stage2
 fn main() -> () {
-    spawn child("Hello");
+    auto child_task = spawn child("Hello");
 }
 
 fn child(str s) {

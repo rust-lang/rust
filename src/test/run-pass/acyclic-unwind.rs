@@ -28,7 +28,7 @@ fn f(chan[int] c)
 
 fn main() {
   let port[int] p = port();
-  spawn f(chan(p));
+  auto task_f = spawn f(chan(p));
   let int i;
 
   // synchronize on event from child.

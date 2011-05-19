@@ -109,7 +109,7 @@ fn test04() {
     let int i = 4;
     while (i > 0) {
         i = i - 1;
-        spawn thread test04_start();
+        auto task_i = spawn thread test04_start();
     }
     log "Finishing up.";
 }
@@ -125,7 +125,7 @@ fn test05_start(chan[int] ch) {
 fn test05() {
     let port[int] po = port();
     let chan[int] ch = chan(po);
-    spawn thread test05_start(ch);
+    auto task5 = spawn thread test05_start(ch);
     let int value <- po;
     value <- po;
     value <- po;

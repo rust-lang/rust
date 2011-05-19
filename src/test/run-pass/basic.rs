@@ -29,8 +29,8 @@ fn main() {
     let int n = 2 + 3 * 7;
     let str s = "hello there";
     let port[int] p = port();
-    spawn a(chan(p));
-    spawn b(chan(p));
+    auto task_a = spawn a(chan(p));
+    auto task_b = spawn b(chan(p));
     let int x = 10;
     x = g(n,s);
     log x;

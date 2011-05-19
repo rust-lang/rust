@@ -8,13 +8,13 @@ fn main() {
   auto c = chan(p);
   let int y;
 
-  spawn child(c);
+  auto task1 = spawn child(c);
   y <- p;
   log "received 1";
   log y;
   assert (y == 10);
 
-  spawn child(c);
+  auto task2 = spawn child(c);
   y <- p;
   log "received 2";
   log y;
