@@ -322,6 +322,45 @@ fn freeze[T](vec[mutable T] v) -> vec[T] {
     ret result;
 }
 
+// Swaps two elements in a vector
+fn swap[T](&vec[T] v, uint a, uint b) {
+    let T t = v.(a);
+    v.(a) = v.(b);
+    v.(b) = t;
+}
+
+// In place vector reversal
+fn reverse[T](&vec[T] v) -> () {
+    let uint i = 0u;
+    auto ln = len[T](v);
+
+    while(i < ln / 2u) {
+        swap(v, i, ln - i - 1u);
+        i += 1u;
+    }
+}
+
+// Functional vector reversal. Returns a reversed copy of v.
+fn reversed[T](vec[T] v) -> vec[T] {
+    let vec[T] res = [];
+
+    auto i = len[T](v);
+    if (i == 0u) {
+        ret res;
+    }
+    else {
+        i -= 1u;
+    }
+
+    while(i != 0u) {
+        push[T](res, v.(i));
+        i -= 1u;
+    }
+    push[T](res, v.(0));
+
+    ret res;
+}
+
 // Local Variables:
 // mode: rust;
 // fill-column: 78;
