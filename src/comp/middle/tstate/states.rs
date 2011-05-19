@@ -160,16 +160,6 @@ import util::common::has_nonlocal_exits;
 import util::common::log_stmt;
 import util::common::log_expr_err;
 
-fn find_pre_post_state_mod(&_mod m) -> bool {
-    log("implement find_pre_post_state_mod!");
-    fail;
-}
-
-fn find_pre_post_state_native_mod(&native_mod m) -> bool {
-    log("implement find_pre_post_state_native_mod!");
-    fail;
-}
-
 fn seq_states(&fn_ctxt fcx, prestate pres, vec[@expr] exprs)
      -> tup(bool, poststate) {
   auto changed = false;
@@ -655,8 +645,9 @@ fn find_pre_post_state_stmt(&fn_ctxt fcx, &prestate pres, @stmt s) -> bool {
                         || changed;
                     changed = extend_poststate(stmt_ann.states.poststate,
                                 pres) || changed;
-                    ret (find_pre_post_state_item(fcx, an_item) || changed);
-                }
+                    /* the outer "walk" will recurse into the item */
+                    ret changed;
+                 }
             }
         }
         case (stmt_expr(?e, _)) {
@@ -742,57 +733,11 @@ fn find_pre_post_state_block(&fn_ctxt fcx, &prestate pres0, &block b)
 }
 
 fn find_pre_post_state_fn(&fn_ctxt fcx, &_fn f) -> bool {
-    /* FIXME: where do we set args as being initialized?
-       What about for methods? */
     auto num_local_vars = num_locals(fcx.enclosing);
     ret find_pre_post_state_block(fcx,
           empty_prestate(num_local_vars), f.body);
 }
 
-fn find_pre_post_state_obj(crate_ctxt ccx, _obj o) -> bool {
-    fn do_a_method(crate_ctxt ccx, &@method m) -> bool {
-        assert (ccx.fm.contains_key(m.node.id));
-        ret find_pre_post_state_fn(rec(enclosing=ccx.fm.get(m.node.id),
-                                       id=m.node.id,
-                                       name=m.node.ident,
-                                       ccx=ccx),
-                                   m.node.meth);
-    }
-    auto f = bind do_a_method(ccx,_);
-    auto flags = vec::map[@method, bool](f, o.methods);
-    auto changed = vec::or(flags);
-    changed = changed || maybe[@method, bool](false, f, o.dtor);
-    ret changed;
-}
-
-fn find_pre_post_state_item(&fn_ctxt fcx, @item i) -> bool {
-    alt (i.node) {
-        case (item_const(?id, ?t, ?e, ?di, ?a)) {
-            ret find_pre_post_state_expr(fcx,
-                  empty_prestate(num_locals(fcx.enclosing)), e);
-        }
-        case (item_fn(?id, ?f, ?ps, ?di, ?a)) {
-            assert (fcx.ccx.fm.contains_key(di));
-            ret find_pre_post_state_fn(rec(enclosing=fcx.ccx.fm.get(di),
-                                           id=di, name=id with fcx), f);
-        }
-        case (item_mod(?id, ?m, ?di)) {
-            ret find_pre_post_state_mod(m);
-        }
-        case (item_native_mod(?id, ?nm, ?di)) {
-            ret find_pre_post_state_native_mod(nm);
-        }
-        case (item_ty(_,_,_,_,_)) {
-            ret false;
-        }
-        case (item_tag(_,_,_,_,_)) {
-            ret false;
-        }
-        case (item_obj(?id, ?o, ?ps, ?di, ?a)) {
-            ret find_pre_post_state_obj(fcx.ccx, o);
-        }
-    }
-}
 //
 // Local Variables:
 // mode: rust
