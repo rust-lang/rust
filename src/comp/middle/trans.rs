@@ -5901,10 +5901,24 @@ fn trans_spawn(&ast::spawn_dom dom, &option::t[str] name,
 
     // dump a bunch of information
     log_err "Spawn";
-    //log_err dom; 
     log_err #fmt("task name: %s", tname);
 
     // Generate code
+    //
+    // This is a several step process. The following things need to happen
+    // (not necessarily in order):
+    //
+    // 1. Evaluate all the arguments to the spawnee.
+    //
+    // 2. Alloca a tuple that holds these arguments (they must be in reverse
+    // order, so that they match the expected stack layout for the spawnee)
+    //
+    // 3. Fill the tutple with the arguments we evaluated.
+    // 
+    // 4. Pass a pointer to the spawnee function and the argument tuple to
+    // upcall_start_task.
+    
+    
     alt(dom) {
         case(ast::dom_implicit) {
             // TODO
