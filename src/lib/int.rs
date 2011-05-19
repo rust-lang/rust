@@ -17,6 +17,10 @@ fn negative(int x) -> bool { ret x < 0; }
 fn nonpositive(int x) -> bool { ret x <= 0; }
 fn nonnegative(int x) -> bool { ret x >= 0; }
 
+// FIXME: Make sure this works with negative integers.
+fn hash(&int x) -> uint { ret x as uint; }
+fn eq_alias(&int x, &int y) -> bool { ret x == y; }
+
 iter range(int lo, int hi) -> int {
     let int lo_ = lo;
     while (lo_ < hi) {

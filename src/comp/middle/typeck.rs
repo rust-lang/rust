@@ -37,6 +37,7 @@ import middle::ty::ty_nil;
 import middle::ty::unify::ures_ok;
 import middle::ty::unify::ures_err;
 
+import std::int;
 import std::str;
 import std::uint;
 import std::vec;
@@ -969,15 +970,15 @@ mod unify {
 
         auto handler = unify_handler(scx, param_substs);
 
-        auto var_bindings = ty::unify::mk_var_bindings();
-        auto result = ty::unify::unify(expected, actual, handler,
-                                       var_bindings, scx.fcx.ccx.tcx);
+        auto bindings = ty::unify::mk_bindings[int](int::hash, int::eq_alias);
+        auto result = ty::unify::unify(expected, actual, handler, bindings,
+                                       scx.fcx.ccx.tcx);
 
         alt (result) {
             case (ures_ok(?rty)) {
                 if (ty::type_contains_vars(scx.fcx.ccx.tcx, rty)) {
                     result = ures_ok(ty::unify::fixup(scx.fcx.ccx.tcx,
-                                                      var_bindings, rty));
+                                                      bindings, rty));
                 }
             }
             case (_) { /* nothing */ }
