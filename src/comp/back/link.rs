@@ -161,7 +161,7 @@ mod write {
                 // Always output the bitcode file with --save-temps
                 auto filename = mk_intermediate_name(output, "opt.bc");
                 llvm::LLVMRunPassManager(pm.llpm, llmod);
-                llvm::LLVMWriteBitcodeToFile(llmod, str::buf(output));
+                llvm::LLVMWriteBitcodeToFile(llmod, str::buf(filename));
                 pm = mk_pass_manager();
 
                 // Save the assembly file if -S is used
