@@ -79,7 +79,6 @@ import front::ast::lit;
 import front::ast::init_op;
 import front::ast::controlflow;
 import front::ast::return;
-import front::ast::noreturn;
 import front::ast::_fn;
 import front::ast::_obj;
 import front::ast::crate;
