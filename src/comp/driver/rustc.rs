@@ -228,7 +228,7 @@ fn main(vec[str] args) {
                     optflag("ls"), optflag("parse-only"),
                     optflag("O"), optopt("OptLevel"),
                     optflag("shared"), optmulti("L"),
-                    optflag("S"), optflag("c"), optopt("o"), optopt("g"),
+                    optflag("S"), optflag("c"), optopt("o"), optflag("g"),
                     optflag("save-temps"), optopt("sysroot"),
                     optflag("stats"),
                     optflag("time-passes"), optflag("time-llvm-passes"),
