@@ -521,7 +521,7 @@ fn lookup_in_scope(&env e, list[scope] sc, &span sp, &ident id, namespace ns)
             }
         }
     }
-    fail;
+    e.sess.bug("reached unreachable code in lookup_in_scope"); // sigh
 }
 
 fn lookup_in_ty_params(&ident id, &vec[ast::ty_param] ty_params)
@@ -757,7 +757,7 @@ fn lookup_in_local_mod(&env e, def_id defid, &ident id, namespace ns,
             }
         }
     }
-    fail;
+    e.sess.bug("reached unreachable code in lookup_in_regular_mod"); // sigh
 }
 
 fn lookup_in_mie(&env e, &mod_index_entry mie, namespace ns)
