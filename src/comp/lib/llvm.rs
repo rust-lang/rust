@@ -1539,7 +1539,10 @@ fn type_to_str_inner(type_names names,
             ret s;
         }
 
-        case (10) { ret "Array"; }
+        case (10) { 
+            auto el_ty = llvm::LLVMGetElementType(ty);
+            ret "[" + type_to_str_inner(names, outer, el_ty) + "]"; 
+        }
 
         case (11) {
             let uint i = 0u;
