@@ -51,6 +51,13 @@ type method = rec(ast::proto proto,
                   vec[arg] inputs,
                   t output);
 
+tag any_item {
+    any_item_rust(@ast::item);
+    any_item_native(@ast::native_item, ast::native_abi);
+}
+
+type item_table = hashmap[ast::def_id,any_item];
+
 type mt = rec(t ty, ast::mutability mut);
 
 // Contains information needed to resolve types and (in the future) look up
@@ -60,6 +67,7 @@ type ctxt = rec(@type_store ts,
                 session::session sess,
                 resolve::def_map def_map,
                 node_type_table node_types,
+                item_table items,
                 type_cache tcache,
                 creader_cache rcache,
                 hashmap[t,str] short_names_cache);
@@ -81,7 +89,8 @@ type raw_t = rec(sty struct,
                  bool has_params,
                  bool has_bound_params,
                  bool has_vars,
-                 bool has_locals);
+                 bool has_locals,
+                 bool has_pointers);
 
 type t = uint;
 
@@ -172,34 +181,31 @@ type ty_param_substs_opt_and_ty = tup(option::t[vec[ty::t]], ty::t);
 type node_type_table =
     @mutable vec[mutable option::t[ty::ty_param_substs_opt_and_ty]];
 
-fn mk_type_store() -> @type_store {
-    auto ts = @interner::mk_interner[raw_t](hash_raw_ty, eq_raw_ty);
+fn populate_type_store(&ctxt cx) {
 
-    intern(ts, ty_nil, none[str]);
-    intern(ts, ty_bool, none[str]);
-    intern(ts, ty_int, none[str]);
-    intern(ts, ty_float, none[str]);
-    intern(ts, ty_uint, none[str]);
-    intern(ts, ty_machine(ty_i8), none[str]);
-    intern(ts, ty_machine(ty_i16), none[str]);
-    intern(ts, ty_machine(ty_i32), none[str]);
-    intern(ts, ty_machine(ty_i64), none[str]);
-    intern(ts, ty_machine(ty_u8), none[str]);
-    intern(ts, ty_machine(ty_u16), none[str]);
-    intern(ts, ty_machine(ty_u32), none[str]);
-    intern(ts, ty_machine(ty_u64), none[str]);
-    intern(ts, ty_machine(ty_f32), none[str]);
-    intern(ts, ty_machine(ty_f64), none[str]);
-    intern(ts, ty_char, none[str]);
-    intern(ts, ty_str, none[str]);
-    intern(ts, ty_task, none[str]);
-    intern(ts, ty_native, none[str]);
-    intern(ts, ty_type, none[str]);
-    intern(ts, ty_bot, none[str]);
+    intern(cx, ty_nil, none[str]);
+    intern(cx, ty_bool, none[str]);
+    intern(cx, ty_int, none[str]);
+    intern(cx, ty_float, none[str]);
+    intern(cx, ty_uint, none[str]);
+    intern(cx, ty_machine(ty_i8), none[str]);
+    intern(cx, ty_machine(ty_i16), none[str]);
+    intern(cx, ty_machine(ty_i32), none[str]);
+    intern(cx, ty_machine(ty_i64), none[str]);
+    intern(cx, ty_machine(ty_u8), none[str]);
+    intern(cx, ty_machine(ty_u16), none[str]);
+    intern(cx, ty_machine(ty_u32), none[str]);
+    intern(cx, ty_machine(ty_u64), none[str]);
+    intern(cx, ty_machine(ty_f32), none[str]);
+    intern(cx, ty_machine(ty_f64), none[str]);
+    intern(cx, ty_char, none[str]);
+    intern(cx, ty_str, none[str]);
+    intern(cx, ty_task, none[str]);
+    intern(cx, ty_native, none[str]);
+    intern(cx, ty_type, none[str]);
+    intern(cx, ty_bot, none[str]);
 
-    assert vec::len(ts.vect) == idx_first_others;
-
-    ret ts;
+    assert vec::len(cx.ts.vect) == idx_first_others;
 }
 
 fn mk_rcache() -> creader_cache {
@@ -226,135 +232,162 @@ fn mk_ctxt(session::session s, resolve::def_map dm) -> ctxt {
     auto tcache =
         common::new_def_hash[ty::ty_param_count_and_ty]();
 
-    ret rec(ts = mk_type_store(),
+    auto items = common::new_def_hash[any_item]();
+    auto ts = @interner::mk_interner[raw_t](hash_raw_ty, eq_raw_ty);
+
+    auto cx =
+        rec(ts = ts,
             sess = s,
             def_map = dm,
             node_types = ntt,
+            items = items,
             tcache = tcache,
             rcache = mk_rcache(),
             short_names_cache =
-                map::mk_hashmap[ty::t,str](ty::hash_ty, ty::eq_ty));
+            map::mk_hashmap[ty::t,str](ty::hash_ty, ty::eq_ty));
+
+    populate_type_store(cx);
+    ret cx;
 }
 
 
 // Type constructors
 
-fn mk_raw_ty(&@type_store ts, &sty st, &option::t[str] cname) -> raw_t {
+fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
     auto h = hash_type_info(st, cname);
 
     let bool has_params = false;
     let bool has_bound_params = false;
     let bool has_vars = false;
     let bool has_locals = false;
+    let bool has_pointers = false;
 
-    fn derive_flags_t(@type_store ts,
+    fn derive_flags_t(&ctxt cx,
                       &mutable bool has_params,
                       &mutable bool has_bound_params,
                       &mutable bool has_vars,
                       &mutable bool has_locals,
+                      &mutable bool has_pointers,
                       &t tt) {
-        auto rt = interner::get[raw_t](*ts, tt);
+        auto rt = interner::get[raw_t](*cx.ts, tt);
         has_params = has_params || rt.has_params;
         has_bound_params = has_bound_params || rt.has_bound_params;
         has_vars = has_vars || rt.has_vars;
         has_locals = has_locals || rt.has_locals;
+        has_pointers = has_pointers || rt.has_pointers;
     }
 
-    fn derive_flags_mt(@type_store ts,
+    fn derive_flags_mt(&ctxt cx,
                        &mutable bool has_params,
                        &mutable bool has_bound_params,
                        &mutable bool has_vars,
                        &mutable bool has_locals,
+                       &mutable bool has_pointers,
                        &mt m) {
-        derive_flags_t(ts, has_params, has_bound_params,
-                       has_vars, has_locals, m.ty);
+        derive_flags_t(cx, has_params, has_bound_params,
+                       has_vars, has_locals, has_pointers, m.ty);
     }
 
 
-    fn derive_flags_arg(@type_store ts,
+    fn derive_flags_arg(&ctxt cx,
                         &mutable bool has_params,
                         &mutable bool has_bound_params,
                         &mutable bool has_vars,
                         &mutable bool has_locals,
+                        &mutable bool has_pointers,
                         &arg a) {
-        derive_flags_t(ts, has_params, has_bound_params,
-                       has_vars, has_locals, a.ty);
+        derive_flags_t(cx, has_params, has_bound_params,
+                       has_vars, has_locals, has_pointers, a.ty);
     }
 
-    fn derive_flags_sig(@type_store ts,
+    fn derive_flags_sig(&ctxt cx,
                         &mutable bool has_params,
                         &mutable bool has_bound_params,
                         &mutable bool has_vars,
                         &mutable bool has_locals,
+                        &mutable bool has_pointers,
                         &vec[arg] args,
                         &t tt) {
         for (arg a in args) {
-            derive_flags_arg(ts, has_params, has_bound_params,
-                             has_vars, has_locals, a);
+            derive_flags_arg(cx, has_params, has_bound_params,
+                             has_vars, has_locals, has_pointers, a);
         }
-        derive_flags_t(ts, has_params, has_bound_params,
-                       has_vars, has_locals, tt);
+        derive_flags_t(cx, has_params, has_bound_params,
+                       has_vars, has_locals, has_pointers, tt);
     }
 
     alt (st) {
-        case (ty_param(_)) { has_params = true; }
-        case (ty_bound_param(_)) { has_bound_params = true; }
+        case (ty_param(_)) {
+            has_params = true;
+            has_pointers = true;
+        }
+        case (ty_bound_param(_)) {
+            has_bound_params = true;
+            has_pointers = true;
+        }
         case (ty_var(_)) { has_vars = true; }
         case (ty_local(_)) { has_locals = true; }
-        case (ty_tag(_, ?tys)) {
+        case (ty_tag(?did, ?tys)) {
             for (t tt in tys) {
-                derive_flags_t(ts, has_params, has_bound_params,
-                               has_vars, has_locals, tt);
+                derive_flags_t(cx, has_params, has_bound_params,
+                               has_vars, has_locals, has_pointers, tt);
             }
         }
         case (ty_box(?m)) {
-            derive_flags_mt(ts, has_params, has_bound_params,
-                            has_vars, has_locals, m);
+            has_pointers = true;
+            derive_flags_mt(cx, has_params, has_bound_params,
+                            has_vars, has_locals, has_pointers, m);
         }
 
         case (ty_vec(?m)) {
-            derive_flags_mt(ts, has_params, has_bound_params,
-                            has_vars, has_locals, m);
+            has_pointers = true;
+            derive_flags_mt(cx, has_params, has_bound_params,
+                            has_vars, has_locals, has_pointers, m);
         }
 
         case (ty_port(?tt)) {
-            derive_flags_t(ts, has_params, has_bound_params,
-                           has_vars, has_locals, tt);
+            has_pointers = true;
+            derive_flags_t(cx, has_params, has_bound_params,
+                           has_vars, has_locals, has_pointers, tt);
         }
 
         case (ty_chan(?tt)) {
-            derive_flags_t(ts, has_params, has_bound_params,
-                           has_vars, has_locals, tt);
+            has_pointers = true;
+            derive_flags_t(cx, has_params, has_bound_params,
+                           has_vars, has_locals, has_pointers, tt);
         }
 
         case (ty_tup(?mts)) {
             for (mt m in mts) {
-                derive_flags_mt(ts, has_params, has_bound_params,
-                                has_vars, has_locals, m);
+                derive_flags_mt(cx, has_params, has_bound_params,
+                                has_vars, has_locals, has_pointers, m);
             }
         }
 
         case (ty_rec(?flds)) {
             for (field f in flds) {
-                derive_flags_mt(ts, has_params, has_bound_params,
-                                has_vars, has_locals, f.mt);
+                derive_flags_mt(cx, has_params, has_bound_params,
+                                has_vars, has_locals, has_pointers, f.mt);
             }
         }
 
         case (ty_fn(_, ?args, ?tt)) {
-            derive_flags_sig(ts, has_params, has_bound_params,
-                             has_vars, has_locals, args, tt);
+            has_pointers = true;
+            derive_flags_sig(cx, has_params, has_bound_params,
+                             has_vars, has_locals, has_pointers, args, tt);
         }
 
         case (ty_native_fn(_, ?args, ?tt)) {
-            derive_flags_sig(ts, has_params, has_bound_params,
-                             has_vars, has_locals, args, tt);
+            has_pointers = true;
+            derive_flags_sig(cx, has_params, has_bound_params,
+                             has_vars, has_locals, has_pointers, args, tt);
         }
 
         case (ty_obj(?meths)) {
+            has_pointers = true;
             for (method m in meths) {
-                derive_flags_sig(ts, has_params, has_bound_params,
-                                 has_vars, has_locals,
+                derive_flags_sig(cx, has_params, has_bound_params,
+                                 has_vars, has_locals, has_pointers,
                                  m.inputs, m.output);
             }
         }
@@ -365,16 +398,26 @@ fn mk_raw_ty(&@type_store ts, &sty st, &option::t[str] cname) -> raw_t {
             has_params = has_params,
             has_bound_params = has_bound_params,
             has_vars = has_vars,
-            has_locals = has_locals);
+            has_locals = has_locals,
+            has_pointers = has_pointers);
 }
 
-fn intern(&@type_store ts, &sty st, &option::t[str] cname) {
-    interner::intern[raw_t](*ts, mk_raw_ty(ts, st, cname));
+fn intern(&ctxt cx, &sty st, &option::t[str] cname) {
+    interner::intern[raw_t](*cx.ts, mk_raw_ty(cx, st, cname));
 }
 
 fn gen_ty_full(&ctxt cx, &sty st, &option::t[str] cname) -> t {
-    auto raw_type = mk_raw_ty(cx.ts, st, cname);
-    ret interner::intern[raw_t](*cx.ts, raw_type);
+    auto raw_type = mk_raw_ty(cx, st, cname);
+    auto t = interner::intern[raw_t](*cx.ts, raw_type);
+
+    /*
+    if (raw_type.has_pointers) {
+        log_err "type has pointers: " + ty_to_str(cx, t);
+    } else {
+        log_err "type has no pointers: " + ty_to_str(cx, t);
+    }
+    */
+    ret t;
 }
 
 // These are private constructors to this module. External users should always
@@ -953,6 +996,7 @@ fn type_is_scalar(&ctxt cx, &t ty) -> bool {
     }
     fail;
 }
+
 
 // FIXME: should we just return true for native types in
 // type_is_scalar?
@@ -1570,6 +1614,15 @@ fn type_contains_params(&ctxt cx, &t typ) -> bool {
 
 fn type_contains_bound_params(&ctxt cx, &t typ) -> bool {
     ret interner::get[raw_t](*cx.ts, typ).has_bound_params;
+}
+
+fn type_contains_pointers(&ctxt cx, &t typ) -> bool {
+    // FIXME: this is currently incorrect, pending an improved
+    // version of the "contains pointers" derived property.
+    //
+    // ret interner::get[raw_t](*cx.ts, typ).has_pointers;
+
+    ret (!type_is_scalar(cx, typ));
 }
 
 // Type accessors for substructures of types
@@ -2774,11 +2827,68 @@ fn def_has_ty_params(&ast::def def) -> bool {
     }
 }
 
+
+// Tag information
+
+type variant_info = rec(vec[ty::t] args, ty::t ctor_ty, ast::def_id id);
+
+// Returns information about the variants in a tag.
+fn tag_variants(&ctxt cx, &ast::def_id id) -> vec[variant_info] {
+    if (cx.sess.get_targ_crate_num() != id._0) {
+        ret creader::get_tag_variants(cx, id);
+    }
+
+    assert (cx.items.contains_key(id));
+    alt (cx.items.get(id)) {
+        case (any_item_rust(?item)) {
+            alt (item.node) {
+                case (ast::item_tag(_, ?variants, _, _, _)) {
+                    let vec[variant_info] result = [];
+                    for (ast::variant variant in variants) {
+                        auto ctor_ty = ann_to_monotype(cx, variant.node.ann);
+                        let vec[t] arg_tys = [];
+                        if (vec::len[ast::variant_arg](variant.node.args)
+                            > 0u) {
+                            for (arg a in ty_fn_args(cx, ctor_ty)) {
+                                arg_tys += [a.ty];
+                            }
+                        }
+                        auto did = variant.node.id;
+                        result += [rec(args=arg_tys,
+                                       ctor_ty=ctor_ty,
+                                       id=did)];
+                    }
+                    ret result;
+                }
+            }
+        }
+    }
+    fail;   // not reached
+}
+
+// Returns information about the tag variant with the given ID:
+fn tag_variant_with_id(&ctxt cx,
+                       &ast::def_id tag_id,
+                       &ast::def_id variant_id) -> variant_info {
+    auto variants = tag_variants(cx, tag_id);
+
+    auto i = 0u;
+    while (i < vec::len[variant_info](variants)) {
+        auto variant = variants.(i);
+        if (common::def_eq(variant.id, variant_id)) {
+            ret variant;
+        }
+        i += 1u;
+    }
+
+    log_err "tag_variant_with_id(): no variant exists with that ID";
+    fail;
+}
+
 // If the given item is in an external crate, looks up its type and adds it to
 // the type cache. Returns the type parameters and type.
-fn lookup_item_type(session::session sess,
-                    ctxt cx, ast::def_id did) -> ty_param_count_and_ty {
-    if (did._0 == sess.get_targ_crate_num()) {
+fn lookup_item_type(ctxt cx, ast::def_id did) -> ty_param_count_and_ty {
+    if (did._0 == cx.sess.get_targ_crate_num()) {
         // The item is in this crate. The caller should have added it to the
         // type cache already; we simply return it.
         ret cx.tcache.get(did);
@@ -2787,7 +2897,7 @@ fn lookup_item_type(session::session sess,
     alt (cx.tcache.find(did)) {
         case (some[ty_param_count_and_ty](?tpt)) { ret tpt; }
         case (none[ty_param_count_and_ty]) {
-            auto tyt = creader::get_type(sess, cx, did);
+            auto tyt = creader::get_type(cx, did);
             cx.tcache.insert(did, tyt);
             ret tyt;
         }
@@ -2799,7 +2909,7 @@ fn ret_ty_of_fn_ty(ty_ctxt tcx, t a_ty) -> t {
         case (ty::ty_fn(_, _, ?ret_ty)) {
             ret ret_ty;
         }
-        case (_) { 
+        case (_) {
             fail;
         }
     }

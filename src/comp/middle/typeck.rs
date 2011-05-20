@@ -51,13 +51,6 @@ import std::option::from_maybe;
 import middle::tstate::ann::ts_ann;
 
 type ty_table = hashmap[ast::def_id, ty::t];
-
-tag any_item {
-    any_item_rust(@ast::item);
-    any_item_native(@ast::native_item, ast::native_abi);
-}
-
-type ty_item_table = hashmap[ast::def_id,any_item];
 type fn_purity_table = hashmap[ast::def_id, ast::purity];
 
 type unify_cache_entry = tup(ty::t,ty::t,vec[mutable ty::t]);
@@ -65,9 +58,7 @@ type unify_cache = hashmap[unify_cache_entry,ty::unify::result];
 
 type obj_info = rec(vec[ast::obj_field] obj_fields, ast::def_id this_obj);
 
-type crate_ctxt = rec(session::session sess,
-                      @ty_item_table item_items,
-                      mutable vec[obj_info] obj_infos,
+type crate_ctxt = rec(mutable vec[obj_info] obj_infos,
                       @fn_purity_table fn_purity_table,
                       unify_cache unify_cache,
                       mutable uint cache_hits,
@@ -112,7 +103,7 @@ fn substitute_ty_params(&@crate_ctxt ccx,
 
     auto supplied_len = vec::len[ty::t](supplied);
     if (ty_param_count != supplied_len) {
-        ccx.sess.span_err(sp, "expected " +
+        ccx.tcx.sess.span_err(sp, "expected " +
                           uint::to_str(ty_param_count, 10u) +
                           " type parameter(s) but found " +
                           uint::to_str(supplied_len, 10u) + " parameter(s)");
@@ -149,23 +140,23 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &ast::span sp, &ast::def defn)
             ret tup(0u, fcx.locals.get(id));
         }
         case (ast::def_fn(?id)) {
-            ret ty::lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx, id);
+            ret ty::lookup_item_type(fcx.ccx.tcx, id);
         }
         case (ast::def_native_fn(?id)) {
-            ret ty::lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx, id);
+            ret ty::lookup_item_type(fcx.ccx.tcx, id);
         }
         case (ast::def_const(?id)) {
-            ret ty::lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx, id);
+            ret ty::lookup_item_type(fcx.ccx.tcx, id);
         }
         case (ast::def_variant(_, ?vid)) {
-            ret ty::lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx, vid);
+            ret ty::lookup_item_type(fcx.ccx.tcx, vid);
         }
         case (ast::def_binding(?id)) {
             // assert (fcx.locals.contains_key(id));
             ret tup(0u, fcx.locals.get(id));
         }
         case (ast::def_obj(?id)) {
-            ret ty::lookup_item_type(fcx.ccx.sess, fcx.ccx.tcx, id);
+            ret ty::lookup_item_type(fcx.ccx.tcx, id);
         }
 
         case (ast::def_mod(_)) {
@@ -175,13 +166,13 @@ fn ty_param_count_and_ty_for_def(&@fn_ctxt fcx, &ast::span sp, &ast::def defn)
         }
 
         case (ast::def_ty(_)) {
-            fcx.ccx.sess.span_err(sp, "expected value but found type");
+            fcx.ccx.tcx.sess.span_err(sp, "expected value but found type");
             fail;
         }
 
         case (_) {
             // FIXME: handle other names.
-            fcx.ccx.sess.unimpl("definition variant");
+            fcx.ccx.tcx.sess.unimpl("definition variant");
             fail;
         }
     }
@@ -209,8 +200,9 @@ fn instantiate_path(&@stmt_ctxt scx,
         ty_substs_opt = some[vec[ty::t]](ty_substs);
 
         if (ty_param_count == 0u) {
-            scx.fcx.ccx.sess.span_err(sp, "this item does not take type " +
-                                      "parameters");
+            scx.fcx.ccx.tcx.sess.span_err(sp,
+                                          "this item does not take type " +
+                                          "parameters");
             fail;
         }
     } else {
@@ -378,7 +370,7 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
 // ast_ty_to_ty.
 fn ast_ty_to_ty_crate(@crate_ctxt ccx, &@ast::ty ast_ty) -> ty::t {
     fn getter(@crate_ctxt ccx, &ast::def_id id) -> ty::ty_param_count_and_ty {
-        ret ty::lookup_item_type(ccx.sess, ccx.tcx, id);
+        ret ty::lookup_item_type(ccx.tcx, id);
     }
     auto f = bind getter(ccx, _);
     ret ast_ty_to_ty(ccx.tcx, f, ast_ty);
@@ -455,10 +447,7 @@ mod write {
 // Could use some cleanup. Consider topologically sorting in phase (1) above.
 
 mod collect {
-    type ctxt = rec(session::session sess,
-                    @ty_item_table id_to_ty_item,
-                    ty::ctxt tcx);
-    type env = rec(@ctxt cx, ast::native_abi abi);
+    type ctxt = rec(ty::ctxt tcx);
 
     fn ty_of_fn_decl(&@ctxt cx,
                      &fn(&@ast::ty ast_ty) -> ty::t convert,
@@ -494,16 +483,16 @@ mod collect {
 
     fn getter(@ctxt cx, &ast::def_id id) -> ty::ty_param_count_and_ty {
 
-        if (id._0 != cx.sess.get_targ_crate_num()) {
+        if (id._0 != cx.tcx.sess.get_targ_crate_num()) {
             // This is a type we need to load in from the crate reader.
-            ret creader::get_type(cx.sess, cx.tcx, id);
+            ret creader::get_type(cx.tcx, id);
         }
 
-        auto it = cx.id_to_ty_item.get(id);
+        auto it = cx.tcx.items.get(id);
         auto tpt;
         alt (it) {
-            case (any_item_rust(?item)) { tpt = ty_of_item(cx, item); }
-            case (any_item_native(?native_item, ?abi)) {
+            case (ty::any_item_rust(?item)) { tpt = ty_of_item(cx, item); }
+            case (ty::any_item_native(?native_item, ?abi)) {
                 tpt = ty_of_native_item(cx, native_item, abi);
             }
         }
@@ -707,27 +696,27 @@ mod collect {
                                            object.methods);
     }
 
-    fn collect(&@ty_item_table id_to_ty_item, &@ast::item i) {
+    fn collect(ty::item_table id_to_ty_item, &@ast::item i) {
         alt (i.node) {
             case (ast::item_ty(_, _, _, ?def_id, _)) {
-                id_to_ty_item.insert(def_id, any_item_rust(i));
+                id_to_ty_item.insert(def_id, ty::any_item_rust(i));
             }
             case (ast::item_tag(_, _, _, ?def_id, _)) {
-                id_to_ty_item.insert(def_id, any_item_rust(i));
+                id_to_ty_item.insert(def_id, ty::any_item_rust(i));
             }
             case (ast::item_obj(_, _, _, ?odid, _)) {
-                id_to_ty_item.insert(odid.ty, any_item_rust(i));
+                id_to_ty_item.insert(odid.ty, ty::any_item_rust(i));
             }
             case (_) { /* empty */ }
         }
     }
 
-    fn collect_native(&@ty_item_table id_to_ty_item, &@ast::native_item i) {
+    fn collect_native(ty::item_table id_to_ty_item, &@ast::native_item i) {
         alt (i.node) {
             case (ast::native_item_ty(_, ?def_id)) {
                 // The abi of types is not used.
                 id_to_ty_item.insert(def_id,
-                    any_item_native(i, ast::native_abi_cdecl));
+                    ty::any_item_native(i, ast::native_abi_cdecl));
             }
             case (_) { /* no-op */ }
         }
@@ -826,15 +815,13 @@ mod collect {
         }
     }
 
-    fn collect_item_types(&session::session sess, &ty::ctxt tcx,
-                          &@ast::crate crate) -> @ty_item_table {
+    fn collect_item_types(&ty::ctxt tcx, &@ast::crate crate) {
         // First pass: collect all type item IDs.
         auto module = crate.node.module;
-        auto id_to_ty_item = @common::new_def_hash[any_item]();
 
         auto visit = rec(
-            visit_item_pre = bind collect(id_to_ty_item, _),
-            visit_native_item_pre = bind collect_native(id_to_ty_item, _)
+            visit_item_pre = bind collect(tcx.items, _),
+            visit_native_item_pre = bind collect_native(tcx.items, _)
             with walk::default_visitor()
         );
         walk::walk_crate(visit, *crate);
@@ -843,18 +830,13 @@ mod collect {
         // contained within the native module.
         auto abi = @mutable none[ast::native_abi];
 
-        auto cx = @rec(sess=sess,
-                       id_to_ty_item=id_to_ty_item,
-                       tcx=tcx);
-
+        auto cx = @rec(tcx=tcx);
         visit = rec(
             visit_item_pre = bind convert(cx,abi,_),
             visit_native_item_pre = bind convert_native(cx,abi,_)
             with walk::default_visitor()
         );
         walk::walk_crate(visit, *crate);
-
-        ret id_to_ty_item;
     }
 }
 
@@ -1059,10 +1041,11 @@ mod Demand {
             }
 
             case (ures_err(?err, ?expected, ?actual)) {
-                scx.fcx.ccx.sess.span_err(sp, "mismatched types: expected "
-                    + ty_to_str(scx.fcx.ccx.tcx, expected) + " but found "
-                    + ty_to_str(scx.fcx.ccx.tcx, actual) + " ("
-                    + ty::type_err_to_str(err) + ")");
+                scx.fcx.ccx.tcx.sess.span_err
+                    (sp, "mismatched types: expected "
+                     + ty_to_str(scx.fcx.ccx.tcx, expected) + " but found "
+                     + ty_to_str(scx.fcx.ccx.tcx, actual) + " ("
+                     + ty::type_err_to_str(err) + ")");
 
                 // TODO: In the future, try returning "expected", reporting
                 // the error, and continue.
@@ -1088,7 +1071,7 @@ fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast::def_id vid,
 
     let vec[ty::t] result = [];
 
-    auto tpt = ty::lookup_item_type(ccx.sess, ccx.tcx, vid);
+    auto tpt = ty::lookup_item_type(ccx.tcx, vid);
     alt (struct(ccx.tcx, tpt._1)) {
         case (ty::ty_fn(_, ?ins, _)) {
             // N-ary variant.
@@ -1499,7 +1482,7 @@ mod Pushdown {
             }
 
             case (_) {
-                scx.fcx.ccx.sess.span_unimpl(e.span,
+                scx.fcx.ccx.tcx.sess.span_unimpl(e.span,
                     #fmt("type unification for expression variant: %s",
                          util::common::expr_to_str(e)));
                 fail;
@@ -1532,7 +1515,7 @@ mod writeback {
         auto local_ty;
         alt (fcx.locals.find(local.id)) {
             case (none[ty::t]) {
-                fcx.ccx.sess.span_err(sp,
+                fcx.ccx.tcx.sess.span_err(sp,
                     "unable to determine type of local: " + local.ident);
                 fail;
             }
@@ -1665,12 +1648,12 @@ fn check_pat(&@stmt_ctxt scx, &@ast::pat pat) {
         case (ast::pat_tag(?p, ?subpats, ?old_ann)) {
             auto vdef = ast::variant_def_ids
                 (scx.fcx.ccx.tcx.def_map.get(old_ann.id));
-            auto t = ty::lookup_item_type(scx.fcx.ccx.sess, scx.fcx.ccx.tcx,
+            auto t = ty::lookup_item_type(scx.fcx.ccx.tcx,
                                           vdef._1)._1;
             auto len = vec::len[ast::ident](p.node.idents);
             auto last_id = p.node.idents.(len - 1u);
 
-            auto tpt = ty::lookup_item_type(scx.fcx.ccx.sess, scx.fcx.ccx.tcx,
+            auto tpt = ty::lookup_item_type(scx.fcx.ccx.tcx,
                                             vdef._0);
 
             auto path_tpot = instantiate_path(scx, p, tpt, pat.span);
@@ -1688,7 +1671,7 @@ fn check_pat(&@stmt_ctxt scx, &@ast::pat pat) {
                                        uint::to_str(subpats_len, 10u) +
                                        " field(s)";
 
-                        scx.fcx.ccx.sess.span_err(pat.span, err_msg);
+                        scx.fcx.ccx.tcx.sess.span_err(pat.span, err_msg);
                         fail;   // TODO: recover
                     }
 
@@ -1710,7 +1693,7 @@ fn check_pat(&@stmt_ctxt scx, &@ast::pat pat) {
                                        uint::to_str(subpats_len, 10u) +
                                        " field(s)";
 
-                        scx.fcx.ccx.sess.span_err(pat.span, err_msg);
+                        scx.fcx.ccx.tcx.sess.span_err(pat.span, err_msg);
                         fail;   // TODO: recover
                     }
 
@@ -1758,14 +1741,14 @@ fn require_pure_call(@crate_ctxt ccx,
                                 ret;
                             }
                             case (_) {
-                                ccx.sess.span_err(sp,
+                                ccx.tcx.sess.span_err(sp,
                                   "Pure function calls impure function");
 
                             }
                         }
                 }
                 case (_) {
-                    ccx.sess.span_err(sp,
+                    ccx.tcx.sess.span_err(sp,
                       "Pure function calls unknown function");
                 }
             }
@@ -1776,14 +1759,15 @@ fn require_pure_call(@crate_ctxt ccx,
 fn require_pure_function(@crate_ctxt ccx, &ast::def_id d_id, &span sp) -> () {
     alt (get_function_purity(ccx, d_id)) {
         case (ast::impure_fn) {
-            ccx.sess.span_err(sp, "Found non-predicate in check expression");
+            ccx.tcx.sess.span_err(sp,
+                                  "Found non-predicate in check expression");
         }
         case (_) { ret; }
     }
 }
 
 fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
-    //fcx.ccx.sess.span_warn(expr.span, "typechecking expr " +
+    //fcx.ccx.tcx.sess.span_warn(expr.span, "typechecking expr " +
     //                       util::common::expr_to_str(expr));
 
     // A generic function to factor out common logic from call and bind
@@ -1821,7 +1805,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                 t_0 = ty::mk_native_fn(scx.fcx.ccx.tcx, abi, arg_tys_0, rt_0);
             }
             case (?u) {
-                scx.fcx.ccx.sess.span_err(f.span,
+                scx.fcx.ccx.tcx.sess.span_err(f.span,
                     "check_call_or_bind(): fn expr doesn't have fn type,"
                     + " instead having: " +
                     ty_to_str(scx.fcx.ccx.tcx,
@@ -1909,7 +1893,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                     alt (struct(scx.fcx.ccx.tcx, oper_t)) {
                         case (ty::ty_box(?inner)) { oper_t = inner.ty; }
                         case (_) {
-                            scx.fcx.ccx.sess.span_err
+                            scx.fcx.ccx.tcx.sess.span_err
                                 (expr.span,
                                  "dereferencing non-box type: "
                                  + ty_to_str(scx.fcx.ccx.tcx, oper_t));
@@ -1938,7 +1922,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             // The definition doesn't take type parameters. If the programmer
             // supplied some, that's an error.
             if (vec::len[@ast::ty](pth.node.types) > 0u) {
-                scx.fcx.ccx.sess.span_err(expr.span,
+                scx.fcx.ccx.tcx.sess.span_err(expr.span,
                     "this kind of value does not take type parameters");
                 fail;
             }
@@ -1970,7 +1954,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                     auto nil = ty::mk_nil(scx.fcx.ccx.tcx);
                     if (!are_compatible(scx, scx.fcx.ret_ty, nil)) {
                         // TODO: span_err
-                        scx.fcx.ccx.sess.err("ret; in function " +
+                        scx.fcx.ccx.tcx.sess.err("ret; in function " +
                             "returning non-nil");
                     }
 
@@ -1987,14 +1971,14 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         }
 
         case (ast::expr_put(?expr_opt, ?a)) {
-            require_impure(scx.fcx.ccx.sess, scx.fcx.purity, expr.span);
+            require_impure(scx.fcx.ccx.tcx.sess, scx.fcx.purity, expr.span);
 
             alt (expr_opt) {
                 case (none[@ast::expr]) {
                     auto nil = ty::mk_nil(scx.fcx.ccx.tcx);
                     if (!are_compatible(scx, scx.fcx.ret_ty, nil)) {
                         // TODO: span_err
-                        scx.fcx.ccx.sess.span_err(expr.span,
+                        scx.fcx.ccx.tcx.sess.span_err(expr.span,
                             "put; in iterator yielding non-nil");
                     }
 
@@ -2041,7 +2025,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                             }
                             for (@ast::expr operand in operands) {
                                 if (! ast::is_constraint_arg(operand)) {
-                                    scx.fcx.ccx.sess.span_err(expr.span,
+                                    scx.fcx.ccx.tcx.sess.span_err(expr.span,
                                        "Constraint args must be "
                                      + "slot variables or literals");
                                 }
@@ -2053,14 +2037,14 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                             write::nil_ty(scx.fcx.ccx.tcx, a.id);
                         }
                         case (_) {
-                           scx.fcx.ccx.sess.span_err(expr.span,
+                           scx.fcx.ccx.tcx.sess.span_err(expr.span,
                              "In a constraint, expected the constraint name "
                            + "to be an explicit name");
                         }
                     }
                 }
                 case (_) {
-                    scx.fcx.ccx.sess.span_err(expr.span,
+                    scx.fcx.ccx.tcx.sess.span_err(expr.span,
                         "check on non-predicate");
                 }
             }
@@ -2075,17 +2059,17 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         }
 
         case (ast::expr_assign(?lhs, ?rhs, ?a)) {
-            require_impure(scx.fcx.ccx.sess, scx.fcx.purity, expr.span);
+            require_impure(scx.fcx.ccx.tcx.sess, scx.fcx.purity, expr.span);
             check_assignment(scx, lhs, rhs, a);
         }
 
         case (ast::expr_assign_op(?op, ?lhs, ?rhs, ?a)) {
-            require_impure(scx.fcx.ccx.sess, scx.fcx.purity, expr.span);
+            require_impure(scx.fcx.ccx.tcx.sess, scx.fcx.purity, expr.span);
             check_assignment(scx, lhs, rhs, a);
         }
 
         case (ast::expr_send(?lhs, ?rhs, ?a)) {
-            require_impure(scx.fcx.ccx.sess, scx.fcx.purity, expr.span);
+            require_impure(scx.fcx.ccx.tcx.sess, scx.fcx.purity, expr.span);
 
             check_expr(scx, lhs);
             check_expr(scx, rhs);
@@ -2105,7 +2089,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         }
 
         case (ast::expr_recv(?lhs, ?rhs, ?a)) {
-            require_impure(scx.fcx.ccx.sess, scx.fcx.purity, expr.span);
+            require_impure(scx.fcx.ccx.tcx.sess, scx.fcx.purity, expr.span);
 
             check_expr(scx, lhs);
             check_expr(scx, rhs);
@@ -2310,8 +2294,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
 
             auto oinfo_opt = get_obj_info(scx.fcx.ccx);
             auto this_obj_id = option::get[obj_info](oinfo_opt).this_obj;
-            this_obj_ty = ty::lookup_item_type(scx.fcx.ccx.sess,
-                                               scx.fcx.ccx.tcx,
+            this_obj_ty = ty::lookup_item_type(scx.fcx.ccx.tcx,
                                                this_obj_id)._1;
 
             // Grab this method's type out of the current object type.
@@ -2329,7 +2312,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
 
             write::ty_only_fixup(scx, a.id, t);
 
-            require_impure(scx.fcx.ccx.sess, scx.fcx.purity, expr.span);
+            require_impure(scx.fcx.ccx.tcx.sess, scx.fcx.purity, expr.span);
         }
 
         case (ast::expr_spawn(_, _, ?f, ?args, ?a)) {
@@ -2346,7 +2329,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                         case (_) {
                             auto err = "non-nil return type in "
                                 + "spawned function";
-                            scx.fcx.ccx.sess.span_err(expr.span, err);
+                            scx.fcx.ccx.tcx.sess.span_err(expr.span, err);
                             fail;
                         }
                     }
@@ -2366,7 +2349,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             if (! (type_is_scalar(scx.fcx.ccx.tcx,
                     expr_ty(scx.fcx.ccx.tcx, e)) &&
                     type_is_scalar(scx.fcx.ccx.tcx, t_1))) {
-                scx.fcx.ccx.sess.span_err(expr.span,
+                scx.fcx.ccx.tcx.sess.span_err(expr.span,
                     "non-scalar cast: " +
                     ty_to_str(scx.fcx.ccx.tcx,
                         expr_ty(scx.fcx.ccx.tcx, e)) +
@@ -2440,7 +2423,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                     alt (struct(scx.fcx.ccx.tcx, bexpr_t)) {
                         case (ty::ty_rec(?flds)) { base_fields = flds; }
                         case (_) {
-                            scx.fcx.ccx.sess.span_err
+                            scx.fcx.ccx.tcx.sess.span_err
                                 (expr.span,
                                  "record update non-record base");
                         }
@@ -2458,7 +2441,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                             }
                         }
                         if (!found) {
-                            scx.fcx.ccx.sess.span_err
+                            scx.fcx.ccx.tcx.sess.span_err
                                 (expr.span,
                                  "unknown field in record update: "
                                  + f.ident);
@@ -2474,30 +2457,30 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             base_t = strip_boxes(scx.fcx.ccx.tcx, base_t);
             alt (struct(scx.fcx.ccx.tcx, base_t)) {
                 case (ty::ty_tup(?args)) {
-                    let uint ix = ty::field_num(scx.fcx.ccx.sess,
+                    let uint ix = ty::field_num(scx.fcx.ccx.tcx.sess,
                                                 expr.span, field);
                     if (ix >= vec::len[ty::mt](args)) {
-                        scx.fcx.ccx.sess.span_err(expr.span,
+                        scx.fcx.ccx.tcx.sess.span_err(expr.span,
                                                   "bad index on tuple");
                     }
                     write::ty_only_fixup(scx, a.id, args.(ix).ty);
                 }
 
                 case (ty::ty_rec(?fields)) {
-                    let uint ix = ty::field_idx(scx.fcx.ccx.sess,
+                    let uint ix = ty::field_idx(scx.fcx.ccx.tcx.sess,
                                                 expr.span, field, fields);
                     if (ix >= vec::len[typeck::field](fields)) {
-                        scx.fcx.ccx.sess.span_err(expr.span,
+                        scx.fcx.ccx.tcx.sess.span_err(expr.span,
                                               "bad index on record");
                     }
                     write::ty_only_fixup(scx, a.id, fields.(ix).mt.ty);
                 }
 
                 case (ty::ty_obj(?methods)) {
-                    let uint ix = ty::method_idx(scx.fcx.ccx.sess,
+                    let uint ix = ty::method_idx(scx.fcx.ccx.tcx.sess,
                                                  expr.span, field, methods);
                     if (ix >= vec::len[typeck::method](methods)) {
-                        scx.fcx.ccx.sess.span_err(expr.span,
+                        scx.fcx.ccx.tcx.sess.span_err(expr.span,
                                                   "bad index on obj");
                     }
                     auto meth = methods.(ix);
@@ -2507,7 +2490,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                 }
 
                 case (_) {
-                    scx.fcx.ccx.sess.span_unimpl(expr.span,
+                    scx.fcx.ccx.tcx.sess.span_unimpl(expr.span,
                         "base type for expr_field in typeck::check_expr: " +
                         ty_to_str(scx.fcx.ccx.tcx, base_t));
                 }
@@ -2524,7 +2507,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             alt (struct(scx.fcx.ccx.tcx, base_t)) {
                 case (ty::ty_vec(?mt)) {
                     if (! type_is_integral(scx.fcx.ccx.tcx, idx_t)) {
-                        scx.fcx.ccx.sess.span_err
+                        scx.fcx.ccx.tcx.sess.span_err
                             (idx.span,
                              "non-integral type of vec index: "
                              + ty_to_str(scx.fcx.ccx.tcx, idx_t));
@@ -2533,7 +2516,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                 }
                 case (ty::ty_str) {
                     if (! type_is_integral(scx.fcx.ccx.tcx, idx_t)) {
-                        scx.fcx.ccx.sess.span_err
+                        scx.fcx.ccx.tcx.sess.span_err
                             (idx.span,
                              "non-integral type of str index: "
                              + ty_to_str(scx.fcx.ccx.tcx, idx_t));
@@ -2542,7 +2525,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                     write::ty_only_fixup(scx, a.id, typ);
                 }
                 case (_) {
-                    scx.fcx.ccx.sess.span_err
+                    scx.fcx.ccx.tcx.sess.span_err
                         (expr.span,
                          "vector-indexing bad type: "
                          + ty_to_str(scx.fcx.ccx.tcx, base_t));
@@ -2565,7 +2548,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                     write::ty_only_fixup(scx, a.id, ct);
                 }
                 case (_) {
-                    scx.fcx.ccx.sess.span_err(expr.span,
+                    scx.fcx.ccx.tcx.sess.span_err(expr.span,
                         "bad port type: " +
                         ty_to_str(scx.fcx.ccx.tcx, port_t));
                 }
@@ -2573,7 +2556,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         }
 
         case (_) {
-            scx.fcx.ccx.sess.unimpl("expr type in typeck::check_expr");
+            scx.fcx.ccx.tcx.sess.unimpl("expr type in typeck::check_expr");
         }
     }
 }
@@ -2727,7 +2710,8 @@ fn check_fn(&@crate_ctxt ccx, &ast::fn_decl decl, ast::proto proto,
             // per the previous comment, this just checks that the declared
             // type is bool, and trusts that that's the actual return type.
             if (!ty::type_is_bool(ccx.tcx, fcx.ret_ty)) {
-              ccx.sess.span_err(body.span, "Non-boolean return type in pred");
+              ccx.tcx.sess.span_err(body.span,
+                                    "Non-boolean return type in pred");
             }
         }
         case (_) {}
@@ -2822,8 +2806,8 @@ fn mk_fn_purity_table(&@ast::crate crate) -> @fn_purity_table {
 }
 
 fn check_crate(&ty::ctxt tcx, &@ast::crate crate) {
-    auto sess = tcx.sess;
-    auto all_items = collect::collect_item_types(sess, tcx, crate);
+
+    collect::collect_item_types(tcx, crate);
 
     let vec[obj_info] obj_infos = [];
 
@@ -2833,9 +2817,7 @@ fn check_crate(&ty::ctxt tcx, &@ast::crate crate) {
         map::mk_hashmap[unify_cache_entry,ty::unify::result](hasher, eqer);
     auto fpt = mk_fn_purity_table(crate); // use a variation on collect
 
-    auto ccx = @rec(sess=sess,
-                    item_items=all_items,
-                    mutable obj_infos=obj_infos,
+    auto ccx = @rec(mutable obj_infos=obj_infos,
                     fn_purity_table=fpt,
                     unify_cache=unify_cache,
                     mutable cache_hits=0u,

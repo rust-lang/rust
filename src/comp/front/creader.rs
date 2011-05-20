@@ -512,10 +512,9 @@ fn lookup_def(int cnum, vec[u8] data, &ast::def_id did) -> ast::def {
     ret def;
 }
 
-fn get_type(session::session sess, ty::ctxt tcx, ast::def_id def)
-        -> ty::ty_param_count_and_ty {
+fn get_type(ty::ctxt tcx, ast::def_id def) -> ty::ty_param_count_and_ty {
     auto external_crate_id = def._0;
-    auto data = sess.get_external_crate(external_crate_id).data;
+    auto data = tcx.sess.get_external_crate(external_crate_id).data;
     auto item = lookup_item(def._1, data);
     auto t = item_type(item, external_crate_id, tcx);
 
@@ -537,14 +536,14 @@ fn get_symbol(session::session sess, ast::def_id def) -> str {
     ret item_symbol(lookup_item(def._1, data));
 }
 
-fn get_tag_variants(session::session sess, ty::ctxt tcx, ast::def_id def)
-        -> vec[trans::variant_info] {
+fn get_tag_variants(ty::ctxt tcx, ast::def_id def)
+    -> vec[ty::variant_info] {
     auto external_crate_id = def._0;
-    auto data = sess.get_external_crate(external_crate_id).data;
+    auto data = tcx.sess.get_external_crate(external_crate_id).data;
     auto items = ebml::get_doc(ebml::new_doc(data), metadata::tag_items);
     auto item = find_item(def._1, items);
 
-    let vec[trans::variant_info] infos = [];
+    let vec[ty::variant_info] infos = [];
     auto variant_ids = tag_variant_ids(item, external_crate_id);
     for (ast::def_id did in variant_ids) {
         auto item = find_item(did._1, items);

@@ -1272,8 +1272,8 @@ fn static_size_of_tag(&@crate_ctxt cx, &ast::span sp, &ty::t t) -> uint {
 
     // Compute max(variant sizes).
     auto max_size = 0u;
-    auto variants = tag_variants(cx, tid);
-    for (variant_info variant in variants) {
+    auto variants = ty::tag_variants(cx.tcx, tid);
+    for (ty::variant_info variant in variants) {
         auto tup_ty = simplify_type(cx, ty::mk_imm_tup(cx.tcx, variant.args));
 
         // Perform any type parameter substitutions.
@@ -1345,8 +1345,8 @@ fn dynamic_size_of(&@block_ctxt cx, ty::t t) -> result {
             let ValueRef max_size = alloca(bcx, T_int());
             bcx.build.Store(C_int(0), max_size);
 
-            auto variants = tag_variants(bcx.fcx.lcx.ccx, tid);
-            for (variant_info variant in variants) {
+            auto variants = ty::tag_variants(bcx.fcx.lcx.ccx.tcx, tid);
+            for (ty::variant_info variant in variants) {
                 // Perform type substitution on the raw argument types.
                 let vec[ty::t] raw_tys = variant.args;
                 let vec[ty::t] tys = [];
@@ -1521,7 +1521,8 @@ fn GEP_tag(@block_ctxt cx,
            &vec[ty::t] ty_substs,
            int ix)
         -> result {
-    auto variant = tag_variant_with_id(cx.fcx.lcx.ccx, tag_id, variant_id);
+    auto variant = ty::tag_variant_with_id(cx.fcx.lcx.ccx.tcx,
+                                           tag_id, variant_id);
 
     // Synthesize a tuple type so that GEP_tup_like() can work its magic.
     // Separately, store the type of the element we're interested in.
@@ -2213,14 +2214,10 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
         }
 
         case (_) {
-            if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t)) {
+            if (ty::type_contains_pointers(cx.fcx.lcx.ccx.tcx, t) &&
+                ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t)) {
                 rslt = iter_structural_ty(cx, v0, t,
                                           bind drop_ty(_, _, _));
-
-            } else if (ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t) ||
-                       ty::type_is_native(cx.fcx.lcx.ccx.tcx, t) ||
-                       ty::type_is_nil(cx.fcx.lcx.ccx.tcx, t)) {
-                rslt = res(cx, C_nil());
             } else {
                 rslt = res(cx, C_nil());
             }
@@ -2543,58 +2540,6 @@ fn make_integral_cmp_glue(&@block_ctxt cx, ValueRef lhs, ValueRef rhs,
     r.bcx.build.RetVoid();
 }
 
-
-// Tag information
-
-type variant_info = rec(vec[ty::t] args, ty::t ctor_ty, ast::def_id id);
-
-// Returns information about the variants in a tag.
-fn tag_variants(&@crate_ctxt cx, &ast::def_id id) -> vec[variant_info] {
-    if (cx.sess.get_targ_crate_num() != id._0) {
-        ret creader::get_tag_variants(cx.sess, cx.tcx, id);
-    }
-
-    assert (cx.items.contains_key(id));
-    alt (cx.items.get(id).node) {
-        case (ast::item_tag(_, ?variants, _, _, _)) {
-            let vec[variant_info] result = [];
-            for (ast::variant variant in variants) {
-                auto ctor_ty = node_ann_type(cx, variant.node.ann);
-                let vec[ty::t] arg_tys = [];
-                if (vec::len[ast::variant_arg](variant.node.args) > 0u) {
-                    for (ty::arg a in ty::ty_fn_args(cx.tcx, ctor_ty)) {
-                        arg_tys += [a.ty];
-                    }
-                }
-                auto did = variant.node.id;
-                result += [rec(args=arg_tys, ctor_ty=ctor_ty, id=did)];
-            }
-            ret result;
-        }
-    }
-    fail;   // not reached
-}
-
-// Returns information about the tag variant with the given ID:
-fn tag_variant_with_id(&@crate_ctxt cx,
-                       &ast::def_id tag_id,
-                       &ast::def_id variant_id) -> variant_info {
-    auto variants = tag_variants(cx, tag_id);
-
-    auto i = 0u;
-    while (i < vec::len[variant_info](variants)) {
-        auto variant = variants.(i);
-        if (common::def_eq(variant.id, variant_id)) {
-            ret variant;
-        }
-        i += 1u;
-    }
-
-    log_err "tag_variant_with_id(): no variant exists with that ID";
-    fail;
-}
-
-
 type val_pair_fn = fn(&@block_ctxt cx, ValueRef dst, ValueRef src) -> result;
 
 type val_and_ty_fn = fn(&@block_ctxt cx, ValueRef v, ty::t t) -> result;
@@ -2677,8 +2622,8 @@ fn iter_structural_ty_full(&@block_ctxt cx,
             }
         }
         case (ty::ty_tag(?tid, ?tps)) {
-            auto variants = tag_variants(cx.fcx.lcx.ccx, tid);
-            auto n_variants = vec::len[variant_info](variants);
+            auto variants = ty::tag_variants(cx.fcx.lcx.ccx.tcx, tid);
+            auto n_variants = vec::len[ty::variant_info](variants);
 
             // Cast the tags to types we can GEP into.
             auto lltagty = T_opaque_tag_ptr(cx.fcx.lcx.ccx.tn);
@@ -2712,7 +2657,7 @@ fn iter_structural_ty_full(&@block_ctxt cx,
             auto next_cx = new_sub_block_ctxt(bcx, "tag-iter-next");
 
             auto i = 0u;
-            for (variant_info variant in variants) {
+            for (ty::variant_info variant in variants) {
                 auto variant_cx = new_sub_block_ctxt(bcx,
                                                      "tag-iter-variant-" +
                                                      uint::to_str(i, 10u));
@@ -3167,7 +3112,7 @@ fn drop_ty(&@block_ctxt cx,
            ValueRef v,
            ty::t t) -> result {
 
-    if (!ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t)) {
+    if (ty::type_contains_pointers(cx.fcx.lcx.ccx.tcx, t)) {
         ret call_tydesc_glue(cx, v, t, false, abi::tydesc_field_drop_glue);
     }
     ret res(cx, C_nil());
@@ -3177,7 +3122,7 @@ fn free_ty(&@block_ctxt cx,
            ValueRef v,
            ty::t t) -> result {
 
-    if (!ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t)) {
+    if (ty::type_contains_pointers(cx.fcx.lcx.ccx.tcx, t)) {
         ret call_tydesc_glue(cx, v, t, false, abi::tydesc_field_free_glue);
     }
     ret res(cx, C_nil());
@@ -3335,27 +3280,9 @@ fn trans_lit(&@crate_ctxt cx, &ast::lit lit, &ast::ann ann) -> ValueRef {
     }
 }
 
-fn target_type(&@crate_ctxt cx, &ty::t t) -> ty::t {
-    alt (ty::struct(cx.tcx, t)) {
-        case (ty::ty_int) {
-            auto struct_ty = ty::mk_mach(cx.tcx,
-                                        cx.sess.get_targ_cfg().int_type);
-            ret ty::copy_cname(cx.tcx, struct_ty, t);
-        }
-        case (ty::ty_uint) {
-            auto struct_ty = ty::mk_mach(cx.tcx,
-                                        cx.sess.get_targ_cfg().uint_type);
-            ret ty::copy_cname(cx.tcx, struct_ty, t);
-        }
-        case (_) { /* fall through */ }
-    }
-    ret t;
-}
-
-
 // Converts an annotation to a type
 fn node_ann_type(&@crate_ctxt cx, &ast::ann a) -> ty::t {
-    ret target_type(cx, ty::ann_to_monotype(cx.tcx, a));
+    ret ty::ann_to_monotype(cx.tcx, a);
 }
 
 fn node_type(&@crate_ctxt cx, &ast::span sp, &ast::ann a) -> TypeRef {
@@ -4197,9 +4124,9 @@ fn trans_pat_match(&@block_ctxt cx, &@ast::pat pat, ValueRef llval,
                 (cx.fcx.lcx.ccx.tcx.def_map.get(ann.id));
             auto variant_tag = 0;
 
-            auto variants = tag_variants(cx.fcx.lcx.ccx, vdef._0);
+            auto variants = ty::tag_variants(cx.fcx.lcx.ccx.tcx, vdef._0);
             auto i = 0;
-            for (variant_info v in variants) {
+            for (ty::variant_info v in variants) {
                 auto this_variant_id = v.id;
                 if (vdef._1._0 == this_variant_id._0 &&
                     vdef._1._1 == this_variant_id._1) {
@@ -4467,18 +4394,15 @@ fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
             ret lval_mem(cx, cx.fcx.llobjfields.get(did));
         }
         case (ast::def_fn(?did)) {
-            auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.sess,
-                                            cx.fcx.lcx.ccx.tcx, did);
+            auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, did);
             ret lval_generic_fn(cx, tyt, did, ann);
         }
         case (ast::def_obj(?did)) {
-            auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.sess,
-                                           cx.fcx.lcx.ccx.tcx, did);
+            auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, did);
             ret lval_generic_fn(cx, tyt, did, ann);
         }
         case (ast::def_variant(?tid, ?vid)) {
-            auto v_tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.sess,
-                                             cx.fcx.lcx.ccx.tcx, vid);
+            auto v_tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, vid);
             alt (ty::struct(cx.fcx.lcx.ccx.tcx, v_tyt._1)) {
                 case (ty::ty_fn(_, _, _)) {
                     // N-ary variant.
@@ -4519,8 +4443,7 @@ fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
             ret lval_mem(cx, cx.fcx.lcx.ccx.consts.get(did));
         }
         case (ast::def_native_fn(?did)) {
-            auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.sess,
-                                           cx.fcx.lcx.ccx.tcx, did);
+            auto tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, did);
             ret lval_generic_fn(cx, tyt, did, ann);
         }
         case (_) {
