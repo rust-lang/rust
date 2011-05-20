@@ -86,11 +86,12 @@ import util::common::log_expr;
 import util::common::log_block;
 import util::common::log_stmt;
 
-import middle::tstate::aux::fn_info;
-import middle::tstate::aux::fn_info_map;
-import middle::tstate::aux::num_locals;
-import middle::tstate::aux::get_fn_info;
-import middle::tstate::aux::crate_ctxt;
+import aux::fn_info;
+import aux::fn_info_map;
+import aux::num_locals;
+import aux::get_fn_info;
+import aux::crate_ctxt;
+import aux::add_node;
 import middle::tstate::ann::empty_ann;
 
 fn collect_ids_expr(&@expr e, @vec[uint] res) -> () {
@@ -140,7 +141,7 @@ fn node_ids_in_fn(&_fn f, &ident i, &def_id d, &ann a, @vec[uint] res) -> () {
 fn init_vecs(&crate_ctxt ccx, @vec[uint] node_ids, uint len) -> () {
     for (uint i in *node_ids) {
         log(uistr(i) + " |-> " + uistr(len));
-        ccx.node_anns.insert(i, empty_ann(len));
+        add_node(ccx, i, empty_ann(len));
     }
 }
 
