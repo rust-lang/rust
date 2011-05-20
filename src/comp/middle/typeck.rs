@@ -314,11 +314,11 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             typ = ty::mk_rec(tcx, flds);
         }
 
-        case (ast::ty_fn(?proto, ?inputs, ?output)) {
+        case (ast::ty_fn(?proto, ?inputs, ?output, ?cf)) {
             auto f = bind ast_arg_to_arg(tcx, getter, _);
             auto i = vec::map[ast::ty_arg, arg](f, inputs);
             auto out_ty = ast_ty_to_ty(tcx, getter, output);
-            typ = ty::mk_fn(tcx, proto, i, out_ty);
+            typ = ty::mk_fn(tcx, proto, i, out_ty, cf);
         }
 
         case (ast::ty_path(?path, ?ann)) {
@@ -346,11 +346,13 @@ fn ast_ty_to_ty(&ty::ctxt tcx, &ty_getter getter, &@ast::ty ast_ty) -> ty::t {
             for (ast::ty_method m in meths) {
                 auto ins = vec::map[ast::ty_arg, arg](f, m.inputs);
                 auto out = ast_ty_to_ty(tcx, getter, m.output);
-                vec::push[ty::method](tmeths,
+                let ty::method new_m =
                                   rec(proto=m.proto,
                                       ident=m.ident,
                                       inputs=ins,
-                                      output=out));
+                                      output=out,
+                                      cf=m.cf);
+                vec::push[ty::method](tmeths, new_m);
             }
 
             typ = ty::mk_obj(tcx, ty::sort_methods(tmeths));
@@ -458,7 +460,7 @@ mod collect {
                      &ast::def_id def_id) -> ty::ty_param_count_and_ty {
         auto input_tys = vec::map[ast::arg,arg](ty_of_arg, decl.inputs);
         auto output_ty = convert(decl.output);
-        auto t_fn = ty::mk_fn(cx.tcx, proto, input_tys, output_ty);
+        auto t_fn = ty::mk_fn(cx.tcx, proto, input_tys, output_ty, decl.cf);
         auto ty_param_count = vec::len[ast::ty_param](ty_params);
         auto tpt = tup(ty_param_count, t_fn);
         cx.tcx.tcache.insert(def_id, tpt);
@@ -513,7 +515,7 @@ mod collect {
         auto inputs = vec::map[ast::arg,arg](f, m.node.meth.decl.inputs);
         auto output = convert(m.node.meth.decl.output);
         ret rec(proto=m.node.meth.proto, ident=m.node.ident,
-                inputs=inputs, output=output);
+                inputs=inputs, output=output, cf=m.node.meth.decl.cf);
     }
 
     fn ty_of_obj(@ctxt cx,
@@ -542,7 +544,8 @@ mod collect {
             vec::push[arg](t_inputs, rec(mode=ty::mo_alias, ty=t_field));
         }
 
-        auto t_fn = ty::mk_fn(cx.tcx, ast::proto_fn, t_inputs, t_obj._1);
+        auto t_fn = ty::mk_fn(cx.tcx, ast::proto_fn, t_inputs, t_obj._1,
+                              ast::return);
 
         auto tpt = tup(t_obj._0, t_fn);
         cx.tcx.tcache.insert(ctor_id, tpt);
@@ -675,7 +678,8 @@ mod collect {
                     args += [rec(mode=ty::mo_alias, ty=arg_ty)];
                 }
                 auto tag_t = ty::mk_tag(cx.tcx, tag_id, ty_param_tys);
-                result_ty = ty::mk_fn(cx.tcx, ast::proto_fn, args, tag_t);
+                result_ty = ty::mk_fn(cx.tcx, ast::proto_fn, args, tag_t,
+                                      ast::return);
             }
 
             auto tpt = tup(ty_param_count, result_ty);
@@ -782,7 +786,7 @@ mod collect {
                         // TODO: typechecker botch
                         let vec[arg] no_args = [];
                         auto t = ty::mk_fn(cx.tcx, ast::proto_fn, no_args,
-                                           ty::mk_nil(cx.tcx));
+                                           ty::mk_nil(cx.tcx), ast::return);
                         write::ty_only(cx.tcx, m.node.ann.id, t);
                     }
                 }
@@ -1073,7 +1077,7 @@ fn variant_arg_types(&@crate_ctxt ccx, &span sp, &ast::def_id vid,
 
     auto tpt = ty::lookup_item_type(ccx.tcx, vid);
     alt (struct(ccx.tcx, tpt._1)) {
-        case (ty::ty_fn(_, ?ins, _)) {
+        case (ty::ty_fn(_, ?ins, _, _)) {
             // N-ary variant.
             for (ty::arg arg in ins) {
                 auto arg_ty = bind_params_in_type(ccx.tcx, arg.ty);
@@ -1660,7 +1664,7 @@ fn check_pat(&@stmt_ctxt scx, &@ast::pat pat) {
 
             alt (struct(scx.fcx.ccx.tcx, t)) {
                 // N-ary variants have function types.
-                case (ty::ty_fn(_, ?args, ?tag_ty)) {
+                case (ty::ty_fn(_, ?args, ?tag_ty, _)) {
                     auto arg_len = vec::len[arg](args);
                     auto subpats_len = vec::len[@ast::pat](subpats);
                     if (arg_len != subpats_len) {
@@ -1798,8 +1802,8 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
         auto rt_0 = next_ty_var(scx);
         auto t_0;
         alt (struct(scx.fcx.ccx.tcx, expr_ty(scx.fcx.ccx.tcx, f))) {
-            case (ty::ty_fn(?proto, _, _))   {
-                t_0 = ty::mk_fn(scx.fcx.ccx.tcx, proto, arg_tys_0, rt_0);
+            case (ty::ty_fn(?proto, _, _, ?cf))   {
+                t_0 = ty::mk_fn(scx.fcx.ccx.tcx, proto, arg_tys_0, rt_0, cf);
             }
             case (ty::ty_native_fn(?abi, _, _))   {
                 t_0 = ty::mk_native_fn(scx.fcx.ccx.tcx, abi, arg_tys_0, rt_0);
@@ -2236,8 +2240,9 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             let vec[ty::arg] arg_tys_1 = [];
             auto rt_1;
             auto fty = expr_ty(scx.fcx.ccx.tcx, f);
+            auto t_1;
             alt (struct(scx.fcx.ccx.tcx, fty)) {
-                case (ty::ty_fn(?proto, ?arg_tys, ?rt)) {
+                case (ty::ty_fn(?proto, ?arg_tys, ?rt, ?cf)) {
                     proto_1 = proto;
                     rt_1 = rt;
 
@@ -2253,14 +2258,14 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                         }
                         i += 1u;
                     }
+                    t_1 = ty::mk_fn(scx.fcx.ccx.tcx, proto_1, arg_tys_1, rt_1,
+                                    cf);
                 }
                 case (_) {
                     log_err "LHS of bind expr didn't have a function type?!";
                     fail;
                 }
             }
-
-            auto t_1 = ty::mk_fn(scx.fcx.ccx.tcx, proto_1, arg_tys_1, rt_1);
             write::ty_only_fixup(scx, a.id, t_1);
         }
 
@@ -2277,7 +2282,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             auto rt_1 = ty::mk_nil(scx.fcx.ccx.tcx); // FIXME: typestate botch
             auto fty = expr_ty(scx.fcx.ccx.tcx, f);
             alt (struct(scx.fcx.ccx.tcx, fty)) {
-                case (ty::ty_fn(_,_,?rt))           { rt_1 = rt; }
+                case (ty::ty_fn(_,_,?rt,_))         { rt_1 = rt; }
                 case (ty::ty_native_fn(_, _, ?rt))  { rt_1 = rt; }
                 case (_) {
                     log_err "LHS of call expr didn't have a function type?!";
@@ -2321,7 +2326,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             // Check the return type
             auto fty = expr_ty(scx.fcx.ccx.tcx, f);
             alt (struct(scx.fcx.ccx.tcx, fty)) {
-                case (ty::ty_fn(_,_,?rt)) {
+                case (ty::ty_fn(_,_,?rt,_)) {
                     alt (struct(scx.fcx.ccx.tcx, rt)) {
                         case (ty::ty_nil) {
                             // This is acceptable
@@ -2485,7 +2490,7 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                     }
                     auto meth = methods.(ix);
                     auto t = ty::mk_fn(scx.fcx.ccx.tcx, meth.proto,
-                                       meth.inputs, meth.output);
+                                       meth.inputs, meth.output, meth.cf);
                     write::ty_only_fixup(scx, a.id, t);
                 }
 

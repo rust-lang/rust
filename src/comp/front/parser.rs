@@ -12,6 +12,8 @@ import util::common::filename;
 import util::common::span;
 import util::common::new_str_hash;
 import util::data::interner;
+import util::common::a_bang;
+import util::common::a_ty;
 
 tag restriction {
     UNRESTRICTED;
@@ -23,10 +25,7 @@ tag file_type {
     SOURCE_FILE;
 }
 
-tag ty_or_bang {
-    a_ty(@ast::ty);
-    a_bang;
-}
+type ty_or_bang = util::common::ty_or_bang[@ast::ty];
 
 state type parser =
     state obj {
@@ -351,14 +350,24 @@ fn parse_ty_fn(ast::proto proto, &parser p, uint lo)
     parse_constrs(p);
 
     let @ast::ty output;
+    auto cf = ast::return;
     if (p.peek() == token::RARROW) {
         p.bump();
-        output = parse_ty(p);
+        auto tmp = parse_ty_or_bang(p);
+        alt (tmp) {
+            case (a_ty[@ast::ty](?t)) {
+                output = t;
+            }
+            case (a_bang[@ast::ty]) {
+                output = @spanned(lo, inputs.span.hi, ast::ty_bot);
+                cf = ast::noreturn;
+            }
+        }
     } else {
         output = @spanned(lo, inputs.span.hi, ast::ty_nil);
     }
 
-    ret ast::ty_fn(proto, inputs.node, output);
+    ret ast::ty_fn(proto, inputs.node, output, cf);
 }
 
 fn parse_proto(&parser p) -> ast::proto {
@@ -377,9 +386,9 @@ fn parse_ty_obj(&parser p, &mutable uint hi) -> ast::ty_ {
         auto f = parse_ty_fn(proto, p, flo);
         expect(p, token::SEMI);
         alt (f) {
-            case (ast::ty_fn(?proto, ?inputs, ?output)) {
+            case (ast::ty_fn(?proto, ?inputs, ?output, ?cf)) {
                 ret rec(proto=proto, ident=ident,
-                        inputs=inputs, output=output);
+                        inputs=inputs, output=output, cf=cf);
             }
         }
         fail;
@@ -457,8 +466,8 @@ fn parse_ty_constrs(@ast::ty t, &parser p) -> @ast::ty {
 
 fn parse_ty_or_bang(&parser p) -> ty_or_bang {
     alt (p.peek()) {
-        case (token::NOT) { p.bump(); ret a_bang; }
-        case (_)         { ret a_ty(parse_ty(p)); }
+        case (token::NOT) { p.bump(); ret a_bang[@ast::ty]; }
+        case (_)         { ret a_ty[@ast::ty](parse_ty(p)); }
     }
 }
 
@@ -530,7 +539,7 @@ fn parse_ty(&parser p) -> @ast::ty {
         auto flo = p.get_last_lo_pos();
         t = parse_ty_fn(ast::proto_fn, p, flo);
         alt (t) {
-            case (ast::ty_fn(_, _, ?out)) {
+            case (ast::ty_fn(_, _, ?out, _)) {
                 hi = out.span.hi;
             }
         }
@@ -538,7 +547,7 @@ fn parse_ty(&parser p) -> @ast::ty {
         auto flo = p.get_last_lo_pos();
         t = parse_ty_fn(ast::proto_iter, p, flo);
         alt (t) {
-            case (ast::ty_fn(_, _, ?out)) {
+            case (ast::ty_fn(_, _, ?out, _)) {
                 hi = out.span.hi;
             }
         }
@@ -1735,15 +1744,16 @@ fn parse_fn_decl(&parser p, ast::purity purity) -> ast::fn_decl {
         p.bump();
         res = parse_ty_or_bang(p);
     } else {
-        res = a_ty(@spanned(inputs.span.lo, inputs.span.hi, ast::ty_nil));
+        res = a_ty[@ast::ty](@spanned(inputs.span.lo, inputs.span.hi,
+                                      ast::ty_nil));
     }
 
     alt (res) {
-        case (a_ty(?t)) {
+        case (a_ty[@ast::ty](?t)) {
             ret rec(inputs=inputs.node, output=t,
               purity=purity, cf=ast::return);
         }
-        case (a_bang) {
+        case (a_bang[@ast::ty]) {
             ret rec(inputs=inputs.node,
                     output=@spanned(p.get_lo_pos(),
                                     p.get_hi_pos(), ast::ty_bot),

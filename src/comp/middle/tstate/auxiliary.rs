@@ -381,20 +381,16 @@ fn controlflow_def_id(&crate_ctxt ccx, &def_id d) -> controlflow {
     }
 }
 
-/* conservative approximation: uses the mapping if e refers to a known
-   function or method, assumes returning otherwise.
-   There's no case for fail b/c we assume e is the callee and it
-   seems unlikely that one would apply "fail" to arguments. */
+/* Use e's type to determine whether it returns.
+ If it has a function type with a ! annotation,
+the answer is noreturn. */
 fn controlflow_expr(&crate_ctxt ccx, @expr e) -> controlflow {
-    auto f = expr_ann(e).id;
-    alt (ccx.tcx.def_map.find(f)) {
-        case (some[def](def_fn(?d))) { 
-            ret controlflow_def_id(ccx, d); 
+    alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.tcx.node_types,
+                                             expr_ann(e)))) {
+        case (ty::ty_fn(_,_,_,?cf)) {
+            ret cf;
         }
-        case (some[def](def_obj_field(?d))) { 
-            ret controlflow_def_id(ccx, d);
-        }
-        case (_)                            {
+        case (_) {
             ret return;
         }
     }

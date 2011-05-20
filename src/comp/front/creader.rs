@@ -13,6 +13,8 @@ import middle::ty;
 import back::x86;
 import util::common;
 import util::common::span;
+import util::common::a_bang;
+import util::common::a_ty;
 
 import std::str;
 import std::uint;
@@ -47,6 +49,8 @@ type str_def = fn(str) -> ast::def_id;
 type pstate = rec(vec[u8] data, int crate,
                   mutable uint pos, uint len, ty::ctxt tcx);
 
+type ty_or_bang = util::common::ty_or_bang[ty::t];
+
 fn peek(@pstate st) -> u8 {
     ret st.data.(st.pos);
 }
@@ -64,9 +68,17 @@ fn parse_ty_data(vec[u8] data, int crate_num, uint pos, uint len,
     ret result;
 }
 
+fn parse_ty_or_bang(@pstate st, str_def sd) -> ty_or_bang {
+    alt (peek(st) as char) {
+        case ('!') { auto ignore = next(st); ret a_bang[ty::t]; }
+        case (_)   { ret a_ty[ty::t](parse_ty(st, sd)); }
+    }
+}
+
 fn parse_ty(@pstate st, str_def sd) -> ty::t {
     alt (next(st) as char) {
         case ('n') { ret ty::mk_nil(st.tcx); }
+        case ('z') { ret ty::mk_bot(st.tcx); }
         case ('b') { ret ty::mk_bool(st.tcx); }
         case ('i') { ret ty::mk_int(st.tcx); }
         case ('u') { ret ty::mk_uint(st.tcx); }
@@ -127,11 +139,11 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
         }
         case ('F') {
             auto func = parse_ty_fn(st, sd);
-            ret ty::mk_fn(st.tcx, ast::proto_fn, func._0, func._1);
+            ret ty::mk_fn(st.tcx, ast::proto_fn, func._0, func._1, func._2);
         }
         case ('W') {
             auto func = parse_ty_fn(st, sd);
-            ret ty::mk_fn(st.tcx, ast::proto_iter, func._0, func._1);
+            ret ty::mk_fn(st.tcx, ast::proto_iter, func._0, func._1, func._2);
         }
         case ('N') {
             auto abi;
@@ -159,9 +171,10 @@ fn parse_ty(@pstate st, str_def sd) -> ty::t {
                 }
                 auto func = parse_ty_fn(st, sd);
                 methods += [rec(proto=proto,
-                                   ident=name,
-                                   inputs=func._0,
-                                   output=func._1)];
+                                ident=name,
+                                inputs=func._0,
+                                output=func._1,
+                                cf=func._2)];
             }
             st.pos += 1u;
             ret ty::mk_obj(st.tcx, methods);
@@ -240,7 +253,8 @@ fn parse_hex(@pstate st) -> uint {
     ret n;
 }
 
-fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty::arg], ty::t) {
+fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty::arg], ty::t,
+                                              ast::controlflow) {
     assert (next(st) as char == '[');
     let vec[ty::arg] inputs = [];
     while (peek(st) as char != ']') {
@@ -252,7 +266,15 @@ fn parse_ty_fn(@pstate st, str_def sd) -> tup(vec[ty::arg], ty::t) {
         inputs += [rec(mode=mode, ty=parse_ty(st, sd))];
     }
     st.pos = st.pos + 1u;
-    ret tup(inputs, parse_ty(st, sd));
+    auto res = parse_ty_or_bang(st, sd);
+    alt (res) {
+        case (a_bang[ty::t]) {
+            ret tup(inputs, ty::mk_bot(st.tcx), ast::noreturn);
+        }
+        case (a_ty[ty::t](?t)) {
+            ret tup(inputs, t, ast::return);
+        }
+    }
 }
 
 
@@ -550,7 +572,7 @@ fn get_tag_variants(ty::ctxt tcx, ast::def_id def)
         auto ctor_ty = item_type(item, external_crate_id, tcx);
         let vec[ty::t] arg_tys = [];
         alt (ty::struct(tcx, ctor_ty)) {
-            case (ty::ty_fn(_, ?args, _)) {
+            case (ty::ty_fn(_, ?args, _, _)) {
                 for (ty::arg a in args) {
                     arg_tys += [a.ty];
                 }

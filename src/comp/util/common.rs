@@ -45,6 +45,11 @@ tag ty_mach {
     ty_f64;
 }
 
+tag ty_or_bang[T] {
+    a_ty(T);
+    a_bang;
+}
+
 fn ty_mach_to_str(ty_mach tm) -> str {
     alt (tm) {
         case (ty_u8) { ret "u8"; }

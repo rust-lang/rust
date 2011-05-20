@@ -307,7 +307,8 @@ type mt = rec(@ty ty, mutability mut);
 type ty_field = rec(ident ident, mt mt);
 type ty_arg = rec(mode mode, @ty ty);
 type ty_method = rec(proto proto, ident ident,
-                     vec[ty_arg] inputs, @ty output);
+                     vec[ty_arg] inputs, @ty output,
+                     controlflow cf);
 type ty = spanned[ty_];
 tag ty_ {
     ty_nil;
@@ -330,7 +331,7 @@ tag ty_ {
     ty_chan(@ty);
     ty_tup(vec[mt]);
     ty_rec(vec[ty_field]);
-    ty_fn(proto, vec[ty_arg], @ty);
+    ty_fn(proto, vec[ty_arg], @ty, controlflow);
     ty_obj(vec[ty_method]);
     ty_path(path, ann);
     ty_type;
