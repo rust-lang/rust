@@ -10,7 +10,6 @@ meta (name = "rustc",
 use std;
 
 mod middle {
-    mod type_glue;
     mod trans;
     mod ty;
     mod fold;
