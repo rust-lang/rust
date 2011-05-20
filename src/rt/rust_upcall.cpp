@@ -549,20 +549,19 @@ upcall_new_task(rust_task *spawner, rust_vec *name) {
 extern "C" CDECL rust_task *
 upcall_start_task(rust_task *spawner,
                   rust_task *task,
-                  uintptr_t exit_task_glue,
                   uintptr_t spawnee_fn,
+                  uintptr_t args,
                   size_t callsz) {
     LOG_UPCALL_ENTRY(spawner);
 
     rust_dom *dom = spawner->dom;
     DLOG(dom, task,
              "upcall start_task(task %s @0x%" PRIxPTR
-             " exit_task_glue 0x%" PRIxPTR
              ", spawnee 0x%" PRIxPTR
-             ", callsz %" PRIdPTR ")", task->name, task, exit_task_glue,
+             ", callsz %" PRIdPTR ")", task->name, task,
              spawnee_fn, callsz);
-    task->start(exit_task_glue, spawnee_fn,
-                spawner->rust_sp, callsz);
+    task->start((uintptr_t)rust_new_exit_task_glue, spawnee_fn,
+                args, callsz);
     return task;
 }
 

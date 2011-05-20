@@ -5981,6 +5981,47 @@ fn trans_spawn(&@block_ctxt cx,
                               [bcx.fcx.lltaskptr, lltname]);
     log_err "Done";
 
+    // Okay, start the task.
+    // First we find the function
+    auto fnptr = trans_lval(bcx, func).res;
+    bcx = fnptr.bcx;
+    
+    auto num_args = vec::len[@ast::expr](args);
+
+    auto llfnptr = bcx.build.GEP(fnptr.val,
+                                 [C_int(0), C_int(0)]);
+    log_err "Casting llfnptr";
+    auto llfnptr_i = bcx.build.PointerCast(llfnptr,
+                                    T_int());
+    log_err "Cassting llargs";
+    auto llargs_i = bcx.build.PointerCast(llargs.val,
+                                   T_int());
+
+    log_err "Building call to start_task";
+    log_err #fmt("ty(start_task) = %s", 
+                 val_str(bcx.fcx.lcx.ccx.tn,
+                         bcx.fcx.lcx.ccx.upcalls.start_task));
+    log_err #fmt("ty(lltaskptr) = %s", 
+                 val_str(bcx.fcx.lcx.ccx.tn,
+                         bcx.fcx.lltaskptr));
+    log_err #fmt("ty(new_task) = %s", 
+                 val_str(bcx.fcx.lcx.ccx.tn,
+                         new_task));
+    log_err #fmt("ty(llfnptr) = %s", 
+                 val_str(bcx.fcx.lcx.ccx.tn,
+                         llfnptr_i));
+    log_err #fmt("ty(llargs) = %s", 
+                 val_str(bcx.fcx.lcx.ccx.tn,
+                         llargs_i));
+    log_err #fmt("ty(num_args) = %s", 
+                 val_str(bcx.fcx.lcx.ccx.tn,
+                         C_int(num_args as int)));
+    bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.start_task,
+                   [bcx.fcx.lltaskptr, new_task,
+                    llfnptr_i, llargs_i, C_int(num_args as int)]);
+    log_err "Done";
+
+    /*
     alt(dom) {
         case(ast::dom_implicit) {
             // TODO
@@ -5995,6 +6036,7 @@ fn trans_spawn(&@block_ctxt cx,
             fail;
         }
     }
+    */
 
     ret res(bcx, new_task);
 }

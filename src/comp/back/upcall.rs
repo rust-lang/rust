@@ -123,8 +123,8 @@ fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
                             T_size_t(), T_ptr(T_ptr(T_tydesc(tn)))],
                         T_ptr(T_tydesc(tn))),
         new_task=d("new_task", [T_ptr(T_str())], T_taskptr(tn)),
-        start_task=d("start_task", [T_taskptr(tn), T_int(), T_int(),
-                                       T_int(), T_size_t()],
+        start_task=d("start_task", [T_taskptr(tn), 
+                                    T_int(), T_int(), T_size_t()],
                      T_taskptr(tn)),
         new_thread=d("new_thread", [T_ptr(T_i8())], T_taskptr(tn)),
         start_thread=d("start_thread", [T_taskptr(tn), T_int(), T_int(),
@@ -133,3 +133,13 @@ fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
     );
 }
 
+//
+// Local Variables:
+// mode: C++
+// fill-column: 78;
+// indent-tabs-mode: nil
+// c-basic-offset: 4
+// buffer-file-coding-system: utf-8-unix
+// compile-command: "make -k -C .. 2>&1 | sed -e 's/\\/x\\//x:\\//g'";
+// End:
+//
