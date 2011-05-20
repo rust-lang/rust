@@ -235,17 +235,9 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
       /* if this is a failing call, it sets the return value */
        alt (controlflow_expr(fcx.ccx, operator)) {
           case (noreturn) {
-            /*
-            log_err("Call that might fail! to");
-            log_expr_err(*operator);
-            */
             changed = gen_poststate(fcx, a, fcx.id) || changed;
           }
-          case (_) { 
-            /*      log_err("non-failing call, to:");
-            log_expr_err(*operator);
-            */
-          }
+          case (_) { }
       }
       ret changed;
     }
