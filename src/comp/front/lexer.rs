@@ -10,7 +10,7 @@ import std::option::none;
 import driver::session::session;
 import util::common;
 import util::common::new_str_hash;
-import util::interner;
+import util::data::interner;
 
 state type reader = state obj {
     fn is_eof() -> bool;
@@ -800,7 +800,7 @@ fn read_block_comment(&reader rdr) -> cmnt {
 
 fn gather_comments(session sess, str path) -> vec[cmnt] {
     auto srdr = io::file_reader(path);
-    auto itr = @interner::mk_interner[str](str::hash, str::eq);
+    auto itr = @interner::mk[str](str::hash, str::eq);
     auto rdr = new_reader(sess, srdr, codemap::new_filemap(path, 0u), itr);
     let vec[cmnt] comments = [];
     while (!rdr.is_eof()) {

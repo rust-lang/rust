@@ -34,7 +34,7 @@ import util::common::new_def_hash;
 import util::common::span;
 import middle::tstate::ann::ts_ann;
 
-import util::interner;
+import util::data::interner;
 
 // Data types
 
@@ -232,7 +232,7 @@ fn mk_ctxt(session::session s, resolve::def_map dm) -> ctxt {
         common::new_def_hash[ty::ty_param_count_and_ty]();
 
     auto items = common::new_def_hash[any_item]();
-    auto ts = @interner::mk_interner[raw_t](hash_raw_ty, eq_raw_ty);
+    auto ts = @interner::mk[raw_t](hash_raw_ty, eq_raw_ty);
 
     auto cx =
         rec(ts = ts,

@@ -1,7 +1,7 @@
 import util::common::ty_mach;
 import util::common::ty_mach_to_str;
 import util::common::new_str_hash;
-import util::interner;
+import util::data::interner;
 import std::int;
 import std::uint;
 import std::str;

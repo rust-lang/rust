@@ -62,7 +62,7 @@ mod driver {
 
 mod util {
     mod common;
-    mod interner;
+    mod data;
 }
 
 auth front::creader::load_crate = unsafe;
