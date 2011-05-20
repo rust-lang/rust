@@ -129,17 +129,16 @@ mod ct {
         }
 
         auto n = (c - ('0' as u8)) as uint;
-        alt (peek_num(s, i + 1u, lim)) {
+        ret alt (peek_num(s, i + 1u, lim)) {
             case (none[tup(uint, uint)]) {
-                ret some[tup(uint, uint)](tup(n, i + 1u));
+                some[tup(uint, uint)](tup(n, i + 1u))
             }
             case (some[tup(uint, uint)](?next)) {
                 auto m = next._0;
                 auto j = next._1;
-                ret some[tup(uint, uint)](tup(n * 10u + m, j));
+                some[tup(uint, uint)](tup(n * 10u + m, j))
             }
-        }
-
+        };
     }
 
     fn parse_conversion(str s, uint i, uint lim) -> tup(piece, uint) {
@@ -162,21 +161,21 @@ mod ct {
         }
 
         auto num = peek_num(s, i, lim);
-        alt (num) {
+        ret alt (num) {
             case (none[tup(uint, uint)]) {
-                ret tup(none[int], i);
+                tup(none[int], i)
             }
             case (some[tup(uint, uint)](?t)) {
                 auto n = t._0;
                 auto j = t._1;
                 if (j < lim && s.(j) == '$' as u8) {
-                    ret tup(some[int](n as int), j + 1u);
+                    tup(some[int](n as int), j + 1u)
                 }
                 else {
-                    ret tup(none[int], i);
+                    tup(none[int], i)
                 }
             }
-        }
+        };
     }
 
     fn parse_flags(str s, uint i, uint lim) -> tup(vec[flag], uint) {
@@ -197,70 +196,66 @@ mod ct {
         auto more = bind more_(_, s, i, lim);
 
         auto f = s.(i);
-        if (f == ('-' as u8)) {
-            ret more(flag_left_justify);
+        ret if (f == ('-' as u8)) {
+            more(flag_left_justify)
         } else if (f == ('0' as u8)) {
-            ret more(flag_left_zero_pad);
+            more(flag_left_zero_pad)
         } else if (f == (' ' as u8)) {
-            ret more(flag_space_for_sign);
+            more(flag_space_for_sign)
         } else if (f == ('+' as u8)) {
-            ret more(flag_sign_always);
+            more(flag_sign_always)
         } else if (f == ('#' as u8)) {
-            ret more(flag_alternate);
+            more(flag_alternate)
         } else {
-            ret tup(noflags, i);
-        }
+            tup(noflags, i)
+        };
     }
 
     fn parse_count(str s, uint i, uint lim) -> tup(count, uint) {
-        if (i >= lim) {
-            ret tup(count_implied, i);
-        }
-
-        if (s.(i) == ('*' as u8)) {
+        ret if (i >= lim) {
+            tup(count_implied, i)
+        } else if (s.(i) == ('*' as u8)) {
             auto param = parse_parameter(s, i + 1u, lim);
             auto j = param._1;
             alt (param._0) {
                 case (none[int]) {
-                    ret tup(count_is_next_param, j);
+                    tup(count_is_next_param, j)
                 }
                 case (some[int](?n)) {
-                    ret tup(count_is_param(n), j);
+                    tup(count_is_param(n), j)
                 }
             }
         } else {
             auto num = peek_num(s, i, lim);
             alt (num) {
                 case (none[tup(uint, uint)]) {
-                    ret tup(count_implied, i);
+                    tup(count_implied, i)
                 }
                 case (some[tup(uint, uint)](?num)) {
-                    ret tup(count_is(num._0 as int), num._1);
+                    tup(count_is(num._0 as int), num._1)
                 }
             }
-        }
+        };
     }
 
     fn parse_precision(str s, uint i, uint lim) -> tup(count, uint) {
-        if (i >= lim) {
-            ret tup(count_implied, i);
-        }
-
-        if (s.(i) == '.' as u8) {
+        ret if (i >= lim) {
+            tup(count_implied, i)
+        } else if (s.(i) == '.' as u8) {
             auto count = parse_count(s, i + 1u, lim);
             // If there were no digits specified, i.e. the precision
             // was ".", then the precision is 0
             alt (count._0) {
                 case (count_implied) {
-                    ret tup(count_is(0), count._1);
+                    tup(count_is(0), count._1)
                 }
                 case (_) {
-                    ret count;
+                    count
                 }
             }
         } else {
-            ret tup(count_implied, i);
-        }
+            tup(count_implied, i)
+        };
     }
 
     fn parse_type(str s, uint i, uint lim) -> tup(ty, uint) {
@@ -269,33 +264,32 @@ mod ct {
             fail;
         }
 
-        auto t;
         auto tstr = str::substr(s, i, 1u);
-        if (str::eq(tstr, "b")) {
-            t = ty_bool;
+        auto t = if (str::eq(tstr, "b")) {
+            ty_bool
         } else if (str::eq(tstr, "s")) {
-            t = ty_str;
+            ty_str
         } else if (str::eq(tstr, "c")) {
-            t = ty_char;
+            ty_char
         } else if (str::eq(tstr, "d")
                    || str::eq(tstr, "i")) {
             // TODO: Do we really want two signed types here?
             // How important is it to be printf compatible?
-            t = ty_int(signed);
+            ty_int(signed)
         } else if (str::eq(tstr, "u")) {
-            t = ty_int(unsigned);
+            ty_int(unsigned)
         } else if (str::eq(tstr, "x")) {
-            t = ty_hex(case_lower);
+            ty_hex(case_lower)
         } else if (str::eq(tstr, "X")) {
-            t = ty_hex(case_upper);
+            ty_hex(case_upper)
         } else if (str::eq(tstr, "t")) {
-            t = ty_bits;
+            ty_bits
         } else if (str::eq(tstr, "o")) {
-            t = ty_octal;
+            ty_octal
         } else {
             log_err "unknown type in conversion";
-            fail;
-        }
+            fail
+        };
 
         ret tup(t, i + 1u);
     }
@@ -355,34 +349,32 @@ mod rt {
 
     fn conv_uint(&conv cv, uint u) -> str {
         auto prec = get_int_precision(cv);
-        auto res;
-        alt (cv.ty) {
+        auto res = alt (cv.ty) {
             case (ty_default) {
-                res = uint_to_str_prec(u, 10u, prec);
+                uint_to_str_prec(u, 10u, prec)
             }
             case (ty_hex_lower) {
-                res = uint_to_str_prec(u, 16u, prec);
+                uint_to_str_prec(u, 16u, prec)
             }
             case (ty_hex_upper) {
-                res = str::to_upper(uint_to_str_prec(u, 16u, prec));
+                str::to_upper(uint_to_str_prec(u, 16u, prec))
             }
             case (ty_bits) {
-                res = uint_to_str_prec(u, 2u, prec);
+                uint_to_str_prec(u, 2u, prec)
             }
             case (ty_octal) {
-                res = uint_to_str_prec(u, 8u, prec);
+                uint_to_str_prec(u, 8u, prec)
             }
-        }
+        };
         ret pad(cv, res, pad_unsigned);
     }
 
     fn conv_bool(&conv cv, bool b) -> str {
-        auto s;
-        if (b) {
-            s = "true";
+        auto s = if (b) {
+            "true"
         } else {
-            s = "false";
-        }
+            "false"
+        };
         // run the boolean conversion through the string conversion logic,
         // giving it the same rules for precision, etc.
         ret conv_str(cv, s);
@@ -393,61 +385,61 @@ mod rt {
     }
 
     fn conv_str(&conv cv, str s) -> str {
-        auto unpadded = s;
-        alt (cv.precision) {
+        auto unpadded = alt (cv.precision) {
             case (count_implied) {
+                s
             }
             case (count_is(?max)) {
                 // For strings, precision is the maximum characters displayed
                 if (max as uint < str::char_len(s)) {
                     // FIXME: substr works on bytes, not chars!
-                    unpadded = str::substr(s, 0u, max as uint);
+                    str::substr(s, 0u, max as uint)
+                } else {
+                    s
                 }
             }
-        }
+        };
         ret pad(cv, unpadded, pad_nozero);
     }
 
     // Convert an int to string with minimum number of digits. If precision is
     // 0 and num is 0 then the result is the empty string.
     fn int_to_str_prec(int num, uint radix, uint prec) -> str {
-        if (num < 0) {
-            ret "-" + uint_to_str_prec((-num) as uint, radix, prec);
+        ret if (num < 0) {
+            "-" + uint_to_str_prec((-num) as uint, radix, prec)
         } else {
-            ret uint_to_str_prec(num as uint, radix, prec);
-        }
+            uint_to_str_prec(num as uint, radix, prec)
+        };
     }
 
     // Convert a uint to string with a minimum number of digits.  If precision
     // is 0 and num is 0 then the result is the empty string. Could move this
     // to uint: but it doesn't seem all that useful.
     fn uint_to_str_prec(uint num, uint radix, uint prec) -> str {
-        auto s;
-
-        if (prec == 0u && num == 0u) {
-            s = "";
+        ret if (prec == 0u && num == 0u) {
+            ""
         } else {
-            s = uint::to_str(num, radix);
+            auto s = uint::to_str(num, radix);
             auto len = str::char_len(s);
             if (len < prec) {
                 auto diff = prec - len;
                 auto pad = str_init_elt('0', diff);
-                s = pad + s;
+                pad + s
+            } else {
+                s
             }
-        }
-
-        ret s;
+        };
     }
 
     fn get_int_precision(&conv cv) -> uint {
-        alt (cv.precision) {
+        ret alt (cv.precision) {
             case (count_is(?c)) {
-                ret c as uint;
+                c as uint
             }
             case (count_implied) {
-                ret 1u;
+                1u
             }
-        }
+        };
     }
 
     // FIXME: This might be useful in str: but needs to be utf8 safe first
@@ -505,14 +497,14 @@ mod rt {
         }
 
         fn have_precision(&conv cv) -> bool {
-            alt (cv.precision) {
+            ret alt (cv.precision) {
                 case (count_implied) {
-                    ret false;
+                    false
                 }
                 case (_) {
-                    ret true;
+                    true
                 }
-            }
+            };
         }
 
         auto zero_padding = false;
