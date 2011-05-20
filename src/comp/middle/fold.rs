@@ -67,7 +67,7 @@ type ast_fold[ENV] =
      (fn(&ENV e, &span sp,
          ast::proto proto,
          &vec[rec(ast::mode mode, @ty ty)] inputs,
-         &@ty output) -> @ty)                     fold_ty_fn,
+         &@ty output, &controlflow cf) -> @ty)    fold_ty_fn,
 
      (fn(&ENV e, &span sp, &ast::path p,
          &ann a) -> @ty)                          fold_ty_path,
@@ -423,12 +423,12 @@ fn fold_ty[ENV](&ENV env, &ast_fold[ENV] fld, &@ty t) -> @ty {
             let vec[ast::ty_method] meths_ = [];
             for (ast::ty_method m in meths) {
                 auto tfn = fold_ty_fn(env_, fld, t.span, m.proto,
-                                      m.inputs, m.output);
+                                      m.inputs, m.output, m.cf);
                 alt (tfn.node) {
-                    case (ast::ty_fn(?p, ?ins, ?out)) {
+                    case (ast::ty_fn(?p, ?ins, ?out, ?cf)) {
                         vec::push[ast::ty_method]
                             (meths_, rec(proto=p, inputs=ins,
-                                         output=out with m));
+                                         output=out, cf=cf with m));
                     }
                 }
             }
@@ -440,8 +440,8 @@ fn fold_ty[ENV](&ENV env, &ast_fold[ENV] fld, &@ty t) -> @ty {
             ret fld.fold_ty_path(env_, t.span, pth_, ann);
         }
 
-        case (ast::ty_fn(?proto, ?inputs, ?output)) {
-            ret fold_ty_fn(env_, fld, t.span, proto, inputs, output);
+        case (ast::ty_fn(?proto, ?inputs, ?output, ?cf)) {
+            ret fold_ty_fn(env_, fld, t.span, proto, inputs, output, cf);
         }
 
         case (ast::ty_chan(?ty)) {
@@ -459,7 +459,7 @@ fn fold_ty[ENV](&ENV env, &ast_fold[ENV] fld, &@ty t) -> @ty {
 fn fold_ty_fn[ENV](&ENV env, &ast_fold[ENV] fld, &span sp,
                    ast::proto proto,
                    &vec[rec(ast::mode mode, @ty ty)] inputs,
-                   &@ty output) -> @ty {
+                   &@ty output, &controlflow cf) -> @ty {
     auto output_ = fold_ty(env, fld, output);
     let vec[rec(ast::mode mode, @ty ty)] inputs_ = [];
     for (rec(ast::mode mode, @ty ty) input in inputs) {
@@ -467,7 +467,7 @@ fn fold_ty_fn[ENV](&ENV env, &ast_fold[ENV] fld, &span sp,
         auto input_ = rec(ty=ty_ with input);
         inputs_ += [input_];
     }
-    ret fld.fold_ty_fn(env, sp, proto, inputs_, output_);
+    ret fld.fold_ty_fn(env, sp, proto, inputs_, output_, cf);
 }
 
 fn fold_decl[ENV](&ENV env, &ast_fold[ENV] fld, &@decl d) -> @decl {
@@ -1264,8 +1264,8 @@ fn identity_fold_ty_obj[ENV](&ENV env, &span sp,
 fn identity_fold_ty_fn[ENV](&ENV env, &span sp,
                             ast::proto proto,
                             &vec[rec(ast::mode mode, @ty ty)] inputs,
-                            &@ty output) -> @ty {
-    ret @respan(sp, ast::ty_fn(proto, inputs, output));
+                            &@ty output, &controlflow cf) -> @ty {
+    ret @respan(sp, ast::ty_fn(proto, inputs, output, cf));
 }
 
 fn identity_fold_ty_path[ENV](&ENV env, &span sp, &ast::path p,
@@ -1742,7 +1742,7 @@ fn new_identity_fold[ENV]() -> ast_fold[ENV] {
          fold_ty_tup     = bind identity_fold_ty_tup[ENV](_,_,_),
          fold_ty_rec     = bind identity_fold_ty_rec[ENV](_,_,_),
          fold_ty_obj     = bind identity_fold_ty_obj[ENV](_,_,_),
-         fold_ty_fn      = bind identity_fold_ty_fn[ENV](_,_,_,_,_),
+         fold_ty_fn      = bind identity_fold_ty_fn[ENV](_,_,_,_,_,_),
          fold_ty_path    = bind identity_fold_ty_path[ENV](_,_,_,_),
          fold_ty_chan    = bind identity_fold_ty_chan[ENV](_,_,_),
          fold_ty_port    = bind identity_fold_ty_port[ENV](_,_,_),

@@ -144,6 +144,7 @@ mod Encode {
     fn enc_sty(&io::writer w, &@ctxt cx, &ty::sty st) {
         alt (st) {
             case (ty::ty_nil) { w.write_char('n'); }
+            case (ty::ty_bot) { w.write_char('z'); }
             case (ty::ty_bool) { w.write_char('b'); }
             case (ty::ty_int) { w.write_char('i'); }
             case (ty::ty_uint) { w.write_char('u'); }
@@ -193,9 +194,9 @@ mod Encode {
                 }
                 w.write_char(']');
             }
-            case (ty::ty_fn(?proto,?args,?out)) {
+            case (ty::ty_fn(?proto,?args,?out,?cf)) {
                 enc_proto(w, proto);
-                enc_ty_fn(w, cx, args, out);
+                enc_ty_fn(w, cx, args, out, cf);
             }
             case (ty::ty_native_fn(?abi,?args,?out)) {
                 w.write_char('N');
@@ -207,14 +208,14 @@ mod Encode {
                     case (ast::native_abi_cdecl) { w.write_char('c'); }
                     case (ast::native_abi_llvm) { w.write_char('l'); }
                 }
-                enc_ty_fn(w, cx, args, out);
+                enc_ty_fn(w, cx, args, out, ast::return);
             }
             case (ty::ty_obj(?methods)) {
                 w.write_str("O[");
                 for (ty::method m in methods) {
                     enc_proto(w, m.proto);
                     w.write_str(m.ident);
-                    enc_ty_fn(w, cx, m.inputs, m.output);
+                    enc_ty_fn(w, cx, m.inputs, m.output, m.cf);
                 }
                 w.write_char(']');
             }
@@ -250,14 +251,22 @@ mod Encode {
         }
     }
 
-    fn enc_ty_fn(&io::writer w, &@ctxt cx, &vec[ty::arg] args, &ty::t out) {
+    fn enc_ty_fn(&io::writer w, &@ctxt cx, &vec[ty::arg] args, &ty::t out,
+                 &ast::controlflow cf) {
         w.write_char('[');
         for (ty::arg arg in args) {
             if (arg.mode == ty::mo_alias) { w.write_char('&'); }
             enc_ty(w, cx, arg.ty);
         }
         w.write_char(']');
-        enc_ty(w, cx, out);
+        alt (cf) {
+            case (ast::noreturn) {
+                w.write_char('!');
+            }
+            case (_) {
+                enc_ty(w, cx, out);
+            }
+        }
     }
 
 }

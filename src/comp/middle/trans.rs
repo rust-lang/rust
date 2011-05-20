@@ -807,7 +807,7 @@ fn type_of_inner(&@crate_ctxt cx, &ast::span sp, &ty::t t) -> TypeRef {
             }
             llty = T_struct(tys);
         }
-        case (ty::ty_fn(?proto, ?args, ?out)) {
+        case (ty::ty_fn(?proto, ?args, ?out, _)) {
             llty = T_fn_pair(cx.tn, type_of_fn(cx, sp, proto, args, out, 0u));
         }
         case (ty::ty_native_fn(?abi, ?args, ?out)) {
@@ -882,7 +882,7 @@ fn type_of_arg(@local_ctxt cx, &ast::span sp, &ty::arg arg) -> TypeRef {
 fn type_of_ty_param_count_and_ty(@local_ctxt lcx, &ast::span sp,
                                  &ty::ty_param_count_and_ty tpt) -> TypeRef {
     alt (ty::struct(lcx.ccx.tcx, tpt._1)) {
-        case (ty::ty_fn(?proto, ?inputs, ?output)) {
+        case (ty::ty_fn(?proto, ?inputs, ?output, _)) {
             auto llfnty = type_of_fn(lcx.ccx, sp, proto,
                                      inputs, output, tpt._0);
             ret T_fn_pair(lcx.ccx.tn, llfnty);
@@ -2114,7 +2114,7 @@ fn make_free_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
             rslt = trans_non_gc_free(cx_, b);
         }
 
-        case (ty::ty_fn(_,_,_)) {
+        case (ty::ty_fn(_,_,_,_)) {
 
             auto box_cell =
                 cx.build.GEP(v0,
@@ -2186,7 +2186,7 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
             rslt = decr_refcnt_maybe_free(cx, box_cell, v0, t);
         }
 
-        case (ty::ty_fn(_,_,_)) {
+        case (ty::ty_fn(_,_,_,_)) {
 
             auto box_cell =
                 cx.build.GEP(v0,
@@ -2650,7 +2650,7 @@ fn iter_structural_ty_full(&@block_ctxt cx,
                     // N-ary variant.
                     auto fn_ty = variant.ctor_ty;
                     alt (ty::struct(bcx.fcx.lcx.ccx.tcx, fn_ty)) {
-                        case (ty::ty_fn(_, ?args, _)) {
+                        case (ty::ty_fn(_, ?args, _, _)) {
                             auto j = 0;
                             for (ty::arg a in args) {
                                 auto v = [C_int(0), C_int(j as int)];
@@ -2700,7 +2700,7 @@ fn iter_structural_ty_full(&@block_ctxt cx,
 
             ret res(next_cx, C_nil());
         }
-        case (ty::ty_fn(_,_,_)) {
+        case (ty::ty_fn(_,_,_,_)) {
             auto box_cell_a =
                 cx.build.GEP(av,
                              [C_int(0),
@@ -4386,7 +4386,7 @@ fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
         case (ast::def_variant(?tid, ?vid)) {
             auto v_tyt = ty::lookup_item_type(cx.fcx.lcx.ccx.tcx, vid);
             alt (ty::struct(cx.fcx.lcx.ccx.tcx, v_tyt._1)) {
-                case (ty::ty_fn(_, _, _)) {
+                case (ty::ty_fn(_, _, _, _)) {
                     // N-ary variant.
                     ret lval_generic_fn(cx, v_tyt, vid, ann);
                 }
@@ -4429,7 +4429,7 @@ fn trans_path(&@block_ctxt cx, &ast::path p, &ast::ann ann) -> lval_result {
             ret lval_generic_fn(cx, tyt, did, ann);
         }
         case (_) {
-            cx.fcx.lcx.ccx.sess.unimpl("def variant in trans");
+            cx.fcx.lcx.ccx.sess.span_unimpl(cx.sp, "def variant in trans");
         }
     }
 }
@@ -6578,7 +6578,7 @@ fn is_terminated(&@block_ctxt cx) -> bool {
 
 fn arg_tys_of_fn(&@crate_ctxt ccx, ast::ann ann) -> vec[ty::arg] {
     alt (ty::struct(ccx.tcx, ty::ann_to_type(ccx.tcx.node_types, ann))) {
-        case (ty::ty_fn(_, ?arg_tys, _)) {
+        case (ty::ty_fn(_, ?arg_tys, _, _)) {
             ret arg_tys;
         }
     }
@@ -6587,7 +6587,7 @@ fn arg_tys_of_fn(&@crate_ctxt ccx, ast::ann ann) -> vec[ty::arg] {
 
 fn ret_ty_of_fn_ty(&@crate_ctxt ccx, ty::t t) -> ty::t {
     alt (ty::struct(ccx.tcx, t)) {
-        case (ty::ty_fn(_, _, ?ret_ty)) {
+        case (ty::ty_fn(_, _, ?ret_ty, _)) {
             ret ret_ty;
         }
     }
@@ -6739,7 +6739,7 @@ fn trans_vtbl(@local_ctxt cx,
 
         auto llfnty = T_nil();
         alt (ty::struct(cx.ccx.tcx, node_ann_type(cx.ccx, m.node.ann))) {
-            case (ty::ty_fn(?proto, ?inputs, ?output)) {
+            case (ty::ty_fn(?proto, ?inputs, ?output, _)) {
                 llfnty = type_of_fn_full(cx.ccx, m.span, proto,
                                          some[TypeRef](llself_ty),
                                          inputs, output,
@@ -7099,7 +7099,7 @@ fn decl_fn_and_pair(&@crate_ctxt ccx, &ast::span sp,
     auto llfty;
     auto llpairty;
     alt (ty::struct(ccx.tcx, node_ann_type(ccx, ann))) {
-        case (ty::ty_fn(?proto, ?inputs, ?output)) {
+        case (ty::ty_fn(?proto, ?inputs, ?output, _)) {
             llfty = type_of_fn(ccx, sp, proto, inputs, output,
                                vec::len[ast::ty_param](ty_params));
             llpairty = T_fn_pair(ccx.tn, llfty);

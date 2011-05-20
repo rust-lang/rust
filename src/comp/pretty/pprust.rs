@@ -137,6 +137,7 @@ fn print_type(ps s, &@ast::ty ty) {
     alt (ty.node) {
         case (ast::ty_nil) {wrd(s.s, "()");}
         case (ast::ty_bool) {wrd(s.s, "bool");}
+        case (ast::ty_bot) {wrd(s.s, "_|_");}
         case (ast::ty_int) {wrd(s.s, "int");}
         case (ast::ty_uint) {wrd(s.s, "uint");}
         case (ast::ty_float) {wrd(s.s, "float");}
@@ -188,15 +189,15 @@ fn print_type(ps s, &@ast::ty ty) {
             for (ast::ty_method m in methods) {
                 hbox(s);
                 print_ty_fn(s, m.proto, option::some[str](m.ident),
-                            m.inputs, m.output);
+                            m.inputs, m.output, m.cf);
                 wrd(s.s, ";");
                 end(s.s);
                 line(s.s);
             }
             bclose_c(s, ty.span);
         }
-        case (ast::ty_fn(?proto,?inputs,?output)) {
-            print_ty_fn(s, proto, option::none[str], inputs, output);
+        case (ast::ty_fn(?proto,?inputs,?output,?cf)) {
+            print_ty_fn(s, proto, option::none[str], inputs, output, cf);
         }
         case (ast::ty_path(?path,_)) {
             print_path(s, path);
@@ -978,7 +979,8 @@ fn print_string(ps s, str st) {
 }
 
 fn print_ty_fn(ps s, ast::proto proto, option::t[str] id,
-               vec[ast::ty_arg] inputs, @ast::ty output) {
+               vec[ast::ty_arg] inputs, @ast::ty output,
+               ast::controlflow cf) {
     if (proto == ast::proto_fn) {wrd(s.s, "fn");}
     else {wrd(s.s, "iter");}
     alt (id) {
@@ -998,7 +1000,14 @@ fn print_ty_fn(ps s, ast::proto proto, option::t[str] id,
         space(s.s);
         hbox(s);
         wrd1(s, "->");
-        print_type(s, output);
+        alt (cf) {
+            case (ast::return) {
+                print_type(s, output);
+            }
+            case (ast::noreturn) {
+                wrd1(s, "!");
+            }
+        }
         end(s.s);
     }
 }
