@@ -3053,7 +3053,7 @@ fn call_cmp_glue(&@block_ctxt cx,
 }
 
 fn take_ty(&@block_ctxt cx, ValueRef v, ty::t t) -> result {
-    if (!ty::type_is_scalar(cx.fcx.lcx.ccx.tcx, t)) {
+    if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t)) {
         ret call_tydesc_glue(cx, v, t, false, abi::tydesc_field_take_glue);
     }
     ret res(cx, C_nil());
