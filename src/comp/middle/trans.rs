@@ -1777,6 +1777,25 @@ fn get_static_tydesc(&@block_ctxt cx,
     }
 }
 
+fn set_no_inline(ValueRef f) {
+    llvm::LLVMAddFunctionAttr(f, lib::llvm::LLVMNoInlineAttribute as
+                              lib::llvm::llvm::Attribute);
+}
+
+fn set_always_inline(ValueRef f) {
+    llvm::LLVMAddFunctionAttr(f, lib::llvm::LLVMAlwaysInlineAttribute as
+                              lib::llvm::llvm::Attribute);
+}
+
+fn set_glue_inlining(&@local_ctxt cx, ValueRef f, &ty::t t) {
+    if (ty::type_is_structural(cx.ccx.tcx, t)) {
+        set_no_inline(f);
+    } else {
+        set_always_inline(f);
+    }
+}
+
+
 // Generates the declaration for (but doesn't emit) a type descriptor.
 fn declare_tydesc(&@local_ctxt cx, &ast::span sp, &ty::t t,
                   vec[uint] ty_params) -> @tydesc_info {
@@ -1838,6 +1857,7 @@ fn declare_generic_glue(&@local_ctxt cx,
         fn_nm = mangle_name_by_seq(cx.ccx, cx.path,  "glue_" + name);
     }
     auto llfn = decl_fastcall_fn(cx.ccx.llmod, fn_nm, llfnty);
+    set_glue_inlining(cx, llfn, t);
     ret llfn;
 }
 
@@ -2916,10 +2936,6 @@ fn lazily_emit_tydesc_glue(&@block_ctxt cx, int field,
                             declare_generic_glue(lcx, ti.ty,
                                                  T_glue_fn(lcx.ccx.tn),
                                                  "free");
-                        // Don't inline free glue; it's cold.
-                        llvm::LLVMAddFunctionAttr(glue_fn,
-                            lib::llvm::LLVMNoInlineAttribute as
-                            lib::llvm::llvm::Attribute);
 
                         ti.free_glue = some[ValueRef](glue_fn);
                         auto dg = make_free_glue;
@@ -2976,10 +2992,10 @@ fn call_tydesc_glue_full(&@block_ctxt cx, ValueRef v,
 }
 
 fn call_tydesc_glue(&@block_ctxt cx, ValueRef v,
-                    &ty::t t, bool escapes, int field) -> result {
+                    &ty::t t, int field) -> result {
 
     let option::t[@tydesc_info] ti = none[@tydesc_info];
-    auto td = get_tydesc(cx, t, escapes, ti);
+    auto td = get_tydesc(cx, t, false, ti);
 
     call_tydesc_glue_full(td.bcx,
                           spill_if_immediate(td.bcx, v, t),
@@ -3054,7 +3070,7 @@ fn call_cmp_glue(&@block_ctxt cx,
 
 fn take_ty(&@block_ctxt cx, ValueRef v, ty::t t) -> result {
     if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t)) {
-        ret call_tydesc_glue(cx, v, t, false, abi::tydesc_field_take_glue);
+        ret call_tydesc_glue(cx, v, t, abi::tydesc_field_take_glue);
     }
     ret res(cx, C_nil());
 }
@@ -3076,7 +3092,7 @@ fn drop_ty(&@block_ctxt cx,
            ty::t t) -> result {
 
     if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t)) {
-        ret call_tydesc_glue(cx, v, t, false, abi::tydesc_field_drop_glue);
+        ret call_tydesc_glue(cx, v, t, abi::tydesc_field_drop_glue);
     }
     ret res(cx, C_nil());
 }
@@ -3086,7 +3102,7 @@ fn free_ty(&@block_ctxt cx,
            ty::t t) -> result {
 
     if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t)) {
-        ret call_tydesc_glue(cx, v, t, false, abi::tydesc_field_free_glue);
+        ret call_tydesc_glue(cx, v, t, abi::tydesc_field_free_glue);
     }
     ret res(cx, C_nil());
 }
