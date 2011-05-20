@@ -538,10 +538,11 @@ upcall_get_type_desc(rust_task *task,
 }
 
 extern "C" CDECL rust_task *
-upcall_new_task(rust_task *spawner, const char *name) {
+upcall_new_task(rust_task *spawner, rust_vec *name) {
+    // name is a rust string structure.
     LOG_UPCALL_ENTRY(spawner);
     rust_dom *dom = spawner->dom;
-    rust_task *task = dom->create_task(spawner, name);
+    rust_task *task = dom->create_task(spawner, (const char *)name->data);
     return task;
 }
 

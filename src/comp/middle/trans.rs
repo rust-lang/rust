@@ -5903,7 +5903,8 @@ fn trans_spawn(&@block_ctxt cx,
     };
 
     // dump a bunch of information
-    log_err "Spawn";
+    log_err "Translating Spawn " +
+        "(The compiled program is not actually running yet, don't worry!";
     log_err #fmt("task name: %s", tname);
 
     // Generate code
@@ -5920,6 +5921,8 @@ fn trans_spawn(&@block_ctxt cx,
     // 
     // 4. Pass a pointer to the spawnee function and the argument tuple to
     // upcall_start_task.
+    //
+    // 5. Oh yeah, we have to create the task before we start it...
     
     // Translate the arguments, remembering their types and where the values
     // ended up.
@@ -5961,6 +5964,23 @@ fn trans_spawn(&@block_ctxt cx,
 
     // Now we're ready to do the upcall.
 
+    // But first, we'll create a task.
+    let ValueRef lltname = C_str(bcx.fcx.lcx.ccx, tname);
+    log_err #fmt("ty(new_task) = %s",
+                 val_str(bcx.fcx.lcx.ccx.tn, 
+                         bcx.fcx.lcx.ccx.upcalls.new_task));
+    log_err #fmt("ty(lltaskptr) = %s",
+                 val_str(bcx.fcx.lcx.ccx.tn, 
+                         bcx.fcx.lltaskptr));
+    log_err #fmt("ty(lltname) = %s",
+                 val_str(bcx.fcx.lcx.ccx.tn, 
+                         lltname));
+
+    log_err "Building upcall_new_task";
+    auto new_task = bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.new_task,
+                              [bcx.fcx.lltaskptr, lltname]);
+    log_err "Done";
+
     alt(dom) {
         case(ast::dom_implicit) {
             // TODO
@@ -5975,6 +5995,8 @@ fn trans_spawn(&@block_ctxt cx,
             fail;
         }
     }
+
+    ret res(bcx, new_task);
 }
 
 fn trans_send(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
