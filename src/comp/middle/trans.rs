@@ -5544,7 +5544,7 @@ fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
         }
 
         case (ast::expr_spawn(?dom, ?name, ?func, ?args, ?ann)) {
-            ret trans_spawn(dom, name, func, args, ann);
+            ret trans_spawn(cx, dom, name, func, args, ann);
         }
 
         case (_) {
@@ -5883,9 +5883,12 @@ fn trans_chan(&@block_ctxt cx, &@ast::expr e, &ast::ann ann) -> result {
     ret res(bcx, chan_val);
 }
 
-fn trans_spawn(&ast::spawn_dom dom, &option::t[str] name,
+fn trans_spawn(&@block_ctxt cx,
+               &ast::spawn_dom dom, &option::t[str] name,
                &@ast::expr func, &vec[@ast::expr] args, 
                &ast::ann ann) -> result {
+    auto bcx = cx;
+
     // Make the task name
     auto tname = alt(name) {
         case(none) {
@@ -5913,22 +5916,62 @@ fn trans_spawn(&ast::spawn_dom dom, &option::t[str] name,
     // 2. Alloca a tuple that holds these arguments (they must be in reverse
     // order, so that they match the expected stack layout for the spawnee)
     //
-    // 3. Fill the tutple with the arguments we evaluated.
+    // 3. Fill the tuple with the arguments we evaluated.
     // 
     // 4. Pass a pointer to the spawnee function and the argument tuple to
     // upcall_start_task.
     
+    // Translate the arguments, remembering their types and where the values
+    // ended up.
+    let vec[ty::t] arg_tys = [];
+    let vec[ValueRef] arg_vals = [];
+    for(@ast::expr e in args) {
+        auto arg = trans_expr(bcx, e);
+        
+        bcx = arg.bcx;
+
+        vec::push[ValueRef](arg_vals, arg.val);
+        vec::push[ty::t](arg_tys,
+                         ty::expr_ty(cx.fcx.lcx.ccx.tcx,
+                                     e));
+    }
+
+    // Make the tuple. We have to reverse the types first though.
+    vec::reverse[ty::t](arg_tys);
+    vec::reverse[ValueRef](arg_vals);
+    auto args_ty = ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, arg_tys);
     
+    // Allocate and fill the tuple.
+    auto llargs = alloc_ty(bcx, args_ty);
+
+    auto i = vec::len[ValueRef](arg_vals) - 1u;
+    for(ValueRef v in arg_vals) {
+        // log_err #fmt("ty(llargs) = %s", 
+        //              val_str(bcx.fcx.lcx.ccx.tn, llargs.val));
+        auto target = bcx.build.GEP(llargs.val, [C_int(0), C_int(i as int)]);
+        
+        // log_err #fmt("ty(v) = %s", val_str(bcx.fcx.lcx.ccx.tn, v));
+        // log_err #fmt("ty(target) = %s", 
+        //              val_str(bcx.fcx.lcx.ccx.tn, target));
+
+        bcx.build.Store(v, target);
+
+        i -= 1u;
+    }
+
+    // Now we're ready to do the upcall.
+
     alt(dom) {
         case(ast::dom_implicit) {
             // TODO
             log_err "Spawning implicit domain tasks is not implemented.";
-            fail;
+            //fail;
         }
 
         case(ast::dom_thread) {
             // TODO
             log_err "Spawining new thread tasks is not implemented.";
+            // TODO: for now use the normal unimpl thing.
             fail;
         }
     }
