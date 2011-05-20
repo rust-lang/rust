@@ -1,6 +1,6 @@
 // xfail-stage0
-// xfail-stage1
-// xfail-stage2
+
+// Regression test for issue #388
 
 fn main() {
   auto x = if (false) {

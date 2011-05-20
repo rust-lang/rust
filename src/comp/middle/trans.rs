@@ -3670,15 +3670,18 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond,
     alt (els) {
         case (some[@ast::expr](?elexpr)) {
             alt (elexpr.node) {
-                case (ast::expr_if(?cond, ?thn, ?els, _)) {
-                    else_res = trans_if(else_cx, cond, thn, els);
-                    // The if expression may need to use the else context to
-                    // drop the refcount of its result so we need to run the
-                    // cleanups
-                    auto bcx = else_res.bcx;
-                    bcx = trans_block_cleanups(bcx,
-                                               find_scope_cx(bcx));
-                    else_res = res(bcx, else_res.val);
+                case (ast::expr_if(_, _, _, ?ann)) {
+                    // Synthesize a block here to act as the else block
+                    // containing an if expression. Needed in order for the
+                    // else scope to behave like a normal block scope. A tad
+                    // ugly.
+                    let ast::block_ elseif_blk_
+                        = rec(stmts = [],
+                              expr = some[@ast::expr](elexpr),
+                              a = ann);
+                    auto elseif_blk = rec(node = elseif_blk_,
+                                          span = elexpr.span);
+                    else_res = trans_block(else_cx, elseif_blk);
                 }
                 case (ast::expr_block(?blk, _)) {
                     // Calling trans_block directly instead of trans_expr
