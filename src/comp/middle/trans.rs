@@ -5543,6 +5543,10 @@ fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
             ret trans_recv(cx, lhs, rhs, ann);
         }
 
+        case (ast::expr_spawn(?dom, ?name, ?func, ?args, ?ann)) {
+            ret trans_spawn(cx, dom, name, func, args, ann);
+        }
+
         case (_) {
             // The expression is an lvalue. Fall through.
         }
@@ -5879,9 +5883,166 @@ fn trans_chan(&@block_ctxt cx, &@ast::expr e, &ast::ann ann) -> result {
     ret res(bcx, chan_val);
 }
 
+fn trans_spawn(&@block_ctxt cx,
+               &ast::spawn_dom dom, &option::t[str] name,
+               &@ast::expr func, &vec[@ast::expr] args, 
+               &ast::ann ann) -> result {
+    auto bcx = cx;
+
+    // Make the task name
+    auto tname = alt(name) {
+        case(none) {
+            auto argss = vec::map(common::expr_to_str, args);
+            #fmt("%s(%s)",
+                 common::expr_to_str(func),
+                 str::connect(argss, ", "))
+        }
+        case(some[str](?n)) {
+            n
+        }
+    };
+
+    // dump a bunch of information
+    log_err "Translating Spawn " +
+        "(The compiled program is not actually running yet, don't worry!";
+    log_err #fmt("task name: %s", tname);
+
+    // Generate code
+    //
+    // This is a several step process. The following things need to happen
+    // (not necessarily in order):
+    //
+    // 1. Evaluate all the arguments to the spawnee.
+    //
+    // 2. Alloca a tuple that holds these arguments (they must be in reverse
+    // order, so that they match the expected stack layout for the spawnee)
+    //
+    // 3. Fill the tuple with the arguments we evaluated.
+    // 
+    // 4. Pass a pointer to the spawnee function and the argument tuple to
+    // upcall_start_task.
+    //
+    // 5. Oh yeah, we have to create the task before we start it...
+    
+    // Translate the arguments, remembering their types and where the values
+    // ended up.
+    let vec[ty::t] arg_tys = [];
+    let vec[ValueRef] arg_vals = [];
+    for(@ast::expr e in args) {
+        auto arg = trans_expr(bcx, e);
+        
+        bcx = arg.bcx;
+
+        vec::push[ValueRef](arg_vals, arg.val);
+        vec::push[ty::t](arg_tys,
+                         ty::expr_ty(cx.fcx.lcx.ccx.tcx,
+                                     e));
+    }
+
+    // Make the tuple. We have to reverse the types first though.
+    vec::reverse[ty::t](arg_tys);
+    vec::reverse[ValueRef](arg_vals);
+    auto args_ty = ty::mk_imm_tup(cx.fcx.lcx.ccx.tcx, arg_tys);
+    
+    // Allocate and fill the tuple.
+    auto llargs = alloc_ty(bcx, args_ty);
+
+    auto i = vec::len[ValueRef](arg_vals) - 1u;
+    for(ValueRef v in arg_vals) {
+        // log_err #fmt("ty(llargs) = %s", 
+        //              val_str(bcx.fcx.lcx.ccx.tn, llargs.val));
+        auto target = bcx.build.GEP(llargs.val, [C_int(0), C_int(i as int)]);
+        
+        // log_err #fmt("ty(v) = %s", val_str(bcx.fcx.lcx.ccx.tn, v));
+        // log_err #fmt("ty(target) = %s", 
+        //              val_str(bcx.fcx.lcx.ccx.tn, target));
+
+        bcx.build.Store(v, target);
+
+        i -= 1u;
+    }
+
+    // Now we're ready to do the upcall.
+
+    // But first, we'll create a task.
+    let ValueRef lltname = C_str(bcx.fcx.lcx.ccx, tname);
+    log_err #fmt("ty(new_task) = %s",
+                 val_str(bcx.fcx.lcx.ccx.tn, 
+                         bcx.fcx.lcx.ccx.upcalls.new_task));
+    log_err #fmt("ty(lltaskptr) = %s",
+                 val_str(bcx.fcx.lcx.ccx.tn, 
+                         bcx.fcx.lltaskptr));
+    log_err #fmt("ty(lltname) = %s",
+                 val_str(bcx.fcx.lcx.ccx.tn, 
+                         lltname));
+
+    log_err "Building upcall_new_task";
+    auto new_task = bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.new_task,
+                              [bcx.fcx.lltaskptr, lltname]);
+    log_err "Done";
+
+    // Okay, start the task.
+    // First we find the function
+    auto fnptr = trans_lval(bcx, func).res;
+    bcx = fnptr.bcx;
+    
+    auto num_args = vec::len[@ast::expr](args);
+
+    auto llfnptr = bcx.build.GEP(fnptr.val,
+                                 [C_int(0), C_int(0)]);
+    log_err "Casting llfnptr";
+    auto llfnptr_i = bcx.build.PointerCast(llfnptr,
+                                    T_int());
+    log_err "Cassting llargs";
+    auto llargs_i = bcx.build.PointerCast(llargs.val,
+                                   T_int());
+
+    log_err "Building call to start_task";
+    log_err #fmt("ty(start_task) = %s", 
+                 val_str(bcx.fcx.lcx.ccx.tn,
+                         bcx.fcx.lcx.ccx.upcalls.start_task));
+    log_err #fmt("ty(lltaskptr) = %s", 
+                 val_str(bcx.fcx.lcx.ccx.tn,
+                         bcx.fcx.lltaskptr));
+    log_err #fmt("ty(new_task) = %s", 
+                 val_str(bcx.fcx.lcx.ccx.tn,
+                         new_task));
+    log_err #fmt("ty(llfnptr) = %s", 
+                 val_str(bcx.fcx.lcx.ccx.tn,
+                         llfnptr_i));
+    log_err #fmt("ty(llargs) = %s", 
+                 val_str(bcx.fcx.lcx.ccx.tn,
+                         llargs_i));
+    log_err #fmt("ty(num_args) = %s", 
+                 val_str(bcx.fcx.lcx.ccx.tn,
+                         C_int(num_args as int)));
+    bcx.build.Call(bcx.fcx.lcx.ccx.upcalls.start_task,
+                   [bcx.fcx.lltaskptr, new_task,
+                    llfnptr_i, llargs_i, C_int(num_args as int)]);
+    log_err "Done";
+
+    /*
+    alt(dom) {
+        case(ast::dom_implicit) {
+            // TODO
+            log_err "Spawning implicit domain tasks is not implemented.";
+            //fail;
+        }
+
+        case(ast::dom_thread) {
+            // TODO
+            log_err "Spawining new thread tasks is not implemented.";
+            // TODO: for now use the normal unimpl thing.
+            fail;
+        }
+    }
+    */
+
+    ret res(bcx, new_task);
+}
+
 fn trans_send(&@block_ctxt cx, &@ast::expr lhs, &@ast::expr rhs,
               &ast::ann ann) -> result {
-
     auto bcx = cx;
     auto chn = trans_expr(bcx, lhs);
     bcx = chn.bcx;
