@@ -2183,29 +2183,58 @@ fn parse_use(&parser p) -> @ast::view_item {
 }
 
 fn parse_rest_import_name(&parser p, ast::ident first,
-                                 option::t[ast::ident] def_ident)
+                          option::t[ast::ident] def_ident)
         -> @ast::view_item {
     auto lo = p.get_lo_pos();
     let vec[ast::ident] identifiers = [first];
-    while (p.peek() != token::SEMI) {
-        expect(p, token::MOD_SEP);
-        auto i = parse_ident(p);
-        identifiers += [i];
+    let bool glob = false;
+
+    while (true) {
+        alt (p.peek()) {
+            case (token::SEMI) {
+                p.bump();
+                break;
+            }
+            case (token::MOD_SEP) {
+                if (glob) { p.err("cannot path into a glob"); }
+                p.bump();
+            }
+            case (_) { p.err("expecting '::' or ';'"); }
+        }
+        alt (p.peek()) {
+            case (token::IDENT(_,_)) {
+                identifiers += [parse_ident(p)];
+            }
+            //the lexer can't tell the different kinds of stars apart ) :
+            case (token::BINOP(token::STAR)) { 
+                glob = true;
+                p.bump();
+            }
+            case (_) { p.err("expecting an identifier, or '*'"); }
+        }
     }
     auto hi = p.get_hi_pos();
-    p.bump();
-    auto defined_id;
+    auto import_decl;
     alt (def_ident) {
         case(some[ast::ident](?i)) {
-            defined_id = i;
+            if (glob) {
+                p.err("globbed imports can't be renamed");
+            }
+            import_decl = ast::view_item_import(i, identifiers,
+                                                p.next_def_id());
         }
         case (_) {
-            auto len = vec::len[ast::ident](identifiers);
-            defined_id = identifiers.(len - 1u);
+            if (glob) {
+                import_decl = ast::view_item_import_glob(identifiers,
+                                                         p.next_def_id());
+            } else {
+                auto len = vec::len[ast::ident](identifiers);
+                import_decl = ast::view_item_import(identifiers.(len - 1u), 
+                                                    identifiers, 
+                                                    p.next_def_id());
+            }
         }
     }
-    auto import_decl = ast::view_item_import(defined_id, identifiers,
-                                            p.next_def_id());
     ret @spanned(lo, hi, import_decl);
 }
 

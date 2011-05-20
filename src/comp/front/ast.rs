@@ -398,6 +398,7 @@ type view_item = spanned[view_item_];
 tag view_item_ {
     view_item_use(ident, vec[@meta_item], def_id, ann);
     view_item_import(ident, vec[ident], def_id);
+    view_item_import_glob(vec[ident], def_id);
     view_item_export(ident);
 }
 
