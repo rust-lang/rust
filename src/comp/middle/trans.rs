@@ -2214,7 +2214,7 @@ fn make_drop_glue(&@block_ctxt cx, ValueRef v0, &ty::t t) {
         }
 
         case (_) {
-            if (ty::type_contains_pointers(cx.fcx.lcx.ccx.tcx, t) &&
+            if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t) &&
                 ty::type_is_structural(cx.fcx.lcx.ccx.tcx, t)) {
                 rslt = iter_structural_ty(cx, v0, t,
                                           bind drop_ty(_, _, _));
@@ -3112,7 +3112,7 @@ fn drop_ty(&@block_ctxt cx,
            ValueRef v,
            ty::t t) -> result {
 
-    if (ty::type_contains_pointers(cx.fcx.lcx.ccx.tcx, t)) {
+    if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t)) {
         ret call_tydesc_glue(cx, v, t, false, abi::tydesc_field_drop_glue);
     }
     ret res(cx, C_nil());
@@ -3122,7 +3122,7 @@ fn free_ty(&@block_ctxt cx,
            ValueRef v,
            ty::t t) -> result {
 
-    if (ty::type_contains_pointers(cx.fcx.lcx.ccx.tcx, t)) {
+    if (ty::type_has_pointers(cx.fcx.lcx.ccx.tcx, t)) {
         ret call_tydesc_glue(cx, v, t, false, abi::tydesc_field_free_glue);
     }
     ret res(cx, C_nil());

@@ -89,8 +89,7 @@ type raw_t = rec(sty struct,
                  bool has_params,
                  bool has_bound_params,
                  bool has_vars,
-                 bool has_locals,
-                 bool has_pointers);
+                 bool has_locals);
 
 type t = uint;
 
@@ -260,21 +259,18 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
     let bool has_bound_params = false;
     let bool has_vars = false;
     let bool has_locals = false;
-    let bool has_pointers = false;
 
     fn derive_flags_t(&ctxt cx,
                       &mutable bool has_params,
                       &mutable bool has_bound_params,
                       &mutable bool has_vars,
                       &mutable bool has_locals,
-                      &mutable bool has_pointers,
                       &t tt) {
         auto rt = interner::get[raw_t](*cx.ts, tt);
         has_params = has_params || rt.has_params;
         has_bound_params = has_bound_params || rt.has_bound_params;
         has_vars = has_vars || rt.has_vars;
         has_locals = has_locals || rt.has_locals;
-        has_pointers = has_pointers || rt.has_pointers;
     }
 
     fn derive_flags_mt(&ctxt cx,
@@ -282,10 +278,9 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
                        &mutable bool has_bound_params,
                        &mutable bool has_vars,
                        &mutable bool has_locals,
-                       &mutable bool has_pointers,
                        &mt m) {
         derive_flags_t(cx, has_params, has_bound_params,
-                       has_vars, has_locals, has_pointers, m.ty);
+                       has_vars, has_locals, m.ty);
     }
 
 
@@ -294,10 +289,9 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
                         &mutable bool has_bound_params,
                         &mutable bool has_vars,
                         &mutable bool has_locals,
-                        &mutable bool has_pointers,
                         &arg a) {
         derive_flags_t(cx, has_params, has_bound_params,
-                       has_vars, has_locals, has_pointers, a.ty);
+                       has_vars, has_locals, a.ty);
     }
 
     fn derive_flags_sig(&ctxt cx,
@@ -305,90 +299,79 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
                         &mutable bool has_bound_params,
                         &mutable bool has_vars,
                         &mutable bool has_locals,
-                        &mutable bool has_pointers,
                         &vec[arg] args,
                         &t tt) {
         for (arg a in args) {
             derive_flags_arg(cx, has_params, has_bound_params,
-                             has_vars, has_locals, has_pointers, a);
+                             has_vars, has_locals, a);
         }
         derive_flags_t(cx, has_params, has_bound_params,
-                       has_vars, has_locals, has_pointers, tt);
+                       has_vars, has_locals, tt);
     }
 
     alt (st) {
         case (ty_param(_)) {
             has_params = true;
-            has_pointers = true;
         }
         case (ty_bound_param(_)) {
             has_bound_params = true;
-            has_pointers = true;
         }
         case (ty_var(_)) { has_vars = true; }
         case (ty_local(_)) { has_locals = true; }
-        case (ty_tag(?did, ?tys)) {
+        case (ty_tag(_, ?tys)) {
             for (t tt in tys) {
                 derive_flags_t(cx, has_params, has_bound_params,
-                               has_vars, has_locals, has_pointers, tt);
+                               has_vars, has_locals, tt);
             }
         }
         case (ty_box(?m)) {
-            has_pointers = true;
             derive_flags_mt(cx, has_params, has_bound_params,
-                            has_vars, has_locals, has_pointers, m);
+                            has_vars, has_locals, m);
         }
 
         case (ty_vec(?m)) {
-            has_pointers = true;
             derive_flags_mt(cx, has_params, has_bound_params,
-                            has_vars, has_locals, has_pointers, m);
+                            has_vars, has_locals, m);
         }
 
         case (ty_port(?tt)) {
-            has_pointers = true;
             derive_flags_t(cx, has_params, has_bound_params,
-                           has_vars, has_locals, has_pointers, tt);
+                           has_vars, has_locals, tt);
         }
 
         case (ty_chan(?tt)) {
-            has_pointers = true;
             derive_flags_t(cx, has_params, has_bound_params,
-                           has_vars, has_locals, has_pointers, tt);
+                           has_vars, has_locals, tt);
         }
 
         case (ty_tup(?mts)) {
             for (mt m in mts) {
                 derive_flags_mt(cx, has_params, has_bound_params,
-                                has_vars, has_locals, has_pointers, m);
+                                has_vars, has_locals, m);
             }
         }
 
         case (ty_rec(?flds)) {
             for (field f in flds) {
                 derive_flags_mt(cx, has_params, has_bound_params,
-                                has_vars, has_locals, has_pointers, f.mt);
+                                has_vars, has_locals, f.mt);
             }
         }
 
         case (ty_fn(_, ?args, ?tt)) {
-            has_pointers = true;
             derive_flags_sig(cx, has_params, has_bound_params,
-                             has_vars, has_locals, has_pointers, args, tt);
+                             has_vars, has_locals, args, tt);
         }
 
         case (ty_native_fn(_, ?args, ?tt)) {
-            has_pointers = true;
             derive_flags_sig(cx, has_params, has_bound_params,
-                             has_vars, has_locals, has_pointers, args, tt);
+                             has_vars, has_locals, args, tt);
         }
 
         case (ty_obj(?meths)) {
-            has_pointers = true;
             for (method m in meths) {
                 derive_flags_sig(cx, has_params, has_bound_params,
-                                 has_vars, has_locals, has_pointers,
-                                 m.inputs, m.output);
+                                 has_vars, has_locals, m.inputs, m.output);
             }
         }
         case (_) { }
@@ -398,8 +381,7 @@ fn mk_raw_ty(&ctxt cx, &sty st, &option::t[str] cname) -> raw_t {
             has_params = has_params,
             has_bound_params = has_bound_params,
             has_vars = has_vars,
-            has_locals = has_locals,
-            has_pointers = has_pointers);
+            has_locals = has_locals);
 }
 
 fn intern(&ctxt cx, &sty st, &option::t[str] cname) {
@@ -408,16 +390,7 @@ fn intern(&ctxt cx, &sty st, &option::t[str] cname) {
 
 fn gen_ty_full(&ctxt cx, &sty st, &option::t[str] cname) -> t {
     auto raw_type = mk_raw_ty(cx, st, cname);
-    auto t = interner::intern[raw_t](*cx.ts, raw_type);
-
-    /*
-    if (raw_type.has_pointers) {
-        log_err "type has pointers: " + ty_to_str(cx, t);
-    } else {
-        log_err "type has no pointers: " + ty_to_str(cx, t);
-    }
-    */
-    ret t;
+    ret interner::intern[raw_t](*cx.ts, raw_type);
 }
 
 // These are private constructors to this module. External users should always
@@ -936,7 +909,6 @@ fn sequence_element_type(&ctxt cx, &t ty) -> t {
     fail;
 }
 
-
 fn type_is_tup_like(&ctxt cx, &t ty) -> bool {
     alt (struct(cx, ty)) {
         case (ty_box(_))    { ret true; }
@@ -993,6 +965,49 @@ fn type_is_scalar(&ctxt cx, &t ty) -> bool {
         case (ty_type) { ret true; }
         case (ty_native) { ret true; }
         case (_) { ret false; }
+    }
+    fail;
+}
+
+
+fn type_has_pointers(&ctxt cx, &t ty) -> bool {
+    alt (struct(cx, ty)) {
+        // scalar types
+        case (ty_nil) { ret false; }
+        case (ty_bool) { ret false; }
+        case (ty_int) { ret false; }
+        case (ty_float) { ret false; }
+        case (ty_uint) { ret false; }
+        case (ty_machine(_)) { ret false; }
+        case (ty_char) { ret false; }
+        case (ty_type) { ret false; }
+        case (ty_native) { ret false; }
+
+        case (ty_tup(?elts))    {
+            for (mt m in elts) {
+                if (type_has_pointers(cx, m.ty)) { ret true; }
+            }
+            ret false;
+        }
+        case (ty_rec(?flds)) {
+            for (field f in flds) {
+                if (type_has_pointers(cx, f.mt.ty)) { ret true; }
+            }
+            ret false;
+        }
+
+        case (ty_tag(?did,?tps))  {
+            auto variants = tag_variants(cx, did);
+            for (variant_info variant in variants) {
+                auto tup_ty = mk_imm_tup(cx, variant.args);
+                // Perform any type parameter substitutions.
+                tup_ty = bind_params_in_type(cx, tup_ty);
+                tup_ty = substitute_type_params(cx, tps, tup_ty);
+                if (type_has_pointers(cx, tup_ty)) { ret true; }
+            }
+            ret false;
+        }
+        case (_) { ret true; }
     }
     fail;
 }
@@ -1614,15 +1629,6 @@ fn type_contains_params(&ctxt cx, &t typ) -> bool {
 
 fn type_contains_bound_params(&ctxt cx, &t typ) -> bool {
     ret interner::get[raw_t](*cx.ts, typ).has_bound_params;
-}
-
-fn type_contains_pointers(&ctxt cx, &t typ) -> bool {
-    // FIXME: this is currently incorrect, pending an improved
-    // version of the "contains pointers" derived property.
-    //
-    // ret interner::get[raw_t](*cx.ts, typ).has_pointers;
-
-    ret (!type_is_scalar(cx, typ));
 }
 
 // Type accessors for substructures of types
@@ -2832,7 +2838,6 @@ fn def_has_ty_params(&ast::def def) -> bool {
 
 type variant_info = rec(vec[ty::t] args, ty::t ctor_ty, ast::def_id id);
 
-// Returns information about the variants in a tag.
 fn tag_variants(&ctxt cx, &ast::def_id id) -> vec[variant_info] {
     if (cx.sess.get_targ_crate_num() != id._0) {
         ret creader::get_tag_variants(cx, id);
