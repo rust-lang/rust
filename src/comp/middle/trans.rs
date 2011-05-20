@@ -1781,19 +1781,7 @@ fn get_static_tydesc(&@block_ctxt cx,
 fn declare_tydesc(&@local_ctxt cx, &ast::span sp, &ty::t t,
                   vec[uint] ty_params) -> @tydesc_info {
     log "+++ declare_tydesc " + ty::ty_to_str(cx.ccx.tcx, t);
-    auto take_glue = declare_generic_glue(cx, t, T_glue_fn(cx.ccx.tn),
-                                          "take");
-    auto drop_glue = declare_generic_glue(cx, t, T_glue_fn(cx.ccx.tn),
-                                          "drop");
-    auto free_glue = declare_generic_glue(cx, t, T_glue_fn(cx.ccx.tn),
-                                          "free");
-    auto cmp_glue = declare_generic_glue(cx, t, T_cmp_glue_fn(cx.ccx.tn),
-                                         "cmp");
     auto ccx = cx.ccx;
-
-    // Don't inline free glue; it's cold.
-    llvm::LLVMAddFunctionAttr(free_glue, lib::llvm::LLVMNoInlineAttribute as
-                              lib::llvm::llvm::Attribute);
 
     auto llsize;
     auto llalign;
