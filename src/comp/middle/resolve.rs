@@ -74,9 +74,18 @@ tag mod_index_entry {
     mie_tag_variant(@ast::item /* tag item */, uint /* variant index */);
 }
 type mod_index = hashmap[ident,list[mod_index_entry]];
-type indexed_mod = rec(option::t[ast::_mod] m, mod_index index);
+
+type indexed_mod = rec(option::t[ast::_mod] m, 
+                       mod_index index, vec[@i_m] glob_imports);
 /* native modules can't contain tags, and we don't store their ASTs because we
    only need to look at them to determine exports, which they can't control.*/
+// It should be safe to use index to memoize lookups of globbed names.
+
+//FIXME: this only exists because we can't yet write recursive types unless
+//the recursion passes through a tag.
+tag i_m {
+    i_m(indexed_mod);
+}
 
 type crate_map = hashmap[uint,ast::crate_num];
 
@@ -116,23 +125,29 @@ fn resolve_crate(session sess, @ast::crate crate) -> def_map {
     ret e.def_map;
 }
 
+
 // Locate all modules and imports and index them, so that the next passes can
 // resolve through them.
 
 fn map_crate(&@env e, &ast::crate c) {
+
+    // First, find all the modules, and index the names that they contain
+
     auto cell = @mutable nil[scope];
-    auto v = rec(visit_crate_pre = bind push_env_for_crate(cell, _),
-                 visit_crate_post = bind pop_env_for_crate(cell, _),
-                 visit_view_item_pre = bind visit_view_item(e, cell, _),
-                 visit_item_pre = bind visit_item(e, cell, _),
-                 visit_item_post = bind pop_env_for_item(cell, _)
-                 with walk::default_visitor());
+    auto index_names = 
+        rec(visit_crate_pre = bind push_env_for_crate(cell, _),
+            visit_crate_post = bind pop_env_for_crate(cell, _),
+            visit_view_item_pre = bind index_vi(e, cell, _),
+            visit_item_pre = bind index_i(e, cell, _),
+            visit_item_post = bind pop_env_for_item(cell, _)
+            with walk::default_visitor());
     // Register the top-level mod
     e.mod_map.insert(-1, @rec(m=some(c.node.module),
-                              index=index_mod(c.node.module)));
-    walk::walk_crate(v, c);
+                              index=index_mod(c.node.module),
+                              glob_imports=vec::empty[@i_m]()));
+    walk::walk_crate(index_names, c);
 
-    fn visit_view_item(@env e, @mutable list[scope] sc, &@ast::view_item i) {
+    fn index_vi(@env e, @mutable list[scope] sc, &@ast::view_item i) {
         alt (i.node) {
             case (ast::view_item_import(_, ?ids, ?defid)) {
                 e.imports.insert(defid._1, todo(i, *sc));
@@ -140,22 +155,65 @@ fn map_crate(&@env e, &ast::crate c) {
             case (_) {}
         }
     }
-    fn visit_item(@env e, @mutable list[scope] sc, &@ast::item i) {
+    fn index_i(@env e, @mutable list[scope] sc, &@ast::item i) {
         push_env_for_item(sc, i);
         alt (i.node) {
             case (ast::item_mod(_, ?md, ?defid)) {
-                auto index = index_mod(md);
-                e.mod_map.insert(defid._1, @rec(m=some(md),
-                                                index=index));
+                e.mod_map.insert(defid._1, 
+                                 @rec(m=some(md), index=index_mod(md),
+                                      glob_imports=vec::empty[@i_m]()));
             }
             case (ast::item_native_mod(_, ?nmd, ?defid)) {
-                auto index = index_nmod(nmd);
-                e.mod_map.insert(defid._1, @rec(m=none[ast::_mod],
-                                                index=index));
+                e.mod_map.insert(defid._1, 
+                                 @rec(m=none[ast::_mod], 
+                                      index=index_nmod(nmd),
+                                      glob_imports=vec::empty[@i_m]()));
             }
             case (_) {}
         }
     }
+
+    // Next, assemble the links for globbed imports.
+    
+    let @indexed_mod cur_mod = e.mod_map.get(-1);
+
+    cell = @mutable nil[scope];
+    auto link_globs = 
+        rec(visit_crate_pre = bind push_env_for_crate(cell, _),
+            visit_crate_post = bind pop_env_for_crate(cell, _),
+            visit_view_item_pre = bind link_glob(e, cell, cur_mod, _),
+            visit_item_pre = bind enter_i(e, cell, cur_mod, _),
+            visit_item_post = bind pop_env_for_item(cell, _)
+            with walk::default_visitor());
+    walk::walk_crate(link_globs, c);
+    
+    fn enter_i(@env e, @mutable list[scope] sc, @indexed_mod cur_mod, 
+               &@ast::item i) {
+        push_env_for_item(sc,i);
+        alt(i.node) {
+            case (ast::item_mod(_, _, ?defid)) {
+                cur_mod = e.mod_map.get(defid._1);
+            }
+            case (ast::item_native_mod(_, _, ?defid)) {
+                cur_mod = e.mod_map.get(defid._1);
+            }
+            case (_) {}
+        }
+    }
+        
+    fn link_glob(@env e, @mutable list[scope] sc, @indexed_mod cur_mod,
+                 &@ast::view_item vi) {
+        alt (vi.node) {
+            //if it really is a glob import, that is
+            case (ast::view_item_import_glob(?path, _)) {
+                cur_mod.glob_imports += 
+                    [follow_import(*e, *sc, path, vi.span)];
+            }
+            case (_) {}
+        }
+        
+    }
+    
 }
 
 fn resolve_imports(&env e) {
@@ -311,6 +369,39 @@ fn push_env_for_arm(@mutable list[scope] sc, &ast::arm p) {
 fn pop_env_for_arm(@mutable list[scope] sc, &ast::arm p) {
     *sc = std::list::cdr(*sc);
 }
+
+
+//HERE
+fn follow_import(&env e, &list[scope] sc, vec[ident] path, &span sp) 
+    -> @i_m {
+    auto path_len = vec::len(path);
+    auto dcur = lookup_in_scope_strict(e, sc, sp, path.(0), ns_module);
+    auto i = 1u;
+    while (true) {
+        if (i == path_len) { break; }
+        dcur = lookup_in_mod_strict(e, dcur, sp, path.(i),
+                                    ns_module, outside);
+        i += 1u;
+    }
+
+    alt (dcur) {
+        case (ast::def_mod(?def_id)) {
+            //TODO: is this sane?
+            ret @i_m(*e.mod_map.get(def_id._1));
+        }
+        case (ast::def_native_mod(?def_id)) {
+            ret @i_m(*e.mod_map.get(def_id._1));
+        }
+        case (_) {
+            e.sess.span_err(sp, str::connect(path, "::") 
+                            + " does not name a module.");
+            fail;
+        }
+    }
+}
+
+
+
 
 // Import resolution
 
@@ -719,6 +810,9 @@ fn found_view_item(&env e, @ast::view_item vi, namespace ns)
         case (ast::view_item_import(_, _, ?defid)) {
             ret lookup_import(e, defid, ns);
         }
+        case (ast::view_item_import_glob(_, ?defid)) {
+            ret none[def]; //TODO: think about this. Is it correct?
+        }
     }
 }
 
@@ -813,12 +907,13 @@ fn lookup_in_local_native_mod(&env e, def_id defid, &ident id, namespace ns)
 
 // Module indexing
 
-fn add_to_index[T](&hashmap[ident,list[T]] index, &ident id, &T ent) {
+fn add_to_index(&hashmap[ident,list[mod_index_entry]] index, &ident id, 
+                &mod_index_entry ent) {
     alt (index.find(id)) {
-        case (none[list[T]]) {
-            index.insert(id, cons(ent, @nil[T]));
+        case (none[list[mod_index_entry]]) {
+            index.insert(id, cons(ent, @nil[mod_index_entry]));
         }
-        case (some[list[T]](?prev)) {
+        case (some[list[mod_index_entry]](?prev)) {
             index.insert(id, cons(ent, @prev));
         }
     }
@@ -834,6 +929,9 @@ fn index_mod(&ast::_mod md) -> mod_index {
             }
             case(ast::view_item_import(?def_ident,_,_)) {
                 add_to_index(index, def_ident, mie_view_item(it));
+            }
+            case(ast::view_item_import_glob(?path,_)) {
+                //globbed imports have to be resolved lazily.
             }
             case(ast::view_item_export(_)) {}
         }
