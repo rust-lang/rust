@@ -135,7 +135,7 @@ fn declare_upcalls(type_names tn, ModuleRef llmod) -> @upcalls {
 
 //
 // Local Variables:
-// mode: C++
+// mode: rust
 // fill-column: 78;
 // indent-tabs-mode: nil
 // c-basic-offset: 4
