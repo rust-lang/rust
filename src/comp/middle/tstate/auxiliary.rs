@@ -1,5 +1,7 @@
 import std::bitv;
+import std::vec;
 import std::vec::len;
+import std::vec::grow;
 import std::vec::pop;
 import std::option;
 import std::option::none;
@@ -156,7 +158,7 @@ type fn_info      = rec(@std::map::hashmap[def_id, var_info] vars,
                         controlflow cf);
 
 /* mapping from node ID to typestate annotation */
-type node_ann_table = @std::map::hashmap[uint, ts_ann];
+type node_ann_table = @vec[ts_ann];
 
 /* mapping from function name to fn_info map */
 type fn_info_map = @std::map::hashmap[def_id, fn_info];
@@ -175,10 +177,26 @@ fn get_fn_info(&crate_ctxt ccx, def_id did) -> fn_info {
     ret ccx.fm.get(did);
 }
 
+fn add_node(&crate_ctxt ccx, uint i, &ts_ann a) -> () {
+    auto sz = len(*(ccx.node_anns)); 
+    if (sz <= i) {
+        grow(*(ccx.node_anns), (i - sz) + 1u, empty_ann(0u));
+    }
+    ccx.node_anns.(i) = a;
+}
+
+fn get_ts_ann(&crate_ctxt ccx, uint i) -> option::t[ts_ann] {
+    if (i < len(*(ccx.node_anns))) {
+        ret some[ts_ann](ccx.node_anns.(i));
+    }
+    else {
+        ret none[ts_ann];
+    }
+}
 /********* utils ********/
 
 fn ann_to_ts_ann(&crate_ctxt ccx, &ann a) -> ts_ann {
-    alt (ccx.node_anns.find(a.id)) {
+    alt (get_ts_ann(ccx, a.id)) {
         case (none[ts_ann])         { 
             log_err ("ann_to_ts_ann: no ts_ann for node_id "
                      + uistr(a.id));
@@ -296,8 +314,8 @@ fn block_poststate(&crate_ctxt ccx, &block b) -> poststate {
 
 /* sets the pre_and_post for an ann */
 fn with_pp(&crate_ctxt ccx, &ann a, pre_and_post p) {
-    ccx.node_anns.insert(a.id, @rec(conditions=p,
-                                    states=empty_states(pps_len(p))));
+    add_node(ccx, a.id, @rec(conditions=p,
+                             states=empty_states(pps_len(p))));
 }
 
 fn set_prestate_ann(&crate_ctxt ccx, &ann a, &prestate pre) -> bool {
@@ -370,8 +388,8 @@ fn num_locals(fn_info m) -> uint {
 }
 
 fn new_crate_ctxt(ty::ctxt cx) -> crate_ctxt {
-    ret rec(tcx=cx, node_anns=@new_uint_hash[ts_ann](),
-            fm=@new_def_hash[fn_info]());
+    let vec[ts_ann] na = [];
+    ret rec(tcx=cx, node_anns=@na, fm=@new_def_hash[fn_info]());
 }
 
 fn controlflow_def_id(&crate_ctxt ccx, &def_id d) -> controlflow {
