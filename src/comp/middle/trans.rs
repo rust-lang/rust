@@ -6425,7 +6425,8 @@ fn trans_block(&@block_ctxt cx, &ast::block b) -> result {
                 ret r;
             } else {
                 auto r_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, e);
-                if (!ty::type_is_nil(cx.fcx.lcx.ccx.tcx, r_ty)) {
+                if (!ty::type_is_nil(cx.fcx.lcx.ccx.tcx, r_ty)
+                    && !ty::type_is_bot(cx.fcx.lcx.ccx.tcx, r_ty)) {
                     // The value resulting from the block gets copied into an
                     // alloca created in an outer scope and its refcount
                     // bumped so that it can escape this block. This means
