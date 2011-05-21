@@ -32,12 +32,11 @@ fn uint_bits() -> uint {
 }
 
 fn create(uint nbits, bool init) -> t {
-    auto elt;
-    if (init) {
-        elt = ~0u;
+    auto elt = if (init) {
+        ~0u
     } else {
-        elt = 0u;
-    }
+        0u
+    };
 
     auto storage = vec::init_elt_mut[uint](elt, nbits / uint_bits() + 1u);
     ret rec(storage = storage, nbits = nbits);
@@ -161,11 +160,11 @@ fn set(&t v, uint i, bool x) {
     auto b = i % bits;
     auto w0 = v.storage.(w);
     auto flag = 1u << b;
-    if (x) {
-        v.storage.(w) = v.storage.(w) | flag;
+    v.storage.(w) = if (x) {
+        v.storage.(w) | flag
     } else {
-        v.storage.(w) = v.storage.(w) & ~flag;
-    }
+        v.storage.(w) & ~flag
+    };
 }
 
 /* true if all bits are 1 */
@@ -191,11 +190,11 @@ fn is_false(&t v) -> bool {
 }
 
 fn init_to_vec(t v, uint i) -> uint {
-    if (get(v, i)) {
-        ret 1u;
+    ret if (get(v, i)) {
+        1u
     } else {
-        ret 0u;
-    }
+        0u
+    };
 }
 
 fn to_vec(&t v) -> vec[uint] {
