@@ -2144,10 +2144,8 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                     if (!ty::type_is_bot(scx.fcx.ccx.tcx, elsopt_t)) {
                         Pushdown::pushdown_expr(scx, thn_t, els);
                         if_t = elsopt_t;
-                    } else if (!ty::type_is_bot(scx.fcx.ccx.tcx, thn_t)) {
-                        if_t = thn_t;
                     } else {
-                        if_t = ty::mk_nil(scx.fcx.ccx.tcx);
+                        if_t = thn_t;
                     }
                 }
                 case (none[@ast::expr]) {
