@@ -5932,8 +5932,12 @@ fn trans_spawn(&@block_ctxt cx,
     auto llfnptr = bcx.build.GEP(fnptr.val,
                                  [C_int(0), C_int(0)]);
     log_err "Casting llfnptr";
-    auto llfnptr_i = bcx.build.PointerCast(llfnptr,
-                                    T_int());
+    auto llfnptrptr_i = bcx.build.PointerCast(llfnptr,
+                                              T_ptr(T_int()));
+    // We'd better dereference this one more time, since that one points into
+    // the symbol table or something.
+    auto llfnptr_i = bcx.build.Load(llfnptrptr_i);
+
     log_err "Cassting llargs";
     auto llargs_i = bcx.build.PointerCast(llargs.val,
                                    T_int());
