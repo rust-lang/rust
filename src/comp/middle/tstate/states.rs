@@ -56,6 +56,7 @@ import bitvectors::intersect_postconds;
 import bitvectors::declare_var;
 import bitvectors::bit_num;
 import bitvectors::gen_poststate;
+import bitvectors::kill_poststate;
 
 import front::ast;
 import front::ast::_fn;
@@ -373,6 +374,13 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
     case (expr_ret(?maybe_ret_val, ?a)) {
         changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
         set_poststate_ann(fcx.ccx, a, false_postcond(num_local_vars));
+        /* return from an always-failing function clears the return bit */
+        alt (fcx.enclosing.cf) {
+            case (noreturn) {
+                kill_poststate(fcx, a, fcx.id);
+            }
+            case (_) {}
+        }
         alt(maybe_ret_val) {
             case (none[@expr]) { /* do nothing */ }
             case (some[@expr](?ret_val)) {

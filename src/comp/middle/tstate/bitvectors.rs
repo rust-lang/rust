@@ -29,6 +29,7 @@ import tstate::ann::intersect;
 import tstate::ann::clone;
 import tstate::ann::set_in_postcond;
 import tstate::ann::set_in_poststate;
+import tstate::ann::clear_in_poststate;
              
 fn bit_num(def_id v, fn_info m) -> uint {
   assert (m.vars.contains_key(v));
@@ -135,5 +136,12 @@ fn gen_poststate(&fn_ctxt fcx, &ann a, def_id id) -> bool {
   assert (fcx.enclosing.vars.contains_key(id));
   let uint i = (fcx.enclosing.vars.get(id))._0;
   ret set_in_poststate(i, (ann_to_ts_ann(fcx.ccx, a)).states);
+}
+
+fn kill_poststate(&fn_ctxt fcx, &ann a, def_id id) -> bool {
+  log "kill_poststate";
+  assert (fcx.enclosing.vars.contains_key(id));
+  let uint i = (fcx.enclosing.vars.get(id))._0;
+  ret clear_in_poststate(i, (ann_to_ts_ann(fcx.ccx, a)).states);
 }
 

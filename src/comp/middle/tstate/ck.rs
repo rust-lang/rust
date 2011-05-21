@@ -11,6 +11,8 @@ import front::ast::ident;
 import front::ast::def_id;
 import front::ast::ty_param;
 import front::ast::crate;
+import front::ast::return;
+import front::ast::noreturn;
 
 import front::ast::expr;
 import middle::ty::type_is_nil;
@@ -124,16 +126,28 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
     auto do_inner = bind do_inner_(fcx, _, post);
     option::map[@expr, ()](do_inner, f.body.node.expr);
   
+    auto cf = fcx.enclosing.cf;
     /* Finally, check that the return value is initialized */
     if (f.proto == ast::proto_fn
         && ! promises(*post, fcx.id, enclosing)
         && ! type_is_nil(fcx.ccx.tcx,
-                         ret_ty_of_fn(fcx.ccx.tcx, a)) ) {
+                         ret_ty_of_fn(fcx.ccx.tcx, a))
+        && cf == return) {
         fcx.ccx.tcx.sess.span_note(f.body.span, "In function " + fcx.name +
           ", not all control paths return a value");
         fcx.ccx.tcx.sess.span_err(f.decl.output.span,
             "see declared return type of '" + ty_to_str(*f.decl.output) +
             "'");
+    }
+    else if (cf == noreturn) {
+        // check that this really always fails
+        // the fcx.id bit means "returns" for a returning fn,
+        // "diverges" for a non-returning fn (I need to use the word
+        if (! promises(*post, fcx.id, enclosing)) {
+            fcx.ccx.tcx.sess.span_err(f.body.span,
+              "In non-returning function " + fcx.name +
+              ", some control paths may return to the caller");
+        }
     }
 
 }

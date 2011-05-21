@@ -109,6 +109,13 @@ fn set_in_poststate(uint i, &pre_and_post_state s) -> bool {
   ret !was_set;
 }
 
+fn clear_in_poststate(uint i, &pre_and_post_state s) -> bool {
+  // sets the ith bit in p's post
+  auto was_set = bitv::get(s.poststate, i);
+  bitv::set(s.poststate, i, false);
+  ret was_set;
+}
+
 // Sets all the bits in a's precondition to equal the
 // corresponding bit in p's precondition.
 fn set_precondition(ts_ann a, &precond p) -> () {

@@ -2288,7 +2288,8 @@ mod unify {
 
         alt (struct(cx.tcx, expected)) {
             case (ty::ty_nil)        { ret struct_cmp(cx, expected, actual); }
-            case (ty::ty_bot)        { ret struct_cmp(cx, expected, actual); }
+            // _|_ unifies with anything
+            case (ty::ty_bot)        { ret ures_ok(expected);                }
             case (ty::ty_bool)       { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_int)        { ret struct_cmp(cx, expected, actual); }
             case (ty::ty_uint)       { ret struct_cmp(cx, expected, actual); }
