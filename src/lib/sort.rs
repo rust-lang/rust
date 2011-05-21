@@ -1,6 +1,10 @@
 import vec::len;
 import vec::slice;
 
+export lteq;
+export merge_sort;
+export quick_sort;
+
 type lteq[T] = fn(&T a, &T b) -> bool;
 
 fn merge_sort[T](lteq[T] le, vec[T] v) -> vec[T] {
