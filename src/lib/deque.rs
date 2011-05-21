@@ -32,11 +32,11 @@ fn create[T]() -> t[T] {
 
         fn fill[T](uint i, uint nelts, uint lo,
                    vec[cell[T]] old) -> cell[T] {
-            if (i < nelts) {
-                ret old.((lo + i) % nelts);
+            ret if (i < nelts) {
+                old.((lo + i) % nelts)
             } else {
-                ret option::none[T];
-            }
+                option::none[T]
+            };
         }
 
         let uint nalloc = uint::next_power_of_two(nelts + 1u);
@@ -45,11 +45,10 @@ fn create[T]() -> t[T] {
     }
 
     fn get[T](vec[cell[T]] elts, uint i) -> T {
-        alt (elts.(i)) {
-            case (option::some[T](?t)) { ret t; }
-            case (_) { fail; }
-        }
-        fail;   // FIXME: remove me when exhaustiveness checking works
+        ret alt (elts.(i)) {
+            case (option::some[T](?t)) { t }
+            case (_) { fail }
+        };
     }
 
     obj deque[T](mutable uint nelts,
