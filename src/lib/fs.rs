@@ -19,6 +19,7 @@ fn dirname(path p) -> path {
     ret str::substr(p, 0u, i as uint);
 }
 
+// FIXME: Need some typestate to avoid bounds check when len(pre) == 0
 fn connect(path pre, path post) -> path {
     auto len = str::byte_len(pre);
     if (pre.(len - 1u) == (os_fs::path_sep as u8)) { // Trailing '/'?
