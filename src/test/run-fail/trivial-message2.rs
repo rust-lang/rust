@@ -1,3 +1,4 @@
+// xfail-stage0
 /*
   This program should hang on the r <- po line.
  */
