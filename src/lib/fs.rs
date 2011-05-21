@@ -22,10 +22,11 @@ fn dirname(path p) -> path {
 // FIXME: Need some typestate to avoid bounds check when len(pre) == 0
 fn connect(path pre, path post) -> path {
     auto len = str::byte_len(pre);
-    if (pre.(len - 1u) == (os_fs::path_sep as u8)) { // Trailing '/'?
-        ret pre + post;
-    }
-    ret pre + path_sep() + post;
+    ret if (pre.(len - 1u) == (os_fs::path_sep as u8)) { // Trailing '/'?
+        pre + post
+    } else {
+        pre + path_sep() + post
+    };
 }
 
 fn file_is_dir(path p) -> bool {
