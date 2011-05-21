@@ -31,7 +31,7 @@ state type parser =
     state obj {
           fn peek() -> token::token;
           fn bump();
-          fn err(str s);
+          fn err(str s) -> !;
           fn restrict(restriction r);
           fn get_restriction() -> restriction;
           fn get_file_type() -> file_type;
@@ -85,7 +85,7 @@ fn new_parser(session::session sess,
                 hi = rdr.get_chpos();
             }
 
-            fn err(str m) {
+            fn err(str m) -> ! {
                 sess.span_err(rec(lo=lo, hi=hi), m);
             }
 
@@ -217,7 +217,7 @@ fn bad_expr_word_table() -> std::map::hashmap[str, ()] {
     ret words;
 }
 
-fn unexpected(&parser p, token::token t) {
+fn unexpected(&parser p, token::token t) -> ! {
     let str s = "unexpected token: ";
     s += token::to_str(p.get_reader(), t);
     p.err(s);

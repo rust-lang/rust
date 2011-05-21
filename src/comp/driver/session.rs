@@ -79,13 +79,13 @@ state obj session(ast::crate_num cnum,
         ret cnum;
     }
 
-    fn span_err(span sp, str msg) {
+    fn span_err(span sp, str msg) -> ! {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
         emit_diagnostic(sp, msg, "error", 9u8, cm);
         fail;
     }
 
-    fn err(str msg) {
+    fn err(str msg) -> ! {
         log_err #fmt("error: %s", msg);
         fail;
     }
@@ -107,19 +107,19 @@ state obj session(ast::crate_num cnum,
         emit_diagnostic(sp, msg, "note", 10u8, cm);
     }
 
-    fn bug(str msg) {
+    fn bug(str msg) -> ! {
         log_err #fmt("error: internal compiler error %s", msg);
         fail;
     }
 
-    fn span_unimpl(span sp, str msg) {
+    fn span_unimpl(span sp, str msg) -> ! {
         // FIXME: Use constants, but rustboot doesn't know how to export them.
         emit_diagnostic(sp, "internal compiler error: unimplemented " + msg,
                         "error", 9u8, cm);
         fail;
     }
-
-    fn unimpl(str msg) {
+    
+    fn unimpl(str msg) -> ! {
         log_err #fmt("error: unimplemented %s", msg);
         fail;
     }
