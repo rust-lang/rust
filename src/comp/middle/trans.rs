@@ -4576,7 +4576,8 @@ fn trans_lval(&@block_ctxt cx, &@ast::expr e) -> lval_result {
         }
         case (_) {
             cx.fcx.lcx.ccx.sess.span_unimpl(e.span,
-                                            "expr variant in trans_lval");
+                                            "expr variant in trans_lval: " 
+                                            + util::common::expr_to_str(e));
         }
     }
     fail;
@@ -5547,6 +5548,10 @@ fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
             ret trans_spawn(cx, dom, name, func, args, ann);
         }
 
+        case (ast::expr_anon_obj(?anon_obj, ?tps, ?odid, ?ann)) {
+            ret trans_anon_obj(cx, e.span, anon_obj, tps, odid, ann);
+        }
+
         case (_) {
             // The expression is an lvalue. Fall through.
         }
@@ -6109,6 +6114,77 @@ fn recv_val(&@block_ctxt cx, ValueRef lhs, &@ast::expr rhs,
     // TODO: Any cleanup need to be done here?
 
     ret res(bcx, lhs);
+}
+
+
+/*
+
+  Suppose we create an anonymous object my_b from a regular object a:
+
+        obj a() {
+            fn foo() -> int {
+                ret 2;
+            }
+            fn bar() -> int {
+                ret self.foo();
+            }
+        }
+
+       auto my_a = a();
+       auto my_b = obj { fn baz() -> int { ret self.foo() } with my_a };
+
+  Here we're extending the my_a object with an additional method baz, creating
+  an object my_b. Since it's an object, my_b is a pair of a vtable pointer and
+  a body pointer:
+
+  my_b: [vtbl* | body*]
+
+  my_b's vtable has entries for foo, bar, and baz, whereas my_a's vtable has
+  only foo and bar. my_b's 3-entry vtable consists of two forwarding functions
+  and one real method.
+
+  my_b's body just contains the pair a: [ a_vtable | a_body ], wrapped up with
+  any additional fields that my_b added. None were added, so my_b is just the
+  wrapped inner object.
+
+*/
+fn trans_anon_obj(&@block_ctxt cx, &ast::span sp,
+                  &ast::anon_obj anon_obj, 
+                  &vec[ast::ty_param] ty_params,
+                  &ast::obj_def_ids oid,
+                  &ast::ann ann) -> result {
+
+    let option::t[result] with_obj_val = none[result];
+    alt (anon_obj.with_obj) {
+        case (none[@ast::expr]) { }
+        case (some[@ast::expr](?e)) {
+            // Translating with_obj returns a pointer to a 2-word value.  We
+            // want to allocate space for this value in our outer object, then
+            // copy it into the outer object.
+            with_obj_val = some[result](trans_expr(cx, e));
+        }
+    }
+
+    // For the anon obj's additional fields, if any exist, translate object
+    // constructor arguments to function arguments.
+    let option::t[vec[ast::obj_field]] addtl_fields 
+        = none[vec[ast::obj_field]];
+    let vec[ast::arg] addtl_fn_args = [];
+
+    alt (anon_obj.fields) {
+        case (none[vec[ast::obj_field]]) { }
+        case (some[vec[ast::obj_field]](?fields)) {
+            for (ast::obj_field f in fields) {
+                addtl_fn_args += [rec(mode=ast::alias, ty=f.ty, 
+                                      ident=f.ident, id=f.id)];
+            }
+        }
+    }
+
+    // TODO: everything else.
+
+    cx.fcx.lcx.ccx.sess.unimpl("support for anonymous objects");
+    fail;
 }
 
 fn init_local(&@block_ctxt cx, &@ast::local local) -> result {

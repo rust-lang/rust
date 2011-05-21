@@ -820,13 +820,13 @@ fn parse_bottom_expr(&parser p) -> @ast::expr {
         }
 
         let vec[@ast::method] meths = [];
-        let option::t[ast::ident] with_obj = none[ast::ident];
+        let option::t[@ast::expr] with_obj = none[@ast::expr];
 
         expect(p, token::LBRACE);
 
         while (p.peek() != token::RBRACE) {
             if (eat_word(p, "with")) {
-                with_obj = some[ast::ident](parse_ident(p));
+                with_obj = some[@ast::expr](parse_expr(p));
             } else {
                 vec::push[@ast::method](meths,
                                          parse_method(p));

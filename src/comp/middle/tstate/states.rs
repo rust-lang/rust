@@ -143,6 +143,7 @@ import front::ast::expr_assert;
 import front::ast::expr_cast;
 import front::ast::expr_for;
 import front::ast::expr_for_each;
+import front::ast::expr_anon_obj;
 import front::ast::stmt_decl;
 import front::ast::stmt_expr;
 import front::ast::block;
@@ -577,6 +578,20 @@ fn find_pre_post_state_expr(&fn_ctxt fcx, &prestate pres, @expr e) -> bool {
     }
     case (expr_self_method(_, ?a)) {
         ret pure_exp(fcx.ccx, a, pres);
+    }
+    case (expr_anon_obj(?anon_obj, _, _,?a)) {
+        alt (anon_obj.with_obj) {
+            case (some[@expr](?e)) {
+                changed = find_pre_post_state_expr(fcx, pres, e);
+                changed = extend_prestate_ann(fcx.ccx, a, pres) || changed;
+                changed = extend_poststate_ann(fcx.ccx, a,
+                            expr_poststate(fcx.ccx, e)) || changed;
+                ret changed;
+            }
+            case (none[@expr]) {
+                ret pure_exp(fcx.ccx, a, pres);
+            }
+        }
     }
   }
 }
