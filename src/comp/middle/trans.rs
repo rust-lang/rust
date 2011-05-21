@@ -3697,8 +3697,6 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond,
                 }
             }
 
-            // If we have an else expression, then the entire
-            // if expression can have a non-nil type.
             // FIXME: This isn't quite right, particularly re: dynamic types
             auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types,
                                            ann);
