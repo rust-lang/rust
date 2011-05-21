@@ -129,11 +129,9 @@ fn check_states_against_conditions(&fn_ctxt fcx, &_fn f, &ann a) -> () {
         && ! promises(*post, fcx.id, enclosing)
         && ! type_is_nil(fcx.ccx.tcx,
                          ret_ty_of_fn(fcx.ccx.tcx, a)) ) {
-        /* FIXME: call span_err, not span_warn, once I finish implementing
-           ! annotations */
-        fcx.ccx.tcx.sess.span_warn(f.body.span, "In function " + fcx.name +
+        fcx.ccx.tcx.sess.span_note(f.body.span, "In function " + fcx.name +
           ", not all control paths return a value");
-        fcx.ccx.tcx.sess.span_note(f.decl.output.span,
+        fcx.ccx.tcx.sess.span_err(f.decl.output.span,
             "see declared return type of '" + ty_to_str(*f.decl.output) +
             "'");
     }
