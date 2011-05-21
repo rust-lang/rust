@@ -10,6 +10,27 @@
 import option::some;
 import option::none;
 
+export opt;
+
+export reqopt;
+export optopt;
+export optflag;
+export optmulti;
+
+export getopts;
+
+export result;
+export success;
+export failure;
+
+export fail_;
+export fail_str;
+
+export opt_present;
+export opt_str;
+export opt_strs;
+export opt_maybe_str;
+
 tag name { long(str); short(char); }
 tag hasarg { yes; no; maybe; }
 tag occur { req; optional; multi; }
