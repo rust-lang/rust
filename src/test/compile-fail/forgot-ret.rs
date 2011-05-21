@@ -1,10 +1,6 @@
-// xfail-stage0
-// xfail-stage1
-// xfail-stage2
-// xfail-stage3
 // -*- rust -*-
 
-// error-pattern: may not return
+// error-pattern: not all control paths return
 
 fn god_exists(int a) -> bool {
   be god_exists(a);
