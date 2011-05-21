@@ -1,5 +1,4 @@
 // -*- rust -*-
-// xfail-stage0
 // error-pattern: non-predicate
 
 fn f(int q) -> bool { ret true; }

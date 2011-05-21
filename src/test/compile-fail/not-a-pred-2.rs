@@ -1,5 +1,4 @@
 // -*- rust -*-
-// xfail-stage0
 
 // error-pattern: non-predicate
 
