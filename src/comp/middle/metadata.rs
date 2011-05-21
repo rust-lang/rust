@@ -341,8 +341,11 @@ fn encode_module_item_paths(&ebml::writer ebml_w,
                             &ast::_mod module,
                             &vec[str] path,
                             &mutable vec[tup(str, uint)] index) {
-    // TODO: only encode exported items
     for (@ast::item it in module.items) {
+        if (!ast::is_exported(ast::item_ident(it), module)) {
+            cont;
+        }
+
         alt (it.node) {
             case (ast::item_const(?id, _, ?tps, ?did, ?ann)) {
                 add_to_index(ebml_w, path, index, id);
