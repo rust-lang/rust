@@ -2134,28 +2134,23 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
                                     cond);
 
             check_block(scx, thn);
-            auto thn_t = block_ty(scx.fcx.ccx.tcx, thn);
 
-            auto if_t;
-            alt (elsopt) {
+            auto if_t = alt (elsopt) {
                 case (some[@ast::expr](?els)) {
                     check_expr(scx, els);
+
+                    auto thn_t = block_ty(scx.fcx.ccx.tcx, thn);
                     auto elsopt_t = expr_ty(scx.fcx.ccx.tcx, els);
                     if (!ty::type_is_bot(scx.fcx.ccx.tcx, elsopt_t)) {
-                        Pushdown::pushdown_expr(scx, thn_t, els);
-                        if_t = elsopt_t;
+                        elsopt_t
                     } else {
-                        if_t = thn_t;
+                        thn_t
                     }
                 }
                 case (none[@ast::expr]) {
-                    if_t = ty::mk_nil(scx.fcx.ccx.tcx);
+                    ty::mk_nil(scx.fcx.ccx.tcx)
                 }
-            }
-
-            if (!ty::type_is_bot(scx.fcx.ccx.tcx, thn_t)) {
-                Pushdown::pushdown_block(scx, if_t, thn);
-            }
+            };
 
             write::ty_only_fixup(scx, a.id, if_t);
         }
