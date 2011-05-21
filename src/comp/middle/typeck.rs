@@ -427,8 +427,7 @@ mod write {
 
     // Writes the bottom type into the node type table.
     fn bot_ty(&ty::ctxt tcx, uint node_id) {
-        // FIXME: Should be mk_bot(), but this breaks lots of stuff.
-        be ty(tcx, node_id, tup(none[vec[ty::t]], ty::mk_nil(tcx)));
+        be ty(tcx, node_id, tup(none[vec[ty::t]], ty::mk_bot(tcx)));
     }
 }
 
