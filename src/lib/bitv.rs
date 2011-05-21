@@ -1,3 +1,22 @@
+export t;
+export create;
+export union;
+export intersect;
+export copy;
+export clone;
+export get;
+export equal;
+export clear;
+export set_all;
+export invert;
+export difference;
+export set;
+export is_true;
+export is_false;
+export to_vec;
+export to_str;
+export eq_vec;
+
 // FIXME: With recursive object types, we could implement binary methods like
 //        union, intersection, and difference. At that point, we could write
 //        an optimizing version of this module that produces a different obj
