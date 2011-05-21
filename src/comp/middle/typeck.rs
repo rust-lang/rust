@@ -1331,12 +1331,19 @@ mod Pushdown {
             case (ast::expr_if(?cond, ?then_0, ?else_0, ?ann)) {
                 auto t = Demand::autoderef(scx, e.span, expected,
                     ann_to_type(scx.fcx.ccx.tcx.node_types, ann), adk);
-                pushdown_block(scx, expected, then_0);
+
+                auto then_t = ty::block_ty(scx.fcx.ccx.tcx, then_0);
+                if (!ty::type_is_bot(scx.fcx.ccx.tcx, then_t)) {
+                    pushdown_block(scx, expected, then_0);
+                }
 
                 alt (else_0) {
                     case (none[@ast::expr]) { /* no-op */ }
                     case (some[@ast::expr](?e_0)) {
-                        pushdown_expr(scx, expected, e_0);
+                        auto else_t = ty::expr_ty(scx.fcx.ccx.tcx, e_0);
+                        if (!ty::type_is_bot(scx.fcx.ccx.tcx, else_t)) {
+                            pushdown_expr(scx, expected, e_0);
+                        }
                     }
                 }
                 write::ty_only_fixup(scx, ann.id, t);
@@ -2129,21 +2136,30 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
             check_block(scx, thn);
             auto thn_t = block_ty(scx.fcx.ccx.tcx, thn);
 
-            auto elsopt_t;
+            auto if_t;
             alt (elsopt) {
                 case (some[@ast::expr](?els)) {
                     check_expr(scx, els);
-                    Pushdown::pushdown_expr(scx, thn_t, els);
-                    elsopt_t = expr_ty(scx.fcx.ccx.tcx, els);
+                    auto elsopt_t = expr_ty(scx.fcx.ccx.tcx, els);
+                    if (!ty::type_is_bot(scx.fcx.ccx.tcx, elsopt_t)) {
+                        Pushdown::pushdown_expr(scx, thn_t, els);
+                        if_t = elsopt_t;
+                    } else if (!ty::type_is_bot(scx.fcx.ccx.tcx, thn_t)) {
+                        if_t = thn_t;
+                    } else {
+                        if_t = ty::mk_nil(scx.fcx.ccx.tcx);
+                    }
                 }
                 case (none[@ast::expr]) {
-                    elsopt_t = ty::mk_nil(scx.fcx.ccx.tcx);
+                    if_t = ty::mk_nil(scx.fcx.ccx.tcx);
                 }
             }
 
-            Pushdown::pushdown_block(scx, elsopt_t, thn);
+            if (!ty::type_is_bot(scx.fcx.ccx.tcx, thn_t)) {
+                Pushdown::pushdown_block(scx, if_t, thn);
+            }
 
-            write::ty_only_fixup(scx, a.id, elsopt_t);
+            write::ty_only_fixup(scx, a.id, if_t);
         }
 
         case (ast::expr_for(?decl, ?seq, ?body, ?a)) {

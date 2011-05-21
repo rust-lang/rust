@@ -3660,7 +3660,8 @@ fn join_results(&@block_ctxt parent_cx,
 }
 
 fn trans_if(&@block_ctxt cx, &@ast::expr cond,
-            &ast::block thn, &option::t[@ast::expr] els) -> result {
+            &ast::block thn, &option::t[@ast::expr] els,
+            &ast::ann ann) -> result {
 
     auto cond_res = trans_expr(cx, cond);
 
@@ -3699,12 +3700,12 @@ fn trans_if(&@block_ctxt cx, &@ast::expr cond,
             // If we have an else expression, then the entire
             // if expression can have a non-nil type.
             // FIXME: This isn't quite right, particularly re: dynamic types
-            auto expr_ty = ty::expr_ty(cx.fcx.lcx.ccx.tcx, elexpr);
+            auto expr_ty = ty::ann_to_type(cx.fcx.lcx.ccx.tcx.node_types,
+                                           ann);
             if (ty::type_has_dynamic_size(cx.fcx.lcx.ccx.tcx, expr_ty)) {
                 expr_llty = T_typaram_ptr(cx.fcx.lcx.ccx.tn);
             } else {
-                expr_llty = type_of(else_res.bcx.fcx.lcx.ccx, elexpr.span,
-                                    expr_ty);
+                expr_llty = type_of(cx.fcx.lcx.ccx, elexpr.span, expr_ty);
                 if (ty::type_is_structural(cx.fcx.lcx.ccx.tcx, expr_ty)) {
                     expr_llty = T_ptr(expr_llty);
                 }
@@ -5392,8 +5393,8 @@ fn trans_expr(&@block_ctxt cx, &@ast::expr e) -> result {
             ret trans_binary(cx, op, x, y);
         }
 
-        case (ast::expr_if(?cond, ?thn, ?els, _)) {
-            ret trans_if(cx, cond, thn, els);
+        case (ast::expr_if(?cond, ?thn, ?els, ?ann)) {
+            ret trans_if(cx, cond, thn, els, ann);
         }
 
         case (ast::expr_for(?decl, ?seq, ?body, _)) {
