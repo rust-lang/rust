@@ -2235,6 +2235,8 @@ fn check_expr(&@stmt_ctxt scx, &@ast::expr expr) {
 
             Pushdown::pushdown_expr(scx, pattern_ty, expr);
 
+            // FIXME: If all the the arms were ty_bot then the result should
+            // also be ty_bot. At the moment this doesn't seem to matter
             write::ty_only_fixup(scx, a.id, result_ty);
         }
 
