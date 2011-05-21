@@ -125,7 +125,7 @@ fn pretty_print_input(session::session sess, eval::env env, str input,
                       pp_mode ppm) {
     auto def = tup(ast::local_crate, 0);
     auto p = front::parser::new_parser(sess, env, def, input, 0u, 0u);
-    auto crate = front::parser::parse_crate_from_source_file(p);
+    auto crate = parse_input(sess, p, input);
 
     auto mode;
     alt (ppm) {
