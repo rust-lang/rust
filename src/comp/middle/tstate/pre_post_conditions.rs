@@ -132,6 +132,7 @@ import front::ast::expr_assert;
 import front::ast::expr_cast;
 import front::ast::expr_for;
 import front::ast::expr_for_each;
+import front::ast::expr_anon_obj;
 import front::ast::stmt_decl;
 import front::ast::stmt_expr;
 import front::ast::block;
@@ -555,6 +556,17 @@ fn find_pre_post_expr(&fn_ctxt fcx, @expr e) -> () {
         case (expr_ext(_, _, _, ?expanded, ?a)) {
             find_pre_post_expr(fcx, expanded);
             copy_pre_post(fcx.ccx, a, expanded);
+        }
+        case (expr_anon_obj(?anon_obj, _, _, ?a)) {
+            alt (anon_obj.with_obj) {
+                case (some[@expr](?ex)) {
+                    find_pre_post_expr(fcx, ex);
+                    copy_pre_post(fcx.ccx, a, ex);
+                }
+                case (none[@expr]) {
+                    clear_pp(expr_pp(fcx.ccx, e));
+                }
+            }
         }
     }
 }

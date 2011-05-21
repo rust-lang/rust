@@ -379,7 +379,7 @@ type anon_obj = rec(
     option::t[vec[obj_field]] fields,
     vec[@method] methods,
     // with_obj: the original object being extended, if it exists.
-    option::t[ident] with_obj);
+    option::t[@expr] with_obj);
 
 type _mod = rec(vec[@view_item] view_items,
                 vec[@item] items);
